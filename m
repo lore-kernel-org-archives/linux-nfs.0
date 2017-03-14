@@ -1,387 +1,1389 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f180.google.com ([209.85.216.180]:34047 "EHLO
-        mail-qt0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751132AbdCNOFq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Mar 2017 10:05:46 -0400
-Received: by mail-qt0-f180.google.com with SMTP id n21so56257581qta.1
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Mar 2017 07:05:45 -0700 (PDT)
-Message-ID: <1489500341.2682.3.camel@redhat.com>
-Subject: Re: nfsd: delegation conflicts between NFSv3 and NFSv4 accessors
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Tue, 14 Mar 2017 10:05:41 -0400
-In-Reply-To: <0FEB53CC-D571-469F-98AA-4D68A545DFAD@oracle.com>
-References: <F2A98574-693E-4F72-B7D1-5FCEA851BC7C@oracle.com>
-         <1489252126.3367.4.camel@redhat.com>
-         <FFE72BE2-6CD5-434D-8DC0-6A5D393BEF4C@oracle.com>
-         <1489266274.3367.6.camel@redhat.com>
-         <20170313132749.GA11746@parsley.fieldses.org>
-         <41257C5D-BFEF-4538-99A3-BBAA4EE99EE3@oracle.com>
-         <1489422816.2807.1.camel@redhat.com>
-         <0D674F66-1A35-4FA9-8827-111B3E9D969C@oracle.com>
-         <0FEB53CC-D571-469F-98AA-4D68A545DFAD@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:37972 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751642AbdCNOL6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Mar 2017 10:11:58 -0400
+Date: Tue, 14 Mar 2017 10:11:57 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [RFC nfs-utils PATCH] nfsdcltrack: cluster mode
+Message-ID: <20170314141157.tjyhyostquyazpyl@tonberry.usersys.redhat.com>
+References: <20170310214612.12583-1-smayhew@redhat.com>
+ <20170313212029.GB15183@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170313212029.GB15183@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-03-13 at 14:26 -0400, Chuck Lever wrote:
-> > On Mar 13, 2017, at 1:12 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > > 
-> > > On Mar 13, 2017, at 12:33 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > 
-> > > On Mon, 2017-03-13 at 11:30 -0400, Chuck Lever wrote:
-> > > > Hi Bruce-
-> > > > 
-> > > > 
-> > > > > On Mar 13, 2017, at 9:27 AM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > > > > 
-> > > > > On Sat, Mar 11, 2017 at 04:04:34PM -0500, Jeff Layton wrote:
-> > > > > > On Sat, 2017-03-11 at 15:46 -0500, Chuck Lever wrote:
-> > > > > > > > On Mar 11, 2017, at 12:08 PM, Jeff Layton <jlayton@redhat.com> wrote:
-> > > > > > > > 
-> > > > > > > > On Sat, 2017-03-11 at 11:53 -0500, Chuck Lever wrote:
-> > > > > > > > > Hi Bruce, Jeff-
-> > > > > > > > > 
-> > > > > > > > > I've observed some interesting Linux NFS server behavior (v4.1.12).
-> > > > > > > > > 
-> > > > > > > > > We have a single system that has an NFSv4 mount via the kernel NFS
-> > > > > > > > > client, and an NFSv3 mount of the same export via a user space NFS
-> > > > > > > > > client. These two clients are accessing the same set of files.
-> > > > > > > > > 
-> > > > > > > > > The following pattern is seen on the wire. I've filtered a recent
-> > > > > > > > > capture on the FH of one of the shared files.
-> > > > > > > > > 
-> > > > > > > > > ---- cut here ----
-> > > > > > > > > 
-> > > > > > > > > 18507  19.483085    10.0.2.11 -> 10.0.1.8     NFS 238 V4 Call ACCESS FH: 0xc930444f, [Check: RD MD XT XE]
-> > > > > > > > > 18508  19.483827     10.0.1.8 -> 10.0.2.11    NFS 194 V4 Reply (Call In 18507) ACCESS, [Access Denied: XE], [Allowed: RD MD XT]
-> > > > > > > > > 18510  19.484676     10.0.1.8 -> 10.0.2.11    NFS 434 V4 Reply (Call In 18509) OPEN StateID: 0x6de3
-> > > > > > > > > 
-> > > > > > > > > This OPEN reply offers a read delegation to the kernel NFS client.
-> > > > > > > > > 
-> > > > > > > > > 18511  19.484806    10.0.2.11 -> 10.0.1.8     NFS 230 V4 Call GETATTR FH: 0xc930444f
-> > > > > > > > > 18512  19.485549     10.0.1.8 -> 10.0.2.11    NFS 274 V4 Reply (Call In 18511) GETATTR
-> > > > > > > > > 18513  19.485611    10.0.2.11 -> 10.0.1.8     NFS 230 V4 Call GETATTR FH: 0xc930444f
-> > > > > > > > > 18514  19.486375     10.0.1.8 -> 10.0.2.11    NFS 186 V4 Reply (Call In 18513) GETATTR
-> > > > > > > > > 18515  19.486464    10.0.2.11 -> 10.0.1.8     NFS 254 V4 Call CLOSE StateID: 0x6de3
-> > > > > > > > > 18516  19.487201     10.0.1.8 -> 10.0.2.11    NFS 202 V4 Reply (Call In 18515) CLOSE
-> > > > > > > > > 18556  19.498617    10.0.2.11 -> 10.0.1.8     NFS 210 V3 READ Call, FH: 0xc930444f Offset: 8192 Len: 8192
-> > > > > > > > > 
-> > > > > > > > > This READ call by the user space client does not conflict with the
-> > > > > > > > > read delegation.
-> > > > > > > > > 
-> > > > > > > > > 18559  19.499396     10.0.1.8 -> 10.0.2.11    NFS 8390 V3 READ Reply (Call In 18556) Len: 8192
-> > > > > > > > > 18726  19.568975     10.0.1.8 -> 10.0.2.11    NFS 310 V3 LOOKUP Reply (Call In 18725), FH: 0xc930444f
-> > > > > > > > > 18727  19.569170    10.0.2.11 -> 10.0.1.8     NFS 210 V3 READ Call, FH: 0xc930444f Offset: 0 Len: 512
-> > > > > > > > > 18728  19.569923     10.0.1.8 -> 10.0.2.11    NFS 710 V3 READ Reply (Call In 18727) Len: 512
-> > > > > > > > > 18729  19.570135    10.0.2.11 -> 10.0.1.8     NFS 234 V3 SETATTR Call, FH: 0xc930444f
-> > > > > > > > > 18730  19.570901     10.0.1.8 -> 10.0.2.11    NFS 214 V3 SETATTR Reply (Call In 18729) Error: NFS3ERR_JUKEBOX
-> > > > > > > > > 
-> > > > > > > > > The user space client has attempted to extend the file. This does
-> > > > > > > > > conflict with the read delegation held by the kernel NFS client,
-> > > > > > > > > so the server returns JUKEBOX, the equivalent of NFS4ERR_DELAY.
-> > > > > > > > > This causes a negative performance impact on the user space NFS
-> > > > > > > > > client.
-> > > > > > > > > 
-> > > > > > > > > 18731  19.575396    10.0.2.11 -> 10.0.1.8     NFS 250 V4 Call DELEGRETURN StateID: 0x6de3
-> > > > > > > > > 18732  19.576132     10.0.1.8 -> 10.0.2.11    NFS 186 V4 Reply (Call In 18731) DELEGRETURN
-> > > > > > > > > 
-> > > > > > > > > No CB_RECALL was done to trigger this DELEGRETURN. Apparently
-> > > > > > > > > the application that was accessing this file via the kernel OS
-> > > > > > > > > client decided already that it no longer needed the file before
-> > > > > > > > > the server could send the CB_RECALL. Sign of perhaps a race
-> > > > > > > > > between the applications accessing the file via these two
-> > > > > > > > > mounts.
-> > > > > > > > > 
-> > > > > > > > > ---- cut here ----
-> > > > > > > > > 
-> > > > > > > > > The server is aware of non-NFSv4 accessors of this file in frame
-> > > > > > > > > 18556. NFSv3 has no OPEN operation, of course, so it's not
-> > > > > > > > > possible for the server to determine how the NFSv3 client will
-> > > > > > > > > subsequently access this file.
-> > > > > > > > > 
-> > > > > > > > 
-> > > > > > > > Right. Why should we assume that the v3 client will do anything other
-> > > > > > > > than read there? If we recall the delegation just for reads, then we
-> > > > > > > > potentially negatively affect the performance of the v4 client.
-> > > > > > > > 
-> > > > > > > > > Seems like at frame 18556, it would be a best practice to recall
-> > > > > > > > > the delegation to avoid potential future conflicts, such as the
-> > > > > > > > > SETATTR in frame 18729.
-> > > > > > > > > 
-> > > > > > > > > Or, perhaps that READ isn't the first NFSv3 access of that file.
-> > > > > > > > > After all, a LOOKUP would have to be done to retrieve that file's
-> > > > > > > > > FH. The OPEN in frame 18556 perhaps could have avoided offering
-> > > > > > > > > the READ delegation, knowing there is a recent non-NFSv4 accessor
-> > > > > > > > > of that file.
-> > > > > > > > > 
-> > > > > > > > > Would these be difficult or inappropriate policies to implement?
-> > > > > > > > > 
-> > > > > > > > > 
-> > > > > > > > 
-> > > > > > > > Reads are not currently considered to be conflicting access vs. a read
-> > > > > > > > delegation.
-> > > > > > > 
-> > > > > > > Strictly speaking, a single NFSv3 READ does not violate the guarantee
-> > > > > > > made by the read delegation. And, strictly speaking, there can be no
-> > > > > > > OPEN conflict because NFSv3 does not have an OPEN operation.
-> > > > > > > 
-> > > > > > > The question is whether the server has an adequate mechanism for
-> > > > > > > delaying NFSv3 accessors when an NFSv4 delegation must be recalled.
-> > > > > > > 
-> > > > > > > NFS3ERR_JUKEBOX and NFS4ERR_DELAY share the same numeric value, but
-> > > > > > > imply different semantics.
-> > > > > > > 
-> > > > > > > RFC1813 says:
-> > > > > > > 
-> > > > > > > NFS3ERR_JUKEBOX
-> > > > > > >  The server initiated the request, but was not able to
-> > > > > > >  complete it in a timely fashion. The client should wait
-> > > > > > >  and then try the request with a new RPC transaction ID.
-> > > > > > >  For example, this error should be returned from a server
-> > > > > > >  that supports hierarchical storage and receives a request
-> > > > > > >  to process a file that has been migrated. In this case,
-> > > > > > >  the server should start the immigration process and
-> > > > > > >  respond to client with this error.
-> > > > > > > 
-> > > > > > > Some clients respond to NFS3ERR_JUKEBOX by waiting quite some time
-> > > > > > > before retrying.
-> > > > > > > 
-> > > > > > > RFC7530 says:
-> > > > > > > 
-> > > > > > > 13.1.1.3.  NFS4ERR_DELAY (Error Code 10008)
-> > > > > > > 
-> > > > > > > For any of a number of reasons, the replier could not process this
-> > > > > > > operation in what was deemed a reasonable time.  The client should
-> > > > > > > wait and then try the request with a new RPC transaction ID.
-> > > > > > > 
-> > > > > > > The following are two examples of what might lead to this situation:
-> > > > > > > 
-> > > > > > > o  A server that supports hierarchical storage receives a request to
-> > > > > > >    process a file that had been migrated.
-> > > > > > > 
-> > > > > > > o  An operation requires a delegation recall to proceed, and waiting
-> > > > > > >    for this delegation recall makes processing this request in a
-> > > > > > >    timely fashion impossible.
-> > > > > > > 
-> > > > > > > An NFSv4 client is prepared to retry this error almost immediately
-> > > > > > > because most of the time it is due to the second bullet.
-> > > > > > > 
-> > > > > > > I agree that not recalling after an NFSv3 READ is reasonable in some
-> > > > > > > cases. However, I demonstrated a case where the current policy does
-> > > > > > > not serve one of these clients well at all. In fact, the NFSv3
-> > > > > > > accessor in this case is the performance-sensitive one.
-> > > > > > > 
-> > > > > > > To put it another way, the NFSv4 protocol does not forbid the
-> > > > > > > current Linux server policy, but interoperating well with existing
-> > > > > > > NFSv3 clients suggests it's not an optimal policy choice.
-> > > > > > > 
-> > > > > > 
-> > > > > > I think that is entirely dependent on the workload. If we proactively
-> > > > > > recall delegations because we think the v3 client _might_ do some
-> > > > > > conflicting access, and then it doesn't, then that's also a non-optimal
-> > > > > > choice.
-> > > > > > 
-> > > > > > > 
-> > > > > > > > I think that's the correct thing to do. Until we have some
-> > > > > > > > sort of conflicting behavior I don't see why you'd want to prematurely
-> > > > > > > > recall the delegation.
-> > > > > > > 
-> > > > > > > The reason to recall a delegation is to avoid returning
-> > > > > > > NFS3ERR_JUKEBOX if at all possible, because doing so is a drastic
-> > > > > > > remedy that results in a performance regression.
-> > > > > > > 
-> > > > > > > The negative impact of not having a delegation is small. The negative
-> > > > > > > impact of returning NFS3ERR_JUKEBOX to a SETATTR or WRITE can be as
-> > > > > > > much as a 5 minute wait. (This is intolerably long for, say, online
-> > > > > > > transaction processing workloads).
-> > > > > > > 
-> > > > > > 
-> > > > > > That sounds like a deficient v3 client, IMO. There's nothing in the v3
-> > > > > > spec that I know of that advocates a delay that long before
-> > > > > > reattempting. I'm pretty sure the Linux client treats NFSERR3_JUKEBOX
-> > > > > > and NFS4ERR_DELAY more or less equivalently.
-> > > > > 
-> > > > > The v3 client uses a 5 second delay (see NFS_JUKEBOX_RETRY_TIME).
-> > > > > The v4 client, at least in the case of operations that could break a
-> > > > > deleg, does exponential backoff starting with a tenth of a second--see
-> > > > > nfs4_delay.
-> > > > > 
-> > > > > So Trond's been taking the spec at its word here.
-> > > > > 
-> > > > > Like Jeff I'm pretty unhappy at the idea of revoking delegations
-> > > > > preemptively on v3 read and lookup.
-> > > > 
-> > > > To completely avoid JUKEBOX, you'd have to recall asynchronously.
-> > > > Even better would be not to offer delegations when it is clear
-> > > > there is an active NFSv3 accessor.
-> > > > 
-> > > > Is there a specific use case where holding onto delegations in
-> > > > this case is measurably valuable?
-> > > > 
-> > > > As Jeff said above, it is workload dependent, but it seems that
-> > > > we are choosing arbitrarily which workloads work well and which
-> > > > will be penalized.
-> > > > 
-> > > > Clearly, speculating about future access is not allowed when
-> > > > only NFSv4 is in play.
-> > > > 
-> > > > 
-> > > > > And a 5 minute wait does sound like a client problem.
-> > > > 
-> > > > Even a 5 second wait is not good. A simple "touch" that takes
-> > > > five seconds can generate user complaints.
-> > > > 
-> > > > I do see the point that a NFSv3 client implementation can be
-> > > > changed to retry JUKEBOX more aggressively. Not all NFSv3 code
-> > > > bases are actively maintained, however.
-> > > > 
-> > > > 
-> > > > > > > The server can detect there are other accessors that do not provide
-> > > > > > > OPEN/CLOSE semantics. In addition, the server cannot predict when one
-> > > > > > > of these accessors may use a WRITE or SETATTR. And finally it does
-> > > > > > > not have a reasonably performant mechanism for delaying those
-> > > > > > > accessors when a delegation must be recalled.
-> > > > > > > 
-> > > > > > 
-> > > > > > Interoperability is hard (and sometimes it doesn't work well :). We
-> > > > > > simply don't have enough info to reliably guess what the v3 client will
-> > > > > > do in this situation.
-> > > > 
-> > > > (This is in response to Jeff's comment)
-> > > > 
-> > > > Interoperability means following the spec, but IMO it also
-> > > > means respecting longstanding implementation practice when
-> > > > a specification does not prescribe particular behavior.
-> > > > 
-> > > > In this case, strictly speaking interoperability is not the
-> > > > concern.
-> > > > 
-> > > > -> The spec authors clearly believed this is an area where
-> > > > implementations are to be given free rein. Otherwise the text
-> > > > would have provided RFC 2119 directives or other specific
-> > > > guidelines. There was opportunity to add specifics in RFCs
-> > > > 3530, 7530, and 5661, but that wasn't done.
-> > > > 
-> > > > -> The scenario I reported does not involve operational
-> > > > failure. It eventually succeeds whether the client's retry
-> > > > is aggressive or lazy. It just works _better_ when there is
-> > > > no DELAY/JUKEBOX.
-> > > > 
-> > > > There are a few normative constraints here, and I think we
-> > > > have a bead on what those are, but IMO the issue is one of
-> > > > implementation quality (on both ends).
-> > > > 
-> > > 
-> > > Yes. I'm just not sold that what you're proposing would be any better
-> > > than what we have for the vast majority of people. It might be, but I
-> > > don't think that's necessarily the case.
-> > 
-> > In other words, both of you are comparing my use case with
-> > a counterfactual. That doesn't seem like a fair fight.
-> > 
-> > Can you demonstrate a specific use case where not offering
-> > a delegation during mixed NFSv3 and NFSv4 access is a true
-> > detriment? (I am open to hearing about it).
-> > 
-> > What happens when an NFSv3 client sends an NLM LOCK on a
-> > delegated file? I assume the correct response is for the
-> > server to return NLM_LCK_BLOCKED, recall the delegation, and
-> > then call the client back when the delegation has been
-> > returned. Is that known to work?
-> > 
-> > 
-> > > > > > That said, I wouldn't have a huge objection to a server side tunable
-> > > > > > (module parameter?) that says "Recall read delegations on v2/3 READ
-> > > > > > calls". Make it default to off, and then people in your situation could
-> > > > > > set it if they thought it a better policy for their workload.
-> > > > > 
-> > > > > I also wonder if in v3 case we should try a small synchronous wait
-> > > > > before returning JUKEBOX.  Read delegations shouldn't require the client
-> > > > > to do very much, so it could be they're typically returned in a
-> > > > > fraction of a second.
-> > > > 
-> > > > That wait would have to be very short in the NFSv3 / UDP case
-> > > > to avoid a retransmit timeout. I know, UDP is going away.
-> > > > 
-> > > > It's hard to say how long to wait. The RTT to the client might
-> > > > have to be taken into account. In WAN deployments, this could
-> > > > be as long as 50ms, for instance.
-> > > > 
-> > > > Although, again, waiting is speculative. A fixed 20ms wait
-> > > > would be appropriate for most LAN deployments, and that's
-> > > > where the expectation of consistently fast operation lies.
-> > > > 
-> > > 
-> > > Not a bad idea. That delay could be tunable as well.
-> > > > > Since we have a fixed number of threads, I don't think we'd want to keep
-> > > > > one waiting much longer than that.  Also, it'd be nice if we could get
-> > > > > woken up early when the delegation return comes in before our wait's
-> > > > > over, but I haven't thought about how to do that.
-> > > > > 
-> > > > > And I don't know if that actually helps.
-> > > > 
-> > > > When there is a lot of file sharing between clients, it might
-> > > > be good to reduce the penalty of delegation recalls.
-> > > > 
-> > > 
-> > > The best way to do that would probably be to have better heuristics for
-> > > deciding whether to hand them out in the first place.
-> > 
-> > I thought that was exactly what I was suggesting. ;-)
-> > See above ("To completely avoid...").
-> > 
-> > 
-> > > We have a little
-> > > of that now with the bloom filter, but maybe those rules could be more
-> > > friendly to this use-case?
-> > > 
-> > > > Clients, after all, cannot know when a recall has completed,
-> > > > so they have to guess about when to retransmit, and usually
-> > > > make a conservative estimate. If server behavior can shorten
-> > > > the delay without introducing race windows, that would be good
-> > > > added value.
-> > > > 
-> > > > But I'm not clear why waiting must tie up the nfsd thread (pun
-> > > > intended). How is a COMMIT or synchronous WRITE handled? Seems
-> > > > like waiting for a delegation recall to complete is a similar
-> > > > kind of thing.
-> > > > 
-> > > 
-> > > It's not required per-se, but there currently isn't a good mechanism to
-> > > idle RPCs in the server without putting the thread to sleep. It may be
-> > > possible to do that with the svc_defer stuff, but I'm a little leery of
-> > > that code.
-> > 
-> > There are other cases where context switching an nfsd would be
-> > useful. For example, inserting an opportunity for nfsd_write
-> > to perform transport reads (after having allocated pages in
-> > the right file) could provide some benefits by reducing data
-> > copies and page allocator calls.
-> > 
-> > I'm agnostic about exactly how this is done.
-> 
-> Meaning I don't have any particular design preferences.
-> 
-> I'd like to help with implementation, though, if there is
-> agreement about what approach is preferred.
-> 
-> 
+On Mon, 13 Mar 2017, J. Bruce Fields wrote:
 
-Yeah, it would be wonderful to move knfsd to a more asynchronous model.
-Being able to free up a thread to do other work when it would otherwise
-be blocked would likely do wonders for scalability.
+> On Fri, Mar 10, 2017 at 04:46:12PM -0500, Scott Mayhew wrote:
+> > This patch adds a new config option called "cluster-mode" for sharing
+> > client records from the cltrack database between nodes of an HA cluster
+> > such as pacemaker.
+> > 
+> > When enabled:
+> > 
+> > 1. We have a sqlite db in a hidden directory (".nfsdcltrack") on each
+> >    export.
+> 
+> I'm worried about storing any nfsdcltrack in an exported filesystem.
+> 
+> Access restrictions that might make sense for the rest of the export may
+> be too permissive for this stuff.  We don't want a client to be able to
+> modify the database,
 
-FWIW, that was a long-term goal that I had in mind when I did the
-patches to move knfsd to workqueues. Once you have it running in a
-workqueue you could more easily idle RPCs and re-dispatch them to the
-workqueue for further processing as needed.
+In my test setup I have the database file writable only by root, so the
+server would have to have root squashing disabled.
 
-You could do it with dedicated threads too of course, it's just not
-quite as conducive to it.
--- 
-Jeff Layton <jlayton@redhat.com>
+> or get a lease or lock on the file.
+
+I hadn't considered that though.  I'll have to do some testing around
+that.
+
+> 
+> > 2. We store the inode number of the etab file in the parameters table
+> >    of the local db,
+> 
+> What's "the local db"?  I guess that's the db normally stored in
+> /var/lib/nfs/nfsdcltrack/main.sqlite?
+
+Yes.
+> 
+> >    along with the path names for all the exports in a
+> >    new table.
+> 
+> A new table in that same database?
+
+Yes.  I added a table called 'exports' that just stores the exported
+pathnames (which are canonicalized by exportfs before getting written
+out to the etab).
+
+> 
+> > 3. During nfsdcltrack's startup, we stat the etab file.  If the inode
+> >    number is different than what we have in the db, then we know that
+> >    the exportfs program has modified the file.  We read in the exported
+> >    path names and compare them to what we have stored in the exports
+> >    table.  If any new exports has been added, we merge the client
+> >    records from db's on those exports into the clients table of the
+> >    local db.  Then we update the exports table in the local db.
+> 
+> How does the merging work?  What happens when some of the clients from
+> an export's .nfsdcltrack/ database are the same as known clients?
+
+The known clients are left as-is.  That's what the 'OR IGNORE' in the
+INSERT statement in the merge function is for (the id is the primary
+key of the clients table -- the 'OR IGNORE' tells sqlite what to do in
+the event that it were to violate that constraint).
+
+> 
+> > 4. When client records are added (cltrack_create()), updated
+> >    (cltrack_check()), or removed (cltrack_remove() and
+> >    cltrace_gracedone()) from the local db, they're added/updated/removed
+> >    from db on each of the exports as well.
+> 
+> Could you explain why you think this will give us the correct behavior
+> across migrations and reboots?
+
+The idea was that if the export's db was kept up to date then it would
+reflect what clients were keeping their lease active with the node
+that was previously exporting the filesystem, and therefore should be
+allowed to reclaim their locks from the node that was taking over the
+export after it was moved or if the old node rebooted.
+
+-Scott
+> 
+> Sounds like an interesting idea, but I'm wary and don't quite have my
+> mind wrapped around it.
+> 
+> --b.
+> 
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> >  utils/nfsdcltrack/Makefile.am   |   5 +-
+> >  utils/nfsdcltrack/nfsdcltrack.c | 165 ++++++++
+> >  utils/nfsdcltrack/sqlite.c      | 821 ++++++++++++++++++++++++++++++++++++++--
+> >  utils/nfsdcltrack/sqlite.h      |   8 +
+> >  4 files changed, 958 insertions(+), 41 deletions(-)
+> > 
+> > diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
+> > index 0a2858f..ff804df 100644
+> > --- a/utils/nfsdcltrack/Makefile.am
+> > +++ b/utils/nfsdcltrack/Makefile.am
+> > @@ -13,7 +13,10 @@ sbin_PROGRAMS	= nfsdcltrack
+> >  noinst_HEADERS	= sqlite.h
+> >  
+> >  nfsdcltrack_SOURCES = nfsdcltrack.c sqlite.c
+> > -nfsdcltrack_LDADD = ../../support/nfs/libnfs.a $(LIBSQLITE) $(LIBCAP)
+> > +nfsdcltrack_LDADD = ../../support/export/libexport.a \
+> > +		    ../../support/nfs/libnfs.a \
+> > +		    ../../support/misc/libmisc.a \
+> > +		    $(LIBSQLITE) $(LIBCAP)
+> >  
+> >  MAINTAINERCLEANFILES = Makefile.in
+> >  
+> > diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+> > index 7af9efb..3ff6d02 100644
+> > --- a/utils/nfsdcltrack/nfsdcltrack.c
+> > +++ b/utils/nfsdcltrack/nfsdcltrack.c
+> > @@ -46,6 +46,10 @@
+> >  #include "conffile.h"
+> >  #include "xlog.h"
+> >  #include "sqlite.h"
+> > +#include "exportfs.h"
+> > +#include "misc.h"
+> > +#include "nfslib.h"
+> > +#include "xmalloc.h"
+> >  
+> >  #ifndef CLD_DEFAULT_STORAGEDIR
+> >  #define CLD_DEFAULT_STORAGEDIR NFS_STATEDIR "/nfsdcltrack"
+> > @@ -93,6 +97,8 @@ static struct cltrack_cmd commands[] =
+> >  };
+> >  
+> >  static char *storagedir = CLD_DEFAULT_STORAGEDIR;
+> > +int cluster_mode = 0;
+> > +struct state_paths etab;
+> >  
+> >  /* common buffer for holding id4 blobs */
+> >  static unsigned char blob[NFS4_OPAQUE_LIMIT];
+> > @@ -262,6 +268,136 @@ cltrack_get_grace_start(void)
+> >  	return grace_start;
+> >  }
+> >  
+> > +/* stolen from nfs-server-generator.c */
+> > +struct list {
+> > +	struct list *next;
+> > +	char *name;
+> > +};
+> > +
+> > +/* stolen from nfs-server-generator.c */
+> > +static int is_unique(struct list **lp, char *path)
+> > +{
+> > +	struct list *l = *lp;
+> > +
+> > +	while (l) {
+> > +		if (strcmp(l->name, path) == 0)
+> > +			return 0;
+> > +		l = l->next;
+> > +	}
+> > +	l = malloc(sizeof(*l));
+> > +	if (l == NULL)
+> > +		return 0;
+> > +	l->name = path;
+> > +	l->next = *lp;
+> > +	*lp = l;
+> > +	return 1;
+> > +}
+> > +
+> > +static
+> > +void dispose_list(struct list **lp)
+> > +{
+> > +	struct list *x;
+> > +	struct list *l = *lp;
+> > +
+> > +	while (l) {
+> > +		x = l;
+> > +		l = l->next;
+> > +		free(x);
+> > +	}
+> > +}
+> > +
+> > +/*
+> > + * Walk the export list, adding them to a temp table in the db.  For any new
+> > + * export we find, try to merge the client records from that export's db into
+> > + * the main db.
+> > + */
+> > +static int
+> > +cltrack_walk_exportlist(void)
+> > +{
+> > +	int ret = 0;
+> > +	int i;
+> > +	nfs_export *exp;
+> > +	struct list *list = NULL;
+> > +
+> > +	for (i = 0; i < MCL_MAXTYPES; i++) {
+> > +		for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
+> > +			if (!is_unique(&list, exp->m_export.e_path))
+> > +				continue;
+> > +			if (exp->m_export.e_flags & NFSEXP_V4ROOT)
+> > +				continue;
+> > +			xlog(D_GENERAL, "export path: %s", exp->m_export.e_path);
+> > +			if (!sqlite_export_exists(exp->m_export.e_path)) {
+> > +				xlog(D_GENERAL, "%s is a new export",
+> > +						exp->m_export.e_path);
+> > +				ret = sqlite_merge_client_records(exp->m_export.e_path);
+> > +				if (ret)
+> > +					xlog(L_WARNING, "failed to merge client records from %s",
+> > +							exp->m_export.e_path);
+> > +			}
+> > +			ret = sqlite_insert_temp_export(exp->m_export.e_path);
+> > +			if (ret) {
+> > +				xlog(L_WARNING, "failed to insert temp export");
+> > +				goto out_err;
+> > +			}
+> > +		}
+> > +	}
+> > +
+> > +out_err:
+> > +	dispose_list(&list);
+> > +	return ret;
+> > +}
+> > +
+> > +/*
+> > + * If the etab file's inode number has changed then it's an indication that the
+> > + * exports have changed.  When that happens, we need to re-read the etab file
+> > + * and update the exports in the db.
+> > + */
+> > +static void
+> > +cltrack_check_etab(void)
+> > +{
+> > +	int ret;
+> > +	int fd;
+> > +	struct stat stb;
+> > +	ino_t etab_inode;
+> > +
+> > +	etab_inode = (ino_t)sqlite_query_etab_inode();
+> > +	if ((fd = open(etab.statefn, O_RDONLY)) < 0) {
+> > +		xlog(L_WARNING, "couldn't open %s", etab.statefn);
+> > +		goto out_deactivate;
+> > +	} else if (fstat(fd, &stb) < 0) {
+> > +		xlog(L_WARNING, "couldn't stat %s", etab.statefn);
+> > +		goto out_deactivate;
+> > +	}
+> > +	if (etab_inode != stb.st_ino) {
+> > +		sqlite_create_temp_exports();
+> > +		xlog(D_GENERAL, "re-reading %s", etab.statefn);
+> > +		xtab_export_read();
+> > +		ret = cltrack_walk_exportlist();
+> > +		if (ret) {
+> > +			xlog(L_WARNING, "failed to walk exportlist");
+> > +			goto out_deactivate;
+> > +		}
+> > +		ret = sqlite_update_exports((long)stb.st_ino);
+> > +		if (ret) {
+> > +			xlog(L_WARNING, "failed to update exports");
+> > +			goto out_deactivate;
+> > +		}
+> > +		sqlite_drop_temp_exports();
+> > +		if (ret) {
+> > +			xlog(L_WARNING, "failed to update etab inode in database");
+> > +			goto out_deactivate;
+> > +		}
+> > +	}
+> > +
+> > +out:
+> > +	return;
+> > +
+> > +out_deactivate:
+> > +	xlog(D_GENERAL, "cluster mode deactivated");
+> > +	cluster_mode = 0;
+> > +	goto out;
+> > +}
+> > +
+> >  static bool
+> >  cltrack_reclaims_complete(void)
+> >  {
+> > @@ -315,6 +451,8 @@ cltrack_init(const char __attribute__((unused)) *unused)
+> >  		 */
+> >  		ret = -EACCES;
+> >  	} else {
+> > +		if (cluster_mode)
+> > +			cltrack_check_etab();
+> >  		if (cltrack_reclaims_complete())
+> >  			cltrack_lift_grace_period();
+> >  	}
+> > @@ -552,6 +690,29 @@ find_cmd(char *cmdname)
+> >  	return NULL;
+> >  }
+> >  
+> > +static void
+> > +cluster_mode_activate(const char *progname)
+> > +{
+> > +	char *s;
+> > +
+> > +	xlog(D_GENERAL, "cluster mode activated");
+> > +	/* NOTE: following uses "mountd" section of nfs.conf !!!! */
+> > +	s = conf_get_str("mountd", "state-directory-path");
+> > +	if (s && !state_setup_basedir(progname, s)) {
+> > +		xlog(L_WARNING, "failed to get mountd's state directory path");
+> > +		goto out_deactivate;
+> > +	}
+> > +	if (!setup_state_path_names(progname, ETAB, ETABTMP, ETABLCK, &etab)) {
+> > +		xlog(L_WARNING, "failed to setup etab path");
+> > +		goto out_deactivate;
+> > +	}
+> > +	return;
+> > +
+> > +out_deactivate:
+> > +	xlog(D_GENERAL, "cluster mode deactivated");
+> > +	cluster_mode = 0;
+> > +}
+> > +
+> >  int
+> >  main(int argc, char **argv)
+> >  {
+> > @@ -575,6 +736,8 @@ main(int argc, char **argv)
+> >  	if (rc > 0)
+> >  		xlog_config(D_ALL, 1);
+> >  
+> > +	cluster_mode = conf_get_bool("nfsdcltrack", "cluster-mode", cluster_mode);
+> > +
+> >  	/* process command-line options */
+> >  	while ((arg = getopt_long(argc, argv, "hdfs:", longopts,
+> >  				  NULL)) != EOF) {
+> > @@ -630,6 +793,8 @@ main(int argc, char **argv)
+> >  		}
+> >  		cmdarg = argv[optind + 1];
+> >  	}
+> > +	if (cluster_mode)
+> > +		cluster_mode_activate(progname);
+> >  	rc = cmd->func(cmdarg);
+> >  out:
+> >  	return rc;
+> > diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+> > index 54cd748..759c1b6 100644
+> > --- a/utils/nfsdcltrack/sqlite.c
+> > +++ b/utils/nfsdcltrack/sqlite.c
+> > @@ -49,17 +49,46 @@
+> >  #include <unistd.h>
+> >  #include <sqlite3.h>
+> >  #include <linux/limits.h>
+> > +#include <stdlib.h>
+> > +#include <libgen.h>
+> >  
+> >  #include "xlog.h"
+> >  
+> > -#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 2
+> > +#define CLTRACK_SQLITE_LATEST_SCHEMA_VERSION 3
+> >  
+> >  /* in milliseconds */
+> >  #define CLTRACK_SQLITE_BUSY_TIMEOUT 10000
+> >  
+> >  /* private data structures */
+> > +struct insert_client_args {
+> > +	const unsigned char	*clname;
+> > +	const size_t		namelen;
+> > +	const bool		has_session;
+> > +	const bool		zerotime;
+> > +};
+> > +
+> > +struct remove_client_args {
+> > +	const unsigned char	*clname;
+> > +	const size_t		namelen;
+> > +};
+> > +
+> > +struct check_client_args {
+> > +	const unsigned char	*clname;
+> > +	const size_t		namelen;
+> > +	const bool		has_session;
+> > +};
+> > +
+> > +struct remove_unreclaimed_args {
+> > +	const time_t		grace_start;
+> > +};
+> > +
+> > +struct list {
+> > +	struct list *next;
+> > +	char *name;
+> > +};
+> >  
+> >  /* global variables */
+> > +extern int cluster_mode;
+> >  
+> >  /* reusable pathname and sql command buffer */
+> >  static char buf[PATH_MAX];
+> > @@ -123,7 +152,7 @@ out:
+> >  }
+> >  
+> >  static int
+> > -sqlite_maindb_update_v1_to_v2(void)
+> > +sqlite_maindb_update_v1_to_v3(void)
+> >  {
+> >  	int ret, ret2;
+> >  	char *err;
+> > @@ -164,6 +193,90 @@ sqlite_maindb_update_v1_to_v2(void)
+> >  		goto rollback;
+> >  	}
+> >  
+> > +	/* create the "exports" table */
+> > +	ret = sqlite3_exec(dbh, "CREATE TABLE exports "
+> > +				"(path TEXT PRIMARY KEY); ",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to create exports table: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
+> > +			"WHERE key = \"version\";",
+> > +			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
+> > +	if (ret < 0) {
+> > +		xlog(L_ERROR, "sprintf failed!");
+> > +		goto rollback;
+> > +	} else if ((size_t)ret >= sizeof(buf)) {
+> > +		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+> > +		ret = -EINVAL;
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to update schema version: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +out:
+> > +	sqlite3_free(err);
+> > +	return ret;
+> > +rollback:
+> > +	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+> > +	if (ret2 != SQLITE_OK)
+> > +		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+> > +	goto out;
+> > +}
+> > +
+> > +static int
+> > +sqlite_maindb_update_v2_to_v3(void)
+> > +{
+> > +	int ret, ret2;
+> > +	char *err;
+> > +
+> > +	/* begin transaction */
+> > +	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+> > +				&err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	/*
+> > +	 * Check schema version again. This time, under an exclusive
+> > +	 * transaction to guard against racing DB setup attempts
+> > +	 */
+> > +	ret = sqlite_query_schema_version();
+> > +	switch (ret) {
+> > +	case 2:
+> > +		/* Still at v2 -- do conversion */
+> > +		break;
+> > +	case CLTRACK_SQLITE_LATEST_SCHEMA_VERSION:
+> > +		/* Someone else raced in and set it up */
+> > +		ret = 0;
+> > +		goto rollback;
+> > +	default:
+> > +		/* Something went wrong -- fail! */
+> > +		ret = -EINVAL;
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	/* create the "exports" table */
+> > +	ret = sqlite3_exec(dbh, "CREATE TABLE exports "
+> > +				"(path TEXT PRIMARY KEY); ",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to create exports table: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> >  	ret = snprintf(buf, sizeof(buf), "UPDATE parameters SET value = %d "
+> >  			"WHERE key = \"version\";",
+> >  			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
+> > @@ -204,7 +317,7 @@ rollback:
+> >   * transaction. On any error, rollback the transaction.
+> >   */
+> >  int
+> > -sqlite_maindb_init_v2(void)
+> > +sqlite_maindb_init_v3(void)
+> >  {
+> >  	int ret, ret2;
+> >  	char *err = NULL;
+> > @@ -253,6 +366,14 @@ sqlite_maindb_init_v2(void)
+> >  		goto rollback;
+> >  	}
+> >  
+> > +	/* create the "exports" table */
+> > +	ret = sqlite3_exec(dbh, "CREATE TABLE exports "
+> > +				"(path TEXT PRIMARY KEY); ",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to create exports table: %s", err);
+> > +		goto rollback;
+> > +	}
+> >  
+> >  	/* insert version into parameters table */
+> >  	ret = snprintf(buf, sizeof(buf), "INSERT OR FAIL INTO parameters "
+> > @@ -334,15 +455,21 @@ sqlite_prepare_dbh(const char *topdir)
+> >  		/* DB is already set up. Do nothing */
+> >  		ret = 0;
+> >  		break;
+> > +	case 2:
+> > +		/* Old DB -- update to new schema */
+> > +		ret = sqlite_maindb_update_v2_to_v3();
+> > +		if (ret)
+> > +			goto out_close;
+> > +		break;
+> >  	case 1:
+> >  		/* Old DB -- update to new schema */
+> > -		ret = sqlite_maindb_update_v1_to_v2();
+> > +		ret = sqlite_maindb_update_v1_to_v3();
+> >  		if (ret)
+> >  			goto out_close;
+> >  		break;
+> >  	case 0:
+> >  		/* Query failed -- try to set up new DB */
+> > -		ret = sqlite_maindb_init_v2();
+> > +		ret = sqlite_maindb_init_v3();
+> >  		if (ret)
+> >  			goto out_close;
+> >  		break;
+> > @@ -362,25 +489,252 @@ out_close:
+> >  	return ret;
+> >  }
+> >  
+> > +static int
+> > +sqlite_create_export_db(const char *path)
+> > +{
+> > +	int ret, ret2;
+> > +	sqlite3 *dbh;
+> > +	char *err = NULL;
+> > +	char *dbpath = strdup(path);
+> > +
+> > +	ret = mkdir_if_not_exist(dirname(dbpath));
+> > +	if (ret)
+> > +		goto out;
+> > +
+> > +	ret = sqlite3_open(path, &dbh);
+> > +	if (ret != SQLITE_OK)
+> > +		goto out;
+> > +
+> > +	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+> > +				&err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+> > +		goto out_dbh;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "CREATE TABLE parameters "
+> > +				"(key TEXT PRIMARY KEY, value TEXT);",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to create parameter table: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "CREATE TABLE clients (id BLOB PRIMARY KEY, "
+> > +				"time INTEGER, has_session INTEGER);",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to create clients table: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = snprintf(buf, sizeof(buf), "INSERT OR FAIL INTO parameters "
+> > +			"values (\"version\", \"%d\");",
+> > +			CLTRACK_SQLITE_LATEST_SCHEMA_VERSION);
+> > +	if (ret < 0) {
+> > +		xlog(L_ERROR, "sprintf failed!");
+> > +		goto rollback;
+> > +	} else if ((size_t)ret >= sizeof(buf)) {
+> > +		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+> > +		ret = -EINVAL;
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +out_dbh:
+> > +	sqlite3_free(err);
+> > +	sqlite3_close(dbh);
+> > +	dbh = NULL;
+> > +out:
+> > +	free(dbpath);
+> > +	return ret;
+> > +
+> > +rollback:
+> > +	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+> > +	if (ret2 != SQLITE_OK)
+> > +		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+> > +	goto out_dbh;
+> > +}
+> > +
+> > +static int
+> > +sqlite_attach_db(const char *path)
+> > +{
+> > +	int ret;
+> > +	char dbpath[PATH_MAX];
+> > +	struct stat stb;
+> > +	sqlite3_stmt *stmt = NULL;
+> > +
+> > +	ret = snprintf(dbpath, PATH_MAX - 1, "%s/.nfsdcltrack/main.sqlite", path);
+> > +	if (ret < 0)
+> > +		return ret;
+> > +
+> > +	dbpath[PATH_MAX - 1] = '\0';
+> > +	if (stat(dbpath, &stb) < 0) {
+> > +		if (errno == ENOENT) {
+> > +			xlog(L_WARNING, "%s does not exist, create it!", dbpath);
+> > +			ret = sqlite_create_export_db(dbpath);
+> > +			if (ret) {
+> > +				xlog(L_ERROR, "failed to create %s", dbpath);
+> > +				return ret;
+> > +			}
+> > +		} else {
+> > +			xlog(L_ERROR, "stat of %s failed", buf);
+> > +			return ret;
+> > +		}
+> > +	}
+> > +	xlog(D_GENERAL, "attaching %s", dbpath);
+> > +	ret = sqlite3_prepare_v2(dbh, "ATTACH DATABASE ? AS attached;",
+> > +			-1, &stmt, NULL);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: unable to prepare attach statement: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_bind_text(stmt, 1, dbpath, strlen(dbpath), SQLITE_STATIC);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: bind text failed: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_step(stmt);
+> > +	if (ret == SQLITE_DONE)
+> > +		ret = SQLITE_OK;
+> > +	else
+> > +		xlog(L_ERROR, "%s: unexpected return code from attach: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +
+> > +	sqlite3_finalize(stmt);
+> > +	stmt = NULL;
+> > +	return ret;
+> > +}
+> > +
+> > +static int
+> > +sqlite_detach_db(void)
+> > +{
+> > +	int ret;
+> > +	char *err = NULL;
+> > +
+> > +	xlog(D_GENERAL, "detaching database");
+> > +	ret = sqlite3_exec(dbh, "DETACH DATABASE attached;", NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to detach attached db: %s", err);
+> > +	}
+> > +
+> > +	sqlite3_free(err);
+> > +	return ret;
+> > +}
+> > +
+> > +static int
+> > +sqlite_cluster_do(int (*func)(void *, const char *), void *data)
+> > +{
+> > +	int ret;
+> > +	char *err = NULL;
+> > +	sqlite3_stmt *stmt = NULL;
+> > +	struct list *lp = NULL;
+> > +	struct list *l;
+> > +
+> > +	xlog(D_GENERAL, "%s", __func__);
+> > +
+> > +	ret = sqlite3_prepare_v2(dbh, "SELECT * FROM exports;",
+> > +			-1, &stmt, NULL);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+> > +			__func__, sqlite3_errmsg(dbh));
+> > +		goto out_err;
+> > +	}
+> > +
+> > +	ret = sqlite3_step(stmt);
+> > +	while (ret == SQLITE_ROW) {
+> > +		l = malloc(sizeof(*l));
+> > +		memset(l, 0, sizeof(*l));
+> > +		if (l == NULL)
+> > +			return 0;
+> > +		l->name = strdup((char *)sqlite3_column_text(stmt, 0));
+> > +		l->next = lp;
+> > +		lp = l;
+> > +		ret = sqlite3_step(stmt);
+> > +	}
+> > +	if (ret == SQLITE_DONE)
+> > +		ret = SQLITE_OK;
+> > +	else
+> > +		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +
+> > +	sqlite3_finalize(stmt);
+> > +	stmt = NULL;
+> > +
+> > +	while (lp) {
+> > +		ret = func(data, lp->name);
+> > +		if (ret != SQLITE_OK)
+> > +			xlog(L_ERROR, "%s: func failed for db %s",
+> > +					__func__, lp->name);
+> > +		l = lp;
+> > +		lp = lp->next;
+> > +		free(l->name);
+> > +		free(l);
+> > +	}
+> > +
+> > +out_err:
+> > +	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+> > +	sqlite3_free(err);
+> > +	return ret;
+> > +}
+> > +
+> >  /*
+> >   * Create a client record
+> >   *
+> >   * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
+> >   */
+> > -int
+> > -sqlite_insert_client(const unsigned char *clname, const size_t namelen,
+> > -			const bool has_session, const bool zerotime)
+> > +static int
+> > +__sqlite_insert_client(void *data, const char *path)
+> >  {
+> >  	int ret;
+> >  	sqlite3_stmt *stmt = NULL;
+> > +	struct insert_client_args *args = data;
+> > +
+> > +	if (path) {
+> > +		ret = sqlite_attach_db(path);
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to attach db for %s",
+> > +					__func__ , path);
+> > +			return ret;
+> > +		}
+> > +	}
+> >  
+> > -	if (zerotime)
+> > -		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
+> > -				"VALUES (?, 0, ?);", -1, &stmt, NULL);
+> > -	else
+> > -		ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE INTO clients "
+> > -				"VALUES (?, strftime('%s', 'now'), ?);", -1,
+> > -				&stmt, NULL);
+> > +	if (args->zerotime) {
+> > +		if (path)
+> > +			ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE "
+> > +					"INTO attached.clients "
+> > +					"VALUES (?, 0, ?);", -1, &stmt, NULL);
+> > +		else
+> > +			ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE "
+> > +					"INTO clients "
+> > +					"VALUES (?, 0, ?);", -1, &stmt, NULL);
+> > +	} else {
+> > +		if (path)
+> > +			ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE "
+> > +					"INTO attached.clients "
+> > +					"VALUES (?, strftime('%s', 'now'), ?);",
+> > +					-1, &stmt, NULL);
+> > +		else
+> > +			ret = sqlite3_prepare_v2(dbh, "INSERT OR REPLACE "
+> > +					"INTO clients "
+> > +					"VALUES (?, strftime('%s', 'now'), ?);",
+> > +					-1, &stmt, NULL);
+> > +	}
+> >  
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+> > @@ -388,15 +742,15 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen,
+> >  		return ret;
+> >  	}
+> >  
+> > -	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
+> > -				SQLITE_STATIC);
+> > +	ret = sqlite3_bind_blob(stmt, 1, (const void *)args->clname,
+> > +				args->namelen, SQLITE_STATIC);
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
+> >  				sqlite3_errmsg(dbh));
+> >  		goto out_err;
+> >  	}
+> >  
+> > -	ret = sqlite3_bind_int(stmt, 2, (int)has_session);
+> > +	ret = sqlite3_bind_int(stmt, 2, (int)args->has_session);
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: bind int failed: %s", __func__,
+> >  				sqlite3_errmsg(dbh));
+> > @@ -409,30 +763,75 @@ sqlite_insert_client(const unsigned char *clname, const size_t namelen,
+> >  	else
+> >  		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
+> >  				__func__, sqlite3_errmsg(dbh));
+> > -
+> >  out_err:
+> > +	if (path) {
+> > +		ret = sqlite_detach_db();
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to detach db for %s",
+> > +					__func__ , path);
+> > +		}
+> > +	}
+> >  	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+> >  	sqlite3_finalize(stmt);
+> >  	return ret;
+> >  }
+> >  
+> > -/* Remove a client record */
+> > +/*
+> > + * Create a client record
+> > + *
+> > + * Returns a non-zero sqlite error code, or SQLITE_OK (aka 0)
+> > + */
+> >  int
+> > -sqlite_remove_client(const unsigned char *clname, const size_t namelen)
+> > +sqlite_insert_client(const unsigned char *clname, const size_t namelen,
+> > +			const bool has_session, const bool zerotime)
+> > +{
+> > +	int ret;
+> > +	struct insert_client_args args = {
+> > +		.clname = clname,
+> > +		.namelen = namelen,
+> > +		.has_session = has_session,
+> > +		.zerotime = zerotime,
+> > +	};
+> > +
+> > +	ret = __sqlite_insert_client(&args, NULL);
+> > +	if (ret == SQLITE_OK && cluster_mode)
+> > +		sqlite_cluster_do(&__sqlite_insert_client, &args);
+> > +
+> > +	return ret;
+> > +}
+> > +
+> > +/* Remove a client record */
+> > +static int
+> > +__sqlite_remove_client(void *data, const char *path)
+> >  {
+> >  	int ret;
+> >  	sqlite3_stmt *stmt = NULL;
+> > +	struct remove_client_args *args = data;
+> > +
+> > +	if (path) {
+> > +		ret = sqlite_attach_db(path);
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to attach db for %s",
+> > +					__func__ , path);
+> > +			return ret;
+> > +		}
+> > +	}
+> > +
+> > +	if (path)
+> > +		ret = sqlite3_prepare_v2(dbh, "DELETE FROM attached.clients "
+> > +					"WHERE id==?", -1, &stmt, NULL);
+> > +	else
+> > +		ret = sqlite3_prepare_v2(dbh, "DELETE FROM clients "
+> > +					"WHERE id==?", -1, &stmt, NULL);
+> >  
+> > -	ret = sqlite3_prepare_v2(dbh, "DELETE FROM clients WHERE id==?", -1,
+> > -				 &stmt, NULL);
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: statement prepare failed: %s",
+> >  				__func__, sqlite3_errmsg(dbh));
+> >  		goto out_err;
+> >  	}
+> >  
+> > -	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
+> > -				SQLITE_STATIC);
+> > +	ret = sqlite3_bind_blob(stmt, 1, (const void *)args->clname,
+> > +				args->namelen, SQLITE_STATIC);
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: bind blob failed: %s", __func__,
+> >  				sqlite3_errmsg(dbh));
+> > @@ -447,22 +846,56 @@ sqlite_remove_client(const unsigned char *clname, const size_t namelen)
+> >  				__func__, ret);
+> >  
+> >  out_err:
+> > +	if (path) {
+> > +		ret = sqlite_detach_db();
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to detach db for %s",
+> > +					__func__ , path);
+> > +		}
+> > +	}
+> >  	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+> >  	sqlite3_finalize(stmt);
+> >  	return ret;
+> >  }
+> >  
+> > +/* Remove a client record */
+> > +int
+> > +sqlite_remove_client(const unsigned char *clname, const size_t namelen)
+> > +{
+> > +	int ret;
+> > +	struct remove_client_args args = {
+> > +		.clname = clname,
+> > +		.namelen = namelen,
+> > +	};
+> > +
+> > +	ret = __sqlite_remove_client(&args, NULL);
+> > +	if (ret == SQLITE_OK && cluster_mode)
+> > +		sqlite_cluster_do(&__sqlite_remove_client, &args);
+> > +
+> > +	return ret;
+> > +}
+> > +
+> >  /*
+> >   * Is the given clname in the clients table? If so, then update its timestamp
+> >   * and return success. If the record isn't present, or the update fails, then
+> >   * return an error.
+> >   */
+> > -int
+> > -sqlite_check_client(const unsigned char *clname, const size_t namelen,
+> > -			const bool has_session)
+> > +static int
+> > +__sqlite_check_client(void *data, const char *path)
+> >  {
+> >  	int ret;
+> >  	sqlite3_stmt *stmt = NULL;
+> > +	struct check_client_args *args = data;
+> > +
+> > +	if (path) {
+> > +		ret = sqlite_attach_db(path);
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to attach db for %s",
+> > +					__func__ , path);
+> > +			return ret;
+> > +		}
+> > +		goto do_update;
+> > +	}
+> >  
+> >  	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM clients WHERE "
+> >  				      "id==?", -1, &stmt, NULL);
+> > @@ -472,8 +905,8 @@ sqlite_check_client(const unsigned char *clname, const size_t namelen,
+> >  		goto out_err;
+> >  	}
+> >  
+> > -	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
+> > -				SQLITE_STATIC);
+> > +	ret = sqlite3_bind_blob(stmt, 1, (const void *)args->clname,
+> > +				args->namelen, SQLITE_STATIC);
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: bind blob failed: %s",
+> >  				__func__, sqlite3_errmsg(dbh));
+> > @@ -494,25 +927,32 @@ sqlite_check_client(const unsigned char *clname, const size_t namelen,
+> >  		goto out_err;
+> >  	}
+> >  
+> > +do_update:
+> >  	/* Only update timestamp for v4.0 clients */
+> > -	if (has_session) {
+> > +	if (args->has_session) {
+> >  		ret = SQLITE_OK;
+> >  		goto out_err;
+> >  	}
+> >  
+> >  	sqlite3_finalize(stmt);
+> >  	stmt = NULL;
+> > -	ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients SET "
+> > -				      "time=strftime('%s', 'now') WHERE id==?",
+> > -				 -1, &stmt, NULL);
+> > +	if (path)
+> > +		ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL attached.clients "
+> > +					"SET time=strftime('%s', 'now') "
+> > +					"WHERE id==?", -1, &stmt, NULL);
+> > +	else
+> > +		ret = sqlite3_prepare_v2(dbh, "UPDATE OR FAIL clients "
+> > +					"SET time=strftime('%s', 'now') "
+> > +					"WHERE id==?", -1, &stmt, NULL);
+> > +
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: unable to prepare update statement: %s",
+> >  				__func__, sqlite3_errmsg(dbh));
+> >  		goto out_err;
+> >  	}
+> >  
+> > -	ret = sqlite3_bind_blob(stmt, 1, (const void *)clname, namelen,
+> > -				SQLITE_STATIC);
+> > +	ret = sqlite3_bind_blob(stmt, 1, (const void *)args->clname,
+> > +				args->namelen, SQLITE_STATIC);
+> >  	if (ret != SQLITE_OK) {
+> >  		xlog(L_ERROR, "%s: bind blob failed: %s",
+> >  				__func__, sqlite3_errmsg(dbh));
+> > @@ -527,22 +967,67 @@ sqlite_check_client(const unsigned char *clname, const size_t namelen,
+> >  				__func__, sqlite3_errmsg(dbh));
+> >  
+> >  out_err:
+> > +	if (path) {
+> > +		ret = sqlite_detach_db();
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to detach db for %s",
+> > +					__func__ , path);
+> > +		}
+> > +	}
+> >  	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+> >  	sqlite3_finalize(stmt);
+> >  	return ret;
+> >  }
+> >  
+> >  /*
+> > - * remove any client records that were not reclaimed since grace_start.
+> > + * Is the given clname in the clients table? If so, then update its timestamp
+> > + * and return success. If the record isn't present, or the update fails, then
+> > + * return an error.
+> >   */
+> >  int
+> > -sqlite_remove_unreclaimed(time_t grace_start)
+> > +sqlite_check_client(const unsigned char *clname, const size_t namelen,
+> > +			const bool has_session)
+> > +{
+> > +	int ret;
+> > +	struct check_client_args args = {
+> > +		.clname = clname,
+> > +		.namelen = namelen,
+> > +		.has_session = has_session,
+> > +	};
+> > +
+> > +	ret = __sqlite_check_client(&args, NULL);
+> > +	if (ret == SQLITE_OK && cluster_mode)
+> > +		sqlite_cluster_do(&__sqlite_check_client, &args);
+> > +
+> > +	return ret;
+> > +}
+> > +
+> > +/*
+> > + * remove any client records that were not reclaimed since grace_start.
+> > + */
+> > +static int
+> > +__sqlite_remove_unreclaimed(void *data, const char *path)
+> >  {
+> >  	int ret;
+> >  	char *err = NULL;
+> > +	struct remove_unreclaimed_args *args = data;
+> > +
+> > +	if (path) {
+> > +		ret = sqlite_attach_db(path);
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to attach db for %s",
+> > +					__func__ , path);
+> > +			return ret;
+> > +		}
+> > +	}
+> > +
+> > +	if (path)
+> > +		ret = snprintf(buf, sizeof(buf), "DELETE FROM attached.clients "
+> > +				"WHERE time < %ld", args->grace_start);
+> > +	else
+> > +		ret = snprintf(buf, sizeof(buf), "DELETE FROM clients "
+> > +				"WHERE time < %ld", args->grace_start);
+> >  
+> > -	ret = snprintf(buf, sizeof(buf), "DELETE FROM clients WHERE time < %ld",
+> > -			grace_start);
+> >  	if (ret < 0) {
+> >  		return ret;
+> >  	} else if ((size_t)ret >= sizeof(buf)) {
+> > @@ -554,12 +1039,38 @@ sqlite_remove_unreclaimed(time_t grace_start)
+> >  	if (ret != SQLITE_OK)
+> >  		xlog(L_ERROR, "%s: delete failed: %s", __func__, err);
+> >  
+> > +	if (path) {
+> > +		ret = sqlite_detach_db();
+> > +		if (ret != SQLITE_OK) {
+> > +			xlog(L_ERROR, "%s: failed to detach db for %s",
+> > +					__func__ , path);
+> > +		}
+> > +	}
+> > +
+> >  	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+> >  	sqlite3_free(err);
+> >  	return ret;
+> >  }
+> >  
+> >  /*
+> > + * remove any client records that were not reclaimed since grace_start.
+> > + */
+> > +int
+> > +sqlite_remove_unreclaimed(time_t grace_start)
+> > +{
+> > +	int ret;
+> > +	struct remove_unreclaimed_args args = {
+> > +		.grace_start = grace_start,
+> > +	};
+> > +
+> > +	ret = __sqlite_remove_unreclaimed(&args, NULL);
+> > +	if (ret == SQLITE_OK && cluster_mode)
+> > +		sqlite_cluster_do(&__sqlite_remove_unreclaimed, &args);
+> > +
+> > +	return ret;
+> > +}
+> > +
+> > +/*
+> >   * Are there any clients that are possibly still reclaiming? Return a positive
+> >   * integer (usually number of clients) if so. If not, then return 0. On any
+> >   * error, return non-zero.
+> > @@ -598,3 +1109,233 @@ sqlite_query_reclaiming(const time_t grace_start)
+> >  			"reclaim", __func__, ret);
+> >  	return ret;
+> >  }
+> > +
+> > +long
+> > +sqlite_query_etab_inode(void)
+> > +{
+> > +	int ret;
+> > +	sqlite3_stmt *stmt = NULL;
+> > +
+> > +	ret = sqlite3_prepare_v2(dbh,
+> > +		"SELECT value FROM parameters WHERE key == \"etab_inode\";",
+> > +		 -1, &stmt, NULL);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to prepare select statement: %s",
+> > +			sqlite3_errmsg(dbh));
+> > +		ret = 0;
+> > +		goto out;
+> > +	}
+> > +
+> > +	ret = sqlite3_step(stmt);
+> > +	if (ret != SQLITE_ROW) {
+> > +		xlog(L_ERROR, "Select statement execution failed: %s",
+> > +				sqlite3_errmsg(dbh));
+> > +		ret = 0;
+> > +		goto out;
+> > +	}
+> > +
+> > +	ret = sqlite3_column_int64(stmt, 0);
+> > +out:
+> > +	sqlite3_finalize(stmt);
+> > +	return ret;
+> > +}
+> > +
+> > +int
+> > +sqlite_create_temp_exports(void)
+> > +{
+> > +	int ret;
+> > +	char *err;
+> > +
+> > +	ret = sqlite3_exec(dbh, "CREATE TEMPORARY TABLE exports "
+> > +				"(path TEXT PRIMARY KEY); ",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to create temp exports table: %s", err);
+> > +	}
+> > +
+> > +	sqlite3_free(err);
+> > +	return ret;
+> > +}
+> > +
+> > +void
+> > +sqlite_drop_temp_exports(void)
+> > +{
+> > +	char *err;
+> > +
+> > +	sqlite3_exec(dbh, "DROP TABLE IF EXISTS temp.exports;",
+> > +				NULL, NULL, &err);
+> > +
+> > +	sqlite3_free(err);
+> > +}
+> > +
+> > +int sqlite_insert_temp_export(const char *path)
+> > +{
+> > +	int ret;
+> > +	sqlite3_stmt *stmt = NULL;
+> > +
+> > +	ret = sqlite3_prepare_v2(dbh, "INSERT OR IGNORE INTO temp.exports "
+> > +			"VALUES (?);", -1, &stmt, NULL);
+> > +
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: insert statement prepare failed: %s",
+> > +			__func__, sqlite3_errmsg(dbh));
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_bind_text(stmt, 1, path, strlen(path), SQLITE_STATIC);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: bind text failed: %s", __func__,
+> > +				sqlite3_errmsg(dbh));
+> > +		goto out_err;
+> > +	}
+> > +
+> > +	ret = sqlite3_step(stmt);
+> > +	if (ret == SQLITE_DONE)
+> > +		ret = SQLITE_OK;
+> > +	else
+> > +		xlog(L_ERROR, "%s: unexpected return code from insert: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +
+> > +out_err:
+> > +	xlog(D_GENERAL, "%s: returning %d", __func__, ret);
+> > +	sqlite3_finalize(stmt);
+> > +	return ret;
+> > +}
+> > +
+> > +int
+> > +sqlite_update_exports(const long ino)
+> > +{
+> > +	int ret, ret2;
+> > +	char *err = NULL;
+> > +
+> > +	ret = sqlite3_exec(dbh, "BEGIN EXCLUSIVE TRANSACTION;", NULL, NULL,
+> > +				&err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to begin transaction: %s", err);
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "DELETE FROM main.exports;",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to delete current exports: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "INSERT INTO main.exports "
+> > +				"SELECT * from temp.exports;",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to copy from temp exports: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = snprintf(buf, sizeof(buf), "INSERT OR REPLACE INTO parameters "
+> > +			"values (\"etab_inode\", \"%ld\");", ino);
+> > +	if (ret < 0) {
+> > +		xlog(L_ERROR, "sprintf failed!");
+> > +		ret = -EINVAL;
+> > +		goto rollback;
+> > +	} else if ((size_t)ret >= sizeof(buf)) {
+> > +		xlog(L_ERROR, "sprintf output too long! (%d chars)", ret);
+> > +		ret = -EINVAL;
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, (const char *)buf, NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to insert into parameter table: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "COMMIT TRANSACTION;", NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to commit transaction: %s", err);
+> > +		goto rollback;
+> > +	}
+> > +
+> > +out:
+> > +	sqlite3_free(err);
+> > +	return ret;
+> > +
+> > +rollback:
+> > +	ret2 = sqlite3_exec(dbh, "ROLLBACK TRANSACTION;", NULL, NULL, &err);
+> > +	if (ret2 != SQLITE_OK)
+> > +		xlog(L_ERROR, "Unable to rollback transaction: %s", err);
+> > +	goto out;
+> > +}
+> > +
+> > +int
+> > +sqlite_export_exists(const char *path)
+> > +{
+> > +	int ret;
+> > +	sqlite3_stmt *stmt = NULL;
+> > +
+> > +	ret = sqlite3_prepare_v2(dbh, "SELECT count(*) FROM main.exports WHERE "
+> > +				      "path = ?;", -1, &stmt, NULL);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: unable to prepare select statement: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_bind_text(stmt, 1, path, strlen(path), SQLITE_STATIC);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: bind text failed: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_step(stmt);
+> > +	if (ret != SQLITE_ROW) {
+> > +		xlog(L_ERROR, "%s: unexpected return code from select: %s",
+> > +				__func__, sqlite3_errmsg(dbh));
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_column_int(stmt, 0);
+> > +	sqlite3_finalize(stmt);
+> > +	xlog(D_GENERAL, "%s: export %s %s", __func__, path,
+> > +			ret ? "exists" : "does not exist");
+> > +	return ret;
+> > +}
+> > +
+> > +int
+> > +sqlite_merge_client_records(const char *path)
+> > +{
+> > +	int ret;
+> > +	char *err = NULL;
+> > +
+> > +	ret = sqlite_attach_db(path);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: failed to attach db for %s",
+> > +				__func__ , path);
+> > +		return ret;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "INSERT OR IGNORE INTO main.clients "
+> > +				"SELECT * from attached.clients;",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to merge client records "
+> > +				"from attached db: %s", err);
+> > +		goto out;
+> > +	}
+> > +
+> > +	ret = sqlite3_exec(dbh, "DELETE FROM attached.clients;",
+> > +				NULL, NULL, &err);
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "Unable to delete client records "
+> > +				"from attached db: %s", err);
+> > +		goto out;
+> > +	}
+> > +
+> > +out:
+> > +	ret = sqlite_detach_db();
+> > +	if (ret != SQLITE_OK) {
+> > +		xlog(L_ERROR, "%s: failed to detach db for %s",
+> > +				__func__ , path);
+> > +	}
+> > +	sqlite3_free(err);
+> > +	return ret;
+> > +}
+> > diff --git a/utils/nfsdcltrack/sqlite.h b/utils/nfsdcltrack/sqlite.h
+> > index 06e7c04..e21a568 100644
+> > --- a/utils/nfsdcltrack/sqlite.h
+> > +++ b/utils/nfsdcltrack/sqlite.h
+> > @@ -29,4 +29,12 @@ int sqlite_check_client(const unsigned char *clname, const size_t namelen,
+> >  int sqlite_remove_unreclaimed(const time_t grace_start);
+> >  int sqlite_query_reclaiming(const time_t grace_start);
+> >  
+> > +long sqlite_query_etab_inode(void);
+> > +int sqlite_create_temp_exports(void);
+> > +void sqlite_drop_temp_exports(void);
+> > +int sqlite_insert_temp_export(const char *path);
+> > +int sqlite_update_exports(const long ino);
+> > +int sqlite_export_exists(const char *path);
+> > +int sqlite_merge_client_records(const char *path);
+> > +
+> >  #endif /* _SQLITE_H */
+> > -- 
+> > 2.9.3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
