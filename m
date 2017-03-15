@@ -1,111 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:35478 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750932AbdCNWxI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Mar 2017 18:53:08 -0400
-Received: by mail-qt0-f194.google.com with SMTP id r5so69076qtb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Mar 2017 15:53:07 -0700 (PDT)
-Message-ID: <1489531983.2682.19.camel@poochiereds.net>
-Subject: Re: Infinite loop when connecting to unreachable NFS servers
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Sebastian Schmidt <yath@yath.de>, linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-kernel@vger.kernel.org
-Date: Tue, 14 Mar 2017 18:53:03 -0400
-In-Reply-To: <20170314221525.u7e6fjfmh2qurhtx@marax.lan.yath.de>
-References: <20170314221525.u7e6fjfmh2qurhtx@marax.lan.yath.de>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx2.suse.de ([195.135.220.15]:36078 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750851AbdCOBky (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 14 Mar 2017 21:40:54 -0400
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 15 Mar 2017 12:40:44 +1100
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: don't try to cross a mountpount when there isn't one there.
+Message-ID: <87fuife2qr.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-03-14 at 23:15 +0100, Sebastian Schmidt wrote:
-> Hi,
-> 
-> I was debugging some mysterious high CPU usage and tracked it down to
-> monitoring daemon regularly calling stat*() on an NFS automount
-> directory. The problem is triggered when mount.nfs passes mount() an
-> addr= that points to an unreachable address (i.e. connecting fails
-> immediately).
-> 
-> One way to reproduce is by trying to mount Google's DNS server, whose
-> IPv6 address isn't properly parsed or rejected by nfs-utils, causing an
-> invalid addr= to be passed to mount():
-> 
-> # strace -vf mount.nfs -v 2001:4860:4860:0:0:0:0:8888:/ /mnt
-> write(1, "mount.nfs: timeout set for Tue Mar 14 22:57:49 2017", ...
-> [...]
-> socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP) = 3
-> bind(3, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("0.0.0.0")}, 16) = 0
-> connect(3, {sa_family=AF_INET, sin_port=htons(0), sin_addr=inet_addr("0.0.7.209")}, 16) = -1 EINVAL (Invalid argument)
-> close(3)                                = 0
-> write(1, "mount.nfs: trying text-based options 'vers=4.2,addr=0.0.7.209,clientaddr=0.0.0.0'", ...
-> mount("2001:4860:4860:0:0:0:0:8888:/", "/mnt", "nfs", 0, "vers=4.2,addr=0.0.7.209,clientad"...) = ?
-> +++ killed by SIGKILL +++
-> 
-
-That mount syntax is invalid. From nfs(5):
-
-       The server's hostname can be an unqualified hostname, a fully qualified
-       domain name, a dotted quad IPv4 address, or an IPv6 address enclosed in
-       square brackets.  Link-local and  site-local  IPv6  addresses  must  be
-       accompanied  by  an  interface  identifier.  See ipv6(7) for details on
-       specifying raw IPv6 addresses.
-
-So, something like this may work better:
-
-    mount -t nfs '[2001:4860:4860:0:0:0:0:8888]:/' /mnt
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
-> While this is certainly a bug in mount.nfs, too, the bug can also be
-> triggered with net.conf.ipv6.all.disable_ipv6=1 and using a hostname that
-> resolves to an IPv6 address only (/etc/hosts works) with mount.nfs.
-> 
-> <4>[ 6564.082853] RPC:     8 sleep_on(queue "xprt_pending" time 4296533344)
-> <4>[ 6564.082855] RPC:     8 added to queue ffff8a673b146a18 "xprt_pending"
-> <4>[ 6564.082858] RPC:     8 setting alarm for 180000 ms
-> <4>[ 6564.082860] RPC:       xs_connect scheduled xprt ffff8a673b146800
-> <4>[ 6564.082863] RPC:     8 sync task going to sleep
-> <4>[ 6564.082868] RPC:       xs_bind 0000:0000:0000:0000:0000:0000:0000:0000:784: ok (0)
-> <4>[ 6564.082870] RPC:       worker connecting xprt ffff8a673b146800 via tcp to 2001:4860:4860::8888 (port 2049)
-> <4>[ 6564.082874] RPC:       ffff8a673b146800 connect status 99 connected 0 sock state 7
-> <4>[ 6564.082876] RPC:     8 __rpc_wake_up_task (now 4296533344)
-> <4>[ 6564.082878] RPC:     8 disabling timer
-> <4>[ 6564.082880] RPC:     8 removed from queue ffff8a673b146a18 "xprt_pending"
-> <4>[ 6564.082883] RPC:       __rpc_wake_up_task done
-> <4>[ 6564.082885] RPC:       xs_tcp_state_change client ffff8a673b146800...
-> <4>[ 6564.082887] RPC:       state 7 conn 0 dead 0 zapped 1 sk_shutdown 3
-> <4>[ 6564.082889] RPC:       disconnected transport ffff8a673b146800
-> <4>[ 6564.082893] RPC:       wake_up_first(ffff8a673b146970 "xprt_sending")
-> <4>[ 6564.082897] RPC:     8 sync task resuming
-> <4>[ 6564.082899] RPC:     8 xprt_connect_status: retrying
-> <4>[ 6564.082901] RPC:     8 call_connect_status (status -11)
-> <4>[ 6564.082903] RPC:     8 call_timeout (minor)
-> <4>[ 6564.082905] RPC:     8 call_bind (status 0)
-> <4>[ 6564.082907] RPC:     8 call_connect xprt ffff8a673b146800 is not connected
-> <4>[ 6564.082909] RPC:     8 xprt_connect xprt ffff8a673b146800 is not connected
-> <4>[ 6564.082912] RPC:     8 sleep_on(queue "xprt_pending" time 4296533344)
-> <4>[ 6564.082913] RPC:     8 added to queue ffff8a673b146a18 "xprt_pending"
-> <4>[ 6564.082914] RPC:     8 setting alarm for 180000 ms
-> <4>[ 6564.082914] RPC:       xs_connect scheduled xprt ffff8a673b146800
-> <4>[ 6564.082916] RPC:     8 sync task going to sleep
-> <4>[ 6564.082919] RPC:       xs_bind 0000:0000:0000:0000:0000:0000:0000:0000:938: ok (0)
-> <4>[ 6564.082920] RPC:       worker connecting xprt ffff8a673b146800 via tcp to 2001:4860:4860::8888 (port 2049)
-> <4>[ 6564.082923] RPC:       ffff8a673b146800 connect status 99 connected 0 sock state 7
-> <4>[ 6564.082924] RPC:     8 __rpc_wake_up_task (now 4296533344)
-> <4>[ 6564.082924] RPC:     8 disabling timer
-> (and so on, until mount() times out)
-> 
-> Similar for the IPv6-literal test case, where it's failing to connect to
-> 0.0.7.209, so it's affecting IPv4, too. While grepping around I found a
-> comment saying "If a UDP socket connect fails, the delay behavior here
-> prevents retry floods (hard mounts)." for xs_connect(), but I haven't
-> figured out how to trigger the UDP connection code.
-> 
+consider the sequence of commands:
+ mkdir -p /import/nfs /import/bind /import/etc
+ mount --bind / /import/bind
+ mount --make-private /import/bind
+ mount --bind /import/etc /import/bind/etc
+
+ exportfs -o rw,no_root_squash,crossmnt,async,no_subtree_check localhost:/
+ mount -o vers=3D4 localhost:/ /import/nfs
+ ls -l /import/nfs/etc
+
+You would not expect this to report a stale file handle.
+Yet it does.
+
+The manipulations under /import/bind cause the dentry for
+/etc to get the DCACHE_MOUNTED flag set, even though nothing
+is mounted on /etc.  This causes nfsd to call
+nfsd_cross_mnt() even though there is no mountpoint.  So an
+upcall to mountd for "/etc" is performed.
+
+The 'crossmnt' flag on the export of / causes mountd to
+report that /etc is exported as it is a descendant of /.  It
+assumes the kernel wouldn't ask about something that wasn't
+a mountpoint.  The filehandle returned identifies the
+filesystem and the inode number of /etc.
+
+When this filehandle is presented to rpc.mountd, via
+"nfsd.fh", the inode cannot be found associated with any
+name in /etc/exports, or with any mountpoint listed by
+getmntent().  So rpc.mountd says the filehandle doesn't
+exist. Hence ESTALE.
+
+This is fixed by teaching nfsd not to trust DCACHE_MOUNTD
+too much.  It is just a hint, not a guarantee.
+Change nfsd_mountpoint() to return '1' for a certain mountpoint,
+'2' for a possible mountpoint, and 0 otherwise.
+
+Then change nfsd_crossmnt() to check if follow_down()
+actually found a mountpount and, if not, to avoid performing
+a lookup if the location is not known to certainly require
+an export-point.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ fs/nfsd/vfs.c | 24 ++++++++++++++++++++----
+ 1 file changed, 20 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 19d50f600e8d..04cafaa94bf7 100644
+=2D-- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -94,6 +94,12 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **d=
+pp,
+ 	err =3D follow_down(&path);
+ 	if (err < 0)
+ 		goto out;
++	if (path.mnt =3D=3D exp->ex_path.mnt && path.dentry =3D=3D dentry &&
++	    nfsd_mountpoint(dentry, exp) =3D=3D 2) {
++		/* This is only a mountpoint in some other namespace */
++		path_put(&path);
++		goto out;
++	}
+=20
+ 	exp2 =3D rqst_exp_get_by_name(rqstp, &path);
+ 	if (IS_ERR(exp2)) {
+@@ -167,16 +173,26 @@ static int nfsd_lookup_parent(struct svc_rqst *rqstp,=
+ struct dentry *dparent, st
+ /*
+  * For nfsd purposes, we treat V4ROOT exports as though there was an
+  * export at *every* directory.
++ * We return:
++ * '1' if this dentry *must* be an export point,
++ * '2' if it might be, if there is really a mount here, and
++ * '0' if there is no chance of an export point here.
+  */
+ int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
+ {
+=2D	if (d_mountpoint(dentry))
++	if (!d_inode(dentry))
++		return 0;
++	if (exp->ex_flags & NFSEXP_V4ROOT)
+ 		return 1;
+ 	if (nfsd4_is_junction(dentry))
+ 		return 1;
+=2D	if (!(exp->ex_flags & NFSEXP_V4ROOT))
+=2D		return 0;
+=2D	return d_inode(dentry) !=3D NULL;
++	if (d_mountpoint(dentry))
++		/*
++		 * Might only be a mountpoint in a different namespace,
++		 * but we need to check.
++		 */
++		return 2;
++	return 0;
+ }
+=20
+ __be32
+=2D-=20
+2.12.0
 
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljIm50ACgkQOeye3VZi
+gbk0eA//RdVXsLnbDN3jsPkKbb+bzHWNkWdlljU0K8mjrKP8vXyy7rnmwyNJoz2m
+XW+J7B20xXNve1R7upPUWwirmA25VIxJBibA2KBDs7JYv1fBPAKx7HAJ9yX+vlVp
+kQjg6dr4plL5akJQ827jMv7PcXIk2uE2HZmK0z+OqWIMDvZj6mvEeENzgSoKACcB
+9I/JEqqD/EmAw9tSMdlaNHs1vPHB/jAQXdhkqjcdmLdOuh34RftN4umbWCgP8ipx
+JfdX8MFtt8+YaCxfuIIJBLvnu0oXVTNsouALEMdiCmaFoQjW7FwT26R9AjoD53b6
+8pAXTnR+ipENz4P4GFjJeYEY4H6vNgfz5Ln7Cw0ktOWzkBY1gocOHJmQrNHyhKuU
+0fZY3vQ+a9bytvVoULC3ndfuM0GpRaYBL1GkKeqBWnfozPP/TFIaWZ/OPTq8DWdp
+fkQ/0yOABn+5l0Z+PbURed6N2+td7LJGzciBd4iFW1eTtfQf/l10io+/xFaiaEcD
+fzUMHye08dtmUY/XGHbN4BHhMR52nka/yLBOMlK7MZXc/J7fXljfEED1yzDtoJrc
+smjVOJuOGWiDpm0pQ1Q31xwBUOfVOUBXSI34/+/DuJ4MJ1qJRloKDlpokw2lzi7M
+rU3sWU6KYtxVNrjXwgcqJX+t+2TMzb9PUBWbzwD3LRmhINHTBGY=
+=r4lL
+-----END PGP SIGNATURE-----
+--=-=-=--
