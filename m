@@ -1,134 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42286 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753814AbdCOOAl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Mar 2017 10:00:41 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Chuck Lever" <chuck.lever@oracle.com>
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: git "make test" fails in t9200-git-cvsexportcommit.sh
-Date: Wed, 15 Mar 2017 10:00:33 -0400
-Message-ID: <EEDA8B03-DB54-47BA-A6FD-AF293BFEDE8E@redhat.com>
-In-Reply-To: <5E4A3C66-5123-446D-9556-0E59E546283D@redhat.com>
-References: <12A85CA0-A715-4379-81D5-58A9CB001266@oracle.com>
- <5E4A3C66-5123-446D-9556-0E59E546283D@redhat.com>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:33515 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753328AbdCOPI7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Mar 2017 11:08:59 -0400
+Received: by mail-io0-f193.google.com with SMTP id f84so3258033ioj.0
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Mar 2017 08:08:58 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+In-Reply-To: <CAN-5tyF3Ld-8EwbOenLxT-rL0gJTAW3szv-8sq29G3Y1itmsWg@mail.gmail.com>
+References: <CAN-5tyEe9txY5CmcZLOE4du=modRSaxKm8uLLT44YtKmSgAOgg@mail.gmail.com>
+ <20170310213715.38258-1-kolga@netapp.com> <1489247175.3260.5.camel@primarydata.com>
+ <A6FAD06E-0F4F-405E-871B-751E763BACB9@netapp.com> <1489352427.6645.1.camel@primarydata.com>
+ <CAN-5tyF3Ld-8EwbOenLxT-rL0gJTAW3szv-8sq29G3Y1itmsWg@mail.gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 15 Mar 2017 11:08:57 -0400
+Message-ID: <CAN-5tyEs649mRJkPRd=MyGi9ssVzc8uUH7g+mnKcBV+gSOF07w@mail.gmail.com>
+Subject: Re: [PATCH 1/1] PNFS dont retry some error when MDS=DS
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "kolga@netapp.com" <kolga@netapp.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 14 Mar 2017, at 18:25, Benjamin Coddington wrote:
-
-> Hi Chuck,
+On Mon, Mar 13, 2017 at 10:42 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Sun, Mar 12, 2017 at 5:00 PM, Trond Myklebust
+> <trondmy@primarydata.com> wrote:
+>> On Sun, 2017-03-12 at 14:40 -0400, Olga Kornievskaia wrote:
+>>> > On Mar 11, 2017, at 10:46 AM, Trond Myklebust <trondmy@primarydata.
+>>> > com> wrote:
+>>> >
+>>> > On Fri, 2017-03-10 at 16:37 -0500, Olga Kornievskaia wrote:
+>>> > > If we sent an operation to the "DS" and got an error, the code
+>>> > > resends
+>>> > > to "MDS" but when they are the same, it gets the same error and
+>>> > > goes
+>>> > > into the infinite loop. Example was COMMIT getting EACCES.
+>>> > >
+>>> >
+>>> > The correct behaviour when getting EACCES from a COMMIT to the MDS
+>>> > would be to retry the entire series of WRITE calls with stable
+>>> > writes.
+>>> > If the server then returns with anything other than FILE_SYNC, then
+>>> > EIO.
+>>> >
 >
-> On 14 Mar 2017, at 11:07, Chuck Lever wrote:
+> Going back to this comment. Then in non-pnfs (4.1 or 4.0), is the
+> expected behavior is to re-send the writes with FILE_SYNC. This is not
+> what the code does now.
 >
->> Hi Ben!
+>>> > Why is the server failing the COMMIT here if the client thinks it
+>>> > sent
+>>> > unstable writes?
+>>>
+>>> This looping was discovered during connectathon testing against the
+>>> desy server. While I believe Tigran thinks there is an error in his
+>>> code and EACCES from COMMIT was unexpected, we thought that it would
+>>> be best if the client didn=E2=80=99t go into infinite loop in this cond=
+ition
+>>> given that EACCES is a valid error for COMMIT. If you think this
+>>> shouldn=E2=80=99t happen in real life, then I=E2=80=99m ok with not pur=
+suing this.
 >>
->> After addressing some IB stack issues that arose in v4.11-rc1,
->> I was finally able to run my standard suite of NFS tests with
->> v4.11-rc2. I found that part of the git regression suite fails
->> with this kernel.
->> ...
->> A wire capture shows that some GETATTR operations receive
->> an NFS3ERR_STALE response from the server. I looked at one
->> of these, and it's against a renamed file "index.lock".
+>> It is legal, and I can sort of see how it might be invoked if a SETATTR
+>> changes the mode between the WRITE and the COMMIT, but it is a corner
+>> case.
 >>
->> So I reverted:
+>>> On a different but related note, in case when MDS !=3D DS, when the
+>>> writes are retried they are not retried against the MDS but again are
+>>> sent to the DS, is that a bug?
 >>
->> commit 920b4530fb80430ff30ef83efe21ba1fa5623731
->> Author:     Benjamin Coddington <bcodding@redhat.com>
->> Date: Wed Feb 1 00:00:07 2017 -0500
->>
->> NFS: nfs_rename() handle -ERESTARTSYS dentry left behind
->>
->> And t9200 now passes:
+>> I would expect that once you decide to fall back to doing I/O through
+>> the MDS, then you'll want any resends to also go to the MDS.
 >
-> Yep, something seems to be wrong with calling
-> nfs_mark_for_revalidate(old_inode) in rpc_call_done instead of after
-> rpc_release.  Thanks for catching this.  I'm out of time today, and 
-> will
-> look at this in the morning.
+> I guess I'm not seeing there is a fallback happening if COMMIT fails.
+> I think if writes fail then fallback happens but not the COMMIT.
+>
+> Again I'm not sure if this is worth pursing as you say it's a corner case=
+.
 
-I found the test was doing something like:
+More thoughts about your comment about retrying the WRITEs. If this is
+indeed a legitimate case of SETATTR changing mode, then WRITEs that
+are retried will fail with EACCES as well. So why bother retrying?
+Might as well just return the error to the application.
 
-  rename("/mnt/localhost/attic_gremlin,", 
-"/mnt/localhost/attic_gremlin,v") = 0
-  open("attic_gremlin", O_RDONLY) = 7
-  open("attic_gremlin,v", O_RDONLY) = 8
+That aside, I still think my patch is needed as it fixes the infinite
+loop that will exist in the MDS=3DDS pnfs case.
 
-So, I think the problem is that patch moved the d_move() before
-d_rehash(new_inode).. so it's actually rehasing the old dentry's name.  
-I'm testing
-the following fix:
+Andy suggested that instead of checking for the same rpc client (which
+might fail if there is trunking going on in the future), instead to
+check the flags from the exchange_id from the server.
 
- From 425f85c59142fe0821d30b11ba0df7704ebf6de6 Mon Sep 17 00:00:00 2001
-Message-Id: 
-<425f85c59142fe0821d30b11ba0df7704ebf6de6.1489586013.git.bcodding@redhat.com>
- From: Benjamin Coddington <bcodding@redhat.com>
-Date: Wed, 15 Mar 2017 08:06:38 -0400
-Subject: [PATCH] NFS: Fix old dentry rehash after move
-
-Now that nfs_rename()'s d_move has moved within the RPC task's 
-rpc_call_done
-callback, rehashing new_dentry will actually rehash the old dentry's 
-name
-in nfs_rename().  d_move() is going to rehash the new dentry for us 
-anyway,
-so doing it again here is unnecessary.
-
-Reported-by: Chuck Lever <chuck.lever@oracle.com>
-Fixes: 920b4530fb80 ("NFS: nfs_rename() handle -ERESTARTSYS dentry left 
-behind")
----
-  fs/nfs/dir.c | 9 ++-------
-  1 file changed, 2 insertions(+), 7 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index fb499a3f21b5..f92ba8d6c556 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2055,7 +2055,7 @@ int nfs_rename(struct inode *old_dir, struct 
-dentry *old_dentry,
-  {
-     struct inode *old_inode = d_inode(old_dentry);
-     struct inode *new_inode = d_inode(new_dentry);
--   struct dentry *dentry = NULL, *rehash = NULL;
-+   struct dentry *dentry = NULL;
-     struct rpc_task *task;
-     int error = -EBUSY;
-
-@@ -2078,10 +2078,8 @@ int nfs_rename(struct inode *old_dir, struct 
-dentry *old_dentry,
-          * To prevent any new references to the target during the
-          * rename, we unhash the dentry in advance.
-          */
--       if (!d_unhashed(new_dentry)) {
-+       if (!d_unhashed(new_dentry))
-             d_drop(new_dentry);
--           rehash = new_dentry;
--       }
-
-         if (d_count(new_dentry) > 2) {
-             int err;
-@@ -2098,7 +2096,6 @@ int nfs_rename(struct inode *old_dir, struct 
-dentry *old_dentry,
-                 goto out;
-
-             new_dentry = dentry;
--           rehash = NULL;
-             new_inode = NULL;
-         }
-     }
-@@ -2119,8 +2116,6 @@ int nfs_rename(struct inode *old_dir, struct 
-dentry *old_dentry,
-         error = task->tk_status;
-     rpc_put_task(task);
-  out:
--   if (rehash)
--       d_rehash(rehash);
-     trace_nfs_rename_exit(old_dir, old_dentry,
-             new_dir, new_dentry, error);
-     /* new dentry created? */
--- 
-2.9.3
+>
+>>> >
+>>> > --
+>>> > Trond Myklebust
+>>> > Linux NFS client maintainer, PrimaryData
+>>> > trond.myklebust@primarydata.com
+>>>
+>>>
+>> --
+>> Trond Myklebust
+>> Linux NFS client maintainer, PrimaryData
+>> trond.myklebust@primarydata.com
