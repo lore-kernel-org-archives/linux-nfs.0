@@ -1,57 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:16810 "EHLO mx142.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:41842 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751713AbdCOQc3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Mar 2017 12:32:29 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 1/1] PNFS dont retry some error when MDS=DS
-Date: Wed, 15 Mar 2017 12:32:24 -0400
-Message-ID: <20170315163224.43632-1-kolga@netapp.com>
-In-Reply-To: <CAN-5tyEs649mRJkPRd=MyGi9ssVzc8uUH7g+mnKcBV+gSOF07w@mail.gmail.com>
-References: <CAN-5tyEs649mRJkPRd=MyGi9ssVzc8uUH7g+mnKcBV+gSOF07w@mail.gmail.com>
+        id S1751416AbdCOSJq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Mar 2017 14:09:46 -0400
+Date: Wed, 15 Mar 2017 14:09:13 -0400
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        ng-linux-team <ng-linux-team@netapp.com>
+Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
+Message-ID: <20170315180913.GB18135@fieldses.org>
+References: <20170302160211.30451-1-kolga@netapp.com>
+ <20170302160211.30451-3-kolga@netapp.com>
+ <20170302160714.GA4760@lst.de>
+ <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we sent an operation to the "DS" and got an error, the code resends
-to "MDS" but when they are the same, it gets the same error and goes
-into the infinite loop. Example was COMMIT getting EACCES.
+On Thu, Mar 02, 2017 at 11:38:03AM -0500, Olga Kornievskaia wrote:
+> > On Mar 2, 2017, at 11:07 AM, Christoph Hellwig <hch@lst.de> wrote:
+> > NAK, we really should not do operations between different
+> > superblocks.
+> 
+> Can you provide some reasoning as to why? What would it break? The
+> reasoning for including one is to allow for a file system to achieve
+> better performance which seems like a feature that would be of great
+> benefit. --
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/filelayout/filelayout.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+Yes, this has come up a few times.  What's going on?:
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 44347f4..5276abe 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -207,6 +207,9 @@ static int filelayout_async_handle_error(struct rpc_task *task,
- 		/* fall through */
- 	default:
- reset:
-+		if (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS &&
-+			clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS)
-+			return task->tk_status;
- 		dprintk("%s Retry through MDS. Error %d\n", __func__,
- 			task->tk_status);
- 		return -NFS4ERR_RESET_TO_MDS;
-@@ -384,9 +387,10 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
- 		return -EAGAIN;
- 	}
- 
--	pnfs_set_layoutcommit(data->inode, data->lseg, data->lwb);
-+	if (!err)
-+		pnfs_set_layoutcommit(data->inode, data->lseg, data->lwb);
- 
--	return 0;
-+	return err;
- }
- 
- static void filelayout_write_prepare(struct rpc_task *task, void *data)
--- 
-1.8.3.1
+	- There was an explanation, and I missed it.
+	- The explanation is complicated and Christoph hasn't had time
+	  to write it up.
+	- Christoph has a strong suspicion there are issues without
+	  being sure exactly where they are.
+	- Something else?
 
+I mean, the whole enterprise is dead in the water without this, as far
+as I can tell, so I'd really like to understand the answer one way or
+the other.
+
+--b.
