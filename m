@@ -1,67 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:36867 "EHLO mx142.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:55965 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751014AbdCOTTE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 15 Mar 2017 15:19:04 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 1 1/1] NFS free the layoutget slot before calling
- pnfs_layout_process
-Date: Wed, 15 Mar 2017 19:18:50 +0000
-Message-ID: <EAC5E2EB-033E-4650-BCF4-2AB0677028F6@netapp.com>
-References: <20170315151851.5762-1-andros@netapp.com>
- <1489604984.10364.1.camel@primarydata.com>
-In-Reply-To: <1489604984.10364.1.camel@primarydata.com>
-Content-Type: text/plain; charset="utf-8"
+        id S1751756AbdCOUEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Mar 2017 16:04:34 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 1/1] PNFS dont retry some error when MDS=DS
+Date: Wed, 15 Mar 2017 16:02:15 -0400
+Message-ID: <20170315200215.43997-1-kolga@netapp.com>
+In-Reply-To: <20170315163224.43632-1-kolga@netapp.com>
+References: <20170315163224.43632-1-kolga@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T0sg4oCTIEnigJlsbCB0YWtlIGEgbG9vay4NCg0KVGhhbmtzDQoNCuKGkkFuZHkNCg0KT24gMy8x
-NS8xNywgMzowOSBQTSwgIlRyb25kIE15a2xlYnVzdCIgPHRyb25kbXlAcHJpbWFyeWRhdGEuY29t
-PiB3cm90ZToNCg0KT24gV2VkLCAyMDE3LTAzLTE1IGF0IDExOjE4IC0wNDAwLCBhbmRyb3NAbmV0
-YXBwLmNvbSB3cm90ZToNCj4gRnJvbTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4N
-Cj4gDQo+IE90aGVyd2lzZSBubyBzbG90cyBjb3VsZCBiZSBhdmFpbGFibGUgZm9yIHRoZSBwb3Rl
-bnRpYWwNCj4gcG5mc19sYXlvdXRfcHJvY2VzcyBnZXRkZXZpY2VpbmZvIGNhbGwgYW5kIHRoZSBj
-bGllbnQgaGFuZ3Mgb24gcE5GUw0KPiBJL08uDQo+IA0KPiBUaGlzIG9jY3VycyBpbiB0ZXN0aW5n
-IGFnYWluc3QgdGhlIHB5bmZzIHBORlMgc2VydmVyIHdoZXJlIHRoZQ0KPiB0aGUgb24td2lyZSBy
-ZXBseSBoaWdoZXN0X3Nsb3RpZCBhbmQgc2xvdCBpZCBhcmUgemVybywgYW5kIHRoZQ0KPiB0YXJn
-ZXQgaGlnaCBzbG90IGlkIGlzIDggKG5lZ290aWF0ZWQgaW4gQ1JFQVRFX1NFU1NJT04pLg0KPiAN
-Cj4gVGhlIGludGVybmFsIGZvcmUgY2hhbm5lbCBzbG90IHRhYmxlIG1heF9zbG90aWQsIHRoZSBt
-YXhpbXVtIGFsbG93ZWQNCj4gdGFibGUgc2xvdGlkIHZhbHVlLCBoYXMgYmVlbiByZWR1Y2VkIHZp
-YSBuZnM0MV9zZXRfbWF4X3Nsb3RpZF9sb2NrZWQNCj4gIGZyb20gOCB0byAxLiAgVGh1cyB0aGVy
-ZSBpcyBvbmUgc2xvdCAoc2xvdGlkIDApIGF2YWlsYWJsZSBmb3IgdXNlDQo+IGJ1dA0KPiBpdCBo
-YXMgbm90IGJlZW4gZnJlZWQgYnkgbGF5b3V0Z2V0IHByb2lyIHRvIHRoZSBnZXRkZXZpY2VpbmZv
-DQo+IHJlcXVlc3QuDQo+IA0KPiBTbyB0aGUgbGF5b3V0IGdldCBjYWxsIGlzIHdhaXRpbmcgZm9y
-IHRoZSBnZXRkZXZpY2VpbmZvIGNhbGwgdG8NCj4gY29tcGxldGUsDQo+IGFuZCB0aGUgZ2V0ZGV2
-aWNlaW5mbyBjYWxsIGlzIHdhaXRpbmcgZm9yIGxheW91dGdldCB0byBmcmVlIHRoZSBzbG90Lg0K
-PiANCj4gU2lnbmVkLW9mZi1ieTogQW5keSBBZGFtc29uIDxhbmRyb3NAbmV0YXBwLmNvbT4NCj4g
-LS0tDQo+ICBmcy9uZnMvbmZzNHByb2MuYyB8IDIgKy0NCj4gIDEgZmlsZSBjaGFuZ2VkLCAxIGlu
-c2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0
-cHJvYy5jIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gaW5kZXggMWIxODM2OC4uOGNhOTJkMCAxMDA2
-NDQNCj4gLS0tIGEvZnMvbmZzL25mczRwcm9jLmMNCj4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMN
-Cj4gQEAgLTg1MDQsMTAgKzg1MDQsMTAgQEAgbmZzNF9wcm9jX2xheW91dGdldChzdHJ1Y3QgbmZz
-NF9sYXlvdXRnZXQNCj4gKmxncCwgbG9uZyAqdGltZW91dCwgZ2ZwX3QgZ2ZwX2ZsYWdzKQ0KPiAg
-CQkJJmxncC0+cmVzLnN0YXRlaWQsDQo+ICAJCQlzdGF0dXMpOw0KPiAgDQo+ICsJbmZzNF9zZXF1
-ZW5jZV9mcmVlX3Nsb3QoJmxncC0+cmVzLnNlcV9yZXMpOw0KPiAgCS8qIGlmIGxheW91dHAtPmxl
-biBpcyAwLCBuZnM0X2xheW91dGdldF9wcmVwYXJlIGNhbGxlZA0KPiBycGNfZXhpdCAqLw0KPiAg
-CWlmIChzdGF0dXMgPT0gMCAmJiBsZ3AtPnJlcy5sYXlvdXRwLT5sZW4pDQo+ICAJCWxzZWcgPSBw
-bmZzX2xheW91dF9wcm9jZXNzKGxncCk7DQo+IC0JbmZzNF9zZXF1ZW5jZV9mcmVlX3Nsb3QoJmxn
-cC0+cmVzLnNlcV9yZXMpOw0KPiAgCXJwY19wdXRfdGFzayh0YXNrKTsNCj4gIAlkcHJpbnRrKCI8
-LS0gJXMgc3RhdHVzPSVkXG4iLCBfX2Z1bmNfXywgc3RhdHVzKTsNCj4gIAlpZiAoc3RhdHVzKQ0K
-DQpUaGUgcGxhY2VtZW50IG9mIHRoZSBjYWxsIHRvIG5mczRfc2VxdWVuY2VfZnJlZV9zbG90KCkg
-YWZ0ZXIgdGhlIGNhbGwNCnRvIHBuZnNfbGF5b3V0X3Byb2Nlc3MoKSBpcyBkZWxpYmVyYXRlLCBh
-bmQgaXMgbmVlZGVkIGluIG9yZGVyIHRvDQplbnN1cmUgdGhhdCBsYXlvdXRyZWNhbGwgY2FsbGJh
-Y2tzIGFyZSBwcm9jZXNzZWQgY29ycmVjdGx5IGluIG9yZGVyDQphZnRlciB0aGUgbGF5b3V0Z2V0
-IGhhcyBiZWVuIHByb2Nlc3NlZCAoc2VlIHJlZmVycmluZ19jYWxsX2V4aXN0cygpKS4NCg0KVGhl
-IGNhbGwgdG8gbmZzNF9maW5kX2dldF9kZXZpY2VpZCgpIG5lZWRzIHRvIGJlIG1vdmVkIG91dCBv
-Zg0KcG5mc191cGRhdGVfbGF5b3V0KCkuDQpJbiB0aGUgZmxleGZpbGVzIGRyaXZlciwgaXQgd2Fz
-IG1vdmVkIHRvIG5mczRfZmZfbGF5b3V0X3ByZXBhcmVfZHMoKSwNCmJ1dCBpdCBsb29rcyB0byBt
-ZSBhcyBpZiB0aGUgZmlsZXMgZHJpdmVyIG5lZWRzIHRvIGNhbGwgaXQgZWFybGllciBkdWUNCnRv
-IHRoZSBuZWVkIHRvIGNhbGN1bGF0ZSBzdHJpcGVzLiBQZXJoYXBzIHRoZSByaWdodCB0aGluZyBp
-cyB0byBhZGQgYQ0Kd3JhcHBlciBhcm91bmQgcG5mc191cGRhdGVfbGF5b3V0KCkgaW4gZnMvbmZz
-L2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jDQp0aGF0IGNhbiBiZSBjYWxsZWQgYnkgYm90aCBmaWxl
-bGF5b3V0X3BnX2luaXRfcmVhZCgpIGFuZA0KZmlsZWxheW91dF9wZ19pbml0X3dyaXRlKCk/DQoN
-Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1h
-cnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQoNCg0K
+If we sent an operation to the "DS" and got an error, the code resends
+to "MDS" but when they are the same, it gets the same error and goes
+into the infinite loop. Example was COMMIT getting EACCES.
+
+Since some setups like ONTAP where each node in the cluster is MDS and
+DS need to check if MDS=DS based on if clientids are the same.
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/filelayout/filelayout.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 44347f4..e1d9bea 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -207,6 +207,10 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+ 		/* fall through */
+ 	default:
+ reset:
++		if (clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_MDS &&
++			clp->cl_exchange_flags & EXCHGID4_FLAG_USE_PNFS_DS &&
++			clp->cl_clientid == mds_client->cl_clientid)
++			return task->tk_status;
+ 		dprintk("%s Retry through MDS. Error %d\n", __func__,
+ 			task->tk_status);
+ 		return -NFS4ERR_RESET_TO_MDS;
+@@ -384,9 +388,10 @@ static int filelayout_commit_done_cb(struct rpc_task *task,
+ 		return -EAGAIN;
+ 	}
+ 
+-	pnfs_set_layoutcommit(data->inode, data->lseg, data->lwb);
++	if (!err)
++		pnfs_set_layoutcommit(data->inode, data->lseg, data->lwb);
+ 
+-	return 0;
++	return err;
+ }
+ 
+ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+-- 
+1.8.3.1
+
