@@ -1,54 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from eddie.linux-mips.org ([148.251.95.138]:35632 "EHLO
-        cvs.linux-mips.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753065AbdCOJwX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Mar 2017 05:52:23 -0400
-Received: from localhost.localdomain ([127.0.0.1]:57312 "EHLO linux-mips.org"
-        rhost-flags-OK-OK-OK-FAIL) by eddie.linux-mips.org with ESMTP
-        id S23991232AbdCOJwVMZqtG (ORCPT <rfc822;linux-nfs@vger.kernel.org>
-        + 1 other); Wed, 15 Mar 2017 10:52:21 +0100
-Date: Wed, 15 Mar 2017 10:25:36 +0100
-From: Ralf Baechle <ralf@linux-mips.org>
-To: James Hogan <james.hogan@imgtec.com>
-Cc: Matt Turner <mattst88@gmail.com>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        linux-nfs@vger.kernel.org, Manuel Lauss <manuel.lauss@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
- next debugging steps?
-Message-ID: <20170315092536.GC22089@linux-mips.org>
-References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
- <20170313094757.GI2878@jhogan-linux.le.imgtec.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170313094757.GI2878@jhogan-linux.le.imgtec.org>
+Received: from foss.arm.com ([217.140.101.70]:45018 "EHLO foss.arm.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751842AbdCOKgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Mar 2017 06:36:01 -0400
+From: Mark Rutland <mark.rutland@arm.com>
+To: linux-kernel@vger.kernel.org
+Cc: Mark Rutland <mark.rutland@arm.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: [PATCH] SUNRPC: fix include for cmpxhg_relaxed()
+Date: Wed, 15 Mar 2017 10:35:42 +0000
+Message-Id: <1489574142-20856-1-git-send-email-mark.rutland@arm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 13, 2017 at 09:47:57AM +0000, James Hogan wrote:
+Currently net/sunrpc/xprtmultipath.c is the only file outside of arch/
+headers and asm-generic/ headers to include <asm/cmpxhcg.h>, apparently
+for the use of cmpxchg_relaxed().
 
-> > 
-> > Note that the corruption is different across reboots, both in the size
-> > of the corruption and the location. I saw 1900~ and 1400~ byte
-> > sequences corrupted on separate occasions, which don't correspond to
-> > the system's 16kB page size.
-> > 
-> > I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
-> > today). All exhibit this behavior with differing frequencies. Earlier
-> > kernels seem to reproduce the issue less often, while more recent
-> > kernels reliably exhibit the problem every boot.
-> > 
-> > How can I further debug this?
-> 
-> It smells a bit like a DMA / caching issue.
-> 
-> Can you provide a full kernel log. That might provide some information
-> about caching that might be relevant (e.g. does dcache have aliases?).
+However, many architectures do not provide cmpxchg_relaxed() in their
+<asm/cmpxhcg.h>, and it is necessary to include <linux/atomic.h> to get
+this definition, as noted in Documentation/core-api/atomic_ops.rst:
 
-The architecture of the BCM1250 SOC used for the BCM91250 boards are
-fully coherent, S-cache and D-cache are physically indexed and tagged.
-Only the VIVT (plus the usual ASID tagging) I-cache leaves space for
-software to screw up cache management but that shouldn't matter for this
-case, so I suggest to start looking into this from the NFS side.
+  If someone wants to use xchg(), cmpxchg() and their variants,
+  linux/atomic.h should be included rather than asm/cmpxchg.h, unless
+  the code is in arch/* and can take care of itself.
 
-  Ralf
+Evidently we're getting the right header this via some transitive
+include today, but this isn't something we can/should rely upon,
+especially with ongoing rework of the atomic headers for KASAN
+instrumentation.
+
+Let's fix the code to include <linux/atomic.h>, avoiding fragility.
+
+Signed-off-by: Mark Rutland <mark.rutland@arm.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: J. Bruce Fields <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@poochiereds.net>
+Cc: David S. Miller <davem@davemloft.net>
+Cc: linux-nfs@vger.kernel.org
+Cc: netdev@vger.kernel.org
+---
+ net/sunrpc/xprtmultipath.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
+index ae92a9e..3b1e856 100644
+--- a/net/sunrpc/xprtmultipath.c
++++ b/net/sunrpc/xprtmultipath.c
+@@ -12,7 +12,7 @@
+ #include <linux/rcupdate.h>
+ #include <linux/rculist.h>
+ #include <linux/slab.h>
+-#include <asm/cmpxchg.h>
++#include <linux/atomic.h>
+ #include <linux/spinlock.h>
+ #include <linux/sunrpc/xprt.h>
+ #include <linux/sunrpc/addr.h>
+-- 
+1.9.1
+
