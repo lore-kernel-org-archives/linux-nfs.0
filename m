@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:32999 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754987AbdCPPyO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Mar 2017 11:54:14 -0400
-Subject: [PATCH v1 13/14] svcrdma: Clean out old XDR encoders
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35568 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751677AbdCPQAy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Mar 2017 12:00:54 -0400
+Subject: [PATCH v1 14/14] svcrdma: Clean up svc_rdma_post_recv() error
+ handling
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 16 Mar 2017 11:54:11 -0400
-Message-ID: <20170316155411.4482.37224.stgit@klimt.1015granger.net>
+Date: Thu, 16 Mar 2017 11:54:19 -0400
+Message-ID: <20170316155419.4482.21602.stgit@klimt.1015granger.net>
 In-Reply-To: <20170316154132.4482.56769.stgit@klimt.1015granger.net>
 References: <20170316154132.4482.56769.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,78 +16,117 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: These have been replaced and are no longer used.
+Distinguish and document failure modes.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc_rdma.h        |    5 ----
- net/sunrpc/xprtrdma/svc_rdma_marshal.c |   39 --------------------------------
- 2 files changed, 44 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   66 +++++++++++++++++++++---------
+ 1 file changed, 47 insertions(+), 19 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 7b1f886..f88f6b0 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -187,11 +187,6 @@ extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
- 
- /* svc_rdma_marshal.c */
- extern int svc_rdma_xdr_decode_req(struct xdr_buf *);
--extern void svc_rdma_old_encode_write_list(struct rpcrdma_msg *rmsgp,
--					   int chunks);
--extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
--extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
--					    __be32, __be64, u32);
- extern void svc_rdma_xdr_encode_write_list(__be32 *rdma_resp, __be32 *wr_ch,
- 					   unsigned int consumed);
- extern void svc_rdma_xdr_encode_reply_chunk(__be32 *rdma_resp, __be32 *rp_ch,
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-index 24a8151..658337e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-@@ -198,45 +198,6 @@ unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp)
- 	return (unsigned long)p - (unsigned long)rdma_resp;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 9176a35..95af982 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -486,6 +486,17 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
+ 	return cma_xprt;
  }
  
--void svc_rdma_old_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
--{
--	struct rpcrdma_write_array *ary;
--
--	/* no read-list */
--	rmsgp->rm_body.rm_chunks[0] = xdr_zero;
--
--	/* write-array discrim */
--	ary = (struct rpcrdma_write_array *)
--		&rmsgp->rm_body.rm_chunks[1];
--	ary->wc_discrim = xdr_one;
--	ary->wc_nchunks = cpu_to_be32(chunks);
--
--	/* write-list terminator */
--	ary->wc_array[chunks].wc_target.rs_handle = xdr_zero;
--
--	/* reply-array discriminator */
--	ary->wc_array[chunks].wc_target.rs_length = xdr_zero;
--}
--
--void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
--				 int chunks)
--{
--	ary->wc_discrim = xdr_one;
--	ary->wc_nchunks = cpu_to_be32(chunks);
--}
--
--void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary,
--				     int chunk_no,
--				     __be32 rs_handle,
--				     __be64 rs_offset,
--				     u32 write_len)
--{
--	struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
--	seg->rs_handle = rs_handle;
--	seg->rs_offset = rs_offset;
--	seg->rs_length = cpu_to_be32(write_len);
--}
--
- /* One Write chunk is copied from Call transport header to Reply
-  * transport header. Each segment's length field is updated to
-  * reflect number of bytes consumed in the segment.
++/**
++ * svc_rdma_post_recv - Post one Receive buffer
++ * @xprt: controlling transport
++ * @flags: memory allocation flags
++ *
++ * Returns:
++ *	%0 if Receive was posted successfully,
++ *	%-EINVAL if arguments are not correct,
++ *	%-ENOMEM if a resource shortage occurred,
++ *	%-EIO if DMA mapping failed.
++ */
+ int svc_rdma_post_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ {
+ 	struct ib_recv_wr recv_wr, *bad_recv_wr;
+@@ -501,14 +512,14 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ 	ctxt->direction = DMA_FROM_DEVICE;
+ 	ctxt->cqe.done = svc_rdma_wc_receive;
+ 	for (sge_no = 0; buflen < xprt->sc_max_req_size; sge_no++) {
+-		if (sge_no >= xprt->sc_max_sge) {
+-			pr_err("svcrdma: Too many sges (%d)\n", sge_no);
+-			goto err_put_ctxt;
+-		}
++		if (sge_no >= xprt->sc_max_sge)
++			goto err_sges;
++		ret = -ENOMEM;
+ 		page = alloc_page(flags);
+ 		if (!page)
+ 			goto err_put_ctxt;
+ 		ctxt->pages[sge_no] = page;
++		ret = -EIO;
+ 		pa = ib_dma_map_page(xprt->sc_cm_id->device,
+ 				     page, 0, PAGE_SIZE,
+ 				     DMA_FROM_DEVICE);
+@@ -528,32 +539,49 @@ int svc_rdma_post_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ 
+ 	svc_xprt_get(&xprt->sc_xprt);
+ 	ret = ib_post_recv(xprt->sc_qp, &recv_wr, &bad_recv_wr);
+-	if (ret) {
+-		svc_rdma_unmap_dma(ctxt);
+-		svc_rdma_put_context(ctxt, 1);
+-		svc_xprt_put(&xprt->sc_xprt);
+-	}
+-	return ret;
++	if (ret)
++		goto err_post;
++	return 0;
++
++ err_sges:
++	ret = -EINVAL;
++	pr_err("svcrdma: Too many sges (%d)\n", sge_no);
+ 
+  err_put_ctxt:
+ 	svc_rdma_unmap_dma(ctxt);
+ 	svc_rdma_put_context(ctxt, 1);
+-	return -ENOMEM;
++	return ret;
++
++ err_post:
++	svc_rdma_unmap_dma(ctxt);
++	svc_rdma_put_context(ctxt, 1);
++	svc_xprt_put(&xprt->sc_xprt);
++	return ret;
+ }
+ 
++/**
++ * svc_rdma_repost_recv - Post one Receive buffer, disconnect on failure
++ * @xprt: controlling transport
++ * @flags: memory allocation flags
++ *
++ * Returns:
++ *	%0 if Receive was posted successfully,
++ *	%-ENOTCONN if posting failed (connection is lost).
++ */
+ int svc_rdma_repost_recv(struct svcxprt_rdma *xprt, gfp_t flags)
+ {
+ 	int ret = 0;
+ 
+ 	ret = svc_rdma_post_recv(xprt, flags);
+-	if (ret) {
+-		pr_err("svcrdma: could not post a receive buffer, err=%d.\n",
+-		       ret);
+-		pr_err("svcrdma: closing transport %p.\n", xprt);
+-		set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+-		ret = -ENOTCONN;
+-	}
+-	return ret;
++	if (ret)
++		goto err_disconnect;
++	return 0;
++
++ err_disconnect:
++	pr_err("svcrdma: could not post a receive buffer, err=%d.\n", ret);
++	pr_err("svcrdma: closing transport %p.\n", xprt);
++	set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
++	return -ENOTCONN;
+ }
+ 
+ static void
 
