@@ -1,40 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f41.google.com ([209.85.214.41]:35245 "EHLO
-        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751483AbdCPSBP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Mar 2017 14:01:15 -0400
-Received: by mail-it0-f41.google.com with SMTP id m27so95506754iti.0
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Mar 2017 11:01:03 -0700 (PDT)
-From: Chuck Lever <chucklever@gmail.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: software error with bugzilla.linux-nfs.org
-Date: Thu, 16 Mar 2017 13:59:39 -0400
-Message-Id: <1BF99BE7-DE8A-436B-B5A7-9080D9E9AC93@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: webmaster@linux-nfs.org
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from mail-it0-f45.google.com ([209.85.214.45]:38432 "EHLO
+        mail-it0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752578AbdCPSFu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Mar 2017 14:05:50 -0400
+Received: by mail-it0-f45.google.com with SMTP id m27so54338096iti.1
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Mar 2017 11:05:49 -0700 (PDT)
+MIME-Version: 1.0
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 16 Mar 2017 14:05:43 -0400
+Message-ID: <CAN-5tyH433qTV9EY5MQpDhRhgekUv7e=R1H7N_Q_46cAwPO=eg@mail.gmail.com>
+Subject: question about open_owner sequencing
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi folks,
 
-When I tried to add a comment to bug 291, this resulted:
+I have a question about recovery from the BAD_SEQID and what should happen.
 
-DBD::mysql::db do failed: Incorrect key file for table =
-'./nfsv4_bugzilla/bugs_fulltext.MYI'; try to repair it [for Statement =
-"UPDATE bugs_fulltext SET comments =3D ?, comments_noprivate =3D ?
-               WHERE bug_id =3D ?"] at Bugzilla/Bug.pm line 938.
-	Bugzilla::Bug::_sync_fulltext(Bugzilla::Bug=3DHASH(0x3a1a278)) =
-called at Bugzilla/Bug.pm line 886
-	Bugzilla::Bug::update(Bugzilla::Bug=3DHASH(0x3a1a278), =
-"2017-03-16 10:58:16") called at =
-/home/linux-nfs.org/nfsv4_bugzilla/process_bug.cgi line 547
+I have the following application that does:
 
-Happened twice out of two attempts.
+1. open(file1)
+2. open(file2)
+3. close(file1)
+4. open(file3)
+5. lock(file2)
 
+If CLOSE gets BAD_SEQID (for whatever reason), I see that LOCK later
+fails with BAD_SEQID as well.
 
---
-Chuck Lever
-chucklever@gmail.com
+step1 OPEN creates open_owner1 seq 0
+step2 OPEN uses open_owner1 seq1
+step3 CLOSE uses open_owner1 seq2 gets BAD_SEQID
+step4 OPEN sends new open_owner2 seq2 and it triggers OPEN_CONFIRM with seq3
+step5 sends LOCK with seq4 and open stateid from the reply in step 2.
 
+LOCK gets BAD_SEQID.
 
+Question: is client sending something incorrect? is server not
+correct? I tested against two different servers (Linux and NetApp) and
+both reply the same way so I'm leaning towards "no". But I don't see
+why "seq4" is not a valid sequence given that the open_owner/sequence
+was just confirmed.
 
+Thanks.
