@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga07.intel.com ([134.134.136.100]:48164 "EHLO mga07.intel.com"
+Received: from mga02.intel.com ([134.134.136.20]:50956 "EHLO mga02.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751354AbdCQML2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:11:28 -0400
+        id S1751035AbdCQMLZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:11:25 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 03/23] net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:26 +0200
-Message-Id: <1489752646-8749-4-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 04/23] net, ceph: convert ceph_snap_context.nref from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:27 +0200
+Message-Id: <1489752646-8749-5-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,108 +36,62 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ include/linux/ceph/libceph.h | 3 ++-
+ net/ceph/snapshot.c          | 6 +++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 72f129c..e7c941a 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -287,7 +287,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- #define UPCALL_BUF_LEN 128
+diff --git a/include/linux/ceph/libceph.h b/include/linux/ceph/libceph.h
+index 1816c5e..26dc674 100644
+--- a/include/linux/ceph/libceph.h
++++ b/include/linux/ceph/libceph.h
+@@ -14,6 +14,7 @@
+ #include <linux/wait.h>
+ #include <linux/writeback.h>
+ #include <linux/slab.h>
++#include <linux/refcount.h>
  
- struct gss_upcall_msg {
--	atomic_t count;
-+	refcount_t count;
- 	kuid_t	uid;
- 	struct rpc_pipe_msg msg;
- 	struct list_head list;
-@@ -328,7 +328,7 @@ static void
- gss_release_msg(struct gss_upcall_msg *gss_msg)
+ #include <linux/ceph/types.h>
+ #include <linux/ceph/messenger.h>
+@@ -159,7 +160,7 @@ struct ceph_client {
+  * dirtied.
+  */
+ struct ceph_snap_context {
+-	atomic_t nref;
++	refcount_t nref;
+ 	u64 seq;
+ 	u32 num_snaps;
+ 	u64 snaps[];
+diff --git a/net/ceph/snapshot.c b/net/ceph/snapshot.c
+index 705414e..e14a5d0 100644
+--- a/net/ceph/snapshot.c
++++ b/net/ceph/snapshot.c
+@@ -49,7 +49,7 @@ struct ceph_snap_context *ceph_create_snap_context(u32 snap_count,
+ 	if (!snapc)
+ 		return NULL;
+ 
+-	atomic_set(&snapc->nref, 1);
++	refcount_set(&snapc->nref, 1);
+ 	snapc->num_snaps = snap_count;
+ 
+ 	return snapc;
+@@ -59,7 +59,7 @@ EXPORT_SYMBOL(ceph_create_snap_context);
+ struct ceph_snap_context *ceph_get_snap_context(struct ceph_snap_context *sc)
  {
- 	struct net *net = gss_msg->auth->net;
--	if (!atomic_dec_and_test(&gss_msg->count))
-+	if (!refcount_dec_and_test(&gss_msg->count))
- 		return;
- 	put_pipe_version(net);
- 	BUG_ON(!list_empty(&gss_msg->list));
-@@ -348,7 +348,7 @@ __gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid, const struct gss_auth *auth
- 			continue;
- 		if (auth && pos->auth->service != auth->service)
- 			continue;
--		atomic_inc(&pos->count);
-+		refcount_inc(&pos->count);
- 		dprintk("RPC:       %s found msg %p\n", __func__, pos);
- 		return pos;
- 	}
-@@ -369,7 +369,7 @@ gss_add_msg(struct gss_upcall_msg *gss_msg)
- 	spin_lock(&pipe->lock);
- 	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
- 	if (old == NULL) {
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		list_add(&gss_msg->list, &pipe->in_downcall);
- 	} else
- 		gss_msg = old;
-@@ -383,7 +383,7 @@ __gss_unhash_msg(struct gss_upcall_msg *gss_msg)
- 	list_del_init(&gss_msg->list);
- 	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
- 	wake_up_all(&gss_msg->waitqueue);
--	atomic_dec(&gss_msg->count);
-+	WARN_ON(refcount_dec_and_test(&gss_msg->count));
+ 	if (sc)
+-		atomic_inc(&sc->nref);
++		refcount_inc(&sc->nref);
+ 	return sc;
  }
- 
- static void
-@@ -506,7 +506,7 @@ gss_alloc_msg(struct gss_auth *gss_auth,
- 	INIT_LIST_HEAD(&gss_msg->list);
- 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
- 	init_waitqueue_head(&gss_msg->waitqueue);
--	atomic_set(&gss_msg->count, 1);
-+	refcount_set(&gss_msg->count, 1);
- 	gss_msg->uid = uid;
- 	gss_msg->auth = gss_auth;
- 	switch (vers) {
-@@ -542,11 +542,11 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
- 	gss_msg = gss_add_msg(gss_new);
- 	if (gss_msg == gss_new) {
- 		int res;
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
- 		if (res) {
- 			gss_unhash_msg(gss_new);
--			atomic_dec(&gss_msg->count);
-+			refcount_dec(&gss_msg->count);
- 			gss_release_msg(gss_new);
- 			gss_msg = ERR_PTR(res);
- 		}
-@@ -595,7 +595,7 @@ gss_refresh_upcall(struct rpc_task *task)
- 		task->tk_timeout = 0;
- 		gss_cred->gc_upcall = gss_msg;
- 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		rpc_sleep_on(&gss_msg->rpc_waitqueue, task, gss_upcall_callback);
- 	} else {
- 		gss_handle_downcall_result(gss_cred, gss_msg);
-@@ -815,7 +815,7 @@ gss_pipe_release(struct inode *inode)
- 		if (!list_empty(&gss_msg->msg.list))
- 			continue;
- 		gss_msg->msg.errno = -EPIPE;
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		__gss_unhash_msg(gss_msg);
- 		spin_unlock(&pipe->lock);
- 		gss_release_msg(gss_msg);
-@@ -834,7 +834,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
- 	if (msg->errno < 0) {
- 		dprintk("RPC:       %s releasing msg %p\n",
- 			__func__, gss_msg);
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		gss_unhash_msg(gss_msg);
- 		if (msg->errno == -ETIMEDOUT)
- 			warn_gssd();
+ EXPORT_SYMBOL(ceph_get_snap_context);
+@@ -68,7 +68,7 @@ void ceph_put_snap_context(struct ceph_snap_context *sc)
+ {
+ 	if (!sc)
+ 		return;
+-	if (atomic_dec_and_test(&sc->nref)) {
++	if (refcount_dec_and_test(&sc->nref)) {
+ 		/*printk(" deleting snap_context %p\n", sc);*/
+ 		kfree(sc);
+ 	}
 -- 
 2.7.4
 
