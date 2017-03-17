@@ -1,86 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:28554 "EHLO mx144.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:3319 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751222AbdCQUVe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 16:21:34 -0400
-To: <torvalds@linux-foundation.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>
+        id S1751116AbdCQUVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 16:21:33 -0400
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes for 4.11
-Message-ID: <2142a302-6319-a6e4-2c4e-46f37e8ac084@Netapp.com>
-Date: Fri, 17 Mar 2017 16:21:11 -0400
+To: <fstests@vger.kernel.org>
+CC: <Anna.Schumaker@Netapp.com>, <linux-nfs@vger.kernel.org>,
+        <hch@infradead.org>
+Subject: [PATCH v5 2/5] generic/417: Add small copies to new file test
+Date: Fri, 17 Mar 2017 15:52:30 -0400
+Message-ID: <20170317195233.4042-3-Anna.Schumaker@Netapp.com>
+In-Reply-To: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
+References: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+This test copies single bytes from a source file into various new files
+just to make sure that we can handle very small copies.
 
-The following changes since commit ed92d8c137b7794c2c2aa14479298b9885967607:
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ tests/generic/417     | 83 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/417.out | 16 ++++++++++
+ tests/generic/group   |  1 +
+ 3 files changed, 100 insertions(+)
+ create mode 100755 tests/generic/417
+ create mode 100644 tests/generic/417.out
 
-  NFSv4: fix getacl ERANGE for some ACL buffer sizes (2017-02-23 17:23:35 -0500)
+diff --git a/tests/generic/417 b/tests/generic/417
+new file mode 100755
+index 00000000..dde3f4d6
+--- /dev/null
++++ b/tests/generic/417
+@@ -0,0 +1,83 @@
++#!/bin/bash
++# FS QA Test No. 417
++#
++# Tests vfs_copy_file_range():
++#   - Copy a small file
++#   - Small copies from various points in the original file
++#-----------------------------------------------------------------------
++# Copyright (c) 2016 Netapp, Inc. All rights reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#-----------------------------------------------------------------------
++#
++
++seq=`basename $0`
++seqres=$RESULT_DIR/$seq
++echo "QA output created by $seq"
++
++here=`pwd`
++tmp=/tmp/$$
++status=1    # failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++_cleanup()
++{
++	cd /
++	rm -rf $tmp.*
++}
++
++# get standard environment
++. common/rc
++. common/filter
++
++# real QA test starts here
++_supported_fs generic
++_supported_os Linux
++
++_require_xfs_io_command "copy_range"
++_require_test
++
++testdir=$TEST_DIR/test-$seq
++rm -rf $testdir
++mkdir $testdir
++rm -f $seqres.full
++
++echo "Create the original file and then copy"
++echo -n "abcde" > $testdir/file
++$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
++echo -n "abcde" | cmp $testdir/copy
++echo "Original md5sums:"
++md5sum $testdir/{file,copy} | _filter_test_dir
++
++echo "Small copies from various points in the original file"
++$XFS_IO_PROG -f -c "copy_range -s 0 -l 1      $testdir/file" "$testdir/a" 2>&1
++$XFS_IO_PROG -f -c "copy_range -s 1 -l 1      $testdir/file" "$testdir/b" 2>&1
++$XFS_IO_PROG -f -c "copy_range -s 2 -l 1      $testdir/file" "$testdir/c" 2>&1
++$XFS_IO_PROG -f -c "copy_range -s 3 -l 1      $testdir/file" "$testdir/d" 2>&1
++$XFS_IO_PROG -f -c "copy_range -s 4 -l 1      $testdir/file" "$testdir/e" 2>&1
++$XFS_IO_PROG -f -c "copy_range -s 4 -l 1 -d 1 $testdir/file" "$testdir/f" 2>&1
++$XFS_IO_PROG -f -c "copy_range -s 5 -l 1      $testdir/file" "$testdir/g" 2>&1
++echo -n "a"    | cmp $testdir/a
++echo -n "b"    | cmp $testdir/b
++echo -n "c"    | cmp $testdir/c
++echo -n "d"    | cmp $testdir/d
++echo -n "e"    | cmp $testdir/e
++echo -en "\0e" | cmp $testdir/f
++echo -n ""     | cmp $testdir/g
++echo "md5sums after small copies"
++md5sum $testdir/{file,a,b,c,d,e,f,g} | _filter_test_dir
++
++#success, all done
++status=0
++exit
+diff --git a/tests/generic/417.out b/tests/generic/417.out
+new file mode 100644
+index 00000000..36c98478
+--- /dev/null
++++ b/tests/generic/417.out
+@@ -0,0 +1,16 @@
++QA output created by 417
++Create the original file and then copy
++Original md5sums:
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-417/file
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-417/copy
++Small copies from various points in the original file
++copy_range: Invalid argument
++md5sums after small copies
++ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-417/file
++0cc175b9c0f1b6a831c399e269772661  TEST_DIR/test-417/a
++92eb5ffee6ae2fec3ad71c777531578f  TEST_DIR/test-417/b
++4a8a08f09d37b73795649038408b5f33  TEST_DIR/test-417/c
++8277e0910d750195b448797616e091ad  TEST_DIR/test-417/d
++e1671797c52e15f763380b45e841ec32  TEST_DIR/test-417/e
++2015eb238d706eceefc784742928054f  TEST_DIR/test-417/f
++d41d8cd98f00b204e9800998ecf8427e  TEST_DIR/test-417/g
+diff --git a/tests/generic/group b/tests/generic/group
+index 9541fff5..57ef9d22 100644
+--- a/tests/generic/group
++++ b/tests/generic/group
+@@ -419,3 +419,4 @@
+ 414 auto quick clone
+ 415 auto clone
+ 416 auto quick copy
++417 auto quick copy
+-- 
+2.12.0
 
-are available in the git repository at:
-
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.11-2
-
-for you to fetch changes up to da066f3f039eba3e72e97b2ccad0dd8b45ba84bd:
-
-  pNFS/flexfiles: never nfs4_mark_deviceid_unavailable (2017-03-17 16:07:17 -0400)
-
-----------------------------------------------------------------
-We have a handful of stable fixes to fix kernel warnings and other bugs that have been
-around for a while.  We've also found a few other reference counting bugs and memory leaks since the initial 4.11 pull.
-
-Stable Bugfixes:
-- Fix decrementing nrequests in NFS v4.2 COPY to fix kernel warnings
-- Prevent a double free in async nfs4_exchange_id()
-- Squelch a kbuild sparse complaint for xprtrdma
-
-Other Bugfixes:
-- Fix a typo (NFS_ATTR_FATTR_GROUP_NAME) that causes a memory leak
-- Fix a reference leak that causes kernel warnings
-- Make nfs4_cb_sv_ops static to fix a sparse warning
-- Respect a server's max size in CREATE_SESSION
-- Handle errors from nfs4_pnfs_ds_connect
-- Flexfiles layout shouldn't mark devices as unavailable
-
-
-Thanks,
-Anna
-
-----------------------------------------------------------------
-Chuck Lever (1):
-      xprtrdma: Squelch kbuild sparse complaint
-
-Jason Yan (1):
-      nfs: make nfs4_cb_sv_ops static
-
-Kinglong Mee (3):
-      nfs4: fix a typo of NFS_ATTR_FATTR_GROUP_NAME
-      NFSv4: fix a reference leak caused WARNING messages
-      NFS: fix the fault nrequests decreasing for nfs_inode COPY
-
-Olga Kornievskaia (2):
-      NFS prevent double free in async nfs4_exchange_id
-      NFSv4.1 respect server's max size in CREATE_SESSION
-
-Weston Andros Adamson (2):
-      pNFS: return status from nfs4_pnfs_ds_connect
-      pNFS/flexfiles: never nfs4_mark_deviceid_unavailable
-
- fs/nfs/callback.c                         |  4 ++--
- fs/nfs/client.c                           | 25 ++++++++++++++++++++++++-
- fs/nfs/filelayout/filelayoutdev.c         |  8 +++++++-
- fs/nfs/flexfilelayout/flexfilelayout.h    | 14 +++++++++++++-
- fs/nfs/flexfilelayout/flexfilelayoutdev.c |  5 +++--
- fs/nfs/internal.h                         |  2 ++
- fs/nfs/nfs4client.c                       |  4 ++--
- fs/nfs/nfs4proc.c                         | 11 ++++-------
- fs/nfs/nfs4xdr.c                          |  2 +-
- fs/nfs/pnfs.h                             |  2 +-
- fs/nfs/pnfs_nfs.c                         | 31 +++++++++++++++++++++++++------
- fs/nfs/write.c                            |  6 ++++--
- net/sunrpc/xprtrdma/verbs.c               |  3 ++-
- 13 files changed, 90 insertions(+), 27 deletions(-)
