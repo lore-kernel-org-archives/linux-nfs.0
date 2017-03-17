@@ -1,154 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:3319 "EHLO mx144.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751116AbdCQUVd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 16:21:33 -0400
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-To: <fstests@vger.kernel.org>
-CC: <Anna.Schumaker@Netapp.com>, <linux-nfs@vger.kernel.org>,
-        <hch@infradead.org>
-Subject: [PATCH v5 2/5] generic/417: Add small copies to new file test
-Date: Fri, 17 Mar 2017 15:52:30 -0400
-Message-ID: <20170317195233.4042-3-Anna.Schumaker@Netapp.com>
-In-Reply-To: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
-References: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
+Received: from mail-it0-f45.google.com ([209.85.214.45]:35766 "EHLO
+        mail-it0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751079AbdCQUfi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 16:35:38 -0400
+Received: by mail-it0-f45.google.com with SMTP id m27so35165166iti.0
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Mar 2017 13:35:37 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <055901d29f46$4adcb0f0$e09612d0$@mindspring.com>
+References: <CAN-5tyH433qTV9EY5MQpDhRhgekUv7e=R1H7N_Q_46cAwPO=eg@mail.gmail.com>
+ <055901d29f46$4adcb0f0$e09612d0$@mindspring.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 17 Mar 2017 16:35:36 -0400
+Message-ID: <CAN-5tyFhibO2wCHrw7NZPVqFe1tEh8gprO9ubruQ53iqL4GdyA@mail.gmail.com>
+Subject: Re: question about open_owner sequencing
+To: Frank Filz <ffilzlnx@mindspring.com>, NeilBrown <neilb@suse.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This test copies single bytes from a source file into various new files
-just to make sure that we can handle very small copies.
+On Fri, Mar 17, 2017 at 1:45 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+>  Hi folks,
+>>
+>> I have a question about recovery from the BAD_SEQID and what should
+>> happen.
+>>
+>> I have the following application that does:
+>>
+>> 1. open(file1)
+>> 2. open(file2)
+>> 3. close(file1)
+>> 4. open(file3)
+>> 5. lock(file2)
+>>
+>> If CLOSE gets BAD_SEQID (for whatever reason), I see that LOCK later fails
+>> with BAD_SEQID as well.
+>>
+>> step1 OPEN creates open_owner1 seq 0
+>> step2 OPEN uses open_owner1 seq1
+>> step3 CLOSE uses open_owner1 seq2 gets BAD_SEQID
+>> step4 OPEN sends new open_owner2 seq2 and it triggers OPEN_CONFIRM
+>> with seq3
+>> step5 sends LOCK with seq4 and open stateid from the reply in step 2.
+>>
+>> LOCK gets BAD_SEQID.
+>>
+>> Question: is client sending something incorrect? is server not correct? I
+>> tested against two different servers (Linux and NetApp) and both reply the
+>> same way so I'm leaning towards "no". But I don't see why "seq4" is not a
+>> valid sequence given that the open_owner/sequence was just confirmed.
+>
+> Wait step4 is using a new open owner? Each open owner has its own seqid (assuming this is V4.0, owner seqid doesn't apply to 4.1 since the sequencing is done for the session with the SEQUENCE op).
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- tests/generic/417     | 83 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/417.out | 16 ++++++++++
- tests/generic/group   |  1 +
- 3 files changed, 100 insertions(+)
- create mode 100755 tests/generic/417
- create mode 100644 tests/generic/417.out
+Yes this is v4.0. Yes step4 uses new open owner but seq# doesn't go to
+0. This is the new behavior to not drop the open owner as per the
+following commit (below).
 
-diff --git a/tests/generic/417 b/tests/generic/417
-new file mode 100755
-index 00000000..dde3f4d6
---- /dev/null
-+++ b/tests/generic/417
-@@ -0,0 +1,83 @@
-+#!/bin/bash
-+# FS QA Test No. 417
-+#
-+# Tests vfs_copy_file_range():
-+#   - Copy a small file
-+#   - Small copies from various points in the original file
-+#-----------------------------------------------------------------------
-+# Copyright (c) 2016 Netapp, Inc. All rights reserved.
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License as
-+# published by the Free Software Foundation.
-+#
-+# This program is distributed in the hope that it would be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write the Free Software Foundation,
-+# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-+#-----------------------------------------------------------------------
-+#
-+
-+seq=`basename $0`
-+seqres=$RESULT_DIR/$seq
-+echo "QA output created by $seq"
-+
-+here=`pwd`
-+tmp=/tmp/$$
-+status=1    # failure is the default!
-+trap "_cleanup; exit \$status" 0 1 2 3 15
-+
-+_cleanup()
-+{
-+	cd /
-+	rm -rf $tmp.*
-+}
-+
-+# get standard environment
-+. common/rc
-+. common/filter
-+
-+# real QA test starts here
-+_supported_fs generic
-+_supported_os Linux
-+
-+_require_xfs_io_command "copy_range"
-+_require_test
-+
-+testdir=$TEST_DIR/test-$seq
-+rm -rf $testdir
-+mkdir $testdir
-+rm -f $seqres.full
-+
-+echo "Create the original file and then copy"
-+echo -n "abcde" > $testdir/file
-+$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
-+echo -n "abcde" | cmp $testdir/copy
-+echo "Original md5sums:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
-+
-+echo "Small copies from various points in the original file"
-+$XFS_IO_PROG -f -c "copy_range -s 0 -l 1      $testdir/file" "$testdir/a" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -s 1 -l 1      $testdir/file" "$testdir/b" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -s 2 -l 1      $testdir/file" "$testdir/c" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -s 3 -l 1      $testdir/file" "$testdir/d" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -s 4 -l 1      $testdir/file" "$testdir/e" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -s 4 -l 1 -d 1 $testdir/file" "$testdir/f" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -s 5 -l 1      $testdir/file" "$testdir/g" 2>&1
-+echo -n "a"    | cmp $testdir/a
-+echo -n "b"    | cmp $testdir/b
-+echo -n "c"    | cmp $testdir/c
-+echo -n "d"    | cmp $testdir/d
-+echo -n "e"    | cmp $testdir/e
-+echo -en "\0e" | cmp $testdir/f
-+echo -n ""     | cmp $testdir/g
-+echo "md5sums after small copies"
-+md5sum $testdir/{file,a,b,c,d,e,f,g} | _filter_test_dir
-+
-+#success, all done
-+status=0
-+exit
-diff --git a/tests/generic/417.out b/tests/generic/417.out
-new file mode 100644
-index 00000000..36c98478
---- /dev/null
-+++ b/tests/generic/417.out
-@@ -0,0 +1,16 @@
-+QA output created by 417
-+Create the original file and then copy
-+Original md5sums:
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-417/file
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-417/copy
-+Small copies from various points in the original file
-+copy_range: Invalid argument
-+md5sums after small copies
-+ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-417/file
-+0cc175b9c0f1b6a831c399e269772661  TEST_DIR/test-417/a
-+92eb5ffee6ae2fec3ad71c777531578f  TEST_DIR/test-417/b
-+4a8a08f09d37b73795649038408b5f33  TEST_DIR/test-417/c
-+8277e0910d750195b448797616e091ad  TEST_DIR/test-417/d
-+e1671797c52e15f763380b45e841ec32  TEST_DIR/test-417/e
-+2015eb238d706eceefc784742928054f  TEST_DIR/test-417/f
-+d41d8cd98f00b204e9800998ecf8427e  TEST_DIR/test-417/g
-diff --git a/tests/generic/group b/tests/generic/group
-index 9541fff5..57ef9d22 100644
---- a/tests/generic/group
-+++ b/tests/generic/group
-@@ -419,3 +419,4 @@
- 414 auto quick clone
- 415 auto clone
- 416 auto quick copy
-+417 auto quick copy
--- 
-2.12.0
+Since LOCK just has the seq# (and not a value of the open_owner) I
+thought it's be the "valid" (current) open owner which would be
+open_owner2.
 
+So after step4, are the 2 open owners then: one with value open_owner1
+(seq2) and one with value open_owner2 (seq3). And then since LOCK is
+associated with the OPEN from step1 and then open_owner 1, then should
+it send send seq2?
+
+Neil, when would the client remove this open owner1  that would have
+been removed prior to this patch?
+
+commit 86cfb0418537460baf0de0b5e9253784be27a6f9
+Author: NeilBrown <neilb@suse.com>
+Date:   Mon Dec 19 11:48:23 2016 +1100
+
+    NFS: Don't disconnect open-owner on NFS4ERR_BAD_SEQID
+
+    When an NFS4ERR_BAD_SEQID is received the open-owner is removed from
+    the ->state_owners rbtree so that it will no longer be used.
+
+    If any stateids attached to this open-owner are still in use, and if a
+    request using one gets an NFS4ERR_BAD_STATEID reply, this can for bad.
+
+    The state is marked as needing recovery and the nfs4_state_manager()
+    is scheduled to clean up.  nfs4_state_manager() finds states to be
+    recovered by walking the state_owners rbtree.  As the open-owner is
+    not in the rbtree, the bad state is not found so nfs4_state_manager()
+    completes having done nothing.  The request is then retried, with a
+    predicatable result (indefinite retries).
+
+    If the stateid is for a delegation, this open_owner will be used
+    to open files when the delegation is returned.  For that to work,
+    a new open-owner needs to be presented to the server.
+
+    This patch changes NFS4ERR_BAD_SEQID handling to leave the open-owner
+    in the rbtree but updates the 'create_time' so it looks like a new
+    open-owner.  With this the indefinite retries no longer happen.
+
+    Signed-off-by: NeilBrown <neilb@suse.com>
+    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+
+>
+> Frank
+>
+>
+> ---
+> This email has been checked for viruses by Avast antivirus software.
+> https://www.avast.com/antivirus
+>
