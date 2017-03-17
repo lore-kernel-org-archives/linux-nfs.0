@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mga07.intel.com ([134.134.136.100]:48164 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751142AbdCQMLl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:11:41 -0400
+        id S1751354AbdCQML2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:11:28 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 05/23] net, ceph: convert ceph_osd.o_ref from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:28 +0200
-Message-Id: <1489752646-8749-6-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 03/23] net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:26 +0200
+Message-Id: <1489752646-8749-4-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,79 +36,108 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/ceph/osd_client.h |  3 ++-
- net/ceph/osd_client.c           | 16 ++++++++--------
- 2 files changed, 10 insertions(+), 9 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
 
-diff --git a/include/linux/ceph/osd_client.h b/include/linux/ceph/osd_client.h
-index 2ea0c28..5ce0cd6 100644
---- a/include/linux/ceph/osd_client.h
-+++ b/include/linux/ceph/osd_client.h
-@@ -5,6 +5,7 @@
- #include <linux/kref.h>
- #include <linux/mempool.h>
- #include <linux/rbtree.h>
-+#include <linux/refcount.h>
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 72f129c..e7c941a 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -287,7 +287,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
+ #define UPCALL_BUF_LEN 128
  
- #include <linux/ceph/types.h>
- #include <linux/ceph/osdmap.h>
-@@ -27,7 +28,7 @@ typedef void (*ceph_osdc_callback_t)(struct ceph_osd_request *);
- 
- /* a given osd we're communicating with */
- struct ceph_osd {
--	atomic_t o_ref;
-+	refcount_t o_ref;
- 	struct ceph_osd_client *o_osdc;
- 	int o_osd;
- 	int o_incarnation;
-diff --git a/net/ceph/osd_client.c b/net/ceph/osd_client.c
-index b65bbf9..99a51f0 100644
---- a/net/ceph/osd_client.c
-+++ b/net/ceph/osd_client.c
-@@ -1005,7 +1005,7 @@ static bool osd_registered(struct ceph_osd *osd)
-  */
- static void osd_init(struct ceph_osd *osd)
+ struct gss_upcall_msg {
+-	atomic_t count;
++	refcount_t count;
+ 	kuid_t	uid;
+ 	struct rpc_pipe_msg msg;
+ 	struct list_head list;
+@@ -328,7 +328,7 @@ static void
+ gss_release_msg(struct gss_upcall_msg *gss_msg)
  {
--	atomic_set(&osd->o_ref, 1);
-+	refcount_set(&osd->o_ref, 1);
- 	RB_CLEAR_NODE(&osd->o_node);
- 	osd->o_requests = RB_ROOT;
- 	osd->o_linger_requests = RB_ROOT;
-@@ -1050,9 +1050,9 @@ static struct ceph_osd *create_osd(struct ceph_osd_client *osdc, int onum)
+ 	struct net *net = gss_msg->auth->net;
+-	if (!atomic_dec_and_test(&gss_msg->count))
++	if (!refcount_dec_and_test(&gss_msg->count))
+ 		return;
+ 	put_pipe_version(net);
+ 	BUG_ON(!list_empty(&gss_msg->list));
+@@ -348,7 +348,7 @@ __gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid, const struct gss_auth *auth
+ 			continue;
+ 		if (auth && pos->auth->service != auth->service)
+ 			continue;
+-		atomic_inc(&pos->count);
++		refcount_inc(&pos->count);
+ 		dprintk("RPC:       %s found msg %p\n", __func__, pos);
+ 		return pos;
+ 	}
+@@ -369,7 +369,7 @@ gss_add_msg(struct gss_upcall_msg *gss_msg)
+ 	spin_lock(&pipe->lock);
+ 	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
+ 	if (old == NULL) {
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		list_add(&gss_msg->list, &pipe->in_downcall);
+ 	} else
+ 		gss_msg = old;
+@@ -383,7 +383,7 @@ __gss_unhash_msg(struct gss_upcall_msg *gss_msg)
+ 	list_del_init(&gss_msg->list);
+ 	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
+ 	wake_up_all(&gss_msg->waitqueue);
+-	atomic_dec(&gss_msg->count);
++	WARN_ON(refcount_dec_and_test(&gss_msg->count));
+ }
  
- static struct ceph_osd *get_osd(struct ceph_osd *osd)
- {
--	if (atomic_inc_not_zero(&osd->o_ref)) {
--		dout("get_osd %p %d -> %d\n", osd, atomic_read(&osd->o_ref)-1,
--		     atomic_read(&osd->o_ref));
-+	if (refcount_inc_not_zero(&osd->o_ref)) {
-+		dout("get_osd %p %d -> %d\n", osd, refcount_read(&osd->o_ref)-1,
-+		     refcount_read(&osd->o_ref));
- 		return osd;
+ static void
+@@ -506,7 +506,7 @@ gss_alloc_msg(struct gss_auth *gss_auth,
+ 	INIT_LIST_HEAD(&gss_msg->list);
+ 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+ 	init_waitqueue_head(&gss_msg->waitqueue);
+-	atomic_set(&gss_msg->count, 1);
++	refcount_set(&gss_msg->count, 1);
+ 	gss_msg->uid = uid;
+ 	gss_msg->auth = gss_auth;
+ 	switch (vers) {
+@@ -542,11 +542,11 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
+ 	gss_msg = gss_add_msg(gss_new);
+ 	if (gss_msg == gss_new) {
+ 		int res;
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
+ 		if (res) {
+ 			gss_unhash_msg(gss_new);
+-			atomic_dec(&gss_msg->count);
++			refcount_dec(&gss_msg->count);
+ 			gss_release_msg(gss_new);
+ 			gss_msg = ERR_PTR(res);
+ 		}
+@@ -595,7 +595,7 @@ gss_refresh_upcall(struct rpc_task *task)
+ 		task->tk_timeout = 0;
+ 		gss_cred->gc_upcall = gss_msg;
+ 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		rpc_sleep_on(&gss_msg->rpc_waitqueue, task, gss_upcall_callback);
  	} else {
- 		dout("get_osd %p FAIL\n", osd);
-@@ -1062,9 +1062,9 @@ static struct ceph_osd *get_osd(struct ceph_osd *osd)
- 
- static void put_osd(struct ceph_osd *osd)
- {
--	dout("put_osd %p %d -> %d\n", osd, atomic_read(&osd->o_ref),
--	     atomic_read(&osd->o_ref) - 1);
--	if (atomic_dec_and_test(&osd->o_ref)) {
-+	dout("put_osd %p %d -> %d\n", osd, refcount_read(&osd->o_ref),
-+	     refcount_read(&osd->o_ref) - 1);
-+	if (refcount_dec_and_test(&osd->o_ref)) {
- 		osd_cleanup(osd);
- 		kfree(osd);
- 	}
-@@ -4092,7 +4092,7 @@ void ceph_osdc_stop(struct ceph_osd_client *osdc)
- 		close_osd(osd);
- 	}
- 	up_write(&osdc->lock);
--	WARN_ON(atomic_read(&osdc->homeless_osd.o_ref) != 1);
-+	WARN_ON(refcount_read(&osdc->homeless_osd.o_ref) != 1);
- 	osd_cleanup(&osdc->homeless_osd);
- 
- 	WARN_ON(!list_empty(&osdc->osd_lru));
+ 		gss_handle_downcall_result(gss_cred, gss_msg);
+@@ -815,7 +815,7 @@ gss_pipe_release(struct inode *inode)
+ 		if (!list_empty(&gss_msg->msg.list))
+ 			continue;
+ 		gss_msg->msg.errno = -EPIPE;
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		__gss_unhash_msg(gss_msg);
+ 		spin_unlock(&pipe->lock);
+ 		gss_release_msg(gss_msg);
+@@ -834,7 +834,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
+ 	if (msg->errno < 0) {
+ 		dprintk("RPC:       %s releasing msg %p\n",
+ 			__func__, gss_msg);
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		gss_unhash_msg(gss_msg);
+ 		if (msg->errno == -ETIMEDOUT)
+ 			warn_gssd();
 -- 
 2.7.4
 
