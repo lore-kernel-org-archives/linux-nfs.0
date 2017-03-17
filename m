@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:48365 "EHLO mga06.intel.com"
+Received: from mga14.intel.com ([192.55.52.115]:57529 "EHLO mga14.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751272AbdCQMQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:16:58 -0400
+        id S1750926AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:16:51 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 22/23] net, ax25: convert ax25_route.refcount from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:45 +0200
-Message-Id: <1489752646-8749-23-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 16/23] net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:39 +0200
+Message-Id: <1489752646-8749-17-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,53 +36,62 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ax25.h    | 6 +++---
- net/ax25/ax25_route.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ include/net/sctp/auth.h | 5 +++--
+ net/sctp/auth.c         | 4 ++--
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index edd82f0..e3467ba 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -185,7 +185,7 @@ typedef struct {
+diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
+index 9b9fb12..328fccc 100644
+--- a/include/net/sctp/auth.h
++++ b/include/net/sctp/auth.h
+@@ -31,6 +31,7 @@
+ #define __sctp_auth_h__
  
- typedef struct ax25_route {
- 	struct ax25_route	*next;
--	atomic_t		refcount;
-+	refcount_t		refcount;
- 	ax25_address		callsign;
- 	struct net_device	*dev;
- 	ax25_digi		*digipeat;
-@@ -194,14 +194,14 @@ typedef struct ax25_route {
+ #include <linux/list.h>
++#include <linux/refcount.h>
  
- static inline void ax25_hold_route(ax25_route *ax25_rt)
- {
--	atomic_inc(&ax25_rt->refcount);
-+	refcount_inc(&ax25_rt->refcount);
+ struct sctp_endpoint;
+ struct sctp_association;
+@@ -53,7 +54,7 @@ struct sctp_hmac {
+  * over SCTP-AUTH
+  */
+ struct sctp_auth_bytes {
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ 	__u32 len;
+ 	__u8  data[];
+ };
+@@ -76,7 +77,7 @@ static inline void sctp_auth_key_hold(struct sctp_auth_bytes *key)
+ 	if (!key)
+ 		return;
+ 
+-	atomic_inc(&key->refcnt);
++	refcount_inc(&key->refcnt);
  }
  
- void __ax25_put_route(ax25_route *ax25_rt);
+ void sctp_auth_key_put(struct sctp_auth_bytes *key);
+diff --git a/net/sctp/auth.c b/net/sctp/auth.c
+index f99d485..b6c98fe 100644
+--- a/net/sctp/auth.c
++++ b/net/sctp/auth.c
+@@ -63,7 +63,7 @@ void sctp_auth_key_put(struct sctp_auth_bytes *key)
+ 	if (!key)
+ 		return;
  
- static inline void ax25_put_route(ax25_route *ax25_rt)
- {
--	if (atomic_dec_and_test(&ax25_rt->refcount))
-+	if (refcount_dec_and_test(&ax25_rt->refcount))
- 		__ax25_put_route(ax25_rt);
- }
- 
-diff --git a/net/ax25/ax25_route.c b/net/ax25/ax25_route.c
-index e1fda27..0446b89 100644
---- a/net/ax25/ax25_route.c
-+++ b/net/ax25/ax25_route.c
-@@ -114,7 +114,7 @@ static int __must_check ax25_rt_add(struct ax25_routes_struct *route)
- 		return -ENOMEM;
+-	if (atomic_dec_and_test(&key->refcnt)) {
++	if (refcount_dec_and_test(&key->refcnt)) {
+ 		kzfree(key);
+ 		SCTP_DBG_OBJCNT_DEC(keys);
  	}
+@@ -84,7 +84,7 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
+ 		return NULL;
  
--	atomic_set(&ax25_rt->refcount, 1);
-+	refcount_set(&ax25_rt->refcount, 1);
- 	ax25_rt->callsign     = route->dest_addr;
- 	ax25_rt->dev          = ax25_dev->dev;
- 	ax25_rt->digipeat     = NULL;
+ 	key->len = key_len;
+-	atomic_set(&key->refcnt, 1);
++	refcount_set(&key->refcnt, 1);
+ 	SCTP_DBG_OBJCNT_INC(keys);
+ 
+ 	return key;
 -- 
 2.7.4
 
