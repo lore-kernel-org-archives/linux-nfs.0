@@ -1,84 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f46.google.com ([209.85.214.46]:35457 "EHLO
-        mail-it0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751096AbdCQVUD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 17:20:03 -0400
-Received: by mail-it0-f46.google.com with SMTP id m27so36221836iti.0
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Mar 2017 14:19:42 -0700 (PDT)
+Received: from mail-it0-f43.google.com ([209.85.214.43]:38889 "EHLO
+        mail-it0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751207AbdCQVVy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 17:21:54 -0400
+Received: by mail-it0-f43.google.com with SMTP id m27so42583499iti.1
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Mar 2017 14:21:53 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <057b01d29f60$c2645dc0$472d1940$@mindspring.com>
-References: <CAN-5tyH433qTV9EY5MQpDhRhgekUv7e=R1H7N_Q_46cAwPO=eg@mail.gmail.com>
- <055901d29f46$4adcb0f0$e09612d0$@mindspring.com> <CAN-5tyFhibO2wCHrw7NZPVqFe1tEh8gprO9ubruQ53iqL4GdyA@mail.gmail.com>
- <057b01d29f60$c2645dc0$472d1940$@mindspring.com>
+In-Reply-To: <20170302160142.30413-1-kolga@netapp.com>
+References: <20170302160142.30413-1-kolga@netapp.com>
 From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 17 Mar 2017 17:19:40 -0400
-Message-ID: <CAN-5tyE5e1whg2xnvaWRF1orwvmzJ4nDXFN25Hw-05W7nQ0A_w@mail.gmail.com>
-Subject: Re: question about open_owner sequencing
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: NeilBrown <neilb@suse.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Date: Fri, 17 Mar 2017 17:21:52 -0400
+Message-ID: <CAN-5tyGHaXgWnZAeKghcXVwMOufU-v-geSpxtSqy6=FC8sUWow@mail.gmail.com>
+Subject: Re: [RFC v1 00/17] NFSD support for inter+async COPY
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 17, 2017 at 4:55 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> On Fri, Mar 17, 2017 at 1:45 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> >  Hi folks,
->> >>
->> >> I have a question about recovery from the BAD_SEQID and what should
->> >> happen.
->> >>
->> >> I have the following application that does:
->> >>
->> >> 1. open(file1)
->> >> 2. open(file2)
->> >> 3. close(file1)
->> >> 4. open(file3)
->> >> 5. lock(file2)
->> >>
->> >> If CLOSE gets BAD_SEQID (for whatever reason), I see that LOCK later
->> >> fails with BAD_SEQID as well.
->> >>
->> >> step1 OPEN creates open_owner1 seq 0
->> >> step2 OPEN uses open_owner1 seq1
->> >> step3 CLOSE uses open_owner1 seq2 gets BAD_SEQID
->> >> step4 OPEN sends new open_owner2 seq2 and it triggers
->> OPEN_CONFIRM
->> >> with seq3
->> >> step5 sends LOCK with seq4 and open stateid from the reply in step 2.
->> >>
->> >> LOCK gets BAD_SEQID.
->> >>
->> >> Question: is client sending something incorrect? is server not
->> >> correct? I tested against two different servers (Linux and NetApp)
->> >> and both reply the same way so I'm leaning towards "no". But I don't
->> >> see why "seq4" is not a valid sequence given that the
->> open_owner/sequence was just confirmed.
->> >
->> > Wait step4 is using a new open owner? Each open owner has its own seqid
->> (assuming this is V4.0, owner seqid doesn't apply to 4.1 since the sequencing
->> is done for the session with the SEQUENCE op).
->>
->> Yes this is v4.0. Yes step4 uses new open owner but seq# doesn't go to 0.
->> This is the new behavior to not drop the open owner as per the following
->> commit (below).
->>
->> Since LOCK just has the seq# (and not a value of the open_owner) I thought
->> it's be the "valid" (current) open owner which would be open_owner2.
->
-> Hmm, so in step5, there is not yet a lock stateid?
->
-> So it's using this form of the lock?
->
-> struct open_to_lock_owner4 {
-> seqid4 open_seqid;
-> stateid4 open_stateid;
-> seqid4 lock_seqid;
-> lock_owner4 lock_owner;
->
-> If so, open_seqid should be 3, lock_seqid can be anything.
+Bruce,
 
-Why is it 3? As far as I can tell, 3 is not a valid seq_id for either
-open_owner1 or open_owner2. open_owner1 is left at seq_id=2 (because
-after "using" seq2 on the CLOSE it got BAD_SEQID so seq_id isn't
-incremented) and open_owner2 would have seq_id=4 (OPEN_CONFIRM used up
-3)?
+Any comments on this?
+
+Should I separate out the async copy support and send it out like I
+did for the client side? I guess the idea is to get the async first
+and then add inter when the VFS layer situation is resolved?
+
+
+On Thu, Mar 2, 2017 at 11:01 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
+> This is server-side support for NFSv4.2 inter and async COPY which is
+> on top of existing intra sync COPY. It also depends on the NFS client
+> piece for NFSv4.2 to do client side of the destination server piece
+> in the inter SSC.
+>
+> NFSD determines if COPY is intra or inter and if sync or async. For
+> inter, NSFD uses NFSv4.1 protocol and creates an internal mount point
+> (superblock). It will destroy the mount point when copy is done.
+>
+> To do asynchronous copies, NFSD creates a single threaded workqueue
+> and does not tie up an NFSD thread to complete the copy. Upon receiving
+> the COPY, it generates a unique copy stateid (stores a global list
+> for keeping track of state for OFFLOAD_STATUS to be queried by),
+> queues up a workqueue for the copy, and replies back to the client.
+> nfsd4_copy arguments that are allocated on the stack are copied for
+> the work item.
+>
+> In the async copy handler, it calls into VFS copy_file_range() with
+> 4MB chunks and loops until it completes the requested copy size. If
+> error is encountered it's saved but also we save the amount of data
+> copied so far. Once done, the results are queued for the callback
+> workqueue and sent via CB_OFFLOAD. Also currently, choosing to clean
+> up the copy state information stored in the global list when cope is
+> done and not doing it when callback's release function (it could be
+> done there alternatively if needed it?).
+>
+> On the source server, upon receiving a COPY_NOTIFY, it generate a
+> unique stateid that's kept in the global list. Upon receiving a READ
+> with a stateid, the code checks the normal list of open stateid and
+> now additionally, it'll check the copy state list as well before
+> deciding to either fail with BAD_STATEID or find one that matches.
+> The stored stateid is only valid to be used for the first time
+> with a choosen lease period (90s currently). When the source server
+> received an OFFLOAD_CANCEL, it will remove the stateid from the
+> global list. Otherwise, the copy stateid is removed upon the removal
+> of its "parent" stateid (open/lock/delegation stateid).
+>
+>
+> Andy Adamson (7):
+>   NFSD add ca_source_server<> to COPY
+>   NFSD generalize nfsd4_compound_state flag names
+>   NFSD: allow inter server COPY to have a STALE source server fh
+>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+>   NFSD add COPY_NOTIFY operation
+>   NFSD add nfs4 inter ssc to nfsd4_copy
+>   NFSD Unique stateid_t for inter server to server COPY authentication
+>
+> Olga Kornievskaia (10):
+>   NFSD CB_OFFLOAD xdr
+>   NFSD OFFLOAD_STATUS xdr
+>   NFSD OFFLOAD_CANCEL xdr
+>   NFSD xdr callback stateid in async COPY reply
+>   NFSD first draft of async copy
+>   NFSD handle OFFLOAD_CANCEL op
+>   NFSD stop queued async copies on client shutdown
+>   NFSD create new stateid for async copy
+>   NFSD define EBADF in nfserrno
+>   NFSD support OFFLOAD_STATUS
+>
+>  fs/nfsd/Kconfig        |  10 +
+>  fs/nfsd/netns.h        |   8 +
+>  fs/nfsd/nfs4callback.c |  95 +++++++
+>  fs/nfsd/nfs4proc.c     | 704 ++++++++++++++++++++++++++++++++++++++++++++++---
+>  fs/nfsd/nfs4state.c    | 142 +++++++++-
+>  fs/nfsd/nfs4xdr.c      | 266 ++++++++++++++++++-
+>  fs/nfsd/nfsctl.c       |   2 +
+>  fs/nfsd/nfsd.h         |   2 +
+>  fs/nfsd/nfsproc.c      |   1 +
+>  fs/nfsd/state.h        |  32 ++-
+>  fs/nfsd/xdr4.h         |  53 +++-
+>  fs/nfsd/xdr4cb.h       |  10 +
+>  include/linux/nfs4.h   |   1 +
+>  13 files changed, 1273 insertions(+), 53 deletions(-)
+>
+> --
+> 1.8.3.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
