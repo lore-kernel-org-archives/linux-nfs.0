@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:41446 "EHLO mga06.intel.com"
+Received: from mga01.intel.com ([192.55.52.88]:32901 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751496AbdCQMLy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:11:54 -0400
+        id S1751142AbdCQMLu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:11:50 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 06/23] net, ceph: convert ceph_pagelist.refcnt from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:29 +0200
-Message-Id: <1489752646-8749-7-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 07/23] net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:30 +0200
+Message-Id: <1489752646-8749-8-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,68 +36,92 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- fs/ceph/mds_client.c          | 2 +-
- include/linux/ceph/pagelist.h | 6 +++---
- net/ceph/pagelist.c           | 2 +-
- 3 files changed, 5 insertions(+), 5 deletions(-)
+ net/rds/ib.c      | 12 ++++++------
+ net/rds/ib.h      |  2 +-
+ net/rds/ib_rdma.c |  4 ++--
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/ceph/mds_client.c b/fs/ceph/mds_client.c
-index c681762..7b38e6c 100644
---- a/fs/ceph/mds_client.c
-+++ b/fs/ceph/mds_client.c
-@@ -1991,7 +1991,7 @@ static struct ceph_msg *create_request_message(struct ceph_mds_client *mdsc,
+diff --git a/net/rds/ib.c b/net/rds/ib.c
+index 91fe46f..bb19cda 100644
+--- a/net/rds/ib.c
++++ b/net/rds/ib.c
+@@ -118,8 +118,8 @@ static void rds_ib_dev_free(struct work_struct *work)
  
- 	if (req->r_pagelist) {
- 		struct ceph_pagelist *pagelist = req->r_pagelist;
--		atomic_inc(&pagelist->refcnt);
-+		refcount_inc(&pagelist->refcnt);
- 		ceph_msg_data_add_pagelist(msg, pagelist);
- 		msg->hdr.data_len = cpu_to_le32(pagelist->length);
- 	} else {
-diff --git a/include/linux/ceph/pagelist.h b/include/linux/ceph/pagelist.h
-index 13d71fe..75a7db2 100644
---- a/include/linux/ceph/pagelist.h
-+++ b/include/linux/ceph/pagelist.h
-@@ -2,7 +2,7 @@
- #define __FS_CEPH_PAGELIST_H
- 
- #include <asm/byteorder.h>
--#include <linux/atomic.h>
-+#include <linux/refcount.h>
- #include <linux/list.h>
- #include <linux/types.h>
- 
-@@ -13,7 +13,7 @@ struct ceph_pagelist {
- 	size_t room;
- 	struct list_head free_list;
- 	size_t num_pages_free;
--	atomic_t refcnt;
-+	refcount_t refcnt;
- };
- 
- struct ceph_pagelist_cursor {
-@@ -30,7 +30,7 @@ static inline void ceph_pagelist_init(struct ceph_pagelist *pl)
- 	pl->room = 0;
- 	INIT_LIST_HEAD(&pl->free_list);
- 	pl->num_pages_free = 0;
--	atomic_set(&pl->refcnt, 1);
-+	refcount_set(&pl->refcnt, 1);
+ void rds_ib_dev_put(struct rds_ib_device *rds_ibdev)
+ {
+-	BUG_ON(atomic_read(&rds_ibdev->refcount) <= 0);
+-	if (atomic_dec_and_test(&rds_ibdev->refcount))
++	BUG_ON(refcount_read(&rds_ibdev->refcount) == 0);
++	if (refcount_dec_and_test(&rds_ibdev->refcount))
+ 		queue_work(rds_wq, &rds_ibdev->free_work);
  }
  
- extern void ceph_pagelist_release(struct ceph_pagelist *pl);
-diff --git a/net/ceph/pagelist.c b/net/ceph/pagelist.c
-index 6864007..ce09f73 100644
---- a/net/ceph/pagelist.c
-+++ b/net/ceph/pagelist.c
-@@ -16,7 +16,7 @@ static void ceph_pagelist_unmap_tail(struct ceph_pagelist *pl)
- 
- void ceph_pagelist_release(struct ceph_pagelist *pl)
- {
--	if (!atomic_dec_and_test(&pl->refcnt))
-+	if (!refcount_dec_and_test(&pl->refcnt))
+@@ -137,7 +137,7 @@ static void rds_ib_add_one(struct ib_device *device)
  		return;
- 	ceph_pagelist_unmap_tail(pl);
- 	while (!list_empty(&pl->head)) {
+ 
+ 	spin_lock_init(&rds_ibdev->spinlock);
+-	atomic_set(&rds_ibdev->refcount, 1);
++	refcount_set(&rds_ibdev->refcount, 1);
+ 	INIT_WORK(&rds_ibdev->free_work, rds_ib_dev_free);
+ 
+ 	rds_ibdev->max_wrs = device->attrs.max_qp_wr;
+@@ -205,10 +205,10 @@ static void rds_ib_add_one(struct ib_device *device)
+ 	down_write(&rds_ib_devices_lock);
+ 	list_add_tail_rcu(&rds_ibdev->list, &rds_ib_devices);
+ 	up_write(&rds_ib_devices_lock);
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ 
+ 	ib_set_client_data(device, &rds_ib_client, rds_ibdev);
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ 
+ 	rds_ib_nodev_connect();
+ 
+@@ -239,7 +239,7 @@ struct rds_ib_device *rds_ib_get_client_data(struct ib_device *device)
+ 	rcu_read_lock();
+ 	rds_ibdev = ib_get_client_data(device, &rds_ib_client);
+ 	if (rds_ibdev)
+-		atomic_inc(&rds_ibdev->refcount);
++		refcount_inc(&rds_ibdev->refcount);
+ 	rcu_read_unlock();
+ 	return rds_ibdev;
+ }
+diff --git a/net/rds/ib.h b/net/rds/ib.h
+index ec55062..bf48224 100644
+--- a/net/rds/ib.h
++++ b/net/rds/ib.h
+@@ -230,7 +230,7 @@ struct rds_ib_device {
+ 	unsigned int		max_initiator_depth;
+ 	unsigned int		max_responder_resources;
+ 	spinlock_t		spinlock;	/* protect the above */
+-	atomic_t		refcount;
++	refcount_t		refcount;
+ 	struct work_struct	free_work;
+ 	int			*vector_load;
+ };
+diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
+index 977f698..9a3c54e 100644
+--- a/net/rds/ib_rdma.c
++++ b/net/rds/ib_rdma.c
+@@ -52,7 +52,7 @@ static struct rds_ib_device *rds_ib_get_device(__be32 ipaddr)
+ 	list_for_each_entry_rcu(rds_ibdev, &rds_ib_devices, list) {
+ 		list_for_each_entry_rcu(i_ipaddr, &rds_ibdev->ipaddr_list, list) {
+ 			if (i_ipaddr->ipaddr == ipaddr) {
+-				atomic_inc(&rds_ibdev->refcount);
++				refcount_inc(&rds_ibdev->refcount);
+ 				rcu_read_unlock();
+ 				return rds_ibdev;
+ 			}
+@@ -134,7 +134,7 @@ void rds_ib_add_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *con
+ 	spin_unlock_irq(&ib_nodev_conns_lock);
+ 
+ 	ic->rds_ibdev = rds_ibdev;
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ }
+ 
+ void rds_ib_remove_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *conn)
 -- 
 2.7.4
 
