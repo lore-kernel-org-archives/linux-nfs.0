@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:62452 "EHLO mga06.intel.com"
+Received: from mga06.intel.com ([134.134.136.31]:61611 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751035AbdCQMLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:11:11 -0400
+        id S1751035AbdCQMLF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:11:05 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 02/23] net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:25 +0200
-Message-Id: <1489752646-8749-3-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 01/23] net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:24 +0200
+Message-Id: <1489752646-8749-2-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,61 +36,102 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sunrpc/auth_gss.h | 3 ++-
- net/sunrpc/auth_gss/auth_gss.c  | 6 +++---
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ include/linux/sunrpc/auth.h |  8 ++++----
+ net/sunrpc/auth.c           | 12 ++++++------
+ 2 files changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
-index 36eebc4..cebdf87 100644
---- a/include/linux/sunrpc/auth_gss.h
-+++ b/include/linux/sunrpc/auth_gss.h
-@@ -13,6 +13,7 @@
- #define _LINUX_SUNRPC_AUTH_GSS_H
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index b1bc62b..bd36e0b 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -15,7 +15,7 @@
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/sunrpc/xdr.h>
  
- #ifdef __KERNEL__
+-#include <linux/atomic.h>
 +#include <linux/refcount.h>
- #include <linux/sunrpc/auth.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/gss_api.h>
-@@ -65,7 +66,7 @@ struct rpc_gss_init_res {
-  * the wire when communicating with a server. */
+ #include <linux/rcupdate.h>
+ #include <linux/uidgid.h>
+ #include <linux/utsname.h>
+@@ -68,7 +68,7 @@ struct rpc_cred {
+ #endif
+ 	unsigned long		cr_expire;	/* when to gc */
+ 	unsigned long		cr_flags;	/* various flags */
+-	atomic_t		cr_count;	/* ref count */
++	refcount_t		cr_count;	/* ref count */
  
- struct gss_cl_ctx {
--	atomic_t		count;
-+	refcount_t		count;
- 	enum rpc_gss_proc	gc_proc;
- 	u32			gc_seq;
- 	spinlock_t		gc_seq_lock;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 4f16953..72f129c 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -117,14 +117,14 @@ static const struct rpc_pipe_ops gss_upcall_ops_v1;
- static inline struct gss_cl_ctx *
- gss_get_ctx(struct gss_cl_ctx *ctx)
+ 	kuid_t			cr_uid;
+ 
+@@ -209,7 +209,7 @@ static inline
+ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
  {
--	atomic_inc(&ctx->count);
-+	refcount_inc(&ctx->count);
- 	return ctx;
+ 	if (cred != NULL)
+-		atomic_inc(&cred->cr_count);
++		refcount_inc(&cred->cr_count);
+ 	return cred;
  }
  
- static inline void
- gss_put_ctx(struct gss_cl_ctx *ctx)
+@@ -226,7 +226,7 @@ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
+ static inline struct rpc_cred *
+ get_rpccred_rcu(struct rpc_cred *cred)
  {
--	if (atomic_dec_and_test(&ctx->count))
-+	if (refcount_dec_and_test(&ctx->count))
- 		gss_free_ctx(ctx);
+-	if (atomic_inc_not_zero(&cred->cr_count))
++	if (refcount_inc_not_zero(&cred->cr_count))
+ 		return cred;
+ 	return NULL;
  }
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 2bff63a..b6439b9 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -310,7 +310,7 @@ rpcauth_unhash_cred(struct rpc_cred *cred)
  
-@@ -200,7 +200,7 @@ gss_alloc_context(void)
- 		ctx->gc_proc = RPC_GSS_PROC_DATA;
- 		ctx->gc_seq = 1;	/* NetApp 6.4R1 doesn't accept seq. no. 0 */
- 		spin_lock_init(&ctx->gc_seq_lock);
--		atomic_set(&ctx->count,1);
-+		refcount_set(&ctx->count,1);
+ 	cache_lock = &cred->cr_auth->au_credcache->lock;
+ 	spin_lock(cache_lock);
+-	ret = atomic_read(&cred->cr_count) == 0;
++	ret = refcount_read(&cred->cr_count) == 0;
+ 	if (ret)
+ 		rpcauth_unhash_cred_locked(cred);
+ 	spin_unlock(cache_lock);
+@@ -470,12 +470,12 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
+ 		list_del_init(&cred->cr_lru);
+ 		number_cred_unused--;
+ 		freed++;
+-		if (atomic_read(&cred->cr_count) != 0)
++		if (refcount_read(&cred->cr_count) != 0)
+ 			continue;
+ 
+ 		cache_lock = &cred->cr_auth->au_credcache->lock;
+ 		spin_lock(cache_lock);
+-		if (atomic_read(&cred->cr_count) == 0) {
++		if (refcount_read(&cred->cr_count) == 0) {
+ 			get_rpccred(cred);
+ 			list_add_tail(&cred->cr_lru, free);
+ 			rpcauth_unhash_cred_locked(cred);
+@@ -642,7 +642,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+ {
+ 	INIT_HLIST_NODE(&cred->cr_hash);
+ 	INIT_LIST_HEAD(&cred->cr_lru);
+-	atomic_set(&cred->cr_count, 1);
++	refcount_set(&cred->cr_count, 1);
+ 	cred->cr_auth = auth;
+ 	cred->cr_ops = ops;
+ 	cred->cr_expire = jiffies;
+@@ -715,12 +715,12 @@ put_rpccred(struct rpc_cred *cred)
+ 		return;
+ 	/* Fast path for unhashed credentials */
+ 	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) == 0) {
+-		if (atomic_dec_and_test(&cred->cr_count))
++		if (refcount_dec_and_test(&cred->cr_count))
+ 			cred->cr_ops->crdestroy(cred);
+ 		return;
  	}
- 	return ctx;
- }
+ 
+-	if (!atomic_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
++	if (!refcount_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
+ 		return;
+ 	if (!list_empty(&cred->cr_lru)) {
+ 		number_cred_unused--;
 -- 
 2.7.4
 
