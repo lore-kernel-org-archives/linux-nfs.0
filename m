@@ -1,77 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:18032 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751023AbdCQOmP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 10:42:15 -0400
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: software error with bugzilla.linux-nfs.org
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1489761399.8441.3.camel@primarydata.com>
-Date: Fri, 17 Mar 2017 10:41:38 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <37923C40-E6AC-474E-B8BA-32D5E3793B54@oracle.com>
-References: <1BF99BE7-DE8A-436B-B5A7-9080D9E9AC93@gmail.com> <1489688316.11936.2.camel@primarydata.com> <0479196B-5B07-4836-B7F9-65064D98E32E@gmail.com> <7BB18FB2-FE2F-4788-B016-6039E9339F98@gmail.com> <1489761399.8441.3.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from elasmtp-spurfowl.atl.sa.earthlink.net ([209.86.89.66]:49261
+        "EHLO elasmtp-spurfowl.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751121AbdCQSO2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 14:14:28 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Olga Kornievskaia'" <aglo@umich.edu>,
+        "'linux-nfs'" <linux-nfs@vger.kernel.org>
+References: <CAN-5tyH433qTV9EY5MQpDhRhgekUv7e=R1H7N_Q_46cAwPO=eg@mail.gmail.com>
+In-Reply-To: <CAN-5tyH433qTV9EY5MQpDhRhgekUv7e=R1H7N_Q_46cAwPO=eg@mail.gmail.com>
+Subject: RE: question about open_owner sequencing
+Date: Fri, 17 Mar 2017 10:45:38 -0700
+Message-ID: <055901d29f46$4adcb0f0$e09612d0$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+        charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Mar 17, 2017, at 10:36 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
+ Hi folks,
 > 
-> On Fri, 2017-03-17 at 10:25 -0400, Chuck Lever wrote:
->>> On Mar 16, 2017, at 2:23 PM, Chuck Lever <chucklever@gmail.com>
->>> wrote:
->>> 
->>>> 
->>>> On Mar 16, 2017, at 2:18 PM, Trond Myklebust <trondmy@primarydata
->>>> .com> wrote:
->>>> 
->>>> On Thu, 2017-03-16 at 13:59 -0400, Chuck Lever wrote:
->>>>> When I tried to add a comment to bug 291, this resulted:
->>>>> 
->>>>> DBD::mysql::db do failed: Incorrect key file for table
->>>>> './nfsv4_bugzilla/bugs_fulltext.MYI'; try to repair it [for
->>>>> Statement
->>>>> "UPDATE bugs_fulltext SET comments = ?, comments_noprivate = ?
->>>>> 鑱借伣鑱借伣鑱借伣鑱借伣鑱借伣鑱借伣鑱借伣鑱絎HERE bug_id = ?"] at Bugzilla/Bug.pm line 938.
->>>>> 	Bugzilla::Bug::_sync_fulltext(Bugzilla::Bug=HASH(0x3a1a
->>>>> 278))
->>>>> called at Bugzilla/Bug.pm line 886
->>>>> 	Bugzilla::Bug::update(Bugzilla::Bug=HASH(0x3a1a278),
->>>>> "2017-03-
->>>>> 16 10:58:16") called at /home/linux-
->>>>> nfs.org/nfsv4_bugzilla/process_bug.cgi line 547
->>>>> 
->>>>> Happened twice out of two attempts.
->>>> 
->>>> The backing mariadb database needed repair following a crash. I'm
->>>> hoping it is working now. Can you please retry?
->>> 
->>> Still not working. I guess this looks like the same error message.
->>> 
->>> DBD::mysql::db do failed: Incorrect key file for table
->>> './nfsv4_bugzilla/bugs_fulltext.MYI'; try to repair it [for
->>> Statement "UPDATE bugs_fulltext SET comments = ?,
->>> comments_noprivate = ?
->>> 聽聽聽聽聽聽聽聽聽聽聽聽聽聽WHERE bug_id = ?"] at Bugzilla/Bug.pm line 938.
->>> 	Bugzilla::Bug::_sync_fulltext(Bugzilla::Bug=HASH(0x421c4d8))
->>> called at Bugzilla/Bug.pm line 886
->>> 	Bugzilla::Bug::update(Bugzilla::Bug=HASH(0x421c4d8), "2017-03-
->>> 16 11:22:07") called at /home/linux-
->>> nfs.org/nfsv4_bugzilla/process_bug.cgi line 547
->> 
->> P'haps the easiest approach is to restore from a known-good backup,
->> and then replay recent changes.
->> 
-> I did a rebuild of the database table entries after your second attempt
-> failed yesterday. I've seen no further errors in the logs since then.
+> I have a question about recovery from the BAD_SEQID and what should
+> happen.
+> 
+> I have the following application that does:
+> 
+> 1. open(file1)
+> 2. open(file2)
+> 3. close(file1)
+> 4. open(file3)
+> 5. lock(file2)
+> 
+> If CLOSE gets BAD_SEQID (for whatever reason), I see that LOCK later fails
+> with BAD_SEQID as well.
+> 
+> step1 OPEN creates open_owner1 seq 0
+> step2 OPEN uses open_owner1 seq1
+> step3 CLOSE uses open_owner1 seq2 gets BAD_SEQID
+> step4 OPEN sends new open_owner2 seq2 and it triggers OPEN_CONFIRM
+> with seq3
+> step5 sends LOCK with seq4 and open stateid from the reply in step 2.
+> 
+> LOCK gets BAD_SEQID.
+> 
+> Question: is client sending something incorrect? is server not correct? I
+> tested against two different servers (Linux and NetApp) and both reply the
+> same way so I'm leaning towards "no". But I don't see why "seq4" is not a
+> valid sequence given that the open_owner/sequence was just confirmed.
 
-Confirmed, it appears to be working now. Thanks!
+Wait step4 is using a new open owner? Each open owner has its own seqid (assuming this is V4.0, owner seqid doesn't apply to 4.1 since the sequencing is done for the session with the SEQUENCE op).
+
+Frank
 
 
---
-Chuck Lever
-
-
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
