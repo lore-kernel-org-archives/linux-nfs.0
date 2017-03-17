@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:57194 "EHLO mga11.intel.com"
+Received: from mga03.intel.com ([134.134.136.65]:18856 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750999AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1751087AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 17 Mar 2017 08:16:51 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 21/23] net, ax25: convert ax25_uid_assoc.refcount from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:44 +0200
-Message-Id: <1489752646-8749-22-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 13/23] net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:36 +0200
+Message-Id: <1489752646-8749-14-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,59 +36,75 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ax25.h  | 8 ++++----
- net/ax25/ax25_uid.c | 2 +-
- 2 files changed, 5 insertions(+), 5 deletions(-)
+ include/net/xfrm.h    | 9 +++++----
+ net/xfrm/xfrm_state.c | 4 ++--
+ 2 files changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/ax25.h b/include/net/ax25.h
-index e602f81..edd82f0 100644
---- a/include/net/ax25.h
-+++ b/include/net/ax25.h
-@@ -11,7 +11,7 @@
- #include <linux/timer.h>
- #include <linux/list.h>
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index 14d82bf..163cda5 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -13,6 +13,7 @@
+ #include <linux/mutex.h>
+ #include <linux/audit.h>
  #include <linux/slab.h>
--#include <linux/atomic.h>
 +#include <linux/refcount.h>
- #include <net/neighbour.h>
+ 
  #include <net/sock.h>
+ #include <net/dst.h>
+@@ -130,7 +131,7 @@ struct xfrm_state {
+ 	struct hlist_node	bysrc;
+ 	struct hlist_node	byspi;
  
-@@ -158,7 +158,7 @@ enum {
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
+ 	spinlock_t		lock;
  
- typedef struct ax25_uid_assoc {
- 	struct hlist_node	uid_node;
--	atomic_t		refcount;
-+	refcount_t		refcount;
- 	kuid_t			uid;
- 	ax25_address		call;
- } ax25_uid_assoc;
-@@ -167,11 +167,11 @@ typedef struct ax25_uid_assoc {
- 	hlist_for_each_entry(__ax25, list, uid_node)
+ 	struct xfrm_id		id;
+@@ -802,18 +803,18 @@ void __xfrm_state_destroy(struct xfrm_state *);
  
- #define ax25_uid_hold(ax25) \
--	atomic_inc(&((ax25)->refcount))
-+	refcount_inc(&((ax25)->refcount))
- 
- static inline void ax25_uid_put(ax25_uid_assoc *assoc)
+ static inline void __xfrm_state_put(struct xfrm_state *x)
  {
--	if (atomic_dec_and_test(&assoc->refcount)) {
-+	if (refcount_dec_and_test(&assoc->refcount)) {
- 		kfree(assoc);
- 	}
+-	atomic_dec(&x->refcnt);
++	refcount_dec(&x->refcnt);
  }
-diff --git a/net/ax25/ax25_uid.c b/net/ax25/ax25_uid.c
-index 0403b0d..83b035f 100644
---- a/net/ax25/ax25_uid.c
-+++ b/net/ax25/ax25_uid.c
-@@ -107,7 +107,7 @@ int ax25_uid_ioctl(int cmd, struct sockaddr_ax25 *sax)
- 		if ((ax25_uid = kmalloc(sizeof(*ax25_uid), GFP_KERNEL)) == NULL)
- 			return -ENOMEM;
  
--		atomic_set(&ax25_uid->refcount, 1);
-+		refcount_set(&ax25_uid->refcount, 1);
- 		ax25_uid->uid  = sax25_kuid;
- 		ax25_uid->call = sax->sax25_call;
+ static inline void xfrm_state_put(struct xfrm_state *x)
+ {
+-	if (atomic_dec_and_test(&x->refcnt))
++	if (refcount_dec_and_test(&x->refcnt))
+ 		__xfrm_state_destroy(x);
+ }
  
+ static inline void xfrm_state_hold(struct xfrm_state *x)
+ {
+-	atomic_inc(&x->refcnt);
++	refcount_inc(&x->refcnt);
+ }
+ 
+ static inline bool addr_match(const void *token1, const void *token2,
+diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
+index 5a597db..a91109f 100644
+--- a/net/xfrm/xfrm_state.c
++++ b/net/xfrm/xfrm_state.c
+@@ -48,7 +48,7 @@ static HLIST_HEAD(xfrm_state_gc_list);
+ 
+ static inline bool xfrm_state_hold_rcu(struct xfrm_state __rcu *x)
+ {
+-	return atomic_inc_not_zero(&x->refcnt);
++	return refcount_inc_not_zero(&x->refcnt);
+ }
+ 
+ static inline unsigned int xfrm_dst_hash(struct net *net,
+@@ -486,7 +486,7 @@ struct xfrm_state *xfrm_state_alloc(struct net *net)
+ 
+ 	if (x) {
+ 		write_pnet(&x->xs_net, net);
+-		atomic_set(&x->refcnt, 1);
++		refcount_set(&x->refcnt, 1);
+ 		atomic_set(&x->tunnel_users, 0);
+ 		INIT_LIST_HEAD(&x->km.all);
+ 		INIT_HLIST_NODE(&x->bydst);
 -- 
 2.7.4
 
