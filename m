@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:36525 "EHLO mga02.intel.com"
+Received: from mga07.intel.com ([134.134.136.100]:62115 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751017AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1751039AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 17 Mar 2017 08:16:51 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 20/23] net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:43 +0200
-Message-Id: <1489752646-8749-21-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 18/23] net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:41 +0200
+Message-Id: <1489752646-8749-19-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -37,83 +37,49 @@ Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
  include/net/sctp/structs.h | 2 +-
- net/sctp/associola.c       | 6 +++---
- net/sctp/endpointola.c     | 6 +++---
- 3 files changed, 7 insertions(+), 7 deletions(-)
+ net/sctp/sm_make_chunk.c   | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index ac3184e..7a9ce11 100644
+index 106e1d3..7ee0c26 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -1170,7 +1170,7 @@ struct sctp_ep_common {
- 	 *   refcnt   - Reference count access to this object.
- 	 *   dead     - Do not attempt to use this object.
- 	 */
--	atomic_t    refcnt;
-+	refcount_t    refcnt;
- 	bool	    dead;
+@@ -520,7 +520,7 @@ int sctp_chunk_abandoned(struct sctp_chunk *);
+ struct sctp_chunk {
+ 	struct list_head list;
  
- 	/* What socket does this endpoint belong to?  */
-diff --git a/net/sctp/associola.c b/net/sctp/associola.c
-index 2a6835b..e5b60b5 100644
---- a/net/sctp/associola.c
-+++ b/net/sctp/associola.c
-@@ -89,7 +89,7 @@ static struct sctp_association *sctp_association_init(struct sctp_association *a
- 	asoc->base.type = SCTP_EP_TYPE_ASSOCIATION;
+-	atomic_t refcnt;
++	refcount_t refcnt;
  
- 	/* Initialize the object handling fields.  */
--	atomic_set(&asoc->base.refcnt, 1);
-+	refcount_set(&asoc->base.refcnt, 1);
+ 	/* How many times this chunk have been sent, for prsctp RTX policy */
+ 	int sent_count;
+diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
+index 969a30c..a54add6 100644
+--- a/net/sctp/sm_make_chunk.c
++++ b/net/sctp/sm_make_chunk.c
+@@ -1346,7 +1346,7 @@ struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
+ 	INIT_LIST_HEAD(&retval->transmitted_list);
+ 	INIT_LIST_HEAD(&retval->frag_list);
+ 	SCTP_DBG_OBJCNT_INC(chunk);
+-	atomic_set(&retval->refcnt, 1);
++	refcount_set(&retval->refcnt, 1);
  
- 	/* Initialize the bind addr area.  */
- 	sctp_bind_addr_init(&asoc->base.bind_addr, ep->base.bind_addr.port);
-@@ -869,7 +869,7 @@ void sctp_assoc_control_transport(struct sctp_association *asoc,
- /* Hold a reference to an association. */
- void sctp_association_hold(struct sctp_association *asoc)
+ nodata:
+ 	return retval;
+@@ -1459,13 +1459,13 @@ void sctp_chunk_free(struct sctp_chunk *chunk)
+ /* Grab a reference to the chunk. */
+ void sctp_chunk_hold(struct sctp_chunk *ch)
  {
--	atomic_inc(&asoc->base.refcnt);
-+	refcount_inc(&asoc->base.refcnt);
+-	atomic_inc(&ch->refcnt);
++	refcount_inc(&ch->refcnt);
  }
  
- /* Release a reference to an association and cleanup
-@@ -877,7 +877,7 @@ void sctp_association_hold(struct sctp_association *asoc)
-  */
- void sctp_association_put(struct sctp_association *asoc)
+ /* Release a reference to the chunk. */
+ void sctp_chunk_put(struct sctp_chunk *ch)
  {
--	if (atomic_dec_and_test(&asoc->base.refcnt))
-+	if (refcount_dec_and_test(&asoc->base.refcnt))
- 		sctp_association_destroy(asoc);
- }
- 
-diff --git a/net/sctp/endpointola.c b/net/sctp/endpointola.c
-index 8c58923..9189a9f 100644
---- a/net/sctp/endpointola.c
-+++ b/net/sctp/endpointola.c
-@@ -113,7 +113,7 @@ static struct sctp_endpoint *sctp_endpoint_init(struct sctp_endpoint *ep,
- 	ep->base.type = SCTP_EP_TYPE_SOCKET;
- 
- 	/* Initialize the basic object fields. */
--	atomic_set(&ep->base.refcnt, 1);
-+	refcount_set(&ep->base.refcnt, 1);
- 	ep->base.dead = false;
- 
- 	/* Create an input queue.  */
-@@ -285,7 +285,7 @@ static void sctp_endpoint_destroy(struct sctp_endpoint *ep)
- /* Hold a reference to an endpoint. */
- void sctp_endpoint_hold(struct sctp_endpoint *ep)
- {
--	atomic_inc(&ep->base.refcnt);
-+	refcount_inc(&ep->base.refcnt);
- }
- 
- /* Release a reference to an endpoint and clean up if there are
-@@ -293,7 +293,7 @@ void sctp_endpoint_hold(struct sctp_endpoint *ep)
-  */
- void sctp_endpoint_put(struct sctp_endpoint *ep)
- {
--	if (atomic_dec_and_test(&ep->base.refcnt))
-+	if (refcount_dec_and_test(&ep->base.refcnt))
- 		sctp_endpoint_destroy(ep);
+-	if (atomic_dec_and_test(&ch->refcnt))
++	if (refcount_dec_and_test(&ch->refcnt))
+ 		sctp_chunk_destroy(ch);
  }
  
 -- 
