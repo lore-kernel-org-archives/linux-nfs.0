@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:61611 "EHLO mga06.intel.com"
+Received: from mga05.intel.com ([192.55.52.43]:38288 "EHLO mga05.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751035AbdCQMLF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:11:05 -0400
+        id S1751448AbdCQMQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:16:50 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 01/23] net, sunrpc: convert rpc_cred.cr_count from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:24 +0200
-Message-Id: <1489752646-8749-2-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 10/23] net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:33 +0200
+Message-Id: <1489752646-8749-11-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,102 +36,60 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/linux/sunrpc/auth.h |  8 ++++----
- net/sunrpc/auth.c           | 12 ++++++------
- 2 files changed, 10 insertions(+), 10 deletions(-)
+ net/rds/message.c | 12 ++++++------
+ net/rds/rds.h     |  2 +-
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index b1bc62b..bd36e0b 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -15,7 +15,7 @@
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/sunrpc/xdr.h>
+diff --git a/net/rds/message.c b/net/rds/message.c
+index 49bfb51..4318cc9 100644
+--- a/net/rds/message.c
++++ b/net/rds/message.c
+@@ -48,8 +48,8 @@ static unsigned int	rds_exthdr_size[__RDS_EXTHDR_MAX] = {
  
--#include <linux/atomic.h>
-+#include <linux/refcount.h>
- #include <linux/rcupdate.h>
- #include <linux/uidgid.h>
- #include <linux/utsname.h>
-@@ -68,7 +68,7 @@ struct rpc_cred {
- #endif
- 	unsigned long		cr_expire;	/* when to gc */
- 	unsigned long		cr_flags;	/* various flags */
--	atomic_t		cr_count;	/* ref count */
-+	refcount_t		cr_count;	/* ref count */
- 
- 	kuid_t			cr_uid;
- 
-@@ -209,7 +209,7 @@ static inline
- struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
+ void rds_message_addref(struct rds_message *rm)
  {
- 	if (cred != NULL)
--		atomic_inc(&cred->cr_count);
-+		refcount_inc(&cred->cr_count);
- 	return cred;
+-	rdsdebug("addref rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
+-	atomic_inc(&rm->m_refcount);
++	rdsdebug("addref rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
++	refcount_inc(&rm->m_refcount);
  }
+ EXPORT_SYMBOL_GPL(rds_message_addref);
  
-@@ -226,7 +226,7 @@ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
- static inline struct rpc_cred *
- get_rpccred_rcu(struct rpc_cred *cred)
+@@ -83,9 +83,9 @@ static void rds_message_purge(struct rds_message *rm)
+ 
+ void rds_message_put(struct rds_message *rm)
  {
--	if (atomic_inc_not_zero(&cred->cr_count))
-+	if (refcount_inc_not_zero(&cred->cr_count))
- 		return cred;
- 	return NULL;
- }
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 2bff63a..b6439b9 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -310,7 +310,7 @@ rpcauth_unhash_cred(struct rpc_cred *cred)
+-	rdsdebug("put rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
+-	WARN(!atomic_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
+-	if (atomic_dec_and_test(&rm->m_refcount)) {
++	rdsdebug("put rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
++	WARN(!refcount_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
++	if (refcount_dec_and_test(&rm->m_refcount)) {
+ 		BUG_ON(!list_empty(&rm->m_sock_item));
+ 		BUG_ON(!list_empty(&rm->m_conn_item));
+ 		rds_message_purge(rm);
+@@ -206,7 +206,7 @@ struct rds_message *rds_message_alloc(unsigned int extra_len, gfp_t gfp)
+ 	rm->m_used_sgs = 0;
+ 	rm->m_total_sgs = extra_len / sizeof(struct scatterlist);
  
- 	cache_lock = &cred->cr_auth->au_credcache->lock;
- 	spin_lock(cache_lock);
--	ret = atomic_read(&cred->cr_count) == 0;
-+	ret = refcount_read(&cred->cr_count) == 0;
- 	if (ret)
- 		rpcauth_unhash_cred_locked(cred);
- 	spin_unlock(cache_lock);
-@@ -470,12 +470,12 @@ rpcauth_prune_expired(struct list_head *free, int nr_to_scan)
- 		list_del_init(&cred->cr_lru);
- 		number_cred_unused--;
- 		freed++;
--		if (atomic_read(&cred->cr_count) != 0)
-+		if (refcount_read(&cred->cr_count) != 0)
- 			continue;
+-	atomic_set(&rm->m_refcount, 1);
++	refcount_set(&rm->m_refcount, 1);
+ 	INIT_LIST_HEAD(&rm->m_sock_item);
+ 	INIT_LIST_HEAD(&rm->m_conn_item);
+ 	spin_lock_init(&rm->m_rs_lock);
+diff --git a/net/rds/rds.h b/net/rds/rds.h
+index 7487597..8c205ff 100644
+--- a/net/rds/rds.h
++++ b/net/rds/rds.h
+@@ -355,7 +355,7 @@ static inline u32 rds_rdma_cookie_offset(rds_rdma_cookie_t cookie)
+ #define RDS_MSG_FLUSH		8
  
- 		cache_lock = &cred->cr_auth->au_credcache->lock;
- 		spin_lock(cache_lock);
--		if (atomic_read(&cred->cr_count) == 0) {
-+		if (refcount_read(&cred->cr_count) == 0) {
- 			get_rpccred(cred);
- 			list_add_tail(&cred->cr_lru, free);
- 			rpcauth_unhash_cred_locked(cred);
-@@ -642,7 +642,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
- {
- 	INIT_HLIST_NODE(&cred->cr_hash);
- 	INIT_LIST_HEAD(&cred->cr_lru);
--	atomic_set(&cred->cr_count, 1);
-+	refcount_set(&cred->cr_count, 1);
- 	cred->cr_auth = auth;
- 	cred->cr_ops = ops;
- 	cred->cr_expire = jiffies;
-@@ -715,12 +715,12 @@ put_rpccred(struct rpc_cred *cred)
- 		return;
- 	/* Fast path for unhashed credentials */
- 	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) == 0) {
--		if (atomic_dec_and_test(&cred->cr_count))
-+		if (refcount_dec_and_test(&cred->cr_count))
- 			cred->cr_ops->crdestroy(cred);
- 		return;
- 	}
- 
--	if (!atomic_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
-+	if (!refcount_dec_and_lock(&cred->cr_count, &rpc_credcache_lock))
- 		return;
- 	if (!list_empty(&cred->cr_lru)) {
- 		number_cred_unused--;
+ struct rds_message {
+-	atomic_t		m_refcount;
++	refcount_t		m_refcount;
+ 	struct list_head	m_sock_item;
+ 	struct list_head	m_conn_item;
+ 	struct rds_incoming	m_inc;
 -- 
 2.7.4
 
