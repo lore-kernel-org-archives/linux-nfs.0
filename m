@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:18856 "EHLO mga03.intel.com"
+Received: from mga07.intel.com ([134.134.136.100]:5555 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751087AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1751069AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 17 Mar 2017 08:16:51 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 13/23] net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:36 +0200
-Message-Id: <1489752646-8749-14-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 11/23] net, x25: convert x25_route.refcnt from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:34 +0200
+Message-Id: <1489752646-8749-12-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,75 +36,59 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/xfrm.h    | 9 +++++----
- net/xfrm/xfrm_state.c | 4 ++--
- 2 files changed, 7 insertions(+), 6 deletions(-)
+ include/net/x25.h   | 7 ++++---
+ net/x25/x25_route.c | 2 +-
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index 14d82bf..163cda5 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -13,6 +13,7 @@
- #include <linux/mutex.h>
- #include <linux/audit.h>
+diff --git a/include/net/x25.h b/include/net/x25.h
+index c383aa4..83a6d31 100644
+--- a/include/net/x25.h
++++ b/include/net/x25.h
+@@ -11,6 +11,7 @@
+ #define _X25_H 
+ #include <linux/x25.h>
  #include <linux/slab.h>
 +#include <linux/refcount.h>
- 
  #include <net/sock.h>
- #include <net/dst.h>
-@@ -130,7 +131,7 @@ struct xfrm_state {
- 	struct hlist_node	bysrc;
- 	struct hlist_node	byspi;
  
+ #define	X25_ADDR_LEN			16
+@@ -129,7 +130,7 @@ struct x25_route {
+ 	struct x25_address	address;
+ 	unsigned int		sigdigits;
+ 	struct net_device	*dev;
 -	atomic_t		refcnt;
 +	refcount_t		refcnt;
- 	spinlock_t		lock;
+ };
  
- 	struct xfrm_id		id;
-@@ -802,18 +803,18 @@ void __xfrm_state_destroy(struct xfrm_state *);
+ struct x25_neigh {
+@@ -265,12 +266,12 @@ void x25_route_free(void);
  
- static inline void __xfrm_state_put(struct xfrm_state *x)
+ static __inline__ void x25_route_hold(struct x25_route *rt)
  {
--	atomic_dec(&x->refcnt);
-+	refcount_dec(&x->refcnt);
+-	atomic_inc(&rt->refcnt);
++	refcount_inc(&rt->refcnt);
  }
  
- static inline void xfrm_state_put(struct xfrm_state *x)
+ static __inline__ void x25_route_put(struct x25_route *rt)
  {
--	if (atomic_dec_and_test(&x->refcnt))
-+	if (refcount_dec_and_test(&x->refcnt))
- 		__xfrm_state_destroy(x);
+-	if (atomic_dec_and_test(&rt->refcnt))
++	if (refcount_dec_and_test(&rt->refcnt))
+ 		kfree(rt);
  }
  
- static inline void xfrm_state_hold(struct xfrm_state *x)
- {
--	atomic_inc(&x->refcnt);
-+	refcount_inc(&x->refcnt);
- }
+diff --git a/net/x25/x25_route.c b/net/x25/x25_route.c
+index 277c8d2..b85b889 100644
+--- a/net/x25/x25_route.c
++++ b/net/x25/x25_route.c
+@@ -55,7 +55,7 @@ static int x25_add_route(struct x25_address *address, unsigned int sigdigits,
  
- static inline bool addr_match(const void *token1, const void *token2,
-diff --git a/net/xfrm/xfrm_state.c b/net/xfrm/xfrm_state.c
-index 5a597db..a91109f 100644
---- a/net/xfrm/xfrm_state.c
-+++ b/net/xfrm/xfrm_state.c
-@@ -48,7 +48,7 @@ static HLIST_HEAD(xfrm_state_gc_list);
+ 	rt->sigdigits = sigdigits;
+ 	rt->dev       = dev;
+-	atomic_set(&rt->refcnt, 1);
++	refcount_set(&rt->refcnt, 1);
  
- static inline bool xfrm_state_hold_rcu(struct xfrm_state __rcu *x)
- {
--	return atomic_inc_not_zero(&x->refcnt);
-+	return refcount_inc_not_zero(&x->refcnt);
- }
- 
- static inline unsigned int xfrm_dst_hash(struct net *net,
-@@ -486,7 +486,7 @@ struct xfrm_state *xfrm_state_alloc(struct net *net)
- 
- 	if (x) {
- 		write_pnet(&x->xs_net, net);
--		atomic_set(&x->refcnt, 1);
-+		refcount_set(&x->refcnt, 1);
- 		atomic_set(&x->tunnel_users, 0);
- 		INIT_LIST_HEAD(&x->km.all);
- 		INIT_HLIST_NODE(&x->bydst);
+ 	list_add(&rt->node, &x25_route_list);
+ 	rc = 0;
 -- 
 2.7.4
 
