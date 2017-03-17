@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:43805 "EHLO mga11.intel.com"
+Received: from mga01.intel.com ([192.55.52.88]:20894 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751094AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:16:51 -0400
+        id S1751102AbdCQMQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:16:50 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 14/23] net, xfrm: convert xfrm_policy.refcnt from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:37 +0200
-Message-Id: <1489752646-8749-15-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 09/23] net, rds: convert rds_mr.r_refcount from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:32 +0200
+Message-Id: <1489752646-8749-10-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,76 +36,81 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/xfrm.h     | 6 +++---
- net/key/af_key.c       | 2 +-
- net/xfrm/xfrm_policy.c | 4 ++--
- 3 files changed, 6 insertions(+), 6 deletions(-)
+ net/rds/rdma.c | 10 +++++-----
+ net/rds/rds.h  |  4 ++--
+ 2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index 163cda5..be30846 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -525,7 +525,7 @@ struct xfrm_policy {
- 
- 	/* This lock only affects elements except for entry. */
- 	rwlock_t		lock;
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- 	struct timer_list	timer;
- 
- 	struct flow_cache_object flo;
-@@ -781,14 +781,14 @@ static inline void xfrm_audit_state_icvfail(struct xfrm_state *x,
- static inline void xfrm_pol_hold(struct xfrm_policy *policy)
- {
- 	if (likely(policy != NULL))
--		atomic_inc(&policy->refcnt);
-+		refcount_inc(&policy->refcnt);
+diff --git a/net/rds/rdma.c b/net/rds/rdma.c
+index f06fac4..8886f15 100644
+--- a/net/rds/rdma.c
++++ b/net/rds/rdma.c
+@@ -84,7 +84,7 @@ static struct rds_mr *rds_mr_tree_walk(struct rb_root *root, u64 key,
+ 	if (insert) {
+ 		rb_link_node(&insert->r_rb_node, parent, p);
+ 		rb_insert_color(&insert->r_rb_node, root);
+-		atomic_inc(&insert->r_refcount);
++		refcount_inc(&insert->r_refcount);
+ 	}
+ 	return NULL;
  }
+@@ -99,7 +99,7 @@ static void rds_destroy_mr(struct rds_mr *mr)
+ 	unsigned long flags;
  
- void xfrm_policy_destroy(struct xfrm_policy *policy);
+ 	rdsdebug("RDS: destroy mr key is %x refcnt %u\n",
+-			mr->r_key, atomic_read(&mr->r_refcount));
++			mr->r_key, refcount_read(&mr->r_refcount));
  
- static inline void xfrm_pol_put(struct xfrm_policy *policy)
- {
--	if (atomic_dec_and_test(&policy->refcnt))
-+	if (refcount_dec_and_test(&policy->refcnt))
- 		xfrm_policy_destroy(policy);
- }
- 
-diff --git a/net/key/af_key.c b/net/key/af_key.c
-index c6252ed..d3611af 100644
---- a/net/key/af_key.c
-+++ b/net/key/af_key.c
-@@ -2152,7 +2152,7 @@ static int pfkey_xfrm_policy2msg(struct sk_buff *skb, const struct xfrm_policy *
+ 	if (test_and_set_bit(RDS_MR_DEAD, &mr->r_state))
+ 		return;
+@@ -223,7 +223,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
+ 		goto out;
  	}
  
- 	hdr->sadb_msg_len = size / sizeof(uint64_t);
--	hdr->sadb_msg_reserved = atomic_read(&xp->refcnt);
-+	hdr->sadb_msg_reserved = refcount_read(&xp->refcnt);
+-	atomic_set(&mr->r_refcount, 1);
++	refcount_set(&mr->r_refcount, 1);
+ 	RB_CLEAR_NODE(&mr->r_rb_node);
+ 	mr->r_trans = rs->rs_transport;
+ 	mr->r_sock = rs;
+@@ -307,7 +307,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
  
- 	return 0;
- }
-diff --git a/net/xfrm/xfrm_policy.c b/net/xfrm/xfrm_policy.c
-index 236cbbc..91cf3e7 100644
---- a/net/xfrm/xfrm_policy.c
-+++ b/net/xfrm/xfrm_policy.c
-@@ -62,7 +62,7 @@ static struct xfrm_policy *__xfrm_policy_unlink(struct xfrm_policy *pol,
+ 	rdsdebug("RDS: get_mr key is %x\n", mr->r_key);
+ 	if (mr_ret) {
+-		atomic_inc(&mr->r_refcount);
++		refcount_inc(&mr->r_refcount);
+ 		*mr_ret = mr;
+ 	}
  
- static inline bool xfrm_pol_hold_rcu(struct xfrm_policy *policy)
+@@ -756,7 +756,7 @@ int rds_cmsg_rdma_dest(struct rds_sock *rs, struct rds_message *rm,
+ 	if (!mr)
+ 		err = -EINVAL;	/* invalid r_key */
+ 	else
+-		atomic_inc(&mr->r_refcount);
++		refcount_inc(&mr->r_refcount);
+ 	spin_unlock_irqrestore(&rs->rs_rdma_lock, flags);
+ 
+ 	if (mr) {
+diff --git a/net/rds/rds.h b/net/rds/rds.h
+index d8070c7..7487597 100644
+--- a/net/rds/rds.h
++++ b/net/rds/rds.h
+@@ -276,7 +276,7 @@ struct rds_incoming {
+ 
+ struct rds_mr {
+ 	struct rb_node		r_rb_node;
+-	atomic_t		r_refcount;
++	refcount_t		r_refcount;
+ 	u32			r_key;
+ 
+ 	/* A copy of the creation flags */
+@@ -855,7 +855,7 @@ int rds_cmsg_atomic(struct rds_sock *rs, struct rds_message *rm,
+ void __rds_put_mr_final(struct rds_mr *mr);
+ static inline void rds_mr_put(struct rds_mr *mr)
  {
--	return atomic_inc_not_zero(&policy->refcnt);
-+	return refcount_inc_not_zero(&policy->refcnt);
+-	if (atomic_dec_and_test(&mr->r_refcount))
++	if (refcount_dec_and_test(&mr->r_refcount))
+ 		__rds_put_mr_final(mr);
  }
  
- static inline bool
-@@ -292,7 +292,7 @@ struct xfrm_policy *xfrm_policy_alloc(struct net *net, gfp_t gfp)
- 		INIT_HLIST_NODE(&policy->bydst);
- 		INIT_HLIST_NODE(&policy->byidx);
- 		rwlock_init(&policy->lock);
--		atomic_set(&policy->refcnt, 1);
-+		refcount_set(&policy->refcnt, 1);
- 		skb_queue_head_init(&policy->polq.hold_queue);
- 		setup_timer(&policy->timer, xfrm_policy_timer,
- 				(unsigned long)policy);
 -- 
 2.7.4
 
