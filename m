@@ -1,61 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:21901 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750999AbdCQOhl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 10:37:41 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chucklever@gmail.com" <chucklever@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:18032 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751023AbdCQOmP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 10:42:15 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Subject: Re: software error with bugzilla.linux-nfs.org
-Date: Fri, 17 Mar 2017 14:36:41 +0000
-Message-ID: <1489761399.8441.3.camel@primarydata.com>
-References: <1BF99BE7-DE8A-436B-B5A7-9080D9E9AC93@gmail.com>
-         <1489688316.11936.2.camel@primarydata.com>
-         <0479196B-5B07-4836-B7F9-65064D98E32E@gmail.com>
-         <7BB18FB2-FE2F-4788-B016-6039E9339F98@gmail.com>
-In-Reply-To: <7BB18FB2-FE2F-4788-B016-6039E9339F98@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1489761399.8441.3.camel@primarydata.com>
+Date: Fri, 17 Mar 2017 10:41:38 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <37923C40-E6AC-474E-B8BA-32D5E3793B54@oracle.com>
+References: <1BF99BE7-DE8A-436B-B5A7-9080D9E9AC93@gmail.com> <1489688316.11936.2.camel@primarydata.com> <0479196B-5B07-4836-B7F9-65064D98E32E@gmail.com> <7BB18FB2-FE2F-4788-B016-6039E9339F98@gmail.com> <1489761399.8441.3.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTAzLTE3IGF0IDEwOjI1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBNYXIgMTYsIDIwMTcsIGF0IDI6MjMgUE0sIENodWNrIExldmVyIDxjaHVja2xldmVyQGdt
-YWlsLmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiA+IA0KPiA+ID4gT24gTWFyIDE2LCAyMDE3
-LCBhdCAyOjE4IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kbXlAcHJpbWFyeWRhdGENCj4gPiA+
-IC5jb20+IHdyb3RlOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIDIwMTctMDMtMTYgYXQgMTM6NTkg
-LTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiBXaGVuIEkgdHJpZWQgdG8gYWRkIGEg
-Y29tbWVudCB0byBidWcgMjkxLCB0aGlzIHJlc3VsdGVkOg0KPiA+ID4gPiANCj4gPiA+ID4gREJE
-OjpteXNxbDo6ZGIgZG8gZmFpbGVkOiBJbmNvcnJlY3Qga2V5IGZpbGUgZm9yIHRhYmxlDQo+ID4g
-PiA+ICcuL25mc3Y0X2J1Z3ppbGxhL2J1Z3NfZnVsbHRleHQuTVlJJzsgdHJ5IHRvIHJlcGFpciBp
-dCBbZm9yDQo+ID4gPiA+IFN0YXRlbWVudA0KPiA+ID4gPiAiVVBEQVRFIGJ1Z3NfZnVsbHRleHQg
-U0VUIGNvbW1lbnRzID0gPywgY29tbWVudHNfbm9wcml2YXRlID0gPw0KPiA+ID4gPiDogb3ogb3o
-gb3ogb3ogb3ogb3ogb3ogb3ogb3ogb3ogb3ogb3ogb3ogb3ogb1XSEVSRSBidWdfaWQgPSA/Il0g
-YXQgQnVnemlsbGEvQnVnLnBtIGxpbmUgOTM4Lg0KPiA+ID4gPiAJQnVnemlsbGE6OkJ1Zzo6X3N5
-bmNfZnVsbHRleHQoQnVnemlsbGE6OkJ1Zz1IQVNIKDB4M2ExYQ0KPiA+ID4gPiAyNzgpKQ0KPiA+
-ID4gPiBjYWxsZWQgYXQgQnVnemlsbGEvQnVnLnBtIGxpbmUgODg2DQo+ID4gPiA+IAlCdWd6aWxs
-YTo6QnVnOjp1cGRhdGUoQnVnemlsbGE6OkJ1Zz1IQVNIKDB4M2ExYTI3OCksDQo+ID4gPiA+ICIy
-MDE3LTAzLQ0KPiA+ID4gPiAxNiAxMDo1ODoxNiIpIGNhbGxlZCBhdCAvaG9tZS9saW51eC0NCj4g
-PiA+ID4gbmZzLm9yZy9uZnN2NF9idWd6aWxsYS9wcm9jZXNzX2J1Zy5jZ2kgbGluZSA1NDcNCj4g
-PiA+ID4gDQo+ID4gPiA+IEhhcHBlbmVkIHR3aWNlIG91dCBvZiB0d28gYXR0ZW1wdHMuDQo+ID4g
-PiANCj4gPiA+IFRoZSBiYWNraW5nIG1hcmlhZGIgZGF0YWJhc2UgbmVlZGVkIHJlcGFpciBmb2xs
-b3dpbmcgYSBjcmFzaC4gSSdtDQo+ID4gPiBob3BpbmcgaXQgaXMgd29ya2luZyBub3cuIENhbiB5
-b3UgcGxlYXNlIHJldHJ5Pw0KPiA+IA0KPiA+IFN0aWxsIG5vdCB3b3JraW5nLiBJIGd1ZXNzIHRo
-aXMgbG9va3MgbGlrZSB0aGUgc2FtZSBlcnJvciBtZXNzYWdlLg0KPiA+IA0KPiA+IERCRDo6bXlz
-cWw6OmRiIGRvIGZhaWxlZDogSW5jb3JyZWN0IGtleSBmaWxlIGZvciB0YWJsZQ0KPiA+ICcuL25m
-c3Y0X2J1Z3ppbGxhL2J1Z3NfZnVsbHRleHQuTVlJJzsgdHJ5IHRvIHJlcGFpciBpdCBbZm9yDQo+
-ID4gU3RhdGVtZW50ICJVUERBVEUgYnVnc19mdWxsdGV4dCBTRVQgY29tbWVudHMgPSA/LA0KPiA+
-IGNvbW1lbnRzX25vcHJpdmF0ZSA9ID8NCj4gPiDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
-V0hFUkUgYnVnX2lkID0gPyJdIGF0IEJ1Z3ppbGxhL0J1Zy5wbSBsaW5lIDkzOC4NCj4gPiAJQnVn
-emlsbGE6OkJ1Zzo6X3N5bmNfZnVsbHRleHQoQnVnemlsbGE6OkJ1Zz1IQVNIKDB4NDIxYzRkOCkp
-DQo+ID4gY2FsbGVkIGF0IEJ1Z3ppbGxhL0J1Zy5wbSBsaW5lIDg4Ng0KPiA+IAlCdWd6aWxsYTo6
-QnVnOjp1cGRhdGUoQnVnemlsbGE6OkJ1Zz1IQVNIKDB4NDIxYzRkOCksICIyMDE3LTAzLQ0KPiA+
-IDE2IDExOjIyOjA3IikgY2FsbGVkIGF0IC9ob21lL2xpbnV4LQ0KPiA+IG5mcy5vcmcvbmZzdjRf
-YnVnemlsbGEvcHJvY2Vzc19idWcuY2dpIGxpbmUgNTQ3DQo+IA0KPiBQJ2hhcHMgdGhlIGVhc2ll
-c3QgYXBwcm9hY2ggaXMgdG8gcmVzdG9yZSBmcm9tIGEga25vd24tZ29vZCBiYWNrdXAsDQo+IGFu
-ZCB0aGVuIHJlcGxheSByZWNlbnQgY2hhbmdlcy4NCj4gDQpJIGRpZCBhIHJlYnVpbGQgb2YgdGhl
-IGRhdGFiYXNlIHRhYmxlIGVudHJpZXMgYWZ0ZXIgeW91ciBzZWNvbmQgYXR0ZW1wdA0KZmFpbGVk
-IHllc3RlcmRheS4gSSd2ZSBzZWVuIG5vIGZ1cnRoZXIgZXJyb3JzIGluIHRoZSBsb2dzIHNpbmNl
-IHRoZW4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+
+> On Mar 17, 2017, at 10:36 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Fri, 2017-03-17 at 10:25 -0400, Chuck Lever wrote:
+>>> On Mar 16, 2017, at 2:23 PM, Chuck Lever <chucklever@gmail.com>
+>>> wrote:
+>>> 
+>>>> 
+>>>> On Mar 16, 2017, at 2:18 PM, Trond Myklebust <trondmy@primarydata
+>>>> .com> wrote:
+>>>> 
+>>>> On Thu, 2017-03-16 at 13:59 -0400, Chuck Lever wrote:
+>>>>> When I tried to add a comment to bug 291, this resulted:
+>>>>> 
+>>>>> DBD::mysql::db do failed: Incorrect key file for table
+>>>>> './nfsv4_bugzilla/bugs_fulltext.MYI'; try to repair it [for
+>>>>> Statement
+>>>>> "UPDATE bugs_fulltext SET comments = ?, comments_noprivate = ?
+>>>>> 鑱借伣鑱借伣鑱借伣鑱借伣鑱借伣鑱借伣鑱借伣鑱絎HERE bug_id = ?"] at Bugzilla/Bug.pm line 938.
+>>>>> 	Bugzilla::Bug::_sync_fulltext(Bugzilla::Bug=HASH(0x3a1a
+>>>>> 278))
+>>>>> called at Bugzilla/Bug.pm line 886
+>>>>> 	Bugzilla::Bug::update(Bugzilla::Bug=HASH(0x3a1a278),
+>>>>> "2017-03-
+>>>>> 16 10:58:16") called at /home/linux-
+>>>>> nfs.org/nfsv4_bugzilla/process_bug.cgi line 547
+>>>>> 
+>>>>> Happened twice out of two attempts.
+>>>> 
+>>>> The backing mariadb database needed repair following a crash. I'm
+>>>> hoping it is working now. Can you please retry?
+>>> 
+>>> Still not working. I guess this looks like the same error message.
+>>> 
+>>> DBD::mysql::db do failed: Incorrect key file for table
+>>> './nfsv4_bugzilla/bugs_fulltext.MYI'; try to repair it [for
+>>> Statement "UPDATE bugs_fulltext SET comments = ?,
+>>> comments_noprivate = ?
+>>> 聽聽聽聽聽聽聽聽聽聽聽聽聽聽WHERE bug_id = ?"] at Bugzilla/Bug.pm line 938.
+>>> 	Bugzilla::Bug::_sync_fulltext(Bugzilla::Bug=HASH(0x421c4d8))
+>>> called at Bugzilla/Bug.pm line 886
+>>> 	Bugzilla::Bug::update(Bugzilla::Bug=HASH(0x421c4d8), "2017-03-
+>>> 16 11:22:07") called at /home/linux-
+>>> nfs.org/nfsv4_bugzilla/process_bug.cgi line 547
+>> 
+>> P'haps the easiest approach is to restore from a known-good backup,
+>> and then replay recent changes.
+>> 
+> I did a rebuild of the database table entries after your second attempt
+> failed yesterday. I've seen no further errors in the logs since then.
+
+Confirmed, it appears to be working now. Thanks!
+
+
+--
+Chuck Lever
+
+
 
