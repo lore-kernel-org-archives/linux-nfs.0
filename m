@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga07.intel.com ([134.134.136.100]:5555 "EHLO mga07.intel.com"
+Received: from mga03.intel.com ([134.134.136.65]:26903 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751069AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1751084AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 17 Mar 2017 08:16:51 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 11/23] net, x25: convert x25_route.refcnt from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:34 +0200
-Message-Id: <1489752646-8749-12-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 12/23] net, x25: convert x25_neigh.refcnt from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:35 +0200
+Message-Id: <1489752646-8749-13-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,59 +36,51 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/x25.h   | 7 ++++---
- net/x25/x25_route.c | 2 +-
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ include/net/x25.h  | 6 +++---
+ net/x25/x25_link.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/include/net/x25.h b/include/net/x25.h
-index c383aa4..83a6d31 100644
+index 83a6d31..265756c 100644
 --- a/include/net/x25.h
 +++ b/include/net/x25.h
-@@ -11,6 +11,7 @@
- #define _X25_H 
- #include <linux/x25.h>
- #include <linux/slab.h>
-+#include <linux/refcount.h>
- #include <net/sock.h>
- 
- #define	X25_ADDR_LEN			16
-@@ -129,7 +130,7 @@ struct x25_route {
- 	struct x25_address	address;
- 	unsigned int		sigdigits;
- 	struct net_device	*dev;
+@@ -142,7 +142,7 @@ struct x25_neigh {
+ 	unsigned long		t20;
+ 	struct timer_list	t20timer;
+ 	unsigned long		global_facil_mask;
 -	atomic_t		refcnt;
 +	refcount_t		refcnt;
  };
  
- struct x25_neigh {
-@@ -265,12 +266,12 @@ void x25_route_free(void);
- 
- static __inline__ void x25_route_hold(struct x25_route *rt)
+ struct x25_sock {
+@@ -243,12 +243,12 @@ void x25_link_free(void);
+ /* x25_neigh.c */
+ static __inline__ void x25_neigh_hold(struct x25_neigh *nb)
  {
--	atomic_inc(&rt->refcnt);
-+	refcount_inc(&rt->refcnt);
+-	atomic_inc(&nb->refcnt);
++	refcount_inc(&nb->refcnt);
  }
  
- static __inline__ void x25_route_put(struct x25_route *rt)
+ static __inline__ void x25_neigh_put(struct x25_neigh *nb)
  {
--	if (atomic_dec_and_test(&rt->refcnt))
-+	if (refcount_dec_and_test(&rt->refcnt))
- 		kfree(rt);
+-	if (atomic_dec_and_test(&nb->refcnt))
++	if (refcount_dec_and_test(&nb->refcnt))
+ 		kfree(nb);
  }
  
-diff --git a/net/x25/x25_route.c b/net/x25/x25_route.c
-index 277c8d2..b85b889 100644
---- a/net/x25/x25_route.c
-+++ b/net/x25/x25_route.c
-@@ -55,7 +55,7 @@ static int x25_add_route(struct x25_address *address, unsigned int sigdigits,
+diff --git a/net/x25/x25_link.c b/net/x25/x25_link.c
+index bcaa180..e0cd04d 100644
+--- a/net/x25/x25_link.c
++++ b/net/x25/x25_link.c
+@@ -266,7 +266,7 @@ void x25_link_device_up(struct net_device *dev)
+ 				       X25_MASK_PACKET_SIZE |
+ 				       X25_MASK_WINDOW_SIZE;
+ 	nb->t20      = sysctl_x25_restart_request_timeout;
+-	atomic_set(&nb->refcnt, 1);
++	refcount_set(&nb->refcnt, 1);
  
- 	rt->sigdigits = sigdigits;
- 	rt->dev       = dev;
--	atomic_set(&rt->refcnt, 1);
-+	refcount_set(&rt->refcnt, 1);
- 
- 	list_add(&rt->node, &x25_route_list);
- 	rc = 0;
+ 	write_lock_bh(&x25_neigh_list_lock);
+ 	list_add(&nb->node, &x25_neigh_list);
 -- 
 2.7.4
 
