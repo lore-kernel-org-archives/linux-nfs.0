@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga05.intel.com ([192.55.52.43]:50936 "EHLO mga05.intel.com"
+Received: from mga06.intel.com ([134.134.136.31]:48908 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751023AbdCQMQu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Mar 2017 08:16:50 -0400
+        id S1751035AbdCQMQv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 17 Mar 2017 08:16:51 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
@@ -17,9 +17,9 @@ Cc: linux-kernel@vger.kernel.org, linux-rdma@vger.kernel.org,
         keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 15/23] net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
-Date: Fri, 17 Mar 2017 14:10:38 +0200
-Message-Id: <1489752646-8749-16-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 19/23] net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
+Date: Fri, 17 Mar 2017 14:10:42 +0200
+Message-Id: <1489752646-8749-20-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -36,63 +36,63 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/xfrm.h    | 6 +++---
- net/xfrm/xfrm_input.c | 4 ++--
+ include/net/sctp/structs.h | 2 +-
+ net/sctp/transport.c       | 8 ++++----
  2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/xfrm.h b/include/net/xfrm.h
-index be30846..35d1cca 100644
---- a/include/net/xfrm.h
-+++ b/include/net/xfrm.h
-@@ -1005,7 +1005,7 @@ struct xfrm_offload {
- };
+diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
+index 7ee0c26..ac3184e 100644
+--- a/include/net/sctp/structs.h
++++ b/include/net/sctp/structs.h
+@@ -731,7 +731,7 @@ struct sctp_transport {
+ 	struct rhlist_head node;
  
- struct sec_path {
--	atomic_t		refcnt;
-+	refcount_t		refcnt;
- 	int			len;
- 	int			olen;
+ 	/* Reference counting. */
+-	atomic_t refcnt;
++	refcount_t refcnt;
+ 		/* RTO-Pending : A flag used to track if one of the DATA
+ 		 *		chunks sent to this address is currently being
+ 		 *		used to compute a RTT. If this flag is 0,
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 3379668..45a5774 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -99,7 +99,7 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
+ 	/* Initialize the 64-bit random nonce sent with heartbeat. */
+ 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
  
-@@ -1026,7 +1026,7 @@ static inline struct sec_path *
- secpath_get(struct sec_path *sp)
- {
- 	if (sp)
--		atomic_inc(&sp->refcnt);
-+		refcount_inc(&sp->refcnt);
- 	return sp;
+-	atomic_set(&peer->refcnt, 1);
++	refcount_set(&peer->refcnt, 1);
+ 
+ 	return peer;
  }
- 
-@@ -1035,7 +1035,7 @@ void __secpath_destroy(struct sec_path *sp);
- static inline void
- secpath_put(struct sec_path *sp)
+@@ -172,7 +172,7 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
+  */
+ static void sctp_transport_destroy(struct sctp_transport *transport)
  {
--	if (sp && atomic_dec_and_test(&sp->refcnt))
-+	if (sp && refcount_dec_and_test(&sp->refcnt))
- 		__secpath_destroy(sp);
- }
- 
-diff --git a/net/xfrm/xfrm_input.c b/net/xfrm/xfrm_input.c
-index 46bdb4f..203ba90 100644
---- a/net/xfrm/xfrm_input.c
-+++ b/net/xfrm/xfrm_input.c
-@@ -114,7 +114,7 @@ struct sec_path *secpath_dup(struct sec_path *src)
- 		for (i = 0; i < sp->len; i++)
- 			xfrm_state_hold(sp->xvec[i]);
+-	if (unlikely(atomic_read(&transport->refcnt))) {
++	if (unlikely(refcount_read(&transport->refcnt))) {
+ 		WARN(1, "Attempt to destroy undead transport %p!\n", transport);
+ 		return;
  	}
--	atomic_set(&sp->refcnt, 1);
-+	refcount_set(&sp->refcnt, 1);
- 	return sp;
+@@ -316,7 +316,7 @@ void sctp_transport_route(struct sctp_transport *transport,
+ /* Hold a reference to a transport.  */
+ int sctp_transport_hold(struct sctp_transport *transport)
+ {
+-	return atomic_add_unless(&transport->refcnt, 1, 0);
++	return refcount_inc_not_zero(&transport->refcnt);
  }
- EXPORT_SYMBOL(secpath_dup);
-@@ -124,7 +124,7 @@ int secpath_set(struct sk_buff *skb)
- 	struct sec_path *sp;
  
- 	/* Allocate new secpath or COW existing one. */
--	if (!skb->sp || atomic_read(&skb->sp->refcnt) != 1) {
-+	if (!skb->sp || refcount_read(&skb->sp->refcnt) != 1) {
- 		sp = secpath_dup(skb->sp);
- 		if (!sp)
- 			return -ENOMEM;
+ /* Release a reference to a transport and clean up
+@@ -324,7 +324,7 @@ int sctp_transport_hold(struct sctp_transport *transport)
+  */
+ void sctp_transport_put(struct sctp_transport *transport)
+ {
+-	if (atomic_dec_and_test(&transport->refcnt))
++	if (refcount_dec_and_test(&transport->refcnt))
+ 		sctp_transport_destroy(transport);
+ }
+ 
 -- 
 2.7.4
 
