@@ -1,124 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1050.oracle.com ([156.151.31.82]:18489 "EHLO
-        userp1050.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751087AbdCRAT3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Mar 2017 20:19:29 -0400
-Date: Fri, 17 Mar 2017 15:02:46 -0700
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: fstests@vger.kernel.org, linux-nfs@vger.kernel.org,
-        hch@infradead.org
-Subject: Re: [PATCH v5 0/5] Add copy_file_range() tests
-Message-ID: <20170317220246.GA12585@birch.djwong.org>
-References: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
+Received: from mx2.suse.de ([195.135.220.15]:52836 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751261AbdCTFII (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Mar 2017 01:08:08 -0400
+From: NeilBrown <neilb@suse.com>
+To: Daniel Pocock <daniel@pocock.pro>,
+        Niels Thykier <niels@thykier.net>, linux-nfs@vger.kernel.org,
+        852395@bugs.debian.org, Robbie Harwood <rharwood@club.cc.cmu.edu>
+Date: Mon, 20 Mar 2017 16:07:40 +1100
+Cc: Debian kernel team <debian-kernel@lists.debian.org>
+Subject: Re: Bug#852395: unblock: gssproxy/0.5.1-2
+In-Reply-To: <f4e3252f-0115-954d-5749-c330c6905b75@pocock.pro>
+References: <148524180980.26332.422684345851896222.reportbug@kirtar> <8ed20c71-d7e2-72e1-a8ce-c913f8e0fffd@thykier.net> <17e5fbd0-9bb1-d7fa-6056-8adbda8a1f4d@pocock.pro> <e157cdda-35b6-8643-7d9f-da79faec56f7@thykier.net> <e157cdda-35b6-8643-7d9f-da79faec56f7@thykier.net> <5df78805-b791-0a5e-3dcb-99792d78c3bd@thykier.net> <f4e3252f-0115-954d-5749-c330c6905b75@pocock.pro>
+Message-ID: <87o9wwcz8j.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 17, 2017 at 03:52:28PM -0400, Anna Schumaker wrote:
-> These tests exercise the copy_file_range() system call, and check copying
-> data to both a new file and overwriting data inside an existing file.
-> 
-> Sorry it took so long to get this version out.  I forgot about these patches
-> after the last submission.
+--=-=-=
+Content-Type: text/plain
 
-Hooray, tests finally!
+On Sun, Mar 05 2017, Daniel Pocock wrote:
 
-I had to bump the numbers up due to conflicts (it's usually best to pick
-a really high number and let Eryu mvtest them to their real numbers),
-but these mostly look ok.
+> On 05/03/17 19:42, Niels Thykier wrote:
+>> On Sat, 04 Feb 2017 09:58:00 +0000 Niels Thykier <niels@thykier.net> wrote:
+>>> Daniel Pocock:
+>>>> [...]
+>>>>
+>>>> Upstream is not really supporting rpc.svcgssd any more, they actually
+>>>> disabled it in the build so people can still have it as a transitional
+>>>> measure in stretch.
+>>>>
+>>>> People shouldn't be using it in any new installations.  Offering them
+>>>> gssproxy is a very sensible thing to do.
+>>>>
+>>>> Regards,
+>>>>
+>>>> Daniel
+>>>>
+>>> Debian kernel team <debian-kernel@lists.debian.org>
+>>> Ok, follow up questions:
+>>>
+>>>  * Do you have an upstream reference to the state of rpc.svcgssd?
+>
+>
+> http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=commit;h=24b5d60d7f0a514310df810e3eb27b72f665febf
+>
+> "svcgssd: Disable support for the rpcsec_gss server by default
+>
+> At this point the gssproxy is better option than the
+> svcgssd so the support is off by default.
+>
+> Use --enable-svcgss to re-enable the support"
+>
+> but it looks like it may not be completely abandoned, there have been
+> other commits that mention gssd recently.
+>
+>
+>>>
+>>>  * Can we provide both rpc.svcgssd and gssproxy in Debian (with the
+>>>    admin choosing) or is it an "xor"?
+>>>
+>
+> I think there are two questions:
+>
+> a) can they both exist in different packages that conflict with each
+> other?  I'm guessing that will probably be yes.
+>
+> b) can they both be installed simultaneously?  Possibly not (can anybody
+> on the linux-nfs list answer?)
 
-However, I do see that something isn't triggering an EINVAL return code:
+Yes, they can.
+The systemd unit files are designed so that svcgssd will only be started
+if gssproxy didn't start - and gssproxy is tried first.
 
-generic/816      - output mismatch (see /tmp/xfstests/results//generic/816.out.bad)
-    --- tests/generic/816.out   2017-03-17 14:46:21.064521899 -0700
-    +++ /tmp/xfstests/results//generic/816.out.bad      2017-03-17 14:58:15.848000000 -0700
-    @@ -16,7 +16,6 @@
-     e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-816/file
-     e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-816/end
-     Copy beyond end of original file
-    -copy_range: Invalid argument
-     md5sums after copying beyond:
-     e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-816/file
-     e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-816/beyond
-    ...
-    (Run 'diff -u tests/generic/816.out /tmp/xfstests/results//generic/816.out.bad'  to see the entire diff)
-generic/817      - output mismatch (see /tmp/xfstests/results//generic/817.out.bad)
-    --- tests/generic/817.out   2017-03-17 14:47:02.916437143 -0700
-    +++ /tmp/xfstests/results//generic/817.out.bad      2017-03-17 14:58:17.168000000 -0700
-    @@ -4,7 +4,6 @@
-     ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-817/file
-     ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-817/copy
-     Small copies from various points in the original file
-    -copy_range: Invalid argument
-     md5sums after small copies
-     ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-817/file
-     0cc175b9c0f1b6a831c399e269772661  TEST_DIR/test-817/a
-    ...
-    (Run 'diff -u tests/generic/817.out /tmp/xfstests/results//generic/817.out.bad'  to see the entire diff)
-generic/818      1s
-generic/819      1s
-generic/820      - output mismatch (see /tmp/xfstests/results//generic/820.out.bad)
-    --- tests/generic/820.out   2017-03-17 14:47:44.140338654 -0700
-    +++ /tmp/xfstests/results//generic/820.out.bad      2017-03-17 14:58:21.120000000 -0700
-    @@ -1,7 +1,6 @@
-     QA output created by 820
-     Create the original files
-     Try to copy when source pos > source size
-    -copy_range: Invalid argument
-     Try to copy to a read-only file
-     copy_range: Bad file descriptor
-     Try to copy to an append-only file
-    ...
-    (Run 'diff -u tests/generic/820.out /tmp/xfstests/results//generic/820.out.bad'  to see the entire diff)
+If you use something other than systemd, similar logic would be needed.
 
-Running 4.11-rc2 here with a ton of XFS patches, though these results
-are from an FSTYP=ext4 run.  FSTYP=xfs produces the same diff output.
+NeilBrown
 
---D
 
-> 
-> Thanks,
-> Anna
-> 
-> 
-> Anna Schumaker (5):
->   generic/416: Add copy to new file test
->   generic/417: Add small copies to new file test
->   generic/418: Add copy test that overwrites data
->   generic/419: Add a copy test for overwriting small amounts of data
->   generic/420: Add a copy test for invalid input
-> 
->  common/rc             |   6 +++
->  tests/generic/416     | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/416.out |  26 +++++++++++++
->  tests/generic/417     |  83 ++++++++++++++++++++++++++++++++++++++++
->  tests/generic/417.out |  16 ++++++++
->  tests/generic/418     | 100 +++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/418.out |  17 +++++++++
->  tests/generic/419     |  87 ++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/419.out |  17 +++++++++
->  tests/generic/420     |  76 +++++++++++++++++++++++++++++++++++++
->  tests/generic/420.out |  12 ++++++
->  tests/generic/group   |   5 +++
->  12 files changed, 547 insertions(+)
->  create mode 100755 tests/generic/416
->  create mode 100644 tests/generic/416.out
->  create mode 100755 tests/generic/417
->  create mode 100644 tests/generic/417.out
->  create mode 100755 tests/generic/418
->  create mode 100644 tests/generic/418.out
->  create mode 100755 tests/generic/419
->  create mode 100644 tests/generic/419.out
->  create mode 100644 tests/generic/420
->  create mode 100644 tests/generic/420.out
-> 
-> -- 
-> 2.12.0
-> 
+>
+>
+>>>  * If this package is unblocked, are there any changes needed in
+>>>    nfs-common needed to support gssproxy?  (source upload, binNMU or
+>>>    "just works with no further changes")
+>>>
+>
+> I don't have time to investigate that right now, if anybody else has
+> time to look more closely that would be great.
+>
+> Regards,
+>
+> Daniel
 > --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljPY50ACgkQOeye3VZi
+gbnNNA/9HBVdo5HtOfI5gLSfvIYwf8LdNDUDsUNs47qn2/aqxEsmVPr2yAzRaUzM
+wNl/J4soS202XnsyqzhACeZufFMGshQjCGY1opX4Af4jocJeItIx0MsHbPmDUq5S
+a5XZbO4ch3D8KpQnYexB36CrkpLPDtHfNvsaNK81+2NRzY/9LY1PRxizQUj+xe7x
+MyLfNlmvpA7WvwkgDnFymwQST+1XoIQWVuNcPiBthzCWMcSo5wRy7eIWXET7ld9c
+hk0bL//aa240tzCfFNwqs/wkT/mo31eq+A+4g+jilptC2+6yB1Xj3Y1z1PChSWkP
+RpXtwWCxWJXUR00jJ985liKgqcO5FgPQAZgMBuEcUeKp+XucY1MX64ri2oz8bgrJ
+fwdmu6bQFlmMdzRrxD5tHB7lazpJsIX6TY55HE1ww3iTWe5nuEqpN4EO+fPBosXQ
+b8oWyWPELTRNwxt42GL93CiJLe1AWiRfi8jy+19vlJuno6v1SP6SG9ct5Ltynlc8
+gkvA8z+FvYaazO5VCFtZ+jldwgQWX2yGhLxynWpX6kSyXR2bIX5KaF0d0IQUCPF2
+VHAJ9DXrZoct0W0D8M4ALQUPmEjeAShtGa7QFdlCzouVld8824NESMrGsDWF8LRm
+DyNy0C+ldY294sKryImsUnRLc9clsrgTuju4oX3yvy3Lj93BLuo=
+=DJyF
+-----END PGP SIGNATURE-----
+--=-=-=--
