@@ -1,236 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:41361 "EHLO mx141.netapp.com"
+Received: from karr.yath.de ([144.76.4.50]:57726 "EHLO karr.yath.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753582AbdCTWHJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Mar 2017 18:07:09 -0400
-From: <andros@netapp.com>
-To: <trondmy@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 3/3] NFS filelayout:call GETDEVICEINFO after pnfs_layout_process completes
-Date: Mon, 20 Mar 2017 18:07:02 -0400
-Message-ID: <1490047622-35305-4-git-send-email-andros@netapp.com>
-In-Reply-To: <1490047622-35305-1-git-send-email-andros@netapp.com>
-References: <1490047622-35305-1-git-send-email-andros@netapp.com>
+        id S1755439AbdCTWte (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Mar 2017 18:49:34 -0400
+Date: Mon, 20 Mar 2017 23:42:14 +0100
+From: Sebastian Schmidt <yath@yath.de>
+To: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        linux-kernel@vger.kernel.org
+Subject: Re: Infinite loop when connecting to unreachable NFS servers
+Message-ID: <20170320224214.kksu3dd2lhmz6mhr@marax.lan.yath.de>
+References: <20170314221525.u7e6fjfmh2qurhtx@marax.lan.yath.de>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; micalg=pgp-sha256;
+        protocol="application/pgp-signature"; boundary="5u7zfcav4zc6cw5s"
+In-Reply-To: <20170314221525.u7e6fjfmh2qurhtx@marax.lan.yath.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
 
-Fix a filelayout GETDEVICEINFO call hang triggered from the LAYOUTGET
-pnfs_layout_process where the GETDEVICEINFO call is waiting for a
-session slot, and the LAYOUGET call is waiting for pnfs_layout_process
-to complete before freeing the slot GETDEVICEINFO is waiting for..
+--5u7zfcav4zc6cw5s
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-This occurs in testing against the pynfs pNFS server where the
-the on-wire reply highest_slotid and slot id are zero, and the
-target high slot id is 8 (negotiated in CREATE_SESSION).
+Hi,
 
-The internal fore channel slot table max_slotid, the maximum allowed
-table slotid value, has been reduced via nfs41_set_max_slotid_locked
- from 8 to 1.  Thus there is one slot (slotid 0) available for use but
-it has not been freed by LAYOUTGET  proir to the GETDEVICEINFO request.
+On Tue, Mar 14, 2017 at 11:15:25PM +0100, Sebastian Schmidt wrote:
+> I was debugging some mysterious high CPU usage and tracked it down to
+> monitoring daemon regularly calling stat*() on an NFS automount
+> directory. The problem is triggered when mount.nfs passes mount() an
+> addr=3D that points to an unreachable address (i.e. connecting fails
+> immediately).
 
-In order to ensure that layoutrecall callbacks are processed in the
-correct order, nfs4_proc_layoutget processing needs to be finished
-e.g. pnfs_layout_process) before giving up the slot that identifies
-the layoutget (see referring_call_exists).
+I looked further into the busy-reconnect issue and I want to share what
+I believe happens.
 
-Move the filelayout_check_layout nfs4_find_get_device call outside of
-the pnfs_layout_process call tree.
+My initial report called mount.nfs with "2001:4860:4860:0:0:0:0:8888:/"=20
+which is, as Jeff pointed out, incorrect, but it caused mount(2) to be=20
+called with addr=3D0.0.7.209. In reality, I'm losing my default route and=
+=20
+an actually valid addr=3D is getting passed to mount(), but both cases hit
+the same code.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/filelayout/filelayout.c | 138 +++++++++++++++++++++++++++--------------
- 1 file changed, 91 insertions(+), 47 deletions(-)
+In xs_tcp_setup_socket(), xs_tcp_finish_connecting() returns an error.=20
+For my made-up test case (0.0.7.209) it's EINVAL, in real life
+ENETUNREACH. The third trigger is passing a valid IPv6 addr=3D and setting
+net.ipv6.conf.all.disable_ipv6 to 1, thereby causing an EADDRNOTAVAIL.
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 4812bf0..2fe05e6 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -560,6 +560,50 @@ static void filelayout_commit_count_stats(struct rpc_task *task, void *data)
- 	return PNFS_ATTEMPTED;
- }
- 
-+static int
-+filelayout_check_deviceid(struct pnfs_layout_hdr *lo,
-+			  struct nfs4_filelayout_segment *fl,
-+			  gfp_t gfp_flags)
-+{
-+	struct nfs4_deviceid_node *d;
-+	struct nfs4_file_layout_dsaddr *dsaddr;
-+	int status = -EINVAL;
-+
-+	/* find and reference the deviceid */
-+	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &fl->deviceid,
-+			lo->plh_lc_cred, gfp_flags);
-+	if (d == NULL)
-+		goto out;
-+
-+	dsaddr = container_of(d, struct nfs4_file_layout_dsaddr, id_node);
-+	/* Found deviceid is unavailable */
-+	if (filelayout_test_devid_unavailable(&dsaddr->id_node))
-+		goto out_put;
-+
-+	fl->dsaddr = dsaddr;
-+
-+	if (fl->first_stripe_index >= dsaddr->stripe_count) {
-+		dprintk("%s Bad first_stripe_index %u\n",
-+				__func__, fl->first_stripe_index);
-+		goto out_put;
-+	}
-+
-+	if ((fl->stripe_type == STRIPE_SPARSE &&
-+	    fl->num_fh > 1 && fl->num_fh != dsaddr->ds_num) ||
-+	    (fl->stripe_type == STRIPE_DENSE &&
-+	    fl->num_fh != dsaddr->stripe_count)) {
-+		dprintk("%s num_fh %u not valid for given packing\n",
-+			__func__, fl->num_fh);
-+		goto out_put;
-+	}
-+	status = 0;
-+out:
-+	return status;
-+out_put:
-+	nfs4_fl_put_deviceid(dsaddr);
-+	goto out;
-+}
-+
- /*
-  * filelayout_check_layout()
-  *
-@@ -574,8 +618,6 @@ static void filelayout_commit_count_stats(struct rpc_task *task, void *data)
- 			struct nfs4_layoutget_res *lgr,
- 			gfp_t gfp_flags)
- {
--	struct nfs4_deviceid_node *d;
--	struct nfs4_file_layout_dsaddr *dsaddr;
- 	int status = -EINVAL;
- 
- 	dprintk("--> %s\n", __func__);
-@@ -600,41 +642,10 @@ static void filelayout_commit_count_stats(struct rpc_task *task, void *data)
- 		goto out;
- 	}
- 
--	/* find and reference the deviceid */
--	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &fl->deviceid,
--			lo->plh_lc_cred, gfp_flags);
--	if (d == NULL)
--		goto out;
--
--	dsaddr = container_of(d, struct nfs4_file_layout_dsaddr, id_node);
--	/* Found deviceid is unavailable */
--	if (filelayout_test_devid_unavailable(&dsaddr->id_node))
--		goto out_put;
--
--	fl->dsaddr = dsaddr;
--
--	if (fl->first_stripe_index >= dsaddr->stripe_count) {
--		dprintk("%s Bad first_stripe_index %u\n",
--				__func__, fl->first_stripe_index);
--		goto out_put;
--	}
--
--	if ((fl->stripe_type == STRIPE_SPARSE &&
--	    fl->num_fh > 1 && fl->num_fh != dsaddr->ds_num) ||
--	    (fl->stripe_type == STRIPE_DENSE &&
--	    fl->num_fh != dsaddr->stripe_count)) {
--		dprintk("%s num_fh %u not valid for given packing\n",
--			__func__, fl->num_fh);
--		goto out_put;
--	}
--
- 	status = 0;
- out:
- 	dprintk("--> %s returns %d\n", __func__, status);
- 	return status;
--out_put:
--	nfs4_fl_put_deviceid(dsaddr);
--	goto out;
- }
- 
- static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
-@@ -885,18 +896,51 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
- 	return min(stripe_unit - (unsigned int)stripe_offset, size);
- }
- 
-+static struct pnfs_layout_segment *
-+fl_pnfs_update_layout(struct inode *ino,
-+		      struct nfs_open_context *ctx,
-+		      loff_t pos,
-+		      u64 count,
-+		      enum pnfs_iomode iomode,
-+		      bool strict_iomode,
-+		      gfp_t gfp_flags)
-+{
-+	struct pnfs_layout_segment *lseg = NULL;
-+	struct pnfs_layout_hdr *lo;
-+	struct nfs4_filelayout_segment *fl;
-+	int status;
-+
-+	lseg = pnfs_update_layout(ino, ctx, pos, count, iomode, strict_iomode,
-+				  gfp_flags);
-+	if (!lseg)
-+		lseg = ERR_PTR(-ENOMEM);
-+	if (IS_ERR(lseg))
-+		goto out;
-+
-+	lo = NFS_I(ino)->layout;
-+	fl = FILELAYOUT_LSEG(lseg);
-+
-+	status = filelayout_check_deviceid(lo, fl, gfp_flags);
-+	if (status)
-+		lseg = ERR_PTR(status);
-+out:
-+	if (IS_ERR(lseg))
-+		pnfs_put_lseg(lseg);
-+	return lseg;
-+}
-+
- static void
- filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct nfs_page *req)
- {
- 	if (!pgio->pg_lseg) {
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--					   req->wb_context,
--					   0,
--					   NFS4_MAX_UINT64,
--					   IOMODE_READ,
--					   false,
--					   GFP_KERNEL);
-+		pgio->pg_lseg = fl_pnfs_update_layout(pgio->pg_inode,
-+						      req->wb_context,
-+						      0,
-+						      NFS4_MAX_UINT64,
-+						      IOMODE_READ,
-+						      false,
-+						      GFP_KERNEL);
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -916,13 +960,13 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
- 	int status;
- 
- 	if (!pgio->pg_lseg) {
--		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
--					   req->wb_context,
--					   0,
--					   NFS4_MAX_UINT64,
--					   IOMODE_RW,
--					   false,
--					   GFP_NOFS);
-+		pgio->pg_lseg = fl_pnfs_update_layout(pgio->pg_inode,
-+						      req->wb_context,
-+						      0,
-+						      NFS4_MAX_UINT64,
-+						      IOMODE_RW,
-+						      false,
-+						      GFP_NOFS);
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
--- 
-1.8.3.1
+Interestingly, the EADDRNOTAVAIL branch has this comment:
+        /* We're probably in TIME_WAIT. Get rid of existing socket,
+         * and retry
+         */
+        xs_tcp_force_close(xprt);
+        break;
 
+whereas the EINVAL and ENETUNREACH case carries this one:
+        /* retry with existing socket, after a delay */
+        xs_tcp_force_close(xprt);
+        goto out;
+
+So both calls to xs_tcp_force_close() claim to retry, but one reuses the
+socket and the other doesn't? The only code skipped by the "goto out"=20
+for the second case is "status =3D -EAGAIN", and this apparently does not
+cause any delayed retries either.
+
+That second case got changed in=20
+4efdd92c921135175a85452cd41273d9e2788db3, where the call to=20
+xs_tcp_force_close() was added initially. That call, however, causes an=20
+autoclose call via xprt_force_disconnect(), eventually invalidating=20
+transport->sock.
+
+That transport->sock, however, is being checked in xs_connect() for=20
+!NULL and, in that case only, a delayed reconnect is scheduled. If=20
+disable_ipv6=3D1 would already have caused connect() to return=20
+EADDRNOTAVAIL, rather than ENETUNREACH as with 3.19-ish, that same=20
+busy-reconnect loop would have also been triggered in that case, even=20
+before 4efdd92c.
+
+So apparently the (only?) code that's responsible for delaying a=20
+reconnect is in xs_connect(), and due to the fact that=20
+xs_tcp_force_close() is called on every connection error,=20
+transport->sock gets NULLed due to autoclose and that delay code is=20
+never run.=20
+
+Here I'm stuck at figuring out what the code is intented to do and would
+appreciate any help.
+
+Thanks,
+
+Sebastian
+
+--5u7zfcav4zc6cw5s
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAABCAAdFiEEdExETVib0Dz3caHc+HHcS2EGWqMFAljQWsIACgkQ+HHcS2EG
+WqN6oxAAsfgD0hieP+g+k01CoxsG2RUla+CgMoqoNgS8mBEPNODLH4NadNJ4qIZI
+pdY9VKPg5Bl8ut48o2uFoGjp0RTlTFoMXm8lR9HPPwZc2ilfx5x6JmiQSllf8VmL
+ggzzZVdsUNokqepi+qIreYRpyZYsquWoIUR5o+Kry2dDBSvyi2AXyyv2XpQ0UUpE
+JZDB/XgSdfvabXRzafR5IudImk/J5k053LT5TrNrNFOCz1mQSZ6QrCEUu/r2/4et
+43JvkjHarBg4jAc8Ucy1G42q3OZUZ+lJbup+hEx2tCItNLCPK5oJD+8HlxAPMprO
+Q/E5aaBZQ69vxSCfU6wfQZxLpGQObeR7ye31QnAEu1vnJKFIAqkbHYf7fUBNSVAn
+DXTeLEdaxUnGO0ev89HAs56ORw6AFZpv6o/nH2oxDW5BIHgzXYydflMbNRbT4dgv
+CqUeXppmcBK/xrMSOzXvypWHaC9WskxGfY+gitwL3nm512oXTPDj2uDa+meQFrmR
+xd1pZrydzy5KPN7ib5sZDomgxcmDUAl92PCLS2YW/aU/ROs5VDP13E71uRVApHXi
+UcvSJ6vk71Exr6q6/xAOsRieUxybqidFXuEwTK2ttL4VvwQQJQ0wa9vALWJHRTq0
+DKpoDp7uuOTe+HKpu1xGCOdb4lT1u2zrTe3KU/JXVNSmYwA+iNs=
+=19Eh
+-----END PGP SIGNATURE-----
+
+--5u7zfcav4zc6cw5s--
