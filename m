@@ -1,106 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40366 "EHLO fieldses.org"
+Received: from mx141.netapp.com ([216.240.21.12]:41361 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753950AbdCTVoA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Mar 2017 17:44:00 -0400
-Date: Mon, 20 Mar 2017 17:43:27 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170320214327.GA5098@fieldses.org>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
- <20161222084549.GA8833@infradead.org>
- <1482417724.3924.39.camel@redhat.com>
+        id S1755034AbdCTWHI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Mar 2017 18:07:08 -0400
+From: <andros@netapp.com>
+To: <trondmy@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 2/3] NFS store nfs4_deviceid in struct nfs4_filelayout_segment
+Date: Mon, 20 Mar 2017 18:07:01 -0400
+Message-ID: <1490047622-35305-3-git-send-email-andros@netapp.com>
+In-Reply-To: <1490047622-35305-1-git-send-email-andros@netapp.com>
+References: <1490047622-35305-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1482417724.3924.39.camel@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 22, 2016 at 09:42:04AM -0500, Jeff Layton wrote:
-> On Thu, 2016-12-22 at 00:45 -0800, Christoph Hellwig wrote:
-> > On Wed, Dec 21, 2016 at 12:03:17PM -0500, Jeff Layton wrote:
-> > > 
-> > > Only btrfs, ext4, and xfs implement it for data changes. Because of
-> > > this, these filesystems must log the inode to disk whenever the
-> > > i_version counter changes. That has a non-zero performance impact,
-> > > especially on write-heavy workloads, because we end up dirtying the
-> > > inode metadata on every write, not just when the times change. [1]
-> > 
-> > Do you have numbers to justify these changes?
-> 
-> I have numbers. As to whether they justify the changes, I'm not sure.
-> This helps a lot on a (admittedly nonsensical) 1-byte write workload. On
-> XFS, with this fio jobfile:
+From: Andy Adamson <andros@netapp.com>
 
-To me, the interesting question is whether this allows us to turn on
-i_version updates by default on xfs and ext4.
+In preparation for moving the filelayout getdeviceinfo call from
+filelayout_alloc_lseg called by pnfs_process_layout
 
-When Josef looked at doing that previously he withdrew the patch due to
-performance regressions.  I think the most useful thread started here:
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/filelayout/filelayout.c | 13 +++++--------
+ fs/nfs/filelayout/filelayout.h |  1 +
+ 2 files changed, 6 insertions(+), 8 deletions(-)
 
-	http://lkml.kernel.org/r/1337092396-3272-1-git-send-email-josef@redhat.com
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 44347f4..4812bf0 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -572,7 +572,6 @@ static void filelayout_commit_count_stats(struct rpc_task *task, void *data)
+ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 			struct nfs4_filelayout_segment *fl,
+ 			struct nfs4_layoutget_res *lgr,
+-			struct nfs4_deviceid *id,
+ 			gfp_t gfp_flags)
+ {
+ 	struct nfs4_deviceid_node *d;
+@@ -602,7 +601,7 @@ static void filelayout_commit_count_stats(struct rpc_task *task, void *data)
+ 	}
+ 
+ 	/* find and reference the deviceid */
+-	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), id,
++	d = nfs4_find_get_deviceid(NFS_SERVER(lo->plh_inode), &fl->deviceid,
+ 			lo->plh_lc_cred, gfp_flags);
+ 	if (d == NULL)
+ 		goto out;
+@@ -657,7 +656,6 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 			 struct nfs4_filelayout_segment *fl,
+ 			 struct nfs4_layoutget_res *lgr,
+-			 struct nfs4_deviceid *id,
+ 			 gfp_t gfp_flags)
+ {
+ 	struct xdr_stream stream;
+@@ -682,9 +680,9 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ 	if (unlikely(!p))
+ 		goto out_err;
+ 
+-	memcpy(id, p, sizeof(*id));
++	memcpy(&fl->deviceid, p, sizeof(fl->deviceid));
+ 	p += XDR_QUADLEN(NFS4_DEVICEID4_SIZE);
+-	nfs4_print_deviceid(id);
++	nfs4_print_deviceid(&fl->deviceid);
+ 
+ 	nfl_util = be32_to_cpup(p++);
+ 	if (nfl_util & NFL4_UFLG_COMMIT_THRU_MDS)
+@@ -831,15 +829,14 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ {
+ 	struct nfs4_filelayout_segment *fl;
+ 	int rc;
+-	struct nfs4_deviceid id;
+ 
+ 	dprintk("--> %s\n", __func__);
+ 	fl = kzalloc(sizeof(*fl), gfp_flags);
+ 	if (!fl)
+ 		return NULL;
+ 
+-	rc = filelayout_decode_layout(layoutid, fl, lgr, &id, gfp_flags);
+-	if (rc != 0 || filelayout_check_layout(layoutid, fl, lgr, &id, gfp_flags)) {
++	rc = filelayout_decode_layout(layoutid, fl, lgr, gfp_flags);
++	if (rc != 0 || filelayout_check_layout(layoutid, fl, lgr, gfp_flags)) {
+ 		_filelayout_free_lseg(fl);
+ 		return NULL;
+ 	}
+diff --git a/fs/nfs/filelayout/filelayout.h b/fs/nfs/filelayout/filelayout.h
+index 4c4d436..79323b5 100644
+--- a/fs/nfs/filelayout/filelayout.h
++++ b/fs/nfs/filelayout/filelayout.h
+@@ -61,6 +61,7 @@ struct nfs4_filelayout_segment {
+ 	u32				stripe_unit;
+ 	u32				first_stripe_index;
+ 	u64				pattern_offset;
++	struct nfs4_deviceid		deviceid;
+ 	struct nfs4_file_layout_dsaddr	*dsaddr; /* Point to GETDEVINFO data */
+ 	unsigned int			num_fh;
+ 	struct nfs_fh			**fh_array;
+-- 
+1.8.3.1
 
-Skimming quickly....  I think the regression was also in the small-write
-case.  So apparently that was thought to reveal a real problem?
-
-So if you've mostly eliminated that regression, then that's good
-motivation for your patches.  (Though I think in addition to comparing
-the patched and unpatched i_version case, we need to compare to the
-unpatched not-i_version case.  I'm not clear whether you did that.)
-
---b.
-
-> 
-> --------------------8<------------------
-> [global]
-> direct=0
-> size=2g
-> filesize=512m
-> bsrange=1-1
-> timeout=60
-> numjobs=1
-> directory=/mnt/scratch
-> 
-> [f1]
-> filename=randwrite
-> rw=randwrite
-> --------------------8<------------------
-> 
-> Unpatched kernel:
->   WRITE: io=7707KB, aggrb=128KB/s, minb=128KB/s, maxb=128KB/s, mint=60000msec, maxt=60000msec
-> 
-> Patched kernel:
->   WRITE: io=12701KB, aggrb=211KB/s, minb=211KB/s, maxb=211KB/s, mint=60000msec, maxt=60000msec
-> 
-> So quite a difference there and it's pretty consistent across runs. If I
-> change the jobfile to have "direct=1" and "bsrange=4k-4k", then any
-> variation between the two doesn't seem to be significant (numbers vary
-> as much between runs on the same kernels and are roughly the same).
-> 
-> Playing with buffered I/O sizes between 1 byte and 4k shows that as the
-> I/O sizes get larger, this makes less difference (which is what I'd
-> expect).
-> 
-> Previous testing with ext4 shows roughly the same results. btrfs shows
-> some benefit here but significantly less than with ext4 or xfs. Not sure
-> why that is yet -- maybe CoW effects?
-> 
-> That said, I don't have a great test rig for this. I'm using VMs with a
-> dedicated LVM volume that's on a random SSD I had laying around. It
-> could use testing on a wider set of configurations and workloads.
-> 
-> I was also hoping that others may have workloads that they think might
-> be (postively or negatively) affected by these changes. If you can think
-> of any in particular, then I'm interested to hear about them.
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
