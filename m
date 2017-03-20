@@ -1,179 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:36756 "EHLO smtp-o-3.desy.de"
+Received: from fieldses.org ([173.255.197.46]:40366 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752784AbdCTVKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 20 Mar 2017 17:10:25 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id C67EF2805F4
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Mar 2017 22:09:34 +0100 (CET)
-Date: Mon, 20 Mar 2017 22:09:32 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Steve Dickson <steved@redhat.com>
-Message-ID: <1657271697.3093215.1490044172396.JavaMail.zimbra@desy.de>
-In-Reply-To: <362211751.3088036.1490043081358.JavaMail.zimbra@desy.de>
-References: <45574919.3034342.1490025160438.JavaMail.zimbra@desy.de> <CAN-5tyHVmfwvEk+N+i5nFa=E7OyWW=k3eRc82Ed0Ttx=rNxdPw@mail.gmail.com> <362211751.3088036.1490043081358.JavaMail.zimbra@desy.de>
-Subject: Re: pNFS: invalid IP:port selection when talks to DS
+        id S1753950AbdCTVoA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Mar 2017 17:44:00 -0400
+Date: Mon, 20 Mar 2017 17:43:27 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Message-ID: <20170320214327.GA5098@fieldses.org>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+ <20161222084549.GA8833@infradead.org>
+ <1482417724.3924.39.camel@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1482417724.3924.39.camel@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Dec 22, 2016 at 09:42:04AM -0500, Jeff Layton wrote:
+> On Thu, 2016-12-22 at 00:45 -0800, Christoph Hellwig wrote:
+> > On Wed, Dec 21, 2016 at 12:03:17PM -0500, Jeff Layton wrote:
+> > > 
+> > > Only btrfs, ext4, and xfs implement it for data changes. Because of
+> > > this, these filesystems must log the inode to disk whenever the
+> > > i_version counter changes. That has a non-zero performance impact,
+> > > especially on write-heavy workloads, because we end up dirtying the
+> > > inode metadata on every write, not just when the times change. [1]
+> > 
+> > Do you have numbers to justify these changes?
+> 
+> I have numbers. As to whether they justify the changes, I'm not sure.
+> This helps a lot on a (admittedly nonsensical) 1-byte write workload. On
+> XFS, with this fio jobfile:
 
-Hi Olga,
+To me, the interesting question is whether this allows us to turn on
+i_version updates by default on xfs and ext4.
 
-you did not have the answer, however you gave me an important hint!
-I believe, all our DSes on a single host generate the same server
-owner during exchange-id. I guess, this can be the reason, why
-client decides to talk to an other DS.
+When Josef looked at doing that previously he withdrew the patch due to
+performance regressions.  I think the most useful thread started here:
 
-Tigran.
+	http://lkml.kernel.org/r/1337092396-3272-1-git-send-email-josef@redhat.com
 
------ Original Message -----
-> From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> To: "Olga Kornievskaia" <aglo@umich.edu>
-> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dickson"=
- <steved@redhat.com>
-> Sent: Monday, March 20, 2017 9:51:21 PM
-> Subject: Re: pNFS: invalid IP:port selection when talks to DS
+Skimming quickly....  I think the regression was also in the small-write
+case.  So apparently that was thought to reveal a real problem?
 
-> Hi Olga,
->=20
-> ----- Original Message -----
->> From: "Olga Kornievskaia" <aglo@umich.edu>
->> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dickson=
-"
->> <steved@redhat.com>
->> Sent: Monday, March 20, 2017 9:14:34 PM
->> Subject: Re: pNFS: invalid IP:port selection when talks to DS
->=20
->> Hi Tigran,
->>=20
->> While I don't have an answer to your question, I'd like to point out
->> that in 4.9 is when Andy's session trunking patches when in.
->>=20
->> I'm curious this client that's now talking to the DS at port 24006
->> instead of 24005, did it before also earlier correctly (legally)
->> talked to DS that was on 24006?
->=20
-> Yes, earlier during testing it had legal access to DS on port 24006.
->=20
-> Tigran.
->=20
->>=20
->> On Mon, Mar 20, 2017 at 11:52 AM, Mkrtchyan, Tigran
->> <tigran.mkrtchyan@desy.de> wrote:
->>>
->>>
->>> Dear (p)NFS-ors,
->>>
->>> we observe VERY unpleasant situation with pNFS in the production.
->>> Our hosts run multiple DSes on different ports, usually 24001-24009.
->>> With CentOS7 (3.10.0-514.6.2.el7.x86_64) we see that client takes
->>> a wrong port number when talks to data server:
->>>
->>> If client uses different DSes on the same host, then at some point it s=
-tarts
->>> to send data to the wrong port number:
->>>
->>> Client <=3D> MDS:
->>>
->>>
->>>     1 0.000000000 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call OP=
-EN DH:
->>>     0x7cbc716b/MIL-68-onebatch-80C-30s-00057.tif.metadata
->>>     2 0.001469799 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply (=
-Call In 1) OPEN
->>>     StateID: 0xec18
->>>     3 0.001578128 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call SE=
-TATTR FH: 0x6ccf3dfa
->>>     4 0.002657187 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply (=
-Call In 3) SETATTR
->>>     5 0.003243819 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call LA=
-YOUTGET
->>>     6 0.014603386 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply (=
-Call In 5) LAYOUTGET
->>>     7 0.014899121 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call GE=
-TDEVINFO
->>>     8 0.015014216 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply (=
-Call In 7) GETDEVINFO
->>>         Opcode: GETDEVINFO (47)
->>>             Status: NFS4_OK (0)
->>>             layout type: LAYOUT4_NFSV4_1_FILES (1)
->>>             device index: 0
->>>             r_netid: tcp
->>>                 length: 3
->>>                 contents: tcp
->>>                 fill bytes: opaque data
->>>             r_addr: 131.169.51.50.93.197
->>>                 length: 20
->>>                 contents: 131.169.51.50.93.197
->>>             r_netid: tcp
->>>                 length: 3
->>>                 contents: tcp
->>>                 fill bytes: opaque data
->>>             r_addr: 131.169.51.50.93.197
->>>                 length: 20
->>>                 contents: 131.169.51.50.93.197
->>>             notification bitmap: 6
->>>             notification bitmap: 0
->>>     [Main Opcode: GETDEVINFO (47)]
->>>
->>>     9 0.105442455 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call TE=
-ST_STATEID
->>>    10 0.105521354 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply (=
-Call In 9)
->>>    TEST_STATEID
->>>
->>>
->>>
->>> NOTICE, that 131.169.51.50.93.197 corresponds to port 24005.
->>>
->>> client <=3D> DS
->>>
->>> $ tshark -r ds-write.pcap  -n -z conv,tcp
->>>     1   0.000000 131.169.251.53 =E2=86=92 131.169.51.50 NFS V4 Call WRI=
-TE StateID: 0xff01
->>>     Offset: 0 Len: 3968
->>>     2   0.000090 131.169.51.50 =E2=86=92 131.169.251.53 NFS V4 Reply (C=
-all In 1) WRITE
->>>     Status: NFS4ERR_BAD_STATEID
->>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
->>> TCP Conversations
->>> Filter:<No Filter>
->>>                                                            |       <-  =
-    | |       ->      | |     Total     |    Relative    |   Duration   |
->>>                                                            | Frames  By=
-tes | | Frames  Bytes | | Frames  Bytes |      Start     |
->>>                                                            | |
->>> 131.169.51.50:24006        <-> 131.169.251.53:847               1      =
-4240
->>> 1       168       2      4408     0.000000000         0.0001
->>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
->>>
->>> NOTICE, that it talks to DS on port 24006!
->>>
->>> Is there know fix which is missing in CentOS7? I can't reproduce it wit=
-h
->>> 4.9 kernel (or it's harder to reproduce).
->>>
->>>
->>> The packages are attached.
->>>
->>> Tigran.
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So if you've mostly eliminated that regression, then that's good
+motivation for your patches.  (Though I think in addition to comparing
+the patched and unpatched i_version case, we need to compare to the
+unpatched not-i_version case.  I'm not clear whether you did that.)
+
+--b.
+
+> 
+> --------------------8<------------------
+> [global]
+> direct=0
+> size=2g
+> filesize=512m
+> bsrange=1-1
+> timeout=60
+> numjobs=1
+> directory=/mnt/scratch
+> 
+> [f1]
+> filename=randwrite
+> rw=randwrite
+> --------------------8<------------------
+> 
+> Unpatched kernel:
+>   WRITE: io=7707KB, aggrb=128KB/s, minb=128KB/s, maxb=128KB/s, mint=60000msec, maxt=60000msec
+> 
+> Patched kernel:
+>   WRITE: io=12701KB, aggrb=211KB/s, minb=211KB/s, maxb=211KB/s, mint=60000msec, maxt=60000msec
+> 
+> So quite a difference there and it's pretty consistent across runs. If I
+> change the jobfile to have "direct=1" and "bsrange=4k-4k", then any
+> variation between the two doesn't seem to be significant (numbers vary
+> as much between runs on the same kernels and are roughly the same).
+> 
+> Playing with buffered I/O sizes between 1 byte and 4k shows that as the
+> I/O sizes get larger, this makes less difference (which is what I'd
+> expect).
+> 
+> Previous testing with ext4 shows roughly the same results. btrfs shows
+> some benefit here but significantly less than with ext4 or xfs. Not sure
+> why that is yet -- maybe CoW effects?
+> 
+> That said, I don't have a great test rig for this. I'm using VMs with a
+> dedicated LVM volume that's on a random SSD I had laying around. It
+> could use testing on a wider set of configurations and workloads.
+> 
+> I was also hoping that others may have workloads that they think might
+> be (postively or negatively) affected by these changes. If you can think
+> of any in particular, then I'm interested to hear about them.
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
