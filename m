@@ -1,177 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.total-security.at ([86.59.114.232]:42113 "EHLO
-        mail.total-security.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753437AbdCTMdL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Mar 2017 08:33:11 -0400
-To: <linux-nfs@vger.kernel.org>
-From: Leonhard Preis <leonhard.preis@radarservices.com>
-Subject: mountd v4root ignores anonuid and anongid for pseudo file system
-Message-ID: <4218b9fa-e215-370a-f913-348e055d33e2@radarservices.com>
-Date: Mon, 20 Mar 2017 13:17:40 +0100
+Received: from mx1.redhat.com ([209.132.183.28]:59284 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753006AbdCTPae (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Mar 2017 11:30:34 -0400
+Date: Mon, 20 Mar 2017 11:30:32 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC v1 00/17] NFSD support for inter+async COPY
+Message-ID: <20170320153032.GB5872@parsley.fieldses.org>
+References: <20170302160142.30413-1-kolga@netapp.com>
+ <CAN-5tyGHaXgWnZAeKghcXVwMOufU-v-geSpxtSqy6=FC8sUWow@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-        protocol="application/pgp-signature";
-        boundary="KX2rbMQK9s75qv7B4MjLI8r06BSB9XT1o"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyGHaXgWnZAeKghcXVwMOufU-v-geSpxtSqy6=FC8sUWow@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---KX2rbMQK9s75qv7B4MjLI8r06BSB9XT1o
-Content-Type: multipart/mixed; boundary="3NNnAlVhNHQXKNl3QeHujIFMWOWRQvHkj";
- protected-headers="v1"
-From: Leonhard Preis <leonhard.preis@radarservices.com>
-To: linux-nfs@vger.kernel.org
-Message-ID: <4218b9fa-e215-370a-f913-348e055d33e2@radarservices.com>
-Subject: mountd v4root ignores anonuid and anongid for pseudo file system
+On Fri, Mar 17, 2017 at 05:21:52PM -0400, Olga Kornievskaia wrote:
+> Any comments on this?
 
---3NNnAlVhNHQXKNl3QeHujIFMWOWRQvHkj
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+I was hoping to get some more details from Christoph on his objections
+to cross-superblock copies.  From the vfs point of view it seems not
+that different from splice, so I'm not seeing a fundamental obstacle.
 
-Hi!
+I'll give the patches a look.
 
-Recently I have been investigating[1] why Vagrant=E2=80=99s automatically=
+> Should I separate out the async copy support and send it out like I
+> did for the client side? I guess the idea is to get the async first
+> and then add inter when the VFS layer situation is resolved?
 
-created NFS shares fail to mount when using NFSv4 on Ubuntu 16.04 while
-they work fine on Debian Stretch. In the end the cause really is
-trivial: Debian created my home directory with 0755 while Ubuntu went
-with 0700. The pseudo file system created by mountd seems to mirror
-these permissions while ignoring that Vagrant set
-`all_squash,anonuid=3D1000,anongid=3D1000`. Thus the client trying to mou=
-nt
-the exported directory is denied access. In my opinion this is a bug
-since uid and gid 1000 would have access to the home directory. But I do
-see that a second NFS share without the exact same options would create
-a dilemma. At the very least a log message indicating this situation
-would be very helpful. Nevertheless I=E2=80=99m not too familiar with NFS=
- and
-would appreciate your take on this.
+If you submit the async stuff first, there needs to be some reason we'd
+want it on its own.
 
-While the solution is simple my lack of knowledge had me dive deep into
-the web to understand what was going wrong. My biggest obstacle was
-definitely the documentation. While the automatically created pseudo
-file system was introduced back in 2010[8][9] it is hardly documented[5]
-=2E The closest one can get to understand to what=E2=80=99s happening wit=
-hout
-diving into the source code and the accompanying git log itself is a
-very outdated discussion from before it was implemented and a note
-saying that =E2=80=9Call of this has since been mostly fixed=E2=80=9D[6].=
- Meanwhile
-almost every tutorial on NFSv4 I remember reading last week still claims
-you need to set up a pseudo root. While some may not claim it there is
-not a single one explaining what is happening if you don=E2=80=99t includ=
-ing the
-man page[3][4][12]:
+The current server behavior is just to truncate and return a short copy
+if the client requests a copy of more than 4MB.  That's very easy, but
+there might be some situations where it strikes the wrong
+balance--either 4MB is too large, and ties up an nfsd thread too long,
+or it's too small, and doesn't give the filesystem enough to work with
+at a time, or enough to amortize the cost of the round-trip back to the
+client which has to submit a new read for the rest of the file.
 
-> For NFSv4, there is a distinguished filesystem which is the root of
-all exported filesystem.  This is specified with fsid=3Droot or fsid=3D0
-both of which mean exactly the same thing.
+In which case perhaps there's a smarter way to choose that number, I
+don't know.
 
-Especially confusing is the following statement from mountd=E2=80=99s man=
- page[4]:
+The asynchronous protocol is significantly more complicated, so before
+doing that I'd like evidence that it's necessary--that we can't get the
+same performance by breaking up the copy into short copies.
 
-> The rpc.mountd daemon implements the server side of the NFS MOUNT
-protocol, an NFS side protocol used by NFS version 2 [RFC1094] and NFS
-version 3 [RFC1813].
+--b.
 
-For me this sounds almost like NFSv4 does not use mountd. Apparently
-even Novell thinks that[11]:
-
-> rpc.mountd =E2=80=94 [=E2=80=A6] This is not used with NFSv4.
-
-Last but not least it=E2=80=99s not exactly helping that mountd does not =
-log its
-debug stuff to journald, only daemon.log (Debian) or syslog (Ubuntu). I
-admit to failing to find these logs until the end when I grep=E2=80=99d f=
-or
-=E2=80=9Cv4root=E2=80=9D in the log directories. But I have seen that the=
-re=E2=80=99s something
-happening in regards to systemd with version 2 of nfs-utils so that
-point may be moot.
-
-Oh, and one more thing: mountd hiding the pseudo exports to showmount[2]
-and exportfs without an option to show them anyway is yet another hint
-denied. My personal highlight is the, usually top-notch, Arch Wiki[7]
-which has a (disputed) claim[7] that NFS requires shares to reside below
-/srv. I hope to find some time this week to improve their documentation.
-
-While I may have had a lot of fun with the documentation, I have no
-complaints about the rock-solid software itself and want to use this
-opportunity to thank the developers for all their efforts!
-
-As I wrote before I kindly ask for your opinion on the matter and what I
-may have missed. Thank you!
-
-Cheers,
-
-Leonhard
-
-[1] https://github.com/mitchellh/vagrant/issues/8279
-
-[2]
-http://git.linux-nfs.org/?p=3Dsteved/nfs-utils.git;a=3Dpatch;h=3Dde108c53=
-1e29ba936a68a6efb99095ad6d6cec8f
-
-[3]
-http://git.linux-nfs.org/?p=3Dsteved/nfs-utils.git;a=3Dblob;f=3Dutils/exp=
-ortfs/exports.man;h=3Dd8de6bec2583144bace5a7352d5db58e0882e60d;hb=3DHEAD
-
-
-[4]
-http://git.linux-nfs.org/?p=3Dsteved/nfs-utils.git;a=3Dblob;f=3Dutils/mou=
-ntd/mountd.man;h=3D9978afcdb4ccb3ef59e5007fa93a1519062cb45c;hb=3DHEAD
-
-[5] http://wiki.linux-nfs.org/wiki/index.php/Nfsv4_configuration
-
-[6] http://wiki.linux-nfs.org/wiki/index.php/Pseudofilesystem_improvement=
-s
-
-[7]
-https://wiki.archlinux.org/index.php/NFS/Troubleshooting#mount.nfs4:_acce=
-ss_denied_by_server_while_mounting
-
-[8]
-http://git.linux-nfs.org/?p=3Dsteved/nfs-utils.git;a=3Dpatch;h=3Db2569432=
-0f2bdd79de82f2003209b8229eafff36
-
-[9]
-http://git.linux-nfs.org/?p=3Dsteved/nfs-utils.git;a=3Dpatch;h=3D3b777b08=
-4a438f55482c8bf7508903ff4c30e1db
-
-[10]
-http://git.linux-nfs.org/?p=3Dsteved/nfs-utils.git;a=3Dpatch;h=3Dde108c53=
-1e29ba936a68a6efb99095ad6d6cec8f
-
-[11] https://www.novell.com/coolsolutions/feature/17581.html
-
-[12]
-http://git.linux-nfs.org/?p=3Dsteved/nfs-utils.git;a=3Dblob;f=3Dutils/exp=
-ortfs/exportfs.man;h=3D91d3589e38d62cb72a343b13b10f0052aec1cbfd;hb=3DHEAD=
-
-
-
-
---3NNnAlVhNHQXKNl3QeHujIFMWOWRQvHkj--
-
---KX2rbMQK9s75qv7B4MjLI8r06BSB9XT1o
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEfyT2e8BIJorFzScvxAt5r6FJNI8FAljPyHQACgkQxAt5r6FJ
-NI+KlQ//Tsc4zV43ik6xm/69Uzc1cMEUtlTev/hSnNhbtHEpLdSHphGLhEbaEIkk
-FqhowXbFcDlhoogdDjUBNX39yEqV+AQH+8JO1LlPryG9dEPrFVrczgjMRq7sLCpC
-FxUM4sGhVflqqsQe1oMOOqcW9u+w2efxbE/DSFAbiDSaLv1wdiaWlmv2nXexlgZB
-MGjla5vMe2+x7UprBU84s+pwatGlJQ4c1tNBEVSkeZ1Cp+V/P1ZR+wNQPkKT0OoT
-MBGxh5uHWCmQJL7yqUvmifdyZxlutoXS8y+J0K+JcP5tWne3xmjxclC7IjVOLQeP
-ntKiMKqKvzAUh7RsF7AzNmYboOwEo9mQW2QkqbDH1YK3+TNXWcqaAKNf5K1Qta8n
-ImDT2gFZ2oRjJoWFzrp8cWzuwNlTaBUNzFLyq7mBjDp9Bp3BbEpoaap0e8SUJfUm
-bRQrUyExlKQ5BfEKA2XBBeq+9nhBAFxqftv8vjTJXkxZEeuk6RjEFyBZRBxcdsT/
-D48ATJQRv1/qbOz8mkdvwffb+EuaKIJyCIbE+hwuIat+F2w6vRLdP832JdUGS/xA
-10r9dMSVx7YgYB1cpJ3jr3Fnw0Ix6FuEAI5oGYoI9bvwyl5XzE1OlYP2E44mFQk7
-Tq3LgULnHvZAJpoao3qlSc/GG5g50dh485VFuNnMUnMdcEr/wbk=
-=RB4Y
------END PGP SIGNATURE-----
-
---KX2rbMQK9s75qv7B4MjLI8r06BSB9XT1o--
+> 
+> 
+> On Thu, Mar 2, 2017 at 11:01 AM, Olga Kornievskaia <kolga@netapp.com> wrote:
+> > This is server-side support for NFSv4.2 inter and async COPY which is
+> > on top of existing intra sync COPY. It also depends on the NFS client
+> > piece for NFSv4.2 to do client side of the destination server piece
+> > in the inter SSC.
+> >
+> > NFSD determines if COPY is intra or inter and if sync or async. For
+> > inter, NSFD uses NFSv4.1 protocol and creates an internal mount point
+> > (superblock). It will destroy the mount point when copy is done.
+> >
+> > To do asynchronous copies, NFSD creates a single threaded workqueue
+> > and does not tie up an NFSD thread to complete the copy. Upon receiving
+> > the COPY, it generates a unique copy stateid (stores a global list
+> > for keeping track of state for OFFLOAD_STATUS to be queried by),
+> > queues up a workqueue for the copy, and replies back to the client.
+> > nfsd4_copy arguments that are allocated on the stack are copied for
+> > the work item.
+> >
+> > In the async copy handler, it calls into VFS copy_file_range() with
+> > 4MB chunks and loops until it completes the requested copy size. If
+> > error is encountered it's saved but also we save the amount of data
+> > copied so far. Once done, the results are queued for the callback
+> > workqueue and sent via CB_OFFLOAD. Also currently, choosing to clean
+> > up the copy state information stored in the global list when cope is
+> > done and not doing it when callback's release function (it could be
+> > done there alternatively if needed it?).
+> >
+> > On the source server, upon receiving a COPY_NOTIFY, it generate a
+> > unique stateid that's kept in the global list. Upon receiving a READ
+> > with a stateid, the code checks the normal list of open stateid and
+> > now additionally, it'll check the copy state list as well before
+> > deciding to either fail with BAD_STATEID or find one that matches.
+> > The stored stateid is only valid to be used for the first time
+> > with a choosen lease period (90s currently). When the source server
+> > received an OFFLOAD_CANCEL, it will remove the stateid from the
+> > global list. Otherwise, the copy stateid is removed upon the removal
+> > of its "parent" stateid (open/lock/delegation stateid).
+> >
+> >
+> > Andy Adamson (7):
+> >   NFSD add ca_source_server<> to COPY
+> >   NFSD generalize nfsd4_compound_state flag names
+> >   NFSD: allow inter server COPY to have a STALE source server fh
+> >   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+> >   NFSD add COPY_NOTIFY operation
+> >   NFSD add nfs4 inter ssc to nfsd4_copy
+> >   NFSD Unique stateid_t for inter server to server COPY authentication
+> >
+> > Olga Kornievskaia (10):
+> >   NFSD CB_OFFLOAD xdr
+> >   NFSD OFFLOAD_STATUS xdr
+> >   NFSD OFFLOAD_CANCEL xdr
+> >   NFSD xdr callback stateid in async COPY reply
+> >   NFSD first draft of async copy
+> >   NFSD handle OFFLOAD_CANCEL op
+> >   NFSD stop queued async copies on client shutdown
+> >   NFSD create new stateid for async copy
+> >   NFSD define EBADF in nfserrno
+> >   NFSD support OFFLOAD_STATUS
+> >
+> >  fs/nfsd/Kconfig        |  10 +
+> >  fs/nfsd/netns.h        |   8 +
+> >  fs/nfsd/nfs4callback.c |  95 +++++++
+> >  fs/nfsd/nfs4proc.c     | 704 ++++++++++++++++++++++++++++++++++++++++++++++---
+> >  fs/nfsd/nfs4state.c    | 142 +++++++++-
+> >  fs/nfsd/nfs4xdr.c      | 266 ++++++++++++++++++-
+> >  fs/nfsd/nfsctl.c       |   2 +
+> >  fs/nfsd/nfsd.h         |   2 +
+> >  fs/nfsd/nfsproc.c      |   1 +
+> >  fs/nfsd/state.h        |  32 ++-
+> >  fs/nfsd/xdr4.h         |  53 +++-
+> >  fs/nfsd/xdr4cb.h       |  10 +
+> >  include/linux/nfs4.h   |   1 +
+> >  13 files changed, 1273 insertions(+), 53 deletions(-)
+> >
+> > --
+> > 1.8.3.1
+> >
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
