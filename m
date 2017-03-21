@@ -1,72 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42060 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757738AbdCUQaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Mar 2017 12:30:13 -0400
-Date: Tue, 21 Mar 2017 12:30:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170321163011.GA16666@fieldses.org>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
- <20161222084549.GA8833@infradead.org>
- <1482417724.3924.39.camel@redhat.com>
- <20170320214327.GA5098@fieldses.org>
- <20170321134500.GA1318@infradead.org>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33114 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932557AbdCUQna (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Mar 2017 12:43:30 -0400
+Received: by mail-it0-f65.google.com with SMTP id 76so2167663itj.0
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Mar 2017 09:43:29 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170321134500.GA1318@infradead.org>
+In-Reply-To: <87d1dbcyxo.fsf@notabene.neil.brown.name>
+References: <87y46monel.fsf@notabene.neil.brown.name> <87bmyx3q3u.fsf@notabene.neil.brown.name>
+ <C37BA8D0-2EAF-41D7-9086-D8729D4BAD48@primarydata.com> <8737k2354z.fsf@notabene.neil.brown.name>
+ <87zijsu4ko.fsf@notabene.neil.brown.name> <CAN-5tyFPVQo26XZ=g0uRuhkJ+x95S8frSyos6J_56HP4U3Ygrg@mail.gmail.com>
+ <87d1dbcyxo.fsf@notabene.neil.brown.name>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 21 Mar 2017 12:43:22 -0400
+Message-ID: <CAN-5tyE+C=Q+qFbzrg3avdN6h1qmJZDL33hTBxeaYU4aEx3Y=A@mail.gmail.com>
+Subject: Re: [PATCH resend] NFS: Don't disconnect open-owner on NFS4ERR_BAD_SEQID
+To: NeilBrown <neilb@suse.com>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        Schumaker Anna <anna.schumaker@netapp.com>,
+        List Linux NFS Mailing <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 21, 2017 at 06:45:00AM -0700, Christoph Hellwig wrote:
-> On Mon, Mar 20, 2017 at 05:43:27PM -0400, J. Bruce Fields wrote:
-> > To me, the interesting question is whether this allows us to turn on
-> > i_version updates by default on xfs and ext4.
-> 
-> XFS v5 file systems have it on by default.
+On Mon, Mar 20, 2017 at 7:26 PM, NeilBrown <neilb@suse.com> wrote:
+> On Mon, Mar 20 2017, Olga Kornievskaia wrote:
+>
+>> Since open_owner is no longer removed then the resources are not
+>> freed. They will not be freed until unmount  (or reboot recovery).
+>
+> I don't follow your reasoning.
+> When the last uses for a state owner is dropped by
+> nfs4_put_state_owner() (e.g. when the last open file using it is
+> closed), nfs4_put_state_owner() will add the state to
+> server->state_owners_lru.
+>
+> nfs4_gc_state_owners() is called periodically (every time any file is
+> opened I think) and it will call nfs4_remove_state_owner_locked()
+> on any state which is sufficiently old enough (hasn't been used in
+> 'lease-time'), and will then call nfs4_free_state_owner().
+> These two will release all resources.
+>
+> Does that explanation fit with your understanding?
 
-Great, thanks.
+Thanks for the explanation. I was thinking about the rb-tree nodes.
+The new open finds the same rb-tree node. I incorrectly thought that
+it'd be generating a new node each time for the new open owner.
 
-> Although we'll still need to agree on the exact semantics of i_version
-> before it's going to be useful.
+Thanks.
 
-Once it's figured out maybe we should write it up for a manpage that
-could be used if statx starts exposing it to userspace.
-
-A first attempt:
-
-- It's a u64.
-
-- It works for regular files and directories.  (What about symlinks or
-  other special types?)
-
-- It changes between two checks if and only if there were intervening
-  data or metadata changes.  The change will always be an increase, but
-  the amount of the increase is meaningless.
-	- NFS doesn't actually require that it increases, but I think it
-	  should.  I assume 64 bits means we don't need a discussion of
-	  wraparound.
-	- AFS wants an actual counter: if you get i_version X, then
-	  write twice, then get i_version X+2, you're allowed to assume
-	  your writes were the only modifications.  Let's ignore this
-	  for now.  In the future if someone explains how to count
-	  operations, then we can extend the interface to tell the
-	  caller it can get those extra semantics.
-
-- It's durable; the above comparison still works if there were reboots
-  between the two i_version checks.
-	- I don't know how realistic this is--we may need to figure out
-	  if there's a weaker guarantee that's still useful.  Do
-	  filesystems actually make ctime/mtime/i_version changes
-	  atomically with the changes that caused them?  What if a
-	  change attribute is exposed to an NFS client but doesn't make
-	  it to disk, and then that value is reused after reboot?
-
-Am I missing any issues?
-
---b.
+>
+> Thanks,
+> NeilBrown
+>
+>
+>>
+>> There are (buggy) servers out there that might be forcing the client
+>> to keep creating new open_owners. So if they are no longer released,
+>> can't the client get into trouble here?
+>>
+>> On Sun, Dec 18, 2016 at 7:48 PM, NeilBrown <neilb@suse.com> wrote:
+>>>
+>>> When an NFS4ERR_BAD_SEQID is received the open-owner is removed from
+>>> the ->state_owners rbtree so that it will no longer be used.
+>>>
+>>> If any stateids attached to this open-owner are still in use, and if a
+>>> request using one gets an NFS4ERR_BAD_STATEID reply, this can for bad.
+>>>
+>>> The state is marked as needing recovery and the nfs4_state_manager()
+>>> is scheduled to clean up.  nfs4_state_manager() finds states to be
+>>> recovered by walking the state_owners rbtree.  As the open-owner is
+>>> not in the rbtree, the bad state is not found so nfs4_state_manager()
+>>> completes having done nothing.  The request is then retried, with a
+>>> predicatable result (indefinite retries).
+>>>
+>>> If the stateid is for a delegation, this open_owner will be used
+>>> to open files when the delegation is returned.  For that to work,
+>>> a new open-owner needs to be presented to the server.
+>>>
+>>> This patch changes NFS4ERR_BAD_SEQID handling to leave the open-owner
+>>> in the rbtree but updates the 'create_time' so it looks like a new
+>>> open-owner.  With this the indefinite retries no longer happen.
+>>>
+>>> Signed-off-by: NeilBrown <neilb@suse.com>
+>>> ---
+>>>
+>>> Hi Trond,
+>>>  It appears this one got lost too.
+>>>  I've added a comment as I thought an explanation was needed, and
+>>>  renamed the function from "drop" to "reset".
+>>>
+>>> Thanks,
+>>> NeilBrown
+>>>
+>>>  fs/nfs/nfs4state.c | 29 +++++++++++++----------------
+>>>  1 file changed, 13 insertions(+), 16 deletions(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>>> index cf869802ff23..1d152f4470cd 100644
+>>> --- a/fs/nfs/nfs4state.c
+>>> +++ b/fs/nfs/nfs4state.c
+>>> @@ -494,21 +494,18 @@ nfs4_alloc_state_owner(struct nfs_server *server,
+>>>  }
+>>>
+>>>  static void
+>>> -nfs4_drop_state_owner(struct nfs4_state_owner *sp)
+>>> -{
+>>> -       struct rb_node *rb_node = &sp->so_server_node;
+>>> -
+>>> -       if (!RB_EMPTY_NODE(rb_node)) {
+>>> -               struct nfs_server *server = sp->so_server;
+>>> -               struct nfs_client *clp = server->nfs_client;
+>>> -
+>>> -               spin_lock(&clp->cl_lock);
+>>> -               if (!RB_EMPTY_NODE(rb_node)) {
+>>> -                       rb_erase(rb_node, &server->state_owners);
+>>> -                       RB_CLEAR_NODE(rb_node);
+>>> -               }
+>>> -               spin_unlock(&clp->cl_lock);
+>>> -       }
+>>> +nfs4_reset_state_owner(struct nfs4_state_owner *sp)
+>>> +{
+>>> +       /* This state_owner is no longer usable, but must
+>>> +        * remain in place so that state recovery can find it
+>>> +        * and the opens associated with it.
+>>> +        * It may also be used for new 'open' request to
+>>> +        * return a delegation to the server.
+>>> +        * So update the 'create_time' so that it looks like
+>>> +        * a new state_owner.  This will cause the server to
+>>> +        * request an OPEN_CONFIRM to start a new sequence.
+>>> +        */
+>>> +       sp->so_seqid.create_time = ktime_get();
+>>>  }
+>>>
+>>>  static void nfs4_free_state_owner(struct nfs4_state_owner *sp)
+>>> @@ -1113,7 +1110,7 @@ void nfs_increment_open_seqid(int status, struct nfs_seqid *seqid)
+>>>
+>>>         sp = container_of(seqid->sequence, struct nfs4_state_owner, so_seqid);
+>>>         if (status == -NFS4ERR_BAD_SEQID)
+>>> -               nfs4_drop_state_owner(sp);
+>>> +               nfs4_reset_state_owner(sp);
+>>>         if (!nfs4_has_session(sp->so_server->nfs_client))
+>>>                 nfs_increment_seqid(status, seqid);
+>>>  }
+>>> --
+>>> 2.11.0
+>>>
