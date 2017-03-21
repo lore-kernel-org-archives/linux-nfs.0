@@ -1,59 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41972 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:42060 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932757AbdCUPuC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Mar 2017 11:50:02 -0400
-Date: Tue, 21 Mar 2017 11:50:00 -0400
+        id S1757738AbdCUQaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 21 Mar 2017 12:30:13 -0400
+Date: Tue, 21 Mar 2017 12:30:11 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        ng-linux-team <ng-linux-team@netapp.com>
-Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
-Message-ID: <20170321155000.GB15402@fieldses.org>
-References: <20170302160211.30451-1-kolga@netapp.com>
- <20170302160211.30451-3-kolga@netapp.com>
- <20170302160714.GA4760@lst.de>
- <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
- <20170315180913.GB18135@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Message-ID: <20170321163011.GA16666@fieldses.org>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+ <20161222084549.GA8833@infradead.org>
+ <1482417724.3924.39.camel@redhat.com>
+ <20170320214327.GA5098@fieldses.org>
+ <20170321134500.GA1318@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170315180913.GB18135@fieldses.org>
+In-Reply-To: <20170321134500.GA1318@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 15, 2017 at 02:09:13PM -0400, J. Bruce Fields wrote:
-> On Thu, Mar 02, 2017 at 11:38:03AM -0500, Olga Kornievskaia wrote:
-> > > On Mar 2, 2017, at 11:07 AM, Christoph Hellwig <hch@lst.de> wrote:
-> > > NAK, we really should not do operations between different
-> > > superblocks.
-> > 
-> > Can you provide some reasoning as to why? What would it break? The
-> > reasoning for including one is to allow for a file system to achieve
-> > better performance which seems like a feature that would be of great
-> > benefit. --
+On Tue, Mar 21, 2017 at 06:45:00AM -0700, Christoph Hellwig wrote:
+> On Mon, Mar 20, 2017 at 05:43:27PM -0400, J. Bruce Fields wrote:
+> > To me, the interesting question is whether this allows us to turn on
+> > i_version updates by default on xfs and ext4.
 > 
-> Yes, this has come up a few times.  What's going on?:
-> 
-> 	- There was an explanation, and I missed it.
-> 	- The explanation is complicated and Christoph hasn't had time
-> 	  to write it up.
-> 	- Christoph has a strong suspicion there are issues without
-> 	  being sure exactly where they are.
-> 	- Something else?
+> XFS v5 file systems have it on by default.
 
-As far as I can tell from talking at LSF:
+Great, thanks.
 
-	- file system operations crossing superblocks is unusual.  No
-	  specific known issue.  Also not sure I understand why splice
-	  isn't precedent.
-	- implementation (with server acting as a client, long-running
-	  process, etc.) will be complicated and ugly.  Sure, I guess
-	  we'll see how complicated and weigh that against any
-	  advantages.  (Though I'm curious about case e.g. of btrfs
-	  clone--can't it easily clone across filesystem boundaries in
-	  some cases when they share storage?)
+> Although we'll still need to agree on the exact semantics of i_version
+> before it's going to be useful.
 
-Anyway.  I'll read the patches.  Probably not this week.
+Once it's figured out maybe we should write it up for a manpage that
+could be used if statx starts exposing it to userspace.
+
+A first attempt:
+
+- It's a u64.
+
+- It works for regular files and directories.  (What about symlinks or
+  other special types?)
+
+- It changes between two checks if and only if there were intervening
+  data or metadata changes.  The change will always be an increase, but
+  the amount of the increase is meaningless.
+	- NFS doesn't actually require that it increases, but I think it
+	  should.  I assume 64 bits means we don't need a discussion of
+	  wraparound.
+	- AFS wants an actual counter: if you get i_version X, then
+	  write twice, then get i_version X+2, you're allowed to assume
+	  your writes were the only modifications.  Let's ignore this
+	  for now.  In the future if someone explains how to count
+	  operations, then we can extend the interface to tell the
+	  caller it can get those extra semantics.
+
+- It's durable; the above comparison still works if there were reboots
+  between the two i_version checks.
+	- I don't know how realistic this is--we may need to figure out
+	  if there's a weaker guarantee that's still useful.  Do
+	  filesystems actually make ctime/mtime/i_version changes
+	  atomically with the changes that caused them?  What if a
+	  change attribute is exposed to an NFS client but doesn't make
+	  it to disk, and then that value is reused after reboot?
+
+Am I missing any issues?
 
 --b.
