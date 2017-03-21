@@ -1,51 +1,22 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42174 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932957AbdCURva (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Mar 2017 13:51:30 -0400
-Date: Tue, 21 Mar 2017 13:51:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170321175129.GC17872@fieldses.org>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
- <20161222084549.GA8833@infradead.org>
- <1482417724.3924.39.camel@redhat.com>
- <20170320214327.GA5098@fieldses.org>
- <20170321134500.GA1318@infradead.org>
- <20170321163011.GA16666@fieldses.org>
- <1490117004.2542.1.camel@redhat.com>
- <20170321173704.GA17872@fieldses.org>
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:32857 "EHLO
+        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932905AbdCURtr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Mar 2017 13:49:47 -0400
+Subject: Re: [PATCH v1 01/14] svcrdma: Move send_wr to svc_rdma_op_ctxt
+To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+References: <20170316154132.4482.56769.stgit@klimt.1015granger.net>
+ <20170316155234.4482.94225.stgit@klimt.1015granger.net>
+From: Sagi Grimberg <sagi@grimberg.me>
+Message-ID: <2210ecc7-ede5-99a0-4ab3-bcf47ac84479@grimberg.me>
+Date: Tue, 21 Mar 2017 19:49:43 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170321173704.GA17872@fieldses.org>
+In-Reply-To: <20170316155234.4482.94225.stgit@klimt.1015granger.net>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 21, 2017 at 01:37:04PM -0400, J. Bruce Fields wrote:
-> On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
-> > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
-> > > 	- NFS doesn't actually require that it increases, but I think it
-> > > 	  should.  I assume 64 bits means we don't need a discussion of
-> > > 	  wraparound.
-> > 
-> > I thought NFS spec required that you be able to recognize old change
-> > attributes so that they can be discarded. I could be wrong here though.
-> > I'd have to go back and look through the spec to be sure.
-> 
-> https://tools.ietf.org/html/rfc7862#section-10
+Looks good,
 
-So, I'm suggesting we implement this one:
-
-	NFS4_CHANGE_TYPE_IS_MONOTONIC_INCR:  The change attribute value
-	  MUST monotonically increase for every atomic change to the file
-	  attributes, data, or directory contents.
-
-It may be a slight lie--after your patches we wouldn't actually increase
-"for every atomic change".  I think that's OK.
-
---b.
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
