@@ -1,88 +1,221 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f174.google.com ([209.85.220.174]:36337 "EHLO
-        mail-qk0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1759530AbdCVTyG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Mar 2017 15:54:06 -0400
-Received: by mail-qk0-f174.google.com with SMTP id p22so24882164qka.3
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Mar 2017 12:53:45 -0700 (PDT)
-Message-ID: <1490212422.3921.1.camel@redhat.com>
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
- optimization
-From: Jeff Layton <jlayton@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Date: Wed, 22 Mar 2017 15:53:42 -0400
-In-Reply-To: <20170321214518.GB17542@dastard>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-         <20161222084549.GA8833@infradead.org> <1482417724.3924.39.camel@redhat.com>
-         <20170320214327.GA5098@fieldses.org> <20170321134500.GA1318@infradead.org>
-         <20170321163011.GA16666@fieldses.org> <1490117004.2542.1.camel@redhat.com>
-         <20170321214518.GB17542@dastard>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from smtp-o-1.desy.de ([131.169.56.154]:47386 "EHLO smtp-o-1.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753746AbdCVU1f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 22 Mar 2017 16:27:35 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 98DD3280A1B
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Mar 2017 21:27:32 +0100 (CET)
+Date: Wed, 22 Mar 2017 21:27:29 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <610161258.3903128.1490214449530.JavaMail.zimbra@desy.de>
+In-Reply-To: <CAN-5tyFO1SH4NDh-ResCZUK5xo0NSQgqo3-dHASiy+5bcqLW4g@mail.gmail.com>
+References: <45574919.3034342.1490025160438.JavaMail.zimbra@desy.de> <CAN-5tyHVmfwvEk+N+i5nFa=E7OyWW=k3eRc82Ed0Ttx=rNxdPw@mail.gmail.com> <362211751.3088036.1490043081358.JavaMail.zimbra@desy.de> <1657271697.3093215.1490044172396.JavaMail.zimbra@desy.de> <CAN-5tyFO1SH4NDh-ResCZUK5xo0NSQgqo3-dHASiy+5bcqLW4g@mail.gmail.com>
+Subject: Re: pNFS: invalid IP:port selection when talks to DS
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-03-22 at 08:45 +1100, Dave Chinner wrote:
-> On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
-> > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
-> > > - It's durable; the above comparison still works if there were reboots
-> > >   between the two i_version checks.
-> > > 	- I don't know how realistic this is--we may need to figure out
-> > > 	  if there's a weaker guarantee that's still useful.  Do
-> > > 	  filesystems actually make ctime/mtime/i_version changes
-> > > 	  atomically with the changes that caused them?  What if a
-> > > 	  change attribute is exposed to an NFS client but doesn't make
-> > > 	  it to disk, and then that value is reused after reboot?
-> > > 
-> > 
-> > Yeah, there could be atomicity there. If we bump i_version, we'll mark
-> > the inode dirty and I think that will end up with the new i_version at
-> > least being journalled before __mark_inode_dirty returns.
-> 
-> The change may be journalled, but it isn't guaranteed stable until
-> fsync is run on the inode.
-> 
-> NFS server operations commit the metadata changed by a modification
-> through ->commit_metadata or sync_inode_metadata() before the
-> response is sent back to the client, hence guaranteeing that
-> i_version changes through the NFS server are stable and durable.
-> 
-> This is not the case for normal operations done through the POSIX
-> API - the journalling is asynchronous and the only durability
-> guarantees are provided by fsync()....
-> 
 
-Ahh ok, I missed that...thanks.
+Hi Olga,
 
-I think we'll have a hard time making this fully atomic. We may end up
-having to settle for something less (and doing our best to warn users
-of that possibility).
+----- Original Message -----
+> From: "Olga Kornievskaia" <aglo@umich.edu>
+> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dickson"=
+ <steved@redhat.com>
+> Sent: Wednesday, March 22, 2017 5:04:21 PM
+> Subject: Re: pNFS: invalid IP:port selection when talks to DS
 
-One idea might be to tie the behavior to AT_FORCE/DONT_SYNC. In the
-don't sync case, allow the kernel to hand out the i_version without
-syncing it to disk. In the FORCE_SYNC case, do an fsync internally
-before returning.
+> Hi Tigran,
+>=20
+> I still don't have the answer to your question but I'm just puzzled
+> why it "works" with 4.9 (session trunking). New code would check the
+> server owner and if they are the same, then it would add that to the
+> list of addresses to trunk. I'd assume you'd be seeing the same
+> behavior with the new code. Thus, I'm puzzled. That aside, if you
+> don't want the new code to trunk between your DSs on the same server,
+> they should return different owner.
 
-> > That said, I suppose it is possible for us to bump the counter, hand
-> > that new counter value out to a NFS client and then the box crashes
-> > before it makes it to the journal.
-> 
-> Yup, this has aways been a problem when you mix posix applications
-> running on the NFS server modifying the same files as the NFS
-> clients are accessing and requiring synchronisation.
-> 
-> > Not sure how big a problem that really is.
-> 
-> This coherency problem has always existed on the server side...
-> 
+I have no idea why 4.9 works differently. May be this no enough 'load'
+to trigger trunking. Anyway, I have updated our code to generate different
+server owners. We still need to test it, before all 600 DSes get updated.
 
-Yes. I don't think this patchset makes anything worse in this regard.
-We will need well-defined semantics here before i_version can be
-exposed to userland via statx however.
--- 
-Jeff Layton <jlayton@redhat.com>
+>=20
+> I'm assuming device ids are different for the DSs on different ports?
+
+Yes, each DS gets a unique id.
+
+Thanks,
+   Tigran.
+
+>=20
+> On Mon, Mar 20, 2017 at 5:09 PM, Mkrtchyan, Tigran
+> <tigran.mkrtchyan@desy.de> wrote:
+>>
+>> Hi Olga,
+>>
+>> you did not have the answer, however you gave me an important hint!
+>> I believe, all our DSes on a single host generate the same server
+>> owner during exchange-id. I guess, this can be the reason, why
+>> client decides to talk to an other DS.
+>>
+>> Tigran.
+>>
+>> ----- Original Message -----
+>>> From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>>> To: "Olga Kornievskaia" <aglo@umich.edu>
+>>> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dickso=
+n"
+>>> <steved@redhat.com>
+>>> Sent: Monday, March 20, 2017 9:51:21 PM
+>>> Subject: Re: pNFS: invalid IP:port selection when talks to DS
+>>
+>>> Hi Olga,
+>>>
+>>> ----- Original Message -----
+>>>> From: "Olga Kornievskaia" <aglo@umich.edu>
+>>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+>>>> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dicks=
+on"
+>>>> <steved@redhat.com>
+>>>> Sent: Monday, March 20, 2017 9:14:34 PM
+>>>> Subject: Re: pNFS: invalid IP:port selection when talks to DS
+>>>
+>>>> Hi Tigran,
+>>>>
+>>>> While I don't have an answer to your question, I'd like to point out
+>>>> that in 4.9 is when Andy's session trunking patches when in.
+>>>>
+>>>> I'm curious this client that's now talking to the DS at port 24006
+>>>> instead of 24005, did it before also earlier correctly (legally)
+>>>> talked to DS that was on 24006?
+>>>
+>>> Yes, earlier during testing it had legal access to DS on port 24006.
+>>>
+>>> Tigran.
+>>>
+>>>>
+>>>> On Mon, Mar 20, 2017 at 11:52 AM, Mkrtchyan, Tigran
+>>>> <tigran.mkrtchyan@desy.de> wrote:
+>>>>>
+>>>>>
+>>>>> Dear (p)NFS-ors,
+>>>>>
+>>>>> we observe VERY unpleasant situation with pNFS in the production.
+>>>>> Our hosts run multiple DSes on different ports, usually 24001-24009.
+>>>>> With CentOS7 (3.10.0-514.6.2.el7.x86_64) we see that client takes
+>>>>> a wrong port number when talks to data server:
+>>>>>
+>>>>> If client uses different DSes on the same host, then at some point it=
+ starts
+>>>>> to send data to the wrong port number:
+>>>>>
+>>>>> Client <=3D> MDS:
+>>>>>
+>>>>>
+>>>>>     1 0.000000000 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
+OPEN DH:
+>>>>>     0x7cbc716b/MIL-68-onebatch-80C-30s-00057.tif.metadata
+>>>>>     2 0.001469799 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
+ (Call In 1) OPEN
+>>>>>     StateID: 0xec18
+>>>>>     3 0.001578128 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
+SETATTR FH: 0x6ccf3dfa
+>>>>>     4 0.002657187 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
+ (Call In 3) SETATTR
+>>>>>     5 0.003243819 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
+LAYOUTGET
+>>>>>     6 0.014603386 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
+ (Call In 5) LAYOUTGET
+>>>>>     7 0.014899121 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
+GETDEVINFO
+>>>>>     8 0.015014216 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
+ (Call In 7) GETDEVINFO
+>>>>>         Opcode: GETDEVINFO (47)
+>>>>>             Status: NFS4_OK (0)
+>>>>>             layout type: LAYOUT4_NFSV4_1_FILES (1)
+>>>>>             device index: 0
+>>>>>             r_netid: tcp
+>>>>>                 length: 3
+>>>>>                 contents: tcp
+>>>>>                 fill bytes: opaque data
+>>>>>             r_addr: 131.169.51.50.93.197
+>>>>>                 length: 20
+>>>>>                 contents: 131.169.51.50.93.197
+>>>>>             r_netid: tcp
+>>>>>                 length: 3
+>>>>>                 contents: tcp
+>>>>>                 fill bytes: opaque data
+>>>>>             r_addr: 131.169.51.50.93.197
+>>>>>                 length: 20
+>>>>>                 contents: 131.169.51.50.93.197
+>>>>>             notification bitmap: 6
+>>>>>             notification bitmap: 0
+>>>>>     [Main Opcode: GETDEVINFO (47)]
+>>>>>
+>>>>>     9 0.105442455 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
+TEST_STATEID
+>>>>>    10 0.105521354 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
+ (Call In 9)
+>>>>>    TEST_STATEID
+>>>>>
+>>>>>
+>>>>>
+>>>>> NOTICE, that 131.169.51.50.93.197 corresponds to port 24005.
+>>>>>
+>>>>> client <=3D> DS
+>>>>>
+>>>>> $ tshark -r ds-write.pcap  -n -z conv,tcp
+>>>>>     1   0.000000 131.169.251.53 =E2=86=92 131.169.51.50 NFS V4 Call W=
+RITE StateID: 0xff01
+>>>>>     Offset: 0 Len: 3968
+>>>>>     2   0.000090 131.169.51.50 =E2=86=92 131.169.251.53 NFS V4 Reply =
+(Call In 1) WRITE
+>>>>>     Status: NFS4ERR_BAD_STATEID
+>>>>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D
+>>>>> TCP Conversations
+>>>>> Filter:<No Filter>
+>>>>>                                                            |       <-=
+      | |       ->      | |     Total     |    Relative    |   Duration   |
+>>>>>                                                            | Frames  =
+Bytes | | Frames  Bytes | | Frames  Bytes |      Start     |
+>>>>>                                                            | |
+>>>>> 131.169.51.50:24006        <-> 131.169.251.53:847               1    =
+  4240
+>>>>> 1       168       2      4408     0.000000000         0.0001
+>>>>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D
+>>>>>
+>>>>> NOTICE, that it talks to DS on port 24006!
+>>>>>
+>>>>> Is there know fix which is missing in CentOS7? I can't reproduce it w=
+ith
+>>>>> 4.9 kernel (or it's harder to reproduce).
+>>>>>
+>>>>>
+>>>>> The packages are attached.
+>>>>>
+>>>>> Tigran.
+>>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" i=
+n
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
