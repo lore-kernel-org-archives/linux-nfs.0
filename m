@@ -1,62 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f48.google.com ([74.125.82.48]:37562 "EHLO
-        mail-wm0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S964875AbdCVQpN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Mar 2017 12:45:13 -0400
-Received: by mail-wm0-f48.google.com with SMTP id n11so43104499wma.0
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Mar 2017 09:45:12 -0700 (PDT)
-Subject: Re: [PATCH v5 2/5] generic/417: Add small copies to new file test
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>, fstests@vger.kernel.org
-References: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
- <20170317195233.4042-3-Anna.Schumaker@Netapp.com>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org
-From: Boaz Harrosh <boaz@plexistor.com>
-Message-ID: <dce891e7-b15b-2197-8473-c1012cc2d216@plexistor.com>
-Date: Wed, 22 Mar 2017 18:45:08 +0200
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35381 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1759259AbdCVRQV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Mar 2017 13:16:21 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170317195233.4042-3-Anna.Schumaker@Netapp.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20170321190339.GE17872@fieldses.org>
+References: <20170302160211.30451-1-kolga@netapp.com> <20170302160211.30451-3-kolga@netapp.com>
+ <20170302160714.GA4760@lst.de> <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
+ <20170315180913.GB18135@fieldses.org> <20170321155000.GB15402@fieldses.org>
+ <56CDE406-AE24-40E4-852C-1C47C5CCD37E@netapp.com> <20170321190339.GE17872@fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 22 Mar 2017 13:16:19 -0400
+Message-ID: <CAN-5tyEWoaakR5+RppcSLD5AvRyizURBbPv+NNAtoFDM25dKmg@mail.gmail.com>
+Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        Christoph Hellwig <hch@lst.de>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        ng-linux-team <ng-linux-team@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/17/2017 09:52 PM, Anna Schumaker wrote:
-> This test copies single bytes from a source file into various new files
-> just to make sure that we can handle very small copies.
-> 
+On Tue, Mar 21, 2017 at 3:03 PM, J. Bruce Fields <bfields@fieldses.org> wro=
+te:
+> On Tue, Mar 21, 2017 at 12:03:08PM -0400, Olga Kornievskaia wrote:
+>> Thank you for the update. I guess I don=E2=80=99t see how the proposed N=
+FS
+>> implementation is complicated and ugly (but I=E2=80=99m biased). I=E2=80=
+=99ll try to
+>> give you some performance number. My 1 data point (1gb) inter copy
+>> showed 30% improvement (how can that be ignored).
+>
+> That would be useful, thanks--if it comes with some details about the
+> setup.
 
-Sorry for not following closely, but how is this supposed to work, I know that
-for FSs that support it a copy_file_range is supported by clone_file_range.
-But usually there are fs-block alignment restrictions on clone_file_range.
+What I have available to me are two laptops that I run my VMs on. It
+is not a setup that is representative of a real setup. I think this
+setup can only provide percent improvement numbers.
 
-Does the VFS do the switch from fs->clone to generic-copy, or is the FS
-suppose to call the generic-copy?
+Andy was suggesting that perhaps the performance lab at Redhat would
+be able to do some testing of the patches for some real world
+performance?
 
-Thanks
-Boaz
-
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> ---
->  tests/generic/417     | 83 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/417.out | 16 ++++++++++
->  tests/generic/group   |  1 +
->  3 files changed, 100 insertions(+)
->  create mode 100755 tests/generic/417
->  create mode 100644 tests/generic/417.out
-> 
-> diff --git a/tests/generic/417 b/tests/generic/417
-> new file mode 100755
-> index 00000000..dde3f4d6
-> --- /dev/null
-> +++ b/tests/generic/417
-> @@ -0,0 +1,83 @@
-> +#!/bin/bash
-> +# FS QA Test No. 417
-> +#
-> +# Tests vfs_copy_file_range():
-> +#   - Copy a small file
-> +#   - Small copies from various points in the original file
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2016 Netapp, Inc. All rights reserved.
-<snip>
-
-
+> I'm not so curious about percent improvement, as how to predict the
+> performance on a given network.
+>
+> If server-to-server copy looks like it's normally able to use close to
+> the available bandwidth between the two servers, and if a traditional
+> read-write-copy loop is similarly able to use the available bandwidth,
+> then I can figure out whether server-to-server copy will help on my
+> setup.
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
