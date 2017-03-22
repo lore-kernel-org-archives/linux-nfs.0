@@ -1,60 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35381 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1759259AbdCVRQV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Mar 2017 13:16:21 -0400
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:35188 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751211AbdCVTHm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Mar 2017 15:07:42 -0400
+Subject: Re: [PATCH v1 03/14] svcrdma: Eliminate RPCRDMA_SQ_DEPTH_MULT
+To: Chuck Lever <chuck.lever@oracle.com>
+References: <20170316154132.4482.56769.stgit@klimt.1015granger.net>
+ <20170316155250.4482.49638.stgit@klimt.1015granger.net>
+ <46eb6195-a542-b35c-4902-a2bebb38feba@grimberg.me>
+ <391F0D90-2A46-4B2F-BCF0-B3BE7D48A3EF@oracle.com>
+ <ec82feb4-d6b9-7fb4-5b11-b8007e313845@grimberg.me>
+ <C9D8A91C-DE08-4A41-A07D-1F4C42DD9B97@oracle.com>
+Cc: List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Sagi Grimberg <sagi@grimberg.me>
+Message-ID: <68e3eda0-90f4-5bca-28be-b2cf494ed172@grimberg.me>
+Date: Wed, 22 Mar 2017 21:06:49 +0200
 MIME-Version: 1.0
-In-Reply-To: <20170321190339.GE17872@fieldses.org>
-References: <20170302160211.30451-1-kolga@netapp.com> <20170302160211.30451-3-kolga@netapp.com>
- <20170302160714.GA4760@lst.de> <0ADCDD29-61BA-46CA-902C-06A6F7D06450@netapp.com>
- <20170315180913.GB18135@fieldses.org> <20170321155000.GB15402@fieldses.org>
- <56CDE406-AE24-40E4-852C-1C47C5CCD37E@netapp.com> <20170321190339.GE17872@fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 22 Mar 2017 13:16:19 -0400
-Message-ID: <CAN-5tyEWoaakR5+RppcSLD5AvRyizURBbPv+NNAtoFDM25dKmg@mail.gmail.com>
-Subject: Re: [PATCH v1 2/3] VFS permit cross device vfs_copy_file_range
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        ng-linux-team <ng-linux-team@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <C9D8A91C-DE08-4A41-A07D-1F4C42DD9B97@oracle.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 21, 2017 at 3:03 PM, J. Bruce Fields <bfields@fieldses.org> wro=
-te:
-> On Tue, Mar 21, 2017 at 12:03:08PM -0400, Olga Kornievskaia wrote:
->> Thank you for the update. I guess I don=E2=80=99t see how the proposed N=
-FS
->> implementation is complicated and ugly (but I=E2=80=99m biased). I=E2=80=
-=99ll try to
->> give you some performance number. My 1 data point (1gb) inter copy
->> showed 30% improvement (how can that be ignored).
->
-> That would be useful, thanks--if it comes with some details about the
-> setup.
 
-What I have available to me are two laptops that I run my VMs on. It
-is not a setup that is representative of a real setup. I think this
-setup can only provide percent improvement numbers.
+> Roughly speaking, I think there needs to be an rdma_rw API that
+> assists the ULP with setting its CQ and SQ sizes, since rdma_rw
+> hides the registration mode (one of which, at least, consumes
+> more SQEs than the other).
 
-Andy was suggesting that perhaps the performance lab at Redhat would
-be able to do some testing of the patches for some real world
-performance?
+Hiding the registration mode was the largely the motivation for
+this... It buys us simplified implementation and inherently supports
+both IB and iWARP (which was annoying and only existing in svc but
+still suboptimal).
 
-> I'm not so curious about percent improvement, as how to predict the
-> performance on a given network.
->
-> If server-to-server copy looks like it's normally able to use close to
-> the available bandwidth between the two servers, and if a traditional
-> read-write-copy loop is similarly able to use the available bandwidth,
-> then I can figure out whether server-to-server copy will help on my
-> setup.
->
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I'd like to introduce one new function call that surfaces the
+> factor used to compute how many additional SQEs that rdma_rw will
+> need. The ULP will invoke it before allocating new Send CQs.
+
+I see your point... We should probably get a sense on how to
+size the completion queue. I think that this issue is solved with
+the CQ pool API that Christoph sent a while ago but was never
+pursued.
+
+The basic idea is that the core would create a pool of long CQs
+and then assigns queue-pairs depending on the sq+rq depth.
+If we were to pick it up would you consider using it?
+
+> I'll try to provide an RFC in the nfsd-rdma-rw-api topic branch.
+
+Cool, lets see what you had in mind...
