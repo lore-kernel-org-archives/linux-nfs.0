@@ -1,221 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:47386 "EHLO smtp-o-1.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753746AbdCVU1f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 22 Mar 2017 16:27:35 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 98DD3280A1B
-        for <linux-nfs@vger.kernel.org>; Wed, 22 Mar 2017 21:27:32 +0100 (CET)
-Date: Wed, 22 Mar 2017 21:27:29 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <610161258.3903128.1490214449530.JavaMail.zimbra@desy.de>
-In-Reply-To: <CAN-5tyFO1SH4NDh-ResCZUK5xo0NSQgqo3-dHASiy+5bcqLW4g@mail.gmail.com>
-References: <45574919.3034342.1490025160438.JavaMail.zimbra@desy.de> <CAN-5tyHVmfwvEk+N+i5nFa=E7OyWW=k3eRc82Ed0Ttx=rNxdPw@mail.gmail.com> <362211751.3088036.1490043081358.JavaMail.zimbra@desy.de> <1657271697.3093215.1490044172396.JavaMail.zimbra@desy.de> <CAN-5tyFO1SH4NDh-ResCZUK5xo0NSQgqo3-dHASiy+5bcqLW4g@mail.gmail.com>
-Subject: Re: pNFS: invalid IP:port selection when talks to DS
+Received: from szxga03-in.huawei.com ([45.249.212.189]:4453 "EHLO
+        dggrg03-dlp.huawei.com" rhost-flags-OK-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1751375AbdCWI40 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Mar 2017 04:56:26 -0400
+From: Jason Yan <yanaijie@huawei.com>
+To: <bfields@fieldses.org>, <jlayton@poochiereds.net>,
+        <linux-nfs@vger.kernel.org>
+CC: <miaoxie@huawei.com>, <zhaohongjiang@huawei.com>,
+        Jason Yan <yanaijie@huawei.com>
+Subject: [PATCH] nfsd: make strdup_if_nonnull static
+Date: Thu, 23 Mar 2017 16:57:36 +0800
+Message-ID: <1490259456-15858-1-git-send-email-yanaijie@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Fixes the following sparse warning:
 
-Hi Olga,
+fs/nfsd/nfs4state.c:1915:5: warning: symbol 'strdup_if_nonnull' was not
+declared. Should it be static?
 
------ Original Message -----
-> From: "Olga Kornievskaia" <aglo@umich.edu>
-> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dickson"=
- <steved@redhat.com>
-> Sent: Wednesday, March 22, 2017 5:04:21 PM
-> Subject: Re: pNFS: invalid IP:port selection when talks to DS
+Signed-off-by: Jason Yan <yanaijie@huawei.com>
+---
+ fs/nfsd/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-> Hi Tigran,
->=20
-> I still don't have the answer to your question but I'm just puzzled
-> why it "works" with 4.9 (session trunking). New code would check the
-> server owner and if they are the same, then it would add that to the
-> list of addresses to trunk. I'd assume you'd be seeing the same
-> behavior with the new code. Thus, I'm puzzled. That aside, if you
-> don't want the new code to trunk between your DSs on the same server,
-> they should return different owner.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e9ef50a..59a9e30 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1912,7 +1912,7 @@ static void copy_clid(struct nfs4_client *target, struct nfs4_client *source)
+ 	target->cl_clientid.cl_id = source->cl_clientid.cl_id; 
+ }
+ 
+-int strdup_if_nonnull(char **target, char *source)
++static int strdup_if_nonnull(char **target, char *source)
+ {
+ 	if (source) {
+ 		*target = kstrdup(source, GFP_KERNEL);
+-- 
+2.5.0
 
-I have no idea why 4.9 works differently. May be this no enough 'load'
-to trigger trunking. Anyway, I have updated our code to generate different
-server owners. We still need to test it, before all 600 DSes get updated.
-
->=20
-> I'm assuming device ids are different for the DSs on different ports?
-
-Yes, each DS gets a unique id.
-
-Thanks,
-   Tigran.
-
->=20
-> On Mon, Mar 20, 2017 at 5:09 PM, Mkrtchyan, Tigran
-> <tigran.mkrtchyan@desy.de> wrote:
->>
->> Hi Olga,
->>
->> you did not have the answer, however you gave me an important hint!
->> I believe, all our DSes on a single host generate the same server
->> owner during exchange-id. I guess, this can be the reason, why
->> client decides to talk to an other DS.
->>
->> Tigran.
->>
->> ----- Original Message -----
->>> From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>> To: "Olga Kornievskaia" <aglo@umich.edu>
->>> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dickso=
-n"
->>> <steved@redhat.com>
->>> Sent: Monday, March 20, 2017 9:51:21 PM
->>> Subject: Re: pNFS: invalid IP:port selection when talks to DS
->>
->>> Hi Olga,
->>>
->>> ----- Original Message -----
->>>> From: "Olga Kornievskaia" <aglo@umich.edu>
->>>> To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
->>>> Cc: "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>, "Steve Dicks=
-on"
->>>> <steved@redhat.com>
->>>> Sent: Monday, March 20, 2017 9:14:34 PM
->>>> Subject: Re: pNFS: invalid IP:port selection when talks to DS
->>>
->>>> Hi Tigran,
->>>>
->>>> While I don't have an answer to your question, I'd like to point out
->>>> that in 4.9 is when Andy's session trunking patches when in.
->>>>
->>>> I'm curious this client that's now talking to the DS at port 24006
->>>> instead of 24005, did it before also earlier correctly (legally)
->>>> talked to DS that was on 24006?
->>>
->>> Yes, earlier during testing it had legal access to DS on port 24006.
->>>
->>> Tigran.
->>>
->>>>
->>>> On Mon, Mar 20, 2017 at 11:52 AM, Mkrtchyan, Tigran
->>>> <tigran.mkrtchyan@desy.de> wrote:
->>>>>
->>>>>
->>>>> Dear (p)NFS-ors,
->>>>>
->>>>> we observe VERY unpleasant situation with pNFS in the production.
->>>>> Our hosts run multiple DSes on different ports, usually 24001-24009.
->>>>> With CentOS7 (3.10.0-514.6.2.el7.x86_64) we see that client takes
->>>>> a wrong port number when talks to data server:
->>>>>
->>>>> If client uses different DSes on the same host, then at some point it=
- starts
->>>>> to send data to the wrong port number:
->>>>>
->>>>> Client <=3D> MDS:
->>>>>
->>>>>
->>>>>     1 0.000000000 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
-OPEN DH:
->>>>>     0x7cbc716b/MIL-68-onebatch-80C-30s-00057.tif.metadata
->>>>>     2 0.001469799 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
- (Call In 1) OPEN
->>>>>     StateID: 0xec18
->>>>>     3 0.001578128 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
-SETATTR FH: 0x6ccf3dfa
->>>>>     4 0.002657187 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
- (Call In 3) SETATTR
->>>>>     5 0.003243819 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
-LAYOUTGET
->>>>>     6 0.014603386 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
- (Call In 5) LAYOUTGET
->>>>>     7 0.014899121 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
-GETDEVINFO
->>>>>     8 0.015014216 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
- (Call In 7) GETDEVINFO
->>>>>         Opcode: GETDEVINFO (47)
->>>>>             Status: NFS4_OK (0)
->>>>>             layout type: LAYOUT4_NFSV4_1_FILES (1)
->>>>>             device index: 0
->>>>>             r_netid: tcp
->>>>>                 length: 3
->>>>>                 contents: tcp
->>>>>                 fill bytes: opaque data
->>>>>             r_addr: 131.169.51.50.93.197
->>>>>                 length: 20
->>>>>                 contents: 131.169.51.50.93.197
->>>>>             r_netid: tcp
->>>>>                 length: 3
->>>>>                 contents: tcp
->>>>>                 fill bytes: opaque data
->>>>>             r_addr: 131.169.51.50.93.197
->>>>>                 length: 20
->>>>>                 contents: 131.169.51.50.93.197
->>>>>             notification bitmap: 6
->>>>>             notification bitmap: 0
->>>>>     [Main Opcode: GETDEVINFO (47)]
->>>>>
->>>>>     9 0.105442455 131.169.251.53 =E2=86=92 131.169.51.35 NFS V4 Call =
-TEST_STATEID
->>>>>    10 0.105521354 131.169.51.35 =E2=86=92 131.169.251.53 NFS V4 Reply=
- (Call In 9)
->>>>>    TEST_STATEID
->>>>>
->>>>>
->>>>>
->>>>> NOTICE, that 131.169.51.50.93.197 corresponds to port 24005.
->>>>>
->>>>> client <=3D> DS
->>>>>
->>>>> $ tshark -r ds-write.pcap  -n -z conv,tcp
->>>>>     1   0.000000 131.169.251.53 =E2=86=92 131.169.51.50 NFS V4 Call W=
-RITE StateID: 0xff01
->>>>>     Offset: 0 Len: 3968
->>>>>     2   0.000090 131.169.51.50 =E2=86=92 131.169.251.53 NFS V4 Reply =
-(Call In 1) WRITE
->>>>>     Status: NFS4ERR_BAD_STATEID
->>>>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
->>>>> TCP Conversations
->>>>> Filter:<No Filter>
->>>>>                                                            |       <-=
-      | |       ->      | |     Total     |    Relative    |   Duration   |
->>>>>                                                            | Frames  =
-Bytes | | Frames  Bytes | | Frames  Bytes |      Start     |
->>>>>                                                            | |
->>>>> 131.169.51.50:24006        <-> 131.169.251.53:847               1    =
-  4240
->>>>> 1       168       2      4408     0.000000000         0.0001
->>>>> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D
->>>>>
->>>>> NOTICE, that it talks to DS on port 24006!
->>>>>
->>>>> Is there know fix which is missing in CentOS7? I can't reproduce it w=
-ith
->>>>> 4.9 kernel (or it's harder to reproduce).
->>>>>
->>>>>
->>>>> The packages are attached.
->>>>>
->>>>> Tigran.
->>>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" i=
-n
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
