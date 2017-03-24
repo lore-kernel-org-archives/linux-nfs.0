@@ -1,63 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:47322 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934524AbdCXO7I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Mar 2017 10:59:08 -0400
-Date: Fri, 24 Mar 2017 10:59:07 -0400
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:41764 "EHLO mx1.molgen.mpg.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1757589AbdCXPWs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Mar 2017 11:22:48 -0400
+Subject: Re: open after unlink tries to open old file
 To: linux-nfs@vger.kernel.org
-Subject: notes on VAULT 2017 NFS BOF
-Message-ID: <20170324145907.GC2722@fieldses.org>
+References: <ae2f9a9e-65b0-9fe5-a148-4ec698df91d0@molgen.mpg.de>
+From: Donald Buczek <buczek@molgen.mpg.de>
+Message-ID: <e7675ce0-b4bb-ea75-ef71-a07ce0d835fb@molgen.mpg.de>
+Date: Fri, 24 Mar 2017 16:22:44 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <ae2f9a9e-65b0-9fe5-a148-4ec698df91d0@molgen.mpg.de>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson lead a quick NFS meeting Wednesday night at Boston during
-vault.  I thought it might be worth posting my notes:
+On 03/10/17 14:55, Donald Buczek wrote:
+> I see this code
+>
+>     #include <stdlib.h>
+>     #include <stdio.h>
+>     #include <sys/types.h>
+>     #include <sys/stat.h>
+>     #include <fcntl.h>
+>     #include <unistd.h>
+>
+>     #define FILENAME "test.dat"
+>
+>     int main() {
+>         int i;
+>         int fd;
+>         unlink(FILENAME);
+>         for  (i=0;i<1000;i++) {
+>             printf("%d\n",i);
+>             if ((fd=open(FILENAME,O_WRONLY+O_CREAT,0))==-1) {
+>                 perror("open");
+>                 exit(1);
+>             }
+>             if (close(fd)==-1) {
+>                 perror("close");
+>                 exit(1);
+>             }
+>             if (unlink(FILENAME)==-1) {
+>                 perror("unlink");
+>                 exit(1);
+>             }
+>         }
+>     }
+>
+> failing most of the time in NFS-mounted directories:
+>
+>     buczek@theinternet:~$ uname -a
+>     Linux theinternet.molgen.mpg.de 4.4.52.mx64.142 #1 SMP Fri Mar 3 
+> 21:25:00 CET 2017 x86_64 GNU/Linux
+>     buczek@theinternet:~$ nfs_test
+>
+>     0
+>     1
+>     2
+>     3
+>     4
+>     open: Permission denied
+>     buczek@theinternet:~$
+>
+> but I fail to find an answer to the question, whether this is supposed 
+> to work or not. Is this a bug or a caching feature?
+>
+> Thanks
+>   Donald
 
-Flex file server: it's just there for testing.  If someone wants to
-build on it, they can.  It has no practical use, and should be
-configured out of distro kernels to avoid confusing users.
+With some bisect work I discovered, that this was just a different 
+manifestation of Bug 109771 [1] reported by myself and fixed by Trond 
+[2] for Linux v4.5. Many of my clients are back on Linux v4.4 longterm 
+because of unrelated issues with other releases and I wrongly thought, 
+the fix was backported.
 
-NFSv4-only server: some users want to minimize open ports, so we should
-support this configuration.  But distros probably shouldn't be
-NFSv4-only by default.  (And: a show of hands at Steve & Chuck's talk
-the next day confirmed that people still depend on NFSv3.)
+Donald
 
-What about turning off UDP?  This looks more doable.  Note client still
-needs to listen for lockd UDP.  But we can keep that while turning off
-nfsd UDP.  (Kernel lockd is currently hard-coded to listen on both UDP
-and TCP regardless of server configuration.)
 
-Should the client by default try NFSv4.2 first?  Consensus seems to be
-yes.  When 4.2 fails, it tries 4.1, then 4.0, etc.  It works
-transparently.  Steved was worried that those retries might become a
-problem on clients with lots of NFS mounts.  Trond suggested recording
-the result of the version negotiation across mounts, so a client doing a
-lot of mounts to the same server would only need the retries on the
-first mount.
+[1] https://bugzilla.kernel.org/show_bug.cgi?id=109771
+[2] 
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=762674f
 
-The retries are driven by userspace which does a mount for a specific
-version and uses the return from the mount call to decide to negotiate
-down.  So a new TCP connection happens for each mount attempt.
+-- 
+Donald Buczek
+buczek@molgen.mpg.de
+Tel: +49 30 8413 1433
 
-Miklos introduced a proposed new mount api at LSF earlier in the week.
-It would allow some communication with the file system driver to set up
-parameters before the system call that creates the mountpoint.  If we
-moved the mount negotiation to that setup phase, that might make the
-negotiation phase more efficient while still leaving userspace in
-charge.  (And we prefer leaving userspace in charge to give it maximum
-control over negotiation policy.)
-
-Somebody asked about inotify implementation.  Currently inotify only
-reports changes made on the same client.  There is unimplemented
-protocol in RFC 5661 that would allow the client to get notifications of
-other changes from the server.  Trond says it would be difficult and
-risks flooding the network with notifications, though the protocol does
-have some provision for batching them.
-
-There were questions about NFS's uses of RDMA writes which I didn't
-follow, and my notes stopped there.
-
---b.
