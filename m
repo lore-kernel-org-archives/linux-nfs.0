@@ -1,16 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f66.google.com ([209.85.213.66]:32888 "EHLO
-        mail-vk0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751577AbdCXNUo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Mar 2017 09:20:44 -0400
+Received: from mail-vk0-f68.google.com ([209.85.213.68]:35723 "EHLO
+        mail-vk0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751477AbdCXNt1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Mar 2017 09:49:27 -0400
 MIME-Version: 1.0
-In-Reply-To: <1489752646-8749-5-git-send-email-elena.reshetova@intel.com>
-References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com> <1489752646-8749-5-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <1489752646-8749-6-git-send-email-elena.reshetova@intel.com>
+References: <1489752646-8749-1-git-send-email-elena.reshetova@intel.com> <1489752646-8749-6-git-send-email-elena.reshetova@intel.com>
 From: Ilya Dryomov <idryomov@gmail.com>
-Date: Fri, 24 Mar 2017 14:20:42 +0100
-Message-ID: <CAOi1vP97Cq5UhxryxsLe2MuNi9zJZFDaY3_CT76uU=_H_sJ-Nw@mail.gmail.com>
-Subject: Re: [PATCH 04/23] net, ceph: convert ceph_snap_context.nref from
- atomic_t to refcount_t
+Date: Fri, 24 Mar 2017 14:49:24 +0100
+Message-ID: <CAOi1vP8ajXGamJ_Et93sfAq4xr46sSuse8cP320j-aqnwrSqKg@mail.gmail.com>
+Subject: Re: [PATCH 05/23] net, ceph: convert ceph_osd.o_ref from atomic_t to refcount_t
 To: Elena Reshetova <elena.reshetova@intel.com>
 Cc: netdev <netdev@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
@@ -46,62 +45,79 @@ On Fri, Mar 17, 2017 at 1:10 PM, Elena Reshetova
 > Signed-off-by: Kees Cook <keescook@chromium.org>
 > Signed-off-by: David Windsor <dwindsor@gmail.com>
 > ---
->  include/linux/ceph/libceph.h | 3 ++-
->  net/ceph/snapshot.c          | 6 +++---
->  2 files changed, 5 insertions(+), 4 deletions(-)
+>  include/linux/ceph/osd_client.h |  3 ++-
+>  net/ceph/osd_client.c           | 16 ++++++++--------
+>  2 files changed, 10 insertions(+), 9 deletions(-)
 >
-> diff --git a/include/linux/ceph/libceph.h b/include/linux/ceph/libceph.h
-> index 1816c5e..26dc674 100644
-> --- a/include/linux/ceph/libceph.h
-> +++ b/include/linux/ceph/libceph.h
-> @@ -14,6 +14,7 @@
->  #include <linux/wait.h>
->  #include <linux/writeback.h>
->  #include <linux/slab.h>
+> diff --git a/include/linux/ceph/osd_client.h b/include/linux/ceph/osd_client.h
+> index 2ea0c28..5ce0cd6 100644
+> --- a/include/linux/ceph/osd_client.h
+> +++ b/include/linux/ceph/osd_client.h
+> @@ -5,6 +5,7 @@
+>  #include <linux/kref.h>
+>  #include <linux/mempool.h>
+>  #include <linux/rbtree.h>
 > +#include <linux/refcount.h>
 >
 >  #include <linux/ceph/types.h>
->  #include <linux/ceph/messenger.h>
-> @@ -159,7 +160,7 @@ struct ceph_client {
->   * dirtied.
+>  #include <linux/ceph/osdmap.h>
+> @@ -27,7 +28,7 @@ typedef void (*ceph_osdc_callback_t)(struct ceph_osd_request *);
+>
+>  /* a given osd we're communicating with */
+>  struct ceph_osd {
+> -       atomic_t o_ref;
+> +       refcount_t o_ref;
+>         struct ceph_osd_client *o_osdc;
+>         int o_osd;
+>         int o_incarnation;
+> diff --git a/net/ceph/osd_client.c b/net/ceph/osd_client.c
+> index b65bbf9..99a51f0 100644
+> --- a/net/ceph/osd_client.c
+> +++ b/net/ceph/osd_client.c
+> @@ -1005,7 +1005,7 @@ static bool osd_registered(struct ceph_osd *osd)
 >   */
->  struct ceph_snap_context {
-> -       atomic_t nref;
-> +       refcount_t nref;
->         u64 seq;
->         u32 num_snaps;
->         u64 snaps[];
-> diff --git a/net/ceph/snapshot.c b/net/ceph/snapshot.c
-> index 705414e..e14a5d0 100644
-> --- a/net/ceph/snapshot.c
-> +++ b/net/ceph/snapshot.c
-> @@ -49,7 +49,7 @@ struct ceph_snap_context *ceph_create_snap_context(u32 snap_count,
->         if (!snapc)
->                 return NULL;
->
-> -       atomic_set(&snapc->nref, 1);
-> +       refcount_set(&snapc->nref, 1);
->         snapc->num_snaps = snap_count;
->
->         return snapc;
-> @@ -59,7 +59,7 @@ EXPORT_SYMBOL(ceph_create_snap_context);
->  struct ceph_snap_context *ceph_get_snap_context(struct ceph_snap_context *sc)
+>  static void osd_init(struct ceph_osd *osd)
 >  {
->         if (sc)
-> -               atomic_inc(&sc->nref);
-> +               refcount_inc(&sc->nref);
->         return sc;
->  }
->  EXPORT_SYMBOL(ceph_get_snap_context);
-> @@ -68,7 +68,7 @@ void ceph_put_snap_context(struct ceph_snap_context *sc)
+> -       atomic_set(&osd->o_ref, 1);
+> +       refcount_set(&osd->o_ref, 1);
+>         RB_CLEAR_NODE(&osd->o_node);
+>         osd->o_requests = RB_ROOT;
+>         osd->o_linger_requests = RB_ROOT;
+> @@ -1050,9 +1050,9 @@ static struct ceph_osd *create_osd(struct ceph_osd_client *osdc, int onum)
+>
+>  static struct ceph_osd *get_osd(struct ceph_osd *osd)
 >  {
->         if (!sc)
->                 return;
-> -       if (atomic_dec_and_test(&sc->nref)) {
-> +       if (refcount_dec_and_test(&sc->nref)) {
->                 /*printk(" deleting snap_context %p\n", sc);*/
->                 kfree(sc);
+> -       if (atomic_inc_not_zero(&osd->o_ref)) {
+> -               dout("get_osd %p %d -> %d\n", osd, atomic_read(&osd->o_ref)-1,
+> -                    atomic_read(&osd->o_ref));
+> +       if (refcount_inc_not_zero(&osd->o_ref)) {
+> +               dout("get_osd %p %d -> %d\n", osd, refcount_read(&osd->o_ref)-1,
+> +                    refcount_read(&osd->o_ref));
+>                 return osd;
+>         } else {
+>                 dout("get_osd %p FAIL\n", osd);
+> @@ -1062,9 +1062,9 @@ static struct ceph_osd *get_osd(struct ceph_osd *osd)
+>
+>  static void put_osd(struct ceph_osd *osd)
+>  {
+> -       dout("put_osd %p %d -> %d\n", osd, atomic_read(&osd->o_ref),
+> -            atomic_read(&osd->o_ref) - 1);
+> -       if (atomic_dec_and_test(&osd->o_ref)) {
+> +       dout("put_osd %p %d -> %d\n", osd, refcount_read(&osd->o_ref),
+> +            refcount_read(&osd->o_ref) - 1);
+> +       if (refcount_dec_and_test(&osd->o_ref)) {
+>                 osd_cleanup(osd);
+>                 kfree(osd);
 >         }
+> @@ -4092,7 +4092,7 @@ void ceph_osdc_stop(struct ceph_osd_client *osdc)
+>                 close_osd(osd);
+>         }
+>         up_write(&osdc->lock);
+> -       WARN_ON(atomic_read(&osdc->homeless_osd.o_ref) != 1);
+> +       WARN_ON(refcount_read(&osdc->homeless_osd.o_ref) != 1);
+>         osd_cleanup(&osdc->homeless_osd);
+>
+>         WARN_ON(!list_empty(&osdc->osd_lru));
 
 Applied.
 
