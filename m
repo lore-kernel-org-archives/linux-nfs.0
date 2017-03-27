@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36400 "EHLO
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33044 "EHLO
         mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751124AbdC0NuH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Mar 2017 09:50:07 -0400
-Subject: [PATCH v2 13/13] svcrdma: Clean out old XDR encoders
+        with ESMTP id S1751124AbdC0N5S (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Mar 2017 09:57:18 -0400
+Subject: [PATCH v2 03/13] svcrdma: Eliminate RPCRDMA_SQ_DEPTH_MULT
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 27 Mar 2017 09:49:40 -0400
-Message-ID: <20170327134940.5585.19495.stgit@klimt.1015granger.net>
+Date: Mon, 27 Mar 2017 09:48:19 -0400
+Message-ID: <20170327134819.5585.90071.stgit@klimt.1015granger.net>
 In-Reply-To: <20170327132329.5585.98465.stgit@klimt.1015granger.net>
 References: <20170327132329.5585.98465.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,106 +15,59 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: These have been replaced and are no longer used.
+The Send Queue depth is temporarily reduced to 1 SQE per credit. The
+new rdma_rw API does an internal computation, during QP creation, to
+increase the depth of the Send Queue to handle RDMA Read and Write
+operations.
+
+This change has to come before the NFSD code paths are updated to
+use the rdma_rw API. Without this patch, rdma_rw_init_qp() increases
+the size of the SQ too much, resulting in memory allocation failures
+during QP creation.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- include/linux/sunrpc/svc_rdma.h        |    4 --
- net/sunrpc/xprtrdma/svc_rdma_marshal.c |   70 --------------------------------
- 2 files changed, 74 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    1 -
+ net/sunrpc/xprtrdma/svc_rdma.c           |    2 --
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    2 +-
+ 3 files changed, 1 insertion(+), 4 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 326703e..3ff4209 100644
+index ac05495..f066349 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -187,10 +187,6 @@ extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
+@@ -182,7 +182,6 @@ struct svcxprt_rdma {
+ /* The default ORD value is based on two outstanding full-size writes with a
+  * page size of 4k, or 32k * 2 ops / 4k = 16 outstanding RDMA_READ.  */
+ #define RPCRDMA_ORD             (64/4)
+-#define RPCRDMA_SQ_DEPTH_MULT   8
+ #define RPCRDMA_MAX_REQUESTS    32
+ #define RPCRDMA_MAX_REQ_SIZE    4096
  
- /* svc_rdma_marshal.c */
- extern int svc_rdma_xdr_decode_req(struct xdr_buf *);
--extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
--extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
--					    __be32, __be64, u32);
--extern unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma.c b/net/sunrpc/xprtrdma/svc_rdma.c
+index c846ca9..9124441 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma.c
++++ b/net/sunrpc/xprtrdma/svc_rdma.c
+@@ -247,8 +247,6 @@ int svc_rdma_init(void)
+ 	dprintk("SVCRDMA Module Init, register RPC RDMA transport\n");
+ 	dprintk("\tsvcrdma_ord      : %d\n", svcrdma_ord);
+ 	dprintk("\tmax_requests     : %u\n", svcrdma_max_requests);
+-	dprintk("\tsq_depth         : %u\n",
+-		svcrdma_max_requests * RPCRDMA_SQ_DEPTH_MULT);
+ 	dprintk("\tmax_bc_requests  : %u\n", svcrdma_max_bc_requests);
+ 	dprintk("\tmax_inline       : %d\n", svcrdma_max_req_size);
  
- /* svc_rdma_recvfrom.c */
- extern int svc_rdma_recvfrom(struct svc_rqst *);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-index ae58a89..bdcf7d8 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-@@ -166,73 +166,3 @@ int svc_rdma_xdr_decode_req(struct xdr_buf *rq_arg)
- 	dprintk("svcrdma: failed to parse transport header\n");
- 	return -EINVAL;
- }
--
--/**
-- * svc_rdma_xdr_get_reply_hdr_length - Get length of Reply transport header
-- * @rdma_resp: buffer containing Reply transport header
-- *
-- * Returns length of transport header, in bytes.
-- */
--unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp)
--{
--	unsigned int nsegs;
--	__be32 *p;
--
--	p = rdma_resp;
--
--	/* RPC-over-RDMA V1 replies never have a Read list. */
--	p += rpcrdma_fixed_maxsz + 1;
--
--	/* Skip Write list. */
--	while (*p++ != xdr_zero) {
--		nsegs = be32_to_cpup(p++);
--		p += nsegs * rpcrdma_segment_maxsz;
--	}
--
--	/* Skip Reply chunk. */
--	if (*p++ != xdr_zero) {
--		nsegs = be32_to_cpup(p++);
--		p += nsegs * rpcrdma_segment_maxsz;
--	}
--
--	return (unsigned long)p - (unsigned long)rdma_resp;
--}
--
--void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
--{
--	struct rpcrdma_write_array *ary;
--
--	/* no read-list */
--	rmsgp->rm_body.rm_chunks[0] = xdr_zero;
--
--	/* write-array discrim */
--	ary = (struct rpcrdma_write_array *)
--		&rmsgp->rm_body.rm_chunks[1];
--	ary->wc_discrim = xdr_one;
--	ary->wc_nchunks = cpu_to_be32(chunks);
--
--	/* write-list terminator */
--	ary->wc_array[chunks].wc_target.rs_handle = xdr_zero;
--
--	/* reply-array discriminator */
--	ary->wc_array[chunks].wc_target.rs_length = xdr_zero;
--}
--
--void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
--				 int chunks)
--{
--	ary->wc_discrim = xdr_one;
--	ary->wc_nchunks = cpu_to_be32(chunks);
--}
--
--void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary,
--				     int chunk_no,
--				     __be32 rs_handle,
--				     __be64 rs_offset,
--				     u32 write_len)
--{
--	struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
--	seg->rs_handle = rs_handle;
--	seg->rs_offset = rs_offset;
--	seg->rs_length = cpu_to_be32(write_len);
--}
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index c13a5c3..b84cd53 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -1013,7 +1013,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 					    svcrdma_max_bc_requests);
+ 	newxprt->sc_rq_depth = newxprt->sc_max_requests +
+ 			       newxprt->sc_max_bc_requests;
+-	newxprt->sc_sq_depth = RPCRDMA_SQ_DEPTH_MULT * newxprt->sc_rq_depth;
++	newxprt->sc_sq_depth = newxprt->sc_rq_depth;
+ 	atomic_set(&newxprt->sc_sq_avail, newxprt->sc_sq_depth);
+ 
+ 	if (!svc_rdma_prealloc_ctxts(newxprt))
 
