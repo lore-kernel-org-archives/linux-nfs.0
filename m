@@ -1,100 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33818 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752482AbdC0NsM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Mar 2017 09:48:12 -0400
-Subject: [PATCH v2 00/13] Server-side NFS/RDMA changes proposed for v4.12
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35735 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752813AbdC0NsX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Mar 2017 09:48:23 -0400
+Subject: [PATCH v2 02/13] svcrdma: Add svc_rdma_map_reply_hdr()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 27 Mar 2017 09:47:54 -0400
-Message-ID: <20170327132329.5585.98465.stgit@klimt.1015granger.net>
+Date: Mon, 27 Mar 2017 09:48:11 -0400
+Message-ID: <20170327134811.5585.69059.stgit@klimt.1015granger.net>
+In-Reply-To: <20170327132329.5585.98465.stgit@klimt.1015granger.net>
+References: <20170327132329.5585.98465.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series overhauls the "reply send" side of the RPC-over-RDMA
-transport to use the new rdma_rw API. No significant performance
-changes were noticed with this overhaul. Benefits include:
+Introduce a helper to DMA-map a reply's transport header before
+sending it. This will in part replace the map vector cache.
 
-<> Better code modularity, less code duplication with other ULPs
-
-<> Ability for svcrdma to use any registration mode for RDMA Writes
-
-<> Correctly handle RPCs that have both a Write and a Reply chunk
-
-<> Correctly handle Write chunk overrun
-
-
-Available in the "nfsd-rdma-for-4.12" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.12
-
-
-Changes since v1:
-- Rebased on v4.11-rc4
-- Dropped clean up of svc_rdma_post_recv
-- Postponed addition of code related to recvfrom
-- Made svc_rdma_{get,put}_rw_ctxt behave symmetrically
-- Converted scatterlist to sg_table
-- Moved transport header construction into svc_rdma_sendto.c
-
-This last one was the result of discussion with Sagi and Christoph
-at LSF. Christoph wants to simplify the organization of this code
-into fewer source files, and Sagi wants the rdma_rw code separated
-from the code that builds the reply's transport header.
-
-The remaining parts of the overhaul are in this topic branch:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-rw-api
-
-There are three significant pieces of work to do in nfsd-rdma-rw-api:
-
-1. A new rdma_rw function needs to be introduced so that ULPs can
-size their CQ, and perform SQ accounting, properly.
-
-2. Similar separation of rdma_rw-related code and transport header
-mangling needs to be done.
-
-3. Organize this code path so that it might someday be invoked
-directly by the upper layer, to better handle NFS WRITE.
-
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/linux/sunrpc/svc_rdma.h            |    3 +
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   36 +++++------------
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   61 ++++++++++++++++++++++------
+ 3 files changed, 62 insertions(+), 38 deletions(-)
 
-Chuck Lever (13):
-      svcrdma: Move send_wr to svc_rdma_op_ctxt
-      svcrdma: Add svc_rdma_map_reply_hdr()
-      svcrdma: Eliminate RPCRDMA_SQ_DEPTH_MULT
-      svcrdma: Add helper to save pages under I/O
-      svcrdma: Introduce local rdma_rw API helpers
-      svcrdma: Use rdma_rw API in RPC reply path
-      svcrdma: Clean up RDMA_ERROR path
-      svcrdma: Report Write/Reply chunk overruns
-      svcrdma: Clean up RPC-over-RDMA backchannel reply processing
-      svcrdma: Reduce size of sge array in struct svc_rdma_op_ctxt
-      svcrdma: Remove unused RDMA Write completion handler
-      svcrdma: Remove the req_map cache
-      svcrdma: Clean out old XDR encoders
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index fa3ef11..ac05495 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -228,6 +228,9 @@ extern int rdma_read_chunk_frmr(struct svcxprt_rdma *, struct svc_rqst *,
+ /* svc_rdma_sendto.c */
+ extern int svc_rdma_map_xdr(struct svcxprt_rdma *, struct xdr_buf *,
+ 			    struct svc_rdma_req_map *, bool);
++extern int svc_rdma_map_reply_hdr(struct svcxprt_rdma *rdma,
++				  struct svc_rdma_op_ctxt *ctxt,
++				  __be32 *rdma_resp, unsigned int len);
+ extern void svc_rdma_build_send_wr(struct svc_rdma_op_ctxt *ctxt,
+ 				   int num_sge);
+ extern int svc_rdma_sendto(struct svc_rqst *);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index 6741ed0..f87f6c3 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -101,51 +101,37 @@ int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt, struct rpcrdma_msg *rmsgp,
+ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 			      struct rpc_rqst *rqst)
+ {
+-	struct xdr_buf *sndbuf = &rqst->rq_snd_buf;
+ 	struct svc_rdma_op_ctxt *ctxt;
+-	struct svc_rdma_req_map *vec;
+ 	int ret;
+ 
+-	vec = svc_rdma_get_req_map(rdma);
+-	ret = svc_rdma_map_xdr(rdma, sndbuf, vec, false);
+-	if (ret)
++	ctxt = svc_rdma_get_context(rdma);
++
++	/* rpcrdma_bc_send_request builds the transport header and
++	 * the backchannel RPC message in the same buffer. Thus only
++	 * one SGE is needed to send both.
++	 */
++	ret = svc_rdma_map_reply_hdr(rdma, ctxt, rqst->rq_buffer,
++				     rqst->rq_snd_buf.len);
++	if (ret < 0)
+ 		goto out_err;
+ 
+ 	ret = svc_rdma_repost_recv(rdma, GFP_NOIO);
+ 	if (ret)
+ 		goto out_err;
+ 
+-	ctxt = svc_rdma_get_context(rdma);
+-	ctxt->pages[0] = virt_to_page(rqst->rq_buffer);
+-	ctxt->count = 1;
+-
+-	ctxt->direction = DMA_TO_DEVICE;
+-	ctxt->sge[0].lkey = rdma->sc_pd->local_dma_lkey;
+-	ctxt->sge[0].length = sndbuf->len;
+-	ctxt->sge[0].addr =
+-	    ib_dma_map_page(rdma->sc_cm_id->device, ctxt->pages[0], 0,
+-			    sndbuf->len, DMA_TO_DEVICE);
+-	if (ib_dma_mapping_error(rdma->sc_cm_id->device, ctxt->sge[0].addr)) {
+-		ret = -EIO;
+-		goto out_unmap;
+-	}
+-	svc_rdma_count_mappings(rdma, ctxt);
+-
+ 	svc_rdma_build_send_wr(ctxt, 1);
+ 	ret = svc_rdma_send(rdma, &ctxt->send_wr);
+-	if (ret) {
+-		ret = -EIO;
++	if (ret)
+ 		goto out_unmap;
+-	}
+ 
+ out_err:
+-	svc_rdma_put_req_map(rdma, vec);
+ 	dprintk("svcrdma: %s returns %d\n", __func__, ret);
+ 	return ret;
+ 
+ out_unmap:
+ 	svc_rdma_unmap_dma(ctxt);
+ 	svc_rdma_put_context(ctxt, 1);
++	ret = -EIO;
+ 	goto out_err;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index fdf8e3d..0e55b34 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -217,6 +217,49 @@ static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
+ 	return 0;
+ }
+ 
++static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
++				 struct svc_rdma_op_ctxt *ctxt,
++				 unsigned int sge_no,
++				 struct page *page,
++				 unsigned int offset,
++				 unsigned int len)
++{
++	struct ib_device *dev = rdma->sc_cm_id->device;
++	dma_addr_t dma_addr;
++
++	dma_addr = ib_dma_map_page(dev, page, offset, len, DMA_TO_DEVICE);
++	if (ib_dma_mapping_error(dev, dma_addr))
++		return -EIO;
++
++	ctxt->sge[sge_no].addr = dma_addr;
++	ctxt->sge[sge_no].length = len;
++	ctxt->sge[sge_no].lkey = rdma->sc_pd->local_dma_lkey;
++	svc_rdma_count_mappings(rdma, ctxt);
++	return 0;
++}
++
++/**
++ * svc_rdma_map_reply_hdr - DMA map the transport header buffer
++ * @rdma: controlling transport
++ * @ctxt: op_ctxt for the Send WR
++ * @rdma_resp: buffer containing transport header
++ * @len: length of transport header
++ *
++ * Returns:
++ *	%0 if the header is DMA mapped,
++ *	%-EIO if DMA mapping failed.
++ */
++int svc_rdma_map_reply_hdr(struct svcxprt_rdma *rdma,
++			   struct svc_rdma_op_ctxt *ctxt,
++			   __be32 *rdma_resp,
++			   unsigned int len)
++{
++	ctxt->direction = DMA_TO_DEVICE;
++	ctxt->pages[0] = virt_to_page(rdma_resp);
++	ctxt->count = 1;
++	return svc_rdma_dma_map_page(rdma, ctxt, 0, ctxt->pages[0], 0, len);
++}
++
+ /* Assumptions:
+  * - The specified write_len can be represented in sc_max_sge * PAGE_SIZE
+  */
+@@ -691,22 +734,14 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 		err = ERR_VERS;
+ 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
+ 
++	/* Map transport header; no RPC message payload */
+ 	ctxt = svc_rdma_get_context(xprt);
+-	ctxt->direction = DMA_TO_DEVICE;
+-	ctxt->count = 1;
+-	ctxt->pages[0] = p;
+-
+-	/* Prepare SGE for local address */
+-	ctxt->sge[0].lkey = xprt->sc_pd->local_dma_lkey;
+-	ctxt->sge[0].length = length;
+-	ctxt->sge[0].addr = ib_dma_map_page(xprt->sc_cm_id->device,
+-					    p, 0, length, DMA_TO_DEVICE);
+-	if (ib_dma_mapping_error(xprt->sc_cm_id->device, ctxt->sge[0].addr)) {
+-		dprintk("svcrdma: Error mapping buffer for protocol error\n");
+-		svc_rdma_put_context(ctxt, 1);
++	ret = svc_rdma_map_reply_hdr(xprt, ctxt, &rmsgp->rm_xid, length);
++	if (ret) {
++		dprintk("svcrdma: Error %d mapping send for protocol error\n",
++			ret);
+ 		return;
+ 	}
+-	svc_rdma_count_mappings(xprt, ctxt);
+ 
+ 	svc_rdma_build_send_wr(ctxt, 1);
+ 	ret = svc_rdma_send(xprt, &ctxt->send_wr);
 
-
- include/linux/sunrpc/rpc_rdma.h            |    3 
- include/linux/sunrpc/svc_rdma.h            |   74 +-
- net/sunrpc/xprtrdma/Makefile               |    2 
- net/sunrpc/xprtrdma/svc_rdma.c             |    8 
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   72 +-
- net/sunrpc/xprtrdma/svc_rdma_marshal.c     |   89 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   80 ++
- net/sunrpc/xprtrdma/svc_rdma_rw.c          |  463 +++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  969 ++++++++++++++--------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |  110 ---
- 10 files changed, 1073 insertions(+), 797 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/svc_rdma_rw.c
-
---
-Chuck Lever
