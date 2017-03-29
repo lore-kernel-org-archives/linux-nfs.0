@@ -1,156 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33832 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756045AbdC2K4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 Mar 2017 06:56:32 -0400
-From: Jan Kara <jack@suse.cz>
-To: <linux-fsdevel@vger.kernel.org>
-Cc: linux-block@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Jan Kara <jack@suse.cz>, linux-mtd@lists.infradead.org,
-        linux-nfs@vger.kernel.org, Petr Vandrovec <petr@vandrovec.name>,
-        linux-nilfs@vger.kernel.org, cluster-devel@redhat.com,
-        osd-dev@open-osd.org, codalist@coda.cs.cmu.edu,
-        linux-afs@lists.infradead.org, ecryptfs@vger.kernel.org,
-        linux-cifs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, v9fs-developer@lists.sourceforge.net,
-        lustre-devel@lists.lustre.org
-Subject: [PATCH 04/25] fs: Provide infrastructure for dynamic BDIs in filesystems
-Date: Wed, 29 Mar 2017 12:56:02 +0200
-Message-Id: <20170329105623.18241-5-jack@suse.cz>
-In-Reply-To: <20170329105623.18241-1-jack@suse.cz>
-References: <20170329105623.18241-1-jack@suse.cz>
+Received: from mail-qt0-f195.google.com ([209.85.216.195]:35794 "EHLO
+        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756000AbdC2LCI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Mar 2017 07:02:08 -0400
+Received: by mail-qt0-f195.google.com with SMTP id r5so1441758qtb.2
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Mar 2017 04:02:07 -0700 (PDT)
+Message-ID: <1490785324.2738.3.camel@poochiereds.net>
+Subject: Re: [PATCH] svcrdma: set XPT_CONG_CTRL flag for bc xprt
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Wed, 29 Mar 2017 07:02:04 -0400
+In-Reply-To: <20170329012252.GB20963@fieldses.org>
+References: <20170326231254.1319.26075.stgit@manet.1015granger.net>
+         <1490577699.6879.1.camel@poochiereds.net>
+         <20170329012252.GB20963@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide helper functions for setting up dynamically allocated
-backing_dev_info structures for filesystems and cleaning them up on
-superblock destruction.
+On Tue, 2017-03-28 at 21:22 -0400, J. Bruce Fields wrote:
+> On Sun, Mar 26, 2017 at 09:21:39PM -0400, Jeff Layton wrote:
+> > On Sun, 2017-03-26 at 19:27 -0400, Chuck Lever wrote:
+> > > Are we certain that all client implementations (including
+> > > backchannel clients) will do something useful when presented with
+> > > such a rejection? At least in the backchannel case, the Linux server
+> > > had no idea what to do with RPC_PROG_MISMATCH on the backchannel.
+> > > The workload stopped dead, no error report anywhere.
+> > > 
+> > 
+> > Ouch. I think this would get translated into EPROTONOSUPPORT in the
+> > client code. That should have ended up with nfsd4_mark_cb_down being
+> > called with that error?...but I think that function may be effectively
+> > neutered:
+> 
+> Are we worrying now about a server that tries to open an NFSv4.0
+> callback connection using UDP?
+> 
+> That would be a very broken server.  And broken in a way that I think is
+> pretty unlikely to actually happen in practice.
+> 
+> Maybe I'm missing something.
+> 
 
-CC: linux-mtd@lists.infradead.org
-CC: linux-nfs@vger.kernel.org
-CC: Petr Vandrovec <petr@vandrovec.name>
-CC: linux-nilfs@vger.kernel.org
-CC: cluster-devel@redhat.com
-CC: osd-dev@open-osd.org
-CC: codalist@coda.cs.cmu.edu
-CC: linux-afs@lists.infradead.org
-CC: ecryptfs@vger.kernel.org
-CC: linux-cifs@vger.kernel.org
-CC: ceph-devel@vger.kernel.org
-CC: linux-btrfs@vger.kernel.org
-CC: v9fs-developer@lists.sourceforge.net
-CC: lustre-devel@lists.lustre.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/super.c                       | 49 ++++++++++++++++++++++++++++++++++++++++
- include/linux/backing-dev-defs.h |  2 +-
- include/linux/fs.h               |  6 +++++
- 3 files changed, 56 insertions(+), 1 deletion(-)
+The client is what was broken here. Chuck's initial patch is correct --
+we do need to flag the RDMA backchannel xprt with XPT_CONG_CTRL. When
+that wasn't there, the RDMA bc was rejecting callbacks from the sever.
 
-diff --git a/fs/super.c b/fs/super.c
-index b8b6a086c03b..0f51a437c269 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -446,6 +446,11 @@ void generic_shutdown_super(struct super_block *sb)
- 	hlist_del_init(&sb->s_instances);
- 	spin_unlock(&sb_lock);
- 	up_write(&sb->s_umount);
-+	if (sb->s_iflags & SB_I_DYNBDI) {
-+		bdi_put(sb->s_bdi);
-+		sb->s_bdi = &noop_backing_dev_info;
-+		sb->s_iflags &= ~SB_I_DYNBDI;
-+	}
- }
- 
- EXPORT_SYMBOL(generic_shutdown_super);
-@@ -1256,6 +1261,50 @@ mount_fs(struct file_system_type *type, int flags, const char *name, void *data)
- }
- 
- /*
-+ * Setup private BDI for given superblock. It gets automatically cleaned up
-+ * in generic_shutdown_super().
-+ */
-+int super_setup_bdi_name(struct super_block *sb, char *fmt, ...)
-+{
-+	struct backing_dev_info *bdi;
-+	int err;
-+	va_list args;
-+
-+	bdi = bdi_alloc(GFP_KERNEL);
-+	if (!bdi)
-+		return -ENOMEM;
-+
-+	bdi->name = sb->s_type->name;
-+
-+	va_start(args, fmt);
-+	err = bdi_register_va(bdi, NULL, fmt, args);
-+	va_end(args);
-+	if (err) {
-+		bdi_put(bdi);
-+		return err;
-+	}
-+	WARN_ON(sb->s_bdi != &noop_backing_dev_info);
-+	sb->s_bdi = bdi;
-+	sb->s_iflags |= SB_I_DYNBDI;
-+
-+	return 0;
-+}
-+EXPORT_SYMBOL(super_setup_bdi_name);
-+
-+/*
-+ * Setup private BDI for given superblock. I gets automatically cleaned up
-+ * in generic_shutdown_super().
-+ */
-+int super_setup_bdi(struct super_block *sb)
-+{
-+	static atomic_long_t bdi_seq = ATOMIC_LONG_INIT(0);
-+
-+	return super_setup_bdi_name(sb, "%.28s-%ld", sb->s_type->name,
-+				    atomic_long_inc_return(&bdi_seq));
-+}
-+EXPORT_SYMBOL(super_setup_bdi);
-+
-+/*
-  * This is an internal function, please use sb_end_{write,pagefault,intwrite}
-  * instead.
-  */
-diff --git a/include/linux/backing-dev-defs.h b/include/linux/backing-dev-defs.h
-index e66d4722db8e..866c433e7d32 100644
---- a/include/linux/backing-dev-defs.h
-+++ b/include/linux/backing-dev-defs.h
-@@ -146,7 +146,7 @@ struct backing_dev_info {
- 	congested_fn *congested_fn; /* Function pointer if device is md/dm */
- 	void *congested_data;	/* Pointer to aux data for congested func */
- 
--	char *name;
-+	const char *name;
- 
- 	struct kref refcnt;	/* Reference counter for the structure */
- 	unsigned int capabilities; /* Device capabilities */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 7251f7bb45e8..98cf14ea78c0 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1272,6 +1272,9 @@ struct mm_struct;
- /* sb->s_iflags to limit user namespace mounts */
- #define SB_I_USERNS_VISIBLE		0x00000010 /* fstype already mounted */
- 
-+/* Temporary flag until all filesystems are converted to dynamic bdis */
-+#define SB_I_DYNBDI	0x00000100
-+
- /* Possible states of 'frozen' field */
- enum {
- 	SB_UNFROZEN = 0,		/* FS is unfrozen */
-@@ -2121,6 +2124,9 @@ extern int vfs_ustat(dev_t, struct kstatfs *);
- extern int freeze_super(struct super_block *super);
- extern int thaw_super(struct super_block *super);
- extern bool our_mnt(struct vfsmount *mnt);
-+extern __printf(2, 3)
-+int super_setup_bdi_name(struct super_block *sb, char *fmt, ...);
-+extern int super_setup_bdi(struct super_block *sb);
- 
- extern int current_umask(void);
- 
+The question at this point is whether we need to do anything further. It
+sounds like the answer to that question is "no" and I'm fine with that.
+
+
+> > static void warn_no_callback_path(struct nfs4_client *clp, int reason)
+> > {
+> >         dprintk("NFSD: warning: no callback path to client %.*s: error %d\n",
+> >                 (int)clp->cl_name.len, clp->cl_name.data, reason);
+> > }
+> 
+> In NFSv4.0 a failing callback connection is absolutely normal (e.g. if
+> the client is behind a firewall).  We might want to provide some better
+> diagnostics to help people figure out why a given client isn't getting
+> delegations, but we don't want to log this by default.
+> 
+> Even in the 4.1 case I wonder if some pretty common failures (e.g.
+> losing contact with the client) might get noticed by the callback code
+> first.
+> 
+> So, dprintk is right here.
+> 
+> --b.
+
+> > 
+> > Note that it emits a dprintk instead of a printk. Should we promote
+> > that to something more visible?
+> > 
+> > >  net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+> > >  1 file changed, 1 insertion(+)
+> > > 
+> > > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > > index c13a5c3..fc8f14c 100644
+> > > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > > @@ -127,6 +127,7 @@ static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *serv,
+> > >  	xprt = &cma_xprt->sc_xprt;
+> > >  
+> > >  	svc_xprt_init(net, &svc_rdma_bc_class, xprt, serv);
+> > > +	set_bit(XPT_CONG_CTRL, &xprt->xpt_flags);
+> > >  	serv->sv_bc_xprt = xprt;
+> > >  
+> > >  	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-2.10.2
-
+Jeff Layton <jlayton@poochiereds.net>
