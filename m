@@ -1,75 +1,431 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f169.google.com ([209.85.216.169]:35592 "EHLO
-        mail-qt0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932219AbdC2Ryf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Mar 2017 13:54:35 -0400
-Received: by mail-qt0-f169.google.com with SMTP id x35so19375324qtc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Mar 2017 10:54:34 -0700 (PDT)
-Message-ID: <1490810071.2678.6.camel@redhat.com>
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
- optimization
-From: Jeff Layton <jlayton@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Date: Wed, 29 Mar 2017 13:54:31 -0400
-In-Reply-To: <20170329111507.GA18467@quack2.suse.cz>
-References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
-         <20161222084549.GA8833@infradead.org> <1482417724.3924.39.camel@redhat.com>
-         <20170320214327.GA5098@fieldses.org> <20170321134500.GA1318@infradead.org>
-         <20170321163011.GA16666@fieldses.org> <1490117004.2542.1.camel@redhat.com>
-         <20170321183006.GD17872@fieldses.org> <1490122013.2593.1.camel@redhat.com>
-         <20170329111507.GA18467@quack2.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:52992 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932294AbdC2SCJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 Mar 2017 14:02:09 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 202D081236
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Mar 2017 18:02:08 +0000 (UTC)
+Date: Wed, 29 Mar 2017 14:02:07 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH] systemd: add generators for the rpc_pipefs
+ mountpoint
+Message-ID: <20170329180207.xkcxepra442j6vv6@tonberry.usersys.redhat.com>
+References: <20170328133703.19325-1-smayhew@redhat.com>
+ <2aace10d-1b9b-b8e8-4f85-caf31f5f51bf@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2aace10d-1b9b-b8e8-4f85-caf31f5f51bf@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
-> On Tue 21-03-17 14:46:53, Jeff Layton wrote:
-> > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
-> > > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
-> > > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
-> > > > > - It's durable; the above comparison still works if there were reboots
-> > > > >   between the two i_version checks.
-> > > > > 	- I don't know how realistic this is--we may need to figure out
-> > > > > 	  if there's a weaker guarantee that's still useful.  Do
-> > > > > 	  filesystems actually make ctime/mtime/i_version changes
-> > > > > 	  atomically with the changes that caused them?  What if a
-> > > > > 	  change attribute is exposed to an NFS client but doesn't make
-> > > > > 	  it to disk, and then that value is reused after reboot?
-> > > > > 
-> > > > 
-> > > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
-> > > > the inode dirty and I think that will end up with the new i_version at
-> > > > least being journalled before __mark_inode_dirty returns.
-> > > 
-> > > So you think the filesystem can provide the atomicity?  In more detail:
-> > > 
-> > 
-> > Sorry, I hit send too quickly. That should have read:
-> > 
-> > "Yeah, there could be atomicity issues there."
-> > 
-> > I think providing that level of atomicity may be difficult, though
-> > maybe there's some way to make the querying of i_version block until
-> > the inode update has been journalled?
-> 
-> Just to complement what Dave said from ext4 side - similarly as with XFS
-> ext4 doesn't guarantee atomicity unless fsync() has completed on the file.
-> Until that you can see arbitrary combination of data & i_version after the
-> crash. We do take care to keep data and metadata in sync only when there
-> are security implications to that (like exposing uninitialized disk blocks)
-> and if not, we are as lazy as we can to improve performance...
-> 
-> 
+On Wed, 29 Mar 2017, Steve Dickson wrote:
 
-Yeah, I think what we'll have to do here is ensure that those
-filesystems do an fsync prior to reporting the i_version getattr
-codepath. It's not pretty, but I don't see a real alternative.
+> Hello,
+> 
+> On 03/28/2017 09:37 AM, Scott Mayhew wrote:
+> > The nfs.conf and idmapd.conf files both have config options for the
+> > pipefs mountpoint.  Currently, changing these from the defaults also
+> > requires manually overriding the systemd unit files that are hard-coded
+> > to mount the filesystem on /var/lib/nfs/rpc_pipefs.
+> The Pipefs-Directory config variable is not documented in either
+> idmapd.conf(5) or rpc.idmapd(8) or nfsidmap(5) so the only way
+> to know about it as to read the code. I would not call that
+> a supported interface and can easily be removed. IMHO.
+> The same thing goes for the Cache-Expiration variable. 
 
--- 
-Jeff Layton <jlayton@redhat.com>
+So you're saying to document the Pipefs-Directory and Cache-Expiration
+variables, not remove them... right?  I think they should be documented
+in idmapd.conf(5) since the other pages both refer to idmapd.conf(5).
+> 
+> > 
+> > This patch adds two generators to create drop-in config files to
+> > override the dependencies for the systemd units that require the pipefs.
+> > There are two because rpc.idmapd uses a separate configuration file.  If
+> > idmapd's configurations are ever folded into the nfs.conf, then the
+> > idmapd-rpc-pipefs-generator.c can be deleted and generate=1 can be
+> > specified for idmapd in rpc-pipefs-generator.c.
+> So I'm thinking we just read Pipefs-Directory out of 
+> one spot that would be /etc/nfs.conf.
+
+I agree but then rpc.idmapd and nfsidmap should be modified to read
+/etc/nfs.conf instead of /etc/idmapd.conf by default, but that could be
+confusing unless some of the section names and/or variable names from
+/etc/idmapd.conf were changed up a bit.  That's quite a bit more than
+I'm trying to accomplish here.
+
+> That way we would only 
+> have to support one of these generators.
+
+If your issue is that there are two generators then I can fold them into
+single one... then if the idmapd.conf ever get folded into nfs.conf it's
+simply a matter of deleting a few lines of code.  The only reason I made
+two generators is becuase it made more sense to me that way.  I'm fine
+either way.
+
+> 
+> Also please document the Pipefs-Directory variable in both
+> the nfs.conf man page and in the example nfs.conf file
+> in the git tree. 
+
+It's actually already documented in both, under the gssd section.
+
+> 
+> > 
+> > This patch also adds a unit file to mount the pipefs on /run/rpc_pipefs,
+> > since that is the most logical alternate location for the pipefs
+> > filesystem.  Users wanting to use some other location besides
+> > /var/lib/nfs/rpc_pipefs or /run/rpc_pipefs would have to create their
+> > own systemd mount unit file, but the generators would take care of the
+> > rest.
+> I'm not sure I understand why this new unit file, run-rpc_pipefs.mount,
+> is needed, especially since it is not being install (aka no updates
+> to the Makefile.am files).
+
+I forgot to update the Makefile.am by mistake.  I definitely want the
+new unit file.  The idea is to give users a choice between
+/var/lib/nfs/rpc_pipes and /run/rpc_pipefs without requiring them to go
+manually messing around with systemd configs.
+
+-Scott
+
+> 
+> steved.
+> 
+> > 
+> > Finally, this patch removes the dependency on the pipefs from the
+> > rpc-svcgssd.service unit file.  rpc.svcgssd uses the sunrpc cache
+> > mechanism to exchange data with the kernel, not the pipefs.
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> >  systemd/Makefile.am                   |   5 +-
+> >  systemd/idmapd-rpc-pipefs-generator.c |  99 ++++++++++++++++++++++
+> >  systemd/rpc-pipefs-generator.c        | 153 ++++++++++++++++++++++++++++++++++
+> >  systemd/rpc-svcgssd.service           |   3 +-
+> >  systemd/run-rpc_pipefs.mount          |  10 +++
+> >  5 files changed, 267 insertions(+), 3 deletions(-)
+> >  create mode 100644 systemd/idmapd-rpc-pipefs-generator.c
+> >  create mode 100644 systemd/rpc-pipefs-generator.c
+> >  create mode 100644 systemd/run-rpc_pipefs.mount
+> > 
+> > diff --git a/systemd/Makefile.am b/systemd/Makefile.am
+> > index 0d15b9f..f09be00 100644
+> > --- a/systemd/Makefile.am
+> > +++ b/systemd/Makefile.am
+> > @@ -42,12 +42,15 @@ EXTRA_DIST = $(unit_files) $(man5_MANS) $(man7_MANS)
+> >  unit_dir = /usr/lib/systemd/system
+> >  generator_dir = /usr/lib/systemd/system-generators
+> >  
+> > -EXTRA_PROGRAMS	= nfs-server-generator
+> > +EXTRA_PROGRAMS	= nfs-server-generator rpc-pipefs-generator idmapd-rpc-pipefs-generator
+> >  genexecdir = $(generator_dir)
+> >  nfs_server_generator_LDADD = ../support/export/libexport.a \
+> >  			     ../support/nfs/libnfs.a \
+> >  			     ../support/misc/libmisc.a
+> >  
+> > +rpc_pipefs_generator_LDADD = ../support/nfs/libnfs.a
+> > +idmapd_rpc_pipefs_generator_LDADD = ../support/nfs/libnfs.a
+> > +
+> >  if INSTALL_SYSTEMD
+> >  genexec_PROGRAMS = nfs-server-generator
+> >  install-data-hook: $(unit_files)
+> > diff --git a/systemd/idmapd-rpc-pipefs-generator.c b/systemd/idmapd-rpc-pipefs-generator.c
+> > new file mode 100644
+> > index 0000000..6b0e382
+> > --- /dev/null
+> > +++ b/systemd/idmapd-rpc-pipefs-generator.c
+> > @@ -0,0 +1,99 @@
+> > +/*
+> > + * idmapd-rpc-pipefs-generator:
+> > + *   systemd generator to create ordering dependencies between
+> > + *   the nfs-idmapd service and the rpc_pipefs mount
+> > + */
+> > +
+> > +#ifdef HAVE_CONFIG_H
+> > +#include <config.h>
+> > +#endif
+> > +
+> > +#include <sys/stat.h>
+> > +#include <sys/types.h>
+> > +#include <unistd.h>
+> > +#include <stdlib.h>
+> > +#include <string.h>
+> > +#include <ctype.h>
+> > +#include <stdio.h>
+> > +
+> > +#include "nfslib.h"
+> > +#include "conffile.h"
+> > +
+> > +#define RPC_PIPEFS_DEFAULT "/var/lib/nfs/rpc_pipefs"
+> > +char *conf_path = _PATH_IDMAPDCONF;
+> > +
+> > +/* We need to convert a path name to a systemd unit
+> > + * name.  This requires some translation ('/' -> '-')
+> > + * and some escaping.
+> > + */
+> > +static void systemd_escape(FILE *f, char *path)
+> > +{
+> > +	while (*path == '/')
+> > +		path++;
+> > +	if (!*path) {
+> > +		/* "/" becomes "-", otherwise leading "/" is ignored */
+> > +		fputs("-", f);
+> > +		return;
+> > +	}
+> > +	while (*path) {
+> > +		char c = *path++;
+> > +
+> > +		if (c == '/') {
+> > +			/* multiple non-trailing slashes become '-' */
+> > +			while (*path == '/')
+> > +				path++;
+> > +			if (*path)
+> > +				fputs("-", f);
+> > +		} else if (isalnum(c) || c == ':' || c == '.' || c == '_')
+> > +			fputc(c, f);
+> > +		else
+> > +			fprintf(f, "\\x%02x", c & 0xff);
+> > +	}
+> > +}
+> > +
+> > +int main(int argc, char *argv[])
+> > +{
+> > +	char	*path;
+> > +	char	dirbase[] = "/nfs-idmapd.service.d";
+> > +	char	filebase[] = "/10-pipefs.conf";
+> > +	FILE	*f;
+> > +	char	*s;
+> > +
+> > +	/* Avoid using any external services */
+> > +	xlog_syslog(0);
+> > +
+> > +	if (argc != 4 || argv[1][0] != '/') {
+> > +		fprintf(stderr, "idmapd-rpc-pipefs-generator: create systemd dependencies for nfs-idmapd\n");
+> > +		fprintf(stderr, "Usage: normal-dir early-dir late-dir\n");
+> > +		exit(1);
+> > +	}
+> > +
+> > +	conf_init();
+> > +	s = conf_get_str("General", "pipefs-directory");
+> > +	if (!s)
+> > +		exit(0);
+> > +	if (strlen(s) == strlen(RPC_PIPEFS_DEFAULT) &&
+> > +			strcmp(s, RPC_PIPEFS_DEFAULT) == 0)
+> > +		exit(0);
+> > +
+> > +	path = malloc(strlen(argv[1]) + sizeof(dirbase) + sizeof(filebase));
+> > +	if (!path)
+> > +		exit(2);
+> > +	strcat(strcpy(path, argv[1]), dirbase);
+> > +	mkdir(path, 0755);
+> > +	strcat(path, filebase);
+> > +	f = fopen(path, "w");
+> > +	if (!f)
+> > +		exit(1);
+> > +
+> > +	fprintf(f, "# Automatically generated by idmapd-rpc-pipefs-generator\n\n[Unit]\n");
+> > +	fprintf(f, "Requires=\nRequires=");
+> > +	systemd_escape(f, s);
+> > +	fprintf(f, ".mount\n");
+> > +	fprintf(f, "After=\nAfter=");
+> > +	systemd_escape(f, s);
+> > +	fprintf(f, ".mount local-fs.target\n");
+> > +	fclose(f);
+> > +
+> > +	exit(0);
+> > +}
+> > diff --git a/systemd/rpc-pipefs-generator.c b/systemd/rpc-pipefs-generator.c
+> > new file mode 100644
+> > index 0000000..fc65cc9
+> > --- /dev/null
+> > +++ b/systemd/rpc-pipefs-generator.c
+> > @@ -0,0 +1,153 @@
+> > +/*
+> > + * rpc-pipefs-generator:
+> > + *   systemd generator to create ordering dependencies between
+> > + *   nfs services and the rpc_pipefs mount(s)
+> > + */
+> > +
+> > +#ifdef HAVE_CONFIG_H
+> > +#include <config.h>
+> > +#endif
+> > +
+> > +#include <sys/stat.h>
+> > +#include <sys/types.h>
+> > +#include <unistd.h>
+> > +#include <stdlib.h>
+> > +#include <string.h>
+> > +#include <ctype.h>
+> > +#include <stdio.h>
+> > +
+> > +#include "nfslib.h"
+> > +#include "conffile.h"
+> > +
+> > +#define NUM_PIPEFS_USERS 3
+> > +#define RPC_PIPEFS_DEFAULT "/var/lib/nfs/rpc_pipefs"
+> > +char *conf_path = NFS_CONFFILE;
+> > +
+> > +/*
+> > + * conf_name - the name as it appears (or would appear, in the case of idmapd,
+> > + *             in the /etc/nfs.conf
+> > + * unit_name - the name of the systemd service unit file (minus '.service')
+> > + * after_local_fs - should the After= directive have local-fs.target or not
+> > + * generate - should a drop-in config be generated or not
+> > + */
+> > +struct pipefs_user {
+> > +	char	*conf_name;
+> > +	char	*unit_name;
+> > +	int	after_local_fs;
+> > +	int	generate;
+> > +};
+> > +
+> > +/*
+> > + * blkmapd and idmapd are placeholders for now, hence generate=0.  blkmapd
+> > + * because it does not have nfs.conf support and because the pipefs directory
+> > + * cannot be overriden.  idmapd because it uses a different config file.
+> > + */
+> > +static struct pipefs_user	pipefs_users[NUM_PIPEFS_USERS] = {
+> > +	{
+> > +		.conf_name = "gssd",
+> > +		.unit_name = "rpc-gssd",
+> > +		.after_local_fs = 0,
+> > +		.generate = 1,
+> > +	},
+> > +	{
+> > +		.conf_name = "blkmapd",
+> > +		.unit_name = "nfs-blkmap",
+> > +		.after_local_fs = 0,
+> > +		.generate = 0,
+> > +	},
+> > +	{
+> > +		.conf_name = "idmapd",
+> > +		.unit_name = "nfs-idmapd",
+> > +		.after_local_fs = 1,
+> > +		.generate = 0,
+> > +	}
+> > +};
+> > +
+> > +/* We need to convert a path name to a systemd unit
+> > + * name.  This requires some translation ('/' -> '-')
+> > + * and some escaping.
+> > + */
+> > +static void systemd_escape(FILE *f, char *path)
+> > +{
+> > +	while (*path == '/')
+> > +		path++;
+> > +	if (!*path) {
+> > +		/* "/" becomes "-", otherwise leading "/" is ignored */
+> > +		fputs("-", f);
+> > +		return;
+> > +	}
+> > +	while (*path) {
+> > +		char c = *path++;
+> > +
+> > +		if (c == '/') {
+> > +			/* multiple non-trailing slashes become '-' */
+> > +			while (*path == '/')
+> > +				path++;
+> > +			if (*path)
+> > +				fputs("-", f);
+> > +		} else if (isalnum(c) || c == ':' || c == '.' || c == '_')
+> > +			fputc(c, f);
+> > +		else
+> > +			fprintf(f, "\\x%02x", c & 0xff);
+> > +	}
+> > +}
+> > +
+> > +int main(int argc, char *argv[])
+> > +{
+> > +	char	*path;
+> > +	char	dirbase[] = ".service.d";
+> > +	char	filebase[] = "/10-pipefs.conf";
+> > +	FILE	*f;
+> > +	char	*s;
+> > +	int	i;
+> > +	struct	pipefs_user p;
+> > +
+> > +	/* Avoid using any external services */
+> > +	xlog_syslog(0);
+> > +
+> > +	if (argc != 4 || argv[1][0] != '/') {
+> > +		fprintf(stderr, "rpc-pipefs-generator: create systemd dependencies for nfs services\n");
+> > +		fprintf(stderr, "Usage: normal-dir early-dir late-dir\n");
+> > +		exit(1);
+> > +	}
+> > +
+> > +	conf_init();
+> > +	for (i = 0; i < NUM_PIPEFS_USERS; i++) {
+> > +		p = pipefs_users[i];
+> > +		if (!p.generate)
+> > +			continue;
+> > +
+> > +		s = conf_get_str(p.conf_name, "pipefs-directory");
+> > +		if (!s)
+> > +			continue;
+> > +		if (strlen(s) == strlen(RPC_PIPEFS_DEFAULT) &&
+> > +				strcmp(s, RPC_PIPEFS_DEFAULT) == 0)
+> > +			continue;
+> > +
+> > +		path = malloc(strlen(argv[1]) + 1 + sizeof(p.unit_name) +
+> > +				sizeof(dirbase) + sizeof(filebase));
+> > +		if (!path)
+> > +			exit(2);
+> > +		sprintf(path, "%s/%s%s", argv[1], p.unit_name, dirbase);
+> > +		mkdir(path, 0755);
+> > +		strcat(path, filebase);
+> > +		f = fopen(path, "w");
+> > +		if (!f)
+> > +			exit(1);
+> > +
+> > +		fprintf(f, "# Automatically generated by rpc-pipefs-generator\n\n[Unit]\n");
+> > +		fprintf(f, "Requires=\nRequires=");
+> > +		systemd_escape(f, s);
+> > +		fprintf(f, ".mount\n");
+> > +		fprintf(f, "After=\nAfter=");
+> > +		systemd_escape(f, s);
+> > +		fprintf(f, ".mount");
+> > +		if (p.after_local_fs)
+> > +			fprintf(f, " local-fs.target");
+> > +		fprintf(f, "\n");
+> > +
+> > +		fclose(f);
+> > +	}
+> > +
+> > +	exit(0);
+> > +}
+> > diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+> > index 7187e3c..cb2bcd4 100644
+> > --- a/systemd/rpc-svcgssd.service
+> > +++ b/systemd/rpc-svcgssd.service
+> > @@ -1,8 +1,7 @@
+> >  [Unit]
+> >  Description=RPC security service for NFS server
+> >  DefaultDependencies=no
+> > -Requires=var-lib-nfs-rpc_pipefs.mount
+> > -After=var-lib-nfs-rpc_pipefs.mount local-fs.target
+> > +After=local-fs.target
+> >  PartOf=nfs-server.service
+> >  PartOf=nfs-utils.service
+> >  
+> > diff --git a/systemd/run-rpc_pipefs.mount b/systemd/run-rpc_pipefs.mount
+> > new file mode 100644
+> > index 0000000..aab3145
+> > --- /dev/null
+> > +++ b/systemd/run-rpc_pipefs.mount
+> > @@ -0,0 +1,10 @@
+> > +[Unit]
+> > +Description=RPC Pipe File System
+> > +DefaultDependencies=no
+> > +After=systemd-tmpfiles-setup.service
+> > +Conflicts=umount.target
+> > +
+> > +[Mount]
+> > +What=sunrpc
+> > +Where=/run/rpc_pipefs
+> > +Type=rpc_pipefs
+> > 
