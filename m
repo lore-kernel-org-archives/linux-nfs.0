@@ -1,81 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53012 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754438AbdC2NuL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 Mar 2017 09:50:11 -0400
-Subject: Re: notes on VAULT 2017 NFS BOF
-To: "J. Bruce Fields" <bfields@fieldses.org>
-References: <20170324145907.GC2722@fieldses.org>
- <b77898fc-830d-6458-fe1e-86159fec92b6@RedHat.com>
- <20170329014557.GE20963@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <3c4752be-4daf-959b-b29d-f60ad4dbb949@RedHat.com>
-Date: Wed, 29 Mar 2017 09:50:09 -0400
-MIME-Version: 1.0
-In-Reply-To: <20170329014557.GE20963@fieldses.org>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qt0-f169.google.com ([209.85.216.169]:35592 "EHLO
+        mail-qt0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932219AbdC2Ryf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Mar 2017 13:54:35 -0400
+Received: by mail-qt0-f169.google.com with SMTP id x35so19375324qtc.2
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Mar 2017 10:54:34 -0700 (PDT)
+Message-ID: <1490810071.2678.6.camel@redhat.com>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
+ optimization
+From: Jeff Layton <jlayton@redhat.com>
+To: Jan Kara <jack@suse.cz>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Date: Wed, 29 Mar 2017 13:54:31 -0400
+In-Reply-To: <20170329111507.GA18467@quack2.suse.cz>
+References: <1482339827-7882-1-git-send-email-jlayton@redhat.com>
+         <20161222084549.GA8833@infradead.org> <1482417724.3924.39.camel@redhat.com>
+         <20170320214327.GA5098@fieldses.org> <20170321134500.GA1318@infradead.org>
+         <20170321163011.GA16666@fieldses.org> <1490117004.2542.1.camel@redhat.com>
+         <20170321183006.GD17872@fieldses.org> <1490122013.2593.1.camel@redhat.com>
+         <20170329111507.GA18467@quack2.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
+> On Tue 21-03-17 14:46:53, Jeff Layton wrote:
+> > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
+> > > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
+> > > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
+> > > > > - It's durable; the above comparison still works if there were reboots
+> > > > >   between the two i_version checks.
+> > > > > 	- I don't know how realistic this is--we may need to figure out
+> > > > > 	  if there's a weaker guarantee that's still useful.  Do
+> > > > > 	  filesystems actually make ctime/mtime/i_version changes
+> > > > > 	  atomically with the changes that caused them?  What if a
+> > > > > 	  change attribute is exposed to an NFS client but doesn't make
+> > > > > 	  it to disk, and then that value is reused after reboot?
+> > > > > 
+> > > > 
+> > > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
+> > > > the inode dirty and I think that will end up with the new i_version at
+> > > > least being journalled before __mark_inode_dirty returns.
+> > > 
+> > > So you think the filesystem can provide the atomicity?  In more detail:
+> > > 
+> > 
+> > Sorry, I hit send too quickly. That should have read:
+> > 
+> > "Yeah, there could be atomicity issues there."
+> > 
+> > I think providing that level of atomicity may be difficult, though
+> > maybe there's some way to make the querying of i_version block until
+> > the inode update has been journalled?
+> 
+> Just to complement what Dave said from ext4 side - similarly as with XFS
+> ext4 doesn't guarantee atomicity unless fsync() has completed on the file.
+> Until that you can see arbitrary combination of data & i_version after the
+> crash. We do take care to keep data and metadata in sync only when there
+> are security implications to that (like exposing uninitialized disk blocks)
+> and if not, we are as lazy as we can to improve performance...
+> 
+> 
 
+Yeah, I think what we'll have to do here is ensure that those
+filesystems do an fsync prior to reporting the i_version getattr
+codepath. It's not pretty, but I don't see a real alternative.
 
-On 03/28/2017 09:45 PM, J. Bruce Fields wrote:
-> On Sat, Mar 25, 2017 at 01:28:42PM -0400, Steve Dickson wrote:
->> On 03/24/2017 10:59 AM, J. Bruce Fields wrote:
->>> Should the client by default try NFSv4.2 first?  Consensus seems to be
->>> yes.  When 4.2 fails, it tries 4.1, then 4.0, etc.  It works
->>> transparently.  Steved was worried that those retries might become a
->>> problem on clients with lots of NFS mounts.  Trond suggested recording
->>> the result of the version negotiation across mounts, so a client doing a
->>> lot of mounts to the same server would only need the retries on the
->>> first mount.
->> I just don't think this scales very well in large NFS mounted
->> home directory server. Since the major enterprise  servers
->> do not support 4.2 and I don't see them supporting 4.2
->> anytime soon. Why try something when you know its going to fail? ;-) 
-> 
-> I'm OK with sticking with 4.1 for now.
-> 
-> That said, the expense of negotiation shouldn't be an issue.  We have
-> ideas here for cutting that expense (if it really is an issue), and
-> they'd help in the 4.1->4.0 case too.
-> 
->> Starting at v4.2 in non-enterprise environments works, 
->> at least it has for the last few years... 
->>
->>> The retries are driven by userspace which does a mount for a specific
->>> version and uses the return from the mount call to decide to negotiate
->>> down.  So a new TCP connection happens for each mount attempt.
->> Well it could be up to 3 connection (including the successful mount)
->> when both the IPv4 and IPv6 address are tried.
-> 
-> Somebody correct me if I'm wrong, but I don't think that contributes to
-> port exhaustion.  Connections to the IPv4 and IPv6 addresses using the
-> same ports are distinct, aren't they?
-IDK... I was just looking at the for loop in nfs_try_mount_v4()
-count a connection for each loop... 
-
-> 
->>> Miklos introduced a proposed new mount api at LSF earlier in the week.
->>> It would allow some communication with the file system driver to set up
->>> parameters before the system call that creates the mountpoint.  If we
->>> moved the mount negotiation to that setup phase, that might make the
->>> negotiation phase more efficient while still leaving userspace in
->>> charge.  (And we prefer leaving userspace in charge to give it maximum
->>> control over negotiation policy.)
->> Any pointers to this?
-> 
-> I googled around a little and can't find any.  It's still just a
-> proposal, so there's nothing for us to build on yet.
-Fair enough... thanks for looking!
-
-steved.
-
-> 
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+Jeff Layton <jlayton@redhat.com>
