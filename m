@@ -1,145 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55874 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:55886 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932571AbdC2BQj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 28 Mar 2017 21:16:39 -0400
-Date: Tue, 28 Mar 2017 21:16:38 -0400
+        id S932709AbdC2BW6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 28 Mar 2017 21:22:58 -0400
+Date: Tue, 28 Mar 2017 21:22:52 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Chuck Lever <chucklever@gmail.com>, linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH] svcrdma: set XPT_CONG_CTRL flag for bc xprt
-Message-ID: <20170329011638.GA20963@fieldses.org>
+Message-ID: <20170329012252.GB20963@fieldses.org>
 References: <20170326231254.1319.26075.stgit@manet.1015granger.net>
  <1490577699.6879.1.camel@poochiereds.net>
- <62622BEB-E234-4035-94FE-0C34E00693AE@gmail.com>
- <FBC1AD99-AF91-42B7-9C38-C68DA5454C94@oracle.com>
- <1490612833.2808.1.camel@poochiereds.net>
- <1490618353.6879.3.camel@poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1490618353.6879.3.camel@poochiereds.net>
+In-Reply-To: <1490577699.6879.1.camel@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 27, 2017 at 08:39:13AM -0400, Jeff Layton wrote:
-> Something like this patch maybe? Builds but is otherwise untested. It
-> might not DTRT though in the (nonsensical) case where you have a server
-> that is listening on UDP but doesn't support v2 or v3. Not sure I
-> really care about that too much.
+On Sun, Mar 26, 2017 at 09:21:39PM -0400, Jeff Layton wrote:
+> On Sun, 2017-03-26 at 19:27 -0400, Chuck Lever wrote:
+> > Are we certain that all client implementations (including
+> > backchannel clients) will do something useful when presented with
+> > such a rejection? At least in the backchannel case, the Linux server
+> > had no idea what to do with RPC_PROG_MISMATCH on the backchannel.
+> > The workload stopped dead, no error report anywhere.
+> > 
+> 
+> Ouch. I think this would get translated into EPROTONOSUPPORT in the
+> client code. That should have ended up with nfsd4_mark_cb_down being
+> called with that error?...but I think that function may be effectively
+> neutered:
 
-I don't think this is worth the trouble.
+Are we worrying now about a server that tries to open an NFSv4.0
+callback connection using UDP?
 
-A client that attempts to mount NFSv4 over UDP is operating out of spec,
-and we don't owe them much.
+That would be a very broken server.  And broken in a way that I think is
+pretty unlikely to actually happen in practice.
 
-I'm not even convinced that transport-specific high/low version returns
-are correct.  A client could in theory be configured to prefer UDP and
-NFSv3, but to fall back to NFSv4 and TCP if NFSv3 was unavailable, and
-this would break that.  That would be legal but admittedly odd client
-behavior.
+Maybe I'm missing something.
 
-If somebody actually hits a case where this patch would help, then let's
-reconsider.
+> static void warn_no_callback_path(struct nfs4_client *clp, int reason)
+> {
+>         dprintk("NFSD: warning: no callback path to client %.*s: error %d\n",
+>                 (int)clp->cl_name.len, clp->cl_name.data, reason);
+> }
+
+In NFSv4.0 a failing callback connection is absolutely normal (e.g. if
+the client is behind a firewall).  We might want to provide some better
+diagnostics to help people figure out why a given client isn't getting
+delegations, but we don't want to log this by default.
+
+Even in the 4.1 case I wonder if some pretty common failures (e.g.
+losing contact with the client) might get noticed by the callback code
+first.
+
+So, dprintk is right here.
 
 --b.
 
 > 
-> [PATCH] sunrpc: dynamically set versions in PROG_MISMATCH error reply
+> Note that it emits a dprintk instead of a printk. Should we promote
+> that to something more visible?
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  include/linux/sunrpc/svc.h |  2 --
->  net/sunrpc/svc.c           | 47 ++++++++++++++++++++++++++++++++++------------
->  2 files changed, 35 insertions(+), 14 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index e770abeed32d..f19321cfcf21 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -381,8 +381,6 @@ struct svc_deferred_req {
->  struct svc_program {
->  	struct svc_program *	pg_next;	/* other programs (same xprt) */
->  	u32			pg_prog;	/* program number */
-> -	unsigned int		pg_lovers;	/* lowest version */
-> -	unsigned int		pg_hivers;	/* highest version */
->  	unsigned int		pg_nvers;	/* number of versions */
->  	struct svc_version **	pg_vers;	/* version array */
->  	char *			pg_name;	/* service name */
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index a08aeb56b8e4..c81f68064313 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -441,18 +441,13 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->  	serv->sv_ops = ops;
->  	xdrsize = 0;
->  	while (prog) {
-> -		prog->pg_lovers = prog->pg_nvers-1;
->  		for (vers=0; vers<prog->pg_nvers ; vers++)
-> -			if (prog->pg_vers[vers]) {
-> -				prog->pg_hivers = vers;
-> -				if (prog->pg_lovers > vers)
-> -					prog->pg_lovers = vers;
-> -				if (prog->pg_vers[vers]->vs_xdrsize > xdrsize)
-> -					xdrsize = prog->pg_vers[vers]->vs_xdrsize;
-> -			}
-> +			if (prog->pg_vers[vers] &&
-> +			    prog->pg_vers[vers]->vs_xdrsize > xdrsize)
-> +				xdrsize = prog->pg_vers[vers]->vs_xdrsize;
->  		prog = prog->pg_next;
->  	}
-> -	serv->sv_xdrsize   = xdrsize;
-> +	serv->sv_xdrsize = xdrsize;
->  	INIT_LIST_HEAD(&serv->sv_tempsocks);
->  	INIT_LIST_HEAD(&serv->sv_permsocks);
->  	init_timer(&serv->sv_temptimer);
-> @@ -1086,6 +1081,36 @@ void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...)
->  static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ...) {}
->  #endif
->  
-> +static void
-> +svc_set_prog_mismatch(struct svc_rqst *rqstp, struct svc_program *prog,
-> +		      struct kvec *resv)
-> +{
-> +	unsigned int vers, hi = 0, lo = prog->pg_nvers - 1;
-> +	struct svc_version *versp;
-> +
-> +	for (vers = 0; vers < prog->pg_nvers ; vers++) {
-> +		versp = prog->pg_vers[vers];
-> +		if (!versp)
-> +			continue;
-> +
-> +		/*
-> +		 * Don't report this version if it needs congestion control
-> +		 * and the xprt doesn't provide it.
-> +		 */
-> +		if (versp->vs_need_cong_ctrl &&
-> +		    !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
-> +			continue;
-> +
-> +		hi = vers;
-> +		if (lo > vers)
-> +			lo = vers;
-> +	}
-> +
-> +	svc_putnl(resv, RPC_PROG_MISMATCH);
-> +	svc_putnl(resv, lo);
-> +	svc_putnl(resv, hi);
-> +}
-> +
->  /*
->   * Common routine for processing the RPC request.
->   */
-> @@ -1315,9 +1340,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  		       vers, prog, progp->pg_name);
->  
->  	serv->sv_stats->rpcbadfmt++;
-> -	svc_putnl(resv, RPC_PROG_MISMATCH);
-> -	svc_putnl(resv, progp->pg_lovers);
-> -	svc_putnl(resv, progp->pg_hivers);
-> +	svc_set_prog_mismatch(rqstp, progp, resv);
->  	goto sendit;
->  
->  err_bad_proc:
-> -- 
-> 2.9.3
+> >  net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
+> >  1 file changed, 1 insertion(+)
+> > 
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > index c13a5c3..fc8f14c 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > @@ -127,6 +127,7 @@ static struct svc_xprt *svc_rdma_bc_create(struct svc_serv *serv,
+> >  	xprt = &cma_xprt->sc_xprt;
+> >  
+> >  	svc_xprt_init(net, &svc_rdma_bc_class, xprt, serv);
+> > +	set_bit(XPT_CONG_CTRL, &xprt->xpt_flags);
+> >  	serv->sv_bc_xprt = xprt;
+> >  
+> >  	dprintk("svcrdma: %s(%p)\n", __func__, xprt);
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
