@@ -1,82 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59126 "EHLO fieldses.org"
+Received: from mx142.netapp.com ([216.240.21.19]:36579 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933356AbdC3QMc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Mar 2017 12:12:32 -0400
-Date: Thu, 30 Mar 2017 12:12:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170330161231.GA9824@fieldses.org>
-References: <20170320214327.GA5098@fieldses.org>
- <20170321134500.GA1318@infradead.org>
- <20170321163011.GA16666@fieldses.org>
- <1490117004.2542.1.camel@redhat.com>
- <20170321183006.GD17872@fieldses.org>
- <1490122013.2593.1.camel@redhat.com>
- <20170329111507.GA18467@quack2.suse.cz>
- <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
+        id S933150AbdC3R0o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 30 Mar 2017 13:26:44 -0400
+Subject: Re: [PATCH 1/1] NFSv4.1 fix infinite loop on IO BAD_STATEID error
+To: Olga Kornievskaia <kolga@netapp.com>,
+        <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+References: <20170330140051.61886-1-kolga@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <bdff27b8-152d-69dd-8dc1-0452aeff645d@Netapp.com>
+Date: Thu, 30 Mar 2017 13:26:36 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1490872308.2694.1.camel@redhat.com>
+In-Reply-To: <20170330140051.61886-1-kolga@netapp.com>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
-> On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
-> > Hum, so are we fine if i_version just changes (increases) for all inodes
-> > after a server crash? If I understand its use right, it would mean
-> > invalidation of all client's caches but that is not such a big deal given
-> > how frequent server crashes should be, right?
+Hi Olga,
 
-Even if it's rare, it may be really painful when all your clients are
-forced to throw out and repopulate their caches after a crash.  But,
-yes, maybe we can live with it.
+On 03/30/2017 10:00 AM, Olga Kornievskaia wrote:
+> Commit 02bfab0414d7 "NFSv4.1: Don't recheck delegations that
+> have already been checked" introduced a regression where when a
+> client received BAD_STATEID error it would not send any TEST_STATEID
+> and instead go into an infinite loop of resending the IO that caused
+> the BAD_STATEID.
 
-> > Because if above is acceptable we could make reported i_version to be a sum
-> > of "superblock crash counter" and "inode i_version". We increment
-> > "superblock crash counter" whenever we detect unclean filesystem shutdown.
-> > That way after a crash we are guaranteed each inode will report new
-> > i_version (the sum would probably have to look like "superblock crash
-> > counter" * 65536 + "inode i_version" so that we avoid reusing possible
-> > i_version numbers we gave away but did not write to disk but still...).
-> > Thoughts?
+Can you double check the bad commit?  I found it as 63d63cbf5e03 and not 02bfab0414d7.  
 
-How hard is this for filesystems to support?  Do they need an on-disk
-format change to keep track of the crash counter?  Maybe not, maybe the
-high bits of the i_version counters are all they need.
-
-> That does sound like a good idea. This is a 64 bit value, so we should
-> be able to carve out some upper bits for a crash counter without risking
-> wrapping.
 > 
-> The other constraint here is that we'd like any later version of the
-> counter to be larger than any earlier value that was handed out. I think
-> this idea would still satisfy that.
+> Fixes: 02bfab0414d7 ("NFSv4.1: Don't recheck delegations that have already been checked")
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/nfs4proc.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index dfa46e4..fb6d981 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2460,6 +2460,7 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+>  	}
+>  
+>  	if (!test_and_clear_bit(NFS_DELEGATION_TEST_EXPIRED, &delegation->flags)) {
+> +		nfs_finish_clear_delegation_stateid(state, &stateid);
+>  		rcu_read_unlock();
 
-I guess we just want to have some back-of-the-envelope estimates of
-maximum number of i_version increments possible between crashes and
-maximum number of crashes possible over lifetime of a filesystem, to
-decide how to split up the bits.
+The NFS_DELEGATION_REVOKED case does the rcu_read_unlock() before the call to nfs_finish_clear_delegation_stateid().  I'm not sure how much of a difference it makes, but can you swap the order of the calls here to match?
 
-I wonder if we could get away with using the new crash counter only for
-*new* values of the i_version?  After a crash, use the on disk i_version
-as is, and put off using the new crash counter until the next time the
-file's modified.
+Thanks,
+Anna
 
-That would still eliminate the risk of accidental reuse of an old
-i_version value.  It still leaves some cases where the client could fail
-to notice an update indefinitely.  All these cases I think have to
-assume that a writer made some changes that it failed to ever sync, so
-as long as we care only about close-to-open semantics perhaps those
-cases don't matter.
-
-I wonder if repeated crashes can lead to any odd corner cases.
-
---b.
+>  		return;
+>  	}
+> 
