@@ -1,134 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45816 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932231AbdC3GvG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Mar 2017 02:51:06 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jason Yan <yanaijie@huawei.com>
-Date: Thu, 30 Mar 2017 17:50:47 +1100
-Cc: jlayton@poochiereds.net, linux-nfs@vger.kernel.org,
-        miaoxie@huawei.com, zhaohongjiang@huawei.com
-Subject: Re: [PATCH] nfsd: make strdup_if_nonnull static
-In-Reply-To: <20170329215132.GC29934@fieldses.org>
-References: <1490259456-15858-1-git-send-email-yanaijie@huawei.com> <20170329215132.GC29934@fieldses.org>
-Message-ID: <874lyb5kc8.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-qk0-f172.google.com ([209.85.220.172]:34594 "EHLO
+        mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933027AbdC3LLy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Mar 2017 07:11:54 -0400
+Received: by mail-qk0-f172.google.com with SMTP id d10so36392785qke.1
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Mar 2017 04:11:53 -0700 (PDT)
+Message-ID: <1490872308.2694.1.camel@redhat.com>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
+ optimization
+From: Jeff Layton <jlayton@redhat.com>
+To: Jan Kara <jack@suse.cz>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Date: Thu, 30 Mar 2017 07:11:48 -0400
+In-Reply-To: <20170330064724.GA21542@quack2.suse.cz>
+References: <20161222084549.GA8833@infradead.org>
+         <1482417724.3924.39.camel@redhat.com> <20170320214327.GA5098@fieldses.org>
+         <20170321134500.GA1318@infradead.org> <20170321163011.GA16666@fieldses.org>
+         <1490117004.2542.1.camel@redhat.com> <20170321183006.GD17872@fieldses.org>
+         <1490122013.2593.1.camel@redhat.com>
+         <20170329111507.GA18467@quack2.suse.cz>
+         <1490810071.2678.6.camel@redhat.com>
+         <20170330064724.GA21542@quack2.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+> On Wed 29-03-17 13:54:31, Jeff Layton wrote:
+> > On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
+> > > On Tue 21-03-17 14:46:53, Jeff Layton wrote:
+> > > > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
+> > > > > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
+> > > > > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
+> > > > > > > - It's durable; the above comparison still works if there were reboots
+> > > > > > >   between the two i_version checks.
+> > > > > > > 	- I don't know how realistic this is--we may need to figure out
+> > > > > > > 	  if there's a weaker guarantee that's still useful.  Do
+> > > > > > > 	  filesystems actually make ctime/mtime/i_version changes
+> > > > > > > 	  atomically with the changes that caused them?  What if a
+> > > > > > > 	  change attribute is exposed to an NFS client but doesn't make
+> > > > > > > 	  it to disk, and then that value is reused after reboot?
+> > > > > > > 
+> > > > > > 
+> > > > > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
+> > > > > > the inode dirty and I think that will end up with the new i_version at
+> > > > > > least being journalled before __mark_inode_dirty returns.
+> > > > > 
+> > > > > So you think the filesystem can provide the atomicity?  In more detail:
+> > > > > 
+> > > > 
+> > > > Sorry, I hit send too quickly. That should have read:
+> > > > 
+> > > > "Yeah, there could be atomicity issues there."
+> > > > 
+> > > > I think providing that level of atomicity may be difficult, though
+> > > > maybe there's some way to make the querying of i_version block until
+> > > > the inode update has been journalled?
+> > > 
+> > > Just to complement what Dave said from ext4 side - similarly as with XFS
+> > > ext4 doesn't guarantee atomicity unless fsync() has completed on the file.
+> > > Until that you can see arbitrary combination of data & i_version after the
+> > > crash. We do take care to keep data and metadata in sync only when there
+> > > are security implications to that (like exposing uninitialized disk blocks)
+> > > and if not, we are as lazy as we can to improve performance...
+> > > 
+> > > 
+> > 
+> > Yeah, I think what we'll have to do here is ensure that those
+> > filesystems do an fsync prior to reporting the i_version getattr
+> > codepath. It's not pretty, but I don't see a real alternative.
+> 
+> Hum, so are we fine if i_version just changes (increases) for all inodes
+> after a server crash? If I understand its use right, it would mean
+> invalidation of all client's caches but that is not such a big deal given
+> how frequent server crashes should be, right?
+> 
+> Because if above is acceptable we could make reported i_version to be a sum
+> of "superblock crash counter" and "inode i_version". We increment
+> "superblock crash counter" whenever we detect unclean filesystem shutdown.
+> That way after a crash we are guaranteed each inode will report new
+> i_version (the sum would probably have to look like "superblock crash
+> counter" * 65536 + "inode i_version" so that we avoid reusing possible
+> i_version numbers we gave away but did not write to disk but still...).
+> Thoughts?
+> 
 
-On Wed, Mar 29 2017, J. Bruce Fields wrote:
+That does sound like a good idea. This is a 64 bit value, so we should
+be able to carve out some upper bits for a crash counter without risking
+wrapping.
 
-> Thanks, applying for 4.12.--b.
-
-Ugh... does strdup_if_nonnull() actually help readability at all?
-kstrdup() already handles NULL fine, which is what the name seems to
-suggest is happening.
-I would think kstrdup_report_error() is a name that better reflects the
-function.
-
-Or just discard it:
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e9ef50addddb..cf28d1056e70 100644
-=2D-- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1912,28 +1912,14 @@ static void copy_clid(struct nfs4_client *target, s=
-truct nfs4_client *source)
- 	target->cl_clientid.cl_id =3D source->cl_clientid.cl_id;=20
- }
-=20
-=2Dint strdup_if_nonnull(char **target, char *source)
-=2D{
-=2D	if (source) {
-=2D		*target =3D kstrdup(source, GFP_KERNEL);
-=2D		if (!*target)
-=2D			return -ENOMEM;
-=2D	} else
-=2D		*target =3D NULL;
-=2D	return 0;
-=2D}
-=2D
- static int copy_cred(struct svc_cred *target, struct svc_cred *source)
- {
-=2D	int ret;
-+	target->cr_principal =3D kstrdup(source->cr_principal, GFP_KERNEL);
-+	target->cr_raw_principal =3D kstrdup(source->cr_raw_principal, GFP_KERNEL=
-);
-+	if ((source->cr_principal && ! target->cr_principal) ||
-+	    (source->cr_raw_principal && ! target->cr_raw_principal))
-+		return -ENOMEM;
-=20
-=2D	ret =3D strdup_if_nonnull(&target->cr_principal, source->cr_principal);
-=2D	if (ret)
-=2D		return ret;
-=2D	ret =3D strdup_if_nonnull(&target->cr_raw_principal,
-=2D					source->cr_raw_principal);
-=2D	if (ret)
-=2D		return ret;
- 	target->cr_flavor =3D source->cr_flavor;
- 	target->cr_uid =3D source->cr_uid;
- 	target->cr_gid =3D source->cr_gid;
-
-
-NeilBrown
-
->
-> On Thu, Mar 23, 2017 at 04:57:36PM +0800, Jason Yan wrote:
->> Fixes the following sparse warning:
->>=20
->> fs/nfsd/nfs4state.c:1915:5: warning: symbol 'strdup_if_nonnull' was not
->> declared. Should it be static?
->>=20
->> Signed-off-by: Jason Yan <yanaijie@huawei.com>
->> ---
->>  fs/nfsd/nfs4state.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>=20
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index e9ef50a..59a9e30 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -1912,7 +1912,7 @@ static void copy_clid(struct nfs4_client *target, =
-struct nfs4_client *source)
->>  	target->cl_clientid.cl_id =3D source->cl_clientid.cl_id;=20
->>  }
->>=20=20
->> -int strdup_if_nonnull(char **target, char *source)
->> +static int strdup_if_nonnull(char **target, char *source)
->>  {
->>  	if (source) {
->>  		*target =3D kstrdup(source, GFP_KERNEL);
->> --=20
->> 2.5.0
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljcqscACgkQOeye3VZi
-gbky6hAApq9M46rMWrCX1B7rWG0nxOOwh0gi1nWT1N8aKLaCP6M6grbfYYXlyFKG
-55OX+c0xqNGJaZvhUUt0BsLga+7C45M+E9pKeBvJe9xwFrFnEUVl7YF6z6FUrCF8
-TmdH3OXES81daaV5ZbiL0YM366TT6GPaMXz638k7IDqd3IE3gO9zthcDQyzNjNlf
-RbT+NvXcc4GMxrOQgbqQFR0p9ga/N4XQtL73sWU+bx+lN2G88Blrs1eALK11cWp7
-uQHPwu47PnvkDK8YceHhjJqJ5bVknJKo6n4dQqPL2Fxdsb9N9sf0vx1SN9+1smtp
-XYchRN8AusKvqihJPNX7O1sLrJrjhiXShzKINdSNbY2h2tyWrO6ywkpYGE9rHl9u
-Gg1C1p1yfcYKx/St9xjqCAgLLilZESvlQtdtExba7Nh7Vbe55SbNgEuetAQt031I
-jcKsUw30ZnxCrn7OmgpgoLbyvQgAMXEGhduAtp1DIPhEiY4zwToKHahPW8FB2B3H
-3L5XPj+w7ZNUvYUUUARijQmwskqn9q87U2utMwnrHuBlD3WJ91nI6HF3HW50xP0d
-HtGW+1ToqjK1mE8gERi/btPbDtmQ9pUzsL+wvhYfC5VH13hTX0TdZ8FlWXAD+6up
-CRWa5lnd/V/0HKviZozD0vshYtbB5wHU7ekzNbG9l79Ywp9DpwE=
-=SwsV
------END PGP SIGNATURE-----
---=-=-=--
+The other constraint here is that we'd like any later version of the
+counter to be larger than any earlier value that was handed out. I think
+this idea would still satisfy that.
+-- 
+Jeff Layton <jlayton@redhat.com>
