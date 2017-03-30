@@ -1,75 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:35371 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934023AbdC3R7w (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Mar 2017 13:59:52 -0400
-Received: by mail-io0-f196.google.com with SMTP id f103so3652990ioi.2
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Mar 2017 10:59:51 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1c58c56a-3a16-2a5d-b87c-d0019762ec9e@gmail.com>
-References: <CAN-5tyG5s1B25WShf5HJ0DkYLpM7oQ1OiZO+zvg892yZ=68NoQ@mail.gmail.com>
- <20170330141055.61977-1-kolga@netapp.com> <1c58c56a-3a16-2a5d-b87c-d0019762ec9e@gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 30 Mar 2017 13:59:49 -0400
-Message-ID: <CAN-5tyEYVstq8ALNXQE=bHTPcScOkMLWrYkRr7O1rdNUB73OkQ@mail.gmail.com>
-Subject: Re: [PATCH 1/1] PNFS fix fallback to MDS if got error on commit to DS
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qt0-f182.google.com ([209.85.216.182]:36764 "EHLO
+        mail-qt0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934299AbdC3Sfh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Mar 2017 14:35:37 -0400
+Received: by mail-qt0-f182.google.com with SMTP id r45so47023860qte.3
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Mar 2017 11:35:36 -0700 (PDT)
+Message-ID: <1490898932.2667.1.camel@redhat.com>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
+ optimization
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Date: Thu, 30 Mar 2017 14:35:32 -0400
+In-Reply-To: <20170330161231.GA9824@fieldses.org>
+References: <20170320214327.GA5098@fieldses.org>
+         <20170321134500.GA1318@infradead.org> <20170321163011.GA16666@fieldses.org>
+         <1490117004.2542.1.camel@redhat.com> <20170321183006.GD17872@fieldses.org>
+         <1490122013.2593.1.camel@redhat.com>
+         <20170329111507.GA18467@quack2.suse.cz>
+         <1490810071.2678.6.camel@redhat.com>
+         <20170330064724.GA21542@quack2.suse.cz>
+         <1490872308.2694.1.camel@redhat.com> <20170330161231.GA9824@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 30, 2017 at 1:34 PM, Anna Schumaker
-<schumaker.anna@gmail.com> wrote:
-> Hi Olga,
->
-> On 03/30/2017 10:10 AM, Olga Kornievskaia wrote:
->> Upong receiving some errors (EACCES) on commit to the DS the code
->> doesn't fallback to MDS and intead retrieds to the same DS again.
->
-> Just so I know what's going on: do you want this patch instead of the first one in the thread?
+On Thu, 2017-03-30 at 12:12 -0400, J. Bruce Fields wrote:
+> On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
+> > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+> > > Hum, so are we fine if i_version just changes (increases) for all inodes
+> > > after a server crash? If I understand its use right, it would mean
+> > > invalidation of all client's caches but that is not such a big deal given
+> > > how frequent server crashes should be, right?
+> 
+> Even if it's rare, it may be really painful when all your clients are
+> forced to throw out and repopulate their caches after a crash.  But,
+> yes, maybe we can live with it.
+> 
 
-Yes I do. I think this might be more correct. The previous patch would
-call pnfs_set_lo_fail() twice for the "rpc connection errors from ds"
-in file layout_async_handle_error() function. Also I think other
-callers of filelayout_async_handle_error() (like read and write) when
-they get these unhandled errors (like EACCES) would also benefit from
-it caz otherwise they would also resend to the DS instead of MDS (but
-I have not tested this case with EACCES and IO).
+Yeah, assuming that normal reboots wouldn't cause this, then I don't see
+it as being too bad.
 
-But what I would have liked a comment on is whether or not
-pnfs_error_mark_layout_for_return() needs to be moved lower to?
+> > > Because if above is acceptable we could make reported i_version to be a sum
+> > > of "superblock crash counter" and "inode i_version". We increment
+> > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
+> > > That way after a crash we are guaranteed each inode will report new
+> > > i_version (the sum would probably have to look like "superblock crash
+> > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
+> > > i_version numbers we gave away but did not write to disk but still...).
+> > > Thoughts?
+> 
+> How hard is this for filesystems to support?  Do they need an on-disk
+> format change to keep track of the crash counter?  Maybe not, maybe the
+> high bits of the i_version counters are all they need.
+> 
 
->
-> Thanks,
-> Anna
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  fs/nfs/filelayout/filelayout.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
->> index a3fc48b..59e1efa 100644
->> --- a/fs/nfs/filelayout/filelayout.c
->> +++ b/fs/nfs/filelayout/filelayout.c
->> @@ -202,10 +202,10 @@ static int filelayout_async_handle_error(struct rpc_task *task,
->>                       task->tk_status);
->>               nfs4_mark_deviceid_unavailable(devid);
->>               pnfs_error_mark_layout_for_return(inode, lseg);
->> -             pnfs_set_lo_fail(lseg);
->>               rpc_wake_up(&tbl->slot_tbl_waitq);
->>               /* fall through */
->>       default:
->> +             pnfs_set_lo_fail(lseg);
->>  reset:
->>               dprintk("%s Retry through MDS. Error %d\n", __func__,
->>                       task->tk_status);
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yeah, I imagine we'd need a on-disk change for this unless there's
+something already present that we could use in place of a crash counter.
+
+> > That does sound like a good idea. This is a 64 bit value, so we should
+> > be able to carve out some upper bits for a crash counter without risking
+> > wrapping.
+> > 
+> > The other constraint here is that we'd like any later version of the
+> > counter to be larger than any earlier value that was handed out. I think
+> > this idea would still satisfy that.
+> 
+> I guess we just want to have some back-of-the-envelope estimates of
+> maximum number of i_version increments possible between crashes and
+> maximum number of crashes possible over lifetime of a filesystem, to
+> decide how to split up the bits.
+> 
+> I wonder if we could get away with using the new crash counter only for
+> *new* values of the i_version?  After a crash, use the on disk i_version
+> as is, and put off using the new crash counter until the next time the
+> file's modified.
+> 
+
+That sounds difficult to get right. Suppose I have an inode that has not
+been updated in a long time. Someone writes to it and then queries the
+i_version. How do I know whether there were crashes since the last time
+I updated it? Or am I misunderstanding what you're proposing here?
+
+> That would still eliminate the risk of accidental reuse of an old
+> i_version value.  It still leaves some cases where the client could fail
+> to notice an update indefinitely.  All these cases I think have to
+> assume that a writer made some changes that it failed to ever sync, so
+> as long as we care only about close-to-open semantics perhaps those
+> cases don't matter.
+> 
+> I wonder if repeated crashes can lead to any odd corner cases.
+> 
+
+-- 
+Jeff Layton <jlayton@redhat.com>
