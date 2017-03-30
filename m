@@ -1,96 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:33936 "EHLO smtp-o-3.desy.de"
+Received: from fieldses.org ([173.255.197.46]:59126 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933718AbdC3Pbg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Mar 2017 11:31:36 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id ED0572801A9
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Mar 2017 17:31:33 +0200 (CEST)
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Cc: trond.myklebust@primarydata.com,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] nfs: flexfiles: fix kernel OOPS if MDS returns unsupported DS type
-Date: Thu, 30 Mar 2017 17:31:18 +0200
-Message-Id: <20170330153118.13765-1-tigran.mkrtchyan@desy.de>
+        id S933356AbdC3QMc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 30 Mar 2017 12:12:32 -0400
+Date: Thu, 30 Mar 2017 12:12:31 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Message-ID: <20170330161231.GA9824@fieldses.org>
+References: <20170320214327.GA5098@fieldses.org>
+ <20170321134500.GA1318@infradead.org>
+ <20170321163011.GA16666@fieldses.org>
+ <1490117004.2542.1.camel@redhat.com>
+ <20170321183006.GD17872@fieldses.org>
+ <1490122013.2593.1.camel@redhat.com>
+ <20170329111507.GA18467@quack2.suse.cz>
+ <1490810071.2678.6.camel@redhat.com>
+ <20170330064724.GA21542@quack2.suse.cz>
+ <1490872308.2694.1.camel@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1490872308.2694.1.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-this fix aims to fix dereferencing of a mirror in an error state when MDS
-returns unsupported DS type (IOW, not v3), which causes the following oops:
+On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
+> On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+> > Hum, so are we fine if i_version just changes (increases) for all inodes
+> > after a server crash? If I understand its use right, it would mean
+> > invalidation of all client's caches but that is not such a big deal given
+> > how frequent server crashes should be, right?
 
-[  220.370709] BUG: unable to handle kernel NULL pointer dereference at 0000000000000065
-[  220.370842] IP: ff_layout_mirror_valid+0x2d/0x110 [nfs_layout_flexfiles]
-[  220.370920] PGD 0
+Even if it's rare, it may be really painful when all your clients are
+forced to throw out and repopulate their caches after a crash.  But,
+yes, maybe we can live with it.
 
-[  220.370972] Oops: 0000 [#1] SMP
-[  220.371013] Modules linked in: nfnetlink_queue nfnetlink_log bluetooth nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache nf_conntrack_netbios_ns nf_conntrack_broadcast xt_CT ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ip_set nfnetlink ebtable_nat ebtable_broute bridge stp llc ip6table_raw ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security iptable_raw iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack libcrc32c iptable_mangle iptable_security ebtable_filter ebtables ip6table_filter ip6_tables binfmt_misc intel_rapl x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel btrfs kvm arc4 snd_hda_codec_hdmi iwldvm irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel intel_cstate mac80211 xor uvcvideo
-[  220.371814]  videobuf2_vmalloc videobuf2_memops snd_hda_codec_idt mei_wdt videobuf2_v4l2 snd_hda_codec_generic iTCO_wdt ppdev videobuf2_core iTCO_vendor_support dell_rbtn dell_wmi iwlwifi sparse_keymap dell_laptop dell_smbios snd_hda_intel dcdbas videodev snd_hda_codec dell_smm_hwmon snd_hda_core media cfg80211 intel_uncore snd_hwdep raid6_pq snd_seq intel_rapl_perf snd_seq_device joydev i2c_i801 rfkill lpc_ich snd_pcm parport_pc mei_me parport snd_timer dell_smo8800 mei snd shpchp soundcore tpm_tis tpm_tis_core tpm nfsd auth_rpcgss nfs_acl lockd grace sunrpc i915 nouveau mxm_wmi ttm i2c_algo_bit drm_kms_helper crc32c_intel e1000e drm sdhci_pci firewire_ohci sdhci serio_raw mmc_core firewire_core ptp crc_itu_t pps_core wmi fjes video
-[  220.372568] CPU: 7 PID: 4988 Comm: cat Not tainted 4.10.5-200.fc25.x86_64 #1
-[  220.372647] Hardware name: Dell Inc. Latitude E6520/0J4TFW, BIOS A06 07/11/2011
-[  220.372729] task: ffff94791f6ea580 task.stack: ffffb72b88c0c000
-[  220.372802] RIP: 0010:ff_layout_mirror_valid+0x2d/0x110 [nfs_layout_flexfiles]
-[  220.372883] RSP: 0018:ffffb72b88c0f970 EFLAGS: 00010246
-[  220.372945] RAX: 0000000000000000 RBX: ffff9479015ca600 RCX: ffffffffffffffed
-[  220.373025] RDX: ffffffffffffffed RSI: ffff9479753dc980 RDI: 0000000000000000
-[  220.373104] RBP: ffffb72b88c0f988 R08: 000000000001c980 R09: ffffffffc0ea6112
-[  220.373184] R10: ffffef17477d9640 R11: ffff9479753dd6c0 R12: ffff9479211c7440
-[  220.373264] R13: ffff9478f45b7790 R14: 0000000000000001 R15: ffff9479015ca600
-[  220.373345] FS:  00007f555fa3e700(0000) GS:ffff9479753c0000(0000) knlGS:0000000000000000
-[  220.373435] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  220.373506] CR2: 0000000000000065 CR3: 0000000196044000 CR4: 00000000000406e0
-[  220.373586] Call Trace:
-[  220.373627]  nfs4_ff_layout_prepare_ds+0x5e/0x200 [nfs_layout_flexfiles]
-[  220.373708]  ff_layout_pg_init_read+0x81/0x160 [nfs_layout_flexfiles]
-[  220.373806]  __nfs_pageio_add_request+0x11f/0x4a0 [nfs]
-[  220.373886]  ? nfs_create_request.part.14+0x37/0x330 [nfs]
-[  220.373967]  nfs_pageio_add_request+0xb2/0x260 [nfs]
-[  220.374042]  readpage_async_filler+0xaf/0x280 [nfs]
-[  220.374103]  read_cache_pages+0xef/0x1b0
-[  220.374166]  ? nfs_read_completion+0x210/0x210 [nfs]
-[  220.374239]  nfs_readpages+0x129/0x200 [nfs]
-[  220.374293]  __do_page_cache_readahead+0x1d0/0x2f0
-[  220.374352]  ondemand_readahead+0x17d/0x2a0
-[  220.374403]  page_cache_sync_readahead+0x2e/0x50
-[  220.374460]  generic_file_read_iter+0x6c8/0x950
-[  220.374532]  ? nfs_mapping_need_revalidate_inode+0x17/0x40 [nfs]
-[  220.374617]  nfs_file_read+0x6e/0xc0 [nfs]
-[  220.374670]  __vfs_read+0xe2/0x150
-[  220.374715]  vfs_read+0x96/0x130
-[  220.374758]  SyS_read+0x55/0xc0
-[  220.374801]  entry_SYSCALL_64_fastpath+0x1a/0xa9
-[  220.374856] RIP: 0033:0x7f555f570bd0
-[  220.374900] RSP: 002b:00007ffeb73e1b38 EFLAGS: 00000246 ORIG_RAX: 0000000000000000
-[  220.374986] RAX: ffffffffffffffda RBX: 00007f555f839ae0 RCX: 00007f555f570bd0
-[  220.375066] RDX: 0000000000020000 RSI: 00007f555fa41000 RDI: 0000000000000003
-[  220.375145] RBP: 0000000000021010 R08: ffffffffffffffff R09: 0000000000000000
-[  220.375226] R10: 00007f555fa40010 R11: 0000000000000246 R12: 0000000000022000
-[  220.375305] R13: 0000000000021010 R14: 0000000000001000 R15: 0000000000002710
-[  220.375386] Code: 66 66 90 55 48 89 e5 41 54 53 49 89 fc 48 83 ec 08 48 85 f6 74 2e 48 8b 4e 30 48 89 f3 48 81 f9 00 f0 ff ff 77 1e 48 85 c9 74 15 <48> 83 79 78 00 b8 01 00 00 00 74 2c 48 83 c4 08 5b 41 5c 5d c3
-[  220.375653] RIP: ff_layout_mirror_valid+0x2d/0x110 [nfs_layout_flexfiles] RSP: ffffb72b88c0f970
-[  220.375748] CR2: 0000000000000065
-[  220.403538] ---[ end trace bcdca752211b7da9 ]---
+> > Because if above is acceptable we could make reported i_version to be a sum
+> > of "superblock crash counter" and "inode i_version". We increment
+> > "superblock crash counter" whenever we detect unclean filesystem shutdown.
+> > That way after a crash we are guaranteed each inode will report new
+> > i_version (the sum would probably have to look like "superblock crash
+> > counter" * 65536 + "inode i_version" so that we avoid reusing possible
+> > i_version numbers we gave away but did not write to disk but still...).
+> > Thoughts?
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- fs/nfs/flexfilelayout/flexfilelayoutdev.c | 4 ++++
- 1 file changed, 4 insertions(+)
+How hard is this for filesystems to support?  Do they need an on-disk
+format change to keep track of the crash counter?  Maybe not, maybe the
+high bits of the i_version counters are all they need.
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-index 85fde93..457cfeb 100644
---- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
-@@ -208,6 +208,10 @@ static bool ff_layout_mirror_valid(struct pnfs_layout_segment *lseg,
- 		} else
- 			goto outerr;
- 	}
-+
-+	if (IS_ERR(mirror->mirror_ds))
-+		goto outerr;
-+
- 	if (mirror->mirror_ds->ds == NULL) {
- 		struct nfs4_deviceid_node *devid;
- 		devid = &mirror->mirror_ds->id_node;
--- 
-2.9.3
+> That does sound like a good idea. This is a 64 bit value, so we should
+> be able to carve out some upper bits for a crash counter without risking
+> wrapping.
+> 
+> The other constraint here is that we'd like any later version of the
+> counter to be larger than any earlier value that was handed out. I think
+> this idea would still satisfy that.
 
+I guess we just want to have some back-of-the-envelope estimates of
+maximum number of i_version increments possible between crashes and
+maximum number of crashes possible over lifetime of a filesystem, to
+decide how to split up the bits.
+
+I wonder if we could get away with using the new crash counter only for
+*new* values of the i_version?  After a crash, use the on disk i_version
+as is, and put off using the new crash counter until the next time the
+file's modified.
+
+That would still eliminate the risk of accidental reuse of an old
+i_version value.  It still leaves some cases where the client could fail
+to notice an update indefinitely.  All these cases I think have to
+assume that a writer made some changes that it failed to ever sync, so
+as long as we care only about close-to-open semantics perhaps those
+cases don't matter.
+
+I wonder if repeated crashes can lead to any odd corner cases.
+
+--b.
