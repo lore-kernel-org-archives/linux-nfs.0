@@ -1,126 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44403 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:45370 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751941AbdC3Gf6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Mar 2017 02:35:58 -0400
-From: NeilBrown <neilb@suse.com>
-To: Scott Mayhew <smayhew@redhat.com>,
-        Steve Dickson <SteveD@RedHat.com>
-Date: Thu, 30 Mar 2017 17:35:48 +1100
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] systemd: add generators for the rpc_pipefs mountpoint
-In-Reply-To: <20170329180207.xkcxepra442j6vv6@tonberry.usersys.redhat.com>
-References: <20170328133703.19325-1-smayhew@redhat.com> <2aace10d-1b9b-b8e8-4f85-caf31f5f51bf@RedHat.com> <20170329180207.xkcxepra442j6vv6@tonberry.usersys.redhat.com>
-Message-ID: <87a8835l17.fsf@notabene.neil.brown.name>
+        id S1755546AbdC3Grd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 30 Mar 2017 02:47:33 -0400
+Date: Thu, 30 Mar 2017 08:47:24 +0200
+From: Jan Kara <jack@suse.cz>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Jan Kara <jack@suse.cz>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Message-ID: <20170330064724.GA21542@quack2.suse.cz>
+References: <20161222084549.GA8833@infradead.org>
+ <1482417724.3924.39.camel@redhat.com>
+ <20170320214327.GA5098@fieldses.org>
+ <20170321134500.GA1318@infradead.org>
+ <20170321163011.GA16666@fieldses.org>
+ <1490117004.2542.1.camel@redhat.com>
+ <20170321183006.GD17872@fieldses.org>
+ <1490122013.2593.1.camel@redhat.com>
+ <20170329111507.GA18467@quack2.suse.cz>
+ <1490810071.2678.6.camel@redhat.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1490810071.2678.6.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Wed 29-03-17 13:54:31, Jeff Layton wrote:
+> On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
+> > On Tue 21-03-17 14:46:53, Jeff Layton wrote:
+> > > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
+> > > > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
+> > > > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
+> > > > > > - It's durable; the above comparison still works if there were reboots
+> > > > > >   between the two i_version checks.
+> > > > > > 	- I don't know how realistic this is--we may need to figure out
+> > > > > > 	  if there's a weaker guarantee that's still useful.  Do
+> > > > > > 	  filesystems actually make ctime/mtime/i_version changes
+> > > > > > 	  atomically with the changes that caused them?  What if a
+> > > > > > 	  change attribute is exposed to an NFS client but doesn't make
+> > > > > > 	  it to disk, and then that value is reused after reboot?
+> > > > > > 
+> > > > > 
+> > > > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
+> > > > > the inode dirty and I think that will end up with the new i_version at
+> > > > > least being journalled before __mark_inode_dirty returns.
+> > > > 
+> > > > So you think the filesystem can provide the atomicity?  In more detail:
+> > > > 
+> > > 
+> > > Sorry, I hit send too quickly. That should have read:
+> > > 
+> > > "Yeah, there could be atomicity issues there."
+> > > 
+> > > I think providing that level of atomicity may be difficult, though
+> > > maybe there's some way to make the querying of i_version block until
+> > > the inode update has been journalled?
+> > 
+> > Just to complement what Dave said from ext4 side - similarly as with XFS
+> > ext4 doesn't guarantee atomicity unless fsync() has completed on the file.
+> > Until that you can see arbitrary combination of data & i_version after the
+> > crash. We do take care to keep data and metadata in sync only when there
+> > are security implications to that (like exposing uninitialized disk blocks)
+> > and if not, we are as lazy as we can to improve performance...
+> > 
+> > 
+> 
+> Yeah, I think what we'll have to do here is ensure that those
+> filesystems do an fsync prior to reporting the i_version getattr
+> codepath. It's not pretty, but I don't see a real alternative.
 
-On Wed, Mar 29 2017, Scott Mayhew wrote:
+Hum, so are we fine if i_version just changes (increases) for all inodes
+after a server crash? If I understand its use right, it would mean
+invalidation of all client's caches but that is not such a big deal given
+how frequent server crashes should be, right?
 
-> On Wed, 29 Mar 2017, Steve Dickson wrote:
->
->> Hello,
->>=20
->> On 03/28/2017 09:37 AM, Scott Mayhew wrote:
->> > The nfs.conf and idmapd.conf files both have config options for the
->> > pipefs mountpoint.  Currently, changing these from the defaults also
->> > requires manually overriding the systemd unit files that are hard-coded
->> > to mount the filesystem on /var/lib/nfs/rpc_pipefs.
->> The Pipefs-Directory config variable is not documented in either
->> idmapd.conf(5) or rpc.idmapd(8) or nfsidmap(5) so the only way
->> to know about it as to read the code. I would not call that
->> a supported interface and can easily be removed. IMHO.
->> The same thing goes for the Cache-Expiration variable.=20
->
-> So you're saying to document the Pipefs-Directory and Cache-Expiration
-> variables, not remove them... right?  I think they should be documented
-> in idmapd.conf(5) since the other pages both refer to idmapd.conf(5).
->>=20
->> >=20
->> > This patch adds two generators to create drop-in config files to
->> > override the dependencies for the systemd units that require the pipef=
-s.
->> > There are two because rpc.idmapd uses a separate configuration file.  =
-If
->> > idmapd's configurations are ever folded into the nfs.conf, then the
->> > idmapd-rpc-pipefs-generator.c can be deleted and generate=3D1 can be
->> > specified for idmapd in rpc-pipefs-generator.c.
->> So I'm thinking we just read Pipefs-Directory out of=20
->> one spot that would be /etc/nfs.conf.
->
-> I agree but then rpc.idmapd and nfsidmap should be modified to read
-> /etc/nfs.conf instead of /etc/idmapd.conf by default, but that could be
-> confusing unless some of the section names and/or variable names from
-> /etc/idmapd.conf were changed up a bit.  That's quite a bit more than
-> I'm trying to accomplish here.
->
->> That way we would only=20
->> have to support one of these generators.
->
-> If your issue is that there are two generators then I can fold them into
-> single one... then if the idmapd.conf ever get folded into nfs.conf it's
-> simply a matter of deleting a few lines of code.  The only reason I made
-> two generators is becuase it made more sense to me that way.  I'm fine
-> either way.
->
->>=20
->> Also please document the Pipefs-Directory variable in both
->> the nfs.conf man page and in the example nfs.conf file
->> in the git tree.=20
->
-> It's actually already documented in both, under the gssd section.
->
->>=20
->> >=20
->> > This patch also adds a unit file to mount the pipefs on /run/rpc_pipef=
-s,
->> > since that is the most logical alternate location for the pipefs
->> > filesystem.  Users wanting to use some other location besides
->> > /var/lib/nfs/rpc_pipefs or /run/rpc_pipefs would have to create their
->> > own systemd mount unit file, but the generators would take care of the
->> > rest.
->> I'm not sure I understand why this new unit file, run-rpc_pipefs.mount,
->> is needed, especially since it is not being install (aka no updates
->> to the Makefile.am files).
->
-> I forgot to update the Makefile.am by mistake.  I definitely want the
-> new unit file.  The idea is to give users a choice between
-> /var/lib/nfs/rpc_pipes and /run/rpc_pipefs without requiring them to go
-> manually messing around with systemd configs.
+Because if above is acceptable we could make reported i_version to be a sum
+of "superblock crash counter" and "inode i_version". We increment
+"superblock crash counter" whenever we detect unclean filesystem shutdown.
+That way after a crash we are guaranteed each inode will report new
+i_version (the sum would probably have to look like "superblock crash
+counter" * 65536 + "inode i_version" so that we avoid reusing possible
+i_version numbers we gave away but did not write to disk but still...).
+Thoughts?
 
-Could the new unit file be generated by the generator???
-i.e. the generator creates the foo.mount based on the nfs.conf file
-contents, as well as create the dependencies between services and this
-file.
-
-??
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljcp0QACgkQOeye3VZi
-gbnTkBAArNhbLsLq5qCoeEVbn8aBEWkXdi4CihNena64x0BOiXOv5R0iAS3wKhah
-CfQvQsuj9lLTVTQ84YfKeQg3r/mQbK3PJqWzevHKr+EfnTiB+fa0w0ltvR2BESTr
-/g7ARPBmWBqJCIZXNbpIaIqIx/4jHZ0/e5rXJLSTIv6fgZaSZxVAJ2FoQGCr+eNW
-sRP9+eTm0MCsKrt3YdZrxlReD/59yZEQfs6a23vu7gSJgL3Sf6vYSH46WgfMYqFc
-gbfRuIuyt/mgNffSRQH3SHV9Q6Dh5grfr7cSvAKgmmhBk8ZT+PAY4XVs2gAHxflk
-g4KUM2GN0wRDDv3z4b7zZmFKLm7Sk5sdXPj5vdSHl3BfddEDwB5hicMo7B390R++
-yko/zUoXQRjBZ9YwHptRr9X328eu63Yk5Yk8cOZGLOTISe81PbALA1F/xMhUm+OH
-wDyB9SSrkcah8q3HIM4o0nRV2+oYMp0ifqIZfgOBVAjiHhYCOoTRNNq/R3+9czit
-DRyImOmehR94yTqJ3N5+M5UkbkbGrmo9KmFUvXT1JN17h1nzdUpCxgxyDoN0mShI
-rnJDhgJ06fF17yEzR4DYQ8KKtcRL6EuVJaxe3zOZi+eF+g5pcBXGqqT+wOZOxjD0
-52il/XvPfqBCz6K0NXp/Lx+RMDO0abqAHE6IsTidyc0N18iEiog=
-=3lxa
------END PGP SIGNATURE-----
---=-=-=--
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
