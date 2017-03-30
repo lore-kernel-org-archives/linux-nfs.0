@@ -1,108 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41676 "EHLO mx1.redhat.com"
+Received: from mx143.netapp.com ([216.240.21.24]:24148 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933493AbdC3NFF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Mar 2017 09:05:05 -0400
-Date: Thu, 30 Mar 2017 09:05:03 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: NeilBrown <neilb@suse.com>
-Cc: Steve Dickson <SteveD@RedHat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] systemd: add generators for the rpc_pipefs
- mountpoint
-Message-ID: <20170330130503.mc43qnglsptdczgd@tonberry.usersys.redhat.com>
-References: <20170328133703.19325-1-smayhew@redhat.com>
- <2aace10d-1b9b-b8e8-4f85-caf31f5f51bf@RedHat.com>
- <20170329180207.xkcxepra442j6vv6@tonberry.usersys.redhat.com>
- <87a8835l17.fsf@notabene.neil.brown.name>
+        id S1754256AbdC3OAz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 30 Mar 2017 10:00:55 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] NFSv4.1 fix infinite loop on IO BAD_STATEID error
+Date: Thu, 30 Mar 2017 10:00:51 -0400
+Message-ID: <20170330140051.61886-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87a8835l17.fsf@notabene.neil.brown.name>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 30 Mar 2017, NeilBrown wrote:
+Commit 02bfab0414d7 "NFSv4.1: Don't recheck delegations that
+have already been checked" introduced a regression where when a
+client received BAD_STATEID error it would not send any TEST_STATEID
+and instead go into an infinite loop of resending the IO that caused
+the BAD_STATEID.
 
-> On Wed, Mar 29 2017, Scott Mayhew wrote:
-> 
-> > On Wed, 29 Mar 2017, Steve Dickson wrote:
-> >
-> >> Hello,
-> >> 
-> >> On 03/28/2017 09:37 AM, Scott Mayhew wrote:
-> >> > The nfs.conf and idmapd.conf files both have config options for the
-> >> > pipefs mountpoint.  Currently, changing these from the defaults also
-> >> > requires manually overriding the systemd unit files that are hard-coded
-> >> > to mount the filesystem on /var/lib/nfs/rpc_pipefs.
-> >> The Pipefs-Directory config variable is not documented in either
-> >> idmapd.conf(5) or rpc.idmapd(8) or nfsidmap(5) so the only way
-> >> to know about it as to read the code. I would not call that
-> >> a supported interface and can easily be removed. IMHO.
-> >> The same thing goes for the Cache-Expiration variable. 
-> >
-> > So you're saying to document the Pipefs-Directory and Cache-Expiration
-> > variables, not remove them... right?  I think they should be documented
-> > in idmapd.conf(5) since the other pages both refer to idmapd.conf(5).
-> >> 
-> >> > 
-> >> > This patch adds two generators to create drop-in config files to
-> >> > override the dependencies for the systemd units that require the pipefs.
-> >> > There are two because rpc.idmapd uses a separate configuration file.  If
-> >> > idmapd's configurations are ever folded into the nfs.conf, then the
-> >> > idmapd-rpc-pipefs-generator.c can be deleted and generate=1 can be
-> >> > specified for idmapd in rpc-pipefs-generator.c.
-> >> So I'm thinking we just read Pipefs-Directory out of 
-> >> one spot that would be /etc/nfs.conf.
-> >
-> > I agree but then rpc.idmapd and nfsidmap should be modified to read
-> > /etc/nfs.conf instead of /etc/idmapd.conf by default, but that could be
-> > confusing unless some of the section names and/or variable names from
-> > /etc/idmapd.conf were changed up a bit.  That's quite a bit more than
-> > I'm trying to accomplish here.
-> >
-> >> That way we would only 
-> >> have to support one of these generators.
-> >
-> > If your issue is that there are two generators then I can fold them into
-> > single one... then if the idmapd.conf ever get folded into nfs.conf it's
-> > simply a matter of deleting a few lines of code.  The only reason I made
-> > two generators is becuase it made more sense to me that way.  I'm fine
-> > either way.
-> >
-> >> 
-> >> Also please document the Pipefs-Directory variable in both
-> >> the nfs.conf man page and in the example nfs.conf file
-> >> in the git tree. 
-> >
-> > It's actually already documented in both, under the gssd section.
-> >
-> >> 
-> >> > 
-> >> > This patch also adds a unit file to mount the pipefs on /run/rpc_pipefs,
-> >> > since that is the most logical alternate location for the pipefs
-> >> > filesystem.  Users wanting to use some other location besides
-> >> > /var/lib/nfs/rpc_pipefs or /run/rpc_pipefs would have to create their
-> >> > own systemd mount unit file, but the generators would take care of the
-> >> > rest.
-> >> I'm not sure I understand why this new unit file, run-rpc_pipefs.mount,
-> >> is needed, especially since it is not being install (aka no updates
-> >> to the Makefile.am files).
-> >
-> > I forgot to update the Makefile.am by mistake.  I definitely want the
-> > new unit file.  The idea is to give users a choice between
-> > /var/lib/nfs/rpc_pipes and /run/rpc_pipefs without requiring them to go
-> > manually messing around with systemd configs.
-> 
-> Could the new unit file be generated by the generator???
-> i.e. the generator creates the foo.mount based on the nfs.conf file
-> contents, as well as create the dependencies between services and this
-> file.
+Fixes: 02bfab0414d7 ("NFSv4.1: Don't recheck delegations that have already been checked")
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-Good idea, I'll try it.
-
--Scott
-> 
-> ??
-> 
-> NeilBrown
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index dfa46e4..fb6d981 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2460,6 +2460,7 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
+ 	}
+ 
+ 	if (!test_and_clear_bit(NFS_DELEGATION_TEST_EXPIRED, &delegation->flags)) {
++		nfs_finish_clear_delegation_stateid(state, &stateid);
+ 		rcu_read_unlock();
+ 		return;
+ 	}
+-- 
+1.8.3.1
 
