@@ -1,37 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f172.google.com ([209.85.220.172]:34594 "EHLO
-        mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933027AbdC3LLy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Mar 2017 07:11:54 -0400
-Received: by mail-qk0-f172.google.com with SMTP id d10so36392785qke.1
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Mar 2017 04:11:53 -0700 (PDT)
-Message-ID: <1490872308.2694.1.camel@redhat.com>
+Received: from mail-qt0-f171.google.com ([209.85.216.171]:36432 "EHLO
+        mail-qt0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754144AbdC3LYE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Mar 2017 07:24:04 -0400
+Received: by mail-qt0-f171.google.com with SMTP id r45so35801574qte.3
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Mar 2017 04:24:03 -0700 (PDT)
+Message-ID: <1490873040.2694.4.camel@redhat.com>
 Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
  optimization
 From: Jeff Layton <jlayton@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jan Kara <jack@suse.cz>, "J. Bruce Fields" <bfields@fieldses.org>,
         Christoph Hellwig <hch@infradead.org>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Date: Thu, 30 Mar 2017 07:11:48 -0400
-In-Reply-To: <20170330064724.GA21542@quack2.suse.cz>
+Date: Thu, 30 Mar 2017 07:24:00 -0400
+In-Reply-To: <20170329234137.GN17542@dastard>
 References: <20161222084549.GA8833@infradead.org>
          <1482417724.3924.39.camel@redhat.com> <20170320214327.GA5098@fieldses.org>
          <20170321134500.GA1318@infradead.org> <20170321163011.GA16666@fieldses.org>
          <1490117004.2542.1.camel@redhat.com> <20170321183006.GD17872@fieldses.org>
          <1490122013.2593.1.camel@redhat.com>
          <20170329111507.GA18467@quack2.suse.cz>
-         <1490810071.2678.6.camel@redhat.com>
-         <20170330064724.GA21542@quack2.suse.cz>
+         <1490810071.2678.6.camel@redhat.com> <20170329234137.GN17542@dastard>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
-> On Wed 29-03-17 13:54:31, Jeff Layton wrote:
+On Thu, 2017-03-30 at 10:41 +1100, Dave Chinner wrote:
+> On Wed, Mar 29, 2017 at 01:54:31PM -0400, Jeff Layton wrote:
 > > On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
 > > > On Tue 21-03-17 14:46:53, Jeff Layton wrote:
 > > > > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
@@ -75,27 +74,39 @@ On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
 > > filesystems do an fsync prior to reporting the i_version getattr
 > > codepath. It's not pretty, but I don't see a real alternative.
 > 
-> Hum, so are we fine if i_version just changes (increases) for all inodes
-> after a server crash? If I understand its use right, it would mean
-> invalidation of all client's caches but that is not such a big deal given
-> how frequent server crashes should be, right?
+> I think that's even more problematic. ->getattr currently runs
+> completely unlocked for performance reasons - it's racy w.r.t. to
+> ongoing modifications to begin with, so /nothing/ that is returned
+> to userspace via stat/statx can be guaranteed to be "coherent".
+> Linus will be very unhappy if you make his git workload (which is
+> /very/ stat heavy) run slower by adding any sort of locking in this
+> hot path.
 > 
-> Because if above is acceptable we could make reported i_version to be a sum
-> of "superblock crash counter" and "inode i_version". We increment
-> "superblock crash counter" whenever we detect unclean filesystem shutdown.
-> That way after a crash we are guaranteed each inode will report new
-> i_version (the sum would probably have to look like "superblock crash
-> counter" * 65536 + "inode i_version" so that we avoid reusing possible
-> i_version numbers we gave away but did not write to disk but still...).
-> Thoughts?
+> Even if we did put an fsync() into ->getattr() (and dealt with all
+> the locking issues that entails), by the time the statx syscall
+> returns to userspace the i_version value may not match the
+> data/metadata in the inode(*).  IOWs, by the time i_version gets
+> to userspace, it is out of date and any use of it for data
+> versioning from userspace is going to be prone to race conditions.
+> 
+> Cheers,
+> 
+> Dave.
+> 
+> (*) fiemap has exactly the same "stale the moment internal fs
+> locks are released" race conditions, which is why it cannot safely
+> be used for mapping holes when copying file data....
 > 
 
-That does sound like a good idea. This is a 64 bit value, so we should
-be able to carve out some upper bits for a crash counter without risking
-wrapping.
+FWIW, I'm not terribly worried about atomicity for all of the reasons
+you describe. My main concern is reusing an i_version value that has
+already been handed out when the inode is now in an entirely different
+state. To that end, I was only considering doing an fsync iff
+STATX_VERSION was requested. If it wasn't we wouldn't need to do one.
 
-The other constraint here is that we'd like any later version of the
-counter to be larger than any earlier value that was handed out. I think
-this idea would still satisfy that.
+A lot of ->getattr implementations already call filemap_write_and_wait,
+but you're correct that flushing out the metadata is different matter. 
+It'd be nice to avoid that if we can.
+
 -- 
 Jeff Layton <jlayton@redhat.com>
