@@ -1,58 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:39138 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933150AbdC3RyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Mar 2017 13:54:09 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] NFSv4.1 fix infinite loop on IO BAD_STATEID error
-Date: Thu, 30 Mar 2017 13:49:03 -0400
-Message-ID: <20170330174903.63175-1-kolga@netapp.com>
-In-Reply-To: <367ad3d3-8aec-baeb-04a6-06348c2eb5b7@Netapp.com>
-References: <367ad3d3-8aec-baeb-04a6-06348c2eb5b7@Netapp.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:35371 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934023AbdC3R7w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Mar 2017 13:59:52 -0400
+Received: by mail-io0-f196.google.com with SMTP id f103so3652990ioi.2
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Mar 2017 10:59:51 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <1c58c56a-3a16-2a5d-b87c-d0019762ec9e@gmail.com>
+References: <CAN-5tyG5s1B25WShf5HJ0DkYLpM7oQ1OiZO+zvg892yZ=68NoQ@mail.gmail.com>
+ <20170330141055.61977-1-kolga@netapp.com> <1c58c56a-3a16-2a5d-b87c-d0019762ec9e@gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 30 Mar 2017 13:59:49 -0400
+Message-ID: <CAN-5tyEYVstq8ALNXQE=bHTPcScOkMLWrYkRr7O1rdNUB73OkQ@mail.gmail.com>
+Subject: Re: [PATCH 1/1] PNFS fix fallback to MDS if got error on commit to DS
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 63d63cbf5e03 "NFSv4.1: Don't recheck delegations that
-have already been checked" introduced a regression where when a
-client received BAD_STATEID error it would not send any TEST_STATEID
-and instead go into an infinite loop of resending the IO that caused
-the BAD_STATEID.
+On Thu, Mar 30, 2017 at 1:34 PM, Anna Schumaker
+<schumaker.anna@gmail.com> wrote:
+> Hi Olga,
+>
+> On 03/30/2017 10:10 AM, Olga Kornievskaia wrote:
+>> Upong receiving some errors (EACCES) on commit to the DS the code
+>> doesn't fallback to MDS and intead retrieds to the same DS again.
+>
+> Just so I know what's going on: do you want this patch instead of the first one in the thread?
 
-Fixes: 63d63cbf5e03 ("NFSv4.1: Don't recheck delegations that have already been checked")
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4proc.c | 9 +++------
- 1 file changed, 3 insertions(+), 6 deletions(-)
+Yes I do. I think this might be more correct. The previous patch would
+call pnfs_set_lo_fail() twice for the "rpc connection errors from ds"
+in file layout_async_handle_error() function. Also I think other
+callers of filelayout_async_handle_error() (like read and write) when
+they get these unhandled errors (like EACCES) would also benefit from
+it caz otherwise they would also resend to the DS instead of MDS (but
+I have not tested this case with EACCES and IO).
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index dfa46e4..bd1e4f6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2453,17 +2453,14 @@ static void nfs41_check_delegation_stateid(struct nfs4_state *state)
- 	}
- 
- 	nfs4_stateid_copy(&stateid, &delegation->stateid);
--	if (test_bit(NFS_DELEGATION_REVOKED, &delegation->flags)) {
-+	if (test_bit(NFS_DELEGATION_REVOKED, &delegation->flags) ||
-+		!test_and_clear_bit(NFS_DELEGATION_TEST_EXPIRED,
-+			&delegation->flags)) {
- 		rcu_read_unlock();
- 		nfs_finish_clear_delegation_stateid(state, &stateid);
- 		return;
- 	}
- 
--	if (!test_and_clear_bit(NFS_DELEGATION_TEST_EXPIRED, &delegation->flags)) {
--		rcu_read_unlock();
--		return;
--	}
--
- 	cred = get_rpccred(delegation->cred);
- 	rcu_read_unlock();
- 	status = nfs41_test_and_free_expired_stateid(server, &stateid, cred);
--- 
-1.8.3.1
+But what I would have liked a comment on is whether or not
+pnfs_error_mark_layout_for_return() needs to be moved lower to?
 
+>
+> Thanks,
+> Anna
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>>  fs/nfs/filelayout/filelayout.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+>> index a3fc48b..59e1efa 100644
+>> --- a/fs/nfs/filelayout/filelayout.c
+>> +++ b/fs/nfs/filelayout/filelayout.c
+>> @@ -202,10 +202,10 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+>>                       task->tk_status);
+>>               nfs4_mark_deviceid_unavailable(devid);
+>>               pnfs_error_mark_layout_for_return(inode, lseg);
+>> -             pnfs_set_lo_fail(lseg);
+>>               rpc_wake_up(&tbl->slot_tbl_waitq);
+>>               /* fall through */
+>>       default:
+>> +             pnfs_set_lo_fail(lseg);
+>>  reset:
+>>               dprintk("%s Retry through MDS. Error %d\n", __func__,
+>>                       task->tk_status);
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
