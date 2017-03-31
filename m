@@ -1,68 +1,181 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33353 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755093AbdCaUoo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Mar 2017 16:44:44 -0400
-Received: by mail-io0-f194.google.com with SMTP id f84so6981299ioj.0
-        for <linux-nfs@vger.kernel.org>; Fri, 31 Mar 2017 13:44:44 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20170309202610.GF3929@fieldses.org>
-References: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
- <1488885081.2788.0.camel@redhat.com> <20170309202610.GF3929@fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 31 Mar 2017 16:44:43 -0400
-Message-ID: <CAN-5tyGdGQ8q_D=w673Bmo-6njgsSB94kT93BJRaSzODZgo7zg@mail.gmail.com>
-Subject: Re: [PATCH] SUNRPC/backchanel: set XPT_CONG_CTRL flag for bc xprt
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Kinglong Mee <kinglongmee@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:45194 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755388AbdCaV44 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 31 Mar 2017 17:56:56 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: neilb@suse.com, linux-nfs@vger.kernel.org
+Subject: [RFC nfs-utils PATCH 1/2] idmapd: move the pipefs-directory config option to nfs.conf
+Date: Fri, 31 Mar 2017 17:56:53 -0400
+Message-Id: <20170331215654.31570-2-smayhew@redhat.com>
+In-Reply-To: <20170331215654.31570-1-smayhew@redhat.com>
+References: <20170331215654.31570-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Bruce,
+Changed idmapd to read its value for the pipefs-directory from
+/etc/nfs.conf rather than /etc/idmapd.conf.  All other configurations
+related to id mapping still reside in /etc/idmapd.conf for now.
 
-When is this going to go upstream?
+Removed the -c option, since it would be confusing as whether it should
+override nfs.conf, idmapd.conf, or both.
 
-On Thu, Mar 9, 2017 at 3:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> Thanks!  Applying.--b.
->
-> On Tue, Mar 07, 2017 at 06:11:21AM -0500, Jeff Layton wrote:
->> On Tue, 2017-03-07 at 17:22 +0800, Kinglong Mee wrote:
->> > The xprt for backchannel is created separately, not in TCP/UDP code.
->> > Because without the flags, the requests from NFSv41 backchannel are
->> > rejected in svc_process_common(),
->> >
->> > 1191         if (versp->vs_need_cong_ctrl &&
->> > 1192             !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
->> > 1193                 goto err_bad_vers;
->> >
->> > Fixes: 5283b03ee5 ("nfs/nfsd/sunrpc: enforce transport...")
->> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> > ---
->> >  net/sunrpc/svcsock.c | 1 +
->> >  1 file changed, 1 insertion(+)
->> >
->> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->> > index 8931e33..2b720fa 100644
->> > --- a/net/sunrpc/svcsock.c
->> > +++ b/net/sunrpc/svcsock.c
->> > @@ -1635,6 +1635,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
->> >
->> >     xprt = &svsk->sk_xprt;
->> >     svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
->> > +   set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
->> >
->> >     serv->sv_bc_xprt = xprt;
->> >
->>
->> Good catch.
->>
->> Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ nfs.conf                |  3 +++
+ systemd/nfs.conf.man    |  9 +++++++++
+ utils/idmapd/idmapd.c   | 35 ++++++++++++++---------------------
+ utils/idmapd/idmapd.man | 19 ++++++++++++++++++-
+ 4 files changed, 44 insertions(+), 22 deletions(-)
+
+diff --git a/nfs.conf b/nfs.conf
+index 81ece06..4359904 100644
+--- a/nfs.conf
++++ b/nfs.conf
+@@ -17,6 +17,9 @@
+ # cred-cache-directory=
+ # preferred-realm=
+ #
++#[idmapd]
++# pipefs-directory=/var/lib/nfs/rpc_pipefs
++#
+ #[lockd]
+ # port=0
+ # udp-port=0
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index bdc0988..83cf84a 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -215,6 +215,15 @@ See
+ for details.
+ 
+ .TP
++.B idmapd
++Recognized values:
++.BR pipefs-directory .
++
++See
++.BR rpc.idmapd (8)
++for details.
++
++.TP
+ .B svcgssd
+ Recognized values:
+ .BR principal .
+diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+index f4e083a..561a4b8 100644
+--- a/utils/idmapd/idmapd.c
++++ b/utils/idmapd/idmapd.c
+@@ -214,13 +214,11 @@ main(int argc, char **argv)
+ 	struct event initialize;
+ 	struct passwd *pw;
+ 	struct group *gr;
+-	struct stat sb;
+ 	char *xpipefsdir = NULL;
+ 	int serverstart = 1, clientstart = 1;
+ 	int ret;
+ 	char *progname;
+ 
+-	conf_path = _PATH_IDMAPDCONF;
+ 	nobodyuser = NFS4NOBODY_USER;
+ 	nobodygroup = NFS4NOBODY_GROUP;
+ 	strlcpy(pipefsdir, PIPEFS_DIR, sizeof(pipefsdir));
+@@ -231,11 +229,9 @@ main(int argc, char **argv)
+ 		progname = argv[0];
+ 	xlog_open(progname);
+ 
+-#define GETOPTSTR "hvfd:p:U:G:c:CS"
++#define GETOPTSTR "hvfd:p:U:G:CS"
+ 	opterr=0; /* Turn off error messages */
+ 	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1) {
+-		if (opt == 'c')
+-			conf_path = optarg;
+ 		if (opt == '?') {
+ 			if (strchr(GETOPTSTR, optopt))
+ 				warnx("'-%c' option requires an argument.", optopt);
+@@ -247,20 +243,19 @@ main(int argc, char **argv)
+ 	}
+ 	optind = 1;
+ 
+-	if (stat(conf_path, &sb) == -1 && (errno == ENOENT || errno == EACCES)) {
+-		warn("Skipping configuration file \"%s\"", conf_path);
+-		conf_path = NULL;
+-	} else {
+-		conf_init();
+-		verbose = conf_get_num("General", "Verbosity", 0);
+-		cache_entry_expiration = conf_get_num("General",
+-				"Cache-Expiration", DEFAULT_IDMAP_CACHE_EXPIRY);
+-		CONF_SAVE(xpipefsdir, conf_get_str("General", "Pipefs-Directory"));
+-		if (xpipefsdir != NULL)
+-			strlcpy(pipefsdir, xpipefsdir, sizeof(pipefsdir));
+-		CONF_SAVE(nobodyuser, conf_get_str("Mapping", "Nobody-User"));
+-		CONF_SAVE(nobodygroup, conf_get_str("Mapping", "Nobody-Group"));
+-	}
++	conf_path = NFS_CONFFILE;
++	conf_init();
++	CONF_SAVE(xpipefsdir, conf_get_str("idmapd", "pipefs-directory"));
++	if (xpipefsdir != NULL)
++		strlcpy(pipefsdir, xpipefsdir, sizeof(pipefsdir));
++
++	conf_path = _PATH_IDMAPDCONF;
++	conf_init();
++	verbose = conf_get_num("General", "Verbosity", 0);
++	cache_entry_expiration = conf_get_num("General",
++			"cache-expiration", DEFAULT_IDMAP_CACHE_EXPIRY);
++	CONF_SAVE(nobodyuser, conf_get_str("Mapping", "Nobody-User"));
++	CONF_SAVE(nobodygroup, conf_get_str("Mapping", "Nobody-Group"));
+ 
+ 	while ((opt = getopt(argc, argv, GETOPTSTR)) != -1)
+ 		switch (opt) {
+@@ -307,8 +302,6 @@ main(int argc, char **argv)
+ #ifdef HAVE_NFS4_SET_DEBUG
+ 	nfs4_set_debug(verbose, xlog_warn);
+ #endif
+-	if (conf_path == NULL)
+-		conf_path = _PATH_IDMAPDCONF;
+ 	if (nfs4_init_name_mapping(conf_path))
+ 		errx(1, "Unable to create name to user id mappings.");
+ 
+diff --git a/utils/idmapd/idmapd.man b/utils/idmapd/idmapd.man
+index d4ab894..0fbc24c 100644
+--- a/utils/idmapd/idmapd.man
++++ b/utils/idmapd/idmapd.man
+@@ -78,6 +78,21 @@ Client-only: perform no idmapping for any NFS server, even if one is detected.
+ .It Fl S
+ Server-only: perform no idmapping for any NFS client, even if one is detected.
+ .El
++.Sh CONFIGURATION FILES
++The
++.Sy [idmapd]
++section of the
++.Pa /etc/nfs.conf
++configuration file recognizes the following value:
++.Bl -tag -width Ds_imagedir
++.It Sy pipefs-directory
++Equivalent to
++.Sy -p .
++.El
++.Pp
++All other settings related to id mapping are found in the
++.Pa /etc/idmapd.conf
++configuration file.
+ .Sh EXAMPLES
+ .Cm rpc.idmapd -f -vvv
+ .Pp
+@@ -94,9 +109,11 @@ messages to console, and with a verbosity level of 3.
+ .\" This next request is for sections 1, 6, 7 & 8 only.
+ .\" .Sh ENVIRONMENT
+ .Sh FILES
+-.Pa /etc/idmapd.conf
++.Pa /etc/idmapd.conf ,
++.Pa /etc/nfs.conf
+ .Sh SEE ALSO
+ .Xr idmapd.conf 5 ,
++.Xr nfs.conf 5 ,
+ .Xr nfsidmap 8
+ .\".Sh SEE ALSO
+ .\".Xr nylon.conf 4
+-- 
+2.9.3
+
