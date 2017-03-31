@@ -1,94 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33204 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754898AbdCaUJK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 31 Mar 2017 16:09:10 -0400
-Date: Fri, 31 Mar 2017 16:09:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Jason Yan <yanaijie@huawei.com>, jlayton@poochiereds.net,
-        linux-nfs@vger.kernel.org, miaoxie@huawei.com,
-        zhaohongjiang@huawei.com
-Subject: Re: [PATCH] nfsd: make strdup_if_nonnull static
-Message-ID: <20170331200909.GC8487@fieldses.org>
-References: <1490259456-15858-1-git-send-email-yanaijie@huawei.com>
- <20170329215132.GC29934@fieldses.org>
- <874lyb5kc8.fsf@notabene.neil.brown.name>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:33353 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755093AbdCaUoo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Mar 2017 16:44:44 -0400
+Received: by mail-io0-f194.google.com with SMTP id f84so6981299ioj.0
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Mar 2017 13:44:44 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <874lyb5kc8.fsf@notabene.neil.brown.name>
+In-Reply-To: <20170309202610.GF3929@fieldses.org>
+References: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
+ <1488885081.2788.0.camel@redhat.com> <20170309202610.GF3929@fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 31 Mar 2017 16:44:43 -0400
+Message-ID: <CAN-5tyGdGQ8q_D=w673Bmo-6njgsSB94kT93BJRaSzODZgo7zg@mail.gmail.com>
+Subject: Re: [PATCH] SUNRPC/backchanel: set XPT_CONG_CTRL flag for bc xprt
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Kinglong Mee <kinglongmee@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 30, 2017 at 05:50:47PM +1100, NeilBrown wrote:
-> On Wed, Mar 29 2017, J. Bruce Fields wrote:
-> 
-> > Thanks, applying for 4.12.--b.
-> 
-> Ugh... does strdup_if_nonnull() actually help readability at all?
-> kstrdup() already handles NULL fine, which is what the name seems to
-> suggest is happening.
-> I would think kstrdup_report_error() is a name that better reflects the
-> function.
-> 
-> Or just discard it:
+Hey Bruce,
 
-Yes, what was I thinking?  Just didn't read kstrdup(), I guess.
-Applying as follows.
+When is this going to go upstream?
 
---b.
-
-commit 3c14417a48da
-Author: NeilBrown <neilb@suse.com>
-Date:   Thu Mar 23 16:57:36 2017 +0800
-
-    nfsd4: remove pointless strdup_if_nonnull
-    
-    kstrdup() already checks for NULL.
-    
-    (Brought to our attention by Jason Yann noticing (from sparse output)
-    that it should have been declared static.)
-    
-    Reported-by: Jason Yan <yanaijie@huawei.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e9ef50addddb..78ff82123a1a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1912,28 +1912,17 @@ static void copy_clid(struct nfs4_client *target, struct nfs4_client *source)
- 	target->cl_clientid.cl_id = source->cl_clientid.cl_id; 
- }
- 
--int strdup_if_nonnull(char **target, char *source)
--{
--	if (source) {
--		*target = kstrdup(source, GFP_KERNEL);
--		if (!*target)
--			return -ENOMEM;
--	} else
--		*target = NULL;
--	return 0;
--}
--
- static int copy_cred(struct svc_cred *target, struct svc_cred *source)
- {
- 	int ret;
- 
--	ret = strdup_if_nonnull(&target->cr_principal, source->cr_principal);
--	if (ret)
--		return ret;
--	ret = strdup_if_nonnull(&target->cr_raw_principal,
--					source->cr_raw_principal);
--	if (ret)
--		return ret;
-+	target->cr_principal = kstrdup(source->cr_principal, GFP_KERNEL);
-+	target->cr_raw_principal = kstrdup(source->cr_raw_principal,
-+								GFP_KERNEL);
-+	if ((source->cr_principal && ! target->cr_principal) ||
-+	    (source->cr_raw_principal && ! target->cr_raw_principal))
-+		return -ENOMEM;
-+
- 	target->cr_flavor = source->cr_flavor;
- 	target->cr_uid = source->cr_uid;
- 	target->cr_gid = source->cr_gid;
+On Thu, Mar 9, 2017 at 3:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> Thanks!  Applying.--b.
+>
+> On Tue, Mar 07, 2017 at 06:11:21AM -0500, Jeff Layton wrote:
+>> On Tue, 2017-03-07 at 17:22 +0800, Kinglong Mee wrote:
+>> > The xprt for backchannel is created separately, not in TCP/UDP code.
+>> > Because without the flags, the requests from NFSv41 backchannel are
+>> > rejected in svc_process_common(),
+>> >
+>> > 1191         if (versp->vs_need_cong_ctrl &&
+>> > 1192             !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
+>> > 1193                 goto err_bad_vers;
+>> >
+>> > Fixes: 5283b03ee5 ("nfs/nfsd/sunrpc: enforce transport...")
+>> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> > ---
+>> >  net/sunrpc/svcsock.c | 1 +
+>> >  1 file changed, 1 insertion(+)
+>> >
+>> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>> > index 8931e33..2b720fa 100644
+>> > --- a/net/sunrpc/svcsock.c
+>> > +++ b/net/sunrpc/svcsock.c
+>> > @@ -1635,6 +1635,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+>> >
+>> >     xprt = &svsk->sk_xprt;
+>> >     svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
+>> > +   set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
+>> >
+>> >     serv->sv_bc_xprt = xprt;
+>> >
+>>
+>> Good catch.
+>>
+>> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
