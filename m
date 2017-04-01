@@ -1,75 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33490 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:33538 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755169AbdDABH6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 31 Mar 2017 21:07:58 -0400
-Date: Fri, 31 Mar 2017 21:07:57 -0400
+        id S1754944AbdDABcm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 31 Mar 2017 21:32:42 -0400
+Date: Fri, 31 Mar 2017 21:32:41 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Kinglong Mee <kinglongmee@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH] SUNRPC/backchanel: set XPT_CONG_CTRL flag for bc xprt
-Message-ID: <20170401010757.GC14424@fieldses.org>
-References: <b321152e-cbe8-94b3-498c-1d32e7c7be2d@gmail.com>
- <1488885081.2788.0.camel@redhat.com>
- <20170309202610.GF3929@fieldses.org>
- <CAN-5tyGdGQ8q_D=w673Bmo-6njgsSB94kT93BJRaSzODZgo7zg@mail.gmail.com>
+To: NeilBrown <neilb@suse.com>
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: don't try to cross a mountpount when there isn't
+ one there.
+Message-ID: <20170401013241.GD14424@fieldses.org>
+References: <87fuife2qr.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyGdGQ8q_D=w673Bmo-6njgsSB94kT93BJRaSzODZgo7zg@mail.gmail.com>
+In-Reply-To: <87fuife2qr.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 31, 2017 at 04:44:43PM -0400, Olga Kornievskaia wrote:
-> Hey Bruce,
-> 
-> When is this going to go upstream?
+Sorry for the delay, I need to find a little time to digest that one.
 
-I have it queued up for 4.11.  I'm hoping to send out a pull request
-tonight, since I'll be taking most of next week off.
+Makes sense to me--but it's a little subtle, and it looks like this
+bug's been lurking for a few years, so I think I'll let it wait for
+4.12 if that's OK.
 
 --b.
 
+On Wed, Mar 15, 2017 at 12:40:44PM +1100, NeilBrown wrote:
 > 
-> On Thu, Mar 9, 2017 at 3:26 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > Thanks!  Applying.--b.
-> >
-> > On Tue, Mar 07, 2017 at 06:11:21AM -0500, Jeff Layton wrote:
-> >> On Tue, 2017-03-07 at 17:22 +0800, Kinglong Mee wrote:
-> >> > The xprt for backchannel is created separately, not in TCP/UDP code.
-> >> > Because without the flags, the requests from NFSv41 backchannel are
-> >> > rejected in svc_process_common(),
-> >> >
-> >> > 1191         if (versp->vs_need_cong_ctrl &&
-> >> > 1192             !test_bit(XPT_CONG_CTRL, &rqstp->rq_xprt->xpt_flags))
-> >> > 1193                 goto err_bad_vers;
-> >> >
-> >> > Fixes: 5283b03ee5 ("nfs/nfsd/sunrpc: enforce transport...")
-> >> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> >> > ---
-> >> >  net/sunrpc/svcsock.c | 1 +
-> >> >  1 file changed, 1 insertion(+)
-> >> >
-> >> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> >> > index 8931e33..2b720fa 100644
-> >> > --- a/net/sunrpc/svcsock.c
-> >> > +++ b/net/sunrpc/svcsock.c
-> >> > @@ -1635,6 +1635,7 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
-> >> >
-> >> >     xprt = &svsk->sk_xprt;
-> >> >     svc_xprt_init(net, &svc_tcp_bc_class, xprt, serv);
-> >> > +   set_bit(XPT_CONG_CTRL, &svsk->sk_xprt.xpt_flags);
-> >> >
-> >> >     serv->sv_bc_xprt = xprt;
-> >> >
-> >>
-> >> Good catch.
-> >>
-> >> Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> consider the sequence of commands:
+>  mkdir -p /import/nfs /import/bind /import/etc
+>  mount --bind / /import/bind
+>  mount --make-private /import/bind
+>  mount --bind /import/etc /import/bind/etc
+> 
+>  exportfs -o rw,no_root_squash,crossmnt,async,no_subtree_check localhost:/
+>  mount -o vers=4 localhost:/ /import/nfs
+>  ls -l /import/nfs/etc
+> 
+> You would not expect this to report a stale file handle.
+> Yet it does.
+> 
+> The manipulations under /import/bind cause the dentry for
+> /etc to get the DCACHE_MOUNTED flag set, even though nothing
+> is mounted on /etc.  This causes nfsd to call
+> nfsd_cross_mnt() even though there is no mountpoint.  So an
+> upcall to mountd for "/etc" is performed.
+> 
+> The 'crossmnt' flag on the export of / causes mountd to
+> report that /etc is exported as it is a descendant of /.  It
+> assumes the kernel wouldn't ask about something that wasn't
+> a mountpoint.  The filehandle returned identifies the
+> filesystem and the inode number of /etc.
+> 
+> When this filehandle is presented to rpc.mountd, via
+> "nfsd.fh", the inode cannot be found associated with any
+> name in /etc/exports, or with any mountpoint listed by
+> getmntent().  So rpc.mountd says the filehandle doesn't
+> exist. Hence ESTALE.
+> 
+> This is fixed by teaching nfsd not to trust DCACHE_MOUNTD
+> too much.  It is just a hint, not a guarantee.
+> Change nfsd_mountpoint() to return '1' for a certain mountpoint,
+> '2' for a possible mountpoint, and 0 otherwise.
+> 
+> Then change nfsd_crossmnt() to check if follow_down()
+> actually found a mountpount and, if not, to avoid performing
+> a lookup if the location is not known to certainly require
+> an export-point.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  fs/nfsd/vfs.c | 24 ++++++++++++++++++++----
+>  1 file changed, 20 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 19d50f600e8d..04cafaa94bf7 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -94,6 +94,12 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry **dpp,
+>  	err = follow_down(&path);
+>  	if (err < 0)
+>  		goto out;
+> +	if (path.mnt == exp->ex_path.mnt && path.dentry == dentry &&
+> +	    nfsd_mountpoint(dentry, exp) == 2) {
+> +		/* This is only a mountpoint in some other namespace */
+> +		path_put(&path);
+> +		goto out;
+> +	}
+>  
+>  	exp2 = rqst_exp_get_by_name(rqstp, &path);
+>  	if (IS_ERR(exp2)) {
+> @@ -167,16 +173,26 @@ static int nfsd_lookup_parent(struct svc_rqst *rqstp, struct dentry *dparent, st
+>  /*
+>   * For nfsd purposes, we treat V4ROOT exports as though there was an
+>   * export at *every* directory.
+> + * We return:
+> + * '1' if this dentry *must* be an export point,
+> + * '2' if it might be, if there is really a mount here, and
+> + * '0' if there is no chance of an export point here.
+>   */
+>  int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
+>  {
+> -	if (d_mountpoint(dentry))
+> +	if (!d_inode(dentry))
+> +		return 0;
+> +	if (exp->ex_flags & NFSEXP_V4ROOT)
+>  		return 1;
+>  	if (nfsd4_is_junction(dentry))
+>  		return 1;
+> -	if (!(exp->ex_flags & NFSEXP_V4ROOT))
+> -		return 0;
+> -	return d_inode(dentry) != NULL;
+> +	if (d_mountpoint(dentry))
+> +		/*
+> +		 * Might only be a mountpoint in a different namespace,
+> +		 * but we need to check.
+> +		 */
+> +		return 2;
+> +	return 0;
+>  }
+>  
+>  __be32
+> -- 
+> 2.12.0
+> 
+
+
