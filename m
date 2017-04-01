@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49160 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35162 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750966AbdDADQG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 31 Mar 2017 23:16:06 -0400
+        id S1751024AbdDADQH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 31 Mar 2017 23:16:07 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
@@ -10,9 +10,9 @@ To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Miklos Szeredi <miklos@szeredi.hu>,
         Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 3/6] locks: Set FL_CLOSE when removing flock locks on close()
-Date: Fri, 31 Mar 2017 23:16:00 -0400
-Message-Id: <263565f7e1c80222c10c8102fc112f1ce97ccfe8.1491015671.git.bcodding@redhat.com>
+Subject: [PATCH 4/6] NFS: Add an iocounter wait function for async RPC tasks
+Date: Fri, 31 Mar 2017 23:16:01 -0400
+Message-Id: <0a6d92ce73dc1663f6700c3560df94685a63b125.1491015671.git.bcodding@redhat.com>
 In-Reply-To: <cover.1491015671.git.bcodding@redhat.com>
 References: <cover.1491015671.git.bcodding@redhat.com>
 In-Reply-To: <cover.1491015671.git.bcodding@redhat.com>
@@ -20,56 +20,113 @@ References: <cover.1491015671.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Set FL_CLOSE in fl_flags as in locks_remove_posix() when clearing locks.
-NFS will check for this flag to ensure an unlock is sent in a following
-patch.
+By sleeping on a new NFS Unlock-On-Close waitqueue, rpc tasks may wait for
+a lock context's iocounter to reach zero.  The rpc waitqueue is only woken
+when the open_context has the NFS_CONTEXT_UNLOCK flag set in order to
+mitigate spurious wake-ups for any iocounter reaching zero.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/fuse/file.c     | 2 +-
- fs/locks.c         | 2 +-
- include/linux/fs.h | 2 ++
- 3 files changed, 4 insertions(+), 2 deletions(-)
+ fs/nfs/client.c           |  1 +
+ fs/nfs/pagelist.c         | 26 +++++++++++++++++++++++++-
+ include/linux/nfs_fs.h    |  1 +
+ include/linux/nfs_fs_sb.h |  1 +
+ include/linux/nfs_page.h  |  1 +
+ 5 files changed, 29 insertions(+), 1 deletion(-)
 
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index 2401c5dabb2a..79e1a3a048a8 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -2172,7 +2172,7 @@ static int fuse_setlk(struct file *file, struct file_lock *fl, int flock)
- 	}
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 91a8d610ba0f..c335c6dce285 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -218,6 +218,7 @@ static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
+ static void pnfs_init_server(struct nfs_server *server)
+ {
+ 	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
++	rpc_init_wait_queue(&server->uoc_rpcwaitq, "NFS UOC");
+ }
  
- 	/* Unlock on close is handled by the flush method */
--	if (fl->fl_flags & FL_CLOSE)
-+	if (fl->fl_flags & FL_CLOSE_POSIX == FL_CLOSE_POSIX)
- 		return 0;
+ #else
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6e629b856a00..d163819e4416 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -115,6 +115,27 @@ nfs_iocounter_wait(struct nfs_lock_context *l_ctx)
+ 			TASK_KILLABLE);
+ }
  
- 	fuse_lk_fill(&args, file, fl, opcode, pid, flock, &inarg);
-diff --git a/fs/locks.c b/fs/locks.c
-index 26811321d39b..af2031a1fcff 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -2504,7 +2504,7 @@ locks_remove_flock(struct file *filp, struct file_lock_context *flctx)
- 		.fl_owner = filp,
- 		.fl_pid = current->tgid,
- 		.fl_file = filp,
--		.fl_flags = FL_FLOCK,
-+		.fl_flags = FL_FLOCK | FL_CLOSE,
- 		.fl_type = F_UNLCK,
- 		.fl_end = OFFSET_MAX,
- 	};
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 2ba074328894..e964ae0a9c29 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -903,6 +903,8 @@ static inline struct file *get_file(struct file *f)
- #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
- #define FL_LAYOUT	2048	/* outstanding pNFS layout */
- 
-+#define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
++bool
++nfs_async_iocounter_wait(struct rpc_task *task, void *data)
++{
++	struct nfs_lock_context *l_ctx = data;
++	struct inode *inode = d_inode(l_ctx->open_context->dentry);
++	bool ret = false;
++
++	if (atomic_read(&l_ctx->io_count) > 0) {
++		rpc_sleep_on(&NFS_SERVER(inode)->uoc_rpcwaitq, task, NULL);
++		ret = true;
++	}
++
++	if (atomic_read(&l_ctx->io_count) == 0) {
++		rpc_wake_up_queued_task(&NFS_SERVER(inode)->uoc_rpcwaitq, task);
++		ret = false;
++	}
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(nfs_async_iocounter_wait);
 +
  /*
-  * Special return value from posix_lock_file() and vfs_lock_file() for
-  * asynchronous locking.
+  * nfs_page_group_lock - lock the head of the page group
+  * @req - request in group that is to be locked
+@@ -398,8 +419,11 @@ static void nfs_clear_request(struct nfs_page *req)
+ 		req->wb_page = NULL;
+ 	}
+ 	if (l_ctx != NULL) {
+-		if (atomic_dec_and_test(&l_ctx->io_count))
++		if (atomic_dec_and_test(&l_ctx->io_count)) {
+ 			wake_up_atomic_t(&l_ctx->io_count);
++			if (test_bit(NFS_CONTEXT_UNLOCK, &ctx->flags))
++				rpc_wake_up(&NFS_SERVER(d_inode(ctx->dentry))->uoc_rpcwaitq);
++		}
+ 		nfs_put_lock_context(l_ctx);
+ 		req->wb_lock_context = NULL;
+ 	}
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index f1da8c8dd473..3ce3e42beead 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -76,6 +76,7 @@ struct nfs_open_context {
+ #define NFS_CONTEXT_ERROR_WRITE		(0)
+ #define NFS_CONTEXT_RESEND_WRITES	(1)
+ #define NFS_CONTEXT_BAD			(2)
++#define NFS_CONTEXT_UNLOCK	(3)
+ 	int error;
+ 
+ 	struct list_head list;
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index b34097c67848..a62cc2b0d30d 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -196,6 +196,7 @@ struct nfs_server {
+ 						   this filesystem */
+ 	struct pnfs_layoutdriver_type  *pnfs_curr_ld; /* Active layout driver */
+ 	struct rpc_wait_queue	roc_rpcwaitq;
++	struct rpc_wait_queue	uoc_rpcwaitq;
+ 	void			*pnfs_ld_data;	/* per mount point data */
+ 
+ 	/* the following fields are protected by nfs_client->cl_lock */
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 957049f72290..d39ebcba52c8 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -141,6 +141,7 @@ extern int nfs_page_group_lock(struct nfs_page *, bool);
+ extern void nfs_page_group_lock_wait(struct nfs_page *);
+ extern void nfs_page_group_unlock(struct nfs_page *);
+ extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
++extern bool nfs_async_iocounter_wait(struct rpc_task *, void *);
+ 
+ /*
+  * Lock the page of an asynchronous request
 -- 
 2.9.3
 
