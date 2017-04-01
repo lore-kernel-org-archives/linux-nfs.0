@@ -1,87 +1,76 @@
 Return-Path: <jlayton@redhat.com>
-Message-ID: <1491054539.18117.2.camel@redhat.com>
-Subject: Re: [PATCH 2/6] NFS: Move the flock open mode check into nfs_flock()
+Message-ID: <1491054638.18117.4.camel@redhat.com>
+Subject: Re: [PATCH 3/6] locks: Set FL_CLOSE when removing flock locks on
+ close()
 From: Jeff Layton <jlayton@redhat.com>
 To: Benjamin Coddington <bcodding@redhat.com>, Trond Myklebust
  <trond.myklebust@primarydata.com>, Anna Schumaker
  <anna.schumaker@netapp.com>,  bfields@fieldses.org, Miklos Szeredi
  <miklos@szeredi.hu>, Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Date: Sat, 01 Apr 2017 09:48:59 -0400
-In-Reply-To: <fe45f49878bdbe361bfeb99cbd92401fccbdb2f6.1491015671.git.bcodding@redhat.com>
+Date: Sat, 01 Apr 2017 09:50:38 -0400
+In-Reply-To: <263565f7e1c80222c10c8102fc112f1ce97ccfe8.1491015671.git.bcodding@redhat.com>
 References: <cover.1491015671.git.bcodding@redhat.com>
-	 <fe45f49878bdbe361bfeb99cbd92401fccbdb2f6.1491015671.git.bcodding@redhat.com>
+	 <263565f7e1c80222c10c8102fc112f1ce97ccfe8.1491015671.git.bcodding@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-03-31 at 23:15 -0400, Benjamin Coddington wrote:
-> We only need to check lock exclusive/shared types against open mode when
-> flock() is used on NFS, so move it into the flock-specific path instead of
-> checking it for all locks.
+On Fri, 2017-03-31 at 23:16 -0400, Benjamin Coddington wrote:
+> Set FL_CLOSE in fl_flags as in locks_remove_posix() when clearing locks.
+> NFS will check for this flag to ensure an unlock is sent in a following
+> patch.
 > 
+
+Might be nice to add some verbiage here about why fuse needs to be
+changed, just for posterity. I recall the discussion a while back so I
+think the change itself looks fine.
+
 > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
 > ---
->  fs/nfs/file.c     | 18 ++++++++++++++++--
->  fs/nfs/nfs4proc.c | 14 --------------
->  2 files changed, 16 insertions(+), 16 deletions(-)
+>  fs/fuse/file.c     | 2 +-
+>  fs/locks.c         | 2 +-
+>  include/linux/fs.h | 2 ++
+>  3 files changed, 4 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> index 26dbe8b0c10d..a490f45df4db 100644
-> --- a/fs/nfs/file.c
-> +++ b/fs/nfs/file.c
-> @@ -820,9 +820,23 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
->  	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
->  		is_local = 1;
+> diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+> index 2401c5dabb2a..79e1a3a048a8 100644
+> --- a/fs/fuse/file.c
+> +++ b/fs/fuse/file.c
+> @@ -2172,7 +2172,7 @@ static int fuse_setlk(struct file *file, struct file_lock *fl, int flock)
+>  	}
 >  
-> -	/* We're simulating flock() locks using posix locks on the server */
-> -	if (fl->fl_type == F_UNLCK)
-> +	/*
-> +	 * VFS doesn't require the open mode to match a flock() lock's type.
-> +	 * NFS, however, may simulate flock() locking with posix locking which
-> +	 * requires the open mode to match the lock type.
-> +	 */
-> +	switch (fl->fl_type) {
-> +	case F_UNLCK:
->  		return do_unlk(filp, cmd, fl, is_local);
-> +	case F_RDLCK:
-> +		if (!(filp->f_mode & FMODE_READ))
-> +			return -EBADF;
-> +		break;
-> +	case F_WRLCK:
-> +		if (!(filp->f_mode & FMODE_WRITE))
-> +			return -EBADF;
-> +	}
+>  	/* Unlock on close is handled by the flush method */
+> -	if (fl->fl_flags & FL_CLOSE)
+> +	if (fl->fl_flags & FL_CLOSE_POSIX == FL_CLOSE_POSIX)
+>  		return 0;
+>  
+>  	fuse_lk_fill(&args, file, fl, opcode, pid, flock, &inarg);
+> diff --git a/fs/locks.c b/fs/locks.c
+> index 26811321d39b..af2031a1fcff 100644
+> --- a/fs/locks.c
+> +++ b/fs/locks.c
+> @@ -2504,7 +2504,7 @@ locks_remove_flock(struct file *filp, struct file_lock_context *flctx)
+>  		.fl_owner = filp,
+>  		.fl_pid = current->tgid,
+>  		.fl_file = filp,
+> -		.fl_flags = FL_FLOCK,
+> +		.fl_flags = FL_FLOCK | FL_CLOSE,
+>  		.fl_type = F_UNLCK,
+>  		.fl_end = OFFSET_MAX,
+>  	};
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 2ba074328894..e964ae0a9c29 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -903,6 +903,8 @@ static inline struct file *get_file(struct file *f)
+>  #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
+>  #define FL_LAYOUT	2048	/* outstanding pNFS layout */
+>  
+> +#define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
 > +
->  	return do_setlk(filp, cmd, fl, is_local);
->  }
->  EXPORT_SYMBOL_GPL(nfs_flock);
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 9388899e4050..91f88bfbbe79 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -6592,20 +6592,6 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
->  	    !test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
->  		return -ENOLCK;
->  
-> -	/*
-> -	 * Don't rely on the VFS having checked the file open mode,
-> -	 * since it won't do this for flock() locks.
-> -	 */
-> -	switch (request->fl_type) {
-> -	case F_RDLCK:
-> -		if (!(filp->f_mode & FMODE_READ))
-> -			return -EBADF;
-> -		break;
-> -	case F_WRLCK:
-> -		if (!(filp->f_mode & FMODE_WRITE))
-> -			return -EBADF;
-> -	}
-> -
->  	status = nfs4_set_lock_state(state, request);
->  	if (status != 0)
->  		return status;
+>  /*
+>   * Special return value from posix_lock_file() and vfs_lock_file() for
+>   * asynchronous locking.
 
 Reviewed-by: Jeff Layton <jlayton@redhat.com>
