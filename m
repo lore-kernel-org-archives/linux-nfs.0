@@ -1,16 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60571 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:60665 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751190AbdDCCN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 2 Apr 2017 22:13:56 -0400
+        id S1751190AbdDCCQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Apr 2017 22:16:04 -0400
 From: NeilBrown <neilb@suse.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Mon, 03 Apr 2017 12:13:49 +1000
-Cc: Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: don't try to cross a mountpount when there isn't one there.
-In-Reply-To: <20170401013241.GD14424@fieldses.org>
-References: <87fuife2qr.fsf@notabene.neil.brown.name> <20170401013241.GD14424@fieldses.org>
-Message-ID: <87o9wedyqq.fsf@notabene.neil.brown.name>
+Date: Mon, 03 Apr 2017 12:15:55 +1000
+Cc: Jason Yan <yanaijie@huawei.com>, jlayton@poochiereds.net,
+        linux-nfs@vger.kernel.org, miaoxie@huawei.com,
+        zhaohongjiang@huawei.com
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>
+Subject: Re: [PATCH] nfsd: make strdup_if_nonnull static
+In-Reply-To: <20170331200909.GC8487@fieldses.org>
+References: <1490259456-15858-1-git-send-email-yanaijie@huawei.com> <20170329215132.GC29934@fieldses.org> <874lyb5kc8.fsf@notabene.neil.brown.name> <20170331200909.GC8487@fieldses.org>
+Message-ID: <87lgridyn8.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -23,18 +26,29 @@ Content-Transfer-Encoding: quoted-printable
 
 On Fri, Mar 31 2017, J. Bruce Fields wrote:
 
-> Sorry for the delay, I need to find a little time to digest that one.
+> On Thu, Mar 30, 2017 at 05:50:47PM +1100, NeilBrown wrote:
+>> On Wed, Mar 29 2017, J. Bruce Fields wrote:
+>>=20
+>> > Thanks, applying for 4.12.--b.
+>>=20
+>> Ugh... does strdup_if_nonnull() actually help readability at all?
+>> kstrdup() already handles NULL fine, which is what the name seems to
+>> suggest is happening.
+>> I would think kstrdup_report_error() is a name that better reflects the
+>> function.
+>>=20
+>> Or just discard it:
 >
-> Makes sense to me--but it's a little subtle, and it looks like this
-> bug's been lurking for a few years, so I think I'll let it wait for
-> 4.12 if that's OK.
+> Yes, what was I thinking?  Just didn't read kstrdup(), I guess.
+> Applying as follows.
 
-4.12 is fine with me.
-Yes, it has been lurking.  As containers and other users of filesystem
-name spaces become more common, we can expect this bug to trigger more
-often.
-I've only seen it under test conditions - not in a real-world use case -
-so I don't think there is any rush.
+
+Thanks.
+Feel free to add
+  Signed-off-by: NeilBrown <neilb@suse.com>
+
+I probably should have stuck that in there in the first place, just in
+case.
 
 Thanks,
 NeilBrown
@@ -43,126 +57,83 @@ NeilBrown
 >
 > --b.
 >
-> On Wed, Mar 15, 2017 at 12:40:44PM +1100, NeilBrown wrote:
->>=20
->> consider the sequence of commands:
->>  mkdir -p /import/nfs /import/bind /import/etc
->>  mount --bind / /import/bind
->>  mount --make-private /import/bind
->>  mount --bind /import/etc /import/bind/etc
->>=20
->>  exportfs -o rw,no_root_squash,crossmnt,async,no_subtree_check localhost=
-:/
->>  mount -o vers=3D4 localhost:/ /import/nfs
->>  ls -l /import/nfs/etc
->>=20
->> You would not expect this to report a stale file handle.
->> Yet it does.
->>=20
->> The manipulations under /import/bind cause the dentry for
->> /etc to get the DCACHE_MOUNTED flag set, even though nothing
->> is mounted on /etc.  This causes nfsd to call
->> nfsd_cross_mnt() even though there is no mountpoint.  So an
->> upcall to mountd for "/etc" is performed.
->>=20
->> The 'crossmnt' flag on the export of / causes mountd to
->> report that /etc is exported as it is a descendant of /.  It
->> assumes the kernel wouldn't ask about something that wasn't
->> a mountpoint.  The filehandle returned identifies the
->> filesystem and the inode number of /etc.
->>=20
->> When this filehandle is presented to rpc.mountd, via
->> "nfsd.fh", the inode cannot be found associated with any
->> name in /etc/exports, or with any mountpoint listed by
->> getmntent().  So rpc.mountd says the filehandle doesn't
->> exist. Hence ESTALE.
->>=20
->> This is fixed by teaching nfsd not to trust DCACHE_MOUNTD
->> too much.  It is just a hint, not a guarantee.
->> Change nfsd_mountpoint() to return '1' for a certain mountpoint,
->> '2' for a possible mountpoint, and 0 otherwise.
->>=20
->> Then change nfsd_crossmnt() to check if follow_down()
->> actually found a mountpount and, if not, to avoid performing
->> a lookup if the location is not known to certainly require
->> an export-point.
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->>  fs/nfsd/vfs.c | 24 ++++++++++++++++++++----
->>  1 file changed, 20 insertions(+), 4 deletions(-)
->>=20
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 19d50f600e8d..04cafaa94bf7 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -94,6 +94,12 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry =
-**dpp,
->>  	err =3D follow_down(&path);
->>  	if (err < 0)
->>  		goto out;
->> +	if (path.mnt =3D=3D exp->ex_path.mnt && path.dentry =3D=3D dentry &&
->> +	    nfsd_mountpoint(dentry, exp) =3D=3D 2) {
->> +		/* This is only a mountpoint in some other namespace */
->> +		path_put(&path);
->> +		goto out;
->> +	}
->>=20=20
->>  	exp2 =3D rqst_exp_get_by_name(rqstp, &path);
->>  	if (IS_ERR(exp2)) {
->> @@ -167,16 +173,26 @@ static int nfsd_lookup_parent(struct svc_rqst *rqs=
-tp, struct dentry *dparent, st
->>  /*
->>   * For nfsd purposes, we treat V4ROOT exports as though there was an
->>   * export at *every* directory.
->> + * We return:
->> + * '1' if this dentry *must* be an export point,
->> + * '2' if it might be, if there is really a mount here, and
->> + * '0' if there is no chance of an export point here.
->>   */
->>  int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
->>  {
->> -	if (d_mountpoint(dentry))
->> +	if (!d_inode(dentry))
->> +		return 0;
->> +	if (exp->ex_flags & NFSEXP_V4ROOT)
->>  		return 1;
->>  	if (nfsd4_is_junction(dentry))
->>  		return 1;
->> -	if (!(exp->ex_flags & NFSEXP_V4ROOT))
->> -		return 0;
->> -	return d_inode(dentry) !=3D NULL;
->> +	if (d_mountpoint(dentry))
->> +		/*
->> +		 * Might only be a mountpoint in a different namespace,
->> +		 * but we need to check.
->> +		 */
->> +		return 2;
->> +	return 0;
->>  }
->>=20=20
->>  __be32
->> --=20
->> 2.12.0
->>=20
+> commit 3c14417a48da
+> Author: NeilBrown <neilb@suse.com>
+> Date:   Thu Mar 23 16:57:36 2017 +0800
+>
+>     nfsd4: remove pointless strdup_if_nonnull
+>=20=20=20=20=20
+>     kstrdup() already checks for NULL.
+>=20=20=20=20=20
+>     (Brought to our attention by Jason Yann noticing (from sparse output)
+>     that it should have been declared static.)
+>=20=20=20=20=20
+>     Reported-by: Jason Yan <yanaijie@huawei.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index e9ef50addddb..78ff82123a1a 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1912,28 +1912,17 @@ static void copy_clid(struct nfs4_client *target,=
+ struct nfs4_client *source)
+>  	target->cl_clientid.cl_id =3D source->cl_clientid.cl_id;=20
+>  }
+>=20=20
+> -int strdup_if_nonnull(char **target, char *source)
+> -{
+> -	if (source) {
+> -		*target =3D kstrdup(source, GFP_KERNEL);
+> -		if (!*target)
+> -			return -ENOMEM;
+> -	} else
+> -		*target =3D NULL;
+> -	return 0;
+> -}
+> -
+>  static int copy_cred(struct svc_cred *target, struct svc_cred *source)
+>  {
+>  	int ret;
+>=20=20
+> -	ret =3D strdup_if_nonnull(&target->cr_principal, source->cr_principal);
+> -	if (ret)
+> -		return ret;
+> -	ret =3D strdup_if_nonnull(&target->cr_raw_principal,
+> -					source->cr_raw_principal);
+> -	if (ret)
+> -		return ret;
+> +	target->cr_principal =3D kstrdup(source->cr_principal, GFP_KERNEL);
+> +	target->cr_raw_principal =3D kstrdup(source->cr_raw_principal,
+> +								GFP_KERNEL);
+> +	if ((source->cr_principal && ! target->cr_principal) ||
+> +	    (source->cr_raw_principal && ! target->cr_raw_principal))
+> +		return -ENOMEM;
+> +
+>  	target->cr_flavor =3D source->cr_flavor;
+>  	target->cr_uid =3D source->cr_uid;
+>  	target->cr_gid =3D source->cr_gid;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljhr90ACgkQOeye3VZi
-gbmcOg//T3aUj3pwUDn4myjcZD7ig+Sih91b4C3d7Zj1T0rmxctihVrsx2tvyisJ
-7F2fA1PlYR1XFZUXcyc4BON7MHZ6Siju1JSkf+abcPW8+zokodYNJHGLfv81eO8+
-1ePyb5oKYjn5xmFo7E1pA/a71yqz1rc6SgcT2CGfCKxp9VHIkfViHT/ghPqiRDNj
-IGRVPaqp3xfpegrcQwiuZWZprUqoFf0PRB9VCdaNykFM3cY01a7nSeDgb0gkL+E0
-/FShf0vMDNv0zQNUHf3imxyNP7sOksQRFHVFpr2b/6/2shJhxaVnUm2WYUgnb9tE
-kFplkLN5ocl2xQ9gNkvvAOy9Cj0DB0vwHnv/4Yq0Lb15o4rOTKaJCepph+tRkBCS
-3sZZ4BP40I20FQsnqbalgsPWJJQMCjWUHiqI+fkwSdOF9EIvHKvLGHuX2zezmaOV
-gAEXX6RE25V4TnphwALo9FKSv1W9ecY9s2toy0Otagsl6aXkeSJZurdJugVXqZd1
-CFp0UP0FPESg2g9rCCyDmfVVX9T086GGt50HDKPExDAFVN4qmHh5oqM9EbpHC/8M
-ANhxeAhoe+n2cSv6U7KFXQSqy3xfaPg8VI65QDQx81ocQUjQR5XrL0m2Guni+3uU
-cJeCnhJyas5ym5IngcoUpG2m5XVfRxpsdjGJEjRQFQFpJZfIzmw=
-=RI5c
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljhsFsACgkQOeye3VZi
+gbl4dA/9GD3yxBhT4SqDBtrN2bj0dJvGzpvNVdghad9MoYnL1ko24vLhJGehiGwb
+SIVDErZDabkfRJTS1RP32FYVTclaiIf9cHnGxjfUKz+OzHg6ieCOtTAdeP6HDy7D
+fZKhj1TgT8rh0pZgjDiGwUSTq8ukxNBOYvtFIqzHyLbNVAcAsg4Uv75xo7ZkkVGS
+B71HRp2GWJbXCvhksqq3Sxs8j+OYjoPMQAIVzL+RGX7I+uO4y5DzZTNN/PpgrjlD
+V3c0HGiSv4ziKfrMf99/P/WHIAyFKt266MmFIxYp9vx91b4xOrQXdx3DJOCQhVgw
+/tXdF0UvuQqnckdL79mmmpetIBZrBu0Gpt6rNIyrFBbxEblPzmlq9ZnxzecnMS3+
+du6MHODlV4emW+mQbNZHpqWBllWsJuzEmE7bX6d5hA+kLm84kSxbbGLHCUwzlZWL
+jJKzQYEUJC5TArRorlaJh82M3XNkoDmufcZlUGxl6BobUL0K0wIHy3w77+qUcORJ
+oYIkhZhdxWmasFHaTS99GR+wFGEHqUdaQbjpNxXg2+u1mzoIbNziV0vkKc6L6JaU
+yC86G3gse0x9Qhg+AbjPXlaACbWQUbRiMspMeqOnGPRYfVF0+DIHmKdq07ld9jGV
+xuM+roBYhqb7HKox0ded3o9t5MjbKvmAhAMstMmmTbrLTHB7vEI=
+=UBHG
 -----END PGP SIGNATURE-----
 --=-=-=--
