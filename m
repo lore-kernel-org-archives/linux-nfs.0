@@ -1,57 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34898 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33640 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750855AbdDCIUc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Apr 2017 04:20:32 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20170329220101.26067-1-ebiggers@google.com>
-References: <20170329220101.26067-1-ebiggers@google.com>
-To: Eric Biggers <ebiggers@google.com>
-Cc: dhowells@redhat.com, keyrings@vger.kernel.org,
-        linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-fscrypt@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Gwendal Grignou <gwendal@chromium.org>,
-        Jaegeuk Kim <jaegeuk@kernel.org>,
-        Richard Weinberger <richard@nod.at>,
-        Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
-Subject: Re: [PATCH] KEYS: make keyctl_invalidate() also require Setattr permission
+        id S1751515AbdDCJka (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Apr 2017 05:40:30 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Jeff Layton" <jlayton@redhat.com>
+Cc: "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>, bfields@fieldses.org,
+        "Miklos Szeredi" <miklos@szeredi.hu>,
+        "Alexander Viro" <viro@zeniv.linux.org.uk>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 5/6] lockd: Introduce nlmclnt_operations
+Date: Mon, 03 Apr 2017 05:40:12 -0400
+Message-ID: <4B6207B9-7254-4C1A-81AF-5DC7B0C74F94@redhat.com>
+In-Reply-To: <1491055532.18117.6.camel@redhat.com>
+References: <cover.1491015671.git.bcodding@redhat.com>
+ <c2c20de92b177386ad627726b6b2838569c2b28d.1491015671.git.bcodding@redhat.com>
+ <1491055532.18117.6.camel@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Mon, 03 Apr 2017 09:20:29 +0100
-Message-ID: <10049.1491207629@warthog.procyon.org.uk>
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eric Biggers <ebiggers@google.com> wrote:
 
-> Currently, a process only needs Search permission on a key to invalidate
-> it with keyctl_invalidate(), which has an effect similar to unlinking it
-> from all keyrings.  Unfortunately, this significantly compromises the
-> keys permission system because as a result, there is no way to grant
-> read-only access to keys without also granting de-facto "delete" access.
-> Even worse, processes may invalidate entire _keyrings_, given only
-> permission to "search" them.
-> 
-> Key invalidation seems to have intended for cases where keyrings are
-> used as caches, and keys can be re-requested at any time by an upcall to
-> /sbin/request-key.  However, keyrings are not always used in this way.
-> For example, users of ext4, f2fs, and ubifs encryption may wish to grant
-> many differently-privileged processes access to the same keys, set up in
-> a shared keyring ahead of time.  Permitting everyone to invalidate keys
-> in this scenario enables a trivial denial-of-service.  And even users of
-> keyrings as "just caches" may wish to restrict invalidation because it
-> may require significant work or user interaction to regenerate keys.
-> 
-> This patch fixes the flaw by requiring both Search and Setattr
-> permission to invalidate a key rather than just Search permission.
-> Requiring Setattr permission is appropriate because Setattr permission
-> also allows revoking (via keyctl_revoke()) or expiring (via
-> keyctl_set_timeout()) the key, which also make the key inaccessible
-> regardless of how many keyrings it is in.  Continuing to require Search
-> permission ensures we do not decrease the level of permissions required.
+On 1 Apr 2017, at 10:05, Jeff Layton wrote:
 
-I'm not sure this is the right method either.  It might be better to allocate
-one of the remaining two permissions bits for this and/or mark keys that are
-invalidateable.
+> On Fri, 2017-03-31 at 23:16 -0400, Benjamin Coddington wrote:
+>> NFS would enjoy the ability to modify the behavior of the NLM 
+>> client's
+>> unlock RPC task in order to delay the transmission of the unlock 
+>> until IO
+>> that was submitted under that lock has completed.  This ability can 
+>> ensure
+>> that the NLM client will always complete the transmission of an 
+>> unlock even
+>> if the waiting caller has been interrupted with fatal signal.
+>>
+>> A struct nlmclnt_operations and callback data pointer can be passed 
+>> to
+>> nlmclnt_proc(). The struct nlmclnt_operations defines three callback
+>> operations that will be used in a following patch:
+>>
+>> nlmclnt_alloc_call - used to call back after a successful allocation 
+>> of
+>> 	a struct nlm_rqst in nlmclnt_proc().
+>>
+>> nlmclnt_unlock_prepare - used to call back during NLM unlock's
+>> 	rpc_call_prepare.  The NLM client defers calling rpc_call_start()
+>> 	until this callback returns false.
+>>
+>> nlmclnt_release_call - used to call back when the NLM client's struct
+>> 	nlm_rqst is freed.
+>>
+>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>> ---
+>>  fs/lockd/clntproc.c         | 26 +++++++++++++++++++++++++-
+>>  fs/nfs/nfs3proc.c           |  2 +-
+>>  fs/nfs/proc.c               |  2 +-
+>>  include/linux/lockd/bind.h  | 11 +++++++++--
+>>  include/linux/lockd/lockd.h |  2 ++
+>>  5 files changed, 38 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+>> index 112952037933..d2744f4960ed 100644
+>> --- a/fs/lockd/clntproc.c
+>> +++ b/fs/lockd/clntproc.c
+>> @@ -150,9 +150,12 @@ static void nlmclnt_release_lockargs(struct 
+>> nlm_rqst *req)
+>>   * @host: address of a valid nlm_host context representing the NLM 
+>> server
+>>   * @cmd: fcntl-style file lock operation to perform
+>>   * @fl: address of arguments for the lock operation
+>> + * @nlmclnt_ops: operations to call back out of nlm
+>> + * @data: address of data to be sent along with callback
+>>   *
+>>   */
+>> -int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock 
+>> *fl)
+>> +int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock 
+>> *fl,
+>> +		const struct nlmclnt_operations *nlmclnt_ops, void *data)
+>
+> Might it be cleaner to put the nlmclnt_operations into the nlm_host?
+> Could pass a pointer to it in the nlmclnt_initdata when creating the
+> nfs_server.
 
-David
+Maybe, if 5 args here is too much.  But passing nlmclnt_operations into
+nlm_init in nfs_start_lockd() would mean the function pointers in
+nlmclnt_operations would need to be exposed in client.c.  While this has
+more args, I think it is a bit neater from the NFS side.
+
+Ben
