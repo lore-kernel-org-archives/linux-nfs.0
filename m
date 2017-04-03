@@ -1,93 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33640 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40236 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751515AbdDCJka (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Apr 2017 05:40:30 -0400
+        id S1751008AbdDCJnH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Apr 2017 05:43:07 -0400
 From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Jeff Layton" <jlayton@redhat.com>
-Cc: "Trond Myklebust" <trond.myklebust@primarydata.com>,
-        "Anna Schumaker" <anna.schumaker@netapp.com>, bfields@fieldses.org,
+To: "kbuild test robot" <lkp@intel.com>
+Cc: kbuild-all@01.org,
+        "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>,
+        "Jeff Layton" <jlayton@poochiereds.net>, bfields@fieldses.org,
         "Miklos Szeredi" <miklos@szeredi.hu>,
         "Alexander Viro" <viro@zeniv.linux.org.uk>,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 5/6] lockd: Introduce nlmclnt_operations
-Date: Mon, 03 Apr 2017 05:40:12 -0400
-Message-ID: <4B6207B9-7254-4C1A-81AF-5DC7B0C74F94@redhat.com>
-In-Reply-To: <1491055532.18117.6.camel@redhat.com>
-References: <cover.1491015671.git.bcodding@redhat.com>
- <c2c20de92b177386ad627726b6b2838569c2b28d.1491015671.git.bcodding@redhat.com>
- <1491055532.18117.6.camel@redhat.com>
+Subject: Re: [PATCH 4/6] NFS: Add an iocounter wait function for async RPC
+ tasks
+Date: Mon, 03 Apr 2017 05:42:57 -0400
+Message-ID: <8FD729A8-AF16-4134-9CFC-6CB9232E4E61@redhat.com>
+In-Reply-To: <201704022250.GuhpAWeg%fengguang.wu@intel.com>
+References: <201704022250.GuhpAWeg%fengguang.wu@intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Ah, thanks robot.  I didn't notice the:
 
-On 1 Apr 2017, at 10:05, Jeff Layton wrote:
+172 #if IS_ENABLED(CONFIG_NFS_V4)
+173     u32         attr_bitmask[3];/* V4 bitmask representing the set
+...
+199     struct rpc_wait_queue   uoc_rpcwaitq;
 
-> On Fri, 2017-03-31 at 23:16 -0400, Benjamin Coddington wrote:
->> NFS would enjoy the ability to modify the behavior of the NLM 
->> client's
->> unlock RPC task in order to delay the transmission of the unlock 
->> until IO
->> that was submitted under that lock has completed.  This ability can 
->> ensure
->> that the NLM client will always complete the transmission of an 
->> unlock even
->> if the waiting caller has been interrupted with fatal signal.
->>
->> A struct nlmclnt_operations and callback data pointer can be passed 
->> to
->> nlmclnt_proc(). The struct nlmclnt_operations defines three callback
->> operations that will be used in a following patch:
->>
->> nlmclnt_alloc_call - used to call back after a successful allocation 
->> of
->> 	a struct nlm_rqst in nlmclnt_proc().
->>
->> nlmclnt_unlock_prepare - used to call back during NLM unlock's
->> 	rpc_call_prepare.  The NLM client defers calling rpc_call_start()
->> 	until this callback returns false.
->>
->> nlmclnt_release_call - used to call back when the NLM client's struct
->> 	nlm_rqst is freed.
->>
->> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->> ---
->>  fs/lockd/clntproc.c         | 26 +++++++++++++++++++++++++-
->>  fs/nfs/nfs3proc.c           |  2 +-
->>  fs/nfs/proc.c               |  2 +-
->>  include/linux/lockd/bind.h  | 11 +++++++++--
->>  include/linux/lockd/lockd.h |  2 ++
->>  5 files changed, 38 insertions(+), 5 deletions(-)
->>
->> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
->> index 112952037933..d2744f4960ed 100644
->> --- a/fs/lockd/clntproc.c
->> +++ b/fs/lockd/clntproc.c
->> @@ -150,9 +150,12 @@ static void nlmclnt_release_lockargs(struct 
->> nlm_rqst *req)
->>   * @host: address of a valid nlm_host context representing the NLM 
->> server
->>   * @cmd: fcntl-style file lock operation to perform
->>   * @fl: address of arguments for the lock operation
->> + * @nlmclnt_ops: operations to call back out of nlm
->> + * @data: address of data to be sent along with callback
->>   *
->>   */
->> -int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock 
->> *fl)
->> +int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock 
->> *fl,
->> +		const struct nlmclnt_operations *nlmclnt_ops, void *data)
+I will re-post this one.
+
+On 2 Apr 2017, at 10:29, kbuild test robot wrote:
+
+> Hi Benjamin,
 >
-> Might it be cleaner to put the nlmclnt_operations into the nlm_host?
-> Could pass a pointer to it in the nlmclnt_initdata when creating the
-> nfs_server.
-
-Maybe, if 5 args here is too much.  But passing nlmclnt_operations into
-nlm_init in nfs_start_lockd() would mean the function pointers in
-nlmclnt_operations would need to be exposed in client.c.  While this has
-more args, I think it is a bit neater from the NFS side.
-
-Ben
+> [auto build test ERROR on nfs/linux-next]
+> [also build test ERROR on v4.11-rc4 next-20170331]
+> [if your patch is applied to the wrong git tree, please drop us a note 
+> to help improve the system]
+>
+> url:    
+> https://github.com/0day-ci/linux/commits/Benjamin-Coddington/Skipped-unlocks/20170402-195846
+> base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git 
+> linux-next
+> config: cris-etrax-100lx_v2_defconfig (attached as .config)
+> compiler: cris-linux-gcc (GCC) 6.2.0
+> reproduce:
+>         wget 
+> https://raw.githubusercontent.com/01org/lkp-tests/master/sbin/make.cross 
+> -O ~/bin/make.cross
+>         chmod +x ~/bin/make.cross
+>         # save the attached .config to linux build tree
+>         make.cross ARCH=cris
+>
+> All errors (new ones prefixed by >>):
+>
+>    fs/nfs/pagelist.c: In function 'nfs_async_iocounter_wait':
+>>> fs/nfs/pagelist.c:126:34: error: 'struct nfs_server' has no member 
+>>> named 'uoc_rpcwaitq'
+>       rpc_sleep_on(&NFS_SERVER(inode)->uoc_rpcwaitq, task, NULL);
+>                                      ^~
+>    fs/nfs/pagelist.c:131:45: error: 'struct nfs_server' has no member 
+> named 'uoc_rpcwaitq'
+>       rpc_wake_up_queued_task(&NFS_SERVER(inode)->uoc_rpcwaitq, task);
+>                                                 ^~
+>    fs/nfs/pagelist.c: In function 'nfs_clear_request':
+>    fs/nfs/pagelist.c:425:50: error: 'struct nfs_server' has no member 
+> named 'uoc_rpcwaitq'
+>         rpc_wake_up(&NFS_SERVER(d_inode(ctx->dentry))->uoc_rpcwaitq);
+>                                                      ^~
+>
+> vim +126 fs/nfs/pagelist.c
+>
+>    120	{
+>    121		struct nfs_lock_context *l_ctx = data;
+>    122		struct inode *inode = d_inode(l_ctx->open_context->dentry);
+>    123		bool ret = false;
+>    124	
+>    125		if (atomic_read(&l_ctx->io_count) > 0) {
+>> 126			rpc_sleep_on(&NFS_SERVER(inode)->uoc_rpcwaitq, task, NULL);
+>    127			ret = true;
+>    128		}
+>    129	
+>
+> ---
+> 0-DAY kernel test infrastructure                Open Source Technology 
+> Center
+> https://lists.01.org/pipermail/kbuild-all                   Intel 
+> Corporation
