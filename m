@@ -1,236 +1,168 @@
-Return-Path: <fengguang.wu@intel.com>
-Date: Sun, 2 Apr 2017 22:29:27 +0800
-From: kbuild test robot <lkp@intel.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: kbuild-all@01.org, Trond Myklebust <trond.myklebust@primarydata.com>,
-	Anna Schumaker <anna.schumaker@netapp.com>,
-	Jeff Layton <jlayton@poochiereds.net>, bfields@fieldses.org,
-	Miklos Szeredi <miklos@szeredi.hu>,
-	Alexander Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 4/6] NFS: Add an iocounter wait function for async RPC
- tasks
-Message-ID: <201704022250.GuhpAWeg%fengguang.wu@intel.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:60571 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751190AbdDCCN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 2 Apr 2017 22:13:56 -0400
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Mon, 03 Apr 2017 12:13:49 +1000
+Cc: Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: don't try to cross a mountpount when there isn't one there.
+In-Reply-To: <20170401013241.GD14424@fieldses.org>
+References: <87fuife2qr.fsf@notabene.neil.brown.name> <20170401013241.GD14424@fieldses.org>
+Message-ID: <87o9wedyqq.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="VbJkn9YxBvnuCH5J"
-In-Reply-To: <0a6d92ce73dc1663f6700c3560df94685a63b125.1491015671.git.bcodding@redhat.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
---VbJkn9YxBvnuCH5J
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On Fri, Mar 31 2017, J. Bruce Fields wrote:
 
-Hi Benjamin,
+> Sorry for the delay, I need to find a little time to digest that one.
+>
+> Makes sense to me--but it's a little subtle, and it looks like this
+> bug's been lurking for a few years, so I think I'll let it wait for
+> 4.12 if that's OK.
 
-[auto build test ERROR on nfs/linux-next]
-[also build test ERROR on v4.11-rc4 next-20170331]
-[if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+4.12 is fine with me.
+Yes, it has been lurking.  As containers and other users of filesystem
+name spaces become more common, we can expect this bug to trigger more
+often.
+I've only seen it under test conditions - not in a real-world use case -
+so I don't think there is any rush.
 
-url:    https://github.com/0day-ci/linux/commits/Benjamin-Coddington/Skipped-unlocks/20170402-195846
-base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
-config: cris-etrax-100lx_v2_defconfig (attached as .config)
-compiler: cris-linux-gcc (GCC) 6.2.0
-reproduce:
-        wget https://raw.githubusercontent.com/01org/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
-        chmod +x ~/bin/make.cross
-        # save the attached .config to linux build tree
-        make.cross ARCH=cris 
+Thanks,
+NeilBrown
 
-All errors (new ones prefixed by >>):
 
-   fs/nfs/pagelist.c: In function 'nfs_async_iocounter_wait':
->> fs/nfs/pagelist.c:126:34: error: 'struct nfs_server' has no member named 'uoc_rpcwaitq'
-      rpc_sleep_on(&NFS_SERVER(inode)->uoc_rpcwaitq, task, NULL);
-                                     ^~
-   fs/nfs/pagelist.c:131:45: error: 'struct nfs_server' has no member named 'uoc_rpcwaitq'
-      rpc_wake_up_queued_task(&NFS_SERVER(inode)->uoc_rpcwaitq, task);
-                                                ^~
-   fs/nfs/pagelist.c: In function 'nfs_clear_request':
-   fs/nfs/pagelist.c:425:50: error: 'struct nfs_server' has no member named 'uoc_rpcwaitq'
-        rpc_wake_up(&NFS_SERVER(d_inode(ctx->dentry))->uoc_rpcwaitq);
-                                                     ^~
+>
+> --b.
+>
+> On Wed, Mar 15, 2017 at 12:40:44PM +1100, NeilBrown wrote:
+>>=20
+>> consider the sequence of commands:
+>>  mkdir -p /import/nfs /import/bind /import/etc
+>>  mount --bind / /import/bind
+>>  mount --make-private /import/bind
+>>  mount --bind /import/etc /import/bind/etc
+>>=20
+>>  exportfs -o rw,no_root_squash,crossmnt,async,no_subtree_check localhost=
+:/
+>>  mount -o vers=3D4 localhost:/ /import/nfs
+>>  ls -l /import/nfs/etc
+>>=20
+>> You would not expect this to report a stale file handle.
+>> Yet it does.
+>>=20
+>> The manipulations under /import/bind cause the dentry for
+>> /etc to get the DCACHE_MOUNTED flag set, even though nothing
+>> is mounted on /etc.  This causes nfsd to call
+>> nfsd_cross_mnt() even though there is no mountpoint.  So an
+>> upcall to mountd for "/etc" is performed.
+>>=20
+>> The 'crossmnt' flag on the export of / causes mountd to
+>> report that /etc is exported as it is a descendant of /.  It
+>> assumes the kernel wouldn't ask about something that wasn't
+>> a mountpoint.  The filehandle returned identifies the
+>> filesystem and the inode number of /etc.
+>>=20
+>> When this filehandle is presented to rpc.mountd, via
+>> "nfsd.fh", the inode cannot be found associated with any
+>> name in /etc/exports, or with any mountpoint listed by
+>> getmntent().  So rpc.mountd says the filehandle doesn't
+>> exist. Hence ESTALE.
+>>=20
+>> This is fixed by teaching nfsd not to trust DCACHE_MOUNTD
+>> too much.  It is just a hint, not a guarantee.
+>> Change nfsd_mountpoint() to return '1' for a certain mountpoint,
+>> '2' for a possible mountpoint, and 0 otherwise.
+>>=20
+>> Then change nfsd_crossmnt() to check if follow_down()
+>> actually found a mountpount and, if not, to avoid performing
+>> a lookup if the location is not known to certainly require
+>> an export-point.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  fs/nfsd/vfs.c | 24 ++++++++++++++++++++----
+>>  1 file changed, 20 insertions(+), 4 deletions(-)
+>>=20
+>> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+>> index 19d50f600e8d..04cafaa94bf7 100644
+>> --- a/fs/nfsd/vfs.c
+>> +++ b/fs/nfsd/vfs.c
+>> @@ -94,6 +94,12 @@ nfsd_cross_mnt(struct svc_rqst *rqstp, struct dentry =
+**dpp,
+>>  	err =3D follow_down(&path);
+>>  	if (err < 0)
+>>  		goto out;
+>> +	if (path.mnt =3D=3D exp->ex_path.mnt && path.dentry =3D=3D dentry &&
+>> +	    nfsd_mountpoint(dentry, exp) =3D=3D 2) {
+>> +		/* This is only a mountpoint in some other namespace */
+>> +		path_put(&path);
+>> +		goto out;
+>> +	}
+>>=20=20
+>>  	exp2 =3D rqst_exp_get_by_name(rqstp, &path);
+>>  	if (IS_ERR(exp2)) {
+>> @@ -167,16 +173,26 @@ static int nfsd_lookup_parent(struct svc_rqst *rqs=
+tp, struct dentry *dparent, st
+>>  /*
+>>   * For nfsd purposes, we treat V4ROOT exports as though there was an
+>>   * export at *every* directory.
+>> + * We return:
+>> + * '1' if this dentry *must* be an export point,
+>> + * '2' if it might be, if there is really a mount here, and
+>> + * '0' if there is no chance of an export point here.
+>>   */
+>>  int nfsd_mountpoint(struct dentry *dentry, struct svc_export *exp)
+>>  {
+>> -	if (d_mountpoint(dentry))
+>> +	if (!d_inode(dentry))
+>> +		return 0;
+>> +	if (exp->ex_flags & NFSEXP_V4ROOT)
+>>  		return 1;
+>>  	if (nfsd4_is_junction(dentry))
+>>  		return 1;
+>> -	if (!(exp->ex_flags & NFSEXP_V4ROOT))
+>> -		return 0;
+>> -	return d_inode(dentry) !=3D NULL;
+>> +	if (d_mountpoint(dentry))
+>> +		/*
+>> +		 * Might only be a mountpoint in a different namespace,
+>> +		 * but we need to check.
+>> +		 */
+>> +		return 2;
+>> +	return 0;
+>>  }
+>>=20=20
+>>  __be32
+>> --=20
+>> 2.12.0
+>>=20
 
-vim +126 fs/nfs/pagelist.c
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
-   120	{
-   121		struct nfs_lock_context *l_ctx = data;
-   122		struct inode *inode = d_inode(l_ctx->open_context->dentry);
-   123		bool ret = false;
-   124	
-   125		if (atomic_read(&l_ctx->io_count) > 0) {
- > 126			rpc_sleep_on(&NFS_SERVER(inode)->uoc_rpcwaitq, task, NULL);
-   127			ret = true;
-   128		}
-   129	
+-----BEGIN PGP SIGNATURE-----
 
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
-
---VbJkn9YxBvnuCH5J
-Content-Type: application/gzip
-Content-Disposition: attachment; filename=".config.gz"
-Content-Transfer-Encoding: base64
-
-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
-
---VbJkn9YxBvnuCH5J--
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljhr90ACgkQOeye3VZi
+gbmcOg//T3aUj3pwUDn4myjcZD7ig+Sih91b4C3d7Zj1T0rmxctihVrsx2tvyisJ
+7F2fA1PlYR1XFZUXcyc4BON7MHZ6Siju1JSkf+abcPW8+zokodYNJHGLfv81eO8+
+1ePyb5oKYjn5xmFo7E1pA/a71yqz1rc6SgcT2CGfCKxp9VHIkfViHT/ghPqiRDNj
+IGRVPaqp3xfpegrcQwiuZWZprUqoFf0PRB9VCdaNykFM3cY01a7nSeDgb0gkL+E0
+/FShf0vMDNv0zQNUHf3imxyNP7sOksQRFHVFpr2b/6/2shJhxaVnUm2WYUgnb9tE
+kFplkLN5ocl2xQ9gNkvvAOy9Cj0DB0vwHnv/4Yq0Lb15o4rOTKaJCepph+tRkBCS
+3sZZ4BP40I20FQsnqbalgsPWJJQMCjWUHiqI+fkwSdOF9EIvHKvLGHuX2zezmaOV
+gAEXX6RE25V4TnphwALo9FKSv1W9ecY9s2toy0Otagsl6aXkeSJZurdJugVXqZd1
+CFp0UP0FPESg2g9rCCyDmfVVX9T086GGt50HDKPExDAFVN4qmHh5oqM9EbpHC/8M
+ANhxeAhoe+n2cSv6U7KFXQSqy3xfaPg8VI65QDQx81ocQUjQR5XrL0m2Guni+3uU
+cJeCnhJyas5ym5IngcoUpG2m5XVfRxpsdjGJEjRQFQFpJZfIzmw=
+=RI5c
+-----END PGP SIGNATURE-----
+--=-=-=--
