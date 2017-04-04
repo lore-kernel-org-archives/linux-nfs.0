@@ -1,97 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39542 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754630AbdDDSit (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Apr 2017 14:38:49 -0400
-Date: Tue, 4 Apr 2017 14:38:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Jan Kara <jack@suse.cz>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170404183843.GD14303@fieldses.org>
-References: <1482417724.3924.39.camel@redhat.com>
- <20170320214327.GA5098@fieldses.org>
- <20170321134500.GA1318@infradead.org>
- <20170321163011.GA16666@fieldses.org>
- <1490117004.2542.1.camel@redhat.com>
- <20170321183006.GD17872@fieldses.org>
- <1490122013.2593.1.camel@redhat.com>
- <20170329111507.GA18467@quack2.suse.cz>
- <1490810071.2678.6.camel@redhat.com>
- <20170329234137.GN17542@dastard>
+Received: from mail-pg0-f67.google.com ([74.125.83.67]:33044 "EHLO
+        mail-pg0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754207AbdDDSog (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Apr 2017 14:44:36 -0400
+Date: Tue, 4 Apr 2017 11:44:33 -0700
+From: Eric Biggers <ebiggers3@gmail.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Eric Biggers <ebiggers@google.com>, keyrings@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Gwendal Grignou <gwendal@chromium.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+Subject: Re: [PATCH] KEYS: make keyctl_invalidate() also require Setattr
+ permission
+Message-ID: <20170404184433.GA46469@gmail.com>
+References: <20170329220101.26067-1-ebiggers@google.com>
+ <10049.1491207629@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170329234137.GN17542@dastard>
+In-Reply-To: <10049.1491207629@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 30, 2017 at 10:41:37AM +1100, Dave Chinner wrote:
-> On Wed, Mar 29, 2017 at 01:54:31PM -0400, Jeff Layton wrote:
-> > On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
-> > > On Tue 21-03-17 14:46:53, Jeff Layton wrote:
-> > > > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
-> > > > > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
-> > > > > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
-> > > > > > > - It's durable; the above comparison still works if there were reboots
-> > > > > > >   between the two i_version checks.
-> > > > > > > 	- I don't know how realistic this is--we may need to figure out
-> > > > > > > 	  if there's a weaker guarantee that's still useful.  Do
-> > > > > > > 	  filesystems actually make ctime/mtime/i_version changes
-> > > > > > > 	  atomically with the changes that caused them?  What if a
-> > > > > > > 	  change attribute is exposed to an NFS client but doesn't make
-> > > > > > > 	  it to disk, and then that value is reused after reboot?
-> > > > > > > 
-> > > > > > 
-> > > > > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
-> > > > > > the inode dirty and I think that will end up with the new i_version at
-> > > > > > least being journalled before __mark_inode_dirty returns.
-> > > > > 
-> > > > > So you think the filesystem can provide the atomicity?  In more detail:
-> > > > > 
-> > > > 
-> > > > Sorry, I hit send too quickly. That should have read:
-> > > > 
-> > > > "Yeah, there could be atomicity issues there."
-> > > > 
-> > > > I think providing that level of atomicity may be difficult, though
-> > > > maybe there's some way to make the querying of i_version block until
-> > > > the inode update has been journalled?
-> > > 
-> > > Just to complement what Dave said from ext4 side - similarly as with XFS
-> > > ext4 doesn't guarantee atomicity unless fsync() has completed on the file.
-> > > Until that you can see arbitrary combination of data & i_version after the
-> > > crash. We do take care to keep data and metadata in sync only when there
-> > > are security implications to that (like exposing uninitialized disk blocks)
-> > > and if not, we are as lazy as we can to improve performance...
-> > > 
-> > > 
+Hi David,
+
+On Mon, Apr 03, 2017 at 09:20:29AM +0100, David Howells wrote:
+> Eric Biggers <ebiggers@google.com> wrote:
+> 
+> > Currently, a process only needs Search permission on a key to invalidate
+> > it with keyctl_invalidate(), which has an effect similar to unlinking it
+> > from all keyrings.  Unfortunately, this significantly compromises the
+> > keys permission system because as a result, there is no way to grant
+> > read-only access to keys without also granting de-facto "delete" access.
+> > Even worse, processes may invalidate entire _keyrings_, given only
+> > permission to "search" them.
 > > 
-> > Yeah, I think what we'll have to do here is ensure that those
-> > filesystems do an fsync prior to reporting the i_version getattr
-> > codepath. It's not pretty, but I don't see a real alternative.
+> > Key invalidation seems to have intended for cases where keyrings are
+> > used as caches, and keys can be re-requested at any time by an upcall to
+> > /sbin/request-key.  However, keyrings are not always used in this way.
+> > For example, users of ext4, f2fs, and ubifs encryption may wish to grant
+> > many differently-privileged processes access to the same keys, set up in
+> > a shared keyring ahead of time.  Permitting everyone to invalidate keys
+> > in this scenario enables a trivial denial-of-service.  And even users of
+> > keyrings as "just caches" may wish to restrict invalidation because it
+> > may require significant work or user interaction to regenerate keys.
+> > 
+> > This patch fixes the flaw by requiring both Search and Setattr
+> > permission to invalidate a key rather than just Search permission.
+> > Requiring Setattr permission is appropriate because Setattr permission
+> > also allows revoking (via keyctl_revoke()) or expiring (via
+> > keyctl_set_timeout()) the key, which also make the key inaccessible
+> > regardless of how many keyrings it is in.  Continuing to require Search
+> > permission ensures we do not decrease the level of permissions required.
 > 
-> I think that's even more problematic. ->getattr currently runs
-> completely unlocked for performance reasons - it's racy w.r.t. to
-> ongoing modifications to begin with, so /nothing/ that is returned
-> to userspace via stat/statx can be guaranteed to be "coherent".
-> Linus will be very unhappy if you make his git workload (which is
-> /very/ stat heavy) run slower by adding any sort of locking in this
-> hot path.
+> I'm not sure this is the right method either.  It might be better to allocate
+> one of the remaining two permissions bits for this and/or mark keys that are
+> invalidateable.
 > 
-> Even if we did put an fsync() into ->getattr() (and dealt with all
-> the locking issues that entails), by the time the statx syscall
-> returns to userspace the i_version value may not match the
-> data/metadata in the inode(*).  IOWs, by the time i_version gets
-> to userspace, it is out of date and any use of it for data
-> versioning from userspace is going to be prone to race conditions.
 
-A slightly out-of-date i_version is fine, I think.  It's just the
-reverse we want to avoid.  E.g., assuming an i_version-supporting
-statux, if somebody could called statx then read, and got the new
-i_version followed by the old data, that would cause problems.
+What do you think is the right solution?  We really need to do _something_.  Can
+you elaborate on what the use case(s) for "invalidate" were intended to be, and
+what users of it are known?
 
---b.
+As I noted in the commit message I was hesistant to create a new Invalidate
+permission because that would require that users of keyctl_setperm +
+keyctl_invalidate to start including a new permission which never existed
+before.  Note that the new permission would be rejected with EINVAL by old
+kernels, so applications might even need to try it both ways.
+
+However perhaps no one cares and doing that would be a non-issue.
+
+If furthermore the only users of "invalidate" are nfsidmap and the in-kernel
+dns_resolver, then it may be fine to rename the KEY_FLAG_ROOT_CAN_INVAL flag to
+something like "KEY_FLAG_INVALIDATABLE" and making it so only those keys can be
+invalidated.  That would be much better, but I don't know for sure that there
+aren't other users of keyctl_invalidate() (you may know more).
+
+- Eric
