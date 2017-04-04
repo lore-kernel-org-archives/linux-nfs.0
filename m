@@ -1,93 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:15848 "EHLO
-        ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753176AbdDDMec (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Apr 2017 08:34:32 -0400
-Date: Tue, 4 Apr 2017 22:34:14 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Jan Kara <jack@suse.cz>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170404123414.GA23007@dastard>
-References: <1490117004.2542.1.camel@redhat.com>
- <20170321183006.GD17872@fieldses.org>
- <1490122013.2593.1.camel@redhat.com>
- <20170329111507.GA18467@quack2.suse.cz>
- <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
- <20170330161231.GA9824@fieldses.org>
- <20170401230526.GW23007@dastard>
- <20170403140055.GF15168@quack2.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170403140055.GF15168@quack2.suse.cz>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:48448 "EHLO smtp-o-3.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751156AbdDDNNB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Apr 2017 09:13:01 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 124762804F3
+        for <linux-nfs@vger.kernel.org>; Tue,  4 Apr 2017 15:12:58 +0200 (CEST)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: trond.myklebust@primarydata.com,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH v2] nfs: flexfilelayout: remove v3-only data server limitation
+Date: Tue,  4 Apr 2017 15:12:51 +0200
+Message-Id: <20170404131251.14212-1-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 03, 2017 at 04:00:55PM +0200, Jan Kara wrote:
-> On Sun 02-04-17 09:05:26, Dave Chinner wrote:
-> > On Thu, Mar 30, 2017 at 12:12:31PM -0400, J. Bruce Fields wrote:
-> > > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
-> > > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
-> > > > > Because if above is acceptable we could make reported i_version to be a sum
-> > > > > of "superblock crash counter" and "inode i_version". We increment
-> > > > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
-> > > > > That way after a crash we are guaranteed each inode will report new
-> > > > > i_version (the sum would probably have to look like "superblock crash
-> > > > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
-> > > > > i_version numbers we gave away but did not write to disk but still...).
-> > > > > Thoughts?
-> > > 
-> > > How hard is this for filesystems to support?  Do they need an on-disk
-> > > format change to keep track of the crash counter?
-> > 
-> > Yes. We'll need version counter in the superblock, and we'll need to
-> > know what the increment semantics are. 
-> > 
-> > The big question is how do we know there was a crash? The only thing
-> > a journalling filesystem knows at mount time is whether it is clean
-> > or requires recovery. Filesystems can require recovery for many
-> > reasons that don't involve a crash (e.g. root fs is never unmounted
-> > cleanly, so always requires recovery). Further, some filesystems may
-> > not even know there was a crash at mount time because their
-> > architecture always leaves a consistent filesystem on disk (e.g. COW
-> > filesystems)....
-> 
-> What filesystems can or cannot easily do obviously differs. Ext4 has a
-> recovery flag set in superblock on RW mount/remount and cleared on
-> umount/RO remount.
+Flexfilelayout supports data servers which talk NFS v3 and v4.{0,1,2}.
+However, this code path is disabled and v3 only servers are accepted.
+This change removes this limitation.
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/flexfilelayout/flexfilelayoutdev.c | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
 
-Even this doesn't help. A recent bug that was reported to the XFS
-list - turns out that systemd can't remount-ro the root
-filesystem sucessfully on shutdown because there are open write fds
-on the root filesystem when it attempts the remount. So it just
-reboots without a remount-ro. This uncovered a bug in grub in
-that it (still!) thinks sync(1) is sufficient to get all the
-metadata that points to a kernel image onto disk in places it can
-read. XFS, like ext4, leaves it in the journal and so the system then fails to
-boot because systemd didn't remount-ro the root fs and hence the
-journal was never flushed before reboot and so grub can't find the
-kernel and so everything fails....
-
-> This flag being set on mount would imply incrementing the crash
-> counter. It should be pretty easy for each filesystem to implement
-> such flag and the counter but I agree it requires an on-disk
-> format change.
-
-Yup, anything we want that is persistent and consistent across
-filesystems will need on-disk format changes. Hence we need a solid
-specification first, not to mention tests to validate correct
-behaviour across all filesystems in xfstests...
-
-Cheers,
-
-Dave.
+diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+index 457cfeb..aae05fc 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
++++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+@@ -119,7 +119,13 @@ nfs4_ff_alloc_deviceid_node(struct nfs_server *server, struct pnfs_device *pdev,
+ 		if (ds_versions[i].wsize > NFS_MAX_FILE_IO_SIZE)
+ 			ds_versions[i].wsize = NFS_MAX_FILE_IO_SIZE;
+ 
+-		if (ds_versions[i].version != 3 || ds_versions[i].minor_version != 0) {
++		/*
++ 		 * check for valid major/minor combination.
++ 		 * currently we support dataserver which talk:
++ 		 *   v3, v4.0, v4.1, v4.2
++ 		 */
++		if (!((ds_versions[i].version == 3 && ds_versions[i].minor_version == 0) ||
++			(ds_versions[i].version == 4 && ds_versions[i].minor_version < 3))) {
+ 			dprintk("%s: [%d] unsupported ds version %d-%d\n", __func__,
+ 				i, ds_versions[i].version,
+ 				ds_versions[i].minor_version);
 -- 
-Dave Chinner
-david@fromorbit.com
+2.9.3
+
