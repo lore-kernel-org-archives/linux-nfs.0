@@ -1,137 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:33254 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752574AbdDDCRQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Apr 2017 22:17:16 -0400
-Received: by mail-io0-f195.google.com with SMTP id f84so13915310ioj.0
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Apr 2017 19:17:16 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH] nfs: flexfilelayout: remove v3-only data server
- limitation
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <555419275.7370836.1491228611932.JavaMail.zimbra@desy.de>
-Date: Mon, 3 Apr 2017 22:17:14 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <70D144DE-A0D2-436E-A90A-5F65BA65F4BA@monkey.org>
-References: <20170403121026.14142-1-tigran.mkrtchyan@desy.de>
- <FB99D377-D3F4-4CA5-9900-7E3CCC1B8EAE@monkey.org>
- <555419275.7370836.1491228611932.JavaMail.zimbra@desy.de>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Received: from mail-yb0-f179.google.com ([209.85.213.179]:34341 "EHLO
+        mail-yb0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753416AbdDDK0L (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Apr 2017 06:26:11 -0400
+Received: by mail-yb0-f179.google.com with SMTP id m133so52305334ybb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Apr 2017 03:26:11 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <87poitv3p4.fsf@notabene.neil.brown.name>
+References: <87poitv3p4.fsf@notabene.neil.brown.name>
+From: ChunYu Wang <chunwang@redhat.com>
+Date: Tue, 4 Apr 2017 18:26:10 +0800
+Message-ID: <CAA2bi7_e+TOfShDacyKSXp6kh0j9bk=nLq01SCftrOk51gu46Q@mail.gmail.com>
+Subject: Re: [PATCH] nfs-server-generator: handle 'noauto' mounts correctly.
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>,
+        Jianhong Yin <jiyin@redhat.com>,
+        Yongcheng Yang <yoyang@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi, Neil,
 
-> On Apr 3, 2017, at 10:10 AM, Mkrtchyan, Tigran =
-<tigran.mkrtchyan@desy.de> wrote:
->=20
-> Hi Dros,
->=20
-> ----- Original Message -----
->> From: "Weston Andros Adamson" <dros@monkey.org>
->> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
->> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>, "Trond Myklebust" =
-<trond.myklebust@primarydata.com>
->> Sent: Monday, April 3, 2017 3:54:59 PM
->> Subject: Re: [PATCH] nfs: flexfilelayout: remove v3-only data server =
-limitation
->=20
->> Hey Tigran!
->>=20
->>> On Apr 3, 2017, at 8:10 AM, Tigran Mkrtchyan =
-<tigran.mkrtchyan@desy.de> wrote:
->>>=20
->>> Flexfilelayout supports data servers which talk NFS v3 and v4.{0,1}.
->>> However, this code path is disabled and v3 only servers are =
-accepted.
->>> This change removes this limitation.
->>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
->>> ---
->>> fs/nfs/flexfilelayout/flexfilelayoutdev.c | 18 ++++++++++++------
->>> 1 file changed, 12 insertions(+), 6 deletions(-)
->>>=20
->>> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> index 457cfeb..fac0ef2 100644
->>> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> @@ -119,12 +119,18 @@ nfs4_ff_alloc_deviceid_node(struct nfs_server =
-*server,
->>> struct pnfs_device *pdev,
->>> 		if (ds_versions[i].wsize > NFS_MAX_FILE_IO_SIZE)
->>> 			ds_versions[i].wsize =3D NFS_MAX_FILE_IO_SIZE;
->>>=20
->>> -		if (ds_versions[i].version !=3D 3 || =
-ds_versions[i].minor_version !=3D 0) {
->>> -			dprintk("%s: [%d] unsupported ds version =
-%d-%d\n", __func__,
->>> -				i, ds_versions[i].version,
->>> -				ds_versions[i].minor_version);
->>> -			ret =3D -EPROTONOSUPPORT;
->>> -			goto out_err_drain_dsaddrs;
->>> +		/* check for valid major minor combination */
->>> +		switch (ds_versions[i].version * 100 + =
-ds_versions[i].minor_version) {
->>=20
->> I'm not sure I love this method of matching
->=20
-> I didn't find a better way without flood of if-statements. Any =
-suggestions?
+Thanks for your patch! But seems there still exists same problem on my
+fedora 25 with a patched nfs-utils version, am I made something wrong
+or we just need more patches for fedora family..?
 
-Not really. That is clever, just not immediately obvious (to me). Plus =
-what happens when we have NFSv4.100? ;)
+-- I just try it with most simple steps:
+[root@bootp-73-5-219 ~]# cat /etc/fstab |grep boot
+UUID=932047db-24e7-4043-8373-6e87333b9ce1 /boot                   ext4
+   noauto        1 2
+^^ Set flag to 'noauto'
 
-I was thinking you could simply check for > nfsv3, but that's not very =
-specific.
+[root@bootp-73-5-219 ~]# umount /boot; mount -a; mountpoint /boot
+/boot is not a mountpoint
+^^ umount ready
 
-Lets see what Trond and Anna say.
+[root@bootp-73-5-219 ~]# cat /lib/systemd/system/nfs-server.service |grep boot
+RequiresMountsFor= /boot
 
--dros
+[root@bootp-73-5-219 ~]# systemctl restart nfs-server
 
->=20
->>=20
->>> +			case 300: /* v3   */
->>> +			case 400: /* v4.0 */
->>> +			case 401: /* v4.1 */
->>> +				break;
->>=20
->> v4.2?
->=20
-> Right!
->=20
-> Tigran.
->>=20
->> -dros
->>=20
->>> +			default:
->>> +				dprintk("%s: [%d] unsupported ds version =
-%d-%d\n", __func__,
->>> +					i, ds_versions[i].version,
->>> +					ds_versions[i].minor_version);
->>> +				ret =3D -EPROTONOSUPPORT;
->>> +				goto out_err_drain_dsaddrs;
->>> 		}
->>>=20
->>> 		dprintk("%s: [%d] vers %u minor_ver %u rsize %u wsize %u =
-coupled %d\n",
->>> --
->>> 2.9.3
->>>=20
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>=20
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+[root@bootp-73-5-219 ~]# mountpoint /boot/
+/boot/ is a mountpoint
+[root@bootp-73-5-219 ~]# mount |grep boot
+/dev/sda1 on /boot type ext4 (rw,relatime,seclabel,data=ordered)
+^^ mount again automatically
+--
+
+-- Already patched:
+[root@bootp-73-5-219 ~]# rpm -q nfs-utils
+nfs-utils-2.1.1-2.rc1.fc25.x86_64
+[root@bootp-73-5-219 nfs-utils]# grep nfs-server-generator -r ./*.patch
+./nfs-utils-2.1.2-rc1.patch:diff --git
+a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
+...
+[root@bootp-73-5-219 nfs-utils]# cat ./nfs-utils.spec |grep -i patch001
+Patch001: nfs-utils-2.1.2-rc1.patch
+%patch001 -p1
+--
+
+Thanks,
+ChunYu Wang
+
+
+
+
+
+On Wed, Feb 8, 2017 at 10:03 AM, NeilBrown <neilb@suse.com> wrote:
+>
+> When this code was written, the systemd documentation stated
+> that "RequiresMountsFor" ignored mountpoints marked as "noauto".
+> Unfortunately this is incorrect.  Consquently a filesystem marked
+> as noauto that is also NFS exported will currently be mounted when
+> the NFS server is started. This is not what people expect.
+>
+> So add a check for the noauto flag.  If any ancestor of a given
+> export point has the noauto flag, no RequiresMountsFor will be
+> generated for that point.
+>
+> Also skip RequiresMountsFor for exports marked 'mountpoint', as their
+> absence is, theoretically, already handled by mountd.
+>
+> URL: https://github.com/systemd/systemd/issues/5249
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  systemd/nfs-server-generator.c | 26 ++++++++++++++++++++++++++
+>  1 file changed, 26 insertions(+)
+>
+> diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
+> index cc99969e9922..4aa65094ca07 100644
+> --- a/systemd/nfs-server-generator.c
+> +++ b/systemd/nfs-server-generator.c
+> @@ -84,6 +84,28 @@ static void systemd_escape(FILE *f, char *path)
+>         }
+>  }
+>
+> +static int has_noauto_flag(char *path)
+> +{
+> +       FILE            *fstab;
+> +       struct mntent   *mnt;
+> +
+> +       fstab = setmntent("/etc/fstab", "r");
+> +       if (!fstab)
+> +               return 0;
+> +
+> +       while ((mnt = getmntent(fstab)) != NULL) {
+> +               int l = strlen(mnt->mnt_dir);
+> +               if (strncmp(mnt->mnt_dir, path, l) != 0)
+> +                       continue;
+> +               if (path[l] && path[l] != '/')
+> +                       continue;
+> +               if (hasmntopt(mnt, "noauto"))
+> +                       break;
+> +       }
+> +       fclose(fstab);
+> +       return mnt != NULL;
+> +}
+> +
+>  int main(int argc, char *argv[])
+>  {
+>         char            *path;
+> @@ -124,6 +146,10 @@ int main(int argc, char *argv[])
+>                 for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
+>                         if (!is_unique(&list, exp->m_export.e_path))
+>                                 continue;
+> +                       if (exp->m_export.e_mountpoint)
+> +                               continue;
+> +                       if (has_noauto_flag(exp->m_export.e_path))
+> +                               continue;
+>                         if (strchr(exp->m_export.e_path, ' '))
+>                                 fprintf(f, "RequiresMountsFor=\"%s\"\n",
+>                                         exp->m_export.e_path);
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+> 2.11.0
+>
