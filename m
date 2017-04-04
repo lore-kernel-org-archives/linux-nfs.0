@@ -1,274 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60974 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751460AbdDCVbq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Apr 2017 17:31:46 -0400
-From: NeilBrown <neilb@suse.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Date: Tue, 04 Apr 2017 07:31:37 +1000
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [RFC nfs-utils PATCH 0/2] add systemd generator for the rpc_pipefs mountpoint
-In-Reply-To: <20170403185115.tvouk4k3nrfoxmiu@tonberry.usersys.redhat.com>
-References: <20170331215654.31570-1-smayhew@redhat.com> <87lgrikuue.fsf@notabene.neil.brown.name> <20170403185115.tvouk4k3nrfoxmiu@tonberry.usersys.redhat.com>
-Message-ID: <874ly5kwjq.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-io0-f195.google.com ([209.85.223.195]:33254 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752574AbdDDCRQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Apr 2017 22:17:16 -0400
+Received: by mail-io0-f195.google.com with SMTP id f84so13915310ioj.0
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Apr 2017 19:17:16 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH] nfs: flexfilelayout: remove v3-only data server
+ limitation
+From: Weston Andros Adamson <dros@monkey.org>
+In-Reply-To: <555419275.7370836.1491228611932.JavaMail.zimbra@desy.de>
+Date: Mon, 3 Apr 2017 22:17:14 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Message-Id: <70D144DE-A0D2-436E-A90A-5F65BA65F4BA@monkey.org>
+References: <20170403121026.14142-1-tigran.mkrtchyan@desy.de>
+ <FB99D377-D3F4-4CA5-9900-7E3CCC1B8EAE@monkey.org>
+ <555419275.7370836.1491228611932.JavaMail.zimbra@desy.de>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, Apr 03 2017, Scott Mayhew wrote:
+> On Apr 3, 2017, at 10:10 AM, Mkrtchyan, Tigran =
+<tigran.mkrtchyan@desy.de> wrote:
+>=20
+> Hi Dros,
+>=20
+> ----- Original Message -----
+>> From: "Weston Andros Adamson" <dros@monkey.org>
+>> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+>> Cc: "linux-nfs list" <linux-nfs@vger.kernel.org>, "Trond Myklebust" =
+<trond.myklebust@primarydata.com>
+>> Sent: Monday, April 3, 2017 3:54:59 PM
+>> Subject: Re: [PATCH] nfs: flexfilelayout: remove v3-only data server =
+limitation
+>=20
+>> Hey Tigran!
+>>=20
+>>> On Apr 3, 2017, at 8:10 AM, Tigran Mkrtchyan =
+<tigran.mkrtchyan@desy.de> wrote:
+>>>=20
+>>> Flexfilelayout supports data servers which talk NFS v3 and v4.{0,1}.
+>>> However, this code path is disabled and v3 only servers are =
+accepted.
+>>> This change removes this limitation.
+>>> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+>>> ---
+>>> fs/nfs/flexfilelayout/flexfilelayoutdev.c | 18 ++++++++++++------
+>>> 1 file changed, 12 insertions(+), 6 deletions(-)
+>>>=20
+>>> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> index 457cfeb..fac0ef2 100644
+>>> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> @@ -119,12 +119,18 @@ nfs4_ff_alloc_deviceid_node(struct nfs_server =
+*server,
+>>> struct pnfs_device *pdev,
+>>> 		if (ds_versions[i].wsize > NFS_MAX_FILE_IO_SIZE)
+>>> 			ds_versions[i].wsize =3D NFS_MAX_FILE_IO_SIZE;
+>>>=20
+>>> -		if (ds_versions[i].version !=3D 3 || =
+ds_versions[i].minor_version !=3D 0) {
+>>> -			dprintk("%s: [%d] unsupported ds version =
+%d-%d\n", __func__,
+>>> -				i, ds_versions[i].version,
+>>> -				ds_versions[i].minor_version);
+>>> -			ret =3D -EPROTONOSUPPORT;
+>>> -			goto out_err_drain_dsaddrs;
+>>> +		/* check for valid major minor combination */
+>>> +		switch (ds_versions[i].version * 100 + =
+ds_versions[i].minor_version) {
+>>=20
+>> I'm not sure I love this method of matching
+>=20
+> I didn't find a better way without flood of if-statements. Any =
+suggestions?
 
-> On Mon, 03 Apr 2017, NeilBrown wrote:
->
->> On Fri, Mar 31 2017, Scott Mayhew wrote:
->>=20
->> > These patches aim to make it a little easier to change the mountpoint.
->> > Right now if you change the pipefs-directory in /etc/nfs.conf, you sti=
-ll
->> > need to manually override the dependencies in the systemd unit files in
->> > order for the change to actually work.=20=20
->> >
->> > The first patch moves rpc.idmapd's (mostly) undocumented
->> > pipefs-directory from /etc/idmapd.conf to /etc/nfs.conf, which rpc.gssd
->> > already can use for it's pipefs-directory configuration.
->> >
->> > The second patch adds a systemd generator that reads the
->> > pipefs-directory configurations from /etc/nfs.conf, and if they differ
->> > from the default it will automatically 1) create a systemd mount unit
->> > file for the pipefs mountpoint and 2) it will create a drop-in
->> > configuration file to override the Requires=3D and After=3D directives=
- for
->> > that service.
->> >
->> > I did run into a bit of a snag though.  Depsite overriding the
->> > dependencies for both idmapd and gssd, I wind up with two pipefs
->> > filesystems mounted:
->> >
->> > [root@coeurl ~]# grep pipefs /proc/mounts
->> > sunrpc /var/lib/nfs/rpc_pipefs rpc_pipefs rw,relatime 0 0
->> > sunrpc /run/rpc_pipefs rpc_pipefs rw,relatime 0 0
->> >
->> > systemd still shows the dependency on the default pipefs mountpoint:
->> >
->> > [root@coeurl ~]# systemctl list-dependencies --before var-lib-nfs-rpc_=
-pipefs.mount
->> > var-lib-nfs-rpc_pipefs.mount
->> > =E2=97=8F =E2=94=9C=E2=94=80nfs-idmapd.service
->> > =E2=97=8F =E2=94=94=E2=94=80rpc-gssd.service
->> >
->> > as well as the new one:
->> >
->> > [root@coeurl ~]# systemctl list-dependencies --before run-rpc_pipefs.m=
-ount
->> > run-rpc_pipefs.mount
->> > =E2=97=8F =E2=94=9C=E2=94=80nfs-idmapd.service
->> > =E2=97=8F =E2=94=94=E2=94=80rpc-gssd.service
->> >
->> > The drop-in configs to override the pipefs mountpoint look correct.  I=
-'m
->> > clearing both Requires=3D and After=3D before setting them:
->> >
->> > [root@coeurl ~]# cat /run/systemd/generator/nfs-idmapd.service.d/10-pi=
-pefs.conf=20
->> > # Automatically generated by rpc-pipefs-generator
->> >
->> > [Unit]
->> > Requires=3D
->> > Requires=3Drun-rpc_pipefs.mount
->> > After=3D
->> > After=3Drun-rpc_pipefs.mount local-fs.target
->> >
->> > [root@coeurl ~]# cat /run/systemd/generator/rpc-gssd.service.d/10-pipe=
-fs.conf=20
->> > # Automatically generated by rpc-pipefs-generator
->> >
->> > [Unit]
->> > Requires=3D
->> > Requires=3Drun-rpc_pipefs.mount
->> > After=3D
->> > After=3Drun-rpc_pipefs.mount
->> >
->> > The generated mount unit file also looks correct:
->> >
->> > [root@coeurl ~]# cat /run/systemd/generator/run-rpc_pipefs.mount=20
->> > # Automatically generated by rpc-pipefs-generator
->> >
->> > [Unit]
->> > Description=3DRPC Pipe File System
->> > DefaultDependencies=3Dno
->> > After=3Dsystemd-tmpfiles-setup.service
->> > Conflicts=3Dumount.target
->> >
->> > [Mount]
->> > What=3Dsunrpc
->> > Where=3D/run/rpc_pipefs
->> > Type=3Drpc_pipefs
->> >
->> > systemd shows that the drop-in config was picked up:
->> >
->> > [root@coeurl ~]# systemctl status nfs-idmapd
->> > =E2=97=8F nfs-idmapd.service - NFSv4 ID-name mapping service
->> >    Loaded: loaded (/usr/lib/systemd/system/nfs-idmapd.service; static;=
- vendor preset: disabled)
->> >   Drop-In: /run/systemd/generator/nfs-idmapd.service.d
->> >            =E2=94=94=E2=94=8010-pipefs.conf
->> >    Active: active (running) since Fri 2017-03-31 16:54:24 EDT; 5min ago
->> >   Process: 27831 ExecStart=3D/usr/sbin/rpc.idmapd $RPCIDMAPDARGS (code=
-=3Dexited, status=3D0/SUCCESS)
->> >  Main PID: 27832 (rpc.idmapd)
->> >     Tasks: 1 (limit: 4915)
->> >    CGroup: /system.slice/nfs-idmapd.service
->> >            =E2=94=94=E2=94=8027832 /usr/sbin/rpc.idmapd
->> >
->> > and lsof shows that the correct mountpoint is being used:
->> >
->> > [root@coeurl ~]# lsof -p 27832 2>/dev/null | grep pipefs
->> > rpc.idmap 27832 root   10r      DIR               0,42        0       =
- 103 /run/rpc_pipefs/nfs
->> >
->> > The same for gssd:
->> >
->> > [root@coeurl ~]# systemctl status rpc-gssd
->> > =E2=97=8F rpc-gssd.service - RPC security service for NFS client and s=
-erver
->> >    Loaded: loaded (/usr/lib/systemd/system/rpc-gssd.service; static; v=
-endor preset: disabled)
->> >   Drop-In: /run/systemd/generator/rpc-gssd.service.d
->> >            =E2=94=94=E2=94=8010-pipefs.conf
->> >    Active: active (running) since Fri 2017-03-31 16:54:29 EDT; 6min ago
->> >   Process: 27839 ExecStart=3D/usr/sbin/rpc.gssd $RPCGSSDARGS (code=3De=
-xited, status=3D0/SUCCESS)
->> >  Main PID: 27840 (rpc.gssd)
->> >     Tasks: 1 (limit: 4915)
->> >    CGroup: /system.slice/rpc-gssd.service
->> >            =E2=94=94=E2=94=8027840 /usr/sbin/rpc.gssd
->> >
->> > [root@coeurl ~]# lsof -p 27840 2>/dev/null | grep pipefs
->> > rpc.gssd 27840 root  cwd       DIR               0,42        0   24637=
- /run/rpc_pipefs
->> > rpc.gssd 27840 root    7r      DIR               0,42        0   24637=
- /run/rpc_pipefs
->> > rpc.gssd 27840 root   11u     FIFO               0,42      0t0     112=
- /run/rpc_pipefs/gssd/clntXX/gssd
->> >
->> > So it looks like systemd is using both sets of dependencies, even thou=
-gh
->> > the programs themselves are only looking for what's specified in
->> > /etc/nfs.conf.  I'm not sure what to do about that.  Maybe remove the
->> > var-lib-nfs-rpc_pipefs.mount unit as well as the dependencies in the
->> > nfs-idmapd.service and rpc-gssd.service files, and have the generator
->> > create those automatically as well?
->> >
->>=20
->> Towards the end of the systemd.unit man page is the text:
->>=20
->>       Note that dependencies (After=3D, etc.) cannot be reset to an empt=
-y list,
->>        so dependencies can only be added in drop-ins. If you want to rem=
-ove
->>        dependencies, you have to override the entire unit.
->>=20
->>=20
->> which is consistent with what you discovered.
->
-> Doh, that's what I get for not reading all the way to the end.
->
->>=20
->> Maybe create a "rpc_pipefs.target" which
->>   Requires=3Dvar-lib-nfs-rpc_pipefs.mount
->>   After=3Dvar-lib-nfs-rpc_pipefs.mount
->> and have all the other unit files specified their dependencies
->> against this target.
->>=20
->> Then your generator would conditionally create a new "rpc_pipefs.target"
->> and matching foo.mount.  The new .target would depend in the foo.mount,
->> and the service files would already depend on that.
->>=20
->> Might work.
->
-> That looks like it works, but what should happen then if programs
-> were to intentionally specify two different values for the pipefs-directo=
-ry
-> in nfs.conf?  Or is that something that wouldn't make sense to do and
-> should be prevented?  I can't think of a reason why you'd want more than
-> one rpc_pipefs filesystem mounted...
+Not really. That is clever, just not immediately obvious (to me). Plus =
+what happens when we have NFSv4.100? ;)
 
-I agree.  I cannot think of any good reason.
-I'm not sure it would be such a bad idea to fix a mount point at compile
-time, but not that we have run-time configuration it is safe to stick
-with it.
+I was thinking you could simply check for > nfsv3, but that's not very =
+specific.
 
->
-> Maybe it would make sense to create a 'global' section and have the
-> programs all look at that instead of looking in their specific config
-> sections... or maybe have the program check global section and then a
-> program-specific section, but include a big fat warning that if you
-> specify it in the program-specific section then you need to override all
-> of them with the same value.
+Lets see what Trond and Anna say.
 
-I support a "global" section of rpc-pipefs mount point.
-I probably should have put pipefs-directory in a "global" section to
-start with.  I don't recall why I didn't.
+-dros
 
-Thanks,
-NeilBrown
-
-
->
-> -Scott
+>=20
 >>=20
->> Thanks,
->> NeilBrown
+>>> +			case 300: /* v3   */
+>>> +			case 400: /* v4.0 */
+>>> +			case 401: /* v4.1 */
+>>> +				break;
 >>=20
+>> v4.2?
+>=20
+> Right!
+>=20
+> Tigran.
 >>=20
->> > -Scott
->> >
->> > Scott Mayhew (2):
->> >   idmapd: move the pipefs-directory config option to nfs.conf
->> >   systemd: add a generator for the rpc_pipefs mountpoint
->> >
->> >  .gitignore                     |   1 +
->> >  nfs.conf                       |   3 +
->> >  systemd/Makefile.am            |   4 +-
->> >  systemd/nfs.conf.man           |   9 ++
->> >  systemd/rpc-pipefs-generator.c | 256 ++++++++++++++++++++++++++++++++=
-+++++++++
->> >  systemd/rpc-svcgssd.service    |   3 +-
->> >  utils/idmapd/idmapd.c          |  35 +++---
->> >  utils/idmapd/idmapd.man        |  19 ++-
->> >  8 files changed, 305 insertions(+), 25 deletions(-)
->> >  create mode 100644 systemd/rpc-pipefs-generator.c
->> >
->> > --=20
->> > 2.9.3
->> >
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> -dros
+>>=20
+>>> +			default:
+>>> +				dprintk("%s: [%d] unsupported ds version =
+%d-%d\n", __func__,
+>>> +					i, ds_versions[i].version,
+>>> +					ds_versions[i].minor_version);
+>>> +				ret =3D -EPROTONOSUPPORT;
+>>> +				goto out_err_drain_dsaddrs;
+>>> 		}
+>>>=20
+>>> 		dprintk("%s: [%d] vers %u minor_ver %u rsize %u wsize %u =
+coupled %d\n",
+>>> --
+>>> 2.9.3
+>>>=20
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>=20
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljivzkACgkQOeye3VZi
-gblZeA/6AkeqqtwM+mo+gNmqiAvRT6nawT16hXpz0hb2gWCmmYNHXQcXSSyPq9Ie
-pHNl+p6Z1sIw4nYGBfn9JkMMoJ0xh++vntE3aaBNkzV5rkHP4K1G6nSJkj+tAfvV
-OsG8dO3sUMZ0qcqm+uLVVfEHutswUmW4xo5mpBh3PySBgUhTmSHK12DA4jd60FpB
-lIBU6v8CfLRMN95DOzc47R7vvIOdyZgv70J2FWHrNHRUd+fcaBan8ITkYSKmnBCV
-blu5LfcFV0SIrdF6OZMPsYurHgUVFhtGS6fB3sD2WzdnKq3U7oiIK7WM+/BkrXy5
-kTkF7k1FsXfGJQGuAqowFmMFmwkL8+Hiu/n+p8ZJRjszn5KsL6OnvOehEkojyDXp
-yR/NOfpu50j560ojftV46JeZ8Y8UGXaGE4l2uoEglhQvbvYixLGn05kjVu0O7AdN
-7J5FlPcuwI86JcVOBmTLgLkFzFRQqmINFj+OJzRVoL3OzaVFkFfuVN+LQQjTQV1K
-hemhBxH+29geLzGnC3UlJicLhXxo/VXsUo02AfIbns9u38kx+CuTg89VItUcuHSu
-KmfIDqXKCveFxp+7SUNS6ufl6sXBitAjnapy4z9o8838gCMM3i1SLzQ8Y8dITdOj
-2l6VNN7DL1B4ELd32dNvqOm/iLFinXF3lM35gFbemZ1nBW7MYks=
-=4+fX
------END PGP SIGNATURE-----
---=-=-=--
