@@ -1,96 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45224 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:56362 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754533AbdDDVb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Apr 2017 17:31:58 -0400
-Subject: Re: [PATCH 1/2] nfsd: Allow the caller to turn off NFSv4.0 without
- turning off NFSv4.x
-To: Trond Myklebust <trondmy@primarydata.com>
-References: <20170224003344.113724-1-trond.myklebust@primarydata.com>
- <20170224003344.113724-2-trond.myklebust@primarydata.com>
- <1ec88fba-7bdb-ee59-e4cf-20970f45bd1d@RedHat.com>
- <1491337561.14806.1.camel@primarydata.com>
- <4d26d8f6-74af-9225-d98d-6e2c42a22e09@RedHat.com>
- <4B984CF4-7D50-4B11-B26E-886845068329@primarydata.com>
-Cc: James Bruce Fields <bfields@fieldses.org>,
-        "neilb@suse.com" <neilb@suse.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <4a409f78-9dfb-cfa4-67e7-6c67b8d263ac@RedHat.com>
-Date: Tue, 4 Apr 2017 17:31:56 -0400
+        id S1754421AbdDDV5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Apr 2017 17:57:36 -0400
+From: NeilBrown <neilb@suse.com>
+To: ChunYu Wang <chunwang@redhat.com>
+Date: Wed, 05 Apr 2017 07:57:28 +1000
+Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>,
+        Jianhong Yin <jiyin@redhat.com>,
+        Yongcheng Yang <yoyang@redhat.com>
+Subject: Re: [PATCH] nfs-server-generator: handle 'noauto' mounts correctly.
+In-Reply-To: <CAA2bi7_e+TOfShDacyKSXp6kh0j9bk=nLq01SCftrOk51gu46Q@mail.gmail.com>
+References: <87poitv3p4.fsf@notabene.neil.brown.name> <CAA2bi7_e+TOfShDacyKSXp6kh0j9bk=nLq01SCftrOk51gu46Q@mail.gmail.com>
+Message-ID: <87vaqjj0on.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <4B984CF4-7D50-4B11-B26E-886845068329@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+
+On Tue, Apr 04 2017, ChunYu Wang wrote:
+
+> Hi, Neil,
+>
+> Thanks for your patch! But seems there still exists same problem on my
+> fedora 25 with a patched nfs-utils version, am I made something wrong
+> or we just need more patches for fedora family..?
+>
+> -- I just try it with most simple steps:
+> [root@bootp-73-5-219 ~]# cat /etc/fstab |grep boot
+> UUID=932047db-24e7-4043-8373-6e87333b9ce1 /boot                   ext4
+>    noauto        1 2
+> ^^ Set flag to 'noauto'
+>
+> [root@bootp-73-5-219 ~]# umount /boot; mount -a; mountpoint /boot
+> /boot is not a mountpoint
+> ^^ umount ready
+>
+> [root@bootp-73-5-219 ~]# cat /lib/systemd/system/nfs-server.service |grep boot
+> RequiresMountsFor= /boot
+
+Why do you have this line in this file?  This is what is causing /boot
+to be mounted.
+It seems that you don't understand the point of the patch.
+The patch modifies the nfs-server systemd generator to *not* including
+this line in the generated file if the noauto option is present.
+
+NeilBrown
 
 
-On 04/04/2017 05:11 PM, Trond Myklebust wrote:
-> 
->> On Apr 4, 2017, at 17:07, Steve Dickson <SteveD@RedHat.com <mailto:SteveD@RedHat.com>> wrote:
+>
+> [root@bootp-73-5-219 ~]# systemctl restart nfs-server
+>
+> [root@bootp-73-5-219 ~]# mountpoint /boot/
+> /boot/ is a mountpoint
+> [root@bootp-73-5-219 ~]# mount |grep boot
+> /dev/sda1 on /boot type ext4 (rw,relatime,seclabel,data=ordered)
+> ^^ mount again automatically
+> --
+>
+> -- Already patched:
+> [root@bootp-73-5-219 ~]# rpm -q nfs-utils
+> nfs-utils-2.1.1-2.rc1.fc25.x86_64
+> [root@bootp-73-5-219 nfs-utils]# grep nfs-server-generator -r ./*.patch
+> ./nfs-utils-2.1.2-rc1.patch:diff --git
+> a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
+> ...
+> [root@bootp-73-5-219 nfs-utils]# cat ./nfs-utils.spec |grep -i patch001
+> Patch001: nfs-utils-2.1.2-rc1.patch
+> %patch001 -p1
+> --
+>
+> Thanks,
+> ChunYu Wang
+>
+>
+>
+>
+>
+> On Wed, Feb 8, 2017 at 10:03 AM, NeilBrown <neilb@suse.com> wrote:
 >>
+>> When this code was written, the systemd documentation stated
+>> that "RequiresMountsFor" ignored mountpoints marked as "noauto".
+>> Unfortunately this is incorrect.  Consquently a filesystem marked
+>> as noauto that is also NFS exported will currently be mounted when
+>> the NFS server is started. This is not what people expect.
 >>
+>> So add a check for the noauto flag.  If any ancestor of a given
+>> export point has the noauto flag, no RequiresMountsFor will be
+>> generated for that point.
 >>
->> On 04/04/2017 04:26 PM, Trond Myklebust wrote:
->>> On Tue, 2017-04-04 at 16:07 -0400, Steve Dickson wrote:
->>>> Hey Trond,
->>>>
->>>> My apologies for taking so long to address this... 
->>>>
->>>> On 02/23/2017 07:33 PM, Trond Myklebust wrote:
->>>>> The new semantic is that '-N4' turns off all NFSv4 minor versions,
->>>>> while
->>>>> '-V4' turns them all on. In order to turn off just minor version x
->>>>> (x >= 0),
->>>>> use -N4.x, and to turn it back on. '-V4.x'.
->>>>>
->>>>> Note that on older kernels, attempting to use -N4.0 and -V4.0 is
->>>>> equivalent to specifying -N4 or -V4.
->>>>
->>>> doing a 
->>>>
->>>> nfsd -d -N4.0 -V4.1 -V4.2 
->>>> nfsd: Writing version string to kernel: -2 +3 -4 +4.1 +4.2
->>>>
->>>> does the right thing but when I do a
->>>>
->>>> nfsd -d -N4.0 
->>>> nfsd: Writing version string to kernel: -2 +3 -4
->>>>
->>>> It brings down all of the v4 minor versions, Is that
->>>> intentional? It seems to me doing a -N4.0 should only
->>>> stop 4.0 from coming up not v4.1 or v4.2
->>>
->>> That is unfortunately not possible for older kernels. They lack the
->>> kernel API to turn off NFSv4.0 only. We could perhaps try to return an
->>> error if you were to specify these flags for those kernels, but that
->>> would require us to hard-code a "minimal" kernel version in nfs-utils.
->> Well we already do that in the legacy mounting code to figure out
->> what mount version to use, but looking at that code it would be pain
->> to pull it out. 
+>> Also skip RequiresMountsFor for exports marked 'mountpoint', as their
+>> absence is, theoretically, already handled by mountd.
 >>
->> But I'm thinking the expectation of nfsd -N4.0 is to only 
->> turn off v4.0 and not work the same as -N4 which turns all of
->> v4 off which is expected. 
+>> URL: https://github.com/systemd/systemd/issues/5249
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  systemd/nfs-server-generator.c | 26 ++++++++++++++++++++++++++
+>>  1 file changed, 26 insertions(+)
 >>
->> When you say old kernel... How old?
-> 
-> Linux 4.10 or older.
-So what will happen when this is done
-    nfsd -d -N4.0 -V4.1 -V4.2
-on an older kernel?
+>> diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
+>> index cc99969e9922..4aa65094ca07 100644
+>> --- a/systemd/nfs-server-generator.c
+>> +++ b/systemd/nfs-server-generator.c
+>> @@ -84,6 +84,28 @@ static void systemd_escape(FILE *f, char *path)
+>>         }
+>>  }
+>>
+>> +static int has_noauto_flag(char *path)
+>> +{
+>> +       FILE            *fstab;
+>> +       struct mntent   *mnt;
+>> +
+>> +       fstab = setmntent("/etc/fstab", "r");
+>> +       if (!fstab)
+>> +               return 0;
+>> +
+>> +       while ((mnt = getmntent(fstab)) != NULL) {
+>> +               int l = strlen(mnt->mnt_dir);
+>> +               if (strncmp(mnt->mnt_dir, path, l) != 0)
+>> +                       continue;
+>> +               if (path[l] && path[l] != '/')
+>> +                       continue;
+>> +               if (hasmntopt(mnt, "noauto"))
+>> +                       break;
+>> +       }
+>> +       fclose(fstab);
+>> +       return mnt != NULL;
+>> +}
+>> +
+>>  int main(int argc, char *argv[])
+>>  {
+>>         char            *path;
+>> @@ -124,6 +146,10 @@ int main(int argc, char *argv[])
+>>                 for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
+>>                         if (!is_unique(&list, exp->m_export.e_path))
+>>                                 continue;
+>> +                       if (exp->m_export.e_mountpoint)
+>> +                               continue;
+>> +                       if (has_noauto_flag(exp->m_export.e_path))
+>> +                               continue;
+>>                         if (strchr(exp->m_export.e_path, ' '))
+>>                                 fprintf(f, "RequiresMountsFor=\"%s\"\n",
+>>                                         exp->m_export.e_path);
+>> --
+>> 2.11.0
+>>
 
-Also looking at the code when -N4.0 is used
-it zero out the entire minorversset which means 
-the -4.1 and -4.2 is not written out to the versions file
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
-nfsd -d -N4
-nfsd: Writing version string to kernel: -2 +3 -4 -4.1 -4.2
+-----BEGIN PGP SIGNATURE-----
 
-nfsd -d -N4.0
-nfsd: Writing version string to kernel: -2 +3 -4
-
-I'm not sure if this matters or not... but it is different.
-
-steved.
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljkFsgACgkQOeye3VZi
+gbnZDg/+OA+zokVw5x6xptXEPWbUQ9LuS3ntHS2+D7lbpaKDo/WT6pvktGTpbXQ8
+w9L7YhaYdoHSMFgj/HFVvT5AJr4o17Ltcsh2jpSxqga0pUroHDAi4T/WMN1nbwfK
+dvA51kzySz0VE4MlZcFShWGQnRW/pfNwwm2ZUwzOeIh41hZte/mN7XJ9IB4hmJ0m
+AUOrj+pMfJMNVI0/mf024wR3YSTec/YTvvzOsjq0LC3uCLTjBr1OT/cCQFgaGlbP
+eRgt2xkJh0P+uVA2GYPhCEL9PyPAD5r9K/48oajc/lk+OkyWvr0vpuBvTMvToM8f
+IEUElikOnuvbYivukKxj9KV+0j+g634J2FhQ/n85O7I8kL55E+FzlMUAGUu8kgQv
+xhjFGz5mFtbWH4HxWATCjLKXJNtvw1ZqIAOVcA4ZtX+iBD9G4HtVwNwpDsN75hW9
+bo9DAA24NSjjb/N4Yf2i0wwx62731soiqnaBHrUfCuZp+7C6tM6TVDedPpVu0kCT
+QBuy/Qm2iYfgArivhgiSer0tJFiUx2X2H7WlrnsyPEqCznGTQ3d7cCwAa8ARy5su
+syIO90jKADC1E/TAr3oBRL16kDhC5nCaQmGqGyhBJqEh6kF/T8QKsv4gkFfzlGDV
+KKFPqBugIN5332Elp5NHX1M/5L33iD+AjUSl9ZsJhMjS96CZN68=
+=O4Lg
+-----END PGP SIGNATURE-----
+--=-=-=--
