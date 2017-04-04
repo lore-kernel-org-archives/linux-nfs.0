@@ -1,228 +1,394 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:35366 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753876AbdDDU0K (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Apr 2017 16:26:10 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "SteveD@RedHat.com" <SteveD@RedHat.com>,
-        Trond Myklebust <trondmy@primarydata.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "neilb@suse.com" <neilb@suse.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49044 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752327AbdDDVHH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Apr 2017 17:07:07 -0400
 Subject: Re: [PATCH 1/2] nfsd: Allow the caller to turn off NFSv4.0 without
  turning off NFSv4.x
-Date: Tue, 4 Apr 2017 20:26:03 +0000
-Message-ID: <1491337561.14806.1.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 References: <20170224003344.113724-1-trond.myklebust@primarydata.com>
-         <20170224003344.113724-2-trond.myklebust@primarydata.com>
-         <1ec88fba-7bdb-ee59-e4cf-20970f45bd1d@RedHat.com>
-In-Reply-To: <1ec88fba-7bdb-ee59-e4cf-20970f45bd1d@RedHat.com>
+ <20170224003344.113724-2-trond.myklebust@primarydata.com>
+ <1ec88fba-7bdb-ee59-e4cf-20970f45bd1d@RedHat.com>
+ <1491337561.14806.1.camel@primarydata.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "neilb@suse.com" <neilb@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <4d26d8f6-74af-9225-d98d-6e2c42a22e09@RedHat.com>
+Date: Tue, 4 Apr 2017 17:07:05 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1491337561.14806.1.camel@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTA0LTA0IGF0IDE2OjA3IC0wNDAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiBIZXkgVHJvbmQsDQo+IA0KPiBNeSBhcG9sb2dpZXMgZm9yIHRha2luZyBzbyBsb25nIHRvIGFk
-ZHJlc3MgdGhpcy4uLsKgDQo+IA0KPiBPbiAwMi8yMy8yMDE3IDA3OjMzIFBNLCBUcm9uZCBNeWts
-ZWJ1c3Qgd3JvdGU6DQo+ID4gVGhlIG5ldyBzZW1hbnRpYyBpcyB0aGF0ICctTjQnIHR1cm5zIG9m
-ZiBhbGwgTkZTdjQgbWlub3IgdmVyc2lvbnMsDQo+ID4gd2hpbGUNCj4gPiAnLVY0JyB0dXJucyB0
-aGVtIGFsbCBvbi4gSW4gb3JkZXIgdG8gdHVybiBvZmYganVzdCBtaW5vciB2ZXJzaW9uIHgNCj4g
-PiAoeCA+PSAwKSwNCj4gPiB1c2UgLU40LngsIGFuZCB0byB0dXJuIGl0IGJhY2sgb24uICctVjQu
-eCcuDQo+ID4gDQo+ID4gTm90ZSB0aGF0IG9uIG9sZGVyIGtlcm5lbHMsIGF0dGVtcHRpbmcgdG8g
-dXNlIC1ONC4wIGFuZCAtVjQuMCBpcw0KPiA+IGVxdWl2YWxlbnQgdG8gc3BlY2lmeWluZyAtTjQg
-b3IgLVY0Lg0KPiANCj4gZG9pbmcgYcKgDQo+IA0KPiBuZnNkIC1kIC1ONC4wIC1WNC4xIC1WNC4y
-wqANCj4gbmZzZDogV3JpdGluZyB2ZXJzaW9uIHN0cmluZyB0byBrZXJuZWw6IC0yICszIC00ICs0
-LjEgKzQuMg0KPiANCj4gZG9lcyB0aGUgcmlnaHQgdGhpbmcgYnV0IHdoZW4gSSBkbyBhDQo+IA0K
-PiBuZnNkIC1kIC1ONC4wwqANCj4gbmZzZDogV3JpdGluZyB2ZXJzaW9uIHN0cmluZyB0byBrZXJu
-ZWw6IC0yICszIC00DQo+IA0KPiBJdCBicmluZ3MgZG93biBhbGwgb2YgdGhlIHY0IG1pbm9yIHZl
-cnNpb25zLCBJcyB0aGF0DQo+IGludGVudGlvbmFsPyBJdCBzZWVtcyB0byBtZSBkb2luZyBhIC1O
-NC4wIHNob3VsZCBvbmx5DQo+IHN0b3AgNC4wIGZyb20gY29taW5nIHVwIG5vdCB2NC4xIG9yIHY0
-LjINCg0KVGhhdCBpcyB1bmZvcnR1bmF0ZWx5IG5vdCBwb3NzaWJsZSBmb3Igb2xkZXIga2VybmVs
-cy4gVGhleSBsYWNrIHRoZQ0Ka2VybmVsIEFQSSB0byB0dXJuIG9mZiBORlN2NC4wIG9ubHkuIFdl
-IGNvdWxkIHBlcmhhcHMgdHJ5IHRvIHJldHVybiBhbg0KZXJyb3IgaWYgeW91IHdlcmUgdG8gc3Bl
-Y2lmeSB0aGVzZSBmbGFncyBmb3IgdGhvc2Uga2VybmVscywgYnV0IHRoYXQNCndvdWxkIHJlcXVp
-cmUgdXMgdG8gaGFyZC1jb2RlIGEgIm1pbmltYWwiIGtlcm5lbCB2ZXJzaW9uIGluIG5mcy11dGls
-cy4NCg0KPiANCj4gc3RldmVkLg0KPiDCoA0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25k
-IE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCj4gPiAtLS0NCj4g
-PiDCoHN1cHBvcnQvaW5jbHVkZS9uZnMvbmZzLmggfMKgwqA3ICsrKy0tDQo+ID4gwqB1dGlscy9u
-ZnNkL25mc2QuY8KgwqDCoMKgwqDCoMKgwqDCoHwgMzkgKysrKysrKysrKysrKysrLS0tLS0tLS0t
-DQo+ID4gwqB1dGlscy9uZnNkL25mc2QubWFuwqDCoMKgwqDCoMKgwqB8wqDCoDQgKy0tDQo+ID4g
-wqB1dGlscy9uZnNkL25mc3N2Yy5jwqDCoMKgwqDCoMKgwqB8IDc2DQo+ID4gKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0NCj4gPiDCoHV0aWxzL25mc2QvbmZz
-c3ZjLmjCoMKgwqDCoMKgwqDCoHzCoMKgMSArDQo+ID4gwqA1IGZpbGVzIGNoYW5nZWQsIDkyIGlu
-c2VydGlvbnMoKyksIDM1IGRlbGV0aW9ucygtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9zdXBw
-b3J0L2luY2x1ZGUvbmZzL25mcy5oIGIvc3VwcG9ydC9pbmNsdWRlL25mcy9uZnMuaA0KPiA+IGlu
-ZGV4IDE1ZWNjNmJmYzQ4NS4uNTg2MDM0M2Y3OGI3IDEwMDY0NA0KPiA+IC0tLSBhL3N1cHBvcnQv
-aW5jbHVkZS9uZnMvbmZzLmgNCj4gPiArKysgYi9zdXBwb3J0L2luY2x1ZGUvbmZzL25mcy5oDQo+
-ID4gQEAgLTE2LDggKzE2LDggQEANCj4gPiDCoCNkZWZpbmUgTkZTRF9NSU5WRVJTIDINCj4gPiDC
-oCNkZWZpbmUgTkZTRF9NQVhWRVJTIDQNCj4gPiDCoA0KPiA+IC0jZGVmaW5lIE5GUzRfTUlOTUlO
-T1IgMQ0KPiA+IC0jZGVmaW5lIE5GUzRfTUFYTUlOT1IgV09SRF9CSVQNCj4gPiArI2RlZmluZSBO
-RlM0X01JTk1JTk9SIDANCj4gPiArI2RlZmluZSBORlM0X01BWE1JTk9SIChXT1JEX0JJVC0xKQ0K
-PiA+IMKgDQo+ID4gwqBzdHJ1Y3QgbmZzX2ZoX2xlbiB7DQo+ID4gwqAJaW50CQlmaF9zaXplOw0K
-PiA+IEBAIC0yOSwxNSArMjksMTggQEAgc3RydWN0IG5mc19maF9sZW4gew0KPiA+IMKgI2RlZmlu
-ZSBORlNDVExfVENQQklUCQnCoMKgwqDCoMKgwqAoMSA8PCAoMTggLSAxKSkNCj4gPiDCoA0KPiA+
-IMKgI2RlZmluZSBORlNDVExfVkVSVU5TRVQoX2NsdGJpdHMsIF92KSAoKF9jbHRiaXRzKSAmPSB+
-KDEgPDwgKChfdikNCj4gPiAtIDEpKSnCoA0KPiA+ICsjZGVmaW5lIE5GU0NUTF9NSU5PUlVOU0VU
-KF9jbHRiaXRzLCBfdikgKChfY2x0Yml0cykgJj0gfigxIDw8DQo+ID4gKF92KSkpDQo+ID4gwqAj
-ZGVmaW5lIE5GU0NUTF9VRFBVTlNFVChfY2x0Yml0cynCoMKgwqDCoMKgKChfY2x0Yml0cykgJj0N
-Cj4gPiB+TkZTQ1RMX1VEUEJJVCnCoA0KPiA+IMKgI2RlZmluZSBORlNDVExfVENQVU5TRVQoX2Ns
-dGJpdHMpwqDCoMKgwqDCoCgoX2NsdGJpdHMpICY9DQo+ID4gfk5GU0NUTF9UQ1BCSVQpwqANCj4g
-PiDCoA0KPiA+IMKgI2RlZmluZSBORlNDVExfVkVSSVNTRVQoX2NsdGJpdHMsIF92KSAoKF9jbHRi
-aXRzKSAmICgxIDw8ICgoX3YpIC0NCj4gPiAxKSkpwqANCj4gPiArI2RlZmluZSBORlNDVExfTUlO
-T1JJU1NFVChfY2x0Yml0cywgX3YpICgoX2NsdGJpdHMpICYgKDEgPDwgKF92KSkpDQo+ID4gwqAj
-ZGVmaW5lIE5GU0NUTF9VRFBJU1NFVChfY2x0Yml0cynCoMKgwqDCoMKgKChfY2x0Yml0cykgJg0K
-PiA+IE5GU0NUTF9VRFBCSVQpwqANCj4gPiDCoCNkZWZpbmUgTkZTQ1RMX1RDUElTU0VUKF9jbHRi
-aXRzKcKgwqDCoMKgwqAoKF9jbHRiaXRzKSAmDQo+ID4gTkZTQ1RMX1RDUEJJVCnCoA0KPiA+IMKg
-DQo+ID4gwqAjZGVmaW5lIE5GU0NUTF9WRVJERUZBVUxUICgweGMpwqDCoMKgwqDCoMKgwqAvKiB2
-ZXJzaW9ucyAzIGFuZCA0ICovDQo+ID4gwqAjZGVmaW5lIE5GU0NUTF9WRVJTRVQoX2NsdGJpdHMs
-IF92KcKgwqDCoCgoX2NsdGJpdHMpIHw9ICgxIDw8ICgoX3YpIC0NCj4gPiAxKSkpwqANCj4gPiAr
-I2RlZmluZSBORlNDVExfTUlOT1JTRVQoX2NsdGJpdHMsIF92KcKgwqDCoCgoX2NsdGJpdHMpIHw9
-ICgxIDw8DQo+ID4gKF92KSkpDQo+ID4gwqAjZGVmaW5lIE5GU0NUTF9VRFBTRVQoX2NsdGJpdHMp
-wqDCoMKgwqDCoMKgwqAoKF9jbHRiaXRzKSB8PQ0KPiA+IE5GU0NUTF9VRFBCSVQpDQo+ID4gwqAj
-ZGVmaW5lIE5GU0NUTF9UQ1BTRVQoX2NsdGJpdHMpwqDCoMKgwqDCoMKgwqAoKF9jbHRiaXRzKSB8
-PQ0KPiA+IE5GU0NUTF9UQ1BCSVQpDQo+ID4gwqANCj4gPiBkaWZmIC0tZ2l0IGEvdXRpbHMvbmZz
-ZC9uZnNkLmMgYi91dGlscy9uZnNkL25mc2QuYw0KPiA+IGluZGV4IDIwZjRiNzk1MjIwMy4uMTcw
-ODUyMWFiMjg2IDEwMDY0NA0KPiA+IC0tLSBhL3V0aWxzL25mc2QvbmZzZC5jDQo+ID4gKysrIGIv
-dXRpbHMvbmZzZC9uZnNkLmMNCj4gPiBAQCAtNjcsNiArNjcsNyBAQCBtYWluKGludCBhcmdjLCBj
-aGFyICoqYXJndikNCj4gPiDCoAlpbnQJc29ja2V0X3VwID0gMDsNCj4gPiDCoAl1bnNpZ25lZCBp
-bnQgbWlub3J2ZXJzID0gMDsNCj4gPiDCoAl1bnNpZ25lZCBpbnQgbWlub3J2ZXJzc2V0ID0gMDsN
-Cj4gPiArCXVuc2lnbmVkIGludCBtaW5vcm1hc2sgPSAwOw0KPiA+IMKgCXVuc2lnbmVkIGludCB2
-ZXJzYml0cyA9IE5GU0NUTF9WRVJERUZBVUxUOw0KPiA+IMKgCXVuc2lnbmVkIGludCBwcm90b2Jp
-dHMgPSBORlNDVExfQUxMQklUUzsNCj4gPiDCoAlpbnQgZ3JhY2UgPSAtMTsNCj4gPiBAQCAtMTA0
-LDEwICsxMDUsMTYgQEAgbWFpbihpbnQgYXJnYywgY2hhciAqKmFyZ3YpDQo+ID4gwqAJCWVsc2UN
-Cj4gPiDCoAkJCU5GU0NUTF9WRVJVTlNFVCh2ZXJzYml0cywgaSk7DQo+ID4gwqAJfQ0KPiA+ICsN
-Cj4gPiArCW5mc3N2Y19nZXRfbWlub3JtYXNrKCZtaW5vcm1hc2spOw0KPiA+IMKgCS8qIFdlIGFz
-c3VtZSB0aGUga2VybmVsIHdpbGwgZGVmYXVsdCBhbGwgbWlub3IgdmVyc2lvbnMgdG8NCj4gPiAn
-b24nLA0KPiA+IMKgCcKgKiBhbmQgYWxsb3cgdGhlIGNvbmZpZyBmaWxlIHRvIGRpc2FibGUgc29t
-ZS4NCj4gPiDCoAnCoCovDQo+ID4gLQlmb3IgKGkgPSBORlM0X01JTk1JTk9SOyBpIDw9IE5GUzRf
-TUFYTUlOT1I7IGkrKykgew0KPiA+ICsJaWYgKE5GU0NUTF9WRVJJU1NFVCh2ZXJzYml0cywgNCkp
-IHsNCj4gPiArCQlORlNDVExfTUlOT1JTRVQobWlub3J2ZXJzc2V0LCAwKTsNCj4gPiArCQlORlND
-VExfTUlOT1JTRVQobWlub3J2ZXJzLCAwKTsNCj4gPiArCX0NCj4gPiArCWZvciAoaSA9IDE7IGkg
-PD0gTkZTNF9NQVhNSU5PUjsgaSsrKSB7DQo+ID4gwqAJCWNoYXIgdGFnWzIwXTsNCj4gPiDCoAkJ
-c3ByaW50Zih0YWcsICJ2ZXJzNC4lZCIsIGkpOw0KPiA+IMKgCQkvKiBUaGUgZGVmYXVsdCBmb3Ig
-bWlub3IgdmVyc2lvbiBzdXBwb3J0IGlzIHRvIGxldA0KPiA+IHRoZQ0KPiA+IEBAIC0xMTksMTIg
-KzEyNiwxMiBAQCBtYWluKGludCBhcmdjLCBjaGFyICoqYXJndikNCj4gPiDCoAkJwqAqIChpLmUu
-IGRvbid0IHNldCB0aGUgYml0IGluIG1pbm9ydmVyc3NldCkuDQo+ID4gwqAJCcKgKi8NCj4gPiDC
-oAkJaWYgKCFjb25mX2dldF9ib29sKCJuZnNkIiwgdGFnLCAxKSkgew0KPiA+IC0JCQlORlNDVExf
-VkVSU0VUKG1pbm9ydmVyc3NldCwgaSk7DQo+ID4gLQkJCU5GU0NUTF9WRVJVTlNFVChtaW5vcnZl
-cnMsIGkpOw0KPiA+ICsJCQlORlNDVExfTUlOT1JTRVQobWlub3J2ZXJzc2V0LCBpKTsNCj4gPiAr
-CQkJTkZTQ1RMX01JTk9SVU5TRVQobWlub3J2ZXJzLCBpKTsNCj4gPiDCoAkJfQ0KPiA+IMKgCQlp
-ZiAoY29uZl9nZXRfYm9vbCgibmZzZCIsIHRhZywgMCkpIHsNCj4gPiAtCQkJTkZTQ1RMX1ZFUlNF
-VChtaW5vcnZlcnNzZXQsIGkpOw0KPiA+IC0JCQlORlNDVExfVkVSU0VUKG1pbm9ydmVycywgaSk7
-DQo+ID4gKwkJCU5GU0NUTF9NSU5PUlNFVChtaW5vcnZlcnNzZXQsIGkpOw0KPiA+ICsJCQlORlND
-VExfTUlOT1JTRVQobWlub3J2ZXJzLCBpKTsNCj4gPiDCoAkJfQ0KPiA+IMKgCX0NCj4gPiDCoA0K
-PiA+IEBAIC0xNzksMTMgKzE4NiwxNyBAQCBtYWluKGludCBhcmdjLCBjaGFyICoqYXJndikNCj4g
-PiDCoAkJCWNhc2UgNDoNCj4gPiDCoAkJCQlpZiAoKnAgPT0gJy4nKSB7DQo+ID4gwqAJCQkJCWlu
-dCBpID0gYXRvaShwKzEpOw0KPiA+IC0JCQkJCWlmIChpIDwgTkZTNF9NSU5NSU5PUiB8fCBpDQo+
-ID4gPiBORlM0X01BWE1JTk9SKSB7DQo+ID4gKwkJCQkJaWYgKGkgPCAwIHx8IGkgPg0KPiA+IE5G
-UzRfTUFYTUlOT1IpIHsNCj4gPiDCoAkJCQkJCWZwcmludGYoc3RkZXJyLA0KPiA+ICIlczogdW5z
-dXBwb3J0ZWQgbWlub3IgdmVyc2lvblxuIiwgb3B0YXJnKTsNCj4gPiDCoAkJCQkJCWV4aXQoMSk7
-DQo+ID4gwqAJCQkJCX0NCj4gPiAtCQkJCQlORlNDVExfVkVSU0VUKG1pbm9ydmVyc3NldA0KPiA+
-ICwgaSk7DQo+ID4gLQkJCQkJTkZTQ1RMX1ZFUlVOU0VUKG1pbm9ydmVycywNCj4gPiBpKTsNCj4g
-PiAtCQkJCQlicmVhazsNCj4gPiArCQkJCQlORlNDVExfTUlOT1JTRVQobWlub3J2ZXJzcw0KPiA+
-IGV0LCBpKTsNCj4gPiArCQkJCQlORlNDVExfTUlOT1JVTlNFVChtaW5vcnZlcg0KPiA+IHMsIGkp
-Ow0KPiA+ICsJCQkJCWlmIChtaW5vcnZlcnMgIT0gMCkNCj4gPiArCQkJCQkJYnJlYWs7DQo+ID4g
-KwkJCQl9IGVsc2Ugew0KPiA+ICsJCQkJCW1pbm9ydmVycyA9IDA7DQo+ID4gKwkJCQkJbWlub3J2
-ZXJzc2V0ID0gbWlub3JtYXNrOw0KPiA+IMKgCQkJCX0NCj4gPiDCoAkJCWNhc2UgMzoNCj4gPiDC
-oAkJCWNhc2UgMjoNCj4gPiBAQCAtMjAxLDE0ICsyMTIsMTQgQEAgbWFpbihpbnQgYXJnYywgY2hh
-ciAqKmFyZ3YpDQo+ID4gwqAJCQljYXNlIDQ6DQo+ID4gwqAJCQkJaWYgKCpwID09ICcuJykgew0K
-PiA+IMKgCQkJCQlpbnQgaSA9IGF0b2kocCsxKTsNCj4gPiAtCQkJCQlpZiAoaSA8IE5GUzRfTUlO
-TUlOT1IgfHwgaQ0KPiA+ID4gTkZTNF9NQVhNSU5PUikgew0KPiA+ICsJCQkJCWlmIChpIDwgMCB8
-fCBpID4NCj4gPiBORlM0X01BWE1JTk9SKSB7DQo+ID4gwqAJCQkJCQlmcHJpbnRmKHN0ZGVyciwN
-Cj4gPiAiJXM6IHVuc3VwcG9ydGVkIG1pbm9yIHZlcnNpb25cbiIsIG9wdGFyZyk7DQo+ID4gwqAJ
-CQkJCQlleGl0KDEpOw0KPiA+IMKgCQkJCQl9DQo+ID4gLQkJCQkJTkZTQ1RMX1ZFUlNFVChtaW5v
-cnZlcnNzZXQNCj4gPiAsIGkpOw0KPiA+IC0JCQkJCU5GU0NUTF9WRVJTRVQobWlub3J2ZXJzLA0K
-PiA+IGkpOw0KPiA+IC0JCQkJCWJyZWFrOw0KPiA+IC0JCQkJfQ0KPiA+ICsJCQkJCU5GU0NUTF9N
-SU5PUlNFVChtaW5vcnZlcnNzDQo+ID4gZXQsIGkpOw0KPiA+ICsJCQkJCU5GU0NUTF9NSU5PUlNF
-VChtaW5vcnZlcnMsDQo+ID4gaSk7DQo+ID4gKwkJCQl9IGVsc2UNCj4gPiArCQkJCQltaW5vcnZl
-cnMgPSBtaW5vcnZlcnNzZXQgPQ0KPiA+IG1pbm9ybWFzazsNCj4gPiDCoAkJCWNhc2UgMzoNCj4g
-PiDCoAkJCWNhc2UgMjoNCj4gPiDCoAkJCQlORlNDVExfVkVSU0VUKHZlcnNiaXRzLCBjKTsNCj4g
-PiBkaWZmIC0tZ2l0IGEvdXRpbHMvbmZzZC9uZnNkLm1hbiBiL3V0aWxzL25mc2QvbmZzZC5tYW4N
-Cj4gPiBpbmRleCA4OTAxZmI2YzY4NzIuLjBkNzk3ZmQyZWM4ZCAxMDA2NDQNCj4gPiAtLS0gYS91
-dGlscy9uZnNkL25mc2QubWFuDQo+ID4gKysrIGIvdXRpbHMvbmZzZC9uZnNkLm1hbg0KPiA+IEBA
-IC01Nyw3ICs1Nyw3IEBAIFRoaXMgb3B0aW9uIGNhbiBiZSB1c2VkIHRvIHJlcXVlc3QgdGhhdA0K
-PiA+IMKgLkIgcnBjLm5mc2QNCj4gPiDCoGRvZXMgbm90IG9mZmVyIGNlcnRhaW4gdmVyc2lvbnMg
-b2YgTkZTLiBUaGUgY3VycmVudCB2ZXJzaW9uIG9mDQo+ID4gwqAuQiBycGMubmZzZA0KPiA+IC1j
-YW4gc3VwcG9ydCBtYWpvciBORlMgdmVyc2lvbnMgMiwzLDQgYW5kIHRoZSBtaW5vciB2ZXJzaW9u
-cyA0LjENCj4gPiBhbmQgNC4yLg0KPiA+ICtjYW4gc3VwcG9ydCBtYWpvciBORlMgdmVyc2lvbnMg
-MiwzLDQgYW5kIHRoZSBtaW5vciB2ZXJzaW9ucyA0LjAsDQo+ID4gNC4xIGFuZCA0LjIuDQo+ID4g
-wqAuVFANCj4gPiDCoC5CIFwtcyAiIG9yICIgXC1cLXN5c2xvZw0KPiA+IMKgQnkgZGVmYXVsdCwN
-Cj4gPiBAQCAtODIsNyArODIsNyBAQCBUaGlzIG9wdGlvbiBjYW4gYmUgdXNlZCB0byByZXF1ZXN0
-IHRoYXQNCj4gPiDCoC5CIHJwYy5uZnNkDQo+ID4gwqBvZmZlciBjZXJ0YWluIHZlcnNpb25zIG9m
-IE5GUy4gVGhlIGN1cnJlbnQgdmVyc2lvbiBvZg0KPiA+IMKgLkIgcnBjLm5mc2QNCj4gPiAtY2Fu
-IHN1cHBvcnQgbWFqb3IgTkZTIHZlcnNpb25zIDIsMyw0IGFuZCB0aGUgbWlub3IgdmVyc2lvbnMg
-NC4xDQo+ID4gYW5kIDQuMi4NCj4gPiArY2FuIHN1cHBvcnQgbWFqb3IgTkZTIHZlcnNpb25zIDIs
-Myw0IGFuZCB0aGUgbWlub3IgdmVyc2lvbnMgNC4wLA0KPiA+IDQuMSBhbmQgNC4yLg0KPiA+IMKg
-LlRQDQo+ID4gwqAuQiBcLUwgIiBvciAiIFwtXC1sZWFzZS10aW1lIHNlY29uZHMNCj4gPiDCoFNl
-dCB0aGUgbGVhc2UtdGltZSB1c2VkIGZvciBORlN2NC7CoMKgVGhpcyBjb3JyZXNwb25kcyB0byBo
-b3cgb2Z0ZW4NCj4gPiBkaWZmIC0tZ2l0IGEvdXRpbHMvbmZzZC9uZnNzdmMuYyBiL3V0aWxzL25m
-c2QvbmZzc3ZjLmMNCj4gPiBpbmRleCAwN2Y2ZmYxMjA0ZDEuLmU4NjA5YzE1YjhlNSAxMDA2NDQN
-Cj4gPiAtLS0gYS91dGlscy9uZnNkL25mc3N2Yy5jDQo+ID4gKysrIGIvdXRpbHMvbmZzZC9uZnNz
-dmMuYw0KPiA+IEBAIC0zMzAsMzYgKzMzMCw3OCBAQCBuZnNzdmNfc2V0X3RpbWUoY29uc3QgY2hh
-ciAqdHlwZSwgY29uc3QgaW50DQo+ID4gc2Vjb25kcykNCj4gPiDCoH0NCj4gPiDCoA0KPiA+IMKg
-dm9pZA0KPiA+ICtuZnNzdmNfZ2V0X21pbm9ybWFzayh1bnNpZ25lZCBpbnQgKm1hc2spDQo+ID4g
-K3sNCj4gPiArCWludCBmZDsNCj4gPiArCWNoYXIgKnB0ciA9IGJ1ZjsNCj4gPiArCXNzaXplX3Qg
-c2l6ZTsNCj4gPiArDQo+ID4gKwlmZCA9IG9wZW4oTkZTRF9WRVJTX0ZJTEUsIE9fUkRPTkxZKTsN
-Cj4gPiArCWlmIChmZCA8IDApDQo+ID4gKwkJcmV0dXJuOw0KPiA+ICsNCj4gPiArCXNpemUgPSBy
-ZWFkKGZkLCBidWYsIHNpemVvZihidWYpKTsNCj4gPiArCWlmIChzaXplIDwgMCkgew0KPiA+ICsJ
-CXhsb2coTF9FUlJPUiwgIkdldHRpbmcgdmVyc2lvbnMgZmFpbGVkOiBlcnJubyAlZA0KPiA+ICgl
-bSkiLCBlcnJubyk7DQo+ID4gKwkJZ290byBvdXQ7DQo+ID4gKwl9DQo+ID4gKwlwdHJbc2l6ZV0g
-PSAnXDAnOw0KPiA+ICsJZm9yICg7Oykgew0KPiA+ICsJCXVuc2lnbmVkIHZlcnMsIG1pbm9yID0g
-MDsNCj4gPiArCQljaGFyICp0b2tlbiA9IHN0cnRvayhwdHIsICIgIik7DQo+ID4gKw0KPiA+ICsJ
-CWlmICghdG9rZW4pDQo+ID4gKwkJCWJyZWFrOw0KPiA+ICsJCXB0ciA9IE5VTEw7DQo+ID4gKwkJ
-aWYgKCp0b2tlbiAhPSAnKycgJiYgKnRva2VuICE9ICctJykNCj4gPiArCQkJY29udGludWU7DQo+
-ID4gKwkJaWYgKHNzY2FuZigrK3Rva2VuLCAiJXUuJXUiLCAmdmVycywgJm1pbm9yKSA+IDAgJiYN
-Cj4gPiArCQnCoMKgwqDCoHZlcnMgPT0gNCAmJiBtaW5vciA8PSBORlM0X01BWE1JTk9SKQ0KPiA+
-ICsJCQlORlNDVExfTUlOT1JTRVQoKm1hc2ssIG1pbm9yKTsNCj4gPiArCX0NCj4gPiArb3V0Og0K
-PiA+ICsJY2xvc2UoZmQpOw0KPiA+ICsJcmV0dXJuOw0KPiA+ICt9DQo+ID4gKw0KPiA+ICtzdGF0
-aWMgaW50DQo+ID4gK25mc3N2Y19wcmludF92ZXJzKGNoYXIgKnB0ciwgdW5zaWduZWQgc2l6ZSwg
-dW5zaWduZWQgdmVycywNCj4gPiB1bnNpZ25lZCBtaW5vcnZlcnMsDQo+ID4gKwkJaW50IGlzc2V0
-KQ0KPiA+ICt7DQo+ID4gKwljaGFyIHNpZ24gPSBpc3NldCA/ICcrJyA6ICctJzsNCj4gPiArCWlm
-IChtaW5vcnZlcnMgPT0gMCkNCj4gPiArCQlyZXR1cm4gc25wcmludGYocHRyLCBzaXplLCAiJWMl
-dSAiLCBzaWduLCB2ZXJzKTsNCj4gPiArCXJldHVybiBzbnByaW50ZihwdHIsIHNpemUsICIlYyV1
-LiV1ICIsIHNpZ24sIHZlcnMsDQo+ID4gbWlub3J2ZXJzKTsNCj4gPiArfQ0KPiA+ICsNCj4gPiAr
-dm9pZA0KPiA+IMKgbmZzc3ZjX3NldHZlcnModW5zaWduZWQgaW50IGN0bGJpdHMsIHVuc2lnbmVk
-IGludCBtaW5vcnZlcnMsDQo+ID4gdW5zaWduZWQgaW50IG1pbm9ydmVyc3NldCkNCj4gPiDCoHsN
-Cj4gPiDCoAlpbnQgZmQsIG4sIG9mZjsNCj4gPiAtCWNoYXIgKnB0cjsNCj4gPiDCoA0KPiA+IC0J
-cHRyID0gYnVmOw0KPiA+IMKgCW9mZiA9IDA7DQo+ID4gwqAJZmQgPSBvcGVuKE5GU0RfVkVSU19G
-SUxFLCBPX1dST05MWSk7DQo+ID4gwqAJaWYgKGZkIDwgMCkNCj4gPiDCoAkJcmV0dXJuOw0KPiA+
-IMKgDQo+ID4gLQlmb3IgKG4gPSBORlM0X01JTk1JTk9SOyBuIDw9IE5GUzRfTUFYTUlOT1I7IG4r
-Kykgew0KPiA+IC0JCWlmIChORlNDVExfVkVSSVNTRVQobWlub3J2ZXJzc2V0LCBuKSkgew0KPiA+
-IC0JCQlpZiAoTkZTQ1RMX1ZFUklTU0VUKG1pbm9ydmVycywgbikpDQo+ID4gLQkJCQlvZmYgKz0g
-c25wcmludGYocHRyK29mZiwNCj4gPiBzaXplb2YoYnVmKSAtIG9mZiwgIis0LiVkICIsIG4pOw0K
-PiA+IC0JCQllbHNlDQo+ID4gLQkJCQlvZmYgKz0gc25wcmludGYocHRyK29mZiwNCj4gPiBzaXpl
-b2YoYnVmKSAtIG9mZiwgIi00LiVkICIsIG4pOw0KPiA+IC0JCX0NCj4gPiAtCX0NCj4gPiAtCWZv
-ciAobiA9IE5GU0RfTUlOVkVSUzsgbiA8PSBORlNEX01BWFZFUlM7IG4rKykgew0KPiA+IC0JCWlm
-IChORlNDVExfVkVSSVNTRVQoY3RsYml0cywgbikpDQo+ID4gLQkJwqDCoMKgwqBvZmYgKz0gc25w
-cmludGYocHRyK29mZiwgc2l6ZW9mKGJ1ZikgLSBvZmYsDQo+ID4gIislZCAiLCBuKTsNCj4gPiAt
-CQllbHNlDQo+ID4gLQkJwqDCoMKgwqBvZmYgKz0gc25wcmludGYocHRyK29mZiwgc2l6ZW9mKGJ1
-ZikgLSBvZmYsICItDQo+ID4gJWQgIiwgbik7DQo+ID4gKwlmb3IgKG4gPSBORlNEX01JTlZFUlM7
-IG4gPD0gKChORlNEX01BWFZFUlMgPCAzKSA/DQo+ID4gTkZTRF9NQVhWRVJTIDogMyk7IG4rKykN
-Cj4gPiArCQlvZmYgKz0gbmZzc3ZjX3ByaW50X3ZlcnMoJmJ1ZltvZmZdLCBzaXplb2YoYnVmKSAt
-DQo+ID4gb2ZmLA0KPiA+ICsJCQkJbiwgMCwgTkZTQ1RMX1ZFUklTU0VUKGN0bGJpdHMsDQo+ID4g
-bikpOw0KPiA+ICsNCj4gPiArCWZvciAobiA9IDA7IG4gPD0gTkZTNF9NQVhNSU5PUjsgbisrKSB7
-DQo+ID4gKwkJaWYgKCFORlNDVExfTUlOT1JJU1NFVChtaW5vcnZlcnNzZXQsIG4pKQ0KPiA+ICsJ
-CQljb250aW51ZTsNCj4gPiArCQlvZmYgKz0gbmZzc3ZjX3ByaW50X3ZlcnMoJmJ1ZltvZmZdLCBz
-aXplb2YoYnVmKSAtDQo+ID4gb2ZmLA0KPiA+ICsJCQkJNCwgbiwgTkZTQ1RMX01JTk9SSVNTRVQo
-bWlub3J2ZXJzLA0KPiA+IG4pKTsNCj4gPiDCoAl9DQo+ID4gKwlpZiAoIW9mZi0tKQ0KPiA+ICsJ
-CWdvdG8gb3V0Ow0KPiA+ICsJYnVmW29mZl0gPSAnXDAnOw0KPiA+IMKgCXhsb2coRF9HRU5FUkFM
-LCAiV3JpdGluZyB2ZXJzaW9uIHN0cmluZyB0byBrZXJuZWw6ICVzIiwNCj4gPiBidWYpOw0KPiA+
-IC0Jc25wcmludGYocHRyK29mZiwgc2l6ZW9mKGJ1ZikgLSBvZmYsICJcbiIpOw0KPiA+ICsJc25w
-cmludGYoJmJ1ZltvZmZdLCBzaXplb2YoYnVmKSAtIG9mZiwgIlxuIik7DQo+ID4gwqAJaWYgKHdy
-aXRlKGZkLCBidWYsIHN0cmxlbihidWYpKSAhPSAoc3NpemVfdClzdHJsZW4oYnVmKSkNCj4gPiDC
-oAkJeGxvZyhMX0VSUk9SLCAiU2V0dGluZyB2ZXJzaW9uIGZhaWxlZDogZXJybm8gJWQNCj4gPiAo
-JW0pIiwgZXJybm8pOw0KPiA+IC0NCj4gPiArb3V0Og0KPiA+IMKgCWNsb3NlKGZkKTsNCj4gPiDC
-oA0KPiA+IMKgCXJldHVybjsNCj4gPiBkaWZmIC0tZ2l0IGEvdXRpbHMvbmZzZC9uZnNzdmMuaCBi
-L3V0aWxzL25mc2QvbmZzc3ZjLmgNCj4gPiBpbmRleCBjZDVhN2U4NGRjN2UuLjM5ZWJmMzdhOTBm
-ZSAxMDA2NDQNCj4gPiAtLS0gYS91dGlscy9uZnNkL25mc3N2Yy5oDQo+ID4gKysrIGIvdXRpbHMv
-bmZzZC9uZnNzdmMuaA0KPiA+IEBAIC0yOCwzICsyOCw0IEBAIHZvaWQJbmZzc3ZjX3NldF90aW1l
-KGNvbnN0IGNoYXIgKnR5cGUsDQo+ID4gY29uc3QgaW50IHNlY29uZHMpOw0KPiA+IMKgaW50CW5m
-c3N2Y19zZXRfcmRtYXBvcnQoY29uc3QgY2hhciAqcG9ydCk7DQo+ID4gwqB2b2lkCW5mc3N2Y19z
-ZXR2ZXJzKHVuc2lnbmVkIGludCBjdGxiaXRzLCB1bnNpZ25lZCBpbnQNCj4gPiBtaW5vcnZlcnM0
-LCB1bnNpZ25lZCBpbnQgbWlub3J2ZXJzNHNldCk7DQo+ID4gwqBpbnQJbmZzc3ZjX3RocmVhZHMo
-aW50IG5yc2VydnMpOw0KPiA+ICt2b2lkCW5mc3N2Y19nZXRfbWlub3JtYXNrKHVuc2lnbmVkIGlu
-dCAqbWFzayk7DQo+ID4gDQo+IA0KPiANCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
-dGEuY29tDQo=
 
+
+On 04/04/2017 04:26 PM, Trond Myklebust wrote:
+> On Tue, 2017-04-04 at 16:07 -0400, Steve Dickson wrote:
+>> Hey Trond,
+>>
+>> My apologies for taking so long to address this... 
+>>
+>> On 02/23/2017 07:33 PM, Trond Myklebust wrote:
+>>> The new semantic is that '-N4' turns off all NFSv4 minor versions,
+>>> while
+>>> '-V4' turns them all on. In order to turn off just minor version x
+>>> (x >= 0),
+>>> use -N4.x, and to turn it back on. '-V4.x'.
+>>>
+>>> Note that on older kernels, attempting to use -N4.0 and -V4.0 is
+>>> equivalent to specifying -N4 or -V4.
+>>
+>> doing a 
+>>
+>> nfsd -d -N4.0 -V4.1 -V4.2 
+>> nfsd: Writing version string to kernel: -2 +3 -4 +4.1 +4.2
+>>
+>> does the right thing but when I do a
+>>
+>> nfsd -d -N4.0 
+>> nfsd: Writing version string to kernel: -2 +3 -4
+>>
+>> It brings down all of the v4 minor versions, Is that
+>> intentional? It seems to me doing a -N4.0 should only
+>> stop 4.0 from coming up not v4.1 or v4.2
+> 
+> That is unfortunately not possible for older kernels. They lack the
+> kernel API to turn off NFSv4.0 only. We could perhaps try to return an
+> error if you were to specify these flags for those kernels, but that
+> would require us to hard-code a "minimal" kernel version in nfs-utils.
+Well we already do that in the legacy mounting code to figure out
+what mount version to use, but looking at that code it would be pain
+to pull it out. 
+
+But I'm thinking the expectation of nfsd -N4.0 is to only 
+turn off v4.0 and not work the same as -N4 which turns all of
+v4 off which is expected. 
+
+When you say old kernel... How old?
+
+steved.
+
+> 
+>>
+>> steved.
+>>  
+>>>
+>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> ---
+>>>  support/include/nfs/nfs.h |  7 +++--
+>>>  utils/nfsd/nfsd.c         | 39 +++++++++++++++---------
+>>>  utils/nfsd/nfsd.man       |  4 +--
+>>>  utils/nfsd/nfssvc.c       | 76
+>>> ++++++++++++++++++++++++++++++++++++-----------
+>>>  utils/nfsd/nfssvc.h       |  1 +
+>>>  5 files changed, 92 insertions(+), 35 deletions(-)
+>>>
+>>> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+>>> index 15ecc6bfc485..5860343f78b7 100644
+>>> --- a/support/include/nfs/nfs.h
+>>> +++ b/support/include/nfs/nfs.h
+>>> @@ -16,8 +16,8 @@
+>>>  #define NFSD_MINVERS 2
+>>>  #define NFSD_MAXVERS 4
+>>>  
+>>> -#define NFS4_MINMINOR 1
+>>> -#define NFS4_MAXMINOR WORD_BIT
+>>> +#define NFS4_MINMINOR 0
+>>> +#define NFS4_MAXMINOR (WORD_BIT-1)
+>>>  
+>>>  struct nfs_fh_len {
+>>>  	int		fh_size;
+>>> @@ -29,15 +29,18 @@ struct nfs_fh_len {
+>>>  #define NFSCTL_TCPBIT		      (1 << (18 - 1))
+>>>  
+>>>  #define NFSCTL_VERUNSET(_cltbits, _v) ((_cltbits) &= ~(1 << ((_v)
+>>> - 1))) 
+>>> +#define NFSCTL_MINORUNSET(_cltbits, _v) ((_cltbits) &= ~(1 <<
+>>> (_v)))
+>>>  #define NFSCTL_UDPUNSET(_cltbits)     ((_cltbits) &=
+>>> ~NFSCTL_UDPBIT) 
+>>>  #define NFSCTL_TCPUNSET(_cltbits)     ((_cltbits) &=
+>>> ~NFSCTL_TCPBIT) 
+>>>  
+>>>  #define NFSCTL_VERISSET(_cltbits, _v) ((_cltbits) & (1 << ((_v) -
+>>> 1))) 
+>>> +#define NFSCTL_MINORISSET(_cltbits, _v) ((_cltbits) & (1 << (_v)))
+>>>  #define NFSCTL_UDPISSET(_cltbits)     ((_cltbits) &
+>>> NFSCTL_UDPBIT) 
+>>>  #define NFSCTL_TCPISSET(_cltbits)     ((_cltbits) &
+>>> NFSCTL_TCPBIT) 
+>>>  
+>>>  #define NFSCTL_VERDEFAULT (0xc)       /* versions 3 and 4 */
+>>>  #define NFSCTL_VERSET(_cltbits, _v)   ((_cltbits) |= (1 << ((_v) -
+>>> 1))) 
+>>> +#define NFSCTL_MINORSET(_cltbits, _v)   ((_cltbits) |= (1 <<
+>>> (_v)))
+>>>  #define NFSCTL_UDPSET(_cltbits)       ((_cltbits) |=
+>>> NFSCTL_UDPBIT)
+>>>  #define NFSCTL_TCPSET(_cltbits)       ((_cltbits) |=
+>>> NFSCTL_TCPBIT)
+>>>  
+>>> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+>>> index 20f4b7952203..1708521ab286 100644
+>>> --- a/utils/nfsd/nfsd.c
+>>> +++ b/utils/nfsd/nfsd.c
+>>> @@ -67,6 +67,7 @@ main(int argc, char **argv)
+>>>  	int	socket_up = 0;
+>>>  	unsigned int minorvers = 0;
+>>>  	unsigned int minorversset = 0;
+>>> +	unsigned int minormask = 0;
+>>>  	unsigned int versbits = NFSCTL_VERDEFAULT;
+>>>  	unsigned int protobits = NFSCTL_ALLBITS;
+>>>  	int grace = -1;
+>>> @@ -104,10 +105,16 @@ main(int argc, char **argv)
+>>>  		else
+>>>  			NFSCTL_VERUNSET(versbits, i);
+>>>  	}
+>>> +
+>>> +	nfssvc_get_minormask(&minormask);
+>>>  	/* We assume the kernel will default all minor versions to
+>>> 'on',
+>>>  	 * and allow the config file to disable some.
+>>>  	 */
+>>> -	for (i = NFS4_MINMINOR; i <= NFS4_MAXMINOR; i++) {
+>>> +	if (NFSCTL_VERISSET(versbits, 4)) {
+>>> +		NFSCTL_MINORSET(minorversset, 0);
+>>> +		NFSCTL_MINORSET(minorvers, 0);
+>>> +	}
+>>> +	for (i = 1; i <= NFS4_MAXMINOR; i++) {
+>>>  		char tag[20];
+>>>  		sprintf(tag, "vers4.%d", i);
+>>>  		/* The default for minor version support is to let
+>>> the
+>>> @@ -119,12 +126,12 @@ main(int argc, char **argv)
+>>>  		 * (i.e. don't set the bit in minorversset).
+>>>  		 */
+>>>  		if (!conf_get_bool("nfsd", tag, 1)) {
+>>> -			NFSCTL_VERSET(minorversset, i);
+>>> -			NFSCTL_VERUNSET(minorvers, i);
+>>> +			NFSCTL_MINORSET(minorversset, i);
+>>> +			NFSCTL_MINORUNSET(minorvers, i);
+>>>  		}
+>>>  		if (conf_get_bool("nfsd", tag, 0)) {
+>>> -			NFSCTL_VERSET(minorversset, i);
+>>> -			NFSCTL_VERSET(minorvers, i);
+>>> +			NFSCTL_MINORSET(minorversset, i);
+>>> +			NFSCTL_MINORSET(minorvers, i);
+>>>  		}
+>>>  	}
+>>>  
+>>> @@ -179,13 +186,17 @@ main(int argc, char **argv)
+>>>  			case 4:
+>>>  				if (*p == '.') {
+>>>  					int i = atoi(p+1);
+>>> -					if (i < NFS4_MINMINOR || i
+>>>> NFS4_MAXMINOR) {
+>>> +					if (i < 0 || i >
+>>> NFS4_MAXMINOR) {
+>>>  						fprintf(stderr,
+>>> "%s: unsupported minor version\n", optarg);
+>>>  						exit(1);
+>>>  					}
+>>> -					NFSCTL_VERSET(minorversset
+>>> , i);
+>>> -					NFSCTL_VERUNSET(minorvers,
+>>> i);
+>>> -					break;
+>>> +					NFSCTL_MINORSET(minorverss
+>>> et, i);
+>>> +					NFSCTL_MINORUNSET(minorver
+>>> s, i);
+>>> +					if (minorvers != 0)
+>>> +						break;
+>>> +				} else {
+>>> +					minorvers = 0;
+>>> +					minorversset = minormask;
+>>>  				}
+>>>  			case 3:
+>>>  			case 2:
+>>> @@ -201,14 +212,14 @@ main(int argc, char **argv)
+>>>  			case 4:
+>>>  				if (*p == '.') {
+>>>  					int i = atoi(p+1);
+>>> -					if (i < NFS4_MINMINOR || i
+>>>> NFS4_MAXMINOR) {
+>>> +					if (i < 0 || i >
+>>> NFS4_MAXMINOR) {
+>>>  						fprintf(stderr,
+>>> "%s: unsupported minor version\n", optarg);
+>>>  						exit(1);
+>>>  					}
+>>> -					NFSCTL_VERSET(minorversset
+>>> , i);
+>>> -					NFSCTL_VERSET(minorvers,
+>>> i);
+>>> -					break;
+>>> -				}
+>>> +					NFSCTL_MINORSET(minorverss
+>>> et, i);
+>>> +					NFSCTL_MINORSET(minorvers,
+>>> i);
+>>> +				} else
+>>> +					minorvers = minorversset =
+>>> minormask;
+>>>  			case 3:
+>>>  			case 2:
+>>>  				NFSCTL_VERSET(versbits, c);
+>>> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+>>> index 8901fb6c6872..0d797fd2ec8d 100644
+>>> --- a/utils/nfsd/nfsd.man
+>>> +++ b/utils/nfsd/nfsd.man
+>>> @@ -57,7 +57,7 @@ This option can be used to request that
+>>>  .B rpc.nfsd
+>>>  does not offer certain versions of NFS. The current version of
+>>>  .B rpc.nfsd
+>>> -can support major NFS versions 2,3,4 and the minor versions 4.1
+>>> and 4.2.
+>>> +can support major NFS versions 2,3,4 and the minor versions 4.0,
+>>> 4.1 and 4.2.
+>>>  .TP
+>>>  .B \-s " or " \-\-syslog
+>>>  By default,
+>>> @@ -82,7 +82,7 @@ This option can be used to request that
+>>>  .B rpc.nfsd
+>>>  offer certain versions of NFS. The current version of
+>>>  .B rpc.nfsd
+>>> -can support major NFS versions 2,3,4 and the minor versions 4.1
+>>> and 4.2.
+>>> +can support major NFS versions 2,3,4 and the minor versions 4.0,
+>>> 4.1 and 4.2.
+>>>  .TP
+>>>  .B \-L " or " \-\-lease-time seconds
+>>>  Set the lease-time used for NFSv4.  This corresponds to how often
+>>> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+>>> index 07f6ff1204d1..e8609c15b8e5 100644
+>>> --- a/utils/nfsd/nfssvc.c
+>>> +++ b/utils/nfsd/nfssvc.c
+>>> @@ -330,36 +330,78 @@ nfssvc_set_time(const char *type, const int
+>>> seconds)
+>>>  }
+>>>  
+>>>  void
+>>> +nfssvc_get_minormask(unsigned int *mask)
+>>> +{
+>>> +	int fd;
+>>> +	char *ptr = buf;
+>>> +	ssize_t size;
+>>> +
+>>> +	fd = open(NFSD_VERS_FILE, O_RDONLY);
+>>> +	if (fd < 0)
+>>> +		return;
+>>> +
+>>> +	size = read(fd, buf, sizeof(buf));
+>>> +	if (size < 0) {
+>>> +		xlog(L_ERROR, "Getting versions failed: errno %d
+>>> (%m)", errno);
+>>> +		goto out;
+>>> +	}
+>>> +	ptr[size] = '\0';
+>>> +	for (;;) {
+>>> +		unsigned vers, minor = 0;
+>>> +		char *token = strtok(ptr, " ");
+>>> +
+>>> +		if (!token)
+>>> +			break;
+>>> +		ptr = NULL;
+>>> +		if (*token != '+' && *token != '-')
+>>> +			continue;
+>>> +		if (sscanf(++token, "%u.%u", &vers, &minor) > 0 &&
+>>> +		    vers == 4 && minor <= NFS4_MAXMINOR)
+>>> +			NFSCTL_MINORSET(*mask, minor);
+>>> +	}
+>>> +out:
+>>> +	close(fd);
+>>> +	return;
+>>> +}
+>>> +
+>>> +static int
+>>> +nfssvc_print_vers(char *ptr, unsigned size, unsigned vers,
+>>> unsigned minorvers,
+>>> +		int isset)
+>>> +{
+>>> +	char sign = isset ? '+' : '-';
+>>> +	if (minorvers == 0)
+>>> +		return snprintf(ptr, size, "%c%u ", sign, vers);
+>>> +	return snprintf(ptr, size, "%c%u.%u ", sign, vers,
+>>> minorvers);
+>>> +}
+>>> +
+>>> +void
+>>>  nfssvc_setvers(unsigned int ctlbits, unsigned int minorvers,
+>>> unsigned int minorversset)
+>>>  {
+>>>  	int fd, n, off;
+>>> -	char *ptr;
+>>>  
+>>> -	ptr = buf;
+>>>  	off = 0;
+>>>  	fd = open(NFSD_VERS_FILE, O_WRONLY);
+>>>  	if (fd < 0)
+>>>  		return;
+>>>  
+>>> -	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
+>>> -		if (NFSCTL_VERISSET(minorversset, n)) {
+>>> -			if (NFSCTL_VERISSET(minorvers, n))
+>>> -				off += snprintf(ptr+off,
+>>> sizeof(buf) - off, "+4.%d ", n);
+>>> -			else
+>>> -				off += snprintf(ptr+off,
+>>> sizeof(buf) - off, "-4.%d ", n);
+>>> -		}
+>>> -	}
+>>> -	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
+>>> -		if (NFSCTL_VERISSET(ctlbits, n))
+>>> -		    off += snprintf(ptr+off, sizeof(buf) - off,
+>>> "+%d ", n);
+>>> -		else
+>>> -		    off += snprintf(ptr+off, sizeof(buf) - off, "-
+>>> %d ", n);
+>>> +	for (n = NFSD_MINVERS; n <= ((NFSD_MAXVERS < 3) ?
+>>> NFSD_MAXVERS : 3); n++)
+>>> +		off += nfssvc_print_vers(&buf[off], sizeof(buf) -
+>>> off,
+>>> +				n, 0, NFSCTL_VERISSET(ctlbits,
+>>> n));
+>>> +
+>>> +	for (n = 0; n <= NFS4_MAXMINOR; n++) {
+>>> +		if (!NFSCTL_MINORISSET(minorversset, n))
+>>> +			continue;
+>>> +		off += nfssvc_print_vers(&buf[off], sizeof(buf) -
+>>> off,
+>>> +				4, n, NFSCTL_MINORISSET(minorvers,
+>>> n));
+>>>  	}
+>>> +	if (!off--)
+>>> +		goto out;
+>>> +	buf[off] = '\0';
+>>>  	xlog(D_GENERAL, "Writing version string to kernel: %s",
+>>> buf);
+>>> -	snprintf(ptr+off, sizeof(buf) - off, "\n");
+>>> +	snprintf(&buf[off], sizeof(buf) - off, "\n");
+>>>  	if (write(fd, buf, strlen(buf)) != (ssize_t)strlen(buf))
+>>>  		xlog(L_ERROR, "Setting version failed: errno %d
+>>> (%m)", errno);
+>>> -
+>>> +out:
+>>>  	close(fd);
+>>>  
+>>>  	return;
+>>> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+>>> index cd5a7e84dc7e..39ebf37a90fe 100644
+>>> --- a/utils/nfsd/nfssvc.h
+>>> +++ b/utils/nfsd/nfssvc.h
+>>> @@ -28,3 +28,4 @@ void	nfssvc_set_time(const char *type,
+>>> const int seconds);
+>>>  int	nfssvc_set_rdmaport(const char *port);
+>>>  void	nfssvc_setvers(unsigned int ctlbits, unsigned int
+>>> minorvers4, unsigned int minorvers4set);
+>>>  int	nfssvc_threads(int nrservs);
+>>> +void	nfssvc_get_minormask(unsigned int *mask);
+>>>
+>>
+>>
