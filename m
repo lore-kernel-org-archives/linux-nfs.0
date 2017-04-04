@@ -1,104 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39532 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:39542 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753243AbdDDSbj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Apr 2017 14:31:39 -0400
-Date: Tue, 4 Apr 2017 14:31:38 -0400
+        id S1754630AbdDDSit (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Apr 2017 14:38:49 -0400
+Date: Tue, 4 Apr 2017 14:38:43 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Jan Kara <jack@suse.cz>, Christoph Hellwig <hch@infradead.org>,
+To: Dave Chinner <david@fromorbit.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@infradead.org>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
 Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170404183138.GC14303@fieldses.org>
-References: <20170321163011.GA16666@fieldses.org>
+Message-ID: <20170404183843.GD14303@fieldses.org>
+References: <1482417724.3924.39.camel@redhat.com>
+ <20170320214327.GA5098@fieldses.org>
+ <20170321134500.GA1318@infradead.org>
+ <20170321163011.GA16666@fieldses.org>
  <1490117004.2542.1.camel@redhat.com>
  <20170321183006.GD17872@fieldses.org>
  <1490122013.2593.1.camel@redhat.com>
  <20170329111507.GA18467@quack2.suse.cz>
  <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
- <20170330161231.GA9824@fieldses.org>
- <1490898932.2667.1.camel@redhat.com>
+ <20170329234137.GN17542@dastard>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1490898932.2667.1.camel@redhat.com>
+In-Reply-To: <20170329234137.GN17542@dastard>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 30, 2017 at 02:35:32PM -0400, Jeff Layton wrote:
-> On Thu, 2017-03-30 at 12:12 -0400, J. Bruce Fields wrote:
-> > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
-> > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
-> > > > Because if above is acceptable we could make reported i_version to be a sum
-> > > > of "superblock crash counter" and "inode i_version". We increment
-> > > > "superblock crash counter" whenever we detect unclean filesystem shutdown.
-> > > > That way after a crash we are guaranteed each inode will report new
-> > > > i_version (the sum would probably have to look like "superblock crash
-> > > > counter" * 65536 + "inode i_version" so that we avoid reusing possible
-> > > > i_version numbers we gave away but did not write to disk but still...).
-> > > > Thoughts?
+On Thu, Mar 30, 2017 at 10:41:37AM +1100, Dave Chinner wrote:
+> On Wed, Mar 29, 2017 at 01:54:31PM -0400, Jeff Layton wrote:
+> > On Wed, 2017-03-29 at 13:15 +0200, Jan Kara wrote:
+> > > On Tue 21-03-17 14:46:53, Jeff Layton wrote:
+> > > > On Tue, 2017-03-21 at 14:30 -0400, J. Bruce Fields wrote:
+> > > > > On Tue, Mar 21, 2017 at 01:23:24PM -0400, Jeff Layton wrote:
+> > > > > > On Tue, 2017-03-21 at 12:30 -0400, J. Bruce Fields wrote:
+> > > > > > > - It's durable; the above comparison still works if there were reboots
+> > > > > > >   between the two i_version checks.
+> > > > > > > 	- I don't know how realistic this is--we may need to figure out
+> > > > > > > 	  if there's a weaker guarantee that's still useful.  Do
+> > > > > > > 	  filesystems actually make ctime/mtime/i_version changes
+> > > > > > > 	  atomically with the changes that caused them?  What if a
+> > > > > > > 	  change attribute is exposed to an NFS client but doesn't make
+> > > > > > > 	  it to disk, and then that value is reused after reboot?
+> > > > > > > 
+> > > > > > 
+> > > > > > Yeah, there could be atomicity there. If we bump i_version, we'll mark
+> > > > > > the inode dirty and I think that will end up with the new i_version at
+> > > > > > least being journalled before __mark_inode_dirty returns.
+> > > > > 
+> > > > > So you think the filesystem can provide the atomicity?  In more detail:
+> > > > > 
+> > > > 
+> > > > Sorry, I hit send too quickly. That should have read:
+> > > > 
+> > > > "Yeah, there could be atomicity issues there."
+> > > > 
+> > > > I think providing that level of atomicity may be difficult, though
+> > > > maybe there's some way to make the querying of i_version block until
+> > > > the inode update has been journalled?
+> > > 
+> > > Just to complement what Dave said from ext4 side - similarly as with XFS
+> > > ext4 doesn't guarantee atomicity unless fsync() has completed on the file.
+> > > Until that you can see arbitrary combination of data & i_version after the
+> > > crash. We do take care to keep data and metadata in sync only when there
+> > > are security implications to that (like exposing uninitialized disk blocks)
+> > > and if not, we are as lazy as we can to improve performance...
+> > > 
+> > > 
 > > 
-> > How hard is this for filesystems to support?  Do they need an on-disk
-> > format change to keep track of the crash counter?  Maybe not, maybe the
-> > high bits of the i_version counters are all they need.
-> > 
+> > Yeah, I think what we'll have to do here is ensure that those
+> > filesystems do an fsync prior to reporting the i_version getattr
+> > codepath. It's not pretty, but I don't see a real alternative.
 > 
-> Yeah, I imagine we'd need a on-disk change for this unless there's
-> something already present that we could use in place of a crash counter.
-
-We could consider using the current time instead.  So, put the current
-time (or time of last boot, or this inode's ctime, or something) in the
-high bits of the change attribute, and keep the low bits as a counter.
-
-Then as long as we trust our clock, we're no longer at risk of reusing
-an i_version value.
-
-> > I guess we just want to have some back-of-the-envelope estimates of
-> > maximum number of i_version increments possible between crashes and
-> > maximum number of crashes possible over lifetime of a filesystem, to
-> > decide how to split up the bits.
-> > 
-> > I wonder if we could get away with using the new crash counter only for
-> > *new* values of the i_version?  After a crash, use the on disk i_version
-> > as is, and put off using the new crash counter until the next time the
-> > file's modified.
-> > 
+> I think that's even more problematic. ->getattr currently runs
+> completely unlocked for performance reasons - it's racy w.r.t. to
+> ongoing modifications to begin with, so /nothing/ that is returned
+> to userspace via stat/statx can be guaranteed to be "coherent".
+> Linus will be very unhappy if you make his git workload (which is
+> /very/ stat heavy) run slower by adding any sort of locking in this
+> hot path.
 > 
-> That sounds difficult to get right. Suppose I have an inode that has not
-> been updated in a long time. Someone writes to it and then queries the
-> i_version. How do I know whether there were crashes since the last time
-> I updated it? Or am I misunderstanding what you're proposing here?
+> Even if we did put an fsync() into ->getattr() (and dealt with all
+> the locking issues that entails), by the time the statx syscall
+> returns to userspace the i_version value may not match the
+> data/metadata in the inode(*).  IOWs, by the time i_version gets
+> to userspace, it is out of date and any use of it for data
+> versioning from userspace is going to be prone to race conditions.
 
-I believe Jan was suggesting that we keep the i_version as-is on disk
-but combine with with the crash counter when it's queried.
-
-I was suggesting instead that on write, when we bump the i_version, we
-replace the simple increment by something that increments *and* sticks
-the current crash counter (or maybe just a time) in the high bits.  And
-that combination will be what goes in i_version and is written to disk.
-
-That guarantees that we never reuse an old value when we increment.
-
-It also avoids having to invalidate absolutely every cache, even of
-completely static files.
-
-Clients could still see the change attribute go backwards, though, if
-they query a file with dirty data and the server crashes before it
-writes out the new change attribute.
-
-Also, they could fail to detect data that reverted after boot if they
-cache data while the file's dirty on the server side, and the server
-crash preserves the i_version update but not the new data.
-
-Presumably both are possible already for ctime (depending on the
-filesystem), and I'm not convinced they're a big problem.
-
-In both cases the reading client is caching while somebody's still
-writing, and as long as the writer comes back and finishes its job,
-readers will thereafter see the right thing.  So I think it's adequate
-for close-to-open.
+A slightly out-of-date i_version is fine, I think.  It's just the
+reverse we want to avoid.  E.g., assuming an i_version-supporting
+statux, if somebody could called statx then read, and got the new
+i_version followed by the old data, that would cause problems.
 
 --b.
