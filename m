@@ -1,63 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39448 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:35644 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932232AbdDDRxj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Apr 2017 13:53:39 -0400
-Date: Tue, 4 Apr 2017 13:53:38 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170404175338.GB14303@fieldses.org>
-References: <20170321183006.GD17872@fieldses.org>
- <1490122013.2593.1.camel@redhat.com>
- <20170329111507.GA18467@quack2.suse.cz>
- <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
- <20170330161231.GA9824@fieldses.org>
- <20170401230526.GW23007@dastard>
- <20170403140055.GF15168@quack2.suse.cz>
- <20170404123414.GA23007@dastard>
+        id S1755250AbdDDR76 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Apr 2017 13:59:58 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 5532BC05972F
+        for <linux-nfs@vger.kernel.org>; Tue,  4 Apr 2017 17:59:58 +0000 (UTC)
+Subject: Re: [nfs-utils PATCH] sm-notify: ending the grace period early should
+ be configurable
+To: Scott Mayhew <smayhew@redhat.com>
+References: <1489181959-2905-1-git-send-email-smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <10e57187-e5be-0950-9c55-ae96faeb64e2@RedHat.com>
+Date: Tue, 4 Apr 2017 13:59:57 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170404123414.GA23007@dastard>
+In-Reply-To: <1489181959-2905-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 04, 2017 at 10:34:14PM +1000, Dave Chinner wrote:
-> On Mon, Apr 03, 2017 at 04:00:55PM +0200, Jan Kara wrote:
-> > What filesystems can or cannot easily do obviously differs. Ext4 has a
-> > recovery flag set in superblock on RW mount/remount and cleared on
-> > umount/RO remount.
+
+
+On 03/10/2017 04:39 PM, Scott Mayhew wrote:
+> sm-notify's early ending of the grace period when it has no hosts to
+> notify can cause problems in some high availability configurations,
+> which may be running one sm-notify per floating IP address in the
+> cluster.  This commit makes that behavior configurable via the
+> nfs.conf (I don't think having a corresponding command line option
+> would be particularly useful, hence none was added).
 > 
-> Even this doesn't help. A recent bug that was reported to the XFS
-> list - turns out that systemd can't remount-ro the root
-> filesystem sucessfully on shutdown because there are open write fds
-> on the root filesystem when it attempts the remount. So it just
-> reboots without a remount-ro.
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed... 
 
-I'd certainly rather not invalidate caches on *every* boot.
-
-On the other hand, if the only cases involve the root filesystem, then
-from the point of view of NFS, we probably don't care much.
-
-> > This flag being set on mount would imply incrementing the crash
-> > counter. It should be pretty easy for each filesystem to implement
-> > such flag and the counter but I agree it requires an on-disk
-> > format change.
+steved.
+> ---
+>  nfs.conf                  |  1 +
+>  utils/statd/sm-notify.c   |  6 +++++-
+>  utils/statd/sm-notify.man | 18 ++++++++++++++++++
+>  3 files changed, 24 insertions(+), 1 deletion(-)
 > 
-> Yup, anything we want that is persistent and consistent across
-> filesystems will need on-disk format changes. Hence we need a solid
-> specification first, not to mention tests to validate correct
-> behaviour across all filesystems in xfstests...
-
-For xfstests we'll need a way to get i_version (patch it into statx, I
-guess?).  Ideally we'd have a way to test behavior across crashes too,
-any advice there?
-
---b.
+> diff --git a/nfs.conf b/nfs.conf
+> index 81ece06..690645c 100644
+> --- a/nfs.conf
+> +++ b/nfs.conf
+> @@ -65,6 +65,7 @@
+>  # retry-time=900
+>  # outgoing-port=
+>  # outgoing-addr=
+> +# lift-grace=y
+>  #
+>  #[svcgssd]
+>  # principal=
+> diff --git a/utils/statd/sm-notify.c b/utils/statd/sm-notify.c
+> index 623213e..0c6766f 100644
+> --- a/utils/statd/sm-notify.c
+> +++ b/utils/statd/sm-notify.c
+> @@ -45,6 +45,8 @@
+>  
+>  #define NLM_END_GRACE_FILE	"/proc/fs/lockd/nlm_end_grace"
+>  
+> +int lift_grace = 1;
+> +
+>  struct nsm_host {
+>  	struct nsm_host *	next;
+>  	char *			name;
+> @@ -494,6 +496,7 @@ main(int argc, char **argv)
+>  	opt_max_retry = conf_get_num("sm-notify", "retry-time", opt_max_retry / 60) * 60;
+>  	opt_srcport = conf_get_str("sm-notify", "outgoing-port");
+>  	opt_srcaddr = conf_get_str("sm-notify", "outgoing-addr");
+> +	lift_grace = conf_get_bool("sm-notify", "lift-grace", lift_grace);
+>  	s = conf_get_str("statd", "state-directory-path");
+>  	if (s && !nsm_setup_pathnames(argv[0], s))
+>  		exit(1);
+> @@ -570,7 +573,8 @@ usage:		fprintf(stderr,
+>  	(void)nsm_retire_monitored_hosts();
+>  	if (nsm_load_notify_list(smn_get_host) == 0) {
+>  		xlog(D_GENERAL, "No hosts to notify; exiting");
+> -		nsm_lift_grace_period();
+> +		if (lift_grace)
+> +			nsm_lift_grace_period();
+>  		return 0;
+>  	}
+>  
+> diff --git a/utils/statd/sm-notify.man b/utils/statd/sm-notify.man
+> index bb7f6e0..cfe1e4b 100644
+> --- a/utils/statd/sm-notify.man
+> +++ b/utils/statd/sm-notify.man
+> @@ -241,6 +241,24 @@ These have the same effect as the command line options
+>  .B v
+>  respectively.
+>  
+> +An additional value recognized in the
+> +.B [sm-notify]
+> +section is
+> +.BR lift-grace .
+> +By default,
+> +.B sm-notify
+> +will lift lockd's grace period early if it has no hosts to notify.
+> +Some high availability configurations will run one
+> +.B sm-notify
+> +per floating IP address.  In these configurations, lifting the
+> +grace period early may prevent clients from reclaiming locks.
+> +.RB "Setting " lift-grace " to " n
+> +will prevent
+> +.B sm-notify
+> +from ending the grace period early.
+> +.B lift-grace
+> +has no corresponding command line option.
+> +
+>  The value recognized in the
+>  .B [statd]
+>  section is
+> 
