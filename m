@@ -1,86 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41440 "EHLO fieldses.org"
+Received: from zarb.ucsf.edu ([169.230.90.57]:48426 "EHLO zarb.ucsf.edu"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932598AbdDESOK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Apr 2017 14:14:10 -0400
-Date: Wed, 5 Apr 2017 14:14:09 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jan Kara <jack@suse.cz>
-Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170405181409.GC28681@fieldses.org>
-References: <1490122013.2593.1.camel@redhat.com>
- <20170329111507.GA18467@quack2.suse.cz>
- <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
- <20170330161231.GA9824@fieldses.org>
- <1490898932.2667.1.camel@redhat.com>
- <20170404183138.GC14303@fieldses.org>
- <878tnfiq7v.fsf@notabene.neil.brown.name>
- <20170405080551.GC8899@quack2.suse.cz>
+        id S1754913AbdDETZr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Apr 2017 15:25:47 -0400
+Received: from localhost (localhost [127.0.0.1])
+        by zarb.ucsf.edu (Postfix) with ESMTP id 39539127
+        for <linux-nfs@vger.kernel.org>; Wed,  5 Apr 2017 12:19:40 -0700 (PDT)
+Date: Wed, 5 Apr 2017 12:19:40 -0700 (PDT)
+From: Joshua Baker-LePain <jlb@salilab.org>
+To: linux-nfs@vger.kernel.org
+Subject: Double listing and duplicate cookie errors
+Message-ID: <alpine.LFD.2.20.1704051200210.30494@zarb.ucsf.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170405080551.GC8899@quack2.suse.cz>
+Content-Type: text/plain; format=flowed; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 05, 2017 at 10:05:51AM +0200, Jan Kara wrote:
-> 1) Keep i_version as is, make clients also check for i_ctime.
+I'm seeing some odd issues mounting a GFS2 filesystem exported via NFS 
+from a CentOS-7 cluster.  The main clients are CentOS-6, but I've also 
+tested from CentOS-7.  There are several filesystem exported from this 
+host, and not all of them show the problem.  At the initial report, these 
+were the symptoms:
 
-That would be a protocol revision, which we'd definitely rather avoid.
+  o NFSv4
+$ mount -t nfs -o hard,intr $SERVER:/home/socr/a /mnt
+$ ls -la /mnt
+ls: reading directory /mnt: Too many levels of symbolic links
+total 460
+drwxr-xr-x.  32 root    root   3864 Sep 27  2016 ./
+dr-xr-xr-x.  43 root    root   4096 Feb 24 10:08 ../
+dr-xr-xr-x.  43 root    root   4096 Feb 24 10:08 ../
+drwxr-xr-x.  59   20383 wheel  2048 Mar 23 12:29 al/
+drwxr-xr-x.  59   20383 wheel  2048 Mar 23 12:29 al/
+.
+.
+.
+$ dmesg | tail -1
+NFS: directory / contains a readdir loop.Please contact your server vendor.  The file: .. has duplicate cookie 1
 
-But can't we accomplish the same by using something like
+Note that there are *no* symbolic links in that directory or any of the 
+others that show the issue.
 
-	ctime * (some constant) + i_version
+  o NFSv3
+$ mount -t nfs -o hard,intr,tcp,nfsvers=3 $SERVER:/nfsexports/home/socr/a /mnt
+$ ls -la /mnt
+.
+Here ls hangs, eating up all of a CPU and ever more memory until finally 
+dying with the message "ls: memory exhausted".
 
-?
+The folks running the server took some of the FSes off line and fsck'd 
+them.  Afterwards, NFSv4 has the same problem (double listing, readdir 
+loop error in client logs) but NFSv3 doesn't -- ls works, doesn't report 
+any errors and doesn't double list files and directories.
 
->    Pro: No on-disk format changes.
->    Cons: After a crash, i_version can go backwards (but when file changes
->    i_version, i_ctime pair should be still different) or not, data can be
->    old or not.
+Our current workaround, obviously, is to fsck the filesystem and use 
+NFSv3.  But that doesn't give me a warm fuzzy feeling.  Does this 
+constellation of symptoms ring any bells?  Thanks.
 
-This is probably good enough for NFS purposes: typically on an NFS
-filesystem, results of a read in the face of a concurrent write open are
-undefined.  And writers sync before close.
-
-So after a crash with a dirty inode, we're in a situation where an NFS
-client still needs to resend some writes, sync, and close.  I'm OK with
-things being inconsistent during this window.
-
-I do expect things to return to normal once that client's has resent its
-writes--hence the worry about actually resuing old values after boot
-(such as if i_version regresses on boot and then increments back to the
-same value after further writes).  Factoring in ctime fixes that.
-
-> 2) Fsync when reporting i_version.
->    Pro: No on-disk format changes, strong consistency of i_version and
->         data.
->    Cons: Difficult to implement for filesystems due to locking constrains.
->          High performance overhead or i_version reporting.
-
-Sounds painful.
-
-> 3) Some variant of crash counter.
->    Pro: i_version cannot go backwards.
->    Cons: Requires on-disk format changes. After a crash data can be old
->          (however i_version increased).
-
-Also, some unnecessary invalidations.  Which maybe can be mostly avoided
-by some variation of Neil's scheme.
-
-It looks to me like option (1) is doable now and introduces no
-regressions compared to the current situation.  (2) and (3) are more
-copmlicated and involve some tradeoffs.
-
-Also, we can implement (1) and switch to (2) or (3) later.  We'd want to
-do it without reported i_versions decreasing on kernel upgrade, but
-there are multiple ways of handling that.  (Worst case, just restrict
-the change to newly created filesystems.)
-
---b.
+-- 
+Joshua Baker-LePain
+QB3 Shared Cluster Sysadmin
+UCSF
