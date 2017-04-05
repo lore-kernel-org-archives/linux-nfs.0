@@ -1,172 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60714 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44144 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753570AbdDERam (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Apr 2017 13:30:42 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 788F357038
-        for <linux-nfs@vger.kernel.org>; Wed,  5 Apr 2017 17:30:42 +0000 (UTC)
-Subject: Re: [RFC nfs-utils PATCH] nfsd: don't enable a UDP socket by default
-To: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-References: <20170225131311.14101-1-jlayton@redhat.com>
+        id S1752869AbdDER3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Apr 2017 13:29:47 -0400
+Subject: Re: [PATCH 1/2] nfsd: Allow the caller to turn off NFSv4.0 without
+ turning off NFSv4.x
+To: Trond Myklebust <trondmy@primarydata.com>
+References: <20170224003344.113724-1-trond.myklebust@primarydata.com>
+ <20170224003344.113724-2-trond.myklebust@primarydata.com>
+ <1ec88fba-7bdb-ee59-e4cf-20970f45bd1d@RedHat.com>
+ <1491337561.14806.1.camel@primarydata.com>
+ <4d26d8f6-74af-9225-d98d-6e2c42a22e09@RedHat.com>
+ <4B984CF4-7D50-4B11-B26E-886845068329@primarydata.com>
+ <4a409f78-9dfb-cfa4-67e7-6c67b8d263ac@RedHat.com>
+Cc: James Bruce Fields <bfields@fieldses.org>,
+        "neilb@suse.com" <neilb@suse.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <59007960-a1a4-2420-dcfb-0ada5a8439ed@RedHat.com>
-Date: Wed, 5 Apr 2017 13:30:36 -0400
+Message-ID: <e132765d-8474-b9fb-9df1-2a296884d236@RedHat.com>
+Date: Wed, 5 Apr 2017 13:29:39 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170225131311.14101-1-jlayton@redhat.com>
+In-Reply-To: <4a409f78-9dfb-cfa4-67e7-6c67b8d263ac@RedHat.com>
 Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 02/25/2017 08:13 AM, Jeff Layton wrote:
-> Most major NFS clients have supported TCP for at least a decade now,
-> and v4-only shops are becoming more prevalent. It seems reasonable that
-> serving over UDP should be something that is "opt-in".
-> 
-> I've always hesitated to do this in the past, but now that we have
-> nfs.conf, it seems like the time may be right to disable UDP in default
-> configurations. In particular, it would be good to try this in the more
-> bleeding edge distros (Fedora, Ubuntu, SuSE, etc...) and see how
-> problematic it is.
-> 
-> Change the default in rpc.nfsd to just open TCP ports by default. Add
-> new -u and -t options that allow users to explicitly override what's
-> in the config file, and update the usage message and manpage.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed... Let's see what breaks! ;-)
+On 04/04/2017 05:31 PM, Steve Dickson wrote:
+>>> But I'm thinking the expectation of nfsd -N4.0 is to only 
+>>> turn off v4.0 and not work the same as -N4 which turns all of
+>>> v4 off which is expected. 
+>>>
+>>> When you say old kernel... How old?
+>> Linux 4.10 or older.
+> So what will happen when this is done
+>     nfsd -d -N4.0 -V4.1 -V4.2
+> on an older kernel?
+On an older kernel this turns off all v4 minor version.
+Plus on older kernels you can turn v4.1 and v4.2 on
+and off but as soon as v4 or v4.0 is turned off
+all versions are off...
+
+With newer kernels things work as expected. 
+
+Committed... 
 
 steved.
-> ---
->  nfs.conf                  |  2 +-
->  support/include/nfs/nfs.h |  2 +-
->  utils/nfsd/nfsd.c         | 18 +++++++++++++-----
->  utils/nfsd/nfsd.man       | 14 ++++++++------
->  4 files changed, 23 insertions(+), 13 deletions(-)
+
 > 
-> diff --git a/nfs.conf b/nfs.conf
-> index 81ece0602dba..5d5a23463cff 100644
-> --- a/nfs.conf
-> +++ b/nfs.conf
-> @@ -42,7 +42,7 @@
->  # port=0
->  # grace-time=90
->  # lease-time=90
-> -# udp=y
-> +# udp=n
->  # tcp=y
->  # vers2=n
->  # vers3=y
-> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
-> index 15ecc6bfc485..5b1ef0ce3883 100644
-> --- a/support/include/nfs/nfs.h
-> +++ b/support/include/nfs/nfs.h
-> @@ -27,6 +27,7 @@ struct nfs_fh_len {
->  
->  #define NFSCTL_UDPBIT		      (1 << (17 - 1))
->  #define NFSCTL_TCPBIT		      (1 << (18 - 1))
-> +#define NFSCTL_PROTODEFAULT	      (NFSCTL_TCPBIT)
->  
->  #define NFSCTL_VERUNSET(_cltbits, _v) ((_cltbits) &= ~(1 << ((_v) - 1))) 
->  #define NFSCTL_UDPUNSET(_cltbits)     ((_cltbits) &= ~NFSCTL_UDPBIT) 
-> @@ -42,6 +43,5 @@ struct nfs_fh_len {
->  #define NFSCTL_TCPSET(_cltbits)       ((_cltbits) |= NFSCTL_TCPBIT)
->  
->  #define NFSCTL_ANYPROTO(_cltbits)     ((_cltbits) & (NFSCTL_UDPBIT | NFSCTL_TCPBIT))
-> -#define NFSCTL_ALLBITS (~0)
->  
->  #endif /* _NFS_NFS_H */
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index 20f4b7952203..5d101f0e98c3 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -44,7 +44,9 @@ static struct option longopts[] =
->  	{ "help", 0, 0, 'h' },
->  	{ "no-nfs-version", 1, 0, 'N' },
->  	{ "nfs-version", 1, 0, 'V' },
-> +	{ "tcp", 0, 0, 't' },
->  	{ "no-tcp", 0, 0, 'T' },
-> +	{ "udp", 0, 0, 'u' },
->  	{ "no-udp", 0, 0, 'U' },
->  	{ "port", 1, 0, 'P' },
->  	{ "port", 1, 0, 'p' },
-> @@ -68,7 +70,7 @@ main(int argc, char **argv)
->  	unsigned int minorvers = 0;
->  	unsigned int minorversset = 0;
->  	unsigned int versbits = NFSCTL_VERDEFAULT;
-> -	unsigned int protobits = NFSCTL_ALLBITS;
-> +	unsigned int protobits = NFSCTL_PROTODEFAULT;
->  	int grace = -1;
->  	int lease = -1;
->  
-> @@ -138,7 +140,7 @@ main(int argc, char **argv)
->  		}
->  	}
->  
-> -	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTUrG:L:", longopts, NULL)) != EOF) {
-> +	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTitUrG:L:", longopts, NULL)) != EOF) {
->  		switch(c) {
->  		case 'd':
->  			xlog_config(D_ALL, 1);
-> @@ -222,9 +224,15 @@ main(int argc, char **argv)
->  			xlog_syslog(1);
->  			xlog_stderr(0);
->  			break;
-> +		case 't':
-> +			NFSCTL_TCPSET(protobits);
-> +			break;
->  		case 'T':
->  			NFSCTL_TCPUNSET(protobits);
->  			break;
-> +		case 'u':
-> +			NFSCTL_UDPSET(protobits);
-> +			break;
->  		case 'U':
->  			NFSCTL_UDPUNSET(protobits);
->  			break;
-> @@ -372,9 +380,9 @@ usage(const char *prog)
->  {
->  	fprintf(stderr, "Usage:\n"
->  		"%s [-d|--debug] [-H hostname] [-p|-P|--port port]\n"
-> -		"     [-N|--no-nfs-version version] [-V|--nfs-version version]\n"
-> -		"     [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] [-r|--rdma=]\n"
-> -		"     [-G|--grace-time secs] [-L|--leasetime secs] nrservs\n",
-> +		"   [-N|--no-nfs-version version] [-V|--nfs-version version]\n"
-> +		"   [-s|--syslog] [-t|--tcp] [-T|--no-tcp] [-u|--udp] [-U|--no-udp]\n"
-> +		"   [-r|--rdma=] [-G|--grace-time secs] [-L|--leasetime secs] nrservs\n",
->  		prog);
->  	exit(2);
->  }
-> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-> index 8901fb6c6872..e0c640a64094 100644
-> --- a/utils/nfsd/nfsd.man
-> +++ b/utils/nfsd/nfsd.man
-> @@ -67,15 +67,17 @@ logs error messages (and debug messages, if enabled) to stderr. This option make
->  log these messages to syslog instead. Note that errors encountered during
->  option processing will still be logged to stderr regardless of this option.
->  .TP
-> +.B \-t " or " \-\-tcp
-> +Instruct the kernel nfs server to open and listen on a TCP socket. This is the default.
-> +.TP
->  .B \-T " or " \-\-no-tcp
-> -Disable 
-> -.B rpc.nfsd 
-> -from accepting TCP connections from clients.
-> +Instruct the kernel nfs server not to open and listen on a TCP socket.
-> +.TP
-> +.B \-u " or " \-\-udp
-> +Instruct the kernel nfs server to open and listen on a UDP socket.
->  .TP
->  .B \-U " or " \-\-no-udp
-> -Disable
-> -.B rpc.nfsd
-> -from accepting UDP connections from clients.
-> +Instruct the kernel nfs server not to open and listen on a UDP socket. This is the default.
->  .TP
->  .B \-V " or " \-\-nfs-version vers
->  This option can be used to request that 
+> Also looking at the code when -N4.0 is used
+> it zero out the entire minorversset which means 
+> the -4.1 and -4.2 is not written out to the versions file
 > 
+> nfsd -d -N4
+> nfsd: Writing version string to kernel: -2 +3 -4 -4.1 -4.2
+> 
+> nfsd -d -N4.0
+> nfsd: Writing version string to kernel: -2 +3 -4
+> 
+> I'm not sure if this matters or not... but it is different.
+> 
+> steved.
