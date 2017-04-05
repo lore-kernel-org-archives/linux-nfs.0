@@ -1,63 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zarb.ucsf.edu ([169.230.90.57]:48426 "EHLO zarb.ucsf.edu"
+Received: from mx1.redhat.com ([209.132.183.28]:38536 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754913AbdDETZr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Apr 2017 15:25:47 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by zarb.ucsf.edu (Postfix) with ESMTP id 39539127
-        for <linux-nfs@vger.kernel.org>; Wed,  5 Apr 2017 12:19:40 -0700 (PDT)
-Date: Wed, 5 Apr 2017 12:19:40 -0700 (PDT)
-From: Joshua Baker-LePain <jlb@salilab.org>
-To: linux-nfs@vger.kernel.org
-Subject: Double listing and duplicate cookie errors
-Message-ID: <alpine.LFD.2.20.1704051200210.30494@zarb.ucsf.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=US-ASCII
+        id S1755481AbdDEVMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Apr 2017 17:12:45 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 780F3A3B6B
+        for <linux-nfs@vger.kernel.org>; Wed,  5 Apr 2017 21:12:44 +0000 (UTC)
+From: Scott Mayhew <smayhew@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH v2 0/4] add systemd generator for the rpc_pipefs mountpoint
+Date: Wed,  5 Apr 2017 17:12:39 -0400
+Message-Id: <20170405211243.12282-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm seeing some odd issues mounting a GFS2 filesystem exported via NFS 
-from a CentOS-7 cluster.  The main clients are CentOS-6, but I've also 
-tested from CentOS-7.  There are several filesystem exported from this 
-host, and not all of them show the problem.  At the initial report, these 
-were the symptoms:
+These patches aim to make it a little easier to change the mountpoint.
+Right now if you change the pipefs-directory in /etc/nfs.conf, you still
+need to manually override the dependencies in the systemd unit files in
+order for the change to actually work.
 
-  o NFSv4
-$ mount -t nfs -o hard,intr $SERVER:/home/socr/a /mnt
-$ ls -la /mnt
-ls: reading directory /mnt: Too many levels of symbolic links
-total 460
-drwxr-xr-x.  32 root    root   3864 Sep 27  2016 ./
-dr-xr-xr-x.  43 root    root   4096 Feb 24 10:08 ../
-dr-xr-xr-x.  43 root    root   4096 Feb 24 10:08 ../
-drwxr-xr-x.  59   20383 wheel  2048 Mar 23 12:29 al/
-drwxr-xr-x.  59   20383 wheel  2048 Mar 23 12:29 al/
-.
-.
-.
-$ dmesg | tail -1
-NFS: directory / contains a readdir loop.Please contact your server vendor.  The file: .. has duplicate cookie 1
+The first patch moves rpc.idmapd's (mostly) undocumented
+pipefs-directory from /etc/idmapd.conf to a newly created [global]
+section in /etc/nfs.conf.
 
-Note that there are *no* symbolic links in that directory or any of the 
-others that show the issue.
+The second patch makes rpc.gssd read its pipefs-directory setting from
+the [global] section of /etc/nfs.conf instead of the [gssd] section.
 
-  o NFSv3
-$ mount -t nfs -o hard,intr,tcp,nfsvers=3 $SERVER:/nfsexports/home/socr/a /mnt
-$ ls -la /mnt
-.
-Here ls hangs, eating up all of a CPU and ever more memory until finally 
-dying with the message "ls: memory exhausted".
+The third patch allows blkmapd to read its pipefs-directory setting from
+the [global] section of /etc/nfs.conf as well (previously it was
+hard-coded).
 
-The folks running the server took some of the FSes off line and fsck'd 
-them.  Afterwards, NFSv4 has the same problem (double listing, readdir 
-loop error in client logs) but NFSv3 doesn't -- ls works, doesn't report 
-any errors and doesn't double list files and directories.
+The final patch adds a systemd generator that reads the
+pipefs-directory configuration from /etc/nfs.conf, and if it differs
+from the default it will automatically create a systemd mount unit
+file for the pipefs mountpoint and it will override the dependencies on
+the pipefs mountpoint via the rpc_pipefs.target unit file.
 
-Our current workaround, obviously, is to fsck the filesystem and use 
-NFSv3.  But that doesn't give me a warm fuzzy feeling.  Does this 
-constellation of symptoms ring any bells?  Thanks.
+Scott Mayhew (4):
+  idmapd: move the pipefs-directory config option to nfs.conf
+  gssd: move the pipefs-directory setting to the nfs.conf global section
+  blkmapd:  allow the rpc_pipefs mountpoint to be overridden
+  systemd: add a generator for the rpc_pipefs mountpoint
+
+ .gitignore                       |   1 +
+ nfs.conf                         |   4 +-
+ systemd/Makefile.am              |   5 +-
+ systemd/nfs-blkmap.service       |   4 +-
+ systemd/nfs-idmapd.service       |   4 +-
+ systemd/nfs.conf.man             |  13 ++-
+ systemd/rpc-gssd.service.in      |   4 +-
+ systemd/rpc-pipefs-generator.c   | 216 +++++++++++++++++++++++++++++++++++++++
+ systemd/rpc-svcgssd.service      |   3 +-
+ systemd/rpc_pipefs.target        |   3 +
+ utils/blkmapd/blkmapd.man        |  17 ++-
+ utils/blkmapd/device-discovery.c |  47 +++++++--
+ utils/gssd/gssd.c                |   4 +-
+ utils/gssd/gssd.man              |  12 ++-
+ utils/idmapd/idmapd.c            |  40 +++++---
+ utils/idmapd/idmapd.man          |  21 +++-
+ 16 files changed, 357 insertions(+), 41 deletions(-)
+ create mode 100644 systemd/rpc-pipefs-generator.c
+ create mode 100644 systemd/rpc_pipefs.target
 
 -- 
-Joshua Baker-LePain
-QB3 Shared Cluster Sysadmin
-UCSF
+2.9.3
+
