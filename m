@@ -1,20 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60728 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54782 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932371AbdDFMGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Apr 2017 08:06:04 -0400
-Date: Thu, 6 Apr 2017 08:06:02 -0400
+        id S1754854AbdDFM3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 6 Apr 2017 08:29:32 -0400
+Date: Thu, 6 Apr 2017 08:29:31 -0400
 From: Scott Mayhew <smayhew@redhat.com>
 To: NeilBrown <neilb@suse.com>
 Cc: steved@redhat.com, linux-nfs@vger.kernel.org
 Subject: Re: [nfs-utils PATCH v2 4/4] systemd: add a generator for the
  rpc_pipefs mountpoint
-Message-ID: <20170406120602.vvsz2nujdtllvlf4@tonberry.usersys.redhat.com>
+Message-ID: <20170406122931.am64xg5hs3juaqrt@tonberry.usersys.redhat.com>
 References: <20170405211243.12282-1-smayhew@redhat.com>
  <20170405211243.12282-5-smayhew@redhat.com>
  <87d1cq14lr.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 In-Reply-To: <87d1cq14lr.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -50,13 +50,37 @@ On Thu, 06 Apr 2017, NeilBrown wrote:
 > Unit files created by systemd-fstab-generator do follow that pattern,
 > but they don't have to.
 
-I didn't know that.
 > 
 > Maybe we should just:
 > 
 > 1/ rename var-lib-nfs-rpc_pipefs.mount to rpc_pipefs.mount,
 >    and modify the dependencies accordingly.
 > 
+The mount doesn't work when I change the name.
+
+[root@fedora25 ~]# systemctl status rpc_pipefs.mount
+● rpc_pipefs.mount - RPC Pipe File System
+   Loaded: error (Reason: Invalid argument)
+   Active: inactive (dead)
+    Where: /var/lib/nfs/rpc_pipefs
+     What: sunrpc
+
+Apr 06 08:17:59 localhost.localdomain systemd[1]: rpc_pipefs.mount: Where= setting doesn't match unit name. Refusing.
+
+
+Looking back at systemd.mount(5), it looks like they do have to follow
+that pattern:
+
+       Mount units must be named after the mount point directories they control.
+       Example: the mount point /home/lennart must be configured in a unit file
+       home-lennart.mount. For details about the escaping logic used to convert a
+       file system path to a unit name, see systemd.unit(5). Note that mount units
+       cannot be templated, nor is possible to add multiple names to a mount unit
+       by creating additional symlinks to it.
+
+
+-Scott
+
 > 2/ write a generator which (if necessary) creates a drop-in for
 >    rpc_pipefs.mount which simply overrides "Where".
 > 
@@ -66,9 +90,6 @@ I didn't know that.
 >     [Mount]
 >     Where=/foo/bar
 
-Sounds good to me, I'll take a look.
-
--Scott
 > 
 > I'm sorry to discard your good work, but I now think that a lot of it is
 > unnecessary.  Sorry for not seeing that earlier.
