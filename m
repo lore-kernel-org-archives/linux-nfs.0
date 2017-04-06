@@ -1,384 +1,226 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55332 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:55262 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755984AbdDEVMp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Apr 2017 17:12:45 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 994FD2BA0EF
-        for <linux-nfs@vger.kernel.org>; Wed,  5 Apr 2017 21:12:44 +0000 (UTC)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v2 4/4] systemd: add a generator for the rpc_pipefs mountpoint
-Date: Wed,  5 Apr 2017 17:12:43 -0400
-Message-Id: <20170405211243.12282-5-smayhew@redhat.com>
-In-Reply-To: <20170405211243.12282-1-smayhew@redhat.com>
-References: <20170405211243.12282-1-smayhew@redhat.com>
+        id S1756416AbdDFBMs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Apr 2017 21:12:48 -0400
+From: NeilBrown <neil@brown.name>
+To: Jan Kara <jack@suse.cz>
+Date: Thu, 06 Apr 2017 11:12:02 +1000
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>, Jan Kara <jack@suse.cz>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+In-Reply-To: <20170405080551.GC8899@quack2.suse.cz>
+References: <20170321183006.GD17872@fieldses.org> <1490122013.2593.1.camel@redhat.com> <20170329111507.GA18467@quack2.suse.cz> <1490810071.2678.6.camel@redhat.com> <20170330064724.GA21542@quack2.suse.cz> <1490872308.2694.1.camel@redhat.com> <20170330161231.GA9824@fieldses.org> <1490898932.2667.1.camel@redhat.com> <20170404183138.GC14303@fieldses.org> <878tnfiq7v.fsf@notabene.neil.brown.name> <20170405080551.GC8899@quack2.suse.cz>
+Message-ID: <87k26ygx0d.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfs.conf has config options for the rpc_pipefs mountpoint.
-Currently, changing these from the default also requires manually
-overriding the systemd unit files that are hard-coded to mount the
-filesystem on /var/lib/nfs/rpc_pipefs.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-This patch adds a generator that creates a mount unit file for the
-rpc_pipefs when a non-default value is specified in /etc/nfs.conf, as
-well as a target unit file to override the dependencies for the systemd
-units using the rpc_pipefs.  The blkmapd, idmapd, and gssd service unit
-files have been modified to define their dependencies on the rpc_pipefs
-mountpoint indirectly via the rpc_pipefs target unit file.
+On Wed, Apr 05 2017, Jan Kara wrote:
 
-This patch also removes the dependency on the rpc_pipefs from the
-rpc-svcgssd.service unit file.  rpc.svcgssd uses the sunrpc cache
-mechanism to exchange data with the kernel, not the rpc_pipefs.
+> On Wed 05-04-17 11:43:32, NeilBrown wrote:
+>> On Tue, Apr 04 2017, J. Bruce Fields wrote:
+>>=20
+>> > On Thu, Mar 30, 2017 at 02:35:32PM -0400, Jeff Layton wrote:
+>> >> On Thu, 2017-03-30 at 12:12 -0400, J. Bruce Fields wrote:
+>> >> > On Thu, Mar 30, 2017 at 07:11:48AM -0400, Jeff Layton wrote:
+>> >> > > On Thu, 2017-03-30 at 08:47 +0200, Jan Kara wrote:
+>> >> > > > Because if above is acceptable we could make reported i_version=
+ to be a sum
+>> >> > > > of "superblock crash counter" and "inode i_version". We increme=
+nt
+>> >> > > > "superblock crash counter" whenever we detect unclean filesyste=
+m shutdown.
+>> >> > > > That way after a crash we are guaranteed each inode will report=
+ new
+>> >> > > > i_version (the sum would probably have to look like "superblock=
+ crash
+>> >> > > > counter" * 65536 + "inode i_version" so that we avoid reusing p=
+ossible
+>> >> > > > i_version numbers we gave away but did not write to disk but st=
+ill...).
+>> >> > > > Thoughts?
+>> >> >=20
+>> >> > How hard is this for filesystems to support?  Do they need an on-di=
+sk
+>> >> > format change to keep track of the crash counter?  Maybe not, maybe=
+ the
+>> >> > high bits of the i_version counters are all they need.
+>> >> >=20
+>> >>=20
+>> >> Yeah, I imagine we'd need a on-disk change for this unless there's
+>> >> something already present that we could use in place of a crash count=
+er.
+>> >
+>> > We could consider using the current time instead.  So, put the current
+>> > time (or time of last boot, or this inode's ctime, or something) in the
+>> > high bits of the change attribute, and keep the low bits as a counter.
+>>=20
+>> This is a very different proposal.
+>> I don't think Jan was suggesting that the i_version be split into two
+>> bit fields, one the change-counter and one the crash-counter.
+>> Rather, the crash-counter was multiplied by a large-number and added to
+>> the change-counter with the expectation that while not ever
+>> change-counter landed on disk, at least 1 in every large-number would.
+>> So after each crash we effectively add large-number to the
+>> change-counter, and can be sure that number hasn't been used already.
+>
+> Yes, that was my thinking.
+>
+>> To store the crash-counter in each inode (which does appeal) you would
+>> need to be able to remove it before adding the new crash counter, and
+>> that requires bit-fields.  Maybe there are enough bits.
+>
+> Furthermore you'd have a potential problem that you need to change
+> i_version on disk just because you are reading after a crash and such
+> changes tend to be problematic (think of read-only mounts and stuff like
+> that).
+>=20=20
+>> If you want to ensure read-only files can remain cached over a crash,
+>> then you would have to mark a file in some way on stable storage
+>> *before* allowing any change.
+>> e.g. you could use the lsb.  Odd i_versions might have been changed
+>> recently and crash-count*large-number needs to be added.
+>> Even i_versions have not been changed recently and nothing need be
+>> added.
+>>=20
+>> If you want to change a file with an even i_version, you subtract
+>>   crash-count*large-number
+>> to the i_version, then set lsb.  This is written to stable storage before
+>> the change.
+>>=20
+>> If a file has not been changed for a while, you can add
+>>   crash-count*large-number
+>> and clear lsb.
+>>=20
+>> The lsb of the i_version would be for internal use only.  It would not
+>> be visible outside the filesystem.
+>>=20
+>> It feels a bit clunky, but I think it would work and is the best
+>> combination of Jan's idea and your requirement.
+>> The biggest cost would be switching to 'odd' before an changes, and the
+>> unknown is when does it make sense to switch to 'even'.
+>
+> Well, there is also a problem that you would need to somehow remember with
+> which 'crash count' the i_version has been previously reported as that is
+> not stored on disk with my scheme. So I don't think we can easily use your
+> scheme.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- .gitignore                     |   1 +
- systemd/Makefile.am            |   5 +-
- systemd/nfs-blkmap.service     |   4 +-
- systemd/nfs-idmapd.service     |   4 +-
- systemd/rpc-gssd.service.in    |   4 +-
- systemd/rpc-pipefs-generator.c | 216 +++++++++++++++++++++++++++++++++++++++++
- systemd/rpc-svcgssd.service    |   3 +-
- systemd/rpc_pipefs.target      |   3 +
- 8 files changed, 231 insertions(+), 9 deletions(-)
- create mode 100644 systemd/rpc-pipefs-generator.c
- create mode 100644 systemd/rpc_pipefs.target
+I don't think there is a problem here.... maybe I didn't explain
+properly or something.
 
-diff --git a/.gitignore b/.gitignore
-index 126d12c..941aca0 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -70,6 +70,7 @@ tests/nsm_client/nlm_sm_inter_svc.c
- tests/nsm_client/nlm_sm_inter_xdr.c
- utils/nfsidmap/nfsidmap
- systemd/nfs-server-generator
-+systemd/rpc-pipefs-generator
- systemd/nfs-config.service
- systemd/rpc-gssd.service
- # cscope database files
-diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index 0d15b9f..4becb77 100644
---- a/systemd/Makefile.am
-+++ b/systemd/Makefile.am
-@@ -4,6 +4,7 @@ MAINTAINERCLEANFILES = Makefile.in
- 
- unit_files =  \
-     nfs-client.target \
-+    rpc_pipefs.target \
-     \
-     nfs-mountd.service \
-     nfs-server.service \
-@@ -42,12 +43,14 @@ EXTRA_DIST = $(unit_files) $(man5_MANS) $(man7_MANS)
- unit_dir = /usr/lib/systemd/system
- generator_dir = /usr/lib/systemd/system-generators
- 
--EXTRA_PROGRAMS	= nfs-server-generator
-+EXTRA_PROGRAMS	= nfs-server-generator rpc-pipefs-generator
- genexecdir = $(generator_dir)
- nfs_server_generator_LDADD = ../support/export/libexport.a \
- 			     ../support/nfs/libnfs.a \
- 			     ../support/misc/libmisc.a
- 
-+rpc_pipefs_generator_LDADD = ../support/nfs/libnfs.a
-+
- if INSTALL_SYSTEMD
- genexec_PROGRAMS = nfs-server-generator
- install-data-hook: $(unit_files)
-diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
-index ddc324e..2bbcee6 100644
---- a/systemd/nfs-blkmap.service
-+++ b/systemd/nfs-blkmap.service
-@@ -2,8 +2,8 @@
- Description=pNFS block layout mapping daemon
- DefaultDependencies=no
- Conflicts=umount.target
--After=var-lib-nfs-rpc_pipefs.mount
--Requires=var-lib-nfs-rpc_pipefs.mount
-+After=rpc_pipefs.target
-+Requires=rpc_pipefs.target
- 
- PartOf=nfs-utils.service
- 
-diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
-index acca86b..f38fe52 100644
---- a/systemd/nfs-idmapd.service
-+++ b/systemd/nfs-idmapd.service
-@@ -1,8 +1,8 @@
- [Unit]
- Description=NFSv4 ID-name mapping service
- DefaultDependencies=no
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount local-fs.target
-+Requires=rpc_pipefs.target
-+After=rpc_pipefs.target local-fs.target
- 
- BindsTo=nfs-server.service
- 
-diff --git a/systemd/rpc-gssd.service.in b/systemd/rpc-gssd.service.in
-index b353027..6807db3 100644
---- a/systemd/rpc-gssd.service.in
-+++ b/systemd/rpc-gssd.service.in
-@@ -2,8 +2,8 @@
- Description=RPC security service for NFS client and server
- DefaultDependencies=no
- Conflicts=umount.target
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount
-+Requires=rpc_pipefs.target
-+After=rpc_pipefs.target
- 
- ConditionPathExists=@_sysconfdir@/krb5.keytab
- 
-diff --git a/systemd/rpc-pipefs-generator.c b/systemd/rpc-pipefs-generator.c
-new file mode 100644
-index 0000000..b0a6c19
---- /dev/null
-+++ b/systemd/rpc-pipefs-generator.c
-@@ -0,0 +1,216 @@
-+/*
-+ * rpc-pipefs-generator:
-+ *   systemd generator to create ordering dependencies between
-+ *   nfs services and the rpc_pipefs mountpoint
-+ */
-+
-+#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
-+
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <unistd.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <ctype.h>
-+#include <stdio.h>
-+#include <mntent.h>
-+
-+#include "nfslib.h"
-+#include "conffile.h"
-+
-+#define RPC_PIPEFS_DEFAULT "/var/lib/nfs/rpc_pipefs"
-+char *conf_path = NFS_CONFFILE;
-+
-+int systemd_len(char *path)
-+{
-+	char *p;
-+	int len = 0;
-+
-+	p = path;
-+	while (*p == '/')
-+		p++;
-+
-+	if (!*p)
-+		/* "/" becomes "-", otherwise leading "/" is ignored */
-+		return 1;
-+
-+	while (*p) {
-+		unsigned char c = *p++;
-+
-+		if (c == '/') {
-+			/* multiple non-trailing slashes become '-' */
-+			while (*p == '/')
-+				p++;
-+			if (*p)
-+				len++;
-+		} else if (isalnum(c) || c == ':' || c == '.' || c == '_')
-+			len++;
-+		else {
-+			len += 4;
-+		}
-+	}
-+
-+	return len;
-+}
-+
-+char *systemd_escape(char *path)
-+{
-+	char *result = NULL;
-+	char *p;
-+	int len;
-+
-+	len = systemd_len(path);
-+	if (!len)
-+		goto out;
-+
-+	result = malloc(len + strlen(".mount") + 1);
-+	if (!result)
-+		goto out;
-+
-+	p = result;
-+	while (*path == '/')
-+		path++;
-+	if (!*path) {
-+		/* "/" becomes "-", otherwise leading "/" is ignored */
-+		*p++ = '-';
-+		goto out_append;
-+	}
-+	while (*path) {
-+		unsigned char c = *path++;
-+
-+		if (c == '/') {
-+			/* multiple non-trailing slashes become '-' */
-+			while (*path == '/')
-+				path++;
-+			if (*path)
-+				*p++ = '-';
-+		} else if (isalnum(c) || c == ':' || c == '.' || c == '_')
-+			*p++ = c;
-+		else {
-+			*p++ = '\\';
-+			*p++ = 'x';
-+			*p++ = '0' + ((c&0xf0)>>4) + (c>=0xa0)*('a'-'9'-1);
-+			*p++ = '0' + (c&0x0f) + ((c&0x0f)>=0x0a)*('a'-'9'-1);
-+		}
-+	}
-+
-+out_append:
-+	sprintf(p, ".mount");
-+out:
-+	return result;
-+}
-+
-+static int generate_mount_unit(const char *pipefs_path, const char *pipefs_unit,
-+			       const char *dirname)
-+{
-+	char	*path;
-+	FILE	*f;
-+
-+	path = malloc(strlen(dirname) + 1 + strlen(pipefs_unit));
-+	if (!path)
-+		return 1;
-+	sprintf(path, "%s/%s", dirname, pipefs_unit);
-+	f = fopen(path, "w");
-+	if (!f)
-+		return 1;
-+
-+	fprintf(f, "# Automatically generated by rpc-pipefs-generator\n\n[Unit]\n");
-+	fprintf(f, "Description=RPC Pipe File System\n");
-+	fprintf(f, "DefaultDependencies=no\n");
-+	fprintf(f, "After=systemd-tmpfiles-setup.service\n");
-+	fprintf(f, "Conflicts=umount.target\n");
-+	fprintf(f, "\n[Mount]\n");
-+	fprintf(f, "What=sunrpc\n");
-+	fprintf(f, "Where=%s\n", pipefs_path);
-+	fprintf(f, "Type=rpc_pipefs\n");
-+
-+	fclose(f);
-+	return 0;
-+}
-+
-+static
-+int generate_target(char *pipefs_path, const char *dirname)
-+{
-+	char	*path;
-+	char	filebase[] = "/rpc_pipefs.target";
-+	char	*pipefs_unit;
-+	FILE	*f;
-+	int 	ret = 0;
-+
-+	pipefs_unit = systemd_escape(pipefs_path);
-+	if (!pipefs_unit)
-+		return 1;
-+
-+	ret = generate_mount_unit(pipefs_path, pipefs_unit, dirname);
-+	if (ret)
-+		return ret;
-+
-+	path = malloc(strlen(dirname) + 1 + sizeof(filebase));
-+	if (!path)
-+		return 2;
-+	sprintf(path, "%s", dirname);
-+	mkdir(path, 0755);
-+	strcat(path, filebase);
-+	f = fopen(path, "w");
-+	if (!f)
-+		return 1;
-+
-+	fprintf(f, "# Automatically generated by rpc-pipefs-generator\n\n[Unit]\n");
-+	fprintf(f, "Requires=%s\n", pipefs_unit);
-+	fprintf(f, "After=%s\n", pipefs_unit);
-+	fclose(f);
-+
-+	return 0;
-+}
-+
-+static int is_non_pipefs_mountpoint(char *path)
-+{
-+	FILE		*mtab;
-+	struct mntent	*mnt;
-+
-+	mtab = setmntent("/etc/mtab", "r");
-+	if (!mtab)
-+		return 0;
-+
-+	while ((mnt = getmntent(mtab)) != NULL) {
-+		if (strlen(mnt->mnt_dir) != strlen(path))
-+			continue;
-+		if (strncmp(mnt->mnt_dir, path, strlen(mnt->mnt_dir)))
-+			continue;
-+		if (strncmp(mnt->mnt_type, "rpc_pipefs", strlen(mnt->mnt_type)))
-+			break;
-+	}
-+	fclose(mtab);
-+	return mnt != NULL;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	int 	ret;
-+	char	*s;
-+
-+	/* Avoid using any external services */
-+	xlog_syslog(0);
-+
-+	if (argc != 4 || argv[1][0] != '/') {
-+		fprintf(stderr, "rpc-pipefs-generator: create systemd dependencies for nfs services\n");
-+		fprintf(stderr, "Usage: normal-dir early-dir late-dir\n");
-+		exit(1);
-+	}
-+
-+	conf_init();
-+	s = conf_get_str("global", "pipefs-directory");
-+	if (!s)
-+		exit(0);
-+	if (strlen(s) == strlen(RPC_PIPEFS_DEFAULT) &&
-+			strcmp(s, RPC_PIPEFS_DEFAULT) == 0)
-+		exit(0);
-+
-+	if (is_non_pipefs_mountpoint(s))
-+		exit(1);
-+
-+	ret = generate_target(s, argv[1]);
-+	exit(ret);
-+}
-diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-index 7187e3c..cb2bcd4 100644
---- a/systemd/rpc-svcgssd.service
-+++ b/systemd/rpc-svcgssd.service
-@@ -1,8 +1,7 @@
- [Unit]
- Description=RPC security service for NFS server
- DefaultDependencies=no
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount local-fs.target
-+After=local-fs.target
- PartOf=nfs-server.service
- PartOf=nfs-utils.service
- 
-diff --git a/systemd/rpc_pipefs.target b/systemd/rpc_pipefs.target
-new file mode 100644
-index 0000000..01d4d27
---- /dev/null
-+++ b/systemd/rpc_pipefs.target
-@@ -0,0 +1,3 @@
-+[Unit]
-+Requires=var-lib-nfs-rpc_pipefs.mount
-+After=var-lib-nfs-rpc_pipefs.mount
--- 
-2.9.3
+I'm assuming there is a crash-count that is stored once per filesystem.
+This might be a disk-format change, or maybe the "Last checked" time
+could be used with ext4 (that is a bit horrible though).
 
+Every on-disk i_version has a flag to choose between:
+  - use this number as it is, but update it on-disk before any change
+  - add multiple of current crash-count to this number before use.
+      If you crash during an update, the i_version is thus automatically
+      increased.
+
+To change from the first option to the second option you subtract the
+multiple of the current crash-count (which might make the stored
+i_version negative), and flip the bit.
+To change from the second option to the first, you add the multiple
+of the current crash-count, and flip the bit.
+In each case, the externally visible i_version does not change.
+Nothing needs to be stored except the per-inode i_version and the per-fs
+crash_count.=20
+
+>
+> So the options we have are:
+>
+> 1) Keep i_version as is, make clients also check for i_ctime.
+>    Pro: No on-disk format changes.
+>    Cons: After a crash, i_version can go backwards (but when file changes
+>    i_version, i_ctime pair should be still different) or not, data can be
+>    old or not.
+
+I like to think of this approach as using the i_version as an extension
+to the i_ctime.
+i_ctime doesn't necessarily change on every file modification, either
+because it is not a modification that is meant to change i_ctime, or
+because i_ctime doesn't have the resolution to show a very small change
+in time, or because the clock that is used to update i_ctime doesn't
+have much resolution.
+So when a change happens, if the stored c_time changes, set i_version to
+zero, otherwise increment i_version.
+Then the externally visible i-version is a combination of the stored
+c_time and the stored i_version.
+If you only used 1-second ctime resolution for versioning purposes, you
+could provide a 64bit i_version as 34 bits of ctime and 30 bits of
+changes-in-one-second.
+It is important that the resolution of ctime used is less that the
+fastest possible restart after a crash.
+
+I don't think that i_version going backwards should be a problem, as
+long as an old version means exactly the same old data.  Presumably
+journalling would ensure that the data and ctime/version are updated
+atomically.
+
+>
+> 2) Fsync when reporting i_version.
+>    Pro: No on-disk format changes, strong consistency of i_version and
+>         data.
+>    Cons: Difficult to implement for filesystems due to locking constrains.
+>          High performance overhead or i_version reporting.
+
+This reminds me of the old ext3 fsync-when-renaming a file.  People
+might depend on it for all the wrong reasons, and other people might
+studiously avoid it due to the performance implications.
+
+>
+> 3) Some variant of crash counter.
+>    Pro: i_version cannot go backwards.
+>    Cons: Requires on-disk format changes. After a crash data can be old
+>          (however i_version increased).
+
+If it is essential for i_version to always go forward, then I think this
+is the best approach.
+If an i_version reset can be tolerated, then I think a
+time-plus-version-count approach is likely to be best.
+
+Thanks,
+NeilBrown
+
+>
+> 								Honza
+> --=20
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljlleIACgkQOeye3VZi
+gblP2Q/9He4MLbp89QrFj6UTVGlKpsKko8p1lU3WX9ERqkyS2tjHAuiy953nFc32
+fEiiTUDhjD5wjyMhj1sBxcqyvvgPq6QK+ObnTUanGZKdkpBHgSm4D209MEfjMbQN
+GFKSBpagrZ3/orLjq8YSUdV5RaJDuu6cFhexNidhI6Jvxnpm12VKmz67Tb2+1iof
+yKVCvPzWBJ5b7WvnILiIRWVAjNfRYq8nFdGLYefMJLD25j2opHZRlyGVFkf5GsEb
+ZJgyOw5zLRtgGHxdI1/HtdxOLA74ef1HABak0lfyIqVnbwS9eEztZrJ+cm7D/tx7
+Kb1g8LcVtj8DFJAYHOkSegDL1Q1oqo/SgSiE1xI29auJYBxHeymOYdjTg8Mf/eS8
+P006SbdaAP2ELuJdvm55KmyJO9X4HegpMHgHe+HFaeY7YvFLjePwoZltmwwNZbBt
+l9ZVrvosYYd0MPfG5ITmUtemSCpiDR09nyBx/WVstD93vZ60WKySJ4/MMukUdsEY
+OoOjLF+O9AVHIKU2xMMojyic9NkGOUqRcYZpYO8YfSIuYa+id9UvF6rwc8dy9jjz
+Z/dzc+TEM/rO8oeInrKPi0o5u0DDTjoTX306ZPDU91YHBo/3BAJkwZk0xQGgyYh+
+wzgtOud+JSfM4s/xqV51YoevWKzcdubT6IQAKqBGMRQhDxtQyRI=
+=SiP6
+-----END PGP SIGNATURE-----
+--=-=-=--
