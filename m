@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45122 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47474 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754577AbdDFLXZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1754398AbdDFLXZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 6 Apr 2017 07:23:25 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -10,9 +10,9 @@ To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Miklos Szeredi <miklos@szeredi.hu>,
         Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 5/6] lockd: Introduce nlmclnt_operations
-Date: Thu,  6 Apr 2017 07:23:21 -0400
-Message-Id: <1e8da8e98e4dad013328ad5b7974e9d11256e863.1491477181.git.bcodding@redhat.com>
+Subject: [PATCH 3/6] locks: Set FL_CLOSE when removing flock locks on close()
+Date: Thu,  6 Apr 2017 07:23:19 -0400
+Message-Id: <d27daedb9fd68b23e25bc63f2852f25a803cdefb.1491477181.git.bcodding@redhat.com>
 In-Reply-To: <cover.1491477181.git.bcodding@redhat.com>
 References: <cover.1491477181.git.bcodding@redhat.com>
 In-Reply-To: <cover.1491477181.git.bcodding@redhat.com>
@@ -20,177 +20,59 @@ References: <cover.1491477181.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS would enjoy the ability to modify the behavior of the NLM client's
-unlock RPC task in order to delay the transmission of the unlock until IO
-that was submitted under that lock has completed.  This ability can ensure
-that the NLM client will always complete the transmission of an unlock even
-if the waiting caller has been interrupted with fatal signal.
+Set FL_CLOSE in fl_flags as in locks_remove_posix() when clearing locks.
+NFS will check for this flag to ensure an unlock is sent in a following
+patch.
 
-A struct nlmclnt_operations and callback data pointer can be passed to
-nlmclnt_proc(). The struct nlmclnt_operations defines three callback
-operations that will be used in a following patch:
-
-nlmclnt_alloc_call - used to call back after a successful allocation of
-	a struct nlm_rqst in nlmclnt_proc().
-
-nlmclnt_unlock_prepare - used to call back during NLM unlock's
-	rpc_call_prepare.  The NLM client defers calling rpc_call_start()
-	until this callback returns false.
-
-nlmclnt_release_call - used to call back when the NLM client's struct
-	nlm_rqst is freed.
+Fuse handles flock and posix locks differently for FL_CLOSE, and so
+requires a fixup to retain the existing behavior for flock.
 
 Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/lockd/clntproc.c         | 26 +++++++++++++++++++++++++-
- fs/nfs/nfs3proc.c           |  2 +-
- fs/nfs/proc.c               |  2 +-
- include/linux/lockd/bind.h  | 11 +++++++++--
- include/linux/lockd/lockd.h |  2 ++
- 5 files changed, 38 insertions(+), 5 deletions(-)
+ fs/fuse/file.c     | 2 +-
+ fs/locks.c         | 2 +-
+ include/linux/fs.h | 2 ++
+ 3 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 112952037933..d2744f4960ed 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -150,9 +150,12 @@ static void nlmclnt_release_lockargs(struct nlm_rqst *req)
-  * @host: address of a valid nlm_host context representing the NLM server
-  * @cmd: fcntl-style file lock operation to perform
-  * @fl: address of arguments for the lock operation
-+ * @nlmclnt_ops: operations to call back out of nlm
-+ * @data: address of data to be sent along with callback
-  *
-  */
--int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
-+int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl,
-+		const struct nlmclnt_operations *nlmclnt_ops, void *data)
- {
- 	struct nlm_rqst		*call;
- 	int			status;
-@@ -161,6 +164,9 @@ int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
- 	if (call == NULL)
- 		return -ENOMEM;
- 
-+	if (nlmclnt_ops && nlmclnt_ops->nlmclnt_alloc_call)
-+		nlmclnt_ops->nlmclnt_alloc_call(data);
-+
- 	nlmclnt_locks_init_private(fl, host);
- 	if (!fl->fl_u.nfs_fl.owner) {
- 		/* lockowner allocation has failed */
-@@ -169,6 +175,8 @@ int nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl)
+diff --git a/fs/fuse/file.c b/fs/fuse/file.c
+index 2401c5dabb2a..79e1a3a048a8 100644
+--- a/fs/fuse/file.c
++++ b/fs/fuse/file.c
+@@ -2172,7 +2172,7 @@ static int fuse_setlk(struct file *file, struct file_lock *fl, int flock)
  	}
- 	/* Set up the argument struct */
- 	nlmclnt_setlockargs(call, fl);
-+	call->nlmclnt_ops = nlmclnt_ops;
-+	call->callback_data = data;
  
- 	if (IS_SETLK(cmd) || IS_SETLKW(cmd)) {
- 		if (fl->fl_type != F_UNLCK) {
-@@ -216,6 +224,8 @@ void nlmclnt_release_call(struct nlm_rqst *call)
- {
- 	if (!atomic_dec_and_test(&call->a_count))
- 		return;
-+	if (call->nlmclnt_ops && call->nlmclnt_ops->nlmclnt_release_call)
-+		call->nlmclnt_ops->nlmclnt_release_call(call->callback_data);
- 	nlmclnt_release_host(call->a_host);
- 	nlmclnt_release_lockargs(call);
- 	kfree(call);
-@@ -687,6 +697,19 @@ nlmclnt_unlock(struct nlm_rqst *req, struct file_lock *fl)
- 	return status;
- }
+ 	/* Unlock on close is handled by the flush method */
+-	if (fl->fl_flags & FL_CLOSE)
++	if (fl->fl_flags & FL_CLOSE_POSIX == FL_CLOSE_POSIX)
+ 		return 0;
  
-+static void nlmclnt_unlock_prepare(struct rpc_task *task, void *data)
-+{
-+	struct nlm_rqst	*req = data;
-+	const struct nlmclnt_operations *nlmclnt_ops = req->nlmclnt_ops;
-+	bool defer_call = false;
+ 	fuse_lk_fill(&args, file, fl, opcode, pid, flock, &inarg);
+diff --git a/fs/locks.c b/fs/locks.c
+index 26811321d39b..af2031a1fcff 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -2504,7 +2504,7 @@ locks_remove_flock(struct file *filp, struct file_lock_context *flctx)
+ 		.fl_owner = filp,
+ 		.fl_pid = current->tgid,
+ 		.fl_file = filp,
+-		.fl_flags = FL_FLOCK,
++		.fl_flags = FL_FLOCK | FL_CLOSE,
+ 		.fl_type = F_UNLCK,
+ 		.fl_end = OFFSET_MAX,
+ 	};
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 2ba074328894..e964ae0a9c29 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -903,6 +903,8 @@ static inline struct file *get_file(struct file *f)
+ #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
+ #define FL_LAYOUT	2048	/* outstanding pNFS layout */
+ 
++#define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
 +
-+	if (nlmclnt_ops && nlmclnt_ops->nlmclnt_unlock_prepare)
-+		defer_call = nlmclnt_ops->nlmclnt_unlock_prepare(task, req->callback_data);
-+
-+	if (!defer_call)
-+		rpc_call_start(task);
-+}
-+
- static void nlmclnt_unlock_callback(struct rpc_task *task, void *data)
- {
- 	struct nlm_rqst	*req = data;
-@@ -720,6 +743,7 @@ static void nlmclnt_unlock_callback(struct rpc_task *task, void *data)
- }
- 
- static const struct rpc_call_ops nlmclnt_unlock_ops = {
-+	.rpc_call_prepare = nlmclnt_unlock_prepare,
- 	.rpc_call_done = nlmclnt_unlock_callback,
- 	.rpc_release = nlmclnt_rpc_release,
- };
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index dc925b531f32..086623ab07b1 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -870,7 +870,7 @@ nfs3_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
- {
- 	struct inode *inode = file_inode(filp);
- 
--	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
-+	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl, NULL, NULL);
- }
- 
- static int nfs3_have_delegation(struct inode *inode, fmode_t flags)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index b7bca8303989..fb8cbdf0a980 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -638,7 +638,7 @@ nfs_proc_lock(struct file *filp, int cmd, struct file_lock *fl)
- {
- 	struct inode *inode = file_inode(filp);
- 
--	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl);
-+	return nlmclnt_proc(NFS_SERVER(inode)->nlm_host, cmd, fl, NULL, NULL);
- }
- 
- /* Helper functions for NFS lock bounds checking */
-diff --git a/include/linux/lockd/bind.h b/include/linux/lockd/bind.h
-index 140edab64446..00c3c2a62bb5 100644
---- a/include/linux/lockd/bind.h
-+++ b/include/linux/lockd/bind.h
-@@ -18,6 +18,7 @@
- 
- /* Dummy declarations */
- struct svc_rqst;
-+struct rpc_task;
- 
  /*
-  * This is the set of functions for lockd->nfsd communication
-@@ -52,8 +53,14 @@ struct nlmclnt_initdata {
- extern struct nlm_host *nlmclnt_init(const struct nlmclnt_initdata *nlm_init);
- extern void	nlmclnt_done(struct nlm_host *host);
- 
--extern int	nlmclnt_proc(struct nlm_host *host, int cmd,
--					struct file_lock *fl);
-+struct nlmclnt_operations {
-+	void (*nlmclnt_alloc_call)(void *);
-+	bool (*nlmclnt_unlock_prepare)(struct rpc_task*, void *);
-+	void (*nlmclnt_release_call)(void *);
-+};
-+
-+extern int	nlmclnt_proc(struct nlm_host *host, int cmd, struct file_lock *fl,
-+	const struct nlmclnt_operations *nlmclnt_ops, void *data);
- extern int	lockd_up(struct net *net);
- extern void	lockd_down(struct net *net);
- 
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index c15373894a42..0c6f777dde53 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -142,6 +142,8 @@ struct nlm_rqst {
- 	struct nlm_block *	a_block;
- 	unsigned int		a_retries;	/* Retry count */
- 	u8			a_owner[NLMCLNT_OHSIZE];
-+	const struct nlmclnt_operations * nlmclnt_ops;
-+	void * callback_data;
- };
- 
- /*
+  * Special return value from posix_lock_file() and vfs_lock_file() for
+  * asynchronous locking.
 -- 
 2.9.3
 
