@@ -1,384 +1,178 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51970 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40652 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753173AbdDFQbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1752945AbdDFQbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 6 Apr 2017 12:31:05 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 76EA72EF182
-        for <linux-nfs@vger.kernel.org>; Thu,  6 Apr 2017 16:31:05 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id E415061B8A
+        for <linux-nfs@vger.kernel.org>; Thu,  6 Apr 2017 16:31:04 +0000 (UTC)
 From: Scott Mayhew <smayhew@redhat.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v3 4/4] systemd: add a generator for the rpc_pipefs mountpoint
-Date: Thu,  6 Apr 2017 12:31:04 -0400
-Message-Id: <20170406163104.28397-5-smayhew@redhat.com>
+Subject: [nfs-utils PATCH v3 3/4] blkmapd:  allow the rpc_pipefs mountpoint to be overridden
+Date: Thu,  6 Apr 2017 12:31:03 -0400
+Message-Id: <20170406163104.28397-4-smayhew@redhat.com>
 In-Reply-To: <20170406163104.28397-1-smayhew@redhat.com>
 References: <20170406163104.28397-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The nfs.conf has config options for the rpc_pipefs mountpoint.
-Currently, changing these from the default also requires manually
-overriding the systemd unit files that are hard-coded to mount the
-filesystem on /var/lib/nfs/rpc_pipefs.
-
-This patch adds a generator that creates a mount unit file for the
-rpc_pipefs when a non-default value is specified in /etc/nfs.conf, as
-well as a target unit file to override the dependencies for the systemd
-units using the rpc_pipefs.  The blkmapd, idmapd, and gssd service unit
-files have been modified to define their dependencies on the rpc_pipefs
-mountpoint indirectly via the rpc_pipefs target unit file.
-
-This patch also removes the dependency on the rpc_pipefs from the
-rpc-svcgssd.service unit file.  rpc.svcgssd uses the sunrpc cache
-mechanism to exchange data with the kernel, not the rpc_pipefs.
+Allow the rpc_pipefs mountpoint to be overriden via the pipefs-directory
+variable in the [general] section of /etc/nfs.conf.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- .gitignore                     |   1 +
- systemd/Makefile.am            |   5 +-
- systemd/nfs-blkmap.service     |   4 +-
- systemd/nfs-idmapd.service     |   4 +-
- systemd/rpc-gssd.service.in    |   4 +-
- systemd/rpc-pipefs-generator.c | 216 +++++++++++++++++++++++++++++++++++++++++
- systemd/rpc-svcgssd.service    |   3 +-
- systemd/rpc_pipefs.target      |   3 +
- 8 files changed, 231 insertions(+), 9 deletions(-)
- create mode 100644 systemd/rpc-pipefs-generator.c
- create mode 100644 systemd/rpc_pipefs.target
+ systemd/nfs.conf.man             |  3 ++-
+ utils/blkmapd/blkmapd.man        | 17 ++++++++++++++-
+ utils/blkmapd/device-discovery.c | 47 ++++++++++++++++++++++++++++++++--------
+ 3 files changed, 56 insertions(+), 11 deletions(-)
 
-diff --git a/.gitignore b/.gitignore
-index 126d12c..941aca0 100644
---- a/.gitignore
-+++ b/.gitignore
-@@ -70,6 +70,7 @@ tests/nsm_client/nlm_sm_inter_svc.c
- tests/nsm_client/nlm_sm_inter_xdr.c
- utils/nfsidmap/nfsidmap
- systemd/nfs-server-generator
-+systemd/rpc-pipefs-generator
- systemd/nfs-config.service
- systemd/rpc-gssd.service
- # cscope database files
-diff --git a/systemd/Makefile.am b/systemd/Makefile.am
-index 0d15b9f..4becb77 100644
---- a/systemd/Makefile.am
-+++ b/systemd/Makefile.am
-@@ -4,6 +4,7 @@ MAINTAINERCLEANFILES = Makefile.in
+diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+index 1a72da0..189b052 100644
+--- a/systemd/nfs.conf.man
++++ b/systemd/nfs.conf.man
+@@ -101,7 +101,8 @@ Recognized values:
+ .BR pipefs-directory .
  
- unit_files =  \
-     nfs-client.target \
-+    rpc_pipefs.target \
-     \
-     nfs-mountd.service \
-     nfs-server.service \
-@@ -42,12 +43,14 @@ EXTRA_DIST = $(unit_files) $(man5_MANS) $(man7_MANS)
- unit_dir = /usr/lib/systemd/system
- generator_dir = /usr/lib/systemd/system-generators
+ See
+-.BR rpc.idmapd (8)
++.BR blkmapd (8),
++.BR rpc.idmapd (8),
+ and
+ .BR rpc.gssd (8)
+ for details.
+diff --git a/utils/blkmapd/blkmapd.man b/utils/blkmapd/blkmapd.man
+index 914b80f..4b3d3f0 100644
+--- a/utils/blkmapd/blkmapd.man
++++ b/utils/blkmapd/blkmapd.man
+@@ -43,9 +43,24 @@ Performs device discovery only then exits.
+ Runs
+ .B blkmapd
+ in the foreground and sends output to stderr (as opposed to syslogd)
++.SH CONFIGURATION FILE
++The
++.B blkmapd
++daemon recognizes the following value from the
++.B [general]
++section of the
++.I /etc/nfs.conf
++configuration file:
++.TP
++.B pipefs-directory
++Tells
++.B blkmapd
++where to look for the rpc_pipefs filesystem.  The default value is
++.IR /var/lib/nfs/rpc_pipefs .
+ .SH SEE ALSO
+ .BR nfs (5),
+-.BR dmsetup (8)
++.BR dmsetup (8),
++.BR nfs.conf (5)
+ .sp
+ RFC 5661 for the NFS version 4.1 specification.
+ .br
+diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+index 8eb3fd0..d2da764 100644
+--- a/utils/blkmapd/device-discovery.c
++++ b/utils/blkmapd/device-discovery.c
+@@ -50,20 +50,36 @@
+ #include <errno.h>
+ #include <libdevmapper.h>
  
--EXTRA_PROGRAMS	= nfs-server-generator
-+EXTRA_PROGRAMS	= nfs-server-generator rpc-pipefs-generator
- genexecdir = $(generator_dir)
- nfs_server_generator_LDADD = ../support/export/libexport.a \
- 			     ../support/nfs/libnfs.a \
- 			     ../support/misc/libmisc.a
- 
-+rpc_pipefs_generator_LDADD = ../support/nfs/libnfs.a
-+
- if INSTALL_SYSTEMD
- genexec_PROGRAMS = nfs-server-generator
- install-data-hook: $(unit_files)
-diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
-index ddc324e..2bbcee6 100644
---- a/systemd/nfs-blkmap.service
-+++ b/systemd/nfs-blkmap.service
-@@ -2,8 +2,8 @@
- Description=pNFS block layout mapping daemon
- DefaultDependencies=no
- Conflicts=umount.target
--After=var-lib-nfs-rpc_pipefs.mount
--Requires=var-lib-nfs-rpc_pipefs.mount
-+After=rpc_pipefs.target
-+Requires=rpc_pipefs.target
- 
- PartOf=nfs-utils.service
- 
-diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
-index acca86b..f38fe52 100644
---- a/systemd/nfs-idmapd.service
-+++ b/systemd/nfs-idmapd.service
-@@ -1,8 +1,8 @@
- [Unit]
- Description=NFSv4 ID-name mapping service
- DefaultDependencies=no
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount local-fs.target
-+Requires=rpc_pipefs.target
-+After=rpc_pipefs.target local-fs.target
- 
- BindsTo=nfs-server.service
- 
-diff --git a/systemd/rpc-gssd.service.in b/systemd/rpc-gssd.service.in
-index b353027..6807db3 100644
---- a/systemd/rpc-gssd.service.in
-+++ b/systemd/rpc-gssd.service.in
-@@ -2,8 +2,8 @@
- Description=RPC security service for NFS client and server
- DefaultDependencies=no
- Conflicts=umount.target
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount
-+Requires=rpc_pipefs.target
-+After=rpc_pipefs.target
- 
- ConditionPathExists=@_sysconfdir@/krb5.keytab
- 
-diff --git a/systemd/rpc-pipefs-generator.c b/systemd/rpc-pipefs-generator.c
-new file mode 100644
-index 0000000..512a464
---- /dev/null
-+++ b/systemd/rpc-pipefs-generator.c
-@@ -0,0 +1,216 @@
-+/*
-+ * rpc-pipefs-generator:
-+ *   systemd generator to create ordering dependencies between
-+ *   nfs services and the rpc_pipefs mountpoint
-+ */
-+
 +#ifdef HAVE_CONFIG_H
-+#include <config.h>
-+#endif
++#include "config.h"
++#endif /* HAVE_CONFIG_H */
 +
-+#include <sys/stat.h>
-+#include <sys/types.h>
-+#include <unistd.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <ctype.h>
-+#include <stdio.h>
-+#include <mntent.h>
-+
+ #include "device-discovery.h"
+ #include "xcommon.h"
 +#include "nfslib.h"
 +#include "conffile.h"
-+
-+#define RPC_PIPEFS_DEFAULT "/var/lib/nfs/rpc_pipefs"
-+char *conf_path = NFS_CONFFILE;
-+
-+int systemd_len(char *path)
-+{
-+	char *p;
-+	int len = 0;
-+
-+	p = path;
-+	while (*p == '/')
-+		p++;
-+
-+	if (!*p)
-+		/* "/" becomes "-", otherwise leading "/" is ignored */
-+		return 1;
-+
-+	while (*p) {
-+		unsigned char c = *p++;
-+
-+		if (c == '/') {
-+			/* multiple non-trailing slashes become '-' */
-+			while (*p == '/')
-+				p++;
-+			if (*p)
-+				len++;
-+		} else if (isalnum(c) || c == ':' || c == '.' || c == '_')
-+			len++;
-+		else {
-+			len += 4;
-+		}
-+	}
-+
-+	return len;
-+}
-+
-+char *systemd_escape(char *path)
-+{
-+	char *result = NULL;
-+	char *p;
-+	int len;
-+
-+	len = systemd_len(path);
-+	if (!len)
-+		goto out;
-+
-+	result = malloc(len + strlen(".mount") + 1);
-+	if (!result)
-+		goto out;
-+
-+	p = result;
-+	while (*path == '/')
-+		path++;
-+	if (!*path) {
-+		/* "/" becomes "-", otherwise leading "/" is ignored */
-+		*p++ = '-';
-+		goto out_append;
-+	}
-+	while (*path) {
-+		unsigned char c = *path++;
-+
-+		if (c == '/') {
-+			/* multiple non-trailing slashes become '-' */
-+			while (*path == '/')
-+				path++;
-+			if (*path)
-+				*p++ = '-';
-+		} else if (isalnum(c) || c == ':' || c == '.' || c == '_')
-+			*p++ = c;
-+		else {
-+			*p++ = '\\';
-+			*p++ = 'x';
-+			*p++ = '0' + ((c&0xf0)>>4) + (c>=0xa0)*('a'-'9'-1);
-+			*p++ = '0' + (c&0x0f) + ((c&0x0f)>=0x0a)*('a'-'9'-1);
-+		}
-+	}
-+
-+out_append:
-+	sprintf(p, ".mount");
-+out:
-+	return result;
-+}
-+
-+static int generate_mount_unit(const char *pipefs_path, const char *pipefs_unit,
-+			       const char *dirname)
-+{
-+	char	*path;
-+	FILE	*f;
-+
-+	path = malloc(strlen(dirname) + 1 + strlen(pipefs_unit));
-+	if (!path)
-+		return 1;
-+	sprintf(path, "%s/%s", dirname, pipefs_unit);
-+	f = fopen(path, "w");
-+	if (!f)
-+		return 1;
-+
-+	fprintf(f, "# Automatically generated by rpc-pipefs-generator\n\n[Unit]\n");
-+	fprintf(f, "Description=RPC Pipe File System\n");
-+	fprintf(f, "DefaultDependencies=no\n");
-+	fprintf(f, "After=systemd-tmpfiles-setup.service\n");
-+	fprintf(f, "Conflicts=umount.target\n");
-+	fprintf(f, "\n[Mount]\n");
-+	fprintf(f, "What=sunrpc\n");
-+	fprintf(f, "Where=%s\n", pipefs_path);
-+	fprintf(f, "Type=rpc_pipefs\n");
-+
-+	fclose(f);
-+	return 0;
-+}
-+
-+static
-+int generate_target(char *pipefs_path, const char *dirname)
-+{
-+	char	*path;
-+	char	filebase[] = "/rpc_pipefs.target";
-+	char	*pipefs_unit;
-+	FILE	*f;
-+	int 	ret = 0;
-+
-+	pipefs_unit = systemd_escape(pipefs_path);
-+	if (!pipefs_unit)
-+		return 1;
-+
-+	ret = generate_mount_unit(pipefs_path, pipefs_unit, dirname);
-+	if (ret)
-+		return ret;
-+
-+	path = malloc(strlen(dirname) + 1 + sizeof(filebase));
-+	if (!path)
-+		return 2;
-+	sprintf(path, "%s", dirname);
-+	mkdir(path, 0755);
-+	strcat(path, filebase);
-+	f = fopen(path, "w");
-+	if (!f)
-+		return 1;
-+
-+	fprintf(f, "# Automatically generated by rpc-pipefs-generator\n\n[Unit]\n");
-+	fprintf(f, "Requires=%s\n", pipefs_unit);
-+	fprintf(f, "After=%s\n", pipefs_unit);
-+	fclose(f);
-+
-+	return 0;
-+}
-+
-+static int is_non_pipefs_mountpoint(char *path)
-+{
-+	FILE		*mtab;
-+	struct mntent	*mnt;
-+
-+	mtab = setmntent("/etc/mtab", "r");
-+	if (!mtab)
-+		return 0;
-+
-+	while ((mnt = getmntent(mtab)) != NULL) {
-+		if (strlen(mnt->mnt_dir) != strlen(path))
-+			continue;
-+		if (strncmp(mnt->mnt_dir, path, strlen(mnt->mnt_dir)))
-+			continue;
-+		if (strncmp(mnt->mnt_type, "rpc_pipefs", strlen(mnt->mnt_type)))
-+			break;
-+	}
-+	fclose(mtab);
-+	return mnt != NULL;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	int 	ret;
-+	char	*s;
-+
-+	/* Avoid using any external services */
-+	xlog_syslog(0);
-+
-+	if (argc != 4 || argv[1][0] != '/') {
-+		fprintf(stderr, "rpc-pipefs-generator: create systemd dependencies for nfs services\n");
-+		fprintf(stderr, "Usage: normal-dir early-dir late-dir\n");
-+		exit(1);
-+	}
-+
-+	conf_init();
-+	s = conf_get_str("general", "pipefs-directory");
-+	if (!s)
-+		exit(0);
-+	if (strlen(s) == strlen(RPC_PIPEFS_DEFAULT) &&
-+			strcmp(s, RPC_PIPEFS_DEFAULT) == 0)
-+		exit(0);
-+
-+	if (is_non_pipefs_mountpoint(s))
-+		exit(1);
-+
-+	ret = generate_target(s, argv[1]);
-+	exit(ret);
-+}
-diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-index 7187e3c..cb2bcd4 100644
---- a/systemd/rpc-svcgssd.service
-+++ b/systemd/rpc-svcgssd.service
-@@ -1,8 +1,7 @@
- [Unit]
- Description=RPC security service for NFS server
- DefaultDependencies=no
--Requires=var-lib-nfs-rpc_pipefs.mount
--After=var-lib-nfs-rpc_pipefs.mount local-fs.target
-+After=local-fs.target
- PartOf=nfs-server.service
- PartOf=nfs-utils.service
  
-diff --git a/systemd/rpc_pipefs.target b/systemd/rpc_pipefs.target
-new file mode 100644
-index 0000000..01d4d27
---- /dev/null
-+++ b/systemd/rpc_pipefs.target
-@@ -0,0 +1,3 @@
-+[Unit]
-+Requires=var-lib-nfs-rpc_pipefs.mount
-+After=var-lib-nfs-rpc_pipefs.mount
+ #define EVENT_SIZE (sizeof(struct inotify_event))
+ #define EVENT_BUFSIZE (1024 * EVENT_SIZE)
+ 
+-#define BL_PIPE_FILE	"/var/lib/nfs/rpc_pipefs/nfs/blocklayout"
+-#define NFSPIPE_DIR	"/var/lib/nfs/rpc_pipefs/nfs"
+ #define RPCPIPE_DIR	"/var/lib/nfs/rpc_pipefs"
+ #define PID_FILE	"/var/run/blkmapd.pid"
+ 
++#define CONF_SAVE(w, f) do {			\
++	char *p = f;				\
++	if (p != NULL)				\
++		(w) = p;			\
++} while (0)
++
++static char bl_pipe_file[PATH_MAX];
++static char nfspipe_dir[PATH_MAX];
++static char rpcpipe_dir[PATH_MAX];
++
+ struct bl_disk *visible_disk_list;
+ int    bl_watch_fd, bl_pipe_fd, nfs_pipedir_wfd, rpc_pipedir_wfd;
+ int    pidfd = -1;
++char   *conf_path = NULL;
++
+ 
+ struct bl_disk_path *bl_get_path(const char *filepath,
+ 				 struct bl_disk_path *paths)
+@@ -358,8 +374,8 @@ static void bl_rpcpipe_cb(void)
+ 				continue;
+ 			if (event->mask & IN_CREATE) {
+ 				BL_LOG_WARNING("nfs pipe dir created\n");
+-				bl_watch_dir(NFSPIPE_DIR, &nfs_pipedir_wfd);
+-				bl_pipe_fd = open(BL_PIPE_FILE, O_RDWR);
++				bl_watch_dir(nfspipe_dir, &nfs_pipedir_wfd);
++				bl_pipe_fd = open(bl_pipe_file, O_RDWR);
+ 			} else if (event->mask & IN_DELETE) {
+ 				BL_LOG_WARNING("nfs pipe dir deleted\n");
+ 				inotify_rm_watch(bl_watch_fd, nfs_pipedir_wfd);
+@@ -372,7 +388,7 @@ static void bl_rpcpipe_cb(void)
+ 				continue;
+ 			if (event->mask & IN_CREATE) {
+ 				BL_LOG_WARNING("blocklayout pipe file created\n");
+-				bl_pipe_fd = open(BL_PIPE_FILE, O_RDWR);
++				bl_pipe_fd = open(bl_pipe_file, O_RDWR);
+ 				if (bl_pipe_fd < 0)
+ 					BL_LOG_ERR("open %s failed: %s\n",
+ 						event->name, strerror(errno));
+@@ -437,6 +453,19 @@ int main(int argc, char **argv)
+ {
+ 	int opt, dflag = 0, fg = 0, ret = 1;
+ 	char pidbuf[64];
++	char *xrpcpipe_dir = NULL;
++
++	strncpy(rpcpipe_dir, RPCPIPE_DIR, sizeof(rpcpipe_dir));
++	conf_path = NFS_CONFFILE;
++	conf_init();
++	CONF_SAVE(xrpcpipe_dir, conf_get_str("general", "pipefs-directory"));
++	if (xrpcpipe_dir != NULL)
++		strlcpy(rpcpipe_dir, xrpcpipe_dir, sizeof(rpcpipe_dir));
++
++	strncpy(nfspipe_dir, rpcpipe_dir, sizeof(nfspipe_dir));
++	strlcat(nfspipe_dir, "/nfs", sizeof(nfspipe_dir));
++	strncpy(bl_pipe_file, rpcpipe_dir, sizeof(bl_pipe_file));
++	strlcat(bl_pipe_file, "/nfs/blocklayout", sizeof(bl_pipe_file));
+ 
+ 	while ((opt = getopt(argc, argv, "hdf")) != -1) {
+ 		switch (opt) {
+@@ -496,12 +525,12 @@ int main(int argc, char **argv)
+ 	}
+ 
+ 	/* open pipe file */
+-	bl_watch_dir(RPCPIPE_DIR, &rpc_pipedir_wfd);
+-	bl_watch_dir(NFSPIPE_DIR, &nfs_pipedir_wfd);
++	bl_watch_dir(rpcpipe_dir, &rpc_pipedir_wfd);
++	bl_watch_dir(nfspipe_dir, &nfs_pipedir_wfd);
+ 
+-	bl_pipe_fd = open(BL_PIPE_FILE, O_RDWR);
++	bl_pipe_fd = open(bl_pipe_file, O_RDWR);
+ 	if (bl_pipe_fd < 0)
+-		BL_LOG_ERR("open pipe file %s failed: %s\n", BL_PIPE_FILE, strerror(errno));
++		BL_LOG_ERR("open pipe file %s failed: %s\n", bl_pipe_file, strerror(errno));
+ 
+ 	while (1) {
+ 		/* discover device when needed */
 -- 
 2.9.3
 
