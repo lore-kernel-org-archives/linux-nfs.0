@@ -1,178 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40652 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55118 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752945AbdDFQbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1752558AbdDFQbF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 6 Apr 2017 12:31:05 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id E415061B8A
-        for <linux-nfs@vger.kernel.org>; Thu,  6 Apr 2017 16:31:04 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 7EB373DBCA
+        for <linux-nfs@vger.kernel.org>; Thu,  6 Apr 2017 16:31:05 +0000 (UTC)
 From: Scott Mayhew <smayhew@redhat.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v3 3/4] blkmapd:  allow the rpc_pipefs mountpoint to be overridden
-Date: Thu,  6 Apr 2017 12:31:03 -0400
-Message-Id: <20170406163104.28397-4-smayhew@redhat.com>
-In-Reply-To: <20170406163104.28397-1-smayhew@redhat.com>
-References: <20170406163104.28397-1-smayhew@redhat.com>
+Subject: [nfs-utils PATCH v3 0/4] add systemd generator for the rpc_pipefs mountpoint
+Date: Thu,  6 Apr 2017 12:31:00 -0400
+Message-Id: <20170406163104.28397-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the rpc_pipefs mountpoint to be overriden via the pipefs-directory
-variable in the [general] section of /etc/nfs.conf.
+Changes since v2: retained the name "general" for the global section of
+the /etc/nfs.conf file.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- systemd/nfs.conf.man             |  3 ++-
- utils/blkmapd/blkmapd.man        | 17 ++++++++++++++-
- utils/blkmapd/device-discovery.c | 47 ++++++++++++++++++++++++++++++++--------
- 3 files changed, 56 insertions(+), 11 deletions(-)
+These patches aim to make it a little easier to change the mountpoint.
+Right now if you change the pipefs-directory in /etc/nfs.conf, you still
+need to manually override the dependencies in the systemd unit files in
+order for the change to actually work.
 
-diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index 1a72da0..189b052 100644
---- a/systemd/nfs.conf.man
-+++ b/systemd/nfs.conf.man
-@@ -101,7 +101,8 @@ Recognized values:
- .BR pipefs-directory .
- 
- See
--.BR rpc.idmapd (8)
-+.BR blkmapd (8),
-+.BR rpc.idmapd (8),
- and
- .BR rpc.gssd (8)
- for details.
-diff --git a/utils/blkmapd/blkmapd.man b/utils/blkmapd/blkmapd.man
-index 914b80f..4b3d3f0 100644
---- a/utils/blkmapd/blkmapd.man
-+++ b/utils/blkmapd/blkmapd.man
-@@ -43,9 +43,24 @@ Performs device discovery only then exits.
- Runs
- .B blkmapd
- in the foreground and sends output to stderr (as opposed to syslogd)
-+.SH CONFIGURATION FILE
-+The
-+.B blkmapd
-+daemon recognizes the following value from the
-+.B [general]
-+section of the
-+.I /etc/nfs.conf
-+configuration file:
-+.TP
-+.B pipefs-directory
-+Tells
-+.B blkmapd
-+where to look for the rpc_pipefs filesystem.  The default value is
-+.IR /var/lib/nfs/rpc_pipefs .
- .SH SEE ALSO
- .BR nfs (5),
--.BR dmsetup (8)
-+.BR dmsetup (8),
-+.BR nfs.conf (5)
- .sp
- RFC 5661 for the NFS version 4.1 specification.
- .br
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index 8eb3fd0..d2da764 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -50,20 +50,36 @@
- #include <errno.h>
- #include <libdevmapper.h>
- 
-+#ifdef HAVE_CONFIG_H
-+#include "config.h"
-+#endif /* HAVE_CONFIG_H */
-+
- #include "device-discovery.h"
- #include "xcommon.h"
-+#include "nfslib.h"
-+#include "conffile.h"
- 
- #define EVENT_SIZE (sizeof(struct inotify_event))
- #define EVENT_BUFSIZE (1024 * EVENT_SIZE)
- 
--#define BL_PIPE_FILE	"/var/lib/nfs/rpc_pipefs/nfs/blocklayout"
--#define NFSPIPE_DIR	"/var/lib/nfs/rpc_pipefs/nfs"
- #define RPCPIPE_DIR	"/var/lib/nfs/rpc_pipefs"
- #define PID_FILE	"/var/run/blkmapd.pid"
- 
-+#define CONF_SAVE(w, f) do {			\
-+	char *p = f;				\
-+	if (p != NULL)				\
-+		(w) = p;			\
-+} while (0)
-+
-+static char bl_pipe_file[PATH_MAX];
-+static char nfspipe_dir[PATH_MAX];
-+static char rpcpipe_dir[PATH_MAX];
-+
- struct bl_disk *visible_disk_list;
- int    bl_watch_fd, bl_pipe_fd, nfs_pipedir_wfd, rpc_pipedir_wfd;
- int    pidfd = -1;
-+char   *conf_path = NULL;
-+
- 
- struct bl_disk_path *bl_get_path(const char *filepath,
- 				 struct bl_disk_path *paths)
-@@ -358,8 +374,8 @@ static void bl_rpcpipe_cb(void)
- 				continue;
- 			if (event->mask & IN_CREATE) {
- 				BL_LOG_WARNING("nfs pipe dir created\n");
--				bl_watch_dir(NFSPIPE_DIR, &nfs_pipedir_wfd);
--				bl_pipe_fd = open(BL_PIPE_FILE, O_RDWR);
-+				bl_watch_dir(nfspipe_dir, &nfs_pipedir_wfd);
-+				bl_pipe_fd = open(bl_pipe_file, O_RDWR);
- 			} else if (event->mask & IN_DELETE) {
- 				BL_LOG_WARNING("nfs pipe dir deleted\n");
- 				inotify_rm_watch(bl_watch_fd, nfs_pipedir_wfd);
-@@ -372,7 +388,7 @@ static void bl_rpcpipe_cb(void)
- 				continue;
- 			if (event->mask & IN_CREATE) {
- 				BL_LOG_WARNING("blocklayout pipe file created\n");
--				bl_pipe_fd = open(BL_PIPE_FILE, O_RDWR);
-+				bl_pipe_fd = open(bl_pipe_file, O_RDWR);
- 				if (bl_pipe_fd < 0)
- 					BL_LOG_ERR("open %s failed: %s\n",
- 						event->name, strerror(errno));
-@@ -437,6 +453,19 @@ int main(int argc, char **argv)
- {
- 	int opt, dflag = 0, fg = 0, ret = 1;
- 	char pidbuf[64];
-+	char *xrpcpipe_dir = NULL;
-+
-+	strncpy(rpcpipe_dir, RPCPIPE_DIR, sizeof(rpcpipe_dir));
-+	conf_path = NFS_CONFFILE;
-+	conf_init();
-+	CONF_SAVE(xrpcpipe_dir, conf_get_str("general", "pipefs-directory"));
-+	if (xrpcpipe_dir != NULL)
-+		strlcpy(rpcpipe_dir, xrpcpipe_dir, sizeof(rpcpipe_dir));
-+
-+	strncpy(nfspipe_dir, rpcpipe_dir, sizeof(nfspipe_dir));
-+	strlcat(nfspipe_dir, "/nfs", sizeof(nfspipe_dir));
-+	strncpy(bl_pipe_file, rpcpipe_dir, sizeof(bl_pipe_file));
-+	strlcat(bl_pipe_file, "/nfs/blocklayout", sizeof(bl_pipe_file));
- 
- 	while ((opt = getopt(argc, argv, "hdf")) != -1) {
- 		switch (opt) {
-@@ -496,12 +525,12 @@ int main(int argc, char **argv)
- 	}
- 
- 	/* open pipe file */
--	bl_watch_dir(RPCPIPE_DIR, &rpc_pipedir_wfd);
--	bl_watch_dir(NFSPIPE_DIR, &nfs_pipedir_wfd);
-+	bl_watch_dir(rpcpipe_dir, &rpc_pipedir_wfd);
-+	bl_watch_dir(nfspipe_dir, &nfs_pipedir_wfd);
- 
--	bl_pipe_fd = open(BL_PIPE_FILE, O_RDWR);
-+	bl_pipe_fd = open(bl_pipe_file, O_RDWR);
- 	if (bl_pipe_fd < 0)
--		BL_LOG_ERR("open pipe file %s failed: %s\n", BL_PIPE_FILE, strerror(errno));
-+		BL_LOG_ERR("open pipe file %s failed: %s\n", bl_pipe_file, strerror(errno));
- 
- 	while (1) {
- 		/* discover device when needed */
+The first patch moves rpc.idmapd's (mostly) undocumented
+pipefs-directory from /etc/idmapd.conf to /etc/nfs.conf.
+
+The second patch adds a deprecation warning to  rpc.gssd if it reads its
+pipefs-directory setting from the [gssd] section of /etc/nfs.conf
+instead of from the [general] section.
+
+The third patch allows blkmapd to read its pipefs-directory setting from
+the [general] section of /etc/nfs.conf as well (previously it was
+hard-coded).
+
+The final patch adds a systemd generator that reads the
+pipefs-directory configuration from /etc/nfs.conf, and if it differs
+from the default it will automatically create a systemd mount unit
+file for the pipefs mountpoint and it will override the dependencies on
+the pipefs mountpoint via the rpc_pipefs.target unit file.
+
+Scott Mayhew (4):
+  idmapd: move the pipefs-directory config option to nfs.conf
+  gssd: add a deprecation warning for pipefs-directory in gssd section
+  blkmapd:  allow the rpc_pipefs mountpoint to be overridden
+  systemd: add a generator for the rpc_pipefs mountpoint
+
+ .gitignore                       |   1 +
+ nfs.conf                         |   6 +-
+ systemd/Makefile.am              |   5 +-
+ systemd/nfs-blkmap.service       |   4 +-
+ systemd/nfs-idmapd.service       |   4 +-
+ systemd/nfs.conf.man             |  13 ++-
+ systemd/rpc-gssd.service.in      |   4 +-
+ systemd/rpc-pipefs-generator.c   | 216 +++++++++++++++++++++++++++++++++++++++
+ systemd/rpc-svcgssd.service      |   3 +-
+ systemd/rpc_pipefs.target        |   3 +
+ utils/blkmapd/blkmapd.man        |  17 ++-
+ utils/blkmapd/device-discovery.c |  47 +++++++--
+ utils/gssd/gssd.c                |   4 +
+ utils/gssd/gssd.man              |  12 ++-
+ utils/idmapd/idmapd.c            |  36 +++++--
+ utils/idmapd/idmapd.man          |  21 +++-
+ 16 files changed, 360 insertions(+), 36 deletions(-)
+ create mode 100644 systemd/rpc-pipefs-generator.c
+ create mode 100644 systemd/rpc_pipefs.target
+
 -- 
 2.9.3
 
