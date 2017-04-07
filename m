@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:19461 "EHLO mx142.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:39372 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933216AbdDGSQI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S932127AbdDGSQI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 7 Apr 2017 14:16:08 -0400
 From: <Anna.Schumaker@Netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 29/34] NFS: Clean up nfs4_proc_get_lease_time()
-Date: Fri, 7 Apr 2017 14:15:23 -0400
-Message-ID: <20170407181528.2832-30-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 27/34] NFS: Clean up nfs4_proc_bind_one_conn_to_session()
+Date: Fri, 7 Apr 2017 14:15:21 -0400
+Message-ID: <20170407181528.2832-28-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 References: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,33 +17,52 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
+Returning errors directly even lets us remove the goto
+
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4proc.c | 10 +++-------
- 1 file changed, 3 insertions(+), 7 deletions(-)
+ fs/nfs/nfs4proc.c | 14 ++++----------
+ 1 file changed, 4 insertions(+), 10 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a3808826b655..dda19a35ad9e 100644
+index 201ca3f2c4ba..184d57a5098d 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -7751,17 +7751,13 @@ int nfs4_proc_get_lease_time(struct nfs_client *clp, struct nfs_fsinfo *fsinfo)
+@@ -7155,8 +7155,6 @@ int nfs4_proc_bind_one_conn_to_session(struct rpc_clnt *clnt,
+ 	};
+ 	struct rpc_task *task;
  
- 	nfs4_init_sequence(&args.la_seq_args, &res.lr_seq_res, 0);
- 	nfs4_set_sequence_privileged(&args.la_seq_args);
 -	dprintk("--> %s\n", __func__);
- 	task = rpc_run_task(&task_setup);
- 
- 	if (IS_ERR(task))
--		status = PTR_ERR(task);
--	else {
--		status = task->tk_status;
--		rpc_put_task(task);
--	}
--	dprintk("<-- %s return %d\n", __func__, status);
-+		return PTR_ERR(task);
- 
-+	status = task->tk_status;
-+	rpc_put_task(task);
+-
+ 	nfs4_copy_sessionid(&args.sessionid, &clp->cl_session->sess_id);
+ 	if (!(clp->cl_session->flags & SESSION4_BACK_CHAN))
+ 		args.dir = NFS4_CDFC4_FORE;
+@@ -7176,24 +7174,20 @@ int nfs4_proc_bind_one_conn_to_session(struct rpc_clnt *clnt,
+ 		if (memcmp(res.sessionid.data,
+ 		    clp->cl_session->sess_id.data, NFS4_MAX_SESSIONID_LEN)) {
+ 			dprintk("NFS: %s: Session ID mismatch\n", __func__);
+-			status = -EIO;
+-			goto out;
++			return -EIO;
+ 		}
+ 		if ((res.dir & args.dir) != res.dir || res.dir == 0) {
+ 			dprintk("NFS: %s: Unexpected direction from server\n",
+ 				__func__);
+-			status = -EIO;
+-			goto out;
++			return -EIO;
+ 		}
+ 		if (res.use_conn_in_rdma_mode != args.use_conn_in_rdma_mode) {
+ 			dprintk("NFS: %s: Server returned RDMA mode = true\n",
+ 				__func__);
+-			status = -EIO;
+-			goto out;
++			return -EIO;
+ 		}
+ 	}
+-out:
+-	dprintk("<-- %s status= %d\n", __func__, status);
++
  	return status;
  }
  
