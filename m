@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:49973 "EHLO mx142.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:54936 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932105AbdDGSPt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Apr 2017 14:15:49 -0400
+        id S932105AbdDGSPr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Apr 2017 14:15:47 -0400
 From: <Anna.Schumaker@Netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 04/34] NFS: Clean up decode_getattr_args()
-Date: Fri, 7 Apr 2017 14:14:58 -0400
-Message-ID: <20170407181528.2832-5-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 01/34] NFS: Clean up do_callback_layoutrecall()
+Date: Fri, 7 Apr 2017 14:14:55 -0400
+Message-ID: <20170407181528.2832-2-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 References: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,32 +17,38 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Removing the dprintk() lets us return the status value directly, rather
-than jumping to a label if an error occurs.
+Removing the dprintk()s lets us simplify the function by removing the
+else condition entirely and returning the status of
+initiate_{file,bulk}_draining() directly.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/callback_xdr.c | 7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ fs/nfs/callback_proc.c | 11 ++---------
+ 1 file changed, 2 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index d051fc3583a9..c782261d86d5 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -192,11 +192,8 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr
- 
- 	status = decode_fh(xdr, &args->fh);
- 	if (unlikely(status != 0))
--		goto out;
--	status = decode_bitmap(xdr, args->bitmap);
--out:
--	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
--	return status;
-+		return status;
-+	return decode_bitmap(xdr, args->bitmap);
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index f073a6d2c6a5..c52408055721 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -317,16 +317,9 @@ static u32 initiate_bulk_draining(struct nfs_client *clp,
+ static u32 do_callback_layoutrecall(struct nfs_client *clp,
+ 				    struct cb_layoutrecallargs *args)
+ {
+-	u32 res;
+-
+-	dprintk("%s enter, type=%i\n", __func__, args->cbl_recall_type);
+ 	if (args->cbl_recall_type == RETURN_FILE)
+-		res = initiate_file_draining(clp, args);
+-	else
+-		res = initiate_bulk_draining(clp, args);
+-	dprintk("%s returning %i\n", __func__, res);
+-	return res;
+-
++		return initiate_file_draining(clp, args);
++	return initiate_bulk_draining(clp, args);
  }
  
- static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr, struct cb_recallargs *args)
+ __be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
 -- 
 2.12.2
 
