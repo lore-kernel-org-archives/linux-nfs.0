@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:5551 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:55096 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932552AbdDGSP7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Apr 2017 14:15:59 -0400
+        id S933093AbdDGSQB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Apr 2017 14:16:01 -0400
 From: <Anna.Schumaker@Netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 18/34] NFS: Clean up nfs4_check_serverowner_minor_id()
-Date: Fri, 7 Apr 2017 14:15:12 -0400
-Message-ID: <20170407181528.2832-19-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 23/34] NFS: Clean up nfs4_init_server()
+Date: Fri, 7 Apr 2017 14:15:17 -0400
+Message-ID: <20170407181528.2832-24-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 References: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,54 +17,53 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Once again, we can remove the function and compare integer values
-directly.
-
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4client.c | 22 +---------------------
- 1 file changed, 1 insertion(+), 21 deletions(-)
+ fs/nfs/nfs4client.c | 16 ++++------------
+ 1 file changed, 4 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 39b8c38b6a68..4f4f179cb849 100644
+index a380255e85ed..2e7fc76cbd4b 100644
 --- a/fs/nfs/nfs4client.c
 +++ b/fs/nfs/nfs4client.c
-@@ -604,25 +604,6 @@ nfs4_check_serverowner_major_id(struct nfs41_server_owner *o1,
+@@ -1025,8 +1025,6 @@ static int nfs4_init_server(struct nfs_server *server,
+ 	struct rpc_timeout timeparms;
+ 	int error;
+ 
+-	dprintk("--> nfs4_init_server()\n");
+-
+ 	nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
+ 			data->timeo, data->retrans);
+ 
+@@ -1054,7 +1052,7 @@ static int nfs4_init_server(struct nfs_server *server,
+ 			data->minorversion,
+ 			data->net);
+ 	if (error < 0)
+-		goto error;
++		return error;
+ 
+ 	if (data->rsize)
+ 		server->rsize = nfs_block_size(data->rsize, NULL);
+@@ -1065,16 +1063,10 @@ static int nfs4_init_server(struct nfs_server *server,
+ 	server->acregmax = data->acregmax * HZ;
+ 	server->acdirmin = data->acdirmin * HZ;
+ 	server->acdirmax = data->acdirmax * HZ;
++	server->port     = data->nfs_server.port;
+ 
+-	server->port = data->nfs_server.port;
+-
+-	error = nfs_init_server_rpcclient(server, &timeparms,
+-					  data->selected_flavor);
+-
+-error:
+-	/* Done */
+-	dprintk("<-- nfs4_init_server() = %d\n", error);
+-	return error;
++	return nfs_init_server_rpcclient(server, &timeparms,
++					 data->selected_flavor);
  }
  
  /*
-- * Returns true if server minor ids match
-- */
--static bool
--nfs4_check_serverowner_minor_id(struct nfs41_server_owner *o1,
--				struct nfs41_server_owner *o2)
--{
--	/* Check eir_server_owner so_minor_id */
--	if (o1->minor_id != o2->minor_id)
--		goto out_minor_mismatch;
--
--	dprintk("NFS: --> %s server owner minor IDs match\n", __func__);
--	return true;
--
--out_minor_mismatch:
--	dprintk("NFS: --> %s server owner minor IDs do not match\n", __func__);
--	return false;
--}
--
--/*
-  * Returns true if the server scopes match
-  */
- static bool
-@@ -674,8 +655,7 @@ int nfs4_detect_session_trunking(struct nfs_client *clp,
- 		goto out_err;
- 
- 	/* Check eir_server_owner so_minor_id */
--	if (!nfs4_check_serverowner_minor_id(clp->cl_serverowner,
--					     res->server_owner))
-+	if (clp->cl_serverowner->minor_id != res->server_owner->minor_id)
- 		goto out_err;
- 
- 	/* Check eir_server_scope */
 -- 
 2.12.2
 
