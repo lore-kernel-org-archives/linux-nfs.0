@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:46795 "EHLO mx143.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:54936 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933181AbdDGSPw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Apr 2017 14:15:52 -0400
+        id S932127AbdDGSPu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Apr 2017 14:15:50 -0400
 From: <Anna.Schumaker@Netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 13/34] NFS: Remove nfs_direct_readpage_release()
-Date: Fri, 7 Apr 2017 14:15:07 -0400
-Message-ID: <20170407181528.2832-14-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 08/34] NFS: Clean up decode_notify_lock_args()
+Date: Fri, 7 Apr 2017 14:15:02 -0400
+Message-ID: <20170407181528.2832-9-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 References: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,44 +17,31 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Just remove the function and have the caller use nfs_release_request()
-instead.
+Let's cut out the goto and return any errors immedately
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/direct.c | 12 +-----------
- 1 file changed, 1 insertion(+), 11 deletions(-)
+ fs/nfs/callback_xdr.c | 7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index aab32fc3d6a8..0b65e25b71ac 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -392,16 +392,6 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
- 	nfs_direct_req_release(dreq);
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index ce1e293b8a18..4cf70dc59933 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -518,11 +518,8 @@ static __be32 decode_notify_lock_args(struct svc_rqst *rqstp, struct xdr_stream
+ 
+ 	status = decode_fh(xdr, &args->cbnl_fh);
+ 	if (unlikely(status != 0))
+-		goto out;
+-	status = decode_lockowner(xdr, args);
+-out:
+-	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+-	return status;
++		return status;
++	return decode_lockowner(xdr, args);
  }
  
--static void nfs_direct_readpage_release(struct nfs_page *req)
--{
--	dprintk("NFS: direct read done (%s/%llu %d@%lld)\n",
--		req->wb_context->dentry->d_sb->s_id,
--		(unsigned long long)NFS_FILEID(d_inode(req->wb_context->dentry)),
--		req->wb_bytes,
--		(long long)req_offset(req));
--	nfs_release_request(req);
--}
--
- static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- {
- 	unsigned long bytes = 0;
-@@ -426,7 +416,7 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
- 			set_page_dirty(page);
- 		bytes += req->wb_bytes;
- 		nfs_list_remove_request(req);
--		nfs_direct_readpage_release(req);
-+		nfs_release_request(req);
- 	}
- out_put:
- 	if (put_dreq(dreq))
+ #endif /* CONFIG_NFS_V4_1 */
 -- 
 2.12.2
 
