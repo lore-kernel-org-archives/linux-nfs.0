@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:2540 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:26541 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933584AbdDGSQA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Apr 2017 14:16:00 -0400
+        id S1754489AbdDGSQE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 7 Apr 2017 14:16:04 -0400
 From: <Anna.Schumaker@Netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 17/34] NFS: Clean up nfs4_match_clientids()
-Date: Fri, 7 Apr 2017 14:15:11 -0400
-Message-ID: <20170407181528.2832-18-Anna.Schumaker@Netapp.com>
+Subject: [PATCH 28/34] NFS: Clean up _nfs4_proc_exchange_id()
+Date: Fri, 7 Apr 2017 14:15:22 -0400
+Message-ID: <20170407181528.2832-29-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 References: <20170407181528.2832-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,58 +17,59 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-If we cut out the dprintk()s, then we don't even need this to be a
-separate function.
-
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs4client.c | 19 ++-----------------
- 1 file changed, 2 insertions(+), 17 deletions(-)
+ fs/nfs/nfs4proc.c | 18 +++---------------
+ 1 file changed, 3 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 8346ccbf2d52..39b8c38b6a68 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -583,21 +583,6 @@ int nfs40_walk_client_list(struct nfs_client *new,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 184d57a5098d..a3808826b655 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7453,15 +7453,14 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	};
+ 	struct nfs41_exchange_id_data *calldata;
+ 	struct rpc_task *task;
+-	int status = -EIO;
++	int status;
  
- #ifdef CONFIG_NFS_V4_1
- /*
-- * Returns true if the client IDs match
-- */
--static bool nfs4_match_clientids(u64 a, u64 b)
--{
--	if (a != b) {
--		dprintk("NFS: --> %s client ID %llx does not match %llx\n",
--			__func__, a, b);
--		return false;
--	}
--	dprintk("NFS: --> %s client ID %llx matches %llx\n",
--		__func__, a, b);
--	return true;
--}
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+-		goto out;
++		return -EIO;
+ 
+-	status = -ENOMEM;
+ 	calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
+ 	if (!calldata)
+-		goto out;
++		return -ENOMEM;
+ 
+ 	if (!xprt)
+ 		nfs4_init_boot_verifier(clp, &verifier);
+@@ -7470,10 +7469,6 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
+ 	if (status)
+ 		goto out_calldata;
+ 
+-	dprintk("NFS call  exchange_id auth=%s, '%s'\n",
+-		clp->cl_rpcclient->cl_auth->au_ops->au_name,
+-		clp->cl_owner_id);
 -
--/*
-  * Returns true if the server major ids match
-  */
- static bool
-@@ -680,7 +665,7 @@ int nfs4_detect_session_trunking(struct nfs_client *clp,
- 				 struct rpc_xprt *xprt)
- {
- 	/* Check eir_clientid */
--	if (!nfs4_match_clientids(clp->cl_clientid, res->clientid))
-+	if (clp->cl_clientid != res->clientid)
- 		goto out_err;
+ 	calldata->res.server_owner = kzalloc(sizeof(struct nfs41_server_owner),
+ 						GFP_NOFS);
+ 	status = -ENOMEM;
+@@ -7539,13 +7534,6 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
  
- 	/* Check eir_server_owner so_major_id */
-@@ -765,7 +750,7 @@ int nfs41_walk_client_list(struct nfs_client *new,
- 		if (pos->cl_cons_state != NFS_CS_READY)
- 			continue;
+ 	rpc_put_task(task);
+ out:
+-	if (clp->cl_implid != NULL)
+-		dprintk("NFS reply exchange_id: Server Implementation ID: "
+-			"domain: %s, name: %s, date: %llu,%u\n",
+-			clp->cl_implid->domain, clp->cl_implid->name,
+-			clp->cl_implid->date.seconds,
+-			clp->cl_implid->date.nseconds);
+-	dprintk("NFS reply exchange_id: %d\n", status);
+ 	return status;
  
--		if (!nfs4_match_clientids(pos->cl_clientid, new->cl_clientid))
-+		if (pos->cl_clientid != new->cl_clientid)
- 			continue;
- 
- 		/*
+ out_impl_id:
 -- 
 2.12.2
 
