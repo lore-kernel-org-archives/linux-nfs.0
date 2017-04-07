@@ -1,133 +1,134 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38702 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751593AbdDFVho (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Apr 2017 17:37:44 -0400
-From: NeilBrown <neilb@suse.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Date: Fri, 07 Apr 2017 07:37:02 +1000
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH v2 4/4] systemd: add a generator for the rpc_pipefs mountpoint
-In-Reply-To: <20170406122931.am64xg5hs3juaqrt@tonberry.usersys.redhat.com>
-References: <20170405211243.12282-1-smayhew@redhat.com> <20170405211243.12282-5-smayhew@redhat.com> <87d1cq14lr.fsf@notabene.neil.brown.name> <20170406122931.am64xg5hs3juaqrt@tonberry.usersys.redhat.com>
-Message-ID: <874ly11am9.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@redhat.com>
+Message-ID: <1491561891.2745.2.camel@redhat.com>
+Subject: Re: [PATCH 4/6] NFS: Add an iocounter wait function for async RPC
+ tasks
+From: Jeff Layton <jlayton@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>, Trond Myklebust
+ <trond.myklebust@primarydata.com>, Anna Schumaker
+ <anna.schumaker@netapp.com>,  bfields@fieldses.org, Miklos Szeredi
+ <miklos@szeredi.hu>, Alexander Viro <viro@zeniv.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Date: Fri, 07 Apr 2017 06:44:51 -0400
+In-Reply-To: <ed1c4fdb8d3c2c8434c53d4c851c31ffac9d93a4.1491477181.git.bcodding@redhat.com>
+References: <cover.1491477181.git.bcodding@redhat.com>
+	 <ed1c4fdb8d3c2c8434c53d4c851c31ffac9d93a4.1491477181.git.bcodding@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Thu, 2017-04-06 at 07:23 -0400, Benjamin Coddington wrote:
+> By sleeping on a new NFS Unlock-On-Close waitqueue, rpc tasks may wait for
+> a lock context's iocounter to reach zero.  The rpc waitqueue is only woken
+> when the open_context has the NFS_CONTEXT_UNLOCK flag set in order to
+> mitigate spurious wake-ups for any iocounter reaching zero.
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfs/client.c           |  1 +
+>  fs/nfs/pagelist.c         | 26 +++++++++++++++++++++++++-
+>  include/linux/nfs_fs.h    |  1 +
+>  include/linux/nfs_fs_sb.h |  1 +
+>  include/linux/nfs_page.h  |  1 +
+>  5 files changed, 29 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 91a8d610ba0f..c335c6dce285 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -218,6 +218,7 @@ static void nfs_cb_idr_remove_locked(struct nfs_client *clp)
+>  static void pnfs_init_server(struct nfs_server *server)
+>  {
+>  	rpc_init_wait_queue(&server->roc_rpcwaitq, "pNFS ROC");
+> +	rpc_init_wait_queue(&server->uoc_rpcwaitq, "NFS UOC");
+>  }
+>  
+>  #else
+> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+> index 6e629b856a00..d163819e4416 100644
+> --- a/fs/nfs/pagelist.c
+> +++ b/fs/nfs/pagelist.c
+> @@ -115,6 +115,27 @@ nfs_iocounter_wait(struct nfs_lock_context *l_ctx)
+>  			TASK_KILLABLE);
+>  }
+>  
+> +bool
+> +nfs_async_iocounter_wait(struct rpc_task *task, void *data)
+> +{
+> +	struct nfs_lock_context *l_ctx = data;
+> +	struct inode *inode = d_inode(l_ctx->open_context->dentry);
+> +	bool ret = false;
+> +
+> +	if (atomic_read(&l_ctx->io_count) > 0) {
+> +		rpc_sleep_on(&NFS_SERVER(inode)->uoc_rpcwaitq, task, NULL);
+> +		ret = true;
+> +	}
+> +
+> +	if (atomic_read(&l_ctx->io_count) == 0) {
+> +		rpc_wake_up_queued_task(&NFS_SERVER(inode)->uoc_rpcwaitq, task);
+> +		ret = false;
+> +	}
+> +
 
-On Thu, Apr 06 2017, Scott Mayhew wrote:
+nit: Would it be better to do the atomic read once into a local variable
+and then compare it afterward?
 
-> On Thu, 06 Apr 2017, NeilBrown wrote:
->
->> On Wed, Apr 05 2017, Scott Mayhew wrote:
->>=20
->> > The nfs.conf has config options for the rpc_pipefs mountpoint.
->> > Currently, changing these from the default also requires manually
->> > overriding the systemd unit files that are hard-coded to mount the
->> > filesystem on /var/lib/nfs/rpc_pipefs.
->> >
->> > This patch adds a generator that creates a mount unit file for the
->> > rpc_pipefs when a non-default value is specified in /etc/nfs.conf, as
->> > well as a target unit file to override the dependencies for the systemd
->> > units using the rpc_pipefs.  The blkmapd, idmapd, and gssd service unit
->> > files have been modified to define their dependencies on the rpc_pipefs
->> > mountpoint indirectly via the rpc_pipefs target unit file.
->> >
->> > This patch also removes the dependency on the rpc_pipefs from the
->> > rpc-svcgssd.service unit file.  rpc.svcgssd uses the sunrpc cache
->> > mechanism to exchange data with the kernel, not the rpc_pipefs.
->> >
->> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
->>=20
->> I was reading through this, which I really thought would be a good patch
->> that I would give an Ack to, and looking at some of the detail involved,
->> I started to wonder if we were really doing the right thing here.
->> You go to some trouble to make the name of the .mount unit file match
->> the name of the location of the mountpoint.  Is that really necessary?
->>=20
->> Unit files created by systemd-fstab-generator do follow that pattern,
->> but they don't have to.
->
->>=20
->> Maybe we should just:
->>=20
->> 1/ rename var-lib-nfs-rpc_pipefs.mount to rpc_pipefs.mount,
->>    and modify the dependencies accordingly.
->>=20
-> The mount doesn't work when I change the name.
->
-> [root@fedora25 ~]# systemctl status rpc_pipefs.mount
-> =E2=97=8F rpc_pipefs.mount - RPC Pipe File System
->    Loaded: error (Reason: Invalid argument)
->    Active: inactive (dead)
->     Where: /var/lib/nfs/rpc_pipefs
->      What: sunrpc
->
-> Apr 06 08:17:59 localhost.localdomain systemd[1]: rpc_pipefs.mount: Where=
-=3D setting doesn't match unit name. Refusing.
->
->
-> Looking back at systemd.mount(5), it looks like they do have to follow
-> that pattern:
->
->        Mount units must be named after the mount point directories they c=
-ontrol.
->        Example: the mount point /home/lennart must be configured in a uni=
-t file
->        home-lennart.mount. For details about the escaping logic used to c=
-onvert a
->        file system path to a unit name, see systemd.unit(5). Note that mo=
-unt units
->        cannot be templated, nor is possible to add multiple names to a mo=
-unt unit
->        by creating additional symlinks to it.
->
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL_GPL(nfs_async_iocounter_wait);
+> +
+>  /*
+>   * nfs_page_group_lock - lock the head of the page group
+>   * @req - request in group that is to be locked
+> @@ -398,8 +419,11 @@ static void nfs_clear_request(struct nfs_page *req)
+>  		req->wb_page = NULL;
+>  	}
+>  	if (l_ctx != NULL) {
+> -		if (atomic_dec_and_test(&l_ctx->io_count))
+> +		if (atomic_dec_and_test(&l_ctx->io_count)) {
+>  			wake_up_atomic_t(&l_ctx->io_count);
+> +			if (test_bit(NFS_CONTEXT_UNLOCK, &ctx->flags))
+> +				rpc_wake_up(&NFS_SERVER(d_inode(ctx->dentry))->uoc_rpcwaitq);
+> +		}
+>  		nfs_put_lock_context(l_ctx);
+>  		req->wb_lock_context = NULL;
+>  	}
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index f1da8c8dd473..3ce3e42beead 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -76,6 +76,7 @@ struct nfs_open_context {
+>  #define NFS_CONTEXT_ERROR_WRITE		(0)
+>  #define NFS_CONTEXT_RESEND_WRITES	(1)
+>  #define NFS_CONTEXT_BAD			(2)
+> +#define NFS_CONTEXT_UNLOCK	(3)
+>  	int error;
+>  
+>  	struct list_head list;
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index b34097c67848..2a70f34dffe8 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -222,6 +222,7 @@ struct nfs_server {
+>  	u32			mountd_version;
+>  	unsigned short		mountd_port;
+>  	unsigned short		mountd_protocol;
+> +	struct rpc_wait_queue	uoc_rpcwaitq;
+>  };
+>  
+>  /* Server capabilities */
+> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+> index 957049f72290..d39ebcba52c8 100644
+> --- a/include/linux/nfs_page.h
+> +++ b/include/linux/nfs_page.h
+> @@ -141,6 +141,7 @@ extern int nfs_page_group_lock(struct nfs_page *, bool);
+>  extern void nfs_page_group_lock_wait(struct nfs_page *);
+>  extern void nfs_page_group_unlock(struct nfs_page *);
+>  extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
+> +extern bool nfs_async_iocounter_wait(struct rpc_task *, void *);
+>  
+>  /*
+>   * Lock the page of an asynchronous request
 
-My turn not to read to the end of the man page I see...
+Looks reasonable otherwise:
 
-That's a strange restriction that seem inconsistent with everything else
-systemd does.  Maybe it it helpful for implementing "RequiresMountsFor"
-but I cannot think of any other justification.
-Anyway, I guess we have to live with it.
-
-I bothered me that you needed to include this:
->> > +	fprintf(f, "DefaultDependencies=3Dno\n");
->> > +	fprintf(f, "After=3Dsystemd-tmpfiles-setup.service\n");
->> > +	fprintf(f, "Conflicts=3Dumount.target\n");
-
-in the code, but I can't see anything we can do about that.
-
-So:
- Reviewed-by: NeilBrown <neilb@suse.com>
-
-for this patch.
-
-Thanks,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljmtP4ACgkQOeye3VZi
-gbmYng/8DYvC6ix+b0gszid3RvjV1ZF3E5+o/vmST2JFDQa4HyHJ6HtfE5arwiwh
-6jLxp1QvylQupnrSBzCPlKXgYFxilS8MQIrfJu1H2eGk1Fn8b5w+zo0dQ+Ikz0lE
-IjUPKUJh24C4QBroqy6R7/Ae2brJ9UM2Q4dofMKGI7UNgFOLpco5+64Zp0Hc6EHh
-/W15UWPH3/YM7ZpJkJMmdhEQfqA0/YbZmsqCQUGsvLKj/6AJ6nHDCBhWqnQAi8LQ
-g8e/XnOacMb89EJHL970UY8S387jfyYRaff1evg5wCPdAebaEWhdRJ64Q/u1MeX+
-SND3Ei2bhJ/KnalTWHchqP3xndsVsgvzjK4ozFwzXY9XGcjrWq4Pa4yVYXgHP7sp
-WpTfWgiWirD+f5onRGvanzUMoAO2YXVaJY7Sm4iEWkpnM6yhb1vIUmtjMrWEJ2Uy
-d8sa4XO8CgBaT5iUmiK82C0agk8QvTS1Ro5zHrPyhOtwEhXyQLKLFr27Y11PFpFM
-vq3FBL7ZYnnn9CykgW8u3KTCqi1JjwvUrwXRSNtsjCXAmDOZHuSItFulMozFgb0j
-o0wXHSg2ofDhJq7jvY7kHgIR8BNyborNZSxUfncOvVg5Xum3dfGsSqGpfxnFCZ3e
-roDAWD8LOHx23H5gPSbEYYiOPnfTKkpiMR+OAmX4D8TmE+qIo7A=
-=sljA
------END PGP SIGNATURE-----
---=-=-=--
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
