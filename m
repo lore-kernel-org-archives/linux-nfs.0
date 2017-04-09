@@ -1,106 +1,186 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35389 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752230AbdDIRFa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 13:05:30 -0400
-Subject: [PATCH v3 00/14] Server-side NFS/RDMA changes proposed for v4.12
+Received: from mail-io0-f194.google.com ([209.85.223.194]:32783 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752230AbdDIRFi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 13:05:38 -0400
+Subject: [PATCH v3 01/14] svcrdma: Move send_wr to svc_rdma_op_ctxt
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sun, 09 Apr 2017 13:05:28 -0400
-Message-ID: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
+Date: Sun, 09 Apr 2017 13:05:36 -0400
+Message-ID: <20170409170536.15073.60128.stgit@klimt.1015granger.net>
+In-Reply-To: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
+References: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series overhauls the "reply send" side of the RPC-over-RDMA
-transport to use the new rdma_rw API. No significant performance
-changes were noticed with this overhaul. Benefits include:
+Clean up: Move the ib_send_wr off the stack, and move common code
+to post a Send Work Request into a helper.
 
-<> Better scalability -- fewer ib_post_send calls per RPC Reply
+This is a refactoring change only.
 
-<> Better code modularity -- less code duplication with other ULPs
-
-<> Ability for svcrdma to use any registration mode for RDMA Writes
-
-<> Correct handling of RPCs that have both a Write and a Reply chunk
-
-<> Correct handling of Write chunk overrun
-
-This revision makes two scalability improvements that Christoph and
-Sagi requested in previous review comments:
-
-1. Use sg_alloc_table_chained to allocate the scatterlist for each
-rdma_rw_ctx. A permanent part of the scatterlist is used for smaller
-I/Os, and a chained part is allocated on demand when performing
-large I/Os. This reduces the amount of memory tied down per client.
-
-2. So far each rdma_rw_ctx has been posted individually. Now all
-rdma_rw_ctx's for one chunk are chained together and posted with a
-single ib_post_send. This reduces the number of ib_post_send
-operations for complex RPC Replies.
-
-
-Bruce, IMO these are ready for your review.
-
-
-Available in the "nfsd-rdma-for-4.12" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.12
-
-
-Changes since v2:
-- Rebased on v4.11-rc5
-- Use chained sg_tables
-- Always one ib_post_send per chunk
-
-
-Changes since v1:
-- Rebased on v4.11-rc4
-- Dropped clean up of svc_rdma_post_recv
-- Postponed addition of code related to recvfrom
-- Made svc_rdma_{get,put}_rw_ctxt behave symmetrically
-- Converted scatterlist to sg_table
-- Moved transport header construction into svc_rdma_sendto.c
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ include/linux/sunrpc/svc_rdma.h            |    4 ++
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   11 -----
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   64 +++++++++++++++++-----------
+ 3 files changed, 44 insertions(+), 35 deletions(-)
 
-Chuck Lever (14):
-      svcrdma: Move send_wr to svc_rdma_op_ctxt
-      svcrdma: Add svc_rdma_map_reply_hdr()
-      svcrdma: Eliminate RPCRDMA_SQ_DEPTH_MULT
-      svcrdma: Add helper to save pages under I/O
-      svcrdma: Clean up svc_rdma_get_inv_rkey()
-      svcrdma: Introduce local rdma_rw API helpers
-      svcrdma: Use rdma_rw API in RPC reply path
-      svcrdma: Clean up RDMA_ERROR path
-      svcrdma: Report Write/Reply chunk overruns
-      svcrdma: Clean up RPC-over-RDMA backchannel reply processing
-      svcrdma: Reduce size of sge array in struct svc_rdma_op_ctxt
-      svcrdma: Remove unused RDMA Write completion handler
-      svcrdma: Remove the req_map cache
-      svcrdma: Clean out old XDR encoders
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index b105f73..287db5c 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -85,6 +85,7 @@ struct svc_rdma_op_ctxt {
+ 	enum dma_data_direction direction;
+ 	int count;
+ 	unsigned int mapped_sges;
++	struct ib_send_wr send_wr;
+ 	struct ib_sge sge[RPCSVC_MAXPAGES];
+ 	struct page *pages[RPCSVC_MAXPAGES];
+ };
+@@ -227,6 +228,9 @@ extern int rdma_read_chunk_frmr(struct svcxprt_rdma *, struct svc_rqst *,
+ /* svc_rdma_sendto.c */
+ extern int svc_rdma_map_xdr(struct svcxprt_rdma *, struct xdr_buf *,
+ 			    struct svc_rdma_req_map *, bool);
++extern int svc_rdma_post_send_wr(struct svcxprt_rdma *rdma,
++				 struct svc_rdma_op_ctxt *ctxt,
++				 int num_sge, u32 inv_rkey);
+ extern int svc_rdma_sendto(struct svc_rqst *);
+ extern void svc_rdma_send_error(struct svcxprt_rdma *, struct rpcrdma_msg *,
+ 				int);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index ff1df40..f12f39c 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -104,7 +104,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 	struct xdr_buf *sndbuf = &rqst->rq_snd_buf;
+ 	struct svc_rdma_op_ctxt *ctxt;
+ 	struct svc_rdma_req_map *vec;
+-	struct ib_send_wr send_wr;
+ 	int ret;
+ 
+ 	vec = svc_rdma_get_req_map(rdma);
+@@ -132,15 +131,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 	}
+ 	svc_rdma_count_mappings(rdma, ctxt);
+ 
+-	memset(&send_wr, 0, sizeof(send_wr));
+-	ctxt->cqe.done = svc_rdma_wc_send;
+-	send_wr.wr_cqe = &ctxt->cqe;
+-	send_wr.sg_list = ctxt->sge;
+-	send_wr.num_sge = 1;
+-	send_wr.opcode = IB_WR_SEND;
+-	send_wr.send_flags = IB_SEND_SIGNALED;
+-
+-	ret = svc_rdma_send(rdma, &send_wr);
++	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
+ 	if (ret) {
+ 		ret = -EIO;
+ 		goto out_unmap;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 515221b..f90b40d 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -435,6 +435,43 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+ 	return -EIO;
+ }
+ 
++/**
++ * svc_rdma_post_send_wr - Set up and post one Send Work Request
++ * @rdma: controlling transport
++ * @ctxt: op_ctxt for transmitting the Send WR
++ * @num_sge: number of SGEs to send
++ * @inv_rkey: R_key argument to Send With Invalidate, or zero
++ *
++ * Returns:
++ *	%0 if the Send* was posted successfully,
++ *	%-ENOTCONN if the connection was lost or dropped,
++ *	%-EINVAL if there was a problem with the Send we built,
++ *	%-ENOMEM if ib_post_send failed.
++ */
++int svc_rdma_post_send_wr(struct svcxprt_rdma *rdma,
++			  struct svc_rdma_op_ctxt *ctxt, int num_sge,
++			  u32 inv_rkey)
++{
++	struct ib_send_wr *send_wr = &ctxt->send_wr;
++
++	dprintk("svcrdma: posting Send WR with %u sge(s)\n", num_sge);
++
++	send_wr->next = NULL;
++	ctxt->cqe.done = svc_rdma_wc_send;
++	send_wr->wr_cqe = &ctxt->cqe;
++	send_wr->sg_list = ctxt->sge;
++	send_wr->num_sge = num_sge;
++	send_wr->send_flags = IB_SEND_SIGNALED;
++	if (inv_rkey) {
++		send_wr->opcode = IB_WR_SEND_WITH_INV;
++		send_wr->ex.invalidate_rkey = inv_rkey;
++	} else {
++		send_wr->opcode = IB_WR_SEND;
++	}
++
++	return svc_rdma_send(rdma, send_wr);
++}
++
+ /* This function prepares the portion of the RPCRDMA message to be
+  * sent in the RDMA_SEND. This function is called after data sent via
+  * RDMA has already been transmitted. There are three cases:
+@@ -460,7 +497,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		      u32 inv_rkey)
+ {
+ 	struct svc_rdma_op_ctxt *ctxt;
+-	struct ib_send_wr send_wr;
+ 	u32 xdr_off;
+ 	int sge_no;
+ 	int sge_bytes;
+@@ -524,19 +560,8 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		pr_err("svcrdma: Too many sges (%d)\n", sge_no);
+ 		goto err;
+ 	}
+-	memset(&send_wr, 0, sizeof send_wr);
+-	ctxt->cqe.done = svc_rdma_wc_send;
+-	send_wr.wr_cqe = &ctxt->cqe;
+-	send_wr.sg_list = ctxt->sge;
+-	send_wr.num_sge = sge_no;
+-	if (inv_rkey) {
+-		send_wr.opcode = IB_WR_SEND_WITH_INV;
+-		send_wr.ex.invalidate_rkey = inv_rkey;
+-	} else
+-		send_wr.opcode = IB_WR_SEND;
+-	send_wr.send_flags =  IB_SEND_SIGNALED;
+ 
+-	ret = svc_rdma_send(rdma, &send_wr);
++	ret = svc_rdma_post_send_wr(rdma, ctxt, sge_no, inv_rkey);
+ 	if (ret)
+ 		goto err;
+ 
+@@ -652,7 +677,6 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
+ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 			 int status)
+ {
+-	struct ib_send_wr err_wr;
+ 	struct page *p;
+ 	struct svc_rdma_op_ctxt *ctxt;
+ 	enum rpcrdma_errcode err;
+@@ -692,17 +716,7 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
+ 	}
+ 	svc_rdma_count_mappings(xprt, ctxt);
+ 
+-	/* Prepare SEND WR */
+-	memset(&err_wr, 0, sizeof(err_wr));
+-	ctxt->cqe.done = svc_rdma_wc_send;
+-	err_wr.wr_cqe = &ctxt->cqe;
+-	err_wr.sg_list = ctxt->sge;
+-	err_wr.num_sge = 1;
+-	err_wr.opcode = IB_WR_SEND;
+-	err_wr.send_flags = IB_SEND_SIGNALED;
+-
+-	/* Post It */
+-	ret = svc_rdma_send(xprt, &err_wr);
++	ret = svc_rdma_post_send_wr(xprt, ctxt, 1, 0);
+ 	if (ret) {
+ 		dprintk("svcrdma: Error %d posting send for protocol error\n",
+ 			ret);
 
-
- include/linux/sunrpc/rpc_rdma.h            |    3 
- include/linux/sunrpc/svc_rdma.h            |   75 +-
- net/sunrpc/Kconfig                         |    1 
- net/sunrpc/xprtrdma/Makefile               |    2 
- net/sunrpc/xprtrdma/svc_rdma.c             |    8 
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   71 +-
- net/sunrpc/xprtrdma/svc_rdma_marshal.c     |   89 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   79 ++
- net/sunrpc/xprtrdma/svc_rdma_rw.c          |  512 +++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  978 ++++++++++++++--------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c   |  110 ---
- 11 files changed, 1131 insertions(+), 797 deletions(-)
- create mode 100644 net/sunrpc/xprtrdma/svc_rdma_rw.c
-
---
-Chuck Lever
