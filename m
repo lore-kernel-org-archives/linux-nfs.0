@@ -1,121 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:34072 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752418AbdDIRHX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 13:07:23 -0400
-Subject: [PATCH v3 14/14] svcrdma: Clean out old XDR encoders
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sun, 09 Apr 2017 13:07:21 -0400
-Message-ID: <20170409170721.15073.23878.stgit@klimt.1015granger.net>
-In-Reply-To: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
-References: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:46418 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752320AbdDISdL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 9 Apr 2017 14:33:11 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 565CE81239
+        for <linux-nfs@vger.kernel.org>; Sun,  9 Apr 2017 18:33:10 +0000 (UTC)
+Subject: Re: [PATCH] nfs-server-generator: fix a potential memory leak issue
+To: ChunYu Wang <chunwang@redhat.com>
+References: <1491754328-28518-1-git-send-email-chunwang@redhat.com>
+Cc: linux-nfs@vger.kernel.org, yoyang@redhat.com, jiyin@redhat.com
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <7073c0d3-809f-4b7c-2b73-db0992dfc653@RedHat.com>
+Date: Sun, 9 Apr 2017 14:33:09 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1491754328-28518-1-git-send-email-chunwang@redhat.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: These have been replaced and are no longer used.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
----
- include/linux/sunrpc/svc_rdma.h        |    4 --
- net/sunrpc/xprtrdma/svc_rdma_marshal.c |   70 --------------------------------
- 2 files changed, 74 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 479bb7f..f3787d8 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -187,10 +187,6 @@ extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
- 
- /* svc_rdma_marshal.c */
- extern int svc_rdma_xdr_decode_req(struct xdr_buf *);
--extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
--extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
--					    __be32, __be64, u32);
--extern unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp);
- 
- /* svc_rdma_recvfrom.c */
- extern int svc_rdma_recvfrom(struct svc_rqst *);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-index ae58a89..bdcf7d8 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
-@@ -166,73 +166,3 @@ int svc_rdma_xdr_decode_req(struct xdr_buf *rq_arg)
- 	dprintk("svcrdma: failed to parse transport header\n");
- 	return -EINVAL;
- }
--
--/**
-- * svc_rdma_xdr_get_reply_hdr_length - Get length of Reply transport header
-- * @rdma_resp: buffer containing Reply transport header
-- *
-- * Returns length of transport header, in bytes.
-- */
--unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp)
--{
--	unsigned int nsegs;
--	__be32 *p;
--
--	p = rdma_resp;
--
--	/* RPC-over-RDMA V1 replies never have a Read list. */
--	p += rpcrdma_fixed_maxsz + 1;
--
--	/* Skip Write list. */
--	while (*p++ != xdr_zero) {
--		nsegs = be32_to_cpup(p++);
--		p += nsegs * rpcrdma_segment_maxsz;
--	}
--
--	/* Skip Reply chunk. */
--	if (*p++ != xdr_zero) {
--		nsegs = be32_to_cpup(p++);
--		p += nsegs * rpcrdma_segment_maxsz;
--	}
--
--	return (unsigned long)p - (unsigned long)rdma_resp;
--}
--
--void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
--{
--	struct rpcrdma_write_array *ary;
--
--	/* no read-list */
--	rmsgp->rm_body.rm_chunks[0] = xdr_zero;
--
--	/* write-array discrim */
--	ary = (struct rpcrdma_write_array *)
--		&rmsgp->rm_body.rm_chunks[1];
--	ary->wc_discrim = xdr_one;
--	ary->wc_nchunks = cpu_to_be32(chunks);
--
--	/* write-list terminator */
--	ary->wc_array[chunks].wc_target.rs_handle = xdr_zero;
--
--	/* reply-array discriminator */
--	ary->wc_array[chunks].wc_target.rs_length = xdr_zero;
--}
--
--void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
--				 int chunks)
--{
--	ary->wc_discrim = xdr_one;
--	ary->wc_nchunks = cpu_to_be32(chunks);
--}
--
--void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary,
--				     int chunk_no,
--				     __be32 rs_handle,
--				     __be64 rs_offset,
--				     u32 write_len)
--{
--	struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
--	seg->rs_handle = rs_handle;
--	seg->rs_offset = rs_offset;
--	seg->rs_length = cpu_to_be32(write_len);
--}
+On 04/09/2017 12:12 PM, ChunYu Wang wrote:
+> Signed-off-by: ChunYu Wang <chunwang@redhat.com>
+> ---
+> Fix a potential memory leak issue caused by unfree pathname 'path'.
+> 
+>  systemd/nfs-server-generator.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
+> index 4aa6509..441cec5 100644
+> --- a/systemd/nfs-server-generator.c
+> +++ b/systemd/nfs-server-generator.c
+> @@ -139,6 +139,7 @@ int main(int argc, char *argv[])
+>  	strcat(path, filebase);
+>  	f = fopen(path, "w");
+>  	if (!f)
+> +		free(path);
+>  		exit(1);
+First of all you need some '{' '}' so the process will not 
+always exit when f != NULL... 
 
+Secondly dead process don't leak memory. :-) They don't leak anything... they are died! ;-)
+
+steved.
+
+>  	fprintf(f, "# Automatically generated by nfs-server-generator\n\n[Unit]\n");
+>  
+> 
