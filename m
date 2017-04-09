@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35482 "EHLO
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34774 "EHLO
         mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752230AbdDIRFr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 13:05:47 -0400
-Subject: [PATCH v3 02/14] svcrdma: Add svc_rdma_map_reply_hdr()
+        with ESMTP id S1752230AbdDIRGL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 13:06:11 -0400
+Subject: [PATCH v3 05/14] svcrdma: Clean up svc_rdma_get_inv_rkey()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sun, 09 Apr 2017 13:05:44 -0400
-Message-ID: <20170409170544.15073.80801.stgit@klimt.1015granger.net>
+Date: Sun, 09 Apr 2017 13:06:08 -0400
+Message-ID: <20170409170608.15073.36554.stgit@klimt.1015granger.net>
 In-Reply-To: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
 References: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,177 +16,76 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce a helper to DMA-map a reply's transport header before
-sending it. This will in part replace the map vector cache.
+Replace C structure-based XDR decoding with more portable code that
+instead uses pointer arithmetic.
+
+This is a refactoring change only.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/sunrpc/svc_rdma.h            |    3 +
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   36 +++++------------
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |   61 ++++++++++++++++++++++------
- 3 files changed, 62 insertions(+), 38 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |   39 ++++++++++++++-------------------
+ 1 file changed, 17 insertions(+), 22 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 287db5c..002a46d 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -228,6 +228,9 @@ extern int rdma_read_chunk_frmr(struct svcxprt_rdma *, struct svc_rqst *,
- /* svc_rdma_sendto.c */
- extern int svc_rdma_map_xdr(struct svcxprt_rdma *, struct xdr_buf *,
- 			    struct svc_rdma_req_map *, bool);
-+extern int svc_rdma_map_reply_hdr(struct svcxprt_rdma *rdma,
-+				  struct svc_rdma_op_ctxt *ctxt,
-+				  __be32 *rdma_resp, unsigned int len);
- extern int svc_rdma_post_send_wr(struct svcxprt_rdma *rdma,
- 				 struct svc_rdma_op_ctxt *ctxt,
- 				 int num_sge, u32 inv_rkey);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index f12f39c..0305b33 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -101,50 +101,36 @@ int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt, struct rpcrdma_msg *rmsgp,
- static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 			      struct rpc_rqst *rqst)
- {
--	struct xdr_buf *sndbuf = &rqst->rq_snd_buf;
- 	struct svc_rdma_op_ctxt *ctxt;
--	struct svc_rdma_req_map *vec;
- 	int ret;
- 
--	vec = svc_rdma_get_req_map(rdma);
--	ret = svc_rdma_map_xdr(rdma, sndbuf, vec, false);
--	if (ret)
-+	ctxt = svc_rdma_get_context(rdma);
-+
-+	/* rpcrdma_bc_send_request builds the transport header and
-+	 * the backchannel RPC message in the same buffer. Thus only
-+	 * one SGE is needed to send both.
-+	 */
-+	ret = svc_rdma_map_reply_hdr(rdma, ctxt, rqst->rq_buffer,
-+				     rqst->rq_snd_buf.len);
-+	if (ret < 0)
- 		goto out_err;
- 
- 	ret = svc_rdma_repost_recv(rdma, GFP_NOIO);
- 	if (ret)
- 		goto out_err;
- 
--	ctxt = svc_rdma_get_context(rdma);
--	ctxt->pages[0] = virt_to_page(rqst->rq_buffer);
--	ctxt->count = 1;
--
--	ctxt->direction = DMA_TO_DEVICE;
--	ctxt->sge[0].lkey = rdma->sc_pd->local_dma_lkey;
--	ctxt->sge[0].length = sndbuf->len;
--	ctxt->sge[0].addr =
--	    ib_dma_map_page(rdma->sc_cm_id->device, ctxt->pages[0], 0,
--			    sndbuf->len, DMA_TO_DEVICE);
--	if (ib_dma_mapping_error(rdma->sc_cm_id->device, ctxt->sge[0].addr)) {
--		ret = -EIO;
--		goto out_unmap;
--	}
--	svc_rdma_count_mappings(rdma, ctxt);
--
- 	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
--	if (ret) {
--		ret = -EIO;
-+	if (ret)
- 		goto out_unmap;
--	}
- 
- out_err:
--	svc_rdma_put_req_map(rdma, vec);
- 	dprintk("svcrdma: %s returns %d\n", __func__, ret);
- 	return ret;
- 
- out_unmap:
- 	svc_rdma_unmap_dma(ctxt);
- 	svc_rdma_put_context(ctxt, 1);
-+	ret = -EIO;
- 	goto out_err;
- }
- 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index f90b40d..a7dc71d 100644
+index 2798f3e..2eb3df6 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -217,6 +217,49 @@ static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
- 	return 0;
+@@ -189,32 +189,25 @@ static void svc_rdma_get_write_arrays(struct rpcrdma_msg *rmsgp,
+  * Invalidate, and responder chooses one rkey to invalidate.
+  *
+  * Find a candidate rkey to invalidate when sending a reply.  Picks the
+- * first rkey it finds in the chunks lists.
++ * first R_key it finds in the chunk lists.
+  *
+  * Returns zero if RPC's chunk lists are empty.
+  */
+-static u32 svc_rdma_get_inv_rkey(struct rpcrdma_msg *rdma_argp,
+-				 struct rpcrdma_write_array *wr_ary,
+-				 struct rpcrdma_write_array *rp_ary)
++static u32 svc_rdma_get_inv_rkey(__be32 *rdma_argp,
++				 __be32 *wr_lst, __be32 *rp_ch)
+ {
+-	struct rpcrdma_read_chunk *rd_ary;
+-	struct rpcrdma_segment *arg_ch;
+-
+-	rd_ary = (struct rpcrdma_read_chunk *)&rdma_argp->rm_body.rm_chunks[0];
+-	if (rd_ary->rc_discrim != xdr_zero)
+-		return be32_to_cpu(rd_ary->rc_target.rs_handle);
+-
+-	if (wr_ary && be32_to_cpu(wr_ary->wc_nchunks)) {
+-		arg_ch = &wr_ary->wc_array[0].wc_target;
+-		return be32_to_cpu(arg_ch->rs_handle);
+-	}
+-
+-	if (rp_ary && be32_to_cpu(rp_ary->wc_nchunks)) {
+-		arg_ch = &rp_ary->wc_array[0].wc_target;
+-		return be32_to_cpu(arg_ch->rs_handle);
+-	}
++	__be32 *p;
+ 
+-	return 0;
++	p = rdma_argp + rpcrdma_fixed_maxsz;
++	if (*p != xdr_zero)
++		p += 2;
++	else if (wr_lst && be32_to_cpup(wr_lst + 1))
++		p = wr_lst + 2;
++	else if (rp_ch && be32_to_cpup(rp_ch + 1))
++		p = rp_ch + 2;
++	else
++		return 0;
++	return be32_to_cpup(p);
  }
  
-+static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
-+				 struct svc_rdma_op_ctxt *ctxt,
-+				 unsigned int sge_no,
-+				 struct page *page,
-+				 unsigned int offset,
-+				 unsigned int len)
-+{
-+	struct ib_device *dev = rdma->sc_cm_id->device;
-+	dma_addr_t dma_addr;
-+
-+	dma_addr = ib_dma_map_page(dev, page, offset, len, DMA_TO_DEVICE);
-+	if (ib_dma_mapping_error(dev, dma_addr))
-+		return -EIO;
-+
-+	ctxt->sge[sge_no].addr = dma_addr;
-+	ctxt->sge[sge_no].length = len;
-+	ctxt->sge[sge_no].lkey = rdma->sc_pd->local_dma_lkey;
-+	svc_rdma_count_mappings(rdma, ctxt);
-+	return 0;
-+}
-+
-+/**
-+ * svc_rdma_map_reply_hdr - DMA map the transport header buffer
-+ * @rdma: controlling transport
-+ * @ctxt: op_ctxt for the Send WR
-+ * @rdma_resp: buffer containing transport header
-+ * @len: length of transport header
-+ *
-+ * Returns:
-+ *	%0 if the header is DMA mapped,
-+ *	%-EIO if DMA mapping failed.
-+ */
-+int svc_rdma_map_reply_hdr(struct svcxprt_rdma *rdma,
-+			   struct svc_rdma_op_ctxt *ctxt,
-+			   __be32 *rdma_resp,
-+			   unsigned int len)
-+{
-+	ctxt->direction = DMA_TO_DEVICE;
-+	ctxt->pages[0] = virt_to_page(rdma_resp);
-+	ctxt->count = 1;
-+	return svc_rdma_dma_map_page(rdma, ctxt, 0, ctxt->pages[0], 0, len);
-+}
-+
- /* Assumptions:
-  * - The specified write_len can be represented in sc_max_sge * PAGE_SIZE
-  */
-@@ -699,22 +742,14 @@ void svc_rdma_send_error(struct svcxprt_rdma *xprt, struct rpcrdma_msg *rmsgp,
- 		err = ERR_VERS;
- 	length = svc_rdma_xdr_encode_error(xprt, rmsgp, err, va);
+ static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
+@@ -650,7 +643,9 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
  
-+	/* Map transport header; no RPC message payload */
- 	ctxt = svc_rdma_get_context(xprt);
--	ctxt->direction = DMA_TO_DEVICE;
--	ctxt->count = 1;
--	ctxt->pages[0] = p;
--
--	/* Prepare SGE for local address */
--	ctxt->sge[0].lkey = xprt->sc_pd->local_dma_lkey;
--	ctxt->sge[0].length = length;
--	ctxt->sge[0].addr = ib_dma_map_page(xprt->sc_cm_id->device,
--					    p, 0, length, DMA_TO_DEVICE);
--	if (ib_dma_mapping_error(xprt->sc_cm_id->device, ctxt->sge[0].addr)) {
--		dprintk("svcrdma: Error mapping buffer for protocol error\n");
--		svc_rdma_put_context(ctxt, 1);
-+	ret = svc_rdma_map_reply_hdr(xprt, ctxt, &rmsgp->rm_xid, length);
-+	if (ret) {
-+		dprintk("svcrdma: Error %d mapping send for protocol error\n",
-+			ret);
- 		return;
- 	}
--	svc_rdma_count_mappings(xprt, ctxt);
+ 	inv_rkey = 0;
+ 	if (rdma->sc_snd_w_inv)
+-		inv_rkey = svc_rdma_get_inv_rkey(rdma_argp, wr_ary, rp_ary);
++		inv_rkey = svc_rdma_get_inv_rkey(&rdma_argp->rm_xid,
++						 (__be32 *)wr_ary,
++						 (__be32 *)rp_ary);
  
- 	ret = svc_rdma_post_send_wr(xprt, ctxt, 1, 0);
- 	if (ret) {
+ 	/* Build an req vec for the XDR */
+ 	vec = svc_rdma_get_req_map(rdma);
 
