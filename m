@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36399 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752418AbdDIRHP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 13:07:15 -0400
-Subject: [PATCH v3 13/14] svcrdma: Remove the req_map cache
+Received: from mail-io0-f195.google.com ([209.85.223.195]:34072 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752418AbdDIRHX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 13:07:23 -0400
+Subject: [PATCH v3 14/14] svcrdma: Clean out old XDR encoders
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sun, 09 Apr 2017 13:07:13 -0400
-Message-ID: <20170409170713.15073.6808.stgit@klimt.1015granger.net>
+Date: Sun, 09 Apr 2017 13:07:21 -0400
+Message-ID: <20170409170721.15073.23878.stgit@klimt.1015granger.net>
 In-Reply-To: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
 References: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,289 +16,106 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-req_maps are no longer used by the send path and can thus be removed.
+Clean up: These have been replaced and are no longer used.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
 ---
- include/linux/sunrpc/svc_rdma.h          |   34 ------------
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   68 ------------------------
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   84 ------------------------------
- 3 files changed, 1 insertion(+), 185 deletions(-)
+ include/linux/sunrpc/svc_rdma.h        |    4 --
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c |   70 --------------------------------
+ 2 files changed, 74 deletions(-)
 
 diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index f58c534..479bb7f 100644
+index 479bb7f..f3787d8 100644
 --- a/include/linux/sunrpc/svc_rdma.h
 +++ b/include/linux/sunrpc/svc_rdma.h
-@@ -96,23 +96,6 @@ struct svc_rdma_op_ctxt {
- 	struct page *pages[RPCSVC_MAXPAGES];
- };
+@@ -187,10 +187,6 @@ extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
  
--/*
-- * NFS_ requests are mapped on the client side by the chunk lists in
-- * the RPCRDMA header. During the fetching of the RPC from the client
-- * and the writing of the reply to the client, the memory in the
-- * client and the memory in the server must be mapped as contiguous
-- * vaddr/len for access by the hardware. These data strucures keep
-- * these mappings.
+ /* svc_rdma_marshal.c */
+ extern int svc_rdma_xdr_decode_req(struct xdr_buf *);
+-extern void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *, int);
+-extern void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *, int,
+-					    __be32, __be64, u32);
+-extern unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp);
+ 
+ /* svc_rdma_recvfrom.c */
+ extern int svc_rdma_recvfrom(struct svc_rqst *);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+index ae58a89..bdcf7d8 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+@@ -166,73 +166,3 @@ int svc_rdma_xdr_decode_req(struct xdr_buf *rq_arg)
+ 	dprintk("svcrdma: failed to parse transport header\n");
+ 	return -EINVAL;
+ }
+-
+-/**
+- * svc_rdma_xdr_get_reply_hdr_length - Get length of Reply transport header
+- * @rdma_resp: buffer containing Reply transport header
 - *
-- * For an RDMA_WRITE, the 'sge' maps the RPC REPLY. For RDMA_READ, the
-- * 'sge' in the svc_rdma_req_map maps the server side RPC reply and the
-- * 'ch' field maps the read-list of the RPCRDMA header to the 'sge'
-- * mapping of the reply.
+- * Returns length of transport header, in bytes.
 - */
--struct svc_rdma_chunk_sge {
--	int start;		/* sge no for this chunk */
--	int count;		/* sge count for this chunk */
--};
- struct svc_rdma_fastreg_mr {
- 	struct ib_mr *mr;
- 	struct scatterlist *sg;
-@@ -121,15 +104,7 @@ struct svc_rdma_fastreg_mr {
- 	enum dma_data_direction direction;
- 	struct list_head frmr_list;
- };
--struct svc_rdma_req_map {
--	struct list_head free;
--	unsigned long count;
--	union {
--		struct kvec sge[RPCSVC_MAXPAGES];
--		struct svc_rdma_chunk_sge ch[RPCSVC_MAXPAGES];
--		unsigned long lkey[RPCSVC_MAXPAGES];
--	};
--};
-+
- #define RDMACTXT_F_LAST_CTXT	2
- 
- #define	SVCRDMA_DEVCAP_FAST_REG		1	/* fast mr registration */
-@@ -160,8 +135,6 @@ struct svcxprt_rdma {
- 	int		     sc_ctxt_used;
- 	spinlock_t	     sc_rw_ctxt_lock;
- 	struct list_head     sc_rw_ctxts;
--	spinlock_t	     sc_map_lock;
--	struct list_head     sc_maps;
- 
- 	struct list_head     sc_rq_dto_q;
- 	spinlock_t	     sc_rq_dto_lock;
-@@ -237,8 +210,6 @@ extern int svc_rdma_send_reply_chunk(struct svcxprt_rdma *rdma,
- 				     struct xdr_buf *xdr);
- 
- /* svc_rdma_sendto.c */
--extern int svc_rdma_map_xdr(struct svcxprt_rdma *, struct xdr_buf *,
--			    struct svc_rdma_req_map *, bool);
- extern int svc_rdma_map_reply_hdr(struct svcxprt_rdma *rdma,
- 				  struct svc_rdma_op_ctxt *ctxt,
- 				  __be32 *rdma_resp, unsigned int len);
-@@ -259,9 +230,6 @@ extern int svc_rdma_post_send_wr(struct svcxprt_rdma *rdma,
- extern struct svc_rdma_op_ctxt *svc_rdma_get_context(struct svcxprt_rdma *);
- extern void svc_rdma_put_context(struct svc_rdma_op_ctxt *, int);
- extern void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt);
--extern struct svc_rdma_req_map *svc_rdma_get_req_map(struct svcxprt_rdma *);
--extern void svc_rdma_put_req_map(struct svcxprt_rdma *,
--				 struct svc_rdma_req_map *);
- extern struct svc_rdma_fastreg_mr *svc_rdma_get_frmr(struct svcxprt_rdma *);
- extern void svc_rdma_put_frmr(struct svcxprt_rdma *,
- 			      struct svc_rdma_fastreg_mr *);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index e514f68..1736337 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -240,74 +240,6 @@ static void svc_rdma_xdr_encode_reply_chunk(__be32 *rdma_resp, __be32 *rp_ch,
- 	xdr_encode_write_chunk(p, rp_ch, consumed);
- }
- 
--int svc_rdma_map_xdr(struct svcxprt_rdma *xprt,
--		     struct xdr_buf *xdr,
--		     struct svc_rdma_req_map *vec,
--		     bool write_chunk_present)
+-unsigned int svc_rdma_xdr_get_reply_hdr_len(__be32 *rdma_resp)
 -{
--	int sge_no;
--	u32 sge_bytes;
--	u32 page_bytes;
--	u32 page_off;
--	int page_no;
+-	unsigned int nsegs;
+-	__be32 *p;
 -
--	if (xdr->len !=
--	    (xdr->head[0].iov_len + xdr->page_len + xdr->tail[0].iov_len)) {
--		pr_err("svcrdma: %s: XDR buffer length error\n", __func__);
--		return -EIO;
+-	p = rdma_resp;
+-
+-	/* RPC-over-RDMA V1 replies never have a Read list. */
+-	p += rpcrdma_fixed_maxsz + 1;
+-
+-	/* Skip Write list. */
+-	while (*p++ != xdr_zero) {
+-		nsegs = be32_to_cpup(p++);
+-		p += nsegs * rpcrdma_segment_maxsz;
 -	}
 -
--	/* Skip the first sge, this is for the RPCRDMA header */
--	sge_no = 1;
--
--	/* Head SGE */
--	vec->sge[sge_no].iov_base = xdr->head[0].iov_base;
--	vec->sge[sge_no].iov_len = xdr->head[0].iov_len;
--	sge_no++;
--
--	/* pages SGE */
--	page_no = 0;
--	page_bytes = xdr->page_len;
--	page_off = xdr->page_base;
--	while (page_bytes) {
--		vec->sge[sge_no].iov_base =
--			page_address(xdr->pages[page_no]) + page_off;
--		sge_bytes = min_t(u32, page_bytes, (PAGE_SIZE - page_off));
--		page_bytes -= sge_bytes;
--		vec->sge[sge_no].iov_len = sge_bytes;
--
--		sge_no++;
--		page_no++;
--		page_off = 0; /* reset for next time through loop */
+-	/* Skip Reply chunk. */
+-	if (*p++ != xdr_zero) {
+-		nsegs = be32_to_cpup(p++);
+-		p += nsegs * rpcrdma_segment_maxsz;
 -	}
 -
--	/* Tail SGE */
--	if (xdr->tail[0].iov_len) {
--		unsigned char *base = xdr->tail[0].iov_base;
--		size_t len = xdr->tail[0].iov_len;
--		u32 xdr_pad = xdr_padsize(xdr->page_len);
--
--		if (write_chunk_present && xdr_pad) {
--			base += xdr_pad;
--			len -= xdr_pad;
--		}
--
--		if (len) {
--			vec->sge[sge_no].iov_base = base;
--			vec->sge[sge_no].iov_len = len;
--			sge_no++;
--		}
--	}
--
--	dprintk("svcrdma: %s: sge_no %d page_no %d "
--		"page_base %u page_len %u head_len %zu tail_len %zu\n",
--		__func__, sge_no, page_no, xdr->page_base, xdr->page_len,
--		xdr->head[0].iov_len, xdr->tail[0].iov_len);
--
--	vec->count = sge_no;
--	return 0;
+-	return (unsigned long)p - (unsigned long)rdma_resp;
 -}
 -
- /* Parse the RPC Call's transport header.
-  */
- static void svc_rdma_get_write_arrays(__be32 *rdma_argp,
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 1597ca8..a9d9cb1 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -272,85 +272,6 @@ static void svc_rdma_destroy_ctxts(struct svcxprt_rdma *xprt)
- 	}
- }
- 
--static struct svc_rdma_req_map *alloc_req_map(gfp_t flags)
+-void svc_rdma_xdr_encode_write_list(struct rpcrdma_msg *rmsgp, int chunks)
 -{
--	struct svc_rdma_req_map *map;
+-	struct rpcrdma_write_array *ary;
 -
--	map = kmalloc(sizeof(*map), flags);
--	if (map)
--		INIT_LIST_HEAD(&map->free);
--	return map;
+-	/* no read-list */
+-	rmsgp->rm_body.rm_chunks[0] = xdr_zero;
+-
+-	/* write-array discrim */
+-	ary = (struct rpcrdma_write_array *)
+-		&rmsgp->rm_body.rm_chunks[1];
+-	ary->wc_discrim = xdr_one;
+-	ary->wc_nchunks = cpu_to_be32(chunks);
+-
+-	/* write-list terminator */
+-	ary->wc_array[chunks].wc_target.rs_handle = xdr_zero;
+-
+-	/* reply-array discriminator */
+-	ary->wc_array[chunks].wc_target.rs_length = xdr_zero;
 -}
 -
--static bool svc_rdma_prealloc_maps(struct svcxprt_rdma *xprt)
+-void svc_rdma_xdr_encode_reply_array(struct rpcrdma_write_array *ary,
+-				 int chunks)
 -{
--	unsigned int i;
--
--	/* One for each receive buffer on this connection. */
--	i = xprt->sc_max_requests;
--
--	while (i--) {
--		struct svc_rdma_req_map *map;
--
--		map = alloc_req_map(GFP_KERNEL);
--		if (!map) {
--			dprintk("svcrdma: No memory for request map\n");
--			return false;
--		}
--		list_add(&map->free, &xprt->sc_maps);
--	}
--	return true;
+-	ary->wc_discrim = xdr_one;
+-	ary->wc_nchunks = cpu_to_be32(chunks);
 -}
 -
--struct svc_rdma_req_map *svc_rdma_get_req_map(struct svcxprt_rdma *xprt)
+-void svc_rdma_xdr_encode_array_chunk(struct rpcrdma_write_array *ary,
+-				     int chunk_no,
+-				     __be32 rs_handle,
+-				     __be64 rs_offset,
+-				     u32 write_len)
 -{
--	struct svc_rdma_req_map *map = NULL;
--
--	spin_lock(&xprt->sc_map_lock);
--	if (list_empty(&xprt->sc_maps))
--		goto out_empty;
--
--	map = list_first_entry(&xprt->sc_maps,
--			       struct svc_rdma_req_map, free);
--	list_del_init(&map->free);
--	spin_unlock(&xprt->sc_map_lock);
--
--out:
--	map->count = 0;
--	return map;
--
--out_empty:
--	spin_unlock(&xprt->sc_map_lock);
--
--	/* Pre-allocation amount was incorrect */
--	map = alloc_req_map(GFP_NOIO);
--	if (map)
--		goto out;
--
--	WARN_ONCE(1, "svcrdma: empty request map list?\n");
--	return NULL;
+-	struct rpcrdma_segment *seg = &ary->wc_array[chunk_no].wc_target;
+-	seg->rs_handle = rs_handle;
+-	seg->rs_offset = rs_offset;
+-	seg->rs_length = cpu_to_be32(write_len);
 -}
--
--void svc_rdma_put_req_map(struct svcxprt_rdma *xprt,
--			  struct svc_rdma_req_map *map)
--{
--	spin_lock(&xprt->sc_map_lock);
--	list_add(&map->free, &xprt->sc_maps);
--	spin_unlock(&xprt->sc_map_lock);
--}
--
--static void svc_rdma_destroy_maps(struct svcxprt_rdma *xprt)
--{
--	while (!list_empty(&xprt->sc_maps)) {
--		struct svc_rdma_req_map *map;
--
--		map = list_first_entry(&xprt->sc_maps,
--				       struct svc_rdma_req_map, free);
--		list_del(&map->free);
--		kfree(map);
--	}
--}
--
- /* QP event handler */
- static void qp_event_handler(struct ib_event *event, void *context)
- {
-@@ -544,7 +465,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
- 	INIT_LIST_HEAD(&cma_xprt->sc_frmr_q);
- 	INIT_LIST_HEAD(&cma_xprt->sc_ctxts);
- 	INIT_LIST_HEAD(&cma_xprt->sc_rw_ctxts);
--	INIT_LIST_HEAD(&cma_xprt->sc_maps);
- 	init_waitqueue_head(&cma_xprt->sc_send_wait);
- 
- 	spin_lock_init(&cma_xprt->sc_lock);
-@@ -552,7 +472,6 @@ static struct svcxprt_rdma *rdma_create_xprt(struct svc_serv *serv,
- 	spin_lock_init(&cma_xprt->sc_frmr_q_lock);
- 	spin_lock_init(&cma_xprt->sc_ctxt_lock);
- 	spin_lock_init(&cma_xprt->sc_rw_ctxt_lock);
--	spin_lock_init(&cma_xprt->sc_map_lock);
- 
- 	/*
- 	 * Note that this implies that the underlying transport support
-@@ -1004,8 +923,6 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 
- 	if (!svc_rdma_prealloc_ctxts(newxprt))
- 		goto errout;
--	if (!svc_rdma_prealloc_maps(newxprt))
--		goto errout;
- 
- 	/*
- 	 * Limit ORD based on client limit, local device limit, and
-@@ -1237,7 +1154,6 @@ static void __svc_rdma_free(struct work_struct *work)
- 	rdma_dealloc_frmr_q(rdma);
- 	svc_rdma_destroy_rw_ctxts(rdma);
- 	svc_rdma_destroy_ctxts(rdma);
--	svc_rdma_destroy_maps(rdma);
- 
- 	/* Destroy the QP if present (not a listener) */
- 	if (rdma->sc_qp && !IS_ERR(rdma->sc_qp))
 
