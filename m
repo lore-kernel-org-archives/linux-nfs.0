@@ -1,16 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38351 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:42980 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750705AbdDJBMR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 9 Apr 2017 21:12:17 -0400
+        id S1751543AbdDJCTs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 9 Apr 2017 22:19:48 -0400
 From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Mon, 10 Apr 2017 11:12:09 +1000
-Subject: Re: [PATCH] systemd: nfs-server service should use network-online
-In-Reply-To: <20170407150738.6200-1-steved@redhat.com>
-References: <20170407150738.6200-1-steved@redhat.com>
-Message-ID: <87shlhxdzq.fsf@notabene.neil.brown.name>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date: Mon, 10 Apr 2017 12:19:40 +1000
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] sunrpc: don't check for failure from mempool_alloc()
+Message-ID: <87zifpvwar.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -21,85 +20,101 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Fri, Apr 07 2017, Steve Dickson wrote:
 
-> There has been an number startup problems where parts of
-> the NFS server fail to start due to DNS and other
-> parts of the network not be up.
->
-> Reading the systemd.special it seems network.target is
-> a passive unit which does not wait and network-online.target
-> is an active unit which does not wait so that
-> should be used.
+When mempool_alloc() is allowed to sleep (GFP_NOIO allows
+sleeping) it cannot fail.
+So rpc_alloc_task() cannot fail, so rpc_new_task doesn't need
+to test for failure.
+Consequently rpc_new_task() cannot fail, so the callers
+don't need to test.
 
-I assume that last "not" should not be there?
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ net/sunrpc/clnt.c  | 8 --------
+ net/sunrpc/sched.c | 5 -----
+ 2 files changed, 13 deletions(-)
 
-According to systemd.special, we should add
-  Wants=3Dnetwork-online.target
-though "Requires" is probably OK.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 52da3ce54bb5..b5cb921775a0 100644
+=2D-- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1042,8 +1042,6 @@ struct rpc_task *rpc_run_task(const struct rpc_task_s=
+etup *task_setup_data)
+ 	struct rpc_task *task;
+=20
+ 	task =3D rpc_new_task(task_setup_data);
+=2D	if (IS_ERR(task))
+=2D		goto out;
+=20
+ 	rpc_task_set_client(task, task_setup_data->rpc_client);
+ 	rpc_task_set_rpc_message(task, task_setup_data->rpc_message);
+@@ -1053,7 +1051,6 @@ struct rpc_task *rpc_run_task(const struct rpc_task_s=
+etup *task_setup_data)
+=20
+ 	atomic_inc(&task->tk_count);
+ 	rpc_execute(task);
+=2Dout:
+ 	return task;
+ }
+ EXPORT_SYMBOL_GPL(rpc_run_task);
+@@ -1140,10 +1137,6 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *re=
+q)
+ 	 * Create an rpc_task to send the data
+ 	 */
+ 	task =3D rpc_new_task(&task_setup_data);
+=2D	if (IS_ERR(task)) {
+=2D		xprt_free_bc_request(req);
+=2D		goto out;
+=2D	}
+ 	task->tk_rqstp =3D req;
+=20
+ 	/*
+@@ -1158,7 +1151,6 @@ struct rpc_task *rpc_run_bc_task(struct rpc_rqst *req)
+ 	WARN_ON_ONCE(atomic_read(&task->tk_count) !=3D 2);
+ 	rpc_execute(task);
+=20
+=2Dout:
+ 	dprintk("RPC: rpc_run_bc_task: task=3D %p\n", task);
+ 	return task;
+ }
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 5db68b371db2..0cc83839c13c 100644
+=2D-- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -965,11 +965,6 @@ struct rpc_task *rpc_new_task(const struct rpc_task_se=
+tup *setup_data)
+=20
+ 	if (task =3D=3D NULL) {
+ 		task =3D rpc_alloc_task();
+=2D		if (task =3D=3D NULL) {
+=2D			rpc_release_calldata(setup_data->callback_ops,
+=2D					setup_data->callback_data);
+=2D			return ERR_PTR(-ENOMEM);
+=2D		}
+ 		flags =3D RPC_TASK_DYNAMIC;
+ 	}
+=20
+=2D-=20
+2.12.2
 
-nfs-server.service already has
- Requires=3D network.target
-which you didn't change.
-
-Also nfs-mountd rpc-statd-notify and rpc.statd all have
- After =3D network.target
-
-They should probably be changed too ??
-
-Thanks,
-NeilBrown
-
-
->
-> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=3D1419351
->
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  systemd/nfs-server.service | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
->
-> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-> index 5be5de6..7cf4ae0 100644
-> --- a/systemd/nfs-server.service
-> +++ b/systemd/nfs-server.service
-> @@ -7,8 +7,8 @@ Wants=3Drpcbind.socket
->  Wants=3Drpc-statd.service nfs-idmapd.service
->  Wants=3Drpc-statd-notify.service
->=20=20
-> -After=3D local-fs.target
-> -After=3D network.target proc-fs-nfsd.mount rpcbind.socket nfs-mountd.ser=
-vice
-> +After=3D local-fs.target network-online.target
-> +After=3D proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
->  After=3D nfs-idmapd.service rpc-statd.service
->  Before=3D rpc-statd-notify.service
->=20=20
-> --=20
-> 2.9.3
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljq2+kACgkQOeye3VZi
-gbmmJxAAuiMBmI+UNftVKuF+rsHNZKQkDUqilTEEy22kZcFj7uskRP+rQuckv76M
-ENRI8l0dwaCEAr8nN+ppzMWd+DpZuNJFSUEHxs3roxVq+tV4FojkQafzkbmujluL
-X511nmtA9j1yc4g+mYmYQFNO8Ua1Ye/GQ0FPuZd//uzeynUyKylEv3zeFETaptR7
-6PQzOU87pfE6tUjMLVOLwaw1ZYmHPsL1OS/TO3mxlRVGUjO+4YkMaUj+YPq71UCp
-ExFHc573O43pjo+JkbsTmiOjuYK4YRpJicVK70ZeYhg1AOGDaNWhgU/tI1Cb5dnu
-ZrWS+Go5lxDkkZyB4LwtSHK1wb9JCqEn8+5pPfvhKgel+Vy546zisnDEMEssT+P7
-HNy8DBslkieTH1FxHCG3nioqNmKHAuqS6bPWJWzW8hWiHmfDSP6hwyaqjP/gzzR7
-incb5J4yVaIsAzeAWRO0sVLPHD4zeMCH6CDeIpTf0lofgyGnnZllugiNiUaLj4Nw
-XwhTZHa4CpcFOLgsHoSk5E+mnEPHkFcg1NVfQUk4zikyRnAhwOgF/kGPj1SzoAp+
-v1VaYeOrFYJBN+NRXiWR3ZEdH0b4vDb0AFZIdI3U6olCaQO4Vs65XKd2DLONdTsV
-LwimL3YVLAx9B47Lmz55fdG8KqJP7SBuQGxSg7b5yw8aeY+IxmQ=
-=mldq
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAljq67wACgkQOeye3VZi
+gbne3hAAwEkUUkP7w4ebXjf0drqeAHw+V0m2KqFBCYz694LD65BAnBO7/h7dZlRE
+coepHeVo3mqACka71VETFBY2bhppjMyZHls7l0sjgzHu237fj6HyNYjwZwxWi7Zx
+yIW4NVEqKIEu1iakEJ2eZj7OtMJcmrmgH4hlJKuhrLit0jm6v5YRjRlxpsch6qgk
+ztWIxMbxlzTCtIab53GKy3SUyKR74zWS2a9k8nCPyMJoTZz1RJTkRXdpFYHwW5JG
+HFE/+P9wzZmgbcZ6yf/FFQRz1HSArMmmpCn4mzvuw9rvCJWWFLzpo5droGEASd9q
+3D0EAJ9suCNUO2Z38gEXfcUjKnjqqHhmkQO+3erZx0uYnTUBYGW2/CUvAMBFt2TB
+gS1zzCw6nXcAnn9QGE1VwoCbU44iAF5shgz8O7tNmgO8u/oKssDcUTHB9sJ90f4Y
+PkbAa6IowpFS9mxJaVOw97mCEIMs3UVPYer0oiO4pVjQKlFnHaLIzCTlaogGg+DT
+qiGu0OqGmpmEAw1ymaeZD2T71vA+qGxcOM9EudzN9+vB/xMaDfh4xtMbLXnaPAnk
+I/lS/sZAlseROKksmydM8Gy44SQE0hr/Q6mmB8Ky9RuDpHvOE87dTicMv3y6/f0c
+1iZlTicZHl+NB2gk2gRb1ByvLoMifSEbMf+gfjYk1BASiDSLvaw=
+=ckrW
 -----END PGP SIGNATURE-----
 --=-=-=--
