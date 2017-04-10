@@ -1,62 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yb0-f182.google.com ([209.85.213.182]:36230 "EHLO
-        mail-yb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751209AbdDJDJc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Apr 2017 23:09:32 -0400
-Received: by mail-yb0-f182.google.com with SMTP id i124so28990715ybc.3
-        for <linux-nfs@vger.kernel.org>; Sun, 09 Apr 2017 20:09:31 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:35594 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752144AbdDJK6P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 10 Apr 2017 06:58:15 -0400
+Subject: Re: [PATCH] systemd: nfs-server service should use network-online
+To: NeilBrown <neilb@suse.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20170407150738.6200-1-steved@redhat.com>
+ <87shlhxdzq.fsf@notabene.neil.brown.name>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <e75ecc27-3e53-f643-160a-cdf121518121@RedHat.com>
+Date: Mon, 10 Apr 2017 06:58:13 -0400
 MIME-Version: 1.0
-In-Reply-To: <7073c0d3-809f-4b7c-2b73-db0992dfc653@RedHat.com>
-References: <1491754328-28518-1-git-send-email-chunwang@redhat.com> <7073c0d3-809f-4b7c-2b73-db0992dfc653@RedHat.com>
-From: ChunYu Wang <chunwang@redhat.com>
-Date: Mon, 10 Apr 2017 11:09:30 +0800
-Message-ID: <CAA2bi78eQ9+7P9pbHHFbbOuPxUVuqpw4kbyH9txe0HqpMfMU9g@mail.gmail.com>
-Subject: Re: [PATCH] nfs-server-generator: fix a potential memory leak issue
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jianhong Yin <jiyin@redhat.com>,
-        Yongcheng Yang <yoyang@redhat.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <87shlhxdzq.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-En, yes,
 
-Thanks for reviewing and reminding, it is my fault [ : ( ].
 
-Valgrind did not notice me about the syntax rationality, but it's my duty.
-Get down to learn, and thanks a lot.
+On 04/09/2017 09:12 PM, NeilBrown wrote:
+> On Fri, Apr 07 2017, Steve Dickson wrote:
+> 
+>> There has been an number startup problems where parts of
+>> the NFS server fail to start due to DNS and other
+>> parts of the network not be up.
+>>
+>> Reading the systemd.special it seems network.target is
+>> a passive unit which does not wait and network-online.target
+>> is an active unit which does not wait so that
+>> should be used.
+> 
+> I assume that last "not" should not be there?
+Right... 
+> 
+> According to systemd.special, we should add
+>   Wants=network-online.target
+> though "Requires" is probably OK.
+I did see that... but the bug report said After= 
+worked so I went with that... 
 
-Regards,
-ChunYu Wang
+> 
+> nfs-server.service already has
+>  Requires= network.target
+> which you didn't change.
+> 
+> Also nfs-mountd rpc-statd-notify and rpc.statd all have
+>  After = network.target
+> 
+> They should probably be changed too ??
+yup... good call.
 
-On Mon, Apr 10, 2017 at 2:33 AM, Steve Dickson <SteveD@redhat.com> wrote:
->
->
-> On 04/09/2017 12:12 PM, ChunYu Wang wrote:
->> Signed-off-by: ChunYu Wang <chunwang@redhat.com>
+steved.
+
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+>>
+>> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1419351
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
 >> ---
->> Fix a potential memory leak issue caused by unfree pathname 'path'.
+>>  systemd/nfs-server.service | 4 ++--
+>>  1 file changed, 2 insertions(+), 2 deletions(-)
 >>
->>  systemd/nfs-server-generator.c | 1 +
->>  1 file changed, 1 insertion(+)
+>> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+>> index 5be5de6..7cf4ae0 100644
+>> --- a/systemd/nfs-server.service
+>> +++ b/systemd/nfs-server.service
+>> @@ -7,8 +7,8 @@ Wants=rpcbind.socket
+>>  Wants=rpc-statd.service nfs-idmapd.service
+>>  Wants=rpc-statd-notify.service
+>>  
+>> -After= local-fs.target
+>> -After= network.target proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
+>> +After= local-fs.target network-online.target
+>> +After= proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
+>>  After= nfs-idmapd.service rpc-statd.service
+>>  Before= rpc-statd-notify.service
+>>  
+>> -- 
+>> 2.9.3
 >>
->> diff --git a/systemd/nfs-server-generator.c b/systemd/nfs-server-generator.c
->> index 4aa6509..441cec5 100644
->> --- a/systemd/nfs-server-generator.c
->> +++ b/systemd/nfs-server-generator.c
->> @@ -139,6 +139,7 @@ int main(int argc, char *argv[])
->>       strcat(path, filebase);
->>       f = fopen(path, "w");
->>       if (!f)
->> +             free(path);
->>               exit(1);
-> First of all you need some '{' '}' so the process will not
-> always exit when f != NULL...
->
-> Secondly dead process don't leak memory. :-) They don't leak anything... they are died! ;-)
->
-> steved.
->
->>       fprintf(f, "# Automatically generated by nfs-server-generator\n\n[Unit]\n");
->>
->>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
