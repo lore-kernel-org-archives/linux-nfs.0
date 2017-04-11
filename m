@@ -1,97 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35128 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752802AbdDKRWX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Apr 2017 13:22:23 -0400
-Subject: [PATCH v3 00/13] NFS/RDMA client-side patches proposed for v4.12
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34682 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753210AbdDKRWc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Apr 2017 13:22:32 -0400
+Subject: [PATCH v3 01/13] xprtrdma: Cancel refresh worker during buffer
+ shutdown
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 11 Apr 2017 13:22:21 -0400
-Message-ID: <20170411171820.11300.55637.stgit@manet.1015granger.net>
+Date: Tue, 11 Apr 2017 13:22:29 -0400
+Message-ID: <20170411172229.11300.52129.stgit@manet.1015granger.net>
+In-Reply-To: <20170411171820.11300.55637.stgit@manet.1015granger.net>
+References: <20170411171820.11300.55637.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna-
+Trying to create MRs while the transport is being torn down can
+cause a crash.
 
-These have seen no changes since v2. IMO these are ready for you to
-consider for your linux-next branch. The two main improvements in
-this series are:
-
-
-1. Break RPC-over-RDMA connections after an RPC timeout.
-
-This gives the client's CM an opportunity to perform server and
-network path rediscovery before retrying the timed-out RPC.
-
-This design was selected because it is simple, and does not make any
-changes to the normal RPC Call send hot path. Also, note the logic
-already in xprt_rdma_send_request() that breaks the connection
-anyway, just before sending a retransmit.
-
-Internal testing at Oracle has demonstrated this logic is effective.
-
-
-2. Support unloading the driver of the underlying device.
-
-Full support for the DEVICE_REMOVAL CM upcall is implemented in the
-client-side RPC-over-RDMA consumer. Devesh's workaround is reverted,
-since it is now no longer necessary.
-
-In addition, support is added for restoring transport operation when
-a new driver is subsequently loaded or when another device is
-already available with connectivity to the NFS server.
-
-Hopefully this work can be the basis for device hotplug,
-suspend/resume with NFS/RDMA mounts, and handling device failover.
-
-
-Available in the "nfs-rdma-for-4.12" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.12
-
-
-Changes since v2:
-- Rebased on v4.11-rc6
-
-
-Changes since v1:
-- Rebased on v4.11-rc4 + recent non-rdma fixes
-- Reordered so bug fixes come first
-- Three small new clean ups
-
+Fixes: e2ac236c0b65 ("xprtrdma: Allocate MRs on demand")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/verbs.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-Chuck Lever (13):
-      xprtrdma: Cancel refresh worker during buffer shutdown
-      sunrpc: Export xprt_force_disconnect()
-      xprtrdma: Detect unreachable NFS/RDMA servers more reliably
-      xprtrdma: Refactor rpcrdma_ia_open()
-      xprtrdma: Use same device when mapping or syncing DMA buffers
-      xprtrdma: Support unplugging an HCA from under an NFS mount
-      xprtrdma: Refactor rpcrdma_ep_connect
-      xprtrdma: Restore transport after device removal
-      xprtrdma: Revert commit d0f36c46deea
-      xprtrdma: Annotate receive workqueue
-      xprtrdma: Squelch ENOBUFS warnings
-      sunrpc: Fix xdr_init_decode_pages() documenting comment
-      xprtrdma: Remove rpcrdma_buffer::rb_pool
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 3b332b3..2e4fc1e 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1037,6 +1037,7 @@ struct rpcrdma_rep *
+ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ {
+ 	cancel_delayed_work_sync(&buf->rb_recovery_worker);
++	cancel_delayed_work_sync(&buf->rb_refresh_worker);
+ 
+ 	while (!list_empty(&buf->rb_recv_bufs)) {
+ 		struct rpcrdma_rep *rep;
 
-
- net/sunrpc/xdr.c                |    2 
- net/sunrpc/xprt.c               |    1 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   12 +
- net/sunrpc/xprtrdma/transport.c |   57 ++++++-
- net/sunrpc/xprtrdma/verbs.c     |  323 ++++++++++++++++++++++++++-------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   22 ++-
- 6 files changed, 295 insertions(+), 122 deletions(-)
-
---
-Chuck Lever
