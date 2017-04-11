@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:35644 "EHLO
+Received: from mail-io0-f196.google.com ([209.85.223.196]:35501 "EHLO
         mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751824AbdDKRXZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Apr 2017 13:23:25 -0400
-Subject: [PATCH v3 07/13] xprtrdma: Refactor rpcrdma_ep_connect
+        with ESMTP id S1752086AbdDKRXE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Apr 2017 13:23:04 -0400
+Subject: [PATCH v3 05/13] xprtrdma: Use same device when mapping or syncing
+ DMA buffers
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 11 Apr 2017 13:23:18 -0400
-Message-ID: <20170411172318.11300.69958.stgit@manet.1015granger.net>
+Date: Tue, 11 Apr 2017 13:23:02 -0400
+Message-ID: <20170411172302.11300.67874.stgit@manet.1015granger.net>
 In-Reply-To: <20170411171820.11300.55637.stgit@manet.1015granger.net>
 References: <20170411171820.11300.55637.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,163 +17,134 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm about to add another arm to
+When the underlying device driver is reloaded, ia->ri_device will be
+replaced. All cached copies of that device pointer have to be
+updated as well.
 
-    if (ep->rep_connected != 0)
+Commit 54cbd6b0c6b9 ("xprtrdma: Delay DMA mapping Send and Receive
+buffers") added the rg_device field to each regbuf. As part of
+handling a device removal, rpcrdma_dma_unmap_regbuf is invoked on
+all regbufs for a transport.
 
-It will be cleaner to use a switch statement here. We'll be looking
-for a couple of specific errnos, or "anything else," basically to
-sort out the difference between a normal reconnect and recovery from
-device removal.
+Simply calling rpcrdma_dma_map_regbuf for each Receive buffer after
+the driver has been reloaded should reinitialize rg_device correctly
+for every case except rpcrdma_wc_receive, which still uses
+rpcrdma_rep::rr_device.
 
-This is a refactoring change only.
+Ensure the same device that was used to map a Receive buffer is also
+used to sync it in rpcrdma_wc_receive by using rg_device there
+instead of rr_device.
 
+This is the only use of rr_device, so it can be removed.
+
+The use of regbufs in the send path is also updated, for
+completeness.
+
+Fixes: 54cbd6b0c6b9 ("xprtrdma: Delay DMA mapping Send and ... ")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |  109 +++++++++++++++++++++++++------------------
- 1 file changed, 63 insertions(+), 46 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ++--
+ net/sunrpc/xprtrdma/verbs.c     |   12 ++++++------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    7 ++++++-
+ 3 files changed, 14 insertions(+), 9 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index a044be2..e68131b 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -494,7 +494,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	}
+ 	sge->length = len;
+ 
+-	ib_dma_sync_single_for_device(ia->ri_device, sge->addr,
++	ib_dma_sync_single_for_device(rdmab_device(rb), sge->addr,
+ 				      sge->length, DMA_TO_DEVICE);
+ 	req->rl_send_wr.num_sge++;
+ 	return true;
+@@ -523,7 +523,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	sge[sge_no].addr = rdmab_addr(rb);
+ 	sge[sge_no].length = xdr->head[0].iov_len;
+ 	sge[sge_no].lkey = rdmab_lkey(rb);
+-	ib_dma_sync_single_for_device(device, sge[sge_no].addr,
++	ib_dma_sync_single_for_device(rdmab_device(rb), sge[sge_no].addr,
+ 				      sge[sge_no].length, DMA_TO_DEVICE);
+ 
+ 	/* If there is a Read chunk, the page list is being handled
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 938fd9e..6479ad3 100644
+index d4880d5..c8813fb 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -711,6 +711,57 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- 	ib_free_cq(ep->rep_attr.send_cq);
- }
+@@ -180,7 +180,7 @@
+ 	rep->rr_wc_flags = wc->wc_flags;
+ 	rep->rr_inv_rkey = wc->ex.invalidate_rkey;
  
-+static int
-+rpcrdma_ep_reconnect(struct rpcrdma_xprt *r_xprt, struct rpcrdma_ep *ep,
-+		     struct rpcrdma_ia *ia)
-+{
-+	struct sockaddr *sap = (struct sockaddr *)&r_xprt->rx_data.addr;
-+	struct rdma_cm_id *id, *old;
-+	int err, rc;
-+
-+	dprintk("RPC:       %s: reconnecting...\n", __func__);
-+
-+	rpcrdma_ep_disconnect(ep, ia);
-+
-+	rc = -EHOSTUNREACH;
-+	id = rpcrdma_create_id(r_xprt, ia, sap);
-+	if (IS_ERR(id))
-+		goto out;
-+
-+	/* As long as the new ID points to the same device as the
-+	 * old ID, we can reuse the transport's existing PD and all
-+	 * previously allocated MRs. Also, the same device means
-+	 * the transport's previous DMA mappings are still valid.
-+	 *
-+	 * This is a sanity check only. There should be no way these
-+	 * point to two different devices here.
-+	 */
-+	old = id;
-+	rc = -ENETUNREACH;
-+	if (ia->ri_device != id->device) {
-+		pr_err("rpcrdma: can't reconnect on different device!\n");
-+		goto out_destroy;
-+	}
-+
-+	err = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
-+	if (err) {
-+		dprintk("RPC:       %s: rdma_create_qp returned %d\n",
-+			__func__, err);
-+		goto out_destroy;
-+	}
-+
-+	/* Atomically replace the transport's ID and QP. */
-+	rc = 0;
-+	old = ia->ri_id;
-+	ia->ri_id = id;
-+	rdma_destroy_qp(old);
-+
-+out_destroy:
-+	rpcrdma_destroy_id(old);
-+out:
-+	return rc;
-+}
-+
- /*
-  * Connect unconnected endpoint.
-  */
-@@ -719,61 +770,25 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+-	ib_dma_sync_single_for_cpu(rep->rr_device,
++	ib_dma_sync_single_for_cpu(rdmab_device(rep->rr_rdmabuf),
+ 				   rdmab_addr(rep->rr_rdmabuf),
+ 				   rep->rr_len, DMA_FROM_DEVICE);
+ 
+@@ -878,7 +878,6 @@ struct rpcrdma_rep *
+ rpcrdma_create_rep(struct rpcrdma_xprt *r_xprt)
  {
- 	struct rpcrdma_xprt *r_xprt = container_of(ia, struct rpcrdma_xprt,
- 						   rx_ia);
--	struct rdma_cm_id *id, *old;
--	struct sockaddr *sap;
- 	unsigned int extras;
--	int rc = 0;
-+	int rc;
+ 	struct rpcrdma_create_data_internal *cdata = &r_xprt->rx_data;
+-	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_rep *rep;
+ 	int rc;
  
--	if (ep->rep_connected != 0) {
- retry:
--		dprintk("RPC:       %s: reconnecting...\n", __func__);
--
--		rpcrdma_ep_disconnect(ep, ia);
--
--		sap = (struct sockaddr *)&r_xprt->rx_data.addr;
--		id = rpcrdma_create_id(r_xprt, ia, sap);
--		if (IS_ERR(id)) {
--			rc = -EHOSTUNREACH;
--			goto out;
--		}
--		/* TEMP TEMP TEMP - fail if new device:
--		 * Deregister/remarshal *all* requests!
--		 * Close and recreate adapter, pd, etc!
--		 * Re-determine all attributes still sane!
--		 * More stuff I haven't thought of!
--		 * Rrrgh!
--		 */
--		if (ia->ri_device != id->device) {
--			printk("RPC:       %s: can't reconnect on "
--				"different device!\n", __func__);
--			rpcrdma_destroy_id(id);
--			rc = -ENETUNREACH;
--			goto out;
--		}
--		/* END TEMP */
--		rc = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
--		if (rc) {
--			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
--				__func__, rc);
--			rpcrdma_destroy_id(id);
--			rc = -ENETUNREACH;
--			goto out;
--		}
--
--		old = ia->ri_id;
--		ia->ri_id = id;
--
--		rdma_destroy_qp(old);
--		rpcrdma_destroy_id(old);
--	} else {
-+	switch (ep->rep_connected) {
-+	case 0:
- 		dprintk("RPC:       %s: connecting...\n", __func__);
- 		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
- 		if (rc) {
- 			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
- 				__func__, rc);
--			/* do not update ep->rep_connected */
--			return -ENETUNREACH;
-+			rc = -ENETUNREACH;
-+			goto out_noupdate;
- 		}
-+		break;
-+	default:
-+		rc = rpcrdma_ep_reconnect(r_xprt, ep, ia);
-+		if (rc)
-+			goto out;
+@@ -894,7 +893,6 @@ struct rpcrdma_rep *
+ 		goto out_free;
  	}
  
- 	ep->rep_connected = 0;
-@@ -801,6 +816,8 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
- out:
- 	if (rc)
- 		ep->rep_connected = rc;
+-	rep->rr_device = ia->ri_device;
+ 	rep->rr_cqe.done = rpcrdma_wc_receive;
+ 	rep->rr_rxprt = r_xprt;
+ 	INIT_WORK(&rep->rr_work, rpcrdma_reply_handler);
+@@ -1232,17 +1230,19 @@ struct rpcrdma_regbuf *
+ bool
+ __rpcrdma_dma_map_regbuf(struct rpcrdma_ia *ia, struct rpcrdma_regbuf *rb)
+ {
++	struct ib_device *device = ia->ri_device;
 +
-+out_noupdate:
- 	return rc;
+ 	if (rb->rg_direction == DMA_NONE)
+ 		return false;
+ 
+-	rb->rg_iov.addr = ib_dma_map_single(ia->ri_device,
++	rb->rg_iov.addr = ib_dma_map_single(device,
+ 					    (void *)rb->rg_base,
+ 					    rdmab_length(rb),
+ 					    rb->rg_direction);
+-	if (ib_dma_mapping_error(ia->ri_device, rdmab_addr(rb)))
++	if (ib_dma_mapping_error(device, rdmab_addr(rb)))
+ 		return false;
+ 
+-	rb->rg_device = ia->ri_device;
++	rb->rg_device = device;
+ 	rb->rg_iov.lkey = ia->ri_pd->local_dma_lkey;
+ 	return true;
+ }
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index af844fc..9d58260 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -164,6 +164,12 @@ struct rpcrdma_regbuf {
+ 	return (struct rpcrdma_msg *)rb->rg_base;
  }
  
++static inline struct ib_device *
++rdmab_device(struct rpcrdma_regbuf *rb)
++{
++	return rb->rg_device;
++}
++
+ #define RPCRDMA_DEF_GFP		(GFP_NOIO | __GFP_NOWARN)
+ 
+ /* To ensure a transport can always make forward progress,
+@@ -209,7 +215,6 @@ struct rpcrdma_rep {
+ 	unsigned int		rr_len;
+ 	int			rr_wc_flags;
+ 	u32			rr_inv_rkey;
+-	struct ib_device	*rr_device;
+ 	struct rpcrdma_xprt	*rr_rxprt;
+ 	struct work_struct	rr_work;
+ 	struct list_head	rr_list;
 
