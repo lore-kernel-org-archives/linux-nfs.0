@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:35363 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752232AbdDKRWs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Apr 2017 13:22:48 -0400
-Subject: [PATCH v3 03/13] xprtrdma: Detect unreachable NFS/RDMA servers more
- reliably
+Received: from mail-io0-f193.google.com ([209.85.223.193]:35432 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752029AbdDKRXB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Apr 2017 13:23:01 -0400
+Subject: [PATCH v3 04/13] xprtrdma: Refactor rpcrdma_ia_open()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 11 Apr 2017 13:22:46 -0400
-Message-ID: <20170411172246.11300.30504.stgit@manet.1015granger.net>
+Date: Tue, 11 Apr 2017 13:22:54 -0400
+Message-ID: <20170411172254.11300.23577.stgit@manet.1015granger.net>
 In-Reply-To: <20170411171820.11300.55637.stgit@manet.1015granger.net>
 References: <20170411171820.11300.55637.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,86 +16,168 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Current NFS clients rely on connection loss to determine when to
-retransmit. In particular, for protocols like NFSv4, clients no
-longer rely on RPC timeouts to drive retransmission: NFSv4 servers
-are required to terminate a connection when they need a client to
-retransmit pending RPCs.
+In order to unload a device driver and reload it, xprtrdma will need
+to close a transport's interface adapter, and then call
+rpcrdma_ia_open again, possibly finding a different interface
+adapter.
 
-When a server is no longer reachable, either because it has crashed
-or because the network path has broken, the server cannot actively
-terminate a connection. Thus NFS clients depend on transport-level
-keepalive to determine when a connection must be replaced and
-pending RPCs retransmitted.
+Make rpcrdma_ia_open safe to call on the same transport multiple
+times.
 
-However, RDMA RC connections do not have a native keepalive
-mechanism. If an NFS/RDMA server crashes after a client has sent
-RPCs successfully (an RC ACK has been received for all OTW RDMA
-requests), there is no way for the client to know the connection is
-moribund.
-
-In addition, new RDMA requests are subject to the RPC-over-RDMA
-credit limit. If the client has consumed all granted credits with
-NFS traffic, it is not allowed to send another RDMA request until
-the server replies. Thus it has no way to send a true keepalive when
-the workload has already consumed all credits with pending RPCs.
-
-To address this, forcibly disconnect a transport when an RPC times
-out. This prevents moribund connections from stopping the
-detection of failover or other configuration changes on the server.
-
-Note that even if the connection is still good, retransmitting
-any RPC will trigger a disconnect thanks to this logic in
-xprt_rdma_send_request:
-
-	/* Must suppress retransmit to maintain credits */
-	if (req->rl_connect_cookie == xprt->connect_cookie)
-		goto drop_connection;
-	req->rl_connect_cookie = xprt->connect_cookie;
+This is a refactoring change only.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |   22 ++++++++++++++++++++++
- 1 file changed, 22 insertions(+)
+ net/sunrpc/xprtrdma/transport.c |    6 +++--
+ net/sunrpc/xprtrdma/verbs.c     |   46 ++++++++++++++++++++-------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    7 +++++-
+ 3 files changed, 32 insertions(+), 27 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index c717f54..acf5d81 100644
+index acf5d81..83e219d 100644
 --- a/net/sunrpc/xprtrdma/transport.c
 +++ b/net/sunrpc/xprtrdma/transport.c
-@@ -484,6 +484,27 @@
- 	dprintk("RPC:       %s: %u\n", __func__, port);
+@@ -66,8 +66,8 @@
+ unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
+ static unsigned int xprt_rdma_inline_write_padding;
+-static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
+-		int xprt_rdma_pad_optimize = 0;
++unsigned int xprt_rdma_memreg_strategy		= RPCRDMA_FRMR;
++int xprt_rdma_pad_optimize;
+ 
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 
+@@ -396,7 +396,7 @@
+ 
+ 	new_xprt = rpcx_to_rdmax(xprt);
+ 
+-	rc = rpcrdma_ia_open(new_xprt, sap, xprt_rdma_memreg_strategy);
++	rc = rpcrdma_ia_open(new_xprt, sap);
+ 	if (rc)
+ 		goto out1;
+ 
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 2e4fc1e..d4880d5 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -413,13 +413,16 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+  * Exported functions.
+  */
+ 
+-/*
+- * Open and initialize an Interface Adapter.
+- *  o initializes fields of struct rpcrdma_ia, including
+- *    interface and provider attributes and protection zone.
++/**
++ * rpcrdma_ia_open - Open and initialize an Interface Adapter.
++ * @xprt: controlling transport
++ * @addr: IP address of remote peer
++ *
++ * Returns 0 on success, negative errno if an appropriate
++ * Interface Adapter could not be found and opened.
+  */
+ int
+-rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
++rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr)
+ {
+ 	struct rpcrdma_ia *ia = &xprt->rx_ia;
+ 	int rc;
+@@ -427,7 +430,7 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	ia->ri_id = rpcrdma_create_id(xprt, ia, addr);
+ 	if (IS_ERR(ia->ri_id)) {
+ 		rc = PTR_ERR(ia->ri_id);
+-		goto out1;
++		goto out_err;
+ 	}
+ 	ia->ri_device = ia->ri_id->device;
+ 
+@@ -435,10 +438,10 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 	if (IS_ERR(ia->ri_pd)) {
+ 		rc = PTR_ERR(ia->ri_pd);
+ 		pr_err("rpcrdma: ib_alloc_pd() returned %d\n", rc);
+-		goto out2;
++		goto out_err;
+ 	}
+ 
+-	switch (memreg) {
++	switch (xprt_rdma_memreg_strategy) {
+ 	case RPCRDMA_FRMR:
+ 		if (frwr_is_supported(ia)) {
+ 			ia->ri_ops = &rpcrdma_frwr_memreg_ops;
+@@ -452,28 +455,23 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 		}
+ 		/*FALLTHROUGH*/
+ 	default:
+-		pr_err("rpcrdma: Unsupported memory registration mode: %d\n",
+-		       memreg);
++		pr_err("rpcrdma: Device %s does not support memreg mode %d\n",
++		       ia->ri_device->name, xprt_rdma_memreg_strategy);
+ 		rc = -EINVAL;
+-		goto out3;
++		goto out_err;
+ 	}
+ 
+ 	return 0;
+ 
+-out3:
+-	ib_dealloc_pd(ia->ri_pd);
+-	ia->ri_pd = NULL;
+-out2:
+-	rpcrdma_destroy_id(ia->ri_id);
+-	ia->ri_id = NULL;
+-out1:
++out_err:
++	rpcrdma_ia_close(ia);
+ 	return rc;
  }
  
+-/*
+- * Clean up/close an IA.
+- *   o if event handles and PD have been initialized, free them.
+- *   o close the IA
 +/**
-+ * xprt_rdma_timer - invoked when an RPC times out
-+ * @xprt: controlling RPC transport
-+ * @task: RPC task that timed out
++ * rpcrdma_ia_close - Clean up/close an IA.
++ * @ia: interface adapter to close
 + *
-+ * Invoked when the transport is still connected, but an RPC
-+ * retransmit timeout occurs.
-+ *
-+ * Since RDMA connections don't have a keep-alive, forcibly
-+ * disconnect and retry to connect. This drives full
-+ * detection of the network path, and retransmissions of
-+ * all pending RPCs.
+  */
+ void
+ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+@@ -483,12 +481,14 @@ static void rpcrdma_destroy_id(struct rdma_cm_id *id)
+ 		if (ia->ri_id->qp)
+ 			rdma_destroy_qp(ia->ri_id);
+ 		rpcrdma_destroy_id(ia->ri_id);
+-		ia->ri_id = NULL;
+ 	}
++	ia->ri_id = NULL;
++	ia->ri_device = NULL;
+ 
+ 	/* If the pd is still busy, xprtrdma missed freeing a resource */
+ 	if (ia->ri_pd && !IS_ERR(ia->ri_pd))
+ 		ib_dealloc_pd(ia->ri_pd);
++	ia->ri_pd = NULL;
+ }
+ 
+ /*
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 171a351..af844fc 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -497,10 +497,15 @@ struct rpcrdma_xprt {
+  * Default is 0, see sysctl entry and rpc_rdma.c rpcrdma_convert_iovs() */
+ extern int xprt_rdma_pad_optimize;
+ 
++/* This setting controls the hunt for a supported memory
++ * registration strategy.
 + */
-+static void
-+xprt_rdma_timer(struct rpc_xprt *xprt, struct rpc_task *task)
-+{
-+	dprintk("RPC: %5u %s: xprt = %p\n", task->tk_pid, __func__, xprt);
++extern unsigned int xprt_rdma_memreg_strategy;
 +
-+	xprt_force_disconnect(xprt);
-+}
-+
- static void
- xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- {
-@@ -776,6 +797,7 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
- 	.alloc_slot		= xprt_alloc_slot,
- 	.release_request	= xprt_release_rqst_cong,       /* ditto */
- 	.set_retrans_timeout	= xprt_set_retrans_timeout_def, /* ditto */
-+	.timer			= xprt_rdma_timer,
- 	.rpcbind		= rpcb_getport_async,	/* sunrpc/rpcb_clnt.c */
- 	.set_port		= xprt_rdma_set_port,
- 	.connect		= xprt_rdma_connect,
+ /*
+  * Interface Adapter calls - xprtrdma/verbs.c
+  */
+-int rpcrdma_ia_open(struct rpcrdma_xprt *, struct sockaddr *, int);
++int rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr);
+ void rpcrdma_ia_close(struct rpcrdma_ia *);
+ bool frwr_is_supported(struct rpcrdma_ia *);
+ bool fmr_is_supported(struct rpcrdma_ia *);
 
