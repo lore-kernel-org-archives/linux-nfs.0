@@ -1,771 +1,156 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:34007 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752500AbdDLQBX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Apr 2017 12:01:23 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: ooo@electrozaur.com, martin.petersen@oracle.com,
-        trond.myklebust@primarydata.com, axboe@kernel.dk
-Cc: osd-dev@open-osd.org, linux-nfs@vger.kernel.org,
-        linux-scsi@vger.kernel.org, linux-block@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH 1/4] block: remove the osdblk driver
-Date: Wed, 12 Apr 2017 18:01:06 +0200
-Message-Id: <20170412160109.10598-2-hch@lst.de>
-In-Reply-To: <20170412160109.10598-1-hch@lst.de>
-References: <20170412160109.10598-1-hch@lst.de>
+Received: from mx143.netapp.com ([216.240.21.24]:22892 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751696AbdDLQEH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 Apr 2017 12:04:07 -0400
+From: "Mora, Jorge" <Jorge.Mora@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Inter server-side copy performance
+Date: Wed, 12 Apr 2017 16:03:53 +0000
+Message-ID: <8C91BE9C-76F2-4E84-9445-D742D80EF56D@netapp.com>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This was just a proof of concept user for the SCSI OSD library, and
-never had any real users.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- drivers/block/Kconfig  |  16 --
- drivers/block/Makefile |   1 -
- drivers/block/osdblk.c | 693 -------------------------------------------------
- 3 files changed, 710 deletions(-)
- delete mode 100644 drivers/block/osdblk.c
-
-diff --git a/drivers/block/Kconfig b/drivers/block/Kconfig
-index a1c2e816128f..58e24c354933 100644
---- a/drivers/block/Kconfig
-+++ b/drivers/block/Kconfig
-@@ -312,22 +312,6 @@ config BLK_DEV_SKD
- 
- 	Use device /dev/skd$N amd /dev/skd$Np$M.
- 
--config BLK_DEV_OSD
--	tristate "OSD object-as-blkdev support"
--	depends on SCSI_OSD_ULD
--	---help---
--	  Saying Y or M here will allow the exporting of a single SCSI
--	  OSD (object-based storage) object as a Linux block device.
--
--	  For example, if you create a 2G object on an OSD device,
--	  you can then use this module to present that 2G object as
--	  a Linux block device.
--
--	  To compile this driver as a module, choose M here: the
--	  module will be called osdblk.
--
--	  If unsure, say N.
--
- config BLK_DEV_SX8
- 	tristate "Promise SATA SX8 support"
- 	depends on PCI
-diff --git a/drivers/block/Makefile b/drivers/block/Makefile
-index b12c772bbeb3..42e8cee1cbc7 100644
---- a/drivers/block/Makefile
-+++ b/drivers/block/Makefile
-@@ -22,7 +22,6 @@ obj-$(CONFIG_CDROM_PKTCDVD)	+= pktcdvd.o
- obj-$(CONFIG_MG_DISK)		+= mg_disk.o
- obj-$(CONFIG_SUNVDC)		+= sunvdc.o
- obj-$(CONFIG_BLK_DEV_SKD)	+= skd.o
--obj-$(CONFIG_BLK_DEV_OSD)	+= osdblk.o
- 
- obj-$(CONFIG_BLK_DEV_UMEM)	+= umem.o
- obj-$(CONFIG_BLK_DEV_NBD)	+= nbd.o
-diff --git a/drivers/block/osdblk.c b/drivers/block/osdblk.c
-deleted file mode 100644
-index 8127b8201a01..000000000000
---- a/drivers/block/osdblk.c
-+++ /dev/null
-@@ -1,693 +0,0 @@
--
--/*
--   osdblk.c -- Export a single SCSI OSD object as a Linux block device
--
--
--   Copyright 2009 Red Hat, Inc.
--
--   This program is free software; you can redistribute it and/or modify
--   it under the terms of the GNU General Public License as published by
--   the Free Software Foundation.
--
--   This program is distributed in the hope that it will be useful,
--   but WITHOUT ANY WARRANTY; without even the implied warranty of
--   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--   GNU General Public License for more details.
--
--   You should have received a copy of the GNU General Public License
--   along with this program; see the file COPYING.  If not, write to
--   the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
--
--
--   Instructions for use
--   --------------------
--
--   1) Map a Linux block device to an existing OSD object.
--
--      In this example, we will use partition id 1234, object id 5678,
--      OSD device /dev/osd1.
--
--      $ echo "1234 5678 /dev/osd1" > /sys/class/osdblk/add
--
--
--   2) List all active blkdev<->object mappings.
--
--      In this example, we have performed step #1 twice, creating two blkdevs,
--      mapped to two separate OSD objects.
--
--      $ cat /sys/class/osdblk/list
--      0 174 1234 5678 /dev/osd1
--      1 179 1994 897123 /dev/osd0
--
--      The columns, in order, are:
--      - blkdev unique id
--      - blkdev assigned major
--      - OSD object partition id
--      - OSD object id
--      - OSD device
--
--
--   3) Remove an active blkdev<->object mapping.
--
--      In this example, we remove the mapping with blkdev unique id 1.
--
--      $ echo 1 > /sys/class/osdblk/remove
--
--
--   NOTE:  The actual creation and deletion of OSD objects is outside the scope
--   of this driver.
--
-- */
--
--#include <linux/kernel.h>
--#include <linux/device.h>
--#include <linux/module.h>
--#include <linux/fs.h>
--#include <linux/slab.h>
--#include <scsi/osd_initiator.h>
--#include <scsi/osd_attributes.h>
--#include <scsi/osd_sec.h>
--#include <scsi/scsi_device.h>
--
--#define DRV_NAME "osdblk"
--#define PFX DRV_NAME ": "
--
--/* #define _OSDBLK_DEBUG */
--#ifdef _OSDBLK_DEBUG
--#define OSDBLK_DEBUG(fmt, a...) \
--	printk(KERN_NOTICE "osdblk @%s:%d: " fmt, __func__, __LINE__, ##a)
--#else
--#define OSDBLK_DEBUG(fmt, a...) \
--	do { if (0) printk(fmt, ##a); } while (0)
--#endif
--
--MODULE_AUTHOR("Jeff Garzik <jeff@garzik.org>");
--MODULE_DESCRIPTION("block device inside an OSD object osdblk.ko");
--MODULE_LICENSE("GPL");
--
--struct osdblk_device;
--
--enum {
--	OSDBLK_MINORS_PER_MAJOR	= 256,		/* max minors per blkdev */
--	OSDBLK_MAX_REQ		= 32,		/* max parallel requests */
--	OSDBLK_OP_TIMEOUT	= 4 * 60,	/* sync OSD req timeout */
--};
--
--struct osdblk_request {
--	struct request		*rq;		/* blk layer request */
--	struct bio		*bio;		/* cloned bio */
--	struct osdblk_device	*osdev;		/* associated blkdev */
--};
--
--struct osdblk_device {
--	int			id;		/* blkdev unique id */
--
--	int			major;		/* blkdev assigned major */
--	struct gendisk		*disk;		/* blkdev's gendisk and rq */
--	struct request_queue	*q;
--
--	struct osd_dev		*osd;		/* associated OSD */
--
--	char			name[32];	/* blkdev name, e.g. osdblk34 */
--
--	spinlock_t		lock;		/* queue lock */
--
--	struct osd_obj_id	obj;		/* OSD partition, obj id */
--	uint8_t			obj_cred[OSD_CAP_LEN]; /* OSD cred */
--
--	struct osdblk_request	req[OSDBLK_MAX_REQ]; /* request table */
--
--	struct list_head	node;
--
--	char			osd_path[0];	/* OSD device path */
--};
--
--static struct class *class_osdblk;		/* /sys/class/osdblk */
--static DEFINE_MUTEX(ctl_mutex);	/* Serialize open/close/setup/teardown */
--static LIST_HEAD(osdblkdev_list);
--
--static const struct block_device_operations osdblk_bd_ops = {
--	.owner		= THIS_MODULE,
--};
--
--static const struct osd_attr g_attr_logical_length = ATTR_DEF(
--	OSD_APAGE_OBJECT_INFORMATION, OSD_ATTR_OI_LOGICAL_LENGTH, 8);
--
--static void osdblk_make_credential(u8 cred_a[OSD_CAP_LEN],
--				   const struct osd_obj_id *obj)
--{
--	osd_sec_init_nosec_doall_caps(cred_a, obj, false, true);
--}
--
--/* copied from exofs; move to libosd? */
--/*
-- * Perform a synchronous OSD operation.  copied from exofs; move to libosd?
-- */
--static int osd_sync_op(struct osd_request *or, int timeout, uint8_t *credential)
--{
--	int ret;
--
--	or->timeout = timeout;
--	ret = osd_finalize_request(or, 0, credential, NULL);
--	if (ret)
--		return ret;
--
--	ret = osd_execute_request(or);
--
--	/* osd_req_decode_sense(or, ret); */
--	return ret;
--}
--
--/*
-- * Perform an asynchronous OSD operation.  copied from exofs; move to libosd?
-- */
--static int osd_async_op(struct osd_request *or, osd_req_done_fn *async_done,
--		   void *caller_context, u8 *cred)
--{
--	int ret;
--
--	ret = osd_finalize_request(or, 0, cred, NULL);
--	if (ret)
--		return ret;
--
--	ret = osd_execute_request_async(or, async_done, caller_context);
--
--	return ret;
--}
--
--/* copied from exofs; move to libosd? */
--static int extract_attr_from_req(struct osd_request *or, struct osd_attr *attr)
--{
--	struct osd_attr cur_attr = {.attr_page = 0}; /* start with zeros */
--	void *iter = NULL;
--	int nelem;
--
--	do {
--		nelem = 1;
--		osd_req_decode_get_attr_list(or, &cur_attr, &nelem, &iter);
--		if ((cur_attr.attr_page == attr->attr_page) &&
--		    (cur_attr.attr_id == attr->attr_id)) {
--			attr->len = cur_attr.len;
--			attr->val_ptr = cur_attr.val_ptr;
--			return 0;
--		}
--	} while (iter);
--
--	return -EIO;
--}
--
--static int osdblk_get_obj_size(struct osdblk_device *osdev, u64 *size_out)
--{
--	struct osd_request *or;
--	struct osd_attr attr;
--	int ret;
--
--	/* start request */
--	or = osd_start_request(osdev->osd, GFP_KERNEL);
--	if (!or)
--		return -ENOMEM;
--
--	/* create a get-attributes(length) request */
--	osd_req_get_attributes(or, &osdev->obj);
--
--	osd_req_add_get_attr_list(or, &g_attr_logical_length, 1);
--
--	/* execute op synchronously */
--	ret = osd_sync_op(or, OSDBLK_OP_TIMEOUT, osdev->obj_cred);
--	if (ret)
--		goto out;
--
--	/* extract length from returned attribute info */
--	attr = g_attr_logical_length;
--	ret = extract_attr_from_req(or, &attr);
--	if (ret)
--		goto out;
--
--	*size_out = get_unaligned_be64(attr.val_ptr);
--
--out:
--	osd_end_request(or);
--	return ret;
--
--}
--
--static void osdblk_osd_complete(struct osd_request *or, void *private)
--{
--	struct osdblk_request *orq = private;
--	struct osd_sense_info osi;
--	int ret = osd_req_decode_sense(or, &osi);
--
--	if (ret) {
--		ret = -EIO;
--		OSDBLK_DEBUG("osdblk_osd_complete with err=%d\n", ret);
--	}
--
--	/* complete OSD request */
--	osd_end_request(or);
--
--	/* complete request passed to osdblk by block layer */
--	__blk_end_request_all(orq->rq, ret);
--}
--
--static void bio_chain_put(struct bio *chain)
--{
--	struct bio *tmp;
--
--	while (chain) {
--		tmp = chain;
--		chain = chain->bi_next;
--
--		bio_put(tmp);
--	}
--}
--
--static struct bio *bio_chain_clone(struct bio *old_chain, gfp_t gfpmask)
--{
--	struct bio *tmp, *new_chain = NULL, *tail = NULL;
--
--	while (old_chain) {
--		tmp = bio_clone_kmalloc(old_chain, gfpmask);
--		if (!tmp)
--			goto err_out;
--
--		tmp->bi_bdev = NULL;
--		gfpmask &= ~__GFP_DIRECT_RECLAIM;
--		tmp->bi_next = NULL;
--
--		if (!new_chain)
--			new_chain = tail = tmp;
--		else {
--			tail->bi_next = tmp;
--			tail = tmp;
--		}
--
--		old_chain = old_chain->bi_next;
--	}
--
--	return new_chain;
--
--err_out:
--	OSDBLK_DEBUG("bio_chain_clone with err\n");
--	bio_chain_put(new_chain);
--	return NULL;
--}
--
--static void osdblk_rq_fn(struct request_queue *q)
--{
--	struct osdblk_device *osdev = q->queuedata;
--
--	while (1) {
--		struct request *rq;
--		struct osdblk_request *orq;
--		struct osd_request *or;
--		struct bio *bio;
--		bool do_write, do_flush;
--
--		/* peek at request from block layer */
--		rq = blk_fetch_request(q);
--		if (!rq)
--			break;
--
--		/* deduce our operation (read, write, flush) */
--		/* I wish the block layer simplified cmd_type/cmd_flags/cmd[]
--		 * into a clearly defined set of RPC commands:
--		 * read, write, flush, scsi command, power mgmt req,
--		 * driver-specific, etc.
--		 */
--
--		do_flush = (req_op(rq) == REQ_OP_FLUSH);
--		do_write = (rq_data_dir(rq) == WRITE);
--
--		if (!do_flush) { /* osd_flush does not use a bio */
--			/* a bio clone to be passed down to OSD request */
--			bio = bio_chain_clone(rq->bio, GFP_ATOMIC);
--			if (!bio)
--				break;
--		} else
--			bio = NULL;
--
--		/* alloc internal OSD request, for OSD command execution */
--		or = osd_start_request(osdev->osd, GFP_ATOMIC);
--		if (!or) {
--			bio_chain_put(bio);
--			OSDBLK_DEBUG("osd_start_request with err\n");
--			break;
--		}
--
--		orq = &osdev->req[rq->tag];
--		orq->rq = rq;
--		orq->bio = bio;
--		orq->osdev = osdev;
--
--		/* init OSD command: flush, write or read */
--		if (do_flush)
--			osd_req_flush_object(or, &osdev->obj,
--					     OSD_CDB_FLUSH_ALL, 0, 0);
--		else if (do_write)
--			osd_req_write(or, &osdev->obj, blk_rq_pos(rq) * 512ULL,
--				      bio, blk_rq_bytes(rq));
--		else
--			osd_req_read(or, &osdev->obj, blk_rq_pos(rq) * 512ULL,
--				     bio, blk_rq_bytes(rq));
--
--		OSDBLK_DEBUG("%s 0x%x bytes at 0x%llx\n",
--			do_flush ? "flush" : do_write ?
--				"write" : "read", blk_rq_bytes(rq),
--			blk_rq_pos(rq) * 512ULL);
--
--		/* begin OSD command execution */
--		if (osd_async_op(or, osdblk_osd_complete, orq,
--				 osdev->obj_cred)) {
--			osd_end_request(or);
--			blk_requeue_request(q, rq);
--			bio_chain_put(bio);
--			OSDBLK_DEBUG("osd_execute_request_async with err\n");
--			break;
--		}
--
--		/* remove the special 'flush' marker, now that the command
--		 * is executing
--		 */
--		rq->special = NULL;
--	}
--}
--
--static void osdblk_free_disk(struct osdblk_device *osdev)
--{
--	struct gendisk *disk = osdev->disk;
--
--	if (!disk)
--		return;
--
--	if (disk->flags & GENHD_FL_UP)
--		del_gendisk(disk);
--	if (disk->queue)
--		blk_cleanup_queue(disk->queue);
--	put_disk(disk);
--}
--
--static int osdblk_init_disk(struct osdblk_device *osdev)
--{
--	struct gendisk *disk;
--	struct request_queue *q;
--	int rc;
--	u64 obj_size = 0;
--
--	/* contact OSD, request size info about the object being mapped */
--	rc = osdblk_get_obj_size(osdev, &obj_size);
--	if (rc)
--		return rc;
--
--	/* create gendisk info */
--	disk = alloc_disk(OSDBLK_MINORS_PER_MAJOR);
--	if (!disk)
--		return -ENOMEM;
--
--	sprintf(disk->disk_name, DRV_NAME "%d", osdev->id);
--	disk->major = osdev->major;
--	disk->first_minor = 0;
--	disk->fops = &osdblk_bd_ops;
--	disk->private_data = osdev;
--
--	/* init rq */
--	q = blk_init_queue(osdblk_rq_fn, &osdev->lock);
--	if (!q) {
--		put_disk(disk);
--		return -ENOMEM;
--	}
--
--	/* switch queue to TCQ mode; allocate tag map */
--	rc = blk_queue_init_tags(q, OSDBLK_MAX_REQ, NULL, BLK_TAG_ALLOC_FIFO);
--	if (rc) {
--		blk_cleanup_queue(q);
--		put_disk(disk);
--		return rc;
--	}
--
--	/* Set our limits to the lower device limits, because osdblk cannot
--	 * sleep when allocating a lower-request and therefore cannot be
--	 * bouncing.
--	 */
--	blk_queue_stack_limits(q, osd_request_queue(osdev->osd));
--
--	blk_queue_prep_rq(q, blk_queue_start_tag);
--	blk_queue_write_cache(q, true, false);
--
--	disk->queue = q;
--
--	q->queuedata = osdev;
--
--	osdev->disk = disk;
--	osdev->q = q;
--
--	/* finally, announce the disk to the world */
--	set_capacity(disk, obj_size / 512ULL);
--	add_disk(disk);
--
--	printk(KERN_INFO "%s: Added of size 0x%llx\n",
--		disk->disk_name, (unsigned long long)obj_size);
--
--	return 0;
--}
--
--/********************************************************************
-- * /sys/class/osdblk/
-- *                   add	map OSD object to blkdev
-- *                   remove	unmap OSD object
-- *                   list	show mappings
-- *******************************************************************/
--
--static void class_osdblk_release(struct class *cls)
--{
--	kfree(cls);
--}
--
--static ssize_t class_osdblk_list(struct class *c,
--				struct class_attribute *attr,
--				char *data)
--{
--	int n = 0;
--	struct list_head *tmp;
--
--	mutex_lock_nested(&ctl_mutex, SINGLE_DEPTH_NESTING);
--
--	list_for_each(tmp, &osdblkdev_list) {
--		struct osdblk_device *osdev;
--
--		osdev = list_entry(tmp, struct osdblk_device, node);
--
--		n += sprintf(data+n, "%d %d %llu %llu %s\n",
--			osdev->id,
--			osdev->major,
--			osdev->obj.partition,
--			osdev->obj.id,
--			osdev->osd_path);
--	}
--
--	mutex_unlock(&ctl_mutex);
--	return n;
--}
--
--static ssize_t class_osdblk_add(struct class *c,
--				struct class_attribute *attr,
--				const char *buf, size_t count)
--{
--	struct osdblk_device *osdev;
--	ssize_t rc;
--	int irc, new_id = 0;
--	struct list_head *tmp;
--
--	if (!try_module_get(THIS_MODULE))
--		return -ENODEV;
--
--	/* new osdblk_device object */
--	osdev = kzalloc(sizeof(*osdev) + strlen(buf) + 1, GFP_KERNEL);
--	if (!osdev) {
--		rc = -ENOMEM;
--		goto err_out_mod;
--	}
--
--	/* static osdblk_device initialization */
--	spin_lock_init(&osdev->lock);
--	INIT_LIST_HEAD(&osdev->node);
--
--	/* generate unique id: find highest unique id, add one */
--
--	mutex_lock_nested(&ctl_mutex, SINGLE_DEPTH_NESTING);
--
--	list_for_each(tmp, &osdblkdev_list) {
--		struct osdblk_device *osdev;
--
--		osdev = list_entry(tmp, struct osdblk_device, node);
--		if (osdev->id > new_id)
--			new_id = osdev->id + 1;
--	}
--
--	osdev->id = new_id;
--
--	/* add to global list */
--	list_add_tail(&osdev->node, &osdblkdev_list);
--
--	mutex_unlock(&ctl_mutex);
--
--	/* parse add command */
--	if (sscanf(buf, "%llu %llu %s", &osdev->obj.partition, &osdev->obj.id,
--		   osdev->osd_path) != 3) {
--		rc = -EINVAL;
--		goto err_out_slot;
--	}
--
--	/* initialize rest of new object */
--	sprintf(osdev->name, DRV_NAME "%d", osdev->id);
--
--	/* contact requested OSD */
--	osdev->osd = osduld_path_lookup(osdev->osd_path);
--	if (IS_ERR(osdev->osd)) {
--		rc = PTR_ERR(osdev->osd);
--		goto err_out_slot;
--	}
--
--	/* build OSD credential */
--	osdblk_make_credential(osdev->obj_cred, &osdev->obj);
--
--	/* register our block device */
--	irc = register_blkdev(0, osdev->name);
--	if (irc < 0) {
--		rc = irc;
--		goto err_out_osd;
--	}
--
--	osdev->major = irc;
--
--	/* set up and announce blkdev mapping */
--	rc = osdblk_init_disk(osdev);
--	if (rc)
--		goto err_out_blkdev;
--
--	return count;
--
--err_out_blkdev:
--	unregister_blkdev(osdev->major, osdev->name);
--err_out_osd:
--	osduld_put_device(osdev->osd);
--err_out_slot:
--	mutex_lock_nested(&ctl_mutex, SINGLE_DEPTH_NESTING);
--	list_del_init(&osdev->node);
--	mutex_unlock(&ctl_mutex);
--
--	kfree(osdev);
--err_out_mod:
--	OSDBLK_DEBUG("Error adding device %s\n", buf);
--	module_put(THIS_MODULE);
--	return rc;
--}
--
--static ssize_t class_osdblk_remove(struct class *c,
--					struct class_attribute *attr,
--					const char *buf,
--					size_t count)
--{
--	struct osdblk_device *osdev = NULL;
--	int target_id, rc;
--	unsigned long ul;
--	struct list_head *tmp;
--
--	rc = kstrtoul(buf, 10, &ul);
--	if (rc)
--		return rc;
--
--	/* convert to int; abort if we lost anything in the conversion */
--	target_id = (int) ul;
--	if (target_id != ul)
--		return -EINVAL;
--
--	/* remove object from list immediately */
--	mutex_lock_nested(&ctl_mutex, SINGLE_DEPTH_NESTING);
--
--	list_for_each(tmp, &osdblkdev_list) {
--		osdev = list_entry(tmp, struct osdblk_device, node);
--		if (osdev->id == target_id) {
--			list_del_init(&osdev->node);
--			break;
--		}
--		osdev = NULL;
--	}
--
--	mutex_unlock(&ctl_mutex);
--
--	if (!osdev)
--		return -ENOENT;
--
--	/* clean up and free blkdev and associated OSD connection */
--	osdblk_free_disk(osdev);
--	unregister_blkdev(osdev->major, osdev->name);
--	osduld_put_device(osdev->osd);
--	kfree(osdev);
--
--	/* release module ref */
--	module_put(THIS_MODULE);
--
--	return count;
--}
--
--static struct class_attribute class_osdblk_attrs[] = {
--	__ATTR(add,	0200, NULL, class_osdblk_add),
--	__ATTR(remove,	0200, NULL, class_osdblk_remove),
--	__ATTR(list,	0444, class_osdblk_list, NULL),
--	__ATTR_NULL
--};
--
--static int osdblk_sysfs_init(void)
--{
--	int ret = 0;
--
--	/*
--	 * create control files in sysfs
--	 * /sys/class/osdblk/...
--	 */
--	class_osdblk = kzalloc(sizeof(*class_osdblk), GFP_KERNEL);
--	if (!class_osdblk)
--		return -ENOMEM;
--
--	class_osdblk->name = DRV_NAME;
--	class_osdblk->owner = THIS_MODULE;
--	class_osdblk->class_release = class_osdblk_release;
--	class_osdblk->class_attrs = class_osdblk_attrs;
--
--	ret = class_register(class_osdblk);
--	if (ret) {
--		kfree(class_osdblk);
--		class_osdblk = NULL;
--		printk(PFX "failed to create class osdblk\n");
--		return ret;
--	}
--
--	return 0;
--}
--
--static void osdblk_sysfs_cleanup(void)
--{
--	if (class_osdblk)
--		class_destroy(class_osdblk);
--	class_osdblk = NULL;
--}
--
--static int __init osdblk_init(void)
--{
--	int rc;
--
--	rc = osdblk_sysfs_init();
--	if (rc)
--		return rc;
--
--	return 0;
--}
--
--static void __exit osdblk_exit(void)
--{
--	osdblk_sysfs_cleanup();
--}
--
--module_init(osdblk_init);
--module_exit(osdblk_exit);
--
--- 
-2.11.0
-
+SGVsbG8sDQogDQpUaGUgZm9sbG93aW5nIHNob3dzIGEgY29tcGFyaXNvbiBiZXR3ZWVuIGludGVy
+IHNlcnZlci1zaWRlIGNvcHkgYW5kIGEgdHJhZGl0aW9uYWwgY29weS4NClNldHVwOg0KICAgIENs
+aWVudDogMTYgQ1BVcywgMzJHQg0KICAgIFNSQyBzZXJ2ZXI6IDQgQ1BVcywgOEdCDQogICAgRFNU
+IHNlcnZlcjogNCBDUFVzLCA4R0INCiAgICBBbGwgbWFjaGluZXMgYXJlIHJ1bm5pbmcgNC4xMC4w
+LXNzYy0wMjI0MjAxNy4xMzQ1LA0KICAgICAgNC4xMC4wIGtlcm5lbCBvbiB0b3AgUkhFTCA3LjMg
+d2l0aCBPbGdh4oCZcyBTU0MgcGF0Y2hlcyAwMjI0MjAxNy50Z3ogKGFzeW5jaHJvbm91cyBTU0Mp
+DQpUZXN0Og0KICAgIFRoZSB0ZXN0IHJ1bnMgMTAgdGltZXMgZm9yIGVhY2ggY29weSBzaXplIGFu
+ZCB0aGUgYXZlcmFnZSBpcyBjb21wYXJlZC4NCiAgICBUaGUgc2VydmVycyBhcmUgbW91bnRlZCBh
+bmQgdW4tbW91bnRlZCBmb3IgZWFjaCBjb3B5ICh1c2luZyBkZWZhdWx0IG1vdW50IG9wdGlvbnMp
+DQogICAgVGVzdGluZyBjb3B5IHNpemU6IDFLQiDigJMgNEdCLCBOT1RFOiB0aGUgbGFzdCBjb3B5
+IGlzIDRHQi0xIGJ5dGVzLCB0aGUgbWF4aW11bSBjb3B5X2ZpbGVfcmFuZ2UoKSBhY2NlcHRzLg0K
+UmVzdWx0czoNCiAgICBGb3IgYSBjb3B5IHNpemUgYmVsb3cgMTZNQiwgdHJhZGl0aW9uYWwgY29w
+eSBydW5zIGZhc3RlciB0aGFuIHNlcnZlci1zaWRlIGNvcHkNCiAgICBGb3IgYSBjb3B5IHNpemUg
+b2YgMzJNQiBhbmQgYWJvdmUsIHNlcnZlci1zaWRlIGNvcHkgaXMgYXQgbGVhc3QgMzAlIGZhc3Rl
+ci4NCiAgICBGb3IgYSBjb3B5IHNpemUgb2YgMTI4TUIgYW5kIGFib3ZlLCBzZXJ2ZXItc2lkZSBj
+b3B5IGlzIGFib3V0IDUwJSBmYXN0ZXIuDQogICAgRm9yIHRoZSAxR0IgYW5kIDJHQiBjb3B5IHNp
+emVzLCB0aGUgcGVyZm9ybWFuY2UgaW1wcm92ZW1lbnQgaXMgb25seSBhYm91dCAzMC00MCUsIGlu
+dmVzdGlnYXRpbmcgd2h5IHRoaXMgaXMgaGFwcGVuaW5nLg0KIA0KIA0KKioqIEludGVyLVNTQyBw
+ZXJmb3JtYW5jZSB0ZXN0DQogICAgVEVTVDogUnVubmluZyB0ZXN0ICdwZXJmMDInDQogDQpQZXJm
+b3JtYW5jZSBkZWdyYWRhdGlvbjoNCiAgICBJTkZPOiAwMDowODo1MC4wMzUxNjUgLSBwZXJmMDIg
+Y29weSB3aXRoIHNpemUgMUtCDQogICAgSU5GTzogMDA6MDk6MDEuMzAyMDA0IC0gU2VydmVyLXNp
+ZGUgQ09QWTogMC4xMDQwNDk5OTI1NjEgc2Vjb25kcw0KICAgIElORk86IDAwOjA5OjAxLjMwMjIw
+NiAtIFRyYWRpdGlvbmFsIENPUFk6IDAuMDMxOTYxMDExODg2NiBzZWNvbmRzDQogICAgRkFJTDog
+U1NDIHNob3VsZCBvdXRwZXJmb3JtIHRyYWRpdGlvbmFsIGNvcHksIHBlcmZvcm1hbmNlIGRlZ3Jh
+ZGF0aW9uIGZvciBhIDFLQiBmaWxlOiAyMjUlDQogICAgSU5GTzogMDA6MDk6MDEuMzAyMzc4IC0g
+cGVyZjAyIGNvcHkgd2l0aCBzaXplIDJLQg0KICAgIElORk86IDAwOjA5OjEyLjMzMjE0NCAtIFNl
+cnZlci1zaWRlIENPUFk6IDAuMDkyMzU4ODUxNDMyOCBzZWNvbmRzDQogICAgSU5GTzogMDA6MDk6
+MTIuMzMyMzM1IC0gVHJhZGl0aW9uYWwgQ09QWTogMC4wMzM1OTY3Nzc5MTYgc2Vjb25kcw0KICAg
+IEZBSUw6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25hbCBjb3B5LCBwZXJmb3JtYW5j
+ZSBkZWdyYWRhdGlvbiBmb3IgYSAyS0IgZmlsZTogMTc0JQ0KICAgIElORk86IDAwOjA5OjEyLjMz
+MjUxMCAtIHBlcmYwMiBjb3B5IHdpdGggc2l6ZSA0S0INCiAgICBJTkZPOiAwMDowOToyMy4zMjA3
+MTQgLSBTZXJ2ZXItc2lkZSBDT1BZOiAwLjEwMDcxNTU2NTY4MSBzZWNvbmRzDQogICAgSU5GTzog
+MDA6MDk6MjMuMzIwOTE1IC0gVHJhZGl0aW9uYWwgQ09QWTogMC4wMzM2MjQwNTMwMDE0IHNlY29u
+ZHMNCiAgICBGQUlMOiBTU0Mgc2hvdWxkIG91dHBlcmZvcm0gdHJhZGl0aW9uYWwgY29weSwgcGVy
+Zm9ybWFuY2UgZGVncmFkYXRpb24gZm9yIGEgNEtCIGZpbGU6IDE5OSUNCiAgICBJTkZPOiAwMDow
+OToyMy4zMjEwODYgLSBwZXJmMDIgY29weSB3aXRoIHNpemUgOEtCDQogICAgSU5GTzogMDA6MDk6
+MzQuNTQyNTE1IC0gU2VydmVyLXNpZGUgQ09QWTogMC4wODgxNjQxMTQ5NTIxIHNlY29uZHMNCiAg
+ICBJTkZPOiAwMDowOTozNC41NDI3NDIgLSBUcmFkaXRpb25hbCBDT1BZOiAwLjAzMzY2MDg4ODY3
+MTkgc2Vjb25kcw0KICAgIEZBSUw6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25hbCBj
+b3B5LCBwZXJmb3JtYW5jZSBkZWdyYWRhdGlvbiBmb3IgYSA4S0IgZmlsZTogMTYxJQ0KICAgIElO
+Rk86IDAwOjA5OjM0LjU0MjkyNCAtIHBlcmYwMiBjb3B5IHdpdGggc2l6ZSAxNktCDQogICAgSU5G
+TzogMDA6MDk6NDUuNDM5NDI0IC0gU2VydmVyLXNpZGUgQ09QWTogMC4wOTM5ODk4MDE0MDY5IHNl
+Y29uZHMNCiAgICBJTkZPOiAwMDowOTo0NS40Mzk2MzAgLSBUcmFkaXRpb25hbCBDT1BZOiAwLjAy
+NzcwNjM4NDY1ODggc2Vjb25kcw0KICAgIEZBSUw6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFk
+aXRpb25hbCBjb3B5LCBwZXJmb3JtYW5jZSBkZWdyYWRhdGlvbiBmb3IgYSAxNktCIGZpbGU6IDIz
+OSUNCiAgICBJTkZPOiAwMDowOTo0NS40Mzk3OTUgLSBwZXJmMDIgY29weSB3aXRoIHNpemUgMzJL
+Qg0KICAgIElORk86IDAwOjA5OjU2LjEwMzQ4MCAtIFNlcnZlci1zaWRlIENPUFk6IDAuMDc5ODMw
+OTA4Nzc1MyBzZWNvbmRzDQogICAgSU5GTzogMDA6MDk6NTYuMTAzNjkxIC0gVHJhZGl0aW9uYWwg
+Q09QWTogMC4wMzM1NzIyMjA4MDIzIHNlY29uZHMNCiAgICBGQUlMOiBTU0Mgc2hvdWxkIG91dHBl
+cmZvcm0gdHJhZGl0aW9uYWwgY29weSwgcGVyZm9ybWFuY2UgZGVncmFkYXRpb24gZm9yIGEgMzJL
+QiBmaWxlOiAxMzclDQogICAgSU5GTzogMDA6MDk6NTYuMTAzODQ4IC0gcGVyZjAyIGNvcHkgd2l0
+aCBzaXplIDY0S0INCiAgICBJTkZPOiAwMDoxMDowNy4yMTcwMjYgLSBTZXJ2ZXItc2lkZSBDT1BZ
+OiAwLjEwNjQ5MTMyNzI4NiBzZWNvbmRzDQogICAgSU5GTzogMDA6MTA6MDcuMjE3MjI4IC0gVHJh
+ZGl0aW9uYWwgQ09QWTogMC4wMzQzODc1ODg1MDEgc2Vjb25kcw0KICAgIEZBSUw6IFNTQyBzaG91
+bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25hbCBjb3B5LCBwZXJmb3JtYW5jZSBkZWdyYWRhdGlvbiBm
+b3IgYSA2NEtCIGZpbGU6IDIwOSUNCiAgICBJTkZPOiAwMDoxMDowNy4yMTc0MDAgLSBwZXJmMDIg
+Y29weSB3aXRoIHNpemUgMTI4S0INCiAgICBJTkZPOiAwMDoxMDoxOC4wMjIzMjAgLSBTZXJ2ZXIt
+c2lkZSBDT1BZOiAwLjEwNTYyNzM0NjAzOSBzZWNvbmRzDQogICAgSU5GTzogMDA6MTA6MTguMDIy
+NTE2IC0gVHJhZGl0aW9uYWwgQ09QWTogMC4wNTExMzE4OTIyMDQzIHNlY29uZHMNCiAgICBGQUlM
+OiBTU0Mgc2hvdWxkIG91dHBlcmZvcm0gdHJhZGl0aW9uYWwgY29weSwgcGVyZm9ybWFuY2UgZGVn
+cmFkYXRpb24gZm9yIGEgMTI4S0IgZmlsZTogMTA2JQ0KICAgIElORk86IDAwOjEwOjE4LjAyMjY4
+NiAtIHBlcmYwMiBjb3B5IHdpdGggc2l6ZSAyNTZLQg0KICAgIElORk86IDAwOjEwOjI5LjQ1MjM1
+MyAtIFNlcnZlci1zaWRlIENPUFk6IDAuMTI0Nzg3MDIwNjgzIHNlY29uZHMNCiAgICBJTkZPOiAw
+MDoxMDoyOS40NTI1MzggLSBUcmFkaXRpb25hbCBDT1BZOiAwLjA1NTI0MDgyMTgzODQgc2Vjb25k
+cw0KICAgIEZBSUw6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25hbCBjb3B5LCBwZXJm
+b3JtYW5jZSBkZWdyYWRhdGlvbiBmb3IgYSAyNTZLQiBmaWxlOiAxMjUlDQogICAgSU5GTzogMDA6
+MTA6MjkuNDUyNzEzIC0gcGVyZjAyIGNvcHkgd2l0aCBzaXplIDUxMktCDQogICAgSU5GTzogMDA6
+MTA6NDEuMzU3MzE1IC0gU2VydmVyLXNpZGUgQ09QWTogMC4xMTA2MDIwOTI3NDMgc2Vjb25kcw0K
+ICAgIElORk86IDAwOjEwOjQxLjM1NzQ4OSAtIFRyYWRpdGlvbmFsIENPUFk6IDAuMDY0Mzk2MTY2
+ODAxNSBzZWNvbmRzDQogICAgRkFJTDogU1NDIHNob3VsZCBvdXRwZXJmb3JtIHRyYWRpdGlvbmFs
+IGNvcHksIHBlcmZvcm1hbmNlIGRlZ3JhZGF0aW9uIGZvciBhIDUxMktCIGZpbGU6IDcxJQ0KICAg
+IElORk86IDAwOjEwOjQxLjM1NzY1NiAtIHBlcmYwMiBjb3B5IHdpdGggc2l6ZSAxTUINCiAgICBJ
+TkZPOiAwMDoxMDo1Mi43MDQxNTkgLSBTZXJ2ZXItc2lkZSBDT1BZOiAwLjExODk1MDIwMDA4MSBz
+ZWNvbmRzDQogICAgSU5GTzogMDA6MTA6NTIuNzA0MzQxIC0gVHJhZGl0aW9uYWwgQ09QWTogMC4w
+NzAzMzA0NzY3NjA5IHNlY29uZHMNCiAgICBGQUlMOiBTU0Mgc2hvdWxkIG91dHBlcmZvcm0gdHJh
+ZGl0aW9uYWwgY29weSwgcGVyZm9ybWFuY2UgZGVncmFkYXRpb24gZm9yIGEgMU1CIGZpbGU6IDY5
+JQ0KICAgIElORk86IDAwOjEwOjUyLjcwNDQ5OSAtIHBlcmYwMiBjb3B5IHdpdGggc2l6ZSAyTUIN
+CiAgICBJTkZPOiAwMDoxMTowNS4zNjcyNjUgLSBTZXJ2ZXItc2lkZSBDT1BZOiAwLjEzNjMzNjQ2
+OTY1IHNlY29uZHMNCiAgICBJTkZPOiAwMDoxMTowNS4zNjc0NTEgLSBUcmFkaXRpb25hbCBDT1BZ
+OiAwLjEwMzY0MzUxMjcyNiBzZWNvbmRzDQogICAgRkFJTDogU1NDIHNob3VsZCBvdXRwZXJmb3Jt
+IHRyYWRpdGlvbmFsIGNvcHksIHBlcmZvcm1hbmNlIGRlZ3JhZGF0aW9uIGZvciBhIDJNQiBmaWxl
+OiAzMSUNCiAgICBJTkZPOiAwMDoxMTowNS4zNjc2MTQgLSBwZXJmMDIgY29weSB3aXRoIHNpemUg
+NE1CDQogICAgSU5GTzogMDA6MTE6MTguODcyMDA0IC0gU2VydmVyLXNpZGUgQ09QWTogMC4xODEx
+NjUwNzUzMDIgc2Vjb25kcw0KICAgIElORk86IDAwOjExOjE4Ljg3MjIwNCAtIFRyYWRpdGlvbmFs
+IENPUFk6IDAuMTY0NTg2MTE0ODgzIHNlY29uZHMNCiAgICBGQUlMOiBTU0Mgc2hvdWxkIG91dHBl
+cmZvcm0gdHJhZGl0aW9uYWwgY29weSwgcGVyZm9ybWFuY2UgZGVncmFkYXRpb24gZm9yIGEgNE1C
+IGZpbGU6IDEwJQ0KICAgIElORk86IDAwOjExOjE4Ljg3MjM2OCAtIHBlcmYwMiBjb3B5IHdpdGgg
+c2l6ZSA4TUINCiAgICBJTkZPOiAwMDoxMTozNS4wOTMwNzEgLSBTZXJ2ZXItc2lkZSBDT1BZOiAw
+LjI5MDIwNDA5NTg0IHNlY29uZHMNCiAgICBJTkZPOiAwMDoxMTozNS4wOTMyOTcgLSBUcmFkaXRp
+b25hbCBDT1BZOiAwLjI4MzMxNTE4MTczMiBzZWNvbmRzDQogICAgRkFJTDogU1NDIHNob3VsZCBv
+dXRwZXJmb3JtIHRyYWRpdGlvbmFsIGNvcHksIHBlcmZvcm1hbmNlIGRlZ3JhZGF0aW9uIGZvciBh
+IDhNQiBmaWxlOiAyJQ0KIA0KUGVyZm9ybWFuY2UgZ2FpbjoNCiAgICBJTkZPOiAwMDoxMTozNS4w
+OTM0NDYgLSBwZXJmMDIgY29weSB3aXRoIHNpemUgMTZNQg0KICAgIElORk86IDAwOjExOjU0Ljc3
+OTg0NCAtIFNlcnZlci1zaWRlIENPUFk6IDAuNDU1NTY5NTc3MjE3IHNlY29uZHMNCiAgICBJTkZP
+OiAwMDoxMTo1NC43ODAwMzggLSBUcmFkaXRpb25hbCBDT1BZOiAwLjUwNjI1MjU5ODc2MyBzZWNv
+bmRzDQogICAgUEFTUzogU1NDIHNob3VsZCBvdXRwZXJmb3JtIHRyYWRpdGlvbmFsIGNvcHksIHBl
+cmZvcm1hbmNlIGltcHJvdmVtZW50IGZvciBhIDE2TUIgZmlsZTogMTElDQogICAgSU5GTzogMDA6
+MTE6NTQuNzgwMTg1IC0gcGVyZjAyIGNvcHkgd2l0aCBzaXplIDMyTUINCiAgICBJTkZPOiAwMDox
+MjoyMi40MTUxMzEgLSBTZXJ2ZXItc2lkZSBDT1BZOiAwLjcxMzY5MTI1ODQzIHNlY29uZHMNCiAg
+ICBJTkZPOiAwMDoxMjoyMi40MTUzMTkgLSBUcmFkaXRpb25hbCBDT1BZOiAwLjkzNDczNjM3MTA0
+IHNlY29uZHMNCiAgICBQQVNTOiBTU0Mgc2hvdWxkIG91dHBlcmZvcm0gdHJhZGl0aW9uYWwgY29w
+eSwgcGVyZm9ybWFuY2UgaW1wcm92ZW1lbnQgZm9yIGEgMzJNQiBmaWxlOiAzMCUNCiAgICBJTkZP
+OiAwMDoxMjoyMi40MTU0NjYgLSBwZXJmMDIgY29weSB3aXRoIHNpemUgNjRNQg0KICAgIElORk86
+IDAwOjEzOjAzLjQ5ODI2MCAtIFNlcnZlci1zaWRlIENPUFk6IDEuMjM4NDUzMzg4MjEgc2Vjb25k
+cw0KICAgIElORk86IDAwOjEzOjAzLjQ5ODQ1NiAtIFRyYWRpdGlvbmFsIENPUFk6IDEuNzMwOTgx
+OTIyMTUgc2Vjb25kcw0KICAgIFBBU1M6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25h
+bCBjb3B5LCBwZXJmb3JtYW5jZSBpbXByb3ZlbWVudCBmb3IgYSA2NE1CIGZpbGU6IDM5JQ0KICAg
+IElORk86IDAwOjEzOjAzLjQ5ODYzNyAtIHBlcmYwMiBjb3B5IHdpdGggc2l6ZSAxMjhNQg0KICAg
+IElORk86IDAwOjE0OjExLjUwMjQ3NSAtIFNlcnZlci1zaWRlIENPUFk6IDIuMjI2Mzk5MTExNzUg
+c2Vjb25kcw0KICAgIElORk86IDAwOjE0OjExLjUwMjg5NiAtIFRyYWRpdGlvbmFsIENPUFk6IDMu
+MzQ3NzgwODcxMzkgc2Vjb25kcw0KICAgIFBBU1M6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFk
+aXRpb25hbCBjb3B5LCBwZXJmb3JtYW5jZSBpbXByb3ZlbWVudCBmb3IgYSAxMjhNQiBmaWxlOiA1
+MCUNCiAgICBJTkZPOiAwMDoxNDoxMS41MDMxMDIgLSBwZXJmMDIgY29weSB3aXRoIHNpemUgMjU2
+TUINCiAgICBJTkZPOiAwMDoxNjoxMi4zMjMzNTAgLSBTZXJ2ZXItc2lkZSBDT1BZOiA0LjI5NDAx
+ODcyMTU4IHNlY29uZHMNCiAgICBJTkZPOiAwMDoxNjoxMi4zMjM1MzcgLSBUcmFkaXRpb25hbCBD
+T1BZOiA2LjU0NjIyMjQ5NjAzIHNlY29uZHMNCiAgICBQQVNTOiBTU0Mgc2hvdWxkIG91dHBlcmZv
+cm0gdHJhZGl0aW9uYWwgY29weSwgcGVyZm9ybWFuY2UgaW1wcm92ZW1lbnQgZm9yIGEgMjU2TUIg
+ZmlsZTogNTIlDQogICAgSU5GTzogMDA6MTY6MTIuMzIzNzAzIC0gcGVyZjAyIGNvcHkgd2l0aCBz
+aXplIDUxMk1CDQogICAgSU5GTzogMDA6MTk6NTguMzExNTk4IC0gU2VydmVyLXNpZGUgQ09QWTog
+OC4zODQxNzcwNjQ5IHNlY29uZHMNCiAgICBJTkZPOiAwMDoxOTo1OC4zMTE3OTMgLSBUcmFkaXRp
+b25hbCBDT1BZOiAxMi45MjAwNDEyMjczIHNlY29uZHMNCiAgICBQQVNTOiBTU0Mgc2hvdWxkIG91
+dHBlcmZvcm0gdHJhZGl0aW9uYWwgY29weSwgcGVyZm9ybWFuY2UgaW1wcm92ZW1lbnQgZm9yIGEg
+NTEyTUIgZmlsZTogNTQlDQogICAgSU5GTzogMDA6MTk6NTguMzExOTM1IC0gcGVyZjAyIGNvcHkg
+d2l0aCBzaXplIDFHQg0KICAgIElORk86IDAwOjI2OjAxLjI3NTgwOSAtIFNlcnZlci1zaWRlIENP
+UFk6IDE0LjU5Njc4MzgwNDkgc2Vjb25kcw0KICAgIElORk86IDAwOjI2OjAxLjI3NjAyMCAtIFRy
+YWRpdGlvbmFsIENPUFk6IDIwLjE5NTc0NTM3Mjggc2Vjb25kcw0KICAgIFBBU1M6IFNTQyBzaG91
+bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25hbCBjb3B5LCBwZXJmb3JtYW5jZSBpbXByb3ZlbWVudCBm
+b3IgYSAxR0IgZmlsZTogMzglDQogICAgSU5GTzogMDA6MjY6MDEuMjc2MTc1IC0gcGVyZjAyIGNv
+cHkgd2l0aCBzaXplIDJHQg0KICAgIElORk86IDAwOjM1OjI5Ljk5MDIyMCAtIFNlcnZlci1zaWRl
+IENPUFk6IDIzLjYwNjc5NTc2NCBzZWNvbmRzDQogICAgSU5GTzogMDA6MzU6MjkuOTkwNDMyIC0g
+VHJhZGl0aW9uYWwgQ09QWTogMzEuNDI2MTUzOTQ1OSBzZWNvbmRzDQogICAgUEFTUzogU1NDIHNo
+b3VsZCBvdXRwZXJmb3JtIHRyYWRpdGlvbmFsIGNvcHksIHBlcmZvcm1hbmNlIGltcHJvdmVtZW50
+IGZvciBhIDJHQiBmaWxlOiAzMyUNCiAgICBJTkZPOiAwMDozNToyOS45OTA1ODAgLSBwZXJmMDIg
+Y29weSB3aXRoIHNpemUgNEdCDQogICAgSU5GTzogMDA6NTM6MTcuMTk4ODI3IC0gU2VydmVyLXNp
+ZGUgQ09QWTogNDEuMjI2MTQwODA5MSBzZWNvbmRzDQogICAgSU5GTzogMDA6NTM6MTcuMTk5MDMz
+IC0gVHJhZGl0aW9uYWwgQ09QWTogNjIuOTIxMDM1MDUxMyBzZWNvbmRzDQogICAgUEFTUzogU1ND
+IHNob3VsZCBvdXRwZXJmb3JtIHRyYWRpdGlvbmFsIGNvcHksIHBlcmZvcm1hbmNlIGltcHJvdmVt
+ZW50IGZvciBhIDRHQiBmaWxlOiA1MiUNCiAgICBUSU1FOiA0NG0yNy4xNjQyODZzDQogDQpMb2dm
+aWxlOiAvaG9tZS9tb3JhL2xvZ3MvbmZzdGVzdF9zc2NfMjAxNzA0MTIwMDA4NDkubG9nDQogDQoy
+MyB0ZXN0cyAoOSBwYXNzZWQsIDE0IGZhaWxlZCkNCiANClRvdGFsIHRpbWU6IDQ0bTI4LjMzNDE3
+N3MNCiANCiANCiANCi0tSm9yZ2UNCg0KDQo=
