@@ -1,44 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:31288 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751854AbdDNTQk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Apr 2017 15:16:40 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "bjschuma@netapp.com" <bjschuma@netapp.com>
-Subject: Re: RFC: fixing kernel oops on interrupted COMMIT from
- nfs_commit_file
-Date: Fri, 14 Apr 2017 19:16:34 +0000
-Message-ID: <1492197391.123147.1.camel@primarydata.com>
-References: <CAN-5tyHD9NspwAzL2YwoQGwcUk52ak0OWZ-dBfwpW6nynAf1Og@mail.gmail.com>
-         <1492109480.7917.1.camel@primarydata.com>
-         <CAN-5tyGOsUdWgjhNO8gvYabW-wx6ybmwUZGNLfY8rtmBiP=p_w@mail.gmail.com>
-         <bed72de9-5cf8-c8a3-f59f-9bf52f3702a1@Netapp.com>
-         <9eb6ccc9-501a-5635-05f9-7bd2fd4f4563@Netapp.com>
-         <1492116646.11542.1.camel@primarydata.com>
-         <CAN-5tyFbuG44eu3WkUprs1Ym3ZA=nfSq3rQ9Zqs5sDCXvuHCpQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyFbuG44eu3WkUprs1Ym3ZA=nfSq3rQ9Zqs5sDCXvuHCpQ@mail.gmail.com>
+Received: from fieldses.org ([173.255.197.46]:56136 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751854AbdDNTdj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Apr 2017 15:33:39 -0400
+Date: Fri, 14 Apr 2017 15:33:38 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 09/14] svcrdma: Report Write/Reply chunk overruns
+Message-ID: <20170414193338.GA10208@fieldses.org>
+References: <20170409163820.15073.43257.stgit@klimt.1015granger.net>
+ <20170409170641.15073.82788.stgit@klimt.1015granger.net>
+ <20170414155634.GC5362@fieldses.org>
+ <FCC0F429-0799-4416-9A61-ABD19C773AA9@oracle.com>
+ <20170414175216.GA8290@fieldses.org>
+ <809B3E7B-8991-4358-804F-B2D0101723FF@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <809B3E7B-8991-4358-804F-B2D0101723FF@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA0LTE0IGF0IDExOjU2IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gVGh1LCBBcHIgMTMsIDIwMTcgYXQgNDo1MCBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gU2Vjb25kbHksIGlm
-IHlvdSB3YW50IHRvIHJlbGVhc2UgdGhlIHJlcXVlc3QgYW5kIHlvdSBhcmUgbm90IHN1cmUNCj4g
-PiB3aGV0aGVyIG9yIG5vdCBpdCBnb3QgY2xlYXJlZCBvZmYgdGhlIGlub2RlJ3MgY2luZm8gY29t
-bWl0IGxpc3QNCj4gPiB5ZXQsDQo+ID4geW91IG1heSBhbHNvIG5lZWQgdG8gbG9jayB0aGF0IHJl
-cXVlc3QgYW5kIGNhbGwNCj4gPiBuZnNfY2xlYXJfcmVxdWVzdF9jb21taXQoKS4NCj4gDQo+IExv
-b2tpbmcgYXQgd2hhdCB0aGUgZnVuY3Rpb24gZG9lcywgSSBkb24ndCBzZWUgd2h5IHRoaXMgaXMg
-bmVlZGVkLg0KPiAid2JfcGFnZSIgaXMgTlVMTCBmb3IgdGhpcyB0eXBlIG9mIGNvbW1pdCBhbmQg
-dGhlcmUgaXMgbm8gcG5mcyBpbg0KPiB0aGlzDQo+IGNhc2UuDQoNClNvbWV0aGluZyBuZWVkcyB0
-byBlbnN1cmUgdGhhdCB0aGUgcmVxdWVzdCBpcyBub3Qgc2l0dGluZyBvbiBhIGNvbW1pdA0KbGlz
-dC4gVGhhdCBjYW4gaGFwcGVuIGlmIHRoZSBjb21taXQgc3VjY2VlZGVkLCBidXQgcmV0dXJuZWQg
-YSBkaWZmZXJlbnQNCnZlcmlmaWVyLCBvciBpdCBjYW4gaGFwcGVuIGlmIG5mc19zY2FuX2NvbW1p
-dCgpIGV4aXRzIGVhcmx5Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNv
-bQ0K
+On Fri, Apr 14, 2017 at 03:07:20PM -0400, Chuck Lever wrote:
+> 
+> > On Apr 14, 2017, at 1:52 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > On Fri, Apr 14, 2017 at 12:10:03PM -0400, Chuck Lever wrote:
+> >> 
+> >>> On Apr 14, 2017, at 11:56 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >>> 
+> >>> On Sun, Apr 09, 2017 at 01:06:41PM -0400, Chuck Lever wrote:
+> >>>> Observed at Connectathon 2017.
+> >>>> 
+> >>>> If a client has underestimated the size of a Write or Reply chunk,
+> >>>> the Linux server writes as much payload data as it can, then it
+> >>>> recognizes there was a problem and closes the connection without
+> >>>> sending the transport header.
+> >>> 
+> >>> Why would the client underestimate?  Is this a client-side bug?
+> >> 
+> >> It can be a bug, and the behavior in this case is that the
+> >> client retransmits indefinitely and deadlocks the transport,
+> >> because the client's upper layer never sees a reply.
+> >> 
+> >> But as you know there are some NFS operations where the client
+> >> cannot predict in advance how large the reply will be. In
+> >> particular the upper bound size of an NFSACL GETACL reply or
+> >> certain NFSv4 GETATTR attributes are not predictable.
+> > 
+> > Oh, I'd forgotten about those cases.
+> > 
+> >> These
+> >> I might categorize as protocol bugs.
+> >> 
+> >> A client can do its best by posting a very large reply buffer
+> >> for such operations, but since these situations typically
+> >> are in practice rare, but NFSv4 GETATTR can be a relatively
+> >> common operation, clients post a few dozen KB for the reply
+> >> buffer and call it a day.
+> >> 
+> >> In these cases (if they should ever fail IRL), returning an
+> >> error is polite and allows operation of other RPCs on that
+> >> transport to continue.
+> > 
+> > Got it, thanks.  (I assume this is documented somewhere in the specs?)
+> 
+> I've written about it in rfc5667bis-09. It's a short document,
+> review comments welcome.
 
+Oh, look, right there in
+https://tools.ietf.org/html/draft-ietf-nfsv4-rfc5667bis-09#section-2.1
+Thanks!  And apologies for not keeping up with stuff.
+
+--b.
