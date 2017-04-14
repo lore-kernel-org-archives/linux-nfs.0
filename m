@@ -1,190 +1,199 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55806 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:55870 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751256AbdDNPEl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Apr 2017 11:04:41 -0400
-Date: Fri, 14 Apr 2017 11:04:40 -0400
+        id S1751235AbdDNPJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Apr 2017 11:09:40 -0400
+Date: Fri, 14 Apr 2017 11:09:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: linux-nfs@vger.kernel.org
 Cc: Neil Brown <neilb@suse.de>
-Subject: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170414150440.GA5362@fieldses.org>
+Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
+Message-ID: <20170414150940.GB5362@fieldses.org>
+References: <20170414150440.GA5362@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20170414150440.GA5362@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+(Cc'd you, Neil, partly on the off chance you might have a better idea
+where this came from.  Looks to me like it may have been there forever,
+but, I haven't looked too hard yet.)
 
-A client can append random data to the end of an NFSv2 or NFSv3 RPC call
-without our complaining; we'll just stop parsing at the end of the
-expected data and ignore the rest.
+--b.
 
-Encoded arguments and replies are stored together in an array of pages,
-and if a call is too large it could leave inadequate space for the
-reply.  This is normally OK because NFS RPC's typically have either
-short arguments and long replies (like READ) or long arguments and short
-replies (like WRITE).  But a client that sends an incorrectly long reply
-can violate those assumptions.  This was observed to cause crashes.
-
-So, insist that the argument not be any longer than we expect.
-
-Also, several operations increment rq_next_page in the decode routine
-before checking the argument size, which can leave rq_next_page pointing
-well past the end of the page array, causing trouble later in
-svc_free_pages.
-
-As followup we may also want to rewrite the encoding routines to check
-more carefully that they aren't running off the end of the page array.
-
-Reported-by: Tuomas Haanpää <thaan@synopsys.com>
-Reported-by: Ari Kauppi <ari@synopsys.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs3xdr.c          | 23 +++++++++++++++++------
- fs/nfsd/nfsxdr.c           | 13 ++++++++++---
- include/linux/sunrpc/svc.h |  3 +--
- 3 files changed, 28 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index dba2ff8eaa68..be66bcadfaea 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -334,8 +334,11 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 	if (!p)
- 		return 0;
- 	p = xdr_decode_hyper(p, &args->offset);
--
- 	args->count = ntohl(*p++);
-+
-+	if (!xdr_argsize_check(rqstp, p))
-+		return 0;
-+
- 	len = min(args->count, max_blocksize);
- 
- 	/* set up the kvec */
-@@ -349,7 +352,7 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 		v++;
- 	}
- 	args->vlen = v;
--	return xdr_argsize_check(rqstp, p);
-+	return 1;
- }
- 
- int
-@@ -536,9 +539,11 @@ nfs3svc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p,
- 	p = decode_fh(p, &args->fh);
- 	if (!p)
- 		return 0;
-+	if (!xdr_argsize_check(rqstp, p))
-+		return 0;
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return xdr_argsize_check(rqstp, p);
-+	return 1;
- }
- 
- int
-@@ -564,10 +569,14 @@ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
- 	args->verf   = p; p += 2;
- 	args->dircount = ~0;
- 	args->count  = ntohl(*p++);
-+
-+	if (!xdr_argsize_check(rqstp, p))
-+		return 0;
-+
- 	args->count  = min_t(u32, args->count, PAGE_SIZE);
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return xdr_argsize_check(rqstp, p);
-+	return 1;
- }
- 
- int
-@@ -585,6 +594,9 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
- 	args->dircount = ntohl(*p++);
- 	args->count    = ntohl(*p++);
- 
-+	if (!xdr_argsize_check(rqstp, p))
-+		return 0;
-+
- 	len = args->count = min(args->count, max_blocksize);
- 	while (len > 0) {
- 		struct page *p = *(rqstp->rq_next_page++);
-@@ -592,8 +604,7 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
- 			args->buffer = page_address(p);
- 		len -= PAGE_SIZE;
- 	}
--
--	return xdr_argsize_check(rqstp, p);
-+	return 1;
- }
- 
- int
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 41b468a6a90f..79268369f7b3 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -257,6 +257,9 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 	len = args->count     = ntohl(*p++);
- 	p++; /* totalcount - unused */
- 
-+	if (!xdr_argsize_check(rqstp, p))
-+		return 0;
-+
- 	len = min_t(unsigned int, len, NFSSVC_MAXBLKSIZE_V2);
- 
- 	/* set up somewhere to store response.
-@@ -272,7 +275,7 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 		v++;
- 	}
- 	args->vlen = v;
--	return xdr_argsize_check(rqstp, p);
-+	return 1;
- }
- 
- int
-@@ -360,9 +363,11 @@ nfssvc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd_readli
- 	p = decode_fh(p, &args->fh);
- 	if (!p)
- 		return 0;
-+	if (!xdr_argsize_check(rqstp, p))
-+		return 0;
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return xdr_argsize_check(rqstp, p);
-+	return 1;
- }
- 
- int
-@@ -400,9 +405,11 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
- 	args->cookie = ntohl(*p++);
- 	args->count  = ntohl(*p++);
- 	args->count  = min_t(u32, args->count, PAGE_SIZE);
-+	if (!xdr_argsize_check(rqstp, p))
-+		return 0;
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return xdr_argsize_check(rqstp, p);
-+	return 1;
- }
- 
- /*
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index e770abeed32d..6ef19cf658b4 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -336,8 +336,7 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
- {
- 	char *cp = (char *)p;
- 	struct kvec *vec = &rqstp->rq_arg.head[0];
--	return cp >= (char*)vec->iov_base
--		&& cp <= (char*)vec->iov_base + vec->iov_len;
-+	return cp == (char *)vec->iov_base + vec->iov_len;
- }
- 
- static inline int
--- 
-2.9.3
-
+On Fri, Apr 14, 2017 at 11:04:40AM -0400, bfields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> A client can append random data to the end of an NFSv2 or NFSv3 RPC call
+> without our complaining; we'll just stop parsing at the end of the
+> expected data and ignore the rest.
+> 
+> Encoded arguments and replies are stored together in an array of pages,
+> and if a call is too large it could leave inadequate space for the
+> reply.  This is normally OK because NFS RPC's typically have either
+> short arguments and long replies (like READ) or long arguments and short
+> replies (like WRITE).  But a client that sends an incorrectly long reply
+> can violate those assumptions.  This was observed to cause crashes.
+> 
+> So, insist that the argument not be any longer than we expect.
+> 
+> Also, several operations increment rq_next_page in the decode routine
+> before checking the argument size, which can leave rq_next_page pointing
+> well past the end of the page array, causing trouble later in
+> svc_free_pages.
+> 
+> As followup we may also want to rewrite the encoding routines to check
+> more carefully that they aren't running off the end of the page array.
+> 
+> Reported-by: Tuomas Haanpää <thaan@synopsys.com>
+> Reported-by: Ari Kauppi <ari@synopsys.com>
+> Cc: stable@vger.kernel.org
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs3xdr.c          | 23 +++++++++++++++++------
+>  fs/nfsd/nfsxdr.c           | 13 ++++++++++---
+>  include/linux/sunrpc/svc.h |  3 +--
+>  3 files changed, 28 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index dba2ff8eaa68..be66bcadfaea 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -334,8 +334,11 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+>  	if (!p)
+>  		return 0;
+>  	p = xdr_decode_hyper(p, &args->offset);
+> -
+>  	args->count = ntohl(*p++);
+> +
+> +	if (!xdr_argsize_check(rqstp, p))
+> +		return 0;
+> +
+>  	len = min(args->count, max_blocksize);
+>  
+>  	/* set up the kvec */
+> @@ -349,7 +352,7 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+>  		v++;
+>  	}
+>  	args->vlen = v;
+> -	return xdr_argsize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  int
+> @@ -536,9 +539,11 @@ nfs3svc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p,
+>  	p = decode_fh(p, &args->fh);
+>  	if (!p)
+>  		return 0;
+> +	if (!xdr_argsize_check(rqstp, p))
+> +		return 0;
+>  	args->buffer = page_address(*(rqstp->rq_next_page++));
+>  
+> -	return xdr_argsize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  int
+> @@ -564,10 +569,14 @@ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
+>  	args->verf   = p; p += 2;
+>  	args->dircount = ~0;
+>  	args->count  = ntohl(*p++);
+> +
+> +	if (!xdr_argsize_check(rqstp, p))
+> +		return 0;
+> +
+>  	args->count  = min_t(u32, args->count, PAGE_SIZE);
+>  	args->buffer = page_address(*(rqstp->rq_next_page++));
+>  
+> -	return xdr_argsize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  int
+> @@ -585,6 +594,9 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
+>  	args->dircount = ntohl(*p++);
+>  	args->count    = ntohl(*p++);
+>  
+> +	if (!xdr_argsize_check(rqstp, p))
+> +		return 0;
+> +
+>  	len = args->count = min(args->count, max_blocksize);
+>  	while (len > 0) {
+>  		struct page *p = *(rqstp->rq_next_page++);
+> @@ -592,8 +604,7 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
+>  			args->buffer = page_address(p);
+>  		len -= PAGE_SIZE;
+>  	}
+> -
+> -	return xdr_argsize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  int
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index 41b468a6a90f..79268369f7b3 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -257,6 +257,9 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+>  	len = args->count     = ntohl(*p++);
+>  	p++; /* totalcount - unused */
+>  
+> +	if (!xdr_argsize_check(rqstp, p))
+> +		return 0;
+> +
+>  	len = min_t(unsigned int, len, NFSSVC_MAXBLKSIZE_V2);
+>  
+>  	/* set up somewhere to store response.
+> @@ -272,7 +275,7 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+>  		v++;
+>  	}
+>  	args->vlen = v;
+> -	return xdr_argsize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  int
+> @@ -360,9 +363,11 @@ nfssvc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd_readli
+>  	p = decode_fh(p, &args->fh);
+>  	if (!p)
+>  		return 0;
+> +	if (!xdr_argsize_check(rqstp, p))
+> +		return 0;
+>  	args->buffer = page_address(*(rqstp->rq_next_page++));
+>  
+> -	return xdr_argsize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  int
+> @@ -400,9 +405,11 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
+>  	args->cookie = ntohl(*p++);
+>  	args->count  = ntohl(*p++);
+>  	args->count  = min_t(u32, args->count, PAGE_SIZE);
+> +	if (!xdr_argsize_check(rqstp, p))
+> +		return 0;
+>  	args->buffer = page_address(*(rqstp->rq_next_page++));
+>  
+> -	return xdr_argsize_check(rqstp, p);
+> +	return 1;
+>  }
+>  
+>  /*
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index e770abeed32d..6ef19cf658b4 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -336,8 +336,7 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
+>  {
+>  	char *cp = (char *)p;
+>  	struct kvec *vec = &rqstp->rq_arg.head[0];
+> -	return cp >= (char*)vec->iov_base
+> -		&& cp <= (char*)vec->iov_base + vec->iov_len;
+> +	return cp == (char *)vec->iov_base + vec->iov_len;
+>  }
+>  
+>  static inline int
+> -- 
+> 2.9.3
+> 
