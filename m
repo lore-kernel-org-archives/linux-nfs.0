@@ -1,221 +1,190 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr50104.outbound.protection.outlook.com ([40.107.5.104]:42301
-        "EHLO EUR03-VE1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751911AbdDNOIA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Apr 2017 10:08:00 -0400
-From: Andrey Ryabinin <aryabinin@virtuozzo.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        <linux-fsdevel@vger.kernel.org>
-CC: Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Steve French <sfrench@samba.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Christoph Hellwig <hch@lst.de>,
-        <v9fs-developer@lists.sourceforge.net>,
-        <linux-kernel@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
-        <samba-technical@lists.samba.org>, <linux-nfs@vger.kernel.org>,
-        <linux-mm@kvack.org>
-Subject: [PATCH 1/4] fs: fix data invalidation in the cleancache during direct IO
-Date: Fri, 14 Apr 2017 17:07:50 +0300
-Message-ID: <20170414140753.16108-2-aryabinin@virtuozzo.com>
-In-Reply-To: <20170414140753.16108-1-aryabinin@virtuozzo.com>
-References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
+Received: from fieldses.org ([173.255.197.46]:55806 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751256AbdDNPEl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 14 Apr 2017 11:04:41 -0400
+Date: Fri, 14 Apr 2017 11:04:40 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Neil Brown <neilb@suse.de>
+Subject: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
+Message-ID: <20170414150440.GA5362@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some direct write fs hooks call invalidate_inode_pages2[_range]()
-conditionally iff mapping->nrpages is not zero. If page cache is empty,
-buffered read following after direct IO write would get stale data from
-the cleancache.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Also it doesn't feel right to check only for ->nrpages because
-invalidate_inode_pages2[_range] invalidates exceptional entries as well.
+A client can append random data to the end of an NFSv2 or NFSv3 RPC call
+without our complaining; we'll just stop parsing at the end of the
+expected data and ignore the rest.
 
-Fix this by calling invalidate_inode_pages2[_range]() regardless of nrpages
-state.
+Encoded arguments and replies are stored together in an array of pages,
+and if a call is too large it could leave inadequate space for the
+reply.  This is normally OK because NFS RPC's typically have either
+short arguments and long replies (like READ) or long arguments and short
+replies (like WRITE).  But a client that sends an incorrectly long reply
+can violate those assumptions.  This was observed to cause crashes.
 
-Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
-Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
+So, insist that the argument not be any longer than we expect.
+
+Also, several operations increment rq_next_page in the decode routine
+before checking the argument size, which can leave rq_next_page pointing
+well past the end of the page array, causing trouble later in
+svc_free_pages.
+
+As followup we may also want to rewrite the encoding routines to check
+more carefully that they aren't running off the end of the page array.
+
+Reported-by: Tuomas Haanpää <thaan@synopsys.com>
+Reported-by: Ari Kauppi <ari@synopsys.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/9p/vfs_file.c |  2 +-
- fs/cifs/inode.c  |  2 +-
- fs/dax.c         |  2 +-
- fs/iomap.c       | 16 +++++++---------
- fs/nfs/direct.c  |  6 ++----
- fs/nfs/inode.c   |  8 +++++---
- mm/filemap.c     | 26 +++++++++++---------------
- 7 files changed, 28 insertions(+), 34 deletions(-)
+ fs/nfsd/nfs3xdr.c          | 23 +++++++++++++++++------
+ fs/nfsd/nfsxdr.c           | 13 ++++++++++---
+ include/linux/sunrpc/svc.h |  3 +--
+ 3 files changed, 28 insertions(+), 11 deletions(-)
 
-diff --git a/fs/9p/vfs_file.c b/fs/9p/vfs_file.c
-index 3de3b4a8..786d0de 100644
---- a/fs/9p/vfs_file.c
-+++ b/fs/9p/vfs_file.c
-@@ -423,7 +423,7 @@ v9fs_file_write_iter(struct kiocb *iocb, struct iov_iter *from)
- 		unsigned long pg_start, pg_end;
- 		pg_start = origin >> PAGE_SHIFT;
- 		pg_end = (origin + retval - 1) >> PAGE_SHIFT;
--		if (inode->i_mapping && inode->i_mapping->nrpages)
-+		if (inode->i_mapping)
- 			invalidate_inode_pages2_range(inode->i_mapping,
- 						      pg_start, pg_end);
- 		iocb->ki_pos += retval;
-diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
-index c3b2fa0..6539fa3 100644
---- a/fs/cifs/inode.c
-+++ b/fs/cifs/inode.c
-@@ -1857,7 +1857,7 @@ cifs_invalidate_mapping(struct inode *inode)
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index dba2ff8eaa68..be66bcadfaea 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -334,8 +334,11 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 	if (!p)
+ 		return 0;
+ 	p = xdr_decode_hyper(p, &args->offset);
+-
+ 	args->count = ntohl(*p++);
++
++	if (!xdr_argsize_check(rqstp, p))
++		return 0;
++
+ 	len = min(args->count, max_blocksize);
+ 
+ 	/* set up the kvec */
+@@ -349,7 +352,7 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 		v++;
+ 	}
+ 	args->vlen = v;
+-	return xdr_argsize_check(rqstp, p);
++	return 1;
+ }
+ 
+ int
+@@ -536,9 +539,11 @@ nfs3svc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p,
+ 	p = decode_fh(p, &args->fh);
+ 	if (!p)
+ 		return 0;
++	if (!xdr_argsize_check(rqstp, p))
++		return 0;
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return xdr_argsize_check(rqstp, p);
++	return 1;
+ }
+ 
+ int
+@@ -564,10 +569,14 @@ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
+ 	args->verf   = p; p += 2;
+ 	args->dircount = ~0;
+ 	args->count  = ntohl(*p++);
++
++	if (!xdr_argsize_check(rqstp, p))
++		return 0;
++
+ 	args->count  = min_t(u32, args->count, PAGE_SIZE);
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return xdr_argsize_check(rqstp, p);
++	return 1;
+ }
+ 
+ int
+@@ -585,6 +594,9 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
+ 	args->dircount = ntohl(*p++);
+ 	args->count    = ntohl(*p++);
+ 
++	if (!xdr_argsize_check(rqstp, p))
++		return 0;
++
+ 	len = args->count = min(args->count, max_blocksize);
+ 	while (len > 0) {
+ 		struct page *p = *(rqstp->rq_next_page++);
+@@ -592,8 +604,7 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
+ 			args->buffer = page_address(p);
+ 		len -= PAGE_SIZE;
+ 	}
+-
+-	return xdr_argsize_check(rqstp, p);
++	return 1;
+ }
+ 
+ int
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 41b468a6a90f..79268369f7b3 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -257,6 +257,9 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 	len = args->count     = ntohl(*p++);
+ 	p++; /* totalcount - unused */
+ 
++	if (!xdr_argsize_check(rqstp, p))
++		return 0;
++
+ 	len = min_t(unsigned int, len, NFSSVC_MAXBLKSIZE_V2);
+ 
+ 	/* set up somewhere to store response.
+@@ -272,7 +275,7 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 		v++;
+ 	}
+ 	args->vlen = v;
+-	return xdr_argsize_check(rqstp, p);
++	return 1;
+ }
+ 
+ int
+@@ -360,9 +363,11 @@ nfssvc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd_readli
+ 	p = decode_fh(p, &args->fh);
+ 	if (!p)
+ 		return 0;
++	if (!xdr_argsize_check(rqstp, p))
++		return 0;
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return xdr_argsize_check(rqstp, p);
++	return 1;
+ }
+ 
+ int
+@@ -400,9 +405,11 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
+ 	args->cookie = ntohl(*p++);
+ 	args->count  = ntohl(*p++);
+ 	args->count  = min_t(u32, args->count, PAGE_SIZE);
++	if (!xdr_argsize_check(rqstp, p))
++		return 0;
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return xdr_argsize_check(rqstp, p);
++	return 1;
+ }
+ 
+ /*
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index e770abeed32d..6ef19cf658b4 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -336,8 +336,7 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
  {
- 	int rc = 0;
+ 	char *cp = (char *)p;
+ 	struct kvec *vec = &rqstp->rq_arg.head[0];
+-	return cp >= (char*)vec->iov_base
+-		&& cp <= (char*)vec->iov_base + vec->iov_len;
++	return cp == (char *)vec->iov_base + vec->iov_len;
+ }
  
--	if (inode->i_mapping && inode->i_mapping->nrpages != 0) {
-+	if (inode->i_mapping) {
- 		rc = invalidate_inode_pages2(inode->i_mapping);
- 		if (rc)
- 			cifs_dbg(VFS, "%s: could not invalidate inode %p\n",
-diff --git a/fs/dax.c b/fs/dax.c
-index 2e382fe..1e8cca0 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -1047,7 +1047,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 	 * into page tables. We have to tear down these mappings so that data
- 	 * written by write(2) is visible in mmap.
- 	 */
--	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-+	if ((iomap->flags & IOMAP_F_NEW)) {
- 		invalidate_inode_pages2_range(inode->i_mapping,
- 					      pos >> PAGE_SHIFT,
- 					      (end - 1) >> PAGE_SHIFT);
-diff --git a/fs/iomap.c b/fs/iomap.c
-index 0b457ff..7e1f947 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -880,16 +880,14 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 		flags |= IOMAP_WRITE;
- 	}
- 
--	if (mapping->nrpages) {
--		ret = filemap_write_and_wait_range(mapping, start, end);
--		if (ret)
--			goto out_free_dio;
-+	ret = filemap_write_and_wait_range(mapping, start, end);
-+	if (ret)
-+		goto out_free_dio;
- 
--		ret = invalidate_inode_pages2_range(mapping,
-+	ret = invalidate_inode_pages2_range(mapping,
- 				start >> PAGE_SHIFT, end >> PAGE_SHIFT);
--		WARN_ON_ONCE(ret);
--		ret = 0;
--	}
-+	WARN_ON_ONCE(ret);
-+	ret = 0;
- 
- 	inode_dio_begin(inode);
- 
-@@ -944,7 +942,7 @@ iomap_dio_rw(struct kiocb *iocb, struct iov_iter *iter,
- 	 * one is a pretty crazy thing to do, so we don't support it 100%.  If
- 	 * this invalidation fails, tough, the write still worked...
- 	 */
--	if (iov_iter_rw(iter) == WRITE && mapping->nrpages) {
-+	if (iov_iter_rw(iter) == WRITE) {
- 		int err = invalidate_inode_pages2_range(mapping,
- 				start >> PAGE_SHIFT, end >> PAGE_SHIFT);
- 		WARN_ON_ONCE(err);
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index aab32fc..183ab4d 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -1024,10 +1024,8 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, struct iov_iter *iter)
- 
- 	result = nfs_direct_write_schedule_iovec(dreq, iter, pos);
- 
--	if (mapping->nrpages) {
--		invalidate_inode_pages2_range(mapping,
--					      pos >> PAGE_SHIFT, end);
--	}
-+	invalidate_inode_pages2_range(mapping,
-+				pos >> PAGE_SHIFT, end);
- 
- 	nfs_end_io_direct(inode);
- 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index f489a5a..b727ec8 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1118,10 +1118,12 @@ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *map
- 			if (ret < 0)
- 				return ret;
- 		}
--		ret = invalidate_inode_pages2(mapping);
--		if (ret < 0)
--			return ret;
- 	}
-+
-+	ret = invalidate_inode_pages2(mapping);
-+	if (ret < 0)
-+		return ret;
-+
- 	if (S_ISDIR(inode->i_mode)) {
- 		spin_lock(&inode->i_lock);
- 		memset(nfsi->cookieverf, 0, sizeof(nfsi->cookieverf));
-diff --git a/mm/filemap.c b/mm/filemap.c
-index e9e5f7b..d233d59 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2721,18 +2721,16 @@ generic_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
- 	 * about to write.  We do this *before* the write so that we can return
- 	 * without clobbering -EIOCBQUEUED from ->direct_IO().
- 	 */
--	if (mapping->nrpages) {
--		written = invalidate_inode_pages2_range(mapping,
-+	written = invalidate_inode_pages2_range(mapping,
- 					pos >> PAGE_SHIFT, end);
--		/*
--		 * If a page can not be invalidated, return 0 to fall back
--		 * to buffered write.
--		 */
--		if (written) {
--			if (written == -EBUSY)
--				return 0;
--			goto out;
--		}
-+	/*
-+	 * If a page can not be invalidated, return 0 to fall back
-+	 * to buffered write.
-+	 */
-+	if (written) {
-+		if (written == -EBUSY)
-+			return 0;
-+		goto out;
- 	}
- 
- 	data = *from;
-@@ -2746,10 +2744,8 @@ generic_file_direct_write(struct kiocb *iocb, struct iov_iter *from)
- 	 * so we don't support it 100%.  If this invalidation
- 	 * fails, tough, the write still worked...
- 	 */
--	if (mapping->nrpages) {
--		invalidate_inode_pages2_range(mapping,
--					      pos >> PAGE_SHIFT, end);
--	}
-+	invalidate_inode_pages2_range(mapping,
-+				pos >> PAGE_SHIFT, end);
- 
- 	if (written > 0) {
- 		pos += written;
+ static inline int
 -- 
-2.10.2
+2.9.3
 
