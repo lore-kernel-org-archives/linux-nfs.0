@@ -1,199 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55870 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751235AbdDNPJk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Apr 2017 11:09:40 -0400
-Date: Fri, 14 Apr 2017 11:09:40 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Cc: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170414150940.GB5362@fieldses.org>
-References: <20170414150440.GA5362@fieldses.org>
+Received: from mail-io0-f171.google.com ([209.85.223.171]:34561 "EHLO
+        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751741AbdDNP4X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Apr 2017 11:56:23 -0400
+Received: by mail-io0-f171.google.com with SMTP id a103so115338176ioj.1
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Apr 2017 08:56:22 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20170414150440.GA5362@fieldses.org>
+In-Reply-To: <1492116646.11542.1.camel@primarydata.com>
+References: <CAN-5tyHD9NspwAzL2YwoQGwcUk52ak0OWZ-dBfwpW6nynAf1Og@mail.gmail.com>
+ <1492109480.7917.1.camel@primarydata.com> <CAN-5tyGOsUdWgjhNO8gvYabW-wx6ybmwUZGNLfY8rtmBiP=p_w@mail.gmail.com>
+ <bed72de9-5cf8-c8a3-f59f-9bf52f3702a1@Netapp.com> <9eb6ccc9-501a-5635-05f9-7bd2fd4f4563@Netapp.com>
+ <1492116646.11542.1.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 14 Apr 2017 11:56:21 -0400
+Message-ID: <CAN-5tyFbuG44eu3WkUprs1Ym3ZA=nfSq3rQ9Zqs5sDCXvuHCpQ@mail.gmail.com>
+Subject: Re: RFC: fixing kernel oops on interrupted COMMIT from nfs_commit_file
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "bjschuma@netapp.com" <bjschuma@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(Cc'd you, Neil, partly on the off chance you might have a better idea
-where this came from.  Looks to me like it may have been there forever,
-but, I haven't looked too hard yet.)
+On Thu, Apr 13, 2017 at 4:50 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Thu, 2017-04-13 at 16:13 -0400, Anna Schumaker wrote:
+>>
+>> On 04/13/2017 03:16 PM, Anna Schumaker wrote:
+>> >
+>> >
+>> > On 04/13/2017 03:07 PM, Olga Kornievskaia wrote:
+>> > > On Thu, Apr 13, 2017 at 2:51 PM, Trond Myklebust
+>> > > <trondmy@primarydata.com> wrote:
+>> > > > On Thu, 2017-04-13 at 14:00 -0400, Olga Kornievskaia wrote:
+>> > > > > Hi folks,
+>> > > > >
+>> > > > > Looking for suggestions on how to fix a kernel oops.
+>> > > > >
+>> > > > > It's possible that there is a ctrl-c when the COMMIT is send.
+>> > > > > In case
+>> > > > > of the COPY, it calls
+>> > > > > nfs_commit_file() which calls wait_on_commit() that is
+>> > > > > interrupted by
+>> > > > > the crtl-c and frees the nfs_page request. So when
+>> > > > > asynchronous
+>> > > > > COMMIT
+>> > > > > rpc comes back it tried to use the nfs_page request and gets
+>> > > > > the
+>> > > > > oops.
+>> > > > >
+>> > > >
+>> > > > Is that call to nfs_free_request() in nfs_commit_file()
+>> > > > correct?
+>> > >
+>> > > yes, nfs_commit_file() creates a new request via
+>> > > nfs_create_request()
+>> > > and in the end if calls nfs_free_request();
+>> > >
+>> > > > It looks to me as if the same request will be freed in
+>> > > > nfs_commit_release_pages().
+>> > >
+>> > > so nfs_commit_release_pages() thru the
+>> > > nfs_unlock_and_release_request() is going to call
+>> > > nfs_release_request() from req->wb_kref.. I'm not sure if this is
+>> > > setup(?) for the copy commit path?
+>> > >
+>> > > Otherwise, it would have seem that we'd be doing a double free
+>> > > and I
+>> > > haven't seen that in testing (not that it can't be true)...
+>> >
+>> > I haven't seen any double-free messages during my testing either,
+>> > so I thought it was okay.  It's possible I'm wrong, though.  I
+>> > wonder if this is something that memory poisoning can help figure
+>> > out?
+>>
+>> After some experimenting, I can still use the nfs_page after
+>> nfs_commit_inode() has returned withotu any memory issues.
+>>
+>
+> Wait...
+>
+> OK, so nfs_scan_commit_list() does indeed take a reference to the req-
+>>wb_kref, so that balances the call to nfs_release_request() in
+> nfs_commit_release_pages(), however it also means that you should not
+> be calling nfs_free_request(), since doing so circumvents the
+> refcounting mechanism.
+>
 
---b.
+Right now when req is created in nfs_commit_file() it starts out with wb_kref=1.
+After calling, nfs_scan_commit_list() wb_kref=2
+Now if in normal operations
+nfs_commit_release_pages will drop that to 1
+And then calling nfs_release_commit in nfs_commit_file() will finally
+drop to 0 and release.
+If ctrl-c happened,
+then nfs_commit_file will drop the ref first but will not free it and
+that will allow the commit to proceed and finish the rpc?
 
-On Fri, Apr 14, 2017 at 11:04:40AM -0400, bfields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> A client can append random data to the end of an NFSv2 or NFSv3 RPC call
-> without our complaining; we'll just stop parsing at the end of the
-> expected data and ignore the rest.
-> 
-> Encoded arguments and replies are stored together in an array of pages,
-> and if a call is too large it could leave inadequate space for the
-> reply.  This is normally OK because NFS RPC's typically have either
-> short arguments and long replies (like READ) or long arguments and short
-> replies (like WRITE).  But a client that sends an incorrectly long reply
-> can violate those assumptions.  This was observed to cause crashes.
-> 
-> So, insist that the argument not be any longer than we expect.
-> 
-> Also, several operations increment rq_next_page in the decode routine
-> before checking the argument size, which can leave rq_next_page pointing
-> well past the end of the page array, causing trouble later in
-> svc_free_pages.
-> 
-> As followup we may also want to rewrite the encoding routines to check
-> more carefully that they aren't running off the end of the page array.
-> 
-> Reported-by: Tuomas Haanpää <thaan@synopsys.com>
-> Reported-by: Ari Kauppi <ari@synopsys.com>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs3xdr.c          | 23 +++++++++++++++++------
->  fs/nfsd/nfsxdr.c           | 13 ++++++++++---
->  include/linux/sunrpc/svc.h |  3 +--
->  3 files changed, 28 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index dba2ff8eaa68..be66bcadfaea 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -334,8 +334,11 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
->  	if (!p)
->  		return 0;
->  	p = xdr_decode_hyper(p, &args->offset);
-> -
->  	args->count = ntohl(*p++);
-> +
-> +	if (!xdr_argsize_check(rqstp, p))
-> +		return 0;
-> +
->  	len = min(args->count, max_blocksize);
->  
->  	/* set up the kvec */
-> @@ -349,7 +352,7 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
->  		v++;
->  	}
->  	args->vlen = v;
-> -	return xdr_argsize_check(rqstp, p);
-> +	return 1;
->  }
->  
->  int
-> @@ -536,9 +539,11 @@ nfs3svc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p,
->  	p = decode_fh(p, &args->fh);
->  	if (!p)
->  		return 0;
-> +	if (!xdr_argsize_check(rqstp, p))
-> +		return 0;
->  	args->buffer = page_address(*(rqstp->rq_next_page++));
->  
-> -	return xdr_argsize_check(rqstp, p);
-> +	return 1;
->  }
->  
->  int
-> @@ -564,10 +569,14 @@ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
->  	args->verf   = p; p += 2;
->  	args->dircount = ~0;
->  	args->count  = ntohl(*p++);
-> +
-> +	if (!xdr_argsize_check(rqstp, p))
-> +		return 0;
-> +
->  	args->count  = min_t(u32, args->count, PAGE_SIZE);
->  	args->buffer = page_address(*(rqstp->rq_next_page++));
->  
-> -	return xdr_argsize_check(rqstp, p);
-> +	return 1;
->  }
->  
->  int
-> @@ -585,6 +594,9 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
->  	args->dircount = ntohl(*p++);
->  	args->count    = ntohl(*p++);
->  
-> +	if (!xdr_argsize_check(rqstp, p))
-> +		return 0;
-> +
->  	len = args->count = min(args->count, max_blocksize);
->  	while (len > 0) {
->  		struct page *p = *(rqstp->rq_next_page++);
-> @@ -592,8 +604,7 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
->  			args->buffer = page_address(p);
->  		len -= PAGE_SIZE;
->  	}
-> -
-> -	return xdr_argsize_check(rqstp, p);
-> +	return 1;
->  }
->  
->  int
-> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-> index 41b468a6a90f..79268369f7b3 100644
-> --- a/fs/nfsd/nfsxdr.c
-> +++ b/fs/nfsd/nfsxdr.c
-> @@ -257,6 +257,9 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
->  	len = args->count     = ntohl(*p++);
->  	p++; /* totalcount - unused */
->  
-> +	if (!xdr_argsize_check(rqstp, p))
-> +		return 0;
-> +
->  	len = min_t(unsigned int, len, NFSSVC_MAXBLKSIZE_V2);
->  
->  	/* set up somewhere to store response.
-> @@ -272,7 +275,7 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
->  		v++;
->  	}
->  	args->vlen = v;
-> -	return xdr_argsize_check(rqstp, p);
-> +	return 1;
->  }
->  
->  int
-> @@ -360,9 +363,11 @@ nfssvc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd_readli
->  	p = decode_fh(p, &args->fh);
->  	if (!p)
->  		return 0;
-> +	if (!xdr_argsize_check(rqstp, p))
-> +		return 0;
->  	args->buffer = page_address(*(rqstp->rq_next_page++));
->  
-> -	return xdr_argsize_check(rqstp, p);
-> +	return 1;
->  }
->  
->  int
-> @@ -400,9 +405,11 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
->  	args->cookie = ntohl(*p++);
->  	args->count  = ntohl(*p++);
->  	args->count  = min_t(u32, args->count, PAGE_SIZE);
-> +	if (!xdr_argsize_check(rqstp, p))
-> +		return 0;
->  	args->buffer = page_address(*(rqstp->rq_next_page++));
->  
-> -	return xdr_argsize_check(rqstp, p);
-> +	return 1;
->  }
->  
->  /*
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index e770abeed32d..6ef19cf658b4 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -336,8 +336,7 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
->  {
->  	char *cp = (char *)p;
->  	struct kvec *vec = &rqstp->rq_arg.head[0];
-> -	return cp >= (char*)vec->iov_base
-> -		&& cp <= (char*)vec->iov_base + vec->iov_len;
-> +	return cp == (char *)vec->iov_base + vec->iov_len;
->  }
->  
->  static inline int
-> -- 
-> 2.9.3
-> 
+> Secondly, if you want to release the request and you are not sure
+> whether or not it got cleared off the inode's cinfo commit list yet,
+> you may also need to lock that request and call
+> nfs_clear_request_commit().
+
+Looking at what the function does, I don't see why this is needed.
+"wb_page" is NULL for this type of commit and there is no pnfs in this
+case.
