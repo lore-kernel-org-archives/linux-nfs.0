@@ -1,67 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:62091 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:38915 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753249AbdDQP5u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Apr 2017 11:57:50 -0400
-Subject: Re: [nfsv4] Inter server-side copy performance
-To: Olga Kornievskaia <aglo@umich.edu>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-References: <DFE33002-FE1C-4E83-B6E3-50BFD304C7F6@netapp.com>
- <20170413174515.GA5140@fieldses.org>
- <59BDF7CA-78BB-42FC-8BC4-95101F5E1EC7@netapp.com>
- <CAN-5tyHOdU9BJnJft+X06=6X7_s8MS_hDmg9t=fJQ=QtvJQD=w@mail.gmail.com>
- <20170417133604.GA22694@fieldses.org>
- <CAN-5tyF10OCihgYUMwoju6V+SnVZkpQNoQLb_UKoCAPuG+EgbQ@mail.gmail.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <44273d82-18b5-a6c7-4c12-81297c84efb1@Netapp.com>
-Date: Mon, 17 Apr 2017 11:57:41 -0400
+        id S1755511AbdDQVPk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Apr 2017 17:15:40 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] NFS append COMMIT after synchronous COPY
+Date: Mon, 17 Apr 2017 17:15:37 -0400
+Message-ID: <20170417211537.93047-1-kolga@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyF10OCihgYUMwoju6V+SnVZkpQNoQLb_UKoCAPuG+EgbQ@mail.gmail.com>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(Resending because Google Inbox didn't switch to plain text)
+Instead of messing with the commit path which has been causing issues,
+add a COMMIT op after the COPY and ask for stable copies in the first
+space.
 
-On 04/17/2017 11:30 AM, Olga Kornievskaia wrote:
-> On Mon, Apr 17, 2017 at 9:36 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> On Fri, Apr 14, 2017 at 05:22:13PM -0400, Olga Kornievskaia wrote:
->>> On Fri, Apr 14, 2017 at 4:09 PM, Mora, Jorge <Jorge.Mora@netapp.com> wrote:
->>>> On 4/13/17, 11:45 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>>> Are you timing just the copy_file_range() call, or do you include a
->>>>> following sync?
->>>>
->>>> I am timing right before calling copy_file_range() up to doing an fsync() and close() of the destination file.
->>>> For the traditional copy is the same, I am timing right before the first read on the source file up to the
->>>> fsync() and close() of the destination file.
->>>
->>> Why should do we need a sync after copy_file_range(). kernel
->>> copy_file_range() will send the commits for any unstable copies it
->>> received.
->>
->> Why does it do that?  As far as I can tell it's not required by
->> documentation for copy_file_range() or COPY.  COPY has a write verifier
->> and a stable_how argument in the reply.  Skipping the commits would
->> allow better performance in case a copy requires multiple COPY calls.
->>
->> But, in any case, if copy_file_range() already committed then it
->> probably doesn't make a significant difference to the timing whether you
->> include a following sync and/or close.
-> 
-> Hm. It does make sense. Anna wrote the original code which included
-> the COMMIT after copy which I haven't thought about.
-> 
-> Anna, any comments?
+It saves a round trip, since after the COPY, the client sends a COMMIT
+anyway.
 
-I think the commit just seemed like a good idea at the time.  I'm okay with changing it if it doesn't make sense.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/internal.h  |  1 -
+ fs/nfs/nfs42proc.c |  6 ------
+ fs/nfs/nfs42xdr.c  | 15 +++++++++++++++
+ fs/nfs/write.c     | 30 ------------------------------
+ 4 files changed, 15 insertions(+), 37 deletions(-)
 
-Anna
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 7b38fed..2989418 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -495,7 +495,6 @@ void nfs_mark_request_commit(struct nfs_page *req,
+ 			     u32 ds_commit_idx);
+ int nfs_write_need_commit(struct nfs_pgio_header *);
+ void nfs_writeback_update_inode(struct nfs_pgio_header *hdr);
+-int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf);
+ int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
+ 			    int how, struct nfs_commit_info *cinfo);
+ void nfs_retry_commit(struct list_head *page_list,
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 1e486c7..9fee48d 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -174,12 +174,6 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+ 	if (status)
+ 		return status;
+ 
+-	if (res->write_res.verifier.committed != NFS_FILE_SYNC) {
+-		status = nfs_commit_file(dst, &res->write_res.verifier.verifier);
+-		if (status)
+-			return status;
+-	}
+-
+ 	truncate_pagecache_range(dst_inode, pos_dst,
+ 				 pos_dst + res->write_res.count);
+ 
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 6c72964..03f3c9e 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -25,6 +25,8 @@
+ 					 NFS42_WRITE_RES_SIZE + \
+ 					 1 /* cr_consecutive */ + \
+ 					 1 /* cr_synchronous */)
++#define decode_commit_maxsz		(op_decode_hdr_maxsz + \
++					 decode_verifier_maxsz)
+ #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
+ 					 encode_fallocate_maxsz)
+ #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
+@@ -222,6 +224,18 @@ static void nfs4_xdr_enc_allocate(struct rpc_rqst *req,
+ 	encode_nops(&hdr);
+ }
+ 
++static void encode_copy_commit(struct xdr_stream *xdr,
++			  struct nfs42_copy_args *args,
++			  struct compound_hdr *hdr)
++{
++	__be32 *p;
++
++	encode_op_hdr(xdr, OP_COMMIT, decode_commit_maxsz, hdr);
++	p = reserve_space(xdr, 12);
++	p = xdr_encode_hyper(p, args->dst_pos);
++	*p = cpu_to_be32(args->count);
++}
++
+ /*
+  * Encode COPY request
+  */
+@@ -239,6 +253,7 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
+ 	encode_savefh(xdr, &hdr);
+ 	encode_putfh(xdr, args->dst_fh, &hdr);
+ 	encode_copy(xdr, args, &hdr);
++	encode_copy_commit(xdr, args, &hdr);
+ 	encode_nops(&hdr);
+ }
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index abb2c8a..8d65d88 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1720,36 +1720,6 @@ void nfs_retry_commit(struct list_head *page_list,
+ 	return -ENOMEM;
+ }
+ 
+-int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf)
+-{
+-	struct inode *inode = file_inode(file);
+-	struct nfs_open_context *open;
+-	struct nfs_commit_info cinfo;
+-	struct nfs_page *req;
+-	int ret;
+-
+-	open = get_nfs_open_context(nfs_file_open_context(file));
+-	req  = nfs_create_request(open, NULL, NULL, 0, i_size_read(inode));
+-	if (IS_ERR(req)) {
+-		ret = PTR_ERR(req);
+-		goto out_put;
+-	}
+-
+-	nfs_init_cinfo_from_inode(&cinfo, inode);
+-
+-	memcpy(&req->wb_verf, verf, sizeof(struct nfs_write_verifier));
+-	nfs_request_add_commit_list(req, &cinfo);
+-	ret = nfs_commit_inode(inode, FLUSH_SYNC);
+-	if (ret > 0)
+-		ret = 0;
+-
+-	nfs_free_request(req);
+-out_put:
+-	put_nfs_open_context(open);
+-	return ret;
+-}
+-EXPORT_SYMBOL_GPL(nfs_commit_file);
+-
+ /*
+  * COMMIT call returned
+  */
+-- 
+1.8.3.1
 
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
-> 
