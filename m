@@ -1,69 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34022 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752748AbdDRUcG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Apr 2017 16:32:06 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFS: Use GFP_NOIO for two allocations in writeback
-Date: Tue, 18 Apr 2017 16:32:03 -0400
-Message-ID: <46AF67C3-E23A-4E71-8744-4195746AFFCF@redhat.com>
-In-Reply-To: <1492533772.3883.3.camel@primarydata.com>
-References: <677652bb558c5b4925547af558d89583564720e5.1492529938.git.bcodding@redhat.com>
- <8145bc699493a8ff826f00333b602d2594fb697c.1492529938.git.bcodding@redhat.com>
- <1492533772.3883.3.camel@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail.linuxfoundation.org ([140.211.169.12]:42922 "EHLO
+        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751503AbdDRWqu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Apr 2017 18:46:50 -0400
+Date: Tue, 18 Apr 2017 15:46:47 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+To: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        <linux-fsdevel@vger.kernel.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Steve French <sfrench@samba.org>,
+        Matthew Wilcox <mawilcox@microsoft.com>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Christoph Hellwig <hch@lst.de>,
+        <v9fs-developer@lists.sourceforge.net>,
+        <linux-kernel@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
+        <samba-technical@lists.samba.org>, <linux-nfs@vger.kernel.org>,
+        <linux-mm@kvack.org>
+Subject: Re: [PATCH 1/4] fs: fix data invalidation in the cleancache during
+ direct IO
+Message-Id: <20170418154647.9583bfa06705c614a2640a15@linux-foundation.org>
+In-Reply-To: <20170414140753.16108-2-aryabinin@virtuozzo.com>
+References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
+        <20170414140753.16108-2-aryabinin@virtuozzo.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 18 Apr 2017, at 12:42, Trond Myklebust wrote:
+On Fri, 14 Apr 2017 17:07:50 +0300 Andrey Ryabinin <aryabinin@virtuozzo.com> wrote:
 
-> Hi Ben,
->
-> On Tue, 2017-04-18 at 11:40 -0400, Benjamin Coddington wrote:
->> Prevent a deadlock that can occur if we wait on allocations
->> that try to write back our pages.
->>
->> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->> ---
->>  fs/nfs/pagelist.c | 10 ++++++++--
->>  1 file changed, 8 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
->> index 19eaae0dee51..fa2924ce5a78 100644
->> --- a/fs/nfs/pagelist.c
->> +++ b/fs/nfs/pagelist.c
->> @@ -668,6 +668,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor
->> *desc,
->>  {
->>  	struct nfs_pgio_mirror *new;
->>  	int i;
->> +	gfp_t gfp_flags = GFP_KERNEL;
->>  
->>  	desc->pg_moreio = 0;
->>  	desc->pg_inode = inode;
->> @@ -687,8 +688,10 @@ void nfs_pageio_init(struct
->> nfs_pageio_descriptor *desc,
->>  	if (pg_ops->pg_get_mirror_count) {
->>  		/* until we have a request, we don't have an lseg
->> and no
->>  		 * idea how many mirrors there will be */
->> +		if (desc->pg_rw_ops->rw_mode == FMODE_WRITE)
->
-> Can we rather replace this with a new field in struct
-> nfs_pageio_descriptor? I want to get rid of pg_rw_ops->rw_mode; it's
-> something that slipped through the cracks.
+> Some direct write fs hooks call invalidate_inode_pages2[_range]()
+> conditionally iff mapping->nrpages is not zero. If page cache is empty,
+> buffered read following after direct IO write would get stale data from
+> the cleancache.
+> 
+> Also it doesn't feel right to check only for ->nrpages because
+> invalidate_inode_pages2[_range] invalidates exceptional entries as well.
+> 
+> Fix this by calling invalidate_inode_pages2[_range]() regardless of nrpages
+> state.
 
-I can do this.  It might make sense to just replace rw_mode with something
-like rw_gfp_flags..  Otherwise, this looks like another argument to
-nfs_pageio_init(), unless we can piggy-back on pg_ioflags.
+I'm not understanding this.  I can buy the argument about
+nrexceptional, but why does cleancache require the
+invalidate_inode_pages2_range) call even when ->nrpages is zero?
 
-> Also, please put this patch before the other so that it can be easily
-> propagated as a stable patch.
+I *assume* it's because invalidate_inode_pages2_range() calls
+cleancache_invalidate_inode(), yes?  If so, can we please add this to
+the changelog?  If not then please explain further.
 
-Of course, that makes more sense too.
 
-Ben
+
