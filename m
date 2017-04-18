@@ -1,82 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:36744 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755869AbdDRPZP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Apr 2017 11:25:15 -0400
-Date: Tue, 18 Apr 2017 11:24:11 -0400
-From: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-To: Andrey Ryabinin <aryabinin@virtuozzo.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Steve French <sfrench@samba.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Christoph Hellwig <hch@lst.de>,
-        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 0/4] Properly invalidate data in the cleancache.
-Message-ID: <20170418152411.GC12001@char.us.oracle.com>
-References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170414140753.16108-1-aryabinin@virtuozzo.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34386 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756804AbdDRPkM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Apr 2017 11:40:12 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] NFS: move nfs_pgarray_set() to open code
+Date: Tue, 18 Apr 2017 11:40:09 -0400
+Message-Id: <677652bb558c5b4925547af558d89583564720e5.1492529938.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 14, 2017 at 05:07:49PM +0300, Andrey Ryabinin wrote:
-> We've noticed that after direct IO write, buffered read sometimes gets
-> stale data which is coming from the cleancache.
+Since commit 00bfa30abe86 ("NFS: Create a common pgio_alloc and
+pgio_release function"), nfs_pgarray_set() has only a single caller.  Let's
+open code it to make it easier to use the correct GFP_ flags in a following
+patch.
 
-That is not good.
-> The reason for this is that some direct write hooks call call invalidate_inode_pages2[_range]()
-> conditionally iff mapping->nrpages is not zero, so we may not invalidate
-> data in the cleancache.
-> 
-> Another odd thing is that we check only for ->nrpages and don't check for ->nrexceptional,
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/pagelist.c | 29 ++++++++++++-----------------
+ 1 file changed, 12 insertions(+), 17 deletions(-)
 
-Yikes.
-> but invalidate_inode_pages2[_range] also invalidates exceptional entries as well.
-> So we invalidate exceptional entries only if ->nrpages != 0? This doesn't feel right.
-> 
->  - Patch 1 fixes direct IO writes by removing ->nrpages check.
->  - Patch 2 fixes similar case in invalidate_bdev(). 
->      Note: I only fixed conditional cleancache_invalidate_inode() here.
->        Do we also need to add ->nrexceptional check in into invalidate_bdev()?
->      
->  - Patches 3-4: some optimizations.
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6e629b856a00..19eaae0dee51 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -29,19 +29,6 @@
+ static struct kmem_cache *nfs_page_cachep;
+ static const struct rpc_call_ops nfs_pgio_common_ops;
+ 
+-static bool nfs_pgarray_set(struct nfs_page_array *p, unsigned int pagecount)
+-{
+-	p->npages = pagecount;
+-	if (pagecount <= ARRAY_SIZE(p->page_array))
+-		p->pagevec = p->page_array;
+-	else {
+-		p->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_KERNEL);
+-		if (!p->pagevec)
+-			p->npages = 0;
+-	}
+-	return p->pagevec != NULL;
+-}
+-
+ struct nfs_pgio_mirror *
+ nfs_pgio_current_mirror(struct nfs_pageio_descriptor *desc)
+ {
+@@ -754,13 +741,21 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+ 				*last_page;
+ 	struct list_head *head = &mirror->pg_list;
+ 	struct nfs_commit_info cinfo;
++	struct nfs_page_array *pg_array = &hdr->page_array;
+ 	unsigned int pagecount, pageused;
+ 
+ 	pagecount = nfs_page_array_len(mirror->pg_base, mirror->pg_count);
+-	if (!nfs_pgarray_set(&hdr->page_array, pagecount)) {
+-		nfs_pgio_error(hdr);
+-		desc->pg_error = -ENOMEM;
+-		return desc->pg_error;
++
++	if (pagecount <= ARRAY_SIZE(pg_array->page_array))
++		pg_array->pagevec = pg_array->page_array;
++	else {
++		pg_array->pagevec = kcalloc(pagecount, sizeof(struct page *), GFP_KERNEL);
++		if (!pg_array->pagevec) {
++			pg_array->npages = 0;
++			nfs_pgio_error(hdr);
++			desc->pg_error = -ENOMEM;
++			return desc->pg_error;
++		}
+ 	}
+ 
+ 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+-- 
+2.9.3
 
-Acked-by: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
-
-Thanks!
-> 
-> Andrey Ryabinin (4):
->   fs: fix data invalidation in the cleancache during direct IO
->   fs/block_dev: always invalidate cleancache in invalidate_bdev()
->   mm/truncate: bail out early from invalidate_inode_pages2_range() if
->     mapping is empty
->   mm/truncate: avoid pointless cleancache_invalidate_inode() calls.
-> 
->  fs/9p/vfs_file.c |  2 +-
->  fs/block_dev.c   | 11 +++++------
->  fs/cifs/inode.c  |  2 +-
->  fs/dax.c         |  2 +-
->  fs/iomap.c       | 16 +++++++---------
->  fs/nfs/direct.c  |  6 ++----
->  fs/nfs/inode.c   |  8 +++++---
->  mm/filemap.c     | 26 +++++++++++---------------
->  mm/truncate.c    | 13 +++++++++----
->  9 files changed, 42 insertions(+), 44 deletions(-)
-> 
-> -- 
-> 2.10.2
-> 
