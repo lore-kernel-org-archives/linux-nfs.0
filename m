@@ -1,154 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:28075 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751783AbdDRQJo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Apr 2017 12:09:44 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] NFS append COMMIT after synchronous COPY
-Date: Tue, 18 Apr 2017 12:09:41 -0400
-Message-ID: <20170418160941.93724-1-kolga@netapp.com>
-In-Reply-To: <562173A5-AB4B-49F8-8C82-F220B6F8ECB5@netapp.com>
-References: <562173A5-AB4B-49F8-8C82-F220B6F8ECB5@netapp.com>
+Received: from mail-wm0-f66.google.com ([74.125.82.66]:35399 "EHLO
+        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751605AbdDRQYL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Apr 2017 12:24:11 -0400
+Subject: Re: RFC: drop the T10 OSD code and its users
+To: Christoph Hellwig <hch@lst.de>, martin.petersen@oracle.com,
+        trond.myklebust@primarydata.com, axboe@kernel.dk
+References: <20170412160109.10598-1-hch@lst.de>
+Cc: osd-dev@open-osd.org, linux-nfs@vger.kernel.org,
+        linux-scsi@vger.kernel.org, linux-block@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+From: Boaz Harrosh <ooo@electrozaur.com>
+Message-ID: <13c543db-dd38-1825-a58d-b4dff99e5f3c@electrozaur.com>
+Date: Tue, 18 Apr 2017 19:24:06 +0300
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <20170412160109.10598-1-hch@lst.de>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of messing with the commit path which has been causing issues,
-add a COMMIT op after the COPY and ask for stable copies in the first
-space.
+On 04/12/2017 07:01 PM, Christoph Hellwig wrote:
 
-It saves a round trip, since after the COPY, the client sends a COMMIT
-anyway.
+Hi Sir Christoph
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/internal.h  |  1 -
- fs/nfs/nfs42proc.c |  6 ------
- fs/nfs/nfs42xdr.c  | 19 +++++++++++++++++--
- fs/nfs/write.c     | 30 ------------------------------
- 4 files changed, 17 insertions(+), 39 deletions(-)
+> The only real user of the T10 OSD protocol, the pNFS object layout
+> driver never went to the point of having shipping products, and the
+> other two users (osdblk and exofs) were simple example of it's usage.
+> 
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 7b38fed..2989418 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -495,7 +495,6 @@ void nfs_mark_request_commit(struct nfs_page *req,
- 			     u32 ds_commit_idx);
- int nfs_write_need_commit(struct nfs_pgio_header *);
- void nfs_writeback_update_inode(struct nfs_pgio_header *hdr);
--int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf);
- int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
- 			    int how, struct nfs_commit_info *cinfo);
- void nfs_retry_commit(struct list_head *page_list,
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 1e486c7..9fee48d 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -174,12 +174,6 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 	if (status)
- 		return status;
- 
--	if (res->write_res.verifier.committed != NFS_FILE_SYNC) {
--		status = nfs_commit_file(dst, &res->write_res.verifier.verifier);
--		if (status)
--			return status;
--	}
--
- 	truncate_pagecache_range(dst_inode, pos_dst,
- 				 pos_dst + res->write_res.count);
- 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 6c72964..8bdf1d5 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -66,12 +66,14 @@
- 					 encode_putfh_maxsz + \
- 					 encode_savefh_maxsz + \
- 					 encode_putfh_maxsz + \
--					 encode_copy_maxsz)
-+					 encode_copy_maxsz + \
-+					 encode_commit_maxsz)
- #define NFS4_dec_copy_sz		(compound_decode_hdr_maxsz + \
- 					 decode_putfh_maxsz + \
- 					 decode_savefh_maxsz + \
- 					 decode_putfh_maxsz + \
--					 decode_copy_maxsz)
-+					 decode_copy_maxsz + \
-+					 decode_commit_maxsz)
- #define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
- 					 encode_putfh_maxsz + \
- 					 encode_deallocate_maxsz + \
-@@ -222,6 +224,18 @@ static void nfs4_xdr_enc_allocate(struct rpc_rqst *req,
- 	encode_nops(&hdr);
- }
- 
-+static void encode_copy_commit(struct xdr_stream *xdr,
-+			  struct nfs42_copy_args *args,
-+			  struct compound_hdr *hdr)
-+{
-+	__be32 *p;
-+
-+	encode_op_hdr(xdr, OP_COMMIT, decode_commit_maxsz, hdr);
-+	p = reserve_space(xdr, 12);
-+	p = xdr_encode_hyper(p, args->dst_pos);
-+	*p = cpu_to_be32(args->count);
-+}
-+
- /*
-  * Encode COPY request
-  */
-@@ -239,6 +253,7 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
- 	encode_savefh(xdr, &hdr);
- 	encode_putfh(xdr, args->dst_fh, &hdr);
- 	encode_copy(xdr, args, &hdr);
-+	encode_copy_commit(xdr, args, &hdr);
- 	encode_nops(&hdr);
- }
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index abb2c8a..8d65d88 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1720,36 +1720,6 @@ void nfs_retry_commit(struct list_head *page_list,
- 	return -ENOMEM;
- }
- 
--int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf)
--{
--	struct inode *inode = file_inode(file);
--	struct nfs_open_context *open;
--	struct nfs_commit_info cinfo;
--	struct nfs_page *req;
--	int ret;
--
--	open = get_nfs_open_context(nfs_file_open_context(file));
--	req  = nfs_create_request(open, NULL, NULL, 0, i_size_read(inode));
--	if (IS_ERR(req)) {
--		ret = PTR_ERR(req);
--		goto out_put;
--	}
--
--	nfs_init_cinfo_from_inode(&cinfo, inode);
--
--	memcpy(&req->wb_verf, verf, sizeof(struct nfs_write_verifier));
--	nfs_request_add_commit_list(req, &cinfo);
--	ret = nfs_commit_inode(inode, FLUSH_SYNC);
--	if (ret > 0)
--		ret = 0;
--
--	nfs_free_request(req);
--out_put:
--	put_nfs_open_context(open);
--	return ret;
--}
--EXPORT_SYMBOL_GPL(nfs_commit_file);
--
- /*
-  * COMMIT call returned
-  */
--- 
-1.8.3.1
+I understand why osdblk might be a pain, and was broken from day one, and
+should by all means go away ASAP.
+
+But exofs should not be bothering anyone, and as far as I know does
+not use any special API's except the osd_uld code of course.
+
+> The code has been mostly unmaintained for years and is getting in the
+> way of block / SCSI changes, so I think it's finally time to drop it.
+> 
+
+Please tell me what are those changes you are talking about? I might be
+able to help in conversion. I guess you mean osd_uld and the Upper SCSI API.
+Just point me at a tree where osd_uld is broken, and perhaps with a little
+guidance from you I can do a satisfactory conversion.
+
+Is true that no new code went in for a long while, but I still from time
+to time run a setup and test that the all stack, like iscsi-bidi and so on still
+works.
+
+That said, yes only a stand alone exofs was tested for a long time, a full
+pnfs setup is missing any supporting server. So Yes I admit that pnfs-obj is
+getting very rotten. And is most probably broken, on the pnfs side of things.
+[Which I admit makes my little plea kind of mute ;-) ]
+
+Every once in a while I get emails from Students basing all kind of interesting
+experiments on top of the exofs and object base storage. So for the sake of academics
+and for the sake of a true bidi-stack testing, might we want to evaluate what is the
+up coming cost, and what is a minimum set we are willing to keep?
+
+Please advise?
+
+thanks
+Boaz
+
+> These patches are against Jens' block for-next tree as that already
+> has various modifications of the SCSI code.
+> 
 
