@@ -1,99 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56425 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751528AbdDRA0A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Apr 2017 20:26:00 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Date: Tue, 18 Apr 2017 10:25:20 +1000
-Cc: Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-In-Reply-To: <20170414150940.GB5362@fieldses.org>
-References: <20170414150440.GA5362@fieldses.org> <20170414150940.GB5362@fieldses.org>
-Message-ID: <87h91mtvdb.fsf@notabene.neil.brown.name>
+Received: from mx142.netapp.com ([216.240.21.19]:15378 "EHLO mx142.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932443AbdDRPEC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Apr 2017 11:04:02 -0400
+Subject: Re: [PATCH 1/1] NFS append COMMIT after synchronous COPY
+To: Olga Kornievskaia <kolga@netapp.com>,
+        <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+References: <20170417211537.93047-1-kolga@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <5ebc2df1-f209-fb9d-ee71-b2e64d0139e9@Netapp.com>
+Date: Tue, 18 Apr 2017 11:03:56 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <20170417211537.93047-1-kolga@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hi Olga,
 
-On Fri, Apr 14 2017, J. Bruce Fields wrote:
+On 04/17/2017 05:15 PM, Olga Kornievskaia wrote:
+> Instead of messing with the commit path which has been causing issues,
+> add a COMMIT op after the COPY and ask for stable copies in the first
+> space.
+> 
+> It saves a round trip, since after the COPY, the client sends a COMMIT
+> anyway.
+> 
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/internal.h  |  1 -
+>  fs/nfs/nfs42proc.c |  6 ------
+>  fs/nfs/nfs42xdr.c  | 15 +++++++++++++++
+>  fs/nfs/write.c     | 30 ------------------------------
+>  4 files changed, 15 insertions(+), 37 deletions(-)
+> 
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index 7b38fed..2989418 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -495,7 +495,6 @@ void nfs_mark_request_commit(struct nfs_page *req,
+>  			     u32 ds_commit_idx);
+>  int nfs_write_need_commit(struct nfs_pgio_header *);
+>  void nfs_writeback_update_inode(struct nfs_pgio_header *hdr);
+> -int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf);
+>  int nfs_generic_commit_list(struct inode *inode, struct list_head *head,
+>  			    int how, struct nfs_commit_info *cinfo);
+>  void nfs_retry_commit(struct list_head *page_list,
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index 1e486c7..9fee48d 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -174,12 +174,6 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+>  	if (status)
+>  		return status;
+>  
+> -	if (res->write_res.verifier.committed != NFS_FILE_SYNC) {
+> -		status = nfs_commit_file(dst, &res->write_res.verifier.verifier);
+> -		if (status)
+> -			return status;
+> -	}
+> -
+>  	truncate_pagecache_range(dst_inode, pos_dst,
+>  				 pos_dst + res->write_res.count);
+>  
+> diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+> index 6c72964..03f3c9e 100644
+> --- a/fs/nfs/nfs42xdr.c
+> +++ b/fs/nfs/nfs42xdr.c
+> @@ -25,6 +25,8 @@
+>  					 NFS42_WRITE_RES_SIZE + \
+>  					 1 /* cr_consecutive */ + \
+>  					 1 /* cr_synchronous */)
+> +#define decode_commit_maxsz		(op_decode_hdr_maxsz + \
+> +					 decode_verifier_maxsz)e
 
-> (Cc'd you, Neil, partly on the off chance you might have a better idea
-> where this came from.  Looks to me like it may have been there forever,
-> but, I haven't looked too hard yet.)
->
-
-Hi Bruce,
- I can't say that I like this patch at all.
-
-The problem is that:
-
-	pages =3D size / PAGE_SIZE + 1; /* extra page as we hold both request and =
-reply.
-				       * We assume one is at most one page
-				       */
-
-this assumption is never verified.
-To my mind, the "obvious" way to verify this assumption is that an
-attempt to generate a multi-page reply should fail if there was a
-multi-page request.
-Failing if there was a little bit of extra noise at the end of the
-request seems harsher than necessary, and could result in a regression.
-
-We already know how big replies can get, so we can perform a complete
-sanity check quite early:
-
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index a08aeb56b8e4..14f4d425cf8c 100644
-=2D-- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1196,6 +1196,12 @@ svc_process_common(struct svc_rqst *rqstp, struct kv=
-ec *argv, struct kvec *resv)
- 		goto err_bad_proc;
- 	rqstp->rq_procinfo =3D procp;
-=20
-+	if ((procp->pc_xdrressize =3D=3D 0 ||
-+	     procp->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE)) &&
-+	    rqstp->rq_arg.len > PAGE_SIZE)
-+		/* The assumption about request/reply sizes in svc_init_buffer() is viol=
-ated! */
-+		goto err_garbage;
-+
- 	/* Syntactic check complete */
- 	serv->sv_stats->rpccnt++;
-=20
-
-I haven't tested this at all and haven't even convinced myself that
-it covers every case (though I cannot immediately think of any likely
-corners).
-
-Does it address your test case?
+nfs4xdr.c includes this file (it's a weird setup, I know), so this and the corresponding encode size should already be declared and available to us.  Can you add them to the NFS4_enc_copy_sz and NFS4_dec_copy_size values?
 
 Thanks,
-NeilBrown
+Anna
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlj1XPAACgkQOeye3VZi
-gbnMCA//ZLiXvmOMYg4RbEyK2rXY07MdTCQEkyb6PYZVZh/tEbdwtRDsf/a1hzwK
-loU27YMU1O8pVI8N8bV9/yFIRDKfqj3IyowsOi4/pFEiublHE3ner1gxJbj1aR+L
-Z9wQYZToYiwVmoUhbZxXydP4TMuMqXbhaJ03gzGrovZXSg5lgV+A+oQw6j+YE5ag
-WRgiTPN/wyMMYy9Y0nvjZVh2LlDYCP8IRPJPi7otwcGYnZSkddca0wmvrcClE9S8
-0MKqz5RCuSvf+x2sfR/ye4XZdtsIheQ61QlfDB1O/YMQyuT//Hj9TqX7DGqneVxo
-N9KBob9ubE2xdbl1wcLpCOO2K0aNudKzk5v6sIAhpdFLyRWQdJysdVYzfi+gsF7l
-gsYabD8xYJF1Lgq7HfXvdTF0skU48vc5JwQTtDmLLdyUrEQbVfazpZ5Y/eWttjq4
-7Sr9d7fJDR/STd5APVlJrBvjkV3vgLYKhnJ1Yuy4JZ2kV1H8iTD5ZLwCvRlo7pp4
-LQyxGgjEh4eWpgwFSC/vsPM2pmCvyuU2BmkRLXAAhmCSzZ6XK5/h9seYdmUohpNN
-1X2h44QMf5Dlg8bl1IgepwLSQoWtkyhhpOA+cV2GBXgMEqMpgpZf/QNErdsvW920
-H112RNrjt+fP23x8qqmfKzkHiYvsK6KdNi+za6IbWxiStJTv2CA=
-=MLZy
------END PGP SIGNATURE-----
---=-=-=--
+>  #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
+>  					 encode_fallocate_maxsz)
+>  #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
+> @@ -222,6 +224,18 @@ static void nfs4_xdr_enc_allocate(struct rpc_rqst *req,
+>  	encode_nops(&hdr);
+>  }
+>  
+> +static void encode_copy_commit(struct xdr_stream *xdr,
+> +			  struct nfs42_copy_args *args,
+> +			  struct compound_hdr *hdr)
+> +{
+> +	__be32 *p;
+> +
+> +	encode_op_hdr(xdr, OP_COMMIT, decode_commit_maxsz, hdr);
+> +	p = reserve_space(xdr, 12);
+> +	p = xdr_encode_hyper(p, args->dst_pos);
+> +	*p = cpu_to_be32(args->count);
+> +}
+> +
+>  /*
+>   * Encode COPY request
+>   */
+> @@ -239,6 +253,7 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
+>  	encode_savefh(xdr, &hdr);
+>  	encode_putfh(xdr, args->dst_fh, &hdr);
+>  	encode_copy(xdr, args, &hdr);
+> +	encode_copy_commit(xdr, args, &hdr);
+>  	encode_nops(&hdr);
+>  }
+>  
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index abb2c8a..8d65d88 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1720,36 +1720,6 @@ void nfs_retry_commit(struct list_head *page_list,
+>  	return -ENOMEM;
+>  }
+>  
+> -int nfs_commit_file(struct file *file, struct nfs_write_verifier *verf)
+> -{
+> -	struct inode *inode = file_inode(file);
+> -	struct nfs_open_context *open;
+> -	struct nfs_commit_info cinfo;
+> -	struct nfs_page *req;
+> -	int ret;
+> -
+> -	open = get_nfs_open_context(nfs_file_open_context(file));
+> -	req  = nfs_create_request(open, NULL, NULL, 0, i_size_read(inode));
+> -	if (IS_ERR(req)) {
+> -		ret = PTR_ERR(req);
+> -		goto out_put;
+> -	}
+> -
+> -	nfs_init_cinfo_from_inode(&cinfo, inode);
+> -
+> -	memcpy(&req->wb_verf, verf, sizeof(struct nfs_write_verifier));
+> -	nfs_request_add_commit_list(req, &cinfo);
+> -	ret = nfs_commit_inode(inode, FLUSH_SYNC);
+> -	if (ret > 0)
+> -		ret = 0;
+> -
+> -	nfs_free_request(req);
+> -out_put:
+> -	put_nfs_open_context(open);
+> -	return ret;
+> -}
+> -EXPORT_SYMBOL_GPL(nfs_commit_file);
+> -
+>  /*
+>   * COMMIT call returned
+>   */
+> 
