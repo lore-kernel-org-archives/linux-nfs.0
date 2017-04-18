@@ -1,83 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:37176 "EHLO mga11.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34022 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752748AbdDRTiM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Apr 2017 15:38:12 -0400
-Date: Tue, 18 Apr 2017 13:38:08 -0600
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Andrey Ryabinin <aryabinin@virtuozzo.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Steve French <sfrench@samba.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Christoph Hellwig <hch@lst.de>,
-        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 1/4] fs: fix data invalidation in the cleancache during
- direct IO
-Message-ID: <20170418193808.GA16667@linux.intel.com>
-References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
- <20170414140753.16108-2-aryabinin@virtuozzo.com>
+        id S1752748AbdDRUcG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Apr 2017 16:32:06 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] NFS: Use GFP_NOIO for two allocations in writeback
+Date: Tue, 18 Apr 2017 16:32:03 -0400
+Message-ID: <46AF67C3-E23A-4E71-8744-4195746AFFCF@redhat.com>
+In-Reply-To: <1492533772.3883.3.camel@primarydata.com>
+References: <677652bb558c5b4925547af558d89583564720e5.1492529938.git.bcodding@redhat.com>
+ <8145bc699493a8ff826f00333b602d2594fb697c.1492529938.git.bcodding@redhat.com>
+ <1492533772.3883.3.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170414140753.16108-2-aryabinin@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 14, 2017 at 05:07:50PM +0300, Andrey Ryabinin wrote:
-> Some direct write fs hooks call invalidate_inode_pages2[_range]()
-> conditionally iff mapping->nrpages is not zero. If page cache is empty,
-> buffered read following after direct IO write would get stale data from
-> the cleancache.
-> 
-> Also it doesn't feel right to check only for ->nrpages because
-> invalidate_inode_pages2[_range] invalidates exceptional entries as well.
-> 
-> Fix this by calling invalidate_inode_pages2[_range]() regardless of nrpages
-> state.
-> 
-> Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
-> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
-> ---
-<>
-> diff --git a/fs/dax.c b/fs/dax.c
-> index 2e382fe..1e8cca0 100644
-> --- a/fs/dax.c
-> +++ b/fs/dax.c
-> @@ -1047,7 +1047,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
->  	 * into page tables. We have to tear down these mappings so that data
->  	 * written by write(2) is visible in mmap.
->  	 */
-> -	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-> +	if ((iomap->flags & IOMAP_F_NEW)) {
->  		invalidate_inode_pages2_range(inode->i_mapping,
->  					      pos >> PAGE_SHIFT,
->  					      (end - 1) >> PAGE_SHIFT);
+On 18 Apr 2017, at 12:42, Trond Myklebust wrote:
 
-tl;dr: I think the old code is correct, and that you don't need this change.
+> Hi Ben,
+>
+> On Tue, 2017-04-18 at 11:40 -0400, Benjamin Coddington wrote:
+>> Prevent a deadlock that can occur if we wait on allocations
+>> that try to write back our pages.
+>>
+>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>> ---
+>>  fs/nfs/pagelist.c | 10 ++++++++--
+>>  1 file changed, 8 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+>> index 19eaae0dee51..fa2924ce5a78 100644
+>> --- a/fs/nfs/pagelist.c
+>> +++ b/fs/nfs/pagelist.c
+>> @@ -668,6 +668,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor
+>> *desc,
+>>  {
+>>  	struct nfs_pgio_mirror *new;
+>>  	int i;
+>> +	gfp_t gfp_flags = GFP_KERNEL;
+>>  
+>>  	desc->pg_moreio = 0;
+>>  	desc->pg_inode = inode;
+>> @@ -687,8 +688,10 @@ void nfs_pageio_init(struct
+>> nfs_pageio_descriptor *desc,
+>>  	if (pg_ops->pg_get_mirror_count) {
+>>  		/* until we have a request, we don't have an lseg
+>> and no
+>>  		 * idea how many mirrors there will be */
+>> +		if (desc->pg_rw_ops->rw_mode == FMODE_WRITE)
+>
+> Can we rather replace this with a new field in struct
+> nfs_pageio_descriptor? I want to get rid of pg_rw_ops->rw_mode; it's
+> something that slipped through the cracks.
 
-This should be harmless, but could slow us down a little if we keep
-calling invalidate_inode_pages2_range() without really needing to.  Really for
-DAX I think we need to call invalidate_inode_page2_range() only if we have
-zero pages mapped over the place where we are doing I/O, which is why we check
-nrpages.
+I can do this.  It might make sense to just replace rw_mode with something
+like rw_gfp_flags..  Otherwise, this looks like another argument to
+nfs_pageio_init(), unless we can piggy-back on pg_ioflags.
 
-Is DAX even allowed to be used at the same time as cleancache?  From a brief
-look at Documentation/vm/cleancache.txt, it seems like these two features are
-incompatible.  With DAX we already are avoiding the page cache completely.
+> Also, please put this patch before the other so that it can be easily
+> propagated as a stable patch.
 
-Anyway, I don't see how this change in DAX can save us from a data corruption
-(which is what you're seeing, right?), and I think it could slow us down, so
-I'd prefer to leave things as they are.
+Of course, that makes more sense too.
+
+Ben
