@@ -1,81 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35790 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754590AbdDRRNv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Apr 2017 13:13:51 -0400
-Date: Tue, 18 Apr 2017 13:13:51 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170418171351.GF6208@fieldses.org>
-References: <20170414150440.GA5362@fieldses.org>
- <20170414150940.GB5362@fieldses.org>
- <87h91mtvdb.fsf@notabene.neil.brown.name>
+Received: from mail-io0-f182.google.com ([209.85.223.182]:32926 "EHLO
+        mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754285AbdDRR2k (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Apr 2017 13:28:40 -0400
+Received: by mail-io0-f182.google.com with SMTP id k87so4830336ioi.0
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Apr 2017 10:28:40 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87h91mtvdb.fsf@notabene.neil.brown.name>
+In-Reply-To: <CAFX2JfkiraKm2Rmqhkrh3CSWBoYfW0QU=uXw=sSx-8Wt8JD7wg@mail.gmail.com>
+References: <DFE33002-FE1C-4E83-B6E3-50BFD304C7F6@netapp.com>
+ <20170413174515.GA5140@fieldses.org> <59BDF7CA-78BB-42FC-8BC4-95101F5E1EC7@netapp.com>
+ <CAN-5tyHOdU9BJnJft+X06=6X7_s8MS_hDmg9t=fJQ=QtvJQD=w@mail.gmail.com>
+ <20170417133604.GA22694@fieldses.org> <CAN-5tyF10OCihgYUMwoju6V+SnVZkpQNoQLb_UKoCAPuG+EgbQ@mail.gmail.com>
+ <CAFX2JfkiraKm2Rmqhkrh3CSWBoYfW0QU=uXw=sSx-8Wt8JD7wg@mail.gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 18 Apr 2017 13:28:39 -0400
+Message-ID: <CAN-5tyEO3wJ3sT_phM6LNGH3zpYmi21e+fhHjkSGvZrRqWziMw@mail.gmail.com>
+Subject: Re: [nfsv4] Inter server-side copy performance
+To: Anna Schumaker <schumakeranna@gmail.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
->  I can't say that I like this patch at all.
-> 
-> The problem is that:
-> 
-> 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
-> 				       * We assume one is at most one page
-> 				       */
-> 
-> this assumption is never verified.
-> To my mind, the "obvious" way to verify this assumption is that an
-> attempt to generate a multi-page reply should fail if there was a
-> multi-page request.
+On Mon, Apr 17, 2017 at 11:37 AM, Anna Schumaker
+<schumakeranna@gmail.com> wrote:
+>
+>
+> On Mon, Apr 17, 2017 at 11:30 AM Olga Kornievskaia <aglo@umich.edu> wrote:
+>>
+>> On Mon, Apr 17, 2017 at 9:36 AM, J. Bruce Fields <bfields@fieldses.org>
+>> wrote:
+>> > On Fri, Apr 14, 2017 at 05:22:13PM -0400, Olga Kornievskaia wrote:
+>> >> On Fri, Apr 14, 2017 at 4:09 PM, Mora, Jorge <Jorge.Mora@netapp.com>
+>> >> wrote:
+>> >> > On 4/13/17, 11:45 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>> >> >> Are you timing just the copy_file_range() call, or do you include a
+>> >> >> following sync?
+>> >> >
+>> >> > I am timing right before calling copy_file_range() up to doing an
+>> >> > fsync() and close() of the destination file.
+>> >> > For the traditional copy is the same, I am timing right before the
+>> >> > first read on the source file up to the
+>> >> > fsync() and close() of the destination file.
+>> >>
+>> >> Why should do we need a sync after copy_file_range(). kernel
+>> >> copy_file_range() will send the commits for any unstable copies it
+>> >> received.
+>> >
+>> > Why does it do that?  As far as I can tell it's not required by
+>> > documentation for copy_file_range() or COPY.  COPY has a write verifier
+>> > and a stable_how argument in the reply.  Skipping the commits would
+>> > allow better performance in case a copy requires multiple COPY calls.
+>> >
+>> > But, in any case, if copy_file_range() already committed then it
+>> > probably doesn't make a significant difference to the timing whether you
+>> > include a following sync and/or close.
+>>
+>> Hm. It does make sense. Anna wrote the original code which included
+>> the COMMIT after copy which I haven't thought about.
+>>
+>> Anna, any comments?
+>
+>
+> I think the commit just seemed like a good idea at the time.  I'm okay with
+> changing it if it doesn't make sense.
 
-A third option, by the way, which Ari Kauppi argued for, is adding a
-null check each time we increment rq_next_page, since we seem to arrange
-for the page array to always be NULL-terminated.
+Given how the code is written now it looks like it's not possible to
+save up commits....
 
-> Failing if there was a little bit of extra noise at the end of the
-> request seems harsher than necessary, and could result in a regression.
+Here's what I can see happening:
 
-You're worrying there might be a weird old client out there somewhere?
-I guess it seems like a small enough risk to me.  I'm more worried the
-extra garbage might violate assumptions elsewhere in the code.
+nfs42_proc_clone() as well as nfs42_proc_copy() will call
+nfs_sync_inode(dst) "to make sure server(s) have the latest data"
+prior to initiating the clone/copy. So even if we just queue up (not
+send) the commit after the executing nfs42_proc_copy, then next call
+into vfs_copy_file_range() will send out that queued up commit.
 
-But, this looks good too:
-
-> We already know how big replies can get, so we can perform a complete
-> sanity check quite early:
-> 
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index a08aeb56b8e4..14f4d425cf8c 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1196,6 +1196,12 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
->  		goto err_bad_proc;
->  	rqstp->rq_procinfo = procp;
->  
-> +	if ((procp->pc_xdrressize == 0 ||
-> +	     procp->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE)) &&
-> +	    rqstp->rq_arg.len > PAGE_SIZE)
-> +		/* The assumption about request/reply sizes in svc_init_buffer() is violated! */
-> +		goto err_garbage;
-> +
->  	/* Syntactic check complete */
->  	serv->sv_stats->rpccnt++;
->  
-> 
-> I haven't tested this at all and haven't even convinced myself that
-> it covers every case (though I cannot immediately think of any likely
-> corners).
-> 
-> Does it address your test case?
-
-I'll check, it probably does.
-
-We'd need to limit the test to v2/v3.
-
-I'm also not opposed to doing both (or all three).
-
---b.
+Is it ok to relax the requirement that requirement, I'm not sure...
