@@ -1,97 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bl2nam02on0104.outbound.protection.outlook.com ([104.47.38.104]:55749
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1753293AbdDRRG3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Apr 2017 13:06:29 -0400
-From: "Chandy, John" <john.chandy@uconn.edu>
-To: Boaz Harrosh <ooo@electrozaur.com>
-CC: Christoph Hellwig <hch@lst.de>,
-        "martin.petersen@oracle.com" <martin.petersen@oracle.com>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "axboe@kernel.dk" <axboe@kernel.dk>,
-        "osd-dev@open-osd.org" <osd-dev@open-osd.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
-        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: RFC: drop the T10 OSD code and its users
-Date: Tue, 18 Apr 2017 17:06:25 +0000
-Message-ID: <1F41407D-B78F-46E3-8FBE-90A5B1E5C3DE@uconn.edu>
-References: <20170412160109.10598-1-hch@lst.de>
- <13c543db-dd38-1825-a58d-b4dff99e5f3c@electrozaur.com>
-In-Reply-To: <13c543db-dd38-1825-a58d-b4dff99e5f3c@electrozaur.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from fieldses.org ([173.255.197.46]:35790 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754590AbdDRRNv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Apr 2017 13:13:51 -0400
+Date: Tue, 18 Apr 2017 13:13:51 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
+Message-ID: <20170418171351.GF6208@fieldses.org>
+References: <20170414150440.GA5362@fieldses.org>
+ <20170414150940.GB5362@fieldses.org>
+ <87h91mtvdb.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87h91mtvdb.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As one of those academics that Boaz was talking about, we do use the OSD dr=
-iver for various research projects including support for OSD in parallel fi=
-le systems like OrangeFS and Lustre.
+On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
+>  I can't say that I like this patch at all.
+> 
+> The problem is that:
+> 
+> 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
+> 				       * We assume one is at most one page
+> 				       */
+> 
+> this assumption is never verified.
+> To my mind, the "obvious" way to verify this assumption is that an
+> attempt to generate a multi-page reply should fail if there was a
+> multi-page request.
 
-John.
+A third option, by the way, which Ari Kauppi argued for, is adding a
+null check each time we increment rq_next_page, since we seem to arrange
+for the page array to always be NULL-terminated.
 
-> On Apr 18, 2017, at 12:24 PM, Boaz Harrosh <ooo@electrozaur.com> wrote:
->=20
-> On 04/12/2017 07:01 PM, Christoph Hellwig wrote:
->=20
-> Hi Sir Christoph
->=20
->> The only real user of the T10 OSD protocol, the pNFS object layout
->> driver never went to the point of having shipping products, and the
->> other two users (osdblk and exofs) were simple example of it's usage.
->>=20
->=20
-> I understand why osdblk might be a pain, and was broken from day one, and
-> should by all means go away ASAP.
->=20
-> But exofs should not be bothering anyone, and as far as I know does
-> not use any special API's except the osd_uld code of course.
->=20
->> The code has been mostly unmaintained for years and is getting in the
->> way of block / SCSI changes, so I think it's finally time to drop it.
->>=20
->=20
-> Please tell me what are those changes you are talking about? I might be
-> able to help in conversion. I guess you mean osd_uld and the Upper SCSI A=
-PI.
-> Just point me at a tree where osd_uld is broken, and perhaps with a littl=
-e
-> guidance from you I can do a satisfactory conversion.
->=20
-> Is true that no new code went in for a long while, but I still from time
-> to time run a setup and test that the all stack, like iscsi-bidi and so o=
-n still
-> works.
->=20
-> That said, yes only a stand alone exofs was tested for a long time, a ful=
-l
-> pnfs setup is missing any supporting server. So Yes I admit that pnfs-obj=
- is
-> getting very rotten. And is most probably broken, on the pnfs side of thi=
-ngs.
-> [Which I admit makes my little plea kind of mute ;-) ]
->=20
-> Every once in a while I get emails from Students basing all kind of inter=
-esting
-> experiments on top of the exofs and object base storage. So for the sake =
-of academics
-> and for the sake of a true bidi-stack testing, might we want to evaluate =
-what is the
-> up coming cost, and what is a minimum set we are willing to keep?
->=20
-> Please advise?
->=20
-> thanks
-> Boaz
->=20
->> These patches are against Jens' block for-next tree as that already
->> has various modifications of the SCSI code.
->>=20
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Failing if there was a little bit of extra noise at the end of the
+> request seems harsher than necessary, and could result in a regression.
 
+You're worrying there might be a weird old client out there somewhere?
+I guess it seems like a small enough risk to me.  I'm more worried the
+extra garbage might violate assumptions elsewhere in the code.
+
+But, this looks good too:
+
+> We already know how big replies can get, so we can perform a complete
+> sanity check quite early:
+> 
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index a08aeb56b8e4..14f4d425cf8c 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1196,6 +1196,12 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+>  		goto err_bad_proc;
+>  	rqstp->rq_procinfo = procp;
+>  
+> +	if ((procp->pc_xdrressize == 0 ||
+> +	     procp->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE)) &&
+> +	    rqstp->rq_arg.len > PAGE_SIZE)
+> +		/* The assumption about request/reply sizes in svc_init_buffer() is violated! */
+> +		goto err_garbage;
+> +
+>  	/* Syntactic check complete */
+>  	serv->sv_stats->rpccnt++;
+>  
+> 
+> I haven't tested this at all and haven't even convinced myself that
+> it covers every case (though I cannot immediately think of any likely
+> corners).
+> 
+> Does it address your test case?
+
+I'll check, it probably does.
+
+We'd need to limit the test to v2/v3.
+
+I'm also not opposed to doing both (or all three).
+
+--b.
