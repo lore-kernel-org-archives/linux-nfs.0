@@ -1,53 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35904 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750975AbdDRSde (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Apr 2017 14:33:34 -0400
-Date: Tue, 18 Apr 2017 14:33:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Anna Schumaker <schumakeranna@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: [nfsv4] Inter server-side copy performance
-Message-ID: <20170418183333.GH6208@fieldses.org>
-References: <DFE33002-FE1C-4E83-B6E3-50BFD304C7F6@netapp.com>
- <20170413174515.GA5140@fieldses.org>
- <59BDF7CA-78BB-42FC-8BC4-95101F5E1EC7@netapp.com>
- <CAN-5tyHOdU9BJnJft+X06=6X7_s8MS_hDmg9t=fJQ=QtvJQD=w@mail.gmail.com>
- <20170417133604.GA22694@fieldses.org>
- <CAN-5tyF10OCihgYUMwoju6V+SnVZkpQNoQLb_UKoCAPuG+EgbQ@mail.gmail.com>
- <CAFX2JfkiraKm2Rmqhkrh3CSWBoYfW0QU=uXw=sSx-8Wt8JD7wg@mail.gmail.com>
- <CAN-5tyEO3wJ3sT_phM6LNGH3zpYmi21e+fhHjkSGvZrRqWziMw@mail.gmail.com>
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:32831 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754079AbdDRSwE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Apr 2017 14:52:04 -0400
+Subject: Re: [PATCH 2/4] fs/block_dev: always invalidate cleancache in
+ invalidate_bdev()
+To: Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org
+References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
+ <20170414140753.16108-3-aryabinin@virtuozzo.com>
+Cc: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Steve French <sfrench@samba.org>,
+        Matthew Wilcox <mawilcox@microsoft.com>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Christoph Hellwig <hch@lst.de>,
+        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
+        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
+        linux-nfs@vger.kernel.org, linux-mm@kvack.org
+From: Nikolay Borisov <n.borisov.lkml@gmail.com>
+Message-ID: <705067e3-eb15-ce2a-cfc8-d048dfc8be4f@gmail.com>
+Date: Tue, 18 Apr 2017 21:51:59 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyEO3wJ3sT_phM6LNGH3zpYmi21e+fhHjkSGvZrRqWziMw@mail.gmail.com>
+In-Reply-To: <20170414140753.16108-3-aryabinin@virtuozzo.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 18, 2017 at 01:28:39PM -0400, Olga Kornievskaia wrote:
-> Given how the code is written now it looks like it's not possible to
-> save up commits....
+
+
+On 14.04.2017 17:07, Andrey Ryabinin wrote:
+> invalidate_bdev() calls cleancache_invalidate_inode() iff ->nrpages != 0
+> which doen't make any sense.
+> Make invalidate_bdev() always invalidate cleancache data.
 > 
-> Here's what I can see happening:
+> Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
+> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
+> ---
+>  fs/block_dev.c | 11 +++++------
+>  1 file changed, 5 insertions(+), 6 deletions(-)
 > 
-> nfs42_proc_clone() as well as nfs42_proc_copy() will call
-> nfs_sync_inode(dst) "to make sure server(s) have the latest data"
-> prior to initiating the clone/copy. So even if we just queue up (not
-> send) the commit after the executing nfs42_proc_copy, then next call
-> into vfs_copy_file_range() will send out that queued up commit.
+> diff --git a/fs/block_dev.c b/fs/block_dev.c
+> index e405d8e..7af4787 100644
+> --- a/fs/block_dev.c
+> +++ b/fs/block_dev.c
+> @@ -103,12 +103,11 @@ void invalidate_bdev(struct block_device *bdev)
+>  {
+>  	struct address_space *mapping = bdev->bd_inode->i_mapping;
+>  
+> -	if (mapping->nrpages == 0)
+> -		return;
+> -
+> -	invalidate_bh_lrus();
+> -	lru_add_drain_all();	/* make sure all lru add caches are flushed */
+> -	invalidate_mapping_pages(mapping, 0, -1);
+> +	if (mapping->nrpages) {
+> +		invalidate_bh_lrus();
+> +		lru_add_drain_all();	/* make sure all lru add caches are flushed */
+> +		invalidate_mapping_pages(mapping, 0, -1);
+> +	}
+
+How is this different than the current code? You will only invalidate
+the mapping iff ->nrpages > 0 ( I assume it can't go down below 0) ?
+Perhaps just remove the if altogether?
+
+>  	/* 99% of the time, we don't need to flush the cleancache on the bdev.
+>  	 * But, for the strange corners, lets be cautious
+>  	 */
 > 
-> Is it ok to relax the requirement that requirement, I'm not sure...
-
-Well, if the typical case of copy_file_range is just opening a file,
-doing a single big copy_file_range(), then closing the file, then this
-doesn't matter.
-
-The linux server is currently limiting COPY to 4MB at a time, which will
-make the commits more annoying.
-
-Even there the typical case will probably still be an open, followed by
-a series of non-overlapping copies, then close, and that shouldn't
-require the commits.
-
---b.
