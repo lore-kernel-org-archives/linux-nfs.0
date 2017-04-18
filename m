@@ -1,40 +1,97 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bcodding@redhat.com" <bcodding@redhat.com>, "anna.schumaker@netapp.com"
-	<anna.schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFS: Use GFP_NOIO for two allocations in writeback
-Date: Tue, 18 Apr 2017 16:42:54 +0000
-Message-ID: <1492533772.3883.3.camel@primarydata.com>
-References: <677652bb558c5b4925547af558d89583564720e5.1492529938.git.bcodding@redhat.com>
-	 <8145bc699493a8ff826f00333b602d2594fb697c.1492529938.git.bcodding@redhat.com>
-In-Reply-To: <8145bc699493a8ff826f00333b602d2594fb697c.1492529938.git.bcodding@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-bl2nam02on0104.outbound.protection.outlook.com ([104.47.38.104]:55749
+        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1753293AbdDRRG3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Apr 2017 13:06:29 -0400
+From: "Chandy, John" <john.chandy@uconn.edu>
+To: Boaz Harrosh <ooo@electrozaur.com>
+CC: Christoph Hellwig <hch@lst.de>,
+        "martin.petersen@oracle.com" <martin.petersen@oracle.com>,
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "axboe@kernel.dk" <axboe@kernel.dk>,
+        "osd-dev@open-osd.org" <osd-dev@open-osd.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: RFC: drop the T10 OSD code and its users
+Date: Tue, 18 Apr 2017 17:06:25 +0000
+Message-ID: <1F41407D-B78F-46E3-8FBE-90A5B1E5C3DE@uconn.edu>
+References: <20170412160109.10598-1-hch@lst.de>
+ <13c543db-dd38-1825-a58d-b4dff99e5f3c@electrozaur.com>
+In-Reply-To: <13c543db-dd38-1825-a58d-b4dff99e5f3c@electrozaur.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgQmVuLA0KDQpPbiBUdWUsIDIwMTctMDQtMTggYXQgMTE6NDAgLTA0MDAsIEJlbmphbWluIENv
-ZGRpbmd0b24gd3JvdGU6DQo+IFByZXZlbnQgYSBkZWFkbG9jayB0aGF0IGNhbiBvY2N1ciBpZiB3
-ZSB3YWl0IG9uIGFsbG9jYXRpb25zDQo+IHRoYXQgdHJ5IHRvIHdyaXRlIGJhY2sgb3VyIHBhZ2Vz
-Lg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVk
-aGF0LmNvbT4NCj4gLS0tDQo+IMKgZnMvbmZzL3BhZ2VsaXN0LmMgfCAxMCArKysrKysrKy0tDQo+
-IMKgMSBmaWxlIGNoYW5nZWQsIDggaW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4gDQo+
-IGRpZmYgLS1naXQgYS9mcy9uZnMvcGFnZWxpc3QuYyBiL2ZzL25mcy9wYWdlbGlzdC5jDQo+IGlu
-ZGV4IDE5ZWFhZTBkZWU1MS4uZmEyOTI0Y2U1YTc4IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvcGFn
-ZWxpc3QuYw0KPiArKysgYi9mcy9uZnMvcGFnZWxpc3QuYw0KPiBAQCAtNjY4LDYgKzY2OCw3IEBA
-IHZvaWQgbmZzX3BhZ2Vpb19pbml0KHN0cnVjdCBuZnNfcGFnZWlvX2Rlc2NyaXB0b3INCj4gKmRl
-c2MsDQo+IMKgew0KPiDCoAlzdHJ1Y3QgbmZzX3BnaW9fbWlycm9yICpuZXc7DQo+IMKgCWludCBp
-Ow0KPiArCWdmcF90IGdmcF9mbGFncyA9IEdGUF9LRVJORUw7DQo+IMKgDQo+IMKgCWRlc2MtPnBn
-X21vcmVpbyA9IDA7DQo+IMKgCWRlc2MtPnBnX2lub2RlID0gaW5vZGU7DQo+IEBAIC02ODcsOCAr
-Njg4LDEwIEBAIHZvaWQgbmZzX3BhZ2Vpb19pbml0KHN0cnVjdA0KPiBuZnNfcGFnZWlvX2Rlc2Ny
-aXB0b3IgKmRlc2MsDQo+IMKgCWlmIChwZ19vcHMtPnBnX2dldF9taXJyb3JfY291bnQpIHsNCj4g
-wqAJCS8qIHVudGlsIHdlIGhhdmUgYSByZXF1ZXN0LCB3ZSBkb24ndCBoYXZlIGFuIGxzZWcNCj4g
-YW5kIG5vDQo+IMKgCQnCoCogaWRlYSBob3cgbWFueSBtaXJyb3JzIHRoZXJlIHdpbGwgYmUgKi8N
-Cj4gKwkJaWYgKGRlc2MtPnBnX3J3X29wcy0+cndfbW9kZSA9PSBGTU9ERV9XUklURSkNCg0KQ2Fu
-IHdlIHJhdGhlciByZXBsYWNlIHRoaXMgd2l0aCBhIG5ldyBmaWVsZCBpbiBzdHJ1Y3QNCm5mc19w
-YWdlaW9fZGVzY3JpcHRvcj8gSSB3YW50IHRvIGdldCByaWQgb2YgcGdfcndfb3BzLT5yd19tb2Rl
-OyBpdCdzDQpzb21ldGhpbmcgdGhhdCBzbGlwcGVkIHRocm91Z2ggdGhlIGNyYWNrcy4NCg0KQWxz
-bywgcGxlYXNlIHB1dCB0aGlzIHBhdGNoIGJlZm9yZSB0aGUgb3RoZXIgc28gdGhhdCBpdCBjYW4g
-YmUgZWFzaWx5DQpwcm9wYWdhdGVkIGFzIGEgc3RhYmxlIHBhdGNoLg0KDQpUaGFua3MhDQogIFRy
-b25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
-IFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+As one of those academics that Boaz was talking about, we do use the OSD dr=
+iver for various research projects including support for OSD in parallel fi=
+le systems like OrangeFS and Lustre.
+
+John.
+
+> On Apr 18, 2017, at 12:24 PM, Boaz Harrosh <ooo@electrozaur.com> wrote:
+>=20
+> On 04/12/2017 07:01 PM, Christoph Hellwig wrote:
+>=20
+> Hi Sir Christoph
+>=20
+>> The only real user of the T10 OSD protocol, the pNFS object layout
+>> driver never went to the point of having shipping products, and the
+>> other two users (osdblk and exofs) were simple example of it's usage.
+>>=20
+>=20
+> I understand why osdblk might be a pain, and was broken from day one, and
+> should by all means go away ASAP.
+>=20
+> But exofs should not be bothering anyone, and as far as I know does
+> not use any special API's except the osd_uld code of course.
+>=20
+>> The code has been mostly unmaintained for years and is getting in the
+>> way of block / SCSI changes, so I think it's finally time to drop it.
+>>=20
+>=20
+> Please tell me what are those changes you are talking about? I might be
+> able to help in conversion. I guess you mean osd_uld and the Upper SCSI A=
+PI.
+> Just point me at a tree where osd_uld is broken, and perhaps with a littl=
+e
+> guidance from you I can do a satisfactory conversion.
+>=20
+> Is true that no new code went in for a long while, but I still from time
+> to time run a setup and test that the all stack, like iscsi-bidi and so o=
+n still
+> works.
+>=20
+> That said, yes only a stand alone exofs was tested for a long time, a ful=
+l
+> pnfs setup is missing any supporting server. So Yes I admit that pnfs-obj=
+ is
+> getting very rotten. And is most probably broken, on the pnfs side of thi=
+ngs.
+> [Which I admit makes my little plea kind of mute ;-) ]
+>=20
+> Every once in a while I get emails from Students basing all kind of inter=
+esting
+> experiments on top of the exofs and object base storage. So for the sake =
+of academics
+> and for the sake of a true bidi-stack testing, might we want to evaluate =
+what is the
+> up coming cost, and what is a minimum set we are willing to keep?
+>=20
+> Please advise?
+>=20
+> thanks
+> Boaz
+>=20
+>> These patches are against Jens' block for-next tree as that already
+>> has various modifications of the SCSI code.
+>>=20
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
