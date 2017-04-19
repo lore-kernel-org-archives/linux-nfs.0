@@ -1,118 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53534 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1764182AbdDSOTk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Apr 2017 10:19:40 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0B4DF75743
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Apr 2017 14:19:40 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-120-168.rdu2.redhat.com [10.10.120.168])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BDCF67F6A1
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Apr 2017 14:19:39 +0000 (UTC)
-Subject: Re: [PATCH] systemd: NFS server services should use network-online
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20170410112341.10700-1-steved@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <e2b02d7b-3b92-4990-5715-42ca35d70625@RedHat.com>
-Date: Wed, 19 Apr 2017 10:19:39 -0400
+Received: from mail-eopbgr30091.outbound.protection.outlook.com ([40.107.3.91]:45025
+        "EHLO EUR03-AM5-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1765569AbdDSPKN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Apr 2017 11:10:13 -0400
+Subject: Re: [PATCH 1/4] fs: fix data invalidation in the cleancache during
+ direct IO
+To: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        <linux-fsdevel@vger.kernel.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Steve French <sfrench@samba.org>,
+        Matthew Wilcox <mawilcox@microsoft.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Christoph Hellwig <hch@lst.de>,
+        <v9fs-developer@lists.sourceforge.net>,
+        <linux-kernel@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
+        <samba-technical@lists.samba.org>, <linux-nfs@vger.kernel.org>,
+        <linux-mm@kvack.org>
+References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
+ <20170414140753.16108-2-aryabinin@virtuozzo.com>
+ <20170418193808.GA16667@linux.intel.com>
+From: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Message-ID: <ac3b6a27-4345-53cf-04b5-c1f74e680695@virtuozzo.com>
+Date: Wed, 19 Apr 2017 18:11:31 +0300
 MIME-Version: 1.0
-In-Reply-To: <20170410112341.10700-1-steved@redhat.com>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <20170418193808.GA16667@linux.intel.com>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On 04/18/2017 10:38 PM, Ross Zwisler wrote:
+> On Fri, Apr 14, 2017 at 05:07:50PM +0300, Andrey Ryabinin wrote:
+>> Some direct write fs hooks call invalidate_inode_pages2[_range]()
+>> conditionally iff mapping->nrpages is not zero. If page cache is empty,
+>> buffered read following after direct IO write would get stale data from
+>> the cleancache.
+>>
+>> Also it doesn't feel right to check only for ->nrpages because
+>> invalidate_inode_pages2[_range] invalidates exceptional entries as well.
+>>
+>> Fix this by calling invalidate_inode_pages2[_range]() regardless of nrpages
+>> state.
+>>
+>> Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
+>> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
+>> ---
+> <>
+>> diff --git a/fs/dax.c b/fs/dax.c
+>> index 2e382fe..1e8cca0 100644
+>> --- a/fs/dax.c
+>> +++ b/fs/dax.c
+>> @@ -1047,7 +1047,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+>>  	 * into page tables. We have to tear down these mappings so that data
+>>  	 * written by write(2) is visible in mmap.
+>>  	 */
+>> -	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
+>> +	if ((iomap->flags & IOMAP_F_NEW)) {
+>>  		invalidate_inode_pages2_range(inode->i_mapping,
+>>  					      pos >> PAGE_SHIFT,
+>>  					      (end - 1) >> PAGE_SHIFT);
+> 
+> tl;dr: I think the old code is correct, and that you don't need this change.
+> 
+> This should be harmless, but could slow us down a little if we keep
+> calling invalidate_inode_pages2_range() without really needing to.  Really for
+> DAX I think we need to call invalidate_inode_page2_range() only if we have
+> zero pages mapped over the place where we are doing I/O, which is why we check
+> nrpages.
+> 
 
-On 04/10/2017 07:23 AM, Steve Dickson wrote:
-> There has been an number startup problems where parts of
-> the NFS server fails to start due to DNS and other
-> parts of the network not be up.
-> 
-> Reading the systemd.special it seems network.target is
-> a passive unit which does not wait for the entire
-> network to come up and network-online.target is an
-> active unit which does wait.
-> 
-> So this adds Wants=network-online.target to all of
-> the NFS server services
-I'm getting some push back on this patch because people
-are saying Requires= should be used not Wants= even 
-though the man page ways wants... 
+Check for ->nrpages only looks strange, because invalidate_inode_pages2_range() also
+invalidates exceptional radix tree entries. Is that correct that we invalidate
+exceptional entries only if ->nrpages > 0 and skip invalidation otherwise?
 
-The theory is Wants "not strong enough". 
 
-Any opinion on this? Here is the bz 
-   https://bugzilla.redhat.com/show_bug.cgi?id=1419351
+> Is DAX even allowed to be used at the same time as cleancache?  From a brief
+> look at Documentation/vm/cleancache.txt, it seems like these two features are
+> incompatible.  With DAX we already are avoiding the page cache completely.
 
-steved.
+tl;dr: I think you're right.
+
+cleancache may store any PageUptodate && PageMappedToDisk page evicted from page cache (see __delete_from_page_cache)
+DAX deletes hole page via __delete_from_page_cache(), but I don't see we mark such page as Uptodate or MappedToDisk
+so it will never go into the cleancache.
+
+Latter cleancache_get_page() (e.g. it's called from mpage_readpages() which is called from blkdev_read_pages())
+I assume that DAX doesn't use a_ops->readpages() method so cleancache_get_page() is never called from DAX.
+
+
+> Anyway, I don't see how this change in DAX can save us from a data corruption
+> (which is what you're seeing, right?), and I think it could slow us down, so
+> I'd prefer to leave things as they are.
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  systemd/nfs-mountd.service       | 2 +-
->  systemd/nfs-server.service       | 4 ++--
->  systemd/rpc-statd-notify.service | 2 +-
->  systemd/rpc-statd.service        | 3 ++-
->  4 files changed, 6 insertions(+), 5 deletions(-)
-> 
-> diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
-> index b0a8bc0..fec0399 100644
-> --- a/systemd/nfs-mountd.service
-> +++ b/systemd/nfs-mountd.service
-> @@ -2,8 +2,8 @@
->  Description=NFS Mount Daemon
->  DefaultDependencies=no
->  Requires=proc-fs-nfsd.mount
-> +Wants=network-online.target
->  After=proc-fs-nfsd.mount
-> -After=network.target local-fs.target
->  After=rpcbind.socket
->  BindsTo=nfs-server.service
->  
-> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-> index 7cf4ae0..e6b8f58 100644
-> --- a/systemd/nfs-server.service
-> +++ b/systemd/nfs-server.service
-> @@ -3,11 +3,11 @@ Description=NFS server and services
->  DefaultDependencies=no
->  Requires= network.target proc-fs-nfsd.mount
->  Requires= nfs-mountd.service
-> -Wants=rpcbind.socket
-> +Wants=rpcbind.socket network-online.target
->  Wants=rpc-statd.service nfs-idmapd.service
->  Wants=rpc-statd-notify.service
->  
-> -After= local-fs.target network-online.target
-> +After= local-fs.target
->  After= proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
->  After= nfs-idmapd.service rpc-statd.service
->  Before= rpc-statd-notify.service
-> diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
-> index 7bfc9b1..f54d4c5 100644
-> --- a/systemd/rpc-statd-notify.service
-> +++ b/systemd/rpc-statd-notify.service
-> @@ -1,7 +1,7 @@
->  [Unit]
->  Description=Notify NFS peers of a restart
->  DefaultDependencies=no
-> -Requires=network.target
-> +Wants=network-online.target
->  After=local-fs.target network.target nss-lookup.target
->  
->  # if we run an nfs server, it needs to be running before we
-> diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
-> index 60d600f..8cef022 100644
-> --- a/systemd/rpc-statd.service
-> +++ b/systemd/rpc-statd.service
-> @@ -3,7 +3,8 @@ Description=NFS status monitor for NFSv2/3 locking.
->  DefaultDependencies=no
->  Conflicts=umount.target
->  Requires=nss-lookup.target rpcbind.socket
-> -After=network.target nss-lookup.target rpcbind.socket
-> +Wants=network-online.target
-> +After=nss-lookup.target rpcbind.socket
->  
->  PartOf=nfs-utils.service
->  
-> 
+
+I'll remove this hunk from v2.
+
+Thanks.
+
+
+
