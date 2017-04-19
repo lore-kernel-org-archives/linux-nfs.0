@@ -1,88 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54434 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1762476AbdDSM0T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Apr 2017 08:26:19 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] NFS: Use GFP_NOIO for two allocations in writeback
-Date: Wed, 19 Apr 2017 08:26:17 -0400
-Message-ID: <64375678-52DA-4B4B-8F57-EADE237BB244@redhat.com>
-In-Reply-To: <902726B7-D6DB-4B76-8712-3C1E2A95A746@redhat.com>
-References: <677652bb558c5b4925547af558d89583564720e5.1492529938.git.bcodding@redhat.com>
- <8145bc699493a8ff826f00333b602d2594fb697c.1492529938.git.bcodding@redhat.com>
- <1492533772.3883.3.camel@primarydata.com>
- <46AF67C3-E23A-4E71-8744-4195746AFFCF@redhat.com>
- <902726B7-D6DB-4B76-8712-3C1E2A95A746@redhat.com>
+Received: from mail-eopbgr50118.outbound.protection.outlook.com ([40.107.5.118]:23616
+        "EHLO EUR03-VE1-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1763562AbdDSNVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Apr 2017 09:21:20 -0400
+Subject: Re: [PATCH 2/4] fs/block_dev: always invalidate cleancache in
+ invalidate_bdev()
+To: Nikolay Borisov <n.borisov.lkml@gmail.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        <linux-fsdevel@vger.kernel.org>
+References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
+ <20170414140753.16108-3-aryabinin@virtuozzo.com>
+ <705067e3-eb15-ce2a-cfc8-d048dfc8be4f@gmail.com>
+CC: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Steve French <sfrench@samba.org>,
+        Matthew Wilcox <mawilcox@microsoft.com>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Christoph Hellwig <hch@lst.de>,
+        <v9fs-developer@lists.sourceforge.net>,
+        <linux-kernel@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
+        <samba-technical@lists.samba.org>, <linux-nfs@vger.kernel.org>,
+        <linux-mm@kvack.org>
+From: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Message-ID: <b2c72883-d9a2-bfda-2cd3-ae9475922bc5@virtuozzo.com>
+Date: Wed, 19 Apr 2017 16:22:42 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <705067e3-eb15-ce2a-cfc8-d048dfc8be4f@gmail.com>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 19 Apr 2017, at 6:08, Benjamin Coddington wrote:
-
-> On 18 Apr 2017, at 16:32, Benjamin Coddington wrote:
->
->> On 18 Apr 2017, at 12:42, Trond Myklebust wrote:
+On 04/18/2017 09:51 PM, Nikolay Borisov wrote:
+> 
+> 
+> On 14.04.2017 17:07, Andrey Ryabinin wrote:
+>> invalidate_bdev() calls cleancache_invalidate_inode() iff ->nrpages != 0
+>> which doen't make any sense.
+>> Make invalidate_bdev() always invalidate cleancache data.
 >>
->>> Hi Ben,
->>>
->>> On Tue, 2017-04-18 at 11:40 -0400, Benjamin Coddington wrote:
->>>> Prevent a deadlock that can occur if we wait on allocations
->>>> that try to write back our pages.
->>>>
->>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->>>> ---
->>>>  fs/nfs/pagelist.c | 10 ++++++++--
->>>>  1 file changed, 8 insertions(+), 2 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
->>>> index 19eaae0dee51..fa2924ce5a78 100644
->>>> --- a/fs/nfs/pagelist.c
->>>> +++ b/fs/nfs/pagelist.c
->>>> @@ -668,6 +668,7 @@ void nfs_pageio_init(struct 
->>>> nfs_pageio_descriptor
->>>> *desc,
->>>>  {
->>>>  	struct nfs_pgio_mirror *new;
->>>>  	int i;
->>>> +	gfp_t gfp_flags = GFP_KERNEL;
->>>>  
->>>>  	desc->pg_moreio = 0;
->>>>  	desc->pg_inode = inode;
->>>> @@ -687,8 +688,10 @@ void nfs_pageio_init(struct
->>>> nfs_pageio_descriptor *desc,
->>>>  	if (pg_ops->pg_get_mirror_count) {
->>>>  		/* until we have a request, we don't have an lseg
->>>> and no
->>>>  		 * idea how many mirrors there will be */
->>>> +		if (desc->pg_rw_ops->rw_mode == FMODE_WRITE)
->>>
->>> Can we rather replace this with a new field in struct
->>> nfs_pageio_descriptor? I want to get rid of pg_rw_ops->rw_mode; it's
->>> something that slipped through the cracks.
+>> Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
+>> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
+>> ---
+>>  fs/block_dev.c | 11 +++++------
+>>  1 file changed, 5 insertions(+), 6 deletions(-)
 >>
->> I can do this.  It might make sense to just replace rw_mode with 
->> something
->> like rw_gfp_flags..  Otherwise, this looks like another argument to
->> nfs_pageio_init(), unless we can piggy-back on pg_ioflags.
->
-> But that won't work, since we'll need something to laster figure out 
-> whether
-> a read or write delegation stateid can be used.  Maybe you were 
-> instead
-> suggesting to move the rw_mode to the pageio_descriptor or header..
+>> diff --git a/fs/block_dev.c b/fs/block_dev.c
+>> index e405d8e..7af4787 100644
+>> --- a/fs/block_dev.c
+>> +++ b/fs/block_dev.c
+>> @@ -103,12 +103,11 @@ void invalidate_bdev(struct block_device *bdev)
+>>  {
+>>  	struct address_space *mapping = bdev->bd_inode->i_mapping;
+>>  
+>> -	if (mapping->nrpages == 0)
+>> -		return;
+>> -
+>> -	invalidate_bh_lrus();
+>> -	lru_add_drain_all();	/* make sure all lru add caches are flushed */
+>> -	invalidate_mapping_pages(mapping, 0, -1);
+>> +	if (mapping->nrpages) {
+>> +		invalidate_bh_lrus();
+>> +		lru_add_drain_all();	/* make sure all lru add caches are flushed */
+>> +		invalidate_mapping_pages(mapping, 0, -1);
+>> +	}
+> 
+> How is this different than the current code? You will only invalidate
+> the mapping iff ->nrpages > 0 ( I assume it can't go down below 0) ?
 
-I've been trying to figure out why you want to get rid of
-pg_rw_ops->rw_mode, and think that it's because it would be better to 
-have
-it in a cacheline in nfs4_proc_pgio_rpc_prepare(), so I'm going to move 
-it
-to the nfs_pgio_header.  There's a 4-byte hole after nfs_writeverf on
-x86_64.
+The difference is that invalidate_bdev() now always calls cleancache_invalidate_inode()
+(you won't see it in this diff, it's placed after this if(mapping->nrpages){} block,)
 
-The updates will continue until a request for decreased verbosity.  :)
+> Perhaps just remove the if altogether?
+> 
 
-Ben
+Given that invalidate_mapping_pages() invalidates exceptional entries as well, it certainly doesn't look
+right that we look only at mapping->nrpages and completely ignore ->nrexceptional.
+So maybe removing if() would be a right thing to do. But I think that should be a separate patch as it would
+fix a another bug probably introduced by commit 91b0abe36a7b ("mm + fs: store shadow entries in page cache")
+
+My intention here was to fix only cleancache case.
+
+
+>>  	/* 99% of the time, we don't need to flush the cleancache on the bdev.
+>>  	 * But, for the strange corners, lets be cautious
+>>  	 */
+>>
