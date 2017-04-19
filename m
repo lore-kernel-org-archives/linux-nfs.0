@@ -1,115 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helmsgmaster01.f-secure.com ([193.110.108.20]:55169 "EHLO
-        helmsgmaster01.f-secure.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1763895AbdDSNqR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Apr 2017 09:46:17 -0400
-From: Marko Rauhamaa <marko.rauhamaa@f-secure.com>
-To: Amir Goldstein <amir73il@gmail.com>
-CC: Jeff Layton <jlayton@poochiereds.net>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        <linux-api@vger.kernel.org>
-Subject: Re: fanotify read returns with errno == EOPENSTALE
-References: <87inn12urq.fsf@drapion.f-secure.com>
-        <CAOQ4uxjzjFDLmvebHmC4t4_tT8xyWfbHVGfKohEqw7ZjpxfV_w@mail.gmail.com>
-        <20170322193122.GV29622@ZenIV.linux.org.uk>
-        <CAOQ4uxhTd1j4HLgZFTdr7wwrhjzkVT8QeoXjca_AMZmYHF31sQ@mail.gmail.com>
-        <87a88c2yxq.fsf@drapion.f-secure.com>
-        <CAOQ4uxggwSDcjdyCDreKs7m0ZNy+6PQQNojm6qDU7mH2tQE-Bw@mail.gmail.com>
-        <1490270212.3921.10.camel@poochiereds.net>
-        <8760j02mfz.fsf@drapion.f-secure.com>
-        <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
-Date: Wed, 19 Apr 2017 16:46:03 +0300
-In-Reply-To: <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
-        (Amir Goldstein's message of "Thu, 23 Mar 2017 09:47:07 -0400")
-Message-ID: <87lgqwa4tg.fsf@drapion.f-secure.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mx1.redhat.com ([209.132.183.28]:64824 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934699AbdDSOLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Apr 2017 10:11:37 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/3] NFS: move rw_mode to nfs_pageio_header
+Date: Wed, 19 Apr 2017 10:11:35 -0400
+Message-Id: <000b541461e81618201955e799f55c94bfca4dc2.1492611057.git.bcodding@redhat.com>
+In-Reply-To: <01bf89b13b51faa8b9adcd3a5e09eea55b8d9827.1492611057.git.bcodding@redhat.com>
+References: <01bf89b13b51faa8b9adcd3a5e09eea55b8d9827.1492611057.git.bcodding@redhat.com>
+In-Reply-To: <677652bb558c5b4925547af558d89583564720e5.1492529938.git.bcodding@redhat.com>
+References: <677652bb558c5b4925547af558d89583564720e5.1492529938.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Amir Goldstein <amir73il@gmail.com>:
+Let's try to have it in a cacheline in nfs4_proc_pgio_rpc_prepare().
 
-> On Thu, Mar 23, 2017 at 8:43 AM, Marko Rauhamaa
-> <marko.rauhamaa@f-secure.com> wrote:
->> Jeff Layton <jlayton@poochiereds.net>:
->>
->>> It was definitely not the intention to leak this error code to
->>> userland. EOPENSTALE is not a POSIX sanctioned error code, so
->>> applications generally don't know anything about it and will be
->>> confused.
->>
->> Got it. I will try to work on a reproduction and make a proper bug
->> report.
->
-> Try this:
->
-> - watch a single file for permissions events (so you will only have
-> one event in the queue)
-> - open file from client to generate single event (don't read event yet)
-> - remove file from server (to make it stale)
-> - read event (with stale file)
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/nfs4proc.c        | 2 +-
+ fs/nfs/pagelist.c        | 8 +++-----
+ fs/nfs/read.c            | 9 ++++++---
+ fs/nfs/write.c           | 7 ++++---
+ include/linux/nfs_page.h | 4 ++--
+ include/linux/nfs_xdr.h  | 1 +
+ 6 files changed, 17 insertions(+), 14 deletions(-)
 
-I did that and reproduced the problem on a recent development kernel.
-Happens every time.
-
-Just take the example program listed under "man fanotify" ("fantest")
-and follow these steps:
-
-    ==============================================================
-    NFS Server    NFS Client(1)     NFS Client(2)
-    ==============================================================
-    # echo foo >/nfsshare/bar.txt
-                  # cat /nfsshare/bar.txt
-                  foo
-                                    # ./fantest /nfsshare
-                                    Press enter key to terminate.
-                                    Listening for events.
-    # rm -f /nfsshare/bar.txt
-                  # cat /nfsshare/bar.txt
-                                    read: Unknown error 518
-                  cat: /nfsshare/bar.txt: Operation not permitted
-    ==============================================================
-
-where NFS Client (1) and (2) are two terminal sessions on a single NFS
-Client machine.
-
-So what do we conclude? Is this a kernel bug or works as designed?
-
-> Oh my. I completely misread your report before. I though you were
-> trying to read from the event->fd. Now I understand that you mean read
-> from fanotify fd. That will definitely return the error, but only in
-> the special case where open error happened on the first event being
-> read to the buffer. If error happens after adding some events to the
-> buffer, fanotify process will not know about this. Regular event will
-> be silently dropped and permission event will be denied.
->
-> [...]
->
-> You do NOT need to call fanotify_init() again, the next read will read
-> the next event.
-
-It does appear that reading the fanotify fd again does the trick. 
-
-However, the client gets an EPERM instead of ENOENT, which is a bit
-weird.
-
-> The fix seems trivial and I can post it once you have the test:
-> - return EAGAIN for read in case of a single event in queue without fd
->   so apps getting the read error will have a good idea what to do
-> - in case of non single event, maybe copy event with error on event->fd
->   to the buffer for specific errors that make sense to report (EMFILE)
->   so a watcher checks the values of negative event->fd can maybe do
->   something about it (e.g. provide a smaller buffer).
-
-EAGAIN would be perfect for me since I'm using fanotify in a nonblocking
-mode. It might be a bit surprising in the blocking case.
-
-
-Marko
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 201ca3f2c4ba..a725de5b7a08 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4610,7 +4610,7 @@ static int nfs4_proc_pgio_rpc_prepare(struct rpc_task *task,
+ 		return 0;
+ 	if (nfs4_set_rw_stateid(&hdr->args.stateid, hdr->args.context,
+ 				hdr->args.lock_context,
+-				hdr->rw_ops->rw_mode) == -EIO)
++				hdr->rw_mode) == -EIO)
+ 		return -EIO;
+ 	if (unlikely(test_bit(NFS_CONTEXT_BAD, &hdr->args.context->flags)))
+ 		return -EIO;
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index fa2924ce5a78..fac370bc0d6e 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -664,11 +664,11 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 		     const struct nfs_pgio_completion_ops *compl_ops,
+ 		     const struct nfs_rw_ops *rw_ops,
+ 		     size_t bsize,
+-		     int io_flags)
++		     int io_flags,
++		     gfp_t gfp_flags)
+ {
+ 	struct nfs_pgio_mirror *new;
+ 	int i;
+-	gfp_t gfp_flags = GFP_KERNEL;
+ 
+ 	desc->pg_moreio = 0;
+ 	desc->pg_inode = inode;
+@@ -688,8 +688,6 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	if (pg_ops->pg_get_mirror_count) {
+ 		/* until we have a request, we don't have an lseg and no
+ 		 * idea how many mirrors there will be */
+-		if (desc->pg_rw_ops->rw_mode == FMODE_WRITE)
+-			gfp_flags = GFP_NOIO;
+ 		new = kcalloc(NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX,
+ 			      sizeof(struct nfs_pgio_mirror), gfp_flags);
+ 		desc->pg_mirrors_dynamic = new;
+@@ -753,7 +751,7 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+ 	if (pagecount <= ARRAY_SIZE(pg_array->page_array))
+ 		pg_array->pagevec = pg_array->page_array;
+ 	else {
+-		if (desc->pg_rw_ops->rw_mode == FMODE_WRITE)
++		if (hdr->rw_mode == FMODE_WRITE)
+ 			gfp_flags = GFP_NOIO;
+ 		pg_array->pagevec = kcalloc(pagecount, sizeof(struct page *), gfp_flags);
+ 		if (!pg_array->pagevec) {
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index defc9233e985..a8421d9dab6a 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -35,7 +35,11 @@ static struct kmem_cache *nfs_rdata_cachep;
+ 
+ static struct nfs_pgio_header *nfs_readhdr_alloc(void)
+ {
+-	return kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
++	struct nfs_pgio_header *p = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
++
++	if (p)
++		p->rw_mode = FMODE_READ;
++	return p;
+ }
+ 
+ static void nfs_readhdr_free(struct nfs_pgio_header *rhdr)
+@@ -64,7 +68,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 		pg_ops = server->pnfs_curr_ld->pg_read_ops;
+ #endif
+ 	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, &nfs_rw_read_ops,
+-			server->rsize, 0);
++			server->rsize, 0, GFP_KERNEL);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+ 
+@@ -451,7 +455,6 @@ void nfs_destroy_readpagecache(void)
+ }
+ 
+ static const struct nfs_rw_ops nfs_rw_read_ops = {
+-	.rw_mode		= FMODE_READ,
+ 	.rw_alloc_header	= nfs_readhdr_alloc,
+ 	.rw_free_header		= nfs_readhdr_free,
+ 	.rw_done		= nfs_readpage_done,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index abb2c8a3be42..859a95b67abe 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -82,8 +82,10 @@ static struct nfs_pgio_header *nfs_writehdr_alloc(void)
+ {
+ 	struct nfs_pgio_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
+ 
+-	if (p)
++	if (p) {
+ 		memset(p, 0, sizeof(*p));
++		p->rw_mode = FMODE_WRITE;
++	}
+ 	return p;
+ }
+ 
+@@ -1368,7 +1370,7 @@ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ 		pg_ops = server->pnfs_curr_ld->pg_write_ops;
+ #endif
+ 	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, &nfs_rw_write_ops,
+-			server->wsize, ioflags);
++			server->wsize, ioflags, GFP_NOIO);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
+ 
+@@ -2108,7 +2110,6 @@ void nfs_destroy_writepagecache(void)
+ }
+ 
+ static const struct nfs_rw_ops nfs_rw_write_ops = {
+-	.rw_mode		= FMODE_WRITE,
+ 	.rw_alloc_header	= nfs_writehdr_alloc,
+ 	.rw_free_header		= nfs_writehdr_free,
+ 	.rw_done		= nfs_writeback_done,
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 957049f72290..6f01e28bba27 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -64,7 +64,6 @@ struct nfs_pageio_ops {
+ };
+ 
+ struct nfs_rw_ops {
+-	const fmode_t rw_mode;
+ 	struct nfs_pgio_header *(*rw_alloc_header)(void);
+ 	void (*rw_free_header)(struct nfs_pgio_header *);
+ 	int  (*rw_done)(struct rpc_task *, struct nfs_pgio_header *,
+@@ -124,7 +123,8 @@ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 			     const struct nfs_pgio_completion_ops *compl_ops,
+ 			     const struct nfs_rw_ops *rw_ops,
+ 			     size_t bsize,
+-			     int how);
++			     int how,
++			     gfp_t gfp_flags);
+ extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
+ 				   struct nfs_page *);
+ extern  int nfs_pageio_resend(struct nfs_pageio_descriptor *,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 348f7c158084..51e27f9746ee 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1427,6 +1427,7 @@ struct nfs_pgio_header {
+ 	struct list_head	pages;
+ 	struct nfs_page		*req;
+ 	struct nfs_writeverf	verf;		/* Used for writes */
++	fmode_t			rw_mode;
+ 	struct pnfs_layout_segment *lseg;
+ 	loff_t			io_start;
+ 	const struct rpc_call_ops *mds_ops;
 -- 
-+358 44 990 4795
-Skype: marko.rauhamaa_f-secure
+2.9.3
+
