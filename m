@@ -1,39 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f51.google.com ([209.85.214.51]:33401 "EHLO
-        mail-it0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S936798AbdDSPLs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Apr 2017 11:11:48 -0400
-Received: by mail-it0-f51.google.com with SMTP id 70so6287084ita.0
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Apr 2017 08:11:48 -0700 (PDT)
-Date: Wed, 19 Apr 2017 09:11:45 -0600
-From: Jens Axboe <axboe@kernel.dk>
-To: Christoph Hellwig <hch@lst.de>
-Cc: ooo@electrozaur.com, martin.petersen@oracle.com,
-        trond.myklebust@primarydata.com, osd-dev@open-osd.org,
-        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
-        linux-block@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: RFC: drop the T10 OSD code and its users
-Message-ID: <20170419151144.GA22579@kernel.dk>
-References: <20170412160109.10598-1-hch@lst.de>
+Received: from mail-db5eur01on0092.outbound.protection.outlook.com ([104.47.2.92]:54920
+        "EHLO EUR01-DB5-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S964888AbdDSPOj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Apr 2017 11:14:39 -0400
+Subject: Re: [PATCH 1/4] fs: fix data invalidation in the cleancache during
+ direct IO
+To: Andrew Morton <akpm@linux-foundation.org>
+References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
+ <20170414140753.16108-2-aryabinin@virtuozzo.com>
+ <20170418154647.9583bfa06705c614a2640a15@linux-foundation.org>
+CC: Alexander Viro <viro@zeniv.linux.org.uk>,
+        <linux-fsdevel@vger.kernel.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Steve French <sfrench@samba.org>,
+        Matthew Wilcox <mawilcox@microsoft.com>,
+        Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Christoph Hellwig <hch@lst.de>,
+        <v9fs-developer@lists.sourceforge.net>,
+        <linux-kernel@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, <linux-mm@kvack.org>
+From: Andrey Ryabinin <aryabinin@virtuozzo.com>
+Message-ID: <64a3f71f-11af-2ab3-c2b5-8e26e03b0ceb@virtuozzo.com>
+Date: Wed, 19 Apr 2017 18:15:43 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170412160109.10598-1-hch@lst.de>
+In-Reply-To: <20170418154647.9583bfa06705c614a2640a15@linux-foundation.org>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 12 2017, Christoph Hellwig wrote:
-> The only real user of the T10 OSD protocol, the pNFS object layout
-> driver never went to the point of having shipping products, and the
-> other two users (osdblk and exofs) were simple example of it's usage.
+
+
+On 04/19/2017 01:46 AM, Andrew Morton wrote:
+> On Fri, 14 Apr 2017 17:07:50 +0300 Andrey Ryabinin <aryabinin@virtuozzo.com> wrote:
 > 
-> The code has been mostly unmaintained for years and is getting in the
-> way of block / SCSI changes, so I think it's finally time to drop it.
+>> Some direct write fs hooks call invalidate_inode_pages2[_range]()
+>> conditionally iff mapping->nrpages is not zero. If page cache is empty,
+>> buffered read following after direct IO write would get stale data from
+>> the cleancache.
+>>
+>> Also it doesn't feel right to check only for ->nrpages because
+>> invalidate_inode_pages2[_range] invalidates exceptional entries as well.
+>>
+>> Fix this by calling invalidate_inode_pages2[_range]() regardless of nrpages
+>> state.
 > 
-> These patches are against Jens' block for-next tree as that already
+> I'm not understanding this.  I can buy the argument about
+> nrexceptional, but why does cleancache require the
+> invalidate_inode_pages2_range) call even when ->nrpages is zero?
+> 
+> I *assume* it's because invalidate_inode_pages2_range() calls
+> cleancache_invalidate_inode(), yes?  If so, can we please add this to
+> the changelog?  If not then please explain further.
+> 
 
-I've added 1/4 for now, as that one should obviously go. If we have
-consensus to kill the rest, I'm all for it.
-
--- 
-Jens Axboe
-
+Yes, your assumption is correct. I'll fix the changelog.
