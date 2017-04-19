@@ -1,96 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr50118.outbound.protection.outlook.com ([40.107.5.118]:23616
-        "EHLO EUR03-VE1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1763562AbdDSNVU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Apr 2017 09:21:20 -0400
-Subject: Re: [PATCH 2/4] fs/block_dev: always invalidate cleancache in
- invalidate_bdev()
-To: Nikolay Borisov <n.borisov.lkml@gmail.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        <linux-fsdevel@vger.kernel.org>
-References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
- <20170414140753.16108-3-aryabinin@virtuozzo.com>
- <705067e3-eb15-ce2a-cfc8-d048dfc8be4f@gmail.com>
-CC: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Steve French <sfrench@samba.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Christoph Hellwig <hch@lst.de>,
-        <v9fs-developer@lists.sourceforge.net>,
-        <linux-kernel@vger.kernel.org>, <linux-cifs@vger.kernel.org>,
-        <samba-technical@lists.samba.org>, <linux-nfs@vger.kernel.org>,
-        <linux-mm@kvack.org>
-From: Andrey Ryabinin <aryabinin@virtuozzo.com>
-Message-ID: <b2c72883-d9a2-bfda-2cd3-ae9475922bc5@virtuozzo.com>
-Date: Wed, 19 Apr 2017 16:22:42 +0300
+Received: from helmsgmaster01.f-secure.com ([193.110.108.20]:55169 "EHLO
+        helmsgmaster01.f-secure.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1763895AbdDSNqR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Apr 2017 09:46:17 -0400
+From: Marko Rauhamaa <marko.rauhamaa@f-secure.com>
+To: Amir Goldstein <amir73il@gmail.com>
+CC: Jeff Layton <jlayton@poochiereds.net>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        <linux-api@vger.kernel.org>
+Subject: Re: fanotify read returns with errno == EOPENSTALE
+References: <87inn12urq.fsf@drapion.f-secure.com>
+        <CAOQ4uxjzjFDLmvebHmC4t4_tT8xyWfbHVGfKohEqw7ZjpxfV_w@mail.gmail.com>
+        <20170322193122.GV29622@ZenIV.linux.org.uk>
+        <CAOQ4uxhTd1j4HLgZFTdr7wwrhjzkVT8QeoXjca_AMZmYHF31sQ@mail.gmail.com>
+        <87a88c2yxq.fsf@drapion.f-secure.com>
+        <CAOQ4uxggwSDcjdyCDreKs7m0ZNy+6PQQNojm6qDU7mH2tQE-Bw@mail.gmail.com>
+        <1490270212.3921.10.camel@poochiereds.net>
+        <8760j02mfz.fsf@drapion.f-secure.com>
+        <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
+Date: Wed, 19 Apr 2017 16:46:03 +0300
+In-Reply-To: <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
+        (Amir Goldstein's message of "Thu, 23 Mar 2017 09:47:07 -0400")
+Message-ID: <87lgqwa4tg.fsf@drapion.f-secure.com>
 MIME-Version: 1.0
-In-Reply-To: <705067e3-eb15-ce2a-cfc8-d048dfc8be4f@gmail.com>
-Content-Type: text/plain; charset="windows-1252"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/18/2017 09:51 PM, Nikolay Borisov wrote:
-> 
-> 
-> On 14.04.2017 17:07, Andrey Ryabinin wrote:
->> invalidate_bdev() calls cleancache_invalidate_inode() iff ->nrpages != 0
->> which doen't make any sense.
->> Make invalidate_bdev() always invalidate cleancache data.
+Amir Goldstein <amir73il@gmail.com>:
+
+> On Thu, Mar 23, 2017 at 8:43 AM, Marko Rauhamaa
+> <marko.rauhamaa@f-secure.com> wrote:
+>> Jeff Layton <jlayton@poochiereds.net>:
 >>
->> Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
->> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
->> ---
->>  fs/block_dev.c | 11 +++++------
->>  1 file changed, 5 insertions(+), 6 deletions(-)
+>>> It was definitely not the intention to leak this error code to
+>>> userland. EOPENSTALE is not a POSIX sanctioned error code, so
+>>> applications generally don't know anything about it and will be
+>>> confused.
 >>
->> diff --git a/fs/block_dev.c b/fs/block_dev.c
->> index e405d8e..7af4787 100644
->> --- a/fs/block_dev.c
->> +++ b/fs/block_dev.c
->> @@ -103,12 +103,11 @@ void invalidate_bdev(struct block_device *bdev)
->>  {
->>  	struct address_space *mapping = bdev->bd_inode->i_mapping;
->>  
->> -	if (mapping->nrpages == 0)
->> -		return;
->> -
->> -	invalidate_bh_lrus();
->> -	lru_add_drain_all();	/* make sure all lru add caches are flushed */
->> -	invalidate_mapping_pages(mapping, 0, -1);
->> +	if (mapping->nrpages) {
->> +		invalidate_bh_lrus();
->> +		lru_add_drain_all();	/* make sure all lru add caches are flushed */
->> +		invalidate_mapping_pages(mapping, 0, -1);
->> +	}
-> 
-> How is this different than the current code? You will only invalidate
-> the mapping iff ->nrpages > 0 ( I assume it can't go down below 0) ?
+>> Got it. I will try to work on a reproduction and make a proper bug
+>> report.
+>
+> Try this:
+>
+> - watch a single file for permissions events (so you will only have
+> one event in the queue)
+> - open file from client to generate single event (don't read event yet)
+> - remove file from server (to make it stale)
+> - read event (with stale file)
 
-The difference is that invalidate_bdev() now always calls cleancache_invalidate_inode()
-(you won't see it in this diff, it's placed after this if(mapping->nrpages){} block,)
+I did that and reproduced the problem on a recent development kernel.
+Happens every time.
 
-> Perhaps just remove the if altogether?
-> 
+Just take the example program listed under "man fanotify" ("fantest")
+and follow these steps:
 
-Given that invalidate_mapping_pages() invalidates exceptional entries as well, it certainly doesn't look
-right that we look only at mapping->nrpages and completely ignore ->nrexceptional.
-So maybe removing if() would be a right thing to do. But I think that should be a separate patch as it would
-fix a another bug probably introduced by commit 91b0abe36a7b ("mm + fs: store shadow entries in page cache")
+    ==============================================================
+    NFS Server    NFS Client(1)     NFS Client(2)
+    ==============================================================
+    # echo foo >/nfsshare/bar.txt
+                  # cat /nfsshare/bar.txt
+                  foo
+                                    # ./fantest /nfsshare
+                                    Press enter key to terminate.
+                                    Listening for events.
+    # rm -f /nfsshare/bar.txt
+                  # cat /nfsshare/bar.txt
+                                    read: Unknown error 518
+                  cat: /nfsshare/bar.txt: Operation not permitted
+    ==============================================================
 
-My intention here was to fix only cleancache case.
+where NFS Client (1) and (2) are two terminal sessions on a single NFS
+Client machine.
+
+So what do we conclude? Is this a kernel bug or works as designed?
+
+> Oh my. I completely misread your report before. I though you were
+> trying to read from the event->fd. Now I understand that you mean read
+> from fanotify fd. That will definitely return the error, but only in
+> the special case where open error happened on the first event being
+> read to the buffer. If error happens after adding some events to the
+> buffer, fanotify process will not know about this. Regular event will
+> be silently dropped and permission event will be denied.
+>
+> [...]
+>
+> You do NOT need to call fanotify_init() again, the next read will read
+> the next event.
+
+It does appear that reading the fanotify fd again does the trick. 
+
+However, the client gets an EPERM instead of ENOENT, which is a bit
+weird.
+
+> The fix seems trivial and I can post it once you have the test:
+> - return EAGAIN for read in case of a single event in queue without fd
+>   so apps getting the read error will have a good idea what to do
+> - in case of non single event, maybe copy event with error on event->fd
+>   to the buffer for specific errors that make sense to report (EMFILE)
+>   so a watcher checks the values of negative event->fd can maybe do
+>   something about it (e.g. provide a smaller buffer).
+
+EAGAIN would be perfect for me since I'm using fanotify in a nonblocking
+mode. It might be a bit surprising in the blocking case.
 
 
->>  	/* 99% of the time, we don't need to flush the cleancache on the bdev.
->>  	 * But, for the strange corners, lets be cautious
->>  	 */
->>
+Marko
+
+-- 
++358 44 990 4795
+Skype: marko.rauhamaa_f-secure
