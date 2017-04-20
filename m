@@ -1,100 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41436 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:41466 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1032906AbdDTOrq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Apr 2017 10:47:46 -0400
-Date: Thu, 20 Apr 2017 16:35:10 +0200
+        id S1032951AbdDTOrt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Apr 2017 10:47:49 -0400
+Date: Thu, 20 Apr 2017 16:20:35 +0200
 From: Jan Kara <jack@suse.cz>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Steve French <sfrench@samba.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Christoph Hellwig <hch@lst.de>,
-        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 1/4] fs: fix data invalidation in the cleancache during
- direct IO
-Message-ID: <20170420143510.GF22135@quack2.suse.cz>
-References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
- <20170414140753.16108-2-aryabinin@virtuozzo.com>
- <20170418193808.GA16667@linux.intel.com>
- <ac3b6a27-4345-53cf-04b5-c1f74e680695@virtuozzo.com>
- <20170419192836.GA6364@linux.intel.com>
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Marko Rauhamaa <marko.rauhamaa@f-secure.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Jan Kara <jack@suse.cz>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-api@vger.kernel.org
+Subject: Re: fanotify read returns with errno == EOPENSTALE
+Message-ID: <20170420142035.GE22135@quack2.suse.cz>
+References: <20170322193122.GV29622@ZenIV.linux.org.uk>
+ <CAOQ4uxhTd1j4HLgZFTdr7wwrhjzkVT8QeoXjca_AMZmYHF31sQ@mail.gmail.com>
+ <87a88c2yxq.fsf@drapion.f-secure.com>
+ <CAOQ4uxggwSDcjdyCDreKs7m0ZNy+6PQQNojm6qDU7mH2tQE-Bw@mail.gmail.com>
+ <1490270212.3921.10.camel@poochiereds.net>
+ <8760j02mfz.fsf@drapion.f-secure.com>
+ <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
+ <87lgqwa4tg.fsf@drapion.f-secure.com>
+ <CAOQ4uxirSfVVYBexXrWccDHnE5oqxNgUh3-X5Ey1w4R=nHXDjA@mail.gmail.com>
+ <CAOQ4uxjA8Z7wnwuHFCKeKT1xz0Gh-qS40Y6cfPi3fAM0MKsRuQ@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170419192836.GA6364@linux.intel.com>
+In-Reply-To: <CAOQ4uxjA8Z7wnwuHFCKeKT1xz0Gh-qS40Y6cfPi3fAM0MKsRuQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed 19-04-17 13:28:36, Ross Zwisler wrote:
-> On Wed, Apr 19, 2017 at 06:11:31PM +0300, Andrey Ryabinin wrote:
-> > On 04/18/2017 10:38 PM, Ross Zwisler wrote:
-> > > On Fri, Apr 14, 2017 at 05:07:50PM +0300, Andrey Ryabinin wrote:
-> > >> Some direct write fs hooks call invalidate_inode_pages2[_range]()
-> > >> conditionally iff mapping->nrpages is not zero. If page cache is empty,
-> > >> buffered read following after direct IO write would get stale data from
-> > >> the cleancache.
-> > >>
-> > >> Also it doesn't feel right to check only for ->nrpages because
-> > >> invalidate_inode_pages2[_range] invalidates exceptional entries as well.
-> > >>
-> > >> Fix this by calling invalidate_inode_pages2[_range]() regardless of nrpages
-> > >> state.
-> > >>
-> > >> Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
-> > >> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
-> > >> ---
-> > > <>
-> > >> diff --git a/fs/dax.c b/fs/dax.c
-> > >> index 2e382fe..1e8cca0 100644
-> > >> --- a/fs/dax.c
-> > >> +++ b/fs/dax.c
-> > >> @@ -1047,7 +1047,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
-> > >>  	 * into page tables. We have to tear down these mappings so that data
-> > >>  	 * written by write(2) is visible in mmap.
-> > >>  	 */
-> > >> -	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-> > >> +	if ((iomap->flags & IOMAP_F_NEW)) {
-> > >>  		invalidate_inode_pages2_range(inode->i_mapping,
-> > >>  					      pos >> PAGE_SHIFT,
-> > >>  					      (end - 1) >> PAGE_SHIFT);
-> > > 
-> > > tl;dr: I think the old code is correct, and that you don't need this change.
-> > > 
-> > > This should be harmless, but could slow us down a little if we keep
-> > > calling invalidate_inode_pages2_range() without really needing to.  Really for
-> > > DAX I think we need to call invalidate_inode_page2_range() only if we have
-> > > zero pages mapped over the place where we are doing I/O, which is why we check
-> > > nrpages.
-> > > 
-> > 
-> > Check for ->nrpages only looks strange, because invalidate_inode_pages2_range() also
-> > invalidates exceptional radix tree entries. Is that correct that we invalidate
-> > exceptional entries only if ->nrpages > 0 and skip invalidation otherwise?
+On Thu 20-04-17 14:33:04, Amir Goldstein wrote:
 > 
-> For DAX we only invalidate clean DAX exceptional entries so that we can keep
-> dirty entries around for writeback, but yes you're correct that we only do the
-> invalidation if nrpages > 0.  And yes, it does seem a bit weird. :)
+> Sorry I messed up the previous patch. please try this one:
+> 
+> diff --git a/fs/notify/fanotify/fanotify_user.c
+> b/fs/notify/fanotify/fanotify_user.c
+> index 2b37f27..7864354 100644
+> --- a/fs/notify/fanotify/fanotify_user.c
+> +++ b/fs/notify/fanotify/fanotify_user.c
+> @@ -295,6 +295,16 @@ static ssize_t fanotify_read(struct file *file,
+> char __user *buf,
+>                 }
+> 
+>                 ret = copy_event_to_user(group, kevent, buf);
+> +               if (unlikely(ret == -EOPENSTALE)) {
+> +                       /*
+> +                        * We cannot report events with stale fd so drop it.
+> +                        * Setting ret to 0 will continue the event loop and
+> +                        * do the right thing if there are no more events to
+> +                        * read (i.e. return bytes read, -EAGAIN or wait).
+> +                        */
+> +                       ret = 0;
+> +               }
+> +
+>                 /*
+>                  * Permission events get queued to wait for response.  Other
+>                  * events can be destroyed now.
+> @@ -305,7 +315,7 @@ static ssize_t fanotify_read(struct file *file,
+> char __user *buf,
+>                                 break;
+>                 } else {
+>  #ifdef CONFIG_FANOTIFY_ACCESS_PERMISSIONS
+> -                       if (ret < 0) {
+> +                       if (ret <= 0) {
+>                                 FANOTIFY_PE(kevent)->response = FAN_DENY;
+>                                 wake_up(&group->fanotify_data.access_waitq);
+>                                 break;
 
-Actually in this place the nrpages check is deliberate since there should
-only be hole pages or nothing in the invalidated range - see the comment
-before the if. But thinking more about it this assumption actually is not
-right in presence of zero PMD entries in the radix tree. So this change
-actually also fixes a possible bug for DAX but we should do it as a
-separate patch with a proper changelog.
+I don't think you want to break out of the reading loop when ret == 0 and
+the code might be more readable as:
+
+               if (!(kevent->mask & FAN_ALL_PERM_EVENTS)) {
+                        fsnotify_destroy_event(group, kevent);
+               } else {
+#ifdef CONFIG_FANOTIFY_ACCESS_PERMISSIONS
+                        if (ret <= 0) {
+                                FANOTIFY_PE(kevent)->response = FAN_DENY;
+                                wake_up(&group->fanotify_data.access_waitq);
+                        } else {
+                                spin_lock(&group->notification_lock);
+                                list_add_tail(&kevent->list,
+                                              &group->fanotify_data.access_list);
+                                spin_unlock(&group->notification_lock);
+                        }
+#endif
+                }
+                if (ret < 0)
+                        break;
+
+Hmm?
 
 								Honza
 -- 
