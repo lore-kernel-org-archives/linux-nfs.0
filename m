@@ -1,93 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f67.google.com ([209.85.218.67]:36488 "EHLO
-        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S970272AbdDTPGU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Apr 2017 11:06:20 -0400
+Received: from fieldses.org ([173.255.197.46]:52610 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S970385AbdDTPQ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Apr 2017 11:16:26 -0400
+Date: Thu, 20 Apr 2017 11:16:25 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
+Message-ID: <20170420151625.GA4782@fieldses.org>
+References: <20170414150440.GA5362@fieldses.org>
+ <20170414150940.GB5362@fieldses.org>
+ <87h91mtvdb.fsf@notabene.neil.brown.name>
+ <20170418171351.GF6208@fieldses.org>
+ <878tmxtfne.fsf@notabene.neil.brown.name>
+ <20170419004405.GA13002@fieldses.org>
+ <87y3uvsxp5.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <20170420142035.GE22135@quack2.suse.cz>
-References: <20170322193122.GV29622@ZenIV.linux.org.uk> <CAOQ4uxhTd1j4HLgZFTdr7wwrhjzkVT8QeoXjca_AMZmYHF31sQ@mail.gmail.com>
- <87a88c2yxq.fsf@drapion.f-secure.com> <CAOQ4uxggwSDcjdyCDreKs7m0ZNy+6PQQNojm6qDU7mH2tQE-Bw@mail.gmail.com>
- <1490270212.3921.10.camel@poochiereds.net> <8760j02mfz.fsf@drapion.f-secure.com>
- <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
- <87lgqwa4tg.fsf@drapion.f-secure.com> <CAOQ4uxirSfVVYBexXrWccDHnE5oqxNgUh3-X5Ey1w4R=nHXDjA@mail.gmail.com>
- <CAOQ4uxjA8Z7wnwuHFCKeKT1xz0Gh-qS40Y6cfPi3fAM0MKsRuQ@mail.gmail.com> <20170420142035.GE22135@quack2.suse.cz>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Thu, 20 Apr 2017 18:06:18 +0300
-Message-ID: <CAOQ4uxgAOJjWP6PHY6WgOkNK0vmaTWnFZN+Jvea7zpjJ_VU8Bw@mail.gmail.com>
-Subject: Re: fanotify read returns with errno == EOPENSTALE
-To: Jan Kara <jack@suse.cz>
-Cc: Marko Rauhamaa <marko.rauhamaa@f-secure.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-api@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87y3uvsxp5.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 20, 2017 at 5:20 PM, Jan Kara <jack@suse.cz> wrote:
-> On Thu 20-04-17 14:33:04, Amir Goldstein wrote:
->>
->> Sorry I messed up the previous patch. please try this one:
->>
->> diff --git a/fs/notify/fanotify/fanotify_user.c
->> b/fs/notify/fanotify/fanotify_user.c
->> index 2b37f27..7864354 100644
->> --- a/fs/notify/fanotify/fanotify_user.c
->> +++ b/fs/notify/fanotify/fanotify_user.c
->> @@ -295,6 +295,16 @@ static ssize_t fanotify_read(struct file *file,
->> char __user *buf,
->>                 }
->>
->>                 ret = copy_event_to_user(group, kevent, buf);
->> +               if (unlikely(ret == -EOPENSTALE)) {
->> +                       /*
->> +                        * We cannot report events with stale fd so drop it.
->> +                        * Setting ret to 0 will continue the event loop and
->> +                        * do the right thing if there are no more events to
->> +                        * read (i.e. return bytes read, -EAGAIN or wait).
->> +                        */
->> +                       ret = 0;
->> +               }
->> +
->>                 /*
->>                  * Permission events get queued to wait for response.  Other
->>                  * events can be destroyed now.
->> @@ -305,7 +315,7 @@ static ssize_t fanotify_read(struct file *file,
->> char __user *buf,
->>                                 break;
->>                 } else {
->>  #ifdef CONFIG_FANOTIFY_ACCESS_PERMISSIONS
->> -                       if (ret < 0) {
->> +                       if (ret <= 0) {
->>                                 FANOTIFY_PE(kevent)->response = FAN_DENY;
->>                                 wake_up(&group->fanotify_data.access_waitq);
->>                                 break;
->
-> I don't think you want to break out of the reading loop when ret == 0 and
-> the code might be more readable as:
->
->                if (!(kevent->mask & FAN_ALL_PERM_EVENTS)) {
->                         fsnotify_destroy_event(group, kevent);
->                } else {
-> #ifdef CONFIG_FANOTIFY_ACCESS_PERMISSIONS
->                         if (ret <= 0) {
->                                 FANOTIFY_PE(kevent)->response = FAN_DENY;
->                                 wake_up(&group->fanotify_data.access_waitq);
->                         } else {
->                                 spin_lock(&group->notification_lock);
->                                 list_add_tail(&kevent->list,
->                                               &group->fanotify_data.access_list);
->                                 spin_unlock(&group->notification_lock);
->                         }
-> #endif
->                 }
->                 if (ret < 0)
->                         break;
->
-> Hmm?
->
+On Thu, Apr 20, 2017 at 10:57:10AM +1000, NeilBrown wrote:
+> I realise NFSv4 compounds don't have that limitation.
+> I wondered what code in the NFSv4 server ensures that we don't try to use
+> more memory than was allocated.
+> 
+> I notice lots of calls to xdr_reserve_space() in nfs4xdr.c.  Many of them
+> trigger nfserr_resource when xdr_reserve_space() returns NULL.
+> But not all.
+> nfsd4_encode_readv() just pops up a warning.  Once.  Then will
+> (eventually) de-reference the NULL pointer and crash.
+> So presumably it really cannot happen (should be a BUG_ON anyway)?
+> So why can this not happen?
+> I see that nfsd4_encode_read() limits the size of the read to
+>   xdr->buf->buflen - xdr->buf->len
+> and nfsd4_encode_readdir() does a similar thing when computing
+> bytes_left.
+> 
+> So, it is more careful about using the allocated pages than v2/3 is.
 
-Right, I missed that.
-Thanks.
+Yes.  The v4 code was written from the start with overflow checks
+preceding any encode or decode.  And I tried to think this all through
+carefully when I rewrote the encoding side a few years ago.  But I don't
+think that really got much review, and test coverage is poor (a big
+thanks here to the synpsys people for their fuzzing work), so additional
+skeptical eyes are welcomed....
+
+There's a lot of tricky hand-written code here handling data from the
+network.  Every now and then somebody brings up the idea of trying to
+autogenerate it, as is traditionally done for rpc programs.  No idea how
+practical that is.
+
+--b.
