@@ -1,56 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52610 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:52678 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S970385AbdDTPQ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Apr 2017 11:16:26 -0400
-Date: Thu, 20 Apr 2017 11:16:25 -0400
+        id S970911AbdDTQTg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Apr 2017 12:19:36 -0400
+Date: Thu, 20 Apr 2017 12:19:35 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: NeilBrown <neilb@suse.com>
 Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
 Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170420151625.GA4782@fieldses.org>
+Message-ID: <20170420161935.GB4782@fieldses.org>
 References: <20170414150440.GA5362@fieldses.org>
  <20170414150940.GB5362@fieldses.org>
  <87h91mtvdb.fsf@notabene.neil.brown.name>
  <20170418171351.GF6208@fieldses.org>
- <878tmxtfne.fsf@notabene.neil.brown.name>
- <20170419004405.GA13002@fieldses.org>
- <87y3uvsxp5.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87y3uvsxp5.fsf@notabene.neil.brown.name>
+In-Reply-To: <20170418171351.GF6208@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 20, 2017 at 10:57:10AM +1000, NeilBrown wrote:
-> I realise NFSv4 compounds don't have that limitation.
-> I wondered what code in the NFSv4 server ensures that we don't try to use
-> more memory than was allocated.
+On Tue, Apr 18, 2017 at 01:13:51PM -0400, J. Bruce Fields wrote:
+> On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
+> >  I can't say that I like this patch at all.
+> > 
+> > The problem is that:
+> > 
+> > 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
+> > 				       * We assume one is at most one page
+> > 				       */
+> > 
+> > this assumption is never verified.
+> > To my mind, the "obvious" way to verify this assumption is that an
+> > attempt to generate a multi-page reply should fail if there was a
+> > multi-page request.
 > 
-> I notice lots of calls to xdr_reserve_space() in nfs4xdr.c.  Many of them
-> trigger nfserr_resource when xdr_reserve_space() returns NULL.
-> But not all.
-> nfsd4_encode_readv() just pops up a warning.  Once.  Then will
-> (eventually) de-reference the NULL pointer and crash.
-> So presumably it really cannot happen (should be a BUG_ON anyway)?
-> So why can this not happen?
-> I see that nfsd4_encode_read() limits the size of the read to
->   xdr->buf->buflen - xdr->buf->len
-> and nfsd4_encode_readdir() does a similar thing when computing
-> bytes_left.
+> A third option, by the way, which Ari Kauppi argued for, is adding a
+> null check each time we increment rq_next_page, since we seem to arrange
+> for the page array to always be NULL-terminated.
 > 
-> So, it is more careful about using the allocated pages than v2/3 is.
+> > Failing if there was a little bit of extra noise at the end of the
+> > request seems harsher than necessary, and could result in a regression.
+> 
+> You're worrying there might be a weird old client out there somewhere?
+> I guess it seems like a small enough risk to me.  I'm more worried the
+> extra garbage might violate assumptions elsewhere in the code.
+> 
+> But, this looks good too:
 
-Yes.  The v4 code was written from the start with overflow checks
-preceding any encode or decode.  And I tried to think this all through
-carefully when I rewrote the encoding side a few years ago.  But I don't
-think that really got much review, and test coverage is poor (a big
-thanks here to the synpsys people for their fuzzing work), so additional
-skeptical eyes are welcomed....
+But, I'm not too happy about putting that NFSv2/v3-specific check in
+common rpc code.  Also, I think this check comes too late for some of
+the damage.
 
-There's a lot of tricky hand-written code here handling data from the
-network.  Every now and then somebody brings up the idea of trying to
-autogenerate it, as is traditionally done for rpc programs.  No idea how
-practical that is.
+I may go with some variation on Ari's idea, let me give it a try....
 
 --b.
+
+> 
+> > We already know how big replies can get, so we can perform a complete
+> > sanity check quite early:
+> > 
+> > diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> > index a08aeb56b8e4..14f4d425cf8c 100644
+> > --- a/net/sunrpc/svc.c
+> > +++ b/net/sunrpc/svc.c
+> > @@ -1196,6 +1196,12 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+> >  		goto err_bad_proc;
+> >  	rqstp->rq_procinfo = procp;
+> >  
+> > +	if ((procp->pc_xdrressize == 0 ||
+> > +	     procp->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE)) &&
+> > +	    rqstp->rq_arg.len > PAGE_SIZE)
+> > +		/* The assumption about request/reply sizes in svc_init_buffer() is violated! */
+> > +		goto err_garbage;
+> > +
+> >  	/* Syntactic check complete */
+> >  	serv->sv_stats->rpccnt++;
+> >  
+> > 
+> > I haven't tested this at all and haven't even convinced myself that
+> > it covers every case (though I cannot immediately think of any likely
+> > corners).
+> > 
+> > Does it address your test case?
+> 
+> I'll check, it probably does.
+> 
+> We'd need to limit the test to v2/v3.
+> 
+> I'm also not opposed to doing both (or all three).
+> 
+> --b.
