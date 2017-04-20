@@ -1,111 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga06.intel.com ([134.134.136.31]:12015 "EHLO mga06.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S946741AbdDTTOt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Apr 2017 15:14:49 -0400
-Date: Thu, 20 Apr 2017 13:14:46 -0600
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Steve French <sfrench@samba.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Christoph Hellwig <hch@lst.de>,
-        v9fs-developer@lists.sourceforge.net, linux-kernel@vger.kernel.org,
-        linux-cifs@vger.kernel.org, samba-technical@lists.samba.org,
-        linux-nfs@vger.kernel.org, linux-mm@kvack.org
-Subject: Re: [PATCH 1/4] fs: fix data invalidation in the cleancache during
- direct IO
-Message-ID: <20170420191446.GA21694@linux.intel.com>
-References: <20170414140753.16108-1-aryabinin@virtuozzo.com>
- <20170414140753.16108-2-aryabinin@virtuozzo.com>
- <20170418193808.GA16667@linux.intel.com>
- <ac3b6a27-4345-53cf-04b5-c1f74e680695@virtuozzo.com>
- <20170419192836.GA6364@linux.intel.com>
- <20170420143510.GF22135@quack2.suse.cz>
- <20170420144431.GA14620@quack2.suse.cz>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:49297 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1033336AbdDTUSh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Apr 2017 16:18:37 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: hch <hch@lst.de>, "ooo@electrozaur.com" <ooo@electrozaur.com>,
+        "Trond Myklebust" <trondmy@primarydata.com>,
+        "martin.petersen@oracle.com" <martin.petersen@oracle.com>,
+        "axboe@kernel.dk" <axboe@kernel.dk>
+CC: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "osd-dev@open-osd.org" <osd-dev@open-osd.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] nfs: remove the objlayout driver
+Date: Thu, 20 Apr 2017 20:18:28 +0000
+Message-ID: <1492719505.82584.3.camel@primarydata.com>
+References: <20170412160109.10598-1-hch@lst.de>
+         <20170412160109.10598-4-hch@lst.de>
+In-Reply-To: <20170412160109.10598-4-hch@lst.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170420144431.GA14620@quack2.suse.cz>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 20, 2017 at 04:44:31PM +0200, Jan Kara wrote:
-> On Thu 20-04-17 16:35:10, Jan Kara wrote:
-> > On Wed 19-04-17 13:28:36, Ross Zwisler wrote:
-> > > On Wed, Apr 19, 2017 at 06:11:31PM +0300, Andrey Ryabinin wrote:
-> > > > On 04/18/2017 10:38 PM, Ross Zwisler wrote:
-> > > > > On Fri, Apr 14, 2017 at 05:07:50PM +0300, Andrey Ryabinin wrote:
-> > > > >> Some direct write fs hooks call invalidate_inode_pages2[_range]()
-> > > > >> conditionally iff mapping->nrpages is not zero. If page cache is empty,
-> > > > >> buffered read following after direct IO write would get stale data from
-> > > > >> the cleancache.
-> > > > >>
-> > > > >> Also it doesn't feel right to check only for ->nrpages because
-> > > > >> invalidate_inode_pages2[_range] invalidates exceptional entries as well.
-> > > > >>
-> > > > >> Fix this by calling invalidate_inode_pages2[_range]() regardless of nrpages
-> > > > >> state.
-> > > > >>
-> > > > >> Fixes: c515e1fd361c ("mm/fs: add hooks to support cleancache")
-> > > > >> Signed-off-by: Andrey Ryabinin <aryabinin@virtuozzo.com>
-> > > > >> ---
-> > > > > <>
-> > > > >> diff --git a/fs/dax.c b/fs/dax.c
-> > > > >> index 2e382fe..1e8cca0 100644
-> > > > >> --- a/fs/dax.c
-> > > > >> +++ b/fs/dax.c
-> > > > >> @@ -1047,7 +1047,7 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
-> > > > >>  	 * into page tables. We have to tear down these mappings so that data
-> > > > >>  	 * written by write(2) is visible in mmap.
-> > > > >>  	 */
-> > > > >> -	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-> > > > >> +	if ((iomap->flags & IOMAP_F_NEW)) {
-> > > > >>  		invalidate_inode_pages2_range(inode->i_mapping,
-> > > > >>  					      pos >> PAGE_SHIFT,
-> > > > >>  					      (end - 1) >> PAGE_SHIFT);
-> > > > > 
-> > > > > tl;dr: I think the old code is correct, and that you don't need this change.
-> > > > > 
-> > > > > This should be harmless, but could slow us down a little if we keep
-> > > > > calling invalidate_inode_pages2_range() without really needing to.  Really for
-> > > > > DAX I think we need to call invalidate_inode_page2_range() only if we have
-> > > > > zero pages mapped over the place where we are doing I/O, which is why we check
-> > > > > nrpages.
-> > > > > 
-> > > > 
-> > > > Check for ->nrpages only looks strange, because invalidate_inode_pages2_range() also
-> > > > invalidates exceptional radix tree entries. Is that correct that we invalidate
-> > > > exceptional entries only if ->nrpages > 0 and skip invalidation otherwise?
-> > > 
-> > > For DAX we only invalidate clean DAX exceptional entries so that we can keep
-> > > dirty entries around for writeback, but yes you're correct that we only do the
-> > > invalidation if nrpages > 0.  And yes, it does seem a bit weird. :)
-> > 
-> > Actually in this place the nrpages check is deliberate since there should
-> > only be hole pages or nothing in the invalidated range - see the comment
-> > before the if. But thinking more about it this assumption actually is not
-> > right in presence of zero PMD entries in the radix tree. So this change
-> > actually also fixes a possible bug for DAX but we should do it as a
-> > separate patch with a proper changelog.
-> 
-> Something like the attached patch. Ross?
+T24gV2VkLCAyMDE3LTA0LTEyIGF0IDE4OjAxICswMjAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gVGhlIG9iamxheW91dCBjb2RlIGhhcyBiZWVuIGluIHRoZSB0cmVlLCBidXQgaXQncyBi
+ZWVuIHVubWFpbnRhaW5lZA0KPiBhbmQNCj4gbm8gc2VydmVyIHByb2R1Y3QgZm9yIGl0IGFjdHVh
+bGx5IGV2ZXIgc2hpcHBlZC4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IENocmlzdG9waCBIZWxsd2ln
+IDxoY2hAbHN0LmRlPg0KPiAtLS0NCj4gwqBEb2N1bWVudGF0aW9uL2FkbWluLWd1aWRlL2tlcm5l
+bC1wYXJhbWV0ZXJzLnR4dCB8wqDCoMKgNiAtDQo+IMKgRG9jdW1lbnRhdGlvbi9maWxlc3lzdGVt
+cy9uZnMvcG5mcy50eHTCoMKgwqDCoMKgwqDCoMKgwqDCoHzCoMKgMzcgLS0NCj4gwqBmcy9uZnMv
+S2NvbmZpZ8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgfMKgwqDCoDUgLQ0KPiDCoGZzL25mcy9NYWtlZmlsZcKgwqDCoMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oHzCoMKgwqAxIC0NCj4gwqBmcy9uZnMvb2JqbGF5b3V0L0tidWlsZMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfMKgwqDCoDUgLQ0KPiDCoGZzL25mcy9v
+YmpsYXlvdXQvb2JqaW9fb3NkLmPCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgfCA2NzUgLS0tLS0tLS0tLS0tLS0NCj4gLS0tLS0tLS0NCj4gwqBmcy9uZnMvb2JqbGF5b3V0
+L29iamxheW91dC5jwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHwgNzA2
+IC0tLS0tLS0tLS0tLS0tDQo+IC0tLS0tLS0tLS0NCj4gwqBmcy9uZnMvb2JqbGF5b3V0L29iamxh
+eW91dC5owqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHwgMTgzIC0tLS0t
+LQ0KPiDCoGZzL25mcy9vYmpsYXlvdXQvcG5mc19vc2RfeGRyX2NsaS5jwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqB8IDQxNSAtLS0tLS0tLS0tLS0tLQ0KPiDCoDkgZmlsZXMgY2hhbmdlZCwgMjAz
+MyBkZWxldGlvbnMoLSkNCj4gwqBkZWxldGUgbW9kZSAxMDA2NDQgZnMvbmZzL29iamxheW91dC9L
+YnVpbGQNCj4gwqBkZWxldGUgbW9kZSAxMDA2NDQgZnMvbmZzL29iamxheW91dC9vYmppb19vc2Qu
+Yw0KPiDCoGRlbGV0ZSBtb2RlIDEwMDY0NCBmcy9uZnMvb2JqbGF5b3V0L29iamxheW91dC5jDQo+
+IMKgZGVsZXRlIG1vZGUgMTAwNjQ0IGZzL25mcy9vYmpsYXlvdXQvb2JqbGF5b3V0LmgNCj4gwqBk
+ZWxldGUgbW9kZSAxMDA2NDQgZnMvbmZzL29iamxheW91dC9wbmZzX29zZF94ZHJfY2xpLmMNCj4g
+DQoNCk9LLiBJJ20gYXBwbHlpbmcgdGhpcyBwYXRjaCBmb3IgdGhlIDQuMTIgbWVyZ2Ugd2luZG93
+LiBJZiwgYXMgQm9heg0Kc3VnZ2VzdHMsIHRoZXJlIGlzIHN0aWxsIGFuIGludGVyZXN0IGluIGV4
+b2ZzLCB0aGVuIEkgc3VnZ2VzdCB3ZSBwdXQNCnRoYXQgdG8gdGhlIHRlc3QgYnkgbW92aW5nIGl0
+IGludG8gdGhlIFNUQUdJTkcgYXJlYSwgdG8gc2VlIGlmIHNvbWVvbmUNCndpbGwgc3RlcCB1cCB0
+byBtYWludGFpbiBpdC4NCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1
+c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-Yep, great catch, this is a real issue.  The attached patch isn't sufficient,
-though, because invalidate_inode_pages2_range() for DAX exceptional entries
-only wipes out the radix tree entry, and doesn't call unmap_mapping_range() as
-it does in the case of real pages.
-
-I'm working on a fix and an associated xfstest test.
