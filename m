@@ -1,68 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helmsgagent01.f-secure.com ([193.110.108.21]:56646 "EHLO
-        helmsgagent01.f-secure.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1039487AbdDUNNr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 09:13:47 -0400
-From: Marko Rauhamaa <marko.rauhamaa@f-secure.com>
-To: Amir Goldstein <amir73il@gmail.com>
-CC: Jeff Layton <jlayton@poochiereds.net>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Jan Kara <jack@suse.cz>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        <linux-api@vger.kernel.org>
-Subject: Re: fanotify read returns with errno == EOPENSTALE
-References: <87inn12urq.fsf@drapion.f-secure.com>
-        <CAOQ4uxjzjFDLmvebHmC4t4_tT8xyWfbHVGfKohEqw7ZjpxfV_w@mail.gmail.com>
-        <20170322193122.GV29622@ZenIV.linux.org.uk>
-        <CAOQ4uxhTd1j4HLgZFTdr7wwrhjzkVT8QeoXjca_AMZmYHF31sQ@mail.gmail.com>
-        <87a88c2yxq.fsf@drapion.f-secure.com>
-        <CAOQ4uxggwSDcjdyCDreKs7m0ZNy+6PQQNojm6qDU7mH2tQE-Bw@mail.gmail.com>
-        <1490270212.3921.10.camel@poochiereds.net>
-        <8760j02mfz.fsf@drapion.f-secure.com>
-        <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
-        <87lgqwa4tg.fsf@drapion.f-secure.com>
-        <CAOQ4uxirSfVVYBexXrWccDHnE5oqxNgUh3-X5Ey1w4R=nHXDjA@mail.gmail.com>
-        <CAOQ4uxjA8Z7wnwuHFCKeKT1xz0Gh-qS40Y6cfPi3fAM0MKsRuQ@mail.gmail.com>
-        <87shl38d1x.fsf@drapion.f-secure.com>
-        <CAOQ4uxiJyrvEJMhM1jhiE5pCgP0iA_LL4Eo_h7UY00wkTKhbTg@mail.gmail.com>
-Date: Fri, 21 Apr 2017 16:13:39 +0300
-In-Reply-To: <CAOQ4uxiJyrvEJMhM1jhiE5pCgP0iA_LL4Eo_h7UY00wkTKhbTg@mail.gmail.com>
-        (Amir Goldstein's message of "Thu, 20 Apr 2017 16:34:55 +0300")
-Message-ID: <871ssl9a4c.fsf@drapion.f-secure.com>
+Received: from mail-wm0-f67.google.com ([74.125.82.67]:35888 "EHLO
+        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1039868AbdDUNRu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 09:17:50 -0400
+Subject: Re: [PATCH 3/4] nfs: remove the objlayout driver
+To: Trond Myklebust <trondmy@primarydata.com>, hch <hch@lst.de>,
+        "martin.petersen@oracle.com" <martin.petersen@oracle.com>,
+        "axboe@kernel.dk" <axboe@kernel.dk>
+References: <20170412160109.10598-1-hch@lst.de>
+ <20170412160109.10598-4-hch@lst.de>
+ <1492719505.82584.3.camel@primarydata.com>
+Cc: "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "osd-dev@open-osd.org" <osd-dev@open-osd.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+From: Boaz Harrosh <ooo@electrozaur.com>
+Message-ID: <272aea55-0738-5de2-ca97-414e13b478af@electrozaur.com>
+Date: Fri, 21 Apr 2017 16:17:41 +0300
 MIME-Version: 1.0
-Content-Type: text/plain
+In-Reply-To: <1492719505.82584.3.camel@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Amir Goldstein <amir73il@gmail.com>:
+On 04/20/2017 11:18 PM, Trond Myklebust wrote:
+<>
+> 
+> OK. I'm applying this patch for the 4.12 merge window. 
 
-> On Thu, Apr 20, 2017 at 3:43 PM, Marko Rauhamaa
-> <marko.rauhamaa@f-secure.com> wrote:
->> Amir Goldstein <amir73il@gmail.com>:
->>
->>> Sorry I messed up the previous patch. please try this one:
->>
->> I will try it.
+That is understandable this code was not tested for a long while
 
-Tried it. Superficially, it seems to be working, but...
+> If, as Boaz
+> suggests, there is still an interest in exofs, then I suggest we put
+> that to the test by moving it into the STAGING area, to see if someone
+> will step up to maintain it.
+> 
 
->> More importantly, does EAGAIN here still guarantee EPOLLET semantics
->> of epoll(7)? IOW, if I get EAGAIN, I shouldn't have to try read(2)ing
->> the fanotify fd again before calling epoll_wait(2).
->
-> Yes, if you get EAGAIN it means there are no more events in the queue,
-> so shouldn't have to try read again.
+I do not understand what you mean by "someone will maintain it"
+What is it that is missing in exofs that you see needs development?
 
-I ran into a system hang with our real product that suggests there might
-be a problem left. It would be explained if your patch generated an
-EAGAIN while there were other events waiting in the queue.
+As I said I regularly run and test this FS and update as things advance
+there where no new fixtures for a while, but no regressions either.
 
-I will have to investigate further.
+Please explain what it means "will maintain it"
 
+> Cheers
+>   Trond
+> 
 
-Marko
+Thanks
+Boaz
 
--- 
-+358 44 990 4795
-Skype: marko.rauhamaa_f-secure
