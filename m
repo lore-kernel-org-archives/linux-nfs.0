@@ -1,66 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49205 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1425602AbdDUTwF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 15:52:05 -0400
-Date: Fri, 21 Apr 2017 22:51:53 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: neilb@suse.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [bug report] sunrpc: don't check for failure from mempool_alloc()
-Message-ID: <20170421195153.vzfthyjiaatc7t7k@mwanda>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from aserp1040.oracle.com ([141.146.126.69]:28332 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1162577AbdDUVxF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 17:53:05 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Subject: Annoucing the release of fedfs-utils version 0.10.7
+Date: Fri, 21 Apr 2017 17:52:51 -0400
+Message-Id: <8ED2BC20-C168-4E9E-BE4F-9300EB9E9838@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        autofs@vger.kernel.org, samba-technical@lists.samba.org
+To: "fedfs-utils;release announcements"
+        <fedfs-utils-announce@oss.oracle.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello NeilBrown,
+This package contains an implementation of the Federated Filesystem
+(FedFS) Proposed Standard for Linux. For an introduction to FedFS, see
+RFC 5716.
 
-The patch 62b2417e84ba: "sunrpc: don't check for failure from
-mempool_alloc()" from Apr 10, 2017, leads to the following static
-checker warning:
+This is an ALPHA quality release.  The code in this release is not
+guaranteed to work.  Programming, administrative, and user interfaces
+may change significantly before the next release.  This release is for
+technology preview only.
 
-	fs/nfs/unlink.c:111 nfs_do_call_unlink()
-	warn: 'task' isn't an ERR_PTR
 
-fs/nfs/unlink.c
-   106  
-   107          NFS_PROTO(dir)->unlink_setup(&msg, dir);
-   108  
-   109          task_setup_data.rpc_client = NFS_CLIENT(dir);
-   110          task = rpc_run_task(&task_setup_data);
-   111          if (!IS_ERR(task))
-   112                  rpc_put_task_async(task);
+Changes since 0.10.6:
+	• Fix compatibility issues with newer OpenSSL releases
 
-This code is obviously harmless, but I get a ball of new warnings today.
-I haven't published this check because it has too many false positives
-so it only affects me.
 
-fs/nfs/unlink.c:111 nfs_do_call_unlink() warn: 'task' isn't an ERR_PTR
-fs/nfs/pagelist.c:602 nfs_initiate_pgio() warn: 'task' isn't an ERR_PTR
-fs/nfs/write.c:1627 nfs_initiate_commit() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:976 nfs4_call_sync_sequence() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:2023 _nfs4_proc_open_confirm() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:2190 nfs4_run_open_task() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:3208 nfs4_do_close() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:5475 nfs4_proc_setclientid() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:5694 _nfs4_proc_delegreturn() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:6193 _nfs4_do_setlk() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:7169 nfs4_proc_bind_one_conn_to_session() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:7527 _nfs4_proc_exchange_id() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:7758 nfs4_proc_get_lease_time() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:8233 nfs41_proc_reclaim_complete() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:8467 nfs4_proc_layoutget() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:8585 nfs4_proc_layoutreturn() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs4proc.c:8732 nfs4_proc_layoutcommit() warn: 'task' isn't an ERR_PTR
-fs/nfs/nfs42proc.c:456 nfs42_proc_layoutstats_generic() warn: 'task' isn't an ERR_PTR
-drivers/clk/x86/clk-pmc-atom.c:342 plt_clk_probe() warn: 'data->mclk_lookup' isn't an ERR_PTR
-net/sunrpc/svc.c:1452 bc_svc_process() warn: 'task' isn't an ERR_PTR
-net/sunrpc/clnt.c:1083 rpc_call_sync() warn: 'task' isn't an ERR_PTR
-net/sunrpc/clnt.c:1113 rpc_call_async() warn: 'task' isn't an ERR_PTR
-net/sunrpc/clnt.c:2585 rpc_clnt_test_and_add_xprt() warn: 'task' isn't an ERR_PTR
-net/sunrpc/clnt.c:2632 rpc_clnt_setup_test_and_add_xprt() warn: 'task' isn't an ERR_PTR
-net/sunrpc/rpcb_clnt.c:784 rpcb_getport_async() warn: 'child' isn't an ERR_PTR
+Changes since 0.10.5:
+	• Fix compatibility issues with newer glibc/libtirpc releases
 
-regards,
-dan carpenter
+
+Changes since 0.10.4:
+	• More fixes in admin tools
+
+
+Changes since 0.10.3:
+	• Fix bugs in admin tools
+
+
+Changes since 0.10.2:
+	• More error handling fixes
+	• Remove an incorrect package dependency
+
+
+Changes since 0.10.1:
+	• Fix bugs in nsdb-jumpstart
+	• Numerous fixes to error handling paths
+	• Introduce basic support for Coverity analysis
+
+
+Changes since 0.10.0:
+	• Address packaging issues
+
+
+New with fedfs-utils 0.10.0:
+
+Non-backwards compatible changes:
+	• *ldaperr removed from libnsdb API
+	• ADMIN client tools no longer use AUTH_NONE security
+	• ADMIN client tools no longer exit with FedFS status code
+
+New features:
+	• Python package PyFedfs added
+	• Tool for configuring FedFS domain root directories
+	• Tool for setting up NSDBs using OpenLDAP
+	• Simpler NCE discovery (compliant with new FedFS NCE I-D)
+	• admin_t API for performing remote ADMIN requests
+	• rpc.fedfsd uses an ACL to control who can perform ADMIN requests
+	• rpc.fedfsd and ADMIN tools support RPCSEC and Kerberos v5
+
+Minor fixes:
+	• FEDFS_LOOKUP_JUNCTION no longer returns NSDB_LDAP_VAL
+	• fedfs-map-nfs4 handles multiple SRV records
+	• Packaging simplifications
+	• Dozens of code clean-ups and bug fixes; consult Changelog for details
+
+
+Source code available at:
+http://git.linux-nfs.org/?p=cel/fedfs-utils.git
+
+The new head of the master branch is commit:
+
+6f356f7badec Release 0.10.7
+
+Patchwork available at:
+http://patchwork.ozlabs.org/project/fedfs-utils/list/
+
+Tarball releases available at:
+http://git.linux-nfs.org/?p=cel/fedfs-releases.git;a=summary
+
+--
+Chuck Lever
+
+
+
