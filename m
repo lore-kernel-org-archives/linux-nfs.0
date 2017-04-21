@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:64144 "EHLO mga09.intel.com"
+Received: from mga09.intel.com ([134.134.136.24]:60440 "EHLO mga09.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1034939AbdDUDos (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Apr 2017 23:44:48 -0400
+        id S1034928AbdDUDoq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Apr 2017 23:44:46 -0400
 From: Ross Zwisler <ross.zwisler@linux.intel.com>
 To: Andrew Morton <akpm@linux-foundation.org>,
         linux-kernel@vger.kernel.org
@@ -26,102 +26,133 @@ Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
         samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         v9fs-developer@lists.sourceforge.net
-Subject: [PATCH 2/2] dax: fix data corruption due to stale mmap reads
-Date: Thu, 20 Apr 2017 21:44:37 -0600
-Message-Id: <20170421034437.4359-2-ross.zwisler@linux.intel.com>
-In-Reply-To: <20170421034437.4359-1-ross.zwisler@linux.intel.com>
+Subject: [PATCH 1/2] dax: prevent invalidation of mapped DAX entries
+Date: Thu, 20 Apr 2017 21:44:36 -0600
+Message-Id: <20170421034437.4359-1-ross.zwisler@linux.intel.com>
+In-Reply-To: <20170420191446.GA21694@linux.intel.com>
 References: <20170420191446.GA21694@linux.intel.com>
- <20170421034437.4359-1-ross.zwisler@linux.intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Users of DAX can suffer data corruption from stale mmap reads via the
-following sequence:
+dax_invalidate_mapping_entry() currently removes DAX exceptional entries
+only if they are clean and unlocked.  This is done via:
 
-- open an mmap over a 2MiB hole
+invalidate_mapping_pages()
+  invalidate_exceptional_entry()
+    dax_invalidate_mapping_entry()
 
-- read from a 2MiB hole, faulting in a 2MiB zero page
+However, for page cache pages removed in invalidate_mapping_pages() there
+is an additional criteria which is that the page must not be mapped.  This
+is noted in the comments above invalidate_mapping_pages() and is checked in
+invalidate_inode_page().
 
-- write to the hole with write(3p).  The write succeeds but we incorrectly
-  leave the 2MiB zero page mapping intact.
+For DAX entries this means that we can can end up in a situation where a
+DAX exceptional entry, either a huge zero page or a regular DAX entry,
+could end up mapped but without an associated radix tree entry. This is
+inconsistent with the rest of the DAX code and with what happens in the
+page cache case.
 
-- via the mmap, read the data that was just written.  Since the zero page
-  mapping is still intact we read back zeroes instead of the new data.
+We aren't able to unmap the DAX exceptional entry because according to its
+comments invalidate_mapping_pages() isn't allowed to block, and
+unmap_mapping_range() takes a write lock on the mapping->i_mmap_rwsem.
 
-We fix this by unconditionally calling invalidate_inode_pages2_range() in
-dax_iomap_actor() for new block allocations, and by enhancing
-__dax_invalidate_mapping_entry() so that it properly unmaps the DAX entry
-being removed from the radix tree.
-
-This is based on an initial patch from Jan Kara.
+Since we essentially never have unmapped DAX entries to evict from the
+radix tree, just remove dax_invalidate_mapping_entry().
 
 Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
 Fixes: c6dcf52c23d2 ("mm: Invalidate DAX radix tree entries only if appropriate")
 Reported-by: Jan Kara <jack@suse.cz>
 Cc: <stable@vger.kernel.org>    [4.10+]
 ---
- fs/dax.c | 26 +++++++++++++++++++-------
- 1 file changed, 19 insertions(+), 7 deletions(-)
+
+This series applies cleanly to the current v4.11-rc7 based linux/master,
+and has passed an xfstests run with DAX on ext4 and XFS.
+
+These patches also apply to v4.10.9 with a little work from the 3-way
+merge feature.
+
+ fs/dax.c            | 29 -----------------------------
+ include/linux/dax.h |  1 -
+ mm/truncate.c       |  9 +++------
+ 3 files changed, 3 insertions(+), 36 deletions(-)
 
 diff --git a/fs/dax.c b/fs/dax.c
-index 166504c..3f445d5 100644
+index 85abd74..166504c 100644
 --- a/fs/dax.c
 +++ b/fs/dax.c
-@@ -468,23 +468,35 @@ static int __dax_invalidate_mapping_entry(struct address_space *mapping,
- 					  pgoff_t index, bool trunc)
- {
- 	int ret = 0;
--	void *entry;
-+	void *entry, **slot;
- 	struct radix_tree_root *page_tree = &mapping->page_tree;
- 
- 	spin_lock_irq(&mapping->tree_lock);
--	entry = get_unlocked_mapping_entry(mapping, index, NULL);
-+	entry = get_unlocked_mapping_entry(mapping, index, &slot);
- 	if (!entry || !radix_tree_exceptional_entry(entry))
- 		goto out;
- 	if (!trunc &&
- 	    (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
- 	     radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE)))
- 		goto out;
-+
-+	/*
-+	 * Make sure 'entry' remains valid while we drop mapping->tree_lock to
-+	 * do the unmap_mapping_range() call.
-+	 */
-+	entry = lock_slot(mapping, slot);
-+	spin_unlock_irq(&mapping->tree_lock);
-+
-+	unmap_mapping_range(mapping, (loff_t)index << PAGE_SHIFT,
-+			(loff_t)PAGE_SIZE << dax_radix_order(entry), 0);
-+
-+	spin_lock_irq(&mapping->tree_lock);
- 	radix_tree_delete(page_tree, index);
- 	mapping->nrexceptional--;
- 	ret = 1;
- out:
--	put_unlocked_mapping_entry(mapping, index, entry);
- 	spin_unlock_irq(&mapping->tree_lock);
-+	dax_wake_mapping_entry_waiter(mapping, index, entry, true);
- 	return ret;
+@@ -507,35 +507,6 @@ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index)
  }
- /*
-@@ -999,11 +1011,11 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		return -EIO;
  
- 	/*
--	 * Write can allocate block for an area which has a hole page mapped
--	 * into page tables. We have to tear down these mappings so that data
--	 * written by write(2) is visible in mmap.
-+	 * Write can allocate block for an area which has a hole page or zero
-+	 * PMD entry in the radix tree.  We have to tear down these mappings so
-+	 * that data written by write(2) is visible in mmap.
- 	 */
--	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-+	if (iomap->flags & IOMAP_F_NEW) {
- 		invalidate_inode_pages2_range(inode->i_mapping,
- 					      pos >> PAGE_SHIFT,
- 					      (end - 1) >> PAGE_SHIFT);
+ /*
+- * Invalidate exceptional DAX entry if easily possible. This handles DAX
+- * entries for invalidate_inode_pages() so we evict the entry only if we can
+- * do so without blocking.
+- */
+-int dax_invalidate_mapping_entry(struct address_space *mapping, pgoff_t index)
+-{
+-	int ret = 0;
+-	void *entry, **slot;
+-	struct radix_tree_root *page_tree = &mapping->page_tree;
+-
+-	spin_lock_irq(&mapping->tree_lock);
+-	entry = __radix_tree_lookup(page_tree, index, NULL, &slot);
+-	if (!entry || !radix_tree_exceptional_entry(entry) ||
+-	    slot_locked(mapping, slot))
+-		goto out;
+-	if (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
+-	    radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
+-		goto out;
+-	radix_tree_delete(page_tree, index);
+-	mapping->nrexceptional--;
+-	ret = 1;
+-out:
+-	spin_unlock_irq(&mapping->tree_lock);
+-	if (ret)
+-		dax_wake_mapping_entry_waiter(mapping, index, entry, true);
+-	return ret;
+-}
+-
+-/*
+  * Invalidate exceptional DAX entry if it is clean.
+  */
+ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index d8a3dc0..f8e1833 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -41,7 +41,6 @@ ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+ 		    const struct iomap_ops *ops);
+ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+-int dax_invalidate_mapping_entry(struct address_space *mapping, pgoff_t index);
+ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+ 				      pgoff_t index);
+ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 6263aff..c537184 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -67,17 +67,14 @@ static void truncate_exceptional_entry(struct address_space *mapping,
+ 
+ /*
+  * Invalidate exceptional entry if easily possible. This handles exceptional
+- * entries for invalidate_inode_pages() so for DAX it evicts only unlocked and
+- * clean entries.
++ * entries for invalidate_inode_pages().
+  */
+ static int invalidate_exceptional_entry(struct address_space *mapping,
+ 					pgoff_t index, void *entry)
+ {
+-	/* Handled by shmem itself */
+-	if (shmem_mapping(mapping))
++	/* Handled by shmem itself, or for DAX we do nothing. */
++	if (shmem_mapping(mapping) || dax_mapping(mapping))
+ 		return 1;
+-	if (dax_mapping(mapping))
+-		return dax_invalidate_mapping_entry(mapping, index);
+ 	clear_shadow_entry(mapping, index, entry);
+ 	return 1;
+ }
 -- 
 2.9.3
 
