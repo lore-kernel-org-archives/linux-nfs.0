@@ -1,101 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48374 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:54802 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1161465AbdDUOTH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Apr 2017 10:19:07 -0400
-From: Artem Savkov <asavkov@redhat.com>
-To: andros@netapp.com
-Cc: anna.schumaker@netapp.com, jstancek@redhat.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Artem Savkov <asavkov@redhat.com>
-Subject: [PATCH] nfs/filelayout: fix NULL pointer dereference in fl_pnfs_update_layout()
-Date: Fri, 21 Apr 2017 16:18:44 +0200
-Message-Id: <1492784324-29661-1-git-send-email-asavkov@redhat.com>
+        id S1042338AbdDUVMx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 21 Apr 2017 17:12:53 -0400
+Date: Fri, 21 Apr 2017 17:12:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
+Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
+Message-ID: <20170421211253.GE19775@fieldses.org>
+References: <20170414150440.GA5362@fieldses.org>
+ <20170414150940.GB5362@fieldses.org>
+ <87h91mtvdb.fsf@notabene.neil.brown.name>
+ <20170418171351.GF6208@fieldses.org>
+ <20170420161935.GB4782@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170420161935.GB4782@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Calling pnfs_put_lset on an IS_ERR pointer results in a NULL pointer
-dereference like the one below. fl_pnfs_update_layout()'s output is
-checked after each call so it doesn't seem that it should try to handle
-these errors on it's own.
+On Thu, Apr 20, 2017 at 12:19:35PM -0400, J. Bruce Fields wrote:
+> On Tue, Apr 18, 2017 at 01:13:51PM -0400, J. Bruce Fields wrote:
+> > On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
+> > >  I can't say that I like this patch at all.
+> > > 
+> > > The problem is that:
+> > > 
+> > > 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
+> > > 				       * We assume one is at most one page
+> > > 				       */
+> > > 
+> > > this assumption is never verified.
+> > > To my mind, the "obvious" way to verify this assumption is that an
+> > > attempt to generate a multi-page reply should fail if there was a
+> > > multi-page request.
+> > 
+> > A third option, by the way, which Ari Kauppi argued for, is adding a
+> > null check each time we increment rq_next_page, since we seem to arrange
+> > for the page array to always be NULL-terminated.
+> > 
+> > > Failing if there was a little bit of extra noise at the end of the
+> > > request seems harsher than necessary, and could result in a regression.
+> > 
+> > You're worrying there might be a weird old client out there somewhere?
+> > I guess it seems like a small enough risk to me.  I'm more worried the
+> > extra garbage might violate assumptions elsewhere in the code.
+> > 
+> > But, this looks good too:
+> 
+> But, I'm not too happy about putting that NFSv2/v3-specific check in
+> common rpc code.
 
-[ 3000.636161] BUG: unable to handle kernel NULL pointer dereference at 000000000000003c
-[ 3000.636970] IP: pnfs_put_lseg+0x29/0x100 [nfsv4]
-[ 3000.637420] PGD 4f23b067
-[ 3000.637421] PUD 4a0f4067
-[ 3000.637679] PMD 0
-[ 3000.637937]
-[ 3000.638287] Oops: 0000 [#1] SMP
-[ 3000.638591] Modules linked in: nfs_layout_nfsv41_files nfsv3 nfnetlink_queue nfnetlink_log nfnetlink bluetooth rfkill rpcsec_gss_krb5 nfsv4 nfs fscache binfmt_misc arc4 md4 nls_utf8 cifs ccm dns_resolver rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_core nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack crct10dif_pclmul crc32_pclmul ghash_clmulni_intel pcspkr virtio_balloon ppdev virtio_rng parport_pc i2c_piix4 parport acpi_cpufreq nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c ata_generic pata_acpi virtio_blk virtio_net cirrus drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops crc32c_intel ata_piix ttm libata drm serio_raw
-[ 3000.645245]  i2c_core virtio_pci virtio_ring virtio floppy dm_mirror dm_region_hash dm_log dm_mod [last unloaded: xt_u32]
-[ 3000.646360] CPU: 1 PID: 26402 Comm: date Not tainted 4.11.0-rc7.1.el7.test.x86_64 #1
-[ 3000.647092] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2011
-[ 3000.647638] task: ffff8800415ada00 task.stack: ffffc90000ff0000
-[ 3000.648207] RIP: 0010:pnfs_put_lseg+0x29/0x100 [nfsv4]
-[ 3000.648696] RSP: 0018:ffffc90000ff39b8 EFLAGS: 00010246
-[ 3000.649193] RAX: 0000000000000000 RBX: fffffffffffffff4 RCX: 00000000000d43be
-[ 3000.649859] RDX: 00000000000d43bd RSI: 0000000000000000 RDI: fffffffffffffff4
-[ 3000.650530] RBP: ffffc90000ff39d8 R08: 000000000001e320 R09: ffffffffa05c35ce
-[ 3000.651203] R10: ffff88007fd1e320 R11: ffffea0001283d80 R12: 0000000001400040
-[ 3000.651875] R13: ffff88004f77d9f0 R14: ffffc90000ff3cd8 R15: ffff8800417ade00
-[ 3000.652546] FS:  00007fac4d5cd740(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
-[ 3000.653304] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[ 3000.653849] CR2: 000000000000003c CR3: 000000004f080000 CR4: 00000000000406e0
-[ 3000.654527] Call Trace:
-[ 3000.654771]  fl_pnfs_update_layout.constprop.20+0x10c/0x150 [nfs_layout_nfsv41_files]
-[ 3000.655505]  filelayout_pg_init_write+0x21d/0x270 [nfs_layout_nfsv41_files]
-[ 3000.656195]  __nfs_pageio_add_request+0x11c/0x490 [nfs]
-[ 3000.656698]  nfs_pageio_add_request+0xac/0x260 [nfs]
-[ 3000.657180]  nfs_do_writepage+0x109/0x2e0 [nfs]
-[ 3000.657616]  nfs_writepages_callback+0x16/0x30 [nfs]
-[ 3000.658096]  write_cache_pages+0x26f/0x510
-[ 3000.658495]  ? nfs_do_writepage+0x2e0/0x2e0 [nfs]
-[ 3000.658946]  ? _raw_spin_unlock_bh+0x1e/0x20
-[ 3000.659357]  ? wb_wakeup_delayed+0x5f/0x70
-[ 3000.659748]  ? __mark_inode_dirty+0x2eb/0x360
-[ 3000.660170]  nfs_writepages+0x84/0xd0 [nfs]
-[ 3000.660575]  ? nfs_updatepage+0x571/0xb70 [nfs]
-[ 3000.661012]  do_writepages+0x1e/0x30
-[ 3000.661358]  __filemap_fdatawrite_range+0xc6/0x100
-[ 3000.661819]  filemap_write_and_wait_range+0x41/0x90
-[ 3000.662292]  nfs_file_fsync+0x34/0x1f0 [nfs]
-[ 3000.662704]  vfs_fsync_range+0x3d/0xb0
-[ 3000.663065]  vfs_fsync+0x1c/0x20
-[ 3000.663385]  nfs4_file_flush+0x57/0x80 [nfsv4]
-[ 3000.663813]  filp_close+0x2f/0x70
-[ 3000.664132]  __close_fd+0x9a/0xc0
-[ 3000.664453]  SyS_close+0x23/0x50
-[ 3000.664785]  do_syscall_64+0x67/0x180
-[ 3000.665162]  entry_SYSCALL64_slow_path+0x25/0x25
-[ 3000.665600] RIP: 0033:0x7fac4d0e1e90
-[ 3000.665946] RSP: 002b:00007ffd54e90c88 EFLAGS: 00000246 ORIG_RAX: 0000000000000003
-[ 3000.666679] RAX: ffffffffffffffda RBX: 00007fac4d3b5400 RCX: 00007fac4d0e1e90
-[ 3000.667349] RDX: 0000000000000000 RSI: 00007fac4d5d9000 RDI: 0000000000000001
-[ 3000.668031] RBP: 0000000000000000 R08: 00007fac4d3b6a00 R09: 00007fac4d5cd740
-[ 3000.668709] R10: 00007ffd54e909e0 R11: 0000000000000246 R12: 0000000000000000
-[ 3000.669385] R13: 00007fac4d3b5e80 R14: 0000000000000000 R15: 0000000000000000
-[ 3000.670061] Code: 00 00 66 66 66 66 90 55 48 85 ff 48 89 e5 41 56 41 55 41 54 53 48 89 fb 0f 84 97 00 00 00 f6 05 16 8f bc ff 10 0f 85 a6 00 00 00 <4c> 8b 63 48 48 8d 7b 38 49 8b 84 24 90 00 00 00 4c 8d a8 88 00
-[ 3000.671831] RIP: pnfs_put_lseg+0x29/0x100 [nfsv4] RSP: ffffc90000ff39b8
-[ 3000.672462] CR2: 000000000000003c
+Well, but it should work just as well in nfsd_dispatch, I think?
+(Untested).  So, maybe that's simplest as a first step:
 
-Signed-off-by: Artem Savkov <asavkov@redhat.com>
----
- fs/nfs/filelayout/filelayout.c | 2 --
- 1 file changed, 2 deletions(-)
-
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index acd30ba..a53d1b7 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -924,8 +924,6 @@ fl_pnfs_update_layout(struct inode *ino,
- 	if (status)
- 		lseg = ERR_PTR(status);
- out:
--	if (IS_ERR(lseg))
--		pnfs_put_lseg(lseg);
- 	return lseg;
- }
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 31e1f9593457..b6298d30a01f 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -759,6 +759,22 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+ 				rqstp->rq_vers, rqstp->rq_proc);
+ 	proc = rqstp->rq_procinfo;
  
--- 
-2.7.4
-
++	if (rqstp->rq_vers < 4 &&
++	    (proc->pc_xdrressize == 0
++			|| proc->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE))
++		&& rqstp->rq_arg.len > PAGE_SIZE) {
++		/*
++		 * NFSv2 and v3 assume that an operation may have either a
++		 * large argument, or a large reply, but never both.
++		 *
++		 * NFSv4 may handle compounds with both argument and
++		 * reply larger than a reply; it has more xdr careful
++		 * xdr decoding which can handle such calls safely.
++		 */
++		dprintk("nfsd: NFSv%d argument too large\n", rqstp->rq_vers);
++		*statp = rpc_garbage_args;
++		return 1;
++	}
+ 	/*
+ 	 * Give the xdr decoder a chance to change this if it wants
+ 	 * (necessary in the NFSv4.0 compound case)
