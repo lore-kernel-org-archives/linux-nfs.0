@@ -1,84 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53152 "EHLO fieldses.org"
+Received: from mga09.intel.com ([134.134.136.24]:64144 "EHLO mga09.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1031972AbdDTWTH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Apr 2017 18:19:07 -0400
-Date: Thu, 20 Apr 2017 18:19:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170420221906.GB6993@fieldses.org>
-References: <20170414150440.GA5362@fieldses.org>
- <20170414150940.GB5362@fieldses.org>
- <87h91mtvdb.fsf@notabene.neil.brown.name>
- <20170418171351.GF6208@fieldses.org>
- <20170420161935.GB4782@fieldses.org>
- <20170420213014.GA6993@fieldses.org>
- <87efwmsp8w.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87efwmsp8w.fsf@notabene.neil.brown.name>
+        id S1034939AbdDUDos (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Apr 2017 23:44:48 -0400
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        v9fs-developer@lists.sourceforge.net
+Subject: [PATCH 2/2] dax: fix data corruption due to stale mmap reads
+Date: Thu, 20 Apr 2017 21:44:37 -0600
+Message-Id: <20170421034437.4359-2-ross.zwisler@linux.intel.com>
+In-Reply-To: <20170421034437.4359-1-ross.zwisler@linux.intel.com>
+References: <20170420191446.GA21694@linux.intel.com>
+ <20170421034437.4359-1-ross.zwisler@linux.intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 21, 2017 at 08:11:59AM +1000, NeilBrown wrote:
-> On Thu, Apr 20 2017, J. Bruce Fields wrote:
-> 
-> > On Thu, Apr 20, 2017 at 12:19:35PM -0400, J. Bruce Fields wrote:
-> >> On Tue, Apr 18, 2017 at 01:13:51PM -0400, J. Bruce Fields wrote:
-> >> > On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
-> >> > >  I can't say that I like this patch at all.
-> >> > > 
-> >> > > The problem is that:
-> >> > > 
-> >> > > 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
-> >> > > 				       * We assume one is at most one page
-> >> > > 				       */
-> >> > > 
-> >> > > this assumption is never verified.
-> >> > > To my mind, the "obvious" way to verify this assumption is that an
-> >> > > attempt to generate a multi-page reply should fail if there was a
-> >> > > multi-page request.
-> >> > 
-> >> > A third option, by the way, which Ari Kauppi argued for, is adding a
-> >> > null check each time we increment rq_next_page, since we seem to arrange
-> >> > for the page array to always be NULL-terminated.
-> >> > 
-> >> > > Failing if there was a little bit of extra noise at the end of the
-> >> > > request seems harsher than necessary, and could result in a regression.
-> >> > 
-> >> > You're worrying there might be a weird old client out there somewhere?
-> >> > I guess it seems like a small enough risk to me.  I'm more worried the
-> >> > extra garbage might violate assumptions elsewhere in the code.
-> >> > 
-> >> > But, this looks good too:
-> >> 
-> >> But, I'm not too happy about putting that NFSv2/v3-specific check in
-> >> common rpc code.  Also, I think this check comes too late for some of
-> >> the damage.
-> 
-> Too late?  It is earlier than anything else.
+Users of DAX can suffer data corruption from stale mmap reads via the
+following sequence:
 
-D'oh, yes, I had some idea the check happened after encoding.
+- open an mmap over a 2MiB hole
 
-> >> I may go with some variation on Ari's idea, let me give it a try....
-> >
-> > In the read case, I think Ari's approach wouldn't catch the error until
-> > nfsd_direct_splice_actor(), which doesn't actually look capable of
-> > handling errors.  Maybe that should be fixed.  Or maybe read just needs
-> > some more checks.  Ugh.
-> 
-> By the time you get to nfsd_read(), the 'struct kvec' should be set up
-> and valid.
+- read from a 2MiB hole, faulting in a 2MiB zero page
 
-That's ignored in the splice case, isn't it?
+- write to the hole with write(3p).  The write succeeds but we incorrectly
+  leave the 2MiB zero page mapping intact.
 
-OK, maybe I need to sleep on it and look again in the morning....
+- via the mmap, read the data that was just written.  Since the zero page
+  mapping is still intact we read back zeroes instead of the new data.
 
---b.
+We fix this by unconditionally calling invalidate_inode_pages2_range() in
+dax_iomap_actor() for new block allocations, and by enhancing
+__dax_invalidate_mapping_entry() so that it properly unmaps the DAX entry
+being removed from the radix tree.
 
-> So we need checks is e.g. nfs3svc_decode_readargs(), but not
-> deeper.
+This is based on an initial patch from Jan Kara.
 
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Fixes: c6dcf52c23d2 ("mm: Invalidate DAX radix tree entries only if appropriate")
+Reported-by: Jan Kara <jack@suse.cz>
+Cc: <stable@vger.kernel.org>    [4.10+]
+---
+ fs/dax.c | 26 +++++++++++++++++++-------
+ 1 file changed, 19 insertions(+), 7 deletions(-)
+
+diff --git a/fs/dax.c b/fs/dax.c
+index 166504c..3f445d5 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -468,23 +468,35 @@ static int __dax_invalidate_mapping_entry(struct address_space *mapping,
+ 					  pgoff_t index, bool trunc)
+ {
+ 	int ret = 0;
+-	void *entry;
++	void *entry, **slot;
+ 	struct radix_tree_root *page_tree = &mapping->page_tree;
+ 
+ 	spin_lock_irq(&mapping->tree_lock);
+-	entry = get_unlocked_mapping_entry(mapping, index, NULL);
++	entry = get_unlocked_mapping_entry(mapping, index, &slot);
+ 	if (!entry || !radix_tree_exceptional_entry(entry))
+ 		goto out;
+ 	if (!trunc &&
+ 	    (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
+ 	     radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE)))
+ 		goto out;
++
++	/*
++	 * Make sure 'entry' remains valid while we drop mapping->tree_lock to
++	 * do the unmap_mapping_range() call.
++	 */
++	entry = lock_slot(mapping, slot);
++	spin_unlock_irq(&mapping->tree_lock);
++
++	unmap_mapping_range(mapping, (loff_t)index << PAGE_SHIFT,
++			(loff_t)PAGE_SIZE << dax_radix_order(entry), 0);
++
++	spin_lock_irq(&mapping->tree_lock);
+ 	radix_tree_delete(page_tree, index);
+ 	mapping->nrexceptional--;
+ 	ret = 1;
+ out:
+-	put_unlocked_mapping_entry(mapping, index, entry);
+ 	spin_unlock_irq(&mapping->tree_lock);
++	dax_wake_mapping_entry_waiter(mapping, index, entry, true);
+ 	return ret;
+ }
+ /*
+@@ -999,11 +1011,11 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+ 		return -EIO;
+ 
+ 	/*
+-	 * Write can allocate block for an area which has a hole page mapped
+-	 * into page tables. We have to tear down these mappings so that data
+-	 * written by write(2) is visible in mmap.
++	 * Write can allocate block for an area which has a hole page or zero
++	 * PMD entry in the radix tree.  We have to tear down these mappings so
++	 * that data written by write(2) is visible in mmap.
+ 	 */
+-	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
++	if (iomap->flags & IOMAP_F_NEW) {
+ 		invalidate_inode_pages2_range(inode->i_mapping,
+ 					      pos >> PAGE_SHIFT,
+ 					      (end - 1) >> PAGE_SHIFT);
+-- 
+2.9.3
 
