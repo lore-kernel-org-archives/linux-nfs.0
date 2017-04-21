@@ -1,100 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28332 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1162577AbdDUVxF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 17:53:05 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=utf-8
-Subject: Annoucing the release of fedfs-utils version 0.10.7
-Date: Fri, 21 Apr 2017 17:52:51 -0400
-Message-Id: <8ED2BC20-C168-4E9E-BE4F-9300EB9E9838@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        autofs@vger.kernel.org, samba-technical@lists.samba.org
-To: "fedfs-utils;release announcements"
-        <fedfs-utils-announce@oss.oracle.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from fieldses.org ([173.255.197.46]:54742 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1161570AbdDUUet (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 21 Apr 2017 16:34:49 -0400
+Date: Fri, 21 Apr 2017 16:34:48 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [GIT PULL] 4.11 nfsd bugfix
+Message-ID: <20170421203448.GD19775@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This package contains an implementation of the Federated Filesystem
-(FedFS) Proposed Standard for Linux. For an introduction to FedFS, see
-RFC 5716.
+Please pull
 
-This is an ALPHA quality release.  The code in this release is not
-guaranteed to work.  Programming, administrative, and user interfaces
-may change significantly before the next release.  This release is for
-technology preview only.
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.11-2
 
+Fix a 4.11 regression that triggers a BUG() on an attempt to use an
+unsupported NFSv4 compound op.
 
-Changes since 0.10.6:
-	• Fix compatibility issues with newer OpenSSL releases
+(Apologies for what's probably a last-minute fix.  I was hoping to have
+a few more ready to roll up with it, but they'll probably have to wait
+till next week.)
 
+--b.
 
-Changes since 0.10.5:
-	• Fix compatibility issues with newer glibc/libtirpc releases
+Olga Kornievskaia (1):
+      nfsd: fix oops on unsupported operation
 
-
-Changes since 0.10.4:
-	• More fixes in admin tools
-
-
-Changes since 0.10.3:
-	• Fix bugs in admin tools
-
-
-Changes since 0.10.2:
-	• More error handling fixes
-	• Remove an incorrect package dependency
-
-
-Changes since 0.10.1:
-	• Fix bugs in nsdb-jumpstart
-	• Numerous fixes to error handling paths
-	• Introduce basic support for Coverity analysis
-
-
-Changes since 0.10.0:
-	• Address packaging issues
-
-
-New with fedfs-utils 0.10.0:
-
-Non-backwards compatible changes:
-	• *ldaperr removed from libnsdb API
-	• ADMIN client tools no longer use AUTH_NONE security
-	• ADMIN client tools no longer exit with FedFS status code
-
-New features:
-	• Python package PyFedfs added
-	• Tool for configuring FedFS domain root directories
-	• Tool for setting up NSDBs using OpenLDAP
-	• Simpler NCE discovery (compliant with new FedFS NCE I-D)
-	• admin_t API for performing remote ADMIN requests
-	• rpc.fedfsd uses an ACL to control who can perform ADMIN requests
-	• rpc.fedfsd and ADMIN tools support RPCSEC and Kerberos v5
-
-Minor fixes:
-	• FEDFS_LOOKUP_JUNCTION no longer returns NSDB_LDAP_VAL
-	• fedfs-map-nfs4 handles multiple SRV records
-	• Packaging simplifications
-	• Dozens of code clean-ups and bug fixes; consult Changelog for details
-
-
-Source code available at:
-http://git.linux-nfs.org/?p=cel/fedfs-utils.git
-
-The new head of the master branch is commit:
-
-6f356f7badec Release 0.10.7
-
-Patchwork available at:
-http://patchwork.ozlabs.org/project/fedfs-utils/list/
-
-Tarball releases available at:
-http://git.linux-nfs.org/?p=cel/fedfs-releases.git;a=summary
-
---
-Chuck Lever
-
-
-
+ fs/nfsd/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
