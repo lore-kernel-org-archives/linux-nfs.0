@@ -1,127 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:35627 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1423283AbdDUSGh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 14:06:37 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "asavkov@redhat.com" <asavkov@redhat.com>,
-        "andros@netapp.com" <andros@netapp.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jstancek@redhat.com" <jstancek@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] nfs/filelayout: fix NULL pointer dereference in
- fl_pnfs_update_layout()
-Date: Fri, 21 Apr 2017 15:00:42 +0000
-Message-ID: <1492786837.47403.1.camel@primarydata.com>
-References: <1492784324-29661-1-git-send-email-asavkov@redhat.com>
-In-Reply-To: <1492784324-29661-1-git-send-email-asavkov@redhat.com>
+Received: from mail-oi0-f65.google.com ([209.85.218.65]:34193 "EHLO
+        mail-oi0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1041149AbdDVHWW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 22 Apr 2017 03:22:22 -0400
 MIME-Version: 1.0
+In-Reply-To: <CAOQ4uxgAOJjWP6PHY6WgOkNK0vmaTWnFZN+Jvea7zpjJ_VU8Bw@mail.gmail.com>
+References: <20170322193122.GV29622@ZenIV.linux.org.uk> <CAOQ4uxhTd1j4HLgZFTdr7wwrhjzkVT8QeoXjca_AMZmYHF31sQ@mail.gmail.com>
+ <87a88c2yxq.fsf@drapion.f-secure.com> <CAOQ4uxggwSDcjdyCDreKs7m0ZNy+6PQQNojm6qDU7mH2tQE-Bw@mail.gmail.com>
+ <1490270212.3921.10.camel@poochiereds.net> <8760j02mfz.fsf@drapion.f-secure.com>
+ <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
+ <87lgqwa4tg.fsf@drapion.f-secure.com> <CAOQ4uxirSfVVYBexXrWccDHnE5oqxNgUh3-X5Ey1w4R=nHXDjA@mail.gmail.com>
+ <CAOQ4uxjA8Z7wnwuHFCKeKT1xz0Gh-qS40Y6cfPi3fAM0MKsRuQ@mail.gmail.com>
+ <20170420142035.GE22135@quack2.suse.cz> <CAOQ4uxgAOJjWP6PHY6WgOkNK0vmaTWnFZN+Jvea7zpjJ_VU8Bw@mail.gmail.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Sat, 22 Apr 2017 10:22:20 +0300
+Message-ID: <CAOQ4uxgkXz+8=m2o_faAh2g2Z21KhAf67WckgPNWhktz1=DaWA@mail.gmail.com>
+Subject: Re: fanotify read returns with errno == EOPENSTALE
+To: Jan Kara <jack@suse.cz>
+Cc: Marko Rauhamaa <marko.rauhamaa@f-secure.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-api@vger.kernel.org
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA0LTIxIGF0IDE2OjE4ICswMjAwLCBBcnRlbSBTYXZrb3Ygd3JvdGU6DQo+
-IENhbGxpbmcgcG5mc19wdXRfbHNldCBvbiBhbiBJU19FUlIgcG9pbnRlciByZXN1bHRzIGluIGEg
-TlVMTCBwb2ludGVyDQo+IGRlcmVmZXJlbmNlIGxpa2UgdGhlIG9uZSBiZWxvdy4gZmxfcG5mc191
-cGRhdGVfbGF5b3V0KCkncyBvdXRwdXQgaXMNCj4gY2hlY2tlZCBhZnRlciBlYWNoIGNhbGwgc28g
-aXQgZG9lc24ndCBzZWVtIHRoYXQgaXQgc2hvdWxkIHRyeSB0bw0KPiBoYW5kbGUNCj4gdGhlc2Ug
-ZXJyb3JzIG9uIGl0J3Mgb3duLg0KPiANCj4gWyAzMDAwLjYzNjE2MV0gQlVHOiB1bmFibGUgdG8g
-aGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UNCj4gYXQgMDAwMDAwMDAwMDAw
-MDAzYw0KPiBbIDMwMDAuNjM2OTcwXSBJUDogcG5mc19wdXRfbHNlZysweDI5LzB4MTAwIFtuZnN2
-NF0NCj4gWyAzMDAwLjYzNzQyMF0gUEdEIDRmMjNiMDY3DQo+IFsgMzAwMC42Mzc0MjFdIFBVRCA0
-YTBmNDA2Nw0KPiBbIDMwMDAuNjM3Njc5XSBQTUQgMA0KPiBbIDMwMDAuNjM3OTM3XQ0KPiBbIDMw
-MDAuNjM4Mjg3XSBPb3BzOiAwMDAwIFsjMV0gU01QDQo+IFsgMzAwMC42Mzg1OTFdIE1vZHVsZXMg
-bGlua2VkIGluOiBuZnNfbGF5b3V0X25mc3Y0MV9maWxlcyBuZnN2Mw0KPiBuZm5ldGxpbmtfcXVl
-dWUgbmZuZXRsaW5rX2xvZyBuZm5ldGxpbmsgYmx1ZXRvb3RoIHJma2lsbA0KPiBycGNzZWNfZ3Nz
-X2tyYjUgbmZzdjQgbmZzIGZzY2FjaGUgYmluZm10X21pc2MgYXJjNCBtZDQgbmxzX3V0ZjggY2lm
-cw0KPiBjY20gZG5zX3Jlc29sdmVyIHJwY3JkbWEgaWJfaXNlcnQgaXNjc2lfdGFyZ2V0X21vZCBp
-Yl9pc2VyIHJkbWFfY20NCj4gaXdfY20gbGliaXNjc2kgc2NzaV90cmFuc3BvcnRfaXNjc2kgaWJf
-c3JwdCB0YXJnZXRfY29yZV9tb2QgaWJfc3JwDQo+IHNjc2lfdHJhbnNwb3J0X3NycCBpYl9pcG9p
-YiBpYl91Y20gaWJfdXZlcmJzIGliX3VtYWQgaWJfY20gaWJfY29yZQ0KPiBubHNfa29pOF91IG5s
-c19jcDkzMiB0c19rbXAgbmZfY29ubnRyYWNrX2lwdjQgbmZfZGVmcmFnX2lwdjQNCj4gbmZfY29u
-bnRyYWNrIGNyY3QxMGRpZl9wY2xtdWwgY3JjMzJfcGNsbXVsIGdoYXNoX2NsbXVsbmlfaW50ZWwg
-cGNzcGtyDQo+IHZpcnRpb19iYWxsb29uIHBwZGV2IHZpcnRpb19ybmcgcGFycG9ydF9wYyBpMmNf
-cGlpeDQgcGFycG9ydA0KPiBhY3BpX2NwdWZyZXEgbmZzZCBhdXRoX3JwY2dzcyBuZnNfYWNsIGxv
-Y2tkIGdyYWNlIHN1bnJwYyB4ZnMNCj4gbGliY3JjMzJjIGF0YV9nZW5lcmljIHBhdGFfYWNwaSB2
-aXJ0aW9fYmxrIHZpcnRpb19uZXQgY2lycnVzDQo+IGRybV9rbXNfaGVscGVyIHN5c2NvcHlhcmVh
-IHN5c2ZpbGxyZWN0IHN5c2ltZ2JsdCBmYl9zeXNfZm9wcw0KPiBjcmMzMmNfaW50ZWwgYXRhX3Bp
-aXggdHRtIGxpYmF0YSBkcm0gc2VyaW9fcmF3DQo+IFsgMzAwMC42NDUyNDVdwqDCoGkyY19jb3Jl
-IHZpcnRpb19wY2kgdmlydGlvX3JpbmcgdmlydGlvIGZsb3BweQ0KPiBkbV9taXJyb3IgZG1fcmVn
-aW9uX2hhc2ggZG1fbG9nIGRtX21vZCBbbGFzdCB1bmxvYWRlZDogeHRfdTMyXQ0KPiBbIDMwMDAu
-NjQ2MzYwXSBDUFU6IDEgUElEOiAyNjQwMiBDb21tOiBkYXRlIE5vdCB0YWludGVkIDQuMTEuMC0N
-Cj4gcmM3LjEuZWw3LnRlc3QueDg2XzY0ICMxDQo+IFsgMzAwMC42NDcwOTJdIEhhcmR3YXJlIG5h
-bWU6IFJlZCBIYXQgS1ZNLCBCSU9TIDAuNS4xIDAxLzAxLzIwMTENCj4gWyAzMDAwLjY0NzYzOF0g
-dGFzazogZmZmZjg4MDA0MTVhZGEwMCB0YXNrLnN0YWNrOiBmZmZmYzkwMDAwZmYwMDAwDQo+IFsg
-MzAwMC42NDgyMDddIFJJUDogMDAxMDpwbmZzX3B1dF9sc2VnKzB4MjkvMHgxMDAgW25mc3Y0XQ0K
-PiBbIDMwMDAuNjQ4Njk2XSBSU1A6IDAwMTg6ZmZmZmM5MDAwMGZmMzliOCBFRkxBR1M6IDAwMDEw
-MjQ2DQo+IFsgMzAwMC42NDkxOTNdIFJBWDogMDAwMDAwMDAwMDAwMDAwMCBSQlg6IGZmZmZmZmZm
-ZmZmZmZmZjQgUkNYOg0KPiAwMDAwMDAwMDAwMGQ0M2JlDQo+IFsgMzAwMC42NDk4NTldIFJEWDog
-MDAwMDAwMDAwMDBkNDNiZCBSU0k6IDAwMDAwMDAwMDAwMDAwMDAgUkRJOg0KPiBmZmZmZmZmZmZm
-ZmZmZmY0DQo+IFsgMzAwMC42NTA1MzBdIFJCUDogZmZmZmM5MDAwMGZmMzlkOCBSMDg6IDAwMDAw
-MDAwMDAwMWUzMjAgUjA5Og0KPiBmZmZmZmZmZmEwNWMzNWNlDQo+IFsgMzAwMC42NTEyMDNdIFIx
-MDogZmZmZjg4MDA3ZmQxZTMyMCBSMTE6IGZmZmZlYTAwMDEyODNkODAgUjEyOg0KPiAwMDAwMDAw
-MDAxNDAwMDQwDQo+IFsgMzAwMC42NTE4NzVdIFIxMzogZmZmZjg4MDA0Zjc3ZDlmMCBSMTQ6IGZm
-ZmZjOTAwMDBmZjNjZDggUjE1Og0KPiBmZmZmODgwMDQxN2FkZTAwDQo+IFsgMzAwMC42NTI1NDZd
-IEZTOsKgwqAwMDAwN2ZhYzRkNWNkNzQwKDAwMDApIEdTOmZmZmY4ODAwN2ZkMDAwMDAoMDAwMCkN
-Cj4ga25sR1M6MDAwMDAwMDAwMDAwMDAwMA0KPiBbIDMwMDAuNjUzMzA0XSBDUzrCoMKgMDAxMCBE
-UzogMDAwMCBFUzogMDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMNCj4gWyAzMDAwLjY1Mzg0OV0g
-Q1IyOiAwMDAwMDAwMDAwMDAwMDNjIENSMzogMDAwMDAwMDA0ZjA4MDAwMCBDUjQ6DQo+IDAwMDAw
-MDAwMDAwNDA2ZTANCj4gWyAzMDAwLjY1NDUyN10gQ2FsbCBUcmFjZToNCj4gWyAzMDAwLjY1NDc3
-MV3CoMKgZmxfcG5mc191cGRhdGVfbGF5b3V0LmNvbnN0cHJvcC4yMCsweDEwYy8weDE1MA0KPiBb
-bmZzX2xheW91dF9uZnN2NDFfZmlsZXNdDQo+IFsgMzAwMC42NTU1MDVdwqDCoGZpbGVsYXlvdXRf
-cGdfaW5pdF93cml0ZSsweDIxZC8weDI3MA0KPiBbbmZzX2xheW91dF9uZnN2NDFfZmlsZXNdDQo+
-IFsgMzAwMC42NTYxOTVdwqDCoF9fbmZzX3BhZ2Vpb19hZGRfcmVxdWVzdCsweDExYy8weDQ5MCBb
-bmZzXQ0KPiBbIDMwMDAuNjU2Njk4XcKgwqBuZnNfcGFnZWlvX2FkZF9yZXF1ZXN0KzB4YWMvMHgy
-NjAgW25mc10NCj4gWyAzMDAwLjY1NzE4MF3CoMKgbmZzX2RvX3dyaXRlcGFnZSsweDEwOS8weDJl
-MCBbbmZzXQ0KPiBbIDMwMDAuNjU3NjE2XcKgwqBuZnNfd3JpdGVwYWdlc19jYWxsYmFjaysweDE2
-LzB4MzAgW25mc10NCj4gWyAzMDAwLjY1ODA5Nl3CoMKgd3JpdGVfY2FjaGVfcGFnZXMrMHgyNmYv
-MHg1MTANCj4gWyAzMDAwLjY1ODQ5NV3CoMKgPyBuZnNfZG9fd3JpdGVwYWdlKzB4MmUwLzB4MmUw
-IFtuZnNdDQo+IFsgMzAwMC42NTg5NDZdwqDCoD8gX3Jhd19zcGluX3VubG9ja19iaCsweDFlLzB4
-MjANCj4gWyAzMDAwLjY1OTM1N13CoMKgPyB3Yl93YWtldXBfZGVsYXllZCsweDVmLzB4NzANCj4g
-WyAzMDAwLjY1OTc0OF3CoMKgPyBfX21hcmtfaW5vZGVfZGlydHkrMHgyZWIvMHgzNjANCj4gWyAz
-MDAwLjY2MDE3MF3CoMKgbmZzX3dyaXRlcGFnZXMrMHg4NC8weGQwIFtuZnNdDQo+IFsgMzAwMC42
-NjA1NzVdwqDCoD8gbmZzX3VwZGF0ZXBhZ2UrMHg1NzEvMHhiNzAgW25mc10NCj4gWyAzMDAwLjY2
-MTAxMl3CoMKgZG9fd3JpdGVwYWdlcysweDFlLzB4MzANCj4gWyAzMDAwLjY2MTM1OF3CoMKgX19m
-aWxlbWFwX2ZkYXRhd3JpdGVfcmFuZ2UrMHhjNi8weDEwMA0KPiBbIDMwMDAuNjYxODE5XcKgwqBm
-aWxlbWFwX3dyaXRlX2FuZF93YWl0X3JhbmdlKzB4NDEvMHg5MA0KPiBbIDMwMDAuNjYyMjkyXcKg
-wqBuZnNfZmlsZV9mc3luYysweDM0LzB4MWYwIFtuZnNdDQo+IFsgMzAwMC42NjI3MDRdwqDCoHZm
-c19mc3luY19yYW5nZSsweDNkLzB4YjANCj4gWyAzMDAwLjY2MzA2NV3CoMKgdmZzX2ZzeW5jKzB4
-MWMvMHgyMA0KPiBbIDMwMDAuNjYzMzg1XcKgwqBuZnM0X2ZpbGVfZmx1c2grMHg1Ny8weDgwIFtu
-ZnN2NF0NCj4gWyAzMDAwLjY2MzgxM13CoMKgZmlscF9jbG9zZSsweDJmLzB4NzANCj4gWyAzMDAw
-LjY2NDEzMl3CoMKgX19jbG9zZV9mZCsweDlhLzB4YzANCj4gWyAzMDAwLjY2NDQ1M13CoMKgU3lT
-X2Nsb3NlKzB4MjMvMHg1MA0KPiBbIDMwMDAuNjY0Nzg1XcKgwqBkb19zeXNjYWxsXzY0KzB4Njcv
-MHgxODANCj4gWyAzMDAwLjY2NTE2Ml3CoMKgZW50cnlfU1lTQ0FMTDY0X3Nsb3dfcGF0aCsweDI1
-LzB4MjUNCj4gWyAzMDAwLjY2NTYwMF0gUklQOiAwMDMzOjB4N2ZhYzRkMGUxZTkwDQo+IFsgMzAw
-MC42NjU5NDZdIFJTUDogMDAyYjowMDAwN2ZmZDU0ZTkwYzg4IEVGTEFHUzogMDAwMDAyNDYgT1JJ
-R19SQVg6DQo+IDAwMDAwMDAwMDAwMDAwMDMNCj4gWyAzMDAwLjY2NjY3OV0gUkFYOiBmZmZmZmZm
-ZmZmZmZmZmRhIFJCWDogMDAwMDdmYWM0ZDNiNTQwMCBSQ1g6DQo+IDAwMDA3ZmFjNGQwZTFlOTAN
-Cj4gWyAzMDAwLjY2NzM0OV0gUkRYOiAwMDAwMDAwMDAwMDAwMDAwIFJTSTogMDAwMDdmYWM0ZDVk
-OTAwMCBSREk6DQo+IDAwMDAwMDAwMDAwMDAwMDENCj4gWyAzMDAwLjY2ODAzMV0gUkJQOiAwMDAw
-MDAwMDAwMDAwMDAwIFIwODogMDAwMDdmYWM0ZDNiNmEwMCBSMDk6DQo+IDAwMDA3ZmFjNGQ1Y2Q3
-NDANCj4gWyAzMDAwLjY2ODcwOV0gUjEwOiAwMDAwN2ZmZDU0ZTkwOWUwIFIxMTogMDAwMDAwMDAw
-MDAwMDI0NiBSMTI6DQo+IDAwMDAwMDAwMDAwMDAwMDANCj4gWyAzMDAwLjY2OTM4NV0gUjEzOiAw
-MDAwN2ZhYzRkM2I1ZTgwIFIxNDogMDAwMDAwMDAwMDAwMDAwMCBSMTU6DQo+IDAwMDAwMDAwMDAw
-MDAwMDANCj4gWyAzMDAwLjY3MDA2MV0gQ29kZTogMDAgMDAgNjYgNjYgNjYgNjYgOTAgNTUgNDgg
-ODUgZmYgNDggODkgZTUgNDEgNTYNCj4gNDEgNTUgNDEgNTQgNTMgNDggODkgZmIgMGYgODQgOTcg
-MDAgMDAgMDAgZjYgMDUgMTYgOGYgYmMgZmYgMTAgMGYgODUNCj4gYTYgMDAgMDAgMDAgPDRjPiA4
-YiA2MyA0OCA0OCA4ZCA3YiAzOCA0OSA4YiA4NCAyNCA5MCAwMCAwMCAwMCA0YyA4ZA0KPiBhOCA4
-OCAwMA0KPiBbIDMwMDAuNjcxODMxXSBSSVA6IHBuZnNfcHV0X2xzZWcrMHgyOS8weDEwMCBbbmZz
-djRdIFJTUDoNCj4gZmZmZmM5MDAwMGZmMzliOA0KPiBbIDMwMDAuNjcyNDYyXSBDUjI6IDAwMDAw
-MDAwMDAwMDAwM2MNCj4gDQo+IFNpZ25lZC1vZmYtYnk6IEFydGVtIFNhdmtvdiA8YXNhdmtvdkBy
-ZWRoYXQuY29tPg0KPiAtLS0NCj4gwqBmcy9uZnMvZmlsZWxheW91dC9maWxlbGF5b3V0LmMgfCAy
-IC0tDQo+IMKgMSBmaWxlIGNoYW5nZWQsIDIgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0
-IGEvZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jDQo+IGIvZnMvbmZzL2ZpbGVsYXlvdXQv
-ZmlsZWxheW91dC5jDQo+IGluZGV4IGFjZDMwYmEuLmE1M2QxYjcgMTAwNjQ0DQo+IC0tLSBhL2Zz
-L25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXQuYw0KPiArKysgYi9mcy9uZnMvZmlsZWxheW91dC9m
-aWxlbGF5b3V0LmMNCj4gQEAgLTkyNCw4ICs5MjQsNiBAQCBmbF9wbmZzX3VwZGF0ZV9sYXlvdXQo
-c3RydWN0IGlub2RlICppbm8sDQo+IMKgCWlmIChzdGF0dXMpDQo+IMKgCQlsc2VnID0gRVJSX1BU
-UihzdGF0dXMpOw0KPiDCoG91dDoNCj4gLQlpZiAoSVNfRVJSKGxzZWcpKQ0KPiAtCQlwbmZzX3B1
-dF9sc2VnKGxzZWcpOw0KPiDCoAlyZXR1cm4gbHNlZzsNCj4gwqB9DQo+IA0KDQpJIHN0cm9uZ2x5
-IHN1c3BlY3QgdGhhdCAicG5mc19wdXRfbHNlZygpIiBpcyBzdXBwb3NlZCB0byBiZSBwYXJ0IG9m
-IHRoZQ0KJ2lmIChzdGF0dXMpJyBjbGF1c2UgYWJvdmUgaXQuDQpJT1c6IA0KDQoJaWYgKHN0YXR1
-cykgew0KCQlwbmZzX3B1dF9sc2VnKGxzZWcpOw0KCQlsc2VnID0gRVJSX1BUUihzdGF0dXMpOw0K
-CX0NCg0KJ2NvcyB0aGF0IHdvdWxkIG1ha2Ugc2Vuc2UuDQoNCkNoZWVycw0KICBUcm9uZA0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURh
-dGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+On Thu, Apr 20, 2017 at 6:06 PM, Amir Goldstein <amir73il@gmail.com> wrote:
+> On Thu, Apr 20, 2017 at 5:20 PM, Jan Kara <jack@suse.cz> wrote:
+>> On Thu 20-04-17 14:33:04, Amir Goldstein wrote:
+>>>
+>>> Sorry I messed up the previous patch. please try this one:
+>>>
+>>> diff --git a/fs/notify/fanotify/fanotify_user.c
+>>> b/fs/notify/fanotify/fanotify_user.c
+>>> index 2b37f27..7864354 100644
+>>> --- a/fs/notify/fanotify/fanotify_user.c
+>>> +++ b/fs/notify/fanotify/fanotify_user.c
+>>> @@ -295,6 +295,16 @@ static ssize_t fanotify_read(struct file *file,
+>>> char __user *buf,
+>>>                 }
+>>>
+>>>                 ret = copy_event_to_user(group, kevent, buf);
+>>> +               if (unlikely(ret == -EOPENSTALE)) {
+>>> +                       /*
+>>> +                        * We cannot report events with stale fd so drop it.
+>>> +                        * Setting ret to 0 will continue the event loop and
+>>> +                        * do the right thing if there are no more events to
+>>> +                        * read (i.e. return bytes read, -EAGAIN or wait).
+>>> +                        */
+>>> +                       ret = 0;
+>>> +               }
+>>> +
+>>>                 /*
+>>>                  * Permission events get queued to wait for response.  Other
+>>>                  * events can be destroyed now.
+>>> @@ -305,7 +315,7 @@ static ssize_t fanotify_read(struct file *file,
+>>> char __user *buf,
+>>>                                 break;
+>>>                 } else {
+>>>  #ifdef CONFIG_FANOTIFY_ACCESS_PERMISSIONS
+>>> -                       if (ret < 0) {
+>>> +                       if (ret <= 0) {
+>>>                                 FANOTIFY_PE(kevent)->response = FAN_DENY;
+>>>                                 wake_up(&group->fanotify_data.access_waitq);
+>>>                                 break;
+>>
+>> I don't think you want to break out of the reading loop when ret == 0 and
+>> the code might be more readable as:
+>>
+>>                if (!(kevent->mask & FAN_ALL_PERM_EVENTS)) {
+>>                         fsnotify_destroy_event(group, kevent);
+>>                } else {
+>> #ifdef CONFIG_FANOTIFY_ACCESS_PERMISSIONS
+>>                         if (ret <= 0) {
+>>                                 FANOTIFY_PE(kevent)->response = FAN_DENY;
+>>                                 wake_up(&group->fanotify_data.access_waitq);
+>>                         } else {
+>>                                 spin_lock(&group->notification_lock);
+>>                                 list_add_tail(&kevent->list,
+>>                                               &group->fanotify_data.access_list);
+>>                                 spin_unlock(&group->notification_lock);
+>>                         }
+>> #endif
+>>                 }
+>>                 if (ret < 0)
+>>                         break;
+>>
+>> Hmm?
+>>
+>
 
+On Fri, Apr 21, 2017 at 5:27 PM, Marko Rauhamaa
+<marko.rauhamaa@f-secure.com> wrote:
+> Amir Goldstein <amir73il@gmail.com>:
+>
+>> Did you notice Jan's comments on my patch? I had a bug that broke out
+>> of the loop. Without his corrections read will return even if there
+>> are more events in the queue.
+>
+> Yes, I now tried Jan's fix, and it did the trick.
+>
+> It will now take months or years before distros have a proper fix. In
+> the interim, I will absorb EOPENSTALE and schedule a reread in that
+> situation.
+>
+> Thank you both for your attention.
+>
+>
+
+Marko,
+
+Were you able to verify that both blocking and non-blocking mode work correctly?
+May I add your Tested-by and Reported-by tags?
+
+Thanks!
+Amir.
