@@ -1,109 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36008 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1426591AbdDVCo4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Apr 2017 22:44:56 -0400
-From: Artem Savkov <asavkov@redhat.com>
-To: trondmy@primarydata.com, andros@netapp.com
-Cc: anna.schumaker@netapp.com, jstancek@redhat.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Artem Savkov <asavkov@redhat.com>
-Subject: [PATCH v2] nfs/filelayout: fix NULL pointer dereference in fl_pnfs_update_layout()
-Date: Fri, 21 Apr 2017 21:35:51 +0200
-Message-Id: <1492803351-9000-1-git-send-email-asavkov@redhat.com>
-In-Reply-To: <1492786837.47403.1.camel@primarydata.com>
-References: <1492786837.47403.1.camel@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:26152 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1043450AbdDVDhu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 23:37:50 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] xprtrdma: use offset_in_page() macro
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1b5bf5bd903ad97138a3a86aa6bcb9b2fc142c6e.1492762974.git.geliangtang@gmail.com>
+Date: Fri, 21 Apr 2017 23:37:31 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <DB24E2C7-5CA1-49B7-A748-B3DE435018F5@oracle.com>
+References: <4dbc77ccaaed98b183cf4dba58a4fa325fd65048.1492758503.git.geliangtang@gmail.com> <1b5bf5bd903ad97138a3a86aa6bcb9b2fc142c6e.1492762974.git.geliangtang@gmail.com>
+To: Geliang Tang <geliangtang@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Calling pnfs_put_lset on an IS_ERR pointer results in a NULL pointer
-dereference like the one below. At the same time the check of retvalue
-of filelayout_check_deviceid() sets lseg to error, but does not free it
-before that.
 
-[ 3000.636161] BUG: unable to handle kernel NULL pointer dereference at 000000000000003c
-[ 3000.636970] IP: pnfs_put_lseg+0x29/0x100 [nfsv4]
-[ 3000.637420] PGD 4f23b067
-[ 3000.637421] PUD 4a0f4067
-[ 3000.637679] PMD 0
-[ 3000.637937]
-[ 3000.638287] Oops: 0000 [#1] SMP
-[ 3000.638591] Modules linked in: nfs_layout_nfsv41_files nfsv3 nfnetlink_queue nfnetlink_log nfnetlink bluetooth rfkill rpcsec_gss_krb5 nfsv4 nfs fscache binfmt_misc arc4 md4 nls_utf8 cifs ccm dns_resolver rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_core nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack crct10dif_pclmul crc32_pclmul ghash_clmulni_intel pcspkr virtio_balloon ppdev virtio_rng parport_pc i2c_piix4 parport acpi_cpufreq nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c ata_generic pata_acpi virtio_blk virtio_net cirrus drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops crc32c_intel ata_piix ttm libata drm serio_raw
-[ 3000.645245]  i2c_core virtio_pci virtio_ring virtio floppy dm_mirror dm_region_hash dm_log dm_mod [last unloaded: xt_u32]
-[ 3000.646360] CPU: 1 PID: 26402 Comm: date Not tainted 4.11.0-rc7.1.el7.test.x86_64 #1
-[ 3000.647092] Hardware name: Red Hat KVM, BIOS 0.5.1 01/01/2011
-[ 3000.647638] task: ffff8800415ada00 task.stack: ffffc90000ff0000
-[ 3000.648207] RIP: 0010:pnfs_put_lseg+0x29/0x100 [nfsv4]
-[ 3000.648696] RSP: 0018:ffffc90000ff39b8 EFLAGS: 00010246
-[ 3000.649193] RAX: 0000000000000000 RBX: fffffffffffffff4 RCX: 00000000000d43be
-[ 3000.649859] RDX: 00000000000d43bd RSI: 0000000000000000 RDI: fffffffffffffff4
-[ 3000.650530] RBP: ffffc90000ff39d8 R08: 000000000001e320 R09: ffffffffa05c35ce
-[ 3000.651203] R10: ffff88007fd1e320 R11: ffffea0001283d80 R12: 0000000001400040
-[ 3000.651875] R13: ffff88004f77d9f0 R14: ffffc90000ff3cd8 R15: ffff8800417ade00
-[ 3000.652546] FS:  00007fac4d5cd740(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
-[ 3000.653304] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[ 3000.653849] CR2: 000000000000003c CR3: 000000004f080000 CR4: 00000000000406e0
-[ 3000.654527] Call Trace:
-[ 3000.654771]  fl_pnfs_update_layout.constprop.20+0x10c/0x150 [nfs_layout_nfsv41_files]
-[ 3000.655505]  filelayout_pg_init_write+0x21d/0x270 [nfs_layout_nfsv41_files]
-[ 3000.656195]  __nfs_pageio_add_request+0x11c/0x490 [nfs]
-[ 3000.656698]  nfs_pageio_add_request+0xac/0x260 [nfs]
-[ 3000.657180]  nfs_do_writepage+0x109/0x2e0 [nfs]
-[ 3000.657616]  nfs_writepages_callback+0x16/0x30 [nfs]
-[ 3000.658096]  write_cache_pages+0x26f/0x510
-[ 3000.658495]  ? nfs_do_writepage+0x2e0/0x2e0 [nfs]
-[ 3000.658946]  ? _raw_spin_unlock_bh+0x1e/0x20
-[ 3000.659357]  ? wb_wakeup_delayed+0x5f/0x70
-[ 3000.659748]  ? __mark_inode_dirty+0x2eb/0x360
-[ 3000.660170]  nfs_writepages+0x84/0xd0 [nfs]
-[ 3000.660575]  ? nfs_updatepage+0x571/0xb70 [nfs]
-[ 3000.661012]  do_writepages+0x1e/0x30
-[ 3000.661358]  __filemap_fdatawrite_range+0xc6/0x100
-[ 3000.661819]  filemap_write_and_wait_range+0x41/0x90
-[ 3000.662292]  nfs_file_fsync+0x34/0x1f0 [nfs]
-[ 3000.662704]  vfs_fsync_range+0x3d/0xb0
-[ 3000.663065]  vfs_fsync+0x1c/0x20
-[ 3000.663385]  nfs4_file_flush+0x57/0x80 [nfsv4]
-[ 3000.663813]  filp_close+0x2f/0x70
-[ 3000.664132]  __close_fd+0x9a/0xc0
-[ 3000.664453]  SyS_close+0x23/0x50
-[ 3000.664785]  do_syscall_64+0x67/0x180
-[ 3000.665162]  entry_SYSCALL64_slow_path+0x25/0x25
-[ 3000.665600] RIP: 0033:0x7fac4d0e1e90
-[ 3000.665946] RSP: 002b:00007ffd54e90c88 EFLAGS: 00000246 ORIG_RAX: 0000000000000003
-[ 3000.666679] RAX: ffffffffffffffda RBX: 00007fac4d3b5400 RCX: 00007fac4d0e1e90
-[ 3000.667349] RDX: 0000000000000000 RSI: 00007fac4d5d9000 RDI: 0000000000000001
-[ 3000.668031] RBP: 0000000000000000 R08: 00007fac4d3b6a00 R09: 00007fac4d5cd740
-[ 3000.668709] R10: 00007ffd54e909e0 R11: 0000000000000246 R12: 0000000000000000
-[ 3000.669385] R13: 00007fac4d3b5e80 R14: 0000000000000000 R15: 0000000000000000
-[ 3000.670061] Code: 00 00 66 66 66 66 90 55 48 85 ff 48 89 e5 41 56 41 55 41 54 53 48 89 fb 0f 84 97 00 00 00 f6 05 16 8f bc ff 10 0f 85 a6 00 00 00 <4c> 8b 63 48 48 8d 7b 38 49 8b 84 24 90 00 00 00 4c 8d a8 88 00
-[ 3000.671831] RIP: pnfs_put_lseg+0x29/0x100 [nfsv4] RSP: ffffc90000ff39b8
-[ 3000.672462] CR2: 000000000000003c
+> On Apr 21, 2017, at 9:21 PM, Geliang Tang <geliangtang@gmail.com> wrote:
+> 
+> Use offset_in_page() macro instead of open-coding.
+> 
+> Signed-off-by: Geliang Tang <geliangtang@gmail.com>
+> ---
+> net/sunrpc/xprtrdma/rpc_rdma.c        | 4 ++--
+> net/sunrpc/xprtrdma/svc_rdma_sendto.c | 3 +--
+> 2 files changed, 3 insertions(+), 4 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index a044be2..429beea 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -540,7 +540,7 @@ rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
+> 			goto out;
+> 
+> 		page = virt_to_page(xdr->tail[0].iov_base);
+> -		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
+> +		page_base = offset_in_page(xdr->tail[0].iov_base);
+> 
+> 		/* If the content in the page list is an odd length,
+> 		 * xdr_write_pages() has added a pad at the beginning
+> @@ -587,7 +587,7 @@ rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
+> 	 */
+> 	if (xdr->tail[0].iov_len) {
+> 		page = virt_to_page(xdr->tail[0].iov_base);
+> -		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
+> +		page_base = offset_in_page(xdr->tail[0].iov_base);
+> 		len = xdr->tail[0].iov_len;
+> 
+> map_tail:
 
-Signed-off-by: Artem Savkov <asavkov@redhat.com>
----
- fs/nfs/filelayout/filelayout.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+There are several other sites that use PAGE_MASK in
+rpc_rdma.c. Should those be included in this patch?
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index acd30ba..fb39fd8 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -921,11 +921,11 @@ fl_pnfs_update_layout(struct inode *ino,
- 	fl = FILELAYOUT_LSEG(lseg);
- 
- 	status = filelayout_check_deviceid(lo, fl, gfp_flags);
--	if (status)
-+	if (status) {
-+		pnfs_put_lseg(lseg);
- 		lseg = ERR_PTR(status);
-+	}
- out:
--	if (IS_ERR(lseg))
--		pnfs_put_lseg(lseg);
- 	return lseg;
- }
- 
--- 
-2.7.4
+Do you have a way to test this change? If not I
+can take it (once the above comment is addressed),
+run it through the usual battery of NFS/RDMA
+testing, and then pass it along to Anna.
+
+
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index 1736337..60b3f29 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -306,12 +306,11 @@ static int svc_rdma_dma_map_buf(struct svcxprt_rdma *rdma,
+> 				unsigned char *base,
+> 				unsigned int len)
+> {
+> -	unsigned long offset = (unsigned long)base & ~PAGE_MASK;
+> 	struct ib_device *dev = rdma->sc_cm_id->device;
+> 	dma_addr_t dma_addr;
+> 
+> 	dma_addr = ib_dma_map_page(dev, virt_to_page(base),
+> -				   offset, len, DMA_TO_DEVICE);
+> +				   offset_in_page(base), len, DMA_TO_DEVICE);
+> 	if (ib_dma_mapping_error(dev, dma_addr))
+> 		return -EIO;
+> 
+
+This hunk conflicts with a rewrite of svc_rdma_sendto.c that
+Bruce has already accepted for v4.12. I would prefer this
+be dropped.
+
+The rewritten code also has this issue. I can submit a patch
+separately that adds offset_in_page in the appropriate place.
+
+
+--
+Chuck Lever
+
+
 
