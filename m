@@ -1,84 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54802 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1042338AbdDUVMx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Apr 2017 17:12:53 -0400
-Date: Fri, 21 Apr 2017 17:12:53 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org, Neil Brown <neilb@suse.de>
-Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170421211253.GE19775@fieldses.org>
-References: <20170414150440.GA5362@fieldses.org>
- <20170414150940.GB5362@fieldses.org>
- <87h91mtvdb.fsf@notabene.neil.brown.name>
- <20170418171351.GF6208@fieldses.org>
- <20170420161935.GB4782@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170420161935.GB4782@fieldses.org>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:34099 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1042996AbdDVBWj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Apr 2017 21:22:39 -0400
+From: Geliang Tang <geliangtang@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Sagi Grimberg <sagi@grimberg.me>
+Cc: Geliang Tang <geliangtang@gmail.com>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] xprtrdma: use offset_in_page() macro
+Date: Sat, 22 Apr 2017 09:21:14 +0800
+Message-Id: <1b5bf5bd903ad97138a3a86aa6bcb9b2fc142c6e.1492762974.git.geliangtang@gmail.com>
+In-Reply-To: <4dbc77ccaaed98b183cf4dba58a4fa325fd65048.1492758503.git.geliangtang@gmail.com>
+References: <4dbc77ccaaed98b183cf4dba58a4fa325fd65048.1492758503.git.geliangtang@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 20, 2017 at 12:19:35PM -0400, J. Bruce Fields wrote:
-> On Tue, Apr 18, 2017 at 01:13:51PM -0400, J. Bruce Fields wrote:
-> > On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
-> > >  I can't say that I like this patch at all.
-> > > 
-> > > The problem is that:
-> > > 
-> > > 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
-> > > 				       * We assume one is at most one page
-> > > 				       */
-> > > 
-> > > this assumption is never verified.
-> > > To my mind, the "obvious" way to verify this assumption is that an
-> > > attempt to generate a multi-page reply should fail if there was a
-> > > multi-page request.
-> > 
-> > A third option, by the way, which Ari Kauppi argued for, is adding a
-> > null check each time we increment rq_next_page, since we seem to arrange
-> > for the page array to always be NULL-terminated.
-> > 
-> > > Failing if there was a little bit of extra noise at the end of the
-> > > request seems harsher than necessary, and could result in a regression.
-> > 
-> > You're worrying there might be a weird old client out there somewhere?
-> > I guess it seems like a small enough risk to me.  I'm more worried the
-> > extra garbage might violate assumptions elsewhere in the code.
-> > 
-> > But, this looks good too:
-> 
-> But, I'm not too happy about putting that NFSv2/v3-specific check in
-> common rpc code.
+Use offset_in_page() macro instead of open-coding.
 
-Well, but it should work just as well in nfsd_dispatch, I think?
-(Untested).  So, maybe that's simplest as a first step:
+Signed-off-by: Geliang Tang <geliangtang@gmail.com>
+---
+ net/sunrpc/xprtrdma/rpc_rdma.c        | 4 ++--
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c | 3 +--
+ 2 files changed, 3 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 31e1f9593457..b6298d30a01f 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -759,6 +759,22 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
- 				rqstp->rq_vers, rqstp->rq_proc);
- 	proc = rqstp->rq_procinfo;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index a044be2..429beea 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -540,7 +540,7 @@ rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
+ 			goto out;
  
-+	if (rqstp->rq_vers < 4 &&
-+	    (proc->pc_xdrressize == 0
-+			|| proc->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE))
-+		&& rqstp->rq_arg.len > PAGE_SIZE) {
-+		/*
-+		 * NFSv2 and v3 assume that an operation may have either a
-+		 * large argument, or a large reply, but never both.
-+		 *
-+		 * NFSv4 may handle compounds with both argument and
-+		 * reply larger than a reply; it has more xdr careful
-+		 * xdr decoding which can handle such calls safely.
-+		 */
-+		dprintk("nfsd: NFSv%d argument too large\n", rqstp->rq_vers);
-+		*statp = rpc_garbage_args;
-+		return 1;
-+	}
- 	/*
- 	 * Give the xdr decoder a chance to change this if it wants
- 	 * (necessary in the NFSv4.0 compound case)
+ 		page = virt_to_page(xdr->tail[0].iov_base);
+-		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
++		page_base = offset_in_page(xdr->tail[0].iov_base);
+ 
+ 		/* If the content in the page list is an odd length,
+ 		 * xdr_write_pages() has added a pad at the beginning
+@@ -587,7 +587,7 @@ rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
+ 	 */
+ 	if (xdr->tail[0].iov_len) {
+ 		page = virt_to_page(xdr->tail[0].iov_base);
+-		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
++		page_base = offset_in_page(xdr->tail[0].iov_base);
+ 		len = xdr->tail[0].iov_len;
+ 
+ map_tail:
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 1736337..60b3f29 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -306,12 +306,11 @@ static int svc_rdma_dma_map_buf(struct svcxprt_rdma *rdma,
+ 				unsigned char *base,
+ 				unsigned int len)
+ {
+-	unsigned long offset = (unsigned long)base & ~PAGE_MASK;
+ 	struct ib_device *dev = rdma->sc_cm_id->device;
+ 	dma_addr_t dma_addr;
+ 
+ 	dma_addr = ib_dma_map_page(dev, virt_to_page(base),
+-				   offset, len, DMA_TO_DEVICE);
++				   offset_in_page(base), len, DMA_TO_DEVICE);
+ 	if (ib_dma_mapping_error(dev, dma_addr))
+ 		return -EIO;
+ 
+-- 
+2.9.3
+
