@@ -1,44 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from m50-135.163.com ([123.125.50.135]:49652 "EHLO m50-135.163.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1427496AbdDWGt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 23 Apr 2017 02:49:59 -0400
-From: Pan Bian <bianpan2016@163.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Pan Bian <bianpan2016@163.com>
-Subject: [PATCH 1/1] NFSv4: check return value of xdr_inline_decode
-Date: Sun, 23 Apr 2017 14:49:41 +0800
-Message-Id: <1492930181-9115-1-git-send-email-bianpan2016@163.com>
+Received: from mail-wr0-f181.google.com ([209.85.128.181]:34033 "EHLO
+        mail-wr0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1044497AbdDWJgN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Apr 2017 05:36:13 -0400
+Subject: Re: [PATCH 3/4] nfs: remove the objlayout driver
+To: Trond Myklebust <trondmy@primarydata.com>
+References: <20170412160109.10598-1-hch@lst.de>
+ <20170412160109.10598-4-hch@lst.de>
+ <1492719505.82584.3.camel@primarydata.com>
+ <272aea55-0738-5de2-ca97-414e13b478af@electrozaur.com>
+ <B6CCD2A9-4691-45DC-AD60-E9A2ECDE22D3@primarydata.com>
+Cc: hch <hch@lst.de>, Martin Petersen <martin.petersen@oracle.com>,
+        Jens Axboe <axboe@kernel.dk>,
+        "linux-scsi@vger.kernel.org" <linux-scsi@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+From: Boaz Harrosh <ooo@electrozaur.com>
+Message-ID: <e253b5f5-d241-9391-dbeb-8e5f6b25b6c0@electrozaur.com>
+Date: Sun, 23 Apr 2017 12:36:09 +0300
+MIME-Version: 1.0
+In-Reply-To: <B6CCD2A9-4691-45DC-AD60-E9A2ECDE22D3@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Function xdr_inline_decode() will return a NULL pointer if the input
-buffer does not have long enough buffer to decode nbytes of data.
-However, in function decode_op_map(), the return value of
-xdr_inline_decode() is not validated before it is used. This patch adds
-a check to the return value of xdr_inline_decode().
+On 04/21/2017 05:00 PM, Trond Myklebust wrote:
+> Maintenance is not development. It’s about doing all the followup
+> _after_ the feature is declared to be developed. That’s been missing
+> for quite some time in the case of the OSD pNFS code, which is why
+> I’m not even bothering to consider staging. If you are saying you are
+> still maintaining exofs, and want to continue doing so, then great,
+> but note that there is a file called BUGS in that directory that has
+> been untouched since 2008, and that’s why I thing staging is a good
+> idea.
+> 
 
-Signed-off-by: Pan Bian <bianpan2016@163.com>
----
- fs/nfs/nfs4xdr.c | 2 ++
- 1 file changed, 2 insertions(+)
+No, the BUGS file is just stale. As you said was not ever updated. All
+the bugs (1) in there do no longer exist for a long long time.
+I will send a patch to remove the file.
 
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 80ce289..81afbbd 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5579,6 +5579,8 @@ static int decode_op_map(struct xdr_stream *xdr, struct nfs4_op_map *op_map)
- 	unsigned int i;
- 
- 	p = xdr_inline_decode(xdr, 4);
-+	if (!p)
-+		return -EIO;
- 	bitmap_words = be32_to_cpup(p++);
- 	if (bitmap_words > NFS4_OP_MAP_NUM_WORDS)
- 		return -EIO;
--- 
-1.9.1
+Yes I maintain this fs. It has the complete fixture list, of what was
+first intended. I keep running it every major kernel release to make
+sure it actually runs, and there are no regressions.
 
+If this FS stands in the way of any new development please anyone
+contact me and I will help in the conversion. Of exofs and the
+osd-uld.
+
+Thanks
+Boaz
 
