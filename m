@@ -1,334 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from venus.the-fa.org ([81.144.133.100]:6133 "EHLO venus.the-fa.org"
+Received: from mx1.redhat.com ([209.132.183.28]:44876 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S972958AbdDXQL5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Apr 2017 12:11:57 -0400
-From: Martin Burnell <Martin.Burnell@thefa.com>
-To: Martin Burnell <Martin.Burnell@thefa.com>
-Subject: RE: IT Notification 
-Date: Mon, 24 Apr 2017 15:56:31 +0000
-Message-ID: <86FB6D04EED1044C988A76299CA11BF1A271FD3E@FBA01MBX02.fa.ds.com>
-References: <86FB6D04EED1044C988A76299CA11BF1A2719A08@FBA01MBX02.fa.ds.com>
-In-Reply-To: <86FB6D04EED1044C988A76299CA11BF1A2719A08@FBA01MBX02.fa.ds.com>
-Content-Type: text/plain; charset="iso-8859-1"
-MIME-Version: 1.0
+        id S974818AbdDXQla (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Apr 2017 12:41:30 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 72F554AE9E
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Apr 2017 16:41:19 +0000 (UTC)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, bfields@redhat.com, chunwang@redhat.com
+Subject: [PATCH] nfsdcltrack: silence some expected errors
+Date: Mon, 24 Apr 2017 12:41:17 -0400
+Message-Id: <20170424164117.13119-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On a new install, we're unable to select from the parameters table, as
+it doesn't exist yet. The code is set up to log that fact at L_ERROR
+now, but it's an expected situation. Change it to log that at D_GENERAL
+instead.
+
+Reported-and-Tested-by: ChunYu Wang <chunwang@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/nfsdcltrack/sqlite.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/nfsdcltrack/sqlite.c b/utils/nfsdcltrack/sqlite.c
+index 54cd7487920b..1552eba4e35c 100644
+--- a/utils/nfsdcltrack/sqlite.c
++++ b/utils/nfsdcltrack/sqlite.c
+@@ -101,7 +101,7 @@ sqlite_query_schema_version(void)
+ 		"SELECT value FROM parameters WHERE key == \"version\";",
+ 		 -1, &stmt, NULL);
+ 	if (ret != SQLITE_OK) {
+-		xlog(L_ERROR, "Unable to prepare select statement: %s",
++		xlog(D_GENERAL, "Unable to prepare select statement: %s",
+ 			sqlite3_errmsg(dbh));
+ 		ret = 0;
+ 		goto out;
+@@ -110,7 +110,7 @@ sqlite_query_schema_version(void)
+ 	/* query schema version */
+ 	ret = sqlite3_step(stmt);
+ 	if (ret != SQLITE_ROW) {
+-		xlog(L_ERROR, "Select statement execution failed: %s",
++		xlog(D_GENERAL, "Select statement execution failed: %s",
+ 				sqlite3_errmsg(dbh));
+ 		ret = 0;
+ 		goto out;
+-- 
+2.9.3
 
-
-________________________________
-From: Martin Burnell
-Sent: 24 April 2017 16:16
-Subject: IT Notification
-
-
-Please click to confirm your account is up to date,
-https://owawebapp.000webhostapp.com/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-This communication contains information which is confidential, which may be privileged, and which is for the exclusive use of the intended recipient(s). If you are not an intended recipient please note that any distribution, disclosure, use or copying of any 
-part of this communication is strictly prohibited. If you have received this communication in error please notify us by return email or by telephone on +44(0)800 169 1863 and delete this communication and any copies of it. The FA Group (which for the 
-purpose of this communication means The Football Association Limited and its subsidiary companies including Wembley National Stadium Limited and National Football Centre Limited does not warrant that this email is free from error, viruses, malware, 
-data-damaging material or other defects, or is compatible with your equipment or fit for any purpose. The FA Group may monitor, intercept and block emails addressed to its users or take any other action in accordance with its email use policy. 
-Statements or opinions may be expressed in this communication that are personal to the sender and do not necessarily represent the views of The FA Group or any member of it. Unless expressly stated otherwise, no member of The FA Group shall be 
-bound by any contract or obligation purported to be created by this communication. 
-This communication has originated from the communications system of The FA Group. 
-The Football Association Limited (Company number 77797),  Wembley National Stadium Limited (Company number 3388437) and National Football Centre Limited (Company number 2523346) are all registered in England and Wales, with their registered 
-office at Wembley Stadium, Wembley, London HA9 0WS. For The FA Tel: +44(0)800 169 1863. http://www.thefa.com. For Wembley National Stadium Limited Tel: +44(0)800 169 2007 http://www.wembleystadium.com
