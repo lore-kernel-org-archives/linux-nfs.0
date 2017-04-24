@@ -1,49 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from helmsgagent01.f-secure.com ([193.110.108.21]:57164 "EHLO
-        helmsgagent01.f-secure.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1165670AbdDXHk4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Apr 2017 03:40:56 -0400
-From: Marko Rauhamaa <marko.rauhamaa@f-secure.com>
-To: Amir Goldstein <amir73il@gmail.com>
-CC: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@poochiereds.net>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        <linux-api@vger.kernel.org>
-Subject: Re: fanotify read returns with errno == EOPENSTALE
-References: <20170322193122.GV29622@ZenIV.linux.org.uk>
-        <CAOQ4uxhTd1j4HLgZFTdr7wwrhjzkVT8QeoXjca_AMZmYHF31sQ@mail.gmail.com>
-        <87a88c2yxq.fsf@drapion.f-secure.com>
-        <CAOQ4uxggwSDcjdyCDreKs7m0ZNy+6PQQNojm6qDU7mH2tQE-Bw@mail.gmail.com>
-        <1490270212.3921.10.camel@poochiereds.net>
-        <8760j02mfz.fsf@drapion.f-secure.com>
-        <CAOQ4uxja14p02jQurLTGv_fHrs+UBa5qfacrgY_-7tyv6UJqdw@mail.gmail.com>
-        <87lgqwa4tg.fsf@drapion.f-secure.com>
-        <CAOQ4uxirSfVVYBexXrWccDHnE5oqxNgUh3-X5Ey1w4R=nHXDjA@mail.gmail.com>
-        <CAOQ4uxjA8Z7wnwuHFCKeKT1xz0Gh-qS40Y6cfPi3fAM0MKsRuQ@mail.gmail.com>
-        <20170420142035.GE22135@quack2.suse.cz>
-        <CAOQ4uxgAOJjWP6PHY6WgOkNK0vmaTWnFZN+Jvea7zpjJ_VU8Bw@mail.gmail.com>
-        <CAOQ4uxgkXz+8=m2o_faAh2g2Z21KhAf67WckgPNWhktz1=DaWA@mail.gmail.com>
-Date: Mon, 24 Apr 2017 10:40:50 +0300
-In-Reply-To: <CAOQ4uxgkXz+8=m2o_faAh2g2Z21KhAf67WckgPNWhktz1=DaWA@mail.gmail.com>
-        (Amir Goldstein's message of "Sat, 22 Apr 2017 10:22:20 +0300")
-Message-ID: <87shky6ynx.fsf@drapion.f-secure.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43418 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1169692AbdDXMQX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Apr 2017 08:16:23 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Anna Schumaker" <anna.schumaker@netapp.com>,
+        "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Callback threads not getting cleaned up
+Date: Mon, 24 Apr 2017 08:16:16 -0400
+Message-ID: <50B1D6E0-A38B-4B16-AAF1-3C6B9ED2A905@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Amir Goldstein <amir73il@gmail.com>:
+Hi Anna and Trond,
 
-> Were you able to verify that both blocking and non-blocking mode work
-> correctly? May I add your Tested-by and Reported-by tags?
+We've had some complaints on v4.9/v4.10 about NFSv4 callback threads not 
+getting cleaned up:
 
-I have only verified the nonblocking case in my tests (which are by no
-means extensive). The reported issue can no longer be reproduced with
-the patched kernel, and the regular OPEN_PERM function is still
-operational.
+https://bugzilla.redhat.com/show_bug.cgi?id=1427493
 
-Feel free to add me to the tags.
+I think the problem started with bb6aeba736ba NFSv4.x: Switch to using 
+svc_set_num_threads() to manage the callback threads.
 
+I just ran a quick test on the testing branch, and this problem 
+persists.  I also tested with Kinglong Mee's two patches:
 
-Marko
+[PATCH v2 1/2] NFSv4.x/callback: Create the callback service through 
+svc_create_pooled
+Message-ID: <322d5c7d-d3b4-1e02-de3f-8e1a900cb150@gmail.com>
+
+and
+
+[PATCH v2 2/2] NFSv4.x/callback: make sure callback threads are 
+interruptible
+Message-ID: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
+
+.. with those, the callback threads are cleaned up properly.  Any chance 
+we can take those two patches this time?  I haven't reviewed those 
+patches (yet), I've just hand tested them to see if they fix this 
+problem.
+
+Ben
