@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59638 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59644 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S977778AbdDXVTV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Apr 2017 17:19:21 -0400
-Date: Mon, 24 Apr 2017 17:19:20 -0400
+        id S977232AbdDXVUb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Apr 2017 17:20:31 -0400
+Date: Mon, 24 Apr 2017 17:20:31 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: NeilBrown <neilb@suse.com>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170424211920.GA1585@fieldses.org>
+Message-ID: <20170424212031.GB1585@fieldses.org>
 References: <20170414150440.GA5362@fieldses.org>
  <20170414150940.GB5362@fieldses.org>
  <87h91mtvdb.fsf@notabene.neil.brown.name>
@@ -17,119 +17,83 @@ References: <20170414150440.GA5362@fieldses.org>
  <20170421211253.GE19775@fieldses.org>
  <87vapurci7.fsf@notabene.neil.brown.name>
  <20170424140642.GB30046@fieldses.org>
+ <20170424211920.GA1585@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20170424140642.GB30046@fieldses.org>
+In-Reply-To: <20170424211920.GA1585@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 24, 2017 at 10:06:42AM -0400, J. Bruce Fields wrote:
-> On Mon, Apr 24, 2017 at 08:21:36AM +1000, NeilBrown wrote:
-> > I like this.  I think this should be the basis of what goes to -stable,
-> > and other improvements should stay in mainline.
-> > 
-> > The only change I would suggest would be to be explicit about where the
-> > nfsacl protocol fits with this.
-> 
-> Oh, good point, I'd forgotten nfsd_dispatch handles multiple protocols!
+And, another problem spotted by the Synposys folks.
 
-That was getting to be kind of a pile of conditions for one "if", and
-the comments were getting a little long-winded, so I split it out, but
-otherwise it's the same idea.
+I'll give these some more testing and hope to send a pull request in
+another day or two.
 
 --b.
 
-commit 43e06bcafea8
+commit a0aa2db91590
 Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Fri Apr 21 16:10:18 2017 -0400
+Date:   Fri Apr 21 15:26:30 2017 -0400
 
-    nfsd: check for oversized NFSv2/v3 arguments
+    nfsd: stricter decoding of write-like NFSv2/v3 ops
     
-    A client can append random data to the end of an NFSv2 or NFSv3 RPC call
-    without our complaining; we'll just stop parsing at the end of the
-    expected data and ignore the rest.
-    
-    Encoded arguments and replies are stored together in an array of pages,
-    and if a call is too large it could leave inadequate space for the
-    reply.  This is normally OK because NFS RPC's typically have either
-    short arguments and long replies (like READ) or long arguments and short
-    replies (like WRITE).  But a client that sends an incorrectly long reply
-    can violate those assumptions.  This was observed to cause crashes.
-    
-    Also, several operations increment rq_next_page in the decode routine
-    before checking the argument size, which can leave rq_next_page pointing
-    well past the end of the page array, causing trouble later in
-    svc_free_pages.
-    
-    So, following a suggestion from Neil Brown, add a central check to
-    enforce our expectation that no NFSv2/v3 call has both a large call and
-    a large reply.
-    
-    As followup we may also want to rewrite the encoding routines to check
-    more carefully that they aren't running off the end of the page array.
-    
-    We may also consider rejecting calls that have any extra garbage
-    appended.  That would be safer, and within our rights by spec, but given
-    the age of our server and the NFS protocol, and the fact that we've
-    never enforced this before, we may need to balance that against the
-    possibility of breaking some oddball client.
+    The NFSv2/v3 code does not systematically check whether we decode past
+    the end of the buffer.  This generally appears to be harmless, but there
+    are a few places where we do arithmetic on the pointers involved and
+    don't account for the possibility that a length could be negative.  Add
+    checks to catch these.
     
     Reported-by: Tuomas Haanpää <thaan@synopsys.com>
     Reported-by: Ari Kauppi <ari@synopsys.com>
-    Cc: stable@vger.kernel.org
     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 31e1f9593457..59979f0bbd4b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -747,6 +747,37 @@ static __be32 map_new_errors(u32 vers, __be32 nfserr)
- 	return nfserr;
- }
- 
-+/*
-+ * A write procedure can have a large argument, and a read procedure can
-+ * have a large reply, but no NFSv2 or NFSv3 procedure has argument and
-+ * reply that can both be larger than a page.  The xdr code has taken
-+ * advantage of this assumption to be a sloppy about bounds checking in
-+ * some cases.  Pending a rewrite of the NFSv2/v3 xdr code to fix that
-+ * problem, we enforce these assumptions here:
-+ */
-+static bool nfs_request_too_big(struct svc_rqst *rqstp,
-+				struct svc_procedure *proc)
-+{
-+	/*
-+	 * The ACL code has more careful bounds-checking and is not
-+	 * susceptible to this problem:
-+	 */
-+	if (rqstp->rq_prog != NFS_PROGRAM)
-+		return false;
-+	/*
-+	 * Ditto NFSv4 (which can in theory have argument and reply both
-+	 * more than a page):
-+	 */
-+	if (rqstp->rq_vers >= 4)
-+		return false;
-+	/* The reply will be small, we're OK: */
-+	if (proc->pc_xdrressize > 0 &&
-+	    proc->pc_xdrressize < XDR_QUADLEN(PAGE_SIZE))
-+		return false;
-+
-+	return rqstp->rq_arg.len > PAGE_SIZE;
-+}
-+
- int
- nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index dba2ff8eaa68..41cc47bf9d00 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -358,6 +358,7 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
  {
-@@ -759,6 +790,11 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
- 				rqstp->rq_vers, rqstp->rq_proc);
- 	proc = rqstp->rq_procinfo;
+ 	unsigned int len, v, hdr, dlen;
+ 	u32 max_blocksize = svc_max_payload(rqstp);
++	struct kvec *head = rqstp->rq_arg.head;
  
-+	if (nfs_request_too_big(rqstp, proc)) {
-+		dprintk("nfsd: NFSv%d argument too large\n", rqstp->rq_vers);
-+		*statp = rpc_garbage_args;
-+		return 1;
-+	}
+ 	p = decode_fh(p, &args->fh);
+ 	if (!p)
+@@ -367,6 +368,8 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+ 	args->count = ntohl(*p++);
+ 	args->stable = ntohl(*p++);
+ 	len = args->len = ntohl(*p++);
++	if ((void *)p > head->iov_base + head->iov_len)
++		return 0;
  	/*
- 	 * Give the xdr decoder a chance to change this if it wants
- 	 * (necessary in the NFSv4.0 compound case)
+ 	 * The count must equal the amount of data passed.
+ 	 */
+@@ -466,11 +469,15 @@ nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p,
+ 	len = ntohl(*p++);
+ 	if (len == 0 || len > NFS3_MAXPATHLEN || len >= PAGE_SIZE)
+ 		return 0;
++	if (!*(rqstp->rq_next_page))
++		return 0;
+ 	args->tname = new = page_address(*(rqstp->rq_next_page++));
+ 	args->tlen = len;
+ 	/* first copy and check from the first page */
+ 	old = (char*)p;
+ 	vec = &rqstp->rq_arg.head[0];
++	if ((void *)old > vec->iov_base + vec->iov_len)
++		return 0;
+ 	avail = vec->iov_len - (old - (char*)vec->iov_base);
+ 	while (len && avail && *old) {
+ 		*new++ = *old++;
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 41b468a6a90f..7a0eed7c619d 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -301,6 +301,8 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be32 *p,
+ 	 * bytes.
+ 	 */
+ 	hdr = (void*)p - rqstp->rq_arg.head[0].iov_base;
++	if (hdr > rqstp->rq_arg.head[0].iov_len)
++		return 0;
+ 	dlen = rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
+ 		- hdr;
+ 
