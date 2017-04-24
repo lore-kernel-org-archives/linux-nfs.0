@@ -1,113 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59120 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:54008 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1170750AbdDXOGn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Apr 2017 10:06:43 -0400
-Date: Mon, 24 Apr 2017 10:06:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-Message-ID: <20170424140642.GB30046@fieldses.org>
-References: <20170414150440.GA5362@fieldses.org>
- <20170414150940.GB5362@fieldses.org>
- <87h91mtvdb.fsf@notabene.neil.brown.name>
- <20170418171351.GF6208@fieldses.org>
- <20170420161935.GB4782@fieldses.org>
- <20170421211253.GE19775@fieldses.org>
- <87vapurci7.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87vapurci7.fsf@notabene.neil.brown.name>
+        id S1169990AbdDXP1y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Apr 2017 11:27:54 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 5747AC05490A
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Apr 2017 15:27:54 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-122-178.rdu2.redhat.com [10.10.122.178])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 089648367F
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Apr 2017 15:27:53 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] systemd: Afters are also needed for the Wants=network-online.target
+Date: Mon, 24 Apr 2017 11:27:52 -0400
+Message-Id: <20170424152752.25730-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 24, 2017 at 08:21:36AM +1000, NeilBrown wrote:
-> On Fri, Apr 21 2017, J. Bruce Fields wrote:
-> 
-> > On Thu, Apr 20, 2017 at 12:19:35PM -0400, J. Bruce Fields wrote:
-> >> On Tue, Apr 18, 2017 at 01:13:51PM -0400, J. Bruce Fields wrote:
-> >> > On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
-> >> > >  I can't say that I like this patch at all.
-> >> > > 
-> >> > > The problem is that:
-> >> > > 
-> >> > > 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
-> >> > > 				       * We assume one is at most one page
-> >> > > 				       */
-> >> > > 
-> >> > > this assumption is never verified.
-> >> > > To my mind, the "obvious" way to verify this assumption is that an
-> >> > > attempt to generate a multi-page reply should fail if there was a
-> >> > > multi-page request.
-> >> > 
-> >> > A third option, by the way, which Ari Kauppi argued for, is adding a
-> >> > null check each time we increment rq_next_page, since we seem to arrange
-> >> > for the page array to always be NULL-terminated.
-> >> > 
-> >> > > Failing if there was a little bit of extra noise at the end of the
-> >> > > request seems harsher than necessary, and could result in a regression.
-> >> > 
-> >> > You're worrying there might be a weird old client out there somewhere?
-> >> > I guess it seems like a small enough risk to me.  I'm more worried the
-> >> > extra garbage might violate assumptions elsewhere in the code.
-> >> > 
-> >> > But, this looks good too:
-> >> 
-> >> But, I'm not too happy about putting that NFSv2/v3-specific check in
-> >> common rpc code.
-> >
-> > Well, but it should work just as well in nfsd_dispatch, I think?
-> > (Untested).  So, maybe that's simplest as a first step:
-> >
-> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> > index 31e1f9593457..b6298d30a01f 100644
-> > --- a/fs/nfsd/nfssvc.c
-> > +++ b/fs/nfsd/nfssvc.c
-> > @@ -759,6 +759,22 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
-> >  				rqstp->rq_vers, rqstp->rq_proc);
-> >  	proc = rqstp->rq_procinfo;
-> >  
-> > +	if (rqstp->rq_vers < 4 &&
-> > +	    (proc->pc_xdrressize == 0
-> > +			|| proc->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE))
-> > +		&& rqstp->rq_arg.len > PAGE_SIZE) {
-> > +		/*
-> > +		 * NFSv2 and v3 assume that an operation may have either a
-> > +		 * large argument, or a large reply, but never both.
-> > +		 *
-> > +		 * NFSv4 may handle compounds with both argument and
-> > +		 * reply larger than a reply; it has more xdr careful
-> > +		 * xdr decoding which can handle such calls safely.
-> > +		 */
-> > +		dprintk("nfsd: NFSv%d argument too large\n", rqstp->rq_vers);
-> > +		*statp = rpc_garbage_args;
-> > +		return 1;
-> > +	}
-> >  	/*
-> >  	 * Give the xdr decoder a chance to change this if it wants
-> >  	 * (necessary in the NFSv4.0 compound case)
-> 
-> I like this.  I think this should be the basis of what goes to -stable,
-> and other improvements should stay in mainline.
-> 
-> The only change I would suggest would be to be explicit about where the
-> nfsacl protocol fits with this.
+Commit 9d4fc3fb added Wants=network-online.target which
+is not enough to ensure the network is completely up
+before the NFS server is started. After=network-online.target
+is also needed.
 
-Oh, good point, I'd forgotten nfsd_dispatch handles multiple protocols!
+Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1419351
 
-> We could change "rqstp->rq_vers < 4" to
->  "rqstp->rq_prog == NFS_PROGRAM && rqstp->rq_vers < 4"
-> or we could change the text:
->  NFSv2 and v3 assume ...
-> to
->  NFSv2 and v3, along with NFSASL, assume ...
-> 
-> and possibly change "rqstp->rq_vers < 4" to "!nfsd_v4client(rqstp)".
-> 
-> I believe none of this applies to lockd as none of that code ever looks
-> beyond a single page.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ systemd/nfs-mountd.service       | 1 +
+ systemd/nfs-server.service       | 2 +-
+ systemd/rpc-statd-notify.service | 2 +-
+ systemd/rpc-statd.service        | 2 +-
+ 4 files changed, 4 insertions(+), 3 deletions(-)
 
-That makes sense.
+diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
+index fec0399..e8ece53 100644
+--- a/systemd/nfs-mountd.service
++++ b/systemd/nfs-mountd.service
+@@ -4,6 +4,7 @@ DefaultDependencies=no
+ Requires=proc-fs-nfsd.mount
+ Wants=network-online.target
+ After=proc-fs-nfsd.mount
++After=network-online.target local-fs.target
+ After=rpcbind.socket
+ BindsTo=nfs-server.service
+ 
+diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+index e6b8f58..136552b 100644
+--- a/systemd/nfs-server.service
++++ b/systemd/nfs-server.service
+@@ -7,7 +7,7 @@ Wants=rpcbind.socket network-online.target
+ Wants=rpc-statd.service nfs-idmapd.service
+ Wants=rpc-statd-notify.service
+ 
+-After= local-fs.target
++After= network-online.target local-fs.target
+ After= proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
+ After= nfs-idmapd.service rpc-statd.service
+ Before= rpc-statd-notify.service
+diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
+index f54d4c5..687fe31 100644
+--- a/systemd/rpc-statd-notify.service
++++ b/systemd/rpc-statd-notify.service
+@@ -2,7 +2,7 @@
+ Description=Notify NFS peers of a restart
+ DefaultDependencies=no
+ Wants=network-online.target
+-After=local-fs.target network.target nss-lookup.target
++After=local-fs.target network-online.target nss-lookup.target
+ 
+ # if we run an nfs server, it needs to be running before we
+ # tell clients that it has restarted.
+diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+index 8cef022..f41ae20 100644
+--- a/systemd/rpc-statd.service
++++ b/systemd/rpc-statd.service
+@@ -4,7 +4,7 @@ DefaultDependencies=no
+ Conflicts=umount.target
+ Requires=nss-lookup.target rpcbind.socket
+ Wants=network-online.target
+-After=nss-lookup.target rpcbind.socket
++After=network-online.target nss-lookup.target rpcbind.socket
+ 
+ PartOf=nfs-utils.service
+ 
+-- 
+2.9.3
 
---b.
