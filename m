@@ -1,46 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43418 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44898 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1169692AbdDXMQX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Apr 2017 08:16:23 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Anna Schumaker" <anna.schumaker@netapp.com>,
-        "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Callback threads not getting cleaned up
-Date: Mon, 24 Apr 2017 08:16:16 -0400
-Message-ID: <50B1D6E0-A38B-4B16-AAF1-3C6B9ED2A905@redhat.com>
+        id S1046512AbdDXMSi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Apr 2017 08:18:38 -0400
+Date: Mon, 24 Apr 2017 08:18:18 -0400 (EDT)
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v2 1/2] NFSv4.x/callback: Create the callback service
+ through svc_create_pooled
+In-Reply-To: <322d5c7d-d3b4-1e02-de3f-8e1a900cb150@gmail.com>
+Message-ID: <alpine.OSX.2.19.9992.1704240805530.29615@planck.local>
+References: <322d5c7d-d3b4-1e02-de3f-8e1a900cb150@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna and Trond,
+On Thu, 19 Jan 2017, Kinglong Mee wrote:
 
-We've had some complaints on v4.9/v4.10 about NFSv4 callback threads not 
-getting cleaned up:
+> As the comments for svc_set_num_threads() said,
+> " Destroying threads relies on the service threads filling in
+> rqstp->rq_task, which only the nfs ones do.  Assumes the serv
+> has been created using svc_create_pooled()."
+>
+> If creating service through svc_create(), the svc_pool_map_put()
+> will be called in svc_destroy(), but the pool map isn't used.
+> So that, the reference of pool map will be drop, the next using
+> of pool map will get a zero npools.
+>
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 
-https://bugzilla.redhat.com/show_bug.cgi?id=1427493
+Thanks!
 
-I think the problem started with bb6aeba736ba NFSv4.x: Switch to using 
-svc_set_num_threads() to manage the callback threads.
-
-I just ran a quick test on the testing branch, and this problem 
-persists.  I also tested with Kinglong Mee's two patches:
-
-[PATCH v2 1/2] NFSv4.x/callback: Create the callback service through 
-svc_create_pooled
-Message-ID: <322d5c7d-d3b4-1e02-de3f-8e1a900cb150@gmail.com>
-
-and
-
-[PATCH v2 2/2] NFSv4.x/callback: make sure callback threads are 
-interruptible
-Message-ID: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
-
-.. with those, the callback threads are cleaned up properly.  Any chance 
-we can take those two patches this time?  I haven't reviewed those 
-patches (yet), I've just hand tested them to see if they fix this 
-problem.
+Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
+Tested-by: Benjamin Coddington <bcodding@redhat.com>
 
 Ben
+
+> ---
+>  fs/nfs/callback.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 484bebc..0a21150 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -279,7 +279,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+>  		printk(KERN_WARNING "nfs_callback_create_svc: no kthread, %d users??\n",
+>  			cb_info->users);
+>
+> -	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
+> +	serv = svc_create_pooled(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
+>  	if (!serv) {
+>  		printk(KERN_ERR "nfs_callback_create_svc: create service failed\n");
+>  		return ERR_PTR(-ENOMEM);
+> --
+> 2.9.3
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
