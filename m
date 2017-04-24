@@ -1,151 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56478 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:59120 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1169601AbdDXMT3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 24 Apr 2017 08:19:29 -0400
-Date: Mon, 24 Apr 2017 08:19:20 -0400 (EDT)
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH v2 2/2] NFSv4.x/callback: make sure callback threads are
- interruptible
-In-Reply-To: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
-Message-ID: <alpine.OSX.2.19.9992.1704240811480.31833@planck.local>
-References: <d8e459af-1efa-dae9-61b6-253e8945831f@gmail.com>
+        id S1170750AbdDXOGn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 24 Apr 2017 10:06:43 -0400
+Date: Mon, 24 Apr 2017 10:06:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
+Message-ID: <20170424140642.GB30046@fieldses.org>
+References: <20170414150440.GA5362@fieldses.org>
+ <20170414150940.GB5362@fieldses.org>
+ <87h91mtvdb.fsf@notabene.neil.brown.name>
+ <20170418171351.GF6208@fieldses.org>
+ <20170420161935.GB4782@fieldses.org>
+ <20170421211253.GE19775@fieldses.org>
+ <87vapurci7.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87vapurci7.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 18 Jan 2017, Kinglong Mee wrote:
-> Commit bb6aeba736ba "NFSv4.x: Switch to using svc_set_num_threads()
->  to manage the callback threads" change nfs start/stop threads
-> through svc_set_num_threads().
->
-> It destroy old threads by SIGINT signal, but our nfs4_callback_svc()
-> isn't interruptible. So that, the callback threads will never be killed.
->
-> # mount -t nfs -overs=4.2 nfstestnic:/ /mnt/
-> # ps -ajx |grep NFS
->     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
-> # umount /mnt
-> # ps -ajx |grep NFS
->     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
-> # mount -t nfs -overs=4.2 nfstestnic:/ /mnt/
-> # umount /mnt
-> # ps -ajx |grep NFS
->     2  5927     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
->     2  5963     0     0 ?           -1 S        0   0:00 [NFSv4 callback]
->
-> After one mount, there will be one callback thread left that cannot killed,
-> the same time, nfs.ko will never be unplugged.
->
-> v2, drop the wrong setting of rqstp->rq_server = NULL
->
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+On Mon, Apr 24, 2017 at 08:21:36AM +1000, NeilBrown wrote:
+> On Fri, Apr 21 2017, J. Bruce Fields wrote:
+> 
+> > On Thu, Apr 20, 2017 at 12:19:35PM -0400, J. Bruce Fields wrote:
+> >> On Tue, Apr 18, 2017 at 01:13:51PM -0400, J. Bruce Fields wrote:
+> >> > On Tue, Apr 18, 2017 at 10:25:20AM +1000, NeilBrown wrote:
+> >> > >  I can't say that I like this patch at all.
+> >> > > 
+> >> > > The problem is that:
+> >> > > 
+> >> > > 	pages = size / PAGE_SIZE + 1; /* extra page as we hold both request and reply.
+> >> > > 				       * We assume one is at most one page
+> >> > > 				       */
+> >> > > 
+> >> > > this assumption is never verified.
+> >> > > To my mind, the "obvious" way to verify this assumption is that an
+> >> > > attempt to generate a multi-page reply should fail if there was a
+> >> > > multi-page request.
+> >> > 
+> >> > A third option, by the way, which Ari Kauppi argued for, is adding a
+> >> > null check each time we increment rq_next_page, since we seem to arrange
+> >> > for the page array to always be NULL-terminated.
+> >> > 
+> >> > > Failing if there was a little bit of extra noise at the end of the
+> >> > > request seems harsher than necessary, and could result in a regression.
+> >> > 
+> >> > You're worrying there might be a weird old client out there somewhere?
+> >> > I guess it seems like a small enough risk to me.  I'm more worried the
+> >> > extra garbage might violate assumptions elsewhere in the code.
+> >> > 
+> >> > But, this looks good too:
+> >> 
+> >> But, I'm not too happy about putting that NFSv2/v3-specific check in
+> >> common rpc code.
+> >
+> > Well, but it should work just as well in nfsd_dispatch, I think?
+> > (Untested).  So, maybe that's simplest as a first step:
+> >
+> > diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> > index 31e1f9593457..b6298d30a01f 100644
+> > --- a/fs/nfsd/nfssvc.c
+> > +++ b/fs/nfsd/nfssvc.c
+> > @@ -759,6 +759,22 @@ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+> >  				rqstp->rq_vers, rqstp->rq_proc);
+> >  	proc = rqstp->rq_procinfo;
+> >  
+> > +	if (rqstp->rq_vers < 4 &&
+> > +	    (proc->pc_xdrressize == 0
+> > +			|| proc->pc_xdrressize > XDR_QUADLEN(PAGE_SIZE))
+> > +		&& rqstp->rq_arg.len > PAGE_SIZE) {
+> > +		/*
+> > +		 * NFSv2 and v3 assume that an operation may have either a
+> > +		 * large argument, or a large reply, but never both.
+> > +		 *
+> > +		 * NFSv4 may handle compounds with both argument and
+> > +		 * reply larger than a reply; it has more xdr careful
+> > +		 * xdr decoding which can handle such calls safely.
+> > +		 */
+> > +		dprintk("nfsd: NFSv%d argument too large\n", rqstp->rq_vers);
+> > +		*statp = rpc_garbage_args;
+> > +		return 1;
+> > +	}
+> >  	/*
+> >  	 * Give the xdr decoder a chance to change this if it wants
+> >  	 * (necessary in the NFSv4.0 compound case)
+> 
+> I like this.  I think this should be the basis of what goes to -stable,
+> and other improvements should stay in mainline.
+> 
+> The only change I would suggest would be to be explicit about where the
+> nfsacl protocol fits with this.
 
-Thanks!  We have some fedora users complaining about this problem:
-https://bugzilla.redhat.com/show_bug.cgi?id=1427493
+Oh, good point, I'd forgotten nfsd_dispatch handles multiple protocols!
 
-This and
-[PATCH v2 1/2] NFSv4.x/callback: Create the callback service through
-svc_create_pooled
+> We could change "rqstp->rq_vers < 4" to
+>  "rqstp->rq_prog == NFS_PROGRAM && rqstp->rq_vers < 4"
+> or we could change the text:
+>  NFSv2 and v3 assume ...
+> to
+>  NFSv2 and v3, along with NFSASL, assume ...
+> 
+> and possibly change "rqstp->rq_vers < 4" to "!nfsd_v4client(rqstp)".
+> 
+> I believe none of this applies to lockd as none of that code ever looks
+> beyond a single page.
 
-fix it up for me.
+That makes sense.
 
-Reviewed-by: Benjamin Coddington <bcodding@redhat.com>
-Tested-by: Benjamin Coddington <bcodding@redhat.com>
-
-Ben
-
-> ---
->  fs/nfs/callback.c | 39 +++++++++++++++++++++++++++++++++++----
->  1 file changed, 35 insertions(+), 4 deletions(-)
->
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 0a21150..2a0fffd 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -73,6 +73,15 @@ nfs4_callback_svc(void *vrqstp)
->  	int err;
->  	struct svc_rqst *rqstp = vrqstp;
->
-> +	/*
-> +	 * thread is spawned with all signals set to SIG_IGN, re-enable
-> +	 * the ones that will bring down the thread
-> +	 */
-> +	allow_signal(SIGKILL);
-> +	allow_signal(SIGHUP);
-> +	allow_signal(SIGINT);
-> +	allow_signal(SIGQUIT);
-> +
->  	set_freezable();
->
->  	while (!kthread_should_stop()) {
-> @@ -80,11 +89,18 @@ nfs4_callback_svc(void *vrqstp)
->  		 * Listen for a request on the socket
->  		 */
->  		err = svc_recv(rqstp, MAX_SCHEDULE_TIMEOUT);
-> -		if (err == -EAGAIN || err == -EINTR)
-> +		if (err == -EAGAIN)
->  			continue;
-> +		else if (err == -EINTR)
-> +			break;
->  		svc_process(rqstp);
->  	}
-> -	return 0;
-> +
-> +	flush_signals(current);
-> +
-> +	/* Release the thread */
-> +	svc_exit_thread(rqstp);
-> +	module_put_and_exit(0);
->  }
->
->  #if defined(CONFIG_NFS_V4_1)
-> @@ -100,6 +116,15 @@ nfs41_callback_svc(void *vrqstp)
->  	int error;
->  	DEFINE_WAIT(wq);
->
-> +	/*
-> +	 * thread is spawned with all signals set to SIG_IGN, re-enable
-> +	 * the ones that will bring down the thread
-> +	 */
-> +	allow_signal(SIGKILL);
-> +	allow_signal(SIGHUP);
-> +	allow_signal(SIGINT);
-> +	allow_signal(SIGQUIT);
-> +
->  	set_freezable();
->
->  	while (!kthread_should_stop()) {
-> @@ -121,11 +146,17 @@ nfs41_callback_svc(void *vrqstp)
->  		} else {
->  			spin_unlock_bh(&serv->sv_cb_lock);
->  			schedule();
-> +			if (signalled())
-> +				break;
->  			finish_wait(&serv->sv_cb_waitq, &wq);
->  		}
-> -		flush_signals(current);
->  	}
-> -	return 0;
-> +
-> +	flush_signals(current);
-> +
-> +	/* Release the thread */
-> +	svc_exit_thread(rqstp);
-> +	module_put_and_exit(0);
->  }
->
->  static inline void nfs_callback_bc_serv(u32 minorversion, struct rpc_xprt *xprt,
-> --
-> 2.9.3
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+--b.
