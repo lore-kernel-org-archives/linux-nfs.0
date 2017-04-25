@@ -1,39 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailrelay105.isp.belgacom.be ([195.238.20.132]:26474 "EHLO
-        mailrelay105.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1432685AbdDYSKx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Apr 2017 14:10:53 -0400
-From: Fabian Frederick <fabf@skynet.be>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        fabf@skynet.be
-Subject: [PATCH 1/1 linux-next] nfs: kmap can't fail
-Date: Tue, 25 Apr 2017 20:10:33 +0200
-Message-Id: <20170425181033.1892-1-fabf@skynet.be>
+Received: from mail-it0-f43.google.com ([209.85.214.43]:37436 "EHLO
+        mail-it0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1951210AbdDYUer (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Apr 2017 16:34:47 -0400
+Received: by mail-it0-f43.google.com with SMTP id x188so83652570itb.0
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Apr 2017 13:34:47 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/2] pNFS bugfixes
+Date: Tue, 25 Apr 2017 16:34:41 -0400
+Message-Id: <20170425203443.37006-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove NULL test on kmap()
+2 patches fo fix issues with pNFS.
 
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
----
- fs/nfs/dir.c | 2 --
- 1 file changed, 2 deletions(-)
+Trond Myklebust (2):
+  pNFS: Ensure we check layout segment validity in the pg_init()
+    callback
+  pNFS: Fix use after free issues in pnfs_do_read()
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 3a188cb..f89e54c 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -179,8 +179,6 @@ struct nfs_cache_array *nfs_readdir_get_array(struct page *page)
- 	if (page == NULL)
- 		return ERR_PTR(-EIO);
- 	ptr = kmap(page);
--	if (ptr == NULL)
--		return ERR_PTR(-ENOMEM);
- 	return ptr;
- }
- 
+ fs/nfs/filelayout/filelayout.c         |  2 ++
+ fs/nfs/flexfilelayout/flexfilelayout.c |  2 ++
+ fs/nfs/pnfs.c                          | 29 ++++++++++++++++++++++++++---
+ fs/nfs/pnfs.h                          |  1 +
+ 4 files changed, 31 insertions(+), 3 deletions(-)
+
 -- 
 2.9.3
 
