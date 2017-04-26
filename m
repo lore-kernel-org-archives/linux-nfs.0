@@ -1,32 +1,169 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36216 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S935007AbdDZPzb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 11:55:31 -0400
-Received: by mail-it0-f65.google.com with SMTP id x188so1011373itb.3
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 08:55:31 -0700 (PDT)
+Received: from mail-it0-f66.google.com ([209.85.214.66]:32973 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S935023AbdDZPzc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 11:55:32 -0400
+Received: by mail-it0-f66.google.com with SMTP id z67so1024983itb.0
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 08:55:32 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
 Cc: "J. Bruce Fields" <bfields@redhat.com>,
         Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH 0/2] Fix the NFSv4 client callback channel shutdown
-Date: Wed, 26 Apr 2017 11:55:25 -0400
-Message-Id: <20170426155527.92213-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 1/2] SUNRPC: Refactor svc_set_num_threads()
+Date: Wed, 26 Apr 2017 11:55:26 -0400
+Message-Id: <20170426155527.92213-2-trond.myklebust@primarydata.com>
+In-Reply-To: <20170426155527.92213-1-trond.myklebust@primarydata.com>
+References: <20170426155527.92213-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix the problem reported by Kinglong, whereby the callback channel was
-failing to shut down properly on umount.
+Refactor to separate out the functions of starting and stopping threads
+so that they can be used in other helpers.
 
-Trond Myklebust (2):
-  SUNRPC: Refactor svc_set_num_threads()
-  NFSv4: Fix callback server shutdown
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/svc.c | 96 ++++++++++++++++++++++++++++++++++----------------------
+ 1 file changed, 58 insertions(+), 38 deletions(-)
 
- fs/nfs/callback.c          |  24 +++++---
- include/linux/sunrpc/svc.h |   1 +
- net/sunrpc/svc.c           | 134 ++++++++++++++++++++++++++++++++-------------
- 3 files changed, 113 insertions(+), 46 deletions(-)
-
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index a08aeb56b8e4..98dc33ae738b 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -702,59 +702,32 @@ choose_victim(struct svc_serv *serv, struct svc_pool *pool, unsigned int *state)
+ 	return task;
+ }
+ 
+-/*
+- * Create or destroy enough new threads to make the number
+- * of threads the given number.  If `pool' is non-NULL, applies
+- * only to threads in that pool, otherwise round-robins between
+- * all pools.  Caller must ensure that mutual exclusion between this and
+- * server startup or shutdown.
+- *
+- * Destroying threads relies on the service threads filling in
+- * rqstp->rq_task, which only the nfs ones do.  Assumes the serv
+- * has been created using svc_create_pooled().
+- *
+- * Based on code that used to be in nfsd_svc() but tweaked
+- * to be pool-aware.
+- */
+-int
+-svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
++/* create new threads */
++static int
++svc_start_kthreads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+ {
+ 	struct svc_rqst	*rqstp;
+ 	struct task_struct *task;
+ 	struct svc_pool *chosen_pool;
+-	int error = 0;
+ 	unsigned int state = serv->sv_nrthreads-1;
+ 	int node;
+ 
+-	if (pool == NULL) {
+-		/* The -1 assumes caller has done a svc_get() */
+-		nrservs -= (serv->sv_nrthreads-1);
+-	} else {
+-		spin_lock_bh(&pool->sp_lock);
+-		nrservs -= pool->sp_nrthreads;
+-		spin_unlock_bh(&pool->sp_lock);
+-	}
+-
+-	/* create new threads */
+-	while (nrservs > 0) {
++	do {
+ 		nrservs--;
+ 		chosen_pool = choose_pool(serv, pool, &state);
+ 
+ 		node = svc_pool_map_get_node(chosen_pool->sp_id);
+ 		rqstp = svc_prepare_thread(serv, chosen_pool, node);
+-		if (IS_ERR(rqstp)) {
+-			error = PTR_ERR(rqstp);
+-			break;
+-		}
++		if (IS_ERR(rqstp))
++			return PTR_ERR(rqstp);
+ 
+ 		__module_get(serv->sv_ops->svo_module);
+ 		task = kthread_create_on_node(serv->sv_ops->svo_function, rqstp,
+ 					      node, "%s", serv->sv_name);
+ 		if (IS_ERR(task)) {
+-			error = PTR_ERR(task);
+ 			module_put(serv->sv_ops->svo_module);
+ 			svc_exit_thread(rqstp);
+-			break;
++			return PTR_ERR(task);
+ 		}
+ 
+ 		rqstp->rq_task = task;
+@@ -763,15 +736,62 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+ 
+ 		svc_sock_update_bufs(serv);
+ 		wake_up_process(task);
+-	}
++	} while (nrservs > 0);
++
++	return 0;
++}
++
++
++/* destroy old threads */
++static int
++svc_signal_kthreads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
++{
++	struct task_struct *task;
++	unsigned int state = serv->sv_nrthreads-1;
++
+ 	/* destroy old threads */
+-	while (nrservs < 0 &&
+-	       (task = choose_victim(serv, pool, &state)) != NULL) {
++	do {
++		task = choose_victim(serv, pool, &state);
++		if (task == NULL)
++			break;
+ 		send_sig(SIGINT, task, 1);
+ 		nrservs++;
++	} while (nrservs < 0);
++
++	return 0;
++}
++
++/*
++ * Create or destroy enough new threads to make the number
++ * of threads the given number.  If `pool' is non-NULL, applies
++ * only to threads in that pool, otherwise round-robins between
++ * all pools.  Caller must ensure that mutual exclusion between this and
++ * server startup or shutdown.
++ *
++ * Destroying threads relies on the service threads filling in
++ * rqstp->rq_task, which only the nfs ones do.  Assumes the serv
++ * has been created using svc_create_pooled().
++ *
++ * Based on code that used to be in nfsd_svc() but tweaked
++ * to be pool-aware.
++ */
++int
++svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
++{
++	if (pool == NULL) {
++		/* The -1 assumes caller has done a svc_get() */
++		nrservs -= (serv->sv_nrthreads-1);
++	} else {
++		spin_lock_bh(&pool->sp_lock);
++		nrservs -= pool->sp_nrthreads;
++		spin_unlock_bh(&pool->sp_lock);
+ 	}
+ 
+-	return error;
++	if (nrservs > 0)
++		return svc_start_kthreads(serv, pool, nrservs);
++	if (nrservs < 0)
++		return svc_signal_kthreads(serv, pool, nrservs);
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(svc_set_num_threads);
+ 
 -- 
 2.9.3
 
