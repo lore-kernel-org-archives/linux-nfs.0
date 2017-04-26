@@ -1,42 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:11104 "EHLO mx142.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933126AbdDZSVZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 26 Apr 2017 14:21:25 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 1/1] NFS4.1 handle interrupted slot reuse from ERR_DELAY
-Date: Wed, 26 Apr 2017 14:21:22 -0400
-Message-ID: <20170426182122.1301-1-kolga@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from [195.159.176.226] ([195.159.176.226]:51731 "EHLO
+        blaine.gmane.org" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+        with ESMTP id S964820AbdDZSfT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 14:35:19 -0400
+Received: from list by blaine.gmane.org with local (Exim 4.84_2)
+        (envelope-from <glN-linux-nfs@m.gmane.org>)
+        id 1d3RmL-0006hp-Jg
+        for linux-nfs@vger.kernel.org; Wed, 26 Apr 2017 20:35:05 +0200
+To: linux-nfs@vger.kernel.org
+From: scar <scar@drigon.com>
+Subject: rdma connection close/reopen every 5 mins
+Date: Wed, 26 Apr 2017 10:23:40 -0700
+Message-ID: <odql2m$vup$1@blaine.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the RPC slot was interrupted and server replied to the next
-operation on the "reused" slot with ERR_DELAY, don't clear out
-the "interrupted" flag until we properly recover.
+Hello, I have setup NFS/RDMA on our infiniband network.  The OS is 
+CentOS 6.8 with kernel 2.6.32-696.1.1.el6.x86_64 and I am using 
+rdma/nfs-rdma packages from the OS version 6.9_4.1.  The connection is 
+successful:
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+10.10.11.249:/newwing on /newwing type nfs 
+(rw,rdma,port=20049,addr=10.10.11.249)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 85957ff..8904d08 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -698,7 +698,8 @@ static int nfs41_sequence_process(struct rpc_task *task,
- 	session = slot->table->session;
- 
- 	if (slot->interrupted) {
--		slot->interrupted = 0;
-+		if (res->sr_status != -NFS4ERR_DELAY)
-+			slot->interrupted = 0;
- 		interrupted = true;
- 	}
- 
--- 
-1.8.3.1
+except in /var/log/messages I am always seeing this exactly every 5 minutes:
+  kernel: rpcrdma: connection to 10.10.11.249:20049 closed (-103)
+  kernel: rpcrdma: connection to 10.10.11.249:20049 on mlx4_0, memreg 6 
+slots 32 ird 16
+
+I suppose it is from some service or cron job.... But I wonder how I 
+could keep the connection open so this isn't happening every 5 minutes?
+
+Thanks
 
