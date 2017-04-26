@@ -1,224 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35571 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:57849 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1435080AbdDZGcJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 26 Apr 2017 02:32:09 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Wed, 26 Apr 2017 16:31:59 +1000
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: check for oversized NFSv2/v3 arguments
-In-Reply-To: <20170425204016.GA15279@fieldses.org>
-References: <20170414150940.GB5362@fieldses.org> <87h91mtvdb.fsf@notabene.neil.brown.name> <20170418171351.GF6208@fieldses.org> <20170420161935.GB4782@fieldses.org> <20170421211253.GE19775@fieldses.org> <87vapurci7.fsf@notabene.neil.brown.name> <20170424140642.GB30046@fieldses.org> <20170424211920.GA1585@fieldses.org> <20170424212031.GB1585@fieldses.org> <87o9vlp48j.fsf@notabene.neil.brown.name> <20170425204016.GA15279@fieldses.org>
-Message-ID: <87inlrptls.fsf@notabene.neil.brown.name>
+        id S1954922AbdDZIwm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 26 Apr 2017 04:52:42 -0400
+Date: Wed, 26 Apr 2017 10:52:35 +0200
+From: Jan Kara <jack@suse.cz>
+To: Ross Zwisler <ross.zwisler@linux.intel.com>
+Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        v9fs-developer@lists.sourceforge.net
+Subject: Re: [PATCH 2/2] dax: fix data corruption due to stale mmap reads
+Message-ID: <20170426085235.GA21738@quack2.suse.cz>
+References: <20170420191446.GA21694@linux.intel.com>
+ <20170421034437.4359-1-ross.zwisler@linux.intel.com>
+ <20170421034437.4359-2-ross.zwisler@linux.intel.com>
+ <20170425111043.GH2793@quack2.suse.cz>
+ <20170425225936.GA29655@linux.intel.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170425225936.GA29655@linux.intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Tue 25-04-17 16:59:36, Ross Zwisler wrote:
+> On Tue, Apr 25, 2017 at 01:10:43PM +0200, Jan Kara wrote:
+> <>
+> > Hum, but now thinking more about it I have hard time figuring out why write
+> > vs fault cannot actually still race:
+> > 
+> > CPU1 - write(2)				CPU2 - read fault
+> > 
+> > 					dax_iomap_pte_fault()
+> > 					  ->iomap_begin() - sees hole
+> > dax_iomap_rw()
+> >   iomap_apply()
+> >     ->iomap_begin - allocates blocks
+> >     dax_iomap_actor()
+> >       invalidate_inode_pages2_range()
+> >         - there's nothing to invalidate
+> > 					  grab_mapping_entry()
+> > 					  - we add zero page in the radix
+> > 					    tree & map it to page tables
+> > 
+> > Similarly read vs write fault may end up racing in a wrong way and try to
+> > replace already existing exceptional entry with a hole page?
+> 
+> Yep, this race seems real to me, too.  This seems very much like the issues
+> that exist when a thread is doing direct I/O.  One thread is doing I/O to an
+> intermediate buffer (page cache for direct I/O case, zero page for us), and
+> the other is going around it directly to media, and they can get out of sync.
+> 
+> IIRC the direct I/O code looked something like:
+> 
+> 1/ invalidate existing mappings
+> 2/ do direct I/O to media
+> 3/ invalidate mappings again, just in case.  Should be cheap if there weren't
+>    any conflicting faults.  This makes sure any new allocations we made are
+>    faulted in.
 
-On Tue, Apr 25 2017, J. Bruce Fields wrote:
+Yeah, the problem is people generally expect weird behavior when they mix
+direct and buffered IO (or let alone mmap) however everyone expects
+standard read(2) and write(2) to be completely coherent with mmap(2).
 
->> > +	if (!*(rqstp->rq_next_page))
->> > +		return 0;
->>=20
->> Why the extra parentheses?  "->" is at the highest precedence level for =
-C.
->
-> I've been doing this stuff enough years, you'd think I'd have bothered
-> to memorize the C operator precedence table by now.
->
-> Anyway, this change is actually unrelated and not entirely necessary;
-> dropped.
->
->> i.e. either keep it simple (like the v2 code) or make it tidy (with head
->> and tail), but not half-and-half??
->
-> What the heck, let's go all out.
+> I guess one option would be to replicate that logic in the DAX I/O path, or we
+> could try and enhance our locking so page faults can't race with I/O since
+> both can allocate blocks.
 
-Looks good, thanks.
+In the abstract way, the problem is that we have radix tree (and page
+tables) cache block mapping information and the operation: "read block
+mapping information, store it in the radix tree" is not serialized in any
+way against other block allocations so the information we store can be out
+of date by the time we store it.
 
+One way to solve this would be to move ->iomap_begin call in the fault
+paths under entry lock although that would mean I have to redo how ext4
+handles DAX faults because with current code it would create lock inversion
+wrt transaction start.
 
->
-> You only live once!
+Another solution would be to grab i_mmap_sem for write when doing write
+fault of a page and similarly have it grabbed for writing when doing
+write(2). This would scale rather poorly but if we later replaced it with a
+range lock (Davidlohr has already posted a nice implementation of it) it
+won't be as bad. But I guess option 1) is better...
 
-:-)
-
-NeilBrown
-
-
->
-> --b.
->
-> commit db44bac41bbf
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Apr 25 16:21:34 2017 -0400
->
->     nfsd4: minor NFSv2/v3 write decoding cleanup
->=20=20=20=20=20
->     Use a couple shortcuts that will simplify a following bugfix.
->=20=20=20=20=20
->     Cc: stable@vger.kernel.org
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index dba2ff8eaa68..d18cfddbe115 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -358,6 +358,8 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be=
-32 *p,
->  {
->  	unsigned int len, v, hdr, dlen;
->  	u32 max_blocksize =3D svc_max_payload(rqstp);
-> +	struct kvec *head =3D rqstp->rq_arg.head;
-> +	struct kvec *tail =3D rqstp->rq_arg.tail;
->=20=20
->  	p =3D decode_fh(p, &args->fh);
->  	if (!p)
-> @@ -377,9 +379,8 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be=
-32 *p,
->  	 * Check to make sure that we got the right number of
->  	 * bytes.
->  	 */
-> -	hdr =3D (void*)p - rqstp->rq_arg.head[0].iov_base;
-> -	dlen =3D rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
-> -		+ rqstp->rq_arg.tail[0].iov_len - hdr;
-> +	hdr =3D (void*)p - head->iov_base;
-> +	dlen =3D head->iov_len + rqstp->rq_arg.page_len + tail->iov_len - hdr;
->  	/*
->  	 * Round the length of the data which was specified up to
->  	 * the next multiple of XDR units and then compare that
-> @@ -396,7 +397,7 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be=
-32 *p,
->  		len =3D args->len =3D max_blocksize;
->  	}
->  	rqstp->rq_vec[0].iov_base =3D (void*)p;
-> -	rqstp->rq_vec[0].iov_len =3D rqstp->rq_arg.head[0].iov_len - hdr;
-> +	rqstp->rq_vec[0].iov_len =3D head->iov_len - hdr;
->  	v =3D 0;
->  	while (len > rqstp->rq_vec[v].iov_len) {
->  		len -=3D rqstp->rq_vec[v].iov_len;
-> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-> index 41b468a6a90f..59bd88a23a3d 100644
-> --- a/fs/nfsd/nfsxdr.c
-> +++ b/fs/nfsd/nfsxdr.c
-> @@ -280,6 +280,7 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be3=
-2 *p,
->  					struct nfsd_writeargs *args)
->  {
->  	unsigned int len, hdr, dlen;
-> +	struct kvec *head =3D rqstp->rq_arg.head;
->  	int v;
->=20=20
->  	p =3D decode_fh(p, &args->fh);
-> @@ -300,9 +301,8 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be3=
-2 *p,
->  	 * Check to make sure that we got the right number of
->  	 * bytes.
->  	 */
-> -	hdr =3D (void*)p - rqstp->rq_arg.head[0].iov_base;
-> -	dlen =3D rqstp->rq_arg.head[0].iov_len + rqstp->rq_arg.page_len
-> -		- hdr;
-> +	hdr =3D (void*)p - head->iov_base;
-> +	dlen =3D head->iov_len + rqstp->rq_arg.page_len - hdr;
->=20=20
->  	/*
->  	 * Round the length of the data which was specified up to
-> @@ -316,7 +316,7 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be3=
-2 *p,
->  		return 0;
->=20=20
->  	rqstp->rq_vec[0].iov_base =3D (void*)p;
-> -	rqstp->rq_vec[0].iov_len =3D rqstp->rq_arg.head[0].iov_len - hdr;
-> +	rqstp->rq_vec[0].iov_len =3D head->iov_len - hdr;
->  	v =3D 0;
->  	while (len > rqstp->rq_vec[v].iov_len) {
->  		len -=3D rqstp->rq_vec[v].iov_len;
-> commit 13bf9fbff0e5
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Fri Apr 21 15:26:30 2017 -0400
->
->     nfsd: stricter decoding of write-like NFSv2/v3 ops
->=20=20=20=20=20
->     The NFSv2/v3 code does not systematically check whether we decode past
->     the end of the buffer.  This generally appears to be harmless, but th=
-ere
->     are a few places where we do arithmetic on the pointers involved and
->     don't account for the possibility that a length could be negative.  A=
-dd
->     checks to catch these.
->=20=20=20=20=20
->     Reported-by: Tuomas Haanp=C3=A4=C3=A4 <thaan@synopsys.com>
->     Reported-by: Ari Kauppi <ari@synopsys.com>
->     Reviewed-by: NeilBrown <neilb@suse.com>
->     Cc: stable@vger.kernel.org
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index d18cfddbe115..452334694a5d 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -369,6 +369,8 @@ nfs3svc_decode_writeargs(struct svc_rqst *rqstp, __be=
-32 *p,
->  	args->count =3D ntohl(*p++);
->  	args->stable =3D ntohl(*p++);
->  	len =3D args->len =3D ntohl(*p++);
-> +	if ((void *)p > head->iov_base + head->iov_len)
-> +		return 0;
->  	/*
->  	 * The count must equal the amount of data passed.
->  	 */
-> @@ -472,6 +474,8 @@ nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __=
-be32 *p,
->  	/* first copy and check from the first page */
->  	old =3D (char*)p;
->  	vec =3D &rqstp->rq_arg.head[0];
-> +	if ((void *)old > vec->iov_base + vec->iov_len)
-> +		return 0;
->  	avail =3D vec->iov_len - (old - (char*)vec->iov_base);
->  	while (len && avail && *old) {
->  		*new++ =3D *old++;
-> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-> index 59bd88a23a3d..de07ff625777 100644
-> --- a/fs/nfsd/nfsxdr.c
-> +++ b/fs/nfsd/nfsxdr.c
-> @@ -302,6 +302,8 @@ nfssvc_decode_writeargs(struct svc_rqst *rqstp, __be3=
-2 *p,
->  	 * bytes.
->  	 */
->  	hdr =3D (void*)p - head->iov_base;
-> +	if (hdr > head->iov_len)
-> +		return 0;
->  	dlen =3D head->iov_len + rqstp->rq_arg.page_len - hdr;
->=20=20
->  	/*
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlkAPt8ACgkQOeye3VZi
-gbli3w//fGQ0k/RztlS0lw8Yx/srm/7+hxiJyJ5HA2puYvMsBZIf0G2wxVDiurI8
-IwJuLFQSuk6CpLVnfMETzpt361OItRthCETGc/BmZcdHwSx8egvag3I9puYE+EO2
-F1SeNVXgSIIWIGmdqsYckqsei4gRW/3iuufsGzAYkOR4aH/FU6tKC7An0wfCeuT3
-e1M0G73ckMkPdNvncj0Ra5jUKpf4Bus1IpmuTjEXycUQmJpHVs0JWWlDnTcCvorx
-IIHSRJDZnX730zXCqwzBsuqjuqkj6fha9YD9KotNnH3Od6t5fH0wN+p7pt70CDzm
-2XhIn+18+sdjSmS+NINHgNqYnO7+llkSbmiZsmKRcyFW5uZ88Uwcw2bAXajpgCcl
-l/ptgHhhR/v9NI/6ysiRCA+q59BU4Ov0csKIA+h9Cg03+g5/8BzxbII7cJUY+qQ9
-kDwSVnkSO8Dwmdb3B6qhUHy67x/aVwbKpzdtN9QtsDNOCpwZlW7RbpuKq4ZyVrmQ
-yMHS5AkQfGP30mk5ops6iUB0eXcozjfJUALqEA+8c3O2AQWXwniCtGu6F2iF5krh
-TPqD09bY7P4s2WD7FwXySiFJIybrPj7XYk7rg18XJxwcS3ym/SFMW8XEJAsiwEQo
-bGD5MXeZCjsoS7SlOlYDsdcf/YvmGhPiNN2GFeLuY1HqGYeKfIw=
-=ucA4
------END PGP SIGNATURE-----
---=-=-=--
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
