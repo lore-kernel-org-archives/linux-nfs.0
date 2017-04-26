@@ -1,169 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35194 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S935076AbdDZPzd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 11:55:33 -0400
-Received: by mail-it0-f66.google.com with SMTP id 70so1016065ita.2
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 08:55:33 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Kinglong Mee <kinglongmee@gmail.com>
-Subject: [PATCH 2/2] NFSv4: Fix callback server shutdown
-Date: Wed, 26 Apr 2017 11:55:27 -0400
-Message-Id: <20170426155527.92213-3-trond.myklebust@primarydata.com>
-In-Reply-To: <20170426155527.92213-2-trond.myklebust@primarydata.com>
-References: <20170426155527.92213-1-trond.myklebust@primarydata.com>
- <20170426155527.92213-2-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:45390 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750803AbdDZQKa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 26 Apr 2017 12:10:30 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id F0C983DBC8
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 16:10:29 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-123-51.rdu2.redhat.com [10.10.123.51])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id B17A577C1D
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 16:10:29 +0000 (UTC)
+Subject: Re: [PATCH] systemd: Afters are also needed for the
+ Wants=network-online.target
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20170424152752.25730-1-steved@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <e5f3b642-3f79-5623-a09c-eb1f68f39372@RedHat.com>
+Date: Wed, 26 Apr 2017 12:10:29 -0400
+MIME-Version: 1.0
+In-Reply-To: <20170424152752.25730-1-steved@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We want to use kthread_stop() in order to ensure the threads are
-shut down before we tear down the nfs_callback_info in nfs_callback_down.
 
-Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-Fixes: bb6aeba736ba9 ("NFSv4.x: Switch to using svc_set_num_threads()...")
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/callback.c          | 24 ++++++++++++++++--------
- include/linux/sunrpc/svc.h |  1 +
- net/sunrpc/svc.c           | 38 ++++++++++++++++++++++++++++++++++++++
- 3 files changed, 55 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 773774531aff..8cabae9b140e 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -76,7 +76,10 @@ nfs4_callback_svc(void *vrqstp)
- 
- 	set_freezable();
- 
--	while (!kthread_should_stop()) {
-+	while (!kthread_freezable_should_stop(NULL)) {
-+
-+		if (signal_pending(current))
-+			flush_signals(current);
- 		/*
- 		 * Listen for a request on the socket
- 		 */
-@@ -85,6 +88,8 @@ nfs4_callback_svc(void *vrqstp)
- 			continue;
- 		svc_process(rqstp);
- 	}
-+	svc_exit_thread(rqstp);
-+	module_put_and_exit(0);
- 	return 0;
- }
- 
-@@ -103,9 +108,10 @@ nfs41_callback_svc(void *vrqstp)
- 
- 	set_freezable();
- 
--	while (!kthread_should_stop()) {
--		if (try_to_freeze())
--			continue;
-+	while (!kthread_freezable_should_stop(NULL)) {
-+
-+		if (signal_pending(current))
-+			flush_signals(current);
- 
- 		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
- 		spin_lock_bh(&serv->sv_cb_lock);
-@@ -121,11 +127,13 @@ nfs41_callback_svc(void *vrqstp)
- 				error);
- 		} else {
- 			spin_unlock_bh(&serv->sv_cb_lock);
--			schedule();
-+			if (!kthread_should_stop())
-+				schedule();
- 			finish_wait(&serv->sv_cb_waitq, &wq);
- 		}
--		flush_signals(current);
- 	}
-+	svc_exit_thread(rqstp);
-+	module_put_and_exit(0);
- 	return 0;
- }
- 
-@@ -221,14 +229,14 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv,
- static struct svc_serv_ops nfs40_cb_sv_ops = {
- 	.svo_function		= nfs4_callback_svc,
- 	.svo_enqueue_xprt	= svc_xprt_do_enqueue,
--	.svo_setup		= svc_set_num_threads,
-+	.svo_setup		= svc_set_num_threads_sync,
- 	.svo_module		= THIS_MODULE,
- };
- #if defined(CONFIG_NFS_V4_1)
- static struct svc_serv_ops nfs41_cb_sv_ops = {
- 	.svo_function		= nfs41_callback_svc,
- 	.svo_enqueue_xprt	= svc_xprt_do_enqueue,
--	.svo_setup		= svc_set_num_threads,
-+	.svo_setup		= svc_set_num_threads_sync,
- 	.svo_module		= THIS_MODULE,
- };
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index e770abeed32d..11cef5a7bc87 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -474,6 +474,7 @@ void		   svc_pool_map_put(void);
- struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
- 			struct svc_serv_ops *);
- int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
-+int		   svc_set_num_threads_sync(struct svc_serv *, struct svc_pool *, int);
- int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
- void		   svc_destroy(struct svc_serv *);
- void		   svc_shutdown_net(struct svc_serv *, struct net *);
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 98dc33ae738b..bc0f5a0ecbdc 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -795,6 +795,44 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
- }
- EXPORT_SYMBOL_GPL(svc_set_num_threads);
- 
-+/* destroy old threads */
-+static int
-+svc_stop_kthreads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-+{
-+	struct task_struct *task;
-+	unsigned int state = serv->sv_nrthreads-1;
-+
-+	/* destroy old threads */
-+	do {
-+		task = choose_victim(serv, pool, &state);
-+		if (task == NULL)
-+			break;
-+		kthread_stop(task);
-+		nrservs++;
-+	} while (nrservs < 0);
-+	return 0;
-+}
-+
-+int
-+svc_set_num_threads_sync(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-+{
-+	if (pool == NULL) {
-+		/* The -1 assumes caller has done a svc_get() */
-+		nrservs -= (serv->sv_nrthreads-1);
-+	} else {
-+		spin_lock_bh(&pool->sp_lock);
-+		nrservs -= pool->sp_nrthreads;
-+		spin_unlock_bh(&pool->sp_lock);
-+	}
-+
-+	if (nrservs > 0)
-+		return svc_start_kthreads(serv, pool, nrservs);
-+	if (nrservs < 0)
-+		return svc_stop_kthreads(serv, pool, nrservs);
-+	return 0;
-+}
-+EXPORT_SYMBOL_GPL(svc_set_num_threads_sync);
-+
- /*
-  * Called from a server thread as it's exiting. Caller must hold the "service
-  * mutex" for the service.
--- 
-2.9.3
+On 04/24/2017 11:27 AM, Steve Dickson wrote:
+> Commit 9d4fc3fb added Wants=network-online.target which
+> is not enough to ensure the network is completely up
+> before the NFS server is started. After=network-online.target
+> is also needed.
+> 
+> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1419351
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
+steved
+> ---
+>  systemd/nfs-mountd.service       | 1 +
+>  systemd/nfs-server.service       | 2 +-
+>  systemd/rpc-statd-notify.service | 2 +-
+>  systemd/rpc-statd.service        | 2 +-
+>  4 files changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
+> index fec0399..e8ece53 100644
+> --- a/systemd/nfs-mountd.service
+> +++ b/systemd/nfs-mountd.service
+> @@ -4,6 +4,7 @@ DefaultDependencies=no
+>  Requires=proc-fs-nfsd.mount
+>  Wants=network-online.target
+>  After=proc-fs-nfsd.mount
+> +After=network-online.target local-fs.target
+>  After=rpcbind.socket
+>  BindsTo=nfs-server.service
+>  
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index e6b8f58..136552b 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -7,7 +7,7 @@ Wants=rpcbind.socket network-online.target
+>  Wants=rpc-statd.service nfs-idmapd.service
+>  Wants=rpc-statd-notify.service
+>  
+> -After= local-fs.target
+> +After= network-online.target local-fs.target
+>  After= proc-fs-nfsd.mount rpcbind.socket nfs-mountd.service
+>  After= nfs-idmapd.service rpc-statd.service
+>  Before= rpc-statd-notify.service
+> diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
+> index f54d4c5..687fe31 100644
+> --- a/systemd/rpc-statd-notify.service
+> +++ b/systemd/rpc-statd-notify.service
+> @@ -2,7 +2,7 @@
+>  Description=Notify NFS peers of a restart
+>  DefaultDependencies=no
+>  Wants=network-online.target
+> -After=local-fs.target network.target nss-lookup.target
+> +After=local-fs.target network-online.target nss-lookup.target
+>  
+>  # if we run an nfs server, it needs to be running before we
+>  # tell clients that it has restarted.
+> diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+> index 8cef022..f41ae20 100644
+> --- a/systemd/rpc-statd.service
+> +++ b/systemd/rpc-statd.service
+> @@ -4,7 +4,7 @@ DefaultDependencies=no
+>  Conflicts=umount.target
+>  Requires=nss-lookup.target rpcbind.socket
+>  Wants=network-online.target
+> -After=nss-lookup.target rpcbind.socket
+> +After=network-online.target nss-lookup.target rpcbind.socket
+>  
+>  PartOf=nfs-utils.service
+>  
+> 
