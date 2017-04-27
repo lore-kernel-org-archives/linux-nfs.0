@@ -1,11 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35724 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1161087AbdD0DGt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 23:06:49 -0400
-Received: by mail-it0-f68.google.com with SMTP id 70so857422ita.2
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 20:06:49 -0700 (PDT)
-Subject: Re: [PATCH 2/2] NFSv4: Fix callback server shutdown
+Received: from mail-it0-f66.google.com ([209.85.214.66]:35273 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S937118AbdD0DNu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 23:13:50 -0400
+Received: by mail-it0-f66.google.com with SMTP id 70so869177ita.2
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 20:13:49 -0700 (PDT)
+Subject: [PATCH resend] NFSv4.x/callback: Create the callback service through
+ svc_create_pooled
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         linux-nfs@vger.kernel.org
 Cc: "J. Bruce Fields" <bfields@redhat.com>,
@@ -13,168 +14,89 @@ Cc: "J. Bruce Fields" <bfields@redhat.com>,
 References: <20170426155527.92213-1-trond.myklebust@primarydata.com>
  <20170426155527.92213-2-trond.myklebust@primarydata.com>
  <20170426155527.92213-3-trond.myklebust@primarydata.com>
+ <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
 From: Kinglong Mee <kinglongmee@gmail.com>
-Message-ID: <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
-Date: Thu, 27 Apr 2017 11:06:39 +0800
+Message-ID: <18c9d73c-d7c7-26af-0e28-fe168aeb5b0d@gmail.com>
+Date: Thu, 27 Apr 2017 11:13:38 +0800
 MIME-Version: 1.0
-In-Reply-To: <20170426155527.92213-3-trond.myklebust@primarydata.com>
+In-Reply-To: <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+As the comments for svc_set_num_threads() said, 
+" Destroying threads relies on the service threads filling in
+rqstp->rq_task, which only the nfs ones do.  Assumes the serv
+has been created using svc_create_pooled()."
 
+If creating service through svc_create(), the svc_pool_map_put()
+will be called in svc_destroy(), but the pool map isn't used.
+So that, the reference of pool map will be drop, the next using
+of pool map will get a zero npools. 
 
-On 4/26/2017 23:55, Trond Myklebust wrote:
-> We want to use kthread_stop() in order to ensure the threads are
-> shut down before we tear down the nfs_callback_info in nfs_callback_down.
-> 
-> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-> Fixes: bb6aeba736ba9 ("NFSv4.x: Switch to using svc_set_num_threads()...")
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Cc: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfs/callback.c          | 24 ++++++++++++++++--------
->  include/linux/sunrpc/svc.h |  1 +
->  net/sunrpc/svc.c           | 38 ++++++++++++++++++++++++++++++++++++++
->  3 files changed, 55 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 773774531aff..8cabae9b140e 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -76,7 +76,10 @@ nfs4_callback_svc(void *vrqstp)
->  
->  	set_freezable();
->  
-> -	while (!kthread_should_stop()) {
-> +	while (!kthread_freezable_should_stop(NULL)) {
-> +
-> +		if (signal_pending(current))
-> +			flush_signals(current);
->  		/*
->  		 * Listen for a request on the socket
->  		 */
-> @@ -85,6 +88,8 @@ nfs4_callback_svc(void *vrqstp)
->  			continue;
->  		svc_process(rqstp);
->  	}
-> +	svc_exit_thread(rqstp);
-> +	module_put_and_exit(0);
->  	return 0;
->  }
->  
-> @@ -103,9 +108,10 @@ nfs41_callback_svc(void *vrqstp)
->  
->  	set_freezable();
->  
-> -	while (!kthread_should_stop()) {
-> -		if (try_to_freeze())
-> -			continue;
-> +	while (!kthread_freezable_should_stop(NULL)) {
-> +
-> +		if (signal_pending(current))
-> +			flush_signals(current);
->  
->  		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
->  		spin_lock_bh(&serv->sv_cb_lock);
-> @@ -121,11 +127,13 @@ nfs41_callback_svc(void *vrqstp)
->  				error);
->  		} else {
->  			spin_unlock_bh(&serv->sv_cb_lock);
-> -			schedule();
-> +			if (!kthread_should_stop())
-> +				schedule();
->  			finish_wait(&serv->sv_cb_waitq, &wq);
->  		}
-> -		flush_signals(current);
->  	}
-> +	svc_exit_thread(rqstp);
-> +	module_put_and_exit(0);
->  	return 0;
->  }
->  
-> @@ -221,14 +229,14 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv,
->  static struct svc_serv_ops nfs40_cb_sv_ops = {
->  	.svo_function		= nfs4_callback_svc,
->  	.svo_enqueue_xprt	= svc_xprt_do_enqueue,
-> -	.svo_setup		= svc_set_num_threads,
-> +	.svo_setup		= svc_set_num_threads_sync,
->  	.svo_module		= THIS_MODULE,
->  };
->  #if defined(CONFIG_NFS_V4_1)
->  static struct svc_serv_ops nfs41_cb_sv_ops = {
->  	.svo_function		= nfs41_callback_svc,
->  	.svo_enqueue_xprt	= svc_xprt_do_enqueue,
-> -	.svo_setup		= svc_set_num_threads,
-> +	.svo_setup		= svc_set_num_threads_sync,
->  	.svo_module		= THIS_MODULE,
->  };
->  
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index e770abeed32d..11cef5a7bc87 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -474,6 +474,7 @@ void		   svc_pool_map_put(void);
->  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
->  			struct svc_serv_ops *);
->  int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
-> +int		   svc_set_num_threads_sync(struct svc_serv *, struct svc_pool *, int);
->  int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
->  void		   svc_destroy(struct svc_serv *);
->  void		   svc_shutdown_net(struct svc_serv *, struct net *);
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 98dc33ae738b..bc0f5a0ecbdc 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -795,6 +795,44 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
->  }
->  EXPORT_SYMBOL_GPL(svc_set_num_threads);
->  
-> +/* destroy old threads */
-> +static int
-> +svc_stop_kthreads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-> +{
-> +	struct task_struct *task;
-> +	unsigned int state = serv->sv_nrthreads-1;
-> +
-> +	/* destroy old threads */
-> +	do {
-> +		task = choose_victim(serv, pool, &state);
-> +		if (task == NULL)
-> +			break;
-> +		kthread_stop(task);
-> +		nrservs++;
-> +	} while (nrservs < 0);
-> +	return 0;
-> +}
-> +
-> +int
-> +svc_set_num_threads_sync(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
-> +{
-> +	if (pool == NULL) {
-> +		/* The -1 assumes caller has done a svc_get() */
-> +		nrservs -= (serv->sv_nrthreads-1);
-> +	} else {
-> +		spin_lock_bh(&pool->sp_lock);
-> +		nrservs -= pool->sp_nrthreads;
-> +		spin_unlock_bh(&pool->sp_lock);
-> +	}
-> +
-> +	if (nrservs > 0)
-> +		return svc_start_kthreads(serv, pool, nrservs);
-> +	if (nrservs < 0)
-> +		return svc_stop_kthreads(serv, pool, nrservs);
-> +	return 0;
-> +}
-> +EXPORT_SYMBOL_GPL(svc_set_num_threads_sync);
+[  137.992130] divide error: 0000 [#1] SMP
+[  137.992148] Modules linked in: nfsd(E) nfsv4 nfs fscache fuse tun bridge stp llc ip_set nfnetlink vmw_vsock_vmci_transport vsock snd_seq_midi snd_seq_midi_event vmw_balloon coretemp crct10dif_pclmul crc32_pclmul ppdev ghash_clmulni_intel intel_rapl_perf joydev snd_ens1371 gameport snd_ac97_codec ac97_bus snd_seq snd_pcm snd_rawmidi snd_timer snd_seq_device snd soundcore parport_pc parport nfit acpi_cpufreq tpm_tis tpm_tis_core tpm vmw_vmci i2c_piix4 shpchp auth_rpcgss nfs_acl lockd(E) grace sunrpc(E) xfs libcrc32c vmwgfx drm_kms_helper ttm crc32c_intel drm e1000 mptspi scsi_transport_spi serio_raw mptscsih mptbase ata_generic pata_acpi [last unloaded: nfsd]
+[  137.992336] CPU: 0 PID: 4514 Comm: rpc.nfsd Tainted: G            E   4.11.0-rc8+ #536
+[  137.992777] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015
+[  137.993757] task: ffff955984101d00 task.stack: ffff9873c2604000
+[  137.994231] RIP: 0010:svc_pool_for_cpu+0x2b/0x80 [sunrpc]
+[  137.994768] RSP: 0018:ffff9873c2607c18 EFLAGS: 00010246
+[  137.995227] RAX: 0000000000000000 RBX: ffff95598376f000 RCX: 0000000000000002
+[  137.995673] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff9559944aec00
+[  137.996156] RBP: ffff9873c2607c18 R08: ffff9559944aec28 R09: 0000000000000000
+[  137.996609] R10: 0000000001080002 R11: 0000000000000000 R12: ffff95598376f010
+[  137.997063] R13: ffff95598376f018 R14: ffff9559944aec28 R15: ffff9559944aec00
+[  137.997584] FS:  00007f755529eb40(0000) GS:ffff9559bb600000(0000) knlGS:0000000000000000
+[  137.998048] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  137.998548] CR2: 000055f3aecd9660 CR3: 0000000084290000 CR4: 00000000001406f0
+[  137.999052] Call Trace:
+[  137.999517]  svc_xprt_do_enqueue+0xef/0x260 [sunrpc]
+[  138.000028]  svc_xprt_received+0x47/0x90 [sunrpc]
+[  138.000487]  svc_add_new_perm_xprt+0x76/0x90 [sunrpc]
+[  138.000981]  svc_addsock+0x14b/0x200 [sunrpc]
+[  138.001424]  ? recalc_sigpending+0x1b/0x50
+[  138.001860]  ? __getnstimeofday64+0x41/0xd0
+[  138.002346]  ? do_gettimeofday+0x29/0x90
+[  138.002779]  write_ports+0x255/0x2c0 [nfsd]
+[  138.003202]  ? _copy_from_user+0x4e/0x80
+[  138.003676]  ? write_recoverydir+0x100/0x100 [nfsd]
+[  138.004098]  nfsctl_transaction_write+0x48/0x80 [nfsd]
+[  138.004544]  __vfs_write+0x37/0x160
+[  138.004982]  ? selinux_file_permission+0xd7/0x110
+[  138.005401]  ? security_file_permission+0x3b/0xc0
+[  138.005865]  vfs_write+0xb5/0x1a0
+[  138.006267]  SyS_write+0x55/0xc0
+[  138.006654]  entry_SYSCALL_64_fastpath+0x1a/0xa9
+[  138.007071] RIP: 0033:0x7f7554b9dc30
+[  138.007437] RSP: 002b:00007ffc9f92c788 EFLAGS: 00000246 ORIG_RAX: 0000000000000001
+[  138.007807] RAX: ffffffffffffffda RBX: 0000000000000002 RCX: 00007f7554b9dc30
+[  138.008168] RDX: 0000000000000002 RSI: 00005640cd536640 RDI: 0000000000000003
+[  138.008573] RBP: 00007ffc9f92c780 R08: 0000000000000001 R09: 0000000000000002
+[  138.008918] R10: 0000000000000064 R11: 0000000000000246 R12: 0000000000000004
+[  138.009254] R13: 00005640cdbf77a0 R14: 00005640cdbf7720 R15: 00007ffc9f92c238
+[  138.009610] Code: 0f 1f 44 00 00 48 8b 87 98 00 00 00 55 48 89 e5 48 83 78 08 00 74 10 8b 05 07 42 02 00 83 f8 01 74 40 83 f8 02 74 19 31 c0 31 d2 <f7> b7 88 00 00 00 5d 89 d0 48 c1 e0 07 48 03 87 90 00 00 00 c3
+[  138.010664] RIP: svc_pool_for_cpu+0x2b/0x80 [sunrpc] RSP: ffff9873c2607c18
+[  138.011061] ---[ end trace b3468224cafa7d11 ]---
 
-There is only one use of svc_set_num_threads that by nfsd,
-I'd like to change svc_set_num_threads and update nfsd than add a new function.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfs/callback.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Ps,
-"NFSv4.x/callback: Create the callback service through svc_create_pooled"
-must be include before the fix. I will resend it later.
+diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+index 484bebc..0a21150 100644
+--- a/fs/nfs/callback.c
++++ b/fs/nfs/callback.c
+@@ -279,7 +279,7 @@ static struct svc_serv *nfs_callback_create_svc(int minorversion)
+ 		printk(KERN_WARNING "nfs_callback_create_svc: no kthread, %d users??\n",
+ 			cb_info->users);
+ 
+-	serv = svc_create(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
++	serv = svc_create_pooled(&nfs4_callback_program, NFS4_CALLBACK_BUFSIZE, sv_ops);
+ 	if (!serv) {
+ 		printk(KERN_ERR "nfs_callback_create_svc: create service failed\n");
+ 		return ERR_PTR(-ENOMEM);
+-- 
+2.9.3
 
-thanks,
-Kinglong Mee
 
