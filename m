@@ -1,55 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57472 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1423217AbdD0WDo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 27 Apr 2017 18:03:44 -0400
-Date: Thu, 27 Apr 2017 18:03:43 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:31530 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751986AbdD0WHO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Apr 2017 18:07:14 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
+        "bfields@redhat.com" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 2/2] NFSv4: Fix callback server shutdown
-Message-ID: <20170427220342.GC29775@parsley.fieldses.org>
+Date: Thu, 27 Apr 2017 22:07:07 +0000
+Message-ID: <1493330824.34802.1.camel@primarydata.com>
 References: <20170426155527.92213-1-trond.myklebust@primarydata.com>
- <20170426155527.92213-2-trond.myklebust@primarydata.com>
- <20170426155527.92213-3-trond.myklebust@primarydata.com>
- <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
- <1493263484.1401.2.camel@primarydata.com>
- <4275e06f-97c0-b5b9-e71c-db7380d90534@gmail.com>
+         <20170426155527.92213-2-trond.myklebust@primarydata.com>
+         <20170426155527.92213-3-trond.myklebust@primarydata.com>
+         <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
+         <1493263484.1401.2.camel@primarydata.com>
+         <4275e06f-97c0-b5b9-e71c-db7380d90534@gmail.com>
+         <20170427220342.GC29775@parsley.fieldses.org>
+In-Reply-To: <20170427220342.GC29775@parsley.fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <4275e06f-97c0-b5b9-e71c-db7380d90534@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 27, 2017 at 11:54:48AM +0800, Kinglong Mee wrote:
-> 
-> 
-> On 4/27/2017 11:24, Trond Myklebust wrote:
-> > On Thu, 2017-04-27 at 11:06 +0800, Kinglong Mee wrote:
-> >>
-> >> There is only one use of svc_set_num_threads that by nfsd,
-> >> I'd like to change svc_set_num_threads and update nfsd than add a new
-> >> function.
-> > 
-> > You can't really combine the two methods. Either you choose signals or
-> > you choose kthread_stop(). The problem is that signals require the
-> > thread to be able to persist past the nfsd_destroy() (which again
-> > forces things like nfsd() having to take nfsd_mutex), or you have to
-> > make things synchronous, in which case having nfsd() try to take
-> > nfsd_mutex causes deadlocks.
-> > 
-> > IOW: if there is legacy behaviour here that requires the signal method,
-> > then knfsd cannot be converted.
-> 
-> Got it.
-> 
-> Tested-and-reviewed-by: Kinglong Mee <kinglongmee@gmail.com>
+T24gVGh1LCAyMDE3LTA0LTI3IGF0IDE4OjAzIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFRodSwgQXByIDI3LCAyMDE3IGF0IDExOjU0OjQ4QU0gKzA4MDAsIEtpbmdsb25nIE1l
+ZSB3cm90ZToNCj4gPiANCj4gPiANCj4gPiBPbiA0LzI3LzIwMTcgMTE6MjQsIFRyb25kIE15a2xl
+YnVzdCB3cm90ZToNCj4gPiA+IE9uIFRodSwgMjAxNy0wNC0yNyBhdCAxMTowNiArMDgwMCwgS2lu
+Z2xvbmcgTWVlIHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlcmUgaXMgb25seSBvbmUgdXNl
+IG9mIHN2Y19zZXRfbnVtX3RocmVhZHMgdGhhdCBieSBuZnNkLA0KPiA+ID4gPiBJJ2QgbGlrZSB0
+byBjaGFuZ2Ugc3ZjX3NldF9udW1fdGhyZWFkcyBhbmQgdXBkYXRlIG5mc2QgdGhhbiBhZGQNCj4g
+PiA+ID4gYSBuZXcNCj4gPiA+ID4gZnVuY3Rpb24uDQo+ID4gPiANCj4gPiA+IFlvdSBjYW4ndCBy
+ZWFsbHkgY29tYmluZSB0aGUgdHdvIG1ldGhvZHMuIEVpdGhlciB5b3UgY2hvb3NlDQo+ID4gPiBz
+aWduYWxzIG9yDQo+ID4gPiB5b3UgY2hvb3NlIGt0aHJlYWRfc3RvcCgpLiBUaGUgcHJvYmxlbSBp
+cyB0aGF0IHNpZ25hbHMgcmVxdWlyZQ0KPiA+ID4gdGhlDQo+ID4gPiB0aHJlYWQgdG8gYmUgYWJs
+ZSB0byBwZXJzaXN0IHBhc3QgdGhlIG5mc2RfZGVzdHJveSgpICh3aGljaCBhZ2Fpbg0KPiA+ID4g
+Zm9yY2VzIHRoaW5ncyBsaWtlIG5mc2QoKSBoYXZpbmcgdG8gdGFrZSBuZnNkX211dGV4KSwgb3Ig
+eW91IGhhdmUNCj4gPiA+IHRvDQo+ID4gPiBtYWtlIHRoaW5ncyBzeW5jaHJvbm91cywgaW4gd2hp
+Y2ggY2FzZSBoYXZpbmcgbmZzZCgpIHRyeSB0byB0YWtlDQo+ID4gPiBuZnNkX211dGV4IGNhdXNl
+cyBkZWFkbG9ja3MuDQo+ID4gPiANCj4gPiA+IElPVzogaWYgdGhlcmUgaXMgbGVnYWN5IGJlaGF2
+aW91ciBoZXJlIHRoYXQgcmVxdWlyZXMgdGhlIHNpZ25hbA0KPiA+ID4gbWV0aG9kLA0KPiA+ID4g
+dGhlbiBrbmZzZCBjYW5ub3QgYmUgY29udmVydGVkLg0KPiA+IA0KPiA+IEdvdCBpdC4NCj4gPiAN
+Cj4gPiBUZXN0ZWQtYW5kLXJldmlld2VkLWJ5OiBLaW5nbG9uZyBNZWUgPGtpbmdsb25nbWVlQGdt
+YWlsLmNvbT4NCj4gDQo+IFNvIGRvZXMgd2hhdCBJIGhhdmUgaW4gZ2l0Oi8vbGludXgtbmZzLm9y
+Zy9+YmZpZWxkcy9saW51eC5naXQgbmZzZC0NCj4gbmV4dA0KPiBsb29rIGNvcnJlY3Q/DQo+IA0K
+PiAoQWx0ZXJuYXRpdmVseSwgaWYgVHJvbmQncyB0YWtpbmcgdGhpcyB0aHJvdWdoIGhpcyB0cmVl
+LCB0aGF0J3MgZmluZQ0KPiB0b28sIGZlZWwgZnJlZSB0byBhZGQgbXkgQUNLLikNCj4gDQpJZiB5
+b3UndmUgYWxyZWFkeSBnb3QgaXQgcXVldWVkIHVwIHRoZW4gSSdtIGZpbmUgd2l0aCB0aGF0LiBJ
+IGhhdmUgaXQNCmluIG15ICJ0ZXN0aW5nIiBicmFuY2ggKHdoaWNoIHBhc3NlcyDimLopIGJ1dCBo
+YXZlbid0IHlldCBtb3ZlZCBpdCBpbnRvDQpsaW51eC1uZXh0Lg0KDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
+bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-So does what I have in git://linux-nfs.org/~bfields/linux.git nfsd-next
-look correct?
-
-(Alternatively, if Trond's taking this through his tree, that's fine
-too, feel free to add my ACK.)
-
---b.
