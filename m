@@ -1,40 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:46293 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S967901AbdD0DY4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 23:24:56 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "kinglongmee@gmail.com" <kinglongmee@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "bfields@redhat.com" <bfields@redhat.com>
+Received: from mail-io0-f194.google.com ([209.85.223.194]:36849 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752387AbdD0Dy7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 23:54:59 -0400
+Received: by mail-io0-f194.google.com with SMTP id x86so2623600ioe.3
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 20:54:58 -0700 (PDT)
 Subject: Re: [PATCH 2/2] NFSv4: Fix callback server shutdown
-Date: Thu, 27 Apr 2017 03:24:47 +0000
-Message-ID: <1493263484.1401.2.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Cc: "bfields@redhat.com" <bfields@redhat.com>
 References: <20170426155527.92213-1-trond.myklebust@primarydata.com>
-         <20170426155527.92213-2-trond.myklebust@primarydata.com>
-         <20170426155527.92213-3-trond.myklebust@primarydata.com>
-         <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
-In-Reply-To: <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
+ <20170426155527.92213-2-trond.myklebust@primarydata.com>
+ <20170426155527.92213-3-trond.myklebust@primarydata.com>
+ <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
+ <1493263484.1401.2.camel@primarydata.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <4275e06f-97c0-b5b9-e71c-db7380d90534@gmail.com>
+Date: Thu, 27 Apr 2017 11:54:48 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1493263484.1401.2.camel@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA0LTI3IGF0IDExOjA2ICswODAwLCBLaW5nbG9uZyBNZWUgd3JvdGU6DQo+
-IA0KPiBUaGVyZSBpcyBvbmx5IG9uZSB1c2Ugb2Ygc3ZjX3NldF9udW1fdGhyZWFkcyB0aGF0IGJ5
-IG5mc2QsDQo+IEknZCBsaWtlIHRvIGNoYW5nZSBzdmNfc2V0X251bV90aHJlYWRzIGFuZCB1cGRh
-dGUgbmZzZCB0aGFuIGFkZCBhIG5ldw0KPiBmdW5jdGlvbi4NCg0KWW91IGNhbid0IHJlYWxseSBj
-b21iaW5lIHRoZSB0d28gbWV0aG9kcy4gRWl0aGVyIHlvdSBjaG9vc2Ugc2lnbmFscyBvcg0KeW91
-IGNob29zZSBrdGhyZWFkX3N0b3AoKS4gVGhlIHByb2JsZW0gaXMgdGhhdCBzaWduYWxzIHJlcXVp
-cmUgdGhlDQp0aHJlYWQgdG8gYmUgYWJsZSB0byBwZXJzaXN0IHBhc3QgdGhlIG5mc2RfZGVzdHJv
-eSgpICh3aGljaCBhZ2Fpbg0KZm9yY2VzIHRoaW5ncyBsaWtlIG5mc2QoKSBoYXZpbmcgdG8gdGFr
-ZSBuZnNkX211dGV4KSwgb3IgeW91IGhhdmUgdG8NCm1ha2UgdGhpbmdzIHN5bmNocm9ub3VzLCBp
-biB3aGljaCBjYXNlIGhhdmluZyBuZnNkKCkgdHJ5IHRvIHRha2UNCm5mc2RfbXV0ZXggY2F1c2Vz
-IGRlYWRsb2Nrcy4NCg0KSU9XOiBpZiB0aGVyZSBpcyBsZWdhY3kgYmVoYXZpb3VyIGhlcmUgdGhh
-dCByZXF1aXJlcyB0aGUgc2lnbmFsIG1ldGhvZCwNCnRoZW4ga25mc2QgY2Fubm90IGJlIGNvbnZl
-cnRlZC4NCg0KPiBQcywNCj4gIk5GU3Y0LngvY2FsbGJhY2s6IENyZWF0ZSB0aGUgY2FsbGJhY2sg
-c2VydmljZSB0aHJvdWdoDQo+IHN2Y19jcmVhdGVfcG9vbGVkIg0KPiBtdXN0IGJlIGluY2x1ZGUg
-YmVmb3JlIHRoZSBmaXguIEkgd2lsbCByZXNlbmQgaXQgbGF0ZXIuDQo+IA0KT0suIFRoYW5rcyEN
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJp
-bWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
+
+On 4/27/2017 11:24, Trond Myklebust wrote:
+> On Thu, 2017-04-27 at 11:06 +0800, Kinglong Mee wrote:
+>>
+>> There is only one use of svc_set_num_threads that by nfsd,
+>> I'd like to change svc_set_num_threads and update nfsd than add a new
+>> function.
+> 
+> You can't really combine the two methods. Either you choose signals or
+> you choose kthread_stop(). The problem is that signals require the
+> thread to be able to persist past the nfsd_destroy() (which again
+> forces things like nfsd() having to take nfsd_mutex), or you have to
+> make things synchronous, in which case having nfsd() try to take
+> nfsd_mutex causes deadlocks.
+> 
+> IOW: if there is legacy behaviour here that requires the signal method,
+> then knfsd cannot be converted.
+
+Got it.
+
+Tested-and-reviewed-by: Kinglong Mee <kinglongmee@gmail.com>
+
+thanks,
+Kinglong Mee
+
+> 
+>> Ps,
+>> "NFSv4.x/callback: Create the callback service through
+>> svc_create_pooled"
+>> must be include before the fix. I will resend it later.
+>>
+> OK. Thanks!
+> 
