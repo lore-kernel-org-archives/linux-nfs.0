@@ -1,153 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:46689 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1032331AbdDZWw6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 26 Apr 2017 18:52:58 -0400
-Date: Wed, 26 Apr 2017 16:52:36 -0600
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        v9fs-developer@lists.sourceforge.net
-Subject: Re: [PATCH 2/2] dax: fix data corruption due to stale mmap reads
-Message-ID: <20170426225236.GA25838@linux.intel.com>
-References: <20170420191446.GA21694@linux.intel.com>
- <20170421034437.4359-1-ross.zwisler@linux.intel.com>
- <20170421034437.4359-2-ross.zwisler@linux.intel.com>
- <20170425111043.GH2793@quack2.suse.cz>
- <20170425225936.GA29655@linux.intel.com>
- <20170426085235.GA21738@quack2.suse.cz>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:30611 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1033435AbdD0BqK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 21:46:10 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "scar@drigon.com" <scar@drigon.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: rdma connection close/reopen every 5 mins
+Date: Thu, 27 Apr 2017 01:46:01 +0000
+Message-ID: <1493257558.129694.1.camel@primarydata.com>
+References: <odql2m$vup$1@blaine.gmane.org>
+         <97258237-282D-4A72-9AEE-BC1B82DF8E1C@oracle.com>
+         <odr81f$k4m$1@blaine.gmane.org>
+         <D82E4998-B2C0-42E5-B51B-4DA13ACB5BB2@oracle.com>
+In-Reply-To: <D82E4998-B2C0-42E5-B51B-4DA13ACB5BB2@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170426085235.GA21738@quack2.suse.cz>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 26, 2017 at 10:52:35AM +0200, Jan Kara wrote:
-> On Tue 25-04-17 16:59:36, Ross Zwisler wrote:
-> > On Tue, Apr 25, 2017 at 01:10:43PM +0200, Jan Kara wrote:
-> > <>
-> > > Hum, but now thinking more about it I have hard time figuring out why write
-> > > vs fault cannot actually still race:
-> > > 
-> > > CPU1 - write(2)				CPU2 - read fault
-> > > 
-> > > 					dax_iomap_pte_fault()
-> > > 					  ->iomap_begin() - sees hole
-> > > dax_iomap_rw()
-> > >   iomap_apply()
-> > >     ->iomap_begin - allocates blocks
-> > >     dax_iomap_actor()
-> > >       invalidate_inode_pages2_range()
-> > >         - there's nothing to invalidate
-> > > 					  grab_mapping_entry()
-> > > 					  - we add zero page in the radix
-> > > 					    tree & map it to page tables
-> > > 
-> > > Similarly read vs write fault may end up racing in a wrong way and try to
-> > > replace already existing exceptional entry with a hole page?
-> > 
-> > Yep, this race seems real to me, too.  This seems very much like the issues
-> > that exist when a thread is doing direct I/O.  One thread is doing I/O to an
-> > intermediate buffer (page cache for direct I/O case, zero page for us), and
-> > the other is going around it directly to media, and they can get out of sync.
-> > 
-> > IIRC the direct I/O code looked something like:
-> > 
-> > 1/ invalidate existing mappings
-> > 2/ do direct I/O to media
-> > 3/ invalidate mappings again, just in case.  Should be cheap if there weren't
-> >    any conflicting faults.  This makes sure any new allocations we made are
-> >    faulted in.
-> 
-> Yeah, the problem is people generally expect weird behavior when they mix
-> direct and buffered IO (or let alone mmap) however everyone expects
-> standard read(2) and write(2) to be completely coherent with mmap(2).
+T24gV2VkLCAyMDE3LTA0LTI2IGF0IDE1OjUyIC0wNzAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBBcHIgMjYsIDIwMTcsIGF0IDM6NDcgUE0sIHNjYXIgPHNjYXJAZHJpZ29uLmNvbT4gd3Jv
+dGU6DQo+ID4gDQo+ID4gQ2h1Y2sgTGV2ZXIgd3JvdGUgb24gMDQvMjYvMjAxNyAwMTozMiBQTToN
+Cj4gPiA+IElmIGl0J3MgZXZlcnkgNSBtaW51dGVzLCB0aGF0J3MgcHJvYmFibHkgdGhlIFJQQyBp
+ZGxlIHRpbWVvdXQNCj4gPiA+IHRoYXQgaXMgY2xvc2luZyB0aGUgY29ubmVjdGlvbi4NCj4gPiA+
+IA0KPiA+ID4gU28gdGhpcyBzaG91bGQgYmUgZW50aXJlbHkgaGFybWxlc3MuDQo+ID4gDQo+ID4g
+WWVzIHNvIGZhciBpdCBzZWVtcyBoYXJtbGVzcywgYnV0IGl0IGlzIGFubm95aW5nIGFuZCBmaWxs
+cyB1cCB0aGUNCj4gPiBsb2cgd2l0aCBzcGFtLCBwbHVzIGl0J3Mgbm90IHNvbWV0aGluZyBJIHNl
+ZSB3aGVuIHVzaW5nIE5GUy9UQ1AuDQo+IA0KPiBUaGF0J3MgY29ycmVjdCwgTkZTL1RDUCBkb2Vz
+IG5vdCBoYXZlIHRoZSAiY29ubmVjdGVkIC8gY2xvc2VkIg0KPiBtZXNzYWdlcywgYnV0IHRoZSBp
+ZGxlIHRpbWVvdXQgYmVoYXZpb3IgaXMgdGhlIGV4YWN0bHkgdGhlIHNhbWUuDQo+IA0KPiBJIHRy
+aWVkIHRvIHJlbW92ZSB0aG9zZSBtZXNzYWdlcyBhIGZldyB5ZWFycyBhZ28gYW5kIHdhcyB0b2xk
+DQo+IHRvIGdvIHBvdW5kIHNhbmQuDQo+IA0KIA0KDQpCeSBtZT8gSeKAmWQgYmUgaGFwcHkgdG8g
+dGFrZSBhIHBhdGNoIHRvIHJlbW92ZSB0aG9zZSBtZXNzYWdlcy4gSSBmaW5kIGl0DQphYnNvbHV0
+ZWx5IHJpZGljdWxvdXMgdG8gYmUgbG9nZ2luZyBmdWxseSBleHBlY3RlZCBiZWhhdmlvdXIgbGlr
+ZSB0aGlzLg0KSXQgc2hvdWxkIGF0IGJlc3QgYmUgYSBkcHJpbnRrKCkgYW5kIEknZCBwcmVmZXIg
+dG8gcmVwbGFjZSBpdCB3aXRoDQp0cmFjZXBvaW50cyBsaWtlIHdlIGRvIGZvciB0aGUgc29ja2V0
+IGNvZGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-Yep, fair enough.
-
-> > I guess one option would be to replicate that logic in the DAX I/O path, or we
-> > could try and enhance our locking so page faults can't race with I/O since
-> > both can allocate blocks.
-> 
-> In the abstract way, the problem is that we have radix tree (and page
-> tables) cache block mapping information and the operation: "read block
-> mapping information, store it in the radix tree" is not serialized in any
-> way against other block allocations so the information we store can be out
-> of date by the time we store it.
-> 
-> One way to solve this would be to move ->iomap_begin call in the fault
-> paths under entry lock although that would mean I have to redo how ext4
-> handles DAX faults because with current code it would create lock inversion
-> wrt transaction start.
-
-I don't think this alone is enough to save us.  The I/O path doesn't currently
-take any DAX radix tree entry locks, so our race would just become:
-
-CPU1 - write(2)				CPU2 - read fault
-
-					dax_iomap_pte_fault()
-					  grab_mapping_entry() // newly moved
-					  ->iomap_begin() - sees hole
-dax_iomap_rw()
-  iomap_apply()
-    ->iomap_begin - allocates blocks
-    dax_iomap_actor()
-      invalidate_inode_pages2_range()
-        - there's nothing to invalidate
-					  - we add zero page in the radix
-					    tree & map it to page tables
-
-In their current form I don't think we want to take DAX radix tree entry locks
-in the I/O path because that would effectively serialize I/O over a given
-radix tree entry. For a 2MiB entry, for example, all I/O to that 2MiB range
-would be serialized.
-
-> Another solution would be to grab i_mmap_sem for write when doing write
-> fault of a page and similarly have it grabbed for writing when doing
-> write(2). This would scale rather poorly but if we later replaced it with a
-> range lock (Davidlohr has already posted a nice implementation of it) it
-> won't be as bad. But I guess option 1) is better...
-
-The best idea I had for handling this sounds similar, which would be to
-convert the radix tree locks to essentially be reader/writer locks.  I/O and
-faults that don't modify the block mapping could just take read-level locks,
-and could all run concurrently.  I/O or faults that modify a block mapping
-would take a write lock, and serialize with other writers and readers.
-
-You could know if you needed a write lock without asking the filesystem - if
-you're a write and the radix tree entry is empty or is for a zero page, you
-grab the write lock.
-
-This dovetails nicely with the idea of having the radix tree act as a cache
-for block mappings.  You take the appropriate lock on the radix tree entry,
-and it has the block mapping info for your I/O or fault so you don't have to
-call into the FS.  I/O would also participate so we would keep info about
-block mappings that we gather from I/O to help shortcut our page faults.
-
-How does this sound vs the range lock idea?  How hard do you think it would be
-to convert our current wait queue system to reader/writer style locking?
-
-Also, how do you think we should deal with the current PMD corruption?  Should
-we go with the current fix (I can augment the comments as you suggested), and
-then handle optimizations to that approach and the solution to this larger
-race as a follow-on?
