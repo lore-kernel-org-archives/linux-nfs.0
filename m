@@ -1,34 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:36874 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S939060AbdD0U03 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 27 Apr 2017 16:26:29 -0400
-Date: Thu, 27 Apr 2017 16:26:28 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd fixes for 4.11
-Message-ID: <20170427202628.GA8989@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:33789 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1422869AbdD0UkD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Apr 2017 16:40:03 -0400
+Received: by mail-io0-f195.google.com with SMTP id k87so6210690ioi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Apr 2017 13:40:03 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS: Ensure we check layout validity before marking it for return
+Date: Thu, 27 Apr 2017 16:39:59 -0400
+Message-Id: <20170427203959.27610-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull knfsd bugfixes for 4.11 from
+pnfs_error_mark_layout_for_return needs to check that the layout is
+valid before calling pnfs_set_plh_return_info().
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.11-3
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pnfs.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-Thanks to Ari Kauppi and Tuomas Haanpää at Synopsis for spotting bugs in
-our NFSv2/v3 xdr code that could crash the server or expose memory.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d423faaba8e3..c284dc5dc72f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2170,6 +2170,10 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 	bool return_now = false;
+ 
+ 	spin_lock(&inode->i_lock);
++	if (!pnfs_layout_is_valid(lo)) {
++		spin_unlock(&inode->i_lock);
++		return;
++	}
+ 	pnfs_set_plh_return_info(lo, range.iomode, 0);
+ 	/* Block LAYOUTGET */
+ 	set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
+-- 
+2.9.3
 
---b.
-
-J. Bruce Fields (3):
-      nfsd: check for oversized NFSv2/v3 arguments
-      nfsd4: minor NFSv2/v3 write decoding cleanup
-      nfsd: stricter decoding of write-like NFSv2/v3 ops
-
- fs/nfsd/nfs3xdr.c | 13 +++++++++----
- fs/nfsd/nfssvc.c  | 36 ++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfsxdr.c  | 10 ++++++----
- 3 files changed, 51 insertions(+), 8 deletions(-)
