@@ -1,59 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:34474 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S937230AbdD0Cs3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 22:48:29 -0400
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (1.0)
-Subject: Re: rdma connection close/reopen every 5 mins
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1493257558.129694.1.camel@primarydata.com>
-Date: Wed, 26 Apr 2017 19:48:08 -0700
-Cc: "scar@drigon.com" <scar@drigon.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <332BA8B5-8AD4-4374-BCAD-317BF87DCDE1@oracle.com>
-References: <odql2m$vup$1@blaine.gmane.org> <97258237-282D-4A72-9AEE-BC1B82DF8E1C@oracle.com> <odr81f$k4m$1@blaine.gmane.org> <D82E4998-B2C0-42E5-B51B-4DA13ACB5BB2@oracle.com> <1493257558.129694.1.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35724 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1161087AbdD0DGt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Apr 2017 23:06:49 -0400
+Received: by mail-it0-f68.google.com with SMTP id 70so857422ita.2
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Apr 2017 20:06:49 -0700 (PDT)
+Subject: Re: [PATCH 2/2] NFSv4: Fix callback server shutdown
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Kinglong Mee <kinglongmee@gmail.com>
+References: <20170426155527.92213-1-trond.myklebust@primarydata.com>
+ <20170426155527.92213-2-trond.myklebust@primarydata.com>
+ <20170426155527.92213-3-trond.myklebust@primarydata.com>
+From: Kinglong Mee <kinglongmee@gmail.com>
+Message-ID: <1692a8de-1d22-dfdd-d36f-e2b040160e26@gmail.com>
+Date: Thu, 27 Apr 2017 11:06:39 +0800
+MIME-Version: 1.0
+In-Reply-To: <20170426155527.92213-3-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Apr 26, 2017, at 6:46 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+
+On 4/26/2017 23:55, Trond Myklebust wrote:
+> We want to use kthread_stop() in order to ensure the threads are
+> shut down before we tear down the nfs_callback_info in nfs_callback_down.
 > 
-> On Wed, 2017-04-26 at 15:52 -0700, Chuck Lever wrote:
->>> On Apr 26, 2017, at 3:47 PM, scar <scar@drigon.com> wrote:
->>> 
->>> Chuck Lever wrote on 04/26/2017 01:32 PM:
->>>> If it's every 5 minutes, that's probably the RPC idle timeout
->>>> that is closing the connection.
->>>> 
->>>> So this should be entirely harmless.
->>> 
->>> Yes so far it seems harmless, but it is annoying and fills up the
->>> log with spam, plus it's not something I see when using NFS/TCP.
->> 
->> That's correct, NFS/TCP does not have the "connected / closed"
->> messages, but the idle timeout behavior is the exactly the same.
->> 
->> I tried to remove those messages a few years ago and was told
->> to go pound sand.
->> 
+> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
+> Fixes: bb6aeba736ba9 ("NFSv4.x: Switch to using svc_set_num_threads()...")
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Cc: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfs/callback.c          | 24 ++++++++++++++++--------
+>  include/linux/sunrpc/svc.h |  1 +
+>  net/sunrpc/svc.c           | 38 ++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 55 insertions(+), 8 deletions(-)
 > 
-> 
-> By me?
+> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
+> index 773774531aff..8cabae9b140e 100644
+> --- a/fs/nfs/callback.c
+> +++ b/fs/nfs/callback.c
+> @@ -76,7 +76,10 @@ nfs4_callback_svc(void *vrqstp)
+>  
+>  	set_freezable();
+>  
+> -	while (!kthread_should_stop()) {
+> +	while (!kthread_freezable_should_stop(NULL)) {
+> +
+> +		if (signal_pending(current))
+> +			flush_signals(current);
+>  		/*
+>  		 * Listen for a request on the socket
+>  		 */
+> @@ -85,6 +88,8 @@ nfs4_callback_svc(void *vrqstp)
+>  			continue;
+>  		svc_process(rqstp);
+>  	}
+> +	svc_exit_thread(rqstp);
+> +	module_put_and_exit(0);
+>  	return 0;
+>  }
+>  
+> @@ -103,9 +108,10 @@ nfs41_callback_svc(void *vrqstp)
+>  
+>  	set_freezable();
+>  
+> -	while (!kthread_should_stop()) {
+> -		if (try_to_freeze())
+> -			continue;
+> +	while (!kthread_freezable_should_stop(NULL)) {
+> +
+> +		if (signal_pending(current))
+> +			flush_signals(current);
+>  
+>  		prepare_to_wait(&serv->sv_cb_waitq, &wq, TASK_INTERRUPTIBLE);
+>  		spin_lock_bh(&serv->sv_cb_lock);
+> @@ -121,11 +127,13 @@ nfs41_callback_svc(void *vrqstp)
+>  				error);
+>  		} else {
+>  			spin_unlock_bh(&serv->sv_cb_lock);
+> -			schedule();
+> +			if (!kthread_should_stop())
+> +				schedule();
+>  			finish_wait(&serv->sv_cb_waitq, &wq);
+>  		}
+> -		flush_signals(current);
+>  	}
+> +	svc_exit_thread(rqstp);
+> +	module_put_and_exit(0);
+>  	return 0;
+>  }
+>  
+> @@ -221,14 +229,14 @@ static int nfs_callback_up_net(int minorversion, struct svc_serv *serv,
+>  static struct svc_serv_ops nfs40_cb_sv_ops = {
+>  	.svo_function		= nfs4_callback_svc,
+>  	.svo_enqueue_xprt	= svc_xprt_do_enqueue,
+> -	.svo_setup		= svc_set_num_threads,
+> +	.svo_setup		= svc_set_num_threads_sync,
+>  	.svo_module		= THIS_MODULE,
+>  };
+>  #if defined(CONFIG_NFS_V4_1)
+>  static struct svc_serv_ops nfs41_cb_sv_ops = {
+>  	.svo_function		= nfs41_callback_svc,
+>  	.svo_enqueue_xprt	= svc_xprt_do_enqueue,
+> -	.svo_setup		= svc_set_num_threads,
+> +	.svo_setup		= svc_set_num_threads_sync,
+>  	.svo_module		= THIS_MODULE,
+>  };
+>  
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index e770abeed32d..11cef5a7bc87 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -474,6 +474,7 @@ void		   svc_pool_map_put(void);
+>  struct svc_serv *  svc_create_pooled(struct svc_program *, unsigned int,
+>  			struct svc_serv_ops *);
+>  int		   svc_set_num_threads(struct svc_serv *, struct svc_pool *, int);
+> +int		   svc_set_num_threads_sync(struct svc_serv *, struct svc_pool *, int);
+>  int		   svc_pool_stats_open(struct svc_serv *serv, struct file *file);
+>  void		   svc_destroy(struct svc_serv *);
+>  void		   svc_shutdown_net(struct svc_serv *, struct net *);
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 98dc33ae738b..bc0f5a0ecbdc 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -795,6 +795,44 @@ svc_set_num_threads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+>  }
+>  EXPORT_SYMBOL_GPL(svc_set_num_threads);
+>  
+> +/* destroy old threads */
+> +static int
+> +svc_stop_kthreads(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+> +{
+> +	struct task_struct *task;
+> +	unsigned int state = serv->sv_nrthreads-1;
+> +
+> +	/* destroy old threads */
+> +	do {
+> +		task = choose_victim(serv, pool, &state);
+> +		if (task == NULL)
+> +			break;
+> +		kthread_stop(task);
+> +		nrservs++;
+> +	} while (nrservs < 0);
+> +	return 0;
+> +}
+> +
+> +int
+> +svc_set_num_threads_sync(struct svc_serv *serv, struct svc_pool *pool, int nrservs)
+> +{
+> +	if (pool == NULL) {
+> +		/* The -1 assumes caller has done a svc_get() */
+> +		nrservs -= (serv->sv_nrthreads-1);
+> +	} else {
+> +		spin_lock_bh(&pool->sp_lock);
+> +		nrservs -= pool->sp_nrthreads;
+> +		spin_unlock_bh(&pool->sp_lock);
+> +	}
+> +
+> +	if (nrservs > 0)
+> +		return svc_start_kthreads(serv, pool, nrservs);
+> +	if (nrservs < 0)
+> +		return svc_stop_kthreads(serv, pool, nrservs);
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL_GPL(svc_set_num_threads_sync);
 
-No, I filed a bug on bugzilla.kernel.org and I think it was
-Alan Cox (!) who told me to leave these alone.
+There is only one use of svc_set_num_threads that by nfsd,
+I'd like to change svc_set_num_threads and update nfsd than add a new function.
 
+Ps,
+"NFSv4.x/callback: Create the callback service through svc_create_pooled"
+must be include before the fix. I will resend it later.
 
-> I’d be happy to take a patch to remove those messages. I find it
-> absolutely ridiculous to be logging fully expected behaviour like this.
-> It should at best be a dprintk() and I'd prefer to replace it with
-> tracepoints like we do for the socket code.
-
-I can send a patch for 4.13 that converts these to
-dprintks for now. Tracepoints are definitely in plan...
-
-
+thanks,
+Kinglong Mee
 
