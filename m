@@ -1,105 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:32896 "EHLO
+Received: from mail-it0-f65.google.com ([209.85.214.65]:32910 "EHLO
         mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S939063AbdD1RZk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Apr 2017 13:25:40 -0400
-Received: by mail-it0-f65.google.com with SMTP id z67so6486824itb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Apr 2017 10:25:40 -0700 (PDT)
+        with ESMTP id S967456AbdD1RZm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Apr 2017 13:25:42 -0400
+Received: by mail-it0-f65.google.com with SMTP id z67so6487009itb.0
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Apr 2017 10:25:41 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 1/5] SUNRPC: Allow creation of RPC clients with multiple connections
-Date: Fri, 28 Apr 2017 13:25:31 -0400
-Message-Id: <20170428172535.7945-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20170428172535.7945-1-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP connections to use
+Date: Fri, 28 Apr 2017 13:25:32 -0400
+Message-Id: <20170428172535.7945-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20170428172535.7945-2-trond.myklebust@primarydata.com>
 References: <20170428172535.7945-1-trond.myklebust@primarydata.com>
+ <20170428172535.7945-2-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add an argument to struct rpc_create_args that allows the specification
-of how many transport connections you want to set up to the server.
+Allow the user to specify that the client should use multiple connections
+to the server. For the moment, this functionality will be limited to
+TCP and to NFSv4.x (x>0).
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- include/linux/sunrpc/clnt.h |  1 +
- net/sunrpc/clnt.c           | 17 ++++++++++++++++-
- net/sunrpc/xprtmultipath.c  |  3 +--
- 3 files changed, 18 insertions(+), 3 deletions(-)
+ fs/nfs/internal.h |  1 +
+ fs/nfs/super.c    | 10 ++++++++++
+ 2 files changed, 11 insertions(+)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 6095ecba0dde..8c3cb38a385b 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -120,6 +120,7 @@ struct rpc_create_args {
- 	u32			prognumber;	/* overrides program->number */
- 	u32			version;
- 	rpc_authflavor_t	authflavor;
-+	u32			nconnect;
- 	unsigned long		flags;
- 	char			*client_name;
- 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 673046c64e48..0ff97288b43f 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -522,6 +522,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 		.bc_xprt = args->bc_xprt,
- 	};
- 	char servername[48];
-+	struct rpc_clnt *clnt;
-+	int i;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 31b26cf1b476..31757a742e9b 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -117,6 +117,7 @@ struct nfs_parsed_mount_data {
+ 		char			*export_path;
+ 		int			port;
+ 		unsigned short		protocol;
++		unsigned short		nconnect;
+ 	} nfs_server;
  
- 	if (args->bc_xprt) {
- 		WARN_ON_ONCE(!(args->protocol & XPRT_TRANSPORT_BC));
-@@ -584,7 +586,15 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
- 		xprt->resvport = 0;
+ 	struct security_mnt_opts lsm_opts;
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 54e0f9f2dd94..7eb48934dc79 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -76,6 +76,8 @@
+ #define NFS_DEFAULT_VERSION 2
+ #endif
  
--	return rpc_create_xprt(args, xprt);
-+	clnt = rpc_create_xprt(args, xprt);
-+	if (IS_ERR(clnt) || args->nconnect <= 1)
-+		return clnt;
++#define NFS_MAX_CONNECTIONS 16
 +
-+	for (i = 0; i < args->nconnect - 1; i++) {
-+		if (rpc_clnt_add_xprt(clnt, &xprtargs, NULL, NULL) < 0)
+ enum {
+ 	/* Mount options that take no arguments */
+ 	Opt_soft, Opt_hard,
+@@ -107,6 +109,7 @@ enum {
+ 	Opt_nfsvers,
+ 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
+ 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
++	Opt_nconnect,
+ 	Opt_lookupcache,
+ 	Opt_fscache_uniq,
+ 	Opt_local_lock,
+@@ -179,6 +182,8 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_mounthost, "mounthost=%s" },
+ 	{ Opt_mountaddr, "mountaddr=%s" },
+ 
++	{ Opt_nconnect, "nconnect=%s" },
++
+ 	{ Opt_lookupcache, "lookupcache=%s" },
+ 	{ Opt_fscache_uniq, "fsc=%s" },
+ 	{ Opt_local_lock, "local_lock=%s" },
+@@ -1544,6 +1549,11 @@ static int nfs_parse_mount_options(char *raw,
+ 			if (mnt->mount_server.addrlen == 0)
+ 				goto out_invalid_address;
+ 			break;
++		case Opt_nconnect:
++			if (nfs_get_option_ul_bound(args, &option, 1, NFS_MAX_CONNECTIONS))
++				goto out_invalid_value;
++			mnt->nfs_server.nconnect = option;
 +			break;
-+	}
-+	return clnt;
- }
- EXPORT_SYMBOL_GPL(rpc_create);
- 
-@@ -2605,6 +2615,10 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- 		return -ENOMEM;
- 	data->xps = xprt_switch_get(xps);
- 	data->xprt = xprt_get(xprt);
-+	if (rpc_xprt_switch_has_addr(data->xps, (struct sockaddr *)&xprt->addr)) {
-+		rpc_cb_add_xprt_release(data);
-+		goto success;
-+	}
- 
- 	cred = authnull_ops.lookup_cred(NULL, NULL, 0);
- 	task = rpc_call_null_helper(clnt, xprt, cred,
-@@ -2614,6 +2628,7 @@ int rpc_clnt_test_and_add_xprt(struct rpc_clnt *clnt,
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
- 	rpc_put_task(task);
-+success:
- 	return 1;
- }
- EXPORT_SYMBOL_GPL(rpc_clnt_test_and_add_xprt);
-diff --git a/net/sunrpc/xprtmultipath.c b/net/sunrpc/xprtmultipath.c
-index 95064d510ce6..486819d0c58b 100644
---- a/net/sunrpc/xprtmultipath.c
-+++ b/net/sunrpc/xprtmultipath.c
-@@ -51,8 +51,7 @@ void rpc_xprt_switch_add_xprt(struct rpc_xprt_switch *xps,
- 	if (xprt == NULL)
- 		return;
- 	spin_lock(&xps->xps_lock);
--	if ((xps->xps_net == xprt->xprt_net || xps->xps_net == NULL) &&
--	    !rpc_xprt_switch_has_addr(xps, (struct sockaddr *)&xprt->addr))
-+	if (xps->xps_net == xprt->xprt_net || xps->xps_net == NULL)
- 		xprt_switch_add_xprt_locked(xps, xprt);
- 	spin_unlock(&xps->xps_lock);
- }
+ 		case Opt_lookupcache:
+ 			string = match_strdup(args);
+ 			if (string == NULL)
 -- 
 2.9.3
 
