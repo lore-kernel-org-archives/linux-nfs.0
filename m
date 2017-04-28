@@ -1,97 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:27306 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S2999309AbdD1Rpl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Apr 2017 13:45:41 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:52433 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1755247AbdD1SIo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Apr 2017 14:08:44 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [RFC PATCH 0/5] Fun with the multipathing code
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170428172535.7945-1-trond.myklebust@primarydata.com>
-Date: Fri, 28 Apr 2017 10:45:32 -0700
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <80AD321C-3774-49BF-B419-9D0D1067FA56@oracle.com>
+Date: Fri, 28 Apr 2017 18:08:37 +0000
+Message-ID: <1493402914.8238.2.camel@primarydata.com>
 References: <20170428172535.7945-1-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+         <80AD321C-3774-49BF-B419-9D0D1067FA56@oracle.com>
+In-Reply-To: <80AD321C-3774-49BF-B419-9D0D1067FA56@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Apr 28, 2017, at 10:25 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> In the spirit of experimentation, I've put together a set of patches
-> that implement setting up multiple TCP connections to the server.
-> The connections all go to the same server IP address, so do not
-> provide support for multiple IP addresses (which I believe is
-> something Andy Adamson is working on).
-> 
-> The feature is only enabled for NFSv4.1 and NFSv4.2 for now; I don't
-> feel comfortable subjecting NFSv3/v4 replay caches to this
-> treatment yet. It relies on the mount option "nconnect" to specify
-> the number of connections to st up. So you can do something like
->  'mount -t nfs -overs=4.1,nconnect=8 foo:/bar /mnt'
-> to set up 8 TCP connections to server 'foo'.
-
-IMO this setting should eventually be set dynamically by the
-client, or should be global (eg., a module parameter).
-
-Since mount points to the same server share the same transport,
-what happens if you specify a different "nconnect" setting on
-two mount points to the same server?
-
-What will the client do if there are not enough resources
-(eg source ports) to create that many? Or is this an "up to N"
-kind of setting? I can imagine a big client having to reduce
-the number of connections to each server to help it scale in
-number of server connections.
-
-Other storage protocols have a mechanism for determining how
-transport connections are provisioned: One connection per
-CPU core (or one CPU per NUMA node) on the client. This gives
-a clear way to decide which connection to use for each RPC,
-and guarantees the reply will arrive at the same compute
-domain that sent the call.
-
-And of course: RPC-over-RDMA really loves this kind of feature
-(multiple connections between same IP tuples) to spread the
-workload over multiple QPs. There isn't anything special needed
-for RDMA, I hope, but I'll have a look at the SUNRPC pieces.
-
-Thanks for posting, I'm looking forward to seeing this
-capability in the Linux client.
-
-
-> Anyhow, feel free to test and give me feedback as to whether or not
-> this helps performance on your system.
-> 
-> Trond Myklebust (5):
->  SUNRPC: Allow creation of RPC clients with multiple connections
->  NFS: Add a mount option to specify number of TCP connections to use
->  NFSv4: Allow multiple connections to NFSv4.x (x>0) servers
->  pNFS: Allow multiple connections to the DS
->  NFS: Display the "nconnect" mount option if it is set.
-> 
-> fs/nfs/client.c             |  2 ++
-> fs/nfs/internal.h           |  2 ++
-> fs/nfs/nfs3client.c         |  3 +++
-> fs/nfs/nfs4client.c         | 13 +++++++++++--
-> fs/nfs/super.c              | 12 ++++++++++++
-> include/linux/nfs_fs_sb.h   |  1 +
-> include/linux/sunrpc/clnt.h |  1 +
-> net/sunrpc/clnt.c           | 17 ++++++++++++++++-
-> net/sunrpc/xprtmultipath.c  |  3 +--
-> 9 files changed, 49 insertions(+), 5 deletions(-)
-> 
-> -- 
-> 2.9.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+T24gRnJpLCAyMDE3LTA0LTI4IGF0IDEwOjQ1IC0wNzAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBBcHIgMjgsIDIwMTcsIGF0IDEwOjI1IEFNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
+a2xlYnVzdEBwcmltDQo+ID4gYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiA+IA0KPiA+IEluIHRoZSBz
+cGlyaXQgb2YgZXhwZXJpbWVudGF0aW9uLCBJJ3ZlIHB1dCB0b2dldGhlciBhIHNldCBvZg0KPiA+
+IHBhdGNoZXMNCj4gPiB0aGF0IGltcGxlbWVudCBzZXR0aW5nIHVwIG11bHRpcGxlIFRDUCBjb25u
+ZWN0aW9ucyB0byB0aGUgc2VydmVyLg0KPiA+IFRoZSBjb25uZWN0aW9ucyBhbGwgZ28gdG8gdGhl
+IHNhbWUgc2VydmVyIElQIGFkZHJlc3MsIHNvIGRvIG5vdA0KPiA+IHByb3ZpZGUgc3VwcG9ydCBm
+b3IgbXVsdGlwbGUgSVAgYWRkcmVzc2VzICh3aGljaCBJIGJlbGlldmUgaXMNCj4gPiBzb21ldGhp
+bmcgQW5keSBBZGFtc29uIGlzIHdvcmtpbmcgb24pLg0KPiA+IA0KPiA+IFRoZSBmZWF0dXJlIGlz
+IG9ubHkgZW5hYmxlZCBmb3IgTkZTdjQuMSBhbmQgTkZTdjQuMiBmb3Igbm93OyBJDQo+ID4gZG9u
+J3QNCj4gPiBmZWVsIGNvbWZvcnRhYmxlIHN1YmplY3RpbmcgTkZTdjMvdjQgcmVwbGF5IGNhY2hl
+cyB0byB0aGlzDQo+ID4gdHJlYXRtZW50IHlldC4gSXQgcmVsaWVzIG9uIHRoZSBtb3VudCBvcHRp
+b24gIm5jb25uZWN0IiB0byBzcGVjaWZ5DQo+ID4gdGhlIG51bWJlciBvZiBjb25uZWN0aW9ucyB0
+byBzdCB1cC4gU28geW91IGNhbiBkbyBzb21ldGhpbmcgbGlrZQ0KPiA+IMKgJ21vdW50IC10IG5m
+cyAtb3ZlcnM9NC4xLG5jb25uZWN0PTggZm9vOi9iYXIgL21udCcNCj4gPiB0byBzZXQgdXAgOCBU
+Q1AgY29ubmVjdGlvbnMgdG8gc2VydmVyICdmb28nLg0KPiANCj4gSU1PIHRoaXMgc2V0dGluZyBz
+aG91bGQgZXZlbnR1YWxseSBiZSBzZXQgZHluYW1pY2FsbHkgYnkgdGhlDQo+IGNsaWVudCwgb3Ig
+c2hvdWxkIGJlIGdsb2JhbCAoZWcuLCBhIG1vZHVsZSBwYXJhbWV0ZXIpLg0KDQpUaGVyZSBpcyBh
+biBhcmd1bWVudCBmb3IgbWFraW5nIGl0IGEgcGVyLXNlcnZlciB2YWx1ZSAod2hpY2ggaXMgd2hh
+dA0KdGhpcyBwYXRjaHNldCBkb2VzKS4gSXQgYWxsb3dzIHRoZSBhZG1pbiBhIGNlcnRhaW4gY29u
+dHJvbCB0byBsaW1pdCB0aGUNCm51bWJlciBvZiBjb25uZWN0aW9ucyB0byBzcGVjaWZpYyBzZXJ2
+ZXJzIHRoYXQgYXJlIG5lZWQgdG8gc2VydmUgbGFyZ2VyDQpudW1iZXJzIG9mIGNsaWVudHMuIEhv
+d2V2ZXIgSSdtIG9wZW4gdG8gY291bnRlciBhcmd1bWVudHMuIEkndmUgbm8NCnN0cm9uZyBvcGlu
+aW9ucyB5ZXQuDQoNCj4gU2luY2UgbW91bnQgcG9pbnRzIHRvIHRoZSBzYW1lIHNlcnZlciBzaGFy
+ZSB0aGUgc2FtZSB0cmFuc3BvcnQsDQo+IHdoYXQgaGFwcGVucyBpZiB5b3Ugc3BlY2lmeSBhIGRp
+ZmZlcmVudCAibmNvbm5lY3QiIHNldHRpbmcgb24NCj4gdHdvIG1vdW50IHBvaW50cyB0byB0aGUg
+c2FtZSBzZXJ2ZXI/DQoNCkN1cnJlbnRseSwgdGhlIGZpcnN0IG9uZSB3aW5zLg0KDQo+IFdoYXQg
+d2lsbCB0aGUgY2xpZW50IGRvIGlmIHRoZXJlIGFyZSBub3QgZW5vdWdoIHJlc291cmNlcw0KPiAo
+ZWcgc291cmNlIHBvcnRzKSB0byBjcmVhdGUgdGhhdCBtYW55PyBPciBpcyB0aGlzIGFuICJ1cCB0
+byBOIg0KPiBraW5kIG9mIHNldHRpbmc/IEkgY2FuIGltYWdpbmUgYSBiaWcgY2xpZW50IGhhdmlu
+ZyB0byByZWR1Y2UNCj4gdGhlIG51bWJlciBvZiBjb25uZWN0aW9ucyB0byBlYWNoIHNlcnZlciB0
+byBoZWxwIGl0IHNjYWxlIGluDQo+IG51bWJlciBvZiBzZXJ2ZXIgY29ubmVjdGlvbnMuDQoNClRo
+ZXJlIGlzIGFuIGFyYml0cmFyeSAoY29tcGlsZSB0aW1lKSBsaW1pdCBvZiAxNi4gVGhlIHVzZSBv
+ZiB0aGUNClNPX1JFVVNFUE9SVCBzb2NrZXQgb3B0aW9uIGVuc3VyZXMgdGhhdCB3ZSBzaG91bGQg
+YWxtb3N0IGFsd2F5cyBiZSBhYmxlDQp0byBzYXRpc2Z5IHRoYXQgbnVtYmVyIG9mIHNvdXJjZSBw
+b3J0cywgc2luY2UgdGhleSBjYW4gYmUgc2hhcmVkIHdpdGgNCmNvbm5lY3Rpb25zIHRvIG90aGVy
+IHNlcnZlcnMuDQoNCj4gT3RoZXIgc3RvcmFnZSBwcm90b2NvbHMgaGF2ZSBhIG1lY2hhbmlzbSBm
+b3IgZGV0ZXJtaW5pbmcgaG93DQo+IHRyYW5zcG9ydCBjb25uZWN0aW9ucyBhcmUgcHJvdmlzaW9u
+ZWQ6IE9uZSBjb25uZWN0aW9uIHBlcg0KPiBDUFUgY29yZSAob3Igb25lIENQVSBwZXIgTlVNQSBu
+b2RlKSBvbiB0aGUgY2xpZW50LiBUaGlzIGdpdmVzDQo+IGEgY2xlYXIgd2F5IHRvIGRlY2lkZSB3
+aGljaCBjb25uZWN0aW9uIHRvIHVzZSBmb3IgZWFjaCBSUEMsDQo+IGFuZCBndWFyYW50ZWVzIHRo
+ZSByZXBseSB3aWxsIGFycml2ZSBhdCB0aGUgc2FtZSBjb21wdXRlDQo+IGRvbWFpbiB0aGF0IHNl
+bnQgdGhlIGNhbGwuDQoNCkNhbiB3ZSBwZXJoYXBzIGxheSBvdXQgYSBjYXNlIGZvciB3aGljaCBt
+ZWNoYW5pc21zIGFyZSB1c2VmdWwgYXMgZmFyIGFzDQpoYXJkd2FyZSBpcyBjb25jZXJuZWQ/IEkg
+dW5kZXJzdGFuZCB0aGUgc29ja2V0IGNvZGUgaXMgYWxyZWFkeQ0KYWZmaW5pdGlzZWQgdG8gQ1BV
+IGNhY2hlcywgc28gdGhhdCBvbmUncyBlYXN5LiBJJ20gbGVzcyBmYW1pbGlhciB3aXRoDQp0aGUg
+dmFyaW91cyBmZWF0dXJlcyBvZiB0aGUgdW5kZXJseWluZyBvZmZsb2FkZWQgTklDcyBhbmQgaG93
+IHRoZXkgdGVuZA0KdG8gcmVhY3Qgd2hlbiB5b3UgYWRkL3N1YnRyYWN0IFRDUCBjb25uZWN0aW9u
+cy4NCg0KPiBBbmQgb2YgY291cnNlOiBSUEMtb3Zlci1SRE1BIHJlYWxseSBsb3ZlcyB0aGlzIGtp
+bmQgb2YgZmVhdHVyZQ0KPiAobXVsdGlwbGUgY29ubmVjdGlvbnMgYmV0d2VlbiBzYW1lIElQIHR1
+cGxlcykgdG8gc3ByZWFkIHRoZQ0KPiB3b3JrbG9hZCBvdmVyIG11bHRpcGxlIFFQcy4gVGhlcmUg
+aXNuJ3QgYW55dGhpbmcgc3BlY2lhbCBuZWVkZWQNCj4gZm9yIFJETUEsIEkgaG9wZSwgYnV0IEkn
+bGwgaGF2ZSBhIGxvb2sgYXQgdGhlIFNVTlJQQyBwaWVjZXMuDQoNCkkgaGF2ZW4ndCB5ZXQgZW5h
+YmxlZCBpdCBmb3IgUlBDL1JETUEsIGJ1dCBJIGltYWdpbmUgeW91IGNhbiBoZWxwIG91dA0KaWYg
+eW91IGZpbmQgaXQgdXNlZnVsIChhcyB5b3UgYXBwZWFyIHRvIGRvKS4NCg0KPiBUaGFua3MgZm9y
+IHBvc3RpbmcsIEknbSBsb29raW5nIGZvcndhcmQgdG8gc2VlaW5nIHRoaXMNCj4gY2FwYWJpbGl0
+eSBpbiB0aGUgTGludXggY2xpZW50Lg0KPiANCj4gDQo+ID4gQW55aG93LCBmZWVsIGZyZWUgdG8g
+dGVzdCBhbmQgZ2l2ZSBtZSBmZWVkYmFjayBhcyB0byB3aGV0aGVyIG9yIG5vdA0KPiA+IHRoaXMg
+aGVscHMgcGVyZm9ybWFuY2Ugb24geW91ciBzeXN0ZW0uDQo+ID4gDQo+ID4gVHJvbmQgTXlrbGVi
+dXN0ICg1KToNCj4gPiDCoFNVTlJQQzogQWxsb3cgY3JlYXRpb24gb2YgUlBDIGNsaWVudHMgd2l0
+aCBtdWx0aXBsZSBjb25uZWN0aW9ucw0KPiA+IMKgTkZTOiBBZGQgYSBtb3VudCBvcHRpb24gdG8g
+c3BlY2lmeSBudW1iZXIgb2YgVENQIGNvbm5lY3Rpb25zIHRvDQo+ID4gdXNlDQo+ID4gwqBORlN2
+NDogQWxsb3cgbXVsdGlwbGUgY29ubmVjdGlvbnMgdG8gTkZTdjQueCAoeD4wKSBzZXJ2ZXJzDQo+
+ID4gwqBwTkZTOiBBbGxvdyBtdWx0aXBsZSBjb25uZWN0aW9ucyB0byB0aGUgRFMNCj4gPiDCoE5G
+UzogRGlzcGxheSB0aGUgIm5jb25uZWN0IiBtb3VudCBvcHRpb24gaWYgaXQgaXMgc2V0Lg0KPiA+
+IA0KPiA+IGZzL25mcy9jbGllbnQuY8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfMKgwqAyICsr
+DQo+ID4gZnMvbmZzL2ludGVybmFsLmjCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfMKgwqAyICsrDQo+
+ID4gZnMvbmZzL25mczNjbGllbnQuY8KgwqDCoMKgwqDCoMKgwqDCoHzCoMKgMyArKysNCj4gPiBm
+cy9uZnMvbmZzNGNsaWVudC5jwqDCoMKgwqDCoMKgwqDCoMKgfCAxMyArKysrKysrKysrKy0tDQo+
+ID4gZnMvbmZzL3N1cGVyLmPCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfCAxMiArKysrKysr
+KysrKysNCj4gPiBpbmNsdWRlL2xpbnV4L25mc19mc19zYi5owqDCoMKgfMKgwqAxICsNCj4gPiBp
+bmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmggfMKgwqAxICsNCj4gPiBuZXQvc3VucnBjL2NsbnQu
+Y8KgwqDCoMKgwqDCoMKgwqDCoMKgwqB8IDE3ICsrKysrKysrKysrKysrKystDQo+ID4gbmV0L3N1
+bnJwYy94cHJ0bXVsdGlwYXRoLmPCoMKgfMKgwqAzICstLQ0KPiA+IDkgZmlsZXMgY2hhbmdlZCwg
+NDkgaW5zZXJ0aW9ucygrKSwgNSBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiAtLcKgDQo+ID4gMi45
+LjMNCj4gPiANCj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5k
+IHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC0NCj4gPiBuZnMiIGluDQo+ID4gdGhlIGJvZHkg
+b2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiBNb3JlIG1ham9y
+ZG9tbyBpbmZvIGF0wqDCoGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRt
+bA0KPiANCj4gLS0NCj4gQ2h1Y2sgTGV2ZXINCj4gDQo+IA0KPiANCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWts
+ZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
