@@ -1,78 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:32964 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1036058AbdD2Ssw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Apr 2017 14:48:52 -0400
-Received: by mail-io0-f193.google.com with SMTP id k87so15903534ioi.0
-        for <linux-nfs@vger.kernel.org>; Sat, 29 Apr 2017 11:48:51 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] pNFS: Ensure we commit the layout if it has been invalidated
-Date: Sat, 29 Apr 2017 14:48:45 -0400
-Message-Id: <20170429184845.58057-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20170429184845.58057-3-trond.myklebust@primarydata.com>
-References: <20170429184845.58057-1-trond.myklebust@primarydata.com>
- <20170429184845.58057-2-trond.myklebust@primarydata.com>
- <20170429184845.58057-3-trond.myklebust@primarydata.com>
+Received: from mga04.intel.com ([192.55.52.120]:5489 "EHLO mga04.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750912AbdEAQyz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 1 May 2017 12:54:55 -0400
+Date: Mon, 1 May 2017 10:54:51 -0600
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        v9fs-developer@lists.sourceforge.net
+Subject: Re: [PATCH 1/2] dax: prevent invalidation of mapped DAX entries
+Message-ID: <20170501165451.GB14837@linux.intel.com>
+References: <20170420191446.GA21694@linux.intel.com>
+ <20170421034437.4359-1-ross.zwisler@linux.intel.com>
+ <20170425101041.GG2793@quack2.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170425101041.GG2793@quack2.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the layout is being invalidated on the server, then we must
-invoke nfs_commit_inode() to ensure any commits to the DS get
-cleared out.
+On Tue, Apr 25, 2017 at 12:10:41PM +0200, Jan Kara wrote:
+> On Thu 20-04-17 21:44:36, Ross Zwisler wrote:
+> > dax_invalidate_mapping_entry() currently removes DAX exceptional entries
+> > only if they are clean and unlocked.  This is done via:
+> > 
+> > invalidate_mapping_pages()
+> >   invalidate_exceptional_entry()
+> >     dax_invalidate_mapping_entry()
+> > 
+> > However, for page cache pages removed in invalidate_mapping_pages() there
+> > is an additional criteria which is that the page must not be mapped.  This
+> > is noted in the comments above invalidate_mapping_pages() and is checked in
+> > invalidate_inode_page().
+> > 
+> > For DAX entries this means that we can can end up in a situation where a
+> > DAX exceptional entry, either a huge zero page or a regular DAX entry,
+> > could end up mapped but without an associated radix tree entry. This is
+> > inconsistent with the rest of the DAX code and with what happens in the
+> > page cache case.
+> > 
+> > We aren't able to unmap the DAX exceptional entry because according to its
+> > comments invalidate_mapping_pages() isn't allowed to block, and
+> > unmap_mapping_range() takes a write lock on the mapping->i_mmap_rwsem.
+> > 
+> > Since we essentially never have unmapped DAX entries to evict from the
+> > radix tree, just remove dax_invalidate_mapping_entry().
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > Fixes: c6dcf52c23d2 ("mm: Invalidate DAX radix tree entries only if appropriate")
+> > Reported-by: Jan Kara <jack@suse.cz>
+> > Cc: <stable@vger.kernel.org>    [4.10+]
+> 
+> Just as a side note - we wouldn't really have to unmap the mapping range
+> covered by the DAX exceptional entry. It would be enough to find out
+> whether such range is mapped and bail out in that case. But that would
+> still be pretty expensive for DAX - we'd have to do rmap walk similar as in
+> dax_mapping_entry_mkclean() and IMHO it is not worth it. So I agree with
+> what you did. You can add:
+> 
+> Reviewed-by: Jan Kara <jack@suse.cz>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs42proc.c | 1 +
- fs/nfs/nfs4proc.c  | 1 +
- fs/nfs/pnfs.c      | 3 +++
- 3 files changed, 5 insertions(+)
-
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index c81c61971625..87f5b7b971ca 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -379,6 +379,7 @@ nfs42_layoutstat_done(struct rpc_task *task, void *calldata)
- 			pnfs_mark_layout_stateid_invalid(lo, &head);
- 			spin_unlock(&inode->i_lock);
- 			pnfs_free_lseg_list(&head);
-+			nfs_commit_inode(inode, 0);
- 		} else
- 			spin_unlock(&inode->i_lock);
- 		break;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c2b82caa9068..158c3d52146f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8330,6 +8330,7 @@ nfs4_layoutget_handle_exception(struct rpc_task *task,
- 		 */
- 		pnfs_mark_layout_stateid_invalid(lo, &head);
- 		spin_unlock(&inode->i_lock);
-+		nfs_commit_inode(inode, 0);
- 		pnfs_free_lseg_list(&head);
- 		status = -EAGAIN;
- 		goto out;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6c2e4c73684c..140ecd7d350f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -727,6 +727,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
- 		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
- 		spin_unlock(&nfsi->vfs_inode.i_lock);
- 		pnfs_free_lseg_list(&tmp_list);
-+		nfs_commit_inode(&nfsi->vfs_inode, 0);
- 		pnfs_put_layout_hdr(lo);
- 	} else
- 		spin_unlock(&nfsi->vfs_inode.i_lock);
-@@ -1989,6 +1990,8 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	spin_unlock(&ino->i_lock);
- 	lseg->pls_layout = lo;
- 	NFS_SERVER(ino)->pnfs_curr_ld->free_lseg(lseg);
-+	if (!pnfs_layout_is_valid(lo))
-+		nfs_commit_inode(ino, 0);
- 	return ERR_PTR(-EAGAIN);
- }
- 
--- 
-2.9.3
-
+Yep, that makes sense.  Thanks for the review.
