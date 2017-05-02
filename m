@@ -1,168 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:36321 "EHLO
-        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750730AbdEAW7M (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 1 May 2017 18:59:12 -0400
-Received: by mail-io0-f171.google.com with SMTP id p80so135921861iop.3
-        for <linux-nfs@vger.kernel.org>; Mon, 01 May 2017 15:59:11 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:50594 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750770AbdEBQ1I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 2 May 2017 12:27:08 -0400
+Date: Tue, 2 May 2017 18:27:04 +0200
+From: Jan Kara <jack@suse.cz>
+To: Corentin Labbe <clabbe.montjoie@gmail.com>
+Cc: jack@suse.cz, anna.schumaker@netapp.com, hch@lst.de,
+        trond.myklebust@primarydata.com, axboe@fb.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [BUG] cannot mount nfs, bisected to 0db10944a76ba ("nfs: Convert
+ to separately allocated bdi")
+Message-ID: <20170502162704.GM13916@quack2.suse.cz>
+References: <20170428095624.GA22965@Red>
 MIME-Version: 1.0
-In-Reply-To: <20170427072659.GA29789@quack2.suse.cz>
-References: <20170420191446.GA21694@linux.intel.com> <20170421034437.4359-1-ross.zwisler@linux.intel.com>
- <20170421034437.4359-2-ross.zwisler@linux.intel.com> <20170425111043.GH2793@quack2.suse.cz>
- <20170425225936.GA29655@linux.intel.com> <20170426085235.GA21738@quack2.suse.cz>
- <20170426225236.GA25838@linux.intel.com> <20170427072659.GA29789@quack2.suse.cz>
-From: Dan Williams <dan.j.williams@intel.com>
-Date: Mon, 1 May 2017 15:59:10 -0700
-Message-ID: <CAPcyv4jWWW6FUC_4f-FunPBva4TY2bdn7FQb+9nhVvA3zx6DiQ@mail.gmail.com>
-Subject: Re: [PATCH 2/2] dax: fix data corruption due to stale mmap reads
-To: Jan Kara <jack@suse.cz>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        linux-cifs@vger.kernel.org,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux MM <linux-mm@kvack.org>, linux-nfs@vger.kernel.org,
-        "linux-nvdimm@lists.01.org" <linux-nvdimm@lists.01.org>,
-        Matthew Wilcox <mawilcox@microsoft.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        v9fs-developer@lists.sourceforge.net
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/mixed; boundary="tKW2IUtsqtDRztdT"
+In-Reply-To: <20170428095624.GA22965@Red>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 27, 2017 at 12:26 AM, Jan Kara <jack@suse.cz> wrote:
-> On Wed 26-04-17 16:52:36, Ross Zwisler wrote:
->> On Wed, Apr 26, 2017 at 10:52:35AM +0200, Jan Kara wrote:
->> > On Tue 25-04-17 16:59:36, Ross Zwisler wrote:
->> > > On Tue, Apr 25, 2017 at 01:10:43PM +0200, Jan Kara wrote:
->> > > <>
->> > > > Hum, but now thinking more about it I have hard time figuring out why write
->> > > > vs fault cannot actually still race:
->> > > >
->> > > > CPU1 - write(2)                         CPU2 - read fault
->> > > >
->> > > >                                         dax_iomap_pte_fault()
->> > > >                                           ->iomap_begin() - sees hole
->> > > > dax_iomap_rw()
->> > > >   iomap_apply()
->> > > >     ->iomap_begin - allocates blocks
->> > > >     dax_iomap_actor()
->> > > >       invalidate_inode_pages2_range()
->> > > >         - there's nothing to invalidate
->> > > >                                           grab_mapping_entry()
->> > > >                                           - we add zero page in the radix
->> > > >                                             tree & map it to page tables
->> > > >
->> > > > Similarly read vs write fault may end up racing in a wrong way and try to
->> > > > replace already existing exceptional entry with a hole page?
->> > >
->> > > Yep, this race seems real to me, too.  This seems very much like the issues
->> > > that exist when a thread is doing direct I/O.  One thread is doing I/O to an
->> > > intermediate buffer (page cache for direct I/O case, zero page for us), and
->> > > the other is going around it directly to media, and they can get out of sync.
->> > >
->> > > IIRC the direct I/O code looked something like:
->> > >
->> > > 1/ invalidate existing mappings
->> > > 2/ do direct I/O to media
->> > > 3/ invalidate mappings again, just in case.  Should be cheap if there weren't
->> > >    any conflicting faults.  This makes sure any new allocations we made are
->> > >    faulted in.
->> >
->> > Yeah, the problem is people generally expect weird behavior when they mix
->> > direct and buffered IO (or let alone mmap) however everyone expects
->> > standard read(2) and write(2) to be completely coherent with mmap(2).
->>
->> Yep, fair enough.
->>
->> > > I guess one option would be to replicate that logic in the DAX I/O path, or we
->> > > could try and enhance our locking so page faults can't race with I/O since
->> > > both can allocate blocks.
->> >
->> > In the abstract way, the problem is that we have radix tree (and page
->> > tables) cache block mapping information and the operation: "read block
->> > mapping information, store it in the radix tree" is not serialized in any
->> > way against other block allocations so the information we store can be out
->> > of date by the time we store it.
->> >
->> > One way to solve this would be to move ->iomap_begin call in the fault
->> > paths under entry lock although that would mean I have to redo how ext4
->> > handles DAX faults because with current code it would create lock inversion
->> > wrt transaction start.
->>
->> I don't think this alone is enough to save us.  The I/O path doesn't currently
->> take any DAX radix tree entry locks, so our race would just become:
->>
->> CPU1 - write(2)                               CPU2 - read fault
->>
->>                                       dax_iomap_pte_fault()
->>                                         grab_mapping_entry() // newly moved
->>                                         ->iomap_begin() - sees hole
->> dax_iomap_rw()
->>   iomap_apply()
->>     ->iomap_begin - allocates blocks
->>     dax_iomap_actor()
->>       invalidate_inode_pages2_range()
->>         - there's nothing to invalidate
->>                                         - we add zero page in the radix
->>                                           tree & map it to page tables
->>
->> In their current form I don't think we want to take DAX radix tree entry locks
->> in the I/O path because that would effectively serialize I/O over a given
->> radix tree entry. For a 2MiB entry, for example, all I/O to that 2MiB range
->> would be serialized.
->
-> Note that invalidate_inode_pages2_range() will see the entry created by
-> grab_mapping_entry() on CPU2 and block waiting for its lock and this is
-> exactly what stops the race. The invalidate_inode_pages2_range()
-> effectively makes sure there isn't any page fault in progress for given
-> range...
->
-> Also note that writes to a file are serialized by i_rwsem anyway (and at
-> least serialization of writes to the overlapping range is required by POSIX)
-> so this doesn't add any more serialization than we already have.
->
->> > Another solution would be to grab i_mmap_sem for write when doing write
->> > fault of a page and similarly have it grabbed for writing when doing
->> > write(2). This would scale rather poorly but if we later replaced it with a
->> > range lock (Davidlohr has already posted a nice implementation of it) it
->> > won't be as bad. But I guess option 1) is better...
->>
->> The best idea I had for handling this sounds similar, which would be to
->> convert the radix tree locks to essentially be reader/writer locks.  I/O and
->> faults that don't modify the block mapping could just take read-level locks,
->> and could all run concurrently.  I/O or faults that modify a block mapping
->> would take a write lock, and serialize with other writers and readers.
->
-> Well, this would be difficult to implement inside the radix tree (not
-> enough bits in the entry) so you'd have to go for some external locking
-> primitive anyway. And if you do that, read-write range lock Davidlohr has
-> implemented is what you describe - well we could also have a radix tree
-> with rwsems but I suspect the overhead of maintaining that would be too
-> large. It would require larger rewrite than reusing entry locks as I
-> suggest above though and it isn't an obvious performance win for realistic
-> workloads either so I'd like to see some performance numbers before going
-> that way. It likely improves a situation where processes race to fault the
-> same page for which we already know the block mapping but I'm not sure if
-> that translates to any measurable performance wins for workloads on DAX
-> filesystem.
 
-I'm also concerned about inventing new / fancy radix infrastructure
-when we're already in the space of needing struct page for any
-non-trivial usage of dax. As Kirill's transparent-huge-page page cache
-implementation matures I'd be interested in looking at a transition
-path away from radix locking towards something that it shared with the
-common case page cache locking.
+--tKW2IUtsqtDRztdT
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+Hello,
+
+On Fri 28-04-17 11:56:24, Corentin Labbe wrote:
+> Since linux next-20170421, mounting nfs give me:
+> [  774.994934] ------------[ cut here ]------------
+> [  774.994975] WARNING: CPU: 1 PID: 10284 at /linux-next/fs/sysfs/dir.c:31 sysfs_warn_dup+0x64/0x74
+> [  774.994985] sysfs: cannot create duplicate filename '/devices/virtual/bdi/0:32'
+> [  774.994992] Modules linked in: axp20x_usb_power gpio_axp209 nvmem_sunxi_sid sun4i_dma sun4i_ss virt_dma
+> [  774.995047] CPU: 1 PID: 10284 Comm: mount.nfs Not tainted 4.11.0-rc4+ #14
+> [  774.995054] Hardware name: Allwinner sun7i (A20) Family
+> [  774.995085] [<c010f19c>] (unwind_backtrace) from [<c010bc74>] (show_stack+0x10/0x14)
+> [  774.995104] [<c010bc74>] (show_stack) from [<c03c6e24>] (dump_stack+0x78/0x8c)
+> [  774.995121] [<c03c6e24>] (dump_stack) from [<c0122200>] (__warn+0xe8/0x100)
+> [  774.995135] [<c0122200>] (__warn) from [<c0122250>] (warn_slowpath_fmt+0x38/0x48)
+> [  774.995150] [<c0122250>] (warn_slowpath_fmt) from [<c02ac178>] (sysfs_warn_dup+0x64/0x74)
+> [  774.995167] [<c02ac178>] (sysfs_warn_dup) from [<c02ac254>] (sysfs_create_dir_ns+0x84/0x94)
+> [  774.995184] [<c02ac254>] (sysfs_create_dir_ns) from [<c03c8b8c>] (kobject_add_internal+0x9c/0x2ec)
+> [  774.995199] [<c03c8b8c>] (kobject_add_internal) from [<c03c8e24>] (kobject_add+0x48/0x98)
+> [  774.995217] [<c03c8e24>] (kobject_add) from [<c048d75c>] (device_add+0xe4/0x5a0)
+> [  774.995232] [<c048d75c>] (device_add) from [<c048ddb4>] (device_create_groups_vargs+0xac/0xbc)
+> [  774.995247] [<c048ddb4>] (device_create_groups_vargs) from [<c048dde4>] (device_create_vargs+0x20/0x28)
+> [  774.995263] [<c048dde4>] (device_create_vargs) from [<c02075c8>] (bdi_register_va+0x44/0xfc)
+> [  774.995280] [<c02075c8>] (bdi_register_va) from [<c023d378>] (super_setup_bdi_name+0x48/0xa4)
+> [  774.995299] [<c023d378>] (super_setup_bdi_name) from [<c0312ef4>] (nfs_fill_super+0x1a4/0x204)
+> [  774.995315] [<c0312ef4>] (nfs_fill_super) from [<c03133f0>] (nfs_fs_mount_common+0x140/0x1e8)
+> [  774.995333] [<c03133f0>] (nfs_fs_mount_common) from [<c03335cc>] (nfs4_remote_mount+0x50/0x58)
+> [  774.995349] [<c03335cc>] (nfs4_remote_mount) from [<c023ef98>] (mount_fs+0x14/0xa4)
+> [  774.995368] [<c023ef98>] (mount_fs) from [<c025cba0>] (vfs_kern_mount+0x54/0x128)
+> [  774.995385] [<c025cba0>] (vfs_kern_mount) from [<c033352c>] (nfs_do_root_mount+0x80/0xa0)
+> [  774.995400] [<c033352c>] (nfs_do_root_mount) from [<c0333818>] (nfs4_try_mount+0x28/0x3c)
+> [  774.995415] [<c0333818>] (nfs4_try_mount) from [<c0313874>] (nfs_fs_mount+0x2cc/0x8c4)
+> [  774.995430] [<c0313874>] (nfs_fs_mount) from [<c023ef98>] (mount_fs+0x14/0xa4)
+> [  774.995445] [<c023ef98>] (mount_fs) from [<c025cba0>] (vfs_kern_mount+0x54/0x128)
+> [  774.995461] [<c025cba0>] (vfs_kern_mount) from [<c02600f0>] (do_mount+0x158/0xc7c)
+> [  774.995475] [<c02600f0>] (do_mount) from [<c0260f98>] (SyS_mount+0x8c/0xb4)
+> [  774.995491] [<c0260f98>] (SyS_mount) from [<c0107840>] (ret_fast_syscall+0x0/0x3c)
+> [  774.995501] ---[ end trace 0665e451f8864ff0 ]---
+...
+> The mount command is
+> mount -t nfs -o tcp,hard,intr,async,rsize=4096,wsize=4096 192.168.1.100:/mnt/local_kernel /usr/src/
+> 
+> the mount command failling with: "mount.nfs: Cannot allocate memory"
+
+I've tried reproducing this (both with NFSv3 and NFSv4) and failed. Also I
+have looked through the code and I fail to see how this could happen. Is
+this the only NFS mount that you have on your system? Didn't also the
+WARN_ON in super_setup_bdi_name() trigger?
+
+Can you run with the attached debug patch and post full dmesg after the
+failure?
+
+								Honza
+-- 
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
+
+--tKW2IUtsqtDRztdT
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-nfs-Debug-bdi-registration-failure.patch"
+
+
+--tKW2IUtsqtDRztdT--
