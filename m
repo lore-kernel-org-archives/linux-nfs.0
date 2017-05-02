@@ -1,68 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33210 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750803AbdEBQiT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 May 2017 12:38:19 -0400
-Received: by mail-io0-f194.google.com with SMTP id o22so7015626iod.0
-        for <linux-nfs@vger.kernel.org>; Tue, 02 May 2017 09:38:19 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:35587 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750854AbdEBQiV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 May 2017 12:38:21 -0400
+Received: by mail-io0-f196.google.com with SMTP id d203so31589806iof.2
+        for <linux-nfs@vger.kernel.org>; Tue, 02 May 2017 09:38:21 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/3] pNFS: Fix a deadlock when coalescing writes and returning the layout
-Date: Tue,  2 May 2017 12:38:08 -0400
-Message-Id: <20170502163812.6211-5-trond.myklebust@primarydata.com>
-In-Reply-To: <20170502163812.6211-4-trond.myklebust@primarydata.com>
+Subject: [PATCH 3/3] pNFS: Fix a typo in pnfs_generic_alloc_ds_commits
+Date: Tue,  2 May 2017 12:38:10 -0400
+Message-Id: <20170502163812.6211-7-trond.myklebust@primarydata.com>
+In-Reply-To: <20170502163812.6211-6-trond.myklebust@primarydata.com>
 References: <20170502163812.6211-1-trond.myklebust@primarydata.com>
  <20170502163812.6211-2-trond.myklebust@primarydata.com>
  <20170502163812.6211-3-trond.myklebust@primarydata.com>
  <20170502163812.6211-4-trond.myklebust@primarydata.com>
+ <20170502163812.6211-5-trond.myklebust@primarydata.com>
+ <20170502163812.6211-6-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Consider the following deadlock:
-
-Process P1	Process P2		Process P3
-==========	==========		==========
-					lock_page(page)
-
-		lseg = pnfs_update_layout(inode)
-
-lo = NFS_I(inode)->layout
-pnfs_error_mark_layout_for_return(lo)
-
-		lock_page(page)
-
-					lseg = pnfs_update_layout(inode)
-
-In this scenario,
-- P1 has declared the layout to be in error, but P2 holds a reference to
-  a layout segment on that inode, so the layoutreturn is deferred.
-- P2 is waiting for a page lock held by P3.
-- P3 is asking for a new layout segment, but is blocked waiting
-  for the layoutreturn.
-
-The fix is to ensure that pnfs_error_mark_layout_for_return() does
-not set the NFS_LAYOUT_RETURN flag, which blocks P3. Instead, we allow
-the latter to call LAYOUTGET so that it can make progress and unblock
-P2.
+If the layout segment is invalid, we want to just resend the remaining
+writes.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 2 --
- 1 file changed, 2 deletions(-)
+ fs/nfs/pnfs_nfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cea1e838efae..adc6ec28d4b5 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -2063,8 +2063,6 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
- 		return;
- 	}
- 	pnfs_set_plh_return_info(lo, range.iomode, 0);
--	/* Block LAYOUTGET */
--	set_bit(NFS_LAYOUT_RETURN, &lo->plh_flags);
- 	/*
- 	 * mark all matching lsegs so that we are sure to have no live
- 	 * segments at hand when sending layoutreturn. See pnfs_put_lseg()
+diff --git a/fs/nfs/pnfs_nfs.c b/fs/nfs/pnfs_nfs.c
+index 7697ac0ff81a..ae600ab1a646 100644
+--- a/fs/nfs/pnfs_nfs.c
++++ b/fs/nfs/pnfs_nfs.c
+@@ -223,7 +223,7 @@ pnfs_generic_alloc_ds_commits(struct nfs_commit_info *cinfo,
+ 		 */
+ 		if (!pnfs_is_valid_lseg(bucket->clseg) &&
+ 		    !test_bit(NFS_LSEG_LAYOUTRETURN, &bucket->clseg->pls_flags))
+-			continue;
++			break;
+ 		data = nfs_commitdata_alloc(false);
+ 		if (!data)
+ 			break;
 -- 
 2.9.3
 
