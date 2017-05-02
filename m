@@ -1,86 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36379 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750854AbdEBQiS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 May 2017 12:38:18 -0400
-Received: by mail-it0-f68.google.com with SMTP id x188so3199746itb.3
-        for <linux-nfs@vger.kernel.org>; Tue, 02 May 2017 09:38:18 -0700 (PDT)
+Received: from mail-io0-f193.google.com ([209.85.223.193]:33259 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751135AbdEBQiW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 2 May 2017 12:38:22 -0400
+Received: by mail-io0-f193.google.com with SMTP id o22so7015949iod.0
+        for <linux-nfs@vger.kernel.org>; Tue, 02 May 2017 09:38:22 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP connections to use
-Date: Tue,  2 May 2017 12:38:07 -0400
-Message-Id: <20170502163812.6211-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20170502163812.6211-3-trond.myklebust@primarydata.com>
+Subject: [RFC PATCH 4/5] pNFS: Allow multiple connections to the DS
+Date: Tue,  2 May 2017 12:38:11 -0400
+Message-Id: <20170502163812.6211-8-trond.myklebust@primarydata.com>
+In-Reply-To: <20170502163812.6211-7-trond.myklebust@primarydata.com>
 References: <20170502163812.6211-1-trond.myklebust@primarydata.com>
  <20170502163812.6211-2-trond.myklebust@primarydata.com>
  <20170502163812.6211-3-trond.myklebust@primarydata.com>
+ <20170502163812.6211-4-trond.myklebust@primarydata.com>
+ <20170502163812.6211-5-trond.myklebust@primarydata.com>
+ <20170502163812.6211-6-trond.myklebust@primarydata.com>
+ <20170502163812.6211-7-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow the user to specify that the client should use multiple connections
-to the server. For the moment, this functionality will be limited to
-TCP and to NFSv4.x (x>0).
+If the user specifies -onconn=<number> mount option, and the transport
+protocol is TCP, then set up <number> connections to the pNFS data server
+as well. The connections will all go to the same IP address.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/internal.h |  1 +
- fs/nfs/super.c    | 10 ++++++++++
- 2 files changed, 11 insertions(+)
+ fs/nfs/nfs3client.c | 3 +++
+ fs/nfs/nfs4client.c | 3 +++
+ 2 files changed, 6 insertions(+)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 31b26cf1b476..31757a742e9b 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -117,6 +117,7 @@ struct nfs_parsed_mount_data {
- 		char			*export_path;
- 		int			port;
- 		unsigned short		protocol;
-+		unsigned short		nconnect;
- 	} nfs_server;
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index 7879f2a0fcfd..8c624c74ddbe 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -100,6 +100,9 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 		return ERR_PTR(-EINVAL);
+ 	cl_init.hostname = buf;
  
- 	struct security_mnt_opts lsm_opts;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 54e0f9f2dd94..7eb48934dc79 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -76,6 +76,8 @@
- #define NFS_DEFAULT_VERSION 2
- #endif
- 
-+#define NFS_MAX_CONNECTIONS 16
++	if (mds_clp->cl_nconnect > 1 && ds_proto == XPRT_TRANSPORT_TCP)
++		cl_init.nconnect = mds_clp->cl_nconnect;
 +
- enum {
- 	/* Mount options that take no arguments */
- 	Opt_soft, Opt_hard,
-@@ -107,6 +109,7 @@ enum {
- 	Opt_nfsvers,
- 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
- 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
-+	Opt_nconnect,
- 	Opt_lookupcache,
- 	Opt_fscache_uniq,
- 	Opt_local_lock,
-@@ -179,6 +182,8 @@ static const match_table_t nfs_mount_option_tokens = {
- 	{ Opt_mounthost, "mounthost=%s" },
- 	{ Opt_mountaddr, "mountaddr=%s" },
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+ 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
  
-+	{ Opt_nconnect, "nconnect=%s" },
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index c9b10b7829f0..bfea1b232dd2 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -912,6 +912,9 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 		return ERR_PTR(-EINVAL);
+ 	cl_init.hostname = buf;
+ 
++	if (mds_clp->cl_nconnect > 1 && ds_proto == XPRT_TRANSPORT_TCP)
++		cl_init.nconnect = mds_clp->cl_nconnect;
 +
- 	{ Opt_lookupcache, "lookupcache=%s" },
- 	{ Opt_fscache_uniq, "fsc=%s" },
- 	{ Opt_local_lock, "local_lock=%s" },
-@@ -1544,6 +1549,11 @@ static int nfs_parse_mount_options(char *raw,
- 			if (mnt->mount_server.addrlen == 0)
- 				goto out_invalid_address;
- 			break;
-+		case Opt_nconnect:
-+			if (nfs_get_option_ul_bound(args, &option, 1, NFS_MAX_CONNECTIONS))
-+				goto out_invalid_value;
-+			mnt->nfs_server.nconnect = option;
-+			break;
- 		case Opt_lookupcache:
- 			string = match_strdup(args);
- 			if (string == NULL)
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+ 		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
+ 
 -- 
 2.9.3
 
