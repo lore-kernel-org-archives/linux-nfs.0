@@ -1,46 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34664 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751233AbdECSlo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 3 May 2017 14:41:44 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <1493836633.3180.9.camel@poochiereds.net>
-References: <1493836633.3180.9.camel@poochiereds.net> <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk> <149382750838.30481.8003919639826341255.stgit@warthog.procyon.org.uk>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
+Received: from smtprelay0210.hostedemail.com ([216.40.44.210]:46897 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1751494AbdECSnw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 May 2017 14:43:52 -0400
+Message-ID: <1493837027.22125.17.camel@perches.com>
+Subject: Re: [PATCH 3/9] VFS: Introduce a mount context
+From: Joe Perches <joe@perches.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, viro@zeniv.linux.org.uk,
         linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org, mszeredi@redhat.com
-Subject: Re: [PATCH 4/9] Implement fsopen() to prepare for a mount
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Wed, 03 May 2017 19:41:40 +0100
-Message-ID: <4652.1493836900@warthog.procyon.org.uk>
+Date: Wed, 03 May 2017 11:43:47 -0700
+In-Reply-To: <4597.1493836661@warthog.procyon.org.uk>
+References: <1493835998.22125.15.camel@perches.com>
+         <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
+         <149382749941.30481.11685229083280551867.stgit@warthog.procyon.org.uk>
+         <1493835238.3180.7.camel@poochiereds.net>
+         <4597.1493836661@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton <jlayton@poochiereds.net> wrote:
-
-> I think one of the neat things here is that we can now error out as
-> soon as a bogus mount option is passed in.
-
-It means that the 'sloppy' option can also now be implemented in userspace.
-
-> > Once fsmount() has been called, further write() calls will incur EBUSY,
-> > even if the fsmount() fails.  read() is still possible to retrieve error
-> > information.
-> > 
+On Wed, 2017-05-03 at 19:37 +0100, David Howells wrote:
+> Joe Perches <joe@perches.com> wrote:
 > 
-> What's the rationale for the above behavior?
+> > krealloc would probably be more efficient and possible
+> > readable as likely there's already padding in the original
+> > allocation.
 > 
-> A failed attempt to graft it into the tree doesn't seem like it would
-> have any real effect on the mount_context. While I can't think of a use
-> case for being able to try fsmount() again, I don't quite understand
-> why we'd prohibit someone from doing it.
+> The problem is if krealloc() fails: you've lost all those pointers to things
+> you then need to free.
 
-The mount procedure is allowed to preallocate resources and attach them to the
-mount context and ->mount() is allowed to use them up, say by transferring
-them to the superblock.  The mount context is then in a degraded state and
-cannot necessarily be reused.
+Huh?  How could that happen?
 
-David
+krealloc must always use a temporary.
+If krealloc returns NULL, the original allocation is kept.
 
+> > Are there no locking constraints?
+> 
+> Generally, no, not until you do the ->mount() op.  Also remounting needs a
+> lock, but that's already done with the sb->s_umount lock.
+> 
+> However, that said, if you do:
+> 
+> 	fd = fsopen("foofs");
+> 	write(fd, "o foo=bar", ...);
+> 	fsmount(fd, "/foo");
+> 
+> then the fsmount() and write() calls have to lock against other fsmount() and
+> write() calls.  I use the inode lock for this.  [Note that it probably should
+> be interruptible rather than just killable, but there's no primitive for that
+> as yet].
+> 
+> David
