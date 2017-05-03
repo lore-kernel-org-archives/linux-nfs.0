@@ -1,71 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f196.google.com ([209.85.220.196]:36555 "EHLO
-        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751264AbdECM4N (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 May 2017 08:56:13 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:40716 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752524AbdECOV5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 3 May 2017 10:21:57 -0400
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 824EC824
+        for <linux-nfs@vger.kernel.org>; Wed,  3 May 2017 14:21:56 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-120-144.rdu2.redhat.com [10.10.120.144])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 461D677D5F
+        for <linux-nfs@vger.kernel.org>; Wed,  3 May 2017 14:21:56 +0000 (UTC)
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: Linux NFS Town Hall meeting: Tomorrow - Thur May 4
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-ID: <605647d3-fab9-a13b-ead4-c9232c4501b9@RedHat.com>
+Date: Wed, 3 May 2017 10:21:55 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170502221649.GA5970@birch.djwong.org>
-References: <20170317195233.4042-1-Anna.Schumaker@Netapp.com>
- <20170317220246.GA12585@birch.djwong.org> <20170320052457.GH14226@eguan.usersys.redhat.com>
- <20170502221649.GA5970@birch.djwong.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 3 May 2017 08:56:11 -0400
-Message-ID: <CAN-5tyGaaPrHSmxNGYWfsbxNECKE1NZz9bp4shy-kQDs2D=MrQ@mail.gmail.com>
-Subject: Re: [PATCH v5 0/5] Add copy_file_range() tests
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Eryu Guan <eguan@redhat.com>, fstests@vger.kernel.org,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 2, 2017 at 6:16 PM, Darrick J. Wong <darrick.wong@oracle.com> wrote:
-> On Mon, Mar 20, 2017 at 01:24:57PM +0800, Eryu Guan wrote:
->> On Fri, Mar 17, 2017 at 03:02:46PM -0700, Darrick J. Wong wrote:
->> > On Fri, Mar 17, 2017 at 03:52:28PM -0400, Anna Schumaker wrote:
->> > > These tests exercise the copy_file_range() system call, and check copying
->> > > data to both a new file and overwriting data inside an existing file.
->> > >
->> > > Sorry it took so long to get this version out.  I forgot about these patches
->> > > after the last submission.
->> >
->> > Hooray, tests finally!
->> >
->> > I had to bump the numbers up due to conflicts (it's usually best to pick
->> > a really high number and let Eryu mvtest them to their real numbers),
->> > but these mostly look ok.
->>
->> Usually the test numbers are not a problem, as long as the patchset is
->> based on latest master and there's no test number conflicts :)
->>
->> Overall the tests look fine to me too.
->>
->> >
->> > However, I do see that something isn't triggering an EINVAL return code:
->>
->> Same results here, tested with xfs/ext4/btrfs on 4.11-rc2 kernel.
->>
->> And another nitpick is the year in copyright, s/2016/2017/ ?
->
-> Another month, another kernel release... can we please get these tests
-> fixed and integrated?
->
+Hello,
 
-I'm curious when you say "testing with btrfs" does it mean NFS server
-exporting btrfs or does it mean just local btrfs?
+We have not had one of these for awhile so
+lets see what everyone is doing. 
 
-> --D
->
->>
->> Thanks,
->> Eryu
->> --
->> To unsubscribe from this list: send the line "unsubscribe fstests" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On thing I would like to talk about is
+the upcoming Bats and future Cthons and Bats 
+
+Lets meeting tomorrow Thur May 4 at 
+
+   *01:00 pm EST (10:00am PST)*
+
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Again the Time: 10:00 am PST (01:00 pm EST)
+
+BlueJeans Video Link:
+    https://bluejeans.com/5642721552/
+
+The call in numbers are:
+
+U.S. and Canada: (800) 451-8679
+World wide toll free numbers
+   https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+
+Conference code: 564.272.1552
+
+steved.
+
