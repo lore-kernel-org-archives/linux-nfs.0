@@ -1,124 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:57410 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751894AbdEDT7a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 May 2017 15:59:30 -0400
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel@vger.kernel.org
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        v9fs-developer@lists.sourceforge.net
-Subject: [PATCH v2 2/2] dax: fix data corruption due to stale mmap reads
-Date: Thu,  4 May 2017 13:59:10 -0600
-Message-Id: <20170504195910.11579-2-ross.zwisler@linux.intel.com>
-In-Reply-To: <20170504195910.11579-1-ross.zwisler@linux.intel.com>
-References: <20170504195910.11579-1-ross.zwisler@linux.intel.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45513 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751136AbdEDUkN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 16:40:13 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP
+ connections to use
+Date: Thu, 4 May 2017 20:40:07 +0000
+Message-ID: <1493930404.6900.2.camel@primarydata.com>
+References: <20170428172535.7945-1-trond.myklebust@primarydata.com>
+         <20170428172535.7945-2-trond.myklebust@primarydata.com>
+         <20170428172535.7945-3-trond.myklebust@primarydata.com>
+         <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
+         <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com>
+         <20170504173638.GA7023@fieldses.org>
+         <F868F692-7CB7-4388-94E7-7D4052CE89F1@oracle.com>
+         <20170504174549.GB7023@fieldses.org>
+In-Reply-To: <20170504174549.GB7023@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Users of DAX can suffer data corruption from stale mmap reads via the
-following sequence:
-
-- open an mmap over a 2MiB hole
-
-- read from a 2MiB hole, faulting in a 2MiB zero page
-
-- write to the hole with write(3p).  The write succeeds but we incorrectly
-  leave the 2MiB zero page mapping intact.
-
-- via the mmap, read the data that was just written.  Since the zero page
-  mapping is still intact we read back zeroes instead of the new data.
-
-We fix this by unconditionally calling invalidate_inode_pages2_range() in
-dax_iomap_actor() for new block allocations, and by enhancing
-invalidate_inode_pages2_range() so that it properly unmaps the DAX entries
-being removed from the radix tree.
-
-This is based on an initial patch from Jan Kara.
-
-I've written an fstest that triggers this error:
-http://www.spinics.net/lists/linux-mm/msg126276.html
-
-Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-Fixes: c6dcf52c23d2 ("mm: Invalidate DAX radix tree entries only if appropriate")
-Reported-by: Jan Kara <jack@suse.cz>
-Cc: <stable@vger.kernel.org>    [4.10+]
----
-
-Changes since v1:
- - Instead of unmapping each DAX entry individually in
-   __dax_invalidate_mapping_entry(), instead unmap the whole range at once
-   inside of invalidate_inode_pages2_range().  Each unmap requires an rmap
-   walk so this should be less expensive, plus now we don't have to drop
-   and re-acquire the mapping->tree_lock for each entry. (Jan)
-
-These patches apply cleanly to v4.11 and have passed an xfstest run.
-They also apply to v4.10.13 with a little help from git am's 3-way merger.
-
----
- fs/dax.c      |  8 ++++----
- mm/truncate.c | 10 ++++++++++
- 2 files changed, 14 insertions(+), 4 deletions(-)
-
-diff --git a/fs/dax.c b/fs/dax.c
-index 166504c..1f2c880 100644
---- a/fs/dax.c
-+++ b/fs/dax.c
-@@ -999,11 +999,11 @@ dax_iomap_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		return -EIO;
- 
- 	/*
--	 * Write can allocate block for an area which has a hole page mapped
--	 * into page tables. We have to tear down these mappings so that data
--	 * written by write(2) is visible in mmap.
-+	 * Write can allocate block for an area which has a hole page or zero
-+	 * PMD entry in the radix tree.  We have to tear down these mappings so
-+	 * that data written by write(2) is visible in mmap.
- 	 */
--	if ((iomap->flags & IOMAP_F_NEW) && inode->i_mapping->nrpages) {
-+	if (iomap->flags & IOMAP_F_NEW) {
- 		invalidate_inode_pages2_range(inode->i_mapping,
- 					      pos >> PAGE_SHIFT,
- 					      (end - 1) >> PAGE_SHIFT);
-diff --git a/mm/truncate.c b/mm/truncate.c
-index c537184..ad40316 100644
---- a/mm/truncate.c
-+++ b/mm/truncate.c
-@@ -683,6 +683,16 @@ int invalidate_inode_pages2_range(struct address_space *mapping,
- 		cond_resched();
- 		index++;
- 	}
-+
-+	/*
-+	 * Ensure that any DAX exceptional entries that have been invalidated
-+	 * are also unmapped.
-+	 */
-+	if (dax_mapping(mapping)) {
-+		unmap_mapping_range(mapping, (loff_t)start << PAGE_SHIFT,
-+				(loff_t)(1 + end - start) << PAGE_SHIFT, 0);
-+	}
-+
- 	cleancache_invalidate_inode(mapping);
- 	return ret;
- }
--- 
-2.9.3
+T24gVGh1LCAyMDE3LTA1LTA0IGF0IDEzOjQ1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFRodSwgTWF5IDA0LCAyMDE3IGF0IDAxOjM4OjM1UE0gLTA0MDAsIENodWNrIExldmVy
+IHdyb3RlOg0KPiA+IA0KPiA+ID4gT24gTWF5IDQsIDIwMTcsIGF0IDE6MzYgUE0sIGJmaWVsZHNA
+ZmllbGRzZXMub3JnIHdyb3RlOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIE1heSAwNCwgMjAxNyBh
+dCAxMjowMToyOVBNIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+
+ID4gT24gTWF5IDQsIDIwMTcsIGF0IDk6NDUgQU0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
+cmFjbGUuYw0KPiA+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAtIFRl
+c3Rpbmcgd2l0aCBhIExpbnV4IHNlcnZlciBzaG93cyB0aGF0IHRoZSBiYXNpYyBORlMvUkRNQQ0K
+PiA+ID4gPiA+IHBpZWNlcw0KPiA+ID4gPiA+IHdvcmssIGJ1dCBhbnkgT1BFTiBvcGVyYXRpb24g
+Z2V0cyBORlM0RVJSX0dSQUNFLCBmb3JldmVyLA0KPiA+ID4gPiA+IHdoZW4gSSB1c2UNCj4gPiA+
+ID4gPiBuY29ubmVjdCA+IDEuIEknbSBsb29raW5nIGludG8gaXQuDQo+ID4gPiA+IA0KPiA+ID4g
+PiBSZXByb2R1Y2VkIHdpdGggTkZTdjQuMSwgVENQLCBhbmQgbmNvbm5lY3Q9Mi4NCj4gPiA+ID4g
+DQo+ID4gPiA+IDM2M8KgwqDCoMKgwqDCoMKgwqDCoC8qDQo+ID4gPiA+IDM2NMKgwqDCoMKgwqDC
+oMKgwqDCoMKgKiBSRkM1NjYxIDE4LjUxLjMNCj4gPiA+ID4gMzY1wqDCoMKgwqDCoMKgwqDCoMKg
+wqAqIEJlZm9yZSBSRUNMQUlNX0NPTVBMRVRFIGRvbmUsIHNlcnZlciBzaG91bGQgZGVueQ0KPiA+
+ID4gPiBuZXcgbG9jaw0KPiA+ID4gPiAzNjbCoMKgwqDCoMKgwqDCoMKgwqDCoCovDQo+ID4gPiA+
+IDM2N8KgwqDCoMKgwqDCoMKgwqDCoGlmIChuZnNkNF9oYXNfc2Vzc2lvbihjc3RhdGUpICYmDQo+
+ID4gPiA+IDM2OMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIXRlc3RfYml0KE5GU0Q0X0NMSUVO
+VF9SRUNMQUlNX0NPTVBMRVRFLA0KPiA+ID4gPiAzNjnCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgJmNzdGF0ZS0+c2Vzc2lvbi0+c2VfY2xpZW50LQ0KPiA+ID4g
+PiA+Y2xfZmxhZ3MpICYmDQo+ID4gPiA+IDM3MMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgb3Bl
+bi0+b3BfY2xhaW1fdHlwZSAhPQ0KPiA+ID4gPiBORlM0X09QRU5fQ0xBSU1fUFJFVklPVVMpDQo+
+ID4gPiA+IDM3McKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqByZXR1cm4gbmZzZXJy
+X2dyYWNlOw0KPiA+ID4gPiANCj4gPiA+ID4gU2VydmVyLXNpZGUgaW5zdHJ1bWVudGF0aW9uIGNv
+bmZpcm1zOg0KPiA+ID4gPiANCj4gPiA+ID4gTWF5wqDCoDQgMTE6Mjg6Mjkga2xpbXQga2VybmVs
+OiBuZnNkNF9vcGVuOiBoYXNfc2Vzc2lvbiByZXR1cm5zDQo+ID4gPiA+IHRydWUNCj4gPiA+ID4g
+TWF5wqDCoDQgMTE6Mjg6Mjkga2xpbXQga2VybmVsOiBuZnNkNF9vcGVuOiBSRUNMQUlNX0NPTVBM
+RVRFIGlzDQo+ID4gPiA+IGZhbHNlDQo+ID4gPiA+IE1hecKgwqA0IDExOjI4OjI5IGtsaW10IGtl
+cm5lbDogbmZzZDRfb3BlbjogY2xhaW1fdHlwZSBpcyAwDQo+ID4gPiA+IA0KPiA+ID4gPiBOZXR3
+b3JrIGNhcHR1cmUgc2hvd3MgdGhlIFJQQ3MgYXJlIGludGVybGVhdmVkIGJldHdlZW4gdGhlIHR3
+bw0KPiA+ID4gPiBjb25uZWN0aW9ucyBhcyB0aGUgY2xpZW50IGVzdGFibGlzaGVzIGl0cyBsZWFz
+ZSwgYW5kIHRoYXQNCj4gPiA+ID4gYXBwZWFycw0KPiA+ID4gPiB0byBiZSBjb25mdXNpbmcgdGhl
+IHNlcnZlci4NCj4gPiA+ID4gDQo+ID4gPiA+IEMxOiBOVUxMIC0+IE5GUzRfT0sNCj4gPiA+ID4g
+QzE6IEVYQ0hBTkdFX0lEIC0+IE5GUzRfT0sNCj4gPiA+ID4gQzI6IENSRUFURV9TRVNTSU9OIC0+
+IE5GUzRfT0sNCj4gPiA+ID4gQzE6IFJFQ0xBSU1fQ09NUExFVEUgLT4gTkZTNEVSUl9DT05OX05P
+VF9CT1VORF9UT19TRVNTSU9ODQo+ID4gPiANCj4gPiA+IFdoYXQgc2VjdXJpdHkgZmxhdm9ycyBh
+cmUgaW52b2x2ZWQ/wqDCoEkgYmVsaWV2ZSB0aGUgY29ycmVjdA0KPiA+ID4gYmVoYXZpb3INCj4g
+PiA+IGRlcGVuZHMgb24gd2hldGhlciBnc3MgaXMgaW4gdXNlIG9yIG5vdC4NCj4gPiANCj4gPiBU
+aGUgbW91bnQgb3B0aW9ucyBhcmUgInNlYz1zeXMiIGJ1dCBib3RoIHNpZGVzIGhhdmUgYSBrZXl0
+YWIuDQo+ID4gU28gdGhlIGxlYXNlIG1hbmFnZW1lbnQgb3BlcmF0aW9ucyBhcmUgZG9uZSB3aXRo
+IGtyYjVpLg0KPiANCj4gT0suwqDCoEknbSBwcmV0dHkgc3VyZSB0aGUgY2xpZW50IG5lZWRzIHRv
+IHNlbmQgQklORF9DT05OX1RPX1NFU1NJT04NCj4gYmVmb3JlIHN0ZXAgQzEuDQo+IA0KPiBNeSBt
+ZW1vcnkgaXMgdGhhdCBvdmVyIGF1dGhfc3lzIHlvdSdyZSBhbGxvd2VkIHRvIHRyZWF0IGFueSBT
+RVFVRU5DRQ0KPiBvdmVyIGEgbmV3IGNvbm5lY3Rpb24gYXMgaW1wbGljaXRseSBiaW5kaW5nIHRo
+YXQgY29ubmVjdGlvbiB0byB0aGUNCj4gcmVmZXJlbmNlZCBzZXNzaW9uLCBidXQgb3ZlciBrcmI1
+IHRoZSBzZXJ2ZXIncyByZXF1aXJlZCB0byByZXR1cm4NCj4gdGhhdA0KPiBOT1RfQk9VTkQgZXJy
+b3IgaWYgdGhlIHNlcnZlciBza2lwcyB0aGUgQklORF9DT05OX1RPX1NFU1NJT04uDQo+IA0KPiBJ
+IHRoaW5rIENSRUFURV9TRVNTSU9OIGlzIGFsbG93ZWQgYXMgbG9uZyBhcyB0aGUgcHJpbmNpcGFs
+cyBhZ3JlZSwNCj4gYW5kDQo+IHRoYXQncyB3aHkgdGhlIGNhbGwgYXQgQzIgc3VjY2VlZHMuwqDC
+oFNlZW1zIGEgbGl0dGxlIHdlaXJkLCB0aG91Z2guDQo+IA0KDQpTZWUgaHR0cHM6Ly90b29scy5p
+ZXRmLm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvbi0yLjEwLjMuMQ0KDQpTbywgd2UgcHJvYmFibHkg
+c2hvdWxkIHNlbmQgdGhlIEJJTkRfQ09OTl9UT19TRVNTSU9OIGFmdGVyIGNyZWF0aW5nIHRoZQ0K
+c2Vzc2lvbiwgYnV0IHNpbmNlIHRoYXQgaW52b2x2ZXMgZmlndXJpbmcgb3V0IHdoZXRoZXIgb3Ig
+bm90IHN0YXRlDQpwcm90ZWN0aW9uIHdhcyBzdWNjZXNzZnVsbHkgbmVnb3RpYXRlZCwgYW5kIHNp
+bmNlIHdlIGhhdmUgdG8gc3VwcG9ydA0KaGFuZGxpbmcgTkZTNEVSUl9DT05OX05PVF9CT1VORF9U
+T19TRVNTSU9OIGFueXdheSwgSSdtIGFsbCBmb3IganVzdA0Kd2FpdGluZyBmb3IgdGhlIHNlcnZl
+ciB0byBzZW5kIHRoZSBlcnJvci4NCg0KPiAtLWIuDQo+IA0KPiA+IA0KPiA+IA0KPiA+ID4gLS1i
+Lg0KPiA+ID4gDQo+ID4gPiA+IEMxOiBQVVRST09URkggfCBHRVRBVFRSIC0+IE5GUzRFUlJfU0VR
+X01JU09SREVSRUQNCj4gPiA+ID4gQzI6IFNFUVVFTkNFIC0+IE5GUzRfT0sNCj4gPiA+ID4gQzE6
+IFBVVFJPT1RGSCB8IEdFVEFUVFIgLT4gTkZTNEVSUl9DT05OX05PVF9CT1VORF9UT19TRVNTSU9O
+DQo+ID4gPiA+IEMxOiBCSU5EX0NPTk5fVE9fU0VTU0lPTiAtPiBORlM0X09LDQo+ID4gPiA+IEMy
+OiBCSU5EX0NPTk5fVE9fU0VTU0lPTiAtPiBORlM0X09LDQo+ID4gPiA+IEMyOiBQVVRST09URkgg
+fCBHRVRBVFRSIC0+IE5GUzRFUlJfU0VRX01JU09SREVSRUQNCj4gPiA+ID4gDQo+ID4gPiA+IC4u
+Li4gbWl4IG9mIEdFVEFUVFJzIGFuZCBvdGhlciBzaW1wbGUgcmVxdWVzdHMgLi4uLg0KPiA+ID4g
+PiANCj4gPiA+ID4gQzE6IE9QRU4gLT4gTkZTNEVSUl9HUkFDRQ0KPiA+ID4gPiBDMjogT1BFTiAt
+PiBORlM0RVJSX0dSQUNFDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGUgUkVDTEFJTV9DT01QTEVURSBv
+cGVyYXRpb24gZmFpbGVkLCBhbmQgdGhlIGNsaWVudCBkb2VzIG5vdA0KPiA+ID4gPiByZXRyeSBp
+dC4gVGhhdCBsZWF2ZXMgaXRzIGxlYXNlIHN0dWNrIGluIEdSQUNFLg0KPiA+ID4gPiANCj4gPiA+
+ID4gDQo+ID4gPiA+IC0tDQo+ID4gPiA+IENodWNrIExldmVyDQo+ID4gPiA+IA0KPiA+ID4gPiAN
+Cj4gPiA+ID4gDQo+ID4gPiA+IC0tDQo+ID4gPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBs
+aXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZQ0KPiA+ID4gPiBsaW51eC1uZnMiIGluDQo+
+ID4gPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3Jn
+DQo+ID4gPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKgaHR0cDovL3ZnZXIua2VybmVsLm9y
+Zy9tYWpvcmRvbW8taW5mby5oDQo+ID4gPiA+IHRtbA0KPiA+ID4gDQo+ID4gPiAtLQ0KPiA+ID4g
+VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
+IGxpbnV4LQ0KPiA+ID4gbmZzIiBpbg0KPiA+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1h
+am9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKg
+aHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG0NCj4gPiA+IGwNCj4gPiAN
+Cj4gPiAtLQ0KPiA+IENodWNrIExldmVyDQo+ID4gDQo+ID4gDQo+ID4gDQo+ID4gLS0NCj4gPiBU
+byB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUg
+bGludXgtDQo+ID4gbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
+bW9Admdlci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdMKgwqBodHRwOi8v
+dmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IC0tDQo+IFRvIHVuc3Vi
+c2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1u
+ZnMiDQo+IGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
+ZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKgaHR0cDovL3ZnZXIua2VybmVsLm9y
+Zy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5
+ZGF0YS5jb20NCg==
 
