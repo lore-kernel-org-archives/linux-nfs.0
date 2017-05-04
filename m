@@ -1,51 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43004 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39263 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751347AbdEDKWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 May 2017 06:22:25 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <87bmr939bg.fsf@rasmusvillemoes.dk>
-References: <87bmr939bg.fsf@rasmusvillemoes.dk> <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk> <149382749941.30481.11685229083280551867.stgit@warthog.procyon.org.uk>
-To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Cc: dhowells@redhat.com, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, mszeredi@redhat.com
-Subject: Re: [PATCH 3/9] VFS: Introduce a mount context
+        id S1751113AbdEDKkv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 May 2017 06:40:51 -0400
+Date: Thu, 4 May 2017 12:40:45 +0200
+From: Karel Zak <kzak@redhat.com>
+To: David Howells <dhowells@redhat.com>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        mszeredi@redhat.com
+Subject: Re: [PATCH 4/9] Implement fsopen() to prepare for a mount
+Message-ID: <20170504104045.6sh3dqofcii6kk2e@ws.net.home>
+References: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
+ <149382750838.30481.8003919639826341255.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Thu, 04 May 2017 11:22:22 +0100
-Message-ID: <24143.1493893342@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <149382750838.30481.8003919639826341255.stgit@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Rasmus Villemoes <linux@rasmusvillemoes.dk> wrote:
+On Wed, May 03, 2017 at 05:05:08PM +0100, David Howells wrote:
+> 	mfd = fsopen("ext4", -1, O_CLOEXEC);
+> 	write(mfd, "d /dev/sdb1"); // note I'm ignoring write's length arg
 
-> > +	if (fs_type->fsopen && fs_type->mc_size < sizeof(*mc))
-> > +		BUG();
+Not sure about 'd', in many cases it is not device, for mount(2)
+syscall we call it "source".
+
+> 	write(mfd, "o noatime");
+> 	write(mfd, "o acl");
+> 	write(mfd, "o user_attr");
+> 	write(mfd, "o iversion");
+> 	write(mfd, "o ");
+> 	write(mfd, "r /my/container"); // root inside the fs
+> 	fsmount(mfd, container_fd, "/mnt", AT_NO_FOLLOW);
 > 
-> So ->mc_size can be 0 (i.e. not explicitly initialized) if fs_type does
-> not have ->fsopen. OK.
-
-I need to be able to handle filesystems that don't support this yet.  Once all
-filesystems support this, I would be able to take away the max_t() thing.
-
-> > +	if (!src->ops->dup)
-> > +		return ERR_PTR(-ENOTSUPP);
-> > +
-> > +	mc = kmemdup(src, src->fs_type->mc_size, GFP_KERNEL);
+> 	mfd = fsopen("afs", -1);
+> 	write(mfd, "d %grand.central.org:root.cell");
+> 	write(mfd, "o cell=grand.central.org");
+> 	write(mfd, "r /");
+> 	fsmount(mfd, AT_FDCWD, "/mnt", 0);
 > 
-> So this assumes that vfs_dup_mount_context is only used if ->mc_size is
-> explicitly initialized. A max_t here as well probably wouldn't hurt.
-
-If you don't provide an ->fsopen() op, you can't set src->ops, you don't see a
-mount context and you can't call this function.  If you did supply an
-->fsopen() op, the BUG() would've got you if you didn't set ->mc_size.
-
-> > +	unsigned short mc_size;		/* Size of mount context to allocate */
+> If an error is reported at any step, an error message may be available to be
+> read() back (ENODATA will be reported if there isn't an error available) in
+> the form:
 > 
-> Any particular reason to use a short? The struct doesn't pack any better.
+> 	"e <subsys>:<problem>"
+> 	"e SELinux:Mount on mountpoint not permitted"
+> 
+> Once fsmount() has been called, further write() calls will incur EBUSY,
+> even if the fsmount() fails.  read() is still possible to retrieve error
+> information.
 
-But it leaves a hole someone else can use.  I try not to use fields larger
-than I need to.
+The very basic mount(2) problem is that you have to parse
+/proc/self/mountinfo to get information about the mounted filesystem.
+It seems that your read() is also one way communication.
 
-David
+What we really need is to have a way how to specify *what* you want to
+read. The error message is not enough, I want to know the finally used
+mount options, mount ID, etc. It would be nice to have something like
+
+
+   fsmount(mfd, AT_FDCWD, "/mnt", 0);
+
+   write(mfd, "o");
+   read(mfd, ....);     // read mount options
+
+   write(mdf, "i");
+   read(mfd, ....);     // read mount ID
+
+
+but it seems ugly. Maybe introduce another function like 
+
+    fsinfo(mdf, "o", buf, bufsz)
+
+to get mount options (etc.) and to avoid separate write & read.
+
+
+> Netlink is not used because it is optional.
+
+ +1
+
+    Karel
+-- 
+ Karel Zak  <kzak@redhat.com>
+ http://karelzak.blogspot.com
