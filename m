@@ -1,117 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45513 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751136AbdEDUkN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 16:40:13 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:49540 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750710AbdEDUm6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 May 2017 16:42:58 -0400
+Date: Thu, 4 May 2017 16:42:58 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP
  connections to use
-Date: Thu, 4 May 2017 20:40:07 +0000
-Message-ID: <1493930404.6900.2.camel@primarydata.com>
+Message-ID: <20170504204258.GE7023@fieldses.org>
 References: <20170428172535.7945-1-trond.myklebust@primarydata.com>
-         <20170428172535.7945-2-trond.myklebust@primarydata.com>
-         <20170428172535.7945-3-trond.myklebust@primarydata.com>
-         <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
-         <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com>
-         <20170504173638.GA7023@fieldses.org>
-         <F868F692-7CB7-4388-94E7-7D4052CE89F1@oracle.com>
-         <20170504174549.GB7023@fieldses.org>
-In-Reply-To: <20170504174549.GB7023@fieldses.org>
+ <20170428172535.7945-2-trond.myklebust@primarydata.com>
+ <20170428172535.7945-3-trond.myklebust@primarydata.com>
+ <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
+ <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com>
+ <20170504173638.GA7023@fieldses.org>
+ <F868F692-7CB7-4388-94E7-7D4052CE89F1@oracle.com>
+ <20170504174549.GB7023@fieldses.org>
+ <1493930404.6900.2.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1493930404.6900.2.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA1LTA0IGF0IDEzOjQ1IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFRodSwgTWF5IDA0LCAyMDE3IGF0IDAxOjM4OjM1UE0gLTA0MDAsIENodWNrIExldmVy
-IHdyb3RlOg0KPiA+IA0KPiA+ID4gT24gTWF5IDQsIDIwMTcsIGF0IDE6MzYgUE0sIGJmaWVsZHNA
-ZmllbGRzZXMub3JnIHdyb3RlOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIE1heSAwNCwgMjAxNyBh
-dCAxMjowMToyOVBNIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+
-ID4gT24gTWF5IDQsIDIwMTcsIGF0IDk6NDUgQU0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
-cmFjbGUuYw0KPiA+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAtIFRl
-c3Rpbmcgd2l0aCBhIExpbnV4IHNlcnZlciBzaG93cyB0aGF0IHRoZSBiYXNpYyBORlMvUkRNQQ0K
-PiA+ID4gPiA+IHBpZWNlcw0KPiA+ID4gPiA+IHdvcmssIGJ1dCBhbnkgT1BFTiBvcGVyYXRpb24g
-Z2V0cyBORlM0RVJSX0dSQUNFLCBmb3JldmVyLA0KPiA+ID4gPiA+IHdoZW4gSSB1c2UNCj4gPiA+
-ID4gPiBuY29ubmVjdCA+IDEuIEknbSBsb29raW5nIGludG8gaXQuDQo+ID4gPiA+IA0KPiA+ID4g
-PiBSZXByb2R1Y2VkIHdpdGggTkZTdjQuMSwgVENQLCBhbmQgbmNvbm5lY3Q9Mi4NCj4gPiA+ID4g
-DQo+ID4gPiA+IDM2M8KgwqDCoMKgwqDCoMKgwqDCoC8qDQo+ID4gPiA+IDM2NMKgwqDCoMKgwqDC
-oMKgwqDCoMKgKiBSRkM1NjYxIDE4LjUxLjMNCj4gPiA+ID4gMzY1wqDCoMKgwqDCoMKgwqDCoMKg
-wqAqIEJlZm9yZSBSRUNMQUlNX0NPTVBMRVRFIGRvbmUsIHNlcnZlciBzaG91bGQgZGVueQ0KPiA+
-ID4gPiBuZXcgbG9jaw0KPiA+ID4gPiAzNjbCoMKgwqDCoMKgwqDCoMKgwqDCoCovDQo+ID4gPiA+
-IDM2N8KgwqDCoMKgwqDCoMKgwqDCoGlmIChuZnNkNF9oYXNfc2Vzc2lvbihjc3RhdGUpICYmDQo+
-ID4gPiA+IDM2OMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgIXRlc3RfYml0KE5GU0Q0X0NMSUVO
-VF9SRUNMQUlNX0NPTVBMRVRFLA0KPiA+ID4gPiAzNjnCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
-oMKgwqDCoMKgwqDCoMKgwqDCoMKgJmNzdGF0ZS0+c2Vzc2lvbi0+c2VfY2xpZW50LQ0KPiA+ID4g
-PiA+Y2xfZmxhZ3MpICYmDQo+ID4gPiA+IDM3MMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgb3Bl
-bi0+b3BfY2xhaW1fdHlwZSAhPQ0KPiA+ID4gPiBORlM0X09QRU5fQ0xBSU1fUFJFVklPVVMpDQo+
-ID4gPiA+IDM3McKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqByZXR1cm4gbmZzZXJy
-X2dyYWNlOw0KPiA+ID4gPiANCj4gPiA+ID4gU2VydmVyLXNpZGUgaW5zdHJ1bWVudGF0aW9uIGNv
-bmZpcm1zOg0KPiA+ID4gPiANCj4gPiA+ID4gTWF5wqDCoDQgMTE6Mjg6Mjkga2xpbXQga2VybmVs
-OiBuZnNkNF9vcGVuOiBoYXNfc2Vzc2lvbiByZXR1cm5zDQo+ID4gPiA+IHRydWUNCj4gPiA+ID4g
-TWF5wqDCoDQgMTE6Mjg6Mjkga2xpbXQga2VybmVsOiBuZnNkNF9vcGVuOiBSRUNMQUlNX0NPTVBM
-RVRFIGlzDQo+ID4gPiA+IGZhbHNlDQo+ID4gPiA+IE1hecKgwqA0IDExOjI4OjI5IGtsaW10IGtl
-cm5lbDogbmZzZDRfb3BlbjogY2xhaW1fdHlwZSBpcyAwDQo+ID4gPiA+IA0KPiA+ID4gPiBOZXR3
-b3JrIGNhcHR1cmUgc2hvd3MgdGhlIFJQQ3MgYXJlIGludGVybGVhdmVkIGJldHdlZW4gdGhlIHR3
-bw0KPiA+ID4gPiBjb25uZWN0aW9ucyBhcyB0aGUgY2xpZW50IGVzdGFibGlzaGVzIGl0cyBsZWFz
-ZSwgYW5kIHRoYXQNCj4gPiA+ID4gYXBwZWFycw0KPiA+ID4gPiB0byBiZSBjb25mdXNpbmcgdGhl
-IHNlcnZlci4NCj4gPiA+ID4gDQo+ID4gPiA+IEMxOiBOVUxMIC0+IE5GUzRfT0sNCj4gPiA+ID4g
-QzE6IEVYQ0hBTkdFX0lEIC0+IE5GUzRfT0sNCj4gPiA+ID4gQzI6IENSRUFURV9TRVNTSU9OIC0+
-IE5GUzRfT0sNCj4gPiA+ID4gQzE6IFJFQ0xBSU1fQ09NUExFVEUgLT4gTkZTNEVSUl9DT05OX05P
-VF9CT1VORF9UT19TRVNTSU9ODQo+ID4gPiANCj4gPiA+IFdoYXQgc2VjdXJpdHkgZmxhdm9ycyBh
-cmUgaW52b2x2ZWQ/wqDCoEkgYmVsaWV2ZSB0aGUgY29ycmVjdA0KPiA+ID4gYmVoYXZpb3INCj4g
-PiA+IGRlcGVuZHMgb24gd2hldGhlciBnc3MgaXMgaW4gdXNlIG9yIG5vdC4NCj4gPiANCj4gPiBU
-aGUgbW91bnQgb3B0aW9ucyBhcmUgInNlYz1zeXMiIGJ1dCBib3RoIHNpZGVzIGhhdmUgYSBrZXl0
-YWIuDQo+ID4gU28gdGhlIGxlYXNlIG1hbmFnZW1lbnQgb3BlcmF0aW9ucyBhcmUgZG9uZSB3aXRo
-IGtyYjVpLg0KPiANCj4gT0suwqDCoEknbSBwcmV0dHkgc3VyZSB0aGUgY2xpZW50IG5lZWRzIHRv
-IHNlbmQgQklORF9DT05OX1RPX1NFU1NJT04NCj4gYmVmb3JlIHN0ZXAgQzEuDQo+IA0KPiBNeSBt
-ZW1vcnkgaXMgdGhhdCBvdmVyIGF1dGhfc3lzIHlvdSdyZSBhbGxvd2VkIHRvIHRyZWF0IGFueSBT
-RVFVRU5DRQ0KPiBvdmVyIGEgbmV3IGNvbm5lY3Rpb24gYXMgaW1wbGljaXRseSBiaW5kaW5nIHRo
-YXQgY29ubmVjdGlvbiB0byB0aGUNCj4gcmVmZXJlbmNlZCBzZXNzaW9uLCBidXQgb3ZlciBrcmI1
-IHRoZSBzZXJ2ZXIncyByZXF1aXJlZCB0byByZXR1cm4NCj4gdGhhdA0KPiBOT1RfQk9VTkQgZXJy
-b3IgaWYgdGhlIHNlcnZlciBza2lwcyB0aGUgQklORF9DT05OX1RPX1NFU1NJT04uDQo+IA0KPiBJ
-IHRoaW5rIENSRUFURV9TRVNTSU9OIGlzIGFsbG93ZWQgYXMgbG9uZyBhcyB0aGUgcHJpbmNpcGFs
-cyBhZ3JlZSwNCj4gYW5kDQo+IHRoYXQncyB3aHkgdGhlIGNhbGwgYXQgQzIgc3VjY2VlZHMuwqDC
-oFNlZW1zIGEgbGl0dGxlIHdlaXJkLCB0aG91Z2guDQo+IA0KDQpTZWUgaHR0cHM6Ly90b29scy5p
-ZXRmLm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvbi0yLjEwLjMuMQ0KDQpTbywgd2UgcHJvYmFibHkg
-c2hvdWxkIHNlbmQgdGhlIEJJTkRfQ09OTl9UT19TRVNTSU9OIGFmdGVyIGNyZWF0aW5nIHRoZQ0K
-c2Vzc2lvbiwgYnV0IHNpbmNlIHRoYXQgaW52b2x2ZXMgZmlndXJpbmcgb3V0IHdoZXRoZXIgb3Ig
-bm90IHN0YXRlDQpwcm90ZWN0aW9uIHdhcyBzdWNjZXNzZnVsbHkgbmVnb3RpYXRlZCwgYW5kIHNp
-bmNlIHdlIGhhdmUgdG8gc3VwcG9ydA0KaGFuZGxpbmcgTkZTNEVSUl9DT05OX05PVF9CT1VORF9U
-T19TRVNTSU9OIGFueXdheSwgSSdtIGFsbCBmb3IganVzdA0Kd2FpdGluZyBmb3IgdGhlIHNlcnZl
-ciB0byBzZW5kIHRoZSBlcnJvci4NCg0KPiAtLWIuDQo+IA0KPiA+IA0KPiA+IA0KPiA+ID4gLS1i
-Lg0KPiA+ID4gDQo+ID4gPiA+IEMxOiBQVVRST09URkggfCBHRVRBVFRSIC0+IE5GUzRFUlJfU0VR
-X01JU09SREVSRUQNCj4gPiA+ID4gQzI6IFNFUVVFTkNFIC0+IE5GUzRfT0sNCj4gPiA+ID4gQzE6
-IFBVVFJPT1RGSCB8IEdFVEFUVFIgLT4gTkZTNEVSUl9DT05OX05PVF9CT1VORF9UT19TRVNTSU9O
-DQo+ID4gPiA+IEMxOiBCSU5EX0NPTk5fVE9fU0VTU0lPTiAtPiBORlM0X09LDQo+ID4gPiA+IEMy
-OiBCSU5EX0NPTk5fVE9fU0VTU0lPTiAtPiBORlM0X09LDQo+ID4gPiA+IEMyOiBQVVRST09URkgg
-fCBHRVRBVFRSIC0+IE5GUzRFUlJfU0VRX01JU09SREVSRUQNCj4gPiA+ID4gDQo+ID4gPiA+IC4u
-Li4gbWl4IG9mIEdFVEFUVFJzIGFuZCBvdGhlciBzaW1wbGUgcmVxdWVzdHMgLi4uLg0KPiA+ID4g
-PiANCj4gPiA+ID4gQzE6IE9QRU4gLT4gTkZTNEVSUl9HUkFDRQ0KPiA+ID4gPiBDMjogT1BFTiAt
-PiBORlM0RVJSX0dSQUNFDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGUgUkVDTEFJTV9DT01QTEVURSBv
-cGVyYXRpb24gZmFpbGVkLCBhbmQgdGhlIGNsaWVudCBkb2VzIG5vdA0KPiA+ID4gPiByZXRyeSBp
-dC4gVGhhdCBsZWF2ZXMgaXRzIGxlYXNlIHN0dWNrIGluIEdSQUNFLg0KPiA+ID4gPiANCj4gPiA+
-ID4gDQo+ID4gPiA+IC0tDQo+ID4gPiA+IENodWNrIExldmVyDQo+ID4gPiA+IA0KPiA+ID4gPiAN
-Cj4gPiA+ID4gDQo+ID4gPiA+IC0tDQo+ID4gPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBs
-aXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZQ0KPiA+ID4gPiBsaW51eC1uZnMiIGluDQo+
-ID4gPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3Jn
-DQo+ID4gPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKgaHR0cDovL3ZnZXIua2VybmVsLm9y
-Zy9tYWpvcmRvbW8taW5mby5oDQo+ID4gPiA+IHRtbA0KPiA+ID4gDQo+ID4gPiAtLQ0KPiA+ID4g
-VG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJl
-IGxpbnV4LQ0KPiA+ID4gbmZzIiBpbg0KPiA+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1h
-am9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKg
-aHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG0NCj4gPiA+IGwNCj4gPiAN
-Cj4gPiAtLQ0KPiA+IENodWNrIExldmVyDQo+ID4gDQo+ID4gDQo+ID4gDQo+ID4gLS0NCj4gPiBU
-byB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUg
-bGludXgtDQo+ID4gbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRv
-bW9Admdlci5rZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdMKgwqBodHRwOi8v
-dmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IC0tDQo+IFRvIHVuc3Vi
-c2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1u
-ZnMiDQo+IGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
-ZWwub3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKgaHR0cDovL3ZnZXIua2VybmVsLm9y
-Zy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5
-ZGF0YS5jb20NCg==
+On Thu, May 04, 2017 at 08:40:07PM +0000, Trond Myklebust wrote:
+> See https://tools.ietf.org/html/rfc5661#section-2.10.3.1
+> 
+> So, we probably should send the BIND_CONN_TO_SESSION after creating the
+> session, but since that involves figuring out whether or not state
+> protection was successfully negotiated, and since we have to support
+> handling NFS4ERR_CONN_NOT_BOUND_TO_SESSION anyway, I'm all for just
+> waiting for the server to send the error.
 
+Makes sense to me.
+
+--b.
