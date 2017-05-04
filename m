@@ -1,89 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51939 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751120AbdEDOnt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 May 2017 10:43:49 -0400
-Date: Thu, 4 May 2017 11:12:33 +0200
-From: Jan Kara <jack@suse.cz>
-To: Ross Zwisler <ross.zwisler@linux.intel.com>
-Cc: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        v9fs-developer@lists.sourceforge.net
-Subject: Re: [PATCH 2/2] dax: fix data corruption due to stale mmap reads
-Message-ID: <20170504091233.GA808@quack2.suse.cz>
-References: <20170420191446.GA21694@linux.intel.com>
- <20170421034437.4359-1-ross.zwisler@linux.intel.com>
- <20170421034437.4359-2-ross.zwisler@linux.intel.com>
- <20170425111043.GH2793@quack2.suse.cz>
- <20170425225936.GA29655@linux.intel.com>
- <20170426085235.GA21738@quack2.suse.cz>
- <20170426225236.GA25838@linux.intel.com>
- <20170427072659.GA29789@quack2.suse.cz>
- <20170501223855.GA25862@linux.intel.com>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:39602 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754596AbdEDQBg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 12:01:36 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170501223855.GA25862@linux.intel.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP connections to use
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
+Date: Thu, 4 May 2017 12:01:29 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com>
+References: <20170428172535.7945-1-trond.myklebust@primarydata.com> <20170428172535.7945-2-trond.myklebust@primarydata.com> <20170428172535.7945-3-trond.myklebust@primarydata.com> <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 01-05-17 16:38:55, Ross Zwisler wrote:
-> > So for now I'm still more inclined to just stay with the radix tree lock as
-> > is and just fix up the locking as I suggest and go for larger rewrite only
-> > if we can demonstrate further performance wins.
-> 
-> Sounds good.
-> 
-> > WRT your second patch, if we go with the locking as I suggest, it is enough
-> > to unmap the whole range after invalidate_inode_pages2() has cleared radix
-> > tree entries (*) which will be much cheaper (for large writes) than doing
-> > unmapping entry by entry.
-> 
-> I'm still not convinced that it is safe to do the unmap in a separate step.  I
-> see your point about it being expensive to do a rmap walk to unmap each entry
-> in __dax_invalidate_mapping_entry(), but I think we might need to because the
-> unmap is part of the contract imposed by invalidate_inode_pages2_range() and
-> invalidate_inode_pages2().  This exists in the header comment above each:
-> 
->  * Any pages which are found to be mapped into pagetables are unmapped prior
->  * to invalidation.
-> 
-> If you look at the usage of invalidate_inode_pages2_range() in
-> generic_file_direct_write() for example (which I realize we won't call for a
-> DAX inode, but still), I think that it really does rely on the fact that
-> invalidated pages are unmapped, right?  If it didn't, and hole pages were
-> mapped, the hole pages could remain mapped while a direct I/O write allocated
-> blocks and then wrote real data.
-> 
-> If we really want to unmap the entire range at once, maybe it would have to be
-> done in invalidate_inode_pages2_range(), after the loop?  My hesitation about
-> this is that we'd be leaking yet more DAX special casing up into the
-> mm/truncate.c code.
-> 
-> Or am I missing something?
 
-No, my thinking was to put the invalidation at the end of
-invalidate_inode_pages2_range(). I agree it means more special-casing for
-DAX in mm/truncate.c.
+> On May 4, 2017, at 9:45 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> - Testing with a Linux server shows that the basic NFS/RDMA pieces
+> work, but any OPEN operation gets NFS4ERR_GRACE, forever, when I use
+> nconnect > 1. I'm looking into it.
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Reproduced with NFSv4.1, TCP, and nconnect=2.
+
+363         /*
+364          * RFC5661 18.51.3
+365          * Before RECLAIM_COMPLETE done, server should deny new lock
+366          */
+367         if (nfsd4_has_session(cstate) &&
+368             !test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
+369                       &cstate->session->se_client->cl_flags) &&
+370             open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
+371                 return nfserr_grace;
+
+Server-side instrumentation confirms:
+
+May  4 11:28:29 klimt kernel: nfsd4_open: has_session returns true
+May  4 11:28:29 klimt kernel: nfsd4_open: RECLAIM_COMPLETE is false
+May  4 11:28:29 klimt kernel: nfsd4_open: claim_type is 0
+
+Network capture shows the RPCs are interleaved between the two
+connections as the client establishes its lease, and that appears
+to be confusing the server.
+
+C1: NULL -> NFS4_OK
+C1: EXCHANGE_ID -> NFS4_OK
+C2: CREATE_SESSION -> NFS4_OK
+C1: RECLAIM_COMPLETE -> NFS4ERR_CONN_NOT_BOUND_TO_SESSION
+C1: PUTROOTFH | GETATTR -> NFS4ERR_SEQ_MISORDERED
+C2: SEQUENCE -> NFS4_OK
+C1: PUTROOTFH | GETATTR -> NFS4ERR_CONN_NOT_BOUND_TO_SESSION
+C1: BIND_CONN_TO_SESSION -> NFS4_OK
+C2: BIND_CONN_TO_SESSION -> NFS4_OK
+C2: PUTROOTFH | GETATTR -> NFS4ERR_SEQ_MISORDERED
+
+.... mix of GETATTRs and other simple requests ....
+
+C1: OPEN -> NFS4ERR_GRACE
+C2: OPEN -> NFS4ERR_GRACE
+
+The RECLAIM_COMPLETE operation failed, and the client does not
+retry it. That leaves its lease stuck in GRACE.
+
+
+--
+Chuck Lever
+
+
+
