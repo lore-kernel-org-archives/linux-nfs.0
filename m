@@ -1,131 +1,154 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49450 "EHLO fieldses.org"
+Received: from mga03.intel.com ([134.134.136.65]:57410 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751472AbdEDT6V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 May 2017 15:58:21 -0400
-Date: Thu, 4 May 2017 15:58:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP
- connections to use
-Message-ID: <20170504195820.GC7023@fieldses.org>
-References: <20170428172535.7945-1-trond.myklebust@primarydata.com>
- <20170428172535.7945-2-trond.myklebust@primarydata.com>
- <20170428172535.7945-3-trond.myklebust@primarydata.com>
- <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
- <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com>
- <20170504173638.GA7023@fieldses.org>
- <F868F692-7CB7-4388-94E7-7D4052CE89F1@oracle.com>
- <20170504174549.GB7023@fieldses.org>
- <D44951CC-9107-425C-9A77-2F513805E93B@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <D44951CC-9107-425C-9A77-2F513805E93B@oracle.com>
+        id S1751732AbdEDT72 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 May 2017 15:59:28 -0400
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Jan Kara <jack@suse.cz>, Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        v9fs-developer@lists.sourceforge.net
+Subject: [PATCH v2 1/2] dax: prevent invalidation of mapped DAX entries
+Date: Thu,  4 May 2017 13:59:09 -0600
+Message-Id: <20170504195910.11579-1-ross.zwisler@linux.intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 04, 2017 at 02:55:06PM -0400, Chuck Lever wrote:
-> 
-> > On May 4, 2017, at 1:45 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Thu, May 04, 2017 at 01:38:35PM -0400, Chuck Lever wrote:
-> >> 
-> >>> On May 4, 2017, at 1:36 PM, bfields@fieldses.org wrote:
-> >>> 
-> >>> On Thu, May 04, 2017 at 12:01:29PM -0400, Chuck Lever wrote:
-> >>>> 
-> >>>>> On May 4, 2017, at 9:45 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> >>>>> 
-> >>>>> - Testing with a Linux server shows that the basic NFS/RDMA pieces
-> >>>>> work, but any OPEN operation gets NFS4ERR_GRACE, forever, when I use
-> >>>>> nconnect > 1. I'm looking into it.
-> >>>> 
-> >>>> Reproduced with NFSv4.1, TCP, and nconnect=2.
-> >>>> 
-> >>>> 363         /*
-> >>>> 364          * RFC5661 18.51.3
-> >>>> 365          * Before RECLAIM_COMPLETE done, server should deny new lock
-> >>>> 366          */
-> >>>> 367         if (nfsd4_has_session(cstate) &&
-> >>>> 368             !test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
-> >>>> 369                       &cstate->session->se_client->cl_flags) &&
-> >>>> 370             open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
-> >>>> 371                 return nfserr_grace;
-> >>>> 
-> >>>> Server-side instrumentation confirms:
-> >>>> 
-> >>>> May  4 11:28:29 klimt kernel: nfsd4_open: has_session returns true
-> >>>> May  4 11:28:29 klimt kernel: nfsd4_open: RECLAIM_COMPLETE is false
-> >>>> May  4 11:28:29 klimt kernel: nfsd4_open: claim_type is 0
-> >>>> 
-> >>>> Network capture shows the RPCs are interleaved between the two
-> >>>> connections as the client establishes its lease, and that appears
-> >>>> to be confusing the server.
-> >>>> 
-> >>>> C1: NULL -> NFS4_OK
-> >>>> C1: EXCHANGE_ID -> NFS4_OK
-> >>>> C2: CREATE_SESSION -> NFS4_OK
-> >>>> C1: RECLAIM_COMPLETE -> NFS4ERR_CONN_NOT_BOUND_TO_SESSION
-> >>> 
-> >>> What security flavors are involved?  I believe the correct behavior
-> >>> depends on whether gss is in use or not.
-> >> 
-> >> The mount options are "sec=sys" but both sides have a keytab.
-> >> So the lease management operations are done with krb5i.
-> > 
-> > OK.  I'm pretty sure the client needs to send BIND_CONN_TO_SESSION
-> > before step C1.
-> > 
-> > My memory is that over auth_sys you're allowed to treat any SEQUENCE
-> > over a new connection as implicitly binding that connection to the
-> > referenced session, but over krb5 the server's required to return that
-> > NOT_BOUND error if the server skips the BIND_CONN_TO_SESSION.
-> 
-> Ah, that would explain why nconnect=[234] is working against my
-> Solaris 12 server: no keytab on that server means lease management
-> is done using plain-old AUTH_SYS.
-> 
-> Multiple connections are now handled entirely by the RPC layer,
-> and are opened and used at rpc_clnt creation time. The NFS client
-> is not aware (except for allowing more than one connection to be
-> used) and relies on its own recovery mechanisms to deal with
-> exceptions that might arise. IOW it doesn't seem to know that an
-> extra BC2S is needed, nor does it know where in the RPC stream
-> to insert that operation.
-> 
-> Seems to me a good approach would be to handle server trunking
-> discovery and lease establishment using a single connection, and
-> then open more connections. A conservative approach might actually
-> hold off on opening additional connections until there are enough
-> RPC transactions being initiated in parallel to warrant it. Or, if
-> @nconnect > 1, use a single connection to perform lease management,
-> and open @nconnect additional connections that handle only per-
-> mount I/O activity.
-> 
-> 
-> > I think CREATE_SESSION is allowed as long as the principals agree, and
-> > that's why the call at C2 succeeds.  Seems a little weird, though.
-> 
-> Well, there's no SEQUENCE operation in that COMPOUND. No session
-> or connection to use there, I think the principal and client ID
-> are the only way to recognize the target of the operation?
+dax_invalidate_mapping_entry() currently removes DAX exceptional entries
+only if they are clean and unlocked.  This is done via:
 
-I'm just not clear why the explicit BIND_CONN_TO_SESSION is required in
-the gss case.
+invalidate_mapping_pages()
+  invalidate_exceptional_entry()
+    dax_invalidate_mapping_entry()
 
-Actually, it's not gss exactly, it's the state protection level:
+However, for page cache pages removed in invalidate_mapping_pages() there
+is an additional criteria which is that the page must not be mapped.  This
+is noted in the comments above invalidate_mapping_pages() and is checked in
+invalidate_inode_page().
 
-	If, when the client ID was created, the client opted for
-	SP4_NONE state protection, the client is not required to use
-	BIND_CONN_TO_SESSION to associate the connection with the
-	session, unless the client wishes to associate the connection
-	with the backchannel.  When SP4_NONE protection is used, simply
-	sending a COMPOUND request with a SEQUENCE operation is
-	sufficient to associate the connection with the session
-	specified in SEQUENCE.
+For DAX entries this means that we can can end up in a situation where a
+DAX exceptional entry, either a huge zero page or a regular DAX entry,
+could end up mapped but without an associated radix tree entry. This is
+inconsistent with the rest of the DAX code and with what happens in the
+page cache case.
 
-Anyway.
+We aren't able to unmap the DAX exceptional entry because according to its
+comments invalidate_mapping_pages() isn't allowed to block, and
+unmap_mapping_range() takes a write lock on the mapping->i_mmap_rwsem.
 
---b.
+We could potentially do an rmap walk to see if each of the entries actually
+has any active mappings before we remove it, but this might end up being
+very expensive and doesn't currently look to be worth it.
+
+So, just remove dax_invalidate_mapping_entry() and leave the DAX entries in
+the radix tree.
+
+Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+Fixes: c6dcf52c23d2 ("mm: Invalidate DAX radix tree entries only if appropriate")
+Reported-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Cc: <stable@vger.kernel.org>    [4.10+]
+---
+ fs/dax.c            | 29 -----------------------------
+ include/linux/dax.h |  1 -
+ mm/truncate.c       |  9 +++------
+ 3 files changed, 3 insertions(+), 36 deletions(-)
+
+diff --git a/fs/dax.c b/fs/dax.c
+index 85abd74..166504c 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -507,35 +507,6 @@ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index)
+ }
+ 
+ /*
+- * Invalidate exceptional DAX entry if easily possible. This handles DAX
+- * entries for invalidate_inode_pages() so we evict the entry only if we can
+- * do so without blocking.
+- */
+-int dax_invalidate_mapping_entry(struct address_space *mapping, pgoff_t index)
+-{
+-	int ret = 0;
+-	void *entry, **slot;
+-	struct radix_tree_root *page_tree = &mapping->page_tree;
+-
+-	spin_lock_irq(&mapping->tree_lock);
+-	entry = __radix_tree_lookup(page_tree, index, NULL, &slot);
+-	if (!entry || !radix_tree_exceptional_entry(entry) ||
+-	    slot_locked(mapping, slot))
+-		goto out;
+-	if (radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_DIRTY) ||
+-	    radix_tree_tag_get(page_tree, index, PAGECACHE_TAG_TOWRITE))
+-		goto out;
+-	radix_tree_delete(page_tree, index);
+-	mapping->nrexceptional--;
+-	ret = 1;
+-out:
+-	spin_unlock_irq(&mapping->tree_lock);
+-	if (ret)
+-		dax_wake_mapping_entry_waiter(mapping, index, entry, true);
+-	return ret;
+-}
+-
+-/*
+  * Invalidate exceptional DAX entry if it is clean.
+  */
+ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+diff --git a/include/linux/dax.h b/include/linux/dax.h
+index d8a3dc0..f8e1833 100644
+--- a/include/linux/dax.h
++++ b/include/linux/dax.h
+@@ -41,7 +41,6 @@ ssize_t dax_iomap_rw(struct kiocb *iocb, struct iov_iter *iter,
+ int dax_iomap_fault(struct vm_fault *vmf, enum page_entry_size pe_size,
+ 		    const struct iomap_ops *ops);
+ int dax_delete_mapping_entry(struct address_space *mapping, pgoff_t index);
+-int dax_invalidate_mapping_entry(struct address_space *mapping, pgoff_t index);
+ int dax_invalidate_mapping_entry_sync(struct address_space *mapping,
+ 				      pgoff_t index);
+ void dax_wake_mapping_entry_waiter(struct address_space *mapping,
+diff --git a/mm/truncate.c b/mm/truncate.c
+index 6263aff..c537184 100644
+--- a/mm/truncate.c
++++ b/mm/truncate.c
+@@ -67,17 +67,14 @@ static void truncate_exceptional_entry(struct address_space *mapping,
+ 
+ /*
+  * Invalidate exceptional entry if easily possible. This handles exceptional
+- * entries for invalidate_inode_pages() so for DAX it evicts only unlocked and
+- * clean entries.
++ * entries for invalidate_inode_pages().
+  */
+ static int invalidate_exceptional_entry(struct address_space *mapping,
+ 					pgoff_t index, void *entry)
+ {
+-	/* Handled by shmem itself */
+-	if (shmem_mapping(mapping))
++	/* Handled by shmem itself, or for DAX we do nothing. */
++	if (shmem_mapping(mapping) || dax_mapping(mapping))
+ 		return 1;
+-	if (dax_mapping(mapping))
+-		return dax_invalidate_mapping_entry(mapping, index);
+ 	clear_shadow_entry(mapping, index, entry);
+ 	return 1;
+ }
+-- 
+2.9.3
+
