@@ -1,149 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:41536 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751907AbdEDNxe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 09:53:34 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP connections to use
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
-Date: Thu, 4 May 2017 09:53:29 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <5E9D117A-ACE7-4572-8984-5DD2CE43D72C@oracle.com>
-References: <20170428172535.7945-1-trond.myklebust@primarydata.com> <20170428172535.7945-2-trond.myklebust@primarydata.com> <20170428172535.7945-3-trond.myklebust@primarydata.com> <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-it0-f53.google.com ([209.85.214.53]:35180 "EHLO
+        mail-it0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755219AbdEDN6I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 09:58:08 -0400
+Received: by mail-it0-f53.google.com with SMTP id c15so18140726ith.0
+        for <linux-nfs@vger.kernel.org>; Thu, 04 May 2017 06:58:08 -0700 (PDT)
+Subject: Re: [PATCH] nfs: Fix bdi handling for cloned superblocks
+To: Jan Kara <jack@suse.cz>
+References: <20170504070242.31501-1-jack@suse.cz>
+Cc: linux-block@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Corentin Labbe <clabbe.montjoie@gmail.com>
+From: Jens Axboe <axboe@kernel.dk>
+Message-ID: <289c8d37-a292-2701-b03b-250f904fd022@kernel.dk>
+Date: Thu, 4 May 2017 07:58:06 -0600
+MIME-Version: 1.0
+In-Reply-To: <20170504070242.31501-1-jack@suse.cz>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 05/04/2017 01:02 AM, Jan Kara wrote:
+> In commit 0d3b12584972 "nfs: Convert to separately allocated bdi" I have
+> wrongly cloned bdi reference in nfs_clone_super(). Further inspection
+> has shown that originally the code was actually allocating a new bdi (in
+> ->clone_server callback) which was later registered in
+> nfs_fs_mount_common() and used for sb->s_bdi in nfs_initialise_sb().
+> This could later result in bdi for the original superblock not getting
+> unregistered when that superblock got shutdown (as the cloned sb still
+> held bdi reference) and later when a new superblock was created under
+> the same anonymous device number, a clash in sysfs has happened on bdi
+> registration:
+> 
+> ------------[ cut here ]------------
+> WARNING: CPU: 1 PID: 10284 at /linux-next/fs/sysfs/dir.c:31 sysfs_warn_dup+0x64/0x74
+> sysfs: cannot create duplicate filename '/devices/virtual/bdi/0:32'
+> Modules linked in: axp20x_usb_power gpio_axp209 nvmem_sunxi_sid sun4i_dma sun4i_ss virt_dma
+> CPU: 1 PID: 10284 Comm: mount.nfs Not tainted 4.11.0-rc4+ #14
+> Hardware name: Allwinner sun7i (A20) Family
+> [<c010f19c>] (unwind_backtrace) from [<c010bc74>] (show_stack+0x10/0x14)
+> [<c010bc74>] (show_stack) from [<c03c6e24>] (dump_stack+0x78/0x8c)
+> [<c03c6e24>] (dump_stack) from [<c0122200>] (__warn+0xe8/0x100)
+> [<c0122200>] (__warn) from [<c0122250>] (warn_slowpath_fmt+0x38/0x48)
+> [<c0122250>] (warn_slowpath_fmt) from [<c02ac178>] (sysfs_warn_dup+0x64/0x74)
+> [<c02ac178>] (sysfs_warn_dup) from [<c02ac254>] (sysfs_create_dir_ns+0x84/0x94)
+> [<c02ac254>] (sysfs_create_dir_ns) from [<c03c8b8c>] (kobject_add_internal+0x9c/0x2ec)
+> [<c03c8b8c>] (kobject_add_internal) from [<c03c8e24>] (kobject_add+0x48/0x98)
+> [<c03c8e24>] (kobject_add) from [<c048d75c>] (device_add+0xe4/0x5a0)
+> [<c048d75c>] (device_add) from [<c048ddb4>] (device_create_groups_vargs+0xac/0xbc)
+> [<c048ddb4>] (device_create_groups_vargs) from [<c048dde4>] (device_create_vargs+0x20/0x28)
+> [<c048dde4>] (device_create_vargs) from [<c02075c8>] (bdi_register_va+0x44/0xfc)
+> [<c02075c8>] (bdi_register_va) from [<c023d378>] (super_setup_bdi_name+0x48/0xa4)
+> [<c023d378>] (super_setup_bdi_name) from [<c0312ef4>] (nfs_fill_super+0x1a4/0x204)
+> [<c0312ef4>] (nfs_fill_super) from [<c03133f0>] (nfs_fs_mount_common+0x140/0x1e8)
+> [<c03133f0>] (nfs_fs_mount_common) from [<c03335cc>] (nfs4_remote_mount+0x50/0x58)
+> [<c03335cc>] (nfs4_remote_mount) from [<c023ef98>] (mount_fs+0x14/0xa4)
+> [<c023ef98>] (mount_fs) from [<c025cba0>] (vfs_kern_mount+0x54/0x128)
+> [<c025cba0>] (vfs_kern_mount) from [<c033352c>] (nfs_do_root_mount+0x80/0xa0)
+> [<c033352c>] (nfs_do_root_mount) from [<c0333818>] (nfs4_try_mount+0x28/0x3c)
+> [<c0333818>] (nfs4_try_mount) from [<c0313874>] (nfs_fs_mount+0x2cc/0x8c4)
+> [<c0313874>] (nfs_fs_mount) from [<c023ef98>] (mount_fs+0x14/0xa4)
+> [<c023ef98>] (mount_fs) from [<c025cba0>] (vfs_kern_mount+0x54/0x128)
+> [<c025cba0>] (vfs_kern_mount) from [<c02600f0>] (do_mount+0x158/0xc7c)
+> [<c02600f0>] (do_mount) from [<c0260f98>] (SyS_mount+0x8c/0xb4)
+> [<c0260f98>] (SyS_mount) from [<c0107840>] (ret_fast_syscall+0x0/0x3c)
+> 
+> Fix the problem by always creating new bdi for a superblock as we used
+> to do.
+> 
+> Reported-and-tested-by: Corentin Labbe <clabbe.montjoie@gmail.com>
+> Fixes: 0d3b12584972ce5781179ad3f15cca3cdb5cae05
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/nfs/internal.h |  6 +++---
+>  fs/nfs/super.c    | 28 ++++++++++------------------
+>  2 files changed, 13 insertions(+), 21 deletions(-)
+> 
+> Hi Jens,
+> 
+> can you please merge this fix to my series converting BDI handling in
+> filesystems? Thanks!
 
-> On May 4, 2017, at 9:45 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> Hi Trond-
-> 
-> 
->> On Apr 28, 2017, at 1:25 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->> 
->> Allow the user to specify that the client should use multiple connections
->> to the server. For the moment, this functionality will be limited to
->> TCP and to NFSv4.x (x>0).
-> 
-> Some initial reactions:
-> 
-> - 5/5 could be squashed into this patch (2/5).
-> 
-> - 4/5 adds support for using NFSv3 with a DS. Why can't you add NFSv3
-> support for multiple connections in the non-pNFS case? If there is a
-> good reason, it should be stated in 4/5's patch description or added
-> as a comment somewhere in the source code.
-> 
-> - Testing with a Linux server shows that the basic NFS/RDMA pieces
-> work, but any OPEN operation gets NFS4ERR_GRACE, forever, when I use
-> nconnect > 1. I'm looking into it.
-> 
-> - Testing with a Solaris 12 server prototype that supports NFSv4.1
-> works fine with nconnect=[23]. Not seeing much performance improvement
-> there because the server is using QDR and a single SATA SSD.
-> 
-> Thus I don't see a strong need to keep the TCP-only limitation. However,
-> if you do keep it, the logic that implements the second sentence in the
-> patch description above is added in 3/5. Should this sentence be in that
-> patch description instead? Or, instead:
-> 
-> s/For the moment/In a subsequent patch
+Yep, added for a later pull in this merge window. Thanks Jan.
 
-Oops, I forgot to mention: mountstats data looks a little confused
-when nconnect > 1. For example:
-
-WRITE:
-           3075342 ops (131%)
-        avg bytes sent per op: 26829    avg bytes received per op: 113
-        backlog wait: 162.375128        RTT: 1.481101   total execute time: 163.861735 (milliseconds)
-
-Haven't looked closely at that 131%, but it could be either the kernel
-or the script itself is assuming one connection per mount.
-
-
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->> fs/nfs/internal.h |  1 +
->> fs/nfs/super.c    | 10 ++++++++++
->> 2 files changed, 11 insertions(+)
->> 
->> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
->> index 31b26cf1b476..31757a742e9b 100644
->> --- a/fs/nfs/internal.h
->> +++ b/fs/nfs/internal.h
->> @@ -117,6 +117,7 @@ struct nfs_parsed_mount_data {
->> 		char			*export_path;
->> 		int			port;
->> 		unsigned short		protocol;
->> +		unsigned short		nconnect;
->> 	} nfs_server;
->> 
->> 	struct security_mnt_opts lsm_opts;
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index 54e0f9f2dd94..7eb48934dc79 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -76,6 +76,8 @@
->> #define NFS_DEFAULT_VERSION 2
->> #endif
->> 
->> +#define NFS_MAX_CONNECTIONS 16
->> +
->> enum {
->> 	/* Mount options that take no arguments */
->> 	Opt_soft, Opt_hard,
->> @@ -107,6 +109,7 @@ enum {
->> 	Opt_nfsvers,
->> 	Opt_sec, Opt_proto, Opt_mountproto, Opt_mounthost,
->> 	Opt_addr, Opt_mountaddr, Opt_clientaddr,
->> +	Opt_nconnect,
->> 	Opt_lookupcache,
->> 	Opt_fscache_uniq,
->> 	Opt_local_lock,
->> @@ -179,6 +182,8 @@ static const match_table_t nfs_mount_option_tokens = {
->> 	{ Opt_mounthost, "mounthost=%s" },
->> 	{ Opt_mountaddr, "mountaddr=%s" },
->> 
->> +	{ Opt_nconnect, "nconnect=%s" },
->> +
->> 	{ Opt_lookupcache, "lookupcache=%s" },
->> 	{ Opt_fscache_uniq, "fsc=%s" },
->> 	{ Opt_local_lock, "local_lock=%s" },
->> @@ -1544,6 +1549,11 @@ static int nfs_parse_mount_options(char *raw,
->> 			if (mnt->mount_server.addrlen == 0)
->> 				goto out_invalid_address;
->> 			break;
->> +		case Opt_nconnect:
->> +			if (nfs_get_option_ul_bound(args, &option, 1, NFS_MAX_CONNECTIONS))
->> +				goto out_invalid_value;
->> +			mnt->nfs_server.nconnect = option;
->> +			break;
->> 		case Opt_lookupcache:
->> 			string = match_strdup(args);
->> 			if (string == NULL)
->> -- 
->> 2.9.3
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+-- 
+Jens Axboe
 
