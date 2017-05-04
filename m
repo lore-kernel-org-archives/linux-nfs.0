@@ -1,85 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-1.desy.de ([131.169.56.154]:48599 "EHLO smtp-o-1.desy.de"
+Received: from fieldses.org ([173.255.197.46]:49258 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755955AbdEDRbo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 May 2017 13:31:44 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id C92AF2804E5
-        for <linux-nfs@vger.kernel.org>; Thu,  4 May 2017 19:31:41 +0200 (CEST)
-Date: Thu, 4 May 2017 19:31:39 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Steve Dickson <SteveD@RedHat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <199204432.4432659.1493919099815.JavaMail.zimbra@desy.de>
-In-Reply-To: <beec01b1-4a0e-1c3b-973c-5217761094b8@RedHat.com>
-References: <605647d3-fab9-a13b-ead4-c9232c4501b9@RedHat.com> <beec01b1-4a0e-1c3b-973c-5217761094b8@RedHat.com>
-Subject: Re: Linux NFS Town Hall meeting: Tomorrow - Thur May 4
+        id S1751474AbdEDRgi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 May 2017 13:36:38 -0400
+Date: Thu, 4 May 2017 13:36:38 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP
+ connections to use
+Message-ID: <20170504173638.GA7023@fieldses.org>
+References: <20170428172535.7945-1-trond.myklebust@primarydata.com>
+ <20170428172535.7945-2-trond.myklebust@primarydata.com>
+ <20170428172535.7945-3-trond.myklebust@primarydata.com>
+ <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com>
+ <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Is it me or nothing happens?
+On Thu, May 04, 2017 at 12:01:29PM -0400, Chuck Lever wrote:
+> 
+> > On May 4, 2017, at 9:45 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> > - Testing with a Linux server shows that the basic NFS/RDMA pieces
+> > work, but any OPEN operation gets NFS4ERR_GRACE, forever, when I use
+> > nconnect > 1. I'm looking into it.
+> 
+> Reproduced with NFSv4.1, TCP, and nconnect=2.
+> 
+> 363         /*
+> 364          * RFC5661 18.51.3
+> 365          * Before RECLAIM_COMPLETE done, server should deny new lock
+> 366          */
+> 367         if (nfsd4_has_session(cstate) &&
+> 368             !test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
+> 369                       &cstate->session->se_client->cl_flags) &&
+> 370             open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
+> 371                 return nfserr_grace;
+> 
+> Server-side instrumentation confirms:
+> 
+> May  4 11:28:29 klimt kernel: nfsd4_open: has_session returns true
+> May  4 11:28:29 klimt kernel: nfsd4_open: RECLAIM_COMPLETE is false
+> May  4 11:28:29 klimt kernel: nfsd4_open: claim_type is 0
+> 
+> Network capture shows the RPCs are interleaved between the two
+> connections as the client establishes its lease, and that appears
+> to be confusing the server.
+> 
+> C1: NULL -> NFS4_OK
+> C1: EXCHANGE_ID -> NFS4_OK
+> C2: CREATE_SESSION -> NFS4_OK
+> C1: RECLAIM_COMPLETE -> NFS4ERR_CONN_NOT_BOUND_TO_SESSION
 
------ Original Message -----
-> From: "Steve Dickson" <SteveD@RedHat.com>
-> To: "linux-nfs" <linux-nfs@vger.kernel.org>
-> Sent: Thursday, May 4, 2017 6:50:27 PM
-> Subject: Re: Linux NFS Town Hall meeting: Tomorrow - Thur May 4
+What security flavors are involved?  I believe the correct behavior
+depends on whether gss is in use or not.
 
-> This will be starting in 10mins or so... If interested...
+--b.
+
+> C1: PUTROOTFH | GETATTR -> NFS4ERR_SEQ_MISORDERED
+> C2: SEQUENCE -> NFS4_OK
+> C1: PUTROOTFH | GETATTR -> NFS4ERR_CONN_NOT_BOUND_TO_SESSION
+> C1: BIND_CONN_TO_SESSION -> NFS4_OK
+> C2: BIND_CONN_TO_SESSION -> NFS4_OK
+> C2: PUTROOTFH | GETATTR -> NFS4ERR_SEQ_MISORDERED
 > 
-> (800) 451-8679 ID: 564.272.1552 (https://bluejeans.com/5642721552)
+> .... mix of GETATTRs and other simple requests ....
 > 
-> steved.
+> C1: OPEN -> NFS4ERR_GRACE
+> C2: OPEN -> NFS4ERR_GRACE
 > 
-> On 05/03/2017 10:21 AM, Steve Dickson wrote:
->> Hello,
->> 
->> We have not had one of these for awhile so
->> lets see what everyone is doing.
->> 
->> On thing I would like to talk about is
->> the upcoming Bats and future Cthons and Bats
->> 
->> Lets meeting tomorrow Thur May 4 at
->> 
->>    *01:00 pm EST (10:00am PST)*
->> 
->> The usual agenda will apply. The maintainers will give
->> a quick status of what is happening in their worlds.
->> 
->> Next we'll get updates from major contributors on what
->> they have been doing and are planing on doing.
->>   
->> Finally, we'll open the floor to questions, comments,
->> concerns from the community.
->> 
->> Generally the meeting lasts between 30 to 45 mins, with
->> a very hard stop at 60mins.
->> 
->> Please feel to attend and participate!
->> 
->> Again the Time: 10:00 am PST (01:00 pm EST)
->> 
->> BlueJeans Video Link:
->>     https://bluejeans.com/5642721552/
->> 
->> The call in numbers are:
->> 
->> U.S. and Canada: (800) 451-8679
->> World wide toll free numbers
->>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
->> 
->> Conference code: 564.272.1552
->> 
->> steved.
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
+> The RECLAIM_COMPLETE operation failed, and the client does not
+> retry it. That leaves its lease stuck in GRACE.
+> 
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
