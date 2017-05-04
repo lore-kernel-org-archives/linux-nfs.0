@@ -1,89 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f53.google.com ([209.85.214.53]:35180 "EHLO
-        mail-it0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755219AbdEDN6I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 09:58:08 -0400
-Received: by mail-it0-f53.google.com with SMTP id c15so18140726ith.0
-        for <linux-nfs@vger.kernel.org>; Thu, 04 May 2017 06:58:08 -0700 (PDT)
-Subject: Re: [PATCH] nfs: Fix bdi handling for cloned superblocks
-To: Jan Kara <jack@suse.cz>
-References: <20170504070242.31501-1-jack@suse.cz>
-Cc: linux-block@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Corentin Labbe <clabbe.montjoie@gmail.com>
-From: Jens Axboe <axboe@kernel.dk>
-Message-ID: <289c8d37-a292-2701-b03b-250f904fd022@kernel.dk>
-Date: Thu, 4 May 2017 07:58:06 -0600
-MIME-Version: 1.0
-In-Reply-To: <20170504070242.31501-1-jack@suse.cz>
-Content-Type: text/plain; charset=windows-1252
+Received: from smtprelay0048.hostedemail.com ([216.40.44.48]:57937 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1753831AbdEDOeq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 10:34:46 -0400
+Message-ID: <1493908479.22125.33.camel@perches.com>
+Subject: Re: [PATCH 3/9] VFS: Introduce a mount context
+From: Joe Perches <joe@perches.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, mszeredi@redhat.com
+Date: Thu, 04 May 2017 07:34:39 -0700
+In-Reply-To: <16293.1493890025@warthog.procyon.org.uk>
+References: <1493835998.22125.15.camel@perches.com>
+         <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
+         <149382749941.30481.11685229083280551867.stgit@warthog.procyon.org.uk>
+         <1493835238.3180.7.camel@poochiereds.net>
+         <16293.1493890025@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="ISO-8859-1"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/04/2017 01:02 AM, Jan Kara wrote:
-> In commit 0d3b12584972 "nfs: Convert to separately allocated bdi" I have
-> wrongly cloned bdi reference in nfs_clone_super(). Further inspection
-> has shown that originally the code was actually allocating a new bdi (in
-> ->clone_server callback) which was later registered in
-> nfs_fs_mount_common() and used for sb->s_bdi in nfs_initialise_sb().
-> This could later result in bdi for the original superblock not getting
-> unregistered when that superblock got shutdown (as the cloned sb still
-> held bdi reference) and later when a new superblock was created under
-> the same anonymous device number, a clash in sysfs has happened on bdi
-> registration:
+On Thu, 2017-05-04 at 10:27 +0100, David Howells wrote:
+> Joe Perches <joe@perches.com> wrote:
 > 
-> ------------[ cut here ]------------
-> WARNING: CPU: 1 PID: 10284 at /linux-next/fs/sysfs/dir.c:31 sysfs_warn_dup+0x64/0x74
-> sysfs: cannot create duplicate filename '/devices/virtual/bdi/0:32'
-> Modules linked in: axp20x_usb_power gpio_axp209 nvmem_sunxi_sid sun4i_dma sun4i_ss virt_dma
-> CPU: 1 PID: 10284 Comm: mount.nfs Not tainted 4.11.0-rc4+ #14
-> Hardware name: Allwinner sun7i (A20) Family
-> [<c010f19c>] (unwind_backtrace) from [<c010bc74>] (show_stack+0x10/0x14)
-> [<c010bc74>] (show_stack) from [<c03c6e24>] (dump_stack+0x78/0x8c)
-> [<c03c6e24>] (dump_stack) from [<c0122200>] (__warn+0xe8/0x100)
-> [<c0122200>] (__warn) from [<c0122250>] (warn_slowpath_fmt+0x38/0x48)
-> [<c0122250>] (warn_slowpath_fmt) from [<c02ac178>] (sysfs_warn_dup+0x64/0x74)
-> [<c02ac178>] (sysfs_warn_dup) from [<c02ac254>] (sysfs_create_dir_ns+0x84/0x94)
-> [<c02ac254>] (sysfs_create_dir_ns) from [<c03c8b8c>] (kobject_add_internal+0x9c/0x2ec)
-> [<c03c8b8c>] (kobject_add_internal) from [<c03c8e24>] (kobject_add+0x48/0x98)
-> [<c03c8e24>] (kobject_add) from [<c048d75c>] (device_add+0xe4/0x5a0)
-> [<c048d75c>] (device_add) from [<c048ddb4>] (device_create_groups_vargs+0xac/0xbc)
-> [<c048ddb4>] (device_create_groups_vargs) from [<c048dde4>] (device_create_vargs+0x20/0x28)
-> [<c048dde4>] (device_create_vargs) from [<c02075c8>] (bdi_register_va+0x44/0xfc)
-> [<c02075c8>] (bdi_register_va) from [<c023d378>] (super_setup_bdi_name+0x48/0xa4)
-> [<c023d378>] (super_setup_bdi_name) from [<c0312ef4>] (nfs_fill_super+0x1a4/0x204)
-> [<c0312ef4>] (nfs_fill_super) from [<c03133f0>] (nfs_fs_mount_common+0x140/0x1e8)
-> [<c03133f0>] (nfs_fs_mount_common) from [<c03335cc>] (nfs4_remote_mount+0x50/0x58)
-> [<c03335cc>] (nfs4_remote_mount) from [<c023ef98>] (mount_fs+0x14/0xa4)
-> [<c023ef98>] (mount_fs) from [<c025cba0>] (vfs_kern_mount+0x54/0x128)
-> [<c025cba0>] (vfs_kern_mount) from [<c033352c>] (nfs_do_root_mount+0x80/0xa0)
-> [<c033352c>] (nfs_do_root_mount) from [<c0333818>] (nfs4_try_mount+0x28/0x3c)
-> [<c0333818>] (nfs4_try_mount) from [<c0313874>] (nfs_fs_mount+0x2cc/0x8c4)
-> [<c0313874>] (nfs_fs_mount) from [<c023ef98>] (mount_fs+0x14/0xa4)
-> [<c023ef98>] (mount_fs) from [<c025cba0>] (vfs_kern_mount+0x54/0x128)
-> [<c025cba0>] (vfs_kern_mount) from [<c02600f0>] (do_mount+0x158/0xc7c)
-> [<c02600f0>] (do_mount) from [<c0260f98>] (SyS_mount+0x8c/0xb4)
-> [<c0260f98>] (SyS_mount) from [<c0107840>] (ret_fast_syscall+0x0/0x3c)
+> > krealloc would probably be more efficient and possible
+> > readable as likely there's already padding in the original
+> > allocation.
 > 
-> Fix the problem by always creating new bdi for a superblock as we used
-> to do.
-> 
-> Reported-and-tested-by: Corentin Labbe <clabbe.montjoie@gmail.com>
-> Fixes: 0d3b12584972ce5781179ad3f15cca3cdb5cae05
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/nfs/internal.h |  6 +++---
->  fs/nfs/super.c    | 28 ++++++++++------------------
->  2 files changed, 13 insertions(+), 21 deletions(-)
-> 
-> Hi Jens,
-> 
-> can you please merge this fix to my series converting BDI handling in
-> filesystems? Thanks!
+> Given there's a maximum of 3 slots, I think it makes better sense to just
+> allocate them all up front.
 
-Yep, added for a later pull in this merge window. Thanks Jan.
-
--- 
-Jens Axboe
+Sounds good to me.
+Simpler is frequently better.
 
