@@ -1,160 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:45649 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752210AbdEDSzO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 14:55:14 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [RFC PATCH 2/5] NFS: Add a mount option to specify number of TCP connections to use
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170504174549.GB7023@fieldses.org>
-Date: Thu, 4 May 2017 14:55:06 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D44951CC-9107-425C-9A77-2F513805E93B@oracle.com>
-References: <20170428172535.7945-1-trond.myklebust@primarydata.com> <20170428172535.7945-2-trond.myklebust@primarydata.com> <20170428172535.7945-3-trond.myklebust@primarydata.com> <EC0AD66D-D8B5-4912-A2DC-5B9167D2A01A@oracle.com> <F87DB5F9-829B-43BD-B823-243A6E1F0A41@oracle.com> <20170504173638.GA7023@fieldses.org> <F868F692-7CB7-4388-94E7-7D4052CE89F1@oracle.com> <20170504174549.GB7023@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:36678 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756409AbdEDTJ0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 15:09:26 -0400
+Received: by mail-it0-f65.google.com with SMTP id x188so2794168itb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 04 May 2017 12:09:26 -0700 (PDT)
+Subject: Re: [RFC PATCH 0/5] Fun with the multipathing code
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+References: <20170428172535.7945-1-trond.myklebust@primarydata.com>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Message-ID: <e1bee10a-c602-543c-7fee-257cc9f77dcb@gmail.com>
+Date: Thu, 4 May 2017 15:09:24 -0400
+MIME-Version: 1.0
+In-Reply-To: <20170428172535.7945-1-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Trond,
 
-> On May 4, 2017, at 1:45 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+I'm testing these on two VMs with a single core each, so probably not the use case you had in mind for these patches.  I ran my script that runs connectathon tests on every NFS version, and I'm seeing it consistently takes about a minute longer with "nconnect=2" than it does without the option.
+
+Thanks for working on this!
+Anna
+
+On 04/28/2017 01:25 PM, Trond Myklebust wrote:
+> In the spirit of experimentation, I've put together a set of patches
+> that implement setting up multiple TCP connections to the server.
+> The connections all go to the same server IP address, so do not
+> provide support for multiple IP addresses (which I believe is
+> something Andy Adamson is working on).
 > 
-> On Thu, May 04, 2017 at 01:38:35PM -0400, Chuck Lever wrote:
->> 
->>> On May 4, 2017, at 1:36 PM, bfields@fieldses.org wrote:
->>> 
->>> On Thu, May 04, 2017 at 12:01:29PM -0400, Chuck Lever wrote:
->>>> 
->>>>> On May 4, 2017, at 9:45 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> 
->>>>> - Testing with a Linux server shows that the basic NFS/RDMA pieces
->>>>> work, but any OPEN operation gets NFS4ERR_GRACE, forever, when I use
->>>>> nconnect > 1. I'm looking into it.
->>>> 
->>>> Reproduced with NFSv4.1, TCP, and nconnect=2.
->>>> 
->>>> 363         /*
->>>> 364          * RFC5661 18.51.3
->>>> 365          * Before RECLAIM_COMPLETE done, server should deny new lock
->>>> 366          */
->>>> 367         if (nfsd4_has_session(cstate) &&
->>>> 368             !test_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
->>>> 369                       &cstate->session->se_client->cl_flags) &&
->>>> 370             open->op_claim_type != NFS4_OPEN_CLAIM_PREVIOUS)
->>>> 371                 return nfserr_grace;
->>>> 
->>>> Server-side instrumentation confirms:
->>>> 
->>>> May  4 11:28:29 klimt kernel: nfsd4_open: has_session returns true
->>>> May  4 11:28:29 klimt kernel: nfsd4_open: RECLAIM_COMPLETE is false
->>>> May  4 11:28:29 klimt kernel: nfsd4_open: claim_type is 0
->>>> 
->>>> Network capture shows the RPCs are interleaved between the two
->>>> connections as the client establishes its lease, and that appears
->>>> to be confusing the server.
->>>> 
->>>> C1: NULL -> NFS4_OK
->>>> C1: EXCHANGE_ID -> NFS4_OK
->>>> C2: CREATE_SESSION -> NFS4_OK
->>>> C1: RECLAIM_COMPLETE -> NFS4ERR_CONN_NOT_BOUND_TO_SESSION
->>> 
->>> What security flavors are involved?  I believe the correct behavior
->>> depends on whether gss is in use or not.
->> 
->> The mount options are "sec=sys" but both sides have a keytab.
->> So the lease management operations are done with krb5i.
+> The feature is only enabled for NFSv4.1 and NFSv4.2 for now; I don't
+> feel comfortable subjecting NFSv3/v4 replay caches to this
+> treatment yet. It relies on the mount option "nconnect" to specify
+> the number of connections to st up. So you can do something like
+>   'mount -t nfs -overs=4.1,nconnect=8 foo:/bar /mnt'
+> to set up 8 TCP connections to server 'foo'.
 > 
-> OK.  I'm pretty sure the client needs to send BIND_CONN_TO_SESSION
-> before step C1.
+> Anyhow, feel free to test and give me feedback as to whether or not
+> this helps performance on your system.
 > 
-> My memory is that over auth_sys you're allowed to treat any SEQUENCE
-> over a new connection as implicitly binding that connection to the
-> referenced session, but over krb5 the server's required to return that
-> NOT_BOUND error if the server skips the BIND_CONN_TO_SESSION.
-
-Ah, that would explain why nconnect=[234] is working against my
-Solaris 12 server: no keytab on that server means lease management
-is done using plain-old AUTH_SYS.
-
-Multiple connections are now handled entirely by the RPC layer,
-and are opened and used at rpc_clnt creation time. The NFS client
-is not aware (except for allowing more than one connection to be
-used) and relies on its own recovery mechanisms to deal with
-exceptions that might arise. IOW it doesn't seem to know that an
-extra BC2S is needed, nor does it know where in the RPC stream
-to insert that operation.
-
-Seems to me a good approach would be to handle server trunking
-discovery and lease establishment using a single connection, and
-then open more connections. A conservative approach might actually
-hold off on opening additional connections until there are enough
-RPC transactions being initiated in parallel to warrant it. Or, if
-@nconnect > 1, use a single connection to perform lease management,
-and open @nconnect additional connections that handle only per-
-mount I/O activity.
-
-
-> I think CREATE_SESSION is allowed as long as the principals agree, and
-> that's why the call at C2 succeeds.  Seems a little weird, though.
-
-Well, there's no SEQUENCE operation in that COMPOUND. No session
-or connection to use there, I think the principal and client ID
-are the only way to recognize the target of the operation?
-
-
-> --b.
+> Trond Myklebust (5):
+>   SUNRPC: Allow creation of RPC clients with multiple connections
+>   NFS: Add a mount option to specify number of TCP connections to use
+>   NFSv4: Allow multiple connections to NFSv4.x (x>0) servers
+>   pNFS: Allow multiple connections to the DS
+>   NFS: Display the "nconnect" mount option if it is set.
 > 
->> 
->> 
->>> --b.
->>> 
->>>> C1: PUTROOTFH | GETATTR -> NFS4ERR_SEQ_MISORDERED
->>>> C2: SEQUENCE -> NFS4_OK
->>>> C1: PUTROOTFH | GETATTR -> NFS4ERR_CONN_NOT_BOUND_TO_SESSION
->>>> C1: BIND_CONN_TO_SESSION -> NFS4_OK
->>>> C2: BIND_CONN_TO_SESSION -> NFS4_OK
->>>> C2: PUTROOTFH | GETATTR -> NFS4ERR_SEQ_MISORDERED
->>>> 
->>>> .... mix of GETATTRs and other simple requests ....
->>>> 
->>>> C1: OPEN -> NFS4ERR_GRACE
->>>> C2: OPEN -> NFS4ERR_GRACE
->>>> 
->>>> The RECLAIM_COMPLETE operation failed, and the client does not
->>>> retry it. That leaves its lease stuck in GRACE.
->>>> 
->>>> 
->>>> --
->>>> Chuck Lever
->>>> 
->>>> 
->>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> --
->> Chuck Lever
->> 
->> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+>  fs/nfs/client.c             |  2 ++
+>  fs/nfs/internal.h           |  2 ++
+>  fs/nfs/nfs3client.c         |  3 +++
+>  fs/nfs/nfs4client.c         | 13 +++++++++++--
+>  fs/nfs/super.c              | 12 ++++++++++++
+>  include/linux/nfs_fs_sb.h   |  1 +
+>  include/linux/sunrpc/clnt.h |  1 +
+>  net/sunrpc/clnt.c           | 17 ++++++++++++++++-
+>  net/sunrpc/xprtmultipath.c  |  3 +--
+>  9 files changed, 49 insertions(+), 5 deletions(-)
+> 
