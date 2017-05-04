@@ -1,65 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from scorn.kernelslacker.org ([45.56.101.199]:42034 "EHLO
-        scorn.kernelslacker.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751918AbdEDVGD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 17:06:03 -0400
-Date: Thu, 4 May 2017 17:05:51 -0400
-From: Dave Jones <davej@codemonkey.org.uk>
-To: linux-nfs@vger.kernel.org
-Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Subject: NFS oops in encode_nfs4_verifier
-Message-ID: <20170504210551.7havpdi7bxbzotcw@codemonkey.org.uk>
+Received: from mail-io0-f176.google.com ([209.85.223.176]:34028 "EHLO
+        mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751119AbdEDX3F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 May 2017 19:29:05 -0400
+Received: by mail-io0-f176.google.com with SMTP id k91so42349060ioi.1
+        for <linux-nfs@vger.kernel.org>; Thu, 04 May 2017 16:29:04 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CABGc9E44m=UvKFtTEaa9hiOJuXfYaNjPr=H92VvqvTbKQ828qQ@mail.gmail.com>
+References: <CABGc9E44m=UvKFtTEaa9hiOJuXfYaNjPr=H92VvqvTbKQ828qQ@mail.gmail.com>
+From: "Igor O." <igoros@gmail.com>
+Date: Thu, 4 May 2017 16:29:03 -0700
+Message-ID: <CABGc9E5r_fSVuLL0uHD7ESeRhZfDwBmAHPqXyx9zW9H2U1i==Q@mail.gmail.com>
+Subject: Re: Race between RPC queuing on xprt_pending and a write space notification?
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Running v4.11-8118-g4ac4d584886a, I see this during boot on one of my
-test machines during boot as it tries to mount two nfs mounts.
+I found a fix for a race that sounds very similar to what I am seeing.
+I am not 100% sure yet but I am reporting progress here in case anyone
+is looking into this.
 
-initcall init_nfs_v4+0x0/0x33 [nfsv4] returned 0 after 28480 usecs
-calling  init_kerberos_module+0x0/0x1000 [rpcsec_gss_krb5] @ 721
-initcall init_kerberos_module+0x0/0x1000 [rpcsec_gss_krb5] returned 0 after 61 usecs
-NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
-NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
-Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
-CPU: 1 PID: 121 Comm: kworker/1:2 Not tainted 4.11.0-think+ #7 
-Workqueue: rpciod rpc_async_schedule [sunrpc]
-task: ffff8804fd8c0040 task.stack: ffffc9000036c000
-RIP: 0010:memcpy_erms+0x6/0x10
-RSP: 0018:ffffc9000036faf8 EFLAGS: 00010282
-RAX: ffff8804efc8c308 RBX: 0000000000000008 RCX: 0000000000000008
-RDX: 0000000000000008 RSI: ffffc90000e2b940 RDI: ffff8804efc8c308
-RBP: ffffc9000036fb20 R08: ffff8804ef1fbc28 R09: 0000000000000001
-R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000000
-R13: 0000000000000002 R14: ffff8804efc8c308 R15: ffff8804efc8c2f8
-FS:  0000000000000000(0000) GS:ffff880507a00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: ffffc90000e2b940 CR3: 00000004faf74000 CR4: 00000000001406e0
-Call Trace:
- ? xdr_encode_opaque_fixed+0x37/0x70 [sunrpc]
- ? encode_exchange_id+0x220/0x220 [nfsv4]
- encode_nfs4_verifier+0x2c/0x40 [nfsv4]
- encode_exchange_id+0x53/0x220 [nfsv4]
- ? init_object+0x69/0xa0
- ? mark_held_locks+0x76/0xa0
- ? xdr_reserve_space+0x1c/0x140 [sunrpc]
- ? encode_exchange_id+0x220/0x220 [nfsv4]
- nfs4_xdr_enc_exchange_id+0x7e/0xb0 [nfsv4]
- rpcauth_wrap_req+0xa7/0xe0 [sunrpc]
- call_transmit+0x1a5/0x2b0 [sunrpc]
- ? call_decode+0x810/0x810 [sunrpc]
- ? call_decode+0x810/0x810 [sunrpc]
- __rpc_execute+0xb4/0x5d0 [sunrpc]
- ? process_one_work+0x1c2/0x6c0
- rpc_async_schedule+0x12/0x20 [sunrpc]
- process_one_work+0x24d/0x6c0
- worker_thread+0x4e/0x3b0
- kthread+0x117/0x150
- ? process_one_work+0x6c0/0x6c0
- ? kthread_create_on_node+0x70/0x70
- ret_from_fork+0x2e/0x40
-Code: 90 90 90 90 90 eb 1e 0f 1f 00 48 89 f8 48 89 d1 48 c1 e9 03 83 e2 07 f3 48 a5 89 d1 f3 a4 c3 66 0f 1f 44 00 00 48 89 f8 48 89 d1 <f3> a4 c3 0f 1f 80 00 00 00 00 48 89 f8 48 83 fa 20 72 7e 40 38 
-RIP: memcpy_erms+0x6/0x10 RSP: ffffc9000036faf8
-CR2: ffffc90000e2b940
+commit d48f9ce73c997573e1b512893fa6eddf353a6f69
+Author: David Vrabel <david.vrabel@citrix.com>
+Date:   Mon Sep 19 13:58:30 2016 +0100
+    sunrpc: fix write space race causing stalls
+    Write space becoming available may race with putting the task to sleep
+    in xprt_wait_for_buffer_space().  The existing mechanism to avoid the
+    race does not work.
+    This (edited) partial trace illustrates the problem:
+       [1] rpc_task_run_action: task:43546@5 ... action=call_transmit
+       [2] xs_write_space <-xs_tcp_write_space
+       [3] xprt_write_space <-xs_write_space
+       [4] rpc_task_sleep: task:43546@5 ...
+       [5] xs_write_space <-xs_tcp_write_space
+    [1] Task 43546 runs but is out of write space.
+    [2] Space becomes available, xs_write_space() clears the
+        SOCKWQ_ASYNC_NOSPACE bit.
+    [3] xprt_write_space() attemts to wake xprt->snd_task (== 43546), but
+        this has not yet been queued and the wake up is lost.
+    [4] xs_nospace() is called which calls xprt_wait_for_buffer_space()
+        which queues task 43546.
+    [5] The call to sk->sk_write_space() at the end of xs_nospace() (which
+        is supposed to handle the above race) does not call
+        xprt_write_space() as the SOCKWQ_ASYNC_NOSPACE bit is clear and
+        thus the task is not woken.
+    Fix the race by resetting the SOCKWQ_ASYNC_NOSPACE bit in xs_nospace()
+    so the second call to sk->sk_write_space() calls xprt_write_space().
+    Suggested-by: Trond Myklebust <trondmy@primarydata.com>
+    Signed-off-by: David Vrabel <david.vrabel@citrix.com>
+    cc: stable@vger.kernel.org # 4.4
+    Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
+Igor
+
+On Thu, May 4, 2017 at 9:22 AM, Igor O. <igoros@gmail.com> wrote:
+> Hi all,
+>
+> I am trying to understand an unresponsive NFS client issue that I can
+> reproduce in a particular workload running for a few hours. The VM
+> running the NFS client is Ubuntu 14.04.5, so this is using the
+> 4.4.0-34 kernel.
+>
+> Based on rpc_debug traces, I have a possible hypothesis on how this
+> can happen as a result of a race on the xprt_pending queue. I was
+> wondering whether anyone here can comment on whether the hypothesis is
+> plausible or not.
+>
+> The client is stuck in the following state:
+>
+>     * There is one pending RPC (61009) that began transmitting, but
+> the transmission was incomplete due to EAGAIN, and will never complete
+>         + RPC 61009 is forever reported as pending by
+> sunrpc/rpc_clnt/*/tasks in debugfs
+>         + Obviously no other RPC can transmit, since the transport is
+> locked by RPC 61009
+>
+>     * But, there is space in the output TCP buffer:
+>         + Output TCP socket buffer is empty, according to netstat
+>         + Server is reporting non-zero TCP window to the client,
+> according to tcpdump
+>
+> This is the rpc_debug trace of how RPC 61009 got into this state:
+>
+>     May  4 06:12:02 ub14045-gold kernel: [155440.176714] RPC: 61009
+> xprt_transmit(524448)
+>     May  4 06:12:02 ub14045-gold kernel: [155440.176734] RPC:
+> xs_tcp_send_request(524448) = 0
+>     May  4 06:12:02 ub14045-gold kernel: [155440.176735] RPC:
+> xs_tcp_send_request(261456) = -11
+>     May  4 06:12:02 ub14045-gold kernel: [155440.176738] RPC: 61009
+> xmit incomplete (261456 left of 524448)
+>     May  4 06:12:02 ub14045-gold kernel: [155440.176771] RPC:
+> write space: waking waiting task on xprt ffff88003d1e7000
+>     May  4 06:12:02 ub14045-gold kernel: [155440.176778] RPC: 61009
+> sleep_on(queue "xprt_pending" time 4333753084)
+>     May  4 06:12:02 ub14045-gold kernel: [155440.176778] RPC: 61009
+> added to queue ffff88003d1e7258 "xprt_pending"
+>
+> In other words:
+>
+>     1. 61009 gets EAGAIN, reports xmit incomplete
+>     2. In race, write space becomes available, the xprt_pending queue
+> tasks get woken. The queue is empty, though, because 61009 hasn't
+> queued itself yet.
+>     3. 61009 queues itself on xprt_pending queue, but it just missed
+> the notification.
+>     4. 61009 is forever stuck on xprt_pending queue. There won't be
+> any future "write space" notification and it will never time out.
+>
+> At this point, there isn't any notification that will wake 61009 on
+> the xprt_pending queue. Since I have a hard mount, there will be no
+> timeout on the wait, as implemented in xprt_wait_for_buffer_space().
+>
+> Can anyone provide insight on whether the xprt_pending queue handles
+> the above race condition? Is there another mechanism apart from "write
+> space" notification (that can be missed) and timeout (not scheduled
+> due to hard mount) that should still wake the RPC from the
+> xprt_pending queue?
+>
+> Apart from that, any suggested next steps to investigate this?
+>
+> Thank you for reading,
+> Igor Ostrovsky
