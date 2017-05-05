@@ -1,115 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35810 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751996AbdEEPrY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 May 2017 11:47:24 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <CAOssrKdHn5SpxEXBZ5EQvCF9E8JTiMqJo+M3OKPXUHYXGeqMGg@mail.gmail.com>
-References: <CAOssrKdHn5SpxEXBZ5EQvCF9E8JTiMqJo+M3OKPXUHYXGeqMGg@mail.gmail.com> <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
-To: Miklos Szeredi <mszeredi@redhat.com>
-Cc: dhowells@redhat.com, viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
-Subject: Re: [RFC][PATCH 0/9] VFS: Introduce mount context
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Fri, 05 May 2017 16:47:22 +0100
-Message-ID: <22958.1493999242@warthog.procyon.org.uk>
+Received: from userp1040.oracle.com ([156.151.31.81]:24732 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751429AbdEEP7j (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 May 2017 11:59:39 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] NFSv4.1: RECLAIM_COMPLETE must handle NFS4ERR_CONN_NOT_BOUND_TO_SESSION
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170504194121.9932-1-trond.myklebust@primarydata.com>
+Date: Fri, 5 May 2017 11:59:31 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <FEF254D1-655A-4946-8C68-7C8F50E2E4EC@oracle.com>
+References: <20170504194121.9932-1-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Miklos Szeredi <mszeredi@redhat.com> wrote:
 
-> I'd argue with some design decisions here.  One of the motivations for
-> doing the mount API overhaul is to create clear distinction between
-> separate functions like:
+> On May 4, 2017, at 3:41 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > 
->  - creating filesystem instance (aka superblock)
+> If the server returns NFS4ERR_CONN_NOT_BOUND_TO_SESSION because we
+> are trunking, then RECLAIM_COMPLETE must handle that by calling
+> nfs4_schedule_session_recovery() and then retrying.
 > 
->  - attaching filesystem instance into mount tree
+> Reported-by: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+I successfully ran iozone workloads with the following mount options
+between my Linux server and client, both of which had a keytab:
+
+ vers=4.1,sec=sys,proto=tcp,nconnect=2
+ vers=4.1,sec=sys,proto=tcp,nconnect=3
+ vers=4.1,sec=sys,proto=tcp,nconnect=4
+ vers=4.1,sec=sys,proto=tcp,nconnect=5
+
+ vers=4.1,sec=sys,proto=rdma,port=20049,nconnect=2
+ vers=4.1,sec=sys,proto=rdma,port=20049,nconnect=3
+ vers=4.1,sec=sys,proto=rdma,port=20049,nconnect=4
+ vers=4.1,sec=sys,proto=rdma,port=20049,nconnect=5
+
+
+Tested-by: Chuck Lever <chuck.lever@oracle.com>
+
+
+> ---
+> fs/nfs/nfs4proc.c  |  7 ++++++-
+> fs/nfs/nfs4state.c | 10 +++++++---
+> 2 files changed, 13 insertions(+), 4 deletions(-)
 > 
->  - reconfiguring superblock
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 158c3d52146f..62fc8eed53cc 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -8153,6 +8153,12 @@ static int nfs41_reclaim_complete_handle_errors(struct rpc_task *task, struct nf
+> 		/* fall through */
+> 	case -NFS4ERR_RETRY_UNCACHED_REP:
+> 		return -EAGAIN;
+> +	case -NFS4ERR_BADSESSION:
+> +	case -NFS4ERR_DEADSESSION:
+> +	case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
+> +		nfs4_schedule_session_recovery(clp->cl_session,
+> +				task->tk_status);
+> +		break;
+> 	default:
+> 		nfs4_schedule_lease_recovery(clp);
+> 	}
+> @@ -8231,7 +8237,6 @@ static int nfs41_proc_reclaim_complete(struct nfs_client *clp,
+> 	if (status == 0)
+> 		status = task->tk_status;
+> 	rpc_put_task(task);
+> -	return 0;
+> out:
+> 	dprintk("<-- %s status=%d\n", __func__, status);
+> 	return status;
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 8156bad6b441..b34de036501b 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -1649,13 +1649,14 @@ static void nfs4_state_start_reclaim_reboot(struct nfs_client *clp)
+> 	nfs4_state_mark_reclaim_helper(clp, nfs4_state_mark_reclaim_reboot);
+> }
 > 
->  - changing mount properties
+> -static void nfs4_reclaim_complete(struct nfs_client *clp,
+> +static int nfs4_reclaim_complete(struct nfs_client *clp,
+> 				 const struct nfs4_state_recovery_ops *ops,
+> 				 struct rpc_cred *cred)
+> {
+> 	/* Notify the server we're done reclaiming our state */
+> 	if (ops->reclaim_complete)
+> -		(void)ops->reclaim_complete(clp, cred);
+> +		return ops->reclaim_complete(clp, cred);
+> +	return 0;
+> }
+> 
+> static void nfs4_clear_reclaim_server(struct nfs_server *server)
+> @@ -1702,13 +1703,16 @@ static void nfs4_state_end_reclaim_reboot(struct nfs_client *clp)
+> {
+> 	const struct nfs4_state_recovery_ops *ops;
+> 	struct rpc_cred *cred;
+> +	int err;
+> 
+> 	if (!nfs4_state_clear_reclaim_reboot(clp))
+> 		return;
+> 	ops = clp->cl_mvops->reboot_recovery_ops;
+> 	cred = nfs4_get_clid_cred(clp);
+> -	nfs4_reclaim_complete(clp, ops, cred);
+> +	err = nfs4_reclaim_complete(clp, ops, cred);
+> 	put_rpccred(cred);
+> +	if (err == -NFS4ERR_CONN_NOT_BOUND_TO_SESSION)
+> +		set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
+> }
+> 
+> static void nfs4_state_start_reclaim_nograce(struct nfs_client *clp)
+> -- 
+> 2.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I definitely agree that keeping a separation between vfsmount manipulation
-(add, bind, move, ...) and superblock manipulation (create, remount) is a good
-idea.
+--
+Chuck Lever
 
-However, creating new superblocks and remounting superblocks have a lot in
-common, including the option parsing.  Note also that existing code is
-somewhat lazy about rejecting parameters that can't be changed with a remount
-and will ignore some attempted changes.  We have to retain this behaviour, at
-least for the normal mount() system call.
 
-Note that one of the main reasons I'm working on this is namespace
-propagation, particularly with respect to automounts.
 
-> This patchset achieves this partly, but the separation is far from
-> crisp clear...  First of all why is fsopen() creating a "mount
-> context"?  It's suppsed to create a "superblock creation context".
-
-I've no particular objection to renaming struct mount_context to something
-else, but it also needs to handle remount because of the commonality.
-
-Further, once you've created a superblock, what are you going to do with it
-other than mount it?  I suppose you could statfs it and we could add other
-superblock manipulation functions, but this is normally done by opening the
-device directly (at least for bdev-based superblocks).
-
-> And indeed, there are mount flags and root path in there, which are
-> definitely not necessary for creating a super block.
-
-Erm, that's not strictly true.
-
-Some filesystems (eg. nfs, ocfs2, lustre) want to know about certain MNT_xxx
-flags, such as MNT_NOATIME and MNT_READONLY.
-
-Further, the root path might be necessary for the mount - see NFS for example.
-What I was thinking of, say for NFS, is splitting the source name up front,
-so:
-
-	my.nfs.org:/my/home/dir
-
-into:
-
-	mc->device = "my.nfs.org";
-	mc->root_path = "/my/home/dir";
-
-and then having the VFS handle the root walk rather than doing it inside NFS.
-This facility could then become available to other filesystems potentially.
-
-However, with the case on NFS, you may need to hand the root path off to a
-mount server.
-
-> Is there a good reason why these mount specific properties leaked into
-> the object created by fsopen()?
-
-Answered above.  I'm okay with removing remove root_path from the context for
-the moment.  It's something that can be revisited later.
-
-We also might need to remove usage of MNT_xxx flags from filesystems.
-
-> Also I'd expect all context ops to be fully generic first.  I.e. no
-> filesystem code needs to be touched to make the new interface work.
-> The context would just build the option string and when everything is
-> ready (probably need a "commit" command) then it would go off and call
-> mount_fs() to create the superblock and attach it to the context.
-
-That should be easy enough to add as a fallback.
-
-> Then, when that works, we could add context ops, so the filesystem can
-> do various things along the way, which is the other reason we want
-> this.  And in the end it would allow gradual migration to a new
-> superblock creation api and phasing out the old one.
-
-I'm not sure the context ops are so easily to add gradually.
-
-> But that shouldn't be observable on either the old or the new userspace
-> interfaces.
-
-Almost a fair point - but it can be observed by pushing in more than a page's
-worth of options.  What I have now for NFS will still work with
-fsopen()/write()/fsmount() whereas mount() won't.
-
-David
