@@ -1,46 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from edge10.ethz.ch ([82.130.75.186]:20496 "EHLO edge10.ethz.ch"
+Received: from mx1.redhat.com ([209.132.183.28]:35492 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751090AbdEELLS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 May 2017 07:11:18 -0400
-To: <linux-nfs@vger.kernel.org>
-From: Stefan Walter <stefan.walter@inf.ethz.ch>
-Subject: Issue with mixed short and fully qualified names with NFS4+KRB5 and
- libnfsidmap
-Message-ID: <c6de9e41-b7d1-ab24-cce3-ce6201423072@inf.ethz.ch>
-Date: Fri, 5 May 2017 13:05:07 +0200
+        id S1752752AbdEENik (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 May 2017 09:38:40 -0400
+Subject: Re: Linux NFS Town Hall meeting: Tomorrow - Thur May 4
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+References: <605647d3-fab9-a13b-ead4-c9232c4501b9@RedHat.com>
+ <beec01b1-4a0e-1c3b-973c-5217761094b8@RedHat.com>
+ <199204432.4432659.1493919099815.JavaMail.zimbra@desy.de>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <1d7bc2ee-bb86-bc88-9cf1-78502fe0a5b6@RedHat.com>
+Date: Fri, 5 May 2017 09:37:57 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"; format=flowed
+In-Reply-To: <199204432.4432659.1493919099815.JavaMail.zimbra@desy.de>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a proposal to improve libnfsidmap to support kerberized NFS4 
-server and client environments with a mixed setup using short and fully 
-qualified names.
-
-My situation is the following: I want to use a file server that is set 
-up to use fully qualified names (sssd.conf: use_fully_qualified_names = 
-true). I have no say in the configuration of said server. On the clients 
-I want to use short names since there is only one realm anyway and the 
-lengthy johndoe@example.com user and group names are too cumbersome.
-
-On all Linux distros I have tried this works with the exception of the 
-chgrp (and chown) command. Changing the group always results in an 
-'Operation not permitted' error.
-
-I have tracked down the source of the problem to nsswitch.so in 
-libnfsidmap. In nss.c the write_name() function creates the user@domain
-string that is sent over the wire. For short names it should actually 
-send user@realm@domain, at least if the server is configured to use 
-fully qualified names. I have patched the function to do this and 
-verified that this actually fixes my problem with chgrp.
-
-Has this been noticed or discussed before? Would a patch be welcome and 
-have a chance to be integrated in the upstream libnfsidmap that would 
-then trickle down to the various distros?
-
-Stefan
 
 
+On 05/04/2017 01:31 PM, Mkrtchyan, Tigran wrote:
+> Is it me or nothing happens?
+Pilot error on my part... Last week the "powers to be" disconnected
+the call in number with the bluejeans.com connections. So if you
+logged in on the bluejeans.com connection you heard nothing. 
 
+I did not know this until after the meeting was over... 
 
+Sorry about that!
+
+steved.
+
+> 
+> ----- Original Message -----
+>> From: "Steve Dickson" <SteveD@RedHat.com>
+>> To: "linux-nfs" <linux-nfs@vger.kernel.org>
+>> Sent: Thursday, May 4, 2017 6:50:27 PM
+>> Subject: Re: Linux NFS Town Hall meeting: Tomorrow - Thur May 4
+> 
+>> This will be starting in 10mins or so... If interested...
+>>
+>> (800) 451-8679 ID: 564.272.1552 (https://bluejeans.com/5642721552)
+>>
+>> steved.
+>>
+>> On 05/03/2017 10:21 AM, Steve Dickson wrote:
+>>> Hello,
+>>>
+>>> We have not had one of these for awhile so
+>>> lets see what everyone is doing.
+>>>
+>>> On thing I would like to talk about is
+>>> the upcoming Bats and future Cthons and Bats
+>>>
+>>> Lets meeting tomorrow Thur May 4 at
+>>>
+>>>    *01:00 pm EST (10:00am PST)*
+>>>
+>>> The usual agenda will apply. The maintainers will give
+>>> a quick status of what is happening in their worlds.
+>>>
+>>> Next we'll get updates from major contributors on what
+>>> they have been doing and are planing on doing.
+>>>   
+>>> Finally, we'll open the floor to questions, comments,
+>>> concerns from the community.
+>>>
+>>> Generally the meeting lasts between 30 to 45 mins, with
+>>> a very hard stop at 60mins.
+>>>
+>>> Please feel to attend and participate!
+>>>
+>>> Again the Time: 10:00 am PST (01:00 pm EST)
+>>>
+>>> BlueJeans Video Link:
+>>>     https://bluejeans.com/5642721552/
+>>>
+>>> The call in numbers are:
+>>>
+>>> U.S. and Canada: (800) 451-8679
+>>> World wide toll free numbers
+>>>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
+>>>
+>>> Conference code: 564.272.1552
+>>>
+>>> steved.
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
