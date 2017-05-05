@@ -1,98 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35492 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752752AbdEENik (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 May 2017 09:38:40 -0400
-Subject: Re: Linux NFS Town Hall meeting: Tomorrow - Thur May 4
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-References: <605647d3-fab9-a13b-ead4-c9232c4501b9@RedHat.com>
- <beec01b1-4a0e-1c3b-973c-5217761094b8@RedHat.com>
- <199204432.4432659.1493919099815.JavaMail.zimbra@desy.de>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <1d7bc2ee-bb86-bc88-9cf1-78502fe0a5b6@RedHat.com>
-Date: Fri, 5 May 2017 09:37:57 -0400
+Received: from mail-lf0-f43.google.com ([209.85.215.43]:35755 "EHLO
+        mail-lf0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751384AbdEEOfK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 May 2017 10:35:10 -0400
+Received: by mail-lf0-f43.google.com with SMTP id j1so4579384lfh.2
+        for <linux-nfs@vger.kernel.org>; Fri, 05 May 2017 07:35:09 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <199204432.4432659.1493919099815.JavaMail.zimbra@desy.de>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
+References: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
+From: Miklos Szeredi <mszeredi@redhat.com>
+Date: Fri, 5 May 2017 16:35:07 +0200
+Message-ID: <CAOssrKdHn5SpxEXBZ5EQvCF9E8JTiMqJo+M3OKPXUHYXGeqMGg@mail.gmail.com>
+Subject: Re: [RFC][PATCH 0/9] VFS: Introduce mount context
+To: David Howells <dhowells@redhat.com>
+Cc: viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, May 3, 2017 at 6:04 PM, David Howells <dhowells@redhat.com> wrote:
+>
+> Here are a set of patches to create a mount context prior to setting up a
+> new mount, populating it with the parsed options/binary data and then
+> effecting the mount.
+
+Great work, thanks for taking this on.
+
+I'd argue with some design decisions here.  One of the motivations for
+doing the mount API overhaul is to create clear distinction between
+separate functions like:
+
+ - creating filesystem instance (aka superblock)
+
+ - attaching filesystem instance into mount tree
+
+ - reconfiguring superblock
+
+ - changing mount properties
 
 
-On 05/04/2017 01:31 PM, Mkrtchyan, Tigran wrote:
-> Is it me or nothing happens?
-Pilot error on my part... Last week the "powers to be" disconnected
-the call in number with the bluejeans.com connections. So if you
-logged in on the bluejeans.com connection you heard nothing. 
+This patchset achieves this partly, but the separation is far from
+crisp clear...  First of all why is fsopen() creating a "mount
+context"?  It's suppsed to create a "superblock creation context".
+And indeed, there are mount flags and root path in there, which are
+definitely not necessary for creating a super block.
 
-I did not know this until after the meeting was over... 
+Is there a good reason why these mount specific properties leaked into
+the object created by fsopen()?
 
-Sorry about that!
+Also I'd expect all context ops to be fully generic first.  I.e. no
+filesystem code needs to be touched to make the new interface work.
+The context would just build the option string and when everything is
+ready (probably need a "commit" command) then it would go off and call
+mount_fs() to create the superblock and attach it to the context.
 
-steved.
+Then, when that works, we could add context ops, so the filesystem can
+do various things along the way, which is the other reason we want
+this.  And in the end it would allow gradual migration to a new
+superblock creation api and phasing out the old one.   But that
+shouldn't be observable on either the old or the new userspace
+interfaces.
 
-> 
-> ----- Original Message -----
->> From: "Steve Dickson" <SteveD@RedHat.com>
->> To: "linux-nfs" <linux-nfs@vger.kernel.org>
->> Sent: Thursday, May 4, 2017 6:50:27 PM
->> Subject: Re: Linux NFS Town Hall meeting: Tomorrow - Thur May 4
-> 
->> This will be starting in 10mins or so... If interested...
->>
->> (800) 451-8679 ID: 564.272.1552 (https://bluejeans.com/5642721552)
->>
->> steved.
->>
->> On 05/03/2017 10:21 AM, Steve Dickson wrote:
->>> Hello,
->>>
->>> We have not had one of these for awhile so
->>> lets see what everyone is doing.
->>>
->>> On thing I would like to talk about is
->>> the upcoming Bats and future Cthons and Bats
->>>
->>> Lets meeting tomorrow Thur May 4 at
->>>
->>>    *01:00 pm EST (10:00am PST)*
->>>
->>> The usual agenda will apply. The maintainers will give
->>> a quick status of what is happening in their worlds.
->>>
->>> Next we'll get updates from major contributors on what
->>> they have been doing and are planing on doing.
->>>   
->>> Finally, we'll open the floor to questions, comments,
->>> concerns from the community.
->>>
->>> Generally the meeting lasts between 30 to 45 mins, with
->>> a very hard stop at 60mins.
->>>
->>> Please feel to attend and participate!
->>>
->>> Again the Time: 10:00 am PST (01:00 pm EST)
->>>
->>> BlueJeans Video Link:
->>>     https://bluejeans.com/5642721552/
->>>
->>> The call in numbers are:
->>>
->>> U.S. and Canada: (800) 451-8679
->>> World wide toll free numbers
->>>    https://www.intercallonline.com/listNumbersByCode.action?confCode=5642721552
->>>
->>> Conference code: 564.272.1552
->>>
->>> steved.
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+> This allows namespaces and other information to be conveyed through the
+> mount procedure.  It also allows extra error information to be returned
+> (so many things can go wrong during a mount that a small integer isn't
+> really sufficient to convey the issue).
+>
+> This also allows Miklós Szeredi's idea of doing:
+>
+>         fd = fsopen("nfs");
+>         write(fd, "option=val", ...);
+>         fsmount(fd, "/mnt");
+>
+> that he presented at LSF-2017 to be implemented (see the relevant patches
+> in the series), to which I can add:
+>
+>         read(fd, error_buffer, ...);
+>
+> to read back any error message.  I didn't use netlink as that would make it
+> depend on CONFIG_NET and would introduce network namespacing issues.
+>
+> I've implemented mount context handling for procfs and nfs.
+>
+> Further developments:
+>
+>  (*) Implement mount context support in more filesystems, ext4 being next
+>      on my list.
+>
+>  (*) Move the walk-from-root stuff that nfs has to generic code so that you
+>      can do something akin to:
+>
+>         mount /dev/sda1:/foo/bar /mnt
+>
+>      See nfs_follow_remote_path() and mount_subtree().  This is slightly
+>      tricky in NFS as we have to prevent referral loops.
+
+First we can limit this feature to non-weird (ie. no managed dentries) subtrees.
+
+>
+>  (*) Move the pid_ns pointer from struct mount_context to struct
+>      proc_mount_context as I'm not sure it's necessary for anything other
+>      than procfs.
+>
+>  (*) Work out how to get at the error message incurred by submounts
+>      encountered during nfs_follow_remote_path().
+>
+>      Should the error message be moved to task_struct and made more
+>      general, perhaps retrieved with a prctl() function?
+>
+>  (*) Clean up/consolidate the security functions.  Possibly add a
+>      validation hook to be called at the same time as the mount context
+>      validate op.
+>
+> The patches can be found here also:
+>
+>         http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=mount-context
+
+Will try to review the actual patches next week.
+
+Thanks,
+Miklos
