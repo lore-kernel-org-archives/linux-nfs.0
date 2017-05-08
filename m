@@ -1,50 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f49.google.com ([74.125.82.49]:36601 "EHLO
-        mail-wm0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755513AbdEHPKK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 May 2017 11:10:10 -0400
-Received: by mail-wm0-f49.google.com with SMTP id u65so88108830wmu.1
-        for <linux-nfs@vger.kernel.org>; Mon, 08 May 2017 08:10:09 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:56608 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750815AbdEHP5m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 8 May 2017 11:57:42 -0400
+Date: Mon, 8 May 2017 11:57:41 -0400
+To: linux-nfs@vger.kernel.org
+Cc: Ari Kauppi <Ari.Kauppi@synopsys.com>
+Subject: [PATCH] nfsd: encoders mustn't use unitialized values in error cases
+Message-ID: <20170508155741.GC2644@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <149382750838.30481.8003919639826341255.stgit@warthog.procyon.org.uk>
-References: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
- <149382750838.30481.8003919639826341255.stgit@warthog.procyon.org.uk>
-From: Miklos Szeredi <mszeredi@redhat.com>
-Date: Mon, 8 May 2017 17:10:07 +0200
-Message-ID: <CAOssrKe-_VJ6C0Gtv0fzDW3j1QBVqPUEXPCcbFvvq13Bp1-Heg@mail.gmail.com>
-Subject: Re: [PATCH 4/9] Implement fsopen() to prepare for a mount
-To: David Howells <dhowells@redhat.com>
-Cc: viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 3, 2017 at 6:05 PM, David Howells <dhowells@redhat.com> wrote:
-> Provide an fsopen() system call that starts the process of preparing to
-> mount, using an fd as a context handle.  fsopen() is given the name of the
-> filesystem that will be used:
->
->         int mfd = fsopen(const char *fsname, int reserved,
->                          int open_flags);
->
-> where reserved should be -1 for the moment (it will be used to pass the
-> namespace information in future) and open_flags can be 0 or O_CLOEXEC.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Someone also suggested using /dev/fs/${FSTYPE} to open the fsfd.  I
-realize that does not have the namespace info that you also want to
-add, but wondering if that really has to come from open and cannot be
-set later?
+In error cases, lgp->lg_layout_type may be out of bounds; so we
+shouldn't be using it until after the check of nfserr.
 
-Alternatives are /proc/fs/${FSTYPE}/dev or /sys/fs/${FSTYPE}/dev.
+This was seen to crash nfsd threads when the server receives a LAYOUTGET
+request with a large layout type.
 
-Obviously neither can be used for bootstraping but there's still old
-mount(2) for that.
+GETDEVICEINFO has the same problem.
 
-I haven't convinced myself whether using plain open(2) or a new
-fsopen(2) syscall is better, just mentioning that this is a
-possibility as well.
+Reported-by: Ari Kauppi <Ari.Kauppi@synopsys.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-Thanks,
-Miklos
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 33017d652b1d..8e9652f37f1f 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4119,8 +4119,7 @@ nfsd4_encode_getdeviceinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		struct nfsd4_getdeviceinfo *gdev)
+ {
+ 	struct xdr_stream *xdr = &resp->xdr;
+-	const struct nfsd4_layout_ops *ops =
+-		nfsd4_layout_ops[gdev->gd_layout_type];
++	const struct nfsd4_layout_ops *ops;
+ 	u32 starting_len = xdr->buf->len, needed_len;
+ 	__be32 *p;
+ 
+@@ -4137,6 +4136,7 @@ nfsd4_encode_getdeviceinfo(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 
+ 	/* If maxcount is 0 then just update notifications */
+ 	if (gdev->gd_maxcount != 0) {
++		ops = nfsd4_layout_ops[gdev->gd_layout_type];
+ 		nfserr = ops->encode_getdeviceinfo(xdr, gdev);
+ 		if (nfserr) {
+ 			/*
+@@ -4189,8 +4189,7 @@ nfsd4_encode_layoutget(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		struct nfsd4_layoutget *lgp)
+ {
+ 	struct xdr_stream *xdr = &resp->xdr;
+-	const struct nfsd4_layout_ops *ops =
+-		nfsd4_layout_ops[lgp->lg_layout_type];
++	const struct nfsd4_layout_ops *ops;
+ 	__be32 *p;
+ 
+ 	dprintk("%s: err %d\n", __func__, nfserr);
+@@ -4213,6 +4212,7 @@ nfsd4_encode_layoutget(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	*p++ = cpu_to_be32(lgp->lg_seg.iomode);
+ 	*p++ = cpu_to_be32(lgp->lg_layout_type);
+ 
++	ops = nfsd4_layout_ops[lgp->lg_layout_type];
+ 	nfserr = ops->encode_layoutget(xdr, lgp);
+ out:
+ 	kfree(lgp->lg_content);
+-- 
+2.9.3
+
