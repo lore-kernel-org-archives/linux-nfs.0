@@ -1,84 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:11159 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752682AbdEHRIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 May 2017 13:08:40 -0400
-Date: Mon, 8 May 2017 11:08:36 -0600
-From: Ross Zwisler <ross.zwisler@linux.intel.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Alexey Kuznetsov <kuznet@virtuozzo.com>,
-        Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Dan Williams <dan.j.williams@intel.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Jens Axboe <axboe@kernel.dk>,
-        Johannes Weiner <hannes@cmpxchg.org>,
-        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
-        Ron Minnich <rminnich@sandia.gov>,
-        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        v9fs-developer@lists.sourceforge.net
-Subject: Re: [PATCH v2 1/2] dax: prevent invalidation of mapped DAX entries
-Message-ID: <20170508170836.GA19867@linux.intel.com>
-References: <20170504195910.11579-1-ross.zwisler@linux.intel.com>
- <20170505072912.GA25424@quack2.suse.cz>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:21443 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751568AbdEHUba (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 May 2017 16:31:30 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "kolga@netapp.com" <kolga@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFS append COMMIT after synchronous COPY
+Date: Mon, 8 May 2017 20:31:24 +0000
+Message-ID: <1494275480.10601.1.camel@primarydata.com>
+References: <562173A5-AB4B-49F8-8C82-F220B6F8ECB5@netapp.com>
+         <20170418160941.93724-1-kolga@netapp.com>
+In-Reply-To: <20170418160941.93724-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170505072912.GA25424@quack2.suse.cz>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 05, 2017 at 09:29:12AM +0200, Jan Kara wrote:
-> On Thu 04-05-17 13:59:09, Ross Zwisler wrote:
-> > dax_invalidate_mapping_entry() currently removes DAX exceptional entries
-> > only if they are clean and unlocked.  This is done via:
-> > 
-> > invalidate_mapping_pages()
-> >   invalidate_exceptional_entry()
-> >     dax_invalidate_mapping_entry()
-> > 
-> > However, for page cache pages removed in invalidate_mapping_pages() there
-> > is an additional criteria which is that the page must not be mapped.  This
-> > is noted in the comments above invalidate_mapping_pages() and is checked in
-> > invalidate_inode_page().
-> > 
-> > For DAX entries this means that we can can end up in a situation where a
-> > DAX exceptional entry, either a huge zero page or a regular DAX entry,
-> > could end up mapped but without an associated radix tree entry. This is
-> > inconsistent with the rest of the DAX code and with what happens in the
-> > page cache case.
-> > 
-> > We aren't able to unmap the DAX exceptional entry because according to its
-> > comments invalidate_mapping_pages() isn't allowed to block, and
-> > unmap_mapping_range() takes a write lock on the mapping->i_mmap_rwsem.
-> > 
-> > We could potentially do an rmap walk to see if each of the entries actually
-> > has any active mappings before we remove it, but this might end up being
-> > very expensive and doesn't currently look to be worth it.
-> > 
-> > So, just remove dax_invalidate_mapping_entry() and leave the DAX entries in
-> > the radix tree.
-> > 
-> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
-> > Fixes: c6dcf52c23d2 ("mm: Invalidate DAX radix tree entries only if appropriate")
-> > Reported-by: Jan Kara <jack@suse.cz>
-> > Reviewed-by: Jan Kara <jack@suse.cz>
-> > Cc: <stable@vger.kernel.org>    [4.10+]
-> 
-> Ah, I've just sent out a series which contains these two patches and
-> another two patches which change the entry locking to fix the last spotted
-> race...  So either just take my last two patches on top of these two or
-> take my series as a whole.
+T24gVHVlLCAyMDE3LTA0LTE4IGF0IDEyOjA5IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gSW5zdGVhZCBvZiBtZXNzaW5nIHdpdGggdGhlIGNvbW1pdCBwYXRoIHdoaWNoIGhhcyBi
+ZWVuIGNhdXNpbmcNCj4gaXNzdWVzLA0KPiBhZGQgYSBDT01NSVQgb3AgYWZ0ZXIgdGhlIENPUFkg
+YW5kIGFzayBmb3Igc3RhYmxlIGNvcGllcyBpbiB0aGUgZmlyc3QNCj4gc3BhY2UuDQo+IA0KPiBJ
+dCBzYXZlcyBhIHJvdW5kIHRyaXAsIHNpbmNlIGFmdGVyIHRoZSBDT1BZLCB0aGUgY2xpZW50IHNl
+bmRzIGENCj4gQ09NTUlUDQo+IGFueXdheS4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IE9sZ2EgS29y
+bmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0KPiAtLS0NCj4gwqBmcy9uZnMvaW50ZXJuYWwu
+aMKgwqB8wqDCoDEgLQ0KPiDCoGZzL25mcy9uZnM0MnByb2MuYyB8wqDCoDYgLS0tLS0tDQo+IMKg
+ZnMvbmZzL25mczQyeGRyLmPCoMKgfCAxOSArKysrKysrKysrKysrKysrKy0tDQo+IMKgZnMvbmZz
+L3dyaXRlLmPCoMKgwqDCoMKgfCAzMCAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4g
+wqA0IGZpbGVzIGNoYW5nZWQsIDE3IGluc2VydGlvbnMoKyksIDM5IGRlbGV0aW9ucygtKQ0KPiAN
+Cj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbnRlcm5hbC5oIGIvZnMvbmZzL2ludGVybmFsLmgNCj4g
+aW5kZXggN2IzOGZlZC4uMjk4OTQxOCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2ludGVybmFsLmgN
+Cj4gKysrIGIvZnMvbmZzL2ludGVybmFsLmgNCj4gQEAgLTQ5NSw3ICs0OTUsNiBAQCB2b2lkIG5m
+c19tYXJrX3JlcXVlc3RfY29tbWl0KHN0cnVjdCBuZnNfcGFnZQ0KPiAqcmVxLA0KPiDCoAkJCcKg
+wqDCoMKgwqB1MzIgZHNfY29tbWl0X2lkeCk7DQo+IMKgaW50IG5mc193cml0ZV9uZWVkX2NvbW1p
+dChzdHJ1Y3QgbmZzX3BnaW9faGVhZGVyICopOw0KPiDCoHZvaWQgbmZzX3dyaXRlYmFja191cGRh
+dGVfaW5vZGUoc3RydWN0IG5mc19wZ2lvX2hlYWRlciAqaGRyKTsNCj4gLWludCBuZnNfY29tbWl0
+X2ZpbGUoc3RydWN0IGZpbGUgKmZpbGUsIHN0cnVjdCBuZnNfd3JpdGVfdmVyaWZpZXINCj4gKnZl
+cmYpOw0KPiDCoGludCBuZnNfZ2VuZXJpY19jb21taXRfbGlzdChzdHJ1Y3QgaW5vZGUgKmlub2Rl
+LCBzdHJ1Y3QgbGlzdF9oZWFkDQo+ICpoZWFkLA0KPiDCoAkJCcKgwqDCoMKgaW50IGhvdywgc3Ry
+dWN0IG5mc19jb21taXRfaW5mbyAqY2luZm8pOw0KPiDCoHZvaWQgbmZzX3JldHJ5X2NvbW1pdChz
+dHJ1Y3QgbGlzdF9oZWFkICpwYWdlX2xpc3QsDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNDJw
+cm9jLmMgYi9mcy9uZnMvbmZzNDJwcm9jLmMNCj4gaW5kZXggMWU0ODZjNy4uOWZlZTQ4ZCAxMDA2
+NDQNCj4gLS0tIGEvZnMvbmZzL25mczQycHJvYy5jDQo+ICsrKyBiL2ZzL25mcy9uZnM0MnByb2Mu
+Yw0KPiBAQCAtMTc0LDEyICsxNzQsNiBAQCBzdGF0aWMgc3NpemVfdCBfbmZzNDJfcHJvY19jb3B5
+KHN0cnVjdCBmaWxlDQo+ICpzcmMsDQo+IMKgCWlmIChzdGF0dXMpDQo+IMKgCQlyZXR1cm4gc3Rh
+dHVzOw0KPiDCoA0KPiAtCWlmIChyZXMtPndyaXRlX3Jlcy52ZXJpZmllci5jb21taXR0ZWQgIT0g
+TkZTX0ZJTEVfU1lOQykgew0KPiAtCQlzdGF0dXMgPSBuZnNfY29tbWl0X2ZpbGUoZHN0LCAmcmVz
+LQ0KPiA+d3JpdGVfcmVzLnZlcmlmaWVyLnZlcmlmaWVyKTsNCj4gLQkJaWYgKHN0YXR1cykNCj4g
+LQkJCXJldHVybiBzdGF0dXM7DQo+IC0JfQ0KPiAtDQo+IMKgCXRydW5jYXRlX3BhZ2VjYWNoZV9y
+YW5nZShkc3RfaW5vZGUsIHBvc19kc3QsDQo+IMKgCQkJCcKgcG9zX2RzdCArIHJlcy0+d3JpdGVf
+cmVzLmNvdW50KTsNCj4gwqANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0Mnhkci5jIGIvZnMv
+bmZzL25mczQyeGRyLmMNCj4gaW5kZXggNmM3Mjk2NC4uOGJkZjFkNSAxMDA2NDQNCj4gLS0tIGEv
+ZnMvbmZzL25mczQyeGRyLmMNCj4gKysrIGIvZnMvbmZzL25mczQyeGRyLmMNCj4gQEAgLTY2LDEy
+ICs2NiwxNCBAQA0KPiDCoAkJCQkJwqBlbmNvZGVfcHV0ZmhfbWF4c3ogKyBcDQo+IMKgCQkJCQnC
+oGVuY29kZV9zYXZlZmhfbWF4c3ogKyBcDQo+IMKgCQkJCQnCoGVuY29kZV9wdXRmaF9tYXhzeiAr
+IFwNCj4gLQkJCQkJwqBlbmNvZGVfY29weV9tYXhzeikNCj4gKwkJCQkJwqBlbmNvZGVfY29weV9t
+YXhzeiArIFwNCj4gKwkJCQkJwqBlbmNvZGVfY29tbWl0X21heHN6KQ0KPiDCoCNkZWZpbmUgTkZT
+NF9kZWNfY29weV9zegkJKGNvbXBvdW5kX2RlY29kZV9oZHJfbWF4c3ogKw0KPiBcDQo+IMKgCQkJ
+CQnCoGRlY29kZV9wdXRmaF9tYXhzeiArIFwNCj4gwqAJCQkJCcKgZGVjb2RlX3NhdmVmaF9tYXhz
+eiArIFwNCj4gwqAJCQkJCcKgZGVjb2RlX3B1dGZoX21heHN6ICsgXA0KPiAtCQkJCQnCoGRlY29k
+ZV9jb3B5X21heHN6KQ0KPiArCQkJCQnCoGRlY29kZV9jb3B5X21heHN6ICsgXA0KPiArCQkJCQnC
+oGRlY29kZV9jb21taXRfbWF4c3opDQo+IMKgI2RlZmluZSBORlM0X2VuY19kZWFsbG9jYXRlX3N6
+CQkoY29tcG91bmRfZW5jb2RlX2hkcl9tDQo+IGF4c3ogKyBcDQo+IMKgCQkJCQnCoGVuY29kZV9w
+dXRmaF9tYXhzeiArIFwNCj4gwqAJCQkJCcKgZW5jb2RlX2RlYWxsb2NhdGVfbWF4c3ogKyBcDQo+
+IEBAIC0yMjIsNiArMjI0LDE4IEBAIHN0YXRpYyB2b2lkIG5mczRfeGRyX2VuY19hbGxvY2F0ZShz
+dHJ1Y3QNCj4gcnBjX3Jxc3QgKnJlcSwNCj4gwqAJZW5jb2RlX25vcHMoJmhkcik7DQo+IMKgfQ0K
+PiDCoA0KPiArc3RhdGljIHZvaWQgZW5jb2RlX2NvcHlfY29tbWl0KHN0cnVjdCB4ZHJfc3RyZWFt
+ICp4ZHIsDQo+ICsJCQnCoMKgc3RydWN0IG5mczQyX2NvcHlfYXJncyAqYXJncywNCj4gKwkJCcKg
+wqBzdHJ1Y3QgY29tcG91bmRfaGRyICpoZHIpDQo+ICt7DQo+ICsJX19iZTMyICpwOw0KPiArDQo+
+ICsJZW5jb2RlX29wX2hkcih4ZHIsIE9QX0NPTU1JVCwgZGVjb2RlX2NvbW1pdF9tYXhzeiwgaGRy
+KTsNCj4gKwlwID0gcmVzZXJ2ZV9zcGFjZSh4ZHIsIDEyKTsNCj4gKwlwID0geGRyX2VuY29kZV9o
+eXBlcihwLCBhcmdzLT5kc3RfcG9zKTsNCj4gKwkqcCA9IGNwdV90b19iZTMyKGFyZ3MtPmNvdW50
+KTsNCj4gK30NCj4gKw0KPiDCoC8qDQo+IMKgICogRW5jb2RlIENPUFkgcmVxdWVzdA0KPiDCoCAq
+Lw0KPiBAQCAtMjM5LDYgKzI1Myw3IEBAIHN0YXRpYyB2b2lkIG5mczRfeGRyX2VuY19jb3B5KHN0
+cnVjdCBycGNfcnFzdA0KPiAqcmVxLA0KPiDCoAllbmNvZGVfc2F2ZWZoKHhkciwgJmhkcik7DQo+
+IMKgCWVuY29kZV9wdXRmaCh4ZHIsIGFyZ3MtPmRzdF9maCwgJmhkcik7DQo+IMKgCWVuY29kZV9j
+b3B5KHhkciwgYXJncywgJmhkcik7DQo+ICsJZW5jb2RlX2NvcHlfY29tbWl0KHhkciwgYXJncywg
+Jmhkcik7DQo+IMKgCWVuY29kZV9ub3BzKCZoZHIpOw0KPiDCoH0NCj4gwqANCj4gZGlmZiAtLWdp
+dCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dyaXRlLmMNCj4gaW5kZXggYWJiMmM4YS4uOGQ2
+NWQ4OCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3dyaXRlLmMNCj4gKysrIGIvZnMvbmZzL3dyaXRl
+LmMNCj4gQEAgLTE3MjAsMzYgKzE3MjAsNiBAQCB2b2lkIG5mc19yZXRyeV9jb21taXQoc3RydWN0
+IGxpc3RfaGVhZA0KPiAqcGFnZV9saXN0LA0KPiDCoAlyZXR1cm4gLUVOT01FTTsNCj4gwqB9DQo+
+IMKgDQo+IC1pbnQgbmZzX2NvbW1pdF9maWxlKHN0cnVjdCBmaWxlICpmaWxlLCBzdHJ1Y3QgbmZz
+X3dyaXRlX3ZlcmlmaWVyDQo+ICp2ZXJmKQ0KPiAtew0KPiAtCXN0cnVjdCBpbm9kZSAqaW5vZGUg
+PSBmaWxlX2lub2RlKGZpbGUpOw0KPiAtCXN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpvcGVuOw0K
+PiAtCXN0cnVjdCBuZnNfY29tbWl0X2luZm8gY2luZm87DQo+IC0Jc3RydWN0IG5mc19wYWdlICpy
+ZXE7DQo+IC0JaW50IHJldDsNCj4gLQ0KPiAtCW9wZW4gPSBnZXRfbmZzX29wZW5fY29udGV4dChu
+ZnNfZmlsZV9vcGVuX2NvbnRleHQoZmlsZSkpOw0KPiAtCXJlccKgwqA9IG5mc19jcmVhdGVfcmVx
+dWVzdChvcGVuLCBOVUxMLCBOVUxMLCAwLA0KPiBpX3NpemVfcmVhZChpbm9kZSkpOw0KPiAtCWlm
+IChJU19FUlIocmVxKSkgew0KPiAtCQlyZXQgPSBQVFJfRVJSKHJlcSk7DQo+IC0JCWdvdG8gb3V0
+X3B1dDsNCj4gLQl9DQo+IC0NCj4gLQluZnNfaW5pdF9jaW5mb19mcm9tX2lub2RlKCZjaW5mbywg
+aW5vZGUpOw0KPiAtDQo+IC0JbWVtY3B5KCZyZXEtPndiX3ZlcmYsIHZlcmYsIHNpemVvZihzdHJ1
+Y3QNCj4gbmZzX3dyaXRlX3ZlcmlmaWVyKSk7DQo+IC0JbmZzX3JlcXVlc3RfYWRkX2NvbW1pdF9s
+aXN0KHJlcSwgJmNpbmZvKTsNCj4gLQlyZXQgPSBuZnNfY29tbWl0X2lub2RlKGlub2RlLCBGTFVT
+SF9TWU5DKTsNCj4gLQlpZiAocmV0ID4gMCkNCj4gLQkJcmV0ID0gMDsNCj4gLQ0KPiAtCW5mc19m
+cmVlX3JlcXVlc3QocmVxKTsNCj4gLW91dF9wdXQ6DQo+IC0JcHV0X25mc19vcGVuX2NvbnRleHQo
+b3Blbik7DQo+IC0JcmV0dXJuIHJldDsNCj4gLX0NCj4gLUVYUE9SVF9TWU1CT0xfR1BMKG5mc19j
+b21taXRfZmlsZSk7DQo+IC0NCj4gwqAvKg0KPiDCoCAqIENPTU1JVCBjYWxsIHJldHVybmVkDQo+
+IMKgICovDQoNClNob3VsZG4ndCB3ZSBkZWNvZGUgdGhlIHJlcGx5IGZyb20gdGhlIHNlcnZlciBz
+byB0aGF0IHdlIGNhbiByZXR1cm4gYW4NCmVycm9yIG1lc3NhZ2Ugb3IgcmV0cnkgaWYgdGhlIGNv
+bW1pdCBmYWlsZWQgYW5kL29yIHRoZSB2ZXJpZmllcnMgZG9uJ3QNCm1hdGNoPyBPdGhlcndpc2Ug
+d2Ugd29uJ3Qgbm90aWNlIGlmIHRoZSBmbHVzaCB0byBkaXNrIGZhaWxlZC4NCg0KLS0gDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRy
+b25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-Sounds good. You added a better comment in invalidate_inode_pages2_range(), so
-let's just use your version of this series.
