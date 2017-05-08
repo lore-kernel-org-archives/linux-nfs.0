@@ -1,93 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f195.google.com ([209.85.216.195]:33950 "EHLO
-        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751156AbdEHRDo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 May 2017 13:03:44 -0400
+Received: from mga03.intel.com ([134.134.136.65]:11159 "EHLO mga03.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752682AbdEHRIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 8 May 2017 13:08:40 -0400
+Date: Mon, 8 May 2017 11:08:36 -0600
+From: Ross Zwisler <ross.zwisler@linux.intel.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Ross Zwisler <ross.zwisler@linux.intel.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Alexey Kuznetsov <kuznet@virtuozzo.com>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Christoph Hellwig <hch@lst.de>,
+        Dan Williams <dan.j.williams@intel.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
+        Jens Axboe <axboe@kernel.dk>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-nvdimm@lists.01.org, Matthew Wilcox <mawilcox@microsoft.com>,
+        Ron Minnich <rminnich@sandia.gov>,
+        samba-technical@lists.samba.org, Steve French <sfrench@samba.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        v9fs-developer@lists.sourceforge.net
+Subject: Re: [PATCH v2 1/2] dax: prevent invalidation of mapped DAX entries
+Message-ID: <20170508170836.GA19867@linux.intel.com>
+References: <20170504195910.11579-1-ross.zwisler@linux.intel.com>
+ <20170505072912.GA25424@quack2.suse.cz>
 MIME-Version: 1.0
-In-Reply-To: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
-References: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
-From: Djalal Harouni <tixxdz@gmail.com>
-Date: Mon, 8 May 2017 19:03:43 +0200
-Message-ID: <CAEiveUdYsVPuhEOjDJYtTN2JaPrEacE7ZeCUp3RhOkugK-ZtHg@mail.gmail.com>
-Subject: Re: [RFC][PATCH 0/9] VFS: Introduce mount context
-To: David Howells <dhowells@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Miklos Szeredi <mszeredi@redhat.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170505072912.GA25424@quack2.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 3, 2017 at 6:04 PM, David Howells <dhowells@redhat.com> wrote:
->
-> Here are a set of patches to create a mount context prior to setting up a
-> new mount, populating it with the parsed options/binary data and then
-> effecting the mount.
->
-> This allows namespaces and other information to be conveyed through the
-> mount procedure.  It also allows extra error information to be returned
-> (so many things can go wrong during a mount that a small integer isn't
-> really sufficient to convey the issue).
->
-> This also allows Mikl=C3=B3s Szeredi's idea of doing:
->
->         fd =3D fsopen("nfs");
->         write(fd, "option=3Dval", ...);
->         fsmount(fd, "/mnt");
+On Fri, May 05, 2017 at 09:29:12AM +0200, Jan Kara wrote:
+> On Thu 04-05-17 13:59:09, Ross Zwisler wrote:
+> > dax_invalidate_mapping_entry() currently removes DAX exceptional entries
+> > only if they are clean and unlocked.  This is done via:
+> > 
+> > invalidate_mapping_pages()
+> >   invalidate_exceptional_entry()
+> >     dax_invalidate_mapping_entry()
+> > 
+> > However, for page cache pages removed in invalidate_mapping_pages() there
+> > is an additional criteria which is that the page must not be mapped.  This
+> > is noted in the comments above invalidate_mapping_pages() and is checked in
+> > invalidate_inode_page().
+> > 
+> > For DAX entries this means that we can can end up in a situation where a
+> > DAX exceptional entry, either a huge zero page or a regular DAX entry,
+> > could end up mapped but without an associated radix tree entry. This is
+> > inconsistent with the rest of the DAX code and with what happens in the
+> > page cache case.
+> > 
+> > We aren't able to unmap the DAX exceptional entry because according to its
+> > comments invalidate_mapping_pages() isn't allowed to block, and
+> > unmap_mapping_range() takes a write lock on the mapping->i_mmap_rwsem.
+> > 
+> > We could potentially do an rmap walk to see if each of the entries actually
+> > has any active mappings before we remove it, but this might end up being
+> > very expensive and doesn't currently look to be worth it.
+> > 
+> > So, just remove dax_invalidate_mapping_entry() and leave the DAX entries in
+> > the radix tree.
+> > 
+> > Signed-off-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+> > Fixes: c6dcf52c23d2 ("mm: Invalidate DAX radix tree entries only if appropriate")
+> > Reported-by: Jan Kara <jack@suse.cz>
+> > Reviewed-by: Jan Kara <jack@suse.cz>
+> > Cc: <stable@vger.kernel.org>    [4.10+]
+> 
+> Ah, I've just sent out a series which contains these two patches and
+> another two patches which change the entry locking to fix the last spotted
+> race...  So either just take my last two patches on top of these two or
+> take my series as a whole.
 
-
-This may help to clear the boundary between what you can do with a
-vfsmount (bind) and the filesystem. In containers, orchestration
-tools, etc bind mounts are treated in a dynamic way, there is
-assumption on github where developers and users expect that they can
-dynamically add/move mounts between namespaces, however this won't
-work with userns, so maybe this will help... My other suggestions:
-Clear documentation and code comments will really help! I posted and
-used some UID shifting within VFS layer patches a year ago, and it
-seems that they really need something like this... !
-
-I'm not sure where I did read about netlink, but at least it should
-count userspace capabilities and namespace privacy/context...
-
-> that he presented at LSF-2017 to be implemented (see the relevant patches
-> in the series), to which I can add:
->
->         read(fd, error_buffer, ...);
->
-> to read back any error message.  I didn't use netlink as that would make =
-it
-> depend on CONFIG_NET and would introduce network namespacing issues.
->
-> I've implemented mount context handling for procfs and nfs.
->
-> Further developments:
->
->  (*) Implement mount context support in more filesystems, ext4 being next
->      on my list.
->
->  (*) Move the walk-from-root stuff that nfs has to generic code so that y=
-ou
->      can do something akin to:
->
->         mount /dev/sda1:/foo/bar /mnt
->
->      See nfs_follow_remote_path() and mount_subtree().  This is slightly
->      tricky in NFS as we have to prevent referral loops.
->
->  (*) Move the pid_ns pointer from struct mount_context to struct
->      proc_mount_context as I'm not sure it's necessary for anything other
->      than procfs.
-
-FWIW the RFC "proc: support private proc instances per pidnamespace"
-[1] that I have to clean will hide pid_ns under procfs filesystem, so
-maybe that's a good reason to move it then get rid of it.
-
-Thanks!
-
-
-[1] https://lkml.org/lkml/2017/4/25/282
-
---=20
-tixxdz
+Sounds good. You added a better comment in invalidate_inode_pages2_range(), so
+let's just use your version of this series.
