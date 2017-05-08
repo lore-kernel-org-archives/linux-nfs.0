@@ -1,239 +1,181 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39442 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752127AbdEHNSs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 May 2017 09:18:48 -0400
-Date: Mon, 8 May 2017 09:18:46 -0400
-From: Brian Foster <bfoster@redhat.com>
-To: Paul Menzel <pmenzel@molgen.mpg.de>
-Cc: linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
-        it+linux-nfs@molgen.mpg.de, Christoph Hellwig <hch@lst.de>
-Subject: Re: Locking problems with Linux 4.9 with NFSD and `fs/iomap.c`
-Message-ID: <20170508131843.GB29840@bfoster.bfoster>
-References: <de171adc29600902515d1424fd800678@molgen.mpg.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <de171adc29600902515d1424fd800678@molgen.mpg.de>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:32797 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750985AbdEHO0x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 May 2017 10:26:53 -0400
+Received: by mail-it0-f65.google.com with SMTP id v135so7479530itv.0
+        for <linux-nfs@vger.kernel.org>; Mon, 08 May 2017 07:26:53 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix exclusive create attributes encoding
+Date: Mon,  8 May 2017 10:26:48 -0400
+Message-Id: <20170508142648.128870-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-cc Christoph, who's more familiar with nfs and wrote the iomap bits.
+When using NFS4_CREATE_EXCLUSIVE4_1 mode, the client will overestimate the
+amount of space that it needs for the attributes because it does so
+before checking whether or not the server supports a given attribute.
 
-On Sun, May 07, 2017 at 09:09:49PM +0200, Paul Menzel wrote:
-> Dear Linux folks,
-> 
-> 
-> There seems to be a regression in Linux 4.9 compared to 4.4. Maybe you have
-> an idea.
-> 
-> The system used 4.4.38 without issues, and was updated to 4.9.23 on April
-> 24th. Since Friday, the NFS exports where not accessible anymore. Rebooting
-> the system into 4.9.24, 4.9.24, and 4.9.25 didn’t change anything, and the
-> system went into the some lock right away. Booting 4.4.38 fixed the issue
-> though.
-> 
+Fix by checking the attribute mask earlier.
 
-The buffered write path was rewritten with the iomap mechanism around
-4.7 or so, so there's a pretty big functionality gap between 4.4 and
-4.9.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4xdr.c | 75 ++++++++++++++++++++++++++------------------------------
+ 1 file changed, 35 insertions(+), 40 deletions(-)
 
-> Here is more information.
-> 
-> NFS doesn’t respond to a null call.
-> 
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index dbfe48ac3529..3aebfdc82b30 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1000,8 +1000,9 @@ static void encode_nfs4_verifier(struct xdr_stream *xdr, const nfs4_verifier *ve
+ 
+ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 				const struct nfs4_label *label,
++				const umode_t *umask,
+ 				const struct nfs_server *server,
+-				bool excl_check, const umode_t *umask)
++				const uint32_t attrmask[])
+ {
+ 	char owner_name[IDMAP_NAMESZ];
+ 	char owner_group[IDMAP_NAMESZ];
+@@ -1016,22 +1017,20 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 	/*
+ 	 * We reserve enough space to write the entire attribute buffer at once.
+ 	 */
+-	if (iap->ia_valid & ATTR_SIZE) {
++	if ((iap->ia_valid & ATTR_SIZE) && (attrmask[0] & FATTR4_WORD0_SIZE)) {
+ 		bmval[0] |= FATTR4_WORD0_SIZE;
+ 		len += 8;
+ 	}
+-	if (!(server->attr_bitmask[2] & FATTR4_WORD2_MODE_UMASK))
+-		umask = NULL;
+ 	if (iap->ia_valid & ATTR_MODE) {
+-		if (umask) {
++		if (umask && (attrmask[2] & FATTR4_WORD2_MODE_UMASK)) {
+ 			bmval[2] |= FATTR4_WORD2_MODE_UMASK;
+ 			len += 8;
+-		} else {
++		} else if (attrmask[1] & FATTR4_WORD1_MODE) {
+ 			bmval[1] |= FATTR4_WORD1_MODE;
+ 			len += 4;
+ 		}
+ 	}
+-	if (iap->ia_valid & ATTR_UID) {
++	if ((iap->ia_valid & ATTR_UID) && (attrmask[1] & FATTR4_WORD1_OWNER)) {
+ 		owner_namelen = nfs_map_uid_to_name(server, iap->ia_uid, owner_name, IDMAP_NAMESZ);
+ 		if (owner_namelen < 0) {
+ 			dprintk("nfs: couldn't resolve uid %d to string\n",
+@@ -1044,7 +1043,8 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 		bmval[1] |= FATTR4_WORD1_OWNER;
+ 		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
+ 	}
+-	if (iap->ia_valid & ATTR_GID) {
++	if ((iap->ia_valid & ATTR_GID) &&
++	   (attrmask[1] & FATTR4_WORD1_OWNER_GROUP)) {
+ 		owner_grouplen = nfs_map_gid_to_group(server, iap->ia_gid, owner_group, IDMAP_NAMESZ);
+ 		if (owner_grouplen < 0) {
+ 			dprintk("nfs: couldn't resolve gid %d to string\n",
+@@ -1056,32 +1056,26 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
+ 		bmval[1] |= FATTR4_WORD1_OWNER_GROUP;
+ 		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
+ 	}
+-	if (iap->ia_valid & ATTR_ATIME_SET) {
+-		bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
+-		len += 16;
+-	} else if (iap->ia_valid & ATTR_ATIME) {
+-		bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
+-		len += 4;
+-	}
+-	if (iap->ia_valid & ATTR_MTIME_SET) {
+-		bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
+-		len += 16;
+-	} else if (iap->ia_valid & ATTR_MTIME) {
+-		bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
+-		len += 4;
++	if (attrmask[1] & FATTR4_WORD1_TIME_ACCESS_SET) {
++		if (iap->ia_valid & ATTR_ATIME_SET) {
++			bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
++			len += 16;
++		} else if (iap->ia_valid & ATTR_ATIME) {
++			bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
++			len += 4;
++		}
+ 	}
+-
+-	if (excl_check) {
+-		const u32 *excl_bmval = server->exclcreat_bitmask;
+-		bmval[0] &= excl_bmval[0];
+-		bmval[1] &= excl_bmval[1];
+-		bmval[2] &= excl_bmval[2];
+-
+-		if (!(excl_bmval[2] & FATTR4_WORD2_SECURITY_LABEL))
+-			label = NULL;
++	if (attrmask[1] & FATTR4_WORD1_TIME_MODIFY_SET) {
++		if (iap->ia_valid & ATTR_MTIME_SET) {
++			bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
++			len += 16;
++		} else if (iap->ia_valid & ATTR_MTIME) {
++			bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
++			len += 4;
++		}
+ 	}
+ 
+-	if (label) {
++	if (label && (attrmask[2] & FATTR4_WORD2_SECURITY_LABEL)) {
+ 		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
+ 		bmval[2] |= FATTR4_WORD2_SECURITY_LABEL;
+ 	}
+@@ -1188,8 +1182,8 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
+ 	}
+ 
+ 	encode_string(xdr, create->name->len, create->name->name);
+-	encode_attrs(xdr, create->attrs, create->label, create->server, false,
+-		     &create->umask);
++	encode_attrs(xdr, create->attrs, create->label, &create->umask,
++			create->server, create->server->attr_bitmask);
+ }
+ 
+ static void encode_getattr_one(struct xdr_stream *xdr, uint32_t bitmap, struct compound_hdr *hdr)
+@@ -1409,13 +1403,13 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
+ 	switch(arg->createmode) {
+ 	case NFS4_CREATE_UNCHECKED:
+ 		*p = cpu_to_be32(NFS4_CREATE_UNCHECKED);
+-		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, false,
+-			     &arg->umask);
++		encode_attrs(xdr, arg->u.attrs, arg->label, &arg->umask,
++				arg->server, arg->server->attr_bitmask);
+ 		break;
+ 	case NFS4_CREATE_GUARDED:
+ 		*p = cpu_to_be32(NFS4_CREATE_GUARDED);
+-		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, false,
+-			     &arg->umask);
++		encode_attrs(xdr, arg->u.attrs, arg->label, &arg->umask,
++				arg->server, arg->server->attr_bitmask);
+ 		break;
+ 	case NFS4_CREATE_EXCLUSIVE:
+ 		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE);
+@@ -1424,8 +1418,8 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
+ 	case NFS4_CREATE_EXCLUSIVE4_1:
+ 		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE4_1);
+ 		encode_nfs4_verifier(xdr, &arg->u.verifier);
+-		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, true,
+-			     &arg->umask);
++		encode_attrs(xdr, arg->u.attrs, arg->label, &arg->umask,
++				arg->server, arg->server->exclcreat_bitmask);
+ 	}
+ }
+ 
+@@ -1681,7 +1675,8 @@ static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs
+ {
+ 	encode_op_hdr(xdr, OP_SETATTR, decode_setattr_maxsz, hdr);
+ 	encode_nfs4_stateid(xdr, &arg->stateid);
+-	encode_attrs(xdr, arg->iap, arg->label, server, false, NULL);
++	encode_attrs(xdr, arg->iap, arg->label, NULL, server,
++			server->attr_bitmask);
+ }
+ 
+ static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclientid *setclientid, struct compound_hdr *hdr)
+-- 
+2.9.3
 
-What exactly is a NULL call? Can this be reproduced easily?
-
-Otherwise, it's not clear to me whether you've hit a deadlock or some
-kind of livelock. Have you checked syslog for any crash or hung task
-messages? Please also provide the hung task output (echo w >
-/proc/sysrq-trigger) once you've hit this state. It would be
-particularly interesting to see whether the iomap_zero_range() path is
-included in that output.
-
-It may also be interesting to enable the xfs_zero_eof() tracepoint
-(trace-cmd start -e 'xfs:xfs_zero_eof') and see what the last few
-entries are from /sys/kernel/debug/tracing/trace_pipe.
-
-Brian
-
-> ```
-> # tshark -r x.x
->   1   0.000000 141.14.16.23 -> 141.14.26.2  TCP 74 1005 → 2049 [SYN] Seq=0
-> Win=29200 Len=0 MSS=1460 SACK_PERM=1 TSval=327954228 TSecr=0 WS=512
->   2   0.000245  141.14.26.2 -> 141.14.16.23 TCP 74 2049 → 1005 [SYN, ACK]
-> Seq=0 Ack=1 Win=28960 Len=0 MSS=1460 SACK_PERM=1 TSval=1126765132
-> TSecr=327954228 WS=512
->   3   0.000269 141.14.16.23 -> 141.14.26.2  TCP 66 1005 → 2049 [ACK] Seq=1
-> Ack=1 Win=29696 Len=0 TSval=327954229 TSecr=1126765132
->   4   0.000300 141.14.16.23 -> 141.14.26.2  NFS 110 V4 NULL Call
->   5   0.202652 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission]
-> 1005 → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=327954432
-> TSecr=1126765132
->   6   0.410651 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission]
-> 1005 → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=327954640
-> TSecr=1126765132
->   7   0.818649 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission]
-> 1005 → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=327955048
-> TSecr=1126765132
->   8   1.012429  141.14.26.2 -> 141.14.16.23 TCP 74 [TCP Spurious
-> Retransmission] 2049 → 1005 [SYN, ACK] Seq=0 Ack=1 Win=28960 Len=0 MSS=1460
-> SACK_PERM=1 TSval=1126766144 TSecr=327955048 WS=512
->   9   1.012448 141.14.16.23 -> 141.14.26.2  TCP 66 [TCP Dup ACK 3#1] 1005 →
-> 2049 [ACK] Seq=45 Ack=1 Win=29696 Len=0 TSval=327955241 TSecr=1126765132
->  10   1.674650 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission]
-> 1005 → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=327955904
-> TSecr=1126765132
->  11   3.060502  141.14.26.2 -> 141.14.16.23 TCP 74 [TCP Spurious
-> Retransmission] 2049 → 1005 [SYN, ACK] Seq=0 Ack=1 Win=28960 Len=0 MSS=1460
-> SACK_PERM=1 TSval=1126768193 TSecr=327955904 WS=512
->  12   3.060521 141.14.16.23 -> 141.14.26.2  TCP 66 [TCP Dup ACK 3#2] 1005 →
-> 2049 [ACK] Seq=45 Ack=1 Win=29696 Len=0 TSval=327957289 TSecr=1126765132
->  13   3.338653 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission]
-> 1005 → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=327957568
-> TSecr=1126765132
-> ```
-> 
-> ``
-> # tshark -r x.x
->   1   0.000000 141.14.16.23 -> 141.14.26.2  TCP 74 690 → 2049 [SYN] Seq=0
-> Win=29200 Len=0 MSS=1460 SACK_PERM=1 TSval=328229577 TSecr=0 WS=512
->   2   0.000039  141.14.26.2 -> 141.14.16.23 TCP 74 2049 → 690 [SYN, ACK]
-> Seq=0 Ack=1 Win=28960 Len=0 MSS=1460 SACK_PERM=1 TSval=1127040480
-> TSecr=328229577 WS=512
->   3   0.000155 141.14.16.23 -> 141.14.26.2  TCP 66 690 → 2049 [ACK] Seq=1
-> Ack=1 Win=29696 Len=0 TSval=328229577 TSecr=1127040480
->   4   0.000180 141.14.16.23 -> 141.14.26.2  NFS 110 V4 NULL Call
->   5   0.206937 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission] 690
-> → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=328229784
-> TSecr=1127040480
->   6   0.414925 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission] 690
-> → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=328229992
-> TSecr=1127040480
->   7   0.822928 141.14.16.23 -> 141.14.26.2  TCP 110 [TCP Retransmission] 690
-> → 2049 [PSH, ACK] Seq=1 Ack=1 Win=29696 Len=44 TSval=328230400
-> TSecr=1127040480
->   8   1.056498  141.14.26.2 -> 141.14.16.23 TCP 74 [TCP Spurious
-> Retransmission] 2049 → 690 [SYN, ACK] Seq=0 Ack=1 Win=28960 Len=0 MSS=1460
-> SACK_PERM=1 TSval=1127041536 TSecr=328230400 WS=512
-> ```
-> 
-> Looking at the stack traces of the nfsd process with
-> 
-> ```
-> for p in $(pgrep 'nfsd$'); do echo $p; cat /proc/$p/stack; done
-> ```
-> 
-> all but one have the trace below.
-> 
-> 
-> ```
-> [<ffffffff813eded7>] call_rwsem_down_write_failed+0x17/0x30
-> [<ffffffff8133aa1c>] xfs_file_buffered_aio_write+0x5c/0x2d0
-> [<ffffffff8133ad2e>] xfs_file_write_iter+0x9e/0x150
-> [<ffffffff81196b50>] do_iter_readv_writev+0xa0/0xf0
-> [<ffffffff81197d4a>] do_readv_writev+0x18a/0x230
-> [<ffffffff8119803c>] vfs_writev+0x3c/0x50
-> [<ffffffffa02826b5>] nfsd_vfs_write+0xc5/0x280 [nfsd]
-> [<ffffffffa028e48a>] nfsd4_write+0x17a/0x1d0 [nfsd]
-> [<ffffffffa02902f9>] nfsd4_proc_compound+0x369/0x5e0 [nfsd]
-> [<ffffffffa027e218>] nfsd_dispatch+0xa8/0x180 [nfsd]
-> [<ffffffffa01a66af>] svc_process_common+0x3ff/0x580 [sunrpc]
-> [<ffffffffa01a696b>] svc_process+0x13b/0x1b0 [sunrpc]
-> [<ffffffffa027dc7d>] nfsd+0xed/0x160 [nfsd]
-> [<ffffffff8107b0ba>] kthread+0xca/0xe0
-> [<ffffffff81a97092>] ret_from_fork+0x22/0x30
-> [<ffffffffffffffff>] 0xffffffffffffffff
-> ```
-> 
-> The one problematic one has the stack trace below.
-> 
-> ```
-> [<ffffffff811f6f6c>] iomap_write_begin+0x8c/0x120
-> [<ffffffff811f758b>] iomap_zero_range_actor+0xeb/0x210     # oder
-> iomap_zero_range_actor+0x90/0x210
-> [<ffffffff811f77e2>] iomap_apply+0xa2/0x110
-> [<ffffffff811f79b8>] iomap_zero_range+0x58/0x80
-> [<ffffffff8133a38e>] xfs_zero_eof+0x4e/0xb0
-> [<ffffffff8133a58d>] xfs_file_aio_write_checks+0x19d/0x1c0
-> [<ffffffff8133aa39>] xfs_file_buffered_aio_write+0x79/0x2d0
-> [<ffffffff8133ad2e>] xfs_file_write_iter+0x9e/0x150
-> [<ffffffff81196b50>] do_iter_readv_writev+0xa0/0xf0
-> [<ffffffff81197d4a>] do_readv_writev+0x18a/0x230
-> [<ffffffff8119803c>] vfs_writev+0x3c/0x50
-> [<ffffffffa02826b5>] nfsd_vfs_write+0xc5/0x280 [nfsd]
-> [<ffffffffa028e48a>] nfsd4_write+0x17a/0x1d0 [nfsd]
-> [<ffffffffa02902f9>] nfsd4_proc_compound+0x369/0x5e0 [nfsd]
-> [<ffffffffa027e218>] nfsd_dispatch+0xa8/0x180 [nfsd]
-> [<ffffffffa01a66af>] svc_process_common+0x3ff/0x580 [sunrpc]
-> [<ffffffffa01a696b>] svc_process+0x13b/0x1b0 [sunrpc]
-> [<ffffffffa027dc7d>] nfsd+0xed/0x160 [nfsd]
-> [<ffffffff8107b0ba>] kthread+0xca/0xe0
-> [<ffffffff81a97092>] ret_from_fork+0x22/0x30
-> [<ffffffffffffffff>] 0xffffffffffffffff
-> ```
-> 
-> Here is the corresponding lines in the source code.
-> 
-> ```
-> info line *0xffffffff811f6f6c Line 124 of "fs/iomap.c" starts at address
-> 0xffffffff811f6f6c <iomap_write_begin+140> and ends at 0xffffffff811f6f70
-> <iomap_write_begin+144>.
-> info line *0xffffffff811f758b Line 345 of "fs/iomap.c" starts at address
-> 0xffffffff811f758b <iomap_zero_range_actor+235> and ends at
-> 0xffffffff811f758f <iomap_zero_range_actor+239>.
-> info line *0xffffffff811f7530 Line 385 of "fs/iomap.c" starts at address
-> 0xffffffff811f7530 <iomap_zero_range_actor+144> and ends at
-> 0xffffffff811f7538 <iomap_zero_range_actor+152>.
-> ```
-> 
-> Here is the code.
-> 
-> ```
-> […]
-> 109 static int
-> 110 iomap_write_begin(struct inode *inode, loff_t pos, unsigned len,
-> unsigned flags,
-> 111                 struct page **pagep, struct iomap *iomap)
-> 112 {
-> 113         pgoff_t index = pos >> PAGE_SHIFT;
-> 114         struct page *page;
-> 115         int status = 0;
-> 116
-> 117         BUG_ON(pos + len > iomap->offset + iomap->length);
-> 118
-> 119         if (fatal_signal_pending(current))
-> 120                 return -EINTR;
-> 121
-> 122         page = grab_cache_page_write_begin(inode->i_mapping, index,
-> flags);
-> 123         if (!page)
-> 124                 return -ENOMEM;
-> 125
-> 126         status = __block_write_begin_int(page, pos, len, NULL, iomap);
-> 127         if (unlikely(status)) {
-> 128                 unlock_page(page);
-> 129                 put_page(page);
-> 130                 page = NULL;
-> 131
-> 132                 iomap_write_failed(inode, pos, len);
-> 133         }
-> 134
-> 135         *pagep = page;
-> 136         return status;
-> 137 }
-> […]
-> ```
-> 
-> So it looks like insufficent memory? But the machine has 1 TB of RAM, and I
-> didn’t see any suspicious running `htop`. Also it should have returned from
-> with that error, shouldn’t it have?
-> 
-> 
-> Kind regards,
-> 
-> Paul
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
