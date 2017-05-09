@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39022 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53608 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754538AbdEIPun (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 11:50:43 -0400
+        id S1755284AbdEIPuq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 11:50:46 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -18,96 +18,62 @@ Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
         neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
         josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
         bo.li.liu@oracle.com
-Subject: [PATCH v4 18/27] mm: don't TestClearPageError in __filemap_fdatawait_range
-Date: Tue,  9 May 2017 11:49:21 -0400
-Message-Id: <20170509154930.29524-19-jlayton@redhat.com>
+Subject: [PATCH v4 21/27] mm: clean up error handling in write_one_page
+Date: Tue,  9 May 2017 11:49:24 -0400
+Message-Id: <20170509154930.29524-22-jlayton@redhat.com>
 In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The -EIO returned here can end up overriding whatever error is marked in
-the address space, and be returned at fsync time, even when there is a
-more appropriate error stored in the mapping.
+Don't try to check PageError since that's potentially racy and not
+necessarily going to be set after writepage errors out.
 
-Read errors are also sometimes tracked on a per-page level using
-PG_error. Suppose we have a read error on a page, and then that page is
-subsequently dirtied by overwriting the whole page. Writeback doesn't
-clear PG_error, so we can then end up successfully writing back that
-page and still return -EIO on fsync.
-
-Worse yet, PG_error is cleared during a sync() syscall, but the -EIO
-return from that is silently discarded. Any subsystem that is relying on
-PG_error to report errors during fsync can easily lose writeback errors
-due to this. All you need is a stray sync() call to wait for writeback
-to complete and you've lost the error.
-
-Since the handling of the PG_error flag is somewhat inconsistent across
-subsystems, let's just rely on marking the address space when there are
-writeback errors. Change the TestClearPageError call to ClearPageError,
-and make __filemap_fdatawait_range a void return function.
+Instead, sample the mapping error early on, and use that value to tell
+us whether we got a writeback error since then.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- mm/filemap.c | 20 +++++---------------
- 1 file changed, 5 insertions(+), 15 deletions(-)
+ mm/page-writeback.c | 11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index eaec849ec8e5..ffdc21762e2f 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -363,17 +363,16 @@ int filemap_flush(struct address_space *mapping)
- }
- EXPORT_SYMBOL(filemap_flush);
- 
--static int __filemap_fdatawait_range(struct address_space *mapping,
-+static void __filemap_fdatawait_range(struct address_space *mapping,
- 				     loff_t start_byte, loff_t end_byte)
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index de0dbf12e2c1..1643456881b4 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -2373,11 +2373,12 @@ int do_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ int write_one_page(struct page *page)
  {
- 	pgoff_t index = start_byte >> PAGE_SHIFT;
- 	pgoff_t end = end_byte >> PAGE_SHIFT;
- 	struct pagevec pvec;
- 	int nr_pages;
+ 	struct address_space *mapping = page->mapping;
 -	int ret = 0;
++	int ret = 0, ret2;
+ 	struct writeback_control wbc = {
+ 		.sync_mode = WB_SYNC_ALL,
+ 		.nr_to_write = 1,
+ 	};
++	errseq_t since = filemap_sample_wb_error(mapping);
  
- 	if (end_byte < start_byte)
--		goto out;
-+		return;
+ 	BUG_ON(!PageLocked(page));
  
- 	pagevec_init(&pvec, 0);
- 	while ((index <= end) &&
-@@ -390,14 +389,11 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
- 				continue;
- 
+@@ -2386,16 +2387,14 @@ int write_one_page(struct page *page)
+ 	if (clear_page_dirty_for_io(page)) {
+ 		get_page(page);
+ 		ret = mapping->a_ops->writepage(page, &wbc);
+-		if (ret == 0) {
++		if (ret == 0)
  			wait_on_page_writeback(page);
--			if (TestClearPageError(page))
+-			if (PageError(page))
 -				ret = -EIO;
-+			ClearPageError(page);
- 		}
- 		pagevec_release(&pvec);
- 		cond_resched();
+-		}
+ 		put_page(page);
+ 	} else {
+ 		unlock_page(page);
  	}
--out:
 -	return ret;
++	ret2 = filemap_check_wb_error(mapping, since);
++	return ret ? : ret2;
  }
- 
- /**
-@@ -414,14 +410,8 @@ static int __filemap_fdatawait_range(struct address_space *mapping,
- int filemap_fdatawait_range_since(struct address_space *mapping,
- 		loff_t start_byte, loff_t end_byte, errseq_t since)
- {
--	int ret, ret2;
--
--	ret = __filemap_fdatawait_range(mapping, start_byte, end_byte);
--	ret2 = filemap_check_wb_error(mapping, since);
--	if (!ret)
--		ret = ret2;
--
--	return ret;
-+	__filemap_fdatawait_range(mapping, start_byte, end_byte);
-+	return filemap_check_wb_error(mapping, since);
- }
- EXPORT_SYMBOL(filemap_fdatawait_range_since);
+ EXPORT_SYMBOL(write_one_page);
  
 -- 
 2.9.3
