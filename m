@@ -1,22 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:50094 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751519AbdEIT6U (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 15:58:20 -0400
-Date: Tue, 9 May 2017 12:58:19 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Ari Kauppi <Ari.Kauppi@synopsys.com>
-Subject: Re: [PATCH] nfsd: encoders mustn't use unitialized values in error
- cases
-Message-ID: <20170509195819.GC22486@infradead.org>
-References: <20170508155741.GC2644@fieldses.org>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:44702 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751242AbdEIT6u (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 15:58:50 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "hch@infradead.org" <hch@infradead.org>
+CC: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4.1: Work around a Linux server bug...
+Date: Tue, 9 May 2017 19:58:46 +0000
+Message-ID: <1494359923.109664.5.camel@primarydata.com>
+References: <20170509195335.114163-1-trond.myklebust@primarydata.com>
+         <20170509195628.GA22486@infradead.org>
+In-Reply-To: <20170509195628.GA22486@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170508155741.GC2644@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks fine,
+T24gVHVlLCAyMDE3LTA1LTA5IGF0IDEyOjU2IC0wNzAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gT24gVHVlLCBNYXkgMDksIDIwMTcgYXQgMDM6NTM6MzVQTSAtMDQwMCwgVHJvbmQgTXlr
+bGVidXN0IHdyb3RlOg0KPiA+IEl0IHR1cm5zIG91dCB0aGUgTGludXggc2VydmVyIGhhcyBhIGJ1
+ZyBpbiBpdHMgaW1wbGVtZW50YXRpb24gb2YNCj4gPiBzdXBhdHRyX2V4Y2xjcmVhdDsgaXQgcmV0
+dXJucyB0aGUgc2V0IG9mIGFsbCBhdHRyaWJ1dGVzLCB3aGV0aGVyDQo+ID4gb3Igbm90IHRoZXkg
+YXJlIHN1cHBvcnRlZCBieSBtaW5vciB2ZXJzaW9uIDEuDQo+IA0KPiBBcmUgeW91IGdvaW5nIHRv
+IHNlbmQgYSBmaXg/DQo+IA0KDQpZZXMuIEdpdmUgbWUgYSBmZXcgbW9yZSBtb21lbnRzLi4uIOKY
+ug0KDQpUaGUgZXhhY3Qgc2FtZSBmaXggbmVlZHMgdG8gYmUgYXBwbGllZCBvbiB0aGUgc2VydmVy
+IHNpZGUuDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+LCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
