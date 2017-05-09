@@ -1,75 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:38248 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:49285 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753210AbdEIJVf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:21:35 -0400
+        with ESMTP id S1753265AbdEIJVo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:21:44 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 29/32] RFC: sunrpc: remove pc_count
-Date: Tue,  9 May 2017 11:20:07 +0200
-Message-Id: <20170509092010.30752-30-hch@lst.de>
+Subject: [PATCH 32/32] nfsd4: const-ify nfsd4_ops
+Date: Tue,  9 May 2017 11:20:10 +0200
+Message-Id: <20170509092010.30752-33-hch@lst.de>
 In-Reply-To: <20170509092010.30752-1-hch@lst.de>
 References: <20170509092010.30752-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-pc_count is the only writeable memeber of struct svc_procinfo, which is
-a good candidate to be const-ified as it contains function pointers.
-
-This patch just removes it and returns zero in the /proc file as the
-count of calls per procedure doesn't seem all that useful.  But it's
-just a dumb hack and we might need a proper fix instead.
+nfsd4_ops contains function pointers, and marking it as constant avoids
+it being able to be used as an attach vector for code injections.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/sunrpc/svc.h | 1 -
- net/sunrpc/stats.c         | 2 +-
- net/sunrpc/svc.c           | 3 ---
- 3 files changed, 1 insertion(+), 5 deletions(-)
+ fs/nfsd/nfs4proc.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 8eeb39286422..cab77b0904b0 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -430,7 +430,6 @@ struct svc_procedure {
- 	void			(*pc_release)(struct svc_rqst *);
- 	unsigned int		pc_argsize;	/* argument struct size */
- 	unsigned int		pc_ressize;	/* result struct size */
--	unsigned int		pc_count;	/* call count */
- 	unsigned int		pc_cachetype;	/* cache info (NFS) */
- 	unsigned int		pc_xdrressize;	/* maximum size of XDR reply */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f52130a94d8d..91eadcdcbccd 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1583,7 +1583,7 @@ struct nfsd4_operation {
+ 			union nfsd4_op_u *);
  };
-diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
-index 42053510b96b..f37d0fc835d7 100644
---- a/net/sunrpc/stats.c
-+++ b/net/sunrpc/stats.c
-@@ -102,7 +102,7 @@ void svc_seq_show(struct seq_file *seq, const struct svc_stat *statp) {
- 			continue;
- 		seq_printf(seq, "proc%d %u", i, vers->vs_nproc);
- 		for (j = 0; j < vers->vs_nproc; j++, proc++)
--			seq_printf(seq, " %u", proc->pc_count);
-+			seq_printf(seq, " %u", 0);
- 		seq_putc(seq, '\n');
- 	}
- }
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index bbf8d938812e..af74604fdadd 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1202,9 +1202,6 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- 	statp = resv->iov_base +resv->iov_len;
- 	svc_putnl(resv, RPC_SUCCESS);
  
--	/* Bump per-procedure stats counter */
--	procp->pc_count++;
--
- 	/* Initialize storage for argp and resp */
- 	memset(rqstp->rq_argp, 0, procp->pc_argsize);
- 	memset(rqstp->rq_resp, 0, procp->pc_ressize);
+-static struct nfsd4_operation nfsd4_ops[];
++static const struct nfsd4_operation nfsd4_ops[];
+ 
+ static const char *nfsd4_op_name(unsigned opnum);
+ 
+@@ -1620,7 +1620,7 @@ static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
+ 	return nfs_ok;
+ }
+ 
+-static inline struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
++static inline const struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
+ {
+ 	return &nfsd4_ops[op->opnum];
+ }
+@@ -1638,10 +1638,9 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ 	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
+ 	struct nfsd4_op *this = &argp->ops[resp->opcnt - 1];
+ 	struct nfsd4_op *next = &argp->ops[resp->opcnt];
+-	struct nfsd4_operation *thisd;
+-	struct nfsd4_operation *nextd;
++	const struct nfsd4_operation *thisd = OPDESC(this);
++	const struct nfsd4_operation *nextd;
+ 
+-	thisd = OPDESC(this);
+ 	/*
+ 	 * Most ops check wronsec on our own; only the putfh-like ops
+ 	 * have special rules.
+@@ -1694,7 +1693,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+ 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
+ 	struct nfsd4_op	*op;
+-	struct nfsd4_operation *opdesc;
++	const struct nfsd4_operation *opdesc;
+ 	struct nfsd4_compound_state *cstate = &resp->cstate;
+ 	struct svc_fh *current_fh = &cstate->current_fh;
+ 	struct svc_fh *save_fh = &cstate->save_fh;
+@@ -2108,7 +2107,7 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 	return (op_encode_hdr_size + 3) * sizeof(__be32);
+ }
+ 
+-static struct nfsd4_operation nfsd4_ops[] = {
++static const struct nfsd4_operation nfsd4_ops[] = {
+ 	[OP_ACCESS] = {
+ 		.op_func = nfsd4_access,
+ 		.op_name = "OP_ACCESS",
 -- 
 2.11.0
 
