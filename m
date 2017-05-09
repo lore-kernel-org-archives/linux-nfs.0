@@ -1,44 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:36436 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752461AbdEIOEd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 10:04:33 -0400
-Date: Tue, 9 May 2017 17:04:14 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Colin King <colin.king@canonical.com>
-Cc: Ari Kauppi <ari@synopsys.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] nfsd: avoid out of bounds read on array nfsd4_layout_ops
-Message-ID: <20170509140414.ycw4z6zsdevbkozm@mwanda>
-References: <20170509133121.26529-1-colin.king@canonical.com>
+Received: from fieldses.org ([173.255.197.46]:58652 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753165AbdEIORJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 10:17:09 -0400
+Date: Tue, 9 May 2017 10:17:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Christoph Hellwig <hch@lst.de>,
+        "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/32] sunrpc: fix encoder callback prototypes
+Message-ID: <20170509141708.GA18466@fieldses.org>
+References: <20170509092010.30752-1-hch@lst.de>
+ <20170509092010.30752-3-hch@lst.de>
+ <779451235.5133504.1494323029528.JavaMail.zimbra@desy.de>
+ <20170509131108.GA15042@lst.de>
+ <1494336641.2659.5.camel@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170509133121.26529-1-colin.king@canonical.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1494336641.2659.5.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 09, 2017 at 02:31:21PM +0100, Colin King wrote:
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 1dbf62190bee..c453a1998e00 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1259,7 +1259,8 @@ nfsd4_layout_verify(struct svc_export *exp, unsigned int layout_type)
->  		return NULL;
->  	}
->  
-> -	if (layout_type >= 32 || !(exp->ex_layout_types & (1 << layout_type))) {
-> +	if (layout_type >= LAYOUT_TYPE_MAX ||
-> +	    !(exp->ex_layout_types & (1 << layout_type))) {
+On Tue, May 09, 2017 at 09:30:41AM -0400, Jeff Layton wrote:
+> On Tue, 2017-05-09 at 15:11 +0200, Christoph Hellwig wrote:
+> > On Tue, May 09, 2017 at 11:43:49AM +0200, Mkrtchyan, Tigran wrote:
+> > > just out of curiosity: you are talking about increasing type safety, but
+> > > at the same time replaces arguments to 'const void *data', which will accept
+> > > everything. Is there something special which I don't understand?
+> > 
+> > Nothing special - cast are potentially dangerous in general, and
+> > function pointer cases are especially dangerous as there is no
+> > verify the caller and callee signatures match at all.  As generic
+> > method call patterns need to have private data of some points they
+> > need to have a void pointer somewhere - either in the signature or
+> > as a pointer from a passed structure.  For those the compiler at least
+> > can do some basic sanity checking, and good static analysis tools can
+> > even verify we get the proper object using whole program analysis.
+> 
+> Strong ACK on all of this.
 
-The 32 is there to prevent a shift wrapping bug.  The bit test prevents
-a buffer overflow so this can't actually overflow.  But this change
-doesn't hurt and is probably cleaner.
+Also very much in favor of these patches.
 
-exp->ex_layout_types  is set in nfsd4_setup_layout_type().
+Though I can't actually remembering seeing a bug here.  So... 
 
-regards,
-dan carpenter
+> I've been bitten before (in userland code) by having a function that
+> took 3 arguments cast to something that took 2. So the callers ends up
+> passing in too few arguments, and the function then just ends up using
+> junk out of a register or off the the stack to satisfy the missing one.
+> Not fun to track down.
 
+OK, that's good to know.
+
+I'm more worried about the encoders and decoders themselves, but I don't
+know what to do about them.
+
+--b.
