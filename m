@@ -1,233 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:55346 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:49180 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752770AbdEIJUW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:20:22 -0400
+        with ESMTP id S1752770AbdEIJUR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:20:17 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/32] lockd: fix encoder callback prototypes
-Date: Tue,  9 May 2017 11:19:41 +0200
-Message-Id: <20170509092010.30752-4-hch@lst.de>
+Subject: [PATCH 01/32] sunrpc: properly type argument to kxdreproc_t
+Date: Tue,  9 May 2017 11:19:39 +0200
+Message-Id: <20170509092010.30752-2-hch@lst.de>
 In-Reply-To: <20170509092010.30752-1-hch@lst.de>
 References: <20170509092010.30752-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Declare the p_encode callbacks with the proper prototype instead of
-casting to kxdreproc_t and losing all type safety.
+Pass struct rpc_request as the first argument instead of an untyped blob,
+and mark the data object as const.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/lockd/clnt4xdr.c | 22 +++++++++++++++-------
- fs/lockd/clntxdr.c  | 22 +++++++++++++++-------
- fs/lockd/mon.c      |  8 ++++----
- 3 files changed, 34 insertions(+), 18 deletions(-)
+ include/linux/sunrpc/xdr.h | 5 ++++-
+ net/sunrpc/clnt.c          | 3 ++-
+ 2 files changed, 6 insertions(+), 2 deletions(-)
 
-diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
-index d3e40db28930..3cbad662120a 100644
---- a/fs/lockd/clnt4xdr.c
-+++ b/fs/lockd/clnt4xdr.c
-@@ -381,8 +381,9 @@ static void encode_nlm4_lock(struct xdr_stream *xdr,
-  */
- static void nlm4_xdr_enc_testargs(struct rpc_rqst *req,
- 				  struct xdr_stream *xdr,
--				  const struct nlm_args *args)
-+				  const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 054c8cde18f3..290f189de200 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -17,6 +17,8 @@
+ #include <asm/unaligned.h>
+ #include <linux/scatterlist.h>
  
- 	encode_cookie(xdr, &args->cookie);
-@@ -402,8 +403,9 @@ static void nlm4_xdr_enc_testargs(struct rpc_rqst *req,
-  */
- static void nlm4_xdr_enc_lockargs(struct rpc_rqst *req,
- 				  struct xdr_stream *xdr,
--				  const struct nlm_args *args)
-+				  const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
- 
- 	encode_cookie(xdr, &args->cookie);
-@@ -424,8 +426,9 @@ static void nlm4_xdr_enc_lockargs(struct rpc_rqst *req,
-  */
- static void nlm4_xdr_enc_cancargs(struct rpc_rqst *req,
- 				  struct xdr_stream *xdr,
--				  const struct nlm_args *args)
-+				  const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
- 
- 	encode_cookie(xdr, &args->cookie);
-@@ -442,8 +445,9 @@ static void nlm4_xdr_enc_cancargs(struct rpc_rqst *req,
-  */
- static void nlm4_xdr_enc_unlockargs(struct rpc_rqst *req,
- 				    struct xdr_stream *xdr,
--				    const struct nlm_args *args)
-+				    const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
- 
- 	encode_cookie(xdr, &args->cookie);
-@@ -458,8 +462,10 @@ static void nlm4_xdr_enc_unlockargs(struct rpc_rqst *req,
-  */
- static void nlm4_xdr_enc_res(struct rpc_rqst *req,
- 			     struct xdr_stream *xdr,
--			     const struct nlm_res *result)
-+			     const void *data)
- {
-+	const struct nlm_res *result = data;
++struct rpc_rqst;
 +
- 	encode_cookie(xdr, &result->cookie);
- 	encode_nlm4_stat(xdr, result->status);
- }
-@@ -479,8 +485,10 @@ static void nlm4_xdr_enc_res(struct rpc_rqst *req,
+ /*
+  * Buffer adjustment
   */
- static void nlm4_xdr_enc_testres(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 const struct nlm_res *result)
-+				 const void *data)
- {
-+	const struct nlm_res *result = data;
-+
- 	encode_cookie(xdr, &result->cookie);
- 	encode_nlm4_stat(xdr, result->status);
- 	if (result->status == nlm_lck_denied)
-@@ -566,7 +574,7 @@ static int nlm4_xdr_dec_res(struct rpc_rqst *req,
- #define PROC(proc, argtype, restype)					\
- [NLMPROC_##proc] = {							\
- 	.p_proc      = NLMPROC_##proc,					\
--	.p_encode    = (kxdreproc_t)nlm4_xdr_enc_##argtype,		\
-+	.p_encode    = nlm4_xdr_enc_##argtype,				\
- 	.p_decode    = (kxdrdproc_t)nlm4_xdr_dec_##restype,		\
- 	.p_arglen    = NLM4_##argtype##_sz,				\
- 	.p_replen    = NLM4_##restype##_sz,				\
-diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
-index 3e9f7874b975..825c0fde8c80 100644
---- a/fs/lockd/clntxdr.c
-+++ b/fs/lockd/clntxdr.c
-@@ -374,8 +374,9 @@ static void encode_nlm_lock(struct xdr_stream *xdr,
+@@ -222,7 +224,8 @@ struct xdr_stream {
+ /*
+  * These are the xdr_stream style generic XDR encode and decode functions.
   */
- static void nlm_xdr_enc_testargs(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 const struct nlm_args *args)
-+				 const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
+-typedef void	(*kxdreproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
++typedef void	(*kxdreproc_t)(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
++		const void *obj);
+ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
  
- 	encode_cookie(xdr, &args->cookie);
-@@ -395,8 +396,9 @@ static void nlm_xdr_enc_testargs(struct rpc_rqst *req,
-  */
- static void nlm_xdr_enc_lockargs(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 const struct nlm_args *args)
-+				 const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
- 
- 	encode_cookie(xdr, &args->cookie);
-@@ -417,8 +419,9 @@ static void nlm_xdr_enc_lockargs(struct rpc_rqst *req,
-  */
- static void nlm_xdr_enc_cancargs(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 const struct nlm_args *args)
-+				 const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
- 
- 	encode_cookie(xdr, &args->cookie);
-@@ -435,8 +438,9 @@ static void nlm_xdr_enc_cancargs(struct rpc_rqst *req,
-  */
- static void nlm_xdr_enc_unlockargs(struct rpc_rqst *req,
- 				   struct xdr_stream *xdr,
--				   const struct nlm_args *args)
-+				   const void *data)
- {
-+	const struct nlm_args *args = data;
- 	const struct nlm_lock *lock = &args->lock;
- 
- 	encode_cookie(xdr, &args->cookie);
-@@ -451,8 +455,10 @@ static void nlm_xdr_enc_unlockargs(struct rpc_rqst *req,
-  */
- static void nlm_xdr_enc_res(struct rpc_rqst *req,
- 			    struct xdr_stream *xdr,
--			    const struct nlm_res *result)
-+			    const void *data)
- {
-+	const struct nlm_res *result = data;
-+
- 	encode_cookie(xdr, &result->cookie);
- 	encode_nlm_stat(xdr, result->status);
- }
-@@ -479,8 +485,10 @@ static void encode_nlm_testrply(struct xdr_stream *xdr,
- 
- static void nlm_xdr_enc_testres(struct rpc_rqst *req,
- 				struct xdr_stream *xdr,
--				const struct nlm_res *result)
-+				const void *data)
- {
-+	const struct nlm_res *result = data;
-+
- 	encode_cookie(xdr, &result->cookie);
- 	encode_nlm_stat(xdr, result->status);
- 	encode_nlm_testrply(xdr, result);
-@@ -564,7 +572,7 @@ static int nlm_xdr_dec_res(struct rpc_rqst *req,
- #define PROC(proc, argtype, restype)	\
- [NLMPROC_##proc] = {							\
- 	.p_proc      = NLMPROC_##proc,					\
--	.p_encode    = (kxdreproc_t)nlm_xdr_enc_##argtype,		\
-+	.p_encode    = nlm_xdr_enc_##argtype,		\
- 	.p_decode    = (kxdrdproc_t)nlm_xdr_dec_##restype,		\
- 	.p_arglen    = NLM_##argtype##_sz,				\
- 	.p_replen    = NLM_##restype##_sz,				\
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 19166d4a8d31..8043fd4b8a5c 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -476,14 +476,14 @@ static void encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
+ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 52da3ce54bb5..38bab2da4155 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2484,7 +2484,8 @@ rpc_verify_header(struct rpc_task *task)
+ 	goto out_garbage;
  }
  
- static void nsm_xdr_enc_mon(struct rpc_rqst *req, struct xdr_stream *xdr,
--			    const struct nsm_args *argp)
-+			    const void *argp)
+-static void rpcproc_encode_null(void *rqstp, struct xdr_stream *xdr, void *obj)
++static void rpcproc_encode_null(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
++		const void *obj)
  {
- 	encode_mon_id(xdr, argp);
- 	encode_priv(xdr, argp);
  }
  
- static void nsm_xdr_enc_unmon(struct rpc_rqst *req, struct xdr_stream *xdr,
--			      const struct nsm_args *argp)
-+			      const void *argp)
- {
- 	encode_mon_id(xdr, argp);
- }
-@@ -532,7 +532,7 @@ static int nsm_xdr_dec_stat(struct rpc_rqst *rqstp,
- static struct rpc_procinfo	nsm_procedures[] = {
- [NSMPROC_MON] = {
- 		.p_proc		= NSMPROC_MON,
--		.p_encode	= (kxdreproc_t)nsm_xdr_enc_mon,
-+		.p_encode	= nsm_xdr_enc_mon,
- 		.p_decode	= (kxdrdproc_t)nsm_xdr_dec_stat_res,
- 		.p_arglen	= SM_mon_sz,
- 		.p_replen	= SM_monres_sz,
-@@ -541,7 +541,7 @@ static struct rpc_procinfo	nsm_procedures[] = {
- 	},
- [NSMPROC_UNMON] = {
- 		.p_proc		= NSMPROC_UNMON,
--		.p_encode	= (kxdreproc_t)nsm_xdr_enc_unmon,
-+		.p_encode	= nsm_xdr_enc_unmon,
- 		.p_decode	= (kxdrdproc_t)nsm_xdr_dec_stat,
- 		.p_arglen	= SM_mon_id_sz,
- 		.p_replen	= SM_unmonres_sz,
 -- 
 2.11.0
 
