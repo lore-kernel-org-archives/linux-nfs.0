@@ -1,62 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48751 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750805AbdEISas (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 14:30:48 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-Subject: Re: [PATCH] NFSv4: Fix exclusive create attributes encoding
-Date: Tue, 9 May 2017 18:30:42 +0000
-Message-ID: <1494354640.109664.1.camel@primarydata.com>
-References: <20170508142648.128870-1-trond.myklebust@primarydata.com>
-         <7609d559-b252-af61-6de2-01843df9bf50@gmail.com>
-In-Reply-To: <7609d559-b252-af61-6de2-01843df9bf50@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qt0-f175.google.com ([209.85.216.175]:35426 "EHLO
+        mail-qt0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751471AbdEISkc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 14:40:32 -0400
+Received: by mail-qt0-f175.google.com with SMTP id n4so8568656qte.2
+        for <linux-nfs@vger.kernel.org>; Tue, 09 May 2017 11:40:31 -0700 (PDT)
+Message-ID: <1494355229.2659.15.camel@redhat.com>
+Subject: Re: [PATCH 4/9] Implement fsopen() to prepare for a mount
+From: Jeff Layton <jlayton@redhat.com>
+To: Karel Zak <kzak@redhat.com>, David Howells <dhowells@redhat.com>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        mszeredi@redhat.com
+Date: Tue, 09 May 2017 14:40:29 -0400
+In-Reply-To: <20170504133414.ytfdumdeuhh5txkw@ws.net.home>
+References: <20170504104045.6sh3dqofcii6kk2e@ws.net.home>
+         <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
+         <149382750838.30481.8003919639826341255.stgit@warthog.procyon.org.uk>
+         <15169.1493903211@warthog.procyon.org.uk>
+         <20170504133414.ytfdumdeuhh5txkw@ws.net.home>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTA1LTA5IGF0IDEzOjU5IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gSGkgVHJvbmQsDQo+IA0KPiBPbiAwNS8wOC8yMDE3IDEwOjI2IEFNLCBUcm9uZCBNeWtsZWJ1
-c3Qgd3JvdGU6DQo+ID4gV2hlbiB1c2luZyBORlM0X0NSRUFURV9FWENMVVNJVkU0XzEgbW9kZSwg
-dGhlIGNsaWVudCB3aWxsDQo+ID4gb3ZlcmVzdGltYXRlIHRoZQ0KPiA+IGFtb3VudCBvZiBzcGFj
-ZSB0aGF0IGl0IG5lZWRzIGZvciB0aGUgYXR0cmlidXRlcyBiZWNhdXNlIGl0IGRvZXMgc28NCj4g
-PiBiZWZvcmUgY2hlY2tpbmcgd2hldGhlciBvciBub3QgdGhlIHNlcnZlciBzdXBwb3J0cyBhIGdp
-dmVuDQo+ID4gYXR0cmlidXRlLg0KPiA+IA0KPiA+IEZpeCBieSBjaGVja2luZyB0aGUgYXR0cmli
-dXRlIG1hc2sgZWFybGllci4NCj4gDQo+IEN0aG9uIGdlbmVyYWwgdGVzdHMgY29uc2lzdGVudGx5
-IGZhaWwgd2l0aCBJTyBlcnJvcnMgb25jZSB0aGlzIHBhdGNoDQo+IGlzIGFwcGxpZWQsIGJ1dCBv
-bmx5IGZvciBORlMgdjQuMSAodjIsIHYzLCB2NC4wLCBhbmQgdjQuMiBhbGwgd29yaw0KPiBmaW5l
-KS7CoMKgSGVyZSBpcyB0aGUgb3V0cHV0IHRoYXQgaXQgZ2l2ZXMgbWU6DQo+IA0KPiBHRU5FUkFM
-IFRFU1RTOiBkaXJlY3RvcnkgL25mcy9nZW5lcmFsDQo+IGlmIHRlc3QgISAteCBydW50ZXN0czsg
-dGhlbiBjaG1vZCBhK3ggcnVudGVzdHM7IGZpDQo+IGNkIC9uZnMvZ2VuZXJhbDsgcm0gLWYgTWFr
-ZWZpbGUgcnVudGVzdHMgcnVudGVzdHMud3JrICouc2ggKi5jDQo+IG1rZHVtbXkgcm1kdW1teSBu
-cm9mZi5pbiBtYWtlZmlsZS50c3QNCj4gY3AgTWFrZWZpbGUgcnVudGVzdHMgcnVudGVzdHMud3Jr
-ICouc2ggKi5jIG1rZHVtbXkgcm1kdW1teSBucm9mZi5pbg0KPiBtYWtlZmlsZS50c3QgL25mcy9n
-ZW5lcmFsDQo+IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFsL01h
-a2VmaWxlJzogSW5wdXQvb3V0cHV0DQo+IGVycm9yDQo+IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3Vs
-YXIgZmlsZSAnL25mcy9nZW5lcmFsL3J1bnRlc3RzJzogSW5wdXQvb3V0cHV0DQo+IGVycm9yDQo+
-IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFsL3J1bnRlc3RzLndy
-ayc6DQo+IElucHV0L291dHB1dCBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZp
-bGUgJy9uZnMvZ2VuZXJhbC9sYXJnZTQuc2gnOiBJbnB1dC9vdXRwdXQNCj4gZXJyb3INCj4gY3A6
-IGNhbm5vdCBjcmVhdGUgcmVndWxhciBmaWxlICcvbmZzL2dlbmVyYWwvbGFyZ2UuYyc6IElucHV0
-L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZpbGUgJy9uZnMv
-Z2VuZXJhbC9sYXJnZTEuYyc6IElucHV0L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNy
-ZWF0ZSByZWd1bGFyIGZpbGUgJy9uZnMvZ2VuZXJhbC9sYXJnZTIuYyc6IElucHV0L291dHB1dA0K
-PiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZpbGUgJy9uZnMvZ2VuZXJhbC9s
-YXJnZTMuYyc6IElucHV0L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1
-bGFyIGZpbGUgJy9uZnMvZ2VuZXJhbC9zdGF0LmMnOiBJbnB1dC9vdXRwdXQNCj4gZXJyb3INCj4g
-Y3A6IGNhbm5vdCBjcmVhdGUgcmVndWxhciBmaWxlICcvbmZzL2dlbmVyYWwvbWtkdW1teSc6IElu
-cHV0L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZpbGUgJy9u
-ZnMvZ2VuZXJhbC9ybWR1bW15JzogSW5wdXQvb3V0cHV0DQo+IGVycm9yDQo+IGNwOiBjYW5ub3Qg
-Y3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFsL25yb2ZmLmluJzogSW5wdXQvb3V0cHV0
-DQo+IGVycm9yDQo+IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFs
-L21ha2VmaWxlLnRzdCc6DQo+IElucHV0L291dHB1dCBlcnJvcg0KPiBtYWtlOiAqKiogW01ha2Vm
-aWxlOjMyOiBjb3B5XSBFcnJvciAxDQo+IGdlbmVyYWwgdGVzdHMgZmFpbGVkDQo+IA0KDQpEdWgu
-Li4gVGhlIExpbnV4IHNlcnZlciBpcyByZXR1cm5pbmcgdGhlIGxpc3Qgb2YgX2FsbF8gYXR0cmli
-dXRlcyB3aGVuDQp3ZSBhc2sgZm9yIHN1cHBhdHRyX2V4Y2xjcmVhdCBpbnN0ZWFkIG9mIHNhbml0
-aXNpbmcgYnkgbWlub3IgdmVyc2lvbi4NCkJydWNlPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
-QHByaW1hcnlkYXRhLmNvbQ0K
+On Thu, 2017-05-04 at 15:34 +0200, Karel Zak wrote:
+> On Thu, May 04, 2017 at 02:06:51PM +0100, David Howells wrote:
+> > Karel Zak <kzak@redhat.com> wrote:
+> > > The very basic mount(2) problem is that you have to parse
+> > > /proc/self/mountinfo to get information about the mounted filesystem.
+> > > It seems that your read() is also one way communication.
+> > > 
+> > > What we really need is to have a way how to specify *what* you want to
+> > > read. The error message is not enough, I want to know the finally used
+> > > mount options, mount ID, etc. It would be nice to have something like
+> > > 
+> > > 
+> > >    fsmount(mfd, AT_FDCWD, "/mnt", 0);
+> > > 
+> > >    write(mfd, "o");
+> > >    read(mfd, ....);     // read mount options
+> > > 
+> > >    write(mdf, "i");
+> > >    read(mfd, ....);     // read mount ID
+> > > 
+> > > 
+> > > but it seems ugly. Maybe introduce another function like 
+> > > 
+> > >     fsinfo(mdf, "o", buf, bufsz)
+> > > 
 
+Not sure that it's any prettier, but you could use an ioctl to switch
+between different read requests:
+
+ioctl(mfd, FSOPEN_READ_OPTIONS);
+read(mfd, ....);
+
+ioctl(mfd, FSOPEN_READ_MOUNT_ID);
+read(mfd, ....);
+
+> > > to get mount options (etc.) and to avoid separate write & read.
+> > 
+> > What is it you're trying to do?  Just read back the state of the new mount?
+> 
+>  ...read back the state of the new mount, because for example mount
+>  options can be modified by FS driver. It would be also nice to have
+>  API to get state of arbitrary mount without parsing mountinfo (the
+>  file is huge on some systems).
+> 
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
