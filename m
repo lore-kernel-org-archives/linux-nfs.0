@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44674 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49084 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753437AbdEIPt6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 11:49:58 -0400
+        id S1754866AbdEIPuB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 11:50:01 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -18,53 +18,41 @@ Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
         neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
         josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
         bo.li.liu@oracle.com
-Subject: [PATCH v4 05/27] btrfs: btrfs_wait_tree_block_writeback can be void return
-Date: Tue,  9 May 2017 11:49:08 -0400
-Message-Id: <20170509154930.29524-6-jlayton@redhat.com>
+Subject: [PATCH v4 09/27] nilfs2: set the mapping error when calling SetPageError on writeback
+Date: Tue,  9 May 2017 11:49:12 -0400
+Message-Id: <20170509154930.29524-10-jlayton@redhat.com>
 In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nothing checks its return value.
+In a later patch, we're going to want to make the fsync codepath not do
+a TestClearPageError call as that can override the error set in the
+address space. To do that though, we need to ensure that filesystems
+that are relying on the PG_error bit for reporting writeback errors
+also set an error in the address space.
 
+Ensure that this is set in nilfs2.
+
+Acked-by: Ryusuke Konishi <konishi.ryusuke@lab.ntt.co.jp>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/btrfs/disk-io.c | 6 +++---
- fs/btrfs/disk-io.h | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/nilfs2/segment.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
-index eb1ee7b6f532..8c479bd5534a 100644
---- a/fs/btrfs/disk-io.c
-+++ b/fs/btrfs/disk-io.c
-@@ -1222,10 +1222,10 @@ int btrfs_write_tree_block(struct extent_buffer *buf)
- 					buf->start + buf->len - 1);
- }
+diff --git a/fs/nilfs2/segment.c b/fs/nilfs2/segment.c
+index febed1217b3f..612d4b446793 100644
+--- a/fs/nilfs2/segment.c
++++ b/fs/nilfs2/segment.c
+@@ -1745,6 +1745,7 @@ static void nilfs_end_page_io(struct page *page, int err)
+ 	} else {
+ 		__set_page_dirty_nobuffers(page);
+ 		SetPageError(page);
++		mapping_set_error(page_mapping(page), err);
+ 	}
  
--int btrfs_wait_tree_block_writeback(struct extent_buffer *buf)
-+void btrfs_wait_tree_block_writeback(struct extent_buffer *buf)
- {
--	return filemap_fdatawait_range(buf->pages[0]->mapping,
--				       buf->start, buf->start + buf->len - 1);
-+	filemap_fdatawait_range(buf->pages[0]->mapping,
-+			        buf->start, buf->start + buf->len - 1);
- }
- 
- struct extent_buffer *read_tree_block(struct btrfs_fs_info *fs_info, u64 bytenr,
-diff --git a/fs/btrfs/disk-io.h b/fs/btrfs/disk-io.h
-index 2e0ec29bfd69..9cc87835abb5 100644
---- a/fs/btrfs/disk-io.h
-+++ b/fs/btrfs/disk-io.h
-@@ -127,7 +127,7 @@ int btrfs_wq_submit_bio(struct btrfs_fs_info *fs_info, struct inode *inode,
- 			extent_submit_bio_hook_t *submit_bio_done);
- unsigned long btrfs_async_submit_limit(struct btrfs_fs_info *info);
- int btrfs_write_tree_block(struct extent_buffer *buf);
--int btrfs_wait_tree_block_writeback(struct extent_buffer *buf);
-+void btrfs_wait_tree_block_writeback(struct extent_buffer *buf);
- int btrfs_init_log_root_tree(struct btrfs_trans_handle *trans,
- 			     struct btrfs_fs_info *fs_info);
- int btrfs_add_log_tree(struct btrfs_trans_handle *trans,
+ 	end_page_writeback(page);
 -- 
 2.9.3
 
