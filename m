@@ -1,109 +1,420 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:43249 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:48201 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752858AbdEIJUa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:20:30 -0400
+        with ESMTP id S1752800AbdEIJUt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:20:49 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/32] sunrpc/auth_gss: nfsd: fix encoder callback prototypes
-Date: Tue,  9 May 2017 11:19:44 +0200
-Message-Id: <20170509092010.30752-7-hch@lst.de>
+Subject: [PATCH 13/32] nfs: don't cast callback decode/proc/encode routines
+Date: Tue,  9 May 2017 11:19:51 +0200
+Message-Id: <20170509092010.30752-14-hch@lst.de>
 In-Reply-To: <20170509092010.30752-1-hch@lst.de>
 References: <20170509092010.30752-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Declare the p_encode callbacks with the proper prototype instead of
-casting to kxdreproc_t and losing all type safety.
+Instead declare all functions with the proper methods signature.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- net/sunrpc/auth_gss/gss_rpc_upcall.c |  2 +-
- net/sunrpc/auth_gss/gss_rpc_xdr.c    | 11 ++++++-----
- net/sunrpc/auth_gss/gss_rpc_xdr.h    |  2 +-
- 3 files changed, 8 insertions(+), 7 deletions(-)
+ fs/nfs/callback.h      | 27 ++++++----------
+ fs/nfs/callback_proc.c | 33 ++++++++++++-------
+ fs/nfs/callback_xdr.c  | 86 +++++++++++++++++++++++++++-----------------------
+ 3 files changed, 77 insertions(+), 69 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index f0c6a8c78a56..45ab924da726 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -55,7 +55,7 @@ enum {
- #define PROC(proc, name)				\
- [GSSX_##proc] = {					\
- 	.p_proc   = GSSX_##proc,			\
--	.p_encode = (kxdreproc_t)gssx_enc_##name,	\
-+	.p_encode = gssx_enc_##name,	\
- 	.p_decode = (kxdrdproc_t)gssx_dec_##name,	\
- 	.p_arglen = GSSX_ARG_##name##_sz,		\
- 	.p_replen = GSSX_RES_##name##_sz, 		\
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 25d9a9cf7b66..5e54f4743092 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -44,7 +44,7 @@ static int gssx_dec_bool(struct xdr_stream *xdr, u32 *v)
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index c701c308fac5..3dc54d7cb19c 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -114,8 +114,7 @@ struct cb_sequenceres {
+ 	uint32_t			csr_target_highestslotid;
+ };
+ 
+-extern __be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+-				       struct cb_sequenceres *res,
++extern __be32 nfs4_callback_sequence(void *argp, void *resp,
+ 				       struct cb_process_state *cps);
+ 
+ #define RCA4_TYPE_MASK_RDATA_DLG	0
+@@ -134,15 +133,13 @@ struct cb_recallanyargs {
+ 	uint32_t	craa_type_mask;
+ };
+ 
+-extern __be32 nfs4_callback_recallany(struct cb_recallanyargs *args,
+-					void *dummy,
++extern __be32 nfs4_callback_recallany(void *argp, void *resp,
+ 					struct cb_process_state *cps);
+ 
+ struct cb_recallslotargs {
+ 	uint32_t	crsa_target_highest_slotid;
+ };
+-extern __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args,
+-					 void *dummy,
++extern __be32 nfs4_callback_recallslot(void *argp, void *resp,
+ 					 struct cb_process_state *cps);
+ 
+ struct cb_layoutrecallargs {
+@@ -159,9 +156,8 @@ struct cb_layoutrecallargs {
+ 	};
+ };
+ 
+-extern __be32 nfs4_callback_layoutrecall(
+-	struct cb_layoutrecallargs *args,
+-	void *dummy, struct cb_process_state *cps);
++extern __be32 nfs4_callback_layoutrecall(void *argp, void *resp,
++		struct cb_process_state *cps);
+ 
+ struct cb_devicenotifyitem {
+ 	uint32_t		cbd_notify_type;
+@@ -175,9 +171,8 @@ struct cb_devicenotifyargs {
+ 	struct cb_devicenotifyitem	 *devs;
+ };
+ 
+-extern __be32 nfs4_callback_devicenotify(
+-	struct cb_devicenotifyargs *args,
+-	void *dummy, struct cb_process_state *cps);
++extern __be32 nfs4_callback_devicenotify(void *argp, void *resp,
++		struct cb_process_state *cps);
+ 
+ struct cb_notify_lock_args {
+ 	struct nfs_fh			cbnl_fh;
+@@ -185,15 +180,13 @@ struct cb_notify_lock_args {
+ 	bool				cbnl_valid;
+ };
+ 
+-extern __be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args,
+-					 void *dummy,
++extern __be32 nfs4_callback_notify_lock(void *argp, void *resp,
+ 					 struct cb_process_state *cps);
+ #endif /* CONFIG_NFS_V4_1 */
+ extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
+-extern __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+-				    struct cb_getattrres *res,
++extern __be32 nfs4_callback_getattr(void *argp, void *resp,
+ 				    struct cb_process_state *cps);
+-extern __be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
++extern __be32 nfs4_callback_recall(void *argp, void *resp,
+ 				   struct cb_process_state *cps);
+ #if IS_ENABLED(CONFIG_NFS_V4)
+ extern int nfs_callback_up(u32 minorversion, struct rpc_xprt *xprt);
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index f073a6d2c6a5..d682c818bf2a 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -19,10 +19,11 @@
+ 
+ #define NFSDBG_FACILITY NFSDBG_CALLBACK
+ 
+-__be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+-			     struct cb_getattrres *res,
++__be32 nfs4_callback_getattr(void *argp, void *resp,
+ 			     struct cb_process_state *cps)
+ {
++	struct cb_getattrargs *args = argp;
++	struct cb_getattrres *res = resp;
+ 	struct nfs_delegation *delegation;
+ 	struct nfs_inode *nfsi;
+ 	struct inode *inode;
+@@ -68,9 +69,10 @@ __be32 nfs4_callback_getattr(struct cb_getattrargs *args,
+ 	return res->status;
  }
  
- static int gssx_enc_buffer(struct xdr_stream *xdr,
--			   gssx_buffer *buf)
-+			   const gssx_buffer *buf)
+-__be32 nfs4_callback_recall(struct cb_recallargs *args, void *dummy,
++__be32 nfs4_callback_recall(void *argp, void *resp,
+ 			    struct cb_process_state *cps)
  {
- 	__be32 *p;
++	struct cb_recallargs *args = argp;
+ 	struct inode *inode;
+ 	__be32 res;
+ 	
+@@ -329,9 +331,10 @@ static u32 do_callback_layoutrecall(struct nfs_client *clp,
  
-@@ -56,7 +56,7 @@ static int gssx_enc_buffer(struct xdr_stream *xdr,
  }
  
- static int gssx_enc_in_token(struct xdr_stream *xdr,
--			     struct gssp_in_token *in)
-+			     const struct gssp_in_token *in)
+-__be32 nfs4_callback_layoutrecall(struct cb_layoutrecallargs *args,
+-				  void *dummy, struct cb_process_state *cps)
++__be32 nfs4_callback_layoutrecall(void *argp, void *resp,
++				  struct cb_process_state *cps)
  {
- 	__be32 *p;
++	struct cb_layoutrecallargs *args = argp;
+ 	u32 res;
  
-@@ -130,7 +130,7 @@ static int gssx_dec_option(struct xdr_stream *xdr,
+ 	dprintk("%s: -->\n", __func__);
+@@ -356,9 +359,10 @@ static void pnfs_recall_all_layouts(struct nfs_client *clp)
+ 	do_callback_layoutrecall(clp, &args);
  }
  
- static int dummy_enc_opt_array(struct xdr_stream *xdr,
--				struct gssx_option_array *oa)
-+				const struct gssx_option_array *oa)
+-__be32 nfs4_callback_devicenotify(struct cb_devicenotifyargs *args,
+-				  void *dummy, struct cb_process_state *cps)
++__be32 nfs4_callback_devicenotify(void *argp, void *resp,
++				  struct cb_process_state *cps)
  {
- 	__be32 *p;
- 
-@@ -348,7 +348,7 @@ static int gssx_dec_status(struct xdr_stream *xdr,
++	struct cb_devicenotifyargs *args = argp;
+ 	int i;
+ 	__be32 res = 0;
+ 	struct nfs_client *clp = cps->clp;
+@@ -500,10 +504,11 @@ static bool referring_call_exists(struct nfs_client *clp,
+ 	return status;
  }
  
- static int gssx_enc_call_ctx(struct xdr_stream *xdr,
--			     struct gssx_call_ctx *ctx)
-+			     const struct gssx_call_ctx *ctx)
+-__be32 nfs4_callback_sequence(struct cb_sequenceargs *args,
+-			      struct cb_sequenceres *res,
++__be32 nfs4_callback_sequence(void *argp, void *resp,
+ 			      struct cb_process_state *cps)
  {
- 	struct gssx_option opt;
++	struct cb_sequenceargs *args = argp;
++	struct cb_sequenceres *res = resp;
+ 	struct nfs4_slot_table *tbl;
+ 	struct nfs4_slot *slot;
+ 	struct nfs_client *clp;
+@@ -604,9 +609,10 @@ validate_bitmap_values(unsigned long mask)
+ 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
+ }
+ 
+-__be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
++__be32 nfs4_callback_recallany(void *argp, void *resp,
+ 			       struct cb_process_state *cps)
+ {
++	struct cb_recallanyargs *args = argp;
+ 	__be32 status;
+ 	fmode_t flags = 0;
+ 
+@@ -639,9 +645,10 @@ __be32 nfs4_callback_recallany(struct cb_recallanyargs *args, void *dummy,
+ }
+ 
+ /* Reduce the fore channel's max_slots to the target value */
+-__be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
++__be32 nfs4_callback_recallslot(void *argp, void *resp,
+ 				struct cb_process_state *cps)
+ {
++	struct cb_recallslotargs *args = argp;
+ 	struct nfs4_slot_table *fc_tbl;
+ 	__be32 status;
+ 
+@@ -664,9 +671,11 @@ __be32 nfs4_callback_recallslot(struct cb_recallslotargs *args, void *dummy,
+ 	return status;
+ }
+ 
+-__be32 nfs4_callback_notify_lock(struct cb_notify_lock_args *args, void *dummy,
++__be32 nfs4_callback_notify_lock(void *argp, void *resp,
+ 				 struct cb_process_state *cps)
+ {
++	struct cb_notify_lock_args *args = argp;
++
+ 	if (!cps->clp) /* set in cb_sequence */
+ 		return htonl(NFS4ERR_OP_NOT_IN_SESSION);
+ 
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index d051fc3583a9..f2b6580c73e9 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -43,16 +43,11 @@
+ /* Internal error code */
+ #define NFS4ERR_RESOURCE_HDR	11050
+ 
+-typedef __be32 (*callback_process_op_t)(void *, void *,
+-					struct cb_process_state *);
+-typedef __be32 (*callback_decode_arg_t)(struct svc_rqst *, struct xdr_stream *, void *);
+-typedef __be32 (*callback_encode_res_t)(struct svc_rqst *, struct xdr_stream *, void *);
+-
+-
+ struct callback_op {
+-	callback_process_op_t process_op;
+-	callback_decode_arg_t decode_args;
+-	callback_encode_res_t encode_res;
++	__be32 (*process_op)(void *, void *, struct cb_process_state *);
++	__be32 (*decode_args)(struct svc_rqst *, struct xdr_stream *, void *);
++	__be32 (*encode_res)(struct svc_rqst *, struct xdr_stream *,
++			const void *);
+ 	long res_maxsize;
+ };
+ 
+@@ -186,8 +181,10 @@ static __be32 decode_op_hdr(struct xdr_stream *xdr, unsigned int *op)
+ 	return 0;
+ }
+ 
+-static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr, struct cb_getattrargs *args)
++static __be32 decode_getattr_args(struct svc_rqst *rqstp,
++		struct xdr_stream *xdr, void *argp)
+ {
++	struct cb_getattrargs *args = argp;
+ 	__be32 status;
+ 
+ 	status = decode_fh(xdr, &args->fh);
+@@ -199,8 +196,10 @@ static __be32 decode_getattr_args(struct svc_rqst *rqstp, struct xdr_stream *xdr
+ 	return status;
+ }
+ 
+-static __be32 decode_recall_args(struct svc_rqst *rqstp, struct xdr_stream *xdr, struct cb_recallargs *args)
++static __be32 decode_recall_args(struct svc_rqst *rqstp,
++		struct xdr_stream *xdr, void *argp)
+ {
++	struct cb_recallargs *args = argp;
  	__be32 *p;
-@@ -733,8 +733,9 @@ static int gssx_enc_cb(struct xdr_stream *xdr, struct gssx_cb *cb)
+ 	__be32 status;
  
- void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 struct gssx_arg_accept_sec_context *arg)
-+				 const void *data)
+@@ -227,9 +226,9 @@ static __be32 decode_layout_stateid(struct xdr_stream *xdr, nfs4_stateid *statei
+ }
+ 
+ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
+-				       struct xdr_stream *xdr,
+-				       struct cb_layoutrecallargs *args)
++				       struct xdr_stream *xdr, void *argp)
  {
-+	const struct gssx_arg_accept_sec_context *arg = data;
- 	int err;
- 
- 	err = gssx_enc_call_ctx(xdr, &arg->call_ctx);
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-index 9d88c6239f01..87cd719ca0ad 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-@@ -179,7 +179,7 @@ struct gssx_res_accept_sec_context {
- #define gssx_dec_init_sec_context NULL
- void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 struct gssx_arg_accept_sec_context *args);
-+				 const void *data);
- int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
++	struct cb_layoutrecallargs *args = argp;
+ 	__be32 *p;
+ 	__be32 status = 0;
+ 	uint32_t iomode;
+@@ -288,8 +287,9 @@ static __be32 decode_layoutrecall_args(struct svc_rqst *rqstp,
+ static
+ __be32 decode_devicenotify_args(struct svc_rqst *rqstp,
  				struct xdr_stream *xdr,
- 				struct gssx_res_accept_sec_context *res);
+-				struct cb_devicenotifyargs *args)
++				void *argp)
+ {
++	struct cb_devicenotifyargs *args = argp;
+ 	__be32 *p;
+ 	__be32 status = 0;
+ 	u32 tmp;
+@@ -429,8 +429,9 @@ static __be32 decode_rc_list(struct xdr_stream *xdr,
+ 
+ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
+ 					struct xdr_stream *xdr,
+-					struct cb_sequenceargs *args)
++					void *argp)
+ {
++	struct cb_sequenceargs *args = argp;
+ 	__be32 *p;
+ 	int i;
+ 	__be32 status;
+@@ -491,8 +492,9 @@ static __be32 decode_cb_sequence_args(struct svc_rqst *rqstp,
+ 
+ static __be32 decode_recallany_args(struct svc_rqst *rqstp,
+ 				      struct xdr_stream *xdr,
+-				      struct cb_recallanyargs *args)
++				      void *argp)
+ {
++	struct cb_recallanyargs *args = argp;
+ 	uint32_t bitmap[2];
+ 	__be32 *p, status;
+ 
+@@ -510,8 +512,9 @@ static __be32 decode_recallany_args(struct svc_rqst *rqstp,
+ 
+ static __be32 decode_recallslot_args(struct svc_rqst *rqstp,
+ 					struct xdr_stream *xdr,
+-					struct cb_recallslotargs *args)
++					void *argp)
+ {
++	struct cb_recallslotargs *args = argp;
+ 	__be32 *p;
+ 
+ 	p = read_buf(xdr, 4);
+@@ -551,8 +554,10 @@ static __be32 decode_lockowner(struct xdr_stream *xdr, struct cb_notify_lock_arg
+ 	return 0;
+ }
+ 
+-static __be32 decode_notify_lock_args(struct svc_rqst *rqstp, struct xdr_stream *xdr, struct cb_notify_lock_args *args)
++static __be32 decode_notify_lock_args(struct svc_rqst *rqstp,
++		struct xdr_stream *xdr, void *argp)
+ {
++	struct cb_notify_lock_args *args = argp;
+ 	__be32 status;
+ 
+ 	status = decode_fh(xdr, &args->cbnl_fh);
+@@ -685,8 +690,10 @@ static __be32 encode_op_hdr(struct xdr_stream *xdr, uint32_t op, __be32 res)
+ 	return 0;
+ }
+ 
+-static __be32 encode_getattr_res(struct svc_rqst *rqstp, struct xdr_stream *xdr, const struct cb_getattrres *res)
++static __be32 encode_getattr_res(struct svc_rqst *rqstp, struct xdr_stream *xdr,
++		const void *resp)
+ {
++	const struct cb_getattrres *res = resp;
+ 	__be32 *savep = NULL;
+ 	__be32 status = res->status;
+ 	
+@@ -728,8 +735,9 @@ static __be32 encode_sessionid(struct xdr_stream *xdr,
+ 
+ static __be32 encode_cb_sequence_res(struct svc_rqst *rqstp,
+ 				       struct xdr_stream *xdr,
+-				       const struct cb_sequenceres *res)
++				       const void *resp)
+ {
++	const struct cb_sequenceres *res = resp;
+ 	__be32 *p;
+ 	__be32 status = res->csr_status;
+ 
+@@ -993,48 +1001,46 @@ static struct callback_op callback_ops[] = {
+ 		.res_maxsize = CB_OP_HDR_RES_MAXSZ,
+ 	},
+ 	[OP_CB_GETATTR] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_getattr,
+-		.decode_args = (callback_decode_arg_t)decode_getattr_args,
+-		.encode_res = (callback_encode_res_t)encode_getattr_res,
++		.process_op = nfs4_callback_getattr,
++		.decode_args = decode_getattr_args,
++		.encode_res = encode_getattr_res,
+ 		.res_maxsize = CB_OP_GETATTR_RES_MAXSZ,
+ 	},
+ 	[OP_CB_RECALL] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_recall,
+-		.decode_args = (callback_decode_arg_t)decode_recall_args,
++		.process_op = nfs4_callback_recall,
++		.decode_args = decode_recall_args,
+ 		.res_maxsize = CB_OP_RECALL_RES_MAXSZ,
+ 	},
+ #if defined(CONFIG_NFS_V4_1)
+ 	[OP_CB_LAYOUTRECALL] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_layoutrecall,
+-		.decode_args =
+-			(callback_decode_arg_t)decode_layoutrecall_args,
++		.process_op = nfs4_callback_layoutrecall,
++		.decode_args = decode_layoutrecall_args,
+ 		.res_maxsize = CB_OP_LAYOUTRECALL_RES_MAXSZ,
+ 	},
+ 	[OP_CB_NOTIFY_DEVICEID] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_devicenotify,
+-		.decode_args =
+-			(callback_decode_arg_t)decode_devicenotify_args,
++		.process_op = nfs4_callback_devicenotify,
++		.decode_args = decode_devicenotify_args,
+ 		.res_maxsize = CB_OP_DEVICENOTIFY_RES_MAXSZ,
+ 	},
+ 	[OP_CB_SEQUENCE] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_sequence,
+-		.decode_args = (callback_decode_arg_t)decode_cb_sequence_args,
+-		.encode_res = (callback_encode_res_t)encode_cb_sequence_res,
++		.process_op = nfs4_callback_sequence,
++		.decode_args = decode_cb_sequence_args,
++		.encode_res = encode_cb_sequence_res,
+ 		.res_maxsize = CB_OP_SEQUENCE_RES_MAXSZ,
+ 	},
+ 	[OP_CB_RECALL_ANY] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_recallany,
+-		.decode_args = (callback_decode_arg_t)decode_recallany_args,
++		.process_op = nfs4_callback_recallany,
++		.decode_args = decode_recallany_args,
+ 		.res_maxsize = CB_OP_RECALLANY_RES_MAXSZ,
+ 	},
+ 	[OP_CB_RECALL_SLOT] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_recallslot,
+-		.decode_args = (callback_decode_arg_t)decode_recallslot_args,
++		.process_op = nfs4_callback_recallslot,
++		.decode_args = decode_recallslot_args,
+ 		.res_maxsize = CB_OP_RECALLSLOT_RES_MAXSZ,
+ 	},
+ 	[OP_CB_NOTIFY_LOCK] = {
+-		.process_op = (callback_process_op_t)nfs4_callback_notify_lock,
+-		.decode_args = (callback_decode_arg_t)decode_notify_lock_args,
++		.process_op = nfs4_callback_notify_lock,
++		.decode_args = decode_notify_lock_args,
+ 		.res_maxsize = CB_OP_NOTIFY_LOCK_RES_MAXSZ,
+ 	},
+ #endif /* CONFIG_NFS_V4_1 */
 -- 
 2.11.0
 
