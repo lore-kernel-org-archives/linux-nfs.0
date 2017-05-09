@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45182 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38786 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754978AbdEIPuL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 11:50:11 -0400
+        id S1755038AbdEIPu0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 11:50:26 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -18,34 +18,60 @@ Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
         neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
         josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
         bo.li.liu@oracle.com
-Subject: [PATCH v4 11/27] fuse: set mapping error in writepage_locked when it fails
-Date: Tue,  9 May 2017 11:49:14 -0400
-Message-Id: <20170509154930.29524-12-jlayton@redhat.com>
+Subject: [PATCH v4 16/27] fs: adapt sync_file_range to new reporting infrastructure
+Date: Tue,  9 May 2017 11:49:19 -0400
+Message-Id: <20170509154930.29524-17-jlayton@redhat.com>
 In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This ensures that we see errors on fsync when writeback fails.
+Since it returns errors in a way similar to fsync, have it use the same
+method for returning previously-reported writeback errors.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/fuse/file.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/sync.c | 13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/fs/fuse/file.c b/fs/fuse/file.c
-index ec238fb5a584..07d0efcb050c 100644
---- a/fs/fuse/file.c
-+++ b/fs/fuse/file.c
-@@ -1669,6 +1669,7 @@ static int fuse_writepage_locked(struct page *page)
- err_free:
- 	fuse_request_free(req);
- err:
-+	mapping_set_error(page->mapping, error);
- 	end_page_writeback(page);
- 	return error;
- }
+diff --git a/fs/sync.c b/fs/sync.c
+index 11ba023434b1..89a03b5252d2 100644
+--- a/fs/sync.c
++++ b/fs/sync.c
+@@ -271,8 +271,11 @@ SYSCALL_DEFINE1(fdatasync, unsigned int, fd)
+  *
+  *
+  * SYNC_FILE_RANGE_WAIT_BEFORE and SYNC_FILE_RANGE_WAIT_AFTER will detect any
+- * I/O errors or ENOSPC conditions and will return those to the caller, after
+- * clearing the EIO and ENOSPC flags in the address_space.
++ * error condition that occurred prior to or after writeback, and will return
++ * that to the caller, while advancing the file's errseq_t cursor. Note that
++ * any errors returned here may have occurred in an area of the file that is
++ * not covered by the given range as most filesystems track writeback errors
++ * on a per-address_space basis
+  *
+  * It should be noted that none of these operations write out the file's
+  * metadata.  So unless the application is strictly performing overwrites of
+@@ -282,7 +285,7 @@ SYSCALL_DEFINE1(fdatasync, unsigned int, fd)
+ SYSCALL_DEFINE4(sync_file_range, int, fd, loff_t, offset, loff_t, nbytes,
+ 				unsigned int, flags)
+ {
+-	int ret;
++	int ret, ret2;
+ 	struct fd f;
+ 	struct address_space *mapping;
+ 	loff_t endbyte;			/* inclusive */
+@@ -356,7 +359,9 @@ SYSCALL_DEFINE4(sync_file_range, int, fd, loff_t, offset, loff_t, nbytes,
+ 
+ 	if (flags & SYNC_FILE_RANGE_WAIT_AFTER)
+ 		ret = filemap_fdatawait_range(mapping, offset, endbyte);
+-
++	ret2 = filemap_report_wb_error(f.file);
++	if (!ret)
++		ret = ret2;
+ out_put:
+ 	fdput(f);
+ out:
 -- 
 2.9.3
 
