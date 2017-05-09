@@ -1,25 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:52992 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:55086 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752993AbdEIT4a (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 15:56:30 -0400
-Date: Tue, 9 May 2017 12:56:28 -0700
+        with ESMTP id S1751087AbdEIT5q (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 15:57:46 -0400
+Date: Tue, 9 May 2017 12:57:42 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSv4.1: Work around a Linux server bug...
-Message-ID: <20170509195628.GA22486@infradead.org>
-References: <20170509195335.114163-1-trond.myklebust@primarydata.com>
+To: Colin King <colin.king@canonical.com>
+Cc: Ari Kauppi <ari@synopsys.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: avoid out of bounds read on array nfsd4_layout_ops
+Message-ID: <20170509195742.GB22486@infradead.org>
+References: <20170509133121.26529-1-colin.king@canonical.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170509195335.114163-1-trond.myklebust@primarydata.com>
+In-Reply-To: <20170509133121.26529-1-colin.king@canonical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 09, 2017 at 03:53:35PM -0400, Trond Myklebust wrote:
-> It turns out the Linux server has a bug in its implementation of
-> supattr_exclcreat; it returns the set of all attributes, whether
-> or not they are supported by minor version 1.
+Looks fine,
 
-Are you going to send a fix?
+Reviewed-by: Christoph Hellwig <hch@lst.de>
