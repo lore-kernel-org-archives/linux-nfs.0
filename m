@@ -1,60 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58652 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:42342 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753165AbdEIORJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 10:17:09 -0400
-Date: Tue, 9 May 2017 10:17:08 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@lst.de>,
-        "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 02/32] sunrpc: fix encoder callback prototypes
-Message-ID: <20170509141708.GA18466@fieldses.org>
-References: <20170509092010.30752-1-hch@lst.de>
- <20170509092010.30752-3-hch@lst.de>
- <779451235.5133504.1494323029528.JavaMail.zimbra@desy.de>
- <20170509131108.GA15042@lst.de>
- <1494336641.2659.5.camel@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1494336641.2659.5.camel@redhat.com>
+        id S1754179AbdEIPt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 11:49:59 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
+        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
+        linux-f2fs-devel@lists.sourceforge.net,
+        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+        linux-block@vger.kernel.org
+Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
+        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
+        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
+        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
+        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
+        bo.li.liu@oracle.com
+Subject: [PATCH v4 08/27] dax: set errors in mapping when writeback fails
+Date: Tue,  9 May 2017 11:49:11 -0400
+Message-Id: <20170509154930.29524-9-jlayton@redhat.com>
+In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
+References: <20170509154930.29524-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 09, 2017 at 09:30:41AM -0400, Jeff Layton wrote:
-> On Tue, 2017-05-09 at 15:11 +0200, Christoph Hellwig wrote:
-> > On Tue, May 09, 2017 at 11:43:49AM +0200, Mkrtchyan, Tigran wrote:
-> > > just out of curiosity: you are talking about increasing type safety, but
-> > > at the same time replaces arguments to 'const void *data', which will accept
-> > > everything. Is there something special which I don't understand?
-> > 
-> > Nothing special - cast are potentially dangerous in general, and
-> > function pointer cases are especially dangerous as there is no
-> > verify the caller and callee signatures match at all.  As generic
-> > method call patterns need to have private data of some points they
-> > need to have a void pointer somewhere - either in the signature or
-> > as a pointer from a passed structure.  For those the compiler at least
-> > can do some basic sanity checking, and good static analysis tools can
-> > even verify we get the proper object using whole program analysis.
-> 
-> Strong ACK on all of this.
+Jan's description for this patch is much better than mine, so I'm
+quoting it verbatim here:
 
-Also very much in favor of these patches.
+DAX currently doesn't set errors in the mapping when cache flushing
+fails in dax_writeback_mapping_range(). Since this function can get
+called only from fsync(2) or sync(2), this is actually as good as it can
+currently get since we correctly propagate the error up from
+dax_writeback_mapping_range() to filemap_fdatawrite(). However in the
+future better writeback error handling will enable us to properly report
+these errors on fsync(2) even if there are multiple file descriptors
+open against the file or if sync(2) gets called before fsync(2). So
+convert DAX to using standard error reporting through the mapping.
 
-Though I can't actually remembering seeing a bug here.  So... 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Reviewed-and-Tested-by: Ross Zwisler <ross.zwisler@linux.intel.com>
+---
+ fs/dax.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-> I've been bitten before (in userland code) by having a function that
-> took 3 arguments cast to something that took 2. So the callers ends up
-> passing in too few arguments, and the function then just ends up using
-> junk out of a register or off the the stack to satisfy the missing one.
-> Not fun to track down.
+diff --git a/fs/dax.c b/fs/dax.c
+index 85abd741253d..9b6b04030c3f 100644
+--- a/fs/dax.c
++++ b/fs/dax.c
+@@ -901,8 +901,10 @@ int dax_writeback_mapping_range(struct address_space *mapping,
+ 
+ 			ret = dax_writeback_one(bdev, mapping, indices[i],
+ 					pvec.pages[i]);
+-			if (ret < 0)
++			if (ret < 0) {
++				mapping_set_error(mapping, ret);
+ 				return ret;
++			}
+ 		}
+ 	}
+ 	return 0;
+-- 
+2.9.3
 
-OK, that's good to know.
-
-I'm more worried about the encoders and decoders themselves, but I don't
-know what to do about them.
-
---b.
