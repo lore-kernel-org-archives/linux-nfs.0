@@ -1,93 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f170.google.com ([209.85.216.170]:35918 "EHLO
-        mail-qt0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752856AbdEIMiu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 08:38:50 -0400
-Received: by mail-qt0-f170.google.com with SMTP id m91so75149284qte.3
-        for <linux-nfs@vger.kernel.org>; Tue, 09 May 2017 05:38:49 -0700 (PDT)
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:22441 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751210AbdEIMlL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 08:41:11 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: hch <hch@lst.de>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 14/32] RFC: sunrpc: remove p_count
+Date: Tue, 9 May 2017 12:41:05 +0000
+Message-ID: <1494333661.4209.18.camel@primarydata.com>
+References: <20170509092010.30752-1-hch@lst.de>
+         <20170509092010.30752-15-hch@lst.de>
+In-Reply-To: <20170509092010.30752-15-hch@lst.de>
 MIME-Version: 1.0
-In-Reply-To: <15868.1494323804@warthog.procyon.org.uk>
-References: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
- <149382749941.30481.11685229083280551867.stgit@warthog.procyon.org.uk>
- <CAOssrKc0=geAw04btF9zO29y3=2sP+caF90HySKMbk8NkND3kQ@mail.gmail.com>
- <10943.1494284264@warthog.procyon.org.uk> <CAOssrKexeO8mmFFAPq2jQtO06iqGWDDe8BOUktEkY6UybDBX1Q@mail.gmail.com>
- <15868.1494323804@warthog.procyon.org.uk>
-From: Miklos Szeredi <mszeredi@redhat.com>
-Date: Tue, 9 May 2017 14:38:48 +0200
-Message-ID: <CAOssrKdJbobwX8Ns+2xq0OhdzZSOy5XmD-rKbJdWXGL6eWJkGQ@mail.gmail.com>
-Subject: Re: [PATCH 3/9] VFS: Introduce a mount context
-To: David Howells <dhowells@redhat.com>
-Cc: viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 9, 2017 at 11:56 AM, David Howells <dhowells@redhat.com> wrote:
-> Miklos Szeredi <mszeredi@redhat.com> wrote:
->
->> So say we have commands like
->>
->> "o+ foo"
->> "o- bar"
->
-> The convention seems to be to prepend "no" to things you want to disable, so
-> let's stick with that, e.g.:
->
->         "o foo"
->         "o nobar"
->
-> otherwise we will have to have separate parsers for old mount() and the new sb
-> config code - and not just for NFS, but at least for ext2/3/4 also.
->
-> Further, we can only publish one format in /proc/mounts - and we cannot change
-> that from the foo/nofoo standard we already use as it's part of the UAPI.
+T24gVHVlLCAyMDE3LTA1LTA5IGF0IDExOjE5ICswMjAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gcF9jb3VudCBpcyB0aGUgb25seSB3cml0ZWFibGUgbWVtZWJlciBvZiBzdHJ1Y3QgcnBj
+X3Byb2NpbmZvLCB3aGljaA0KPiBpcw0KPiBhIGdvb2QgY2FuZGlkYXRlIHRvIGJlIGNvbnN0LWlm
+aWVkIGFzIGl0IGNvbnRhaW5zIGZ1bmN0aW9uIHBvaW50ZXJzLg0KPiANCj4gVGhpcyBwYXRjaCBq
+dXN0IHJlbW92ZXMgaXQgYW5kIHJldHVybnMgemVybyBpbiB0aGUgL3Byb2MgZmlsZSBhcyB0aGUN
+Cj4gY291bnQgb2YgY2FsbHMgcGVyIHByb2NlZHVyZSBkb2Vzbid0IHNlZW0gYWxsIHRoYXQgdXNl
+ZnVsLsKgwqBCdXQgaXQncw0KPiBqdXN0IGEgZHVtYiBoYWNrIGFuZCB3ZSBtaWdodCBuZWVkIGEg
+cHJvcGVyIGZpeCBpbnN0ZWFkLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQ2hyaXN0b3BoIEhlbGx3
+aWcgPGhjaEBsc3QuZGU+DQo+IC0tLQ0KPiDCoGluY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaCB8
+IDEgLQ0KPiDCoG5ldC9zdW5ycGMvY2xudC5jwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHwgMSAtDQo+
+IMKgbmV0L3N1bnJwYy9zdGF0cy5jwqDCoMKgwqDCoMKgwqDCoMKgwqB8IDMgKy0tDQo+IMKgMyBm
+aWxlcyBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgNCBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYg
+LS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy9jbG50LmgNCj4gYi9pbmNsdWRlL2xpbnV4L3N1
+bnJwYy9jbG50LmgNCj4gaW5kZXggNjA5NWVjYmEwZGRlLi5kMWY2Nzc4YzdkYTcgMTAwNjQ0DQo+
+IC0tLSBhL2luY2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaA0KPiArKysgYi9pbmNsdWRlL2xpbnV4
+L3N1bnJwYy9jbG50LmgNCj4gQEAgLTk5LDcgKzk5LDYgQEAgc3RydWN0IHJwY19wcm9jaW5mbyB7
+DQo+IMKgCWt4ZHJkcHJvY190CQlwX2RlY29kZTsJLyogWERSIGRlY29kZQ0KPiBmdW5jdGlvbiAq
+Lw0KPiDCoAl1bnNpZ25lZCBpbnQJCXBfYXJnbGVuOwkvKiBhcmd1bWVudCBoZHINCj4gbGVuZ3Ro
+ICh1MzIpICovDQo+IMKgCXVuc2lnbmVkIGludAkJcF9yZXBsZW47CS8qIHJlcGx5IGhkcg0KPiBs
+ZW5ndGggKHUzMikgKi8NCj4gLQl1bnNpZ25lZCBpbnQJCXBfY291bnQ7CS8qIGNhbGwgY291bnQg
+Ki8NCj4gwqAJdW5zaWduZWQgaW50CQlwX3RpbWVyOwkvKiBXaGljaCBSVFQNCj4gdGltZXIgdG8g
+dXNlICovDQo+IMKgCXUzMgkJCXBfc3RhdGlkeDsJLyogV2hpY2gNCj4gcHJvY2VkdXJlIHRvIGFj
+Y291bnQgKi8NCj4gwqAJY29uc3QgY2hhciAqCQlwX25hbWU7CQkvKiBuYW1lDQo+IG9mIHByb2Nl
+ZHVyZSAqLw0KPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQvc3VucnBjL2Ns
+bnQuYw0KPiBpbmRleCBiZGI3NWY3NDg4ZTkuLmU2ZDJhZTQ5ZDc5MSAxMDA2NDQNCj4gLS0tIGEv
+bmV0L3N1bnJwYy9jbG50LmMNCj4gKysrIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gQEAgLTE1MzIs
+NyArMTUzMiw2IEBAIGNhbGxfc3RhcnQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiDCoAkJCShS
+UENfSVNfQVNZTkModGFzaykgPyAiYXN5bmMiIDogInN5bmMiKSk7DQo+IMKgDQo+IMKgCS8qIElu
+Y3JlbWVudCBjYWxsIGNvdW50ICovDQo+IC0JdGFzay0+dGtfbXNnLnJwY19wcm9jLT5wX2NvdW50
+Kys7DQo+IMKgCWNsbnQtPmNsX3N0YXRzLT5ycGNjbnQrKzsNCj4gwqAJdGFzay0+dGtfYWN0aW9u
+ID0gY2FsbF9yZXNlcnZlOw0KPiDCoH0NCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvc3RhdHMu
+YyBiL25ldC9zdW5ycGMvc3RhdHMuYw0KPiBpbmRleCBjYWViMDFhZDJiNWEuLjg4YjFlMThjMGRk
+NiAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9zdGF0cy5jDQo+ICsrKyBiL25ldC9zdW5ycGMv
+c3RhdHMuYw0KPiBAQCAtNTUsOCArNTUsNyBAQCBzdGF0aWMgaW50IHJwY19wcm9jX3Nob3coc3Ry
+dWN0IHNlcV9maWxlICpzZXEsIHZvaWQNCj4gKnYpIHsNCj4gwqAJCXNlcV9wcmludGYoc2VxLCAi
+cHJvYyV1ICV1IiwNCj4gwqAJCQkJCXZlcnMtPm51bWJlciwgdmVycy0NCj4gPm5ycHJvY3MpOw0K
+PiDCoAkJZm9yIChqID0gMDsgaiA8IHZlcnMtPm5ycHJvY3M7IGorKykNCj4gLQkJCXNlcV9wcmlu
+dGYoc2VxLCAiICV1IiwNCj4gLQkJCQkJdmVycy0+cHJvY3Nbal0ucF9jb3VudCk7DQo+ICsJCQlz
+ZXFfcHJpbnRmKHNlcSwgIiAldSIsIDApOw0KPiDCoAkJc2VxX3B1dGMoc2VxLCAnXG4nKTsNCj4g
+wqAJfQ0KPiDCoAlyZXR1cm4gMDsNCg0KQWdhaW4sIHdlIHJlYWxseSBkbyBub3Qgd2FudCB0byBi
+cmVhayBuZnNzdGF0IG9yIG1vdW50c3RhdHMuIEEgc2VwYXJhdGUNCnN0YXRpc3RpY3Mgc3RydWN0
+dXJlIHNlZW1zIHRoZSB3YXkgdG8gZ28uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFy
+eWRhdGEuY29tDQo=
 
-You're right, that this is a complicated issue and worth more
-discussion.  And also you are right that we cannot change existing
-UAPI, which is going to cause some headaches.
-
-But that doesn't mean the new UAPI must follow the conventions of the
-badly defined existing UAPI.
-
-And the "no*" convention is anything but well defined, so we cannot
-just stick it into generic code, because you'll find exceptions
-everywhere.
-
-And one more reason to have a new, unambiguous UAPI for retrieving
-superblock options.
-
->
->> The generic option parser would just add or remove the option in the
->> current set of options,
->
-> It sounds like you want to build up a string of "opt1,opt2,opt3" then have the
-> VFS add and remove things from it and then parse it into the filesystem's
-> internal structures on "commit".
-
-That would be the default operation, if the filesystem doesn't define
-its own parser.
-
->> and commit would just call ->remount_fs() with the new set of options.
->
-> You're defining "commit" to do different things depending on the situation.
-> You need a separation between "commit create" and "commit update".
-
-It would be different, yes, at least until the superblock creation api
-is completely transformed, at which point it may actually become the
-same thing.  But lets not jump ahead.
-
->> It would probably not work for the NFS case, but that's okay, NFS can
->> implement its own option parsing.
->
-> If NFS has to implement its own option parsing, we've done it wrong.
-
-My above sentence was not clear.  What I meant to say that NFS needs
-to implement the non-generic option parsing function in order to be
-able to handle the case of "you can't change the server IP address".
-Which it would want to do anyway, since it will result in cleaner
-code.
-
-Thanks,
-Miklos
