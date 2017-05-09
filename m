@@ -1,80 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f173.google.com ([209.85.216.173]:35550 "EHLO
-        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752654AbdEIMC7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 08:02:59 -0400
-Received: by mail-qt0-f173.google.com with SMTP id n4so74001858qte.2
-        for <linux-nfs@vger.kernel.org>; Tue, 09 May 2017 05:02:59 -0700 (PDT)
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:29144 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751100AbdEIMKH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 08:10:07 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: hch <hch@lst.de>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 23/32] sunrpc: properly type pc_encode callbacks
+Date: Tue, 9 May 2017 12:10:01 +0000
+Message-ID: <1494331798.4209.1.camel@primarydata.com>
+References: <20170509092010.30752-1-hch@lst.de>
+         <20170509092010.30752-24-hch@lst.de>
+In-Reply-To: <20170509092010.30752-24-hch@lst.de>
 MIME-Version: 1.0
-In-Reply-To: <15762.1494322915@warthog.procyon.org.uk>
-References: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
- <149382749941.30481.11685229083280551867.stgit@warthog.procyon.org.uk>
- <CAOssrKc0=geAw04btF9zO29y3=2sP+caF90HySKMbk8NkND3kQ@mail.gmail.com>
- <10943.1494284264@warthog.procyon.org.uk> <CAOssrKexeO8mmFFAPq2jQtO06iqGWDDe8BOUktEkY6UybDBX1Q@mail.gmail.com>
- <15762.1494322915@warthog.procyon.org.uk>
-From: Miklos Szeredi <mszeredi@redhat.com>
-Date: Tue, 9 May 2017 14:02:57 +0200
-Message-ID: <CAOssrKeR4bNwYyuwyr2d5fG8RcxeyWKREFTdnGqovus9t_2n4A@mail.gmail.com>
-Subject: Re: [PATCH 3/9] VFS: Introduce a mount context
-To: David Howells <dhowells@redhat.com>
-Cc: viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 9, 2017 at 11:41 AM, David Howells <dhowells@redhat.com> wrote:
-> Miklos Szeredi <mszeredi@redhat.com> wrote:
->
->> I think that's crazy.  We don't return detailed errors for any other
->> syscall for path lookup, so why would path lookup for mount be
->> special.
->
-> Firstly, we don't return detailed errors for mount() at the moment either.
->
-> Secondly, path lookup might entail automounts, so perhaps we should do it for
-> path lookup too.  Particularly in light of the fact that NFS4 mount uses
-> pathwalk to get from server:/ to server:/the/dir/I/actually/wanted/ so I'm
-> currently losing that error:-/
->
-> Thirdly, the security operation I'm talking about is separate to path lookup -
-> though perhaps we should pass LOOKUP_MOUNT as an intent flag into pathwalk so
-> that the security check can be done there; perhaps combined with another one.
->
-> Fourthly, why shouldn't we consider extending the facility to other system
-> calls in future?  It would involve copying the string to task_struct and
-> providing a way to retrieve it, but that's not that hard to achieve.
+T24gVHVlLCAyMDE3LTA1LTA5IGF0IDExOjIwICswMjAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
+ZToNCj4gRHJvcCB0aGUgcmVzcCBhcmd1bWVudCBhcyBpdCBjYW4gdHJpdmlhbGx5IGJlIGRlcml2
+ZWQgZnJvbSB0aGUgcnFzdHANCj4gYXJndW1lbnQuwqDCoFdpdGggdGhhdCBhbGwgZnVuY3Rpb25z
+IG5vdyBoYXZlIHRoZSBzYW1lIHByb3RvdHlwZSwgYW5kDQo+IHdlDQo+IGNhbiByZW1vdmUgdGhl
+IHVuc2FmZSBjYXN0aW5nIHRvIGt4ZHJwcm9jX3QuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBDaHJp
+c3RvcGggSGVsbHdpZyA8aGNoQGxzdC5kZT4NCj4gLS0tDQo+IMKgZnMvbG9ja2Qvc3ZjNHByb2Mu
+Y8KgwqDCoMKgwqDCoMKgwqB8wqDCoDIgKy0NCj4gwqBmcy9sb2NrZC9zdmNwcm9jLmPCoMKgwqDC
+oMKgwqDCoMKgwqB8wqDCoDIgKy0NCj4gwqBmcy9sb2NrZC94ZHIuY8KgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgfCAxNCArKysrKystLS0NCj4gwqBmcy9sb2NrZC94ZHI0LmPCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqB8IDE0ICsrKysrKy0tLQ0KPiDCoGZzL25mcy9jYWxsYmFja194ZHIuY8KgwqDC
+oMKgwqDCoHzCoMKgNiArKy0tDQo+IMKgZnMvbmZzZC9uZnMyYWNsLmPCoMKgwqDCoMKgwqDCoMKg
+wqDCoHwgMTggKysrKysrLS0tLS0NCj4gwqBmcy9uZnNkL25mczNhY2wuY8KgwqDCoMKgwqDCoMKg
+wqDCoMKgfCAxMSArKystLS0tDQo+IMKgZnMvbmZzZC9uZnMzcHJvYy5jwqDCoMKgwqDCoMKgwqDC
+oMKgfCA0NCArKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0NCj4gwqBmcy9uZnNkL25mczN4ZHIu
+Y8KgwqDCoMKgwqDCoMKgwqDCoMKgfCA3NCArKysrKysrKysrKysrKysrKysrKysrKysrKystLS0t
+LS0tLS0NCj4gLS0tLS0tLS0tLQ0KPiDCoGZzL25mc2QvbmZzNHByb2MuY8KgwqDCoMKgwqDCoMKg
+wqDCoHzCoMKgNCArLS0NCj4gwqBmcy9uZnNkL25mczR4ZHIuY8KgwqDCoMKgwqDCoMKgwqDCoMKg
+fMKgwqA1ICsrLS0NCj4gwqBmcy9uZnNkL25mc3Byb2MuY8KgwqDCoMKgwqDCoMKgwqDCoMKgfCAz
+NiArKysrKysrKysrKy0tLS0tLS0tLS0tDQo+IMKgZnMvbmZzZC9uZnNzdmMuY8KgwqDCoMKgwqDC
+oMKgwqDCoMKgwqB8wqDCoDUgKy0tLQ0KPiDCoGZzL25mc2QvbmZzeGRyLmPCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgfCAzMSArKysrKysrKysrKy0tLS0tLS0tDQo+IMKgZnMvbmZzZC94ZHIuaMKgwqDC
+oMKgwqDCoMKgwqDCoMKgwqDCoMKgwqB8IDE0ICsrKystLS0tLQ0KPiDCoGZzL25mc2QveGRyMy5o
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqB8IDQ1ICsrKysrKysrKystLS0tLS0tLS0tLS0tLS0t
+LS0NCj4gwqBmcy9uZnNkL3hkcjQuaMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfMKgwqA1ICsr
+LS0NCj4gwqBpbmNsdWRlL2xpbnV4L2xvY2tkL3hkci5owqDCoHzCoMKgOCArKy0tLQ0KPiDCoGlu
+Y2x1ZGUvbGludXgvbG9ja2QveGRyNC5oIHzCoMKgOCArKy0tLQ0KPiDCoGluY2x1ZGUvbGludXgv
+c3VucnBjL3N2Yy5oIHzCoMKgMyArLQ0KPiDCoG5ldC9zdW5ycGMvc3ZjLmPCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgfMKgwqA2ICsrLS0NCj4gwqAyMSBmaWxlcyBjaGFuZ2VkLCAxODUgaW5zZXJ0aW9u
+cygrKSwgMTcwIGRlbGV0aW9ucygtKQ0KPiANCg0KQWNrZWQtYnk6IFRyb25kIE15a2xlYnVzdCA8
+dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
+CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVz
+dEBwcmltYXJ5ZGF0YS5jb20NCg0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5
+RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-Maybe we should.   In fact that sounds like a splendid idea.  IMO even
-better, than having errors go via the fsfd descriptor.  Pretty cheap
-on the kernel side, and completely optional on the userspace side.
-
->
->> And why would
->>
->>     fd = open("/foo/bar", O_PATH);
->>     fsmount(fsfd, fd, NULL);
->>
->> behave differently from
->>
->>     fsmount(fsfd, -1, "/foo/bar");
->>
->> ?
->
-> There's argument that the former should return EFAULT.  And that you should
-> set the path to "" and pass AT_EMPTY_PATH.  I should probably make sure it
-> does that - and add a flags field.  statx() was fixed to work this way.
->
-> Question for you: Should the MNT_* flags be passed to fsmount(), perhaps in
-> MS_* form?
-
-MS_* flags are a mess.  I don't think they should be used for any new
-functionality.  MNT_* flags are much better, but there are some
-internal flags there as well.
-
-I think the struct file model is better, where we have the external
-O_* flags and the internal FMODE_* flags.
-
-Thanks,
-Miklos
