@@ -1,355 +1,219 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:59318 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:58268 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753210AbdEIJVl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:21:41 -0400
+        with ESMTP id S1753228AbdEIJVi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:21:38 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 31/32] sunrpc: mark all struct svc_version instances as const
-Date: Tue,  9 May 2017 11:20:09 +0200
-Message-Id: <20170509092010.30752-32-hch@lst.de>
+Subject: [PATCH 30/32] sunrpc: mark all struct svc_procinfo instances as const
+Date: Tue,  9 May 2017 11:20:08 +0200
+Message-Id: <20170509092010.30752-31-hch@lst.de>
 In-Reply-To: <20170509092010.30752-1-hch@lst.de>
 References: <20170509092010.30752-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+struct svc_procinfo contains function pointers, and marking it as
+constant avoids it being able to be used as an attach vector for
+code injections.
+
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/lockd/svc.c             | 32 ++++++++++++++++----------------
- fs/nfs/callback.c          |  2 +-
- fs/nfs/callback_xdr.c      |  4 ++--
- fs/nfs/internal.h          |  4 ++--
- fs/nfs/nfs4_fs.h           |  4 ++--
- fs/nfsd/nfs2acl.c          | 12 ++++++------
- fs/nfsd/nfs3acl.c          | 12 ++++++------
- fs/nfsd/nfs3proc.c         | 12 ++++++------
- fs/nfsd/nfs4proc.c         |  2 +-
- fs/nfsd/nfsd.h             |  6 +++---
- fs/nfsd/nfsproc.c          | 12 ++++++------
- fs/nfsd/nfssvc.c           |  8 ++++----
- include/linux/sunrpc/svc.h |  2 +-
- net/sunrpc/svc.c           |  4 ++--
- 14 files changed, 58 insertions(+), 58 deletions(-)
+ fs/lockd/svc4proc.c         | 2 +-
+ fs/lockd/svcproc.c          | 2 +-
+ fs/nfs/callback_xdr.c       | 2 +-
+ fs/nfsd/nfs2acl.c           | 2 +-
+ fs/nfsd/nfs3acl.c           | 2 +-
+ fs/nfsd/nfs3proc.c          | 2 +-
+ fs/nfsd/nfs4proc.c          | 2 +-
+ fs/nfsd/nfsproc.c           | 2 +-
+ fs/nfsd/nfssvc.c            | 4 ++--
+ include/linux/lockd/lockd.h | 4 ++--
+ include/linux/sunrpc/svc.h  | 4 ++--
+ net/sunrpc/svc.c            | 2 +-
+ 12 files changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index e7c8b9c76e48..448f326fb8ec 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -737,27 +737,27 @@ module_exit(exit_nlm);
- /*
-  * Define NLM program and procedures
-  */
--static struct svc_version	nlmsvc_version1 = {
--		.vs_vers	= 1,
--		.vs_nproc	= 17,
--		.vs_proc	= nlmsvc_procedures,
--		.vs_xdrsize	= NLMSVC_XDRSIZE,
-+static const struct svc_version nlmsvc_version1 = {
-+	.vs_vers	= 1,
-+	.vs_nproc	= 17,
-+	.vs_proc	= nlmsvc_procedures,
-+	.vs_xdrsize	= NLMSVC_XDRSIZE,
- };
--static struct svc_version	nlmsvc_version3 = {
--		.vs_vers	= 3,
--		.vs_nproc	= 24,
--		.vs_proc	= nlmsvc_procedures,
--		.vs_xdrsize	= NLMSVC_XDRSIZE,
-+static const struct svc_version nlmsvc_version3 = {
-+	.vs_vers	= 3,
-+	.vs_nproc	= 24,
-+	.vs_proc	= nlmsvc_procedures,
-+	.vs_xdrsize	= NLMSVC_XDRSIZE,
- };
- #ifdef CONFIG_LOCKD_V4
--static struct svc_version	nlmsvc_version4 = {
--		.vs_vers	= 4,
--		.vs_nproc	= 24,
--		.vs_proc	= nlmsvc_procedures4,
--		.vs_xdrsize	= NLMSVC_XDRSIZE,
-+static const struct svc_version nlmsvc_version4 = {
-+	.vs_vers	= 4,
-+	.vs_nproc	= 24,
-+	.vs_proc	= nlmsvc_procedures4,
-+	.vs_xdrsize	= NLMSVC_XDRSIZE,
- };
- #endif
--static struct svc_version *	nlmsvc_version[] = {
-+static const struct svc_version *nlmsvc_version[] = {
- 	[1] = &nlmsvc_version1,
- 	[3] = &nlmsvc_version3,
- #ifdef CONFIG_LOCKD_V4
-diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-index 773774531aff..e8bd5d7b229d 100644
---- a/fs/nfs/callback.c
-+++ b/fs/nfs/callback.c
-@@ -431,7 +431,7 @@ static int nfs_callback_authenticate(struct svc_rqst *rqstp)
- /*
-  * Define NFS4 callback program
-  */
--static struct svc_version *nfs4_callback_version[] = {
-+static const struct svc_version *nfs4_callback_version[] = {
- 	[1] = &nfs4_callback_version1,
- 	[4] = &nfs4_callback_version4,
- };
+diff --git a/fs/lockd/svc4proc.c b/fs/lockd/svc4proc.c
+index fed016155791..82925f17ec45 100644
+--- a/fs/lockd/svc4proc.c
++++ b/fs/lockd/svc4proc.c
+@@ -507,7 +507,7 @@ struct nlm_void			{ int dummy; };
+ #define	No	(1+1024/4)				/* netobj */
+ #define	St	1					/* status */
+ #define	Rg	4					/* range (offset + length) */
+-struct svc_procedure		nlmsvc_procedures4[] = {
++const struct svc_procedure nlmsvc_procedures4[] = {
+   PROC(null,		void,		void,		void,	void, 1),
+   PROC(test,		testargs,	testres,	args,	res, Ck+St+2+No+Rg),
+   PROC(lock,		lockargs,	res,		args,	res, Ck+St),
+diff --git a/fs/lockd/svcproc.c b/fs/lockd/svcproc.c
+index 14648b051eba..07915162581d 100644
+--- a/fs/lockd/svcproc.c
++++ b/fs/lockd/svcproc.c
+@@ -551,7 +551,7 @@ struct nlm_void			{ int dummy; };
+ #define	No	(1+1024/4)			/* Net Obj */
+ #define	Rg	2				/* range - offset + size */
+ 
+-struct svc_procedure		nlmsvc_procedures[] = {
++const struct svc_procedure nlmsvc_procedures[] = {
+   PROC(null,		void,		void,		void,	void, 1),
+   PROC(test,		testargs,	testres,	args,	res, Ck+St+2+No+Rg),
+   PROC(lock,		lockargs,	res,		args,	res, Ck+St),
 diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 6753bbc6a70a..04313b7670e6 100644
+index 6d46e592ed79..6753bbc6a70a 100644
 --- a/fs/nfs/callback_xdr.c
 +++ b/fs/nfs/callback_xdr.c
-@@ -1066,7 +1066,7 @@ static const struct svc_procedure nfs4_callback_procedures1[] = {
- 	}
- };
- 
--struct svc_version nfs4_callback_version1 = {
-+const struct svc_version nfs4_callback_version1 = {
- 	.vs_vers = 1,
- 	.vs_nproc = ARRAY_SIZE(nfs4_callback_procedures1),
- 	.vs_proc = nfs4_callback_procedures1,
-@@ -1076,7 +1076,7 @@ struct svc_version nfs4_callback_version1 = {
- 	.vs_need_cong_ctrl = true,
- };
- 
--struct svc_version nfs4_callback_version4 = {
-+const struct svc_version nfs4_callback_version4 = {
- 	.vs_vers = 4,
- 	.vs_nproc = ARRAY_SIZE(nfs4_callback_procedures1),
- 	.vs_proc = nfs4_callback_procedures1,
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 76d0f5e993ba..89eecd146da3 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -225,8 +225,8 @@ static inline void nfs_fs_proc_exit(void)
- #endif
- 
- /* callback_xdr.c */
--extern struct svc_version nfs4_callback_version1;
--extern struct svc_version nfs4_callback_version4;
-+extern const struct svc_version nfs4_callback_version1;
-+extern const struct svc_version nfs4_callback_version4;
- 
- struct nfs_pageio_descriptor;
- /* pagelist.c */
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 9b0cf3872722..40bd05f05e74 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -498,8 +498,8 @@ extern const struct rpc_procinfo nfs4_procedures[];
- struct nfs4_mount_data;
- 
- /* callback_xdr.c */
--extern struct svc_version nfs4_callback_version1;
--extern struct svc_version nfs4_callback_version4;
-+extern const struct svc_version nfs4_callback_version1;
-+extern const struct svc_version nfs4_callback_version4;
- 
- static inline void nfs4_stateid_copy(nfs4_stateid *dst, const nfs4_stateid *src)
- {
+@@ -1050,7 +1050,7 @@ static struct callback_op callback_ops[] = {
+ /*
+  * Define NFS4 callback procedures
+  */
+-static struct svc_procedure nfs4_callback_procedures1[] = {
++static const struct svc_procedure nfs4_callback_procedures1[] = {
+ 	[CB_NULL] = {
+ 		.pc_func = nfs4_callback_null,
+ 		.pc_decode = nfs4_decode_void,
 diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
-index 95c5804be5ed..0faa9c05d491 100644
+index fc6b179c8fff..95c5804be5ed 100644
 --- a/fs/nfsd/nfs2acl.c
 +++ b/fs/nfsd/nfs2acl.c
-@@ -378,10 +378,10 @@ static const struct svc_procedure nfsd_acl_procedures2[] = {
-   PROC(access,	access,		access,		access,   RC_NOCACHE, ST+AT+1),
- };
+@@ -370,7 +370,7 @@ struct nfsd3_voidargs { int dummy; };
+ #define pAT (1+AT)	/* post attributes - conditional */
+ #define ACL (1+NFS_ACL_MAX_ENTRIES*3)  /* Access Control List */
  
--struct svc_version	nfsd_acl_version2 = {
--		.vs_vers	= 2,
--		.vs_nproc	= 5,
--		.vs_proc	= nfsd_acl_procedures2,
--		.vs_dispatch	= nfsd_dispatch,
--		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+const struct svc_version nfsd_acl_version2 = {
-+	.vs_vers	= 2,
-+	.vs_nproc	= 5,
-+	.vs_proc	= nfsd_acl_procedures2,
-+	.vs_dispatch	= nfsd_dispatch,
-+	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
- };
+-static struct svc_procedure		nfsd_acl_procedures2[] = {
++static const struct svc_procedure nfsd_acl_procedures2[] = {
+   PROC(null,	void,		void,		void,	  RC_NOCACHE, ST),
+   PROC(getacl,	getacl,		getacl,		getacl,	  RC_NOCACHE, ST+1+2*(1+ACL)),
+   PROC(setacl,	setacl,		attrstat,	attrstat, RC_NOCACHE, ST+AT),
 diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
-index 10be7c58d1d3..47ea93e90447 100644
+index 9437b758cbfd..10be7c58d1d3 100644
 --- a/fs/nfsd/nfs3acl.c
 +++ b/fs/nfsd/nfs3acl.c
-@@ -263,11 +263,11 @@ static const struct svc_procedure nfsd_acl_procedures3[] = {
+@@ -257,7 +257,7 @@ struct nfsd3_voidargs { int dummy; };
+ #define pAT (1+AT)	/* post attributes - conditional */
+ #define ACL (1+NFS_ACL_MAX_ENTRIES*3)  /* Access Control List */
+ 
+-static struct svc_procedure		nfsd_acl_procedures3[] = {
++static const struct svc_procedure nfsd_acl_procedures3[] = {
+   PROC(null,	void,		void,		void,	  RC_NOCACHE, ST),
+   PROC(getacl,	getacl,		getacl,		getacl,	  RC_NOCACHE, ST+1+2*(1+ACL)),
    PROC(setacl,	setacl,		setacl,		fhandle,  RC_NOCACHE, ST+pAT),
- };
- 
--struct svc_version	nfsd_acl_version3 = {
--		.vs_vers	= 3,
--		.vs_nproc	= 3,
--		.vs_proc	= nfsd_acl_procedures3,
--		.vs_dispatch	= nfsd_dispatch,
--		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+const struct svc_version nfsd_acl_version3 = {
-+	.vs_vers	= 3,
-+	.vs_nproc	= 3,
-+	.vs_proc	= nfsd_acl_procedures3,
-+	.vs_dispatch	= nfsd_dispatch,
-+	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
- };
- 
 diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index df636d30f18a..58245aaac329 100644
+index 17c90c41a3a6..df636d30f18a 100644
 --- a/fs/nfsd/nfs3proc.c
 +++ b/fs/nfsd/nfs3proc.c
-@@ -890,10 +890,10 @@ static const struct svc_procedure nfsd_procedures3[22] = {
- 	},
- };
+@@ -674,7 +674,7 @@ struct nfsd3_voidargs { int dummy; };
+ #define pAT (1+AT)	/* post attributes - conditional */
+ #define WC (7+pAT)	/* WCC attributes */
  
--struct svc_version	nfsd_version3 = {
--		.vs_vers	= 3,
--		.vs_nproc	= 22,
--		.vs_proc	= nfsd_procedures3,
--		.vs_dispatch	= nfsd_dispatch,
--		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
-+const struct svc_version nfsd_version3 = {
-+	.vs_vers	= 3,
-+	.vs_nproc	= 22,
-+	.vs_proc	= nfsd_procedures3,
-+	.vs_dispatch	= nfsd_dispatch,
-+	.vs_xdrsize	= NFS3_SVC_XDRSIZE,
- };
+-static struct svc_procedure		nfsd_procedures3[22] = {
++static const struct svc_procedure nfsd_procedures3[22] = {
+ 	[NFS3PROC_NULL] = {
+ 		.pc_func = nfsd3_proc_null,
+ 		.pc_encode = nfs3svc_encode_voidres,
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 4e406bc1cb24..f52130a94d8d 100644
+index 9ecb983b31cf..4e406bc1cb24 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -2553,7 +2553,7 @@ static const struct svc_procedure nfsd_procedures4[2] = {
- 	},
- };
+@@ -2532,7 +2532,7 @@ static const char *nfsd4_op_name(unsigned opnum)
+ #define nfsd4_voidres			nfsd4_voidargs
+ struct nfsd4_voidargs { int dummy; };
  
--struct svc_version	nfsd_version4 = {
-+const struct svc_version nfsd_version4 = {
- 	.vs_vers		= 4,
- 	.vs_nproc		= 2,
- 	.vs_proc		= nfsd_procedures4,
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index d96606801d47..b9c538ab7a59 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -60,7 +60,7 @@ struct readdir_cd {
- 
- 
- extern struct svc_program	nfsd_program;
--extern struct svc_version	nfsd_version2, nfsd_version3,
-+extern const struct svc_version	nfsd_version2, nfsd_version3,
- 				nfsd_version4;
- extern struct mutex		nfsd_mutex;
- extern spinlock_t		nfsd_drc_lock;
-@@ -86,12 +86,12 @@ void		nfsd_destroy(struct net *net);
- 
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- #ifdef CONFIG_NFSD_V2_ACL
--extern struct svc_version nfsd_acl_version2;
-+extern const struct svc_version nfsd_acl_version2;
- #else
- #define nfsd_acl_version2 NULL
- #endif
- #ifdef CONFIG_NFSD_V3_ACL
--extern struct svc_version nfsd_acl_version3;
-+extern const struct svc_version nfsd_acl_version3;
- #else
- #define nfsd_acl_version3 NULL
- #endif
+-static struct svc_procedure		nfsd_procedures4[2] = {
++static const struct svc_procedure nfsd_procedures4[2] = {
+ 	[NFSPROC4_NULL] = {
+ 		.pc_func = nfsd4_proc_null,
+ 		.pc_encode = nfs4svc_encode_voidres,
 diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 900acf05f962..200d76685e90 100644
+index 0ef88d0e67d9..900acf05f962 100644
 --- a/fs/nfsd/nfsproc.c
 +++ b/fs/nfsd/nfsproc.c
-@@ -743,12 +743,12 @@ static const struct svc_procedure nfsd_procedures2[18] = {
- };
+@@ -573,7 +573,7 @@ struct nfsd_void { int dummy; };
+ #define FH 8		/* filehandle */
+ #define	AT 18		/* attributes */
  
- 
--struct svc_version	nfsd_version2 = {
--		.vs_vers	= 2,
--		.vs_nproc	= 18,
--		.vs_proc	= nfsd_procedures2,
--		.vs_dispatch	= nfsd_dispatch,
--		.vs_xdrsize	= NFS2_SVC_XDRSIZE,
-+const struct svc_version nfsd_version2 = {
-+	.vs_vers	= 2,
-+	.vs_nproc	= 18,
-+	.vs_proc	= nfsd_procedures2,
-+	.vs_dispatch	= nfsd_dispatch,
-+	.vs_xdrsize	= NFS2_SVC_XDRSIZE,
- };
- 
- /*
+-static struct svc_procedure		nfsd_procedures2[18] = {
++static const struct svc_procedure nfsd_procedures2[18] = {
+ 	[NFSPROC_NULL] = {
+ 		.pc_func = nfsd_proc_null,
+ 		.pc_decode = nfssvc_decode_void,
 diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 379b310c445d..063ae7de2c12 100644
+index 555233664124..379b310c445d 100644
 --- a/fs/nfsd/nfssvc.c
 +++ b/fs/nfsd/nfssvc.c
-@@ -68,14 +68,14 @@ unsigned long	nfsd_drc_mem_used;
+@@ -756,7 +756,7 @@ static __be32 map_new_errors(u32 vers, __be32 nfserr)
+  * problem, we enforce these assumptions here:
+  */
+ static bool nfs_request_too_big(struct svc_rqst *rqstp,
+-				struct svc_procedure *proc)
++				const struct svc_procedure *proc)
+ {
+ 	/*
+ 	 * The ACL code has more careful bounds-checking and is not
+@@ -781,7 +781,7 @@ static bool nfs_request_too_big(struct svc_rqst *rqstp,
+ int
+ nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp)
+ {
+-	struct svc_procedure	*proc;
++	const struct svc_procedure *proc;
+ 	__be32			nfserr;
+ 	__be32			*nfserrp;
  
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
- static struct svc_stat	nfsd_acl_svcstats;
--static struct svc_version *	nfsd_acl_version[] = {
-+static const struct svc_version *nfsd_acl_version[] = {
- 	[2] = &nfsd_acl_version2,
- 	[3] = &nfsd_acl_version3,
- };
- 
- #define NFSD_ACL_MINVERS            2
- #define NFSD_ACL_NRVERS		ARRAY_SIZE(nfsd_acl_version)
--static struct svc_version *nfsd_acl_versions[NFSD_ACL_NRVERS];
-+static const struct svc_version *nfsd_acl_versions[NFSD_ACL_NRVERS];
- 
- static struct svc_program	nfsd_acl_program = {
- 	.pg_prog		= NFS_ACL_PROGRAM,
-@@ -92,7 +92,7 @@ static struct svc_stat	nfsd_acl_svcstats = {
- };
- #endif /* defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL) */
- 
--static struct svc_version *	nfsd_version[] = {
-+static const struct svc_version *nfsd_version[] = {
- 	[2] = &nfsd_version2,
- #if defined(CONFIG_NFSD_V3)
- 	[3] = &nfsd_version3,
-@@ -104,7 +104,7 @@ static struct svc_version *	nfsd_version[] = {
- 
- #define NFSD_MINVERS    	2
- #define NFSD_NRVERS		ARRAY_SIZE(nfsd_version)
--static struct svc_version *nfsd_versions[NFSD_NRVERS];
-+static const struct svc_version *nfsd_versions[NFSD_NRVERS];
- 
- struct svc_program		nfsd_program = {
- #if defined(CONFIG_NFSD_V2_ACL) || defined(CONFIG_NFSD_V3_ACL)
+diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+index b37dee3acaba..a93f63ebfd76 100644
+--- a/include/linux/lockd/lockd.h
++++ b/include/linux/lockd/lockd.h
+@@ -190,9 +190,9 @@ struct nlm_block {
+  * Global variables
+  */
+ extern const struct rpc_program	nlm_program;
+-extern struct svc_procedure	nlmsvc_procedures[];
++extern const struct svc_procedure nlmsvc_procedures[];
+ #ifdef CONFIG_LOCKD_V4
+-extern struct svc_procedure	nlmsvc_procedures4[];
++extern const struct svc_procedure nlmsvc_procedures4[];
+ #endif
+ extern int			nlmsvc_grace_period;
+ extern unsigned long		nlmsvc_timeout;
 diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 6c4637621ca5..76dfc1d023b6 100644
+index cab77b0904b0..6c4637621ca5 100644
 --- a/include/linux/sunrpc/svc.h
 +++ b/include/linux/sunrpc/svc.h
-@@ -384,7 +384,7 @@ struct svc_program {
- 	unsigned int		pg_lovers;	/* lowest version */
- 	unsigned int		pg_hivers;	/* highest version */
- 	unsigned int		pg_nvers;	/* number of versions */
--	struct svc_version **	pg_vers;	/* version array */
-+	const struct svc_version **pg_vers;	/* version array */
- 	char *			pg_name;	/* service name */
- 	char *			pg_class;	/* class name: services sharing authentication */
- 	struct svc_stat *	pg_stats;	/* rpc statistics */
+@@ -237,7 +237,7 @@ struct svc_rqst {
+ 
+ 	struct svc_serv *	rq_server;	/* RPC service definition */
+ 	struct svc_pool *	rq_pool;	/* thread pool */
+-	struct svc_procedure *	rq_procinfo;	/* procedure info */
++	const struct svc_procedure *rq_procinfo;/* procedure info */
+ 	struct auth_ops *	rq_authop;	/* authentication flavour */
+ 	struct svc_cred		rq_cred;	/* auth info */
+ 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
+@@ -397,7 +397,7 @@ struct svc_program {
+ struct svc_version {
+ 	u32			vs_vers;	/* version number */
+ 	u32			vs_nproc;	/* number of procedures */
+-	struct svc_procedure *	vs_proc;	/* per-procedure info */
++	const struct svc_procedure *vs_proc;	/* per-procedure info */
+ 	u32			vs_xdrsize;	/* xdrsize needed for this version */
+ 
+ 	/* Don't register with rpcbind */
 diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 4a3ec1a55110..1dda932b4124 100644
+index af74604fdadd..4a3ec1a55110 100644
 --- a/net/sunrpc/svc.c
 +++ b/net/sunrpc/svc.c
-@@ -950,7 +950,7 @@ int svc_register(const struct svc_serv *serv, struct net *net,
- 		 const unsigned short port)
+@@ -1094,7 +1094,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
  {
  	struct svc_program	*progp;
--	struct svc_version	*vers;
-+	const struct svc_version *vers;
- 	unsigned int		i;
- 	int			error = 0;
- 
-@@ -1093,7 +1093,7 @@ static int
- svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
- {
- 	struct svc_program	*progp;
--	struct svc_version	*versp = NULL;	/* compiler food */
-+	const struct svc_version *versp = NULL;	/* compiler food */
- 	const struct svc_procedure *procp = NULL;
+ 	struct svc_version	*versp = NULL;	/* compiler food */
+-	struct svc_procedure	*procp = NULL;
++	const struct svc_procedure *procp = NULL;
  	struct svc_serv		*serv = rqstp->rq_server;
  	__be32			*statp;
+ 	u32			prog, vers, proc;
 -- 
 2.11.0
 
