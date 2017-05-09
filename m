@@ -1,51 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:20853 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751100AbdEINnw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 09:43:52 -0400
-Content-Type: text/plain;
-        charset=utf-8
-Mime-Version: 1.0 (1.0)
-Subject: Re: [PATCH 29/32] RFC: sunrpc: remove pc_count
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1494332183.4209.5.camel@primarydata.com>
-Date: Tue, 9 May 2017 09:43:37 -0400
-Cc: hch <hch@lst.de>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <B1D4B91F-244F-4293-9188-280872712442@oracle.com>
-References: <20170509092010.30752-1-hch@lst.de> <20170509092010.30752-30-hch@lst.de> <1494332183.4209.5.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:36436 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752461AbdEIOEd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 10:04:33 -0400
+Date: Tue, 9 May 2017 17:04:14 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Colin King <colin.king@canonical.com>
+Cc: Ari Kauppi <ari@synopsys.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] nfsd: avoid out of bounds read on array nfsd4_layout_ops
+Message-ID: <20170509140414.ycw4z6zsdevbkozm@mwanda>
+References: <20170509133121.26529-1-colin.king@canonical.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170509133121.26529-1-colin.king@canonical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, May 09, 2017 at 02:31:21PM +0100, Colin King wrote:
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 1dbf62190bee..c453a1998e00 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1259,7 +1259,8 @@ nfsd4_layout_verify(struct svc_export *exp, unsigned int layout_type)
+>  		return NULL;
+>  	}
+>  
+> -	if (layout_type >= 32 || !(exp->ex_layout_types & (1 << layout_type))) {
+> +	if (layout_type >= LAYOUT_TYPE_MAX ||
+> +	    !(exp->ex_layout_types & (1 << layout_type))) {
 
-> On May 9, 2017, at 8:16 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
-> 
->> On Tue, 2017-05-09 at 11:20 +0200, Christoph Hellwig wrote:
->> pc_count is the only writeable memeber of struct svc_procinfo, which
->> is
->> a good candidate to be const-ified as it contains function pointers.
->> 
->> This patch just removes it and returns zero in the /proc file as the
->> count of calls per procedure doesn't seem all that useful.Â Â But it's
->> just a dumb hack and we might need a proper fix instead.
->> 
->> Signed-off-by: Christoph Hellwig <hch@lst.de>
->> ---
->> 
-> 
-> For now, why not just move it to a separate non-const structure that is
-> pointed to by the const one? We shouldn't deliberately break nfsstat...
+The 32 is there to prevent a shift wrapping bug.  The bit test prevents
+a buffer overflow so this can't actually overflow.  But this change
+doesn't hurt and is probably cleaner.
 
-Agree on both counts.
+exp->ex_layout_types  is set in nfsd4_setup_layout_type().
 
-
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
-> N‹§²æìr¸›yúèšØb²X¬¶Ç§vØ^–)Þº{.nÇ+‰·¥Š{±û"žØ^n‡r¡ö¦zËëh™¨è­Ú&¢ø®G«éh®(­éšŽŠÝ¢j"ú¶m§ÿïêäz¹Þ–Šàþf£¢·hšˆ§~ˆmš
+regards,
+dan carpenter
 
