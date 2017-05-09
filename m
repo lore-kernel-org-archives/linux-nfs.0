@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34262 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49220 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755032AbdEIPuR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 11:50:17 -0400
+        id S1755069AbdEIPuU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 11:50:20 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -18,41 +18,46 @@ Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
         neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
         josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
         bo.li.liu@oracle.com
-Subject: [PATCH v4 10/27] 9p: set mapping error when writeback fails in launder_page
-Date: Tue,  9 May 2017 11:49:13 -0400
-Message-Id: <20170509154930.29524-11-jlayton@redhat.com>
+Subject: [PATCH v4 12/27] cifs: set mapping error when page writeback fails in writepage or launder_pages
+Date: Tue,  9 May 2017 11:49:15 -0400
+Message-Id: <20170509154930.29524-13-jlayton@redhat.com>
 In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-launder_page is just writeback under the page lock. We still need to
-mark the mapping for errors there when they occur.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 Reviewed-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/9p/vfs_addr.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/cifs/file.c | 12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
 
-diff --git a/fs/9p/vfs_addr.c b/fs/9p/vfs_addr.c
-index adaf6f6dd858..7af6e6501698 100644
---- a/fs/9p/vfs_addr.c
-+++ b/fs/9p/vfs_addr.c
-@@ -223,8 +223,11 @@ static int v9fs_launder_page(struct page *page)
- 	v9fs_fscache_wait_on_page_write(inode, page);
- 	if (clear_page_dirty_for_io(page)) {
- 		retval = v9fs_vfs_writepage_locked(page);
--		if (retval)
-+		if (retval) {
-+			if (retval != -EAGAIN)
-+				mapping_set_error(page->mapping, retval);
- 			return retval;
-+		}
- 	}
- 	return 0;
- }
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 21d404535739..0bee7f8d91ad 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -2234,14 +2234,16 @@ cifs_writepage_locked(struct page *page, struct writeback_control *wbc)
+ 	set_page_writeback(page);
+ retry_write:
+ 	rc = cifs_partialpagewrite(page, 0, PAGE_SIZE);
+-	if (rc == -EAGAIN && wbc->sync_mode == WB_SYNC_ALL)
+-		goto retry_write;
+-	else if (rc == -EAGAIN)
++	if (rc == -EAGAIN) {
++		if (wbc->sync_mode == WB_SYNC_ALL)
++			goto retry_write;
+ 		redirty_page_for_writepage(wbc, page);
+-	else if (rc != 0)
++	} else if (rc != 0) {
+ 		SetPageError(page);
+-	else
++		mapping_set_error(page->mapping, rc);
++	} else {
+ 		SetPageUptodate(page);
++	}
+ 	end_page_writeback(page);
+ 	put_page(page);
+ 	free_xid(xid);
 -- 
 2.9.3
 
