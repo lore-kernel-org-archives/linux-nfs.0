@@ -1,213 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33488 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751653AbdEIR76 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 13:59:58 -0400
-Received: by mail-it0-f68.google.com with SMTP id v135so1027290itv.0
-        for <linux-nfs@vger.kernel.org>; Tue, 09 May 2017 10:59:58 -0700 (PDT)
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48751 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750805AbdEISas (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 14:30:48 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
 Subject: Re: [PATCH] NFSv4: Fix exclusive create attributes encoding
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
+Date: Tue, 9 May 2017 18:30:42 +0000
+Message-ID: <1494354640.109664.1.camel@primarydata.com>
 References: <20170508142648.128870-1-trond.myklebust@primarydata.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <7609d559-b252-af61-6de2-01843df9bf50@gmail.com>
-Date: Tue, 9 May 2017 13:59:56 -0400
+         <7609d559-b252-af61-6de2-01843df9bf50@gmail.com>
+In-Reply-To: <7609d559-b252-af61-6de2-01843df9bf50@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20170508142648.128870-1-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+T24gVHVlLCAyMDE3LTA1LTA5IGF0IDEzOjU5IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
+Cj4gSGkgVHJvbmQsDQo+IA0KPiBPbiAwNS8wOC8yMDE3IDEwOjI2IEFNLCBUcm9uZCBNeWtsZWJ1
+c3Qgd3JvdGU6DQo+ID4gV2hlbiB1c2luZyBORlM0X0NSRUFURV9FWENMVVNJVkU0XzEgbW9kZSwg
+dGhlIGNsaWVudCB3aWxsDQo+ID4gb3ZlcmVzdGltYXRlIHRoZQ0KPiA+IGFtb3VudCBvZiBzcGFj
+ZSB0aGF0IGl0IG5lZWRzIGZvciB0aGUgYXR0cmlidXRlcyBiZWNhdXNlIGl0IGRvZXMgc28NCj4g
+PiBiZWZvcmUgY2hlY2tpbmcgd2hldGhlciBvciBub3QgdGhlIHNlcnZlciBzdXBwb3J0cyBhIGdp
+dmVuDQo+ID4gYXR0cmlidXRlLg0KPiA+IA0KPiA+IEZpeCBieSBjaGVja2luZyB0aGUgYXR0cmli
+dXRlIG1hc2sgZWFybGllci4NCj4gDQo+IEN0aG9uIGdlbmVyYWwgdGVzdHMgY29uc2lzdGVudGx5
+IGZhaWwgd2l0aCBJTyBlcnJvcnMgb25jZSB0aGlzIHBhdGNoDQo+IGlzIGFwcGxpZWQsIGJ1dCBv
+bmx5IGZvciBORlMgdjQuMSAodjIsIHYzLCB2NC4wLCBhbmQgdjQuMiBhbGwgd29yaw0KPiBmaW5l
+KS7CoMKgSGVyZSBpcyB0aGUgb3V0cHV0IHRoYXQgaXQgZ2l2ZXMgbWU6DQo+IA0KPiBHRU5FUkFM
+IFRFU1RTOiBkaXJlY3RvcnkgL25mcy9nZW5lcmFsDQo+IGlmIHRlc3QgISAteCBydW50ZXN0czsg
+dGhlbiBjaG1vZCBhK3ggcnVudGVzdHM7IGZpDQo+IGNkIC9uZnMvZ2VuZXJhbDsgcm0gLWYgTWFr
+ZWZpbGUgcnVudGVzdHMgcnVudGVzdHMud3JrICouc2ggKi5jDQo+IG1rZHVtbXkgcm1kdW1teSBu
+cm9mZi5pbiBtYWtlZmlsZS50c3QNCj4gY3AgTWFrZWZpbGUgcnVudGVzdHMgcnVudGVzdHMud3Jr
+ICouc2ggKi5jIG1rZHVtbXkgcm1kdW1teSBucm9mZi5pbg0KPiBtYWtlZmlsZS50c3QgL25mcy9n
+ZW5lcmFsDQo+IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFsL01h
+a2VmaWxlJzogSW5wdXQvb3V0cHV0DQo+IGVycm9yDQo+IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3Vs
+YXIgZmlsZSAnL25mcy9nZW5lcmFsL3J1bnRlc3RzJzogSW5wdXQvb3V0cHV0DQo+IGVycm9yDQo+
+IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFsL3J1bnRlc3RzLndy
+ayc6DQo+IElucHV0L291dHB1dCBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZp
+bGUgJy9uZnMvZ2VuZXJhbC9sYXJnZTQuc2gnOiBJbnB1dC9vdXRwdXQNCj4gZXJyb3INCj4gY3A6
+IGNhbm5vdCBjcmVhdGUgcmVndWxhciBmaWxlICcvbmZzL2dlbmVyYWwvbGFyZ2UuYyc6IElucHV0
+L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZpbGUgJy9uZnMv
+Z2VuZXJhbC9sYXJnZTEuYyc6IElucHV0L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNy
+ZWF0ZSByZWd1bGFyIGZpbGUgJy9uZnMvZ2VuZXJhbC9sYXJnZTIuYyc6IElucHV0L291dHB1dA0K
+PiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZpbGUgJy9uZnMvZ2VuZXJhbC9s
+YXJnZTMuYyc6IElucHV0L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1
+bGFyIGZpbGUgJy9uZnMvZ2VuZXJhbC9zdGF0LmMnOiBJbnB1dC9vdXRwdXQNCj4gZXJyb3INCj4g
+Y3A6IGNhbm5vdCBjcmVhdGUgcmVndWxhciBmaWxlICcvbmZzL2dlbmVyYWwvbWtkdW1teSc6IElu
+cHV0L291dHB1dA0KPiBlcnJvcg0KPiBjcDogY2Fubm90IGNyZWF0ZSByZWd1bGFyIGZpbGUgJy9u
+ZnMvZ2VuZXJhbC9ybWR1bW15JzogSW5wdXQvb3V0cHV0DQo+IGVycm9yDQo+IGNwOiBjYW5ub3Qg
+Y3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFsL25yb2ZmLmluJzogSW5wdXQvb3V0cHV0
+DQo+IGVycm9yDQo+IGNwOiBjYW5ub3QgY3JlYXRlIHJlZ3VsYXIgZmlsZSAnL25mcy9nZW5lcmFs
+L21ha2VmaWxlLnRzdCc6DQo+IElucHV0L291dHB1dCBlcnJvcg0KPiBtYWtlOiAqKiogW01ha2Vm
+aWxlOjMyOiBjb3B5XSBFcnJvciAxDQo+IGdlbmVyYWwgdGVzdHMgZmFpbGVkDQo+IA0KDQpEdWgu
+Li4gVGhlIExpbnV4IHNlcnZlciBpcyByZXR1cm5pbmcgdGhlIGxpc3Qgb2YgX2FsbF8gYXR0cmli
+dXRlcyB3aGVuDQp3ZSBhc2sgZm9yIHN1cHBhdHRyX2V4Y2xjcmVhdCBpbnN0ZWFkIG9mIHNhbml0
+aXNpbmcgYnkgbWlub3IgdmVyc2lvbi4NCkJydWNlPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
+QHByaW1hcnlkYXRhLmNvbQ0K
 
-On 05/08/2017 10:26 AM, Trond Myklebust wrote:
-> When using NFS4_CREATE_EXCLUSIVE4_1 mode, the client will overestimate the
-> amount of space that it needs for the attributes because it does so
-> before checking whether or not the server supports a given attribute.
-> 
-> Fix by checking the attribute mask earlier.
-
-Cthon general tests consistently fail with IO errors once this patch is applied, but only for NFS v4.1 (v2, v3, v4.0, and v4.2 all work fine).  Here is the output that it gives me:
-
-GENERAL TESTS: directory /nfs/general
-if test ! -x runtests; then chmod a+x runtests; fi
-cd /nfs/general; rm -f Makefile runtests runtests.wrk *.sh *.c mkdummy rmdummy nroff.in makefile.tst
-cp Makefile runtests runtests.wrk *.sh *.c mkdummy rmdummy nroff.in makefile.tst /nfs/general
-cp: cannot create regular file '/nfs/general/Makefile': Input/output error
-cp: cannot create regular file '/nfs/general/runtests': Input/output error
-cp: cannot create regular file '/nfs/general/runtests.wrk': Input/output error
-cp: cannot create regular file '/nfs/general/large4.sh': Input/output error
-cp: cannot create regular file '/nfs/general/large.c': Input/output error
-cp: cannot create regular file '/nfs/general/large1.c': Input/output error
-cp: cannot create regular file '/nfs/general/large2.c': Input/output error
-cp: cannot create regular file '/nfs/general/large3.c': Input/output error
-cp: cannot create regular file '/nfs/general/stat.c': Input/output error
-cp: cannot create regular file '/nfs/general/mkdummy': Input/output error
-cp: cannot create regular file '/nfs/general/rmdummy': Input/output error
-cp: cannot create regular file '/nfs/general/nroff.in': Input/output error
-cp: cannot create regular file '/nfs/general/makefile.tst': Input/output error
-make: *** [Makefile:32: copy] Error 1
-general tests failed
-
-Thanks,
-Anna
-
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4xdr.c | 75 ++++++++++++++++++++++++++------------------------------
->  1 file changed, 35 insertions(+), 40 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index dbfe48ac3529..3aebfdc82b30 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -1000,8 +1000,9 @@ static void encode_nfs4_verifier(struct xdr_stream *xdr, const nfs4_verifier *ve
->  
->  static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
->  				const struct nfs4_label *label,
-> +				const umode_t *umask,
->  				const struct nfs_server *server,
-> -				bool excl_check, const umode_t *umask)
-> +				const uint32_t attrmask[])
->  {
->  	char owner_name[IDMAP_NAMESZ];
->  	char owner_group[IDMAP_NAMESZ];
-> @@ -1016,22 +1017,20 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
->  	/*
->  	 * We reserve enough space to write the entire attribute buffer at once.
->  	 */
-> -	if (iap->ia_valid & ATTR_SIZE) {
-> +	if ((iap->ia_valid & ATTR_SIZE) && (attrmask[0] & FATTR4_WORD0_SIZE)) {
->  		bmval[0] |= FATTR4_WORD0_SIZE;
->  		len += 8;
->  	}
-> -	if (!(server->attr_bitmask[2] & FATTR4_WORD2_MODE_UMASK))
-> -		umask = NULL;
->  	if (iap->ia_valid & ATTR_MODE) {
-> -		if (umask) {
-> +		if (umask && (attrmask[2] & FATTR4_WORD2_MODE_UMASK)) {
->  			bmval[2] |= FATTR4_WORD2_MODE_UMASK;
->  			len += 8;
-> -		} else {
-> +		} else if (attrmask[1] & FATTR4_WORD1_MODE) {
->  			bmval[1] |= FATTR4_WORD1_MODE;
->  			len += 4;
->  		}
->  	}
-> -	if (iap->ia_valid & ATTR_UID) {
-> +	if ((iap->ia_valid & ATTR_UID) && (attrmask[1] & FATTR4_WORD1_OWNER)) {
->  		owner_namelen = nfs_map_uid_to_name(server, iap->ia_uid, owner_name, IDMAP_NAMESZ);
->  		if (owner_namelen < 0) {
->  			dprintk("nfs: couldn't resolve uid %d to string\n",
-> @@ -1044,7 +1043,8 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
->  		bmval[1] |= FATTR4_WORD1_OWNER;
->  		len += 4 + (XDR_QUADLEN(owner_namelen) << 2);
->  	}
-> -	if (iap->ia_valid & ATTR_GID) {
-> +	if ((iap->ia_valid & ATTR_GID) &&
-> +	   (attrmask[1] & FATTR4_WORD1_OWNER_GROUP)) {
->  		owner_grouplen = nfs_map_gid_to_group(server, iap->ia_gid, owner_group, IDMAP_NAMESZ);
->  		if (owner_grouplen < 0) {
->  			dprintk("nfs: couldn't resolve gid %d to string\n",
-> @@ -1056,32 +1056,26 @@ static void encode_attrs(struct xdr_stream *xdr, const struct iattr *iap,
->  		bmval[1] |= FATTR4_WORD1_OWNER_GROUP;
->  		len += 4 + (XDR_QUADLEN(owner_grouplen) << 2);
->  	}
-> -	if (iap->ia_valid & ATTR_ATIME_SET) {
-> -		bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
-> -		len += 16;
-> -	} else if (iap->ia_valid & ATTR_ATIME) {
-> -		bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
-> -		len += 4;
-> -	}
-> -	if (iap->ia_valid & ATTR_MTIME_SET) {
-> -		bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
-> -		len += 16;
-> -	} else if (iap->ia_valid & ATTR_MTIME) {
-> -		bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
-> -		len += 4;
-> +	if (attrmask[1] & FATTR4_WORD1_TIME_ACCESS_SET) {
-> +		if (iap->ia_valid & ATTR_ATIME_SET) {
-> +			bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
-> +			len += 16;
-> +		} else if (iap->ia_valid & ATTR_ATIME) {
-> +			bmval[1] |= FATTR4_WORD1_TIME_ACCESS_SET;
-> +			len += 4;
-> +		}
->  	}
-> -
-> -	if (excl_check) {
-> -		const u32 *excl_bmval = server->exclcreat_bitmask;
-> -		bmval[0] &= excl_bmval[0];
-> -		bmval[1] &= excl_bmval[1];
-> -		bmval[2] &= excl_bmval[2];
-> -
-> -		if (!(excl_bmval[2] & FATTR4_WORD2_SECURITY_LABEL))
-> -			label = NULL;
-> +	if (attrmask[1] & FATTR4_WORD1_TIME_MODIFY_SET) {
-> +		if (iap->ia_valid & ATTR_MTIME_SET) {
-> +			bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
-> +			len += 16;
-> +		} else if (iap->ia_valid & ATTR_MTIME) {
-> +			bmval[1] |= FATTR4_WORD1_TIME_MODIFY_SET;
-> +			len += 4;
-> +		}
->  	}
->  
-> -	if (label) {
-> +	if (label && (attrmask[2] & FATTR4_WORD2_SECURITY_LABEL)) {
->  		len += 4 + 4 + 4 + (XDR_QUADLEN(label->len) << 2);
->  		bmval[2] |= FATTR4_WORD2_SECURITY_LABEL;
->  	}
-> @@ -1188,8 +1182,8 @@ static void encode_create(struct xdr_stream *xdr, const struct nfs4_create_arg *
->  	}
->  
->  	encode_string(xdr, create->name->len, create->name->name);
-> -	encode_attrs(xdr, create->attrs, create->label, create->server, false,
-> -		     &create->umask);
-> +	encode_attrs(xdr, create->attrs, create->label, &create->umask,
-> +			create->server, create->server->attr_bitmask);
->  }
->  
->  static void encode_getattr_one(struct xdr_stream *xdr, uint32_t bitmap, struct compound_hdr *hdr)
-> @@ -1409,13 +1403,13 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
->  	switch(arg->createmode) {
->  	case NFS4_CREATE_UNCHECKED:
->  		*p = cpu_to_be32(NFS4_CREATE_UNCHECKED);
-> -		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, false,
-> -			     &arg->umask);
-> +		encode_attrs(xdr, arg->u.attrs, arg->label, &arg->umask,
-> +				arg->server, arg->server->attr_bitmask);
->  		break;
->  	case NFS4_CREATE_GUARDED:
->  		*p = cpu_to_be32(NFS4_CREATE_GUARDED);
-> -		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, false,
-> -			     &arg->umask);
-> +		encode_attrs(xdr, arg->u.attrs, arg->label, &arg->umask,
-> +				arg->server, arg->server->attr_bitmask);
->  		break;
->  	case NFS4_CREATE_EXCLUSIVE:
->  		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE);
-> @@ -1424,8 +1418,8 @@ static inline void encode_createmode(struct xdr_stream *xdr, const struct nfs_op
->  	case NFS4_CREATE_EXCLUSIVE4_1:
->  		*p = cpu_to_be32(NFS4_CREATE_EXCLUSIVE4_1);
->  		encode_nfs4_verifier(xdr, &arg->u.verifier);
-> -		encode_attrs(xdr, arg->u.attrs, arg->label, arg->server, true,
-> -			     &arg->umask);
-> +		encode_attrs(xdr, arg->u.attrs, arg->label, &arg->umask,
-> +				arg->server, arg->server->exclcreat_bitmask);
->  	}
->  }
->  
-> @@ -1681,7 +1675,8 @@ static void encode_setattr(struct xdr_stream *xdr, const struct nfs_setattrargs
->  {
->  	encode_op_hdr(xdr, OP_SETATTR, decode_setattr_maxsz, hdr);
->  	encode_nfs4_stateid(xdr, &arg->stateid);
-> -	encode_attrs(xdr, arg->iap, arg->label, server, false, NULL);
-> +	encode_attrs(xdr, arg->iap, arg->label, NULL, server,
-> +			server->attr_bitmask);
->  }
->  
->  static void encode_setclientid(struct xdr_stream *xdr, const struct nfs4_setclientid *setclientid, struct compound_hdr *hdr)
-> 
