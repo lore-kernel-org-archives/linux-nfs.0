@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33130 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53530 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754894AbdEIQM7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 12:12:59 -0400
+        id S1753554AbdEIQMx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 12:12:53 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -18,41 +18,53 @@ Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
         neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
         josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
         bo.li.liu@oracle.com
-Subject: [xfstests PATCH v2 2/3] ext4: allow ext4 to use $SCRATCH_LOGDEV
-Date: Tue,  9 May 2017 12:12:44 -0400
-Message-Id: <20170509161245.29908-3-jlayton@redhat.com>
-In-Reply-To: <20170509161245.29908-1-jlayton@redhat.com>
-References: <20170509161245.29908-1-jlayton@redhat.com>
+Subject: [xfstests PATCH v2 0/3] xfstest for updated writeback error handling
+Date: Tue,  9 May 2017 12:12:42 -0400
+Message-Id: <20170509161245.29908-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The writeback error handling test requires that you put the journal on a
-separate device. This allows us to use dmerror to simulate data
-writeback failure, without affecting the journal.
+I've numbered the new test as 999 for the moment so as not to collide with
+tests being added while I've been working on this. I can change that and
+resend if this should go in.
 
-xfs already has infrastructure for this (a'la $SCRATCH_LOGDEV), so wire
-up the ext4 code so that it can do the same thing when _scratch_mkfs is
-called.
+I'm working on a set of kernel patches to change how writeback errors
+are handled and reported in the kernel. Instead of reporting a
+writeback error to only the first fsync caller on the file, I aim
+to make the kernel report them once on every file description:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- common/rc | 3 +++
- 1 file changed, 3 insertions(+)
+   http://www.spinics.net/lists/kernel/msg2504453.html
 
-diff --git a/common/rc b/common/rc
-index 257b1903359d..8b815d9c8c33 100644
---- a/common/rc
-+++ b/common/rc
-@@ -675,6 +675,9 @@ _scratch_mkfs_ext4()
- 	local tmp=`mktemp`
- 	local mkfs_status
- 
-+	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
-+	    $mkfs_cmd -O journal_dev $SCRATCH_LOGDEV && \
-+	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
- 
- 	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
- 	mkfs_status=$?
+This patch adds a test for the new behavior, on local filesystems that
+can handle journalling to a separate device. Basically, open many fds to
+the same file, turn on dm_error, write to each of the fds, and then
+fsync them all to ensure that they all get an error back. Then, flip the
+device back to working, reopen the files and ensure that no error is
+reported.
+
+With the kernel patch series in place, ext4 and xfs now pass. btrfs still
+clears the error after the first fsync, so it seems like it still needs a
+bit of work.
+
+Jeff Layton (3):
+  generic: add a writeback error handling test
+  ext4: allow ext4 to use $SCRATCH_LOGDEV
+  btrfs: allow it to use $SCRATCH_LOGDEV
+
+ common/dmerror        |  13 +++--
+ common/rc             |   5 ++
+ src/Makefile          |   2 +-
+ src/fsync-err.c       | 138 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/999     |  75 +++++++++++++++++++++++++++
+ tests/generic/999.out |   3 ++
+ tests/generic/group   |   1 +
+ tools/dmerror         |  47 +++++++++++++++++
+ 8 files changed, 278 insertions(+), 6 deletions(-)
+ create mode 100644 src/fsync-err.c
+ create mode 100755 tests/generic/999
+ create mode 100644 tests/generic/999.out
+ create mode 100755 tools/dmerror
+
 -- 
 2.9.3
 
