@@ -1,75 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47837 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752951AbdEIMnZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 08:43:25 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: hch <hch@lst.de>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 16/32] lockd: fix some weird indentation
-Date: Tue, 9 May 2017 12:43:18 +0000
-Message-ID: <1494333795.4209.20.camel@primarydata.com>
-References: <20170509092010.30752-1-hch@lst.de>
-         <20170509092010.30752-17-hch@lst.de>
-In-Reply-To: <20170509092010.30752-17-hch@lst.de>
+Received: from verein.lst.de ([213.95.11.211]:45103 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753210AbdEINLJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 09:11:09 -0400
+Date: Tue, 9 May 2017 15:11:08 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 02/32] sunrpc: fix encoder callback prototypes
+Message-ID: <20170509131108.GA15042@lst.de>
+References: <20170509092010.30752-1-hch@lst.de> <20170509092010.30752-3-hch@lst.de> <779451235.5133504.1494323029528.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <779451235.5133504.1494323029528.JavaMail.zimbra@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTA1LTA5IGF0IDExOjE5ICswMjAwLCBDaHJpc3RvcGggSGVsbHdpZyB3cm90
-ZToNCj4gUmVtb3ZlIGRvdWJsZSBpbmRlbnRhdGlvbiBvZiBhIGZldyBzdHJ1Y3QgcnBjX3ZlcnNp
-b24gYW5kDQo+IHN0cnVjdCBycGNfcHJvZ3JhbSBpbnN0YW5jZS4NCj4gDQo+IFNpZ25lZC1vZmYt
-Ynk6IENocmlzdG9waCBIZWxsd2lnIDxoY2hAbHN0LmRlPg0KPiAtLS0NCj4gwqBmcy9sb2NrZC9j
-bG50eGRyLmMgfCAyMiArKysrKysrKysrKy0tLS0tLS0tLS0tDQo+IMKgZnMvbG9ja2QvbW9uLmPC
-oMKgwqDCoMKgfCAxNiArKysrKysrKy0tLS0tLS0tDQo+IMKgMiBmaWxlcyBjaGFuZ2VkLCAxOSBp
-bnNlcnRpb25zKCspLCAxOSBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9sb2Nr
-ZC9jbG50eGRyLmMgYi9mcy9sb2NrZC9jbG50eGRyLmMNCj4gaW5kZXggY2NjZjVjMmZmYWRiLi43
-YmM1NDE2MmY1YmYgMTAwNjQ0DQo+IC0tLSBhL2ZzL2xvY2tkL2NsbnR4ZHIuYw0KPiArKysgYi9m
-cy9sb2NrZC9jbG50eGRyLmMNCj4gQEAgLTYwMSwxNSArNjAxLDE1IEBAIHN0YXRpYyBjb25zdCBz
-dHJ1Y3QgcnBjX3Byb2NpbmZvDQo+IG5sbV9wcm9jZWR1cmVzW10gPSB7DQo+IMKgfTsNCj4gwqAN
-Cj4gwqBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY192ZXJzaW9uCW5sbV92ZXJzaW9uMSA9IHsNCj4g
-LQkJLm51bWJlcgkJPSAxLA0KPiAtCQkubnJwcm9jcwk9IEFSUkFZX1NJWkUobmxtX3Byb2NlZHVy
-ZXMpLA0KPiAtCQkucHJvY3MJCT0gbmxtX3Byb2NlZHVyZXMsDQo+ICsJLm51bWJlcgkJPSAxLA0K
-PiArCS5ucnByb2NzCT0gQVJSQVlfU0laRShubG1fcHJvY2VkdXJlcyksDQo+ICsJLnByb2NzCQk9
-IG5sbV9wcm9jZWR1cmVzLA0KPiDCoH07DQo+IMKgDQo+IMKgc3RhdGljIGNvbnN0IHN0cnVjdCBy
-cGNfdmVyc2lvbglubG1fdmVyc2lvbjMgPSB7DQo+IC0JCS5udW1iZXIJCT0gMywNCj4gLQkJLm5y
-cHJvY3MJPSBBUlJBWV9TSVpFKG5sbV9wcm9jZWR1cmVzKSwNCj4gLQkJLnByb2NzCQk9IG5sbV9w
-cm9jZWR1cmVzLA0KPiArCS5udW1iZXIJCT0gMywNCj4gKwkubnJwcm9jcwk9IEFSUkFZX1NJWkUo
-bmxtX3Byb2NlZHVyZXMpLA0KPiArCS5wcm9jcwkJPSBubG1fcHJvY2VkdXJlcywNCj4gwqB9Ow0K
-PiDCoA0KPiDCoHN0YXRpYyBjb25zdCBzdHJ1Y3QgcnBjX3ZlcnNpb24JKm5sbV92ZXJzaW9uc1td
-ID0gew0KPiBAQCAtNjIzLDkgKzYyMyw5IEBAIHN0YXRpYyBjb25zdCBzdHJ1Y3QgcnBjX3ZlcnNp
-b24JKm5sbV92ZXJzaQ0KPiBvbnNbXSA9IHsNCj4gwqBzdGF0aWMgc3RydWN0IHJwY19zdGF0CQlu
-bG1fcnBjX3N0YXRzOw0KPiDCoA0KPiDCoGNvbnN0IHN0cnVjdCBycGNfcHJvZ3JhbQlubG1fcHJv
-Z3JhbSA9IHsNCj4gLQkJLm5hbWUJCT0gImxvY2tkIiwNCj4gLQkJLm51bWJlcgkJPSBOTE1fUFJP
-R1JBTSwNCj4gLQkJLm5ydmVycwkJPSBBUlJBWV9TSVpFKG5sbV92ZXJzaW9ucyksDQo+IC0JCS52
-ZXJzaW9uCT0gbmxtX3ZlcnNpb25zLA0KPiAtCQkuc3RhdHMJCT0gJm5sbV9ycGNfc3RhdHMsDQo+
-ICsJLm5hbWUJCT0gImxvY2tkIiwNCj4gKwkubnVtYmVyCQk9IE5MTV9QUk9HUkFNLA0KPiArCS5u
-cnZlcnMJCT0gQVJSQVlfU0laRShubG1fdmVyc2lvbnMpLA0KPiArCS52ZXJzaW9uCT0gbmxtX3Zl
-cnNpb25zLA0KPiArCS5zdGF0cwkJPSAmbmxtX3JwY19zdGF0cywNCj4gwqB9Ow0KPiBkaWZmIC0t
-Z2l0IGEvZnMvbG9ja2QvbW9uLmMgYi9mcy9sb2NrZC9tb24uYw0KPiBpbmRleCAyYzQxZGU4ZGIx
-ZjAuLjBlYjU1YjRkNzViNiAxMDA2NDQNCj4gLS0tIGEvZnMvbG9ja2QvbW9uLmMNCj4gKysrIGIv
-ZnMvbG9ja2QvbW9uLmMNCj4gQEAgLTU1Myw5ICs1NTMsOSBAQCBzdGF0aWMgY29uc3Qgc3RydWN0
-IHJwY19wcm9jaW5mbyBuc21fcHJvY2VkdXJlc1tdDQo+ID0gew0KPiDCoH07DQo+IMKgDQo+IMKg
-c3RhdGljIGNvbnN0IHN0cnVjdCBycGNfdmVyc2lvbiBuc21fdmVyc2lvbjEgPSB7DQo+IC0JCS5u
-dW1iZXIJCT0gMSwNCj4gLQkJLm5ycHJvY3MJPSBBUlJBWV9TSVpFKG5zbV9wcm9jZWR1cmVzKSwN
-Cj4gLQkJLnByb2NzCQk9IG5zbV9wcm9jZWR1cmVzDQo+ICsJLm51bWJlcgkJPSAxLA0KPiArCS5u
-cnByb2NzCT0gQVJSQVlfU0laRShuc21fcHJvY2VkdXJlcyksDQo+ICsJLnByb2NzCQk9IG5zbV9w
-cm9jZWR1cmVzDQo+IMKgfTsNCj4gwqANCj4gwqBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY192ZXJz
-aW9uICpuc21fdmVyc2lvbltdID0gew0KPiBAQCAtNTY1LDkgKzU2NSw5IEBAIHN0YXRpYyBjb25z
-dCBzdHJ1Y3QgcnBjX3ZlcnNpb24gKm5zbV92ZXJzaW9uW10gPQ0KPiB7DQo+IMKgc3RhdGljIHN0
-cnVjdCBycGNfc3RhdAkJbnNtX3N0YXRzOw0KPiDCoA0KPiDCoHN0YXRpYyBjb25zdCBzdHJ1Y3Qg
-cnBjX3Byb2dyYW0gbnNtX3Byb2dyYW0gPSB7DQo+IC0JCS5uYW1lCQk9ICJzdGF0ZCIsDQo+IC0J
-CS5udW1iZXIJCT0gTlNNX1BST0dSQU0sDQo+IC0JCS5ucnZlcnMJCT0gQVJSQVlfU0laRShuc21f
-dmVyc2lvbiksDQo+IC0JCS52ZXJzaW9uCT0gbnNtX3ZlcnNpb24sDQo+IC0JCS5zdGF0cwkJPSAm
-bnNtX3N0YXRzDQo+ICsJLm5hbWUJCT0gInN0YXRkIiwNCj4gKwkubnVtYmVyCQk9IE5TTV9QUk9H
-UkFNLA0KPiArCS5ucnZlcnMJCT0gQVJSQVlfU0laRShuc21fdmVyc2lvbiksDQo+ICsJLnZlcnNp
-b24JPSBuc21fdmVyc2lvbiwNCj4gKwkuc3RhdHMJCT0gJm5zbV9zdGF0cw0KPiDCoH07DQoNCkFj
-a2VkLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFBy
-aW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On Tue, May 09, 2017 at 11:43:49AM +0200, Mkrtchyan, Tigran wrote:
+> just out of curiosity: you are talking about increasing type safety, but
+> at the same time replaces arguments to 'const void *data', which will accept
+> everything. Is there something special which I don't understand?
 
+Nothing special - cast are potentially dangerous in general, and
+function pointer cases are especially dangerous as there is no
+verify the caller and callee signatures match at all.  As generic
+method call patterns need to have private data of some points they
+need to have a void pointer somewhere - either in the signature or
+as a pointer from a passed structure.  For those the compiler at least
+can do some basic sanity checking, and good static analysis tools can
+even verify we get the proper object using whole program analysis.
