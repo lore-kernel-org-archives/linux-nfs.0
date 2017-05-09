@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44172 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55196 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755424AbdEIPux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 11:50:53 -0400
+        id S1754538AbdEIPuy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 11:50:54 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -18,108 +18,122 @@ Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
         neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
         josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
         bo.li.liu@oracle.com
-Subject: [PATCH v4 23/27] gfs2: clean up some filemap_* calls
-Date: Tue,  9 May 2017 11:49:26 -0400
-Message-Id: <20170509154930.29524-24-jlayton@redhat.com>
+Subject: [PATCH v4 20/27] cifs: cleanup writeback handling errors and comments
+Date: Tue,  9 May 2017 11:49:23 -0400
+Message-Id: <20170509154930.29524-21-jlayton@redhat.com>
 In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In some places, it's trying to reset the mapping error after calling
-filemap_fdatawait. That's no longer required. Also, turn several
-filemap_fdatawrite+filemap_fdatawait calls into filemap_write_and_wait.
-That will at least return writeback errors that occur during the write
-phase.
+Now that writeback errors are handled on a per-file basis using the new
+sequence counter method at the vfs layer, we no longer need to re-set
+errors in the mapping after doing writeback in non-fsync codepaths.
+
+Also, fix up some bogus comments.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/gfs2/glops.c | 17 ++++-------------
- fs/gfs2/lops.c  |  4 +---
- fs/gfs2/super.c |  6 ++----
- 3 files changed, 7 insertions(+), 20 deletions(-)
+ fs/cifs/cifsfs.c |  4 +---
+ fs/cifs/file.c   |  7 ++-----
+ fs/cifs/inode.c  | 22 +++++++---------------
+ 3 files changed, 10 insertions(+), 23 deletions(-)
 
-diff --git a/fs/gfs2/glops.c b/fs/gfs2/glops.c
-index 5db59d444838..18ab54e351d6 100644
---- a/fs/gfs2/glops.c
-+++ b/fs/gfs2/glops.c
-@@ -145,7 +145,6 @@ static void rgrp_go_sync(struct gfs2_glock *gl)
- 	struct gfs2_sbd *sdp = gl->gl_name.ln_sbd;
- 	struct address_space *mapping = &sdp->sd_aspace;
- 	struct gfs2_rgrpd *rgd;
--	int error;
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index dd3f5fabfdf6..017a2d1d02c7 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -829,10 +829,8 @@ static loff_t cifs_llseek(struct file *file, loff_t offset, int whence)
+ 		if (!CIFS_CACHE_READ(CIFS_I(inode)) && inode->i_mapping &&
+ 		    inode->i_mapping->nrpages != 0) {
+ 			rc = filemap_fdatawait(inode->i_mapping);
+-			if (rc) {
+-				mapping_set_error(inode->i_mapping, rc);
++			if (rc)
+ 				return rc;
+-			}
+ 		}
+ 		/*
+ 		 * Some applications poll for the file length in this strange
+diff --git a/fs/cifs/file.c b/fs/cifs/file.c
+index 0bee7f8d91ad..9825d892716e 100644
+--- a/fs/cifs/file.c
++++ b/fs/cifs/file.c
+@@ -722,9 +722,7 @@ cifs_reopen_file(struct cifsFileInfo *cfile, bool can_flush)
+ 	cinode = CIFS_I(inode);
  
- 	spin_lock(&gl->gl_lockref.lock);
- 	rgd = gl->gl_object;
-@@ -158,9 +157,7 @@ static void rgrp_go_sync(struct gfs2_glock *gl)
- 	GLOCK_BUG_ON(gl, gl->gl_state != LM_ST_EXCLUSIVE);
- 
- 	gfs2_log_flush(sdp, gl, NORMAL_FLUSH);
--	filemap_fdatawrite_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
--	error = filemap_fdatawait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
--	mapping_set_error(mapping, error);
-+	filemap_write_and_wait_range(mapping, gl->gl_vm.start, gl->gl_vm.end);
- 	gfs2_ail_empty_gl(gl);
- 
- 	spin_lock(&gl->gl_lockref.lock);
-@@ -207,7 +204,6 @@ static void inode_go_sync(struct gfs2_glock *gl)
- {
- 	struct gfs2_inode *ip = gl->gl_object;
- 	struct address_space *metamapping = gfs2_glock2aspace(gl);
--	int error;
- 
- 	if (ip && !S_ISREG(ip->i_inode.i_mode))
- 		ip = NULL;
-@@ -223,14 +219,9 @@ static void inode_go_sync(struct gfs2_glock *gl)
- 
- 	gfs2_log_flush(gl->gl_name.ln_sbd, gl, NORMAL_FLUSH);
- 	filemap_fdatawrite(metamapping);
--	if (ip) {
--		struct address_space *mapping = ip->i_inode.i_mapping;
--		filemap_fdatawrite(mapping);
--		error = filemap_fdatawait(mapping);
--		mapping_set_error(mapping, error);
--	}
--	error = filemap_fdatawait(metamapping);
--	mapping_set_error(metamapping, error);
-+	if (ip)
-+		filemap_write_and_wait(ip->i_inode.i_mapping);
-+	filemap_fdatawait(metamapping);
- 	gfs2_ail_empty_gl(gl);
- 	/*
- 	 * Writeback of the data mapping may cause the dirty flag to be set
-diff --git a/fs/gfs2/lops.c b/fs/gfs2/lops.c
-index cd7857ab1a6a..614bb974b927 100644
---- a/fs/gfs2/lops.c
-+++ b/fs/gfs2/lops.c
-@@ -586,9 +586,7 @@ static void gfs2_meta_sync(struct gfs2_glock *gl)
- 	if (mapping == NULL)
- 		mapping = &sdp->sd_aspace;
- 
--	filemap_fdatawrite(mapping);
--	error = filemap_fdatawait(mapping);
+ 	if (can_flush) {
+-		rc = filemap_write_and_wait(inode->i_mapping);
+-		mapping_set_error(inode->i_mapping, rc);
 -
-+	error = filemap_write_and_wait(mapping);
- 	if (error)
- 		gfs2_io_error(gl->gl_name.ln_sbd);
- }
-diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
-index 361796a84fce..675c39566ea1 100644
---- a/fs/gfs2/super.c
-+++ b/fs/gfs2/super.c
-@@ -1593,10 +1593,8 @@ static void gfs2_evict_inode(struct inode *inode)
- out_truncate:
- 	gfs2_log_flush(sdp, ip->i_gl, NORMAL_FLUSH);
- 	metamapping = gfs2_glock2aspace(ip->i_gl);
--	if (test_bit(GLF_DIRTY, &ip->i_gl->gl_flags)) {
--		filemap_fdatawrite(metamapping);
--		filemap_fdatawait(metamapping);
--	}
-+	if (test_bit(GLF_DIRTY, &ip->i_gl->gl_flags))
-+		filemap_write_and_wait(metamapping);
- 	write_inode_now(inode, 1);
- 	gfs2_ail_flush(ip->i_gl, 0);
++		filemap_write_and_wait(inode->i_mapping);
+ 		if (tcon->unix_ext)
+ 			rc = cifs_get_inode_info_unix(&inode, full_path,
+ 						      inode->i_sb, xid);
+@@ -3906,8 +3904,7 @@ void cifs_oplock_break(struct work_struct *work)
+ 			break_lease(inode, O_WRONLY);
+ 		rc = filemap_fdatawrite(inode->i_mapping);
+ 		if (!CIFS_CACHE_READ(cinode)) {
+-			rc = filemap_fdatawait(inode->i_mapping);
+-			mapping_set_error(inode->i_mapping, rc);
++			filemap_fdatawait(inode->i_mapping);
+ 			cifs_zap_mapping(inode);
+ 		}
+ 		cifs_dbg(FYI, "Oplock flush inode %p rc %d\n", inode, rc);
+diff --git a/fs/cifs/inode.c b/fs/cifs/inode.c
+index b261db34103c..a58e605240fc 100644
+--- a/fs/cifs/inode.c
++++ b/fs/cifs/inode.c
+@@ -2008,10 +2008,8 @@ int cifs_getattr(const struct path *path, struct kstat *stat,
+ 	if (!CIFS_CACHE_READ(CIFS_I(inode)) && inode->i_mapping &&
+ 	    inode->i_mapping->nrpages != 0) {
+ 		rc = filemap_fdatawait(inode->i_mapping);
+-		if (rc) {
+-			mapping_set_error(inode->i_mapping, rc);
++		if (rc)
+ 			return rc;
+-		}
+ 	}
  
+ 	rc = cifs_revalidate_dentry_attr(dentry);
+@@ -2171,15 +2169,12 @@ cifs_setattr_unix(struct dentry *direntry, struct iattr *attrs)
+ 	 * Attempt to flush data before changing attributes. We need to do
+ 	 * this for ATTR_SIZE and ATTR_MTIME for sure, and if we change the
+ 	 * ownership or mode then we may also need to do this. Here, we take
+-	 * the safe way out and just do the flush on all setattr requests. If
+-	 * the flush returns error, store it to report later and continue.
++	 * the safe way out and just do the flush on all setattr requests.
+ 	 *
+ 	 * BB: This should be smarter. Why bother flushing pages that
+-	 * will be truncated anyway? Also, should we error out here if
+-	 * the flush returns error?
++	 * will be truncated anyway?
+ 	 */
+-	rc = filemap_write_and_wait(inode->i_mapping);
+-	mapping_set_error(inode->i_mapping, rc);
++	filemap_write_and_wait(inode->i_mapping);
+ 	rc = 0;
+ 
+ 	if (attrs->ia_valid & ATTR_SIZE) {
+@@ -2314,15 +2309,12 @@ cifs_setattr_nounix(struct dentry *direntry, struct iattr *attrs)
+ 	 * Attempt to flush data before changing attributes. We need to do
+ 	 * this for ATTR_SIZE and ATTR_MTIME for sure, and if we change the
+ 	 * ownership or mode then we may also need to do this. Here, we take
+-	 * the safe way out and just do the flush on all setattr requests. If
+-	 * the flush returns error, store it to report later and continue.
++	 * the safe way out and just do the flush on all setattr requests.
+ 	 *
+ 	 * BB: This should be smarter. Why bother flushing pages that
+-	 * will be truncated anyway? Also, should we error out here if
+-	 * the flush returns error?
++	 * will be truncated anyway?
+ 	 */
+-	rc = filemap_write_and_wait(inode->i_mapping);
+-	mapping_set_error(inode->i_mapping, rc);
++	filemap_write_and_wait(inode->i_mapping);
+ 	rc = 0;
+ 
+ 	if (attrs->ia_valid & ATTR_SIZE) {
 -- 
 2.9.3
 
