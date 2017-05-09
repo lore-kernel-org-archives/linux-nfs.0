@@ -1,146 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:38705 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:52890 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752199AbdEIJUt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:20:49 -0400
+        with ESMTP id S1753025AbdEIJVD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 05:21:03 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 11/32] lockd: fix decoder callback prototypes
-Date: Tue,  9 May 2017 11:19:49 +0200
-Message-Id: <20170509092010.30752-12-hch@lst.de>
+Subject: [PATCH 18/32] nfsd: use named initializers in PROC()
+Date: Tue,  9 May 2017 11:19:56 +0200
+Message-Id: <20170509092010.30752-19-hch@lst.de>
 In-Reply-To: <20170509092010.30752-1-hch@lst.de>
 References: <20170509092010.30752-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Declare the p_decode callbacks with the proper prototype instead of
-casting to kxdrdproc_t and losing all type safety.
-
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/lockd/clnt4xdr.c |  8 +++++---
- fs/lockd/clntxdr.c  |  8 +++++---
- fs/lockd/mon.c      | 10 ++++++----
- 3 files changed, 16 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs2acl.c  | 22 +++++++++++-----------
+ fs/nfsd/nfs3acl.c  | 22 +++++++++++-----------
+ fs/nfsd/nfs4proc.c | 10 +++++-----
+ 3 files changed, 27 insertions(+), 27 deletions(-)
 
-diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
-index 3cbad662120a..f0ab7a99dd23 100644
---- a/fs/lockd/clnt4xdr.c
-+++ b/fs/lockd/clnt4xdr.c
-@@ -533,8 +533,9 @@ static int decode_nlm4_testrply(struct xdr_stream *xdr,
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index 838f90f3f890..12933d07204c 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -345,17 +345,17 @@ static int nfsaclsvc_release_access(struct svc_rqst *rqstp, __be32 *p,
+ #define nfsd3_voidres		nfsd3_voidargs
+ struct nfsd3_voidargs { int dummy; };
  
- static int nlm4_xdr_dec_testres(struct rpc_rqst *req,
- 				struct xdr_stream *xdr,
--				struct nlm_res *result)
-+				void *data)
- {
-+	struct nlm_res *result = data;
- 	int error;
+-#define PROC(name, argt, rest, relt, cache, respsize)	\
+- { (svc_procfunc) nfsacld_proc_##name,		\
+-   (kxdrproc_t) nfsaclsvc_decode_##argt##args,	\
+-   (kxdrproc_t) nfsaclsvc_encode_##rest##res,	\
+-   (kxdrproc_t) nfsaclsvc_release_##relt,		\
+-   sizeof(struct nfsd3_##argt##args),		\
+-   sizeof(struct nfsd3_##rest##res),		\
+-   0,						\
+-   cache,					\
+-   respsize,					\
+- }
++#define PROC(name, argt, rest, relt, cache, respsize)			\
++{									\
++	.pc_func	= (svc_procfunc) nfsacld_proc_##name,		\
++	.pc_decode	= (kxdrproc_t) nfsaclsvc_decode_##argt##args,	\
++	.pc_encode	= (kxdrproc_t) nfsaclsvc_encode_##rest##res,	\
++	.pc_release	= (kxdrproc_t) nfsaclsvc_release_##relt,	\
++	.pc_argsize	= sizeof(struct nfsd3_##argt##args),		\
++	.pc_ressize	= sizeof(struct nfsd3_##rest##res),		\
++	.pc_cachetype	= cache,					\
++	.pc_xdrressize	= respsize,					\
++}
  
- 	error = decode_cookie(xdr, &result->cookie);
-@@ -553,8 +554,9 @@ static int nlm4_xdr_dec_testres(struct rpc_rqst *req,
+ #define ST 1		/* status*/
+ #define AT 21		/* attributes */
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index dcb5f79076c0..db988a229b3a 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -237,17 +237,17 @@ static int nfs3svc_release_getacl(struct svc_rqst *rqstp, __be32 *p,
+ #define nfsd3_voidres			nfsd3_voidargs
+ struct nfsd3_voidargs { int dummy; };
+ 
+-#define PROC(name, argt, rest, relt, cache, respsize)	\
+- { (svc_procfunc) nfsd3_proc_##name,		\
+-   (kxdrproc_t) nfs3svc_decode_##argt##args,	\
+-   (kxdrproc_t) nfs3svc_encode_##rest##res,	\
+-   (kxdrproc_t) nfs3svc_release_##relt,		\
+-   sizeof(struct nfsd3_##argt##args),		\
+-   sizeof(struct nfsd3_##rest##res),		\
+-   0,						\
+-   cache,					\
+-   respsize,					\
+- }
++#define PROC(name, argt, rest, relt, cache, respsize)			\
++{									\
++	.pc_func	= (svc_procfunc) nfsd3_proc_##name,		\
++	.pc_decode	= (kxdrproc_t) nfs3svc_decode_##argt##args,	\
++	.pc_encode	= (kxdrproc_t) nfs3svc_encode_##rest##res,	\
++	.pc_release	= (kxdrproc_t) nfs3svc_release_##relt,		\
++	.pc_argsize	= sizeof(struct nfsd3_##argt##args),		\
++	.pc_ressize	= sizeof(struct nfsd3_##rest##res),		\
++	.pc_cachetype	= cache,					\
++	.pc_xdrressize	= respsize,					\
++}
+ 
+ #define ST 1		/* status*/
+ #define AT 21		/* attributes */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index d86031b6ad79..2a7bf4fb81bd 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1672,10 +1672,10 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+  * COMPOUND call.
   */
- static int nlm4_xdr_dec_res(struct rpc_rqst *req,
- 			    struct xdr_stream *xdr,
--			    struct nlm_res *result)
-+			    void *data)
+ static __be32
+-nfsd4_proc_compound(struct svc_rqst *rqstp,
+-		    struct nfsd4_compoundargs *args,
+-		    struct nfsd4_compoundres *resp)
++nfsd4_proc_compound(struct svc_rqst *rqstp, void *arg, void *res)
  {
-+	struct nlm_res *result = data;
- 	int error;
++	struct nfsd4_compoundargs *args = arg;
++	struct nfsd4_compoundres *resp = res;
+ 	struct nfsd4_op	*op;
+ 	struct nfsd4_operation *opdesc;
+ 	struct nfsd4_compound_state *cstate = &resp->cstate;
+@@ -2517,7 +2517,7 @@ struct nfsd4_voidargs { int dummy; };
  
- 	error = decode_cookie(xdr, &result->cookie);
-@@ -575,7 +577,7 @@ static int nlm4_xdr_dec_res(struct rpc_rqst *req,
- [NLMPROC_##proc] = {							\
- 	.p_proc      = NLMPROC_##proc,					\
- 	.p_encode    = nlm4_xdr_enc_##argtype,				\
--	.p_decode    = (kxdrdproc_t)nlm4_xdr_dec_##restype,		\
-+	.p_decode    = nlm4_xdr_dec_##restype,				\
- 	.p_arglen    = NLM4_##argtype##_sz,				\
- 	.p_replen    = NLM4_##restype##_sz,				\
- 	.p_statidx   = NLMPROC_##proc,					\
-diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
-index 825c0fde8c80..17e7f08b3a22 100644
---- a/fs/lockd/clntxdr.c
-+++ b/fs/lockd/clntxdr.c
-@@ -531,8 +531,9 @@ static int decode_nlm_testrply(struct xdr_stream *xdr,
- 
- static int nlm_xdr_dec_testres(struct rpc_rqst *req,
- 			       struct xdr_stream *xdr,
--			       struct nlm_res *result)
-+			       void *data)
- {
-+	struct nlm_res *result = data;
- 	int error;
- 
- 	error = decode_cookie(xdr, &result->cookie);
-@@ -551,8 +552,9 @@ static int nlm_xdr_dec_testres(struct rpc_rqst *req,
-  */
- static int nlm_xdr_dec_res(struct rpc_rqst *req,
- 			   struct xdr_stream *xdr,
--			   struct nlm_res *result)
-+			   void *data)
- {
-+	struct nlm_res *result = data;
- 	int error;
- 
- 	error = decode_cookie(xdr, &result->cookie);
-@@ -573,7 +575,7 @@ static int nlm_xdr_dec_res(struct rpc_rqst *req,
- [NLMPROC_##proc] = {							\
- 	.p_proc      = NLMPROC_##proc,					\
- 	.p_encode    = nlm_xdr_enc_##argtype,		\
--	.p_decode    = (kxdrdproc_t)nlm_xdr_dec_##restype,		\
-+	.p_decode    = nlm_xdr_dec_##restype,				\
- 	.p_arglen    = NLM_##argtype##_sz,				\
- 	.p_replen    = NLM_##restype##_sz,				\
- 	.p_statidx   = NLMPROC_##proc,					\
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 8043fd4b8a5c..80630f0347e1 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -490,8 +490,9 @@ static void nsm_xdr_enc_unmon(struct rpc_rqst *req, struct xdr_stream *xdr,
- 
- static int nsm_xdr_dec_stat_res(struct rpc_rqst *rqstp,
- 				struct xdr_stream *xdr,
--				struct nsm_res *resp)
-+				void *data)
- {
-+	struct nsm_res *resp = data;
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, 4 + 4);
-@@ -507,8 +508,9 @@ static int nsm_xdr_dec_stat_res(struct rpc_rqst *rqstp,
- 
- static int nsm_xdr_dec_stat(struct rpc_rqst *rqstp,
- 			    struct xdr_stream *xdr,
--			    struct nsm_res *resp)
-+			    void *data)
- {
-+	struct nsm_res *resp = data;
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, 4);
-@@ -533,7 +535,7 @@ static struct rpc_procinfo	nsm_procedures[] = {
- [NSMPROC_MON] = {
- 		.p_proc		= NSMPROC_MON,
- 		.p_encode	= nsm_xdr_enc_mon,
--		.p_decode	= (kxdrdproc_t)nsm_xdr_dec_stat_res,
-+		.p_decode	= nsm_xdr_dec_stat_res,
- 		.p_arglen	= SM_mon_sz,
- 		.p_replen	= SM_monres_sz,
- 		.p_statidx	= NSMPROC_MON,
-@@ -542,7 +544,7 @@ static struct rpc_procinfo	nsm_procedures[] = {
- [NSMPROC_UNMON] = {
- 		.p_proc		= NSMPROC_UNMON,
- 		.p_encode	= nsm_xdr_enc_unmon,
--		.p_decode	= (kxdrdproc_t)nsm_xdr_dec_stat,
-+		.p_decode	= nsm_xdr_dec_stat,
- 		.p_arglen	= SM_mon_id_sz,
- 		.p_replen	= SM_unmonres_sz,
- 		.p_statidx	= NSMPROC_UNMON,
+ static struct svc_procedure		nfsd_procedures4[2] = {
+ 	[NFSPROC4_NULL] = {
+-		.pc_func = (svc_procfunc) nfsd4_proc_null,
++		.pc_func = nfsd4_proc_null,
+ 		.pc_encode = (kxdrproc_t) nfs4svc_encode_voidres,
+ 		.pc_argsize = sizeof(struct nfsd4_voidargs),
+ 		.pc_ressize = sizeof(struct nfsd4_voidres),
+@@ -2525,7 +2525,7 @@ static struct svc_procedure		nfsd_procedures4[2] = {
+ 		.pc_xdrressize = 1,
+ 	},
+ 	[NFSPROC4_COMPOUND] = {
+-		.pc_func = (svc_procfunc) nfsd4_proc_compound,
++		.pc_func = nfsd4_proc_compound,
+ 		.pc_decode = (kxdrproc_t) nfs4svc_decode_compoundargs,
+ 		.pc_encode = (kxdrproc_t) nfs4svc_encode_compoundres,
+ 		.pc_argsize = sizeof(struct nfsd4_compoundargs),
 -- 
 2.11.0
 
