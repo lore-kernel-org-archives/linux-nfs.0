@@ -1,74 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f175.google.com ([209.85.216.175]:35426 "EHLO
-        mail-qt0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751471AbdEISkc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 14:40:32 -0400
-Received: by mail-qt0-f175.google.com with SMTP id n4so8568656qte.2
-        for <linux-nfs@vger.kernel.org>; Tue, 09 May 2017 11:40:31 -0700 (PDT)
-Message-ID: <1494355229.2659.15.camel@redhat.com>
-Subject: Re: [PATCH 4/9] Implement fsopen() to prepare for a mount
+Received: from mail-qk0-f176.google.com ([209.85.220.176]:32799 "EHLO
+        mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752049AbdEISv1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 May 2017 14:51:27 -0400
+Received: by mail-qk0-f176.google.com with SMTP id y201so9342441qka.0
+        for <linux-nfs@vger.kernel.org>; Tue, 09 May 2017 11:51:26 -0700 (PDT)
+Message-ID: <1494355884.2659.18.camel@redhat.com>
+Subject: Re: [PATCH 3/9] VFS: Introduce a mount context
 From: Jeff Layton <jlayton@redhat.com>
-To: Karel Zak <kzak@redhat.com>, David Howells <dhowells@redhat.com>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        mszeredi@redhat.com
-Date: Tue, 09 May 2017 14:40:29 -0400
-In-Reply-To: <20170504133414.ytfdumdeuhh5txkw@ws.net.home>
-References: <20170504104045.6sh3dqofcii6kk2e@ws.net.home>
-         <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
-         <149382750838.30481.8003919639826341255.stgit@warthog.procyon.org.uk>
-         <15169.1493903211@warthog.procyon.org.uk>
-         <20170504133414.ytfdumdeuhh5txkw@ws.net.home>
+To: Miklos Szeredi <mszeredi@redhat.com>,
+        David Howells <dhowells@redhat.com>
+Cc: viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
+Date: Tue, 09 May 2017 14:51:24 -0400
+In-Reply-To: <CAOssrKeR4bNwYyuwyr2d5fG8RcxeyWKREFTdnGqovus9t_2n4A@mail.gmail.com>
+References: <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
+         <149382749941.30481.11685229083280551867.stgit@warthog.procyon.org.uk>
+         <CAOssrKc0=geAw04btF9zO29y3=2sP+caF90HySKMbk8NkND3kQ@mail.gmail.com>
+         <10943.1494284264@warthog.procyon.org.uk>
+         <CAOssrKexeO8mmFFAPq2jQtO06iqGWDDe8BOUktEkY6UybDBX1Q@mail.gmail.com>
+         <15762.1494322915@warthog.procyon.org.uk>
+         <CAOssrKeR4bNwYyuwyr2d5fG8RcxeyWKREFTdnGqovus9t_2n4A@mail.gmail.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-05-04 at 15:34 +0200, Karel Zak wrote:
-> On Thu, May 04, 2017 at 02:06:51PM +0100, David Howells wrote:
-> > Karel Zak <kzak@redhat.com> wrote:
-> > > The very basic mount(2) problem is that you have to parse
-> > > /proc/self/mountinfo to get information about the mounted filesystem.
-> > > It seems that your read() is also one way communication.
-> > > 
-> > > What we really need is to have a way how to specify *what* you want to
-> > > read. The error message is not enough, I want to know the finally used
-> > > mount options, mount ID, etc. It would be nice to have something like
-> > > 
-> > > 
-> > >    fsmount(mfd, AT_FDCWD, "/mnt", 0);
-> > > 
-> > >    write(mfd, "o");
-> > >    read(mfd, ....);     // read mount options
-> > > 
-> > >    write(mdf, "i");
-> > >    read(mfd, ....);     // read mount ID
-> > > 
-> > > 
-> > > but it seems ugly. Maybe introduce another function like 
-> > > 
-> > >     fsinfo(mdf, "o", buf, bufsz)
-> > > 
-
-Not sure that it's any prettier, but you could use an ioctl to switch
-between different read requests:
-
-ioctl(mfd, FSOPEN_READ_OPTIONS);
-read(mfd, ....);
-
-ioctl(mfd, FSOPEN_READ_MOUNT_ID);
-read(mfd, ....);
-
-> > > to get mount options (etc.) and to avoid separate write & read.
+On Tue, 2017-05-09 at 14:02 +0200, Miklos Szeredi wrote:
+> On Tue, May 9, 2017 at 11:41 AM, David Howells <dhowells@redhat.com> wrote:
+> > Miklos Szeredi <mszeredi@redhat.com> wrote:
 > > 
-> > What is it you're trying to do?  Just read back the state of the new mount?
+> > > I think that's crazy.  We don't return detailed errors for any other
+> > > syscall for path lookup, so why would path lookup for mount be
+> > > special.
+> > 
+> > Firstly, we don't return detailed errors for mount() at the moment either.
+> > 
+> > Secondly, path lookup might entail automounts, so perhaps we should do it for
+> > path lookup too.  Particularly in light of the fact that NFS4 mount uses
+> > pathwalk to get from server:/ to server:/the/dir/I/actually/wanted/ so I'm
+> > currently losing that error:-/
+> > 
+> > Thirdly, the security operation I'm talking about is separate to path lookup -
+> > though perhaps we should pass LOOKUP_MOUNT as an intent flag into pathwalk so
+> > that the security check can be done there; perhaps combined with another one.
+> > 
+> > Fourthly, why shouldn't we consider extending the facility to other system
+> > calls in future?  It would involve copying the string to task_struct and
+> > providing a way to retrieve it, but that's not that hard to achieve.
 > 
->  ...read back the state of the new mount, because for example mount
->  options can be modified by FS driver. It would be also nice to have
->  API to get state of arbitrary mount without parsing mountinfo (the
->  file is huge on some systems).
+> Maybe we should.   In fact that sounds like a splendid idea.  IMO even
+> better, than having errors go via the fsfd descriptor.  Pretty cheap
+> on the kernel side, and completely optional on the userspace side.
 > 
 
+A question here: What should happen if you go to set an error here, and
+one is already set? Should it just free the string and replace it with
+the new one? IOW, just keep the latest error? Or is it better to keep
+the earlier one?
+
+If you want to put this in the task_struct then I think you'll want to
+sort that out. You could easily end up in this situation if a lot of
+different kernel subsystems started using it to pass back detailed
+errors.
+
+> > 
+> > > And why would
+> > > 
+> > >     fd = open("/foo/bar", O_PATH);
+> > >     fsmount(fsfd, fd, NULL);
+> > > 
+> > > behave differently from
+> > > 
+> > >     fsmount(fsfd, -1, "/foo/bar");
+> > > 
+> > > ?
+> > 
+> > There's argument that the former should return EFAULT.  And that you should
+> > set the path to "" and pass AT_EMPTY_PATH.  I should probably make sure it
+> > does that - and add a flags field.  statx() was fixed to work this way.
+> > 
+> > Question for you: Should the MNT_* flags be passed to fsmount(), perhaps in
+> > MS_* form?
+> 
+> MS_* flags are a mess.  I don't think they should be used for any new
+> functionality.  MNT_* flags are much better, but there are some
+> internal flags there as well.
+> 
+> I think the struct file model is better, where we have the external
+> O_* flags and the internal FMODE_* flags.
+> 
+> Thanks,
+> Miklos
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 -- 
 Jeff Layton <jlayton@redhat.com>
