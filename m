@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50510 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60196 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755719AbdEIPvT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 May 2017 11:51:19 -0400
+        id S1755557AbdEIPvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 May 2017 11:51:04 -0400
 From: Jeff Layton <jlayton@redhat.com>
 To: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -18,119 +18,103 @@ Cc: dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
         neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
         josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
         bo.li.liu@oracle.com
-Subject: [PATCH v4 24/27][RFC] nfs: convert to new errseq_t based error tracking for writeback errors
-Date: Tue,  9 May 2017 11:49:27 -0400
-Message-Id: <20170509154930.29524-25-jlayton@redhat.com>
+Subject: [PATCH v4 25/27] Documentation: flesh out the section in vfs.txt on storing and reporting writeback errors
+Date: Tue,  9 May 2017 11:49:28 -0400
+Message-Id: <20170509154930.29524-26-jlayton@redhat.com>
 In-Reply-To: <20170509154930.29524-1-jlayton@redhat.com>
 References: <20170509154930.29524-1-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Drop the ERROR_WRITE flag and convert the error field in the context to
-a errseq_t. Add a new wb_err_cursor to track the reporting of the
-errseq_t. In principle, we could use the f_wb_err field in struct file
-for that, but that's problematic with the stock reporting in call_fsync.
+I waxed a little loquacious here, but I figured that more detail was
+better, and writeback error handling is so hard to get right.
 
+Cc: Jan Kara <jack@suse.cz>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-
 ---
- fs/nfs/file.c          | 19 +++++++++++--------
- fs/nfs/inode.c         |  5 +++--
- fs/nfs/write.c         |  2 +-
- include/linux/nfs_fs.h |  3 ++-
- 4 files changed, 17 insertions(+), 12 deletions(-)
+ Documentation/filesystems/vfs.txt | 54 ++++++++++++++++++++++++++++++++-------
+ 1 file changed, 45 insertions(+), 9 deletions(-)
 
-I did this on a lark to see how it would be, but I don't think this is
-really better than what's there already. There may be a better way to
-provide the right semantics without using an errseq_t here.
-
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 668213984d68..fd4d2b381d4b 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -212,21 +212,24 @@ nfs_file_fsync_commit(struct file *file, loff_t start, loff_t end, int datasync)
- {
- 	struct nfs_open_context *ctx = nfs_file_open_context(file);
- 	struct inode *inode = file_inode(file);
--	int have_error, do_resend, status;
--	int ret = 0;
-+	int do_resend, status;
-+	int ret;
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index f201a77873f7..382190a872e5 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -576,12 +576,46 @@ should clear PG_Dirty and set PG_Writeback.  It can be actually
+ written at any point after PG_Dirty is clear.  Once it is known to be
+ safe, PG_Writeback is cleared.
  
- 	dprintk("NFS: fsync file(%pD2) datasync %d\n", file, datasync);
+-If there is an error during writeback, then the address_space should be
+-marked with an error (typically using mapping_set_error), in order to
+-ensure that the error can later be reported to the application when an
+-fsync is issued.
+-
+-Writeback makes use of a writeback_control structure...
++Writeback makes use of a writeback_control structure to direct the
++operations.  This gives the the writepage and writepages operations some
++information about the nature of and reason for the writeback request,
++and the constraints under which it is being done.  It is also used to
++return information back to the caller about the result of a writepage or
++writepages request.
++
++Handling errors during writeback
++--------------------------------
++Most applications that utilize the pagecache will periodically call
++fsync to ensure that data written has made it to the backing store.
++When there is an error during writeback, that error should be reported
++when fsync is called.  After an error has been reported to fsync,
++subsequent fsync calls on the same file descriptor should return 0,
++unless further writeback errors have occurred since the previous fsync.
++
++Ideally, the kernel would report it only on file descriptions on which
++writes were done that subsequently failed to be written back.  The
++generic pagecache infrastructure does not track the file descriptions
++that have dirtied each individual page however, so determining which
++file descriptors should get back an error is not possible.
++
++Instead, the generic writeback error tracking infrastructure in the
++kernel settles for reporting errors to fsync on all file descriptions
++that were open at the time that the error occurred.  In a situation with
++multiple writers, all of them will get back an error on a subsequent fsync,
++even if all of the writes done through that particular file descriptor
++succeeded (or even if there were no writes on that file descriptor at all).
++
++Filesystems that wish to use this infrastructure should call
++mapping_set_error to record the error in the address_space when it
++occurs.  The generic vfs code will then handle reporting the error when
++fsync is called, even if the fsync file operation returned 0.
++
++Filesystems are free to track errors internally if they choose (i.e. if
++they do keep track of how the pages were dirtied), but they should aim
++to provide the same (or better) error reporting semantics for when there
++are multiple writers.  Those filesystems should avoid calling
++mapping_set_error in order to ensure that errors stored in the mapping
++aren't improperly reported by the generic filesystem code.
  
- 	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
- 	do_resend = test_and_clear_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flags);
--	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
-+	clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
- 	status = nfs_commit_inode(inode, FLUSH_SYNC);
--	have_error |= test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
--	if (have_error) {
--		ret = xchg(&ctx->error, 0);
--		if (ret)
--			goto out;
-+	ret = errseq_check(&ctx->wb_err, READ_ONCE(ctx->wb_err_cursor));
-+	if (ret) {
-+		/* Use f_lock to serialize changes to wb_err_cursor */
-+		spin_lock(&file->f_lock);
-+		ret = errseq_check_and_advance(&ctx->wb_err, &ctx->wb_err_cursor);
-+		spin_unlock(&file->f_lock);
- 	}
-+	if (ret)
-+		goto out;
- 	if (status < 0) {
- 		ret = status;
- 		goto out;
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index f489a5a71bd5..ca85f6b39e3b 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -869,7 +869,8 @@ struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry,
- 	ctx->state = NULL;
- 	ctx->mode = f_mode;
- 	ctx->flags = 0;
--	ctx->error = 0;
-+	ctx->wb_err = 0;
-+	ctx->wb_err_cursor = 0;
- 	ctx->flock_owner = (fl_owner_t)filp;
- 	nfs_init_lock_context(&ctx->lock_context);
- 	ctx->lock_context.open_context = ctx;
-@@ -978,7 +979,7 @@ void nfs_file_clear_open_context(struct file *filp)
- 		 * We fatal error on write before. Try to writeback
- 		 * every page again.
- 		 */
--		if (ctx->error < 0)
-+		if (errseq_check(&ctx->wb_err, ctx->wb_err_cursor))
- 			invalidate_inode_pages2(inode->i_mapping);
- 		filp->private_data = NULL;
- 		spin_lock(&inode->i_lock);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index abb2c8a3be42..95a5b4ac6714 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -94,7 +94,7 @@ static void nfs_writehdr_free(struct nfs_pgio_header *hdr)
+ struct address_space_operations
+ -------------------------------
+@@ -810,7 +844,8 @@ struct address_space_operations {
+ The File Object
+ ===============
  
- static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- {
--	ctx->error = error;
-+	errseq_set(&ctx->wb_err, error);
- 	smp_wmb();
- 	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
- }
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 287f34161086..336adf1a38f7 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -76,7 +76,8 @@ struct nfs_open_context {
- #define NFS_CONTEXT_ERROR_WRITE		(0)
- #define NFS_CONTEXT_RESEND_WRITES	(1)
- #define NFS_CONTEXT_BAD			(2)
--	int error;
-+	errseq_t wb_err;		/* where wb errors are tracked */
-+	errseq_t wb_err_cursor;		/* reporting cursor */
+-A file object represents a file opened by a process.
++A file object represents a file opened by a process. This is also known
++as an "open file description" in POSIX parlance.
  
- 	struct list_head list;
- 	struct nfs4_threshold	*mdsthreshold;
+ 
+ struct file_operations
+@@ -893,9 +928,10 @@ otherwise noted.
+ 
+   release: called when the last reference to an open file is closed
+ 
+-  fsync: called by the fsync(2) system call. Errors that were previously
++  fsync: called by the fsync(2) system call.  Errors that were previously
+ 	 recorded using mapping_set_error will automatically be returned to
+-	 the application and the file's error sequence advanced.
++	 the application and the struct file's error sequence advanced.
++	 See the section above on handling writeback errors.
+ 
+   fasync: called by the fcntl(2) system call when asynchronous
+ 	(non-blocking) mode is enabled for a file
 -- 
 2.9.3
 
