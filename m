@@ -1,184 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:7085 "EHLO mx144.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:60908 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753489AbdEJSjw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 May 2017 14:39:52 -0400
-Subject: Re: [PATCH v6 4/5] generic/432: Add a copy test for overwriting small
- amounts of data
-To: "Darrick J. Wong" <darrick.wong@oracle.com>
-CC: <fstests@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <hch@infradead.org>
-References: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
- <20170510174628.22895-5-Anna.Schumaker@Netapp.com>
- <20170510183745.GE5970@birch.djwong.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <658f2572-9767-3dd7-c48e-9cb8f2b28510@Netapp.com>
-Date: Wed, 10 May 2017 14:39:46 -0400
+        id S1752804AbdEJTLG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 15:11:06 -0400
+Date: Wed, 10 May 2017 15:11:05 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [GIT PULL] nfsd changes for 4.12
+Message-ID: <20170510191105.GC10450@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20170510183745.GE5970@birch.djwong.org>
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Please pull
 
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.12
 
-On 05/10/2017 02:37 PM, Darrick J. Wong wrote:
-> On Wed, May 10, 2017 at 01:46:27PM -0400, Anna Schumaker wrote:
->> This test is similar to 345, except that it copies one byte at a time to
-> 
-> 345?  Or is that now 431?  Perhaps amend the commit message to "This
-> test is similar to the previous one, except..."?
+Another RDMA update from Chuck Lever, and a bunch of miscellaneous
+bugfixes.
 
-Yeah, I forgot to update that :(   It's supposed to be for the previous test, so that's probably the best wording to use.
+--b.
 
-Anna
+----------------------------------------------------------------
+Ari Kauppi (1):
+      nfsd: fix undefined behavior in nfsd4_layout_verify
 
-> 
-> Otherwise, the tests run ok on xfs and ext4 and look ok, so for the whole set
-> Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
-> 
-> --D
-> 
->> make sure that this case works as expected.
->>
->> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
->> ---
->>  tests/generic/432     | 87 +++++++++++++++++++++++++++++++++++++++++++++++++++
->>  tests/generic/432.out | 17 ++++++++++
->>  tests/generic/group   |  1 +
->>  3 files changed, 105 insertions(+)
->>  create mode 100755 tests/generic/432
->>  create mode 100644 tests/generic/432.out
->>
->> diff --git a/tests/generic/432 b/tests/generic/432
->> new file mode 100755
->> index 00000000..9cd899ce
->> --- /dev/null
->> +++ b/tests/generic/432
->> @@ -0,0 +1,87 @@
->> +#!/bin/bash
->> +# FS QA Test No. 432
->> +#
->> +# Tests vfs_copy_file_range():
->> +#   - Copy a small file
->> +#   - Use copy to swap data at beginning and end
->> +#   - Use copy to swap data in the middle
->> +#   - Use copy to swap data in a small file
->> +#-----------------------------------------------------------------------
->> +# Copyright (c) 2017 Netapp, Inc. All rights reserved.
->> +#
->> +# This program is free software; you can redistribute it and/or
->> +# modify it under the terms of the GNU General Public License as
->> +# published by the Free Software Foundation.
->> +#
->> +# This program is distributed in the hope that it would be useful,
->> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
->> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
->> +# GNU General Public License for more details.
->> +#
->> +# You should have received a copy of the GNU General Public License
->> +# along with this program; if not, write the Free Software Foundation,
->> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
->> +#-----------------------------------------------------------------------
->> +#
->> +
->> +seq=`basename $0`
->> +seqres=$RESULT_DIR/$seq
->> +echo "QA output created by $seq"
->> +
->> +here=`pwd`
->> +tmp=/tmp/$$
->> +status=1    # failure is the default!
->> +trap "_cleanup; exit \$status" 0 1 2 3 15
->> +
->> +_cleanup()
->> +{
->> +	cd /
->> +	rm -rf $tmp.*
->> +}
->> +
->> +# get standard environment
->> +. common/rc
->> +. common/filter
->> +
->> +# real QA test starts here
->> +_supported_fs generic
->> +_supported_os Linux
->> +
->> +_require_xfs_io_command "copy_range"
->> +_require_test
->> +
->> +testdir=$TEST_DIR/test-$seq
->> +rm -rf $testdir
->> +mkdir $testdir
->> +rm -f $seqres.full
->> +
->> +echo "Create the original file and then copy"
->> +echo -n "abcde" > $testdir/file
->> +$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy" 2>&1
->> +cmp $testdir/file $testdir/copy
->> +echo "Original md5sums:"
->> +md5sum $testdir/{file,copy} | _filter_test_dir
->> +
->> +echo "Swap beginning and end of original file"
->> +$XFS_IO_PROG -f -c "copy_range -s 0 -d 4 -l 1 $testdir/file" "$testdir/copy" 2>&1
->> +$XFS_IO_PROG -f -c "copy_range -s 4 -d 0 -l 1 $testdir/file" "$testdir/copy" 2>&1
->> +echo -n "ebcda" | cmp $testdir/copy
->> +echo "md5sums after swapping beginning and end:"
->> +md5sum $testdir/{file,copy} | _filter_test_dir
->> +
->> +echo "Swap middle parts of original file"
->> +$XFS_IO_PROG -f -c "copy_range -s 1 -d 3 -l 1 $testdir/file" "$testdir/copy" 2>&1
->> +$XFS_IO_PROG -f -c "copy_range -s 3 -d 1 -l 1 $testdir/file" "$testdir/copy" 2>&1
->> +echo -n "edcba" | cmp $testdir/copy
->> +echo "md5sums after swapping middle:"
->> +md5sum $testdir/{file,copy} | _filter_test_dir
->> +
->> +echo "Copy tail of original file onto copy"
->> +$XFS_IO_PROG -f -c "copy_range -s 1 -d 3 -l 4 $testdir/file" "$testdir/copy" 2>&1
->> +echo -n "edcbcde" | cmp $testdir/copy
->> +echo "md5sums after copying tail:"
->> +md5sum $testdir/{file,copy} | _filter_test_dir
->> +
->> +#success, all done
->> +status=0
->> +exit
->> diff --git a/tests/generic/432.out b/tests/generic/432.out
->> new file mode 100644
->> index 00000000..eec84392
->> --- /dev/null
->> +++ b/tests/generic/432.out
->> @@ -0,0 +1,17 @@
->> +QA output created by 432
->> +Create the original file and then copy
->> +Original md5sums:
->> +ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-432/file
->> +ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-432/copy
->> +Swap beginning and end of original file
->> +md5sums after swapping beginning and end:
->> +ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-432/file
->> +32db1f6d06d15f7e38e1ab1c69da498a  TEST_DIR/test-432/copy
->> +Swap middle parts of original file
->> +md5sums after swapping middle:
->> +ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-432/file
->> +295228f3d82d344bbcf2f0030519c2ea  TEST_DIR/test-432/copy
->> +Copy tail of original file onto copy
->> +md5sums after copying tail:
->> +ab56b4d92b40713acc5af89985d4b786  TEST_DIR/test-432/file
->> +0c4aac952f72fa078e2f8419aca70b28  TEST_DIR/test-432/copy
->> diff --git a/tests/generic/group b/tests/generic/group
->> index 608c45b2..43aac9fd 100644
->> --- a/tests/generic/group
->> +++ b/tests/generic/group
->> @@ -434,3 +434,4 @@
->>  429 auto quick copy
->>  430 auto quick copy
->>  431 auto quick copy
->> +432 auto quick copy
->> -- 
->> 2.12.2
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe fstests" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Chuck Lever (14):
+      svcrdma: Move send_wr to svc_rdma_op_ctxt
+      svcrdma: Add svc_rdma_map_reply_hdr()
+      svcrdma: Eliminate RPCRDMA_SQ_DEPTH_MULT
+      svcrdma: Add helper to save pages under I/O
+      svcrdma: Clean up svc_rdma_get_inv_rkey()
+      svcrdma: Introduce local rdma_rw API helpers
+      svcrdma: Use rdma_rw API in RPC reply path
+      svcrdma: Clean up RDMA_ERROR path
+      svcrdma: Report Write/Reply chunk overruns
+      svcrdma: Clean up RPC-over-RDMA backchannel reply processing
+      svcrdma: Reduce size of sge array in struct svc_rdma_op_ctxt
+      svcrdma: Remove unused RDMA Write completion handler
+      svcrdma: Remove the req_map cache
+      svcrdma: Clean out old XDR encoders
+
+Colin Ian King (1):
+      lockd: remove redundant check on block
+
+Dmitry V. Levin (1):
+      uapi: fix linux/nfsd/cld.h userspace compilation errors
+
+J. Bruce Fields (3):
+      nfsd: check for oversized NFSv2/v3 arguments
+      lockd: fix lockd shutdown race
+      nfsd: encoders mustn't use unitialized values in error cases
+
+Kinglong Mee (1):
+      NFSv4.x/callback: Create the callback service through svc_create_pooled
+
+NeilBrown (2):
+      nfsd4: remove pointless strdup_if_nonnull
+      NFS: don't try to cross a mountpount when there isn't one there.
+
+Trond Myklebust (3):
+      SUNRPC: Refactor svc_set_num_threads()
+      NFSv4: Fix callback server shutdown
+      nfsd: Fix up the "supattr_exclcreat" attributes
+
+ fs/lockd/svc.c                             |   6 +-
+ fs/lockd/svclock.c                         |  18 +-
+ fs/nfs/callback.c                          |  26 +-
+ fs/nfsd/nfs3xdr.c                          |  23 +-
+ fs/nfsd/nfs4proc.c                         |   3 +-
+ fs/nfsd/nfs4state.c                        |  25 +-
+ fs/nfsd/nfs4xdr.c                          |  19 +-
+ fs/nfsd/nfsxdr.c                           |  13 +-
+ fs/nfsd/vfs.c                              |  24 +-
+ include/linux/sunrpc/rpc_rdma.h            |   3 +
+ include/linux/sunrpc/svc.h                 |   4 +-
+ include/linux/sunrpc/svc_rdma.h            |  75 +--
+ include/uapi/linux/nfsd/cld.h              |  14 +-
+ net/sunrpc/Kconfig                         |   1 +
+ net/sunrpc/svc.c                           | 134 ++--
+ net/sunrpc/xprtrdma/Makefile               |   2 +-
+ net/sunrpc/xprtrdma/svc_rdma.c             |   8 +-
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  71 +--
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c     |  89 ---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |  79 ++-
+ net/sunrpc/xprtrdma/svc_rdma_rw.c          | 512 +++++++++++++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      | 978 ++++++++++++++---------------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   | 110 +---
+ 23 files changed, 1334 insertions(+), 903 deletions(-)
+ create mode 100644 net/sunrpc/xprtrdma/svc_rdma_rw.c
