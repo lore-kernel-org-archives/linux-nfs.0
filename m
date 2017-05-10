@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:62842 "EHLO mx143.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:24063 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752285AbdEJRqs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 May 2017 13:46:48 -0400
+        id S1752923AbdEJRrH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 13:47:07 -0400
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 To: <fstests@vger.kernel.org>
 CC: <Anna.Schumaker@Netapp.com>, <linux-nfs@vger.kernel.org>,
         <hch@infradead.org>
-Subject: [PATCH v6 5/5] generic/433: Add a copy test for invalid input
-Date: Wed, 10 May 2017 13:46:28 -0400
-Message-ID: <20170510174628.22895-6-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v6 3/5] generic/431: Add copy test that overwrites data
+Date: Wed, 10 May 2017 13:46:26 -0400
+Message-ID: <20170510174628.22895-4-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
 References: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,28 +17,32 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This test passes invalid argumnt combinations to the copy_file_range()
-system call to test that input is verified before attempting to copy.
+Using copy to overwrite data in the destination file is perfectly valid,
+so let's make sure this case works as expected.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tests/generic/433     | 79 +++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/433.out | 14 +++++++++
- tests/generic/group   |  1 +
- 3 files changed, 94 insertions(+)
- create mode 100644 tests/generic/433
- create mode 100644 tests/generic/433.out
+ tests/generic/431     | 100 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/431.out |  17 +++++++++
+ tests/generic/group   |   1 +
+ 3 files changed, 118 insertions(+)
+ create mode 100755 tests/generic/431
+ create mode 100644 tests/generic/431.out
 
-diff --git a/tests/generic/433 b/tests/generic/433
-new file mode 100644
-index 00000000..11b936eb
+diff --git a/tests/generic/431 b/tests/generic/431
+new file mode 100755
+index 00000000..413aa8d2
 --- /dev/null
-+++ b/tests/generic/433
-@@ -0,0 +1,79 @@
++++ b/tests/generic/431
+@@ -0,0 +1,100 @@
 +#!/bin/bash
-+# FS QA Test No. 433
++# FS QA Test No. 431
 +#
-+# Tests vfs_copy_file_range() error checking
++# Tests vfs_copy_file_range():
++#   - Copy a file
++#   - Use copy to swap data at beginning and end
++#   - Use copy to swap data in the middle
++#   - Use copy to simultaneously overwrite and append to destination file
 +#-----------------------------------------------------------------------
 +# Copyright (c) 2017 Netapp, Inc. All rights reserved.
 +#
@@ -88,61 +92,81 @@ index 00000000..11b936eb
 +mkdir $testdir
 +rm -f $seqres.full
 +
-+echo "Create the original files"
-+$XFS_IO_PROG -f -c 'pwrite -S 0x61 0 1000' $testdir/file >> $seqres.full 2>&1
-+mknod $testdir/dev1 c 1 3
-+mkfifo $testdir/fifo
++echo "Create the original file and then copy"
++$XFS_IO_PROG -f -c 'pwrite -S 0x61 0    1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x62 1000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x63 2000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
++$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
++cmp $testdir/file  $testdir/copy
++echo "Original md5sums:"
++md5sum $testdir/{file,copy} | _filter_test_dir
 +
-+echo "Try to copy when source pos > source size"
-+$XFS_IO_PROG -f -c "copy_range -s 1000 -l 100 $testdir/file" "$testdir/copy" 2>&1
-+md5sum $testdir/copy | _filter_test_dir
++echo "Swap beginning and end of original file"
++$XFS_IO_PROG -f -c "copy_range -s 4000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
++$XFS_IO_PROG -f -c "copy_range -d 4000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
++cmp -n 1000 $testdir/file $testdir/copy 4000
++cmp -n 3000 $testdir/file $testdir/copy 1000 1000
++cmp -n 1000 $testdir/file $testdir/copy 0 4000
++echo "md5sums after swapping beginning and end:"
++md5sum $testdir/{file,copy} | _filter_test_dir
 +
-+echo "Try to copy to a read-only file"
-+$XFS_IO_PROG -r -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/copy" 2>&1
-+md5sum $testdir/copy | _filter_test_dir
++echo "Swap middle parts of original file"
++$XFS_IO_PROG -f -c "copy_range -s 1000 -d 3000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
++$XFS_IO_PROG -f -c "copy_range -s 3000 -d 1000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
++cmp -n 1000 $testdir/file $testdir/copy 4000
++cmp -n 1000 $testdir/file $testdir/copy 3000 1000
++cmp -n 1000 $testdir/file $testdir/copy 2000 2000
++cmp -n 1000 $testdir/file $testdir/copy 1000 3000
++cmp -n 1000 $testdir/file $testdir/copy 0 4000
++echo "md5sums after swapping middle:"
++md5sum $testdir/{file,copy} | _filter_test_dir
 +
-+echo "Try to copy to an append-only file"
-+$XFS_IO_PROG -a -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/copy" 2>&1
-+md5sum $testdir/copy | _filter_test_dir
-+
-+echo "Try to copy to a device"
-+$XFS_IO_PROG -a -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/dev1" 2>&1
-+
-+echo "Try to copy to a fifo"
-+$XFS_IO_PROG -a -f -c "copy_range -s 0 -l 100 $testdir/file" "$testdir/fifo" 2>&1
++echo "Copy tail of original file onto copy"
++$XFS_IO_PROG -f -c "copy_range -s 1000 -d 3000 -l 4000 $testdir/file" "$testdir/copy" 2>&1
++cmp -n 1000 $testdir/file $testdir/copy 4000
++cmp -n 1000 $testdir/file $testdir/copy 3000 1000
++cmp -n 1000 $testdir/file $testdir/copy 2000 2000
++cmp -n 4000 $testdir/file $testdir/copy 1000 3000
++echo "md5sums after copying tail:"
++md5sum $testdir/{file,copy} | _filter_test_dir
 +
 +#success, all done
 +status=0
 +exit
-diff --git a/tests/generic/433.out b/tests/generic/433.out
+diff --git a/tests/generic/431.out b/tests/generic/431.out
 new file mode 100644
-index 00000000..da6f5e9c
+index 00000000..175fbdf1
 --- /dev/null
-+++ b/tests/generic/433.out
-@@ -0,0 +1,14 @@
-+QA output created by 433
-+Create the original files
-+Try to copy when source pos > source size
-+d41d8cd98f00b204e9800998ecf8427e  TEST_DIR/test-433/copy
-+Try to copy to a read-only file
-+copy_range: Bad file descriptor
-+d41d8cd98f00b204e9800998ecf8427e  TEST_DIR/test-433/copy
-+Try to copy to an append-only file
-+copy_range: Bad file descriptor
-+d41d8cd98f00b204e9800998ecf8427e  TEST_DIR/test-433/copy
-+Try to copy to a device
-+copy_range: Invalid argument
-+Try to copy to a fifo
-+copy_range: Invalid argument
++++ b/tests/generic/431.out
+@@ -0,0 +1,17 @@
++QA output created by 431
++Create the original file and then copy
++Original md5sums:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/copy
++Swap beginning and end of original file
++md5sums after swapping beginning and end:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
++5f4e111811dd9a810143c9db9bec6d80  TEST_DIR/test-431/copy
++Swap middle parts of original file
++md5sums after swapping middle:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
++8c81889a5a50b311197110bcf769a695  TEST_DIR/test-431/copy
++Copy tail of original file onto copy
++md5sums after copying tail:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
++e5fbacd993eaa5e80ebc2b14b969887d  TEST_DIR/test-431/copy
 diff --git a/tests/generic/group b/tests/generic/group
-index 43aac9fd..fc00405f 100644
+index b5f115af..608c45b2 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -435,3 +435,4 @@
+@@ -433,3 +433,4 @@
+ 428 auto quick
+ 429 auto quick copy
  430 auto quick copy
- 431 auto quick copy
- 432 auto quick copy
-+433 auto quick copy
++431 auto quick copy
 -- 
 2.12.2
 
