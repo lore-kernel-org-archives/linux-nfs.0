@@ -1,26 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49916 "EHLO mx1.redhat.com"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:34872 "EHLO smtp-o-3.desy.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753563AbdEJPlN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 May 2017 11:41:13 -0400
-Subject: Re: Venue change for bake-a-thon June 2017
-To: Bill Baker <bill.baker@oracle.com>, nfsv4@ietf.org
-Cc: linux-nfs@vger.kernel.org, tina.hartshorn@oracle.com
-References: <b3f5e413-a148-4466-58dc-c2738afef20e@Oracle.com>
- <528bf82e-563d-6223-cde7-9797ee1b7ff4@RedHat.com>
- <59133238.8000100@oracle.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <796645a2-1764-f11b-eed7-954a682c3b08@RedHat.com>
-Date: Wed, 10 May 2017 11:41:11 -0400
-MIME-Version: 1.0
+        id S1753855AbdEJPwk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 11:52:40 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 3D69D280057
+        for <linux-nfs@vger.kernel.org>; Wed, 10 May 2017 17:52:38 +0200 (CEST)
+Date: Wed, 10 May 2017 17:52:35 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Bill Baker <bill.baker@oracle.com>
+Cc: tina hartshorn <tina.hartshorn@oracle.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <1436158961.5489309.1494431555801.JavaMail.zimbra@desy.de>
 In-Reply-To: <59133238.8000100@oracle.com>
-Content-Type: text/plain; charset=windows-1252
+References: <b3f5e413-a148-4466-58dc-c2738afef20e@Oracle.com> <528bf82e-563d-6223-cde7-9797ee1b7ff4@RedHat.com> <59133238.8000100@oracle.com>
+Subject: Re: [nfsv4] Venue change for bake-a-thon June 2017
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Bill,
 
 
-On 05/10/2017 11:31 AM, Bill Baker wrote:
+I can't make it this time due to conflicting meeting.
+
+Tigran.
+
+
+----- Original Message -----
+> From: "Bill Baker" <bill.baker@oracle.com>
+> To: "Steve Dickson" <SteveD@RedHat.com>, nfsv4@ietf.org
+> Cc: "tina hartshorn" <tina.hartshorn@oracle.com>, "linux-nfs" <linux-nfs@vger.kernel.org>
+> Sent: Wednesday, May 10, 2017 5:31:04 PM
+> Subject: Re: [nfsv4] Venue change for bake-a-thon June 2017
+
 > Hi, Steve,
 > 
 > thanks for your feedback, comments at the bottom.
@@ -79,29 +93,20 @@ On 05/10/2017 11:31 AM, Bill Baker wrote:
 > 
 > 
 > I understand completely.
-thanks! 
-
 > 
 > Perhaps it is time to drop back to just 2 events per year,
 > connectathon and Fall BAT hosted by RedHat.
-6 months apart... one on one coast and one one the
-other... I know that would work for us. 
-
-I must admit I would miss Ann Arbor... It is 
-a great little city but unfortunately the 
-facilities are little rough... Too bad we 
-can not get back into the University.  
-
 > 
 > Would anyone be opposed to that?  Time to speak up is now.
 > I'm on the hook for the auditorium.
-Again, we are all for it.
-
 > 
 > Sorry for all the re-planning, we should have discussed this
 > during connectathon.
-That would mean we would have our act together and that
-will never happen!! 8-)
-
-steved.
 > 
+> --
+> Bill Baker, Oracle ZFSSA/NFS development
+> 
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
