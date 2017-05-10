@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:24063 "EHLO mx144.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:15165 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752923AbdEJRrH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 May 2017 13:47:07 -0400
+        id S1753114AbdEJRqw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 13:46:52 -0400
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 To: <fstests@vger.kernel.org>
 CC: <Anna.Schumaker@Netapp.com>, <linux-nfs@vger.kernel.org>,
         <hch@infradead.org>
-Subject: [PATCH v6 3/5] generic/431: Add copy test that overwrites data
-Date: Wed, 10 May 2017 13:46:26 -0400
-Message-ID: <20170510174628.22895-4-Anna.Schumaker@Netapp.com>
+Subject: [PATCH v6 1/5] generic/429: Add copy to new file test
+Date: Wed, 10 May 2017 13:46:24 -0400
+Message-ID: <20170510174628.22895-2-Anna.Schumaker@Netapp.com>
 In-Reply-To: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
 References: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -17,32 +17,51 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Using copy to overwrite data in the destination file is perfectly valid,
-so let's make sure this case works as expected.
+This test copies data from various points in a source file to a new
+file.  This is useful for testing the basics of copy_file_range().
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- tests/generic/431     | 100 ++++++++++++++++++++++++++++++++++++++++++++++++++
- tests/generic/431.out |  17 +++++++++
+ common/rc             |   6 +++
+ tests/generic/429     | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
+ tests/generic/429.out |  25 +++++++++++++
  tests/generic/group   |   1 +
- 3 files changed, 118 insertions(+)
- create mode 100755 tests/generic/431
- create mode 100644 tests/generic/431.out
+ 4 files changed, 134 insertions(+)
+ create mode 100755 tests/generic/429
+ create mode 100644 tests/generic/429.out
 
-diff --git a/tests/generic/431 b/tests/generic/431
+diff --git a/common/rc b/common/rc
+index 8dafd4bc..816d06a6 100644
+--- a/common/rc
++++ b/common/rc
+@@ -2047,6 +2047,12 @@ _require_xfs_io_command()
+ 	"chproj")
+ 		testio=`$XFS_IO_PROG -F -f -c "chproj 0" $testfile 2>&1`
+ 		;;
++	"copy_range")
++		testcopy=$TEST_DIR/$$.copy.xfs_io
++		$XFS_IO_PROG -F -f -c "pwrite 0 4k" $testfile 2>&1 > /dev/null
++		testio=`$XFS_IO_PROG -F -f -c "copy_range $testfile" $testcopy 2>&1`
++		rm -f $testcopy 2>&1 > /dev/null
++		;;
+ 	"falloc" )
+ 		testio=`$XFS_IO_PROG -F -f -c "falloc $param 0 1m" $testfile 2>&1`
+ 		;;
+diff --git a/tests/generic/429 b/tests/generic/429
 new file mode 100755
-index 00000000..413aa8d2
+index 00000000..fb52df8b
 --- /dev/null
-+++ b/tests/generic/431
-@@ -0,0 +1,100 @@
++++ b/tests/generic/429
+@@ -0,0 +1,102 @@
 +#!/bin/bash
-+# FS QA Test No. 431
++# FS QA Test No. 429
 +#
 +# Tests vfs_copy_file_range():
 +#   - Copy a file
-+#   - Use copy to swap data at beginning and end
-+#   - Use copy to swap data in the middle
-+#   - Use copy to simultaneously overwrite and append to destination file
++#   - Copy beginning of original to new file
++#   - Copy middle of original to a new file
++#   - Copy end of original to new file
++#   - Copy middle of original to a new file, creating a hole
 +#-----------------------------------------------------------------------
 +# Copyright (c) 2017 Netapp, Inc. All rights reserved.
 +#
@@ -99,74 +118,83 @@ index 00000000..413aa8d2
 +$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
 +$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
 +$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
-+cmp $testdir/file  $testdir/copy
++cmp $testdir/file $testdir/copy
 +echo "Original md5sums:"
 +md5sum $testdir/{file,copy} | _filter_test_dir
 +
-+echo "Swap beginning and end of original file"
-+$XFS_IO_PROG -f -c "copy_range -s 4000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -d 4000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
-+cmp -n 1000 $testdir/file $testdir/copy 4000
-+cmp -n 3000 $testdir/file $testdir/copy 1000 1000
-+cmp -n 1000 $testdir/file $testdir/copy 0 4000
-+echo "md5sums after swapping beginning and end:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
++echo "Copy beginning of original file"
++$XFS_IO_PROG -f -c "copy_range -l 1000 $testdir/file" "$testdir/beginning" 2>&1
++cmp -n 1000 $testdir/file $testdir/beginning
++echo "md5sums after copying beginning:"
++md5sum $testdir/{file,beginning} | _filter_test_dir
 +
-+echo "Swap middle parts of original file"
-+$XFS_IO_PROG -f -c "copy_range -s 1000 -d 3000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
-+$XFS_IO_PROG -f -c "copy_range -s 3000 -d 1000 -l 1000 $testdir/file" "$testdir/copy" 2>&1
-+cmp -n 1000 $testdir/file $testdir/copy 4000
-+cmp -n 1000 $testdir/file $testdir/copy 3000 1000
-+cmp -n 1000 $testdir/file $testdir/copy 2000 2000
-+cmp -n 1000 $testdir/file $testdir/copy 1000 3000
-+cmp -n 1000 $testdir/file $testdir/copy 0 4000
-+echo "md5sums after swapping middle:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
++echo "Copy middle of original file"
++$XFS_IO_PROG -f -c "copy_range -s 1000 -l 3000 $testdir/file" "$testdir/middle" 2>&1
++cmp -n 3000 $testdir/file $testdir/middle 1000
++echo "md5sums after copying middle:"
++md5sum $testdir/{file,middle} | _filter_test_dir
 +
-+echo "Copy tail of original file onto copy"
-+$XFS_IO_PROG -f -c "copy_range -s 1000 -d 3000 -l 4000 $testdir/file" "$testdir/copy" 2>&1
-+cmp -n 1000 $testdir/file $testdir/copy 4000
-+cmp -n 1000 $testdir/file $testdir/copy 3000 1000
-+cmp -n 1000 $testdir/file $testdir/copy 2000 2000
-+cmp -n 4000 $testdir/file $testdir/copy 1000 3000
-+echo "md5sums after copying tail:"
-+md5sum $testdir/{file,copy} | _filter_test_dir
++echo "Copy end of original file"
++$XFS_IO_PROG -f -c "copy_range -s 4000 -l 1000 $testdir/file" "$testdir/end" 2>&1
++cmp -n 1000 $testdir/file $testdir/end 4000
++echo "md5sums after copying end:"
++md5sum $testdir/{file,end} | _filter_test_dir
++
++echo "Copy beyond end of original file"
++$XFS_IO_PROG -f -c "copy_range -s 4000 -l 2000 $testdir/file" "$testdir/beyond" 2>&1
++cmp -n 1000 $testdir/file $testdir/end 4000
++echo "md5sums after copying beyond:"
++md5sum $testdir/{file,beyond} | _filter_test_dir
++
++echo "Copy creates hole in target file"
++$XFS_IO_PROG -f -c "copy_range -s 1000 -l 3000 -d 1000 $testdir/file" "$testdir/hole" 2>&1
++cmp -n 3000 $testdir/file $testdir/hole 1000 1000
++echo "md5sums after creating hole:"
++md5sum $testdir/{file,hole} | _filter_test_dir
 +
 +#success, all done
 +status=0
 +exit
-diff --git a/tests/generic/431.out b/tests/generic/431.out
+diff --git a/tests/generic/429.out b/tests/generic/429.out
 new file mode 100644
-index 00000000..175fbdf1
+index 00000000..8de90a44
 --- /dev/null
-+++ b/tests/generic/431.out
-@@ -0,0 +1,17 @@
-+QA output created by 431
++++ b/tests/generic/429.out
+@@ -0,0 +1,25 @@
++QA output created by 429
 +Create the original file and then copy
 +Original md5sums:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/copy
-+Swap beginning and end of original file
-+md5sums after swapping beginning and end:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
-+5f4e111811dd9a810143c9db9bec6d80  TEST_DIR/test-431/copy
-+Swap middle parts of original file
-+md5sums after swapping middle:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
-+8c81889a5a50b311197110bcf769a695  TEST_DIR/test-431/copy
-+Copy tail of original file onto copy
-+md5sums after copying tail:
-+e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-431/file
-+e5fbacd993eaa5e80ebc2b14b969887d  TEST_DIR/test-431/copy
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/copy
++Copy beginning of original file
++md5sums after copying beginning:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
++cabe45dcc9ae5b66ba86600cca6b8ba8  TEST_DIR/test-429/beginning
++Copy middle of original file
++md5sums after copying middle:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
++4197de9da5badfc302715486b82bcdf1  TEST_DIR/test-429/middle
++Copy end of original file
++md5sums after copying end:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
++e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-429/end
++Copy beyond end of original file
++md5sums after copying beyond:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
++e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-429/beyond
++Copy creates hole in target file
++md5sums after creating hole:
++e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
++3ae9aef0992f8cb51c90c9a0ff2dd9d2  TEST_DIR/test-429/hole
 diff --git a/tests/generic/group b/tests/generic/group
-index b5f115af..608c45b2 100644
+index b3051752..1c0fbb73 100644
 --- a/tests/generic/group
 +++ b/tests/generic/group
-@@ -433,3 +433,4 @@
+@@ -431,3 +431,4 @@
+ 426 auto quick exportfs
+ 427 auto quick aio rw
  428 auto quick
- 429 auto quick copy
- 430 auto quick copy
-+431 auto quick copy
++429 auto quick copy
 -- 
 2.12.2
 
