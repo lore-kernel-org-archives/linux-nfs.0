@@ -1,112 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:34872 "EHLO smtp-o-3.desy.de"
+Received: from mx1.redhat.com ([209.132.183.28]:40292 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753855AbdEJPwk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 May 2017 11:52:40 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 3D69D280057
-        for <linux-nfs@vger.kernel.org>; Wed, 10 May 2017 17:52:38 +0200 (CEST)
-Date: Wed, 10 May 2017 17:52:35 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Bill Baker <bill.baker@oracle.com>
-Cc: tina hartshorn <tina.hartshorn@oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <1436158961.5489309.1494431555801.JavaMail.zimbra@desy.de>
-In-Reply-To: <59133238.8000100@oracle.com>
-References: <b3f5e413-a148-4466-58dc-c2738afef20e@Oracle.com> <528bf82e-563d-6223-cde7-9797ee1b7ff4@RedHat.com> <59133238.8000100@oracle.com>
-Subject: Re: [nfsv4] Venue change for bake-a-thon June 2017
+        id S1751760AbdEJQS2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 12:18:28 -0400
+Subject: [RFC][PATCH 00/14] VFS: Introduce superblock configuration context
+From: David Howells <dhowells@redhat.com>
+To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Wed, 10 May 2017 17:18:18 +0100
+Message-ID: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bill,
+
+Here are a set of patches to create a superblock configuration context
+prior to setting up a new mount, populating it with the parsed
+options/binary data, creating the superblock and then effecting the mount.
+
+This allows namespaces and other information to be conveyed through the
+mount procedure.  It also allows extra error information to be returned
+(so many things can go wrong during a mount that a small integer isn't
+really sufficient to convey the issue).
+
+This also allows Miklós Szeredi's idea of doing:
+
+	fd = fsopen("nfs");
+	write(fd, "option=val", ...);
+	fsmount(fd, "/mnt");
+
+that he presented at LSF-2017 to be implemented (see the relevant patches
+in the series), to which I can add:
+
+	read(fd, error_buffer, ...);
+
+to read back any error message.  I didn't use netlink as that would make it
+depend on CONFIG_NET and would introduce network namespacing issues.
+
+I've implemented mount context handling for procfs and nfs.
+
+Significant changes:
+
+ (*) Renamed struct mount_context to struct sb_config and amended various
+     variable names.
+
+ (*) Split the sb_config stuff out into its own header.
+
+ (*) Support non-context aware filesystems through a special set of
+     sb_config operations.
+
+ (*) Stored the created superblock and root dentry into the sb_config after
+     creation rather than directly into a vfsmount.  This allows some
+     arguments to be removed to various NFS functions.
+
+ (*) Added an explicit superblock-creation step.  This allows a created
+     superblock to then be mounted multiple times.
+
+ (*) Added a flag to say that the sb_config is degraded and cannot have
+     another go at having a superblock creation whilst getting rid of the
+     one that says it's already mounted.
+
+Further developments:
+
+ (*) fsmount() needs to take AT_EMPTY_PATH and similar.
+
+ (*) Implement sb reconfiguration (for now it returns ENOANO).
+
+ (*) Implement mount context support in more filesystems, ext4 being next
+     on my list.
+
+ (*) Move the walk-from-root stuff that nfs has to generic code so that you
+     can do something akin to:
+
+	mount /dev/sda1:/foo/bar /mnt
+
+     See nfs_follow_remote_path() and mount_subtree().  This is slightly
+     tricky in NFS as we have to prevent referral loops.
+
+ (*) Move the pid_ns pointer from struct mount_context to struct
+     proc_mount_context as I'm not sure it's necessary for anything other
+     than procfs.
+
+ (*) Work out how to get at the error message incurred by submounts
+     encountered during nfs_follow_remote_path().
+
+     Should the error message be moved to task_struct and made more
+     general, perhaps retrieved with a prctl() function?
+
+ (*) Clean up/consolidate the security functions.  Possibly add a
+     validation hook to be called at the same time as the mount context
+     validate op.
+
+The patches can be found here also:
+
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=mount-context
+
+David
+---
+David Howells (14):
+      Provide a function to create a NUL-terminated string from unterminated data
+      Clean up whitespace in fs/namespace.c
+      VFS: Make get_mnt_ns() return the namespace
+      VFS: Make get_filesystem() return the affected filesystem
+      VFS: Provide empty name qstr
+      VFS: Introduce a superblock configuration context
+      Implement fsopen() to prepare for a mount
+      Implement fsmount() to effect a pre-configured mount
+      Sample program for driving fsopen/fsmount
+      procfs: Move proc_fill_super() to fs/proc/root.c
+      proc: Add superblock config support to procfs
+      NFS: Add mount context support.
+      Support legacy filesystems
+      Add commands to create or update a superblock
 
 
-I can't make it this time due to conflicting meeting.
+ Documentation/filesystems/mounting.txt |  463 ++++++++
+ arch/x86/entry/syscalls/syscall_32.tbl |    2 
+ arch/x86/entry/syscalls/syscall_64.tbl |    2 
+ fs/Makefile                            |    3 
+ fs/dcache.c                            |    8 
+ fs/filesystems.c                       |    3 
+ fs/fsopen.c                            |  302 +++++
+ fs/gfs2/dir.c                          |    3 
+ fs/internal.h                          |    4 
+ fs/libfs.c                             |   17 
+ fs/mount.h                             |    3 
+ fs/namei.c                             |    3 
+ fs/namespace.c                         |  495 +++++++--
+ fs/nfs/Makefile                        |    2 
+ fs/nfs/client.c                        |   74 +
+ fs/nfs/getroot.c                       |   75 +
+ fs/nfs/internal.h                      |  142 +--
+ fs/nfs/mount.c                         | 1500 +++++++++++++++++++++++++++
+ fs/nfs/namespace.c                     |   76 +
+ fs/nfs/nfs3_fs.h                       |    2 
+ fs/nfs/nfs3client.c                    |    6 
+ fs/nfs/nfs3proc.c                      |    2 
+ fs/nfs/nfs4_fs.h                       |    4 
+ fs/nfs/nfs4client.c                    |   82 +
+ fs/nfs/nfs4namespace.c                 |  208 ++--
+ fs/nfs/nfs4proc.c                      |    3 
+ fs/nfs/nfs4super.c                     |  223 ++--
+ fs/nfs/proc.c                          |    2 
+ fs/nfs/super.c                         | 1791 ++------------------------------
+ fs/nsfs.c                              |    3 
+ fs/pipe.c                              |    3 
+ fs/proc/inode.c                        |   50 -
+ fs/proc/internal.h                     |    6 
+ fs/proc/root.c                         |  197 +++-
+ fs/sb_config.c                         |  532 ++++++++++
+ fs/super.c                             |  109 +-
+ include/linux/dcache.h                 |    5 
+ include/linux/fs.h                     |   13 
+ include/linux/lsm_hooks.h              |   47 +
+ include/linux/mount.h                  |    4 
+ include/linux/nfs_xdr.h                |    7 
+ include/linux/sb_config.h              |  104 ++
+ include/linux/security.h               |   40 +
+ include/linux/string.h                 |    1 
+ include/linux/syscalls.h               |    2 
+ include/uapi/linux/magic.h             |    1 
+ kernel/sys_ni.c                        |    4 
+ mm/util.c                              |   24 
+ samples/fsmount/test-fsmount.c         |   78 +
+ security/security.c                    |   45 +
+ security/selinux/hooks.c               |  202 +++-
+ 51 files changed, 4592 insertions(+), 2385 deletions(-)
+ create mode 100644 Documentation/filesystems/mounting.txt
+ create mode 100644 fs/fsopen.c
+ create mode 100644 fs/nfs/mount.c
+ create mode 100644 fs/sb_config.c
+ create mode 100644 include/linux/sb_config.h
+ create mode 100644 samples/fsmount/test-fsmount.c
 
-Tigran.
-
-
------ Original Message -----
-> From: "Bill Baker" <bill.baker@oracle.com>
-> To: "Steve Dickson" <SteveD@RedHat.com>, nfsv4@ietf.org
-> Cc: "tina hartshorn" <tina.hartshorn@oracle.com>, "linux-nfs" <linux-nfs@vger.kernel.org>
-> Sent: Wednesday, May 10, 2017 5:31:04 PM
-> Subject: Re: [nfsv4] Venue change for bake-a-thon June 2017
-
-> Hi, Steve,
-> 
-> thanks for your feedback, comments at the bottom.
-> 
-> On 05/10/17 10:02, Steve Dickson wrote:
->> Hello,
->>
->> On 04/20/2017 07:42 AM, Bill Baker wrote:
->>>
->>> Greetings,
->>>
->>> After some discussion with Andy Adamson and others, I've
->>> decided to offer the the Agnews auditorium on Oracle's
->>> Santa Clara campus for this year's June bake-a-thon.  This
->>> is the same facility used to host connectathon the last several
->>> years.
->>>
->>> I've reserved the auditorium for the week of June 26th.
->>>
->>> Much as I like downtown Ann Arbor, the auditorium offers
->>> more than ample space in a comfortable facility.  We would
->>> like to continue the momentum of testing NFSoRDMA and the
->>> extra equipment is not very practical at the workantile.
->>>
->>> The usual suspects will be running the event:
->>>
->>> Tina.Hartshorn@oracle.com - registration, facilities
->>> Chad.Wasinger@oracle.com - network setup
->>>
->>> If you have concerns with this plan, please voice them
->>> here on-list, or to me privately.  Last thing I would want
->>> to do is discourage participation via this venue change.
->>>
->>> Feel free to forward this to other interested parties.
->> Unfortunately,  the people on the Red Hat team is having
->> a very hard time finding reasonable airfares to the
->> West coast. Instead of $300 or $400 its well over
->> $1000 which is causing push back by our management.
->>
->> I, personally, have been looking for the last a couple
->> weeks, hoping the the prices would come down but they
->> have not... They have not gone up, but they have
->> not come down.
->>
->> So at this point it looks like the Red Hat team
->> will not be attend this BAT, which is disappointing
->> because the timing actually worked out well with our
->> internal scheduling.
->>
->> With that said, I had every intention after this BAT
->> of announcing the date Fall BAT for the last week
->> in Sept (25th to 29th). Hopefully at this point
->> airfares will be more reasonable so it will be
->> well attended. I will make a more official
->> announcement later on...
-> 
-> 
-> I understand completely.
-> 
-> Perhaps it is time to drop back to just 2 events per year,
-> connectathon and Fall BAT hosted by RedHat.
-> 
-> Would anyone be opposed to that?  Time to speak up is now.
-> I'm on the hook for the auditorium.
-> 
-> Sorry for all the re-planning, we should have discussed this
-> during connectathon.
-> 
-> --
-> Bill Baker, Oracle ZFSSA/NFS development
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
