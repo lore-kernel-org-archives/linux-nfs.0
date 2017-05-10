@@ -1,129 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f180.google.com ([209.85.216.180]:32853 "EHLO
-        mail-qt0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752792AbdEJO4U (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 May 2017 10:56:20 -0400
-Received: by mail-qt0-f180.google.com with SMTP id t26so31791153qtg.0
-        for <linux-nfs@vger.kernel.org>; Wed, 10 May 2017 07:56:19 -0700 (PDT)
-Message-ID: <1494428176.2688.25.camel@redhat.com>
-Subject: Re: [PATCH v4 13/27] lib: add errseq_t type and infrastructure for
- handling it
-From: Jeff Layton <jlayton@redhat.com>
-To: Matthew Wilcox <willy@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-        linux-block@vger.kernel.org, dhowells@redhat.com,
-        akpm@linux-foundation.org, hch@infradead.org,
-        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
-        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
-        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
-        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
-        bo.li.liu@oracle.com
-Date: Wed, 10 May 2017 10:56:16 -0400
-In-Reply-To: <20170510141821.GB1590@bombadil.infradead.org>
-References: <20170509154930.29524-1-jlayton@redhat.com>
-         <20170509154930.29524-14-jlayton@redhat.com>
-         <20170510141821.GB1590@bombadil.infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:47986 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752643AbdEJPCT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 11:02:19 -0400
+Subject: Re: Venue change for bake-a-thon June 2017
+To: Bill Baker <Bill.Baker@Oracle.com>, nfsv4@ietf.org
+Cc: linux-nfs@vger.kernel.org, tina.hartshorn@Oracle.com
+References: <b3f5e413-a148-4466-58dc-c2738afef20e@Oracle.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <528bf82e-563d-6223-cde7-9797ee1b7ff4@RedHat.com>
+Date: Wed, 10 May 2017 11:02:18 -0400
+MIME-Version: 1.0
+In-Reply-To: <b3f5e413-a148-4466-58dc-c2738afef20e@Oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-05-10 at 07:18 -0700, Matthew Wilcox wrote:
-> On Tue, May 09, 2017 at 11:49:16AM -0400, Jeff Layton wrote:
-> > +++ b/lib/errseq.c
-> > @@ -0,0 +1,199 @@
-> > +#include <linux/err.h>
-> > +#include <linux/bug.h>
-> > +#include <linux/atomic.h>
-> > +#include <linux/errseq.h>
-> > +
-> > +/*
-> > + * An errseq_t is a way of recording errors in one place, and allowing any
-> > + * number of "subscribers" to tell whether it has changed since an arbitrary
-> > + * time of their choosing.
-> 
-> You use the word "time" in several places in the documentation, but I think
-> it's clearer to say "sampling point" or "sample", since you're not using jiffies
-> or nanoseconds.  For example, I'd phrase this paragraph this way:
-> 
->  * An errseq_t is a way of recording errors in one place, and allowing any
->  * number of "subscribers" to tell whether it has changed since they last
->  * sampled it.
-> 
-> > + * The general idea is for consumers to sample an errseq_t value at a
-> > + * particular point in time. Later, that value can be used to tell whether any
-> > + * new errors have occurred since that time.
-> 
->  * The general idea is for consumers to sample an errseq_t value.  That
->  * value can be used to tell whether any new errors have occurred since
->  * the last time it was sampled.
-> 
-> > +/* The "ones" bit for the counter */
-> 
-> Maybe "The lowest bit of the counter"?
-> 
-> > +/**
-> > + * errseq_check - has an error occurred since a particular point in time?
-> 
-> "has an error occurred since the last time it was sampled"
-> 
-> > +/**
-> > + * errseq_check_and_advance - check an errseq_t and advance it to the current value
-> > + * @eseq: pointer to value being checked reported
-> 
-> "value being checked reported"?
-> 
+Hello,
 
-Thanks. I'm cleaning up the comments like you suggest.
-
-> > +int errseq_check_and_advance(errseq_t *eseq, errseq_t *since)
-> > +{
-> > +	int err = 0;
-> > +	errseq_t old, new;
-> > +
-> > +	/*
-> > +	 * Most callers will want to use the inline wrapper to check this,
-> > +	 * so that the common case of no error is handled without needing
-> > +	 * to lock.
-> > +	 */
-> > +	old = READ_ONCE(*eseq);
-> > +	if (old != *since) {
-> > +		/*
-> > +		 * Set the flag and try to swap it into place if it has
-> > +		 * changed.
-> > +		 *
-> > +		 * We don't care about the outcome of the swap here. If the
-> > +		 * swap doesn't occur, then it has either been updated by a
-> > +		 * writer who is bumping the seq count anyway, or another
-> > +		 * reader who is just setting the "seen" flag. Either outcome
-> > +		 * is OK, and we can advance "since" and return an error based
-> > +		 * on what we have.
-> > +		 */
-> > +		new = old | ERRSEQ_SEEN;
-> > +		if (new != old)
-> > +			cmpxchg(eseq, old, new);
-> > +		*since = new;
-> > +		err = -(new & MAX_ERRNO);
-> > +	}
+On 04/20/2017 07:42 AM, Bill Baker wrote:
 > 
-> I probably need to read through the patchset some more to understand this.
-> Naively, surely "since" should be updated to the current value of 'eseq'
-> if we failed the cmpxchg()?
+> Greetings,
+> 
+> After some discussion with Andy Adamson and others, I've
+> decided to offer the the Agnews auditorium on Oracle's
+> Santa Clara campus for this year's June bake-a-thon.  This
+> is the same facility used to host connectathon the last several
+> years.
+> 
+> I've reserved the auditorium for the week of June 26th.
+> 
+> Much as I like downtown Ann Arbor, the auditorium offers
+> more than ample space in a comfortable facility.  We would
+> like to continue the momentum of testing NFSoRDMA and the
+> extra equipment is not very practical at the workantile.
+> 
+> The usual suspects will be running the event:
+> 
+> Tina.Hartshorn@oracle.com - registration, facilities
+> Chad.Wasinger@oracle.com - network setup
+> 
+> If you have concerns with this plan, please voice them
+> here on-list, or to me privately.  Last thing I would want
+> to do is discourage participation via this venue change.
+> 
+> Feel free to forward this to other interested parties.
+Unfortunately,  the people on the Red Hat team is having
+a very hard time finding reasonable airfares to the 
+West coast. Instead of $300 or $400 its well over 
+$1000 which is causing push back by our management.
 
-I don't think so. If we want to do that, then we'll need to redrive the
-cmpxchg to set the SEEN flag if it's now clear. Storing the value in
-"since" is effectively sampling it, so you do have to mark it seen.
+I, personally, have been looking for the last a couple
+weeks, hoping the the prices would come down but they
+have not... They have not gone up, but they have 
+not come down. 
 
-The good news is that I think that "new" is just as valid a value to
-store here as *eseq would be. It ends up representing an errseq_t value
-that never actually got stored in eseq, but that's OK with the way this
-works.
+So at this point it looks like the Red Hat team 
+will not be attend this BAT, which is disappointing
+because the timing actually worked out well with our
+internal scheduling.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+With that said, I had every intention after this BAT
+of announcing the date Fall BAT for the last week
+in Sept (25th to 29th). Hopefully at this point
+airfares will be more reasonable so it will be 
+well attended. I will make a more official 
+announcement later on... 
+
+steved.
+
+
+
