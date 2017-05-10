@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46010 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59622 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754171AbdEJQSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 May 2017 12:18:35 -0400
-Subject: [PATCH 01/14] Provide a function to create a NUL-terminated string
- from unterminated data
+        id S1754355AbdEJQTH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 12:19:07 -0400
+Subject: [PATCH 04/14] VFS: Make get_filesystem() return the affected
+ filesystem
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Wed, 10 May 2017 17:18:32 +0100
-Message-ID: <149443311279.2378.7316063507590450144.stgit@warthog.procyon.org.uk>
+Date: Wed, 10 May 2017 17:19:05 +0100
+Message-ID: <149443314538.2378.2761982681923678493.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
 References: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,71 +18,44 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a function, kmemdup_nul(), that will create a NUL-terminated string
-from an unterminated character array where the length is known in advance.
+Make get_filesystem() return a pointer to the filesystem on which it just
+got a ref.
 
-This is better than kstrndup() in situations where we already know the
-string length as the strnlen() in kstrndup() is superfluous.
-
+Suggested-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- include/linux/string.h |    1 +
- mm/util.c              |   24 ++++++++++++++++++++++++
- 2 files changed, 25 insertions(+)
+ fs/filesystems.c   |    3 ++-
+ include/linux/fs.h |    2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/string.h b/include/linux/string.h
-index 26b6f6a66f83..0c88c0a1a72b 100644
---- a/include/linux/string.h
-+++ b/include/linux/string.h
-@@ -123,6 +123,7 @@ extern char *kstrdup(const char *s, gfp_t gfp) __malloc;
- extern const char *kstrdup_const(const char *s, gfp_t gfp);
- extern char *kstrndup(const char *s, size_t len, gfp_t gfp);
- extern void *kmemdup(const void *src, size_t len, gfp_t gfp);
-+extern char *kmemdup_nul(const char *s, size_t len, gfp_t gfp);
+diff --git a/fs/filesystems.c b/fs/filesystems.c
+index cac75547d35c..591e52d23ed4 100644
+--- a/fs/filesystems.c
++++ b/fs/filesystems.c
+@@ -33,9 +33,10 @@ static struct file_system_type *file_systems;
+ static DEFINE_RWLOCK(file_systems_lock);
  
- extern char **argv_split(gfp_t gfp, const char *str, int *argcp);
- extern void argv_free(char **argv);
-diff --git a/mm/util.c b/mm/util.c
-index 656dc5e37a87..be68664bfb73 100644
---- a/mm/util.c
-+++ b/mm/util.c
-@@ -83,6 +83,8 @@ EXPORT_SYMBOL(kstrdup_const);
-  * @s: the string to duplicate
-  * @max: read at most @max chars from @s
-  * @gfp: the GFP mask used in the kmalloc() call when allocating memory
-+ *
-+ * Note: Use kmemdup_nul() instead if the size is known exactly.
-  */
- char *kstrndup(const char *s, size_t max, gfp_t gfp)
+ /* WARNING: This can be used only if we _already_ own a reference */
+-void get_filesystem(struct file_system_type *fs)
++struct file_system_type *get_filesystem(struct file_system_type *fs)
  {
-@@ -121,6 +123,28 @@ void *kmemdup(const void *src, size_t len, gfp_t gfp)
- EXPORT_SYMBOL(kmemdup);
+ 	__module_get(fs->owner);
++	return fs;
+ }
  
- /**
-+ * kmemdup_nul - Create a NUL-terminated string from unterminated data
-+ * @s: The data to stringify
-+ * @len: The size of the data
-+ * @gfp: the GFP mask used in the kmalloc() call when allocating memory
-+ */
-+char *kmemdup_nul(const char *s, size_t len, gfp_t gfp)
-+{
-+	char *buf;
-+
-+	if (!s)
-+		return NULL;
-+
-+	buf = kmalloc_track_caller(len + 1, gfp);
-+	if (buf) {
-+		memcpy(buf, s, len);
-+		buf[len] = '\0';
-+	}
-+	return buf;
-+}
-+EXPORT_SYMBOL(kmemdup_nul);
-+
-+/**
-  * memdup_user - duplicate memory region from user space
-  *
-  * @src: source address in user space
+ void put_filesystem(struct file_system_type *fs)
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 30e5c14bd743..45ac992133fc 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2953,7 +2953,7 @@ extern int generic_block_fiemap(struct inode *inode,
+ 				struct fiemap_extent_info *fieinfo, u64 start,
+ 				u64 len, get_block_t *get_block);
+ 
+-extern void get_filesystem(struct file_system_type *fs);
++extern struct file_system_type *get_filesystem(struct file_system_type *fs);
+ extern void put_filesystem(struct file_system_type *fs);
+ extern struct file_system_type *get_fs_type(const char *name);
+ extern struct super_block *get_super(struct block_device *);
 
