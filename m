@@ -1,46 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f182.google.com ([209.85.220.182]:36663 "EHLO
-        mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752959AbdEJNhV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 May 2017 09:37:21 -0400
-Received: by mail-qk0-f182.google.com with SMTP id u75so29865324qka.3
-        for <linux-nfs@vger.kernel.org>; Wed, 10 May 2017 06:37:21 -0700 (PDT)
-Message-ID: <1494423438.2688.15.camel@redhat.com>
-Subject: Re: [PATCH 3/9] VFS: Introduce a mount context
-From: Jeff Layton <jlayton@redhat.com>
-To: David Howells <dhowells@redhat.com>
-Cc: Miklos Szeredi <mszeredi@redhat.com>,
-        viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
-Date: Wed, 10 May 2017 09:37:18 -0400
-In-Reply-To: <25115.1494423114@warthog.procyon.org.uk>
-References: <1494422409.2688.13.camel@redhat.com>
-         <CAOssrKdKmhUZtDja+SqHy_wPreyvE=oi90E+_uR_KPCOE-iHnw@mail.gmail.com>
-         <149382747487.30481.15428192741961545429.stgit@warthog.procyon.org.uk>
-         <149382749941.30481.11685229083280551867.stgit@warthog.procyon.org.uk>
-         <CAOssrKc0=geAw04btF9zO29y3=2sP+caF90HySKMbk8NkND3kQ@mail.gmail.com>
-         <10943.1494284264@warthog.procyon.org.uk>
-         <CAOssrKexeO8mmFFAPq2jQtO06iqGWDDe8BOUktEkY6UybDBX1Q@mail.gmail.com>
-         <15762.1494322915@warthog.procyon.org.uk>
-         <CAOssrKeR4bNwYyuwyr2d5fG8RcxeyWKREFTdnGqovus9t_2n4A@mail.gmail.com>
-         <1494355884.2659.18.camel@redhat.com>
-         <30059.1494403518@warthog.procyon.org.uk>
-         <25115.1494423114@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx2.suse.de ([195.135.220.15]:41035 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1753597AbdEJNqq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 09:46:46 -0400
+Date: Wed, 10 May 2017 15:46:36 +0200
+From: Jan Kara <jack@suse.cz>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-mm@kvack.org,
+        jfs-discussion@lists.sourceforge.net, linux-xfs@vger.kernel.org,
+        cluster-devel@redhat.com, linux-f2fs-devel@lists.sourceforge.net,
+        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+        linux-block@vger.kernel.org, dhowells@redhat.com,
+        akpm@linux-foundation.org, hch@infradead.org,
+        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
+        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
+        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
+        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
+        bo.li.liu@oracle.com
+Subject: Re: [PATCH v4 14/27] fs: new infrastructure for writeback error
+ handling and reporting
+Message-ID: <20170510134636.GA3883@quack2.suse.cz>
+References: <20170509154930.29524-1-jlayton@redhat.com>
+ <20170509154930.29524-15-jlayton@redhat.com>
+ <20170510114840.GF25137@quack2.suse.cz>
+ <1494418790.2688.7.camel@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1494418790.2688.7.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-05-10 at 14:31 +0100, David Howells wrote:
-> Jeff Layton <jlayton@redhat.com> wrote:
+On Wed 10-05-17 08:19:50, Jeff Layton wrote:
+> On Wed, 2017-05-10 at 13:48 +0200, Jan Kara wrote:
+> > On Tue 09-05-17 11:49:17, Jeff Layton wrote:
+> > > diff --git a/fs/file_table.c b/fs/file_table.c
+> > > index 954d510b765a..d6138b6411ff 100644
+> > > --- a/fs/file_table.c
+> > > +++ b/fs/file_table.c
+> > > @@ -168,6 +168,7 @@ struct file *alloc_file(const struct path *path, fmode_t mode,
+> > >  	file->f_path = *path;
+> > >  	file->f_inode = path->dentry->d_inode;
+> > >  	file->f_mapping = path->dentry->d_inode->i_mapping;
+> > > +	file->f_wb_err = filemap_sample_wb_error(file->f_mapping);
+> > 
+> > Why do you sample here when you also sample in do_dentry_open()? I didn't
+> > find any alloc_file() callers that would possibly care about writeback
+> > errors... 
+> > 
+> > 								Honza
 > 
-> > One idea might be to always kfree it on syscall entry
-> 
-> You can't do that otherwise there's no way to retrieve the strings.
-> 
-> 
+> I basically used the setting of f_mapping as a guideline as to where to
+> sample it for initialization. My thinking was that if f_mapping ever
+> ended up different then you'd probably also want f_wb_err to be
+> resampled anyway.
 
-True...you'd have to exempt the syscall that does the retrieving.
+OK, makes sense.
+
+> I can drop this hunk if you think we don't need it.
+
+I don't really care. I was just wondering whether I'm missing something...
+
+								Honza
+
 -- 
-Jeff Layton <jlayton@redhat.com>
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
