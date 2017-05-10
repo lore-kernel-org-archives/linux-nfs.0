@@ -1,49 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48824 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37443 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754275AbdEJQS5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 10 May 2017 12:18:57 -0400
-Date: Wed, 10 May 2017 12:18:51 -0400 (EDT)
-From: Bob Peterson <rpeterso@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-        linux-block@vger.kernel.org, dhowells@redhat.com,
-        akpm@linux-foundation.org, hch@infradead.org,
-        ross zwisler <ross.zwisler@linux.intel.com>,
-        mawilcox@microsoft.com, jack@suse.com, viro@zeniv.linux.org.uk,
-        corbet@lwn.net, neilb@suse.de, clm@fb.com, tytso@mit.edu,
-        axboe@kernel.dk, josef@toxicpanda.com, hubcap@omnibond.com,
-        bo li liu <bo.li.liu@oracle.com>
-Message-ID: <1840580824.6421109.1494433131277.JavaMail.zimbra@redhat.com>
-In-Reply-To: <20170509154930.29524-24-jlayton@redhat.com>
-References: <20170509154930.29524-1-jlayton@redhat.com> <20170509154930.29524-24-jlayton@redhat.com>
-Subject: Re: [PATCH v4 23/27] gfs2: clean up some filemap_* calls
+        id S1754231AbdEJQSy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 10 May 2017 12:18:54 -0400
+Subject: [PATCH 02/14] Clean up whitespace in fs/namespace.c
+From: David Howells <dhowells@redhat.com>
+To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Wed, 10 May 2017 17:18:40 +0100
+Message-ID: <149443312023.2378.2321518082982408548.stgit@warthog.procyon.org.uk>
+In-Reply-To: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
+References: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message -----
-| In some places, it's trying to reset the mapping error after calling
-| filemap_fdatawait. That's no longer required. Also, turn several
-| filemap_fdatawrite+filemap_fdatawait calls into filemap_write_and_wait.
-| That will at least return writeback errors that occur during the write
-| phase.
-| 
-| Signed-off-by: Jeff Layton <jlayton@redhat.com>
-| ---
+Clean up line terminal whitespace in fs/namespace.c.
 
-Hi Jeff,
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-This version looks better. ACK.
+ fs/namespace.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-Regards,
+diff --git a/fs/namespace.c b/fs/namespace.c
+index cc1375eff88c..db034b6afd43 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1659,7 +1659,7 @@ void __detach_mounts(struct dentry *dentry)
+ 	namespace_unlock();
+ }
+ 
+-/* 
++/*
+  * Is the caller allowed to modify his namespace?
+  */
+ static inline bool may_mount(void)
+@@ -2213,7 +2213,7 @@ static int do_loopback(struct path *path, const char *old_name,
+ 
+ 	err = -EINVAL;
+ 	if (mnt_ns_loop(old_path.dentry))
+-		goto out; 
++		goto out;
+ 
+ 	mp = lock_mount(path);
+ 	err = PTR_ERR(mp);
 
-Bob Peterson
-Red Hat File Systems
