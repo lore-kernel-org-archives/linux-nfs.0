@@ -1,44 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:48670 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754957AbdEKH7O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 May 2017 03:59:14 -0400
-Date: Thu, 11 May 2017 09:59:11 +0200
-From: Michal Hocko <mhocko@kernel.org>
-To: Nikolay Borisov <n.borisov.lkml@gmail.com>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [GIT PULL] Please pull NFS client fixes for 4.12
-Message-ID: <20170511075910.GD26782@dhcp22.suse.cz>
-References: <1494434821.4764.1.camel@primarydata.com>
- <be16be57-235c-fdf9-f708-3898aeeeb5aa@gmail.com>
+Received: from mail-wm0-f41.google.com ([74.125.82.41]:38323 "EHLO
+        mail-wm0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755224AbdEKILI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 May 2017 04:11:08 -0400
+Received: by mail-wm0-f41.google.com with SMTP id 142so26311111wma.1
+        for <linux-nfs@vger.kernel.org>; Thu, 11 May 2017 01:11:07 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <be16be57-235c-fdf9-f708-3898aeeeb5aa@gmail.com>
+In-Reply-To: <20170511073857.GL390@ZenIV.linux.org.uk>
+References: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
+ <149443323117.2378.6029610622093309047.stgit@warthog.procyon.org.uk> <20170511073857.GL390@ZenIV.linux.org.uk>
+From: Miklos Szeredi <mszeredi@redhat.com>
+Date: Thu, 11 May 2017 10:11:06 +0200
+Message-ID: <CAOssrKcq5MRmN1NnywOxCx6366PY4R9auEeFOjgD1YURXHK0fg@mail.gmail.com>
+Subject: Re: [PATCH 14/14] Add commands to create or update a superblock
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: David Howells <dhowells@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu 11-05-17 10:53:27, Nikolay Borisov wrote:
-> 
-> 
-> On 10.05.2017 19:47, Trond Myklebust wrote:
-[...]
-> > - Cleanup and removal of some memory failure paths now that
-> >   GFP_NOFS is guaranteed to never fail.
-> 
-> What guarantees that? Since if this is the case then this can result in
-> a lot of opportunities for cleanup across the whole kernel tree. After
-> discussing with mhocko (cc'ed) it seems that in practice everything
-> below COSTLY_ORDER which are not GFP_NORETRY will never fail. But this
-> semantic is not the same as GFP_NOFAIL. E.g. nothing guarantees that
-> this will stay like that in the future?
+On Thu, May 11, 2017 at 9:38 AM, Al Viro <viro@zeniv.linux.org.uk> wrote:
+> On Wed, May 10, 2017 at 05:20:31PM +0100, David Howells wrote:
+>
+>> @@ -64,8 +70,8 @@ struct sb_config_operations {
+>>       int (*parse_option)(struct sb_config *sc, char *p);
+>>       int (*monolithic_mount_data)(struct sb_config *sc, void *data);
+>>       int (*validate)(struct sb_config *sc);
+>> -     struct dentry *(*mount)(struct sb_config *sc);
+>> -     int (*fill_super)(struct super_block *s, struct sb_config *sc);
+>> +     int (*create_super)(struct sb_config *sc);
+>
+> Hell, NO.
+>
+> The primary effect of that thing is *NOT* to create a superblock.  It
+> might be a side effect, and quite often it will happen, but the
+> real goal here is a mountable tree.  Which might or might not reside
+> on a new superblock.  And which might very well involve no object
+> creation whatsoever.
+>
+> This name is actively misleading and the same goes for its relatives
+> (vfs_create_super(), etc.).  It's "give me a tree to mount", not
+> "create something or other".
 
-In practice it is hard to change the semantic of small allocations never
-fail _practically_. But this is absolutely not guaranteed! They can fail
-e.g. when the allocation context is the oom victim. Removing error paths
-for allocation failures is just wrong.
--- 
-Michal Hocko
-SUSE Labs
+Indeed, I haven't thought of that.  And there's a good hornet's nest
+waiting to poke ones hand into: mounting the same blockdev with
+different options will get you either
+
+ - EBUSY if the MS_* flags mismatch
+ - silently ignored options in any other case
+
+which is far from being nice and consistent.
+
+Thanks,
+Miklos
