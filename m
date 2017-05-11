@@ -1,72 +1,241 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:33944 "EHLO
-        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934170AbdEKOfU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 May 2017 10:35:20 -0400
-Received: by mail-qk0-f181.google.com with SMTP id k74so23952905qke.1
-        for <linux-nfs@vger.kernel.org>; Thu, 11 May 2017 07:35:20 -0700 (PDT)
-Message-ID: <1494513311.8853.5.camel@redhat.com>
-Subject: Re: [PATCH 07/14] Implement fsopen() to prepare for a mount
-From: Jeff Layton <jlayton@redhat.com>
-To: David Howells <dhowells@redhat.com>,
-        Sargun Dhillon <sargun@sargun.me>
-Cc: mszeredi@redhat.com, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>
-Date: Thu, 11 May 2017 10:35:11 -0400
-In-Reply-To: <6167.1494513034@warthog.procyon.org.uk>
-References: <CAMp4zn_rhfzmy-J6Y_nL-HR+BmVpYMLFGqPNEzpm93HXTM7cDQ@mail.gmail.com>
-         <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
-         <149443316786.2378.6065648057770350840.stgit@warthog.procyon.org.uk>
-         <6167.1494513034@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:56998 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1757272AbdEKPtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 11 May 2017 11:49:50 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id F06D7C04B940
+        for <linux-nfs@vger.kernel.org>; Thu, 11 May 2017 15:49:44 +0000 (UTC)
+Subject: Re: [PATCH] rpcbind: pair all svc_getargs() calls with svc_freeargs()
+ to avoid memory leak
+To: Doran Moppert <dmoppert@redhat.com>, linux-nfs@vger.kernel.org
+References: <20170511060520.GE3866@sin.redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <90d819fb-7b0c-9616-509f-e95d58426670@RedHat.com>
+Date: Thu, 11 May 2017 11:49:43 -0400
+MIME-Version: 1.0
+In-Reply-To: <20170511060520.GE3866@sin.redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-05-11 at 15:30 +0100, David Howells wrote:
-> Sargun Dhillon <sargun@sargun.me> wrote:
-> 
-> > Instead of string based configuration, does it perhaps make sense to
-> > pass in structured mount data? Something like:
-> 
-> I don't think it helps particularly.
-> 
-> > enum mount_command_id {
-> >     MOUNT_OPTION_STR,
-> >     MOUNT_SET_USER_NS
-> > };
-> > 
-> > struct mount_attr {
-> >    __u64 command_id;
-> >    union {
-> >        char option_str[4095];
-> >        char mount_source[PATH_MAX];
-> 
-> Why limit the option size to 4096?  I can see situations where it might be
-> necessary to hand in a bigger blob - giving cifs a Microsoft Kerberos PAC for
-> example.
-> 
-> >        struct {
-> >            __u32 user_ns_fd
-> 
-> There are more than just that namespace that could be relevant.
-> 
-> >        }
-> >    }
-> > }
-> > 
-> > It seems a lot less error prone to me.
-> 
-> Not really.  The only real difference is how one selects what action is
-> intended and how one determines the length.  write() has a length parameter.
-> 
 
-Agreed. I like the text based configuration better.
 
-It also has another advantage: It's easy to strace the program and see
-what it's doing. With an opaque blob, we'd need to teach strace how to
-format the thing to be able to view it.
+On 05/11/2017 02:05 AM, Doran Moppert wrote:
+> This patch is to address CVE-2017-8779 "rpcbomb" in rpcbind, discussed
+> at [1], [2], [3].  The last link suggests this issue is actually a bug
+> in rpcbind, which led me here.
+> 
+> The leak caused by the reproducer at [4] appears to come from
+> rpcb_service_4(), in the case where svc_getargs() returns false and the
+> function had an early return, rather than passing through the cleanup
+> path at done:, as would otherwise occur.
+> 
+> It also addresses a couple of other locations where the same fault seems
+> to exist, though I haven't been able to exercise those.  I hope someone
+> more intimate with rpc(3) can confirm my understanding is correct, and
+> that I haven't introduced any new bugs.
+> 
+> Without this patch, using the reproducer (and variants) repeatedly
+> against rpcbind with a numBytes argument of 1_000_000_000, /proc/$(pidof
+> rpcbind)/status reports VmSize increase of 976564 kB each call, and
+> VmRSS increase of around 260 kB every 33 calls - the specific numbers
+> are probably an artifact of my rhel/glibc version.  With the patch,
+> there is a small (~50 kB) VmSize increase with the first message, but
+> thereafter both VmSize and VmRSS remain steady.
+> 
+> 
+> [1]: http://seclists.org/oss-sec/2017/q2/209
+> [2]: https://bugzilla.redhat.com/show_bug.cgi?id=1448124
+> [3]: https://sourceware.org/ml/libc-alpha/2017-05/msg00129.html
+> [4]: https://github.com/guidovranken/rpcbomb/
+> 
+> 
+> Signed-off-by: Doran Moppert <dmoppert@redhat.com>
+Committed... 
 
--- 
-Jeff Layton <jlayton@redhat.com>
+steved.
+
+> ---
+>  src/pmap_svc.c     | 56 +++++++++++++++++++++++++++++++++++++++++++++---------
+>  src/rpcb_svc.c     |  2 +-
+>  src/rpcb_svc_4.c   |  2 +-
+>  src/rpcb_svc_com.c |  8 ++++++++
+>  4 files changed, 57 insertions(+), 11 deletions(-)
+> 
+> diff --git a/src/pmap_svc.c b/src/pmap_svc.c
+> index 4c744fe..e926cdc 100644
+> --- a/src/pmap_svc.c
+> +++ b/src/pmap_svc.c
+> @@ -175,6 +175,7 @@ pmapproc_change(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt, unsigned long
+>  	long ans;
+>  	uid_t uid;
+>  	char uidbuf[32];
+> +	int rc = TRUE;
+>  
+>  	/*
+>  	 * Can't use getpwnam here. We might end up calling ourselves
+> @@ -194,7 +195,8 @@ pmapproc_change(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt, unsigned long
+>  
+>  	if (!svc_getargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
+>  		svcerr_decode(xprt);
+> -		return (FALSE);
+> +		rc = FALSE;
+> +		goto done;
+>  	}
+>  #ifdef RPCBIND_DEBUG
+>  	if (debugging)
+> @@ -205,7 +207,8 @@ pmapproc_change(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt, unsigned long
+>  
+>  	if (!check_access(xprt, op, reg.pm_prog, PMAPVERS)) {
+>  		svcerr_weakauth(xprt);
+> -		return (FALSE);
+> +		rc = (FALSE);
+> +		goto done;
+>  	}
+>  
+>  	rpcbreg.r_prog = reg.pm_prog;
+> @@ -258,7 +261,16 @@ done_change:
+>  		rpcbs_set(RPCBVERS_2_STAT, ans);
+>  	else
+>  		rpcbs_unset(RPCBVERS_2_STAT, ans);
+> -	return (TRUE);
+> +done:
+> +	if (!svc_freeargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
+> +		if (debugging) {
+> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
+> +			if (doabort) {
+> +				rpcbind_abort();
+> +			}
+> +		}
+> +	}
+> +	return (rc);
+>  }
+>  
+>  /* ARGSUSED */
+> @@ -272,15 +284,18 @@ pmapproc_getport(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
+>  #ifdef RPCBIND_DEBUG
+>  	char *uaddr;
+>  #endif
+> +	int rc = TRUE;
+>  
+>  	if (!svc_getargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
+>  		svcerr_decode(xprt);
+> -		return (FALSE);
+> +		rc = FALSE;
+> +		goto done;
+>  	}
+>  
+>  	if (!check_access(xprt, PMAPPROC_GETPORT, reg.pm_prog, PMAPVERS)) {
+>  		svcerr_weakauth(xprt);
+> -		return FALSE;
+> +		rc = FALSE;
+> +		goto done;
+>  	}
+>  
+>  #ifdef RPCBIND_DEBUG
+> @@ -330,21 +345,34 @@ pmapproc_getport(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
+>  		pmap_ipprot2netid(reg.pm_prot) ?: "<unknown>",
+>  		port ? udptrans : "");
+>  
+> -	return (TRUE);
+> +done:
+> +	if (!svc_freeargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
+> +		if (debugging) {
+> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
+> +			if (doabort) {
+> +				rpcbind_abort();
+> +			}
+> +		}
+> +	}
+> +	return (rc);
+>  }
+>  
+>  /* ARGSUSED */
+>  static bool_t
+>  pmapproc_dump(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
+>  {
+> +	int rc = TRUE;
+> +
+>  	if (!svc_getargs(xprt, (xdrproc_t)xdr_void, NULL)) {
+>  		svcerr_decode(xprt);
+> -		return (FALSE);
+> +		rc = FALSE;
+> +		goto done;
+>  	}
+>  
+>  	if (!check_access(xprt, PMAPPROC_DUMP, 0, PMAPVERS)) {
+>  		svcerr_weakauth(xprt);
+> -		return FALSE;
+> +		rc = FALSE;
+> +		goto done;
+>  	}
+>  	
+>  	if ((!svc_sendreply(xprt, (xdrproc_t) xdr_pmaplist_ptr,
+> @@ -354,7 +382,17 @@ pmapproc_dump(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
+>  			rpcbind_abort();
+>  		}
+>  	}
+> -	return (TRUE);
+> +
+> +done:
+> +	if (!svc_freeargs(xprt, (xdrproc_t) xdr_pmap, (char *)NULL)) {
+> +		if (debugging) {
+> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
+> +			if (doabort) {
+> +				rpcbind_abort();
+> +			}
+> +		}
+> +	}
+> +	return (rc);
+>  }
+>  
+>  int pmap_netid2ipprot(const char *netid)
+> diff --git a/src/rpcb_svc.c b/src/rpcb_svc.c
+> index 709e3fb..091f530 100644
+> --- a/src/rpcb_svc.c
+> +++ b/src/rpcb_svc.c
+> @@ -166,7 +166,7 @@ rpcb_service_3(struct svc_req *rqstp, SVCXPRT *transp)
+>  		svcerr_decode(transp);
+>  		if (debugging)
+>  			(void) xlog(LOG_DEBUG, "rpcbind: could not decode");
+> -		return;
+> +		goto done;
+>  	}
+>  
+>  	if (rqstp->rq_proc == RPCBPROC_SET
+> diff --git a/src/rpcb_svc_4.c b/src/rpcb_svc_4.c
+> index 5094879..eebbbbe 100644
+> --- a/src/rpcb_svc_4.c
+> +++ b/src/rpcb_svc_4.c
+> @@ -218,7 +218,7 @@ rpcb_service_4(struct svc_req *rqstp, SVCXPRT *transp)
+>  		svcerr_decode(transp);
+>  		if (debugging)
+>  			(void) xlog(LOG_DEBUG, "rpcbind: could not decode\n");
+> -		return;
+> +		goto done;
+>  	}
+>  
+>  	if (rqstp->rq_proc == RPCBPROC_SET
+> diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
+> index 5862c26..cb63afd 100644
+> --- a/src/rpcb_svc_com.c
+> +++ b/src/rpcb_svc_com.c
+> @@ -927,6 +927,14 @@ error:
+>  	if (call_msg.rm_xid != 0)
+>  		(void) free_slot_by_xid(call_msg.rm_xid);
+>  out:
+> +	if (!svc_freeargs(transp, (xdrproc_t) xdr_rmtcall_args, (char *) &a)) {
+> +		if (debugging) {
+> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
+> +			if (doabort) {
+> +				rpcbind_abort();
+> +			}
+> +		}
+> +	}
+>  	if (local_uaddr)
+>  		free(local_uaddr);
+>  	if (buf_alloc)
+> 
