@@ -1,72 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43176 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S932651AbdEKM0P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 May 2017 08:26:15 -0400
-Date: Thu, 11 May 2017 14:26:13 +0200
-From: Michal Hocko <mhocko@kernel.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "n.borisov.lkml@gmail.com" <n.borisov.lkml@gmail.com>,
-        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:23912 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932375AbdEKMpH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 May 2017 08:45:07 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "mhocko@kernel.org" <mhocko@kernel.org>
+CC: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "n.borisov.lkml@gmail.com" <n.borisov.lkml@gmail.com>
 Subject: Re: [GIT PULL] Please pull NFS client fixes for 4.12
-Message-ID: <20170511122613.GJ26782@dhcp22.suse.cz>
+Date: Thu, 11 May 2017 12:45:00 +0000
+Message-ID: <1494506698.3207.3.camel@primarydata.com>
 References: <1494434821.4764.1.camel@primarydata.com>
- <be16be57-235c-fdf9-f708-3898aeeeb5aa@gmail.com>
- <20170511075910.GD26782@dhcp22.suse.cz>
- <1494504995.3207.1.camel@primarydata.com>
+         <be16be57-235c-fdf9-f708-3898aeeeb5aa@gmail.com>
+         <20170511075910.GD26782@dhcp22.suse.cz>
+         <1494504995.3207.1.camel@primarydata.com>
+         <20170511122613.GJ26782@dhcp22.suse.cz>
+In-Reply-To: <20170511122613.GJ26782@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <1494504995.3207.1.camel@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu 11-05-17 12:16:37, Trond Myklebust wrote:
-> On Thu, 2017-05-11 at 09:59 +0200, Michal Hocko wrote:
-> > On Thu 11-05-17 10:53:27, Nikolay Borisov wrote:
-> > > 
-> > > 
-> > > On 10.05.2017 19:47, Trond Myklebust wrote:
-> > 
-> > [...]
-> > > > - Cleanup and removal of some memory failure paths now that
-> > > >   GFP_NOFS is guaranteed to never fail.
-> > > 
-> > > What guarantees that? Since if this is the case then this can
-> > > result in
-> > > a lot of opportunities for cleanup across the whole kernel tree.
-> > > After
-> > > discussing with mhocko (cc'ed) it seems that in practice everything
-> > > below COSTLY_ORDER which are not GFP_NORETRY will never fail. But
-> > > this
-> > > semantic is not the same as GFP_NOFAIL. E.g. nothing guarantees
-> > > that
-> > > this will stay like that in the future?
-> > 
-> > In practice it is hard to change the semantic of small allocations
-> > never
-> > fail _practically_. But this is absolutely not guaranteed! They can
-> > fail
-> > e.g. when the allocation context is the oom victim. Removing error
-> > paths
-> > for allocation failures is just wrong.
-> 
-> OK, this makes no fucking sense at all.
-> 
-> Either allocations can fail or they can't.
-> 1) If they can't fail, then we don't need the checks.
-> 2) If they can fail, then we do need them, and this hand wringing in
-> the MM community about GFP_* semantics and how we need to prevent
-> failure is fucking pointless.
+T24gVGh1LCAyMDE3LTA1LTExIGF0IDE0OjI2ICswMjAwLCBNaWNoYWwgSG9ja28gd3JvdGU6DQo+
+IE9uIFRodSAxMS0wNS0xNyAxMjoxNjozNywgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IE9u
+IFRodSwgMjAxNy0wNS0xMSBhdCAwOTo1OSArMDIwMCwgTWljaGFsIEhvY2tvIHdyb3RlOg0KPiA+
+ID4gT24gVGh1IDExLTA1LTE3IDEwOjUzOjI3LCBOaWtvbGF5IEJvcmlzb3Ygd3JvdGU6DQo+ID4g
+PiA+IA0KPiA+ID4gPiANCj4gPiA+ID4gT24gMTAuMDUuMjAxNyAxOTo0NywgVHJvbmQgTXlrbGVi
+dXN0IHdyb3RlOg0KPiA+ID4gDQo+ID4gPiBbLi4uXQ0KPiA+ID4gPiA+IC0gQ2xlYW51cCBhbmQg
+cmVtb3ZhbCBvZiBzb21lIG1lbW9yeSBmYWlsdXJlIHBhdGhzIG5vdyB0aGF0DQo+ID4gPiA+ID4g
+wqAgR0ZQX05PRlMgaXMgZ3VhcmFudGVlZCB0byBuZXZlciBmYWlsLg0KPiA+ID4gPiANCj4gPiA+
+ID4gV2hhdCBndWFyYW50ZWVzIHRoYXQ/IFNpbmNlIGlmIHRoaXMgaXMgdGhlIGNhc2UgdGhlbiB0
+aGlzIGNhbg0KPiA+ID4gPiByZXN1bHQgaW4NCj4gPiA+ID4gYSBsb3Qgb2Ygb3Bwb3J0dW5pdGll
+cyBmb3IgY2xlYW51cCBhY3Jvc3MgdGhlIHdob2xlIGtlcm5lbA0KPiA+ID4gPiB0cmVlLg0KPiA+
+ID4gPiBBZnRlcg0KPiA+ID4gPiBkaXNjdXNzaW5nIHdpdGggbWhvY2tvIChjYydlZCkgaXQgc2Vl
+bXMgdGhhdCBpbiBwcmFjdGljZQ0KPiA+ID4gPiBldmVyeXRoaW5nDQo+ID4gPiA+IGJlbG93IENP
+U1RMWV9PUkRFUiB3aGljaCBhcmUgbm90IEdGUF9OT1JFVFJZIHdpbGwgbmV2ZXIgZmFpbC4NCj4g
+PiA+ID4gQnV0DQo+ID4gPiA+IHRoaXMNCj4gPiA+ID4gc2VtYW50aWMgaXMgbm90IHRoZSBzYW1l
+IGFzIEdGUF9OT0ZBSUwuIEUuZy4gbm90aGluZyBndWFyYW50ZWVzDQo+ID4gPiA+IHRoYXQNCj4g
+PiA+ID4gdGhpcyB3aWxsIHN0YXkgbGlrZSB0aGF0IGluIHRoZSBmdXR1cmU/DQo+ID4gPiANCj4g
+PiA+IEluIHByYWN0aWNlIGl0IGlzIGhhcmQgdG8gY2hhbmdlIHRoZSBzZW1hbnRpYyBvZiBzbWFs
+bA0KPiA+ID4gYWxsb2NhdGlvbnMNCj4gPiA+IG5ldmVyDQo+ID4gPiBmYWlsIF9wcmFjdGljYWxs
+eV8uIEJ1dCB0aGlzIGlzIGFic29sdXRlbHkgbm90IGd1YXJhbnRlZWQhIFRoZXkNCj4gPiA+IGNh
+bg0KPiA+ID4gZmFpbA0KPiA+ID4gZS5nLiB3aGVuIHRoZSBhbGxvY2F0aW9uIGNvbnRleHQgaXMg
+dGhlIG9vbSB2aWN0aW0uIFJlbW92aW5nDQo+ID4gPiBlcnJvcg0KPiA+ID4gcGF0aHMNCj4gPiA+
+IGZvciBhbGxvY2F0aW9uIGZhaWx1cmVzIGlzIGp1c3Qgd3JvbmcuDQo+ID4gDQo+ID4gT0ssIHRo
+aXMgbWFrZXMgbm8gZnVja2luZyBzZW5zZSBhdCBhbGwuDQo+ID4gDQo+ID4gRWl0aGVyIGFsbG9j
+YXRpb25zIGNhbiBmYWlsIG9yIHRoZXkgY2FuJ3QuDQo+ID4gMSkgSWYgdGhleSBjYW4ndCBmYWls
+LCB0aGVuIHdlIGRvbid0IG5lZWQgdGhlIGNoZWNrcy4NCj4gPiAyKSBJZiB0aGV5IGNhbiBmYWls
+LCB0aGVuIHdlIGRvIG5lZWQgdGhlbSwgYW5kIHRoaXMgaGFuZCB3cmluZ2luZw0KPiA+IGluDQo+
+ID4gdGhlIE1NIGNvbW11bml0eSBhYm91dCBHRlBfKiBzZW1hbnRpY3MgYW5kIGhvdyB3ZSBuZWVk
+IHRvIHByZXZlbnQNCj4gPiBmYWlsdXJlIGlzIGZ1Y2tpbmcgcG9pbnRsZXNzLg0KPiANCj4gZXZl
+cnl0aGluZyB3aGljaCBpcyBub3QgX19HRlBfTk9GQUlMIG1pZ2h0IGZhaWwuIFdlIHRyeSBoYXJk
+IG5vdCB0bw0KPiBmYWlsDQo+IHNtYWxsIGFsbG9jYXRpb25zIHJlcXVlc3RzIGFzIG11Y2ggYXMg
+d2UgY2FuIGluIGdlbmVyYWwgYnV0IHlvdQ0KPiBfaGF2ZV8gdG8NCj4gY2hlY2sgZm9yIGZhaWx1
+cmVzLiBUaGVyZSBpcyBzaW1wbHkgbm8gd2F5IHRvIGd1YXJhbnRlZSAibmV2ZXIgZmFpbCINCj4g
+c2VtYW50aWMgZm9yIGFsbCBhbGxvY2F0aW9uIHJlcXVlc3RzLiBUaGlzIGhhcyBiZWVuIGxpa2Ug
+dGhhdA0KPiBiYXNpY2FsbHkNCj4gc2luY2UgeWVhcnMuIEFuZCBldmVuIHRoaXMgdHJ5LXRvLWJl
+LW5vZmFpbGluZyBmb3Igc21hbGwgYWxsb2NhdGlvbnMNCj4gaGFzDQo+IGJlZW4gUElUQSBmb3Ig
+c29tZSBjb3JuZXIgY2FzZXMuDQoNCkknbGwgdGFrZSB0aGF0IGFzIGEgdm90ZSBmb3IgKDIpLCB0
+aGVuLg0KDQpJIGtub3cgdGhhdCBmYWlsdXJlcyBjb3VsZCBvY2N1ciBpbiB0aGUgcGFzdC4gVGhh
+dCdzIHdoeSB0aG9zZSBjb2RlDQpwYXRocyB3ZXJlIHRoZXJlLiBUaGUgcHJvYmxlbSBpcyB0aGF0
+IHRoZSBNTSBjb21tdW5pdHkgaGFzIGJlZW4gbWFraW5nDQpsb3RzIG9mIG5vaXNlIG9uIG1haWxp
+bmcgbGlzdHMsIGNvbmZlcmVuY2VzIGFuZCBMV04gYXJ0aWNsZXMgYWJvdXQgaG93DQp3ZSBtdXN0
+IG5vdCBmYWlsIHNtYWxsIGFsbG9jYXRpb25zIGJlY2F1c2UgdGhlIE1NIGNvbW11bml0eSBiZWxp
+ZXZlcw0KdGhhdCBub2JvZHkgZXhwZWN0cyBpdC4gVGhpcyBpcyBjb25mdXNpbmcgZXZlcnlvbmUu
+Li4gSXQgY29uZnVzZWQgTmVpbA0KQnJvd24sIHdobyBjb250cmlidXRlZCB0aGVzZSBwYXRjaGVz
+LCBhbmQgaXQgY29uZnVzZWQgbWUgYW5kIGFsbCB0aGUNCm90aGVyIHJldmlld2VycyBvZiB0aGVz
+ZSBwYXRjaGVzIG9uIHRoZSBsaW51eC1uZnMgbWFpbGluZyBsaXN0Lg0KDQpTbyBpZiBpbmRlZWQg
+KDIpIGlzIGNvcnJlY3QsIHRoZW4gcGxlYXNlIGNhbiB3ZSBoYXZlIGEgY2xlYXIgc3RhdGVtZW50
+DQpfd2hlbiBkaXNjdXNzaW5nIGltcHJvdmVtZW50cyB0byBtZW1vcnkgYWxsb2NhdGlvbiBzZW1h
+bnRpY3NfIHRoYXQNCkdGUF8qIHN0aWxsIGNhbiBmYWlsLCBzdGlsbCB3aWxsIGZhaWwsIGFuZCB0
+aGF0IGNhbGxlcnMgc2hvdWxkIGFzc3VtZQ0KaXQgd2lsbCBmYWlsIGFuZCBzaG91bGQgdGVzdCB0
+aGVpciBjb2RlIHBhdGhzIGFzc3VtaW5nIHRoZSBmYWlsdXJlDQpjYXNlLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJv
+bmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-everything which is not __GFP_NOFAIL might fail. We try hard not to fail
-small allocations requests as much as we can in general but you _have_ to
-check for failures. There is simply no way to guarantee "never fail"
-semantic for all allocation requests. This has been like that basically
-since years. And even this try-to-be-nofailing for small allocations has
-been PITA for some corner cases.
-
--- 
-Michal Hocko
-SUSE Labs
