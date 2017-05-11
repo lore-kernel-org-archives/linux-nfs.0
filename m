@@ -1,43 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:55972 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750917AbdEKHYj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 May 2017 03:24:39 -0400
-Date: Thu, 11 May 2017 08:24:37 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: David Howells <dhowells@redhat.com>
-Cc: mszeredi@redhat.com, jlayton@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 06/14] VFS: Introduce a superblock configuration context
-Message-ID: <20170511072437.GK390@ZenIV.linux.org.uk>
-References: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
- <149443315971.2378.14729909191942288079.stgit@warthog.procyon.org.uk>
+Received: from mx1.redhat.com ([209.132.183.28]:42828 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750917AbdEKH1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 11 May 2017 03:27:50 -0400
+Date: Thu, 11 May 2017 15:27:47 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
+        fstests@vger.kernel.org, linux-nfs@vger.kernel.org,
+        hch@infradead.org
+Subject: Re: [PATCH v6 4/5] generic/432: Add a copy test for overwriting
+ small amounts of data
+Message-ID: <20170511072747.GH7250@eguan.usersys.redhat.com>
+References: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
+ <20170510174628.22895-5-Anna.Schumaker@Netapp.com>
+ <20170510183745.GE5970@birch.djwong.org>
+ <658f2572-9767-3dd7-c48e-9cb8f2b28510@Netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <149443315971.2378.14729909191942288079.stgit@warthog.procyon.org.uk>
+In-Reply-To: <658f2572-9767-3dd7-c48e-9cb8f2b28510@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 10, 2017 at 05:19:19PM +0100, David Howells wrote:
-> + (*) struct mnt_namespace *mnt_ns
-> +
-> +     This is a subset of the namespaces in use by the invoking process.  This
-> +     retains a ref on each namespace.  The subscribed namespaces may be
-> +     replaced by the filesystem to reflect other sources, such as the parent
-> +     mount superblock on an automount.
+On Wed, May 10, 2017 at 02:39:46PM -0400, Anna Schumaker wrote:
+> 
+> 
+> On 05/10/2017 02:37 PM, Darrick J. Wong wrote:
+> > On Wed, May 10, 2017 at 01:46:27PM -0400, Anna Schumaker wrote:
+> >> This test is similar to 345, except that it copies one byte at a time to
+> > 
+> > 345?  Or is that now 431?  Perhaps amend the commit message to "This
+> > test is similar to the previous one, except..."?
+> 
+> Yeah, I forgot to update that :(   It's supposed to be for the previous test, so that's probably the best wording to use.
 
-I don't think it's a good idea.  No comments on userns stuff, but what's
-the situation when you want it to play with the real namespace?  Details,
-please...
+I can fix it at commit time. Thanks for the tests! And thanks Darrick
+for reviewing!
 
-> + (*) int (*fill_super)(struct super_block *s, struct sb_config *sc);
-> +
-> +     This is available to be used by things like mount_ns_mc() that are called
-> +     by ->mount() to transfer information/resources from the superblock configuration context to
-> +     the superblock.
+BTW, seq number should be dropped in summary line too, tests are always
+re-numberd on commit anyway, "generic: Add copy to new file test" should
+be fine :)
 
-        Don't.  This kind of stuff can bloody well be an explicit callback.
-Methods of that kind are trouble - we had that sort of PITA quite a few
-times, and it had always been a headache when we eventually had to kill them
-off.  Starting with ->read_inode(), if you remember that one...
+Thanks,
+Eryu
