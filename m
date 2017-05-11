@@ -1,16 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59010 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38630 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933071AbdEKOAb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 May 2017 10:00:31 -0400
-Subject: [PATCH 04/14] VFS: Make get_filesystem() return the affected
- filesystem [ver #2]
+        id S933090AbdEKOAk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 11 May 2017 10:00:40 -0400
+Subject: [PATCH 05/14] VFS: Provide empty name qstr [ver #2]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 11 May 2017 15:00:28 +0100
-Message-ID: <149451122825.4599.4321100319755096089.stgit@warthog.procyon.org.uk>
+Date: Thu, 11 May 2017 15:00:35 +0100
+Message-ID: <149451123585.4599.6856406693086176310.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
 References: <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,44 +17,141 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make get_filesystem() return a pointer to the filesystem on which it just
-got a ref.
+Provide an empty name (ie. "") qstr for general use.
 
-Suggested-by: Rasmus Villemoes <linux@rasmusvillemoes.dk>
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/filesystems.c   |    3 ++-
- include/linux/fs.h |    2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ fs/dcache.c            |    8 ++++++--
+ fs/gfs2/dir.c          |    3 +--
+ fs/namei.c             |    3 +--
+ fs/nsfs.c              |    3 +--
+ fs/pipe.c              |    3 +--
+ include/linux/dcache.h |    5 +++++
+ 6 files changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/fs/filesystems.c b/fs/filesystems.c
-index cac75547d35c..591e52d23ed4 100644
---- a/fs/filesystems.c
-+++ b/fs/filesystems.c
-@@ -33,9 +33,10 @@ static struct file_system_type *file_systems;
- static DEFINE_RWLOCK(file_systems_lock);
+diff --git a/fs/dcache.c b/fs/dcache.c
+index 95d71eda8142..9a17ee020996 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -90,6 +90,11 @@ EXPORT_SYMBOL(rename_lock);
  
- /* WARNING: This can be used only if we _already_ own a reference */
--void get_filesystem(struct file_system_type *fs)
-+struct file_system_type *get_filesystem(struct file_system_type *fs)
- {
- 	__module_get(fs->owner);
-+	return fs;
+ static struct kmem_cache *dentry_cache __read_mostly;
+ 
++const struct qstr empty_name = QSTR_INIT("", 0);
++EXPORT_SYMBOL(empty_name);
++const struct qstr slash_name = QSTR_INIT("/", 1);
++EXPORT_SYMBOL(slash_name);
++
+ /*
+  * This is the single most critical data structure when it comes
+  * to the dcache: the hashtable for lookups. Somebody should try
+@@ -1580,8 +1585,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
+ 	 */
+ 	dentry->d_iname[DNAME_INLINE_LEN-1] = 0;
+ 	if (unlikely(!name)) {
+-		static const struct qstr anon = QSTR_INIT("/", 1);
+-		name = &anon;
++		name = &slash_name;
+ 		dname = dentry->d_iname;
+ 	} else if (name->len > DNAME_INLINE_LEN-1) {
+ 		size_t size = offsetof(struct external_name, name[1]);
+diff --git a/fs/gfs2/dir.c b/fs/gfs2/dir.c
+index 79113219be5f..a5dfff6a033e 100644
+--- a/fs/gfs2/dir.c
++++ b/fs/gfs2/dir.c
+@@ -872,7 +872,6 @@ static struct gfs2_leaf *new_leaf(struct inode *inode, struct buffer_head **pbh,
+ 	struct buffer_head *bh;
+ 	struct gfs2_leaf *leaf;
+ 	struct gfs2_dirent *dent;
+-	struct qstr name = { .name = "" };
+ 	struct timespec tv = current_time(inode);
+ 
+ 	error = gfs2_alloc_blocks(ip, &bn, &n, 0, NULL);
+@@ -896,7 +895,7 @@ static struct gfs2_leaf *new_leaf(struct inode *inode, struct buffer_head **pbh,
+ 	leaf->lf_sec = cpu_to_be64(tv.tv_sec);
+ 	memset(leaf->lf_reserved2, 0, sizeof(leaf->lf_reserved2));
+ 	dent = (struct gfs2_dirent *)(leaf+1);
+-	gfs2_qstr2dirent(&name, bh->b_size - sizeof(struct gfs2_leaf), dent);
++	gfs2_qstr2dirent(&empty_name, bh->b_size - sizeof(struct gfs2_leaf), dent);
+ 	*pbh = bh;
+ 	return leaf;
  }
+diff --git a/fs/namei.c b/fs/namei.c
+index 19dcf62133cc..0c2af2c7794f 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -3368,7 +3368,6 @@ static int do_last(struct nameidata *nd,
  
- void put_filesystem(struct file_system_type *fs)
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 30e5c14bd743..45ac992133fc 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2953,7 +2953,7 @@ extern int generic_block_fiemap(struct inode *inode,
- 				struct fiemap_extent_info *fieinfo, u64 start,
- 				u64 len, get_block_t *get_block);
+ struct dentry *vfs_tmpfile(struct dentry *dentry, umode_t mode, int open_flag)
+ {
+-	static const struct qstr name = QSTR_INIT("/", 1);
+ 	struct dentry *child = NULL;
+ 	struct inode *dir = dentry->d_inode;
+ 	struct inode *inode;
+@@ -3382,7 +3381,7 @@ struct dentry *vfs_tmpfile(struct dentry *dentry, umode_t mode, int open_flag)
+ 	if (!dir->i_op->tmpfile)
+ 		goto out_err;
+ 	error = -ENOMEM;
+-	child = d_alloc(dentry, &name);
++	child = d_alloc(dentry, &slash_name);
+ 	if (unlikely(!child))
+ 		goto out_err;
+ 	error = dir->i_op->tmpfile(dir, child, mode);
+diff --git a/fs/nsfs.c b/fs/nsfs.c
+index 323f492e0822..253cf59b27a1 100644
+--- a/fs/nsfs.c
++++ b/fs/nsfs.c
+@@ -53,7 +53,6 @@ static void nsfs_evict(struct inode *inode)
+ static void *__ns_get_path(struct path *path, struct ns_common *ns)
+ {
+ 	struct vfsmount *mnt = nsfs_mnt;
+-	struct qstr qname = { .name = "", };
+ 	struct dentry *dentry;
+ 	struct inode *inode;
+ 	unsigned long d;
+@@ -85,7 +84,7 @@ static void *__ns_get_path(struct path *path, struct ns_common *ns)
+ 	inode->i_fop = &ns_file_operations;
+ 	inode->i_private = ns;
  
--extern void get_filesystem(struct file_system_type *fs);
-+extern struct file_system_type *get_filesystem(struct file_system_type *fs);
- extern void put_filesystem(struct file_system_type *fs);
- extern struct file_system_type *get_fs_type(const char *name);
- extern struct super_block *get_super(struct block_device *);
+-	dentry = d_alloc_pseudo(mnt->mnt_sb, &qname);
++	dentry = d_alloc_pseudo(mnt->mnt_sb, &empty_name);
+ 	if (!dentry) {
+ 		iput(inode);
+ 		return ERR_PTR(-ENOMEM);
+diff --git a/fs/pipe.c b/fs/pipe.c
+index 73b84baf58f8..97e5be897753 100644
+--- a/fs/pipe.c
++++ b/fs/pipe.c
+@@ -739,13 +739,12 @@ int create_pipe_files(struct file **res, int flags)
+ 	struct inode *inode = get_pipe_inode();
+ 	struct file *f;
+ 	struct path path;
+-	static struct qstr name = { .name = "" };
+ 
+ 	if (!inode)
+ 		return -ENFILE;
+ 
+ 	err = -ENOMEM;
+-	path.dentry = d_alloc_pseudo(pipe_mnt->mnt_sb, &name);
++	path.dentry = d_alloc_pseudo(pipe_mnt->mnt_sb, &empty_name);
+ 	if (!path.dentry)
+ 		goto err_inode;
+ 	path.mnt = mntget(pipe_mnt);
+diff --git a/include/linux/dcache.h b/include/linux/dcache.h
+index d2e38dc6172c..3f65a4fa72ed 100644
+--- a/include/linux/dcache.h
++++ b/include/linux/dcache.h
+@@ -55,6 +55,11 @@ struct qstr {
+ 
+ #define QSTR_INIT(n,l) { { { .len = l } }, .name = n }
+ 
++extern const char empty_string[];
++extern const struct qstr empty_name;
++extern const char slash_string[];
++extern const struct qstr slash_name;
++
+ struct dentry_stat_t {
+ 	long nr_dentry;
+ 	long nr_unused;
 
