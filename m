@@ -1,241 +1,308 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56998 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55112 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757272AbdEKPtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 May 2017 11:49:50 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F06D7C04B940
-        for <linux-nfs@vger.kernel.org>; Thu, 11 May 2017 15:49:44 +0000 (UTC)
-Subject: Re: [PATCH] rpcbind: pair all svc_getargs() calls with svc_freeargs()
- to avoid memory leak
-To: Doran Moppert <dmoppert@redhat.com>, linux-nfs@vger.kernel.org
-References: <20170511060520.GE3866@sin.redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <90d819fb-7b0c-9616-509f-e95d58426670@RedHat.com>
-Date: Thu, 11 May 2017 11:49:43 -0400
+        id S932614AbdEKOBa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 11 May 2017 10:01:30 -0400
+Subject: [PATCH 11/14] proc: Add superblock config support to procfs [ver #2]
+From: David Howells <dhowells@redhat.com>
+To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Thu, 11 May 2017 15:01:27 +0100
+Message-ID: <149451128717.4599.14901087582528452925.stgit@warthog.procyon.org.uk>
+In-Reply-To: <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
+References: <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <20170511060520.GE3866@sin.redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Add superblock config support to procfs.
 
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
 
-On 05/11/2017 02:05 AM, Doran Moppert wrote:
-> This patch is to address CVE-2017-8779 "rpcbomb" in rpcbind, discussed
-> at [1], [2], [3].  The last link suggests this issue is actually a bug
-> in rpcbind, which led me here.
-> 
-> The leak caused by the reproducer at [4] appears to come from
-> rpcb_service_4(), in the case where svc_getargs() returns false and the
-> function had an early return, rather than passing through the cleanup
-> path at done:, as would otherwise occur.
-> 
-> It also addresses a couple of other locations where the same fault seems
-> to exist, though I haven't been able to exercise those.  I hope someone
-> more intimate with rpc(3) can confirm my understanding is correct, and
-> that I haven't introduced any new bugs.
-> 
-> Without this patch, using the reproducer (and variants) repeatedly
-> against rpcbind with a numBytes argument of 1_000_000_000, /proc/$(pidof
-> rpcbind)/status reports VmSize increase of 976564 kB each call, and
-> VmRSS increase of around 260 kB every 33 calls - the specific numbers
-> are probably an artifact of my rhel/glibc version.  With the patch,
-> there is a small (~50 kB) VmSize increase with the first message, but
-> thereafter both VmSize and VmRSS remain steady.
-> 
-> 
-> [1]: http://seclists.org/oss-sec/2017/q2/209
-> [2]: https://bugzilla.redhat.com/show_bug.cgi?id=1448124
-> [3]: https://sourceware.org/ml/libc-alpha/2017-05/msg00129.html
-> [4]: https://github.com/guidovranken/rpcbomb/
-> 
-> 
-> Signed-off-by: Doran Moppert <dmoppert@redhat.com>
-Committed... 
+ fs/proc/inode.c    |    2 -
+ fs/proc/internal.h |    2 -
+ fs/proc/root.c     |  166 +++++++++++++++++++++++++++++++++-------------------
+ 3 files changed, 108 insertions(+), 62 deletions(-)
 
-steved.
+diff --git a/fs/proc/inode.c b/fs/proc/inode.c
+index 194fa2d13b7e..df9e586ee1af 100644
+--- a/fs/proc/inode.c
++++ b/fs/proc/inode.c
+@@ -118,7 +118,7 @@ const struct super_operations proc_sops = {
+ 	.drop_inode	= generic_delete_inode,
+ 	.evict_inode	= proc_evict_inode,
+ 	.statfs		= simple_statfs,
+-	.remount_fs	= proc_remount,
++	.remount_fs_sc	= proc_remount,
+ 	.show_options	= proc_show_options,
+ };
+ 
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index b681533f59dd..4546372c2d13 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -262,7 +262,7 @@ static inline void proc_tty_init(void) {}
+ extern struct proc_dir_entry proc_root;
+ 
+ extern void proc_self_init(void);
+-extern int proc_remount(struct super_block *, int *, char *);
++extern int proc_remount(struct super_block *, struct sb_config *);
+ 
+ /*
+  * task_[no]mmu.c
+diff --git a/fs/proc/root.c b/fs/proc/root.c
+index ee1937b37370..da5757d1c518 100644
+--- a/fs/proc/root.c
++++ b/fs/proc/root.c
+@@ -24,9 +24,18 @@
+ #include <linux/parser.h>
+ #include <linux/cred.h>
+ #include <linux/magic.h>
++#include <linux/slab.h>
+ 
+ #include "internal.h"
+ 
++struct proc_sb_config {
++	struct sb_config	sc;
++	struct pid_namespace	*pid_ns;
++	unsigned long		mask;
++	int			hidepid;
++	int			gid;
++};
++
+ enum {
+ 	Opt_gid, Opt_hidepid, Opt_err,
+ };
+@@ -37,56 +46,60 @@ static const match_table_t tokens = {
+ 	{Opt_err, NULL},
+ };
+ 
+-static int proc_parse_options(char *options, struct pid_namespace *pid)
++static int proc_parse_mount_option(struct sb_config *sc, char *p)
+ {
+-	char *p;
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
+ 	substring_t args[MAX_OPT_ARGS];
+-	int option;
+-
+-	if (!options)
+-		return 1;
+-
+-	while ((p = strsep(&options, ",")) != NULL) {
+-		int token;
+-		if (!*p)
+-			continue;
+-
+-		args[0].to = args[0].from = NULL;
+-		token = match_token(p, tokens, args);
+-		switch (token) {
+-		case Opt_gid:
+-			if (match_int(&args[0], &option))
+-				return 0;
+-			pid->pid_gid = make_kgid(current_user_ns(), option);
+-			break;
+-		case Opt_hidepid:
+-			if (match_int(&args[0], &option))
+-				return 0;
+-			if (option < HIDEPID_OFF ||
+-			    option > HIDEPID_INVISIBLE) {
+-				pr_err("proc: hidepid value must be between 0 and 2.\n");
+-				return 0;
+-			}
+-			pid->hide_pid = option;
+-			break;
+-		default:
+-			pr_err("proc: unrecognized mount option \"%s\" "
+-			       "or missing value\n", p);
+-			return 0;
++	int token;
++
++	args[0].to = args[0].from = NULL;
++	token = match_token(p, tokens, args);
++	switch (token) {
++	case Opt_gid:
++		if (match_int(&args[0], &cfg->gid))
++			return sb_cfg_inval(sc, "procfs: Unparseable gid= argument");
++		break;
++
++	case Opt_hidepid:
++		if (match_int(&args[0], &cfg->hidepid))
++			return sb_cfg_inval(sc, "procfs: Unparseable hidepid= argument");
++		if (cfg->hidepid < HIDEPID_OFF ||
++		    cfg->hidepid > HIDEPID_INVISIBLE) {
++			pr_err("proc: hidepid value must be between 0 and 2.\n");
++			return sb_cfg_inval(sc, "procfs: Invalid hidepid= argument");
+ 		}
++		break;
++
++	default:
++		pr_err("proc: unrecognized mount option \"%s\" "
++		       "or missing value\n", p);
++		return sb_cfg_inval(sc, "procfs: Invalid mount option or missing value");
+ 	}
+ 
+-	return 1;
++	cfg->mask |= 1 << token;
++	return 0;
++}
++
++static void proc_set_options(struct super_block *s,
++			     struct sb_config *sc,
++			     struct pid_namespace *pid_ns,
++			     struct user_namespace *user_ns)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++
++	if (cfg->mask & (1 << Opt_gid))
++		pid_ns->pid_gid = make_kgid(user_ns, cfg->gid);
++	if (cfg->mask & (1 << Opt_hidepid))
++		pid_ns->hide_pid = cfg->hidepid;
+ }
+ 
+-static int proc_fill_super(struct super_block *s, void *data, int silent)
++static int proc_fill_super(struct super_block *s, struct sb_config *sc)
+ {
+-	struct pid_namespace *ns = get_pid_ns(s->s_fs_info);
++	struct pid_namespace *pid_ns = get_pid_ns(s->s_fs_info);
+ 	struct inode *root_inode;
+ 	int ret;
+ 
+-	if (!proc_parse_options(data, ns))
+-		return -EINVAL;
++	proc_set_options(s, sc, pid_ns, current_user_ns());
+ 
+ 	/* User space would break if executables or devices appear on proc */
+ 	s->s_iflags |= SB_I_USERNS_VISIBLE | SB_I_NOEXEC | SB_I_NODEV;
+@@ -103,7 +116,7 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
+ 	 * top of it
+ 	 */
+ 	s->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
+-	
++
+ 	pde_get(&proc_root);
+ 	root_inode = proc_get_inode(s, &proc_root);
+ 	if (!root_inode) {
+@@ -124,27 +137,45 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
+ 	return proc_setup_thread_self(s);
+ }
+ 
+-int proc_remount(struct super_block *sb, int *flags, char *data)
++int proc_remount(struct super_block *sb, struct sb_config *sc)
+ {
+ 	struct pid_namespace *pid = sb->s_fs_info;
+ 
+ 	sync_filesystem(sb);
+-	return !proc_parse_options(data, pid);
++
++	if (sc)
++		proc_set_options(sb, sc, pid, current_user_ns());
++	return 0;
+ }
+ 
+-static struct dentry *proc_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *data)
++static struct dentry *proc_mount(struct sb_config *sc)
+ {
+-	struct pid_namespace *ns;
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
+ 
+-	if (flags & MS_KERNMOUNT) {
+-		ns = data;
+-		data = NULL;
+-	} else {
+-		ns = task_active_pid_ns(current);
+-	}
++	return mount_ns_sc(sc, proc_fill_super, cfg->pid_ns);
++}
+ 
+-	return mount_ns(fs_type, flags, data, ns, ns->user_ns, proc_fill_super);
++static void proc_sb_config_free(struct sb_config *sc)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++
++	if (cfg->pid_ns)
++		put_pid_ns(cfg->pid_ns);
++}
++
++static const struct sb_config_operations proc_sb_config_ops = {
++	.free		= proc_sb_config_free,
++	.parse_option	= proc_parse_mount_option,
++	.mount		= proc_mount,
++};
++
++static int proc_init_sb_config(struct sb_config *sc, struct super_block *src_sb)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++
++	cfg->pid_ns = get_pid_ns(task_active_pid_ns(current));
++	cfg->sc.ops = &proc_sb_config_ops;
++	return 0;
+ }
+ 
+ static void proc_kill_sb(struct super_block *sb)
+@@ -162,7 +193,8 @@ static void proc_kill_sb(struct super_block *sb)
+ 
+ static struct file_system_type proc_fs_type = {
+ 	.name		= "proc",
+-	.mount		= proc_mount,
++	.sb_config_size	= sizeof(struct proc_sb_config),
++	.init_sb_config	= proc_init_sb_config,
+ 	.kill_sb	= proc_kill_sb,
+ 	.fs_flags	= FS_USERNS_MOUNT,
+ };
+@@ -210,7 +242,7 @@ static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentr
+ {
+ 	if (!proc_pid_lookup(dir, dentry, flags))
+ 		return NULL;
+-	
++
+ 	return proc_lookup(dir, dentry, flags);
+ }
+ 
+@@ -249,12 +281,12 @@ static const struct inode_operations proc_root_inode_operations = {
+  * This is the root "inode" in the /proc tree..
+  */
+ struct proc_dir_entry proc_root = {
+-	.low_ino	= PROC_ROOT_INO, 
+-	.namelen	= 5, 
+-	.mode		= S_IFDIR | S_IRUGO | S_IXUGO, 
+-	.nlink		= 2, 
++	.low_ino	= PROC_ROOT_INO,
++	.namelen	= 5,
++	.mode		= S_IFDIR | S_IRUGO | S_IXUGO,
++	.nlink		= 2,
+ 	.count		= ATOMIC_INIT(1),
+-	.proc_iops	= &proc_root_inode_operations, 
++	.proc_iops	= &proc_root_inode_operations,
+ 	.proc_fops	= &proc_root_operations,
+ 	.parent		= &proc_root,
+ 	.subdir		= RB_ROOT,
+@@ -263,9 +295,23 @@ struct proc_dir_entry proc_root = {
+ 
+ int pid_ns_prepare_proc(struct pid_namespace *ns)
+ {
++	struct proc_sb_config *cfg;
++	struct sb_config *sc;
+ 	struct vfsmount *mnt;
+ 
+-	mnt = kern_mount_data(&proc_fs_type, ns);
++	sc = __vfs_new_sb_config(&proc_fs_type, NULL, 0, SB_CONFIG_FOR_NEW);
++	if (IS_ERR(sc))
++		return PTR_ERR(sc);
++
++	cfg = container_of(sc, struct proc_sb_config, sc);
++	if (cfg->pid_ns != ns) {
++		put_pid_ns(cfg->pid_ns);
++		get_pid_ns(ns);
++		cfg->pid_ns = ns;
++	}
++
++	mnt = kern_mount_data_sc(sc);
++	put_sb_config(sc);
+ 	if (IS_ERR(mnt))
+ 		return PTR_ERR(mnt);
+ 
 
-> ---
->  src/pmap_svc.c     | 56 +++++++++++++++++++++++++++++++++++++++++++++---------
->  src/rpcb_svc.c     |  2 +-
->  src/rpcb_svc_4.c   |  2 +-
->  src/rpcb_svc_com.c |  8 ++++++++
->  4 files changed, 57 insertions(+), 11 deletions(-)
-> 
-> diff --git a/src/pmap_svc.c b/src/pmap_svc.c
-> index 4c744fe..e926cdc 100644
-> --- a/src/pmap_svc.c
-> +++ b/src/pmap_svc.c
-> @@ -175,6 +175,7 @@ pmapproc_change(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt, unsigned long
->  	long ans;
->  	uid_t uid;
->  	char uidbuf[32];
-> +	int rc = TRUE;
->  
->  	/*
->  	 * Can't use getpwnam here. We might end up calling ourselves
-> @@ -194,7 +195,8 @@ pmapproc_change(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt, unsigned long
->  
->  	if (!svc_getargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
->  		svcerr_decode(xprt);
-> -		return (FALSE);
-> +		rc = FALSE;
-> +		goto done;
->  	}
->  #ifdef RPCBIND_DEBUG
->  	if (debugging)
-> @@ -205,7 +207,8 @@ pmapproc_change(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt, unsigned long
->  
->  	if (!check_access(xprt, op, reg.pm_prog, PMAPVERS)) {
->  		svcerr_weakauth(xprt);
-> -		return (FALSE);
-> +		rc = (FALSE);
-> +		goto done;
->  	}
->  
->  	rpcbreg.r_prog = reg.pm_prog;
-> @@ -258,7 +261,16 @@ done_change:
->  		rpcbs_set(RPCBVERS_2_STAT, ans);
->  	else
->  		rpcbs_unset(RPCBVERS_2_STAT, ans);
-> -	return (TRUE);
-> +done:
-> +	if (!svc_freeargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
-> +		if (debugging) {
-> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
-> +			if (doabort) {
-> +				rpcbind_abort();
-> +			}
-> +		}
-> +	}
-> +	return (rc);
->  }
->  
->  /* ARGSUSED */
-> @@ -272,15 +284,18 @@ pmapproc_getport(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
->  #ifdef RPCBIND_DEBUG
->  	char *uaddr;
->  #endif
-> +	int rc = TRUE;
->  
->  	if (!svc_getargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
->  		svcerr_decode(xprt);
-> -		return (FALSE);
-> +		rc = FALSE;
-> +		goto done;
->  	}
->  
->  	if (!check_access(xprt, PMAPPROC_GETPORT, reg.pm_prog, PMAPVERS)) {
->  		svcerr_weakauth(xprt);
-> -		return FALSE;
-> +		rc = FALSE;
-> +		goto done;
->  	}
->  
->  #ifdef RPCBIND_DEBUG
-> @@ -330,21 +345,34 @@ pmapproc_getport(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
->  		pmap_ipprot2netid(reg.pm_prot) ?: "<unknown>",
->  		port ? udptrans : "");
->  
-> -	return (TRUE);
-> +done:
-> +	if (!svc_freeargs(xprt, (xdrproc_t) xdr_pmap, (char *)&reg)) {
-> +		if (debugging) {
-> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
-> +			if (doabort) {
-> +				rpcbind_abort();
-> +			}
-> +		}
-> +	}
-> +	return (rc);
->  }
->  
->  /* ARGSUSED */
->  static bool_t
->  pmapproc_dump(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
->  {
-> +	int rc = TRUE;
-> +
->  	if (!svc_getargs(xprt, (xdrproc_t)xdr_void, NULL)) {
->  		svcerr_decode(xprt);
-> -		return (FALSE);
-> +		rc = FALSE;
-> +		goto done;
->  	}
->  
->  	if (!check_access(xprt, PMAPPROC_DUMP, 0, PMAPVERS)) {
->  		svcerr_weakauth(xprt);
-> -		return FALSE;
-> +		rc = FALSE;
-> +		goto done;
->  	}
->  	
->  	if ((!svc_sendreply(xprt, (xdrproc_t) xdr_pmaplist_ptr,
-> @@ -354,7 +382,17 @@ pmapproc_dump(struct svc_req *rqstp /*__unused*/, SVCXPRT *xprt)
->  			rpcbind_abort();
->  		}
->  	}
-> -	return (TRUE);
-> +
-> +done:
-> +	if (!svc_freeargs(xprt, (xdrproc_t) xdr_pmap, (char *)NULL)) {
-> +		if (debugging) {
-> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
-> +			if (doabort) {
-> +				rpcbind_abort();
-> +			}
-> +		}
-> +	}
-> +	return (rc);
->  }
->  
->  int pmap_netid2ipprot(const char *netid)
-> diff --git a/src/rpcb_svc.c b/src/rpcb_svc.c
-> index 709e3fb..091f530 100644
-> --- a/src/rpcb_svc.c
-> +++ b/src/rpcb_svc.c
-> @@ -166,7 +166,7 @@ rpcb_service_3(struct svc_req *rqstp, SVCXPRT *transp)
->  		svcerr_decode(transp);
->  		if (debugging)
->  			(void) xlog(LOG_DEBUG, "rpcbind: could not decode");
-> -		return;
-> +		goto done;
->  	}
->  
->  	if (rqstp->rq_proc == RPCBPROC_SET
-> diff --git a/src/rpcb_svc_4.c b/src/rpcb_svc_4.c
-> index 5094879..eebbbbe 100644
-> --- a/src/rpcb_svc_4.c
-> +++ b/src/rpcb_svc_4.c
-> @@ -218,7 +218,7 @@ rpcb_service_4(struct svc_req *rqstp, SVCXPRT *transp)
->  		svcerr_decode(transp);
->  		if (debugging)
->  			(void) xlog(LOG_DEBUG, "rpcbind: could not decode\n");
-> -		return;
-> +		goto done;
->  	}
->  
->  	if (rqstp->rq_proc == RPCBPROC_SET
-> diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
-> index 5862c26..cb63afd 100644
-> --- a/src/rpcb_svc_com.c
-> +++ b/src/rpcb_svc_com.c
-> @@ -927,6 +927,14 @@ error:
->  	if (call_msg.rm_xid != 0)
->  		(void) free_slot_by_xid(call_msg.rm_xid);
->  out:
-> +	if (!svc_freeargs(transp, (xdrproc_t) xdr_rmtcall_args, (char *) &a)) {
-> +		if (debugging) {
-> +			(void) xlog(LOG_DEBUG, "unable to free arguments\n");
-> +			if (doabort) {
-> +				rpcbind_abort();
-> +			}
-> +		}
-> +	}
->  	if (local_uaddr)
->  		free(local_uaddr);
->  	if (buf_alloc)
-> 
