@@ -1,117 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53257 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755093AbdEKNKU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 May 2017 09:10:20 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "mhocko@kernel.org" <mhocko@kernel.org>
-CC: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
+Received: from mx2.suse.de ([195.135.220.15]:46904 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1755481AbdEKN1O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 11 May 2017 09:27:14 -0400
+Date: Thu, 11 May 2017 15:27:12 +0200
+From: Michal Hocko <mhocko@kernel.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "n.borisov.lkml@gmail.com" <n.borisov.lkml@gmail.com>
 Subject: Re: [GIT PULL] Please pull NFS client fixes for 4.12
-Date: Thu, 11 May 2017 13:10:03 +0000
-Message-ID: <1494508201.3207.5.camel@primarydata.com>
+Message-ID: <20170511132712.GL26782@dhcp22.suse.cz>
 References: <1494434821.4764.1.camel@primarydata.com>
-         <be16be57-235c-fdf9-f708-3898aeeeb5aa@gmail.com>
-         <20170511075910.GD26782@dhcp22.suse.cz>
-         <1494504995.3207.1.camel@primarydata.com>
-         <20170511122613.GJ26782@dhcp22.suse.cz>
-         <1494506698.3207.3.camel@primarydata.com>
-         <20170511125612.GK26782@dhcp22.suse.cz>
-In-Reply-To: <20170511125612.GK26782@dhcp22.suse.cz>
+ <be16be57-235c-fdf9-f708-3898aeeeb5aa@gmail.com>
+ <20170511075910.GD26782@dhcp22.suse.cz>
+ <1494504995.3207.1.camel@primarydata.com>
+ <20170511122613.GJ26782@dhcp22.suse.cz>
+ <1494506698.3207.3.camel@primarydata.com>
+ <20170511125612.GK26782@dhcp22.suse.cz>
+ <1494508201.3207.5.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1494508201.3207.5.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA1LTExIGF0IDE0OjU2ICswMjAwLCBNaWNoYWwgSG9ja28gd3JvdGU6DQo+
-IE9uIFRodSAxMS0wNS0xNyAxMjo0NTowMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+IE9u
-IFRodSwgMjAxNy0wNS0xMSBhdCAxNDoyNiArMDIwMCwgTWljaGFsIEhvY2tvIHdyb3RlOg0KPiA+
-ID4gT24gVGh1IDExLTA1LTE3IDEyOjE2OjM3LCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4g
-PiA+IE9uIFRodSwgMjAxNy0wNS0xMSBhdCAwOTo1OSArMDIwMCwgTWljaGFsIEhvY2tvIHdyb3Rl
-Og0KPiA+ID4gPiA+IE9uIFRodSAxMS0wNS0xNyAxMDo1MzoyNywgTmlrb2xheSBCb3Jpc292IHdy
-b3RlOg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IE9uIDEwLjA1LjIw
-MTcgMTk6NDcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBb
-Li4uXQ0KPiA+ID4gPiA+ID4gPiAtIENsZWFudXAgYW5kIHJlbW92YWwgb2Ygc29tZSBtZW1vcnkg
-ZmFpbHVyZSBwYXRocyBub3cNCj4gPiA+ID4gPiA+ID4gdGhhdA0KPiA+ID4gPiA+ID4gPiDCoCBH
-RlBfTk9GUyBpcyBndWFyYW50ZWVkIHRvIG5ldmVyIGZhaWwuDQo+ID4gPiA+ID4gPiANCj4gPiA+
-ID4gPiA+IFdoYXQgZ3VhcmFudGVlcyB0aGF0PyBTaW5jZSBpZiB0aGlzIGlzIHRoZSBjYXNlIHRo
-ZW4gdGhpcw0KPiA+ID4gPiA+ID4gY2FuDQo+ID4gPiA+ID4gPiByZXN1bHQgaW4NCj4gPiA+ID4g
-PiA+IGEgbG90IG9mIG9wcG9ydHVuaXRpZXMgZm9yIGNsZWFudXAgYWNyb3NzIHRoZSB3aG9sZSBr
-ZXJuZWwNCj4gPiA+ID4gPiA+IHRyZWUuDQo+ID4gPiA+ID4gPiBBZnRlcg0KPiA+ID4gPiA+ID4g
-ZGlzY3Vzc2luZyB3aXRoIG1ob2NrbyAoY2MnZWQpIGl0IHNlZW1zIHRoYXQgaW4gcHJhY3RpY2UN
-Cj4gPiA+ID4gPiA+IGV2ZXJ5dGhpbmcNCj4gPiA+ID4gPiA+IGJlbG93IENPU1RMWV9PUkRFUiB3
-aGljaCBhcmUgbm90IEdGUF9OT1JFVFJZIHdpbGwgbmV2ZXINCj4gPiA+ID4gPiA+IGZhaWwuDQo+
-ID4gPiA+ID4gPiBCdXQNCj4gPiA+ID4gPiA+IHRoaXMNCj4gPiA+ID4gPiA+IHNlbWFudGljIGlz
-IG5vdCB0aGUgc2FtZSBhcyBHRlBfTk9GQUlMLiBFLmcuIG5vdGhpbmcNCj4gPiA+ID4gPiA+IGd1
-YXJhbnRlZXMNCj4gPiA+ID4gPiA+IHRoYXQNCj4gPiA+ID4gPiA+IHRoaXMgd2lsbCBzdGF5IGxp
-a2UgdGhhdCBpbiB0aGUgZnV0dXJlPw0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEluIHByYWN0aWNl
-IGl0IGlzIGhhcmQgdG8gY2hhbmdlIHRoZSBzZW1hbnRpYyBvZiBzbWFsbA0KPiA+ID4gPiA+IGFs
-bG9jYXRpb25zDQo+ID4gPiA+ID4gbmV2ZXINCj4gPiA+ID4gPiBmYWlsIF9wcmFjdGljYWxseV8u
-IEJ1dCB0aGlzIGlzIGFic29sdXRlbHkgbm90IGd1YXJhbnRlZWQhDQo+ID4gPiA+ID4gVGhleQ0K
-PiA+ID4gPiA+IGNhbg0KPiA+ID4gPiA+IGZhaWwNCj4gPiA+ID4gPiBlLmcuIHdoZW4gdGhlIGFs
-bG9jYXRpb24gY29udGV4dCBpcyB0aGUgb29tIHZpY3RpbS4gUmVtb3ZpbmcNCj4gPiA+ID4gPiBl
-cnJvcg0KPiA+ID4gPiA+IHBhdGhzDQo+ID4gPiA+ID4gZm9yIGFsbG9jYXRpb24gZmFpbHVyZXMg
-aXMganVzdCB3cm9uZy4NCj4gPiA+ID4gDQo+ID4gPiA+IE9LLCB0aGlzIG1ha2VzIG5vIGZ1Y2tp
-bmcgc2Vuc2UgYXQgYWxsLg0KPiA+ID4gPiANCj4gPiA+ID4gRWl0aGVyIGFsbG9jYXRpb25zIGNh
-biBmYWlsIG9yIHRoZXkgY2FuJ3QuDQo+ID4gPiA+IDEpIElmIHRoZXkgY2FuJ3QgZmFpbCwgdGhl
-biB3ZSBkb24ndCBuZWVkIHRoZSBjaGVja3MuDQo+ID4gPiA+IDIpIElmIHRoZXkgY2FuIGZhaWws
-IHRoZW4gd2UgZG8gbmVlZCB0aGVtLCBhbmQgdGhpcyBoYW5kDQo+ID4gPiA+IHdyaW5naW5nDQo+
-ID4gPiA+IGluDQo+ID4gPiA+IHRoZSBNTSBjb21tdW5pdHkgYWJvdXQgR0ZQXyogc2VtYW50aWNz
-IGFuZCBob3cgd2UgbmVlZCB0bw0KPiA+ID4gPiBwcmV2ZW50DQo+ID4gPiA+IGZhaWx1cmUgaXMg
-ZnVja2luZyBwb2ludGxlc3MuDQo+ID4gPiANCj4gPiA+IGV2ZXJ5dGhpbmcgd2hpY2ggaXMgbm90
-IF9fR0ZQX05PRkFJTCBtaWdodCBmYWlsLiBXZSB0cnkgaGFyZCBub3QNCj4gPiA+IHRvDQo+ID4g
-PiBmYWlsDQo+ID4gPiBzbWFsbCBhbGxvY2F0aW9ucyByZXF1ZXN0cyBhcyBtdWNoIGFzIHdlIGNh
-biBpbiBnZW5lcmFsIGJ1dCB5b3UNCj4gPiA+IF9oYXZlXyB0bw0KPiA+ID4gY2hlY2sgZm9yIGZh
-aWx1cmVzLiBUaGVyZSBpcyBzaW1wbHkgbm8gd2F5IHRvIGd1YXJhbnRlZSAibmV2ZXINCj4gPiA+
-IGZhaWwiDQo+ID4gPiBzZW1hbnRpYyBmb3IgYWxsIGFsbG9jYXRpb24gcmVxdWVzdHMuIFRoaXMg
-aGFzIGJlZW4gbGlrZSB0aGF0DQo+ID4gPiBiYXNpY2FsbHkNCj4gPiA+IHNpbmNlIHllYXJzLiBB
-bmQgZXZlbiB0aGlzIHRyeS10by1iZS1ub2ZhaWxpbmcgZm9yIHNtYWxsDQo+ID4gPiBhbGxvY2F0
-aW9ucw0KPiA+ID4gaGFzDQo+ID4gPiBiZWVuIFBJVEEgZm9yIHNvbWUgY29ybmVyIGNhc2VzLg0K
-PiA+IA0KPiA+IEknbGwgdGFrZSB0aGF0IGFzIGEgdm90ZSBmb3IgKDIpLCB0aGVuLg0KPiA+IA0K
-PiA+IEkga25vdyB0aGF0IGZhaWx1cmVzIGNvdWxkIG9jY3VyIGluIHRoZSBwYXN0LiBUaGF0J3Mg
-d2h5IHRob3NlIGNvZGUNCj4gPiBwYXRocyB3ZXJlIHRoZXJlLiBUaGUgcHJvYmxlbSBpcyB0aGF0
-IHRoZSBNTSBjb21tdW5pdHkgaGFzIGJlZW4NCj4gPiBtYWtpbmcNCj4gPiBsb3RzIG9mIG5vaXNl
-IG9uIG1haWxpbmcgbGlzdHMsIGNvbmZlcmVuY2VzIGFuZCBMV04gYXJ0aWNsZXMgYWJvdXQNCj4g
-PiBob3cNCj4gPiB3ZSBtdXN0IG5vdCBmYWlsIHNtYWxsIGFsbG9jYXRpb25zIGJlY2F1c2UgdGhl
-IE1NIGNvbW11bml0eQ0KPiA+IGJlbGlldmVzDQo+ID4gdGhhdCBub2JvZHkgZXhwZWN0cyBpdC4g
-VGhpcyBpcyBjb25mdXNpbmcgZXZlcnlvbmUuLi4NCj4gDQo+IEl0IHdhcyBleGFjdGx5IG90aGVy
-IHdheSBhcm91bmQuIFdlIHdvdWxkIGxpa2UgdG8gX2dldF9yaWRfb2ZfIHRoaXMNCj4gZG8NCj4g
-bm90IGZhaWwgYmVoYXZpb3IgYmVjYXVzZSBpdCBpcyBjYXVzaW5nIGEgbWFqb3IgaGVhZGFjaGVz
-IGluIG91dCBvZg0KPiBtZW1vcnkgY29ybmVyIGNhc2VzLiBKdXN0IHRha2UgR0ZQX05PRlMgYXMg
-YW4gZXhhbXBsZS4gSXQgaXMgYSB3ZWFrDQo+IHJlY2xhaW0gY29udGV4dCBiZWNhdXNlIHdlIGNh
-bm5vdCByZWNsYWltIGZzIG1ldGFkYXRhIGFuZCB0aGF0IG1pZ2h0DQo+IGJlDQo+IGEgbG90IG9m
-IG1lbW9yeSBzbyB3ZSBjYW5ub3QgdHJpZ2dlciB0aGUgT09NIGtpbGxlciBhbmQgaGF2ZSB0byBy
-ZWx5DQo+IG9uDQo+IGEgZGlmZmVyZW50IGFsbG9jYXRpb24gY29udGV4dCBvciBrc3dhcGQgdG8g
-bWFrZSBhIHByb2dyZXNzIG9uIG91cg0KPiBiZWhhbGYuIFdlIHdvdWxkIHJlYWxseSBsaWtlIHRv
-IGZhaWwgdGhvc2UgcmVxdWVzdHMgaW5zdGVhZC4gSSd2ZQ0KPiB0cmllZA0KPiB0aGF0IGluIHRo
-ZSBwYXN0IGJ1dCBpdCB3YXMgZGVlbWVkIHRvIGRhbmdlcm91cyBiZWNhdXNlIF9hbGxfIGtlcm5l
-bA0KPiBwYXRocyB3b3VsZCBoYXZlIHRvIGJlIGNoZWNrZWQgZm9yIGEgc2FuZSBmYWlsdXJlIGJl
-aGF2aW9yLiBTbyB3ZSBhcmUNCj4ga2VlcGluZyBzdGF0dXMgcXVvIGluc3RlYWQuDQoNCklmIHdl
-IHN1c3BlY3QgdGhlIGV4aXN0ZW5jZSBvZiBhIGxvYWQgb2YgcG90ZW50aWFsIHRpbWUgYm9tYnMg
-aW4gdGhlDQprZXJuZWwgZHVlIHRvIG1pc3NpbmcgY2hlY2tzLCB0aGVuIHRoZSBzdGF0dXMgcXVv
-IGlzIG5vdCBnb29kIGVub3VnaC4NCldlIHNob3VsZCBiZSB3b3JraW5nIG9uIHRvb2xzIHRvIGlk
-ZW50aWZ5IHRoZXNlIGNvZGUgcGF0aHMuDQoNClF1aXRlIGZyYW5rbHksIEknZCBsb3ZlIHRvIHNl
-ZSBhIGZ1enplci1saWtlIHRvb2wgdGhhdCBjYW4gcmFuZG9tbHkNCmZhaWwgYWxsb2NhdGlvbnMu
-IEkgY2FuIGVhc2lseSBtYWtlIG9uZSBmb3IgdGhlIE5GUyBjb2RlLCBidXQgaWYgdGhlcmUNCmlz
-IGEgZ2VuZXJhbCBwcm9ibGVtIGlkZW50aWZ5aW5nIGJ1Z2d5IGNvZGUsIHRoZW4gcGVyaGFwcyBp
-dCBzaG91bGQgYmUNCnNvbHZlZCBhdCB0aGUgTU0gbGF5ZXIgaXRzZWxmLg0KDQo+ID4gSXQgY29u
-ZnVzZWQgTmVpbCBCcm93biwgd2hvIGNvbnRyaWJ1dGVkIHRoZXNlIHBhdGNoZXMsIGFuZCBpdA0K
-PiA+IGNvbmZ1c2VkDQo+ID4gbWUgYW5kIGFsbCB0aGUgb3RoZXIgcmV2aWV3ZXJzIG9mIHRoZXNl
-IHBhdGNoZXMgb24gdGhlIGxpbnV4LW5mcw0KPiA+IG1haWxpbmcgbGlzdC4NCj4gPiANCj4gPiBT
-byBpZiBpbmRlZWQgKDIpIGlzIGNvcnJlY3QsIHRoZW4gcGxlYXNlIGNhbiB3ZSBoYXZlIGEgY2xl
-YXINCj4gPiBzdGF0ZW1lbnQNCj4gPiBfd2hlbiBkaXNjdXNzaW5nIGltcHJvdmVtZW50cyB0byBt
-ZW1vcnkgYWxsb2NhdGlvbiBzZW1hbnRpY3NfIHRoYXQNCj4gPiBHRlBfKiBzdGlsbCBjYW4gZmFp
-bCwgc3RpbGwgd2lsbCBmYWlsLCBhbmQgdGhhdCBjYWxsZXJzIHNob3VsZA0KPiA+IGFzc3VtZQ0K
-PiA+IGl0IHdpbGwgZmFpbCBhbmQgc2hvdWxkIHRlc3QgdGhlaXIgY29kZSBwYXRocyBhc3N1bWlu
-ZyB0aGUgZmFpbHVyZQ0KPiA+IGNhc2UuDQo+IA0KPiBJIGRvIG5vdCBzZWUgYW55IGV4cGxpY2l0
-IGRvY3VtZW50YXRpb24gd2hpY2ggd291bGQgZW5jb3VyYWdlIHVzZXJzDQo+IHRvDQo+IG5vdCBj
-aGVjayBmb3IgdGhlIGFsbG9jYXRpb24gZmFpbHVyZS4gT25seSBfX0dGUF9OT0ZBSUwgaXMgZG9j
-dW1lbnRlZA0KPiBpdA0KPiBfbXVzdF8gcmV0cnkgZm9yIGV2ZXIuIE9mIGNvdXJzZSBJIGFtIG9w
-ZW4gZm9yIGFueSBkb2N1bWVudGF0aW9uDQo+IGltcHJvdmVtZW50cy4NCg0KQXMgSSBzYWlkLCB0
-aGUgcHJvYmxlbSBoYXMgYmVlbiB0aGUgZGlzY3Vzc2lvbiwgYW5kIGhvdyBpdCBmb2N1c3NlcyBv
-bg0KIm11c3Qgbm90IGZhaWwiLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
-LmNvbQ0K
+On Thu 11-05-17 13:10:03, Trond Myklebust wrote:
+> On Thu, 2017-05-11 at 14:56 +0200, Michal Hocko wrote:
+[...]
+> > I do not see any explicit documentation which would encourage users
+> > to not check for the allocation failure. Only __GFP_NOFAIL is
+> > documented it _must_ retry for ever. Of course I am open for any
+> > documentation improvements.
+> 
+> As I said, the problem has been the discussion, and how it focusses on
+> "must not fail".
 
+I would strongly suggest cc linux-mm ML when doing this kind of changes.
+-- 
+Michal Hocko
+SUSE Labs
