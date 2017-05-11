@@ -1,45 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42828 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750917AbdEKH1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 May 2017 03:27:50 -0400
-Date: Thu, 11 May 2017 15:27:47 +0800
-From: Eryu Guan <eguan@redhat.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: "Darrick J. Wong" <darrick.wong@oracle.com>,
-        fstests@vger.kernel.org, linux-nfs@vger.kernel.org,
-        hch@infradead.org
-Subject: Re: [PATCH v6 4/5] generic/432: Add a copy test for overwriting
- small amounts of data
-Message-ID: <20170511072747.GH7250@eguan.usersys.redhat.com>
-References: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
- <20170510174628.22895-5-Anna.Schumaker@Netapp.com>
- <20170510183745.GE5970@birch.djwong.org>
- <658f2572-9767-3dd7-c48e-9cb8f2b28510@Netapp.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:56276 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751208AbdEKHi7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 May 2017 03:38:59 -0400
+Date: Thu, 11 May 2017 08:38:57 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: David Howells <dhowells@redhat.com>
+Cc: mszeredi@redhat.com, jlayton@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 14/14] Add commands to create or update a superblock
+Message-ID: <20170511073857.GL390@ZenIV.linux.org.uk>
+References: <149443309780.2378.6532276992468576087.stgit@warthog.procyon.org.uk>
+ <149443323117.2378.6029610622093309047.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <658f2572-9767-3dd7-c48e-9cb8f2b28510@Netapp.com>
+In-Reply-To: <149443323117.2378.6029610622093309047.stgit@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 10, 2017 at 02:39:46PM -0400, Anna Schumaker wrote:
-> 
-> 
-> On 05/10/2017 02:37 PM, Darrick J. Wong wrote:
-> > On Wed, May 10, 2017 at 01:46:27PM -0400, Anna Schumaker wrote:
-> >> This test is similar to 345, except that it copies one byte at a time to
-> > 
-> > 345?  Or is that now 431?  Perhaps amend the commit message to "This
-> > test is similar to the previous one, except..."?
-> 
-> Yeah, I forgot to update that :(   It's supposed to be for the previous test, so that's probably the best wording to use.
+On Wed, May 10, 2017 at 05:20:31PM +0100, David Howells wrote:
+  
+> @@ -64,8 +70,8 @@ struct sb_config_operations {
+>  	int (*parse_option)(struct sb_config *sc, char *p);
+>  	int (*monolithic_mount_data)(struct sb_config *sc, void *data);
+>  	int (*validate)(struct sb_config *sc);
+> -	struct dentry *(*mount)(struct sb_config *sc);
+> -	int (*fill_super)(struct super_block *s, struct sb_config *sc);
+> +	int (*create_super)(struct sb_config *sc);
 
-I can fix it at commit time. Thanks for the tests! And thanks Darrick
-for reviewing!
+Hell, NO.
 
-BTW, seq number should be dropped in summary line too, tests are always
-re-numberd on commit anyway, "generic: Add copy to new file test" should
-be fine :)
+The primary effect of that thing is *NOT* to create a superblock.  It
+might be a side effect, and quite often it will happen, but the
+real goal here is a mountable tree.  Which might or might not reside
+on a new superblock.  And which might very well involve no object
+creation whatsoever.
 
-Thanks,
-Eryu
+This name is actively misleading and the same goes for its relatives
+(vfs_create_super(), etc.).  It's "give me a tree to mount", not
+"create something or other".
