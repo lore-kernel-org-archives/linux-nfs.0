@@ -1,312 +1,211 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36876 "EHLO mx1.redhat.com"
+Received: from mx142.netapp.com ([216.240.21.19]:37953 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933118AbdEKOBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 May 2017 10:01:04 -0400
-Subject: [PATCH 08/14] Implement fsmount() to effect a pre-configured mount
- [ver #2]
-From: David Howells <dhowells@redhat.com>
-To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 11 May 2017 15:01:00 +0100
-Message-ID: <149451126044.4599.15065000638005379027.stgit@warthog.procyon.org.uk>
-In-Reply-To: <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
+        id S932712AbdEKR1F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 11 May 2017 13:27:05 -0400
+Subject: Re: [RFC][PATCH 00/14] VFS: Introduce superblock configuration
+ context [ver #2]
+To: David Howells <dhowells@redhat.com>, <mszeredi@redhat.com>,
+        <viro@zeniv.linux.org.uk>, <jlayton@redhat.com>
+CC: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
 References: <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <68231d1a-9902-ce3d-73e3-6e74754832e4@Netapp.com>
+Date: Thu, 11 May 2017 13:26:57 -0400
 MIME-Version: 1.0
+In-Reply-To: <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a system call by which a filesystem opened with fsopen() and
-configured by a series of writes can be mounted:
+Hi David,
 
-	int ret = fsmount(int fsfd, int dfd, const char *path,
-			  unsigned int at_flags, unsigned int flags);
+On 05/11/2017 09:59 AM, David Howells wrote:
+> 
+> Here are a set of patches to create a superblock configuration context
+> prior to setting up a new mount, populating it with the parsed
+> options/binary data, creating the superblock and then effecting the mount.
+> 
+> This allows namespaces and other information to be conveyed through the
+> mount procedure.  It also allows extra error information to be returned
+> (so many things can go wrong during a mount that a small integer isn't
+> really sufficient to convey the issue).
+> 
+> This also allows Miklós Szeredi's idea of doing:
+> 
+> 	fd = fsopen("nfs");
+> 	write(fd, "option=val", ...);
+> 	fsmount(fd, "/mnt");
+> 
+> that he presented at LSF-2017 to be implemented (see the relevant patches
+> in the series), to which I can add:
+> 
+> 	read(fd, error_buffer, ...);
+> 
+> to read back any error message.  I didn't use netlink as that would make it
+> depend on CONFIG_NET and would introduce network namespacing issues.
+> 
+> I've implemented mount context handling for procfs and nfs.
+> 
+> Significant changes:
+> 
+>  ver #2:
+> 
+>  (*) Removed the ->fill_super() from sb_config_operations and passed it in
+>      directly to functions that want to call it.  NFS now calls
+>      nfs_fill_super() directly rather than jumping through a pointer to it
+>      since there's only the one option at the moment.
+> 
+>  (*) Removed ->mnt_ns and ->sb from sb_config and moved ->pid_ns into
+>      proc_sb_config.
+> 
+>  (*) Renamed create_super -> get_tree.
+> 
+>  (*) Renamed struct mount_context to struct sb_config and amended various
+>      variable names.
+> 
+>  (*) sys_fsmount() acquired AT_* flags and MS_* flags (for MNT_* flags)
+>      arguments.
+> 
+>  ver #1:
+> 
+>  (*) Split the sb_config stuff out into its own header.
+> 
+>  (*) Support non-context aware filesystems through a special set of
+>      sb_config operations.
+> 
+>  (*) Stored the created superblock and root dentry into the sb_config after
+>      creation rather than directly into a vfsmount.  This allows some
+>      arguments to be removed to various NFS functions.
+> 
+>  (*) Added an explicit superblock-creation step.  This allows a created
+>      superblock to then be mounted multiple times.
+> 
+>  (*) Added a flag to say that the sb_config is degraded and cannot have
+>      another go at having a superblock creation whilst getting rid of the
+>      one that says it's already mounted.
+> 
+> Further developments:
+> 
+>  (*) Implement sb reconfiguration (for now it returns ENOANO).
+> 
+>  (*) Implement mount context support in more filesystems, ext4 being next
+>      on my list.
+> 
+>  (*) Move the walk-from-root stuff that nfs has to generic code so that you
+>      can do something akin to:
+> 
+> 	mount /dev/sda1:/foo/bar /mnt
+> 
+>      See nfs_follow_remote_path() and mount_subtree().  This is slightly
+>      tricky in NFS as we have to prevent referral loops.
+> 
+>  (*) Move the pid_ns pointer from struct mount_context to struct
+>      proc_mount_context as I'm not sure it's necessary for anything other
+>      than procfs.
+> 
+>  (*) Work out how to get at the error message incurred by submounts
+>      encountered during nfs_follow_remote_path().
+> 
+>      Should the error message be moved to task_struct and made more
+>      general, perhaps retrieved with a prctl() function?
+> 
+>  (*) Clean up/consolidate the security functions.  Possibly add a
+>      validation hook to be called at the same time as the mount context
+>      validate op.
+> 
+> The patches can be found here also:
+> 
+> 	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=mount-context
+> 
+> David
+> ---
+> David Howells (14):
+>       Provide a function to create a NUL-terminated string from unterminated data
+>       Clean up whitespace in fs/namespace.c
+>       VFS: Make get_mnt_ns() return the namespace
+>       VFS: Make get_filesystem() return the affected filesystem
+>       VFS: Provide empty name qstr
+>       VFS: Introduce a superblock configuration context
+>       Implement fsopen() to prepare for a mount
+>       Implement fsmount() to effect a pre-configured mount
+>       Sample program for driving fsopen/fsmount
+>       procfs: Move proc_fill_super() to fs/proc/root.c
+>       proc: Add superblock config support to procfs
+>       NFS: Add mount context support.
+>       Support legacy filesystems
+>       Add commands to create or update a superblock
+> 
+> 
+>  Documentation/filesystems/mounting.txt |  470 ++++++++
+>  arch/x86/entry/syscalls/syscall_32.tbl |    2 
+>  arch/x86/entry/syscalls/syscall_64.tbl |    2 
+>  fs/Makefile                            |    3 
+>  fs/dcache.c                            |    8 
+>  fs/filesystems.c                       |    3 
+>  fs/fsopen.c                            |  302 +++++
+>  fs/gfs2/dir.c                          |    3 
+>  fs/internal.h                          |    4 
+>  fs/libfs.c                             |   17 
+>  fs/mount.h                             |    3 
+>  fs/namei.c                             |    3 
+>  fs/namespace.c                         |  495 +++++++--
+>  fs/nfs/Makefile                        |    2 
+>  fs/nfs/client.c                        |   74 +
+>  fs/nfs/getroot.c                       |   76 +
+>  fs/nfs/internal.h                      |  142 +--
+>  fs/nfs/mount.c                         | 1497 +++++++++++++++++++++++++++
+>  fs/nfs/namespace.c                     |   76 +
+>  fs/nfs/nfs3_fs.h                       |    2 
+>  fs/nfs/nfs3client.c                    |    6 
+>  fs/nfs/nfs3proc.c                      |    2 
+>  fs/nfs/nfs4_fs.h                       |    4 
+>  fs/nfs/nfs4client.c                    |   82 +
+>  fs/nfs/nfs4namespace.c                 |  208 ++--
+>  fs/nfs/nfs4proc.c                      |    3 
+>  fs/nfs/nfs4super.c                     |  220 ++--
+>  fs/nfs/proc.c                          |    2 
+>  fs/nfs/super.c                         | 1782 ++------------------------------
+>  fs/nsfs.c                              |    3 
+>  fs/pipe.c                              |    3 
+>  fs/proc/inode.c                        |   50 -
+>  fs/proc/internal.h                     |    6 
+>  fs/proc/root.c                         |  210 +++-
+>  fs/sb_config.c                         |  524 +++++++++
+>  fs/super.c                             |  110 +-
+>  include/linux/dcache.h                 |    5 
+>  include/linux/fs.h                     |   16 
+>  include/linux/lsm_hooks.h              |   47 +
+>  include/linux/mount.h                  |    4 
+>  include/linux/nfs_xdr.h                |    7 
+>  include/linux/sb_config.h              |  100 ++
+>  include/linux/security.h               |   40 +
+>  include/linux/string.h                 |    1 
+>  include/linux/syscalls.h               |    3 
+>  include/uapi/linux/magic.h             |    1 
+>  kernel/sys_ni.c                        |    4 
+>  mm/util.c                              |   24 
+>  samples/fsmount/test-fsmount.c         |   79 +
+>  security/security.c                    |   45 +
+>  security/selinux/hooks.c               |  202 +++-
+>  51 files changed, 4596 insertions(+), 2381 deletions(-)
 
-where fsfd is the fd returned by fsopen(), dfd, path and at_flags locate
-the mountpoint and flags are the applicable MS_* flags.  dfd can be
-AT_FDCWD or an fd open to a directory.
+Is there any way to split the NFS patch into multiple pieces?  The patch in your git tree is longer than my attention span, and I'm having a hard time keeping track of everything going on.  I also suspect that this might be why it doesn't show up in my email with the rest of your patches.
 
-In the event that fsmount() fails, it may be possible to get an error
-message by calling read().  If no message is available, ENODATA will be
-reported.
+Thanks,
+Anna
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
 
- arch/x86/entry/syscalls/syscall_32.tbl |    1 
- arch/x86/entry/syscalls/syscall_64.tbl |    1 
- fs/namespace.c                         |   99 ++++++++++++++++++++++++++++++++
- include/linux/lsm_hooks.h              |    6 ++
- include/linux/security.h               |    6 ++
- include/linux/syscalls.h               |    2 +
- kernel/sys_ni.c                        |    1 
- security/security.c                    |    7 ++
- security/selinux/hooks.c               |   13 ++++
- 9 files changed, 136 insertions(+)
-
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index 9bf8d4c62f85..abe6ea95e0e6 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -392,3 +392,4 @@
- 383	i386	statx			sys_statx
- 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
- 385	i386	fsopen			sys_fsopen
-+386	i386	fsmount			sys_fsmount
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 9b198c5fc412..0977c5079831 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -340,6 +340,7 @@
- 331	common	pkey_free		sys_pkey_free
- 332	common	statx			sys_statx
- 333	common	fsopen			sys_fsopen
-+334	common	fsmount			sys_fsmount
- 
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 8ade7252ee34..6e43657d78bd 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -3253,6 +3253,105 @@ vfs_submount_sc(const struct dentry *mountpoint, struct sb_config *sc)
- EXPORT_SYMBOL_GPL(vfs_submount_sc);
- 
- /*
-+ * Mount a new, prepared superblock (specified by fs_fd) on the location
-+ * specified by dfd and dir_name.  dfd can be AT_FDCWD, a dir fd or a container
-+ * fd.  This cannot be used for binding, moving or remounting mounts.
-+ */
-+SYSCALL_DEFINE5(fsmount, int, fs_fd, int, dfd, const char __user *, dir_name,
-+		unsigned int, at_flags, unsigned int, flags)
-+{
-+	struct sb_config *sc;
-+	struct inode *inode;
-+	struct path mountpoint;
-+	struct fd f;
-+	unsigned int lookup_flags, mnt_flags = 0;
-+	long ret;
-+
-+	if ((at_flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
-+			  AT_EMPTY_PATH)) != 0)
-+		return -EINVAL;
-+
-+	if (flags & ~(MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC |
-+		      MS_NOATIME | MS_NODIRATIME | MS_RELATIME | MS_STRICTATIME))
-+		return -EINVAL;
-+
-+	if (flags & MS_RDONLY)
-+		mnt_flags |= MNT_READONLY;
-+	if (flags & MS_NOSUID)
-+		mnt_flags |= MNT_NOSUID;
-+	if (flags & MS_NODEV)
-+		mnt_flags |= MNT_NODEV;
-+	if (flags & MS_NOEXEC)
-+		mnt_flags |= MNT_NOEXEC;
-+	if (flags & MS_NODIRATIME)
-+		mnt_flags |= MNT_NODIRATIME;
-+
-+	if (flags & MS_STRICTATIME) {
-+		if (flags & MS_NOATIME)
-+			return -EINVAL;
-+	} else if (flags & MS_NOATIME) {
-+		mnt_flags |= MNT_NOATIME;
-+	} else {
-+		mnt_flags |= MNT_RELATIME;
-+	}
-+
-+	f = fdget(fs_fd);
-+	if (!f.file)
-+		return -EBADF;
-+
-+	ret = -EINVAL;
-+	if (f.file->f_op != &fs_fs_fops)
-+		goto err_fsfd;
-+
-+	sc = f.file->private_data;
-+
-+	ret = -EPERM;
-+	if (!may_mount() ||
-+	    ((sc->ms_flags & MS_MANDLOCK) && !may_mandlock()))
-+		goto err_fsfd;
-+
-+	/* Prevent further changes. */
-+	inode = file_inode(f.file);
-+	ret = inode_lock_killable(inode);
-+	if (ret < 0)
-+		goto err_fsfd;
-+	ret = -EBUSY;
-+	if (!sc->mounted) {
-+		sc->mounted = true;
-+		ret = 0;
-+	}
-+	inode_unlock(inode);
-+	if (ret < 0)
-+		goto err_fsfd;
-+
-+	/* Find the mountpoint.  A container can be specified in dfd. */
-+	lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
-+	if (at_flags & AT_SYMLINK_NOFOLLOW)
-+		lookup_flags &= ~LOOKUP_FOLLOW;
-+	if (at_flags & AT_NO_AUTOMOUNT)
-+		lookup_flags &= ~LOOKUP_AUTOMOUNT;
-+	if (at_flags & AT_EMPTY_PATH)
-+		lookup_flags |= LOOKUP_EMPTY;
-+	ret = user_path_at(dfd, dir_name, lookup_flags, &mountpoint);
-+	if (ret < 0) {
-+		sb_cfg_error(sc, "VFS: Mountpoint lookup failed");
-+		goto err_fsfd;
-+	}
-+
-+	ret = security_sb_config_mountpoint(sc, &mountpoint);
-+	if (ret < 0)
-+		goto err_mp;
-+
-+	ret = do_new_mount_sc(sc, &mountpoint, mnt_flags);
-+
-+err_mp:
-+	path_put(&mountpoint);
-+err_fsfd:
-+	fdput(f);
-+	return ret;
-+}
-+
-+/*
-  * Return true if path is reachable from root
-  *
-  * namespace_sem or mount_lock is held
-diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
-index 6238fccaf5a4..e8e473ce5ddd 100644
---- a/include/linux/lsm_hooks.h
-+++ b/include/linux/lsm_hooks.h
-@@ -101,6 +101,10 @@
-  *	Equivalent of sb_kern_mount, but with a superblock configuration context.
-  *	@sc indicates the superblock configuration context.
-  *	@src_sb indicates the new superblock.
-+ * @sb_config_mountpoint:
-+ *	Equivalent of sb_mount, but with an sb_config.
-+ *	@sc indicates the superblock configuration context.
-+ *	@mountpoint indicates the path on which the mount will take place.
-  *
-  * Security hooks for filesystem operations.
-  *
-@@ -1390,6 +1394,7 @@ union security_list_options {
- 	void (*sb_config_free)(struct sb_config *sc);
- 	int (*sb_config_parse_option)(struct sb_config *sc, char *opt);
- 	int (*sb_config_kern_mount)(struct sb_config *sc, struct super_block *sb);
-+	int (*sb_config_mountpoint)(struct sb_config *sc, struct path *mountpoint);
- 
- 	int (*sb_alloc_security)(struct super_block *sb);
- 	void (*sb_free_security)(struct super_block *sb);
-@@ -1704,6 +1709,7 @@ struct security_hook_heads {
- 	struct list_head sb_config_free;
- 	struct list_head sb_config_parse_option;
- 	struct list_head sb_config_kern_mount;
-+	struct list_head sb_config_mountpoint;
- 	struct list_head sb_alloc_security;
- 	struct list_head sb_free_security;
- 	struct list_head sb_copy_data;
-diff --git a/include/linux/security.h b/include/linux/security.h
-index 49a7254aa30a..f95dc555cf29 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -226,6 +226,7 @@ int security_sb_config_dup(struct sb_config *sc, struct sb_config *src_sc);
- void security_sb_config_free(struct sb_config *sc);
- int security_sb_config_parse_option(struct sb_config *sc, char *opt);
- int security_sb_config_kern_mount(struct sb_config *sc, struct super_block *sb);
-+int security_sb_config_mountpoint(struct sb_config *sc, struct path *mountpoint);
- int security_sb_alloc(struct super_block *sb);
- void security_sb_free(struct super_block *sb);
- int security_sb_copy_data(char *orig, char *copy);
-@@ -541,6 +542,11 @@ static inline int security_sb_config_kern_mount(struct sb_config *sc,
- {
- 	return 0;
- }
-+static inline int security_sb_config_mountpoint(struct sb_config *sc,
-+						struct path *mountpoint)
-+{
-+	return 0;
-+}
- 
- static inline int security_sb_alloc(struct super_block *sb)
- {
-diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-index 91ec8802ad5d..07e4f775f24d 100644
---- a/include/linux/syscalls.h
-+++ b/include/linux/syscalls.h
-@@ -906,5 +906,7 @@ asmlinkage long sys_pkey_free(int pkey);
- asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
- 			  unsigned mask, struct statx __user *buffer);
- asmlinkage long sys_fsopen(const char *fs_name, int containerfd, unsigned int flags);
-+asmlinkage long sys_fsmount(int fsfd, int dfd, const char *path, unsigned int at_flags,
-+			    unsigned int flags);
- 
- #endif
-diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
-index de1dc63e7e47..a0fe764bd5dd 100644
---- a/kernel/sys_ni.c
-+++ b/kernel/sys_ni.c
-@@ -261,3 +261,4 @@ cond_syscall(sys_pkey_free);
- 
- /* fd-based mount */
- cond_syscall(sys_fsopen);
-+cond_syscall(sys_fsmount);
-diff --git a/security/security.c b/security/security.c
-index fa9037186634..8b2b7e6b3112 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -334,6 +334,11 @@ int security_sb_config_kern_mount(struct sb_config *sc, struct super_block *sb)
- 	return call_int_hook(sb_config_kern_mount, 0, sc, sb);
- }
- 
-+int security_sb_config_mountpoint(struct sb_config *sc, struct path *mountpoint)
-+{
-+	return call_int_hook(sb_config_mountpoint, 0, sc, mountpoint);
-+}
-+
- int security_sb_alloc(struct super_block *sb)
- {
- 	return call_int_hook(sb_alloc_security, 0, sb);
-@@ -1691,6 +1696,8 @@ struct security_hook_heads security_hook_heads = {
- 		LIST_HEAD_INIT(security_hook_heads.sb_config_parse_option),
- 	.sb_config_kern_mount =
- 		LIST_HEAD_INIT(security_hook_heads.sb_config_kern_mount),
-+	.sb_config_mountpoint =
-+		LIST_HEAD_INIT(security_hook_heads.sb_config_mountpoint),
- 	.sb_alloc_security =
- 		LIST_HEAD_INIT(security_hook_heads.sb_alloc_security),
- 	.sb_free_security =
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 142be91888c9..e1bf18af72f5 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -2990,6 +2990,18 @@ static int selinux_sb_config_kern_mount(struct sb_config *sc,
- 	return rc;
- }
- 
-+static int selinux_sb_config_mountpoint(struct sb_config *sc,
-+					struct path *mountpoint)
-+{
-+	const struct cred *cred = current_cred();
-+	int ret;
-+
-+	ret = path_has_perm(cred, mountpoint, FILE__MOUNTON);
-+	if (ret < 0)
-+		sb_cfg_error(sc, "SELinux: Mount on mountpoint not permitted");
-+	return ret;
-+}
-+
- /* inode security operations */
- 
- static int selinux_inode_alloc_security(struct inode *inode)
-@@ -6300,6 +6312,7 @@ static struct security_hook_list selinux_hooks[] = {
- 	LSM_HOOK_INIT(sb_config_free, selinux_sb_config_free),
- 	LSM_HOOK_INIT(sb_config_parse_option, selinux_sb_config_parse_option),
- 	LSM_HOOK_INIT(sb_config_kern_mount, selinux_sb_config_kern_mount),
-+	LSM_HOOK_INIT(sb_config_mountpoint, selinux_sb_config_mountpoint),
- 
- 	LSM_HOOK_INIT(sb_alloc_security, selinux_sb_alloc_security),
- 	LSM_HOOK_INIT(sb_free_security, selinux_sb_free_security),
-
+>  create mode 100644 Documentation/filesystems/mounting.txt
+>  create mode 100644 fs/fsopen.c
+>  create mode 100644 fs/nfs/mount.c
+>  create mode 100644 fs/sb_config.c
+>  create mode 100644 include/linux/sb_config.h
+>  create mode 100644 samples/fsmount/test-fsmount.c
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
