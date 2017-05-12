@@ -1,64 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58844 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755231AbdELOeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 12 May 2017 10:34:20 -0400
-Date: Fri, 12 May 2017 10:34:11 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Steve Dickson <SteveD@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26777 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1756829AbdELPBq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 11:01:46 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "stefanha@redhat.com" <stefanha@redhat.com>,
+        "bfields@redhat.com" <bfields@redhat.com>
+CC: "SteveD@redhat.com" <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
 Subject: Re: EXCHANGE_ID with same network address but different server owner
-Message-ID: <20170512143410.GC17983@parsley.fieldses.org>
+Date: Fri, 12 May 2017 15:01:37 +0000
+Message-ID: <1494601295.10434.1.camel@primarydata.com>
 References: <20170512132721.GA654@stefanha-x1.localdomain>
+         <20170512143410.GC17983@parsley.fieldses.org>
+In-Reply-To: <20170512143410.GC17983@parsley.fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170512132721.GA654@stefanha-x1.localdomain>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 12, 2017 at 09:27:21AM -0400, Stefan Hajnoczi wrote:
-> Hi,
-> I've been working on NFS over the AF_VSOCK transport
-> (https://www.spinics.net/lists/linux-nfs/msg60292.html).  AF_VSOCK
-> resets established network connections when the virtual machine is
-> migrated to a new host.
-> 
-> The NFS client expects file handles and other state to remain valid upon
-> reconnecting.  This is not the case after VM live migration since the
-> new host does not have the NFS server state from the old host.
-> 
-> Volatile file handles have been suggested as a way to reflect that state
-> does not persist across reconnect, but the Linux NFS client does not
-> support volatile file handles.
+T24gRnJpLCAyMDE3LTA1LTEyIGF0IDEwOjM0IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIEZyaSwgTWF5IDEyLCAyMDE3IGF0IDA5OjI3OjIxQU0gLTA0MDAsIFN0ZWZhbiBIYWpu
+b2N6aSB3cm90ZToNCj4gPiBIaSwNCj4gPiBJJ3ZlIGJlZW4gd29ya2luZyBvbiBORlMgb3ZlciB0
+aGUgQUZfVlNPQ0sgdHJhbnNwb3J0DQo+ID4gKGh0dHBzOi8vd3d3LnNwaW5pY3MubmV0L2xpc3Rz
+L2xpbnV4LW5mcy9tc2c2MDI5Mi5odG1sKS7CoMKgQUZfVlNPQ0sNCj4gPiByZXNldHMgZXN0YWJs
+aXNoZWQgbmV0d29yayBjb25uZWN0aW9ucyB3aGVuIHRoZSB2aXJ0dWFsIG1hY2hpbmUgaXMNCj4g
+PiBtaWdyYXRlZCB0byBhIG5ldyBob3N0Lg0KPiA+IA0KPiA+IFRoZSBORlMgY2xpZW50IGV4cGVj
+dHMgZmlsZSBoYW5kbGVzIGFuZCBvdGhlciBzdGF0ZSB0byByZW1haW4gdmFsaWQNCj4gPiB1cG9u
+DQo+ID4gcmVjb25uZWN0aW5nLsKgwqBUaGlzIGlzIG5vdCB0aGUgY2FzZSBhZnRlciBWTSBsaXZl
+IG1pZ3JhdGlvbiBzaW5jZQ0KPiA+IHRoZQ0KPiA+IG5ldyBob3N0IGRvZXMgbm90IGhhdmUgdGhl
+IE5GUyBzZXJ2ZXIgc3RhdGUgZnJvbSB0aGUgb2xkIGhvc3QuDQo+ID4gDQo+ID4gVm9sYXRpbGUg
+ZmlsZSBoYW5kbGVzIGhhdmUgYmVlbiBzdWdnZXN0ZWQgYXMgYSB3YXkgdG8gcmVmbGVjdCB0aGF0
+DQo+ID4gc3RhdGUNCj4gPiBkb2VzIG5vdCBwZXJzaXN0IGFjcm9zcyByZWNvbm5lY3QsIGJ1dCB0
+aGUgTGludXggTkZTIGNsaWVudCBkb2VzDQo+ID4gbm90DQo+ID4gc3VwcG9ydCB2b2xhdGlsZSBm
+aWxlIGhhbmRsZXMuDQo+IA0KPiBUaGF0J3MgdW5saWtlbHkgdG8gY2hhbmdlOyB0aGUgcHJvdG9j
+b2wgYWxsb3dzIHRoZSBzZXJ2ZXIgdG8NCj4gYWR2ZXJ0aXNlDQo+IHZvbGF0aWxlIGZpbGVoYW5k
+bGVzLCBidXQgZG9lc24ndCByZWFsbHkgZ2l2ZSBhbnkgdG9vbHMgdG8gaW1wbGVtZW50DQo+IHRo
+ZW0gcmVsaWFibHkuDQo+IA0KPiA+IEkgc2F3IE5GUyA0LjEgaGFzIGEgd2F5IGZvciBhIG5ldyBz
+ZXJ2ZXIgcnVubmluZyB3aXRoIHRoZSBzYW1lDQo+ID4gbmV0d29yaw0KPiA+IGFkZHJlc3Mgb2Yg
+YW4gb2xkIHNlcnZlciB0byBjb21tdW5pY2F0ZSB0aGF0IGl0IGlzIGluZGVlZCBhIG5ldw0KPiA+
+IHNlcnZlcg0KPiA+IGluc3RhbmNlLsKgwqBJZiB0aGUgc2VydmVyIG93bmVyL3Njb3BlIGluIHRo
+ZSBFWENIQU5HRV9JRCByZXNwb25zZQ0KPiA+IGRvZXMNCj4gPiBub3QgbWF0Y2ggdGhlIHByZXZp
+b3VzIHNlcnZlcidzIHZhbHVlcyB0aGVuIHRoZSBzZXJ2ZXIgaXMgYSBuZXcNCj4gPiBpbnN0YW5j
+ZS4NCj4gPiANCj4gPiBUaGUgaW1wbGljYXRpb25zIG9mIGVuY291bnRlcmluZyBhIG5ldyBzZXJ2
+ZXIgb3duZXIvc2NvcGUgdXBvbg0KPiA+IHJlY29ubmVjdA0KPiA+IGFyZW4ndCBjbGVhciB0byBt
+ZSBhbmQgSSdtIG5vdCBzdXJlIHRvIHdoYXQgZXh0ZW50IHRoZSBMaW51eA0KPiA+IGltcGxlbWVu
+dGF0aW9uIGhhbmRsZXMgdGhpcyBjYXNlLsKgwqBDYW4gYW55b25lIGV4cGxhaW4gd2hhdCBoYXBw
+ZW5zDQo+ID4gaWYNCj4gPiB0aGUgTkZTIGNsaWVudCBmaW5kcyBhIG5ldyBzZXJ2ZXIgb3duZXIv
+c2NvcGUgYWZ0ZXIgcmVjb25uZWN0aW5nPw0KPiANCj4gSSBoYXZlbid0IHRlc3RlZCBpdCwgYnV0
+IGlmIGl0IHJlY29ubmVjdHMgdG8gdGhlIHNhbWUgSVAgYWRkcmVzcyBhbmQNCj4gZmluZHMgb3V0
+IGl0J3Mgbm8gbG9uZ2VyIHRhbGtpbmcgdG8gdGhlIHNhbWUgc2VydmVyLCBJIHRoaW5rIHRoZSBv
+bmx5DQo+IGNvcnJlY3QgdGhpbmcgaXQgY291bGQgZG8gd291bGQgYmUgdG8ganVzdCBmYWlsIGFs
+bCBmdXJ0aGVyIGFjY2Vzcy4NCj4gDQo+IFRoZXJlJ3Mgbm8gZWFzeSBzb2x1dGlvbi4NCj4gDQo+
+IFRvIG1pZ3JhdGUgYmV0d2VlbiBORlMgc2VydmVycyB5b3UgbmVlZCBzb21lIHNvcnQgb2YgY2x1
+c3RlcmVkIE5GUw0KPiBzZXJ2aWNlIHdpdGggc2hhcmVkIHN0b3JhZ2UuwqDCoFdlIGNhbid0IGN1
+cnJlbnRseSBzdXBwb3J0IGNvbmN1cnJlbnQNCj4gYWNjZXNzIHRvIHNoYXJlZCBzdG9yYWdlIGZy
+b20gbXVsdGlwbGUgTkZTIHNlcnZlcnMsIHNvIGFsbCB0aGF0J3MNCj4gcG9zc2libGUgYWN0aXZl
+L3Bhc3NpdmUgZmFpbG92ZXIuwqDCoEFsc28sIHBlb3BsZSB0aGF0IHNldCB0aGF0IHVwDQo+IG5v
+cm1hbGx5IGRlcGVuZCBvbiBhIGZsb2F0aW5nIElQIGFkZHJlc3MtLUknbSBub3Qgc3VyZSBpZiB0
+aGVyZSdzIGFuDQo+IGVxdWl2YWxlbnQgZm9yIFZTT0NLLg0KPiANCg0KQWN0dWFsbHksIHRoaXMg
+bWlnaHQgYmUgYSB1c2UgY2FzZSBmb3IgcmUtZXhwb3J0aW5nIE5GUy4gSWYgdGhlIGhvc3QNCmNv
+dWxkIHJlLWV4cG9ydCBhIE5GUyBtb3VudCB0byB0aGUgZ3Vlc3RzLCB0aGVuIHlvdSBkb24ndCBu
+ZWNlc3NhcmlseQ0KbmVlZCBhIGNsdXN0ZXJlZCBmaWxlc3lzdGVtLg0KDQpPVE9ILCB0aGlzIHdv
+dWxkIG5vdCBzb2x2ZSB0aGUgcHJvYmxlbSBvZiBtaWdyYXRpbmcgbG9ja3MsIHdoaWNoIGlzIG5v
+dA0KcmVhbGx5IGVhc3kgdG8gc3VwcG9ydCBpbiB0aGUgY3VycmVudCBzdGF0ZSBtb2RlbCBmb3Ig
+TkZTdjQueC4NCg0KPiAtLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-That's unlikely to change; the protocol allows the server to advertise
-volatile filehandles, but doesn't really give any tools to implement
-them reliably.
-
-> I saw NFS 4.1 has a way for a new server running with the same network
-> address of an old server to communicate that it is indeed a new server
-> instance.  If the server owner/scope in the EXCHANGE_ID response does
-> not match the previous server's values then the server is a new
-> instance.
-> 
-> The implications of encountering a new server owner/scope upon reconnect
-> aren't clear to me and I'm not sure to what extent the Linux
-> implementation handles this case.  Can anyone explain what happens if
-> the NFS client finds a new server owner/scope after reconnecting?
-
-I haven't tested it, but if it reconnects to the same IP address and
-finds out it's no longer talking to the same server, I think the only
-correct thing it could do would be to just fail all further access.
-
-There's no easy solution.
-
-To migrate between NFS servers you need some sort of clustered NFS
-service with shared storage.  We can't currently support concurrent
-access to shared storage from multiple NFS servers, so all that's
-possible active/passive failover.  Also, people that set that up
-normally depend on a floating IP address--I'm not sure if there's an
-equivalent for VSOCK.
-
---b.
