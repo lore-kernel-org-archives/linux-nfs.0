@@ -1,116 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:42563 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751407AbdELRBE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 13:01:04 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1494601295.10434.1.camel@primarydata.com>
-Date: Fri, 12 May 2017 13:00:47 -0400
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
-References: <20170512132721.GA654@stefanha-x1.localdomain> <20170512143410.GC17983@parsley.fieldses.org> <1494601295.10434.1.camel@primarydata.com>
-To: "stefanha@redhat.com" <stefanha@redhat.com>
+Received: from mail-qt0-f177.google.com ([209.85.216.177]:34810 "EHLO
+        mail-qt0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1757613AbdELSBY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 14:01:24 -0400
+Received: by mail-qt0-f177.google.com with SMTP id l7so12221637qte.1
+        for <linux-nfs@vger.kernel.org>; Fri, 12 May 2017 11:01:24 -0700 (PDT)
+Message-ID: <1494612078.4227.0.camel@redhat.com>
+Subject: Re: [PATCH 14/33] lockd: fix some weird indentation
+From: Jeff Layton <jlayton@redhat.com>
+To: Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 12 May 2017 14:01:18 -0400
+In-Reply-To: <20170512161701.22468-15-hch@lst.de>
+References: <20170512161701.22468-1-hch@lst.de>
+         <20170512161701.22468-15-hch@lst.de>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On May 12, 2017, at 11:01 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
+On Fri, 2017-05-12 at 18:16 +0200, Christoph Hellwig wrote:
+> Remove double indentation of a few struct rpc_version and
+> struct rpc_program instance.
 > 
-> On Fri, 2017-05-12 at 10:34 -0400, J. Bruce Fields wrote:
->> On Fri, May 12, 2017 at 09:27:21AM -0400, Stefan Hajnoczi wrote:
->>> Hi,
->>> I've been working on NFS over the AF_VSOCK transport
->>> (https://www.spinics.net/lists/linux-nfs/msg60292.html).  AF_VSOCK
->>> resets established network connections when the virtual machine is
->>> migrated to a new host.
->>> 
->>> The NFS client expects file handles and other state to remain valid
->>> upon
->>> reconnecting.  This is not the case after VM live migration since
->>> the
->>> new host does not have the NFS server state from the old host.
->>> 
->>> Volatile file handles have been suggested as a way to reflect that
->>> state
->>> does not persist across reconnect, but the Linux NFS client does
->>> not
->>> support volatile file handles.
->> 
->> That's unlikely to change; the protocol allows the server to
->> advertise
->> volatile filehandles, but doesn't really give any tools to implement
->> them reliably.
->> 
->>> I saw NFS 4.1 has a way for a new server running with the same
->>> network
->>> address of an old server to communicate that it is indeed a new
->>> server
->>> instance.  If the server owner/scope in the EXCHANGE_ID response
->>> does
->>> not match the previous server's values then the server is a new
->>> instance.
->>> 
->>> The implications of encountering a new server owner/scope upon
->>> reconnect
->>> aren't clear to me and I'm not sure to what extent the Linux
->>> implementation handles this case.  Can anyone explain what happens
->>> if
->>> the NFS client finds a new server owner/scope after reconnecting?
->> 
->> I haven't tested it, but if it reconnects to the same IP address and
->> finds out it's no longer talking to the same server, I think the only
->> correct thing it could do would be to just fail all further access.
->> 
->> There's no easy solution.
->> 
->> To migrate between NFS servers you need some sort of clustered NFS
->> service with shared storage.  We can't currently support concurrent
->> access to shared storage from multiple NFS servers, so all that's
->> possible active/passive failover.  Also, people that set that up
->> normally depend on a floating IP address--I'm not sure if there's an
->> equivalent for VSOCK.
->> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/lockd/clntxdr.c | 22 +++++++++++-----------
+>  fs/lockd/mon.c     | 16 ++++++++--------
+>  2 files changed, 19 insertions(+), 19 deletions(-)
 > 
-> Actually, this might be a use case for re-exporting NFS. If the host
-> could re-export a NFS mount to the guests, then you don't necessarily
-> need a clustered filesystem.
-> 
-> OTOH, this would not solve the problem of migrating locks, which is not
-> really easy to support in the current state model for NFSv4.x.
+> diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
+> index 17e7f08b3a22..bd8a976785ae 100644
+> --- a/fs/lockd/clntxdr.c
+> +++ b/fs/lockd/clntxdr.c
+> @@ -601,15 +601,15 @@ static struct rpc_procinfo	nlm_procedures[] = {
+>  };
+>  
+>  static const struct rpc_version	nlm_version1 = {
+> -		.number		= 1,
+> -		.nrprocs	= ARRAY_SIZE(nlm_procedures),
+> -		.procs		= nlm_procedures,
+> +	.number		= 1,
+> +	.nrprocs	= ARRAY_SIZE(nlm_procedures),
+> +	.procs		= nlm_procedures,
+>  };
+>  
+>  static const struct rpc_version	nlm_version3 = {
+> -		.number		= 3,
+> -		.nrprocs	= ARRAY_SIZE(nlm_procedures),
+> -		.procs		= nlm_procedures,
+> +	.number		= 3,
+> +	.nrprocs	= ARRAY_SIZE(nlm_procedures),
+> +	.procs		= nlm_procedures,
+>  };
+>  
+>  static const struct rpc_version	*nlm_versions[] = {
+> @@ -623,9 +623,9 @@ static const struct rpc_version	*nlm_versions[] = {
+>  static struct rpc_stat		nlm_rpc_stats;
+>  
+>  const struct rpc_program	nlm_program = {
+> -		.name		= "lockd",
+> -		.number		= NLM_PROGRAM,
+> -		.nrvers		= ARRAY_SIZE(nlm_versions),
+> -		.version	= nlm_versions,
+> -		.stats		= &nlm_rpc_stats,
+> +	.name		= "lockd",
+> +	.number		= NLM_PROGRAM,
+> +	.nrvers		= ARRAY_SIZE(nlm_versions),
+> +	.version	= nlm_versions,
+> +	.stats		= &nlm_rpc_stats,
+>  };
+> diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+> index 80630f0347e1..62424e929a7f 100644
+> --- a/fs/lockd/mon.c
+> +++ b/fs/lockd/mon.c
+> @@ -553,9 +553,9 @@ static struct rpc_procinfo	nsm_procedures[] = {
+>  };
+>  
+>  static const struct rpc_version nsm_version1 = {
+> -		.number		= 1,
+> -		.nrprocs	= ARRAY_SIZE(nsm_procedures),
+> -		.procs		= nsm_procedures
+> +	.number		= 1,
+> +	.nrprocs	= ARRAY_SIZE(nsm_procedures),
+> +	.procs		= nsm_procedures
+>  };
+>  
+>  static const struct rpc_version *nsm_version[] = {
+> @@ -565,9 +565,9 @@ static const struct rpc_version *nsm_version[] = {
+>  static struct rpc_stat		nsm_stats;
+>  
+>  static const struct rpc_program nsm_program = {
+> -		.name		= "statd",
+> -		.number		= NSM_PROGRAM,
+> -		.nrvers		= ARRAY_SIZE(nsm_version),
+> -		.version	= nsm_version,
+> -		.stats		= &nsm_stats
+> +	.name		= "statd",
+> +	.number		= NSM_PROGRAM,
+> +	.nrvers		= ARRAY_SIZE(nsm_version),
+> +	.version	= nsm_version,
+> +	.stats		= &nsm_stats
+>  };
 
-Some alternatives:
-
-- Make the local NFS server's exports read-only, NFSv3
-  only, and do not support locking. Ensure that the
-  filehandles and namespace are the same on every NFS
-  server.
-
-- As Trond suggested, all the local NFS servers accessed
-  via AF_SOCK should re-export NFS filesystems that
-  are located elsewhere and are visible everywhere.
-
-- Ensure there is an accompanying NFSv4 FS migration event
-  that moves the client's files (and possibly its open and
-  lock state) from the local NFS server to the destination
-  NFS server concurrent with the live migration.
-
-  If the client is aware of the FS migration, it will expect
-  the filehandles to be the same, but it can reconstruct
-  the open and lock state on the destination server (if that
-  server allows GRACEful recovery for that client).
-
-  This is possible in the protocol and implemented in the
-  Linux NFS client, but none of it is implemented in the
-  Linux NFS server.
-
---
-Chuck Lever
-
-
-
+Acked-by: Jeff Layton <jlayton@redhat.com>
