@@ -1,70 +1,141 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26777 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1756829AbdELPBq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 11:01:46 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "stefanha@redhat.com" <stefanha@redhat.com>,
-        "bfields@redhat.com" <bfields@redhat.com>
-CC: "SteveD@redhat.com" <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-Date: Fri, 12 May 2017 15:01:37 +0000
-Message-ID: <1494601295.10434.1.camel@primarydata.com>
-References: <20170512132721.GA654@stefanha-x1.localdomain>
-         <20170512143410.GC17983@parsley.fieldses.org>
-In-Reply-To: <20170512143410.GC17983@parsley.fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:36156 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754244AbdELP4C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 12 May 2017 11:56:02 -0400
+Date: Fri, 12 May 2017 11:56:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jan Kara <jack@suse.cz>
+Cc: NeilBrown <neil@brown.name>, Jeff Layton <jlayton@redhat.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
+Message-ID: <20170512155601.GE7704@fieldses.org>
+References: <20170330064724.GA21542@quack2.suse.cz>
+ <1490872308.2694.1.camel@redhat.com>
+ <20170330161231.GA9824@fieldses.org>
+ <1490898932.2667.1.camel@redhat.com>
+ <20170404183138.GC14303@fieldses.org>
+ <878tnfiq7v.fsf@notabene.neil.brown.name>
+ <20170405080551.GC8899@quack2.suse.cz>
+ <20170405181409.GC28681@fieldses.org>
+ <20170511185942.GD25434@fieldses.org>
+ <20170512082754.GB31470@quack2.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170512082754.GB31470@quack2.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA1LTEyIGF0IDEwOjM0IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIEZyaSwgTWF5IDEyLCAyMDE3IGF0IDA5OjI3OjIxQU0gLTA0MDAsIFN0ZWZhbiBIYWpu
-b2N6aSB3cm90ZToNCj4gPiBIaSwNCj4gPiBJJ3ZlIGJlZW4gd29ya2luZyBvbiBORlMgb3ZlciB0
-aGUgQUZfVlNPQ0sgdHJhbnNwb3J0DQo+ID4gKGh0dHBzOi8vd3d3LnNwaW5pY3MubmV0L2xpc3Rz
-L2xpbnV4LW5mcy9tc2c2MDI5Mi5odG1sKS7CoMKgQUZfVlNPQ0sNCj4gPiByZXNldHMgZXN0YWJs
-aXNoZWQgbmV0d29yayBjb25uZWN0aW9ucyB3aGVuIHRoZSB2aXJ0dWFsIG1hY2hpbmUgaXMNCj4g
-PiBtaWdyYXRlZCB0byBhIG5ldyBob3N0Lg0KPiA+IA0KPiA+IFRoZSBORlMgY2xpZW50IGV4cGVj
-dHMgZmlsZSBoYW5kbGVzIGFuZCBvdGhlciBzdGF0ZSB0byByZW1haW4gdmFsaWQNCj4gPiB1cG9u
-DQo+ID4gcmVjb25uZWN0aW5nLsKgwqBUaGlzIGlzIG5vdCB0aGUgY2FzZSBhZnRlciBWTSBsaXZl
-IG1pZ3JhdGlvbiBzaW5jZQ0KPiA+IHRoZQ0KPiA+IG5ldyBob3N0IGRvZXMgbm90IGhhdmUgdGhl
-IE5GUyBzZXJ2ZXIgc3RhdGUgZnJvbSB0aGUgb2xkIGhvc3QuDQo+ID4gDQo+ID4gVm9sYXRpbGUg
-ZmlsZSBoYW5kbGVzIGhhdmUgYmVlbiBzdWdnZXN0ZWQgYXMgYSB3YXkgdG8gcmVmbGVjdCB0aGF0
-DQo+ID4gc3RhdGUNCj4gPiBkb2VzIG5vdCBwZXJzaXN0IGFjcm9zcyByZWNvbm5lY3QsIGJ1dCB0
-aGUgTGludXggTkZTIGNsaWVudCBkb2VzDQo+ID4gbm90DQo+ID4gc3VwcG9ydCB2b2xhdGlsZSBm
-aWxlIGhhbmRsZXMuDQo+IA0KPiBUaGF0J3MgdW5saWtlbHkgdG8gY2hhbmdlOyB0aGUgcHJvdG9j
-b2wgYWxsb3dzIHRoZSBzZXJ2ZXIgdG8NCj4gYWR2ZXJ0aXNlDQo+IHZvbGF0aWxlIGZpbGVoYW5k
-bGVzLCBidXQgZG9lc24ndCByZWFsbHkgZ2l2ZSBhbnkgdG9vbHMgdG8gaW1wbGVtZW50DQo+IHRo
-ZW0gcmVsaWFibHkuDQo+IA0KPiA+IEkgc2F3IE5GUyA0LjEgaGFzIGEgd2F5IGZvciBhIG5ldyBz
-ZXJ2ZXIgcnVubmluZyB3aXRoIHRoZSBzYW1lDQo+ID4gbmV0d29yaw0KPiA+IGFkZHJlc3Mgb2Yg
-YW4gb2xkIHNlcnZlciB0byBjb21tdW5pY2F0ZSB0aGF0IGl0IGlzIGluZGVlZCBhIG5ldw0KPiA+
-IHNlcnZlcg0KPiA+IGluc3RhbmNlLsKgwqBJZiB0aGUgc2VydmVyIG93bmVyL3Njb3BlIGluIHRo
-ZSBFWENIQU5HRV9JRCByZXNwb25zZQ0KPiA+IGRvZXMNCj4gPiBub3QgbWF0Y2ggdGhlIHByZXZp
-b3VzIHNlcnZlcidzIHZhbHVlcyB0aGVuIHRoZSBzZXJ2ZXIgaXMgYSBuZXcNCj4gPiBpbnN0YW5j
-ZS4NCj4gPiANCj4gPiBUaGUgaW1wbGljYXRpb25zIG9mIGVuY291bnRlcmluZyBhIG5ldyBzZXJ2
-ZXIgb3duZXIvc2NvcGUgdXBvbg0KPiA+IHJlY29ubmVjdA0KPiA+IGFyZW4ndCBjbGVhciB0byBt
-ZSBhbmQgSSdtIG5vdCBzdXJlIHRvIHdoYXQgZXh0ZW50IHRoZSBMaW51eA0KPiA+IGltcGxlbWVu
-dGF0aW9uIGhhbmRsZXMgdGhpcyBjYXNlLsKgwqBDYW4gYW55b25lIGV4cGxhaW4gd2hhdCBoYXBw
-ZW5zDQo+ID4gaWYNCj4gPiB0aGUgTkZTIGNsaWVudCBmaW5kcyBhIG5ldyBzZXJ2ZXIgb3duZXIv
-c2NvcGUgYWZ0ZXIgcmVjb25uZWN0aW5nPw0KPiANCj4gSSBoYXZlbid0IHRlc3RlZCBpdCwgYnV0
-IGlmIGl0IHJlY29ubmVjdHMgdG8gdGhlIHNhbWUgSVAgYWRkcmVzcyBhbmQNCj4gZmluZHMgb3V0
-IGl0J3Mgbm8gbG9uZ2VyIHRhbGtpbmcgdG8gdGhlIHNhbWUgc2VydmVyLCBJIHRoaW5rIHRoZSBv
-bmx5DQo+IGNvcnJlY3QgdGhpbmcgaXQgY291bGQgZG8gd291bGQgYmUgdG8ganVzdCBmYWlsIGFs
-bCBmdXJ0aGVyIGFjY2Vzcy4NCj4gDQo+IFRoZXJlJ3Mgbm8gZWFzeSBzb2x1dGlvbi4NCj4gDQo+
-IFRvIG1pZ3JhdGUgYmV0d2VlbiBORlMgc2VydmVycyB5b3UgbmVlZCBzb21lIHNvcnQgb2YgY2x1
-c3RlcmVkIE5GUw0KPiBzZXJ2aWNlIHdpdGggc2hhcmVkIHN0b3JhZ2UuwqDCoFdlIGNhbid0IGN1
-cnJlbnRseSBzdXBwb3J0IGNvbmN1cnJlbnQNCj4gYWNjZXNzIHRvIHNoYXJlZCBzdG9yYWdlIGZy
-b20gbXVsdGlwbGUgTkZTIHNlcnZlcnMsIHNvIGFsbCB0aGF0J3MNCj4gcG9zc2libGUgYWN0aXZl
-L3Bhc3NpdmUgZmFpbG92ZXIuwqDCoEFsc28sIHBlb3BsZSB0aGF0IHNldCB0aGF0IHVwDQo+IG5v
-cm1hbGx5IGRlcGVuZCBvbiBhIGZsb2F0aW5nIElQIGFkZHJlc3MtLUknbSBub3Qgc3VyZSBpZiB0
-aGVyZSdzIGFuDQo+IGVxdWl2YWxlbnQgZm9yIFZTT0NLLg0KPiANCg0KQWN0dWFsbHksIHRoaXMg
-bWlnaHQgYmUgYSB1c2UgY2FzZSBmb3IgcmUtZXhwb3J0aW5nIE5GUy4gSWYgdGhlIGhvc3QNCmNv
-dWxkIHJlLWV4cG9ydCBhIE5GUyBtb3VudCB0byB0aGUgZ3Vlc3RzLCB0aGVuIHlvdSBkb24ndCBu
-ZWNlc3NhcmlseQ0KbmVlZCBhIGNsdXN0ZXJlZCBmaWxlc3lzdGVtLg0KDQpPVE9ILCB0aGlzIHdv
-dWxkIG5vdCBzb2x2ZSB0aGUgcHJvYmxlbSBvZiBtaWdyYXRpbmcgbG9ja3MsIHdoaWNoIGlzIG5v
-dA0KcmVhbGx5IGVhc3kgdG8gc3VwcG9ydCBpbiB0aGUgY3VycmVudCBzdGF0ZSBtb2RlbCBmb3Ig
-TkZTdjQueC4NCg0KPiAtLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Fri, May 12, 2017 at 10:27:54AM +0200, Jan Kara wrote:
+> On Thu 11-05-17 14:59:43, J. Bruce Fields wrote:
+> > On Wed, Apr 05, 2017 at 02:14:09PM -0400, J. Bruce Fields wrote:
+> > > On Wed, Apr 05, 2017 at 10:05:51AM +0200, Jan Kara wrote:
+> > > > 1) Keep i_version as is, make clients also check for i_ctime.
+> > > 
+> > > That would be a protocol revision, which we'd definitely rather avoid.
+> > > 
+> > > But can't we accomplish the same by using something like
+> > > 
+> > > 	ctime * (some constant) + i_version
+> > > 
+> > > ?
+> > > 
+> > > >    Pro: No on-disk format changes.
+> > > >    Cons: After a crash, i_version can go backwards (but when file changes
+> > > >    i_version, i_ctime pair should be still different) or not, data can be
+> > > >    old or not.
+> > > 
+> > > This is probably good enough for NFS purposes: typically on an NFS
+> > > filesystem, results of a read in the face of a concurrent write open are
+> > > undefined.  And writers sync before close.
+> > > 
+> > > So after a crash with a dirty inode, we're in a situation where an NFS
+> > > client still needs to resend some writes, sync, and close.  I'm OK with
+> > > things being inconsistent during this window.
+> > > 
+> > > I do expect things to return to normal once that client's has resent its
+> > > writes--hence the worry about actually resuing old values after boot
+> > > (such as if i_version regresses on boot and then increments back to the
+> > > same value after further writes).  Factoring in ctime fixes that.
+> > 
+> > So for now I'm thinking of just doing something like the following.
+> > 
+> > Only nfsd needs it for now, but it could be moved to a vfs helper for
+> > statx, or for individual filesystems that want to do something
+> > different.  (The NFSv4 client will want to use the server's change
+> > attribute instead, I think.  And other filesystems might want to try
+> > something more ambitious like Neil's proposal.)
+> > 
+> > --b.
+> > 
+> > diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> > index 12feac6ee2fd..9636c9a60aba 100644
+> > diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
+> > index f84fe6bf9aee..14f09f1ef605 100644
+> > --- a/fs/nfsd/nfsfh.h
+> > +++ b/fs/nfsd/nfsfh.h
+> > @@ -240,6 +240,16 @@ fh_clear_wcc(struct svc_fh *fhp)
+> >  	fhp->fh_pre_saved = false;
+> >  }
+> >  
+> > +static inline u64 nfsd4_change_attribute(struct inode *inode)
+> > +{
+> > +	u64 chattr;
+> > +
+> > +	chattr = inode->i_ctime.tv_sec << 30;
+> 
+> Won't this overflow on 32-bit archs? tv_sec seems to be defined as long?
+> Probably you need explicit (u64) cast... Otherwise I'm fine with this.
 
+Whoops, yes.  Or just assign to chattr as a separate step.  I'll fix
+that.
+
+--b.
+
+> > +	chattr += inode->i_ctime.tv_nsec;
+> > +	chattr += inode->i_version;
+> > +	return chattr;
+> > +}
+> > +
+> >  /*
+> >   * Fill in the pre_op attr for the wcc data
+> >   */
+> > @@ -253,7 +263,7 @@ fill_pre_wcc(struct svc_fh *fhp)
+> >  		fhp->fh_pre_mtime = inode->i_mtime;
+> >  		fhp->fh_pre_ctime = inode->i_ctime;
+> >  		fhp->fh_pre_size  = inode->i_size;
+> > -		fhp->fh_pre_change = inode->i_version;
+> > +		fhp->fh_pre_change = nfsd4_change_attribute(inode);
+> >  		fhp->fh_pre_saved = true;
+> >  	}
+> >  }
+> > --- a/fs/nfsd/nfs3xdr.c
+> > +++ b/fs/nfsd/nfs3xdr.c
+> > @@ -260,7 +260,7 @@ void fill_post_wcc(struct svc_fh *fhp)
+> >  		printk("nfsd: inode locked twice during operation.\n");
+> >  
+> >  	err = fh_getattr(fhp, &fhp->fh_post_attr);
+> > -	fhp->fh_post_change = d_inode(fhp->fh_dentry)->i_version;
+> > +	fhp->fh_post_change = nfsd4_change_attribute(d_inode(fhp->fh_dentry));
+> >  	if (err) {
+> >  		fhp->fh_post_saved = false;
+> >  		/* Grab the ctime anyway - set_change_info might use it */
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index 26780d53a6f9..a09532d4a383 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -1973,7 +1973,7 @@ static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode,
+> >  		*p++ = cpu_to_be32(convert_to_wallclock(exp->cd->flush_time));
+> >  		*p++ = 0;
+> >  	} else if (IS_I_VERSION(inode)) {
+> > -		p = xdr_encode_hyper(p, inode->i_version);
+> > +		p = xdr_encode_hyper(p, nfsd4_change_attribute(inode));
+> >  	} else {
+> >  		*p++ = cpu_to_be32(stat->ctime.tv_sec);
+> >  		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
+> -- 
+> Jan Kara <jack@suse.com>
+> SUSE Labs, CR
