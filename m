@@ -1,216 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46764 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51076 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754846AbdELNIh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 12 May 2017 09:08:37 -0400
-Date: Fri, 12 May 2017 21:08:34 +0800
-From: Eryu Guan <eguan@redhat.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: fstests@vger.kernel.org, linux-nfs@vger.kernel.org,
-        hch@infradead.org
-Subject: Re: [PATCH v6 1/5] generic/429: Add copy to new file test
-Message-ID: <20170512130834.GQ7250@eguan.usersys.redhat.com>
-References: <20170510174628.22895-1-Anna.Schumaker@Netapp.com>
- <20170510174628.22895-2-Anna.Schumaker@Netapp.com>
+        id S1754965AbdELN1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 12 May 2017 09:27:23 -0400
+Date: Fri, 12 May 2017 09:27:21 -0400
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: EXCHANGE_ID with same network address but different server owner
+Message-ID: <20170512132721.GA654@stefanha-x1.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170510174628.22895-2-Anna.Schumaker@Netapp.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="7AUc2qLy4jB3hD7Z"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 10, 2017 at 01:46:24PM -0400, Anna Schumaker wrote:
-> This test copies data from various points in a source file to a new
-> file.  This is useful for testing the basics of copy_file_range().
-> 
-> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> ---
->  common/rc             |   6 +++
->  tests/generic/429     | 102 ++++++++++++++++++++++++++++++++++++++++++++++++++
->  tests/generic/429.out |  25 +++++++++++++
->  tests/generic/group   |   1 +
->  4 files changed, 134 insertions(+)
->  create mode 100755 tests/generic/429
->  create mode 100644 tests/generic/429.out
-> 
-> diff --git a/common/rc b/common/rc
-> index 8dafd4bc..816d06a6 100644
-> --- a/common/rc
-> +++ b/common/rc
-> @@ -2047,6 +2047,12 @@ _require_xfs_io_command()
->  	"chproj")
->  		testio=`$XFS_IO_PROG -F -f -c "chproj 0" $testfile 2>&1`
->  		;;
-> +	"copy_range")
-> +		testcopy=$TEST_DIR/$$.copy.xfs_io
-> +		$XFS_IO_PROG -F -f -c "pwrite 0 4k" $testfile 2>&1 > /dev/null
-> +		testio=`$XFS_IO_PROG -F -f -c "copy_range $testfile" $testcopy 2>&1`
-> +		rm -f $testcopy 2>&1 > /dev/null
-> +		;;
->  	"falloc" )
->  		testio=`$XFS_IO_PROG -F -f -c "falloc $param 0 1m" $testfile 2>&1`
->  		;;
-> diff --git a/tests/generic/429 b/tests/generic/429
-> new file mode 100755
-> index 00000000..fb52df8b
-> --- /dev/null
-> +++ b/tests/generic/429
-> @@ -0,0 +1,102 @@
-> +#!/bin/bash
-> +# FS QA Test No. 429
-> +#
-> +# Tests vfs_copy_file_range():
-> +#   - Copy a file
-> +#   - Copy beginning of original to new file
-> +#   - Copy middle of original to a new file
-> +#   - Copy end of original to new file
-> +#   - Copy middle of original to a new file, creating a hole
-> +#-----------------------------------------------------------------------
-> +# Copyright (c) 2017 Netapp, Inc. All rights reserved.
-> +#
-> +# This program is free software; you can redistribute it and/or
-> +# modify it under the terms of the GNU General Public License as
-> +# published by the Free Software Foundation.
-> +#
-> +# This program is distributed in the hope that it would be useful,
-> +# but WITHOUT ANY WARRANTY; without even the implied warranty of
-> +# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-> +# GNU General Public License for more details.
-> +#
-> +# You should have received a copy of the GNU General Public License
-> +# along with this program; if not, write the Free Software Foundation,
-> +# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-> +#-----------------------------------------------------------------------
-> +#
-> +
-> +seq=`basename $0`
-> +seqres=$RESULT_DIR/$seq
-> +echo "QA output created by $seq"
-> +
-> +here=`pwd`
-> +tmp=/tmp/$$
-> +status=1    # failure is the default!
-> +trap "_cleanup; exit \$status" 0 1 2 3 15
-> +
-> +_cleanup()
-> +{
-> +	cd /
-> +	rm -rf $tmp.*
-> +}
-> +
-> +# get standard environment
-> +. common/rc
-> +. common/filter
-> +
-> +# real QA test starts here
-> +_supported_fs generic
-> +_supported_os Linux
-> +
-> +_require_xfs_io_command "copy_range"
-> +_require_test
-> +
-> +testdir=$TEST_DIR/test-$seq
-> +rm -rf $testdir
-> +mkdir $testdir
-> +rm -f $seqres.full
-> +
-> +echo "Create the original file and then copy"
-> +$XFS_IO_PROG -f -c 'pwrite -S 0x61 0    1000' $testdir/file >> $seqres.full 2>&1
-> +$XFS_IO_PROG -f -c 'pwrite -S 0x62 1000 1000' $testdir/file >> $seqres.full 2>&1
-> +$XFS_IO_PROG -f -c 'pwrite -S 0x63 2000 1000' $testdir/file >> $seqres.full 2>&1
-> +$XFS_IO_PROG -f -c 'pwrite -S 0x64 3000 1000' $testdir/file >> $seqres.full 2>&1
-> +$XFS_IO_PROG -f -c 'pwrite -S 0x65 4000 1000' $testdir/file >> $seqres.full 2>&1
-> +$XFS_IO_PROG -f -c "copy_range $testdir/file" "$testdir/copy"
-> +cmp $testdir/file $testdir/copy
-> +echo "Original md5sums:"
-> +md5sum $testdir/{file,copy} | _filter_test_dir
-> +
-> +echo "Copy beginning of original file"
-> +$XFS_IO_PROG -f -c "copy_range -l 1000 $testdir/file" "$testdir/beginning" 2>&1
 
-I just noticed these "2>&1" redirection of all the copy_range calls. The
-test harness could save both stdout and stderr for golden output diff,
-so the redirections are not needed.
+--7AUc2qLy4jB3hD7Z
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-I'll update all these tests to remove the redirections.
+Hi,
+I've been working on NFS over the AF_VSOCK transport
+(https://www.spinics.net/lists/linux-nfs/msg60292.html).  AF_VSOCK
+resets established network connections when the virtual machine is
+migrated to a new host.
+
+The NFS client expects file handles and other state to remain valid upon
+reconnecting.  This is not the case after VM live migration since the
+new host does not have the NFS server state from the old host.
+
+Volatile file handles have been suggested as a way to reflect that state
+does not persist across reconnect, but the Linux NFS client does not
+support volatile file handles.
+
+I saw NFS 4.1 has a way for a new server running with the same network
+address of an old server to communicate that it is indeed a new server
+instance.  If the server owner/scope in the EXCHANGE_ID response does
+not match the previous server's values then the server is a new
+instance.
+
+The implications of encountering a new server owner/scope upon reconnect
+aren't clear to me and I'm not sure to what extent the Linux
+implementation handles this case.  Can anyone explain what happens if
+the NFS client finds a new server owner/scope after reconnecting?
 
 Thanks,
-Eryu
+Stefan
 
-> +cmp -n 1000 $testdir/file $testdir/beginning
-> +echo "md5sums after copying beginning:"
-> +md5sum $testdir/{file,beginning} | _filter_test_dir
-> +
-> +echo "Copy middle of original file"
-> +$XFS_IO_PROG -f -c "copy_range -s 1000 -l 3000 $testdir/file" "$testdir/middle" 2>&1
-> +cmp -n 3000 $testdir/file $testdir/middle 1000
-> +echo "md5sums after copying middle:"
-> +md5sum $testdir/{file,middle} | _filter_test_dir
-> +
-> +echo "Copy end of original file"
-> +$XFS_IO_PROG -f -c "copy_range -s 4000 -l 1000 $testdir/file" "$testdir/end" 2>&1
-> +cmp -n 1000 $testdir/file $testdir/end 4000
-> +echo "md5sums after copying end:"
-> +md5sum $testdir/{file,end} | _filter_test_dir
-> +
-> +echo "Copy beyond end of original file"
-> +$XFS_IO_PROG -f -c "copy_range -s 4000 -l 2000 $testdir/file" "$testdir/beyond" 2>&1
-> +cmp -n 1000 $testdir/file $testdir/end 4000
-> +echo "md5sums after copying beyond:"
-> +md5sum $testdir/{file,beyond} | _filter_test_dir
-> +
-> +echo "Copy creates hole in target file"
-> +$XFS_IO_PROG -f -c "copy_range -s 1000 -l 3000 -d 1000 $testdir/file" "$testdir/hole" 2>&1
-> +cmp -n 3000 $testdir/file $testdir/hole 1000 1000
-> +echo "md5sums after creating hole:"
-> +md5sum $testdir/{file,hole} | _filter_test_dir
-> +
-> +#success, all done
-> +status=0
-> +exit
-> diff --git a/tests/generic/429.out b/tests/generic/429.out
-> new file mode 100644
-> index 00000000..8de90a44
-> --- /dev/null
-> +++ b/tests/generic/429.out
-> @@ -0,0 +1,25 @@
-> +QA output created by 429
-> +Create the original file and then copy
-> +Original md5sums:
-> +e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
-> +e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/copy
-> +Copy beginning of original file
-> +md5sums after copying beginning:
-> +e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
-> +cabe45dcc9ae5b66ba86600cca6b8ba8  TEST_DIR/test-429/beginning
-> +Copy middle of original file
-> +md5sums after copying middle:
-> +e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
-> +4197de9da5badfc302715486b82bcdf1  TEST_DIR/test-429/middle
-> +Copy end of original file
-> +md5sums after copying end:
-> +e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
-> +e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-429/end
-> +Copy beyond end of original file
-> +md5sums after copying beyond:
-> +e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
-> +e68d4a150c4e42f4f9ea3ffe4c9cf4ed  TEST_DIR/test-429/beyond
-> +Copy creates hole in target file
-> +md5sums after creating hole:
-> +e11fbace556cba26bf0076e74cab90a3  TEST_DIR/test-429/file
-> +3ae9aef0992f8cb51c90c9a0ff2dd9d2  TEST_DIR/test-429/hole
-> diff --git a/tests/generic/group b/tests/generic/group
-> index b3051752..1c0fbb73 100644
-> --- a/tests/generic/group
-> +++ b/tests/generic/group
-> @@ -431,3 +431,4 @@
->  426 auto quick exportfs
->  427 auto quick aio rw
->  428 auto quick
-> +429 auto quick copy
-> -- 
-> 2.12.2
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe fstests" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--7AUc2qLy4jB3hD7Z
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEcBAEBAgAGBQJZFbg5AAoJEJykq7OBq3PILB4IAJpZ7PaJzw9ClUMTQcvgjMGi
+50i+v64yRyX3h4WbX3kgd7o5iJjviUMgUBjs2pwSi7PP/9R+owkP1OsnI6wmrqCy
+gVHbnL18qVDrA+MsTpBIYmz8GIOG664ylsca/C5qv0JHal5j1wgN6TvYAofjrfKh
+imJBlf6ByrYhiUCHTCI3OOODut6irBiwS2CXup9tcsNyFOgAkuDLsNFy5B1DpeU3
+8ecOZOY3RRkXck/zyGmKuG3WkuyDLorwuiM+8kPVxhpG9ipiUPmoCQy7mHo5iDDs
++UtbSZqYIeDgywOKOcrjJdQrkKMCa4usqlhCPUiEXJBqZ39f6DG+RyEZ88J6Cbw=
+=Q0WZ
+-----END PGP SIGNATURE-----
+
+--7AUc2qLy4jB3hD7Z--
