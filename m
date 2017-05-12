@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:37608 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:50865 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932470AbdELQRN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 12:17:13 -0400
+        with ESMTP id S932470AbdELQRQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 12:17:16 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/33] sunrpc: fix encoder callback prototypes
-Date: Fri, 12 May 2017 18:16:30 +0200
-Message-Id: <20170512161701.22468-3-hch@lst.de>
+Subject: [PATCH 03/33] lockd: fix encoder callback prototypes
+Date: Fri, 12 May 2017 18:16:31 +0200
+Message-Id: <20170512161701.22468-4-hch@lst.de>
 In-Reply-To: <20170512161701.22468-1-hch@lst.de>
 References: <20170512161701.22468-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -24,116 +24,212 @@ Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Jeff Layton <jlayton@redhat.com>
 Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/rpcb_clnt.c | 24 +++++++++++++-----------
- 1 file changed, 13 insertions(+), 11 deletions(-)
+ fs/lockd/clnt4xdr.c | 22 +++++++++++++++-------
+ fs/lockd/clntxdr.c  | 22 +++++++++++++++-------
+ fs/lockd/mon.c      |  8 ++++----
+ 3 files changed, 34 insertions(+), 18 deletions(-)
 
-diff --git a/net/sunrpc/rpcb_clnt.c b/net/sunrpc/rpcb_clnt.c
-index 5b30603596d0..d0269a39afdf 100644
---- a/net/sunrpc/rpcb_clnt.c
-+++ b/net/sunrpc/rpcb_clnt.c
-@@ -843,8 +843,9 @@ static void rpcb_getport_done(struct rpc_task *child, void *data)
+diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
+index d3e40db28930..3cbad662120a 100644
+--- a/fs/lockd/clnt4xdr.c
++++ b/fs/lockd/clnt4xdr.c
+@@ -381,8 +381,9 @@ static void encode_nlm4_lock(struct xdr_stream *xdr,
   */
+ static void nlm4_xdr_enc_testargs(struct rpc_rqst *req,
+ 				  struct xdr_stream *xdr,
+-				  const struct nlm_args *args)
++				  const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
  
- static void rpcb_enc_mapping(struct rpc_rqst *req, struct xdr_stream *xdr,
--			     const struct rpcbind_args *rpcb)
+ 	encode_cookie(xdr, &args->cookie);
+@@ -402,8 +403,9 @@ static void nlm4_xdr_enc_testargs(struct rpc_rqst *req,
+  */
+ static void nlm4_xdr_enc_lockargs(struct rpc_rqst *req,
+ 				  struct xdr_stream *xdr,
+-				  const struct nlm_args *args)
++				  const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
+ 
+ 	encode_cookie(xdr, &args->cookie);
+@@ -424,8 +426,9 @@ static void nlm4_xdr_enc_lockargs(struct rpc_rqst *req,
+  */
+ static void nlm4_xdr_enc_cancargs(struct rpc_rqst *req,
+ 				  struct xdr_stream *xdr,
+-				  const struct nlm_args *args)
++				  const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
+ 
+ 	encode_cookie(xdr, &args->cookie);
+@@ -442,8 +445,9 @@ static void nlm4_xdr_enc_cancargs(struct rpc_rqst *req,
+  */
+ static void nlm4_xdr_enc_unlockargs(struct rpc_rqst *req,
+ 				    struct xdr_stream *xdr,
+-				    const struct nlm_args *args)
++				    const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
+ 
+ 	encode_cookie(xdr, &args->cookie);
+@@ -458,8 +462,10 @@ static void nlm4_xdr_enc_unlockargs(struct rpc_rqst *req,
+  */
+ static void nlm4_xdr_enc_res(struct rpc_rqst *req,
+ 			     struct xdr_stream *xdr,
+-			     const struct nlm_res *result)
 +			     const void *data)
  {
-+	const struct rpcbind_args *rpcb = data;
- 	__be32 *p;
++	const struct nlm_res *result = data;
++
+ 	encode_cookie(xdr, &result->cookie);
+ 	encode_nlm4_stat(xdr, result->status);
+ }
+@@ -479,8 +485,10 @@ static void nlm4_xdr_enc_res(struct rpc_rqst *req,
+  */
+ static void nlm4_xdr_enc_testres(struct rpc_rqst *req,
+ 				 struct xdr_stream *xdr,
+-				 const struct nlm_res *result)
++				 const void *data)
+ {
++	const struct nlm_res *result = data;
++
+ 	encode_cookie(xdr, &result->cookie);
+ 	encode_nlm4_stat(xdr, result->status);
+ 	if (result->status == nlm_lck_denied)
+@@ -566,7 +574,7 @@ static int nlm4_xdr_dec_res(struct rpc_rqst *req,
+ #define PROC(proc, argtype, restype)					\
+ [NLMPROC_##proc] = {							\
+ 	.p_proc      = NLMPROC_##proc,					\
+-	.p_encode    = (kxdreproc_t)nlm4_xdr_enc_##argtype,		\
++	.p_encode    = nlm4_xdr_enc_##argtype,				\
+ 	.p_decode    = (kxdrdproc_t)nlm4_xdr_dec_##restype,		\
+ 	.p_arglen    = NLM4_##argtype##_sz,				\
+ 	.p_replen    = NLM4_##restype##_sz,				\
+diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
+index 3e9f7874b975..825c0fde8c80 100644
+--- a/fs/lockd/clntxdr.c
++++ b/fs/lockd/clntxdr.c
+@@ -374,8 +374,9 @@ static void encode_nlm_lock(struct xdr_stream *xdr,
+  */
+ static void nlm_xdr_enc_testargs(struct rpc_rqst *req,
+ 				 struct xdr_stream *xdr,
+-				 const struct nlm_args *args)
++				 const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
  
- 	dprintk("RPC: %5u encoding PMAP_%s call (%u, %u, %d, %u)\n",
-@@ -917,8 +918,9 @@ static void encode_rpcb_string(struct xdr_stream *xdr, const char *string,
+ 	encode_cookie(xdr, &args->cookie);
+@@ -395,8 +396,9 @@ static void nlm_xdr_enc_testargs(struct rpc_rqst *req,
+  */
+ static void nlm_xdr_enc_lockargs(struct rpc_rqst *req,
+ 				 struct xdr_stream *xdr,
+-				 const struct nlm_args *args)
++				 const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
+ 
+ 	encode_cookie(xdr, &args->cookie);
+@@ -417,8 +419,9 @@ static void nlm_xdr_enc_lockargs(struct rpc_rqst *req,
+  */
+ static void nlm_xdr_enc_cancargs(struct rpc_rqst *req,
+ 				 struct xdr_stream *xdr,
+-				 const struct nlm_args *args)
++				 const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
+ 
+ 	encode_cookie(xdr, &args->cookie);
+@@ -435,8 +438,9 @@ static void nlm_xdr_enc_cancargs(struct rpc_rqst *req,
+  */
+ static void nlm_xdr_enc_unlockargs(struct rpc_rqst *req,
+ 				   struct xdr_stream *xdr,
+-				   const struct nlm_args *args)
++				   const void *data)
+ {
++	const struct nlm_args *args = data;
+ 	const struct nlm_lock *lock = &args->lock;
+ 
+ 	encode_cookie(xdr, &args->cookie);
+@@ -451,8 +455,10 @@ static void nlm_xdr_enc_unlockargs(struct rpc_rqst *req,
+  */
+ static void nlm_xdr_enc_res(struct rpc_rqst *req,
+ 			    struct xdr_stream *xdr,
+-			    const struct nlm_res *result)
++			    const void *data)
+ {
++	const struct nlm_res *result = data;
++
+ 	encode_cookie(xdr, &result->cookie);
+ 	encode_nlm_stat(xdr, result->status);
+ }
+@@ -479,8 +485,10 @@ static void encode_nlm_testrply(struct xdr_stream *xdr,
+ 
+ static void nlm_xdr_enc_testres(struct rpc_rqst *req,
+ 				struct xdr_stream *xdr,
+-				const struct nlm_res *result)
++				const void *data)
+ {
++	const struct nlm_res *result = data;
++
+ 	encode_cookie(xdr, &result->cookie);
+ 	encode_nlm_stat(xdr, result->status);
+ 	encode_nlm_testrply(xdr, result);
+@@ -564,7 +572,7 @@ static int nlm_xdr_dec_res(struct rpc_rqst *req,
+ #define PROC(proc, argtype, restype)	\
+ [NLMPROC_##proc] = {							\
+ 	.p_proc      = NLMPROC_##proc,					\
+-	.p_encode    = (kxdreproc_t)nlm_xdr_enc_##argtype,		\
++	.p_encode    = nlm_xdr_enc_##argtype,		\
+ 	.p_decode    = (kxdrdproc_t)nlm_xdr_dec_##restype,		\
+ 	.p_arglen    = NLM_##argtype##_sz,				\
+ 	.p_replen    = NLM_##restype##_sz,				\
+diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
+index 19166d4a8d31..8043fd4b8a5c 100644
+--- a/fs/lockd/mon.c
++++ b/fs/lockd/mon.c
+@@ -476,14 +476,14 @@ static void encode_priv(struct xdr_stream *xdr, const struct nsm_args *argp)
  }
  
- static void rpcb_enc_getaddr(struct rpc_rqst *req, struct xdr_stream *xdr,
--			     const struct rpcbind_args *rpcb)
-+			     const void *data)
+ static void nsm_xdr_enc_mon(struct rpc_rqst *req, struct xdr_stream *xdr,
+-			    const struct nsm_args *argp)
++			    const void *argp)
  {
-+	const struct rpcbind_args *rpcb = data;
- 	__be32 *p;
+ 	encode_mon_id(xdr, argp);
+ 	encode_priv(xdr, argp);
+ }
  
- 	dprintk("RPC: %5u encoding RPCB_%s call (%u, %u, '%s', '%s')\n",
-@@ -992,7 +994,7 @@ static int rpcb_dec_getaddr(struct rpc_rqst *req, struct xdr_stream *xdr,
- static struct rpc_procinfo rpcb_procedures2[] = {
- 	[RPCBPROC_SET] = {
- 		.p_proc		= RPCBPROC_SET,
--		.p_encode	= (kxdreproc_t)rpcb_enc_mapping,
-+		.p_encode	= rpcb_enc_mapping,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_set,
- 		.p_arglen	= RPCB_mappingargs_sz,
- 		.p_replen	= RPCB_setres_sz,
-@@ -1002,7 +1004,7 @@ static struct rpc_procinfo rpcb_procedures2[] = {
+ static void nsm_xdr_enc_unmon(struct rpc_rqst *req, struct xdr_stream *xdr,
+-			      const struct nsm_args *argp)
++			      const void *argp)
+ {
+ 	encode_mon_id(xdr, argp);
+ }
+@@ -532,7 +532,7 @@ static int nsm_xdr_dec_stat(struct rpc_rqst *rqstp,
+ static struct rpc_procinfo	nsm_procedures[] = {
+ [NSMPROC_MON] = {
+ 		.p_proc		= NSMPROC_MON,
+-		.p_encode	= (kxdreproc_t)nsm_xdr_enc_mon,
++		.p_encode	= nsm_xdr_enc_mon,
+ 		.p_decode	= (kxdrdproc_t)nsm_xdr_dec_stat_res,
+ 		.p_arglen	= SM_mon_sz,
+ 		.p_replen	= SM_monres_sz,
+@@ -541,7 +541,7 @@ static struct rpc_procinfo	nsm_procedures[] = {
  	},
- 	[RPCBPROC_UNSET] = {
- 		.p_proc		= RPCBPROC_UNSET,
--		.p_encode	= (kxdreproc_t)rpcb_enc_mapping,
-+		.p_encode	= rpcb_enc_mapping,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_set,
- 		.p_arglen	= RPCB_mappingargs_sz,
- 		.p_replen	= RPCB_setres_sz,
-@@ -1012,7 +1014,7 @@ static struct rpc_procinfo rpcb_procedures2[] = {
- 	},
- 	[RPCBPROC_GETPORT] = {
- 		.p_proc		= RPCBPROC_GETPORT,
--		.p_encode	= (kxdreproc_t)rpcb_enc_mapping,
-+		.p_encode	= rpcb_enc_mapping,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_getport,
- 		.p_arglen	= RPCB_mappingargs_sz,
- 		.p_replen	= RPCB_getportres_sz,
-@@ -1025,7 +1027,7 @@ static struct rpc_procinfo rpcb_procedures2[] = {
- static struct rpc_procinfo rpcb_procedures3[] = {
- 	[RPCBPROC_SET] = {
- 		.p_proc		= RPCBPROC_SET,
--		.p_encode	= (kxdreproc_t)rpcb_enc_getaddr,
-+		.p_encode	= rpcb_enc_getaddr,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_set,
- 		.p_arglen	= RPCB_getaddrargs_sz,
- 		.p_replen	= RPCB_setres_sz,
-@@ -1035,7 +1037,7 @@ static struct rpc_procinfo rpcb_procedures3[] = {
- 	},
- 	[RPCBPROC_UNSET] = {
- 		.p_proc		= RPCBPROC_UNSET,
--		.p_encode	= (kxdreproc_t)rpcb_enc_getaddr,
-+		.p_encode	= rpcb_enc_getaddr,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_set,
- 		.p_arglen	= RPCB_getaddrargs_sz,
- 		.p_replen	= RPCB_setres_sz,
-@@ -1045,7 +1047,7 @@ static struct rpc_procinfo rpcb_procedures3[] = {
- 	},
- 	[RPCBPROC_GETADDR] = {
- 		.p_proc		= RPCBPROC_GETADDR,
--		.p_encode	= (kxdreproc_t)rpcb_enc_getaddr,
-+		.p_encode	= rpcb_enc_getaddr,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_getaddr,
- 		.p_arglen	= RPCB_getaddrargs_sz,
- 		.p_replen	= RPCB_getaddrres_sz,
-@@ -1058,7 +1060,7 @@ static struct rpc_procinfo rpcb_procedures3[] = {
- static struct rpc_procinfo rpcb_procedures4[] = {
- 	[RPCBPROC_SET] = {
- 		.p_proc		= RPCBPROC_SET,
--		.p_encode	= (kxdreproc_t)rpcb_enc_getaddr,
-+		.p_encode	= rpcb_enc_getaddr,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_set,
- 		.p_arglen	= RPCB_getaddrargs_sz,
- 		.p_replen	= RPCB_setres_sz,
-@@ -1068,7 +1070,7 @@ static struct rpc_procinfo rpcb_procedures4[] = {
- 	},
- 	[RPCBPROC_UNSET] = {
- 		.p_proc		= RPCBPROC_UNSET,
--		.p_encode	= (kxdreproc_t)rpcb_enc_getaddr,
-+		.p_encode	= rpcb_enc_getaddr,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_set,
- 		.p_arglen	= RPCB_getaddrargs_sz,
- 		.p_replen	= RPCB_setres_sz,
-@@ -1078,7 +1080,7 @@ static struct rpc_procinfo rpcb_procedures4[] = {
- 	},
- 	[RPCBPROC_GETADDR] = {
- 		.p_proc		= RPCBPROC_GETADDR,
--		.p_encode	= (kxdreproc_t)rpcb_enc_getaddr,
-+		.p_encode	= rpcb_enc_getaddr,
- 		.p_decode	= (kxdrdproc_t)rpcb_dec_getaddr,
- 		.p_arglen	= RPCB_getaddrargs_sz,
- 		.p_replen	= RPCB_getaddrres_sz,
+ [NSMPROC_UNMON] = {
+ 		.p_proc		= NSMPROC_UNMON,
+-		.p_encode	= (kxdreproc_t)nsm_xdr_enc_unmon,
++		.p_encode	= nsm_xdr_enc_unmon,
+ 		.p_decode	= (kxdrdproc_t)nsm_xdr_dec_stat,
+ 		.p_arglen	= SM_mon_id_sz,
+ 		.p_replen	= SM_unmonres_sz,
 -- 
 2.11.0
 
