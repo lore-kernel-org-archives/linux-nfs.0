@@ -1,36 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:43472 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754931AbdELI15 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 12 May 2017 04:27:57 -0400
-Date: Fri, 12 May 2017 10:27:54 +0200
-From: Jan Kara <jack@suse.cz>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jan Kara <jack@suse.cz>, NeilBrown <neil@brown.name>,
-        Jeff Layton <jlayton@redhat.com>,
-        Christoph Hellwig <hch@infradead.org>,
+Received: from mail-qt0-f181.google.com ([209.85.216.181]:36709 "EHLO
+        mail-qt0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756710AbdELLB2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 07:01:28 -0400
+Received: by mail-qt0-f181.google.com with SMTP id m91so38086644qte.3
+        for <linux-nfs@vger.kernel.org>; Fri, 12 May 2017 04:01:28 -0700 (PDT)
+Message-ID: <1494586885.2787.3.camel@redhat.com>
+Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and
+ optimization
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>, Jan Kara <jack@suse.cz>
+Cc: NeilBrown <neil@brown.name>, Christoph Hellwig <hch@infradead.org>,
         linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-ext4@vger.kernel.org,
         linux-btrfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [RFC PATCH v1 00/30] fs: inode->i_version rework and optimization
-Message-ID: <20170512082754.GB31470@quack2.suse.cz>
-References: <1490810071.2678.6.camel@redhat.com>
- <20170330064724.GA21542@quack2.suse.cz>
- <1490872308.2694.1.camel@redhat.com>
- <20170330161231.GA9824@fieldses.org>
- <1490898932.2667.1.camel@redhat.com>
- <20170404183138.GC14303@fieldses.org>
- <878tnfiq7v.fsf@notabene.neil.brown.name>
- <20170405080551.GC8899@quack2.suse.cz>
- <20170405181409.GC28681@fieldses.org>
- <20170511185942.GD25434@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Date: Fri, 12 May 2017 07:01:25 -0400
 In-Reply-To: <20170511185942.GD25434@fieldses.org>
+References: <20170329111507.GA18467@quack2.suse.cz>
+         <1490810071.2678.6.camel@redhat.com>
+         <20170330064724.GA21542@quack2.suse.cz>
+         <1490872308.2694.1.camel@redhat.com> <20170330161231.GA9824@fieldses.org>
+         <1490898932.2667.1.camel@redhat.com> <20170404183138.GC14303@fieldses.org>
+         <878tnfiq7v.fsf@notabene.neil.brown.name>
+         <20170405080551.GC8899@quack2.suse.cz>
+         <20170405181409.GC28681@fieldses.org> <20170511185942.GD25434@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu 11-05-17 14:59:43, J. Bruce Fields wrote:
+On Thu, 2017-05-11 at 14:59 -0400, J. Bruce Fields wrote:
 > On Wed, Apr 05, 2017 at 02:14:09PM -0400, J. Bruce Fields wrote:
 > > On Wed, Apr 05, 2017 at 10:05:51AM +0200, Jan Kara wrote:
 > > > 1) Keep i_version as is, make clients also check for i_ctime.
@@ -86,12 +85,6 @@ On Thu 11-05-17 14:59:43, J. Bruce Fields wrote:
 > +	u64 chattr;
 > +
 > +	chattr = inode->i_ctime.tv_sec << 30;
-
-Won't this overflow on 32-bit archs? tv_sec seems to be defined as long?
-Probably you need explicit (u64) cast... Otherwise I'm fine with this.
-
-								Honza
-
 > +	chattr += inode->i_ctime.tv_nsec;
 > +	chattr += inode->i_version;
 > +	return chattr;
@@ -133,6 +126,16 @@ Probably you need explicit (u64) cast... Otherwise I'm fine with this.
 >  	} else {
 >  		*p++ = cpu_to_be32(stat->ctime.tv_sec);
 >  		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
+
+
+Sorry I've been MIA on this discussion. I've had a very busy spring...
+
+This looks reasonable to me (modulo Jan's comment about casting tv_sec
+to u64).
+
+To be clear, I think this is mostly orthogonal to the changes that I was
+originally proposing, right? I think we can still benefit from only
+bumping and storing i_version values after they've been queried.
+
 -- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+Jeff Layton <jlayton@redhat.com>
