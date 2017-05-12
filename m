@@ -1,67 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51076 "EHLO mx1.redhat.com"
+Received: from mx143.netapp.com ([216.240.21.24]:33479 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754965AbdELN1X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 12 May 2017 09:27:23 -0400
-Date: Fri, 12 May 2017 09:27:21 -0400
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Steve Dickson <SteveD@redhat.com>
-Subject: EXCHANGE_ID with same network address but different server owner
-Message-ID: <20170512132721.GA654@stefanha-x1.localdomain>
+        id S1750991AbdELNz4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 12 May 2017 09:55:56 -0400
+Subject: Re: [RFC][PATCH 00/14] VFS: Introduce superblock configuration
+ context [ver #2]
+To: David Howells <dhowells@redhat.com>
+CC: <mszeredi@redhat.com>, <viro@zeniv.linux.org.uk>,
+        <jlayton@redhat.com>, <linux-fsdevel@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+References: <68231d1a-9902-ce3d-73e3-6e74754832e4@Netapp.com>
+ <149451118535.4599.16084557087363834548.stgit@warthog.procyon.org.uk>
+ <9616.1494530672@warthog.procyon.org.uk>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <5610bd4e-b0a4-79d5-a90e-54cb9e63299f@Netapp.com>
+Date: Fri, 12 May 2017 09:55:24 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="7AUc2qLy4jB3hD7Z"
+In-Reply-To: <9616.1494530672@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---7AUc2qLy4jB3hD7Z
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
 
-Hi,
-I've been working on NFS over the AF_VSOCK transport
-(https://www.spinics.net/lists/linux-nfs/msg60292.html).  AF_VSOCK
-resets established network connections when the virtual machine is
-migrated to a new host.
+On 05/11/2017 03:24 PM, David Howells wrote:
+> Anna Schumaker <Anna.Schumaker@Netapp.com> wrote:
+> 
+>> Is there any way to split the NFS patch into multiple pieces?
+> 
+> Are you okay with a patch or two that add code that is unconnected in that
+> patch, but connected in a later one?
 
-The NFS client expects file handles and other state to remain valid upon
-reconnecting.  This is not the case after VM live migration since the
-new host does not have the NFS server state from the old host.
+Yes, I'm okay with that.  Thanks for working on this!
 
-Volatile file handles have been suggested as a way to reflect that state
-does not persist across reconnect, but the Linux NFS client does not
-support volatile file handles.
+Anna
 
-I saw NFS 4.1 has a way for a new server running with the same network
-address of an old server to communicate that it is indeed a new server
-instance.  If the server owner/scope in the EXCHANGE_ID response does
-not match the previous server's values then the server is a new
-instance.
-
-The implications of encountering a new server owner/scope upon reconnect
-aren't clear to me and I'm not sure to what extent the Linux
-implementation handles this case.  Can anyone explain what happens if
-the NFS client finds a new server owner/scope after reconnecting?
-
-Thanks,
-Stefan
-
---7AUc2qLy4jB3hD7Z
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEcBAEBAgAGBQJZFbg5AAoJEJykq7OBq3PILB4IAJpZ7PaJzw9ClUMTQcvgjMGi
-50i+v64yRyX3h4WbX3kgd7o5iJjviUMgUBjs2pwSi7PP/9R+owkP1OsnI6wmrqCy
-gVHbnL18qVDrA+MsTpBIYmz8GIOG664ylsca/C5qv0JHal5j1wgN6TvYAofjrfKh
-imJBlf6ByrYhiUCHTCI3OOODut6irBiwS2CXup9tcsNyFOgAkuDLsNFy5B1DpeU3
-8ecOZOY3RRkXck/zyGmKuG3WkuyDLorwuiM+8kPVxhpG9ipiUPmoCQy7mHo5iDDs
-+UtbSZqYIeDgywOKOcrjJdQrkKMCa4usqlhCPUiEXJBqZ39f6DG+RyEZ88J6Cbw=
-=Q0WZ
------END PGP SIGNATURE-----
-
---7AUc2qLy4jB3hD7Z--
+> 
+> David
+> 
