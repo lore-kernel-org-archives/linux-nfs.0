@@ -1,239 +1,255 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:57534 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:59607 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933039AbdELQSd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 12:18:33 -0400
+        with ESMTP id S1758047AbdELQSm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 12:18:42 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 27/33] nfsd4: properly type op_get_currentstateid callbacks
-Date: Fri, 12 May 2017 18:16:55 +0200
-Message-Id: <20170512161701.22468-28-hch@lst.de>
+Subject: [PATCH 30/33] sunrpc: move pc_count out of struct svc_procinfo
+Date: Fri, 12 May 2017 18:16:58 +0200
+Message-Id: <20170512161701.22468-31-hch@lst.de>
 In-Reply-To: <20170512161701.22468-1-hch@lst.de>
 References: <20170512161701.22468-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pass union nfsd4_op_u to the op_set_currentstateid callbacks instead of
-using unsafe function pointer casts.
+pc_count is the only writeable memeber of struct svc_procinfo, which is
+a good candidate to be const-ified as it contains function pointers.
+
+This patch moves it into out out struct svc_procinfo, and into a
+separate writable array that is pointed to by struct svc_version.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/current_stateid.h | 24 ++++++++++++++++--------
- fs/nfsd/nfs4proc.c        | 21 ++++++++++-----------
- fs/nfsd/nfs4state.c       | 40 ++++++++++++++++++++++++----------------
- 3 files changed, 50 insertions(+), 35 deletions(-)
+ fs/lockd/svc.c             |  6 ++++++
+ fs/nfs/callback_xdr.c      |  4 ++++
+ fs/nfsd/nfs2acl.c          |  2 ++
+ fs/nfsd/nfs3acl.c          |  2 ++
+ fs/nfsd/nfs3proc.c         |  2 ++
+ fs/nfsd/nfs4proc.c         |  2 ++
+ fs/nfsd/nfsproc.c          |  2 ++
+ include/linux/sunrpc/svc.h |  2 +-
+ net/sunrpc/stats.c         | 11 ++++++-----
+ net/sunrpc/svc.c           |  2 +-
+ 10 files changed, 28 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/current_stateid.h b/fs/nfsd/current_stateid.h
-index 3c80a7b5302d..34075cee573a 100644
---- a/fs/nfsd/current_stateid.h
-+++ b/fs/nfsd/current_stateid.h
-@@ -20,13 +20,21 @@ extern void nfsd4_set_closestateid(struct nfsd4_compound_state *,
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 5d481e8a1b5d..cc6abe6280bc 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -739,23 +739,29 @@ module_exit(exit_nlm);
  /*
-  * functions to consume current state id
+  * Define NLM program and procedures
   */
--extern void nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *);
--extern void nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *, struct nfsd4_delegreturn *);
--extern void nfsd4_get_freestateid(struct nfsd4_compound_state *, struct nfsd4_free_stateid *);
--extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *, struct nfsd4_setattr *);
--extern void nfsd4_get_closestateid(struct nfsd4_compound_state *, struct nfsd4_close *);
--extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *, struct nfsd4_locku *);
--extern void nfsd4_get_readstateid(struct nfsd4_compound_state *, struct nfsd4_read *);
--extern void nfsd4_get_writestateid(struct nfsd4_compound_state *, struct nfsd4_write *);
-+extern void nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
-+extern void nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
-+extern void nfsd4_get_freestateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
-+extern void nfsd4_get_setattrstateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
-+extern void nfsd4_get_closestateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
-+extern void nfsd4_get_lockustateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
-+extern void nfsd4_get_readstateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
-+extern void nfsd4_get_writestateid(struct nfsd4_compound_state *,
-+		union nfsd4_op_u *);
++static unsigned int nlmsvc_version1_count[17];
+ static struct svc_version	nlmsvc_version1 = {
+ 		.vs_vers	= 1,
+ 		.vs_nproc	= 17,
+ 		.vs_proc	= nlmsvc_procedures,
++		.vs_count	= nlmsvc_version1_count,
+ 		.vs_xdrsize	= NLMSVC_XDRSIZE,
+ };
++static unsigned int nlmsvc_version3_count[24];
+ static struct svc_version	nlmsvc_version3 = {
+ 		.vs_vers	= 3,
+ 		.vs_nproc	= 24,
+ 		.vs_proc	= nlmsvc_procedures,
++		.vs_count	= nlmsvc_version3_count,
+ 		.vs_xdrsize	= NLMSVC_XDRSIZE,
+ };
+ #ifdef CONFIG_LOCKD_V4
++static unsigned int nlmsvc_version4_count[24];
+ static struct svc_version	nlmsvc_version4 = {
+ 		.vs_vers	= 4,
+ 		.vs_nproc	= 24,
+ 		.vs_proc	= nlmsvc_procedures4,
++		.vs_count	= nlmsvc_version4_count,
+ 		.vs_xdrsize	= NLMSVC_XDRSIZE,
+ };
+ #endif
+diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
+index acf75dc63e14..ecd46b8c0985 100644
+--- a/fs/nfs/callback_xdr.c
++++ b/fs/nfs/callback_xdr.c
+@@ -1011,20 +1011,24 @@ static struct svc_procedure nfs4_callback_procedures1[] = {
+ 	}
+ };
  
- #endif   /* _NFSD4_CURRENT_STATE_H */
++static unsigned int nfs4_callback_count1[ARRAY_SIZE(nfs4_callback_procedures1)];
+ struct svc_version nfs4_callback_version1 = {
+ 	.vs_vers = 1,
+ 	.vs_nproc = ARRAY_SIZE(nfs4_callback_procedures1),
+ 	.vs_proc = nfs4_callback_procedures1,
++	.vs_count = nfs4_callback_count1,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
+ 	.vs_hidden = true,
+ 	.vs_need_cong_ctrl = true,
+ };
+ 
++static unsigned int nfs4_callback_count4[ARRAY_SIZE(nfs4_callback_procedures1)];
+ struct svc_version nfs4_callback_version4 = {
+ 	.vs_vers = 4,
+ 	.vs_nproc = ARRAY_SIZE(nfs4_callback_procedures1),
+ 	.vs_proc = nfs4_callback_procedures1,
++	.vs_count = nfs4_callback_count4,
+ 	.vs_xdrsize = NFS4_CALLBACK_XDRSIZE,
+ 	.vs_dispatch = NULL,
+ 	.vs_hidden = true,
+diff --git a/fs/nfsd/nfs2acl.c b/fs/nfsd/nfs2acl.c
+index fc6b179c8fff..026edfe73fd5 100644
+--- a/fs/nfsd/nfs2acl.c
++++ b/fs/nfsd/nfs2acl.c
+@@ -378,10 +378,12 @@ static struct svc_procedure		nfsd_acl_procedures2[] = {
+   PROC(access,	access,		access,		access,   RC_NOCACHE, ST+AT+1),
+ };
+ 
++static unsigned int nfsd_acl_count2[ARRAY_SIZE(nfsd_acl_procedures2)];
+ struct svc_version	nfsd_acl_version2 = {
+ 		.vs_vers	= 2,
+ 		.vs_nproc	= 5,
+ 		.vs_proc	= nfsd_acl_procedures2,
++		.vs_count	= nfsd_acl_count2,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+ };
+diff --git a/fs/nfsd/nfs3acl.c b/fs/nfsd/nfs3acl.c
+index 9437b758cbfd..73c0970ccefb 100644
+--- a/fs/nfsd/nfs3acl.c
++++ b/fs/nfsd/nfs3acl.c
+@@ -263,10 +263,12 @@ static struct svc_procedure		nfsd_acl_procedures3[] = {
+   PROC(setacl,	setacl,		setacl,		fhandle,  RC_NOCACHE, ST+pAT),
+ };
+ 
++static unsigned int nfsd_acl_count3[ARRAY_SIZE(nfsd_acl_procedures3)];
+ struct svc_version	nfsd_acl_version3 = {
+ 		.vs_vers	= 3,
+ 		.vs_nproc	= 3,
+ 		.vs_proc	= nfsd_acl_procedures3,
++		.vs_count	= nfsd_acl_count3,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+ };
+diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+index 17c90c41a3a6..b5823802e278 100644
+--- a/fs/nfsd/nfs3proc.c
++++ b/fs/nfsd/nfs3proc.c
+@@ -890,10 +890,12 @@ static struct svc_procedure		nfsd_procedures3[22] = {
+ 	},
+ };
+ 
++static unsigned int nfsd_count3[ARRAY_SIZE(nfsd_procedures3)];
+ struct svc_version	nfsd_version3 = {
+ 		.vs_vers	= 3,
+ 		.vs_nproc	= 22,
+ 		.vs_proc	= nfsd_procedures3,
++		.vs_count	= nfsd_count3,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS3_SVC_XDRSIZE,
+ };
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index fa2c46f67f27..4d724d3284b0 100644
+index a947dcef5e4e..bad5fec0ebc7 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1525,8 +1525,6 @@ typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
- 			      void *);
- typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
- 
--typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
--
- enum nfsd4_op_flags {
- 	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
- 	ALLOWED_ON_ABSENT_FS = 1 << 1,	/* ops processed on absent fs */
-@@ -1563,7 +1561,8 @@ struct nfsd4_operation {
- 	char *op_name;
- 	/* Try to get response size before operation */
- 	nfsd4op_rsize op_rsize_bop;
--	stateid_getter op_get_currentstateid;
-+	void (*op_get_currentstateid)(struct nfsd4_compound_state *,
-+			union nfsd4_op_u *);
- 	void (*op_set_currentstateid)(struct nfsd4_compound_state *,
- 			union nfsd4_op_u *);
+@@ -2554,10 +2554,12 @@ static struct svc_procedure		nfsd_procedures4[2] = {
+ 	},
  };
-@@ -2104,7 +2103,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_CLOSE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_closestateid,
-+		.op_get_currentstateid = nfsd4_get_closestateid,
- 		.op_set_currentstateid = nfsd4_set_closestateid,
- 	},
- 	[OP_COMMIT] = {
-@@ -2124,7 +2123,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_DELEGRETURN",
- 		.op_rsize_bop = nfsd4_only_status_rsize,
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_delegreturnstateid,
-+		.op_get_currentstateid = nfsd4_get_delegreturnstateid,
- 	},
- 	[OP_GETATTR] = {
- 		.op_func = (nfsd4op_func)nfsd4_getattr,
-@@ -2161,7 +2160,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_LOCKU",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_lockustateid,
-+		.op_get_currentstateid = nfsd4_get_lockustateid,
- 	},
- 	[OP_LOOKUP] = {
- 		.op_func = (nfsd4op_func)nfsd4_lookup,
-@@ -2198,7 +2197,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_OPEN_DOWNGRADE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_status_stateid_rsize,
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_opendowngradestateid,
-+		.op_get_currentstateid = nfsd4_get_opendowngradestateid,
- 		.op_set_currentstateid = nfsd4_set_opendowngradestateid,
- 	},
- 	[OP_PUTFH] = {
-@@ -2226,7 +2225,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_func = (nfsd4op_func)nfsd4_read,
- 		.op_name = "OP_READ",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
-+		.op_get_currentstateid = nfsd4_get_readstateid,
- 	},
- 	[OP_READDIR] = {
- 		.op_func = (nfsd4op_func)nfsd4_readdir,
-@@ -2282,7 +2281,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_name = "OP_SETATTR",
- 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_setattr_rsize,
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_setattrstateid,
-+		.op_get_currentstateid = nfsd4_get_setattrstateid,
- 	},
- 	[OP_SETCLIENTID] = {
- 		.op_func = (nfsd4op_func)nfsd4_setclientid,
-@@ -2308,7 +2307,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
- 		.op_name = "OP_WRITE",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
-+		.op_get_currentstateid = nfsd4_get_writestateid,
- 	},
- 	[OP_RELEASE_LOCKOWNER] = {
- 		.op_func = (nfsd4op_func)nfsd4_release_lockowner,
-@@ -2388,7 +2387,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_func = (nfsd4op_func)nfsd4_free_stateid,
- 		.op_flags = ALLOWED_WITHOUT_FH | OP_MODIFIES_SOMETHING,
- 		.op_name = "OP_FREE_STATEID",
--		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
-+		.op_get_currentstateid = nfsd4_get_freestateid,
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- #ifdef CONFIG_NFSD_PNFS
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f9552357923e..01ab21f8d34d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -7135,49 +7135,57 @@ nfsd4_set_lockstateid(struct nfsd4_compound_state *cstate,
+ 
++static unsigned int nfsd_count3[ARRAY_SIZE(nfsd_procedures4)];
+ struct svc_version	nfsd_version4 = {
+ 	.vs_vers		= 4,
+ 	.vs_nproc		= 2,
+ 	.vs_proc		= nfsd_procedures4,
++	.vs_count		= nfsd_count3,
+ 	.vs_dispatch		= nfsd_dispatch,
+ 	.vs_xdrsize		= NFS4_SVC_XDRSIZE,
+ 	.vs_rpcb_optnl		= true,
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 0ef88d0e67d9..44b157553733 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -743,10 +743,12 @@ static struct svc_procedure		nfsd_procedures2[18] = {
+ };
+ 
+ 
++static unsigned int nfsd_count2[ARRAY_SIZE(nfsd_procedures2)];
+ struct svc_version	nfsd_version2 = {
+ 		.vs_vers	= 2,
+ 		.vs_nproc	= 18,
+ 		.vs_proc	= nfsd_procedures2,
++		.vs_count	= nfsd_count2,
+ 		.vs_dispatch	= nfsd_dispatch,
+ 		.vs_xdrsize	= NFS2_SVC_XDRSIZE,
+ };
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 6cfe41db7f31..9f00384153f4 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -397,6 +397,7 @@ struct svc_version {
+ 	u32			vs_vers;	/* version number */
+ 	u32			vs_nproc;	/* number of procedures */
+ 	struct svc_procedure *	vs_proc;	/* per-procedure info */
++	unsigned int		*vs_count;	/* call counts */
+ 	u32			vs_xdrsize;	/* xdrsize needed for this version */
+ 
+ 	/* Don't register with rpcbind */
+@@ -429,7 +430,6 @@ struct svc_procedure {
+ 	void			(*pc_release)(struct svc_rqst *);
+ 	unsigned int		pc_argsize;	/* argument struct size */
+ 	unsigned int		pc_ressize;	/* result struct size */
+-	unsigned int		pc_count;	/* call count */
+ 	unsigned int		pc_cachetype;	/* cache info (NFS) */
+ 	unsigned int		pc_xdrressize;	/* maximum size of XDR reply */
+ };
+diff --git a/net/sunrpc/stats.c b/net/sunrpc/stats.c
+index 8b6c35ae1d57..1e671333c3d5 100644
+--- a/net/sunrpc/stats.c
++++ b/net/sunrpc/stats.c
+@@ -77,9 +77,9 @@ static const struct file_operations rpc_proc_fops = {
+ /*
+  * Get RPC server stats
   */
+-void svc_seq_show(struct seq_file *seq, const struct svc_stat *statp) {
++void svc_seq_show(struct seq_file *seq, const struct svc_stat *statp)
++{
+ 	const struct svc_program *prog = statp->program;
+-	const struct svc_procedure *proc;
+ 	const struct svc_version *vers;
+ 	unsigned int i, j;
  
- void
--nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate, struct nfsd4_open_downgrade *odp)
-+nfsd4_get_opendowngradestateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &odp->od_stateid);
-+	get_stateid(cstate, &u->open_downgrade.od_stateid);
- }
+@@ -98,11 +98,12 @@ void svc_seq_show(struct seq_file *seq, const struct svc_stat *statp) {
+ 			statp->rpcbadclnt);
  
- void
--nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *cstate, struct nfsd4_delegreturn *drp)
-+nfsd4_get_delegreturnstateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &drp->dr_stateid);
-+	get_stateid(cstate, &u->delegreturn.dr_stateid);
+ 	for (i = 0; i < prog->pg_nvers; i++) {
+-		if (!(vers = prog->pg_vers[i]) || !(proc = vers->vs_proc))
++		vers = prog->pg_vers[i];
++		if (!vers)
+ 			continue;
+ 		seq_printf(seq, "proc%d %u", i, vers->vs_nproc);
+-		for (j = 0; j < vers->vs_nproc; j++, proc++)
+-			seq_printf(seq, " %u", proc->pc_count);
++		for (j = 0; j < vers->vs_nproc; j++)
++			seq_printf(seq, " %u", vers->vs_count[j]);
+ 		seq_putc(seq, '\n');
+ 	}
  }
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index aa643a29fdc6..6452592194ac 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1261,7 +1261,7 @@ svc_process_common(struct svc_rqst *rqstp, struct kvec *argv, struct kvec *resv)
+ 	svc_putnl(resv, RPC_SUCCESS);
  
- void
--nfsd4_get_freestateid(struct nfsd4_compound_state *cstate, struct nfsd4_free_stateid *fsp)
-+nfsd4_get_freestateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &fsp->fr_stateid);
-+	get_stateid(cstate, &u->free_stateid.fr_stateid);
- }
+ 	/* Bump per-procedure stats counter */
+-	procp->pc_count++;
++	versp->vs_count[proc]++;
  
- void
--nfsd4_get_setattrstateid(struct nfsd4_compound_state *cstate, struct nfsd4_setattr *setattr)
-+nfsd4_get_setattrstateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &setattr->sa_stateid);
-+	get_stateid(cstate, &u->setattr.sa_stateid);
- }
- 
- void
--nfsd4_get_closestateid(struct nfsd4_compound_state *cstate, struct nfsd4_close *close)
-+nfsd4_get_closestateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &close->cl_stateid);
-+	get_stateid(cstate, &u->close.cl_stateid);
- }
- 
- void
--nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate, struct nfsd4_locku *locku)
-+nfsd4_get_lockustateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &locku->lu_stateid);
-+	get_stateid(cstate, &u->locku.lu_stateid);
- }
- 
- void
--nfsd4_get_readstateid(struct nfsd4_compound_state *cstate, struct nfsd4_read *read)
-+nfsd4_get_readstateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &read->rd_stateid);
-+	get_stateid(cstate, &u->read.rd_stateid);
- }
- 
- void
--nfsd4_get_writestateid(struct nfsd4_compound_state *cstate, struct nfsd4_write *write)
-+nfsd4_get_writestateid(struct nfsd4_compound_state *cstate,
-+		union nfsd4_op_u *u)
- {
--	get_stateid(cstate, &write->wr_stateid);
-+	get_stateid(cstate, &u->write.wr_stateid);
- }
+ 	/* Initialize storage for argp and resp */
+ 	memset(rqstp->rq_argp, 0, procp->pc_argsize);
 -- 
 2.11.0
 
