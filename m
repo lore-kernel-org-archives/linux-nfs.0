@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:47886 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:59168 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932610AbdELQR0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 12:17:26 -0400
+        with ESMTP id S932610AbdELQRY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 12 May 2017 12:17:24 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/33] sunrpc/auth_gss: nfsd: fix encoder callback prototypes
-Date: Fri, 12 May 2017 18:16:34 +0200
-Message-Id: <20170512161701.22468-7-hch@lst.de>
+Subject: [PATCH 05/33] nfsd: fix encoder callback prototypes
+Date: Fri, 12 May 2017 18:16:33 +0200
+Message-Id: <20170512161701.22468-6-hch@lst.de>
 In-Reply-To: <20170512161701.22468-1-hch@lst.de>
 References: <20170512161701.22468-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -22,90 +22,65 @@ casting to kxdreproc_t and losing all type safety.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 Reviewed-by: Jeff Layton <jlayton@redhat.com>
-Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/auth_gss/gss_rpc_upcall.c |  2 +-
- net/sunrpc/auth_gss/gss_rpc_xdr.c    | 11 ++++++-----
- net/sunrpc/auth_gss/gss_rpc_xdr.h    |  2 +-
- 3 files changed, 8 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4callback.c | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-index f0c6a8c78a56..45ab924da726 100644
---- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
-@@ -55,7 +55,7 @@ enum {
- #define PROC(proc, name)				\
- [GSSX_##proc] = {					\
- 	.p_proc   = GSSX_##proc,			\
--	.p_encode = (kxdreproc_t)gssx_enc_##name,	\
-+	.p_encode = gssx_enc_##name,	\
- 	.p_decode = (kxdrdproc_t)gssx_dec_##name,	\
- 	.p_arglen = GSSX_ARG_##name##_sz,		\
- 	.p_replen = GSSX_RES_##name##_sz, 		\
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index 25d9a9cf7b66..5e54f4743092 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -44,7 +44,7 @@ static int gssx_dec_bool(struct xdr_stream *xdr, u32 *v)
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 0274db6e65d0..bede418237ee 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -468,7 +468,7 @@ static int decode_cb_sequence4res(struct xdr_stream *xdr,
+  * NB: Without this zero space reservation, callbacks over krb5p fail
+  */
+ static void nfs4_xdr_enc_cb_null(struct rpc_rqst *req, struct xdr_stream *xdr,
+-				 void *__unused)
++				 const void *__unused)
+ {
+ 	xdr_reserve_space(xdr, 0);
  }
- 
- static int gssx_enc_buffer(struct xdr_stream *xdr,
--			   gssx_buffer *buf)
-+			   const gssx_buffer *buf)
+@@ -477,8 +477,9 @@ static void nfs4_xdr_enc_cb_null(struct rpc_rqst *req, struct xdr_stream *xdr,
+  * 20.2. Operation 4: CB_RECALL - Recall a Delegation
+  */
+ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
+-				   const struct nfsd4_callback *cb)
++				   const void *data)
  {
- 	__be32 *p;
++	const struct nfsd4_callback *cb = data;
+ 	const struct nfs4_delegation *dp = cb_to_delegation(cb);
+ 	struct nfs4_cb_compound_hdr hdr = {
+ 		.ident = cb->cb_clp->cl_cb_ident,
+@@ -585,8 +586,9 @@ static void encode_cb_layout4args(struct xdr_stream *xdr,
  
-@@ -56,7 +56,7 @@ static int gssx_enc_buffer(struct xdr_stream *xdr,
- }
- 
- static int gssx_enc_in_token(struct xdr_stream *xdr,
--			     struct gssp_in_token *in)
-+			     const struct gssp_in_token *in)
+ static void nfs4_xdr_enc_cb_layout(struct rpc_rqst *req,
+ 				   struct xdr_stream *xdr,
+-				   const struct nfsd4_callback *cb)
++				   const void *data)
  {
- 	__be32 *p;
++	const struct nfsd4_callback *cb = data;
+ 	const struct nfs4_layout_stateid *ls =
+ 		container_of(cb, struct nfs4_layout_stateid, ls_recall);
+ 	struct nfs4_cb_compound_hdr hdr = {
+@@ -631,8 +633,9 @@ static void encode_stateowner(struct xdr_stream *xdr, struct nfs4_stateowner *so
  
-@@ -130,7 +130,7 @@ static int gssx_dec_option(struct xdr_stream *xdr,
- }
- 
- static int dummy_enc_opt_array(struct xdr_stream *xdr,
--				struct gssx_option_array *oa)
-+				const struct gssx_option_array *oa)
+ static void nfs4_xdr_enc_cb_notify_lock(struct rpc_rqst *req,
+ 					struct xdr_stream *xdr,
+-					const struct nfsd4_callback *cb)
++					const void *data)
  {
- 	__be32 *p;
- 
-@@ -348,7 +348,7 @@ static int gssx_dec_status(struct xdr_stream *xdr,
- }
- 
- static int gssx_enc_call_ctx(struct xdr_stream *xdr,
--			     struct gssx_call_ctx *ctx)
-+			     const struct gssx_call_ctx *ctx)
- {
- 	struct gssx_option opt;
- 	__be32 *p;
-@@ -733,8 +733,9 @@ static int gssx_enc_cb(struct xdr_stream *xdr, struct gssx_cb *cb)
- 
- void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 struct gssx_arg_accept_sec_context *arg)
-+				 const void *data)
- {
-+	const struct gssx_arg_accept_sec_context *arg = data;
- 	int err;
- 
- 	err = gssx_enc_call_ctx(xdr, &arg->call_ctx);
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.h b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-index 9d88c6239f01..87cd719ca0ad 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.h
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.h
-@@ -179,7 +179,7 @@ struct gssx_res_accept_sec_context {
- #define gssx_dec_init_sec_context NULL
- void gssx_enc_accept_sec_context(struct rpc_rqst *req,
- 				 struct xdr_stream *xdr,
--				 struct gssx_arg_accept_sec_context *args);
-+				 const void *data);
- int gssx_dec_accept_sec_context(struct rpc_rqst *rqstp,
- 				struct xdr_stream *xdr,
- 				struct gssx_res_accept_sec_context *res);
++	const struct nfsd4_callback *cb = data;
+ 	const struct nfsd4_blocked_lock *nbl =
+ 		container_of(cb, struct nfsd4_blocked_lock, nbl_cb);
+ 	struct nfs4_lockowner *lo = (struct nfs4_lockowner *)nbl->nbl_lock.fl_owner;
+@@ -682,7 +685,7 @@ static int nfs4_xdr_dec_cb_notify_lock(struct rpc_rqst *rqstp,
+ #define PROC(proc, call, argtype, restype)				\
+ [NFSPROC4_CLNT_##proc] = {						\
+ 	.p_proc    = NFSPROC4_CB_##call,				\
+-	.p_encode  = (kxdreproc_t)nfs4_xdr_enc_##argtype,		\
++	.p_encode  = nfs4_xdr_enc_##argtype,		\
+ 	.p_decode  = (kxdrdproc_t)nfs4_xdr_dec_##restype,		\
+ 	.p_arglen  = NFS4_enc_##argtype##_sz,				\
+ 	.p_replen  = NFS4_dec_##restype##_sz,				\
 -- 
 2.11.0
 
