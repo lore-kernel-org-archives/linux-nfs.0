@@ -1,148 +1,202 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38018 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44460 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934356AbdEOOnS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 15 May 2017 10:43:18 -0400
-Date: Mon, 15 May 2017 15:43:06 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-Message-ID: <20170515144306.GB16013@stefanha-x1.localdomain>
-References: <20170512132721.GA654@stefanha-x1.localdomain>
- <20170512143410.GC17983@parsley.fieldses.org>
- <1494601295.10434.1.camel@primarydata.com>
- <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
+        id S1753322AbdEOPR4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 May 2017 11:17:56 -0400
+Subject: [RFC][PATCH 00/21] VFS: Introduce superblock configuration context
+ [ver #3]
+From: David Howells <dhowells@redhat.com>
+To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
+Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 15 May 2017 16:17:53 +0100
+Message-ID: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="WhfpMioaduB5tiZL"
-In-Reply-To: <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---WhfpMioaduB5tiZL
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Here are a set of patches to create a superblock configuration context
+prior to setting up a new mount, populating it with the parsed
+options/binary data, creating the superblock and then effecting the mount.
 
-On Fri, May 12, 2017 at 01:00:47PM -0400, Chuck Lever wrote:
->=20
-> > On May 12, 2017, at 11:01 AM, Trond Myklebust <trondmy@primarydata.com>=
- wrote:
-> >=20
-> > On Fri, 2017-05-12 at 10:34 -0400, J. Bruce Fields wrote:
-> >> On Fri, May 12, 2017 at 09:27:21AM -0400, Stefan Hajnoczi wrote:
-> >>> Hi,
-> >>> I've been working on NFS over the AF_VSOCK transport
-> >>> (https://www.spinics.net/lists/linux-nfs/msg60292.html).  AF_VSOCK
-> >>> resets established network connections when the virtual machine is
-> >>> migrated to a new host.
-> >>>=20
-> >>> The NFS client expects file handles and other state to remain valid
-> >>> upon
-> >>> reconnecting.  This is not the case after VM live migration since
-> >>> the
-> >>> new host does not have the NFS server state from the old host.
-> >>>=20
-> >>> Volatile file handles have been suggested as a way to reflect that
-> >>> state
-> >>> does not persist across reconnect, but the Linux NFS client does
-> >>> not
-> >>> support volatile file handles.
-> >>=20
-> >> That's unlikely to change; the protocol allows the server to
-> >> advertise
-> >> volatile filehandles, but doesn't really give any tools to implement
-> >> them reliably.
-> >>=20
-> >>> I saw NFS 4.1 has a way for a new server running with the same
-> >>> network
-> >>> address of an old server to communicate that it is indeed a new
-> >>> server
-> >>> instance.  If the server owner/scope in the EXCHANGE_ID response
-> >>> does
-> >>> not match the previous server's values then the server is a new
-> >>> instance.
-> >>>=20
-> >>> The implications of encountering a new server owner/scope upon
-> >>> reconnect
-> >>> aren't clear to me and I'm not sure to what extent the Linux
-> >>> implementation handles this case.  Can anyone explain what happens
-> >>> if
-> >>> the NFS client finds a new server owner/scope after reconnecting?
-> >>=20
-> >> I haven't tested it, but if it reconnects to the same IP address and
-> >> finds out it's no longer talking to the same server, I think the only
-> >> correct thing it could do would be to just fail all further access.
-> >>=20
-> >> There's no easy solution.
-> >>=20
-> >> To migrate between NFS servers you need some sort of clustered NFS
-> >> service with shared storage.  We can't currently support concurrent
-> >> access to shared storage from multiple NFS servers, so all that's
-> >> possible active/passive failover.  Also, people that set that up
-> >> normally depend on a floating IP address--I'm not sure if there's an
-> >> equivalent for VSOCK.
-> >>=20
-> >=20
-> > Actually, this might be a use case for re-exporting NFS. If the host
-> > could re-export a NFS mount to the guests, then you don't necessarily
-> > need a clustered filesystem.
-> >=20
-> > OTOH, this would not solve the problem of migrating locks, which is not
-> > really easy to support in the current state model for NFSv4.x.
->=20
-> Some alternatives:
->=20
-> - Make the local NFS server's exports read-only, NFSv3
->   only, and do not support locking. Ensure that the
->   filehandles and namespace are the same on every NFS
->   server.
->=20
-> - As Trond suggested, all the local NFS servers accessed
->   via AF_SOCK should re-export NFS filesystems that
->   are located elsewhere and are visible everywhere.
->=20
-> - Ensure there is an accompanying NFSv4 FS migration event
->   that moves the client's files (and possibly its open and
->   lock state) from the local NFS server to the destination
->   NFS server concurrent with the live migration.
->=20
->   If the client is aware of the FS migration, it will expect
->   the filehandles to be the same, but it can reconstruct
->   the open and lock state on the destination server (if that
->   server allows GRACEful recovery for that client).
->=20
->   This is possible in the protocol and implemented in the
->   Linux NFS client, but none of it is implemented in the
->   Linux NFS server.
+This allows namespaces and other information to be conveyed through the
+mount procedure.  It also allows extra error information to be returned
+(so many things can go wrong during a mount that a small integer isn't
+really sufficient to convey the issue).
 
-Great, thanks for the pointers everyone.
+This also allows Miklós Szeredi's idea of doing:
 
-It's clear to me that AF_VSOCK won't get NFS migration for free.
-Initially live migration will not be supported.
+	fd = fsopen("nfs");
+	write(fd, "option=val", ...);
+	fsmount(fd, "/mnt");
 
-Re-exporting sounds interesting - perhaps the new host could re-export
-the old host's file systems.  I'll look into the spec and code.
+that he presented at LSF-2017 to be implemented (see the relevant patches
+in the series), to which I can add:
 
-Stefan
+	read(fd, error_buffer, ...);
 
---WhfpMioaduB5tiZL
-Content-Type: application/pgp-signature; name="signature.asc"
+to read back any error message.  I didn't use netlink as that would make it
+depend on CONFIG_NET and would introduce network namespacing issues.
 
------BEGIN PGP SIGNATURE-----
+I've implemented mount context handling for procfs and nfs.
 
-iQEcBAEBAgAGBQJZGb56AAoJEJykq7OBq3PIKzcIALL1zUpPd5uyjy/9Io43bGOK
-YEka4IIGU2EIcLVXf3fclIfT2pgfiPSgz2NF6egjEkdys6Q9d3KGXW1P3rw66knz
-Up6OWlBMJVm0A8AJLXdgj7roGkXQVeJc+O0CzU6zxuVqD3KALlOIFcq9CRxbjd8y
-hCEQkBAj2gDPiKRm6dVS2AIeDRma9sosmGjCPc/ELesvFtbezvQTzH8PRCqK1VYJ
-nKj200N72Jo5LAB/G7gte0Y4vV9SaRcQY68glEjiWVmq8Bkz1Gj6I/iFJHNnii8Y
-P5K8Auo7xUASTVJJYeQOu3W2QsrbD6JJvsaHbhMeK05abl85JHxQJ7djWtU4ki0=
-=QBDQ
------END PGP SIGNATURE-----
+Significant changes:
 
---WhfpMioaduB5tiZL--
+ ver #3:
+
+ (*) Rebased on 4.12-rc1.
+
+ (*) Split the NFS patch up somewhat.
+
+ ver #2:
+
+ (*) Removed the ->fill_super() from sb_config_operations and passed it in
+     directly to functions that want to call it.  NFS now calls
+     nfs_fill_super() directly rather than jumping through a pointer to it
+     since there's only the one option at the moment.
+
+ (*) Removed ->mnt_ns and ->sb from sb_config and moved ->pid_ns into
+     proc_sb_config.
+
+ (*) Renamed create_super -> get_tree.
+
+ (*) Renamed struct mount_context to struct sb_config and amended various
+     variable names.
+
+ (*) sys_fsmount() acquired AT_* flags and MS_* flags (for MNT_* flags)
+     arguments.
+
+ ver #1:
+
+ (*) Split the sb_config stuff out into its own header.
+
+ (*) Support non-context aware filesystems through a special set of
+     sb_config operations.
+
+ (*) Stored the created superblock and root dentry into the sb_config after
+     creation rather than directly into a vfsmount.  This allows some
+     arguments to be removed to various NFS functions.
+
+ (*) Added an explicit superblock-creation step.  This allows a created
+     superblock to then be mounted multiple times.
+
+ (*) Added a flag to say that the sb_config is degraded and cannot have
+     another go at having a superblock creation whilst getting rid of the
+     one that says it's already mounted.
+
+Further developments:
+
+ (*) Implement sb reconfiguration (for now it returns ENOANO).
+
+ (*) Implement mount context support in more filesystems, ext4 being next
+     on my list.
+
+ (*) Move the walk-from-root stuff that nfs has to generic code so that you
+     can do something akin to:
+
+	mount /dev/sda1:/foo/bar /mnt
+
+     See nfs_follow_remote_path() and mount_subtree().  This is slightly
+     tricky in NFS as we have to prevent referral loops.
+
+ (*) Work out how to get at the error message incurred by submounts
+     encountered during nfs_follow_remote_path().
+
+     Should the error message be moved to task_struct and made more
+     general, perhaps retrieved with a prctl() function?
+
+ (*) Clean up/consolidate the security functions.  Possibly add a
+     validation hook to be called at the same time as the mount context
+     validate op.
+
+The patches can be found here also:
+
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=mount-context
+
+David
+---
+David Howells (21):
+      Provide a function to create a NUL-terminated string from unterminated data
+      Clean up whitespace in fs/namespace.c
+      VFS: Make get_mnt_ns() return the namespace
+      VFS: Make get_filesystem() return the affected filesystem
+      VFS: Provide empty name qstr
+      VFS: Introduce a superblock configuration context
+      Implement fsopen() to prepare for a mount
+      Implement fsmount() to effect a pre-configured mount
+      Sample program for driving fsopen/fsmount
+      procfs: Move proc_fill_super() to fs/proc/root.c
+      proc: Add superblock config support to procfs
+      NFS: Move mount bits into their own file
+      NFS: Constify mount argument match tables
+      NFS: Rename struct nfs_parsed_mount_data to struct nfs_sb_config
+      NFS: Split nfs_parse_mount_options()
+      NFS: Deindent nfs_sb_config_parse_option()
+      NFS: Add a small buffer in nfs_sb_config to avoid string dup
+      NFS: Do some tidying of the parsing code
+      NFS: Add mount context support.
+      Support legacy filesystems
+      Add commands to create or update a superblock
+
+
+ Documentation/filesystems/mounting.txt |  470 ++++++++
+ arch/x86/entry/syscalls/syscall_32.tbl |    2 
+ arch/x86/entry/syscalls/syscall_64.tbl |    2 
+ fs/Makefile                            |    3 
+ fs/dcache.c                            |    8 
+ fs/filesystems.c                       |    3 
+ fs/fsopen.c                            |  302 +++++
+ fs/gfs2/dir.c                          |    3 
+ fs/internal.h                          |    4 
+ fs/libfs.c                             |   17 
+ fs/mount.h                             |    3 
+ fs/namei.c                             |    3 
+ fs/namespace.c                         |  495 +++++++--
+ fs/nfs/Makefile                        |    2 
+ fs/nfs/client.c                        |   74 +
+ fs/nfs/getroot.c                       |   76 +
+ fs/nfs/internal.h                      |  141 +--
+ fs/nfs/mount.c                         | 1499 +++++++++++++++++++++++++++
+ fs/nfs/namespace.c                     |   66 +
+ fs/nfs/nfs3_fs.h                       |    2 
+ fs/nfs/nfs3client.c                    |    6 
+ fs/nfs/nfs3proc.c                      |    2 
+ fs/nfs/nfs4_fs.h                       |    4 
+ fs/nfs/nfs4client.c                    |   82 +
+ fs/nfs/nfs4namespace.c                 |  208 ++--
+ fs/nfs/nfs4proc.c                      |    3 
+ fs/nfs/nfs4super.c                     |  220 ++--
+ fs/nfs/proc.c                          |    2 
+ fs/nfs/super.c                         | 1785 ++------------------------------
+ fs/nsfs.c                              |    3 
+ fs/pipe.c                              |    3 
+ fs/proc/inode.c                        |   50 -
+ fs/proc/internal.h                     |    6 
+ fs/proc/root.c                         |  210 +++-
+ fs/sb_config.c                         |  524 +++++++++
+ fs/super.c                             |  110 +-
+ include/linux/dcache.h                 |    5 
+ include/linux/fs.h                     |   16 
+ include/linux/lsm_hooks.h              |   47 +
+ include/linux/mount.h                  |    4 
+ include/linux/nfs_xdr.h                |    7 
+ include/linux/sb_config.h              |  100 ++
+ include/linux/security.h               |   40 +
+ include/linux/string.h                 |    1 
+ include/linux/syscalls.h               |    3 
+ include/uapi/linux/magic.h             |    1 
+ kernel/sys_ni.c                        |    4 
+ mm/util.c                              |   24 
+ samples/fsmount/test-fsmount.c         |   79 +
+ security/security.c                    |   35 +
+ security/selinux/hooks.c               |  202 +++-
+ 51 files changed, 4588 insertions(+), 2373 deletions(-)
+ create mode 100644 Documentation/filesystems/mounting.txt
+ create mode 100644 fs/fsopen.c
+ create mode 100644 fs/nfs/mount.c
+ create mode 100644 fs/sb_config.c
+ create mode 100644 include/linux/sb_config.h
+ create mode 100644 samples/fsmount/test-fsmount.c
+
