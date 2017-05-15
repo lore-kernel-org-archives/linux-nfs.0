@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44684 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44294 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753276AbdEOPSs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 15 May 2017 11:18:48 -0400
-Subject: [PATCH 03/21] VFS: Make get_mnt_ns() return the namespace [ver #3]
+        id S965636AbdEOPSj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 May 2017 11:18:39 -0400
+Subject: [PATCH 02/21] Clean up whitespace in fs/namespace.c [ver #3]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 15 May 2017 16:18:43 +0100
-Message-ID: <149486152391.23956.2663457419484359121.stgit@warthog.procyon.org.uk>
+Date: Mon, 15 May 2017 16:18:35 +0100
+Message-ID: <149486151558.23956.7339492677294760449.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
 References: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -17,29 +17,34 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make get_mnt_ns() return the namespace it got a ref on for consistency with
-other namespace ref getting functions.
+Clean up line terminal whitespace in fs/namespace.c.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/mount.h |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/namespace.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/mount.h b/fs/mount.h
-index bf1fda6eed8f..02ef292a77d7 100644
---- a/fs/mount.h
-+++ b/fs/mount.h
-@@ -108,9 +108,10 @@ static inline void detach_mounts(struct dentry *dentry)
- 	__detach_mounts(dentry);
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 8bd3e4d448b9..c076787871e7 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1656,7 +1656,7 @@ void __detach_mounts(struct dentry *dentry)
+ 	namespace_unlock();
  }
  
--static inline void get_mnt_ns(struct mnt_namespace *ns)
-+static inline struct mnt_namespace *get_mnt_ns(struct mnt_namespace *ns)
- {
- 	atomic_inc(&ns->count);
-+	return ns;
- }
+-/* 
++/*
+  * Is the caller allowed to modify his namespace?
+  */
+ static inline bool may_mount(void)
+@@ -2210,7 +2210,7 @@ static int do_loopback(struct path *path, const char *old_name,
  
- extern seqlock_t mount_lock;
+ 	err = -EINVAL;
+ 	if (mnt_ns_loop(old_path.dentry))
+-		goto out; 
++		goto out;
+ 
+ 	mp = lock_mount(path);
+ 	err = PTR_ERR(mp);
 
