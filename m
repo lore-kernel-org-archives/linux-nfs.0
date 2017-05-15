@@ -1,88 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45126 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35056 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965636AbdEOPSa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 15 May 2017 11:18:30 -0400
-Subject: [PATCH 01/21] Provide a function to create a NUL-terminated string
- from unterminated data [ver #3]
-From: David Howells <dhowells@redhat.com>
-To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 15 May 2017 16:18:01 +0100
-Message-ID: <149486148141.23956.5613630461913190505.stgit@warthog.procyon.org.uk>
-In-Reply-To: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
-References: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
+        id S933342AbdEOPo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 May 2017 11:44:27 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 371CF80F9F
+        for <linux-nfs@vger.kernel.org>; Mon, 15 May 2017 15:44:26 +0000 (UTC)
+Date: Mon, 15 May 2017 11:44:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Eryu Guan <eguan@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [4.12-rc1 regression] failed to set posix acl on NFSv3 mount
+Message-ID: <20170515154424.GC9697@parsley.fieldses.org>
+References: <20170515112638.GU7250@eguan.usersys.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170515112638.GU7250@eguan.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a function, kmemdup_nul(), that will create a NUL-terminated string
-from an unterminated character array where the length is known in advance.
+On Mon, May 15, 2017 at 07:26:38PM +0800, Eryu Guan wrote:
+> I found xfstests generic/053 generic/105 generic/307 and generic/319
+> started to fail on NFSv3 mount against Linux server running v4.12-rc1
+> kernel. They all try to set acl (xattr) on file/dir reside on NFSv3
+> mount. And this is a regression, 4.11 Linux server worked fine. A simple
+> reproducer would be:
+> 
+> mount linux-server:/export /mnt/nfs
+> touch /mnt/nfs/testfile
+> setfattr -n user.test -v helloworld /mnt/nfs/testfile
+> 
+> The last setfattr returned EACCES
+> 
+> setfattr: /mnt/nfs/testfile: Operation not supported
+> 
+> And I bisected this to commit 51f56777
 
-This is better than kstrndup() in situations where we already know the
-string length as the strnlen() in kstrndup() is superfluous.
+Oh, yikes, very sorry about that, the patch should not have gone
+upstream.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+This was my original approach to the problem, but I abandoned it in part
+because someone pointed out the problem you found.  And Neil suggested
+the approach used in the better fix, which is upstream as e6838a29ecb
+"nfsd: check for oversized NFSv2/v3 arguments".
 
- include/linux/string.h |    1 +
- mm/util.c              |   24 ++++++++++++++++++++++++
- 2 files changed, 25 insertions(+)
+But somehow the old version must have been left in the tree branch I
+gave Linus to pull?
 
-diff --git a/include/linux/string.h b/include/linux/string.h
-index 537918f8a98e..3dd944cfe171 100644
---- a/include/linux/string.h
-+++ b/include/linux/string.h
-@@ -131,6 +131,7 @@ extern char *kstrdup(const char *s, gfp_t gfp) __malloc;
- extern const char *kstrdup_const(const char *s, gfp_t gfp);
- extern char *kstrndup(const char *s, size_t len, gfp_t gfp);
- extern void *kmemdup(const void *src, size_t len, gfp_t gfp);
-+extern char *kmemdup_nul(const char *s, size_t len, gfp_t gfp);
- 
- extern char **argv_split(gfp_t gfp, const char *str, int *argcp);
- extern void argv_free(char **argv);
-diff --git a/mm/util.c b/mm/util.c
-index 464df3489903..cc9f0a2810bd 100644
---- a/mm/util.c
-+++ b/mm/util.c
-@@ -83,6 +83,8 @@ EXPORT_SYMBOL(kstrdup_const);
-  * @s: the string to duplicate
-  * @max: read at most @max chars from @s
-  * @gfp: the GFP mask used in the kmalloc() call when allocating memory
-+ *
-+ * Note: Use kmemdup_nul() instead if the size is known exactly.
-  */
- char *kstrndup(const char *s, size_t max, gfp_t gfp)
- {
-@@ -121,6 +123,28 @@ void *kmemdup(const void *src, size_t len, gfp_t gfp)
- EXPORT_SYMBOL(kmemdup);
- 
- /**
-+ * kmemdup_nul - Create a NUL-terminated string from unterminated data
-+ * @s: The data to stringify
-+ * @len: The size of the data
-+ * @gfp: the GFP mask used in the kmalloc() call when allocating memory
-+ */
-+char *kmemdup_nul(const char *s, size_t len, gfp_t gfp)
-+{
-+	char *buf;
-+
-+	if (!s)
-+		return NULL;
-+
-+	buf = kmalloc_track_caller(len + 1, gfp);
-+	if (buf) {
-+		memcpy(buf, s, len);
-+		buf[len] = '\0';
-+	}
-+	return buf;
-+}
-+EXPORT_SYMBOL(kmemdup_nul);
-+
-+/**
-  * memdup_user - duplicate memory region from user space
-  *
-  * @src: source address in user space
+Apologies, I'll take another look to make sure I'm not still confused
+about somethign, and then send a revert.  And I'll try to keep out an
+eye for the stable backports to NAK those....
 
+--b.
+
+> 
+> commit 51f567777799c9d85a778302b9eb61cf15214a98
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Thu Apr 6 22:36:31 2017 -0400
+> 
+>     nfsd: check for oversized NFSv2/v3 arguments
+> 
+> And I only need to revert this hunk to "fix" the regression:
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index e770abe..6ef19cf 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -336,8 +336,7 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
+>  {
+>         char *cp = (char *)p;
+>         struct kvec *vec = &rqstp->rq_arg.head[0];
+> -       return cp >= (char*)vec->iov_base
+> -               && cp <= (char*)vec->iov_base + vec->iov_len;
+> +       return cp == (char *)vec->iov_base + vec->iov_len;
+>  }
+>  
+>  static inline int
+> 
+> Debug log printing out cp, iov_base and iov_base + iov_len confirmed
+> that cp can be greater than iov_base but smaller than iov_base + iov_len
+> 
+> [10868.819939] xdr_argsize_check: cp == ffff88020ea6f094, iov_base == ffff88020ea6f068, iov_base + iov_len == ffff88020ea6f104
+> 
+> Please help take a look. If you need more info please let me know.
+> 
+> Thanks,
+> Eryu
