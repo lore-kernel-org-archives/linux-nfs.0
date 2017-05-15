@@ -1,138 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:58204 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S933104AbdEOLSj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 15 May 2017 07:18:39 -0400
-Date: Mon, 15 May 2017 12:42:46 +0200
-From: Jan Kara <jack@suse.cz>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-        linux-block@vger.kernel.org, dhowells@redhat.com,
-        akpm@linux-foundation.org, hch@infradead.org,
-        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
-        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
-        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
-        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
-        bo.li.liu@oracle.com
-Subject: Re: [PATCH v4 15/27] fs: retrofit old error reporting API onto new
- infrastructure
-Message-ID: <20170515104246.GC16182@quack2.suse.cz>
-References: <20170509154930.29524-1-jlayton@redhat.com>
- <20170509154930.29524-16-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56992 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932309AbdEOL0q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 May 2017 07:26:46 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 9AE244E4C8
+        for <linux-nfs@vger.kernel.org>; Mon, 15 May 2017 11:26:40 +0000 (UTC)
+Date: Mon, 15 May 2017 19:26:38 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [4.12-rc1 regression] failed to set posix acl on NFSv3 mount
+Message-ID: <20170515112638.GU7250@eguan.usersys.redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170509154930.29524-16-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 09-05-17 11:49:18, Jeff Layton wrote:
-> Now that we have a better way to store and report errors that occur
-> during writeback, we need to convert the existing codebase to use it. We
-> could just adapt all of the filesystem code and related infrastructure
-> to the new API, but that's a lot of churn.
-> 
-> When it comes to setting errors in the mapping, filemap_set_wb_error is
-> a drop-in replacement for mapping_set_error. Turn that function into a
-> simple wrapper around the new one.
-> 
-> Because we want to ensure that writeback errors are always reported at
-> fsync time, inject filemap_report_wb_error calls much closer to the
-> syscall boundary, in call_fsync.
-> 
-> For fsync calls (and things like the nfsd equivalent), we either return
-> the error that the fsync operation returns, or the one returned by
-> filemap_report_wb_error. In both cases, we advance the file->f_wb_err to
-> the latest value. This allows us to provide new fsync semantics that
-> will return errors that may have occurred previously and been viewed
-> via other file descriptors.
-> 
-> The final piece of the puzzle is what to do about filemap_check_errors
-> calls that are being called directly or via filemap_* functions. Here,
-> we must take a little "creative license".
-> 
-> Since we now handle advancing the file->f_wb_err value at the generic
-> filesystem layer, we no longer need those callers to clear errors out
-> of the mapping or advance an errseq_t.
-> 
-> A lot of the existing codebase relies on being getting an error back
-> from those functions when there is a writeback problem, so we do still
-> want to have them report writeback errors somehow.
-> 
-> When reporting writeback errors, we will always report errors that have
-> occurred since a particular point in time. With the old writeback error
-> reporting, the time we used was "since it was last tested/cleared" which
-> is entirely arbitrary and potentially racy. Now, we can at least report
-> the latest error that has occurred since an arbitrary point in time
-> (represented as a sampled errseq_t value).
-> 
-> In the case where we don't have a struct file to work with, this patch
-> just has the wrappers sample the current mapping->wb_err value, and use
-> that as an arbitrary point from which to check for errors.
+Hi all,
 
-I think this is really dangerous and we shouldn't do this. You are quite
-likely to lose IO errors in such calls because you will ignore all errors
-that happened during previous background writeback or even for IO that
-managed to complete before we called filemap_fdatawait(). Maybe we need to
-keep the original set-clear-bit IO error reporting for these cases, until
-we can convert them to fdatawait_range_since()?
+I found xfstests generic/053 generic/105 generic/307 and generic/319
+started to fail on NFSv3 mount against Linux server running v4.12-rc1
+kernel. They all try to set acl (xattr) on file/dir reside on NFSv3
+mount. And this is a regression, 4.11 Linux server worked fine. A simple
+reproducer would be:
 
-> That's probably not "correct" in all cases, particularly in the case of
-> something like filemap_fdatawait, but I'm not sure it's any worse than
-> what we already have, and this gives us a basis from which to work.
-> 
-> A lot of those callers will likely want to change to a model where they
-> sample the errseq_t much earlier (perhaps when starting a transaction),
-> store it in an appropriate place and then use that value later when
-> checking to see if an error occurred.
-> 
-> That will almost certainly take some involvement from other subsystem
-> maintainers. I'm quite open to adding new API functions to help enable
-> this if that would be helpful, but I don't really want to do that until
-> I better understand what's needed.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+mount linux-server:/export /mnt/nfs
+touch /mnt/nfs/testfile
+setfattr -n user.test -v helloworld /mnt/nfs/testfile
 
-...
+The last setfattr returned EACCES
 
-> diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-> index 5f7317875a67..7ce13281925f 100644
-> --- a/fs/f2fs/file.c
-> +++ b/fs/f2fs/file.c
-> @@ -187,6 +187,7 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
->  		.nr_to_write = LONG_MAX,
->  		.for_reclaim = 0,
->  	};
-> +	errseq_t since = READ_ONCE(file->f_wb_err);
->  
->  	if (unlikely(f2fs_readonly(inode->i_sb)))
->  		return 0;
-> @@ -265,6 +266,8 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
->  	}
->  
->  	ret = wait_on_node_pages_writeback(sbi, ino);
-> +	if (ret == 0)
-> +		ret = filemap_check_wb_error(NODE_MAPPING(sbi), since);
->  	if (ret)
->  		goto out;
+setfattr: /mnt/nfs/testfile: Operation not supported
 
-So this conversion looks wrong and actually points to a larger issue with
-the scheme. The problem is there are two mappings that come into play here
-- file_inode(file)->i_mapping which is the data mapping and
-NODE_MAPPING(sbi) which is the metadata mapping (and this is not a problem
-specific to f2fs. For example ext2 also uses this scheme where block
-devices' mapping is the metadata mapping). And we need to merge error
-information from these two mappings so for the stamping scheme to work,
-we'd need two stamps stored in struct file. One for data mapping and one
-for metadata mapping. Or maybe there's some more clever scheme but for now
-I don't see one...
+And I bisected this to commit 51f56777
 
-								Honza
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+commit 51f567777799c9d85a778302b9eb61cf15214a98
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Apr 6 22:36:31 2017 -0400
+
+    nfsd: check for oversized NFSv2/v3 arguments
+
+And I only need to revert this hunk to "fix" the regression:
+
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index e770abe..6ef19cf 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -336,8 +336,7 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
+ {
+        char *cp = (char *)p;
+        struct kvec *vec = &rqstp->rq_arg.head[0];
+-       return cp >= (char*)vec->iov_base
+-               && cp <= (char*)vec->iov_base + vec->iov_len;
++       return cp == (char *)vec->iov_base + vec->iov_len;
+ }
+ 
+ static inline int
+
+Debug log printing out cp, iov_base and iov_base + iov_len confirmed
+that cp can be greater than iov_base but smaller than iov_base + iov_len
+
+[10868.819939] xdr_argsize_check: cp == ffff88020ea6f094, iov_base == ffff88020ea6f068, iov_base + iov_len == ffff88020ea6f104
+
+Please help take a look. If you need more info please let me know.
+
+Thanks,
+Eryu
