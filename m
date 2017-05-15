@@ -1,78 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45632 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935069AbdEOQCy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 15 May 2017 12:02:54 -0400
-Date: Mon, 15 May 2017 12:02:48 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-Message-ID: <20170515160248.GD9697@parsley.fieldses.org>
-References: <20170512132721.GA654@stefanha-x1.localdomain>
- <20170512143410.GC17983@parsley.fieldses.org>
- <1494601295.10434.1.camel@primarydata.com>
- <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
- <20170515144306.GB16013@stefanha-x1.localdomain>
+Received: from userp1040.oracle.com ([156.151.31.81]:26469 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756316AbdEORpD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 May 2017 13:45:03 -0400
+Date: Mon, 15 May 2017 10:42:51 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
+        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
+        linux-f2fs-devel@lists.sourceforge.net,
+        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+        linux-block@vger.kernel.org, fstests@vger.kernel.org,
+        dhowells@redhat.com, akpm@linux-foundation.org, hch@infradead.org,
+        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
+        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
+        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
+        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
+        bo.li.liu@oracle.com
+Subject: Re: [xfstests PATCH v2 2/3] ext4: allow ext4 to use $SCRATCH_LOGDEV
+Message-ID: <20170515174251.GD4514@birch.djwong.org>
+References: <20170509161245.29908-1-jlayton@redhat.com>
+ <20170509161245.29908-3-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170515144306.GB16013@stefanha-x1.localdomain>
+In-Reply-To: <20170509161245.29908-3-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 15, 2017 at 03:43:06PM +0100, Stefan Hajnoczi wrote:
-> On Fri, May 12, 2017 at 01:00:47PM -0400, Chuck Lever wrote:
-> > 
-> > > On May 12, 2017, at 11:01 AM, Trond Myklebust <trondmy@primarydata.com> wrote:
-> > > Actually, this might be a use case for re-exporting NFS. If the host
-> > > could re-export a NFS mount to the guests, then you don't necessarily
-> > > need a clustered filesystem.
-> > > 
-> > > OTOH, this would not solve the problem of migrating locks, which is not
-> > > really easy to support in the current state model for NFSv4.x.
-> > 
-> > Some alternatives:
-> > 
-> > - Make the local NFS server's exports read-only, NFSv3
-> >   only, and do not support locking. Ensure that the
-> >   filehandles and namespace are the same on every NFS
-> >   server.
-> > 
-> > - As Trond suggested, all the local NFS servers accessed
-> >   via AF_SOCK should re-export NFS filesystems that
-> >   are located elsewhere and are visible everywhere.
-> > 
-> > - Ensure there is an accompanying NFSv4 FS migration event
-> >   that moves the client's files (and possibly its open and
-> >   lock state) from the local NFS server to the destination
-> >   NFS server concurrent with the live migration.
-> > 
-> >   If the client is aware of the FS migration, it will expect
-> >   the filehandles to be the same, but it can reconstruct
-> >   the open and lock state on the destination server (if that
-> >   server allows GRACEful recovery for that client).
-> > 
-> >   This is possible in the protocol and implemented in the
-> >   Linux NFS client, but none of it is implemented in the
-> >   Linux NFS server.
+On Tue, May 09, 2017 at 12:12:44PM -0400, Jeff Layton wrote:
+> The writeback error handling test requires that you put the journal on a
+> separate device. This allows us to use dmerror to simulate data
+> writeback failure, without affecting the journal.
 > 
-> Great, thanks for the pointers everyone.
+> xfs already has infrastructure for this (a'la $SCRATCH_LOGDEV), so wire
+> up the ext4 code so that it can do the same thing when _scratch_mkfs is
+> called.
 > 
-> It's clear to me that AF_VSOCK won't get NFS migration for free.
-> Initially live migration will not be supported.
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+
+Looks ok,
+Reviewed-by: Darrick J. Wong <darrick.wong@oracle.com>
+
+--D
+
+> ---
+>  common/rc | 3 +++
+>  1 file changed, 3 insertions(+)
 > 
-> Re-exporting sounds interesting - perhaps the new host could re-export
-> the old host's file systems.  I'll look into the spec and code.
-
-I've since forgotten the limitations of the nfs reexport series.
-
-Locking (lock recovery, specifically) seems like the biggest problem to
-solve to improve clustered nfs service; without that, it might actually
-be easier than reexporting, I don't know.  If there's a use case for
-clustered nfs service that doesn't support file locking, maybe we should
-look into it.
-
---b.
+> diff --git a/common/rc b/common/rc
+> index 257b1903359d..8b815d9c8c33 100644
+> --- a/common/rc
+> +++ b/common/rc
+> @@ -675,6 +675,9 @@ _scratch_mkfs_ext4()
+>  	local tmp=`mktemp`
+>  	local mkfs_status
+>  
+> +	[ "$USE_EXTERNAL" = yes -a ! -z "$SCRATCH_LOGDEV" ] && \
+> +	    $mkfs_cmd -O journal_dev $SCRATCH_LOGDEV && \
+> +	    mkfs_cmd="$mkfs_cmd -J device=$SCRATCH_LOGDEV"
+>  
+>  	_scratch_do_mkfs "$mkfs_cmd" "$mkfs_filter" $* 2>$tmp.mkfserr 1>$tmp.mkfsstd
+>  	mkfs_status=$?
+> -- 
+> 2.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
