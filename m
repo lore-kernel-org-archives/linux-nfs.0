@@ -1,284 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f193.google.com ([209.85.217.193]:35310 "EHLO
-        mail-ua0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751711AbdEOB6W (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 May 2017 21:58:22 -0400
-Received: by mail-ua0-f193.google.com with SMTP id e28so9078928uah.2
-        for <linux-nfs@vger.kernel.org>; Sun, 14 May 2017 18:58:21 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:58204 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S933104AbdEOLSj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 May 2017 07:18:39 -0400
+Date: Mon, 15 May 2017 12:42:46 +0200
+From: Jan Kara <jack@suse.cz>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
+        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
+        linux-f2fs-devel@lists.sourceforge.net,
+        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
+        linux-block@vger.kernel.org, dhowells@redhat.com,
+        akpm@linux-foundation.org, hch@infradead.org,
+        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
+        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
+        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
+        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
+        bo.li.liu@oracle.com
+Subject: Re: [PATCH v4 15/27] fs: retrofit old error reporting API onto new
+ infrastructure
+Message-ID: <20170515104246.GC16182@quack2.suse.cz>
+References: <20170509154930.29524-1-jlayton@redhat.com>
+ <20170509154930.29524-16-jlayton@redhat.com>
 MIME-Version: 1.0
-From: Guido Vranken <guidovranken@gmail.com>
-Date: Mon, 15 May 2017 03:58:20 +0200
-Message-ID: <CAO5O-ELFAoyHZWnvyh_vtdB0vJiEf-wsBgKF8SG+Y_Bj4fK1kw@mail.gmail.com>
-Subject: [PATCH] rpcbind: libtirpc fixes for CVE-2017-8779
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170509154930.29524-16-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix for CVE-2017-8779
-Signed-off-by: Guido Vranken <guidovranken@gmail.com>
----
- src/rpc_generic.c |  8 ++++++++
- src/rpcb_prot.c   | 22 ++++++++++++++--------
- src/rpcb_st_xdr.c |  9 +++++----
- src/xdr.c         | 30 +++++++++++++++++++++++++-----
- 4 files changed, 52 insertions(+), 17 deletions(-)
+On Tue 09-05-17 11:49:18, Jeff Layton wrote:
+> Now that we have a better way to store and report errors that occur
+> during writeback, we need to convert the existing codebase to use it. We
+> could just adapt all of the filesystem code and related infrastructure
+> to the new API, but that's a lot of churn.
+> 
+> When it comes to setting errors in the mapping, filemap_set_wb_error is
+> a drop-in replacement for mapping_set_error. Turn that function into a
+> simple wrapper around the new one.
+> 
+> Because we want to ensure that writeback errors are always reported at
+> fsync time, inject filemap_report_wb_error calls much closer to the
+> syscall boundary, in call_fsync.
+> 
+> For fsync calls (and things like the nfsd equivalent), we either return
+> the error that the fsync operation returns, or the one returned by
+> filemap_report_wb_error. In both cases, we advance the file->f_wb_err to
+> the latest value. This allows us to provide new fsync semantics that
+> will return errors that may have occurred previously and been viewed
+> via other file descriptors.
+> 
+> The final piece of the puzzle is what to do about filemap_check_errors
+> calls that are being called directly or via filemap_* functions. Here,
+> we must take a little "creative license".
+> 
+> Since we now handle advancing the file->f_wb_err value at the generic
+> filesystem layer, we no longer need those callers to clear errors out
+> of the mapping or advance an errseq_t.
+> 
+> A lot of the existing codebase relies on being getting an error back
+> from those functions when there is a writeback problem, so we do still
+> want to have them report writeback errors somehow.
+> 
+> When reporting writeback errors, we will always report errors that have
+> occurred since a particular point in time. With the old writeback error
+> reporting, the time we used was "since it was last tested/cleared" which
+> is entirely arbitrary and potentially racy. Now, we can at least report
+> the latest error that has occurred since an arbitrary point in time
+> (represented as a sampled errseq_t value).
+> 
+> In the case where we don't have a struct file to work with, this patch
+> just has the wrappers sample the current mapping->wb_err value, and use
+> that as an arbitrary point from which to check for errors.
 
-diff --git a/src/rpc_generic.c b/src/rpc_generic.c
-index 2f09a8f..589cbd5 100644
---- a/src/rpc_generic.c
-+++ b/src/rpc_generic.c
-@@ -615,6 +615,9 @@ __rpc_taddr2uaddr_af(int af, const struct netbuf *nbuf)
+I think this is really dangerous and we shouldn't do this. You are quite
+likely to lose IO errors in such calls because you will ignore all errors
+that happened during previous background writeback or even for IO that
+managed to complete before we called filemap_fdatawait(). Maybe we need to
+keep the original set-clear-bit IO error reporting for these cases, until
+we can convert them to fdatawait_range_since()?
 
-     switch (af) {
-     case AF_INET:
-+        if (nbuf->len < sizeof(*sin)) {
-+            return NULL;
-+        }
-         sin = nbuf->buf;
-         if (inet_ntop(af, &sin->sin_addr, namebuf, sizeof namebuf)
-             == NULL)
-@@ -626,6 +629,9 @@ __rpc_taddr2uaddr_af(int af, const struct netbuf *nbuf)
-         break;
- #ifdef INET6
-     case AF_INET6:
-+        if (nbuf->len < sizeof(*sin6)) {
-+            return NULL;
-+        }
-         sin6 = nbuf->buf;
-         if (inet_ntop(af, &sin6->sin6_addr, namebuf6, sizeof namebuf6)
-             == NULL)
-@@ -667,6 +673,8 @@ __rpc_uaddr2taddr_af(int af, const char *uaddr)
+> That's probably not "correct" in all cases, particularly in the case of
+> something like filemap_fdatawait, but I'm not sure it's any worse than
+> what we already have, and this gives us a basis from which to work.
+> 
+> A lot of those callers will likely want to change to a model where they
+> sample the errseq_t much earlier (perhaps when starting a transaction),
+> store it in an appropriate place and then use that value later when
+> checking to see if an error occurred.
+> 
+> That will almost certainly take some involvement from other subsystem
+> maintainers. I'm quite open to adding new API functions to help enable
+> this if that would be helpful, but I don't really want to do that until
+> I better understand what's needed.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-     port = 0;
-     sin = NULL;
-+    if (uaddr == NULL)
-+        return NULL;
-     addrstr = strdup(uaddr);
-     if (addrstr == NULL)
-         return NULL;
-diff --git a/src/rpcb_prot.c b/src/rpcb_prot.c
-index 43fd385..a923c8e 100644
---- a/src/rpcb_prot.c
-+++ b/src/rpcb_prot.c
-@@ -41,6 +41,7 @@
- #include <rpc/types.h>
- #include <rpc/xdr.h>
- #include <rpc/rpcb_prot.h>
-+#include "rpc_com.h"
+...
 
- bool_t
- xdr_rpcb(xdrs, objp)
-@@ -53,13 +54,13 @@ xdr_rpcb(xdrs, objp)
-     if (!xdr_u_int32_t(xdrs, &objp->r_vers)) {
-         return (FALSE);
-     }
--    if (!xdr_string(xdrs, &objp->r_netid, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->r_netid, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
--    if (!xdr_string(xdrs, &objp->r_addr, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->r_addr, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
--    if (!xdr_string(xdrs, &objp->r_owner, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->r_owner, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
-     return (TRUE);
-@@ -159,19 +160,19 @@ xdr_rpcb_entry(xdrs, objp)
-     XDR *xdrs;
-     rpcb_entry *objp;
- {
--    if (!xdr_string(xdrs, &objp->r_maddr, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->r_maddr, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
--    if (!xdr_string(xdrs, &objp->r_nc_netid, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->r_nc_netid, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
-     if (!xdr_u_int32_t(xdrs, &objp->r_nc_semantics)) {
-         return (FALSE);
-     }
--    if (!xdr_string(xdrs, &objp->r_nc_protofmly, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->r_nc_protofmly, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
--    if (!xdr_string(xdrs, &objp->r_nc_proto, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->r_nc_proto, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
-     return (TRUE);
-@@ -292,7 +293,7 @@ xdr_rpcb_rmtcallres(xdrs, p)
-     bool_t dummy;
-     struct r_rpcb_rmtcallres *objp = (struct r_rpcb_rmtcallres *)(void *)p;
+> diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+> index 5f7317875a67..7ce13281925f 100644
+> --- a/fs/f2fs/file.c
+> +++ b/fs/f2fs/file.c
+> @@ -187,6 +187,7 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
+>  		.nr_to_write = LONG_MAX,
+>  		.for_reclaim = 0,
+>  	};
+> +	errseq_t since = READ_ONCE(file->f_wb_err);
+>  
+>  	if (unlikely(f2fs_readonly(inode->i_sb)))
+>  		return 0;
+> @@ -265,6 +266,8 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
+>  	}
+>  
+>  	ret = wait_on_node_pages_writeback(sbi, ino);
+> +	if (ret == 0)
+> +		ret = filemap_check_wb_error(NODE_MAPPING(sbi), since);
+>  	if (ret)
+>  		goto out;
 
--    if (!xdr_string(xdrs, &objp->addr, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->addr, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
-     if (!xdr_u_int(xdrs, &objp->results.results_len)) {
-@@ -312,6 +313,11 @@ xdr_netbuf(xdrs, objp)
-     if (!xdr_u_int32_t(xdrs, (u_int32_t *) &objp->maxlen)) {
-         return (FALSE);
-     }
-+
-+    if (objp->maxlen > RPC_MAXDATASIZE) {
-+        return (FALSE);
-+    }
-+
-     dummy = xdr_bytes(xdrs, (char **)&(objp->buf),
-             (u_int *)&(objp->len), objp->maxlen);
-     return (dummy);
-diff --git a/src/rpcb_st_xdr.c b/src/rpcb_st_xdr.c
-index 08db745..28e6a48 100644
---- a/src/rpcb_st_xdr.c
-+++ b/src/rpcb_st_xdr.c
-@@ -37,6 +37,7 @@
+So this conversion looks wrong and actually points to a larger issue with
+the scheme. The problem is there are two mappings that come into play here
+- file_inode(file)->i_mapping which is the data mapping and
+NODE_MAPPING(sbi) which is the metadata mapping (and this is not a problem
+specific to f2fs. For example ext2 also uses this scheme where block
+devices' mapping is the metadata mapping). And we need to merge error
+information from these two mappings so for the stamping scheme to work,
+we'd need two stamps stored in struct file. One for data mapping and one
+for metadata mapping. Or maybe there's some more clever scheme but for now
+I don't see one...
 
-
- #include <rpc/rpc.h>
-+#include "rpc_com.h"
-
- /* Link list of all the stats about getport and getaddr */
-
-@@ -58,7 +59,7 @@ xdr_rpcbs_addrlist(xdrs, objp)
-         if (!xdr_int(xdrs, &objp->failure)) {
-         return (FALSE);
-         }
--        if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
-+        if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
-         return (FALSE);
-         }
-
-@@ -109,7 +110,7 @@ xdr_rpcbs_rmtcalllist(xdrs, objp)
-         IXDR_PUT_INT32(buf, objp->failure);
-         IXDR_PUT_INT32(buf, objp->indirect);
-     }
--    if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
-     if (!xdr_pointer(xdrs, (char **)&objp->next,
-@@ -147,7 +148,7 @@ xdr_rpcbs_rmtcalllist(xdrs, objp)
-         objp->failure = (int)IXDR_GET_INT32(buf);
-         objp->indirect = (int)IXDR_GET_INT32(buf);
-     }
--    if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
-     if (!xdr_pointer(xdrs, (char **)&objp->next,
-@@ -175,7 +176,7 @@ xdr_rpcbs_rmtcalllist(xdrs, objp)
-     if (!xdr_int(xdrs, &objp->indirect)) {
-         return (FALSE);
-     }
--    if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
-+    if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
-         return (FALSE);
-     }
-     if (!xdr_pointer(xdrs, (char **)&objp->next,
-diff --git a/src/xdr.c b/src/xdr.c
-index f3fb9ad..b9a1558 100644
---- a/src/xdr.c
-+++ b/src/xdr.c
-@@ -42,8 +42,10 @@
- #include <stdlib.h>
- #include <string.h>
-
-+#include <rpc/rpc.h>
- #include <rpc/types.h>
- #include <rpc/xdr.h>
-+#include <rpc/rpc_com.h>
-
- typedef quad_t          longlong_t;     /* ANSI long long type */
- typedef u_quad_t        u_longlong_t;   /* ANSI unsigned long long type */
-@@ -53,7 +55,6 @@ typedef u_quad_t        u_longlong_t;   /* ANSI
-unsigned long long type */
-  */
- #define XDR_FALSE    ((long) 0)
- #define XDR_TRUE    ((long) 1)
--#define LASTUNSIGNED    ((u_int) 0-1)
-
- /*
-  * for unit alignment
-@@ -629,6 +630,7 @@ xdr_bytes(xdrs, cpp, sizep, maxsize)
- {
-     char *sp = *cpp;  /* sp is the actual string pointer */
-     u_int nodesize;
-+    bool_t ret, allocated = FALSE;
-
-     /*
-      * first deal with the length since xdr bytes are counted
-@@ -652,6 +654,7 @@ xdr_bytes(xdrs, cpp, sizep, maxsize)
-         }
-         if (sp == NULL) {
-             *cpp = sp = mem_alloc(nodesize);
-+            allocated = TRUE;
-         }
-         if (sp == NULL) {
-             warnx("xdr_bytes: out of memory");
-@@ -660,7 +663,14 @@ xdr_bytes(xdrs, cpp, sizep, maxsize)
-         /* FALLTHROUGH */
-
-     case XDR_ENCODE:
--        return (xdr_opaque(xdrs, sp, nodesize));
-+        ret = xdr_opaque(xdrs, sp, nodesize);
-+        if ((xdrs->x_op == XDR_DECODE) && (ret == FALSE)) {
-+            if (allocated == TRUE) {
-+                free(sp);
-+                *cpp = NULL;
-+            }
-+        }
-+        return (ret);
-
-     case XDR_FREE:
-         if (sp != NULL) {
-@@ -754,6 +764,7 @@ xdr_string(xdrs, cpp, maxsize)
-     char *sp = *cpp;  /* sp is the actual string pointer */
-     u_int size;
-     u_int nodesize;
-+    bool_t ret, allocated = FALSE;
-
-     /*
-      * first deal with the length since xdr strings are counted-strings
-@@ -793,8 +804,10 @@ xdr_string(xdrs, cpp, maxsize)
-     switch (xdrs->x_op) {
-
-     case XDR_DECODE:
--        if (sp == NULL)
-+        if (sp == NULL) {
-             *cpp = sp = mem_alloc(nodesize);
-+            allocated = TRUE;
-+        }
-         if (sp == NULL) {
-             warnx("xdr_string: out of memory");
-             return (FALSE);
-@@ -803,7 +816,14 @@ xdr_string(xdrs, cpp, maxsize)
-         /* FALLTHROUGH */
-
-     case XDR_ENCODE:
--        return (xdr_opaque(xdrs, sp, size));
-+        ret = xdr_opaque(xdrs, sp, size);
-+        if ((xdrs->x_op == XDR_DECODE) && (ret == FALSE)) {
-+            if (allocated == TRUE) {
-+                free(sp);
-+                *cpp = NULL;
-+            }
-+        }
-+        return (ret);
-
-     case XDR_FREE:
-         mem_free(sp, nodesize);
-@@ -823,7 +843,7 @@ xdr_wrapstring(xdrs, cpp)
-     XDR *xdrs;
-     char **cpp;
- {
--    return xdr_string(xdrs, cpp, LASTUNSIGNED);
-+    return xdr_string(xdrs, cpp, RPC_MAXDATASIZE);
- }
-
- /*
+								Honza
 -- 
-2.1.4
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
