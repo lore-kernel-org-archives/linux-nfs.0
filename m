@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50712 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56554 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934712AbdEOPU0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 15 May 2017 11:20:26 -0400
-Subject: [PATCH 15/21] NFS: Split nfs_parse_mount_options() [ver #3]
+        id S965812AbdEOPUA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 May 2017 11:20:00 -0400
+Subject: [PATCH 11/21] proc: Add superblock config support to procfs [ver #3]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 15 May 2017 16:20:18 +0100
-Message-ID: <149486161870.23956.10962026940795644533.stgit@warthog.procyon.org.uk>
+Date: Mon, 15 May 2017 16:19:48 +0100
+Message-ID: <149486158822.23956.11177118518984651590.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
 References: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -17,302 +17,292 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Split nfs_parse_mount_options() to move the prologue, list-splitting and
-epilogue into one function and the per-option processing into another.
+Add superblock config support to procfs.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/nfs/internal.h |    3 +
- fs/nfs/mount.c    |  143 ++++++++++++++++++++++++++++++-----------------------
- 2 files changed, 83 insertions(+), 63 deletions(-)
+ fs/proc/inode.c    |    2 -
+ fs/proc/internal.h |    2 -
+ fs/proc/root.c     |  166 +++++++++++++++++++++++++++++++++-------------------
+ 3 files changed, 108 insertions(+), 62 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index af6ca28da48d..ed255241baa7 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -100,7 +100,10 @@ struct nfs_sb_config {
- 	unsigned int		version;
- 	unsigned int		minorversion;
- 	char			*fscache_uniq;
-+	unsigned short		protofamily;
-+	unsigned short		mountfamily;
- 	bool			need_mount;
-+	bool			sloppy;
+diff --git a/fs/proc/inode.c b/fs/proc/inode.c
+index a4bf66af0ba9..304e5c36b7ba 100644
+--- a/fs/proc/inode.c
++++ b/fs/proc/inode.c
+@@ -118,7 +118,7 @@ const struct super_operations proc_sops = {
+ 	.drop_inode	= generic_delete_inode,
+ 	.evict_inode	= proc_evict_inode,
+ 	.statfs		= simple_statfs,
+-	.remount_fs	= proc_remount,
++	.remount_fs_sc	= proc_remount,
+ 	.show_options	= proc_show_options,
+ };
  
- 	struct {
- 		struct sockaddr_storage	address;
-diff --git a/fs/nfs/mount.c b/fs/nfs/mount.c
-index ef9683deb2a8..26153b471e48 100644
---- a/fs/nfs/mount.c
-+++ b/fs/nfs/mount.c
-@@ -494,46 +494,18 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
- }
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index b681533f59dd..4546372c2d13 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -262,7 +262,7 @@ static inline void proc_tty_init(void) {}
+ extern struct proc_dir_entry proc_root;
+ 
+ extern void proc_self_init(void);
+-extern int proc_remount(struct super_block *, int *, char *);
++extern int proc_remount(struct super_block *, struct sb_config *);
  
  /*
-- * Error-check and convert a string of mount options from user space into
-- * a data structure.  The whole mount string is processed; bad options are
-- * skipped as they are encountered.  If there were no errors, return 1;
-- * otherwise return 0 (zero).
-+ * Parse a single mount option in "key[=val]" form.
-  */
--int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
-+static int nfs_sb_config_parse_option(struct nfs_sb_config *cfg, char *p)
+  * task_[no]mmu.c
+diff --git a/fs/proc/root.c b/fs/proc/root.c
+index ee1937b37370..da5757d1c518 100644
+--- a/fs/proc/root.c
++++ b/fs/proc/root.c
+@@ -24,9 +24,18 @@
+ #include <linux/parser.h>
+ #include <linux/cred.h>
+ #include <linux/magic.h>
++#include <linux/slab.h>
+ 
+ #include "internal.h"
+ 
++struct proc_sb_config {
++	struct sb_config	sc;
++	struct pid_namespace	*pid_ns;
++	unsigned long		mask;
++	int			hidepid;
++	int			gid;
++};
++
+ enum {
+ 	Opt_gid, Opt_hidepid, Opt_err,
+ };
+@@ -37,56 +46,60 @@ static const match_table_t tokens = {
+ 	{Opt_err, NULL},
+ };
+ 
+-static int proc_parse_options(char *options, struct pid_namespace *pid)
++static int proc_parse_mount_option(struct sb_config *sc, char *p)
  {
--	char *p, *string, *secdata;
--	int rc, sloppy = 0, invalid_option = 0;
--	unsigned short protofamily = AF_UNSPEC;
--	unsigned short mountfamily = AF_UNSPEC;
+-	char *p;
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
+ 	substring_t args[MAX_OPT_ARGS];
+-	int option;
 -
--	if (!raw) {
--		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
+-	if (!options)
 -		return 1;
--	}
--	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
 -
--	secdata = alloc_secdata();
--	if (!secdata)
--		goto out_nomem;
--
--	rc = security_sb_copy_data(raw, secdata);
--	if (rc)
--		goto out_security_failure;
--
--	rc = security_sb_parse_opts_str(secdata, &cfg->lsm_opts);
--	if (rc)
--		goto out_security_failure;
--
--	free_secdata(secdata);
-+	char *string;
-+	int rc;
- 
--	while ((p = strsep(&raw, ",")) != NULL) {
-+	{
- 		substring_t args[MAX_OPT_ARGS];
- 		unsigned long option;
- 		int token;
- 
+-	while ((p = strsep(&options, ",")) != NULL) {
+-		int token;
 -		if (!*p)
 -			continue;
 -
- 		dfprintk(MOUNT, "NFS:   parsing nfs mount option '%s'\n", p);
- 
- 		token = match_token(p, nfs_mount_option_tokens, args);
-@@ -737,7 +709,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			if (!rc) {
- 				dfprintk(MOUNT, "NFS:   unrecognized "
- 						"security flavor\n");
+-		args[0].to = args[0].from = NULL;
+-		token = match_token(p, tokens, args);
+-		switch (token) {
+-		case Opt_gid:
+-			if (match_int(&args[0], &option))
 -				return 0;
-+				return -EINVAL;
- 			}
- 			break;
- 		case Opt_proto:
-@@ -747,22 +719,22 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			token = match_token(string,
- 					    nfs_xprt_protocol_tokens, args);
- 
--			protofamily = AF_INET;
-+			cfg->protofamily = AF_INET;
- 			switch (token) {
- 			case Opt_xprt_udp6:
--				protofamily = AF_INET6;
-+				cfg->protofamily = AF_INET6;
- 			case Opt_xprt_udp:
- 				cfg->flags &= ~NFS_MOUNT_TCP;
- 				cfg->nfs_server.protocol = XPRT_TRANSPORT_UDP;
- 				break;
- 			case Opt_xprt_tcp6:
--				protofamily = AF_INET6;
-+				cfg->protofamily = AF_INET6;
- 			case Opt_xprt_tcp:
- 				cfg->flags |= NFS_MOUNT_TCP;
- 				cfg->nfs_server.protocol = XPRT_TRANSPORT_TCP;
- 				break;
- 			case Opt_xprt_rdma6:
--				protofamily = AF_INET6;
-+				cfg->protofamily = AF_INET6;
- 			case Opt_xprt_rdma:
- 				/* vector side protocols to TCP */
- 				cfg->flags |= NFS_MOUNT_TCP;
-@@ -773,7 +745,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 				dfprintk(MOUNT, "NFS:   unrecognized "
- 						"transport protocol\n");
- 				kfree(string);
+-			pid->pid_gid = make_kgid(current_user_ns(), option);
+-			break;
+-		case Opt_hidepid:
+-			if (match_int(&args[0], &option))
 -				return 0;
-+				return -EINVAL;
- 			}
- 			kfree(string);
- 			break;
-@@ -785,15 +757,15 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 					    nfs_xprt_protocol_tokens, args);
- 			kfree(string);
- 
--			mountfamily = AF_INET;
-+			cfg->mountfamily = AF_INET;
- 			switch (token) {
- 			case Opt_xprt_udp6:
--				mountfamily = AF_INET6;
-+				cfg->mountfamily = AF_INET6;
- 			case Opt_xprt_udp:
- 				cfg->mount_server.protocol = XPRT_TRANSPORT_UDP;
- 				break;
- 			case Opt_xprt_tcp6:
--				mountfamily = AF_INET6;
-+				cfg->mountfamily = AF_INET6;
- 			case Opt_xprt_tcp:
- 				cfg->mount_server.protocol = XPRT_TRANSPORT_TCP;
- 				break;
-@@ -801,7 +773,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			default:
- 				dfprintk(MOUNT, "NFS:   unrecognized "
- 						"transport protocol\n");
+-			if (option < HIDEPID_OFF ||
+-			    option > HIDEPID_INVISIBLE) {
+-				pr_err("proc: hidepid value must be between 0 and 2.\n");
 -				return 0;
-+				return -EINVAL;
- 			}
- 			break;
- 		case Opt_addr:
-@@ -860,7 +832,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 				default:
- 					dfprintk(MOUNT, "NFS:   invalid "
- 							"lookupcache argument\n");
--					return 0;
-+					return -EINVAL;
- 			};
- 			break;
- 		case Opt_fscache_uniq:
-@@ -893,7 +865,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			default:
- 				dfprintk(MOUNT, "NFS:	invalid	"
- 						"local_lock argument\n");
--				return 0;
-+				return -EINVAL;
- 			};
- 			break;
- 
-@@ -901,7 +873,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 		 * Special options
- 		 */
- 		case Opt_sloppy:
--			sloppy = 1;
-+			cfg->sloppy = 1;
- 			dfprintk(MOUNT, "NFS:   relaxing parsing rules\n");
- 			break;
- 		case Opt_userspace:
-@@ -911,12 +883,63 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			break;
- 
- 		default:
--			invalid_option = 1;
- 			dfprintk(MOUNT, "NFS:   unrecognized mount option "
- 					"'%s'\n", p);
-+			return -EINVAL;
+-			}
+-			pid->hide_pid = option;
+-			break;
+-		default:
+-			pr_err("proc: unrecognized mount option \"%s\" "
+-			       "or missing value\n", p);
+-			return 0;
++	int token;
++
++	args[0].to = args[0].from = NULL;
++	token = match_token(p, tokens, args);
++	switch (token) {
++	case Opt_gid:
++		if (match_int(&args[0], &cfg->gid))
++			return sb_cfg_inval(sc, "procfs: Unparseable gid= argument");
++		break;
++
++	case Opt_hidepid:
++		if (match_int(&args[0], &cfg->hidepid))
++			return sb_cfg_inval(sc, "procfs: Unparseable hidepid= argument");
++		if (cfg->hidepid < HIDEPID_OFF ||
++		    cfg->hidepid > HIDEPID_INVISIBLE) {
++			pr_err("proc: hidepid value must be between 0 and 2.\n");
++			return sb_cfg_inval(sc, "procfs: Invalid hidepid= argument");
  		}
++		break;
++
++	default:
++		pr_err("proc: unrecognized mount option \"%s\" "
++		       "or missing value\n", p);
++		return sb_cfg_inval(sc, "procfs: Invalid mount option or missing value");
  	}
  
+-	return 1;
++	cfg->mask |= 1 << token;
 +	return 0;
-+
-+out_invalid_address:
-+	printk(KERN_INFO "NFS: bad IP address specified: %s\n", p);
-+	return -EINVAL;
-+out_invalid_value:
-+	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
-+	return -EINVAL;
-+out_nomem:
-+	printk(KERN_INFO "NFS: not enough memory to parse option\n");
-+	return -ENOMEM;
 +}
 +
-+/*
-+ * Error-check and convert a string of mount options from user space into
-+ * a data structure.  The whole mount string is processed; bad options are
-+ * skipped as they are encountered.  If there were no errors, return 1;
-+ * otherwise return 0 (zero).
-+ */
-+int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
++static void proc_set_options(struct super_block *s,
++			     struct sb_config *sc,
++			     struct pid_namespace *pid_ns,
++			     struct user_namespace *user_ns)
 +{
-+	char *p, *secdata;
-+	int rc, sloppy = 0, invalid_option = 0;
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
 +
-+	if (!raw) {
-+		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
-+		return 1;
-+	}
-+	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
-+
-+	secdata = alloc_secdata();
-+	if (!secdata)
-+		goto out_nomem;
-+
-+	rc = security_sb_copy_data(raw, secdata);
-+	if (rc)
-+		goto out_security_failure;
-+
-+	rc = security_sb_parse_opts_str(secdata, &cfg->lsm_opts);
-+	if (rc)
-+		goto out_security_failure;
-+
-+	free_secdata(secdata);
-+
-+	while ((p = strsep(&raw, ",")) != NULL) {
-+		if (!*p)
-+			continue;
-+		if (nfs_sb_config_parse_option(cfg, p) < 0)
-+			invalid_option = true;
-+	}
-+
- 	if (!sloppy && invalid_option)
- 		return 0;
++	if (cfg->mask & (1 << Opt_gid))
++		pid_ns->pid_gid = make_kgid(user_ns, cfg->gid);
++	if (cfg->mask & (1 << Opt_hidepid))
++		pid_ns->hide_pid = cfg->hidepid;
+ }
  
-@@ -931,22 +954,26 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 	 * verify that any proto=/mountproto= options match the address
- 	 * families in the addr=/mountaddr= options.
+-static int proc_fill_super(struct super_block *s, void *data, int silent)
++static int proc_fill_super(struct super_block *s, struct sb_config *sc)
+ {
+-	struct pid_namespace *ns = get_pid_ns(s->s_fs_info);
++	struct pid_namespace *pid_ns = get_pid_ns(s->s_fs_info);
+ 	struct inode *root_inode;
+ 	int ret;
+ 
+-	if (!proc_parse_options(data, ns))
+-		return -EINVAL;
++	proc_set_options(s, sc, pid_ns, current_user_ns());
+ 
+ 	/* User space would break if executables or devices appear on proc */
+ 	s->s_iflags |= SB_I_USERNS_VISIBLE | SB_I_NOEXEC | SB_I_NODEV;
+@@ -103,7 +116,7 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
+ 	 * top of it
  	 */
--	if (protofamily != AF_UNSPEC &&
--	    protofamily != cfg->nfs_server.address.ss_family)
-+	if (cfg->protofamily != AF_UNSPEC &&
-+	    cfg->protofamily != cfg->nfs_server.address.ss_family)
- 		goto out_proto_mismatch;
+ 	s->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
+-	
++
+ 	pde_get(&proc_root);
+ 	root_inode = proc_get_inode(s, &proc_root);
+ 	if (!root_inode) {
+@@ -124,27 +137,45 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
+ 	return proc_setup_thread_self(s);
+ }
  
--	if (mountfamily != AF_UNSPEC) {
-+	if (cfg->mountfamily != AF_UNSPEC) {
- 		if (cfg->mount_server.addrlen) {
--			if (mountfamily != cfg->mount_server.address.ss_family)
-+			if (cfg->mountfamily != cfg->mount_server.address.ss_family)
- 				goto out_mountproto_mismatch;
- 		} else {
--			if (mountfamily != cfg->nfs_server.address.ss_family)
-+			if (cfg->mountfamily != cfg->nfs_server.address.ss_family)
- 				goto out_mountproto_mismatch;
- 		}
- 	}
+-int proc_remount(struct super_block *sb, int *flags, char *data)
++int proc_remount(struct super_block *sb, struct sb_config *sc)
+ {
+ 	struct pid_namespace *pid = sb->s_fs_info;
  
- 	return 1;
- 
-+out_minorversion_mismatch:
-+	printk(KERN_INFO "NFS: mount option vers=%u does not support "
-+			 "minorversion=%u\n", cfg->version, cfg->minorversion);
+ 	sync_filesystem(sb);
+-	return !proc_parse_options(data, pid);
++
++	if (sc)
++		proc_set_options(sb, sc, pid, current_user_ns());
 +	return 0;
- out_mountproto_mismatch:
- 	printk(KERN_INFO "NFS: mount server address does not match mountproto= "
- 			 "option\n");
-@@ -954,20 +981,10 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- out_proto_mismatch:
- 	printk(KERN_INFO "NFS: server address does not match proto= option\n");
- 	return 0;
--out_invalid_address:
--	printk(KERN_INFO "NFS: bad IP address specified: %s\n", p);
--	return 0;
--out_invalid_value:
--	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
--	return 0;
--out_minorversion_mismatch:
--	printk(KERN_INFO "NFS: mount option vers=%u does not support "
--			 "minorversion=%u\n", cfg->version, cfg->minorversion);
--	return 0;
- out_migration_misuse:
- 	printk(KERN_INFO
- 		"NFS: 'migration' not supported for this NFS version\n");
--	return 0;
-+	return -EINVAL;
- out_nomem:
- 	printk(KERN_INFO "NFS: not enough memory to parse option\n");
- 	return 0;
+ }
+ 
+-static struct dentry *proc_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *data)
++static struct dentry *proc_mount(struct sb_config *sc)
+ {
+-	struct pid_namespace *ns;
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
+ 
+-	if (flags & MS_KERNMOUNT) {
+-		ns = data;
+-		data = NULL;
+-	} else {
+-		ns = task_active_pid_ns(current);
+-	}
++	return mount_ns_sc(sc, proc_fill_super, cfg->pid_ns);
++}
+ 
+-	return mount_ns(fs_type, flags, data, ns, ns->user_ns, proc_fill_super);
++static void proc_sb_config_free(struct sb_config *sc)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++
++	if (cfg->pid_ns)
++		put_pid_ns(cfg->pid_ns);
++}
++
++static const struct sb_config_operations proc_sb_config_ops = {
++	.free		= proc_sb_config_free,
++	.parse_option	= proc_parse_mount_option,
++	.mount		= proc_mount,
++};
++
++static int proc_init_sb_config(struct sb_config *sc, struct super_block *src_sb)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++
++	cfg->pid_ns = get_pid_ns(task_active_pid_ns(current));
++	cfg->sc.ops = &proc_sb_config_ops;
++	return 0;
+ }
+ 
+ static void proc_kill_sb(struct super_block *sb)
+@@ -162,7 +193,8 @@ static void proc_kill_sb(struct super_block *sb)
+ 
+ static struct file_system_type proc_fs_type = {
+ 	.name		= "proc",
+-	.mount		= proc_mount,
++	.sb_config_size	= sizeof(struct proc_sb_config),
++	.init_sb_config	= proc_init_sb_config,
+ 	.kill_sb	= proc_kill_sb,
+ 	.fs_flags	= FS_USERNS_MOUNT,
+ };
+@@ -210,7 +242,7 @@ static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentr
+ {
+ 	if (!proc_pid_lookup(dir, dentry, flags))
+ 		return NULL;
+-	
++
+ 	return proc_lookup(dir, dentry, flags);
+ }
+ 
+@@ -249,12 +281,12 @@ static const struct inode_operations proc_root_inode_operations = {
+  * This is the root "inode" in the /proc tree..
+  */
+ struct proc_dir_entry proc_root = {
+-	.low_ino	= PROC_ROOT_INO, 
+-	.namelen	= 5, 
+-	.mode		= S_IFDIR | S_IRUGO | S_IXUGO, 
+-	.nlink		= 2, 
++	.low_ino	= PROC_ROOT_INO,
++	.namelen	= 5,
++	.mode		= S_IFDIR | S_IRUGO | S_IXUGO,
++	.nlink		= 2,
+ 	.count		= ATOMIC_INIT(1),
+-	.proc_iops	= &proc_root_inode_operations, 
++	.proc_iops	= &proc_root_inode_operations,
+ 	.proc_fops	= &proc_root_operations,
+ 	.parent		= &proc_root,
+ 	.subdir		= RB_ROOT,
+@@ -263,9 +295,23 @@ struct proc_dir_entry proc_root = {
+ 
+ int pid_ns_prepare_proc(struct pid_namespace *ns)
+ {
++	struct proc_sb_config *cfg;
++	struct sb_config *sc;
+ 	struct vfsmount *mnt;
+ 
+-	mnt = kern_mount_data(&proc_fs_type, ns);
++	sc = __vfs_new_sb_config(&proc_fs_type, NULL, 0, SB_CONFIG_FOR_NEW);
++	if (IS_ERR(sc))
++		return PTR_ERR(sc);
++
++	cfg = container_of(sc, struct proc_sb_config, sc);
++	if (cfg->pid_ns != ns) {
++		put_pid_ns(cfg->pid_ns);
++		get_pid_ns(ns);
++		cfg->pid_ns = ns;
++	}
++
++	mnt = kern_mount_data_sc(sc);
++	put_sb_config(sc);
+ 	if (IS_ERR(mnt))
+ 		return PTR_ERR(mnt);
+ 
 
