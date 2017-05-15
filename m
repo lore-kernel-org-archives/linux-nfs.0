@@ -1,15 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44294 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45126 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965636AbdEOPSj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 15 May 2017 11:18:39 -0400
-Subject: [PATCH 02/21] Clean up whitespace in fs/namespace.c [ver #3]
+        id S965636AbdEOPSa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 15 May 2017 11:18:30 -0400
+Subject: [PATCH 01/21] Provide a function to create a NUL-terminated string
+ from unterminated data [ver #3]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 15 May 2017 16:18:35 +0100
-Message-ID: <149486151558.23956.7339492677294760449.stgit@warthog.procyon.org.uk>
+Date: Mon, 15 May 2017 16:18:01 +0100
+Message-ID: <149486148141.23956.5613630461913190505.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
 References: <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -17,34 +18,71 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up line terminal whitespace in fs/namespace.c.
+Provide a function, kmemdup_nul(), that will create a NUL-terminated string
+from an unterminated character array where the length is known in advance.
+
+This is better than kstrndup() in situations where we already know the
+string length as the strnlen() in kstrndup() is superfluous.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/namespace.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ include/linux/string.h |    1 +
+ mm/util.c              |   24 ++++++++++++++++++++++++
+ 2 files changed, 25 insertions(+)
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 8bd3e4d448b9..c076787871e7 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1656,7 +1656,7 @@ void __detach_mounts(struct dentry *dentry)
- 	namespace_unlock();
- }
+diff --git a/include/linux/string.h b/include/linux/string.h
+index 537918f8a98e..3dd944cfe171 100644
+--- a/include/linux/string.h
++++ b/include/linux/string.h
+@@ -131,6 +131,7 @@ extern char *kstrdup(const char *s, gfp_t gfp) __malloc;
+ extern const char *kstrdup_const(const char *s, gfp_t gfp);
+ extern char *kstrndup(const char *s, size_t len, gfp_t gfp);
+ extern void *kmemdup(const void *src, size_t len, gfp_t gfp);
++extern char *kmemdup_nul(const char *s, size_t len, gfp_t gfp);
  
--/* 
-+/*
-  * Is the caller allowed to modify his namespace?
+ extern char **argv_split(gfp_t gfp, const char *str, int *argcp);
+ extern void argv_free(char **argv);
+diff --git a/mm/util.c b/mm/util.c
+index 464df3489903..cc9f0a2810bd 100644
+--- a/mm/util.c
++++ b/mm/util.c
+@@ -83,6 +83,8 @@ EXPORT_SYMBOL(kstrdup_const);
+  * @s: the string to duplicate
+  * @max: read at most @max chars from @s
+  * @gfp: the GFP mask used in the kmalloc() call when allocating memory
++ *
++ * Note: Use kmemdup_nul() instead if the size is known exactly.
   */
- static inline bool may_mount(void)
-@@ -2210,7 +2210,7 @@ static int do_loopback(struct path *path, const char *old_name,
+ char *kstrndup(const char *s, size_t max, gfp_t gfp)
+ {
+@@ -121,6 +123,28 @@ void *kmemdup(const void *src, size_t len, gfp_t gfp)
+ EXPORT_SYMBOL(kmemdup);
  
- 	err = -EINVAL;
- 	if (mnt_ns_loop(old_path.dentry))
--		goto out; 
-+		goto out;
- 
- 	mp = lock_mount(path);
- 	err = PTR_ERR(mp);
+ /**
++ * kmemdup_nul - Create a NUL-terminated string from unterminated data
++ * @s: The data to stringify
++ * @len: The size of the data
++ * @gfp: the GFP mask used in the kmalloc() call when allocating memory
++ */
++char *kmemdup_nul(const char *s, size_t len, gfp_t gfp)
++{
++	char *buf;
++
++	if (!s)
++		return NULL;
++
++	buf = kmalloc_track_caller(len + 1, gfp);
++	if (buf) {
++		memcpy(buf, s, len);
++		buf[len] = '\0';
++	}
++	return buf;
++}
++EXPORT_SYMBOL(kmemdup_nul);
++
++/**
+  * memdup_user - duplicate memory region from user space
+  *
+  * @src: source address in user space
 
