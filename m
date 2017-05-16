@@ -1,44 +1,188 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44836 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:41026 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752259AbdEPRmQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 May 2017 13:42:16 -0400
-Date: Tue, 16 May 2017 13:42:15 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Gu Zheng <guzheng1@huawei.com>
-Cc: jlayton@poochiereds.net, linux-nfs@vger.kernel.org,
-        houtao1@huawei.com, Zhaohongjiang <zhaohongjiang@huawei.com>,
-        miaoxie@huawei.com
-Subject: Re: nfs+ext4,can not umount the ext4 mountpoint
-Message-ID: <20170516174215.GA15232@fieldses.org>
-References: <591AF71F.1040703@huawei.com>
+        id S1750930AbdEPUTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 May 2017 16:19:51 -0400
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 2902580508
+        for <linux-nfs@vger.kernel.org>; Tue, 16 May 2017 20:19:46 +0000 (UTC)
+Date: Tue, 16 May 2017 16:19:44 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Eryu Guan <eguan@redhat.com>
+Subject: [PATCH] nfsd: Revert "nfsd: check for oversized NFSv2/v3 arguments"
+Message-ID: <20170516201944.GC28537@parsley.fieldses.org>
+References: <20170515112638.GU7250@eguan.usersys.redhat.com>
+ <20170515154424.GC9697@parsley.fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <591AF71F.1040703@huawei.com>
+In-Reply-To: <20170515154424.GC9697@parsley.fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 16, 2017 at 08:57:03PM +0800, Gu Zheng wrote:
-> Hi all:
-> we have a test about nfs on linux 4.11.
-> the detailed process as follow:
-> server ip:9.81.231.141                    		client
-> mount -t ext4 /dev/vdb /home/nfs/aa
-> 							mount -t nfs -o sync,tcp,vers=3,noac,timeo=70,retrans=3 9.81.231.141:/home/nfs  /tmp/aa/
-> 							ls /tmp/aa
-> umount /home/nfs/aa
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-This is as expected.  There's actually no guarantee you'll be able to
-unmount the filesystem till nfsd is stopped (even unexporting won't
-always do the job).
+This reverts commit 51f567777799 "nfsd: check for oversized NFSv2/v3
+arguments", which breaks support for NFSv3 ACLs.
 
---b.
+That patch was actually an earlier draft of a fix for the problem that
+was eventually fixed by e6838a29ecb "nfsd: check for oversized NFSv2/v3
+arguments".  But somehow I accidentally left this earlier draft in the
+branch that was part of my 2.12 pull request.
 
-> 
-> the umount remind "target is busy".
-> so we analyze the code , a reference count which is named "mnt_count" add 1 in rqst_exp_get_by_name() after execute the "ls" order.
-> the detailed call is nfsd3_proc_lookup->nfsd_lookup->nfsd_lookup_dentry->nfsd_cross_mnt->rqst_exp_get_by_name->exp_get_by_name->svc_export_lookup->sunrpc_cache_lookup->svc_export_init->path_get
-> the reference count can't be subtracted untill we stop nfsd or tcp idle timeout on server. the system call the cache_flush() to subtract the count.
-> then we can umount successfully.
-> 
-> do dou have some patches can umount immediately or some suggestions?
+Reported-by: Eryu Guan <eguan@redhat.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs3xdr.c          | 23 ++++++-----------------
+ fs/nfsd/nfsxdr.c           | 13 +++----------
+ include/linux/sunrpc/svc.h |  3 ++-
+ 3 files changed, 11 insertions(+), 28 deletions(-)
+
+The stable cc may be overkill as I don't *think* the original's been
+backported to stable yet, but it's there just in case I miss NAK'ing the
+backports....
+
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index 12feac6ee2fd..452334694a5d 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -334,11 +334,8 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 	if (!p)
+ 		return 0;
+ 	p = xdr_decode_hyper(p, &args->offset);
+-	args->count = ntohl(*p++);
+-
+-	if (!xdr_argsize_check(rqstp, p))
+-		return 0;
+ 
++	args->count = ntohl(*p++);
+ 	len = min(args->count, max_blocksize);
+ 
+ 	/* set up the kvec */
+@@ -352,7 +349,7 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 		v++;
+ 	}
+ 	args->vlen = v;
+-	return 1;
++	return xdr_argsize_check(rqstp, p);
+ }
+ 
+ int
+@@ -544,11 +541,9 @@ nfs3svc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p,
+ 	p = decode_fh(p, &args->fh);
+ 	if (!p)
+ 		return 0;
+-	if (!xdr_argsize_check(rqstp, p))
+-		return 0;
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return 1;
++	return xdr_argsize_check(rqstp, p);
+ }
+ 
+ int
+@@ -574,14 +569,10 @@ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
+ 	args->verf   = p; p += 2;
+ 	args->dircount = ~0;
+ 	args->count  = ntohl(*p++);
+-
+-	if (!xdr_argsize_check(rqstp, p))
+-		return 0;
+-
+ 	args->count  = min_t(u32, args->count, PAGE_SIZE);
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return 1;
++	return xdr_argsize_check(rqstp, p);
+ }
+ 
+ int
+@@ -599,9 +590,6 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
+ 	args->dircount = ntohl(*p++);
+ 	args->count    = ntohl(*p++);
+ 
+-	if (!xdr_argsize_check(rqstp, p))
+-		return 0;
+-
+ 	len = args->count = min(args->count, max_blocksize);
+ 	while (len > 0) {
+ 		struct page *p = *(rqstp->rq_next_page++);
+@@ -609,7 +597,8 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
+ 			args->buffer = page_address(p);
+ 		len -= PAGE_SIZE;
+ 	}
+-	return 1;
++
++	return xdr_argsize_check(rqstp, p);
+ }
+ 
+ int
+diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+index 6a4947a3f4fa..de07ff625777 100644
+--- a/fs/nfsd/nfsxdr.c
++++ b/fs/nfsd/nfsxdr.c
+@@ -257,9 +257,6 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 	len = args->count     = ntohl(*p++);
+ 	p++; /* totalcount - unused */
+ 
+-	if (!xdr_argsize_check(rqstp, p))
+-		return 0;
+-
+ 	len = min_t(unsigned int, len, NFSSVC_MAXBLKSIZE_V2);
+ 
+ 	/* set up somewhere to store response.
+@@ -275,7 +272,7 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
+ 		v++;
+ 	}
+ 	args->vlen = v;
+-	return 1;
++	return xdr_argsize_check(rqstp, p);
+ }
+ 
+ int
+@@ -365,11 +362,9 @@ nfssvc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd_readli
+ 	p = decode_fh(p, &args->fh);
+ 	if (!p)
+ 		return 0;
+-	if (!xdr_argsize_check(rqstp, p))
+-		return 0;
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return 1;
++	return xdr_argsize_check(rqstp, p);
+ }
+ 
+ int
+@@ -407,11 +402,9 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
+ 	args->cookie = ntohl(*p++);
+ 	args->count  = ntohl(*p++);
+ 	args->count  = min_t(u32, args->count, PAGE_SIZE);
+-	if (!xdr_argsize_check(rqstp, p))
+-		return 0;
+ 	args->buffer = page_address(*(rqstp->rq_next_page++));
+ 
+-	return 1;
++	return xdr_argsize_check(rqstp, p);
+ }
+ 
+ /*
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 94631026f79c..11cef5a7bc87 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -336,7 +336,8 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
+ {
+ 	char *cp = (char *)p;
+ 	struct kvec *vec = &rqstp->rq_arg.head[0];
+-	return cp == (char *)vec->iov_base + vec->iov_len;
++	return cp >= (char*)vec->iov_base
++		&& cp <= (char*)vec->iov_base + vec->iov_len;
+ }
+ 
+ static inline int
+-- 
+2.9.3
+
