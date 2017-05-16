@@ -1,167 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f178.google.com ([209.85.216.178]:33649 "EHLO
-        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934452AbdEOR7F (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 May 2017 13:59:05 -0400
-Received: by mail-qt0-f178.google.com with SMTP id t26so96397531qtg.0
-        for <linux-nfs@vger.kernel.org>; Mon, 15 May 2017 10:59:04 -0700 (PDT)
-Message-ID: <1494871139.4080.3.camel@redhat.com>
-Subject: Re: [PATCH v4 15/27] fs: retrofit old error reporting API onto new
- infrastructure
-From: Jeff Layton <jlayton@redhat.com>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-        linux-block@vger.kernel.org, dhowells@redhat.com,
-        akpm@linux-foundation.org, hch@infradead.org,
-        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
-        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
-        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
-        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com,
-        bo.li.liu@oracle.com
-Date: Mon, 15 May 2017 13:58:59 -0400
-In-Reply-To: <20170515104246.GC16182@quack2.suse.cz>
-References: <20170509154930.29524-1-jlayton@redhat.com>
-         <20170509154930.29524-16-jlayton@redhat.com>
-         <20170515104246.GC16182@quack2.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx2.suse.de ([195.135.220.15]:60983 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751990AbdEPKSY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 May 2017 06:18:24 -0400
+From: Jan Kara <jack@suse.cz>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>
+Subject: [PATCH] nfs: Mark unnecessarily extern functions as static
+Date: Tue, 16 May 2017 12:18:11 +0200
+Message-Id: <20170516101811.27425-1-jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-05-15 at 12:42 +0200, Jan Kara wrote:
-> On Tue 09-05-17 11:49:18, Jeff Layton wrote:
-> > Now that we have a better way to store and report errors that occur
-> > during writeback, we need to convert the existing codebase to use it. We
-> > could just adapt all of the filesystem code and related infrastructure
-> > to the new API, but that's a lot of churn.
-> > 
-> > When it comes to setting errors in the mapping, filemap_set_wb_error is
-> > a drop-in replacement for mapping_set_error. Turn that function into a
-> > simple wrapper around the new one.
-> > 
-> > Because we want to ensure that writeback errors are always reported at
-> > fsync time, inject filemap_report_wb_error calls much closer to the
-> > syscall boundary, in call_fsync.
-> > 
-> > For fsync calls (and things like the nfsd equivalent), we either return
-> > the error that the fsync operation returns, or the one returned by
-> > filemap_report_wb_error. In both cases, we advance the file->f_wb_err to
-> > the latest value. This allows us to provide new fsync semantics that
-> > will return errors that may have occurred previously and been viewed
-> > via other file descriptors.
-> > 
-> > The final piece of the puzzle is what to do about filemap_check_errors
-> > calls that are being called directly or via filemap_* functions. Here,
-> > we must take a little "creative license".
-> > 
-> > Since we now handle advancing the file->f_wb_err value at the generic
-> > filesystem layer, we no longer need those callers to clear errors out
-> > of the mapping or advance an errseq_t.
-> > 
-> > A lot of the existing codebase relies on being getting an error back
-> > from those functions when there is a writeback problem, so we do still
-> > want to have them report writeback errors somehow.
-> > 
-> > When reporting writeback errors, we will always report errors that have
-> > occurred since a particular point in time. With the old writeback error
-> > reporting, the time we used was "since it was last tested/cleared" which
-> > is entirely arbitrary and potentially racy. Now, we can at least report
-> > the latest error that has occurred since an arbitrary point in time
-> > (represented as a sampled errseq_t value).
-> > 
-> > In the case where we don't have a struct file to work with, this patch
-> > just has the wrappers sample the current mapping->wb_err value, and use
-> > that as an arbitrary point from which to check for errors.
-> 
-> I think this is really dangerous and we shouldn't do this. You are quite
-> likely to lose IO errors in such calls because you will ignore all errors
-> that happened during previous background writeback or even for IO that
-> managed to complete before we called filemap_fdatawait(). Maybe we need to
-> keep the original set-clear-bit IO error reporting for these cases, until
-> we can convert them to fdatawait_range_since()?
-> 
+nfs_initialise_sb() and nfs_clone_super() are declared as extern even
+though they are used only in fs/nfs/super.c. Mark them as static.
 
-Yes that is a danger.
+Also remove explicit 'inline' directive from nfs_initialise_sb() and
+leave it upto compiler to decide whether inlining is worth it.
 
-In fact, late last week I was finally able to make my xfstest work with
-btrfs, and started hitting oopses with it because of the way the error
-reporting changed. I rolled up a patch to fix that (and it simplifies
-the code some, IMO), but other callers of filemap_fdatawait may have
-similar problems here.
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/nfs/internal.h | 2 --
+ fs/nfs/super.c    | 5 +++--
+ 2 files changed, 3 insertions(+), 4 deletions(-)
 
-I'll pick up working on this again in a more piecemeal way. I had
-originally looked at doing that, but there are some problematic places
-(e.g. buffer.c), where the code is shared by a bunch of different
-filesystems that makes it difficult.
-
-We may end up needing some sort of FS_WB_ERRSEQ flag to do this
-correctly, at least until the transition to errseq_t is done.
-
-> > That's probably not "correct" in all cases, particularly in the case of
-> > something like filemap_fdatawait, but I'm not sure it's any worse than
-> > what we already have, and this gives us a basis from which to work.
-> > 
-> > A lot of those callers will likely want to change to a model where they
-> > sample the errseq_t much earlier (perhaps when starting a transaction),
-> > store it in an appropriate place and then use that value later when
-> > checking to see if an error occurred.
-> > 
-> > That will almost certainly take some involvement from other subsystem
-> > maintainers. I'm quite open to adding new API functions to help enable
-> > this if that would be helpful, but I don't really want to do that until
-> > I better understand what's needed.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> ...
-> 
-> > diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-> > index 5f7317875a67..7ce13281925f 100644
-> > --- a/fs/f2fs/file.c
-> > +++ b/fs/f2fs/file.c
-> > @@ -187,6 +187,7 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
-> >  		.nr_to_write = LONG_MAX,
-> >  		.for_reclaim = 0,
-> >  	};
-> > +	errseq_t since = READ_ONCE(file->f_wb_err);
-> >  
-> >  	if (unlikely(f2fs_readonly(inode->i_sb)))
-> >  		return 0;
-> > @@ -265,6 +266,8 @@ static int f2fs_do_sync_file(struct file *file, loff_t start, loff_t end,
-> >  	}
-> >  
-> >  	ret = wait_on_node_pages_writeback(sbi, ino);
-> > +	if (ret == 0)
-> > +		ret = filemap_check_wb_error(NODE_MAPPING(sbi), since);
-> >  	if (ret)
-> >  		goto out;
-> 
-> So this conversion looks wrong and actually points to a larger issue with
-> the scheme. The problem is there are two mappings that come into play here
-> - file_inode(file)->i_mapping which is the data mapping and
-> NODE_MAPPING(sbi) which is the metadata mapping (and this is not a problem
-> specific to f2fs. For example ext2 also uses this scheme where block
-> devices' mapping is the metadata mapping). And we need to merge error
-> information from these two mappings so for the stamping scheme to work,
-> we'd need two stamps stored in struct file. One for data mapping and one
-> for metadata mapping. Or maybe there's some more clever scheme but for now
-> I don't see one...
-> 
-
-Got it -- since there are two mappings, there are two errseq_t's and
-you'd need a since cursor for each. I don't really like having to add a
-second 32-bit word to struct file, but I also don't see a real
-alternative right offhand. May be able to stash it in file->private_data 
-for some of these filesystems.
-
-In any case, I'll ponder how to do this in a more piecemeal way.
-
-Thanks for all of the review so far!
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index e9b4c3320e37..3e24392f2caa 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -398,7 +398,6 @@ extern struct file_system_type nfs4_referral_fs_type;
+ bool nfs_auth_info_match(const struct nfs_auth_info *, rpc_authflavor_t);
+ struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *,
+ 			struct nfs_subversion *);
+-void nfs_initialise_sb(struct super_block *);
+ int nfs_set_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ int nfs_clone_sb_security(struct super_block *, struct dentry *, struct nfs_mount_info *);
+ struct dentry *nfs_fs_mount_common(struct nfs_server *, int, const char *,
+@@ -458,7 +457,6 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ 
+ /* super.c */
+-void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
+ void nfs_umount_begin(struct super_block *);
+ int  nfs_statfs(struct dentry *, struct kstatfs *);
+ int  nfs_show_options(struct seq_file *, struct dentry *);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 2f3822a4a7d5..eceb4eabb064 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2301,7 +2301,7 @@ EXPORT_SYMBOL_GPL(nfs_remount);
+ /*
+  * Initialise the common bits of the superblock
+  */
+-inline void nfs_initialise_sb(struct super_block *sb)
++static void nfs_initialise_sb(struct super_block *sb)
+ {
+ 	struct nfs_server *server = NFS_SB(sb);
+ 
+@@ -2348,7 +2348,8 @@ EXPORT_SYMBOL_GPL(nfs_fill_super);
+ /*
+  * Finish setting up a cloned NFS2/3/4 superblock
+  */
+-void nfs_clone_super(struct super_block *sb, struct nfs_mount_info *mount_info)
++static void nfs_clone_super(struct super_block *sb,
++			    struct nfs_mount_info *mount_info)
+ {
+ 	const struct super_block *old_sb = mount_info->cloned->sb;
+ 	struct nfs_server *server = NFS_SB(sb);
 -- 
-Jeff Layton <jlayton@redhat.com>
+2.12.0
+
