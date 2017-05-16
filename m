@@ -1,34 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from szxga01-in.huawei.com ([45.249.212.187]:6306 "EHLO
-        szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752337AbdEPM5d (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 May 2017 08:57:33 -0400
-From: Gu Zheng <guzheng1@huawei.com>
-Subject: nfs+ext4,can not umount the ext4 mountpoint
-To: <bfields@fieldses.org>, <jlayton@poochiereds.net>
-CC: <linux-nfs@vger.kernel.org>, <houtao1@huawei.com>,
-        Zhaohongjiang <zhaohongjiang@huawei.com>, <miaoxie@huawei.com>
-Message-ID: <591AF71F.1040703@huawei.com>
-Date: Tue, 16 May 2017 20:57:03 +0800
+Received: from fieldses.org ([173.255.197.46]:44460 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752764AbdEPNLn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 May 2017 09:11:43 -0400
+Date: Tue, 16 May 2017 09:11:42 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Stefan Hajnoczi <stefanha@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: EXCHANGE_ID with same network address but different server owner
+Message-ID: <20170516131142.GA12711@fieldses.org>
+References: <20170512132721.GA654@stefanha-x1.localdomain>
+ <20170512143410.GC17983@parsley.fieldses.org>
+ <1494601295.10434.1.camel@primarydata.com>
+ <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
+ <20170515144306.GB16013@stefanha-x1.localdomain>
+ <20170515160248.GD9697@parsley.fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="gbk"; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170515160248.GD9697@parsley.fieldses.org>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all:
-we have a test about nfs on linux 4.11.
-the detailed process as follow:
-server ip:9.81.231.141                    		client
-mount -t ext4 /dev/vdb /home/nfs/aa
-							mount -t nfs -o sync,tcp,vers=3,noac,timeo=70,retrans=3 9.81.231.141:/home/nfs  /tmp/aa/
-							ls /tmp/aa
-umount /home/nfs/aa
+I think you explained this before, perhaps you could just offer a
+pointer: remind us what your requirements or use cases are especially
+for VM migration?
 
-the umount remind "target is busy".
-so we analyze the code , a reference count which is named "mnt_count" add 1 in rqst_exp_get_by_name() after execute the "ls" order.
-the detailed call is nfsd3_proc_lookup->nfsd_lookup->nfsd_lookup_dentry->nfsd_cross_mnt->rqst_exp_get_by_name->exp_get_by_name->svc_export_lookup->sunrpc_cache_lookup->svc_export_init->path_get
-the reference count can't be subtracted untill we stop nfsd or tcp idle timeout on server. the system call the cache_flush() to subtract the count.
-then we can umount successfully.
-
-do dou have some patches can umount immediately or some suggestions?
-
+--b.
