@@ -1,188 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41026 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750930AbdEPUTv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 May 2017 16:19:51 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 2902580508
-        for <linux-nfs@vger.kernel.org>; Tue, 16 May 2017 20:19:46 +0000 (UTC)
-Date: Tue, 16 May 2017 16:19:44 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Eryu Guan <eguan@redhat.com>
-Subject: [PATCH] nfsd: Revert "nfsd: check for oversized NFSv2/v3 arguments"
-Message-ID: <20170516201944.GC28537@parsley.fieldses.org>
-References: <20170515112638.GU7250@eguan.usersys.redhat.com>
- <20170515154424.GC9697@parsley.fieldses.org>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:36594 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751953AbdEPVuB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 May 2017 17:50:01 -0400
+Date: Tue, 16 May 2017 14:49:57 -0700
+From: Eric Biggers <ebiggers3@gmail.com>
+To: David Howells <dhowells@redhat.com>
+Cc: Eric Biggers <ebiggers@google.com>, keyrings@vger.kernel.org,
+        linux-api@vger.kernel.org, linux-cifs@vger.kernel.org,
+        linux-fscrypt@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Gwendal Grignou <gwendal@chromium.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Richard Weinberger <richard@nod.at>,
+        Theodore Ts'o <tytso@mit.edu>, stable@vger.kernel.org
+Subject: Re: [PATCH] KEYS: make keyctl_invalidate() also require Setattr
+ permission
+Message-ID: <20170516214957.GA113464@gmail.com>
+References: <20170329220101.26067-1-ebiggers@google.com>
+ <10049.1491207629@warthog.procyon.org.uk>
+ <20170404184433.GA46469@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170515154424.GC9697@parsley.fieldses.org>
+In-Reply-To: <20170404184433.GA46469@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hi David,
 
-This reverts commit 51f567777799 "nfsd: check for oversized NFSv2/v3
-arguments", which breaks support for NFSv3 ACLs.
+On Tue, Apr 04, 2017 at 11:44:33AM -0700, Eric Biggers wrote:
+> On Mon, Apr 03, 2017 at 09:20:29AM +0100, David Howells wrote:
+> > Eric Biggers <ebiggers@google.com> wrote:
+> > 
+> > > Currently, a process only needs Search permission on a key to invalidate
+> > > it with keyctl_invalidate(), which has an effect similar to unlinking it
+> > > from all keyrings.  Unfortunately, this significantly compromises the
+> > > keys permission system because as a result, there is no way to grant
+> > > read-only access to keys without also granting de-facto "delete" access.
+> > > Even worse, processes may invalidate entire _keyrings_, given only
+> > > permission to "search" them.
+> > > 
+> > > Key invalidation seems to have intended for cases where keyrings are
+> > > used as caches, and keys can be re-requested at any time by an upcall to
+> > > /sbin/request-key.  However, keyrings are not always used in this way.
+> > > For example, users of ext4, f2fs, and ubifs encryption may wish to grant
+> > > many differently-privileged processes access to the same keys, set up in
+> > > a shared keyring ahead of time.  Permitting everyone to invalidate keys
+> > > in this scenario enables a trivial denial-of-service.  And even users of
+> > > keyrings as "just caches" may wish to restrict invalidation because it
+> > > may require significant work or user interaction to regenerate keys.
+> > > 
+> > > This patch fixes the flaw by requiring both Search and Setattr
+> > > permission to invalidate a key rather than just Search permission.
+> > > Requiring Setattr permission is appropriate because Setattr permission
+> > > also allows revoking (via keyctl_revoke()) or expiring (via
+> > > keyctl_set_timeout()) the key, which also make the key inaccessible
+> > > regardless of how many keyrings it is in.  Continuing to require Search
+> > > permission ensures we do not decrease the level of permissions required.
+> > 
+> > I'm not sure this is the right method either.  It might be better to allocate
+> > one of the remaining two permissions bits for this and/or mark keys that are
+> > invalidateable.
+> > 
+> 
+> What do you think is the right solution?  We really need to do _something_.  Can
+> you elaborate on what the use case(s) for "invalidate" were intended to be, and
+> what users of it are known?
+> 
+> As I noted in the commit message I was hesistant to create a new Invalidate
+> permission because that would require that users of keyctl_setperm +
+> keyctl_invalidate to start including a new permission which never existed
+> before.  Note that the new permission would be rejected with EINVAL by old
+> kernels, so applications might even need to try it both ways.
+> 
+> However perhaps no one cares and doing that would be a non-issue.
+> 
+> If furthermore the only users of "invalidate" are nfsidmap and the in-kernel
+> dns_resolver, then it may be fine to rename the KEY_FLAG_ROOT_CAN_INVAL flag to
+> something like "KEY_FLAG_INVALIDATABLE" and making it so only those keys can be
+> invalidated.  That would be much better, but I don't know for sure that there
+> aren't other users of keyctl_invalidate() (you may know more).
+> 
 
-That patch was actually an earlier draft of a fix for the problem that
-was eventually fixed by e6838a29ecb "nfsd: check for oversized NFSv2/v3
-arguments".  But somehow I accidentally left this earlier draft in the
-branch that was part of my 2.12 pull request.
+I'm still thinking my proposed fix to require Setattr permission is the best
+solution.  Allocating a new permission bit breaks everyone calling
+keyctl_setperm() along with keyctl_invalidate(), while marking only certain keys
+as invalidatable breaks everyone using keyctl_invalidate() for some "unintended"
+key.
 
-Reported-by: Eryu Guan <eguan@redhat.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs3xdr.c          | 23 ++++++-----------------
- fs/nfsd/nfsxdr.c           | 13 +++----------
- include/linux/sunrpc/svc.h |  3 ++-
- 3 files changed, 11 insertions(+), 28 deletions(-)
+Personally, I've now seen keyctl_invalidate() used in two different places for
+removing ext4 encryption keys: in Chrome OS userspace, and in a test script.
+The fact is that almost everyone using the keyrings API gets confused about the
+difference between revocation, invalidation, expiration, and unlinking, so they
+may end up doing "invalidate" when maybe they were "supposed" to do something
+else.  And it may not be a good idea to break the people who happened to choose
+"invalidate", beyond what we have to do to close the security hole.
 
-The stable cc may be overkill as I don't *think* the original's been
-backported to stable yet, but it's there just in case I miss NAK'ing the
-backports....
+What do you say?
 
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 12feac6ee2fd..452334694a5d 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -334,11 +334,8 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 	if (!p)
- 		return 0;
- 	p = xdr_decode_hyper(p, &args->offset);
--	args->count = ntohl(*p++);
--
--	if (!xdr_argsize_check(rqstp, p))
--		return 0;
- 
-+	args->count = ntohl(*p++);
- 	len = min(args->count, max_blocksize);
- 
- 	/* set up the kvec */
-@@ -352,7 +349,7 @@ nfs3svc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 		v++;
- 	}
- 	args->vlen = v;
--	return 1;
-+	return xdr_argsize_check(rqstp, p);
- }
- 
- int
-@@ -544,11 +541,9 @@ nfs3svc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p,
- 	p = decode_fh(p, &args->fh);
- 	if (!p)
- 		return 0;
--	if (!xdr_argsize_check(rqstp, p))
--		return 0;
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return 1;
-+	return xdr_argsize_check(rqstp, p);
- }
- 
- int
-@@ -574,14 +569,10 @@ nfs3svc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
- 	args->verf   = p; p += 2;
- 	args->dircount = ~0;
- 	args->count  = ntohl(*p++);
--
--	if (!xdr_argsize_check(rqstp, p))
--		return 0;
--
- 	args->count  = min_t(u32, args->count, PAGE_SIZE);
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return 1;
-+	return xdr_argsize_check(rqstp, p);
- }
- 
- int
-@@ -599,9 +590,6 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
- 	args->dircount = ntohl(*p++);
- 	args->count    = ntohl(*p++);
- 
--	if (!xdr_argsize_check(rqstp, p))
--		return 0;
--
- 	len = args->count = min(args->count, max_blocksize);
- 	while (len > 0) {
- 		struct page *p = *(rqstp->rq_next_page++);
-@@ -609,7 +597,8 @@ nfs3svc_decode_readdirplusargs(struct svc_rqst *rqstp, __be32 *p,
- 			args->buffer = page_address(p);
- 		len -= PAGE_SIZE;
- 	}
--	return 1;
-+
-+	return xdr_argsize_check(rqstp, p);
- }
- 
- int
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index 6a4947a3f4fa..de07ff625777 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -257,9 +257,6 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 	len = args->count     = ntohl(*p++);
- 	p++; /* totalcount - unused */
- 
--	if (!xdr_argsize_check(rqstp, p))
--		return 0;
--
- 	len = min_t(unsigned int, len, NFSSVC_MAXBLKSIZE_V2);
- 
- 	/* set up somewhere to store response.
-@@ -275,7 +272,7 @@ nfssvc_decode_readargs(struct svc_rqst *rqstp, __be32 *p,
- 		v++;
- 	}
- 	args->vlen = v;
--	return 1;
-+	return xdr_argsize_check(rqstp, p);
- }
- 
- int
-@@ -365,11 +362,9 @@ nfssvc_decode_readlinkargs(struct svc_rqst *rqstp, __be32 *p, struct nfsd_readli
- 	p = decode_fh(p, &args->fh);
- 	if (!p)
- 		return 0;
--	if (!xdr_argsize_check(rqstp, p))
--		return 0;
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return 1;
-+	return xdr_argsize_check(rqstp, p);
- }
- 
- int
-@@ -407,11 +402,9 @@ nfssvc_decode_readdirargs(struct svc_rqst *rqstp, __be32 *p,
- 	args->cookie = ntohl(*p++);
- 	args->count  = ntohl(*p++);
- 	args->count  = min_t(u32, args->count, PAGE_SIZE);
--	if (!xdr_argsize_check(rqstp, p))
--		return 0;
- 	args->buffer = page_address(*(rqstp->rq_next_page++));
- 
--	return 1;
-+	return xdr_argsize_check(rqstp, p);
- }
- 
- /*
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 94631026f79c..11cef5a7bc87 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -336,7 +336,8 @@ xdr_argsize_check(struct svc_rqst *rqstp, __be32 *p)
- {
- 	char *cp = (char *)p;
- 	struct kvec *vec = &rqstp->rq_arg.head[0];
--	return cp == (char *)vec->iov_base + vec->iov_len;
-+	return cp >= (char*)vec->iov_base
-+		&& cp <= (char*)vec->iov_base + vec->iov_len;
- }
- 
- static inline int
--- 
-2.9.3
-
+- Eric
