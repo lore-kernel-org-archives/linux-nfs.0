@@ -1,45 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33390 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752373AbdEPNge (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 May 2017 09:36:34 -0400
-Received: by mail-io0-f196.google.com with SMTP id m4so14442537ioe.0
-        for <linux-nfs@vger.kernel.org>; Tue, 16 May 2017 06:36:34 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/3] Improvements to page writeback commit policy
-Date: Tue, 16 May 2017 09:36:25 -0400
-Message-Id: <20170516133628.16525-1-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:59438 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751357AbdEPNg3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 May 2017 09:36:29 -0400
+Date: Tue, 16 May 2017 09:36:03 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Stefan Hajnoczi <stefanha@redhat.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: EXCHANGE_ID with same network address but different server owner
+Message-ID: <20170516133603.GA21704@parsley.fieldses.org>
+References: <20170512132721.GA654@stefanha-x1.localdomain>
+ <20170512143410.GC17983@parsley.fieldses.org>
+ <1494601295.10434.1.camel@primarydata.com>
+ <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
+ <20170515144306.GB16013@stefanha-x1.localdomain>
+ <20170515160248.GD9697@parsley.fieldses.org>
+ <20170516133338.GD8498@stefanha-x1.localdomain>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170516133338.GD8498@stefanha-x1.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following patches are intended to smooth out the page writeback
-performance by ensuring that we commit the data earlier on the server.
+On Tue, May 16, 2017 at 02:33:38PM +0100, Stefan Hajnoczi wrote:
+> I suspect many guests will have a dedicated/private export.  The guest
+> will be the only client accessing its export.  This could simplify the
+> locking issues.
 
-We assume that if something is starting writeback on the pages, then
-that process wants to commit the data as soon as possible, whether it
-is an application or just the background flush process.
-We also assume that for streaming type processes, we don't want to pause
-the I/O in order to commit, so we don't want to rely on a counter of
-in-flight I/O to the entire inode going to zero.
+So why not migrate filesystem images instead of using NFS?
 
-We therefore set up a monitor that counts the number of in-flight
-writes for each call to nfs_writepages(). Once all the writes to that
-call to nfs_writepages has completed, we send the commit. Note that this
-mirrors the behaviour for O_DIRECT writes, where we similarly track the
-in-flight writes on a per-call basis.
-
-Trond Myklebust (3):
-  NFS: Remove unused fields in the page I/O structures
-  NFS: Ensure we commit after writeback is complete
-  NFS: Fix commit policy for non-blocking calls to nfs_write_inode()
-
- fs/nfs/pagelist.c        |  5 ++--
- fs/nfs/write.c           | 59 +++++++++++++++++++++++++++++++++++++++++++++++-
- include/linux/nfs_page.h |  2 +-
- include/linux/nfs_xdr.h  |  3 ++-
- 4 files changed, 64 insertions(+), 5 deletions(-)
-
--- 
-2.9.4
-
+--b.
