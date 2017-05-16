@@ -1,44 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34958 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753074AbdEPNgl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 May 2017 09:36:41 -0400
-Received: by mail-io0-f193.google.com with SMTP id o12so14460641iod.2
-        for <linux-nfs@vger.kernel.org>; Tue, 16 May 2017 06:36:41 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:38452 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751633AbdEPOKJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 May 2017 10:10:09 -0400
+Date: Tue, 16 May 2017 22:09:55 +0800
+From: Eryu Guan <eguan@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFS: Fix commit policy for non-blocking calls to nfs_write_inode()
-Date: Tue, 16 May 2017 09:36:28 -0400
-Message-Id: <20170516133628.16525-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20170516133628.16525-3-trond.myklebust@primarydata.com>
-References: <20170516133628.16525-1-trond.myklebust@primarydata.com>
- <20170516133628.16525-2-trond.myklebust@primarydata.com>
- <20170516133628.16525-3-trond.myklebust@primarydata.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>
+Subject: [4.12-rc1 regression] copy_file_range(2) stuck in infinite loop
+Message-ID: <20170516140955.GZ7250@eguan.usersys.redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that the writes will schedule a commit on their own, we don't
-need nfs_write_inode() to schedule one if there are outstanding
-writes, and we're being called in non-blocking mode.
+Hi all,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/write.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+fstests test generic/430 would hang when testing NFSv4.2 using 4.12-rc1
+kernel based client. And this is a regression, 4.11 kernel has no
+problem. A simple reproducer is like:
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 051197cb9195..b1af5dee5e0a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1941,7 +1941,7 @@ int nfs_write_inode(struct inode *inode, struct writeback_control *wbc)
- 		/* Don't commit yet if this is a non-blocking flush and there
- 		 * are a lot of outstanding writes for this mapping.
- 		 */
--		if (nfsi->commit_info.ncommit <= (nfsi->nrequests >> 1))
-+		if (mapping_tagged(inode->i_mapping, PAGECACHE_TAG_WRITEBACK))
- 			goto out_mark_dirty;
- 
- 		/* don't wait for the COMMIT response */
--- 
-2.9.4
+# mount -t nfs -o vers=4.2 nfs-server:/export /mnt/nfs
+# xfs_io -fc "pwrite 0 4k" /mnt/nfs/testfile
+# xfs_io -fc "copy_range /mnt/nfs/testfile" /mnt/nfs/testfile.copy
 
+The last copy_range command never returns, and xfs_io process is in D
+state. Some kernel debug code shows that it stuck in infinite loop in
+nfs42_proc_copy(), _nfs42_proc_copy() always returns -EAGAIN.
+
+So this looks like a problem introduced by this commit
+
+commit e092693443b995c8e3a565a73b5fdb05f1260f9b
+Author: Olga Kornievskaia <kolga@netapp.com>
+Date:   Mon May 8 18:02:24 2017 -0400
+
+    NFS append COMMIT after synchronous COPY
+
+    Instead of messing with the commit path which has been causing issues,
+    add a COMMIT op after the COPY and ask for stable copies in the first
+    space.
+
+    It saves a round trip, since after the COPY, the client sends a COMMIT
+    anyway.
+
+    Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+Reverting this patch did solve the problem. If you need more info please
+let me know.
+
+Thanks,
+Eryu
