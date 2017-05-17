@@ -1,69 +1,290 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51392 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31721 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752921AbdEQOdR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 May 2017 10:33:17 -0400
-Date: Wed, 17 May 2017 15:33:14 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-Message-ID: <20170517143314.GB12490@stefanha-x1.localdomain>
-References: <20170512132721.GA654@stefanha-x1.localdomain>
- <20170512143410.GC17983@parsley.fieldses.org>
- <1494601295.10434.1.camel@primarydata.com>
- <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
- <20170515144306.GB16013@stefanha-x1.localdomain>
- <20170515160248.GD9697@parsley.fieldses.org>
- <20170516133338.GD8498@stefanha-x1.localdomain>
- <20170516133603.GA21704@parsley.fieldses.org>
+        id S1753486AbdEQPEc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 17 May 2017 11:04:32 -0400
+Subject: Re: [PATCH] rpcbind: libtirpc fixes for CVE-2017-8779
+To: Guido Vranken <guidovranken@gmail.com>, linux-nfs@vger.kernel.org
+References: <CAO5O-ELFAoyHZWnvyh_vtdB0vJiEf-wsBgKF8SG+Y_Bj4fK1kw@mail.gmail.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <775cde7e-93d1-fc93-2848-bf5d04dd6370@RedHat.com>
+Date: Wed, 17 May 2017 11:04:25 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="v9Ux+11Zm5mwPlX6"
-In-Reply-To: <20170516133603.GA21704@parsley.fieldses.org>
+In-Reply-To: <CAO5O-ELFAoyHZWnvyh_vtdB0vJiEf-wsBgKF8SG+Y_Bj4fK1kw@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---v9Ux+11Zm5mwPlX6
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
 
-On Tue, May 16, 2017 at 09:36:03AM -0400, J. Bruce Fields wrote:
-> On Tue, May 16, 2017 at 02:33:38PM +0100, Stefan Hajnoczi wrote:
-> > I suspect many guests will have a dedicated/private export.  The guest
-> > will be the only client accessing its export.  This could simplify the
-> > locking issues.
->=20
-> So why not migrate filesystem images instead of using NFS?
+On 05/14/2017 09:58 PM, Guido Vranken wrote:
+> Fix for CVE-2017-8779
+> Signed-off-by: Guido Vranken <guidovranken@gmail.com>
+> ---
+>  src/rpc_generic.c |  8 ++++++++
+>  src/rpcb_prot.c   | 22 ++++++++++++++--------
+>  src/rpcb_st_xdr.c |  9 +++++----
+>  src/xdr.c         | 30 +++++++++++++++++++++++++-----
+>  4 files changed, 52 insertions(+), 17 deletions(-)
+Committed... 
 
-Some users consider disk image files inconvenient because they cannot be
-inspected and manipulated with regular shell utilities.
+steved.
 
-Especially scenarios where many VMs are launched with VM-specific data
-files can benefit from using files directly instead of building disk
-images.
-
-I'm not saying all users just export per-VM directories, but it's a
-common case and may be a good starting point if a general solution is
-very hard.
-
---v9Ux+11Zm5mwPlX6
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEcBAEBAgAGBQJZHF8qAAoJEJykq7OBq3PIRQMIAJO48x1xCDK2w+5TNOsSL8j4
-PKDY2WKzo7NZ0voHI9Hfcr0n980KAZxBk4DU6yHLk8+DYS2O9ipQ88vlBTd1f1lS
-0SWVcJ8zCuFvKPvcGjscUEb9OcRBszZXj2OFeq8nt6F4/KPvYeWybGhUNVV2llMU
-1eKLvUmsuvKAStF5hRt7835pgjV4LQRQwwZAG0NKn5+h0Z2FavCkDUwcf6shueE8
-aY+7zljETyzfGqiX79mHvxYB+TW1RUS6Eus+mLPLvZbRYq4/hPlg1bFxs7//bUiP
-i5LMGbB3x3FW8vPpddaa+qVb9P16Sm1Ns6aUvLcpGqptD+jiyl898Uq17NRcZI8=
-=H5vy
------END PGP SIGNATURE-----
-
---v9Ux+11Zm5mwPlX6--
+> 
+> diff --git a/src/rpc_generic.c b/src/rpc_generic.c
+> index 2f09a8f..589cbd5 100644
+> --- a/src/rpc_generic.c
+> +++ b/src/rpc_generic.c
+> @@ -615,6 +615,9 @@ __rpc_taddr2uaddr_af(int af, const struct netbuf *nbuf)
+> 
+>      switch (af) {
+>      case AF_INET:
+> +        if (nbuf->len < sizeof(*sin)) {
+> +            return NULL;
+> +        }
+>          sin = nbuf->buf;
+>          if (inet_ntop(af, &sin->sin_addr, namebuf, sizeof namebuf)
+>              == NULL)
+> @@ -626,6 +629,9 @@ __rpc_taddr2uaddr_af(int af, const struct netbuf *nbuf)
+>          break;
+>  #ifdef INET6
+>      case AF_INET6:
+> +        if (nbuf->len < sizeof(*sin6)) {
+> +            return NULL;
+> +        }
+>          sin6 = nbuf->buf;
+>          if (inet_ntop(af, &sin6->sin6_addr, namebuf6, sizeof namebuf6)
+>              == NULL)
+> @@ -667,6 +673,8 @@ __rpc_uaddr2taddr_af(int af, const char *uaddr)
+> 
+>      port = 0;
+>      sin = NULL;
+> +    if (uaddr == NULL)
+> +        return NULL;
+>      addrstr = strdup(uaddr);
+>      if (addrstr == NULL)
+>          return NULL;
+> diff --git a/src/rpcb_prot.c b/src/rpcb_prot.c
+> index 43fd385..a923c8e 100644
+> --- a/src/rpcb_prot.c
+> +++ b/src/rpcb_prot.c
+> @@ -41,6 +41,7 @@
+>  #include <rpc/types.h>
+>  #include <rpc/xdr.h>
+>  #include <rpc/rpcb_prot.h>
+> +#include "rpc_com.h"
+> 
+>  bool_t
+>  xdr_rpcb(xdrs, objp)
+> @@ -53,13 +54,13 @@ xdr_rpcb(xdrs, objp)
+>      if (!xdr_u_int32_t(xdrs, &objp->r_vers)) {
+>          return (FALSE);
+>      }
+> -    if (!xdr_string(xdrs, &objp->r_netid, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->r_netid, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+> -    if (!xdr_string(xdrs, &objp->r_addr, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->r_addr, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+> -    if (!xdr_string(xdrs, &objp->r_owner, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->r_owner, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+>      return (TRUE);
+> @@ -159,19 +160,19 @@ xdr_rpcb_entry(xdrs, objp)
+>      XDR *xdrs;
+>      rpcb_entry *objp;
+>  {
+> -    if (!xdr_string(xdrs, &objp->r_maddr, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->r_maddr, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+> -    if (!xdr_string(xdrs, &objp->r_nc_netid, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->r_nc_netid, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+>      if (!xdr_u_int32_t(xdrs, &objp->r_nc_semantics)) {
+>          return (FALSE);
+>      }
+> -    if (!xdr_string(xdrs, &objp->r_nc_protofmly, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->r_nc_protofmly, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+> -    if (!xdr_string(xdrs, &objp->r_nc_proto, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->r_nc_proto, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+>      return (TRUE);
+> @@ -292,7 +293,7 @@ xdr_rpcb_rmtcallres(xdrs, p)
+>      bool_t dummy;
+>      struct r_rpcb_rmtcallres *objp = (struct r_rpcb_rmtcallres *)(void *)p;
+> 
+> -    if (!xdr_string(xdrs, &objp->addr, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->addr, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+>      if (!xdr_u_int(xdrs, &objp->results.results_len)) {
+> @@ -312,6 +313,11 @@ xdr_netbuf(xdrs, objp)
+>      if (!xdr_u_int32_t(xdrs, (u_int32_t *) &objp->maxlen)) {
+>          return (FALSE);
+>      }
+> +
+> +    if (objp->maxlen > RPC_MAXDATASIZE) {
+> +        return (FALSE);
+> +    }
+> +
+>      dummy = xdr_bytes(xdrs, (char **)&(objp->buf),
+>              (u_int *)&(objp->len), objp->maxlen);
+>      return (dummy);
+> diff --git a/src/rpcb_st_xdr.c b/src/rpcb_st_xdr.c
+> index 08db745..28e6a48 100644
+> --- a/src/rpcb_st_xdr.c
+> +++ b/src/rpcb_st_xdr.c
+> @@ -37,6 +37,7 @@
+> 
+> 
+>  #include <rpc/rpc.h>
+> +#include "rpc_com.h"
+> 
+>  /* Link list of all the stats about getport and getaddr */
+> 
+> @@ -58,7 +59,7 @@ xdr_rpcbs_addrlist(xdrs, objp)
+>          if (!xdr_int(xdrs, &objp->failure)) {
+>          return (FALSE);
+>          }
+> -        if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
+> +        if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>          }
+> 
+> @@ -109,7 +110,7 @@ xdr_rpcbs_rmtcalllist(xdrs, objp)
+>          IXDR_PUT_INT32(buf, objp->failure);
+>          IXDR_PUT_INT32(buf, objp->indirect);
+>      }
+> -    if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+>      if (!xdr_pointer(xdrs, (char **)&objp->next,
+> @@ -147,7 +148,7 @@ xdr_rpcbs_rmtcalllist(xdrs, objp)
+>          objp->failure = (int)IXDR_GET_INT32(buf);
+>          objp->indirect = (int)IXDR_GET_INT32(buf);
+>      }
+> -    if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+>      if (!xdr_pointer(xdrs, (char **)&objp->next,
+> @@ -175,7 +176,7 @@ xdr_rpcbs_rmtcalllist(xdrs, objp)
+>      if (!xdr_int(xdrs, &objp->indirect)) {
+>          return (FALSE);
+>      }
+> -    if (!xdr_string(xdrs, &objp->netid, (u_int)~0)) {
+> +    if (!xdr_string(xdrs, &objp->netid, RPC_MAXDATASIZE)) {
+>          return (FALSE);
+>      }
+>      if (!xdr_pointer(xdrs, (char **)&objp->next,
+> diff --git a/src/xdr.c b/src/xdr.c
+> index f3fb9ad..b9a1558 100644
+> --- a/src/xdr.c
+> +++ b/src/xdr.c
+> @@ -42,8 +42,10 @@
+>  #include <stdlib.h>
+>  #include <string.h>
+> 
+> +#include <rpc/rpc.h>
+>  #include <rpc/types.h>
+>  #include <rpc/xdr.h>
+> +#include <rpc/rpc_com.h>
+> 
+>  typedef quad_t          longlong_t;     /* ANSI long long type */
+>  typedef u_quad_t        u_longlong_t;   /* ANSI unsigned long long type */
+> @@ -53,7 +55,6 @@ typedef u_quad_t        u_longlong_t;   /* ANSI
+> unsigned long long type */
+>   */
+>  #define XDR_FALSE    ((long) 0)
+>  #define XDR_TRUE    ((long) 1)
+> -#define LASTUNSIGNED    ((u_int) 0-1)
+> 
+>  /*
+>   * for unit alignment
+> @@ -629,6 +630,7 @@ xdr_bytes(xdrs, cpp, sizep, maxsize)
+>  {
+>      char *sp = *cpp;  /* sp is the actual string pointer */
+>      u_int nodesize;
+> +    bool_t ret, allocated = FALSE;
+> 
+>      /*
+>       * first deal with the length since xdr bytes are counted
+> @@ -652,6 +654,7 @@ xdr_bytes(xdrs, cpp, sizep, maxsize)
+>          }
+>          if (sp == NULL) {
+>              *cpp = sp = mem_alloc(nodesize);
+> +            allocated = TRUE;
+>          }
+>          if (sp == NULL) {
+>              warnx("xdr_bytes: out of memory");
+> @@ -660,7 +663,14 @@ xdr_bytes(xdrs, cpp, sizep, maxsize)
+>          /* FALLTHROUGH */
+> 
+>      case XDR_ENCODE:
+> -        return (xdr_opaque(xdrs, sp, nodesize));
+> +        ret = xdr_opaque(xdrs, sp, nodesize);
+> +        if ((xdrs->x_op == XDR_DECODE) && (ret == FALSE)) {
+> +            if (allocated == TRUE) {
+> +                free(sp);
+> +                *cpp = NULL;
+> +            }
+> +        }
+> +        return (ret);
+> 
+>      case XDR_FREE:
+>          if (sp != NULL) {
+> @@ -754,6 +764,7 @@ xdr_string(xdrs, cpp, maxsize)
+>      char *sp = *cpp;  /* sp is the actual string pointer */
+>      u_int size;
+>      u_int nodesize;
+> +    bool_t ret, allocated = FALSE;
+> 
+>      /*
+>       * first deal with the length since xdr strings are counted-strings
+> @@ -793,8 +804,10 @@ xdr_string(xdrs, cpp, maxsize)
+>      switch (xdrs->x_op) {
+> 
+>      case XDR_DECODE:
+> -        if (sp == NULL)
+> +        if (sp == NULL) {
+>              *cpp = sp = mem_alloc(nodesize);
+> +            allocated = TRUE;
+> +        }
+>          if (sp == NULL) {
+>              warnx("xdr_string: out of memory");
+>              return (FALSE);
+> @@ -803,7 +816,14 @@ xdr_string(xdrs, cpp, maxsize)
+>          /* FALLTHROUGH */
+> 
+>      case XDR_ENCODE:
+> -        return (xdr_opaque(xdrs, sp, size));
+> +        ret = xdr_opaque(xdrs, sp, size);
+> +        if ((xdrs->x_op == XDR_DECODE) && (ret == FALSE)) {
+> +            if (allocated == TRUE) {
+> +                free(sp);
+> +                *cpp = NULL;
+> +            }
+> +        }
+> +        return (ret);
+> 
+>      case XDR_FREE:
+>          mem_free(sp, nodesize);
+> @@ -823,7 +843,7 @@ xdr_wrapstring(xdrs, cpp)
+>      XDR *xdrs;
+>      char **cpp;
+>  {
+> -    return xdr_string(xdrs, cpp, LASTUNSIGNED);
+> +    return xdr_string(xdrs, cpp, RPC_MAXDATASIZE);
+>  }
+> 
+>  /*
+> 
