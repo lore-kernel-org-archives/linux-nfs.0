@@ -1,99 +1,257 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52304 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754521AbdERNeo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 May 2017 09:34:44 -0400
-Date: Thu, 18 May 2017 14:34:41 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-Message-ID: <20170518133441.GC4155@stefanha-x1.localdomain>
-References: <20170512132721.GA654@stefanha-x1.localdomain>
- <20170512143410.GC17983@parsley.fieldses.org>
- <1494601295.10434.1.camel@primarydata.com>
- <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
- <20170515144306.GB16013@stefanha-x1.localdomain>
- <20170515160248.GD9697@parsley.fieldses.org>
- <20170516131142.GA12711@fieldses.org>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="JWEK1jqKZ6MHAcjA"
-In-Reply-To: <20170516131142.GA12711@fieldses.org>
+Received: from mail-qk0-f182.google.com ([209.85.220.182]:34775 "EHLO
+        mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754241AbdEROE1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 10:04:27 -0400
+Received: by mail-qk0-f182.google.com with SMTP id k74so36578267qke.1
+        for <linux-nfs@vger.kernel.org>; Thu, 18 May 2017 07:04:27 -0700 (PDT)
+Message-ID: <1495116264.3956.3.camel@redhat.com>
+Subject: Re: [PATCH v2 01/10] SUNRPC: add AF_VSOCK support to addr.[ch]
+From: Jeff Layton <jlayton@redhat.com>
+To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 18 May 2017 10:04:24 -0400
+In-Reply-To: <1475834514-4058-2-git-send-email-stefanha@redhat.com>
+References: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
+         <1475834514-4058-2-git-send-email-stefanha@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2016-10-07 at 11:01 +0100, Stefan Hajnoczi wrote:
+> AF_VSOCK addresses are a Context ID (CID) and port number tuple.  The
+> CID is a unique address, similar to a IP address on a local subnet.
+> 
+> Extend the addr.h functions to handle AF_VSOCK addresses.
+> 
+> Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+> ---
+> v2:
+>  * Replace CONFIG_VSOCKETS with CONFIG_SUNRPC_XPRT_VSOCK to prevent
+>    build failures when SUNRPC=y and VSOCKETS=m.  Built-in code cannot
+>    link against code in a module.
+> ---
+>  include/linux/sunrpc/addr.h | 44 ++++++++++++++++++++++++++++++++++
+>  net/sunrpc/Kconfig          | 10 ++++++++
+>  net/sunrpc/addr.c           | 57 +++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 111 insertions(+)
+> 
+> diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
+> index 5c9c6cd..c4169bc 100644
+> --- a/include/linux/sunrpc/addr.h
+> +++ b/include/linux/sunrpc/addr.h
+> @@ -10,6 +10,7 @@
+>  #include <linux/socket.h>
+>  #include <linux/in.h>
+>  #include <linux/in6.h>
+> +#include <linux/vm_sockets.h>
+>  #include <net/ipv6.h>
+>  
+>  size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+> @@ -26,6 +27,8 @@ static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+>  		return ntohs(((struct sockaddr_in *)sap)->sin_port);
+>  	case AF_INET6:
+>  		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
+> +	case AF_VSOCK:
+> +		return ((struct sockaddr_vm *)sap)->svm_port;
+>  	}
+>  	return 0;
+>  }
+> @@ -40,6 +43,9 @@ static inline void rpc_set_port(struct sockaddr *sap,
+>  	case AF_INET6:
+>  		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
+>  		break;
+> +	case AF_VSOCK:
+> +		((struct sockaddr_vm *)sap)->svm_port = port;
+> +		break;
+>  	}
+>  }
+>  
+> @@ -106,6 +112,40 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+>  }
+>  #endif	/* !(IS_ENABLED(CONFIG_IPV6) */
+>  
+> +#if IS_ENABLED(CONFIG_VSOCKETS)
+> +static inline bool rpc_cmp_vsock_addr(const struct sockaddr *sap1,
+> +				      const struct sockaddr *sap2)
+> +{
+> +	const struct sockaddr_vm *svm1 = (const struct sockaddr_vm *)sap1;
+> +	const struct sockaddr_vm *svm2 = (const struct sockaddr_vm *)sap2;
+> +
+> +	return svm1->svm_cid == svm2->svm_cid;
+> +}
+> +
+> +static inline bool __rpc_copy_vsock_addr(struct sockaddr *dst,
+> +					 const struct sockaddr *src)
+> +{
+> +	const struct sockaddr_vm *ssvm = (const struct sockaddr_vm *)src;
+> +	struct sockaddr_vm *dsvm = (struct sockaddr_vm *)dst;
+> +
+> +	dsvm->svm_family = ssvm->svm_family;
+> +	dsvm->svm_cid = ssvm->svm_cid;
+> +	return true;
+> +}
+> +#else	/* !(IS_ENABLED(CONFIG_VSOCKETS) */
+> +static inline bool rpc_cmp_vsock_addr(const struct sockaddr *sap1,
+> +				      const struct sockaddr *sap2)
+> +{
+> +	return false;
+> +}
+> +
+> +static inline bool __rpc_copy_vsock_addr(struct sockaddr *dst,
+> +					 const struct sockaddr *src)
+> +{
+> +	return false;
+> +}
+> +#endif	/* !(IS_ENABLED(CONFIG_VSOCKETS) */
+> +
+>  /**
+>   * rpc_cmp_addr - compare the address portion of two sockaddrs.
+>   * @sap1: first sockaddr
+> @@ -125,6 +165,8 @@ static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+>  			return rpc_cmp_addr4(sap1, sap2);
+>  		case AF_INET6:
+>  			return rpc_cmp_addr6(sap1, sap2);
+> +		case AF_VSOCK:
+> +			return rpc_cmp_vsock_addr(sap1, sap2);
+>  		}
+>  	}
+>  	return false;
+> @@ -161,6 +203,8 @@ static inline bool rpc_copy_addr(struct sockaddr *dst,
+>  		return __rpc_copy_addr4(dst, src);
+>  	case AF_INET6:
+>  		return __rpc_copy_addr6(dst, src);
+> +	case AF_VSOCK:
+> +		return __rpc_copy_vsock_addr(dst, src);
+>  	}
+>  	return false;
+>  }
+> diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+> index 04ce2c0..d18fc1a 100644
+> --- a/net/sunrpc/Kconfig
+> +++ b/net/sunrpc/Kconfig
+> @@ -61,3 +61,13 @@ config SUNRPC_XPRT_RDMA
+>  
+>  	  If unsure, or you know there is no RDMA capability on your
+>  	  hardware platform, say N.
+> +
+> +config SUNRPC_XPRT_VSOCK
+> +	bool "RPC-over-AF_VSOCK transport"
+> +	depends on SUNRPC && VSOCKETS && !(SUNRPC=y && VSOCKETS=m)
+> +	default SUNRPC && VSOCKETS
+> +	help
+> +	  This option allows the NFS client and server to use the AF_VSOCK
+> +	  transport to communicate between virtual machines and the host.
+> +
+> +	  If unsure, say Y.
+> diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+> index 2e0a6f9..f4dd962 100644
+> --- a/net/sunrpc/addr.c
+> +++ b/net/sunrpc/addr.c
+> @@ -16,11 +16,14 @@
+>   * RFC 4291, Section 2.2 for details on IPv6 presentation formats.
+>   */
+>  
+> + /* TODO register netid and uaddr with IANA? (See RFC 5665 5.1/5.2) */
+> +
+>  #include <net/ipv6.h>
+>  #include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/msg_prot.h>
+>  #include <linux/slab.h>
+>  #include <linux/export.h>
+> +#include <linux/vm_sockets.h>
+>  
+>  #if IS_ENABLED(CONFIG_IPV6)
+>  
+> @@ -108,6 +111,26 @@ static size_t rpc_ntop6(const struct sockaddr *sap,
+>  
+>  #endif	/* !IS_ENABLED(CONFIG_IPV6) */
+>  
+> +#ifdef CONFIG_SUNRPC_XPRT_VSOCK
+> +
+> +static size_t rpc_ntop_vsock(const struct sockaddr *sap,
+> +			     char *buf, const size_t buflen)
+> +{
+> +	const struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
+> +
+> +	return snprintf(buf, buflen, "%u", svm->svm_cid);
+> +}
+> +
+> +#else	/* !CONFIG_SUNRPC_XPRT_VSOCK */
+> +
+> +static size_t rpc_ntop_vsock(const struct sockaddr *sap,
+> +			     char *buf, const size_t buflen)
+> +{
+> +	return 0;
+> +}
+> +
+> +#endif	/* !CONFIG_SUNRPC_XPRT_VSOCK */
+> +
+>  static int rpc_ntop4(const struct sockaddr *sap,
+>  		     char *buf, const size_t buflen)
+>  {
+> @@ -132,6 +155,8 @@ size_t rpc_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
+>  		return rpc_ntop4(sap, buf, buflen);
+>  	case AF_INET6:
+>  		return rpc_ntop6(sap, buf, buflen);
+> +	case AF_VSOCK:
+> +		return rpc_ntop_vsock(sap, buf, buflen);
+>  	}
+>  
+>  	return 0;
+> @@ -229,6 +254,34 @@ static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
+>  }
+>  #endif
+>  
+> +#ifdef CONFIG_SUNRPC_XPRT_VSOCK
+> +static size_t rpc_pton_vsock(const char *buf, const size_t buflen,
+> +			     struct sockaddr *sap, const size_t salen)
+> +{
+> +	const size_t prefix_len = strlen("vsock:");
+> +	struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
+> +	unsigned int cid;
+> +
+> +	if (strncmp(buf, "vsock:", prefix_len) != 0 ||
+> +	    salen < sizeof(struct sockaddr_vm))
+> +		return 0;
+> +
+> +	if (kstrtouint(buf + prefix_len, 10, &cid) != 0)
+> +		return 0;
+> +
+> +	memset(svm, 0, sizeof(struct sockaddr_vm));
+> +	svm->svm_family = AF_VSOCK;
+> +	svm->svm_cid = cid;
+> +	return sizeof(struct sockaddr_vm);
+> +}
+> +#else
+> +static size_t rpc_pton_vsock(const char *buf, const size_t buflen,
+> +			     struct sockaddr *sap, const size_t salen)
+> +{
+> +	return 0;
+> +}
+> +#endif
+> +
+>  /**
+>   * rpc_pton - Construct a sockaddr in @sap
+>   * @net: applicable network namespace
+> @@ -249,6 +302,10 @@ size_t rpc_pton(struct net *net, const char *buf, const size_t buflen,
+>  {
+>  	unsigned int i;
+>  
+> +	/* TODO is there a nicer way to distinguish vsock addresses? */
+> +	if (strncmp(buf, "vsock:", 6) == 0)
+> +		return rpc_pton_vsock(buf, buflen, sap, salen);
+> +
 
---JWEK1jqKZ6MHAcjA
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Ick, what if I have a host on the network named "vsock"? I think you'll
+need to come up with a different way to do this.
 
-On Tue, May 16, 2017 at 09:11:42AM -0400, J. Bruce Fields wrote:
-> I think you explained this before, perhaps you could just offer a
-> pointer: remind us what your requirements or use cases are especially
-> for VM migration?
+>  	for (i = 0; i < buflen; i++)
+>  		if (buf[i] == ':')
+>  			return rpc_pton6(net, buf, buflen, sap, salen);
 
-The NFS over AF_VSOCK configuration is:
-
-A guest running on host mounts an NFS export from the host.  The NFS
-server may be kernel nfsd or an NFS frontend to a distributed storage
-system like Ceph.  A little more about these cases below.
-
-Kernel nfsd is useful for sharing files.  For example, the guest may
-read some files from the host when it launches and/or it may write out
-result files to the host when it shuts down.  The user may also wish to
-share their home directory between the guest and the host.
-
-NFS frontends are a different use case.  They hide distributed storage
-systems from guests in cloud environments.  This way guests don't see
-the details of the Ceph, Gluster, etc nodes.  Besides benefiting
-security it also allows NFS-capable guests to run without installing
-specific drivers for the distributed storage system.  This use case is
-"filesystem as a service".
-
-The reason for using AF_VSOCK instead of TCP/IP is that traditional
-networking configuration is fragile.  Automatically adding a dedicated
-NIC to the guest and choosing an IP subnet has a high chance of
-conflicts (subnet collisions, network interface naming, firewall rules,
-network management tools).  AF_VSOCK is a zero-configuration
-communications channel so it avoids these problems.
-
-On to migration.  For the most part, guests can be live migrated between
-hosts without significant downtime or manual steps.  PCI passthrough is
-an example of a feature that makes it very hard to live migrate.  I hope
-we can allow migration with NFS, although some limitations may be
-necessary to make it feasible.
-
-There are two NFS over AF_VSOCK migration scenarios:
-
-1. The files live on host H1 and host H2 cannot access the files
-   directly.  There is no way for an NFS server on H2 to access those
-   same files unless the directory is copied along with the guest or H2
-   proxies to the NFS server on H1.
-
-2. The files are accessible from both host H1 and host H2 because they
-   are on shared storage or distributed storage system.  Here the
-   problem is "just" migrating the state from H1's NFS server to H2 so
-   that file handles remain valid.
-
-Stefan
-
---JWEK1jqKZ6MHAcjA
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEcBAEBAgAGBQJZHaLxAAoJEJykq7OBq3PIJE8H/2ruNH/bagWyO5zuFjj0RTpD
-fwnDqYokDP8Ha2vWP/dm9sWv8dryTDRwTvH7xVj4TxoCimu1QYQJZoMUODXmC7N8
-MZp1T9DRSwy6wNJWJW0B112fJ+Jg0+9OUul42726oFGBVwWxzzrF4VU68ux3dspU
-6H4ZIOZu0TE9+89iCMkB4Xv5g9GLUxLoqLWSrTnF9YkIJ4n+Bbip6YBk9HrPw+2y
-UUHgTOT2D88IM2DI3C/fELb9qBZ7ye9ugtBKHXUXy7xJViL9dNiZi+Q80Sg1NA4h
-ZX/JO84HS4qArZewm7SQ9k91L5B2nkuqCXID4oNZYY6mRfI/gKli/V7hN51b6ks=
-=TZAa
------END PGP SIGNATURE-----
-
---JWEK1jqKZ6MHAcjA--
+-- 
+Jeff Layton <jlayton@redhat.com>
