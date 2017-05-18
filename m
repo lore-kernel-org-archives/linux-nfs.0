@@ -1,281 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f196.google.com ([209.85.220.196]:34780 "EHLO
-        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933137AbdERQz3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 12:55:29 -0400
-Received: by mail-qk0-f196.google.com with SMTP id u75so6810847qka.1
-        for <linux-nfs@vger.kernel.org>; Thu, 18 May 2017 09:55:29 -0700 (PDT)
-Message-ID: <1495126525.3956.10.camel@poochiereds.net>
-Subject: Re: [PATCH] locks: Set fl_nspid at file_lock allocation
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Benjamin Coddington <bcodding@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>, bfields@fieldses.org
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 18 May 2017 12:55:25 -0400
-In-Reply-To: <896e8ca302614f71f3030015ebf3befe2b40d3c4.1495122972.git.bcodding@redhat.com>
-References: <896e8ca302614f71f3030015ebf3befe2b40d3c4.1495122972.git.bcodding@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47946 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932288AbdERRNz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 13:13:55 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@redhat.com" <bfields@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "stefanha@redhat.com" <stefanha@redhat.com>,
+        "SteveD@redhat.com" <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Subject: Re: EXCHANGE_ID with same network address but different server owner
+Date: Thu, 18 May 2017 17:13:48 +0000
+Message-ID: <1495127625.13396.7.camel@primarydata.com>
+References: <20170515144306.GB16013@stefanha-x1.localdomain>
+         <20170515160248.GD9697@parsley.fieldses.org>
+         <20170516131142.GA12711@fieldses.org>
+         <20170518133441.GC4155@stefanha-x1.localdomain>
+         <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
+         <1495119887.11859.1.camel@primarydata.com>
+         <20170518150850.GB16256@parsley.fieldses.org>
+         <1495120629.13396.1.camel@primarydata.com>
+         <20170518152822.GA9725@fieldses.org>
+         <1495123747.13396.4.camel@primarydata.com>
+         <20170518163159.GD16256@parsley.fieldses.org>
+In-Reply-To: <20170518163159.GD16256@parsley.fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-05-18 at 12:02 -0400, Benjamin Coddington wrote:
-> Since commit c69899a17ca4 "NFSv4: Update of VFS byte range lock must be
-> atomic with the stateid update", NFSv4 has been inserting locks in rpciod
-> worker context.  The result is that the file_lock's fl_nspid is the
-> kworker's pid instead of the original userspace pid.  We can fix that up by
-> setting fl_nspid in locks_allocate_lock, and tranfer it to the file_lock
-> that's eventually recorded.
-> 
-> Also, let's set fl_nspid directly in a few places it is stored on the
-> stack.  The use of fl_pid is retained for lock managers that do not set
-> fl_nspid and instead wish to use and record private fl_pid numbers.
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/locks.c | 44 ++++++++++++++++++++++++++------------------
->  1 file changed, 26 insertions(+), 18 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index af2031a1fcff..959b3f93f4bd 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -249,7 +249,7 @@ locks_dump_ctx_list(struct list_head *list, char *list_type)
->  	struct file_lock *fl;
->  
->  	list_for_each_entry(fl, list, fl_list) {
-> -		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n", list_type, fl->fl_owner, fl->fl_flags, fl->fl_type, fl->fl_pid);
-> +		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n", list_type, fl->fl_owner, fl->fl_flags, fl->fl_type, pid_vnr(fl->fl_nspid));
->  	}
->  }
->  
+T24gVGh1LCAyMDE3LTA1LTE4IGF0IDEyOjMyIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFRodSwgTWF5IDE4LCAyMDE3IGF0IDA0OjA5OjEwUE0gKzAwMDAsIFRyb25kIE15a2xl
+YnVzdCB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTctMDUtMTggYXQgMTE6MjggLTA0MDAsIGJmaWVs
+ZHNAZmllbGRzZXMub3JnIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBNYXkgMTgsIDIwMTcgYXQgMDM6
+MTc6MTFQTSArMDAwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gPiBGb3IgdGhlIGNh
+c2UgdGhhdCBTdGVmYW4gaXMgZGlzY3Vzc2luZyAoa3ZtKSBpdCB3b3VsZCBsaXRlcmFsbHkNCj4g
+PiA+ID4gYmUNCj4gPiA+ID4gYQ0KPiA+ID4gPiBzaW5nbGUgcHJvY2VzcyB0aGF0IGlzIGJlaW5n
+IG1pZ3JhdGVkLiBGb3IgbHhjIGFuZA0KPiA+ID4gPiBkb2NrZXIva3ViZXJuZXRlcy0NCj4gPiA+
+ID4gc3R5bGUgY29udGFpbmVycywgaXQgd291bGQgYmUgYSBjb2xsZWN0aW9uIG9mIHByb2Nlc3Nl
+cy4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBtb3VudHBvaW50cyB1c2VkIGJ5IHRoZXNlIGNvbnRh
+aW5lcnMgYXJlIG9mdGVuIG93bmVkIGJ5IHRoZQ0KPiA+ID4gPiBob3N0Ow0KPiA+ID4gPiB0aGV5
+IGFyZSB0eXBpY2FsbHkgc2V0IHVwIGJlZm9yZSBzdGFydGluZyB0aGUgY29udGFpbmVyaXNlZA0K
+PiA+ID4gPiBwcm9jZXNzZXMuDQo+ID4gPiA+IEZ1cnRoZXJtb3JlLCB0aGVyZSBpcyB0eXBpY2Fs
+bHkgbm8gInN0YXJ0IGNvbnRhaW5lciIgc3lzdGVtDQo+ID4gPiA+IGNhbGwNCj4gPiA+ID4gdGhh
+dA0KPiA+ID4gPiB3ZSBjYW4gdXNlIHRvIGlkZW50aWZ5IHdoaWNoIHNldCBvZiBwcm9jZXNzZXMg
+KG9yIGNncm91cHMpIGFyZQ0KPiA+ID4gPiBjb250YWluZXJpc2VkLCBhbmQgc2hvdWxkIHNoYXJl
+IGEgY2xpZW50aWQuDQo+ID4gPiANCj4gPiA+IElzIHRoYXQgc3VjaCBhIGhhcmQgcHJvYmxlbT8N
+Cj4gPiA+IA0KPiA+IA0KPiA+IEVyciwgeWVzLi4uIGlzbid0IGl0PyBIb3cgZG8gSSBpZGVudGlm
+eSBhIGNvbnRhaW5lciBhbmQga25vdyB3aGVyZQ0KPiA+IHRvDQo+ID4gc2V0IHRoZSBsZWFzZSBi
+b3VuZGFyeT8NCj4gPiANCj4gPiBCZWFyIGluIG1pbmQgdGhhdCB0aGUgZGVmaW5pdGlvbiBvZiAi
+Y29udGFpbmVyIiBpcyBub24tZXhpc3RlbnQNCj4gPiBiZXlvbmQNCj4gPiB0aGUgb2J2aW91cyAi
+YSBsb29zZSBjb2xsZWN0aW9uIG9mIHByb2Nlc3NlcyIuIEl0IHZhcmllcyBmcm9tIHRoZQ0KPiA+
+IGRvY2tlci9seGMvdmlydHVvenpvIHN0eWxlIGNvbnRhaW5lciwgd2hpY2ggdXNlcyBuYW1lc3Bh
+Y2VzIHRvDQo+ID4gYm91bmQNCj4gPiB0aGUgcHJvY2Vzc2VzLCB0byB0aGUgR29vZ2xlIHR5cGUg
+b2YgImNvbnRhaW5lciIgdGhhdCBpcyBhY3R1YWxseQ0KPiA+IGp1c3QNCj4gPiBhIHNldCBvZiBj
+Z3JvdXBzIGFuZCB0byB0aGUga3ZtL3FlbXUgc2luZ2xlIHByb2Nlc3MuDQo+IA0KPiBTdXJlLCBi
+dXQsIGNhbid0IHdlIHBpY2sgKnNvbWV0aGluZyogdG8gdXNlIGFzIHRoZSBib3VuZGFyeSAobmV0
+d29yaw0KPiBuYW1lc3BhY2U/KSwgZG9jdW1lbnQgaXQsIGFuZCBsZXQgdXNlcnNwYWNlIHVzZSB0
+aGF0IHRvIHRlbGwgdXMgd2hhdA0KPiBpdA0KPiB3YW50cz8NCj4gDQo+ID4gPiBJbiBhbnkgY2Fz
+ZSwgZnJvbSB0aGUgcHJvdG9jb2wgcG9pbnQgb2YgdmlldyB0aGVzZSBhbGwgc291bmQgbGlrZQ0K
+PiA+ID4gY2xpZW50DQo+ID4gPiBpbXBsZW1lbnRhdGlvbiBkZXRhaWxzLg0KPiA+IA0KPiA+IElm
+IHlvdSBhcmUgc2VlaW5nIGFuIG9idmlvdXMgYXJjaGl0ZWN0dXJlIGZvciB0aGUgY2xpZW50LCB0
+aGVuDQo+ID4gcGxlYXNlDQo+ID4gc2hhcmUuLi4NCj4gDQo+IE1ha2UgY2xpZW50aWRzIHBlci1u
+ZXR3b3JrLW5hbWVzcGFjZSBhbmQgc3RvcmUgdGhlbSBpbg0KPiBuZnNfbmV0P8KgwqAoTWF5YmUN
+Cj4gdGhhdCdzIHdoYXQncyBhbHJlYWR5IGRvbmUsIEkgY2FuJ3QgdGVsbC4pDQo+IA0KPiA+ID4g
+VGhlIG9ubHkgcHJvYmxlbSBJIHNlZSB3aXRoIG11bHRpcGxlIGNsaWVudCBJRCdzIGlzIHRoYXQg
+eW91J2QNCj4gPiA+IGxpa2UNCj4gPiA+IHRvDQo+ID4gPiBrZWVwIHRoZWlyIGRlbGVnYXRpb25z
+IGZyb20gY29uZmxpY3Rpbmcgd2l0aCBlYWNoIG90aGVyIHNvIHRoZXkNCj4gPiA+IGNhbg0KPiA+
+ID4gc2hhcmUgY2FjaGUuDQo+ID4gPiANCj4gPiA+IEJ1dCwgbWF5YmUgSSdtIG1pc3Npbmcgc29t
+ZXRoaW5nIGVsc2UuDQo+ID4gDQo+ID4gSGF2aW5nIHRvIGFuIEVYQ0hBTkdFX0lEICsgQ1JFQVRF
+X1NFU1NJT04gb24gZXZlcnkgY2FsbCB0bw0KPiA+IGZvcmsoKS9jbG9uZSgpIGFuZCBhIERFU1RS
+T1lfU0VTU0lPTi9ERVNUUk9ZX0VYQ0hBTkdFSUQgaW4gZWFjaA0KPiA+IHByb2Nlc3MNCj4gPiBk
+ZXN0cnVjdG9yPyBMZWFzZSByZW5ld2FsIHBpbmdzIGZyb20gMTAwMCBwcm9jZXNzZXMgcnVubmlu
+ZyBvbiAxMDAwDQo+ID4gY2xpZW50cz8NCj4gPiANCj4gPiBUaGlzIGlzIHdoYXQgSSBtZWFuIGFi
+b3V0IGNvbnRhaW5lciBib3VuZGFyaWVzLiBJZiB0aGV5IGFyZW4ndCB3ZWxsDQo+ID4gZGVmaW5l
+ZCwgdGhlbiB3ZSdyZSBkb3duIHRvIGRvaW5nIHByZWNpc2VseSB0aGUgYWJvdmUuDQo+IA0KPiBB
+Z2FpbiB0aGlzIHNvdW5kcyBsaWtlIGEgY29tcGxhaW50IGFib3V0IHRoZSBrZXJuZWwgYXBpIHJh
+dGhlciB0aGFuDQo+IGFib3V0IHRoZSBwcm90b2NvbC7CoMKgSWYgdGhlIGNvbnRhaW5lciBtYW5h
+Z2VtZW50IHN5c3RlbSBrbm93cyB3aGF0IGl0DQo+IHdhbnRzIGFuZCB3ZSBnaXZlIGl0IGEgd2F5
+IHRvIGV4cGxhaW4gaXQgdG8gdXMsIHRoZW4gd2UgYXZvaWQgbW9zdCBvZg0KPiB0aGF0LCByaWdo
+dD8NCj4gDQoNCk9LLCBzbyBjb25zaWRlciB0aGUgdXNlIGNhc2UgdGhhdCBpbnNwaXJlZCB0aGlz
+IGNvbnZlcnNhdGlvbjogbmFtZWx5DQp1c2luZyBuZnNkIG9uIHRoZSBzZXJ2ZXIgdG8gcHJveHkg
+Zm9yIGEgY2xpZW50IHJ1bm5pbmcgaW4ga3ZtIGFuZCB1c2luZw0KdGhlIHZzb2NrIGludGVyZmFj
+ZS4NCg0KSG93IGRvIEkgYXJjaGl0ZWN0IGtuZnNkIHNvIHRoYXQgaXQgaGFuZGxlcyB0aGF0IHVz
+ZSBjYXNlPyBBcmUgeW91DQpzYXlpbmcgdGhhdCBJIG5lZWQgdG8gc2V0IHVwIGEgY29udGFpbmVy
+IG9mIGtuZnNkIHRocmVhZHMganVzdCB0byBzZXJ2ZQ0KdGhpcyBvbmUga3ZtIGluc3RhbmNlPyBP
+dGhlcndpc2UsIHRoZSBsb2NrcyBjcmVhdGVkIGJ5IGtuZnNkIGZvciB0aGF0DQprdm0gcHJvY2Vz
+cyB3aWxsIGhhdmUgdGhlIHNhbWUgY2xpZW50aWQgYXMgYWxsIHRoZSBvdGhlciBsb2NrcyBjcmVh
+dGVkDQpieSBrbmZzZD8NCg0KVG8gbWUsIGl0IHNlZW1zIG1vcmUgZmxleGlibGUgdG8gYWxsb3cg
+YSB1dGlsaXR5IGxpa2UgY3JpdSAoaHR0cHM6Ly9jcmkNCnUub3JnL01haW5fUGFnZSkgdG8gc3Bl
+Y2lmeSAiSSdkIGxpa2UgdG8gbWFyayB0aGVzZSBzcGVjaWZpYyBsb2NrcyBhcw0KYmVpbmcgcGFy
+dCBvZiB0aGlzIGNoZWNrcG9pbnQvcmVzdG9yZSBjb250ZXh0IHBsZWFzZSIgKGh0dHBzOi8vY3Jp
+dS5vcmcNCi9GaWxlX2xvY2tzKSwgYW5kIGFsbG93IHRoZW0gdG8gYmUgYXR0ZW1wdGVkIHJlc3Rv
+cmVkIHdpdGggdGhlIHByb2Nlc3MNCnRoYXQgd2FzIG1pZ3JhdGVkLg0KTm90ZSB0aGF0IGNyaXUg
+YWxzbyB3b3JrcyBhdCB0aGUgbGV2ZWwgb2YgdGhlIGFwcGxpY2F0aW9uLCBub3QgYQ0KY29udGFp
+bmVyLCBldmVuIHRob3VnaCBpdCB3YXMgZGV2ZWxvcGVkIGJ5IHRoZSBjb250YWluZXIgdmlydHVh
+bGlzYXRpb24NCmNvbW11bml0eS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
+bGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0
+YS5jb20NCg==
 
-Probably should change the format to say fl_nspid=%u here, just to be
-clear. Might also want to keep fl_pid in there since the lock manager
-could set it.
-
-
-> @@ -294,8 +294,10 @@ struct file_lock *locks_alloc_lock(void)
->  {
->  	struct file_lock *fl = kmem_cache_zalloc(filelock_cache, GFP_KERNEL);
->  
-> -	if (fl)
-> +	if (fl) {
->  		locks_init_lock_heads(fl);
-> +		fl->fl_nspid = get_pid(task_tgid(current));
-> +	}
->  
->  	return fl;
->  }
-> @@ -328,6 +330,8 @@ void locks_free_lock(struct file_lock *fl)
->  	BUG_ON(!hlist_unhashed(&fl->fl_link));
->  
->  	locks_release_private(fl);
-> +	if (fl->fl_nspid)
-> +		put_pid(fl->fl_nspid);
->  	kmem_cache_free(filelock_cache, fl);
->  }
->  EXPORT_SYMBOL(locks_free_lock);
-> @@ -357,8 +361,15 @@ EXPORT_SYMBOL(locks_init_lock);
->   */
->  void locks_copy_conflock(struct file_lock *new, struct file_lock *fl)
->  {
-> +	struct pid *replace_pid = new->fl_nspid;
-> +
->  	new->fl_owner = fl->fl_owner;
->  	new->fl_pid = fl->fl_pid;
-> +	if (fl->fl_nspid) {
-> +		new->fl_nspid = get_pid(fl->fl_nspid);
-> +		if (replace_pid)
-> +			put_pid(replace_pid);
-> +	}
->  	new->fl_file = NULL;
->  	new->fl_flags = fl->fl_flags;
->  	new->fl_type = fl->fl_type;
-> @@ -422,7 +433,6 @@ flock_make_lock(struct file *filp, unsigned int cmd)
->  
->  	fl->fl_file = filp;
->  	fl->fl_owner = filp;
-> -	fl->fl_pid = current->tgid;
->  	fl->fl_flags = FL_FLOCK;
->  	fl->fl_type = type;
->  	fl->fl_end = OFFSET_MAX;
-> @@ -482,7 +492,6 @@ static int flock64_to_posix_lock(struct file *filp, struct file_lock *fl,
->  		fl->fl_end = OFFSET_MAX;
->  
->  	fl->fl_owner = current->files;
-> -	fl->fl_pid = current->tgid;
->  	fl->fl_file = filp;
->  	fl->fl_flags = FL_POSIX;
->  	fl->fl_ops = NULL;
-> @@ -547,8 +556,6 @@ static int lease_init(struct file *filp, long type, struct file_lock *fl)
->  		return -EINVAL;
->  
->  	fl->fl_owner = filp;
-> -	fl->fl_pid = current->tgid;
-> -
->  	fl->fl_file = filp;
->  	fl->fl_flags = FL_LEASE;
->  	fl->fl_start = 0;
-> @@ -733,7 +740,6 @@ static void locks_wake_up_blocks(struct file_lock *blocker)
->  static void
->  locks_insert_lock_ctx(struct file_lock *fl, struct list_head *before)
->  {
-> -	fl->fl_nspid = get_pid(task_tgid(current));
->  	list_add_tail(&fl->fl_list, before);
->  	locks_insert_global_locks(fl);
->  }
-> @@ -743,10 +749,6 @@ locks_unlink_lock_ctx(struct file_lock *fl)
->  {
->  	locks_delete_global_locks(fl);
->  	list_del_init(&fl->fl_list);
-> -	if (fl->fl_nspid) {
-> -		put_pid(fl->fl_nspid);
-> -		fl->fl_nspid = NULL;
-> -	}
->  	locks_wake_up_blocks(fl);
->  }
->  
-> @@ -823,8 +825,6 @@ posix_test_lock(struct file *filp, struct file_lock *fl)
->  	list_for_each_entry(cfl, &ctx->flc_posix, fl_list) {
->  		if (posix_locks_conflict(fl, cfl)) {
->  			locks_copy_conflock(fl, cfl);
-> -			if (cfl->fl_nspid)
-> -				fl->fl_pid = pid_vnr(cfl->fl_nspid);
->  			goto out;
->  		}
->  	}
-> @@ -1298,7 +1298,7 @@ int locks_mandatory_area(struct inode *inode, struct file *filp, loff_t start,
->  	bool sleep = false;
->  
->  	locks_init_lock(&fl);
-> -	fl.fl_pid = current->tgid;
-> +	fl.fl_nspid = get_pid(task_tgid(current));
->  	fl.fl_file = filp;
->  	fl.fl_flags = FL_POSIX | FL_ACCESS;
->  	if (filp && !(filp->f_flags & O_NONBLOCK))
-> @@ -1336,6 +1336,7 @@ int locks_mandatory_area(struct inode *inode, struct file *filp, loff_t start,
->  		break;
->  	}
->  
-> +	put_pid(fl.fl_nspid);
->  	return error;
->  }
->  
-> @@ -2052,7 +2053,7 @@ EXPORT_SYMBOL_GPL(vfs_test_lock);
->  
->  static int posix_lock_to_flock(struct flock *flock, struct file_lock *fl)
->  {
-> -	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
-> +	flock->l_pid = IS_OFDLCK(fl) ? -1 : pid_vnr(fl->fl_nspid);
->  #if BITS_PER_LONG == 32
->  	/*
->  	 * Make sure we can represent the posix lock via
-> @@ -2074,7 +2075,7 @@ static int posix_lock_to_flock(struct flock *flock, struct file_lock *fl)
->  #if BITS_PER_LONG == 32
->  static void posix_lock_to_flock64(struct flock64 *flock, struct file_lock *fl)
->  {
-> -	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
-> +	flock->l_pid = IS_OFDLCK(fl) ? -1 : pid_vnr(fl->fl_nspid);
-
-What about the lock managers that _do_ set fl->fl_pid. With nfsv2/3,
-this is always going to give you back the pid of lockd, AFAICT.
-
-Do we want to present the pid value that the client sent here instead in
-that case? Maybe the lm could set a fl_flag to indicate that the pid
-should be taken directly from fl_pid here? Then you could move the above
-logic to a static inline or something.
-
-Alternately, you could add a new lm_present_pid operation to lock
-managers to format the pid as they see fit.
-
->  	flock->l_start = fl->fl_start;
->  	flock->l_len = fl->fl_end == OFFSET_MAX ? 0 :
->  		fl->fl_end - fl->fl_start + 1;
-> @@ -2093,6 +2094,7 @@ int fcntl_getlk(struct file *filp, unsigned int cmd, struct flock __user *l)
->  	int error;
->  
->  	error = -EFAULT;
-> +	file_lock.fl_nspid = get_pid(task_tgid(current));
->  	if (copy_from_user(&flock, l, sizeof(flock)))
->  		goto out;
->  	error = -EINVAL;
-> @@ -2129,6 +2131,7 @@ int fcntl_getlk(struct file *filp, unsigned int cmd, struct flock __user *l)
->  rel_priv:
->  	locks_release_private(&file_lock);
->  out:
-> +	put_pid(file_lock.fl_nspid);
->  	return error;
->  }
->  
-> @@ -2322,6 +2325,7 @@ int fcntl_getlk64(struct file *filp, unsigned int cmd, struct flock64 __user *l)
->  	int error;
->  
->  	error = -EFAULT;
-> +	file_lock.fl_nspid = get_pid(task_tgid(current));
-
-Might it be cleaner to create a FILE_LOCK(name) macro that does this on
-the stack (like LIST_HEAD()) ?
-
->  	if (copy_from_user(&flock, l, sizeof(flock)))
->  		goto out;
->  	error = -EINVAL;
-> @@ -2356,6 +2360,7 @@ int fcntl_getlk64(struct file *filp, unsigned int cmd, struct flock64 __user *l)
->  
->  	locks_release_private(&file_lock);
->  out:
-> +	put_pid(file_lock.fl_nspid);
->  	return error;
->  }
->  
-> @@ -2482,7 +2487,7 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
->  	lock.fl_start = 0;
->  	lock.fl_end = OFFSET_MAX;
->  	lock.fl_owner = owner;
-> -	lock.fl_pid = current->tgid;
-> +	lock.fl_nspid = get_pid(task_tgid(current));
->  	lock.fl_file = filp;
->  	lock.fl_ops = NULL;
->  	lock.fl_lmops = NULL;
-> @@ -2491,6 +2496,7 @@ void locks_remove_posix(struct file *filp, fl_owner_t owner)
->  
->  	if (lock.fl_ops && lock.fl_ops->fl_release_private)
->  		lock.fl_ops->fl_release_private(&lock);
-> +	put_pid(lock.fl_nspid);
->  	trace_locks_remove_posix(inode, &lock, error);
->  }
->  
-> @@ -2502,7 +2508,6 @@ locks_remove_flock(struct file *filp, struct file_lock_context *flctx)
->  {
->  	struct file_lock fl = {
->  		.fl_owner = filp,
-> -		.fl_pid = current->tgid,
->  		.fl_file = filp,
->  		.fl_flags = FL_FLOCK | FL_CLOSE,
->  		.fl_type = F_UNLCK,
-> @@ -2513,6 +2518,8 @@ locks_remove_flock(struct file *filp, struct file_lock_context *flctx)
->  	if (list_empty(&flctx->flc_flock))
->  		return;
->  
-> +	fl.fl_nspid = get_pid(task_tgid(current));
-> +
->  	if (filp->f_op->flock && is_remote_lock(filp))
->  		filp->f_op->flock(filp, F_SETLKW, &fl);
->  	else
-> @@ -2520,6 +2527,7 @@ locks_remove_flock(struct file *filp, struct file_lock_context *flctx)
->  
->  	if (fl.fl_ops && fl.fl_ops->fl_release_private)
->  		fl.fl_ops->fl_release_private(&fl);
-> +	put_pid(fl.fl_nspid);
-
-I think we only need to take a reference for when the file_lock can
-outlive the current task, so the get/put may not be necessary in these
-functions.
-
->  }
->  
->  /* The i_flctx must be valid when calling into here */
-
-This does look like a step in the right direction, I think.
--- 
-Jeff Layton <jlayton@poochiereds.net>
