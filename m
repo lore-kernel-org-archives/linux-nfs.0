@@ -1,149 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:46279 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932643AbdERPSX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 11:18:23 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@redhat.com" <bfields@redhat.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "stefanha@redhat.com" <stefanha@redhat.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
+Received: from fieldses.org ([173.255.197.46]:48400 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932461AbdERP2X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 May 2017 11:28:23 -0400
+Date: Thu, 18 May 2017 11:28:22 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "bfields@redhat.com" <bfields@redhat.com>,
+        "stefanha@redhat.com" <stefanha@redhat.com>,
         "SteveD@redhat.com" <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
 Subject: Re: EXCHANGE_ID with same network address but different server owner
-Date: Thu, 18 May 2017 15:17:58 +0000
-Message-ID: <1495120676.13396.2.camel@primarydata.com>
-References: <20170512132721.GA654@stefanha-x1.localdomain>
-         <20170512143410.GC17983@parsley.fieldses.org>
-         <1494601295.10434.1.camel@primarydata.com>
-         <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
-         <20170515144306.GB16013@stefanha-x1.localdomain>
-         <20170515160248.GD9697@parsley.fieldses.org>
-         <20170516131142.GA12711@fieldses.org>
-         <20170518133441.GC4155@stefanha-x1.localdomain>
-         <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
-         <1495119887.11859.1.camel@primarydata.com>
-         <20170518150850.GB16256@parsley.fieldses.org>
-         <6636E5F4-6ACD-4AF8-95D2-C6563E9CF5A2@oracle.com>
-In-Reply-To: <6636E5F4-6ACD-4AF8-95D2-C6563E9CF5A2@oracle.com>
+Message-ID: <20170518152822.GA9725@fieldses.org>
+References: <1494601295.10434.1.camel@primarydata.com>
+ <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
+ <20170515144306.GB16013@stefanha-x1.localdomain>
+ <20170515160248.GD9697@parsley.fieldses.org>
+ <20170516131142.GA12711@fieldses.org>
+ <20170518133441.GC4155@stefanha-x1.localdomain>
+ <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
+ <1495119887.11859.1.camel@primarydata.com>
+ <20170518150850.GB16256@parsley.fieldses.org>
+ <1495120629.13396.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1495120629.13396.1.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA1LTE4IGF0IDExOjE1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBNYXkgMTgsIDIwMTcsIGF0IDExOjA4IEFNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNA
-cmVkaGF0LmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiBPbiBUaHUsIE1heSAxOCwgMjAxNyBh
-dCAwMzowNDo1MFBNICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gPiBPbiBUaHUs
-IDIwMTctMDUtMTggYXQgMTA6MjggLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiA+
-IE9uIE1heSAxOCwgMjAxNywgYXQgOTozNCBBTSwgU3RlZmFuIEhham5vY3ppIDxzdGVmYW5oYUBy
-ZWRoYXQNCj4gPiA+ID4gPiAuY29tPg0KPiA+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+IA0KPiA+
-ID4gPiA+IE9uIFR1ZSwgTWF5IDE2LCAyMDE3IGF0IDA5OjExOjQyQU0gLTA0MDAsIEouIEJydWNl
-IEZpZWxkcw0KPiA+ID4gPiA+IHdyb3RlOg0KPiA+ID4gPiA+ID4gSSB0aGluayB5b3UgZXhwbGFp
-bmVkIHRoaXMgYmVmb3JlLCBwZXJoYXBzIHlvdSBjb3VsZCBqdXN0DQo+ID4gPiA+ID4gPiBvZmZl
-ciBhDQo+ID4gPiA+ID4gPiBwb2ludGVyOiByZW1pbmQgdXMgd2hhdCB5b3VyIHJlcXVpcmVtZW50
-cyBvciB1c2UgY2FzZXMgYXJlDQo+ID4gPiA+ID4gPiBlc3BlY2lhbGx5DQo+ID4gPiA+ID4gPiBm
-b3IgVk0gbWlncmF0aW9uPw0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRoZSBORlMgb3ZlciBBRl9W
-U09DSyBjb25maWd1cmF0aW9uIGlzOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEEgZ3Vlc3QgcnVu
-bmluZyBvbiBob3N0IG1vdW50cyBhbiBORlMgZXhwb3J0IGZyb20gdGhlDQo+ID4gPiA+ID4gaG9z
-dC7CoMKgVGhlDQo+ID4gPiA+ID4gTkZTDQo+ID4gPiA+ID4gc2VydmVyIG1heSBiZSBrZXJuZWwg
-bmZzZCBvciBhbiBORlMgZnJvbnRlbmQgdG8gYSBkaXN0cmlidXRlZA0KPiA+ID4gPiA+IHN0b3Jh
-Z2UNCj4gPiA+ID4gPiBzeXN0ZW0gbGlrZSBDZXBoLsKgwqBBIGxpdHRsZSBtb3JlIGFib3V0IHRo
-ZXNlIGNhc2VzIGJlbG93Lg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEtlcm5lbCBuZnNkIGlzIHVz
-ZWZ1bCBmb3Igc2hhcmluZyBmaWxlcy7CoMKgRm9yIGV4YW1wbGUsIHRoZQ0KPiA+ID4gPiA+IGd1
-ZXN0DQo+ID4gPiA+ID4gbWF5DQo+ID4gPiA+ID4gcmVhZCBzb21lIGZpbGVzIGZyb20gdGhlIGhv
-c3Qgd2hlbiBpdCBsYXVuY2hlcyBhbmQvb3IgaXQgbWF5DQo+ID4gPiA+ID4gd3JpdGUNCj4gPiA+
-ID4gPiBvdXQNCj4gPiA+ID4gPiByZXN1bHQgZmlsZXMgdG8gdGhlIGhvc3Qgd2hlbiBpdCBzaHV0
-cyBkb3duLsKgwqBUaGUgdXNlciBtYXkNCj4gPiA+ID4gPiBhbHNvDQo+ID4gPiA+ID4gd2lzaCB0
-bw0KPiA+ID4gPiA+IHNoYXJlIHRoZWlyIGhvbWUgZGlyZWN0b3J5IGJldHdlZW4gdGhlIGd1ZXN0
-IGFuZCB0aGUgaG9zdC4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBORlMgZnJvbnRlbmRzIGFyZSBh
-IGRpZmZlcmVudCB1c2UgY2FzZS7CoMKgVGhleSBoaWRlDQo+ID4gPiA+ID4gZGlzdHJpYnV0ZWQN
-Cj4gPiA+ID4gPiBzdG9yYWdlDQo+ID4gPiA+ID4gc3lzdGVtcyBmcm9tIGd1ZXN0cyBpbiBjbG91
-ZCBlbnZpcm9ubWVudHMuwqDCoFRoaXMgd2F5IGd1ZXN0cw0KPiA+ID4gPiA+IGRvbid0DQo+ID4g
-PiA+ID4gc2VlDQo+ID4gPiA+ID4gdGhlIGRldGFpbHMgb2YgdGhlIENlcGgsIEdsdXN0ZXIsIGV0
-YyBub2Rlcy7CoMKgQmVzaWRlcw0KPiA+ID4gPiA+IGJlbmVmaXRpbmcNCj4gPiA+ID4gPiBzZWN1
-cml0eSBpdCBhbHNvIGFsbG93cyBORlMtY2FwYWJsZSBndWVzdHMgdG8gcnVuIHdpdGhvdXQNCj4g
-PiA+ID4gPiBpbnN0YWxsaW5nDQo+ID4gPiA+ID4gc3BlY2lmaWMgZHJpdmVycyBmb3IgdGhlIGRp
-c3RyaWJ1dGVkIHN0b3JhZ2Ugc3lzdGVtLsKgwqBUaGlzDQo+ID4gPiA+ID4gdXNlIGNhc2UNCj4g
-PiA+ID4gPiBpcw0KPiA+ID4gPiA+ICJmaWxlc3lzdGVtIGFzIGEgc2VydmljZSIuDQo+ID4gPiA+
-ID4gDQo+ID4gPiA+ID4gVGhlIHJlYXNvbiBmb3IgdXNpbmcgQUZfVlNPQ0sgaW5zdGVhZCBvZiBU
-Q1AvSVAgaXMgdGhhdA0KPiA+ID4gPiA+IHRyYWRpdGlvbmFsDQo+ID4gPiA+ID4gbmV0d29ya2lu
-ZyBjb25maWd1cmF0aW9uIGlzIGZyYWdpbGUuwqDCoEF1dG9tYXRpY2FsbHkgYWRkaW5nIGENCj4g
-PiA+ID4gPiBkZWRpY2F0ZWQNCj4gPiA+ID4gPiBOSUMgdG8gdGhlIGd1ZXN0IGFuZCBjaG9vc2lu
-ZyBhbiBJUCBzdWJuZXQgaGFzIGEgaGlnaCBjaGFuY2UNCj4gPiA+ID4gPiBvZg0KPiA+ID4gPiA+
-IGNvbmZsaWN0cyAoc3VibmV0IGNvbGxpc2lvbnMsIG5ldHdvcmsgaW50ZXJmYWNlIG5hbWluZywN
-Cj4gPiA+ID4gPiBmaXJld2FsbA0KPiA+ID4gPiA+IHJ1bGVzLA0KPiA+ID4gPiA+IG5ldHdvcmsg
-bWFuYWdlbWVudCB0b29scykuwqDCoEFGX1ZTT0NLIGlzIGEgemVyby1jb25maWd1cmF0aW9uDQo+
-ID4gPiA+ID4gY29tbXVuaWNhdGlvbnMgY2hhbm5lbCBzbyBpdCBhdm9pZHMgdGhlc2UgcHJvYmxl
-bXMuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gT24gdG8gbWlncmF0aW9uLsKgwqBGb3IgdGhlIG1v
-c3QgcGFydCwgZ3Vlc3RzIGNhbiBiZSBsaXZlDQo+ID4gPiA+ID4gbWlncmF0ZWQNCj4gPiA+ID4g
-PiBiZXR3ZWVuDQo+ID4gPiA+ID4gaG9zdHMgd2l0aG91dCBzaWduaWZpY2FudCBkb3dudGltZSBv
-ciBtYW51YWwgc3RlcHMuwqDCoFBDSQ0KPiA+ID4gPiA+IHBhc3N0aHJvdWdoIGlzDQo+ID4gPiA+
-ID4gYW4gZXhhbXBsZSBvZiBhIGZlYXR1cmUgdGhhdCBtYWtlcyBpdCB2ZXJ5IGhhcmQgdG8gbGl2
-ZQ0KPiA+ID4gPiA+IG1pZ3JhdGUuwqDCoEkNCj4gPiA+ID4gPiBob3BlDQo+ID4gPiA+ID4gd2Ug
-Y2FuIGFsbG93IG1pZ3JhdGlvbiB3aXRoIE5GUywgYWx0aG91Z2ggc29tZSBsaW1pdGF0aW9ucw0K
-PiA+ID4gPiA+IG1heSBiZQ0KPiA+ID4gPiA+IG5lY2Vzc2FyeSB0byBtYWtlIGl0IGZlYXNpYmxl
-Lg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRoZXJlIGFyZSB0d28gTkZTIG92ZXIgQUZfVlNPQ0sg
-bWlncmF0aW9uIHNjZW5hcmlvczoNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiAxLiBUaGUgZmlsZXMg
-bGl2ZSBvbiBob3N0IEgxIGFuZCBob3N0IEgyIGNhbm5vdCBhY2Nlc3MgdGhlDQo+ID4gPiA+ID4g
-ZmlsZXMNCj4gPiA+ID4gPiDCoCBkaXJlY3RseS7CoMKgVGhlcmUgaXMgbm8gd2F5IGZvciBhbiBO
-RlMgc2VydmVyIG9uIEgyIHRvDQo+ID4gPiA+ID4gYWNjZXNzDQo+ID4gPiA+ID4gdGhvc2UNCj4g
-PiA+ID4gPiDCoCBzYW1lIGZpbGVzIHVubGVzcyB0aGUgZGlyZWN0b3J5IGlzIGNvcGllZCBhbG9u
-ZyB3aXRoIHRoZQ0KPiA+ID4gPiA+IGd1ZXN0IG9yDQo+ID4gPiA+ID4gSDINCj4gPiA+ID4gPiDC
-oCBwcm94aWVzIHRvIHRoZSBORlMgc2VydmVyIG9uIEgxLg0KPiA+ID4gPiANCj4gPiA+ID4gSGF2
-aW5nIG1hbmFnZWQgKGFuZCBzaGFyZWQpIHN0b3JhZ2Ugb24gdGhlIHBoeXNpY2FsIGhvc3QgaXMN
-Cj4gPiA+ID4gYXdrd2FyZC4gSSBrbm93IHNvbWUgY2xvdWQgcHJvdmlkZXJzIG1pZ2h0IGRvIHRo
-aXMgdG9kYXkgYnkNCj4gPiA+ID4gY29weWluZyBndWVzdCBkaXNrIGltYWdlcyBkb3duIHRvIHRo
-ZSBob3N0J3MgbG9jYWwgZGlzaywgYnV0DQo+ID4gPiA+IGdlbmVyYWxseSBpdCdzIG5vdCBhIGZs
-ZXhpYmxlIHByaW1hcnkgZGVwbG95bWVudCBjaG9pY2UuDQo+ID4gPiA+IA0KPiA+ID4gPiBUaGVy
-ZSdzIG5vIGdvb2Qgd2F5IHRvIGV4cGFuZCBvciByZXBsaWNhdGUgdGhpcyBwb29sIG9mDQo+ID4g
-PiA+IHN0b3JhZ2UuIEEgYmFja3VwIHNjaGVtZSB3b3VsZCBuZWVkIHRvIGFjY2VzcyBhbGwgcGh5
-c2ljYWwNCj4gPiA+ID4gaG9zdHMuIEFuZCB0aGUgZmlsZXMgYXJlIHZpc2libGUgb25seSBvbiBz
-cGVjaWZpYyBob3N0cy4NCj4gPiA+ID4gDQo+ID4gPiA+IElNTyB5b3Ugd2FudCB0byB0cmVhdCBs
-b2NhbCBzdG9yYWdlIG9uIGVhY2ggcGh5c2ljYWwgaG9zdCBhcw0KPiA+ID4gPiBhIGNhY2hlIHRp
-ZXIgcmF0aGVyIHRoYW4gYXMgYSBiYWNrLWVuZCB0aWVyLg0KPiA+ID4gPiANCj4gPiA+ID4gDQo+
-ID4gPiA+ID4gMi4gVGhlIGZpbGVzIGFyZSBhY2Nlc3NpYmxlIGZyb20gYm90aCBob3N0IEgxIGFu
-ZCBob3N0IEgyDQo+ID4gPiA+ID4gYmVjYXVzZQ0KPiA+ID4gPiA+IHRoZXkNCj4gPiA+ID4gPiDC
-oCBhcmUgb24gc2hhcmVkIHN0b3JhZ2Ugb3IgZGlzdHJpYnV0ZWQgc3RvcmFnZSBzeXN0ZW0uwqDC
-oEhlcmUNCj4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiDCoCBwcm9ibGVtIGlzICJqdXN0IiBtaWdy
-YXRpbmcgdGhlIHN0YXRlIGZyb20gSDEncyBORlMgc2VydmVyDQo+ID4gPiA+ID4gdG8gSDINCj4g
-PiA+ID4gPiBzbw0KPiA+ID4gPiA+IMKgIHRoYXQgZmlsZSBoYW5kbGVzIHJlbWFpbiB2YWxpZC4N
-Cj4gPiA+ID4gDQo+ID4gPiA+IEVzc2VudGlhbGx5IHRoaXMgaXMgdGhlIHJlLWV4cG9ydCBjYXNl
-LCBhbmQgdGhpcyBtYWtlcyBhIGxvdA0KPiA+ID4gPiBtb3JlIHNlbnNlIHRvIG1lIGZyb20gYSBz
-dG9yYWdlIGFkbWluaXN0cmF0aW9uIHBvaW50IG9mIHZpZXcuDQo+ID4gPiA+IA0KPiA+ID4gPiBU
-aGUgcG9vbCBvZiBhZG1pbmlzdGVyZWQgc3RvcmFnZSBpcyBub3QgbG9jYWwgdG8gdGhlIHBoeXNp
-Y2FsDQo+ID4gPiA+IGhvc3RzIHJ1bm5pbmcgdGhlIGd1ZXN0cywgd2hpY2ggaXMgaG93IEkgdGhp
-bmsgY2xvdWQgcHJvdmlkZXJzDQo+ID4gPiA+IHdvdWxkIHByZWZlciB0byBvcGVyYXRlLg0KPiA+
-ID4gPiANCj4gPiA+ID4gVXNlciBzdG9yYWdlIHdvdWxkIGJlIGFjY2Vzc2libGUgdmlhIGFuIE5G
-UyBzaGFyZSwgYnV0IG1hbmFnZWQNCj4gPiA+ID4gaW4gYSBDZXBoIG9iamVjdCAod2l0aCByZWR1
-bmRhbmN5LCBhIGNvbW1vbiBoaWdoIHRocm91Z2hwdXQNCj4gPiA+ID4gYmFja3VwIGZhY2lsaXR5
-LCBhbmQgc2VjdXJlIGNlbnRyYWwgbWFuYWdlbWVudCBvZiB1c2VyDQo+ID4gPiA+IGlkZW50aXRp
-ZXMpLg0KPiA+ID4gPiANCj4gPiA+ID4gRWFjaCBob3N0J3MgTkZTIHNlcnZlciBjb3VsZCBiZSBj
-b25maWd1cmVkIHRvIGV4cG9zZSBvbmx5IHRoZQ0KPiA+ID4gPiB0aGUgY2xvdWQgc3RvcmFnZSBy
-ZXNvdXJjZXMgZm9yIHRoZSB0ZW5hbnRzIG9uIHRoYXQgaG9zdC4gVGhlDQo+ID4gPiA+IGJhY2st
-ZW5kIHN0b3JhZ2UgKGllLCBDZXBoKSBjb3VsZCBvcGVyYXRlIG9uIGEgcHJpdmF0ZSBzdG9yYWdl
-DQo+ID4gPiA+IGFyZWEgbmV0d29yayBmb3IgYmV0dGVyIHNlY3VyaXR5Lg0KPiA+ID4gPiANCj4g
-PiA+ID4gVGhlIG9ubHkgbWlzc2luZyBwaWVjZSBoZXJlIGlzIHN1cHBvcnQgaW4gTGludXgtYmFz
-ZWQgTkZTDQo+ID4gPiA+IHNlcnZlcnMgZm9yIHRyYW5zcGFyZW50IHN0YXRlIG1pZ3JhdGlvbi4N
-Cj4gPiA+IA0KPiA+ID4gTm90IHJlYWxseS4gSW4gYSBjb250YWluZXJpc2VkIHdvcmxkLCB3ZSdy
-ZSBnb2luZyB0byBzZWUgbW9yZSBhbmQNCj4gPiA+IG1vcmUNCj4gPiA+IGNhc2VzIHdoZXJlIGp1
-c3QgYSBzaW5nbGUgcHJvY2Vzcy9hcHBsaWNhdGlvbiBnZXRzIG1pZ3JhdGVkIGZyb20NCj4gPiA+
-IG9uZQ0KPiA+ID4gTkZTIGNsaWVudCB0byBhbm90aGVyIChhbmQgeWVzLCBhIHJlLWV4cG9ydGVy
-L3Byb3h5IG9mIE5GUyBpcw0KPiA+ID4ganVzdA0KPiA+ID4gYW5vdGhlciBjbGllbnQgYXMgZmFy
-IGFzIHRoZSBvcmlnaW5hbCBzZXJ2ZXIgaXMgY29uY2VybmVkKS4NCj4gPiA+IElPVzogSSB0aGlu
-ayB3ZSB3YW50IHRvIGFsbG93IGEgY2xpZW50IHRvIG1pZ3JhdGUgc29tZSBwYXJ0cyBvZg0KPiA+
-ID4gaXRzDQo+ID4gPiBsb2NrIHN0YXRlIHRvIGFub3RoZXIgY2xpZW50LCB3aXRob3V0IG5lY2Vz
-c2FyaWx5IHJlcXVpcmluZyBldmVyeQ0KPiA+ID4gcHJvY2VzcyBiZWluZyBtaWdyYXRlZCB0byBo
-YXZlIGl0cyBvd24gY2xpZW50aWQuDQo+ID4gDQo+ID4gSXQgd291bGRuJ3QgaGF2ZSB0byBiZSBl
-dmVyeSBwcm9jZXNzLCBpdCdkIGJlIGV2ZXJ5IGNvbnRhaW5lciwNCj4gPiByaWdodD8NCj4gPiBX
-aGF0J3MgdGhlIGRpc2FkdmFudGFnZSBvZiBwZXItY29udGFpbmVyIGNsaWVudGlkcz/CoMKgSSBn
-dWVzcyB5b3UNCj4gPiBsb3NlDQo+ID4gdGhlIGNoYW5jZSB0byBzaGFyZSBkZWxlZ2F0aW9ucyBh
-bmQgY2FjaGVzLg0KPiANCj4gQ2FuJ3QgZWFjaCBjb250YWluZXIgaGF2ZSBpdCdzIG93biBuZXQg
-bmFtZXNwYWNlLCBhbmQgZWFjaCBuZXQNCj4gbmFtZXNwYWNlIGhhdmUgaXRzIG93biBjbGllbnQg
-SUQ/DQoNClBvc3NpYmx5LCBidXQgdGhhdCB3b3VsZG4ndCBjb3ZlciBTdGVmYW4ncyBjYXNlIG9m
-IGEgc2luZ2xlIGt2bQ0KcHJvY2Vzcy4g4pi6DQoNCj4gKEkgYWdyZWUsIGJ0dywgdGhpcyBjbGFz
-cyBvZiBwcm9ibGVtcyBzaG91bGQgYmUgY29uc2lkZXJlZCBpbg0KPiB0aGUgbmV3IG5mc3Y0IFdH
-IGNoYXJ0ZXIuIFRoYW5rcyBmb3IgZG9pbmcgdGhhdCwgVHJvbmQpLg0KPiANCi0tIA0KVHJvbmQg
-TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9u
-ZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On Thu, May 18, 2017 at 03:17:11PM +0000, Trond Myklebust wrote:
+> For the case that Stefan is discussing (kvm) it would literally be a
+> single process that is being migrated. For lxc and docker/kubernetes-
+> style containers, it would be a collection of processes.
+> 
+> The mountpoints used by these containers are often owned by the host;
+> they are typically set up before starting the containerised processes.
+> Furthermore, there is typically no "start container" system call that
+> we can use to identify which set of processes (or cgroups) are
+> containerised, and should share a clientid.
 
+Is that such a hard problem?
+
+In any case, from the protocol point of view these all sound like client
+implementation details.
+
+The only problem I see with multiple client ID's is that you'd like to
+keep their delegations from conflicting with each other so they can
+share cache.
+
+But, maybe I'm missing something else.
+
+--b.
