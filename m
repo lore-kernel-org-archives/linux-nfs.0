@@ -1,112 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f176.google.com ([209.85.220.176]:35422 "EHLO
-        mail-qk0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756123AbdEROIB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 10:08:01 -0400
-Received: by mail-qk0-f176.google.com with SMTP id a72so36471688qkj.2
-        for <linux-nfs@vger.kernel.org>; Thu, 18 May 2017 07:07:41 -0700 (PDT)
-Message-ID: <1495116454.3956.4.camel@redhat.com>
-Subject: Re: [PATCH 0/4] nfs-utils mount: add AF_VSOCK support
-From: Jeff Layton <jlayton@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:21645 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753540AbdERO2X (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 10:28:23 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: EXCHANGE_ID with same network address but different server owner
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170518133441.GC4155@stefanha-x1.localdomain>
+Date: Thu, 18 May 2017 10:28:10 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
+References: <20170512132721.GA654@stefanha-x1.localdomain> <20170512143410.GC17983@parsley.fieldses.org> <1494601295.10434.1.camel@primarydata.com> <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com> <20170515144306.GB16013@stefanha-x1.localdomain> <20170515160248.GD9697@parsley.fieldses.org> <20170516131142.GA12711@fieldses.org> <20170518133441.GC4155@stefanha-x1.localdomain>
 To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 18 May 2017 10:07:34 -0400
-In-Reply-To: <20170518124830.GA4155@stefanha-x1.localdomain>
-References: <1475834503-3984-1-git-send-email-stefanha@redhat.com>
-         <1495039891.2930.8.camel@redhat.com>
-         <20170518124830.GA4155@stefanha-x1.localdomain>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-05-18 at 13:48 +0100, Stefan Hajnoczi wrote:
-> On Wed, May 17, 2017 at 12:51:31PM -0400, Jeff Layton wrote:
-> > On Fri, 2016-10-07 at 11:01 +0100, Stefan Hajnoczi wrote:
-> > > The AF_VSOCK address family allows virtual machines to communicate with the
-> > > hypervisor using a zero-configuration transport.  Both KVM and VMware
-> > > hypervisors support AF_VSOCK and it was introduced in Linux 3.9.
-> > > 
-> > > This patch series adds AF_VSOCK support to mount.nfs(8) and works together with
-> > > the kernel NFS client patches that I am also posting to
-> > > linux-nfs@vger.kernel.org.
-> > > 
-> > > NFS over AF_VSOCK is useful for file system sharing between a virtual machine
-> > > and the host.  Due to the zero-configuration nature of AF_VSOCK this is more
-> > > transparent to the user and more robust than asking the user to set up NFS over
-> > > TCP/IP.
-> > > 
-> > > A file system from the host (hypervisor) can be mounted inside a virtual
-> > > machine over AF_VSOCK like this:
-> > > 
-> > >   (guest)# mount.nfs 2:/export /mnt -v -o clientaddr=3,proto=vsock
-> > > 
-> > > The VM's cid (address) is 3 and the hypervisor is 2.
-> > > 
-> > 
-> > Sorry for the long delay, and I may just not have been keeping up. I'd
-> > like to start taking a look at these patches, but I'm having a hard time
-> > finding much information about how one would use AF_VSOCK in practice.
-> > I'd like to understand the general idea a little more before I go
-> > reviewing code...
-> > 
-> > If 2 is always the HV's address, then is that documented somewhere?
-> 
-> Yes, it's always the address for the host.  In
-> /usr/include/linux/vm_sockets.h:
-> 
->   /* Use this as the destination CID in an address when referring to the host
->    * (any process other than the hypervisor).  VMCI relies on it being 2, but
->    * this would be useful for other transports too.
->    */
-> 
->   #define VMADDR_CID_HOST 2
-> 
-> VMCI is VMware's AF_VSOCK transport.  virtio-vsock is the VIRTIO
-> transport for AF_VSOCK (used by KVM).
-> 
-> > How are guest addresses determined?
-> 
-> Guest addresses are assigned before launching a VM.  They are
-> re-assigned upon live migration (they have host-wide scope, not
-> datacenter scope).
-> 
-> KVM (QEMU) virtual machines are typically managed using libvirt.
-> Libvirt support for AF_VSOCK is currently in development and it will
-> assign addresses to guests.
-> 
 
-Ok...is there some way for the guest to determine its own cid
-programmatically? 
-
-> > Can different guests talk to each other over vsock?
+> On May 18, 2017, at 9:34 AM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
 > 
-> No, for security reasons this is purely host<->guest.  The protocol is
-> not routable and guest<->guest communication is forbidden.
+> On Tue, May 16, 2017 at 09:11:42AM -0400, J. Bruce Fields wrote:
+>> I think you explained this before, perhaps you could just offer a
+>> pointer: remind us what your requirements or use cases are especially
+>> for VM migration?
 > 
-
-Pity...that seems like it could have made this more useful.
-
-Are there plans to eventually add some sort of name resolution? (It
-> > might be interesting to put together a NSS module that keeps a list of
-> > running guest hostnames and their vsock addresses).
+> The NFS over AF_VSOCK configuration is:
 > 
-> Not at this time.
+> A guest running on host mounts an NFS export from the host.  The NFS
+> server may be kernel nfsd or an NFS frontend to a distributed storage
+> system like Ceph.  A little more about these cases below.
+> 
+> Kernel nfsd is useful for sharing files.  For example, the guest may
+> read some files from the host when it launches and/or it may write out
+> result files to the host when it shuts down.  The user may also wish to
+> share their home directory between the guest and the host.
+> 
+> NFS frontends are a different use case.  They hide distributed storage
+> systems from guests in cloud environments.  This way guests don't see
+> the details of the Ceph, Gluster, etc nodes.  Besides benefiting
+> security it also allows NFS-capable guests to run without installing
+> specific drivers for the distributed storage system.  This use case is
+> "filesystem as a service".
+> 
+> The reason for using AF_VSOCK instead of TCP/IP is that traditional
+> networking configuration is fragile.  Automatically adding a dedicated
+> NIC to the guest and choosing an IP subnet has a high chance of
+> conflicts (subnet collisions, network interface naming, firewall rules,
+> network management tools).  AF_VSOCK is a zero-configuration
+> communications channel so it avoids these problems.
+> 
+> On to migration.  For the most part, guests can be live migrated between
+> hosts without significant downtime or manual steps.  PCI passthrough is
+> an example of a feature that makes it very hard to live migrate.  I hope
+> we can allow migration with NFS, although some limitations may be
+> necessary to make it feasible.
+> 
+> There are two NFS over AF_VSOCK migration scenarios:
+> 
+> 1. The files live on host H1 and host H2 cannot access the files
+>   directly.  There is no way for an NFS server on H2 to access those
+>   same files unless the directory is copied along with the guest or H2
+>   proxies to the NFS server on H1.
 
-Yeah, not much point in it if it's always between guest and hv.
+Having managed (and shared) storage on the physical host is
+awkward. I know some cloud providers might do this today by
+copying guest disk images down to the host's local disk, but
+generally it's not a flexible primary deployment choice.
 
-Ok, so this is really just allows a guest to mount a server running on
-the bare metal host os? I guess you could also do it the other way
-around too, but that doesn't seem terribly useful.
+There's no good way to expand or replicate this pool of
+storage. A backup scheme would need to access all physical
+hosts. And the files are visible only on specific hosts.
 
-Other than the reliable way to know what the HV's VSOCK address is,
-what's the compelling reason to do this? I guess you might be able to
-get more reliable root on NFS with this, but if the server has to be
-running on the same physical box then why not present a disk image in
-another way and get NFS out of the picture?
+IMO you want to treat local storage on each physical host as
+a cache tier rather than as a back-end tier.
 
-Note that AF_VSOCK itself seems quite useful for certain guest->host
-communications. I just don't quite grok why I'd want to use this over
-vanilla IP networking for NFS as it doesn't seem quite as flexible.
--- 
-Jeff Layton <jlayton@redhat.com>
+
+> 2. The files are accessible from both host H1 and host H2 because they
+>   are on shared storage or distributed storage system.  Here the
+>   problem is "just" migrating the state from H1's NFS server to H2 so
+>   that file handles remain valid.
+
+Essentially this is the re-export case, and this makes a lot
+more sense to me from a storage administration point of view.
+
+The pool of administered storage is not local to the physical
+hosts running the guests, which is how I think cloud providers
+would prefer to operate.
+
+User storage would be accessible via an NFS share, but managed
+in a Ceph object (with redundancy, a common high throughput
+backup facility, and secure central management of user
+identities).
+
+Each host's NFS server could be configured to expose only the
+the cloud storage resources for the tenants on that host. The
+back-end storage (ie, Ceph) could operate on a private storage
+area network for better security.
+
+The only missing piece here is support in Linux-based NFS
+servers for transparent state migration.
+
+
+--
+Chuck Lever
+
+
+
