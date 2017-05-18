@@ -1,102 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47946 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932288AbdERRNz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 13:13:55 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@redhat.com" <bfields@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "stefanha@redhat.com" <stefanha@redhat.com>,
-        "SteveD@redhat.com" <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-Date: Thu, 18 May 2017 17:13:48 +0000
-Message-ID: <1495127625.13396.7.camel@primarydata.com>
-References: <20170515144306.GB16013@stefanha-x1.localdomain>
-         <20170515160248.GD9697@parsley.fieldses.org>
-         <20170516131142.GA12711@fieldses.org>
-         <20170518133441.GC4155@stefanha-x1.localdomain>
-         <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
-         <1495119887.11859.1.camel@primarydata.com>
-         <20170518150850.GB16256@parsley.fieldses.org>
-         <1495120629.13396.1.camel@primarydata.com>
-         <20170518152822.GA9725@fieldses.org>
-         <1495123747.13396.4.camel@primarydata.com>
-         <20170518163159.GD16256@parsley.fieldses.org>
-In-Reply-To: <20170518163159.GD16256@parsley.fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:43020 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753623AbdERRgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 18 May 2017 13:36:24 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Jeff Layton" <jlayton@poochiereds.net>
+Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>, bfields@fieldses.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] locks: Set fl_nspid at file_lock allocation
+Date: Thu, 18 May 2017 13:36:21 -0400
+Message-ID: <1069ECDA-D96D-495E-BB7B-128A926AD3DF@redhat.com>
+In-Reply-To: <1495126525.3956.10.camel@poochiereds.net>
+References: <896e8ca302614f71f3030015ebf3befe2b40d3c4.1495122972.git.bcodding@redhat.com>
+ <1495126525.3956.10.camel@poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA1LTE4IGF0IDEyOjMyIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFRodSwgTWF5IDE4LCAyMDE3IGF0IDA0OjA5OjEwUE0gKzAwMDAsIFRyb25kIE15a2xl
-YnVzdCB3cm90ZToNCj4gPiBPbiBUaHUsIDIwMTctMDUtMTggYXQgMTE6MjggLTA0MDAsIGJmaWVs
-ZHNAZmllbGRzZXMub3JnIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBNYXkgMTgsIDIwMTcgYXQgMDM6
-MTc6MTFQTSArMDAwMCwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gPiBGb3IgdGhlIGNh
-c2UgdGhhdCBTdGVmYW4gaXMgZGlzY3Vzc2luZyAoa3ZtKSBpdCB3b3VsZCBsaXRlcmFsbHkNCj4g
-PiA+ID4gYmUNCj4gPiA+ID4gYQ0KPiA+ID4gPiBzaW5nbGUgcHJvY2VzcyB0aGF0IGlzIGJlaW5n
-IG1pZ3JhdGVkLiBGb3IgbHhjIGFuZA0KPiA+ID4gPiBkb2NrZXIva3ViZXJuZXRlcy0NCj4gPiA+
-ID4gc3R5bGUgY29udGFpbmVycywgaXQgd291bGQgYmUgYSBjb2xsZWN0aW9uIG9mIHByb2Nlc3Nl
-cy4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBtb3VudHBvaW50cyB1c2VkIGJ5IHRoZXNlIGNvbnRh
-aW5lcnMgYXJlIG9mdGVuIG93bmVkIGJ5IHRoZQ0KPiA+ID4gPiBob3N0Ow0KPiA+ID4gPiB0aGV5
-IGFyZSB0eXBpY2FsbHkgc2V0IHVwIGJlZm9yZSBzdGFydGluZyB0aGUgY29udGFpbmVyaXNlZA0K
-PiA+ID4gPiBwcm9jZXNzZXMuDQo+ID4gPiA+IEZ1cnRoZXJtb3JlLCB0aGVyZSBpcyB0eXBpY2Fs
-bHkgbm8gInN0YXJ0IGNvbnRhaW5lciIgc3lzdGVtDQo+ID4gPiA+IGNhbGwNCj4gPiA+ID4gdGhh
-dA0KPiA+ID4gPiB3ZSBjYW4gdXNlIHRvIGlkZW50aWZ5IHdoaWNoIHNldCBvZiBwcm9jZXNzZXMg
-KG9yIGNncm91cHMpIGFyZQ0KPiA+ID4gPiBjb250YWluZXJpc2VkLCBhbmQgc2hvdWxkIHNoYXJl
-IGEgY2xpZW50aWQuDQo+ID4gPiANCj4gPiA+IElzIHRoYXQgc3VjaCBhIGhhcmQgcHJvYmxlbT8N
-Cj4gPiA+IA0KPiA+IA0KPiA+IEVyciwgeWVzLi4uIGlzbid0IGl0PyBIb3cgZG8gSSBpZGVudGlm
-eSBhIGNvbnRhaW5lciBhbmQga25vdyB3aGVyZQ0KPiA+IHRvDQo+ID4gc2V0IHRoZSBsZWFzZSBi
-b3VuZGFyeT8NCj4gPiANCj4gPiBCZWFyIGluIG1pbmQgdGhhdCB0aGUgZGVmaW5pdGlvbiBvZiAi
-Y29udGFpbmVyIiBpcyBub24tZXhpc3RlbnQNCj4gPiBiZXlvbmQNCj4gPiB0aGUgb2J2aW91cyAi
-YSBsb29zZSBjb2xsZWN0aW9uIG9mIHByb2Nlc3NlcyIuIEl0IHZhcmllcyBmcm9tIHRoZQ0KPiA+
-IGRvY2tlci9seGMvdmlydHVvenpvIHN0eWxlIGNvbnRhaW5lciwgd2hpY2ggdXNlcyBuYW1lc3Bh
-Y2VzIHRvDQo+ID4gYm91bmQNCj4gPiB0aGUgcHJvY2Vzc2VzLCB0byB0aGUgR29vZ2xlIHR5cGUg
-b2YgImNvbnRhaW5lciIgdGhhdCBpcyBhY3R1YWxseQ0KPiA+IGp1c3QNCj4gPiBhIHNldCBvZiBj
-Z3JvdXBzIGFuZCB0byB0aGUga3ZtL3FlbXUgc2luZ2xlIHByb2Nlc3MuDQo+IA0KPiBTdXJlLCBi
-dXQsIGNhbid0IHdlIHBpY2sgKnNvbWV0aGluZyogdG8gdXNlIGFzIHRoZSBib3VuZGFyeSAobmV0
-d29yaw0KPiBuYW1lc3BhY2U/KSwgZG9jdW1lbnQgaXQsIGFuZCBsZXQgdXNlcnNwYWNlIHVzZSB0
-aGF0IHRvIHRlbGwgdXMgd2hhdA0KPiBpdA0KPiB3YW50cz8NCj4gDQo+ID4gPiBJbiBhbnkgY2Fz
-ZSwgZnJvbSB0aGUgcHJvdG9jb2wgcG9pbnQgb2YgdmlldyB0aGVzZSBhbGwgc291bmQgbGlrZQ0K
-PiA+ID4gY2xpZW50DQo+ID4gPiBpbXBsZW1lbnRhdGlvbiBkZXRhaWxzLg0KPiA+IA0KPiA+IElm
-IHlvdSBhcmUgc2VlaW5nIGFuIG9idmlvdXMgYXJjaGl0ZWN0dXJlIGZvciB0aGUgY2xpZW50LCB0
-aGVuDQo+ID4gcGxlYXNlDQo+ID4gc2hhcmUuLi4NCj4gDQo+IE1ha2UgY2xpZW50aWRzIHBlci1u
-ZXR3b3JrLW5hbWVzcGFjZSBhbmQgc3RvcmUgdGhlbSBpbg0KPiBuZnNfbmV0P8KgwqAoTWF5YmUN
-Cj4gdGhhdCdzIHdoYXQncyBhbHJlYWR5IGRvbmUsIEkgY2FuJ3QgdGVsbC4pDQo+IA0KPiA+ID4g
-VGhlIG9ubHkgcHJvYmxlbSBJIHNlZSB3aXRoIG11bHRpcGxlIGNsaWVudCBJRCdzIGlzIHRoYXQg
-eW91J2QNCj4gPiA+IGxpa2UNCj4gPiA+IHRvDQo+ID4gPiBrZWVwIHRoZWlyIGRlbGVnYXRpb25z
-IGZyb20gY29uZmxpY3Rpbmcgd2l0aCBlYWNoIG90aGVyIHNvIHRoZXkNCj4gPiA+IGNhbg0KPiA+
-ID4gc2hhcmUgY2FjaGUuDQo+ID4gPiANCj4gPiA+IEJ1dCwgbWF5YmUgSSdtIG1pc3Npbmcgc29t
-ZXRoaW5nIGVsc2UuDQo+ID4gDQo+ID4gSGF2aW5nIHRvIGFuIEVYQ0hBTkdFX0lEICsgQ1JFQVRF
-X1NFU1NJT04gb24gZXZlcnkgY2FsbCB0bw0KPiA+IGZvcmsoKS9jbG9uZSgpIGFuZCBhIERFU1RS
-T1lfU0VTU0lPTi9ERVNUUk9ZX0VYQ0hBTkdFSUQgaW4gZWFjaA0KPiA+IHByb2Nlc3MNCj4gPiBk
-ZXN0cnVjdG9yPyBMZWFzZSByZW5ld2FsIHBpbmdzIGZyb20gMTAwMCBwcm9jZXNzZXMgcnVubmlu
-ZyBvbiAxMDAwDQo+ID4gY2xpZW50cz8NCj4gPiANCj4gPiBUaGlzIGlzIHdoYXQgSSBtZWFuIGFi
-b3V0IGNvbnRhaW5lciBib3VuZGFyaWVzLiBJZiB0aGV5IGFyZW4ndCB3ZWxsDQo+ID4gZGVmaW5l
-ZCwgdGhlbiB3ZSdyZSBkb3duIHRvIGRvaW5nIHByZWNpc2VseSB0aGUgYWJvdmUuDQo+IA0KPiBB
-Z2FpbiB0aGlzIHNvdW5kcyBsaWtlIGEgY29tcGxhaW50IGFib3V0IHRoZSBrZXJuZWwgYXBpIHJh
-dGhlciB0aGFuDQo+IGFib3V0IHRoZSBwcm90b2NvbC7CoMKgSWYgdGhlIGNvbnRhaW5lciBtYW5h
-Z2VtZW50IHN5c3RlbSBrbm93cyB3aGF0IGl0DQo+IHdhbnRzIGFuZCB3ZSBnaXZlIGl0IGEgd2F5
-IHRvIGV4cGxhaW4gaXQgdG8gdXMsIHRoZW4gd2UgYXZvaWQgbW9zdCBvZg0KPiB0aGF0LCByaWdo
-dD8NCj4gDQoNCk9LLCBzbyBjb25zaWRlciB0aGUgdXNlIGNhc2UgdGhhdCBpbnNwaXJlZCB0aGlz
-IGNvbnZlcnNhdGlvbjogbmFtZWx5DQp1c2luZyBuZnNkIG9uIHRoZSBzZXJ2ZXIgdG8gcHJveHkg
-Zm9yIGEgY2xpZW50IHJ1bm5pbmcgaW4ga3ZtIGFuZCB1c2luZw0KdGhlIHZzb2NrIGludGVyZmFj
-ZS4NCg0KSG93IGRvIEkgYXJjaGl0ZWN0IGtuZnNkIHNvIHRoYXQgaXQgaGFuZGxlcyB0aGF0IHVz
-ZSBjYXNlPyBBcmUgeW91DQpzYXlpbmcgdGhhdCBJIG5lZWQgdG8gc2V0IHVwIGEgY29udGFpbmVy
-IG9mIGtuZnNkIHRocmVhZHMganVzdCB0byBzZXJ2ZQ0KdGhpcyBvbmUga3ZtIGluc3RhbmNlPyBP
-dGhlcndpc2UsIHRoZSBsb2NrcyBjcmVhdGVkIGJ5IGtuZnNkIGZvciB0aGF0DQprdm0gcHJvY2Vz
-cyB3aWxsIGhhdmUgdGhlIHNhbWUgY2xpZW50aWQgYXMgYWxsIHRoZSBvdGhlciBsb2NrcyBjcmVh
-dGVkDQpieSBrbmZzZD8NCg0KVG8gbWUsIGl0IHNlZW1zIG1vcmUgZmxleGlibGUgdG8gYWxsb3cg
-YSB1dGlsaXR5IGxpa2UgY3JpdSAoaHR0cHM6Ly9jcmkNCnUub3JnL01haW5fUGFnZSkgdG8gc3Bl
-Y2lmeSAiSSdkIGxpa2UgdG8gbWFyayB0aGVzZSBzcGVjaWZpYyBsb2NrcyBhcw0KYmVpbmcgcGFy
-dCBvZiB0aGlzIGNoZWNrcG9pbnQvcmVzdG9yZSBjb250ZXh0IHBsZWFzZSIgKGh0dHBzOi8vY3Jp
-dS5vcmcNCi9GaWxlX2xvY2tzKSwgYW5kIGFsbG93IHRoZW0gdG8gYmUgYXR0ZW1wdGVkIHJlc3Rv
-cmVkIHdpdGggdGhlIHByb2Nlc3MNCnRoYXQgd2FzIG1pZ3JhdGVkLg0KTm90ZSB0aGF0IGNyaXUg
-YWxzbyB3b3JrcyBhdCB0aGUgbGV2ZWwgb2YgdGhlIGFwcGxpY2F0aW9uLCBub3QgYQ0KY29udGFp
-bmVyLCBldmVuIHRob3VnaCBpdCB3YXMgZGV2ZWxvcGVkIGJ5IHRoZSBjb250YWluZXIgdmlydHVh
-bGlzYXRpb24NCmNvbW11bml0eS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBj
-bGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0
-YS5jb20NCg==
+> On Thu, 2017-05-18 at 12:02 -0400, Benjamin Coddington wrote:
+>> diff --git a/fs/locks.c b/fs/locks.c
+>> index af2031a1fcff..959b3f93f4bd 100644
+>> --- a/fs/locks.c
+>> +++ b/fs/locks.c
+>> @@ -249,7 +249,7 @@ locks_dump_ctx_list(struct list_head *list, char 
+>> *list_type)
+>>  	struct file_lock *fl;
+>>
+>>  	list_for_each_entry(fl, list, fl_list) {
+>> -		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n", 
+>> list_type, fl->fl_owner, fl->fl_flags, fl->fl_type, fl->fl_pid);
+>> +		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n", 
+>> list_type, fl->fl_owner, fl->fl_flags, fl->fl_type, 
+>> pid_vnr(fl->fl_nspid));
+>>  	}
+>>  }
+>>
+>
+> Probably should change the format to say fl_nspid=%u here, just to be
+> clear. Might also want to keep fl_pid in there since the lock manager
+> could set it.
 
+Yes, I thought about just spitting out both.  Let's do that.
+
+>> @@ -2074,7 +2075,7 @@ static int posix_lock_to_flock(struct flock 
+>> *flock, struct file_lock *fl)
+>>  #if BITS_PER_LONG == 32
+>>  static void posix_lock_to_flock64(struct flock64 *flock, struct 
+>> file_lock *fl)
+>>  {
+>> -	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
+>> +	flock->l_pid = IS_OFDLCK(fl) ? -1 : pid_vnr(fl->fl_nspid);
+>
+> What about the lock managers that _do_ set fl->fl_pid. With nfsv2/3,
+> this is always going to give you back the pid of lockd, AFAICT.
+
+But isn't this really what you want?  If a local process wants to know 
+who
+holds a conflicting lock, the fl_pid of a remote system is really pretty
+useless.  Not only that, but there's no way for the local process to 
+know
+when the pid is local or remote.  Better to be consistent and always 
+return
+something that's useful.
+
+> Do we want to present the pid value that the client sent here instead 
+> in
+> that case? Maybe the lm could set a fl_flag to indicate that the pid
+> should be taken directly from fl_pid here? Then you could move the 
+> above
+> logic to a static inline or something.
+>
+> Alternately, you could add a new lm_present_pid operation to lock
+> managers to format the pid as they see fit.
+
+Either works to solve the problem, but I still think that F_GETLK and
+/proc/locks should only return local pids.
+
+>> @@ -2322,6 +2325,7 @@ int fcntl_getlk64(struct file *filp, unsigned 
+>> int cmd, struct flock64 __user *l)
+>>  	int error;
+>>
+>>  	error = -EFAULT;
+>> +	file_lock.fl_nspid = get_pid(task_tgid(current));
+>
+> Might it be cleaner to create a FILE_LOCK(name) macro that does this 
+> on
+> the stack (like LIST_HEAD()) ?
+
+Yes, it would.  I'll do it.
+
+>> @@ -2520,6 +2527,7 @@ locks_remove_flock(struct file *filp, struct 
+>> file_lock_context *flctx)
+>>
+>>  	if (fl.fl_ops && fl.fl_ops->fl_release_private)
+>>  		fl.fl_ops->fl_release_private(&fl);
+>> +	put_pid(fl.fl_nspid);
+>
+> I think we only need to take a reference for when the file_lock can
+> outlive the current task, so the get/put may not be necessary in these
+> functions.
+
+Right.. of course.  I can clean those up.
+
+Ben
