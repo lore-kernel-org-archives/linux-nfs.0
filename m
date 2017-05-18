@@ -1,112 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:21645 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753540AbdERO2X (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 10:28:23 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32793 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932314AbdERPE6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 May 2017 11:04:58 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "stefanha@redhat.com" <stefanha@redhat.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "bfields@redhat.com" <bfields@redhat.com>,
+        "SteveD@redhat.com" <SteveD@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: EXCHANGE_ID with same network address but different server owner
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170518133441.GC4155@stefanha-x1.localdomain>
-Date: Thu, 18 May 2017 10:28:10 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
-References: <20170512132721.GA654@stefanha-x1.localdomain> <20170512143410.GC17983@parsley.fieldses.org> <1494601295.10434.1.camel@primarydata.com> <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com> <20170515144306.GB16013@stefanha-x1.localdomain> <20170515160248.GD9697@parsley.fieldses.org> <20170516131142.GA12711@fieldses.org> <20170518133441.GC4155@stefanha-x1.localdomain>
-To: Stefan Hajnoczi <stefanha@redhat.com>
+Date: Thu, 18 May 2017 15:04:50 +0000
+Message-ID: <1495119887.11859.1.camel@primarydata.com>
+References: <20170512132721.GA654@stefanha-x1.localdomain>
+         <20170512143410.GC17983@parsley.fieldses.org>
+         <1494601295.10434.1.camel@primarydata.com>
+         <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
+         <20170515144306.GB16013@stefanha-x1.localdomain>
+         <20170515160248.GD9697@parsley.fieldses.org>
+         <20170516131142.GA12711@fieldses.org>
+         <20170518133441.GC4155@stefanha-x1.localdomain>
+         <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
+In-Reply-To: <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On May 18, 2017, at 9:34 AM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
-> 
-> On Tue, May 16, 2017 at 09:11:42AM -0400, J. Bruce Fields wrote:
->> I think you explained this before, perhaps you could just offer a
->> pointer: remind us what your requirements or use cases are especially
->> for VM migration?
-> 
-> The NFS over AF_VSOCK configuration is:
-> 
-> A guest running on host mounts an NFS export from the host.  The NFS
-> server may be kernel nfsd or an NFS frontend to a distributed storage
-> system like Ceph.  A little more about these cases below.
-> 
-> Kernel nfsd is useful for sharing files.  For example, the guest may
-> read some files from the host when it launches and/or it may write out
-> result files to the host when it shuts down.  The user may also wish to
-> share their home directory between the guest and the host.
-> 
-> NFS frontends are a different use case.  They hide distributed storage
-> systems from guests in cloud environments.  This way guests don't see
-> the details of the Ceph, Gluster, etc nodes.  Besides benefiting
-> security it also allows NFS-capable guests to run without installing
-> specific drivers for the distributed storage system.  This use case is
-> "filesystem as a service".
-> 
-> The reason for using AF_VSOCK instead of TCP/IP is that traditional
-> networking configuration is fragile.  Automatically adding a dedicated
-> NIC to the guest and choosing an IP subnet has a high chance of
-> conflicts (subnet collisions, network interface naming, firewall rules,
-> network management tools).  AF_VSOCK is a zero-configuration
-> communications channel so it avoids these problems.
-> 
-> On to migration.  For the most part, guests can be live migrated between
-> hosts without significant downtime or manual steps.  PCI passthrough is
-> an example of a feature that makes it very hard to live migrate.  I hope
-> we can allow migration with NFS, although some limitations may be
-> necessary to make it feasible.
-> 
-> There are two NFS over AF_VSOCK migration scenarios:
-> 
-> 1. The files live on host H1 and host H2 cannot access the files
->   directly.  There is no way for an NFS server on H2 to access those
->   same files unless the directory is copied along with the guest or H2
->   proxies to the NFS server on H1.
-
-Having managed (and shared) storage on the physical host is
-awkward. I know some cloud providers might do this today by
-copying guest disk images down to the host's local disk, but
-generally it's not a flexible primary deployment choice.
-
-There's no good way to expand or replicate this pool of
-storage. A backup scheme would need to access all physical
-hosts. And the files are visible only on specific hosts.
-
-IMO you want to treat local storage on each physical host as
-a cache tier rather than as a back-end tier.
-
-
-> 2. The files are accessible from both host H1 and host H2 because they
->   are on shared storage or distributed storage system.  Here the
->   problem is "just" migrating the state from H1's NFS server to H2 so
->   that file handles remain valid.
-
-Essentially this is the re-export case, and this makes a lot
-more sense to me from a storage administration point of view.
-
-The pool of administered storage is not local to the physical
-hosts running the guests, which is how I think cloud providers
-would prefer to operate.
-
-User storage would be accessible via an NFS share, but managed
-in a Ceph object (with redundancy, a common high throughput
-backup facility, and secure central management of user
-identities).
-
-Each host's NFS server could be configured to expose only the
-the cloud storage resources for the tenants on that host. The
-back-end storage (ie, Ceph) could operate on a private storage
-area network for better security.
-
-The only missing piece here is support in Linux-based NFS
-servers for transparent state migration.
-
-
---
-Chuck Lever
-
-
+T24gVGh1LCAyMDE3LTA1LTE4IGF0IDEwOjI4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBNYXkgMTgsIDIwMTcsIGF0IDk6MzQgQU0sIFN0ZWZhbiBIYWpub2N6aSA8c3RlZmFuaGFA
+cmVkaGF0LmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiBPbiBUdWUsIE1heSAxNiwgMjAxNyBh
+dCAwOToxMTo0MkFNIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4gPiBJIHRoaW5r
+IHlvdSBleHBsYWluZWQgdGhpcyBiZWZvcmUsIHBlcmhhcHMgeW91IGNvdWxkIGp1c3Qgb2ZmZXIg
+YQ0KPiA+ID4gcG9pbnRlcjogcmVtaW5kIHVzIHdoYXQgeW91ciByZXF1aXJlbWVudHMgb3IgdXNl
+IGNhc2VzIGFyZQ0KPiA+ID4gZXNwZWNpYWxseQ0KPiA+ID4gZm9yIFZNIG1pZ3JhdGlvbj8NCj4g
+PiANCj4gPiBUaGUgTkZTIG92ZXIgQUZfVlNPQ0sgY29uZmlndXJhdGlvbiBpczoNCj4gPiANCj4g
+PiBBIGd1ZXN0IHJ1bm5pbmcgb24gaG9zdCBtb3VudHMgYW4gTkZTIGV4cG9ydCBmcm9tIHRoZSBo
+b3N0LsKgwqBUaGUNCj4gPiBORlMNCj4gPiBzZXJ2ZXIgbWF5IGJlIGtlcm5lbCBuZnNkIG9yIGFu
+IE5GUyBmcm9udGVuZCB0byBhIGRpc3RyaWJ1dGVkDQo+ID4gc3RvcmFnZQ0KPiA+IHN5c3RlbSBs
+aWtlIENlcGguwqDCoEEgbGl0dGxlIG1vcmUgYWJvdXQgdGhlc2UgY2FzZXMgYmVsb3cuDQo+ID4g
+DQo+ID4gS2VybmVsIG5mc2QgaXMgdXNlZnVsIGZvciBzaGFyaW5nIGZpbGVzLsKgwqBGb3IgZXhh
+bXBsZSwgdGhlIGd1ZXN0DQo+ID4gbWF5DQo+ID4gcmVhZCBzb21lIGZpbGVzIGZyb20gdGhlIGhv
+c3Qgd2hlbiBpdCBsYXVuY2hlcyBhbmQvb3IgaXQgbWF5IHdyaXRlDQo+ID4gb3V0DQo+ID4gcmVz
+dWx0IGZpbGVzIHRvIHRoZSBob3N0IHdoZW4gaXQgc2h1dHMgZG93bi7CoMKgVGhlIHVzZXIgbWF5
+IGFsc28NCj4gPiB3aXNoIHRvDQo+ID4gc2hhcmUgdGhlaXIgaG9tZSBkaXJlY3RvcnkgYmV0d2Vl
+biB0aGUgZ3Vlc3QgYW5kIHRoZSBob3N0Lg0KPiA+IA0KPiA+IE5GUyBmcm9udGVuZHMgYXJlIGEg
+ZGlmZmVyZW50IHVzZSBjYXNlLsKgwqBUaGV5IGhpZGUgZGlzdHJpYnV0ZWQNCj4gPiBzdG9yYWdl
+DQo+ID4gc3lzdGVtcyBmcm9tIGd1ZXN0cyBpbiBjbG91ZCBlbnZpcm9ubWVudHMuwqDCoFRoaXMg
+d2F5IGd1ZXN0cyBkb24ndA0KPiA+IHNlZQ0KPiA+IHRoZSBkZXRhaWxzIG9mIHRoZSBDZXBoLCBH
+bHVzdGVyLCBldGMgbm9kZXMuwqDCoEJlc2lkZXMgYmVuZWZpdGluZw0KPiA+IHNlY3VyaXR5IGl0
+IGFsc28gYWxsb3dzIE5GUy1jYXBhYmxlIGd1ZXN0cyB0byBydW4gd2l0aG91dA0KPiA+IGluc3Rh
+bGxpbmcNCj4gPiBzcGVjaWZpYyBkcml2ZXJzIGZvciB0aGUgZGlzdHJpYnV0ZWQgc3RvcmFnZSBz
+eXN0ZW0uwqDCoFRoaXMgdXNlIGNhc2UNCj4gPiBpcw0KPiA+ICJmaWxlc3lzdGVtIGFzIGEgc2Vy
+dmljZSIuDQo+ID4gDQo+ID4gVGhlIHJlYXNvbiBmb3IgdXNpbmcgQUZfVlNPQ0sgaW5zdGVhZCBv
+ZiBUQ1AvSVAgaXMgdGhhdCB0cmFkaXRpb25hbA0KPiA+IG5ldHdvcmtpbmcgY29uZmlndXJhdGlv
+biBpcyBmcmFnaWxlLsKgwqBBdXRvbWF0aWNhbGx5IGFkZGluZyBhDQo+ID4gZGVkaWNhdGVkDQo+
+ID4gTklDIHRvIHRoZSBndWVzdCBhbmQgY2hvb3NpbmcgYW4gSVAgc3VibmV0IGhhcyBhIGhpZ2gg
+Y2hhbmNlIG9mDQo+ID4gY29uZmxpY3RzIChzdWJuZXQgY29sbGlzaW9ucywgbmV0d29yayBpbnRl
+cmZhY2UgbmFtaW5nLCBmaXJld2FsbA0KPiA+IHJ1bGVzLA0KPiA+IG5ldHdvcmsgbWFuYWdlbWVu
+dCB0b29scykuwqDCoEFGX1ZTT0NLIGlzIGEgemVyby1jb25maWd1cmF0aW9uDQo+ID4gY29tbXVu
+aWNhdGlvbnMgY2hhbm5lbCBzbyBpdCBhdm9pZHMgdGhlc2UgcHJvYmxlbXMuDQo+ID4gDQo+ID4g
+T24gdG8gbWlncmF0aW9uLsKgwqBGb3IgdGhlIG1vc3QgcGFydCwgZ3Vlc3RzIGNhbiBiZSBsaXZl
+IG1pZ3JhdGVkDQo+ID4gYmV0d2Vlbg0KPiA+IGhvc3RzIHdpdGhvdXQgc2lnbmlmaWNhbnQgZG93
+bnRpbWUgb3IgbWFudWFsIHN0ZXBzLsKgwqBQQ0kNCj4gPiBwYXNzdGhyb3VnaCBpcw0KPiA+IGFu
+IGV4YW1wbGUgb2YgYSBmZWF0dXJlIHRoYXQgbWFrZXMgaXQgdmVyeSBoYXJkIHRvIGxpdmUgbWln
+cmF0ZS7CoMKgSQ0KPiA+IGhvcGUNCj4gPiB3ZSBjYW4gYWxsb3cgbWlncmF0aW9uIHdpdGggTkZT
+LCBhbHRob3VnaCBzb21lIGxpbWl0YXRpb25zIG1heSBiZQ0KPiA+IG5lY2Vzc2FyeSB0byBtYWtl
+IGl0IGZlYXNpYmxlLg0KPiA+IA0KPiA+IFRoZXJlIGFyZSB0d28gTkZTIG92ZXIgQUZfVlNPQ0sg
+bWlncmF0aW9uIHNjZW5hcmlvczoNCj4gPiANCj4gPiAxLiBUaGUgZmlsZXMgbGl2ZSBvbiBob3N0
+IEgxIGFuZCBob3N0IEgyIGNhbm5vdCBhY2Nlc3MgdGhlIGZpbGVzDQo+ID4gwqAgZGlyZWN0bHku
+wqDCoFRoZXJlIGlzIG5vIHdheSBmb3IgYW4gTkZTIHNlcnZlciBvbiBIMiB0byBhY2Nlc3MNCj4g
+PiB0aG9zZQ0KPiA+IMKgIHNhbWUgZmlsZXMgdW5sZXNzIHRoZSBkaXJlY3RvcnkgaXMgY29waWVk
+IGFsb25nIHdpdGggdGhlIGd1ZXN0IG9yDQo+ID4gSDINCj4gPiDCoCBwcm94aWVzIHRvIHRoZSBO
+RlMgc2VydmVyIG9uIEgxLg0KPiANCj4gSGF2aW5nIG1hbmFnZWQgKGFuZCBzaGFyZWQpIHN0b3Jh
+Z2Ugb24gdGhlIHBoeXNpY2FsIGhvc3QgaXMNCj4gYXdrd2FyZC4gSSBrbm93IHNvbWUgY2xvdWQg
+cHJvdmlkZXJzIG1pZ2h0IGRvIHRoaXMgdG9kYXkgYnkNCj4gY29weWluZyBndWVzdCBkaXNrIGlt
+YWdlcyBkb3duIHRvIHRoZSBob3N0J3MgbG9jYWwgZGlzaywgYnV0DQo+IGdlbmVyYWxseSBpdCdz
+IG5vdCBhIGZsZXhpYmxlIHByaW1hcnkgZGVwbG95bWVudCBjaG9pY2UuDQo+IA0KPiBUaGVyZSdz
+IG5vIGdvb2Qgd2F5IHRvIGV4cGFuZCBvciByZXBsaWNhdGUgdGhpcyBwb29sIG9mDQo+IHN0b3Jh
+Z2UuIEEgYmFja3VwIHNjaGVtZSB3b3VsZCBuZWVkIHRvIGFjY2VzcyBhbGwgcGh5c2ljYWwNCj4g
+aG9zdHMuIEFuZCB0aGUgZmlsZXMgYXJlIHZpc2libGUgb25seSBvbiBzcGVjaWZpYyBob3N0cy4N
+Cj4gDQo+IElNTyB5b3Ugd2FudCB0byB0cmVhdCBsb2NhbCBzdG9yYWdlIG9uIGVhY2ggcGh5c2lj
+YWwgaG9zdCBhcw0KPiBhIGNhY2hlIHRpZXIgcmF0aGVyIHRoYW4gYXMgYSBiYWNrLWVuZCB0aWVy
+Lg0KPiANCj4gDQo+ID4gMi4gVGhlIGZpbGVzIGFyZSBhY2Nlc3NpYmxlIGZyb20gYm90aCBob3N0
+IEgxIGFuZCBob3N0IEgyIGJlY2F1c2UNCj4gPiB0aGV5DQo+ID4gwqAgYXJlIG9uIHNoYXJlZCBz
+dG9yYWdlIG9yIGRpc3RyaWJ1dGVkIHN0b3JhZ2Ugc3lzdGVtLsKgwqBIZXJlIHRoZQ0KPiA+IMKg
+IHByb2JsZW0gaXMgImp1c3QiIG1pZ3JhdGluZyB0aGUgc3RhdGUgZnJvbSBIMSdzIE5GUyBzZXJ2
+ZXIgdG8gSDINCj4gPiBzbw0KPiA+IMKgIHRoYXQgZmlsZSBoYW5kbGVzIHJlbWFpbiB2YWxpZC4N
+Cj4gDQo+IEVzc2VudGlhbGx5IHRoaXMgaXMgdGhlIHJlLWV4cG9ydCBjYXNlLCBhbmQgdGhpcyBt
+YWtlcyBhIGxvdA0KPiBtb3JlIHNlbnNlIHRvIG1lIGZyb20gYSBzdG9yYWdlIGFkbWluaXN0cmF0
+aW9uIHBvaW50IG9mIHZpZXcuDQo+IA0KPiBUaGUgcG9vbCBvZiBhZG1pbmlzdGVyZWQgc3RvcmFn
+ZSBpcyBub3QgbG9jYWwgdG8gdGhlIHBoeXNpY2FsDQo+IGhvc3RzIHJ1bm5pbmcgdGhlIGd1ZXN0
+cywgd2hpY2ggaXMgaG93IEkgdGhpbmsgY2xvdWQgcHJvdmlkZXJzDQo+IHdvdWxkIHByZWZlciB0
+byBvcGVyYXRlLg0KPiANCj4gVXNlciBzdG9yYWdlIHdvdWxkIGJlIGFjY2Vzc2libGUgdmlhIGFu
+IE5GUyBzaGFyZSwgYnV0IG1hbmFnZWQNCj4gaW4gYSBDZXBoIG9iamVjdCAod2l0aCByZWR1bmRh
+bmN5LCBhIGNvbW1vbiBoaWdoIHRocm91Z2hwdXQNCj4gYmFja3VwIGZhY2lsaXR5LCBhbmQgc2Vj
+dXJlIGNlbnRyYWwgbWFuYWdlbWVudCBvZiB1c2VyDQo+IGlkZW50aXRpZXMpLg0KPiANCj4gRWFj
+aCBob3N0J3MgTkZTIHNlcnZlciBjb3VsZCBiZSBjb25maWd1cmVkIHRvIGV4cG9zZSBvbmx5IHRo
+ZQ0KPiB0aGUgY2xvdWQgc3RvcmFnZSByZXNvdXJjZXMgZm9yIHRoZSB0ZW5hbnRzIG9uIHRoYXQg
+aG9zdC4gVGhlDQo+IGJhY2stZW5kIHN0b3JhZ2UgKGllLCBDZXBoKSBjb3VsZCBvcGVyYXRlIG9u
+IGEgcHJpdmF0ZSBzdG9yYWdlDQo+IGFyZWEgbmV0d29yayBmb3IgYmV0dGVyIHNlY3VyaXR5Lg0K
+PiANCj4gVGhlIG9ubHkgbWlzc2luZyBwaWVjZSBoZXJlIGlzIHN1cHBvcnQgaW4gTGludXgtYmFz
+ZWQgTkZTDQo+IHNlcnZlcnMgZm9yIHRyYW5zcGFyZW50IHN0YXRlIG1pZ3JhdGlvbi4NCg0KTm90
+IHJlYWxseS4gSW4gYSBjb250YWluZXJpc2VkIHdvcmxkLCB3ZSdyZSBnb2luZyB0byBzZWUgbW9y
+ZSBhbmQgbW9yZQ0KY2FzZXMgd2hlcmUganVzdCBhIHNpbmdsZSBwcm9jZXNzL2FwcGxpY2F0aW9u
+IGdldHMgbWlncmF0ZWQgZnJvbSBvbmUNCk5GUyBjbGllbnQgdG8gYW5vdGhlciAoYW5kIHllcywg
+YSByZS1leHBvcnRlci9wcm94eSBvZiBORlMgaXMganVzdA0KYW5vdGhlciBjbGllbnQgYXMgZmFy
+IGFzIHRoZSBvcmlnaW5hbCBzZXJ2ZXIgaXMgY29uY2VybmVkKS4NCklPVzogSSB0aGluayB3ZSB3
+YW50IHRvIGFsbG93IGEgY2xpZW50IHRvIG1pZ3JhdGUgc29tZSBwYXJ0cyBvZiBpdHMNCmxvY2sg
+c3RhdGUgdG8gYW5vdGhlciBjbGllbnQsIHdpdGhvdXQgbmVjZXNzYXJpbHkgcmVxdWlyaW5nIGV2
+ZXJ5DQpwcm9jZXNzIGJlaW5nIG1pZ3JhdGVkIHRvIGhhdmUgaXRzIG93biBjbGllbnRpZC4NCg0K
+SSdtIGluIHRoZSBwcm9jZXNzIG9mIGJ1aWxkaW5nIHVwIGEgbGF1bmRyeSBsaXN0IG9mIHByb2Js
+ZW1zIHRoYXQgSSdkDQpsaWtlIHRvIHNlZSBzb2x2ZWQgYXMgcGFydCBvZiB0aGUgbmV3IElFVEYg
+V0cgY2hhcnRlci4gVGhpcyBpcyBvbmUNCmlzc3VlIHRoYXQgSSB0aGluayBzaG91bGQgYmUgb24g
+dGhhdCBsaXN0Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
