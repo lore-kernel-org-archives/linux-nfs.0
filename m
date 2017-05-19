@@ -1,80 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48114 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750703AbdESELV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 May 2017 00:11:21 -0400
-Date: Thu, 18 May 2017 21:07:31 -0700
-From: Liu Bo <bo.li.liu@oracle.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-mm@kvack.org, jfs-discussion@lists.sourceforge.net,
-        linux-xfs@vger.kernel.org, cluster-devel@redhat.com,
-        linux-f2fs-devel@lists.sourceforge.net,
-        v9fs-developer@lists.sourceforge.net, linux-nilfs@vger.kernel.org,
-        linux-block@vger.kernel.org, dhowells@redhat.com,
-        akpm@linux-foundation.org, hch@infradead.org,
-        ross.zwisler@linux.intel.com, mawilcox@microsoft.com,
-        jack@suse.com, viro@zeniv.linux.org.uk, corbet@lwn.net,
-        neilb@suse.de, clm@fb.com, tytso@mit.edu, axboe@kernel.dk,
-        josef@toxicpanda.com, hubcap@omnibond.com, rpeterso@redhat.com
-Subject: Re: [PATCH v4 05/27] btrfs: btrfs_wait_tree_block_writeback can be
- void return
-Message-ID: <20170519040731.GA30704@lim.localdomain>
-Reply-To: bo.li.liu@oracle.com
-References: <20170509154930.29524-1-jlayton@redhat.com>
- <20170509154930.29524-6-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:58146 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751190AbdESMfK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 May 2017 08:35:10 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Jeff Layton" <jlayton@poochiereds.net>
+Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>, bfields@fieldses.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] locks: Set fl_nspid at file_lock allocation
+Date: Fri, 19 May 2017 08:35:07 -0400
+Message-ID: <6ED42F9C-F290-451C-89A9-4A7C3FFDEFA6@redhat.com>
+In-Reply-To: <1495140075.3956.13.camel@poochiereds.net>
+References: <896e8ca302614f71f3030015ebf3befe2b40d3c4.1495122972.git.bcodding@redhat.com>
+ <1495126525.3956.10.camel@poochiereds.net>
+ <1069ECDA-D96D-495E-BB7B-128A926AD3DF@redhat.com>
+ <1495140075.3956.13.camel@poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170509154930.29524-6-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 09, 2017 at 11:49:08AM -0400, Jeff Layton wrote:
-> Nothing checks its return value.
+On 18 May 2017, at 16:41, Jeff Layton wrote:
 
-Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+> On Thu, 2017-05-18 at 13:36 -0400, Benjamin Coddington wrote:
+>>> On Thu, 2017-05-18 at 12:02 -0400, Benjamin Coddington wrote:
+>>>> diff --git a/fs/locks.c b/fs/locks.c
+>>>> index af2031a1fcff..959b3f93f4bd 100644
+>>>> --- a/fs/locks.c
+>>>> +++ b/fs/locks.c
+>>>> @@ -249,7 +249,7 @@ locks_dump_ctx_list(struct list_head *list, char
+>>>> *list_type)
+>>>>  	struct file_lock *fl;
+>>>>
+>>>>  	list_for_each_entry(fl, list, fl_list) {
+>>>> -		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n",
+>>>> list_type, fl->fl_owner, fl->fl_flags, fl->fl_type, fl->fl_pid);
+>>>> +		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n",
+>>>> list_type, fl->fl_owner, fl->fl_flags, fl->fl_type,
+>>>> pid_vnr(fl->fl_nspid));
+>>>>  	}
+>>>>  }
+>>>>
+>>>
+>>> Probably should change the format to say fl_nspid=%u here, just to be
+>>> clear. Might also want to keep fl_pid in there since the lock manager
+>>> could set it.
+>>
+>> Yes, I thought about just spitting out both.  Let's do that.
+>>
+>>>> @@ -2074,7 +2075,7 @@ static int posix_lock_to_flock(struct flock
+>>>> *flock, struct file_lock *fl)
+>>>>  #if BITS_PER_LONG == 32
+>>>>  static void posix_lock_to_flock64(struct flock64 *flock, struct
+>>>> file_lock *fl)
+>>>>  {
+>>>> -	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
+>>>> +	flock->l_pid = IS_OFDLCK(fl) ? -1 : pid_vnr(fl->fl_nspid);
+>>>
+>>> What about the lock managers that _do_ set fl->fl_pid. With nfsv2/3,
+>>> this is always going to give you back the pid of lockd, AFAICT.
+>>
+>> But isn't this really what you want?  If a local process wants to know
+>> who
+>> holds a conflicting lock, the fl_pid of a remote system is really pretty
+>> useless.  Not only that, but there's no way for the local process to
+>> know
+>> when the pid is local or remote.  Better to be consistent and always
+>> return
+>> something that's useful.
+>>
+>
+> The l_pid field in struct flock (and by extension fl_pid) is pretty
+> poorly defined in the spec(s), especially when there is a remote host
+> involved. Programs that rely on it are insane, of course...but Linux has
+> always behaved this way.
 
--liubo
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/btrfs/disk-io.c | 6 +++---
->  fs/btrfs/disk-io.h | 2 +-
->  2 files changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/btrfs/disk-io.c b/fs/btrfs/disk-io.c
-> index eb1ee7b6f532..8c479bd5534a 100644
-> --- a/fs/btrfs/disk-io.c
-> +++ b/fs/btrfs/disk-io.c
-> @@ -1222,10 +1222,10 @@ int btrfs_write_tree_block(struct extent_buffer *buf)
->  					buf->start + buf->len - 1);
->  }
->  
-> -int btrfs_wait_tree_block_writeback(struct extent_buffer *buf)
-> +void btrfs_wait_tree_block_writeback(struct extent_buffer *buf)
->  {
-> -	return filemap_fdatawait_range(buf->pages[0]->mapping,
-> -				       buf->start, buf->start + buf->len - 1);
-> +	filemap_fdatawait_range(buf->pages[0]->mapping,
-> +			        buf->start, buf->start + buf->len - 1);
->  }
->  
->  struct extent_buffer *read_tree_block(struct btrfs_fs_info *fs_info, u64 bytenr,
-> diff --git a/fs/btrfs/disk-io.h b/fs/btrfs/disk-io.h
-> index 2e0ec29bfd69..9cc87835abb5 100644
-> --- a/fs/btrfs/disk-io.h
-> +++ b/fs/btrfs/disk-io.h
-> @@ -127,7 +127,7 @@ int btrfs_wq_submit_bio(struct btrfs_fs_info *fs_info, struct inode *inode,
->  			extent_submit_bio_hook_t *submit_bio_done);
->  unsigned long btrfs_async_submit_limit(struct btrfs_fs_info *info);
->  int btrfs_write_tree_block(struct extent_buffer *buf);
-> -int btrfs_wait_tree_block_writeback(struct extent_buffer *buf);
-> +void btrfs_wait_tree_block_writeback(struct extent_buffer *buf);
->  int btrfs_init_log_root_tree(struct btrfs_trans_handle *trans,
->  			     struct btrfs_fs_info *fs_info);
->  int btrfs_add_log_tree(struct btrfs_trans_handle *trans,
-> -- 
-> 2.9.3
-> 
+But if it is completely useless today, then we can change it without
+worrying about breaking it because it is already broken.  There's no
+documentation anywhere that informs users of F_GETLK or /proc/locks that
+l_pid is completely unreliable.
+
+Do you know why linux hasn't picked up l_sysid?  I can't seem to find any
+previous discussion about it.
+
+> In the absence of a compelling reason to change it, I think we should
+> keep the behavior in this respect as close as possible to what we have
+> now.
+
+I think the reason would be l_pid should at least have some consistent
+meaning.  I think now that this patch probably shouldn't change it, but it
+should be changed.
+
+>>> Do we want to present the pid value that the client sent here instead
+>>> in
+>>> that case? Maybe the lm could set a fl_flag to indicate that the pid
+>>> should be taken directly from fl_pid here? Then you could move the
+>>> above
+>>> logic to a static inline or something.
+>>>
+>>> Alternately, you could add a new lm_present_pid operation to lock
+>>> managers to format the pid as they see fit.
+>>
+>> Either works to solve the problem, but I still think that F_GETLK and
+>> /proc/locks should only return local pids.
+>>
+>>>> @@ -2322,6 +2325,7 @@ int fcntl_getlk64(struct file *filp, unsigned
+>>>> int cmd, struct flock64 __user *l)
+>>>>  	int error;
+>>>>
+>>>>  	error = -EFAULT;
+>>>> +	file_lock.fl_nspid = get_pid(task_tgid(current));
+>>>
+>>> Might it be cleaner to create a FILE_LOCK(name) macro that does this
+>>> on
+>>> the stack (like LIST_HEAD()) ?
+>>
+>> Yes, it would.  I'll do it.
+>>
+>
+> In some of those places it might not hurt to consider allocating and
+> freeing a file_lock instead. file_lock is not exactly small (208 bytes
+> on my latest build)...
+
+Do you want that wrapped up with this patch?
+
+Ben
