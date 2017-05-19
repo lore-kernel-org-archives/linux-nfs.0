@@ -1,158 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:36181 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752816AbdESN23 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 May 2017 09:28:29 -0400
-Received: by mail-qk0-f195.google.com with SMTP id y128so10135245qka.3
-        for <linux-nfs@vger.kernel.org>; Fri, 19 May 2017 06:28:28 -0700 (PDT)
-Message-ID: <1495200505.2889.5.camel@poochiereds.net>
-Subject: Re: [PATCH] locks: Set fl_nspid at file_lock allocation
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, bfields@fieldses.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 19 May 2017 09:28:25 -0400
-In-Reply-To: <6ED42F9C-F290-451C-89A9-4A7C3FFDEFA6@redhat.com>
-References: <896e8ca302614f71f3030015ebf3befe2b40d3c4.1495122972.git.bcodding@redhat.com>
-         <1495126525.3956.10.camel@poochiereds.net>
-         <1069ECDA-D96D-495E-BB7B-128A926AD3DF@redhat.com>
-         <1495140075.3956.13.camel@poochiereds.net>
-         <6ED42F9C-F290-451C-89A9-4A7C3FFDEFA6@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:55752 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751481AbdESOF4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 May 2017 10:05:56 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <CAOssrKehzdSABr-K6Usb7AjxyJ-POtUbdRap0e8Jq78=o-cMLg@mail.gmail.com>
+References: <CAOssrKehzdSABr-K6Usb7AjxyJ-POtUbdRap0e8Jq78=o-cMLg@mail.gmail.com> <149486147335.23956.2504187638938281431.stgit@warthog.procyon.org.uk> <149486154888.23956.10260643844119198576.stgit@warthog.procyon.org.uk> <CAOssrKdf4aKRRMJWLERr8hE7kptighaqFtR0vWdoMkPraSsYpw@mail.gmail.com> <18741.1494952398@warthog.procyon.org.uk> <CAOssrKcL7A=mLTeOe73jGbs7oK-5eneCNuCHNDY7OLy0_=KPUA@mail.gmail.com> <19461.1495020695@warthog.procyon.org.uk>
+To: Miklos Szeredi <mszeredi@redhat.com>
+Cc: dhowells@redhat.com, viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 06/21] VFS: Introduce a superblock configuration context [ver #3]
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Fri, 19 May 2017 15:05:52 +0100
+Message-ID: <23332.1495202752@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-05-19 at 08:35 -0400, Benjamin Coddington wrote:
-> On 18 May 2017, at 16:41, Jeff Layton wrote:
+Miklos Szeredi <mszeredi@redhat.com> wrote:
+
+> Yes.  Current behavior seems to just ignore given options (except
+> MS_RDONLY) in that case, so we need to keep that possibility.
+
+Yeah.  I wonder if we really should be consistency checking some parameters in
+some filesystems - or, at least, offering the opportunity.
+
+> Also I think it would be good to allow selecting when superblock is created:
 > 
-> > On Thu, 2017-05-18 at 13:36 -0400, Benjamin Coddington wrote:
-> > > > On Thu, 2017-05-18 at 12:02 -0400, Benjamin Coddington wrote:
-> > > > > diff --git a/fs/locks.c b/fs/locks.c
-> > > > > index af2031a1fcff..959b3f93f4bd 100644
-> > > > > --- a/fs/locks.c
-> > > > > +++ b/fs/locks.c
-> > > > > @@ -249,7 +249,7 @@ locks_dump_ctx_list(struct list_head *list, char
-> > > > > *list_type)
-> > > > >  	struct file_lock *fl;
-> > > > > 
-> > > > >  	list_for_each_entry(fl, list, fl_list) {
-> > > > > -		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n",
-> > > > > list_type, fl->fl_owner, fl->fl_flags, fl->fl_type, fl->fl_pid);
-> > > > > +		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n",
-> > > > > list_type, fl->fl_owner, fl->fl_flags, fl->fl_type,
-> > > > > pid_vnr(fl->fl_nspid));
-> > > > >  	}
-> > > > >  }
-> > > > > 
-> > > > 
-> > > > Probably should change the format to say fl_nspid=%u here, just to be
-> > > > clear. Might also want to keep fl_pid in there since the lock manager
-> > > > could set it.
-> > > 
-> > > Yes, I thought about just spitting out both.  Let's do that.
-> > > 
-> > > > > @@ -2074,7 +2075,7 @@ static int posix_lock_to_flock(struct flock
-> > > > > *flock, struct file_lock *fl)
-> > > > >  #if BITS_PER_LONG == 32
-> > > > >  static void posix_lock_to_flock64(struct flock64 *flock, struct
-> > > > > file_lock *fl)
-> > > > >  {
-> > > > > -	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
-> > > > > +	flock->l_pid = IS_OFDLCK(fl) ? -1 : pid_vnr(fl->fl_nspid);
-> > > > 
-> > > > What about the lock managers that _do_ set fl->fl_pid. With nfsv2/3,
-> > > > this is always going to give you back the pid of lockd, AFAICT.
-> > > 
-> > > But isn't this really what you want?  If a local process wants to know
-> > > who
-> > > holds a conflicting lock, the fl_pid of a remote system is really pretty
-> > > useless.  Not only that, but there's no way for the local process to
-> > > know
-> > > when the pid is local or remote.  Better to be consistent and always
-> > > return
-> > > something that's useful.
-> > > 
-> > 
-> > The l_pid field in struct flock (and by extension fl_pid) is pretty
-> > poorly defined in the spec(s), especially when there is a remote host
-> > involved. Programs that rely on it are insane, of course...but Linux has
-> > always behaved this way.
+>   - non-exclusive create: if exists return it, if not create it
+>   - exclusive create: only create if non-existent
+>   - non-create: only return if exists
+
+I quite like that idea.  Use O_CREAT and O_EXCL?  Probably better to define a
+new flag space for fsopen() rather than trying to share with open().  I'm not
+sure how likely it would be to be used, though.
+
+> So what I propose is:
 > 
-> But if it is completely useless today, then we can change it without
-> worrying about breaking it because it is already broken.  There's no
-> documentation anywhere that informs users of F_GETLK or /proc/locks that
-> l_pid is completely unreliable.
+>  1) call ->parse_option()
 > 
-
-True...but again, that's how it currently works today and I haven't yet
-heard a good reason for changing it. The argument so far is "because we
-can and no one should care", but I don't think that's enough. AFAICT,
-the current behavior is not really causing any problems, per-se.
-
-If we want to change it, we need to have an explanation for the poor sap
-who chimes in in two years that his application subtly stopped working
-the same way when his kernel was upgraded. If we can say we did it to
-solve a specific problem, then I'd be more inclined to change it.
-
-> Do you know why linux hasn't picked up l_sysid?  I can't seem to find any
-> previous discussion about it.
+>       would get indication what we are trying to do (find and/or
+> create and/or reconfig)
 > 
-
-Because it's not part of POSIX? The fcntl spec page says:
-
-"The identification of a machine in a network environment is outside the
-scope of this volume of POSIX.1-2008. Thus, an l_sysid member, such as
-found in System V, is not included in the locking structure."
-
-We could change that, but it's a userland ABI change and you'd need new
-F_* command constants (at the very least)...and if we're going to go
-there then I'd want to start thinking about an async locking API.
-
-(cue the snowball effect)
-
-> > In the absence of a compelling reason to change it, I think we should
-> > keep the behavior in this respect as close as possible to what we have
-> > now.
+>       this step is optional, the the filesystem type could possibly be
+> enough for the following steps
 > 
-> I think the reason would be l_pid should at least have some consistent
-> meaning.  I think now that this patch probably shouldn't change it, but it
-> should be changed.
+>  2) call ->get_tree()
 > 
-> > > > Do we want to present the pid value that the client sent here instead
-> > > > in
-> > > > that case? Maybe the lm could set a fl_flag to indicate that the pid
-> > > > should be taken directly from fl_pid here? Then you could move the
-> > > > above
-> > > > logic to a static inline or something.
-> > > > 
-> > > > Alternately, you could add a new lm_present_pid operation to lock
-> > > > managers to format the pid as they see fit.
-> > > 
-> > > Either works to solve the problem, but I still think that F_GETLK and
-> > > /proc/locks should only return local pids.
-> > > 
-> > > > > @@ -2322,6 +2325,7 @@ int fcntl_getlk64(struct file *filp, unsigned
-> > > > > int cmd, struct flock64 __user *l)
-> > > > >  	int error;
-> > > > > 
-> > > > >  	error = -EFAULT;
-> > > > > +	file_lock.fl_nspid = get_pid(task_tgid(current));
-> > > > 
-> > > > Might it be cleaner to create a FILE_LOCK(name) macro that does this
-> > > > on
-> > > > the stack (like LIST_HEAD()) ?
-> > > 
-> > > Yes, it would.  I'll do it.
-> > > 
-> > 
-> > In some of those places it might not hurt to consider allocating and
-> > freeing a file_lock instead. file_lock is not exactly small (208 bytes
-> > on my latest build)...
+>       pass sc containing parsed options and flags controlling the
+> creation of the superblock (create/exclusive)
 > 
-> Do you want that wrapped up with this patch?
-> 
-> Ben
+>       this step is optional, not called if we are given an sb to work
+> with (i.e. only reconfig)
 
--- 
-Jeff Layton <jlayton@poochiereds.net>
+No.  We have to call this to get the root dentry.  Whether or not it creates a
+superblock - or even if it creates a superblock in someone else's filesystem
+(the cpuset fs, for example) - is immaterial.
+
+Further, we aren't given information as to whether the superblock was created
+for us or not - though that can be changed.
+
+Even further, I think by the time this returns, the superblock should be
+live.  It will be live if we're reusing it, though we can get s_umount to
+prevent a race.
+
+>  3) call ->reconfig()
+> 
+>       pass sc containing parsed options
+> 
+>       this step is optional, we might be instructed just to find or
+> create the sb
+
+Actually, it's arguable that we *shouldn't* be calling this if the superblock
+already exists - otherwise we may end up changing the parameters someone else
+has set.
+
+For mount(2), for most filesystems, we have to leave the active parameters
+unaltered for compatibility.  For fsopen() I'm willing to add a consistency
+check - but there probably has to be a flag to waive that as otherwise you
+can't mount without determining what the other party's parameters were.
+
+> I don't get it.  We never passed MNT_* options as strings to the
+> kernel.
+
+You're right.  I've moved all those flags over to the forbidden list.
+
+> Ah, mnt_devname.  The device name as just a special type of option and
+> as such should be stored in the superblock.
+
+I'll leave that for now and deal with it later.  We have to be careful not to
+break userspace by changing what's seen in /proc/mounts.
+
+David
