@@ -1,64 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50630 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756380AbdESTDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 May 2017 15:03:37 -0400
-Date: Fri, 19 May 2017 15:03:14 -0400
-From: "J . Bruce Fields" <bfields@fieldses.org>
-To: Bart Van Assche <bart.vanassche@sandisk.com>
-Cc: "Martin K . Petersen" <martin.petersen@oracle.com>,
-        James Bottomley <James.Bottomley@HansenPartnership.com>,
-        linux-scsi@vger.kernel.org, Jeff Layton <jlayton@poochiereds.net>,
-        Jens Axboe <axboe@fb.com>, Christoph Hellwig <hch@lst.de>,
-        Omar Sandoval <osandov@fb.com>,
-        Hannes Reinecke <hare@suse.com>, linux-nfs@vger.kernel.org,
-        linux-block@vger.kernel.org
-Subject: Re: [PATCH 05/18] nfsd: Check private request size before submitting
- a SCSI request
-Message-ID: <20170519190314.GA25811@fieldses.org>
-References: <20170519183016.12646-1-bart.vanassche@sandisk.com>
- <20170519183016.12646-6-bart.vanassche@sandisk.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:49288 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750734AbdESVcJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 May 2017 17:32:09 -0400
+Date: Sat, 20 May 2017 00:31:12 +0300
+From: Dan Carpenter <dan.carpenter@oracle.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Tom Haynes <loghyr@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Weston Andros Adamson <dros@primarydata.com>,
+        Fred Isaman <fred.isaman@gmail.com>, linux-nfs@vger.kernel.org,
+        kernel-janitors@vger.kernel.org
+Subject: [PATCH] pNFS/flexfiles: missing error code in ff_layout_alloc_lseg()
+Message-ID: <20170519213112.udkpg2nstamr2h2h@mwanda>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170519183016.12646-6-bart.vanassche@sandisk.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ACK as far as I'm concerned.--b.
+If xdr_inline_decode() fails then we end up returning ERR_PTR(0).  The
+caller treats NULL returns as -ENOMEM so it doesn't really hurt runtime,
+but obviously we intended to set an error code here.
 
-On Fri, May 19, 2017 at 11:30:03AM -0700, Bart Van Assche wrote:
-> Since using scsi_req() is only allowed against request queues for which
-> struct scsi_request is the first member of their private request
-> data, refuse to register block layer queues for which the private
-> data is smaller than struct scsi_request.
-> 
-> References: commit 82ed4db499b8 ("block: split scsi_request out of struct request")
-> Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Cc: Jeff Layton <jlayton@poochiereds.net>
-> Cc: Jens Axboe <axboe@fb.com>
-> Cc: Christoph Hellwig <hch@lst.de>
-> Cc: Omar Sandoval <osandov@fb.com>
-> Cc: Hannes Reinecke <hare@suse.com>
-> Cc: linux-nfs@vger.kernel.org
-> Cc: linux-block@vger.kernel.org
-> ---
->  fs/nfsd/blocklayout.c | 3 +++
->  1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-> index fb5213afc854..90d1df31491b 100644
-> --- a/fs/nfsd/blocklayout.c
-> +++ b/fs/nfsd/blocklayout.c
-> @@ -219,6 +219,9 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
->  	u8 *buf, *d, type, assoc;
->  	int error;
->  
-> +	if (WARN_ON_ONCE(blk_queue_cmd_size(q) < sizeof(struct scsi_request)))
-> +		return -EINVAL;
-> +
->  	buf = kzalloc(bufflen, GFP_KERNEL);
->  	if (!buf)
->  		return -ENOMEM;
-> -- 
-> 2.12.2
+Fixes: d67ae825a59d ("pnfs/flexfiles: Add the FlexFile Layout Driver")
+Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index f5714ee01000..23542dc44a25 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -454,6 +454,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 			goto out_err_free;
+ 
+ 		/* fh */
++		rc = -EIO;
+ 		p = xdr_inline_decode(&stream, 4);
+ 		if (!p)
+ 			goto out_err_free;
