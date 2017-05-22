@@ -1,15 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41920 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39302 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935455AbdEVPxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 May 2017 11:53:53 -0400
-Subject: [PATCH 15/23] proc: Add superblock config support to procfs [ver #4]
+        id S932956AbdEVPxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 11:53:34 -0400
+Subject: [PATCH 11/23] VFS: Implement fsopen() to prepare for a mount [ver
+ #4]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 22 May 2017 16:53:49 +0100
-Message-ID: <149546842915.9289.17268235023260846638.stgit@warthog.procyon.org.uk>
+Date: Mon, 22 May 2017 16:53:16 +0100
+Message-ID: <149546839657.9289.6411757401051423138.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 References: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -17,305 +18,415 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add superblock config support to procfs.
+Provide an fsopen() system call that starts the process of preparing to
+mount, using an fd as a context handle.  fsopen() is given the name of the
+filesystem that will be used:
+
+	int mfd = fsopen(const char *fsname, int reserved,
+			 int open_flags);
+
+where reserved should be -1 for the moment (it will be used to pass the
+namespace information in future) and open_flags can be 0 or O_CLOEXEC.
+
+For example:
+
+	mfd = fsopen("ext4", -1, O_CLOEXEC);
+	write(mfd, "s /dev/sdb1"); // note I'm ignoring write's length arg
+	write(mfd, "o noatime");
+	write(mfd, "o acl");
+	write(mfd, "o user_attr");
+	write(mfd, "o iversion");
+	write(mfd, "o ");
+	write(mfd, "r /my/container"); // root inside the fs
+	write(mfd, "x create"); // create the superblock
+	fsmount(mfd, container_fd, "/mnt", AT_NO_FOLLOW);
+
+	mfd = fsopen("afs", -1);
+	write(mfd, "s %grand.central.org:root.cell");
+	write(mfd, "o cell=grand.central.org");
+	write(mfd, "r /");
+	write(mfd, "x create");
+	fsmount(mfd, AT_FDCWD, "/mnt", 0);
+
+If an error is reported at any step, an error message may be available to be
+read() back (ENODATA will be reported if there isn't an error available) in
+the form:
+
+	"e <subsys>:<problem>"
+	"e SELinux:Mount on mountpoint not permitted"
+
+Once fsmount() has been called, further write() calls will incur EBUSY,
+even if the fsmount() fails.  read() is still possible to retrieve error
+information.
+
+The fsopen() syscall creates a mount context and hangs it of the fd that it
+returns.
+
+Netlink is not used because it is optional.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/proc/inode.c    |    2 -
- fs/proc/internal.h |    2 -
- fs/proc/root.c     |  175 ++++++++++++++++++++++++++++++++++------------------
- 3 files changed, 116 insertions(+), 63 deletions(-)
+ arch/x86/entry/syscalls/syscall_32.tbl |    1 
+ arch/x86/entry/syscalls/syscall_64.tbl |    1 
+ fs/Makefile                            |    2 
+ fs/fsopen.c                            |  267 ++++++++++++++++++++++++++++++++
+ include/linux/sb_config.h              |    2 
+ include/linux/syscalls.h               |    1 
+ include/uapi/linux/magic.h             |    1 
+ kernel/sys_ni.c                        |    3 
+ 8 files changed, 277 insertions(+), 1 deletion(-)
+ create mode 100644 fs/fsopen.c
 
-diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index a4bf66af0ba9..304e5c36b7ba 100644
---- a/fs/proc/inode.c
-+++ b/fs/proc/inode.c
-@@ -118,7 +118,7 @@ const struct super_operations proc_sops = {
- 	.drop_inode	= generic_delete_inode,
- 	.evict_inode	= proc_evict_inode,
- 	.statfs		= simple_statfs,
--	.remount_fs	= proc_remount,
-+	.remount_fs_sc	= proc_remount,
- 	.show_options	= proc_show_options,
- };
+diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+index 448ac2161112..9bf8d4c62f85 100644
+--- a/arch/x86/entry/syscalls/syscall_32.tbl
++++ b/arch/x86/entry/syscalls/syscall_32.tbl
+@@ -391,3 +391,4 @@
+ 382	i386	pkey_free		sys_pkey_free
+ 383	i386	statx			sys_statx
+ 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
++385	i386	fsopen			sys_fsopen
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 5aef183e2f85..9b198c5fc412 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -339,6 +339,7 @@
+ 330	common	pkey_alloc		sys_pkey_alloc
+ 331	common	pkey_free		sys_pkey_free
+ 332	common	statx			sys_statx
++333	common	fsopen			sys_fsopen
  
-diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index b681533f59dd..4546372c2d13 100644
---- a/fs/proc/internal.h
-+++ b/fs/proc/internal.h
-@@ -262,7 +262,7 @@ static inline void proc_tty_init(void) {}
- extern struct proc_dir_entry proc_root;
+ #
+ # x32-specific system call numbers start at 512 to avoid cache impact
+diff --git a/fs/Makefile b/fs/Makefile
+index 8f5142525866..b8fcf48b0400 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -12,7 +12,7 @@ obj-y :=	open.o read_write.o file_table.o super.o \
+ 		seq_file.o xattr.o libfs.o fs-writeback.o \
+ 		pnode.o splice.o sync.o utimes.o \
+ 		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o \
+-		sb_config.o
++		sb_config.o fsopen.o
  
- extern void proc_self_init(void);
--extern int proc_remount(struct super_block *, int *, char *);
-+extern int proc_remount(struct super_block *, struct sb_config *);
- 
- /*
-  * task_[no]mmu.c
-diff --git a/fs/proc/root.c b/fs/proc/root.c
-index ff2e810e9e64..9878b62e874c 100644
---- a/fs/proc/root.c
-+++ b/fs/proc/root.c
-@@ -18,14 +18,23 @@
- #include <linux/module.h>
- #include <linux/bitops.h>
- #include <linux/user_namespace.h>
--#include <linux/mount.h>
+ ifeq ($(CONFIG_BLOCK),y)
+ obj-y +=	buffer.o block_dev.o direct-io.o mpage.o
+diff --git a/fs/fsopen.c b/fs/fsopen.c
+new file mode 100644
+index 000000000000..cbede77158ba
+--- /dev/null
++++ b/fs/fsopen.c
+@@ -0,0 +1,267 @@
++/* Filesystem access-by-fd.
++ *
++ * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public Licence
++ * as published by the Free Software Foundation; either version
++ * 2 of the Licence, or (at your option) any later version.
++ */
++
 +#include <linux/sb_config.h>
- #include <linux/pid_namespace.h>
- #include <linux/parser.h>
- #include <linux/cred.h>
- #include <linux/magic.h>
++#include <linux/mount.h>
 +#include <linux/slab.h>
- 
- #include "internal.h"
- 
-+struct proc_sb_config {
-+	struct sb_config	sc;
-+	struct pid_namespace	*pid_ns;
-+	unsigned long		mask;
-+	int			hidepid;
-+	int			gid;
-+};
++#include <linux/uaccess.h>
++#include <linux/file.h>
++#include <linux/magic.h>
++#include <linux/syscalls.h>
 +
- enum {
- 	Opt_gid, Opt_hidepid, Opt_err,
- };
-@@ -36,56 +45,60 @@ static const match_table_t tokens = {
- 	{Opt_err, NULL},
- };
- 
--static int proc_parse_options(char *options, struct pid_namespace *pid)
-+static int proc_parse_mount_option(struct sb_config *sc, char *p)
- {
--	char *p;
-+	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
- 	substring_t args[MAX_OPT_ARGS];
--	int option;
--
--	if (!options)
--		return 1;
--
--	while ((p = strsep(&options, ",")) != NULL) {
--		int token;
--		if (!*p)
--			continue;
--
--		args[0].to = args[0].from = NULL;
--		token = match_token(p, tokens, args);
--		switch (token) {
--		case Opt_gid:
--			if (match_int(&args[0], &option))
--				return 0;
--			pid->pid_gid = make_kgid(current_user_ns(), option);
--			break;
--		case Opt_hidepid:
--			if (match_int(&args[0], &option))
--				return 0;
--			if (option < HIDEPID_OFF ||
--			    option > HIDEPID_INVISIBLE) {
--				pr_err("proc: hidepid value must be between 0 and 2.\n");
--				return 0;
--			}
--			pid->hide_pid = option;
--			break;
--		default:
--			pr_err("proc: unrecognized mount option \"%s\" "
--			       "or missing value\n", p);
--			return 0;
-+	int token;
++static struct vfsmount *fs_fs_mnt __read_mostly;
 +
-+	args[0].to = args[0].from = NULL;
-+	token = match_token(p, tokens, args);
-+	switch (token) {
-+	case Opt_gid:
-+		if (match_int(&args[0], &cfg->gid))
-+			return invalf("procfs: Unparseable gid= argument");
++static int fs_fs_release(struct inode *inode, struct file *file)
++{
++	struct sb_config *sc = file->private_data;
++
++	file->private_data = NULL;
++
++	put_sb_config(sc);
++	return 0;
++}
++
++/*
++ * Userspace writes configuration data and commands to the fd and we parse it
++ * here.  For the moment, we assume a single option or command per write.  Each
++ * line written is of the form
++ *
++ *	<option_type><space><stuff...>
++ *
++ *	d /dev/sda1				-- Device name
++ *	o noatime				-- Option without value
++ *	o cell=grand.central.org		-- Option with value
++ *	r /					-- Dir within device to mount
++ *	x create				-- Create a superblock
++ */
++static ssize_t fs_fs_write(struct file *file,
++			   const char __user *_buf, size_t len, loff_t *pos)
++{
++	struct sb_config *sc = file->private_data;
++	struct inode *inode = file_inode(file);
++	char opt[2], *data;
++	ssize_t ret;
++
++	if (len < 3 || len > 4095)
++		return -EINVAL;
++
++	if (copy_from_user(opt, _buf, 2) != 0)
++		return -EFAULT;
++	switch (opt[0]) {
++	case 's':
++	case 'o':
++	case 'x':
++		break;
++	default:
++		goto err_bad_cmd;
++	}
++	if (opt[1] != ' ')
++		goto err_bad_cmd;
++
++	data = memdup_user_nul(_buf + 2, len - 2);
++	if (IS_ERR(data))
++		return PTR_ERR(data);
++
++	/* From this point onwards we need to lock the fd against someone
++	 * trying to mount it.
++	 */
++	ret = inode_lock_killable(inode);
++	if (ret < 0)
++		goto err_free;
++
++	ret = -EINVAL;
++	switch (opt[0]) {
++	case 's':
++		if (sc->device)
++			goto err_unlock;
++		sc->device = data;
++		data = NULL;
 +		break;
 +
-+	case Opt_hidepid:
-+		if (match_int(&args[0], &cfg->hidepid))
-+			return invalf("procfs: Unparseable hidepid= argument");
-+		if (cfg->hidepid < HIDEPID_OFF ||
-+		    cfg->hidepid > HIDEPID_INVISIBLE) {
-+			pr_err("proc: hidepid value must be between 0 and 2.\n");
-+			return invalf("procfs: Invalid hidepid= argument");
- 		}
++	case 'o':
++		ret = vfs_parse_mount_option(sc, data);
++		if (ret < 0)
++			goto err_unlock;
++		break;
++
++	case 'x':
++		if (strcmp(data, "create") == 0) {
++			ret = vfs_get_tree(sc);
++		} else {
++			ret = invalf("VFS: Invalid command");
++		}
++		if (ret < 0)
++			goto err_unlock;
 +		break;
 +
 +	default:
-+		pr_err("proc: unrecognized mount option \"%s\" "
-+		       "or missing value\n", p);
-+		return invalf("procfs: Invalid mount option or missing value");
- 	}
- 
--	return 1;
-+	cfg->mask |= 1 << token;
-+	return 0;
++		goto err_unlock;
++	}
++
++	ret = len;
++err_unlock:
++	inode_unlock(inode);
++err_free:
++	kfree(data);
++	return ret;
++err_bad_cmd:
++	return invalf("VFS: Unsupported write spec");
 +}
 +
-+static void proc_set_options(struct super_block *s,
-+			     struct sb_config *sc,
-+			     struct pid_namespace *pid_ns,
-+			     struct user_namespace *user_ns)
-+{
-+	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
-+
-+	if (cfg->mask & (1 << Opt_gid))
-+		pid_ns->pid_gid = make_kgid(user_ns, cfg->gid);
-+	if (cfg->mask & (1 << Opt_hidepid))
-+		pid_ns->hide_pid = cfg->hidepid;
- }
- 
--static int proc_fill_super(struct super_block *s, void *data, int silent)
-+static int proc_fill_super(struct super_block *s, struct sb_config *sc)
- {
--	struct pid_namespace *ns = get_pid_ns(s->s_fs_info);
-+	struct pid_namespace *pid_ns = get_pid_ns(s->s_fs_info);
- 	struct inode *root_inode;
- 	int ret;
- 
--	if (!proc_parse_options(data, ns))
--		return -EINVAL;
-+	proc_set_options(s, sc, pid_ns, current_user_ns());
- 
- 	/* User space would break if executables or devices appear on proc */
- 	s->s_iflags |= SB_I_USERNS_VISIBLE | SB_I_NOEXEC | SB_I_NODEV;
-@@ -102,7 +115,7 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
- 	 * top of it
- 	 */
- 	s->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
--	
-+
- 	pde_get(&proc_root);
- 	root_inode = proc_get_inode(s, &proc_root);
- 	if (!root_inode) {
-@@ -123,27 +136,45 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
- 	return proc_setup_thread_self(s);
- }
- 
--int proc_remount(struct super_block *sb, int *flags, char *data)
-+int proc_remount(struct super_block *sb, struct sb_config *sc)
- {
- 	struct pid_namespace *pid = sb->s_fs_info;
- 
- 	sync_filesystem(sb);
--	return !proc_parse_options(data, pid);
-+
-+	if (sc)
-+		proc_set_options(sb, sc, pid, current_user_ns());
-+	return 0;
- }
- 
--static struct dentry *proc_mount(struct file_system_type *fs_type,
--	int flags, const char *dev_name, void *data)
-+static int proc_get_tree(struct sb_config *sc)
- {
--	struct pid_namespace *ns;
-+	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
- 
--	if (flags & MS_KERNMOUNT) {
--		ns = data;
--		data = NULL;
--	} else {
--		ns = task_active_pid_ns(current);
--	}
-+	return mount_ns_sc(sc, proc_fill_super, cfg->pid_ns);
-+}
-+
-+static void proc_sb_config_free(struct sb_config *sc)
-+{
-+	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
- 
--	return mount_ns(fs_type, flags, data, ns, ns->user_ns, proc_fill_super);
-+	if (cfg->pid_ns)
-+		put_pid_ns(cfg->pid_ns);
-+}
-+
-+static const struct sb_config_operations proc_sb_config_ops = {
-+	.free		= proc_sb_config_free,
-+	.parse_option	= proc_parse_mount_option,
-+	.get_tree	= proc_get_tree,
++const struct file_operations fs_fs_fops = {
++	.write		= fs_fs_write,
++	.release	= fs_fs_release,
++	.llseek		= no_llseek,
 +};
 +
-+static int proc_init_sb_config(struct sb_config *sc, struct super_block *src_sb)
++/*
++ * Indicate the name we want to display the filesystem file as.
++ */
++static char *fs_fs_dname(struct dentry *dentry, char *buffer, int buflen)
 +{
-+	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++	return dynamic_dname(dentry, buffer, buflen, "fs:[%lu]",
++			     d_inode(dentry)->i_ino);
++}
 +
-+	cfg->pid_ns = get_pid_ns(task_active_pid_ns(current));
-+	cfg->sc.ops = &proc_sb_config_ops;
-+	return 0;
- }
- 
- static void proc_kill_sb(struct super_block *sb)
-@@ -161,7 +192,8 @@ static void proc_kill_sb(struct super_block *sb)
- 
- static struct file_system_type proc_fs_type = {
- 	.name		= "proc",
--	.mount		= proc_mount,
-+	.sb_config_size	= sizeof(struct proc_sb_config),
-+	.init_sb_config	= proc_init_sb_config,
- 	.kill_sb	= proc_kill_sb,
- 	.fs_flags	= FS_USERNS_MOUNT,
- };
-@@ -209,7 +241,7 @@ static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentr
- {
- 	if (!proc_pid_lookup(dir, dentry, flags))
- 		return NULL;
--	
++static const struct dentry_operations fs_fs_dentry_operations = {
++	.d_dname	= fs_fs_dname,
++};
 +
- 	return proc_lookup(dir, dentry, flags);
- }
- 
-@@ -248,12 +280,12 @@ static const struct inode_operations proc_root_inode_operations = {
-  * This is the root "inode" in the /proc tree..
-  */
- struct proc_dir_entry proc_root = {
--	.low_ino	= PROC_ROOT_INO, 
--	.namelen	= 5, 
--	.mode		= S_IFDIR | S_IRUGO | S_IXUGO, 
--	.nlink		= 2, 
-+	.low_ino	= PROC_ROOT_INO,
-+	.namelen	= 5,
-+	.mode		= S_IFDIR | S_IRUGO | S_IXUGO,
-+	.nlink		= 2,
- 	.count		= ATOMIC_INIT(1),
--	.proc_iops	= &proc_root_inode_operations, 
-+	.proc_iops	= &proc_root_inode_operations,
- 	.proc_fops	= &proc_root_operations,
- 	.parent		= &proc_root,
- 	.subdir		= RB_ROOT,
-@@ -262,9 +294,30 @@ struct proc_dir_entry proc_root = {
- 
- int pid_ns_prepare_proc(struct pid_namespace *ns)
- {
-+	struct proc_sb_config *cfg;
-+	struct sb_config *sc;
- 	struct vfsmount *mnt;
++/*
++ * Create a file that can be used to configure a new mount.
++ */
++static struct file *create_fs_file(struct sb_config *sc)
++{
++	struct inode *inode;
++	struct file *f;
++	struct path path;
 +	int ret;
 +
-+	sc = __vfs_new_sb_config(&proc_fs_type, NULL, 0, SB_CONFIG_FOR_NEW);
++	inode = alloc_anon_inode(fs_fs_mnt->mnt_sb);
++	if (!inode)
++		return ERR_PTR(-ENFILE);
++	inode->i_fop = &fs_fs_fops;
++
++	ret = -ENOMEM;
++	path.dentry = d_alloc_pseudo(fs_fs_mnt->mnt_sb, &empty_name);
++	if (!path.dentry)
++		goto err_inode;
++	path.mnt = mntget(fs_fs_mnt);
++
++	d_instantiate(path.dentry, inode);
++
++	f = alloc_file(&path, FMODE_READ | FMODE_WRITE, &fs_fs_fops);
++	if (IS_ERR(f)) {
++		ret = PTR_ERR(f);
++		goto err_file;
++	}
++
++	f->private_data = sc;
++	return f;
++
++err_file:
++	path_put(&path);
++	return ERR_PTR(ret);
++
++err_inode:
++	iput(inode);
++	return ERR_PTR(ret);
++}
++
++ const struct super_operations fs_fs_ops = {
++	.drop_inode	= generic_delete_inode,
++	.destroy_inode	= free_inode_nonrcu,
++	.statfs		= simple_statfs,
++};
++
++static struct dentry *fs_fs_mount(struct file_system_type *fs_type,
++				  int flags, const char *dev_name,
++				  void *data)
++{
++	return mount_pseudo(fs_type, "fs_fs:", &fs_fs_ops,
++			    &fs_fs_dentry_operations, FS_FS_MAGIC);
++}
++
++static struct file_system_type fs_fs_type = {
++	.name		= "fs_fs",
++	.mount		= fs_fs_mount,
++	.kill_sb	= kill_anon_super,
++};
++
++static int __init init_fs_fs(void)
++{
++	int ret;
++
++	ret = register_filesystem(&fs_fs_type);
++	if (ret < 0)
++		panic("Cannot register fs_fs\n");
++
++	fs_fs_mnt = kern_mount(&fs_fs_type);
++	if (IS_ERR(fs_fs_mnt))
++		panic("Cannot mount fs_fs: %ld\n", PTR_ERR(fs_fs_mnt));
++	return 0;
++}
++
++fs_initcall(init_fs_fs);
++
++/*
++ * Open a filesystem by name so that it can be configured for mounting.
++ *
++ * We are allowed to specify a container in which the filesystem will be
++ * opened, thereby indicating which namespaces will be used (notably, which
++ * network namespace will be used for network filesystems).
++ */
++SYSCALL_DEFINE3(fsopen, const char __user *, _fs_name, int, reserved,
++		unsigned int, flags)
++{
++	struct sb_config *sc;
++	struct file *file;
++	const char *fs_name;
++	int fd, ret;
++
++	if (flags & ~O_CLOEXEC || reserved != -1)
++		return -EINVAL;
++
++	fs_name = strndup_user(_fs_name, PAGE_SIZE);
++	if (IS_ERR(fs_name))
++		return PTR_ERR(fs_name);
++
++	sc = vfs_new_sb_config(fs_name);
++	kfree(fs_name);
 +	if (IS_ERR(sc))
 +		return PTR_ERR(sc);
 +
-+	cfg = container_of(sc, struct proc_sb_config, sc);
-+	if (cfg->pid_ns != ns) {
-+		put_pid_ns(cfg->pid_ns);
-+		get_pid_ns(ns);
-+		cfg->pid_ns = ns;
++	ret = -ENOTSUPP;
++	if (!sc->ops)
++		goto err_sc;
++
++	file = create_fs_file(sc);
++	if (IS_ERR(file)) {
++		ret = PTR_ERR(file);
++		goto err_sc;
 +	}
 +
-+	ret = vfs_get_tree(sc);
-+	if (ret < 0) {
-+		put_sb_config(sc);
-+		return ret;
-+	}
- 
--	mnt = kern_mount_data(&proc_fs_type, ns);
-+	mnt = kern_mount_data_sc(sc);
++	ret = get_unused_fd_flags(flags & O_CLOEXEC);
++	if (ret < 0)
++		goto err_file;
++
++	fd = ret;
++	fd_install(fd, file);
++	return fd;
++
++err_file:
++	fput(file);
++	return ret;
++
++err_sc:
 +	put_sb_config(sc);
- 	if (IS_ERR(mnt))
- 		return PTR_ERR(mnt);
++	return ret;
++}
+diff --git a/include/linux/sb_config.h b/include/linux/sb_config.h
+index 0da92dd99d60..144258d82fa1 100644
+--- a/include/linux/sb_config.h
++++ b/include/linux/sb_config.h
+@@ -82,4 +82,6 @@ extern int generic_monolithic_mount_data(struct sb_config *sc, void *data);
+ extern int vfs_get_tree(struct sb_config *sc);
+ extern void put_sb_config(struct sb_config *sc);
  
++extern const struct file_operations fs_fs_fops;
++
+ #endif /* _LINUX_SB_CONFIG_H */
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 980c3c9b06f8..91ec8802ad5d 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -905,5 +905,6 @@ asmlinkage long sys_pkey_alloc(unsigned long flags, unsigned long init_val);
+ asmlinkage long sys_pkey_free(int pkey);
+ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
+ 			  unsigned mask, struct statx __user *buffer);
++asmlinkage long sys_fsopen(const char *fs_name, int containerfd, unsigned int flags);
+ 
+ #endif
+diff --git a/include/uapi/linux/magic.h b/include/uapi/linux/magic.h
+index e230af2e6855..88ae83492f7c 100644
+--- a/include/uapi/linux/magic.h
++++ b/include/uapi/linux/magic.h
+@@ -84,5 +84,6 @@
+ #define UDF_SUPER_MAGIC		0x15013346
+ #define BALLOON_KVM_MAGIC	0x13661366
+ #define ZSMALLOC_MAGIC		0x58295829
++#define FS_FS_MAGIC		0x66736673
+ 
+ #endif /* __LINUX_MAGIC_H__ */
+diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+index 8acef8576ce9..de1dc63e7e47 100644
+--- a/kernel/sys_ni.c
++++ b/kernel/sys_ni.c
+@@ -258,3 +258,6 @@ cond_syscall(sys_membarrier);
+ cond_syscall(sys_pkey_mprotect);
+ cond_syscall(sys_pkey_alloc);
+ cond_syscall(sys_pkey_free);
++
++/* fd-based mount */
++cond_syscall(sys_fsopen);
 
