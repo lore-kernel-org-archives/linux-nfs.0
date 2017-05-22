@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39302 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36000 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932956AbdEVPxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 May 2017 11:53:34 -0400
-Subject: [PATCH 11/23] VFS: Implement fsopen() to prepare for a mount [ver
- #4]
+        id S932861AbdEVPx1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 11:53:27 -0400
+Subject: [PATCH 12/23] VFS: Implement fsmount() to effect a pre-configured
+ mount [ver #4]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 22 May 2017 16:53:16 +0100
-Message-ID: <149546839657.9289.6411757401051423138.stgit@warthog.procyon.org.uk>
+Date: Mon, 22 May 2017 16:53:24 +0100
+Message-ID: <149546840419.9289.13864402130204204147.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 References: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,415 +18,281 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide an fsopen() system call that starts the process of preparing to
-mount, using an fd as a context handle.  fsopen() is given the name of the
-filesystem that will be used:
+Provide a system call by which a filesystem opened with fsopen() and
+configured by a series of writes can be mounted:
 
-	int mfd = fsopen(const char *fsname, int reserved,
-			 int open_flags);
+	int ret = fsmount(int fsfd, int dfd, const char *path,
+			  unsigned int at_flags, unsigned int flags);
 
-where reserved should be -1 for the moment (it will be used to pass the
-namespace information in future) and open_flags can be 0 or O_CLOEXEC.
+where fsfd is the fd returned by fsopen(), dfd, path and at_flags locate
+the mountpoint and flags are the applicable MS_* flags.  dfd can be
+AT_FDCWD or an fd open to a directory.
 
-For example:
-
-	mfd = fsopen("ext4", -1, O_CLOEXEC);
-	write(mfd, "s /dev/sdb1"); // note I'm ignoring write's length arg
-	write(mfd, "o noatime");
-	write(mfd, "o acl");
-	write(mfd, "o user_attr");
-	write(mfd, "o iversion");
-	write(mfd, "o ");
-	write(mfd, "r /my/container"); // root inside the fs
-	write(mfd, "x create"); // create the superblock
-	fsmount(mfd, container_fd, "/mnt", AT_NO_FOLLOW);
-
-	mfd = fsopen("afs", -1);
-	write(mfd, "s %grand.central.org:root.cell");
-	write(mfd, "o cell=grand.central.org");
-	write(mfd, "r /");
-	write(mfd, "x create");
-	fsmount(mfd, AT_FDCWD, "/mnt", 0);
-
-If an error is reported at any step, an error message may be available to be
-read() back (ENODATA will be reported if there isn't an error available) in
-the form:
-
-	"e <subsys>:<problem>"
-	"e SELinux:Mount on mountpoint not permitted"
-
-Once fsmount() has been called, further write() calls will incur EBUSY,
-even if the fsmount() fails.  read() is still possible to retrieve error
-information.
-
-The fsopen() syscall creates a mount context and hangs it of the fd that it
-returns.
-
-Netlink is not used because it is optional.
+In the event that fsmount() fails, it may be possible to get an error
+message by calling read().  If no message is available, ENODATA will be
+reported.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
  arch/x86/entry/syscalls/syscall_32.tbl |    1 
  arch/x86/entry/syscalls/syscall_64.tbl |    1 
- fs/Makefile                            |    2 
- fs/fsopen.c                            |  267 ++++++++++++++++++++++++++++++++
- include/linux/sb_config.h              |    2 
- include/linux/syscalls.h               |    1 
- include/uapi/linux/magic.h             |    1 
- kernel/sys_ni.c                        |    3 
- 8 files changed, 277 insertions(+), 1 deletion(-)
- create mode 100644 fs/fsopen.c
+ fs/namespace.c                         |   96 ++++++++++++++++++++++++++++++++
+ include/linux/lsm_hooks.h              |    6 ++
+ include/linux/security.h               |    5 ++
+ include/linux/syscalls.h               |    2 +
+ kernel/sys_ni.c                        |    1 
+ security/security.c                    |    5 ++
+ security/selinux/hooks.c               |   12 ++++
+ 9 files changed, 129 insertions(+)
 
 diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index 448ac2161112..9bf8d4c62f85 100644
+index 9bf8d4c62f85..abe6ea95e0e6 100644
 --- a/arch/x86/entry/syscalls/syscall_32.tbl
 +++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -391,3 +391,4 @@
- 382	i386	pkey_free		sys_pkey_free
+@@ -392,3 +392,4 @@
  383	i386	statx			sys_statx
  384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
-+385	i386	fsopen			sys_fsopen
+ 385	i386	fsopen			sys_fsopen
++386	i386	fsmount			sys_fsmount
 diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 5aef183e2f85..9b198c5fc412 100644
+index 9b198c5fc412..0977c5079831 100644
 --- a/arch/x86/entry/syscalls/syscall_64.tbl
 +++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -339,6 +339,7 @@
- 330	common	pkey_alloc		sys_pkey_alloc
+@@ -340,6 +340,7 @@
  331	common	pkey_free		sys_pkey_free
  332	common	statx			sys_statx
-+333	common	fsopen			sys_fsopen
+ 333	common	fsopen			sys_fsopen
++334	common	fsmount			sys_fsmount
  
  #
  # x32-specific system call numbers start at 512 to avoid cache impact
-diff --git a/fs/Makefile b/fs/Makefile
-index 8f5142525866..b8fcf48b0400 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -12,7 +12,7 @@ obj-y :=	open.o read_write.o file_table.o super.o \
- 		seq_file.o xattr.o libfs.o fs-writeback.o \
- 		pnode.o splice.o sync.o utimes.o \
- 		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o \
--		sb_config.o
-+		sb_config.o fsopen.o
+diff --git a/fs/namespace.c b/fs/namespace.c
+index e92bc48accb5..4e9ad16db79c 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -3239,6 +3239,102 @@ vfs_submount(const struct dentry *mountpoint, struct file_system_type *type,
+ EXPORT_SYMBOL_GPL(vfs_submount);
  
- ifeq ($(CONFIG_BLOCK),y)
- obj-y +=	buffer.o block_dev.o direct-io.o mpage.o
-diff --git a/fs/fsopen.c b/fs/fsopen.c
-new file mode 100644
-index 000000000000..cbede77158ba
---- /dev/null
-+++ b/fs/fsopen.c
-@@ -0,0 +1,267 @@
-+/* Filesystem access-by-fd.
-+ *
-+ * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public Licence
-+ * as published by the Free Software Foundation; either version
-+ * 2 of the Licence, or (at your option) any later version.
+ /*
++ * Mount a new, prepared superblock (specified by fs_fd) on the location
++ * specified by dfd and dir_name.  dfd can be AT_FDCWD, a dir fd or a container
++ * fd.  This cannot be used for binding, moving or remounting mounts.
 + */
-+
-+#include <linux/sb_config.h>
-+#include <linux/mount.h>
-+#include <linux/slab.h>
-+#include <linux/uaccess.h>
-+#include <linux/file.h>
-+#include <linux/magic.h>
-+#include <linux/syscalls.h>
-+
-+static struct vfsmount *fs_fs_mnt __read_mostly;
-+
-+static int fs_fs_release(struct inode *inode, struct file *file)
-+{
-+	struct sb_config *sc = file->private_data;
-+
-+	file->private_data = NULL;
-+
-+	put_sb_config(sc);
-+	return 0;
-+}
-+
-+/*
-+ * Userspace writes configuration data and commands to the fd and we parse it
-+ * here.  For the moment, we assume a single option or command per write.  Each
-+ * line written is of the form
-+ *
-+ *	<option_type><space><stuff...>
-+ *
-+ *	d /dev/sda1				-- Device name
-+ *	o noatime				-- Option without value
-+ *	o cell=grand.central.org		-- Option with value
-+ *	r /					-- Dir within device to mount
-+ *	x create				-- Create a superblock
-+ */
-+static ssize_t fs_fs_write(struct file *file,
-+			   const char __user *_buf, size_t len, loff_t *pos)
-+{
-+	struct sb_config *sc = file->private_data;
-+	struct inode *inode = file_inode(file);
-+	char opt[2], *data;
-+	ssize_t ret;
-+
-+	if (len < 3 || len > 4095)
-+		return -EINVAL;
-+
-+	if (copy_from_user(opt, _buf, 2) != 0)
-+		return -EFAULT;
-+	switch (opt[0]) {
-+	case 's':
-+	case 'o':
-+	case 'x':
-+		break;
-+	default:
-+		goto err_bad_cmd;
-+	}
-+	if (opt[1] != ' ')
-+		goto err_bad_cmd;
-+
-+	data = memdup_user_nul(_buf + 2, len - 2);
-+	if (IS_ERR(data))
-+		return PTR_ERR(data);
-+
-+	/* From this point onwards we need to lock the fd against someone
-+	 * trying to mount it.
-+	 */
-+	ret = inode_lock_killable(inode);
-+	if (ret < 0)
-+		goto err_free;
-+
-+	ret = -EINVAL;
-+	switch (opt[0]) {
-+	case 's':
-+		if (sc->device)
-+			goto err_unlock;
-+		sc->device = data;
-+		data = NULL;
-+		break;
-+
-+	case 'o':
-+		ret = vfs_parse_mount_option(sc, data);
-+		if (ret < 0)
-+			goto err_unlock;
-+		break;
-+
-+	case 'x':
-+		if (strcmp(data, "create") == 0) {
-+			ret = vfs_get_tree(sc);
-+		} else {
-+			ret = invalf("VFS: Invalid command");
-+		}
-+		if (ret < 0)
-+			goto err_unlock;
-+		break;
-+
-+	default:
-+		goto err_unlock;
-+	}
-+
-+	ret = len;
-+err_unlock:
-+	inode_unlock(inode);
-+err_free:
-+	kfree(data);
-+	return ret;
-+err_bad_cmd:
-+	return invalf("VFS: Unsupported write spec");
-+}
-+
-+const struct file_operations fs_fs_fops = {
-+	.write		= fs_fs_write,
-+	.release	= fs_fs_release,
-+	.llseek		= no_llseek,
-+};
-+
-+/*
-+ * Indicate the name we want to display the filesystem file as.
-+ */
-+static char *fs_fs_dname(struct dentry *dentry, char *buffer, int buflen)
-+{
-+	return dynamic_dname(dentry, buffer, buflen, "fs:[%lu]",
-+			     d_inode(dentry)->i_ino);
-+}
-+
-+static const struct dentry_operations fs_fs_dentry_operations = {
-+	.d_dname	= fs_fs_dname,
-+};
-+
-+/*
-+ * Create a file that can be used to configure a new mount.
-+ */
-+static struct file *create_fs_file(struct sb_config *sc)
-+{
-+	struct inode *inode;
-+	struct file *f;
-+	struct path path;
-+	int ret;
-+
-+	inode = alloc_anon_inode(fs_fs_mnt->mnt_sb);
-+	if (!inode)
-+		return ERR_PTR(-ENFILE);
-+	inode->i_fop = &fs_fs_fops;
-+
-+	ret = -ENOMEM;
-+	path.dentry = d_alloc_pseudo(fs_fs_mnt->mnt_sb, &empty_name);
-+	if (!path.dentry)
-+		goto err_inode;
-+	path.mnt = mntget(fs_fs_mnt);
-+
-+	d_instantiate(path.dentry, inode);
-+
-+	f = alloc_file(&path, FMODE_READ | FMODE_WRITE, &fs_fs_fops);
-+	if (IS_ERR(f)) {
-+		ret = PTR_ERR(f);
-+		goto err_file;
-+	}
-+
-+	f->private_data = sc;
-+	return f;
-+
-+err_file:
-+	path_put(&path);
-+	return ERR_PTR(ret);
-+
-+err_inode:
-+	iput(inode);
-+	return ERR_PTR(ret);
-+}
-+
-+ const struct super_operations fs_fs_ops = {
-+	.drop_inode	= generic_delete_inode,
-+	.destroy_inode	= free_inode_nonrcu,
-+	.statfs		= simple_statfs,
-+};
-+
-+static struct dentry *fs_fs_mount(struct file_system_type *fs_type,
-+				  int flags, const char *dev_name,
-+				  void *data)
-+{
-+	return mount_pseudo(fs_type, "fs_fs:", &fs_fs_ops,
-+			    &fs_fs_dentry_operations, FS_FS_MAGIC);
-+}
-+
-+static struct file_system_type fs_fs_type = {
-+	.name		= "fs_fs",
-+	.mount		= fs_fs_mount,
-+	.kill_sb	= kill_anon_super,
-+};
-+
-+static int __init init_fs_fs(void)
-+{
-+	int ret;
-+
-+	ret = register_filesystem(&fs_fs_type);
-+	if (ret < 0)
-+		panic("Cannot register fs_fs\n");
-+
-+	fs_fs_mnt = kern_mount(&fs_fs_type);
-+	if (IS_ERR(fs_fs_mnt))
-+		panic("Cannot mount fs_fs: %ld\n", PTR_ERR(fs_fs_mnt));
-+	return 0;
-+}
-+
-+fs_initcall(init_fs_fs);
-+
-+/*
-+ * Open a filesystem by name so that it can be configured for mounting.
-+ *
-+ * We are allowed to specify a container in which the filesystem will be
-+ * opened, thereby indicating which namespaces will be used (notably, which
-+ * network namespace will be used for network filesystems).
-+ */
-+SYSCALL_DEFINE3(fsopen, const char __user *, _fs_name, int, reserved,
-+		unsigned int, flags)
++SYSCALL_DEFINE5(fsmount, int, fs_fd, int, dfd, const char __user *, dir_name,
++		unsigned int, at_flags, unsigned int, flags)
 +{
 +	struct sb_config *sc;
-+	struct file *file;
-+	const char *fs_name;
-+	int fd, ret;
++	struct inode *inode;
++	struct path mountpoint;
++	struct fd f;
++	unsigned int lookup_flags, mnt_flags = 0;
++	long ret;
 +
-+	if (flags & ~O_CLOEXEC || reserved != -1)
++	if ((at_flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
++			  AT_EMPTY_PATH)) != 0)
 +		return -EINVAL;
 +
-+	fs_name = strndup_user(_fs_name, PAGE_SIZE);
-+	if (IS_ERR(fs_name))
-+		return PTR_ERR(fs_name);
++	if (flags & ~(MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC |
++		      MS_NOATIME | MS_NODIRATIME | MS_RELATIME | MS_STRICTATIME))
++		return -EINVAL;
 +
-+	sc = vfs_new_sb_config(fs_name);
-+	kfree(fs_name);
-+	if (IS_ERR(sc))
-+		return PTR_ERR(sc);
++	if (flags & MS_RDONLY)
++		mnt_flags |= MNT_READONLY;
++	if (flags & MS_NOSUID)
++		mnt_flags |= MNT_NOSUID;
++	if (flags & MS_NODEV)
++		mnt_flags |= MNT_NODEV;
++	if (flags & MS_NOEXEC)
++		mnt_flags |= MNT_NOEXEC;
++	if (flags & MS_NODIRATIME)
++		mnt_flags |= MNT_NODIRATIME;
 +
-+	ret = -ENOTSUPP;
-+	if (!sc->ops)
-+		goto err_sc;
-+
-+	file = create_fs_file(sc);
-+	if (IS_ERR(file)) {
-+		ret = PTR_ERR(file);
-+		goto err_sc;
++	if (flags & MS_STRICTATIME) {
++		if (flags & MS_NOATIME)
++			return -EINVAL;
++	} else if (flags & MS_NOATIME) {
++		mnt_flags |= MNT_NOATIME;
++	} else {
++		mnt_flags |= MNT_RELATIME;
 +	}
 +
-+	ret = get_unused_fd_flags(flags & O_CLOEXEC);
++	f = fdget(fs_fd);
++	if (!f.file)
++		return -EBADF;
++
++	ret = -EINVAL;
++	if (f.file->f_op != &fs_fs_fops)
++		goto err_fsfd;
++
++	sc = f.file->private_data;
++
++	ret = -EPERM;
++	if (!may_mount() ||
++	    ((sc->ms_flags & MS_MANDLOCK) && !may_mandlock()))
++		goto err_fsfd;
++
++	/* There must be a valid superblock or we can't mount it */
++	inode = file_inode(f.file);
++	ret = inode_lock_killable(inode);
++	if (ret == 0) {
++		if (!sc->root)
++			ret = invalf("VFS: Root must be obtained before mount");
++		inode_unlock(inode);
++	}
 +	if (ret < 0)
-+		goto err_file;
++		goto err_fsfd;
 +
-+	fd = ret;
-+	fd_install(fd, file);
-+	return fd;
++	/* Find the mountpoint.  A container can be specified in dfd. */
++	lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
++	if (at_flags & AT_SYMLINK_NOFOLLOW)
++		lookup_flags &= ~LOOKUP_FOLLOW;
++	if (at_flags & AT_NO_AUTOMOUNT)
++		lookup_flags &= ~LOOKUP_AUTOMOUNT;
++	if (at_flags & AT_EMPTY_PATH)
++		lookup_flags |= LOOKUP_EMPTY;
++	ret = user_path_at(dfd, dir_name, lookup_flags, &mountpoint);
++	if (ret < 0) {
++		errorf("VFS: Mountpoint lookup failed");
++		goto err_fsfd;
++	}
 +
-+err_file:
-+	fput(file);
-+	return ret;
++	ret = security_sb_mountpoint(sc, &mountpoint);
++	if (ret < 0)
++		goto err_mp;
 +
-+err_sc:
-+	put_sb_config(sc);
++	ret = do_new_mount_sc(sc, &mountpoint, mnt_flags);
++
++err_mp:
++	path_put(&mountpoint);
++err_fsfd:
++	fdput(f);
 +	return ret;
 +}
-diff --git a/include/linux/sb_config.h b/include/linux/sb_config.h
-index 0da92dd99d60..144258d82fa1 100644
---- a/include/linux/sb_config.h
-+++ b/include/linux/sb_config.h
-@@ -82,4 +82,6 @@ extern int generic_monolithic_mount_data(struct sb_config *sc, void *data);
- extern int vfs_get_tree(struct sb_config *sc);
- extern void put_sb_config(struct sb_config *sc);
- 
-+extern const struct file_operations fs_fs_fops;
 +
- #endif /* _LINUX_SB_CONFIG_H */
++/*
+  * Return true if path is reachable from root
+  *
+  * namespace_sem or mount_lock is held
+diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
+index e95a918e61ca..7064c0c15386 100644
+--- a/include/linux/lsm_hooks.h
++++ b/include/linux/lsm_hooks.h
+@@ -102,6 +102,10 @@
+  *	@sc indicates the superblock configuration context.
+  *	@sc->root indicates the root that will be mounted.
+  *	@sc->root->d_sb points to the superblock.
++ * @sb_mountpoint:
++ *	Equivalent of sb_mount, but with an sb_config.
++ *	@sc indicates the superblock configuration context.
++ *	@mountpoint indicates the path on which the mount will take place.
+  *
+  * Security hooks for filesystem operations.
+  *
+@@ -1405,6 +1409,7 @@ union security_list_options {
+ 	void (*sb_config_free)(struct sb_config *sc);
+ 	int (*sb_config_parse_option)(struct sb_config *sc, char *opt);
+ 	int (*sb_get_tree)(struct sb_config *sc);
++	int (*sb_mountpoint)(struct sb_config *sc, struct path *mountpoint);
+ 
+ 	int (*sb_alloc_security)(struct super_block *sb);
+ 	void (*sb_free_security)(struct super_block *sb);
+@@ -1721,6 +1726,7 @@ struct security_hook_heads {
+ 	struct list_head sb_config_free;
+ 	struct list_head sb_config_parse_option;
+ 	struct list_head sb_get_tree;
++	struct list_head sb_mountpoint;
+ 	struct list_head sb_alloc_security;
+ 	struct list_head sb_free_security;
+ 	struct list_head sb_copy_data;
+diff --git a/include/linux/security.h b/include/linux/security.h
+index f6eb735987d1..8c06e158c195 100644
+--- a/include/linux/security.h
++++ b/include/linux/security.h
+@@ -230,6 +230,7 @@ int security_sb_config_dup(struct sb_config *sc, struct sb_config *src_sc);
+ void security_sb_config_free(struct sb_config *sc);
+ int security_sb_config_parse_option(struct sb_config *sc, char *opt);
+ int security_sb_get_tree(struct sb_config *sc);
++int security_sb_mountpoint(struct sb_config *sc, struct path *mountpoint);
+ int security_sb_alloc(struct super_block *sb);
+ void security_sb_free(struct super_block *sb);
+ int security_sb_copy_data(char *orig, char *copy);
+@@ -546,6 +547,10 @@ static inline int security_sb_get_tree(struct sb_config *sc)
+ {
+ 	return 0;
+ }
++static inline int security_sb_mountpoint(struct sb_config *sc, struct path *mountpoint)
++{
++	return 0;
++}
+ 
+ static inline int security_sb_alloc(struct super_block *sb)
+ {
 diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-index 980c3c9b06f8..91ec8802ad5d 100644
+index 91ec8802ad5d..07e4f775f24d 100644
 --- a/include/linux/syscalls.h
 +++ b/include/linux/syscalls.h
-@@ -905,5 +905,6 @@ asmlinkage long sys_pkey_alloc(unsigned long flags, unsigned long init_val);
- asmlinkage long sys_pkey_free(int pkey);
+@@ -906,5 +906,7 @@ asmlinkage long sys_pkey_free(int pkey);
  asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
  			  unsigned mask, struct statx __user *buffer);
-+asmlinkage long sys_fsopen(const char *fs_name, int containerfd, unsigned int flags);
+ asmlinkage long sys_fsopen(const char *fs_name, int containerfd, unsigned int flags);
++asmlinkage long sys_fsmount(int fsfd, int dfd, const char *path, unsigned int at_flags,
++			    unsigned int flags);
  
  #endif
-diff --git a/include/uapi/linux/magic.h b/include/uapi/linux/magic.h
-index e230af2e6855..88ae83492f7c 100644
---- a/include/uapi/linux/magic.h
-+++ b/include/uapi/linux/magic.h
-@@ -84,5 +84,6 @@
- #define UDF_SUPER_MAGIC		0x15013346
- #define BALLOON_KVM_MAGIC	0x13661366
- #define ZSMALLOC_MAGIC		0x58295829
-+#define FS_FS_MAGIC		0x66736673
- 
- #endif /* __LINUX_MAGIC_H__ */
 diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
-index 8acef8576ce9..de1dc63e7e47 100644
+index de1dc63e7e47..a0fe764bd5dd 100644
 --- a/kernel/sys_ni.c
 +++ b/kernel/sys_ni.c
-@@ -258,3 +258,6 @@ cond_syscall(sys_membarrier);
- cond_syscall(sys_pkey_mprotect);
- cond_syscall(sys_pkey_alloc);
- cond_syscall(sys_pkey_free);
+@@ -261,3 +261,4 @@ cond_syscall(sys_pkey_free);
+ 
+ /* fd-based mount */
+ cond_syscall(sys_fsopen);
++cond_syscall(sys_fsmount);
+diff --git a/security/security.c b/security/security.c
+index ed086c6c8f0b..f4136ca5cb1b 100644
+--- a/security/security.c
++++ b/security/security.c
+@@ -341,6 +341,11 @@ int security_sb_get_tree(struct sb_config *sc)
+ 	return call_int_hook(sb_get_tree, 0, sc);
+ }
+ 
++int security_sb_mountpoint(struct sb_config *sc, struct path *mountpoint)
++{
++	return call_int_hook(sb_mountpoint, 0, sc, mountpoint);
++}
 +
-+/* fd-based mount */
-+cond_syscall(sys_fsopen);
+ int security_sb_alloc(struct super_block *sb)
+ {
+ 	return call_int_hook(sb_alloc_security, 0, sb);
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index 1deafdbf8716..877b7e7bd2d5 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -2970,6 +2970,17 @@ static int selinux_sb_get_tree(struct sb_config *sc)
+ 	return rc;
+ }
+ 
++static int selinux_sb_mountpoint(struct sb_config *sc, struct path *mountpoint)
++{
++	const struct cred *cred = current_cred();
++	int ret;
++
++	ret = path_has_perm(cred, mountpoint, FILE__MOUNTON);
++	if (ret < 0)
++		errorf("SELinux: Mount on mountpoint not permitted");
++	return ret;
++}
++
+ /* inode security operations */
+ 
+ static int selinux_inode_alloc_security(struct inode *inode)
+@@ -6303,6 +6314,7 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
+ 	LSM_HOOK_INIT(sb_config_free, selinux_sb_config_free),
+ 	LSM_HOOK_INIT(sb_config_parse_option, selinux_sb_config_parse_option),
+ 	LSM_HOOK_INIT(sb_get_tree, selinux_sb_get_tree),
++	LSM_HOOK_INIT(sb_mountpoint, selinux_sb_mountpoint),
+ 
+ 	LSM_HOOK_INIT(sb_alloc_security, selinux_sb_alloc_security),
+ 	LSM_HOOK_INIT(sb_free_security, selinux_sb_free_security),
 
