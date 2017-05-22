@@ -1,15 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39634 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57482 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935454AbdEVPy1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 May 2017 11:54:27 -0400
-Subject: [PATCH 19/23] NFS: Split nfs_parse_mount_options() [ver #4]
+        id S935582AbdEVPyr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 11:54:47 -0400
+Subject: [PATCH 21/23] NFS: Add a small buffer in nfs_sb_config to avoid
+ string dup [ver #4]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 22 May 2017 16:54:23 +0100
-Message-ID: <149546846343.9289.10116246611708152701.stgit@warthog.procyon.org.uk>
+Date: Mon, 22 May 2017 16:54:39 +0100
+Message-ID: <149546847981.9289.12051666635401926702.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 References: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -17,304 +18,193 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Split nfs_parse_mount_options() to move the prologue, list-splitting and
-epilogue into one function and the per-option processing into another.
+Add a small buffer in nfs_sb_config to avoid string duplication when
+parsing numbers.  Also make the parsing function wrapper place the parsed
+integer directly in the appropriate nfs_sb_config struct member.
 
-Signed-off-by: David Howells <dhowells@redhat.com>
+Sigend-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/nfs/internal.h |    3 +
- fs/nfs/mount.c    |  143 ++++++++++++++++++++++++++++++-----------------------
- 2 files changed, 83 insertions(+), 63 deletions(-)
+ fs/nfs/internal.h |    2 +
+ fs/nfs/mount.c    |   83 +++++++++++++++++++----------------------------------
+ 2 files changed, 32 insertions(+), 53 deletions(-)
 
 diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index af6ca28da48d..ed255241baa7 100644
+index ed255241baa7..52242240933f 100644
 --- a/fs/nfs/internal.h
 +++ b/fs/nfs/internal.h
-@@ -100,7 +100,10 @@ struct nfs_sb_config {
- 	unsigned int		version;
- 	unsigned int		minorversion;
- 	char			*fscache_uniq;
-+	unsigned short		protofamily;
-+	unsigned short		mountfamily;
- 	bool			need_mount;
-+	bool			sloppy;
+@@ -125,6 +125,8 @@ struct nfs_sb_config {
  
- 	struct {
- 		struct sockaddr_storage	address;
+ 	struct security_mnt_opts lsm_opts;
+ 	struct net		*net;
++
++	char			buf[32];	/* Parse buffer */
+ };
+ 
+ /* mount_clnt.c */
 diff --git a/fs/nfs/mount.c b/fs/nfs/mount.c
-index 8f22163a4cc7..99735a494d46 100644
+index 8296f2f84dc7..e5593070422d 100644
 --- a/fs/nfs/mount.c
 +++ b/fs/nfs/mount.c
-@@ -494,46 +494,18 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
+@@ -466,27 +466,22 @@ static int nfs_get_option_str(substring_t args[], char **option)
+ 	return !*option;
  }
  
- /*
-- * Error-check and convert a string of mount options from user space into
-- * a data structure.  The whole mount string is processed; bad options are
-- * skipped as they are encountered.  If there were no errors, return 1;
-- * otherwise return 0 (zero).
-+ * Parse a single mount option in "key[=val]" form.
-  */
--int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
-+static int nfs_sb_config_parse_option(struct nfs_sb_config *cfg, char *p)
+-static int nfs_get_option_ul(substring_t args[], unsigned long *option)
++static int nfs_get_option_ui(struct nfs_sb_config *cfg,
++			     substring_t args[], unsigned int *option)
  {
--	char *p, *string, *secdata;
--	int rc, sloppy = 0, invalid_option = 0;
--	unsigned short protofamily = AF_UNSPEC;
--	unsigned short mountfamily = AF_UNSPEC;
+-	int rc;
+-	char *string;
 -
--	if (!raw) {
--		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
--		return 1;
--	}
--	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
+-	string = match_strdup(args);
+-	if (string == NULL)
+-		return -ENOMEM;
+-	rc = kstrtoul(string, 10, option);
+-	kfree(string);
 -
--	secdata = alloc_secdata();
--	if (!secdata)
--		goto out_nomem;
+-	return rc;
++	match_strlcpy(cfg->buf, args, sizeof(cfg->buf));
++	return kstrtouint(cfg->buf, 10, option);
+ }
+ 
+-static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
+-		unsigned long l_bound, unsigned long u_bound)
++static int nfs_get_option_ui_bound(struct nfs_sb_config *cfg,
++				   substring_t args[], unsigned int *option,
++				   unsigned int l_bound, unsigned u_bound)
+ {
+ 	int ret;
+ 
+-	ret = nfs_get_option_ul(args, option);
+-	if (ret != 0)
++	match_strlcpy(cfg->buf, args, sizeof(cfg->buf));
++	ret = kstrtouint(cfg->buf, 10, option);
++	if (ret < 0)
+ 		return ret;
+ 	if (*option < l_bound || *option > u_bound)
+ 		return -ERANGE;
+@@ -499,7 +494,6 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
+ static int nfs_sb_config_parse_option(struct nfs_sb_config *cfg, char *p)
+ {
+ 	substring_t args[MAX_OPT_ARGS];
+-	unsigned long option;
+ 	char *string;
+ 	int rc, token;
+ 
+@@ -507,7 +501,6 @@ static int nfs_sb_config_parse_option(struct nfs_sb_config *cfg, char *p)
+ 
+ 	token = match_token(p, nfs_mount_option_tokens, args);
+ 	switch (token) {
 -
--	rc = security_sb_copy_data(raw, secdata);
--	if (rc)
--		goto out_security_failure;
--
--	rc = security_sb_parse_opts_str(secdata, &cfg->lsm_opts);
--	if (rc)
--		goto out_security_failure;
--
--	free_secdata(secdata);
-+	char *string;
-+	int rc;
- 
--	while ((p = strsep(&raw, ",")) != NULL) {
-+	{
- 		substring_t args[MAX_OPT_ARGS];
- 		unsigned long option;
- 		int token;
- 
--		if (!*p)
--			continue;
--
- 		dfprintk(MOUNT, "NFS:   parsing nfs mount option '%s'\n", p);
- 
- 		token = match_token(p, nfs_mount_option_tokens, args);
-@@ -737,7 +709,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			if (!rc) {
- 				dfprintk(MOUNT, "NFS:   unrecognized "
- 						"security flavor\n");
--				return 0;
-+				return -EINVAL;
- 			}
- 			break;
- 		case Opt_proto:
-@@ -747,22 +719,22 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			token = match_token(string,
- 					    nfs_xprt_protocol_tokens, args);
- 
--			protofamily = AF_INET;
-+			cfg->protofamily = AF_INET;
- 			switch (token) {
- 			case Opt_xprt_udp6:
--				protofamily = AF_INET6;
-+				cfg->protofamily = AF_INET6;
- 			case Opt_xprt_udp:
- 				cfg->flags &= ~NFS_MOUNT_TCP;
- 				cfg->nfs_server.protocol = XPRT_TRANSPORT_UDP;
- 				break;
- 			case Opt_xprt_tcp6:
--				protofamily = AF_INET6;
-+				cfg->protofamily = AF_INET6;
- 			case Opt_xprt_tcp:
- 				cfg->flags |= NFS_MOUNT_TCP;
- 				cfg->nfs_server.protocol = XPRT_TRANSPORT_TCP;
- 				break;
- 			case Opt_xprt_rdma6:
--				protofamily = AF_INET6;
-+				cfg->protofamily = AF_INET6;
- 			case Opt_xprt_rdma:
- 				/* vector side protocols to TCP */
- 				cfg->flags |= NFS_MOUNT_TCP;
-@@ -773,7 +745,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 				dfprintk(MOUNT, "NFS:   unrecognized "
- 						"transport protocol\n");
- 				kfree(string);
--				return 0;
-+				return -EINVAL;
- 			}
- 			kfree(string);
- 			break;
-@@ -785,15 +757,15 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 					    nfs_xprt_protocol_tokens, args);
- 			kfree(string);
- 
--			mountfamily = AF_INET;
-+			cfg->mountfamily = AF_INET;
- 			switch (token) {
- 			case Opt_xprt_udp6:
--				mountfamily = AF_INET6;
-+				cfg->mountfamily = AF_INET6;
- 			case Opt_xprt_udp:
- 				cfg->mount_server.protocol = XPRT_TRANSPORT_UDP;
- 				break;
- 			case Opt_xprt_tcp6:
--				mountfamily = AF_INET6;
-+				cfg->mountfamily = AF_INET6;
- 			case Opt_xprt_tcp:
- 				cfg->mount_server.protocol = XPRT_TRANSPORT_TCP;
- 				break;
-@@ -801,7 +773,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			default:
- 				dfprintk(MOUNT, "NFS:   unrecognized "
- 						"transport protocol\n");
--				return 0;
-+				return -EINVAL;
- 			}
- 			break;
- 		case Opt_addr:
-@@ -860,7 +832,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 				default:
- 					dfprintk(MOUNT, "NFS:   invalid "
- 							"lookupcache argument\n");
--					return 0;
-+					return -EINVAL;
- 			};
- 			break;
- 		case Opt_fscache_uniq:
-@@ -893,7 +865,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			default:
- 				dfprintk(MOUNT, "NFS:	invalid	"
- 						"local_lock argument\n");
--				return 0;
-+				return -EINVAL;
- 			};
- 			break;
- 
-@@ -901,7 +873,7 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 		 * Special options
+ 		/*
+ 		 * boolean options:  foo/nofoo
  		 */
- 		case Opt_sloppy:
--			sloppy = 1;
-+			cfg->sloppy = 1;
- 			dfprintk(MOUNT, "NFS:   relaxing parsing rules\n");
- 			break;
- 		case Opt_userspace:
-@@ -911,12 +883,63 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 			break;
+@@ -603,86 +596,70 @@ static int nfs_sb_config_parse_option(struct nfs_sb_config *cfg, char *p)
+ 		 * options that take numeric values
+ 		 */
+ 	case Opt_port:
+-		if (nfs_get_option_ul(args, &option) ||
+-		    option > USHRT_MAX)
++		if (nfs_get_option_ui_bound(cfg, args, &cfg->nfs_server.port,
++					    0, USHRT_MAX))
+ 			goto out_invalid_value;
+-		cfg->nfs_server.port = option;
+ 		break;
+ 	case Opt_rsize:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->rsize))
+ 			goto out_invalid_value;
+-		cfg->rsize = option;
+ 		break;
+ 	case Opt_wsize:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->wsize))
+ 			goto out_invalid_value;
+-		cfg->wsize = option;
+ 		break;
+ 	case Opt_bsize:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->bsize))
+ 			goto out_invalid_value;
+-		cfg->bsize = option;
+ 		break;
+ 	case Opt_timeo:
+-		if (nfs_get_option_ul_bound(args, &option, 1, INT_MAX))
++		if (nfs_get_option_ui_bound(cfg, args, &cfg->timeo, 1, INT_MAX))
+ 			goto out_invalid_value;
+-		cfg->timeo = option;
+ 		break;
+ 	case Opt_retrans:
+-		if (nfs_get_option_ul_bound(args, &option, 0, INT_MAX))
++		if (nfs_get_option_ui_bound(cfg, args, &cfg->retrans, 0, INT_MAX))
+ 			goto out_invalid_value;
+-		cfg->retrans = option;
+ 		break;
+ 	case Opt_acregmin:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->acregmin))
+ 			goto out_invalid_value;
+-		cfg->acregmin = option;
+ 		break;
+ 	case Opt_acregmax:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->acregmax))
+ 			goto out_invalid_value;
+-		cfg->acregmax = option;
+ 		break;
+ 	case Opt_acdirmin:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->acdirmin))
+ 			goto out_invalid_value;
+-		cfg->acdirmin = option;
+ 		break;
+ 	case Opt_acdirmax:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->acdirmax))
+ 			goto out_invalid_value;
+-		cfg->acdirmax = option;
+ 		break;
+ 	case Opt_actimeo:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->acdirmax))
+ 			goto out_invalid_value;
+ 		cfg->acregmin = cfg->acregmax =
+-			cfg->acdirmin = cfg->acdirmax = option;
++			cfg->acdirmin = cfg->acdirmax;
+ 		break;
+ 	case Opt_namelen:
+-		if (nfs_get_option_ul(args, &option))
++		if (nfs_get_option_ui(cfg, args, &cfg->namlen))
+ 			goto out_invalid_value;
+-		cfg->namlen = option;
+ 		break;
+ 	case Opt_mountport:
+-		if (nfs_get_option_ul(args, &option) ||
+-		    option > USHRT_MAX)
++		if (nfs_get_option_ui_bound(cfg, args, &cfg->mount_server.port,
++					    0, USHRT_MAX))
+ 			goto out_invalid_value;
+-		cfg->mount_server.port = option;
+ 		break;
+ 	case Opt_mountvers:
+-		if (nfs_get_option_ul(args, &option) ||
+-		    option < NFS_MNT_VERSION ||
+-		    option > NFS_MNT3_VERSION)
++		if (nfs_get_option_ui_bound(cfg, args, &cfg->mount_server.version,
++					    NFS_MNT_VERSION, NFS_MNT3_VERSION))
+ 			goto out_invalid_value;
+-		cfg->mount_server.version = option;
+ 		break;
+ 	case Opt_minorversion:
+-		if (nfs_get_option_ul(args, &option))
+-			goto out_invalid_value;
+-		if (option > NFS4_MAX_MINOR_VERSION)
++		if (nfs_get_option_ui_bound(cfg, args, &cfg->minorversion,
++					    0, NFS4_MAX_MINOR_VERSION))
+ 			goto out_invalid_value;
+-		cfg->minorversion = option;
+ 		break;
  
- 		default:
--			invalid_option = 1;
- 			dfprintk(MOUNT, "NFS:   unrecognized mount option "
- 					"'%s'\n", p);
-+			return -EINVAL;
- 		}
- 	}
- 
-+	return 0;
-+
-+out_invalid_address:
-+	printk(KERN_INFO "NFS: bad IP address specified: %s\n", p);
-+	return -EINVAL;
-+out_invalid_value:
-+	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
-+	return -EINVAL;
-+out_nomem:
-+	printk(KERN_INFO "NFS: not enough memory to parse option\n");
-+	return -ENOMEM;
-+}
-+
-+/*
-+ * Error-check and convert a string of mount options from user space into
-+ * a data structure.  The whole mount string is processed; bad options are
-+ * skipped as they are encountered.  If there were no errors, return 1;
-+ * otherwise return 0 (zero).
-+ */
-+int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
-+{
-+	char *p, *secdata;
-+	int rc, sloppy = 0, invalid_option = 0;
-+
-+	if (!raw) {
-+		dfprintk(MOUNT, "NFS: mount options string was NULL.\n");
-+		return 1;
-+	}
-+	dfprintk(MOUNT, "NFS: nfs mount opts='%s'\n", raw);
-+
-+	secdata = alloc_secdata();
-+	if (!secdata)
-+		goto out_nomem;
-+
-+	rc = security_sb_copy_data(raw, secdata);
-+	if (rc)
-+		goto out_security_failure;
-+
-+	rc = security_sb_parse_opts_str(secdata, &cfg->lsm_opts);
-+	if (rc)
-+		goto out_security_failure;
-+
-+	free_secdata(secdata);
-+
-+	while ((p = strsep(&raw, ",")) != NULL) {
-+		if (!*p)
-+			continue;
-+		if (nfs_sb_config_parse_option(cfg, p) < 0)
-+			invalid_option = true;
-+	}
-+
- 	if (!sloppy && invalid_option)
- 		return 0;
- 
-@@ -931,22 +954,26 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- 	 * verify that any proto=/mountproto= options match the address
- 	 * families in the addr=/mountaddr= options.
- 	 */
--	if (protofamily != AF_UNSPEC &&
--	    protofamily != cfg->nfs_server.address.ss_family)
-+	if (cfg->protofamily != AF_UNSPEC &&
-+	    cfg->protofamily != cfg->nfs_server.address.ss_family)
- 		goto out_proto_mismatch;
- 
--	if (mountfamily != AF_UNSPEC) {
-+	if (cfg->mountfamily != AF_UNSPEC) {
- 		if (cfg->mount_server.addrlen) {
--			if (mountfamily != cfg->mount_server.address.ss_family)
-+			if (cfg->mountfamily != cfg->mount_server.address.ss_family)
- 				goto out_mountproto_mismatch;
- 		} else {
--			if (mountfamily != cfg->nfs_server.address.ss_family)
-+			if (cfg->mountfamily != cfg->nfs_server.address.ss_family)
- 				goto out_mountproto_mismatch;
- 		}
- 	}
- 
- 	return 1;
- 
-+out_minorversion_mismatch:
-+	printk(KERN_INFO "NFS: mount option vers=%u does not support "
-+			 "minorversion=%u\n", cfg->version, cfg->minorversion);
-+	return 0;
- out_mountproto_mismatch:
- 	printk(KERN_INFO "NFS: mount server address does not match mountproto= "
- 			 "option\n");
-@@ -954,20 +981,10 @@ int nfs_parse_mount_options(char *raw, struct nfs_sb_config *cfg)
- out_proto_mismatch:
- 	printk(KERN_INFO "NFS: server address does not match proto= option\n");
- 	return 0;
--out_invalid_address:
--	printk(KERN_INFO "NFS: bad IP address specified: %s\n", p);
--	return 0;
--out_invalid_value:
--	printk(KERN_INFO "NFS: bad mount option value specified: %s\n", p);
--	return 0;
--out_minorversion_mismatch:
--	printk(KERN_INFO "NFS: mount option vers=%u does not support "
--			 "minorversion=%u\n", cfg->version, cfg->minorversion);
--	return 0;
- out_migration_misuse:
- 	printk(KERN_INFO
- 		"NFS: 'migration' not supported for this NFS version\n");
--	return 0;
-+	return -EINVAL;
- out_nomem:
- 	printk(KERN_INFO "NFS: not enough memory to parse option\n");
- 	return 0;
+ 		/*
 
