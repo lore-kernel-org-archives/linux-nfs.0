@@ -1,104 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f170.google.com ([209.85.220.170]:33651 "EHLO
-        mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933994AbdEVOZb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2017 10:25:31 -0400
-Received: by mail-qk0-f170.google.com with SMTP id y201so107052516qka.0
-        for <linux-nfs@vger.kernel.org>; Mon, 22 May 2017 07:25:30 -0700 (PDT)
-Message-ID: <1495463128.2816.8.camel@redhat.com>
-Subject: Re: EXCHANGE_ID with same network address but different server owner
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        David Howells <dhowells@redhat.com>
-Cc: "stefanha@redhat.com" <stefanha@redhat.com>,
-        "bfields@redhat.com" <bfields@redhat.com>,
-        "SteveD@redhat.com" <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Date: Mon, 22 May 2017 10:25:28 -0400
-In-Reply-To: <1495123747.13396.4.camel@primarydata.com>
-References: <1494601295.10434.1.camel@primarydata.com>
-         <021509A5-FA89-4289-B190-26DC317A09F6@oracle.com>
-         <20170515144306.GB16013@stefanha-x1.localdomain>
-         <20170515160248.GD9697@parsley.fieldses.org>
-         <20170516131142.GA12711@fieldses.org>
-         <20170518133441.GC4155@stefanha-x1.localdomain>
-         <A720C1BD-D218-43A2-B6FD-C72B1E58D98C@oracle.com>
-         <1495119887.11859.1.camel@primarydata.com>
-         <20170518150850.GB16256@parsley.fieldses.org>
-         <1495120629.13396.1.camel@primarydata.com>
-         <20170518152822.GA9725@fieldses.org>
-         <1495123747.13396.4.camel@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:40968 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933917AbdEVOac (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 10:30:32 -0400
+Subject: Re: [PATCH 1/2] mount.nfs: v4 mounts should fail when -o flag is
+ used.
+To: NeilBrown <neilb@suse.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20170519222510.31205-1-steved@redhat.com>
+ <87inktk2yg.fsf@notabene.neil.brown.name>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <5a0d2640-ec93-279b-9113-228994283923@RedHat.com>
+Date: Mon, 22 May 2017 10:30:30 -0400
+MIME-Version: 1.0
+In-Reply-To: <87inktk2yg.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-05-18 at 16:09 +0000, Trond Myklebust wrote:
-> On Thu, 2017-05-18 at 11:28 -0400, bfields@fieldses.org wrote:
-> > On Thu, May 18, 2017 at 03:17:11PM +0000, Trond Myklebust wrote:
-> > > For the case that Stefan is discussing (kvm) it would literally be
-> > > a
-> > > single process that is being migrated. For lxc and
-> > > docker/kubernetes-
-> > > style containers, it would be a collection of processes.
-> > > 
-> > > The mountpoints used by these containers are often owned by the
-> > > host;
-> > > they are typically set up before starting the containerised
-> > > processes.
-> > > Furthermore, there is typically no "start container" system call
-> > > that
-> > > we can use to identify which set of processes (or cgroups) are
-> > > containerised, and should share a clientid.
-> > 
-> > Is that such a hard problem?
-> > 
-> 
-> Err, yes... isn't it? How do I identify a container and know where to
-> set the lease boundary?
-> 
-> Bear in mind that the definition of "container" is non-existent beyond
-> the obvious "a loose collection of processes". It varies from the
-> docker/lxc/virtuozzo style container, which uses namespaces to bound
-> the processes, to the Google type of "container" that is actually just
-> a set of cgroups and to the kvm/qemu single process.
-> 
-> > In any case, from the protocol point of view these all sound like
-> > client
-> > implementation details.
-> 
-> If you are seeing an obvious architecture for the client, then please
-> share...
-> 
-> > The only problem I see with multiple client ID's is that you'd like
-> > to
-> > keep their delegations from conflicting with each other so they can
-> > share cache.
-> > 
-> > But, maybe I'm missing something else.
-> 
-> Having to an EXCHANGE_ID + CREATE_SESSION on every call to
-> fork()/clone() and a DESTROY_SESSION/DESTROY_EXCHANGEID in each process
-> destructor? Lease renewal pings from 1000 processes running on 1000
-> clients?
-> 
-> This is what I mean about container boundaries. If they aren't well
-> defined, then we're down to doing precisely the above.
-> 
 
-This is the crux of the problem with containers in general.
 
-We've been pretending for a long time that the kernel doesn't really
-need to understand them and can just worry about namespaces, but that
-really hasn't worked out well so far.
+On 05/21/2017 11:03 PM, NeilBrown wrote:
+> On Fri, May 19 2017, Steve Dickson wrote:
+> 
+>> When the pseudo root is set with fsid=0, explicit
+>> v4 mounts (via the -o flag) should fail when
+>> the incorrect export is tried instead of rolling
+>> back to v3.
+> 
+> Hi Steve,
+>  I think this patch makes sense, but the above description doesn't.
+>  Where does fsid=0 fit in anywhere here?
+It sets the export to be the pseudo root
+    /home *(rw,fsid=0,sec=sys:krb5:krb5i:krb5p)
 
-I think we need to consider making a "container" a first-class object in
-the kernel. Note that that would also help solve the long-standing
-problem of how to handle usermode helper upcalls in containers.
+so when then that export using either -t nfs4 or -o v4
+    mount -o v4.0 127.0.0.1:/home /mnt
 
-I do happen to know of one kernel developer (cc'ed here) who has been
-working on something along those lines...
--- 
-Jeff Layton <jlayton@redhat.com>
+the mount should fail instead of rolling back to v3
+Basically its be used to cause the error. 
+
+> 
+> I think you want to say
+> 
+>   When the protocol is set with "-t nfs4", we should behave just like
+>   with do with "-o vers=4" and not fall back to v3.
+Actually the first patch fixes the -o vers=4 case since
+that too was rolling back to v3 in the above scenario
+ 
+> 
+> Is that what you were really trying to say?
+How about
+
+When the protocol is set the "-o v4" flag,
+and the mount fails due to a pseudo root
+issue, the mount should fail not, roll 
+back to v3.
+
+steved.
+
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>>  utils/mount/network.c | 3 ++-
+>>  utils/mount/network.h | 8 ++++----
+>>  2 files changed, 6 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/utils/mount/network.c b/utils/mount/network.c
+>> index 281e935..e39263e 100644
+>> --- a/utils/mount/network.c
+>> +++ b/utils/mount/network.c
+>> @@ -1299,7 +1299,8 @@ nfs_nfs_version(struct mount_options *options, struct nfs_version *version)
+>>  		if (!(version->minor = strtol(version_val, &cptr, 10)) && cptr == version_val)
+>>  			goto ret_error;
+>>  		version->v_mode = V_SPECIFIC;
+>> -	} else if (version->major > 3 && *cptr == '\0')
+>> +	} else if (version->major > 3 && *cptr == '\0' &&
+>> +			version->v_mode == V_DEFAULT) /* v_mode has not been set */
+>>  		version->v_mode = V_GENERAL;
+>>  
+>>  	if (*cptr != '\0')
+>> diff --git a/utils/mount/network.h b/utils/mount/network.h
+>> index 9cc5dec..45e2b24 100644
+>> --- a/utils/mount/network.h
+>> +++ b/utils/mount/network.h
+>> @@ -58,10 +58,10 @@ int clnt_ping(struct sockaddr_in *, const unsigned long,
+>>  struct mount_options;
+>>  
+>>  enum {
+>> -	V_DEFAULT = 0,
+>> -	V_GENERAL,
+>> -	V_SPECIFIC,
+>> -	V_PARSE_ERR,
+>> +	V_DEFAULT = 0, /* not set */
+>> +	V_GENERAL,     /* single digit => 4 */
+>> +	V_SPECIFIC,    /* single digit < 4 or decimal included */
+>> +	V_PARSE_ERR,   /* miss all others */
+>>  };
+>>  
+>>  struct nfs_version {
+>> -- 
+>> 2.9.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
