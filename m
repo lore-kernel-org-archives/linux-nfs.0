@@ -1,66 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from 129-80-91-24.rev.ruscomp.net ([80.91.24.129]:49940 "HELO
-        ruscomp.net" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1750819AbdEUGJ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 21 May 2017 02:09:56 -0400
-Content-Type: application/zip; name="96168941904.zip"
-To: <linux-nfs@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:59920 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S932273AbdEVDDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 21 May 2017 23:03:43 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Date: Mon, 22 May 2017 13:03:35 +1000
+Subject: Re: [PATCH 1/2] mount.nfs: v4 mounts should fail when -o flag is used.
+In-Reply-To: <20170519222510.31205-1-steved@redhat.com>
+References: <20170519222510.31205-1-steved@redhat.com>
+Message-ID: <87inktk2yg.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Message-ID: <149534699235.15599.7743690875567579982@ruscomp.net>
-Subject: 
-From: <nadelina.machado@uem.mz>
-Date: Sun, 21 May 2017 06:09:52 -0000
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-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
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+On Fri, May 19 2017, Steve Dickson wrote:
+
+> When the pseudo root is set with fsid=3D0, explicit
+> v4 mounts (via the -o flag) should fail when
+> the incorrect export is tried instead of rolling
+> back to v3.
+
+Hi Steve,
+ I think this patch makes sense, but the above description doesn't.
+ Where does fsid=3D0 fit in anywhere here?
+
+I think you want to say
+
+  When the protocol is set with "-t nfs4", we should behave just like
+  with do with "-o vers=3D4" and not fall back to v3.
+
+Is that what you were really trying to say?
+
+Thanks,
+NeilBrown
+
+
+>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/mount/network.c | 3 ++-
+>  utils/mount/network.h | 8 ++++----
+>  2 files changed, 6 insertions(+), 5 deletions(-)
+>
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index 281e935..e39263e 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -1299,7 +1299,8 @@ nfs_nfs_version(struct mount_options *options, stru=
+ct nfs_version *version)
+>  		if (!(version->minor =3D strtol(version_val, &cptr, 10)) && cptr =3D=
+=3D version_val)
+>  			goto ret_error;
+>  		version->v_mode =3D V_SPECIFIC;
+> -	} else if (version->major > 3 && *cptr =3D=3D '\0')
+> +	} else if (version->major > 3 && *cptr =3D=3D '\0' &&
+> +			version->v_mode =3D=3D V_DEFAULT) /* v_mode has not been set */
+>  		version->v_mode =3D V_GENERAL;
+>=20=20
+>  	if (*cptr !=3D '\0')
+> diff --git a/utils/mount/network.h b/utils/mount/network.h
+> index 9cc5dec..45e2b24 100644
+> --- a/utils/mount/network.h
+> +++ b/utils/mount/network.h
+> @@ -58,10 +58,10 @@ int clnt_ping(struct sockaddr_in *, const unsigned lo=
+ng,
+>  struct mount_options;
+>=20=20
+>  enum {
+> -	V_DEFAULT =3D 0,
+> -	V_GENERAL,
+> -	V_SPECIFIC,
+> -	V_PARSE_ERR,
+> +	V_DEFAULT =3D 0, /* not set */
+> +	V_GENERAL,     /* single digit =3D> 4 */
+> +	V_SPECIFIC,    /* single digit < 4 or decimal included */
+> +	V_PARSE_ERR,   /* miss all others */
+>  };
+>=20=20
+>  struct nfs_version {
+> --=20
+> 2.9.4
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlkiVQcACgkQOeye3VZi
+gblISA/+LNAJ8ukZgwaYyyuBBALN8yfMtHClUDpWzGG4NbsjMlXNXc6wVcqjWYdF
+IehM3F0c1VAvEmbFQrEdQshdHI/iQeO4Bf2xHfLj4e13upgI8FjOyagMZodNh9CX
+xw72GZYyud7UJqdXxiONuae+D4G59sGZejsiTnNS+S2f3q6Hgbgu0MqZfmwviyvn
+FYxoUnXtrKhz8Ju1e0SMAYG1klEughlLRag8VkW2cW/KYx27rI0vz3L8+yIPzzUI
+IV0Khk6dOY4tWeiqo0ocDeRRgK+nu8DgPp1cB3gtCYgSnkOjZ8N/kVLEDsxZvzcy
+YB54i/0Y62WPstVk8wamumlQtsw8Hq6kDFsYrlrD58hVsMtQ5OXEQVA8ltzOkaoU
+VoepHkRiSrgzXGcbLq0RnfBSarAL2YkPQcGGey4FybRbc//rWixp0Ey52QFQP1gn
+2c4fh+mO38wwkXSwyXc6cgK7dpycUWsw7kFKsqcaYOh2GSPhlVeRxEFf3fSl70EY
+WPBD5cHhES18qNmyhPZjkilMdZbrAm+wlKqJ4mvlEA1x0B2iFv2vaPHetUT44sL8
+affqBw1RM0vVU35bNkHqBdkeLck8YsHdIS64uRg4+BtQNXhTc5beELkrv0IGSryb
+uVw9/wuHRl/Ifdug3+tiY3Rv0QIx9ipVQFOZUJOeMdgpB2xsgsI=
+=961F
+-----END PGP SIGNATURE-----
+--=-=-=--
