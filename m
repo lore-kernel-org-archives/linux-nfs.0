@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38492 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41920 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935454AbdEVPyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 May 2017 11:54:09 -0400
-Subject: [PATCH 17/23] NFS: Constify mount argument match tables [ver #4]
+        id S935455AbdEVPxx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 11:53:53 -0400
+Subject: [PATCH 15/23] proc: Add superblock config support to procfs [ver #4]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 22 May 2017 16:54:06 +0100
-Message-ID: <149546844676.9289.680362524190214324.stgit@warthog.procyon.org.uk>
+Date: Mon, 22 May 2017 16:53:49 +0100
+Message-ID: <149546842915.9289.17268235023260846638.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 References: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -17,43 +17,305 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The mount argument match tables should never be altered so constify them.
+Add superblock config support to procfs.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/nfs/mount.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+ fs/proc/inode.c    |    2 -
+ fs/proc/internal.h |    2 -
+ fs/proc/root.c     |  175 ++++++++++++++++++++++++++++++++++------------------
+ 3 files changed, 116 insertions(+), 63 deletions(-)
 
-diff --git a/fs/nfs/mount.c b/fs/nfs/mount.c
-index 3e2fe57b9b07..a41f034aafb2 100644
---- a/fs/nfs/mount.c
-+++ b/fs/nfs/mount.c
-@@ -197,7 +197,7 @@ enum {
- 	Opt_lookupcache_err
+diff --git a/fs/proc/inode.c b/fs/proc/inode.c
+index a4bf66af0ba9..304e5c36b7ba 100644
+--- a/fs/proc/inode.c
++++ b/fs/proc/inode.c
+@@ -118,7 +118,7 @@ const struct super_operations proc_sops = {
+ 	.drop_inode	= generic_delete_inode,
+ 	.evict_inode	= proc_evict_inode,
+ 	.statfs		= simple_statfs,
+-	.remount_fs	= proc_remount,
++	.remount_fs_sc	= proc_remount,
+ 	.show_options	= proc_show_options,
  };
  
--static match_table_t nfs_lookupcache_tokens = {
-+static const match_table_t nfs_lookupcache_tokens = {
- 	{ Opt_lookupcache_all, "all" },
- 	{ Opt_lookupcache_positive, "pos" },
- 	{ Opt_lookupcache_positive, "positive" },
-@@ -213,7 +213,7 @@ enum {
- 	Opt_local_lock_err
+diff --git a/fs/proc/internal.h b/fs/proc/internal.h
+index b681533f59dd..4546372c2d13 100644
+--- a/fs/proc/internal.h
++++ b/fs/proc/internal.h
+@@ -262,7 +262,7 @@ static inline void proc_tty_init(void) {}
+ extern struct proc_dir_entry proc_root;
+ 
+ extern void proc_self_init(void);
+-extern int proc_remount(struct super_block *, int *, char *);
++extern int proc_remount(struct super_block *, struct sb_config *);
+ 
+ /*
+  * task_[no]mmu.c
+diff --git a/fs/proc/root.c b/fs/proc/root.c
+index ff2e810e9e64..9878b62e874c 100644
+--- a/fs/proc/root.c
++++ b/fs/proc/root.c
+@@ -18,14 +18,23 @@
+ #include <linux/module.h>
+ #include <linux/bitops.h>
+ #include <linux/user_namespace.h>
+-#include <linux/mount.h>
++#include <linux/sb_config.h>
+ #include <linux/pid_namespace.h>
+ #include <linux/parser.h>
+ #include <linux/cred.h>
+ #include <linux/magic.h>
++#include <linux/slab.h>
+ 
+ #include "internal.h"
+ 
++struct proc_sb_config {
++	struct sb_config	sc;
++	struct pid_namespace	*pid_ns;
++	unsigned long		mask;
++	int			hidepid;
++	int			gid;
++};
++
+ enum {
+ 	Opt_gid, Opt_hidepid, Opt_err,
+ };
+@@ -36,56 +45,60 @@ static const match_table_t tokens = {
+ 	{Opt_err, NULL},
  };
  
--static match_table_t nfs_local_lock_tokens = {
-+static const match_table_t nfs_local_lock_tokens = {
- 	{ Opt_local_lock_all, "all" },
- 	{ Opt_local_lock_flock, "flock" },
- 	{ Opt_local_lock_posix, "posix" },
-@@ -229,7 +229,7 @@ enum {
- 	Opt_vers_err
- };
+-static int proc_parse_options(char *options, struct pid_namespace *pid)
++static int proc_parse_mount_option(struct sb_config *sc, char *p)
+ {
+-	char *p;
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
+ 	substring_t args[MAX_OPT_ARGS];
+-	int option;
+-
+-	if (!options)
+-		return 1;
+-
+-	while ((p = strsep(&options, ",")) != NULL) {
+-		int token;
+-		if (!*p)
+-			continue;
+-
+-		args[0].to = args[0].from = NULL;
+-		token = match_token(p, tokens, args);
+-		switch (token) {
+-		case Opt_gid:
+-			if (match_int(&args[0], &option))
+-				return 0;
+-			pid->pid_gid = make_kgid(current_user_ns(), option);
+-			break;
+-		case Opt_hidepid:
+-			if (match_int(&args[0], &option))
+-				return 0;
+-			if (option < HIDEPID_OFF ||
+-			    option > HIDEPID_INVISIBLE) {
+-				pr_err("proc: hidepid value must be between 0 and 2.\n");
+-				return 0;
+-			}
+-			pid->hide_pid = option;
+-			break;
+-		default:
+-			pr_err("proc: unrecognized mount option \"%s\" "
+-			       "or missing value\n", p);
+-			return 0;
++	int token;
++
++	args[0].to = args[0].from = NULL;
++	token = match_token(p, tokens, args);
++	switch (token) {
++	case Opt_gid:
++		if (match_int(&args[0], &cfg->gid))
++			return invalf("procfs: Unparseable gid= argument");
++		break;
++
++	case Opt_hidepid:
++		if (match_int(&args[0], &cfg->hidepid))
++			return invalf("procfs: Unparseable hidepid= argument");
++		if (cfg->hidepid < HIDEPID_OFF ||
++		    cfg->hidepid > HIDEPID_INVISIBLE) {
++			pr_err("proc: hidepid value must be between 0 and 2.\n");
++			return invalf("procfs: Invalid hidepid= argument");
+ 		}
++		break;
++
++	default:
++		pr_err("proc: unrecognized mount option \"%s\" "
++		       "or missing value\n", p);
++		return invalf("procfs: Invalid mount option or missing value");
+ 	}
  
--static match_table_t nfs_vers_tokens = {
-+static const match_table_t nfs_vers_tokens = {
- 	{ Opt_vers_2, "2" },
- 	{ Opt_vers_3, "3" },
- 	{ Opt_vers_4, "4" },
+-	return 1;
++	cfg->mask |= 1 << token;
++	return 0;
++}
++
++static void proc_set_options(struct super_block *s,
++			     struct sb_config *sc,
++			     struct pid_namespace *pid_ns,
++			     struct user_namespace *user_ns)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++
++	if (cfg->mask & (1 << Opt_gid))
++		pid_ns->pid_gid = make_kgid(user_ns, cfg->gid);
++	if (cfg->mask & (1 << Opt_hidepid))
++		pid_ns->hide_pid = cfg->hidepid;
+ }
+ 
+-static int proc_fill_super(struct super_block *s, void *data, int silent)
++static int proc_fill_super(struct super_block *s, struct sb_config *sc)
+ {
+-	struct pid_namespace *ns = get_pid_ns(s->s_fs_info);
++	struct pid_namespace *pid_ns = get_pid_ns(s->s_fs_info);
+ 	struct inode *root_inode;
+ 	int ret;
+ 
+-	if (!proc_parse_options(data, ns))
+-		return -EINVAL;
++	proc_set_options(s, sc, pid_ns, current_user_ns());
+ 
+ 	/* User space would break if executables or devices appear on proc */
+ 	s->s_iflags |= SB_I_USERNS_VISIBLE | SB_I_NOEXEC | SB_I_NODEV;
+@@ -102,7 +115,7 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
+ 	 * top of it
+ 	 */
+ 	s->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
+-	
++
+ 	pde_get(&proc_root);
+ 	root_inode = proc_get_inode(s, &proc_root);
+ 	if (!root_inode) {
+@@ -123,27 +136,45 @@ static int proc_fill_super(struct super_block *s, void *data, int silent)
+ 	return proc_setup_thread_self(s);
+ }
+ 
+-int proc_remount(struct super_block *sb, int *flags, char *data)
++int proc_remount(struct super_block *sb, struct sb_config *sc)
+ {
+ 	struct pid_namespace *pid = sb->s_fs_info;
+ 
+ 	sync_filesystem(sb);
+-	return !proc_parse_options(data, pid);
++
++	if (sc)
++		proc_set_options(sb, sc, pid, current_user_ns());
++	return 0;
+ }
+ 
+-static struct dentry *proc_mount(struct file_system_type *fs_type,
+-	int flags, const char *dev_name, void *data)
++static int proc_get_tree(struct sb_config *sc)
+ {
+-	struct pid_namespace *ns;
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
+ 
+-	if (flags & MS_KERNMOUNT) {
+-		ns = data;
+-		data = NULL;
+-	} else {
+-		ns = task_active_pid_ns(current);
+-	}
++	return mount_ns_sc(sc, proc_fill_super, cfg->pid_ns);
++}
++
++static void proc_sb_config_free(struct sb_config *sc)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
+ 
+-	return mount_ns(fs_type, flags, data, ns, ns->user_ns, proc_fill_super);
++	if (cfg->pid_ns)
++		put_pid_ns(cfg->pid_ns);
++}
++
++static const struct sb_config_operations proc_sb_config_ops = {
++	.free		= proc_sb_config_free,
++	.parse_option	= proc_parse_mount_option,
++	.get_tree	= proc_get_tree,
++};
++
++static int proc_init_sb_config(struct sb_config *sc, struct super_block *src_sb)
++{
++	struct proc_sb_config *cfg = container_of(sc, struct proc_sb_config, sc);
++
++	cfg->pid_ns = get_pid_ns(task_active_pid_ns(current));
++	cfg->sc.ops = &proc_sb_config_ops;
++	return 0;
+ }
+ 
+ static void proc_kill_sb(struct super_block *sb)
+@@ -161,7 +192,8 @@ static void proc_kill_sb(struct super_block *sb)
+ 
+ static struct file_system_type proc_fs_type = {
+ 	.name		= "proc",
+-	.mount		= proc_mount,
++	.sb_config_size	= sizeof(struct proc_sb_config),
++	.init_sb_config	= proc_init_sb_config,
+ 	.kill_sb	= proc_kill_sb,
+ 	.fs_flags	= FS_USERNS_MOUNT,
+ };
+@@ -209,7 +241,7 @@ static struct dentry *proc_root_lookup(struct inode * dir, struct dentry * dentr
+ {
+ 	if (!proc_pid_lookup(dir, dentry, flags))
+ 		return NULL;
+-	
++
+ 	return proc_lookup(dir, dentry, flags);
+ }
+ 
+@@ -248,12 +280,12 @@ static const struct inode_operations proc_root_inode_operations = {
+  * This is the root "inode" in the /proc tree..
+  */
+ struct proc_dir_entry proc_root = {
+-	.low_ino	= PROC_ROOT_INO, 
+-	.namelen	= 5, 
+-	.mode		= S_IFDIR | S_IRUGO | S_IXUGO, 
+-	.nlink		= 2, 
++	.low_ino	= PROC_ROOT_INO,
++	.namelen	= 5,
++	.mode		= S_IFDIR | S_IRUGO | S_IXUGO,
++	.nlink		= 2,
+ 	.count		= ATOMIC_INIT(1),
+-	.proc_iops	= &proc_root_inode_operations, 
++	.proc_iops	= &proc_root_inode_operations,
+ 	.proc_fops	= &proc_root_operations,
+ 	.parent		= &proc_root,
+ 	.subdir		= RB_ROOT,
+@@ -262,9 +294,30 @@ struct proc_dir_entry proc_root = {
+ 
+ int pid_ns_prepare_proc(struct pid_namespace *ns)
+ {
++	struct proc_sb_config *cfg;
++	struct sb_config *sc;
+ 	struct vfsmount *mnt;
++	int ret;
++
++	sc = __vfs_new_sb_config(&proc_fs_type, NULL, 0, SB_CONFIG_FOR_NEW);
++	if (IS_ERR(sc))
++		return PTR_ERR(sc);
++
++	cfg = container_of(sc, struct proc_sb_config, sc);
++	if (cfg->pid_ns != ns) {
++		put_pid_ns(cfg->pid_ns);
++		get_pid_ns(ns);
++		cfg->pid_ns = ns;
++	}
++
++	ret = vfs_get_tree(sc);
++	if (ret < 0) {
++		put_sb_config(sc);
++		return ret;
++	}
+ 
+-	mnt = kern_mount_data(&proc_fs_type, ns);
++	mnt = kern_mount_data_sc(sc);
++	put_sb_config(sc);
+ 	if (IS_ERR(mnt))
+ 		return PTR_ERR(mnt);
+ 
 
