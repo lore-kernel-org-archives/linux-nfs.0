@@ -1,71 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:39457 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755309AbdEVUbd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2017 16:31:33 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] xprtrdma: Delete an error message for a failed memory allocation in xprt_rdma_bc_setup()
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <3c3f0067-1438-129c-d921-e2c056d5776b@users.sourceforge.net>
-Date: Mon, 22 May 2017 16:31:08 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        netdev@vger.kernel.org, Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org
-Message-Id: <DC0EF67A-4AF8-415A-8EC0-F86F8E6F08FE@oracle.com>
-References: <3c3f0067-1438-129c-d921-e2c056d5776b@users.sourceforge.net>
-To: SF Markus Elfring <elfring@users.sourceforge.net>
+Received: from mx1.redhat.com ([209.132.183.28]:47162 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933607AbdEVVag (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 17:30:36 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>,
+        "Weston Andros Adamson" <dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] pnfs: Fix the check for requests in range of layout
+ segment
+Date: Mon, 22 May 2017 17:30:34 -0400
+Message-ID: <447399F0-689F-45FB-9291-5798821B838A@redhat.com>
+In-Reply-To: <bf2ea18703f605c6fcfe698f5a59c6062ca590ed.1495477047.git.bcodding@redhat.com>
+References: <bf2ea18703f605c6fcfe698f5a59c6062ca590ed.1495477047.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On May 22, 2017, at 4:24 PM, SF Markus Elfring <elfring@users.sourceforge.net> wrote:
-> 
-> From: Markus Elfring <elfring@users.sourceforge.net>
-> Date: Mon, 22 May 2017 22:18:28 +0200
-> 
-> Omit an extra message for a memory allocation failure in this function.
-> 
-> This issue was detected by using the Coccinelle software.
-> 
-> Link: http://events.linuxfoundation.org/sites/events/files/slides/LCJ16-Refactor_Strings-WSang_0.pdf
-> Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+On 22 May 2017, at 14:20, Benjamin Coddington wrote:
 
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-
+> It's possible and acceptable for NFS to attempt to add requests beyond 
+> the
+> range of the current pgio->pg_lseg, a case which should be caught and
+> limited by the pg_test operation.  However, the current handling of 
+> this
+> case replaces pgio->pg_lseg with a new layout segment (after a WARN) 
+> within
+> that pg_test operation.  That will cause all the previously added 
+> requests
+> to be submitted with this new layout segment, which may not be valid 
+> for
+> those requests.
+>
+> Fix this problem by only returning zero for the number of bytes to 
+> coalesce
+> from pg_test for this case which allows any previously added requests 
+> to
+> complete on the current layout segment.  The check for requests 
+> starting
+> out of range of the layout segment moves to pg_init, so that the
+> replacement of pgio->pg_lseg will be done when the next request is 
+> added.
+>
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 > ---
-> net/sunrpc/xprtrdma/backchannel.c | 6 ++----
-> 1 file changed, 2 insertions(+), 4 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-> index 24fedd4b117e..03f6b5840764 100644
-> --- a/net/sunrpc/xprtrdma/backchannel.c
-> +++ b/net/sunrpc/xprtrdma/backchannel.c
-> @@ -119,11 +119,9 @@ int xprt_rdma_bc_setup(struct rpc_xprt *xprt, unsigned int reqs)
-> 
-> 	for (i = 0; i < (reqs << 1); i++) {
-> 		rqst = kzalloc(sizeof(*rqst), GFP_KERNEL);
-> -		if (!rqst) {
-> -			pr_err("RPC:       %s: Failed to create bc rpc_rqst\n",
-> -			       __func__);
-> +		if (!rqst)
-> 			goto out_free;
-> -		}
-> +
-> 		dprintk("RPC:       %s: new rqst %p\n", __func__, rqst);
-> 
-> 		rqst->rq_xprt = &r_xprt->rx_xprt;
-> -- 
-> 2.13.0
+>  fs/nfs/pnfs.c | 27 +++++++++++++++++++--------
+>  fs/nfs/pnfs.h | 10 ++++++++++
+>  2 files changed, 29 insertions(+), 8 deletions(-)
+>
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index adc6ec28d4b5..0c26de3d3914 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -2094,12 +2094,28 @@ pnfs_generic_pg_check_layout(struct 
+> nfs_pageio_descriptor *pgio)
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_check_layout);
+>
+> +/*
+> + * Check for any intersection between the request and the 
+> pgio->pg_lseg,
+> + * and if none, put this pgio->pg_lseg away.
+> + */
+> +static void
+> +pnfs_generic_pg_check_range(struct nfs_pageio_descriptor *pgio, 
+> struct nfs_page *req)
+> +{
+> +	if (pgio->pg_lseg && !pnfs_lseg_request_intersecting(pgio->pg_lseg, 
+> req)) {
+> +		if (pgio->pg_ops->pg_cleanup)
+> +			pgio->pg_ops->pg_cleanup(pgio);
+> +		else
+> +			pnfs_generic_pg_cleanup(pgio);
 
---
-Chuck Lever
+Actually, I think this ^^ should be put_lseg(), pgio->pg_lseg = NULL
+instead, since we're already within pg_init.  The layouts might have 
+work
+that would be undone by pg_cleanup..  I'll send a v2 after a short wait 
+for
+comment.
 
-
+Ben
 
