@@ -1,131 +1,251 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:64076 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42243 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752455AbdEVPuG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 May 2017 11:50:06 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 17B9B7F7A6
-        for <linux-nfs@vger.kernel.org>; Mon, 22 May 2017 15:50:06 +0000 (UTC)
-Received: from jumitche.remote.csb (unknown [10.33.36.38])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 94FF67C430
-        for <linux-nfs@vger.kernel.org>; Mon, 22 May 2017 15:50:05 +0000 (UTC)
-Message-ID: <1495468204.4169.10.camel@redhat.com>
-Subject: [PATCH 2/3] nfs.conf tidy ups
-From: Justin Mitchell <jumitche@redhat.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Mon, 22 May 2017 16:50:04 +0100
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        id S1751312AbdEVQWa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 12:22:30 -0400
+Subject: [RFC][PATCH 0/9] Make containers kernel objects
+From: David Howells <dhowells@redhat.com>
+To: trondmy@primarydata.com
+Cc: mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        linux-kernel@vger.kernel.org, dhowells@redhat.com,
+        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        cgroups@vger.kernel.org, ebiederm@xmission.com
+Date: Mon, 22 May 2017 17:22:26 +0100
+Message-ID: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add function to cleanup and free the loaded config
 
-Signed-off-by: Justin Mitchell <jumitche@rehat.com>
+Here are a set of patches to define a container object for the kernel and
+to provide some methods to create and manipulate them.
 
+The reason I think this is necessary is that the kernel has no idea how to
+direct upcalls to what userspace considers to be a container - current
+Linux practice appears to make a "container" just an arbitrarily chosen
+junction of namespaces, control groups and files, which may be changed
+individually within the "container".
+
+The kernel upcall mechanism then needs to decide which set of namespaces,
+etc., it must exec the appropriate upcall program.  Examples of this
+include:
+
+ (1) The DNS resolver.  The DNS cache in the kernel should probably be
+     per-network namespace, but in userspace the program, its libraries and
+     its config data are associated with a mount tree and a user namespace
+     and it gets run in a particular pid namespace.
+
+ (2) NFS ID mapper.  The NFS ID mapping cache should also probably be
+     per-network namespace.
+
+ (3) nfsdcltrack.  A way for NFSD to access stable storage for tracking
+     of persistent state.  Again, network-namespace dependent, but also
+     perhaps mount-namespace dependent.
+
+ (4) General request-key upcalls.  Not particularly namespace dependent,
+     apart from keyrings being somewhat governed by the user namespace and
+     the upcall being configured by the mount namespace.
+
+These patches are built on top of the mount context patchset so that
+namespaces can be properly propagated over submounts/automounts.
+
+These patches implement a container object that holds the following things:
+
+ (1) Namespaces.
+
+ (2) A root directory.
+
+ (3) A set of processes, including a designated 'init' process.
+
+ (4) The creator's credentials, including ownership.
+
+ (5) A place to hang security for the container, allowing policies to be
+     set per-container.
+
+I also want to add:
+
+ (6) Control groups.
+
+ (7) A per-container keyring that can be added to from outside of the
+     container, even once the container is live, for the provision of
+     filesystem authentication/encryption keys in advance of the container
+     being started.
+
+You can get a list of containers by examining /proc/containers - but I'm
+not sure how much value this gets you.  Note that the container in which
+you are running is called "<current>" and you can only see other containers
+that were started from within yours.  Containers are therefore effectively
+hierarchical and an init_container is set up when the system boots.
+
+
+Some management operations are provided:
+
+ (1) int fd = container_create(const char *name, unsigned int flags);
+
+     Create a container of the given name and return a handle to it as a
+     file descriptor.  flags indicates what namespaces should be inherited
+     from the caller and what should be replaced new.  It is possible to
+     set up a container with a null root filesystem that can be mounted
+     later.
+
+ (2) int fsfd = fsopen(const char *fsname, int container_fd,
+		       unsigned int flags);
+
+     Prepare a mount context inside the container.  This uses all the
+     containers namespaces instead of the caller's.
+
+ (3) fsmount(int fsfd, int dfd, const char *path, unsigned int at_flags,
+	     unsigned int flags);
+
+     Mount a prepared superblock.  dfd can be given container_fd to use the
+     container to which it refers as the root of the pathwalk.
+
+     If path is "/" and at_flags is AT_FSMOUNT_CONTAINER_ROOT, then this
+     will attempt to mount the root of the container and create a mount
+     namespace for it.  The container must've been created with
+     CONTAINER_NEW_EMPTY_FS_NS.
+
+ (4) pid_t pid = fork_into_container(int container_fd);
+
+     Create the init process in a container.  The process uses that
+     container's namespaces instead of the caller's.
+
+ (5) int sfd = container_socket(int container_fd,
+				int domain, int type, int protocol);
+
+     Create a socket inside a container.  The socket gets the container's
+     namespaces.  This allows netlink operations to be called within that
+     container to set it up from outside (at least in theory).
+
+ (6) mkdirat(int dfd, ...);
+     mknodat(int dfd, ...);
+     openat(int dfd, ...);
+
+     Supplying a container fd as dfd makes the pathwalk happen relative to
+     the root of the container.  Note that the path must be *relative*.
+
+And some need to be/could be added:
+
+ (7) Directly set a container's namespaces to allow cross-container
+     sharing.
+
+ (8) Adjust the control group membership of a container.
+
+ (9) Add a key inside a container keyring.
+
+(10) Kill/suspend/freeze/reboot container, both from inside and out.
+
+(11) Set container's root dir.
+
+(12) Set the container's security policy.
+
+(13) Allow overlayfs to access filesystems outside of the container in
+     which it is being created.
+
+
+Kernel upcalls are invoked in the root of the container that incurs them
+rather than in the init namespace context.  There's still some awkwardness
+here if you, say, share a network namespace between containers.  Either the
+upcall binaries and configuration must be duplicated between sharing
+containers or a container must be elected as the one in which such upcalls
+will be done.
+
+
+Some further thoughts:
+
+ (*) Should there be an AT_IN_CONTAINER flag to provide to syscalls that
+     take a container in lieu of AT_FDCWD or a directory fd?  The problem
+     is that such as mkdirat() and openat() don't have an at_flags
+     argument.
+
+ (*) Should there be a container hierarchy at all?  It seems that this is
+     only really necessary for /proc/containers.  Do we want to allow
+     containers-within-containers?
+
+ (*) Should each container automatically have its own pid namespace such
+     that its 'init' process always appears as pid 1?
+
+ (*) Does this allow kernel upcalls to be accounted against the correct
+     control group?
+
+ (*) Should each container have a 'list' of accessible device numbers such
+     that certain device files can be made usable within a container?  And
+     can devtmpfs/udev be made to show the correct file set for each
+     container?
+
+
+The patches can be found here also:
+
+	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=container
+
+Note that this is dependent on the mount-context branch.
+
+David
 ---
- support/include/conffile.h |  1 +
- support/nfs/conffile.c     | 51 +++++++++++++++++++++++++++++++++++++++-------
- 2 files changed, 45 insertions(+), 7 deletions(-)
-
-diff --git a/support/include/conffile.h b/support/include/conffile.h
-index 20b1a32..2d11a52 100644
---- a/support/include/conffile.h
-+++ b/support/include/conffile.h
-@@ -60,6 +60,7 @@ extern _Bool    conf_get_bool(char *, char *, _Bool);
- extern char    *conf_get_str(char *, char *);
- extern char    *conf_get_section(char *, char *, char *);
- extern void     conf_init(const char *);
-+extern void     conf_cleanup(void);
- extern int      conf_match_num(char *, char *, int);
- extern int      conf_remove(int, char *, char *);
- extern int      conf_remove_section(int, char *);
-diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index a76c7e3..7c607c0 100644
---- a/support/nfs/conffile.c
-+++ b/support/nfs/conffile.c
-@@ -414,13 +414,32 @@ conf_load(int trans, const char *path)
- 	return -1;
- }
- 
-+/* remove and free up any existing config state */
-+static void conf_free_bindings(void)
-+{
-+	unsigned int i;
-+	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
-+		struct conf_binding *cb, *next;
-+
-+		cb = LIST_FIRST(&conf_bindings[i]);
-+		for (; cb; cb = next) {
-+			next = LIST_NEXT(cb, link);
-+			LIST_REMOVE(cb, link);
-+			free(cb->section);
-+			free(cb->arg);
-+			free(cb->tag);
-+			free(cb->value);
-+			free(cb);
-+		}
-+		LIST_INIT(&conf_bindings[i]);
-+	}
-+}
-+
- /* Open the config file and map it into our address space, then parse it.  */
- static void
- conf_reinit(const char *conf_file)
- {
--	struct conf_binding *cb = 0;
- 	int trans;
--	unsigned int i;
- 
- 	trans = conf_begin();
- 	if (conf_load(trans, conf_file) < 0)
-@@ -430,12 +449,9 @@ conf_reinit(const char *conf_file)
- 	conf_load_defaults();
- 
- 	/* Free potential existing configuration.  */
--	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
--		cb = LIST_FIRST (&conf_bindings[i]);
--		for (; cb; cb = LIST_FIRST (&conf_bindings[i]))
--			conf_remove_now(cb->section, cb->tag);
--	}
-+	conf_free_bindings();
- 
-+	/* Apply the new configuration values */
- 	conf_end(trans, 1);
- 	return;
- }
-@@ -454,6 +470,27 @@ conf_init (const char *conf_file)
- 	conf_reinit(conf_file);
- }
- 
-+/* 
-+ * Empty the config and free up any used memory 
-+ */
-+void
-+conf_cleanup(void)
-+{
-+	conf_free_bindings();
-+
-+	struct conf_trans *node, *next;
-+	for (node = TAILQ_FIRST(&conf_trans_queue); node; node = next) {
-+		next = TAILQ_NEXT(node, link);
-+		TAILQ_REMOVE (&conf_trans_queue, node, link);
-+		if (node->section) free(node->section);
-+		if (node->arg) free(node->arg);
-+		if (node->tag) free(node->tag);
-+		if (node->value) free(node->value);
-+		free (node);
-+	}
-+	TAILQ_INIT(&conf_trans_queue);
-+}
-+
- /*
-  * Return the numeric value denoted by TAG in section SECTION or DEF
-  * if that tag does not exist.
--- 
-1.8.3.1
+David Howells (9):
+      containers: Rename linux/container.h to linux/container_dev.h
+      Implement containers as kernel objects
+      Provide /proc/containers
+      Allow processes to be forked and upcalled into a container
+      Open a socket inside a container
+      Allow fs syscall dfd arguments to take a container fd
+      Make fsopen() able to initiate mounting into a container
+      Honour CONTAINER_NEW_EMPTY_FS_NS
+      Sample program for driving container objects
 
 
+ arch/x86/entry/syscalls/syscall_32.tbl |    3 
+ arch/x86/entry/syscalls/syscall_64.tbl |    3 
+ drivers/acpi/container.c               |    2 
+ drivers/base/container.c               |    2 
+ fs/fsopen.c                            |   33 +-
+ fs/libfs.c                             |    3 
+ fs/namei.c                             |   52 ++-
+ fs/namespace.c                         |  108 +++++-
+ fs/nfs/namespace.c                     |    2 
+ fs/nfs/nfs4namespace.c                 |    4 
+ fs/proc/root.c                         |   13 +
+ fs/sb_config.c                         |   29 +-
+ include/linux/container.h              |   91 ++++-
+ include/linux/container_dev.h          |   25 +
+ include/linux/cred.h                   |    3 
+ include/linux/init_task.h              |    4 
+ include/linux/kmod.h                   |    1 
+ include/linux/lsm_hooks.h              |   25 +
+ include/linux/mount.h                  |    5 
+ include/linux/nsproxy.h                |    7 
+ include/linux/pid.h                    |    5 
+ include/linux/proc_ns.h                |    3 
+ include/linux/sb_config.h              |    5 
+ include/linux/sched.h                  |    3 
+ include/linux/sched/task.h             |    4 
+ include/linux/security.h               |   20 +
+ include/linux/syscalls.h               |    6 
+ include/uapi/linux/container.h         |   28 ++
+ include/uapi/linux/fcntl.h             |    2 
+ include/uapi/linux/magic.h             |    1 
+ init/Kconfig                           |    7 
+ init/main.c                            |    4 
+ kernel/Makefile                        |    2 
+ kernel/container.c                     |  576 ++++++++++++++++++++++++++++++++
+ kernel/cred.c                          |   45 ++-
+ kernel/exit.c                          |    1 
+ kernel/fork.c                          |  117 ++++++-
+ kernel/kmod.c                          |   13 +
+ kernel/kthread.c                       |    3 
+ kernel/namespaces.h                    |   15 +
+ kernel/nsproxy.c                       |   34 +-
+ kernel/pid.c                           |    4 
+ kernel/sys_ni.c                        |    5 
+ net/socket.c                           |   37 ++
+ samples/containers/test-container.c    |  162 +++++++++
+ security/security.c                    |   18 +
+ security/selinux/hooks.c               |    5 
+ 47 files changed, 1408 insertions(+), 132 deletions(-)
+ create mode 100644 include/linux/container_dev.h
+ create mode 100644 include/uapi/linux/container.h
+ create mode 100644 kernel/container.c
+ create mode 100644 kernel/namespaces.h
+ create mode 100644 samples/containers/test-container.c
 
