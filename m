@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36000 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39308 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932861AbdEVPx1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 May 2017 11:53:27 -0400
-Subject: [PATCH 12/23] VFS: Implement fsmount() to effect a pre-configured
- mount [ver #4]
+        id S1757305AbdEVPxF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 11:53:05 -0400
+Subject: [PATCH 08/23] VFS: Add LSM hooks for superblock configuration
+ context [ver #4]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk, jlayton@redhat.com
 Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 22 May 2017 16:53:24 +0100
-Message-ID: <149546840419.9289.13864402130204204147.stgit@warthog.procyon.org.uk>
+Date: Mon, 22 May 2017 16:52:51 +0100
+Message-ID: <149546837117.9289.16824999319457230279.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 References: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,281 +18,362 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a system call by which a filesystem opened with fsopen() and
-configured by a series of writes can be mounted:
-
-	int ret = fsmount(int fsfd, int dfd, const char *path,
-			  unsigned int at_flags, unsigned int flags);
-
-where fsfd is the fd returned by fsopen(), dfd, path and at_flags locate
-the mountpoint and flags are the applicable MS_* flags.  dfd can be
-AT_FDCWD or an fd open to a directory.
-
-In the event that fsmount() fails, it may be possible to get an error
-message by calling read().  If no message is available, ENODATA will be
-reported.
+Add LSM hooks for use by the superblock configuration context code.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- arch/x86/entry/syscalls/syscall_32.tbl |    1 
- arch/x86/entry/syscalls/syscall_64.tbl |    1 
- fs/namespace.c                         |   96 ++++++++++++++++++++++++++++++++
- include/linux/lsm_hooks.h              |    6 ++
- include/linux/security.h               |    5 ++
- include/linux/syscalls.h               |    2 +
- kernel/sys_ni.c                        |    1 
- security/security.c                    |    5 ++
- security/selinux/hooks.c               |   12 ++++
- 9 files changed, 129 insertions(+)
+ include/linux/lsm_hooks.h |   39 ++++++++++
+ include/linux/security.h  |   28 +++++++
+ security/security.c       |   25 +++++++
+ security/selinux/hooks.c  |  169 +++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 261 insertions(+)
 
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index 9bf8d4c62f85..abe6ea95e0e6 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -392,3 +392,4 @@
- 383	i386	statx			sys_statx
- 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
- 385	i386	fsopen			sys_fsopen
-+386	i386	fsmount			sys_fsmount
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 9b198c5fc412..0977c5079831 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -340,6 +340,7 @@
- 331	common	pkey_free		sys_pkey_free
- 332	common	statx			sys_statx
- 333	common	fsopen			sys_fsopen
-+334	common	fsmount			sys_fsmount
- 
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
-diff --git a/fs/namespace.c b/fs/namespace.c
-index e92bc48accb5..4e9ad16db79c 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -3239,6 +3239,102 @@ vfs_submount(const struct dentry *mountpoint, struct file_system_type *type,
- EXPORT_SYMBOL_GPL(vfs_submount);
- 
- /*
-+ * Mount a new, prepared superblock (specified by fs_fd) on the location
-+ * specified by dfd and dir_name.  dfd can be AT_FDCWD, a dir fd or a container
-+ * fd.  This cannot be used for binding, moving or remounting mounts.
-+ */
-+SYSCALL_DEFINE5(fsmount, int, fs_fd, int, dfd, const char __user *, dir_name,
-+		unsigned int, at_flags, unsigned int, flags)
-+{
-+	struct sb_config *sc;
-+	struct inode *inode;
-+	struct path mountpoint;
-+	struct fd f;
-+	unsigned int lookup_flags, mnt_flags = 0;
-+	long ret;
-+
-+	if ((at_flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
-+			  AT_EMPTY_PATH)) != 0)
-+		return -EINVAL;
-+
-+	if (flags & ~(MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC |
-+		      MS_NOATIME | MS_NODIRATIME | MS_RELATIME | MS_STRICTATIME))
-+		return -EINVAL;
-+
-+	if (flags & MS_RDONLY)
-+		mnt_flags |= MNT_READONLY;
-+	if (flags & MS_NOSUID)
-+		mnt_flags |= MNT_NOSUID;
-+	if (flags & MS_NODEV)
-+		mnt_flags |= MNT_NODEV;
-+	if (flags & MS_NOEXEC)
-+		mnt_flags |= MNT_NOEXEC;
-+	if (flags & MS_NODIRATIME)
-+		mnt_flags |= MNT_NODIRATIME;
-+
-+	if (flags & MS_STRICTATIME) {
-+		if (flags & MS_NOATIME)
-+			return -EINVAL;
-+	} else if (flags & MS_NOATIME) {
-+		mnt_flags |= MNT_NOATIME;
-+	} else {
-+		mnt_flags |= MNT_RELATIME;
-+	}
-+
-+	f = fdget(fs_fd);
-+	if (!f.file)
-+		return -EBADF;
-+
-+	ret = -EINVAL;
-+	if (f.file->f_op != &fs_fs_fops)
-+		goto err_fsfd;
-+
-+	sc = f.file->private_data;
-+
-+	ret = -EPERM;
-+	if (!may_mount() ||
-+	    ((sc->ms_flags & MS_MANDLOCK) && !may_mandlock()))
-+		goto err_fsfd;
-+
-+	/* There must be a valid superblock or we can't mount it */
-+	inode = file_inode(f.file);
-+	ret = inode_lock_killable(inode);
-+	if (ret == 0) {
-+		if (!sc->root)
-+			ret = invalf("VFS: Root must be obtained before mount");
-+		inode_unlock(inode);
-+	}
-+	if (ret < 0)
-+		goto err_fsfd;
-+
-+	/* Find the mountpoint.  A container can be specified in dfd. */
-+	lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
-+	if (at_flags & AT_SYMLINK_NOFOLLOW)
-+		lookup_flags &= ~LOOKUP_FOLLOW;
-+	if (at_flags & AT_NO_AUTOMOUNT)
-+		lookup_flags &= ~LOOKUP_AUTOMOUNT;
-+	if (at_flags & AT_EMPTY_PATH)
-+		lookup_flags |= LOOKUP_EMPTY;
-+	ret = user_path_at(dfd, dir_name, lookup_flags, &mountpoint);
-+	if (ret < 0) {
-+		errorf("VFS: Mountpoint lookup failed");
-+		goto err_fsfd;
-+	}
-+
-+	ret = security_sb_mountpoint(sc, &mountpoint);
-+	if (ret < 0)
-+		goto err_mp;
-+
-+	ret = do_new_mount_sc(sc, &mountpoint, mnt_flags);
-+
-+err_mp:
-+	path_put(&mountpoint);
-+err_fsfd:
-+	fdput(f);
-+	return ret;
-+}
-+
-+/*
-  * Return true if path is reachable from root
-  *
-  * namespace_sem or mount_lock is held
 diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
-index e95a918e61ca..7064c0c15386 100644
+index 080f34e66017..c2bbd9e92b0a 100644
 --- a/include/linux/lsm_hooks.h
 +++ b/include/linux/lsm_hooks.h
-@@ -102,6 +102,10 @@
-  *	@sc indicates the superblock configuration context.
-  *	@sc->root indicates the root that will be mounted.
-  *	@sc->root->d_sb points to the superblock.
-+ * @sb_mountpoint:
-+ *	Equivalent of sb_mount, but with an sb_config.
-+ *	@sc indicates the superblock configuration context.
-+ *	@mountpoint indicates the path on which the mount will take place.
+@@ -75,6 +75,34 @@
+  *	should enable secure mode.
+  *	@bprm contains the linux_binprm structure.
   *
++ * Security hooks for mount using fd context.
++ *
++ * @sb_config_alloc:
++ *	Allocate and attach a security structure to sc->security.  This pointer
++ *	is initialised to NULL by the caller.
++ *	@sc indicates the new superblock configuration context.
++ *	@src_sb indicates the source superblock of a submount.
++ * @sb_config_dup:
++ *	Allocate and attach a security structure to sc->security.  This pointer
++ *	is initialised to NULL by the caller.
++ *	@sc indicates the new superblock configuration context.
++ *	@src_sc indicates the original superblock configuration context.
++ * @sb_config_free:
++ *	Clean up a superblock configuration context.
++ *	@sc indicates the superblock configuration context.
++ * @sb_config_parse_option:
++ *	Userspace provided an option to configure a superblock.  The LSM may
++ *	reject it with an error and may use it for itself, in which case it
++ *	should return 1; otherwise it should return 0 to pass it on to the
++ *	filesystem.
++ *	@sc indicates the superblock configuration context.
++ *	@p indicates the option in "key[=val]" form.
++ * @sb_get_tree:
++ *	Assign the security to a newly created superblock.
++ *	@sc indicates the superblock configuration context.
++ *	@sc->root indicates the root that will be mounted.
++ *	@sc->root->d_sb points to the superblock.
++ *
   * Security hooks for filesystem operations.
   *
-@@ -1405,6 +1409,7 @@ union security_list_options {
- 	void (*sb_config_free)(struct sb_config *sc);
- 	int (*sb_config_parse_option)(struct sb_config *sc, char *opt);
- 	int (*sb_get_tree)(struct sb_config *sc);
-+	int (*sb_mountpoint)(struct sb_config *sc, struct path *mountpoint);
+  * @sb_alloc_security:
+@@ -1372,6 +1400,12 @@ union security_list_options {
+ 	void (*bprm_committing_creds)(struct linux_binprm *bprm);
+ 	void (*bprm_committed_creds)(struct linux_binprm *bprm);
  
++	int (*sb_config_alloc)(struct sb_config *sc, struct super_block *src_sb);
++	int (*sb_config_dup)(struct sb_config *sc, struct sb_config *src_sc);
++	void (*sb_config_free)(struct sb_config *sc);
++	int (*sb_config_parse_option)(struct sb_config *sc, char *opt);
++	int (*sb_get_tree)(struct sb_config *sc);
++
  	int (*sb_alloc_security)(struct super_block *sb);
  	void (*sb_free_security)(struct super_block *sb);
-@@ -1721,6 +1726,7 @@ struct security_hook_heads {
- 	struct list_head sb_config_free;
- 	struct list_head sb_config_parse_option;
- 	struct list_head sb_get_tree;
-+	struct list_head sb_mountpoint;
+ 	int (*sb_copy_data)(char *orig, char *copy);
+@@ -1683,6 +1717,11 @@ struct security_hook_heads {
+ 	struct list_head bprm_secureexec;
+ 	struct list_head bprm_committing_creds;
+ 	struct list_head bprm_committed_creds;
++	struct list_head sb_config_alloc;
++	struct list_head sb_config_dup;
++	struct list_head sb_config_free;
++	struct list_head sb_config_parse_option;
++	struct list_head sb_get_tree;
  	struct list_head sb_alloc_security;
  	struct list_head sb_free_security;
  	struct list_head sb_copy_data;
 diff --git a/include/linux/security.h b/include/linux/security.h
-index f6eb735987d1..8c06e158c195 100644
+index af675b576645..d1dfb6abd4f7 100644
 --- a/include/linux/security.h
 +++ b/include/linux/security.h
-@@ -230,6 +230,7 @@ int security_sb_config_dup(struct sb_config *sc, struct sb_config *src_sc);
- void security_sb_config_free(struct sb_config *sc);
- int security_sb_config_parse_option(struct sb_config *sc, char *opt);
- int security_sb_get_tree(struct sb_config *sc);
-+int security_sb_mountpoint(struct sb_config *sc, struct path *mountpoint);
+@@ -55,6 +55,7 @@ struct msg_queue;
+ struct xattr;
+ struct xfrm_sec_ctx;
+ struct mm_struct;
++struct sb_config;
+ 
+ /* If capable should audit the security request */
+ #define SECURITY_CAP_NOAUDIT 0
+@@ -224,6 +225,11 @@ int security_bprm_check(struct linux_binprm *bprm);
+ void security_bprm_committing_creds(struct linux_binprm *bprm);
+ void security_bprm_committed_creds(struct linux_binprm *bprm);
+ int security_bprm_secureexec(struct linux_binprm *bprm);
++int security_sb_config_alloc(struct sb_config *sc, struct super_block *sb);
++int security_sb_config_dup(struct sb_config *sc, struct sb_config *src_sc);
++void security_sb_config_free(struct sb_config *sc);
++int security_sb_config_parse_option(struct sb_config *sc, char *opt);
++int security_sb_get_tree(struct sb_config *sc);
  int security_sb_alloc(struct super_block *sb);
  void security_sb_free(struct super_block *sb);
  int security_sb_copy_data(char *orig, char *copy);
-@@ -546,6 +547,10 @@ static inline int security_sb_get_tree(struct sb_config *sc)
- {
- 	return 0;
+@@ -520,6 +526,28 @@ static inline int security_bprm_secureexec(struct linux_binprm *bprm)
+ 	return cap_bprm_secureexec(bprm);
  }
-+static inline int security_sb_mountpoint(struct sb_config *sc, struct path *mountpoint)
+ 
++static inline int security_sb_config_alloc(struct sb_config *sc,
++					   struct super_block *src_sb)
 +{
 +	return 0;
 +}
- 
++static inline int security_sb_config_dup(struct sb_config *sc,
++					 struct sb_config *src_sc)
++{
++	return 0;
++}
++static inline void security_sb_config_free(struct sb_config *sc)
++{
++}
++static inline int security_sb_config_parse_option(struct sb_config *sc, char *opt)
++{
++	return 0;
++}
++static inline int security_sb_get_tree(struct sb_config *sc)
++{
++	return 0;
++}
++
  static inline int security_sb_alloc(struct super_block *sb)
  {
-diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-index 91ec8802ad5d..07e4f775f24d 100644
---- a/include/linux/syscalls.h
-+++ b/include/linux/syscalls.h
-@@ -906,5 +906,7 @@ asmlinkage long sys_pkey_free(int pkey);
- asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
- 			  unsigned mask, struct statx __user *buffer);
- asmlinkage long sys_fsopen(const char *fs_name, int containerfd, unsigned int flags);
-+asmlinkage long sys_fsmount(int fsfd, int dfd, const char *path, unsigned int at_flags,
-+			    unsigned int flags);
- 
- #endif
-diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
-index de1dc63e7e47..a0fe764bd5dd 100644
---- a/kernel/sys_ni.c
-+++ b/kernel/sys_ni.c
-@@ -261,3 +261,4 @@ cond_syscall(sys_pkey_free);
- 
- /* fd-based mount */
- cond_syscall(sys_fsopen);
-+cond_syscall(sys_fsmount);
+ 	return 0;
 diff --git a/security/security.c b/security/security.c
-index ed086c6c8f0b..f4136ca5cb1b 100644
+index b9fea3999cf8..951f28487719 100644
 --- a/security/security.c
 +++ b/security/security.c
-@@ -341,6 +341,11 @@ int security_sb_get_tree(struct sb_config *sc)
- 	return call_int_hook(sb_get_tree, 0, sc);
+@@ -316,6 +316,31 @@ int security_bprm_secureexec(struct linux_binprm *bprm)
+ 	return call_int_hook(bprm_secureexec, 0, bprm);
  }
  
-+int security_sb_mountpoint(struct sb_config *sc, struct path *mountpoint)
++int security_sb_config_alloc(struct sb_config *sc, struct super_block *src_sb)
 +{
-+	return call_int_hook(sb_mountpoint, 0, sc, mountpoint);
++	return call_int_hook(sb_config_alloc, 0, sc, src_sb);
++}
++
++int security_sb_config_dup(struct sb_config *sc, struct sb_config *src_sc)
++{
++	return call_int_hook(sb_config_dup, 0, sc, src_sc);
++}
++
++void security_sb_config_free(struct sb_config *sc)
++{
++	call_void_hook(sb_config_free, sc);
++}
++
++int security_sb_config_parse_option(struct sb_config *sc, char *opt)
++{
++	return call_int_hook(sb_config_parse_option, 0, sc, opt);
++}
++
++int security_sb_get_tree(struct sb_config *sc)
++{
++	return call_int_hook(sb_get_tree, 0, sc);
 +}
 +
  int security_sb_alloc(struct super_block *sb)
  {
  	return call_int_hook(sb_alloc_security, 0, sb);
 diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 1deafdbf8716..877b7e7bd2d5 100644
+index e67a526d1f30..420bfa955fb4 100644
 --- a/security/selinux/hooks.c
 +++ b/security/selinux/hooks.c
-@@ -2970,6 +2970,17 @@ static int selinux_sb_get_tree(struct sb_config *sc)
- 	return rc;
+@@ -47,6 +47,7 @@
+ #include <linux/fdtable.h>
+ #include <linux/namei.h>
+ #include <linux/mount.h>
++#include <linux/sb_config.h>
+ #include <linux/netfilter_ipv4.h>
+ #include <linux/netfilter_ipv6.h>
+ #include <linux/tty.h>
+@@ -2826,6 +2827,168 @@ static int selinux_umount(struct vfsmount *mnt, int flags)
+ 				   FILESYSTEM__UNMOUNT, NULL);
  }
  
-+static int selinux_sb_mountpoint(struct sb_config *sc, struct path *mountpoint)
++/* fsopen mount context operations */
++
++static int selinux_sb_config_alloc(struct sb_config *sc,
++				   struct super_block *src_sb)
++{
++	struct security_mnt_opts *opts;
++
++	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
++	if (!opts)
++		return -ENOMEM;
++
++	sc->security = opts;
++	return 0;
++}
++
++static int selinux_sb_config_dup(struct sb_config *sc,
++				 struct sb_config *src_sc)
++{
++	const struct security_mnt_opts *src = src_sc->security;
++	struct security_mnt_opts *opts;
++	int i, n;
++
++	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
++	if (!opts)
++		return -ENOMEM;
++	sc->security = opts;
++
++	if (!src || !src->num_mnt_opts)
++		return 0;
++	n = opts->num_mnt_opts = src->num_mnt_opts;
++
++	if (src->mnt_opts) {
++		opts->mnt_opts = kcalloc(n, sizeof(char *), GFP_KERNEL);
++		if (!opts->mnt_opts)
++			return -ENOMEM;
++
++		for (i = 0; i < n; i++) {
++			if (src->mnt_opts[i]) {
++				opts->mnt_opts[i] = kstrdup(src->mnt_opts[i],
++							    GFP_KERNEL);
++				if (!opts->mnt_opts[i])
++					return -ENOMEM;
++			}
++		}
++	}
++
++	if (src->mnt_opts_flags) {
++		opts->mnt_opts_flags = kmemdup(src->mnt_opts_flags,
++					       n * sizeof(int), GFP_KERNEL);
++		if (!opts->mnt_opts_flags)
++			return -ENOMEM;
++	}
++
++	return 0;
++}
++
++static void selinux_sb_config_free(struct sb_config *sc)
++{
++	struct security_mnt_opts *opts = sc->security;
++
++	security_free_mnt_opts(opts);
++	sc->security = NULL;
++}
++
++static int selinux_sb_config_parse_option(struct sb_config *sc, char *opt)
++{
++	struct security_mnt_opts *opts = sc->security;
++	substring_t args[MAX_OPT_ARGS];
++	unsigned int have;
++	char *c, **oo;
++	int token, ctx, i, *of;
++
++	token = match_token(opt, tokens, args);
++	if (token == Opt_error)
++		return 0; /* Doesn't belong to us. */
++
++	have = 0;
++	for (i = 0; i < opts->num_mnt_opts; i++)
++		have |= 1 << opts->mnt_opts_flags[i];
++	if (have & (1 << token))
++		return invalf("SELinux: Duplicate mount options");
++
++	switch (token) {
++	case Opt_context:
++		if (have & (1 << Opt_defcontext))
++			goto incompatible;
++		ctx = CONTEXT_MNT;
++		goto copy_context_string;
++
++	case Opt_fscontext:
++		ctx = FSCONTEXT_MNT;
++		goto copy_context_string;
++
++	case Opt_rootcontext:
++		ctx = ROOTCONTEXT_MNT;
++		goto copy_context_string;
++
++	case Opt_defcontext:
++		if (have & (1 << Opt_context))
++			goto incompatible;
++		ctx = DEFCONTEXT_MNT;
++		goto copy_context_string;
++
++	case Opt_labelsupport:
++		return 1;
++
++	default:
++		return invalf("SELinux: Unknown mount option");
++	}
++
++copy_context_string:
++	if (opts->num_mnt_opts > 3)
++		return invalf("SELinux: Too many options");
++
++	of = krealloc(opts->mnt_opts_flags,
++		      (opts->num_mnt_opts + 1) * sizeof(int), GFP_KERNEL);
++	if (!of)
++		return -ENOMEM;
++	of[opts->num_mnt_opts] = 0;
++	opts->mnt_opts_flags = of;
++
++	oo = krealloc(opts->mnt_opts,
++		      (opts->num_mnt_opts + 1) * sizeof(char *), GFP_KERNEL);
++	if (!oo)
++		return -ENOMEM;
++	oo[opts->num_mnt_opts] = NULL;
++	opts->mnt_opts = oo;
++
++	c = match_strdup(&args[0]);
++	if (!c)
++		return -ENOMEM;
++	opts->mnt_opts[opts->num_mnt_opts] = c;
++	opts->mnt_opts_flags[opts->num_mnt_opts] = ctx;
++	opts->num_mnt_opts++;
++	return 1;
++
++incompatible:
++	return invalf("SELinux: Incompatible mount options");
++}
++
++static int selinux_sb_get_tree(struct sb_config *sc)
 +{
 +	const struct cred *cred = current_cred();
-+	int ret;
++	struct common_audit_data ad;
++	int rc;
 +
-+	ret = path_has_perm(cred, mountpoint, FILE__MOUNTON);
-+	if (ret < 0)
-+		errorf("SELinux: Mount on mountpoint not permitted");
-+	return ret;
++	rc = selinux_set_mnt_opts(sc->root->d_sb, sc->security, 0, NULL);
++	if (rc)
++		return rc;
++
++	/* Allow all mounts performed by the kernel */
++	if (sc->ms_flags & MS_KERNMOUNT)
++		return 0;
++
++	ad.type = LSM_AUDIT_DATA_DENTRY;
++	ad.u.dentry = sc->root;
++	rc = superblock_has_perm(cred, sc->root->d_sb, FILESYSTEM__MOUNT, &ad);
++	if (rc < 0)
++		errorf("SELinux: Mount of superblock not permitted");
++	return rc;
 +}
 +
  /* inode security operations */
  
  static int selinux_inode_alloc_security(struct inode *inode)
-@@ -6303,6 +6314,7 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
- 	LSM_HOOK_INIT(sb_config_free, selinux_sb_config_free),
- 	LSM_HOOK_INIT(sb_config_parse_option, selinux_sb_config_parse_option),
- 	LSM_HOOK_INIT(sb_get_tree, selinux_sb_get_tree),
-+	LSM_HOOK_INIT(sb_mountpoint, selinux_sb_mountpoint),
+@@ -6154,6 +6317,12 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
+ 	LSM_HOOK_INIT(bprm_committed_creds, selinux_bprm_committed_creds),
+ 	LSM_HOOK_INIT(bprm_secureexec, selinux_bprm_secureexec),
  
++	LSM_HOOK_INIT(sb_config_alloc, selinux_sb_config_alloc),
++	LSM_HOOK_INIT(sb_config_dup, selinux_sb_config_dup),
++	LSM_HOOK_INIT(sb_config_free, selinux_sb_config_free),
++	LSM_HOOK_INIT(sb_config_parse_option, selinux_sb_config_parse_option),
++	LSM_HOOK_INIT(sb_get_tree, selinux_sb_get_tree),
++
  	LSM_HOOK_INIT(sb_alloc_security, selinux_sb_alloc_security),
  	LSM_HOOK_INIT(sb_free_security, selinux_sb_free_security),
+ 	LSM_HOOK_INIT(sb_copy_data, selinux_sb_copy_data),
 
