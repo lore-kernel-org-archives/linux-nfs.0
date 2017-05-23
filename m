@@ -1,76 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57358 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47186 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1757989AbdEWQN0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 May 2017 12:13:26 -0400
+        id S967530AbdEWQgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 23 May 2017 12:36:07 -0400
 From: David Howells <dhowells@redhat.com>
-In-Reply-To: <87lgpoww67.fsf@xmission.com>
-References: <87lgpoww67.fsf@xmission.com> <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
-To: ebiederm@xmission.com (Eric W. Biederman)
-Cc: dhowells@redhat.com, trondmy@primarydata.com, mszeredi@redhat.com,
-        linux-nfs@vger.kernel.org, jlayton@redhat.com,
+In-Reply-To: <1495554267.27369.9.camel@HansenPartnership.com>
+References: <1495554267.27369.9.camel@HansenPartnership.com> <87zie3mxkc.fsf@xmission.com> <f167feeb-e653-12e3-eec8-24162f7f7c07@suse.de> <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk> <1495472039.2757.19.camel@HansenPartnership.com> <2446.1495551216@warthog.procyon.org.uk> <2961.1495552481@warthog.procyon.org.uk> <87bmqjmwl5.fsf@xmission.com>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc: dhowells@redhat.com, "Eric W. Biederman" <ebiederm@xmission.com>,
+        Aleksa Sarai <asarai@suse.de>, trondmy@primarydata.com,
+        mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        Linux Containers <containers@lists.linux-foundation.org>,
         linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org
 Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
 MIME-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 23 May 2017 17:13:18 +0100
-Message-ID: <3612.1495555998@warthog.procyon.org.uk>
+Date: Tue, 23 May 2017 17:36:03 +0100
+Message-ID: <3860.1495557363@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eric W. Biederman <ebiederm@xmission.com> wrote:
+James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
 
-> Let me suggest a concrete alternative:
-> 
-> - At the time of mount observer the mounters user namespace.
+> What David is pointing out is that the kernel has a DNS cache
+> (net/dns_resolver/) it can do name to IP translations, but isn't
+> namespaced.  Once it has one entry all containers would see it if they
+> cause a lookup to go through the kernel cache, so going through the
+> cache you can't have a name resolving to different IP addresses on a
+> per container basis.
 
-Looking at sget(), I don't think a mounter can see a superblock outside of
-their namespace.  There is something icky in there whereby all automounts are
-currently transferred into the init_user_ns though (something to fix in my
-mount-context series) :-/
+Yes - and the transport to userspace, the request_key() upcall, isn't
+namespaced either.  Namespacing it isn't entirely simple since we have to set
+the right mount namespace (for execve, config, etc.), plus any other relevant
+namespaces (such as network) - which is dependent on key type.
 
-> - Find the mounters pid namespace.
-> - If the mounters pid namespace is owned by the mounters user namespace
->   walk up the pid namespace tree to the first pid namespace owned by
->   that user namespace.
-> - If the mounters pid namespace is not owned by the mounters user
->   namespace fail the mount it is going to need to make upcalls as
->   will not be possible.
+I can't record the mount namespace in the network namespace because that would
+create a dependency loop:
 
-Take the following scenario:
+	mnt_ns -> mnt -> sb -> net_ns -> mnt_ns
 
- (1) Create a process with a new network namespace.  Set up the network to
-     route out of ethernet port 1.
+> I think Eric's point is that if you need the same DNS names resolving
+> to different IP addresses on a per container basis, you can do this in
+> userspace today but you have to disable the in-kernel DNS cache.
 
- (2) Create a child process with new network and user namespaces.  Set up the
-     network to route out of ethernet port 2.
-
- (3) Mount an NFS volume in the process created in (2).
-
-The mount in (3) will fail unconditionally.
-
-> - Hold a reference to the pid namespace that was found.
-
-Take the following scenario:
-
- (1) Create a process with new network and pid namespaces.  Set up the network
-     to route out of ethernet port 1.
-
- (2) Create a child process with new network and pid namespaces.  Set up the
-     network to route out of ethernet port 2.
-
- (3) Mount an NFS volume in the process created in (2).
-
- (4) Create another child process with new network and pid namespaces.  Set up
-     the network to route out of ethernet port 3.
-
- (5) In the process created in (4), access the NFS volume created in (3).
-
-The user namespace is the same all the way through.
-
-Now you're holding a ref to the pid namespace created in (1) - but that is of
-no use to you.  The upcall must take place in the network namespace that
-routes out through port 2.
+You could disable the in-kernel dns resolver in your config, but then you
+don't get referrals in NFS.  Also, CIFS, AFS and other filesystems would be
+affected.  If you're fine with the restrictions, then there is no problem.
 
 David
