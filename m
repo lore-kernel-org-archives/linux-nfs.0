@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36775 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S968285AbdEWOyS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:54:18 -0400
-Subject: [PATCH v1 04/12] xprtrdma: Pre-mark remotely invalidated MRs
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33279 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S968302AbdEWOye (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:54:34 -0400
+Subject: [PATCH v1 06/12] xprtrdma: Rename rpcrdma_req::rl_free
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 23 May 2017 10:54:10 -0400
-Message-ID: <20170523145410.961.68330.stgit@manet.1015granger.net>
+Date: Tue, 23 May 2017 10:54:27 -0400
+Message-ID: <20170523145426.961.42537.stgit@manet.1015granger.net>
 In-Reply-To: <20170523142629.961.81233.stgit@manet.1015granger.net>
 References: <20170523142629.961.81233.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,126 +15,71 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There are rare cases where an rpcrdma_req and its matched
-rpcrdma_rep can be re-used, via rpcrdma_buffer_put, while the RPC
-reply handler is still using that req. This is typically due to a
-signal firing at just the wrong instant.
+Clean up: I'm about to use the rl_free field for purposes other than
+a free list. So use a more generic name.
 
-As part of closing this race window, avoid using the wrong
-rpcrdma_rep to detect remotely invalidated MRs. Mark MRs as
-invalidated while we are sure the rep is still OK to use.
+This is a refactoring change only.
 
 BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=305
 Fixes: 68791649a725 ('xprtrdma: Invalidate in the RPC reply ... ')
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c  |    4 +---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   22 ++++++++++++++++++++--
- net/sunrpc/xprtrdma/verbs.c     |    1 +
- net/sunrpc/xprtrdma/xprt_rdma.h |    6 ++++++
- 4 files changed, 28 insertions(+), 5 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c     |    9 ++++-----
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 2 files changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 98808d0..9c0fa4a 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -461,7 +461,6 @@
- frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
- {
- 	struct ib_send_wr *first, **prev, *last, *bad_wr;
--	struct rpcrdma_rep *rep = req->rl_reply;
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	struct rpcrdma_frmr *f;
- 	struct rpcrdma_mw *mw;
-@@ -480,8 +479,7 @@
- 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
- 		mw->frmr.fr_state = FRMR_IS_INVALID;
- 
--		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
--		    (mw->mw_handle == rep->rr_inv_rkey))
-+		if (mw->mw_flags & RPCRDMA_MW_F_RI)
- 			continue;
- 
- 		f = &mw->frmr;
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 694e9b1..2356a63 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -928,6 +928,24 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	return fixup_copy_count;
- }
- 
-+/* Caller must guarantee @rep remains stable during this call.
-+ */
-+static void
-+rpcrdma_mark_remote_invalidation(struct list_head *mws,
-+				 struct rpcrdma_rep *rep)
-+{
-+	struct rpcrdma_mw *mw;
-+
-+	if (!(rep->rr_wc_flags & IB_WC_WITH_INVALIDATE))
-+		return;
-+
-+	list_for_each_entry(mw, mws, mw_list)
-+		if (mw->mw_handle == rep->rr_inv_rkey) {
-+			mw->mw_flags = RPCRDMA_MW_F_RI;
-+			break; /* only one invalidated MR per RPC */
-+		}
-+}
-+
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
- /* By convention, backchannel calls arrive via rdma_msg type
-  * messages, and never populate the chunk lists. This makes
-@@ -1006,13 +1024,13 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	/* Sanity checking has passed. We are now committed
- 	 * to complete this transaction.
- 	 */
-+	rpcrdma_mark_remote_invalidation(&req->rl_registered, rep);
- 	list_del_init(&rqst->rq_list);
-+	req->rl_reply = rep;
- 	spin_unlock_bh(&xprt->transport_lock);
- 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
- 		__func__, rep, req, be32_to_cpu(headerp->rm_xid));
- 
--	/* from here on, the reply is no longer an orphan */
--	req->rl_reply = rep;
- 	xprt->reestablish_timeout = 0;
- 
- 	if (headerp->rm_vers != rpcrdma_version)
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 3dbce9a..a8be66d 100644
+index a8be66d..df72224 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1187,6 +1187,7 @@ struct rpcrdma_mw *
+@@ -971,7 +971,6 @@ struct rpcrdma_req *
+ 	if (req == NULL)
+ 		return ERR_PTR(-ENOMEM);
  
- 	if (!mw)
- 		goto out_nomws;
-+	mw->mw_flags = 0;
- 	return mw;
+-	INIT_LIST_HEAD(&req->rl_free);
+ 	spin_lock(&buffer->rb_reqslock);
+ 	list_add(&req->rl_all, &buffer->rb_allreqs);
+ 	spin_unlock(&buffer->rb_reqslock);
+@@ -1055,7 +1054,7 @@ struct rpcrdma_rep *
+ 			goto out;
+ 		}
+ 		req->rl_backchannel = false;
+-		list_add(&req->rl_free, &buf->rb_send_bufs);
++		list_add(&req->rl_list, &buf->rb_send_bufs);
+ 	}
  
- out_nomws:
+ 	INIT_LIST_HEAD(&buf->rb_recv_bufs);
+@@ -1084,8 +1083,8 @@ struct rpcrdma_rep *
+ 	struct rpcrdma_req *req;
+ 
+ 	req = list_first_entry(&buf->rb_send_bufs,
+-			       struct rpcrdma_req, rl_free);
+-	list_del(&req->rl_free);
++			       struct rpcrdma_req, rl_list);
++	list_del(&req->rl_list);
+ 	return req;
+ }
+ 
+@@ -1268,7 +1267,7 @@ struct rpcrdma_req *
+ 
+ 	spin_lock(&buffers->rb_lock);
+ 	buffers->rb_send_count--;
+-	list_add_tail(&req->rl_free, &buffers->rb_send_bufs);
++	list_add_tail(&req->rl_list, &buffers->rb_send_bufs);
+ 	if (rep) {
+ 		buffers->rb_recv_count--;
+ 		list_add_tail(&rep->rr_list, &buffers->rb_recv_bufs);
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 1d66acf..2e02733 100644
+index 1c23117..ad918c8 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -271,6 +271,7 @@ struct rpcrdma_mw {
- 	struct scatterlist	*mw_sg;
- 	int			mw_nents;
- 	enum dma_data_direction	mw_dir;
-+	unsigned long		mw_flags;
- 	union {
- 		struct rpcrdma_fmr	fmr;
- 		struct rpcrdma_frmr	frmr;
-@@ -282,6 +283,11 @@ struct rpcrdma_mw {
- 	struct list_head	mw_all;
- };
+@@ -340,7 +340,7 @@ enum {
  
-+/* mw_flags */
-+enum {
-+	RPCRDMA_MW_F_RI		= 1,
-+};
-+
- /*
-  * struct rpcrdma_req -- structure central to the request/reply sequence.
-  *
+ struct rpcrdma_buffer;
+ struct rpcrdma_req {
+-	struct list_head	rl_free;
++	struct list_head	rl_list;
+ 	unsigned int		rl_mapped_sges;
+ 	unsigned int		rl_connect_cookie;
+ 	struct rpcrdma_buffer	*rl_buffer;
 
