@@ -1,103 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f175.google.com ([209.85.216.175]:36003 "EHLO
-        mail-qt0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933683AbdEVWWR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 May 2017 18:22:17 -0400
-Received: by mail-qt0-f175.google.com with SMTP id f55so113550072qta.3
-        for <linux-nfs@vger.kernel.org>; Mon, 22 May 2017 15:22:16 -0700 (PDT)
-Message-ID: <1495491733.25946.3.camel@redhat.com>
-Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
-From: Jeff Layton <jlayton@redhat.com>
-To: "Eric W. Biederman" <ebiederm@xmission.com>,
-        David Howells <dhowells@redhat.com>
-Cc: trondmy@primarydata.com, mszeredi@redhat.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        cgroups@vger.kernel.org
-Date: Mon, 22 May 2017 18:22:13 -0400
-In-Reply-To: <87lgpoww67.fsf@xmission.com>
-References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
-         <87lgpoww67.fsf@xmission.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:57252 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1759663AbdEWAUf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 22 May 2017 20:20:35 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Weston Andros Adamson <dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] pnfs: Fix the check for requests in range of layout segment
+Date: Mon, 22 May 2017 20:20:23 -0400
+Message-Id: <ebc608f7753341754da8c1940a8646044b18152a.1495498753.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-05-22 at 14:04 -0500, Eric W. Biederman wrote:
-> David Howells <dhowells@redhat.com> writes:
-> 
-> > Here are a set of patches to define a container object for the kernel and
-> > to provide some methods to create and manipulate them.
-> > 
-> > The reason I think this is necessary is that the kernel has no idea how to
-> > direct upcalls to what userspace considers to be a container - current
-> > Linux practice appears to make a "container" just an arbitrarily chosen
-> > junction of namespaces, control groups and files, which may be changed
-> > individually within the "container".
-> > 
-> 
-> I think this might possibly be a useful abstraction for solving the
-> keyring upcalls if it was something created implicitly.
-> 
-> fork_into_container for use by keyring upcalls is currently a security
-> vulnerability as it allows escaping all of a containers cgroups.  But
-> you have that on your list of things to fix.  However you don't have
-> seccomp and a few other things.
-> 
-> Before we had kthreadd in the kernel upcalls always had issues because
-> the code to reset all of the userspace bits and make the forked
-> task suitable for running upcalls was always missing some detail.  It is
-> a very bug-prone kind of idiom that you are talking about.  It is doubly
-> bug-prone because the wrongness is visible to userspace and as such
-> might get become a frozen KABI guarantee.
-> 
-> Let me suggest a concrete alternative:
-> 
-> - At the time of mount observer the mounters user namespace.
-> - Find the mounters pid namespace.
-> - If the mounters pid namespace is owned by the mounters user namespace
->   walk up the pid namespace tree to the first pid namespace owned by
->   that user namespace.
-> - If the mounters pid namespace is not owned by the mounters user
->   namespace fail the mount it is going to need to make upcalls as
->   will not be possible.
-> - Hold a reference to the pid namespace that was found.
-> 
-> Then when an upcall needs to be made fork a child of the init process
-> of the specified pid namespace.  Or fail if the init process of the
-> pid namespace has died.
-> 
-> That should always work and it does not require keeping expensive state
-> where we did not have it previously.  Further because the semantics are
-> fork a child of a particular pid namespace's init as features get added
-> to the kernel this code remains well defined.
-> 
-> For ordinary request-key upcalls we should be able to use the same rules
-> and just not save/restore things in the kernel.
-> 
+It's possible and acceptable for NFS to attempt to add requests beyond the
+range of the current pgio->pg_lseg, a case which should be caught and
+limited by the pg_test operation.  However, the current handling of this
+case replaces pgio->pg_lseg with a new layout segment (after a WARN) within
+that pg_test operation.  That will cause all the previously added requests
+to be submitted with this new layout segment, which may not be valid for
+those requests.
 
-OK, that does seem like a reasonable idea. Note that it's not just
-request-key upcalls here that we're interested in, but anything that
-we'd typically spawn from kthreadd otherwise.
+Fix this problem by only returning zero for the number of bytes to coalesce
+from pg_test for this case which allows any previously added requests to
+complete on the current layout segment.  The check for requests starting
+out of range of the layout segment moves to pg_init, so that the
+replacement of pgio->pg_lseg will be done when the next request is added.
 
-That said, I worry a little about this. If the init process does a setns
-at the wrong time, suddenly you're doing the upcall in different
-namespaces than you intended.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/nfs/pnfs.c | 25 +++++++++++++++++--------
+ fs/nfs/pnfs.h | 10 ++++++++++
+ 2 files changed, 27 insertions(+), 8 deletions(-)
 
-Might it be better to use the init process of the container as the
-template like you suggest, but snapshot its "context" at a particular
-point in time instead?
-
-knfsd could do this when it's started, for instance...
-
-
-> A huge advantage of my alternative (other than not being a bit-rot
-> magnet) is that it should drop into existing container infrastructure
-> without problems.  The rule for container implementors is simple to use
-> security key infrastructure you need to have created a pid namespace in
-> your user namespace.
-> 
-> Eric
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index adc6ec28d4b5..c383d0913b54 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2094,12 +2094,26 @@ pnfs_generic_pg_check_layout(struct nfs_pageio_descriptor *pgio)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_check_layout);
+ 
++/*
++ * Check for any intersection between the request and the pgio->pg_lseg,
++ * and if none, put this pgio->pg_lseg away.
++ */
++static void
++pnfs_generic_pg_check_range(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	if (pgio->pg_lseg && !pnfs_lseg_request_intersecting(pgio->pg_lseg, req)) {
++		pnfs_put_lseg(pgio->pg_lseg);
++		pgio->pg_lseg = NULL;
++	}
++}
++
+ void
+ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ {
+ 	u64 rd_size = req->wb_bytes;
+ 
+ 	pnfs_generic_pg_check_layout(pgio);
++	pnfs_generic_pg_check_range(pgio, req);
+ 	if (pgio->pg_lseg == NULL) {
+ 		if (pgio->pg_dreq == NULL)
+ 			rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
+@@ -2131,6 +2145,7 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+ {
+ 	pnfs_generic_pg_check_layout(pgio);
++	pnfs_generic_pg_check_range(pgio, req);
+ 	if (pgio->pg_lseg == NULL) {
+ 		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 						   req->wb_context,
+@@ -2191,16 +2206,10 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio,
+ 		seg_end = pnfs_end_offset(pgio->pg_lseg->pls_range.offset,
+ 				     pgio->pg_lseg->pls_range.length);
+ 		req_start = req_offset(req);
+-		WARN_ON_ONCE(req_start >= seg_end);
++
+ 		/* start of request is past the last byte of this segment */
+-		if (req_start >= seg_end) {
+-			/* reference the new lseg */
+-			if (pgio->pg_ops->pg_cleanup)
+-				pgio->pg_ops->pg_cleanup(pgio);
+-			if (pgio->pg_ops->pg_init)
+-				pgio->pg_ops->pg_init(pgio, req);
++		if (req_start >= seg_end)
+ 			return 0;
+-		}
+ 
+ 		/* adjust 'size' iff there are fewer bytes left in the
+ 		 * segment than what nfs_generic_pg_test returned */
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 2d05b756a8d6..99731e3e332f 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -593,6 +593,16 @@ pnfs_lseg_range_intersecting(const struct pnfs_layout_range *l1,
+ 	return pnfs_is_range_intersecting(l1->offset, end1, l2->offset, end2);
+ }
+ 
++static inline bool
++pnfs_lseg_request_intersecting(struct pnfs_layout_segment *lseg, struct nfs_page *req)
++{
++	u64 seg_last = pnfs_end_offset(lseg->pls_range.offset, lseg->pls_range.length);
++	u64 req_last = req_offset(req) + req->wb_bytes;
++
++	return pnfs_is_range_intersecting(lseg->pls_range.offset, seg_last,
++				req_offset(req), req_last);
++}
++
+ extern unsigned int layoutstats_timer;
+ 
+ #ifdef NFS_DEBUG
 -- 
-Jeff Layton <jlayton@redhat.com>
+2.9.3
+
