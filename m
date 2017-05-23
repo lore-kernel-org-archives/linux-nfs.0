@@ -1,55 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bedivere.hansenpartnership.com ([66.63.167.143]:42056 "EHLO
-        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750885AbdEWPob (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 11:44:31 -0400
-Message-ID: <1495554267.27369.9.camel@HansenPartnership.com>
-Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
-From: James Bottomley <James.Bottomley@HansenPartnership.com>
-To: "Eric W. Biederman" <ebiederm@xmission.com>,
-        David Howells <dhowells@redhat.com>
-Cc: Aleksa Sarai <asarai@suse.de>, trondmy@primarydata.com,
-        mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        Linux Containers <containers@lists.linux-foundation.org>,
+Received: from mx1.redhat.com ([209.132.183.28]:57358 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1757989AbdEWQN0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 23 May 2017 12:13:26 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <87lgpoww67.fsf@xmission.com>
+References: <87lgpoww67.fsf@xmission.com> <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+To: ebiederm@xmission.com (Eric W. Biederman)
+Cc: dhowells@redhat.com, trondmy@primarydata.com, mszeredi@redhat.com,
+        linux-nfs@vger.kernel.org, jlayton@redhat.com,
         linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org
-Date: Tue, 23 May 2017 08:44:27 -0700
-In-Reply-To: <87bmqjmwl5.fsf@xmission.com>
-References: <87zie3mxkc.fsf@xmission.com>
-         <f167feeb-e653-12e3-eec8-24162f7f7c07@suse.de>
-         <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
-         <1495472039.2757.19.camel@HansenPartnership.com>
-         <2446.1495551216@warthog.procyon.org.uk>
-         <2961.1495552481@warthog.procyon.org.uk> <87bmqjmwl5.fsf@xmission.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 23 May 2017 17:13:18 +0100
+Message-ID: <3612.1495555998@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-05-23 at 10:17 -0500, Eric W. Biederman wrote:
-> David Howells <dhowells@redhat.com> writes:
-> > Eric W. Biederman <ebiederm@xmission.com> wrote:
-> > > It does solve this in userspace rather simply.
-> > 
-> > Ummm...  How?  The kernel DNS resolver is not namespace aware.
+Eric W. Biederman <ebiederm@xmission.com> wrote:
+
+> Let me suggest a concrete alternative:
 > 
-> But it works fine if called in the proper context and we have a 
-> defacto standard for where to put all of the files (the tricky part) 
-> if you are dealing with multiple network namespaces simultaneously.
+> - At the time of mount observer the mounters user namespace.
 
-I think you're missing each other's points slightly.
+Looking at sget(), I don't think a mounter can see a superblock outside of
+their namespace.  There is something icky in there whereby all automounts are
+currently transferred into the init_user_ns though (something to fix in my
+mount-context series) :-/
 
-What David is pointing out is that the kernel has a DNS cache
-(net/dns_resolver/) it can do name to IP translations, but isn't
-namespaced.  Once it has one entry all containers would see it if they
-cause a lookup to go through the kernel cache, so going through the
-cache you can't have a name resolving to different IP addresses on a
-per container basis.
+> - Find the mounters pid namespace.
+> - If the mounters pid namespace is owned by the mounters user namespace
+>   walk up the pid namespace tree to the first pid namespace owned by
+>   that user namespace.
+> - If the mounters pid namespace is not owned by the mounters user
+>   namespace fail the mount it is going to need to make upcalls as
+>   will not be possible.
 
-I think Eric's point is that if you need the same DNS names resolving
-to different IP addresses on a per container basis, you can do this in
-userspace today but you have to disable the in-kernel DNS cache.
+Take the following scenario:
 
-James
+ (1) Create a process with a new network namespace.  Set up the network to
+     route out of ethernet port 1.
 
+ (2) Create a child process with new network and user namespaces.  Set up the
+     network to route out of ethernet port 2.
 
+ (3) Mount an NFS volume in the process created in (2).
+
+The mount in (3) will fail unconditionally.
+
+> - Hold a reference to the pid namespace that was found.
+
+Take the following scenario:
+
+ (1) Create a process with new network and pid namespaces.  Set up the network
+     to route out of ethernet port 1.
+
+ (2) Create a child process with new network and pid namespaces.  Set up the
+     network to route out of ethernet port 2.
+
+ (3) Mount an NFS volume in the process created in (2).
+
+ (4) Create another child process with new network and pid namespaces.  Set up
+     the network to route out of ethernet port 3.
+
+ (5) In the process created in (4), access the NFS volume created in (3).
+
+The user namespace is the same all the way through.
+
+Now you're holding a ref to the pid namespace created in (1) - but that is of
+no use to you.  The upcall must take place in the network namespace that
+routes out through port 2.
+
+David
