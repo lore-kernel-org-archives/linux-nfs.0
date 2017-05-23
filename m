@@ -1,153 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55850 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752668AbdEWNwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 May 2017 09:52:13 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <1495472039.2757.19.camel@HansenPartnership.com>
-References: <1495472039.2757.19.camel@HansenPartnership.com> <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
-To: James Bottomley <James.Bottomley@HansenPartnership.com>
-Cc: dhowells@redhat.com, trondmy@primarydata.com, mszeredi@redhat.com,
-        linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org,
-        ebiederm@xmission.com,
-        Linux Containers <containers@lists.linux-foundation.org>
-Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:35524 "EHLO
+        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752380AbdEWOX7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:23:59 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 23 May 2017 14:52:09 +0100
-Message-ID: <32556.1495547529@warthog.procyon.org.uk>
+In-Reply-To: <1495491733.25946.3.camel@redhat.com>
+References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+ <87lgpoww67.fsf@xmission.com> <1495491733.25946.3.camel@redhat.com>
+From: Djalal Harouni <tixxdz@gmail.com>
+Date: Tue, 23 May 2017 16:23:55 +0200
+Message-ID: <CAEiveUchdQVvFCVxSVcvpxnT0gj=sidfsJfW5mOOWKL6LWddYQ@mail.gmail.com>
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "Eric W. Biederman" <ebiederm@xmission.com>,
+        David Howells <dhowells@redhat.com>, trondmy@primarydata.com,
+        Miklos Szeredi <mszeredi@redhat.com>,
+        linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        "open list:CONTROL GROUP (CGROUP)" <cgroups@vger.kernel.org>,
+        Andy Lutomirski <luto@kernel.org>,
+        Kees Cook <keescook@chromium.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
+On Tue, May 23, 2017 at 12:22 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Mon, 2017-05-22 at 14:04 -0500, Eric W. Biederman wrote:
+>> David Howells <dhowells@redhat.com> writes:
+>>
+>> > Here are a set of patches to define a container object for the kernel and
+>> > to provide some methods to create and manipulate them.
+>> >
+>> > The reason I think this is necessary is that the kernel has no idea how to
+>> > direct upcalls to what userspace considers to be a container - current
+>> > Linux practice appears to make a "container" just an arbitrarily chosen
+>> > junction of namespaces, control groups and files, which may be changed
+>> > individually within the "container".
+>> >
+>>
+>> I think this might possibly be a useful abstraction for solving the
+>> keyring upcalls if it was something created implicitly.
+>>
+>> fork_into_container for use by keyring upcalls is currently a security
+>> vulnerability as it allows escaping all of a containers cgroups.  But
+>> you have that on your list of things to fix.  However you don't have
+>> seccomp and a few other things.
+>>
+>> Before we had kthreadd in the kernel upcalls always had issues because
+>> the code to reset all of the userspace bits and make the forked
+>> task suitable for running upcalls was always missing some detail.  It is
+>> a very bug-prone kind of idiom that you are talking about.  It is doubly
+>> bug-prone because the wrongness is visible to userspace and as such
+>> might get become a frozen KABI guarantee.
+>>
+>> Let me suggest a concrete alternative:
+>>
+>> - At the time of mount observer the mounters user namespace.
+>> - Find the mounters pid namespace.
+>> - If the mounters pid namespace is owned by the mounters user namespace
+>>   walk up the pid namespace tree to the first pid namespace owned by
+>>   that user namespace.
+>> - If the mounters pid namespace is not owned by the mounters user
+>>   namespace fail the mount it is going to need to make upcalls as
+>>   will not be possible.
+>> - Hold a reference to the pid namespace that was found.
+>>
+>> Then when an upcall needs to be made fork a child of the init process
+>> of the specified pid namespace.  Or fail if the init process of the
+>> pid namespace has died.
+>>
+>> That should always work and it does not require keeping expensive state
+>> where we did not have it previously.  Further because the semantics are
+>> fork a child of a particular pid namespace's init as features get added
+>> to the kernel this code remains well defined.
+>>
+>> For ordinary request-key upcalls we should be able to use the same rules
+>> and just not save/restore things in the kernel.
+>>
+>
+> OK, that does seem like a reasonable idea. Note that it's not just
+> request-key upcalls here that we're interested in, but anything that
+> we'd typically spawn from kthreadd otherwise.
 
-> This sounds like a step in the wrong direction: the strength of the
-> current container interfaces in Linux is that people who set up
-> containers don't have to agree what they look like.
-
-It may be a strength, but it is also a problem.
-
-> So I can set up a user namespace without a mount namespace or an
-> architecture emulation container with only a mount namespace.
-
-(I presume you mean with only the mount namespace separate)
-
-Yep.  You can do that with this too.
-
-> But ignoring my fun foibles with containers and to give a concrete
-> example in terms of a popular orchestration system: in kubernetes,
-> where certain namespaces are shared across pods, do you imagine the
-> kernel's view of the "container" to be the pod or what kubernetes
-> thinks of as the container?
-
-Why not both?  If the net_ns is created in the pod container, then probably
-network-related upcalls should be directed there.  Unless instructed
-otherwise, upon creation a container object will inherit the caller's
-namespaces.
-
-> This is important, because half the examples you give below are network
-> related and usually pods share a network namespace.
-
-Yeah - I'm more familiar with upcalls made by NFS, AFS and keyrings.
-
-> >  (1) The DNS resolver.  ...
-> 
-> All persistent (written to fs data) has to be mount ns associated;
-> there are no ifs, ands and buts to that.  I agree this implies that if
-> you want to run a separate network namespace, you either take DNS from
-> the parent (a lot of containers do)
-
-My intention is to make the DNS cache per-network namespace within the kernel.
-Currently, there's only one and it's shared between all namespaces, but that
-won't work if you end up with two net namespaces that direct the same
-addresses to different things.
-
-> or you set up a daemon to run within the mount namespace.
-
-That's not currently an option: the DNS service upcalls only, and
-/sbin/request-key is invoked in the init_ns.  This performs the network
-accesses in the wrong network namespace.
-
-> I agree the latter is a slightly fiddly operation you have to get right, but
-> that's why we have orchestration systems.
-
-An orchestration system can use this.  This is not a replacement for
-Kubernetes or Docker or whatever.
-
-> What is it we could do with the above that we cannot do today?
-
-Upcall into an appropriate set of namespaces and keep the results separate by
-network namespace.
-
-> >  (2) NFS ID mapper.  The NFS ID mapping cache should also probably be
-> >      per-network namespace.
-> 
-> I think this is a view but not the only one:  Right at the moment, NFS
-> ID mapping is used as the one of the ways we can get the user namespace
-> ID mapping writes to file problems fixed ... that makes it a property
-> of the mount namespace for a lot of containers.
-
-In some ways it's really a property of the server, and two different servers
-may appear in two separate network namespaces with the same apparent name and
-address.
-
-It's not a property of the mount namespace because mount namespaces share
-superblocks, and this is done at the superblock level.
-
-Possibly it should be done on the vfsmount, as a filter on the interaction
-between userspace and kernel.
-
-> There are many other instances where they do exactly as you say, but what
-> I'm saying is that we don't want to lose the flexibility we currently have.
-
-You don't really lose any flexibility; if anything, you gain it.
-
-(Note that in case your objection is that I haven't yet implemented the
-ability to set namespaces arbitrarily in a namespace, that's on list of things
-to do that I included, as is adjusting the control groups.)
-
-> All mount namespaces have an owning user namespace, so the data
-> relations are already there in the kernel, is the problem simply
-> finding them?
-
-The superblocks used by the vfsmounts in a mount namespace aren't all
-necessarily in the same user_ns, so none of:
-
-	sb->s_user_ns == current_user_ns()
-	sb->s_user_ns == current->ns->mnt_ns->user_ns
-	current->ns->mnt_ns->user_ns == current_user_ns()
-
-need hold true that I can see.
-
-> > These patches are built on top of the mount context patchset so that
-> > namespaces can be properly propagated over submounts/automounts.
-> 
-> I'll stop here ... you get the idea that I think this is imposing a set
-> of restrictions that will come back to bite us later.
-
-What restrictions am I imposing?
-
-> If this is just for the sake of figuring out how to get keyring upcalls to
-> work, then I'm sure we can come up with something.
-
-No, it's not just for that, though, admittedly, all of the upcall mechanisms I
-outlined use request_key() at the core.
+Generalizing it will expose the kernel to exploits, today containers
+setup the mount namespace for images from the net, outdated
+filesystems, and users just do it,  it is easy. Having kthread running
+inside such contexts is not a good idea. That's today usecases.
 
 
-Really, a container is an anchor for the resources you need to make an upcall,
-but it can also be used to anchor other things.
+> That said, I worry a little about this. If the init process does a setns
+> at the wrong time, suddenly you're doing the upcall in different
+> namespaces than you intended.
 
-One thing I've been asked for by a number of people is a per-container keyring
-for the provision of authentication keys, fs decryption keys and other things
-- but there's no actual container off which this can be hung.
+That init process or whatever process inside owns that context and files.
 
-Another thing that could be useful is a list of what device files a container
-may access, so that we can allow limited mounting by the container root user
-within the container.
+Maybe for some cases it is better to use userspace that you can talk
+to through a standard kernel bus endpoint and request a resource as it
+is done within modern apps. The application at the other end acts
+using kthread helpers in the appropriate context.
 
-Now these could be made into their own namespaces or added to one that already
-exists - perhaps the mount namespace being the most logical.
 
-David
+-- 
+tixxdz
