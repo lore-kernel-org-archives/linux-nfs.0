@@ -1,41 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36803 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S968278AbdEWOyC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:54:02 -0400
-Subject: [PATCH v1 02/12] xprtrdma: On invalidation failure,
- remove MWs from rl_registered
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 23 May 2017 10:53:54 -0400
-Message-ID: <20170523145354.961.18377.stgit@manet.1015granger.net>
-In-Reply-To: <20170523142629.961.81233.stgit@manet.1015granger.net>
-References: <20170523142629.961.81233.stgit@manet.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:53876 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S967115AbdEWOxl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 23 May 2017 10:53:41 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <f167feeb-e653-12e3-eec8-24162f7f7c07@suse.de>
+References: <f167feeb-e653-12e3-eec8-24162f7f7c07@suse.de> <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk> <1495472039.2757.19.camel@HansenPartnership.com>
+To: Aleksa Sarai <asarai@suse.de>
+Cc: dhowells@redhat.com,
+        James Bottomley <James.Bottomley@HansenPartnership.com>,
+        trondmy@primarydata.com, mszeredi@redhat.com,
+        linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        Linux Containers <containers@lists.linux-foundation.org>,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org,
+        ebiederm@xmission.com
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 23 May 2017 15:53:36 +0100
+Message-ID: <2446.1495551216@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Callers assume the ro_unmap_sync and ro_unmap_safe methods empty
-the list of registered MRs. Ensure that all paths through
-fmr_op_unmap_sync() remove MWs from that list.
+Aleksa Sarai <asarai@suse.de> wrote:
 
-Fixes: 9d6b04097882 ("xprtrdma: Place registered MWs on a ... ")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/fmr_ops.c |    1 +
- 1 file changed, 1 insertion(+)
+> >> The reason I think this is necessary is that the kernel has no idea
+> >> how to direct upcalls to what userspace considers to be a container -
+> >> current Linux practice appears to make a "container" just an
+> >> arbitrarily chosen junction of namespaces, control groups and files,
+> >> which may be changed individually within the "container".
+> 
+> Just want to point out that if the kernel APIs for containers massively
+> change, then the OCI will have to completely rework how we describe containers
+> (and so will all existing runtimes).
+> 
+> Not to mention that while I don't like how hard it is (from a runtime
+> perspective) to actually set up a container securely, there are undoubtedly
+> benefits to having namespaces split out. The network namespace being separate
+> means that in certain contexts you actually don't want to create a new network
+> namespace when creating a container.
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 9ee573f..7b2de86 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -295,6 +295,7 @@ enum {
- 	pr_err("rpcrdma: ib_unmap_fmr failed (%i)\n", rc);
- 
- 	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
-+		list_del_init(&mw->mw_list);
- 		list_del_init(&mw->fmr.fm_mr->list);
- 		fmr_op_recover_mr(mw);
- 	}
+Yep, I quite agree.
 
+However, certain things need to be made per-net namespace that *aren't*.  DNS
+results, for instance.
+
+As an example, I could set up a client machine with two ethernet ports, set up
+two DNS+NFS servers, each of which think they're called "foo.bar" and attach
+each server to a different port on the client machine.  Then I could create a
+pair of containers on the client machine and route the network in each
+container to a different port.  Now there's a problem because the names of the
+cached DNS records for each port overlap.
+
+Further, the NFS idmapper needs to be able to direct its calls to the
+appropriate network.
+
+> I had some ideas about how you could implement bridging in userspace (as an
+> unprivileged user, for rootless containers) but if you can't join namespaces
+> individually then such a setup is not practically possible.
+
+I'm not proposing to take away the ability to arbitrarily set the namespaces
+in a container.  I haven't implemented it yet, but it was on the to-do list:
+
+ (7) Directly set a container's namespaces to allow cross-container
+     sharing.
+
+David
