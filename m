@@ -1,122 +1,128 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f170.google.com ([209.85.220.170]:36336 "EHLO
-        mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933703AbdEWOag (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:30:36 -0400
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33123 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S967105AbdEWOxt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:53:49 -0400
+Subject: [PATCH v1 01/12] xprtrdma: Don't defer MR recovery if ro_map fails
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 23 May 2017 10:53:46 -0400
+Message-ID: <20170523145346.961.93720.stgit@manet.1015granger.net>
+In-Reply-To: <20170523142629.961.81233.stgit@manet.1015granger.net>
+References: <20170523142629.961.81233.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <874lwbraxh.fsf@xmission.com>
-References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
- <87lgpoww67.fsf@xmission.com> <1495491733.25946.3.camel@redhat.com> <874lwbraxh.fsf@xmission.com>
-From: Djalal Harouni <tixxdz@gmail.com>
-Date: Tue, 23 May 2017 16:30:33 +0200
-Message-ID: <CAEiveUcbmm5m4=11ZppxAWppeoFWUBFpLC7dAZRuBCTFHR548g@mail.gmail.com>
-Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        David Howells <dhowells@redhat.com>, trondmy@primarydata.com,
-        Miklos Szeredi <mszeredi@redhat.com>,
-        linux-nfs@vger.kernel.org,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        "open list:CONTROL GROUP (CGROUP)" <cgroups@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 23, 2017 at 2:54 PM, Eric W. Biederman
-<ebiederm@xmission.com> wrote:
-> Jeff Layton <jlayton@redhat.com> writes:
->
->> On Mon, 2017-05-22 at 14:04 -0500, Eric W. Biederman wrote:
->>> David Howells <dhowells@redhat.com> writes:
->>>
->>> > Here are a set of patches to define a container object for the kernel and
->>> > to provide some methods to create and manipulate them.
->>> >
->>> > The reason I think this is necessary is that the kernel has no idea how to
->>> > direct upcalls to what userspace considers to be a container - current
->>> > Linux practice appears to make a "container" just an arbitrarily chosen
->>> > junction of namespaces, control groups and files, which may be changed
->>> > individually within the "container".
->>> >
->>>
->>> I think this might possibly be a useful abstraction for solving the
->>> keyring upcalls if it was something created implicitly.
->>>
->>> fork_into_container for use by keyring upcalls is currently a security
->>> vulnerability as it allows escaping all of a containers cgroups.  But
->>> you have that on your list of things to fix.  However you don't have
->>> seccomp and a few other things.
->>>
->>> Before we had kthreadd in the kernel upcalls always had issues because
->>> the code to reset all of the userspace bits and make the forked
->>> task suitable for running upcalls was always missing some detail.  It is
->>> a very bug-prone kind of idiom that you are talking about.  It is doubly
->>> bug-prone because the wrongness is visible to userspace and as such
->>> might get become a frozen KABI guarantee.
->>>
->>> Let me suggest a concrete alternative:
->>>
->>> - At the time of mount observer the mounters user namespace.
->>> - Find the mounters pid namespace.
->>> - If the mounters pid namespace is owned by the mounters user namespace
->>>   walk up the pid namespace tree to the first pid namespace owned by
->>>   that user namespace.
->>> - If the mounters pid namespace is not owned by the mounters user
->>>   namespace fail the mount it is going to need to make upcalls as
->>>   will not be possible.
->>> - Hold a reference to the pid namespace that was found.
->>>
->>> Then when an upcall needs to be made fork a child of the init process
->>> of the specified pid namespace.  Or fail if the init process of the
->>> pid namespace has died.
->>>
->>> That should always work and it does not require keeping expensive state
->>> where we did not have it previously.  Further because the semantics are
->>> fork a child of a particular pid namespace's init as features get added
->>> to the kernel this code remains well defined.
->>>
->>> For ordinary request-key upcalls we should be able to use the same rules
->>> and just not save/restore things in the kernel.
->>>
->>
->> OK, that does seem like a reasonable idea. Note that it's not just
->> request-key upcalls here that we're interested in, but anything that
->> we'd typically spawn from kthreadd otherwise.
->
-> General user mode helper *Nod*.
->
->> That said, I worry a little about this. If the init process does a setns
->> at the wrong time, suddenly you're doing the upcall in different
->> namespaces than you intended.
->>
->> Might it be better to use the init process of the container as the
->> template like you suggest, but snapshot its "context" at a particular
->> point in time instead?
->>
->> knfsd could do this when it's started, for instance...
->
-> The danger of a snapshot it time is something important (like cgroup
-> membership) might change.
->
-> It might be necessary to have this be an opt-in.   Perhaps even to the
-> point of starting a dedicated kthreadd.
->
-> Right now I think we need to figure out what it will take to solve this
-> in the kernel because I strongly suspect that solving this in userspace
-> is a cop out and we really aren't providing enough information to
-> userspace to run the helper in the proper context.    And I strongly
-> suspect that providing enough information from the kernel will be
-> roughly equivalent to solving this in the kernel.
+Deferred MR recovery does a DMA-unmapping of the MW. However, ro_map
+invokes rpcrdma_defer_mr_recovery in some error cases where the MW
+has not even been DMA-mapped yet.
 
-Maybe it depends on the cases, a general approach can be too difficult
-to handle especially from the security point. Maybe it is better to
-identify what operations need what context, and a userspace
-service/proxy can act using kthreadd with the right context... at
-least the shift to this model has been done for years now in the
-mobile industry.
+Avoid a DMA-unmapping error replacing rpcrdma_defer_mr_recovery.
 
+Also note that if ib_dma_map_sg is asked to map 0 nents, it will
+return 0. So the extra "if (i == 0)" check is no longer needed.
 
--- 
-tixxdz
+Fixes: 42fe28f60763 ("xprtrdma: Do not leak an MW during a DMA ...")
+Fixes: 505bbe64dd04 ("xprtrdma: Refactor MR recovery work queues")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/fmr_ops.c  |   18 +++++++++---------
+ net/sunrpc/xprtrdma/frwr_ops.c |   19 ++++++++-----------
+ 2 files changed, 17 insertions(+), 20 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 59e6402..9ee573f 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -213,13 +213,11 @@ enum {
+ 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
+ 			break;
+ 	}
+-	mw->mw_nents = i;
+ 	mw->mw_dir = rpcrdma_data_dir(writing);
+-	if (i == 0)
+-		goto out_dmamap_err;
+ 
+-	if (!ib_dma_map_sg(r_xprt->rx_ia.ri_device,
+-			   mw->mw_sg, mw->mw_nents, mw->mw_dir))
++	mw->mw_nents = ib_dma_map_sg(r_xprt->rx_ia.ri_device,
++				     mw->mw_sg, i, mw->mw_dir);
++	if (!mw->mw_nents)
+ 		goto out_dmamap_err;
+ 
+ 	for (i = 0, dma_pages = mw->fmr.fm_physaddrs; i < mw->mw_nents; i++)
+@@ -237,16 +235,18 @@ enum {
+ 	return mw->mw_nents;
+ 
+ out_dmamap_err:
+-	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
+-	       mw->mw_sg, mw->mw_nents);
+-	rpcrdma_defer_mr_recovery(mw);
++	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
++	       mw->mw_sg, i);
++	rpcrdma_put_mw(r_xprt, mw);
+ 	return -EIO;
+ 
+ out_maperr:
+ 	pr_err("rpcrdma: ib_map_phys_fmr %u@0x%llx+%i (%d) status %i\n",
+ 	       len, (unsigned long long)dma_pages[0],
+ 	       pageoff, mw->mw_nents, rc);
+-	rpcrdma_defer_mr_recovery(mw);
++	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
++			mw->mw_sg, mw->mw_nents, mw->mw_dir);
++	rpcrdma_put_mw(r_xprt, mw);
+ 	return -EIO;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index f81dd93..33ede72 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -355,7 +355,7 @@
+ 	struct ib_mr *mr;
+ 	struct ib_reg_wr *reg_wr;
+ 	struct ib_send_wr *bad_wr;
+-	int rc, i, n, dma_nents;
++	int rc, i, n;
+ 	u8 key;
+ 
+ 	mw = NULL;
+@@ -391,14 +391,10 @@
+ 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
+ 			break;
+ 	}
+-	mw->mw_nents = i;
+ 	mw->mw_dir = rpcrdma_data_dir(writing);
+-	if (i == 0)
+-		goto out_dmamap_err;
+ 
+-	dma_nents = ib_dma_map_sg(ia->ri_device,
+-				  mw->mw_sg, mw->mw_nents, mw->mw_dir);
+-	if (!dma_nents)
++	mw->mw_nents = ib_dma_map_sg(ia->ri_device, mw->mw_sg, i, mw->mw_dir);
++	if (!mw->mw_nents)
+ 		goto out_dmamap_err;
+ 
+ 	n = ib_map_mr_sg(mr, mw->mw_sg, mw->mw_nents, NULL, PAGE_SIZE);
+@@ -436,13 +432,14 @@
+ 	return mw->mw_nents;
+ 
+ out_dmamap_err:
+-	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
+-	       mw->mw_sg, mw->mw_nents);
+-	rpcrdma_defer_mr_recovery(mw);
++	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
++	       mw->mw_sg, i);
++	frmr->fr_state = FRMR_IS_INVALID;
++	rpcrdma_put_mw(r_xprt, mw);
+ 	return -EIO;
+ 
+ out_mapmr_err:
+-	pr_err("rpcrdma: failed to map mr %p (%u/%u)\n",
++	pr_err("rpcrdma: failed to map mr %p (%d/%d)\n",
+ 	       frmr->fr_mr, n, mw->mw_nents);
+ 	rpcrdma_defer_mr_recovery(mw);
+ 	return -EIO;
+
