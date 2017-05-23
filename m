@@ -1,56 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:55104 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752012AbdEWMXf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 May 2017 08:23:35 -0400
-Date: Tue, 23 May 2017 08:23:34 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: hch <hch@lst.de>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: remove function pointer casts and constify function tables
-Message-ID: <20170523122334.GA4298@fieldses.org>
-References: <20170512161701.22468-1-hch@lst.de>
- <1494620040.19467.1.camel@primarydata.com>
- <20170513072557.GA14602@lst.de>
- <1494691819.31377.1.camel@primarydata.com>
- <20170515152134.GC24547@fieldses.org>
- <20170515154450.GA18630@lst.de>
- <20170523081159.GA19216@lst.de>
+Received: from out01.mta.xmission.com ([166.70.13.231]:38016 "EHLO
+        out01.mta.xmission.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758137AbdEWNAi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 09:00:38 -0400
+From: ebiederm@xmission.com (Eric W. Biederman)
+To: Jeff Layton <jlayton@redhat.com>
+Cc: David Howells <dhowells@redhat.com>, trondmy@primarydata.com,
+        mszeredi@redhat.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org
+References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+        <87lgpoww67.fsf@xmission.com> <1495491733.25946.3.camel@redhat.com>
+Date: Tue, 23 May 2017 07:54:02 -0500
+In-Reply-To: <1495491733.25946.3.camel@redhat.com> (Jeff Layton's message of
+        "Mon, 22 May 2017 18:22:13 -0400")
+Message-ID: <874lwbraxh.fsf@xmission.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170523081159.GA19216@lst.de>
+Content-Type: text/plain
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 23, 2017 at 10:11:59AM +0200, hch wrote:
-> On Mon, May 15, 2017 at 05:44:50PM +0200, hch wrote:
-> > On Mon, May 15, 2017 at 11:21:34AM -0400, bfields@fieldses.org wrote:
-> > > On Sat, May 13, 2017 at 04:10:21PM +0000, Trond Myklebust wrote:
-> > > > Right, so the alternative is that either Bruce or Anna merges the full
-> > > > set, and then both pull that common base into their linux-next branches
-> > > > on linux-nfs.org, and we then ask everyone to develop their 4.13
-> > > > patches against those branches. That would work too...
-> > > 
-> > > I like that.  Christoph, could you just give us a 12-rc1-based branch to
-> > > base our 4.13 work on?
-> > 
-> >     git://git.infradead.org/users/hch/vfs.git nfs-ops
-> > 
-> > Gitweb:
-> > 
-> >     http://git.infradead.org/users/hch/vfs.git/shortlog/refs/heads/nfs-ops
-> 
-> Any progress on picking this up somewhere?
+Jeff Layton <jlayton@redhat.com> writes:
 
-Unfortunately I can't get anything through testing.  It's not your
-patches, it's something in -rc1.  My server VM stops responding to
-any network traffic randomly in the middle of a run.  If I log in from a
-serial console, I see the interface is up and everything looks OK.  I
-haven't had the chance to do much more, and I'm not sure where to
-start....  I started a git-bisect attempt, but there are several
-unrelated problems, and I'm not sure this one is 100% reproduceable.
+> On Mon, 2017-05-22 at 14:04 -0500, Eric W. Biederman wrote:
+>> David Howells <dhowells@redhat.com> writes:
+>> 
+>> > Here are a set of patches to define a container object for the kernel and
+>> > to provide some methods to create and manipulate them.
+>> > 
+>> > The reason I think this is necessary is that the kernel has no idea how to
+>> > direct upcalls to what userspace considers to be a container - current
+>> > Linux practice appears to make a "container" just an arbitrarily chosen
+>> > junction of namespaces, control groups and files, which may be changed
+>> > individually within the "container".
+>> > 
+>> 
+>> I think this might possibly be a useful abstraction for solving the
+>> keyring upcalls if it was something created implicitly.
+>> 
+>> fork_into_container for use by keyring upcalls is currently a security
+>> vulnerability as it allows escaping all of a containers cgroups.  But
+>> you have that on your list of things to fix.  However you don't have
+>> seccomp and a few other things.
+>> 
+>> Before we had kthreadd in the kernel upcalls always had issues because
+>> the code to reset all of the userspace bits and make the forked
+>> task suitable for running upcalls was always missing some detail.  It is
+>> a very bug-prone kind of idiom that you are talking about.  It is doubly
+>> bug-prone because the wrongness is visible to userspace and as such
+>> might get become a frozen KABI guarantee.
+>> 
+>> Let me suggest a concrete alternative:
+>> 
+>> - At the time of mount observer the mounters user namespace.
+>> - Find the mounters pid namespace.
+>> - If the mounters pid namespace is owned by the mounters user namespace
+>>   walk up the pid namespace tree to the first pid namespace owned by
+>>   that user namespace.
+>> - If the mounters pid namespace is not owned by the mounters user
+>>   namespace fail the mount it is going to need to make upcalls as
+>>   will not be possible.
+>> - Hold a reference to the pid namespace that was found.
+>> 
+>> Then when an upcall needs to be made fork a child of the init process
+>> of the specified pid namespace.  Or fail if the init process of the
+>> pid namespace has died.
+>> 
+>> That should always work and it does not require keeping expensive state
+>> where we did not have it previously.  Further because the semantics are
+>> fork a child of a particular pid namespace's init as features get added
+>> to the kernel this code remains well defined.
+>> 
+>> For ordinary request-key upcalls we should be able to use the same rules
+>> and just not save/restore things in the kernel.
+>> 
+>
+> OK, that does seem like a reasonable idea. Note that it's not just
+> request-key upcalls here that we're interested in, but anything that
+> we'd typically spawn from kthreadd otherwise.
 
---b.
+General user mode helper *Nod*.
+
+> That said, I worry a little about this. If the init process does a setns
+> at the wrong time, suddenly you're doing the upcall in different
+> namespaces than you intended.
+>
+> Might it be better to use the init process of the container as the
+> template like you suggest, but snapshot its "context" at a particular
+> point in time instead?
+>
+> knfsd could do this when it's started, for instance...
+
+The danger of a snapshot it time is something important (like cgroup
+membership) might change.
+
+It might be necessary to have this be an opt-in.   Perhaps even to the
+point of starting a dedicated kthreadd.
+
+Right now I think we need to figure out what it will take to solve this
+in the kernel because I strongly suspect that solving this in userspace
+is a cop out and we really aren't providing enough information to
+userspace to run the helper in the proper context.    And I strongly
+suspect that providing enough information from the kernel will be
+roughly equivalent to solving this in the kernel.
+
+The only big issue I have had with the suggestion of a dedicated thread
+in the past is the overhead something like that will breing with it.
+
+Eric
