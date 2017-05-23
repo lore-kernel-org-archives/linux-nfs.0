@@ -1,103 +1,153 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49268 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55850 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1763258AbdEWNLH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 May 2017 09:11:07 -0400
-Date: Tue, 23 May 2017 14:11:05 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH v2 01/10] SUNRPC: add AF_VSOCK support to addr.[ch]
-Message-ID: <20170523131105.GA17369@stefanha-x1.localdomain>
-References: <1475834514-4058-1-git-send-email-stefanha@redhat.com>
- <1475834514-4058-2-git-send-email-stefanha@redhat.com>
- <1495116264.3956.3.camel@redhat.com>
- <20170522122105.GH12205@stefanha-x1.localdomain>
- <1495457696.2816.2.camel@redhat.com>
+        id S1752668AbdEWNwN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 23 May 2017 09:52:13 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1495472039.2757.19.camel@HansenPartnership.com>
+References: <1495472039.2757.19.camel@HansenPartnership.com> <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+To: James Bottomley <James.Bottomley@HansenPartnership.com>
+Cc: dhowells@redhat.com, trondmy@primarydata.com, mszeredi@redhat.com,
+        linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org,
+        ebiederm@xmission.com,
+        Linux Containers <containers@lists.linux-foundation.org>
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="qMm9M+Fa2AknHoGS"
-In-Reply-To: <1495457696.2816.2.camel@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 23 May 2017 14:52:09 +0100
+Message-ID: <32556.1495547529@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
 
---qMm9M+Fa2AknHoGS
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> This sounds like a step in the wrong direction: the strength of the
+> current container interfaces in Linux is that people who set up
+> containers don't have to agree what they look like.
 
-On Mon, May 22, 2017 at 08:54:56AM -0400, Jeff Layton wrote:
-> On Mon, 2017-05-22 at 13:21 +0100, Stefan Hajnoczi wrote:
-> > On Thu, May 18, 2017 at 10:04:24AM -0400, Jeff Layton wrote:
-> > > On Fri, 2016-10-07 at 11:01 +0100, Stefan Hajnoczi wrote:
-> > > > @@ -249,6 +302,10 @@ size_t rpc_pton(struct net *net, const char *b=
-uf, const size_t buflen,
-> > > >  {
-> > > >  	unsigned int i;
-> > > > =20
-> > > > +	/* TODO is there a nicer way to distinguish vsock addresses? */
-> > > > +	if (strncmp(buf, "vsock:", 6) =3D=3D 0)
-> > > > +		return rpc_pton_vsock(buf, buflen, sap, salen);
-> > > > +
-> > >=20
-> > > Ick, what if I have a host on the network named "vsock"? I think you'=
-ll
-> > > need to come up with a different way to do this.
-> >=20
-> > There is no collision.  This function doesn't do name resolution and no
-> > valid IPv4/IPv6 address starts with "vsock:".
-> >=20
->=20
-> Doh! Of course... :)
->=20
-> > I am open to suggestions for a cleaner way of doing it though :).
->=20
-> Does lsof recognize vsock sockets? How does it format them?
+It may be a strength, but it is also a problem.
 
-lsof only prints a generic socket representation:
+> So I can set up a user namespace without a mount namespace or an
+> architecture emulation container with only a mount namespace.
 
-COMMAND     PID   TID       USER   FD      TYPE             DEVICE  SIZE/OF=
-F       NODE NAME
-nc-vsock  20775         stefanha    3u     sock                0,9       0t=
-0    1518648 protocol: AF_VSOCK
+(I presume you mean with only the mount namespace separate)
 
-Depending on a program's command-line syntax, addresses are usually
-written as CID:PORT, or vsock:CID:PORT if the program must differentiate
-between address types from the string itself.
+Yep.  You can do that with this too.
 
-QEMU, qemu-guest-agent, and systemd have syntax for specifying AF_VSOCK
-sockets.  For example:
-https://github.com/systemd/systemd/blob/master/src/test/test-socket-util.c#=
-L98
+> But ignoring my fun foibles with containers and to give a concrete
+> example in terms of a popular orchestration system: in kubernetes,
+> where certain namespaces are shared across pods, do you imagine the
+> kernel's view of the "container" to be the pod or what kubernetes
+> thinks of as the container?
 
-If I have time to submit lsof patches I'll propose the following syntax
-(a combination of how AF_UNIX and AF_INET TCP sockets are formatted):
+Why not both?  If the net_ns is created in the pod container, then probably
+network-related upcalls should be directed there.  Unless instructed
+otherwise, upon creation a container object will inherit the caller's
+namespaces.
 
-COMMAND     PID   TID       USER   FD      TYPE             DEVICE  SIZE/OF=
-F       NODE NAME
-nc-vsock  20775         stefanha    3u     vsock           1520136       0t=
-0    1520136 local=3D2:1234 state=3DLISTEN type=3DSTREAM
-nc-vsock  20775         stefanha    4u     vsock           1520138       0t=
-0    1520138 local=3D2:1234 remote=3D3:51213 state=3DCONNECTED type=3DSTREAM
+> This is important, because half the examples you give below are network
+> related and usually pods share a network namespace.
 
-Stefan
+Yeah - I'm more familiar with upcalls made by NFS, AFS and keyrings.
 
---qMm9M+Fa2AknHoGS
-Content-Type: application/pgp-signature; name="signature.asc"
+> >  (1) The DNS resolver.  ...
+> 
+> All persistent (written to fs data) has to be mount ns associated;
+> there are no ifs, ands and buts to that.  I agree this implies that if
+> you want to run a separate network namespace, you either take DNS from
+> the parent (a lot of containers do)
 
------BEGIN PGP SIGNATURE-----
+My intention is to make the DNS cache per-network namespace within the kernel.
+Currently, there's only one and it's shared between all namespaces, but that
+won't work if you end up with two net namespaces that direct the same
+addresses to different things.
 
-iQEcBAEBAgAGBQJZJDTpAAoJEJykq7OBq3PIzMMH/iQndk7NHVep4QRvP6J1QdnL
-5oawx+x6mtJ6SI1t40QExbkeQsZYbcNHCyWqPT05r0lfAFzrg4m9Ek6nDZEpKRjk
-atw6AX6CPp7pMaUWv61ngaSxrvBosWQs/wlZJxIaMdqU90QwcOZv24zKNGNiYBAf
-SaBoHaobm5JaA6dGnJx0ssN6r1pAZHas6Wmc3BpNVg60gMKNO2piBLeD5mywofkd
-RW9f5ruK/fI0bc+azBTY+BxqHn1SFBuRv4+/ZqCJZDyo6IkhfF85S5ymueOTCgQD
-i40d48HM0tH7oymDBSyvbmy//BDCKrSMv+nhHon+0HtUNd9tYocsCU3gYN6e7Gk=
-=YIxC
------END PGP SIGNATURE-----
+> or you set up a daemon to run within the mount namespace.
 
---qMm9M+Fa2AknHoGS--
+That's not currently an option: the DNS service upcalls only, and
+/sbin/request-key is invoked in the init_ns.  This performs the network
+accesses in the wrong network namespace.
+
+> I agree the latter is a slightly fiddly operation you have to get right, but
+> that's why we have orchestration systems.
+
+An orchestration system can use this.  This is not a replacement for
+Kubernetes or Docker or whatever.
+
+> What is it we could do with the above that we cannot do today?
+
+Upcall into an appropriate set of namespaces and keep the results separate by
+network namespace.
+
+> >  (2) NFS ID mapper.  The NFS ID mapping cache should also probably be
+> >      per-network namespace.
+> 
+> I think this is a view but not the only one:  Right at the moment, NFS
+> ID mapping is used as the one of the ways we can get the user namespace
+> ID mapping writes to file problems fixed ... that makes it a property
+> of the mount namespace for a lot of containers.
+
+In some ways it's really a property of the server, and two different servers
+may appear in two separate network namespaces with the same apparent name and
+address.
+
+It's not a property of the mount namespace because mount namespaces share
+superblocks, and this is done at the superblock level.
+
+Possibly it should be done on the vfsmount, as a filter on the interaction
+between userspace and kernel.
+
+> There are many other instances where they do exactly as you say, but what
+> I'm saying is that we don't want to lose the flexibility we currently have.
+
+You don't really lose any flexibility; if anything, you gain it.
+
+(Note that in case your objection is that I haven't yet implemented the
+ability to set namespaces arbitrarily in a namespace, that's on list of things
+to do that I included, as is adjusting the control groups.)
+
+> All mount namespaces have an owning user namespace, so the data
+> relations are already there in the kernel, is the problem simply
+> finding them?
+
+The superblocks used by the vfsmounts in a mount namespace aren't all
+necessarily in the same user_ns, so none of:
+
+	sb->s_user_ns == current_user_ns()
+	sb->s_user_ns == current->ns->mnt_ns->user_ns
+	current->ns->mnt_ns->user_ns == current_user_ns()
+
+need hold true that I can see.
+
+> > These patches are built on top of the mount context patchset so that
+> > namespaces can be properly propagated over submounts/automounts.
+> 
+> I'll stop here ... you get the idea that I think this is imposing a set
+> of restrictions that will come back to bite us later.
+
+What restrictions am I imposing?
+
+> If this is just for the sake of figuring out how to get keyring upcalls to
+> work, then I'm sure we can come up with something.
+
+No, it's not just for that, though, admittedly, all of the upcall mechanisms I
+outlined use request_key() at the core.
+
+
+Really, a container is an anchor for the resources you need to make an upcall,
+but it can also be used to anchor other things.
+
+One thing I've been asked for by a number of people is a per-container keyring
+for the provision of authentication keys, fs decryption keys and other things
+- but there's no actual container off which this can be hung.
+
+Another thing that could be useful is a list of what device files a container
+may access, so that we can allow limited mounting by the container root user
+within the container.
+
+Now these could be made into their own namespaces or added to one that already
+exists - perhaps the mount namespace being the most logical.
+
+David
