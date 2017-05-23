@@ -1,126 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f170.google.com ([209.85.223.170]:33083 "EHLO
-        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S968302AbdEWOyx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:54:53 -0400
-Subject: [PATCH v1 09/12] xprtrdma: Demote "connect" log messages
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 23 May 2017 10:54:51 -0400
-Message-ID: <20170523145450.961.34867.stgit@manet.1015granger.net>
-In-Reply-To: <20170523142629.961.81233.stgit@manet.1015granger.net>
-References: <20170523142629.961.81233.stgit@manet.1015granger.net>
+Received: from out1-smtp.messagingengine.com ([66.111.4.25]:49543 "EHLO
+        out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S968318AbdEWOy4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:54:56 -0400
+Message-Id: <1495551292.2742620.985957224.3FCF254A@webmail.messagingengine.com>
+From: Colin Walters <walters@verbum.org>
+To: Djalal Harouni <tixxdz@gmail.com>,
+        "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        David Howells <dhowells@redhat.com>, trondmy@primarydata.com,
+        Miklos Szeredi <mszeredi@redhat.com>,
+        linux-nfs@vger.kernel.org,
+        "linux-kernel" <linux-kernel@vger.kernel.org>,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Linux FS Devel <linux-fsdevel@vger.kernel.org>,
+        "open list:CONTROL GROUP (CGROUP)" <cgroups@vger.kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
+Date: Tue, 23 May 2017 10:54:52 -0400
+In-Reply-To: <CAEiveUcbmm5m4=11ZppxAWppeoFWUBFpLC7dAZRuBCTFHR548g@mail.gmail.com>
+References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+ <87lgpoww67.fsf@xmission.com> <1495491733.25946.3.camel@redhat.com>
+ <874lwbraxh.fsf@xmission.com>
+ <CAEiveUcbmm5m4=11ZppxAWppeoFWUBFpLC7dAZRuBCTFHR548g@mail.gmail.com>
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some have complained about the log messages generated when xprtrdma
-opens or closes a connection to a server. When an NFS mount is
-mostly idle these can appear every few minutes as the client idles
-out the connection and reconnects.
+On Tue, May 23, 2017, at 10:30 AM, Djalal Harouni wrote:
+>
+> Maybe it depends on the cases, a general approach can be too difficult
+> to handle especially from the security point. Maybe it is better to
+> identify what operations need what context, and a userspace
+> service/proxy can act using kthreadd with the right context... at
+> least the shift to this model has been done for years now in the
+> mobile industry.
 
-Connection and disconnection is a normal part of operation, and not
-exceptional, so change these to dprintk's for now. At some point
-all of these will be converted to tracepoints, but that's for
-another day.
+Why not drop the upcall model in favor of having userspace
+monitor events via a (more efficient) protocol and react to them on its own?
+It's just generally more flexible and avoids all of those issues like
+replicating the seccomp configuration, etc.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/verbs.c |   44 ++++++++-----------------------------------
- 1 file changed, 8 insertions(+), 36 deletions(-)
+Something like inotify/signalfd could be a precedent around having a read()/poll()able
+fd.  /proc/keys-requests ?
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index a215a87..e4171f2 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -243,8 +243,6 @@
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- 	struct sockaddr *sap = (struct sockaddr *)&ep->rep_remote_addr;
- #endif
--	struct ib_qp_attr *attr = &ia->ri_qp_attr;
--	struct ib_qp_init_attr *iattr = &ia->ri_qp_init_attr;
- 	int connstate = 0;
- 
- 	switch (event->event) {
-@@ -267,7 +265,8 @@
- 		break;
- 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
--		pr_info("rpcrdma: removing device for %pIS:%u\n",
-+		pr_info("rpcrdma: removing device %s for %pIS:%u\n",
-+			ia->ri_device->name,
- 			sap, rpc_get_port(sap));
- #endif
- 		set_bit(RPCRDMA_IAF_REMOVING, &ia->ri_flags);
-@@ -282,13 +281,6 @@
- 		return 1;
- 	case RDMA_CM_EVENT_ESTABLISHED:
- 		connstate = 1;
--		ib_query_qp(ia->ri_id->qp, attr,
--			    IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
--			    iattr);
--		dprintk("RPC:       %s: %d responder resources"
--			" (%d initiator)\n",
--			__func__, attr->max_dest_rd_atomic,
--			attr->max_rd_atomic);
- 		rpcrdma_update_connect_private(xprt, &event->param.conn);
- 		goto connected;
- 	case RDMA_CM_EVENT_CONNECT_ERROR:
-@@ -298,11 +290,9 @@
- 		connstate = -ENETDOWN;
- 		goto connected;
- 	case RDMA_CM_EVENT_REJECTED:
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
--		pr_info("rpcrdma: connection to %pIS:%u on %s rejected: %s\n",
--			sap, rpc_get_port(sap), ia->ri_device->name,
-+		dprintk("rpcrdma: connection to %pIS:%u rejected: %s\n",
-+			sap, rpc_get_port(sap),
- 			rdma_reject_msg(id, event->status));
--#endif
- 		connstate = -ECONNREFUSED;
- 		if (event->status == IB_CM_REJ_STALE_CONN)
- 			connstate = -EAGAIN;
-@@ -310,37 +300,19 @@
- 	case RDMA_CM_EVENT_DISCONNECTED:
- 		connstate = -ECONNABORTED;
- connected:
--		dprintk("RPC:       %s: %sconnected\n",
--					__func__, connstate > 0 ? "" : "dis");
- 		atomic_set(&xprt->rx_buf.rb_credits, 1);
- 		ep->rep_connected = connstate;
- 		rpcrdma_conn_func(ep);
- 		wake_up_all(&ep->rep_connect_wait);
- 		/*FALLTHROUGH*/
- 	default:
--		dprintk("RPC:       %s: %pIS:%u (ep 0x%p): %s\n",
--			__func__, sap, rpc_get_port(sap), ep,
--			rdma_event_msg(event->event));
-+		dprintk("RPC:       %s: %pIS:%u on %s/%s (ep 0x%p): %s\n",
-+			__func__, sap, rpc_get_port(sap),
-+			ia->ri_device->name, ia->ri_ops->ro_displayname,
-+			ep, rdma_event_msg(event->event));
- 		break;
- 	}
- 
--#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
--	if (connstate == 1) {
--		int ird = attr->max_dest_rd_atomic;
--		int tird = ep->rep_remote_cma.responder_resources;
--
--		pr_info("rpcrdma: connection to %pIS:%u on %s, memreg '%s', %d credits, %d responders%s\n",
--			sap, rpc_get_port(sap),
--			ia->ri_device->name,
--			ia->ri_ops->ro_displayname,
--			xprt->rx_buf.rb_max_requests,
--			ird, ird < 4 && ird < tird / 2 ? " (low!)" : "");
--	} else if (connstate < 0) {
--		pr_info("rpcrdma: connection to %pIS:%u closed (%d)\n",
--			sap, rpc_get_port(sap), connstate);
--	}
--#endif
--
- 	return 0;
- }
- 
-
+Then if you create a new user namespace, and open /proc/keys-requests, the
+kernel will always write to that instead of calling /sbin/request-key.
