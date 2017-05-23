@@ -1,81 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35782 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1759200AbdEWOzB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:55:01 -0400
-Subject: [PATCH v1 10/12] xprtrdma: FMR does not need list_del_init()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 23 May 2017 10:54:59 -0400
-Message-ID: <20170523145459.961.69893.stgit@manet.1015granger.net>
-In-Reply-To: <20170523142629.961.81233.stgit@manet.1015granger.net>
-References: <20170523142629.961.81233.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:41416 "EHLO
+        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1762701AbdEWPCg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 11:02:36 -0400
+Message-ID: <1495551751.10876.17.camel@HansenPartnership.com>
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: David Howells <dhowells@redhat.com>
+Cc: mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        Linux Containers <containers@lists.linux-foundation.org>,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        cgroups@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        trondmy@primarydata.com, ebiederm@xmission.com
+Date: Tue, 23 May 2017 08:02:31 -0700
+In-Reply-To: <32556.1495547529@warthog.procyon.org.uk>
+References: <1495472039.2757.19.camel@HansenPartnership.com>
+         <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+         <32556.1495547529@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up.
+On Tue, 2017-05-23 at 14:52 +0100, David Howells wrote:
+> James Bottomley <James.Bottomley@HansenPartnership.com> wrote:
+> 
+> > This sounds like a step in the wrong direction: the strength of the
+> > current container interfaces in Linux is that people who set up
+> > containers don't have to agree what they look like.
+> 
+> It may be a strength, but it is also a problem.
+> 
+> > So I can set up a user namespace without a mount namespace or an
+> > architecture emulation container with only a mount namespace.
+> 
+> (I presume you mean with only the mount namespace separate)
+> 
+> Yep.  You can do that with this too.
+> 
+> > But ignoring my fun foibles with containers and to give a concrete
+> > example in terms of a popular orchestration system: in kubernetes,
+> > where certain namespaces are shared across pods, do you imagine the
+> > kernel's view of the "container" to be the pod or what kubernetes
+> > thinks of as the container?
+> 
+> Why not both?  If the net_ns is created in the pod container, then
+> probably
+> network-related upcalls should be directed there.  Unless instructed
+> otherwise, upon creation a container object will inherit the caller's
+> namespaces.
 
-Commit 38f1932e60ba ("xprtrdma: Remove FMRs from the unmap list
-after unmapping") utilized list_del_init() to try to prevent some
-list corruption. The corruption was actually caused by the reply
-handler racing with a signal. Now that MR invalidation is properly
-serialized, list_del_init() can safely be replaced.
+The pod isn't a container, it's a collection of containers.  Lets say
+each container has a separate mount namespace but shares a network
+namespace (this is a gross simplification, there are many other ways
+you can set up a pod, but this one illustrates the point).  For your
+upcall you'd have to pick a kubernetes container and you don't have the
+information to do that, even with your current patches, because what
+kubernetes has done.  This is where your view of "container" doesn't
+match the kubernetes view.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/fmr_ops.c |   18 ++++++++++--------
- 1 file changed, 10 insertions(+), 8 deletions(-)
+> > This is important, because half the examples you give below are 
+> > network related and usually pods share a network namespace.
+> 
+> Yeah - I'm more familiar with upcalls made by NFS, AFS and keyrings.
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 2f4eacd..d3f84bb 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -91,7 +91,7 @@ enum {
- 
- 	list_add(&mw->fmr.fm_mr->list, &l);
- 	rc = ib_unmap_fmr(&l);
--	list_del_init(&mw->fmr.fm_mr->list);
-+	list_del(&mw->fmr.fm_mr->list);
- 	return rc;
- }
- 
-@@ -261,7 +261,7 @@ enum {
- static void
- fmr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct list_head *mws)
- {
--	struct rpcrdma_mw *mw, *tmp;
-+	struct rpcrdma_mw *mw;
- 	LIST_HEAD(unmap_list);
- 	int rc;
- 
-@@ -283,9 +283,11 @@ enum {
- 	/* ORDER: Now DMA unmap all of the req's MRs, and return
- 	 * them to the free MW list.
- 	 */
--	list_for_each_entry_safe(mw, tmp, mws, mw_list) {
--		list_del_init(&mw->mw_list);
--		list_del_init(&mw->fmr.fm_mr->list);
-+	while (!list_empty(mws)) {
-+		mw = rpcrdma_pop_mw(mws);
-+		dprintk("RPC:       %s: DMA unmapping fmr %p\n",
-+			__func__, &mw->fmr);
-+		list_del(&mw->fmr.fm_mr->list);
- 		ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
- 				mw->mw_sg, mw->mw_nents, mw->mw_dir);
- 		rpcrdma_put_mw(r_xprt, mw);
-@@ -296,9 +298,9 @@ enum {
- out_reset:
- 	pr_err("rpcrdma: ib_unmap_fmr failed (%i)\n", rc);
- 
--	list_for_each_entry_safe(mw, tmp, mws, mw_list) {
--		list_del_init(&mw->mw_list);
--		list_del_init(&mw->fmr.fm_mr->list);
-+	while (!list_empty(mws)) {
-+		mw = rpcrdma_pop_mw(mws);
-+		list_del(&mw->fmr.fm_mr->list);
- 		fmr_op_recover_mr(mw);
- 	}
- }
+OK, so rather than getting into the technical back and forth below can
+we agree that the kernel can't have a unitary view of "container"
+because the current use cases (the orchestration systems) don't have
+one?  Then the next step becomes how can we add an abstraction that
+gives you what you want (as far as I can tell basically identifying a
+set of namespaces for an upcall) in a way that doesn't bind the kernel
+to have a unitary view of a container? And then we can tack the ideas
+on to the Jeff/Eric subthread.
+
+James
 
