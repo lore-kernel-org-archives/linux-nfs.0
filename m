@@ -1,69 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53876 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S967115AbdEWOxl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 May 2017 10:53:41 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <f167feeb-e653-12e3-eec8-24162f7f7c07@suse.de>
-References: <f167feeb-e653-12e3-eec8-24162f7f7c07@suse.de> <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk> <1495472039.2757.19.camel@HansenPartnership.com>
-To: Aleksa Sarai <asarai@suse.de>
-Cc: dhowells@redhat.com,
-        James Bottomley <James.Bottomley@HansenPartnership.com>,
-        trondmy@primarydata.com, mszeredi@redhat.com,
-        linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        Linux Containers <containers@lists.linux-foundation.org>,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org,
-        ebiederm@xmission.com
-Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
+Received: from mail-it0-f68.google.com ([209.85.214.68]:33193 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S968285AbdEWOyE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 23 May 2017 10:54:04 -0400
+Subject: [PATCH v1 03/12] xprtrdma: Fix FRWR invalidation error recovery
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 23 May 2017 10:54:02 -0400
+Message-ID: <20170523145402.961.7601.stgit@manet.1015granger.net>
+In-Reply-To: <20170523142629.961.81233.stgit@manet.1015granger.net>
+References: <20170523142629.961.81233.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 23 May 2017 15:53:36 +0100
-Message-ID: <2446.1495551216@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Aleksa Sarai <asarai@suse.de> wrote:
+When ib_post_send() fails, all LOCAL_INV WRs past @bad_wr have to be
+examined, and the MRs reset by hand.
 
-> >> The reason I think this is necessary is that the kernel has no idea
-> >> how to direct upcalls to what userspace considers to be a container -
-> >> current Linux practice appears to make a "container" just an
-> >> arbitrarily chosen junction of namespaces, control groups and files,
-> >> which may be changed individually within the "container".
-> 
-> Just want to point out that if the kernel APIs for containers massively
-> change, then the OCI will have to completely rework how we describe containers
-> (and so will all existing runtimes).
-> 
-> Not to mention that while I don't like how hard it is (from a runtime
-> perspective) to actually set up a container securely, there are undoubtedly
-> benefits to having namespaces split out. The network namespace being separate
-> means that in certain contexts you actually don't want to create a new network
-> namespace when creating a container.
+I'm not sure how the existing code can work by comparing R_keys.
+Restructure the logic so that instead it walks the chain of WRs,
+starting from the first bad one.
 
-Yep, I quite agree.
+Make sure to wait for completion if at least one WR was actually
+posted. Otherwise, if the ib_post_send fails, we can end up
+DMA-unmapping the MR while LOCAL_INV operations are in flight.
 
-However, certain things need to be made per-net namespace that *aren't*.  DNS
-results, for instance.
+Commit 7a89f9c626e3 ("xprtrdma: Honor ->send_request API contract")
+added the rdma_disconnect() call site. The disconnect actually
+causes more problems than it solves, and SQ overruns happen only as
+a result of software bugs. So remove it.
 
-As an example, I could set up a client machine with two ethernet ports, set up
-two DNS+NFS servers, each of which think they're called "foo.bar" and attach
-each server to a different port on the client machine.  Then I could create a
-pair of containers on the client machine and route the network in each
-container to a different port.  Now there's a problem because the names of the
-cached DNS records for each port overlap.
+Fixes: d7a21c1bed54 ("xprtrdma: Reset MRs in frwr_op_unmap_sync()")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/frwr_ops.c |   23 +++++++++++++----------
+ 1 file changed, 13 insertions(+), 10 deletions(-)
 
-Further, the NFS idmapper needs to be able to direct its calls to the
-appropriate network.
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index 33ede72..98808d0 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -521,12 +521,13 @@
+ 	 * unless ri_id->qp is a valid pointer.
+ 	 */
+ 	r_xprt->rx_stats.local_inv_needed++;
++	bad_wr = NULL;
+ 	rc = ib_post_send(ia->ri_id->qp, first, &bad_wr);
++	if (bad_wr != first)
++		wait_for_completion(&f->fr_linv_done);
+ 	if (rc)
+ 		goto reset_mrs;
+ 
+-	wait_for_completion(&f->fr_linv_done);
+-
+ 	/* ORDER: Now DMA unmap all of the req's MRs, and return
+ 	 * them to the free MW list.
+ 	 */
+@@ -543,17 +544,19 @@
+ 
+ reset_mrs:
+ 	pr_err("rpcrdma: FRMR invalidate ib_post_send returned %i\n", rc);
+-	rdma_disconnect(ia->ri_id);
+ 
+ 	/* Find and reset the MRs in the LOCAL_INV WRs that did not
+-	 * get posted. This is synchronous, and slow.
++	 * get posted.
+ 	 */
+-	list_for_each_entry(mw, &req->rl_registered, mw_list) {
+-		f = &mw->frmr;
+-		if (mw->mw_handle == bad_wr->ex.invalidate_rkey) {
+-			__frwr_reset_mr(ia, mw);
+-			bad_wr = bad_wr->next;
+-		}
++	rpcrdma_init_cqcount(&r_xprt->rx_ep, -count);
++	while (bad_wr) {
++		f = container_of(bad_wr, struct rpcrdma_frmr,
++				 fr_invwr);
++		mw = container_of(f, struct rpcrdma_mw, frmr);
++
++		__frwr_reset_mr(ia, mw);
++
++		bad_wr = bad_wr->next;
+ 	}
+ 	goto unmap;
+ }
 
-> I had some ideas about how you could implement bridging in userspace (as an
-> unprivileged user, for rootless containers) but if you can't join namespaces
-> individually then such a setup is not practically possible.
-
-I'm not proposing to take away the ability to arbitrarily set the namespaces
-in a container.  I haven't implemented it yet, but it was on the to-do list:
-
- (7) Directly set a container's namespaces to allow cross-container
-     sharing.
-
-David
