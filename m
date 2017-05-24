@@ -1,57 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:48297 "EHLO
-        out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S965113AbdEXJQ7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 May 2017 05:16:59 -0400
-Message-ID: <1495617409.2538.1.camel@themaw.net>
-Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
-From: Ian Kent <raven@themaw.net>
-To: "Eric W. Biederman" <ebiederm@xmission.com>,
-        David Howells <dhowells@redhat.com>
-Cc: James Bottomley <James.Bottomley@HansenPartnership.com>,
-        mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        Linux Containers <containers@lists.linux-foundation.org>,
-        linux-kernel@vger.kernel.org, cgroups@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, trondmy@primarydata.com,
-        viro@zeniv.linux.org.uk
-Date: Wed, 24 May 2017 17:16:49 +0800
-In-Reply-To: <87k256ek3e.fsf@xmission.com>
-References: <1495554267.27369.9.camel@HansenPartnership.com>
-         <87zie3mxkc.fsf@xmission.com>
-         <f167feeb-e653-12e3-eec8-24162f7f7c07@suse.de>
-         <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
-         <1495472039.2757.19.camel@HansenPartnership.com>
-         <2446.1495551216@warthog.procyon.org.uk>
-         <2961.1495552481@warthog.procyon.org.uk> <87bmqjmwl5.fsf@xmission.com>
-         <3860.1495557363@warthog.procyon.org.uk> <87k256ek3e.fsf@xmission.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:44769 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S965590AbdEXLog (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 24 May 2017 07:44:36 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "xiaolong.ye@intel.com" <xiaolong.ye@intel.com>
+CC: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "lkp@01.org" <lkp@01.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [lkp-robot] [NFS]  14d1bbb0ca: BUG:scheduling_while_atomic
+Date: Wed, 24 May 2017 11:44:27 +0000
+Message-ID: <1495626265.8735.2.camel@primarydata.com>
+References: <20170524023629.GK1795@yexl-desktop>
+In-Reply-To: <20170524023629.GK1795@yexl-desktop>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-05-24 at 03:26 -0500, Eric W. Biederman wrote:
-> 
-> So far no one has even bothered to seriously try the one solution that
-> is guaranteed to work because it takes a lot of changes to kernel code.
-> I believe the last effort snagged on what a pain it is to refactor the
-> user mode helper infrastructure.
+T24gV2VkLCAyMDE3LTA1LTI0IGF0IDEwOjM2ICswODAwLCBrZXJuZWwgdGVzdCByb2JvdCB3cm90
+ZToNCj4gRllJLCB3ZSBub3RpY2VkIHRoZSBmb2xsb3dpbmcgY29tbWl0Og0KPiANCj4gY29tbWl0
+OiAxNGQxYmJiMGNhNDI1YzRmZGQ5YTM4ZWFhYzM0NmMwMjg2NjFiNzUyICgiTkZTOiBDcmVhdGUg
+YQ0KPiBjb21tb24gbmZzNF9tYXRjaF9jbGllbnQoKSBmdW5jdGlvbiIpDQo+IGh0dHBzOi8vZ2l0
+Lmtlcm5lbC5vcmcvY2dpdC9saW51eC9rZXJuZWwvZ2l0L3RvcnZhbGRzL2xpbnV4LmdpdA0KPiBt
+YXN0ZXINCj4gDQo+IGluIHRlc3RjYXNlOiBib290DQo+IA0KPiBvbiB0ZXN0IG1hY2hpbmU6IHFl
+bXUtc3lzdGVtLXg4Nl82NCAtZW5hYmxlLWt2bSAtY3B1IGhvc3QgLXNtcCAyIC1tDQo+IDRHDQo+
+IA0KPiBjYXVzZWQgYmVsb3cgY2hhbmdlcyAocGxlYXNlIHJlZmVyIHRvIGF0dGFjaGVkIGRtZXNn
+L2ttc2cgZm9yIGVudGlyZQ0KPiBsb2cvYmFja3RyYWNlKToNCj4gDQo+IA0KPiArLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLSstLS0tLS0tLS0tLS0rLS0tLS0tLS0tLS0tKw0KPiA+IMKg
+wqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDC
+oHwgNWI2ZDNmZjYwNSB8IDE0ZDFiYmIwY2EgfA0KPiANCj4gKy0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0rLS0tLS0tLS0tLS0tKy0tLS0tLS0tLS0tLSsNCj4gPiBib290X3N1Y2Nlc3Nl
+c8KgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgfCA0NjnCoMKgwqDCoMKgwqDCoMKgfCA0
+NzDCoMKgwqDCoMKgwqDCoMKgfA0KPiA+IGJvb3RfZmFpbHVyZXPCoMKgwqDCoMKgwqDCoMKgwqDC
+oMKgwqDCoMKgwqDCoMKgfCAwwqDCoMKgwqDCoMKgwqDCoMKgwqB8IDMxwqDCoMKgwqDCoMKgwqDC
+oMKgfA0KPiA+IEJVRzpzY2hlZHVsaW5nX3doaWxlX2F0b21pY8KgwqDCoHwgMMKgwqDCoMKgwqDC
+oMKgwqDCoMKgfCAzMcKgwqDCoMKgwqDCoMKgwqDCoHwNCj4gPiBCVUc6c3BpbmxvY2tfcmVjdXJz
+aW9uX29uX0NQVSB8IDDCoMKgwqDCoMKgwqDCoMKgwqDCoHwgMzDCoMKgwqDCoMKgwqDCoMKgwqB8
+DQo+IA0KPiArLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLSstLS0tLS0tLS0tLS0rLS0t
+LS0tLS0tLS0tKw0KPiANCj4gDQo+IA0KPiBbwqDCoDI5OS4xNTg5OTFdIEJVRzogc2NoZWR1bGlu
+ZyB3aGlsZSBhdG9taWM6DQo+IG1vdW50Lm5mcy85Mzg3LzB4MDAwMDAwMDINCj4gW8KgwqAyOTku
+MTY5NTg3XSAyIGxvY2tzIGhlbGQgYnkgbW91bnQubmZzLzkzODc6DQo+IFvCoMKgMjk5LjE3NjE2
+NV3CoMKgIzA6wqDCoChuZnNfY2xpZF9pbml0X211dGV4KXsuLi4uLi59LCBhdDoNCj4gWzxmZmZm
+ZmZmZjgxMzBjYzkyPl0gbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcrMHg0Ny8weDFmYw0K
+PiBbwqDCoDI5OS4yMDE4MDJdwqDCoCMxOsKgwqAoJigmbm4tPm5mc19jbGllbnRfbG9jayktPnJs
+b2NrKXsuLi4uLi59LCBhdDoNCj4gWzxmZmZmZmZmZjgxMzEyNWZhPl0gbmZzNDBfd2Fsa19jbGll
+bnRfbGlzdCsweDJlOS8weDMzOA0KPiANCg0KT29wcy4gQW5uYSwgaXQgbG9va3MgYXMgaWYgdGhh
+dCBwYXRjaCBhZGRzIGFuIGluY29ycmVjdCBjYWxsIHRvDQoic3Bpbl9sb2NrKCZubi0+bmZzX2Ns
+aWVudF9sb2NrKSIgZm9yIHRoZSAiZGVmYXVsdDoiIGNhc2Ugd2hlbg0KcHJvY2Vzc2luZyB0aGUg
+cmVzdWx0IGZyb20gdGhlIFNFVENMSUVOVElEX0NPTkZJUk0gY2FsbC4gSSBjYW4gc2VuZCBhDQpm
+aXguDQoNClRoYW5rcyBYaWFvbG9uZyENCg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9u
+ZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-Yes, that's mostly true in my case although I wouldn't say I haven't looked at
-it seriously but equally I haven't got anything towards it yet either, sorry.
-
-I'm likely going to revisit this based on a couple of approaches.
-
-One is just what you describe and I had already been looking at this some time
-ago. It seems to me that adding a work queue type that starts and retains a
-process until the work queue is destroyed (similar to the way the work queue sub
-system starts a fail over thread for use under resource exhaustion) would be a
-sensible way to do it.
-
-This doesn't mean I think it's a good idea for reasons I've outlined in the past
-but the approach does warrant the effort to work out if it can be used without
-problems.
-
-And there's also the request key infrastructure which, as it is now, gets in the
-road of verifying results, *sigh*.
-
-Ian
