@@ -1,114 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38168 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44882 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1763386AbdEYUfp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 May 2017 16:35:45 -0400
-Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 7AD568051D
-        for <linux-nfs@vger.kernel.org>; Thu, 25 May 2017 20:35:34 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-122-191.rdu2.redhat.com [10.10.122.191])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 29591189B1
-        for <linux-nfs@vger.kernel.org>; Thu, 25 May 2017 20:35:34 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] rpcbproc_callit_com: No need to allocate output buffer
-Date: Thu, 25 May 2017 16:35:31 -0400
-Message-Id: <20170525203531.4471-2-steved@redhat.com>
-In-Reply-To: <20170525203531.4471-1-steved@redhat.com>
-References: <20170525203531.4471-1-steved@redhat.com>
+        id S936784AbdEYVH4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 May 2017 17:07:56 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
+Cc: Paul Moore <paul@paul-moore.com>,
+        Stephen Smalley <sds@tycho.nsa.gov>,
+        Eric Paris <eparis@parisplace.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH RFC 0/2] Fix setting of security labels over NFSv4.2
+Date: Thu, 25 May 2017 17:07:52 -0400
+Message-Id: <20170525210754.24265-1-smayhew@redhat.com>
+In-Reply-To: <20170404232646.GB24146@parsley.fieldses.org>
+References: <20170404232646.GB24146@parsley.fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that sendz is a fixed size (UDPMSGSIZE) which
-is small then RPC_BUF_MAX, no need to check the
-sendz size.
+Red Hat QE reported that chcon fails over NFSv4.2 on recent kernels.
+The problem is related to how filesystems are mounted in NFSv4.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/rpcb_svc_com.c | 33 +++++----------------------------
- 1 file changed, 5 insertions(+), 28 deletions(-)
+When an NFSv4 client performs a mount operation, it first mounts the
+NFSv4 root and then does path walk to the exported path and performs a
+submount on that, cloning the security mount options from the root's
+superblock to the submount's superblock in the process.
 
-diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
-index 1fc2229..d36b090 100644
---- a/src/rpcb_svc_com.c
-+++ b/src/rpcb_svc_com.c
-@@ -612,8 +612,6 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
- 	struct netconfig *nconf;
- 	struct netbuf *caller;
- 	struct r_rmtcall_args a;
--	char *outbufp;
--	char *outbuf_alloc = NULL;
- 	char  outbuf[RPC_BUF_MAX];
- 	struct netbuf *na = (struct netbuf *) NULL;
- 	struct rpc_msg call_msg;
-@@ -674,7 +672,6 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
- 
- 	rpcbs_rmtcall(versnum - 2, reply_type, a.rmt_prog, a.rmt_vers,
- 			a.rmt_proc, transp->xp_netid, rbl);
--
- 	if (rbl == (rpcblist_ptr)NULL) {
- #ifdef RPCBIND_DEBUG
- 		if (debugging)
-@@ -793,24 +790,10 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
- 	call_msg.rm_call.cb_rpcvers = RPC_MSG_VERSION;
- 	call_msg.rm_call.cb_prog = a.rmt_prog;
- 	call_msg.rm_call.cb_vers = a.rmt_vers;
--	if (sendsz > RPC_BUF_MAX) {
--#ifdef	notyet
--		outbuf_alloc = alloca(sendsz);	/* not in IDR2? */
--#else
--		outbuf_alloc = malloc(sendsz);
--#endif	/* notyet */
--		if (outbuf_alloc == NULL) {
--			if (reply_type == RPCBPROC_INDIRECT)
--				svcerr_systemerr(transp);
--			if (debugging)
--				xlog(LOG_DEBUG,
--				"rpcbproc_callit_com:  No memory!\n");
--			goto error;
--		}
--		xdrmem_create(&outxdr, outbuf_alloc, sendsz, XDR_ENCODE);
--	} else {
--		xdrmem_create(&outxdr, outbuf, sendsz, XDR_ENCODE);
--	}
-+
-+	memset(outbuf, '\0', sendsz); /* Zero out the output buffer */
-+	xdrmem_create(&outxdr, outbuf, sendsz, XDR_ENCODE);
-+
- 	if (!xdr_callhdr(&outxdr, &call_msg)) {
- 		if (reply_type == RPCBPROC_INDIRECT)
- 			svcerr_systemerr(transp);
-@@ -875,10 +858,6 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
- 		goto error;
- 	}
- 	outlen = (int) XDR_GETPOS(&outxdr);
--	if (outbuf_alloc)
--		outbufp = outbuf_alloc;
--	else
--		outbufp = outbuf;
- 
- 	na = uaddr2taddr(nconf, local_uaddr);
- 	if (!na) {
-@@ -887,7 +866,7 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
- 		goto error;
- 	}
- 
--	if (sendto(fd, outbufp, outlen, 0, (struct sockaddr *)na->buf, na->len)
-+	if (sendto(fd, outbuf, outlen, 0, (struct sockaddr *)na->buf, na->len)
- 	    != outlen) {
- 		if (debugging)
- 			xlog(LOG_DEBUG,
-@@ -912,8 +891,6 @@ out:
- 	}
- 	if (local_uaddr)
- 		free(local_uaddr);
--	if (outbuf_alloc)
--		free(outbuf_alloc);
- 	if (na) {
- 		free(na->buf);
- 		free(na);
+Unless the NFS server has an explicit fsid=0 export with the
+"security_label" option, the NFSv4 root superblock will not have
+SBLABEL_MNT set, and neither will the submount superblock after cloning
+the security mount options.  As a result, setxattr's of security labels
+over NFSv4.2 will fail.
+
+NFS servers with a modern nfs-utils package will automatically create a
+pseudo fs to fill in the gaps (including the root itself) leading up to
+the actual export, so it is uncommon these days for an NFS server to
+have an explicit fsid=0 export.
+
+Allowing the NFSv4 client to override the SECURITY_LSM_NATIVE_LABELS
+flag on an initialized superblock would ensure that SBLABEL_MNT is set
+when the client traverses from an exported path without the
+"security_label" option to one with the "security_label" option.
+
+Scott Mayhew (2):
+  selinux: allow SECURITY_LSM_NATIVE_LABELS to be set on an already
+    initialized superblock
+  nfs: update labeling behavior on a superblock when submounting
+
+ fs/nfs/super.c           | 23 ++++++++++++++++++++++-
+ security/selinux/hooks.c |  4 ++--
+ 2 files changed, 24 insertions(+), 3 deletions(-)
+
 -- 
 2.9.3
 
