@@ -1,93 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35395 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1755860AbdEYHAm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 May 2017 03:00:42 -0400
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Date: Thu, 25 May 2017 17:00:32 +1000
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: ensure correct error is reported by
- xs_tcp_setup_socket()
-Message-ID: <871srdifov.fsf@notabene.neil.brown.name>
+Received: from mx1.redhat.com ([209.132.183.28]:51002 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S966118AbdEYN0d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 May 2017 09:26:33 -0400
+Date: Thu, 25 May 2017 09:26:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Eryu Guan <eguan@redhat.com>
+Cc: fstests@vger.kernel.org,
+        Weston Andros Adamson <dros@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [RFC PATCH] nfs: test nfs4_getfacl near page size ACL from server
+Message-ID: <20170525132625.GA6658@parsley.fieldses.org>
+References: <20170516120909.827-1-eguan@redhat.com>
+ <20170516150745.GB21704@parsley.fieldses.org>
+ <20170517033854.GA7250@eguan.usersys.redhat.com>
+ <20170517172035.GD5011@parsley.fieldses.org>
+ <20170525040119.GB23805@eguan.usersys.redhat.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170525040119.GB23805@eguan.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Thu, May 25, 2017 at 12:01:19PM +0800, Eryu Guan wrote:
+> Yes, that's a problem, it's been 'xfstests' for at least 14 years and
+> 'fstests' is only there for 3 years, sometimes (or most of the times) we
+> still call it 'xfstests' for a better understanding.
 
+Just to troll slightly: I actually don't believe you when you say it's
+been renamed.  I don't see any evidence of that.
 
-If you attempt a TCP mount from an host that is unreachable in a way
-that triggers an immediate error from kernel_connect(), that error
-does not propagate up, instead EAGAIN is reported.
+The repository still seems to be called xfstests-dev, the README calls
+it "the FSQA suite" or "xfstests", with only a brief mention of the
+fstest mailing list at the end.  In fact that's the only use of the term
+"fstests" in the entire repository:
 
-This results in call_connect_status receiving the wrong error.
+	$ git grep '\<xfstests'|wc -l
+	36
+	$ git grep '\<fstests'|wc -l
+	1
 
-A case that it easy to demonstrate is to attempt to mount from an
-address that results in ENETUNREACH, but first deleting any default
-route.
-Without this patch, the mount.nfs process is persistently runnable
-and is hard to kill.  With this patch it exits as it should.
+And I'm not turning up any references to fstests from google except for
+references to the mailing list name.  Your email here is the only
+reference I can find to the project being renamed at all.  (I do see one
+mail announcing the mailist name change.)
 
-The problem is caused by the fact that xs_tcp_force_close() eventually
-calls
-      xprt_wake_pending_tasks(xprt, -EAGAIN);
-which causes an error return of -EAGAIN.  so when xs_tcp_setup_sock()
-calls
-      xprt_wake_pending_tasks(xprt, status);
-the status is ignored.
+> > Anyway, thanks for adding this.  I do a partial fstests run as part of
+> 
+> Can I take it as a "Reviewed-by" tag? :)
 
-Fixes: 4efdd92c9211 ("SUNRPC: Remove TCP client connection reset hack")
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- net/sunrpc/xprtsock.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+Sure.
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 16aff8ddc16f..d5b54c020dec 100644
-=2D-- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2432,7 +2432,12 @@ static void xs_tcp_setup_socket(struct work_struct *=
-work)
- 	case -ENETUNREACH:
- 	case -EADDRINUSE:
- 	case -ENOBUFS:
-=2D		/* retry with existing socket, after a delay */
-+		/*
-+		 * xs_tcp_force_close() wakes tasks with -EIO.
-+		 * We need to wake them first to ensure the
-+		 * correct error code.
-+		 */
-+		xprt_wake_pending_tasks(xprt, status);
- 		xs_tcp_force_close(xprt);
- 		goto out;
- 	}
-=2D-=20
-2.12.2
+> For a quick smoke test
+> 
+> './check -nfs -g quick'
+> 
+> (run tests in 'quick' group) will do, it only takes around 10 minutes for me to complete.
+> 
+> And for something more thoroughly, you can do
+> 
+> './check -nfs -g auto'
 
+Thanks!
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+I've got my own handpicked list of tests, partly because I didn't notice
+the existance of "quick", partly because there were some failures I
+didn't have the time to triage.
 
------BEGIN PGP SIGNATURE-----
+> (run tests in 'auto' group), which will take longer time but runs many
+> more tests.
+> 
+> I test every RC release with local-mounted NFS, with NFSv3,
+> NFSv4.0/4.1/4.2. Here're the 'known issues' I have for 4.11 kernel (I
+> think some failures are false alert, the tests need updates, some
+> failures may long standing & low priority bugs on NFS? But I'm not sure
+> which is which)
+> 
+> Failures for all NFS versions:
+...
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlkmgRIACgkQOeye3VZi
-gbnEMRAAs2Zm1xmPKgbuJr12f0RXtOHG+nG42SeEN7xZ7CJCTSr4MDbBOk0jgvzA
-8ipzyqKuYkO0Bqf2WhVCthjGSlAtF7or7GiKiaaGl3A7fFAw47TG2joeZrNb3Zqq
-ZsGPoPb2J1frBIWWHJAaA9+lCjlAzgsf4kpy3VMhJXNr50cJi6cJsj+KHQ44PGGj
-iur8u+S/oNP24PtqquA3FCmgEpGxYHs1aR4pEXoKxpUTaG71toU/ROynyeJE8n6E
-h6fO7RC/BAAzBR5res2+LbKGxJdovYBEAGmhKPaRQMsaoqgyIcLg1gm2Oi8nA6Va
-81CcROczggOfuYyKJ7m+qO6/L5Hn2yYAY9L+VnVB8jMqpfiWIyVgOeF39FgY2lvY
-3lt3j1FatEHvEJ6LTQun8lF0hrO/3foI4PoaI2zctOlm7j0rdz+haiFO8yNeJcM+
-KzYVI5PS1laIJ8+UBX+Jo4lPalmAMnj6OmuaZzjw5uGHiRudEmfgENbec7ce5OwT
-Mb7W3b7Spl0DbrNyxytQG37j9b56FE5ahqEwxPJf9nd3+H0oOo3yw+M0QYSDGdQr
-4XtJfNtfBZ+4UX6YR/Hvhoj/GfngEgrsoBY4v5SHab7jrQgbOOaSbFKrwdaVqlL0
-rarBStkzRdBcKvcgD85XqoA7t0XPGUlh6t3ilwe4OPOqLDTb6mE=
-=hdTc
------END PGP SIGNATURE-----
---=-=-=--
+Thanks again!  I'll try to set aside some time to reconcile this with my
+own list and see if I can figure out some of the failures.
+
+--b.
