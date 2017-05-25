@@ -1,7 +1,7 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44882 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54785 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936784AbdEYVH4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S938983AbdEYVH4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 25 May 2017 17:07:56 -0400
 From: Scott Mayhew <smayhew@redhat.com>
 To: selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
@@ -10,16 +10,14 @@ Cc: Paul Moore <paul@paul-moore.com>,
         Eric Paris <eparis@parisplace.org>,
         Trond Myklebust <trondmy@primarydata.com>,
         "J . Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH RFC 0/2] Fix setting of security labels over NFSv4.2
-Date: Thu, 25 May 2017 17:07:52 -0400
-Message-Id: <20170525210754.24265-1-smayhew@redhat.com>
-In-Reply-To: <20170404232646.GB24146@parsley.fieldses.org>
+Subject: [PATCH RFC 1/2] selinux: allow SECURITY_LSM_NATIVE_LABELS to be set on an already initialized superblock
+Date: Thu, 25 May 2017 17:07:53 -0400
+Message-Id: <20170525210754.24265-2-smayhew@redhat.com>
+In-Reply-To: <20170525210754.24265-1-smayhew@redhat.com>
 References: <20170404232646.GB24146@parsley.fieldses.org>
+ <20170525210754.24265-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
-
-Red Hat QE reported that chcon fails over NFSv4.2 on recent kernels.
-The problem is related to how filesystems are mounted in NFSv4.
 
 When an NFSv4 client performs a mount operation, it first mounts the
 NFSv4 root and then does path walk to the exported path and performs a
@@ -32,25 +30,38 @@ SBLABEL_MNT set, and neither will the submount superblock after cloning
 the security mount options.  As a result, setxattr's of security labels
 over NFSv4.2 will fail.
 
-NFS servers with a modern nfs-utils package will automatically create a
-pseudo fs to fill in the gaps (including the root itself) leading up to
-the actual export, so it is uncommon these days for an NFS server to
-have an explicit fsid=0 export.
-
 Allowing the NFSv4 client to override the SECURITY_LSM_NATIVE_LABELS
-flag on an initialized superblock would ensure that SBLABEL_MNT is set
+flag on an initialized superblock will ensure that SBLABEL_MNT is set
 when the client traverses from an exported path without the
 "security_label" option to one with the "security_label" option.
 
-Scott Mayhew (2):
-  selinux: allow SECURITY_LSM_NATIVE_LABELS to be set on an already
-    initialized superblock
-  nfs: update labeling behavior on a superblock when submounting
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ security/selinux/hooks.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
- fs/nfs/super.c           | 23 ++++++++++++++++++++++-
- security/selinux/hooks.c |  4 ++--
- 2 files changed, 24 insertions(+), 3 deletions(-)
-
+diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+index e67a526..366ab86 100644
+--- a/security/selinux/hooks.c
++++ b/security/selinux/hooks.c
+@@ -730,7 +730,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 	 * will be used for both mounts)
+ 	 */
+ 	if ((sbsec->flags & SE_SBINITIALIZED) && (sb->s_type->fs_flags & FS_BINARY_MOUNTDATA)
+-	    && (num_opts == 0))
++	    && (num_opts == 0) && !(kern_flags & SECURITY_LSM_NATIVE_LABELS))
+ 		goto out;
+ 
+ 	root_isec = backing_inode_security_novalidate(root);
+@@ -797,7 +797,7 @@ static int selinux_set_mnt_opts(struct super_block *sb,
+ 		}
+ 	}
+ 
+-	if (sbsec->flags & SE_SBINITIALIZED) {
++	if (sbsec->flags & SE_SBINITIALIZED && !(kern_flags & SECURITY_LSM_NATIVE_LABELS)) {
+ 		/* previously mounted with options, but not on this attempt? */
+ 		if ((sbsec->flags & SE_MNTMASK) && !num_opts)
+ 			goto out_double_mount;
 -- 
 2.9.3
 
