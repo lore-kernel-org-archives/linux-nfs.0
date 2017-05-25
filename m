@@ -1,48 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esa2.hgst.iphmx.com ([68.232.143.124]:15291 "EHLO
-        esa2.hgst.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1033988AbdEYUTt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 25 May 2017 16:19:49 -0400
-From: Bart Van Assche <Bart.VanAssche@sandisk.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "hch@lst.de" <hch@lst.de>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
-        "osandov@fb.com" <osandov@fb.com>, "axboe@fb.com" <axboe@fb.com>,
-        "axboe@kernel.dk" <axboe@kernel.dk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 06/19] nfsd: Check private request size before submitting
- a SCSI request
-Date: Thu, 25 May 2017 20:19:47 +0000
-Message-ID: <1495743585.2615.6.camel@sandisk.com>
-References: <20170525184327.23570-1-bart.vanassche@sandisk.com>
-         <20170525184327.23570-7-bart.vanassche@sandisk.com>
-         <20170525184851.GD4298@fieldses.org>
-In-Reply-To: <20170525184851.GD4298@fieldses.org>
-Content-Type: text/plain; charset="iso-8859-1"
-MIME-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:59966 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S966562AbdEYUfe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 May 2017 16:35:34 -0400
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 069E580C08
+        for <linux-nfs@vger.kernel.org>; Thu, 25 May 2017 20:35:34 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-122-191.rdu2.redhat.com [10.10.122.191])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id A86C46046F
+        for <linux-nfs@vger.kernel.org>; Thu, 25 May 2017 20:35:33 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2] rpcbproc_callit_com: Stop freeing a static pointer.
+Date: Thu, 25 May 2017 16:35:30 -0400
+Message-Id: <20170525203531.4471-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-05-25 at 14:48 -0400, J . Bruce Fields wrote:
-> On Thu, May 25, 2017 at 11:43:14AM -0700, Bart Van Assche wrote:
-> > Since using scsi_req() is only allowed against request queues for
-> > which struct scsi_request is the first member of their private
-> > request data, refuse to submit SCSI commands against a queue for
-> > which this is not the case.
->=20
-> Is it possible we could catch this earlier and avoid giving out the
-> layout in the first place?
+commit 7ea36ee introduced a svc_freeargs() call
+that ended up freeing static pointer.
 
-Hello Christoph,
+It turns out the allocations for the rmt_args
+is not necessary . The xdr routines (xdr_bytes) will
+handle the memory management and the largest
+possible message size is UDPMSGSIZE (due to UDP only)
+which is smaller than RPC_BUF_MAX
 
-According to what I see in commit 8650b8a05850 you are the author of this
-code? Can the blk_queue_scsi_pdu(q) test fail in nfsd4_scsi_identify_device=
-()?
-If so, can nfsd4_layout_verify() be modified in such a way that it prevents
-that nfsd4_scsi_proc_getdeviceinfo() is ever called for a non-SCSI queue?
-Can you recommend an approach?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ src/rpcb_svc_com.c | 39 ++++++---------------------------------
+ 1 file changed, 6 insertions(+), 33 deletions(-)
 
-Thanks,
+diff --git a/src/rpcb_svc_com.c b/src/rpcb_svc_com.c
+index cb63afd..1fc2229 100644
+--- a/src/rpcb_svc_com.c
++++ b/src/rpcb_svc_com.c
+@@ -612,9 +612,9 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
+ 	struct netconfig *nconf;
+ 	struct netbuf *caller;
+ 	struct r_rmtcall_args a;
+-	char *buf_alloc = NULL, *outbufp;
++	char *outbufp;
+ 	char *outbuf_alloc = NULL;
+-	char buf[RPC_BUF_MAX], outbuf[RPC_BUF_MAX];
++	char  outbuf[RPC_BUF_MAX];
+ 	struct netbuf *na = (struct netbuf *) NULL;
+ 	struct rpc_msg call_msg;
+ 	int outlen;
+@@ -635,36 +635,10 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
+ 	}
+ 	if (si.si_socktype != SOCK_DGRAM)
+ 		return;	/* Only datagram type accepted */
+-	sendsz = __rpc_get_t_size(si.si_af, si.si_proto, UDPMSGSIZE);
+-	if (sendsz == 0) {	/* data transfer not supported */
+-		if (reply_type == RPCBPROC_INDIRECT)
+-			svcerr_systemerr(transp);
+-		return;
+-	}
+-	/*
+-	 * Should be multiple of 4 for XDR.
+-	 */
+-	sendsz = ((sendsz + 3) / 4) * 4;
+-	if (sendsz > RPC_BUF_MAX) {
+-#ifdef	notyet
+-		buf_alloc = alloca(sendsz);		/* not in IDR2? */
+-#else
+-		buf_alloc = malloc(sendsz);
+-#endif	/* notyet */
+-		if (buf_alloc == NULL) {
+-			if (debugging)
+-				xlog(LOG_DEBUG,
+-					"rpcbproc_callit_com:  No Memory!\n");
+-			if (reply_type == RPCBPROC_INDIRECT)
+-				svcerr_systemerr(transp);
+-			return;
+-		}
+-		a.rmt_args.args = buf_alloc;
+-	} else {
+-		a.rmt_args.args = buf;
+-	}
++	sendsz = UDPMSGSIZE;
+ 
+ 	call_msg.rm_xid = 0;	/* For error checking purposes */
++	memset(&a, 0, sizeof(a)); /* Zero out the input buffer */
+ 	if (!svc_getargs(transp, (xdrproc_t) xdr_rmtcall_args, (char *) &a)) {
+ 		if (reply_type == RPCBPROC_INDIRECT)
+ 			svcerr_decode(transp);
+@@ -704,7 +678,8 @@ rpcbproc_callit_com(struct svc_req *rqstp, SVCXPRT *transp,
+ 	if (rbl == (rpcblist_ptr)NULL) {
+ #ifdef RPCBIND_DEBUG
+ 		if (debugging)
+-			xlog(LOG_DEBUG, "not found\n");
++			xlog(LOG_DEBUG, "prog %lu vers %lu: not found\n", 
++				a.rmt_prog, a.rmt_vers);
+ #endif
+ 		if (reply_type == RPCBPROC_INDIRECT)
+ 			svcerr_noprog(transp);
+@@ -937,8 +912,6 @@ out:
+ 	}
+ 	if (local_uaddr)
+ 		free(local_uaddr);
+-	if (buf_alloc)
+-		free(buf_alloc);
+ 	if (outbuf_alloc)
+ 		free(outbuf_alloc);
+ 	if (na) {
+-- 
+2.9.3
 
-Bart.=
