@@ -1,124 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51320 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53848 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756716AbdEZPWw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 26 May 2017 11:22:52 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Jeff Layton" <jlayton@poochiereds.net>
-Cc: "Alexander Viro" <viro@zeniv.linux.org.uk>, bfields@fieldses.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] locks: Set fl_nspid at file_lock allocation
-Date: Fri, 26 May 2017 11:22:49 -0400
-Message-ID: <F45B59D5-DEB8-48ED-A127-780F96D92FDA@redhat.com>
-In-Reply-To: <6ED42F9C-F290-451C-89A9-4A7C3FFDEFA6@redhat.com>
-References: <896e8ca302614f71f3030015ebf3befe2b40d3c4.1495122972.git.bcodding@redhat.com>
- <1495126525.3956.10.camel@poochiereds.net>
- <1069ECDA-D96D-495E-BB7B-128A926AD3DF@redhat.com>
- <1495140075.3956.13.camel@poochiereds.net>
- <6ED42F9C-F290-451C-89A9-4A7C3FFDEFA6@redhat.com>
+        id S943716AbdEZP2W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 26 May 2017 11:28:22 -0400
+Date: Fri, 26 May 2017 11:28:21 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Stephen Smalley <sds@tycho.nsa.gov>
+Cc: selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org,
+        Paul Moore <paul@paul-moore.com>,
+        Eric Paris <eparis@parisplace.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH RFC 2/2] nfs: update labeling behavior on a superblock
+ when submounting
+Message-ID: <20170526152821.xgyidg7qebdwbm6f@tonberry.usersys.redhat.com>
+References: <20170404232646.GB24146@parsley.fieldses.org>
+ <20170525210754.24265-1-smayhew@redhat.com>
+ <20170525210754.24265-3-smayhew@redhat.com>
+ <1495808645.12091.10.camel@tycho.nsa.gov>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <1495808645.12091.10.camel@tycho.nsa.gov>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 26 May 2017, Stephen Smalley wrote:
 
-On 19 May 2017, at 8:35, Benjamin Coddington wrote:
+> On Thu, 2017-05-25 at 17:07 -0400, Scott Mayhew wrote:
+> > When the client traverses from filesystem exported without the
+> > "security_label" option to one exported with the "security_label"
+> > option, it needs to pass SECURITY_LSM_NATIVE_LABELS to
+> > security_sb_set_mnt_opts() so that the new superblock has SBLABEL_MNT
+> > set in its security mount options.  Otherwise, attempts to set
+> > security
+> > labels via setxattr over NFSv4.2 will fail.
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> >  fs/nfs/super.c | 23 ++++++++++++++++++++++-
+> >  1 file changed, 22 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > index 2f3822a..d7a3b89 100644
+> > --- a/fs/nfs/super.c
+> > +++ b/fs/nfs/super.c
+> > @@ -2544,10 +2544,31 @@ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
+> >  int nfs_clone_sb_security(struct super_block *s, struct dentry
+> > *mntroot,
+> >  			  struct nfs_mount_info *mount_info)
+> >  {
+> > +	int error;
+> > +	unsigned long kflags = 0, kflags_out = 0;
+> > +	struct security_mnt_opts opts;
+> > +
+> >  	/* clone any lsm security options from the parent to the new
+> > sb */
+> >  	if (d_inode(mntroot)->i_op != NFS_SB(s)->nfs_client-
+> > >rpc_ops->dir_inode_ops)
+> >  		return -ESTALE;
+> > -	return security_sb_clone_mnt_opts(mount_info->cloned->sb,
+> > s);
+> > +	error = security_sb_clone_mnt_opts(mount_info->cloned->sb,
+> > s);
+> > +	if (error)
+> > +		goto err;
+> > +
+> > +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
+> > +		!(NFS_SB(mount_info->cloned->sb)->caps &
+> > NFS_CAP_SECURITY_LABEL)) {
+> > +		memset(&opts, 0, sizeof(opts));
+> > +		kflags |= SECURITY_LSM_NATIVE_LABELS;
+> > +
+> > +		error = security_sb_set_mnt_opts(s, &opts, kflags,
+> > &kflags_out);
+> > +		if (error)
+> > +			goto err;
+> > +
+> > +		if (!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
+> > +			NFS_SB(s)->caps &= ~NFS_CAP_SECURITY_LABEL;
+> > +	}
+> > +err:
+> > +	return error;
+> >  }
+> >  EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
+> 
+> Could this clobber a context set via context= mount option?
 
-> On 18 May 2017, at 16:41, Jeff Layton wrote:
->
->> On Thu, 2017-05-18 at 13:36 -0400, Benjamin Coddington wrote:
->>>> On Thu, 2017-05-18 at 12:02 -0400, Benjamin Coddington wrote:
->>>>> diff --git a/fs/locks.c b/fs/locks.c
->>>>> index af2031a1fcff..959b3f93f4bd 100644
->>>>> --- a/fs/locks.c
->>>>> +++ b/fs/locks.c
->>>>> @@ -249,7 +249,7 @@ locks_dump_ctx_list(struct list_head *list, char
->>>>> *list_type)
->>>>>  	struct file_lock *fl;
->>>>>
->>>>>  	list_for_each_entry(fl, list, fl_list) {
->>>>> -		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n",
->>>>> list_type, fl->fl_owner, fl->fl_flags, fl->fl_type, fl->fl_pid);
->>>>> +		pr_warn("%s: fl_owner=%p fl_flags=0x%x fl_type=0x%x fl_pid=%u\n",
->>>>> list_type, fl->fl_owner, fl->fl_flags, fl->fl_type,
->>>>> pid_vnr(fl->fl_nspid));
->>>>>  	}
->>>>>  }
->>>>>
->>>>
->>>> Probably should change the format to say fl_nspid=%u here, just to be
->>>> clear. Might also want to keep fl_pid in there since the lock manager
->>>> could set it.
->>>
->>> Yes, I thought about just spitting out both.  Let's do that.
->>>
->>>>> @@ -2074,7 +2075,7 @@ static int posix_lock_to_flock(struct flock
->>>>> *flock, struct file_lock *fl)
->>>>>  #if BITS_PER_LONG == 32
->>>>>  static void posix_lock_to_flock64(struct flock64 *flock, struct
->>>>> file_lock *fl)
->>>>>  {
->>>>> -	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
->>>>> +	flock->l_pid = IS_OFDLCK(fl) ? -1 : pid_vnr(fl->fl_nspid);
->>>>
->>>> What about the lock managers that _do_ set fl->fl_pid. With nfsv2/3,
->>>> this is always going to give you back the pid of lockd, AFAICT.
->>>
->>> But isn't this really what you want?  If a local process wants to know
->>> who
->>> holds a conflicting lock, the fl_pid of a remote system is really pretty
->>> useless.  Not only that, but there's no way for the local process to
->>> know
->>> when the pid is local or remote.  Better to be consistent and always
->>> return
->>> something that's useful.
->>>
->>
->> The l_pid field in struct flock (and by extension fl_pid) is pretty
->> poorly defined in the spec(s), especially when there is a remote host
->> involved. Programs that rely on it are insane, of course...but Linux has
->> always behaved this way.
->
-> But if it is completely useless today, then we can change it without
-> worrying about breaking it because it is already broken.  There's no
-> documentation anywhere that informs users of F_GETLK or /proc/locks that
-> l_pid is completely unreliable.
->
-> Do you know why linux hasn't picked up l_sysid?  I can't seem to find any
-> previous discussion about it.
->
->> In the absence of a compelling reason to change it, I think we should
->> keep the behavior in this respect as close as possible to what we have
->> now.
->
-> I think the reason would be l_pid should at least have some consistent
-> meaning.  I think now that this patch probably shouldn't change it, but it
-> should be changed.
->
->>>> Do we want to present the pid value that the client sent here instead
->>>> in
->>>> that case? Maybe the lm could set a fl_flag to indicate that the pid
->>>> should be taken directly from fl_pid here? Then you could move the
->>>> above
->>>> logic to a static inline or something.
->>>>
->>>> Alternately, you could add a new lm_present_pid operation to lock
->>>> managers to format the pid as they see fit.
->>>
->>> Either works to solve the problem, but I still think that F_GETLK and
->>> /proc/locks should only return local pids.
+Argh, yes I suppose it could.  In my first attempt to fix this, I added
+a security_sb_get_mnt_opts() hook to get the original mount options and
+then passed that along with the SECURITY_LSM_NATIVE_LABELS flag to
+security_sb_set_mnt_opts().  When I saw that security_sb_set_mnt_opts()
+wouldn't allow me to change a superblock that had already been
+initialized, I got rid of the hook and added the check in patch 1...
+maybe a combination of the two is needed?
 
-It turns out that the lm_present_pid approach is not sufficient and we
-should instead use a flag, since the non-lock-manager fs/lockd/clntproc.c
-wants to use fl->fl_pid = 0 in the case where the client is testing and
-finds a conflicting lock.
+Testing it again now, I'm not sure the context= mount option is working
+correctly with the latest kernel.
 
-So, the client considers remote pids to be bogus, which makes a lot of sense
-to me.
-
-Additionally, after testing, today's kernel returns lockd's pid on a local
-F_GETLCK for a remotely-held NFS lock.  So, I think our understanding of the
-situation needs to be reversed.  Lock manager's locks are locally reporting
-the local lock pid, but sometimes a remote lock needs to override the local
-pid to set fl_pid.
-
-Ben
+-Scott
