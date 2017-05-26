@@ -1,123 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from emsm-gh1-uea11.nsa.gov ([8.44.101.9]:33694 "EHLO
-        emsm-gh1-uea11.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754118AbdEZPiX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 May 2017 11:38:23 -0400
-Message-ID: <1495813358.4586.1.camel@tycho.nsa.gov>
-Subject: Re: [PATCH RFC 2/2] nfs: update labeling behavior on a superblock
- when submounting
-From: Stephen Smalley <sds@tycho.nsa.gov>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org,
-        Paul Moore <paul@paul-moore.com>,
-        Eric Paris <eparis@parisplace.org>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>
-Date: Fri, 26 May 2017 11:42:38 -0400
-In-Reply-To: <20170526152821.xgyidg7qebdwbm6f@tonberry.usersys.redhat.com>
-References: <20170404232646.GB24146@parsley.fieldses.org>
-         <20170525210754.24265-1-smayhew@redhat.com>
-         <20170525210754.24265-3-smayhew@redhat.com>
-         <1495808645.12091.10.camel@tycho.nsa.gov>
-         <20170526152821.xgyidg7qebdwbm6f@tonberry.usersys.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:38616 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1947951AbdEZPr1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 26 May 2017 11:47:27 -0400
+Date: Fri, 26 May 2017 11:47:26 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "hch@lst.de" <hch@lst.de>
+Cc: Bart Van Assche <Bart.VanAssche@sandisk.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "linux-block@vger.kernel.org" <linux-block@vger.kernel.org>,
+        "osandov@fb.com" <osandov@fb.com>, "axboe@fb.com" <axboe@fb.com>,
+        "axboe@kernel.dk" <axboe@kernel.dk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 06/19] nfsd: Check private request size before submitting
+ a SCSI request
+Message-ID: <20170526154726.GF4593@fieldses.org>
+References: <20170525184327.23570-1-bart.vanassche@sandisk.com>
+ <20170525184327.23570-7-bart.vanassche@sandisk.com>
+ <20170525184851.GD4298@fieldses.org>
+ <1495743585.2615.6.camel@sandisk.com>
+ <20170526061003.GF18424@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170526061003.GF18424@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-05-26 at 11:28 -0400, Scott Mayhew wrote:
-> On Fri, 26 May 2017, Stephen Smalley wrote:
-> 
-> > On Thu, 2017-05-25 at 17:07 -0400, Scott Mayhew wrote:
-> > > When the client traverses from filesystem exported without the
-> > > "security_label" option to one exported with the "security_label"
-> > > option, it needs to pass SECURITY_LSM_NATIVE_LABELS to
-> > > security_sb_set_mnt_opts() so that the new superblock has
-> > > SBLABEL_MNT
-> > > set in its security mount options.  Otherwise, attempts to set
-> > > security
-> > > labels via setxattr over NFSv4.2 will fail.
+On Fri, May 26, 2017 at 08:10:03AM +0200, hch@lst.de wrote:
+> On Thu, May 25, 2017 at 08:19:47PM +0000, Bart Van Assche wrote:
+> > On Thu, 2017-05-25 at 14:48 -0400, J . Bruce Fields wrote:
+> > > On Thu, May 25, 2017 at 11:43:14AM -0700, Bart Van Assche wrote:
+> > > > Since using scsi_req() is only allowed against request queues for
+> > > > which struct scsi_request is the first member of their private
+> > > > request data, refuse to submit SCSI commands against a queue for
+> > > > which this is not the case.
 > > > 
-> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > > ---
-> > >  fs/nfs/super.c | 23 ++++++++++++++++++++++-
-> > >  1 file changed, 22 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > > index 2f3822a..d7a3b89 100644
-> > > --- a/fs/nfs/super.c
-> > > +++ b/fs/nfs/super.c
-> > > @@ -2544,10 +2544,31 @@ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
-> > >  int nfs_clone_sb_security(struct super_block *s, struct dentry
-> > > *mntroot,
-> > >  			  struct nfs_mount_info *mount_info)
-> > >  {
-> > > +	int error;
-> > > +	unsigned long kflags = 0, kflags_out = 0;
-> > > +	struct security_mnt_opts opts;
-> > > +
-> > >  	/* clone any lsm security options from the parent to the
-> > > new
-> > > sb */
-> > >  	if (d_inode(mntroot)->i_op != NFS_SB(s)->nfs_client-
-> > > > rpc_ops->dir_inode_ops)
-> > > 
-> > >  		return -ESTALE;
-> > > -	return security_sb_clone_mnt_opts(mount_info->cloned-
-> > > >sb,
-> > > s);
-> > > +	error = security_sb_clone_mnt_opts(mount_info->cloned-
-> > > >sb,
-> > > s);
-> > > +	if (error)
-> > > +		goto err;
-> > > +
-> > > +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
-> > > +		!(NFS_SB(mount_info->cloned->sb)->caps &
-> > > NFS_CAP_SECURITY_LABEL)) {
-> > > +		memset(&opts, 0, sizeof(opts));
-> > > +		kflags |= SECURITY_LSM_NATIVE_LABELS;
-> > > +
-> > > +		error = security_sb_set_mnt_opts(s, &opts,
-> > > kflags,
-> > > &kflags_out);
-> > > +		if (error)
-> > > +			goto err;
-> > > +
-> > > +		if (!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
-> > > +			NFS_SB(s)->caps &=
-> > > ~NFS_CAP_SECURITY_LABEL;
-> > > +	}
-> > > +err:
-> > > +	return error;
-> > >  }
-> > >  EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
+> > > Is it possible we could catch this earlier and avoid giving out the
+> > > layout in the first place?
 > > 
-> > Could this clobber a context set via context= mount option?
+> > Hello Christoph,
+> > 
+> > According to what I see in commit 8650b8a05850 you are the author of this
+> > code? Can the blk_queue_scsi_pdu(q) test fail in nfsd4_scsi_identify_device()?
 > 
-> Argh, yes I suppose it could.  In my first attempt to fix this, I
-> added
-> a security_sb_get_mnt_opts() hook to get the original mount options
-> and
-> then passed that along with the SECURITY_LSM_NATIVE_LABELS flag to
-> security_sb_set_mnt_opts().  When I saw that
-> security_sb_set_mnt_opts()
-> wouldn't allow me to change a superblock that had already been
-> initialized, I got rid of the hook and added the check in patch 1...
-> maybe a combination of the two is needed?
+> If the user explicitly asked for a scsi layout export of a non-scsi
+> device it can.
+> 
+> > If so, can nfsd4_layout_verify() be modified in such a way that it prevents
+> > that nfsd4_scsi_proc_getdeviceinfo() is ever called for a non-SCSI queue?
+> > Can you recommend an approach?
+> 
+> Not easily.  The only thing we could do is an export time check, that
+> would refuse the scsi layout export if the device is not capable.
+> 
+> I can look into that, but it will take some time so for now I think we
+> should go ahead with your series.
 
-Could we instead extend the security_sb_clone_mnt_opts() hook interface
-to pass flags, and just handle it inside of the
-selinux_sb_clone_mnt_opts() hook?  Then we don't have to change
-selinux_sb_set_mnt_opts() handling, which may be called for mount(2)
-from userspace, not just from NFS client code.  You might need to
-refactor it to share common code, but we shouldn't alter its logic when
-called normally.
-
-
-> Testing it again now, I'm not sure the context= mount option is
-> working
-> correctly with the latest kernel.
-
-Hmm...if not, then that's another regression that will need to be
-addressed.
+Fine by me.--b.
