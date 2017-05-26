@@ -1,120 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f178.google.com ([209.85.216.178]:36062 "EHLO
-        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933272AbdEZTjl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 May 2017 15:39:41 -0400
-Received: by mail-qt0-f178.google.com with SMTP id f55so16302493qta.3
-        for <linux-nfs@vger.kernel.org>; Fri, 26 May 2017 12:39:41 -0700 (PDT)
-Message-ID: <1495827577.14036.3.camel@redhat.com>
-Subject: Re: [PATC_H] locks: Set fl_nspid at file_lock allocation
-From: Jeff Layton <jlayton@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, bfields@fieldses.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 26 May 2017 15:39:37 -0400
-In-Reply-To: <C98A1A8E-F8CF-48B2-87B7-0006621626AD@redhat.com>
-References: <896e8ca302614f71f3030015ebf3befe2b40d3c4.1495122972.git.bcodding@redhat.com>
-         <1495126525.3956.10.camel@poochiereds.net>
-         <1069ECDA-D96D-495E-BB7B-128A926AD3DF@redhat.com>
-         <1495140075.3956.13.camel@poochiereds.net>
-         <6ED42F9C-F290-451C-89A9-4A7C3FFDEFA6@redhat.com>
-         <F45B59D5-DEB8-48ED-A127-780F96D92FDA@redhat.com>
-         <1495817366.4299.3.camel@redhat.com>
-         <C98A1A8E-F8CF-48B2-87B7-0006621626AD@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-it0-f67.google.com ([209.85.214.67]:35820 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754528AbdEZT6k (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 May 2017 15:58:40 -0400
+Received: by mail-it0-f67.google.com with SMTP id 67so2396097itx.2
+        for <linux-nfs@vger.kernel.org>; Fri, 26 May 2017 12:58:40 -0700 (PDT)
+From: Andreas Dilger <adilger@dilger.ca>
+Message-Id: <9E1EC8DB-1864-4ABA-8BEB-79C3EA9C4EBF@dilger.ca>
+Content-Type: multipart/signed;
+ boundary="Apple-Mail=_C4D7C509-FC52-48AF-A0D7-E8D8E853614C";
+ protocol="application/pgp-signature"; micalg=pgp-sha1
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: fsetxattr(2) for ACL on nfs
+Date: Fri, 26 May 2017 13:58:33 -0600
+In-Reply-To: <27179.1495751869@jrobl>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: "J. R. Okajima" <hooanon05g@gmail.com>
+References: <27179.1495751869@jrobl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-05-26 at 13:53 -0400, Benjamin Coddington wrote:
-> On 26 May 2017, at 12:49, Jeff Layton wrote:
-> 
-> > On Fri, 2017-05-26 at 11:22 -0400, Benjamin Coddington wrote:
-> > > On 19 May 2017, at 8:35, Benjamin Coddington wrote:
-> > > So, the client considers remote pids to be bogus, which makes a lot 
-> > > of sense
-> > > to me.
-> > > 
-> > 
-> > Yeah, not much it can do with a pid, really...
-> > 
-> > > Additionally, after testing, today's kernel returns lockd's pid on a 
-> > > local
-> > > F_GETLCK for a remotely-held NFS lock.  So, I think our understanding 
-> > > of the
-> > > situation needs to be reversed.  Lock manager's locks are locally 
-> > > reporting
-> > > the local lock pid, but sometimes a remote lock needs to override the 
-> > > local
-> > > pid to set fl_pid.
-> > > 
-> > 
-> > Fair enough. Now that I look...v4 locks set by knfsd just pick up the
-> > pid of whatever the nfsd thread it happens to be running in. From
-> > nfsd4_lock:
-> > 
-> >     file_lock->fl_pid = current->tgid;
-> > 
-> > So, it sounds like it really is totally meaningless then. In that case
-> > I'll reverse my earlier opinion, and say that if it's easier to just
-> > set it to whatever lockd's pid is, then that'd be fine with me.
-> > 
-> > OTOH, pid_t is an int, and I don't think negative pids are valid (are
-> > they?)
-> > 
-> > Maybe we should set it to -1 for a remote lock (like we do for OFD
-> > locks). Or, could consider declaring a new value (-2?) to represent a
-> > remote lock?
-> 
-> OK, for my own clarity I'd like to nail down the desired behavior for 
-> all
-> four cases:
-> 
-> 1) F_GETLK on a remote file with a remote lock.
-> 
->      I think the filesystem should determine the l_pid to return here.  
-> NFS
-> is returning 0 for v3.  Other filesystems are doing different things.  
-> This
-> is easy to do from locks.c by setting a flag on the lock in the 
-> ops->lock
-> path for F_GETLK.
-> 
-> 2) F_GETLK on a local file with a remote lock.
-> 
->      I think this should be the l_pid of the lock manager.  That seems 
-> to be
-> the case now for NFS.
-> 
-> 3) F_GETLK on a remote file with a local lock, and..
-> 4) F_GETLK on a local file with a local lock.
-> 
->      Should set l_pid of the local locking process
-> 
-> This is still an unreliable mess, but I don't see any way around it 
-> until we
-> have something like l_sysid.
-> 
-> 
 
-ACK...I'm onboard now. That all sounds pretty reasonable.
+--Apple-Mail=_C4D7C509-FC52-48AF-A0D7-E8D8E853614C
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-But...most important would be to add some comments that lay out this
-rationale at the right point in the code sothat  we don't forget this
-conversation in a year or two. I'd suggest a comment over the file_lock
-for sure, to explain why we have fl_pid and fl_nspid and how we intend
-for them to be used.
+On May 25, 2017, at 4:37 PM, J. R. Okajima <hooanon05g@gmail.com> wrote:
+>=20
+> Since v4.12-rc1, I see an error on NFS3.
+>=20
+> $ stat -f .
+>  File: "."
+>    ID: 0        Namelen: 255     Type: nfs
+> Block size: 32768      Fundamental block size: 32768
+> Blocks: Total: 248        Free: 247        Available: 234
+> Inodes: Total: 2048       Free: 2020
+> $ cp ../ro/f_src .
+> $ rm f_src
+> rm: remove regular file 'f_src'? y
+> $ cp -p ../ro/f_src .
+> cp: preserving permissions for './f_src': Permission denied
+>=20
+> (from "cp --help")
+>  -p                           same as =
+--preserve=3Dmode,ownership,timestamps
+>      --preserve[=3DATTR_LIST]   preserve the specified attributes =
+(default:
+>                                 mode,ownership,timestamps), if =
+possible
+>                                 additional attributes: context, links, =
+xattr,
+>                                 all
+>=20
+> By strace, I see fsetxattr(2) for ACL returned the error.
+> Is this an intentional behaviour?
+>=20
+> (from strace)
+> open("../ro/f_src", O_RDONLY)           =3D 3
+> fstat(3, {st_mode=3DS_IFREG|0644, st_size=3D2, ...}) =3D 0
+> open("./f_src", O_WRONLY|O_CREAT|O_EXCL, 0600) =3D 4
+> fstat(4, {st_mode=3DS_IFREG|0600, st_size=3D0, ...}) =3D 0
+> fadvise64(3, 0, 0, POSIX_FADV_SEQUENTIAL) =3D 0
+> mmap(NULL, 139264, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, =
+-1, 0) =3D 0x7fcb293f8000
+> read(3, "f\n", 131072)                  =3D 2
+> write(4, "f\n", 2)                      =3D 2
+> read(3, "", 131072)                     =3D 0
+> utimensat(4, NULL, {{1495750885, 0}, {1495750885, 0}}, 0) =3D 0
+> fgetxattr(3, "system.posix_acl_access", 0x7ffed40196d0, 132) =3D -1 =
+ENODATA (No data available)
+> fstat(3, {st_mode=3DS_IFREG|0644, st_size=3D2, ...}) =3D 0
+> fsetxattr(4, "system.posix_acl_access", =
+"\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\=
+xff\xff \x00\x04\x00\xff\xff\xff\xff", 28, 0) =3D -1 EACCES (Permission =
+denied)
 
-Would also be interesting to add some tests for this to xfstests too, as
-I know that gets run frequently...
+To me this looks like "cp" is broken.  If it gets no POSIX ACL xattr =
+from the
+kernel (ENODATA) for this file, why is it trying to save a POSIX ACL to =
+the
+copy?  That just adds needless overhead, either at the syscall level, or =
+also
+on disk if it is storing ACLs on files that don't need them...
 
-I'm also not opposed to the idea of l_sysid. It'd mean adding in a new
-API of some sort, but it could be done. However, l_sysid on solaris is a
-single int. I think that's probably insufficient in this day and age.
+Cheers, Andreas
 
-Maybe you would want to allow the pass in a pointer to a buffer, and
-have the kernel populate it with a string? We could have a per-fs string
-formatter (with a standard one for local filesystems).
+> fchmod(4, 0100644)                      =3D 0
+> open("/usr/lib/charset.alias", O_RDONLY|O_NOFOLLOW) =3D -1 ENOENT (No =
+such file or directory)
+> write(2, "cp: ", 4)                     =3D 4
+> write(2, "preserving permissions for './f_"..., 36) =3D 36
+> write(2, ": Permission denied", 19)     =3D 19
+> write(2, "\n", 1)                       =3D 1
+>=20
+> Additonally, after this error, the shutdown process stops saying
+> 	nfs: server localhost not responding, still trying
+>=20
+> Does anyone know which commit causes these problems?
+>=20
+>=20
+> J. R. Okajima
 
--- 
-Jeff Layton <jlayton@redhat.com>
+
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_C4D7C509-FC52-48AF-A0D7-E8D8E853614C
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iD8DBQFZKIjppIg59Q01vtYRAstVAKCdRXvQW+eMyGM5bY23EeW/eR40tgCg0Udn
+IrU1+EJcyggYdDIyCLQB330=
+=CUPI
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_C4D7C509-FC52-48AF-A0D7-E8D8E853614C--
