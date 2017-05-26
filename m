@@ -1,55 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38510 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:38540 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1764497AbdEZPJ4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 26 May 2017 11:09:56 -0400
-Date: Fri, 26 May 2017 11:09:56 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: "Michael S. Tsirkin" <mst@redhat.com>
-Cc: hch <hch@lst.de>, Trond Myklebust <trondmy@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org
-Subject: Re: remove function pointer casts and constify function tables
-Message-ID: <20170526150956.GB4593@fieldses.org>
-References: <20170512161701.22468-1-hch@lst.de>
- <1494620040.19467.1.camel@primarydata.com>
- <20170513072557.GA14602@lst.de>
- <1494691819.31377.1.camel@primarydata.com>
- <20170515152134.GC24547@fieldses.org>
- <20170515154450.GA18630@lst.de>
- <20170523081159.GA19216@lst.de>
- <20170523122334.GA4298@fieldses.org>
- <20170526150839.GA4593@fieldses.org>
+        id S1756716AbdEZPRW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 26 May 2017 11:17:22 -0400
+Date: Fri, 26 May 2017 11:17:22 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Stephen Smalley <sds@tycho.nsa.gov>
+Cc: Scott Mayhew <smayhew@redhat.com>, selinux@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <trondmy@primarydata.com>
+Subject: Re: [PATCH RFC 0/2] Fix setting of security labels over NFSv4.2
+Message-ID: <20170526151722.GC4593@fieldses.org>
+References: <20170404232646.GB24146@parsley.fieldses.org>
+ <20170525210754.24265-1-smayhew@redhat.com>
+ <1495810097.12091.14.camel@tycho.nsa.gov>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170526150839.GA4593@fieldses.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1495810097.12091.14.camel@tycho.nsa.gov>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Probably should have cc'd virtualization@lists.linux-foundation.org too.
+On Fri, May 26, 2017 at 10:48:17AM -0400, Stephen Smalley wrote:
+> On Thu, 2017-05-25 at 17:07 -0400, Scott Mayhew wrote:
+> > Red Hat QE reported that chcon fails over NFSv4.2 on recent kernels.
+> > The problem is related to how filesystems are mounted in NFSv4.
+> 
+> What kernel version and what is a reproducer for the problem?  I don't
+> seem to see it on e.g. Fedora 25 with 4.10, unless I misunderstand.
 
-On Fri, May 26, 2017 at 11:08:39AM -0400, bfields@fieldses.org wrote:
-> On Tue, May 23, 2017 at 08:23:34AM -0400, bfields@fieldses.org wrote:
-> > Unfortunately I can't get anything through testing.  It's not your
-> > patches, it's something in -rc1.  My server VM stops responding to
-> > any network traffic randomly in the middle of a run.  If I log in from a
-> > serial console, I see the interface is up and everything looks OK.  I
-> > haven't had the chance to do much more, and I'm not sure where to
-> > start....  I started a git-bisect attempt, but there are several
-> > unrelated problems, and I'm not sure this one is 100% reproduceable.
+Basically just mount an export with security_label set, mount over NFS,
+"ls -Z" will (correctly) show you the server-side security labels, but
+"chcon" will fail with ENOTSUP.
+
+If that's not reproducing, maybe you chould show us "exports -v" and
+"mount" output--it might not reproduce if you have an "fsid=0" export or
+if you're mounting with a protocol version older than 4.2.
+
+--b.
+
 > 
-> It looks like it may be due to something pulled in with virtio updates.
-> I've reproduced the problem on c8b0d7290657 "s390/virtio: change
-> maintainership" but not on v4.11.  Are there any known issues with those
-> commits?
-> 
-> I've just been doing this long-running bisect while working on other
-> stuff.  My reproducer (basically just running a bunch of NFS
-> connectathon tests over a variety of protocol versions and security
-> flavors) doesn't hit the bug reliably, and I've had to restart a couple
-> times probably due to false negatives.  But this looks pretty promising,
-> and there's only 17 commits in that range, so I'll keep bisecting.
-> 
-> --b.
+> > 
+> > When an NFSv4 client performs a mount operation, it first mounts the
+> > NFSv4 root and then does path walk to the exported path and performs
+> > a
+> > submount on that, cloning the security mount options from the root's
+> > superblock to the submount's superblock in the process.
+> > 
+> > Unless the NFS server has an explicit fsid=0 export with the
+> > "security_label" option, the NFSv4 root superblock will not have
+> > SBLABEL_MNT set, and neither will the submount superblock after
+> > cloning
+> > the security mount options.  As a result, setxattr's of security
+> > labels
+> > over NFSv4.2 will fail.
+> > 
+> > NFS servers with a modern nfs-utils package will automatically create
+> > a
+> > pseudo fs to fill in the gaps (including the root itself) leading up
+> > to
+> > the actual export, so it is uncommon these days for an NFS server to
+> > have an explicit fsid=0 export.
+> > 
+> > Allowing the NFSv4 client to override the SECURITY_LSM_NATIVE_LABELS
+> > flag on an initialized superblock would ensure that SBLABEL_MNT is
+> > set
+> > when the client traverses from an exported path without the
+> > "security_label" option to one with the "security_label" option.
+> > 
+> > Scott Mayhew (2):
+> >   selinux: allow SECURITY_LSM_NATIVE_LABELS to be set on an already
+> >     initialized superblock
+> >   nfs: update labeling behavior on a superblock when submounting
+> > 
+> >  fs/nfs/super.c           | 23 ++++++++++++++++++++++-
+> >  security/selinux/hooks.c |  4 ++--
+> >  2 files changed, 24 insertions(+), 3 deletions(-)
+> > 
