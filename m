@@ -1,110 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44288 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934404AbdEZUO5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 26 May 2017 16:14:57 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jeff Layton <jlayton@poochiereds.net>, bfields@fieldses.org
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] fs/locks: Use fs-specific l_pid for remote locks
-Date: Fri, 26 May 2017 16:14:51 -0400
-Message-Id: <25fc5f8da5fb2c41a319160d0556b01afe3ed78d.1495829587.git.bcodding@redhat.com>
-In-Reply-To: <cover.1495829587.git.bcodding@redhat.com>
-References: <cover.1495829587.git.bcodding@redhat.com>
-In-Reply-To: <cover.1495829587.git.bcodding@redhat.com>
-References: <cover.1495829587.git.bcodding@redhat.com>
+Received: from mail03-md.ns.itscom.net ([175.177.155.113]:49255 "EHLO
+        mail03-md.ns.itscom.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1948869AbdEZX76 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 May 2017 19:59:58 -0400
+From: "J. R. Okajima" <hooanon05g@gmail.com>
+Subject: Re: fsetxattr(2) for ACL on nfs
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+In-Reply-To: <9E1EC8DB-1864-4ABA-8BEB-79C3EA9C4EBF@dilger.ca>
+References: <27179.1495751869@jrobl> <9E1EC8DB-1864-4ABA-8BEB-79C3EA9C4EBF@dilger.ca>
+Date: Sat, 27 May 2017 08:59:56 +0900
+Message-ID: <28291.1495843196@jrobl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we're setting fl_nspid at file_lock allocation, we need to handle
-the case where a remote filesystem directly sets fl_pid.  If the filesystem
-implements the lock operation, set a flag to return the lock's fl_pid,
-rather than fl_nspid.
+Andreas Dilger:
+> > open("../ro/f_src", O_RDONLY)           = 3
+> > fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
+> > open("./f_src", O_WRONLY|O_CREAT|O_EXCL, 0600) = 4
+> > fstat(4, {st_mode=S_IFREG|0600, st_size=0, ...}) = 0
+> > fadvise64(3, 0, 0, POSIX_FADV_SEQUENTIAL) = 0
+> > mmap(NULL, 139264, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fcb293f8000
+> > read(3, "f\n", 131072)                  = 2
+> > write(4, "f\n", 2)                      = 2
+> > read(3, "", 131072)                     = 0
+> > utimensat(4, NULL, {{1495750885, 0}, {1495750885, 0}}, 0) = 0
+> > fgetxattr(3, "system.posix_acl_access", 0x7ffed40196d0, 132) = -1 ENODATA (No data available)
+> > fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
+> > fsetxattr(4, "system.posix_acl_access", "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 28, 0) = -1 EACCES (Permission denied)
+>
+> To me this looks like "cp" is broken.  If it gets no POSIX ACL xattr from the
+> kernel (ENODATA) for this file, why is it trying to save a POSIX ACL to the
+> copy?  That just adds needless overhead, either at the syscall level, or also
+> on disk if it is storing ACLs on files that don't need them...
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/locks.c         | 25 +++++++++++++++++++------
- include/linux/fs.h |  1 +
- 2 files changed, 20 insertions(+), 6 deletions(-)
+Maybe you are right.
+But on v4.11, it succeeded.
 
-diff --git a/fs/locks.c b/fs/locks.c
-index 270ae50247db..f1aac1680394 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -2052,16 +2052,28 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
-  */
- int vfs_test_lock(struct file *filp, struct file_lock *fl)
- {
--	if (filp->f_op->lock && is_remote_lock(filp))
-+	if (filp->f_op->lock && is_remote_lock(filp)) {
-+		fl->fl_flags |= FL_PID_PRIV;
- 		return filp->f_op->lock(filp, F_GETLK, fl);
-+	}
- 	posix_test_lock(filp, fl);
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(vfs_test_lock);
- 
-+static inline int flock_translate_pid(struct file_lock *fl)
-+{
-+	if (IS_OFDLCK(fl))
-+		return -1;
-+	if (fl->fl_flags & FL_PID_PRIV)
-+		return fl->fl_pid;
-+	return pid_vnr(fl->fl_nspid);
-+}
-+
-+
- static int posix_lock_to_flock(struct flock *flock, struct file_lock *fl)
- {
--	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
-+	flock->l_pid = flock_translate_pid(fl);
- #if BITS_PER_LONG == 32
- 	/*
- 	 * Make sure we can represent the posix lock via
-@@ -2083,7 +2095,7 @@ static int posix_lock_to_flock(struct flock *flock, struct file_lock *fl)
- #if BITS_PER_LONG == 32
- static void posix_lock_to_flock64(struct flock64 *flock, struct file_lock *fl)
- {
--	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
-+	flock->l_pid = flock_translate_pid(fl);
- 	flock->l_start = fl->fl_start;
- 	flock->l_len = fl->fl_end == OFFSET_MAX ? 0 :
- 		fl->fl_end - fl->fl_start + 1;
-@@ -2636,7 +2648,9 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 	struct inode *inode = NULL;
- 	unsigned int fl_pid;
- 
--	if (fl->fl_nspid) {
-+	if (fl->fl_flags & FL_PID_PRIV) {
-+		fl_pid = fl->fl_pid;
-+	} else {
- 		struct pid_namespace *proc_pidns = file_inode(f->file)->i_sb->s_fs_info;
- 
- 		/* Don't let fl_pid change based on who is reading the file */
-@@ -2649,8 +2663,7 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
- 		 */
- 		if (fl_pid == 0)
- 			return;
--	} else
--		fl_pid = fl->fl_pid;
-+	}
- 
- 	if (fl->fl_file != NULL)
- 		inode = locks_inode(fl->fl_file);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 0ad325ed71e8..8d945b86b9f3 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -908,6 +908,7 @@ static inline struct file *get_file(struct file *f)
- #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
- #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
- #define FL_LAYOUT	2048	/* outstanding pNFS layout */
-+#define FL_PID_PRIV	4096	/* F_GETLK should report fl_pid */
- 
- #define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
- 
--- 
-2.9.3
+open("../ro/f_src", O_RDONLY)           = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
+open("./f_src", O_WRONLY|O_CREAT|O_EXCL, 0600) = 4
+fstat(4, {st_mode=S_IFREG|0600, st_size=0, ...}) = 0
+fadvise64(3, 0, 0, POSIX_FADV_SEQUENTIAL) = 0
+mmap(NULL, 139264, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f3dcf031000
+read(3, "f\n", 131072)                  = 2
+write(4, "f\n", 2)                      = 2
+read(3, "", 131072)                     = 0
+utimensat(4, NULL, {{1495842847, 0}, {1495842847, 0}}, 0) = 0
+fgetxattr(3, "system.posix_acl_access", 0x7fff63443360, 132) = -1 ENODATA (No data available)
+fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
+fsetxattr(4, "system.posix_acl_access", "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 28, 0) = 0
 
+
+J. R. Okajima
