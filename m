@@ -1,155 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:49256 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:35720 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753920AbdE0IRa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 04:17:30 -0400
+        with ESMTP id S1753944AbdE0IRn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 04:17:43 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 05/10] fs: move more code into do_iter_read/do_iter_write
-Date: Sat, 27 May 2017 11:16:49 +0300
-Message-Id: <20170527081654.15957-6-hch@lst.de>
+Subject: [PATCH 09/10] nfsd: use vfs_iter_read/write
+Date: Sat, 27 May 2017 11:16:53 +0300
+Message-Id: <20170527081654.15957-10-hch@lst.de>
 In-Reply-To: <20170527081654.15957-1-hch@lst.de>
 References: <20170527081654.15957-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The checks for the permissions and can read / write flags are common
-for the callers.
+Instead of messing with the address limit to use vfs_read/vfs_writev.
+
+Note that this requires that exported file implement ->read_iter and
+->write_iter.  All currently exportable file systems do this.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/read_write.c | 73 ++++++++++++++++++++++-----------------------------------
- 1 file changed, 28 insertions(+), 45 deletions(-)
+ fs/nfsd/vfs.c | 17 +++++++----------
+ 1 file changed, 7 insertions(+), 10 deletions(-)
 
-diff --git a/fs/read_write.c b/fs/read_write.c
-index f453c9a485b9..64b61a032a56 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -922,6 +922,11 @@ static ssize_t do_iter_read(struct file *file, struct iov_iter *iter,
- 	size_t tot_len;
- 	ssize_t ret = 0;
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 2be32955d7f2..37a03c456b38 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -911,13 +911,12 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp,
+ __be32 nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
+ 		unsigned long *count)
+ {
+-	mm_segment_t oldfs;
++	struct iov_iter iter;
+ 	int host_err;
  
-+	if (!(file->f_mode & FMODE_READ))
-+		return -EBADF;
-+	if (!(file->f_mode & FMODE_CAN_READ))
-+		return -EINVAL;
+-	oldfs = get_fs();
+-	set_fs(KERNEL_DS);
+-	host_err = vfs_readv(file, (struct iovec __user *)vec, vlen, &offset, 0);
+-	set_fs(oldfs);
++	iov_iter_kvec(&iter, READ | ITER_KVEC, vec, vlen, *count);
++	host_err = vfs_iter_read(file, &iter, &offset, 0);
 +
- 	tot_len = iov_iter_count(iter);
- 	if (!tot_len)
- 		goto out;
-@@ -945,6 +950,11 @@ static ssize_t do_iter_write(struct file *file, struct iov_iter *iter,
- 	size_t tot_len;
- 	ssize_t ret = 0;
- 
-+	if (!(file->f_mode & FMODE_WRITE))
-+		return -EBADF;
-+	if (!(file->f_mode & FMODE_CAN_WRITE))
-+		return -EINVAL;
-+
- 	tot_len = iov_iter_count(iter);
- 	if (!tot_len)
- 		return 0;
-@@ -971,17 +981,12 @@ ssize_t vfs_readv(struct file *file, const struct iovec __user *vec,
- 	struct iov_iter iter;
- 	ssize_t ret;
- 
--	if (!(file->f_mode & FMODE_READ))
--		return -EBADF;
--	if (!(file->f_mode & FMODE_CAN_READ))
--		return -EINVAL;
--
- 	ret = import_iovec(READ, vec, vlen, ARRAY_SIZE(iovstack), &iov, &iter);
--	if (ret < 0)
--		return ret;
-+	if (ret >= 0) {
-+		ret = do_iter_read(file, &iter, pos, flags);
-+		kfree(iov);
-+	}
- 
--	ret = do_iter_read(file, &iter, pos, flags);
--	kfree(iov);
- 	return ret;
+ 	return nfsd_finish_read(file, count, host_err);
  }
- EXPORT_SYMBOL(vfs_readv);
-@@ -994,17 +999,11 @@ ssize_t vfs_writev(struct file *file, const struct iovec __user *vec,
- 	struct iov_iter iter;
- 	ssize_t ret;
  
--	if (!(file->f_mode & FMODE_WRITE))
--		return -EBADF;
--	if (!(file->f_mode & FMODE_CAN_WRITE))
--		return -EINVAL;
--
- 	ret = import_iovec(WRITE, vec, vlen, ARRAY_SIZE(iovstack), &iov, &iter);
--	if (ret < 0)
--		return ret;
--
--	ret = do_iter_write(file, &iter, pos, flags);
--	kfree(iov);
-+	if (ret >= 0) {
-+		ret = do_iter_write(file, &iter, pos, flags);
-+		kfree(iov);
-+	}
- 	return ret;
- }
- EXPORT_SYMBOL(vfs_writev);
-@@ -1161,21 +1160,13 @@ static size_t compat_readv(struct file *file,
- 	struct iovec iovstack[UIO_FASTIOV];
- 	struct iovec *iov = iovstack;
- 	struct iov_iter iter;
--	ssize_t ret = -EBADF;
--
--	if (!(file->f_mode & FMODE_READ))
--		goto out;
--
--	ret = -EINVAL;
--	if (!(file->f_mode & FMODE_CAN_READ))
--		goto out;
-+	ssize_t ret;
+@@ -974,7 +973,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 				unsigned long *cnt, int stable)
+ {
+ 	struct svc_export	*exp;
+-	mm_segment_t		oldfs;
++	struct iov_iter		iter;
+ 	__be32			err = 0;
+ 	int			host_err;
+ 	int			use_wgather;
+@@ -1000,10 +999,8 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 	if (stable && !use_wgather)
+ 		flags |= RWF_SYNC;
  
- 	ret = compat_import_iovec(READ, vec, vlen, UIO_FASTIOV, &iov, &iter);
--	if (ret < 0)
--		goto out;
--	ret = do_iter_read(file, &iter, pos, flags);
--	kfree(iov);
--out:
-+	if (ret >= 0) {
-+		ret = do_iter_read(file, &iter, pos, flags);
-+		kfree(iov);
-+	}
- 	if (ret > 0)
- 		add_rchar(current, ret);
- 	inc_syscr(current);
-@@ -1274,21 +1265,13 @@ static size_t compat_writev(struct file *file,
- 	struct iovec iovstack[UIO_FASTIOV];
- 	struct iovec *iov = iovstack;
- 	struct iov_iter iter;
--	ssize_t ret = -EBADF;
--
--	if (!(file->f_mode & FMODE_WRITE))
--		goto out;
--
--	ret = -EINVAL;
--	if (!(file->f_mode & FMODE_CAN_WRITE))
--		goto out;
-+	ssize_t ret;
- 
- 	ret = compat_import_iovec(WRITE, vec, vlen, UIO_FASTIOV, &iov, &iter);
--	if (ret < 0)
--		goto out;
--	ret = do_iter_write(file, &iter, pos, flags);
--	kfree(iov);
--out:
-+	if (ret >= 0) {
-+		ret = do_iter_write(file, &iter, pos, flags);
-+		kfree(iov);
-+	}
- 	if (ret > 0)
- 		add_wchar(current, ret);
- 	inc_syscw(current);
+-	/* Write the data. */
+-	oldfs = get_fs(); set_fs(KERNEL_DS);
+-	host_err = vfs_writev(file, (struct iovec __user *)vec, vlen, &pos, flags);
+-	set_fs(oldfs);
++	iov_iter_kvec(&iter, WRITE | ITER_KVEC, vec, vlen, *cnt);
++	host_err = vfs_iter_write(file, &iter, &pos, flags);
+ 	if (host_err < 0)
+ 		goto out_nfserr;
+ 	*cnt = host_err;
 -- 
 2.11.0
 
