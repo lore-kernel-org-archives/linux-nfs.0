@@ -1,106 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:44514 "EHLO
+Received: from bombadil.infradead.org ([65.50.211.133]:48686 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753845AbdE0IRN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 04:17:13 -0400
+        with ESMTP id S1753845AbdE0IRY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 04:17:24 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 03/10] fs: remove do_compat_readv_writev
-Date: Sat, 27 May 2017 11:16:47 +0300
-Message-Id: <20170527081654.15957-4-hch@lst.de>
+Subject: [PATCH 06/10] fs: set kernel address limit in do_loop_readv_writev
+Date: Sat, 27 May 2017 11:16:50 +0300
+Message-Id: <20170527081654.15957-7-hch@lst.de>
 In-Reply-To: <20170527081654.15957-1-hch@lst.de>
 References: <20170527081654.15957-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-opencode it in both callers to simplify the call stack a bit.
+This will allow to use all iov_iter based read/write for ITER_KVEC
+without having to check if the file has the iter version of the
+read/write ops, which will allow us to get rid of a large number
+of get_fs/set_fs calls in drivers.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/read_write.c | 42 ++++++++++++++++--------------------------
- 1 file changed, 16 insertions(+), 26 deletions(-)
+ fs/read_write.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
 diff --git a/fs/read_write.c b/fs/read_write.c
-index 94cb71058098..5cbdf23d924f 100644
+index 64b61a032a56..60c64a996ab2 100644
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -1142,32 +1142,13 @@ SYSCALL_DEFINE6(pwritev2, unsigned long, fd, const struct iovec __user *, vec,
+@@ -704,9 +704,18 @@ static ssize_t do_loop_readv_writev(struct file *filp, struct iov_iter *iter,
+ 		loff_t *ppos, int type, int flags)
+ {
+ 	ssize_t ret = 0;
++	mm_segment_t uninitialized_var(old_fs);
+ 
+ 	if (flags & ~RWF_HIPRI)
+ 		return -EOPNOTSUPP;
++	if (iter->type & (ITER_BVEC | ITER_PIPE))
++		return -EOPNOTSUPP;
++
++	/* adjust the address limit for in-kernel I/O */
++	if (iter->type & ITER_KVEC) {
++		old_fs = get_fs();
++		set_fs(get_ds());
++	}
+ 
+ 	while (iov_iter_count(iter)) {
+ 		struct iovec iovec = iov_iter_iovec(iter);
+@@ -731,6 +740,8 @@ static ssize_t do_loop_readv_writev(struct file *filp, struct iov_iter *iter,
+ 		iov_iter_advance(iter, nr);
+ 	}
+ 
++	if (iter->type & ITER_KVEC)
++		set_fs(old_fs);
+ 	return ret;
  }
  
- #ifdef CONFIG_COMPAT
--
--static ssize_t compat_do_readv_writev(int type, struct file *file,
--			       const struct compat_iovec __user *uvector,
--			       unsigned long nr_segs, loff_t *pos,
--			       int flags)
--{
--	struct iovec iovstack[UIO_FASTIOV];
--	struct iovec *iov = iovstack;
--	struct iov_iter iter;
--	ssize_t ret;
--
--	ret = compat_import_iovec(type, uvector, nr_segs,
--				  UIO_FASTIOV, &iov, &iter);
--	if (ret < 0)
--		return ret;
--
--	ret = __do_readv_writev(type, file, &iter, pos, flags);
--	kfree(iov);
--
--	return ret;
--}
--
- static size_t compat_readv(struct file *file,
- 			   const struct compat_iovec __user *vec,
- 			   unsigned long vlen, loff_t *pos, int flags)
- {
-+	struct iovec iovstack[UIO_FASTIOV];
-+	struct iovec *iov = iovstack;
-+	struct iov_iter iter;
- 	ssize_t ret = -EBADF;
- 
- 	if (!(file->f_mode & FMODE_READ))
-@@ -1177,8 +1158,11 @@ static size_t compat_readv(struct file *file,
- 	if (!(file->f_mode & FMODE_CAN_READ))
- 		goto out;
- 
--	ret = compat_do_readv_writev(READ, file, vec, vlen, pos, flags);
--
-+	ret = compat_import_iovec(READ, vec, vlen, UIO_FASTIOV, &iov, &iter);
-+	if (ret < 0)
-+		goto out;
-+	ret = __do_readv_writev(READ, file, &iter, pos, flags);
-+	kfree(iov);
- out:
- 	if (ret > 0)
- 		add_rchar(current, ret);
-@@ -1275,6 +1259,9 @@ static size_t compat_writev(struct file *file,
- 			    const struct compat_iovec __user *vec,
- 			    unsigned long vlen, loff_t *pos, int flags)
- {
-+	struct iovec iovstack[UIO_FASTIOV];
-+	struct iovec *iov = iovstack;
-+	struct iov_iter iter;
- 	ssize_t ret = -EBADF;
- 
- 	if (!(file->f_mode & FMODE_WRITE))
-@@ -1284,8 +1271,11 @@ static size_t compat_writev(struct file *file,
- 	if (!(file->f_mode & FMODE_CAN_WRITE))
- 		goto out;
- 
--	ret = compat_do_readv_writev(WRITE, file, vec, vlen, pos, flags);
--
-+	ret = compat_import_iovec(WRITE, vec, vlen, UIO_FASTIOV, &iov, &iter);
-+	if (ret < 0)
-+		goto out;
-+	ret = __do_readv_writev(WRITE, file, &iter, pos, flags);
-+	kfree(iov);
- out:
- 	if (ret > 0)
- 		add_wchar(current, ret);
 -- 
 2.11.0
 
