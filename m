@@ -1,45 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:36540 "EHLO
-        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755449AbdE0KLO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 06:11:14 -0400
-Received: by mail-qk0-f193.google.com with SMTP id y128so3831257qka.3
-        for <linux-nfs@vger.kernel.org>; Sat, 27 May 2017 03:11:14 -0700 (PDT)
-Message-ID: <1495879871.2881.6.camel@poochiereds.net>
-Subject: Re: [PATCH 0/3] Fixups for l_pid
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Benjamin Coddington <bcodding@redhat.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>, bfields@fieldses.org
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 27 May 2017 06:11:11 -0400
-In-Reply-To: <cover.1495829587.git.bcodding@redhat.com>
-References: <cover.1495829587.git.bcodding@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:54290 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750737AbdE0Rpo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 13:45:44 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "ebiederm@xmission.com" <ebiederm@xmission.com>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>,
+        "cgroups@vger.kernel.org" <cgroups@vger.kernel.org>,
+        "mszeredi@redhat.com" <mszeredi@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
+Date: Sat, 27 May 2017 17:45:35 +0000
+Message-ID: <1495907132.4591.3.camel@primarydata.com>
+References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+         <87lgpoww67.fsf@xmission.com>
+In-Reply-To: <87lgpoww67.fsf@xmission.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-05-26 at 16:14 -0400, Benjamin Coddington wrote:
-> LTP fcntl tests (fcntl11 fcntl14 fcntl17 fcntl19 fcntl20 fcntl21) have been
-> failing for NFSv4 mounts due to an unexpected l_pid.  What follows are some
-> fixups:
-> 
-> Benjamin Coddington (3):
->   fs/locks: Alloc file_lock where practical
->   fs/locks: Set fl_nspid at file_lock allocation
->   fs/locks: Use fs-specific l_pid for remote locks
-> 
->  fs/locks.c         | 137 +++++++++++++++++++++++++++++++++--------------------
->  include/linux/fs.h |   1 +
->  2 files changed, 86 insertions(+), 52 deletions(-)
-> 
+T24gTW9uLCAyMDE3LTA1LTIyIGF0IDE0OjA0IC0wNTAwLCBFcmljIFcuIEJpZWRlcm1hbiB3cm90
+ZToNCj4gRGF2aWQgSG93ZWxscyA8ZGhvd2VsbHNAcmVkaGF0LmNvbT4gd3JpdGVzOg0KPiANCj4g
+PiBIZXJlIGFyZSBhIHNldCBvZiBwYXRjaGVzIHRvIGRlZmluZSBhIGNvbnRhaW5lciBvYmplY3Qg
+Zm9yIHRoZQ0KPiA+IGtlcm5lbCBhbmQNCj4gPiB0byBwcm92aWRlIHNvbWUgbWV0aG9kcyB0byBj
+cmVhdGUgYW5kIG1hbmlwdWxhdGUgdGhlbS4NCj4gPiANCj4gPiBUaGUgcmVhc29uIEkgdGhpbmsg
+dGhpcyBpcyBuZWNlc3NhcnkgaXMgdGhhdCB0aGUga2VybmVsIGhhcyBubyBpZGVhDQo+ID4gaG93
+IHRvDQo+ID4gZGlyZWN0IHVwY2FsbHMgdG8gd2hhdCB1c2Vyc3BhY2UgY29uc2lkZXJzIHRvIGJl
+IGEgY29udGFpbmVyIC0NCj4gPiBjdXJyZW50DQo+ID4gTGludXggcHJhY3RpY2UgYXBwZWFycyB0
+byBtYWtlIGEgImNvbnRhaW5lciIganVzdCBhbiBhcmJpdHJhcmlseQ0KPiA+IGNob3Nlbg0KPiA+
+IGp1bmN0aW9uIG9mIG5hbWVzcGFjZXMsIGNvbnRyb2wgZ3JvdXBzIGFuZCBmaWxlcywgd2hpY2gg
+bWF5IGJlDQo+ID4gY2hhbmdlZA0KPiA+IGluZGl2aWR1YWxseSB3aXRoaW4gdGhlICJjb250YWlu
+ZXIiLg0KPiA+IA0KPiANCj4gSSB0aGluayB0aGlzIG1pZ2h0IHBvc3NpYmx5IGJlIGEgdXNlZnVs
+IGFic3RyYWN0aW9uIGZvciBzb2x2aW5nIHRoZQ0KPiBrZXlyaW5nIHVwY2FsbHMgaWYgaXQgd2Fz
+IHNvbWV0aGluZyBjcmVhdGVkIGltcGxpY2l0bHkuDQo+IA0KPiBmb3JrX2ludG9fY29udGFpbmVy
+IGZvciB1c2UgYnkga2V5cmluZyB1cGNhbGxzIGlzIGN1cnJlbnRseSBhDQo+IHNlY3VyaXR5DQo+
+IHZ1bG5lcmFiaWxpdHkgYXMgaXQgYWxsb3dzIGVzY2FwaW5nIGFsbCBvZiBhIGNvbnRhaW5lcnMg
+Y2dyb3Vwcy7CoMKgQnV0DQo+IHlvdSBoYXZlIHRoYXQgb24geW91ciBsaXN0IG9mIHRoaW5ncyB0
+byBmaXguwqDCoEhvd2V2ZXIgeW91IGRvbid0IGhhdmUNCj4gc2VjY29tcCBhbmQgYSBmZXcgb3Ro
+ZXIgdGhpbmdzLg0KPiANCj4gQmVmb3JlIHdlIGhhZCBrdGhyZWFkZCBpbiB0aGUga2VybmVsIHVw
+Y2FsbHMgYWx3YXlzIGhhZCBpc3N1ZXMNCj4gYmVjYXVzZQ0KPiB0aGUgY29kZSB0byByZXNldCBh
+bGwgb2YgdGhlIHVzZXJzcGFjZSBiaXRzIGFuZCBtYWtlIHRoZSBmb3JrZWQNCj4gdGFzayBzdWl0
+YWJsZSBmb3IgcnVubmluZyB1cGNhbGxzIHdhcyBhbHdheXMgbWlzc2luZyBzb21lIGRldGFpbC7C
+oMKgSXQNCj4gaXMNCj4gYSB2ZXJ5IGJ1Zy1wcm9uZSBraW5kIG9mIGlkaW9tIHRoYXQgeW91IGFy
+ZSB0YWxraW5nIGFib3V0LsKgwqBJdCBpcw0KPiBkb3VibHkNCj4gYnVnLXByb25lIGJlY2F1c2Ug
+dGhlIHdyb25nbmVzcyBpcyB2aXNpYmxlIHRvIHVzZXJzcGFjZSBhbmQgYXMgc3VjaA0KPiBtaWdo
+dCBnZXQgYmVjb21lIGEgZnJvemVuIEtBQkkgZ3VhcmFudGVlLg0KPiANCj4gTGV0IG1lIHN1Z2dl
+c3QgYSBjb25jcmV0ZSBhbHRlcm5hdGl2ZToNCj4gDQo+IC0gQXQgdGhlIHRpbWUgb2YgbW91bnQg
+b2JzZXJ2ZXIgdGhlIG1vdW50ZXJzIHVzZXIgbmFtZXNwYWNlLg0KPiAtIEZpbmQgdGhlIG1vdW50
+ZXJzIHBpZCBuYW1lc3BhY2UuDQo+IC0gSWYgdGhlIG1vdW50ZXJzIHBpZCBuYW1lc3BhY2UgaXMg
+b3duZWQgYnkgdGhlIG1vdW50ZXJzIHVzZXINCj4gbmFtZXNwYWNlDQo+IMKgIHdhbGsgdXAgdGhl
+IHBpZCBuYW1lc3BhY2UgdHJlZSB0byB0aGUgZmlyc3QgcGlkIG5hbWVzcGFjZSBvd25lZCBieQ0K
+PiDCoCB0aGF0IHVzZXIgbmFtZXNwYWNlLg0KPiAtIElmIHRoZSBtb3VudGVycyBwaWQgbmFtZXNw
+YWNlIGlzIG5vdCBvd25lZCBieSB0aGUgbW91bnRlcnMgdXNlcg0KPiDCoCBuYW1lc3BhY2UgZmFp
+bCB0aGUgbW91bnQgaXQgaXMgZ29pbmcgdG8gbmVlZCB0byBtYWtlIHVwY2FsbHMgYXMNCj4gwqAg
+d2lsbCBub3QgYmUgcG9zc2libGUuDQo+IC0gSG9sZCBhIHJlZmVyZW5jZSB0byB0aGUgcGlkIG5h
+bWVzcGFjZSB0aGF0IHdhcyBmb3VuZC4NCj4gDQo+IFRoZW4gd2hlbiBhbiB1cGNhbGwgbmVlZHMg
+dG8gYmUgbWFkZSBmb3JrIGEgY2hpbGQgb2YgdGhlIGluaXQgcHJvY2Vzcw0KPiBvZiB0aGUgc3Bl
+Y2lmaWVkIHBpZCBuYW1lc3BhY2UuwqDCoE9yIGZhaWwgaWYgdGhlIGluaXQgcHJvY2VzcyBvZiB0
+aGUNCj4gcGlkIG5hbWVzcGFjZSBoYXMgZGllZC4NCj4gDQo+IFRoYXQgc2hvdWxkIGFsd2F5cyB3
+b3JrIGFuZCBpdCBkb2VzIG5vdCByZXF1aXJlIGtlZXBpbmcgZXhwZW5zaXZlDQo+IHN0YXRlDQo+
+IHdoZXJlIHdlIGRpZCBub3QgaGF2ZSBpdCBwcmV2aW91c2x5LsKgwqBGdXJ0aGVyIGJlY2F1c2Ug
+dGhlIHNlbWFudGljcw0KPiBhcmUNCj4gZm9yayBhIGNoaWxkIG9mIGEgcGFydGljdWxhciBwaWQg
+bmFtZXNwYWNlJ3MgaW5pdCBhcyBmZWF0dXJlcyBnZXQNCj4gYWRkZWQNCj4gdG8gdGhlIGtlcm5l
+bCB0aGlzIGNvZGUgcmVtYWlucyB3ZWxsIGRlZmluZWQuDQo+IA0KPiBGb3Igb3JkaW5hcnkgcmVx
+dWVzdC1rZXkgdXBjYWxscyB3ZSBzaG91bGQgYmUgYWJsZSB0byB1c2UgdGhlIHNhbWUNCj4gcnVs
+ZXMNCj4gYW5kIGp1c3Qgbm90IHNhdmUvcmVzdG9yZSB0aGluZ3MgaW4gdGhlIGtlcm5lbC4NCj4g
+DQo+IEEgaHVnZSBhZHZhbnRhZ2Ugb2YgbXkgYWx0ZXJuYXRpdmUgKG90aGVyIHRoYW4gbm90IGJl
+aW5nIGEgYml0LXJvdA0KPiBtYWduZXQpIGlzIHRoYXQgaXQgc2hvdWxkIGRyb3AgaW50byBleGlz
+dGluZyBjb250YWluZXIgaW5mcmFzdHJ1Y3R1cmUNCj4gd2l0aG91dCBwcm9ibGVtcy7CoMKgVGhl
+IHJ1bGUgZm9yIGNvbnRhaW5lciBpbXBsZW1lbnRvcnMgaXMgc2ltcGxlIHRvDQo+IHVzZQ0KPiBz
+ZWN1cml0eSBrZXkgaW5mcmFzdHJ1Y3R1cmUgeW91IG5lZWQgdG8gaGF2ZSBjcmVhdGVkIGEgcGlk
+IG5hbWVzcGFjZQ0KPiBpbg0KPiB5b3VyIHVzZXIgbmFtZXNwYWNlLg0KPiANCg0KV2hpbGUgdGhp
+cyBtYXkgYmUgcGFydCBvZiBhIHNvbHV0aW9uLCBJIGRvbid0IHNlZSBob3cgaXQgY2FuIGRlYWwg
+d2l0aA0KaXNzdWVzIHN1Y2ggYXMgdGhlIG5lZWQgdG8gc2V0IHVwIGFuIFJQQ1NFQ19HU1Mgc2Vz
+c2lvbiBvbiBiZWhhbGYgb2YNCnRoZSB1c2VyLiBUaGUgaXNzdWUgdGhlcmUgaXMgdGhhdCB3aGls
+ZSB0aGUgbW91bnQgbWF5IGhhdmUgYmVlbiBjcmVhdGVkDQppbiBhIHBhcmVudCBuYW1lc3BhY2Us
+IHRoZSBhY3R1YWwgY2FsbCB0byBraW5pdCB0byBzZXQgdXAgYSBrZXJiZXJvcw0KY29udGV4dCBp
+cyBsaWtlbHkgdG8gaGF2ZSBiZWVuIG1hZGUgaW5zaWRlIHRoZSBjb250YWluZXIuIEl0IG1heSBl
+dmVuDQpoYXZlIGJlZW4gZG9uZSB1c2luZyBhIGNvbXBsZXRlbHkgc2VwYXJhdGUgbmV0IG5hbWVz
+cGFjZS4gU28gaW4gb3JkZXINCnRvIHNldCB1cCBteSBSUENTRUNfR1NTIHNlc3Npb24sIEkgbWF5
+IG5lZWQgdG8gZG8gc28gZnJvbSBpbnNpZGUgdGhlDQp1c2VyIGNvbnRhaW5lci4NCg0KSW4gdGhh
+dCBraW5kIG9mIGVudmlyb25tZW50LCBtaWdodCBpdCBwZXJoYXBzIG1ha2Ugc2Vuc2UgdG8ganVz
+dCBhbGxvdw0KYW4gdXBjYWxsIGV4ZWN1dGFibGUgcnVubmluZyBpbiB0aGUgcm9vdCBpbml0IG5h
+bWVzcGFjZSB0byB0dW5uZWwNCnRocm91Z2ggKHVzaW5nIHNldG5zKCkpIHNvIGl0IGNhbiBhY3R1
+YWxseSBleGVjdXRlIGluIHRoZSBjb250ZXh0IG9mDQp0aGUgY2hpbGQgY29udGFpbmVyPyBUaGF0
+IHdvdWxkIGtlZXAgc2VjdXJpdHkgcG9saWN5IHdpdGggdGhlIGluaXQNCm5hbWVzcGFjZSwgYnV0
+IHdvdWxkIGFsc28gZW5zdXJlIHRoYXQgdGhlIGNvbnRhaW5lciBlbnZpcm9ubWVudCBydWxlcw0K
+bWF5IGJlIGFwcGxpZWQgaWYgYW5kIHdoZW4gYXBwcm9wcmlhdGUuDQoNCkluIGFkZGl0aW9uIHRv
+IHRvZGF5J3MgdXBjYWxsIG1lY2hhbmlzbSwgd2Ugd291bGQgbmVlZCB0aGUgYWJpbGl0eSB0bw0K
+cGFzcyBpbiB0aGUgbnNwcm94eSAoYW5kIHJvb3QgZGlyZWN0b3J5KSBmb3IgdGhlIGNvbmZpbmVk
+IHByb2Nlc3MgdGhhdA0KdHJpZ2dlcmVkIHRoZSB1cGNhbGwgYW5kL29yIHRoZSBuYW1lc3BhY2Ug
+Zm9yIHRoZSBtb3VudHBvaW50LiBJJ20NCmFzc3VtaW5nIHRoYXQgY291bGQgYmUgZG9uZSBieSBw
+YXNzaW5nIGluIGEgZmlsZSBkZXNjcmlwdG9yIHRvIHRoZQ0KYXBwcm9wcmlhdGUgL3Byb2MgZW50
+cmllcz8NCg0KVGhlIGRvd25zaWRlIG9mIGFuIGFwcHJvYWNoIGxpa2UgdGhpcyBpcyB0aGF0IGl0
+IHJlcXVpcmVzIGNvbnRhaW5lcg0KYXdhcmVuZXNzIGluIHRoZSB1cGNhbGwgZXhlY3V0YWJsZXMg
+dGhlbXNlbHZlcy4gSWYgdGhlIGV4ZWN1dGFibGVzDQpkb24ndCBrbm93IHdoYXQgdGhleSBhcmUg
+ZG9pbmcsIHRoZXkgY291bGQgZW5kIHVwIGxlYWtpbmcgaW5mb3JtYXRpb24NCmZyb20gdGhlIGlu
+aXQgbmFtZXNwYWNlIHRvIHRoZSBwcm9jZXNzIHJ1bm5pbmcgaW4gdGhlIGNvbnRhaW5lciB2aWEg
+dGhlDQprZXlyaW5nLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
+CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVz
+dEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-Thanks Ben. These all look fine to me.
-
-Could you rebase them on top of current linux-next? Christoph sent some
-patches last week that are generating conflicts here and this doesn't
-quite merge in correctly.
-
-Thanks,
--- 
-Jeff Layton <jlayton@poochiereds.net>
