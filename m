@@ -1,63 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:37664 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754021AbdE0IRx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 04:17:53 -0400
+Received: from verein.lst.de ([213.95.11.211]:46658 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754021AbdE0ITq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 27 May 2017 04:19:46 -0400
+Date: Sat, 27 May 2017 10:19:44 +0200
 From: Christoph Hellwig <hch@lst.de>
 To: Alexander Viro <viro@zeniv.linux.org.uk>
 Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>,
         linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: [PATCH 10/10] nfsd: remove nfsd_vfs_read
-Date: Sat, 27 May 2017 11:16:54 +0300
-Message-Id: <20170527081654.15957-11-hch@lst.de>
-In-Reply-To: <20170527081654.15957-1-hch@lst.de>
-References: <20170527081654.15957-1-hch@lst.de>
+Subject: Re: [PATCH 06/10] fs: set kernel address limit in
+        do_loop_readv_writev
+Message-ID: <20170527081944.GA31189@lst.de>
+References: <20170527081654.15957-1-hch@lst.de> <20170527081654.15957-7-hch@lst.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170527081654.15957-7-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simpler done in the only caller.
+Arg.  This patch has been NAKed by Al, but got stuck in the series.
+It's not actually needed by the latter patches and can be discarded.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfsd/vfs.c | 17 ++++++-----------
- 1 file changed, 6 insertions(+), 11 deletions(-)
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 37a03c456b38..0d19ab1b9404 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -920,16 +920,6 @@ __be32 nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
- 	return nfsd_finish_read(file, count, host_err);
- }
- 
--static __be32
--nfsd_vfs_read(struct svc_rqst *rqstp, struct file *file,
--	      loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
--{
--	if (file->f_op->splice_read && test_bit(RQ_SPLICE_OK, &rqstp->rq_flags))
--		return nfsd_splice_read(rqstp, file, offset, count);
--	else
--		return nfsd_readv(file, offset, vec, vlen, count);
--}
--
- /*
-  * Gathered writes: If another process is currently writing to the file,
-  * there's a high chance this is another nfsd (triggered by a bulk write
-@@ -1041,7 +1031,12 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 	ra = nfsd_init_raparms(file);
- 
- 	trace_read_opened(rqstp, fhp, offset, vlen);
--	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
-+
-+	if (file->f_op->splice_read && test_bit(RQ_SPLICE_OK, &rqstp->rq_flags))
-+		err = nfsd_splice_read(rqstp, file, offset, count);
-+	else
-+		err = nfsd_readv(file, offset, vec, vlen, count);
-+
- 	trace_read_io_done(rqstp, fhp, offset, vlen);
- 
- 	if (ra)
--- 
-2.11.0
-
+On Sat, May 27, 2017 at 11:16:50AM +0300, Christoph Hellwig wrote:
+> This will allow to use all iov_iter based read/write for ITER_KVEC
+> without having to check if the file has the iter version of the
+> read/write ops, which will allow us to get rid of a large number
+> of get_fs/set_fs calls in drivers.
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/read_write.c | 11 +++++++++++
+>  1 file changed, 11 insertions(+)
+> 
+> diff --git a/fs/read_write.c b/fs/read_write.c
+> index 64b61a032a56..60c64a996ab2 100644
+> --- a/fs/read_write.c
+> +++ b/fs/read_write.c
+> @@ -704,9 +704,18 @@ static ssize_t do_loop_readv_writev(struct file *filp, struct iov_iter *iter,
+>  		loff_t *ppos, int type, int flags)
+>  {
+>  	ssize_t ret = 0;
+> +	mm_segment_t uninitialized_var(old_fs);
+>  
+>  	if (flags & ~RWF_HIPRI)
+>  		return -EOPNOTSUPP;
+> +	if (iter->type & (ITER_BVEC | ITER_PIPE))
+> +		return -EOPNOTSUPP;
+> +
+> +	/* adjust the address limit for in-kernel I/O */
+> +	if (iter->type & ITER_KVEC) {
+> +		old_fs = get_fs();
+> +		set_fs(get_ds());
+> +	}
+>  
+>  	while (iov_iter_count(iter)) {
+>  		struct iovec iovec = iov_iter_iovec(iter);
+> @@ -731,6 +740,8 @@ static ssize_t do_loop_readv_writev(struct file *filp, struct iov_iter *iter,
+>  		iov_iter_advance(iter, nr);
+>  	}
+>  
+> +	if (iter->type & ITER_KVEC)
+> +		set_fs(old_fs);
+>  	return ret;
+>  }
+>  
+> -- 
+> 2.11.0
+---end quoted text---
