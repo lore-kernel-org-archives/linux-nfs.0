@@ -1,108 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:54290 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750737AbdE0Rpo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 13:45:44 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "ebiederm@xmission.com" <ebiederm@xmission.com>,
+Received: from bedivere.hansenpartnership.com ([66.63.167.143]:53032 "EHLO
+        bedivere.hansenpartnership.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750732AbdE0TLJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 15:11:09 -0400
+Message-ID: <1495912258.2893.9.camel@HansenPartnership.com>
+Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
+From: James Bottomley <James.Bottomley@HansenPartnership.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "ebiederm@xmission.com" <ebiederm@xmission.com>,
         "dhowells@redhat.com" <dhowells@redhat.com>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "jlayton@redhat.com" <jlayton@redhat.com>,
         "cgroups@vger.kernel.org" <cgroups@vger.kernel.org>,
         "mszeredi@redhat.com" <mszeredi@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
         "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-Subject: Re: [RFC][PATCH 0/9] Make containers kernel objects
-Date: Sat, 27 May 2017 17:45:35 +0000
-Message-ID: <1495907132.4591.3.camel@primarydata.com>
+Date: Sat, 27 May 2017 12:10:58 -0700
+In-Reply-To: <1495907132.4591.3.camel@primarydata.com>
 References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
-         <87lgpoww67.fsf@xmission.com>
-In-Reply-To: <87lgpoww67.fsf@xmission.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+         <87lgpoww67.fsf@xmission.com> <1495907132.4591.3.camel@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTA1LTIyIGF0IDE0OjA0IC0wNTAwLCBFcmljIFcuIEJpZWRlcm1hbiB3cm90
-ZToNCj4gRGF2aWQgSG93ZWxscyA8ZGhvd2VsbHNAcmVkaGF0LmNvbT4gd3JpdGVzOg0KPiANCj4g
-PiBIZXJlIGFyZSBhIHNldCBvZiBwYXRjaGVzIHRvIGRlZmluZSBhIGNvbnRhaW5lciBvYmplY3Qg
-Zm9yIHRoZQ0KPiA+IGtlcm5lbCBhbmQNCj4gPiB0byBwcm92aWRlIHNvbWUgbWV0aG9kcyB0byBj
-cmVhdGUgYW5kIG1hbmlwdWxhdGUgdGhlbS4NCj4gPiANCj4gPiBUaGUgcmVhc29uIEkgdGhpbmsg
-dGhpcyBpcyBuZWNlc3NhcnkgaXMgdGhhdCB0aGUga2VybmVsIGhhcyBubyBpZGVhDQo+ID4gaG93
-IHRvDQo+ID4gZGlyZWN0IHVwY2FsbHMgdG8gd2hhdCB1c2Vyc3BhY2UgY29uc2lkZXJzIHRvIGJl
-IGEgY29udGFpbmVyIC0NCj4gPiBjdXJyZW50DQo+ID4gTGludXggcHJhY3RpY2UgYXBwZWFycyB0
-byBtYWtlIGEgImNvbnRhaW5lciIganVzdCBhbiBhcmJpdHJhcmlseQ0KPiA+IGNob3Nlbg0KPiA+
-IGp1bmN0aW9uIG9mIG5hbWVzcGFjZXMsIGNvbnRyb2wgZ3JvdXBzIGFuZCBmaWxlcywgd2hpY2gg
-bWF5IGJlDQo+ID4gY2hhbmdlZA0KPiA+IGluZGl2aWR1YWxseSB3aXRoaW4gdGhlICJjb250YWlu
-ZXIiLg0KPiA+IA0KPiANCj4gSSB0aGluayB0aGlzIG1pZ2h0IHBvc3NpYmx5IGJlIGEgdXNlZnVs
-IGFic3RyYWN0aW9uIGZvciBzb2x2aW5nIHRoZQ0KPiBrZXlyaW5nIHVwY2FsbHMgaWYgaXQgd2Fz
-IHNvbWV0aGluZyBjcmVhdGVkIGltcGxpY2l0bHkuDQo+IA0KPiBmb3JrX2ludG9fY29udGFpbmVy
-IGZvciB1c2UgYnkga2V5cmluZyB1cGNhbGxzIGlzIGN1cnJlbnRseSBhDQo+IHNlY3VyaXR5DQo+
-IHZ1bG5lcmFiaWxpdHkgYXMgaXQgYWxsb3dzIGVzY2FwaW5nIGFsbCBvZiBhIGNvbnRhaW5lcnMg
-Y2dyb3Vwcy7CoMKgQnV0DQo+IHlvdSBoYXZlIHRoYXQgb24geW91ciBsaXN0IG9mIHRoaW5ncyB0
-byBmaXguwqDCoEhvd2V2ZXIgeW91IGRvbid0IGhhdmUNCj4gc2VjY29tcCBhbmQgYSBmZXcgb3Ro
-ZXIgdGhpbmdzLg0KPiANCj4gQmVmb3JlIHdlIGhhZCBrdGhyZWFkZCBpbiB0aGUga2VybmVsIHVw
-Y2FsbHMgYWx3YXlzIGhhZCBpc3N1ZXMNCj4gYmVjYXVzZQ0KPiB0aGUgY29kZSB0byByZXNldCBh
-bGwgb2YgdGhlIHVzZXJzcGFjZSBiaXRzIGFuZCBtYWtlIHRoZSBmb3JrZWQNCj4gdGFzayBzdWl0
-YWJsZSBmb3IgcnVubmluZyB1cGNhbGxzIHdhcyBhbHdheXMgbWlzc2luZyBzb21lIGRldGFpbC7C
-oMKgSXQNCj4gaXMNCj4gYSB2ZXJ5IGJ1Zy1wcm9uZSBraW5kIG9mIGlkaW9tIHRoYXQgeW91IGFy
-ZSB0YWxraW5nIGFib3V0LsKgwqBJdCBpcw0KPiBkb3VibHkNCj4gYnVnLXByb25lIGJlY2F1c2Ug
-dGhlIHdyb25nbmVzcyBpcyB2aXNpYmxlIHRvIHVzZXJzcGFjZSBhbmQgYXMgc3VjaA0KPiBtaWdo
-dCBnZXQgYmVjb21lIGEgZnJvemVuIEtBQkkgZ3VhcmFudGVlLg0KPiANCj4gTGV0IG1lIHN1Z2dl
-c3QgYSBjb25jcmV0ZSBhbHRlcm5hdGl2ZToNCj4gDQo+IC0gQXQgdGhlIHRpbWUgb2YgbW91bnQg
-b2JzZXJ2ZXIgdGhlIG1vdW50ZXJzIHVzZXIgbmFtZXNwYWNlLg0KPiAtIEZpbmQgdGhlIG1vdW50
-ZXJzIHBpZCBuYW1lc3BhY2UuDQo+IC0gSWYgdGhlIG1vdW50ZXJzIHBpZCBuYW1lc3BhY2UgaXMg
-b3duZWQgYnkgdGhlIG1vdW50ZXJzIHVzZXINCj4gbmFtZXNwYWNlDQo+IMKgIHdhbGsgdXAgdGhl
-IHBpZCBuYW1lc3BhY2UgdHJlZSB0byB0aGUgZmlyc3QgcGlkIG5hbWVzcGFjZSBvd25lZCBieQ0K
-PiDCoCB0aGF0IHVzZXIgbmFtZXNwYWNlLg0KPiAtIElmIHRoZSBtb3VudGVycyBwaWQgbmFtZXNw
-YWNlIGlzIG5vdCBvd25lZCBieSB0aGUgbW91bnRlcnMgdXNlcg0KPiDCoCBuYW1lc3BhY2UgZmFp
-bCB0aGUgbW91bnQgaXQgaXMgZ29pbmcgdG8gbmVlZCB0byBtYWtlIHVwY2FsbHMgYXMNCj4gwqAg
-d2lsbCBub3QgYmUgcG9zc2libGUuDQo+IC0gSG9sZCBhIHJlZmVyZW5jZSB0byB0aGUgcGlkIG5h
-bWVzcGFjZSB0aGF0IHdhcyBmb3VuZC4NCj4gDQo+IFRoZW4gd2hlbiBhbiB1cGNhbGwgbmVlZHMg
-dG8gYmUgbWFkZSBmb3JrIGEgY2hpbGQgb2YgdGhlIGluaXQgcHJvY2Vzcw0KPiBvZiB0aGUgc3Bl
-Y2lmaWVkIHBpZCBuYW1lc3BhY2UuwqDCoE9yIGZhaWwgaWYgdGhlIGluaXQgcHJvY2VzcyBvZiB0
-aGUNCj4gcGlkIG5hbWVzcGFjZSBoYXMgZGllZC4NCj4gDQo+IFRoYXQgc2hvdWxkIGFsd2F5cyB3
-b3JrIGFuZCBpdCBkb2VzIG5vdCByZXF1aXJlIGtlZXBpbmcgZXhwZW5zaXZlDQo+IHN0YXRlDQo+
-IHdoZXJlIHdlIGRpZCBub3QgaGF2ZSBpdCBwcmV2aW91c2x5LsKgwqBGdXJ0aGVyIGJlY2F1c2Ug
-dGhlIHNlbWFudGljcw0KPiBhcmUNCj4gZm9yayBhIGNoaWxkIG9mIGEgcGFydGljdWxhciBwaWQg
-bmFtZXNwYWNlJ3MgaW5pdCBhcyBmZWF0dXJlcyBnZXQNCj4gYWRkZWQNCj4gdG8gdGhlIGtlcm5l
-bCB0aGlzIGNvZGUgcmVtYWlucyB3ZWxsIGRlZmluZWQuDQo+IA0KPiBGb3Igb3JkaW5hcnkgcmVx
-dWVzdC1rZXkgdXBjYWxscyB3ZSBzaG91bGQgYmUgYWJsZSB0byB1c2UgdGhlIHNhbWUNCj4gcnVs
-ZXMNCj4gYW5kIGp1c3Qgbm90IHNhdmUvcmVzdG9yZSB0aGluZ3MgaW4gdGhlIGtlcm5lbC4NCj4g
-DQo+IEEgaHVnZSBhZHZhbnRhZ2Ugb2YgbXkgYWx0ZXJuYXRpdmUgKG90aGVyIHRoYW4gbm90IGJl
-aW5nIGEgYml0LXJvdA0KPiBtYWduZXQpIGlzIHRoYXQgaXQgc2hvdWxkIGRyb3AgaW50byBleGlz
-dGluZyBjb250YWluZXIgaW5mcmFzdHJ1Y3R1cmUNCj4gd2l0aG91dCBwcm9ibGVtcy7CoMKgVGhl
-IHJ1bGUgZm9yIGNvbnRhaW5lciBpbXBsZW1lbnRvcnMgaXMgc2ltcGxlIHRvDQo+IHVzZQ0KPiBz
-ZWN1cml0eSBrZXkgaW5mcmFzdHJ1Y3R1cmUgeW91IG5lZWQgdG8gaGF2ZSBjcmVhdGVkIGEgcGlk
-IG5hbWVzcGFjZQ0KPiBpbg0KPiB5b3VyIHVzZXIgbmFtZXNwYWNlLg0KPiANCg0KV2hpbGUgdGhp
-cyBtYXkgYmUgcGFydCBvZiBhIHNvbHV0aW9uLCBJIGRvbid0IHNlZSBob3cgaXQgY2FuIGRlYWwg
-d2l0aA0KaXNzdWVzIHN1Y2ggYXMgdGhlIG5lZWQgdG8gc2V0IHVwIGFuIFJQQ1NFQ19HU1Mgc2Vz
-c2lvbiBvbiBiZWhhbGYgb2YNCnRoZSB1c2VyLiBUaGUgaXNzdWUgdGhlcmUgaXMgdGhhdCB3aGls
-ZSB0aGUgbW91bnQgbWF5IGhhdmUgYmVlbiBjcmVhdGVkDQppbiBhIHBhcmVudCBuYW1lc3BhY2Us
-IHRoZSBhY3R1YWwgY2FsbCB0byBraW5pdCB0byBzZXQgdXAgYSBrZXJiZXJvcw0KY29udGV4dCBp
-cyBsaWtlbHkgdG8gaGF2ZSBiZWVuIG1hZGUgaW5zaWRlIHRoZSBjb250YWluZXIuIEl0IG1heSBl
-dmVuDQpoYXZlIGJlZW4gZG9uZSB1c2luZyBhIGNvbXBsZXRlbHkgc2VwYXJhdGUgbmV0IG5hbWVz
-cGFjZS4gU28gaW4gb3JkZXINCnRvIHNldCB1cCBteSBSUENTRUNfR1NTIHNlc3Npb24sIEkgbWF5
-IG5lZWQgdG8gZG8gc28gZnJvbSBpbnNpZGUgdGhlDQp1c2VyIGNvbnRhaW5lci4NCg0KSW4gdGhh
-dCBraW5kIG9mIGVudmlyb25tZW50LCBtaWdodCBpdCBwZXJoYXBzIG1ha2Ugc2Vuc2UgdG8ganVz
-dCBhbGxvdw0KYW4gdXBjYWxsIGV4ZWN1dGFibGUgcnVubmluZyBpbiB0aGUgcm9vdCBpbml0IG5h
-bWVzcGFjZSB0byB0dW5uZWwNCnRocm91Z2ggKHVzaW5nIHNldG5zKCkpIHNvIGl0IGNhbiBhY3R1
-YWxseSBleGVjdXRlIGluIHRoZSBjb250ZXh0IG9mDQp0aGUgY2hpbGQgY29udGFpbmVyPyBUaGF0
-IHdvdWxkIGtlZXAgc2VjdXJpdHkgcG9saWN5IHdpdGggdGhlIGluaXQNCm5hbWVzcGFjZSwgYnV0
-IHdvdWxkIGFsc28gZW5zdXJlIHRoYXQgdGhlIGNvbnRhaW5lciBlbnZpcm9ubWVudCBydWxlcw0K
-bWF5IGJlIGFwcGxpZWQgaWYgYW5kIHdoZW4gYXBwcm9wcmlhdGUuDQoNCkluIGFkZGl0aW9uIHRv
-IHRvZGF5J3MgdXBjYWxsIG1lY2hhbmlzbSwgd2Ugd291bGQgbmVlZCB0aGUgYWJpbGl0eSB0bw0K
-cGFzcyBpbiB0aGUgbnNwcm94eSAoYW5kIHJvb3QgZGlyZWN0b3J5KSBmb3IgdGhlIGNvbmZpbmVk
-IHByb2Nlc3MgdGhhdA0KdHJpZ2dlcmVkIHRoZSB1cGNhbGwgYW5kL29yIHRoZSBuYW1lc3BhY2Ug
-Zm9yIHRoZSBtb3VudHBvaW50LiBJJ20NCmFzc3VtaW5nIHRoYXQgY291bGQgYmUgZG9uZSBieSBw
-YXNzaW5nIGluIGEgZmlsZSBkZXNjcmlwdG9yIHRvIHRoZQ0KYXBwcm9wcmlhdGUgL3Byb2MgZW50
-cmllcz8NCg0KVGhlIGRvd25zaWRlIG9mIGFuIGFwcHJvYWNoIGxpa2UgdGhpcyBpcyB0aGF0IGl0
-IHJlcXVpcmVzIGNvbnRhaW5lcg0KYXdhcmVuZXNzIGluIHRoZSB1cGNhbGwgZXhlY3V0YWJsZXMg
-dGhlbXNlbHZlcy4gSWYgdGhlIGV4ZWN1dGFibGVzDQpkb24ndCBrbm93IHdoYXQgdGhleSBhcmUg
-ZG9pbmcsIHRoZXkgY291bGQgZW5kIHVwIGxlYWtpbmcgaW5mb3JtYXRpb24NCmZyb20gdGhlIGlu
-aXQgbmFtZXNwYWNlIHRvIHRoZSBwcm9jZXNzIHJ1bm5pbmcgaW4gdGhlIGNvbnRhaW5lciB2aWEg
-dGhlDQprZXlyaW5nLg0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVz
-dEBwcmltYXJ5ZGF0YS5jb20NCg==
+On Sat, 2017-05-27 at 17:45 +0000, Trond Myklebust wrote:
+> On Mon, 2017-05-22 at 14:04 -0500, Eric W. Biederman wrote:
+> > David Howells <dhowells@redhat.com> writes:
+> > 
+> > > Here are a set of patches to define a container object for the
+> > > kernel and
+> > > to provide some methods to create and manipulate them.
+> > > 
+> > > The reason I think this is necessary is that the kernel has no
+> > > idea
+> > > how to
+> > > direct upcalls to what userspace considers to be a container -
+> > > current
+> > > Linux practice appears to make a "container" just an arbitrarily
+> > > chosen
+> > > junction of namespaces, control groups and files, which may be
+> > > changed
+> > > individually within the "container".
+> > > 
+> > 
+> > I think this might possibly be a useful abstraction for solving the
+> > keyring upcalls if it was something created implicitly.
+> > 
+> > fork_into_container for use by keyring upcalls is currently a
+> > security
+> > vulnerability as it allows escaping all of a containers cgroups. 
+> >  But
+> > you have that on your list of things to fix.  However you don't
+> > have
+> > seccomp and a few other things.
+> > 
+> > Before we had kthreadd in the kernel upcalls always had issues
+> > because
+> > the code to reset all of the userspace bits and make the forked
+> > task suitable for running upcalls was always missing some detail. 
+> >  It
+> > is
+> > a very bug-prone kind of idiom that you are talking about.  It is
+> > doubly
+> > bug-prone because the wrongness is visible to userspace and as such
+> > might get become a frozen KABI guarantee.
+> > 
+> > Let me suggest a concrete alternative:
+> > 
+> > - At the time of mount observer the mounters user namespace.
+> > - Find the mounters pid namespace.
+> > - If the mounters pid namespace is owned by the mounters user
+> > namespace
+> >   walk up the pid namespace tree to the first pid namespace owned
+> > by
+> >   that user namespace.
+> > - If the mounters pid namespace is not owned by the mounters user
+> >   namespace fail the mount it is going to need to make upcalls as
+> >   will not be possible.
+> > - Hold a reference to the pid namespace that was found.
+> > 
+> > Then when an upcall needs to be made fork a child of the init
+> > process
+> > of the specified pid namespace.  Or fail if the init process of the
+> > pid namespace has died.
+> > 
+> > That should always work and it does not require keeping expensive
+> > state
+> > where we did not have it previously.  Further because the semantics
+> > are
+> > fork a child of a particular pid namespace's init as features get
+> > added
+> > to the kernel this code remains well defined.
+> > 
+> > For ordinary request-key upcalls we should be able to use the same
+> > rules
+> > and just not save/restore things in the kernel.
+> > 
+> > A huge advantage of my alternative (other than not being a bit-rot
+> > magnet) is that it should drop into existing container
+> > infrastructure
+> > without problems.  The rule for container implementors is simple to
+> > use
+> > security key infrastructure you need to have created a pid
+> > namespace
+> > in
+> > your user namespace.
+> > 
+> 
+> While this may be part of a solution, I don't see how it can deal 
+> with issues such as the need to set up an RPCSEC_GSS session on 
+> behalf of the user. The issue there is that while the mount may have 
+> been created in a parent namespace, the actual call to kinit to set 
+> up a kerberos context is likely to have been made inside the 
+> container. It may even have been done using a completely separate net 
+> namespace. So in order to set up my RPCSEC_GSS session, I may need to 
+> do so from inside the user container.
+
+So perhaps the way to deal with this is to have a dynamic upcall
+interface where you're expected to write the path to the upcall binary
+(the initial upcall would be grandfathered to the root namespaces). 
+ For a container, we could make this capture the nsproxy at time of
+write, meaning that as long as the orchestration system sets up
+everything it wants and then writes the upcall binary, we always know
+the namespace environment to execute it in (we'll have to hunt for a
+parallel method for doing this for cgroups).  The in-kernel subsystem
+executing the upcall would have to be aware there were multiple
+possible ones and know how to look for the one it needs based on
+triggering parameters (likely net ns).  We'd probably have to tie the
+lifetime of the nsproxy to the mount ns, so it would be destroyed and
+removed from the upcall list as soon as the mount ns goes away.
+
+The great thing about this is that the kernel makes no assumptions at
+all about what the environment is: the orchestration system tells it
+when it's ready, so when it's built all the necessary OS
+virtualizations.
+
+> In that kind of environment, might it perhaps make sense to just 
+> allow an upcall executable running in the root init namespace to 
+> tunnel through (using setns()) so it can actually execute in the 
+> context of the child container? That would keep security policy with 
+> the init namespace, but would also ensure that the container 
+> environment rules may be applied if and when appropriate.
+
+So I think having the container tell you when it's constructed the
+upcall container, by writing the upcall path does all this for you.
+
+> In addition to today's upcall mechanism, we would need the ability to
+> pass in the nsproxy (and root directory) for the confined process 
+> that triggered the upcall and/or the namespace for the mountpoint. 
+> I'm assuming that could be done by passing in a file descriptor to 
+> the appropriate /proc entries?
+
+OK, so the proposed approach does this too by capturing the nsproxy at
+the moment you declare the upcall path for the container.
+
+> The downside of an approach like this is that it requires container
+> awareness in the upcall executables themselves. If the executables
+> don't know what they are doing, they could end up leaking information
+> from the init namespace to the process running in the container via 
+> the keyring.
+
+This would depend on security policy.  Right at the moment, with the
+proposed nsproxy capture I think if we don't find a registered upcall,
+we do have to execute the root one (because that's what we do today)
+meaning the upcall binary in the host has to be container aware.  I
+don't think any of the container upcalls have to be.
+
+The only remaining problem is how does the container orchestration
+system know which upcalls it is supposed to be containerising ... this
+sounds like a full list we need out of the kernel and some sort of
+metadata on the container creator.
+
+James
 
