@@ -1,30 +1,25 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:53922 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750732AbdE0Tcm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 May 2017 15:32:42 -0400
-Date: Sat, 27 May 2017 20:32:39 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Christoph Hellwig <hch@lst.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: clean up readv/writev helpers
-Message-ID: <20170527193239.GM390@ZenIV.linux.org.uk>
-References: <20170527081654.15957-1-hch@lst.de>
+Received: from bombadil.infradead.org ([65.50.211.133]:56688 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750792AbdE1Gfa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 May 2017 02:35:30 -0400
+Date: Sat, 27 May 2017 23:35:20 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@poochiereds.net>, bfields@fieldses.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] fs/locks: Alloc file_lock where practical
+Message-ID: <20170528063520.GA32640@infradead.org>
+References: <cover.1495829587.git.bcodding@redhat.com>
+ <1588d987ebffd963a71b0ac23d73d11b34142d15.1495829587.git.bcodding@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170527081654.15957-1-hch@lst.de>
+In-Reply-To: <1588d987ebffd963a71b0ac23d73d11b34142d15.1495829587.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 27, 2017 at 11:16:44AM +0300, Christoph Hellwig wrote:
-> Hi Al,
-> 
-> this series cleans up how we implement the various vectored read and write
-> syscalls, as well as the internal iov_iter based APIs.  It then switches
-> nfsd to use vfs_iter_read/write which cleans up nfsd.  Note that all
-> exportable file systems already implement ->read_iter and ->write_iter
-> anyway.
+On Fri, May 26, 2017 at 04:14:49PM -0400, Benjamin Coddington wrote:
+> Use an allocation it where makes sense to do so.
 
-1--5 and 7--10 applied.
+Care to expain why it makes sense?
