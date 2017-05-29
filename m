@@ -1,16 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53364 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:53976 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751083AbdE2WGI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 May 2017 18:06:08 -0400
+        id S1750864AbdE2WTZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 29 May 2017 18:19:25 -0400
 From: NeilBrown <neilb@suse.com>
-To: Lennart Poettering <lennart@poettering.net>
-Date: Tue, 30 May 2017 08:05:57 +1000
+To: Steve Dickson <SteveD@RedHat.com>
+Date: Tue, 30 May 2017 08:19:16 +1000
 Cc: systemd-devel@freedesktop.org, linux-nfs@vger.kernel.org
-Subject: Re: [systemd-devel] systemd and NFS "bg" mounts.
+Subject: [PATCH] nfs.man: document incompatibility between "bg" option and systemd.
 In-Reply-To: <20170529133814.GC17967@gardel-login>
 References: <87lgpkgwrw.fsf@notabene.neil.brown.name> <20170529133814.GC17967@gardel-login>
-Message-ID: <87wp8zfhdm.fsf@notabene.neil.brown.name>
+cc: Lennart Poettering <lennart@poettering.net>
+Message-ID: <87tw43fgrf.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -21,203 +22,77 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, May 29 2017, Lennart Poettering wrote:
 
-> On Fri, 26.05.17 12:46, NeilBrown (neilb@suse.com) wrote:
->
->>=20
->> Hi all,
->>  it appears that systemd doesn't play well with NFS "bg" mounts.
->>  I can see a few options for how to address this and wonder if anyone
->>  has any opinions.
->
-> Yeah, this has come up before. Long story short: "bg" is simply not
-> compatible with systemd. We assume that the /bin/mount's effect is
-> visible in /proc/self/mountinfo, and everything else is considered a
-> bug, i.e. /bin/mount lying to us. And I think that's a pretty rational
-> assumption and requirement to make.
->
-> I am not particularly convinced the "bg" usecase is really such a
-> great idea, since it is necessarily racy: you never know whether mount
-> is actually in effect or not, even though /bin/mount claims so. I am
-> pretty sure other options (such as autofs mounts, which are dead-easy
-> to use in system: just replace the "bg" mount option in fstab by
-> "x-systemd.automount") are much better approaches to the problem at
-> hand: they also make your local system less dependent on remote
-> network access, but they do give proper guarantees about their
-> runtime: when the autofs mount is established the path is available.
->
-> Hence I am tempted to treat the issue as a documentation and warning
-> issue: accept that "bg" is not supported, but document this better. In
-> addition, we should probably log about "bg" being broken in the
-> fstab-generator. I file a bug about that now:
->
-> https://github.com/systemd/systemd/issues/6046
+Systemd does not, and will not, support "bg" correctly.
+It has other, better, ways to handle "background" mounting.
 
-There is a weird distorted sort of justice here.  When NFS first
-appeared, it broke various long-standing Unix practices, such as
-O_EXCL|O_CREAT for lock files.  Now systemd appears and breaks a
-long-standing NFS practice: bg mounts.
+Explain this.
 
-I hoped we could find a way to make them work, but I won't cry over
-their demise.  I much prefer automount .... I think all NFS mounts
-should be automounts.
+See also https://github.com/systemd/systemd/issues/6046
 
-I see this is already documented in systemd.mount:
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ utils/mount/nfs.man | 18 +++++++++++++++++-
+ 1 file changed, 17 insertions(+), 1 deletion(-)
 
-  The NFS mount option bg for NFS background mounts as documented in nfs(5)=
- is
-  not supported in /etc/fstab entries.
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index cc6e992ed807..7e76492d454f 100644
+=2D-- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -372,6 +372,21 @@ Alternatively these issues can be addressed
+ using an automounter (refer to
+ .BR automount (8)
+ for details).
++.IP
++When
++.B systemd
++is used to mount the filesystems listed in
++.IR /etc/fstab ,
++the
++.B bg
++option is not supported, and may be stripped from the option list.
++Similar functionality can be achieved by providing the
++.B x-system.automount
++option.  This will cause
++.B systemd
++to attempt to mount the filesystem when the mountpoint is first
++accessed, rather than during system boot.  The mount still happens in
++the "background", though in a different way.
+ .TP 1.5i
+ .BR rdirplus " / " nordirplus
+ Selects whether to use NFS v3 or v4 READDIRPLUS requests.
+@@ -1810,7 +1825,8 @@ such as security negotiation, server referrals, and n=
+amed attributes.
+ .BR rpc.idmapd (8),
+ .BR rpc.gssd (8),
+ .BR rpc.svcgssd (8),
+=2D.BR kerberos (1)
++.BR kerberos (1),
++.BR systemd.mount (5) .
+ .sp
+ RFC 768 for the UDP specification.
+ .br
+=2D-=20
+2.12.2
 
-I wonder how many people actually read that.
-We should probably add symmetric documentation to nfs(5)
-Both should give clear pointers to x-systemd.automount.
-
-
->
->>  This is better, but the background mount.nfs can persist for a long
->>  time.  I don't think it persists forever, but at least half an hour I
->>  think.
->>=20
->>  When the foo.mount unit is stopped, the mount.nfs process isn't
->>  killed.
->
-> Hmm, if you see this, then this would be a bug: mount units that are
-> stopped should not leave processes around.
->
->>  I don't think this is a major problem, but it is unfortunate and could
->>  be confusing.  During testing I've had multiple mount.nfs background
->>  processes all attached to the one .mount unit.
->
-> Humpf, could you file a bug?
-
-https://github.com/systemd/systemd/issues/6048
-
->
-> While I think the "bg" concept is broken, as discussed above, having
-> FUSE mounts with processes in the background is actually supported,
-> and we should clean them up properly when the mount unit is stopped.
->
-> Hmm, maybe mount.nfs isn't properly killable? i.e. systemd tries to
-> kill it, but it refuses to be killed?
-
-mount.nfs responds cleanly to SIGTERM.
-
->
->>  What should we do about bg NFS mounts with systemd?
->>  Some options:
->>    - declare "bg" to be not-supported.  If you don't need the filesystem
->>      to be present for boot, then use x-systemd.automount, or some other
->>      automount scheme.
->>      If we did this, we probably need to make it very obvious that "bg"
->>      mounts aren't supported - maybe a log message that appears when
->>      you do "systemctl status ..." ??
->
-> I am all for this, as suggested above. I'd only log from
-> fstab-generator though. (That said, if we want something stronger, we
-> could also add the fact that we stripped "bg" from the mount optoins
-> to the DEscription=3D of the generated mount unit.)
-
-That last bit sounds like a very good idea.  Stripping "bg" could be seen
-as a "surprising" thing for fstab-generator to do.  Making it as obvious
-as possible to the sys-admin would be a good thing (and would probably
-make support personnel happy too).
-
->
->>    - decide that "bg" is really just a lame attempt at automounting, and
->>      that now we have real automounting, "bg" can be translated to that.
->>      So systemd-fstab-generator would treat "bg" like
->>      "x-systemd.automount" and otherwise strip it  from the list of
->>      options.
->
-> I am a bit afraid of this I must say. The semantics are different
-> enough to likely cause more problems then we'd solve with this. Not
-> supporting this at all sounds like the much better approach here:
-> let's strip "bg" when specified.
->
->>    - do our best to really support "bg".  That means, at least, applying
->>      a much larger timeout to "bg" mounts, and preferably killing any
->>      background processes when a mount unit is stopped.  Below is a
->>      little patch which does this last bit, but I'm not sure it is gener=
-ally
->>      safe.
->
-> As mentioned I think this would just trade one race for a couple of
-> new ones, and that appears to be a bad idea to me.
->
->>  A side question is: should this knowledge about NFS be encoded in
->>  systemd, or should nfs-utils add the necessary knowledge?
->
-> I am pretty sure we should keep special understanding of NFS at a
-> minimum in PID 1, but I think we can be less strict in
-> fstab-generator, as its primary job is compat with UNIX anyway.
-
-I was thinking about which source package the knowledge would be in, and
-hence which set of maintainers would over-see it.  I don't expect
-systemd maintainers to be fully in-touch with the details of NFS, but
-then NFS developers cannot be fully in-touch with how systemd works.
-
-Apart from some documentation changes, we probably don't need to put
-anything new in nfs-utils at the moment.
-
->
->>=20
->>  i.e. we could add an nfs-fstab-generator to nfs-utils which creates
->>  drop-ins to modify the behaviour of the drop-ins provided by
->>  systemd-fstab-generator.
->>  Adding the TimeoutSec=3D would be easy.  Stripping the "bg" would be
->>  possible.
->>  Changing the remote-fs.target.requires/foo.mount symlink to be
->>  remote-fs.target.requires/foo.automount would be problematic
->>  though.
->
-> Well, I'd be fine with letting NFS do its own handling of the NFS
-> /etc/fstab entries, but I think the special casing of "bg" is fine to
-> simply add to the existing generator in systemd.
->
->>  Could we teach systemd-fstab-generator to ignore $TYPE filesystems
->>  if TYPE-fstab-generator existed?
->
-> Well, generators can override each other in very limited ways (as
-> there are three different output directories a gnerator can write to,
-> which are inserted at different places in the unit file search path),
-> we could build on that. That said, I think adding this to
-> fstab-generator in systemd is OK.
-
-Ahh, of course.  That is what normal-dir / early-dir / late-dir is for.
-I'll keep that in mind in case I do ever need it.
-
->
->>  Or should we just build all this filesystem-specific knowledge into
->>  systemd?
->
-> For now, I think adding this to systemd's fstab-generator would be fine.
->
-> Hope this makes sense,
-
-Yes it does.  It wasn't the outcome I was hoping for, but it is hard to
-argue against it.
-
-Thanks a lot,
-NeilBrown
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlksm0YACgkQOeye3VZi
-gblxyg//aXhXokRed7nWXCXUwJtK0lCjLrNTNMHfjLmwzgc+QlBF6medoxs0ko+v
-9eR9LFF4x2hecmdKTW2YU9bLhHMSlVXGD7VrCEEizoZ4QAb8OXAlJiafRobnfiBN
-JV9QlLb+083VMH93DA2V57eddYLnavV086WY2epmc8SThxdQxk25DE1kFH7Qcodo
-Pd1mjphBzToiVBjIfIwm6uI7uRwy144AZDE2HdVeuik16BkXdS0vTEs6IB3G3p/H
-U7CbglbBfD6rWavz3ksgO1MRRL2Ne7HyUo2B2G6uHofu7BTyThqs6TYuqCQSPDPp
-SnpU5ZjLsQFDEFuUuCZ/95Es9iJBRbMOHTwZzJXHLT6jeffw4iy6gDYWJiCbkLer
-ZfHauc8fuXAiuILgcEUXTjACIE6NVMT3fhkVtpjpDET29P/hmivLlcNCz4sfIABl
-+L/2s00G3/kcT6IJv3uE5iOcsYtGpeV/q0RO4G3GTzvyJ7plrK3WDxpQI9eK7mfu
-+orCFY8XEIieWedccQozpZH4Qybb8Y5ogCcns1zDvKSZd+GDOpvA7WsnQVqMzW7m
-45hSlWNpwz17JjscGF8dFCgTyT7vtC4Vrr6ObRbfwhdS87Kj34yd72eSNlLYhwsG
-rd7ifIEUo9h9UVfnlvc2bbuVVgzFfkCHNQ0oSnVkA4ImeoPbkPw=
-=swbK
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlksnmYACgkQOeye3VZi
+gblvlxAAnu+c6MM+0l7PzszEnZPwIpKjnThp4ix2Cdauq1X4SXYc9E5Uu/vtivR8
+j7AH+WWKr+9vnPzc4FpnlsLnmjdlrHADFQkMjskY60fAKxyW0iTZIRMvjlpRzq8v
+moetaO4Twq0UZkmtSaiRIDALgML+sFDspc5hCduUhBpgVKPQXYZKJsSCSqeNdowR
+rWJu1DE4Gl8nFYJwSDPLO2yTzUhLu2A+R2pS8rQlAOaR2+N+lfDlxbdahDvoyN3L
+k0YG0uBG4mPg8HdcfZkDcrWDAR8ptjvGU4AOtn0QHBuAYVxc+vcIgGvyNmo00D5U
+TX3Ofp37cgcdrhR+OnAUj0YoTR9dbLgUSa4lkBX/BqiP8COkO7kBJ7R1NsN8urcA
+78T6vl+dwzb5Nb+UJq37ZX7mgzbQoLUlRWdm01CWQ6howgu8vpfBgXAhzbWj1gHT
+j5vNhjyee9mhHB8X7OpT4SGkL4+fXUnjRSe0RQUrIYwiR2oxBLwvB4YdW/QArSoH
+Rw5GZhfesqkBBl3ADXT7Hj3nGgYdcKVGWBOpkPRN0lS7jnAE4S74GxcD6w7wuvUc
+WLo/7gGTOrLH3eoBBWJXAPnB/vDnJ86okhxOf9aWr1Ez3tzzSFrNNIROIsTtsDjm
+dv1cHLC9Fp/8VM8cPl9oq9KSSDOtTbhl5Jx05BUxLUpNRznlLxQ=
+=54bQ
 -----END PGP SIGNATURE-----
 --=-=-=--
