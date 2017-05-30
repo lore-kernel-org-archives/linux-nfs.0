@@ -1,69 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48282 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:48286 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750761AbdE3TeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 May 2017 15:34:20 -0400
-Date: Tue, 30 May 2017 15:34:19 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: GSS sequence number window
-Message-ID: <20170530193419.GA9371@fieldses.org>
-References: <63736845-2BD3-4EE1-AC12-0BD21A9ABEF2@oracle.com>
+        id S1750951AbdE3Tkq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 30 May 2017 15:40:46 -0400
+Date: Tue, 30 May 2017 15:40:30 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Stephen Smalley <sds@tycho.nsa.gov>
+Cc: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org,
+        selinux@tycho.nsa.gov, Trond Myklebust <trondmy@primarydata.com>
+Subject: Re: [PATCH RFC 2/2] nfs: update labeling behavior on a superblock
+ when submounting
+Message-ID: <20170530194030.GB9371@fieldses.org>
+References: <20170404232646.GB24146@parsley.fieldses.org>
+ <20170525210754.24265-1-smayhew@redhat.com>
+ <20170525210754.24265-3-smayhew@redhat.com>
+ <1495808645.12091.10.camel@tycho.nsa.gov>
+ <20170526152821.xgyidg7qebdwbm6f@tonberry.usersys.redhat.com>
+ <1496155125.2164.8.camel@tycho.nsa.gov>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <63736845-2BD3-4EE1-AC12-0BD21A9ABEF2@oracle.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1496155125.2164.8.camel@tycho.nsa.gov>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 30, 2017 at 02:58:00PM -0400, Chuck Lever wrote:
-> Hey Bruce!
+On Tue, May 30, 2017 at 10:38:45AM -0400, Stephen Smalley wrote:
+> On Fri, 2017-05-26 at 11:28 -0400, Scott Mayhew wrote:
+> > On Fri, 26 May 2017, Stephen Smalley wrote:
+> > 
+> > > On Thu, 2017-05-25 at 17:07 -0400, Scott Mayhew wrote:
+> > > > When the client traverses from filesystem exported without the
+> > > > "security_label" option to one exported with the "security_label"
+> > > > option, it needs to pass SECURITY_LSM_NATIVE_LABELS to
+> > > > security_sb_set_mnt_opts() so that the new superblock has
+> > > > SBLABEL_MNT
+> > > > set in its security mount options.  Otherwise, attempts to set
+> > > > security
+> > > > labels via setxattr over NFSv4.2 will fail.
+> > > > 
+> > > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > > > ---
+> > > >  fs/nfs/super.c | 23 ++++++++++++++++++++++-
+> > > >  1 file changed, 22 insertions(+), 1 deletion(-)
+> > > > 
+> > > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > > > index 2f3822a..d7a3b89 100644
+> > > > --- a/fs/nfs/super.c
+> > > > +++ b/fs/nfs/super.c
+> > > > @@ -2544,10 +2544,31 @@ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
+> > > >  int nfs_clone_sb_security(struct super_block *s, struct dentry
+> > > > *mntroot,
+> > > >  			  struct nfs_mount_info *mount_info)
+> > > >  {
+> > > > +	int error;
+> > > > +	unsigned long kflags = 0, kflags_out = 0;
+> > > > +	struct security_mnt_opts opts;
+> > > > +
+> > > >  	/* clone any lsm security options from the parent to the
+> > > > new
+> > > > sb */
+> > > >  	if (d_inode(mntroot)->i_op != NFS_SB(s)->nfs_client-
+> > > > > rpc_ops->dir_inode_ops)
+> > > > 
+> > > >  		return -ESTALE;
+> > > > -	return security_sb_clone_mnt_opts(mount_info->cloned-
+> > > > >sb,
+> > > > s);
+> > > > +	error = security_sb_clone_mnt_opts(mount_info->cloned-
+> > > > >sb,
+> > > > s);
+> > > > +	if (error)
+> > > > +		goto err;
+> > > > +
+> > > > +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
+> > > > +		!(NFS_SB(mount_info->cloned->sb)->caps &
+> > > > NFS_CAP_SECURITY_LABEL)) {
+> > > > +		memset(&opts, 0, sizeof(opts));
+> > > > +		kflags |= SECURITY_LSM_NATIVE_LABELS;
+> > > > +
+> > > > +		error = security_sb_set_mnt_opts(s, &opts,
+> > > > kflags,
+> > > > &kflags_out);
+> > > > +		if (error)
+> > > > +			goto err;
+> > > > +
+> > > > +		if (!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
+> > > > +			NFS_SB(s)->caps &=
+> > > > ~NFS_CAP_SECURITY_LABEL;
+> > > > +	}
+> > > > +err:
+> > > > +	return error;
+> > > >  }
+> > > >  EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
+> > > 
+> > > Could this clobber a context set via context= mount option?
+> > 
+> > Argh, yes I suppose it could.  In my first attempt to fix this, I
+> > added
+> > a security_sb_get_mnt_opts() hook to get the original mount options
+> > and
+> > then passed that along with the SECURITY_LSM_NATIVE_LABELS flag to
+> > security_sb_set_mnt_opts().  When I saw that
+> > security_sb_set_mnt_opts()
+> > wouldn't allow me to change a superblock that had already been
+> > initialized, I got rid of the hook and added the check in patch 1...
+> > maybe a combination of the two is needed?
+> > 
+> > Testing it again now, I'm not sure the context= mount option is
+> > working
+> > correctly with the latest kernel.
 > 
-> While testing with sec=krb5 and sec=krb5i, I noticed a lot of
-> spurious connection loss, especially when I wanted to run a
-> CPU-intensive workload on my NFS server at the same time I
-> was testing.
-> 
-> I added a pr_err() in gss_check_seq_num, and ran a fio job
-> on a vers=3,sec=sys,proto=tcp mount (server is exporting a
-> tmpfs). On the server, I rebuilt a kernel source tree cscope
-> database at the same time.
-> 
-> May 29 17:53:13 klimt kernel: gss_check_seq_num: seq_num = 250098, sd_max = 250291, GSS_SEQ_WIN = 128
-> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num = 937816, sd_max = 938171, GSS_SEQ_WIN = 128
-> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num = 938544, sd_max = 938727, GSS_SEQ_WIN = 128
-> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num = 938543, sd_max = 938727, GSS_SEQ_WIN = 128
-> May 29 17:53:34 klimt kernel: gss_check_seq_num: seq_num = 939344, sd_max = 939549, GSS_SEQ_WIN = 128
-> May 29 17:53:35 klimt kernel: gss_check_seq_num: seq_num = 965007, sd_max = 965176, GSS_SEQ_WIN = 128
-> May 29 17:54:01 klimt kernel: gss_check_seq_num: seq_num = 1799710, sd_max = 1799982, GSS_SEQ_WIN = 128
-> May 29 17:54:02 klimt kernel: gss_check_seq_num: seq_num = 1831165, sd_max = 1831353, GSS_SEQ_WIN = 128
-> May 29 17:54:04 klimt kernel: gss_check_seq_num: seq_num = 1883583, sd_max = 1883761, GSS_SEQ_WIN = 128
-> May 29 17:54:07 klimt kernel: gss_check_seq_num: seq_num = 1959316, sd_max = 1959447, GSS_SEQ_WIN = 128
-> 
-> RFC 2203 suggests there's no risk to using a large window.
-> My first thought was to make the sequence window larger
-> (say 2048) but I've seen stragglers outside even that large
-> a window.
-> 
-> Any thoughts about why there are these sequence number
-> outliers?
+> Looks like you are correct,
+> https://github.com/SELinuxProject/selinux-kernel/issues/35
 
-No, alas.
-
-The server's where it's easier to catch, but it'd be interesting to know
-what's going on on the client side when this happens.
-
-Might be interesting to know just what the operation (or compound ops)
-are in the bad cases, in case there's some pattern.
-
-Might also be interesting to check where exactly in the client code the
-sequence number is assigned and where in the server code it's checked,
-and think about where they might get queued up or reordered in between.
-
-Is it possible there are retries involved?
-
-Does increasing the number of server threads help?
-
-I don't think it'd be a problem to increase the sequence window.
+Ugh.  So, to make sure I understand: the desired behavior is that in the
+case the client mounts with a context= option, behavior is exactly as if
+the client or server didn't support the new security labeling protocol.
+That would make sense to me.
 
 --b.
