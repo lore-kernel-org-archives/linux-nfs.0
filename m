@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:36012 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750922AbdE3SPI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 14:15:08 -0400
-Subject: [PATCH v1 08/17] svcrdma: Don't account for Receive queue
- "starvation"
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36564 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750922AbdE3SPA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 14:15:00 -0400
+Subject: [PATCH v1 07/17] svcrdma: Improve Reply chunk sanity checking
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 30 May 2017 14:15:06 -0400
-Message-ID: <20170530181506.2992.9237.stgit@klimt.1015granger.net>
+Date: Tue, 30 May 2017 14:14:58 -0400
+Message-ID: <20170530181458.2992.89047.stgit@klimt.1015granger.net>
 In-Reply-To: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
 References: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,70 +15,50 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From what I can tell, calling ->recvfrom when there is no work to do
-is a normal part of operation. This is the only way svc_recv can
-tell when there is no more data ready to receive on the transport.
+Identify malformed transport headers and unsupported chunk
+combinations as early as possible.
 
-Neither the TCP nor the UDP transport implementations have a
-"starve" metric.
+- Ensure that segment lengths are not crazy.
 
-The cost of receive starvation accounting is bumping an atomic, which
-results in extra (IMO unnecessary) bus traffic between CPU sockets,
-while holding a spin lock.
+- Ensure that the Reply chunk's segment count is not crazy.
+
+With a 1KB inline threshold, the largest number of Write segments
+that can be conveyed is about 60 (for a RDMA_NOMSG Reply message).
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   21 ++++++---------------
- 1 file changed, 6 insertions(+), 15 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index b480893..1452bd0 100644
+index cf8be18..b480893 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -844,9 +844,9 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 	struct svc_xprt *xprt = rqstp->rq_xprt;
- 	struct svcxprt_rdma *rdma_xprt =
- 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
--	struct svc_rdma_op_ctxt *ctxt = NULL;
-+	struct svc_rdma_op_ctxt *ctxt;
- 	struct rpcrdma_msg *rmsgp;
--	int ret = 0;
-+	int ret;
+@@ -217,15 +217,20 @@ static __be32 *xdr_check_write_list(__be32 *p, const __be32 *end)
+ 	return p;
+ }
  
- 	dprintk("svcrdma: rqstp=%p\n", rqstp);
- 
-@@ -863,21 +863,13 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 					struct svc_rdma_op_ctxt, list);
- 		list_del(&ctxt->list);
- 	} else {
--		atomic_inc(&rdma_stat_rq_starve);
-+		/* No new incoming requests, terminate the loop */
- 		clear_bit(XPT_DATA, &xprt->xpt_flags);
--		ctxt = NULL;
-+		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
-+		return 0;
+-static __be32 *xdr_check_reply_chunk(__be32 *p, __be32 *end)
++/* Sanity check the Reply chunk.
++ *
++ * Sanity checks:
++ * - Reply chunk does not overflow buffer.
++ * - Segment size limited by largest NFS data payload.
++ *
++ * Returns pointer to the following RPC header.
++ */
++static __be32 *xdr_check_reply_chunk(__be32 *p, const __be32 *end)
+ {
+-	__be32 *next;
+-
+ 	if (*p++ != xdr_zero) {
+-		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
+-		if (next > end)
++		p = xdr_check_write_chunk(p, end, MAX_BYTES_SPECIAL_SEG);
++		if (!p)
+ 			return NULL;
+-		p = next;
  	}
- 	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
--	if (!ctxt) {
--		/* This is the EAGAIN path. The svc_recv routine will
--		 * return -EAGAIN, the nfsd thread will go to call into
--		 * svc_recv again and we shouldn't be on the active
--		 * transport list
--		 */
--		if (test_bit(XPT_CLOSE, &xprt->xpt_flags))
--			goto defer;
--		goto out;
--	}
-+
- 	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p\n",
- 		ctxt, rdma_xprt, rqstp);
- 	atomic_inc(&rdma_stat_recv);
-@@ -920,7 +912,6 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 		+ rqstp->rq_arg.page_len
- 		+ rqstp->rq_arg.tail[0].iov_len;
- 	svc_rdma_put_context(ctxt, 0);
-- out:
- 	dprintk("svcrdma: ret=%d, rq_arg.len=%u, "
- 		"rq_arg.head[0].iov_base=%p, rq_arg.head[0].iov_len=%zd\n",
- 		ret, rqstp->rq_arg.len,
+ 	return p;
+ }
 
