@@ -1,146 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:50371 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750902AbdE3Lvh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 May 2017 07:51:37 -0400
-From: NeilBrown <neilb@suse.com>
-To: Jason Vas Dias <jason.vas.dias@gmail.com>,
+Received: from gardel.0pointer.net ([85.214.157.71]:45714 "EHLO
+        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751851AbdE3MnP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 08:43:15 -0400
+Date: Tue, 30 May 2017 14:43:12 +0200
+From: Lennart Poettering <lennart@poettering.net>
+To: NeilBrown <neilb@suse.com>
+Cc: Steve Dickson <SteveD@RedHat.com>, systemd-devel@freedesktop.org,
         linux-nfs@vger.kernel.org
-Date: Tue, 30 May 2017 21:51:28 +1000
-Subject: Re: mount.nfs needs to accept 'addr' option / parse its target string better
-In-Reply-To: <CALyZvKwXQew+t69BiQ4UXX+7=bYMPWxXdUbFepzWmrX_9_d=Qw@mail.gmail.com>
-References: <CALyZvKwXQew+t69BiQ4UXX+7=bYMPWxXdUbFepzWmrX_9_d=Qw@mail.gmail.com>
-Message-ID: <8760giftq7.fsf@notabene.neil.brown.name>
+Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option
+ and systemd.
+Message-ID: <20170530124311.GA19096@gardel-login>
+References: <87lgpkgwrw.fsf@notabene.neil.brown.name>
+ <20170529133814.GC17967@gardel-login>
+ <87tw43fgrf.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87tw43fgrf.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+On Tue, 30.05.17 08:19, NeilBrown (neilb@suse.com) wrote:
 
-On Mon, May 29 2017, Jason Vas Dias wrote:
+> 
+> Systemd does not, and will not, support "bg" correctly.
+> It has other, better, ways to handle "background" mounting.
+> 
+> Explain this.
+> 
+> See also https://github.com/systemd/systemd/issues/6046
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  utils/mount/nfs.man | 18 +++++++++++++++++-
+>  1 file changed, 17 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index cc6e992ed807..7e76492d454f 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -372,6 +372,21 @@ Alternatively these issues can be addressed
+>  using an automounter (refer to
+>  .BR automount (8)
+>  for details).
+> +.IP
+> +When
+> +.B systemd
+> +is used to mount the filesystems listed in
+> +.IR /etc/fstab ,
+> +the
+> +.B bg
+> +option is not supported, and may be stripped from the option list.
+> +Similar functionality can be achieved by providing the
+> +.B x-system.automount
 
-> Good day -
->
-> I just built & installed the latest nfs-utils-2.1.1 , and noticed a
-> number of issues
-> with mount.nfs .
->
->
-> 1. It does not seem to be possible to specify a literal IPv6 address in a target
->     (not "URL"! ) <host>:<share> string:
+The option is called "x-systemd.automount", i.e. one more "d".
 
+> +option.  This will cause
+> +.B systemd
+> +to attempt to mount the filesystem when the mountpoint is first
+> +accessed, rather than during system boot.  The mount still happens in
+> +the "background", though in a different way.
 
-Please read the "nfs" man page.
+Looks good to me otherwise!
 
-  man 5 nfs
+Lennart
 
-particularly the second last para of the "DESCRIPTION" which starts
-
-  The server's hostname can be ...
-
-NeilBrown
-
->
->     $ mount -t nfs4 ::1:/mnt/disk /mnt/disk2
->     mount.nfs4: Failed to resolve server : Name or service not known
->     ( so it does not work for the loopback IPv6 address; try link local
->       IPv6 address:
->      $ strace -f -s8192 -v -e trace=mount mount -t nfs4  \
->         fe80::fa16:54ff:fef7:d66d:/mnt/disk /mnt/disk2
->      mount.nfs4: Failed to resolve server fe80: Name or service not known
->    )
->
->   Yet it DOES work for the literal IPv4 loopback address:
->      $  mount -t nfs4 127.0.0.1:/mnt/disk /mnt/disk2
->      $ echo $?
->      0
->    But not if a port is specified :
->    $ strace -f -s8192 -v -e trace=mount mount -t nfs4 \
->       127.0.0.1:2049:/mnt/disk /mnt/disk2
->      strace: Process 2265 attached
-> [pid  2265] mount("127.0.0.1:2049:/mnt/disk", "/mnt/disk2", "nfs4", 0,
-> "vers=4.2,addr=127.0.0.1,clientaddr=127.0.0.1"May 29 20:16:13 jvdlux
-> kernel: [40029.874234] device: '0:43': device_add
-> May 29 20:16:13 jvdlux kernel: [40029.874283] PM: Adding info for No Bus:0:43
-> ) = -1 ENOENT (No such file or directory)
-> May 29 20:16:13 jvdlux kernel: [40029.922459] device: '0:43': device_unregister
-> May 29 20:16:13 jvdlux kernel: [40029.922496] PM: Removing info for No Bus:0:43
-> May 29 20:16:13 jvdlux kernel: [40029.922533] device: '0:43':
-> device_create_release
-> [pid  2265] mount("127.0.0.1:2049:/mnt/disk", "/mnt/disk2", "nfs4", 0,
-> "addr=127.0.0.1,vers=3,proto=tcp,mountvers=3,mountproto=udp,mountport=49831"May
-> 29 20:16:13 jvdlux rpc.mountd[1001]: Bad path in mount request from
-> 127.0.0.1: "2049:/mnt/disk"
-> ) = -1 EACCES (Permission denied)
-> mount.nfs4: access denied by server while mounting 127.0.0.1:2049:/mnt/disk
->
-> (the above output includes the syslog messages from a 'tail -f
-> /var/log/messages'
->  running in the background ).  It is strange that the mount is tried
-> twice here ,
-> once with version 4, and once with version 3, even though I had requested
-> a filesystem type of 'nfs4' , not 'nfs3' .
->
-> So it seems that mount.nfs is treating the FIRST colon as unconditionally
-> starting the 'share name' portion of the URL . I think it would make more
-> sense to make it find the LAST colon (use rindex(3) instead of index(3)) -
-> then it should check if what follows is a number - then it has found the
-> port , or the last octet of an IPv6 address .
->
-> And why doesn't mount.nfs support NFS URLs ? :
->   $ mount.nfs4 nfs://127.0.0.1/mnt/disk /mnt/disk2
->   mount.nfs4: NFS URLs are not supported
->
-> Then at least it would be simpler to separate out the host name,
-> regardless of whether a literal IPv6 address is used or not.
->
-> And it appears to be really impossible to specify a literal IPv6 address
-> in the colon-separated octet ASCII format in the 'target' string.
->
-> Why doesn't mount.nfs support parsing the 'addr' option ?  :
->
->   $ mount -t nfs4 -o 'addr=fe80::fa16:54ff:fef7:d66d' /mnt/disk /mnt/disk2
->   mount.nfs4: remote share not in 'host:dir' format
->
-> If mount.nfs supports literal IPv4 addresses, it should support
-> literal IPv6 addresses.
->
-> I think mount.nfs should support NFS URLs, including ones with a
-> ':<port>' suffix
-> ( or a '#<port>' suffix for IPv6 addresses) ,  and that it should also
-> support specifying the 'addr=' option directly, and then not require
-> the address to be
-> prefixed to the share name with a separating colon .
->
-> Just my two cents worth / some observations ...
->
-> Regards,
-> Jason
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlktXMIACgkQOeye3VZi
-gbk9lg//d21MihEaMv/1TUW8EARPkYyAoJ1+LkSg9epgTtxzWX/pJJ/kComM5Pr7
-rzZmZUIRRnhd26f+FrDd/Ok0OrK5DM69AffjbU5wbxe+zQ7gttfAlR9E1YHWD/iK
-xsGQ9Xkak1LDbVT0JNf+1FGhuOI+Ury3lSEG2b+ifSYJ79D9cs3VrDiDyW0ekpwG
-kQGKlsrW9XzgQLTZG4wHsRzX7qV+QP6BbFfvj1+QPurrMVGoD8QdFcUlqjl3Kfbc
-axzA4YkuMTVLoUKR64sCJ4ti5+V5vEHrHEy/qdhOmJJmTJo60U2+x80MvwqBwiaF
-uURuiOzlheafrrwAY3AwLWdCZiHN9s8pHa6pgNHTmiKyvhBsHLhLvW9qtNdi87ag
-I0NUan8ZfHBnhxptPjpAj4GRbXNkIKNfN0P3FXTZLluyXJMKV4SmqZLuM5O0RZ/p
-zaRf6iJtyB0g/OfM+pogSZyS1N8rTZfcCeszP3x2kupARrc8kuIza/qClRhthgqa
-DNNxt6M9GFcTUX8RHLlka5ERoCsq7M0dVNOzI0Tr+tjd9ENYhXguzOjUWp2E9MZk
-bu9LkXGcUABkafYIxtR88PLeHacFBzgLoWdR3Bbbt2mdgKoeaze6nHLD+4yfRWdx
-+87unGW2y+mXe3UNe9WhQRqXu8vsQcTUefVw0PhiOmwnMtlPZOk=
-=YhU6
------END PGP SIGNATURE-----
---=-=-=--
+-- 
+Lennart Poettering, Red Hat
