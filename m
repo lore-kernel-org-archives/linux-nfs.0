@@ -1,64 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gardel.0pointer.net ([85.214.157.71]:45742 "EHLO
-        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750898AbdE3MqB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 08:46:01 -0400
-Date: Tue, 30 May 2017 14:45:58 +0200
-From: Lennart Poettering <lennart@poettering.net>
-To: Michael Biebl <mbiebl@gmail.com>
-Cc: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org,
-        systemd-devel@freedesktop.org
-Subject: Re: [systemd-devel] [PATCH] nfs.man: document incompatibility
- between "bg" option and systemd.
-Message-ID: <20170530124558.GB19096@gardel-login>
-References: <87lgpkgwrw.fsf@notabene.neil.brown.name>
- <20170529133814.GC17967@gardel-login>
- <87tw43fgrf.fsf@notabene.neil.brown.name>
- <CAGWsdOh5Sy-=8uv1aLUsCs+Co_QHgrkbUOJ0fXkb=Xskcez6JQ@mail.gmail.com>
- <87inkig1vw.fsf@notabene.neil.brown.name>
- <CAGWsdOjd+HDity=qO0Rfk9RZ6bujwcXkR3MeZdN7ubroBPJ0sA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAGWsdOjd+HDity=qO0Rfk9RZ6bujwcXkR3MeZdN7ubroBPJ0sA@mail.gmail.com>
+Received: from emsm-gh1-uea11.nsa.gov ([8.44.101.9]:40275 "EHLO
+        emsm-gh1-uea11.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751525AbdE3Oe4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 10:34:56 -0400
+Message-ID: <1496155125.2164.8.camel@tycho.nsa.gov>
+Subject: Re: [PATCH RFC 2/2] nfs: update labeling behavior on a superblock
+ when submounting
+From: Stephen Smalley <sds@tycho.nsa.gov>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org,
+        "J . Bruce Fields" <bfields@fieldses.org>, selinux@tycho.nsa.gov,
+        Trond Myklebust <trondmy@primarydata.com>
+Date: Tue, 30 May 2017 10:38:45 -0400
+In-Reply-To: <20170526152821.xgyidg7qebdwbm6f@tonberry.usersys.redhat.com>
+References: <20170404232646.GB24146@parsley.fieldses.org>
+         <20170525210754.24265-1-smayhew@redhat.com>
+         <20170525210754.24265-3-smayhew@redhat.com>
+         <1495808645.12091.10.camel@tycho.nsa.gov>
+         <20170526152821.xgyidg7qebdwbm6f@tonberry.usersys.redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 30.05.17 11:15, Michael Biebl (mbiebl@gmail.com) wrote:
-
-> 2017-05-30 10:55 GMT+02:00 NeilBrown <neilb@suse.com>:
-> > On Tue, May 30 2017, Michael Biebl wrote:
-> >
-> >> 2017-05-30 0:19 GMT+02:00 NeilBrown <neilb@suse.com>:
-> >>
-> >>> +.B bg
-> >>> +option is not supported, and may be stripped from the option list.
-> >>
-> >> Either systemd is updated to actually strip the bg option or not. The
-> >> documentation should reflect that.
-> >> I don't think we should be vague about this, as it would only be confusing.
-> >
-> > It depends on which version of systemd is in use.
-> > Even if/when systemd is updated to strip the 'bg', it would not
-> > be correct to say "and will be stripped..." as that isn't true for all
-> > versions.
-> > We could spell it out "and may be stripped from the option list,
-> > depending on which version of systemd is installed", but I'm not sure
-> > that really helps...
-> >  "... and some versions of systemd will strip 'bg' from the option list"
-> >  ??
+On Fri, 2017-05-26 at 11:28 -0400, Scott Mayhew wrote:
+> On Fri, 26 May 2017, Stephen Smalley wrote:
 > 
-> So far, no version of systemd strips bg from the option list.
-> If in version X systemd actually starts stripping bg, we should
-> explicitly mention that version in the man page imho.
+> > On Thu, 2017-05-25 at 17:07 -0400, Scott Mayhew wrote:
+> > > When the client traverses from filesystem exported without the
+> > > "security_label" option to one exported with the "security_label"
+> > > option, it needs to pass SECURITY_LSM_NATIVE_LABELS to
+> > > security_sb_set_mnt_opts() so that the new superblock has
+> > > SBLABEL_MNT
+> > > set in its security mount options.  Otherwise, attempts to set
+> > > security
+> > > labels via setxattr over NFSv4.2 will fail.
+> > > 
+> > > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > > ---
+> > >  fs/nfs/super.c | 23 ++++++++++++++++++++++-
+> > >  1 file changed, 22 insertions(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > > index 2f3822a..d7a3b89 100644
+> > > --- a/fs/nfs/super.c
+> > > +++ b/fs/nfs/super.c
+> > > @@ -2544,10 +2544,31 @@ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
+> > >  int nfs_clone_sb_security(struct super_block *s, struct dentry
+> > > *mntroot,
+> > >  			  struct nfs_mount_info *mount_info)
+> > >  {
+> > > +	int error;
+> > > +	unsigned long kflags = 0, kflags_out = 0;
+> > > +	struct security_mnt_opts opts;
+> > > +
+> > >  	/* clone any lsm security options from the parent to the
+> > > new
+> > > sb */
+> > >  	if (d_inode(mntroot)->i_op != NFS_SB(s)->nfs_client-
+> > > > rpc_ops->dir_inode_ops)
+> > > 
+> > >  		return -ESTALE;
+> > > -	return security_sb_clone_mnt_opts(mount_info->cloned-
+> > > >sb,
+> > > s);
+> > > +	error = security_sb_clone_mnt_opts(mount_info->cloned-
+> > > >sb,
+> > > s);
+> > > +	if (error)
+> > > +		goto err;
+> > > +
+> > > +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
+> > > +		!(NFS_SB(mount_info->cloned->sb)->caps &
+> > > NFS_CAP_SECURITY_LABEL)) {
+> > > +		memset(&opts, 0, sizeof(opts));
+> > > +		kflags |= SECURITY_LSM_NATIVE_LABELS;
+> > > +
+> > > +		error = security_sb_set_mnt_opts(s, &opts,
+> > > kflags,
+> > > &kflags_out);
+> > > +		if (error)
+> > > +			goto err;
+> > > +
+> > > +		if (!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
+> > > +			NFS_SB(s)->caps &=
+> > > ~NFS_CAP_SECURITY_LABEL;
+> > > +	}
+> > > +err:
+> > > +	return error;
+> > >  }
+> > >  EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
+> > 
+> > Could this clobber a context set via context= mount option?
+> 
+> Argh, yes I suppose it could.  In my first attempt to fix this, I
+> added
+> a security_sb_get_mnt_opts() hook to get the original mount options
+> and
+> then passed that along with the SECURITY_LSM_NATIVE_LABELS flag to
+> security_sb_set_mnt_opts().  When I saw that
+> security_sb_set_mnt_opts()
+> wouldn't allow me to change a superblock that had already been
+> initialized, I got rid of the hook and added the check in patch 1...
+> maybe a combination of the two is needed?
+> 
+> Testing it again now, I'm not sure the context= mount option is
+> working
+> correctly with the latest kernel.
 
-I figure it's up to the NFS folks to decide on this, but if I were
-them I would not mention any version numbers. That just gets out of
-date. Instead, document the new behaviour and indicate in the README
-file that the documentation assumes systemd with a certain version is
-used, and then let the packers figure out the rest, i.e. if they want
-to place some kind of weak package version dependency or not.
+Looks like you are correct,
+https://github.com/SELinuxProject/selinux-kernel/issues/35
 
-Lennart
-
--- 
-Lennart Poettering, Red Hat
