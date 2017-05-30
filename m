@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:36246 "EHLO
+Received: from mail-io0-f195.google.com ([209.85.223.195]:33490 "EHLO
         mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750979AbdE3SQE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 14:16:04 -0400
-Subject: [PATCH v1 15/17] svcrdma: Clean-up svc_rdma_unmap_dma
+        with ESMTP id S1750979AbdE3SQM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 14:16:12 -0400
+Subject: [PATCH v1 16/17] svcrdma: Clean up after converting
+ svc_rdma_recvfrom to rdma_rw API
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 30 May 2017 14:16:02 -0400
-Message-ID: <20170530181602.2992.70495.stgit@klimt.1015granger.net>
+Date: Tue, 30 May 2017 14:16:10 -0400
+Message-ID: <20170530181610.2992.59462.stgit@klimt.1015granger.net>
 In-Reply-To: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
 References: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,45 +16,95 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's no longer a need to compare each SGE's lkey with the PD's
-local_dma_lkey. Now that FRWR is gone, all DMA mappings are for
-pages that were registered with this key.
+Clean up: Registration mode details are now handled by the rdma_rw
+API, and thus can be removed from svcrdma.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   19 +++++--------------
- 1 file changed, 5 insertions(+), 14 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    4 ---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   39 +++---------------------------
+ 2 files changed, 4 insertions(+), 39 deletions(-)
 
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index fd7775f..995c6fe 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -90,9 +90,6 @@ struct svc_rdma_op_ctxt {
+ 	struct page *pages[RPCSVC_MAXPAGES];
+ };
+ 
+-#define	SVCRDMA_DEVCAP_FAST_REG		1	/* fast mr registration */
+-#define	SVCRDMA_DEVCAP_READ_W_INV	2	/* read w/ invalidate */
+-
+ struct svcxprt_rdma {
+ 	struct svc_xprt      sc_xprt;		/* SVC transport structure */
+ 	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
+@@ -123,7 +120,6 @@ struct svcxprt_rdma {
+ 	struct ib_qp         *sc_qp;
+ 	struct ib_cq         *sc_rq_cq;
+ 	struct ib_cq         *sc_sq_cq;
+-	u32		     sc_dev_caps;	/* distilled device caps */
+ 
+ 	spinlock_t	     sc_lock;		/* transport lock */
+ 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 8864105..75bd11f 100644
+index 75bd11f..e660d49 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -225,22 +225,13 @@ void svc_rdma_unmap_dma(struct svc_rdma_op_ctxt *ctxt)
- {
- 	struct svcxprt_rdma *xprt = ctxt->xprt;
- 	struct ib_device *device = xprt->sc_cm_id->device;
--	u32 lkey = xprt->sc_pd->local_dma_lkey;
- 	unsigned int i;
+@@ -783,7 +783,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	memset(&qp_attr, 0, sizeof qp_attr);
+ 	qp_attr.event_handler = qp_event_handler;
+ 	qp_attr.qp_context = &newxprt->sc_xprt;
+-	qp_attr.port_num = newxprt->sc_cm_id->port_num;
++	qp_attr.port_num = newxprt->sc_port_num;
+ 	qp_attr.cap.max_rdma_ctxs = newxprt->sc_max_requests;
+ 	qp_attr.cap.max_send_wr = newxprt->sc_sq_depth;
+ 	qp_attr.cap.max_recv_wr = newxprt->sc_rq_depth;
+@@ -807,43 +807,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	}
+ 	newxprt->sc_qp = newxprt->sc_cm_id->qp;
  
--	for (i = 0; i < ctxt->mapped_sges; i++) {
--		/*
--		 * Unmap the DMA addr in the SGE if the lkey matches
--		 * the local_dma_lkey, otherwise, ignore it since it is
--		 * an FRMR lkey and will be unmapped later when the
--		 * last WR that uses it completes.
--		 */
--		if (ctxt->sge[i].lkey == lkey)
--			ib_dma_unmap_page(device,
--					    ctxt->sge[i].addr,
--					    ctxt->sge[i].length,
--					    ctxt->direction);
--	}
-+	for (i = 0; i < ctxt->mapped_sges; i++)
-+		ib_dma_unmap_page(device,
-+				  ctxt->sge[i].addr,
-+				  ctxt->sge[i].length,
-+				  ctxt->direction);
- 	ctxt->mapped_sges = 0;
- }
+-	/*
+-	 * Use the most secure set of MR resources based on the
+-	 * transport type and available memory management features in
+-	 * the device. Here's the table implemented below:
+-	 *
+-	 *		Fast	Global	DMA	Remote WR
+-	 *		Reg	LKEY	MR	Access
+-	 *		Sup'd	Sup'd	Needed	Needed
+-	 *
+-	 * IWARP	N	N	Y	Y
+-	 *		N	Y	Y	Y
+-	 *		Y	N	Y	N
+-	 *		Y	Y	N	-
+-	 *
+-	 * IB		N	N	Y	N
+-	 *		N	Y	N	-
+-	 *		Y	N	Y	N
+-	 *		Y	Y	N	-
+-	 *
+-	 * NB:	iWARP requires remote write access for the data sink
+-	 *	of an RDMA_READ. IB does not.
+-	 */
+-	if (dev->attrs.device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS) {
+-		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_FAST_REG;
+-	} else
++	if (!(dev->attrs.device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS))
+ 		newxprt->sc_snd_w_inv = false;
+-
+-	/*
+-	 * Determine if a DMA MR is required and if so, what privs are required
+-	 */
+-	if (!rdma_protocol_iwarp(dev, newxprt->sc_cm_id->port_num) &&
+-	    !rdma_ib_or_roce(dev, newxprt->sc_cm_id->port_num))
++	if (!rdma_protocol_iwarp(dev, newxprt->sc_port_num) &&
++	    !rdma_ib_or_roce(dev, newxprt->sc_port_num))
+ 		goto errout;
  
+-	if (rdma_protocol_iwarp(dev, newxprt->sc_cm_id->port_num))
+-		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
+-
+ 	/* Post receive buffers */
+ 	for (i = 0; i < newxprt->sc_max_requests; i++) {
+ 		ret = svc_rdma_post_recv(newxprt, GFP_KERNEL);
 
