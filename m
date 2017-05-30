@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:33966 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750855AbdE3SOw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 14:14:52 -0400
-Subject: [PATCH v1 06/17] svcrdma: Improve Write chunk sanity checking
+Received: from mail-io0-f194.google.com ([209.85.223.194]:36012 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750922AbdE3SPI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 14:15:08 -0400
+Subject: [PATCH v1 08/17] svcrdma: Don't account for Receive queue
+ "starvation"
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 30 May 2017 14:14:50 -0400
-Message-ID: <20170530181450.2992.29755.stgit@klimt.1015granger.net>
+Date: Tue, 30 May 2017 14:15:06 -0400
+Message-ID: <20170530181506.2992.9237.stgit@klimt.1015granger.net>
 In-Reply-To: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
 References: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,97 +16,70 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Identify malformed transport headers and unsupported chunk
-combinations as early as possible.
+>From what I can tell, calling ->recvfrom when there is no work to do
+is a normal part of operation. This is the only way svc_recv can
+tell when there is no more data ready to receive on the transport.
 
-- Reject RPC-over-RDMA messages that contain more than one Write
-chunk, since this implementation does not support more than one per
-message.
+Neither the TCP nor the UDP transport implementations have a
+"starve" metric.
 
-- Ensure that segment lengths are not crazy.
-
-- Ensure that the chunk's segment count is not crazy.
-
-With a 1KB inline threshold, the largest number of Write segments
-that can be conveyed is about 60 (for a RDMA_NOMSG Reply message).
+The cost of receive starvation accounting is bumping an atomic, which
+results in extra (IMO unnecessary) bus traffic between CPU sockets,
+while holding a spin lock.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   52 ++++++++++++++++++++++++++++---
- 1 file changed, 47 insertions(+), 5 deletions(-)
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   21 ++++++---------------
+ 1 file changed, 6 insertions(+), 15 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 885ad95..cf8be18 100644
+index b480893..1452bd0 100644
 --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
 +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -117,6 +117,11 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
- 	rqstp->rq_arg.tail[0].iov_len = 0;
- }
+@@ -844,9 +844,9 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 	struct svc_xprt *xprt = rqstp->rq_xprt;
+ 	struct svcxprt_rdma *rdma_xprt =
+ 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
+-	struct svc_rdma_op_ctxt *ctxt = NULL;
++	struct svc_rdma_op_ctxt *ctxt;
+ 	struct rpcrdma_msg *rmsgp;
+-	int ret = 0;
++	int ret;
  
-+/* This accommodates the largest possible Write chunk,
-+ * in one segment.
-+ */
-+#define MAX_BYTES_WRITE_SEG	((u32)(RPCSVC_MAXPAGES << PAGE_SHIFT))
-+
- /* This accommodates the largest possible Position-Zero
-  * Read chunk or Reply chunk, in one segment.
-  */
-@@ -162,15 +167,52 @@ static __be32 *xdr_check_read_list(__be32 *p, const __be32 *end)
- 	return p;
- }
+ 	dprintk("svcrdma: rqstp=%p\n", rqstp);
  
--static __be32 *xdr_check_write_list(__be32 *p, __be32 *end)
-+/* The segment count is limited to how many segments can
-+ * fit in the transport header without overflowing the
-+ * buffer. That's about 60 Write segments for a 1KB inline
-+ * threshold.
-+ */
-+static __be32 *xdr_check_write_chunk(__be32 *p, const __be32 *end,
-+				     u32 maxlen)
- {
--	__be32 *next;
-+	u32 i, segcount;
-+
-+	segcount = be32_to_cpup(p++);
-+	for (i = 0; i < segcount; i++) {
-+		p++;	/* handle */
-+		if (be32_to_cpup(p++) > maxlen)
-+			return NULL;
-+		p += 2;	/* offset */
-+
-+		if (p > end)
-+			return NULL;
-+	}
-+
-+	return p;
-+}
- 
-+/* Sanity check the Write list.
-+ *
-+ * Implementation limits:
-+ * - This implementation supports only one Write chunk.
-+ *
-+ * Sanity checks:
-+ * - Write list does not overflow buffer.
-+ * - Segment size limited by largest NFS data payload.
-+ *
-+ * Returns pointer to the following Reply chunk.
-+ */
-+static __be32 *xdr_check_write_list(__be32 *p, const __be32 *end)
-+{
-+	u32 chcount;
-+
-+	chcount = 0;
- 	while (*p++ != xdr_zero) {
--		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
--		if (next > end)
-+		p = xdr_check_write_chunk(p, end, MAX_BYTES_WRITE_SEG);
-+		if (!p)
-+			return NULL;
-+		if (chcount++ > 1)
- 			return NULL;
--		p = next;
+@@ -863,21 +863,13 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 					struct svc_rdma_op_ctxt, list);
+ 		list_del(&ctxt->list);
+ 	} else {
+-		atomic_inc(&rdma_stat_rq_starve);
++		/* No new incoming requests, terminate the loop */
+ 		clear_bit(XPT_DATA, &xprt->xpt_flags);
+-		ctxt = NULL;
++		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
++		return 0;
  	}
- 	return p;
- }
+ 	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
+-	if (!ctxt) {
+-		/* This is the EAGAIN path. The svc_recv routine will
+-		 * return -EAGAIN, the nfsd thread will go to call into
+-		 * svc_recv again and we shouldn't be on the active
+-		 * transport list
+-		 */
+-		if (test_bit(XPT_CLOSE, &xprt->xpt_flags))
+-			goto defer;
+-		goto out;
+-	}
++
+ 	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p\n",
+ 		ctxt, rdma_xprt, rqstp);
+ 	atomic_inc(&rdma_stat_recv);
+@@ -920,7 +912,6 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 		+ rqstp->rq_arg.page_len
+ 		+ rqstp->rq_arg.tail[0].iov_len;
+ 	svc_rdma_put_context(ctxt, 0);
+- out:
+ 	dprintk("svcrdma: ret=%d, rq_arg.len=%u, "
+ 		"rq_arg.head[0].iov_base=%p, rq_arg.head[0].iov_len=%zd\n",
+ 		ret, rqstp->rq_arg.len,
 
