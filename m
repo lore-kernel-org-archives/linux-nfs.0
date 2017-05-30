@@ -1,60 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44916 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60921 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751085AbdE3Q0o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 May 2017 12:26:44 -0400
-Date: Tue, 30 May 2017 19:26:37 +0300
-From: "Michael S. Tsirkin" <mst@redhat.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-Cc: hch <hch@lst.de>, Trond Myklebust <trondmy@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        virtualization@lists.linux-foundation.org
-Subject: Re: remove function pointer casts and constify function tables
-Message-ID: <20170530192544-mutt-send-email-mst@kernel.org>
-References: <1494620040.19467.1.camel@primarydata.com>
- <20170513072557.GA14602@lst.de>
- <1494691819.31377.1.camel@primarydata.com>
- <20170515152134.GC24547@fieldses.org>
- <20170515154450.GA18630@lst.de>
- <20170523081159.GA19216@lst.de>
- <20170523122334.GA4298@fieldses.org>
- <20170526150839.GA4593@fieldses.org>
- <20170526150956.GB4593@fieldses.org>
- <20170526193133.GA9874@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170526193133.GA9874@fieldses.org>
+        id S1751015AbdE3Qbn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 30 May 2017 12:31:43 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Alexander Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@poochiereds.net>, bfields@fieldses.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/3] fs/locks: Use fs-specific l_pid for remote locks
+Date: Tue, 30 May 2017 12:31:40 -0400
+Message-Id: <f452b6beeabb74c367e042601e778e6f0c9908f6.1496161312.git.bcodding@redhat.com>
+In-Reply-To: <cover.1496161312.git.bcodding@redhat.com>
+References: <cover.1496161312.git.bcodding@redhat.com>
+In-Reply-To: <cover.1496161312.git.bcodding@redhat.com>
+References: <cover.1496161312.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 26, 2017 at 03:31:33PM -0400, bfields@fieldses.org wrote:
-> Looks like the culprit is very likely d85b758f72b0 "virtio_net: fix
-> support for small rings".
-> 
-> After that patch, my NFS server VM stops responding to packets after a
-> few minutes of testing.  Before that patch, my server keeps working.
-> 
-> --b.
+Now that we're setting fl_nspid at file_lock allocation, we need to handle
+the case where a remote filesystem directly sets fl_pid.  If the filesystem
+implements the lock operation, set a flag to return the lock's fl_pid,
+rather than fl_nspid.
 
-Others complained about that too.
-I'm still trying to reproduce though.
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+---
+ fs/locks.c         | 25 +++++++++++++++++++------
+ include/linux/fs.h |  7 +++++++
+ 2 files changed, 26 insertions(+), 6 deletions(-)
 
-Meanwhile, could you please locate this line of code:
-+               vi->rq[i].min_buf_len = mergeable_min_buf_len(vi, vi->rq[i].vq);
-
-and add something like
-        printk(KERN_ERR, "min buf = 0x%x expected 0x%x size 0x%x big %d\n",
-               vi->rq[i].min_buf_len, GOOD_PACKET_LEN,
-               virtqueue_get_vring_size(vi->rq[i].vq),
-               (int)vi->big_packets);
-
-after it?
-Then boot and capture the output.
-
-Thanks!
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index 0f5a461b8da6..c7a222a8eaa7 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -2047,16 +2047,28 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
+  */
+ int vfs_test_lock(struct file *filp, struct file_lock *fl)
+ {
+-	if (filp->f_op->lock && is_remote_lock(filp))
++	if (filp->f_op->lock && is_remote_lock(filp)) {
++		fl->fl_flags |= FL_PID_PRIV;
+ 		return filp->f_op->lock(filp, F_GETLK, fl);
++	}
+ 	posix_test_lock(filp, fl);
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(vfs_test_lock);
+ 
++static inline int flock_translate_pid(struct file_lock *fl)
++{
++	if (IS_OFDLCK(fl))
++		return -1;
++	if (fl->fl_flags & FL_PID_PRIV)
++		return fl->fl_pid;
++	return pid_vnr(fl->fl_nspid);
++}
++
++
+ static int posix_lock_to_flock(struct flock *flock, struct file_lock *fl)
+ {
+-	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
++	flock->l_pid = flock_translate_pid(fl);
+ #if BITS_PER_LONG == 32
+ 	/*
+ 	 * Make sure we can represent the posix lock via
+@@ -2078,7 +2090,7 @@ static int posix_lock_to_flock(struct flock *flock, struct file_lock *fl)
+ #if BITS_PER_LONG == 32
+ static void posix_lock_to_flock64(struct flock64 *flock, struct file_lock *fl)
+ {
+-	flock->l_pid = IS_OFDLCK(fl) ? -1 : fl->fl_pid;
++	flock->l_pid = flock_translate_pid(fl);
+ 	flock->l_start = fl->fl_start;
+ 	flock->l_len = fl->fl_end == OFFSET_MAX ? 0 :
+ 		fl->fl_end - fl->fl_start + 1;
+@@ -2596,7 +2608,9 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+ 	struct inode *inode = NULL;
+ 	unsigned int fl_pid;
+ 
+-	if (fl->fl_nspid) {
++	if (fl->fl_flags & FL_PID_PRIV) {
++		fl_pid = fl->fl_pid;
++	} else {
+ 		struct pid_namespace *proc_pidns = file_inode(f->file)->i_sb->s_fs_info;
+ 
+ 		/* Don't let fl_pid change based on who is reading the file */
+@@ -2609,8 +2623,7 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+ 		 */
+ 		if (fl_pid == 0)
+ 			return;
+-	} else
+-		fl_pid = fl->fl_pid;
++	}
+ 
+ 	if (fl->fl_file != NULL)
+ 		inode = locks_inode(fl->fl_file);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index aa4affb38c39..11794cbaaed0 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -908,6 +908,7 @@ static inline struct file *get_file(struct file *f)
+ #define FL_UNLOCK_PENDING	512 /* Lease is being broken */
+ #define FL_OFDLCK	1024	/* lock is "owned" by struct file */
+ #define FL_LAYOUT	2048	/* outstanding pNFS layout */
++#define FL_PID_PRIV	4096	/* F_GETLK should report fl_pid */
+ 
+ #define FL_CLOSE_POSIX (FL_POSIX | FL_CLOSE)
+ 
+@@ -973,6 +974,12 @@ int opens_in_grace(struct net *);
+  * 3) lock range end
+  *
+  * Obviously, the last two criteria only matter for POSIX locks.
++ *
++ * fl_pid and fl_nspid appear redundant, but fl_pid is used to handle cases
++ * where a local F_GETLK returns a lock that was granted to a remote owner,
++ * as might exist with a remotely available filesystem like NFS.  For that
++ * case, the lock manager should set fl_pid, and that value is returned to a
++ * local F_GETLK.
+  */
+ struct file_lock {
+ 	struct file_lock *fl_next;	/* singly linked list for this inode  */
 -- 
-MST
+2.9.3
+
