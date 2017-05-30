@@ -1,68 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48020 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750922AbdE3SDW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 May 2017 14:03:22 -0400
-Date: Tue, 30 May 2017 14:03:21 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 10/10] nfsd: remove nfsd_vfs_read
-Message-ID: <20170530180321.GI18523@fieldses.org>
-References: <20170527081654.15957-1-hch@lst.de>
- <20170527081654.15957-11-hch@lst.de>
+Received: from mail-io0-f176.google.com ([209.85.223.176]:33867 "EHLO
+        mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750761AbdE3SOE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 14:14:04 -0400
+Subject: [PATCH v1 00/17] Server-side NFS/RDMA changes proposed for v4.13
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 30 May 2017 14:14:02 -0400
+Message-ID: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170527081654.15957-11-hch@lst.de>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ACK.--b.
+This series overhauls the "call receive" side of the RPC-over-RDMA
+transport to use the new rdma_rw API. A slight performance increase
+(better throughput and latency) has been seen. Benefits include:
 
-On Sat, May 27, 2017 at 11:16:54AM +0300, Christoph Hellwig wrote:
-> Simpler done in the only caller.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/vfs.c | 17 ++++++-----------
->  1 file changed, 6 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 37a03c456b38..0d19ab1b9404 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -920,16 +920,6 @@ __be32 nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
->  	return nfsd_finish_read(file, count, host_err);
->  }
->  
-> -static __be32
-> -nfsd_vfs_read(struct svc_rqst *rqstp, struct file *file,
-> -	      loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
-> -{
-> -	if (file->f_op->splice_read && test_bit(RQ_SPLICE_OK, &rqstp->rq_flags))
-> -		return nfsd_splice_read(rqstp, file, offset, count);
-> -	else
-> -		return nfsd_readv(file, offset, vec, vlen, count);
-> -}
-> -
->  /*
->   * Gathered writes: If another process is currently writing to the file,
->   * there's a high chance this is another nfsd (triggered by a bulk write
-> @@ -1041,7 +1031,12 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  	ra = nfsd_init_raparms(file);
->  
->  	trace_read_opened(rqstp, fhp, offset, vlen);
-> -	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
-> +
-> +	if (file->f_op->splice_read && test_bit(RQ_SPLICE_OK, &rqstp->rq_flags))
-> +		err = nfsd_splice_read(rqstp, file, offset, count);
-> +	else
-> +		err = nfsd_readv(file, offset, vec, vlen, count);
-> +
->  	trace_read_io_done(rqstp, fhp, offset, vlen);
->  
->  	if (ra)
-> -- 
-> 2.11.0
+ o Fewer ib_post_send calls per RPC Call
+
+ o Code duplicated by other ULPs is replaced with core functions
+
+ o Position-Zero Read chunks are handled in one function
+
+ o More thorough transport header sanity checking
+
+
+Available in the "nfsd-rdma-for-4.13" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.13
+
+
+In order to keep the for-4.13 series to about 15 patches, I've
+updated the "nfsd-rdma-rw-api" topic branch to include a few
+additional patches. A new rdma_rw API is provided to expose the
+number of MRs needed for a given payload size so that queue depths
+can be more accurately calculated.
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-rw-api
+
+
+---
+
+Chuck Lever (17):
+      ib_core: Enable and expose force_mr module parameter
+      svcrdma: Squelch disconnection messages
+      svcrdma: Avoid Send Queue overflow
+      svcrdma: Remove svc_rdma_marshal.c
+      svcrdma: Improve Read chunk sanity checking
+      svcrdma: Improve Write chunk sanity checking
+      svcrdma: Improve Reply chunk sanity checking
+      svcrdma: Don't account for Receive queue "starvation"
+      sunrpc: Allocate one more page per svc_rqst
+      svcrdma: Add recvfrom helpers to svc_rdma_rw.c
+      svcrdma: Use generic RDMA R/W API in RPC Call path
+      svcrdma: Properly compute .len and .buflen for received RPC Calls
+      svcrdma: Remove unused Read completion handlers
+      svcrdma: Remove frmr cache
+      svcrdma: Clean-up svc_rdma_unmap_dma
+      svcrdma: Clean up after converting svc_rdma_recvfrom to rdma_rw API
+      svcrdma: use offset_in_page() macro
+
+
+ drivers/infiniband/core/rw.c             |    2 
+ include/linux/sunrpc/svc.h               |    3 
+ include/linux/sunrpc/svc_rdma.h          |   46 --
+ net/sunrpc/svc_xprt.c                    |    8 
+ net/sunrpc/xprtrdma/Makefile             |    4 
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c   |  168 -------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  734 ++++++++++++------------------
+ net/sunrpc/xprtrdma/svc_rdma_rw.c        |  433 ++++++++++++++++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   15 -
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |  250 +---------
+ 10 files changed, 760 insertions(+), 903 deletions(-)
+ delete mode 100644 net/sunrpc/xprtrdma/svc_rdma_marshal.c
+
+--
+Chuck Lever
