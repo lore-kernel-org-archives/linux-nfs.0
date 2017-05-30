@@ -1,100 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39524 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44916 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751081AbdE3QNS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 May 2017 12:13:18 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <149616052408.10194.7774163568767478808.stgit@warthog.procyon.org.uk>
-References: <149616052408.10194.7774163568767478808.stgit@warthog.procyon.org.uk>
-To: James.Bottomley@HansenPartnership.com, ebiederm@xmission.com
-Cc: linux-nfs@vger.kernel.org, containers@lists.linux-foundation.org,
-        linux-kernel@vger.kernel.org, dhowells@redhat.com,
-        keyrings@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        cgroups@vger.kernel.org
-Subject: Example daemon program
+        id S1751085AbdE3Q0o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 30 May 2017 12:26:44 -0400
+Date: Tue, 30 May 2017 19:26:37 +0300
+From: "Michael S. Tsirkin" <mst@redhat.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: hch <hch@lst.de>, Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        virtualization@lists.linux-foundation.org
+Subject: Re: remove function pointer casts and constify function tables
+Message-ID: <20170530192544-mutt-send-email-mst@kernel.org>
+References: <1494620040.19467.1.camel@primarydata.com>
+ <20170513072557.GA14602@lst.de>
+ <1494691819.31377.1.camel@primarydata.com>
+ <20170515152134.GC24547@fieldses.org>
+ <20170515154450.GA18630@lst.de>
+ <20170523081159.GA19216@lst.de>
+ <20170523122334.GA4298@fieldses.org>
+ <20170526150839.GA4593@fieldses.org>
+ <20170526150956.GB4593@fieldses.org>
+ <20170526193133.GA9874@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Tue, 30 May 2017 17:13:10 +0100
-Message-ID: <10295.1496160790@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170526193133.GA9874@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Here's a one-shot example daemon that services user-type keys.
+On Fri, May 26, 2017 at 03:31:33PM -0400, bfields@fieldses.org wrote:
+> Looks like the culprit is very likely d85b758f72b0 "virtio_net: fix
+> support for small rings".
+> 
+> After that patch, my NFS server VM stops responding to packets after a
+> few minutes of testing.  Before that patch, my server keeps working.
+> 
+> --b.
 
-David
----
-/* request_key() service daemon
- *
- * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
- * Written by David Howells (dhowells@redhat.com)
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public Licence
- * as published by the Free Software Foundation; either version
- * 2 of the Licence, or (at your option) any later version.
- */
+Others complained about that too.
+I'm still trying to reproduce though.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <keyutils.h>
+Meanwhile, could you please locate this line of code:
++               vi->rq[i].min_buf_len = mergeable_min_buf_len(vi, vi->rq[i].vq);
 
-#define KEY_SERVICE_NS_UTS		0x0001
-#define KEY_SERVICE_NS_IPC		0x0002
-#define KEY_SERVICE_NS_MNT		0x0004
-#define KEY_SERVICE_NS_PID		0x0008
-#define KEY_SERVICE_NS_NET		0x0010
-#define KEY_SERVICE_NS_CGROUP		0x0020
-#define KEY_SERVICE___ALL_NS		0x003f
+and add something like
+        printk(KERN_ERR, "min buf = 0x%x expected 0x%x size 0x%x big %d\n",
+               vi->rq[i].min_buf_len, GOOD_PACKET_LEN,
+               virtqueue_get_vring_size(vi->rq[i].vq),
+               (int)vi->big_packets);
 
-#define KEY_SERVICE_FD_CLOEXEC		0x0001
-#define KEY_SERVICE_FD_NONBLOCK		0x0002
+after it?
+Then boot and capture the output.
 
-#define KEYCTL_SERVICE_CREATE		30	/* Create a request_key() service channel */
-#define KEYCTL_SERVICE_ADD		31	/* Specify the a request pattern we can service */
+Thanks!
 
-int main()
-{
-	key_serial_t key, tring, pring, sring;
-	char buf[128], op[12];
-	uid_t uid;
-	gid_t gid;
-	int kfd, len;
 
-	kfd = keyctl(KEYCTL_SERVICE_CREATE, KEY_SERVICE_FD_CLOEXEC);
-	if (kfd == -1) {
-		perror("service-create");
-		exit(1);
-	}
-
-	if (keyctl(KEYCTL_SERVICE_ADD, kfd, "user", 0) == -1) {
-		perror("service-add");
-		exit(1);
-	}
-
-	len = read(kfd, buf, sizeof(buf) - 1);
-	if (len == -1) {
-		perror("read");
-		exit(1);
-	}
-	buf[len] = 0;
-
-	printf("received %d [%s]\n", len, buf);
-	if (sscanf(buf, "%12s %x %x %x %x %x %x",
-		   op, &key, &uid, &gid, &tring, &pring, &sring) != 7) {
-		fprintf(stderr, "sscanf: Insufficient args decoded\n");
-		exit(1);
-	}
-
-	if (keyctl_assume_authority(key) == -1) {
-		perror("assume");
-		exit(1);
-	}
-
-	if (keyctl_instantiate(key, "foo_bar", 7, 0) == -1) {
-		perror("instantiate");
-		exit(1);
-	}
-	
-	exit(0);
-}
+-- 
+MST
