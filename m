@@ -1,90 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28192 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750821AbdE3VD1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 May 2017 17:03:27 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: GSS sequence number window
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170530193419.GA9371@fieldses.org>
-Date: Tue, 30 May 2017 17:03:24 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <3E3205C9-1560-4A8A-B506-201240B48406@oracle.com>
-References: <63736845-2BD3-4EE1-AC12-0BD21A9ABEF2@oracle.com> <20170530193419.GA9371@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail.kernel.org ([198.145.29.99]:45036 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750902AbdEaEgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 May 2017 00:36:53 -0400
+Date: Wed, 31 May 2017 07:36:50 +0300
+From: Leon Romanovsky <leon@kernel.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1 01/17] ib_core: Enable and expose force_mr module
+ parameter
+Message-ID: <20170531043650.GI5406@mtr-leonro.local>
+References: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
+ <20170530181410.2992.90842.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha256;
+        protocol="application/pgp-signature"; boundary="dMdWWqg3F2Dv/qfw"
+In-Reply-To: <20170530181410.2992.90842.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On May 30, 2017, at 3:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Tue, May 30, 2017 at 02:58:00PM -0400, Chuck Lever wrote:
->> Hey Bruce!
->> 
->> While testing with sec=krb5 and sec=krb5i, I noticed a lot of
->> spurious connection loss, especially when I wanted to run a
->> CPU-intensive workload on my NFS server at the same time I
->> was testing.
->> 
->> I added a pr_err() in gss_check_seq_num, and ran a fio job
->> on a vers=3,sec=sys,proto=tcp mount (server is exporting a
->> tmpfs). On the server, I rebuilt a kernel source tree cscope
->> database at the same time.
->> 
->> May 29 17:53:13 klimt kernel: gss_check_seq_num: seq_num = 250098, sd_max = 250291, GSS_SEQ_WIN = 128
->> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num = 937816, sd_max = 938171, GSS_SEQ_WIN = 128
->> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num = 938544, sd_max = 938727, GSS_SEQ_WIN = 128
->> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num = 938543, sd_max = 938727, GSS_SEQ_WIN = 128
->> May 29 17:53:34 klimt kernel: gss_check_seq_num: seq_num = 939344, sd_max = 939549, GSS_SEQ_WIN = 128
->> May 29 17:53:35 klimt kernel: gss_check_seq_num: seq_num = 965007, sd_max = 965176, GSS_SEQ_WIN = 128
->> May 29 17:54:01 klimt kernel: gss_check_seq_num: seq_num = 1799710, sd_max = 1799982, GSS_SEQ_WIN = 128
->> May 29 17:54:02 klimt kernel: gss_check_seq_num: seq_num = 1831165, sd_max = 1831353, GSS_SEQ_WIN = 128
->> May 29 17:54:04 klimt kernel: gss_check_seq_num: seq_num = 1883583, sd_max = 1883761, GSS_SEQ_WIN = 128
->> May 29 17:54:07 klimt kernel: gss_check_seq_num: seq_num = 1959316, sd_max = 1959447, GSS_SEQ_WIN = 128
->> 
->> RFC 2203 suggests there's no risk to using a large window.
->> My first thought was to make the sequence window larger
->> (say 2048) but I've seen stragglers outside even that large
->> a window.
->> 
->> Any thoughts about why there are these sequence number
->> outliers?
-> 
-> No, alas.
-> 
-> The server's where it's easier to catch, but it'd be interesting to know
-> what's going on on the client side when this happens.
-> 
-> Might be interesting to know just what the operation (or compound ops)
-> are in the bad cases, in case there's some pattern.
+--dMdWWqg3F2Dv/qfw
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-It appears to happen more frequently with a 100% read
-workload that accesses multiple files.
+On Tue, May 30, 2017 at 02:14:10PM -0400, Chuck Lever wrote:
+> The fourth parameter of the module_param_named macro is a set of
+> file permissions. Passing 0 there means that module parameter is
+> not created and that adding "options ib_core force_mr=1" to a
+> modprobe.conf file has no effect.
+>
+> The default setting of rdma_rw_force_mr continues to be 0, or false.
+>
+> Fixes: a060b5629ab0 ("IB/core: generic RDMA READ/WRITE API")
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  drivers/infiniband/core/rw.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
 
+I still would like to see this module parameter removed.
+https://patchwork.kernel.org/patch/9727129/
 
-> Might also be interesting to check where exactly in the client code the
-> sequence number is assigned and where in the server code it's checked,
-> and think about where they might get queued up or reordered in between.
-> 
-> Is it possible there are retries involved?
+There is no need to expose to user something which is used for one-time
+debugging,
 
-It's hard to tell, since disconnect means there will be
-a recorded retransmission.
+Thanks
 
+> diff --git a/drivers/infiniband/core/rw.c b/drivers/infiniband/core/rw.c
+> index dbfd854..1cc8f07 100644
+> --- a/drivers/infiniband/core/rw.c
+> +++ b/drivers/infiniband/core/rw.c
+> @@ -23,7 +23,7 @@ enum {
+>  };
+>
+>  static bool rdma_rw_force_mr;
+> -module_param_named(force_mr, rdma_rw_force_mr, bool, 0);
+> +module_param_named(force_mr, rdma_rw_force_mr, bool, 0644);
+>  MODULE_PARM_DESC(force_mr, "Force usage of MRs for RDMA READ/WRITE operations");
+>
+>  /*
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> Does increasing the number of server threads help?
+--dMdWWqg3F2Dv/qfw
+Content-Type: application/pgp-signature; name="signature.asc"
 
-Yes, but it doesn't fully address the issue.
+-----BEGIN PGP SIGNATURE-----
 
+iQIzBAEBCAAdFiEEkhr/r4Op1/04yqaB5GN7iDZyWKcFAlkuSGEACgkQ5GN7iDZy
+WKfgNRAAiT2bfYmGDGiGN8PXsY6WT+L7cSzaVLFO3GsptkLiRb9PAScIUxj7v02a
+IphwXqVEFc4uFk5k7wUOphydssTLRwjzBBFUHiU+FKjdtQ4s2FhMUf3VnekAm2qv
+g3w5RCYUw8e440ADHa/jhVdg8/sj7DYndp8pIjlyRgqm6zY1OCYaYln1B0RPKyr8
+7dPRZnyM3A7+Z78+lYba0i9hdMuhHSYozLgsFLCOvSFIgnHJFLYYqeeJZJm1nNie
+WyWi2JZrZDgFKA/3oEKsGWi7mj/3c6QIpviYZPuJIcHkp7BvV+ztu1KlRqNOSrCM
+H9CpSZwN7FDEdg85I0qu9HfyPtidPa0PQlKfinfpimrSoXkdv16+shIQl9acjKUs
+IAqh71rGlUqDNWcjJ2GFsgM3UgK3Lqcny1qCGblLoJj54u7KP5XsDdNhvojAVZf1
+4kbo1N+HnRBv46M3sae5LKfRBOnFJ/ebg4y1pZpmikjCv+Yrr0ODFdK7luqrezM1
+xpG50Yke+tUDfrTRuYBzdNDItmgvYFDw3HLP/FKqRTLfFb7mKbZn5qjrYBQoAW4i
+rkrYp+hWQxQy5eFHv6I58y9UCp/lPOlbBszOavOQ5Kzcj4RIfEKMxfv8JcrkiCJ/
+mhh4KNv8tEndNcI/XJsOEx28vo0aWGXqr1KqlN85fk/cI7+6sGk=
+=mRLW
+-----END PGP SIGNATURE-----
 
-> I don't think it'd be a problem to increase the sequence window.
-
-Increasing the window to 1024 does not seem to help.
-
-
---
-Chuck Lever
-
-
-
+--dMdWWqg3F2Dv/qfw--
