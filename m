@@ -1,93 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from out1-smtp.messagingengine.com ([66.111.4.25]:34933 "EHLO
-        out1-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750977AbdEaPgV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 May 2017 11:36:21 -0400
-Message-Id: <1496244979.313075.994296480.7C5735E8@webmail.messagingengine.com>
-From: Colin Walters <walters@verbum.org>
-To: David Howells <dhowells@redhat.com>
-Cc: James.Bottomley@HansenPartnership.com, ebiederm@xmission.com,
-        linux-nfs@vger.kernel.org, containers@lists.linux-foundation.org,
-        linux-kernel@vger.kernel.org, keyrings@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, cgroups@vger.kernel.org
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Date: Wed, 31 May 2017 11:36:19 -0400
-In-Reply-To: <3412.1496242065@warthog.procyon.org.uk>
-References: <1496239145.289295.994170312.57409998@webmail.messagingengine.com>
- <149616052408.10194.7774163568767478808.stgit@warthog.procyon.org.uk>
- <3412.1496242065@warthog.procyon.org.uk>
-Subject: Re: [RFC PATCH] KEYS: Allow a live daemon in a namespace to service
- request_key upcalls
+Received: from mail-qt0-f171.google.com ([209.85.216.171]:36842 "EHLO
+        mail-qt0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751000AbdEaRQ4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 May 2017 13:16:56 -0400
+Received: by mail-qt0-f171.google.com with SMTP id f55so17434917qta.3
+        for <linux-nfs@vger.kernel.org>; Wed, 31 May 2017 10:16:55 -0700 (PDT)
+Message-ID: <1496251011.2984.2.camel@redhat.com>
+Subject: Re: [PATCH v2 0/3] Fixups for l_pid
+From: Jeff Layton <jlayton@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>, bfields@fieldses.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 31 May 2017 13:16:51 -0400
+In-Reply-To: <cover.1496161312.git.bcodding@redhat.com>
+References: <cover.1496161312.git.bcodding@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 31, 2017, at 10:47 AM, David Howells wrote:
-
-
-> > So if the mount-in-container is mostly init containers, and for init
-> > containers you have *all* namespaces usually, does it make
-> > sense to have the capability to match namespaces for key services?
+On Tue, 2017-05-30 at 12:31 -0400, Benjamin Coddington wrote:
+> LTP fcntl tests (fcntl11 fcntl14 fcntl17 fcntl19 fcntl20 fcntl21) have been
+> failing for NFSv4 mounts due to an unexpected l_pid.  What follows are some
+> fixups:
 > 
-> Yes.
+> on v2:
+> 	- Rebase onto linux-next
+> 	- Revert back to using the stack in locks_mandatory_area(), and fixup
+> 	patch description for 1/3
+> 	- Add a comment to 3/3 explaining the seemingly-redundant fl_pid and
+> 	fl_nspid
 > 
-> If I don't provide it, someone will complain that I haven't provided it.
-
-I don't think it's as clear cut as that.  I'd agree that where possible, it makes
-sense to be general since it's hard to envision every use case, but in this particualr
-case there are risks around security and clear maintenance issues.  Providing
-a feature without *known* users in a security-sensitive context seems to
-me to be something to think twice about.
-
-> > Something that worries me a lot here is for e.g. Docker today, the default
-> > is uid 0 but not CAP_SYS_ADMIN.  We don't want a container that I run
-> > with --host=net to be able to read the "host" keyrings, even if it shares
-> > the host network namespace.
+> These three patches can be pulled from the branch named "fixups_for_l_pid"
+> here: git://bcodding.com/~bcodding/linux
 > 
-> This is a separate issue.
-
-Kind of - what I'm getting at is that today, changing any of the kernel
-upcalls is a fully privileged operation.  Most container userspace tools
-mount /proc read-only to ensure that even uid 0 containers can't change it
-by default.
-
-(Wait, is /sbin/request-key really hardcoded in the kernel?  I guess that's
- good from the perspective of not having containers be able to change it 
- like they could /proc/sys/kernel/core_pattern if it was writable, but
- it seems surprising)
-
-Anyways, if we now expose a method to configure this, we have to look
-at the increase in attack surface.
-
-In practice again, most container implementations I'm aware of use
-seccomp today to simply block off access to the keyring.   As I mentioned
-Docker does it, so does flatpak:
-https://github.com/flatpak/flatpak/blob/ea7077fcd431fb98fe85cd815cbd2ec13df58d09/common/flatpak-run.c#L4007
-and Chrome:
-https://cs.chromium.org/chromium/src/sandbox/linux/seccomp-bpf-helpers/syscall_sets.cc?q=keyctl&dr=C&l=791
-
-But I'm a bit uncertain about *relying* on the seccomp filtering.  Particularly
-because we do want the "init container" approach to work and be able
-to use the kernel keyring, but also not be able to affect other containers
-or the host.
-
-> Keys may be relevant in different namespaces, which makes namespacing them
-> hard to achieve.  For instance, dns-, idmapper- and rxrpc-type keys should
-> probably be differentiated by network namespace.
+> Benjamin Coddington (3):
+>   fs/locks: Use allocation rather than the stack in fcntl_getlk()
+>   fs/locks: Set fl_nspid at file_lock allocation
+>   fs/locks: Use fs-specific l_pid for remote locks
 > 
-> However, it might be worth creating a keyrings namespace.
-
-Hm, yes - I think I was conflating CLONE_NEWUSER with uid 0's keyring
-but that's a distinct thing from the kernel keyrings.
-
-> > Basically my instinct here is to be conservative and have KEYCTL_SERVICE_ADD
-> > require CAP_SYS_ADMIN and only affect the userns keyring.
+>  fs/locks.c         | 100 ++++++++++++++++++++++++++++++++++-------------------
+>  include/linux/fs.h |   7 ++++
+>  2 files changed, 72 insertions(+), 35 deletions(-)
 > 
-> "Affect" in what sense?
 
-Operate on at all - view/read/write/search etc.
+This all looks good to me. Nice work!
 
-At a high level I'm glad you're looking at the "service fd" model instead of
-upcalls - I do think it'll get us to a better place.  The main thing I'm getting
-at first though is making sure we're not introducing new security issues, and that the
-new proposed API makes sense for some of the important userspace use cases.
+I've gone ahead and merged it into my linux-next branch, and it should
+make v4.13 (barring any problems).
+
+Thanks!
+-- 
+Jeff Layton <jlayton@redhat.com>
