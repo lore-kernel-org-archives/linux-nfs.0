@@ -1,89 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:45036 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750902AbdEaEgx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 May 2017 00:36:53 -0400
-Date: Wed, 31 May 2017 07:36:50 +0300
-From: Leon Romanovsky <leon@kernel.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 01/17] ib_core: Enable and expose force_mr module
- parameter
-Message-ID: <20170531043650.GI5406@mtr-leonro.local>
-References: <20170530175808.2992.60365.stgit@klimt.1015granger.net>
- <20170530181410.2992.90842.stgit@klimt.1015granger.net>
+Received: from mail-qt0-f175.google.com ([209.85.216.175]:35656 "EHLO
+        mail-qt0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750985AbdEaHvD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 May 2017 03:51:03 -0400
+Received: by mail-qt0-f175.google.com with SMTP id v27so6027015qtg.2
+        for <linux-nfs@vger.kernel.org>; Wed, 31 May 2017 00:51:03 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-        protocol="application/pgp-signature"; boundary="dMdWWqg3F2Dv/qfw"
-In-Reply-To: <20170530181410.2992.90842.stgit@klimt.1015granger.net>
+In-Reply-To: <15403.1496158574@warthog.procyon.org.uk>
+References: <149546825563.9289.9065118651584207610.stgit@warthog.procyon.org.uk>
+ <20170530145043.GG6365@ZenIV.linux.org.uk> <15403.1496158574@warthog.procyon.org.uk>
+From: Miklos Szeredi <mszeredi@redhat.com>
+Date: Wed, 31 May 2017 09:51:02 +0200
+Message-ID: <CAOssrKewzKn-5=b3n84mP=8EROCP22thcizggQfueh+CqDHKDg@mail.gmail.com>
+Subject: Re: [RFC][PATCH 00/23] VFS: Introduce superblock configuration
+ context [ver #4]
+To: David Howells <dhowells@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+        Jeff Layton <jlayton@redhat.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
---dMdWWqg3F2Dv/qfw
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Tue, May 30, 2017 at 02:14:10PM -0400, Chuck Lever wrote:
-> The fourth parameter of the module_param_named macro is a set of
-> file permissions. Passing 0 there means that module parameter is
-> not created and that adding "options ib_core force_mr=1" to a
-> modprobe.conf file has no effect.
+On Tue, May 30, 2017 at 5:36 PM, David Howells <dhowells@redhat.com> wrote:
+> Al Viro <viro@ZenIV.linux.org.uk> wrote:
 >
-> The default setting of rdma_rw_force_mr continues to be 0, or false.
+>> Random notes:
+>>       * "sb_config" looks rather odd in the current variant; mount_context,
+>> perhaps?  Or fs_context, for that matter...  Anyway, that's trivial.
 >
-> Fixes: a060b5629ab0 ("IB/core: generic RDMA READ/WRITE API")
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->  drivers/infiniband/core/rw.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> You can argue that one with Miklós.  He argued against mount_context as I had
+> it originally.  His point is that the same struct may be used when
+> reconfiguring an sb - which isn't exactly a mount operation (even though we do
+> it that day today with remount).
+
+I'm fine with fs_context, just leave "mount" out of this.  Mounting is
+the act of attaching the root dentry to the mountpoint. fs_context is
+used for obtaining the root, but not for mounting itself, hence
+mount_context is misleading IMO.
+
+>>       * what the hell is ms_flags thing doing in __vfs_new_sb_config()?
+>> It's a really vile mix of unrelated flags and operations we had in existing
+>> mount(2) ABI.  With MS_KERNMOUNT thrown into that loo^Wmix.  Sure, we need
+>> to parse the garbage fed to mount(2).  And we need to pass that garbage to
+>> "legacy" types as well, but let's not inflict it upon the new mechanisms.
 >
+> I know, but we might get it from mount(2).  I can tamp down the flag mask and
+> translate it from MS_*, but the MS_* flags are also stored in the superblock
+> (->s_flags).
 
-I still would like to see this module parameter removed.
-https://patchwork.kernel.org/patch/9727129/
+Good cleanup would be to just introduce a new set of flags for s_flags
+and leave MS_* usage solely for the legacy mount(2) interface.
 
-There is no need to expose to user something which is used for one-time
-debugging,
-
-Thanks
-
-> diff --git a/drivers/infiniband/core/rw.c b/drivers/infiniband/core/rw.c
-> index dbfd854..1cc8f07 100644
-> --- a/drivers/infiniband/core/rw.c
-> +++ b/drivers/infiniband/core/rw.c
-> @@ -23,7 +23,7 @@ enum {
->  };
->
->  static bool rdma_rw_force_mr;
-> -module_param_named(force_mr, rdma_rw_force_mr, bool, 0);
-> +module_param_named(force_mr, rdma_rw_force_mr, bool, 0644);
->  MODULE_PARM_DESC(force_mr, "Force usage of MRs for RDMA READ/WRITE operations");
->
->  /*
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---dMdWWqg3F2Dv/qfw
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEkhr/r4Op1/04yqaB5GN7iDZyWKcFAlkuSGEACgkQ5GN7iDZy
-WKfgNRAAiT2bfYmGDGiGN8PXsY6WT+L7cSzaVLFO3GsptkLiRb9PAScIUxj7v02a
-IphwXqVEFc4uFk5k7wUOphydssTLRwjzBBFUHiU+FKjdtQ4s2FhMUf3VnekAm2qv
-g3w5RCYUw8e440ADHa/jhVdg8/sj7DYndp8pIjlyRgqm6zY1OCYaYln1B0RPKyr8
-7dPRZnyM3A7+Z78+lYba0i9hdMuhHSYozLgsFLCOvSFIgnHJFLYYqeeJZJm1nNie
-WyWi2JZrZDgFKA/3oEKsGWi7mj/3c6QIpviYZPuJIcHkp7BvV+ztu1KlRqNOSrCM
-H9CpSZwN7FDEdg85I0qu9HfyPtidPa0PQlKfinfpimrSoXkdv16+shIQl9acjKUs
-IAqh71rGlUqDNWcjJ2GFsgM3UgK3Lqcny1qCGblLoJj54u7KP5XsDdNhvojAVZf1
-4kbo1N+HnRBv46M3sae5LKfRBOnFJ/ebg4y1pZpmikjCv+Yrr0ODFdK7luqrezM1
-xpG50Yke+tUDfrTRuYBzdNDItmgvYFDw3HLP/FKqRTLfFb7mKbZn5qjrYBQoAW4i
-rkrYp+hWQxQy5eFHv6I58y9UCp/lPOlbBszOavOQ5Kzcj4RIfEKMxfv8JcrkiCJ/
-mhh4KNv8tEndNcI/XJsOEx28vo0aWGXqr1KqlN85fk/cI7+6sGk=
-=mRLW
------END PGP SIGNATURE-----
-
---dMdWWqg3F2Dv/qfw--
+Thanks,
+Miklos
