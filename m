@@ -1,71 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49962 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:49970 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751033AbdEaUcM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 May 2017 16:32:12 -0400
-Date: Wed, 31 May 2017 16:32:11 -0400
-To: "J. R. Okajima" <hooanon05g@gmail.com>
-Cc: Andreas Dilger <adilger@dilger.ca>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Subject: Re: fsetxattr(2) for ACL on nfs
-Message-ID: <20170531203211.GB23526@fieldses.org>
-References: <27179.1495751869@jrobl>
- <9E1EC8DB-1864-4ABA-8BEB-79C3EA9C4EBF@dilger.ca>
- <28291.1495843196@jrobl>
+        id S1750898AbdEaU5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 May 2017 16:57:15 -0400
+Date: Wed, 31 May 2017 16:57:15 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: "Michael S. Tsirkin" <mst@redhat.com>
+Cc: hch <hch@lst.de>, Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        virtualization@lists.linux-foundation.org
+Subject: Re: remove function pointer casts and constify function tables
+Message-ID: <20170531205715.GC23526@fieldses.org>
+References: <1494691819.31377.1.camel@primarydata.com>
+ <20170515152134.GC24547@fieldses.org>
+ <20170515154450.GA18630@lst.de>
+ <20170523081159.GA19216@lst.de>
+ <20170523122334.GA4298@fieldses.org>
+ <20170526150839.GA4593@fieldses.org>
+ <20170526150956.GB4593@fieldses.org>
+ <20170526193133.GA9874@fieldses.org>
+ <20170530192544-mutt-send-email-mst@kernel.org>
+ <20170530195716-mutt-send-email-mst@kernel.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <28291.1495843196@jrobl>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20170530195716-mutt-send-email-mst@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's a known bug, I've been slow to get it upstream, apologies, I'll try
-to get it in for -rc4.
+On Tue, May 30, 2017 at 07:58:06PM +0300, Michael S. Tsirkin wrote:
+> On Tue, May 30, 2017 at 07:26:37PM +0300, Michael S. Tsirkin wrote:
+> > On Fri, May 26, 2017 at 03:31:33PM -0400, bfields@fieldses.org wrote:
+> > > Looks like the culprit is very likely d85b758f72b0 "virtio_net: fix
+> > > support for small rings".
+> > > 
+> > > After that patch, my NFS server VM stops responding to packets after a
+> > > few minutes of testing.  Before that patch, my server keeps working.
+> > > 
+> > > --b.
+> > 
+> > Others complained about that too.
+> > I'm still trying to reproduce though.
+> > 
+> > Meanwhile, could you please locate this line of code:
+> > +               vi->rq[i].min_buf_len = mergeable_min_buf_len(vi, vi->rq[i].vq);
+> > 
+> > and add something like
+> >         printk(KERN_ERR, "min buf = 0x%x expected 0x%x size 0x%x big %d\n",
+> >                vi->rq[i].min_buf_len, GOOD_PACKET_LEN,
+> >                virtqueue_get_vring_size(vi->rq[i].vq),
+> >                (int)vi->big_packets);
+> > 
+> > after it?
+> > Then boot and capture the output.
+> > 
+> > Thanks!
+> > 
+> 
+> Also, can you pls print the mergeable_rx_buffer_size attribute from
+> sysfs for this device?
+
+On 4.12-rc1:
+
+	# cat
+	# /sys/devices/pci0000:00/0000:00:03.0/virtio0/net/eth0/queues/rx-0/virtio_net/mergeable_rx_buffer_size
+	320
 
 --b.
 
-On Sat, May 27, 2017 at 08:59:56AM +0900, J. R. Okajima wrote:
-> Andreas Dilger:
-> > > open("../ro/f_src", O_RDONLY)           = 3
-> > > fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
-> > > open("./f_src", O_WRONLY|O_CREAT|O_EXCL, 0600) = 4
-> > > fstat(4, {st_mode=S_IFREG|0600, st_size=0, ...}) = 0
-> > > fadvise64(3, 0, 0, POSIX_FADV_SEQUENTIAL) = 0
-> > > mmap(NULL, 139264, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fcb293f8000
-> > > read(3, "f\n", 131072)                  = 2
-> > > write(4, "f\n", 2)                      = 2
-> > > read(3, "", 131072)                     = 0
-> > > utimensat(4, NULL, {{1495750885, 0}, {1495750885, 0}}, 0) = 0
-> > > fgetxattr(3, "system.posix_acl_access", 0x7ffed40196d0, 132) = -1 ENODATA (No data available)
-> > > fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
-> > > fsetxattr(4, "system.posix_acl_access", "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 28, 0) = -1 EACCES (Permission denied)
-> >
-> > To me this looks like "cp" is broken.  If it gets no POSIX ACL xattr from the
-> > kernel (ENODATA) for this file, why is it trying to save a POSIX ACL to the
-> > copy?  That just adds needless overhead, either at the syscall level, or also
-> > on disk if it is storing ACLs on files that don't need them...
-> 
-> Maybe you are right.
-> But on v4.11, it succeeded.
-> 
-> open("../ro/f_src", O_RDONLY)           = 3
-> fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
-> open("./f_src", O_WRONLY|O_CREAT|O_EXCL, 0600) = 4
-> fstat(4, {st_mode=S_IFREG|0600, st_size=0, ...}) = 0
-> fadvise64(3, 0, 0, POSIX_FADV_SEQUENTIAL) = 0
-> mmap(NULL, 139264, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7f3dcf031000
-> read(3, "f\n", 131072)                  = 2
-> write(4, "f\n", 2)                      = 2
-> read(3, "", 131072)                     = 0
-> utimensat(4, NULL, {{1495842847, 0}, {1495842847, 0}}, 0) = 0
-> fgetxattr(3, "system.posix_acl_access", 0x7fff63443360, 132) = -1 ENODATA (No data available)
-> fstat(3, {st_mode=S_IFREG|0644, st_size=2, ...}) = 0
-> fsetxattr(4, "system.posix_acl_access", "\x02\x00\x00\x00\x01\x00\x06\x00\xff\xff\xff\xff\x04\x00\x04\x00\xff\xff\xff\xff \x00\x04\x00\xff\xff\xff\xff", 28, 0) = 0
-> 
-> 
-> J. R. Okajima
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
