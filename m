@@ -1,63 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51368 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:39690 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750952AbdFAN32 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Jun 2017 09:29:28 -0400
-Date: Thu, 1 Jun 2017 09:29:27 -0400
-From: "J . Bruce Fields" <bfields@fieldses.org>
-To: Bart Van Assche <bart.vanassche@sandisk.com>
-Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
-        Christoph Hellwig <hch@lst.de>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Omar Sandoval <osandov@fb.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 6/6] nfsd: Check queue type before submitting a SCSI
- request
-Message-ID: <20170601132927.GO18523@fieldses.org>
-References: <20170531214350.31157-1-bart.vanassche@sandisk.com>
- <20170531214350.31157-7-bart.vanassche@sandisk.com>
+        id S1751078AbdFAOCt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Jun 2017 10:02:49 -0400
+Subject: Re: [PATCH] mount.nfs: improve version negotiation when vers=4 is
+ specified.
+To: NeilBrown <neilb@suse.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20170519222510.31205-1-steved@redhat.com>
+ <87inktk2yg.fsf@notabene.neil.brown.name>
+ <5a0d2640-ec93-279b-9113-228994283923@RedHat.com>
+ <877f18jsx5.fsf@notabene.neil.brown.name>
+ <10eb706b-2f8b-24ad-d572-eb38abdb331d@RedHat.com>
+ <87lgpceeuo.fsf@notabene.neil.brown.name>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <82c09e27-2d53-f7a4-2826-a5f7a91ded33@RedHat.com>
+Date: Thu, 1 Jun 2017 10:02:47 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170531214350.31157-7-bart.vanassche@sandisk.com>
+In-Reply-To: <87lgpceeuo.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Feel free to add
 
-	Acked-by: J. Bruce Fields <bfields@redhat.com>
 
-if you need it.--b.
-
-On Wed, May 31, 2017 at 02:43:50PM -0700, Bart Van Assche wrote:
-> Since using scsi_req() is only allowed against request queues for
-> which struct scsi_request is the first member of their private
-> request data, refuse to submit SCSI commands against a queue for
-> which this is not the case.
+On 05/31/2017 08:22 PM, NeilBrown wrote:
 > 
-> References: commit 82ed4db499b8 ("block: split scsi_request out of struct request")
-> Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
-> Reviewed-by: Hannes Reinecke <hare@suse.com>
-> Reviewed-by: Christoph Hellwig <hch@lst.de>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Cc: Jeff Layton <jlayton@poochiereds.net>
-> Cc: Omar Sandoval <osandov@fb.com>
-> Cc: linux-nfs@vger.kernel.org
+> If NFSv4, in general, is requested (possibly by -t nfs4 or -o v4 or -o
+> vers=4 etc) then we need to negotiate the best minor version, but must
+> not fallback to v3 or v2.  Internally, this state is reflected in v_mode
+> == V_GENERAL.  This means that a major version was given, but the minor
+> version still needs to be negotiated.
+> 
+> This is handled by nfs_autonegotiate(). It currently does the right
+> thing for EPROTONOSUPPORT and EINVAL, but not for other errors.
+> In particular, ENOENT can cause problems as  NFSv4 might export
+> a different namespace than NFSv3 (e.g. by using fsid=0 in the Linux
+> NFS server).  Currently a mount request for NFSv4 and a particular path
+> can result if an NFSv3 mount if the path is available with v3 but
+> not v4.
+> 
+> So move the special handling of V_GENERAL into the common fall_back:
+> code, and add extra checking in the ENCONNREFUSED case, which does
+> not use fall_back:.
+> 
+> Tested-by: Steve Dickson <steved@redhat.com>
+> Signed-off-by: NeilBrown <neilb@suse.com>
+Committed... with the addition change to nfs_set_version() 
+which stops -t nfs4 from rolling back to v3.
+
+Thanks! 
+
+steved.
+ 
 > ---
->  fs/nfsd/blocklayout.c | 3 +++
->  1 file changed, 3 insertions(+)
+>  utils/mount/stropts.c | 9 ++++++---
+>  1 file changed, 6 insertions(+), 3 deletions(-)
 > 
-> diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
-> index fb5213afc854..47ed19c53f2e 100644
-> --- a/fs/nfsd/blocklayout.c
-> +++ b/fs/nfsd/blocklayout.c
-> @@ -219,6 +219,9 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
->  	u8 *buf, *d, type, assoc;
->  	int error;
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index 0fbb37569ef9..b20ad1c8bf55 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -838,9 +838,6 @@ check_result:
+>  	case EINVAL:
+>  		/* A less clear indication that our client
+>  		 * does not support NFSv4 minor version. */
+> -		if (mi->version.v_mode == V_GENERAL &&
+> -			mi->version.minor == 0)
+> -				return result;
+>  		if (mi->version.v_mode != V_SPECIFIC) {
+>  			if (mi->version.minor > 0) {
+>  				mi->version.minor--;
+> @@ -862,6 +859,9 @@ check_result:
+>  		/* UDP-Only servers won't support v4, but maybe it
+>  		 * just isn't ready yet.  So try v3, but double-check
+>  		 * with rpcbind for v4. */
+> +		if (mi->version.v_mode == V_GENERAL)
+> +			/* Mustn't try v2,v3 */
+> +			return result;
+>  		result = nfs_try_mount_v3v2(mi, TRUE);
+>  		if (result == 0 && errno == EAGAIN) {
+>  			/* v4 server seems to be registered now. */
+> @@ -878,6 +878,9 @@ check_result:
+>  	}
 >  
-> +	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
-> +		return -EINVAL;
-> +
->  	buf = kzalloc(bufflen, GFP_KERNEL);
->  	if (!buf)
->  		return -ENOMEM;
-> -- 
-> 2.12.2
+>  fall_back:
+> +	if (mi->version.v_mode == V_GENERAL)
+> +		/* v2,3 fallback not allowed */
+> +		return result;
+>  	return nfs_try_mount_v3v2(mi, FALSE);
+>  }
+>  
+> 
