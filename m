@@ -1,94 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39690 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16931 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751078AbdFAOCt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Jun 2017 10:02:49 -0400
-Subject: Re: [PATCH] mount.nfs: improve version negotiation when vers=4 is
- specified.
-To: NeilBrown <neilb@suse.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20170519222510.31205-1-steved@redhat.com>
- <87inktk2yg.fsf@notabene.neil.brown.name>
- <5a0d2640-ec93-279b-9113-228994283923@RedHat.com>
- <877f18jsx5.fsf@notabene.neil.brown.name>
- <10eb706b-2f8b-24ad-d572-eb38abdb331d@RedHat.com>
- <87lgpceeuo.fsf@notabene.neil.brown.name>
+        id S1751083AbdFAOpw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Jun 2017 10:45:52 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 5FAC6448D66
+        for <linux-nfs@vger.kernel.org>; Thu,  1 Jun 2017 14:45:52 +0000 (UTC)
+Subject: Re: [PATCH 2/3] nfs.conf tidy ups
+To: Justin Mitchell <jumitche@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <1495468204.4169.10.camel@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <82c09e27-2d53-f7a4-2826-a5f7a91ded33@RedHat.com>
-Date: Thu, 1 Jun 2017 10:02:47 -0400
+Message-ID: <65cbaa98-164b-e6a5-95f3-e6e07703cbb3@RedHat.com>
+Date: Thu, 1 Jun 2017 10:45:51 -0400
 MIME-Version: 1.0
-In-Reply-To: <87lgpceeuo.fsf@notabene.neil.brown.name>
+In-Reply-To: <1495468204.4169.10.camel@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-
-On 05/31/2017 08:22 PM, NeilBrown wrote:
+On 05/22/2017 11:50 AM, Justin Mitchell wrote:
+> Add function to cleanup and free the loaded config
 > 
-> If NFSv4, in general, is requested (possibly by -t nfs4 or -o v4 or -o
-> vers=4 etc) then we need to negotiate the best minor version, but must
-> not fallback to v3 or v2.  Internally, this state is reflected in v_mode
-> == V_GENERAL.  This means that a major version was given, but the minor
-> version still needs to be negotiated.
+> Signed-off-by: Justin Mitchell <jumitche@rehat.com>
 > 
-> This is handled by nfs_autonegotiate(). It currently does the right
-> thing for EPROTONOSUPPORT and EINVAL, but not for other errors.
-> In particular, ENOENT can cause problems as  NFSv4 might export
-> a different namespace than NFSv3 (e.g. by using fsid=0 in the Linux
-> NFS server).  Currently a mount request for NFSv4 and a particular path
-> can result if an NFSv3 mount if the path is available with v3 but
-> not v4.
+> ---
+>  support/include/conffile.h |  1 +
+>  support/nfs/conffile.c     | 51 +++++++++++++++++++++++++++++++++++++++-------
+>  2 files changed, 45 insertions(+), 7 deletions(-)
 > 
-> So move the special handling of V_GENERAL into the common fall_back:
-> code, and add extra checking in the ENCONNREFUSED case, which does
-> not use fall_back:.
-> 
-> Tested-by: Steve Dickson <steved@redhat.com>
-> Signed-off-by: NeilBrown <neilb@suse.com>
-Committed... with the addition change to nfs_set_version() 
-which stops -t nfs4 from rolling back to v3.
-
-Thanks! 
+> diff --git a/support/include/conffile.h b/support/include/conffile.h
+> index 20b1a32..2d11a52 100644
+> --- a/support/include/conffile.h
+> +++ b/support/include/conffile.h
+> @@ -60,6 +60,7 @@ extern _Bool    conf_get_bool(char *, char *, _Bool);
+>  extern char    *conf_get_str(char *, char *);
+>  extern char    *conf_get_section(char *, char *, char *);
+>  extern void     conf_init(const char *);
+> +extern void     conf_cleanup(void);
+I don't see this being called any where? How is it being used?
 
 steved.
- 
-> ---
->  utils/mount/stropts.c | 9 ++++++---
->  1 file changed, 6 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 0fbb37569ef9..b20ad1c8bf55 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -838,9 +838,6 @@ check_result:
->  	case EINVAL:
->  		/* A less clear indication that our client
->  		 * does not support NFSv4 minor version. */
-> -		if (mi->version.v_mode == V_GENERAL &&
-> -			mi->version.minor == 0)
-> -				return result;
->  		if (mi->version.v_mode != V_SPECIFIC) {
->  			if (mi->version.minor > 0) {
->  				mi->version.minor--;
-> @@ -862,6 +859,9 @@ check_result:
->  		/* UDP-Only servers won't support v4, but maybe it
->  		 * just isn't ready yet.  So try v3, but double-check
->  		 * with rpcbind for v4. */
-> +		if (mi->version.v_mode == V_GENERAL)
-> +			/* Mustn't try v2,v3 */
-> +			return result;
->  		result = nfs_try_mount_v3v2(mi, TRUE);
->  		if (result == 0 && errno == EAGAIN) {
->  			/* v4 server seems to be registered now. */
-> @@ -878,6 +878,9 @@ check_result:
->  	}
->  
->  fall_back:
-> +	if (mi->version.v_mode == V_GENERAL)
-> +		/* v2,3 fallback not allowed */
-> +		return result;
->  	return nfs_try_mount_v3v2(mi, FALSE);
+>  extern int      conf_match_num(char *, char *, int);
+>  extern int      conf_remove(int, char *, char *);
+>  extern int      conf_remove_section(int, char *);
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index a76c7e3..7c607c0 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -414,13 +414,32 @@ conf_load(int trans, const char *path)
+>  	return -1;
 >  }
 >  
+> +/* remove and free up any existing config state */
+> +static void conf_free_bindings(void)
+> +{
+> +	unsigned int i;
+> +	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
+> +		struct conf_binding *cb, *next;
+> +
+> +		cb = LIST_FIRST(&conf_bindings[i]);
+> +		for (; cb; cb = next) {
+> +			next = LIST_NEXT(cb, link);
+> +			LIST_REMOVE(cb, link);
+> +			free(cb->section);
+> +			free(cb->arg);
+> +			free(cb->tag);
+> +			free(cb->value);
+> +			free(cb);
+> +		}
+> +		LIST_INIT(&conf_bindings[i]);
+> +	}
+> +}
+> +
+>  /* Open the config file and map it into our address space, then parse it.  */
+>  static void
+>  conf_reinit(const char *conf_file)
+>  {
+> -	struct conf_binding *cb = 0;
+>  	int trans;
+> -	unsigned int i;
+>  
+>  	trans = conf_begin();
+>  	if (conf_load(trans, conf_file) < 0)
+> @@ -430,12 +449,9 @@ conf_reinit(const char *conf_file)
+>  	conf_load_defaults();
+>  
+>  	/* Free potential existing configuration.  */
+> -	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
+> -		cb = LIST_FIRST (&conf_bindings[i]);
+> -		for (; cb; cb = LIST_FIRST (&conf_bindings[i]))
+> -			conf_remove_now(cb->section, cb->tag);
+> -	}
+> +	conf_free_bindings();
+>  
+> +	/* Apply the new configuration values */
+>  	conf_end(trans, 1);
+>  	return;
+>  }
+> @@ -454,6 +470,27 @@ conf_init (const char *conf_file)
+>  	conf_reinit(conf_file);
+>  }
+>  
+> +/* 
+> + * Empty the config and free up any used memory 
+> + */
+> +void
+> +conf_cleanup(void)
+> +{
+> +	conf_free_bindings();
+> +
+> +	struct conf_trans *node, *next;
+> +	for (node = TAILQ_FIRST(&conf_trans_queue); node; node = next) {
+> +		next = TAILQ_NEXT(node, link);
+> +		TAILQ_REMOVE (&conf_trans_queue, node, link);
+> +		if (node->section) free(node->section);
+> +		if (node->arg) free(node->arg);
+> +		if (node->tag) free(node->tag);
+> +		if (node->value) free(node->value);
+> +		free (node);
+> +	}
+> +	TAILQ_INIT(&conf_trans_queue);
+> +}
+> +
+>  /*
+>   * Return the numeric value denoted by TAG in section SECTION or DEF
+>   * if that tag does not exist.
 > 
