@@ -1,73 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f180.google.com ([209.85.220.180]:33298 "EHLO
-        mail-qk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751078AbdFAM7Y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Jun 2017 08:59:24 -0400
-Received: by mail-qk0-f180.google.com with SMTP id y201so35311386qka.0
-        for <linux-nfs@vger.kernel.org>; Thu, 01 Jun 2017 05:59:24 -0700 (PDT)
-Message-ID: <1496321961.2845.6.camel@redhat.com>
-Subject: Re: [lkp-robot] [fs/locks]  9d21d181d0:
- will-it-scale.per_process_ops -14.1% regression
-From: Jeff Layton <jlayton@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: kernel test robot <xiaolong.ye@intel.com>,
-        Alexander Viro <viro@zeniv.linux.org.uk>, bfields@fieldses.org,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        lkp@01.org, Christoph Hellwig <hch@infradead.org>
-Date: Thu, 01 Jun 2017 08:59:21 -0400
-In-Reply-To: <8F2C3CFF-5C2D-41B0-A895-B1F074DA7943@redhat.com>
-References: <20170601020556.GE16905@yexl-desktop>
-         <1496317284.2845.4.camel@redhat.com>
-         <8F2C3CFF-5C2D-41B0-A895-B1F074DA7943@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:51368 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750952AbdFAN32 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Jun 2017 09:29:28 -0400
+Date: Thu, 1 Jun 2017 09:29:27 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Bart Van Assche <bart.vanassche@sandisk.com>
+Cc: Jens Axboe <axboe@kernel.dk>, linux-block@vger.kernel.org,
+        Christoph Hellwig <hch@lst.de>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Omar Sandoval <osandov@fb.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 6/6] nfsd: Check queue type before submitting a SCSI
+ request
+Message-ID: <20170601132927.GO18523@fieldses.org>
+References: <20170531214350.31157-1-bart.vanassche@sandisk.com>
+ <20170531214350.31157-7-bart.vanassche@sandisk.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170531214350.31157-7-bart.vanassche@sandisk.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-06-01 at 07:49 -0400, Benjamin Coddington wrote:
-> On 1 Jun 2017, at 7:41, Jeff Layton wrote:
+Feel free to add
+
+	Acked-by: J. Bruce Fields <bfields@redhat.com>
+
+if you need it.--b.
+
+On Wed, May 31, 2017 at 02:43:50PM -0700, Bart Van Assche wrote:
+> Since using scsi_req() is only allowed against request queues for
+> which struct scsi_request is the first member of their private
+> request data, refuse to submit SCSI commands against a queue for
+> which this is not the case.
 > 
-> > On Thu, 2017-06-01 at 10:05 +0800, kernel test robot wrote:
-> > > Greeting,
-> > > 
-> > > FYI, we noticed a -14.1% regression of will-it-scale.per_process_ops 
-> > > due to commit:
-> > > 
-> > > 
-> > > commit: 9d21d181d06acab9a8e80eac2ec4eed77b656793 ("fs/locks: Set 
-> > > fl_nspid at file_lock allocation")
-> > > url: 
-> > > https://github.com/0day-ci/linux/commits/Benjamin-Coddington/fs-locks-Alloc-file_lock-where-practical/20170527-050700
-> > > 
-> > > 
-> > 
-> > Ouch, that's a rather nasty performance hit. In hindsight, maybe we
-> > shouldn't move those off the stack after all? Heck, if it's that
-> > significant, maybe we should move the F_SETLK callers to allocate 
-> > these
-> > on the stack as well?
+> References: commit 82ed4db499b8 ("block: split scsi_request out of struct request")
+> Signed-off-by: Bart Van Assche <bart.vanassche@sandisk.com>
+> Reviewed-by: Hannes Reinecke <hare@suse.com>
+> Reviewed-by: Christoph Hellwig <hch@lst.de>
+> Cc: J. Bruce Fields <bfields@fieldses.org>
+> Cc: Jeff Layton <jlayton@poochiereds.net>
+> Cc: Omar Sandoval <osandov@fb.com>
+> Cc: linux-nfs@vger.kernel.org
+> ---
+>  fs/nfsd/blocklayout.c | 3 +++
+>  1 file changed, 3 insertions(+)
 > 
-> We can do that.  But, I think this is picking up the 
-> locks_mandatory_area()
-> allocation which is now removed.  The attached config has
-> CONFIG_MANDATORY_FILE_LOCKING=y,  so there's allocation on every 
-> read/write.
-> 
-
-I'm not so sure. That would only be the case if the thing were marked
-for manadatory locking (a really rare thing).
-
-The test is really simple and I don't think any read/write activity is
-involved:
-
-    https://github.com/antonblanchard/will-it-scale/blob/master/tests/lock1.c
-
-...and the 0 day bisected it down to this patch, IIUC:
-
-    https://github.com/0day-ci/linux/commit/9d21d181d06acab9a8e80eac2ec4eed77b656793
-
-It seems likely that it's the extra get_pid/put_pid in the allocation
-and free codepath. I expected those to be pretty cheap, but maybe
-they're not?
--- 
-Jeff Layton <jlayton@redhat.com>
+> diff --git a/fs/nfsd/blocklayout.c b/fs/nfsd/blocklayout.c
+> index fb5213afc854..47ed19c53f2e 100644
+> --- a/fs/nfsd/blocklayout.c
+> +++ b/fs/nfsd/blocklayout.c
+> @@ -219,6 +219,9 @@ static int nfsd4_scsi_identify_device(struct block_device *bdev,
+>  	u8 *buf, *d, type, assoc;
+>  	int error;
+>  
+> +	if (WARN_ON_ONCE(!blk_queue_scsi_passthrough(q)))
+> +		return -EINVAL;
+> +
+>  	buf = kzalloc(bufflen, GFP_KERNEL);
+>  	if (!buf)
+>  		return -ENOMEM;
+> -- 
+> 2.12.2
