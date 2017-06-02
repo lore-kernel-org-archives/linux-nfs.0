@@ -1,271 +1,278 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from emsm-gh1-uea11.nsa.gov ([8.44.101.9]:21220 "EHLO
-        emsm-gh1-uea11.nsa.gov" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751125AbdFBMut (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jun 2017 08:50:49 -0400
-Message-ID: <1496408108.19674.1.camel@tycho.nsa.gov>
-Subject: Re: [PATCH v2] security/selinux: allow security_sb_clone_mnt_opts
- to enable/disable native labeling behavior
-From: Stephen Smalley <sds@tycho.nsa.gov>
-To: Scott Mayhew <smayhew@redhat.com>, selinux@tycho.nsa.gov,
-        linux-nfs@vger.kernel.org
-Cc: Paul Moore <paul@paul-moore.com>,
+Received: from mx1.redhat.com ([209.132.183.28]:64919 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751125AbdFBNJU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Jun 2017 09:09:20 -0400
+Date: Fri, 2 Jun 2017 09:09:18 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: Stephen Smalley <sds@tycho.nsa.gov>
+Cc: selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org,
+        Paul Moore <paul@paul-moore.com>,
         Eric Paris <eparis@parisplace.org>,
         Trond Myklebust <trondmy@primarydata.com>,
         "J . Bruce Fields" <bfields@fieldses.org>
-Date: Fri, 02 Jun 2017 08:55:08 -0400
-In-Reply-To: <20170601205947.4917-1-smayhew@redhat.com>
+Subject: Re: [PATCH v2] security/selinux: allow security_sb_clone_mnt_opts to
+ enable/disable native labeling behavior
+Message-ID: <20170602130918.gu22wnbd35idaurf@tonberry.usersys.redhat.com>
 References: <1496341807.27759.15.camel@tycho.nsa.gov>
-         <20170601205947.4917-1-smayhew@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <20170601205947.4917-1-smayhew@redhat.com>
+ <1496408108.19674.1.camel@tycho.nsa.gov>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <1496408108.19674.1.camel@tycho.nsa.gov>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-06-01 at 16:59 -0400, Scott Mayhew wrote:
-> When an NFSv4 client performs a mount operation, it first mounts the
-> NFSv4 root and then does path walk to the exported path and performs
-> a
-> submount on that, cloning the security mount options from the root's
-> superblock to the submount's superblock in the process.
-> 
-> Unless the NFS server has an explicit fsid=0 export with the
-> "security_label" option, the NFSv4 root superblock will not have
-> SBLABEL_MNT set, and neither will the submount superblock after
-> cloning
-> the security mount options.Â Â As a result, setxattr's of security
-> labels
-> over NFSv4.2 will fail.Â Â In a similar fashion, NFSv4.2 mounts mounted
-> with the context= mount option will not show the correct labels
-> because
-> the nfs_server->caps flags of the cloned superblock will still have
-> NFS_CAP_SECURITY_LABEL set.
-> 
-> Allowing the NFSv4 client to enable or disable
-> SECURITY_LSM_NATIVE_LABELS
-> behavior will ensure that the SBLABEL_MNT flag has the correct value
-> when the client traverses from an exported path without the
-> "security_label" option to one with the "security_label" option and
-> vice versa.Â Â Similarly, checking to see if SECURITY_LSM_NATIVE_LABELS
-> is
-> set upon return from security_sb_clone_mnt_opts() and clearing
-> NFS_CAP_SECURITY_LABEL if necessary will allow the correct labels to
-> be displayed for NFSv4.2 mounts mounted with the context= mount
-> option.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
-> Â fs/nfs/super.cÂ Â Â Â Â Â Â Â Â Â Â Â | 18 +++++++++++++++++-
-> Â include/linux/lsm_hooks.h |Â Â 4 +++-
-> Â include/linux/security.hÂ Â |Â Â 8 ++++++--
-> Â security/security.cÂ Â Â Â Â Â Â |Â Â 7 +++++--
-> Â security/selinux/hooks.cÂ Â | 35 +++++++++++++++++++++++++++++++++--
-> Â 5 files changed, 64 insertions(+), 8 deletions(-)
+On Fri, 02 Jun 2017, Stephen Smalley wrote:
 
-What tree is this against? Doesn't apply cleanly on selinux #next.
-
+> On Thu, 2017-06-01 at 16:59 -0400, Scott Mayhew wrote:
+> > When an NFSv4 client performs a mount operation, it first mounts the
+> > NFSv4 root and then does path walk to the exported path and performs
+> > a
+> > submount on that, cloning the security mount options from the root's
+> > superblock to the submount's superblock in the process.
+> > 
+> > Unless the NFS server has an explicit fsid=0 export with the
+> > "security_label" option, the NFSv4 root superblock will not have
+> > SBLABEL_MNT set, and neither will the submount superblock after
+> > cloning
+> > the security mount options.  As a result, setxattr's of security
+> > labels
+> > over NFSv4.2 will fail.  In a similar fashion, NFSv4.2 mounts mounted
+> > with the context= mount option will not show the correct labels
+> > because
+> > the nfs_server->caps flags of the cloned superblock will still have
+> > NFS_CAP_SECURITY_LABEL set.
+> > 
+> > Allowing the NFSv4 client to enable or disable
+> > SECURITY_LSM_NATIVE_LABELS
+> > behavior will ensure that the SBLABEL_MNT flag has the correct value
+> > when the client traverses from an exported path without the
+> > "security_label" option to one with the "security_label" option and
+> > vice versa.  Similarly, checking to see if SECURITY_LSM_NATIVE_LABELS
+> > is
+> > set upon return from security_sb_clone_mnt_opts() and clearing
+> > NFS_CAP_SECURITY_LABEL if necessary will allow the correct labels to
+> > be displayed for NFSv4.2 mounts mounted with the context= mount
+> > option.
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> >  fs/nfs/super.c            | 18 +++++++++++++++++-
+> >  include/linux/lsm_hooks.h |  4 +++-
+> >  include/linux/security.h  |  8 ++++++--
+> >  security/security.c       |  7 +++++--
+> >  security/selinux/hooks.c  | 35 +++++++++++++++++++++++++++++++++--
+> >  5 files changed, 64 insertions(+), 8 deletions(-)
 > 
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 2f3822a..ffded39 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -2544,10 +2544,26 @@ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
-> Â int nfs_clone_sb_security(struct super_block *s, struct dentry
-> *mntroot,
-> Â 			Â Â struct nfs_mount_info *mount_info)
-> Â {
-> +	int error;
-> +	unsigned long kflags = 0, kflags_out = 0;
-> +
-> Â 	/* clone any lsm security options from the parent to the new
-> sb */
-> Â 	if (d_inode(mntroot)->i_op != NFS_SB(s)->nfs_client-
-> >rpc_ops->dir_inode_ops)
-> Â 		return -ESTALE;
-> -	return security_sb_clone_mnt_opts(mount_info->cloned->sb,
-> s);
-> +
-> +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL)
-> +		kflags |= SECURITY_LSM_NATIVE_LABELS;
-> +
-> +	error = security_sb_clone_mnt_opts(mount_info->cloned->sb,
-> s, kflags,
-> +			&kflags_out);
-> +	if (error)
-> +		return error;
-> +
-> +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
-> +		!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
-> +		NFS_SB(s)->caps &= ~NFS_CAP_SECURITY_LABEL;
-> +	return error;
+> What tree is this against? Doesn't apply cleanly on selinux #next.
 
-This can just be return 0, right?
+It's against Linus' mainline tree.
+> 
+> > 
+> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> > index 2f3822a..ffded39 100644
+> > --- a/fs/nfs/super.c
+> > +++ b/fs/nfs/super.c
+> > @@ -2544,10 +2544,26 @@ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
+> >  int nfs_clone_sb_security(struct super_block *s, struct dentry
+> > *mntroot,
+> >  			  struct nfs_mount_info *mount_info)
+> >  {
+> > +	int error;
+> > +	unsigned long kflags = 0, kflags_out = 0;
+> > +
+> >  	/* clone any lsm security options from the parent to the new
+> > sb */
+> >  	if (d_inode(mntroot)->i_op != NFS_SB(s)->nfs_client-
+> > >rpc_ops->dir_inode_ops)
+> >  		return -ESTALE;
+> > -	return security_sb_clone_mnt_opts(mount_info->cloned->sb,
+> > s);
+> > +
+> > +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL)
+> > +		kflags |= SECURITY_LSM_NATIVE_LABELS;
+> > +
+> > +	error = security_sb_clone_mnt_opts(mount_info->cloned->sb,
+> > s, kflags,
+> > +			&kflags_out);
+> > +	if (error)
+> > +		return error;
+> > +
+> > +	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
+> > +		!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
+> > +		NFS_SB(s)->caps &= ~NFS_CAP_SECURITY_LABEL;
+> > +	return error;
+> 
+> This can just be return 0, right?
 
-> +
-> Â }
-> Â EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
-> Â 
-> diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
-> index 080f34e..2f54bfb 100644
-> --- a/include/linux/lsm_hooks.h
-> +++ b/include/linux/lsm_hooks.h
-> @@ -1388,7 +1388,9 @@ union security_list_options {
-> Â 				unsigned long kern_flags,
-> Â 				unsigned long *set_kern_flags);
-> Â 	int (*sb_clone_mnt_opts)(const struct super_block *oldsb,
-> -					struct super_block *newsb);
-> +					struct super_block *newsb,
-> +					unsigned long kern_flags,
-> +					unsigned long
-> *set_kern_flags);
-> Â 	int (*sb_parse_opts_str)(char *options, struct
-> security_mnt_opts *opts);
-> Â 	int (*dentry_init_security)(struct dentry *dentry, int mode,
-> Â 					const struct qstr *name,
-> void **ctx,
-> diff --git a/include/linux/security.h b/include/linux/security.h
-> index af675b5..a55ae9c 100644
-> --- a/include/linux/security.h
-> +++ b/include/linux/security.h
-> @@ -240,7 +240,9 @@ int security_sb_set_mnt_opts(struct super_block
-> *sb,
-> Â 				unsigned long kern_flags,
-> Â 				unsigned long *set_kern_flags);
-> Â int security_sb_clone_mnt_opts(const struct super_block *oldsb,
-> -				struct super_block *newsb);
-> +				struct super_block *newsb,
-> +				unsigned long kern_flags,
-> +				unsigned long *set_kern_flags);
-> Â int security_sb_parse_opts_str(char *options, struct
-> security_mnt_opts *opts);
-> Â int security_dentry_init_security(struct dentry *dentry, int mode,
-> Â 					const struct qstr *name,
-> void **ctx,
-> @@ -581,7 +583,9 @@ static inline int security_sb_set_mnt_opts(struct
-> super_block *sb,
-> Â }
-> Â 
-> Â static inline int security_sb_clone_mnt_opts(const struct
-> super_block *oldsb,
-> -					Â Â Â Â Â Â struct super_block
-> *newsb)
-> +					Â Â Â Â Â Â struct super_block
-> *newsb,
-> +					Â Â Â Â Â Â unsigned long
-> kern_flags,
-> +					Â Â Â Â Â Â unsigned long
-> *set_kern_flags)
-> Â {
-> Â 	return 0;
-> Â }
-> diff --git a/security/security.c b/security/security.c
-> index b9fea39..7b70ea2 100644
-> --- a/security/security.c
-> +++ b/security/security.c
-> @@ -380,9 +380,12 @@ int security_sb_set_mnt_opts(struct super_block
-> *sb,
-> Â EXPORT_SYMBOL(security_sb_set_mnt_opts);
-> Â 
-> Â int security_sb_clone_mnt_opts(const struct super_block *oldsb,
-> -				struct super_block *newsb)
-> +				struct super_block *newsb,
-> +				unsigned long kern_flags,
-> +				unsigned long *set_kern_flags)
-> Â {
-> -	return call_int_hook(sb_clone_mnt_opts, 0, oldsb, newsb);
-> +	return call_int_hook(sb_clone_mnt_opts, 0, oldsb, newsb,
-> +				kern_flags, set_kern_flags);
-> Â }
-> Â EXPORT_SYMBOL(security_sb_clone_mnt_opts);
-> Â 
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index e67a526..d8d5d35 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -529,8 +529,16 @@ static int sb_finish_set_opts(struct super_block
-> *sb)
-> Â 		Â Â Â Â Â Â Â sb->s_id, sb->s_type->name);
-> Â 
-> Â 	sbsec->flags |= SE_SBINITIALIZED;
-> +
-> +	/*
-> +	Â * Explicitly set or clear SBLABEL_MNT.Â Â It's not sufficient
-> to simply
-> +	Â * leave the flag untouched because sb_clone_mnt_opts might
-> be handing
-> +	Â * us a superblock that needs the flag to be cleared.
-> +	Â */
-> Â 	if (selinux_is_sblabel_mnt(sb))
-> Â 		sbsec->flags |= SBLABEL_MNT;
-> +	else
-> +		sbsec->flags &= ~SBLABEL_MNT;
-> Â 
-> Â 	/* Initialize the root inode. */
-> Â 	rc = inode_doinit_with_dentry(root_inode, root);
-> @@ -963,8 +971,11 @@ static int selinux_cmp_sb_context(const struct
-> super_block *oldsb,
-> Â }
-> Â 
-> Â static int selinux_sb_clone_mnt_opts(const struct super_block
-> *oldsb,
-> -					struct super_block *newsb)
-> +					struct super_block *newsb,
-> +					unsigned long kern_flags,
-> +					unsigned long
-> *set_kern_flags)
-> Â {
-> +	int rc = 0;
-> Â 	const struct superblock_security_struct *oldsbsec = oldsb-
-> >s_security;
-> Â 	struct superblock_security_struct *newsbsec = newsb-
-> >s_security;
-> Â 
-> @@ -979,6 +990,13 @@ static int selinux_sb_clone_mnt_opts(const
-> struct super_block *oldsb,
-> Â 	if (!ss_initialized)
-> Â 		return 0;
-> Â 
-> +	/*
-> +	Â * Specifying internal flags without providing a place to
-> +	Â * place the results is not allowed.
-> +	Â */
-> +	if (kern_flags && !set_kern_flags)
-> +		return -EINVAL;
-> +
-> Â 	/* how can we clone if the old one wasn't set up?? */
-> Â 	BUG_ON(!(oldsbsec->flags & SE_SBINITIALIZED));
-> Â 
-> @@ -994,6 +1012,18 @@ static int selinux_sb_clone_mnt_opts(const
-> struct super_block *oldsb,
-> Â 	newsbsec->def_sid = oldsbsec->def_sid;
-> Â 	newsbsec->behavior = oldsbsec->behavior;
-> Â 
-> +	if (newsbsec->behavior == SECURITY_FS_USE_NATIVE &&
-> +		!(kern_flags & SECURITY_LSM_NATIVE_LABELS) &&
-> !set_context) {
-> +		rc = security_fs_use(newsb);
-> +		if (rc)
-> +			goto out;
-> +	}
-> +
-> +	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !set_context)
-> {
-> +		newsbsec->behavior = SECURITY_FS_USE_NATIVE;
-> +		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
-> +	}
-> +
-> Â 	if (set_context) {
-> Â 		u32 sid = oldsbsec->mntpoint_sid;
-> Â 
-> @@ -1013,8 +1043,9 @@ static int selinux_sb_clone_mnt_opts(const
-> struct super_block *oldsb,
-> Â 	}
-> Â 
-> Â 	sb_finish_set_opts(newsb);
-> +out:
-> Â 	mutex_unlock(&newsbsec->lock);
-> -	return 0;
-> +	return rc;
-> Â }
-> Â 
-> Â static int selinux_parse_opts_str(char *options,
+Yes.
+> 
+> > +
+> >  }
+> >  EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
+> >  
+> > diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
+> > index 080f34e..2f54bfb 100644
+> > --- a/include/linux/lsm_hooks.h
+> > +++ b/include/linux/lsm_hooks.h
+> > @@ -1388,7 +1388,9 @@ union security_list_options {
+> >  				unsigned long kern_flags,
+> >  				unsigned long *set_kern_flags);
+> >  	int (*sb_clone_mnt_opts)(const struct super_block *oldsb,
+> > -					struct super_block *newsb);
+> > +					struct super_block *newsb,
+> > +					unsigned long kern_flags,
+> > +					unsigned long
+> > *set_kern_flags);
+> >  	int (*sb_parse_opts_str)(char *options, struct
+> > security_mnt_opts *opts);
+> >  	int (*dentry_init_security)(struct dentry *dentry, int mode,
+> >  					const struct qstr *name,
+> > void **ctx,
+> > diff --git a/include/linux/security.h b/include/linux/security.h
+> > index af675b5..a55ae9c 100644
+> > --- a/include/linux/security.h
+> > +++ b/include/linux/security.h
+> > @@ -240,7 +240,9 @@ int security_sb_set_mnt_opts(struct super_block
+> > *sb,
+> >  				unsigned long kern_flags,
+> >  				unsigned long *set_kern_flags);
+> >  int security_sb_clone_mnt_opts(const struct super_block *oldsb,
+> > -				struct super_block *newsb);
+> > +				struct super_block *newsb,
+> > +				unsigned long kern_flags,
+> > +				unsigned long *set_kern_flags);
+> >  int security_sb_parse_opts_str(char *options, struct
+> > security_mnt_opts *opts);
+> >  int security_dentry_init_security(struct dentry *dentry, int mode,
+> >  					const struct qstr *name,
+> > void **ctx,
+> > @@ -581,7 +583,9 @@ static inline int security_sb_set_mnt_opts(struct
+> > super_block *sb,
+> >  }
+> >  
+> >  static inline int security_sb_clone_mnt_opts(const struct
+> > super_block *oldsb,
+> > -					      struct super_block
+> > *newsb)
+> > +					      struct super_block
+> > *newsb,
+> > +					      unsigned long
+> > kern_flags,
+> > +					      unsigned long
+> > *set_kern_flags)
+> >  {
+> >  	return 0;
+> >  }
+> > diff --git a/security/security.c b/security/security.c
+> > index b9fea39..7b70ea2 100644
+> > --- a/security/security.c
+> > +++ b/security/security.c
+> > @@ -380,9 +380,12 @@ int security_sb_set_mnt_opts(struct super_block
+> > *sb,
+> >  EXPORT_SYMBOL(security_sb_set_mnt_opts);
+> >  
+> >  int security_sb_clone_mnt_opts(const struct super_block *oldsb,
+> > -				struct super_block *newsb)
+> > +				struct super_block *newsb,
+> > +				unsigned long kern_flags,
+> > +				unsigned long *set_kern_flags)
+> >  {
+> > -	return call_int_hook(sb_clone_mnt_opts, 0, oldsb, newsb);
+> > +	return call_int_hook(sb_clone_mnt_opts, 0, oldsb, newsb,
+> > +				kern_flags, set_kern_flags);
+> >  }
+> >  EXPORT_SYMBOL(security_sb_clone_mnt_opts);
+> >  
+> > diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
+> > index e67a526..d8d5d35 100644
+> > --- a/security/selinux/hooks.c
+> > +++ b/security/selinux/hooks.c
+> > @@ -529,8 +529,16 @@ static int sb_finish_set_opts(struct super_block
+> > *sb)
+> >  		       sb->s_id, sb->s_type->name);
+> >  
+> >  	sbsec->flags |= SE_SBINITIALIZED;
+> > +
+> > +	/*
+> > +	 * Explicitly set or clear SBLABEL_MNT.  It's not sufficient
+> > to simply
+> > +	 * leave the flag untouched because sb_clone_mnt_opts might
+> > be handing
+> > +	 * us a superblock that needs the flag to be cleared.
+> > +	 */
+> >  	if (selinux_is_sblabel_mnt(sb))
+> >  		sbsec->flags |= SBLABEL_MNT;
+> > +	else
+> > +		sbsec->flags &= ~SBLABEL_MNT;
+> >  
+> >  	/* Initialize the root inode. */
+> >  	rc = inode_doinit_with_dentry(root_inode, root);
+> > @@ -963,8 +971,11 @@ static int selinux_cmp_sb_context(const struct
+> > super_block *oldsb,
+> >  }
+> >  
+> >  static int selinux_sb_clone_mnt_opts(const struct super_block
+> > *oldsb,
+> > -					struct super_block *newsb)
+> > +					struct super_block *newsb,
+> > +					unsigned long kern_flags,
+> > +					unsigned long
+> > *set_kern_flags)
+> >  {
+> > +	int rc = 0;
+> >  	const struct superblock_security_struct *oldsbsec = oldsb-
+> > >s_security;
+> >  	struct superblock_security_struct *newsbsec = newsb-
+> > >s_security;
+> >  
+> > @@ -979,6 +990,13 @@ static int selinux_sb_clone_mnt_opts(const
+> > struct super_block *oldsb,
+> >  	if (!ss_initialized)
+> >  		return 0;
+> >  
+> > +	/*
+> > +	 * Specifying internal flags without providing a place to
+> > +	 * place the results is not allowed.
+> > +	 */
+> > +	if (kern_flags && !set_kern_flags)
+> > +		return -EINVAL;
+> > +
+> >  	/* how can we clone if the old one wasn't set up?? */
+> >  	BUG_ON(!(oldsbsec->flags & SE_SBINITIALIZED));
+> >  
+> > @@ -994,6 +1012,18 @@ static int selinux_sb_clone_mnt_opts(const
+> > struct super_block *oldsb,
+> >  	newsbsec->def_sid = oldsbsec->def_sid;
+> >  	newsbsec->behavior = oldsbsec->behavior;
+> >  
+> > +	if (newsbsec->behavior == SECURITY_FS_USE_NATIVE &&
+> > +		!(kern_flags & SECURITY_LSM_NATIVE_LABELS) &&
+> > !set_context) {
+> > +		rc = security_fs_use(newsb);
+> > +		if (rc)
+> > +			goto out;
+> > +	}
+> > +
+> > +	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !set_context)
+> > {
+> > +		newsbsec->behavior = SECURITY_FS_USE_NATIVE;
+> > +		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
+> > +	}
+> > +
+> >  	if (set_context) {
+> >  		u32 sid = oldsbsec->mntpoint_sid;
+> >  
+> > @@ -1013,8 +1043,9 @@ static int selinux_sb_clone_mnt_opts(const
+> > struct super_block *oldsb,
+> >  	}
+> >  
+> >  	sb_finish_set_opts(newsb);
+> > +out:
+> >  	mutex_unlock(&newsbsec->lock);
+> > -	return 0;
+> > +	return rc;
+> >  }
+> >  
+> >  static int selinux_parse_opts_str(char *options,
