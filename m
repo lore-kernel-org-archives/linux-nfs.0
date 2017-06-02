@@ -1,45 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47602 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751655AbdFBNz2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 2 Jun 2017 09:55:28 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.2: Don't send mode again in post-EXCLUSIVE4_1 SETATTR with umask
-Date: Fri,  2 Jun 2017 09:55:21 -0400
-Message-Id: <117d6500cc64c89ea56d8d4f940f14f7ecc744bb.1496411640.git.bcodding@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:36604 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751128AbdFBPBJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Jun 2017 11:01:09 -0400
+Received: from userv0022.oracle.com (userv0022.oracle.com [156.151.31.74])
+        by userp1040.oracle.com (Sentrion-MTA-4.3.2/Sentrion-MTA-4.3.2) with ESMTP id v52F18x1007027
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Fri, 2 Jun 2017 15:01:08 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: Proposal for end-of-life for fedfs-utils development
+Message-Id: <56804FBE-34B2-47FB-96EF-013D4476D89A@oracle.com>
+Date: Fri, 2 Jun 2017 11:01:05 -0400
+To: fedfs-utils developers <fedfs-utils-devel@oss.oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benjamin Coddington <bcodding@godel.bcodding.lab>
+Upstream fedfs-utils has not been under active development for
+two years or more, and there is a scant user base. I'd like to
+propose making 0.10 the final major release of fedfs-utils.
 
-Now that we have umask support, we shouldn't re-send the mode in a SETATTR
-following an exclusive CREATE, or we risk having the same problem fixed in
-commit 5334c5bdac92 ("NFS: Send attributes in OPEN request for
-NFS4_CREATE_EXCLUSIVE4_1"), which is that files with S_ISGID will have that
-bit stripped away.
+The plan:
 
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/nfs4proc.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+- Since 0.10 is in at least one major enterprise distribution,
+I will remain available to integrate security fixes and make
+new minor releases in the 0.10 line, as needed, for one to
+two more years.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c08c46a3b8cd..403787319446 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2589,7 +2589,8 @@ static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
- 
- 	/* Except MODE, it seems harmless of setting twice. */
- 	if (opendata->o_arg.createmode != NFS4_CREATE_EXCLUSIVE &&
--		attrset[1] & FATTR4_WORD1_MODE)
-+		(attrset[1] & FATTR4_WORD1_MODE) ||
-+		(attrset[2] & FATTR4_WORD2_MODE_UMASK))
- 		sattr->ia_valid &= ~ATTR_MODE;
- 
- 	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
--- 
-2.9.3
+- Retire and remove fedfs-utils from upstream mirror distros
+such as Fedora rawhide.
+
+- Transfer utilities such as nfsref into nfs-utils, with
+support for FedFS junctions removed.
+
+- Announcements of the change in status will be made on
+fedfs-utils-announce and on the wiki.linux-nfs.org site.
+
+
+
+Comments welcome!
+
+
+--
+Chuck Lever
+
+
 
