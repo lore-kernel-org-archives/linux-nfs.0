@@ -1,225 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51230 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54026 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751224AbdFAU7t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Jun 2017 16:59:49 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: selinux@tycho.nsa.gov, linux-nfs@vger.kernel.org
-Cc: Paul Moore <paul@paul-moore.com>,
-        Stephen Smalley <sds@tycho.nsa.gov>,
-        Eric Paris <eparis@parisplace.org>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH v2] security/selinux: allow security_sb_clone_mnt_opts to enable/disable native labeling behavior
-Date: Thu,  1 Jun 2017 16:59:47 -0400
-Message-Id: <20170601205947.4917-1-smayhew@redhat.com>
-In-Reply-To: <1496341807.27759.15.camel@tycho.nsa.gov>
-References: <1496341807.27759.15.camel@tycho.nsa.gov>
+        id S1750747AbdFBGE7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Jun 2017 02:04:59 -0400
+Date: Fri, 2 Jun 2017 14:04:57 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-xfs@vger.kernel.org
+Subject: [v4.12-rc1 regression] nfs server crashed in fstests run
+Message-ID: <20170602060457.GG23805@eguan.usersys.redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When an NFSv4 client performs a mount operation, it first mounts the
-NFSv4 root and then does path walk to the exported path and performs a
-submount on that, cloning the security mount options from the root's
-superblock to the submount's superblock in the process.
+Hi all,
 
-Unless the NFS server has an explicit fsid=0 export with the
-"security_label" option, the NFSv4 root superblock will not have
-SBLABEL_MNT set, and neither will the submount superblock after cloning
-the security mount options.  As a result, setxattr's of security labels
-over NFSv4.2 will fail.  In a similar fashion, NFSv4.2 mounts mounted
-with the context= mount option will not show the correct labels because
-the nfs_server->caps flags of the cloned superblock will still have
-NFS_CAP_SECURITY_LABEL set.
+Starting from 4.12-rc1 kernel, I saw Linux nfs server crashes all the
+time in my fstests (xfstests) runs, I appended the console log of an
+NFSv3 crash to the end of this mail.
 
-Allowing the NFSv4 client to enable or disable SECURITY_LSM_NATIVE_LABELS
-behavior will ensure that the SBLABEL_MNT flag has the correct value
-when the client traverses from an exported path without the
-"security_label" option to one with the "security_label" option and
-vice versa.  Similarly, checking to see if SECURITY_LSM_NATIVE_LABELS is
-set upon return from security_sb_clone_mnt_opts() and clearing
-NFS_CAP_SECURITY_LABEL if necessary will allow the correct labels to
-be displayed for NFSv4.2 mounts mounted with the context= mount option.
+I was exporting a directory resided on XFS, and loopback mounted the NFS
+export on localhost. Both NFSv3 and NFSv4 could hit this crash. The
+crash usually happens when running test case generic/029 or generic/095.
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfs/super.c            | 18 +++++++++++++++++-
- include/linux/lsm_hooks.h |  4 +++-
- include/linux/security.h  |  8 ++++++--
- security/security.c       |  7 +++++--
- security/selinux/hooks.c  | 35 +++++++++++++++++++++++++++++++++--
- 5 files changed, 64 insertions(+), 8 deletions(-)
+But the problem is, there's no easy and efficient way to reproduce it, I
+tried run only generic/029 and generic/095 in a loop for 1000 times but
+failed, I also tried run the 'quick' group tests only for 50 iterations
+but failed again. It seems that the only reliable way to reproduce it is
+run the 'auto' group tests for 20 iterations.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 2f3822a..ffded39 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2544,10 +2544,26 @@ EXPORT_SYMBOL_GPL(nfs_set_sb_security);
- int nfs_clone_sb_security(struct super_block *s, struct dentry *mntroot,
- 			  struct nfs_mount_info *mount_info)
- {
-+	int error;
-+	unsigned long kflags = 0, kflags_out = 0;
-+
- 	/* clone any lsm security options from the parent to the new sb */
- 	if (d_inode(mntroot)->i_op != NFS_SB(s)->nfs_client->rpc_ops->dir_inode_ops)
- 		return -ESTALE;
--	return security_sb_clone_mnt_opts(mount_info->cloned->sb, s);
-+
-+	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL)
-+		kflags |= SECURITY_LSM_NATIVE_LABELS;
-+
-+	error = security_sb_clone_mnt_opts(mount_info->cloned->sb, s, kflags,
-+			&kflags_out);
-+	if (error)
-+		return error;
-+
-+	if (NFS_SB(s)->caps & NFS_CAP_SECURITY_LABEL &&
-+		!(kflags_out & SECURITY_LSM_NATIVE_LABELS))
-+		NFS_SB(s)->caps &= ~NFS_CAP_SECURITY_LABEL;
-+	return error;
-+
- }
- EXPORT_SYMBOL_GPL(nfs_clone_sb_security);
- 
-diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
-index 080f34e..2f54bfb 100644
---- a/include/linux/lsm_hooks.h
-+++ b/include/linux/lsm_hooks.h
-@@ -1388,7 +1388,9 @@ union security_list_options {
- 				unsigned long kern_flags,
- 				unsigned long *set_kern_flags);
- 	int (*sb_clone_mnt_opts)(const struct super_block *oldsb,
--					struct super_block *newsb);
-+					struct super_block *newsb,
-+					unsigned long kern_flags,
-+					unsigned long *set_kern_flags);
- 	int (*sb_parse_opts_str)(char *options, struct security_mnt_opts *opts);
- 	int (*dentry_init_security)(struct dentry *dentry, int mode,
- 					const struct qstr *name, void **ctx,
-diff --git a/include/linux/security.h b/include/linux/security.h
-index af675b5..a55ae9c 100644
---- a/include/linux/security.h
-+++ b/include/linux/security.h
-@@ -240,7 +240,9 @@ int security_sb_set_mnt_opts(struct super_block *sb,
- 				unsigned long kern_flags,
- 				unsigned long *set_kern_flags);
- int security_sb_clone_mnt_opts(const struct super_block *oldsb,
--				struct super_block *newsb);
-+				struct super_block *newsb,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags);
- int security_sb_parse_opts_str(char *options, struct security_mnt_opts *opts);
- int security_dentry_init_security(struct dentry *dentry, int mode,
- 					const struct qstr *name, void **ctx,
-@@ -581,7 +583,9 @@ static inline int security_sb_set_mnt_opts(struct super_block *sb,
- }
- 
- static inline int security_sb_clone_mnt_opts(const struct super_block *oldsb,
--					      struct super_block *newsb)
-+					      struct super_block *newsb,
-+					      unsigned long kern_flags,
-+					      unsigned long *set_kern_flags)
- {
- 	return 0;
- }
-diff --git a/security/security.c b/security/security.c
-index b9fea39..7b70ea2 100644
---- a/security/security.c
-+++ b/security/security.c
-@@ -380,9 +380,12 @@ int security_sb_set_mnt_opts(struct super_block *sb,
- EXPORT_SYMBOL(security_sb_set_mnt_opts);
- 
- int security_sb_clone_mnt_opts(const struct super_block *oldsb,
--				struct super_block *newsb)
-+				struct super_block *newsb,
-+				unsigned long kern_flags,
-+				unsigned long *set_kern_flags)
- {
--	return call_int_hook(sb_clone_mnt_opts, 0, oldsb, newsb);
-+	return call_int_hook(sb_clone_mnt_opts, 0, oldsb, newsb,
-+				kern_flags, set_kern_flags);
- }
- EXPORT_SYMBOL(security_sb_clone_mnt_opts);
- 
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index e67a526..d8d5d35 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -529,8 +529,16 @@ static int sb_finish_set_opts(struct super_block *sb)
- 		       sb->s_id, sb->s_type->name);
- 
- 	sbsec->flags |= SE_SBINITIALIZED;
-+
-+	/*
-+	 * Explicitly set or clear SBLABEL_MNT.  It's not sufficient to simply
-+	 * leave the flag untouched because sb_clone_mnt_opts might be handing
-+	 * us a superblock that needs the flag to be cleared.
-+	 */
- 	if (selinux_is_sblabel_mnt(sb))
- 		sbsec->flags |= SBLABEL_MNT;
-+	else
-+		sbsec->flags &= ~SBLABEL_MNT;
- 
- 	/* Initialize the root inode. */
- 	rc = inode_doinit_with_dentry(root_inode, root);
-@@ -963,8 +971,11 @@ static int selinux_cmp_sb_context(const struct super_block *oldsb,
- }
- 
- static int selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
--					struct super_block *newsb)
-+					struct super_block *newsb,
-+					unsigned long kern_flags,
-+					unsigned long *set_kern_flags)
- {
-+	int rc = 0;
- 	const struct superblock_security_struct *oldsbsec = oldsb->s_security;
- 	struct superblock_security_struct *newsbsec = newsb->s_security;
- 
-@@ -979,6 +990,13 @@ static int selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
- 	if (!ss_initialized)
- 		return 0;
- 
-+	/*
-+	 * Specifying internal flags without providing a place to
-+	 * place the results is not allowed.
-+	 */
-+	if (kern_flags && !set_kern_flags)
-+		return -EINVAL;
-+
- 	/* how can we clone if the old one wasn't set up?? */
- 	BUG_ON(!(oldsbsec->flags & SE_SBINITIALIZED));
- 
-@@ -994,6 +1012,18 @@ static int selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
- 	newsbsec->def_sid = oldsbsec->def_sid;
- 	newsbsec->behavior = oldsbsec->behavior;
- 
-+	if (newsbsec->behavior == SECURITY_FS_USE_NATIVE &&
-+		!(kern_flags & SECURITY_LSM_NATIVE_LABELS) && !set_context) {
-+		rc = security_fs_use(newsb);
-+		if (rc)
-+			goto out;
-+	}
-+
-+	if (kern_flags & SECURITY_LSM_NATIVE_LABELS && !set_context) {
-+		newsbsec->behavior = SECURITY_FS_USE_NATIVE;
-+		*set_kern_flags |= SECURITY_LSM_NATIVE_LABELS;
-+	}
-+
- 	if (set_context) {
- 		u32 sid = oldsbsec->mntpoint_sid;
- 
-@@ -1013,8 +1043,9 @@ static int selinux_sb_clone_mnt_opts(const struct super_block *oldsb,
- 	}
- 
- 	sb_finish_set_opts(newsb);
-+out:
- 	mutex_unlock(&newsbsec->lock);
--	return 0;
-+	return rc;
- }
- 
- static int selinux_parse_opts_str(char *options,
--- 
-2.9.3
+	i=0
+	while [ $i -lt 20 ]; do
+		./check -nfs -g auto
+		((i++))
+	done
 
+And usually server crashed within 5 iterations, but at times it could
+survive 10 iterations and only crashed if you left it running for more
+iterations. This makes it hard to bisect and bisecting is very
+time-consuming.
+
+(The bisecting is running now, it needs a few days to finish. My first
+two attempts pointed first bad commit to some mm patches, but reverting
+that patch didn't prevent server from crashing, so I enlarged the loop
+count and started bisecting for the third time).
+
+If more info is needed please let me know.
+
+Thanks,
+Eryu
+
+
+[88895.796834] run fstests generic/028 at 2017-06-01 00:43:18
+[88900.945420] run fstests generic/029 at 2017-06-01 00:43:23
+[88901.127315] BUG: unable to handle kernel paging request at ffffffffc0360e12
+[88901.135095] IP: report_bug+0x64/0x100
+[88901.139177] PGD 3b7c0c067
+[88901.139177] P4D 3b7c0c067
+[88901.142194] PUD 3b7c0e067
+[88901.145209] PMD 469e33067
+[88901.148225] PTE 80000004675f4161
+[88901.151240]
+[88901.156497] Oops: 0003 [#1] SMP
+[88901.159997] Modules linked in: loop dm_mod nfsv3 nfs fscache ext4 jbd2 mbcache intel_rapl sb_edac x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm nfsd irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel pcbc ipmi_ssif cdc_ether aesni_intel iTCO_wdt usbnet crypto_simd ipmi_si glue_helper sg iTCO_vendor_support wmi mii cryptd ipmi_devintf ipmi_msghandler auth_rpcgss shpchp i2c_i801 pcspkr ioatdma lpc_ich nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod mgag200 drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops igb ttm drm ptp pps_core dca megaraid_sas crc32c_intel i2c_algo_bit i2c_core
+[88901.221606] CPU: 9 PID: 3278 Comm: nfsd Not tainted 4.12.0-rc3 #42
+[88901.228500] Hardware name: IBM System x3650 M4 -[7915ON3]-/00J6520, BIOS -[VVE124AUS-1.30]- 11/21/2012
+[88901.238885] task: ffffa10062d12d00 task.stack: ffffc2820478c000
+[88901.245488] RIP: 0010:report_bug+0x64/0x100
+[88901.250153] RSP: 0018:ffffc2820478f598 EFLAGS: 00010202
+[88901.255980] RAX: ffffffffc0360e08 RBX: ffffffffc0301cdc RCX: 0000000000000001
+[88901.263940] RDX: 0000000000000907 RSI: ffffffffc038bc80 RDI: ffffffffffff0d22
+[88901.271901] RBP: ffffc2820478f5b8 R08: 0000000000000001 R09: 00000000000001cc
+[88901.279861] R10: ffffffffb6a36f67 R11: 0000000000000000 R12: ffffc2820478f6e8
+[88901.287821] R13: ffffffffc0351b2a R14: 00000000000003fb R15: 0000000000000004
+[88901.295783] FS:  0000000000000000(0000) GS:ffffa1007f6c0000(0000) knlGS:0000000000000000
+[88901.304818] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[88901.311227] CR2: ffffffffc0360e12 CR3: 00000003b7c09000 CR4: 00000000000406e0
+[88901.319188] Call Trace:
+[88901.321920]  do_trap+0x16a/0x190
+[88901.325519]  do_error_trap+0x89/0x110
+[88901.329652]  ? xfs_do_writepage+0x65c/0x680 [xfs]
+[88901.334917]  ? _xfs_buf_find+0x2a2/0x510 [xfs]
+[88901.339875]  ? kmem_cache_alloc+0x194/0x1a0
+[88901.344561]  ? kmem_zone_alloc+0x96/0x100 [xfs]
+[88901.349615]  do_invalid_op+0x20/0x30
+[88901.353604]  invalid_op+0x1e/0x30
+[88901.357318] RIP: 0010:xfs_do_writepage+0x65c/0x680 [xfs]
+[88901.363242] RSP: 0018:ffffc2820478f790 EFLAGS: 00010206
+[88901.369069] RAX: 0000000000340140 RBX: ffffc2820478f8b8 RCX: 0000000000000000
+[88901.377030] RDX: 0000000000000000 RSI: ffffc2820478f9f8 RDI: fffffc2be1095400
+[88901.384991] RBP: ffffc2820478f838 R08: 0000000000000002 R09: 000000000001ff20
+[88901.392950] R10: ffffa1007ffd1d00 R11: 0000000000000000 R12: ffffa10053c2ea58
+[88901.400911] R13: fffffc2be1095400 R14: ffffc2820478f960 R15: ffffc2820478f9f8
+[88901.408876]  ? page_mkclean+0x69/0xb0
+[88901.412960]  ? invalid_page_referenced_vma+0x90/0x90
+[88901.418500]  write_cache_pages+0x26f/0x510
+[88901.423085]  ? xfs_vm_set_page_dirty+0x1d0/0x1d0 [xfs]
+[88901.428819]  ? block_write_end+0x36/0x80
+[88901.433193]  ? generic_write_end+0x54/0xc0
+[88901.437791]  xfs_vm_writepages+0xb6/0xd0 [xfs]
+[88901.442741]  do_writepages+0x1c/0x70
+[88901.446727]  __filemap_fdatawrite_range+0xc6/0x100
+[88901.452071]  filemap_write_and_wait_range+0x41/0x90
+[88901.457532]  xfs_file_fsync+0x63/0x1d0 [xfs]
+[88901.462294]  vfs_fsync_range+0x3d/0xb0
+[88901.466491]  xfs_file_write_iter+0x121/0x140 [xfs]
+[88901.471835]  __do_readv_writev+0x2d3/0x360
+[88901.476402]  do_readv_writev+0x76/0xb0
+[88901.480582]  ? do_dentry_open+0x261/0x310
+[88901.485069]  ? xfs_extent_busy_ag_cmp+0x20/0x20 [xfs]
+[88901.490704]  vfs_writev+0x3c/0x50
+[88901.494409]  nfsd_vfs_write+0xd0/0x360 [nfsd]
+[88901.499271]  ? ima_file_check+0x20/0x30
+[88901.503553]  nfsd_write+0x15a/0x210 [nfsd]
+[88901.508116]  nfsd3_proc_write+0x9d/0x130 [nfsd]
+[88901.513172]  nfsd_dispatch+0xce/0x270 [nfsd]
+[88901.517950]  svc_process_common+0x387/0x740 [sunrpc]
+[88901.523492]  svc_process+0xfc/0x1c0 [sunrpc]
+[88901.528248]  nfsd+0xe9/0x160 [nfsd]
+[88901.532137]  kthread+0x109/0x140
+[88901.535740]  ? nfsd_destroy+0x60/0x60 [nfsd]
+[88901.540501]  ? kthread_park+0x60/0x60
+[88901.544586]  ret_from_fork+0x25/0x30
+[88901.548572] Code: 63 78 04 44 0f b7 70 08 41 89 d0 4c 8d 2c 38 41 83 e0 01 f6 c2 02 74 17 66 45 85 c0 74 11 f6 c2 04 b9 01 00 00 00 75 bb 83 ca 04 <66> 89 50 0a 66 45 85 c0 74 52 0f b6 48 0b 41 0f b7 f6 4d 89 e0
+[88901.569642] RIP: report_bug+0x64/0x100 RSP: ffffc2820478f598
+[88901.575955] CR2: ffffffffc0360e12
+[88901.579663] ---[ end trace 62c63b9fb594e7f4 ]---
+[88901.584811] Kernel panic - not syncing: Fatal exception
+[88901.590694] Kernel Offset: 0x35000000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+[88901.602731] Rebooting in 3 seconds..
