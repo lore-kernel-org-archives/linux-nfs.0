@@ -1,55 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:29280 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751306AbdFCXcT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Jun 2017 19:32:19 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes for Linux 4.12
-Date: Sat, 3 Jun 2017 23:31:48 +0000
-Message-ID: <1496532706.12246.1.camel@primarydata.com>
+Received: from www.brfliseberg.se ([213.242.162.1]:59516 "EHLO
+        www.brfliseberg.se" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751045AbdFDMZK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 4 Jun 2017 08:25:10 -0400
+Message-Id: <201706022301.v52MWdAM028763@www.brfliseberg.se>
+Content-Type: text/plain; charset="iso-8859-1"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Subject: Investment Interest & Offer
+To: Recipients <seydouthieba@tiscali.co.uk>
+From: "Seydou Thieba" <seydouthieba@tiscali.co.uk>
+Date: Sat, 03 Jun 2017 00:01:51 +0100
+Reply-To: seydouthiebaconsultant@gmail.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgMDgzMzI4OTNl
-MzdhZjZhZTc3OTM2N2U3OGU0NDRmOGY5NTcxNTExZDoNCg0KICBMaW51eCA0LjEyLXJjMiAoMjAx
-Ny0wNS0yMSAxOTozMDoyMyAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjEyLTINCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
-Z2VzIHVwIHRvIDRmMjUzZTFlYjYyOGY1YWRmN2NhNGY0M2FhYjRiYmIxYmZmZmEwODE6DQoNCiAg
-bmZzOiBNYXJrIHVubmVjZXNzYXJpbHkgZXh0ZXJuIGZ1bmN0aW9ucyBhcyBzdGF0aWMgKDIwMTct
-MDYtMDMgMTY6MDY6MzggLTA0MDApDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgZm9y
-IExpbnV4IDQuMTINCg0KQnVnZml4ZXMgaW5jbHVkZToNCg0KLSBGaXggYSB0eXBvIGluIGNvbW1p
-dCBlMDkyNjkzNDQzYiB0aGF0IGJyZWFrcyBjb3B5IG9mZmxvYWQNCi0gRml4IHRoZSBjb25uZWN0
-IGVycm9yIHByb3BhZ2F0aW9uIGluIHhzX3RjcF9zZXR1cF9zb2NrZXQoKQ0KLSBGaXggYSBsb2Nr
-IGxlYWsgaW4gbmZzNDBfd2Fsa19jbGllbnRfbGlzdA0KLSBWZXJpZnkgdGhhdCBwTkZTIHJlcXVl
-c3RzIGxpZSB3aXRoaW4gdGhlIG9mZnNldCByYW5nZSBvZiB0aGUgbGF5b3V0IHNlZ21lbnQuDQoN
-Ci0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0NCkJlbmphbWluIENvZGRpbmd0b24gKDEpOg0KICAgICAgcG5mczogRml4IHRoZSBj
-aGVjayBmb3IgcmVxdWVzdHMgaW4gcmFuZ2Ugb2YgbGF5b3V0IHNlZ21lbnQNCg0KRGFuIENhcnBl
-bnRlciAoMSk6DQogICAgICBwTkZTL2ZsZXhmaWxlczogbWlzc2luZyBlcnJvciBjb2RlIGluIGZm
-X2xheW91dF9hbGxvY19sc2VnKCkNCg0KSmFuIEthcmEgKDEpOg0KICAgICAgbmZzOiBNYXJrIHVu
-bmVjZXNzYXJpbHkgZXh0ZXJuIGZ1bmN0aW9ucyBhcyBzdGF0aWMNCg0KTWFya3VzIEVsZnJpbmcg
-KDEpOg0KICAgICAgeHBydHJkbWE6IERlbGV0ZSBhbiBlcnJvciBtZXNzYWdlIGZvciBhIGZhaWxl
-ZCBtZW1vcnkgYWxsb2NhdGlvbiBpbiB4cHJ0X3JkbWFfYmNfc2V0dXAoKQ0KDQpOZWlsQnJvd24g
-KDEpOg0KICAgICAgU1VOUlBDOiBlbnN1cmUgY29ycmVjdCBlcnJvciBpcyByZXBvcnRlZCBieSB4
-c190Y3Bfc2V0dXBfc29ja2V0KCkNCg0KT2xnYSBLb3JuaWV2c2thaWEgKDEpOg0KICAgICAgTkZT
-IGZpeCBDT01NSVQgYWZ0ZXIgQ09QWQ0KDQpUcm9uZCBNeWtsZWJ1c3QgKDEpOg0KICAgICAgTkZT
-djQuMDogRml4IGEgbG9jayBsZWFrIGluIG5mczQwX3dhbGtfY2xpZW50X2xpc3QNCg0KIGZzL25m
-cy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5jIHwgIDEgKw0KIGZzL25mcy9pbnRlcm5h
-bC5oICAgICAgICAgICAgICAgICAgICAgIHwgIDIgLS0NCiBmcy9uZnMvbmZzNDJwcm9jLmMgICAg
-ICAgICAgICAgICAgICAgICB8ICAyICstDQogZnMvbmZzL25mczRjbGllbnQuYyAgICAgICAgICAg
-ICAgICAgICAgfCAgMSAtDQogZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAg
-fCAyNSArKysrKysrKysrKysrKysrKy0tLS0tLS0tDQogZnMvbmZzL3BuZnMuaCAgICAgICAgICAg
-ICAgICAgICAgICAgICAgfCAxMCArKysrKysrKysrDQogZnMvbmZzL3N1cGVyLmMgICAgICAgICAg
-ICAgICAgICAgICAgICAgfCAgNSArKystLQ0KIG5ldC9zdW5ycGMveHBydHJkbWEvYmFja2NoYW5u
-ZWwuYyAgICAgIHwgIDYgKystLS0tDQogbmV0L3N1bnJwYy94cHJ0c29jay5jICAgICAgICAgICAg
-ICAgICAgfCAgNyArKysrKystDQogOSBmaWxlcyBjaGFuZ2VkLCA0MCBpbnNlcnRpb25zKCspLCAx
-OSBkZWxldGlvbnMoLSkNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
-aW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
