@@ -1,74 +1,71 @@
-Return-Path: <bfields@fieldses.org>
-Date: Tue, 6 Jun 2017 16:56:46 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:37685 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751390AbdFFVCt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Jun 2017 17:02:49 -0400
+Subject: Re: [PATCH] mount.nfs: Use default minor version when -t nfs4 is
+ specified
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Benjamin Coddington <bcodding@redhat.com>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: GSS sequence number window
-Message-ID: <20170606205646.GJ13376@fieldses.org>
-References: <EC0579A3-BC81-4398-A11D-8D8EEFC473BF@redhat.com>
- <20170531192231.GA23526@fieldses.org>
- <C7BDFB27-72B4-4156-8272-BAE8AE89039B@oracle.com>
- <28665890-C74A-4319-B42E-475393821EC7@oracle.com>
- <20170606194158.GG13376@fieldses.org>
- <4D542D55-DCBA-4838-9DB2-B76B4068783E@oracle.com>
- <20170606201504.GH13376@fieldses.org>
- <F7960CBD-9E6C-478D-B390-F435DFD37DFB@oracle.com>
- <20170606202307.GI13376@fieldses.org>
- <2ED4D9A9-08B4-499C-BB76-EFCC5108D2FA@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20170606194812.4248-1-steved@redhat.com>
+ <5D1A0F34-DD8D-465E-BF94-7E2C92EC8282@oracle.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <6bc13046-8098-8cce-189a-6977b86e8efc@RedHat.com>
+Date: Tue, 6 Jun 2017 17:02:47 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2ED4D9A9-08B4-499C-BB76-EFCC5108D2FA@oracle.com>
+In-Reply-To: <5D1A0F34-DD8D-465E-BF94-7E2C92EC8282@oracle.com>
+Content-Type: text/plain; charset=utf-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 06, 2017 at 04:54:51PM -0400, Chuck Lever wrote:
-> 
-> > On Jun 6, 2017, at 4:23 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > On Tue, Jun 06, 2017 at 04:16:53PM -0400, Chuck Lever wrote:
-> >> 
-> >>> On Jun 6, 2017, at 4:15 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>> 
-> >>> On Tue, Jun 06, 2017 at 03:45:59PM -0400, Chuck Lever wrote:
-> >>>> 
-> >>>>> On Jun 6, 2017, at 3:41 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >>>>> 
-> >>>>> On Tue, Jun 06, 2017 at 03:35:23PM -0400, Chuck Lever wrote:
-> >>>>>> I filed https://bugzilla.linux-nfs.org/show_bug.cgi?id=306
-> >>>>>> 
-> >>>>>> To check memory allocation latency, I could always construct
-> >>>>>> a framework around kmalloc and alloc_page.
-> >>>>>> 
-> >>>>>> 
-> >>>>>> I've also found some bad behavior around proto=rdma,sec=krb5i.
-> >>>>>> When I run a heavy I/O workload (fio, for example), every so
-> >>>>>> often a read operation fails with EIO. I dug into it a little
-> >>>>>> and MIC verification fails for these replies on the client.
-> >>>>> 
-> >>>>> Do we still have the problem that the read data can change between the
-> >>>>> time we calculate the MIC and the time we transmit the data to the
-> >>>>> client?
-> >>>> 
-> >>>> I don't see a problem with krb5p, which, if IIUC, would also
-> >>>> fall victim to this situation, unless there is much stricter
-> >>>> request serialization going on with krb5p.
-> >>> 
-> >>> We turn off zero-copy by clearing RQ_SPLICE_OK in the krb5p case.
-> >> 
-> >> Seems like this is the right answer for krb5i too. Shall I try that?
-> > 
-> > Sure!  Just grep around for RQ_SPLICE_OK, I think it should be easy to
-> > figure out.
-> 
-> I added
-> 
->         clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
-> 
-> at the top of unwrap_integ_data() in net/sunrpc/auth_gss/svcauth_gss.c.
-> 
-> I haven't seen a failure yet, which is a good sign.
 
-Well, unfortunately it means the only easy fix we have right now may
-cause a performance regression.  Anyway, maybe that's what we should do.
 
---b.
+On 06/06/2017 03:52 PM, Chuck Lever wrote:
+> 
+>> On Jun 6, 2017, at 3:48 PM, Steve Dickson <steved@redhat.com> wrote:
+>>
+>> When the nfs4 filesystem specified, the default minor
+>> version should be used not v4.0.
+> 
+> Isn't the default specified in the mountnfs config file?
+It can be... But in general its not... 
+
+So the question is when the nfs4 file system (aka -t nfs4)
+what minor version does that mean? v4.0 which was the 
+default in the past or the new default v4.2?
+
+steved.
+> 
+> 
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>> utils/mount/stropts.c | 3 ++-
+>> 1 file changed, 2 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>> index c0266e5..57efb26 100644
+>> --- a/utils/mount/stropts.c
+>> +++ b/utils/mount/stropts.c
+>> @@ -317,7 +317,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
+>>
+>> 	if (strncmp(mi->type, "nfs4", 4) == 0) {
+>> 		mi->version.major = 4;
+>> -		mi->version.v_mode = V_GENERAL;
+>> +		mi->version.minor = 2;
+>> +		mi->version.v_mode = V_SPECIFIC;
+>> 	}
+>> 	/*
+>> 	 * Before 2.6.32, the kernel NFS client didn't
+>> -- 
+>> 2.9.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
