@@ -1,53 +1,46 @@
-Return-Path: <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: GSS sequence number window
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170606194158.GG13376@fieldses.org>
-Date: Tue, 6 Jun 2017 15:45:59 -0400
-Cc: Benjamin Coddington <bcodding@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4D542D55-DCBA-4838-9DB2-B76B4068783E@oracle.com>
-References: <63736845-2BD3-4EE1-AC12-0BD21A9ABEF2@oracle.com> <20170530193419.GA9371@fieldses.org> <EC0579A3-BC81-4398-A11D-8D8EEFC473BF@redhat.com> <20170531192231.GA23526@fieldses.org> <C7BDFB27-72B4-4156-8272-BAE8AE89039B@oracle.com> <28665890-C74A-4319-B42E-475393821EC7@oracle.com> <20170606194158.GG13376@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:55024 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751580AbdFFTsQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Jun 2017 15:48:16 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 4E6CBC049D5C
+        for <linux-nfs@vger.kernel.org>; Tue,  6 Jun 2017 19:48:15 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-120-221.rdu2.redhat.com [10.10.120.221])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id F17E95885E
+        for <linux-nfs@vger.kernel.org>; Tue,  6 Jun 2017 19:48:14 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] mount.nfs: Use default minor version when -t nfs4 is specified
+Date: Tue,  6 Jun 2017 15:48:12 -0400
+Message-Id: <20170606194812.4248-1-steved@redhat.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When the nfs4 filesystem specified, the default minor
+version should be used not v4.0.
 
-> On Jun 6, 2017, at 3:41 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Tue, Jun 06, 2017 at 03:35:23PM -0400, Chuck Lever wrote:
->> I filed https://bugzilla.linux-nfs.org/show_bug.cgi?id=306
->> 
->> To check memory allocation latency, I could always construct
->> a framework around kmalloc and alloc_page.
->> 
->> 
->> I've also found some bad behavior around proto=rdma,sec=krb5i.
->> When I run a heavy I/O workload (fio, for example), every so
->> often a read operation fails with EIO. I dug into it a little
->> and MIC verification fails for these replies on the client.
-> 
-> Do we still have the problem that the read data can change between the
-> time we calculate the MIC and the time we transmit the data to the
-> client?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mount/stropts.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-I don't see a problem with krb5p, which, if IIUC, would also
-fall victim to this situation, unless there is much stricter
-request serialization going on with krb5p.
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index c0266e5..57efb26 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -317,7 +317,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
+ 
+ 	if (strncmp(mi->type, "nfs4", 4) == 0) {
+ 		mi->version.major = 4;
+-		mi->version.v_mode = V_GENERAL;
++		mi->version.minor = 2;
++		mi->version.v_mode = V_SPECIFIC;
+ 	}
+ 	/*
+ 	 * Before 2.6.32, the kernel NFS client didn't
+-- 
+2.9.4
 
-Even so, how would I detect if this issue was present?
-
-
-> --b.
-> 
->> 
->> I filed https://bugzilla.linux-nfs.org/show_bug.cgi?id=307
->> to document this second issue.
->> 
->> I'm not sure what a next step would be. My suspicion is that
->> either the server or the client is mishandling the RPC reply
->> buffer, which causes the checksums to be different. Not sure
->> why this would be so intermittent, though.
-
---
-Chuck Lever
