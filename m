@@ -1,158 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f173.google.com ([209.85.216.173]:35306 "EHLO
-        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751200AbdFFQjR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jun 2017 12:39:17 -0400
-Received: by mail-qt0-f173.google.com with SMTP id w1so136365192qtg.2
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Jun 2017 09:39:17 -0700 (PDT)
-MIME-Version: 1.0
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 6 Jun 2017 12:39:15 -0400
-Message-ID: <CAN-5tyHTmx7KM76DRa5F5PwgJpNsZELf8BBHeoBq-yacHfzpmg@mail.gmail.com>
-Subject: race in state manager leads to failed recovery
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from [195.159.176.226] ([195.159.176.226]:38740 "EHLO
+        blaine.gmane.org" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+        with ESMTP id S1751247AbdFFQrA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jun 2017 12:47:00 -0400
+Received: from list by blaine.gmane.org with local (Exim 4.84_2)
+        (envelope-from <glN-linux-nfs@m.gmane.org>)
+        id 1dIHd6-00065N-Ew
+        for linux-nfs@vger.kernel.org; Tue, 06 Jun 2017 18:46:52 +0200
+To: linux-nfs@vger.kernel.org
+From: Lutz Vieweg <lvml@5t9.de>
+Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
+Date: Tue, 06 Jun 2017 18:46:51 +0200
+Message-ID: <5936DC7B.8040804@5t9.de>
+References: <20151012164846.GA5017@draconx.ca>   <20151012192538.GG28755@fieldses.org> <20151012194647.GJ28755@fieldses.org>     <20151013030136.GA7081@draconx.ca>      <20151013065225.44c5581d@synchrony.poochiereds.net>     <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com>    <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com> <1469814735.19411.1.camel@poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8; format=flowed
+In-Reply-To: <1469814735.19411.1.camel@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An application can fail with EIO when the server reboots and the
-client while doing the recovery is getting into the following
-situation where it incorrectly chooses "nograce" recovery instead of
-"reboot" recovery. The necessary trigger is a pnfs mount and 2 DS
-reads on the same file fail with BAD_STATEID each read uses its own
-lock stateid (and MDS server reboots losing state). Since  server
-rebooted it will fail recovery ops with BAD_SESSION and then also
-STALE_ID triggering session and clientid recovery.
+On 07/29/2016 07:52 PM, Jeff Layton wrote:
+>>>>>>>>    fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET,
+>>>>>>>> start=1073741824, len=1}) = -1 EIO (Input/output error)
+>>
+>> Unfortunately I did not manage to perform a network capture last time
+>> due to power loss.  I did not hit this issue again until yesterday (~9
+>> months later), this time after 45 days of uptime.
+>>
+>> Kernel versions now are: 4.5.1 on the server, and 4.4.3 on the client.
 
-1. Thread1 gets BAD_STATEID initiates stateid recovery calls
-nfs4_state_mark_reclaim_no_grace() which sets the cl_state->flags and
-state->flags respective _NOGRACE flags.
+I wanted to add that I, too, have one NFS client and server
+(running linux-4.11.0 on both the server and the client)
+currently in the same kind of state:
 
-2. State manager gets to run and it clears the _NOGRACE from the
-cl_state. Calls nfs4_do_reclaim() which sends TEST_STATEID which gets
-a BAD_SESSION.
+I can reproduce in 100% of the cases that the following commands:
 
-3. Thread2 now gets control and it also processing its BAD_STATEID and
-calls nfs4_state_mark_reclaim_no_grace() and it again sets the
-state/cl_state->flags to have _NOGRACE.
+> rm -f x.sqlite
+> sqlite3 x.sqlite "PRAGMA case_sensitive_like=1;PRAGMA synchronous=OFF;PRAGMA recursive_triggers=ON;PRAGMA foreign_keys=OFF;PRAGMA locking_mode = NORMAL;PRAGMA journal_mode =  TRUNCATE;"
 
-4. State manager runs and continues with state recovery by sending
-DESTROY_SESSION, and then CREATE_SESSION which fails with
-STALE_CLIENTID. Now we are recovering the lease.
+result in:
 
-5. State manager in nfs4_recovery_handle_error for STALE_CLIENTID,
-calls nfs4_state_start_reclaim_reboot() calls
-nfs4_state_mark_reclaim_reboot() which has a check
+>  "Error: disk I/O error"
 
-/* Don't recover state that expired before the reboot */
-if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags)) {
-  clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
-  return 0;
-}
+on the client - while working fine on the NFS server - with the same kind
+of strace output:
 
-Because the _NOGRACE was set again in Step3, we end up clearing
-_RECLAIM_REBOOT and not setting _RECLAIM_REBOOT in the cl_state->flags
-and choose to do "nograce" operation instead of recovery.
+>  fcntl(3, F_SETLK, {type=F_RDLCK, whence=SEEK_SET, start=1073741824, len=1}) = -1 EIO (Input/output error)
+>  write(2, "Error: disk I/O error\n", 22Error: disk I/O error
 
-Removing this check removes the problem.
+But unlike the original reporter, we use the NFS v3 protocol:
+> server:/data on /data type nfs (rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,soft,proto=tcp,timeo=600,retrans=2,sec=sys,mountvers=3,mountport=20048,mountproto=udp,local_lock=none)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 06274e3..2c668a0 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1321,11 +1321,6 @@ static int
-nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_st
-  if (!nfs4_valid_open_stateid(state))
-  return 0;
-  set_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
-- /* Don't recover state that expired before the reboot */
-- if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags)) {
-- clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
-- return 0;
-- }
-  set_bit(NFS_OWNER_RECLAIM_REBOOT, &state->owner->so_flags);
-  set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
-  return 1;
+If you want me to try or trace something on the client,
+I'm willing to help.
 
-I'm confused by the comment why would we not what to recover state?
+Regards,
 
-When both threads execute before the state manager starts this problem
-doesn't exist.
+Lutz Vieweg
 
-If helpful here are two annotated (**) snippet from var log message
-from the non-working and then one without the check:
 
-Jun  6 12:06:42 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff880072f50=
-c00
-   ** first thread sets the nograce recovery
-Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
-cleared NOGRACE from client state ffff88006fc23d28
-  ** this is from the state manager=E2=80=99s loop from after
-test_and_clear(NFS4CLNT_RECLAIM_NO_GRACE, cl_state)
-Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_do_reclaim start
-Jun  6 12:06:42 ipa18 kernel: NFS call  test_stateid ffff880077ac0af0
-Jun  6 12:06:42 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff880072f50=
-c00
-   ** 2nd thread sets the nograce recovery
-Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_do_reclaim status end=3D-11
-Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_begin_drain_session
-Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_state_mark_reclaim_reboot
-clears RECLAIM_REBOOT from state=3Dffff880072f50c00
-   ** this is from nfs4_state_mark_reclaim_reboot() and ends up not
-setting the _RECLAIM_REBOOT flag in cl_state and clears it from the
-state->flags
-Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_begin_drain_session
-Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_begin_drain_session
-Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_reclaim_lease client
-state=3Dffff88006fc23d28 flag has NOGRACE
-Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
-cleared NOGRACE from client state ffff88006fc23d28
-   ** this is in the state manager loop after the "reclaim_nograce" is
-chosen and clearing the _NOGRACE flag
-Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_do_reclaim start
-Jun  6 12:06:43 ipa18 kernel: NFS call  test_stateid ffff880077ac0af0
-Jun  6 12:06:43 ipa18 kernel: NFS call  test_stateid ffff880077ac02f0
-Jun  6 12:06:43 ipa18 kernel: NFS call  test_stateid ffff880072f50c68
-Jun  6 12:06:43 ipa18 kernel: NFS: nfs4_reclaim_open_state: Lock reclaim fa=
-iled!
-Jun  6 12:06:43 ipa18 kernel: NFS: nfs4_reclaim_open_state: Lock reclaim fa=
-iled!
-Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_reclaim_open_state clearing
-NOGRACE from state=3Dffff880072f50c00
-Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_do_reclaim end=3D0
-Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_end_drain_session
-
-This is a snippet from when we ignore that _NOGRACE is set and proceed
-to set the _RECLAIM_REBOOT
-Jun  6 12:21:58 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff88007363b=
-bc0
-Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
-cleared NOGRACE from client state ffff88002febe528
-Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_do_reclaim start
-Jun  6 12:21:58 ipa18 kernel: NFS call  test_stateid ffff880077ac4cf0
-Jun  6 12:21:58 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff88007363b=
-bc0
-Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_do_reclaim status end=3D-11
-Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_begin_drain_session
-Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_state_mark_reclaim_reboot NOT
-clearing _RECLAIM_REBOOT from state=3Dffff88007363bbc0
-    *** Removing the check and instead proceeding to set the
-_RECLAIM_REBOOT in the cl_state->flags so that
-Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_begin_drain_session
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_begin_drain_session
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_reclaim_lease client
-state=3Dffff88002febe528 flag has NOGRACE
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_state_manager reclaim reboot
-op cl_state=3Dffff88002febe528
-   *** Unlike the previous case the state manager now goes into the
-reclaim reboot state.
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim start
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_reclaim_open_state clearing
-NOGRACE from state=3Dffff88007363bbc0
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim end=3D0
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
-cleared NOGRACE from client state ffff88002febe528
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim start
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim end=3D0
-Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_end_drain_session
