@@ -1,32 +1,30 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41246 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36066 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751541AbdFFOgq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Jun 2017 10:36:46 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        id S1751721AbdFFOhL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Jun 2017 10:37:11 -0400
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 997843D95C
-        for <linux-nfs@vger.kernel.org>; Tue,  6 Jun 2017 14:36:45 +0000 (UTC)
-Subject: Re: [PATCH 3/3] nfs.conf tidy ups
+        by mx1.redhat.com (Postfix) with ESMTPS id A845715561
+        for <linux-nfs@vger.kernel.org>; Tue,  6 Jun 2017 14:37:05 +0000 (UTC)
+Subject: Re: [PATCH 2/3] nfs.conf tidy ups
 To: Justin Mitchell <jumitche@redhat.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <1495468363.4169.13.camel@redhat.com>
+References: <1495468204.4169.10.camel@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <828514d4-0a6c-8106-4c16-f47d9e6a6053@RedHat.com>
-Date: Tue, 6 Jun 2017 10:36:44 -0400
+Message-ID: <d430e93a-3d63-4985-8d92-1a444629f041@RedHat.com>
+Date: Tue, 6 Jun 2017 10:37:04 -0400
 MIME-Version: 1.0
-In-Reply-To: <1495468363.4169.13.camel@redhat.com>
+In-Reply-To: <1495468204.4169.10.camel@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 05/22/2017 11:52 AM, Justin Mitchell wrote:
-> Remove the line length parameter and associated code which
-> led to buffer overruns in the line parsing code.
-> Also drops the undocumented 'include' directive.
+On 05/22/2017 11:50 AM, Justin Mitchell wrote:
+> Add function to cleanup and free the loaded config
 > 
 > Signed-off-by: Justin Mitchell <jumitche@rehat.com>
 Committed... 
@@ -35,273 +33,102 @@ steved.
 
 > 
 > ---
->  support/nfs/conffile.c | 201 ++++++++++++++++++++++++++++---------------------
->  1 file changed, 117 insertions(+), 84 deletions(-)
+>  support/include/conffile.h |  1 +
+>  support/nfs/conffile.c     | 51 +++++++++++++++++++++++++++++++++++++++-------
+>  2 files changed, 45 insertions(+), 7 deletions(-)
 > 
+> diff --git a/support/include/conffile.h b/support/include/conffile.h
+> index 20b1a32..2d11a52 100644
+> --- a/support/include/conffile.h
+> +++ b/support/include/conffile.h
+> @@ -60,6 +60,7 @@ extern _Bool    conf_get_bool(char *, char *, _Bool);
+>  extern char    *conf_get_str(char *, char *);
+>  extern char    *conf_get_section(char *, char *, char *);
+>  extern void     conf_init(const char *);
+> +extern void     conf_cleanup(void);
+>  extern int      conf_match_num(char *, char *, int);
+>  extern int      conf_remove(int, char *, char *);
+>  extern int      conf_remove_section(int, char *);
 > diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index 7c607c0..449ac1c 100644
+> index a76c7e3..7c607c0 100644
 > --- a/support/nfs/conffile.c
 > +++ b/support/nfs/conffile.c
-> @@ -212,15 +212,10 @@ conf_set_now(char *section, char *arg, char *tag,
->   * headers and feed tag-value pairs into our configuration database.
->   */
->  static void
-> -conf_parse_line(int trans, char *line, size_t sz, char **section, char **subsection)
-> +conf_parse_line(int trans, char *line, int lineno, char **section, char **subsection)
->  {
->  	char *val, *ptr;
-> -	size_t i;
-> -	size_t j;
-> -	static int ln = 0;
->  
-> -	/* Lines starting with '#' or ';' are comments.  */
-> -	ln++;
->  	/* Ignore blank lines */
->  	if (*line == '\0')
->  		return;
-> @@ -229,113 +224,149 @@ conf_parse_line(int trans, char *line, size_t sz, char **section, char **subsect
->  	while (isblank(*line)) 
->  		line++;
->  
-> +	/* Lines starting with '#' or ';' are comments.  */
->  	if (*line == '#' || *line == ';')
->  		return;
->  
->  	/* '[section]' parsing...  */
->  	if (*line == '[') {
->  		line++;
-> +
-> +		if (*section) {
-> +			free(*section);
-> +			*section = NULL;
-> +		}
-> +		if (*subsection) {
-> +			free(*subsection);
-> +			*subsection = NULL;
-> +		}
-> +
->  		/* Strip off any blanks after '[' */
->  		while (isblank(*line)) 
->  			line++;
-> -		for (i = 0; i < sz; i++) {
-> -			if (line[i] == ']') {
-> -				break;
-> -			}
-> -		}
-> -		if (*section)
-> -			free(*section);
-> -		if (i == sz) {
-> +
-> +		/* find the closing ] */
-> +		ptr = strchr(line, ']');
-> +		if (ptr == NULL) {
->  			xlog_warn("config file error: line %d: "
-> - 				"non-matched ']', ignoring until next section", ln);
-> -			*section = NULL;
-> + 				"non-matched ']', ignoring until next section", lineno);
->  			return;
->  		}
-> +
-> +		/* just ignore everything after the closing ] */
-> +		*(ptr--) = '\0';
-> +
->  		/* Strip off any blanks before ']' */
-> -		val = line;
-> -		j=0;
-> -		while (*val && !isblank(*val)) 
-> -			val++, j++;
-> -		if (*val)
-> -			i = j;
-> -		*section = malloc(i+1);
-> +		while (ptr >= line && isblank(*ptr)) 
-> +			*(ptr--)='\0';
-> +
-> +		/* look for an arg to split from the section name */
-> +		val = strchr(line, '"');
-> +		if (val != NULL) {
-> +			ptr = val - 1;
-> +			*(val++) = '\0';
-> +
-> +			/* trim away any whitespace before the " */
-> +			while (ptr > line && isblank(*ptr))
-> +				*(ptr--)='\0';
-> +		}
-> +
-> +		/* copy the section name */
-> +		*section = strdup(line);
->  		if (!*section) {
-> -			xlog_warn("conf_parse_line: %d: malloc (%lu) failed", ln,
-> -						(unsigned long)i);
-> +			xlog_warn("conf_parse_line: %d: malloc failed", lineno);
->  			return;
->  		}
-> -		strncpy(*section, line, i);
-> -		(*section)[i] = '\0';
->  
-> -		if (*subsection) {
-> -			free(*subsection);
-> -			*subsection = NULL;
-> -		}
-> +		/* there is no arg, we are done */
-> +		if (val == NULL) return;
->  
-> +		/* check for the closing " */
->  		ptr = strchr(val, '"');
-> -		if (ptr == NULL)
-> -			return;
-> -		line = ++ptr;
-> -		while (*ptr && *ptr != '"' && *ptr != ']')
-> -			ptr++;
-> -		if (*ptr == '\0' || *ptr == ']') {
-> +		if (ptr == NULL) {
->  			xlog_warn("config file error: line %d: "
-> - 				"non-matched '\"', ignoring until next section", ln);
-> -		}  else {
-> -			*ptr = '\0';
-> -			*subsection = strdup(line);
-> -			if (!*subsection) 
-> -				xlog_warn("conf_parse_line: %d: malloc arg failed", ln);
-> + 				"non-matched '\"', ignoring until next section", lineno);
-> +			return;
->  		}
-> +		*ptr = '\0';
-> +		*subsection = strdup(val);
-> +		if (!*subsection) 
-> +			xlog_warn("conf_parse_line: %d: malloc arg failed", lineno);
->  		return;
->  	}
->  
->  	/* Deal with assignments.  */
-> -	for (i = 0; i < sz; i++) {
-> -		if (line[i] == '=') {
-> -			/* If no section, we are ignoring the lines.  */
-> -			if (!*section) {
-> +	ptr = strchr(line, '=');
-> +
-> +	/* not an assignment line */
-> +	if (ptr == NULL) {
-> +		/* Other non-empty lines are weird.  */
-> +		if (line[strspn(line, " \t")])
->  			xlog_warn("config file error: line %d: "
-> -				"ignoring line due to no section", ln);
-> -				return;
-> -			}
-> -			line[strcspn (line, " \t=")] = '\0';
-> -			val = line + i + 1 + strspn (line + i + 1, " \t");
-> -
-> -			if (val[0] == '"') {
-> -				val ++;
-> -				j = strcspn(val, "\"");
-> -				val[j] = 0;
-> -			} else if (val[0] == '\'') {
-> -				val ++;
-> -				j = strcspn(val, "'");
-> -				val[j] = 0;
-> -			} else {
-> -				/* Skip trailing spaces and comments */
-> -				for (j = 0; val[j]; j++) {
-> -					if ((val[j] == '#' || val[j] == ';')
-> -					    && (j == 0 || isspace(val[j-1]))) {
-> -						val[j] = '\0';
-> -						break;
-> -					}
-> -				}
-> -				while (j && isspace(val[j-1]))
-> -					val[--j] = '\0';
-> -			}
-> -			if (strcasecmp(line, "include") == 0)
-> -				conf_load(trans, val);
-> -			else
-> -				/* XXX Perhaps should we not ignore errors?  */
-> -				conf_set(trans, *section, *subsection, line, val, 0, 0);
-> +				"line not empty and not an assignment", lineno);
-> +		return;
-> +	}
-> +
-> +	/* If no section, we are ignoring the line.  */
-> +	if (!*section) {
-> +		xlog_warn("config file error: line %d: "
-> +			"ignoring line due to no section", lineno);
-> +		return;
-> +	}
-> +
-> +	val = ptr + 1;
-> +	*(ptr--) = '\0';
-> +
-> +	/* strip spaces before and after the = */
-> +	while (ptr >= line && isblank(*ptr))
-> +		*(ptr--)='\0';
-> +	while (*val != '\0' && isblank(*val))
-> +		val++;
-> +
-> +	if (*val == '"') {
-> +		val++;
-> +		ptr = strchr(val, '"');
-> +		if (ptr == NULL) {
-> +			xlog_warn("config file error: line %d: "
-> +				"unmatched quotes", lineno);
->  			return;
->  		}
-> +		*ptr = '\0';
-> +	} else
-> +	if (*val == '\'') {
-> +		val++;
-> +		ptr = strchr(val, '\'');
-> +		if (ptr == NULL) {
-> +			xlog_warn("config file error: line %d: "
-> +				"unmatched quotes", lineno);
-> +			return;
-> +		}
-> +		*ptr = '\0';
-> +	} else {
-> +		/* Trim any trailing spaces and comments */
-> +		if ((ptr=strchr(val, '#'))!=NULL)
-> +			*ptr = '\0';
-> +		if ((ptr=strchr(val, ';'))!=NULL)
-> +			*ptr = '\0';
-> +
-> +		ptr = val + strlen(val) - 1;
-> +		while (ptr > val && isspace(*ptr))
-> +			*(ptr--) = '\0';
->  	}
-> -	/* Other non-empty lines are weird.  */
-> -	i = strspn(line, " \t");
-> -	if (line[i])
-> -		xlog_warn("config file error: line %d:", ln);
->  
-> -	return;
-> +	if (*line == '\0') {
-> +		xlog_warn("config file error: line %d: "
-> +			"missing tag in assignment", lineno);
-> +		return;
-> +	}
-> +	if (*val == '\0') {
-> +		xlog_warn("config file error: line %d: "
-> +			"missing value in assignment", lineno);
-> +		return;
-> +	}
-> +
-> +	/* XXX Perhaps should we not ignore errors?  */
-> +	conf_set(trans, *section, *subsection, line, val, 0, 0);
+> @@ -414,13 +414,32 @@ conf_load(int trans, const char *path)
+>  	return -1;
 >  }
 >  
->  /* Parse the mapped configuration file.  */
-> @@ -347,6 +378,7 @@ conf_parse(int trans, char *buf, size_t sz)
->  	char *line;
->  	char *section = NULL;
->  	char *subsection = NULL;
-> +	int lineno = 0;
+> +/* remove and free up any existing config state */
+> +static void conf_free_bindings(void)
+> +{
+> +	unsigned int i;
+> +	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
+> +		struct conf_binding *cb, *next;
+> +
+> +		cb = LIST_FIRST(&conf_bindings[i]);
+> +		for (; cb; cb = next) {
+> +			next = LIST_NEXT(cb, link);
+> +			LIST_REMOVE(cb, link);
+> +			free(cb->section);
+> +			free(cb->arg);
+> +			free(cb->tag);
+> +			free(cb->value);
+> +			free(cb);
+> +		}
+> +		LIST_INIT(&conf_bindings[i]);
+> +	}
+> +}
+> +
+>  /* Open the config file and map it into our address space, then parse it.  */
+>  static void
+>  conf_reinit(const char *conf_file)
+>  {
+> -	struct conf_binding *cb = 0;
+>  	int trans;
+> -	unsigned int i;
 >  
->  	line = cp;
->  	while (cp < bufend) {
-> @@ -356,7 +388,8 @@ conf_parse(int trans, char *buf, size_t sz)
->  				*(cp - 1) = *cp = ' ';
->  			else {
->  				*cp = '\0';
-> -				conf_parse_line(trans, line, cp - line, &section, &subsection);
-> +				lineno++;
-> +				conf_parse_line(trans, line, lineno, &section, &subsection);
->  				line = cp + 1;
->  			}
->  		}
+>  	trans = conf_begin();
+>  	if (conf_load(trans, conf_file) < 0)
+> @@ -430,12 +449,9 @@ conf_reinit(const char *conf_file)
+>  	conf_load_defaults();
+>  
+>  	/* Free potential existing configuration.  */
+> -	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
+> -		cb = LIST_FIRST (&conf_bindings[i]);
+> -		for (; cb; cb = LIST_FIRST (&conf_bindings[i]))
+> -			conf_remove_now(cb->section, cb->tag);
+> -	}
+> +	conf_free_bindings();
+>  
+> +	/* Apply the new configuration values */
+>  	conf_end(trans, 1);
+>  	return;
+>  }
+> @@ -454,6 +470,27 @@ conf_init (const char *conf_file)
+>  	conf_reinit(conf_file);
+>  }
+>  
+> +/* 
+> + * Empty the config and free up any used memory 
+> + */
+> +void
+> +conf_cleanup(void)
+> +{
+> +	conf_free_bindings();
+> +
+> +	struct conf_trans *node, *next;
+> +	for (node = TAILQ_FIRST(&conf_trans_queue); node; node = next) {
+> +		next = TAILQ_NEXT(node, link);
+> +		TAILQ_REMOVE (&conf_trans_queue, node, link);
+> +		if (node->section) free(node->section);
+> +		if (node->arg) free(node->arg);
+> +		if (node->tag) free(node->tag);
+> +		if (node->value) free(node->value);
+> +		free (node);
+> +	}
+> +	TAILQ_INIT(&conf_trans_queue);
+> +}
+> +
+>  /*
+>   * Return the numeric value denoted by TAG in section SECTION or DEF
+>   * if that tag does not exist.
 > 
