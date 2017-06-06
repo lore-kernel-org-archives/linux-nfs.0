@@ -1,103 +1,106 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52052 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751578AbdFFSH7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Jun 2017 14:07:59 -0400
-Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option and
- systemd.
-To: NeilBrown <neilb@suse.com>
-Cc: systemd-devel@freedesktop.org, linux-nfs@vger.kernel.org,
-        Lennart Poettering <lennart@poettering.net>
-References: <87lgpkgwrw.fsf@notabene.neil.brown.name>
- <20170529133814.GC17967@gardel-login>
- <87tw43fgrf.fsf@notabene.neil.brown.name>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
-Date: Tue, 6 Jun 2017 14:07:57 -0400
-MIME-Version: 1.0
-In-Reply-To: <87tw43fgrf.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=utf-8
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: GSS sequence number window
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <C7BDFB27-72B4-4156-8272-BAE8AE89039B@oracle.com>
+Date: Tue, 6 Jun 2017 15:35:23 -0400
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <28665890-C74A-4319-B42E-475393821EC7@oracle.com>
+References: <63736845-2BD3-4EE1-AC12-0BD21A9ABEF2@oracle.com> <20170530193419.GA9371@fieldses.org> <EC0579A3-BC81-4398-A11D-8D8EEFC473BF@redhat.com> <20170531192231.GA23526@fieldses.org> <C7BDFB27-72B4-4156-8272-BAE8AE89039B@oracle.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-On 05/29/2017 06:19 PM, NeilBrown wrote:
+> On May 31, 2017, at 4:27 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
-> Systemd does not, and will not, support "bg" correctly.
-> It has other, better, ways to handle "background" mounting.
-The only problem with this is bg mounts still work at least
-up to 4.11 kernel... 
-
-It appears there is a problem with a 4.12 kernel. The mount no 
-longer errors out with ECONNREFUSED it just hangs in the 
-kernel trying forever... It sounds like a bug to me but 
-maybe that change was intentional.. Anna?? Trond???
-
-So I'm a bit hesitant to commit this since not accurate, yet.
-
-Finally, the whole idea of systemd randomly/silently 
-strip off mount options is crazy... IMHO... 
-
-Just because a concept that has been around for years
-does not fix well in the systemd world it gets
-rip out??? IDK... but I think we can do better than that.
-
-Note, the 'bg' is used by clients that do want their
-booting to hang by servers that are down so if the 
-option is rip out, boots will start hang. This
-will make it very difficult to debug since the bg
-will still exist in fstab.  
-
-Again, the whole concept of systemd messing with mounts options
-is just not a good one... IMHO.. 
-
-steved.
-
+>> 
+>> On May 31, 2017, at 3:22 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> 
+>> On Tue, May 30, 2017 at 04:11:20PM -0400, Benjamin Coddington wrote:
+>>> On 30 May 2017, at 15:34, J. Bruce Fields wrote:
+>>> 
+>>>> On Tue, May 30, 2017 at 02:58:00PM -0400, Chuck Lever wrote:
+>>>>> Hey Bruce!
+>>>>> 
+>>>>> While testing with sec=krb5 and sec=krb5i, I noticed a lot of
+>>>>> spurious connection loss, especially when I wanted to run a
+>>>>> CPU-intensive workload on my NFS server at the same time I
+>>>>> was testing.
+>>>>> 
+>>>>> I added a pr_err() in gss_check_seq_num, and ran a fio job
+>>>>> on a vers=3,sec=sys,proto=tcp mount (server is exporting a
+>>>>> tmpfs). On the server, I rebuilt a kernel source tree cscope
+>>>>> database at the same time.
+>>>>> 
+>>>>> May 29 17:53:13 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 250098, sd_max = 250291, GSS_SEQ_WIN = 128
+>>>>> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 937816, sd_max = 938171, GSS_SEQ_WIN = 128
+>>>>> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 938544, sd_max = 938727, GSS_SEQ_WIN = 128
+>>>>> May 29 17:53:33 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 938543, sd_max = 938727, GSS_SEQ_WIN = 128
+>>>>> May 29 17:53:34 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 939344, sd_max = 939549, GSS_SEQ_WIN = 128
+>>>>> May 29 17:53:35 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 965007, sd_max = 965176, GSS_SEQ_WIN = 128
+>>>>> May 29 17:54:01 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 1799710, sd_max = 1799982, GSS_SEQ_WIN = 128
+>>>>> May 29 17:54:02 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 1831165, sd_max = 1831353, GSS_SEQ_WIN = 128
+>>>>> May 29 17:54:04 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 1883583, sd_max = 1883761, GSS_SEQ_WIN = 128
+>>>>> May 29 17:54:07 klimt kernel: gss_check_seq_num: seq_num =
+>>>>> 1959316, sd_max = 1959447, GSS_SEQ_WIN = 128
+>>>>> 
+>>>>> RFC 2203 suggests there's no risk to using a large window.
+>>>>> My first thought was to make the sequence window larger
+>>>>> (say 2048) but I've seen stragglers outside even that large
+>>>>> a window.
+>>>>> 
+>>>>> Any thoughts about why there are these sequence number
+>>>>> outliers?
+>>>> 
+>>>> No, alas.
+>>> 
+>>> I noticed some slow allocations on the server with krb5 last year - but
+>>> never got around to doing anything about it:
+>>> http://marc.info/?t=146032122900006&r=1&w=2
+>>> 
+>>> Could be the same thing?
+>> 
+>> I don't think it would be too hard to eliminate the need for allocations
+>> there.  Or maybe there's even a quick hack that would let Chuck test
+>> whether that's the problem (different GFP flags on those allocations?)
 > 
-> Explain this.
+> This doesn't feel like a memory allocator issue. My server has
+> loads of free memory, and there's just one NUMA node.
 > 
-> See also https://github.com/systemd/systemd/issues/6046
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  utils/mount/nfs.man | 18 +++++++++++++++++-
->  1 file changed, 17 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index cc6e992ed807..7e76492d454f 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -372,6 +372,21 @@ Alternatively these issues can be addressed
->  using an automounter (refer to
->  .BR automount (8)
->  for details).
-> +.IP
-> +When
-> +.B systemd
-> +is used to mount the filesystems listed in
-> +.IR /etc/fstab ,
-> +the
-> +.B bg
-> +option is not supported, and may be stripped from the option list.
-> +Similar functionality can be achieved by providing the
-> +.B x-system.automount
-> +option.  This will cause
-> +.B systemd
-> +to attempt to mount the filesystem when the mountpoint is first
-> +accessed, rather than during system boot.  The mount still happens in
-> +the "background", though in a different way.
->  .TP 1.5i
->  .BR rdirplus " / " nordirplus
->  Selects whether to use NFS v3 or v4 READDIRPLUS requests.
-> @@ -1810,7 +1825,8 @@ such as security negotiation, server referrals, and named attributes.
->  .BR rpc.idmapd (8),
->  .BR rpc.gssd (8),
->  .BR rpc.svcgssd (8),
-> -.BR kerberos (1)
-> +.BR kerberos (1),
-> +.BR systemd.mount (5) .
->  .sp
->  RFC 768 for the UDP specification.
->  .br
-> 
+> Since increasing nfsd thread count seems to improve the situation,
+> my guess is that having more threads available makes it less likely
+> that an RPC request will be reordered.
+
+I filed https://bugzilla.linux-nfs.org/show_bug.cgi?id=306
+
+To check memory allocation latency, I could always construct
+a framework around kmalloc and alloc_page.
+
+
+I've also found some bad behavior around proto=rdma,sec=krb5i.
+When I run a heavy I/O workload (fio, for example), every so
+often a read operation fails with EIO. I dug into it a little
+and MIC verification fails for these replies on the client.
+
+I filed https://bugzilla.linux-nfs.org/show_bug.cgi?id=307
+to document this second issue.
+
+I'm not sure what a next step would be. My suspicion is that
+either the server or the client is mishandling the RPC reply
+buffer, which causes the checksums to be different. Not sure
+why this would be so intermittent, though.
+
+
+--
+Chuck Lever
