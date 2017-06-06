@@ -1,59 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:18463 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751440AbdFFTwq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jun 2017 15:52:46 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] mount.nfs: Use default minor version when -t nfs4 is specified
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170606194812.4248-1-steved@redhat.com>
-Date: Tue, 6 Jun 2017 15:52:41 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <5D1A0F34-DD8D-465E-BF94-7E2C92EC8282@oracle.com>
-References: <20170606194812.4248-1-steved@redhat.com>
-To: Steve Dickson <steved@redhat.com>
+Received: from mail-yw0-f173.google.com ([209.85.161.173]:35232 "EHLO
+        mail-yw0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751247AbdFFT5d (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jun 2017 15:57:33 -0400
+Received: by mail-yw0-f173.google.com with SMTP id 141so8259887ywe.2
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Jun 2017 12:57:33 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
+References: <87lgpkgwrw.fsf@notabene.neil.brown.name> <20170529133814.GC17967@gardel-login>
+ <87tw43fgrf.fsf@notabene.neil.brown.name> <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
+From: Michael Biebl <mbiebl@gmail.com>
+Date: Tue, 6 Jun 2017 21:57:32 +0200
+Message-ID: <CAGWsdOjswhfUszn0AmFtFcz-sbDU8=qFr5z1=tNigROOPBS0Rw@mail.gmail.com>
+Subject: Re: [systemd-devel] [PATCH] nfs.man: document incompatibility between
+ "bg" option and systemd.
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org,
+        systemd-devel@freedesktop.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+2017-06-06 20:07 GMT+02:00 Steve Dickson <SteveD@redhat.com>:
+> Finally, the whole idea of systemd randomly/silently
+> strip off mount options is crazy... IMHO...
 
-> On Jun 6, 2017, at 3:48 PM, Steve Dickson <steved@redhat.com> wrote:
-> 
-> When the nfs4 filesystem specified, the default minor
-> version should be used not v4.0.
-
-Isn't the default specified in the mountnfs config file?
-
-
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> utils/mount/stropts.c | 3 ++-
-> 1 file changed, 2 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index c0266e5..57efb26 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -317,7 +317,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
-> 
-> 	if (strncmp(mi->type, "nfs4", 4) == 0) {
-> 		mi->version.major = 4;
-> -		mi->version.v_mode = V_GENERAL;
-> +		mi->version.minor = 2;
-> +		mi->version.v_mode = V_SPECIFIC;
-> 	}
-> 	/*
-> 	 * Before 2.6.32, the kernel NFS client didn't
-> -- 
-> 2.9.4
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
+Personally, I would prefer if systemd simply logged a warning/error
+message but would *not* strip the bg option.
 
 
-
+-- 
+Why is it that all of the instruments seeking intelligent life in the
+universe are pointed away from Earth?
