@@ -1,134 +1,158 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36066 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751721AbdFFOhL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Jun 2017 10:37:11 -0400
-Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A845715561
-        for <linux-nfs@vger.kernel.org>; Tue,  6 Jun 2017 14:37:05 +0000 (UTC)
-Subject: Re: [PATCH 2/3] nfs.conf tidy ups
-To: Justin Mitchell <jumitche@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <1495468204.4169.10.camel@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <d430e93a-3d63-4985-8d92-1a444629f041@RedHat.com>
-Date: Tue, 6 Jun 2017 10:37:04 -0400
+Received: from mail-qt0-f173.google.com ([209.85.216.173]:35306 "EHLO
+        mail-qt0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751200AbdFFQjR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Jun 2017 12:39:17 -0400
+Received: by mail-qt0-f173.google.com with SMTP id w1so136365192qtg.2
+        for <linux-nfs@vger.kernel.org>; Tue, 06 Jun 2017 09:39:17 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1495468204.4169.10.camel@redhat.com>
-Content-Type: text/plain; charset=utf-8
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 6 Jun 2017 12:39:15 -0400
+Message-ID: <CAN-5tyHTmx7KM76DRa5F5PwgJpNsZELf8BBHeoBq-yacHfzpmg@mail.gmail.com>
+Subject: race in state manager leads to failed recovery
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+An application can fail with EIO when the server reboots and the
+client while doing the recovery is getting into the following
+situation where it incorrectly chooses "nograce" recovery instead of
+"reboot" recovery. The necessary trigger is a pnfs mount and 2 DS
+reads on the same file fail with BAD_STATEID each read uses its own
+lock stateid (and MDS server reboots losing state). Since  server
+rebooted it will fail recovery ops with BAD_SESSION and then also
+STALE_ID triggering session and clientid recovery.
 
+1. Thread1 gets BAD_STATEID initiates stateid recovery calls
+nfs4_state_mark_reclaim_no_grace() which sets the cl_state->flags and
+state->flags respective _NOGRACE flags.
 
-On 05/22/2017 11:50 AM, Justin Mitchell wrote:
-> Add function to cleanup and free the loaded config
-> 
-> Signed-off-by: Justin Mitchell <jumitche@rehat.com>
-Committed... 
+2. State manager gets to run and it clears the _NOGRACE from the
+cl_state. Calls nfs4_do_reclaim() which sends TEST_STATEID which gets
+a BAD_SESSION.
 
-steved.
+3. Thread2 now gets control and it also processing its BAD_STATEID and
+calls nfs4_state_mark_reclaim_no_grace() and it again sets the
+state/cl_state->flags to have _NOGRACE.
 
-> 
-> ---
->  support/include/conffile.h |  1 +
->  support/nfs/conffile.c     | 51 +++++++++++++++++++++++++++++++++++++++-------
->  2 files changed, 45 insertions(+), 7 deletions(-)
-> 
-> diff --git a/support/include/conffile.h b/support/include/conffile.h
-> index 20b1a32..2d11a52 100644
-> --- a/support/include/conffile.h
-> +++ b/support/include/conffile.h
-> @@ -60,6 +60,7 @@ extern _Bool    conf_get_bool(char *, char *, _Bool);
->  extern char    *conf_get_str(char *, char *);
->  extern char    *conf_get_section(char *, char *, char *);
->  extern void     conf_init(const char *);
-> +extern void     conf_cleanup(void);
->  extern int      conf_match_num(char *, char *, int);
->  extern int      conf_remove(int, char *, char *);
->  extern int      conf_remove_section(int, char *);
-> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index a76c7e3..7c607c0 100644
-> --- a/support/nfs/conffile.c
-> +++ b/support/nfs/conffile.c
-> @@ -414,13 +414,32 @@ conf_load(int trans, const char *path)
->  	return -1;
->  }
->  
-> +/* remove and free up any existing config state */
-> +static void conf_free_bindings(void)
-> +{
-> +	unsigned int i;
-> +	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
-> +		struct conf_binding *cb, *next;
-> +
-> +		cb = LIST_FIRST(&conf_bindings[i]);
-> +		for (; cb; cb = next) {
-> +			next = LIST_NEXT(cb, link);
-> +			LIST_REMOVE(cb, link);
-> +			free(cb->section);
-> +			free(cb->arg);
-> +			free(cb->tag);
-> +			free(cb->value);
-> +			free(cb);
-> +		}
-> +		LIST_INIT(&conf_bindings[i]);
-> +	}
-> +}
-> +
->  /* Open the config file and map it into our address space, then parse it.  */
->  static void
->  conf_reinit(const char *conf_file)
->  {
-> -	struct conf_binding *cb = 0;
->  	int trans;
-> -	unsigned int i;
->  
->  	trans = conf_begin();
->  	if (conf_load(trans, conf_file) < 0)
-> @@ -430,12 +449,9 @@ conf_reinit(const char *conf_file)
->  	conf_load_defaults();
->  
->  	/* Free potential existing configuration.  */
-> -	for (i = 0; i < sizeof conf_bindings / sizeof conf_bindings[0]; i++) {
-> -		cb = LIST_FIRST (&conf_bindings[i]);
-> -		for (; cb; cb = LIST_FIRST (&conf_bindings[i]))
-> -			conf_remove_now(cb->section, cb->tag);
-> -	}
-> +	conf_free_bindings();
->  
-> +	/* Apply the new configuration values */
->  	conf_end(trans, 1);
->  	return;
->  }
-> @@ -454,6 +470,27 @@ conf_init (const char *conf_file)
->  	conf_reinit(conf_file);
->  }
->  
-> +/* 
-> + * Empty the config and free up any used memory 
-> + */
-> +void
-> +conf_cleanup(void)
-> +{
-> +	conf_free_bindings();
-> +
-> +	struct conf_trans *node, *next;
-> +	for (node = TAILQ_FIRST(&conf_trans_queue); node; node = next) {
-> +		next = TAILQ_NEXT(node, link);
-> +		TAILQ_REMOVE (&conf_trans_queue, node, link);
-> +		if (node->section) free(node->section);
-> +		if (node->arg) free(node->arg);
-> +		if (node->tag) free(node->tag);
-> +		if (node->value) free(node->value);
-> +		free (node);
-> +	}
-> +	TAILQ_INIT(&conf_trans_queue);
-> +}
-> +
->  /*
->   * Return the numeric value denoted by TAG in section SECTION or DEF
->   * if that tag does not exist.
-> 
+4. State manager runs and continues with state recovery by sending
+DESTROY_SESSION, and then CREATE_SESSION which fails with
+STALE_CLIENTID. Now we are recovering the lease.
+
+5. State manager in nfs4_recovery_handle_error for STALE_CLIENTID,
+calls nfs4_state_start_reclaim_reboot() calls
+nfs4_state_mark_reclaim_reboot() which has a check
+
+/* Don't recover state that expired before the reboot */
+if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags)) {
+  clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
+  return 0;
+}
+
+Because the _NOGRACE was set again in Step3, we end up clearing
+_RECLAIM_REBOOT and not setting _RECLAIM_REBOOT in the cl_state->flags
+and choose to do "nograce" operation instead of recovery.
+
+Removing this check removes the problem.
+
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 06274e3..2c668a0 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1321,11 +1321,6 @@ static int
+nfs4_state_mark_reclaim_reboot(struct nfs_client *clp, struct nfs4_st
+  if (!nfs4_valid_open_stateid(state))
+  return 0;
+  set_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
+- /* Don't recover state that expired before the reboot */
+- if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags)) {
+- clear_bit(NFS_STATE_RECLAIM_REBOOT, &state->flags);
+- return 0;
+- }
+  set_bit(NFS_OWNER_RECLAIM_REBOOT, &state->owner->so_flags);
+  set_bit(NFS4CLNT_RECLAIM_REBOOT, &clp->cl_state);
+  return 1;
+
+I'm confused by the comment why would we not what to recover state?
+
+When both threads execute before the state manager starts this problem
+doesn't exist.
+
+If helpful here are two annotated (**) snippet from var log message
+from the non-working and then one without the check:
+
+Jun  6 12:06:42 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff880072f50=
+c00
+   ** first thread sets the nograce recovery
+Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
+cleared NOGRACE from client state ffff88006fc23d28
+  ** this is from the state manager=E2=80=99s loop from after
+test_and_clear(NFS4CLNT_RECLAIM_NO_GRACE, cl_state)
+Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_do_reclaim start
+Jun  6 12:06:42 ipa18 kernel: NFS call  test_stateid ffff880077ac0af0
+Jun  6 12:06:42 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff880072f50=
+c00
+   ** 2nd thread sets the nograce recovery
+Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_do_reclaim status end=3D-11
+Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_begin_drain_session
+Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_state_mark_reclaim_reboot
+clears RECLAIM_REBOOT from state=3Dffff880072f50c00
+   ** this is from nfs4_state_mark_reclaim_reboot() and ends up not
+setting the _RECLAIM_REBOOT flag in cl_state and clears it from the
+state->flags
+Jun  6 12:06:42 ipa18 kernel: AGLO: nfs4_begin_drain_session
+Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_begin_drain_session
+Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_reclaim_lease client
+state=3Dffff88006fc23d28 flag has NOGRACE
+Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
+cleared NOGRACE from client state ffff88006fc23d28
+   ** this is in the state manager loop after the "reclaim_nograce" is
+chosen and clearing the _NOGRACE flag
+Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_do_reclaim start
+Jun  6 12:06:43 ipa18 kernel: NFS call  test_stateid ffff880077ac0af0
+Jun  6 12:06:43 ipa18 kernel: NFS call  test_stateid ffff880077ac02f0
+Jun  6 12:06:43 ipa18 kernel: NFS call  test_stateid ffff880072f50c68
+Jun  6 12:06:43 ipa18 kernel: NFS: nfs4_reclaim_open_state: Lock reclaim fa=
+iled!
+Jun  6 12:06:43 ipa18 kernel: NFS: nfs4_reclaim_open_state: Lock reclaim fa=
+iled!
+Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_reclaim_open_state clearing
+NOGRACE from state=3Dffff880072f50c00
+Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_do_reclaim end=3D0
+Jun  6 12:06:43 ipa18 kernel: AGLO: nfs4_end_drain_session
+
+This is a snippet from when we ignore that _NOGRACE is set and proceed
+to set the _RECLAIM_REBOOT
+Jun  6 12:21:58 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff88007363b=
+bc0
+Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
+cleared NOGRACE from client state ffff88002febe528
+Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_do_reclaim start
+Jun  6 12:21:58 ipa18 kernel: NFS call  test_stateid ffff880077ac4cf0
+Jun  6 12:21:58 ipa18 kernel: nfs4_state_mark_reclaim_nograce ffff88007363b=
+bc0
+Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_do_reclaim status end=3D-11
+Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_begin_drain_session
+Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_state_mark_reclaim_reboot NOT
+clearing _RECLAIM_REBOOT from state=3Dffff88007363bbc0
+    *** Removing the check and instead proceeding to set the
+_RECLAIM_REBOOT in the cl_state->flags so that
+Jun  6 12:21:58 ipa18 kernel: AGLO: nfs4_begin_drain_session
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_begin_drain_session
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_reclaim_lease client
+state=3Dffff88002febe528 flag has NOGRACE
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_state_manager reclaim reboot
+op cl_state=3Dffff88002febe528
+   *** Unlike the previous case the state manager now goes into the
+reclaim reboot state.
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim start
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_reclaim_open_state clearing
+NOGRACE from state=3Dffff88007363bbc0
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim end=3D0
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_state_manager reclaim_nograce
+cleared NOGRACE from client state ffff88002febe528
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim start
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_do_reclaim end=3D0
+Jun  6 12:21:59 ipa18 kernel: AGLO: nfs4_end_drain_session
