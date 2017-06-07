@@ -1,42 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from hqemgate15.nvidia.com ([216.228.121.64]:5691 "EHLO
-        hqemgate15.nvidia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751634AbdFGGnI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jun 2017 02:43:08 -0400
-From: Tuo Chen Peng <tpeng@nvidia.com>
-To: <trond.myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        Tuo Chen Peng <tpeng@nvidia.com>
-Subject: [PATCH] nfs: Fix fscache stat printing in nfs_show_stats()
-Date: Tue, 6 Jun 2017 23:42:44 -0700
-Message-ID: <1496817764-3641-1-git-send-email-tpeng@nvidia.com>
+Received: from gardel.0pointer.net ([85.214.157.71]:47708 "EHLO
+        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751003AbdFGIS6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jun 2017 04:18:58 -0400
+Date: Wed, 7 Jun 2017 10:12:57 +0200
+From: Lennart Poettering <mzxreary@0pointer.de>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: NeilBrown <neilb@suse.com>, systemd-devel@freedesktop.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option
+ and systemd.
+Message-ID: <20170607081257.GH27006@gardel-login>
+References: <87lgpkgwrw.fsf@notabene.neil.brown.name>
+ <20170529133814.GC17967@gardel-login>
+ <87tw43fgrf.fsf@notabene.neil.brown.name>
+ <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_show_stats() was incorrectly reading statistics for bytes when printing that
-for fsc. It caused files like /proc/self/mountstats to report incorrect fsc
-statistics for NFS mounts.
+On Tue, 06.06.17 14:07, Steve Dickson (SteveD@RedHat.com) wrote:
 
-Signed-off-by: Tuo Chen Peng <tpeng@nvidia.com>
----
- fs/nfs/super.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> Hello,
+> 
+> On 05/29/2017 06:19 PM, NeilBrown wrote:
+> > 
+> > Systemd does not, and will not, support "bg" correctly.
+> > It has other, better, ways to handle "background" mounting.
+> The only problem with this is bg mounts still work at least
+> up to 4.11 kernel... 
+> 
+> It appears there is a problem with a 4.12 kernel. The mount no 
+> longer errors out with ECONNREFUSED it just hangs in the 
+> kernel trying forever... It sounds like a bug to me but 
+> maybe that change was intentional.. Anna?? Trond???
+> 
+> So I'm a bit hesitant to commit this since not accurate, yet.
+> 
+> Finally, the whole idea of systemd randomly/silently 
+> strip off mount options is crazy... IMHO... 
+> 
+> Just because a concept that has been around for years
+> does not fix well in the systemd world it gets
+> rip out??? IDK... but I think we can do better than that.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index eceb4ea..b417639 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -879,7 +879,7 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
- 	if (nfss->options & NFS_OPTION_FSCACHE) {
- 		seq_printf(m, "\n\tfsc:\t");
- 		for (i = 0; i < __NFSIOS_FSCACHEMAX; i++)
--			seq_printf(m, "%Lu ", totals.bytes[i]);
-+			seq_printf(m, "%Lu ", totals.fscache[i]);
- 	}
- #endif
- 	seq_printf(m, "\n");
+Well "bg" doesn't really work on systemd systems, and this was never
+different, hence I think it's only fair to document that it is
+incompatible with systemd. In addition, I have the suspicion it is not
+used very widely, since I never actually got complaints about it.
+
+Lennart
+
 -- 
-2.7.4
-
+Lennart Poettering, Red Hat
