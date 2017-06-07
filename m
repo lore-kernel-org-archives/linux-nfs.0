@@ -1,71 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from tobolsknauka.ru ([178.46.154.119]:44863 "HELO tobolsknauka.ru"
-        rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with SMTP
-        id S1751443AbdFGIqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Jun 2017 04:46:12 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:56189 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751424AbdFGJml (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Jun 2017 05:42:41 -0400
+Subject: Re: [systemd-devel] [PATCH] nfs.man: document incompatibility between
+ "bg" option and systemd.
+To: Lennart Poettering <mzxreary@0pointer.de>,
+        Michael Biebl <mbiebl@gmail.com>
+Cc: linux-nfs@vger.kernel.org, systemd-devel@freedesktop.org,
+        NeilBrown <neilb@suse.com>
+References: <87lgpkgwrw.fsf@notabene.neil.brown.name>
+ <20170529133814.GC17967@gardel-login>
+ <87tw43fgrf.fsf@notabene.neil.brown.name>
+ <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
+ <CAGWsdOjswhfUszn0AmFtFcz-sbDU8=qFr5z1=tNigROOPBS0Rw@mail.gmail.com>
+ <20170607081313.GI27006@gardel-login>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <7da2b587-b21a-48ad-6ab4-2a1efed25d65@RedHat.com>
+Date: Wed, 7 Jun 2017 05:42:39 -0400
 MIME-Version: 1.0
-Date: Wed, 07 Jun 2017 08:46:01 -0000
-Message-ID: <149682516173.8931.8132617761333239543@tobolsknauka.ru>
-Subject: 
-From: <nadelina.machado@uem.mz>
-Content-Type: application/zip; name="3041024.zip"
-To: <linux-nfs@vger.kernel.org>
+In-Reply-To: <20170607081313.GI27006@gardel-login>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-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
+
+
+On 06/07/2017 04:13 AM, Lennart Poettering wrote:
+> On Tue, 06.06.17 21:57, Michael Biebl (mbiebl@gmail.com) wrote:
+> 
+>> 2017-06-06 20:07 GMT+02:00 Steve Dickson <SteveD@redhat.com>:
+>>> Finally, the whole idea of systemd randomly/silently
+>>> strip off mount options is crazy... IMHO...
+>>
+>> Personally, I would prefer if systemd simply logged a warning/error
+>> message but would *not* strip the bg option.
+> 
+> What good does that do if "bg" doesn't actually work properly?
+At the moment it works just fine... 
+
+steved.
+
+> 
+> Lennart
+> 
