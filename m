@@ -1,17 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51951 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52817 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751573AbdFGCs5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Jun 2017 22:48:57 -0400
+        id S1751574AbdFGDIQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Jun 2017 23:08:16 -0400
 From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Wed, 07 Jun 2017 12:48:47 +1000
-Subject: Re: [PATCH] mount.nfs: Use default minor version when -t nfs4 is specified
-In-Reply-To: <20170606194812.4248-1-steved@redhat.com>
-References: <20170606194812.4248-1-steved@redhat.com>
-cc: Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <87y3t4bjhs.fsf@notabene.neil.brown.name>
+To: Lutz Vieweg <lvml@5t9.de>, linux-nfs@vger.kernel.org
+Date: Wed, 07 Jun 2017 13:08:08 +1000
+Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
+In-Reply-To: <5936DC7B.8040804@5t9.de>
+References: <20151012164846.GA5017@draconx.ca> <20151012192538.GG28755@fieldses.org> <20151012194647.GJ28755@fieldses.org> <20151013030136.GA7081@draconx.ca> <20151013065225.44c5581d@synchrony.poochiereds.net> <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com> <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com> <1469814735.19411.1.camel@poochiereds.net> <5936DC7B.8040804@5t9.de>
+Message-ID: <87vao8bilj.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -20,85 +18,86 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
-On Tue, Jun 06 2017, Steve Dickson wrote:
+On Tue, Jun 06 2017, Lutz Vieweg wrote:
 
-> When the nfs4 filesystem specified, the default minor
-> version should be used not v4.0.
+> On 07/29/2016 07:52 PM, Jeff Layton wrote:
+>>>>>>>>>    fcntl(7, F_SETLK, {type=F_RDLCK, whence=SEEK_SET,
+>>>>>>>>> start=1073741824, len=1}) = -1 EIO (Input/output error)
+>>>
+>>> Unfortunately I did not manage to perform a network capture last time
+>>> due to power loss.  I did not hit this issue again until yesterday (~9
+>>> months later), this time after 45 days of uptime.
+>>>
+>>> Kernel versions now are: 4.5.1 on the server, and 4.4.3 on the client.
 >
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/mount/stropts.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
+> I wanted to add that I, too, have one NFS client and server
+> (running linux-4.11.0 on both the server and the client)
+> currently in the same kind of state:
 >
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index c0266e5..57efb26 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -317,7 +317,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
->=20=20
->  	if (strncmp(mi->type, "nfs4", 4) =3D=3D 0) {
->  		mi->version.major =3D 4;
-> -		mi->version.v_mode =3D V_GENERAL;
-> +		mi->version.minor =3D 2;
-> +		mi->version.v_mode =3D V_SPECIFIC;
+> I can reproduce in 100% of the cases that the following commands:
+>
+>> rm -f x.sqlite
+>> sqlite3 x.sqlite "PRAGMA case_sensitive_like=1;PRAGMA synchronous=OFF;PRAGMA recursive_triggers=ON;PRAGMA foreign_keys=OFF;PRAGMA locking_mode = NORMAL;PRAGMA journal_mode =  TRUNCATE;"
+>
+> result in:
+>
+>>  "Error: disk I/O error"
+>
+> on the client - while working fine on the NFS server - with the same kind
+> of strace output:
+>
+>>  fcntl(3, F_SETLK, {type=F_RDLCK, whence=SEEK_SET, start=1073741824, len=1}) = -1 EIO (Input/output error)
+>>  write(2, "Error: disk I/O error\n", 22Error: disk I/O error
+>
+> But unlike the original reporter, we use the NFS v3 protocol:
+>> server:/data on /data type nfs (rw,relatime,vers=3,rsize=1048576,wsize=1048576,namlen=255,soft,proto=tcp,timeo=600,retrans=2,sec=sys,mountvers=3,mountport=20048,mountproto=udp,local_lock=none)
+>
+> If you want me to try or trace something on the client,
+> I'm willing to help.
 
-I think this is wrong.
+Using "soft" is not a good idea.  It could be the cause, but it isn't very
+likely if NFS is otherwise working OK.
 
-By setting the mode to SPECIFIC, you are saying that if the server
-doesn't support v4.2, then fail the mount.  That cannot be right.
+It might help to run
+  rpcdebug -m nfs -s all; rpcdebug -m nlm -s all ;rpcdebug -m rpc -s all
+  #repeat your test
+  rpcdebug -m nfs -c all; rpcdebug -m nlm -c all ;rpcdebug -m rpc -c all
 
-Given that (currently) v_mode is not V_SPECIFIC, nfs_set_version()
-will go on and call nfs_default_version(), which will use the default
-value from the config file - just as Chuck suggests.
+then collect the kernel logs (possibly just run "dmesg") and post all
+the messages which happened at that time.
 
-If there is no default in the config file .... nfs_default_version()
-will do nothing.  So version.minor will probably remain at zero.
-So setting
-> +		mi->version.minor =3D 2;
+It might also help to find the port number that lockd is running on
+   rpcinfo -p $SERVER | grep 'tcp.*nlockmgr'
 
-(where 2 is the maximum supported version) is probably correct.
-Setting
-> +		mi->version.v_mode =3D V_SPECIFIC;
-is unnecessary and wrong.
+(use the 4th column) and
 
-If there an easy way to find out the maximum minor version that the
-kernel supports?  We should really default version.minor to that.
-Once we get up to v4.20, it'll seem odd to try to mount 4.20, 4.19,
-4.18,... until something succeeds....
+  tcpdump -s 0 -w /tmp/trace.pcap port 2049 or port $LOCKD_PID &
+  # run test
+  killall tcpdump
 
-Thanks,
+gzip /tmp/trace.pcap and put it somewhere it can be fetched from - or
+maybe post as an attachment if it isn't too big.
+
 NeilBrown
-
->  	}
->  	/*
->  	 * Before 2.6.32, the kernel NFS client didn't
-> --=20
-> 2.9.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk3aZEACgkQOeye3VZi
-gbls0w/8DXLcJE+0m4j7z18Z9PIcvgn/VGQ2Z209Q5WGddAPCqWi2WRJlCHfTa0C
-shLLOgoSjy8j74MFd2/jEF/9wrvgvDstCITqAAemCOxrn2dr6O3iyqODmwQX2S6e
-+c7abYWvi4DC69La1X3RABP+LwmQP4F+M5znYw4iSCESRvBewD6BXjMvNh8VA4uq
-PSqg3qEMZqOG7UcNY8ATpCAIQzMGLpEaoLphZsaaxmrDBOH7p6M/RMIr3DnarbH9
-PY7uSyM8boo9Lpxa97P51w6gXsxS7qRbyQadWawVFD32+pV/0XR2wg/jJ9AimS7a
-8OAMOgteTec6loiJnxAyrllcLK2FRBdfgAKCqz6o4xu7akT+ZLrdjG9Xy/n3Zlym
-e1Os1Y18RyEGBh7NE7GGl51GdrqjcU75NoHk44w2eKrygDOTmzoikqOYQMQ+7Cta
-SYxax+zBj4k1lLT/9m9RwkT4Ojksc2TAF1G/3C3uVRfFJpjam6ZY7ABNxkLz/Zn0
-Uo5ePzkdQZ7LQAaZJ4d9EiR6W7cQ7LWw6+/KNZafReqNxbeCrPcplmjBis8EjWIJ
-W/v0+9uTiW2tGeuwRaeNVg6cpYzdX0A1/DL6v6PsSldkv/wgOvIGY5wKVv5d0Hrd
-Z9dXG4+1rOXeHRP3DgezmHs6k+B9gs8ABWdkNUcM4nqMVwqaWDk=
-=I08c
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk3bhkACgkQOeye3VZi
+gbkaaQ/8CH56QijxmfZiGVN2eve4fDe55/p49S96XTO7YNWYlF/rzOBcR4W8VQyh
+TWcwWOl90OIBhVOwopeKmCcYCAe6aMRO07oPYFUN4cwVE4MNVj9Hx7aKkINHxF0Y
+KkyPKUAFqUr0Fb0HrMWSp2nQC0JtSjxHYdp37TXCUCtq1rw8UiDh5K+4FYedwq0b
+8LMUy4cbM90GUgC087IqiWHfxVbQdwPre+BN5wDsCoke8iC5JY5zaLQcAzLlwFJs
+tmDpfglNR3C1JtqE8qwzN1fE/l5kE4tYn4FGl3cjxyfJwD6JHK+xrcqoBF+NOxEp
+VIGa1WDaUYv/NRa3EddKfqx6c6IzQWQjn6vP+TmbkwTAaoW1qunZszv8kRU12n1L
+5UW1qenuISF7/0ZDbHyTaVVhl6L3x6pyDnk1ZkhoYAse+gRxvARsttv58KG8Sh7q
+JnzVICbG9uhE/2555cKVwu+1OO0lpBoi4jscIEQnDoa3uwo3rnyJ86Q6vAMMux+N
+rNeQuPsYxED4cdg08EpkUe/DBmgopx/PCgbcKrAn+f8r4lxtLHa9mLlE9TWln8hJ
+sN0ADoa40jx+kSaR1Pez2vdinDxfTvdIGzJfo0GVM0r6u0JRMzaOf8PMa7joPkW8
+1+26RUsND43YRtqLyZ1T8FOtvnyTDvrHmi+P9pkGvO+f6wI03Fg=
+=g1hp
 -----END PGP SIGNATURE-----
 --=-=-=--
