@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37802 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:45308 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751436AbdFFVtf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Jun 2017 17:49:35 -0400
+        id S1750766AbdFGAdA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Jun 2017 20:33:00 -0400
 From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@RedHat.com>
-Date: Wed, 07 Jun 2017 07:49:24 +1000
-Cc: systemd-devel@freedesktop.org, linux-nfs@vger.kernel.org,
-        Lennart Poettering <lennart@poettering.net>
-Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option and systemd.
-In-Reply-To: <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
-References: <87lgpkgwrw.fsf@notabene.neil.brown.name> <20170529133814.GC17967@gardel-login> <87tw43fgrf.fsf@notabene.neil.brown.name> <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
-Message-ID: <87lgp4dbx7.fsf@notabene.neil.brown.name>
+To: Ian Kent <raven@themaw.net>
+Date: Wed, 07 Jun 2017 10:32:49 +1000
+Cc: autofs mailing list <autofs@vger.kernel.org>
+Subject: [autofs PATCH] Add -c option when calling /bin/umount - if supported.
+cc: linux-nfs@vger.kernel.org
+cc: util-linux@vger.kernel.org
+Message-ID: <87d1agd4cu.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -22,168 +21,242 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, Jun 06 2017, Steve Dickson wrote:
 
-> Hello,
->
-> On 05/29/2017 06:19 PM, NeilBrown wrote:
->>=20
->> Systemd does not, and will not, support "bg" correctly.
->> It has other, better, ways to handle "background" mounting.
-> The only problem with this is bg mounts still work at least
-> up to 4.11 kernel...=20
+The "-c" option has been supported by umount since util-linux 2.17.
+It tells umount that the path name is "canonical", meaning no
+symlinks or ".." etc.
+This is appropriate for autofs to use and it always uses canonical
+path names.
+The advantage of "-c" is that it means umount doesn't need to
+'lstat()' the path so much.
+From=20util-linux 2.30, umount doesn't lstat the path at all when
+"-c" is passed.  This is particularly beneficial when unmounting
+an NFS filesystem for which the server is no reachable. In that
+case an 'lstat()' will hang, but the umount(2) can succeed.
 
-I don't think this is correct.
-In the default configuration, "mount -t nfs -o bg ...."
-runs for longer than 90 seconds, so systemd kill it.
+So check if "-c" is supported, and if so, use it.
+Prior to 2.30 this doesn't help much, but doesn't hurt.
+After 2.30 (and a similar small change to nfs-utils),
+"-c" will mean that unmounting NFS filesystems will not hang.
 
-A working "bg" mount would successfully mount the filesystem is the
-server came back after 5 minutes. If you use current systemd in the
-default configuration, it won't.
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ aclocal.m4          | 18 ++++++++++++++++++
+ configure           | 33 +++++++++++++++++++++++++++++++++
+ configure.in        | 14 ++++++++++++++
+ daemon/spawn.c      | 23 +++++++++++++++--------
+ include/config.h.in |  3 +++
+ 5 files changed, 83 insertions(+), 8 deletions(-)
 
-bg mounts do work sometimes, but I don't think they are reliable, and
-there seems to be no interest in changing this.
-Maybe the text should say "Systemd does not, and will not, reliably
-support "bg" mounts...".
+diff --git a/aclocal.m4 b/aclocal.m4
+index 00811e08dabe..40e1ee97e905 100644
+=2D-- a/aclocal.m4
++++ b/aclocal.m4
+@@ -73,6 +73,24 @@ AC_DEFUN(AF_SLOPPY_MOUNT,
+   fi
+ fi])
+=20
++dnl ----------------------------------------------------------------------=
+----
++dnl AF_NO_CANON_UMOUNT
++dnl
++dnl Check to see if umount(8) supports the no-canonicalize (-c) option, an=
+d define
++dnl the cpp variable HAVE_NO_CANON_UMOUNT if so.  This requires that UMOUN=
+T is
++dnl already defined by a call to AF_PATH_INCLUDE or AC_PATH_PROGS.
++dnl ----------------------------------------------------------------------=
+----
++AC_DEFUN(AF_NO_CANON_UMOUNT,
++[if test -n "$UMOUNT" ; then
++  AC_MSG_CHECKING([if umount accepts the -c option])
++  if "$UMOUNT" -h 2>&1 | grep -e '-c.*--no-canonicalize' > /dev/null 2>&1 =
+; then
++    enable_no_canon_umount=3Dyes
++    AC_MSG_RESULT(yes)
++  else
++    AC_MSG_RESULT(no)
++  fi
++fi])
++
+=20
+ dnl ----------------------------------------------------------------------=
+----
+ dnl AF_LINUX_PROCFS
+diff --git a/configure b/configure
+index 10f907e36a9b..9ba267073e62 100755
+=2D-- a/configure
++++ b/configure
+@@ -737,6 +737,7 @@ with_flagdir
+ with_libtirpc
+ with_dmalloc
+ enable_sloppy_mount
++enable_no_canon_umount
+ with_hesiod
+ with_openldap
+ with_sasl
+@@ -1363,6 +1364,7 @@ Optional Features:
+   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=
+=3Dno)
+   --enable-FEATURE[=3DARG]  include FEATURE [ARG=3Dyes]
+   --enable-sloppy-mount         enable the use of the -s option to mount
++  --enable-no-canon-umount         enable the use of the -c option to umou=
+nt
+   --disable-ext-env	        disable search in environment for substitution=
+ variable
+   --disable-mount-locking       disable use of locking when spawning mount=
+ command
+   --enable-force-shutdown       enable USR1 signal to force unlink umount =
+of any
+@@ -3993,6 +3995,37 @@ $as_echo "#define HAVE_SLOPPY_MOUNT 1" >>confdefs.h
+=20
+ fi
+=20
++#
++# Newer umounts have the -c (--no-canonicalize) option to avoid
++# stating the path and possible blocking.  Good for NFS.
++#
++# Check whether --enable-no-canon-umount was given.
++if test "${enable_no_canon_umount+set}" =3D set; then :
++  enableval=3D$enable_no_canon_umount;
++else
++  enable_no_canon_umount=3Dauto
++fi
++
++if test x$enable_no_canon_umount =3D xauto; then
++	if test -n "$UMOUNT" ; then
++  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if umount accepts the =
+-c option" >&5
++$as_echo_n "checking if umount accepts the -c option... " >&6; }
++  if "$UMOUNT" -h 2>&1 | grep -e '-c.*--no-canonicalize' > /dev/null 2>&1 =
+; then
++    enable_no_canon_umount=3Dyes
++    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
++$as_echo "yes" >&6; }
++  else
++    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
++$as_echo "no" >&6; }
++  fi
++fi
++fi
++if test x$enable_no_canon_umount =3D xyes; then
++
++$as_echo "#define HAVE_NO_CANON_UMOUNT 1" >>confdefs.h
++
++fi
++
+ # LDAP SASL auth needs libxml and Kerberos
+ for ac_prog in xml2-config
+ do
+diff --git a/configure.in b/configure.in
+index 05212521b2a9..d408b209cace 100644
+=2D-- a/configure.in
++++ b/configure.in
+@@ -167,6 +167,20 @@ if test x$enable_sloppy_mount =3D xyes; then
+ 	AC_DEFINE(HAVE_SLOPPY_MOUNT, 1, [define if the mount command supports the=
+ -s option])
+ fi
+=20
++#
++# Newer umounts have the -c (--no-canonicalize) option to avoid
++# stating the path and possible blocking.  Good for NFS.
++#
++AC_ARG_ENABLE(no-canon-umount,
++[  --enable-no-canon-umount         enable the use of the -c option to umo=
+unt],,
++	enable_no_canon_umount=3Dauto)
++if test x$enable_no_canon_umount =3D xauto; then
++	AF_NO_CANON_UMOUNT()
++fi
++if test x$enable_no_canon_umount =3D xyes; then
++	AC_DEFINE(HAVE_NO_CANON_UMOUNT, 1, [define if the umount command supports=
+ the -c option])
++fi
++
+ # LDAP SASL auth needs libxml and Kerberos
+ AF_CHECK_LIBXML()
+ AF_CHECK_KRB5()
+diff --git a/daemon/spawn.c b/daemon/spawn.c
+index c640d97601da..4515607ba022 100644
+=2D-- a/daemon/spawn.c
++++ b/daemon/spawn.c
+@@ -592,6 +592,11 @@ int spawn_umount(unsigned logopt, ...)
+ 	char **argv, **p;
+ 	char prog[] =3D PATH_UMOUNT;
+ 	char arg0[] =3D PATH_UMOUNT;
++#ifdef HAVE_NO_CANON_UMOUNT
++	char * const arg_c =3D "-c";
++#else
++	char * const arg_c =3D NULL;
++#endif
+ 	char argn[] =3D "-n";
+ 	unsigned int options;
+ 	unsigned int retries =3D MTAB_LOCK_RETRIES;
+@@ -620,19 +625,21 @@ int spawn_umount(unsigned logopt, ...)
+ 			update_mtab =3D 0;
+ 		}
+ 	}
++	if (arg_c)
++		argc++;;
+=20
+=2D	if (!(argv =3D alloca(sizeof(char *) * argc + 1)))
++	if (!(argv =3D alloca(sizeof(char *) * (argc + 1))))
+ 		return -1;
+=20
+=2D	argv[0] =3D arg0;
++	p =3D argv;
++	*p++ =3D arg0;
++	if (arg_c)
++		*p++ =3D arg_c;
++
++	if (!update_mtab)
++		*p++ =3D argn;
+=20
+ 	va_start(arg, logopt);
+=2D	if (update_mtab)
+=2D		p =3D argv + 1;
+=2D	else {
+=2D		argv[1] =3D argn;
+=2D		p =3D argv + 2;
+=2D	}
+ 	while ((*p++ =3D va_arg(arg, char *)));
+ 	va_end(arg);
+=20
+diff --git a/include/config.h.in b/include/config.h.in
+index e8885092f858..6ed0d832bb60 100644
+=2D-- a/include/config.h.in
++++ b/include/config.h.in
+@@ -57,6 +57,9 @@
+ /* define if you have MOUNT_NFS */
+ #undef HAVE_MOUNT_NFS
+=20
++/* define if the umount command supports the -c option */
++#undef HAVE_NO_CANON_UMOUNT
++
+ /* define if the mount command supports the -s option */
+ #undef HAVE_SLOPPY_MOUNT
+=20
+=2D-=20
+2.12.2
 
-
->
-> It appears there is a problem with a 4.12 kernel. The mount no=20
-> longer errors out with ECONNREFUSED it just hangs in the=20
-> kernel trying forever... It sounds like a bug to me but=20
-> maybe that change was intentional.. Anna?? Trond???
-
-Might be related to my patch
-  [PATCH] SUNRPC: ensure correct error is reported by xs_tcp_setup_socket()
-
-sent 25th May.
-
->
-> So I'm a bit hesitant to commit this since not accurate, yet.
->
-> Finally, the whole idea of systemd randomly/silently=20
-> strip off mount options is crazy... IMHO...=20
-
-It isn't exactly systemd, it is systemd-fstab-generator.
-The options lists in /etc/fstab are not all equal.  Some
-are relevant to /bin/mount, some to mount.nfs, some to the kernel.
-I think /bin/mount processes the option lists before passing it
-to mount.nfs.  There is no intrinsic reason that systemd-fstab-generator
-shouldn't do the same thing.
-
->
-> Just because a concept that has been around for years
-> does not fix well in the systemd world it gets
-> rip out??? IDK... but I think we can do better than that.
-
-I could suggest that automount is uniformly better than bg.  Give how
-long automount has been around, and how easy it is to use with systemd,
-it might be time to start encouraging people to stop using the inferior
-technology.
-
-I could say that, but I'm not 100% sure.  The difference between
-automount and bg is that with bg it is easy to see if the mount has
-succeeded yet - just look for an empty directory.  With automount,
-you'll typically get a delay at that point.  We could possibly wind down
-that delay...
-
->
-> Note, the 'bg' is used by clients that do want their
-> booting to hang by servers that are down so if the=20
-> option is rip out, boots will start hang. This
-> will make it very difficult to debug since the bg
-> will still exist in fstab.
-
-Not exactly.
-Current default behaviour is that systemd will wait 90 seconds, then
-kill the mount program and fail the boot.  If we strip out "bg", the
-same thing will happen.
-
-I'm OK with the patch not being applied just yet.  I think we need to
-resolve this issue, but it isn't 100% clear to me what the best
-resolution would be.  So I'm happy to see a conversation happening and
-opinions being shared.
-I'd be particularly pleased if you could double check how "bg" is
-currently handled on some systemd-enabled system that you use.
-Does the mount program get killed like I see?  Does boot succeed if
-there is a bg mount from an unresponsive server?
-
-Thanks,
-NeilBrown
-
-
->
-> Again, the whole concept of systemd messing with mounts options
-> is just not a good one... IMHO..=20
->
-> steved.
->
->>=20
->> Explain this.
->>=20
->> See also https://github.com/systemd/systemd/issues/6046
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->>  utils/mount/nfs.man | 18 +++++++++++++++++-
->>  1 file changed, 17 insertions(+), 1 deletion(-)
->>=20
->> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
->> index cc6e992ed807..7e76492d454f 100644
->> --- a/utils/mount/nfs.man
->> +++ b/utils/mount/nfs.man
->> @@ -372,6 +372,21 @@ Alternatively these issues can be addressed
->>  using an automounter (refer to
->>  .BR automount (8)
->>  for details).
->> +.IP
->> +When
->> +.B systemd
->> +is used to mount the filesystems listed in
->> +.IR /etc/fstab ,
->> +the
->> +.B bg
->> +option is not supported, and may be stripped from the option list.
->> +Similar functionality can be achieved by providing the
->> +.B x-system.automount
->> +option.  This will cause
->> +.B systemd
->> +to attempt to mount the filesystem when the mountpoint is first
->> +accessed, rather than during system boot.  The mount still happens in
->> +the "background", though in a different way.
->>  .TP 1.5i
->>  .BR rdirplus " / " nordirplus
->>  Selects whether to use NFS v3 or v4 READDIRPLUS requests.
->> @@ -1810,7 +1825,8 @@ such as security negotiation, server referrals, an=
-d named attributes.
->>  .BR rpc.idmapd (8),
->>  .BR rpc.gssd (8),
->>  .BR rpc.svcgssd (8),
->> -.BR kerberos (1)
->> +.BR kerberos (1),
->> +.BR systemd.mount (5) .
->>  .sp
->>  RFC 768 for the UDP specification.
->>  .br
->>=20
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk3I2YACgkQOeye3VZi
-gbntMA//X96Zj20+ffcM5JDRsTDB2S4H2uraAudfKflyjK1HSlxPY+2sYR553A65
-vQCSU8mbct8zJMLyWX9Jg2PyvKF5FxFjhRj7gFAY0s8LPDqAecdHKNKDO5hZ5TYy
-coqVq6BDLsaZxrn/1SWdf/o1bjQuc3vbwHiteBH6WZCPf3RYqJNK+vXdX7IF0OZZ
-p7LMyYeHjKscJ95CfdVJo6pXA9+N7/A/HiUpE08N5B7uEy9xjmjADTeUzFnvyW0J
-rpjTqWbTm0/b/6J7XkXYaUCv0UF2ktHZcZ9fesZmFVgFZtdH+gBWMHUFLJQzIM9L
-7URIG3eLjO+0Ncmr/E6hjsu1v+Wan/XqGLQ54K98KaIJ8Kxsclzj4w/HN4RgGXI3
-/o4AMZgcDvnzWaSEwCldxBK/DfVb7O8NA7F/U1m7Xgo8TuyXl+I9VjR91okApdIR
-GdKHc+OKBH6RgXoqvUVO5yQN5LNIkxUmCRoss1ibsZgMlXwLXkEfv/4iFJjoYvod
-7G71fl1Dngzs53AaAhgMWgnPheY5xJyniGSnqT8LiGNi00FtJH8MQGAZ6fHVcBFc
-97sYB1kxkw7/iXWzjWyA5MYPSfQRBdQCICpsqvvT4SVd25ABoG6sqxTDy5LF0JPW
-XKR3eeeDKsMDBj9MvLbteTBZDX8jqkozEhjzgMrSv5RyWFN2vzE=
-=rQPl
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk3SbMACgkQOeye3VZi
+gbngDxAAutFgEa3DflICsz5VJPdXS6vxqYtoVUve3et4FIaPttlcGz14tERDqWq3
+cUenU1Y/zAdzcYXyU/vBbEMuvq4/dMtNbOvzGghQrJXQmdLxK2aFpD6c16akXfNO
+fuqM7kDlji0oMd45TXdJHL4QNwM+nVamvWWQ1A/suON/gv2QEXAYwpFZjJnLeZuK
+hJCEUlGKGw4WXkYKUhMZg7QyZwXYOMdKT22OsOuCaYeB5s7AMZkIa4H3CPVqvd42
+x4zI1ZoOMlETrM3cjfYjKBCD70JCc7fnwzySxIOd0dWyGvoSq+DwttT2iG8DAfb+
+uOe1yrf9MDR0XOAv1UH9S/oAKDiGgsBelFGmfPUQcJXLEchE+cAkaRPnBvQKuGgK
+g7vJYUJdbPvAjC6sZh647c3cqe9cFj7IHhUb246c0bcyX6cHz3k1+tNW0QttNJ5P
+cT23Lks6A1BN5eAT31Oa8pZ/HNdMthoUdTHwE90HQBdu7p1K7bqZHnx2pe6vCl6x
+t8YLIS5siGl9ozRsxz4q1fbMMVe1o7JlVjb08gSjtDx26HGO14sd0CejQLKACgaL
+41Ox08BPy9SgO/5lVad6xmBWYgsUVurnWIkCLmJvfhw34ni/U3nweW+n92K7jYGM
+IgRvY3o1CmVkmkeK0zZOIIsHuGJuYs3jAFi+FPzp+kZsEQx8Fao=
+=bB9O
 -----END PGP SIGNATURE-----
 --=-=-=--
