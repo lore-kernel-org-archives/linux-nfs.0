@@ -1,159 +1,212 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:43201 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:48188 "EHLO
         userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751629AbdFGSC2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jun 2017 14:02:28 -0400
+        with ESMTP id S1752120AbdFGTXp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Jun 2017 15:23:45 -0400
+Date: Wed, 7 Jun 2017 12:23:38 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Eryu Guan <eguan@redhat.com>
+Cc: linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org
+Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
+Message-ID: <20170607192338.GG4530@birch.djwong.org>
+References: <20170602060457.GG23805@eguan.usersys.redhat.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Proposal for end-of-life for fedfs-utils development
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170607155549.GB26995@fieldses.org>
-Date: Wed, 7 Jun 2017 14:02:19 -0400
-Cc: fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        NFSv4 <nfsv4@ietf.org>
-Message-Id: <092C6B41-E55B-43D1-95DC-7A53A2445B7A@oracle.com>
-References: <56804FBE-34B2-47FB-96EF-013D4476D89A@oracle.com> <20170607155549.GB26995@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20170602060457.GG23805@eguan.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce, that's a good question, and an answer is worth sharing with
-the nfsv4 WG mailing list, whom I've cc'd.
-
-
-> On Jun 7, 2017, at 11:55 AM, bfields@fieldses.org wrote:
+On Fri, Jun 02, 2017 at 02:04:57PM +0800, Eryu Guan wrote:
+> Hi all,
 > 
-> So if it's not too depressing I'd be curious what went wrong--did this
-> turn out to be harder than we thought to get stable, or are people happy
-> enough with automounting, or did we just not do a good job of explaining
-> it to people that might use it, or some combination of all those?
-
-If you're interested in an intriguing discussion of what makes a
-successful protocol, I recommend RFC 5218. Now, not in any particular
-order, the main reasons FedFS has not been widely adopted are (IMO of
-course):
-
-
-1. Lack of vendor adoption
-
-After the specifications were completed, we anticipated two independent
-implementations. For various reasons the Solaris FedFS implementation
-was abandoned. One big reason was LDAP.
-
-NFS/Ganesha has expressed some interest in FedFS over the years, but
-I'm not aware of an implementation.
-
-NetApp abandoned FedFS before it was published as RFCs.
-
-So we were left with just the Linux implementation, just like what
-happened with SPKM.
-
-
-2. LDAP is onerously complex
-
-The LDAP components of the Linux implementation were the worst to
-implement by far. This also proved to be the case in the Solaris
-prototype implementation. OpenLDAP is designed for massive scalability
-but aggressively shuns ease of administration.
-
-It was suggested that we integrate with FreeIPA, which is a Linux-based
-management suite that can provide an LDAP service, a KDC, and a
-certificate authority. But there was never enough user inertia to make
-that effort.
-
-There was resistance to integrating FedFS directly into nfs-utils
-because the LDAP components would have added complex library
-dependencies.
-
-The LDAP pieces of FedFS are specified to use TLS, but NFS operates
-using GSS and Kerberos. Getting these two worlds to work together was
-going to be the next step (and also, figuring out how to make the LDAP
-service use GSS instead, which we should have done before completing
-the standard).
-
-However, by the time the FedFS standards were complete, there was no
-longer WG interest to address its shortcomings. There were two small
-I-Ds published to start down that path. They went nowhere because the
-IETF's pool of LDAP expertise is difficult to consult, now that
-LDAP-related WGs have been disbanded.
-
-IMO LDAP, which was chosen early in the 2000s by the IBM prototypes
-that were to become FedFS, was ultimately a poor choice for what
-eventually became the public FedFS standard. This can be attributed
-to changing times.
-
-
-3. Lack of consensus about how to store junctions
-
-There was never consensus in the Linux community about how to represent
-junction objects on disk. NFS wanted something that would look naturally
-like an empty directory to NFS versions that did not support referrals.
-Samba wanted something that could behave like symbolic links, as it
-had been using for its own DFS-style referrals. The filesystem folks
-were not interested in creating a new distinct object that could fill
-both roles.
-
-As you are probably aware, Bruce, I asked about this every year at
-LFS/MM for several years. I was always told "get back to us when you
-have users."
-
-Solaris went for reparse points in its implementation. Those are also
-supported by FreeBSD. I think RPs would have been a great direction
-but sadly these are not being actively pursued in the Linux FS
-community.
-
-Lack of user adoption sapped the energy out of the effort to find a
-consensus. Though, if FedFS had been widely adopted before a consensus
-was reached on junction object representation, we'd have a significant
-data conversion problem.
-
-
-4. Existing implementations are capable enough
-
-This is mostly speculation on my part, but FedFS was a competitive
-response to the global namespace capabilities of AFS and SMB, not to
-any particular stated need in NFS communities.
-
-I've discussed the use of FedFS with various large enterprises, but
-quite often the underlying needs are able to be filled by some form
-of pNFS. I think this class of solution is what NetApp and Primary
-Data have adopted.
-
-Or put another way, pNFS seems capable of doing most anything that a
-referral-based mechanism can do. And in non-NFSv4 environments, the
-automounter is good enough for most people.
-
-Certainly we could design something from the ground up that addresses
-many of these shortcomings, but I get about one query about FedFS a
-year. I just wonder if it would be worth the effort.
-
-
-> --b.
+> Starting from 4.12-rc1 kernel, I saw Linux nfs server crashes all the
+> time in my fstests (xfstests) runs, I appended the console log of an
+> NFSv3 crash to the end of this mail.
 > 
-> On Fri, Jun 02, 2017 at 11:01:05AM -0400, Chuck Lever wrote:
->> Upstream fedfs-utils has not been under active development for
->> two years or more, and there is a scant user base. I'd like to
->> propose making 0.10 the final major release of fedfs-utils.
->> 
->> The plan:
->> 
->> - Since 0.10 is in at least one major enterprise distribution,
->> I will remain available to integrate security fixes and make
->> new minor releases in the 0.10 line, as needed, for one to
->> two more years.
->> 
->> - Retire and remove fedfs-utils from upstream mirror distros
->> such as Fedora rawhide.
->> 
->> - Transfer utilities such as nfsref into nfs-utils, with
->> support for FedFS junctions removed.
->> 
->> - Announcements of the change in status will be made on
->> fedfs-utils-announce and on the wiki.linux-nfs.org site.
+> I was exporting a directory resided on XFS, and loopback mounted the NFS
+> export on localhost. Both NFSv3 and NFSv4 could hit this crash. The
+> crash usually happens when running test case generic/029 or generic/095.
+> 
+> But the problem is, there's no easy and efficient way to reproduce it, I
+> tried run only generic/029 and generic/095 in a loop for 1000 times but
+> failed, I also tried run the 'quick' group tests only for 50 iterations
+> but failed again. It seems that the only reliable way to reproduce it is
+> run the 'auto' group tests for 20 iterations.
+> 
+> 	i=0
+> 	while [ $i -lt 20 ]; do
+> 		./check -nfs -g auto
+> 		((i++))
+> 	done
+> 
+> And usually server crashed within 5 iterations, but at times it could
+> survive 10 iterations and only crashed if you left it running for more
+> iterations. This makes it hard to bisect and bisecting is very
+> time-consuming.
+> 
+> (The bisecting is running now, it needs a few days to finish. My first
+> two attempts pointed first bad commit to some mm patches, but reverting
+> that patch didn't prevent server from crashing, so I enlarged the loop
+> count and started bisecting for the third time).
+> 
+> If more info is needed please let me know.
+> 
+> Thanks,
+> Eryu
+> 
+> 
+> [88895.796834] run fstests generic/028 at 2017-06-01 00:43:18
+> [88900.945420] run fstests generic/029 at 2017-06-01 00:43:23
+> [88901.127315] BUG: unable to handle kernel paging request at ffffffffc0360e12
+> [88901.135095] IP: report_bug+0x64/0x100
+> [88901.139177] PGD 3b7c0c067
+> [88901.139177] P4D 3b7c0c067
+> [88901.142194] PUD 3b7c0e067
+> [88901.145209] PMD 469e33067
+> [88901.148225] PTE 80000004675f4161
+> [88901.151240]
+> [88901.156497] Oops: 0003 [#1] SMP
+> [88901.159997] Modules linked in: loop dm_mod nfsv3 nfs fscache ext4 jbd2 mbcache intel_rapl sb_edac x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm nfsd irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel pcbc ipmi_ssif cdc_ether aesni_intel iTCO_wdt usbnet crypto_simd ipmi_si glue_helper sg iTCO_vendor_support wmi mii cryptd ipmi_devintf ipmi_msghandler auth_rpcgss shpchp i2c_i801 pcspkr ioatdma lpc_ich nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod mgag200 drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops igb ttm drm ptp pps_core dca megaraid_sas crc32c_intel i2c_algo_bit i2c_core
+> [88901.221606] CPU: 9 PID: 3278 Comm: nfsd Not tainted 4.12.0-rc3 #42
+> [88901.228500] Hardware name: IBM System x3650 M4 -[7915ON3]-/00J6520, BIOS -[VVE124AUS-1.30]- 11/21/2012
+> [88901.238885] task: ffffa10062d12d00 task.stack: ffffc2820478c000
+> [88901.245488] RIP: 0010:report_bug+0x64/0x100
+> [88901.250153] RSP: 0018:ffffc2820478f598 EFLAGS: 00010202
+> [88901.255980] RAX: ffffffffc0360e08 RBX: ffffffffc0301cdc RCX: 0000000000000001
+> [88901.263940] RDX: 0000000000000907 RSI: ffffffffc038bc80 RDI: ffffffffffff0d22
+> [88901.271901] RBP: ffffc2820478f5b8 R08: 0000000000000001 R09: 00000000000001cc
+> [88901.279861] R10: ffffffffb6a36f67 R11: 0000000000000000 R12: ffffc2820478f6e8
+> [88901.287821] R13: ffffffffc0351b2a R14: 00000000000003fb R15: 0000000000000004
+> [88901.295783] FS:  0000000000000000(0000) GS:ffffa1007f6c0000(0000) knlGS:0000000000000000
+> [88901.304818] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> [88901.311227] CR2: ffffffffc0360e12 CR3: 00000003b7c09000 CR4: 00000000000406e0
+> [88901.319188] Call Trace:
+> [88901.321920]  do_trap+0x16a/0x190
+> [88901.325519]  do_error_trap+0x89/0x110
+> [88901.329652]  ? xfs_do_writepage+0x65c/0x680 [xfs]
 
---
-Chuck Lever
+Hmm, does gdb think this address is at:
 
+(gdb) l *(xfs_do_writepage+0x65c)
+0x7c17c is in xfs_do_writepage (/storage/home/djwong/cdev/work/linux-xfs/include/linux/highmem.h:77).
 
+like my system?  That location is preempt_disable() in kunmap_atomic(),
+which is ... odd.  I tried to run your reproducer script but smashed
+into this instead:
 
+[  826.735882] ============================================
+[  826.736952] WARNING: possible recursive locking detected
+[  826.737992] 4.12.0-rc4-xfsx #7 Not tainted
+[  826.738636] --------------------------------------------
+[  826.739700] nfsd/1416 is trying to acquire lock:
+[  826.740423]  (&stp->st_mutex){+.+.+.}, at: [<ffffffffa004cda6>] nfsd4_process_open2+0x4f6/0x1360 [nfsd]
+[  826.741749] 
+[  826.741749] but task is already holding lock:
+[  826.742897]  (&stp->st_mutex){+.+.+.}, at: [<ffffffffa004cd3f>] nfsd4_process_open2+0x48f/0x1360 [nfsd]
+[  826.744211] 
+[  826.744211] other info that might help us debug this:
+[  826.745262]  Possible unsafe locking scenario:
+[  826.745262] 
+[  826.746203]        CPU0
+[  826.746651]        ----
+[  826.747071]   lock(&stp->st_mutex);
+[  826.747795]   lock(&stp->st_mutex);
+[  826.748392] 
+[  826.748392]  *** DEADLOCK ***
+[  826.748392] 
+[  826.749577]  May be due to missing lock nesting notation
+[  826.749577] 
+[  826.750912] 1 lock held by nfsd/1416:
+[  826.751570]  #0:  (&stp->st_mutex){+.+.+.}, at: [<ffffffffa004cd3f>] nfsd4_process_open2+0x48f/0x1360 [nfsd]
+[  826.753350] 
+[  826.753350] stack backtrace:
+[  826.754122] CPU: 3 PID: 1416 Comm: nfsd Not tainted 4.12.0-rc4-xfsx #7
+[  826.755258] Hardware name: QEMU Standard PC (Q35 + ICH9, 2009), BIOS Ubuntu-1.8.2-1ubuntu1 04/01/2014
+[  826.756856] Call Trace:
+[  826.757381]  dump_stack+0x85/0xc7
+[  826.758029]  __lock_acquire+0x1567/0x15c0
+[  826.758771]  ? kvm_clock_read+0x23/0x40
+[  826.759423]  lock_acquire+0xac/0x200
+[  826.760014]  ? lock_acquire+0xac/0x200
+[  826.760665]  ? nfsd4_process_open2+0x4f6/0x1360 [nfsd]
+[  826.761618]  ? nfsd4_process_open2+0x4f6/0x1360 [nfsd]
+[  826.762549]  __mutex_lock+0x75/0x9c0
+[  826.763160]  ? nfsd4_process_open2+0x4f6/0x1360 [nfsd]
+[  826.763995]  ? nfsd4_process_open2+0x4e1/0x1360 [nfsd]
+[  826.764836]  ? nfsd4_process_open2+0x4e1/0x1360 [nfsd]
+[  826.765675]  mutex_lock_nested+0x1b/0x20
+[  826.766334]  ? _raw_spin_unlock+0x31/0x50
+[  826.767014]  ? mutex_lock_nested+0x1b/0x20
+[  826.767690]  nfsd4_process_open2+0x4f6/0x1360 [nfsd]
+[  826.768561]  nfsd4_open+0x574/0x830 [nfsd]
+[  826.769248]  ? nfsd4_open+0x574/0x830 [nfsd]
+[  826.769991]  nfsd4_proc_compound+0x31b/0x620 [nfsd]
+[  826.770796]  nfsd_dispatch+0xc8/0x260 [nfsd]
+[  826.771547]  svc_process_common+0x351/0x690
+[  826.772270]  svc_process+0x11f/0x380
+[  826.772879]  nfsd+0x176/0x280 [nfsd]
+[  826.773539]  kthread+0x117/0x150
+[  826.774124]  ? nfsd_destroy+0x180/0x180 [nfsd]
+[  826.774969]  ? kthread_create_on_node+0x40/0x40
+[  826.775889]  ret_from_fork+0x2a/0x40
+[  826.778354] NFS: nfs4_reclaim_open_state: Lock reclaim failed!
+
+After which the NFS mounts were all wedged up and wouldn't unmount.
+
+<shrug>
+
+--D
+
+> [88901.334917]  ? _xfs_buf_find+0x2a2/0x510 [xfs]
+> [88901.339875]  ? kmem_cache_alloc+0x194/0x1a0
+> [88901.344561]  ? kmem_zone_alloc+0x96/0x100 [xfs]
+> [88901.349615]  do_invalid_op+0x20/0x30
+> [88901.353604]  invalid_op+0x1e/0x30
+> [88901.357318] RIP: 0010:xfs_do_writepage+0x65c/0x680 [xfs]
+> [88901.363242] RSP: 0018:ffffc2820478f790 EFLAGS: 00010206
+> [88901.369069] RAX: 0000000000340140 RBX: ffffc2820478f8b8 RCX: 0000000000000000
+> [88901.377030] RDX: 0000000000000000 RSI: ffffc2820478f9f8 RDI: fffffc2be1095400
+> [88901.384991] RBP: ffffc2820478f838 R08: 0000000000000002 R09: 000000000001ff20
+> [88901.392950] R10: ffffa1007ffd1d00 R11: 0000000000000000 R12: ffffa10053c2ea58
+> [88901.400911] R13: fffffc2be1095400 R14: ffffc2820478f960 R15: ffffc2820478f9f8
+> [88901.408876]  ? page_mkclean+0x69/0xb0
+> [88901.412960]  ? invalid_page_referenced_vma+0x90/0x90
+> [88901.418500]  write_cache_pages+0x26f/0x510
+> [88901.423085]  ? xfs_vm_set_page_dirty+0x1d0/0x1d0 [xfs]
+> [88901.428819]  ? block_write_end+0x36/0x80
+> [88901.433193]  ? generic_write_end+0x54/0xc0
+> [88901.437791]  xfs_vm_writepages+0xb6/0xd0 [xfs]
+> [88901.442741]  do_writepages+0x1c/0x70
+> [88901.446727]  __filemap_fdatawrite_range+0xc6/0x100
+> [88901.452071]  filemap_write_and_wait_range+0x41/0x90
+> [88901.457532]  xfs_file_fsync+0x63/0x1d0 [xfs]
+> [88901.462294]  vfs_fsync_range+0x3d/0xb0
+> [88901.466491]  xfs_file_write_iter+0x121/0x140 [xfs]
+> [88901.471835]  __do_readv_writev+0x2d3/0x360
+> [88901.476402]  do_readv_writev+0x76/0xb0
+> [88901.480582]  ? do_dentry_open+0x261/0x310
+> [88901.485069]  ? xfs_extent_busy_ag_cmp+0x20/0x20 [xfs]
+> [88901.490704]  vfs_writev+0x3c/0x50
+> [88901.494409]  nfsd_vfs_write+0xd0/0x360 [nfsd]
+> [88901.499271]  ? ima_file_check+0x20/0x30
+> [88901.503553]  nfsd_write+0x15a/0x210 [nfsd]
+> [88901.508116]  nfsd3_proc_write+0x9d/0x130 [nfsd]
+> [88901.513172]  nfsd_dispatch+0xce/0x270 [nfsd]
+> [88901.517950]  svc_process_common+0x387/0x740 [sunrpc]
+> [88901.523492]  svc_process+0xfc/0x1c0 [sunrpc]
+> [88901.528248]  nfsd+0xe9/0x160 [nfsd]
+> [88901.532137]  kthread+0x109/0x140
+> [88901.535740]  ? nfsd_destroy+0x60/0x60 [nfsd]
+> [88901.540501]  ? kthread_park+0x60/0x60
+> [88901.544586]  ret_from_fork+0x25/0x30
+> [88901.548572] Code: 63 78 04 44 0f b7 70 08 41 89 d0 4c 8d 2c 38 41 83 e0 01 f6 c2 02 74 17 66 45 85 c0 74 11 f6 c2 04 b9 01 00 00 00 75 bb 83 ca 04 <66> 89 50 0a 66 45 85 c0 74 52 0f b6 48 0b 41 0f b7 f6 4d 89 e0
+> [88901.569642] RIP: report_bug+0x64/0x100 RSP: ffffc2820478f598
+> [88901.575955] CR2: ffffffffc0360e12
+> [88901.579663] ---[ end trace 62c63b9fb594e7f4 ]---
+> [88901.584811] Kernel panic - not syncing: Fatal exception
+> [88901.590694] Kernel Offset: 0x35000000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+> [88901.602731] Rebooting in 3 seconds..
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
