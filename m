@@ -1,85 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f178.google.com ([209.85.223.178]:35543 "EHLO
-        mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751640AbdFHPvm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:51:42 -0400
-Subject: [PATCH v2 00/13] NFS/RDMA client-side patches proposed for v4.13
+Received: from mail-io0-f193.google.com ([209.85.223.193]:33054 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751771AbdFHPv6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:51:58 -0400
+Subject: [PATCH v2 02/13] xprtrdma: Pre-mark remotely invalidated MRs
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 08 Jun 2017 11:51:39 -0400
-Message-ID: <20170608154339.18945.5500.stgit@manet.1015granger.net>
+Date: Thu, 08 Jun 2017 11:51:56 -0400
+Message-ID: <20170608155156.18945.29883.stgit@manet.1015granger.net>
+In-Reply-To: <20170608154339.18945.5500.stgit@manet.1015granger.net>
+References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series contains a major fix for client-side NFS/RDMA.
+There are rare cases where an rpcrdma_req and its matched
+rpcrdma_rep can be re-used, via rpcrdma_buffer_put, while the RPC
+reply handler is still using that req. This is typically due to a
+signal firing at just the wrong instant.
 
-When a signal fires, it's possible for the server's RPC reply to
-race with the client code that terminates the RPC after a signal.
-The result is both of these code paths try to invalidate the same
-MR at the same time.
+As part of closing this race window, avoid using the wrong
+rpcrdma_rep to detect remotely invalidated MRs. Mark MRs as
+invalidated while we are sure the rep is still OK to use.
 
-Because FRWR invalidation is typically fast, it's nearly impossible
-to hit the race with FRWR. However, FMR invalidation happens at
-about the same speed as the NFS server responds, so it's more likely
-to hit this window when using FMR. FMR is also more sensitive to
-concurrent operations on the same MR, which can result in a kernel
-crash or an HCA firmware reset.
-
-As part of closing the signal race window, the reply handler is
-restructured and several error recovery paths in the invalidation
-code are fixed.
-
-In addition to this fix, there are a pair of small but important
-changes to make NFSv4.1 Transparent State Migration work. These
-enable basic migration test cases to pass successfully.
-
-
-Available in the "nfs-rdma-for-4.13" topic branch of this git repo:
-
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfs-rdma-for-4.13
-
-
-Changes since v1:
-- Moved back-portable fixes to top of series
-- Split fixes for CONFIRMED_R and contrived slot into separate patches
-- Tested and reworked fixes for CONFIRMED_R and contrived slot number
-
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=305
+Fixes: 68791649a725 ('xprtrdma: Invalidate in the RPC reply ... ')
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/frwr_ops.c  |    4 +---
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   22 ++++++++++++++++++++--
+ net/sunrpc/xprtrdma/verbs.c     |    1 +
+ net/sunrpc/xprtrdma/xprt_rdma.h |    6 ++++++
+ 4 files changed, 28 insertions(+), 5 deletions(-)
 
-Chuck Lever (13):
-      xprtrdma: On invalidation failure, remove MWs from rl_registered
-      xprtrdma: Pre-mark remotely invalidated MRs
-      xprtrdma: Pass only the list of registered MRs to ro_unmap_sync
-      xprtrdma: Rename rpcrdma_req::rl_free
-      xprtrdma: Fix client lock-up after application signal fires
-      xprtrdma: Fix FRWR invalidation error recovery
-      xprtrdma: Don't defer MR recovery if ro_map fails
-      NFSv4.1: Handle EXCHGID4_FLAG_CONFIRMED_R during NFSv4.1 migration
-      NFSv4.1: Use seqid returned by EXCHANGE_ID after state migration
-      xprtrdma: Demote "connect" log messages
-      xprtrdma: FMR does not need list_del_init()
-      xprtrdma: Replace PAGE_MASK with offset_in_page()
-      xprtrdma: Fix documenting comments in frwr_ops.c
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index f81dd93..31290cb 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -464,7 +464,6 @@
+ frwr_op_unmap_sync(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ {
+ 	struct ib_send_wr *first, **prev, *last, *bad_wr;
+-	struct rpcrdma_rep *rep = req->rl_reply;
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	struct rpcrdma_frmr *f;
+ 	struct rpcrdma_mw *mw;
+@@ -483,8 +482,7 @@
+ 	list_for_each_entry(mw, &req->rl_registered, mw_list) {
+ 		mw->frmr.fr_state = FRMR_IS_INVALID;
+ 
+-		if ((rep->rr_wc_flags & IB_WC_WITH_INVALIDATE) &&
+-		    (mw->mw_handle == rep->rr_inv_rkey))
++		if (mw->mw_flags & RPCRDMA_MW_F_RI)
+ 			continue;
+ 
+ 		f = &mw->frmr;
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 694e9b1..2356a63 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -928,6 +928,24 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	return fixup_copy_count;
+ }
+ 
++/* Caller must guarantee @rep remains stable during this call.
++ */
++static void
++rpcrdma_mark_remote_invalidation(struct list_head *mws,
++				 struct rpcrdma_rep *rep)
++{
++	struct rpcrdma_mw *mw;
++
++	if (!(rep->rr_wc_flags & IB_WC_WITH_INVALIDATE))
++		return;
++
++	list_for_each_entry(mw, mws, mw_list)
++		if (mw->mw_handle == rep->rr_inv_rkey) {
++			mw->mw_flags = RPCRDMA_MW_F_RI;
++			break; /* only one invalidated MR per RPC */
++		}
++}
++
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ /* By convention, backchannel calls arrive via rdma_msg type
+  * messages, and never populate the chunk lists. This makes
+@@ -1006,13 +1024,13 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	/* Sanity checking has passed. We are now committed
+ 	 * to complete this transaction.
+ 	 */
++	rpcrdma_mark_remote_invalidation(&req->rl_registered, rep);
+ 	list_del_init(&rqst->rq_list);
++	req->rl_reply = rep;
+ 	spin_unlock_bh(&xprt->transport_lock);
+ 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
+ 		__func__, rep, req, be32_to_cpu(headerp->rm_xid));
+ 
+-	/* from here on, the reply is no longer an orphan */
+-	req->rl_reply = rep;
+ 	xprt->reestablish_timeout = 0;
+ 
+ 	if (headerp->rm_vers != rpcrdma_version)
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 3dbce9a..a8be66d 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1187,6 +1187,7 @@ struct rpcrdma_mw *
+ 
+ 	if (!mw)
+ 		goto out_nomws;
++	mw->mw_flags = 0;
+ 	return mw;
+ 
+ out_nomws:
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 1d66acf..2e02733 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -271,6 +271,7 @@ struct rpcrdma_mw {
+ 	struct scatterlist	*mw_sg;
+ 	int			mw_nents;
+ 	enum dma_data_direction	mw_dir;
++	unsigned long		mw_flags;
+ 	union {
+ 		struct rpcrdma_fmr	fmr;
+ 		struct rpcrdma_frmr	frmr;
+@@ -282,6 +283,11 @@ struct rpcrdma_mw {
+ 	struct list_head	mw_all;
+ };
+ 
++/* mw_flags */
++enum {
++	RPCRDMA_MW_F_RI		= 1,
++};
++
+ /*
+  * struct rpcrdma_req -- structure central to the request/reply sequence.
+  *
 
-
- fs/nfs/nfs4client.c             |    5 ++
- fs/nfs/nfs4proc.c               |    7 +-
- fs/nfs/nfs4state.c              |   16 +++--
- include/linux/nfs_fs_sb.h       |    2 +
- net/sunrpc/xprtrdma/fmr_ops.c   |   47 ++++++++-------
- net/sunrpc/xprtrdma/frwr_ops.c  |   69 ++++++++++------------
- net/sunrpc/xprtrdma/rpc_rdma.c  |  125 +++++++++++++++++++++++++--------------
- net/sunrpc/xprtrdma/transport.c |    3 +
- net/sunrpc/xprtrdma/verbs.c     |   55 ++++-------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   40 ++++++++++++
- 10 files changed, 215 insertions(+), 154 deletions(-)
-
---
-Chuck Lever
