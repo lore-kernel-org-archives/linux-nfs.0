@@ -1,116 +1,205 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39218 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51896 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751620AbdFHQES (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Jun 2017 12:04:18 -0400
-Subject: Re: [PATCH] mount.nfs: Use default minor version when -t nfs4 is
- specified
-From: Steve Dickson <SteveD@RedHat.com>
-To: NeilBrown <neilb@suse.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>
-References: <20170606194812.4248-1-steved@redhat.com>
- <87y3t4bjhs.fsf@notabene.neil.brown.name>
- <980ef718-075d-4c68-7e2c-853add72e184@RedHat.com>
-Message-ID: <abb747de-325c-c62b-ed1d-81fcd3e16944@RedHat.com>
-Date: Thu, 8 Jun 2017 12:04:16 -0400
-MIME-Version: 1.0
-In-Reply-To: <980ef718-075d-4c68-7e2c-853add72e184@RedHat.com>
-Content-Type: text/plain; charset=utf-8
+        id S1750919AbdFHQeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Jun 2017 12:34:13 -0400
+Message-ID: <1496939645.4216.13.camel@redhat.com>
+Subject: [PATCH] Reimplement include functionality in nfs.conf
+From: Justin Mitchell <jumitche@redhat.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Cc: Steve Dickson <SteveD@RedHat.com>, NeilBrown <neilb@suse.com>
+Date: Thu, 08 Jun 2017 17:34:05 +0100
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Re-implement include file functionality as documented.
+
+Existing implementation had various issues, one of which was it allowed
+a subordinate file to inadvertently change which section the subsequent
+tags back in the master config file got assigned to.
+
+Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 
 
-On 06/08/2017 11:36 AM, Steve Dickson wrote:
-> 
-> 
-> On 06/06/2017 10:48 PM, NeilBrown wrote:
->> On Tue, Jun 06 2017, Steve Dickson wrote:
->>
->>> When the nfs4 filesystem specified, the default minor
->>> version should be used not v4.0.
->>>
->>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>> ---
->>>  utils/mount/stropts.c | 3 ++-
->>>  1 file changed, 2 insertions(+), 1 deletion(-)
->>>
->>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->>> index c0266e5..57efb26 100644
->>> --- a/utils/mount/stropts.c
->>> +++ b/utils/mount/stropts.c
->>> @@ -317,7 +317,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
->>>  
->>>  	if (strncmp(mi->type, "nfs4", 4) == 0) {
->>>  		mi->version.major = 4;
->>> -		mi->version.v_mode = V_GENERAL;
->>> +		mi->version.minor = 2;
->>> +		mi->version.v_mode = V_SPECIFIC;
->>
->> I think this is wrong.
->>
->> By setting the mode to SPECIFIC, you are saying that if the server
->> doesn't support v4.2, then fail the mount.  That cannot be right.
-> Ok... I though since nfs4 was being specify it should be
-> V_SPECIFIC but I do see your point about negotiating  down.
-> 
-> It turns out setting  vers4.2=n in /etc/nfs.conf breaks 
-> all v4 mounts... So I think we have issues in that area
-> ATM... ;-)
-> 
->>
->> Given that (currently) v_mode is not V_SPECIFIC, nfs_set_version()
->> will go on and call nfs_default_version(), which will use the default
->> value from the config file - just as Chuck suggests.
->>
->> If there is no default in the config file .... nfs_default_version()
->> will do nothing.  So version.minor will probably remain at zero.
->> So setting
->>> +		mi->version.minor = 2;
->>
->> (where 2 is the maximum supported version) is probably correct.
-It is because in nfs_default_version() there is this chunk of code
 
-    if (mi->version.v_mode == V_GENERAL) {
-        if (config_default_vers.v_mode != V_DEFAULT &&
-            mi->version.major == config_default_vers.major)
-            mi->version.minor = config_default_vers.minor;
-        return;
-    }
-that ends up not setting the minor version at all which
-is the reason the minor version is zero. 
+---
+ support/nfs/conffile.c | 78 ++++++++++++++++++++++++++++++++++++--------------
+ 1 file changed, 56 insertions(+), 22 deletions(-)
 
-steved.
+diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+index 449ac1c..05e0a6f 100644
+--- a/support/nfs/conffile.c
++++ b/support/nfs/conffile.c
+@@ -56,9 +56,11 @@
+ #pragma GCC visibility push(hidden)
+ 
+ static void conf_load_defaults(void);
+-static int conf_load(int trans, const char *path);
++static char * conf_load(const char *path);
+ static int conf_set(int , char *, char *, char *, 
+ 	char *, int , int );
++static void conf_parse(int trans, char *buf, 
++	char **section, char **subsection);
+ 
+ struct conf_trans {
+ 	TAILQ_ENTRY (conf_trans) link;
+@@ -202,7 +204,6 @@ conf_set_now(char *section, char *arg, char *tag,
+ 	node->tag = strdup(tag);
+ 	node->value = strdup(value);
+ 	node->is_default = is_default;
+-
+ 	LIST_INSERT_HEAD(&conf_bindings[conf_hash (section)], node, link);
+ 	return 0;
+ }
+@@ -365,22 +366,47 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
+ 		return;
+ 	}
+ 
+-	/* XXX Perhaps should we not ignore errors?  */
+-	conf_set(trans, *section, *subsection, line, val, 0, 0);
++	if (strcasecmp(line, "include")==0) {
++		/* load and parse subordinate config files */
++		char * subconf = conf_load(val);
++		if (subconf == NULL) {
++			xlog_warn("config file error: line %d: "
++			"error loading included config", lineno);
++			return;
++		}
++
++		/* copy the section data so the included file can inherit it
++		 * without accidentally changing it for us */
++		char * inc_section = NULL;
++		char * inc_subsection = NULL;
++		if (*section != NULL) {
++			inc_section = strdup(*section);
++			if (*subsection != NULL)
++				inc_subsection = strdup(*subsection);
++		}
++
++		conf_parse(trans, subconf, &inc_section, &inc_subsection);
++
++		if (inc_section) free(inc_section);
++		if (inc_subsection) free(inc_subsection);
++		free(subconf);
++	} else {
++		/* XXX Perhaps should we not ignore errors?  */
++		conf_set(trans, *section, *subsection, line, val, 0, 0);
++	}
+ }
+ 
+ /* Parse the mapped configuration file.  */
+ static void
+-conf_parse(int trans, char *buf, size_t sz)
++conf_parse(int trans, char *buf, char **section, char **subsection)
+ {
+ 	char *cp = buf;
+-	char *bufend = buf + sz;
++	char *bufend = NULL;
+ 	char *line;
+-	char *section = NULL;
+-	char *subsection = NULL;
+ 	int lineno = 0;
+ 
+ 	line = cp;
++	bufend = buf + strlen(buf);
+ 	while (cp < bufend) {
+ 		if (*cp == '\n') {
+ 			/* Check for escaped newlines.  */
+@@ -389,7 +415,7 @@ conf_parse(int trans, char *buf, size_t sz)
+ 			else {
+ 				*cp = '\0';
+ 				lineno++;
+-				conf_parse_line(trans, line, lineno, &section, &subsection);
++				conf_parse_line(trans, line, lineno, section, subsection);
+ 				line = cp + 1;
+ 			}
+ 		}
+@@ -397,8 +423,6 @@ conf_parse(int trans, char *buf, size_t sz)
+ 	}
+ 	if (cp != line)
+ 		xlog_warn("conf_parse: last line non-terminated, ignored.");
+-	if (section) free(section);
+-	if (subsection) free(subsection);
+ }
+ 
+ static void
+@@ -408,21 +432,21 @@ conf_load_defaults(void)
+ 	return;
+ }
+ 
+-static int
+-conf_load(int trans, const char *path)
++static char *
++conf_load(const char *path)
+ {
+ 	struct stat sb;
+ 	if ((stat (path, &sb) == 0) || (errno != ENOENT)) {
+-		char *new_conf_addr;
++		char *new_conf_addr = NULL;
+ 		size_t sz = sb.st_size;
+ 		int fd = open (path, O_RDONLY, 0);
+ 
+ 		if (fd == -1) {
+ 			xlog_warn("conf_reinit: open (\"%s\", O_RDONLY) failed", path);
+-			return -1;
++			return NULL;
+ 		}
+ 
+-		new_conf_addr = malloc(sz);
++		new_conf_addr = malloc(sz+1);
+ 		if (!new_conf_addr) {
+ 			xlog_warn("conf_reinit: malloc (%lu) failed", (unsigned long)sz);
+ 			goto fail;
+@@ -437,14 +461,13 @@ conf_load(int trans, const char *path)
+ 		close(fd);
+ 
+ 		/* XXX Should we not care about errors and rollback?  */
+-		conf_parse(trans, new_conf_addr, sz);
+-		free(new_conf_addr);
+-		return 0;
++		new_conf_addr[sz] = '\0';
++		return new_conf_addr;
+ 	fail:
+ 		close(fd);
+-		free(new_conf_addr);
++		if (new_conf_addr) free(new_conf_addr);
+ 	}
+-	return -1;
++	return NULL;
+ }
+ 
+ /* remove and free up any existing config state */
+@@ -473,14 +496,25 @@ static void
+ conf_reinit(const char *conf_file)
+ {
+ 	int trans;
++	char * conf_data;
+ 
+ 	trans = conf_begin();
+-	if (conf_load(trans, conf_file) < 0)
++	conf_data = conf_load(conf_file);
++
++	if (conf_data == NULL)
+ 		return;
+ 
+ 	/* Load default configuration values.  */
+ 	conf_load_defaults();
+ 
++	/* Parse config contents into the transaction queue */
++	char *section = NULL;
++	char *subsection = NULL;
++	conf_parse(trans, conf_data, &section, &subsection);
++	if (section) free(section);
++	if (subsection) free(subsection);
++	free(conf_data);
++
+ 	/* Free potential existing configuration.  */
+ 	conf_free_bindings();
+ 
+-- 
+1.8.3.1
 
->> Setting
->>> +		mi->version.v_mode = V_SPECIFIC;
->> is unnecessary and wrong.
->>
->> If there an easy way to find out the maximum minor version that the
->> kernel supports?  We should really default version.minor to that.
->> Once we get up to v4.20, it'll seem odd to try to mount 4.20, 4.19,
->> 4.18,... until something succeeds....
-> Maybe it should be something like the server does under /proc/fs/nfsd/version
-> 
-> steved.
-> 
->>
->> Thanks,
->> NeilBrown
->>
->>>  	}
->>>  	/*
->>>  	 * Before 2.6.32, the kernel NFS client didn't
->>> -- 
->>> 2.9.4
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+
