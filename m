@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:36166 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751744AbdFHPwn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:52:43 -0400
-Subject: [PATCH v2 07/13] xprtrdma: Don't defer MR recovery if ro_map fails
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34263 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751642AbdFHPwv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:52:51 -0400
+Subject: [PATCH v2 08/13] NFSv4.1: Handle EXCHGID4_FLAG_CONFIRMED_R during
+ NFSv4.1 migration
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 08 Jun 2017 11:52:36 -0400
-Message-ID: <20170608155236.18945.12584.stgit@manet.1015granger.net>
+Date: Thu, 08 Jun 2017 11:52:44 -0400
+Message-ID: <20170608155244.18945.66640.stgit@manet.1015granger.net>
 In-Reply-To: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,114 +16,110 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Deferred MR recovery does a DMA-unmapping of the MW. However, ro_map
-invokes rpcrdma_defer_mr_recovery in some error cases where the MW
-has not even been DMA-mapped yet.
+Transparent State Migration copies a client's lease state from the
+server where a filesystem used to reside to the server where it now
+resides. When an NFSv4.1 client first contacts that destination
+server, it uses EXCHANGE_ID to detect trunking relationships.
 
-Avoid a DMA-unmapping error replacing rpcrdma_defer_mr_recovery.
+The lease that was copied there is returned to that client, but the
+destination server sets EXCHGID4_FLAG_CONFIRMED_R when replying to
+the client. This is because the lease was confirmed on the source
+server (before it was copied).
 
-Also note that if ib_dma_map_sg is asked to map 0 nents, it will
-return 0. So the extra "if (i == 0)" check is no longer needed.
+Normally, when CONFIRMED_R is set, a client purges the lease and
+creates a new one. However, that throws away the entire benefit of
+Transparent State Migration.
 
-Fixes: 42fe28f60763 ("xprtrdma: Do not leak an MW during a DMA ...")
-Fixes: 505bbe64dd04 ("xprtrdma: Refactor MR recovery work queues")
+Therefore, the client must not purge that lease when it is possible
+that Transparent State Migration has occurred.
+
+Reported-by: Xuan Qi <xuan.qi@oracle.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Xuan Qi <xuan.qi@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c  |   18 +++++++++---------
- net/sunrpc/xprtrdma/frwr_ops.c |   19 ++++++++-----------
- 2 files changed, 17 insertions(+), 20 deletions(-)
+ fs/nfs/nfs4client.c       |    5 +++++
+ fs/nfs/nfs4state.c        |   16 +++++++++++-----
+ include/linux/nfs_fs_sb.h |    2 ++
+ 3 files changed, 18 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 5556ed9..2f4eacd 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -213,13 +213,11 @@ enum {
- 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
- 			break;
- 	}
--	mw->mw_nents = i;
- 	mw->mw_dir = rpcrdma_data_dir(writing);
--	if (i == 0)
--		goto out_dmamap_err;
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 692a7a8..203d7a3 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -414,6 +414,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 	if (clp != old)
+ 		clp->cl_preserve_clid = true;
+ 	nfs_put_client(clp);
++	clear_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags);
+ 	return old;
  
--	if (!ib_dma_map_sg(r_xprt->rx_ia.ri_device,
--			   mw->mw_sg, mw->mw_nents, mw->mw_dir))
-+	mw->mw_nents = ib_dma_map_sg(r_xprt->rx_ia.ri_device,
-+				     mw->mw_sg, i, mw->mw_dir);
-+	if (!mw->mw_nents)
- 		goto out_dmamap_err;
+ error:
+@@ -853,6 +854,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
+ 	if (server->options & NFS_OPTION_MIGRATION)
+ 		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
++	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
++		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
  
- 	for (i = 0, dma_pages = mw->fmr.fm_physaddrs; i < mw->mw_nents; i++)
-@@ -237,16 +235,18 @@ enum {
- 	return mw->mw_nents;
+ 	/* Allocate or find a client reference we can use */
+ 	clp = nfs_get_client(&cl_init);
+@@ -1213,9 +1216,11 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
+ 		return -EAFNOSUPPORT;
  
- out_dmamap_err:
--	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
--	       mw->mw_sg, mw->mw_nents);
--	rpcrdma_defer_mr_recovery(mw);
-+	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
-+	       mw->mw_sg, i);
-+	rpcrdma_put_mw(r_xprt, mw);
- 	return -EIO;
+ 	nfs_server_remove_lists(server);
++	set_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
+ 	error = nfs4_set_client(server, hostname, sap, salen, buf,
+ 				clp->cl_proto, clnt->cl_timeout,
+ 				clp->cl_minorversion, net);
++	clear_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
+ 	nfs_put_client(clp);
+ 	if (error != 0) {
+ 		nfs_server_insert_lists(server);
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index b34de03..83f8e60 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -352,11 +352,17 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
+ 	if (clp != *result)
+ 		return 0;
  
- out_maperr:
- 	pr_err("rpcrdma: ib_map_phys_fmr %u@0x%llx+%i (%d) status %i\n",
- 	       len, (unsigned long long)dma_pages[0],
- 	       pageoff, mw->mw_nents, rc);
--	rpcrdma_defer_mr_recovery(mw);
-+	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
-+			mw->mw_sg, mw->mw_nents, mw->mw_dir);
-+	rpcrdma_put_mw(r_xprt, mw);
- 	return -EIO;
- }
+-	/* Purge state if the client id was established in a prior instance */
+-	if (clp->cl_exchange_flags & EXCHGID4_FLAG_CONFIRMED_R)
+-		set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
+-	else
+-		set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
++	/*
++	 * Purge state if the client id was established in a prior
++	 * instance and the client id could not have arrived on the
++	 * server via Transparent State Migration.
++	 */
++	if (clp->cl_exchange_flags & EXCHGID4_FLAG_CONFIRMED_R) {
++		if (!test_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags))
++			set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
++		else
++			set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
++	}
+ 	nfs4_schedule_state_manager(clp);
+ 	status = nfs_wait_client_init_complete(clp);
+ 	if (status < 0)
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index e418a10..74c4466 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -42,6 +42,7 @@ struct nfs_client {
+ #define NFS_CS_MIGRATION	2		/* - transparent state migr */
+ #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
+ #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
++#define NFS_CS_TSM_POSSIBLE	5		/* - Maybe state migration */
+ 	struct sockaddr_storage	cl_addr;	/* server identifier */
+ 	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
+@@ -210,6 +211,7 @@ struct nfs_server {
+ 	unsigned long		mig_status;
+ #define NFS_MIG_IN_TRANSITION		(1)
+ #define NFS_MIG_FAILED			(2)
++#define NFS_MIG_TSM_POSSIBLE		(3)
  
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 24631e0..8f63d38 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -355,7 +355,7 @@
- 	struct ib_mr *mr;
- 	struct ib_reg_wr *reg_wr;
- 	struct ib_send_wr *bad_wr;
--	int rc, i, n, dma_nents;
-+	int rc, i, n;
- 	u8 key;
+ 	void (*destroy)(struct nfs_server *);
  
- 	mw = NULL;
-@@ -391,14 +391,10 @@
- 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
- 			break;
- 	}
--	mw->mw_nents = i;
- 	mw->mw_dir = rpcrdma_data_dir(writing);
--	if (i == 0)
--		goto out_dmamap_err;
- 
--	dma_nents = ib_dma_map_sg(ia->ri_device,
--				  mw->mw_sg, mw->mw_nents, mw->mw_dir);
--	if (!dma_nents)
-+	mw->mw_nents = ib_dma_map_sg(ia->ri_device, mw->mw_sg, i, mw->mw_dir);
-+	if (!mw->mw_nents)
- 		goto out_dmamap_err;
- 
- 	n = ib_map_mr_sg(mr, mw->mw_sg, mw->mw_nents, NULL, PAGE_SIZE);
-@@ -436,13 +432,14 @@
- 	return mw->mw_nents;
- 
- out_dmamap_err:
--	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
--	       mw->mw_sg, mw->mw_nents);
--	rpcrdma_defer_mr_recovery(mw);
-+	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
-+	       mw->mw_sg, i);
-+	frmr->fr_state = FRMR_IS_INVALID;
-+	rpcrdma_put_mw(r_xprt, mw);
- 	return -EIO;
- 
- out_mapmr_err:
--	pr_err("rpcrdma: failed to map mr %p (%u/%u)\n",
-+	pr_err("rpcrdma: failed to map mr %p (%d/%d)\n",
- 	       frmr->fr_mr, n, mw->mw_nents);
- 	rpcrdma_defer_mr_recovery(mw);
- 	return -EIO;
 
