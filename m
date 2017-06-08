@@ -1,179 +1,223 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47824 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751439AbdFHC1k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Jun 2017 22:27:40 -0400
-Date: Thu, 8 Jun 2017 10:27:37 +0800
-From: Eryu Guan <eguan@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org
-Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
-Message-ID: <20170608022737.GA19952@eguan.usersys.redhat.com>
-References: <20170602060457.GG23805@eguan.usersys.redhat.com>
- <20170607033357.GW19952@eguan.usersys.redhat.com>
- <20170607155356.GA26995@fieldses.org>
+Received: from mx2.suse.de ([195.135.220.15]:34580 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752475AbdFHFRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Jun 2017 01:17:04 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@RedHat.com>,
+        Lennart Poettering <mzxreary@0pointer.de>
+Date: Thu, 08 Jun 2017 15:16:52 +1000
+Cc: systemd-devel@freedesktop.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option and systemd.
+In-Reply-To: <ce5c37b4-a81b-4eaf-c1ac-7f36488bdaa9@RedHat.com>
+References: <87lgpkgwrw.fsf@notabene.neil.brown.name> <20170529133814.GC17967@gardel-login> <87tw43fgrf.fsf@notabene.neil.brown.name> <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com> <87lgp4dbx7.fsf@notabene.neil.brown.name> <2a7fd6d4-a965-02e0-3b7b-97c5743d7083@RedHat.com> <20170607120221.GJ27006@gardel-login> <ce5c37b4-a81b-4eaf-c1ac-7f36488bdaa9@RedHat.com>
+Message-ID: <87mv9jawjf.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170607155356.GA26995@fieldses.org>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 07, 2017 at 11:53:56AM -0400, J. Bruce Fields wrote:
-> On Wed, Jun 07, 2017 at 11:33:57AM +0800, Eryu Guan wrote:
-> > On Fri, Jun 02, 2017 at 02:04:57PM +0800, Eryu Guan wrote:
-> > > Hi all,
-> > > 
-> > > Starting from 4.12-rc1 kernel, I saw Linux nfs server crashes all the
-> > > time in my fstests (xfstests) runs, I appended the console log of an
-> > > NFSv3 crash to the end of this mail.
-> > > 
-> > > I was exporting a directory resided on XFS, and loopback mounted the NFS
-> > > export on localhost. Both NFSv3 and NFSv4 could hit this crash. The
-> > 
-> > I did more test runs with ext4 exported, seems it's only reproducible
-> > when the exported local filesystem is XFS, ext4 survived 20 rounds of
-> > fstests runs auto group tests.
-> > 
-> > And this crash can still be seen with 4.12-rc4 kernel.
-> 
-> So this sounds a little more likely to be an xfs bug.  I also don't see
-> any likely looking nfsd commits in the v4.11..v4.12-rc1 range.
-> 
-> But I take it you can't reproduce when running directly on xfs with no
-> NFS involvement?
+--=-=-=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-Correct, I don't see any xfs crashes in fstests run without nfs.
+On Wed, Jun 07 2017, Steve Dickson wrote:
 
-> 
-> Not knowing this code well I don't know what to suggest other than the
-> long painful bisect.
+> On 06/07/2017 08:02 AM, Lennart Poettering wrote:
+>> On Wed, 07.06.17 06:08, Steve Dickson (SteveD@RedHat.com) wrote:
+>>=20
+>>>
+>>>
+>>> On 06/06/2017 05:49 PM, NeilBrown wrote:
+>>>> On Tue, Jun 06 2017, Steve Dickson wrote:
+>>>>
+>>>>> Hello,
+>>>>>
+>>>>> On 05/29/2017 06:19 PM, NeilBrown wrote:
+>>>>>>
+>>>>>> Systemd does not, and will not, support "bg" correctly.
+>>>>>> It has other, better, ways to handle "background" mounting.
+>>>>> The only problem with this is bg mounts still work at least
+>>>>> up to 4.11 kernel...=20
+>>>>
+>>>> I don't think this is correct.
+>>>> In the default configuration, "mount -t nfs -o bg ...."
+>>>> runs for longer than 90 seconds, so systemd kill it.
+>>> I must be missing something... it seems to be working for me
+>>>
+>>> # mount -vvv -o bg rhel7srv:/home/tmp /mnt/tmp
+>>> mount.nfs: trying text-based options 'bg,vers=3D4.1,addr=3D172.31.1.60,=
+clientaddr=3D172.31.1.58'
+>>> mount.nfs: mount(2): Connection refused
+>>> mount.nfs: trying text-based options 'bg,addr=3D172.31.1.60'
+>>> mount.nfs: prog 100003, trying vers=3D3, prot=3D6
+>>> mount.nfs: trying 172.31.1.60 prog 100003 vers 3 prot TCP port 2049
+>>> mount.nfs: portmap query failed: RPC: Remote system error - Connection =
+refused
+>>> mount.nfs: backgrounding "rhel7srv:/home/tmp"
+>>> mount.nfs: mount options: "rw,bg"
+>>=20
+>> We are talking about mounts done through /etc/fstab, i.e. the ones
+>> systemd actually manages.
+> I guess I was not clear... After adding a bg mount to fstab and
+> reboot, mounting a server that is not up, there is a mount in
+> background that looks like=20
+>
+> # ps ax | grep mount
+>  1104 ?        Ss     0:00 /sbin/mount.nfs nfssrv:/home/tmp /mnt/tmp -o r=
+w,bg
+>
+> Looking at the remote-fs.target status:
+>
+> # systemctl status remote-fs.target=20
+> * remote-fs.target - Remote File Systems
+>    Loaded: loaded (/usr/lib/systemd/system/remote-fs.target; enabled; ven=
+dor preset: enabled)
+>    Active: active since Tue 2017-06-06 12:36:51 EDT; 12min ago
+>      Docs: man:systemd.special(7)
+>
+> Jun 06 12:36:51 f26.boston.devel.redhat.com systemd[1]: Reached target Re=
+mote File Systems.
+>
+> It appears to be successful=20
 
-Bisect is still running, automatically. I guess it still needs several
-days to finish.
+Strange ... not for me.
 
-Thanks for looking at it!
+I have a recent compiled-from-source upstream systemd and a very recent
+upstream kernel.
 
-Eryu
+I add a line to /etc/fstab
 
-> 
-> --b.
-> 
-> > Thanks,
-> > Eryu
-> > 
-> > > crash usually happens when running test case generic/029 or generic/095.
-> > > 
-> > > But the problem is, there's no easy and efficient way to reproduce it, I
-> > > tried run only generic/029 and generic/095 in a loop for 1000 times but
-> > > failed, I also tried run the 'quick' group tests only for 50 iterations
-> > > but failed again. It seems that the only reliable way to reproduce it is
-> > > run the 'auto' group tests for 20 iterations.
-> > > 
-> > > 	i=0
-> > > 	while [ $i -lt 20 ]; do
-> > > 		./check -nfs -g auto
-> > > 		((i++))
-> > > 	done
-> > > 
-> > > And usually server crashed within 5 iterations, but at times it could
-> > > survive 10 iterations and only crashed if you left it running for more
-> > > iterations. This makes it hard to bisect and bisecting is very
-> > > time-consuming.
-> > > 
-> > > (The bisecting is running now, it needs a few days to finish. My first
-> > > two attempts pointed first bad commit to some mm patches, but reverting
-> > > that patch didn't prevent server from crashing, so I enlarged the loop
-> > > count and started bisecting for the third time).
-> > > 
-> > > If more info is needed please let me know.
-> > > 
-> > > Thanks,
-> > > Eryu
-> > > 
-> > > 
-> > > [88895.796834] run fstests generic/028 at 2017-06-01 00:43:18
-> > > [88900.945420] run fstests generic/029 at 2017-06-01 00:43:23
-> > > [88901.127315] BUG: unable to handle kernel paging request at ffffffffc0360e12
-> > > [88901.135095] IP: report_bug+0x64/0x100
-> > > [88901.139177] PGD 3b7c0c067
-> > > [88901.139177] P4D 3b7c0c067
-> > > [88901.142194] PUD 3b7c0e067
-> > > [88901.145209] PMD 469e33067
-> > > [88901.148225] PTE 80000004675f4161
-> > > [88901.151240]
-> > > [88901.156497] Oops: 0003 [#1] SMP
-> > > [88901.159997] Modules linked in: loop dm_mod nfsv3 nfs fscache ext4 jbd2 mbcache intel_rapl sb_edac x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel kvm nfsd irqbypass crct10dif_pclmul crc32_pclmul ghash_clmulni_intel pcbc ipmi_ssif cdc_ether aesni_intel iTCO_wdt usbnet crypto_simd ipmi_si glue_helper sg iTCO_vendor_support wmi mii cryptd ipmi_devintf ipmi_msghandler auth_rpcgss shpchp i2c_i801 pcspkr ioatdma lpc_ich nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod mgag200 drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops igb ttm drm ptp pps_core dca megaraid_sas crc32c_intel i2c_algo_bit i2c_core
-> > > [88901.221606] CPU: 9 PID: 3278 Comm: nfsd Not tainted 4.12.0-rc3 #42
-> > > [88901.228500] Hardware name: IBM System x3650 M4 -[7915ON3]-/00J6520, BIOS -[VVE124AUS-1.30]- 11/21/2012
-> > > [88901.238885] task: ffffa10062d12d00 task.stack: ffffc2820478c000
-> > > [88901.245488] RIP: 0010:report_bug+0x64/0x100
-> > > [88901.250153] RSP: 0018:ffffc2820478f598 EFLAGS: 00010202
-> > > [88901.255980] RAX: ffffffffc0360e08 RBX: ffffffffc0301cdc RCX: 0000000000000001
-> > > [88901.263940] RDX: 0000000000000907 RSI: ffffffffc038bc80 RDI: ffffffffffff0d22
-> > > [88901.271901] RBP: ffffc2820478f5b8 R08: 0000000000000001 R09: 00000000000001cc
-> > > [88901.279861] R10: ffffffffb6a36f67 R11: 0000000000000000 R12: ffffc2820478f6e8
-> > > [88901.287821] R13: ffffffffc0351b2a R14: 00000000000003fb R15: 0000000000000004
-> > > [88901.295783] FS:  0000000000000000(0000) GS:ffffa1007f6c0000(0000) knlGS:0000000000000000
-> > > [88901.304818] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> > > [88901.311227] CR2: ffffffffc0360e12 CR3: 00000003b7c09000 CR4: 00000000000406e0
-> > > [88901.319188] Call Trace:
-> > > [88901.321920]  do_trap+0x16a/0x190
-> > > [88901.325519]  do_error_trap+0x89/0x110
-> > > [88901.329652]  ? xfs_do_writepage+0x65c/0x680 [xfs]
-> > > [88901.334917]  ? _xfs_buf_find+0x2a2/0x510 [xfs]
-> > > [88901.339875]  ? kmem_cache_alloc+0x194/0x1a0
-> > > [88901.344561]  ? kmem_zone_alloc+0x96/0x100 [xfs]
-> > > [88901.349615]  do_invalid_op+0x20/0x30
-> > > [88901.353604]  invalid_op+0x1e/0x30
-> > > [88901.357318] RIP: 0010:xfs_do_writepage+0x65c/0x680 [xfs]
-> > > [88901.363242] RSP: 0018:ffffc2820478f790 EFLAGS: 00010206
-> > > [88901.369069] RAX: 0000000000340140 RBX: ffffc2820478f8b8 RCX: 0000000000000000
-> > > [88901.377030] RDX: 0000000000000000 RSI: ffffc2820478f9f8 RDI: fffffc2be1095400
-> > > [88901.384991] RBP: ffffc2820478f838 R08: 0000000000000002 R09: 000000000001ff20
-> > > [88901.392950] R10: ffffa1007ffd1d00 R11: 0000000000000000 R12: ffffa10053c2ea58
-> > > [88901.400911] R13: fffffc2be1095400 R14: ffffc2820478f960 R15: ffffc2820478f9f8
-> > > [88901.408876]  ? page_mkclean+0x69/0xb0
-> > > [88901.412960]  ? invalid_page_referenced_vma+0x90/0x90
-> > > [88901.418500]  write_cache_pages+0x26f/0x510
-> > > [88901.423085]  ? xfs_vm_set_page_dirty+0x1d0/0x1d0 [xfs]
-> > > [88901.428819]  ? block_write_end+0x36/0x80
-> > > [88901.433193]  ? generic_write_end+0x54/0xc0
-> > > [88901.437791]  xfs_vm_writepages+0xb6/0xd0 [xfs]
-> > > [88901.442741]  do_writepages+0x1c/0x70
-> > > [88901.446727]  __filemap_fdatawrite_range+0xc6/0x100
-> > > [88901.452071]  filemap_write_and_wait_range+0x41/0x90
-> > > [88901.457532]  xfs_file_fsync+0x63/0x1d0 [xfs]
-> > > [88901.462294]  vfs_fsync_range+0x3d/0xb0
-> > > [88901.466491]  xfs_file_write_iter+0x121/0x140 [xfs]
-> > > [88901.471835]  __do_readv_writev+0x2d3/0x360
-> > > [88901.476402]  do_readv_writev+0x76/0xb0
-> > > [88901.480582]  ? do_dentry_open+0x261/0x310
-> > > [88901.485069]  ? xfs_extent_busy_ag_cmp+0x20/0x20 [xfs]
-> > > [88901.490704]  vfs_writev+0x3c/0x50
-> > > [88901.494409]  nfsd_vfs_write+0xd0/0x360 [nfsd]
-> > > [88901.499271]  ? ima_file_check+0x20/0x30
-> > > [88901.503553]  nfsd_write+0x15a/0x210 [nfsd]
-> > > [88901.508116]  nfsd3_proc_write+0x9d/0x130 [nfsd]
-> > > [88901.513172]  nfsd_dispatch+0xce/0x270 [nfsd]
-> > > [88901.517950]  svc_process_common+0x387/0x740 [sunrpc]
-> > > [88901.523492]  svc_process+0xfc/0x1c0 [sunrpc]
-> > > [88901.528248]  nfsd+0xe9/0x160 [nfsd]
-> > > [88901.532137]  kthread+0x109/0x140
-> > > [88901.535740]  ? nfsd_destroy+0x60/0x60 [nfsd]
-> > > [88901.540501]  ? kthread_park+0x60/0x60
-> > > [88901.544586]  ret_from_fork+0x25/0x30
-> > > [88901.548572] Code: 63 78 04 44 0f b7 70 08 41 89 d0 4c 8d 2c 38 41 83 e0 01 f6 c2 02 74 17 66 45 85 c0 74 11 f6 c2 04 b9 01 00 00 00 75 bb 83 ca 04 <66> 89 50 0a 66 45 85 c0 74 52 0f b6 48 0b 41 0f b7 f6 4d 89 e0
-> > > [88901.569642] RIP: report_bug+0x64/0x100 RSP: ffffc2820478f598
-> > > [88901.575955] CR2: ffffffffc0360e12
-> > > [88901.579663] ---[ end trace 62c63b9fb594e7f4 ]---
-> > > [88901.584811] Kernel panic - not syncing: Fatal exception
-> > > [88901.590694] Kernel Offset: 0x35000000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
-> > > [88901.602731] Rebooting in 3 seconds..
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ 192.168.1.111:/nowhere /mnt nfs bg 0 0
+
+and reboot (192.168.1.111 is on a different subnet to the VM I am
+testing in, but no host responds to the address).
+
+There is a 1m30s wait while trying to mount /mnt, then boot completes
+(I was wrong when I said that it didn't).
+
+=E2=97=8F mnt.mount - /mnt
+   Loaded: loaded (/etc/fstab; generated; vendor preset: enabled)
+   Active: failed (Result: timeout) since Thu 2017-06-08 11:13:52 AEST; 1mi=
+n 24s ago
+    Where: /mnt
+     What: 192.168.1.111:/nowhere
+     Docs: man:fstab(5)
+           man:systemd-fstab-generator(8)
+  Process: 333 ExecMount=3D/bin/mount 192.168.1.111:/nowhere /mnt -t nfs -o=
+ bg (code=3Dkilled, signal=3DTERM)
+
+Jun 08 11:12:22 debian systemd[1]: Mounting /mnt...
+Jun 08 11:13:52 debian systemd[1]: mnt.mount: Mounting timed out. Stopping.
+Jun 08 11:13:52 debian systemd[1]: mnt.mount: Mount process exited, code=3D=
+killed status=3D15
+Jun 08 11:13:52 debian systemd[1]: Failed to mount /mnt.
+Jun 08 11:13:52 debian systemd[1]: mnt.mount: Unit entered failed state.
+
+
+The /bin/mount process has been killed (SIGTERM) after the 90 second
+timeout
+
+=E2=97=8F remote-fs.target - Remote File Systems
+   Loaded: loaded (/lib/systemd/system/remote-fs.target; enabled; vendor pr=
+eset: enabled)
+  Drop-In: /run/systemd/generator/remote-fs.target.d
+           =E2=94=94=E2=94=8050-insserv.conf.conf
+   Active: inactive (dead)
+     Docs: man:systemd.special(7)
+
+Jun 08 11:13:52 debian systemd[1]: Dependency failed for Remote File System=
+s.
+Jun 08 11:13:52 debian systemd[1]: remote-fs.target: Job remote-fs.target/s=
+tart failed with result 'dependency'.
+
+
+remote-fs.target has not been reached.
+
+Because remote-fs.target is WantedBy multi-user.target, but need
+RequiredBy it, boot completes.
+But if anything did Require remote-fs.target, it would fail if "bg"
+mounts were not mounted within 90 seconds.
+
+
+Looking back over your log messages:
+
+>>> mount.nfs: portmap query failed: RPC: Remote system error - Connection =
+refused
+>>> mount.nfs: backgrounding "rhel7srv:/home/tmp"
+
+it appears that the fg mount attempt failed quickly (ECONNREFUSED), so it
+background the process immediately.  Systemd sees that as success
+(despite the fact that the filesystem isn't actually mounted) and
+doesn't clean up the background processes (which is arguably a bug).
+
+If you try to mount from a server which doesn't even return ECONNREFUSED or
+EHOSTUNREACH, such that the first mount attempt takes longer than 90
+seconds, then you should get the same results as me.
+
+Your results go some way to explaining why Lennart hasn't received many
+complaints, but I'm convinced that the current situation is not ideal
+(because SUSE has received some complaints).
+
+I've been pondering the possibility of making "bg" work properly with
+systemd and I think I've found a promising approach.  It involves having
+systemd take responsibility for the "run in the background" part.
+
+If we get systemd-fstab-generator to translate "bg" to "retry=3D10000",
+then "mount.nfs" will behave like the background version of
+"mount.nfs -o bg".  i.e. it will retry for one month (nearly).   If there is
+already a 'retry=3D' option, we just strip the "bg".
+
+For this to work, we would need to add
+   TimeoutSec=3Dinfinity
+to the .mount unit file so that systemd doesn't kill the mount.
+We would also need to add (the effect of) "nofail", so that systemd
+doesn't wait for the mount to complete...
+Except that the current implementation of "nofail" is faulty.
+It removes the default "Before=3Dremote-fs.mount", which has the unwanted
+consequence of unmounting the filesystem too early at shutdown.
+
+I have a solution for that too (which I'll submit a push request for
+shortly).
+My solution to "nofail" is to treat it much like "automount", but
+instead of using an automount unit to trigger the mount, we use
+a timer unit (with OnActiveSec=3D0).
+By triggering the mount unit with a timer instead of Wanting it
+directly, it gets run in a separate transaction.  This means that the
+"Before=3Dremote-fs.target" doesn't have the effect of delaying
+remote-fs.target.  Before/After only order jobs within the one
+transaction.
+When it comes time to shutdown, remote-fs.target and the foo.mount will
+be in the same transaction, so the Before=3D will ensure foo.mount
+isn't unmounted until after remote-fs.target has been allows to finish,
+which is after any services that might be using the filesystem.
+
+So I think I've found a solution for systemd to handle "bg" nfs mounts
+correctly.   I'll submit some pull requests for consideration.
+
+Thanks,
+NeilBrown
+
+=20=20=20
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk43cYACgkQOeye3VZi
+gbk0wxAAmKKIIi7I8dGO1UOQO1t4eslkxFbH+wiYJZ8ANNfRfj4UkaFsg+ZCZ5o7
+nznY/qOiNlR8k7nCqj35lxOLsSHoaM87h5ATo20TSmOgWgWMQ0doBfhyg5H1rt1v
+tq+qxeHcSF3pM/EJHpoFT0IQ2JabfRHyXeDy+MVSS37xbSCo8pCp0kmS8OfQSMN4
+mGJ/FlLKTdGCh+XWU+aWfqtlMIc1mEbBHTTKRxdMrFg+HCwoFKrdKIi2tiAXjOCh
+I5Q8tDwTADb6dnYp1VZBxs8QBdc6ekMj82iYb2yp1ESLHaSc58TRTNDf/2YNYJ6G
+mSsJPyMxR81BOz9enXGxRYUZ6L0deiGFGc9mLi6/euLfyWXqGtDM4ondX9lqgZtM
+62mp8/ZsXK6hAT3qWDaLNrXg+08N95Au19HDkRt/LvOWBGUgcAKoFoHkJ92aJjiZ
+uyNITodxfRjBGumVkPY7xW4kKXj3SytOeuSpn+cNaxxUn/2Zv5Xn38/O7f6aRnvw
+CGQovKTBptv6oikCIDqEhxwTbdOVkhLgJc7xBIyS0SS1dWMUHZ/OEUKnCgtSC//g
+1ii7jmGICRCsUcAcdhzxp1xyby2anWLIkw6mPHh3VtqW6uQoXfS276iP+pqondi6
+VJiN569S0hRrIwTuCvNVrYlBLF99whV6TPToMzcz6sxlTfDHVbc=
+=nh5D
+-----END PGP SIGNATURE-----
+--=-=-=--
