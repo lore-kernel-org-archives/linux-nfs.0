@@ -1,60 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:36381 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751717AbdFHPx0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:53:26 -0400
-Subject: [PATCH v2 13/13] xprtrdma: Fix documenting comments in frwr_ops.c
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 08 Jun 2017 11:53:24 -0400
-Message-ID: <20170608155324.18945.10549.stgit@manet.1015granger.net>
-In-Reply-To: <20170608154339.18945.5500.stgit@manet.1015granger.net>
-References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:39218 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751620AbdFHQES (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Jun 2017 12:04:18 -0400
+Subject: Re: [PATCH] mount.nfs: Use default minor version when -t nfs4 is
+ specified
+From: Steve Dickson <SteveD@RedHat.com>
+To: NeilBrown <neilb@suse.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+References: <20170606194812.4248-1-steved@redhat.com>
+ <87y3t4bjhs.fsf@notabene.neil.brown.name>
+ <980ef718-075d-4c68-7e2c-853add72e184@RedHat.com>
+Message-ID: <abb747de-325c-c62b-ed1d-81fcd3e16944@RedHat.com>
+Date: Thu, 8 Jun 2017 12:04:16 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <980ef718-075d-4c68-7e2c-853add72e184@RedHat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up.
 
-FASTREG and LOCAL_INV WRs are typically not signaled. localinv_wake
-is used for the last LOCAL_INV WR in a chain, which is always
-signaled. The documenting comments should reflect that.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/frwr_ops.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+On 06/08/2017 11:36 AM, Steve Dickson wrote:
+> 
+> 
+> On 06/06/2017 10:48 PM, NeilBrown wrote:
+>> On Tue, Jun 06 2017, Steve Dickson wrote:
+>>
+>>> When the nfs4 filesystem specified, the default minor
+>>> version should be used not v4.0.
+>>>
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>> ---
+>>>  utils/mount/stropts.c | 3 ++-
+>>>  1 file changed, 2 insertions(+), 1 deletion(-)
+>>>
+>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>> index c0266e5..57efb26 100644
+>>> --- a/utils/mount/stropts.c
+>>> +++ b/utils/mount/stropts.c
+>>> @@ -317,7 +317,8 @@ static int nfs_set_version(struct nfsmount_info *mi)
+>>>  
+>>>  	if (strncmp(mi->type, "nfs4", 4) == 0) {
+>>>  		mi->version.major = 4;
+>>> -		mi->version.v_mode = V_GENERAL;
+>>> +		mi->version.minor = 2;
+>>> +		mi->version.v_mode = V_SPECIFIC;
+>>
+>> I think this is wrong.
+>>
+>> By setting the mode to SPECIFIC, you are saying that if the server
+>> doesn't support v4.2, then fail the mount.  That cannot be right.
+> Ok... I though since nfs4 was being specify it should be
+> V_SPECIFIC but I do see your point about negotiating  down.
+> 
+> It turns out setting  vers4.2=n in /etc/nfs.conf breaks 
+> all v4 mounts... So I think we have issues in that area
+> ATM... ;-)
+> 
+>>
+>> Given that (currently) v_mode is not V_SPECIFIC, nfs_set_version()
+>> will go on and call nfs_default_version(), which will use the default
+>> value from the config file - just as Chuck suggests.
+>>
+>> If there is no default in the config file .... nfs_default_version()
+>> will do nothing.  So version.minor will probably remain at zero.
+>> So setting
+>>> +		mi->version.minor = 2;
+>>
+>> (where 2 is the maximum supported version) is probably correct.
+It is because in nfs_default_version() there is this chunk of code
 
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 8f63d38..6aea36a 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -277,7 +277,7 @@
- }
- 
- /**
-- * frwr_wc_fastreg - Invoked by RDMA provider for each polled FastReg WC
-+ * frwr_wc_fastreg - Invoked by RDMA provider for a flushed FastReg WC
-  * @cq:	completion queue (ignored)
-  * @wc:	completed WR
-  *
-@@ -298,7 +298,7 @@
- }
- 
- /**
-- * frwr_wc_localinv - Invoked by RDMA provider for each polled LocalInv WC
-+ * frwr_wc_localinv - Invoked by RDMA provider for a flushed LocalInv WC
-  * @cq:	completion queue (ignored)
-  * @wc:	completed WR
-  *
-@@ -319,7 +319,7 @@
- }
- 
- /**
-- * frwr_wc_localinv - Invoked by RDMA provider for each polled LocalInv WC
-+ * frwr_wc_localinv_wake - Invoked by RDMA provider for a signaled LocalInv WC
-  * @cq:	completion queue (ignored)
-  * @wc:	completed WR
-  *
+    if (mi->version.v_mode == V_GENERAL) {
+        if (config_default_vers.v_mode != V_DEFAULT &&
+            mi->version.major == config_default_vers.major)
+            mi->version.minor = config_default_vers.minor;
+        return;
+    }
+that ends up not setting the minor version at all which
+is the reason the minor version is zero. 
 
+steved.
+
+>> Setting
+>>> +		mi->version.v_mode = V_SPECIFIC;
+>> is unnecessary and wrong.
+>>
+>> If there an easy way to find out the maximum minor version that the
+>> kernel supports?  We should really default version.minor to that.
+>> Once we get up to v4.20, it'll seem odd to try to mount 4.20, 4.19,
+>> 4.18,... until something succeeds....
+> Maybe it should be something like the server does under /proc/fs/nfsd/version
+> 
+> steved.
+> 
+>>
+>> Thanks,
+>> NeilBrown
+>>
+>>>  	}
+>>>  	/*
+>>>  	 * Before 2.6.32, the kernel NFS client didn't
+>>> -- 
+>>> 2.9.4
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
