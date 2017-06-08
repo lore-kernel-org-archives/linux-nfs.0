@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34295 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751642AbdFHPwy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:52:54 -0400
-Subject: [PATCH v2 09/13] NFSv4.1: Use seqid returned by EXCHANGE_ID after
- state migration
+Received: from mail-it0-f66.google.com ([209.85.214.66]:35967 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751786AbdFHPxS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:53:18 -0400
+Subject: [PATCH v2 12/13] xprtrdma: Replace PAGE_MASK with offset_in_page()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 08 Jun 2017 11:52:52 -0400
-Message-ID: <20170608155252.18945.61089.stgit@manet.1015granger.net>
+Date: Thu, 08 Jun 2017 11:53:16 -0400
+Message-ID: <20170608155316.18945.60694.stgit@manet.1015granger.net>
 In-Reply-To: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,52 +15,74 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Transparent State Migration copies a client's lease state from the
-server where a filesystem used to reside to the server where it now
-resides. When an NFSv4.1 client first contacts that destination
-server, it uses EXCHANGE_ID to detect trunking relationships.
+Clean up.
 
-The lease that was copied there is returned to that client, but the
-destination server sets EXCHGID4_FLAG_CONFIRMED_R when replying to
-the client. This is because the lease was confirmed on the source
-server (before it was copied).
-
-When CONFIRMED_R is set, the client throws away the sequence ID
-returned by the server. During a Transparent State Migration, however
-there's no other way for the client to know what sequence ID to use
-with a lease that's been migrated.
-
-Therefore, the client must save and use the contrived slot sequence
-value returned by the destination server even when CONFIRMED_R is
-set.
-
-Note that some servers always return a seqid of 1 after a migration.
-
-Reported-by: Xuan Qi <xuan.qi@oracle.com>
+Reported by: Geliang Tang <geliangtang@gmail.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Xuan Qi <xuan.qi@oracle.com>
 ---
- fs/nfs/nfs4proc.c |    7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |   16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c08c46a..04dd718 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7375,12 +7375,11 @@ static void nfs4_exchange_id_done(struct rpc_task *task, void *data)
- 	if (status == 0) {
- 		clp->cl_clientid = cdata->res.clientid;
- 		clp->cl_exchange_flags = cdata->res.flags;
-+		clp->cl_seqid = cdata->res.seqid;
- 		/* Client ID is not confirmed */
--		if (!(cdata->res.flags & EXCHGID4_FLAG_CONFIRMED_R)) {
-+		if (!(cdata->res.flags & EXCHGID4_FLAG_CONFIRMED_R))
- 			clear_bit(NFS4_SESSION_ESTABLISHED,
--			&clp->cl_session->session_state);
--			clp->cl_seqid = cdata->res.seqid;
--		}
-+				  &clp->cl_session->session_state);
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index b6584ae..ca4d6e4 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -141,7 +141,7 @@ static bool rpcrdma_args_inline(struct rpcrdma_xprt *r_xprt,
  
- 		kfree(clp->cl_serverowner);
- 		clp->cl_serverowner = cdata->res.server_owner;
+ 	if (xdr->page_len) {
+ 		remaining = xdr->page_len;
+-		offset = xdr->page_base & ~PAGE_MASK;
++		offset = offset_in_page(xdr->page_base);
+ 		count = 0;
+ 		while (remaining) {
+ 			remaining -= min_t(unsigned int,
+@@ -222,7 +222,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 
+ 	len = xdrbuf->page_len;
+ 	ppages = xdrbuf->pages + (xdrbuf->page_base >> PAGE_SHIFT);
+-	page_base = xdrbuf->page_base & ~PAGE_MASK;
++	page_base = offset_in_page(xdrbuf->page_base);
+ 	p = 0;
+ 	while (len && n < RPCRDMA_MAX_SEGS) {
+ 		if (!ppages[p]) {
+@@ -540,7 +540,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 			goto out;
+ 
+ 		page = virt_to_page(xdr->tail[0].iov_base);
+-		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
++		page_base = offset_in_page(xdr->tail[0].iov_base);
+ 
+ 		/* If the content in the page list is an odd length,
+ 		 * xdr_write_pages() has added a pad at the beginning
+@@ -557,7 +557,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	 */
+ 	if (xdr->page_len) {
+ 		ppages = xdr->pages + (xdr->page_base >> PAGE_SHIFT);
+-		page_base = xdr->page_base & ~PAGE_MASK;
++		page_base = offset_in_page(xdr->page_base);
+ 		remaining = xdr->page_len;
+ 		while (remaining) {
+ 			sge_no++;
+@@ -587,7 +587,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	 */
+ 	if (xdr->tail[0].iov_len) {
+ 		page = virt_to_page(xdr->tail[0].iov_base);
+-		page_base = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
++		page_base = offset_in_page(xdr->tail[0].iov_base);
+ 		len = xdr->tail[0].iov_len;
+ 
+ map_tail:
+@@ -878,9 +878,9 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	srcp += curlen;
+ 	copy_len -= curlen;
+ 
+-	page_base = rqst->rq_rcv_buf.page_base;
+-	ppages = rqst->rq_rcv_buf.pages + (page_base >> PAGE_SHIFT);
+-	page_base &= ~PAGE_MASK;
++	ppages = rqst->rq_rcv_buf.pages +
++		(rqst->rq_rcv_buf.page_base >> PAGE_SHIFT);
++	page_base = offset_in_page(rqst->rq_rcv_buf.page_base);
+ 	fixup_copy_count = 0;
+ 	if (copy_len && rqst->rq_rcv_buf.page_len) {
+ 		int pagelist_len;
 
