@@ -1,14 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34263 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751642AbdFHPwv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:52:51 -0400
-Subject: [PATCH v2 08/13] NFSv4.1: Handle EXCHGID4_FLAG_CONFIRMED_R during
- NFSv4.1 migration
+Received: from mail-it0-f49.google.com ([209.85.214.49]:38879 "EHLO
+        mail-it0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751612AbdFHPxC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:53:02 -0400
+Subject: [PATCH v2 10/13] xprtrdma: Demote "connect" log messages
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 08 Jun 2017 11:52:44 -0400
-Message-ID: <20170608155244.18945.66640.stgit@manet.1015granger.net>
+Date: Thu, 08 Jun 2017 11:53:00 -0400
+Message-ID: <20170608155300.18945.28044.stgit@manet.1015granger.net>
 In-Reply-To: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,110 +15,112 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Transparent State Migration copies a client's lease state from the
-server where a filesystem used to reside to the server where it now
-resides. When an NFSv4.1 client first contacts that destination
-server, it uses EXCHANGE_ID to detect trunking relationships.
+Some have complained about the log messages generated when xprtrdma
+opens or closes a connection to a server. When an NFS mount is
+mostly idle these can appear every few minutes as the client idles
+out the connection and reconnects.
 
-The lease that was copied there is returned to that client, but the
-destination server sets EXCHGID4_FLAG_CONFIRMED_R when replying to
-the client. This is because the lease was confirmed on the source
-server (before it was copied).
+Connection and disconnection is a normal part of operation, and not
+exceptional, so change these to dprintk's for now. At some point
+all of these will be converted to tracepoints, but that's for
+another day.
 
-Normally, when CONFIRMED_R is set, a client purges the lease and
-creates a new one. However, that throws away the entire benefit of
-Transparent State Migration.
-
-Therefore, the client must not purge that lease when it is possible
-that Transparent State Migration has occurred.
-
-Reported-by: Xuan Qi <xuan.qi@oracle.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Xuan Qi <xuan.qi@oracle.com>
 ---
- fs/nfs/nfs4client.c       |    5 +++++
- fs/nfs/nfs4state.c        |   16 +++++++++++-----
- include/linux/nfs_fs_sb.h |    2 ++
- 3 files changed, 18 insertions(+), 5 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   44 ++++++++-----------------------------------
+ 1 file changed, 8 insertions(+), 36 deletions(-)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 692a7a8..203d7a3 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -414,6 +414,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	if (clp != old)
- 		clp->cl_preserve_clid = true;
- 	nfs_put_client(clp);
-+	clear_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags);
- 	return old;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index a215a87..e4171f2 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -243,8 +243,6 @@
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+ 	struct sockaddr *sap = (struct sockaddr *)&ep->rep_remote_addr;
+ #endif
+-	struct ib_qp_attr *attr = &ia->ri_qp_attr;
+-	struct ib_qp_init_attr *iattr = &ia->ri_qp_init_attr;
+ 	int connstate = 0;
  
- error:
-@@ -853,6 +854,8 @@ static int nfs4_set_client(struct nfs_server *server,
- 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
- 	if (server->options & NFS_OPTION_MIGRATION)
- 		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
-+	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
-+		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
+ 	switch (event->event) {
+@@ -267,7 +265,8 @@
+ 		break;
+ 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-		pr_info("rpcrdma: removing device for %pIS:%u\n",
++		pr_info("rpcrdma: removing device %s for %pIS:%u\n",
++			ia->ri_device->name,
+ 			sap, rpc_get_port(sap));
+ #endif
+ 		set_bit(RPCRDMA_IAF_REMOVING, &ia->ri_flags);
+@@ -282,13 +281,6 @@
+ 		return 1;
+ 	case RDMA_CM_EVENT_ESTABLISHED:
+ 		connstate = 1;
+-		ib_query_qp(ia->ri_id->qp, attr,
+-			    IB_QP_MAX_QP_RD_ATOMIC | IB_QP_MAX_DEST_RD_ATOMIC,
+-			    iattr);
+-		dprintk("RPC:       %s: %d responder resources"
+-			" (%d initiator)\n",
+-			__func__, attr->max_dest_rd_atomic,
+-			attr->max_rd_atomic);
+ 		rpcrdma_update_connect_private(xprt, &event->param.conn);
+ 		goto connected;
+ 	case RDMA_CM_EVENT_CONNECT_ERROR:
+@@ -298,11 +290,9 @@
+ 		connstate = -ENETDOWN;
+ 		goto connected;
+ 	case RDMA_CM_EVENT_REJECTED:
+-#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-		pr_info("rpcrdma: connection to %pIS:%u on %s rejected: %s\n",
+-			sap, rpc_get_port(sap), ia->ri_device->name,
++		dprintk("rpcrdma: connection to %pIS:%u rejected: %s\n",
++			sap, rpc_get_port(sap),
+ 			rdma_reject_msg(id, event->status));
+-#endif
+ 		connstate = -ECONNREFUSED;
+ 		if (event->status == IB_CM_REJ_STALE_CONN)
+ 			connstate = -EAGAIN;
+@@ -310,37 +300,19 @@
+ 	case RDMA_CM_EVENT_DISCONNECTED:
+ 		connstate = -ECONNABORTED;
+ connected:
+-		dprintk("RPC:       %s: %sconnected\n",
+-					__func__, connstate > 0 ? "" : "dis");
+ 		atomic_set(&xprt->rx_buf.rb_credits, 1);
+ 		ep->rep_connected = connstate;
+ 		rpcrdma_conn_func(ep);
+ 		wake_up_all(&ep->rep_connect_wait);
+ 		/*FALLTHROUGH*/
+ 	default:
+-		dprintk("RPC:       %s: %pIS:%u (ep 0x%p): %s\n",
+-			__func__, sap, rpc_get_port(sap), ep,
+-			rdma_event_msg(event->event));
++		dprintk("RPC:       %s: %pIS:%u on %s/%s (ep 0x%p): %s\n",
++			__func__, sap, rpc_get_port(sap),
++			ia->ri_device->name, ia->ri_ops->ro_displayname,
++			ep, rdma_event_msg(event->event));
+ 		break;
+ 	}
  
- 	/* Allocate or find a client reference we can use */
- 	clp = nfs_get_client(&cl_init);
-@@ -1213,9 +1216,11 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
- 		return -EAFNOSUPPORT;
- 
- 	nfs_server_remove_lists(server);
-+	set_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
- 	error = nfs4_set_client(server, hostname, sap, salen, buf,
- 				clp->cl_proto, clnt->cl_timeout,
- 				clp->cl_minorversion, net);
-+	clear_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
- 	nfs_put_client(clp);
- 	if (error != 0) {
- 		nfs_server_insert_lists(server);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index b34de03..83f8e60 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -352,11 +352,17 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
- 	if (clp != *result)
- 		return 0;
- 
--	/* Purge state if the client id was established in a prior instance */
--	if (clp->cl_exchange_flags & EXCHGID4_FLAG_CONFIRMED_R)
--		set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
--	else
--		set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+	/*
-+	 * Purge state if the client id was established in a prior
-+	 * instance and the client id could not have arrived on the
-+	 * server via Transparent State Migration.
-+	 */
-+	if (clp->cl_exchange_flags & EXCHGID4_FLAG_CONFIRMED_R) {
-+		if (!test_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags))
-+			set_bit(NFS4CLNT_PURGE_STATE, &clp->cl_state);
-+		else
-+			set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
-+	}
- 	nfs4_schedule_state_manager(clp);
- 	status = nfs_wait_client_init_complete(clp);
- 	if (status < 0)
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index e418a10..74c4466 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -42,6 +42,7 @@ struct nfs_client {
- #define NFS_CS_MIGRATION	2		/* - transparent state migr */
- #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
- #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
-+#define NFS_CS_TSM_POSSIBLE	5		/* - Maybe state migration */
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
-@@ -210,6 +211,7 @@ struct nfs_server {
- 	unsigned long		mig_status;
- #define NFS_MIG_IN_TRANSITION		(1)
- #define NFS_MIG_FAILED			(2)
-+#define NFS_MIG_TSM_POSSIBLE		(3)
- 
- 	void (*destroy)(struct nfs_server *);
+-#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-	if (connstate == 1) {
+-		int ird = attr->max_dest_rd_atomic;
+-		int tird = ep->rep_remote_cma.responder_resources;
+-
+-		pr_info("rpcrdma: connection to %pIS:%u on %s, memreg '%s', %d credits, %d responders%s\n",
+-			sap, rpc_get_port(sap),
+-			ia->ri_device->name,
+-			ia->ri_ops->ro_displayname,
+-			xprt->rx_buf.rb_max_requests,
+-			ird, ird < 4 && ird < tird / 2 ? " (low!)" : "");
+-	} else if (connstate < 0) {
+-		pr_info("rpcrdma: connection to %pIS:%u closed (%d)\n",
+-			sap, rpc_get_port(sap), connstate);
+-	}
+-#endif
+-
+ 	return 0;
+ }
  
 
