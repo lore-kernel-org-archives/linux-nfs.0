@@ -1,40 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38574 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751992AbdFHPgu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Jun 2017 11:36:50 -0400
-Date: Thu, 8 Jun 2017 11:36:49 -0400
-To: NeilBrown <neilb@suse.com>
-Cc: Steve Dickson <SteveD@RedHat.com>,
-        Lennart Poettering <mzxreary@0pointer.de>,
-        systemd-devel@freedesktop.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option
- and systemd.
-Message-ID: <20170608153649.GB8625@fieldses.org>
-References: <87lgpkgwrw.fsf@notabene.neil.brown.name>
- <20170529133814.GC17967@gardel-login>
- <87tw43fgrf.fsf@notabene.neil.brown.name>
- <89415cad-331e-bac6-7fd1-dffa058726de@RedHat.com>
- <87lgp4dbx7.fsf@notabene.neil.brown.name>
- <2a7fd6d4-a965-02e0-3b7b-97c5743d7083@RedHat.com>
- <20170607120221.GJ27006@gardel-login>
- <ce5c37b4-a81b-4eaf-c1ac-7f36488bdaa9@RedHat.com>
- <87mv9jawjf.fsf@notabene.neil.brown.name>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33680 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751771AbdFHPvt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:51:49 -0400
+Subject: [PATCH v2 01/13] xprtrdma: On invalidation failure,
+ remove MWs from rl_registered
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Thu, 08 Jun 2017 11:51:48 -0400
+Message-ID: <20170608155147.18945.85705.stgit@manet.1015granger.net>
+In-Reply-To: <20170608154339.18945.5500.stgit@manet.1015granger.net>
+References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87mv9jawjf.fsf@notabene.neil.brown.name>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 08, 2017 at 03:16:52PM +1000, NeilBrown wrote:
-> So I think I've found a solution for systemd to handle "bg" nfs mounts
-> correctly.   I'll submit some pull requests for consideration.
+Callers assume the ro_unmap_sync and ro_unmap_safe methods empty
+the list of registered MRs. Ensure that all paths through
+fmr_op_unmap_sync() remove MWs from that list.
 
-Out of curiosity, after that change is there still any reason you'd
-recommend any new user actually use "bg" (as opposed to an automount)?
+Fixes: 9d6b04097882 ("xprtrdma: Place registered MWs on a ... ")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/fmr_ops.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-I appreciate the effort to keep existing systems working, I'm just
-curious.
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 59e6402..21f3cd5 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -295,6 +295,7 @@ enum {
+ 	pr_err("rpcrdma: ib_unmap_fmr failed (%i)\n", rc);
+ 
+ 	list_for_each_entry_safe(mw, tmp, &req->rl_registered, mw_list) {
++		list_del_init(&mw->mw_list);
+ 		list_del_init(&mw->fmr.fm_mr->list);
+ 		fmr_op_recover_mr(mw);
+ 	}
 
---b.
