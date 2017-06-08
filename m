@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34210 "EHLO
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36166 "EHLO
         mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751744AbdFHPwa (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:52:30 -0400
-Subject: [PATCH v2 06/13] xprtrdma: Fix FRWR invalidation error recovery
+        with ESMTP id S1751744AbdFHPwn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Jun 2017 11:52:43 -0400
+Subject: [PATCH v2 07/13] xprtrdma: Don't defer MR recovery if ro_map fails
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 08 Jun 2017 11:52:28 -0400
-Message-ID: <20170608155228.18945.92955.stgit@manet.1015granger.net>
+Date: Thu, 08 Jun 2017 11:52:36 -0400
+Message-ID: <20170608155236.18945.12584.stgit@manet.1015granger.net>
 In-Reply-To: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -15,74 +15,114 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When ib_post_send() fails, all LOCAL_INV WRs past @bad_wr have to be
-examined, and the MRs reset by hand.
+Deferred MR recovery does a DMA-unmapping of the MW. However, ro_map
+invokes rpcrdma_defer_mr_recovery in some error cases where the MW
+has not even been DMA-mapped yet.
 
-I'm not sure how the existing code can work by comparing R_keys.
-Restructure the logic so that instead it walks the chain of WRs,
-starting from the first bad one.
+Avoid a DMA-unmapping error replacing rpcrdma_defer_mr_recovery.
 
-Make sure to wait for completion if at least one WR was actually
-posted. Otherwise, if the ib_post_send fails, we can end up
-DMA-unmapping the MR while LOCAL_INV operations are in flight.
+Also note that if ib_dma_map_sg is asked to map 0 nents, it will
+return 0. So the extra "if (i == 0)" check is no longer needed.
 
-Commit 7a89f9c626e3 ("xprtrdma: Honor ->send_request API contract")
-added the rdma_disconnect() call site. The disconnect actually
-causes more problems than it solves, and SQ overruns happen only as
-a result of software bugs. So remove it.
-
-Fixes: d7a21c1bed54 ("xprtrdma: Reset MRs in frwr_op_unmap_sync()")
+Fixes: 42fe28f60763 ("xprtrdma: Do not leak an MW during a DMA ...")
+Fixes: 505bbe64dd04 ("xprtrdma: Refactor MR recovery work queues")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/frwr_ops.c |   23 +++++++++++++----------
- 1 file changed, 13 insertions(+), 10 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c  |   18 +++++++++---------
+ net/sunrpc/xprtrdma/frwr_ops.c |   19 ++++++++-----------
+ 2 files changed, 17 insertions(+), 20 deletions(-)
 
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 5556ed9..2f4eacd 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -213,13 +213,11 @@ enum {
+ 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
+ 			break;
+ 	}
+-	mw->mw_nents = i;
+ 	mw->mw_dir = rpcrdma_data_dir(writing);
+-	if (i == 0)
+-		goto out_dmamap_err;
+ 
+-	if (!ib_dma_map_sg(r_xprt->rx_ia.ri_device,
+-			   mw->mw_sg, mw->mw_nents, mw->mw_dir))
++	mw->mw_nents = ib_dma_map_sg(r_xprt->rx_ia.ri_device,
++				     mw->mw_sg, i, mw->mw_dir);
++	if (!mw->mw_nents)
+ 		goto out_dmamap_err;
+ 
+ 	for (i = 0, dma_pages = mw->fmr.fm_physaddrs; i < mw->mw_nents; i++)
+@@ -237,16 +235,18 @@ enum {
+ 	return mw->mw_nents;
+ 
+ out_dmamap_err:
+-	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
+-	       mw->mw_sg, mw->mw_nents);
+-	rpcrdma_defer_mr_recovery(mw);
++	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
++	       mw->mw_sg, i);
++	rpcrdma_put_mw(r_xprt, mw);
+ 	return -EIO;
+ 
+ out_maperr:
+ 	pr_err("rpcrdma: ib_map_phys_fmr %u@0x%llx+%i (%d) status %i\n",
+ 	       len, (unsigned long long)dma_pages[0],
+ 	       pageoff, mw->mw_nents, rc);
+-	rpcrdma_defer_mr_recovery(mw);
++	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
++			mw->mw_sg, mw->mw_nents, mw->mw_dir);
++	rpcrdma_put_mw(r_xprt, mw);
+ 	return -EIO;
+ }
+ 
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 97f9f85..24631e0 100644
+index 24631e0..8f63d38 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -521,12 +521,13 @@
- 	 * unless ri_id->qp is a valid pointer.
- 	 */
- 	r_xprt->rx_stats.local_inv_needed++;
-+	bad_wr = NULL;
- 	rc = ib_post_send(ia->ri_id->qp, first, &bad_wr);
-+	if (bad_wr != first)
-+		wait_for_completion(&f->fr_linv_done);
- 	if (rc)
- 		goto reset_mrs;
+@@ -355,7 +355,7 @@
+ 	struct ib_mr *mr;
+ 	struct ib_reg_wr *reg_wr;
+ 	struct ib_send_wr *bad_wr;
+-	int rc, i, n, dma_nents;
++	int rc, i, n;
+ 	u8 key;
  
--	wait_for_completion(&f->fr_linv_done);
--
- 	/* ORDER: Now DMA unmap all of the MRs, and return
- 	 * them to the free MW list.
- 	 */
-@@ -543,17 +544,19 @@
- 
- reset_mrs:
- 	pr_err("rpcrdma: FRMR invalidate ib_post_send returned %i\n", rc);
--	rdma_disconnect(ia->ri_id);
- 
- 	/* Find and reset the MRs in the LOCAL_INV WRs that did not
--	 * get posted. This is synchronous, and slow.
-+	 * get posted.
- 	 */
--	list_for_each_entry(mw, mws, mw_list) {
--		f = &mw->frmr;
--		if (mw->mw_handle == bad_wr->ex.invalidate_rkey) {
--			__frwr_reset_mr(ia, mw);
--			bad_wr = bad_wr->next;
--		}
-+	rpcrdma_init_cqcount(&r_xprt->rx_ep, -count);
-+	while (bad_wr) {
-+		f = container_of(bad_wr, struct rpcrdma_frmr,
-+				 fr_invwr);
-+		mw = container_of(f, struct rpcrdma_mw, frmr);
-+
-+		__frwr_reset_mr(ia, mw);
-+
-+		bad_wr = bad_wr->next;
+ 	mw = NULL;
+@@ -391,14 +391,10 @@
+ 		    offset_in_page((seg-1)->mr_offset + (seg-1)->mr_len))
+ 			break;
  	}
- 	goto unmap;
- }
+-	mw->mw_nents = i;
+ 	mw->mw_dir = rpcrdma_data_dir(writing);
+-	if (i == 0)
+-		goto out_dmamap_err;
+ 
+-	dma_nents = ib_dma_map_sg(ia->ri_device,
+-				  mw->mw_sg, mw->mw_nents, mw->mw_dir);
+-	if (!dma_nents)
++	mw->mw_nents = ib_dma_map_sg(ia->ri_device, mw->mw_sg, i, mw->mw_dir);
++	if (!mw->mw_nents)
+ 		goto out_dmamap_err;
+ 
+ 	n = ib_map_mr_sg(mr, mw->mw_sg, mw->mw_nents, NULL, PAGE_SIZE);
+@@ -436,13 +432,14 @@
+ 	return mw->mw_nents;
+ 
+ out_dmamap_err:
+-	pr_err("rpcrdma: failed to dma map sg %p sg_nents %u\n",
+-	       mw->mw_sg, mw->mw_nents);
+-	rpcrdma_defer_mr_recovery(mw);
++	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
++	       mw->mw_sg, i);
++	frmr->fr_state = FRMR_IS_INVALID;
++	rpcrdma_put_mw(r_xprt, mw);
+ 	return -EIO;
+ 
+ out_mapmr_err:
+-	pr_err("rpcrdma: failed to map mr %p (%u/%u)\n",
++	pr_err("rpcrdma: failed to map mr %p (%d/%d)\n",
+ 	       frmr->fr_mr, n, mw->mw_nents);
+ 	rpcrdma_defer_mr_recovery(mw);
+ 	return -EIO;
 
