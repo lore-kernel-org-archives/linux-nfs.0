@@ -1,15 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53192 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:56488 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751475AbdFHWHc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Jun 2017 18:07:32 -0400
+        id S1751895AbdFHWYt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Jun 2017 18:24:49 -0400
 From: NeilBrown <neilb@suse.com>
-To: Lutz Vieweg <lvml@5t9.de>, linux-nfs@vger.kernel.org
-Date: Fri, 09 Jun 2017 08:07:23 +1000
-Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
-In-Reply-To: <59399945.2020507@5t9.de>
-References: <20151012164846.GA5017@draconx.ca> <20151012192538.GG28755@fieldses.org> <20151012194647.GJ28755@fieldses.org> <20151013030136.GA7081@draconx.ca> <20151013065225.44c5581d@synchrony.poochiereds.net> <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com> <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com> <1469814735.19411.1.camel@poochiereds.net> <5936DC7B.8040804@5t9.de> <87vao8bilj.fsf@notabene.neil.brown.name> <59399945.2020507@5t9.de>
-Message-ID: <871squb0bo.fsf@notabene.neil.brown.name>
+To: Justin Mitchell <jumitche@redhat.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Fri, 09 Jun 2017 08:24:39 +1000
+Cc: Steve Dickson <SteveD@RedHat.com>
+Subject: Re: [PATCH] Reimplement include functionality in nfs.conf
+In-Reply-To: <1496939645.4216.13.camel@redhat.com>
+References: <1496939645.4216.13.camel@redhat.com>
+Message-ID: <87y3t29kyg.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -20,117 +22,223 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Jun 08 2017, Lutz Vieweg wrote:
+On Thu, Jun 08 2017, Justin Mitchell wrote:
 
-> On 06/07/2017 05:08 AM, NeilBrown wrote:
->>>>   fcntl(3, F_SETLK, {type=3DF_RDLCK, whence=3DSEEK_SET, start=3D107374=
-1824, len=3D1}) =3D -1 EIO (Input/output error)
->>>>   write(2, "Error: disk I/O error\n", 22Error: disk I/O error
->>>
->>> But unlike the original reporter, we use the NFS v3 protocol:
->>>> myserver:/data on /data type nfs (rw,relatime,vers=3D3,rsize=3D1048576=
-,wsize=3D1048576,namlen=3D255,soft,proto=3Dtcp,timeo=3D600,retrans=3D2,sec=
-=3Dsys,mountvers=3D3,mountport=3D20048,mountproto=3Dudp,local_lock=3Dnone)
->>
->> Using "soft" is not a good idea.  It could be the cause, but it isn't ve=
-ry
->> likely if NFS is otherwise working OK.
+> Re-implement include file functionality as documented.
 >
-> NFS v3 has been working very well for us for many years.
-> When we upgraded those two servers ~3 years ago, we did try NFS v4 first,=
- but
-> that had caused frequent occurences of "un-killable processes in D state",
-> so we had to revert to v3 to allow for stable operation.
-
-I queried the use of "soft" - as opposed to "hard".
-You defend the use of v3 as opposed to v4.
-I think there is some miscommunication happening here.
-
-If v3 works better for you than v4, then certainly use it.
-You could try reporting details of the problems with v4, but I cannot
-promise a helpful response, so it is totally up to you.
-
-But "soft" is generally a bad idea.  It can lead to data corruption in
-various way as it ports errors to user-space which user-space is often
-not expecting.
-
-These days, the processes in D state are (usually) killable.
-
+> Existing implementation had various issues, one of which was it allowed
+> a subordinate file to inadvertently change which section the subsequent
+> tags back in the master config file got assigned to.
 >
->> It might help to run
->>    rpcdebug -m nfs -s all; rpcdebug -m nlm -s all ;rpcdebug -m rpc -s all
->>    #repeat your test
->>    rpcdebug -m nfs -c all; rpcdebug -m nlm -c all ;rpcdebug -m rpc -c all
->>
->> then collect the kernel logs (possibly just run "dmesg") and post all
->> the messages which happened at that time.
+> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 >
-> Ok, attaching a log generated like this while running:
->
-> sqlite3 x.sqlite "PRAGMA case_sensitive_like=3D1;PRAGMA synchronous=3DOFF=
-;PRAGMA=20
-> recursive_triggers=3DON;PRAGMA foreign_keys=3DOFF;PRAGMA locking_mode =3D=
- NORMAL;PRAGMA journal_mode =3D=20
-> TRUNCATE;"
 
-Thanks. Probably the key line is
+That all looks reasonably sensible - thanks.
+I'll try to test it next week some time, but for now
+ Acked-by: NeilBrown <neilb@suse.com>
 
-[2339904.695240] RPC: 46702 remote rpcbind: RPC program/version unavailable
-
-The client is trying to talk to lockd on the server, and lockd doesn't
-seem to be there.
-
-
->
->> It might also help to find the port number that lockd is running on
->>     rpcinfo -p $SERVER | grep 'tcp.*nlockmgr'
->
-> None of the ports reported this way contains the string "nlockmgr":
-
-This agrees with the line from the log.  If nlockmgr isn't listed, then
-locking cannot work.  This is the cause of your problem.
-
->> rpcinfo -p myserver
->>    program vers proto   port  service
->>     100000    4   tcp    111  portmapper
->>     100000    3   tcp    111  portmapper
->>     100000    2   tcp    111  portmapper
->>     100000    4   udp    111  portmapper
->>     100000    3   udp    111  portmapper
->>     100000    2   udp    111  portmapper
-
-Even "nfs" isn't listed - but clearly the nfs server is running.
-
-My guess is that rpcbind was restarted with the "-w" flag, so it lost
-all the state that it previosly had.
-If you stop and restart NFS service on the server, it might start
-working again.  Otherwise just reboot the nfs server.
-
+Thanks,
 NeilBrown
 
 
 >
-> Regards,
 >
-> Lutz Vieweg
+> ---
+>  support/nfs/conffile.c | 78 ++++++++++++++++++++++++++++++++++++--------=
+------
+>  1 file changed, 56 insertions(+), 22 deletions(-)
+>
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index 449ac1c..05e0a6f 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -56,9 +56,11 @@
+>  #pragma GCC visibility push(hidden)
+>=20=20
+>  static void conf_load_defaults(void);
+> -static int conf_load(int trans, const char *path);
+> +static char * conf_load(const char *path);
+>  static int conf_set(int , char *, char *, char *,=20
+>  	char *, int , int );
+> +static void conf_parse(int trans, char *buf,=20
+> +	char **section, char **subsection);
+>=20=20
+>  struct conf_trans {
+>  	TAILQ_ENTRY (conf_trans) link;
+> @@ -202,7 +204,6 @@ conf_set_now(char *section, char *arg, char *tag,
+>  	node->tag =3D strdup(tag);
+>  	node->value =3D strdup(value);
+>  	node->is_default =3D is_default;
+> -
+>  	LIST_INSERT_HEAD(&conf_bindings[conf_hash (section)], node, link);
+>  	return 0;
+>  }
+> @@ -365,22 +366,47 @@ conf_parse_line(int trans, char *line, int lineno, =
+char **section, char **subsec
+>  		return;
+>  	}
+>=20=20
+> -	/* XXX Perhaps should we not ignore errors?  */
+> -	conf_set(trans, *section, *subsection, line, val, 0, 0);
+> +	if (strcasecmp(line, "include")=3D=3D0) {
+> +		/* load and parse subordinate config files */
+> +		char * subconf =3D conf_load(val);
+> +		if (subconf =3D=3D NULL) {
+> +			xlog_warn("config file error: line %d: "
+> +			"error loading included config", lineno);
+> +			return;
+> +		}
+> +
+> +		/* copy the section data so the included file can inherit it
+> +		 * without accidentally changing it for us */
+> +		char * inc_section =3D NULL;
+> +		char * inc_subsection =3D NULL;
+> +		if (*section !=3D NULL) {
+> +			inc_section =3D strdup(*section);
+> +			if (*subsection !=3D NULL)
+> +				inc_subsection =3D strdup(*subsection);
+> +		}
+> +
+> +		conf_parse(trans, subconf, &inc_section, &inc_subsection);
+> +
+> +		if (inc_section) free(inc_section);
+> +		if (inc_subsection) free(inc_subsection);
+> +		free(subconf);
+> +	} else {
+> +		/* XXX Perhaps should we not ignore errors?  */
+> +		conf_set(trans, *section, *subsection, line, val, 0, 0);
+> +	}
+>  }
+>=20=20
+>  /* Parse the mapped configuration file.  */
+>  static void
+> -conf_parse(int trans, char *buf, size_t sz)
+> +conf_parse(int trans, char *buf, char **section, char **subsection)
+>  {
+>  	char *cp =3D buf;
+> -	char *bufend =3D buf + sz;
+> +	char *bufend =3D NULL;
+>  	char *line;
+> -	char *section =3D NULL;
+> -	char *subsection =3D NULL;
+>  	int lineno =3D 0;
+>=20=20
+>  	line =3D cp;
+> +	bufend =3D buf + strlen(buf);
+>  	while (cp < bufend) {
+>  		if (*cp =3D=3D '\n') {
+>  			/* Check for escaped newlines.  */
+> @@ -389,7 +415,7 @@ conf_parse(int trans, char *buf, size_t sz)
+>  			else {
+>  				*cp =3D '\0';
+>  				lineno++;
+> -				conf_parse_line(trans, line, lineno, &section, &subsection);
+> +				conf_parse_line(trans, line, lineno, section, subsection);
+>  				line =3D cp + 1;
+>  			}
+>  		}
+> @@ -397,8 +423,6 @@ conf_parse(int trans, char *buf, size_t sz)
+>  	}
+>  	if (cp !=3D line)
+>  		xlog_warn("conf_parse: last line non-terminated, ignored.");
+> -	if (section) free(section);
+> -	if (subsection) free(subsection);
+>  }
+>=20=20
+>  static void
+> @@ -408,21 +432,21 @@ conf_load_defaults(void)
+>  	return;
+>  }
+>=20=20
+> -static int
+> -conf_load(int trans, const char *path)
+> +static char *
+> +conf_load(const char *path)
+>  {
+>  	struct stat sb;
+>  	if ((stat (path, &sb) =3D=3D 0) || (errno !=3D ENOENT)) {
+> -		char *new_conf_addr;
+> +		char *new_conf_addr =3D NULL;
+>  		size_t sz =3D sb.st_size;
+>  		int fd =3D open (path, O_RDONLY, 0);
+>=20=20
+>  		if (fd =3D=3D -1) {
+>  			xlog_warn("conf_reinit: open (\"%s\", O_RDONLY) failed", path);
+> -			return -1;
+> +			return NULL;
+>  		}
+>=20=20
+> -		new_conf_addr =3D malloc(sz);
+> +		new_conf_addr =3D malloc(sz+1);
+>  		if (!new_conf_addr) {
+>  			xlog_warn("conf_reinit: malloc (%lu) failed", (unsigned long)sz);
+>  			goto fail;
+> @@ -437,14 +461,13 @@ conf_load(int trans, const char *path)
+>  		close(fd);
+>=20=20
+>  		/* XXX Should we not care about errors and rollback?  */
+> -		conf_parse(trans, new_conf_addr, sz);
+> -		free(new_conf_addr);
+> -		return 0;
+> +		new_conf_addr[sz] =3D '\0';
+> +		return new_conf_addr;
+>  	fail:
+>  		close(fd);
+> -		free(new_conf_addr);
+> +		if (new_conf_addr) free(new_conf_addr);
+>  	}
+> -	return -1;
+> +	return NULL;
+>  }
+>=20=20
+>  /* remove and free up any existing config state */
+> @@ -473,14 +496,25 @@ static void
+>  conf_reinit(const char *conf_file)
+>  {
+>  	int trans;
+> +	char * conf_data;
+>=20=20
+>  	trans =3D conf_begin();
+> -	if (conf_load(trans, conf_file) < 0)
+> +	conf_data =3D conf_load(conf_file);
+> +
+> +	if (conf_data =3D=3D NULL)
+>  		return;
+>=20=20
+>  	/* Load default configuration values.  */
+>  	conf_load_defaults();
+>=20=20
+> +	/* Parse config contents into the transaction queue */
+> +	char *section =3D NULL;
+> +	char *subsection =3D NULL;
+> +	conf_parse(trans, conf_data, &section, &subsection);
+> +	if (section) free(section);
+> +	if (subsection) free(subsection);
+> +	free(conf_data);
+> +
+>  	/* Free potential existing configuration.  */
+>  	conf_free_bindings();
+>=20=20
+> --=20
+> 1.8.3.1
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk5yp0ACgkQOeye3VZi
-gbkGfxAAqLko+l9+uJmnYqNLXRVIf1cWMFJ/BmtQSNqdMgvausN4/8xQ0f4MTx6x
-AF45ymPXqIMlJnqBGUs77s403/wanfUV5ErXND63nb6yFeGre81F3ZqqeLfasH2M
-XqO+5WTKd4ZhXrl4VIef/0I1ZEt0F0odGrYSjr4GB0kSVbrGVp44L09NZgtxDrZv
-oyqPqJ648VOsWSA564dEck1e/OhwROtXajrsJp0WyDOyypHvPstdmXHNGlVVOdT4
-lGcFIM2ulZaiuiakoco+UQ7NIMUriKnwtSlob/YfaEpXELSDTRJ3ZDiP/D6rLodf
-8A0Yqc7Jzdfk5sHn22Gd2x1646CuCJN3Ngmwdg0vum/qeH+k+Jce7DtfauvOl5Qp
-FZ2tyFuPjbI3ucTaLEXpQHSJz+fPFxATQmQ6poLvMIURM5xacHOxl8zl0op/hqeG
-DsjGTsY/cJ62rddy+zrSCCbegMYZ08Jx1Wit8oIYMMGKv8B4dZWgjSSf7LhapMK+
-ZnzvYwjwbYESS64WkTGXGKEY7Da8cYnJo4ikThG2WQ0ch2L0hduPRShf9fC2IcYy
-LzTrlzzsmXmbhvP7u7bH2CbewdzWt4nDux9ov4lZ2ZuMZKuqTc+MFhAuAjzx7s7U
-ogkJjlhOjOrAIlIYOhyJ3nYXfa0OvBG8EiClQkmoB+lciQLdAzk=
-=yggz
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk5zqgACgkQOeye3VZi
+gbk8LQ/7BUUoa7+HVGYzQJnAK6uBZQvq6NVPuf2WW4jSbzJ7O99JI+5CCrANgUFV
+grdgNbFBojAdVVJi364LXEujm21j1/dkTQbP2FWzbeYMUKFRGZpW3ZygMTUG7alM
+dpfwinSJTFHG2rMgQcNYylZCWA2XUunfvY0L3mxPr3vhL2Ovdb7EmIFanOA1cCpG
+GLCl0L28KvvU53oJv7W0rppCSd+y+b5K9CXezWyoD6DM8BKrww6peneIzCpZ0SIJ
+JwpjzlV1tt+vDk782EmHPiOqiMCskJrOnGt0Z2Iwt1ifaBKqwuYHZTy5pOT/IOhT
+YsXWBIV/U9wFyDK75KXHZ2LgJAED6+huEIT+TsY3annwgugVchGzAlS/F66t0rcu
+h7DqU7BjdIBPgUck3mNHnkqWk51MTAZyh4TZPYhj9K8uRr2zDs38+lay9Qsg1CGb
+0RJtTmxNNcsGL5Ab93lSoD9qYPZeSJ/MVjsVxd0m9eELaVKNyqRXyEFeRpZ2tbZV
+IKa55K9c+RU+lEuy/NDZFBOuR57zAzTRtDif3SVnMyZYpLNrGqhZXFrqz3zK1ZbO
+5whfrjFLNfsuy6neWldixQFiOnnQbWyTpddZmFW4Uixxs8/bzS80EOQOrvB/T0Po
+ecDtLsR51DVm0N2LB3Bw4EwsIZHq7ahMbNA+HzTON2tgAvdl0qQ=
+=8Q7a
 -----END PGP SIGNATURE-----
 --=-=-=--
