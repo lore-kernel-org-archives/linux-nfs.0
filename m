@@ -1,41 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60890 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751562AbdFIPDk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Jun 2017 11:03:40 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Fix initialization of nfs_page_array->npages
-Date: Fri,  9 Jun 2017 11:03:23 -0400
-Message-Id: <a0aadd8ba44801d294fb919412c85f6b39bea852.1497020554.git.bcodding@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:26087 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751572AbdFISEd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jun 2017 14:04:33 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: NFSv4: cinfo->atomic and file creation
+Date: Fri, 9 Jun 2017 14:04:26 -0400
+Message-Id: <33567B9C-C04A-436F-A4F6-F5AB745D3323@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 8ef9b0b9e1c0 open-coded nfs_pgarray_set(), and left out the
-initialization of the nfs_page_array's npages.  This mistake didn't show up
-until testing with block layouts, and there shows that all pNFS reads
-return -EIO.
+Hi Trond-
 
-Fixes: 8ef9b0b9e1c0 ("NFS: move nfs_pgarray_set() to open code")
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/pagelist.c | 1 +
- 1 file changed, 1 insertion(+)
+As we discussed yesterday, I'm concerned about the test in
+_nfs4_proc_open that uses the values of the cinfo.before and
+cinfo.after fields without checking cinfo.atomic.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index ad92b401326c..7ddba5022948 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -779,6 +779,7 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- 	gfp_t gfp_flags = GFP_KERNEL;
- 
- 	pagecount = nfs_page_array_len(mirror->pg_base, mirror->pg_count);
-+	pg_array->npages = pagecount;
- 
- 	if (pagecount <= ARRAY_SIZE(pg_array->page_array))
- 		pg_array->pagevec = pg_array->page_array;
--- 
-2.9.3
+2288         if (o_arg->open_flags & O_CREAT) {
+2289                 if (o_arg->open_flags & O_EXCL)
+2290                         data->file_created = 1;
+2291                 else if (o_res->cinfo.before != o_res->cinfo.after)
+2292                         data->file_created = 1;
+2293                 if (data->file_created || dir->i_version != o_res->cinfo.after)
+2294                         update_changeattr(dir, &o_res->cinfo,
+2295                                         o_res->f_attr->time_start);
+2296         }
+
+Line 2291 is the issue.
+
+Suppose the server filesystem substitutes a weak ctime for
+the change attribute. Sometimes when a file is successfully
+created on the server, the ctime of the parent doesn't
+change. This test then fails and leaves file_created set
+to zero.
+
+Later, nfs4_opendata_access looks at file_created. If not
+set, the access check fails and open(2) returns EACCES as
+a result, even though the file was created successfully
+and OPEN returned NFS4_OK.
+
+You mentioned that the server should set cinfo.atomic to
+be false when a weak ctime is used as the change attribute.
+Will that help in this case?
+
+
+--
+Chuck Lever
+
+
 
