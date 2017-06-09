@@ -1,152 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:33664 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751561AbdFITPg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jun 2017 15:15:36 -0400
-Subject: Re: [PATCH v2 04/13] xprtrdma: Rename rpcrdma_req::rl_free
-To: Chuck Lever <chuck.lever@oracle.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: List Linux RDMA Mailing <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <20170608154339.18945.5500.stgit@manet.1015granger.net>
- <20170608155212.18945.37327.stgit@manet.1015granger.net>
- <7ee9b1fd-9628-2767-444e-90c6736d63f9@Netapp.com>
- <5332A4D9-ADC4-4DA4-A20E-ACC6019F83BF@oracle.com>
- <C0C5BD8B-9D97-48F4-A0AD-C7FC17DA9C00@oracle.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <4e6f6463-e023-f5c2-5771-d8a1ff9bbd27@gmail.com>
-Date: Fri, 9 Jun 2017 15:15:33 -0400
+Received: from mail-lf0-f65.google.com ([209.85.215.65]:36446 "EHLO
+        mail-lf0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751538AbdFIUYN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jun 2017 16:24:13 -0400
+Received: by mail-lf0-f65.google.com with SMTP id x81so5822822lfb.3
+        for <linux-nfs@vger.kernel.org>; Fri, 09 Jun 2017 13:24:12 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <C0C5BD8B-9D97-48F4-A0AD-C7FC17DA9C00@oracle.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20170606004637.GC5789@fieldses.org>
+References: <20170602130918.gu22wnbd35idaurf@tonberry.usersys.redhat.com>
+ <20170605154504.3659-1-smayhew@redhat.com> <CAHC9VhTpcZXB=9SRLHu+8Ot=ydyszc0+Qe044uVzPz8ndx4ukA@mail.gmail.com>
+ <20170606004637.GC5789@fieldses.org>
+From: Paul Moore <paul@paul-moore.com>
+Date: Fri, 9 Jun 2017 16:24:10 -0400
+Message-ID: <CAHC9VhTF9_3mySBwrxUqu2-dw4S-Ci8qyX8d+vUTfOpTNs86+g@mail.gmail.com>
+Subject: Re: [PATCH v3] security/selinux: allow security_sb_clone_mnt_opts to
+ enable/disable native labeling behavior
+To: Scott Mayhew <smayhew@redhat.com>, selinux@tycho.nsa.gov,
+        linux-nfs@vger.kernel.org
+Cc: "J . Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        Stephen Smalley <sds@tycho.nsa.gov>,
+        Eric Paris <eparis@parisplace.org>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Jun 5, 2017 at 8:46 PM, J . Bruce Fields <bfields@fieldses.org> wrote:
+> On Mon, Jun 05, 2017 at 05:21:55PM -0400, Paul Moore wrote:
+>> On Mon, Jun 5, 2017 at 11:45 AM, Scott Mayhew <smayhew@redhat.com> wrote:
+>> > When an NFSv4 client performs a mount operation, it first mounts the
+>> > NFSv4 root and then does path walk to the exported path and performs a
+>> > submount on that, cloning the security mount options from the root's
+>> > superblock to the submount's superblock in the process.
+>> >
+>> > Unless the NFS server has an explicit fsid=0 export with the
+>> > "security_label" option, the NFSv4 root superblock will not have
+>> > SBLABEL_MNT set, and neither will the submount superblock after cloning
+>> > the security mount options.  As a result, setxattr's of security labels
+>> > over NFSv4.2 will fail.  In a similar fashion, NFSv4.2 mounts mounted
+>> > with the context= mount option will not show the correct labels because
+>> > the nfs_server->caps flags of the cloned superblock will still have
+>> > NFS_CAP_SECURITY_LABEL set.
+>> >
+>> > Allowing the NFSv4 client to enable or disable SECURITY_LSM_NATIVE_LABELS
+>> > behavior will ensure that the SBLABEL_MNT flag has the correct value
+>> > when the client traverses from an exported path without the
+>> > "security_label" option to one with the "security_label" option and
+>> > vice versa.  Similarly, checking to see if SECURITY_LSM_NATIVE_LABELS is
+>> > set upon return from security_sb_clone_mnt_opts() and clearing
+>> > NFS_CAP_SECURITY_LABEL if necessary will allow the correct labels to
+>> > be displayed for NFSv4.2 mounts mounted with the context= mount option.
+>> >
+>> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+>> > ---
+>> >  fs/nfs/super.c            | 17 ++++++++++++++++-
+>> >  include/linux/lsm_hooks.h |  4 +++-
+>> >  include/linux/security.h  |  8 ++++++--
+>> >  security/security.c       |  7 +++++--
+>> >  security/selinux/hooks.c  | 35 +++++++++++++++++++++++++++++++++--
+>> >  5 files changed, 63 insertions(+), 8 deletions(-)
+>>
+>> Thanks for sorting this out Scott and Stephen.
+>>
+>> NFS folks, any objections to this patch?  If not, I'd like to pull
+>> this into the SELinux tree but I'd like to have an ACK from you before
+>> I do.
+>
+> Looks OK to me, but I think it's Trond or Anna (added to cc) that you
+> want the ACK from.
 
+It's been about four days with not comments from the NFS folks so I'm
+just going to go ahead and merge this into the selinux/next branch so
+we can get some more widespread testing.  NFS folks, if you want to
+object please do so a week or two before the next merge window opens,
+otherwise I'm going to send this patch upstream.
 
-On 06/09/2017 03:12 PM, Chuck Lever wrote:
-> 
->> On Jun 9, 2017, at 3:03 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>
->>>
->>> On Jun 9, 2017, at 2:58 PM, Anna Schumaker <Anna.Schumaker@Netapp.com> wrote:
->>>
->>> Hi Chuck,
->>>
->>> On 06/08/2017 11:52 AM, Chuck Lever wrote:
->>>> Clean up: I'm about to use the rl_free field for purposes other than
->>>> a free list. So use a more generic name.
->>>>
->>>> This is a refactoring change only.
->>>>
->>>> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=305
->>>> Fixes: 68791649a725 ('xprtrdma: Invalidate in the RPC reply ... ')
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> net/sunrpc/xprtrdma/verbs.c     |    9 ++++-----
->>>> net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
->>>> 2 files changed, 5 insertions(+), 6 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
->>>> index a8be66d..df72224 100644
->>>> --- a/net/sunrpc/xprtrdma/verbs.c
->>>> +++ b/net/sunrpc/xprtrdma/verbs.c
->>>> @@ -971,7 +971,6 @@ struct rpcrdma_req *
->>>> 	if (req == NULL)
->>>> 		return ERR_PTR(-ENOMEM);
->>>>
->>>> -	INIT_LIST_HEAD(&req->rl_free);
->>>
->>> Does rl_list still need to get initialized somewhere?
->>
->> rl_free/rl_list isn't the anchor of a list. It is only
->> ever a member of a list. So this INIT_LIST_HEAD is actually
->> unnecessary.
-> 
-> Or, put another way: since list_empty() is not used
-> on this field anywhere, it shouldn't be necessary to
-> ensure it is initialized.
+Thanks Scott for working on this patch, and everyone else for their
+comments, testing, and review.
 
-Thanks for the explanation!  I took a second look, and that all sounds right :)
-
-> 
-> 
->>> Thanks,
->>> Anna
->>>
->>>> 	spin_lock(&buffer->rb_reqslock);
->>>> 	list_add(&req->rl_all, &buffer->rb_allreqs);
->>>> 	spin_unlock(&buffer->rb_reqslock);
->>>> @@ -1055,7 +1054,7 @@ struct rpcrdma_rep *
->>>> 			goto out;
->>>> 		}
->>>> 		req->rl_backchannel = false;
->>>> -		list_add(&req->rl_free, &buf->rb_send_bufs);
->>>> +		list_add(&req->rl_list, &buf->rb_send_bufs);
->>>> 	}
->>>>
->>>> 	INIT_LIST_HEAD(&buf->rb_recv_bufs);
->>>> @@ -1084,8 +1083,8 @@ struct rpcrdma_rep *
->>>> 	struct rpcrdma_req *req;
->>>>
->>>> 	req = list_first_entry(&buf->rb_send_bufs,
->>>> -			       struct rpcrdma_req, rl_free);
->>>> -	list_del(&req->rl_free);
->>>> +			       struct rpcrdma_req, rl_list);
->>>> +	list_del(&req->rl_list);
->>>> 	return req;
->>>> }
->>>>
->>>> @@ -1268,7 +1267,7 @@ struct rpcrdma_req *
->>>>
->>>> 	spin_lock(&buffers->rb_lock);
->>>> 	buffers->rb_send_count--;
->>>> -	list_add_tail(&req->rl_free, &buffers->rb_send_bufs);
->>>> +	list_add_tail(&req->rl_list, &buffers->rb_send_bufs);
->>>> 	if (rep) {
->>>> 		buffers->rb_recv_count--;
->>>> 		list_add_tail(&rep->rr_list, &buffers->rb_recv_bufs);
->>>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> index 1c23117..ad918c8 100644
->>>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
->>>> @@ -340,7 +340,7 @@ enum {
->>>>
->>>> struct rpcrdma_buffer;
->>>> struct rpcrdma_req {
->>>> -	struct list_head	rl_free;
->>>> +	struct list_head	rl_list;
->>>> 	unsigned int		rl_mapped_sges;
->>>> 	unsigned int		rl_connect_cookie;
->>>> 	struct rpcrdma_buffer	*rl_buffer;
->>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->> --
->> Chuck Lever
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+paul moore
+www.paul-moore.com
