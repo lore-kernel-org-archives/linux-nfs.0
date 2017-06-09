@@ -1,72 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from static-173-59-115-46.phlapa.fios.verizon.net ([173.59.115.46]:57220
-        "HELO verizon.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with SMTP id S1751527AbdFIMGg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jun 2017 08:06:36 -0400
-To: <linux-nfs@vger.kernel.org>
-Date: Fri, 09 Jun 2017 12:06:32 -0000
-Subject: 
-Content-Type: application/zip; name="654278479856042.zip"
-Message-ID: <149700999242.30693.17786340448370118659@verizon.net>
+Received: from mx1.redhat.com ([209.132.183.28]:49134 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751629AbdFINYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Jun 2017 09:24:36 -0400
+Subject: Re: [PATCH V2] mount.nfs: Use default minor version when -t nfs4 is
+ specified
+To: NeilBrown <neilb@suse.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20170608183314.15247-1-steved@redhat.com>
+ <87a85hadi6.fsf@notabene.neil.brown.name>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <00345580-ccd6-3006-852d-f6762e2cbb06@RedHat.com>
+Date: Fri, 9 Jun 2017 09:24:35 -0400
 MIME-Version: 1.0
-From: <sdeanrthe@sympatico.ca>
+In-Reply-To: <87a85hadi6.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-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
-AA==
+
+
+On 06/09/2017 02:20 AM, NeilBrown wrote:
+> On Thu, Jun 08 2017, Steve Dickson wrote:
+> 
+>> When the nfs4 filesystem specified, the default major
+>> and minor versions should be used.
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+> 
+> Hi Steve,
+>  I think this is definitely heading in the right direction.
+>  I particularly like that you've #defined for the default major/minor.
+> 
+>  However as I reflected on it, I realised that "-o v4" needs to set
+>  the same version as "-t nfs4", and even with this patch it doesn't.
+Good catch! 
+> 
+>  I think we need to focus on nfs_default_version() and make sure it does
+>  the right thing.
+> 
+>  If v.mode == V_DEFAULT, we need to copy both 'major' and 'minor'
+>  from config_default_vers if they are set.  If
+>  config_default_vers.v_mode == V_GENERAL, .minor won't be set so in
+>  that case we need to use NFS_DEFAULT_MINOR;
+> 
+>  If v.mode == V_GENERAL, then only copy the minor if it is set and the
+>  major is correct.  So we need to check for V_SPECIFIC, and other wise
+>  use the default minor.
+That's how it worked out... 
+> 
+>  If v.mode == V_SPECIFIC, nfs_default_version isn't called, so it
+>  doesn't matter.
+> 
+>  I think this gets it right...
+Also nfs_do_mount_v4() needs to check the minor
+version as well...
+
+thanks!
+
+steved.
+
+> 
+>  Thoughts?
+> 
+> Thanks,
+> NeilBrown
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index c0266e51ad1c..7dfdd9e62115 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -73,6 +73,13 @@
+>  #define NFS_DEF_BG_TIMEOUT_MINUTES	(10000u)
+>  #endif
+>  
+> +#ifndef NFS_DEFAULT_MAJOR
+> +#define NFS_DEFAULT_MAJOR	4
+> +#endif
+> +#ifndef NFS_DEFAULT_MINOR
+> +#define NFS_DEFAULT_MINOR	2
+> +#endif
+> +
+>  extern int nfs_mount_data_version;
+>  extern char *progname;
+>  extern int verbose;
+> @@ -110,22 +117,27 @@ static void nfs_default_version(struct nfsmount_info *mi)
+>  	}
+>  
+>  	if (mi->version.v_mode == V_DEFAULT &&
+> -		config_default_vers.v_mode != V_DEFAULT) {
+> +	    config_default_vers.v_mode != V_DEFAULT) {
+>  		mi->version.major = config_default_vers.major;
+> -		mi->version.minor = config_default_vers.minor;
+> +		if (config_default_vers.v_mode == V_SPECIFIC)
+> +			mi->version.minor = config_default_vers.minor;
+> +		else
+> +			mi->version.minor = NFS_DEFAULT_MINOR;
+>  		return;
+>  	}
+>  
+>  	if (mi->version.v_mode == V_GENERAL) {
+> -		if (config_default_vers.v_mode != V_DEFAULT &&
+> +		if (config_default_vers.v_mode == V_SPECIFIC &&
+>  		    mi->version.major == config_default_vers.major)
+>  			mi->version.minor = config_default_vers.minor;
+> +		else
+> +			mi->version.minor = NFS_DEFAULT_MINOR;
+>  		return;
+>  	}
+>  
+>  #endif /* MOUNT_CONFIG */
+> -	mi->version.major = 4;
+> -	mi->version.minor = 2;
+> +	mi->version.major = NFS_DEFAULT_MAJOR;
+> +	mi->version.minor = NFS_DEFAULT_MINOR;
+>  }
+>  
+>  /*
+> 
