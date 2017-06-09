@@ -1,139 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mo4-p00-ob.smtp.rzone.de ([81.169.146.162]:31382 "EHLO
-        mo4-p00-ob.smtp.rzone.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751530AbdFILBp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jun 2017 07:01:45 -0400
-Message-ID: <593A8011.4080501@5t9.de>
-Date: Fri, 09 Jun 2017 13:01:37 +0200
-From: Lutz Vieweg <lvml@5t9.de>
+Received: from static-173-59-115-46.phlapa.fios.verizon.net ([173.59.115.46]:57220
+        "HELO verizon.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with SMTP id S1751527AbdFIMGg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Jun 2017 08:06:36 -0400
+To: <linux-nfs@vger.kernel.org>
+Date: Fri, 09 Jun 2017 12:06:32 -0000
+Subject: 
+Content-Type: application/zip; name="654278479856042.zip"
+Message-ID: <149700999242.30693.17786340448370118659@verizon.net>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org
-Subject: Re: PROBLEM: nfs I/O errors with sqlite applications
-References: <20151012164846.GA5017@draconx.ca> <20151012192538.GG28755@fieldses.org> <20151012194647.GJ28755@fieldses.org> <20151013030136.GA7081@draconx.ca> <20151013065225.44c5581d@synchrony.poochiereds.net> <CADyTPEyUKNdYuj0LwoX-r6jJJ0tEufwyA_mEKE=OVniX9rXPog@mail.gmail.com> <CADyTPEx=h95ODeG3BixMHc=kxLmkFt+aVyS+V_bK-b=CqK4_6Q@mail.gmail.com> <1469814735.19411.1.camel@poochiereds.net> <5936DC7B.8040804@5t9.de> <87vao8bilj.fsf@notabene.neil.brown.name> <59399945.2020507@5t9.de> <871squb0bo.fsf@notabene.neil.brown.name>
-In-Reply-To: <871squb0bo.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+From: <sdeanrthe@sympatico.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 06/09/2017 12:07 AM, NeilBrown wrote:
-> But "soft" is generally a bad idea.  It can lead to data corruption in
-> various way as it ports errors to user-space which user-space is often
-> not expecting.
-
- From reading "man 5 nfs" I understood the one situation in which this
-option makes a difference is when the NFS server becomes unavailable/unre=
-achable.
-
-With "hard" user-space applications will wait indefinitely in the hope
-that the NFS service will become available again.
-
-I see that if there was only some temporary glitch with connectivity
-to the NFS server, this waiting might yield a better outcome - but that
-should be covered by the timeout grace periods anyway.
-
-But if:
-
-- An unreachability of the service persists for a very long time,
-   it is bad that it will take a very long time for any monitoring
-   of the applications on the server to notice that this is no longer
-   a tolerable situation, so some sort of fail-over to different applicat=
-ion
-   instances need to be triggered
-
-- The unavailability/unreachability of the service is resolved by rebooti=
-ng
-   the NFS server, chances are that the files are then in a different sta=
-te
-   than before (due to reverting to the last known consistent state of
-   the local filesystem on the server), and in that situation I don't
-   want to fool the client into thinking that everything I/O-wise is fine=
- -
-   better signal an error to make the application aware of the situation
-
-- The unavailability/unreachability of the service is unresolvable, becau=
-se
-   the primary NFS server died completely, then the files will clearly be=
-
-   in a different state once a secondary service is brought up - and a
-   "kill -9" on all the processes waiting for NFS-I/O seems equally likel=
-y
-   to me to cause the applications trouble than returning an error on
-   the pending I/O operations.
-
-> These days, the processes in D state are (usually) killable.
-
-If that is true for processes waiting on (hard) mounted NFS services,
-that is really appreciated and good to know. It would certainly help
-us next time we try a newer NFS protocol release :-)
-
-(BTW: I recently had to reboot a machine because processes who
-waited for access to a long-removed USB device persisted in D-state...
-and were immune to "kill -9". So at least the USB driver subsystem
-seems to still contain such pitfalls.)
-
-> Thanks. Probably the key line is
->
-> [2339904.695240] RPC: 46702 remote rpcbind: RPC program/version unavail=
-able
->
-> The client is trying to talk to lockd on the server, and lockd doesn't
-> seem to be there.
-
-"ps" however says there is a process of that name running on that server:=
-
-> USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAN=
-D
-> root      3753  0.0  0.0      0     0 ?        S    May26   0:02  \_ [l=
-ockd]
-
-Your assumption:
-> My guess is that rpcbind was restarted with the "-w" flag, so it lost
-> all the state that it previosly had.
-seems to be right:
-
-> > systemctl status rpcbind
-> =E2=97=8F rpcbind.service - RPC bind service
->    Loaded: loaded (/usr/lib/systemd/system/rpcbind.service; enabled; ve=
-ndor preset: enabled)
->    Active: active (running) since Wed 2017-05-31 10:06:05 CEST; 1 weeks=
- 2 days ago
->   Process: 14043 ExecStart=3D/sbin/rpcbind -w $RPCBIND_ARGS (code=3Dexi=
-ted, status=3D0/SUCCESS)
->  Main PID: 14044 (rpcbind)
->    CGroup: /system.slice/rpcbind.service
->            =E2=94=94=E2=94=8014044 /sbin/rpcbind -w
->
-> May 31 10:06:05 myserver systemd[1]: Starting RPC bind service...
-> May 31 10:06:05 myserver systemd[1]: Started RPC bind service.
-
-If that kind of invocation is known to cause trouble, I wonder why
-RedHat/CentOS chose to make it wath seems to be their default...
-
-> If you stop and restart NFS service on the server, it might start
-> working again.  Otherwise just reboot the nfs server.
-
-A "systemctl stop nfs ; systemctl start nfs" was not sufficent, only chan=
-ged the symptom:
-> sqlite3 x.sqlite "PRAGMA case_sensitive_like=3D1;PRAGMA synchronous=3DO=
-FF;PRAGMA recursive_triggers=3DON;PRAGMA foreign_keys=3DOFF;PRAGMA lockin=
-g_mode =3D NORMAL;PRAGMA journal_mode =3D TRUNCATE;"
-> Error: database is locked
-
-On the server, at the same time, the following message is emitted to the =
-system log:
-> Jun  9 12:53:57 myserver kernel: lockd: cannot monitor myclient
-
-What did help, however, was running:
-> systemctl stop rpc-statd ; systemctl start rpc-statd
-on the server.
-
-So thanks for your analysis! - We now know a way to remove the symptom
-with relatively little disturbance of services.
-
-Should we somehow try to get rid of that "-w" to rpcbind, in an attempt
-to not re-trigger the symptom at a later time?
-
-Regards,
-
-Lutz Vieweg
-
+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
+AA==
