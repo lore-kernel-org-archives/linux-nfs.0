@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56488 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:47644 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751895AbdFHWYt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Jun 2017 18:24:49 -0400
+        id S1751479AbdFIDRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Jun 2017 23:17:23 -0400
 From: NeilBrown <neilb@suse.com>
-To: Justin Mitchell <jumitche@redhat.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Fri, 09 Jun 2017 08:24:39 +1000
-Cc: Steve Dickson <SteveD@RedHat.com>
-Subject: Re: [PATCH] Reimplement include functionality in nfs.conf
-In-Reply-To: <1496939645.4216.13.camel@redhat.com>
-References: <1496939645.4216.13.camel@redhat.com>
-Message-ID: <87y3t29kyg.fsf@notabene.neil.brown.name>
+To: devzero@web.de, linux-nfs@vger.kernel.org
+Date: Fri, 09 Jun 2017 13:17:12 +1000
+Cc: pf@artcom-gmbh.de, rnews@altium.nl, jlayton@redhat.com,
+        bfields@fieldses.org
+Subject: Re: How to avoid rebooting Linux NFS-client when NFS-server is not available?
+In-Reply-To: <trinity-f2c19596-3afe-4a3f-ad07-78e6cfda9cb5-1496911790012@3capp-webde-bap34>
+References: <trinity-f2c19596-3afe-4a3f-ad07-78e6cfda9cb5-1496911790012@3capp-webde-bap34>
+Message-ID: <87mv9halzb.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -19,226 +19,156 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Jun 08 2017, Justin Mitchell wrote:
+On Thu, Jun 08 2017, devzero@web.de wrote:
 
-> Re-implement include file functionality as documented.
+>>Indeed: This workaround seems to work!
 >
-> Existing implementation had various issues, one of which was it allowed
-> a subordinate file to inadvertently change which section the subsequent
-> tags back in the master config file got assigned to.
+> Unfortunately not in every situation.
 >
-> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+> We have differnt XEN servers (Citrix XS7) at remote location which have h=
+ung/stale NFS mount problems at regular intervals (.ISO storage repo is mou=
+nted via WAN) and i always need to reboot, which really really(!) sucks.
+>
+> At least a fake NFS server as described below releases the stuck mount, i=
+.e. df -h and other processes touching do not hang anymore, so at least thi=
+s workaround helps to some degree...=20
+>
+> BUT:
+>
+> # umount /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e
+> umount.nfs: /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e: Stale fil=
+e handle
+>
+> # mount|grep xen-sr-iso
+> 172.16.28.10:/mnt/S2V2/xen-sr-iso on /run/sr-mount/2b5c5c60-3744-c860-28a=
+7-eb106d3a339e type nfs (rw,relatime,vers=3D3,rsize=3D131072,wsize=3D131072=
+,namlen=3D255,acdirmin=3D0,acdirmax=3D0,soft,proto=3Dtcp,timeo=3D600,retran=
+s=3D2147483647,sec=3Dsys,mountaddr=3D172.16.28.10,mountvers=3D3,mountport=
+=3D680,mountproto=3Dtcp,local_lock=3Dnone,addr=3D172.16.28.10)
+>
+> # umount -l -f /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e
+> umount.nfs: /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e: Stale fil=
+e handle
+
+This really shouldn't happen.
+Since Linux 3.12 (commit 8033426e6bdb) it has been possible to
+umount an NFS filesystem, no matter what state it is in.
+
+Since util-linux 2.23 (commit 6d5d2b5fd342308), umount -l or umount -f
+should have avoided statting the filesystem.
+
+If you have a new util-linux (mount -V) and new kernel (uname -a),
+then I'd be interested to see
+  strace -o /tmp/strace -f umount -f /run/......
+
+
+
+>
+> # mount|grep xen-sr-iso
+> 172.16.28.10:/mnt/S2V2/xen-sr-iso on /run/sr-mount/2b5c5c60-3744-c860-28a=
+7-eb106d3a339e type nfs (rw,relatime,vers=3D3,rsize=3D131072,wsize=3D131072=
+,namlen=3D255,acdirmin=3D0,acdirmax=3D0,soft,proto=3Dtcp,timeo=3D600,retran=
+s=3D2147483647,sec=3Dsys,mountaddr=3D172.16.28.10,mountvers=3D3,mountport=
+=3D680,mountproto=3Dtcp,local_lock=3Dnone,addr=3D172.16.28.10)
+>
+> # ls -la
+> ls: cannot access 2b5c5c60-3744-c860-28a7-eb106d3a339e: Stale file handle
+> total 0
+> drwx------  3 root root   60 Feb 18 17:43 .
+> drwxr-xr-x 36 root root 1660 Jun  7 18:45 ..
+> d?????????  ? ?    ?       ?            ? 2b5c5c60-3744-c860-28a7-eb106d3=
+a339e
+>
+> Any hint on how to circumvent rebooting to remount the nfs share or proac=
+tively avoid stale NFS mounts would be very appreciated. (disabling NFS by =
+module unload/load is no option, as our XEN servers do have other NFS mount=
+s for shared storage)
+>
+> regards
+> Roland
+>
+> ps:
+> I`m not sure if linux-nfs ML will allow anonymous posts (probably not), s=
+o maybe someone subscribed be so kind to reply with list cc=C2=B4ed. I`d li=
+ke to avoid subscribing to a list because of a single post...
 >
 
-That all looks reasonably sensible - thanks.
-I'll try to test it next week some time, but for now
- Acked-by: NeilBrown <neilb@suse.com>
+We aren't that closed-minded ;-)  Your message went to the list.
 
-Thanks,
 NeilBrown
 
-
 >
 >
-> ---
->  support/nfs/conffile.c | 78 ++++++++++++++++++++++++++++++++++++--------=
-------
->  1 file changed, 56 insertions(+), 22 deletions(-)
 >
-> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index 449ac1c..05e0a6f 100644
-> --- a/support/nfs/conffile.c
-> +++ b/support/nfs/conffile.c
-> @@ -56,9 +56,11 @@
->  #pragma GCC visibility push(hidden)
->=20=20
->  static void conf_load_defaults(void);
-> -static int conf_load(int trans, const char *path);
-> +static char * conf_load(const char *path);
->  static int conf_set(int , char *, char *, char *,=20
->  	char *, int , int );
-> +static void conf_parse(int trans, char *buf,=20
-> +	char **section, char **subsection);
->=20=20
->  struct conf_trans {
->  	TAILQ_ENTRY (conf_trans) link;
-> @@ -202,7 +204,6 @@ conf_set_now(char *section, char *arg, char *tag,
->  	node->tag =3D strdup(tag);
->  	node->value =3D strdup(value);
->  	node->is_default =3D is_default;
-> -
->  	LIST_INSERT_HEAD(&conf_bindings[conf_hash (section)], node, link);
->  	return 0;
->  }
-> @@ -365,22 +366,47 @@ conf_parse_line(int trans, char *line, int lineno, =
-char **section, char **subsec
->  		return;
->  	}
->=20=20
-> -	/* XXX Perhaps should we not ignore errors?  */
-> -	conf_set(trans, *section, *subsection, line, val, 0, 0);
-> +	if (strcasecmp(line, "include")=3D=3D0) {
-> +		/* load and parse subordinate config files */
-> +		char * subconf =3D conf_load(val);
-> +		if (subconf =3D=3D NULL) {
-> +			xlog_warn("config file error: line %d: "
-> +			"error loading included config", lineno);
-> +			return;
-> +		}
-> +
-> +		/* copy the section data so the included file can inherit it
-> +		 * without accidentally changing it for us */
-> +		char * inc_section =3D NULL;
-> +		char * inc_subsection =3D NULL;
-> +		if (*section !=3D NULL) {
-> +			inc_section =3D strdup(*section);
-> +			if (*subsection !=3D NULL)
-> +				inc_subsection =3D strdup(*subsection);
-> +		}
-> +
-> +		conf_parse(trans, subconf, &inc_section, &inc_subsection);
-> +
-> +		if (inc_section) free(inc_section);
-> +		if (inc_subsection) free(inc_subsection);
-> +		free(subconf);
-> +	} else {
-> +		/* XXX Perhaps should we not ignore errors?  */
-> +		conf_set(trans, *section, *subsection, line, val, 0, 0);
-> +	}
->  }
->=20=20
->  /* Parse the mapped configuration file.  */
->  static void
-> -conf_parse(int trans, char *buf, size_t sz)
-> +conf_parse(int trans, char *buf, char **section, char **subsection)
->  {
->  	char *cp =3D buf;
-> -	char *bufend =3D buf + sz;
-> +	char *bufend =3D NULL;
->  	char *line;
-> -	char *section =3D NULL;
-> -	char *subsection =3D NULL;
->  	int lineno =3D 0;
->=20=20
->  	line =3D cp;
-> +	bufend =3D buf + strlen(buf);
->  	while (cp < bufend) {
->  		if (*cp =3D=3D '\n') {
->  			/* Check for escaped newlines.  */
-> @@ -389,7 +415,7 @@ conf_parse(int trans, char *buf, size_t sz)
->  			else {
->  				*cp =3D '\0';
->  				lineno++;
-> -				conf_parse_line(trans, line, lineno, &section, &subsection);
-> +				conf_parse_line(trans, line, lineno, section, subsection);
->  				line =3D cp + 1;
->  			}
->  		}
-> @@ -397,8 +423,6 @@ conf_parse(int trans, char *buf, size_t sz)
->  	}
->  	if (cp !=3D line)
->  		xlog_warn("conf_parse: last line non-terminated, ignored.");
-> -	if (section) free(section);
-> -	if (subsection) free(subsection);
->  }
->=20=20
->  static void
-> @@ -408,21 +432,21 @@ conf_load_defaults(void)
->  	return;
->  }
->=20=20
-> -static int
-> -conf_load(int trans, const char *path)
-> +static char *
-> +conf_load(const char *path)
->  {
->  	struct stat sb;
->  	if ((stat (path, &sb) =3D=3D 0) || (errno !=3D ENOENT)) {
-> -		char *new_conf_addr;
-> +		char *new_conf_addr =3D NULL;
->  		size_t sz =3D sb.st_size;
->  		int fd =3D open (path, O_RDONLY, 0);
->=20=20
->  		if (fd =3D=3D -1) {
->  			xlog_warn("conf_reinit: open (\"%s\", O_RDONLY) failed", path);
-> -			return -1;
-> +			return NULL;
->  		}
->=20=20
-> -		new_conf_addr =3D malloc(sz);
-> +		new_conf_addr =3D malloc(sz+1);
->  		if (!new_conf_addr) {
->  			xlog_warn("conf_reinit: malloc (%lu) failed", (unsigned long)sz);
->  			goto fail;
-> @@ -437,14 +461,13 @@ conf_load(int trans, const char *path)
->  		close(fd);
->=20=20
->  		/* XXX Should we not care about errors and rollback?  */
-> -		conf_parse(trans, new_conf_addr, sz);
-> -		free(new_conf_addr);
-> -		return 0;
-> +		new_conf_addr[sz] =3D '\0';
-> +		return new_conf_addr;
->  	fail:
->  		close(fd);
-> -		free(new_conf_addr);
-> +		if (new_conf_addr) free(new_conf_addr);
->  	}
-> -	return -1;
-> +	return NULL;
->  }
->=20=20
->  /* remove and free up any existing config state */
-> @@ -473,14 +496,25 @@ static void
->  conf_reinit(const char *conf_file)
->  {
->  	int trans;
-> +	char * conf_data;
->=20=20
->  	trans =3D conf_begin();
-> -	if (conf_load(trans, conf_file) < 0)
-> +	conf_data =3D conf_load(conf_file);
-> +
-> +	if (conf_data =3D=3D NULL)
->  		return;
->=20=20
->  	/* Load default configuration values.  */
->  	conf_load_defaults();
->=20=20
-> +	/* Parse config contents into the transaction queue */
-> +	char *section =3D NULL;
-> +	char *subsection =3D NULL;
-> +	conf_parse(trans, conf_data, &section, &subsection);
-> +	if (section) free(section);
-> +	if (subsection) free(subsection);
-> +	free(conf_data);
-> +
->  	/* Free potential existing configuration.  */
->  	conf_free_bindings();
->=20=20
-> --=20
-> 1.8.3.1
+>>List:       linux-nfs
+>>Subject:    Re: How to avoid rebooting Linux NFS-client when NFS-server i=
+s not available?
+>>From:       Peter Funk <pf () artcom-gmbh ! de>
+>>Date:       2013-07-26 12:08:49
+>>Message-ID: 20130726120849.GA12584 () pfmaster
+>>[Download message RAW]
+>
+>>Dick Streefland wrote 24.07.2013 13:03:
+>>> Peter Funk <pf@artcom-gmbh.de> wrote:
+>>> | We've researched this question for quite a while now and nobody here
+>>> | found a solution to the following problem:
+>>> |=20
+>>> |  1: A Linux computer is NFS client of some other Linux NFS server
+>>> |     and has some active mounts and some processes working with files=
+=20
+>>> |     on that NFS server.=20=20
+>>> |=20
+>>> |  2: Now the NFS server becomes unavailable and a system administrator=
+=20
+>>> |     wants to clean up the situation on the NFS client computer withou=
+t=20
+>>> |     having to reboot this client computer.
+>>> |=20
+>>> | Is this possible?  And if how exactly?
+>>>=20
+>>> What you could try is temporarily add the IP number of the dead NFS
+>>> server to another NFS server. The other NFS server should reject any
+>>> request for the dead mount, and the client can continue with an error.
+>>
+>>Indeed: This workaround seems to work!
+>>
+>>Assume example: The NFS-server has IP 192.168.123.45 and the client
+>>has also the nfs-kernel-server package installed and it is running.
+>>Then this sequence on the client did the trick::
+>>
+>>    ifconfig eth0:fakesrv 192.168.123.45 up
+>>    umount -f -l ....
+>>    umount -f -l ....
+>>    ....
+>>    ifconfig eth0:fakesrv down
+>>
+>>Best Regards and many thanks for your suggestion,
+>>Peter Funk
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk5zqgACgkQOeye3VZi
-gbk8LQ/7BUUoa7+HVGYzQJnAK6uBZQvq6NVPuf2WW4jSbzJ7O99JI+5CCrANgUFV
-grdgNbFBojAdVVJi364LXEujm21j1/dkTQbP2FWzbeYMUKFRGZpW3ZygMTUG7alM
-dpfwinSJTFHG2rMgQcNYylZCWA2XUunfvY0L3mxPr3vhL2Ovdb7EmIFanOA1cCpG
-GLCl0L28KvvU53oJv7W0rppCSd+y+b5K9CXezWyoD6DM8BKrww6peneIzCpZ0SIJ
-JwpjzlV1tt+vDk782EmHPiOqiMCskJrOnGt0Z2Iwt1ifaBKqwuYHZTy5pOT/IOhT
-YsXWBIV/U9wFyDK75KXHZ2LgJAED6+huEIT+TsY3annwgugVchGzAlS/F66t0rcu
-h7DqU7BjdIBPgUck3mNHnkqWk51MTAZyh4TZPYhj9K8uRr2zDs38+lay9Qsg1CGb
-0RJtTmxNNcsGL5Ab93lSoD9qYPZeSJ/MVjsVxd0m9eELaVKNyqRXyEFeRpZ2tbZV
-IKa55K9c+RU+lEuy/NDZFBOuR57zAzTRtDif3SVnMyZYpLNrGqhZXFrqz3zK1ZbO
-5whfrjFLNfsuy6neWldixQFiOnnQbWyTpddZmFW4Uixxs8/bzS80EOQOrvB/T0Po
-ecDtLsR51DVm0N2LB3Bw4EwsIZHq7ahMbNA+HzTON2tgAvdl0qQ=
-=8Q7a
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk6EzkACgkQOeye3VZi
+gbn3bQ/+NS6QfBueiqAq/uW4mzABKSeh+jUfDutenR7TX+bYKBf9r1Ze0oqbIlYY
+CJgqPN3X/odpBbwOmD3gU5Qx+XIgAmgYBZPfz3sjR5nAml+tRCEVgsAvKC27BOz2
+VJipKt9ZuOnw065Or/RDCcuxEXZgZAdaO3l4Co5t33sQadlAOiZ8R9OMdtihAbdh
+zmZjers6krU5bE5bm25upuJuDPWNQPRXCmE7aVsEVT/vyeYpQF5bPkJ6Z4lrIniE
+J//os0TPUHinxoZpdxHSraLLPMEZzaUBLKixwInTzHsa3g2YqcFPbfuPZi5zLdgU
+41+2tfuzpYSp8k4RG4fQRFQ77ul5X7xki3CE23ZrTnfe/BKIeSb0XUX9dwz2V6Zj
+P0nqcJJnCYt655OYEXlJljUKwmycI1JsOm0i0jlzBZDCgDOrio6DVDs1RfIlbBbs
+k4U7d36MxyaoftFL/6A7z9G1q2KeennccR7b5LzvEmcSql0QeXpBCRoKd80rND+T
+Duny6zHOLUPSBaEz7+uq9QK1qwKfpb/uoedBAbab+pOgpy2LexJea/uLZfa6k1cx
+eZTD2bcUuk694byvVtCjzDcCuYSyGWuXD0OpIevZU1ce5A9AdnwbDcbzrQXKZ0iZ
+7jgK+rpzn44sUBdY8FmwN6n5TE96ZbF7qPSArU/4NAqCm4Ey64s=
+=SiHz
 -----END PGP SIGNATURE-----
 --=-=-=--
