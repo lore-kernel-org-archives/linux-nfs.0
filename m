@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47644 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:47858 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751479AbdFIDRX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Jun 2017 23:17:23 -0400
+        id S1751535AbdFIGU0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 9 Jun 2017 02:20:26 -0400
 From: NeilBrown <neilb@suse.com>
-To: devzero@web.de, linux-nfs@vger.kernel.org
-Date: Fri, 09 Jun 2017 13:17:12 +1000
-Cc: pf@artcom-gmbh.de, rnews@altium.nl, jlayton@redhat.com,
-        bfields@fieldses.org
-Subject: Re: How to avoid rebooting Linux NFS-client when NFS-server is not available?
-In-Reply-To: <trinity-f2c19596-3afe-4a3f-ad07-78e6cfda9cb5-1496911790012@3capp-webde-bap34>
-References: <trinity-f2c19596-3afe-4a3f-ad07-78e6cfda9cb5-1496911790012@3capp-webde-bap34>
-Message-ID: <87mv9halzb.fsf@notabene.neil.brown.name>
+To: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Date: Fri, 09 Jun 2017 16:20:17 +1000
+Subject: Re: [PATCH V2] mount.nfs: Use default minor version when -t nfs4 is specified
+In-Reply-To: <20170608183314.15247-1-steved@redhat.com>
+References: <20170608183314.15247-1-steved@redhat.com>
+Message-ID: <87a85hadi6.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -19,156 +18,115 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Jun 08 2017, devzero@web.de wrote:
+On Thu, Jun 08 2017, Steve Dickson wrote:
 
->>Indeed: This workaround seems to work!
+> When the nfs4 filesystem specified, the default major
+> and minor versions should be used.
 >
-> Unfortunately not in every situation.
->
-> We have differnt XEN servers (Citrix XS7) at remote location which have h=
-ung/stale NFS mount problems at regular intervals (.ISO storage repo is mou=
-nted via WAN) and i always need to reboot, which really really(!) sucks.
->
-> At least a fake NFS server as described below releases the stuck mount, i=
-.e. df -h and other processes touching do not hang anymore, so at least thi=
-s workaround helps to some degree...=20
->
-> BUT:
->
-> # umount /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e
-> umount.nfs: /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e: Stale fil=
-e handle
->
-> # mount|grep xen-sr-iso
-> 172.16.28.10:/mnt/S2V2/xen-sr-iso on /run/sr-mount/2b5c5c60-3744-c860-28a=
-7-eb106d3a339e type nfs (rw,relatime,vers=3D3,rsize=3D131072,wsize=3D131072=
-,namlen=3D255,acdirmin=3D0,acdirmax=3D0,soft,proto=3Dtcp,timeo=3D600,retran=
-s=3D2147483647,sec=3Dsys,mountaddr=3D172.16.28.10,mountvers=3D3,mountport=
-=3D680,mountproto=3Dtcp,local_lock=3Dnone,addr=3D172.16.28.10)
->
-> # umount -l -f /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e
-> umount.nfs: /run/sr-mount/2b5c5c60-3744-c860-28a7-eb106d3a339e: Stale fil=
-e handle
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 
-This really shouldn't happen.
-Since Linux 3.12 (commit 8033426e6bdb) it has been possible to
-umount an NFS filesystem, no matter what state it is in.
+Hi Steve,
+ I think this is definitely heading in the right direction.
+ I particularly like that you've #defined for the default major/minor.
 
-Since util-linux 2.23 (commit 6d5d2b5fd342308), umount -l or umount -f
-should have avoided statting the filesystem.
+ However as I reflected on it, I realised that "-o v4" needs to set
+ the same version as "-t nfs4", and even with this patch it doesn't.
 
-If you have a new util-linux (mount -V) and new kernel (uname -a),
-then I'd be interested to see
-  strace -o /tmp/strace -f umount -f /run/......
+ I think we need to focus on nfs_default_version() and make sure it does
+ the right thing.
 
+ If v.mode =3D=3D V_DEFAULT, we need to copy both 'major' and 'minor'
+ from config_default_vers if they are set.  If
+ config_default_vers.v_mode =3D=3D V_GENERAL, .minor won't be set so in
+ that case we need to use NFS_DEFAULT_MINOR;
 
+ If v.mode =3D=3D V_GENERAL, then only copy the minor if it is set and the
+ major is correct.  So we need to check for V_SPECIFIC, and other wise
+ use the default minor.
 
->
-> # mount|grep xen-sr-iso
-> 172.16.28.10:/mnt/S2V2/xen-sr-iso on /run/sr-mount/2b5c5c60-3744-c860-28a=
-7-eb106d3a339e type nfs (rw,relatime,vers=3D3,rsize=3D131072,wsize=3D131072=
-,namlen=3D255,acdirmin=3D0,acdirmax=3D0,soft,proto=3Dtcp,timeo=3D600,retran=
-s=3D2147483647,sec=3Dsys,mountaddr=3D172.16.28.10,mountvers=3D3,mountport=
-=3D680,mountproto=3Dtcp,local_lock=3Dnone,addr=3D172.16.28.10)
->
-> # ls -la
-> ls: cannot access 2b5c5c60-3744-c860-28a7-eb106d3a339e: Stale file handle
-> total 0
-> drwx------  3 root root   60 Feb 18 17:43 .
-> drwxr-xr-x 36 root root 1660 Jun  7 18:45 ..
-> d?????????  ? ?    ?       ?            ? 2b5c5c60-3744-c860-28a7-eb106d3=
-a339e
->
-> Any hint on how to circumvent rebooting to remount the nfs share or proac=
-tively avoid stale NFS mounts would be very appreciated. (disabling NFS by =
-module unload/load is no option, as our XEN servers do have other NFS mount=
-s for shared storage)
->
-> regards
-> Roland
->
-> ps:
-> I`m not sure if linux-nfs ML will allow anonymous posts (probably not), s=
-o maybe someone subscribed be so kind to reply with list cc=C2=B4ed. I`d li=
-ke to avoid subscribing to a list because of a single post...
->
+ If v.mode =3D=3D V_SPECIFIC, nfs_default_version isn't called, so it
+ doesn't matter.
 
-We aren't that closed-minded ;-)  Your message went to the list.
+ I think this gets it right...
 
+ Thoughts?
+
+Thanks,
 NeilBrown
 
->
->
->
->>List:       linux-nfs
->>Subject:    Re: How to avoid rebooting Linux NFS-client when NFS-server i=
-s not available?
->>From:       Peter Funk <pf () artcom-gmbh ! de>
->>Date:       2013-07-26 12:08:49
->>Message-ID: 20130726120849.GA12584 () pfmaster
->>[Download message RAW]
->
->>Dick Streefland wrote 24.07.2013 13:03:
->>> Peter Funk <pf@artcom-gmbh.de> wrote:
->>> | We've researched this question for quite a while now and nobody here
->>> | found a solution to the following problem:
->>> |=20
->>> |  1: A Linux computer is NFS client of some other Linux NFS server
->>> |     and has some active mounts and some processes working with files=
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index c0266e51ad1c..7dfdd9e62115 100644
+=2D-- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -73,6 +73,13 @@
+ #define NFS_DEF_BG_TIMEOUT_MINUTES	(10000u)
+ #endif
 =20
->>> |     on that NFS server.=20=20
->>> |=20
->>> |  2: Now the NFS server becomes unavailable and a system administrator=
++#ifndef NFS_DEFAULT_MAJOR
++#define NFS_DEFAULT_MAJOR	4
++#endif
++#ifndef NFS_DEFAULT_MINOR
++#define NFS_DEFAULT_MINOR	2
++#endif
++
+ extern int nfs_mount_data_version;
+ extern char *progname;
+ extern int verbose;
+@@ -110,22 +117,27 @@ static void nfs_default_version(struct nfsmount_info =
+*mi)
+ 	}
 =20
->>> |     wants to clean up the situation on the NFS client computer withou=
-t=20
->>> |     having to reboot this client computer.
->>> |=20
->>> | Is this possible?  And if how exactly?
->>>=20
->>> What you could try is temporarily add the IP number of the dead NFS
->>> server to another NFS server. The other NFS server should reject any
->>> request for the dead mount, and the client can continue with an error.
->>
->>Indeed: This workaround seems to work!
->>
->>Assume example: The NFS-server has IP 192.168.123.45 and the client
->>has also the nfs-kernel-server package installed and it is running.
->>Then this sequence on the client did the trick::
->>
->>    ifconfig eth0:fakesrv 192.168.123.45 up
->>    umount -f -l ....
->>    umount -f -l ....
->>    ....
->>    ifconfig eth0:fakesrv down
->>
->>Best Regards and many thanks for your suggestion,
->>Peter Funk
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ 	if (mi->version.v_mode =3D=3D V_DEFAULT &&
+=2D		config_default_vers.v_mode !=3D V_DEFAULT) {
++	    config_default_vers.v_mode !=3D V_DEFAULT) {
+ 		mi->version.major =3D config_default_vers.major;
+=2D		mi->version.minor =3D config_default_vers.minor;
++		if (config_default_vers.v_mode =3D=3D V_SPECIFIC)
++			mi->version.minor =3D config_default_vers.minor;
++		else
++			mi->version.minor =3D NFS_DEFAULT_MINOR;
+ 		return;
+ 	}
+=20
+ 	if (mi->version.v_mode =3D=3D V_GENERAL) {
+=2D		if (config_default_vers.v_mode !=3D V_DEFAULT &&
++		if (config_default_vers.v_mode =3D=3D V_SPECIFIC &&
+ 		    mi->version.major =3D=3D config_default_vers.major)
+ 			mi->version.minor =3D config_default_vers.minor;
++		else
++			mi->version.minor =3D NFS_DEFAULT_MINOR;
+ 		return;
+ 	}
+=20
+ #endif /* MOUNT_CONFIG */
+=2D	mi->version.major =3D 4;
+=2D	mi->version.minor =3D 2;
++	mi->version.major =3D NFS_DEFAULT_MAJOR;
++	mi->version.minor =3D NFS_DEFAULT_MINOR;
+ }
+=20
+ /*
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk6EzkACgkQOeye3VZi
-gbn3bQ/+NS6QfBueiqAq/uW4mzABKSeh+jUfDutenR7TX+bYKBf9r1Ze0oqbIlYY
-CJgqPN3X/odpBbwOmD3gU5Qx+XIgAmgYBZPfz3sjR5nAml+tRCEVgsAvKC27BOz2
-VJipKt9ZuOnw065Or/RDCcuxEXZgZAdaO3l4Co5t33sQadlAOiZ8R9OMdtihAbdh
-zmZjers6krU5bE5bm25upuJuDPWNQPRXCmE7aVsEVT/vyeYpQF5bPkJ6Z4lrIniE
-J//os0TPUHinxoZpdxHSraLLPMEZzaUBLKixwInTzHsa3g2YqcFPbfuPZi5zLdgU
-41+2tfuzpYSp8k4RG4fQRFQ77ul5X7xki3CE23ZrTnfe/BKIeSb0XUX9dwz2V6Zj
-P0nqcJJnCYt655OYEXlJljUKwmycI1JsOm0i0jlzBZDCgDOrio6DVDs1RfIlbBbs
-k4U7d36MxyaoftFL/6A7z9G1q2KeennccR7b5LzvEmcSql0QeXpBCRoKd80rND+T
-Duny6zHOLUPSBaEz7+uq9QK1qwKfpb/uoedBAbab+pOgpy2LexJea/uLZfa6k1cx
-eZTD2bcUuk694byvVtCjzDcCuYSyGWuXD0OpIevZU1ce5A9AdnwbDcbzrQXKZ0iZ
-7jgK+rpzn44sUBdY8FmwN6n5TE96ZbF7qPSArU/4NAqCm4Ey64s=
-=SiHz
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlk6PiMACgkQOeye3VZi
+gbkQDw//U5GZYBqfA3rNIud8nwNF9su50xtDceoRFJdGPqoLC2R6rmVqH+bOl0mO
+WtEa77sSyCEqRwPsALH67BW1SlzYAVYqI1U2ZMmxAQmR+tmDK5QanyNXGfBwho6q
+WHI3AQKG74npDmnh1w+//BEbFzTF+UQ/uCEjhVr3pjKCOJIA7/AGurp9t1rAXpiS
+RfZ8pd415175A6PfUQ9GebbuZmpVmEKmBtopUeySpwE3Z19PoegugTcYV1JfSE4V
+XDNA9K0kk92UHKYl4eyHfcirpvjuAbBOa9J9MBzRrXGJ/PmUP05cl7FqaKExJWty
+AwZA4Wo8+/yjsKeEkubf8zq5RxYqMDnr1WJ+feq7UjlsyvCMOwb1uX0LdlXphJ9/
+Kqo3DCpPF+gxrijHJTYwf9AjR3x+VJJaDfbUkPKojkgLo5S4WCv0mx/DRAeLlM9/
+130Aoy8eNMvO6Y4b+YMz2i7pMhU9HK11dhJsO8P5Ml0Ck9AtGnbJI2j1EKaFEPGi
+K7tc+SXPzTHRgnFIrychoBmhqo2br+i7BXhWa0Hfwh99McNpBrweS3TdpHOxTiaG
+Soq76LaLu/c2HlFWtTTGx27a8rprLY/WLWJNaPpYgFUuZixTZRxujcWDJhxcYkvL
+4B/a2YNAgVrhGo+KoEcbb2C+xq6O+n1zO2VTxzgsWqembKALpE4=
+=8Mi+
 -----END PGP SIGNATURE-----
 --=-=-=--
