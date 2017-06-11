@@ -1,19 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f177.google.com ([209.85.223.177]:36615 "EHLO
-        mail-io0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751651AbdFKNg3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Jun 2017 09:36:29 -0400
-Received: by mail-io0-f177.google.com with SMTP id y77so46561093ioe.3
-        for <linux-nfs@vger.kernel.org>; Sun, 11 Jun 2017 06:36:28 -0700 (PDT)
+Received: from mail-oi0-f67.google.com ([209.85.218.67]:33947 "EHLO
+        mail-oi0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751794AbdFKUsi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 11 Jun 2017 16:48:38 -0400
 MIME-Version: 1.0
-In-Reply-To: <878tkzq6wi.fsf@purkki.adurom.net>
+In-Reply-To: <CAGXu5jKp=X7-eKo+HgzS3uqncx5yy-u=tJNqV9K8GOgJ=-C7iA@mail.gmail.com>
 References: <20170610025912.6499-1-Jason@zx2c4.com> <878tkzq6wi.fsf@purkki.adurom.net>
-From: Kees Cook <keescook@chromium.org>
-Date: Sun, 11 Jun 2017 06:36:27 -0700
-Message-ID: <CAGXu5jKp=X7-eKo+HgzS3uqncx5yy-u=tJNqV9K8GOgJ=-C7iA@mail.gmail.com>
+ <CAGXu5jKp=X7-eKo+HgzS3uqncx5yy-u=tJNqV9K8GOgJ=-C7iA@mail.gmail.com>
+From: Emmanuel Grumbach <egrumbach@gmail.com>
+Date: Sun, 11 Jun 2017 23:48:36 +0300
+Message-ID: <CANUX_P2b0Bx+-E_OBQ0reGW0=d6819qc=r83K0kTv0xMo8mtLQ@mail.gmail.com>
 Subject: Re: [PATCH 0/6] Constant Time Memory Comparisons Are Important
-To: Kalle Valo <kvalo@codeaurora.org>
-Cc: "Jason A. Donenfeld" <Jason@zx2c4.com>,
+To: Kees Cook <keescook@chromium.org>
+Cc: Kalle Valo <kvalo@codeaurora.org>,
+        "Jason A. Donenfeld" <Jason@zx2c4.com>,
         LKML <linux-kernel@vger.kernel.org>,
         "kernel-hardening@lists.openwall.com"
         <kernel-hardening@lists.openwall.com>,
@@ -39,20 +39,22 @@ Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jun 11, 2017 at 1:13 AM, Kalle Valo <kvalo@codeaurora.org> wrote:
-> "Jason A. Donenfeld" <Jason@zx2c4.com> writes:
+On Sun, Jun 11, 2017 at 4:36 PM, Kees Cook <keescook@chromium.org> wrote:
 >
->> Whenever you're comparing two MACs, it's important to do this using
->> crypto_memneq instead of memcmp. With memcmp, you leak timing information,
->> which could then be used to iteratively forge a MAC.
+> On Sun, Jun 11, 2017 at 1:13 AM, Kalle Valo <kvalo@codeaurora.org> wrote:
+> > "Jason A. Donenfeld" <Jason@zx2c4.com> writes:
+> >
+> >> Whenever you're comparing two MACs, it's important to do this using
+> >> crypto_memneq instead of memcmp. With memcmp, you leak timing information,
+> >> which could then be used to iteratively forge a MAC.
+> >
+> > Do you have any pointers where I could learn more about this?
 >
-> Do you have any pointers where I could learn more about this?
+> While not using C specifically, this talks about the problem generally:
+> https://www.chosenplaintext.ca/articles/beginners-guide-constant-time-cryptography.html
+>
 
-While not using C specifically, this talks about the problem generally:
-https://www.chosenplaintext.ca/articles/beginners-guide-constant-time-cryptography.html
-
--Kees
-
--- 
-Kees Cook
-Pixel Security
+Sorry for the stupid question, but the MAC address is in plaintext in
+the air anyway or easily accessible via user space tools. I fail to
+see what it is so secret about a MAC address in that code where that
+same MAC address is accessible via myriads of ways.
