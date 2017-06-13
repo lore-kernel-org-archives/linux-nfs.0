@@ -1,94 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:6571 "EHLO mx142.netapp.com"
+Received: from smtp-o-1.desy.de ([131.169.56.154]:52522 "EHLO smtp-o-1.desy.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752259AbdFMSgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 13 Jun 2017 14:36:24 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/1] PNFS fix dangling DS mount
-Date: Tue, 13 Jun 2017 14:36:20 -0400
-Message-ID: <20170613183620.57538-1-kolga@netapp.com>
-In-Reply-To: <CAN-5tyHUJW85oxaX81Zr3Drp5WFv05-tWWXGcKCQh5S+1VZ7JQ@mail.gmail.com>
-References: <CAN-5tyHUJW85oxaX81Zr3Drp5WFv05-tWWXGcKCQh5S+1VZ7JQ@mail.gmail.com>
+        id S1751826AbdFMTWX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Jun 2017 15:22:23 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id DDC3C280706
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Jun 2017 21:22:20 +0200 (CEST)
+Date: Tue, 13 Jun 2017 21:22:18 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>
+Message-ID: <1087115680.14242025.1497381738583.JavaMail.zimbra@desy.de>
+In-Reply-To: <CAN-5tyHeaNHVxQLnXVfQyyS20jwk0L-2UjY-pH-azM6ADQBEtQ@mail.gmail.com>
+References: <991293071.14131572.1497360717136.JavaMail.zimbra@desy.de> <CAN-5tyHeaNHVxQLnXVfQyyS20jwk0L-2UjY-pH-azM6ADQBEtQ@mail.gmail.com>
+Subject: Re: "nfs4_discover_server_trunking unhandled error" on Ctrl-C
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a regression by commit 8d40b0f14846 ("NFS filelayout:call
-GETDEVICEINFO after pnfs_layout_process completes"). It leaves the
-DS mount dangling.
+Hi Olga,
 
-Previously, filelayout_alloc_sec() would call filelayout_check_layout()
-which would call nfs4_find_get_deviceid which ups the count on the
-device_id. It's only called once and it's matched by the
-filelayout_free_lseg() that calls nfs4_fl_put_deviceid().
+this is 4.12.-rc4.  I will check packet capture tomorrow, however, I am pretty sure that
+this is client internal interrupt processing.
 
-After that patch, each read/write ends up calling nfs4_find_get_deviceid
-and there is no balance for that. Instead, do nfs4_fl_put_deviceid()
-in the filelayout's .pg_cleanup and remove it from filelayout_free_lseg.
+Tigran.
 
-But we still want a reference to hold over the lifetime of the segment.
-So start the recount at 2 and keep the nfs4_fl_put_deviceid() in
-the filelayout_free_lseg().
+----- Original Message -----
+> From: "Olga Kornievskaia" <aglo@umich.edu>
+> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>, "Andy Adamson" <andros@netapp.com>
+> Sent: Tuesday, June 13, 2017 6:21:01 PM
+> Subject: Re: "nfs4_discover_server_trunking unhandled error" on Ctrl-C
 
-Fixes: 8d40b0f14846 ("NFS filelayout:call GETDEVICEINFO after pnfs_layout_process completes")
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/filelayout/filelayout.c | 15 +++++++++++++--
- fs/nfs/pnfs_dev.c              |  2 +-
- 2 files changed, 14 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index acd30ba..33ebd1a 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -989,18 +989,29 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
- 	nfs_pageio_reset_write_mds(pgio);
- }
- 
-+static void filelayout_pg_cleanup(struct nfs_pageio_descriptor *desc)
-+{
-+	if (desc->pg_lseg) {
-+		struct nfs4_filelayout_segment *fl =
-+			FILELAYOUT_LSEG(desc->pg_lseg);
-+
-+		nfs4_fl_put_deviceid(fl->dsaddr);
-+	}
-+	pnfs_generic_pg_cleanup(desc);
-+}
-+
- static const struct nfs_pageio_ops filelayout_pg_read_ops = {
- 	.pg_init = filelayout_pg_init_read,
- 	.pg_test = filelayout_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
--	.pg_cleanup = pnfs_generic_pg_cleanup,
-+	.pg_cleanup = filelayout_pg_cleanup,
- };
- 
- static const struct nfs_pageio_ops filelayout_pg_write_ops = {
- 	.pg_init = filelayout_pg_init_write,
- 	.pg_test = filelayout_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
--	.pg_cleanup = pnfs_generic_pg_cleanup,
-+	.pg_cleanup = filelayout_pg_cleanup,
- };
- 
- static u32 select_bucket_index(struct nfs4_filelayout_segment *fl, u32 j)
-diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
-index 2961fcd..671d65f 100644
---- a/fs/nfs/pnfs_dev.c
-+++ b/fs/nfs/pnfs_dev.c
-@@ -255,7 +255,7 @@ struct nfs4_deviceid_node *
- 	d->nfs_client = server->nfs_client;
- 	d->flags = 0;
- 	d->deviceid = *id;
--	atomic_set(&d->ref, 1);
-+	atomic_set(&d->ref, 2);
- }
- EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
- 
--- 
-1.8.3.1
-
+> On Tue, Jun 13, 2017 at 9:31 AM, Mkrtchyan, Tigran
+> <tigran.mkrtchyan@desy.de> wrote:
+>>
+>> If I hit Ctrl-C during mount, then I see following message in the log file:
+>>
+>>  NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
+>>
+>>
+>> produced at nfs4state.c:2533. Is this expected behavior?
+> 
+> What kernel version (or upstream commit) is that? Is this
+> reproducible? Anything on the network trace that server returns that
+> could explain an error it doesn't expect. Also I'm thinking that
+> nfs_wait_client_init_complete() could be interrupted by ctrl-c and
+> return ERESTARTSYS and that could translate to "unhanded error".
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
