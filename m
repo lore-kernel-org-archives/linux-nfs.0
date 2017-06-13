@@ -1,36 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f175.google.com ([209.85.216.175]:35213 "EHLO
-        mail-qt0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750899AbdFMQVD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Jun 2017 12:21:03 -0400
-Received: by mail-qt0-f175.google.com with SMTP id w1so177920092qtg.2
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Jun 2017 09:21:03 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <991293071.14131572.1497360717136.JavaMail.zimbra@desy.de>
-References: <991293071.14131572.1497360717136.JavaMail.zimbra@desy.de>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 13 Jun 2017 12:21:01 -0400
-Message-ID: <CAN-5tyHeaNHVxQLnXVfQyyS20jwk0L-2UjY-pH-azM6ADQBEtQ@mail.gmail.com>
-Subject: Re: "nfs4_discover_server_trunking unhandled error" on Ctrl-C
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:47208 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752452AbdFMRbO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Jun 2017 13:31:14 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 8A57A23E6D8
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Jun 2017 17:31:13 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 409C28B7A0
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Jun 2017 17:31:13 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/2 V3] mount.nfs: Use default minor version when -t nfs4 is specified
+Date: Tue, 13 Jun 2017 13:31:11 -0400
+Message-Id: <20170613173112.8596-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 13, 2017 at 9:31 AM, Mkrtchyan, Tigran
-<tigran.mkrtchyan@desy.de> wrote:
->
-> If I hit Ctrl-C during mount, then I see following message in the log file:
->
->  NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
->
->
-> produced at nfs4state.c:2533. Is this expected behavior?
+When the nfs4 filesystem specified, the default major
+and minor versions should be used.
 
-What kernel version (or upstream commit) is that? Is this
-reproducible? Anything on the network trace that server returns that
-could explain an error it doesn't expect. Also I'm thinking that
-nfs_wait_client_init_complete() could be interrupted by ctrl-c and
-return ERESTARTSYS and that could translate to "unhanded error".
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/mount/stropts.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
+
+v2: Added the NFS_DEFAULT_MAJOR/MINOR defines
+v3: Add back the setting of v_mode to V_GENERAL in nfs_set_version()
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index c0266e5..fbea6fb 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -73,6 +73,13 @@
+ #define NFS_DEF_BG_TIMEOUT_MINUTES	(10000u)
+ #endif
+ 
++#ifndef NFS_DEFAULT_MAJOR
++#define NFS_DEFAULT_MAJOR	4
++#endif
++#ifndef NFS_DEFAULT_MINOR
++#define NFS_DEFAULT_MINOR	2
++#endif
++
+ extern int nfs_mount_data_version;
+ extern char *progname;
+ extern int verbose;
+@@ -124,8 +131,8 @@ static void nfs_default_version(struct nfsmount_info *mi)
+ 	}
+ 
+ #endif /* MOUNT_CONFIG */
+-	mi->version.major = 4;
+-	mi->version.minor = 2;
++	mi->version.major = NFS_DEFAULT_MAJOR;
++	mi->version.minor = NFS_DEFAULT_MINOR;
+ }
+ 
+ /*
+@@ -316,7 +323,9 @@ static int nfs_set_version(struct nfsmount_info *mi)
+ 		return 0;
+ 
+ 	if (strncmp(mi->type, "nfs4", 4) == 0) {
+-		mi->version.major = 4;
++		/* Set to default values */
++		mi->version.major = NFS_DEFAULT_MAJOR;
++		mi->version.minor = NFS_DEFAULT_MINOR;
+ 		mi->version.v_mode = V_GENERAL;
+ 	}
+ 	/*
+-- 
+2.9.4
+
