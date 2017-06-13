@@ -1,83 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54102 "EHLO mx1.redhat.com"
+Received: from mx142.netapp.com ([216.240.21.19]:6571 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752525AbdFMRbO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 13 Jun 2017 13:31:14 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id E5B8EC05FFCA
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Jun 2017 17:31:13 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id A2E208B7A5
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Jun 2017 17:31:13 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2 V2] mount.nfs: Use default minor version when -o v4 is specified
-Date: Tue, 13 Jun 2017 13:31:12 -0400
-Message-Id: <20170613173112.8596-2-steved@redhat.com>
-In-Reply-To: <20170613173112.8596-1-steved@redhat.com>
-References: <20170613173112.8596-1-steved@redhat.com>
+        id S1752259AbdFMSgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Jun 2017 14:36:24 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] PNFS fix dangling DS mount
+Date: Tue, 13 Jun 2017 14:36:20 -0400
+Message-ID: <20170613183620.57538-1-kolga@netapp.com>
+In-Reply-To: <CAN-5tyHUJW85oxaX81Zr3Drp5WFv05-tWWXGcKCQh5S+1VZ7JQ@mail.gmail.com>
+References: <CAN-5tyHUJW85oxaX81Zr3Drp5WFv05-tWWXGcKCQh5S+1VZ7JQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When v4 is specified on the command line the
-default minor version needs to be used.
+There is a regression by commit 8d40b0f14846 ("NFS filelayout:call
+GETDEVICEINFO after pnfs_layout_process completes"). It leaves the
+DS mount dangling.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Previously, filelayout_alloc_sec() would call filelayout_check_layout()
+which would call nfs4_find_get_deviceid which ups the count on the
+device_id. It's only called once and it's matched by the
+filelayout_free_lseg() that calls nfs4_fl_put_deviceid().
+
+After that patch, each read/write ends up calling nfs4_find_get_deviceid
+and there is no balance for that. Instead, do nfs4_fl_put_deviceid()
+in the filelayout's .pg_cleanup and remove it from filelayout_free_lseg.
+
+But we still want a reference to hold over the lifetime of the segment.
+So start the recount at 2 and keep the nfs4_fl_put_deviceid() in
+the filelayout_free_lseg().
+
+Fixes: 8d40b0f14846 ("NFS filelayout:call GETDEVICEINFO after pnfs_layout_process completes")
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- utils/mount/stropts.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
+ fs/nfs/filelayout/filelayout.c | 15 +++++++++++++--
+ fs/nfs/pnfs_dev.c              |  2 +-
+ 2 files changed, 14 insertions(+), 3 deletions(-)
 
-V2: Removed pointless check of v_mode in nfs_do_mount_v4()
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index fbea6fb..9330d42 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -119,14 +119,22 @@ static void nfs_default_version(struct nfsmount_info *mi)
- 	if (mi->version.v_mode == V_DEFAULT &&
- 		config_default_vers.v_mode != V_DEFAULT) {
- 		mi->version.major = config_default_vers.major;
--		mi->version.minor = config_default_vers.minor;
-+		if (config_default_vers.minor)
-+			mi->version.minor = config_default_vers.minor;
-+		else if (!mi->version.minor)
-+			mi->version.minor = NFS_DEFAULT_MINOR;
- 		return;
- 	}
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index acd30ba..33ebd1a 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -989,18 +989,29 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ 	nfs_pageio_reset_write_mds(pgio);
+ }
  
- 	if (mi->version.v_mode == V_GENERAL) {
- 		if (config_default_vers.v_mode != V_DEFAULT &&
--		    mi->version.major == config_default_vers.major)
--			mi->version.minor = config_default_vers.minor;
-+		    mi->version.major == config_default_vers.major) {
-+			if (config_default_vers.minor)
-+				mi->version.minor = config_default_vers.minor;
-+			else if (!mi->version.minor)
-+				mi->version.minor = NFS_DEFAULT_MINOR;
-+		} else if (!mi->version.minor)
-+			mi->version.minor = NFS_DEFAULT_MINOR;
- 		return;
- 	}
++static void filelayout_pg_cleanup(struct nfs_pageio_descriptor *desc)
++{
++	if (desc->pg_lseg) {
++		struct nfs4_filelayout_segment *fl =
++			FILELAYOUT_LSEG(desc->pg_lseg);
++
++		nfs4_fl_put_deviceid(fl->dsaddr);
++	}
++	pnfs_generic_pg_cleanup(desc);
++}
++
+ static const struct nfs_pageio_ops filelayout_pg_read_ops = {
+ 	.pg_init = filelayout_pg_init_read,
+ 	.pg_test = filelayout_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+-	.pg_cleanup = pnfs_generic_pg_cleanup,
++	.pg_cleanup = filelayout_pg_cleanup,
+ };
  
-@@ -741,13 +749,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
- 	}
+ static const struct nfs_pageio_ops filelayout_pg_write_ops = {
+ 	.pg_init = filelayout_pg_init_write,
+ 	.pg_test = filelayout_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+-	.pg_cleanup = pnfs_generic_pg_cleanup,
++	.pg_cleanup = filelayout_pg_cleanup,
+ };
  
- 	if (mi->version.v_mode != V_SPECIFIC) {
--		if (mi->version.v_mode == V_GENERAL)
--			snprintf(version_opt, sizeof(version_opt) - 1,
--				"vers=%lu", mi->version.major);
--		else
--			snprintf(version_opt, sizeof(version_opt) - 1,
--				"vers=%lu.%lu", mi->version.major,
--				mi->version.minor);
-+		snprintf(version_opt, sizeof(version_opt) - 1,
-+			"vers=%lu.%lu", mi->version.major,
-+			mi->version.minor);
+ static u32 select_bucket_index(struct nfs4_filelayout_segment *fl, u32 j)
+diff --git a/fs/nfs/pnfs_dev.c b/fs/nfs/pnfs_dev.c
+index 2961fcd..671d65f 100644
+--- a/fs/nfs/pnfs_dev.c
++++ b/fs/nfs/pnfs_dev.c
+@@ -255,7 +255,7 @@ struct nfs4_deviceid_node *
+ 	d->nfs_client = server->nfs_client;
+ 	d->flags = 0;
+ 	d->deviceid = *id;
+-	atomic_set(&d->ref, 1);
++	atomic_set(&d->ref, 2);
+ }
+ EXPORT_SYMBOL_GPL(nfs4_init_deviceid_node);
  
- 		if (po_append(options, version_opt) == PO_FAILED) {
- 			errno = EINVAL;
 -- 
-2.9.4
+1.8.3.1
 
