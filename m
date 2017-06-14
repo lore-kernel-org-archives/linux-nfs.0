@@ -1,101 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:44198 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751928AbdFNOKE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jun 2017 10:10:04 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: "nfs4_discover_server_trunking unhandled error" on Ctrl-C
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1497443353.6752.5.camel@redhat.com>
-Date: Wed, 14 Jun 2017 10:09:48 -0400
-Cc: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-        Olga Kornievskaia <aglo@umich.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "William A. (Andy) Adamson" <andros@netapp.com>
-Message-Id: <FE3D3FA5-6C2F-4F02-9498-7DCBB945B99F@oracle.com>
-References: <991293071.14131572.1497360717136.JavaMail.zimbra@desy.de> <CAN-5tyHeaNHVxQLnXVfQyyS20jwk0L-2UjY-pH-azM6ADQBEtQ@mail.gmail.com> <1087115680.14242025.1497381738583.JavaMail.zimbra@desy.de> <1497443353.6752.5.camel@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:50132 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752614AbdFNPQR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Jun 2017 11:16:17 -0400
+Subject: [PATCH 06/27] Provide supplementary error message facility [ver #5]
+From: David Howells <dhowells@redhat.com>
+To: mszeredi@redhat.com, viro@zeniv.linux.org.uk
+Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        linux-kernel@vger.kernel.org, dhowells@redhat.com,
+        linux-security-module@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Date: Wed, 14 Jun 2017 16:16:11 +0100
+Message-ID: <149745337097.10897.6533194783327792549.stgit@warthog.procyon.org.uk>
+In-Reply-To: <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk>
+References: <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Provide a way for the kernel to pass supplementary error messages to
+userspace.  This will make it easier for userspace, particularly in
+containers to find out what went wrong during mounts and automounts, but is
+also made available to any other syscalls that want to use it.
 
-> On Jun 14, 2017, at 8:29 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> That warning has been around for a long time. We're running the server
-> trunking check and caught a signal in the middle of it. It's harmless,
-> AFAICT.
-> 
-> Should we merge a patch like this (untested) one, just to silence it? It
-> really is an expected situation that we needn't warn anyone about:
-> 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index b34de036501b..ae9a9ad2894d 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -2182,6 +2182,9 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
->                                 * in nfs4_exchange_id */
->                status = -EKEYEXPIRED;
->                break;
-> +       case -ERESTARTSYS:
-> +               status = -EINTR;
-> +               break;
->        default:
->                pr_warn("NFS: %s unhandled error %d. Exiting with error EIO\n",
->                                __func__, status);
+Two prctl() functions are added for this:
 
-I agree that this message is noise in this case, and the patch
-looks sane.
+ (1) int old_setting = prctl(PR_ERRMSG_ENABLE, int setting);
 
+     Enable (setting == 1) or disable (setting == 0) the facility.
+     Disabling the facility clears the error buffer.
 
-> On Tue, 2017-06-13 at 21:22 +0200, Mkrtchyan, Tigran wrote:
->> Hi Olga,
->> 
->> this is 4.12.-rc4.  I will check packet capture tomorrow, however, I am pretty sure that
->> this is client internal interrupt processing.
->> 
->> Tigran.
->> 
->> ----- Original Message -----
->>> From: "Olga Kornievskaia" <aglo@umich.edu>
->>> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
->>> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>, "Andy Adamson" <andros@netapp.com>
->>> Sent: Tuesday, June 13, 2017 6:21:01 PM
->>> Subject: Re: "nfs4_discover_server_trunking unhandled error" on Ctrl-C
->>> On Tue, Jun 13, 2017 at 9:31 AM, Mkrtchyan, Tigran
->>> <tigran.mkrtchyan@desy.de> wrote:
->>>> 
->>>> If I hit Ctrl-C during mount, then I see following message in the log file:
->>>> 
->>>> NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
->>>> 
->>>> 
->>>> produced at nfs4state.c:2533. Is this expected behavior?
->>> 
->>> What kernel version (or upstream commit) is that? Is this
->>> reproducible? Anything on the network trace that server returns that
->>> could explain an error it doesn't expect. Also I'm thinking that
->>> nfs_wait_client_init_complete() could be interrupted by ctrl-c and
->>> return ERESTARTSYS and that could translate to "unhanded error".
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ (2) int size = prctl(PR_ERRMSG_READ, char *buffer, int buf_size);
 
---
-Chuck Lever
+     Reads the next error string into the buffer.  The string is truncated
+     if it won't fit.  Strings are discarded as they're read.
 
+     If there isn't a string, ENODATA is indicated.
 
+I've done it this way rather than a proc file because procfs might not be
+accessible.
+
+The interface inside the kernel is a pair of macros:
+
+ (*) void errorf(const char *fmt, ...);
+ (*) int invalf(const char *fmt, ...);
+
+Both of them snprintf() the string into the current process's error message
+buffer if the facility is enabled.  The string is truncated if it exceeds
+the limit.  invalf() returns -EINVAL whereas errof() has no return.
+
+Note that this is very crude and could be made to store multiple strings,
+allocate storage as required and not duplicate unformatted strings that are
+stored in the rodata section (like kvasprintf_const).  Unfortunately,
+specially handling rodata strings wouldn't gain a lot as most strings are
+likely to be in modules, where the string's life can be terminated by
+rmmod.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ include/linux/sched.h      |   29 +++++++++++++++++++++++++++++
+ include/uapi/linux/prctl.h |    6 ++++++
+ kernel/exit.c              |    1 +
+ kernel/fork.c              |    1 +
+ kernel/sys.c               |   38 ++++++++++++++++++++++++++++++++++++++
+ 5 files changed, 75 insertions(+)
+
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 2b69fc650201..a6002b60b0b9 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -1051,6 +1051,8 @@ struct task_struct {
+ 	/* Used by LSM modules for access restriction: */
+ 	void				*security;
+ #endif
++#define ERROR_MSG_SIZE 256
++	char				*error_msg;
+ 	/* CPU-specific state of this task: */
+ 	struct thread_struct		thread;
+ 
+@@ -1573,4 +1575,31 @@ extern long sched_getaffinity(pid_t pid, struct cpumask *mask);
+ #define TASK_SIZE_OF(tsk)	TASK_SIZE
+ #endif
+ 
++/**
++ * errorf - Store supplementary error message
++ * @fmt: The format string
++ *
++ * Store the supplementary error message for the process if the process has
++ * enabled the facility.
++ */
++#define errorf(fmt, ...)			\
++	do {					\
++		if (current->error_msg)					\
++			snprintf(current->error_msg, ERROR_MSG_SIZE, fmt, ## __VA_ARGS__); \
++	} while(0)
++
++/**
++ * invalf - Store supplementary invalid argument error message
++ * @fmt: The format string
++ *
++ * Store the supplementary error message for the process if the process has
++ * enabled the facility and return -EINVAL.
++ */
++#define invalf(fmt, ...)			\
++	({					\
++		errorf(fmt, ## __VA_ARGS__);	\
++		-EINVAL;			\
++	})
++
++
+ #endif
+diff --git a/include/uapi/linux/prctl.h b/include/uapi/linux/prctl.h
+index a8d0759a9e40..b1203850dac8 100644
+--- a/include/uapi/linux/prctl.h
++++ b/include/uapi/linux/prctl.h
+@@ -197,4 +197,10 @@ struct prctl_mm_map {
+ # define PR_CAP_AMBIENT_LOWER		3
+ # define PR_CAP_AMBIENT_CLEAR_ALL	4
+ 
++/*
++ * Control the supplementary error message gathering facility.
++ */
++#define PR_ERRMSG_ENABLE		48
++#define PR_ERRMSG_READ			49
++
+ #endif /* _LINUX_PRCTL_H */
+diff --git a/kernel/exit.c b/kernel/exit.c
+index 516acdb0e0ec..31b8617aee04 100644
+--- a/kernel/exit.c
++++ b/kernel/exit.c
+@@ -932,6 +932,7 @@ void __noreturn do_exit(long code)
+ 		__this_cpu_add(dirty_throttle_leaks, tsk->nr_dirtied);
+ 	exit_rcu();
+ 	TASKS_RCU(__srcu_read_unlock(&tasks_rcu_exit_srcu, tasks_rcu_i));
++	kfree(tsk->error_msg);
+ 
+ 	do_task_dead();
+ }
+diff --git a/kernel/fork.c b/kernel/fork.c
+index e53770d2bf95..177b4c82fcb9 100644
+--- a/kernel/fork.c
++++ b/kernel/fork.c
+@@ -1912,6 +1912,7 @@ static __latent_entropy struct task_struct *copy_process(
+ 
+ 	trace_task_newtask(p, clone_flags);
+ 	uprobe_copy_process(p, clone_flags);
++	p->error_msg = NULL;
+ 
+ 	return p;
+ 
+diff --git a/kernel/sys.c b/kernel/sys.c
+index 8a94b4eabcaa..b784905c4806 100644
+--- a/kernel/sys.c
++++ b/kernel/sys.c
+@@ -2295,6 +2295,44 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
+ 	case PR_GET_FP_MODE:
+ 		error = GET_FP_MODE(me);
+ 		break;
++
++	case PR_ERRMSG_ENABLE:
++		switch (arg2) {
++		case 0:
++			if (!current->error_msg)
++				return 0;
++			kfree(current->error_msg);
++			current->error_msg = NULL;
++			return 1;
++		case 1:
++			if (current->error_msg)
++				return 1;
++			current->error_msg = kmalloc(ERROR_MSG_SIZE, GFP_KERNEL);
++			if (!current->error_msg)
++				return -ENOMEM;
++			current->error_msg[0] = 0;
++			return 0;
++		default:
++			error = -EINVAL;
++			break;
++		}
++		break;
++
++	case PR_ERRMSG_READ:
++		if (!arg2 || !arg3)
++			return -EINVAL;
++		if (!current->error_msg)
++			return -EINVAL;
++		if (!current->error_msg[0])
++			return -ENODATA;
++		error = strlen(current->error_msg);
++		if (arg3 < error)
++			error = arg3;
++		if (copy_to_user((char __user *)arg2, current->error_msg, error))
++			return -EFAULT;
++		current->error_msg[0] = 0;
++		return error;
++
+ 	default:
+ 		error = -EINVAL;
+ 		break;
 
