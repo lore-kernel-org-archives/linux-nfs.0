@@ -1,583 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nm10-vm0.bullet.mail.ne1.yahoo.com ([98.138.91.72]:32826 "EHLO
-        nm10-vm0.bullet.mail.ne1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752003AbdFNUDq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jun 2017 16:03:46 -0400
-Subject: Re: [PATCH 08/27] VFS: Introduce the structs and doc for a filesystem
- context [ver #5]
-To: David Howells <dhowells@redhat.com>, mszeredi@redhat.com,
-        viro@zeniv.linux.org.uk
-Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        linux-kernel@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-References: <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk>
- <149745339478.10897.13154531822843514976.stgit@warthog.procyon.org.uk>
-From: Casey Schaufler <casey@schaufler-ca.com>
-Message-ID: <22bc3062-e860-5266-7a2d-9f5eff8b8559@schaufler-ca.com>
-Date: Wed, 14 Jun 2017 13:03:43 -0700
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:36353 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751735AbdFNUIQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Jun 2017 16:08:16 -0400
 MIME-Version: 1.0
-In-Reply-To: <149745339478.10897.13154531822843514976.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAOQ4uxhSS1s2ZYZbhzmRdw1N+DS6bc_RFHZSmeeM96uidesmuQ@mail.gmail.com>
+References: <5bca6687-ac03-72ef-f38e-6759a0fbb1d6@gmail.com>
+ <20170614185335.58193-1-kolga@netapp.com> <CAOQ4uxhSS1s2ZYZbhzmRdw1N+DS6bc_RFHZSmeeM96uidesmuQ@mail.gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 14 Jun 2017 16:08:14 -0400
+Message-ID: <CAN-5tyGS8hBpySwnGx8ka=Lifn1Wtoy5ziZeS-mXQDhJLrBPtA@mail.gmail.com>
+Subject: Re: [PATCH 1/1] [RFC] 64bit copy_file_range system call
+To: Amir Goldstein <amir73il@gmail.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 6/14/2017 8:16 AM, David Howells wrote:
-> Introduce a filesystem context concept to be used during superblock
-> creation for mount and superblock reconfiguration for remount.  This is
-> allocated at the beginning of the mount procedure and into it is placed:
+On Wed, Jun 14, 2017 at 3:32 PM, Amir Goldstein <amir73il@gmail.com> wrote:
+> On Wed, Jun 14, 2017 at 9:53 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
+>>
+>> This is a proposal to allow 64bit count to copy and return as
+>> a result of a copy_file_range. No attempt was made to share code
+>> with the 32bit function because 32bit interface should probably
+>> get depreciated.
+>>
+>> Why use 64bit? Current uses of 32bit are by clone_file_range()
+>> which could use 64bit count and NFS copy_file_range also supports
+>> 64bit count value.
+>>
+>> Also with this proposal off-the-bet allow the userland to copy
+>> between different mount points.
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+> ...
+>> +
+>> +       /*
+>> +        * Try cloning first, this is supported by more file systems, and
+>> +        * more efficient if both clone and copy are supported (e.g. NFS).
+>> +        */
+>> +       if (file_in->f_op->clone_file_range) {
+>> +               ret = file_in->f_op->clone_file_range(file_in, pos_in,
+>> +                               file_out, pos_out, len);
+>> +               if (ret == 0) {
+>> +                       ret = len;
+>> +                       goto done;
+>> +               }
+>> +       }
+>> +
+>> +       if (file_out->f_op->copy_file_range64) {
+>> +               ret = file_out->f_op->copy_file_range64(file_in, pos_in,
+>> +                                       file_out, pos_out, len, flags);
+>> +               if (ret != -EOPNOTSUPP)
+>> +                       goto done;
+>> +       }
+>> +
+>> +       ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out,
+>> +                       len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
+>> +
 >
->  (1) Filesystem type.
->
->  (2) Namespaces.
->
->  (3) Device name.
->
->  (4) Superblock flags (MS_*).
->
->  (5) Security details.
->
->  (6) Filesystem-specific data, as set by the mount options.
->
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> ---
->
->  Documentation/filesystems/mounting.txt |  436 ++++++++++++++++++++++++++++++++
->  include/linux/fs_context.h             |   72 +++++
->  2 files changed, 508 insertions(+)
->  create mode 100644 Documentation/filesystems/mounting.txt
->  create mode 100644 include/linux/fs_context.h
->
-> diff --git a/Documentation/filesystems/mounting.txt b/Documentation/filesystems/mounting.txt
-> new file mode 100644
-> index 000000000000..315a5a4ff5cc
-> --- /dev/null
-> +++ b/Documentation/filesystems/mounting.txt
-> @@ -0,0 +1,436 @@
-> +			      ===================
-> +			      FILESYSTEM MOUNTING
-> +			      ===================
-> +
-> +CONTENTS
-> +
-> + (1) Overview.
-> +
-> + (2) The filesystem context.
-> +
-> + (3) The filesystem context operations.
-> +
-> + (4) Filesystem context security.
-> +
-> + (5) VFS filesystem context operations.
-> +
-> +
-> +========
-> +OVERVIEW
-> +========
-> +
-> +The creation of new mounts is now to be done in a multistep process:
-> +
-> + (1) Create a filesystem context.
-> +
-> + (2) Parse the options and attach them to the context.  Options may be passed
-> +     individually from userspace.
-> +
-> + (3) Validate and pre-process the context.
-> +
-> + (4) Get or create a superblock and mountable root.
-> +
-> + (5) Perform the mount.
-> +
-> + (6) Return an error message attached to the context.
-> +
-> + (7) Destroy the context.
-> +
-> +To support this, the file_system_type struct gains two new fields:
-> +
-> +	unsigned short fs_context_size;
-> +
-> +which indicates the total amount of space that should be allocated for context
-> +data (see the Filesystem Context section), and:
-> +
-> +	int (*init_fs_context)(struct fs_context *fc, struct super_block *src_sb);
-> +
-> +which is invoked to set up the filesystem-specific parts of a filesystem
-> +context, including the additional space.  The src_sb parameter is used to
-> +convey the superblock from which the filesystem may draw extra information
-> +(such as namespaces), for submount (FS_CONTEXT_FOR_SUBMOUNT) or remount
-> +(FS_CONTEXT_FOR_REMOUNT) purposes or it will be NULL.
-> +
-> +Note that security initialisation is done *after* the filesystem is called so
-> +that the namespaces may be adjusted first.
-> +
-> +And the super_operations struct gains one:
-> +
-> +	int (*remount_fs_fc) (struct super_block *, struct fs_context *);
-> +
-> +This shadows the ->remount_fs() operation and takes a prepared filesystem
-> +context instead of the mount flags and data page.  It may modify the ms_flags
-> +in the context for the caller to pick up.
-> +
-> +[NOTE] remount_fs_fc is intended as a replacement for remount_fs.
-> +
-> +
-> +======================
-> +THE FILESYSTEM CONTEXT
-> +======================
-> +
-> +The creation and reconfiguration of a superblock is governed by a filesystem
-> +context.  This is represented by the fs_context structure:
-> +
-> +	struct fs_context {
-> +		const struct fs_context_operations *ops;
-> +		struct file_system_type *fs;
-> +		struct dentry		*root;
-> +		struct user_namespace	*user_ns;
-> +		struct net		*net_ns;
-> +		const struct cred	*cred;
-> +		char			*device;
-> +		void			*security;
-> +		unsigned int		sb_flags;
-> +		bool			sloppy;
-> +		bool			silent;
-> +		bool			degraded;
-> +		enum fs_context_purpose	purpose : 8;
-> +	};
+> Olga,
 
-Could you namespace the fields of this structure?
-e.g. fs_cred, fs_security
-It makes it so much easier to determine which ->cred
-you're looking at.
+Hi Amir,
 
-> +
-> +When the VFS creates this, it allocates ->fs_context_size bytes (as specified
-> +by the file_system_type object) to hold both the fs_context struct and any
-> +extra data required by the filesystem.  The fs_context struct is placed at the
-> +beginning of this space.  Any extra space beyond that is for use by the
-> +filesystem.  The filesystem should wrap the struct in its own, e.g.:
-> +
-> +	struct nfs_fs_context {
-> +		struct fs_context fc;
-> +		...
-> +	};
-> +
-> +placing the fs_context struct first.  container_of() can then be used.  The
-> +file_system_type would be initialised thus:
-> +
-> +	struct file_system_type nfs = {
-> +		...
-> +		.fs_context_size	= sizeof(struct nfs_fs_context),
-> +		.init_fs_context	= nfs_init_fs_context,
-> +		...
-> +	};
-> +
-> +The fs_context fields are as follows:
-> +
-> + (*) const struct fs_context_operations *ops
-> +
-> +     These are operations that can be done on a filesystem context (see
-> +     below).  This must be set by the ->init_fs_context() file_system_type
-> +     operation.
-> +
-> + (*) struct file_system_type *fs
-> +
-> +     A pointer to the file_system_type of the filesystem that is being
-> +     constructed or reconfigured.  This retains a ref on the type owner.
-> +
-> + (*) struct dentry *root
-> +
-> +     A pointer to the root of the mountable tree (and indirectly, the
-> +     superblock thereof).  This is filled in by the ->get_tree() op.
-> +
-> + (*) struct user_namespace *user_ns
-> + (*) struct net *net_ns
-> +
-> +     This is a subset of the namespaces in use by the invoking process.  This
-> +     retains a ref on each namespace.  The subscribed namespaces may be
-> +     replaced by the filesystem to reflect other sources, such as the parent
-> +     mount superblock on an automount.
-> +
-> + (*) struct cred *cred
-> +
-> +     The mounter's credentials.  This retains a ref on the credentials.
-> +
-> + (*) char *device
-> +
-> +     This is the device to be mounted.  It may be a block device
-> +     (e.g. /dev/sda1) or something more exotic, such as the "host:/path" that
-> +     NFS desires.
-> +
-> + (*) void *security
-> +
-> +     A place for the LSMs to hang their security data for the superblock.  The
-> +     relevant security operations are described below.
-> +
-> + (*) unsigned int sb_flags
-> +
-> +     This holds the MS_* flags mount flags.
-> +
-> + (*) bool sloppy
-> + (*) bool silent
-> +
-> +     These are set if the sloppy or silent mount options are given.
-> +
-> +     [NOTE] sloppy is probably unnecessary when userspace passes over one
-> +     option at a time since the error can just be ignored if userspace deems it
-> +     to be unimportant.
-> +
-> +     [NOTE] silent is probably redundant with ms_flags & MS_SILENT.
-> +
-> + (*) bool degraded
-> +
-> +     This is set if any preallocated resources in the context have been used
-> +     up, thereby rendering it unreusable for the ->get_tree() op.
-> +
-> + (*) enum fs_context_purpose
-> +
-> +     This indicates the purpose for which the context is intended.  The
-> +     available values are:
-> +
-> +	FS_CONTEXT_FOR_NEW	-- New mount
-> +	FS_CONTEXT_FOR_SUBMOUNT	-- New automatic submount of extant mount
-> +	FS_CONTEXT_FOR_REMOUNT	-- Change an existing mount
-> +
-> +The mount context is created by calling vfs_new_fs_context(), vfs_sb_reconfig()
-> +or vfs_dup_fs_context() and is destroyed with put_fs_context().  Note that the
-> +structure is not refcounted.
-> +
-> +VFS, security and filesystem mount options are set individually with
-> +vfs_parse_mount_option().  Options provided by the old mount(2) system call as
-> +a page of data can be parsed with generic_monolithic_mount_data().
-> +
-> +When mounting, the filesystem is allowed to take data from any of the pointers
-> +and attach it to the superblock (or whatever), provided it clears the pointer
-> +in the mount context.
-> +
-> +The filesystem is also allowed to allocate resources and pin them with the
-> +mount context.  For instance, NFS might pin the appropriate protocol version
-> +module.
-> +
-> +
-> +=================================
-> +THE FILESYSTEM CONTEXT OPERATIONS
-> +=================================
-> +
-> +The filesystem context points to a table of operations:
-> +
-> +	struct fs_context_operations {
-> +		void (*free)(struct fs_context *fc);
-> +		int (*dup)(struct fs_context *fc, struct fs_context *src_fc);
-> +		int (*parse_option)(struct fs_context *fc, char *p);
-> +		int (*monolithic_mount_data)(struct fs_context *fc, void *data);
-> +		int (*validate)(struct fs_context *fc);
-> +		int (*get_tree)(struct fs_context *fc);
-> +	};
-> +
-> +These operations are invoked by the various stages of the mount procedure to
-> +manage the filesystem context.  They are as follows:
-> +
-> + (*) void (*free)(struct fs_context *fc);
-> +
-> +     Called to clean up the filesystem-specific part of the filesystem context
-> +     when the context is destroyed.  It should be aware that parts of the
-> +     context may have been removed and NULL'd out by ->get_tree().
-> +
-> + (*) int (*dup)(struct fs_context *fc, struct fs_context *src_fc);
-> +
-> +     Called when a filesystem context has been duplicated to get any refs or
-> +     copy any non-referenced resources held in the filesystem-specific part of
-> +     the filesystem context.  An error may be returned to indicate failure to
-> +     do this.
-> +
-> +     [!] Note that even if this fails, put_fs_context() will be called
-> +	 immediately thereafter, so ->dup() *must* make the
-> +	 filesystem-specific part safe for ->free().
-> +
-> + (*) int (*parse_option)(struct fs_context *fc, char *p);
-> +
-> +     Called when an option is to be added to the filesystem context.  p points
-> +     to the option string, likely in "key[=val]" format.  VFS-specific options
-> +     will have been weeded out and fc->sb_flags updated in the context.
-> +     Security options will also have been weeded out and fc->security updated.
-> +
-> +     If successful, 0 should be returned and a negative error code otherwise.
-> +     If an ambiguous error (such as -EINVAL) is returned, sb_cfg_error() or
-> +     sb_cfg_inval() should be used to provide a string that provides more
-> +     information.
-> +
-> + (*) int (*monolithic_mount_data)(struct fs_context *fc, void *data);
-> +
-> +     Called when the mount(2) system call is invoked to pass the entire data
-> +     page in one go.  If this is expected to be just a list of "key[=val]"
-> +     items separated by commas, then this may be set to NULL.
-> +
-> +     The return value is as for ->parse_option().
-> +
-> +     If the filesystem (eg. NFS) needs to examine the data first and then finds
-> +     it's the standard key-val list then it may pass it off to
-> +     generic_monolithic_mount_data().
-> +
-> + (*) int (*validate)(struct fs_context *fc);
-> +
-> +     Called when all the options have been applied and the mount is about to
-> +     take place.  It is should check for inconsistencies from mount options and
-> +     it is also allowed to do preliminary resource acquisition.  For instance,
-> +     the core NFS module could load the NFS protocol module here.
-> +
-> +     Note that if fc->mount_type == FS_CONTEXT_FOR_REMOUNT, some of the options
-> +     necessary for a new mount may not be set.
-> +
-> +     The return value is as for ->parse_option().
-> +
-> + (*) int (*get_tree)(struct fs_context *fc);
-> +
-> +     Called to get or create the mountable root and superblock, using the
-> +     information stored in the filesystem context (remounts go
-> +     via a different vector).  It may detach any resources it desires from the
-> +     filesystem context and transfer them to the superblock it
-> +     creates.
-> +
-> +     On success it should set fc->root to the mountable root.
-> +
-> +     In the case of an error, it should return a negative error code and
-> +     consider invoking sb_cfg_inval() or sb_cfg_error().
-> +
-> +
-> +=========================================
-> +FILESYSTEM CONTEXT SECURITY
-> +========================================
-> +
-> +The filesystem context contains a security points that the LSMs
-> +can use for building up a security context for the superblock to be mounted.
-> +There are a number of operations used by the new mount code for this purpose:
-> +
-> + (*) int security_fs_context_alloc(struct fs_context *fc,
-> +				  struct super_block *src_sb);
-> +
-> +     Called to initialise fc->security (which is preset to NULL) and allocate
-> +     any resources needed.  It should return 0 on success and a negative error
-> +     code on failure.
-> +
-> +     src_sb is non-NULL in the case of a remount (FS_CONTEXT_FOR_REMOUNT) in
-> +     which case it indicates the superblock to be remounted or in the case of a
-> +     submount (FS_CONTEXT_FOR_SUBMOUNT) in which case it indicates the parent
-> +     superblock.
-> +
-> + (*) int security_fs_context_dup(struct fs_context *fc,
-> +				struct fs_context *src_mc);
-> +
-> +     Called to initialise fc->security (which is preset to NULL) and allocate
-> +     any resources needed.  The original filesystem context is
-> +     pointed to by src_mc and may be used for reference.  It should return 0 on
-> +     success and a negative error code on failure.
-> +
-> + (*) void security_fs_context_free(struct fs_context *fc);
-> +
-> +     Called to clean up anything attached to fc->security.  Note that the
-> +     contents may have been transferred to a superblock and the pointer NULL'd
-> +     out during mount.
-> +
-> + (*) int security_fs_context_parse_option(struct fs_context *fc, char *opt);
-> +
-> +     Called for each mount option.  The mount options are in "key[=val]" form.
-> +     An active LSM may reject one with an error, pass one over and return 0 or
-> +     consume one and return 1.  If consumed, the option isn't passed on to the
-> +     filesystem.
-> +
-> +     If it returns an error, more information can be returned with
-> +     sb_cfg_inval() or sb_cfg_error().
-> +
-> + (*) int security_sb_get_tree(struct fs_context *fc);
-> +
-> +     Called during the mount procedure to verify that the specified superblock
-> +     is allowed to be mounted and to transfer the security data there.
-> +
-> +     On success, it should return 0; otherwise it should return an error and
-> +     perhaps call invalf() or errorf() to indicate the problem.  It should not
-> +     return -ENOMEM as this should be taken care of in advance.
-> +
-> +     [NOTE] Should I add a security_fs_context_validate() operation so that the
-> +     LSM has the opportunity to allocate stuff and check the options as a
-> +     whole?
-> +
-> +
-> +=================================
-> +VFS FILESYSTEM CONTEXT OPERATIONS
-> +=================================
-> +
-> +There are four operations for creating a filesystem context and
-> +one for destroying a context:
-> +
-> + (*) struct fs_context *__vfs_new_fs_context(struct file_system_type *fs_type,
-> +					     struct super_block *src_sb;
-> +					     unsigned int ms_flags);
-> +
-> +     Create a filesystem context given a filesystem type pointer.
-> +     This allocates the filesystem context, sets the flags,
-> +     initialises the security and calls fs_type->init_fs_context() to initialise
-> +     the filesystem context.
-> +
-> +     src_sb can be NULL or it may indicate a superblock that is going to be
-> +     remounted (FS_CONTEXT_FOR_REMOUNT) or a superblock that is the parent of a
-> +     submount (FS_CONTEXT_FOR_SUBMOUNT).  This superblock is provided as a
-> +     source of namespace information.
-> +
-> + (*) struct fs_context *vfs_sb_reconfig(struct vfsmount *mnt,
-> +					unsigned int ms_flags);
-> +
-> +     Create a filesystem context from the same filesystem as an
-> +     extant mount and initialise the mount parameters from the superblock
-> +     underlying that mount.  This is for use by remount.
-> +
-> + (*) struct fs_context *vfs_new_fs_context(const char *fs_name);
-> +
-> +     Create a filesystem context given a filesystem name.  It is assumed that
-> +     the mount flags will be passed in as text options or set directly later.
-> +     This is intended to be called from sys_mount() or sys_fsopen().  This
-> +     copies current's namespaces to the context.
-> +
-> + (*) struct fs_context *vfs_dup_fs_context(struct fs_context *src_fc);
-> +
-> +     Duplicate a filesystem context, copying any options noted and duplicating
-> +     or additionally referencing any resources held therein.  This is
-> +     available for use where a filesystem has to get a mount within a mount,
-> +     such as NFS4 does by internally mounting the root of the target server
-> +     and then doing a private pathwalk to the target directory.
-> +
-> + (*) void put_fs_context(struct fs_context *fc);
-> +
-> +     Destroy a filesystem context, releasing any resources it holds.  This
-> +     calls the ->free() operation.  This is intended to be called by anyone
-> +     who created a filesystem context.
-> +
-> +     [!] filesystem contexts are not refcounted, so this causes unconditional
-> +	 destruction.
-> +
-> +In all the above operations, apart from the put op, the return is a mount
-> +context pointer or a negative error code.  No error string is saved as the
-> +error string is only guaranteed as long as the file_system_type is pinned (and
-> +thus the module).
-> +
-> +In the remaining operations, if an error occurs, a negative error code is
-> +returned and, if not obvious, fc->error_msg may have been set to point to a
-> +useful string.  This string should not be freed.
-> +
-> + (*) int vfs_get_tree(struct fs_context *fc);
-> +
-> +     Get or create the mountable root and superblock, using the parameters in
-> +     the filesystem context to select/configure the superblock.  This invokes
-> +     the ->validate() op and then the ->get_tree() op.
-> +
-> +     [NOTE] ->validate() can probably be rolled into ->get_tree() and
-> +     ->remount_fs_fc().
-> +
-> + (*) struct vfsmount *vfs_kern_mount_fc(struct fs_context *fc);
-> +
-> +     Create a mount given the parameters in the specified filesystem context.
-> +
-> + (*) struct vfsmount *vfs_submount_fc(const struct dentry *mountpoint,
-> +				      struct fs_context *fc);
-> +
-> +     Create a mount given a filesystem context and set MS_SUBMOUNT on it.  A
-> +     wrapper around vfs_kern_mount_fc().  This is intended to be called from
-> +     filesystems that have automount points (NFS, AFS, ...).
-> +
-> + (*) int vfs_parse_mount_option(struct fs_context *fc, char *data);
-> +
-> +     Supply a single mount option to the filesystem context.  The mount option
-> +     should likely be in a "key[=val]" string form.  The option is first
-> +     checked to see if it corresponds to a standard mount flag (in which case
-> +     it is used to mark an MS_xxx flag and consumed) or a security option (in
-> +     which case the LSM consumes it) before it is passed on to the filesystem.
-> +
-> + (*) int generic_monolithic_mount_data(struct fs_context *fc, void *data);
-> +
-> +     Parse a sys_mount() data page, assuming the form to be a text list
-> +     consisting of key[=val] options separated by commas.  Each item in the
-> +     list is passed to vfs_mount_option().  This is the default when the
-> +     ->monolithic_mount_data() operation is NULL.
-> diff --git a/include/linux/fs_context.h b/include/linux/fs_context.h
-> new file mode 100644
-> index 000000000000..429c40be2c9e
-> --- /dev/null
-> +++ b/include/linux/fs_context.h
-> @@ -0,0 +1,72 @@
-> +/* Filesystem superblock creation and reconfiguration context.
-> + *
-> + * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
-> + * Written by David Howells (dhowells@redhat.com)
-> + *
-> + * This program is free software; you can redistribute it and/or
-> + * modify it under the terms of the GNU General Public Licence
-> + * as published by the Free Software Foundation; either version
-> + * 2 of the Licence, or (at your option) any later version.
-> + */
-> +
-> +#ifndef _LINUX_FS_CONTEXT_H
-> +#define _LINUX_FS_CONTEXT_H
-> +
-> +#include <linux/kernel.h>
-> +#include <linux/errno.h>
-> +
-> +struct cred;
-> +struct dentry;
-> +struct file_operations;
-> +struct file_system_type;
-> +struct mnt_namespace;
-> +struct net;
-> +struct pid_namespace;
-> +struct super_block;
-> +struct user_namespace;
-> +struct vfsmount;
-> +
-> +enum fs_context_purpose {
-> +	FS_CONTEXT_FOR_NEW,	/* New superblock for direct mount */
-> +	FS_CONTEXT_FOR_SUBMOUNT,	/* New superblock for automatic submount */
-> +	FS_CONTEXT_FOR_REMOUNT,	/* Superblock reconfiguration for remount */
-> +};
-> +
-> +/*
-> + * Filesystem context as allocated and constructed by the ->init_fs_context()
-> + * file_system_type operation.  The size of the object allocated is specified
-> + * in struct file_system_type::fs_context_size and this must include sufficient
-> + * space for the fs_context struct.
-> + *
-> + * Superblock creation fills in ->root whereas reconfiguration begins with this
-> + * already set.
-> + *
-> + * See Documentation/filesystems/mounting.txt
-> + */
-> +struct fs_context {
-> +	const struct fs_context_operations *ops;
-> +	struct file_system_type	*fs_type;
-> +	struct dentry		*root;		/* The root and superblock */
-> +	struct user_namespace	*user_ns;	/* The user namespace for this mount */
-> +	struct net		*net_ns;	/* The network namespace for this mount */
-> +	const struct cred	*cred;		/* The mounter's credentials */
-> +	char			*device;	/* The device name or mount target */
-> +	char			*subtype;	/* The subtype to set on the superblock */
-> +	void			*security;	/* The LSM context */
-> +	unsigned int		sb_flags;	/* The superblock flags (MS_*) */
-> +	bool			sloppy;		/* Unrecognised options are okay */
-> +	bool			silent;
-> +	bool			degraded;	/* True if the context can't be reused */
-> +	enum fs_context_purpose	purpose : 8;
-> +};
-> +
-> +struct fs_context_operations {
-> +	void (*free)(struct fs_context *fc);
-> +	int (*dup)(struct fs_context *fc, struct fs_context *src_fc);
-> +	int (*parse_option)(struct fs_context *fc, char *p);
-> +	int (*monolithic_mount_data)(struct fs_context *fc, void *data);
-> +	int (*validate)(struct fs_context *fc);
-> +	int (*get_tree)(struct fs_context *fc);
-> +};
-> +
-> +#endif /* _LINUX_FS_CONTEXT_H */
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-security-module" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Thanks for the comments.
 
+> I know this is copied from vfs_copy_file_range() as is, so my comment
+> applies to the origin function as well, but it is easier to change the new
+> function without changing userspace behavior, so..
+>
+> A while back, either Dave Chinner or Christoph suggested that I use
+> vfs_copy_file_range() from ovl_copy_up_data() instead of calling
+> vfs_clone_file_range() and falling back to do_splice_direct() loop.
+> Then Christoph added the clone_file_range attempt into
+> vfs_copy_file_range(), which was one part of the work.
+>
+> However, ovl_copy_up_data() uses a killable loop of do_splice_direct()
+> calls with smaller chunks, so it is not the same as vfs_copy_file_range().
+>
+> I wonder if it makes sense to use a similar killable loop in the new
+> function?
+
+I'm currently not proposing to change the semantics of
+copy_file_range() call to in some cases return a partial copy and thus
+making the application responsible for looping to finish the copy.
+Basically copy_file_range() follows the same semantics as read/write
+where it is possible that not all requested bytes are completed.
+However, if it seems more desirable to shift the responsibility to
+completing the copy into the kernel, then I can definitely add the
+same looping as does ovl_copy_up_data().
+
+> I wonder, for reference, if NFS implementation of copy_file_range64()
+> is killable?
+
+I believe the current implementation of "intra" (same server) copy is
+not killable. The outstanding proposal to add asynchronous copy as
+well as "inter" (server to server) copy is killable.
