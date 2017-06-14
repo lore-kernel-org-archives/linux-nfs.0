@@ -1,204 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:33787 "EHLO smtp-o-3.desy.de"
+Received: from mx1.redhat.com ([209.132.183.28]:34710 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751606AbdFNV5H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Jun 2017 17:57:07 -0400
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 6FA08280896
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Jun 2017 23:57:05 +0200 (CEST)
-Date: Wed, 14 Jun 2017 23:57:02 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>, NFSv4 <nfsv4@ietf.org>
-Message-ID: <1529444490.14625288.1497477422197.JavaMail.zimbra@desy.de>
-In-Reply-To: <092C6B41-E55B-43D1-95DC-7A53A2445B7A@oracle.com>
-References: <56804FBE-34B2-47FB-96EF-013D4476D89A@oracle.com> <20170607155549.GB26995@fieldses.org> <092C6B41-E55B-43D1-95DC-7A53A2445B7A@oracle.com>
-Subject: Re: [nfsv4] Proposal for end-of-life for fedfs-utils development
+        id S1752376AbdFNWbl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Jun 2017 18:31:41 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <149745355907.10897.10073768158664960494.stgit@warthog.procyon.org.uk>
+References: <149745355907.10897.10073768158664960494.stgit@warthog.procyon.org.uk> <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk>
+To: mszeredi@redhat.com, viro@zeniv.linux.org.uk
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        Li Zefan <lizefan@huawei.com>,
+        Johannes Weiner <hannes@cmpxchg.org>,
+        Tejun Heo <tj@kernel.org>, cgroups@vger.kernel.org,
+        fenghua.yu@intel.com
+Subject: Re: [PATCH 27/27] ... and the intel_rdt driver
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="us-ascii"
+Date: Wed, 14 Jun 2017 23:31:36 +0100
+Message-ID: <10464.1497479496@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+This also needs the attached addition to fix the intel_rdt driver.
 
------ Original Message -----
-> From: "Chuck Lever" <chuck.lever@oracle.com>
-> To: "J. Bruce Fields" <bfields@fieldses.org>
-> Cc: "fedfs-utils Developers" <fedfs-utils-devel@oss.oracle.com>, "linux-nfs" <linux-nfs@vger.kernel.org>, "NFSv4"
-> <nfsv4@ietf.org>
-> Sent: Wednesday, June 7, 2017 8:02:19 PM
-> Subject: Re: [nfsv4] Proposal for end-of-life for fedfs-utils development
-
-> Bruce, that's a good question, and an answer is worth sharing with
-> the nfsv4 WG mailing list, whom I've cc'd.
-> 
-> 
->> On Jun 7, 2017, at 11:55 AM, bfields@fieldses.org wrote:
->> 
->> So if it's not too depressing I'd be curious what went wrong--did this
->> turn out to be harder than we thought to get stable, or are people happy
->> enough with automounting, or did we just not do a good job of explaining
->> it to people that might use it, or some combination of all those?
-> 
-> If you're interested in an intriguing discussion of what makes a
-> successful protocol, I recommend RFC 5218. Now, not in any particular
-> order, the main reasons FedFS has not been widely adopted are (IMO of
-> course):
-> 
-> 
-> 1. Lack of vendor adoption
-> 
-> After the specifications were completed, we anticipated two independent
-> implementations. For various reasons the Solaris FedFS implementation
-> was abandoned. One big reason was LDAP.
-> 
-> NFS/Ganesha has expressed some interest in FedFS over the years, but
-> I'm not aware of an implementation.
-> 
-> NetApp abandoned FedFS before it was published as RFCs.
-> 
-> So we were left with just the Linux implementation, just like what
-> happened with SPKM.
-> 
-> 
-> 2. LDAP is onerously complex
-> 
-> The LDAP components of the Linux implementation were the worst to
-> implement by far. This also proved to be the case in the Solaris
-> prototype implementation. OpenLDAP is designed for massive scalability
-> but aggressively shuns ease of administration.
-> 
-> It was suggested that we integrate with FreeIPA, which is a Linux-based
-> management suite that can provide an LDAP service, a KDC, and a
-> certificate authority. But there was never enough user inertia to make
-> that effort.
-> 
-> There was resistance to integrating FedFS directly into nfs-utils
-> because the LDAP components would have added complex library
-> dependencies.
-> 
-> The LDAP pieces of FedFS are specified to use TLS, but NFS operates
-> using GSS and Kerberos. Getting these two worlds to work together was
-> going to be the next step (and also, figuring out how to make the LDAP
-> service use GSS instead, which we should have done before completing
-> the standard).
-> 
-> However, by the time the FedFS standards were complete, there was no
-> longer WG interest to address its shortcomings. There were two small
-> I-Ds published to start down that path. They went nowhere because the
-> IETF's pool of LDAP expertise is difficult to consult, now that
-> LDAP-related WGs have been disbanded.
-> 
-> IMO LDAP, which was chosen early in the 2000s by the IBM prototypes
-> that were to become FedFS, was ultimately a poor choice for what
-> eventually became the public FedFS standard. This can be attributed
-> to changing times.
-> 
-> 
-> 3. Lack of consensus about how to store junctions
-> 
-> There was never consensus in the Linux community about how to represent
-> junction objects on disk. NFS wanted something that would look naturally
-> like an empty directory to NFS versions that did not support referrals.
-> Samba wanted something that could behave like symbolic links, as it
-> had been using for its own DFS-style referrals. The filesystem folks
-> were not interested in creating a new distinct object that could fill
-> both roles.
-> 
-> As you are probably aware, Bruce, I asked about this every year at
-> LFS/MM for several years. I was always told "get back to us when you
-> have users."
-> 
-> Solaris went for reparse points in its implementation. Those are also
-> supported by FreeBSD. I think RPs would have been a great direction
-> but sadly these are not being actively pursued in the Linux FS
-> community.
-> 
-> Lack of user adoption sapped the energy out of the effort to find a
-> consensus. Though, if FedFS had been widely adopted before a consensus
-> was reached on junction object representation, we'd have a significant
-> data conversion problem.
-> 
-> 
-> 4. Existing implementations are capable enough
-> 
-> This is mostly speculation on my part, but FedFS was a competitive
-> response to the global namespace capabilities of AFS and SMB, not to
-> any particular stated need in NFS communities.
-> 
-> I've discussed the use of FedFS with various large enterprises, but
-> quite often the underlying needs are able to be filled by some form
-> of pNFS. I think this class of solution is what NetApp and Primary
-> Data have adopted.
-> 
-> Or put another way, pNFS seems capable of doing most anything that a
-> referral-based mechanism can do. And in non-NFSv4 environments, the
-> automounter is good enough for most people.
-> 
-> Certainly we could design something from the ground up that addresses
-> many of these shortcomings, but I get about one query about FedFS a
-> year. I just wonder if it would be worth the effort.
-
-We  at DESY was interested in FedFS for two main reasons: one is to replace
-AFS and second is to build a federation on independent NFS server.
-The second option is not covered by pNFS as FedFS allows to run independent
-pNFS instances with different administrative domains, implementations and 
-namespaces, but still provide a common mount point. NetApp or Primary Data
-does not provide solution for that. Even we don't :-D. 
-
-Why we have failed? There was not clear how to set it up. LDAP management
-was a mess. Schema was not standardized and not available with existing
-LDAP server.
-
-Currently we have 5 pNFS based instances with ~15PB in total. Some
-nodes have direct mounts. But most of 'generic' clients automunter config
-to fake FedFS as we don't know in advance which server will be used. Does
-it works - Yes, does it solves all problems - No.
-
-I would like to see a federated name space. We have the demand, but may be it's
-only us.
-
-For non NFS world we have a HTTP federation. It uses HTTP redirects, similar to
-referrals. However, the tendency is to move towards distributed systems instead
-of federated ones. If this project survive, then we can attempt to have a second
-look at NFS federation. Life is a spiral.....
-
-Regards,
-   Tigran.
-
-> 
-> 
->> --b.
->> 
->> On Fri, Jun 02, 2017 at 11:01:05AM -0400, Chuck Lever wrote:
->>> Upstream fedfs-utils has not been under active development for
->>> two years or more, and there is a scant user base. I'd like to
->>> propose making 0.10 the final major release of fedfs-utils.
->>> 
->>> The plan:
->>> 
->>> - Since 0.10 is in at least one major enterprise distribution,
->>> I will remain available to integrate security fixes and make
->>> new minor releases in the 0.10 line, as needed, for one to
->>> two more years.
->>> 
->>> - Retire and remove fedfs-utils from upstream mirror distros
->>> such as Fedora rawhide.
->>> 
->>> - Transfer utilities such as nfsref into nfs-utils, with
->>> support for FedFS junctions removed.
->>> 
->>> - Announcements of the change in status will be made on
->>> fedfs-utils-announce and on the wiki.linux-nfs.org site.
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
+David
+---
+diff --git a/arch/x86/kernel/cpu/intel_rdt_rdtgroup.c b/arch/x86/kernel/cpu/intel_rdt_rdtgroup.c
+index f5af0cc7eb0d..d026701894fd 100644
+--- a/arch/x86/kernel/cpu/intel_rdt_rdtgroup.c
++++ b/arch/x86/kernel/cpu/intel_rdt_rdtgroup.c
+@@ -35,6 +35,11 @@
+ #include <asm/intel_rdt.h>
+ #include <asm/intel_rdt_common.h>
+ 
++struct rdt_fs_context {
++	struct kernfs_fs_context kfc;
++	bool	enable_cdp;
++};
++
+ DEFINE_STATIC_KEY_FALSE(rdt_enable_key);
+ struct kernfs_root *rdt_root;
+ struct rdtgroup rdtgroup_default;
+@@ -743,22 +748,6 @@ static void cdp_disable(void)
+ 	}
+ }
+ 
+-static int parse_rdtgroupfs_options(char *data)
+-{
+-	char *token, *o = data;
+-	int ret = 0;
+-
+-	while ((token = strsep(&o, ",")) != NULL) {
+-		if (!*token)
+-			return -EINVAL;
+-
+-		if (!strcmp(token, "cdp"))
+-			ret = cdp_enable();
+-	}
+-
+-	return ret;
+-}
+-
+ /*
+  * We don't allow rdtgroup directories to be created anywhere
+  * except the root directory. Thus when looking for the rdtgroup
+@@ -823,11 +812,9 @@ void rdtgroup_kn_unlock(struct kernfs_node *kn)
+ 	}
+ }
+ 
+-static struct dentry *rdt_mount(struct file_system_type *fs_type,
+-				int flags, const char *unused_dev_name,
+-				void *data)
++static int rdt_get_tree(struct fs_context *fc)
+ {
+-	struct dentry *dentry;
++	struct rdt_fs_context *ctx = container_of(fc, struct rdt_fs_context, kfc.fc);
+ 	int ret;
+ 
+ 	mutex_lock(&rdtgroup_mutex);
+@@ -835,27 +822,25 @@ static struct dentry *rdt_mount(struct file_system_type *fs_type,
+ 	 * resctrl file system can only be mounted once.
+ 	 */
+ 	if (static_branch_unlikely(&rdt_enable_key)) {
+-		dentry = ERR_PTR(-EBUSY);
++		errorf("intel_rdt: Can only mount once");
++		ret = -EBUSY;
+ 		goto out;
+ 	}
+ 
+-	ret = parse_rdtgroupfs_options(data);
+-	if (ret) {
+-		dentry = ERR_PTR(ret);
+-		goto out_cdp;
++	if (ctx->enable_cdp) {
++		ret = cdp_enable();
++		if (ret < 0)
++			goto out_cdp;
+ 	}
+ 
+ 	closid_init();
+ 
+ 	ret = rdtgroup_create_info_dir(rdtgroup_default.kn);
+-	if (ret) {
+-		dentry = ERR_PTR(ret);
++	if (ret < 0)
+ 		goto out_cdp;
+-	}
+ 
+-	dentry = kernfs_mount(fs_type, flags, rdt_root,
+-			      RDTGROUP_SUPER_MAGIC, NULL);
+-	if (IS_ERR(dentry))
++	ret = kernfs_get_tree(&ctx->kfc);
++	if (ret < 0)
+ 		goto out_cdp;
+ 
+ 	static_branch_enable(&rdt_enable_key);
+@@ -865,8 +850,42 @@ static struct dentry *rdt_mount(struct file_system_type *fs_type,
+ 	cdp_disable();
+ out:
+ 	mutex_unlock(&rdtgroup_mutex);
++	return ret;
++}
++
++static int rdt_parse_option(struct fs_context *fc, char *p)
++{
++	struct rdt_fs_context *ctx = container_of(fc, struct rdt_fs_context, kfc.fc);
+ 
+-	return dentry;
++	if (strcmp(p, "cdp") == 0) {
++		ctx->enable_cdp = true;
++		return 0;
++	}
++
++	return invalf("intel_rdt: Unknown option");
++}
++
++static void rdt_fs_context_free(struct fs_context *fc)
++{
++	struct rdt_fs_context *ctx = container_of(fc, struct rdt_fs_context, kfc.fc);
++
++	kernfs_free_fs_context(&ctx->kfc);
++}
++
++static const struct fs_context_operations rdt_fs_context_ops = {
++	.free		= rdt_fs_context_free,
++	.parse_option	= rdt_parse_option,
++	.get_tree	= rdt_get_tree,
++};
++
++static int rdt_init_fs_context(struct fs_context *fc, struct super_block *src_sb)
++{
++	struct rdt_fs_context *ctx = container_of(fc, struct rdt_fs_context, kfc.fc);
++
++	ctx->kfc.root = rdt_root;
++	ctx->kfc.magic = RDTGROUP_SUPER_MAGIC;
++	ctx->kfc.fc.ops = &rdt_fs_context_ops;
++	return 0;
+ }
+ 
+ static int reset_all_ctrls(struct rdt_resource *r)
+@@ -994,9 +1013,10 @@ static void rdt_kill_sb(struct super_block *sb)
+ }
+ 
+ static struct file_system_type rdt_fs_type = {
+-	.name    = "resctrl",
+-	.mount   = rdt_mount,
+-	.kill_sb = rdt_kill_sb,
++	.name			= "resctrl",
++	.fs_context_size	= sizeof(struct rdt_fs_context),
++	.init_fs_context	= rdt_init_fs_context,
++	.kill_sb		= rdt_kill_sb,
+ };
+ 
+ static int rdtgroup_mkdir(struct kernfs_node *parent_kn, const char *name,
