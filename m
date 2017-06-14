@@ -1,17 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50132 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41192 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752614AbdFNPQR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Jun 2017 11:16:17 -0400
-Subject: [PATCH 06/27] Provide supplementary error message facility [ver #5]
+        id S1752141AbdFNPR2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Jun 2017 11:17:28 -0400
+Subject: [PATCH 13/27] VFS: Implement fsmount() to effect a pre-configured
+ mount [ver #5]
 From: David Howells <dhowells@redhat.com>
 To: mszeredi@redhat.com, viro@zeniv.linux.org.uk
 Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com,
         linux-kernel@vger.kernel.org, dhowells@redhat.com,
         linux-security-module@vger.kernel.org,
         linux-fsdevel@vger.kernel.org
-Date: Wed, 14 Jun 2017 16:16:11 +0100
-Message-ID: <149745337097.10897.6533194783327792549.stgit@warthog.procyon.org.uk>
+Date: Wed, 14 Jun 2017 16:17:19 +0100
+Message-ID: <149745343991.10897.9754948236224112565.stgit@warthog.procyon.org.uk>
 In-Reply-To: <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk>
 References: <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -19,185 +20,166 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide a way for the kernel to pass supplementary error messages to
-userspace.  This will make it easier for userspace, particularly in
-containers to find out what went wrong during mounts and automounts, but is
-also made available to any other syscalls that want to use it.
+Provide a system call by which a filesystem opened with fsopen() and
+configured by a series of writes can be mounted:
 
-Two prctl() functions are added for this:
+	int ret = fsmount(int fsfd, int dfd, const char *path,
+			  unsigned int at_flags, unsigned int flags);
 
- (1) int old_setting = prctl(PR_ERRMSG_ENABLE, int setting);
+where fsfd is the fd returned by fsopen(), dfd, path and at_flags locate
+the mountpoint and flags are the applicable MS_* flags.  dfd can be
+AT_FDCWD or an fd open to a directory.
 
-     Enable (setting == 1) or disable (setting == 0) the facility.
-     Disabling the facility clears the error buffer.
-
- (2) int size = prctl(PR_ERRMSG_READ, char *buffer, int buf_size);
-
-     Reads the next error string into the buffer.  The string is truncated
-     if it won't fit.  Strings are discarded as they're read.
-
-     If there isn't a string, ENODATA is indicated.
-
-I've done it this way rather than a proc file because procfs might not be
-accessible.
-
-The interface inside the kernel is a pair of macros:
-
- (*) void errorf(const char *fmt, ...);
- (*) int invalf(const char *fmt, ...);
-
-Both of them snprintf() the string into the current process's error message
-buffer if the facility is enabled.  The string is truncated if it exceeds
-the limit.  invalf() returns -EINVAL whereas errof() has no return.
-
-Note that this is very crude and could be made to store multiple strings,
-allocate storage as required and not duplicate unformatted strings that are
-stored in the rodata section (like kvasprintf_const).  Unfortunately,
-specially handling rodata strings wouldn't gain a lot as most strings are
-likely to be in modules, where the string's life can be terminated by
-rmmod.
+In the event that fsmount() fails, it may be possible to get an error
+message by calling read().  If no message is available, ENODATA will be
+reported.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- include/linux/sched.h      |   29 +++++++++++++++++++++++++++++
- include/uapi/linux/prctl.h |    6 ++++++
- kernel/exit.c              |    1 +
- kernel/fork.c              |    1 +
- kernel/sys.c               |   38 ++++++++++++++++++++++++++++++++++++++
- 5 files changed, 75 insertions(+)
+ arch/x86/entry/syscalls/syscall_32.tbl |    1 
+ arch/x86/entry/syscalls/syscall_64.tbl |    1 
+ fs/namespace.c                         |   85 ++++++++++++++++++++++++++++++++
+ include/linux/syscalls.h               |    2 +
+ kernel/sys_ni.c                        |    1 
+ 5 files changed, 90 insertions(+)
 
-diff --git a/include/linux/sched.h b/include/linux/sched.h
-index 2b69fc650201..a6002b60b0b9 100644
---- a/include/linux/sched.h
-+++ b/include/linux/sched.h
-@@ -1051,6 +1051,8 @@ struct task_struct {
- 	/* Used by LSM modules for access restriction: */
- 	void				*security;
- #endif
-+#define ERROR_MSG_SIZE 256
-+	char				*error_msg;
- 	/* CPU-specific state of this task: */
- 	struct thread_struct		thread;
+diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+index 9bf8d4c62f85..abe6ea95e0e6 100644
+--- a/arch/x86/entry/syscalls/syscall_32.tbl
++++ b/arch/x86/entry/syscalls/syscall_32.tbl
+@@ -392,3 +392,4 @@
+ 383	i386	statx			sys_statx
+ 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
+ 385	i386	fsopen			sys_fsopen
++386	i386	fsmount			sys_fsmount
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 9b198c5fc412..0977c5079831 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -340,6 +340,7 @@
+ 331	common	pkey_free		sys_pkey_free
+ 332	common	statx			sys_statx
+ 333	common	fsopen			sys_fsopen
++334	common	fsmount			sys_fsmount
  
-@@ -1573,4 +1575,31 @@ extern long sched_getaffinity(pid_t pid, struct cpumask *mask);
- #define TASK_SIZE_OF(tsk)	TASK_SIZE
- #endif
+ #
+ # x32-specific system call numbers start at 512 to avoid cache impact
+diff --git a/fs/namespace.c b/fs/namespace.c
+index cd44283dee99..9158b67936a5 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -3241,6 +3241,91 @@ vfs_submount(const struct dentry *mountpoint, struct file_system_type *type,
+ EXPORT_SYMBOL_GPL(vfs_submount);
  
-+/**
-+ * errorf - Store supplementary error message
-+ * @fmt: The format string
-+ *
-+ * Store the supplementary error message for the process if the process has
-+ * enabled the facility.
+ /*
++ * Mount a new, prepared superblock (specified by fs_fd) on the location
++ * specified by dfd and dir_name.  dfd can be AT_FDCWD, a dir fd or a container
++ * fd.  This cannot be used for binding, moving or remounting mounts.
 + */
-+#define errorf(fmt, ...)			\
-+	do {					\
-+		if (current->error_msg)					\
-+			snprintf(current->error_msg, ERROR_MSG_SIZE, fmt, ## __VA_ARGS__); \
-+	} while(0)
++SYSCALL_DEFINE5(fsmount, int, fs_fd, int, dfd, const char __user *, dir_name,
++		unsigned int, at_flags, unsigned int, flags)
++{
++	struct fs_context *fc;
++	struct path mountpoint;
++	struct fd f;
++	unsigned int lookup_flags, mnt_flags = 0;
++	long ret;
 +
-+/**
-+ * invalf - Store supplementary invalid argument error message
-+ * @fmt: The format string
-+ *
-+ * Store the supplementary error message for the process if the process has
-+ * enabled the facility and return -EINVAL.
-+ */
-+#define invalf(fmt, ...)			\
-+	({					\
-+		errorf(fmt, ## __VA_ARGS__);	\
-+		-EINVAL;			\
-+	})
++	if ((at_flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
++			  AT_EMPTY_PATH)) != 0)
++		return -EINVAL;
 +
++	if (flags & ~(MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC |
++		      MS_NOATIME | MS_NODIRATIME | MS_RELATIME | MS_STRICTATIME))
++		return -EINVAL;
 +
- #endif
-diff --git a/include/uapi/linux/prctl.h b/include/uapi/linux/prctl.h
-index a8d0759a9e40..b1203850dac8 100644
---- a/include/uapi/linux/prctl.h
-+++ b/include/uapi/linux/prctl.h
-@@ -197,4 +197,10 @@ struct prctl_mm_map {
- # define PR_CAP_AMBIENT_LOWER		3
- # define PR_CAP_AMBIENT_CLEAR_ALL	4
- 
++	if (flags & MS_RDONLY)
++		mnt_flags |= MNT_READONLY;
++	if (flags & MS_NOSUID)
++		mnt_flags |= MNT_NOSUID;
++	if (flags & MS_NODEV)
++		mnt_flags |= MNT_NODEV;
++	if (flags & MS_NOEXEC)
++		mnt_flags |= MNT_NOEXEC;
++	if (flags & MS_NODIRATIME)
++		mnt_flags |= MNT_NODIRATIME;
++
++	if (flags & MS_STRICTATIME) {
++		if (flags & MS_NOATIME)
++			return -EINVAL;
++	} else if (flags & MS_NOATIME) {
++		mnt_flags |= MNT_NOATIME;
++	} else {
++		mnt_flags |= MNT_RELATIME;
++	}
++
++	f = fdget(fs_fd);
++	if (!f.file)
++		return -EBADF;
++
++	ret = -EINVAL;
++	if (f.file->f_op != &fs_fs_fops)
++		goto err_fsfd;
++
++	fc = f.file->private_data;
++
++	ret = -EPERM;
++	if (!may_mount() ||
++	    ((fc->sb_flags & MS_MANDLOCK) && !may_mandlock()))
++		goto err_fsfd;
++
++	/* There must be a valid superblock or we can't mount it */
++	if (!fc->root) {
++		ret = invalf("VFS: Root must be obtained before mount");
++		goto err_fsfd;
++	}
++
++	/* Find the mountpoint.  A container can be specified in dfd. */
++	lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
++	if (at_flags & AT_SYMLINK_NOFOLLOW)
++		lookup_flags &= ~LOOKUP_FOLLOW;
++	if (at_flags & AT_NO_AUTOMOUNT)
++		lookup_flags &= ~LOOKUP_AUTOMOUNT;
++	if (at_flags & AT_EMPTY_PATH)
++		lookup_flags |= LOOKUP_EMPTY;
++	ret = user_path_at(dfd, dir_name, lookup_flags, &mountpoint);
++	if (ret < 0) {
++		errorf("VFS: Mountpoint lookup failed");
++		goto err_fsfd;
++	}
++
++	ret = do_new_mount_fc(fc, &mountpoint, mnt_flags);
++
++	path_put(&mountpoint);
++err_fsfd:
++	fdput(f);
++	return ret;
++}
++
 +/*
-+ * Control the supplementary error message gathering facility.
-+ */
-+#define PR_ERRMSG_ENABLE		48
-+#define PR_ERRMSG_READ			49
-+
- #endif /* _LINUX_PRCTL_H */
-diff --git a/kernel/exit.c b/kernel/exit.c
-index 516acdb0e0ec..31b8617aee04 100644
---- a/kernel/exit.c
-+++ b/kernel/exit.c
-@@ -932,6 +932,7 @@ void __noreturn do_exit(long code)
- 		__this_cpu_add(dirty_throttle_leaks, tsk->nr_dirtied);
- 	exit_rcu();
- 	TASKS_RCU(__srcu_read_unlock(&tasks_rcu_exit_srcu, tasks_rcu_i));
-+	kfree(tsk->error_msg);
+  * Return true if path is reachable from root
+  *
+  * namespace_sem or mount_lock is held
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 91ec8802ad5d..07e4f775f24d 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -906,5 +906,7 @@ asmlinkage long sys_pkey_free(int pkey);
+ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
+ 			  unsigned mask, struct statx __user *buffer);
+ asmlinkage long sys_fsopen(const char *fs_name, int containerfd, unsigned int flags);
++asmlinkage long sys_fsmount(int fsfd, int dfd, const char *path, unsigned int at_flags,
++			    unsigned int flags);
  
- 	do_task_dead();
- }
-diff --git a/kernel/fork.c b/kernel/fork.c
-index e53770d2bf95..177b4c82fcb9 100644
---- a/kernel/fork.c
-+++ b/kernel/fork.c
-@@ -1912,6 +1912,7 @@ static __latent_entropy struct task_struct *copy_process(
+ #endif
+diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+index de1dc63e7e47..a0fe764bd5dd 100644
+--- a/kernel/sys_ni.c
++++ b/kernel/sys_ni.c
+@@ -261,3 +261,4 @@ cond_syscall(sys_pkey_free);
  
- 	trace_task_newtask(p, clone_flags);
- 	uprobe_copy_process(p, clone_flags);
-+	p->error_msg = NULL;
- 
- 	return p;
- 
-diff --git a/kernel/sys.c b/kernel/sys.c
-index 8a94b4eabcaa..b784905c4806 100644
---- a/kernel/sys.c
-+++ b/kernel/sys.c
-@@ -2295,6 +2295,44 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
- 	case PR_GET_FP_MODE:
- 		error = GET_FP_MODE(me);
- 		break;
-+
-+	case PR_ERRMSG_ENABLE:
-+		switch (arg2) {
-+		case 0:
-+			if (!current->error_msg)
-+				return 0;
-+			kfree(current->error_msg);
-+			current->error_msg = NULL;
-+			return 1;
-+		case 1:
-+			if (current->error_msg)
-+				return 1;
-+			current->error_msg = kmalloc(ERROR_MSG_SIZE, GFP_KERNEL);
-+			if (!current->error_msg)
-+				return -ENOMEM;
-+			current->error_msg[0] = 0;
-+			return 0;
-+		default:
-+			error = -EINVAL;
-+			break;
-+		}
-+		break;
-+
-+	case PR_ERRMSG_READ:
-+		if (!arg2 || !arg3)
-+			return -EINVAL;
-+		if (!current->error_msg)
-+			return -EINVAL;
-+		if (!current->error_msg[0])
-+			return -ENODATA;
-+		error = strlen(current->error_msg);
-+		if (arg3 < error)
-+			error = arg3;
-+		if (copy_to_user((char __user *)arg2, current->error_msg, error))
-+			return -EFAULT;
-+		current->error_msg[0] = 0;
-+		return error;
-+
- 	default:
- 		error = -EINVAL;
- 		break;
+ /* fd-based mount */
+ cond_syscall(sys_fsopen);
++cond_syscall(sys_fsmount);
 
