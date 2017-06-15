@@ -1,54 +1,108 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:37042 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750777AbdFOKOn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jun 2017 06:14:43 -0400
-Date: Thu, 15 Jun 2017 11:14:42 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: David Howells <dhowells@redhat.com>
-Cc: mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        linux-kernel@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 16/27] proc: Add fs_context support to procfs [ver #5]
-Message-ID: <20170615101441.GI31671@ZenIV.linux.org.uk>
-References: <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk>
- <149745346349.10897.1390410969617844911.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <149745346349.10897.1390410969617844911.stgit@warthog.procyon.org.uk>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@redhat.com>
+Message-ID: <1497529418.4607.3.camel@redhat.com>
+Subject: Re: [PATCH v2] NFS: nfs_rename() handle -ERESTARTSYS dentry left
+ behind
+From: Jeff Layton <jlayton@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>, Trond Myklebust
+ <trond.myklebust@primarydata.com>, Anna Schumaker
+ <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, Miklos Szeredi <miklos@szeredi.hu>, Bruce
+ Fields <bfields@fieldses.org>
+Date: Thu, 15 Jun 2017 08:23:38 -0400
+In-Reply-To: <612a69423fe410fef453e8488ff8d33ace3c00a4.1485922464.git.bcodding@redhat.com>
+References: 
+	<612a69423fe410fef453e8488ff8d33ace3c00a4.1485922464.git.bcodding@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 14, 2017 at 04:17:43PM +0100, David Howells wrote:
-
->  int pid_ns_prepare_proc(struct pid_namespace *ns)
->  {
-> +	struct proc_fs_context *ctx;
-> +	struct fs_context *fc;
->  	struct vfsmount *mnt;
-> +	int ret;
-> +
-> +	fc = vfs_new_fs_context(&proc_fs_type, NULL, 0, FS_CONTEXT_FOR_NEW);
-> +	if (IS_ERR(fc))
-> +		return PTR_ERR(fc);
-> +
-> +	ctx = container_of(fc, struct proc_fs_context, fc);
-> +	if (ctx->pid_ns != ns) {
-> +		put_pid_ns(ctx->pid_ns);
-> +		get_pid_ns(ns);
-> +		ctx->pid_ns = ns;
-> +	}
-> +
-> +	ret = vfs_get_tree(fc);
-> +	if (ret < 0) {
-> +		put_fs_context(fc);
-> +		return ret;
-> +	}
+On Wed, 2017-02-01 at 00:00 -0500, Benjamin Coddington wrote:
+> An interrupted rename will leave the old dentry behind if the rename
+> succeeds.  Fix this by moving the final local work of the rename to
+> rpc_call_done so that the results of the RENAME can always be handled,
+> even if the original process has already returned with -ERESTARTSYS.
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfs/dir.c | 36 +++++++++++++++++++++++++-----------
+>  1 file changed, 25 insertions(+), 11 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index fad81041f5ab..fb499a3f21b5 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2002,6 +2002,29 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_link);
 >  
-> -	mnt = kern_mount_data(&proc_fs_type, ns);
-> +	mnt = kern_mount_data_fc(fc);
-> +	put_fs_context(fc);
+> +static void
+> +nfs_complete_rename(struct rpc_task *task, struct nfs_renamedata *data)
+> +{
+> +	struct dentry *old_dentry = data->old_dentry;
+> +	struct dentry *new_dentry = data->new_dentry;
+> +	struct inode *old_inode = d_inode(old_dentry);
+> +	struct inode *new_inode = d_inode(new_dentry);
+> +
+> +	nfs_mark_for_revalidate(old_inode);
+> +
+> +	switch (task->tk_status) {
+> +	case 0:
+> +		if (new_inode != NULL)
+> +			nfs_drop_nlink(new_inode);
+> +		d_move(old_dentry, new_dentry);
+> +		nfs_set_verifier(new_dentry,
+> +					nfs_save_change_attribute(data->new_dir));
+> +		break;
+> +	case -ENOENT:
+> +		nfs_dentry_handle_enoent(old_dentry);
+> +	}
+> +}
+> +
+>  /*
+>   * RENAME
+>   * FIXME: Some nfsds, like the Linux user space nfsd, may generate a
+> @@ -2084,7 +2107,8 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	if (new_inode != NULL)
+>  		NFS_PROTO(new_inode)->return_delegation(new_inode);
+>  
+> -	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry, NULL);
+> +	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry,
+> +					nfs_complete_rename);
+>  	if (IS_ERR(task)) {
+>  		error = PTR_ERR(task);
+>  		goto out;
+> @@ -2094,21 +2118,11 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	if (error == 0)
+>  		error = task->tk_status;
+>  	rpc_put_task(task);
+> -	nfs_mark_for_revalidate(old_inode);
+>  out:
+>  	if (rehash)
+>  		d_rehash(rehash);
+>  	trace_nfs_rename_exit(old_dir, old_dentry,
+>  			new_dir, new_dentry, error);
+> -	if (!error) {
+> -		if (new_inode != NULL)
+> -			nfs_drop_nlink(new_inode);
+> -		d_move(old_dentry, new_dentry);
+> -		nfs_set_verifier(new_dentry,
+> -					nfs_save_change_attribute(new_dir));
+> -	} else if (error == -ENOENT)
+> -		nfs_dentry_handle_enoent(old_dentry);
+> -
+>  	/* new dentry created? */
+>  	if (dentry)
+>  		dput(dentry);
 
-Same as with ipc; do you need to go through dynamic allocation,
-container_of, patching it up, etc.?
+Oof. I believe this patch is wrong and likely causing dcache
+corruption.. If the task catches a signal here then you'll be doing the
+d_move without holding the i_rwsem, and that isn't safe.
+
+I think we need to go ahead and revert this immediately from mainline
+and v4.11-stable, and do what we discussed with the v1 patch -- have the
+rename completion function detect whether the original process has been
+killed and mark the parents for revalidation if they were.
+
+Thoughts?
+-- 
+Jeff Layton <jlayton@redhat.com>
