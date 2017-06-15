@@ -1,117 +1,245 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:20115 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752416AbdFOOrS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 15 Jun 2017 10:47:18 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20170615100713.GH31671@ZenIV.linux.org.uk>
-References: <20170615100713.GH31671@ZenIV.linux.org.uk> <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk> <149745354300.10897.4615400686590211820.stgit@warthog.procyon.org.uk>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: dhowells@redhat.com, mszeredi@redhat.com,
-        linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        linux-kernel@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 25/27] ipc: Convert mqueue fs to fs_context [ver #5]
-MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Thu, 15 Jun 2017 15:47:09 +0100
-Message-ID: <18687.1497538029@warthog.procyon.org.uk>
+Received: from userp1040.oracle.com ([156.151.31.81]:49318 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751755AbdFOO5F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jun 2017 10:57:05 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [nfsv4] Proposal for end-of-life for fedfs-utils development
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1529444490.14625288.1497477422197.JavaMail.zimbra@desy.de>
+Date: Thu, 15 Jun 2017 10:56:55 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        fedfs-utils Developers <fedfs-utils-devel@oss.oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        NFSv4 <nfsv4@ietf.org>
+Message-Id: <C5B5D8B0-F7BD-4E37-A3E6-00959129F2E6@oracle.com>
+References: <56804FBE-34B2-47FB-96EF-013D4476D89A@oracle.com> <20170607155549.GB26995@fieldses.org> <092C6B41-E55B-43D1-95DC-7A53A2445B7A@oracle.com> <1529444490.14625288.1497477422197.JavaMail.zimbra@desy.de>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Al Viro <viro@ZenIV.linux.org.uk> wrote:
 
-> > +	if (ctx->ipc_ns != ns) {
+> On Jun 14, 2017, at 5:57 PM, Mkrtchyan, Tigran <tigran.mkrtchyan@desy.de> wrote:
 > 
-> How could they possibly be equal?  You are setting that ns up here, right?
-> How could it be in any process' nsproxy?
+> Hi Chuck,
+> 
+> ----- Original Message -----
+>> From: "Chuck Lever" <chuck.lever@oracle.com>
+>> To: "J. Bruce Fields" <bfields@fieldses.org>
+>> Cc: "fedfs-utils Developers" <fedfs-utils-devel@oss.oracle.com>, "linux-nfs" <linux-nfs@vger.kernel.org>, "NFSv4"
+>> <nfsv4@ietf.org>
+>> Sent: Wednesday, June 7, 2017 8:02:19 PM
+>> Subject: Re: [nfsv4] Proposal for end-of-life for fedfs-utils development
+> 
+>> Bruce, that's a good question, and an answer is worth sharing with
+>> the nfsv4 WG mailing list, whom I've cc'd.
+>> 
+>> 
+>>> On Jun 7, 2017, at 11:55 AM, bfields@fieldses.org wrote:
+>>> 
+>>> So if it's not too depressing I'd be curious what went wrong--did this
+>>> turn out to be harder than we thought to get stable, or are people happy
+>>> enough with automounting, or did we just not do a good job of explaining
+>>> it to people that might use it, or some combination of all those?
+>> 
+>> If you're interested in an intriguing discussion of what makes a
+>> successful protocol, I recommend RFC 5218. Now, not in any particular
+>> order, the main reasons FedFS has not been widely adopted are (IMO of
+>> course):
+>> 
+>> 
+>> 1. Lack of vendor adoption
+>> 
+>> After the specifications were completed, we anticipated two independent
+>> implementations. For various reasons the Solaris FedFS implementation
+>> was abandoned. One big reason was LDAP.
+>> 
+>> NFS/Ganesha has expressed some interest in FedFS over the years, but
+>> I'm not aware of an implementation.
+>> 
+>> NetApp abandoned FedFS before it was published as RFCs.
+>> 
+>> So we were left with just the Linux implementation, just like what
+>> happened with SPKM.
+>> 
+>> 
+>> 2. LDAP is onerously complex
+>> 
+>> The LDAP components of the Linux implementation were the worst to
+>> implement by far. This also proved to be the case in the Solaris
+>> prototype implementation. OpenLDAP is designed for massive scalability
+>> but aggressively shuns ease of administration.
+>> 
+>> It was suggested that we integrate with FreeIPA, which is a Linux-based
+>> management suite that can provide an LDAP service, a KDC, and a
+>> certificate authority. But there was never enough user inertia to make
+>> that effort.
+>> 
+>> There was resistance to integrating FedFS directly into nfs-utils
+>> because the LDAP components would have added complex library
+>> dependencies.
+>> 
+>> The LDAP pieces of FedFS are specified to use TLS, but NFS operates
+>> using GSS and Kerberos. Getting these two worlds to work together was
+>> going to be the next step (and also, figuring out how to make the LDAP
+>> service use GSS instead, which we should have done before completing
+>> the standard).
+>> 
+>> However, by the time the FedFS standards were complete, there was no
+>> longer WG interest to address its shortcomings. There were two small
+>> I-Ds published to start down that path. They went nowhere because the
+>> IETF's pool of LDAP expertise is difficult to consult, now that
+>> LDAP-related WGs have been disbanded.
+>> 
+>> IMO LDAP, which was chosen early in the 2000s by the IBM prototypes
+>> that were to become FedFS, was ultimately a poor choice for what
+>> eventually became the public FedFS standard. This can be attributed
+>> to changing times.
+>> 
+>> 
+>> 3. Lack of consensus about how to store junctions
+>> 
+>> There was never consensus in the Linux community about how to represent
+>> junction objects on disk. NFS wanted something that would look naturally
+>> like an empty directory to NFS versions that did not support referrals.
+>> Samba wanted something that could behave like symbolic links, as it
+>> had been using for its own DFS-style referrals. The filesystem folks
+>> were not interested in creating a new distinct object that could fill
+>> both roles.
+>> 
+>> As you are probably aware, Bruce, I asked about this every year at
+>> LFS/MM for several years. I was always told "get back to us when you
+>> have users."
+>> 
+>> Solaris went for reparse points in its implementation. Those are also
+>> supported by FreeBSD. I think RPs would have been a great direction
+>> but sadly these are not being actively pursued in the Linux FS
+>> community.
+>> 
+>> Lack of user adoption sapped the energy out of the effort to find a
+>> consensus. Though, if FedFS had been widely adopted before a consensus
+>> was reached on junction object representation, we'd have a significant
+>> data conversion problem.
+>> 
+>> 
+>> 4. Existing implementations are capable enough
+>> 
+>> This is mostly speculation on my part, but FedFS was a competitive
+>> response to the global namespace capabilities of AFS and SMB, not to
+>> any particular stated need in NFS communities.
+>> 
+>> I've discussed the use of FedFS with various large enterprises, but
+>> quite often the underlying needs are able to be filled by some form
+>> of pNFS. I think this class of solution is what NetApp and Primary
+>> Data have adopted.
+>> 
+>> Or put another way, pNFS seems capable of doing most anything that a
+>> referral-based mechanism can do. And in non-NFSv4 environments, the
+>> automounter is good enough for most people.
+>> 
+>> Certainly we could design something from the ground up that addresses
+>> many of these shortcomings, but I get about one query about FedFS a
+>> year. I just wonder if it would be worth the effort.
+> 
+> We  at DESY was interested in FedFS for two main reasons: one is to replace
+> AFS and second is to build a federation on independent NFS server.
+> The second option is not covered by pNFS as FedFS allows to run independent
+> pNFS instances with different administrative domains, implementations and 
+> namespaces, but still provide a common mount point. NetApp or Primary Data
+> does not provide solution for that. Even we don't :-D.
 
-Fair point.
+The last time I visited DESY, I left with the impression that
+there was a requirement that directories could be populated
+programmatically (ie. one directory entry could represent a
+group of files, perhaps on disparate NFS servers, and something
+on each client determined which member of that group would be
+opened). FedFS can't do that, but perhaps pNFS could.
 
-> Ugh, again...  Is there any reason for dynamic allocation of that thing in
-> this particular case?  AFAICS, these contortions are all due to going through
-> vfs_new_fs_context()/put_fs_context().  And it's not as if they had been
-> refcounted...
 
-I can statically initialise it as below, but whilst I don't need to call
-vfs_new_fs_context() and put_fs_context(), I do have to call the security
-hooks (Smack makes no distinction for internal filesystems) to set up the
-security context and clean it up, and I do have to have the error handling for
-in case kern_mount_data_fc() fails.
+> Why we have failed? There was not clear how to set it up. LDAP management
+> was a mess. Schema was not standardized
 
-So it actually makes both the source and the object file bigger.  Now, I could
-hide some of this inside a pair of inline functions, but it doesn't help that
-much.
+The schema is now standardized in RFC 7532, but the pub date
+for that document is recent (March 2015).
 
-What might be better is to provide a function that wraps the vfs_get_tree()
-and kern_mount_data_fc() calls and the cleanup.
 
-David
----
-diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index f2e1d1d69961..a18a5f6763f9 100644
---- a/ipc/mqueue.c
-+++ b/ipc/mqueue.c
-@@ -1431,8 +1431,15 @@ static struct file_system_type mqueue_fs_type = {
- 
- int mq_init_ns(struct ipc_namespace *ns)
- {
--	struct mqueue_fs_context *ctx;
--	struct fs_context *fc;
-+	struct mqueue_fs_context ctx = {
-+		.fc.ops		= &mqueue_fs_context_ops,
-+		.fc.fs_type	= &mqueue_fs_type,
-+		.fc.cred	= current_cred(),
-+		.fc.user_ns	= current_user_ns(),
-+		.fc.purpose	= FS_CONTEXT_FOR_NEW,
-+		.ipc_ns		= ns,
-+	};
-+	struct super_block *sb;
- 	struct vfsmount *mnt;
- 	int ret;
- 
-@@ -1443,29 +1450,32 @@ int mq_init_ns(struct ipc_namespace *ns)
- 	ns->mq_msg_default   = DFLT_MSG;
- 	ns->mq_msgsize_default  = DFLT_MSGSIZE;
- 
--	fc = vfs_new_fs_context(&mqueue_fs_type, NULL, 0, FS_CONTEXT_FOR_NEW);
--	if (IS_ERR(fc))
--		return PTR_ERR(fc);
--
--	ctx = container_of(fc, struct mqueue_fs_context, fc);
--	put_ipc_ns(ctx->ipc_ns);
--	ctx->ipc_ns = get_ipc_ns(ns);
-+	ret = security_fs_context_alloc(&ctx.fc, NULL);
-+	if (ret < 0)
-+		return ret;
- 
--	ret = vfs_get_tree(fc);
-+	ret = vfs_get_tree(&ctx.fc);
- 	if (ret < 0)
- 		goto out_fc;
- 
--	mnt = kern_mount_data_fc(fc);
-+	mnt = kern_mount_data_fc(&ctx.fc);
- 	if (IS_ERR(mnt)) {
- 		ret = PTR_ERR(mnt);
--		goto out_fc;
-+		goto out_root;
- 	}
- 
- 	ns->mq_mnt = mnt;
- 	ret = 0;
- out_fc:
--	put_fs_context(fc);
-+	security_fs_context_free(&ctx.fc);
- 	return ret;
-+
-+out_root:
-+	sb = ctx.fc.root->d_sb;
-+	dput(ctx.fc.root);
-+	ctx.fc.root = NULL;
-+	deactivate_super(sb);
-+	goto out_fc;
- }
- 
- void mq_clear_sbinfo(struct ipc_namespace *ns)
+> and not available with existing LDAP server.
+
+I recognized this could be an impediment to adoption, and
+contacted the people responsible for 389ds and the OpenLDAP
+community. I was told they could include the schema when
+the schema was standardized and fedfs-utils had users.
+
+fedfs-utils provides the schema in two forms, IIRC, ready
+to copy to your favorite LDAP server.
+
+
+> Currently we have 5 pNFS based instances with ~15PB in total. Some
+> nodes have direct mounts. But most of 'generic' clients automunter config
+> to fake FedFS as we don't know in advance which server will be used. Does
+> it works - Yes, does it solves all problems - No.
+> 
+> I would like to see a federated name space. We have the demand, but may be it's
+> only us.
+
+I can't speak authoritatively about that, but DESY is the
+only contact I've had about fedfs-utils in years.
+
+
+> For non NFS world we have a HTTP federation. It uses HTTP redirects, similar to
+> referrals. However, the tendency is to move towards distributed systems instead
+> of federated ones. If this project survive, then we can attempt to have a second
+> look at NFS federation. Life is a spiral.....
+
+There's no plan to take down the upstream fedfs-utils
+source code repository.
+
+
+> Regards,
+>   Tigran.
+> 
+>> 
+>> 
+>>> --b.
+>>> 
+>>> On Fri, Jun 02, 2017 at 11:01:05AM -0400, Chuck Lever wrote:
+>>>> Upstream fedfs-utils has not been under active development for
+>>>> two years or more, and there is a scant user base. I'd like to
+>>>> propose making 0.10 the final major release of fedfs-utils.
+>>>> 
+>>>> The plan:
+>>>> 
+>>>> - Since 0.10 is in at least one major enterprise distribution,
+>>>> I will remain available to integrate security fixes and make
+>>>> new minor releases in the 0.10 line, as needed, for one to
+>>>> two more years.
+>>>> 
+>>>> - Retire and remove fedfs-utils from upstream mirror distros
+>>>> such as Fedora rawhide.
+>>>> 
+>>>> - Transfer utilities such as nfsref into nfs-utils, with
+>>>> support for FedFS junctions removed.
+>>>> 
+>>>> - Announcements of the change in status will be made on
+>>>> fedfs-utils-announce and on the wiki.linux-nfs.org site.
+>> 
+>> --
+>> Chuck Lever
+>> 
+>> 
+>> 
+>> _______________________________________________
+>> nfsv4 mailing list
+>> nfsv4@ietf.org
+>> https://www.ietf.org/mailman/listinfo/nfsv4
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
