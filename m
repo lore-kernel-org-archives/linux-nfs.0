@@ -1,66 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f180.google.com ([209.85.216.180]:32973 "EHLO
-        mail-qt0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751883AbdFOTLO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jun 2017 15:11:14 -0400
+Received: from mx143.netapp.com ([216.240.21.24]:49338 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750820AbdFOT32 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Jun 2017 15:29:28 -0400
+From: "Mora, Jorge" <Jorge.Mora@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Olga Kornievskaia <aglo@umich.edu>
+CC: Anna Schumaker <schumakeranna@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: [nfsv4] Inter server-side copy performance
+Date: Thu, 15 Jun 2017 19:29:24 +0000
+Message-ID: <0E501639-4064-4EB8-8EFF-3F23CCA6A806@netapp.com>
+References: <DFE33002-FE1C-4E83-B6E3-50BFD304C7F6@netapp.com>
+ <20170413174515.GA5140@fieldses.org>
+ <59BDF7CA-78BB-42FC-8BC4-95101F5E1EC7@netapp.com>
+ <CAN-5tyHOdU9BJnJft+X06=6X7_s8MS_hDmg9t=fJQ=QtvJQD=w@mail.gmail.com>
+ <20170417133604.GA22694@fieldses.org>
+ <CAN-5tyF10OCihgYUMwoju6V+SnVZkpQNoQLb_UKoCAPuG+EgbQ@mail.gmail.com>
+ <CAFX2JfkiraKm2Rmqhkrh3CSWBoYfW0QU=uXw=sSx-8Wt8JD7wg@mail.gmail.com>
+ <CAN-5tyEO3wJ3sT_phM6LNGH3zpYmi21e+fhHjkSGvZrRqWziMw@mail.gmail.com>
+ <20170418183333.GH6208@fieldses.org>
+In-Reply-To: <20170418183333.GH6208@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-In-Reply-To: <D4ACE39C-B98F-4076-B9D1-9767CE76EFED@dilger.ca>
-References: <20170614170653.58083-1-kolga@netapp.com> <20170615081502.GA10599@infradead.org>
- <CAN-5tyEbqtP-=XmHRSKQbRrdPJgw3tmXzW-DmXwTvMLp7xR49w@mail.gmail.com> <D4ACE39C-B98F-4076-B9D1-9767CE76EFED@dilger.ca>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 15 Jun 2017 15:11:12 -0400
-Message-ID: <CAN-5tyGvHQPccnps0JGsAfRxeD4cM2OiBAjJsozUgswy07k=XA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] [RFC] 64bit copy_file_range system call
-To: Andreas Dilger <adilger@dilger.ca>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jun 15, 2017 at 2:35 PM, Andreas Dilger <adilger@dilger.ca> wrote:
->
->> On Jun 15, 2017, at 7:07 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Thu, Jun 15, 2017 at 4:15 AM, Christoph Hellwig <hch@infradead.org> wrote:
->>> On Wed, Jun 14, 2017 at 01:06:53PM -0400, Olga Kornievskaia wrote:
->>>> This is a proposal to allow 64bit count to copy and return as
->>>> a result of a copy_file_range. No attempt was made to share code
->>>> with the 32bit function because 32bit interface should probably
->>>> get depreciated.
->>>>
->>>> Why use 64bit? Current uses of 32bit are by clone_file_range()
->>>> which could use 64bit count and NFS copy_file_range also supports
->>>> 64bit count value.
->>>
->>> Please provide a very good use case that actually matters to a large
->>> portion of the Linux users.
->>
->> Reason: it will not hurt any user but it will help for
->> server-to-server NFS copy because for each invocation of of
->> copy_file_range() it requires that the client sends COPY_NOTIFY, then
->> COPY and then a copy triggers a establishment of clientid/session
->> before the reading of the source file can happen. All that could be
->> saved by have a 64bit value.
->
-> What is the overhead of sending a couple of RPCs vs. copying 4GB of
-> data on the server?
-
-We get about 11% improvement having an interface that removes the need
-for multiple calls. That's testing 8gb copy that normally would have
-needed 2 copies.
-
->> Current copy_file_range would work for any file size, it would just
->> need to be called in a loop by the application. With the given
->> proposal, there wouldn't be a need for the application to loop due to
->> the API size limitation. It might still loop if a partial copy was
->> done.
->
->
-> Given that there always needs to be a loop to handle partial completion,
-> adding the 64-bit syscall doesn't really simplify the application at
-> all, but adds duplicate code to the kernel for little benefit.
-
-If 32bit version would be deprecated then there won't be duplicate code.
+SGVyZSBhcmUgdGhlIG5ldyBudW1iZXJzIHVzaW5nIGxhdGVzdCBTU0MgY29kZSBmb3IgYW4gOEdC
+IGNvcHkuDQpUaGUgY29kZSBoYXMgYSBkZWxheWVkIHVubW91bnQgb24gdGhlIGRlc3RpbmF0aW9u
+IHNlcnZlciB3aGljaCBhbGxvd3MgZm9yIHNpbmdsZQ0KbW91bnQgd2hlbiBtdWx0aXBsZSBDT1BZ
+IGNhbGxzIGFyZSBtYWRlIGJhY2sgdG8gYmFjay4NCkFsc28sIHRoZXJlIGlzIGEgdGhpcmQgb3B0
+aW9uIHdoaWNoIGlzIHVzaW5nIGlvY3RsIHdpdGggYSA2NCBiaXQgY29weSBsZW5ndGggaW4gb3Jk
+ZXIgdG8gDQppc3N1ZSBhIHNpbmdsZSBjYWxsIGZvciBjb3B5IGxlbmd0aHMgPj0gNEdCLg0KDQpT
+ZXR1cDoNCiAgICAgQ2xpZW50OiAxNiBDUFVzLCAzMkdCDQogICAgIFNSQyBzZXJ2ZXI6IDQgQ1BV
+cywgOEdCDQogICAgIERTVCBzZXJ2ZXI6IDQgQ1BVcywgOEdCDQoNClRyYWRpdGlvbmFsIGNvcHk6
+DQogICAgREJHMjogMjA6MzE6NDMuNjgzNTk1IC0gVHJhZGl0aW9uYWwgQ09QWSByZXR1cm5zIDg1
+ODk5MzQ1OTAgKDk2Ljg0MzI4MTAzMDcgc2Vjb25kcykNClNTQyAoMiBjb3B5X2ZpbGVfcmFuZ2Ug
+Y2FsbHMgYmFjayB0byBiYWNrKToNCiAgICBEQkcyOiAyMDozMDowMC4yNjgyMDMgLSBTZXJ2ZXIt
+c2lkZSBDT1BZIHJldHVybnMgODU4OTkzNDU5MCAoODMuMDUxNzc1OTMyMyBzZWNvbmRzKQ0KICAg
+IFBBU1M6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25hbCBjb3B5LCBwZXJmb3JtYW5j
+ZSBpbXByb3ZlbWVudCBmb3IgYSA4R0IgZmlsZTogMTYlDQpTU0MgKDIgY29weV9maWxlX3Jhbmdl
+IGNhbGxzIGluIHBhcmFsbGVsKToNCiAgICBEQkcyOiAyMDozNDo0OS42ODY1NzMgLSBTZXJ2ZXIt
+c2lkZSBDT1BZIHJldHVybnMgODU4OTkzNDU5MCAoNzkuMzA4MDAxMDQxNCBzZWNvbmRzKQ0KICAg
+IFBBU1M6IFNTQyBzaG91bGQgb3V0cGVyZm9ybSB0cmFkaXRpb25hbCBjb3B5LCBwZXJmb3JtYW5j
+ZSBpbXByb3ZlbWVudCBmb3IgYSA4R0IgZmlsZTogMjAlDQpTU0MgKDEgaW9jdGwgY2FsbCk6DQog
+ICAgREJHMjogMjA6Mzg6NDEuMzIzNzc0IC0gU2VydmVyLXNpZGUgQ09QWSByZXR1cm5zIDg1ODk5
+MzQ1OTAgKDc0Ljc3NzQzNTA2NDMgc2Vjb25kcykNCiAgICBQQVNTOiBTU0Mgc2hvdWxkIG91dHBl
+cmZvcm0gdHJhZGl0aW9uYWwgY29weSwgcGVyZm9ybWFuY2UgaW1wcm92ZW1lbnQgZm9yIGEgOEdC
+IGZpbGU6IDI4JQ0KDQpTaW5jZSBJIGRvbuKAmXQgaGF2ZSB0aHJlZSBzaW1pbGFyIHN5c3RlbXMg
+dG8gdGVzdCB3aXRoLCBoYXZpbmcgdGhlIGJlc3QgbWFjaGluZSAobW9yZSBjcHXigJlzIGFuZCBt
+b3JlIG1lbW9yeSkNCmFzIHRoZSBjbGllbnQgZ2l2ZXMgYSBiZXR0ZXIgcGVyZm9ybWFuY2UgZm9y
+IHRoZSB0cmFkaXRpb25hbCBjb3B5LiBUaGUgZm9sbG93aW5nIHJlc3VsdHMgYXJlIGRvbmUgdXNp
+bmcNCnRoZSBiZXN0IG1hY2hpbmUgYXMgdGhlIGRlc3RpbmF0aW9uIHNlcnZlciBpbnN0ZWFkLg0K
+DQpTZXR1cCAodXNpbmcgdGhlIGJlc3QgbWFjaGluZSBhcyB0aGUgZGVzdGluYXRpb24gc2VydmVy
+IGluc3RlYWQpOg0KICAgICBDbGllbnQ6IDQgQ1BVcywgOEdCDQogICAgIFNSQyBzZXJ2ZXI6IDQg
+Q1BVcywgOEdCDQogICAgIERTVCBzZXJ2ZXI6IDE2IENQVXMsIDMyR0INCg0KVHJhZGl0aW9uYWwg
+Y29weToNCiAgICBEQkcyOiAyMTo1MjoxNS4wMzk2MjUgLSBUcmFkaXRpb25hbCBDT1BZIHJldHVy
+bnMgODU4OTkzNDU5MCAoMTc4LjY4NjYzNTk3MSBzZWNvbmRzKQ0KU1NDICgyIGNvcHlfZmlsZV9y
+YW5nZSBjYWxscyBiYWNrIHRvIGJhY2spOg0KICAgIERCRzI6IDIxOjQ5OjA4Ljk2MTM4NCAtIFNl
+cnZlci1zaWRlIENPUFkgcmV0dXJucyA4NTg5OTM0NTkwICgxNzMuMDcxMTcyOTUzIHNlY29uZHMp
+DQogICAgUEFTUzogU1NDIHNob3VsZCBvdXRwZXJmb3JtIHRyYWRpdGlvbmFsIGNvcHksIHBlcmZv
+cm1hbmNlIGltcHJvdmVtZW50IGZvciBhIDhHQiBmaWxlOiAzJQ0KU1NDICgyIGNvcHlfZmlsZV9y
+YW5nZSBjYWxscyBpbiBwYXJhbGxlbCk6DQogICAgREJHMjogMjE6MzU6NTkuODIyNDY3IC0gU2Vy
+dmVyLXNpZGUgQ09QWSByZXR1cm5zIDg1ODk5MzQ1OTAgKDE1OS43NDM4NDk5OTMgc2Vjb25kcykN
+CiAgICBQQVNTOiBTU0Mgc2hvdWxkIG91dHBlcmZvcm0gdHJhZGl0aW9uYWwgY29weSwgcGVyZm9y
+bWFuY2UgaW1wcm92ZW1lbnQgZm9yIGEgOEdCIGZpbGU6IDE4JQ0KU1NDICgxIGlvY3RsIGNhbGwp
+Og0KICAgIERCRzI6IDIxOjI4OjMzLjQ2MTUyOCAtIFNlcnZlci1zaWRlIENPUFkgcmV0dXJucyA4
+NTg5OTM0NTkwICg4My45OTgzOTgwNjU2IHNlY29uZHMpDQogICAgUEFTUzogU1NDIHNob3VsZCBv
+dXRwZXJmb3JtIHRyYWRpdGlvbmFsIGNvcHksIHBlcmZvcm1hbmNlIGltcHJvdmVtZW50IGZvciBh
+IDhHQiBmaWxlOiAxMTklDQoNCkFzIHlvdSBjYW4gc2VlIGEgc2luZ2xlIDhHQiBjb3B5IChpb2N0
+bCB3aXRoIDY0IGJpdCBjb3B5IGxlbmd0aCkgcGVyZm9ybXMgdGhlIHNhbWUgYXMgYmVmb3JlIChh
+Ym91dCA4MCBzZWNvbmRzKQ0KYnV0IGluIHRoaXMgY2FzZSB0aGUgdHJhZGl0aW9uYWwgY29weSB0
+YWtlcyBhIGxvdCBsb25nZXIuDQoNCg0KLS1Kb3JnZQ0KDQoNCk9uIDQvMTgvMTcsIDEyOjMzIFBN
+LCAibGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBvbiBiZWhhbGYgb2YgSi4gQnJ1Y2Ug
+RmllbGRzIiA8bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZyBvbiBiZWhhbGYgb2YgYmZp
+ZWxkc0BmaWVsZHNlcy5vcmc+IHdyb3RlOg0KDQogICAgT24gVHVlLCBBcHIgMTgsIDIwMTcgYXQg
+MDE6Mjg6MzlQTSAtMDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQogICAgPiBHaXZlbiBo
+b3cgdGhlIGNvZGUgaXMgd3JpdHRlbiBub3cgaXQgbG9va3MgbGlrZSBpdCdzIG5vdCBwb3NzaWJs
+ZSB0bw0KICAgID4gc2F2ZSB1cCBjb21taXRzLi4uLg0KICAgID4gDQogICAgPiBIZXJlJ3Mgd2hh
+dCBJIGNhbiBzZWUgaGFwcGVuaW5nOg0KICAgID4gDQogICAgPiBuZnM0Ml9wcm9jX2Nsb25lKCkg
+YXMgd2VsbCBhcyBuZnM0Ml9wcm9jX2NvcHkoKSB3aWxsIGNhbGwNCiAgICA+IG5mc19zeW5jX2lu
+b2RlKGRzdCkgInRvIG1ha2Ugc3VyZSBzZXJ2ZXIocykgaGF2ZSB0aGUgbGF0ZXN0IGRhdGEiDQog
+ICAgPiBwcmlvciB0byBpbml0aWF0aW5nIHRoZSBjbG9uZS9jb3B5LiBTbyBldmVuIGlmIHdlIGp1
+c3QgcXVldWUgdXAgKG5vdA0KICAgID4gc2VuZCkgdGhlIGNvbW1pdCBhZnRlciB0aGUgZXhlY3V0
+aW5nIG5mczQyX3Byb2NfY29weSwgdGhlbiBuZXh0IGNhbGwNCiAgICA+IGludG8gdmZzX2NvcHlf
+ZmlsZV9yYW5nZSgpIHdpbGwgc2VuZCBvdXQgdGhhdCBxdWV1ZWQgdXAgY29tbWl0Lg0KICAgID4g
+DQogICAgPiBJcyBpdCBvayB0byByZWxheCB0aGUgcmVxdWlyZW1lbnQgdGhhdCByZXF1aXJlbWVu
+dCwgSSdtIG5vdCBzdXJlLi4uDQogICAgDQogICAgV2VsbCwgaWYgdGhlIHR5cGljYWwgY2FzZSBv
+ZiBjb3B5X2ZpbGVfcmFuZ2UgaXMganVzdCBvcGVuaW5nIGEgZmlsZSwNCiAgICBkb2luZyBhIHNp
+bmdsZSBiaWcgY29weV9maWxlX3JhbmdlKCksIHRoZW4gY2xvc2luZyB0aGUgZmlsZSwgdGhlbiB0
+aGlzDQogICAgZG9lc24ndCBtYXR0ZXIuDQogICAgDQogICAgVGhlIGxpbnV4IHNlcnZlciBpcyBj
+dXJyZW50bHkgbGltaXRpbmcgQ09QWSB0byA0TUIgYXQgYSB0aW1lLCB3aGljaCB3aWxsDQogICAg
+bWFrZSB0aGUgY29tbWl0cyBtb3JlIGFubm95aW5nLg0KICAgIA0KICAgIEV2ZW4gdGhlcmUgdGhl
+IHR5cGljYWwgY2FzZSB3aWxsIHByb2JhYmx5IHN0aWxsIGJlIGFuIG9wZW4sIGZvbGxvd2VkIGJ5
+DQogICAgYSBzZXJpZXMgb2Ygbm9uLW92ZXJsYXBwaW5nIGNvcGllcywgdGhlbiBjbG9zZSwgYW5k
+IHRoYXQgc2hvdWxkbid0DQogICAgcmVxdWlyZSB0aGUgY29tbWl0cy4NCiAgICANCiAgICAtLWIu
+DQogICAgLS0NCiAgICBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGlu
+ZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KICAgIHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0
+byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQogICAgTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAg
+aHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQogICAgDQoNCg==
