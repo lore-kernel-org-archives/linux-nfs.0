@@ -1,136 +1,141 @@
-Return-Path: <jlayton@redhat.com>
-Message-ID: <1497558869.4607.15.camel@redhat.com>
-Subject: Re: [PATCH 2/2] NFS: nfs_rename() - revalidate directories on
- -ERESTARTSYS
-From: Jeff Layton <jlayton@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>, Anna Schumaker
-	 <anna.schumaker@netapp.com>, mszeredi@redhat.com, bfields@redhat.com,
-	linux-nfs@vger.kernel.org
-Date: Thu, 15 Jun 2017 16:34:29 -0400
-In-Reply-To: <4D7B208E-553B-4170-8081-12DE3881A04C@redhat.com>
-References: <cover.1497541002.git.bcodding@redhat.com>
-	 <32ef5d3ded4fe75bb6fc6e1a1aebdd0297257d9e.1497541002.git.bcodding@redhat.com>
-	 <1497550694.4607.10.camel@redhat.com>
-	 <1497553607.4607.13.camel@poochiereds.net>
-	 <4D7B208E-553B-4170-8081-12DE3881A04C@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:59366 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751979AbdFOUhn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Jun 2017 16:37:43 -0400
+Date: Thu, 15 Jun 2017 16:37:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Mora, Jorge" <Jorge.Mora@netapp.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>,
+        Anna Schumaker <schumakeranna@gmail.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: [nfsv4] Inter server-side copy performance
+Message-ID: <20170615203742.GA5319@fieldses.org>
+References: <DFE33002-FE1C-4E83-B6E3-50BFD304C7F6@netapp.com>
+ <20170413174515.GA5140@fieldses.org>
+ <59BDF7CA-78BB-42FC-8BC4-95101F5E1EC7@netapp.com>
+ <CAN-5tyHOdU9BJnJft+X06=6X7_s8MS_hDmg9t=fJQ=QtvJQD=w@mail.gmail.com>
+ <20170417133604.GA22694@fieldses.org>
+ <CAN-5tyF10OCihgYUMwoju6V+SnVZkpQNoQLb_UKoCAPuG+EgbQ@mail.gmail.com>
+ <CAFX2JfkiraKm2Rmqhkrh3CSWBoYfW0QU=uXw=sSx-8Wt8JD7wg@mail.gmail.com>
+ <CAN-5tyEO3wJ3sT_phM6LNGH3zpYmi21e+fhHjkSGvZrRqWziMw@mail.gmail.com>
+ <20170418183333.GH6208@fieldses.org>
+ <0E501639-4064-4EB8-8EFF-3F23CCA6A806@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <0E501639-4064-4EB8-8EFF-3F23CCA6A806@netapp.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-06-15 at 16:19 -0400, Benjamin Coddington wrote:
-> On 15 Jun 2017, at 15:06, Jeff Layton wrote:
-> 
-> > On Thu, 2017-06-15 at 14:18 -0400, Jeff Layton wrote:
-> > > On Thu, 2017-06-15 at 12:13 -0400, Benjamin Coddington wrote:
-> > > > An interrupted rename will leave the old dentry behind if the rename
-> > > > succeeds.  Fix this by forcing a lookup the next time through
-> > > > ->d_revalidate.
-> > > > 
-> > > > A previous attempt at solving this problem took the approach to 
-> > > > complete
-> > > > the work of the rename asynchronously, however that approach was 
-> > > > wrong
-> > > > since it would allow the d_move() to occur after the directory's 
-> > > > i_mutex
-> > > > had been dropped by the original process.
-> > > > 
-> > > > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > > > ---
-> > > >  fs/nfs/dir.c            | 2 ++
-> > > >  fs/nfs/unlink.c         | 7 +++++++
-> > > >  include/linux/nfs_xdr.h | 1 +
-> > > >  3 files changed, 10 insertions(+)
-> > > > 
-> > > > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > > > index 1faf337b316f..bb697e5c3f6c 100644
-> > > > --- a/fs/nfs/dir.c
-> > > > +++ b/fs/nfs/dir.c
-> > > > @@ -2037,6 +2037,8 @@ int nfs_rename(struct inode *old_dir, struct 
-> > > > dentry *old_dentry,
-> > > >  	error = rpc_wait_for_completion_task(task);
-> > > >  	if (error == 0)
-> > > >  		error = task->tk_status;
-> > > > +	else
-> > > > +		((struct nfs_renamedata *)task->tk_calldata)->cancelled = 1;
-> > > 
-> > > This looks a bit racy. You could end up setting cancelled just after 
-> > > the
-> > > reply comes in and the completion callback checks it. I think that 
-> > > you
-> > > probably either want to do this with an atomic operation or under a 
-> > > lock
-> > > of some sort.
-> > > 
-> > > You could probably do it with an xchg() operation?
-> > > 
-> > 
-> > As Ben pointed out on IRC, that flag is checked in rpc_release, so as
-> > long as we ensure that it's set while we hold a task reference we 
-> > should
-> > be fine here without any locking.
-> > 
-> > That said, do we need a barrier here? We do need to ensure that
-> > cancelled is set before the rpc_put_task occurs.
-> 
-> Yes, I think we probably do.
-> 
+Thanks.
 
-Yeah, I think a smp_wmb() there, paired with the implied barrier in the
-atomic_dec_and_test in rpc_put_task?
+My main question is how close we get to what you'd expect given hardware
+specs.  As long as it's in that neighborhood, then people will know what
+to expect.
 
+For example I'd expect server-to-server-copy bandwidth to be be roughly
+the smallest of:
 
-> 
-> > > >  	rpc_put_task(task);
-> > > >  	nfs_mark_for_revalidate(old_inode);
-> > > >  out:
-> > > > diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-> > > > index 191aa577dd1f..b47158a34879 100644
-> > > > --- a/fs/nfs/unlink.c
-> > > > +++ b/fs/nfs/unlink.c
-> > > > @@ -288,6 +288,13 @@ static void nfs_async_rename_release(void 
-> > > > *calldata)
-> > > >  	if (d_really_is_positive(data->old_dentry))
-> > > >  		nfs_mark_for_revalidate(d_inode(data->old_dentry));
-> > > > 
-> > > > +	/* The result of the rename is unknown. Play it safe by
-> > > > +	 * forcing a new lookup */
-> > > > +	if (data->cancelled) {
-> > > > +		nfs_force_lookup_revalidate(data->old_dir);
-> > > > +		nfs_force_lookup_revalidate(data->new_dir);
-> 
-> Jeff's pointed out on IRC that we should hold the i_lock to call
-> nfs_force_lookup_revalidate(), so I'll add that.
-> 
-> 
-> > > > +	}
-> > > > +
-> > > >  	dput(data->old_dentry);
-> > > >  	dput(data->new_dentry);
-> > > >  	iput(data->old_dir);
-> > > > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> > > > index b28c83475ee8..2a8406b4b353 100644
-> > > > --- a/include/linux/nfs_xdr.h
-> > > > +++ b/include/linux/nfs_xdr.h
-> > > > @@ -1533,6 +1533,7 @@ struct nfs_renamedata {
-> > > >  	struct nfs_fattr	new_fattr;
-> > > >  	void (*complete)(struct rpc_task *, struct nfs_renamedata *);
-> > > >  	long timeout;
-> > > > +	int cancelled;
-> > > 
-> > > No need for a whole int for a flag and these do get allocated. Make 
-> > > it a
-> > > bool?
-> 
-> or
-> 
-> unsigned int : 1
-> 
-> which seems to be often used -- see nfs4_opendata.  The cancelled flag 
-> could
-> be changed there as well I suppose.
+	- source server disk read bandwidth
+	- destination server disk write bandwidth
+	- network bandwidth
 
-I'd prefer a bool, but it's really up to Trond and Anna, I suppose.
+Which is actually the same I'd expect for a traditional copy, except
+that the network bandwidth might be different.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+But in your case, I'm guessing it's gigabit all around (and drive
+bandwidth high enough not to matter).  And if my arithmetic is right,
+traditional copy is getting around 700Mb/s and server-to-server copy
+between 800 and 900 Mb/s depending on exactly how we do it?  Kinda
+curious why traditional copy isn't doing better, I'd've thought we'd
+have that pretty well optimized by now.
+
+--b.
+
+On Thu, Jun 15, 2017 at 07:29:24PM +0000, Mora, Jorge wrote:
+> Here are the new numbers using latest SSC code for an 8GB copy.
+> The code has a delayed unmount on the destination server which allows for single
+> mount when multiple COPY calls are made back to back.
+> Also, there is a third option which is using ioctl with a 64 bit copy length in order to 
+> issue a single call for copy lengths >= 4GB.
+> 
+> Setup:
+>      Client: 16 CPUs, 32GB
+>      SRC server: 4 CPUs, 8GB
+>      DST server: 4 CPUs, 8GB
+> 
+> Traditional copy:
+>     DBG2: 20:31:43.683595 - Traditional COPY returns 8589934590 (96.8432810307 seconds)
+> SSC (2 copy_file_range calls back to back):
+>     DBG2: 20:30:00.268203 - Server-side COPY returns 8589934590 (83.0517759323 seconds)
+>     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 16%
+> SSC (2 copy_file_range calls in parallel):
+>     DBG2: 20:34:49.686573 - Server-side COPY returns 8589934590 (79.3080010414 seconds)
+>     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 20%
+> SSC (1 ioctl call):
+>     DBG2: 20:38:41.323774 - Server-side COPY returns 8589934590 (74.7774350643 seconds)
+>     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 28%
+> 
+> Since I don’t have three similar systems to test with, having the best machine (more cpu’s and more memory)
+> as the client gives a better performance for the traditional copy. The following results are done using
+> the best machine as the destination server instead.
+> 
+> Setup (using the best machine as the destination server instead):
+>      Client: 4 CPUs, 8GB
+>      SRC server: 4 CPUs, 8GB
+>      DST server: 16 CPUs, 32GB
+> 
+> Traditional copy:
+>     DBG2: 21:52:15.039625 - Traditional COPY returns 8589934590 (178.686635971 seconds)
+> SSC (2 copy_file_range calls back to back):
+>     DBG2: 21:49:08.961384 - Server-side COPY returns 8589934590 (173.071172953 seconds)
+>     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 3%
+> SSC (2 copy_file_range calls in parallel):
+>     DBG2: 21:35:59.822467 - Server-side COPY returns 8589934590 (159.743849993 seconds)
+>     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 18%
+> SSC (1 ioctl call):
+>     DBG2: 21:28:33.461528 - Server-side COPY returns 8589934590 (83.9983980656 seconds)
+>     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 119%
+> 
+> As you can see a single 8GB copy (ioctl with 64 bit copy length) performs the same as before (about 80 seconds)
+> but in this case the traditional copy takes a lot longer.
+> 
+> 
+> --Jorge
+> 
+> 
+> On 4/18/17, 12:33 PM, "linux-nfs-owner@vger.kernel.org on behalf of J. Bruce Fields" <linux-nfs-owner@vger.kernel.org on behalf of bfields@fieldses.org> wrote:
+> 
+>     On Tue, Apr 18, 2017 at 01:28:39PM -0400, Olga Kornievskaia wrote:
+>     > Given how the code is written now it looks like it's not possible to
+>     > save up commits....
+>     > 
+>     > Here's what I can see happening:
+>     > 
+>     > nfs42_proc_clone() as well as nfs42_proc_copy() will call
+>     > nfs_sync_inode(dst) "to make sure server(s) have the latest data"
+>     > prior to initiating the clone/copy. So even if we just queue up (not
+>     > send) the commit after the executing nfs42_proc_copy, then next call
+>     > into vfs_copy_file_range() will send out that queued up commit.
+>     > 
+>     > Is it ok to relax the requirement that requirement, I'm not sure...
+>     
+>     Well, if the typical case of copy_file_range is just opening a file,
+>     doing a single big copy_file_range(), then closing the file, then this
+>     doesn't matter.
+>     
+>     The linux server is currently limiting COPY to 4MB at a time, which will
+>     make the commits more annoying.
+>     
+>     Even there the typical case will probably still be an open, followed by
+>     a series of non-overlapping copies, then close, and that shouldn't
+>     require the commits.
+>     
+>     --b.
+>     --
+>     To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>     the body of a message to majordomo@vger.kernel.org
+>     More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>     
+> 
