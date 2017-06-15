@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48492 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:57056 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750814AbdFOU7Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1751598AbdFOU7Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Thu, 15 Jun 2017 16:59:16 -0400
 From: Benjamin Coddington <bcodding@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Cc: Jeff Layton <jlayton@redhat.com>, mszeredi@redhat.com,
         bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/2] NFS: nfs_rename() - revalidate directories on -ERESTARTSYS
-Date: Thu, 15 Jun 2017 16:59:14 -0400
-Message-Id: <4051bbbec3bf880f65dbd4c63e6dc2b649c16e8e.1497559453.git.bcodding@redhat.com>
+Subject: [PATCH v2 1/2] Revert "NFS: nfs_rename() handle -ERESTARTSYS dentry left behind"
+Date: Thu, 15 Jun 2017 16:59:13 -0400
+Message-Id: <019c971f05beedfcf9d8039da508548e4819217d.1497559453.git.bcodding@redhat.com>
 In-Reply-To: <cover.1497559453.git.bcodding@redhat.com>
 References: <cover.1497559453.git.bcodding@redhat.com>
 In-Reply-To: <cover.1497559453.git.bcodding@redhat.com>
@@ -18,75 +18,112 @@ References: <cover.1497559453.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An interrupted rename will leave the old dentry behind if the rename
-succeeds.  Fix this by forcing a lookup the next time through
-->d_revalidate.
+This reverts commit 920b4530fb80430ff30ef83efe21ba1fa5623731 which could
+call d_move() without holding the directory's i_mutex, and reverts commit
+d4ea7e3c5c0e341c15b073016dbf3ab6c65f12f3 "NFS: Fix old dentry rehash after
+move", which was a follow-up fix.
 
-A previous attempt at solving this problem took the approach to complete
-the work of the rename asynchronously, however that approach was wrong
-since it would allow the d_move() to occur after the directory's i_mutex
-had been dropped by the original process.
-
-v2:  Add memory barrier, hold directory i_locks while revalidating, specify
-     single-bit field width for cancelled flag.
-
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+Fixes: 920b4530fb80 ("NFS: nfs_rename() handle -ERESTARTSYS dentry left behind")
+Cc: stable@vger.kernel.org # v4.10+
 ---
- fs/nfs/dir.c            |  5 ++++-
- fs/nfs/unlink.c         | 11 +++++++++++
- include/linux/nfs_xdr.h |  1 +
- 3 files changed, 16 insertions(+), 1 deletion(-)
+ fs/nfs/dir.c | 45 ++++++++++++++++++---------------------------
+ 1 file changed, 18 insertions(+), 27 deletions(-)
 
 diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 1faf337b316f..94b05d0eec06 100644
+index 32ccd7754f8a..1faf337b316f 100644
 --- a/fs/nfs/dir.c
 +++ b/fs/nfs/dir.c
-@@ -2035,7 +2035,10 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	}
+@@ -1946,29 +1946,6 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+ }
+ EXPORT_SYMBOL_GPL(nfs_link);
  
- 	error = rpc_wait_for_completion_task(task);
--	if (error == 0)
-+	if (error != 0) {
-+		((struct nfs_renamedata *)task->tk_calldata)->cancelled = 1;
-+		smp_wmb();
-+	} else
+-static void
+-nfs_complete_rename(struct rpc_task *task, struct nfs_renamedata *data)
+-{
+-	struct dentry *old_dentry = data->old_dentry;
+-	struct dentry *new_dentry = data->new_dentry;
+-	struct inode *old_inode = d_inode(old_dentry);
+-	struct inode *new_inode = d_inode(new_dentry);
+-
+-	nfs_mark_for_revalidate(old_inode);
+-
+-	switch (task->tk_status) {
+-	case 0:
+-		if (new_inode != NULL)
+-			nfs_drop_nlink(new_inode);
+-		d_move(old_dentry, new_dentry);
+-		nfs_set_verifier(new_dentry,
+-					nfs_save_change_attribute(data->new_dir));
+-		break;
+-	case -ENOENT:
+-		nfs_dentry_handle_enoent(old_dentry);
+-	}
+-}
+-
+ /*
+  * RENAME
+  * FIXME: Some nfsds, like the Linux user space nfsd, may generate a
+@@ -1999,7 +1976,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ {
+ 	struct inode *old_inode = d_inode(old_dentry);
+ 	struct inode *new_inode = d_inode(new_dentry);
+-	struct dentry *dentry = NULL;
++	struct dentry *dentry = NULL, *rehash = NULL;
+ 	struct rpc_task *task;
+ 	int error = -EBUSY;
+ 
+@@ -2022,8 +1999,10 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 		 * To prevent any new references to the target during the
+ 		 * rename, we unhash the dentry in advance.
+ 		 */
+-		if (!d_unhashed(new_dentry))
++		if (!d_unhashed(new_dentry)) {
+ 			d_drop(new_dentry);
++			rehash = new_dentry;
++		}
+ 
+ 		if (d_count(new_dentry) > 2) {
+ 			int err;
+@@ -2040,6 +2019,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 				goto out;
+ 
+ 			new_dentry = dentry;
++			rehash = NULL;
+ 			new_inode = NULL;
+ 		}
+ 	}
+@@ -2048,8 +2028,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (new_inode != NULL)
+ 		NFS_PROTO(new_inode)->return_delegation(new_inode);
+ 
+-	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry,
+-					nfs_complete_rename);
++	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry, NULL);
+ 	if (IS_ERR(task)) {
+ 		error = PTR_ERR(task);
+ 		goto out;
+@@ -2059,9 +2038,21 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (error == 0)
  		error = task->tk_status;
  	rpc_put_task(task);
- 	nfs_mark_for_revalidate(old_inode);
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 191aa577dd1f..28628dde38b9 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -288,6 +288,17 @@ static void nfs_async_rename_release(void *calldata)
- 	if (d_really_is_positive(data->old_dentry))
- 		nfs_mark_for_revalidate(d_inode(data->old_dentry));
- 
-+	/* The result of the rename is unknown. Play it safe by
-+	 * forcing a new lookup */
-+	if (data->cancelled) {
-+		spin_lock(&data->old_dir->i_lock);
-+		nfs_force_lookup_revalidate(data->old_dir);
-+		spin_unlock(&data->old_dir->i_lock);
-+		spin_lock(&data->new_dir->i_lock);
-+		nfs_force_lookup_revalidate(data->new_dir);
-+		spin_unlock(&data->new_dir->i_lock);
-+	}
++	nfs_mark_for_revalidate(old_inode);
+ out:
++	if (rehash)
++		d_rehash(rehash);
+ 	trace_nfs_rename_exit(old_dir, old_dentry,
+ 			new_dir, new_dentry, error);
++	if (!error) {
++		if (new_inode != NULL)
++			nfs_drop_nlink(new_inode);
++		d_move(old_dentry, new_dentry);
++		nfs_set_verifier(new_dentry,
++					nfs_save_change_attribute(new_dir));
++	} else if (error == -ENOENT)
++		nfs_dentry_handle_enoent(old_dentry);
 +
- 	dput(data->old_dentry);
- 	dput(data->new_dentry);
- 	iput(data->old_dir);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b28c83475ee8..0c32443d29a7 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1533,6 +1533,7 @@ struct nfs_renamedata {
- 	struct nfs_fattr	new_fattr;
- 	void (*complete)(struct rpc_task *, struct nfs_renamedata *);
- 	long timeout;
-+	unsigned int cancelled : 1;
- };
- 
- struct nfs_access_entry;
+ 	/* new dentry created? */
+ 	if (dentry)
+ 		dput(dentry);
 -- 
 2.9.3
 
