@@ -1,141 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59366 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751979AbdFOUhn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 15 Jun 2017 16:37:43 -0400
-Date: Thu, 15 Jun 2017 16:37:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Mora, Jorge" <Jorge.Mora@netapp.com>
-Cc: Olga Kornievskaia <aglo@umich.edu>,
-        Anna Schumaker <schumakeranna@gmail.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: [nfsv4] Inter server-side copy performance
-Message-ID: <20170615203742.GA5319@fieldses.org>
-References: <DFE33002-FE1C-4E83-B6E3-50BFD304C7F6@netapp.com>
- <20170413174515.GA5140@fieldses.org>
- <59BDF7CA-78BB-42FC-8BC4-95101F5E1EC7@netapp.com>
- <CAN-5tyHOdU9BJnJft+X06=6X7_s8MS_hDmg9t=fJQ=QtvJQD=w@mail.gmail.com>
- <20170417133604.GA22694@fieldses.org>
- <CAN-5tyF10OCihgYUMwoju6V+SnVZkpQNoQLb_UKoCAPuG+EgbQ@mail.gmail.com>
- <CAFX2JfkiraKm2Rmqhkrh3CSWBoYfW0QU=uXw=sSx-8Wt8JD7wg@mail.gmail.com>
- <CAN-5tyEO3wJ3sT_phM6LNGH3zpYmi21e+fhHjkSGvZrRqWziMw@mail.gmail.com>
- <20170418183333.GH6208@fieldses.org>
- <0E501639-4064-4EB8-8EFF-3F23CCA6A806@netapp.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:27785 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752155AbdFOUyP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Jun 2017 16:54:15 -0400
+Date: Thu, 15 Jun 2017 13:53:57 -0700
+From: "Darrick J. Wong" <darrick.wong@oracle.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] [RFC] 64bit copy_file_range system call
+Message-ID: <20170615205357.GA13715@birch.djwong.org>
+References: <5bca6687-ac03-72ef-f38e-6759a0fbb1d6@gmail.com>
+ <20170614185335.58193-1-kolga@netapp.com>
+ <20170615035923.GA4521@birch.djwong.org>
+ <CAN-5tyGCYjR4wXkpjD8XKXSSAmSS1VG2SA1Kr4V5iJFPjZJFug@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <0E501639-4064-4EB8-8EFF-3F23CCA6A806@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyGCYjR4wXkpjD8XKXSSAmSS1VG2SA1Kr4V5iJFPjZJFug@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks.
+On Thu, Jun 15, 2017 at 10:39:42AM -0400, Olga Kornievskaia wrote:
+> On Wed, Jun 14, 2017 at 11:59 PM, Darrick J. Wong
+> <darrick.wong@oracle.com> wrote:
+> > On Wed, Jun 14, 2017 at 02:53:35PM -0400, Olga Kornievskaia wrote:
+> >> This is a proposal to allow 64bit count to copy and return as
+> >> a result of a copy_file_range. No attempt was made to share code
+> >> with the 32bit function because 32bit interface should probably
+> >> get depreciated.
+> >>
+> >> Why use 64bit? Current uses of 32bit are by clone_file_range()
+> >> which could use 64bit count and NFS copy_file_range also supports
+> >> 64bit count value.
+> >>
+> >> Also with this proposal off-the-bet allow the userland to copy
+> >> between different mount points.
+> >>
+> >> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> >> ---
+> >>  arch/x86/entry/syscalls/syscall_32.tbl |   1 +
+> >>  arch/x86/entry/syscalls/syscall_64.tbl |   1 +
+> >>  fs/read_write.c                        | 146 +++++++++++++++++++++++++++++++--
+> >>  include/linux/fs.h                     |   4 +
+> >>  include/linux/syscalls.h               |   3 +
+> >>  include/uapi/asm-generic/unistd.h      |   4 +-
+> >>  kernel/sys_ni.c                        |   1 +
+> >>  7 files changed, 154 insertions(+), 6 deletions(-)
+> >>
+> >> diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+> >> index 448ac21..1f5f1e7 100644
+> >> --- a/arch/x86/entry/syscalls/syscall_32.tbl
+> >> +++ b/arch/x86/entry/syscalls/syscall_32.tbl
+> >> @@ -391,3 +391,4 @@
+> >>  382  i386    pkey_free               sys_pkey_free
+> >>  383  i386    statx                   sys_statx
+> >>  384  i386    arch_prctl              sys_arch_prctl                  compat_sys_arch_prctl
+> >> +385  i386    copy_file_range64       sys_copy_file_range64
+> >> diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+> >> index 5aef183..e658bbe 100644
+> >> --- a/arch/x86/entry/syscalls/syscall_64.tbl
+> >> +++ b/arch/x86/entry/syscalls/syscall_64.tbl
+> >> @@ -339,6 +339,7 @@
+> >>  330  common  pkey_alloc              sys_pkey_alloc
+> >>  331  common  pkey_free               sys_pkey_free
+> >>  332  common  statx                   sys_statx
+> >> +333  64      copy_file_range64       sys_copy_file_range64
+> >>
+> >>  #
+> >>  # x32-specific system call numbers start at 512 to avoid cache impact
+> >> diff --git a/fs/read_write.c b/fs/read_write.c
+> >> index e3ee985..c9c072b 100644
+> >> --- a/fs/read_write.c
+> >> +++ b/fs/read_write.c
+> >> @@ -1700,7 +1700,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+> >>       return ret;
+> >>  }
+> >>
+> >> -static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+> >> +static int rw64_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+> >>  {
+> >>       struct inode *inode = file_inode(file);
+> >>
+> >> @@ -1723,6 +1723,142 @@ static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+> >>       return security_file_permission(file, write ? MAY_WRITE : MAY_READ);
+> >>  }
+> >>
+> >> +u64 vfs_copy_file_range64(struct file *file_in, loff_t pos_in,
+> >> +                         struct file *file_out, loff_t pos_out,
+> >> +                         u64 len, unsigned int flags)
+> >
+> > AFAICT the difference between vfs_copy_file_range() and
+> > vfs_copy_file_range64() is that you've replaced 'size_t len' with
+> > 'u64 len', correct?
+> 
+> That and I'm asking to allow for cross-device copy to be allowed by
+> the system call.
 
-My main question is how close we get to what you'd expect given hardware
-specs.  As long as it's in that neighborhood, then people will know what
-to expect.
+I was fine letting each fs decide if it was going to allow cross-device
+copy or not, but Christoph argued that since we don't generally allow
+operations across mountpoints we shouldn't allow cross-mountpoint
+{clone,copy}_file_range either.
 
-For example I'd expect server-to-server-copy bandwidth to be be roughly
-the smallest of:
+Roughly translated, XFS has no cross-device copy abilities, there aren't
+any plans to add it, so I don't feel motivated to argue for it... but if
+the nfs community is so motivated (it sounds like it) then y'all could
+try one more time.
 
-	- source server disk read bandwidth
-	- destination server disk write bandwidth
-	- network bandwidth
-
-Which is actually the same I'd expect for a traditional copy, except
-that the network bandwidth might be different.
-
-But in your case, I'm guessing it's gigabit all around (and drive
-bandwidth high enough not to matter).  And if my arithmetic is right,
-traditional copy is getting around 700Mb/s and server-to-server copy
-between 800 and 900 Mb/s depending on exactly how we do it?  Kinda
-curious why traditional copy isn't doing better, I'd've thought we'd
-have that pretty well optimized by now.
-
---b.
-
-On Thu, Jun 15, 2017 at 07:29:24PM +0000, Mora, Jorge wrote:
-> Here are the new numbers using latest SSC code for an 8GB copy.
-> The code has a delayed unmount on the destination server which allows for single
-> mount when multiple COPY calls are made back to back.
-> Also, there is a third option which is using ioctl with a 64 bit copy length in order to 
-> issue a single call for copy lengths >= 4GB.
+> > sizeof(size_t) == sizeof(u64) on 64-bit machines, so at least as far as
+> > the userspace interface is concerned, this only makes a difference on
+> > 32-bit userlands, right?  So, uh, how many 32-bit user programs need to
+> > c_f_r more than 2GB at a time?
 > 
-> Setup:
->      Client: 16 CPUs, 32GB
->      SRC server: 4 CPUs, 8GB
->      DST server: 4 CPUs, 8GB
-> 
-> Traditional copy:
->     DBG2: 20:31:43.683595 - Traditional COPY returns 8589934590 (96.8432810307 seconds)
-> SSC (2 copy_file_range calls back to back):
->     DBG2: 20:30:00.268203 - Server-side COPY returns 8589934590 (83.0517759323 seconds)
->     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 16%
-> SSC (2 copy_file_range calls in parallel):
->     DBG2: 20:34:49.686573 - Server-side COPY returns 8589934590 (79.3080010414 seconds)
->     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 20%
-> SSC (1 ioctl call):
->     DBG2: 20:38:41.323774 - Server-side COPY returns 8589934590 (74.7774350643 seconds)
->     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 28%
-> 
-> Since I don’t have three similar systems to test with, having the best machine (more cpu’s and more memory)
-> as the client gives a better performance for the traditional copy. The following results are done using
-> the best machine as the destination server instead.
-> 
-> Setup (using the best machine as the destination server instead):
->      Client: 4 CPUs, 8GB
->      SRC server: 4 CPUs, 8GB
->      DST server: 16 CPUs, 32GB
-> 
-> Traditional copy:
->     DBG2: 21:52:15.039625 - Traditional COPY returns 8589934590 (178.686635971 seconds)
-> SSC (2 copy_file_range calls back to back):
->     DBG2: 21:49:08.961384 - Server-side COPY returns 8589934590 (173.071172953 seconds)
->     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 3%
-> SSC (2 copy_file_range calls in parallel):
->     DBG2: 21:35:59.822467 - Server-side COPY returns 8589934590 (159.743849993 seconds)
->     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 18%
-> SSC (1 ioctl call):
->     DBG2: 21:28:33.461528 - Server-side COPY returns 8589934590 (83.9983980656 seconds)
->     PASS: SSC should outperform traditional copy, performance improvement for a 8GB file: 119%
-> 
-> As you can see a single 8GB copy (ioctl with 64 bit copy length) performs the same as before (about 80 seconds)
-> but in this case the traditional copy takes a lot longer.
-> 
-> 
-> --Jorge
-> 
-> 
-> On 4/18/17, 12:33 PM, "linux-nfs-owner@vger.kernel.org on behalf of J. Bruce Fields" <linux-nfs-owner@vger.kernel.org on behalf of bfields@fieldses.org> wrote:
-> 
->     On Tue, Apr 18, 2017 at 01:28:39PM -0400, Olga Kornievskaia wrote:
->     > Given how the code is written now it looks like it's not possible to
->     > save up commits....
->     > 
->     > Here's what I can see happening:
->     > 
->     > nfs42_proc_clone() as well as nfs42_proc_copy() will call
->     > nfs_sync_inode(dst) "to make sure server(s) have the latest data"
->     > prior to initiating the clone/copy. So even if we just queue up (not
->     > send) the commit after the executing nfs42_proc_copy, then next call
->     > into vfs_copy_file_range() will send out that queued up commit.
->     > 
->     > Is it ok to relax the requirement that requirement, I'm not sure...
->     
->     Well, if the typical case of copy_file_range is just opening a file,
->     doing a single big copy_file_range(), then closing the file, then this
->     doesn't matter.
->     
->     The linux server is currently limiting COPY to 4MB at a time, which will
->     make the commits more annoying.
->     
->     Even there the typical case will probably still be an open, followed by
->     a series of non-overlapping copies, then close, and that shouldn't
->     require the commits.
->     
->     --b.
->     --
->     To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->     the body of a message to majordomo@vger.kernel.org
->     More majordomo info at  http://vger.kernel.org/majordomo-info.html
->     
-> 
+> Isn't that 4GB? I thought that max of ssize_t is 4GB on 64bit. I'm
+> under the impression that sizeof (ssize_t) != sizeof(u64) on 64bit
+> machine. If I'm wrong, then this patch is indeed not needed.
