@@ -1,62 +1,100 @@
-Return-Path: <schumaker.anna@gmail.com>
-Sender: Anna Schumaker <schumakeranna@gmail.com>
-Subject: Re: [PATCH 2/2] NFS: nfs_rename() - revalidate directories on
+Return-Path: <jlayton@redhat.com>
+Message-ID: <1497560972.4607.17.camel@redhat.com>
+Subject: Re: [PATCH v2 2/2] NFS: nfs_rename() - revalidate directories on
  -ERESTARTSYS
-To: Benjamin Coddington <bcodding@redhat.com>,
- Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
- Anna Schumaker <anna.schumaker@netapp.com>, mszeredi@redhat.com,
- bfields@redhat.com, linux-nfs@vger.kernel.org
-References: <cover.1497541002.git.bcodding@redhat.com>
- <32ef5d3ded4fe75bb6fc6e1a1aebdd0297257d9e.1497541002.git.bcodding@redhat.com>
- <1497550694.4607.10.camel@redhat.com>
- <1497553607.4607.13.camel@poochiereds.net>
- <4D7B208E-553B-4170-8081-12DE3881A04C@redhat.com>
- <1497558869.4607.15.camel@redhat.com>
- <C3B2B67D-E66B-431B-A77F-F0171741A75E@redhat.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <d501e58f-8f58-701e-1b4a-959a7a695665@gmail.com>
-Date: Thu, 15 Jun 2017 17:06:48 -0400
-MIME-Version: 1.0
-In-Reply-To: <C3B2B67D-E66B-431B-A77F-F0171741A75E@redhat.com>
-Content-Type: text/plain; charset=utf-8
+From: Jeff Layton <jlayton@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>, Trond Myklebust
+ <trond.myklebust@primarydata.com>, Anna Schumaker
+ <anna.schumaker@netapp.com>
+Cc: mszeredi@redhat.com, bfields@redhat.com, linux-nfs@vger.kernel.org
+Date: Thu, 15 Jun 2017 17:09:32 -0400
+In-Reply-To: <4051bbbec3bf880f65dbd4c63e6dc2b649c16e8e.1497559453.git.bcodding@redhat.com>
+References: <cover.1497559453.git.bcodding@redhat.com>
+	 <4051bbbec3bf880f65dbd4c63e6dc2b649c16e8e.1497559453.git.bcodding@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2017-06-15 at 16:59 -0400, Benjamin Coddington wrote:
+> An interrupted rename will leave the old dentry behind if the rename
+> succeeds.  Fix this by forcing a lookup the next time through
+> ->d_revalidate.
+> 
+> A previous attempt at solving this problem took the approach to complete
+> the work of the rename asynchronously, however that approach was wrong
+> since it would allow the d_move() to occur after the directory's i_mutex
+> had been dropped by the original process.
+> 
+> v2:  Add memory barrier, hold directory i_locks while revalidating, specify
+>      single-bit field width for cancelled flag.
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfs/dir.c            |  5 ++++-
+>  fs/nfs/unlink.c         | 11 +++++++++++
+>  include/linux/nfs_xdr.h |  1 +
+>  3 files changed, 16 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 1faf337b316f..94b05d0eec06 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2035,7 +2035,10 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	}
+>  
+>  	error = rpc_wait_for_completion_task(task);
+> -	if (error == 0)
+> +	if (error != 0) {
+> +		((struct nfs_renamedata *)task->tk_calldata)->cancelled = 1;
+> +		smp_wmb();
 
+Looks good, a comment here about how this barrier is paired would be
+nice. We'll be scratching our heads on this in another year or two.
 
-On 06/15/2017 04:57 PM, Benjamin Coddington wrote:
-> On 15 Jun 2017, at 16:34, Jeff Layton wrote:
-> 
->> Yeah, I think a smp_wmb() there, paired with the implied barrier in the
->> atomic_dec_and_test in rpc_put_task?
-> 
-> Yes, that should do it.
-> 
->>>>> No need for a whole int for a flag and these do get allocated. Make
->>>>> it a
->>>>> bool?
->>>
->>> or
->>>
->>> unsigned int : 1
->>>
->>> which seems to be often used -- see nfs4_opendata.  The cancelled flag
->>> could
->>> be changed there as well I suppose.
->>
->> I'd prefer a bool, but it's really up to Trond and Anna, I suppose.
-> 
-> If Anna or Trond will tell us how they'd like it, I can follow up with a
-> patch to make them all consistent.
+> +	} else
+>  		error = task->tk_status;
+>  	rpc_put_task(task);
+>  	nfs_mark_for_revalidate(old_inode);
+> diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+> index 191aa577dd1f..28628dde38b9 100644
+> --- a/fs/nfs/unlink.c
+> +++ b/fs/nfs/unlink.c
+> @@ -288,6 +288,17 @@ static void nfs_async_rename_release(void *calldata)
+>  	if (d_really_is_positive(data->old_dentry))
+>  		nfs_mark_for_revalidate(d_inode(data->old_dentry));
+>  
+> +	/* The result of the rename is unknown. Play it safe by
+> +	 * forcing a new lookup */
+> +	if (data->cancelled) {
+> +		spin_lock(&data->old_dir->i_lock);
+> +		nfs_force_lookup_revalidate(data->old_dir);
+> +		spin_unlock(&data->old_dir->i_lock);
+> +		spin_lock(&data->new_dir->i_lock);
+> +		nfs_force_lookup_revalidate(data->new_dir);
+> +		spin_unlock(&data->new_dir->i_lock);
+> +	}
+> +
+>  	dput(data->old_dentry);
+>  	dput(data->new_dentry);
+>  	iput(data->old_dir);
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index b28c83475ee8..0c32443d29a7 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1533,6 +1533,7 @@ struct nfs_renamedata {
+>  	struct nfs_fattr	new_fattr;
+>  	void (*complete)(struct rpc_task *, struct nfs_renamedata *);
+>  	long timeout;
+> +	unsigned int cancelled : 1;
+> };
+>  
+>  struct nfs_access_entry;
 
-My preference is for a bool
+nitpick:
 
-Anna
+I'd suggest a bool. You're going to get at least an extra byte on the
+allocation anyway. Might as well make it easier to read. We can always
+move to bitfields if we need another flag here later.
 
-> 
-> Ben
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+Jeff Layton <jlayton@redhat.com>
