@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34775 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753322AbdFPPWs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jun 2017 11:22:48 -0400
-Subject: [PATCH v2 18/19] svcrdma: Remove svc_rdma_chunk_ctxt::cc_dir field
+Received: from mail-it0-f66.google.com ([209.85.214.66]:35678 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753322AbdFPPWc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jun 2017 11:22:32 -0400
+Subject: [PATCH v2 16/19] svcrdma: Clean up after converting
+ svc_rdma_recvfrom to rdma_rw API
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 16 Jun 2017 11:22:46 -0400
-Message-ID: <20170616152246.14210.86600.stgit@klimt.1015granger.net>
+Date: Fri, 16 Jun 2017 11:22:30 -0400
+Message-ID: <20170616152230.14210.77568.stgit@klimt.1015granger.net>
 In-Reply-To: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
 References: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,85 +16,95 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: No need to save the I/O direction. The functions that
-release svc_rdma_chunk_ctxt already know what direction to use.
+Clean up: Registration mode details are now handled by the rdma_rw
+API, and thus can be removed from svcrdma.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_rw.c |   18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+ include/linux/sunrpc/svc_rdma.h          |    4 ---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   39 +++---------------------------
+ 2 files changed, 4 insertions(+), 39 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index f385da0..d015ed0 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -116,22 +116,20 @@ struct svc_rdma_chunk_ctxt {
- 	struct svcxprt_rdma	*cc_rdma;
- 	struct list_head	cc_rwctxts;
- 	int			cc_sqecount;
--	enum dma_data_direction cc_dir;
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index fd7775f..995c6fe 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -90,9 +90,6 @@ struct svc_rdma_op_ctxt {
+ 	struct page *pages[RPCSVC_MAXPAGES];
  };
  
- static void svc_rdma_cc_init(struct svcxprt_rdma *rdma,
--			     struct svc_rdma_chunk_ctxt *cc,
--			     enum dma_data_direction dir)
-+			     struct svc_rdma_chunk_ctxt *cc)
- {
- 	cc->cc_rdma = rdma;
- 	svc_xprt_get(&rdma->sc_xprt);
+-#define	SVCRDMA_DEVCAP_FAST_REG		1	/* fast mr registration */
+-#define	SVCRDMA_DEVCAP_READ_W_INV	2	/* read w/ invalidate */
+-
+ struct svcxprt_rdma {
+ 	struct svc_xprt      sc_xprt;		/* SVC transport structure */
+ 	struct rdma_cm_id    *sc_cm_id;		/* RDMA connection id */
+@@ -123,7 +120,6 @@ struct svcxprt_rdma {
+ 	struct ib_qp         *sc_qp;
+ 	struct ib_cq         *sc_rq_cq;
+ 	struct ib_cq         *sc_sq_cq;
+-	u32		     sc_dev_caps;	/* distilled device caps */
  
- 	INIT_LIST_HEAD(&cc->cc_rwctxts);
- 	cc->cc_sqecount = 0;
--	cc->cc_dir = dir;
- }
+ 	spinlock_t	     sc_lock;		/* transport lock */
  
--static void svc_rdma_cc_release(struct svc_rdma_chunk_ctxt *cc)
-+static void svc_rdma_cc_release(struct svc_rdma_chunk_ctxt *cc,
-+				enum dma_data_direction dir)
- {
- 	struct svcxprt_rdma *rdma = cc->cc_rdma;
- 	struct svc_rdma_rw_ctxt *ctxt;
-@@ -141,7 +139,7 @@ static void svc_rdma_cc_release(struct svc_rdma_chunk_ctxt *cc)
- 
- 		rdma_rw_ctx_destroy(&ctxt->rw_ctx, rdma->sc_qp,
- 				    rdma->sc_port_num, ctxt->rw_sg_table.sgl,
--				    ctxt->rw_nents, cc->cc_dir);
-+				    ctxt->rw_nents, dir);
- 		svc_rdma_put_rw_ctxt(rdma, ctxt);
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+index 75bd11f..e660d49 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+@@ -783,7 +783,7 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+ 	memset(&qp_attr, 0, sizeof qp_attr);
+ 	qp_attr.event_handler = qp_event_handler;
+ 	qp_attr.qp_context = &newxprt->sc_xprt;
+-	qp_attr.port_num = newxprt->sc_cm_id->port_num;
++	qp_attr.port_num = newxprt->sc_port_num;
+ 	qp_attr.cap.max_rdma_ctxs = newxprt->sc_max_requests;
+ 	qp_attr.cap.max_send_wr = newxprt->sc_sq_depth;
+ 	qp_attr.cap.max_recv_wr = newxprt->sc_rq_depth;
+@@ -807,43 +807,12 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
  	}
- 	svc_xprt_put(&rdma->sc_xprt);
-@@ -179,14 +177,14 @@ struct svc_rdma_write_info {
- 	info->wi_seg_no = 0;
- 	info->wi_nsegs = be32_to_cpup(++chunk);
- 	info->wi_segs = ++chunk;
--	svc_rdma_cc_init(rdma, &info->wi_cc, DMA_TO_DEVICE);
-+	svc_rdma_cc_init(rdma, &info->wi_cc);
- 	info->wi_cc.cc_cqe.done = svc_rdma_write_done;
- 	return info;
- }
+ 	newxprt->sc_qp = newxprt->sc_cm_id->qp;
  
- static void svc_rdma_write_info_free(struct svc_rdma_write_info *info)
- {
--	svc_rdma_cc_release(&info->wi_cc);
-+	svc_rdma_cc_release(&info->wi_cc, DMA_TO_DEVICE);
- 	kfree(info);
- }
+-	/*
+-	 * Use the most secure set of MR resources based on the
+-	 * transport type and available memory management features in
+-	 * the device. Here's the table implemented below:
+-	 *
+-	 *		Fast	Global	DMA	Remote WR
+-	 *		Reg	LKEY	MR	Access
+-	 *		Sup'd	Sup'd	Needed	Needed
+-	 *
+-	 * IWARP	N	N	Y	Y
+-	 *		N	Y	Y	Y
+-	 *		Y	N	Y	N
+-	 *		Y	Y	N	-
+-	 *
+-	 * IB		N	N	Y	N
+-	 *		N	Y	N	-
+-	 *		Y	N	Y	N
+-	 *		Y	Y	N	-
+-	 *
+-	 * NB:	iWARP requires remote write access for the data sink
+-	 *	of an RDMA_READ. IB does not.
+-	 */
+-	if (dev->attrs.device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS) {
+-		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_FAST_REG;
+-	} else
++	if (!(dev->attrs.device_cap_flags & IB_DEVICE_MEM_MGT_EXTENSIONS))
+ 		newxprt->sc_snd_w_inv = false;
+-
+-	/*
+-	 * Determine if a DMA MR is required and if so, what privs are required
+-	 */
+-	if (!rdma_protocol_iwarp(dev, newxprt->sc_cm_id->port_num) &&
+-	    !rdma_ib_or_roce(dev, newxprt->sc_cm_id->port_num))
++	if (!rdma_protocol_iwarp(dev, newxprt->sc_port_num) &&
++	    !rdma_ib_or_roce(dev, newxprt->sc_port_num))
+ 		goto errout;
  
-@@ -241,14 +239,14 @@ struct svc_rdma_read_info {
- 	if (!info)
- 		return info;
- 
--	svc_rdma_cc_init(rdma, &info->ri_cc, DMA_FROM_DEVICE);
-+	svc_rdma_cc_init(rdma, &info->ri_cc);
- 	info->ri_cc.cc_cqe.done = svc_rdma_wc_read_done;
- 	return info;
- }
- 
- static void svc_rdma_read_info_free(struct svc_rdma_read_info *info)
- {
--	svc_rdma_cc_release(&info->ri_cc);
-+	svc_rdma_cc_release(&info->ri_cc, DMA_FROM_DEVICE);
- 	kfree(info);
- }
- 
+-	if (rdma_protocol_iwarp(dev, newxprt->sc_cm_id->port_num))
+-		newxprt->sc_dev_caps |= SVCRDMA_DEVCAP_READ_W_INV;
+-
+ 	/* Post receive buffers */
+ 	for (i = 0; i < newxprt->sc_max_requests; i++) {
+ 		ret = svc_rdma_post_recv(newxprt, GFP_KERNEL);
 
