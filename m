@@ -1,13 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33943 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752382AbdFPPUj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jun 2017 11:20:39 -0400
-Subject: [PATCH v2 02/19] svcrdma: Squelch disconnection messages
+Received: from mail-it0-f68.google.com ([209.85.214.68]:32810 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752382AbdFPPUc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jun 2017 11:20:32 -0400
+Subject: [PATCH v2 01/19] ib_core: Enable and expose force_mr module
+ parameter
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 16 Jun 2017 11:20:37 -0400
-Message-ID: <20170616152037.14210.75651.stgit@klimt.1015granger.net>
+Date: Fri, 16 Jun 2017 11:20:29 -0400
+Message-ID: <20170616152029.14210.50090.stgit@klimt.1015granger.net>
 In-Reply-To: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
 References: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,63 +16,30 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The server displays "svcrdma: failed to post Send WR (-107)" in the
-kernel log when the client disconnects. This could flood the server's
-log, so remove the message.
+The fourth parameter of the module_param_named macro is a set of
+file permissions. Passing 0 there means that module parameter is
+not created and that adding "options ib_core force_mr=1" to a
+modprobe.conf file has no effect.
 
+The default setting of rdma_rw_force_mr continues to be 0, or false.
+
+Fixes: a060b5629ab0 ("IB/core: generic RDMA READ/WRITE API")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |   13 ++++++++++---
- 1 file changed, 10 insertions(+), 3 deletions(-)
+ drivers/infiniband/core/rw.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 1736337..5ba6d91 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -313,13 +313,17 @@ static int svc_rdma_dma_map_buf(struct svcxprt_rdma *rdma,
- 	dma_addr = ib_dma_map_page(dev, virt_to_page(base),
- 				   offset, len, DMA_TO_DEVICE);
- 	if (ib_dma_mapping_error(dev, dma_addr))
--		return -EIO;
-+		goto out_maperr;
+diff --git a/drivers/infiniband/core/rw.c b/drivers/infiniband/core/rw.c
+index dbfd854..1cc8f07 100644
+--- a/drivers/infiniband/core/rw.c
++++ b/drivers/infiniband/core/rw.c
+@@ -23,7 +23,7 @@ enum {
+ };
  
- 	ctxt->sge[sge_no].addr = dma_addr;
- 	ctxt->sge[sge_no].length = len;
- 	ctxt->sge[sge_no].lkey = rdma->sc_pd->local_dma_lkey;
- 	svc_rdma_count_mappings(rdma, ctxt);
- 	return 0;
-+
-+out_maperr:
-+	pr_err("svcrdma: failed to map buffer\n");
-+	return -EIO;
- }
+ static bool rdma_rw_force_mr;
+-module_param_named(force_mr, rdma_rw_force_mr, bool, 0);
++module_param_named(force_mr, rdma_rw_force_mr, bool, 0644);
+ MODULE_PARM_DESC(force_mr, "Force usage of MRs for RDMA READ/WRITE operations");
  
- static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
-@@ -334,13 +338,17 @@ static int svc_rdma_dma_map_page(struct svcxprt_rdma *rdma,
- 
- 	dma_addr = ib_dma_map_page(dev, page, offset, len, DMA_TO_DEVICE);
- 	if (ib_dma_mapping_error(dev, dma_addr))
--		return -EIO;
-+		goto out_maperr;
- 
- 	ctxt->sge[sge_no].addr = dma_addr;
- 	ctxt->sge[sge_no].length = len;
- 	ctxt->sge[sge_no].lkey = rdma->sc_pd->local_dma_lkey;
- 	svc_rdma_count_mappings(rdma, ctxt);
- 	return 0;
-+
-+out_maperr:
-+	pr_err("svcrdma: failed to map page\n");
-+	return -EIO;
- }
- 
- /**
-@@ -547,7 +555,6 @@ static int svc_rdma_send_reply_msg(struct svcxprt_rdma *rdma,
- 	return 0;
- 
- err:
--	pr_err("svcrdma: failed to post Send WR (%d)\n", ret);
- 	svc_rdma_unmap_dma(ctxt);
- 	svc_rdma_put_context(ctxt, 1);
- 	return ret;
+ /*
 
