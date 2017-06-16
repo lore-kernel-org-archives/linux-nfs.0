@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f181.google.com ([209.85.223.181]:36640 "EHLO
-        mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753322AbdFPPW4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jun 2017 11:22:56 -0400
-Subject: [PATCH v2 19/19] sunrpc: Disable splice for krb5i
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34775 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753322AbdFPPWs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Jun 2017 11:22:48 -0400
+Subject: [PATCH v2 18/19] svcrdma: Remove svc_rdma_chunk_ctxt::cc_dir field
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 16 Jun 2017 11:22:54 -0400
-Message-ID: <20170616152254.14210.48071.stgit@klimt.1015granger.net>
+Date: Fri, 16 Jun 2017 11:22:46 -0400
+Message-ID: <20170616152246.14210.86600.stgit@klimt.1015granger.net>
 In-Reply-To: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
 References: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -15,98 +15,85 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Running a multi-threaded 8KB fio test (70/30 mix), three or four out
-of twelve of the jobs fail when using krb5i. The failure is an EIO
-on a read.
+Clean up: No need to save the I/O direction. The functions that
+release svc_rdma_chunk_ctxt already know what direction to use.
 
-Troubleshooting confirmed the EIO results when the client fails to
-verify the MIC of an NFS READ reply. Bruce suggested the problem
-could be due to the data payload changing between the time the
-reply's MIC was computed on the server and the time the reply was
-actually sent.
-
-krb5p gets around this problem by disabling RQ_SPLICE_OK.
-
-"iozone -i0 -i1 -s128m -y1k -az -I", export is tmpfs, mount is
-sec=krb5i,vers=3,proto=rdma. The important numbers are the
-read / reread column.
-
-Here's without the RQ_SPLICE_OK patch:
-
-              kB  reclen    write  rewrite    read    reread
-          131072       1     7546     7929     8396     8267
-          131072       2    14375    14600    15843    15639
-          131072       4    19280    19248    21303    21410
-          131072       8    32350    31772    35199    34883
-          131072      16    36748    37477    49365    51706
-          131072      32    55669    56059    57475    57389
-          131072      64    74599    75190    74903    75550
-          131072     128    99810   101446   102828   102724
-          131072     256   122042   122612   124806   125026
-          131072     512   137614   138004   141412   141267
-          131072    1024   146601   148774   151356   151409
-          131072    2048   180684   181727   293140   292840
-          131072    4096   206907   207658   552964   549029
-          131072    8192   223982   224360   454493   473469
-          131072   16384   228927   228390   654734   632607
-
-And here's with it:
-
-              kB  reclen    write  rewrite    read    reread
-          131072       1     7700     7365     7958     8011
-          131072       2    13211    13303    14937    14414
-          131072       4    19001    19265    20544    20657
-          131072       8    30883    31097    34255    33566
-          131072      16    36868    34908    51499    49944
-          131072      32    56428    55535    58710    56952
-          131072      64    73507    74676    75619    74378
-          131072     128   100324   101442   103276   102736
-          131072     256   122517   122995   124639   124150
-          131072     512   137317   139007   140530   140830
-          131072    1024   146807   148923   151246   151072
-          131072    2048   179656   180732   292631   292034
-          131072    4096   206216   208583   543355   541951
-          131072    8192   223738   224273   494201   489372
-          131072   16384   229313   229840   691719   668427
-
-I would say that there is not much difference in this test.
-
-For good measure, here's the same test with sec=krb5p:
-
-              kB  reclen    write  rewrite    read    reread
-          131072       1     5982     5881     6137     6218
-          131072       2    10216    10252    10850    10932
-          131072       4    12236    12575    15375    15526
-          131072       8    15461    15462    23821    22351
-          131072      16    25677    25811    27529    27640
-          131072      32    31903    32354    34063    33857
-          131072      64    42989    43188    45635    45561
-          131072     128    52848    53210    56144    56141
-          131072     256    59123    59214    62691    62933
-          131072     512    63140    63277    66887    67025
-          131072    1024    65255    65299    69213    69140
-          131072    2048    76454    76555   133767   133862
-          131072    4096    84726    84883   251925   250702
-          131072    8192    89491    89482   270821   276085
-          131072   16384    91572    91597   361768   336868
-
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=307
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c |    2 ++
- 1 file changed, 2 insertions(+)
+ net/sunrpc/xprtrdma/svc_rdma_rw.c |   18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index a54a7a3..ab329f4 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -838,6 +838,8 @@ u32 svcauth_gss_flavor(struct auth_domain *dom)
- 	struct xdr_netobj mic;
- 	struct xdr_buf integ_buf;
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+index f385da0..d015ed0 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
+@@ -116,22 +116,20 @@ struct svc_rdma_chunk_ctxt {
+ 	struct svcxprt_rdma	*cc_rdma;
+ 	struct list_head	cc_rwctxts;
+ 	int			cc_sqecount;
+-	enum dma_data_direction cc_dir;
+ };
  
-+	clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
-+
- 	/* Did we already verify the signature on the original pass through? */
- 	if (rqstp->rq_deferred)
- 		return 0;
+ static void svc_rdma_cc_init(struct svcxprt_rdma *rdma,
+-			     struct svc_rdma_chunk_ctxt *cc,
+-			     enum dma_data_direction dir)
++			     struct svc_rdma_chunk_ctxt *cc)
+ {
+ 	cc->cc_rdma = rdma;
+ 	svc_xprt_get(&rdma->sc_xprt);
+ 
+ 	INIT_LIST_HEAD(&cc->cc_rwctxts);
+ 	cc->cc_sqecount = 0;
+-	cc->cc_dir = dir;
+ }
+ 
+-static void svc_rdma_cc_release(struct svc_rdma_chunk_ctxt *cc)
++static void svc_rdma_cc_release(struct svc_rdma_chunk_ctxt *cc,
++				enum dma_data_direction dir)
+ {
+ 	struct svcxprt_rdma *rdma = cc->cc_rdma;
+ 	struct svc_rdma_rw_ctxt *ctxt;
+@@ -141,7 +139,7 @@ static void svc_rdma_cc_release(struct svc_rdma_chunk_ctxt *cc)
+ 
+ 		rdma_rw_ctx_destroy(&ctxt->rw_ctx, rdma->sc_qp,
+ 				    rdma->sc_port_num, ctxt->rw_sg_table.sgl,
+-				    ctxt->rw_nents, cc->cc_dir);
++				    ctxt->rw_nents, dir);
+ 		svc_rdma_put_rw_ctxt(rdma, ctxt);
+ 	}
+ 	svc_xprt_put(&rdma->sc_xprt);
+@@ -179,14 +177,14 @@ struct svc_rdma_write_info {
+ 	info->wi_seg_no = 0;
+ 	info->wi_nsegs = be32_to_cpup(++chunk);
+ 	info->wi_segs = ++chunk;
+-	svc_rdma_cc_init(rdma, &info->wi_cc, DMA_TO_DEVICE);
++	svc_rdma_cc_init(rdma, &info->wi_cc);
+ 	info->wi_cc.cc_cqe.done = svc_rdma_write_done;
+ 	return info;
+ }
+ 
+ static void svc_rdma_write_info_free(struct svc_rdma_write_info *info)
+ {
+-	svc_rdma_cc_release(&info->wi_cc);
++	svc_rdma_cc_release(&info->wi_cc, DMA_TO_DEVICE);
+ 	kfree(info);
+ }
+ 
+@@ -241,14 +239,14 @@ struct svc_rdma_read_info {
+ 	if (!info)
+ 		return info;
+ 
+-	svc_rdma_cc_init(rdma, &info->ri_cc, DMA_FROM_DEVICE);
++	svc_rdma_cc_init(rdma, &info->ri_cc);
+ 	info->ri_cc.cc_cqe.done = svc_rdma_wc_read_done;
+ 	return info;
+ }
+ 
+ static void svc_rdma_read_info_free(struct svc_rdma_read_info *info)
+ {
+-	svc_rdma_cc_release(&info->ri_cc);
++	svc_rdma_cc_release(&info->ri_cc, DMA_FROM_DEVICE);
+ 	kfree(info);
+ }
+ 
 
