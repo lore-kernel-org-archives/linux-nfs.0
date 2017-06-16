@@ -1,42 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56864 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60596 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752398AbdFPNuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Jun 2017 09:50:21 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>, mszeredi@redhat.com,
-        bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v3 0/2] nfs_complete_rename() calls d_move() without i_mutex
-Date: Fri, 16 Jun 2017 09:50:17 -0400
-Message-Id: <cover.1497620860.git.bcodding@redhat.com>
+        id S1752321AbdFPOxz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Jun 2017 10:53:55 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20170616090621.GA13775@infradead.org>
+References: <20170616090621.GA13775@infradead.org> <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk> <149745338248.10897.17175227466711674034.stgit@warthog.procyon.org.uk> <20170615093927.GG31671@ZenIV.linux.org.uk>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: dhowells@redhat.com, Al Viro <viro@ZenIV.linux.org.uk>,
+        mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
+        linux-kernel@vger.kernel.org,
+        linux-security-module@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 07/27] VFS: Differentiate mount flags (MS_*) from internal superblock flags [ver #5]
+MIME-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Date: Fri, 16 Jun 2017 15:53:30 +0100
+Message-ID: <9141.1497624810@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Once commit 920b4530fb80430ff30ef83efe21ba1fa5623731 "NFS: nfs_rename()
-handle -ERESTARTSYS dentry left behind" moved the local d_move() into the
-RPC asyncronous context, d_move() could be called without holding the
-directories' i_mutex.
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Let's revert that commit, and a follow-up fix for it in 1/2, and then fix
-the original problem once more by forcing a revalidation of the old and new
-directories if we notice that the rename was interrupted in 2/2.
+> It might be good to just introduce the internal flags field first,
 
-v2:  Add memory barrier, hold directory i_locks while revalidating, specify
-     single-bit field width for cancelled flag.
+Internal flags field?  Did you mean Al's suggested sb_readonly() wrapper?
 
-v3:  Add some comments, change cancelled flag to bool.
-
-Benjamin Coddington (2):
-  Revert "NFS: nfs_rename() handle -ERESTARTSYS dentry left behind"
-  NFS: nfs_rename() - revalidate directories on -ERESTARTSYS
-
- fs/nfs/dir.c            | 57 +++++++++++++++++++++++++------------------------
- fs/nfs/unlink.c         | 11 ++++++++++
- include/linux/nfs_xdr.h |  1 +
- 3 files changed, 41 insertions(+), 28 deletions(-)
-
--- 
-2.9.3
-
+David
