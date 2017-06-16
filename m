@@ -1,30 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38330 "EHLO mx1.redhat.com"
+Received: from mx144.netapp.com ([216.240.21.25]:26710 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750866AbdFPPyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Jun 2017 11:54:33 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20170616154959.GA27209@infradead.org>
-References: <20170616154959.GA27209@infradead.org> <20170616090621.GA13775@infradead.org> <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk> <149745338248.10897.17175227466711674034.stgit@warthog.procyon.org.uk> <20170615093927.GG31671@ZenIV.linux.org.uk> <9141.1497624810@warthog.procyon.org.uk>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: dhowells@redhat.com, Al Viro <viro@ZenIV.linux.org.uk>,
-        mszeredi@redhat.com, linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        linux-kernel@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 07/27] VFS: Differentiate mount flags (MS_*) from internal superblock flags [ver #5]
+        id S1750760AbdFPQMs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Jun 2017 12:12:48 -0400
+From: Anna.Schumaker@Netapp.com
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: Set FATTR4_WORD0_TYPE for . and .. entries
+Date: Fri, 16 Jun 2017 12:12:33 -0400
+Message-ID: <20170616161233.29147-1-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Fri, 16 Jun 2017 16:54:30 +0100
-Message-ID: <654.1497628470@warthog.procyon.org.uk>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Christoph Hellwig <hch@infradead.org> wrote:
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-> (1) Add a new SB field that is like s_flags but for the new flags,
+The current code worked okay for getdents(), but getdents64() expects
+the d_type field to get filled out properly in the stat structure.
+Setting this field fixes xfstests generic/401.
 
-Do we really need to do that?  The SB_* flags are conumeric with the MS_*
-flags they replace.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/nfs4proc.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
-David
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c08c46a3b8cd..735b3068a2d1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -275,6 +275,7 @@ const u32 nfs4_fs_locations_bitmap[3] = {
+ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dentry,
+ 		struct nfs4_readdir_arg *readdir)
+ {
++	unsigned int attrs = FATTR4_WORD0_FILEID | FATTR4_WORD0_TYPE;
+ 	__be32 *start, *p;
+ 
+ 	if (cookie > 2) {
+@@ -305,8 +306,9 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 		memcpy(p, ".\0\0\0", 4);                        /* entry */
+ 		p++;
+ 		*p++ = xdr_one;                         /* bitmap length */
+-		*p++ = htonl(FATTR4_WORD0_FILEID);             /* bitmap */
+-		*p++ = htonl(8);              /* attribute buffer length */
++		*p++ = htonl(attrs);                           /* bitmap */
++		*p++ = htonl(12);             /* attribute buffer length */
++		*p++ = htonl(NF4DIR);
+ 		p = xdr_encode_hyper(p, NFS_FILEID(d_inode(dentry)));
+ 	}
+ 	
+@@ -317,8 +319,9 @@ static void nfs4_setup_readdir(u64 cookie, __be32 *verifier, struct dentry *dent
+ 	memcpy(p, "..\0\0", 4);                         /* entry */
+ 	p++;
+ 	*p++ = xdr_one;                         /* bitmap length */
+-	*p++ = htonl(FATTR4_WORD0_FILEID);             /* bitmap */
+-	*p++ = htonl(8);              /* attribute buffer length */
++	*p++ = htonl(attrs);                           /* bitmap */
++	*p++ = htonl(12);             /* attribute buffer length */
++	*p++ = htonl(NF4DIR);
+ 	p = xdr_encode_hyper(p, NFS_FILEID(d_inode(dentry->d_parent)));
+ 
+ 	readdir->pgbase = (char *)p - (char *)start;
+-- 
+2.13.1
+
