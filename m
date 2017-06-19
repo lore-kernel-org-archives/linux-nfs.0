@@ -1,394 +1,410 @@
-Return-Path: <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH] NFS: convert flags to bool
-To: Benjamin Coddington <bcodding@redhat.com>, Trond Myklebust
-	<trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-References: <db7a135f03665f2193182e0bbc686a6b2eaf5210.1497878420.git.bcodding@redhat.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <246d3d7f-4e9f-8710-7001-c4db2dd7d567@Netapp.com>
-Date: Mon, 19 Jun 2017 15:19:51 -0400
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:34993 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752850AbdFSSfK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jun 2017 14:35:10 -0400
 MIME-Version: 1.0
-In-Reply-To: <db7a135f03665f2193182e0bbc686a6b2eaf5210.1497878420.git.bcodding@redhat.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20170615205357.GA13715@birch.djwong.org>
+References: <5bca6687-ac03-72ef-f38e-6759a0fbb1d6@gmail.com>
+ <20170614185335.58193-1-kolga@netapp.com> <20170615035923.GA4521@birch.djwong.org>
+ <CAN-5tyGCYjR4wXkpjD8XKXSSAmSS1VG2SA1Kr4V5iJFPjZJFug@mail.gmail.com> <20170615205357.GA13715@birch.djwong.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 19 Jun 2017 14:34:58 -0400
+Message-ID: <CAN-5tyFSw7CzfpH0=+KW94Z5fHmeOTvG1=7hXsd7nNcaAzre6Q@mail.gmail.com>
+Subject: Re: [PATCH 1/1] [RFC] 64bit copy_file_range system call
+To: "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben,
+On Thu, Jun 15, 2017 at 4:53 PM, Darrick J. Wong
+<darrick.wong@oracle.com> wrote:
+> On Thu, Jun 15, 2017 at 10:39:42AM -0400, Olga Kornievskaia wrote:
+>> On Wed, Jun 14, 2017 at 11:59 PM, Darrick J. Wong
+>> <darrick.wong@oracle.com> wrote:
+>> > On Wed, Jun 14, 2017 at 02:53:35PM -0400, Olga Kornievskaia wrote:
+>> >> This is a proposal to allow 64bit count to copy and return as
+>> >> a result of a copy_file_range. No attempt was made to share code
+>> >> with the 32bit function because 32bit interface should probably
+>> >> get depreciated.
+>> >>
+>> >> Why use 64bit? Current uses of 32bit are by clone_file_range()
+>> >> which could use 64bit count and NFS copy_file_range also supports
+>> >> 64bit count value.
+>> >>
+>> >> Also with this proposal off-the-bet allow the userland to copy
+>> >> between different mount points.
+>> >>
+>> >> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> >> ---
+>> >>  arch/x86/entry/syscalls/syscall_32.tbl |   1 +
+>> >>  arch/x86/entry/syscalls/syscall_64.tbl |   1 +
+>> >>  fs/read_write.c                        | 146 +++++++++++++++++++++++++++++++--
+>> >>  include/linux/fs.h                     |   4 +
+>> >>  include/linux/syscalls.h               |   3 +
+>> >>  include/uapi/asm-generic/unistd.h      |   4 +-
+>> >>  kernel/sys_ni.c                        |   1 +
+>> >>  7 files changed, 154 insertions(+), 6 deletions(-)
+>> >>
+>> >> diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+>> >> index 448ac21..1f5f1e7 100644
+>> >> --- a/arch/x86/entry/syscalls/syscall_32.tbl
+>> >> +++ b/arch/x86/entry/syscalls/syscall_32.tbl
+>> >> @@ -391,3 +391,4 @@
+>> >>  382  i386    pkey_free               sys_pkey_free
+>> >>  383  i386    statx                   sys_statx
+>> >>  384  i386    arch_prctl              sys_arch_prctl                  compat_sys_arch_prctl
+>> >> +385  i386    copy_file_range64       sys_copy_file_range64
+>> >> diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+>> >> index 5aef183..e658bbe 100644
+>> >> --- a/arch/x86/entry/syscalls/syscall_64.tbl
+>> >> +++ b/arch/x86/entry/syscalls/syscall_64.tbl
+>> >> @@ -339,6 +339,7 @@
+>> >>  330  common  pkey_alloc              sys_pkey_alloc
+>> >>  331  common  pkey_free               sys_pkey_free
+>> >>  332  common  statx                   sys_statx
+>> >> +333  64      copy_file_range64       sys_copy_file_range64
+>> >>
+>> >>  #
+>> >>  # x32-specific system call numbers start at 512 to avoid cache impact
+>> >> diff --git a/fs/read_write.c b/fs/read_write.c
+>> >> index e3ee985..c9c072b 100644
+>> >> --- a/fs/read_write.c
+>> >> +++ b/fs/read_write.c
+>> >> @@ -1700,7 +1700,7 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>> >>       return ret;
+>> >>  }
+>> >>
+>> >> -static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+>> >> +static int rw64_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+>> >>  {
+>> >>       struct inode *inode = file_inode(file);
+>> >>
+>> >> @@ -1723,6 +1723,142 @@ static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
+>> >>       return security_file_permission(file, write ? MAY_WRITE : MAY_READ);
+>> >>  }
+>> >>
+>> >> +u64 vfs_copy_file_range64(struct file *file_in, loff_t pos_in,
+>> >> +                         struct file *file_out, loff_t pos_out,
+>> >> +                         u64 len, unsigned int flags)
+>> >
+>> > AFAICT the difference between vfs_copy_file_range() and
+>> > vfs_copy_file_range64() is that you've replaced 'size_t len' with
+>> > 'u64 len', correct?
+>>
+>> That and I'm asking to allow for cross-device copy to be allowed by
+>> the system call.
+>
+> I was fine letting each fs decide if it was going to allow cross-device
+> copy or not, but Christoph argued that since we don't generally allow
+> operations across mountpoints we shouldn't allow cross-mountpoint
+> {clone,copy}_file_range either.
+>
+> Roughly translated, XFS has no cross-device copy abilities, there aren't
+> any plans to add it, so I don't feel motivated to argue for it... but if
+> the nfs community is so motivated (it sounds like it) then y'all could
+> try one more time.
 
-Thanks for doing this!  A couple of comments below:
+Yes NFS community does need one for doing a server-to-server copy
+(performance) feature.
 
-On 06/19/2017 09:22 AM, Benjamin Coddington wrote:
-> NFS uses some int, and unsigned int :1, and bool as flags in structs and
-> args.  Assert the preference for uniformly replacing these with the bool
-> type.
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  fs/nfs/dir.c            | 16 ++++++++--------
->  fs/nfs/internal.h       |  6 +++---
->  fs/nfs/nfs2xdr.c        |  2 +-
->  fs/nfs/nfs3proc.c       |  2 +-
->  fs/nfs/nfs3xdr.c        |  2 +-
->  fs/nfs/nfs4proc.c       | 42 +++++++++++++++++++++---------------------
->  fs/nfs/nfs4xdr.c        |  2 +-
->  fs/nfs/proc.c           |  2 +-
->  include/linux/nfs_xdr.h | 10 +++++-----
->  9 files changed, 42 insertions(+), 42 deletions(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 7108d272bc87..1be9fd659a8b 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -151,7 +151,7 @@ struct nfs_cache_array {
->  	struct nfs_cache_array_entry array[0];
->  };
->  
-> -typedef int (*decode_dirent_t)(struct xdr_stream *, struct nfs_entry *, int);
-> +typedef int (*decode_dirent_t)(struct xdr_stream *, struct nfs_entry *, bool);
->  typedef struct {
->  	struct file	*file;
->  	struct page	*page;
-> @@ -165,8 +165,8 @@ typedef struct {
->  	unsigned long	timestamp;
->  	unsigned long	gencount;
->  	unsigned int	cache_entry_index;
-> -	unsigned int	plus:1;
-> -	unsigned int	eof:1;
-> +	bool plus;
-> +	bool eof;
->  } nfs_readdir_descriptor_t;
->  
->  /*
-> @@ -355,7 +355,7 @@ int nfs_readdir_xdr_filler(struct page **pages, nfs_readdir_descriptor_t *desc,
->  		if (error == -ENOTSUPP && desc->plus) {
->  			NFS_SERVER(inode)->caps &= ~NFS_CAP_READDIRPLUS;
->  			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
-> -			desc->plus = 0;
-> +			desc->plus = false;
->  			goto again;
->  		}
->  		goto error;
-> @@ -557,7 +557,7 @@ int nfs_readdir_page_filler(nfs_readdir_descriptor_t *desc, struct nfs_entry *en
->  
->  		count++;
->  
-> -		if (desc->plus != 0)
-> +		if (desc->plus)
->  			nfs_prime_dcache(file_dentry(desc->file), entry);
->  
->  		status = nfs_readdir_add_to_array(entry, page);
-> @@ -860,7 +860,7 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
->  	desc->ctx = ctx;
->  	desc->dir_cookie = &dir_ctx->dir_cookie;
->  	desc->decode = NFS_PROTO(inode)->decode_dirent;
-> -	desc->plus = nfs_use_readdirplus(inode, ctx) ? 1 : 0;
-> +	desc->plus = nfs_use_readdirplus(inode, ctx) ? true : false;
+There was an argument that none of the VFS operations allow for
+cross-device operations. What about splice, doesn't it allow to cross
+mount points? So why not allow copy_file_range to do it too?
 
-nfs_use_readdirplus() already returns a bool, so you should be able to set desc->plus without the ternary.
+>> > sizeof(size_t) == sizeof(u64) on 64-bit machines, so at least as far as
+>> > the userspace interface is concerned, this only makes a difference on
+>> > 32-bit userlands, right?  So, uh, how many 32-bit user programs need to
+>> > c_f_r more than 2GB at a time?
+>>
+>> Isn't that 4GB? I thought that max of ssize_t is 4GB on 64bit. I'm
+>> under the impression that sizeof (ssize_t) != sizeof(u64) on 64bit
+>> machine. If I'm wrong, then this patch is indeed not needed.
+>
+> From include/uapi/asm-generic/posix_types.h:
+>
+> /*
+>  * Most 32 bit architectures use "unsigned int" size_t,
+>  * and all 64 bit architectures use "unsigned long" size_t.
+>  */
+> #ifndef __kernel_size_t
+> #if __BITS_PER_LONG != 64
+> typedef unsigned int    __kernel_size_t;
+> typedef int             __kernel_ssize_t;
+> typedef int             __kernel_ptrdiff_t;
+> #else
+> typedef __kernel_ulong_t __kernel_size_t;
+> typedef __kernel_long_t __kernel_ssize_t;
+> typedef __kernel_long_t __kernel_ptrdiff_t;
+> #endif
+> #endif
+>
+> Note that 'long' is 64-bit, at least on x64.
 
->  
->  	if (ctx->pos == 0 || nfs_attribute_cache_expired(inode))
->  		res = nfs_revalidate_mapping(inode, file->f_mapping);
-> @@ -885,8 +885,8 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
->  			clear_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(inode)->flags);
->  			nfs_zap_caches(inode);
->  			desc->page_index = 0;
-> -			desc->plus = 0;
-> -			desc->eof = 0;
-> +			desc->plus = false;
-> +			desc->eof = false;
->  			continue;
->  		}
->  		if (res < 0)
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 3e24392f2caa..23d6c80346fc 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -272,17 +272,17 @@ static inline bool nfs_match_open_context(const struct nfs_open_context *ctx1,
->  /* nfs2xdr.c */
->  extern struct rpc_procinfo nfs_procedures[];
->  extern int nfs2_decode_dirent(struct xdr_stream *,
-> -				struct nfs_entry *, int);
-> +				struct nfs_entry *, bool);
->  
->  /* nfs3xdr.c */
->  extern struct rpc_procinfo nfs3_procedures[];
+Ok, thank you for pointing this out. I see now that it's not important
+to change the size_t to allow for larger than 4GB copies.
 
-I applied this portion on top of Christoph's constify-everything change, and I needed to change nfs2_procedures[] and nfs3_procedures[] to be const before git would apply the patch.
-
-Thanks again for putting this together!
-Anna
-
->  extern int nfs3_decode_dirent(struct xdr_stream *,
-> -				struct nfs_entry *, int);
-> +				struct nfs_entry *, bool);
->  
->  /* nfs4xdr.c */
->  #if IS_ENABLED(CONFIG_NFS_V4)
->  extern int nfs4_decode_dirent(struct xdr_stream *,
-> -				struct nfs_entry *, int);
-> +				struct nfs_entry *, bool);>  #endif
->  #ifdef CONFIG_NFS_V4_1
->  extern const u32 nfs41_maxread_overhead;
-> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-> index b4e03ed8599d..a03e45288e0b 100644
-> --- a/fs/nfs/nfs2xdr.c
-> +++ b/fs/nfs/nfs2xdr.c
-> @@ -913,7 +913,7 @@ static int nfs2_xdr_dec_writeres(struct rpc_rqst *req, struct xdr_stream *xdr,
->   *	};
->   */
->  int nfs2_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
-> -		       int plus)
-> +		       bool plus)
->  {
->  	__be32 *p;
->  	int error;
-> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-> index 0c07b567118d..df4a7d3ab915 100644
-> --- a/fs/nfs/nfs3proc.c
-> +++ b/fs/nfs/nfs3proc.c
-> @@ -621,7 +621,7 @@ nfs3_proc_rmdir(struct inode *dir, const struct qstr *name)
->   */
->  static int
->  nfs3_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
-> -		  u64 cookie, struct page **pages, unsigned int count, int plus)
-> +		  u64 cookie, struct page **pages, unsigned int count, bool plus)
->  {
->  	struct inode		*dir = d_inode(dentry);
->  	__be32			*verf = NFS_I(dir)->cookieverf;
-> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-> index 267126d32ec0..a2df35fe9bfa 100644
-> --- a/fs/nfs/nfs3xdr.c
-> +++ b/fs/nfs/nfs3xdr.c
-> @@ -1946,7 +1946,7 @@ static int nfs3_xdr_dec_link3res(struct rpc_rqst *req, struct xdr_stream *xdr,
->   *	};
->   */
->  int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
-> -		       int plus)
-> +		       bool plus)
->  {
->  	struct nfs_entry old = *entry;
->  	__be32 *p;
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index c08c46a3b8cd..5f50d0a483bb 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1034,11 +1034,11 @@ struct nfs4_opendata {
->  	struct nfs4_state *state;
->  	struct iattr attrs;
->  	unsigned long timestamp;
-> -	unsigned int rpc_done : 1;
-> -	unsigned int file_created : 1;
-> -	unsigned int is_recover : 1;
-> +	bool rpc_done;
-> +	bool file_created;
-> +	bool is_recover;
-> +	bool cancelled;
->  	int rpc_status;
-> -	int cancelled;
->  };
->  
->  static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
-> @@ -1962,7 +1962,7 @@ static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
->  		nfs4_stateid_copy(&data->o_res.stateid, &data->c_res.stateid);
->  		nfs_confirm_seqid(&data->owner->so_seqid, 0);
->  		renew_lease(data->o_res.server, data->timestamp);
-> -		data->rpc_done = 1;
-> +		data->rpc_done = true;
->  	}
->  }
->  
-> @@ -1972,7 +1972,7 @@ static void nfs4_open_confirm_release(void *calldata)
->  	struct nfs4_state *state = NULL;
->  
->  	/* If this request hasn't been cancelled, do nothing */
-> -	if (data->cancelled == 0)
-> +	if (!data->cancelled)
->  		goto out_free;
->  	/* In case of error, no cleanup! */
->  	if (!data->rpc_done)
-> @@ -2015,7 +2015,7 @@ static int _nfs4_proc_open_confirm(struct nfs4_opendata *data)
->  
->  	nfs4_init_sequence(&data->c_arg.seq_args, &data->c_res.seq_res, 1);
->  	kref_get(&data->kref);
-> -	data->rpc_done = 0;
-> +	data->rpc_done = false;
->  	data->rpc_status = 0;
->  	data->timestamp = jiffies;
->  	if (data->is_recover)
-> @@ -2025,7 +2025,7 @@ static int _nfs4_proc_open_confirm(struct nfs4_opendata *data)
->  		return PTR_ERR(task);
->  	status = rpc_wait_for_completion_task(task);
->  	if (status != 0) {
-> -		data->cancelled = 1;
-> +		data->cancelled = true;
->  		smp_wmb();
->  	} else
->  		status = data->rpc_status;
-> @@ -2124,7 +2124,7 @@ static void nfs4_open_done(struct rpc_task *task, void *calldata)
->  		if (!(data->o_res.rflags & NFS4_OPEN_RESULT_CONFIRM))
->  			nfs_confirm_seqid(&data->owner->so_seqid, 0);
->  	}
-> -	data->rpc_done = 1;
-> +	data->rpc_done = true;
->  }
->  
->  static void nfs4_open_release(void *calldata)
-> @@ -2133,7 +2133,7 @@ static void nfs4_open_release(void *calldata)
->  	struct nfs4_state *state = NULL;
->  
->  	/* If this request hasn't been cancelled, do nothing */
-> -	if (data->cancelled == 0)
-> +	if (!data->cancelled)
->  		goto out_free;
->  	/* In case of error, no cleanup! */
->  	if (data->rpc_status != 0 || !data->rpc_done)
-> @@ -2179,20 +2179,20 @@ static int nfs4_run_open_task(struct nfs4_opendata *data, int isrecover)
->  
->  	nfs4_init_sequence(&o_arg->seq_args, &o_res->seq_res, 1);
->  	kref_get(&data->kref);
-> -	data->rpc_done = 0;
-> +	data->rpc_done = false;
->  	data->rpc_status = 0;
-> -	data->cancelled = 0;
-> -	data->is_recover = 0;
-> +	data->cancelled = false;
-> +	data->is_recover = false;
->  	if (isrecover) {
->  		nfs4_set_sequence_privileged(&o_arg->seq_args);
-> -		data->is_recover = 1;
-> +		data->is_recover = true;
->  	}
->  	task = rpc_run_task(&task_setup_data);
->  	if (IS_ERR(task))
->  		return PTR_ERR(task);
->  	status = rpc_wait_for_completion_task(task);
->  	if (status != 0) {
-> -		data->cancelled = 1;
-> +		data->cancelled = true;
->  		smp_wmb();
->  	} else
->  		status = data->rpc_status;
-> @@ -2287,9 +2287,9 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
->  
->  	if (o_arg->open_flags & O_CREAT) {
->  		if (o_arg->open_flags & O_EXCL)
-> -			data->file_created = 1;
-> +			data->file_created = true;
->  		else if (o_res->cinfo.before != o_res->cinfo.after)
-> -			data->file_created = 1;
-> +			data->file_created = true;
->  		if (data->file_created || dir->i_version != o_res->cinfo.after)
->  			update_changeattr(dir, &o_res->cinfo,
->  					o_res->f_attr->time_start);
-> @@ -4272,7 +4272,7 @@ static int nfs4_proc_mkdir(struct inode *dir, struct dentry *dentry,
->  }
->  
->  static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
-> -		u64 cookie, struct page **pages, unsigned int count, int plus)
-> +		u64 cookie, struct page **pages, unsigned int count, bool plus)
->  {
->  	struct inode		*dir = d_inode(dentry);
->  	struct nfs4_readdir_arg args = {
-> @@ -4310,7 +4310,7 @@ static int _nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
->  }
->  
->  static int nfs4_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
-> -		u64 cookie, struct page **pages, unsigned int count, int plus)
-> +		u64 cookie, struct page **pages, unsigned int count, bool plus)
->  {
->  	struct nfs4_exception exception = { };
->  	int err;
-> @@ -6134,7 +6134,7 @@ static void nfs4_lock_release(void *calldata)
->  
->  	dprintk("%s: begin!\n", __func__);
->  	nfs_free_seqid(data->arg.open_seqid);
-> -	if (data->cancelled != 0) {
-> +	if (data->cancelled) {
->  		struct rpc_task *task;
->  		task = nfs4_do_unlck(&data->fl, data->ctx, data->lsp,
->  				data->arg.lock_seqid);
-> @@ -6217,7 +6217,7 @@ static int _nfs4_do_setlk(struct nfs4_state *state, int cmd, struct file_lock *f
->  			nfs4_handle_setlk_error(data->server, data->lsp,
->  					data->arg.new_lock_owner, ret);
->  	} else
-> -		data->cancelled = 1;
-> +		data->cancelled = true;
->  	rpc_put_task(task);
->  	dprintk("%s: done, ret = %d!\n", __func__, ret);
->  	trace_nfs4_set_lock(fl, state, &data->res.stateid, cmd, ret);
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 3aebfdc82b30..d31ad276185c 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -7350,7 +7350,7 @@ static int nfs4_xdr_dec_free_stateid(struct rpc_rqst *rqstp,
->   * on a directory already in our cache.
->   */
->  int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
-> -		       int plus)
-> +		       bool plus)
->  {
->  	unsigned int savep;
->  	uint32_t bitmap[3] = {0};
-> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-> index 9872cf676a50..7962e49097c3 100644
-> --- a/fs/nfs/proc.c
-> +++ b/fs/nfs/proc.c
-> @@ -485,7 +485,7 @@ nfs_proc_rmdir(struct inode *dir, const struct qstr *name)
->   */
->  static int
->  nfs_proc_readdir(struct dentry *dentry, struct rpc_cred *cred,
-> -		 u64 cookie, struct page **pages, unsigned int count, int plus)
-> +		 u64 cookie, struct page **pages, unsigned int count, bool plus)
->  {
->  	struct inode		*dir = d_inode(dentry);
->  	struct nfs_readdirargs	arg = {
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 1aca3d7c1810..9463eeff9e3c 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -878,7 +878,7 @@ struct nfs3_readdirargs {
->  	struct nfs_fh *		fh;
->  	__u64			cookie;
->  	__be32			verf[2];
-> -	int			plus;
-> +	bool			plus;
->  	unsigned int            count;
->  	struct page **		pages;
->  };
-> @@ -909,7 +909,7 @@ struct nfs3_linkres {
->  struct nfs3_readdirres {
->  	struct nfs_fattr *	dir_attr;
->  	__be32 *		verf;
-> -	int			plus;
-> +	bool			plus;
->  };
->  
->  struct nfs3_getaclres {
-> @@ -1053,7 +1053,7 @@ struct nfs4_readdir_arg {
->  	struct page **			pages;	/* zero-copy data */
->  	unsigned int			pgbase;	/* zero-copy data */
->  	const u32 *			bitmask;
-> -	int				plus;
-> +	bool				plus;
->  };
->  
->  struct nfs4_readdir_res {
-> @@ -1586,7 +1586,7 @@ struct nfs_rpc_ops {
->  	int	(*mkdir)   (struct inode *, struct dentry *, struct iattr *);
->  	int	(*rmdir)   (struct inode *, const struct qstr *);
->  	int	(*readdir) (struct dentry *, struct rpc_cred *,
-> -			    u64, struct page **, unsigned int, int);
-> +			    u64, struct page **, unsigned int, bool);
->  	int	(*mknod)   (struct inode *, struct dentry *, struct iattr *,
->  			    dev_t);
->  	int	(*statfs)  (struct nfs_server *, struct nfs_fh *,
-> @@ -1596,7 +1596,7 @@ struct nfs_rpc_ops {
->  	int	(*pathconf) (struct nfs_server *, struct nfs_fh *,
->  			     struct nfs_pathconf *);
->  	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
-> -	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
-> +	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, bool);
->  	int	(*pgio_rpc_prepare)(struct rpc_task *,
->  				    struct nfs_pgio_header *);
->  	void	(*read_setup)(struct nfs_pgio_header *, struct rpc_message *);
-> 
+>
+>> > Follow up question -- does c_f_r not work for > 2GB of data when
+>> > userspace is 64-bit?
+>>
+>> Current copy_file_range would work for any file size, it would just
+>> need to be called in a loop by the application. With the given
+>> proposal, there wouldn't be a need for the application to loop due to
+>> the API size limitation. It might still loop if a partial copy was
+>> done.
+>
+> ...which is what happens if we fall back to do_splice_direct, since a
+> single call won't pagecache-copy more than INT_MAX bytes from one file
+> to another.  Therefore, any serious user of this syscall has to check
+> the arguments and loop if it wants the whole range done, similar to how
+> one is (supposed) to call write().
+>
+> --D
+>
+>>
+>> >
+>> > --D
+>> >
+>> >> +{
+>> >> +     struct inode *inode_in = file_inode(file_in);
+>> >> +     struct inode *inode_out = file_inode(file_out);
+>> >> +     u64 ret;
+>> >> +
+>> >> +     if (flags != 0)
+>> >> +             return -EINVAL;
+>> >> +
+>> >> +     if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
+>> >> +             return -EISDIR;
+>> >> +     if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
+>> >> +             return -EINVAL;
+>> >> +
+>> >> +     ret = rw64_verify_area(file_in, pos_in, len, false);
+>> >> +     if (unlikely(ret))
+>> >> +             return ret;
+>> >> +
+>> >> +     ret = rw64_verify_area(file_out, pos_out, len, true);
+>> >> +     if (unlikely(ret))
+>> >> +             return ret;
+>> >> +
+>> >> +     if (!(file_in->f_mode & FMODE_READ) ||
+>> >> +         !(file_out->f_mode & FMODE_WRITE) ||
+>> >> +         (file_out->f_flags & O_APPEND))
+>> >> +             return -EBADF;
+>> >> +
+>> >> +     if (len == 0)
+>> >> +             return 0;
+>> >> +
+>> >> +     file_start_write(file_out);
+>> >> +
+>> >> +     /*
+>> >> +      * Try cloning first, this is supported by more file systems, and
+>> >> +      * more efficient if both clone and copy are supported (e.g. NFS).
+>> >> +      */
+>> >> +     if (file_in->f_op->clone_file_range) {
+>> >> +             ret = file_in->f_op->clone_file_range(file_in, pos_in,
+>> >> +                             file_out, pos_out, len);
+>> >> +             if (ret == 0) {
+>> >> +                     ret = len;
+>> >> +                     goto done;
+>> >> +             }
+>> >> +     }
+>> >> +
+>> >> +     if (file_out->f_op->copy_file_range64) {
+>> >> +             ret = file_out->f_op->copy_file_range64(file_in, pos_in,
+>> >> +                                     file_out, pos_out, len, flags);
+>> >> +             if (ret != -EOPNOTSUPP)
+>> >> +                     goto done;
+>> >> +     }
+>> >> +
+>> >> +     ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out,
+>> >> +                     len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
+>> >> +
+>> >> +done:
+>> >> +     if (ret > 0) {
+>> >> +             fsnotify_access(file_in);
+>> >> +             add_rchar(current, ret);
+>> >> +             fsnotify_modify(file_out);
+>> >> +             add_wchar(current, ret);
+>> >> +     }
+>> >> +
+>> >> +     inc_syscr(current);
+>> >> +     inc_syscw(current);
+>> >> +
+>> >> +     file_end_write(file_out);
+>> >> +
+>> >> +     return ret;
+>> >> +}
+>> >> +EXPORT_SYMBOL(vfs_copy_file_range64);
+>> >> +
+>> >> +SYSCALL_DEFINE6(copy_file_range64, int, fd_in, loff_t __user *, off_in,
+>> >> +             int, fd_out, loff_t __user *, off_out,
+>> >> +             u64, len, unsigned int, flags)
+>> >> +{
+>> >> +     loff_t pos_in;
+>> >> +     loff_t pos_out;
+>> >> +     struct fd f_in;
+>> >> +     struct fd f_out;
+>> >> +     u64 ret = -EBADF;
+>> >> +
+>> >> +     f_in = fdget(fd_in);
+>> >> +     if (!f_in.file)
+>> >> +             goto out2;
+>> >> +
+>> >> +     f_out = fdget(fd_out);
+>> >> +     if (!f_out.file)
+>> >> +             goto out1;
+>> >> +
+>> >> +     ret = -EFAULT;
+>> >> +     if (off_in) {
+>> >> +             if (copy_from_user(&pos_in, off_in, sizeof(loff_t)))
+>> >> +                     goto out;
+>> >> +     } else {
+>> >> +             pos_in = f_in.file->f_pos;
+>> >> +     }
+>> >> +
+>> >> +     if (off_out) {
+>> >> +             if (copy_from_user(&pos_out, off_out, sizeof(loff_t)))
+>> >> +                     goto out;
+>> >> +     } else {
+>> >> +             pos_out = f_out.file->f_pos;
+>> >> +     }
+>> >> +
+>> >> +     ret = vfs_copy_file_range64(f_in.file, pos_in, f_out.file, pos_out, len,
+>> >> +                               flags);
+>> >> +     if (ret > 0) {
+>> >> +             pos_in += ret;
+>> >> +             pos_out += ret;
+>> >> +
+>> >> +             if (off_in) {
+>> >> +                     if (copy_to_user(off_in, &pos_in, sizeof(loff_t)))
+>> >> +                             ret = -EFAULT;
+>> >> +             } else {
+>> >> +                     f_in.file->f_pos = pos_in;
+>> >> +             }
+>> >> +
+>> >> +             if (off_out) {
+>> >> +                     if (copy_to_user(off_out, &pos_out, sizeof(loff_t)))
+>> >> +                             ret = -EFAULT;
+>> >> +             } else {
+>> >> +                     f_out.file->f_pos = pos_out;
+>> >> +             }
+>> >> +     }
+>> >> +
+>> >> +out:
+>> >> +     fdput(f_out);
+>> >> +out1:
+>> >> +     fdput(f_in);
+>> >> +out2:
+>> >> +     return ret;
+>> >> +}
+>> >> +
+>> >>  /*
+>> >>   * Check that the two inodes are eligible for cloning, the ranges make
+>> >>   * sense, and then flush all dirty data.  Caller must ensure that the
+>> >> @@ -1860,11 +1996,11 @@ int vfs_clone_file_range(struct file *file_in, loff_t pos_in,
+>> >>       if (!file_in->f_op->clone_file_range)
+>> >>               return -EOPNOTSUPP;
+>> >>
+>> >> -     ret = clone_verify_area(file_in, pos_in, len, false);
+>> >> +     ret = rw64_verify_area(file_in, pos_in, len, false);
+>> >>       if (ret)
+>> >>               return ret;
+>> >>
+>> >> -     ret = clone_verify_area(file_out, pos_out, len, true);
+>> >> +     ret = rw64_verify_area(file_out, pos_out, len, true);
+>> >>       if (ret)
+>> >>               return ret;
+>> >>
+>> >> @@ -2009,7 +2145,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+>> >>       if (!S_ISREG(src->i_mode))
+>> >>               goto out;
+>> >>
+>> >> -     ret = clone_verify_area(file, off, len, false);
+>> >> +     ret = rw64_verify_area(file, off, len, false);
+>> >>       if (ret < 0)
+>> >>               goto out;
+>> >>       ret = 0;
+>> >> @@ -2041,7 +2177,7 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+>> >>               }
+>> >>
+>> >>               dst_off = info->dest_offset;
+>> >> -             ret = clone_verify_area(dst_file, dst_off, len, true);
+>> >> +             ret = rw64_verify_area(dst_file, dst_off, len, true);
+>> >>               if (ret < 0) {
+>> >>                       info->status = ret;
+>> >>                       goto next_file;
+>> >> diff --git a/include/linux/fs.h b/include/linux/fs.h
+>> >> index 803e5a9..41fce43 100644
+>> >> --- a/include/linux/fs.h
+>> >> +++ b/include/linux/fs.h
+>> >> @@ -1690,6 +1690,8 @@ struct file_operations {
+>> >>                       u64);
+>> >>       ssize_t (*dedupe_file_range)(struct file *, u64, u64, struct file *,
+>> >>                       u64);
+>> >> +     u64 (*copy_file_range64)(struct file *, loff_t, struct file *,
+>> >> +                     loff_t, u64, unsigned int);
+>> >>  };
+>> >>
+>> >>  struct inode_operations {
+>> >> @@ -1770,6 +1772,8 @@ extern int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+>> >>                                        loff_t len, bool *is_same);
+>> >>  extern int vfs_dedupe_file_range(struct file *file,
+>> >>                                struct file_dedupe_range *same);
+>> >> +extern u64 vfs_copy_file_range64(struct file *, loff_t, struct file *,
+>> >> +                            loff_t, u64, unsigned int);
+>> >>
+>> >>  struct super_operations {
+>> >>       struct inode *(*alloc_inode)(struct super_block *sb);
+>> >> diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+>> >> index 980c3c9..f7ea78e 100644
+>> >> --- a/include/linux/syscalls.h
+>> >> +++ b/include/linux/syscalls.h
+>> >> @@ -905,5 +905,8 @@ asmlinkage long sys_pkey_mprotect(unsigned long start, size_t len,
+>> >>  asmlinkage long sys_pkey_free(int pkey);
+>> >>  asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
+>> >>                         unsigned mask, struct statx __user *buffer);
+>> >> +asmlinkage long sys_copy_file_range64(int fd_in, loff_t __user *off_in,
+>> >> +                                 int fd_out, loff_t __user *off_out,
+>> >> +                                 u64 len, unsigned int flags);
+>> >>
+>> >>  #endif
+>> >> diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
+>> >> index 061185a..e385a76 100644
+>> >> --- a/include/uapi/asm-generic/unistd.h
+>> >> +++ b/include/uapi/asm-generic/unistd.h
+>> >> @@ -731,9 +731,11 @@
+>> >>  __SYSCALL(__NR_pkey_free,     sys_pkey_free)
+>> >>  #define __NR_statx 291
+>> >>  __SYSCALL(__NR_statx,     sys_statx)
+>> >> +#define __NR_copy_file_range64 292
+>> >> +__SYSCALL(__NR_copy_file_range64, sys_copy_file_range64)
+>> >>
+>> >>  #undef __NR_syscalls
+>> >> -#define __NR_syscalls 292
+>> >> +#define __NR_syscalls 293
+>> >>
+>> >>  /*
+>> >>   * All syscalls below here should go away really,
+>> >> diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+>> >> index 8acef85..8e0cfd4 100644
+>> >> --- a/kernel/sys_ni.c
+>> >> +++ b/kernel/sys_ni.c
+>> >> @@ -178,6 +178,7 @@ asmlinkage long sys_ni_syscall(void)
+>> >>  cond_syscall(sys_capget);
+>> >>  cond_syscall(sys_capset);
+>> >>  cond_syscall(sys_copy_file_range);
+>> >> +cond_syscall(sys_copy_file_range64);
+>> >>
+>> >>  /* arch-specific weak syscall entries */
+>> >>  cond_syscall(sys_pciconfig_read);
+>> >> --
+>> >> 1.8.3.1
+>> >>
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
