@@ -1,85 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40658 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58446 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752897AbdFSPZ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Jun 2017 11:25:29 -0400
+        id S1752897AbdFSPZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Jun 2017 11:25:33 -0400
 Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id CF36AC056783
+        by mx1.redhat.com (Postfix) with ESMTPS id 672AB80C19
         for <linux-nfs@vger.kernel.org>; Mon, 19 Jun 2017 15:25:28 +0000 (UTC)
 Received: from steved.boston.devel.redhat.com (ovpn-116-126.phx2.redhat.com [10.3.116.126])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 881748274E
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 2122F8274D
         for <linux-nfs@vger.kernel.org>; Mon, 19 Jun 2017 15:25:28 +0000 (UTC)
 From: Steve Dickson <steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2 V4] mount.nfs: Use default minor version when -o v4 is specified
-Date: Mon, 19 Jun 2017 11:25:26 -0400
-Message-Id: <20170619152526.26260-2-steved@redhat.com>
-In-Reply-To: <20170619152526.26260-1-steved@redhat.com>
-References: <20170619152526.26260-1-steved@redhat.com>
+Subject: [PATCH 1/2 V3] mount.nfs: Use default minor version when -t nfs4 is specified
+Date: Mon, 19 Jun 2017 11:25:25 -0400
+Message-Id: <20170619152526.26260-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When v4 is specified on the command line the
-default minor version needs to be used.
+When the nfs4 filesystem specified, the default major
+and minor versions should be used.
+
+v2: Added the NFS_DEFAULT_MAJOR/MINOR defines
+v3: Add back the setting of v_mode to V_GENERAL in nfs_set_version()
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/mount/stropts.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
-
-v2: Removed pointless check of v_mode in nfs_do_mount_v4()
-v3: Correctly set the minor version when set in nfsmount.conf
-v4: Post the correct patch!!! 
+ utils/mount/stropts.c | 15 ++++++++++++---
+ 1 file changed, 12 insertions(+), 3 deletions(-)
 
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index fbea6fb..c2a739b 100644
+index c0266e5..fbea6fb 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -119,14 +119,22 @@ static void nfs_default_version(struct nfsmount_info *mi)
- 	if (mi->version.v_mode == V_DEFAULT &&
- 		config_default_vers.v_mode != V_DEFAULT) {
- 		mi->version.major = config_default_vers.major;
--		mi->version.minor = config_default_vers.minor;
-+		if (config_default_vers.v_mode == V_SPECIFIC)
-+			mi->version.minor = config_default_vers.minor;
-+		else
-+			mi->version.minor = NFS_DEFAULT_MINOR;
- 		return;
+@@ -73,6 +73,13 @@
+ #define NFS_DEF_BG_TIMEOUT_MINUTES	(10000u)
+ #endif
+ 
++#ifndef NFS_DEFAULT_MAJOR
++#define NFS_DEFAULT_MAJOR	4
++#endif
++#ifndef NFS_DEFAULT_MINOR
++#define NFS_DEFAULT_MINOR	2
++#endif
++
+ extern int nfs_mount_data_version;
+ extern char *progname;
+ extern int verbose;
+@@ -124,8 +131,8 @@ static void nfs_default_version(struct nfsmount_info *mi)
  	}
  
- 	if (mi->version.v_mode == V_GENERAL) {
- 		if (config_default_vers.v_mode != V_DEFAULT &&
--		    mi->version.major == config_default_vers.major)
--			mi->version.minor = config_default_vers.minor;
-+		    mi->version.major == config_default_vers.major) {
-+			if (config_default_vers.v_mode == V_SPECIFIC)
-+				mi->version.minor = config_default_vers.minor;
-+			else
-+				mi->version.minor = NFS_DEFAULT_MINOR;
-+		} else
-+			mi->version.minor = NFS_DEFAULT_MINOR;
- 		return;
+ #endif /* MOUNT_CONFIG */
+-	mi->version.major = 4;
+-	mi->version.minor = 2;
++	mi->version.major = NFS_DEFAULT_MAJOR;
++	mi->version.minor = NFS_DEFAULT_MINOR;
+ }
+ 
+ /*
+@@ -316,7 +323,9 @@ static int nfs_set_version(struct nfsmount_info *mi)
+ 		return 0;
+ 
+ 	if (strncmp(mi->type, "nfs4", 4) == 0) {
+-		mi->version.major = 4;
++		/* Set to default values */
++		mi->version.major = NFS_DEFAULT_MAJOR;
++		mi->version.minor = NFS_DEFAULT_MINOR;
+ 		mi->version.v_mode = V_GENERAL;
  	}
- 
-@@ -741,13 +749,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
- 	}
- 
- 	if (mi->version.v_mode != V_SPECIFIC) {
--		if (mi->version.v_mode == V_GENERAL)
--			snprintf(version_opt, sizeof(version_opt) - 1,
--				"vers=%lu", mi->version.major);
--		else
--			snprintf(version_opt, sizeof(version_opt) - 1,
--				"vers=%lu.%lu", mi->version.major,
--				mi->version.minor);
-+		snprintf(version_opt, sizeof(version_opt) - 1,
-+			"vers=%lu.%lu", mi->version.major,
-+			mi->version.minor);
- 
- 		if (po_append(options, version_opt) == PO_FAILED) {
- 			errno = EINVAL;
+ 	/*
 -- 
 2.9.4
 
