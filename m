@@ -1,75 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:28744 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751761AbdFSPLH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Jun 2017 11:11:07 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 3B65BB14C
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Jun 2017 15:11:02 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-116-126.phx2.redhat.com [10.3.116.126])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id E49428209D
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Jun 2017 15:11:01 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2 V3] mount.nfs: Use default minor version when -t nfs4 is specified
-Date: Mon, 19 Jun 2017 11:10:59 -0400
-Message-Id: <20170619151100.25774-1-steved@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:33564 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751317AbdFSPXN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Jun 2017 11:23:13 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v2 19/19] sunrpc: Disable splice for krb5i
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170618073438.GA15358@infradead.org>
+Date: Mon, 19 Jun 2017 11:22:41 -0400
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <14AD4311-5092-441C-8A3B-F7EC7E801358@oracle.com>
+References: <20170616151535.14210.34926.stgit@klimt.1015granger.net> <20170616152254.14210.48071.stgit@klimt.1015granger.net> <20170617150705.GA27917@infradead.org> <A573E1EB-48DB-4E4A-B710-34914B0CF016@oracle.com> <20170618073438.GA15358@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the nfs4 filesystem specified, the default major
-and minor versions should be used.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/stropts.c | 15 ++++++++++++---
- 1 file changed, 12 insertions(+), 3 deletions(-)
+> On Jun 18, 2017, at 3:34 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> 
+> On Sat, Jun 17, 2017 at 01:23:24PM -0400, Chuck Lever wrote:
+>> 
+>>> On Jun 17, 2017, at 11:07 AM, Christoph Hellwig <hch@infradead.org> wrote:
+>>> 
+>>> On Fri, Jun 16, 2017 at 11:22:54AM -0400, Chuck Lever wrote:
+>>>> Running a multi-threaded 8KB fio test (70/30 mix), three or four out
+>>>> of twelve of the jobs fail when using krb5i. The failure is an EIO
+>>>> on a read.
+>>> 
+>>> Just curious: what is the backing fs that you tested with?  I'd be
+>>> curious if you see this on XFS for example.
+>> 
+>> I was able to reproduce this with a tmpfs share and
+>> with an XFS share on NVMe LUNs.
+> 
+> Interesting.  XFS actually locks out all writes while doing a buffered
+> read, so we end up with two different read instance for the hash vs
+> the data, which does indeed sound dangerous.
 
-v2: Added the NFS_DEFAULT_MAJOR/MINOR defines
-v3: Add back the setting of v_mode to V_GENERAL in nfs_set_version()
+I'm going to submit this again with a comment change and
+Jeff's Reviewed-by. Can I add your Reviewed-by as well?
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index c0266e5..fbea6fb 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -73,6 +73,13 @@
- #define NFS_DEF_BG_TIMEOUT_MINUTES	(10000u)
- #endif
- 
-+#ifndef NFS_DEFAULT_MAJOR
-+#define NFS_DEFAULT_MAJOR	4
-+#endif
-+#ifndef NFS_DEFAULT_MINOR
-+#define NFS_DEFAULT_MINOR	2
-+#endif
-+
- extern int nfs_mount_data_version;
- extern char *progname;
- extern int verbose;
-@@ -124,8 +131,8 @@ static void nfs_default_version(struct nfsmount_info *mi)
- 	}
- 
- #endif /* MOUNT_CONFIG */
--	mi->version.major = 4;
--	mi->version.minor = 2;
-+	mi->version.major = NFS_DEFAULT_MAJOR;
-+	mi->version.minor = NFS_DEFAULT_MINOR;
- }
- 
- /*
-@@ -316,7 +323,9 @@ static int nfs_set_version(struct nfsmount_info *mi)
- 		return 0;
- 
- 	if (strncmp(mi->type, "nfs4", 4) == 0) {
--		mi->version.major = 4;
-+		/* Set to default values */
-+		mi->version.major = NFS_DEFAULT_MAJOR;
-+		mi->version.minor = NFS_DEFAULT_MINOR;
- 		mi->version.v_mode = V_GENERAL;
- 	}
- 	/*
--- 
-2.9.4
+
+--
+Chuck Lever
+
+
 
