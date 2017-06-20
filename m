@@ -1,33 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40722 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751175AbdFTTlv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Jun 2017 15:41:51 -0400
-Date: Tue, 20 Jun 2017 15:41:45 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 19/19] sunrpc: Disable splice for krb5i
-Message-ID: <20170620194145.GD13008@fieldses.org>
-References: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
- <20170616152254.14210.48071.stgit@klimt.1015granger.net>
- <1497693712.4684.4.camel@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26788 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751025AbdFTTqO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jun 2017 15:46:14 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "kolga@netapp.com" <kolga@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFS fix race in state recovery
+Date: Tue, 20 Jun 2017 19:46:09 +0000
+Message-ID: <1497987965.13996.4.camel@primarydata.com>
+References: <20170619203609.62597-1-kolga@netapp.com>
+In-Reply-To: <20170619203609.62597-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1497693712.4684.4.camel@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jun 17, 2017 at 06:01:52AM -0400, Jeff Layton wrote:
-> This seems like the right thing to do, IMO. It's nice to avoid copies
-> where we can, but this is just one of the places where we can't, at
-> least with the way things stand now. It is a pity we don't have a way to
-> CoW these things though.
+T24gTW9uLCAyMDE3LTA2LTE5IGF0IDE2OjM2IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gQW4gYXBwbGljYXRpb24gY2FuIGZhaWwgd2l0aCBFSU8gd2hlbiB0aGUgc2VydmVyIHJl
+Ym9vdHMgYW5kIHRoZQ0KPiBjbGllbnQgd2hpbGUgZG9pbmcgdGhlIHJlY292ZXJ5IGlzIGdldHRp
+bmcgaW50byB0aGUgZm9sbG93aW5nDQo+IHNpdHVhdGlvbiB3aGVyZSBpdCBpbmNvcnJlY3RseSBj
+aG9vc2VzICJub2dyYWNlIiByZWNvdmVyeSBpbnN0ZWFkDQo+IG9mICJyZWJvb3QiIHJlY292ZXJ5
+LiBUaGUgbmVjZXNzYXJ5IHRyaWdnZXIgaXMgYSBwbmZzIG1vdW50IGFuZCAyIERTDQo+IHJlYWRz
+IG9uIHRoZSBzYW1lIGZpbGUgZmFpbCB3aXRoIEJBRF9TVEFURUlEIGVhY2ggcmVhZCB1c2VzIGl0
+cyBvd24NCj4gbG9jayBzdGF0ZWlkIChhbmQgTURTIHNlcnZlciByZWJvb3RzIGxvc2luZyBzdGF0
+ZSkuIFNpbmNlwqDCoHNlcnZlcg0KPiByZWJvb3RlZCBpdCB3aWxsIGZhaWwgcmVjb3Zlcnkgb3Bz
+IHdpdGggQkFEX1NFU1NJT04gYW5kIHRoZW4gYWxzbw0KPiBTVEFMRV9JRCB0cmlnZ2VyaW5nIHNl
+c3Npb24gYW5kIGNsaWVudGlkIHJlY292ZXJ5Lg0KPiANCj4gMS4gVGhyZWFkMSBnZXRzIEJBRF9T
+VEFURUlEIGluaXRpYXRlcyBzdGF0ZWlkIHJlY292ZXJ5IGNhbGxzDQo+IG5mczRfc3RhdGVfbWFy
+a19yZWNsYWltX25vX2dyYWNlKCkgd2hpY2ggc2V0cyB0aGUgY2xfc3RhdGUtPmZsYWdzIGFuZA0K
+PiBzdGF0ZS0+ZmxhZ3MgcmVzcGVjdGl2ZSBfTk9HUkFDRSBmbGFncy4NCj4gDQo+IDIuIFN0YXRl
+IG1hbmFnZXIgZ2V0cyB0byBydW4gYW5kIGl0IGNsZWFycyB0aGUgX05PR1JBQ0UgZnJvbSB0aGUN
+Cj4gY2xfc3RhdGUuIENhbGxzIG5mczRfZG9fcmVjbGFpbSgpIHdoaWNoIHNlbmRzIFRFU1RfU1RB
+VEVJRCB3aGljaCBnZXRzDQo+IGEgQkFEX1NFU1NJT04uDQo+IA0KPiAzLiBUaHJlYWQyIG5vdyBn
+ZXRzIGNvbnRyb2wgYW5kIGl0IGFsc28gcHJvY2Vzc2luZyBpdHMgQkFEX1NUQVRFSUQNCj4gYW5k
+DQo+IGNhbGxzIG5mczRfc3RhdGVfbWFya19yZWNsYWltX25vX2dyYWNlKCkgYW5kIGl0IGFnYWlu
+IHNldHMgdGhlDQo+IHN0YXRlL2NsX3N0YXRlLT5mbGFncyB0byBoYXZlIF9OT0dSQUNFLg0KPiAN
+Cj4gNC4gU3RhdGUgbWFuYWdlciBydW5zIGFuZCBjb250aW51ZXMgd2l0aCBzdGF0ZSByZWNvdmVy
+eSBieSBzZW5kaW5nDQo+IERFU1RST1lfU0VTU0lPTiwgYW5kIHRoZW4gQ1JFQVRFX1NFU1NJT04g
+d2hpY2ggZmFpbHMgd2l0aA0KPiBTVEFMRV9DTElFTlRJRC4gTm93IHdlIGFyZSByZWNvdmVyaW5n
+IHRoZSBsZWFzZS4NCj4gDQo+IDUuIFN0YXRlIG1hbmFnZXIgaW4gbmZzNF9yZWNvdmVyeV9oYW5k
+bGVfZXJyb3IgZm9yIFNUQUxFX0NMSUVOVElELA0KPiBjYWxscyBuZnM0X3N0YXRlX3N0YXJ0X3Jl
+Y2xhaW1fcmVib290KCkgY2FsbHMNCj4gbmZzNF9zdGF0ZV9tYXJrX3JlY2xhaW1fcmVib290KCkg
+d2hpY2ggaGFzIGEgY2hlY2sNCj4gDQo+IC8qIERvbid0IHJlY292ZXIgc3RhdGUgdGhhdCBleHBp
+cmVkIGJlZm9yZSB0aGUgcmVib290ICovDQo+IGlmICh0ZXN0X2JpdChORlNfU1RBVEVfUkVDTEFJ
+TV9OT0dSQUNFLCAmc3RhdGUtPmZsYWdzKSkgew0KPiDCoCBjbGVhcl9iaXQoTkZTX1NUQVRFX1JF
+Q0xBSU1fUkVCT09ULCAmc3RhdGUtPmZsYWdzKTsNCj4gwqAgcmV0dXJuIDA7DQo+IH0NCj4gDQo+
+IEJlY2F1c2UgdGhlIF9OT0dSQUNFIHdhcyBzZXQgYWdhaW4gaW4gU3RlcDMsIHdlIGVuZCB1cCBj
+bGVhcmluZw0KPiBfUkVDTEFJTV9SRUJPT1QgYW5kIG5vdCBzZXR0aW5nIF9SRUNMQUlNX1JFQk9P
+VCBpbiB0aGUgY2xfc3RhdGUtDQo+ID5mbGFncw0KPiBhbmQgY2hvb3NlIHRvIGRvICJub2dyYWNl
+IiBvcGVyYXRpb24gaW5zdGVhZCBvZiByZWNvdmVyeS4NCj4gDQo+IFByb3Bvc2luZyB0byBpbnRy
+b2R1Y2UgYSBuZXcgc3RhdGUgZmxhZyBpbmRpY2F0aW5nIHJlY292ZXJ5IGlzDQo+IGdvaW5nIG9u
+IGFuZCB3aGVuIHNldCBpbiBuZnM0X3N0YXRlX21hcmtfcmVjbGFpbV9ub2dyYWNlKCkgcmV0dXJu
+Lg0KPiANClRoaXMgbG9va3MgdG8gYmUgYSBjb25zZXF1ZW5jZSBvZiB0cmVhdGluZyB0aGUgZXJy
+b3IgY29kZXMgZnJvbSB0aGUgRFMNCmFzIGJlaW5nIGluZGlzdGluZ3Vpc2hhYmxlIGZyb20gdGhl
+IE1EUyBvbmVzLiBJIHRoaW5rIHRoZSByaWdodCBmaXgNCmhlcmUgaXMgcmF0aGVyIHRvIHRyZWF0
+IHRoZSBEUyBlcnJvciBjb2RlcyBhcyBhbiBpbmRpY2F0aW9uIHRoYXQgd2UNCm5lZWQgdG8gZHJv
+cCB0aGUgbGF5b3V0IGFuZCByZXRyeSB0aGUgSS9PIChlaXRoZXIgcmVzZW5kIGEgbGF5b3V0Z2V0
+LA0Kb3IgcmV0cnkgdGhlIEkvTyB0aHJvdWdoIHRoZSBNRFMpLg0KDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
+bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-We have to run all the data through CPU anyway for the checksum, so I
-guess what I was thinking we could do--if we decided we needed the
-optimization--was to figure out how to copy and checksum (or encrypt)
-simultaneously in one pass.
-
---b.
