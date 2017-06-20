@@ -1,47 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44344 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:40702 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751122AbdFTTRh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Jun 2017 15:17:37 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Jeff Layton" <jlayton@poochiereds.net>
-Cc: bfields@fieldses.org, "Alexander Viro" <viro@zeniv.linux.org.uk>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        "open list" <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH 2/2] fs/locks: Remove fl_nspid and use fs-specific l_pid
- for remote locks
-Date: Tue, 20 Jun 2017 15:17:34 -0400
-Message-ID: <9AA05B58-8D17-4A03-88F8-0F44F346AE0F@redhat.com>
-In-Reply-To: <1497978415.4555.14.camel@poochiereds.net>
-References: <cover.1497877897.git.bcodding@redhat.com>
- <901367ff4ffd87594a380e3a0a5d20c4e4195b0e.1497877897.git.bcodding@redhat.com>
- <1497893534.4654.11.camel@poochiereds.net>
- <9037C362-D6F7-4545-80C2-08B072005055@redhat.com>
- <D1AFE5C7-427F-4B0B-8337-3D6A247156A3@redhat.com>
- <1497978415.4555.14.camel@poochiereds.net>
+        id S1751639AbdFTTYu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Jun 2017 15:24:50 -0400
+Date: Tue, 20 Jun 2017 15:24:49 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 19/19] sunrpc: Disable splice for krb5i
+Message-ID: <20170620192449.GB13008@fieldses.org>
+References: <20170616151535.14210.34926.stgit@klimt.1015granger.net>
+ <20170616152254.14210.48071.stgit@klimt.1015granger.net>
+ <20170617150705.GA27917@infradead.org>
+ <A573E1EB-48DB-4E4A-B710-34914B0CF016@oracle.com>
+ <20170618073438.GA15358@infradead.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170618073438.GA15358@infradead.org>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 20 Jun 2017, at 13:06, Jeff Layton wrote:
->
-> Now that I think about it a bit more, I don't think we really need a
-> flag here.
->
-> Just have the ->lock operation set the fl_pid to a negative value. That
-> will never be a valid pid anyway. Then flock_translate_pid could just
-> return any negative value directly instead of trying to translate it.
->
-> In practice we would always just set it to -1. Maybe even add something
-> like this that the lock-> operation could set it to?
->
-> #define    FILE_LOCK_OWNER_UNDEFINED       -1
+On Sun, Jun 18, 2017 at 12:34:38AM -0700, Christoph Hellwig wrote:
+> On Sat, Jun 17, 2017 at 01:23:24PM -0400, Chuck Lever wrote:
+> > 
+> > > On Jun 17, 2017, at 11:07 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> > > 
+> > > On Fri, Jun 16, 2017 at 11:22:54AM -0400, Chuck Lever wrote:
+> > >> Running a multi-threaded 8KB fio test (70/30 mix), three or four out
+> > >> of twelve of the jobs fail when using krb5i. The failure is an EIO
+> > >> on a read.
+> > > 
+> > > Just curious: what is the backing fs that you tested with?  I'd be
+> > > curious if you see this on XFS for example.
+> > 
+> > I was able to reproduce this with a tmpfs share and
+> > with an XFS share on NVMe LUNs.
+> 
+> Interesting.  XFS actually locks out all writes while doing a buffered
+> read, so we end up with two different read instance for the hash vs
+> the data, which does indeed sound dangerous.
 
-So for filesystems that set a remote pid, they should negate the pid to mean
-that the pid should not be translated?  Then when we return that pid, we
-flip it back again, or display a negative number, or turn it into -1?
+In the bad case Chuck was seeing, we were going through
+splice_direct_to_actor(), is that a buffered read for the purposes of
+the above statement?
 
-The flag, having a readable name, would make things a bit clearer as to what
-the filesystems expect to happen to that pid value.
-
-Ben
+--b.
