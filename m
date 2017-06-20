@@ -1,64 +1,102 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26788 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751025AbdFTTqO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jun 2017 15:46:14 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "kolga@netapp.com" <kolga@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFS fix race in state recovery
-Date: Tue, 20 Jun 2017 19:46:09 +0000
-Message-ID: <1497987965.13996.4.camel@primarydata.com>
-References: <20170619203609.62597-1-kolga@netapp.com>
-In-Reply-To: <20170619203609.62597-1-kolga@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@poochiereds.net>
+Message-ID: <1497989638.5054.3.camel@poochiereds.net>
+Subject: Re: [PATCH 2/2] fs/locks: Remove fl_nspid and use fs-specific l_pid
+ for remote locks
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: bfields@fieldses.org, Alexander Viro <viro@zeniv.linux.org.uk>,
+	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, open list
+	 <linux-kernel@vger.kernel.org>
+Date: Tue, 20 Jun 2017 16:13:58 -0400
+In-Reply-To: <9522737A-F6A5-4D17-A6F1-4438E438D076@redhat.com>
+References: <cover.1497877897.git.bcodding@redhat.com>
+	 <901367ff4ffd87594a380e3a0a5d20c4e4195b0e.1497877897.git.bcodding@redhat.com>
+	 <1497893534.4654.11.camel@poochiereds.net>
+	 <9037C362-D6F7-4545-80C2-08B072005055@redhat.com>
+	 <D1AFE5C7-427F-4B0B-8337-3D6A247156A3@redhat.com>
+	 <9522737A-F6A5-4D17-A6F1-4438E438D076@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTA2LTE5IGF0IDE2OjM2IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gQW4gYXBwbGljYXRpb24gY2FuIGZhaWwgd2l0aCBFSU8gd2hlbiB0aGUgc2VydmVyIHJl
-Ym9vdHMgYW5kIHRoZQ0KPiBjbGllbnQgd2hpbGUgZG9pbmcgdGhlIHJlY292ZXJ5IGlzIGdldHRp
-bmcgaW50byB0aGUgZm9sbG93aW5nDQo+IHNpdHVhdGlvbiB3aGVyZSBpdCBpbmNvcnJlY3RseSBj
-aG9vc2VzICJub2dyYWNlIiByZWNvdmVyeSBpbnN0ZWFkDQo+IG9mICJyZWJvb3QiIHJlY292ZXJ5
-LiBUaGUgbmVjZXNzYXJ5IHRyaWdnZXIgaXMgYSBwbmZzIG1vdW50IGFuZCAyIERTDQo+IHJlYWRz
-IG9uIHRoZSBzYW1lIGZpbGUgZmFpbCB3aXRoIEJBRF9TVEFURUlEIGVhY2ggcmVhZCB1c2VzIGl0
-cyBvd24NCj4gbG9jayBzdGF0ZWlkIChhbmQgTURTIHNlcnZlciByZWJvb3RzIGxvc2luZyBzdGF0
-ZSkuIFNpbmNlwqDCoHNlcnZlcg0KPiByZWJvb3RlZCBpdCB3aWxsIGZhaWwgcmVjb3Zlcnkgb3Bz
-IHdpdGggQkFEX1NFU1NJT04gYW5kIHRoZW4gYWxzbw0KPiBTVEFMRV9JRCB0cmlnZ2VyaW5nIHNl
-c3Npb24gYW5kIGNsaWVudGlkIHJlY292ZXJ5Lg0KPiANCj4gMS4gVGhyZWFkMSBnZXRzIEJBRF9T
-VEFURUlEIGluaXRpYXRlcyBzdGF0ZWlkIHJlY292ZXJ5IGNhbGxzDQo+IG5mczRfc3RhdGVfbWFy
-a19yZWNsYWltX25vX2dyYWNlKCkgd2hpY2ggc2V0cyB0aGUgY2xfc3RhdGUtPmZsYWdzIGFuZA0K
-PiBzdGF0ZS0+ZmxhZ3MgcmVzcGVjdGl2ZSBfTk9HUkFDRSBmbGFncy4NCj4gDQo+IDIuIFN0YXRl
-IG1hbmFnZXIgZ2V0cyB0byBydW4gYW5kIGl0IGNsZWFycyB0aGUgX05PR1JBQ0UgZnJvbSB0aGUN
-Cj4gY2xfc3RhdGUuIENhbGxzIG5mczRfZG9fcmVjbGFpbSgpIHdoaWNoIHNlbmRzIFRFU1RfU1RB
-VEVJRCB3aGljaCBnZXRzDQo+IGEgQkFEX1NFU1NJT04uDQo+IA0KPiAzLiBUaHJlYWQyIG5vdyBn
-ZXRzIGNvbnRyb2wgYW5kIGl0IGFsc28gcHJvY2Vzc2luZyBpdHMgQkFEX1NUQVRFSUQNCj4gYW5k
-DQo+IGNhbGxzIG5mczRfc3RhdGVfbWFya19yZWNsYWltX25vX2dyYWNlKCkgYW5kIGl0IGFnYWlu
-IHNldHMgdGhlDQo+IHN0YXRlL2NsX3N0YXRlLT5mbGFncyB0byBoYXZlIF9OT0dSQUNFLg0KPiAN
-Cj4gNC4gU3RhdGUgbWFuYWdlciBydW5zIGFuZCBjb250aW51ZXMgd2l0aCBzdGF0ZSByZWNvdmVy
-eSBieSBzZW5kaW5nDQo+IERFU1RST1lfU0VTU0lPTiwgYW5kIHRoZW4gQ1JFQVRFX1NFU1NJT04g
-d2hpY2ggZmFpbHMgd2l0aA0KPiBTVEFMRV9DTElFTlRJRC4gTm93IHdlIGFyZSByZWNvdmVyaW5n
-IHRoZSBsZWFzZS4NCj4gDQo+IDUuIFN0YXRlIG1hbmFnZXIgaW4gbmZzNF9yZWNvdmVyeV9oYW5k
-bGVfZXJyb3IgZm9yIFNUQUxFX0NMSUVOVElELA0KPiBjYWxscyBuZnM0X3N0YXRlX3N0YXJ0X3Jl
-Y2xhaW1fcmVib290KCkgY2FsbHMNCj4gbmZzNF9zdGF0ZV9tYXJrX3JlY2xhaW1fcmVib290KCkg
-d2hpY2ggaGFzIGEgY2hlY2sNCj4gDQo+IC8qIERvbid0IHJlY292ZXIgc3RhdGUgdGhhdCBleHBp
-cmVkIGJlZm9yZSB0aGUgcmVib290ICovDQo+IGlmICh0ZXN0X2JpdChORlNfU1RBVEVfUkVDTEFJ
-TV9OT0dSQUNFLCAmc3RhdGUtPmZsYWdzKSkgew0KPiDCoCBjbGVhcl9iaXQoTkZTX1NUQVRFX1JF
-Q0xBSU1fUkVCT09ULCAmc3RhdGUtPmZsYWdzKTsNCj4gwqAgcmV0dXJuIDA7DQo+IH0NCj4gDQo+
-IEJlY2F1c2UgdGhlIF9OT0dSQUNFIHdhcyBzZXQgYWdhaW4gaW4gU3RlcDMsIHdlIGVuZCB1cCBj
-bGVhcmluZw0KPiBfUkVDTEFJTV9SRUJPT1QgYW5kIG5vdCBzZXR0aW5nIF9SRUNMQUlNX1JFQk9P
-VCBpbiB0aGUgY2xfc3RhdGUtDQo+ID5mbGFncw0KPiBhbmQgY2hvb3NlIHRvIGRvICJub2dyYWNl
-IiBvcGVyYXRpb24gaW5zdGVhZCBvZiByZWNvdmVyeS4NCj4gDQo+IFByb3Bvc2luZyB0byBpbnRy
-b2R1Y2UgYSBuZXcgc3RhdGUgZmxhZyBpbmRpY2F0aW5nIHJlY292ZXJ5IGlzDQo+IGdvaW5nIG9u
-IGFuZCB3aGVuIHNldCBpbiBuZnM0X3N0YXRlX21hcmtfcmVjbGFpbV9ub2dyYWNlKCkgcmV0dXJu
-Lg0KPiANClRoaXMgbG9va3MgdG8gYmUgYSBjb25zZXF1ZW5jZSBvZiB0cmVhdGluZyB0aGUgZXJy
-b3IgY29kZXMgZnJvbSB0aGUgRFMNCmFzIGJlaW5nIGluZGlzdGluZ3Vpc2hhYmxlIGZyb20gdGhl
-IE1EUyBvbmVzLiBJIHRoaW5rIHRoZSByaWdodCBmaXgNCmhlcmUgaXMgcmF0aGVyIHRvIHRyZWF0
-IHRoZSBEUyBlcnJvciBjb2RlcyBhcyBhbiBpbmRpY2F0aW9uIHRoYXQgd2UNCm5lZWQgdG8gZHJv
-cCB0aGUgbGF5b3V0IGFuZCByZXRyeSB0aGUgSS9PIChlaXRoZXIgcmVzZW5kIGEgbGF5b3V0Z2V0
-LA0Kb3IgcmV0cnkgdGhlIEkvTyB0aHJvdWdoIHRoZSBNRFMpLg0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
-bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Tue, 2017-06-20 at 15:39 -0400, Benjamin Coddington wrote:
+> On 20 Jun 2017, at 15:32, Jeff Layton wrote:
+> 
+> > On Tue, 2017-06-20 at 15:17 -0400, Benjamin Coddington wrote:
+> > > On 20 Jun 2017, at 13:06, Jeff Layton wrote:
+> > > > 
+> > > > Now that I think about it a bit more, I don't think we really need a
+> > > > flag here.
+> > > > 
+> > > > Just have the ->lock operation set the fl_pid to a negative value. 
+> > > > That
+> > > > will never be a valid pid anyway. Then flock_translate_pid could 
+> > > > just
+> > > > return any negative value directly instead of trying to translate 
+> > > > it.
+> > > > 
+> > > > In practice we would always just set it to -1. Maybe even add 
+> > > > something
+> > > > like this that the lock-> operation could set it to?
+> > > > 
+> > > > #define    FILE_LOCK_OWNER_UNDEFINED       -1
+> > > 
+> > > So for filesystems that set a remote pid, they should negate the pid 
+> > > to mean
+> > > that the pid should not be translated?  Then when we return that pid, 
+> > > we
+> > > flip it back again, or display a negative number, or turn it into -1?
+> > > 
+> > > The flag, having a readable name, would make things a bit clearer as 
+> > > to what
+> > > the filesystems expect to happen to that pid value.
+> > > 
+> > 
+> > I now think that we really only ought to be filling out the pid when 
+> > it
+> > refers to a process on the local host. It seems sketchy to me to 
+> > return
+> > a pid here that is really the pid on another host, but happens to have
+> > the same pid as something else on this host. It's misleading at best,
+> > and if anyone tries to act on that info it could be dangerous. So I'm
+> > thinking that we should just set it to -1 when the lock is held by
+> > another host entirely.
+> > 
+> > But, since pid values must be positive, we can code the basic
+> > infrastructure to return any negative value as-is instead of trying to
+> > translate it.
+> 
+> Ok, so we have to patch several filesystems.  The question is do we 
+> patch
+> those filesystems that set remote pids to negate their pid values in the 
+> lock
+> they return from F_GETLK, or do we ask them to set a flag?  We'd be 
+> patching
+> them to negate their pid just to then transform it to -1..
+> 
+> I'd prefer a flag rather than carrying meaning in a modified value since 
+> the
+> flag has readable information.  No one will come along later and wonder 
+> why
+> some filesystems are negating their pid values.
+> 
+> If we're going to touch filesystems that set have remote locks anyway,
+> perhaps it makes sense to take a step toward l_sysid by adding another
+> member to file_lock.  Then a special value of fl_sysid would indicate 
+> the
+> local system.
+> 
 
+I think we need to fix up the current API first.
+
+My main interest is that we have the kernel report l_pid properly to the
+best of its ability, and when it can't that it report some clearly non-
+sensical value (e.g., -1) for the pid. I think that's the only sane
+thing we can do at this point.
+
+If we want to start discussing new locking APIs then I'm fine with that,
+but I'd still want to do something sane here before we start down that
+road anyway.
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
