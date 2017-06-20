@@ -1,102 +1,93 @@
-Return-Path: <jlayton@poochiereds.net>
-Message-ID: <1497989638.5054.3.camel@poochiereds.net>
-Subject: Re: [PATCH 2/2] fs/locks: Remove fl_nspid and use fs-specific l_pid
- for remote locks
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: bfields@fieldses.org, Alexander Viro <viro@zeniv.linux.org.uk>,
-	linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org, open list
-	 <linux-kernel@vger.kernel.org>
-Date: Tue, 20 Jun 2017 16:13:58 -0400
-In-Reply-To: <9522737A-F6A5-4D17-A6F1-4438E438D076@redhat.com>
-References: <cover.1497877897.git.bcodding@redhat.com>
-	 <901367ff4ffd87594a380e3a0a5d20c4e4195b0e.1497877897.git.bcodding@redhat.com>
-	 <1497893534.4654.11.camel@poochiereds.net>
-	 <9037C362-D6F7-4545-80C2-08B072005055@redhat.com>
-	 <D1AFE5C7-427F-4B0B-8337-3D6A247156A3@redhat.com>
-	 <9522737A-F6A5-4D17-A6F1-4438E438D076@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx143.netapp.com ([216.240.21.24]:10373 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752164AbdFTUkf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Jun 2017 16:40:35 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] PNFS fix dangling DS mount
+Date: Tue, 20 Jun 2017 16:40:31 -0400
+Message-ID: <20170620204031.64667-1-kolga@netapp.com>
+In-Reply-To: <1497987431.13996.1.camel@primarydata.com>
+References: <1497987431.13996.1.camel@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-06-20 at 15:39 -0400, Benjamin Coddington wrote:
-> On 20 Jun 2017, at 15:32, Jeff Layton wrote:
-> 
-> > On Tue, 2017-06-20 at 15:17 -0400, Benjamin Coddington wrote:
-> > > On 20 Jun 2017, at 13:06, Jeff Layton wrote:
-> > > > 
-> > > > Now that I think about it a bit more, I don't think we really need a
-> > > > flag here.
-> > > > 
-> > > > Just have the ->lock operation set the fl_pid to a negative value. 
-> > > > That
-> > > > will never be a valid pid anyway. Then flock_translate_pid could 
-> > > > just
-> > > > return any negative value directly instead of trying to translate 
-> > > > it.
-> > > > 
-> > > > In practice we would always just set it to -1. Maybe even add 
-> > > > something
-> > > > like this that the lock-> operation could set it to?
-> > > > 
-> > > > #define    FILE_LOCK_OWNER_UNDEFINED       -1
-> > > 
-> > > So for filesystems that set a remote pid, they should negate the pid 
-> > > to mean
-> > > that the pid should not be translated?  Then when we return that pid, 
-> > > we
-> > > flip it back again, or display a negative number, or turn it into -1?
-> > > 
-> > > The flag, having a readable name, would make things a bit clearer as 
-> > > to what
-> > > the filesystems expect to happen to that pid value.
-> > > 
-> > 
-> > I now think that we really only ought to be filling out the pid when 
-> > it
-> > refers to a process on the local host. It seems sketchy to me to 
-> > return
-> > a pid here that is really the pid on another host, but happens to have
-> > the same pid as something else on this host. It's misleading at best,
-> > and if anyone tries to act on that info it could be dangerous. So I'm
-> > thinking that we should just set it to -1 when the lock is held by
-> > another host entirely.
-> > 
-> > But, since pid values must be positive, we can code the basic
-> > infrastructure to return any negative value as-is instead of trying to
-> > translate it.
-> 
-> Ok, so we have to patch several filesystems.  The question is do we 
-> patch
-> those filesystems that set remote pids to negate their pid values in the 
-> lock
-> they return from F_GETLK, or do we ask them to set a flag?  We'd be 
-> patching
-> them to negate their pid just to then transform it to -1..
-> 
-> I'd prefer a flag rather than carrying meaning in a modified value since 
-> the
-> flag has readable information.  No one will come along later and wonder 
-> why
-> some filesystems are negating their pid values.
-> 
-> If we're going to touch filesystems that set have remote locks anyway,
-> perhaps it makes sense to take a step toward l_sysid by adding another
-> member to file_lock.  Then a special value of fl_sysid would indicate 
-> the
-> local system.
-> 
+There is a regression by commit 8d40b0f14846 ("NFS filelayout:call
+GETDEVICEINFO after pnfs_layout_process completes"). It leaves the
+DS mount dangling.
 
-I think we need to fix up the current API first.
+Previously, filelayout_alloc_sec() would call filelayout_check_layout()
+which would call nfs4_find_get_deviceid which ups the count on the
+device_id. It's only called once and it's matched by the
+filelayout_free_lseg() that calls nfs4_fl_put_deviceid().
 
-My main interest is that we have the kernel report l_pid properly to the
-best of its ability, and when it can't that it report some clearly non-
-sensical value (e.g., -1) for the pid. I think that's the only sane
-thing we can do at this point.
+After that patch, each read/write ends up calling nfs4_find_get_deviceid
+and there is no balance for that. Instead, do nfs4_fl_put_deviceid()
+in the filelayout's .pg_cleanup and remove it from filelayout_free_lseg.
 
-If we want to start discussing new locking APIs then I'm fine with that,
-but I'd still want to do something sane here before we start down that
-road anyway.
+But we still want a reference to hold over the lifetime of the segment.
+So up the ref count when we allocate new device node and free it in
+the filelayout_free_lseg().
 
+Fixes: 8d40b0f14846 ("NFS filelayout:call GETDEVICEINFO after pnfs_layout_process completes")
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/filelayout/filelayout.c    | 15 +++++++++++++--
+ fs/nfs/filelayout/filelayoutdev.c |  1 +
+ 2 files changed, 14 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 1cf85d6..ce82da1 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -991,18 +991,29 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ 	nfs_pageio_reset_write_mds(pgio);
+ }
+ 
++static void filelayout_pg_cleanup(struct nfs_pageio_descriptor *desc)
++{
++	if (desc->pg_lseg) {
++		struct nfs4_filelayout_segment *fl =
++			FILELAYOUT_LSEG(desc->pg_lseg);
++
++		nfs4_fl_put_deviceid(fl->dsaddr);
++	}
++	pnfs_generic_pg_cleanup(desc);
++}
++
+ static const struct nfs_pageio_ops filelayout_pg_read_ops = {
+ 	.pg_init = filelayout_pg_init_read,
+ 	.pg_test = filelayout_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+-	.pg_cleanup = pnfs_generic_pg_cleanup,
++	.pg_cleanup = filelayout_pg_cleanup,
+ };
+ 
+ static const struct nfs_pageio_ops filelayout_pg_write_ops = {
+ 	.pg_init = filelayout_pg_init_write,
+ 	.pg_test = filelayout_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+-	.pg_cleanup = pnfs_generic_pg_cleanup,
++	.pg_cleanup = filelayout_pg_cleanup,
+ };
+ 
+ static u32 select_bucket_index(struct nfs4_filelayout_segment *fl, u32 j)
+diff --git a/fs/nfs/filelayout/filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
+index d913e81..862fe1f 100644
+--- a/fs/nfs/filelayout/filelayoutdev.c
++++ b/fs/nfs/filelayout/filelayoutdev.c
+@@ -147,6 +147,7 @@ struct nfs4_file_layout_dsaddr *
+ 	stripe_indices = NULL;
+ 	dsaddr->ds_num = num;
+ 	nfs4_init_deviceid_node(&dsaddr->id_node, server, &pdev->dev_id);
++	nfs4_get_deviceid(&dsaddr->id_node);
+ 
+ 	INIT_LIST_HEAD(&dsaddrs);
+ 
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+1.8.3.1
+
