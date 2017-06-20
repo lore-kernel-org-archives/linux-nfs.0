@@ -1,41 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:21081 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751093AbdFTTeN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jun 2017 15:34:13 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 1/1] [RFC] 64bit copy_file_range system call
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170619193903.GA12803@infradead.org>
-Date: Tue, 20 Jun 2017 15:33:39 -0400
-Cc: Olga Kornievskaia <aglo@umich.edu>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <3836534F-8360-4EF4-926B-C5322A44D95E@oracle.com>
-References: <5bca6687-ac03-72ef-f38e-6759a0fbb1d6@gmail.com> <20170614185335.58193-1-kolga@netapp.com> <20170615035923.GA4521@birch.djwong.org> <CAN-5tyGCYjR4wXkpjD8XKXSSAmSS1VG2SA1Kr4V5iJFPjZJFug@mail.gmail.com> <20170615205357.GA13715@birch.djwong.org> <CAN-5tyFSw7CzfpH0=+KW94Z5fHmeOTvG1=7hXsd7nNcaAzre6Q@mail.gmail.com> <20170619193903.GA12803@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:53880 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752002AbdFTThT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Jun 2017 15:37:19 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "kolga@netapp.com" <kolga@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] PNFS fix dangling DS mount
+Date: Tue, 20 Jun 2017 19:37:13 +0000
+Message-ID: <1497987431.13996.1.camel@primarydata.com>
+References: <CAN-5tyHUJW85oxaX81Zr3Drp5WFv05-tWWXGcKCQh5S+1VZ7JQ@mail.gmail.com>
+         <20170613183620.57538-1-kolga@netapp.com>
+In-Reply-To: <20170613183620.57538-1-kolga@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Jun 19, 2017, at 3:39 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> On Mon, Jun 19, 2017 at 02:34:58PM -0400, Olga Kornievskaia wrote:
->> Yes NFS community does need one for doing a server-to-server copy
->> (performance) feature.
-> 
-> s/NFS community/NetApp/
-
-I don't have an opinion on the API details, but Oracle is interested
-in server-to-server copy, especially if there is an implementation
-of it in the Linux NFS server.
-
-
---
-Chuck Lever
-
-
+T24gVHVlLCAyMDE3LTA2LTEzIGF0IDE0OjM2IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gVGhlcmUgaXMgYSByZWdyZXNzaW9uIGJ5IGNvbW1pdCA4ZDQwYjBmMTQ4NDYgKCJORlMg
+ZmlsZWxheW91dDpjYWxsDQo+IEdFVERFVklDRUlORk8gYWZ0ZXIgcG5mc19sYXlvdXRfcHJvY2Vz
+cyBjb21wbGV0ZXMiKS4gSXQgbGVhdmVzIHRoZQ0KPiBEUyBtb3VudCBkYW5nbGluZy4NCj4gDQo+
+IFByZXZpb3VzbHksIGZpbGVsYXlvdXRfYWxsb2Nfc2VjKCkgd291bGQgY2FsbA0KPiBmaWxlbGF5
+b3V0X2NoZWNrX2xheW91dCgpDQo+IHdoaWNoIHdvdWxkIGNhbGwgbmZzNF9maW5kX2dldF9kZXZp
+Y2VpZCB3aGljaCB1cHMgdGhlIGNvdW50IG9uIHRoZQ0KPiBkZXZpY2VfaWQuIEl0J3Mgb25seSBj
+YWxsZWQgb25jZSBhbmQgaXQncyBtYXRjaGVkIGJ5IHRoZQ0KPiBmaWxlbGF5b3V0X2ZyZWVfbHNl
+ZygpIHRoYXQgY2FsbHMgbmZzNF9mbF9wdXRfZGV2aWNlaWQoKS4NCj4gDQo+IEFmdGVyIHRoYXQg
+cGF0Y2gsIGVhY2ggcmVhZC93cml0ZSBlbmRzIHVwIGNhbGxpbmcNCj4gbmZzNF9maW5kX2dldF9k
+ZXZpY2VpZA0KPiBhbmQgdGhlcmUgaXMgbm8gYmFsYW5jZSBmb3IgdGhhdC4gSW5zdGVhZCwgZG8g
+bmZzNF9mbF9wdXRfZGV2aWNlaWQoKQ0KPiBpbiB0aGUgZmlsZWxheW91dCdzIC5wZ19jbGVhbnVw
+IGFuZCByZW1vdmUgaXQgZnJvbQ0KPiBmaWxlbGF5b3V0X2ZyZWVfbHNlZy4NCj4gDQo+IEJ1dCB3
+ZSBzdGlsbCB3YW50IGEgcmVmZXJlbmNlIHRvIGhvbGQgb3ZlciB0aGUgbGlmZXRpbWUgb2YgdGhl
+DQo+IHNlZ21lbnQuDQo+IFNvIHN0YXJ0IHRoZSByZWNvdW50IGF0IDIgYW5kIGtlZXAgdGhlIG5m
+czRfZmxfcHV0X2RldmljZWlkKCkgaW4NCj4gdGhlIGZpbGVsYXlvdXRfZnJlZV9sc2VnKCkuDQo+
+IA0KPiBGaXhlczogOGQ0MGIwZjE0ODQ2ICgiTkZTIGZpbGVsYXlvdXQ6Y2FsbCBHRVRERVZJQ0VJ
+TkZPIGFmdGVyDQo+IHBuZnNfbGF5b3V0X3Byb2Nlc3MgY29tcGxldGVzIikNCj4gU2lnbmVkLW9m
+Zi1ieTogT2xnYSBLb3JuaWV2c2thaWEgPGtvbGdhQG5ldGFwcC5jb20+DQo+IC0tLQ0KPiDCoGZz
+L25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXQuYyB8IDE1ICsrKysrKysrKysrKystLQ0KPiDCoGZz
+L25mcy9wbmZzX2Rldi5jwqDCoMKgwqDCoMKgwqDCoMKgwqDCoMKgwqDCoHzCoMKgMiArLQ0KPiDC
+oDIgZmlsZXMgY2hhbmdlZCwgMTQgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+
+IGRpZmYgLS1naXQgYS9mcy9uZnMvZmlsZWxheW91dC9maWxlbGF5b3V0LmMNCj4gYi9mcy9uZnMv
+ZmlsZWxheW91dC9maWxlbGF5b3V0LmMNCj4gaW5kZXggYWNkMzBiYS4uMzNlYmQxYSAxMDA2NDQN
+Cj4gLS0tIGEvZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jDQo+ICsrKyBiL2ZzL25mcy9m
+aWxlbGF5b3V0L2ZpbGVsYXlvdXQuYw0KPiBAQCAtOTg5LDE4ICs5ODksMjkgQEAgc3RhdGljIHZv
+aWQgX2ZpbGVsYXlvdXRfZnJlZV9sc2VnKHN0cnVjdA0KPiBuZnM0X2ZpbGVsYXlvdXRfc2VnbWVu
+dCAqZmwpDQo+IMKgCW5mc19wYWdlaW9fcmVzZXRfd3JpdGVfbWRzKHBnaW8pOw0KPiDCoH0NCj4g
+wqANCj4gK3N0YXRpYyB2b2lkIGZpbGVsYXlvdXRfcGdfY2xlYW51cChzdHJ1Y3QgbmZzX3BhZ2Vp
+b19kZXNjcmlwdG9yDQo+ICpkZXNjKQ0KPiArew0KPiArCWlmIChkZXNjLT5wZ19sc2VnKSB7DQo+
+ICsJCXN0cnVjdCBuZnM0X2ZpbGVsYXlvdXRfc2VnbWVudCAqZmwgPQ0KPiArCQkJRklMRUxBWU9V
+VF9MU0VHKGRlc2MtPnBnX2xzZWcpOw0KPiArDQo+ICsJCW5mczRfZmxfcHV0X2RldmljZWlkKGZs
+LT5kc2FkZHIpOw0KPiArCX0NCj4gKwlwbmZzX2dlbmVyaWNfcGdfY2xlYW51cChkZXNjKTsNCj4g
+K30NCj4gKw0KPiDCoHN0YXRpYyBjb25zdCBzdHJ1Y3QgbmZzX3BhZ2Vpb19vcHMgZmlsZWxheW91
+dF9wZ19yZWFkX29wcyA9IHsNCj4gwqAJLnBnX2luaXQgPSBmaWxlbGF5b3V0X3BnX2luaXRfcmVh
+ZCwNCj4gwqAJLnBnX3Rlc3QgPSBmaWxlbGF5b3V0X3BnX3Rlc3QsDQo+IMKgCS5wZ19kb2lvID0g
+cG5mc19nZW5lcmljX3BnX3JlYWRwYWdlcywNCj4gLQkucGdfY2xlYW51cCA9IHBuZnNfZ2VuZXJp
+Y19wZ19jbGVhbnVwLA0KPiArCS5wZ19jbGVhbnVwID0gZmlsZWxheW91dF9wZ19jbGVhbnVwLA0K
+PiDCoH07DQo+IMKgDQo+IMKgc3RhdGljIGNvbnN0IHN0cnVjdCBuZnNfcGFnZWlvX29wcyBmaWxl
+bGF5b3V0X3BnX3dyaXRlX29wcyA9IHsNCj4gwqAJLnBnX2luaXQgPSBmaWxlbGF5b3V0X3BnX2lu
+aXRfd3JpdGUsDQo+IMKgCS5wZ190ZXN0ID0gZmlsZWxheW91dF9wZ190ZXN0LA0KPiDCoAkucGdf
+ZG9pbyA9IHBuZnNfZ2VuZXJpY19wZ193cml0ZXBhZ2VzLA0KPiAtCS5wZ19jbGVhbnVwID0gcG5m
+c19nZW5lcmljX3BnX2NsZWFudXAsDQo+ICsJLnBnX2NsZWFudXAgPSBmaWxlbGF5b3V0X3BnX2Ns
+ZWFudXAsDQo+IMKgfTsNCj4gwqANCj4gwqBzdGF0aWMgdTMyIHNlbGVjdF9idWNrZXRfaW5kZXgo
+c3RydWN0IG5mczRfZmlsZWxheW91dF9zZWdtZW50ICpmbCwNCj4gdTMyIGopDQo+IGRpZmYgLS1n
+aXQgYS9mcy9uZnMvcG5mc19kZXYuYyBiL2ZzL25mcy9wbmZzX2Rldi5jDQo+IGluZGV4IDI5NjFm
+Y2QuLjY3MWQ2NWYgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9wbmZzX2Rldi5jDQo+ICsrKyBiL2Zz
+L25mcy9wbmZzX2Rldi5jDQo+IEBAIC0yNTUsNyArMjU1LDcgQEAgc3RydWN0IG5mczRfZGV2aWNl
+aWRfbm9kZSAqDQo+IMKgCWQtPm5mc19jbGllbnQgPSBzZXJ2ZXItPm5mc19jbGllbnQ7DQo+IMKg
+CWQtPmZsYWdzID0gMDsNCj4gwqAJZC0+ZGV2aWNlaWQgPSAqaWQ7DQo+IC0JYXRvbWljX3NldCgm
+ZC0+cmVmLCAxKTsNCj4gKwlhdG9taWNfc2V0KCZkLT5yZWYsIDIpOw0KPiDCoH0NCj4gwqBFWFBP
+UlRfU1lNQk9MX0dQTChuZnM0X2luaXRfZGV2aWNlaWRfbm9kZSk7DQo+IMKgDQoNCkkgd2FzIGdv
+aW5nIHRvIGFwcGx5IHRoaXMsIGJ1dCB1cG9uIHJldmlldyBpdCBsb29rcyBhcyBpZiBpdCB3aWxs
+IGNhdXNlDQphIGRldmljZWlkIHJlZmNvdW50IGxlYWsgZm9yIGJvdGggcE5GUyBibG9ja3MgYW5k
+IGZsZXhmaWxlcy4gUGxlYXNlDQpmaXguDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
+RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFy
+eWRhdGEuY29tDQo=
 
