@@ -1,66 +1,210 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:43110 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752462AbdFUObe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2017 10:31:34 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH RESEND 0/3] Improvements to page writeback commit policy
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170620233539.22417-1-trond.myklebust@primarydata.com>
-Date: Wed, 21 Jun 2017 10:31:12 -0400
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C653223D-193D-4385-8AA1-11FD38C6CE89@oracle.com>
-References: <20170620233539.22417-1-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34754 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752828AbdFUQYr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Jun 2017 12:24:47 -0400
+Subject: Re: [PATCH] Reimplement include functionality in nfs.conf
+To: Justin Mitchell <jumitche@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Cc: NeilBrown <neilb@suse.com>
+References: <1496939645.4216.13.camel@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <ef6ba00a-933e-f797-9f87-b5c081516e13@RedHat.com>
+Date: Wed, 21 Jun 2017 12:05:35 -0400
+MIME-Version: 1.0
+In-Reply-To: <1496939645.4216.13.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Jun 20, 2017, at 7:35 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+On 06/08/2017 12:34 PM, Justin Mitchell wrote:
+> Re-implement include file functionality as documented.
 > 
-> The following patches are intended to smooth out the page writeback
-> performance by ensuring that we commit the data earlier on the server.
+> Existing implementation had various issues, one of which was it allowed
+> a subordinate file to inadvertently change which section the subsequent
+> tags back in the master config file got assigned to.
 > 
-> We assume that if something is starting writeback on the pages, then
-> that process wants to commit the data as soon as possible, whether it
-> is an application or just the background flush process.
-> We also assume that for streaming type processes, we don't want to pause
-> the I/O in order to commit, so we don't want to rely on a counter of
-> in-flight I/O to the entire inode going to zero.
+> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+Committed... Thanks!
+
+steved
 > 
-> We therefore set up a monitor that counts the number of in-flight
-> writes for each call to nfs_writepages(). Once all the writes to that
-> call to nfs_writepages has completed, we send the commit. Note that this
-> mirrors the behaviour for O_DIRECT writes, where we similarly track the
-> in-flight writes on a per-call basis.
-
-These are the same as the patches you sent May 16th?
-I am trying to get a little time to try them out.
-
-
-> Trond Myklebust (3):
->  NFS: Remove unused fields in the page I/O structures
->  NFS: Ensure we commit after writeback is complete
->  NFS: Fix commit policy for non-blocking calls to nfs_write_inode()
 > 
-> fs/nfs/pagelist.c        |  5 ++--
-> fs/nfs/write.c           | 59 +++++++++++++++++++++++++++++++++++++++++++++++-
-> include/linux/nfs_page.h |  2 +-
-> include/linux/nfs_xdr.h  |  3 ++-
-> 4 files changed, 64 insertions(+), 5 deletions(-)
 > 
-> -- 
-> 2.9.4
+> ---
+>  support/nfs/conffile.c | 78 ++++++++++++++++++++++++++++++++++++--------------
+>  1 file changed, 56 insertions(+), 22 deletions(-)
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
+> index 449ac1c..05e0a6f 100644
+> --- a/support/nfs/conffile.c
+> +++ b/support/nfs/conffile.c
+> @@ -56,9 +56,11 @@
+>  #pragma GCC visibility push(hidden)
+>  
+>  static void conf_load_defaults(void);
+> -static int conf_load(int trans, const char *path);
+> +static char * conf_load(const char *path);
+>  static int conf_set(int , char *, char *, char *, 
+>  	char *, int , int );
+> +static void conf_parse(int trans, char *buf, 
+> +	char **section, char **subsection);
+>  
+>  struct conf_trans {
+>  	TAILQ_ENTRY (conf_trans) link;
+> @@ -202,7 +204,6 @@ conf_set_now(char *section, char *arg, char *tag,
+>  	node->tag = strdup(tag);
+>  	node->value = strdup(value);
+>  	node->is_default = is_default;
+> -
+>  	LIST_INSERT_HEAD(&conf_bindings[conf_hash (section)], node, link);
+>  	return 0;
+>  }
+> @@ -365,22 +366,47 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
+>  		return;
+>  	}
+>  
+> -	/* XXX Perhaps should we not ignore errors?  */
+> -	conf_set(trans, *section, *subsection, line, val, 0, 0);
+> +	if (strcasecmp(line, "include")==0) {
+> +		/* load and parse subordinate config files */
+> +		char * subconf = conf_load(val);
+> +		if (subconf == NULL) {
+> +			xlog_warn("config file error: line %d: "
+> +			"error loading included config", lineno);
+> +			return;
+> +		}
+> +
+> +		/* copy the section data so the included file can inherit it
+> +		 * without accidentally changing it for us */
+> +		char * inc_section = NULL;
+> +		char * inc_subsection = NULL;
+> +		if (*section != NULL) {
+> +			inc_section = strdup(*section);
+> +			if (*subsection != NULL)
+> +				inc_subsection = strdup(*subsection);
+> +		}
+> +
+> +		conf_parse(trans, subconf, &inc_section, &inc_subsection);
+> +
+> +		if (inc_section) free(inc_section);
+> +		if (inc_subsection) free(inc_subsection);
+> +		free(subconf);
+> +	} else {
+> +		/* XXX Perhaps should we not ignore errors?  */
+> +		conf_set(trans, *section, *subsection, line, val, 0, 0);
+> +	}
+>  }
+>  
+>  /* Parse the mapped configuration file.  */
+>  static void
+> -conf_parse(int trans, char *buf, size_t sz)
+> +conf_parse(int trans, char *buf, char **section, char **subsection)
+>  {
+>  	char *cp = buf;
+> -	char *bufend = buf + sz;
+> +	char *bufend = NULL;
+>  	char *line;
+> -	char *section = NULL;
+> -	char *subsection = NULL;
+>  	int lineno = 0;
+>  
+>  	line = cp;
+> +	bufend = buf + strlen(buf);
+>  	while (cp < bufend) {
+>  		if (*cp == '\n') {
+>  			/* Check for escaped newlines.  */
+> @@ -389,7 +415,7 @@ conf_parse(int trans, char *buf, size_t sz)
+>  			else {
+>  				*cp = '\0';
+>  				lineno++;
+> -				conf_parse_line(trans, line, lineno, &section, &subsection);
+> +				conf_parse_line(trans, line, lineno, section, subsection);
+>  				line = cp + 1;
+>  			}
+>  		}
+> @@ -397,8 +423,6 @@ conf_parse(int trans, char *buf, size_t sz)
+>  	}
+>  	if (cp != line)
+>  		xlog_warn("conf_parse: last line non-terminated, ignored.");
+> -	if (section) free(section);
+> -	if (subsection) free(subsection);
+>  }
+>  
+>  static void
+> @@ -408,21 +432,21 @@ conf_load_defaults(void)
+>  	return;
+>  }
+>  
+> -static int
+> -conf_load(int trans, const char *path)
+> +static char *
+> +conf_load(const char *path)
+>  {
+>  	struct stat sb;
+>  	if ((stat (path, &sb) == 0) || (errno != ENOENT)) {
+> -		char *new_conf_addr;
+> +		char *new_conf_addr = NULL;
+>  		size_t sz = sb.st_size;
+>  		int fd = open (path, O_RDONLY, 0);
+>  
+>  		if (fd == -1) {
+>  			xlog_warn("conf_reinit: open (\"%s\", O_RDONLY) failed", path);
+> -			return -1;
+> +			return NULL;
+>  		}
+>  
+> -		new_conf_addr = malloc(sz);
+> +		new_conf_addr = malloc(sz+1);
+>  		if (!new_conf_addr) {
+>  			xlog_warn("conf_reinit: malloc (%lu) failed", (unsigned long)sz);
+>  			goto fail;
+> @@ -437,14 +461,13 @@ conf_load(int trans, const char *path)
+>  		close(fd);
+>  
+>  		/* XXX Should we not care about errors and rollback?  */
+> -		conf_parse(trans, new_conf_addr, sz);
+> -		free(new_conf_addr);
+> -		return 0;
+> +		new_conf_addr[sz] = '\0';
+> +		return new_conf_addr;
+>  	fail:
+>  		close(fd);
+> -		free(new_conf_addr);
+> +		if (new_conf_addr) free(new_conf_addr);
+>  	}
+> -	return -1;
+> +	return NULL;
+>  }
+>  
+>  /* remove and free up any existing config state */
+> @@ -473,14 +496,25 @@ static void
+>  conf_reinit(const char *conf_file)
+>  {
+>  	int trans;
+> +	char * conf_data;
+>  
+>  	trans = conf_begin();
+> -	if (conf_load(trans, conf_file) < 0)
+> +	conf_data = conf_load(conf_file);
+> +
+> +	if (conf_data == NULL)
+>  		return;
+>  
+>  	/* Load default configuration values.  */
+>  	conf_load_defaults();
+>  
+> +	/* Parse config contents into the transaction queue */
+> +	char *section = NULL;
+> +	char *subsection = NULL;
+> +	conf_parse(trans, conf_data, &section, &subsection);
+> +	if (section) free(section);
+> +	if (subsection) free(subsection);
+> +	free(conf_data);
+> +
+>  	/* Free potential existing configuration.  */
+>  	conf_free_bindings();
+>  
+> 
