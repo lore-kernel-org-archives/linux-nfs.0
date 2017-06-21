@@ -1,210 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34754 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50282 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752828AbdFUQYr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Jun 2017 12:24:47 -0400
-Subject: Re: [PATCH] Reimplement include functionality in nfs.conf
-To: Justin Mitchell <jumitche@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: NeilBrown <neilb@suse.com>
-References: <1496939645.4216.13.camel@redhat.com>
+        id S1751124AbdFUQZ5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Jun 2017 12:25:57 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 4C16461D24
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Jun 2017 16:19:33 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-227.phx2.redhat.com [10.3.116.227])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 12FB75D961
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Jun 2017 16:19:32 +0000 (UTC)
+Subject: Re: [PATCH 2/2 V4] mount.nfs: Use default minor version when -o v4 is
+ specified
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20170619152526.26260-1-steved@redhat.com>
+ <20170619152526.26260-2-steved@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <ef6ba00a-933e-f797-9f87-b5c081516e13@RedHat.com>
-Date: Wed, 21 Jun 2017 12:05:35 -0400
+Message-ID: <d0ff22e8-b366-1caf-d4ec-9479f24f9be2@RedHat.com>
+Date: Wed, 21 Jun 2017 12:19:32 -0400
 MIME-Version: 1.0
-In-Reply-To: <1496939645.4216.13.camel@redhat.com>
+In-Reply-To: <20170619152526.26260-2-steved@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 06/08/2017 12:34 PM, Justin Mitchell wrote:
-> Re-implement include file functionality as documented.
+On 06/19/2017 11:25 AM, Steve Dickson wrote:
+> When v4 is specified on the command line the
+> default minor version needs to be used.
 > 
-> Existing implementation had various issues, one of which was it allowed
-> a subordinate file to inadvertently change which section the subsequent
-> tags back in the master config file got assigned to.
-> 
-> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
-Committed... Thanks!
-
-steved
-> 
-> 
-> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 > ---
->  support/nfs/conffile.c | 78 ++++++++++++++++++++++++++++++++++++--------------
->  1 file changed, 56 insertions(+), 22 deletions(-)
+>  utils/mount/stropts.c | 24 ++++++++++++++----------
+>  1 file changed, 14 insertions(+), 10 deletions(-)
 > 
-> diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-> index 449ac1c..05e0a6f 100644
-> --- a/support/nfs/conffile.c
-> +++ b/support/nfs/conffile.c
-> @@ -56,9 +56,11 @@
->  #pragma GCC visibility push(hidden)
->  
->  static void conf_load_defaults(void);
-> -static int conf_load(int trans, const char *path);
-> +static char * conf_load(const char *path);
->  static int conf_set(int , char *, char *, char *, 
->  	char *, int , int );
-> +static void conf_parse(int trans, char *buf, 
-> +	char **section, char **subsection);
->  
->  struct conf_trans {
->  	TAILQ_ENTRY (conf_trans) link;
-> @@ -202,7 +204,6 @@ conf_set_now(char *section, char *arg, char *tag,
->  	node->tag = strdup(tag);
->  	node->value = strdup(value);
->  	node->is_default = is_default;
-> -
->  	LIST_INSERT_HEAD(&conf_bindings[conf_hash (section)], node, link);
->  	return 0;
->  }
-> @@ -365,22 +366,47 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
+> v2: Removed pointless check of v_mode in nfs_do_mount_v4()
+> v3: Correctly set the minor version when set in nfsmount.conf
+> v4: Post the correct patch!!! 
+Committed...
+
+steved. 
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index fbea6fb..c2a739b 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -119,14 +119,22 @@ static void nfs_default_version(struct nfsmount_info *mi)
+>  	if (mi->version.v_mode == V_DEFAULT &&
+>  		config_default_vers.v_mode != V_DEFAULT) {
+>  		mi->version.major = config_default_vers.major;
+> -		mi->version.minor = config_default_vers.minor;
+> +		if (config_default_vers.v_mode == V_SPECIFIC)
+> +			mi->version.minor = config_default_vers.minor;
+> +		else
+> +			mi->version.minor = NFS_DEFAULT_MINOR;
 >  		return;
 >  	}
 >  
-> -	/* XXX Perhaps should we not ignore errors?  */
-> -	conf_set(trans, *section, *subsection, line, val, 0, 0);
-> +	if (strcasecmp(line, "include")==0) {
-> +		/* load and parse subordinate config files */
-> +		char * subconf = conf_load(val);
-> +		if (subconf == NULL) {
-> +			xlog_warn("config file error: line %d: "
-> +			"error loading included config", lineno);
-> +			return;
-> +		}
-> +
-> +		/* copy the section data so the included file can inherit it
-> +		 * without accidentally changing it for us */
-> +		char * inc_section = NULL;
-> +		char * inc_subsection = NULL;
-> +		if (*section != NULL) {
-> +			inc_section = strdup(*section);
-> +			if (*subsection != NULL)
-> +				inc_subsection = strdup(*subsection);
-> +		}
-> +
-> +		conf_parse(trans, subconf, &inc_section, &inc_subsection);
-> +
-> +		if (inc_section) free(inc_section);
-> +		if (inc_subsection) free(inc_subsection);
-> +		free(subconf);
-> +	} else {
-> +		/* XXX Perhaps should we not ignore errors?  */
-> +		conf_set(trans, *section, *subsection, line, val, 0, 0);
-> +	}
->  }
->  
->  /* Parse the mapped configuration file.  */
->  static void
-> -conf_parse(int trans, char *buf, size_t sz)
-> +conf_parse(int trans, char *buf, char **section, char **subsection)
->  {
->  	char *cp = buf;
-> -	char *bufend = buf + sz;
-> +	char *bufend = NULL;
->  	char *line;
-> -	char *section = NULL;
-> -	char *subsection = NULL;
->  	int lineno = 0;
->  
->  	line = cp;
-> +	bufend = buf + strlen(buf);
->  	while (cp < bufend) {
->  		if (*cp == '\n') {
->  			/* Check for escaped newlines.  */
-> @@ -389,7 +415,7 @@ conf_parse(int trans, char *buf, size_t sz)
->  			else {
->  				*cp = '\0';
->  				lineno++;
-> -				conf_parse_line(trans, line, lineno, &section, &subsection);
-> +				conf_parse_line(trans, line, lineno, section, subsection);
->  				line = cp + 1;
->  			}
->  		}
-> @@ -397,8 +423,6 @@ conf_parse(int trans, char *buf, size_t sz)
->  	}
->  	if (cp != line)
->  		xlog_warn("conf_parse: last line non-terminated, ignored.");
-> -	if (section) free(section);
-> -	if (subsection) free(subsection);
->  }
->  
->  static void
-> @@ -408,21 +432,21 @@ conf_load_defaults(void)
->  	return;
->  }
->  
-> -static int
-> -conf_load(int trans, const char *path)
-> +static char *
-> +conf_load(const char *path)
->  {
->  	struct stat sb;
->  	if ((stat (path, &sb) == 0) || (errno != ENOENT)) {
-> -		char *new_conf_addr;
-> +		char *new_conf_addr = NULL;
->  		size_t sz = sb.st_size;
->  		int fd = open (path, O_RDONLY, 0);
->  
->  		if (fd == -1) {
->  			xlog_warn("conf_reinit: open (\"%s\", O_RDONLY) failed", path);
-> -			return -1;
-> +			return NULL;
->  		}
->  
-> -		new_conf_addr = malloc(sz);
-> +		new_conf_addr = malloc(sz+1);
->  		if (!new_conf_addr) {
->  			xlog_warn("conf_reinit: malloc (%lu) failed", (unsigned long)sz);
->  			goto fail;
-> @@ -437,14 +461,13 @@ conf_load(int trans, const char *path)
->  		close(fd);
->  
->  		/* XXX Should we not care about errors and rollback?  */
-> -		conf_parse(trans, new_conf_addr, sz);
-> -		free(new_conf_addr);
-> -		return 0;
-> +		new_conf_addr[sz] = '\0';
-> +		return new_conf_addr;
->  	fail:
->  		close(fd);
-> -		free(new_conf_addr);
-> +		if (new_conf_addr) free(new_conf_addr);
->  	}
-> -	return -1;
-> +	return NULL;
->  }
->  
->  /* remove and free up any existing config state */
-> @@ -473,14 +496,25 @@ static void
->  conf_reinit(const char *conf_file)
->  {
->  	int trans;
-> +	char * conf_data;
->  
->  	trans = conf_begin();
-> -	if (conf_load(trans, conf_file) < 0)
-> +	conf_data = conf_load(conf_file);
-> +
-> +	if (conf_data == NULL)
+>  	if (mi->version.v_mode == V_GENERAL) {
+>  		if (config_default_vers.v_mode != V_DEFAULT &&
+> -		    mi->version.major == config_default_vers.major)
+> -			mi->version.minor = config_default_vers.minor;
+> +		    mi->version.major == config_default_vers.major) {
+> +			if (config_default_vers.v_mode == V_SPECIFIC)
+> +				mi->version.minor = config_default_vers.minor;
+> +			else
+> +				mi->version.minor = NFS_DEFAULT_MINOR;
+> +		} else
+> +			mi->version.minor = NFS_DEFAULT_MINOR;
 >  		return;
+>  	}
 >  
->  	/* Load default configuration values.  */
->  	conf_load_defaults();
+> @@ -741,13 +749,9 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+>  	}
 >  
-> +	/* Parse config contents into the transaction queue */
-> +	char *section = NULL;
-> +	char *subsection = NULL;
-> +	conf_parse(trans, conf_data, &section, &subsection);
-> +	if (section) free(section);
-> +	if (subsection) free(subsection);
-> +	free(conf_data);
-> +
->  	/* Free potential existing configuration.  */
->  	conf_free_bindings();
+>  	if (mi->version.v_mode != V_SPECIFIC) {
+> -		if (mi->version.v_mode == V_GENERAL)
+> -			snprintf(version_opt, sizeof(version_opt) - 1,
+> -				"vers=%lu", mi->version.major);
+> -		else
+> -			snprintf(version_opt, sizeof(version_opt) - 1,
+> -				"vers=%lu.%lu", mi->version.major,
+> -				mi->version.minor);
+> +		snprintf(version_opt, sizeof(version_opt) - 1,
+> +			"vers=%lu.%lu", mi->version.major,
+> +			mi->version.minor);
 >  
+>  		if (po_append(options, version_opt) == PO_FAILED) {
+>  			errno = EINVAL;
 > 
