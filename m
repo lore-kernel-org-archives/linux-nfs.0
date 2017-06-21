@@ -1,27 +1,27 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from host55.servers.prgn.misp.co.uk ([95.142.154.181]:54025 "EHLO
+Received: from host55.servers.prgn.misp.co.uk ([95.142.154.181]:56336 "EHLO
         host55.servers.prgn.misp.co.uk" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751106AbdFUUnF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2017 16:43:05 -0400
-Received: from slartibartfast.improbability.net ([87.127.90.134]:39908)
+        by vger.kernel.org with ESMTP id S1752393AbdFUVYR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Jun 2017 17:24:17 -0400
+Received: from slartibartfast.improbability.net ([87.127.90.134]:40148)
         by host55.servers.prgn.misp.co.uk with esmtpsa (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
         (Exim 4.89)
         (envelope-from <reiver@improbability.net>)
-        id 1dNlMR-003CeY-Jz
-        for linux-nfs@vger.kernel.org; Wed, 21 Jun 2017 20:32:21 +0100
+        id 1dNn6e-0041Uq-5t
+        for linux-nfs@vger.kernel.org; Wed, 21 Jun 2017 22:24:09 +0100
 From: Alan Swanson <reiver@improbability.net>
 To: linux-nfs@vger.kernel.org
 Cc: Alan Swanson <reiver@improbability.net>
-Subject: [PATCH] idmapd: Use inotify instead of dnotify
-Date: Wed, 21 Jun 2017 20:31:45 +0100
-Message-Id: <20170621193145.30033-1-reiver@improbability.net>
+Subject: [PATCH V2] idmapd: Use inotify instead of dnotify
+Date: Wed, 21 Jun 2017 22:23:38 +0100
+Message-Id: <20170621212338.32460-1-reiver@improbability.net>
+In-Reply-To: <20170621193145.30033-1-reiver@improbability.net>
+References: <20170621193145.30033-1-reiver@improbability.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Remove last use of dnotify in nfs-utils by bringing idmapd upto
 date with (required) inotify use by gssd and blkmapd.
-
-Signed-off-by: Alan Swanson <reiver@improbability.net>
 ---
  utils/idmapd/idmapd.c | 32 +++++++++++++++++---------------
  1 file changed, 17 insertions(+), 15 deletions(-)
@@ -32,8 +32,10 @@ still not officially depreciated, dnotify was officially "replaced"
 by inotify in Linux 2.6.13 in 2005. Would be nice to sync this
 requirement across the codebase.
 
+V2: Init wd to -1 not 0
+
 diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index c12e878..c965119 100644
+index c12e878..c29dba6 100644
 --- a/utils/idmapd/idmapd.c
 +++ b/utils/idmapd/idmapd.c
 @@ -36,7 +36,7 @@
@@ -50,7 +52,7 @@ index c12e878..c965119 100644
  main(int argc, char **argv)
  {
 -	int fd = 0, opt, fg = 0, nfsdret = -1;
-+	int wd = 0, opt, fg = 0, nfsdret = -1;
++	int wd = -1, opt, fg = 0, nfsdret = -1;
  	struct idmap_clientq icq;
 -	struct event rootdirev, clntdirev, svrdirev;
 +	struct event rootdirev, clntdirev, svrdirev, inotifyev;
