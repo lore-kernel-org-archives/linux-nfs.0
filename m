@@ -1,38 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:40948 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750932AbdFWPZc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 23 Jun 2017 11:25:32 -0400
-Date: Fri, 23 Jun 2017 11:25:32 -0400
-To: Paul Menzel <pmenzel@molgen.mpg.de>
-Cc: linux-nfs@vger.kernel.org, it+linux-nfs@molgen.mpg.de
-Subject: Re: Full volume causes some NFS clients to get client ID expired
- responses
-Message-ID: <20170623152532.GB31966@fieldses.org>
-References: <03f0da7e-99c1-a015-c701-b8c8f4a6ec85@molgen.mpg.de>
- <6c0fa7f4-a179-4b7e-9f52-abfa80df3bb4@molgen.mpg.de>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:60075 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753447AbdFWP0D (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 11:26:03 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RESEND 0/3] Improvements to page writeback commit policy
+Date: Fri, 23 Jun 2017 15:25:43 +0000
+Message-ID: <1498231541.8584.1.camel@primarydata.com>
+References: <20170620233539.22417-1-trond.myklebust@primarydata.com>
+         <20170623145657.GA31966@fieldses.org>
+In-Reply-To: <20170623145657.GA31966@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <6c0fa7f4-a179-4b7e-9f52-abfa80df3bb4@molgen.mpg.de>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 21, 2017 at 01:48:05PM +0200, Paul Menzel wrote:
-> We experience the following behavior with the Linux series 4.4 and 4.9.
+T24gRnJpLCAyMDE3LTA2LTIzIGF0IDEwOjU2IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFR1ZSwgSnVuIDIwLCAyMDE3IGF0IDA3OjM1OjM1UE0gLTA0MDAsIFRyb25kIE15a2xl
+YnVzdCB3cm90ZToNCj4gPiBUaGUgZm9sbG93aW5nIHBhdGNoZXMgYXJlIGludGVuZGVkIHRvIHNt
+b290aCBvdXQgdGhlIHBhZ2Ugd3JpdGViYWNrDQo+ID4gcGVyZm9ybWFuY2UgYnkgZW5zdXJpbmcg
+dGhhdCB3ZSBjb21taXQgdGhlIGRhdGEgZWFybGllciBvbiB0aGUNCj4gPiBzZXJ2ZXIuDQo+IA0K
+PiBXYXMgdGhlcmUgc29tZSBwYXJ0aWN1bGFyIGJlbmNobWFyayBvciBoYXJkd2FyZSBzZXR1cCB0
+aGF0IG1vdGl2YXRlZA0KPiBkb2luZyB0aGlzIG5vdz8NCg0KSSBmaW5hbGx5IGhhZCBlbm91Z2gg
+ZnJlZSB0aW1lIHRvIHN0dWR5IHRoZSBwcm9ibGVtIG9mIHdoeSBteSBiYWNrdXBzDQpmcm9tIG15
+IGxhcHRvcCB0byBteSBOQVMgYmFja3VwIGRldmljZSB0b29rIHNvIGxvbmcgdG8gY29tcGxldGUs
+IGFuZA0Kd2h5IHRoZSAncnN5bmMnIGJhbmR3aWR0aCBkaXNwbGF5IGlzIHNvIGluY29uc2lzdGVu
+dC4NCg0KPiANCj4gLS1iLg0KPiANCj4gPiANCj4gPiBXZSBhc3N1bWUgdGhhdCBpZiBzb21ldGhp
+bmcgaXMgc3RhcnRpbmcgd3JpdGViYWNrIG9uIHRoZSBwYWdlcywNCj4gPiB0aGVuDQo+ID4gdGhh
+dCBwcm9jZXNzIHdhbnRzIHRvIGNvbW1pdCB0aGUgZGF0YSBhcyBzb29uIGFzIHBvc3NpYmxlLCB3
+aGV0aGVyDQo+ID4gaXQNCj4gPiBpcyBhbiBhcHBsaWNhdGlvbiBvciBqdXN0IHRoZSBiYWNrZ3Jv
+dW5kIGZsdXNoIHByb2Nlc3MuDQo+ID4gV2UgYWxzbyBhc3N1bWUgdGhhdCBmb3Igc3RyZWFtaW5n
+IHR5cGUgcHJvY2Vzc2VzLCB3ZSBkb24ndCB3YW50IHRvDQo+ID4gcGF1c2UNCj4gPiB0aGUgSS9P
+IGluIG9yZGVyIHRvIGNvbW1pdCwgc28gd2UgZG9uJ3Qgd2FudCB0byByZWx5IG9uIGEgY291bnRl
+cg0KPiA+IG9mDQo+ID4gaW4tZmxpZ2h0IEkvTyB0byB0aGUgZW50aXJlIGlub2RlIGdvaW5nIHRv
+IHplcm8uDQo+ID4gDQo+ID4gV2UgdGhlcmVmb3JlIHNldCB1cCBhIG1vbml0b3IgdGhhdCBjb3Vu
+dHMgdGhlIG51bWJlciBvZiBpbi1mbGlnaHQNCj4gPiB3cml0ZXMgZm9yIGVhY2ggY2FsbCB0byBu
+ZnNfd3JpdGVwYWdlcygpLiBPbmNlIGFsbCB0aGUgd3JpdGVzIHRvDQo+ID4gdGhhdA0KPiA+IGNh
+bGwgdG8gbmZzX3dyaXRlcGFnZXMgaGFzIGNvbXBsZXRlZCwgd2Ugc2VuZCB0aGUgY29tbWl0LiBO
+b3RlIHRoYXQNCj4gPiB0aGlzDQo+ID4gbWlycm9ycyB0aGUgYmVoYXZpb3VyIGZvciBPX0RJUkVD
+VCB3cml0ZXMsIHdoZXJlIHdlIHNpbWlsYXJseSB0cmFjaw0KPiA+IHRoZQ0KPiA+IGluLWZsaWdo
+dCB3cml0ZXMgb24gYSBwZXItY2FsbCBiYXNpcy4NCj4gPiANCj4gPiBUcm9uZCBNeWtsZWJ1c3Qg
+KDMpOg0KPiA+IMKgIE5GUzogUmVtb3ZlIHVudXNlZCBmaWVsZHMgaW4gdGhlIHBhZ2UgSS9PIHN0
+cnVjdHVyZXMNCj4gPiDCoCBORlM6IEVuc3VyZSB3ZSBjb21taXQgYWZ0ZXIgd3JpdGViYWNrIGlz
+IGNvbXBsZXRlDQo+ID4gwqAgTkZTOiBGaXggY29tbWl0IHBvbGljeSBmb3Igbm9uLWJsb2NraW5n
+IGNhbGxzIHRvDQo+ID4gbmZzX3dyaXRlX2lub2RlKCkNCj4gPiANCj4gPiDCoGZzL25mcy9wYWdl
+bGlzdC5jwqDCoMKgwqDCoMKgwqDCoHzCoMKgNSArKy0tDQo+ID4gwqBmcy9uZnMvd3JpdGUuY8Kg
+wqDCoMKgwqDCoMKgwqDCoMKgwqB8IDU5DQo+ID4gKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrKystDQo+ID4gwqBpbmNsdWRlL2xpbnV4L25mc19wYWdlLmggfMKg
+wqAyICstDQo+ID4gwqBpbmNsdWRlL2xpbnV4L25mc194ZHIuaMKgwqB8wqDCoDMgKystDQo+ID4g
+wqA0IGZpbGVzIGNoYW5nZWQsIDY0IGluc2VydGlvbnMoKyksIDUgZGVsZXRpb25zKC0pDQo+ID4g
+DQo+ID4gLS3CoA0KPiA+IDIuOS40DQo+ID4gDQo+ID4gLS0NCj4gPiBUbyB1bnN1YnNjcmliZSBm
+cm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtDQo+ID4gbmZz
+IiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwu
+b3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdMKgwqBodHRwOi8vdmdlci5rZXJuZWwub3Jn
+L21ham9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4
+IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmlt
+YXJ5ZGF0YS5jb20NCg==
 
-So, your NFS server is a Linux server running kernel 4.4 or 4.9?  What
-is the exported filesystem?
-
-What are the clients?
-
-> When the exported directory on the server gets full to 100 % some NFS
-> clients are unable to access the server anymore, but others can.
-> 
-> The error is, that the server says the client ID has expired.
-
-Where exactly are you seeing that error, in response to what operation?
-
-Might be interesting to try a more recent kernel.
-
---b.
