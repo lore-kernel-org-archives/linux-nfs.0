@@ -1,95 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:26927 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754989AbdFWUsh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 16:48:37 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH RESEND 0/3] Improvements to page writeback commit policy
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34417 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752170AbdFWVRB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:17:01 -0400
+Subject: [PATCH v3 00/18] Server-side NFS/RDMA changes proposed for v4.13
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <C653223D-193D-4385-8AA1-11FD38C6CE89@oracle.com>
-Date: Fri, 23 Jun 2017 16:48:31 -0400
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <2062C819-C45A-4E8B-9222-78FB8270FB68@oracle.com>
-References: <20170620233539.22417-1-trond.myklebust@primarydata.com> <C653223D-193D-4385-8AA1-11FD38C6CE89@oracle.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Fri, 23 Jun 2017 17:16:59 -0400
+Message-ID: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Bruce-
 
-> On Jun 21, 2017, at 10:31 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> 
->> On Jun 20, 2017, at 7:35 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->> 
->> The following patches are intended to smooth out the page writeback
->> performance by ensuring that we commit the data earlier on the server.
->> 
->> We assume that if something is starting writeback on the pages, then
->> that process wants to commit the data as soon as possible, whether it
->> is an application or just the background flush process.
->> We also assume that for streaming type processes, we don't want to pause
->> the I/O in order to commit, so we don't want to rely on a counter of
->> in-flight I/O to the entire inode going to zero.
->> 
->> We therefore set up a monitor that counts the number of in-flight
->> writes for each call to nfs_writepages(). Once all the writes to that
->> call to nfs_writepages has completed, we send the commit. Note that this
->> mirrors the behaviour for O_DIRECT writes, where we similarly track the
->> in-flight writes on a per-call basis.
-> 
-> These are the same as the patches you sent May 16th?
-> I am trying to get a little time to try them out.
+This series overhauls the "call receive" side of the RPC-over-RDMA
+transport to use the new rdma_rw API. A slight performance increase
+(better throughput and latency) has been seen. Benefits include:
 
-After applying these four patches, I ran a series of iozone
-benchmarks with buffered and direct I/O. NFSv3 and NFSv4.0
-on RDMA. Exports were tmpfs and xfs on NVMe.
+o Fewer ib_post_send calls per RPC Call
 
-I see about a 10% improvement in buffered write throughput,
-no degradation elsewhere, and no crashes or other misbehav-
-ior.
+o Code duplicated by other ULPs is replaced with core functions
 
-xfstests passes with the usual few failures.
+o Position-Zero Read chunks are handled in one function
 
-Buffered write throughput is still limited to 1GBps when
-targeting a tmpfs export on a 5.6GBps network. The server
-isn't breaking a sweat, but the client appears to be hit-
-ting some spin locks pretty hard. This is similar behavior
-to before the patches were applied.
+o More thorough transport header sanity checking
 
 
->> Trond Myklebust (3):
->> NFS: Remove unused fields in the page I/O structures
->> NFS: Ensure we commit after writeback is complete
->> NFS: Fix commit policy for non-blocking calls to nfs_write_inode()
->> 
->> fs/nfs/pagelist.c        |  5 ++--
->> fs/nfs/write.c           | 59 +++++++++++++++++++++++++++++++++++++++++++++++-
->> include/linux/nfs_page.h |  2 +-
->> include/linux/nfs_xdr.h  |  3 ++-
->> 4 files changed, 64 insertions(+), 5 deletions(-)
->> 
->> -- 
->> 2.9.4
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+IMO these are ready for you to consider for v4.13. Have a pleasant
+weekend.
+
+
+Available in the "nfsd-rdma-for-4.13" topic branch of this git repo:
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+
+Or for browsing:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.13
+
+
+Remaining rdma_rw API changes are here:
+
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-rw-api
+
+
+Changes since v2:
+* Rebased on v4.12-rc6 to pick up an RDMA CM fix
+* Fix op_ctxt leak when client forces a disconnect
+* Updated krb5i RQ_SPLICE_OK fix based on review comments
+* Dropped enable-force-mr patch
+
+
+Changes since v1:
+* Fixed bugzilla.linux-nfs 307
+* Cleaned up struct svc_rdma_chunk_ctxt
+
+---
+
+Chuck Lever (18):
+      sunrpc: Disable splice for krb5i
+      svcrdma: Squelch disconnection messages
+      svcrdma: Avoid Send Queue overflow
+      svcrdma: Remove svc_rdma_marshal.c
+      svcrdma: Improve Read chunk sanity checking
+      svcrdma: Improve Write chunk sanity checking
+      svcrdma: Improve Reply chunk sanity checking
+      svcrdma: Don't account for Receive queue "starvation"
+      sunrpc: Allocate one more page per svc_rqst
+      svcrdma: Add recvfrom helpers to svc_rdma_rw.c
+      svcrdma: Use generic RDMA R/W API in RPC Call path
+      svcrdma: Properly compute .len and .buflen for received RPC Calls
+      svcrdma: Remove unused Read completion handlers
+      svcrdma: Remove frmr cache
+      svcrdma: Clean-up svc_rdma_unmap_dma
+      svcrdma: Clean up after converting svc_rdma_recvfrom to rdma_rw API
+      svcrdma: use offset_in_page() macro
+      svcrdma: Remove svc_rdma_chunk_ctxt::cc_dir field
+
+
+ include/linux/sunrpc/svc.h               |    3 
+ include/linux/sunrpc/svc_rdma.h          |   46 --
+ net/sunrpc/auth_gss/svcauth_gss.c        |    8 
+ net/sunrpc/svc.c                         |    2 
+ net/sunrpc/svc_xprt.c                    |    8 
+ net/sunrpc/xprtrdma/Makefile             |    4 
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c   |  168 -------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  734 ++++++++++++------------------
+ net/sunrpc/xprtrdma/svc_rdma_rw.c        |  449 ++++++++++++++++++
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   15 -
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |  250 +---------
+ 11 files changed, 776 insertions(+), 911 deletions(-)
+ delete mode 100644 net/sunrpc/xprtrdma/svc_rdma_marshal.c
 
 --
 Chuck Lever
-
-
-
