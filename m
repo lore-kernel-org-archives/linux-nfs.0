@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36458 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754340AbdFWVR3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:17:29 -0400
-Subject: [PATCH v3 03/18] svcrdma: Avoid Send Queue overflow
+Received: from mail-it0-f66.google.com ([209.85.214.66]:36515 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754365AbdFWVRh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:17:37 -0400
+Subject: [PATCH v3 04/18] svcrdma: Remove svc_rdma_marshal.c
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 23 Jun 2017 17:17:24 -0400
-Message-ID: <20170623211723.5162.43419.stgit@klimt.1015granger.net>
+Date: Fri, 23 Jun 2017 17:17:35 -0400
+Message-ID: <20170623211735.5162.36891.stgit@klimt.1015granger.net>
 In-Reply-To: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
 References: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -16,60 +16,370 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sanity case: Catch the case where more Work Requests are being
-posted to the Send Queue than there are Send Queue Entries.
+svc_rdma_marshal.c has one remaining exported function --
+svc_rdma_xdr_decode_req -- and it has a single call site. Take
+the same approach as the sendto path, and move this function
+into the source file where it is called.
 
-This might happen if a client sends a chunk with more segments than
-there are SQEs for the transport. The server can't send that reply,
-so the transport will deadlock unless the client drops the RPC.
+This is a refactoring change only.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_rw.c     |    5 +++++
- net/sunrpc/xprtrdma/svc_rdma_sendto.c |    2 +-
- 2 files changed, 6 insertions(+), 1 deletion(-)
+ include/linux/sunrpc/svc_rdma.h         |    3 -
+ net/sunrpc/xprtrdma/Makefile            |    4 -
+ net/sunrpc/xprtrdma/svc_rdma_marshal.c  |  168 -------------------------------
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |  126 +++++++++++++++++++++++
+ 4 files changed, 128 insertions(+), 173 deletions(-)
+ delete mode 100644 net/sunrpc/xprtrdma/svc_rdma_marshal.c
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 0cf6202..3b35364 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -232,6 +232,9 @@ static int svc_rdma_post_chunk_ctxt(struct svc_rdma_chunk_ctxt *cc)
- 	struct ib_cqe *cqe;
- 	int ret;
+diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+index f3787d8..3ca9916 100644
+--- a/include/linux/sunrpc/svc_rdma.h
++++ b/include/linux/sunrpc/svc_rdma.h
+@@ -185,9 +185,6 @@ extern int svc_rdma_handle_bc_reply(struct rpc_xprt *xprt,
+ 				    __be32 *rdma_resp,
+ 				    struct xdr_buf *rcvbuf);
  
-+	if (cc->cc_sqecount > rdma->sc_sq_depth)
-+		return -EINVAL;
+-/* svc_rdma_marshal.c */
+-extern int svc_rdma_xdr_decode_req(struct xdr_buf *);
+-
+ /* svc_rdma_recvfrom.c */
+ extern int svc_rdma_recvfrom(struct svc_rqst *);
+ extern int rdma_read_chunk_lcl(struct svcxprt_rdma *, struct svc_rqst *,
+diff --git a/net/sunrpc/xprtrdma/Makefile b/net/sunrpc/xprtrdma/Makefile
+index c1ae814..b8213dd 100644
+--- a/net/sunrpc/xprtrdma/Makefile
++++ b/net/sunrpc/xprtrdma/Makefile
+@@ -3,6 +3,6 @@ obj-$(CONFIG_SUNRPC_XPRT_RDMA) += rpcrdma.o
+ rpcrdma-y := transport.o rpc_rdma.o verbs.o \
+ 	fmr_ops.o frwr_ops.o \
+ 	svc_rdma.o svc_rdma_backchannel.o svc_rdma_transport.o \
+-	svc_rdma_marshal.o svc_rdma_sendto.o svc_rdma_recvfrom.o \
+-	svc_rdma_rw.o module.o
++	svc_rdma_sendto.o svc_rdma_recvfrom.o svc_rdma_rw.o \
++	module.o
+ rpcrdma-$(CONFIG_SUNRPC_BACKCHANNEL) += backchannel.o
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_marshal.c b/net/sunrpc/xprtrdma/svc_rdma_marshal.c
+deleted file mode 100644
+index bdcf7d8..0000000
+--- a/net/sunrpc/xprtrdma/svc_rdma_marshal.c
++++ /dev/null
+@@ -1,168 +0,0 @@
+-/*
+- * Copyright (c) 2016 Oracle. All rights reserved.
+- * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
+- *
+- * This software is available to you under a choice of one of two
+- * licenses.  You may choose to be licensed under the terms of the GNU
+- * General Public License (GPL) Version 2, available from the file
+- * COPYING in the main directory of this source tree, or the BSD-type
+- * license below:
+- *
+- * Redistribution and use in source and binary forms, with or without
+- * modification, are permitted provided that the following conditions
+- * are met:
+- *
+- *      Redistributions of source code must retain the above copyright
+- *      notice, this list of conditions and the following disclaimer.
+- *
+- *      Redistributions in binary form must reproduce the above
+- *      copyright notice, this list of conditions and the following
+- *      disclaimer in the documentation and/or other materials provided
+- *      with the distribution.
+- *
+- *      Neither the name of the Network Appliance, Inc. nor the names of
+- *      its contributors may be used to endorse or promote products
+- *      derived from this software without specific prior written
+- *      permission.
+- *
+- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+- *
+- * Author: Tom Tucker <tom@opengridcomputing.com>
+- */
+-
+-#include <linux/sunrpc/xdr.h>
+-#include <linux/sunrpc/debug.h>
+-#include <asm/unaligned.h>
+-#include <linux/sunrpc/rpc_rdma.h>
+-#include <linux/sunrpc/svc_rdma.h>
+-
+-#define RPCDBG_FACILITY	RPCDBG_SVCXPRT
+-
+-static __be32 *xdr_check_read_list(__be32 *p, __be32 *end)
+-{
+-	__be32 *next;
+-
+-	while (*p++ != xdr_zero) {
+-		next = p + rpcrdma_readchunk_maxsz - 1;
+-		if (next > end)
+-			return NULL;
+-		p = next;
+-	}
+-	return p;
+-}
+-
+-static __be32 *xdr_check_write_list(__be32 *p, __be32 *end)
+-{
+-	__be32 *next;
+-
+-	while (*p++ != xdr_zero) {
+-		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
+-		if (next > end)
+-			return NULL;
+-		p = next;
+-	}
+-	return p;
+-}
+-
+-static __be32 *xdr_check_reply_chunk(__be32 *p, __be32 *end)
+-{
+-	__be32 *next;
+-
+-	if (*p++ != xdr_zero) {
+-		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
+-		if (next > end)
+-			return NULL;
+-		p = next;
+-	}
+-	return p;
+-}
+-
+-/**
+- * svc_rdma_xdr_decode_req - Parse incoming RPC-over-RDMA header
+- * @rq_arg: Receive buffer
+- *
+- * On entry, xdr->head[0].iov_base points to first byte in the
+- * RPC-over-RDMA header.
+- *
+- * On successful exit, head[0] points to first byte past the
+- * RPC-over-RDMA header. For RDMA_MSG, this is the RPC message.
+- * The length of the RPC-over-RDMA header is returned.
+- */
+-int svc_rdma_xdr_decode_req(struct xdr_buf *rq_arg)
+-{
+-	__be32 *p, *end, *rdma_argp;
+-	unsigned int hdr_len;
+-
+-	/* Verify that there's enough bytes for header + something */
+-	if (rq_arg->len <= RPCRDMA_HDRLEN_ERR)
+-		goto out_short;
+-
+-	rdma_argp = rq_arg->head[0].iov_base;
+-	if (*(rdma_argp + 1) != rpcrdma_version)
+-		goto out_version;
+-
+-	switch (*(rdma_argp + 3)) {
+-	case rdma_msg:
+-	case rdma_nomsg:
+-		break;
+-
+-	case rdma_done:
+-		goto out_drop;
+-
+-	case rdma_error:
+-		goto out_drop;
+-
+-	default:
+-		goto out_proc;
+-	}
+-
+-	end = (__be32 *)((unsigned long)rdma_argp + rq_arg->len);
+-	p = xdr_check_read_list(rdma_argp + 4, end);
+-	if (!p)
+-		goto out_inval;
+-	p = xdr_check_write_list(p, end);
+-	if (!p)
+-		goto out_inval;
+-	p = xdr_check_reply_chunk(p, end);
+-	if (!p)
+-		goto out_inval;
+-	if (p > end)
+-		goto out_inval;
+-
+-	rq_arg->head[0].iov_base = p;
+-	hdr_len = (unsigned long)p - (unsigned long)rdma_argp;
+-	rq_arg->head[0].iov_len -= hdr_len;
+-	return hdr_len;
+-
+-out_short:
+-	dprintk("svcrdma: header too short = %d\n", rq_arg->len);
+-	return -EINVAL;
+-
+-out_version:
+-	dprintk("svcrdma: bad xprt version: %u\n",
+-		be32_to_cpup(rdma_argp + 1));
+-	return -EPROTONOSUPPORT;
+-
+-out_drop:
+-	dprintk("svcrdma: dropping RDMA_DONE/ERROR message\n");
+-	return 0;
+-
+-out_proc:
+-	dprintk("svcrdma: bad rdma procedure (%u)\n",
+-		be32_to_cpup(rdma_argp + 3));
+-	return -EINVAL;
+-
+-out_inval:
+-	dprintk("svcrdma: failed to parse transport header\n");
+-	return -EINVAL;
+-}
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index 27a99bf..55ad335 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -1,4 +1,5 @@
+ /*
++ * Copyright (c) 2016, 2017 Oracle. All rights reserved.
+  * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
+  * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
+  *
+@@ -40,6 +41,7 @@
+  * Author: Tom Tucker <tom@opengridcomputing.com>
+  */
+ 
++#include <linux/sunrpc/xdr.h>
+ #include <linux/sunrpc/debug.h>
+ #include <linux/sunrpc/rpc_rdma.h>
+ #include <linux/spinlock.h>
+@@ -115,6 +117,130 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+ 	rqstp->rq_arg.tail[0].iov_len = 0;
+ }
+ 
++static __be32 *xdr_check_read_list(__be32 *p, __be32 *end)
++{
++	__be32 *next;
 +
- 	first_wr = NULL;
- 	cqe = &cc->cc_cqe;
- 	list_for_each(tmp, &cc->cc_rwctxts) {
-@@ -425,6 +428,7 @@ static int svc_rdma_send_xdr_pagelist(struct svc_rdma_write_info *info,
-  *
-  * Returns a non-negative number of bytes the chunk consumed, or
-  *	%-E2BIG if the payload was larger than the Write chunk,
-+ *	%-EINVAL if client provided too many segments,
-  *	%-ENOMEM if rdma_rw context pool was exhausted,
-  *	%-ENOTCONN if posting failed (connection is lost),
-  *	%-EIO if rdma_rw initialization failed (DMA mapping, etc).
-@@ -465,6 +469,7 @@ int svc_rdma_send_write_chunk(struct svcxprt_rdma *rdma, __be32 *wr_ch,
-  *
-  * Returns a non-negative number of bytes the chunk consumed, or
-  *	%-E2BIG if the payload was larger than the Reply chunk,
-+ *	%-EINVAL if client provided too many segments,
-  *	%-ENOMEM if rdma_rw context pool was exhausted,
-  *	%-ENOTCONN if posting failed (connection is lost),
-  *	%-EIO if rdma_rw initialization failed (DMA mapping, etc).
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index 5ba6d91..19fd01e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -684,7 +684,7 @@ int svc_rdma_sendto(struct svc_rqst *rqstp)
- 	return 0;
- 
-  err2:
--	if (ret != -E2BIG)
-+	if (ret != -E2BIG || ret != -EINVAL)
- 		goto err1;
- 
- 	ret = svc_rdma_post_recv(rdma, GFP_KERNEL);
++	while (*p++ != xdr_zero) {
++		next = p + rpcrdma_readchunk_maxsz - 1;
++		if (next > end)
++			return NULL;
++		p = next;
++	}
++	return p;
++}
++
++static __be32 *xdr_check_write_list(__be32 *p, __be32 *end)
++{
++	__be32 *next;
++
++	while (*p++ != xdr_zero) {
++		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
++		if (next > end)
++			return NULL;
++		p = next;
++	}
++	return p;
++}
++
++static __be32 *xdr_check_reply_chunk(__be32 *p, __be32 *end)
++{
++	__be32 *next;
++
++	if (*p++ != xdr_zero) {
++		next = p + 1 + be32_to_cpup(p) * rpcrdma_segment_maxsz;
++		if (next > end)
++			return NULL;
++		p = next;
++	}
++	return p;
++}
++
++/* On entry, xdr->head[0].iov_base points to first byte in the
++ * RPC-over-RDMA header.
++ *
++ * On successful exit, head[0] points to first byte past the
++ * RPC-over-RDMA header. For RDMA_MSG, this is the RPC message.
++ * The length of the RPC-over-RDMA header is returned.
++ *
++ * Assumptions:
++ * - The transport header is entirely contained in the head iovec.
++ */
++static int svc_rdma_xdr_decode_req(struct xdr_buf *rq_arg)
++{
++	__be32 *p, *end, *rdma_argp;
++	unsigned int hdr_len;
++	char *proc;
++
++	/* Verify that there's enough bytes for header + something */
++	if (rq_arg->len <= RPCRDMA_HDRLEN_ERR)
++		goto out_short;
++
++	rdma_argp = rq_arg->head[0].iov_base;
++	if (*(rdma_argp + 1) != rpcrdma_version)
++		goto out_version;
++
++	switch (*(rdma_argp + 3)) {
++	case rdma_msg:
++		proc = "RDMA_MSG";
++		break;
++	case rdma_nomsg:
++		proc = "RDMA_NOMSG";
++		break;
++
++	case rdma_done:
++		goto out_drop;
++
++	case rdma_error:
++		goto out_drop;
++
++	default:
++		goto out_proc;
++	}
++
++	end = (__be32 *)((unsigned long)rdma_argp + rq_arg->len);
++	p = xdr_check_read_list(rdma_argp + 4, end);
++	if (!p)
++		goto out_inval;
++	p = xdr_check_write_list(p, end);
++	if (!p)
++		goto out_inval;
++	p = xdr_check_reply_chunk(p, end);
++	if (!p)
++		goto out_inval;
++	if (p > end)
++		goto out_inval;
++
++	rq_arg->head[0].iov_base = p;
++	hdr_len = (unsigned long)p - (unsigned long)rdma_argp;
++	rq_arg->head[0].iov_len -= hdr_len;
++	dprintk("svcrdma: received %s request for XID 0x%08x, hdr_len=%u\n",
++		proc, be32_to_cpup(rdma_argp), hdr_len);
++	return hdr_len;
++
++out_short:
++	dprintk("svcrdma: header too short = %d\n", rq_arg->len);
++	return -EINVAL;
++
++out_version:
++	dprintk("svcrdma: bad xprt version: %u\n",
++		be32_to_cpup(rdma_argp + 1));
++	return -EPROTONOSUPPORT;
++
++out_drop:
++	dprintk("svcrdma: dropping RDMA_DONE/ERROR message\n");
++	return 0;
++
++out_proc:
++	dprintk("svcrdma: bad rdma procedure (%u)\n",
++		be32_to_cpup(rdma_argp + 3));
++	return -EINVAL;
++
++out_inval:
++	dprintk("svcrdma: failed to parse transport header\n");
++	return -EINVAL;
++}
++
+ /* Issue an RDMA_READ using the local lkey to map the data sink */
+ int rdma_read_chunk_lcl(struct svcxprt_rdma *xprt,
+ 			struct svc_rqst *rqstp,
 
