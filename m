@@ -1,107 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39852 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751620AbdFWP3c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 23 Jun 2017 11:29:32 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20170614175426.GA26229@htj.duckdns.org>
-References: <20170614175426.GA26229@htj.duckdns.org> <149745330648.10897.9605870130502083184.stgit@warthog.procyon.org.uk> <149745355907.10897.10073768158664960494.stgit@warthog.procyon.org.uk>
-To: Tejun Heo <tj@kernel.org>
-Cc: dhowells@redhat.com, mszeredi@redhat.com, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, jlayton@redhat.com,
-        Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        Li Zefan <lizefan@huawei.com>,
-        Johannes Weiner <hannes@cmpxchg.org>, cgroups@vger.kernel.org
-Subject: Re: [PATCH 27/27] kernfs, sysfs, cgroup: Support fs_context [ver #5]
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:41554 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752066AbdFWP34 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 11:29:56 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RESEND 0/3] Improvements to page writeback commit policy
+Date: Fri, 23 Jun 2017 15:29:44 +0000
+Message-ID: <1498231782.8584.3.camel@primarydata.com>
+References: <20170620233539.22417-1-trond.myklebust@primarydata.com>
+         <20170623145657.GA31966@fieldses.org>
+         <1498231541.8584.1.camel@primarydata.com>
+In-Reply-To: <1498231541.8584.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Date: Fri, 23 Jun 2017 16:29:28 +0100
-Message-ID: <6414.1498231768@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tejun Heo <tj@kernel.org> wrote:
+T24gRnJpLCAyMDE3LTA2LTIzIGF0IDExOjI1IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IE9uIEZyaSwgMjAxNy0wNi0yMyBhdCAxMDo1NiAtMDQwMCwgSi4gQnJ1Y2UgRmllbGRzIHdy
+b3RlOg0KPiA+IE9uIFR1ZSwgSnVuIDIwLCAyMDE3IGF0IDA3OjM1OjM1UE0gLTA0MDAsIFRyb25k
+IE15a2xlYnVzdCB3cm90ZToNCj4gPiA+IFRoZSBmb2xsb3dpbmcgcGF0Y2hlcyBhcmUgaW50ZW5k
+ZWQgdG8gc21vb3RoIG91dCB0aGUgcGFnZQ0KPiA+ID4gd3JpdGViYWNrDQo+ID4gPiBwZXJmb3Jt
+YW5jZSBieSBlbnN1cmluZyB0aGF0IHdlIGNvbW1pdCB0aGUgZGF0YSBlYXJsaWVyIG9uIHRoZQ0K
+PiA+ID4gc2VydmVyLg0KPiA+IA0KPiA+IFdhcyB0aGVyZSBzb21lIHBhcnRpY3VsYXIgYmVuY2ht
+YXJrIG9yIGhhcmR3YXJlIHNldHVwIHRoYXQNCj4gPiBtb3RpdmF0ZWQNCj4gPiBkb2luZyB0aGlz
+IG5vdz8NCj4gDQo+IEkgZmluYWxseSBoYWQgZW5vdWdoIGZyZWUgdGltZSB0byBzdHVkeSB0aGUg
+cHJvYmxlbSBvZiB3aHkgbXkgYmFja3Vwcw0KPiBmcm9tIG15IGxhcHRvcCB0byBteSBOQVMgYmFj
+a3VwIGRldmljZSB0b29rIHNvIGxvbmcgdG8gY29tcGxldGUsIGFuZA0KPiB3aHkgdGhlICdyc3lu
+YycgYmFuZHdpZHRoIGRpc3BsYXkgaXMgc28gaW5jb25zaXN0ZW50Lg0KDQpUaGUgTkFTIGRldmlj
+ZSBpbiBxdWVzdGlvbiBpcyBhIG5vLW5hbWUgYnJhbmQgTkZTdjMgYm94LCBCVFcuIE5vIGZhbmN5
+DQpwTkZTIG9yIGV2ZW4gU1NEcy4NCg0KPiANCj4gPiANCj4gPiAtLWIuDQo+ID4gDQo+ID4gPiAN
+Cj4gPiA+IFdlIGFzc3VtZSB0aGF0IGlmIHNvbWV0aGluZyBpcyBzdGFydGluZyB3cml0ZWJhY2sg
+b24gdGhlIHBhZ2VzLA0KPiA+ID4gdGhlbg0KPiA+ID4gdGhhdCBwcm9jZXNzIHdhbnRzIHRvIGNv
+bW1pdCB0aGUgZGF0YSBhcyBzb29uIGFzIHBvc3NpYmxlLA0KPiA+ID4gd2hldGhlcg0KPiA+ID4g
+aXQNCj4gPiA+IGlzIGFuIGFwcGxpY2F0aW9uIG9yIGp1c3QgdGhlIGJhY2tncm91bmQgZmx1c2gg
+cHJvY2Vzcy4NCj4gPiA+IFdlIGFsc28gYXNzdW1lIHRoYXQgZm9yIHN0cmVhbWluZyB0eXBlIHBy
+b2Nlc3Nlcywgd2UgZG9uJ3Qgd2FudA0KPiA+ID4gdG8NCj4gPiA+IHBhdXNlDQo+ID4gPiB0aGUg
+SS9PIGluIG9yZGVyIHRvIGNvbW1pdCwgc28gd2UgZG9uJ3Qgd2FudCB0byByZWx5IG9uIGEgY291
+bnRlcg0KPiA+ID4gb2YNCj4gPiA+IGluLWZsaWdodCBJL08gdG8gdGhlIGVudGlyZSBpbm9kZSBn
+b2luZyB0byB6ZXJvLg0KPiA+ID4gDQo+ID4gPiBXZSB0aGVyZWZvcmUgc2V0IHVwIGEgbW9uaXRv
+ciB0aGF0IGNvdW50cyB0aGUgbnVtYmVyIG9mIGluLWZsaWdodA0KPiA+ID4gd3JpdGVzIGZvciBl
+YWNoIGNhbGwgdG8gbmZzX3dyaXRlcGFnZXMoKS4gT25jZSBhbGwgdGhlIHdyaXRlcyB0bw0KPiA+
+ID4gdGhhdA0KPiA+ID4gY2FsbCB0byBuZnNfd3JpdGVwYWdlcyBoYXMgY29tcGxldGVkLCB3ZSBz
+ZW5kIHRoZSBjb21taXQuIE5vdGUNCj4gPiA+IHRoYXQNCj4gPiA+IHRoaXMNCj4gPiA+IG1pcnJv
+cnMgdGhlIGJlaGF2aW91ciBmb3IgT19ESVJFQ1Qgd3JpdGVzLCB3aGVyZSB3ZSBzaW1pbGFybHkN
+Cj4gPiA+IHRyYWNrDQo+ID4gPiB0aGUNCj4gPiA+IGluLWZsaWdodCB3cml0ZXMgb24gYSBwZXIt
+Y2FsbCBiYXNpcy4NCj4gPiA+IA0KPiA+ID4gVHJvbmQgTXlrbGVidXN0ICgzKToNCj4gPiA+IMKg
+IE5GUzogUmVtb3ZlIHVudXNlZCBmaWVsZHMgaW4gdGhlIHBhZ2UgSS9PIHN0cnVjdHVyZXMNCj4g
+PiA+IMKgIE5GUzogRW5zdXJlIHdlIGNvbW1pdCBhZnRlciB3cml0ZWJhY2sgaXMgY29tcGxldGUN
+Cj4gPiA+IMKgIE5GUzogRml4IGNvbW1pdCBwb2xpY3kgZm9yIG5vbi1ibG9ja2luZyBjYWxscyB0
+bw0KPiA+ID4gbmZzX3dyaXRlX2lub2RlKCkNCj4gPiA+IA0KPiA+ID4gwqBmcy9uZnMvcGFnZWxp
+c3QuY8KgwqDCoMKgwqDCoMKgwqB8wqDCoDUgKystLQ0KPiA+ID4gwqBmcy9uZnMvd3JpdGUuY8Kg
+wqDCoMKgwqDCoMKgwqDCoMKgwqB8IDU5DQo+ID4gPiArKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKy0NCj4gPiA+IMKgaW5jbHVkZS9saW51eC9uZnNfcGFnZS5o
+IHzCoMKgMiArLQ0KPiA+ID4gwqBpbmNsdWRlL2xpbnV4L25mc194ZHIuaMKgwqB8wqDCoDMgKyst
+DQo+ID4gPiDCoDQgZmlsZXMgY2hhbmdlZCwgNjQgaW5zZXJ0aW9ucygrKSwgNSBkZWxldGlvbnMo
+LSkNCj4gPiA+IA0KPiA+ID4gLS3CoA0KPiA+ID4gMi45LjQNCj4gPiA+IA0KPiA+ID4gLS0NCj4g
+PiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNj
+cmliZSBsaW51eC0NCj4gPiA+IG5mcyIgaW4NCj4gPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0
+byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0
+wqDCoGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtDQo+ID4gPiBsDQo+
+ID4gDQo+ID4gDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-> > Make kernfs support superblock creation/mount/remount with fs_context.
-> > 
-> > This requires that sysfs and cgroup, which are built on kernfs, be made to
-> > support fs_context also.
-> 
-> Can you please include a brief rationale for doing this and include a
-> pointer to the fuller description on what's going on?
-
-The overview is that I'm trying to create a method by which mount creation can
-be better parameterised.  This includes:
-
- (1) Improved option passing from userspace.  We're limited to what we can
-     cram into a single page and we have to pass all the options in one go.
-
-     I was impressed by Miklós's idea that he presented at LSF/MM for opening
-     an fd to the filesystem driver, passing the parameters individually by
-     write() and then performing a mount from that, so I could permit:
-
-     (a) Allow each individual option to exceed PAGE_SIZE in size.
-
-     (b) Allow options to contain binary data as no characters need to be
-     	 reserved for parsing tokens (NUL terminators, commas).
-
-     (c) Allow feedback on individual options.
-
-     (d) Allow the filesystem to ask for information, such as passwords.
-
-     (e) Allow selection of a subtree of the "device" to actually use
-     	 (ie. combine a bind mount with the mount).
-
- (2) Loading a context from an already mounted filesystem, thereby providing a
-     better way of doing:
-
-     (a) Bind mounts
-
-     (b) Filesystem reconfiguration.
-
-     (c) Parameter propagation to automounts/submounts.
-
- (3) Up-front parameter parsing and resource allocation.  This allows
-     parameters to be parsed validated and resources to be allocated before we
-     begin the super_block initialisation/creation/loading/whatever process,
-     allowing us to get some error handling out of the way earlier.
-
-     Ext4 has an interesting issue here: it will load the parameters from
-     disk, then overlay them with the parameters given to sys_mount() as it
-     parses them - but this will leave you with a half-set-up superblock if a
-     parse error occurs.  I *think* the new-mount branch just discards the
-     superblock in that case, but in the case of remount, only *some* of the
-     changes will be applied - which is bad.
-
- (4) Better handling of namespaces - the fs_context gives us somewhere to
-     anchor namespaces and potentially configure these before mounting.
-     Certainly, it would give somewhere to pass namespace information to a
-     submount.
-
-     This would potentially make it possible to mount directly into someone
-     else's namespaces for container handing.
-
-
-I'd also like to make it possible to return better error messages from the
-kernel as a lot of different things can go wrong during a mount and we only
-have a small integer to convey this - plus dmesg, which might be inaccessible
-and may mixed up with other things.
-
-Originally, I implemented the supplementary error message handling as hanging
-off the fs_context struct, but that got tricky with NFS because NFS4 creates a
-mount for the root on a server and then invokes pathwalk to the intended path
-from within the ->mount() function.
-
-This pathwalk is expected to trip one or more automount points as changes in
-FSID are detected - but they have no access to the parent fs_context struct in
-which to supplement any error that is incurred.
-
-So I've moved this to task_struct and provided a couple of prctls to manage it
-- this also has the added bonus of making it more widely available and also
-making it potentially useful to determine what happened in the case of an
-automount failure.  However, Al would prefer me to move it back to the
-fs_struct as it's too generic otherwise.
-
-David
