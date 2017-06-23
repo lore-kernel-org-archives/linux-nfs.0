@@ -1,68 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:41554 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752066AbdFWP34 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 11:29:56 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RESEND 0/3] Improvements to page writeback commit policy
-Date: Fri, 23 Jun 2017 15:29:44 +0000
-Message-ID: <1498231782.8584.3.camel@primarydata.com>
-References: <20170620233539.22417-1-trond.myklebust@primarydata.com>
-         <20170623145657.GA31966@fieldses.org>
-         <1498231541.8584.1.camel@primarydata.com>
-In-Reply-To: <1498231541.8584.1.camel@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:40958 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753447AbdFWQGD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 23 Jun 2017 12:06:03 -0400
+Date: Fri, 23 Jun 2017 12:06:02 -0400
+To: Brian Cowan <brian.cowan@hcl.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 2 potentially stupid questions.
+Message-ID: <20170623160602.GC31966@fieldses.org>
+References: <PS1PR04MB1692ED9241F275897AC5F320FEDB0@PS1PR04MB1692.apcprd04.prod.outlook.com>
+ <PS1PR04MB16925A39FB7C41D10CDFAE54FEDB0@PS1PR04MB1692.apcprd04.prod.outlook.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <PS1PR04MB16925A39FB7C41D10CDFAE54FEDB0@PS1PR04MB1692.apcprd04.prod.outlook.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA2LTIzIGF0IDExOjI1IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIEZyaSwgMjAxNy0wNi0yMyBhdCAxMDo1NiAtMDQwMCwgSi4gQnJ1Y2UgRmllbGRzIHdy
-b3RlOg0KPiA+IE9uIFR1ZSwgSnVuIDIwLCAyMDE3IGF0IDA3OjM1OjM1UE0gLTA0MDAsIFRyb25k
-IE15a2xlYnVzdCB3cm90ZToNCj4gPiA+IFRoZSBmb2xsb3dpbmcgcGF0Y2hlcyBhcmUgaW50ZW5k
-ZWQgdG8gc21vb3RoIG91dCB0aGUgcGFnZQ0KPiA+ID4gd3JpdGViYWNrDQo+ID4gPiBwZXJmb3Jt
-YW5jZSBieSBlbnN1cmluZyB0aGF0IHdlIGNvbW1pdCB0aGUgZGF0YSBlYXJsaWVyIG9uIHRoZQ0K
-PiA+ID4gc2VydmVyLg0KPiA+IA0KPiA+IFdhcyB0aGVyZSBzb21lIHBhcnRpY3VsYXIgYmVuY2ht
-YXJrIG9yIGhhcmR3YXJlIHNldHVwIHRoYXQNCj4gPiBtb3RpdmF0ZWQNCj4gPiBkb2luZyB0aGlz
-IG5vdz8NCj4gDQo+IEkgZmluYWxseSBoYWQgZW5vdWdoIGZyZWUgdGltZSB0byBzdHVkeSB0aGUg
-cHJvYmxlbSBvZiB3aHkgbXkgYmFja3Vwcw0KPiBmcm9tIG15IGxhcHRvcCB0byBteSBOQVMgYmFj
-a3VwIGRldmljZSB0b29rIHNvIGxvbmcgdG8gY29tcGxldGUsIGFuZA0KPiB3aHkgdGhlICdyc3lu
-YycgYmFuZHdpZHRoIGRpc3BsYXkgaXMgc28gaW5jb25zaXN0ZW50Lg0KDQpUaGUgTkFTIGRldmlj
-ZSBpbiBxdWVzdGlvbiBpcyBhIG5vLW5hbWUgYnJhbmQgTkZTdjMgYm94LCBCVFcuIE5vIGZhbmN5
-DQpwTkZTIG9yIGV2ZW4gU1NEcy4NCg0KPiANCj4gPiANCj4gPiAtLWIuDQo+ID4gDQo+ID4gPiAN
-Cj4gPiA+IFdlIGFzc3VtZSB0aGF0IGlmIHNvbWV0aGluZyBpcyBzdGFydGluZyB3cml0ZWJhY2sg
-b24gdGhlIHBhZ2VzLA0KPiA+ID4gdGhlbg0KPiA+ID4gdGhhdCBwcm9jZXNzIHdhbnRzIHRvIGNv
-bW1pdCB0aGUgZGF0YSBhcyBzb29uIGFzIHBvc3NpYmxlLA0KPiA+ID4gd2hldGhlcg0KPiA+ID4g
-aXQNCj4gPiA+IGlzIGFuIGFwcGxpY2F0aW9uIG9yIGp1c3QgdGhlIGJhY2tncm91bmQgZmx1c2gg
-cHJvY2Vzcy4NCj4gPiA+IFdlIGFsc28gYXNzdW1lIHRoYXQgZm9yIHN0cmVhbWluZyB0eXBlIHBy
-b2Nlc3Nlcywgd2UgZG9uJ3Qgd2FudA0KPiA+ID4gdG8NCj4gPiA+IHBhdXNlDQo+ID4gPiB0aGUg
-SS9PIGluIG9yZGVyIHRvIGNvbW1pdCwgc28gd2UgZG9uJ3Qgd2FudCB0byByZWx5IG9uIGEgY291
-bnRlcg0KPiA+ID4gb2YNCj4gPiA+IGluLWZsaWdodCBJL08gdG8gdGhlIGVudGlyZSBpbm9kZSBn
-b2luZyB0byB6ZXJvLg0KPiA+ID4gDQo+ID4gPiBXZSB0aGVyZWZvcmUgc2V0IHVwIGEgbW9uaXRv
-ciB0aGF0IGNvdW50cyB0aGUgbnVtYmVyIG9mIGluLWZsaWdodA0KPiA+ID4gd3JpdGVzIGZvciBl
-YWNoIGNhbGwgdG8gbmZzX3dyaXRlcGFnZXMoKS4gT25jZSBhbGwgdGhlIHdyaXRlcyB0bw0KPiA+
-ID4gdGhhdA0KPiA+ID4gY2FsbCB0byBuZnNfd3JpdGVwYWdlcyBoYXMgY29tcGxldGVkLCB3ZSBz
-ZW5kIHRoZSBjb21taXQuIE5vdGUNCj4gPiA+IHRoYXQNCj4gPiA+IHRoaXMNCj4gPiA+IG1pcnJv
-cnMgdGhlIGJlaGF2aW91ciBmb3IgT19ESVJFQ1Qgd3JpdGVzLCB3aGVyZSB3ZSBzaW1pbGFybHkN
-Cj4gPiA+IHRyYWNrDQo+ID4gPiB0aGUNCj4gPiA+IGluLWZsaWdodCB3cml0ZXMgb24gYSBwZXIt
-Y2FsbCBiYXNpcy4NCj4gPiA+IA0KPiA+ID4gVHJvbmQgTXlrbGVidXN0ICgzKToNCj4gPiA+IMKg
-IE5GUzogUmVtb3ZlIHVudXNlZCBmaWVsZHMgaW4gdGhlIHBhZ2UgSS9PIHN0cnVjdHVyZXMNCj4g
-PiA+IMKgIE5GUzogRW5zdXJlIHdlIGNvbW1pdCBhZnRlciB3cml0ZWJhY2sgaXMgY29tcGxldGUN
-Cj4gPiA+IMKgIE5GUzogRml4IGNvbW1pdCBwb2xpY3kgZm9yIG5vbi1ibG9ja2luZyBjYWxscyB0
-bw0KPiA+ID4gbmZzX3dyaXRlX2lub2RlKCkNCj4gPiA+IA0KPiA+ID4gwqBmcy9uZnMvcGFnZWxp
-c3QuY8KgwqDCoMKgwqDCoMKgwqB8wqDCoDUgKystLQ0KPiA+ID4gwqBmcy9uZnMvd3JpdGUuY8Kg
-wqDCoMKgwqDCoMKgwqDCoMKgwqB8IDU5DQo+ID4gPiArKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKy0NCj4gPiA+IMKgaW5jbHVkZS9saW51eC9uZnNfcGFnZS5o
-IHzCoMKgMiArLQ0KPiA+ID4gwqBpbmNsdWRlL2xpbnV4L25mc194ZHIuaMKgwqB8wqDCoDMgKyst
-DQo+ID4gPiDCoDQgZmlsZXMgY2hhbmdlZCwgNjQgaW5zZXJ0aW9ucygrKSwgNSBkZWxldGlvbnMo
-LSkNCj4gPiA+IA0KPiA+ID4gLS3CoA0KPiA+ID4gMi45LjQNCj4gPiA+IA0KPiA+ID4gLS0NCj4g
-PiA+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNj
-cmliZSBsaW51eC0NCj4gPiA+IG5mcyIgaW4NCj4gPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0
-byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+ID4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0
-wqDCoGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtDQo+ID4gPiBsDQo+
-ID4gDQo+ID4gDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Thu, Jun 22, 2017 at 06:51:05PM +0000, Brian Cowan wrote:
+> I need to do some stress testing the product I support accessing
+> storage over NFS v4.1 and compare the performance with NFSv3 (with its
+> lovely NLM) and NFSv4 (with its fun integral client lock retry
+> interval). This brings me to the 2 potentially stupid questions:
+> 
+> 1) Is there a "gold standard" server? I know that the "de facto
+> standard" is usually Solaris, but I'm looking for a something like a
+> "least common denominator" NFS v4.1 server implementation. I'm trying
+> to avoid "test this client [red hat 7.4 snapshot 3 ATM] with this
+> half-dozen servers and see what happens on each" kind of tests since
+> that seriously muddies the waters. Especially since I will need to
+> test Ubuntu 14/16, SuSE 11 & 12, CentOS, etc., clients.
 
+I don't think so.  But I'm not sure I understand what you're looking
+for.  The server your users are most likely to use?  The server likely
+to perform best in your test?  The server most likely to expose corner
+cases or bugs in your product?  But I'm afraid I wouldn't know the
+answers to any of those questions....
+
+> 2) Is there a simple way to set the maximum NFS version on a
+> PER-EXPORT basis on a single server. The "exports" man page is mum on
+> the subject. I'm getting around this by explicitly mounting my
+> "control" (NFSv3) export as NFSv3, but if there is a way to set a max
+> protocol version on the EXPORT, that would simplify testing since I
+> could just use autofs. Yes, I can enable use of, and then tweak,
+> /etc/auto.net to do this, but I'm trying to do the fiddling in just
+> one place as I know that I'll need to do these tests for other Linux
+> distros. Especially since it seems autofs is somewhat twitchy when
+> using /net mounts (sometimes -hosts works, sometimes it doesn't,
+> sometimes using the auto.net file works, other times it doesn't).
+
+On the client side, /etc/nfs.conf can set per-mount protocol version
+preferences.
+
+On the server side, there's no per-export setting.  I don't think that
+would really work--protocol versions are negotiated before the client
+even gets around to looking at a particular export.  You can set
+supported versions globally with options to rpc.nfsd (see man rpc.nfsd)
+and in Fedora you'd set those in /etc/sysconfig/nfs.
+
+> Thanks for any hints.
+> 
+> Bruce, this is the issue where lock contention on NFSv4 would cause
+> lockers on the same machine to go asleep for integral #'s of seconds. 
+
+I've forgotten the report, apologies, but that sort of problem should in
+theory be fixed with changes in 4.9 by Jeff Layton that allow the server
+to notify clients when contended locks are unlocked.
+
+--b.
