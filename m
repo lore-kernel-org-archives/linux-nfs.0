@@ -1,85 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:49427 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754200AbdFWVRq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:17:46 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RESEND 0/3] Improvements to page writeback commit policy
-Date: Fri, 23 Jun 2017 21:17:40 +0000
-Message-ID: <1498252656.8584.5.camel@primarydata.com>
-References: <20170620233539.22417-1-trond.myklebust@primarydata.com>
-         <C653223D-193D-4385-8AA1-11FD38C6CE89@oracle.com>
-         <2062C819-C45A-4E8B-9222-78FB8270FB68@oracle.com>
-In-Reply-To: <2062C819-C45A-4E8B-9222-78FB8270FB68@oracle.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36647 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753598AbdFWVSK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:18:10 -0400
+Subject: [PATCH v3 08/18] svcrdma: Don't account for Receive queue
+ "starvation"
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Fri, 23 Jun 2017 17:18:08 -0400
+Message-ID: <20170623211808.5162.68255.stgit@klimt.1015granger.net>
+In-Reply-To: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
+References: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA2LTIzIGF0IDE2OjQ4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBKdW4gMjEsIDIwMTcsIGF0IDEwOjMxIEFNLCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJA
-b3JhY2xlLmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiA+IA0KPiA+ID4gT24gSnVuIDIwLCAy
-MDE3LCBhdCA3OjM1IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmkNCj4g
-PiA+IG1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gPiANCj4gPiA+IFRoZSBmb2xsb3dpbmcgcGF0
-Y2hlcyBhcmUgaW50ZW5kZWQgdG8gc21vb3RoIG91dCB0aGUgcGFnZQ0KPiA+ID4gd3JpdGViYWNr
-DQo+ID4gPiBwZXJmb3JtYW5jZSBieSBlbnN1cmluZyB0aGF0IHdlIGNvbW1pdCB0aGUgZGF0YSBl
-YXJsaWVyIG9uIHRoZQ0KPiA+ID4gc2VydmVyLg0KPiA+ID4gDQo+ID4gPiBXZSBhc3N1bWUgdGhh
-dCBpZiBzb21ldGhpbmcgaXMgc3RhcnRpbmcgd3JpdGViYWNrIG9uIHRoZSBwYWdlcywNCj4gPiA+
-IHRoZW4NCj4gPiA+IHRoYXQgcHJvY2VzcyB3YW50cyB0byBjb21taXQgdGhlIGRhdGEgYXMgc29v
-biBhcyBwb3NzaWJsZSwNCj4gPiA+IHdoZXRoZXIgaXQNCj4gPiA+IGlzIGFuIGFwcGxpY2F0aW9u
-IG9yIGp1c3QgdGhlIGJhY2tncm91bmQgZmx1c2ggcHJvY2Vzcy4NCj4gPiA+IFdlIGFsc28gYXNz
-dW1lIHRoYXQgZm9yIHN0cmVhbWluZyB0eXBlIHByb2Nlc3Nlcywgd2UgZG9uJ3Qgd2FudA0KPiA+
-ID4gdG8gcGF1c2UNCj4gPiA+IHRoZSBJL08gaW4gb3JkZXIgdG8gY29tbWl0LCBzbyB3ZSBkb24n
-dCB3YW50IHRvIHJlbHkgb24gYSBjb3VudGVyDQo+ID4gPiBvZg0KPiA+ID4gaW4tZmxpZ2h0IEkv
-TyB0byB0aGUgZW50aXJlIGlub2RlIGdvaW5nIHRvIHplcm8uDQo+ID4gPiANCj4gPiA+IFdlIHRo
-ZXJlZm9yZSBzZXQgdXAgYSBtb25pdG9yIHRoYXQgY291bnRzIHRoZSBudW1iZXIgb2YgaW4tZmxp
-Z2h0DQo+ID4gPiB3cml0ZXMgZm9yIGVhY2ggY2FsbCB0byBuZnNfd3JpdGVwYWdlcygpLiBPbmNl
-IGFsbCB0aGUgd3JpdGVzIHRvDQo+ID4gPiB0aGF0DQo+ID4gPiBjYWxsIHRvIG5mc193cml0ZXBh
-Z2VzIGhhcyBjb21wbGV0ZWQsIHdlIHNlbmQgdGhlIGNvbW1pdC4gTm90ZQ0KPiA+ID4gdGhhdCB0
-aGlzDQo+ID4gPiBtaXJyb3JzIHRoZSBiZWhhdmlvdXIgZm9yIE9fRElSRUNUIHdyaXRlcywgd2hl
-cmUgd2Ugc2ltaWxhcmx5DQo+ID4gPiB0cmFjayB0aGUNCj4gPiA+IGluLWZsaWdodCB3cml0ZXMg
-b24gYSBwZXItY2FsbCBiYXNpcy4NCj4gPiANCj4gPiBUaGVzZSBhcmUgdGhlIHNhbWUgYXMgdGhl
-IHBhdGNoZXMgeW91IHNlbnQgTWF5IDE2dGg/DQo+ID4gSSBhbSB0cnlpbmcgdG8gZ2V0IGEgbGl0
-dGxlIHRpbWUgdG8gdHJ5IHRoZW0gb3V0Lg0KPiANCj4gQWZ0ZXIgYXBwbHlpbmcgdGhlc2UgZm91
-ciBwYXRjaGVzLCBJIHJhbiBhIHNlcmllcyBvZiBpb3pvbmUNCj4gYmVuY2htYXJrcyB3aXRoIGJ1
-ZmZlcmVkIGFuZCBkaXJlY3QgSS9PLiBORlN2MyBhbmQgTkZTdjQuMA0KPiBvbiBSRE1BLiBFeHBv
-cnRzIHdlcmUgdG1wZnMgYW5kIHhmcyBvbiBOVk1lLg0KPiANCj4gSSBzZWUgYWJvdXQgYSAxMCUg
-aW1wcm92ZW1lbnQgaW4gYnVmZmVyZWQgd3JpdGUgdGhyb3VnaHB1dCwNCj4gbm8gZGVncmFkYXRp
-b24gZWxzZXdoZXJlLCBhbmQgbm8gY3Jhc2hlcyBvciBvdGhlciBtaXNiZWhhdi0NCj4gaW9yLg0K
-DQpDb29sISBUaGFua3MgZm9yIHRlc3RpbmcuDQoNCj4gDQo+IHhmc3Rlc3RzIHBhc3NlcyB3aXRo
-IHRoZSB1c3VhbCBmZXcgZmFpbHVyZXMuDQo+IA0KPiBCdWZmZXJlZCB3cml0ZSB0aHJvdWdocHV0
-IGlzIHN0aWxsIGxpbWl0ZWQgdG8gMUdCcHMgd2hlbg0KPiB0YXJnZXRpbmcgYSB0bXBmcyBleHBv
-cnQgb24gYSA1LjZHQnBzIG5ldHdvcmsuIFRoZSBzZXJ2ZXINCj4gaXNuJ3QgYnJlYWtpbmcgYSBz
-d2VhdCwgYnV0IHRoZSBjbGllbnQgYXBwZWFycyB0byBiZSBoaXQtDQo+IHRpbmcgc29tZSBzcGlu
-IGxvY2tzIHByZXR0eSBoYXJkLiBUaGlzIGlzIHNpbWlsYXIgYmVoYXZpb3INCj4gdG8gYmVmb3Jl
-IHRoZSBwYXRjaGVzIHdlcmUgYXBwbGllZC4NCg0KSnVzdCBvdXQgb2YgY3VyaW9zaXR5LCBkbyB5
-b3Ugc2VlIHRoZSBzYW1lIGJlaGF2aW91ciB3aXRoIE9fRElSRUNUDQphZ2FpbnN0IHRoZSB0bXBm
-cz8gVGhlcmUgYXJlIDIgZGlmZmVyZW5jZXMgdGhlcmU6DQoxKSBubyBpbm9kZV9sb2NrKGlub2Rl
-KSBjb250ZW50aW9uLg0KMikgc2xpZ2hseSBsZXNzIGlub2RlLT5pX2xvY2sgc3BpbmxvY2sgY29u
-dGVudGlvbi4NCg0KPiANCj4gPiA+IFRyb25kIE15a2xlYnVzdCAoMyk6DQo+ID4gPiBORlM6IFJl
-bW92ZSB1bnVzZWQgZmllbGRzIGluIHRoZSBwYWdlIEkvTyBzdHJ1Y3R1cmVzDQo+ID4gPiBORlM6
-IEVuc3VyZSB3ZSBjb21taXQgYWZ0ZXIgd3JpdGViYWNrIGlzIGNvbXBsZXRlDQo+ID4gPiBORlM6
-IEZpeCBjb21taXQgcG9saWN5IGZvciBub24tYmxvY2tpbmcgY2FsbHMgdG8NCj4gPiA+IG5mc193
-cml0ZV9pbm9kZSgpDQo+ID4gPiANCj4gPiA+IGZzL25mcy9wYWdlbGlzdC5jwqDCoMKgwqDCoMKg
-wqDCoHzCoMKgNSArKy0tDQo+ID4gPiBmcy9uZnMvd3JpdGUuY8KgwqDCoMKgwqDCoMKgwqDCoMKg
-wqB8IDU5DQo+ID4gPiArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrKy0NCj4gPiA+IGluY2x1ZGUvbGludXgvbmZzX3BhZ2UuaCB8wqDCoDIgKy0NCj4gPiA+IGlu
-Y2x1ZGUvbGludXgvbmZzX3hkci5owqDCoHzCoMKgMyArKy0NCj4gPiA+IDQgZmlsZXMgY2hhbmdl
-ZCwgNjQgaW5zZXJ0aW9ucygrKSwgNSBkZWxldGlvbnMoLSkNCj4gPiA+IA0KPiA+ID4gLS3CoA0K
-PiA+ID4gMi45LjQNCj4gPiA+IA0KPiA+ID4gLS0NCj4gPiA+IFRvIHVuc3Vic2NyaWJlIGZyb20g
-dGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC0NCj4gPiA+IG5mcyIg
-aW4NCj4gPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwu
-b3JnDQo+ID4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0wqDCoGh0dHA6Ly92Z2VyLmtlcm5lbC5v
-cmcvbWFqb3Jkb21vLWluZm8uaHRtDQo+ID4gPiBsDQo+ID4gDQo+ID4gLS0NCj4gPiBDaHVjayBM
-ZXZlcg0KPiA+IA0KPiA+IA0KPiA+IA0KPiA+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
-aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LQ0KPiA+IG5mcyIgaW4N
-Cj4gPiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0K
-PiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXTCoMKgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpv
-cmRvbW8taW5mby5odG1sDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4gDQo+IA0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURh
-dGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+>From what I can tell, calling ->recvfrom when there is no work to do
+is a normal part of operation. This is the only way svc_recv can
+tell when there is no more data ready to receive on the transport.
+
+Neither the TCP nor the UDP transport implementations have a
+"starve" metric.
+
+The cost of receive starvation accounting is bumping an atomic, which
+results in extra (IMO unnecessary) bus traffic between CPU sockets,
+while holding a spin lock.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   21 ++++++---------------
+ 1 file changed, 6 insertions(+), 15 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+index b480893..1452bd0 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+@@ -844,9 +844,9 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 	struct svc_xprt *xprt = rqstp->rq_xprt;
+ 	struct svcxprt_rdma *rdma_xprt =
+ 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
+-	struct svc_rdma_op_ctxt *ctxt = NULL;
++	struct svc_rdma_op_ctxt *ctxt;
+ 	struct rpcrdma_msg *rmsgp;
+-	int ret = 0;
++	int ret;
+ 
+ 	dprintk("svcrdma: rqstp=%p\n", rqstp);
+ 
+@@ -863,21 +863,13 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 					struct svc_rdma_op_ctxt, list);
+ 		list_del(&ctxt->list);
+ 	} else {
+-		atomic_inc(&rdma_stat_rq_starve);
++		/* No new incoming requests, terminate the loop */
+ 		clear_bit(XPT_DATA, &xprt->xpt_flags);
+-		ctxt = NULL;
++		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
++		return 0;
+ 	}
+ 	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
+-	if (!ctxt) {
+-		/* This is the EAGAIN path. The svc_recv routine will
+-		 * return -EAGAIN, the nfsd thread will go to call into
+-		 * svc_recv again and we shouldn't be on the active
+-		 * transport list
+-		 */
+-		if (test_bit(XPT_CLOSE, &xprt->xpt_flags))
+-			goto defer;
+-		goto out;
+-	}
++
+ 	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p\n",
+ 		ctxt, rdma_xprt, rqstp);
+ 	atomic_inc(&rdma_stat_recv);
+@@ -920,7 +912,6 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
+ 		+ rqstp->rq_arg.page_len
+ 		+ rqstp->rq_arg.tail[0].iov_len;
+ 	svc_rdma_put_context(ctxt, 0);
+- out:
+ 	dprintk("svcrdma: ret=%d, rq_arg.len=%u, "
+ 		"rq_arg.head[0].iov_base=%p, rq_arg.head[0].iov_len=%zd\n",
+ 		ret, rqstp->rq_arg.len,
 
