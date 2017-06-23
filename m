@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:36647 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753598AbdFWVSK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:18:10 -0400
-Subject: [PATCH v3 08/18] svcrdma: Don't account for Receive queue
- "starvation"
+Received: from mail-it0-f68.google.com ([209.85.214.68]:32809 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754075AbdFWVSX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:18:23 -0400
+Subject: [PATCH v3 09/18] sunrpc: Allocate one more page per svc_rqst
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 23 Jun 2017 17:18:08 -0400
-Message-ID: <20170623211808.5162.68255.stgit@klimt.1015granger.net>
+Date: Fri, 23 Jun 2017 17:18:16 -0400
+Message-ID: <20170623211816.5162.54447.stgit@klimt.1015granger.net>
 In-Reply-To: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
 References: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -17,70 +16,68 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From what I can tell, calling ->recvfrom when there is no work to do
-is a normal part of operation. This is the only way svc_recv can
-tell when there is no more data ready to receive on the transport.
+svcrdma needs 259 pages for 1MB NFSv4.0 READ requests:
 
-Neither the TCP nor the UDP transport implementations have a
-"starve" metric.
+ - 1 page for the transport header and head iovec
+ - 256 pages for the data payload
+ - 1 page for the trailing GETATTR request (since NFSD XDR decoding
+   does not look for a tail iovec, the GETATTR is stuck at the end
+   of the rqstp->rq_arg.pages list)
+ - 1 page for building the reply xdr_buf
 
-The cost of receive starvation accounting is bumping an atomic, which
-results in extra (IMO unnecessary) bus traffic between CPU sockets,
-while holding a spin lock.
+Note that RPCSVC_MAXPAGES is defined as:
+
+	((RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_SIZE + 2 + 1)
+
+I don't understand why the "+PAGE_SIZE-1" is in there, because
+division will always round the result down to
+
+	(RPCSVC_MAXPAYLOAD / PAGE_SIZE + 2 + 1)
+
+Let's remove the "-1" to get 260 pages maximum.
+
+Then svc_alloc_args() needs to ask for pages according to this
+same formula, otherwise it will never allocate enough.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   21 ++++++---------------
- 1 file changed, 6 insertions(+), 15 deletions(-)
+ include/linux/sunrpc/svc.h |    3 +--
+ net/sunrpc/svc_xprt.c      |    8 +++++---
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index b480893..1452bd0 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -844,9 +844,9 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 	struct svc_xprt *xprt = rqstp->rq_xprt;
- 	struct svcxprt_rdma *rdma_xprt =
- 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
--	struct svc_rdma_op_ctxt *ctxt = NULL;
-+	struct svc_rdma_op_ctxt *ctxt;
- 	struct rpcrdma_msg *rmsgp;
--	int ret = 0;
-+	int ret;
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 11cef5a..35c274f 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -176,8 +176,7 @@ static inline void svc_get(struct svc_serv *serv)
+  * We using ->sendfile to return read data, we might need one extra page
+  * if the request is not page-aligned.  So add another '1'.
+  */
+-#define RPCSVC_MAXPAGES		((RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_SIZE \
+-				+ 2 + 1)
++#define RPCSVC_MAXPAGES	((RPCSVC_MAXPAYLOAD + PAGE_SIZE) / PAGE_SIZE + 2 + 1)
  
- 	dprintk("svcrdma: rqstp=%p\n", rqstp);
+ static inline u32 svc_getnl(struct kvec *iov)
+ {
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 7bfe1fb..9bd484d 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -659,11 +659,13 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 	int i;
  
-@@ -863,21 +863,13 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 					struct svc_rdma_op_ctxt, list);
- 		list_del(&ctxt->list);
- 	} else {
--		atomic_inc(&rdma_stat_rq_starve);
-+		/* No new incoming requests, terminate the loop */
- 		clear_bit(XPT_DATA, &xprt->xpt_flags);
--		ctxt = NULL;
-+		spin_unlock(&rdma_xprt->sc_rq_dto_lock);
-+		return 0;
- 	}
- 	spin_unlock(&rdma_xprt->sc_rq_dto_lock);
--	if (!ctxt) {
--		/* This is the EAGAIN path. The svc_recv routine will
--		 * return -EAGAIN, the nfsd thread will go to call into
--		 * svc_recv again and we shouldn't be on the active
--		 * transport list
--		 */
--		if (test_bit(XPT_CLOSE, &xprt->xpt_flags))
--			goto defer;
--		goto out;
--	}
-+
- 	dprintk("svcrdma: processing ctxt=%p on xprt=%p, rqstp=%p\n",
- 		ctxt, rdma_xprt, rqstp);
- 	atomic_inc(&rdma_stat_recv);
-@@ -920,7 +912,6 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 		+ rqstp->rq_arg.page_len
- 		+ rqstp->rq_arg.tail[0].iov_len;
- 	svc_rdma_put_context(ctxt, 0);
-- out:
- 	dprintk("svcrdma: ret=%d, rq_arg.len=%u, "
- 		"rq_arg.head[0].iov_base=%p, rq_arg.head[0].iov_len=%zd\n",
- 		ret, rqstp->rq_arg.len,
+ 	/* now allocate needed pages.  If we get a failure, sleep briefly */
+-	pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
+-	WARN_ON_ONCE(pages >= RPCSVC_MAXPAGES);
+-	if (pages >= RPCSVC_MAXPAGES)
++	pages = (serv->sv_max_mesg + (2 * PAGE_SIZE)) >> PAGE_SHIFT;
++	if (pages >= RPCSVC_MAXPAGES) {
++		pr_warn_once("svc: warning: pages=%u >= RPCSVC_MAXPAGES=%lu\n",
++			     pages, RPCSVC_MAXPAGES);
+ 		/* use as many pages as possible */
+ 		pages = RPCSVC_MAXPAGES - 1;
++	}
+ 	for (i = 0; i < pages ; i++)
+ 		while (rqstp->rq_pages[i] == NULL) {
+ 			struct page *p = alloc_page(GFP_KERNEL);
 
