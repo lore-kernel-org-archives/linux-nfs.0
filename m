@@ -1,100 +1,135 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:34417 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752170AbdFWVRB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:17:01 -0400
-Subject: [PATCH v3 00/18] Server-side NFS/RDMA changes proposed for v4.13
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34324 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752170AbdFWVRJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Jun 2017 17:17:09 -0400
+Subject: [PATCH v3 01/18] sunrpc: Disable splice for krb5i
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 23 Jun 2017 17:16:59 -0400
-Message-ID: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
+Date: Fri, 23 Jun 2017 17:17:07 -0400
+Message-ID: <20170623211707.5162.1679.stgit@klimt.1015granger.net>
+In-Reply-To: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
+References: <20170623211150.5162.59075.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
+Running a multi-threaded 8KB fio test (70/30 mix), three or four out
+of twelve of the jobs fail when using krb5i. The failure is an EIO
+on a read.
 
-This series overhauls the "call receive" side of the RPC-over-RDMA
-transport to use the new rdma_rw API. A slight performance increase
-(better throughput and latency) has been seen. Benefits include:
+Troubleshooting confirmed the EIO results when the client fails to
+verify the MIC of an NFS READ reply. Bruce suggested the problem
+could be due to the data payload changing between the time the
+reply's MIC was computed on the server and the time the reply was
+actually sent.
 
-o Fewer ib_post_send calls per RPC Call
+krb5p gets around this problem by disabling RQ_SPLICE_OK. Use the
+same mechanism for krb5i RPCs.
 
-o Code duplicated by other ULPs is replaced with core functions
+"iozone -i0 -i1 -s128m -y1k -az -I", export is tmpfs, mount is
+sec=krb5i,vers=3,proto=rdma. The important numbers are the
+read / reread column.
 
-o Position-Zero Read chunks are handled in one function
+Here's without the RQ_SPLICE_OK patch:
 
-o More thorough transport header sanity checking
+              kB  reclen    write  rewrite    read    reread
+          131072       1     7546     7929     8396     8267
+          131072       2    14375    14600    15843    15639
+          131072       4    19280    19248    21303    21410
+          131072       8    32350    31772    35199    34883
+          131072      16    36748    37477    49365    51706
+          131072      32    55669    56059    57475    57389
+          131072      64    74599    75190    74903    75550
+          131072     128    99810   101446   102828   102724
+          131072     256   122042   122612   124806   125026
+          131072     512   137614   138004   141412   141267
+          131072    1024   146601   148774   151356   151409
+          131072    2048   180684   181727   293140   292840
+          131072    4096   206907   207658   552964   549029
+          131072    8192   223982   224360   454493   473469
+          131072   16384   228927   228390   654734   632607
 
+And here's with it:
 
-IMO these are ready for you to consider for v4.13. Have a pleasant
-weekend.
+              kB  reclen    write  rewrite    read    reread
+          131072       1     7700     7365     7958     8011
+          131072       2    13211    13303    14937    14414
+          131072       4    19001    19265    20544    20657
+          131072       8    30883    31097    34255    33566
+          131072      16    36868    34908    51499    49944
+          131072      32    56428    55535    58710    56952
+          131072      64    73507    74676    75619    74378
+          131072     128   100324   101442   103276   102736
+          131072     256   122517   122995   124639   124150
+          131072     512   137317   139007   140530   140830
+          131072    1024   146807   148923   151246   151072
+          131072    2048   179656   180732   292631   292034
+          131072    4096   206216   208583   543355   541951
+          131072    8192   223738   224273   494201   489372
+          131072   16384   229313   229840   691719   668427
 
+I would say that there is not much difference in this test.
 
-Available in the "nfsd-rdma-for-4.13" topic branch of this git repo:
+For good measure, here's the same test with sec=krb5p:
 
-git://git.linux-nfs.org/projects/cel/cel-2.6.git
+              kB  reclen    write  rewrite    read    reread
+          131072       1     5982     5881     6137     6218
+          131072       2    10216    10252    10850    10932
+          131072       4    12236    12575    15375    15526
+          131072       8    15461    15462    23821    22351
+          131072      16    25677    25811    27529    27640
+          131072      32    31903    32354    34063    33857
+          131072      64    42989    43188    45635    45561
+          131072     128    52848    53210    56144    56141
+          131072     256    59123    59214    62691    62933
+          131072     512    63140    63277    66887    67025
+          131072    1024    65255    65299    69213    69140
+          131072    2048    76454    76555   133767   133862
+          131072    4096    84726    84883   251925   250702
+          131072    8192    89491    89482   270821   276085
+          131072   16384    91572    91597   361768   336868
 
-
-Or for browsing:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-for-4.13
-
-
-Remaining rdma_rw API changes are here:
-
-http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=log;h=refs/heads/nfsd-rdma-rw-api
-
-
-Changes since v2:
-* Rebased on v4.12-rc6 to pick up an RDMA CM fix
-* Fix op_ctxt leak when client forces a disconnect
-* Updated krb5i RQ_SPLICE_OK fix based on review comments
-* Dropped enable-force-mr patch
-
-
-Changes since v1:
-* Fixed bugzilla.linux-nfs 307
-* Cleaned up struct svc_rdma_chunk_ctxt
-
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=307
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
+ net/sunrpc/auth_gss/svcauth_gss.c |    8 ++++++++
+ net/sunrpc/svc.c                  |    2 +-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 
-Chuck Lever (18):
-      sunrpc: Disable splice for krb5i
-      svcrdma: Squelch disconnection messages
-      svcrdma: Avoid Send Queue overflow
-      svcrdma: Remove svc_rdma_marshal.c
-      svcrdma: Improve Read chunk sanity checking
-      svcrdma: Improve Write chunk sanity checking
-      svcrdma: Improve Reply chunk sanity checking
-      svcrdma: Don't account for Receive queue "starvation"
-      sunrpc: Allocate one more page per svc_rqst
-      svcrdma: Add recvfrom helpers to svc_rdma_rw.c
-      svcrdma: Use generic RDMA R/W API in RPC Call path
-      svcrdma: Properly compute .len and .buflen for received RPC Calls
-      svcrdma: Remove unused Read completion handlers
-      svcrdma: Remove frmr cache
-      svcrdma: Clean-up svc_rdma_unmap_dma
-      svcrdma: Clean up after converting svc_rdma_recvfrom to rdma_rw API
-      svcrdma: use offset_in_page() macro
-      svcrdma: Remove svc_rdma_chunk_ctxt::cc_dir field
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index a54a7a3..7b1ee5a 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -838,6 +838,14 @@ u32 svcauth_gss_flavor(struct auth_domain *dom)
+ 	struct xdr_netobj mic;
+ 	struct xdr_buf integ_buf;
+ 
++	/* NFS READ normally uses splice to send data in-place. However
++	 * the data in cache can change after the reply's MIC is computed
++	 * but before the RPC reply is sent. To prevent the client from
++	 * rejecting the server-computed MIC in this somewhat rare case,
++	 * do not use splice with the GSS integrity service.
++	 */
++	clear_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
++
+ 	/* Did we already verify the signature on the original pass through? */
+ 	if (rqstp->rq_deferred)
+ 		return 0;
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index bc0f5a0..3dd8e86 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -1166,7 +1166,7 @@ static __printf(2,3) void svc_printk(struct svc_rqst *rqstp, const char *fmt, ..
+ 	if (argv->iov_len < 6*4)
+ 		goto err_short_len;
+ 
+-	/* Will be turned off only in gss privacy case: */
++	/* Will be turned off by GSS integrity and privacy services */
+ 	set_bit(RQ_SPLICE_OK, &rqstp->rq_flags);
+ 	/* Will be turned off only when NFSv4 Sessions are used */
+ 	set_bit(RQ_USEDEFERRAL, &rqstp->rq_flags);
 
-
- include/linux/sunrpc/svc.h               |    3 
- include/linux/sunrpc/svc_rdma.h          |   46 --
- net/sunrpc/auth_gss/svcauth_gss.c        |    8 
- net/sunrpc/svc.c                         |    2 
- net/sunrpc/svc_xprt.c                    |    8 
- net/sunrpc/xprtrdma/Makefile             |    4 
- net/sunrpc/xprtrdma/svc_rdma_marshal.c   |  168 -------
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  734 ++++++++++++------------------
- net/sunrpc/xprtrdma/svc_rdma_rw.c        |  449 ++++++++++++++++++
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |   15 -
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  250 +---------
- 11 files changed, 776 insertions(+), 911 deletions(-)
- delete mode 100644 net/sunrpc/xprtrdma/svc_rdma_marshal.c
-
---
-Chuck Lever
