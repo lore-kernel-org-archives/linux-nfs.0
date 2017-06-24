@@ -1,96 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gws08.hcl.com ([192.8.186.131]:35150 "EHLO GWS08.hcl.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754075AbdFXAm3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 23 Jun 2017 20:42:29 -0400
-From: Brian Cowan <brian.cowan@hcl.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: 2 potentially stupid questions.
-Date: Sat, 24 Jun 2017 00:42:22 +0000
-Message-ID: <PS1PR04MB169239A023BD84231758EE09FED90@PS1PR04MB1692.apcprd04.prod.outlook.com>
-References: <PS1PR04MB1692ED9241F275897AC5F320FEDB0@PS1PR04MB1692.apcprd04.prod.outlook.com>
- <PS1PR04MB16925A39FB7C41D10CDFAE54FEDB0@PS1PR04MB1692.apcprd04.prod.outlook.com>
- <20170623160602.GC31966@fieldses.org>
-In-Reply-To: <20170623160602.GC31966@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from [211.160.166.214] ([211.160.166.214]:1266 "HELO mail.roma.sh.cn"
+        rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with SMTP
+        id S1751073AbdFXFY0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 24 Jun 2017 01:24:26 -0400
+Reply-To: EMAILQUNFA@163.COM
+Message-ID: <32B33AFE522D731E2AD7C96F58DAE415@atlcnvcn>
+From: 9jtjqesi <acozheng@mail.roma.sh.cn>
+Subject: =?utf-8?B?bGlucm9uZ+KYhVNFTUEgU0hPV+KYhSAy?=
+        =?utf-8?B?MDE356ysNDnlsYrnvo7lm73mi4nmlq/nu7TliqDmlq/lm73pmYXmsb3ovabmlLnoo4U=?=
+        =?utf-8?B?5Y+K6YWN5Lu255So5ZOB5bGVIOKAlOKAlCDlhajnkIPop4TmqKHmnIDlpKfmsb3ovabliLbpgKA=?=
+        =?utf-8?B?5Lia5bGV5LyaICAgW+WcsOWPs1A0L0wxMDAtWl0=?=
+Date: Sat, 24 Jun 2017 13:10:44 +0800
 MIME-Version: 1.0
+Content-Type: text/plain;
+        charset="utf-8"
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Well, I'm trying to avoid having to test against 2 filers (Netapp and emc), at least 2 versions of each of 3 linux distributions (Red Hat 6.x and 7.x, SuSE 11 and 12, ubuntu 12, 14, and 16) and Solaris 11 (Sparc and x86) as servers, against each of those Unix OS's as clients. Right about now I'm happy I don't need to test using WINDOWS NFS client/server products, because so few of those work consistently even inside the same major version.a complete test could trference as many as 99 client/server combinations. Given that a single test run takes just over an hour and a half for data collection... And my first attempt at data analysis took longer (need to write a script to process the log files into a summary instead of importing 20 400,000 line TSV files into excel). 
-
-My hope was that we someone could say that "x" was the server "reference" implementation. IOW, if the server didn't act like "x" (which used to be "Solaris" back in the day) it was arguable that the server was defective.
-
-At least some of the 4.9 changes are getting backported to 3.10 kernels, at least for Red Hat 7. Since the RH Bugzilla doesn't talk about RH 6.x, I can remove it from consideration, but if I don't test, and test across client/server releases, I don't think anyone will, at which time we wind up playing distro roulette.  
-
-As it stands, I saw some odd behavior in the RH 7.4 beta that I may need to reproduce in 4.9... Apparently something is allergic to odd numbers in redhat's version of the NFSv4.1 client/server. I get odd peaks in the maximum lockf call time when there is an odd number of lockers. We're talking maximum times >10,000x the mean lock time. 
-
-If someone else wants to verify the odd findings I can post my c source and the script file to run the 1-20-locker tests.
-
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of J. Bruce Fields
-Sent: Friday, June 23, 2017 12:06 PM
-To: Brian Cowan <brian.cowan@hcl.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: 2 potentially stupid questions.
-
-On Thu, Jun 22, 2017 at 06:51:05PM +0000, Brian Cowan wrote:
-> I need to do some stress testing the product I support accessing 
-> storage over NFS v4.1 and compare the performance with NFSv3 (with its 
-> lovely NLM) and NFSv4 (with its fun integral client lock retry 
-> interval). This brings me to the 2 potentially stupid questions:
-> 
-> 1) Is there a "gold standard" server? I know that the "de facto 
-> standard" is usually Solaris, but I'm looking for a something like a 
-> "least common denominator" NFS v4.1 server implementation. I'm trying 
-> to avoid "test this client [red hat 7.4 snapshot 3 ATM] with this 
-> half-dozen servers and see what happens on each" kind of tests since 
-> that seriously muddies the waters. Especially since I will need to 
-> test Ubuntu 14/16, SuSE 11 & 12, CentOS, etc., clients.
-
-I don't think so.  But I'm not sure I understand what you're looking for.  The server your users are most likely to use?  The server likely to perform best in your test?  The server most likely to expose corner cases or bugs in your product?  But I'm afraid I wouldn't know the answers to any of those questions....
-
-> 2) Is there a simple way to set the maximum NFS version on a 
-> PER-EXPORT basis on a single server. The "exports" man page is mum on 
-> the subject. I'm getting around this by explicitly mounting my 
-> "control" (NFSv3) export as NFSv3, but if there is a way to set a max 
-> protocol version on the EXPORT, that would simplify testing since I 
-> could just use autofs. Yes, I can enable use of, and then tweak, 
-> /etc/auto.net to do this, but I'm trying to do the fiddling in just 
-> one place as I know that I'll need to do these tests for other Linux 
-> distros. Especially since it seems autofs is somewhat twitchy when 
-> using /net mounts (sometimes -hosts works, sometimes it doesn't, 
-> sometimes using the auto.net file works, other times it doesn't).
-
-On the client side, /etc/nfs.conf can set per-mount protocol version preferences.
-
-On the server side, there's no per-export setting.  I don't think that would really work--protocol versions are negotiated before the client even gets around to looking at a particular export.  You can set supported versions globally with options to rpc.nfsd (see man rpc.nfsd) and in Fedora you'd set those in /etc/sysconfig/nfs.
-
-> Thanks for any hints.
-> 
-> Bruce, this is the issue where lock contention on NFSv4 would cause 
-> lockers on the same machine to go asleep for integral #'s of seconds.
-
-I've forgotten the report, apologies, but that sort of problem should in theory be fixed with changes in 4.9 by Jeff Layton that allow the server to notify clients when contended locks are unlocked.
-
---b.
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
-::DISCLAIMER::
-----------------------------------------------------------------------------------------------------------------------------------------------------
-
-The contents of this e-mail and any attachment(s) are confidential and intended for the named recipient(s) only.
-E-mail transmission is not guaranteed to be secure or error-free as information could be intercepted, corrupted,
-lost, destroyed, arrive late or incomplete, or may contain viruses in transmission. The e mail and its contents
-(with or without referred errors) shall therefore not attach any liability on the originator or HCL or its affiliates.
-Views or opinions, if any, presented in this email are solely those of the author and may not necessarily reflect the
-views or opinions of HCL or its affiliates. Any form of reproduction, dissemination, copying, disclosure, modification,
-distribution and / or publication of this message without the prior written consent of authorized representative of
-HCL is strictly prohibited. If you have received this email in error please delete it and notify the sender immediately.
-Before opening any email and/or attachments, please check them for viruses and other defects.
-
-----------------------------------------------------------------------------------------------------------------------------------------------------
+bGlucm9uZw0K44CA44CADQrlsIrmlaznmoQg5LyB5Lia6aKG5a+8L+WFrOWPuOi0n+i0o+S6ui/k
+uJrnlYzkuJPlrrbvvIzmgqjlpb3vvJoNCuOAgOOAgA0K44CA44CA546w5bCG4oCc5YWo55CD6KeE
+5qih5pyA5aSn55qE44CB5Y6G5Y+y5pyA5oKg5LmF44CB5pyA6JGX5ZCN55qE5rG96L2m5Yi26YCg
+5Lia6LS45piT5Y+K5rG96L2m5ZSu5ZCO5pyN5Yqh5biC5Zy65LiT5Lia5bGV5Lya4oCd44CMU0VN
+QSBTSE9XIDIwMTcgJiBBQVBFWCBTSE9XIDIwMTfjgI3otYTorq/lj5HpgIHnu5nmgqjjgIINCuOA
+gOOAgOivt+enr+aegeWPguS4juOAgeWFseS6q+ebm+S8mu+8myAg5o+Q5YmN5a6J5o6S44CB6LWi
+5b6X5YWI5py6ICDigJTigJQgDQrjgIDjgIANClNFTUEgU0hPVyAyMDE3ICAmICBBQVBFWCBTSE9X
+IDIwMTcNCjIwMTfnrKw0OeWxiue+juWbveaLieaWr+e7tOWKoOaWr+WbvemZheaxvei9puaUueij
+heWPiumFjeS7tueUqOWTgeWxleiniOS8mg0K44CA44CADQrjgIDjgIANCu+8keOAgSDln7og5pys
+IOS/oSDmga8g77ya44CA44CA44CA44CA44CA44CA44CA44CADQrjgIDjgIANCuWxleS8muWQjeen
+sO+8miAyMDE356ysNDnlsYrnvo7lm73mi4nmlq/nu7TliqDmlq/lm73pmYXmsb3ovabmlLnoo4Xl
+j4rnlKjlk4HlsZXop4jkvJog77yIU0VNQSBTSE9XIDIwMTbvvIkNCuOAgOOAgOOAgOOAgOOAgCAy
+MDE356ysNDnlsYrnvo7lm73mi4nmlq/nu7TliqDmlq/lm73pmYXmsb3ovabphY3ku7blj4rllK7l
+kI7mnI3liqHljZrop4jkvJog77yIQUFQRVggU0hPVyAyMDE277yJIA0K5bGV5Lya5pe26Ze077ya
+IDIwMTflubQxMOaciDMx5pel4oCUMTHmnIgwM+aXpQ0K5bGV5Lya5Zyw54K577yaIOe+juWbveaL
+ieaWr+e7tOWKoOaWr+WbvemZheS8muWxleS4reW/gyDvvIhMYXMgVmVnYXMgQ29udmVudGlvbiBD
+ZW50ZXIgVVNB77yJDQrlsZXkvJrlkajmnJ/vvJog5LiA5bm05LiA5bGKIO+8iDIwMTflubTkuLrn
+rKw0OeWxiu+8iQ0K5oql5ZCN5oiq5q2i77yaIDIwMTflubQwNuaciDMw5pelDQrjgIDjgIANCuS4
+u+WKnuWNleS9je+8miDnvo7lm73msb3ovabkuI7orr7lpIfliLbpgKDllYbljY/kvJrvvIhTRU1B
+77yJ44CBIOe+juWbveaxvei9pue7tOS/ruacjeWKoeS4muWNj+S8mu+8iEFTSUHvvInjgIEg576O
+5Zu95rG96L2m6Zu26YOo5Lu25Y2P5Lya77yIQVBBQe+8iQ0K57uE5Yqe5Y2V5L2N77yaIOS4reWb
+veWbvemZhei0uOS/g+S8mu+8iENDUElU77yJ44CBIOaYoOW+t+WbvemZheS8muWxleaciemZkOWF
+rOWPuO+8iFlPTkQgRVhQT++8iQ0K5Zyo57q/5a6i5pyN77yaIFFRL+mCrueusS8gODI3NzU1MDdA
+cXEuY29t77ybIOW+ruS/oS8geW9uZGV4cG/vvJsg5b6u5Y2aLyBodHRwOi8vd2VpYm8uY29tL3lp
+bmdkZWh1aXpoYW4gDQrlkqjor6LnlLXor53vvJogNDAwMC01ODAtODUw77yI6L2sODg4OOOAgTUy
+MjDvvInvvJsgMTMxLTI2NjItNTIwNu+8myAwMTDigJQ2OTIzLTY5NDTjgIE4Njk5LTcxNTXvvJsN
+CuOAgOOAgA0K44CA44CADQrvvJLjgIEg5biCIOWcuiDog4wg5pmvIO+8muOAgOOAgOOAgOOAgOOA
+gOOAgOOAgOOAgA0K44CA44CADQrjgIDjgIDljJfnvo7luILlnLrmmK/lhajnkIPmnIDlpKfnmoTm
+sb3phY3pnIDmsYLluILlnLrvvIzku4Xmsb3phY3kuqflk4HlnKjnvo7lm73nmoTluILlnLrlrrnp
+h4/lsLHmnIk2MDDkur/nvo7lhYPvvIzljYrmlbDku6XkuIrkvp3otZbov5vlj6PvvIzkuJTmsb3o
+vabovbTmib/jgIHovabmoaXjgIHmtrLljovku7bov5jmmK/ljJfnvo7luILlnLrnmoTkvJjlir/k
+uqflk4HvvIzlj5HlsZXmvZzlipvlt6jlpKfjgILmja7nu5/orqHvvIznvo7lm73luILlnLrnmoTl
+ubTplIDllK7pop3ljaDliLDlhajnkIPluILlnLrnmoTlha3liIbkuYvkuIDnmoTmr5TkvovjgILn
+vo7lm73msb3ovabpm7bphY3ku7bluILlnLrkuYvlpKforqnkurrlkIPmg4rvvIzkvovlpoLvvIzm
+jInnhafnm67liY3nvo7lm73msb3ovabkv53mnInph4/orqHnrpfvvIznvo7lm73kurrnm67liY3l
+ubPlnYc1LDAwMOiLsemHjO+8iOWQiDgsMDAw5YWs6YeM77yJ5pu05o2i5py65rK55ZKM6L+b6KGM
+5bi46KeE5L+d5YW75LiA5qyh77yM5aaC5p6c5bCG6L+Z5LiA6YeM56iL5bmz5Z2H6ZmN5YiwNCw5
+MDDoi7Hph4zvvIzmr4/lubTlsLHlj6/ku6Xlop7liqA2LDUwMOS4h+e+juWFg+eahOW4guWcuuWu
+uemHj+OAgue+juWbveaxvei9puWUruWQjuW4guWcuuS7juacgOWIneeahOa0l+i9puaJk+icoeWI
+sOS7iuWkqeeahOWNq+aYn+WvvOiIquWSjOaAp+iDveaUueijhe+8jOe7j+WOhuS6hui/kTEwMOW5
+tOeahOWOhuWPsu+8jOWFtumXtOWQhOenjeaWsOS6p+WTgeWSjOaWsOaKgOacr+WxguWHuuS4jeep
+t++8jOWCrOeUn+S6huaIkOWNg+S4iuS4h+e+juWbveS6uueahOi0ouWvjOWlh+i/ue+8jOS5n+az
+qOWumuS6huS4gOaJueaJueWVhuS4muaooeW8j+aXoOazlemAguW6lOW4guWcuuWPmOWMlueahOS8
+geS4mumAgOWHuuWOhuWPsuiInuWPsOOAgg0K44CA44CA576O5Zu95piv5rG96L2m5aS05Y+35aSn
+5Zu977yM5Lmf5piv5a+M5Zu977yM5aSn5aSa5pWw5a625bqt5bm05pS25YWl6YO95ZyoM+S4h+e+
+juWFg+S7peS4iu+8jOiAjOW4guWcuuS4iuacgOaZrumAmueahOaWsOi9puS4gOiIrOWUruS7t+mD
+veWcqDLkuIfnvo7lhYPlt6blj7PjgIIg576O5Zu96YGt6YGH57uP5rWO5Y2x5py65ZCO77yM5L6d
+5pen5L+d6K+B552A5YWo55CD5rG96L2m6ZSA6YeP56ys5LiA55qE5Zyw5L2N44CC5Zyo576O5Zu9
+77yM5rG96L2m6YWN5Lu25L6b5bqU5ZWG44CB5rG96L2m6YWN5Lu26ZSA5ZSu5ZWG5ZKM5rG96L2m
+5L+u55CG5pyN5Yqh5ZWG5b2i5oiQ5LqG5LiA5p2h5Lqn5Lia6ZO+77yM6ICM6L2m5Li76YCJ5oup
+5rG96L2m57u05L+u5pyN5Yqh55qE5b2i5byP5Lmf5piv5aSa6YeN55qE44CC6L2m5Li75Y+v5Lul
+5qC55o2u6Ieq5bex55qE54ix5aW944CB5rG96L2m55qE5Y+X5o2f56iL5bqm5Lul5Y+K5omA6ZyA
+6KaB57u05L+u55qE6aG555uu5Y676YCJ5oup6YCC5ZCI55qE5Y6C5a6244CC5aaC5p6c5oS/5oSP
+5aSa6Iqx6ZKx5Lmw5pS+5b+D77yM6L2m5Li75Y+v5Y675Y6f5Y6C5L+u6YWN5Lu277yb5aaC5p6c
+5Zu+55yB6ZKx77yM5bCx5Yiw5LiA5Lqb5bCP5Z6L5bqX77yM5LuW5Lus55qE6YWN5Lu25pyJ55u4
+5b2T5LiA6YOo5YiG5piv5LuO5Lqa5rSy6L+b5Y+j55qE77yM5YW25Lit5pyJ5LiN5bCR6L+Y5piv
+5Lit5Zu95Yi26YCg44CCDQrjgIDjgIDnvo7lm73mmK/msb3ovabpm7bpg6jku7bov5vlj6PlpKfl
+m73vvIznvo7lm73msb3ovabpm7bpg6jku7bmnIDov5Hlh6DlubTmnaXku6Xov5vlj6PkuLrkuLvv
+vIzmnIDov5HkuI7kuK3lm73lj5HnlJ/nuqDnurfnmoTova7og47nibnkv53moYjjgILlsLHmmK/n
+vo7lm73ova7og47nq57kuonliqPlir/nrYnlm6DntKDpgKDmiJDjgILnvo7lm73llYbliqHpg6jk
+urrlo6vlnKjkuIDmrKHnu4/mtY7kvJrorq7kuIrooajnpLrvvIznvo7lm73lsIbkv53or4HkuI3k
+vJrlkozkuK3lm73lnKjmsb3ovabpm7bpg6jku7bnmoTov5vlj6PkuIrov5vkuIDmraXlho3lop7l
+iqDpmZDliLbmnaHmrL7jgILlnKjnvo7lm73nu4/mtY7mnKrmnaXlpI3oi4/nmoTliLrmv4DkuIvv
+vIzmiJHlm73lh7rlj6Pnvo7lm73msb3ovabpm7bpg6jku7blsIbnqLPmraXlop7plb/lm57mmpbj
+gIIgDQrjgIDjgIANCuOAgOOAgA0K77yT44CBIOacrCDlsZUg566AIOS7iyDvvJrjgIDjgIDjgIDj
+gIDjgIDjgIDjgIDjgIANCuOAgOOAgA0K44CA44CA5pys5bGV5YiG5Li64oCcU0VNQSBTSE9X5ZKM
+QUFQRVggU0hPV+KAneS4pOWkp+WxleWMuu+8jOWni+WKnuS6jjE5NjnlubTvvIzmr4/lubTkuIDl
+sYrvvIwyMDE35bm05Li656ysNDnlsYrvvIzlrprmnJ/lnKjmi4nmlq/nu7TliqDmlq/kuL7lip7j
+gILigJxBQVBFWCBTSE9X5ZKMU0VNQSBTSE9X4oCd55Sx576O5Zu95rG96L2m5LiO6K6+5aSH5Yi2
+6YCg5ZWG5Y2P5Lya77yIU0VNQe+8ieOAgee+juWbveaxvei9pumbtumDqOS7tuWNj+S8mu+8iEFQ
+QUHvvInlkoznvo7lm73msb3ovabnu7Tkv67mnI3liqHkuJrljY/kvJrvvIhBU0lB77yJ5YWx5ZCM
+5Li75Yqe77yM5Lit5Zu95oC75bGV5Zui57uE57uH5Y2V5L2N5Li65Lit5Zu95Zu96ZmF6LS45L+D
+5Lya77yIQ0NQSVTvvInlj4rmmKDlvrflm73pmYXkvJrlsZXmnInpmZDlhazlj7jvvIhZT05EIEVY
+UE/vvInvvIzlnKjljJfkuqzjgIHkuIrmtbfnrYnlnLDorr7mnInliIbmlK/mnLrmnoTvvIzotJ/o
+tKPor6XlsZXkvJrlnKjkuK3lm73nmoTmjqjlub/lkozmi5vllYblt6XkvZzjgILkuLrkuoblop7o
+v5vlm73lhoXlpJbmsb3ovabphY3ku7blj4rllK7lkI7mnI3liqHooYzkuJrnmoTkuqTmtYHkuI7l
+kIjkvZzvvIzlkIzml7blsZXnpLrmiJHlm73msb3ovabphY3ku7bkuqfkuJrnmoTlj5HlsZXkuI7m
+iJDlsLHvvIzluK7liqnlooPlhoXkvIHkuJrlvIDmi5Plm73lpJbluILlnLrvvIzmiJHku6zor5rp
+goDlhajlm73lkITlnLDnm7jlhbPljZXkvY3kuI7kuJrnlYzkurrlo6vliqDlhaXlkrHku6znmoTk
+uK3lm73mgLvlsZXlm6LliY3lvoDmi4nmlq/nu7TliqDmlq/lj4LlsZXlj4Lop4LjgILigJxBQVBF
+WCBTSE9XICYgU0VNQSBTSE9X4oCd5Lit5Zu95oC75bGV5Zui5oql5ZCN54Ot57q/77yaNDAwMC01
+ODAtODUw6L2sODg4OOOAgTgxNDTjgIE1MjIw44CCDQrjgIDjgIBBQVBFWOaYr0F1dG9tb3RpdmUg
+QWZ0ZXJtYXJrZXQgUHJvZHVjdHMgRXhwb++8iOWbvemZheaxvei9pumDqOS7tuWPiuWUruWQjuac
+jeWKoeWxleiniOS8mu+8ieeahOeugOensOOAgg0K44CA44CAU0VNQeaYr1NwZWNpYWx0eSBFcXVp
+cG1lbnQgTWFya2V0IEFzc29jaWF0aW9u77yI576O5Zu95rG96L2m5LiO6K6+5aSH5Yi26YCg5ZWG
+5Y2P5Lya77yJ55qE566A56ew44CCDQrjgIDjgIBBQVBFWCBTSE9X5piv5LiW55WM5pyA5aSn55qE
+5rG96L2m5Yi26YCg5Lia6LS45piT5Y+K5rG96L2m5ZSu5ZCO5pyN5Yqh5biC5Zy655qE5LiT5Lia
+5bGV6KeI5Lya44CCDQrjgIDjgIBTRU1BIFNIT1fmmK/lhajnkIPop4TmqKHmnIDlpKfnmoTjgIHl
+joblj7LmnIDmgqDkuYXjgIHmnIDokZflkI3nmoTmlLnoo4Xovablj4rmlLnoo4Xku7blsZXop4jk
+vJrjgIINCuOAgOOAgEFBUEVYIFNIT1cgJiBTRU1BIFNIT1flvpfliLDkuobnvo7lm73llYbkuJrp
+g6jnmoTmibbmjIHjgIINCuOAgOOAgEFBUEVYIFNIT1cgJiBTRU1BIFNIT1fog73mjqXop6bliLDl
+h6DkuY7lnKjlhbblroPlsZXkvJrkuIrmjqXop6bkuI3liLDnmoTkuJbnlYzlkITlnLDnmoTkubDl
+rrbjgIINCuOAgOOAgEFBUEVYIFNIT1cgJiBTRU1BIFNIT1fku6PooajnmoTmmK8zOTUw5Lq/576O
+5YWD55qE5YWo55CD5rG96L2m5ZSu5ZCO5Y+K5pS56KOF5biC5Zy644CCDQrjgIDjgIANCuOAgOOA
+gA0K77yU44CBIOWfjiDluIIg566AIOS7iyDvvJrjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIANCuOA
+gOOAgA0K44CA44CA5ouJ5pav57u05Yqg5pav77yITGFzIFZlZ2Fz77yJ5piv576O5Zu95YaF5Y2O
+6L6+5bee55qE5pyA5aSn5Z+O5biC77yM5Lul6LWM5Y2a5Lia5Li65Lit5b+D55qE5bqe5aSn55qE
+5peF5ri444CB6LSt54mp44CB5bqm5YGH5Lqn5Lia6ICM6JGX5ZCN77yM5piv5LiW55WM55+l5ZCN
+55qE5bqm5YGH5Zyj5Zyw5LmL5LiA44CCDQrjgIDjgIDliKvnp7DvvJrkuJbnlYzlqLHkuZDkuYvp
+g73vvIhUaGUgRW50ZXJ0YWlubWVudCBDYXBpdGFsIG9mIHRoZSBXb3JsZO+8ieOAgee9quaBtuS5
+i+Wfju+8iFNpbiBDaXR577yJ44CB6LWM5Z+O77yITGFzIFZlZ2Fz77yJ44CCDQrjgIDjgIDov5nk
+uKrmi6XmnIkxNzDkuIfkurrlj6PnmoTnjrDku6PljJbmspnmvKDln47luILmr4/lubTlkLjlvJXn
+nYAzODkw5LiH5ri45a6i77yM5bGF576O5Zu95ZCE5aSn5Z+O5biC5LmL6aaW44CCIA0K44CA44CA
+5o2u6K+05LiW55WM5LiK5Y2B5a625pyA5aSn55qE5bqm5YGH5peF6aaG5bCx5pyJ5Lmd5a625piv
+5Zyo6L+Z6YeM77yM5YW25Lit5pyA5aSn55qE5bCx5piv5oul5pyJNTAzNOS4quWuouaIv+eahOex
+s+mrmOaiheWkp+mFkuW6l+S6huOAgiANCuOAgOOAgOaLieaWr+e7tOWKoOaWr+aYr+S4lueVjOS4
+iuiRl+WQjeeahOS8muiuruWxleiniOWfjuW4guOAgg0K44CA44CADQrjgIDjgIANCu+8leOAgSDl
+joYg5bGKIOWbniDpob4g77ya44CA44CA44CA44CA44CA44CA44CA44CADQrjgIDjgIANCuOAgOOA
+gEFBUEVYIFNIT1cgJiBTRU1BIFNIT1fmr4/lubTpg73mnInmnaXoh6rlhajnkIMxMjDlpJrkuKrl
+m73lrrbnmoTljZblrrblj4LlsZXvvIzlj4Lop4LogIXlnKgxMeS4h+S6uuS7peS4iu+8jOWFtuS4
+reS5sOWutuWkp+e6pjXkuIflpJrlrrbjgIINCuOAgOOAgDIwMTHlubTlj4LlsZXllYYyMjAx5a62
+77yI5Lit5Zu9Nzkz5a6277yJ77ybDQrjgIDjgIAyMDEw5bm05Y+C5bGV5ZWGMjExNeWutu+8iOS4
+reWbvTU0OeWutu+8ie+8mw0K44CA44CAMjAwOeW5tOWPguWxleWVhjIwNjLlrrbvvIjkuK3lm700
+OTDlrrbvvInvvJsNCuOAgOOAgA0K44CA44CADQrvvJbjgIEg5bGVIOWTgSDojIMg5Zu0IO+8muOA
+gOOAgOOAgOOAgOOAgOOAgOOAgOOAgA0K44CA44CADQril4YgU0VNQeWxle+8miANCuOAgOOAgOaU
+ueijhei9puOAgeaIv+i9puOAgeS4k+eUqOi9puOAgeaUueijhemDqOS7tuOAgeaUueijheeUqOWT
+geOAgei9ruiDjuOAgei9ruavguOAgeaxvei9pueUteWtkOeUteWZqOOAgemBv+mch+WZqOOAgeW8
+ueewp+OAgeW5s+ihoeaLieadhuOAgemYsuaKpOadv+OAgea2ieawtOWZqOOAgee7nuebmOOAgeaI
+v+i9puWNp+WFt+OAgea2pua7keayue+8jOWIuei9puayueOAgea3u+WKoOWJguOAgeaIt+WkluS8
+kemXsuWPiumcsuiQpeeUqOWTgeOAgeenu+WKqOaIv+OAgeacqOWxi+OAgeW4kOiTrOetieOAgg0K
+4peGIEFBUEVY5bGV77yaIA0K44CA44CA5rG96L2m6YWN5Lu244CB56m66LCD44CB5rG96L2m6Z+z
+5ZON44CB6Ziy55uX5Lqn5ZOB44CB55S15a2Q6K6+5aSH44CB6JOE55S15rGg44CB5a6J5YWo5bim
+44CB5Yi25Yqo5Zmo6Zu25Lu244CB5bqV55uY44CB56a75ZCI5Zmo44CB5Ya35Y2057O757uf44CB
+5Lyg5Yqo5Y+K5Y+Y6YCf5Zmo44CB6YeR5bGe5p6E5Lu244CB6YeN5Z6L6L2m6L6G6YOo5Lu25Y+K
+6ZmE5Lu244CB5rG95L+d6K6+5aSH55So5ZOB44CB5o+Q5Y2H6K6+5aSH44CB5pyN5Yqh6K6+5aSH
+44CB6LCD6K+V6K6+5aSH44CB6L2m6L6G57u05L+u5bel5YW35ZKM6K6+5aSH44CB57u05L+u6L2m
+6Ze06K6+5aSH44CB5rG96L2m54Gv5YW35Y+K5rG96L2m576O5a6555So5ZOB562J44CCDQrjgIDj
+gIANCuOAgOOAgA0K77yX44CBIOWPgiDlsZUg5b2iIOW8jyDvvJrjgIDjgIDjgIDjgIDjgIDjgIDj
+gIDjgIANCuOAgOOAgA0K4peGIOWPgiDlsZXvvJog56ef6LWB44CQ5bGV5L2N44CR77yM5bGV56S6
+5LyB5Lia5b2i6LGh5Y+K5Lqn5ZOB77yM5Li76KaB6LS555So5pyJ44CQ5bGV5L2N6LS544CR44CQ
+6L+Q6L6T6LS544CR44CQ5pCt5bu66LS544CR44CQ5Lq65ZGY6LS544CR562J44CCDQril4Yg5Y+C
+IOingu+8miDmtL7pgaPjgJDkurrlkZjjgJHvvIzojoXkuLTlsZXlnLrlj4Lop4Llj4rogIPlr5/v
+vIzkuLvopoHotLnnlKjmnInjgJDmiqXlkI3otLnjgJHjgJDms6jlhozotLnjgJHjgJDkuqTpgJro
+tLnjgJHjgJDpo5/lrr/otLnjgJHnrYnjgIINCuOAgOOAgA0K44CA44CADQrvvJjjgIEg5625IOWx
+lSDogZQg57ucIO+8muOAgOOAgOOAgOOAgOOAgOOAgOOAgOOAgA0K44CA44CADQrmnInlhbPlj4Ll
+sZXlj4Lop4LigJxTRU1BIFNIT1cgJiBBQVBFWCBTSE9X4oCd5LqL5a6c77yM6K+36IGU57uc44CQ
+5Lit5Zu95oC75bGV5Zui44CR57uE5Yqe5pa577yaDQrlhajlm73nu5/kuIDlrqLmnI3ng63nur/v
+vJogNDAwMC0gNTgwLSA4NTAu77yI5YiG5py6Ojg4ODggLzgxNDQgLzUyMjDvvIkNCuWFqOWbvee7
+n+S4gOaKpeWQjeS4k+e6v++8miA0MDAwLSA2ODAtIDg2MC7vvIjlhbzkvKDnnJ/vvIkNCuWPguWx
+lemhvumXru+8miDlvKDlhYjnlJ/jgIEg546L5YWI55Sf44CBIOWtmeWls+Wjq+OAgSDlkLTlpbPl
+o6sNCuWPguWxleeDree6v++8miAxMzktMTAzMS04MTQ044CBIDEzMS0yNjYyLTUyMDbvvJsgIDAx
+MOKAlCA4Njk5LTcxNTXjgIEgNjkyMy02OTQ0Lg0K5Zyo57q/5a6i5pyN77yaIFFRL+mCrueusS8g
+ODI3NzU1MDdAcXEuY29t77ybIOW+ruWNmi8gaHR0cDovL3dlaWJvLmNvbS95b25kZXhwbyANCuWF
+rOS8l+W+ruS/oe+8miBDYW5aaGFuWGlhb1hp77yI5Y+C5bGV5raI5oGv77yJ44CBIFpoYW5TaGFu
+Z1poaUppYe+8iOWxleWVhuS5i+Wutu+8ie+8mw0K5Yqe5YWs5Zyw5Z2A77yaIOWMl+S6rOW4guac
+nemYs+WMuuWMl+S4ieeOr+S4nOi3r+WFreWPt+S4reWbveWbvemZheWxleiniOS4reW/g+Wbm+Wx
+gg0K44CA44CADQrjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgIDjgJQg
+5pig5b635Lya5bGVIC8g6K+a6YKA5Y+C5YqgMjAxN+W5tOW6puadg+WogeWunuaViOWTgeeJjOeb
+m+S8miDvuZ4NCuOAgOOAgA0K44CA44CADQrjgJAg5YWs5LyX5bmz5Y+wIOOAkQ0K44CA44CADQrl
+vq7kv6HvvJog5Y+C5bGV5raI5oGvIO+8iElE77yaQ2FuWmhhblhpYW9Yae+8ieKAlOKAlCDlk4Hn
+iYzmianlvKDnmoTlubPlj7DjgIDluILlnLrlvIDmi5PnmoTmoaXmooENCuW+ruS/oe+8miDlsZXl
+lYbkuYvlrrYg77yISUTvvJpaaGFuU2hhbmdaaGlKaWHvvInigJTigJQg5Li65bGV5ZWG5o+Q5L6b
+5pyA5L2z6JCl5Zyw44CA5Li66ZiB5LiL6JCl6YCg5Y+C5bGV5Lu35YC8DQrjgIDjgIANCuOAgOOA
+gA0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCueZ
+vuS4h+e+pOWPkeezu+e7n3zkuLrmgqjlj5HpgIF85aaC5LiN5biM5pyb5YaN5pS25Yiw5q2k6KGM
+5Lia6LWE6K6vfOivt+WbnuWkjeKAnFREK1NFTUHigJ3oh7Ppgq7nrrExMDU1ODAwODEyQHFxLmNv
+bQ0KIA0K6KeG6aKRTVA05Zyw5Z2AICAtLT4NCg==
 
