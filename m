@@ -1,298 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f171.google.com ([209.85.220.171]:34256 "EHLO
-        mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751055AbdFXNX1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 24 Jun 2017 09:23:27 -0400
-Received: by mail-qk0-f171.google.com with SMTP id d78so19457624qkb.1
-        for <linux-nfs@vger.kernel.org>; Sat, 24 Jun 2017 06:23:26 -0700 (PDT)
-Message-ID: <1498310604.4796.5.camel@redhat.com>
-Subject: Re: [PATCH 1/1] [RFC] 64bit copy_file_range system call
-From: Jeff Layton <jlayton@redhat.com>
-To: Olga Kornievskaia <kolga@netapp.com>, linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org
-Date: Sat, 24 Jun 2017 09:23:24 -0400
-In-Reply-To: <20170614170653.58083-1-kolga@netapp.com>
-References: <20170614170653.58083-1-kolga@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:33848 "EHLO
+        ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751423AbdFZMp1 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Jun 2017 08:45:27 -0400
+Date: Mon, 26 Jun 2017 22:39:50 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: Eryu Guan <eguan@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
+Message-ID: <20170626123949.GP17542@dastard>
+References: <20170602060457.GG23805@eguan.usersys.redhat.com>
+ <20170623072656.GI23360@eguan.usersys.redhat.com>
+ <20170623074334.GE5308@dhcp22.suse.cz>
+ <20170623075156.GF5308@dhcp22.suse.cz>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170623075156.GF5308@dhcp22.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-06-14 at 13:06 -0400, Olga Kornievskaia wrote:
-> This is a proposal to allow 64bit count to copy and return as
-> a result of a copy_file_range. No attempt was made to share code
-> with the 32bit function because 32bit interface should probably
-> get depreciated.
+On Fri, Jun 23, 2017 at 09:51:56AM +0200, Michal Hocko wrote:
+> On Fri 23-06-17 09:43:34, Michal Hocko wrote:
+> > [Let's add Jack and keep the full email for reference]
+> > 
+> > On Fri 23-06-17 15:26:56, Eryu Guan wrote:
+> [...]
+> > > Then I did further confirmation tests:
+> > > 1. switch to a new branch with that jbd2 patch as HEAD and compile
+> > > kernel, run test with both ext4 and XFS exported on this newly compiled
+> > > kernel, it crashed within 5 iterations.
+> > > 
+> > > 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
+> > > and XFS exported, kernel survived 20 iterations of full fstests run.
+> > > 
+> > > 3. kernel from step 1 survived 20 iterations of full fstests run, if I
+> > > export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
+> > > 
+> > > 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
+> > > /export/test and /export/scratch were mounted as ext4, and this was done
+> > > on another test host because I don't have another spare test partition)
+> > > 
+> > > 
+> > > All these facts seem to confirm that commit 81378da64de6 really is the
+> > > culprit, I just don't see how..
 > 
-> Why use 64bit? Current uses of 32bit are by clone_file_range()
-> which could use 64bit count and NFS copy_file_range also supports
-> 64bit count value.
-> 
-> Also with this proposal off-the-bet allow the userland to copy
-> between different mount points.
-> 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  arch/x86/entry/syscalls/syscall_32.tbl |   1 +
->  arch/x86/entry/syscalls/syscall_64.tbl |   1 +
->  fs/read_write.c                        | 136 +++++++++++++++++++++++++++++++++
->  include/linux/fs.h                     |   4 +
->  include/linux/syscalls.h               |   3 +
->  include/uapi/asm-generic/unistd.h      |   4 +-
->  kernel/sys_ni.c                        |   1 +
->  7 files changed, 149 insertions(+), 1 deletion(-)
-> 
-> diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-> index 448ac21..1f5f1e7 100644
-> --- a/arch/x86/entry/syscalls/syscall_32.tbl
-> +++ b/arch/x86/entry/syscalls/syscall_32.tbl
-> @@ -391,3 +391,4 @@
->  382	i386	pkey_free		sys_pkey_free
->  383	i386	statx			sys_statx
->  384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
-> +385	i386	copy_file_range64	sys_copy_file_range64
-> diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-> index 5aef183..e658bbe 100644
-> --- a/arch/x86/entry/syscalls/syscall_64.tbl
-> +++ b/arch/x86/entry/syscalls/syscall_64.tbl
-> @@ -339,6 +339,7 @@
->  330	common	pkey_alloc		sys_pkey_alloc
->  331	common	pkey_free		sys_pkey_free
->  332	common	statx			sys_statx
-> +333	64	copy_file_range64	sys_copy_file_range64
->  
->  #
->  # x32-specific system call numbers start at 512 to avoid cache impact
-> diff --git a/fs/read_write.c b/fs/read_write.c
-> index 47c1d44..e2665c1 100644
-> --- a/fs/read_write.c
-> +++ b/fs/read_write.c
-> @@ -1700,6 +1700,142 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->  	return ret;
->  }
->  
-> +u64 vfs_copy_file_range64(struct file *file_in, loff_t pos_in,
-> +			    struct file *file_out, loff_t pos_out,
-> +			    u64 len, unsigned int flags)
-> +{
-> +	struct inode *inode_in = file_inode(file_in);
-> +	struct inode *inode_out = file_inode(file_out);
-> +	u64 ret;
-> +
-> +	if (flags != 0)
-> +		return -EINVAL;
-> +
-> +	if (S_ISDIR(inode_in->i_mode) || S_ISDIR(inode_out->i_mode))
-> +		return -EISDIR;
-> +	if (!S_ISREG(inode_in->i_mode) || !S_ISREG(inode_out->i_mode))
-> +		return -EINVAL;
-> +
-> +	ret = rw_verify_area(READ, file_in, &pos_in, len);
-> +	if (unlikely(ret))
-> +		return ret;
-> +
-> +	ret = rw_verify_area(WRITE, file_out, &pos_out, len);
-> +	if (unlikely(ret))
-> +		return ret;
-> +
-> +	if (!(file_in->f_mode & FMODE_READ) ||
-> +	    !(file_out->f_mode & FMODE_WRITE) ||
-> +	    (file_out->f_flags & O_APPEND))
-> +		return -EBADF;
-> +
-> +	if (len == 0)
-> +		return 0;
-> +
-> +	file_start_write(file_out);
-> +
-> +	/*
-> +	 * Try cloning first, this is supported by more file systems, and
-> +	 * more efficient if both clone and copy are supported (e.g. NFS).
-> +	 */
-> +	if (file_in->f_op->clone_file_range) {
-> +		ret = file_in->f_op->clone_file_range(file_in, pos_in,
-> +				file_out, pos_out, len);
-> +		if (ret == 0) {
-> +			ret = len;
-> +			goto done;
-> +		}
-> +	}
-> +
-> +	if (file_out->f_op->copy_file_range64) {
-> +		ret = file_out->f_op->copy_file_range64(file_in, pos_in,
-> +					file_out, pos_out, len, flags);
-> +		if (ret != -EOPNOTSUPP)
-> +			goto done;
-> +	}
-> +
-> +	ret = do_splice_direct(file_in, &pos_in, file_out, &pos_out,
-> +			len > MAX_RW_COUNT ? MAX_RW_COUNT : len, 0);
-> +
-> +done:
-> +	if (ret > 0) {
-> +		fsnotify_access(file_in);
-> +		add_rchar(current, ret);
-> +		fsnotify_modify(file_out);
-> +		add_wchar(current, ret);
-> +	}
-> +
-> +	inc_syscr(current);
-> +	inc_syscw(current);
-> +
-> +	file_end_write(file_out);
-> +
-> +	return ret;
-> +}
-> +EXPORT_SYMBOL(vfs_copy_file_range64);
-> +
-> +SYSCALL_DEFINE6(copy_file_range64, int, fd_in, loff_t __user *, off_in,
-> +		int, fd_out, loff_t __user *, off_out,
-> +		u64, len, unsigned int, flags)
-> +{
-> +	loff_t pos_in;
-> +	loff_t pos_out;
-> +	struct fd f_in;
-> +	struct fd f_out;
-> +	u64 ret = -EBADF;
-> +
-> +	f_in = fdget(fd_in);
-> +	if (!f_in.file)
-> +		goto out2;
-> +
-> +	f_out = fdget(fd_out);
-> +	if (!f_out.file)
-> +		goto out1;
-> +
-> +	ret = -EFAULT;
-> +	if (off_in) {
-> +		if (copy_from_user(&pos_in, off_in, sizeof(loff_t)))
-> +			goto out;
-> +	} else {
-> +		pos_in = f_in.file->f_pos;
-> +	}
-> +
-> +	if (off_out) {
-> +		if (copy_from_user(&pos_out, off_out, sizeof(loff_t)))
-> +			goto out;
-> +	} else {
-> +		pos_out = f_out.file->f_pos;
-> +	}
-> +
-> +	ret = vfs_copy_file_range64(f_in.file, pos_in, f_out.file, pos_out, len,
-> +				  flags);
-> +	if (ret > 0) {
-> +		pos_in += ret;
-> +		pos_out += ret;
-> +
-> +		if (off_in) {
-> +			if (copy_to_user(off_in, &pos_in, sizeof(loff_t)))
-> +				ret = -EFAULT;
-> +		} else {
-> +			f_in.file->f_pos = pos_in;
-> +		}
-> +
-> +		if (off_out) {
-> +			if (copy_to_user(off_out, &pos_out, sizeof(loff_t)))
-> +				ret = -EFAULT;
-> +		} else {
-> +			f_out.file->f_pos = pos_out;
-> +		}
-> +	}
-> +
-> +out:
-> +	fdput(f_out);
-> +out1:
-> +	fdput(f_in);
-> +out2:
-> +	return ret;
-> +}
-> +
->  static int clone_verify_area(struct file *file, loff_t pos, u64 len, bool write)
->  {
->  	struct inode *inode = file_inode(file);
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 803e5a9..2727a98 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1690,6 +1690,8 @@ struct file_operations {
->  			u64);
->  	ssize_t (*dedupe_file_range)(struct file *, u64, u64, struct file *,
->  			u64);
-> +	u64 (*copy_file_range64)(struct file *, loff_t, struct file *,
-> +			loff_t, u64, unsigned int);
->  };
->  
->  struct inode_operations {
-> @@ -1770,6 +1772,8 @@ extern int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
->  					 loff_t len, bool *is_same);
->  extern int vfs_dedupe_file_range(struct file *file,
->  				 struct file_dedupe_range *same);
-> +extern u64 vfs_copy_file_range64(struct file *, loff_t, struct file *,
-> +			       loff_t, u64, unsigned int);
->  
->  struct super_operations {
->     	struct inode *(*alloc_inode)(struct super_block *sb);
-> diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-> index 980c3c9..f7ea78e 100644
-> --- a/include/linux/syscalls.h
-> +++ b/include/linux/syscalls.h
-> @@ -905,5 +905,8 @@ asmlinkage long sys_pkey_mprotect(unsigned long start, size_t len,
->  asmlinkage long sys_pkey_free(int pkey);
->  asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
->  			  unsigned mask, struct statx __user *buffer);
-> +asmlinkage long sys_copy_file_range64(int fd_in, loff_t __user *off_in,
-> +				    int fd_out, loff_t __user *off_out,
-> +				    u64 len, unsigned int flags);
->  
->  #endif
-> diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
-> index 061185a..e385a76 100644
-> --- a/include/uapi/asm-generic/unistd.h
-> +++ b/include/uapi/asm-generic/unistd.h
-> @@ -731,9 +731,11 @@
->  __SYSCALL(__NR_pkey_free,     sys_pkey_free)
->  #define __NR_statx 291
->  __SYSCALL(__NR_statx,     sys_statx)
-> +#define __NR_copy_file_range64 292
-> +__SYSCALL(__NR_copy_file_range64, sys_copy_file_range64)
->  
->  #undef __NR_syscalls
-> -#define __NR_syscalls 292
-> +#define __NR_syscalls 293
->  
->  /*
->   * All syscalls below here should go away really,
-> diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
-> index 8acef85..8e0cfd4 100644
-> --- a/kernel/sys_ni.c
-> +++ b/kernel/sys_ni.c
-> @@ -178,6 +178,7 @@ asmlinkage long sys_ni_syscall(void)
->  cond_syscall(sys_capget);
->  cond_syscall(sys_capset);
->  cond_syscall(sys_copy_file_range);
-> +cond_syscall(sys_copy_file_range64);
->  
->  /* arch-specific weak syscall entries */
->  cond_syscall(sys_pciconfig_read);
+> AFAIR, no follow up patches to remove GFP_NOFS have been merged into
+> ext4 so we are currently only with 81378da64de6 and all it does is that
+> _all_ allocations from the transaction context are implicitly GFP_NOFS.
+> I can imagine that if there is a GFP_KERNEL allocation in this context
+> (which would be incorrect AFAIU) some shrinkers will not be called as a
+> result and that might lead to an observable behavior change. But this
+> sounds like a wild speculation. The mere fact that xfs oopses and there
+> is no ext code in the backtrace is suspicious on its own. Does this oops
+> sound familiar to xfs guys?
 
-Hi Olga,
+Nope, but if it's in write_cache_pages() then it's not actually
+crashing in XFS code, but in generic page cache and radix tree
+traversal code. Which means objects that are allocated from slabs
+and pools that are shared by both XFS and ext4.
 
-We discussed this a bit privately, but I'll note it here too.
+We've had problems in the past where use after free of bufferheads
+in reiserfs was discovered by corruption of bufferheads in XFS code,
+so maybe there's a similar issue being exposed by the ext4
+GFP_NOFS changes? i.e. try debugging this by treating it as memory
+corruption until we know more...
 
-Server-to-server copy seems like a nice thing to me as well. There are
-several filesystems that can likely make use of that ability.
+> > > > [88901.418500]  write_cache_pages+0x26f/0x510
 
-I don't have a real opinion on the API change either, but you're making
-a very subtle change with this patch. Prior to this, the existing
-copy_file_range calls could count on the superblocks being the same.
-Now, it looks like you can pass them any old file pointer.
-
-The exsiting copy_file_range file ops need to be fixed to vet the struct
-files they've been handed if you want to do this.
-
-It would also be nice to see something on copy_file_range and
-clone_file_range in Documentation/filesystems/vfs.txt.
+Knowing what line of code is failing would help identify what object
+is problematic....
 
 Cheers,
+
+Dave.
 -- 
-Jeff Layton <jlayton@redhat.com>
+Dave Chinner
+david@fromorbit.com
