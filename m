@@ -1,320 +1,151 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:57052 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751483AbdF0PoJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jun 2017 11:44:09 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: trond.myklebust@primarydata.com
-Cc: jlayton@poochiereds.net, linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] nfs4: add NFSv4 LOOKUPP handlers
-Date: Tue, 27 Jun 2017 08:44:02 -0700
-Message-Id: <20170627154403.20944-4-hch@lst.de>
-In-Reply-To: <20170627154403.20944-1-hch@lst.de>
-References: <20170627154403.20944-1-hch@lst.de>
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:36556 "EHLO
+        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751579AbdF0QMc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jun 2017 12:12:32 -0400
+MIME-Version: 1.0
+In-Reply-To: <1498564063.4539.5.camel@redhat.com>
+References: <CAN-5tyG-2=Y26oG91H-Htymda2K=bGVrMuRR8EvB1vs1KLi3Zw@mail.gmail.com>
+ <20170626144943.86070-1-kolga@netapp.com> <1498564063.4539.5.camel@redhat.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 27 Jun 2017 12:12:30 -0400
+Message-ID: <CAN-5tyFDCwTirqeMT_Tzk_6=RRBn8a_ofRK+_PDCtEWTFsVpmA@mail.gmail.com>
+Subject: Re: [PATCH 1/1] VFS permit cross device vfs_copy_file_range
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jeff.layton@primarydata.com>
+On Tue, Jun 27, 2017 at 7:47 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Mon, 2017-06-26 at 10:49 -0400, Olga Kornievskaia wrote:
+>> Allow copy_file_range to copy between different superblocks but only
+>> of the same file system types.
+>>
+>> This feature is needed by NFSv4.2 to perform file copy operation on
+>> the same server or file copy between different NFSv4.2 servers.
+>>
+>> If a file system's fileoperations copy_file_range operation prohibits
+>> cross-device copies, fall back to do_splice_direct. This is needed for
+>> the NFS (destination) server side implementation of the file copy.
+>>
+>> Currently there is only 1 implementor of the copy_file_range FS
+>> operation -- CIFS. CIFS assumes incoming file descriptors are both
+>> CIFS but it will check if they are coming from different servers.
+>>
+>> NFS will allow for copies between different NFS servers.
+>>
+>> Adding to the vfs.txt documentation to explicitly warn about allowing
+>> for different superblocks of the same file type to be passed into the
+>> copy_file_range for the future users of copy_file_range method.
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>>  Documentation/filesystems/vfs.txt |  7 +++++++
+>>  fs/read_write.c                   | 12 +++++-------
+>>  2 files changed, 12 insertions(+), 7 deletions(-)
+>>
+>> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+>> index f42b906..cf22424 100644
+>> --- a/Documentation/filesystems/vfs.txt
+>> +++ b/Documentation/filesystems/vfs.txt
+>> @@ -845,6 +845,8 @@ struct file_operations {
+>>  #ifndef CONFIG_MMU
+>>       unsigned (*mmap_capabilities)(struct file *);
+>>  #endif
+>> +     ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
+>> +                                loff_t, size_t, unsigned int);
+>>  };
+>>
+>>  Again, all methods are called without any locks being held, unless
+>> @@ -913,6 +915,11 @@ otherwise noted.
+>>
+>>    fallocate: called by the VFS to preallocate blocks or punch a hole.
+>>
+>> +  copy_file_range: called by copy_file_range(2) system call. This method
+>> +                works on two file descriptors that might reside on
+>> +                different superblocks of the same type of file system.
+>> +
+>> +
+>>  Note that the file operations are implemented by the specific
+>>  filesystem in which the inode resides. When opening a device node
+>>  (character or block special) most filesystems will call special
+>> diff --git a/fs/read_write.c b/fs/read_write.c
+>> index 47c1d44..effbfb2 100644
+>> --- a/fs/read_write.c
+>> +++ b/fs/read_write.c
+>> @@ -1589,10 +1589,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>           (file_out->f_flags & O_APPEND))
+>>               return -EBADF;
+>>
+>> -     /* this could be relaxed once a method supports cross-fs copies */
+>> -     if (inode_in->i_sb != inode_out->i_sb)
+>> -             return -EXDEV;
+>> -
+>>       if (len == 0)
+>>               return 0;
+>>
+>> @@ -1602,7 +1598,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>        * Try cloning first, this is supported by more file systems, and
+>>        * more efficient if both clone and copy are supported (e.g. NFS).
+>>        */
+>> -     if (file_in->f_op->clone_file_range) {
+>> +     if (inode_in->i_sb == inode_out->i_sb &&
+>> +                     file_in->f_op->clone_file_range) {
+>
+> I do wonder if we really ought to check for the same superblock here.
+>
+> ISTM that it might be possible for some fs' (btrfs?) to clone blocks
+> across superblocks in some situations?
+>
+> Oh well -- I guess we can cross that bridge when we come to it.
 
-This will be needed in order to implement the get_parent export op
-for nfsd.
+I was trying to keep with the expectations of the underlying function
+calls. Since I'm not proposing to change clone_file_range, I added
+that check.
 
-Signed-off-by: Jeff Layton <jeff.layton@primarydata.com>
----
- fs/nfs/nfs4proc.c       | 49 +++++++++++++++++++++++++++++++++
- fs/nfs/nfs4trace.h      | 29 ++++++++++++++++++++
- fs/nfs/nfs4xdr.c        | 73 +++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfs4.h    |  1 +
- include/linux/nfs_xdr.h | 17 +++++++++++-
- 5 files changed, 168 insertions(+), 1 deletion(-)
+>>               ret = file_in->f_op->clone_file_range(file_in, pos_in,
+>>                               file_out, pos_out, len);
+>>               if (ret == 0) {
+>> @@ -1611,10 +1608,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>               }
+>>       }
+>>
+>> -     if (file_out->f_op->copy_file_range) {
+>> +     if (file_out->f_op->copy_file_range &&
+>> +                     (file_in->f_op == file_out->f_op)) {
+>
+> It's possible that they might not have the same f_op pointer, but have
+> the same copy_file_range operation (e.g. cifs.ko has a bunch of
+> different f_op structures for different cases, so they might not be the
+> same even though they have the same copy_file_range op).
+>
+> Maybe this should be:
+>
+>     file_in->f_op->copy_file_range == file_out->f_op->copy_file_range
+>
+> ?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index c08c46a3b8cd..6fd9eee8e4ee 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3802,6 +3802,54 @@ nfs4_proc_lookup_mountpoint(struct inode *dir, const struct qstr *name,
- 	return (client == NFS_CLIENT(dir)) ? rpc_clone_client(client) : client;
- }
- 
-+static int _nfs4_proc_lookupp(struct inode *inode,
-+		struct nfs_fh *fhandle, struct nfs_fattr *fattr,
-+		struct nfs4_label *label)
-+{
-+	struct rpc_clnt *clnt = NFS_CLIENT(inode);
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	int		       status;
-+	struct nfs4_lookupp_arg args = {
-+		.bitmask = server->attr_bitmask,
-+		.fh = NFS_FH(inode),
-+	};
-+	struct nfs4_lookupp_res res = {
-+		.server = server,
-+		.fattr = fattr,
-+		.label = label,
-+		.fh = fhandle,
-+	};
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_LOOKUPP],
-+		.rpc_argp = &args,
-+		.rpc_resp = &res,
-+	};
-+
-+	args.bitmask = nfs4_bitmask(server, label);
-+
-+	nfs_fattr_init(fattr);
-+
-+	dprintk("NFS call  lookupp ino=0x%lx\n", inode->i_ino);
-+	status = nfs4_call_sync(clnt, server, &msg, &args.seq_args,
-+				&res.seq_res, 0);
-+	dprintk("NFS reply lookupp: %d\n", status);
-+	return status;
-+}
-+
-+static int nfs4_proc_lookupp(struct inode *inode, struct nfs_fh *fhandle,
-+			     struct nfs_fattr *fattr, struct nfs4_label *label)
-+{
-+	struct nfs4_exception exception = { };
-+	int err;
-+	do {
-+		err = _nfs4_proc_lookupp(inode, fhandle, fattr, label);
-+		trace_nfs4_lookupp(inode, err);
-+		err = nfs4_handle_exception(NFS_SERVER(inode), err,
-+				&exception);
-+	} while (exception.retry);
-+	return err;
-+}
-+
- static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
-@@ -9312,6 +9360,7 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.getattr	= nfs4_proc_getattr,
- 	.setattr	= nfs4_proc_setattr,
- 	.lookup		= nfs4_proc_lookup,
-+	.lookupp	= nfs4_proc_lookupp,
- 	.access		= nfs4_proc_access,
- 	.readlink	= nfs4_proc_readlink,
- 	.create		= nfs4_proc_create,
-diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
-index 845d0eadefc9..be1da19c65d6 100644
---- a/fs/nfs/nfs4trace.h
-+++ b/fs/nfs/nfs4trace.h
-@@ -891,6 +891,35 @@ DEFINE_NFS4_LOOKUP_EVENT(nfs4_remove);
- DEFINE_NFS4_LOOKUP_EVENT(nfs4_get_fs_locations);
- DEFINE_NFS4_LOOKUP_EVENT(nfs4_secinfo);
- 
-+TRACE_EVENT(nfs4_lookupp,
-+		TP_PROTO(
-+			const struct inode *inode,
-+			int error
-+		),
-+
-+		TP_ARGS(inode, error),
-+
-+		TP_STRUCT__entry(
-+			__field(dev_t, dev)
-+			__field(u64, ino)
-+			__field(int, error)
-+		),
-+
-+		TP_fast_assign(
-+			__entry->dev = inode->i_sb->s_dev;
-+			__entry->ino = NFS_FILEID(inode);
-+			__entry->error = error;
-+		),
-+
-+		TP_printk(
-+			"error=%d (%s) inode=%02x:%02x:%llu",
-+			__entry->error,
-+			show_nfsv4_errors(__entry->error),
-+			MAJOR(__entry->dev), MINOR(__entry->dev),
-+			(unsigned long long)__entry->ino
-+		)
-+);
-+
- TRACE_EVENT(nfs4_rename,
- 		TP_PROTO(
- 			const struct inode *olddir,
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 3aebfdc82b30..b55017987dcd 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -159,6 +159,8 @@ static int nfs4_stat_to_errno(int);
- 				(op_decode_hdr_maxsz)
- #define encode_lookup_maxsz	(op_encode_hdr_maxsz + nfs4_name_maxsz)
- #define decode_lookup_maxsz	(op_decode_hdr_maxsz)
-+#define encode_lookupp_maxsz	(op_encode_hdr_maxsz)
-+#define decode_lookupp_maxsz	(op_decode_hdr_maxsz)
- #define encode_share_access_maxsz \
- 				(2)
- #define encode_createmode_maxsz	(1 + encode_attrs_maxsz + encode_verifier_maxsz)
-@@ -618,6 +620,18 @@ static int nfs4_stat_to_errno(int);
- 				decode_lookup_maxsz + \
- 				decode_getattr_maxsz + \
- 				decode_getfh_maxsz)
-+#define NFS4_enc_lookupp_sz	(compound_encode_hdr_maxsz + \
-+				encode_sequence_maxsz + \
-+				encode_putfh_maxsz + \
-+				encode_lookupp_maxsz + \
-+				encode_getattr_maxsz + \
-+				encode_getfh_maxsz)
-+#define NFS4_dec_lookupp_sz	(compound_decode_hdr_maxsz + \
-+				decode_sequence_maxsz + \
-+				decode_putfh_maxsz + \
-+				decode_lookupp_maxsz + \
-+				decode_getattr_maxsz + \
-+				decode_getfh_maxsz)
- #define NFS4_enc_lookup_root_sz (compound_encode_hdr_maxsz + \
- 				encode_sequence_maxsz + \
- 				encode_putrootfh_maxsz + \
-@@ -1368,6 +1382,11 @@ static void encode_lookup(struct xdr_stream *xdr, const struct qstr *name, struc
- 	encode_string(xdr, name->len, name->name);
- }
- 
-+static void encode_lookupp(struct xdr_stream *xdr, struct compound_hdr *hdr)
-+{
-+	encode_op_hdr(xdr, OP_LOOKUPP, decode_lookupp_maxsz, hdr);
-+}
-+
- static void encode_share_access(struct xdr_stream *xdr, u32 share_access)
- {
- 	__be32 *p;
-@@ -2120,6 +2139,25 @@ static void nfs4_xdr_enc_lookup(struct rpc_rqst *req, struct xdr_stream *xdr,
- }
- 
- /*
-+ * Encode LOOKUPP request
-+ */
-+static void nfs4_xdr_enc_lookupp(struct rpc_rqst *req, struct xdr_stream *xdr,
-+				const struct nfs4_lookupp_arg *args)
-+{
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->seq_args, &hdr);
-+	encode_putfh(xdr, args->fh, &hdr);
-+	encode_lookupp(xdr, &hdr);
-+	encode_getfh(xdr, &hdr);
-+	encode_getfattr(xdr, args->bitmask, &hdr);
-+	encode_nops(&hdr);
-+}
-+
-+/*
-  * Encode LOOKUP_ROOT request
-  */
- static void nfs4_xdr_enc_lookup_root(struct rpc_rqst *req,
-@@ -5005,6 +5043,11 @@ static int decode_lookup(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_LOOKUP);
- }
- 
-+static int decode_lookupp(struct xdr_stream *xdr)
-+{
-+	return decode_op_hdr(xdr, OP_LOOKUPP);
-+}
-+
- /* This is too sick! */
- static int decode_space_limit(struct xdr_stream *xdr,
- 		unsigned long *pagemod_limit)
-@@ -6182,6 +6225,35 @@ static int nfs4_xdr_dec_lookup(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- }
- 
- /*
-+ * Decode LOOKUPP response
-+ */
-+static int nfs4_xdr_dec_lookupp(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
-+				struct nfs4_lookupp_res *res)
-+{
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_lookupp(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_getfh(xdr, res->fh);
-+	if (status)
-+		goto out;
-+	status = decode_getfattr_label(xdr, res->fattr, res->label, res->server);
-+out:
-+	return status;
-+}
-+
-+/*
-  * Decode LOOKUP_ROOT response
-  */
- static int nfs4_xdr_dec_lookup_root(struct rpc_rqst *rqstp,
-@@ -7517,6 +7589,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
- 	PROC(ACCESS,		enc_access,		dec_access),
- 	PROC(GETATTR,		enc_getattr,		dec_getattr),
- 	PROC(LOOKUP,		enc_lookup,		dec_lookup),
-+	PROC(LOOKUPP,		enc_lookupp,		dec_lookupp),
- 	PROC(LOOKUP_ROOT,	enc_lookup_root,	dec_lookup_root),
- 	PROC(REMOVE,		enc_remove,		dec_remove),
- 	PROC(RENAME,		enc_rename,		dec_rename),
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 1b1ca04820a3..47239c336688 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -479,6 +479,7 @@ enum {
- 	NFSPROC4_CLNT_ACCESS,
- 	NFSPROC4_CLNT_GETATTR,
- 	NFSPROC4_CLNT_LOOKUP,
-+	NFSPROC4_CLNT_LOOKUPP,
- 	NFSPROC4_CLNT_LOOKUP_ROOT,
- 	NFSPROC4_CLNT_REMOVE,
- 	NFSPROC4_CLNT_RENAME,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b28c83475ee8..7a664a5fcc25 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1012,7 +1012,6 @@ struct nfs4_link_res {
- 	struct nfs_fattr *		dir_attr;
- };
- 
--
- struct nfs4_lookup_arg {
- 	struct nfs4_sequence_args	seq_args;
- 	const struct nfs_fh *		dir_fh;
-@@ -1028,6 +1027,20 @@ struct nfs4_lookup_res {
- 	struct nfs4_label		*label;
- };
- 
-+struct nfs4_lookupp_arg {
-+	struct nfs4_sequence_args	seq_args;
-+	const struct nfs_fh		*fh;
-+	const u32			*bitmask;
-+};
-+
-+struct nfs4_lookupp_res {
-+	struct nfs4_sequence_res	seq_res;
-+	const struct nfs_server		*server;
-+	struct nfs_fattr		*fattr;
-+	struct nfs_fh			*fh;
-+	struct nfs4_label		*label;
-+};
-+
- struct nfs4_lookup_root_arg {
- 	struct nfs4_sequence_args	seq_args;
- 	const u32 *			bitmask;
-@@ -1567,6 +1580,8 @@ struct nfs_rpc_ops {
- 	int	(*lookup)  (struct inode *, const struct qstr *,
- 			    struct nfs_fh *, struct nfs_fattr *,
- 			    struct nfs4_label *);
-+	int	(*lookupp) (struct inode *, struct nfs_fh *,
-+			    struct nfs_fattr *, struct nfs4_label *);
- 	int	(*access)  (struct inode *, struct nfs_access_entry *);
- 	int	(*readlink)(struct inode *, struct page *, unsigned int,
- 			    unsigned int);
--- 
-2.11.0
+Yeah, I was debating between those two options and decided to go with
+f_op pointer but I agree the other way is the way to go. I'll wait to
+hear if there are any other comments and if not make this change and
+send the next version.
 
+thank you for the comments!
+
+>>               ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+>>                                                     pos_out, len, flags);
+>> -             if (ret != -EOPNOTSUPP)
+>> +             if (ret != -EOPNOTSUPP && ret != -EXDEV)
+>>                       goto done;
+>>       }
+>>
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
