@@ -1,151 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:36556 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751579AbdF0QMc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jun 2017 12:12:32 -0400
+Received: from scorn.kernelslacker.org ([45.56.101.199]:58754 "EHLO
+        scorn.kernelslacker.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751716AbdF0SAv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Jun 2017 14:00:51 -0400
+Date: Tue, 27 Jun 2017 14:00:45 -0400
+From: Dave Jones <davej@codemonkey.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: 4.12rc7 oops in nfs4_exchange_id_done
+Message-ID: <20170627180045.haj3szprsx2vzf6g@codemonkey.org.uk>
 MIME-Version: 1.0
-In-Reply-To: <1498564063.4539.5.camel@redhat.com>
-References: <CAN-5tyG-2=Y26oG91H-Htymda2K=bGVrMuRR8EvB1vs1KLi3Zw@mail.gmail.com>
- <20170626144943.86070-1-kolga@netapp.com> <1498564063.4539.5.camel@redhat.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 27 Jun 2017 12:12:30 -0400
-Message-ID: <CAN-5tyFDCwTirqeMT_Tzk_6=RRBn8a_ofRK+_PDCtEWTFsVpmA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] VFS permit cross device vfs_copy_file_range
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 27, 2017 at 7:47 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> On Mon, 2017-06-26 at 10:49 -0400, Olga Kornievskaia wrote:
->> Allow copy_file_range to copy between different superblocks but only
->> of the same file system types.
->>
->> This feature is needed by NFSv4.2 to perform file copy operation on
->> the same server or file copy between different NFSv4.2 servers.
->>
->> If a file system's fileoperations copy_file_range operation prohibits
->> cross-device copies, fall back to do_splice_direct. This is needed for
->> the NFS (destination) server side implementation of the file copy.
->>
->> Currently there is only 1 implementor of the copy_file_range FS
->> operation -- CIFS. CIFS assumes incoming file descriptors are both
->> CIFS but it will check if they are coming from different servers.
->>
->> NFS will allow for copies between different NFS servers.
->>
->> Adding to the vfs.txt documentation to explicitly warn about allowing
->> for different superblocks of the same file type to be passed into the
->> copy_file_range for the future users of copy_file_range method.
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  Documentation/filesystems/vfs.txt |  7 +++++++
->>  fs/read_write.c                   | 12 +++++-------
->>  2 files changed, 12 insertions(+), 7 deletions(-)
->>
->> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
->> index f42b906..cf22424 100644
->> --- a/Documentation/filesystems/vfs.txt
->> +++ b/Documentation/filesystems/vfs.txt
->> @@ -845,6 +845,8 @@ struct file_operations {
->>  #ifndef CONFIG_MMU
->>       unsigned (*mmap_capabilities)(struct file *);
->>  #endif
->> +     ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
->> +                                loff_t, size_t, unsigned int);
->>  };
->>
->>  Again, all methods are called without any locks being held, unless
->> @@ -913,6 +915,11 @@ otherwise noted.
->>
->>    fallocate: called by the VFS to preallocate blocks or punch a hole.
->>
->> +  copy_file_range: called by copy_file_range(2) system call. This method
->> +                works on two file descriptors that might reside on
->> +                different superblocks of the same type of file system.
->> +
->> +
->>  Note that the file operations are implemented by the specific
->>  filesystem in which the inode resides. When opening a device node
->>  (character or block special) most filesystems will call special
->> diff --git a/fs/read_write.c b/fs/read_write.c
->> index 47c1d44..effbfb2 100644
->> --- a/fs/read_write.c
->> +++ b/fs/read_write.c
->> @@ -1589,10 +1589,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>           (file_out->f_flags & O_APPEND))
->>               return -EBADF;
->>
->> -     /* this could be relaxed once a method supports cross-fs copies */
->> -     if (inode_in->i_sb != inode_out->i_sb)
->> -             return -EXDEV;
->> -
->>       if (len == 0)
->>               return 0;
->>
->> @@ -1602,7 +1598,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>        * Try cloning first, this is supported by more file systems, and
->>        * more efficient if both clone and copy are supported (e.g. NFS).
->>        */
->> -     if (file_in->f_op->clone_file_range) {
->> +     if (inode_in->i_sb == inode_out->i_sb &&
->> +                     file_in->f_op->clone_file_range) {
->
-> I do wonder if we really ought to check for the same superblock here.
->
-> ISTM that it might be possible for some fs' (btrfs?) to clone blocks
-> across superblocks in some situations?
->
-> Oh well -- I guess we can cross that bridge when we come to it.
+NFS: Registering the id_resolver key type
+Key type id_resolver registered
+Key type id_legacy registered
+NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
+NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
+Oops: 0000 [#1] SMP
+CPU: 1 PID: 140 Comm: kworker/1:2 Not tainted 4.12.0-rc7-think+ #1 
+Workqueue: rpciod rpc_async_schedule [sunrpc]
+task: ffff8804ffeb9c00 task.stack: ffffc9000062c000
+RIP: 0010:nfs4_exchange_id_done+0x22e/0x5b0 [nfsv4]
+RSP: 0018:ffffc9000062fd40 EFLAGS: 00010246
+RAX: ffffc90000d83948 RBX: ffff8804ef00f240 RCX: 0000000000000002
+RDX: 0000000000000001 RSI: 00000000ffffffff RDI: 0000000000000000
+RBP: ffffc9000062fd78 R08: ffff8804ef6c0b28 R09: 380c70ed00000000
+R10: ffffc9000062fdb0 R11: ffff8804ffeb9c00 R12: 0000000000000000
+R13: ffffffffa0021620 R14: ffff8804ef0f39c8 R15: ffff8804f88453d8
+FS:  0000000000000000(0000) GS:ffff88050a000000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: ffffc90000d83948 CR3: 0000000502fff000 CR4: 00000000001406e0
+Call Trace:
+ ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+ ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+ ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+ rpc_exit_task+0x2e/0x80 [sunrpc]
+ __rpc_execute+0xb4/0x5b0 [sunrpc]
+ ? process_one_work+0x1c2/0x680
+ rpc_async_schedule+0x12/0x20 [sunrpc]
+ process_one_work+0x24d/0x680
+ worker_thread+0x4e/0x3b0
+ kthread+0x117/0x150
+ ? process_one_work+0x680/0x680
+ ? kthread_create_on_node+0x70/0x70
+ ret_from_fork+0x27/0x40
+Code: b0 03 00 00 e8 84 3d f8 e0 49 c7 87 b0 03 00 00 00 00 00 00 49 8b 46 18 49 89 87 b0 03 00 00 49 c7 46 18 00 00 00 00 49 8b 46 58 <48> 8b 00 49 89 87 20 01 00 00 e9 23 fe ff ff 48 83 c6 04 48 83 
+RIP: nfs4_exchange_id_done+0x22e/0x5b0 [nfsv4] RSP: ffffc9000062fd40
+CR2: ffffc90000d83948
+NMI watchdog: BUG: soft lockup - CPU#2 stuck for 23s! [systemd:1]
+irq event stamp: 9668834
+hardirqs last  enabled at (9668833): [<ffffffff81a318dd>] restore_regs_and_iret+0x0/0x1d
+hardirqs last disabled at (9668834): [<ffffffff81a28610>] __schedule+0xd0/0x9b0
+softirqs last  enabled at (9668832): [<ffffffff81a35735>] __do_softirq+0x3a5/0x4d3
+softirqs last disabled at (9668709): [<ffffffff8108c6e3>] irq_exit+0xc3/0xd0
+CPU: 2 PID: 1 Comm: systemd Tainted: G      D         4.12.0-rc7-think+ #1 
+task: ffff880506240040 task.stack: ffffc90000010000
+RIP: 0010:smp_call_function_single+0xd4/0x100
+RSP: 0018:ffffc90000013c68 EFLAGS: 00000202
+  ORIG_RAX: ffffffffffffff10
+RAX: 0000000000000000 RBX: 0000000000000002 RCX: 0000000000000830
+RDX: 0000000000000001 RSI: 00000000000000fb RDI: 0000000400000000
+RBP: ffffc90000013c90 R08: fffffffffffffff8 R09: 0000000000000006
+R10: ffffc90000013d00 R11: 0000000000000000 R12: 0000000000000001
+R13: ffff8804f1a93be8 R14: 0000000000000002 R15: ffffc90000013cf8
+FS:  00007fb976424940(0000) GS:ffff88050a200000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 000055d89342ed90 CR3: 0000000502fff000 CR4: 00000000001406e0
+Call Trace:
+ ? do_flush_tlb_all+0xd0/0xd0
+ smp_call_function_many+0x211/0x260
+ ? do_flush_tlb_all+0xd0/0xd0
+ native_flush_tlb_others+0x77/0x280
+ ? vma_gap_callbacks_rotate+0x1e/0x30
+ flush_tlb_mm_range+0x9e/0x250
+ copy_process.part.42+0x11ea/0x1dd0
+ _do_fork+0xeb/0x710
+ ? vtime_account_user+0x73/0x90
+ SyS_clone+0x19/0x20
+ do_syscall_64+0x66/0x190
+ entry_SYSCALL64_slow_path+0x25/0x25
+RIP: 0033:0x7fb9749ea34b
+RSP: 002b:00007ffddd8807f0 EFLAGS: 00000246
+  ORIG_RAX: 0000000000000038
+RAX: ffffffffffffffda RBX: 00007ffddd8807f0 RCX: 00007fb9749ea34b
+RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000001200011
+RBP: 00007ffddd880840 R08: 00007fb976424940 R09: 000055d8931a27d7
+R10: 00007fb976424c10 R11: 0000000000000246 R12: 0000000000000000
+R13: 0000000000000020 R14: 0000000000000000 R15: 0000000000000000
+Code: 6d ee 7e 48 8b 4d f8 65 48 33 0c 25 28 00 00 00 75 3d c9 c3 48 89 d1 48 89 f2 48 8d 75 d8 e8 24 fe ff ff 8b 55 f0 83 e2 01 74 0a <f3> 90 8b 55 f0 83 e2 01 75 f6 eb c5 8b 05 62 25 08 02 85 c0 75 
 
-I was trying to keep with the expectations of the underlying function
-calls. Since I'm not proposing to change clone_file_range, I added
-that check.
-
->>               ret = file_in->f_op->clone_file_range(file_in, pos_in,
->>                               file_out, pos_out, len);
->>               if (ret == 0) {
->> @@ -1611,10 +1608,11 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>               }
->>       }
->>
->> -     if (file_out->f_op->copy_file_range) {
->> +     if (file_out->f_op->copy_file_range &&
->> +                     (file_in->f_op == file_out->f_op)) {
->
-> It's possible that they might not have the same f_op pointer, but have
-> the same copy_file_range operation (e.g. cifs.ko has a bunch of
-> different f_op structures for different cases, so they might not be the
-> same even though they have the same copy_file_range op).
->
-> Maybe this should be:
->
->     file_in->f_op->copy_file_range == file_out->f_op->copy_file_range
->
-> ?
-
-Yeah, I was debating between those two options and decided to go with
-f_op pointer but I agree the other way is the way to go. I'll wait to
-hear if there are any other comments and if not make this change and
-send the next version.
-
-thank you for the comments!
-
->>               ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
->>                                                     pos_out, len, flags);
->> -             if (ret != -EOPNOTSUPP)
->> +             if (ret != -EOPNOTSUPP && ret != -EXDEV)
->>                       goto done;
->>       }
->>
->
-> --
-> Jeff Layton <jlayton@redhat.com>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
