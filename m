@@ -1,116 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:21862 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752010AbdF1DEl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Jun 2017 23:04:41 -0400
-Date: Wed, 28 Jun 2017 11:04:39 +0800
-From: Eryu Guan <eguan@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Michal Hocko <mhocko@suse.com>, Theodore Ts'o <tytso@mit.edu>,
-        jack@suse.cz, david@fromorbit.com
-Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
-Message-ID: <20170628030439.GA23360@eguan.usersys.redhat.com>
-References: <20170602060457.GG23805@eguan.usersys.redhat.com>
- <20170623072656.GI23360@eguan.usersys.redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:23190 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751937AbdF1OTW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jun 2017 10:19:22 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client fixes for 4.12
+Date: Wed, 28 Jun 2017 14:19:18 +0000
+Message-ID: <1498659555.5376.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170623072656.GI23360@eguan.usersys.redhat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 23, 2017 at 03:26:56PM +0800, Eryu Guan wrote:
-> [As this bug somehow involves in ext4/jbd2 changes, cc ext4 list too]
-> 
-> On Fri, Jun 02, 2017 at 02:04:57PM +0800, Eryu Guan wrote:
-> > Hi all,
-> > 
-> > Starting from 4.12-rc1 kernel, I saw Linux nfs server crashes all the
-> > time in my fstests (xfstests) runs, I appended the console log of an
-> > NFSv3 crash to the end of this mail.
-> 
-> Some follow-up updates on this bug. *My* conclusion is, commit
-> 81378da64de6 ("jbd2: mark the transaction context with the scope
-> GFP_NOFS context") introduced this issue, and this is a bug that needs
-> ext4, XFS and NFS to reproduce.
-> 
-> For more details please see below.
-> 
-> > 
-> > I was exporting a directory resided on XFS, and loopback mounted the NFS
-> > export on localhost. Both NFSv3 and NFSv4 could hit this crash. The
-> > crash usually happens when running test case generic/029 or generic/095.
-> > 
-> > But the problem is, there's no easy and efficient way to reproduce it, I
-> > tried run only generic/029 and generic/095 in a loop for 1000 times but
-> > failed, I also tried run the 'quick' group tests only for 50 iterations
-> > but failed again. It seems that the only reliable way to reproduce it is
-> > run the 'auto' group tests for 20 iterations.
-> > 
-> > 	i=0
-> > 	while [ $i -lt 20 ]; do
-> > 		./check -nfs -g auto
-> > 		((i++))
-> > 	done
-> > 
-> > And usually server crashed within 5 iterations, but at times it could
-> > survive 10 iterations and only crashed if you left it running for more
-> > iterations. This makes it hard to bisect and bisecting is very
-> > time-consuming.
-> > 
-> > (The bisecting is running now, it needs a few days to finish. My first
-> > two attempts pointed first bad commit to some mm patches, but reverting
-> > that patch didn't prevent server from crashing, so I enlarged the loop
-> > count and started bisecting for the third time).
-> 
-> The third round of bisect finally finished after 2 weeks painful
-> testings, git bisect pointed first bad to commit 81378da64de6 ("jbd2:
-> mark the transaction context with the scope GFP_NOFS context"), which
-> seemed very weird to me, because the crash always happens in XFS code.
-> 
-> But this reminded me that I was not only exporting XFS for NFS testing,
-> but also ext4. So my full test setup is
-> 
-> # mount -t ext4 /dev/sda4 /export/test
-> # showmount -e localhost
-> Export list for localhost:
-> /export/scratch *
-> /export/test    *
-> 
-> (/export/scratch is on rootfs, which is XFS)
-> 
-> # cat local.config
-> TEST_DEV=localhost:/export/test
-> TEST_DIR=/mnt/testarea/test
-> SCRATCH_DEV=localhost:/export/scratch
-> SCRATCH_MNT=/mnt/testarea/scratch
-> 
-> 
-> Then I did further confirmation tests:
-> 1. switch to a new branch with that jbd2 patch as HEAD and compile
-> kernel, run test with both ext4 and XFS exported on this newly compiled
-> kernel, it crashed within 5 iterations.
-> 
-> 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
-> and XFS exported, kernel survived 20 iterations of full fstests run.
-> 
-> 3. kernel from step 1 survived 20 iterations of full fstests run, if I
-> export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
-> 
-> 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
-> /export/test and /export/scratch were mounted as ext4, and this was done
-> on another test host because I don't have another spare test partition)
-> 
-> 
-> All these facts seem to confirm that commit 81378da64de6 really is the
-> culprit, I just don't see how..
-> 
-> I attached git bisect log, and if you need more information please let
-> me know. BTW, I'm testing 4.12-rc6 kernel now to see if it's already
-> been fixed there.
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgM2MyOTkzYjhj
+NjE0M2Q4YTU3OTM3NDZhNTRlYmE4Zjg2Zjk1MjQwZjoNCg0KICBMaW51eCA0LjEyLXJjNCAoMjAx
+Ny0wNi0wNCAxNjo0Nzo0MyAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjEyLTMNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
+Z2VzIHVwIHRvIDJlMzFiNGNiODk1YWU3OGRiMzFkZmZiODYwY2QyNTVkODZjNjU2MWM6DQoNCiAg
+TkZTdjQuMTogbmZzNF9jYWxsYmFja19mcmVlX3Nsb3QoKSBjYW5ub3QgY2FsbCBuZnM0X3Nsb3Rf
+dGJsX2RyYWluX2NvbXBsZXRlKCkgKDIwMTctMDYtMjcgMjI6MjY6MjMgLTA0MDApDQoNCi0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgZm9yIExpbnV4IDQuMTINCg0KQnVnZml4ZXMgaW5jbHVk
+ZToNCg0KLSBTdGFibGUgZml4IGZvciBleGNsdXNpdmUgY3JlYXRlIGlmIHRoZSBzZXJ2ZXIgc3Vw
+cG9ydHMgdGhlIHVtYXNrIGF0dHJpYnV0ZQ0KLSBUcnVua2luZyBkZXRlY3Rpb24gc2hvdWxkIGhh
+bmRsZSBFUkVTVEFSVFNZUy9FSU5UUg0KLSBTdGFibGUgZml4IGZvciBhIHJhY2UgaW4gdGhlIExB
+WU9VVEdFVCBmdW5jdGlvbg0KLSBTdGFibGUgZml4IHRvIHJldmVydCAibmZzX3JlbmFtZSgpIGhh
+bmRsZSAtRVJFU1RBUlRTWVMgZGVudHJ5IGxlZnQgYmVoaW5kIg0KLSBuZnM0X2NhbGxiYWNrX2Zy
+ZWVfc2xvdCgpIGNhbm5vdCBjYWxsIG5mczRfc2xvdF90YmxfZHJhaW5fY29tcGxldGUoKQ0KDQot
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQpCZW5qYW1pbiBDb2RkaW5ndG9uICgyKToNCiAgICAgIE5GU3Y0LjI6IERvbid0IHNl
+bmQgbW9kZSBhZ2FpbiBpbiBwb3N0LUVYQ0xVU0lWRTRfMSBTRVRBVFRSIHdpdGggdW1hc2sNCiAg
+ICAgIFJldmVydCAiTkZTOiBuZnNfcmVuYW1lKCkgaGFuZGxlIC1FUkVTVEFSVFNZUyBkZW50cnkg
+bGVmdCBiZWhpbmQiDQoNClRyb25kIE15a2xlYnVzdCAoMyk6DQogICAgICBORlM6IFRydW5raW5n
+IGRldGVjdGlvbiBzaG91bGQgaGFuZGxlIEVSRVNUQVJUU1lTL0VJTlRSDQogICAgICBORlN2NC4x
+OiBGaXggYSByYWNlIGluIG5mczRfcHJvY19sYXlvdXRnZXQNCiAgICAgIE5GU3Y0LjE6IG5mczRf
+Y2FsbGJhY2tfZnJlZV9zbG90KCkgY2Fubm90IGNhbGwgbmZzNF9zbG90X3RibF9kcmFpbl9jb21w
+bGV0ZSgpDQoNCiBmcy9uZnMvY2FsbGJhY2tfeGRyLmMgfCAgMSAtDQogZnMvbmZzL2Rpci5jICAg
+ICAgICAgIHwgNTEgKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQogZnMvbmZzL25mczRwcm9jLmMgICAgIHwgIDUgKysrLS0NCiBmcy9uZnMvbmZzNHN0
+YXRlLmMgICAgfCAgMiArKw0KIDQgZmlsZXMgY2hhbmdlZCwgMjkgaW5zZXJ0aW9ucygrKSwgMzAg
+ZGVsZXRpb25zKC0pDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-4.12-rc6 kernel survived 30 iterations of full fstests run. Not sure if
-it's been fixed or made even harder to reproduce.
-
-Thanks,
-Eryu
