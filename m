@@ -1,48 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:23190 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751937AbdF1OTW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jun 2017 10:19:22 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client fixes for 4.12
-Date: Wed, 28 Jun 2017 14:19:18 +0000
-Message-ID: <1498659555.5376.1.camel@primarydata.com>
+Received: from verein.lst.de ([213.95.11.211]:49776 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751492AbdF1OfN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Jun 2017 10:35:13 -0400
+Date: Wed, 28 Jun 2017 16:35:11 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Christoph Hellwig <hch@lst.de>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: clean up readv/writev helpers
+Message-ID: <20170628143511.GA2359@lst.de>
+References: <20170527081654.15957-1-hch@lst.de> <20170527193239.GM390@ZenIV.linux.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170527193239.GM390@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgM2MyOTkzYjhj
-NjE0M2Q4YTU3OTM3NDZhNTRlYmE4Zjg2Zjk1MjQwZjoNCg0KICBMaW51eCA0LjEyLXJjNCAoMjAx
-Ny0wNi0wNCAxNjo0Nzo0MyAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjEyLTMNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
-Z2VzIHVwIHRvIDJlMzFiNGNiODk1YWU3OGRiMzFkZmZiODYwY2QyNTVkODZjNjU2MWM6DQoNCiAg
-TkZTdjQuMTogbmZzNF9jYWxsYmFja19mcmVlX3Nsb3QoKSBjYW5ub3QgY2FsbCBuZnM0X3Nsb3Rf
-dGJsX2RyYWluX2NvbXBsZXRlKCkgKDIwMTctMDYtMjcgMjI6MjY6MjMgLTA0MDApDQoNCi0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgZm9yIExpbnV4IDQuMTINCg0KQnVnZml4ZXMgaW5jbHVk
-ZToNCg0KLSBTdGFibGUgZml4IGZvciBleGNsdXNpdmUgY3JlYXRlIGlmIHRoZSBzZXJ2ZXIgc3Vw
-cG9ydHMgdGhlIHVtYXNrIGF0dHJpYnV0ZQ0KLSBUcnVua2luZyBkZXRlY3Rpb24gc2hvdWxkIGhh
-bmRsZSBFUkVTVEFSVFNZUy9FSU5UUg0KLSBTdGFibGUgZml4IGZvciBhIHJhY2UgaW4gdGhlIExB
-WU9VVEdFVCBmdW5jdGlvbg0KLSBTdGFibGUgZml4IHRvIHJldmVydCAibmZzX3JlbmFtZSgpIGhh
-bmRsZSAtRVJFU1RBUlRTWVMgZGVudHJ5IGxlZnQgYmVoaW5kIg0KLSBuZnM0X2NhbGxiYWNrX2Zy
-ZWVfc2xvdCgpIGNhbm5vdCBjYWxsIG5mczRfc2xvdF90YmxfZHJhaW5fY29tcGxldGUoKQ0KDQot
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tDQpCZW5qYW1pbiBDb2RkaW5ndG9uICgyKToNCiAgICAgIE5GU3Y0LjI6IERvbid0IHNl
-bmQgbW9kZSBhZ2FpbiBpbiBwb3N0LUVYQ0xVU0lWRTRfMSBTRVRBVFRSIHdpdGggdW1hc2sNCiAg
-ICAgIFJldmVydCAiTkZTOiBuZnNfcmVuYW1lKCkgaGFuZGxlIC1FUkVTVEFSVFNZUyBkZW50cnkg
-bGVmdCBiZWhpbmQiDQoNClRyb25kIE15a2xlYnVzdCAoMyk6DQogICAgICBORlM6IFRydW5raW5n
-IGRldGVjdGlvbiBzaG91bGQgaGFuZGxlIEVSRVNUQVJUU1lTL0VJTlRSDQogICAgICBORlN2NC4x
-OiBGaXggYSByYWNlIGluIG5mczRfcHJvY19sYXlvdXRnZXQNCiAgICAgIE5GU3Y0LjE6IG5mczRf
-Y2FsbGJhY2tfZnJlZV9zbG90KCkgY2Fubm90IGNhbGwgbmZzNF9zbG90X3RibF9kcmFpbl9jb21w
-bGV0ZSgpDQoNCiBmcy9uZnMvY2FsbGJhY2tfeGRyLmMgfCAgMSAtDQogZnMvbmZzL2Rpci5jICAg
-ICAgICAgIHwgNTEgKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tDQogZnMvbmZzL25mczRwcm9jLmMgICAgIHwgIDUgKysrLS0NCiBmcy9uZnMvbmZzNHN0
-YXRlLmMgICAgfCAgMiArKw0KIDQgZmlsZXMgY2hhbmdlZCwgMjkgaW5zZXJ0aW9ucygrKSwgMzAg
-ZGVsZXRpb25zKC0pDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Sat, May 27, 2017 at 08:32:39PM +0100, Al Viro wrote:
+> On Sat, May 27, 2017 at 11:16:44AM +0300, Christoph Hellwig wrote:
+> > Hi Al,
+> > 
+> > this series cleans up how we implement the various vectored read and write
+> > syscalls, as well as the internal iov_iter based APIs.  It then switches
+> > nfsd to use vfs_iter_read/write which cleans up nfsd.  Note that all
+> > exportable file systems already implement ->read_iter and ->write_iter
+> > anyway.
+> 
+> 1--5 and 7--10 applied.
 
+Yet these changes don't seem to be in linux-next.  Where did you apply
+them to?
