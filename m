@@ -1,121 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:48024 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:21862 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753374AbdF1C6p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Jun 2017 22:58:45 -0400
-Date: Wed, 28 Jun 2017 10:58:42 +0800
+        id S1752010AbdF1DEl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Jun 2017 23:04:41 -0400
+Date: Wed, 28 Jun 2017 11:04:39 +0800
 From: Eryu Guan <eguan@redhat.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Michal Hocko <mhocko@kernel.org>, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        Theodore Ts'o <tytso@mit.edu>, Jan Kara <jack@suse.cz>
+To: linux-nfs@vger.kernel.org
+Cc: linux-xfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        Michal Hocko <mhocko@suse.com>, Theodore Ts'o <tytso@mit.edu>,
+        jack@suse.cz, david@fromorbit.com
 Subject: Re: [v4.12-rc1 regression] nfs server crashed in fstests run
-Message-ID: <20170628025842.GZ23360@eguan.usersys.redhat.com>
+Message-ID: <20170628030439.GA23360@eguan.usersys.redhat.com>
 References: <20170602060457.GG23805@eguan.usersys.redhat.com>
  <20170623072656.GI23360@eguan.usersys.redhat.com>
- <20170623074334.GE5308@dhcp22.suse.cz>
- <20170623075156.GF5308@dhcp22.suse.cz>
- <20170626123949.GP17542@dastard>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170626123949.GP17542@dastard>
+In-Reply-To: <20170623072656.GI23360@eguan.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jun 26, 2017 at 10:39:50PM +1000, Dave Chinner wrote:
-> On Fri, Jun 23, 2017 at 09:51:56AM +0200, Michal Hocko wrote:
-> > On Fri 23-06-17 09:43:34, Michal Hocko wrote:
-> > > [Let's add Jack and keep the full email for reference]
-> > > 
-> > > On Fri 23-06-17 15:26:56, Eryu Guan wrote:
-> > [...]
-> > > > Then I did further confirmation tests:
-> > > > 1. switch to a new branch with that jbd2 patch as HEAD and compile
-> > > > kernel, run test with both ext4 and XFS exported on this newly compiled
-> > > > kernel, it crashed within 5 iterations.
-> > > > 
-> > > > 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
-> > > > and XFS exported, kernel survived 20 iterations of full fstests run.
-> > > > 
-> > > > 3. kernel from step 1 survived 20 iterations of full fstests run, if I
-> > > > export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
-> > > > 
-> > > > 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
-> > > > /export/test and /export/scratch were mounted as ext4, and this was done
-> > > > on another test host because I don't have another spare test partition)
-> > > > 
-> > > > 
-> > > > All these facts seem to confirm that commit 81378da64de6 really is the
-> > > > culprit, I just don't see how..
+On Fri, Jun 23, 2017 at 03:26:56PM +0800, Eryu Guan wrote:
+> [As this bug somehow involves in ext4/jbd2 changes, cc ext4 list too]
+> 
+> On Fri, Jun 02, 2017 at 02:04:57PM +0800, Eryu Guan wrote:
+> > Hi all,
 > > 
-> > AFAIR, no follow up patches to remove GFP_NOFS have been merged into
-> > ext4 so we are currently only with 81378da64de6 and all it does is that
-> > _all_ allocations from the transaction context are implicitly GFP_NOFS.
-> > I can imagine that if there is a GFP_KERNEL allocation in this context
-> > (which would be incorrect AFAIU) some shrinkers will not be called as a
-> > result and that might lead to an observable behavior change. But this
-> > sounds like a wild speculation. The mere fact that xfs oopses and there
-> > is no ext code in the backtrace is suspicious on its own. Does this oops
-> > sound familiar to xfs guys?
+> > Starting from 4.12-rc1 kernel, I saw Linux nfs server crashes all the
+> > time in my fstests (xfstests) runs, I appended the console log of an
+> > NFSv3 crash to the end of this mail.
 > 
-> Nope, but if it's in write_cache_pages() then it's not actually
-> crashing in XFS code, but in generic page cache and radix tree
-> traversal code. Which means objects that are allocated from slabs
-> and pools that are shared by both XFS and ext4.
+> Some follow-up updates on this bug. *My* conclusion is, commit
+> 81378da64de6 ("jbd2: mark the transaction context with the scope
+> GFP_NOFS context") introduced this issue, and this is a bug that needs
+> ext4, XFS and NFS to reproduce.
 > 
-> We've had problems in the past where use after free of bufferheads
-> in reiserfs was discovered by corruption of bufferheads in XFS code,
-> so maybe there's a similar issue being exposed by the ext4
-> GFP_NOFS changes? i.e. try debugging this by treating it as memory
-> corruption until we know more...
+> For more details please see below.
 > 
-> > > > > [88901.418500]  write_cache_pages+0x26f/0x510
+> > 
+> > I was exporting a directory resided on XFS, and loopback mounted the NFS
+> > export on localhost. Both NFSv3 and NFSv4 could hit this crash. The
+> > crash usually happens when running test case generic/029 or generic/095.
+> > 
+> > But the problem is, there's no easy and efficient way to reproduce it, I
+> > tried run only generic/029 and generic/095 in a loop for 1000 times but
+> > failed, I also tried run the 'quick' group tests only for 50 iterations
+> > but failed again. It seems that the only reliable way to reproduce it is
+> > run the 'auto' group tests for 20 iterations.
+> > 
+> > 	i=0
+> > 	while [ $i -lt 20 ]; do
+> > 		./check -nfs -g auto
+> > 		((i++))
+> > 	done
+> > 
+> > And usually server crashed within 5 iterations, but at times it could
+> > survive 10 iterations and only crashed if you left it running for more
+> > iterations. This makes it hard to bisect and bisecting is very
+> > time-consuming.
+> > 
+> > (The bisecting is running now, it needs a few days to finish. My first
+> > two attempts pointed first bad commit to some mm patches, but reverting
+> > that patch didn't prevent server from crashing, so I enlarged the loop
+> > count and started bisecting for the third time).
 > 
-> Knowing what line of code is failing would help identify what object
-> is problematic....
+> The third round of bisect finally finished after 2 weeks painful
+> testings, git bisect pointed first bad to commit 81378da64de6 ("jbd2:
+> mark the transaction context with the scope GFP_NOFS context"), which
+> seemed very weird to me, because the crash always happens in XFS code.
+> 
+> But this reminded me that I was not only exporting XFS for NFS testing,
+> but also ext4. So my full test setup is
+> 
+> # mount -t ext4 /dev/sda4 /export/test
+> # showmount -e localhost
+> Export list for localhost:
+> /export/scratch *
+> /export/test    *
+> 
+> (/export/scratch is on rootfs, which is XFS)
+> 
+> # cat local.config
+> TEST_DEV=localhost:/export/test
+> TEST_DIR=/mnt/testarea/test
+> SCRATCH_DEV=localhost:/export/scratch
+> SCRATCH_MNT=/mnt/testarea/scratch
+> 
+> 
+> Then I did further confirmation tests:
+> 1. switch to a new branch with that jbd2 patch as HEAD and compile
+> kernel, run test with both ext4 and XFS exported on this newly compiled
+> kernel, it crashed within 5 iterations.
+> 
+> 2. revert that jbd2 patch (when it was HEAD), run test with both ext4
+> and XFS exported, kernel survived 20 iterations of full fstests run.
+> 
+> 3. kernel from step 1 survived 20 iterations of full fstests run, if I
+> export XFS only (create XFS on /dev/sda4 and mount it at /export/test).
+> 
+> 4. 4.12-rc1 kernel survived the same test if I export ext4 only (both
+> /export/test and /export/scratch were mounted as ext4, and this was done
+> on another test host because I don't have another spare test partition)
+> 
+> 
+> All these facts seem to confirm that commit 81378da64de6 really is the
+> culprit, I just don't see how..
+> 
+> I attached git bisect log, and if you need more information please let
+> me know. BTW, I'm testing 4.12-rc6 kernel now to see if it's already
+> been fixed there.
 
-This was what I replied to Darrick when he first asked for the same
-information:
-
-"
-I managed to reproduce again with 4.12-rc4 kernel, call trace is
-
-[  704.811107] Call Trace:
-[  704.811107]  do_trap+0x16a/0x190
-[  704.811107]  do_error_trap+0x89/0x110
-[  704.811107]  ? xfs_do_writepage+0x6c7/0x6d0 [xfs]
-[  704.811107]  ? check_preempt_curr+0x7d/0x90
-[  704.811107]  ? ttwu_do_wakeup+0x1e/0x150
-[  704.811107]  do_invalid_op+0x20/0x30
-[  704.811107]  invalid_op+0x1e/0x30
-
-and xfs_do_writepage+0x6c7 is
-
-(gdb) l *(xfs_do_writepage+0x6c7)
-0x679e7 is in xfs_do_writepage (fs/xfs/xfs_aops.c:850).
-845             int                     error = 0;
-846             int                     count = 0;
-847             int                     uptodate = 1;
-848             unsigned int            new_type;
-849
-850             bh = head = page_buffers(page);
-851             offset = page_offset(page);
-852             do {
-853                     if (offset >= end_offset)
-854                             break;
-"
-
-Later on, I did the same several times, and it ended up in different
-lines of the code, I can't remember the exact line number now, but it
-always involved in dealing with buffer heads.
+4.12-rc6 kernel survived 30 iterations of full fstests run. Not sure if
+it's been fixed or made even harder to reproduce.
 
 Thanks,
 Eryu
-
-> 
-> Cheers,
-> 
-> Dave.
-> -- 
-> Dave Chinner
-> david@fromorbit.com
