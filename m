@@ -1,49 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49136 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751489AbdF1PWv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Jun 2017 11:22:51 -0400
-Date: Wed, 28 Jun 2017 11:22:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: Christoph Hellwig <hch@lst.de>, trond.myklebust@primarydata.com,
-        jlayton@poochiereds.net, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] nfs4: add NFSv4 LOOKUPP handlers
-Message-ID: <20170628152250.GF11295@fieldses.org>
-References: <20170627154403.20944-1-hch@lst.de>
- <20170627154403.20944-4-hch@lst.de>
- <99a3d554-399f-3d02-2033-3962fc00afea@gmail.com>
- <20170628151316.GE11295@fieldses.org>
- <8598f3b1-d057-4ca8-325e-b1bd2eefb13f@gmail.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:52128 "EHLO
+        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751559AbdF1Qhn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jun 2017 12:37:43 -0400
+Date: Wed, 28 Jun 2017 17:37:40 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: Christoph Hellwig <hch@lst.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: clean up readv/writev helpers
+Message-ID: <20170628163740.GI10672@ZenIV.linux.org.uk>
+References: <20170527081654.15957-1-hch@lst.de>
+ <20170527193239.GM390@ZenIV.linux.org.uk>
+ <20170628143511.GA2359@lst.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8598f3b1-d057-4ca8-325e-b1bd2eefb13f@gmail.com>
+In-Reply-To: <20170628143511.GA2359@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 28, 2017 at 11:17:41AM -0400, Anna Schumaker wrote:
-> 
-> 
-> On 06/28/2017 11:13 AM, J. Bruce Fields wrote:
-> > On Wed, Jun 28, 2017 at 10:55:35AM -0400, Anna Schumaker wrote:
-> >> Hi Christoph,
-> >>
-> >> On 06/27/2017 11:44 AM, Christoph Hellwig wrote:
-> >>> From: Jeff Layton <jeff.layton@primarydata.com>
-> >>>
-> >>> This will be needed in order to implement the get_parent export op
-> >>> for nfsd.
-> >>
-> >> I think this patch conflicts with your constify and function pointer cleanups from a few weeks ago, and it may need to be updated.
-> >>
-> >> Just double checking:  Bruce, are you taking the constify series for 4.13?
+On Wed, Jun 28, 2017 at 04:35:11PM +0200, Christoph Hellwig wrote:
+> On Sat, May 27, 2017 at 08:32:39PM +0100, Al Viro wrote:
+> > On Sat, May 27, 2017 at 11:16:44AM +0300, Christoph Hellwig wrote:
+> > > Hi Al,
+> > > 
+> > > this series cleans up how we implement the various vectored read and write
+> > > syscalls, as well as the internal iov_iter based APIs.  It then switches
+> > > nfsd to use vfs_iter_read/write which cleans up nfsd.  Note that all
+> > > exportable file systems already implement ->read_iter and ->write_iter
+> > > anyway.
 > > 
-> > Sorry, I haven't been paying attention--what constify series?
+> > 1--5 and 7--10 applied.
 > 
-> The one Christoph sent out in May that touched all of nfs, nfsd, and sunrpc.  I wasn't sure if we had come to a decision about who is sending that in or not :)
+> Yet these changes don't seem to be in linux-next.  Where did you apply
+> them to?
 
-Gah, right, sorry.  I still intend to just pull his nfs-ops branch, but
-I think I got distracted by test failures caused by an unrelated vm
-networking issues.  I'll take a look....
-
---b.
+#work.read_write, as part of #work.uaccess.  I apologize for being late
+with #for-next this cycle (putting it very mildly); hopefull I'll have
+something working by tonight.  Hell, quite a bit is still a tangled mess
+in local queues... ;-/
