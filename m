@@ -1,42 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:52128 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751559AbdF1Qhn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Jun 2017 12:37:43 -0400
-Date: Wed, 28 Jun 2017 17:37:40 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Christoph Hellwig <hch@lst.de>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: clean up readv/writev helpers
-Message-ID: <20170628163740.GI10672@ZenIV.linux.org.uk>
-References: <20170527081654.15957-1-hch@lst.de>
- <20170527193239.GM390@ZenIV.linux.org.uk>
- <20170628143511.GA2359@lst.de>
+Received: from verein.lst.de ([213.95.11.211]:50448 "EHLO newverein.lst.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751489AbdF1Qlj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Jun 2017 12:41:39 -0400
+Date: Wed, 28 Jun 2017 18:41:37 +0200
+From: Christoph Hellwig <hch@lst.de>
+To: Paul Menzel <pmenzel@molgen.mpg.de>
+Cc: Brian Foster <bfoster@redhat.com>, Christoph Hellwig <hch@lst.de>,
+        it+linux-nfs@molgen.mpg.de, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: Locking problems with Linux 4.9 and 4.11 with NFSD and
+        `fs/iomap.c`
+Message-ID: <20170628164137.GA8248@lst.de>
+References: <de171adc29600902515d1424fd800678@molgen.mpg.de> <20170508131843.GB29840@bfoster.bfoster> <20170509090534.GB2378@lst.de> <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de> <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de> <20170510171757.GA10534@localhost.localdomain> <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170628143511.GA2359@lst.de>
+In-Reply-To: <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 28, 2017 at 04:35:11PM +0200, Christoph Hellwig wrote:
-> On Sat, May 27, 2017 at 08:32:39PM +0100, Al Viro wrote:
-> > On Sat, May 27, 2017 at 11:16:44AM +0300, Christoph Hellwig wrote:
-> > > Hi Al,
-> > > 
-> > > this series cleans up how we implement the various vectored read and write
-> > > syscalls, as well as the internal iov_iter based APIs.  It then switches
-> > > nfsd to use vfs_iter_read/write which cleans up nfsd.  Note that all
-> > > exportable file systems already implement ->read_iter and ->write_iter
-> > > anyway.
-> > 
-> > 1--5 and 7--10 applied.
-> 
-> Yet these changes don't seem to be in linux-next.  Where did you apply
-> them to?
+On Tue, Jun 27, 2017 at 01:59:46PM +0200, Paul Menzel wrote:
+> Dear Brian, dear Christoph,
+>
+>
+> Just a small update that we were hit by the problem on a different machine 
+> (identical model) with Linux 4.9.32 and the exact same symptoms.
 
-#work.read_write, as part of #work.uaccess.  I apologize for being late
-with #for-next this cycle (putting it very mildly); hopefull I'll have
-something working by tonight.  Hell, quite a bit is still a tangled mess
-in local queues... ;-/
+Thanks for the update.  I have to admit this issue completely dropped
+off my table, but I'll try to get back to it in the next days.
