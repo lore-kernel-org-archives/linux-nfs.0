@@ -1,32 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:50448 "EHLO newverein.lst.de"
+Received: from verein.lst.de ([213.95.11.211]:50468 "EHLO newverein.lst.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751489AbdF1Qlj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Jun 2017 12:41:39 -0400
-Date: Wed, 28 Jun 2017 18:41:37 +0200
+        id S1751560AbdF1Qph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Jun 2017 12:45:37 -0400
+Date: Wed, 28 Jun 2017 18:45:35 +0200
 From: Christoph Hellwig <hch@lst.de>
-To: Paul Menzel <pmenzel@molgen.mpg.de>
-Cc: Brian Foster <bfoster@redhat.com>, Christoph Hellwig <hch@lst.de>,
-        it+linux-nfs@molgen.mpg.de, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: Locking problems with Linux 4.9 and 4.11 with NFSD and
-        `fs/iomap.c`
-Message-ID: <20170628164137.GA8248@lst.de>
-References: <de171adc29600902515d1424fd800678@molgen.mpg.de> <20170508131843.GB29840@bfoster.bfoster> <20170509090534.GB2378@lst.de> <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de> <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de> <20170510171757.GA10534@localhost.localdomain> <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: Christoph Hellwig <hch@lst.de>, trond.myklebust@primarydata.com,
+        "J. Bruce Fields" <bfields@fieldses.org>, jlayton@poochiereds.net,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] nfs4: add NFSv4 LOOKUPP handlers
+Message-ID: <20170628164535.GA8563@lst.de>
+References: <20170627154403.20944-1-hch@lst.de> <20170627154403.20944-4-hch@lst.de> <99a3d554-399f-3d02-2033-3962fc00afea@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
+In-Reply-To: <99a3d554-399f-3d02-2033-3962fc00afea@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jun 27, 2017 at 01:59:46PM +0200, Paul Menzel wrote:
-> Dear Brian, dear Christoph,
->
->
-> Just a small update that we were hit by the problem on a different machine 
-> (identical model) with Linux 4.9.32 and the exact same symptoms.
+On Wed, Jun 28, 2017 at 10:55:35AM -0400, Anna Schumaker wrote:
+> Hi Christoph,
+> 
+> On 06/27/2017 11:44 AM, Christoph Hellwig wrote:
+> > From: Jeff Layton <jeff.layton@primarydata.com>
+> > 
+> > This will be needed in order to implement the get_parent export op
+> > for nfsd.
+> 
+> I think this patch conflicts with your constify and function pointer cleanups from a few weeks ago, and it may need to be updated.
+> 
+> Just double checking:  Bruce, are you taking the constify series for 4.13?
 
-Thanks for the update.  I have to admit this issue completely dropped
-off my table, but I'll try to get back to it in the next days.
+Seems like it's in linux-next through Bruce's tree.
+
+I can respin these patches against it.  Anna, Trond: are you fine
+with just basing the nfs tree on top of the nfsd one?  Or do we want
+to take this series through the nfsd tree?
