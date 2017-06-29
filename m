@@ -1,47 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49336 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751489AbdF1Rav (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Jun 2017 13:30:51 -0400
-Date: Wed, 28 Jun 2017 13:30:50 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: Anna Schumaker <schumaker.anna@gmail.com>,
-        trond.myklebust@primarydata.com, jlayton@poochiereds.net,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] nfs4: add NFSv4 LOOKUPP handlers
-Message-ID: <20170628173050.GB22508@fieldses.org>
-References: <20170627154403.20944-1-hch@lst.de>
- <20170627154403.20944-4-hch@lst.de>
- <99a3d554-399f-3d02-2033-3962fc00afea@gmail.com>
- <20170628164535.GA8563@lst.de>
+Received: from mail-qt0-f193.google.com ([209.85.216.193]:33680 "EHLO
+        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752768AbdF2NZh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Jun 2017 09:25:37 -0400
+Received: by mail-qt0-f193.google.com with SMTP id c20so11236681qte.0
+        for <linux-nfs@vger.kernel.org>; Thu, 29 Jun 2017 06:25:37 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170628164535.GA8563@lst.de>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 29 Jun 2017 09:25:36 -0400
+Message-ID: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
+Subject: [RFC] fix parallelism for rpc tasks
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jun 28, 2017 at 06:45:35PM +0200, Christoph Hellwig wrote:
-> On Wed, Jun 28, 2017 at 10:55:35AM -0400, Anna Schumaker wrote:
-> > Hi Christoph,
-> > 
-> > On 06/27/2017 11:44 AM, Christoph Hellwig wrote:
-> > > From: Jeff Layton <jeff.layton@primarydata.com>
-> > > 
-> > > This will be needed in order to implement the get_parent export op
-> > > for nfsd.
-> > 
-> > I think this patch conflicts with your constify and function pointer cleanups from a few weeks ago, and it may need to be updated.
-> > 
-> > Just double checking:  Bruce, are you taking the constify series for 4.13?
-> 
-> Seems like it's in linux-next through Bruce's tree.
+Hi folks,
 
-That's literally just your nfs-ops branch.  I was assuming that's what
-we'd both work on top of.
+On a multi-core machine, is it expected that we can have parallel RPCs
+handled by each of the per-core workqueue?
 
---b.
+In testing a read workload, observing via "top" command that a single
+"kworker" thread is running servicing the requests (no parallelism).
+It's more prominent while doing these operations over krb5p mount.
 
-> I can respin these patches against it.  Anna, Trond: are you fine
-> with just basing the nfs tree on top of the nfsd one?  Or do we want
-> to take this series through the nfsd tree?
+What has been suggested by Bruce is to try this and in my testing I
+see then the read workload spread among all the kworker threads.
+
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 0cc8383..f80e688 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -1095,7 +1095,7 @@ static int rpciod_start(void)
+  * Create the rpciod thread and wait for it to start.
+  */
+  dprintk("RPC:       creating workqueue rpciod\n");
+- wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM, 0);
++ wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM | WQ_UNBOUND, 0);
+  if (!wq)
+  goto out_failed;
+  rpciod_workqueue = wq;
