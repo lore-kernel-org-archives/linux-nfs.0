@@ -1,101 +1,251 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55032 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43628 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751659AbdF3NWK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 09:22:10 -0400
+        id S1752316AbdF3NYE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:24:04 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
-Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>,
-        Steve Dickson <steved@redhat.com>,
+Cc: Abbas Naderi <abiusx@google.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH nfs-utils v2 12/12] tests: add "vsock:" exports(5) test case
-Date: Fri, 30 Jun 2017 14:21:20 +0100
-Message-Id: <20170630132120.31578-13-stefanha@redhat.com>
-In-Reply-To: <20170630132120.31578-1-stefanha@redhat.com>
-References: <20170630132120.31578-1-stefanha@redhat.com>
+Subject: [PATCH v3 01/14] SUNRPC: add AF_VSOCK support to addr.[ch]
+Date: Fri, 30 Jun 2017 14:23:39 +0100
+Message-Id: <20170630132352.32133-2-stefanha@redhat.com>
+In-Reply-To: <20170630132352.32133-1-stefanha@redhat.com>
+References: <20170630132352.32133-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This simple test case checks that the new syntax works for AF_VSOCK.
+AF_VSOCK addresses are a Context ID (CID) and port number tuple.  The
+CID is a unique address, similar to a IP address on a local subnet.
+
+Extend the addr.h functions to handle AF_VSOCK addresses.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- tests/Makefile.am          |  3 ++-
- tests/t0002-vsock-basic.sh | 53 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 55 insertions(+), 1 deletion(-)
- create mode 100755 tests/t0002-vsock-basic.sh
+v2:
+ * Replace CONFIG_VSOCKETS with CONFIG_SUNRPC_XPRT_VSOCK to prevent
+   build failures when SUNRPC=y and VSOCKETS=m.  Built-in code cannot
+   link against code in a module.
+---
+ include/linux/sunrpc/addr.h | 44 ++++++++++++++++++++++++++++++++++
+ net/sunrpc/addr.c           | 57 +++++++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/Kconfig          | 10 ++++++++
+ 3 files changed, 111 insertions(+)
 
-diff --git a/tests/Makefile.am b/tests/Makefile.am
-index 1f96264..c4e2792 100644
---- a/tests/Makefile.am
-+++ b/tests/Makefile.am
-@@ -10,5 +10,6 @@ SUBDIRS = nsm_client
+diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
+index 5c9c6cd..c4169bc 100644
+--- a/include/linux/sunrpc/addr.h
++++ b/include/linux/sunrpc/addr.h
+@@ -10,6 +10,7 @@
+ #include <linux/socket.h>
+ #include <linux/in.h>
+ #include <linux/in6.h>
++#include <linux/vm_sockets.h>
+ #include <net/ipv6.h>
  
- MAINTAINERCLEANFILES = Makefile.in
+ size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
+@@ -26,6 +27,8 @@ static inline unsigned short rpc_get_port(const struct sockaddr *sap)
+ 		return ntohs(((struct sockaddr_in *)sap)->sin_port);
+ 	case AF_INET6:
+ 		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
++	case AF_VSOCK:
++		return ((struct sockaddr_vm *)sap)->svm_port;
+ 	}
+ 	return 0;
+ }
+@@ -40,6 +43,9 @@ static inline void rpc_set_port(struct sockaddr *sap,
+ 	case AF_INET6:
+ 		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
+ 		break;
++	case AF_VSOCK:
++		((struct sockaddr_vm *)sap)->svm_port = port;
++		break;
+ 	}
+ }
  
--TESTS = t0001-statd-basic-mon-unmon.sh
-+TESTS = t0001-statd-basic-mon-unmon.sh \
-+	t0002-vsock-basic.sh
- EXTRA_DIST = test-lib.sh $(TESTS)
-diff --git a/tests/t0002-vsock-basic.sh b/tests/t0002-vsock-basic.sh
-new file mode 100755
-index 0000000..21a3884
---- /dev/null
-+++ b/tests/t0002-vsock-basic.sh
-@@ -0,0 +1,53 @@
-+#!/bin/bash
-+#
-+# t0002-vsock-basic.sh -- test basic NFSv4 over AF_VSOCK functionality
-+#
-+# Copyright (C) 2017  Red Hat, Stefan Hajnoczi <stefanha@redhat.com>
-+#
-+# This program is free software; you can redistribute it and/or
-+# modify it under the terms of the GNU General Public License
-+# as published by the Free Software Foundation; either version 2
-+# of the License, or (at your option) any later version.
-+#
-+# This program is distributed in the hope that it will be useful,
-+# but WITHOUT ANY WARRANTY; without even the implied warranty of
-+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+# GNU General Public License for more details.
-+#
-+# You should have received a copy of the GNU General Public License
-+# along with this program; if not, write to the Free Software Foundation, Inc.,
-+# 51 Franklin Street, Fifth Floor, Boston, MA 0211-1301 USA
-+#
+@@ -106,6 +112,40 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
+ }
+ #endif	/* !(IS_ENABLED(CONFIG_IPV6) */
+ 
++#if IS_ENABLED(CONFIG_VSOCKETS)
++static inline bool rpc_cmp_vsock_addr(const struct sockaddr *sap1,
++				      const struct sockaddr *sap2)
++{
++	const struct sockaddr_vm *svm1 = (const struct sockaddr_vm *)sap1;
++	const struct sockaddr_vm *svm2 = (const struct sockaddr_vm *)sap2;
 +
-+. ./test-lib.sh
-+
-+check_root
-+
-+test_exportfs() {
-+	client_addr="$1"
-+	export_spec="$client_addr:$(realpath .)"
-+
-+	echo "TEST: $client_addr"
-+
-+	"$srcdir/../utils/exportfs/exportfs" "$export_spec"
-+	if [ $? -ne 0 ]; then
-+		echo "FAIL: exportfs failed"
-+		exit 1
-+	fi
-+
-+	expected_etab="$(realpath .)	$client_addr("
-+	grep --fixed-strings -q "$expected_etab" /var/lib/nfs/etab
-+	if [ $? -ne 0 ]; then
-+		echo "FAIL: etab doesn't contain entry"
-+		exit 1
-+	fi
-+
-+	"$srcdir/../utils/exportfs/exportfs" -u "$export_spec"
-+	if [ $? -ne 0 ]; then
-+		echo "FAIL: exportfs -u failed"
-+		exit 1
-+	fi
++	return svm1->svm_cid == svm2->svm_cid;
 +}
 +
-+test_exportfs "vsock:3"
-+test_exportfs "vsock:*"
++static inline bool __rpc_copy_vsock_addr(struct sockaddr *dst,
++					 const struct sockaddr *src)
++{
++	const struct sockaddr_vm *ssvm = (const struct sockaddr_vm *)src;
++	struct sockaddr_vm *dsvm = (struct sockaddr_vm *)dst;
++
++	dsvm->svm_family = ssvm->svm_family;
++	dsvm->svm_cid = ssvm->svm_cid;
++	return true;
++}
++#else	/* !(IS_ENABLED(CONFIG_VSOCKETS) */
++static inline bool rpc_cmp_vsock_addr(const struct sockaddr *sap1,
++				      const struct sockaddr *sap2)
++{
++	return false;
++}
++
++static inline bool __rpc_copy_vsock_addr(struct sockaddr *dst,
++					 const struct sockaddr *src)
++{
++	return false;
++}
++#endif	/* !(IS_ENABLED(CONFIG_VSOCKETS) */
++
+ /**
+  * rpc_cmp_addr - compare the address portion of two sockaddrs.
+  * @sap1: first sockaddr
+@@ -125,6 +165,8 @@ static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
+ 			return rpc_cmp_addr4(sap1, sap2);
+ 		case AF_INET6:
+ 			return rpc_cmp_addr6(sap1, sap2);
++		case AF_VSOCK:
++			return rpc_cmp_vsock_addr(sap1, sap2);
+ 		}
+ 	}
+ 	return false;
+@@ -161,6 +203,8 @@ static inline bool rpc_copy_addr(struct sockaddr *dst,
+ 		return __rpc_copy_addr4(dst, src);
+ 	case AF_INET6:
+ 		return __rpc_copy_addr6(dst, src);
++	case AF_VSOCK:
++		return __rpc_copy_vsock_addr(dst, src);
+ 	}
+ 	return false;
+ }
+diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
+index 2e0a6f9..f4dd962 100644
+--- a/net/sunrpc/addr.c
++++ b/net/sunrpc/addr.c
+@@ -16,11 +16,14 @@
+  * RFC 4291, Section 2.2 for details on IPv6 presentation formats.
+  */
+ 
++ /* TODO register netid and uaddr with IANA? (See RFC 5665 5.1/5.2) */
++
+ #include <net/ipv6.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/sunrpc/msg_prot.h>
+ #include <linux/slab.h>
+ #include <linux/export.h>
++#include <linux/vm_sockets.h>
+ 
+ #if IS_ENABLED(CONFIG_IPV6)
+ 
+@@ -108,6 +111,26 @@ static size_t rpc_ntop6(const struct sockaddr *sap,
+ 
+ #endif	/* !IS_ENABLED(CONFIG_IPV6) */
+ 
++#ifdef CONFIG_SUNRPC_XPRT_VSOCK
++
++static size_t rpc_ntop_vsock(const struct sockaddr *sap,
++			     char *buf, const size_t buflen)
++{
++	const struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
++
++	return snprintf(buf, buflen, "%u", svm->svm_cid);
++}
++
++#else	/* !CONFIG_SUNRPC_XPRT_VSOCK */
++
++static size_t rpc_ntop_vsock(const struct sockaddr *sap,
++			     char *buf, const size_t buflen)
++{
++	return 0;
++}
++
++#endif	/* !CONFIG_SUNRPC_XPRT_VSOCK */
++
+ static int rpc_ntop4(const struct sockaddr *sap,
+ 		     char *buf, const size_t buflen)
+ {
+@@ -132,6 +155,8 @@ size_t rpc_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
+ 		return rpc_ntop4(sap, buf, buflen);
+ 	case AF_INET6:
+ 		return rpc_ntop6(sap, buf, buflen);
++	case AF_VSOCK:
++		return rpc_ntop_vsock(sap, buf, buflen);
+ 	}
+ 
+ 	return 0;
+@@ -229,6 +254,34 @@ static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
+ }
+ #endif
+ 
++#ifdef CONFIG_SUNRPC_XPRT_VSOCK
++static size_t rpc_pton_vsock(const char *buf, const size_t buflen,
++			     struct sockaddr *sap, const size_t salen)
++{
++	const size_t prefix_len = strlen("vsock:");
++	struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
++	unsigned int cid;
++
++	if (strncmp(buf, "vsock:", prefix_len) != 0 ||
++	    salen < sizeof(struct sockaddr_vm))
++		return 0;
++
++	if (kstrtouint(buf + prefix_len, 10, &cid) != 0)
++		return 0;
++
++	memset(svm, 0, sizeof(struct sockaddr_vm));
++	svm->svm_family = AF_VSOCK;
++	svm->svm_cid = cid;
++	return sizeof(struct sockaddr_vm);
++}
++#else
++static size_t rpc_pton_vsock(const char *buf, const size_t buflen,
++			     struct sockaddr *sap, const size_t salen)
++{
++	return 0;
++}
++#endif
++
+ /**
+  * rpc_pton - Construct a sockaddr in @sap
+  * @net: applicable network namespace
+@@ -249,6 +302,10 @@ size_t rpc_pton(struct net *net, const char *buf, const size_t buflen,
+ {
+ 	unsigned int i;
+ 
++	/* TODO is there a nicer way to distinguish vsock addresses? */
++	if (strncmp(buf, "vsock:", 6) == 0)
++		return rpc_pton_vsock(buf, buflen, sap, salen);
++
+ 	for (i = 0; i < buflen; i++)
+ 		if (buf[i] == ':')
+ 			return rpc_pton6(net, buf, buflen, sap, salen);
+diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
+index ac09ca8..4fc6550 100644
+--- a/net/sunrpc/Kconfig
++++ b/net/sunrpc/Kconfig
+@@ -62,3 +62,13 @@ config SUNRPC_XPRT_RDMA
+ 
+ 	  If unsure, or you know there is no RDMA capability on your
+ 	  hardware platform, say N.
++
++config SUNRPC_XPRT_VSOCK
++	bool "RPC-over-AF_VSOCK transport"
++	depends on SUNRPC && VSOCKETS && !(SUNRPC=y && VSOCKETS=m)
++	default SUNRPC && VSOCKETS
++	help
++	  This option allows the NFS client and server to use the AF_VSOCK
++	  transport to communicate between virtual machines and the host.
++
++	  If unsure, say Y.
 -- 
 2.9.4
 
