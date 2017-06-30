@@ -1,19 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47010 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54362 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751563AbdF3PHb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 11:07:31 -0400
-Subject: Re: [PATCH nfs-utils v2 10/12] exportfs: add support for "vsock:"
- exports(5) syntax
+        id S1751695AbdF3PZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 11:25:34 -0400
+Subject: Re: [PATCH nfs-utils v2 11/12] nfsd: add --vsock (-v) option to nfsd
 To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>
 References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-11-stefanha@redhat.com>
+ <20170630132120.31578-12-stefanha@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <3d149aad-1bbd-4fef-15fd-7ffd6ab85dd1@RedHat.com>
-Date: Fri, 30 Jun 2017 11:07:27 -0400
+Message-ID: <99deb619-7e39-6689-79b3-2e7d252145b0@RedHat.com>
+Date: Fri, 30 Jun 2017 11:25:31 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170630132120.31578-11-stefanha@redhat.com>
+In-Reply-To: <20170630132120.31578-12-stefanha@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -21,88 +20,185 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 
 On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> Allow exports to be restricted to AF_VSOCK clients:
+> The following command-line serves NFSv4.1 over AF_VSOCK:
 > 
->   # exportfs vsock:3:/export
-> 
-> and:
-> 
->   # cat /etc/exports
->   /export	vsock:*(rw,no_root_squash,insecure,subtree_check)
-Again it would be nice to use hostnames or address types
-instead of a qualifier like 'vsock'... But if we do end
-up going down this road, this definitely has to be
-documented in the man page. 
+>   nfsd -TU -N3 -V4.1 -v 2049
+So this specifying no-tcp, no-udp (which is no longer needed since 
+udp is off by default), no-v3, only-v4.1, vsock listiner,
+and you are missing a -p because I don't think you want to
+start up 2049 process. 
+
+How does this work with the standard NFS server? Are the
+co-compatible?
+
+Also the --vsock needs to be documented. Also can the
+--vsock flag just mean all of these specifics... Meaning
+so they don't have to be specified on the command line?
 
 steved.
+  
 > 
 > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 > ---
->  utils/exportfs/exportfs.c | 32 ++++++++++++++++++++++++++++++++
->  1 file changed, 32 insertions(+)
+>  utils/nfsd/nfssvc.h |  1 +
+>  utils/nfsd/nfsd.c   | 18 +++++++++++++---
+>  utils/nfsd/nfssvc.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 78 insertions(+), 3 deletions(-)
 > 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 3ded733..6bf67f1 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -299,6 +299,20 @@ static int exportfs_generic(char *arg, char *options, int verbose)
->  	return 0;
+> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+> index 39ebf37..1d251ca 100644
+> --- a/utils/nfsd/nfssvc.h
+> +++ b/utils/nfsd/nfssvc.h
+> @@ -26,6 +26,7 @@ int	nfssvc_set_sockets(const unsigned int protobits,
+>  			   const char *host, const char *port);
+>  void	nfssvc_set_time(const char *type, const int seconds);
+>  int	nfssvc_set_rdmaport(const char *port);
+> +int	nfssvc_set_vsock(const char *port);
+>  void	nfssvc_setvers(unsigned int ctlbits, unsigned int minorvers4, unsigned int minorvers4set);
+>  int	nfssvc_threads(int nrservs);
+>  void	nfssvc_get_minormask(unsigned int *mask);
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index 2b38249..f969da0 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -53,6 +53,7 @@ static struct option longopts[] =
+>  	{ "rdma", 2, 0, 'R' },
+>  	{ "grace-time", 1, 0, 'G'},
+>  	{ "lease-time", 1, 0, 'L'},
+> +	{ "vsock", 1, 0, 'v' },
+>  	{ NULL, 0, 0, 0 }
+>  };
+>  
+> @@ -61,6 +62,7 @@ main(int argc, char **argv)
+>  {
+>  	int	count = NFSD_NPROC, c, i, error = 0, portnum, fd, found_one;
+>  	char *p, *progname, *port, *rdma_port = NULL;
+> +	char *vsock_port = NULL;
+>  	char **haddr = NULL;
+>  	int hcounter = 0;
+>  	struct conf_list *hosts;
+> @@ -145,7 +147,7 @@ main(int argc, char **argv)
+>  		}
+>  	}
+>  
+> -	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTituUrG:L:", longopts, NULL)) != EOF) {
+> +	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTituUrG:L:v:", longopts, NULL)) != EOF) {
+>  		switch(c) {
+>  		case 'd':
+>  			xlog_config(D_ALL, 1);
+> @@ -180,7 +182,9 @@ main(int argc, char **argv)
+>  			else
+>  				rdma_port = "nfsrdma";
+>  			break;
+> -
+> +		case 'v': /* --vsock */
+> +			vsock_port = optarg;
+> +			break;
+>  		case 'N':
+>  			switch((c = strtol(optarg, &p, 0))) {
+>  			case 4:
+> @@ -306,7 +310,8 @@ main(int argc, char **argv)
+>  	}
+>  
+>  	if (NFSCTL_VERISSET(versbits, 4) &&
+> -	    !NFSCTL_TCPISSET(protobits)) {
+> +	    !NFSCTL_TCPISSET(protobits) &&
+> +	    !vsock_port) {
+>  		xlog(L_ERROR, "version 4 requires the TCP protocol");
+>  		exit(1);
+>  	}
+> @@ -350,6 +355,13 @@ main(int argc, char **argv)
+>  		if (!error)
+>  			socket_up = 1;
+>  	}
+> +
+> +	if (vsock_port) {
+> +		error = nfssvc_set_vsock(vsock_port);
+> +		if (!error)
+> +			socket_up = 1;
+> +	}
+> +
+>  set_threads:
+>  	/* don't start any threads if unable to hand off any sockets */
+>  	if (!socket_up) {
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index e8609c1..e867454 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -15,6 +15,7 @@
+>  #include <netdb.h>
+>  #include <netinet/in.h>
+>  #include <arpa/inet.h>
+> +#include <linux/vm_sockets.h>
+>  #include <sys/stat.h>
+>  #include <unistd.h>
+>  #include <fcntl.h>
+> @@ -304,6 +305,67 @@ nfssvc_set_rdmaport(const char *port)
+>  	return ret;
 >  }
 >  
-> +static int exportfs_vsock(char *arg, char *options, int verbose)
+> +int
+> +nfssvc_set_vsock(const char *port)
 > +{
-> +	char *path;
+> +	struct sockaddr_vm svm;
+> +	int nport;
+> +	char buf[20];
+> +	int rc = 1;
+> +	int sockfd = -1;
+> +	int fd = -1;
+> +	char *ep;
 > +
-> +	if ((path = strchr(arg + strlen("vsock:"), ':')) != NULL)
-> +		*path++ = '\0';
+> +	nport = strtol(port, &ep, 10);
+> +	if (!*port || *ep) {
+> +		xlog(L_ERROR, "unable to interpret port name %s",
+> +		     port);
+> +		goto out;
+> +	}
 > +
-> +	if (!path || *path != '/')
-> +		return 1;
+> +	sockfd = socket(AF_VSOCK, SOCK_STREAM, 0);
+> +	if (sockfd < 0) {
+> +		xlog(L_ERROR, "unable to create AF_VSOCK socket: "
+> +			      "errno %d (%m)", errno);
+> +		goto out;
+> +	}
 > +
-> +	exportfs_parsed(arg, path, options, verbose);
-> +	return 0;
+> +	svm.svm_family = AF_VSOCK;
+> +	svm.svm_port = nport;
+> +	svm.svm_cid = VMADDR_CID_ANY;
+> +
+> +	if (bind(sockfd, (struct sockaddr*)&svm, sizeof(svm))) {
+> +		xlog(L_ERROR, "unable to bind AF_VSOCK socket: "
+> +			      "errno %d (%m)", errno);
+> +		goto out;
+> +	}
+> +
+> +	if (listen(sockfd, 64)) {
+> +		xlog(L_ERROR, "unable to create listening socket: "
+> +			      "errno %d (%m)", errno);
+> +		goto out;
+> +	}
+> +
+> +	fd = open(NFSD_PORTS_FILE, O_WRONLY);
+> +	if (fd < 0) {
+> +		xlog(L_ERROR, "couldn't open ports file: errno "
+> +		     "%d (%m)", errno);
+> +		goto out;
+> +	}
+> +	snprintf(buf, sizeof(buf), "%d\n", sockfd);
+> +	if (write(fd, buf, strlen(buf)) != (ssize_t)strlen(buf)) {
+> +		xlog(L_ERROR, "unable to request vsock services: %m");
+> +		goto out;
+> +	}
+> +	rc = 0;
+> +out:
+> +	if (fd != -1)
+> +		close(fd);
+> +	if (sockfd != -1)
+> +		close(sockfd);
+> +	return rc;
 > +}
 > +
->  static int exportfs_ipv6(char *arg, char *options, int verbose)
+>  void
+>  nfssvc_set_time(const char *type, const int seconds)
 >  {
->  	char *path, *c;
-> @@ -332,6 +346,8 @@ exportfs(char *arg, char *options, int verbose)
->  
->  	if (*arg == '[')
->  		failed = exportfs_ipv6(arg, options, verbose);
-> +	else if (strncmp(arg, "vsock:", strlen("vsock:")) == 0)
-> +		failed = exportfs_vsock(arg, options, verbose);
->  	else
->  		failed = exportfs_generic(arg, options, verbose);
->  	if (failed)
-> @@ -412,6 +428,20 @@ static int unexportfs_generic(char *arg, int verbose)
->  	return 0;
->  }
->  
-> +static int unexportfs_vsock(char *arg, int verbose)
-> +{
-> +	char *path;
-> +
-> +	if ((path = strchr(arg + strlen("vsock:"), ':')) != NULL)
-> +		*path++ = '\0';
-> +
-> +	if (!path || *path != '/')
-> +		return 1;
-> +
-> +	unexportfs_parsed(arg, path, verbose);
-> +	return 0;
-> +}
-> +
->  static int unexportfs_ipv6(char *arg, int verbose)
->  {
->  	char *path, *c;
-> @@ -445,6 +475,8 @@ unexportfs(char *arg, int verbose)
->  
->  	if (*arg == '[')
->  		failed = unexportfs_ipv6(arg, verbose);
-> +	else if (strncmp(arg, "vsock:", strlen("vsock:")) == 0)
-> +		failed = unexportfs_vsock(arg, verbose);
->  	else
->  		failed = unexportfs_generic(arg, verbose);
->  	if (failed)
 > 
