@@ -1,188 +1,265 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54856 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46578 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751659AbdF3NWF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 09:22:05 -0400
+        id S1751659AbdF3NV4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:21:56 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>,
         Steve Dickson <steved@redhat.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH nfs-utils v2 11/12] nfsd: add --vsock (-v) option to nfsd
-Date: Fri, 30 Jun 2017 14:21:19 +0100
-Message-Id: <20170630132120.31578-12-stefanha@redhat.com>
+Subject: [PATCH nfs-utils v2 08/12] exportfs: add AF_VSOCK address parsing and printing
+Date: Fri, 30 Jun 2017 14:21:16 +0100
+Message-Id: <20170630132120.31578-9-stefanha@redhat.com>
 In-Reply-To: <20170630132120.31578-1-stefanha@redhat.com>
 References: <20170630132120.31578-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following command-line serves NFSv4.1 over AF_VSOCK:
-
-  nfsd -TU -N3 -V4.1 -v 2049
+Add code to parse and print AF_VSOCK addresses since the getaddrinfo(3)
+family of functions don't handle this address family.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- utils/nfsd/nfssvc.h |  1 +
- utils/nfsd/nfsd.c   | 18 +++++++++++++---
- utils/nfsd/nfssvc.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 78 insertions(+), 3 deletions(-)
+ support/export/hostname.c | 155 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 155 insertions(+)
 
-diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-index 39ebf37..1d251ca 100644
---- a/utils/nfsd/nfssvc.h
-+++ b/utils/nfsd/nfssvc.h
-@@ -26,6 +26,7 @@ int	nfssvc_set_sockets(const unsigned int protobits,
- 			   const char *host, const char *port);
- void	nfssvc_set_time(const char *type, const int seconds);
- int	nfssvc_set_rdmaport(const char *port);
-+int	nfssvc_set_vsock(const char *port);
- void	nfssvc_setvers(unsigned int ctlbits, unsigned int minorvers4, unsigned int minorvers4set);
- int	nfssvc_threads(int nrservs);
- void	nfssvc_get_minormask(unsigned int *mask);
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 2b38249..f969da0 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -53,6 +53,7 @@ static struct option longopts[] =
- 	{ "rdma", 2, 0, 'R' },
- 	{ "grace-time", 1, 0, 'G'},
- 	{ "lease-time", 1, 0, 'L'},
-+	{ "vsock", 1, 0, 'v' },
- 	{ NULL, 0, 0, 0 }
- };
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index 7f8a6f8..b7f8b39 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -30,6 +30,107 @@
+ #include "sockaddr.h"
+ #include "exportfs.h"
  
-@@ -61,6 +62,7 @@ main(int argc, char **argv)
- {
- 	int	count = NFSD_NPROC, c, i, error = 0, portnum, fd, found_one;
- 	char *p, *progname, *port, *rdma_port = NULL;
-+	char *vsock_port = NULL;
- 	char **haddr = NULL;
- 	int hcounter = 0;
- 	struct conf_list *hosts;
-@@ -145,7 +147,7 @@ main(int argc, char **argv)
- 		}
- 	}
- 
--	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTituUrG:L:", longopts, NULL)) != EOF) {
-+	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTituUrG:L:v:", longopts, NULL)) != EOF) {
- 		switch(c) {
- 		case 'd':
- 			xlog_config(D_ALL, 1);
-@@ -180,7 +182,9 @@ main(int argc, char **argv)
- 			else
- 				rdma_port = "nfsrdma";
- 			break;
--
-+		case 'v': /* --vsock */
-+			vsock_port = optarg;
-+			break;
- 		case 'N':
- 			switch((c = strtol(optarg, &p, 0))) {
- 			case 4:
-@@ -306,7 +310,8 @@ main(int argc, char **argv)
- 	}
- 
- 	if (NFSCTL_VERISSET(versbits, 4) &&
--	    !NFSCTL_TCPISSET(protobits)) {
-+	    !NFSCTL_TCPISSET(protobits) &&
-+	    !vsock_port) {
- 		xlog(L_ERROR, "version 4 requires the TCP protocol");
- 		exit(1);
- 	}
-@@ -350,6 +355,13 @@ main(int argc, char **argv)
- 		if (!error)
- 			socket_up = 1;
- 	}
-+
-+	if (vsock_port) {
-+		error = nfssvc_set_vsock(vsock_port);
-+		if (!error)
-+			socket_up = 1;
-+	}
-+
- set_threads:
- 	/* don't start any threads if unable to hand off any sockets */
- 	if (!socket_up) {
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index e8609c1..e867454 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -15,6 +15,7 @@
- #include <netdb.h>
- #include <netinet/in.h>
- #include <arpa/inet.h>
-+#include <linux/vm_sockets.h>
- #include <sys/stat.h>
- #include <unistd.h>
- #include <fcntl.h>
-@@ -304,6 +305,67 @@ nfssvc_set_rdmaport(const char *port)
- 	return ret;
- }
- 
-+int
-+nfssvc_set_vsock(const char *port)
++#ifdef AF_VSOCK
++static char *
++host_ntop_vsock(const struct sockaddr *sap, char *buf, const size_t buflen)
 +{
-+	struct sockaddr_vm svm;
-+	int nport;
-+	char buf[20];
-+	int rc = 1;
-+	int sockfd = -1;
-+	int fd = -1;
-+	char *ep;
-+
-+	nport = strtol(port, &ep, 10);
-+	if (!*port || *ep) {
-+		xlog(L_ERROR, "unable to interpret port name %s",
-+		     port);
-+		goto out;
-+	}
-+
-+	sockfd = socket(AF_VSOCK, SOCK_STREAM, 0);
-+	if (sockfd < 0) {
-+		xlog(L_ERROR, "unable to create AF_VSOCK socket: "
-+			      "errno %d (%m)", errno);
-+		goto out;
-+	}
-+
-+	svm.svm_family = AF_VSOCK;
-+	svm.svm_port = nport;
-+	svm.svm_cid = VMADDR_CID_ANY;
-+
-+	if (bind(sockfd, (struct sockaddr*)&svm, sizeof(svm))) {
-+		xlog(L_ERROR, "unable to bind AF_VSOCK socket: "
-+			      "errno %d (%m)", errno);
-+		goto out;
-+	}
-+
-+	if (listen(sockfd, 64)) {
-+		xlog(L_ERROR, "unable to create listening socket: "
-+			      "errno %d (%m)", errno);
-+		goto out;
-+	}
-+
-+	fd = open(NFSD_PORTS_FILE, O_WRONLY);
-+	if (fd < 0) {
-+		xlog(L_ERROR, "couldn't open ports file: errno "
-+		     "%d (%m)", errno);
-+		goto out;
-+	}
-+	snprintf(buf, sizeof(buf), "%d\n", sockfd);
-+	if (write(fd, buf, strlen(buf)) != (ssize_t)strlen(buf)) {
-+		xlog(L_ERROR, "unable to request vsock services: %m");
-+		goto out;
-+	}
-+	rc = 0;
-+out:
-+	if (fd != -1)
-+		close(fd);
-+	if (sockfd != -1)
-+		close(sockfd);
-+	return rc;
++	struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
++	snprintf(buf, buflen, "vsock:%u", svm->svm_cid);
++	return buf;
 +}
 +
++/* Allocate an addrinfo for AF_VSOCK.  Free with host_freeaddrinfo(). */
++static struct addrinfo *
++vsock_alloc_addrinfo(struct sockaddr_vm **svm)
++{
++	struct {
++		struct addrinfo ai;
++		struct sockaddr_vm svm;
++	} *vai;
++
++	vai = calloc(1, sizeof(*vai));
++	if (!vai)
++		return NULL;
++
++	vai->ai.ai_family = AF_VSOCK;
++	vai->ai.ai_socktype = SOCK_STREAM;
++	vai->ai.ai_addrlen = sizeof(vai->svm);
++	vai->ai.ai_addr = (struct sockaddr *)&vai->svm;
++	vai->svm.svm_family = AF_VSOCK;
++
++	if (svm)
++		*svm = &vai->svm;
++
++	return &vai->ai;
++}
++
++/* hostname -> addrinfo */
++static struct addrinfo *
++vsock_hostname_addrinfo(const char *hostname)
++{
++	const char *cid_str;
++	char *end_ptr;
++	struct addrinfo *ai;
++	struct sockaddr_vm *svm;
++	long cid;
++
++	cid_str = hostname + strlen("vsock:");
++	cid = strtol(cid_str, &end_ptr, 10);
++	if (end_ptr == cid_str || *end_ptr != '\0')
++		return NULL;
++	if (cid < 0 || cid > UINT32_MAX)
++		return NULL;
++
++	ai = vsock_alloc_addrinfo(&svm);
++	if (!ai)
++		return NULL;
++
++	ai->ai_canonname = strdup(hostname);
++	if (!ai->ai_canonname) {
++		host_freeaddrinfo(ai);
++		return NULL;
++	}
++
++	svm->svm_cid = cid;
++	return ai;
++}
++
++/* sockaddr -> hostname */
++static char *
++vsock_canonname(const struct sockaddr *sap)
++{
++	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)sap;
++	char *canonname;
++
++	if (asprintf(&canonname, "vsock:%u", svm->svm_cid) < 0)
++		return NULL;
++	return canonname;
++}
++
++/* sockaddr -> addrinfo */
++static struct addrinfo *
++vsock_sockaddr_addrinfo(const struct sockaddr *sap)
++{
++	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)sap;
++	struct sockaddr_vm *ai_svm;
++	struct addrinfo *ai;
++
++	ai = vsock_alloc_addrinfo(&ai_svm);
++	if (!ai)
++		return NULL;
++
++	*ai_svm = *svm;
++
++	ai->ai_canonname = vsock_canonname(sap);
++	if (!ai->ai_canonname) {
++		host_freeaddrinfo(ai);
++		return NULL;
++	}
++
++	return ai;
++}
++#endif /* AF_VSOCK */
++
+ /**
+  * host_ntop - generate presentation address given a sockaddr
+  * @sap: pointer to socket address
+@@ -52,6 +153,11 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
+ 		return buf;
+ 	}
+ 
++#ifdef AF_VSOCK
++	if (sap->sa_family == AF_VSOCK)
++		return host_ntop_vsock(sap, buf, buflen);
++#endif
++
+ 	error = getnameinfo(sap, salen, buf, (socklen_t)buflen,
+ 						NULL, 0, NI_NUMERICHOST);
+ 	if (error != 0) {
+@@ -69,6 +175,11 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
+ 
+ 	memset(buf, 0, buflen);
+ 
++#ifdef AF_VSOCK
++	if (sap->sa_family == AF_VSOCK)
++		return host_ntop_vsock(sap, buf, buflen);
++#endif
++
+ 	if (sin->sin_family != AF_INET) {
+ 		(void)strncpy(buf, "bad family", buflen - 1);
+ 		return buf;
+@@ -120,6 +231,12 @@ host_pton(const char *paddr)
+ 			__func__);
+ 		return NULL;
+ 	}
++
++#ifdef AF_VSOCK
++	if (strncmp(paddr, "vsock:", strlen("vsock:")) == 0)
++		return vsock_hostname_addrinfo(paddr);
++#endif
++
+ 	inet4 = 1;
+ 	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0)
+ 		inet4 = 0;
+@@ -174,6 +291,11 @@ host_addrinfo(const char *hostname)
+ 	};
+ 	int error;
+ 
++#ifdef AF_VSOCK
++	if (strncmp(hostname, "vsock:", strlen("vsock:")) == 0)
++		return vsock_hostname_addrinfo(hostname);
++#endif
++
+ 	error = getaddrinfo(hostname, NULL, &hint, &ai);
+ 	switch (error) {
+ 	case 0:
+@@ -202,6 +324,14 @@ host_addrinfo(const char *hostname)
  void
- nfssvc_set_time(const char *type, const int seconds)
+ host_freeaddrinfo(struct addrinfo *ai)
  {
++#ifdef AF_VSOCK
++	if (ai && ai->ai_family == AF_VSOCK) {
++		free(ai->ai_canonname);
++		free(ai);
++		return;
++	}
++#endif /* AF_VSOCK */
++
+ 	freeaddrinfo(ai);
+ }
+ 
+@@ -225,6 +355,11 @@ host_canonname(const struct sockaddr *sap)
+ 	char buf[NI_MAXHOST];
+ 	int error;
+ 
++#ifdef AF_VSOCK
++	if (sap->sa_family == AF_VSOCK)
++		return vsock_canonname(sap);
++#endif
++
+ 	if (salen == 0) {
+ 		xlog(D_GENERAL, "%s: unsupported address family %d",
+ 				__func__, sap->sa_family);
+@@ -260,6 +395,11 @@ host_canonname(const struct sockaddr *sap)
+ 	const struct in_addr *addr = &sin->sin_addr;
+ 	struct hostent *hp;
+ 
++#ifdef AF_VSOCK
++	if (sap->sa_family == AF_VSOCK)
++		return vsock_canonname(sap);
++#endif
++
+ 	if (sap->sa_family != AF_INET)
+ 		return NULL;
+ 
+@@ -291,6 +431,11 @@ host_reliable_addrinfo(const struct sockaddr *sap)
+ 	struct addrinfo *ai, *a;
+ 	char *hostname;
+ 
++#ifdef AF_VSOCK
++	if (sap->sa_family == AF_VSOCK)
++		return vsock_sockaddr_addrinfo(sap);
++#endif
++
+ 	hostname = host_canonname(sap);
+ 	if (hostname == NULL)
+ 		return NULL;
+@@ -340,6 +485,11 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 	struct addrinfo *ai;
+ 	int error;
+ 
++#ifdef AF_VSOCK
++	if (sap->sa_family == AF_VSOCK)
++		return vsock_sockaddr_addrinfo(sap);
++#endif
++
+ 	if (salen == 0) {
+ 		xlog(D_GENERAL, "%s: unsupported address family %d",
+ 				__func__, sap->sa_family);
+@@ -388,6 +538,11 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 	char buf[INET_ADDRSTRLEN];
+ 	struct addrinfo *ai;
+ 
++#ifdef AF_VSOCK
++	if (sap->sa_family == AF_VSOCK)
++		return vsock_sockaddr_addrinfo(sap);
++#endif
++
+ 	if (sap->sa_family != AF_INET)
+ 		return NULL;
+ 
 -- 
 2.9.4
 
