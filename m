@@ -1,101 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52458 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9047 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751560AbdF3NVa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 09:21:30 -0400
+        id S1751659AbdF3NVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:21:45 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>,
         Steve Dickson <steved@redhat.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH nfs-utils v2 02/12] nfs-utils: add AF_VSOCK support to sockaddr.h
-Date: Fri, 30 Jun 2017 14:21:10 +0100
-Message-Id: <20170630132120.31578-3-stefanha@redhat.com>
+Subject: [PATCH nfs-utils v2 06/12] mount: AF_VSOCK address parsing
+Date: Fri, 30 Jun 2017 14:21:14 +0100
+Message-Id: <20170630132120.31578-7-stefanha@redhat.com>
 In-Reply-To: <20170630132120.31578-1-stefanha@redhat.com>
 References: <20170630132120.31578-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+getaddrinfo(3) does not have AF_VSOCK support.  Parse the CID in the
+hostname option and build a struct sockaddr_vm.
+
+There is one tricky thing here: struct addrinfo is normally allocated by
+getaddrinfo(3) and freed by freeaddrinfo(3).  The memory allocation of
+the struct addrinfo and struct sockaddr are an implementation detail of
+libc.  Therefore we must avoid freeaddrinfo(3) calls when the addrinfo
+details were filled out by us for AF_VSOCK instead of by getaddrinfo(3).
+
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- support/include/sockaddr.h | 29 +++++++++++++++++++++++++++++
- 1 file changed, 29 insertions(+)
+ utils/mount/stropts.c | 63 +++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 58 insertions(+), 5 deletions(-)
 
-diff --git a/support/include/sockaddr.h b/support/include/sockaddr.h
-index 446b537..0577859 100644
---- a/support/include/sockaddr.h
-+++ b/support/include/sockaddr.h
-@@ -31,6 +31,9 @@
- #include <stdbool.h>
- #include <sys/socket.h>
- #include <netinet/in.h>
-+#ifdef AF_VSOCK
-+#include <linux/vm_sockets.h>
-+#endif
- 
- /*
-  * This type is for defining buffers that contain network socket
-@@ -51,6 +54,9 @@ union nfs_sockaddr {
- 	struct sockaddr		sa;
- 	struct sockaddr_in	s4;
- 	struct sockaddr_in6	s6;
-+#ifdef AF_VSOCK
-+	struct sockaddr_vm	svm;
-+#endif
- };
- 
- #if SIZEOF_SOCKLEN_T - 0 == 0
-@@ -66,6 +72,10 @@ union nfs_sockaddr {
- #define SIZEOF_SOCKADDR_IN6	SIZEOF_SOCKADDR_UNKNOWN
- #endif	/* !IPV6_SUPPORTED */
- 
-+#ifdef AF_VSOCK
-+#define SIZEOF_SOCKADDR_VM	(socklen_t)sizeof(struct sockaddr_vm)
-+#endif
-+
- /**
-  * nfs_sockaddr_length - return the size in bytes of a socket address
-  * @sap: pointer to socket address
-@@ -81,6 +91,10 @@ nfs_sockaddr_length(const struct sockaddr *sap)
- 		return SIZEOF_SOCKADDR_IN;
- 	case AF_INET6:
- 		return SIZEOF_SOCKADDR_IN6;
-+#ifdef AF_VSOCK
-+	case AF_VSOCK:
-+		return SIZEOF_SOCKADDR_VM;
-+#endif /* !AF_VSOCK */
- 	}
- 	return SIZEOF_SOCKADDR_UNKNOWN;
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 99656dd..3161609 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -898,6 +898,42 @@ fall_back:
+ 	return nfs_try_mount_v3v2(mi, FALSE);
  }
-@@ -218,6 +232,17 @@ compare_sockaddr6(__attribute__ ((unused)) const struct sockaddr *sa1,
- }
- #endif	/* !IPV6_SUPPORTED */
  
 +#ifdef AF_VSOCK
-+static inline _Bool
-+compare_sockaddr_vsock(const struct sockaddr *sa1, const struct sockaddr *sa2)
++/* There are no guarantees on how getaddrinfo(3) allocates struct addrinfo so
++ * be sure to call free(3) on *address instead of freeaddrinfo(3).
++ */
++static int vsock_getaddrinfo(struct nfsmount_info *mi,
++			     struct addrinfo **address)
 +{
-+	const struct sockaddr_vm *svm1 = (const struct sockaddr_vm *)sa1;
-+	const struct sockaddr_vm *svm2 = (const struct sockaddr_vm *)sa2;
++	struct {
++		struct addrinfo ai;
++		struct sockaddr_vm svm;
++	} *vai;
++	long cid;
++	char *endptr;
 +
-+	return svm1->svm_cid == svm2->svm_cid;
++	errno = 0;
++	cid = strtol(mi->hostname, &endptr, 10);
++	if (errno != 0 || *endptr != '\0' ||
++	    cid < 0 || cid > UINT_MAX)
++		return EAI_NONAME;
++
++	vai = calloc(1, sizeof(*vai));
++	if (!vai)
++		return EAI_MEMORY;
++
++	vai->ai.ai_family	= AF_VSOCK;
++	vai->ai.ai_socktype	= SOCK_STREAM;
++	vai->ai.ai_addrlen	= sizeof(vai->svm);
++	vai->ai.ai_addr		= (struct sockaddr *)&vai->svm;
++	vai->svm.svm_family	= AF_VSOCK;
++	vai->svm.svm_cid	= cid;
++
++	*address = &vai->ai;
++	return 0;
 +}
++#endif /* AF_VSOCK */
++
+ /*
+  * This is a single pass through the fg/bg loop.
+  *
+@@ -909,12 +945,21 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+ 	int result = 0;
+ 
+ 	if (mi->address == NULL) {
+-		struct addrinfo hint = {};
+-		int error;
+-		struct addrinfo *address;
++		int error = 0;
++		struct addrinfo *address = NULL;
++
++#ifdef AF_VSOCK
++		if (mi->family == AF_VSOCK)
++			error = vsock_getaddrinfo(mi, &address);
 +#endif
 +
- /**
-  * nfs_compare_sockaddr - compare two socket addresses for equality
-  * @sa1: pointer to a socket address
-@@ -238,6 +263,10 @@ nfs_compare_sockaddr(const struct sockaddr *sa1, const struct sockaddr *sa2)
- 			return compare_sockaddr4(sa1, sa2);
- 		case AF_INET6:
- 			return compare_sockaddr6(sa1, sa2);
-+#ifdef AF_VSOCK
-+		case AF_VSOCK:
-+			return compare_sockaddr_vsock(sa1, sa2);
-+#endif
- 		}
++		if (error == 0 && !address) {
++			struct addrinfo hint = {};
++
++			hint.ai_family = (int)mi->family;
++			error = getaddrinfo(mi->hostname, NULL, &hint, &address);
++		}
  
- 	return false;
+-		hint.ai_family = (int)mi->family;
+-		error = getaddrinfo(mi->hostname, NULL, &hint, &address);
+ 		if (error != 0) {
+ 			if (error == EAI_AGAIN)
+ 				errno = EAGAIN;
+@@ -1209,6 +1254,14 @@ int nfsmount_string(const char *spec, const char *node, const char *type,
+ 	} else
+ 		nfs_error(_("%s: internal option parsing error"), progname);
+ 
++#ifdef AF_VSOCK
++	/* See vsock_getaddrinfo() for why we cannot use freeaddrinfo(3) */
++	if (mi.address && mi.address->ai_family == AF_VSOCK) {
++		free(mi.address);
++		mi.address = NULL;
++	}
++#endif
++
+ 	freeaddrinfo(mi.address);
+ 	free(mi.hostname);
+ 	return retval;
 -- 
 2.9.4
 
