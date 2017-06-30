@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43628 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58334 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752316AbdF3NYE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 09:24:04 -0400
+        id S1752317AbdF3NYC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:24:02 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Abbas Naderi <abiusx@google.com>,
@@ -12,240 +12,185 @@ Cc: Abbas Naderi <abiusx@google.com>,
         Jeff Layton <jlayton@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH v3 01/14] SUNRPC: add AF_VSOCK support to addr.[ch]
-Date: Fri, 30 Jun 2017 14:23:39 +0100
-Message-Id: <20170630132352.32133-2-stefanha@redhat.com>
-In-Reply-To: <20170630132352.32133-1-stefanha@redhat.com>
-References: <20170630132352.32133-1-stefanha@redhat.com>
+Subject: [PATCH v3 00/14] NFS: add AF_VSOCK support
+Date: Fri, 30 Jun 2017 14:23:38 +0100
+Message-Id: <20170630132352.32133-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-AF_VSOCK addresses are a Context ID (CID) and port number tuple.  The
-CID is a unique address, similar to a IP address on a local subnet.
+v3:
+ * Now with nfsd support so the full stack can be tested
 
-Extend the addr.h functions to handle AF_VSOCK addresses.
+This patch series enables AF_VSOCK address family support in the NFS client and
+nfsd.  You can also get the code here:
+https://github.com/stefanha/linux/tree/vsock-nfsd
 
-Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
----
-v2:
- * Replace CONFIG_VSOCKETS with CONFIG_SUNRPC_XPRT_VSOCK to prevent
-   build failures when SUNRPC=y and VSOCKETS=m.  Built-in code cannot
-   link against code in a module.
----
- include/linux/sunrpc/addr.h | 44 ++++++++++++++++++++++++++++++++++
- net/sunrpc/addr.c           | 57 +++++++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/Kconfig          | 10 ++++++++
- 3 files changed, 111 insertions(+)
+Please also see the nfs-utils patch series I have just sent to
+linux-nfs@vger.kernel.org for the necessary patches.  You can get the code
+here:
+https://github.com/stefanha/nfs-utils/tree/vsock-nfsd
 
-diff --git a/include/linux/sunrpc/addr.h b/include/linux/sunrpc/addr.h
-index 5c9c6cd..c4169bc 100644
---- a/include/linux/sunrpc/addr.h
-+++ b/include/linux/sunrpc/addr.h
-@@ -10,6 +10,7 @@
- #include <linux/socket.h>
- #include <linux/in.h>
- #include <linux/in6.h>
-+#include <linux/vm_sockets.h>
- #include <net/ipv6.h>
- 
- size_t		rpc_ntop(const struct sockaddr *, char *, const size_t);
-@@ -26,6 +27,8 @@ static inline unsigned short rpc_get_port(const struct sockaddr *sap)
- 		return ntohs(((struct sockaddr_in *)sap)->sin_port);
- 	case AF_INET6:
- 		return ntohs(((struct sockaddr_in6 *)sap)->sin6_port);
-+	case AF_VSOCK:
-+		return ((struct sockaddr_vm *)sap)->svm_port;
- 	}
- 	return 0;
- }
-@@ -40,6 +43,9 @@ static inline void rpc_set_port(struct sockaddr *sap,
- 	case AF_INET6:
- 		((struct sockaddr_in6 *)sap)->sin6_port = htons(port);
- 		break;
-+	case AF_VSOCK:
-+		((struct sockaddr_vm *)sap)->svm_port = port;
-+		break;
- 	}
- }
- 
-@@ -106,6 +112,40 @@ static inline bool __rpc_copy_addr6(struct sockaddr *dst,
- }
- #endif	/* !(IS_ENABLED(CONFIG_IPV6) */
- 
-+#if IS_ENABLED(CONFIG_VSOCKETS)
-+static inline bool rpc_cmp_vsock_addr(const struct sockaddr *sap1,
-+				      const struct sockaddr *sap2)
-+{
-+	const struct sockaddr_vm *svm1 = (const struct sockaddr_vm *)sap1;
-+	const struct sockaddr_vm *svm2 = (const struct sockaddr_vm *)sap2;
-+
-+	return svm1->svm_cid == svm2->svm_cid;
-+}
-+
-+static inline bool __rpc_copy_vsock_addr(struct sockaddr *dst,
-+					 const struct sockaddr *src)
-+{
-+	const struct sockaddr_vm *ssvm = (const struct sockaddr_vm *)src;
-+	struct sockaddr_vm *dsvm = (struct sockaddr_vm *)dst;
-+
-+	dsvm->svm_family = ssvm->svm_family;
-+	dsvm->svm_cid = ssvm->svm_cid;
-+	return true;
-+}
-+#else	/* !(IS_ENABLED(CONFIG_VSOCKETS) */
-+static inline bool rpc_cmp_vsock_addr(const struct sockaddr *sap1,
-+				      const struct sockaddr *sap2)
-+{
-+	return false;
-+}
-+
-+static inline bool __rpc_copy_vsock_addr(struct sockaddr *dst,
-+					 const struct sockaddr *src)
-+{
-+	return false;
-+}
-+#endif	/* !(IS_ENABLED(CONFIG_VSOCKETS) */
-+
- /**
-  * rpc_cmp_addr - compare the address portion of two sockaddrs.
-  * @sap1: first sockaddr
-@@ -125,6 +165,8 @@ static inline bool rpc_cmp_addr(const struct sockaddr *sap1,
- 			return rpc_cmp_addr4(sap1, sap2);
- 		case AF_INET6:
- 			return rpc_cmp_addr6(sap1, sap2);
-+		case AF_VSOCK:
-+			return rpc_cmp_vsock_addr(sap1, sap2);
- 		}
- 	}
- 	return false;
-@@ -161,6 +203,8 @@ static inline bool rpc_copy_addr(struct sockaddr *dst,
- 		return __rpc_copy_addr4(dst, src);
- 	case AF_INET6:
- 		return __rpc_copy_addr6(dst, src);
-+	case AF_VSOCK:
-+		return __rpc_copy_vsock_addr(dst, src);
- 	}
- 	return false;
- }
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index 2e0a6f9..f4dd962 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -16,11 +16,14 @@
-  * RFC 4291, Section 2.2 for details on IPv6 presentation formats.
-  */
- 
-+ /* TODO register netid and uaddr with IANA? (See RFC 5665 5.1/5.2) */
-+
- #include <net/ipv6.h>
- #include <linux/sunrpc/addr.h>
- #include <linux/sunrpc/msg_prot.h>
- #include <linux/slab.h>
- #include <linux/export.h>
-+#include <linux/vm_sockets.h>
- 
- #if IS_ENABLED(CONFIG_IPV6)
- 
-@@ -108,6 +111,26 @@ static size_t rpc_ntop6(const struct sockaddr *sap,
- 
- #endif	/* !IS_ENABLED(CONFIG_IPV6) */
- 
-+#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+
-+static size_t rpc_ntop_vsock(const struct sockaddr *sap,
-+			     char *buf, const size_t buflen)
-+{
-+	const struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
-+
-+	return snprintf(buf, buflen, "%u", svm->svm_cid);
-+}
-+
-+#else	/* !CONFIG_SUNRPC_XPRT_VSOCK */
-+
-+static size_t rpc_ntop_vsock(const struct sockaddr *sap,
-+			     char *buf, const size_t buflen)
-+{
-+	return 0;
-+}
-+
-+#endif	/* !CONFIG_SUNRPC_XPRT_VSOCK */
-+
- static int rpc_ntop4(const struct sockaddr *sap,
- 		     char *buf, const size_t buflen)
- {
-@@ -132,6 +155,8 @@ size_t rpc_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
- 		return rpc_ntop4(sap, buf, buflen);
- 	case AF_INET6:
- 		return rpc_ntop6(sap, buf, buflen);
-+	case AF_VSOCK:
-+		return rpc_ntop_vsock(sap, buf, buflen);
- 	}
- 
- 	return 0;
-@@ -229,6 +254,34 @@ static size_t rpc_pton6(struct net *net, const char *buf, const size_t buflen,
- }
- #endif
- 
-+#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+static size_t rpc_pton_vsock(const char *buf, const size_t buflen,
-+			     struct sockaddr *sap, const size_t salen)
-+{
-+	const size_t prefix_len = strlen("vsock:");
-+	struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
-+	unsigned int cid;
-+
-+	if (strncmp(buf, "vsock:", prefix_len) != 0 ||
-+	    salen < sizeof(struct sockaddr_vm))
-+		return 0;
-+
-+	if (kstrtouint(buf + prefix_len, 10, &cid) != 0)
-+		return 0;
-+
-+	memset(svm, 0, sizeof(struct sockaddr_vm));
-+	svm->svm_family = AF_VSOCK;
-+	svm->svm_cid = cid;
-+	return sizeof(struct sockaddr_vm);
-+}
-+#else
-+static size_t rpc_pton_vsock(const char *buf, const size_t buflen,
-+			     struct sockaddr *sap, const size_t salen)
-+{
-+	return 0;
-+}
-+#endif
-+
- /**
-  * rpc_pton - Construct a sockaddr in @sap
-  * @net: applicable network namespace
-@@ -249,6 +302,10 @@ size_t rpc_pton(struct net *net, const char *buf, const size_t buflen,
- {
- 	unsigned int i;
- 
-+	/* TODO is there a nicer way to distinguish vsock addresses? */
-+	if (strncmp(buf, "vsock:", 6) == 0)
-+		return rpc_pton_vsock(buf, buflen, sap, salen);
-+
- 	for (i = 0; i < buflen; i++)
- 		if (buf[i] == ':')
- 			return rpc_pton6(net, buf, buflen, sap, salen);
-diff --git a/net/sunrpc/Kconfig b/net/sunrpc/Kconfig
-index ac09ca8..4fc6550 100644
---- a/net/sunrpc/Kconfig
-+++ b/net/sunrpc/Kconfig
-@@ -62,3 +62,13 @@ config SUNRPC_XPRT_RDMA
- 
- 	  If unsure, or you know there is no RDMA capability on your
- 	  hardware platform, say N.
-+
-+config SUNRPC_XPRT_VSOCK
-+	bool "RPC-over-AF_VSOCK transport"
-+	depends on SUNRPC && VSOCKETS && !(SUNRPC=y && VSOCKETS=m)
-+	default SUNRPC && VSOCKETS
-+	help
-+	  This option allows the NFS client and server to use the AF_VSOCK
-+	  transport to communicate between virtual machines and the host.
-+
-+	  If unsure, say Y.
+The AF_VSOCK address family provides socket communication between virtual
+machines and hypervisors.  VMware VMCI and virtio (for KVM) transports are
+available in Linux, see net/vmw_vsock/.
+
+The goal of this work is sharing files between virtual machines and
+hypervisors.  AF_VSOCK is well-suited to this because it requires no
+configuration inside the virtual machine, making it simple to manage and
+reliable.
+
+Why NFS over AF_VSOCK?
+----------------------
+It is unusual to add a new NFS transport, only TCP, RDMA, and UDP are currently
+supported.  Here is the rationale for adding AF_VSOCK.
+
+Sharing files with a virtual machine can be configured manually:
+1. Add a dedicated network card to the virtual machine.  It will be used for
+   NFS traffic.
+2. Configure a local subnet and assign IP addresses to the virtual machine and
+   hypervisor
+3. Configure an NFS export on the hypervisor and start the NFS server
+4. Mount the export inside the virtual machine
+
+Automating these steps poses a problem: modifying network configuration inside
+the virtual machine is invasive.  It's hard to add a network interface to an
+arbitrary running system in an automated fashion, considering the diversity in
+network management tools, firewall rules, IP address usage, etc.
+
+Furthermore, the user may disrupt file sharing by accident when they add
+firewall rules, restart networking, etc because the NFS network interface is
+prone to interference alongside the network interfaces managed by the user.
+
+AF_VSOCK is a zero-configuration network transport that avoids these problems.
+Adding it to a virtual machine is non-invasive.  It also avoids accidental
+misconfiguration by the user.  This is why "guest agents" and other services in
+various hypervisors (KVM, Xen, VMware, VirtualBox) do not use regular network
+interfaces.
+
+Instead of implementing a paravirtualized filesystem it makes more sense to use
+NFS, which is mature and well-understood.  This is why this patch series adds
+AF_VSOCK support to NFS.
+
+The approach in this series
+---------------------------
+AF_VSOCK stream sockets can be used for NFSv4.1 much in the same way as TCP.
+RFC 1831 record fragments divide messages since SOCK_STREAM semantics are
+present.  The backchannel shares the connection just like the default TCP
+configuration.
+
+Addresses are <Context ID, Port Number> pairs.  These patches use "vsock:<cid>"
+string representation to distinguish AF_VSOCK addresses from IPv4 and IPv6
+numeric addresses.
+
+The following nfsd /proc changes are needed:
+
+ * /proc/net/rpc/auth.unix.ip - new 'vsock:CID' syntax
+ * /proc/fs/nfsd/portlist - new 'vsock' transport and
+                            accept AF_VSOCK socket fds
+
+Quickstart
+----------
+1. Build these patches or clone from git:
+   https://github.com/stefanha/linux/tree/vsock-nfsd
+
+   Config options:
+   CONFIG_VSOCKETS=m
+   CONFIG_VIRTIO_VSOCKETS=m
+   CONFIG_VIRTIO_VSOCKETS_COMMON=m
+   CONFIG_SUNRPC_XPRT_VSOCK=y
+   CONFIG_VHOST_VSOCK=m
+
+   Install this kernel on the host and inside the guest.
+
+2. Build nfs-utils from git:
+   https://github.com/stefanha/nfs-utils/tree/vsock-nfsd
+
+   Install nfs-utils on the host and inside the guest.
+
+3. Define a vsock export on the host:
+
+   (host)# cat /etc/exports
+   /export	vsock:*(rw,no_root_squash,insecure,subtree_check)
+
+4. Ensure the host has AF_VSOCK set up
+
+   (host)# modprobe vhost_vsock
+
+5. Start nfsd
+
+   (host)# systemctl start var-lib-nfs-rpc_pipefs.mount
+   (host)# systemctl start proc-fs-nfsd.mount
+   (host)# systemctl start rpcbind.socket rpcbind.service
+   (host)# rpc.mountd
+   (host)# exportfs -r
+   (host)# rpc.nfsd -N3 -V4.1 --vsock 2049
+
+6. Launch the guest
+
+   (host)# qemu-system-x86_64 -M accel=kvm -m 1G \
+             -device vhost-vsock-pci,id=vhost-vsock-pci0,guest-cid=3 \
+             ...
+
+   (Check whether your qemu-system-x86_64 binary supports vsock using
+   "qemu-system-x86_64 -device \? 2>&1 | grep vsock".  If not, build
+   QEMU from git://git.qemu-project.org/qemu.git master.)
+
+7. Mount the export from the guest
+
+   The following example mounts /export from the hypervisor (CID 2)
+   inside the virtual machine (CID 3):
+
+   (guest)# mount.nfs 2:/export /mnt -o clientaddr=3,proto=vsock
+
+Status
+------
+Tested with basic NFSv4.1 file I/O.  Advanced NFS features may require
+additional changes.
+
+Please let me know your comments or questions.
+
+Thanks,
+Stefan
+
+Stefan Hajnoczi (14):
+  SUNRPC: add AF_VSOCK support to addr.[ch]
+  SUNRPC: rename "TCP" record parser to "stream" parser
+  SUNRPC: abstract tcp_read_sock() in record fragment parser
+  SUNRPC: extract xs_stream_reset_state()
+  VSOCK: add tcp_read_sock()-like vsock_read_sock() function
+  SUNRPC: add AF_VSOCK support to xprtsock.c
+  SUNRPC: drop unnecessary svc_bc_tcp_create() helper
+  SUNRPC: add AF_VSOCK support to svc_xprt.c
+  SUNRPC: add AF_VSOCK backchannel support
+  NFS: add AF_VSOCK support to NFS client
+  nfsd: support vsock xprt creation
+  SUNRPC: add AF_VSOCK lock class
+  SUNRPC: vsock svcsock support
+  SUNRPC: add AF_VSOCK support to auth.unix.ip
+
+ include/linux/sunrpc/addr.h             |  44 ++
+ include/linux/sunrpc/svc_xprt.h         |  12 +
+ include/linux/sunrpc/xprt.h             |   1 +
+ include/linux/sunrpc/xprtsock.h         |  36 +-
+ include/linux/virtio_vsock.h            |   4 +
+ include/net/af_vsock.h                  |   5 +
+ include/trace/events/sunrpc.h           |  26 +-
+ drivers/vhost/vsock.c                   |   1 +
+ fs/nfs/client.c                         |   2 +
+ fs/nfs/super.c                          |  11 +-
+ fs/nfsd/nfsctl.c                        |  23 +-
+ net/sunrpc/addr.c                       |  57 +++
+ net/sunrpc/svc_xprt.c                   |  18 +
+ net/sunrpc/svcauth_unix.c               | 146 +++++--
+ net/sunrpc/svcsock.c                    | 271 ++++++++++--
+ net/sunrpc/xprtsock.c                   | 701 +++++++++++++++++++++++++-------
+ net/vmw_vsock/af_vsock.c                |  16 +
+ net/vmw_vsock/virtio_transport.c        |   1 +
+ net/vmw_vsock/virtio_transport_common.c |  66 +++
+ net/vmw_vsock/vmci_transport.c          |   8 +
+ net/sunrpc/Kconfig                      |  10 +
+ 21 files changed, 1206 insertions(+), 253 deletions(-)
+
 -- 
 2.9.4
 
