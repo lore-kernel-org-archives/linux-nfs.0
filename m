@@ -1,178 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:32131 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751584AbdF3AXL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Jun 2017 20:23:11 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v3 09/18] sunrpc: Allocate one more page per svc_rqst
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <EB8E2100-6176-424A-B687-FE84758889E0@oracle.com>
-Date: Thu, 29 Jun 2017 20:23:04 -0400
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C17CF389-2673-4478-B662-D6F890E3D047@oracle.com>
-References: <20170623211150.5162.59075.stgit@klimt.1015granger.net> <20170623211816.5162.54447.stgit@klimt.1015granger.net> <20170629202004.GC4178@fieldses.org> <EB8E2100-6176-424A-B687-FE84758889E0@oracle.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:47594 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751560AbdF3NVZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:21:25 -0400
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>,
+        Steve Dickson <steved@redhat.com>,
+        Stefan Hajnoczi <stefanha@redhat.com>
+Subject: [PATCH nfs-utils v2 00/12] add NFS over AF_VSOCK support
+Date: Fri, 30 Jun 2017 14:21:08 +0100
+Message-Id: <20170630132120.31578-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The AF_VSOCK address family allows virtual machines to communicate with the
+hypervisor using a zero-configuration transport.  Both KVM and VMware
+hypervisors support AF_VSOCK and it was introduced in Linux 3.9.
 
-> On Jun 29, 2017, at 4:44 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> Thanks for the review!
-> 
->> On Jun 29, 2017, at 4:20 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
->> 
->> I'm confused by this one:
->> 
->> On Fri, Jun 23, 2017 at 05:18:16PM -0400, Chuck Lever wrote:
->>> svcrdma needs 259 pages for 1MB NFSv4.0 READ requests:
->>> 
->>> - 1 page for the transport header and head iovec
->>> - 256 pages for the data payload
->>> - 1 page for the trailing GETATTR request (since NFSD XDR decoding
->>>  does not look for a tail iovec, the GETATTR is stuck at the end
->>>  of the rqstp->rq_arg.pages list)
->>> - 1 page for building the reply xdr_buf
->>> 
->>> Note that RPCSVC_MAXPAGES is defined as:
->>> 
->>> 	((RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_SIZE + 2 + 1)
->>> 
->>> I don't understand why the "+PAGE_SIZE-1" is in there, because
->>> division will always round the result down to
->>> 
->>> 	(RPCSVC_MAXPAYLOAD / PAGE_SIZE + 2 + 1)
->> 
->> I think you're assuming that RPCSVC_MAXPAYLOAD is a multiple of
->> PAGE_SIZE.  Maybe that's true in all cases (I haven't checked), but it
->> seems harmless to handle the case where it's not.
-> 
-> include/linux/sunrpc/svc.h says:
-> 
-> 126  * Maximum payload size supported by a kernel RPC server.
-> 127  * This is use to determine the max number of pages nfsd is
-> 128  * willing to return in a single READ operation.
-> 129  *
-> 130  * These happen to all be powers of 2, which is not strictly
-> 131  * necessary but helps enforce the real limitation, which is
-> 132  * that they should be multiples of PAGE_SIZE.
-> 
-> Note that the same calculation in svc_alloc_args() assumes
-> that serv->sv_max_mesg is a multiple of PAGE_SIZE:
-> 
-> 	pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
-> 
-> It's confusing that the value of RPCSVC_MAXPAGES is not computed
-> the same way as "pages" is.
-> 
-> 
->>> Let's remove the "-1" to get 260 pages maximum.
->> 
->> Why?  (I'm not necessarily opposed, I just missed the explanation.)
-> 
-> The top of the patch description explains why I need 259 pages.
-> 
-> MAX_PAGES has to be 260 in order for this check in svc_alloc_args()
-> 
-> 	if (pages >= RPCSVC_MAXPAGES) {
-> 		/* use as many pages as possible */
-> 		pages = RPCSVC_MAXPAGES - 1;
-> 
-> to allow 260 elements of the array to be filled in.
+This patch series adds AF_VSOCK support to mount.nfs(8) and rpc.nfsd(8).
 
-OK, I see why I was confused about this. I expected a variable
-called "pages" to be the count of pages. But it actually contains
-the maximum index of the rq_pages array, which is one less than
-the number of array elements. However...
+It requires the kernel NFS client patches that I am also posting to
+linux-nfs@vger.kernel.org.  Please see the kernel patch series for an overview
+of NFS over AF_VSOCK and quickstart instructions for testing.
 
-It looks like the rq_pages array already has 259 elements, but
-the last element always contains NULL.
+This series extends exports(5) syntax to handle vsock:<CID> or vsock:*.  For
+example, the guest with CID 3 can be given access using vsock:3.
 
- 682         rqstp->rq_page_end = &rqstp->rq_pages[i];
- 683         rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
+The code is also available here:
+https://github.com/stefanha/nfs-utils/tree/vsock-nfsd
 
-So we actually have just 258 pages in this 259-entry array. That's
-one short of the 259 pages needed by svcrdma, and one less than
-the value of RPCSVC_MAXPAGES.
+Stefan Hajnoczi (12):
+  mount: don't use IPPROTO_UDP for address resolution
+  nfs-utils: add AF_VSOCK support to sockaddr.h
+  mount: present AF_VSOCK addresses
+  mount: accept AF_VSOCK in nfs_verify_family()
+  getport: recognize "vsock" netid
+  mount: AF_VSOCK address parsing
+  exportfs: introduce host_freeaddrinfo()
+  exportfs: add AF_VSOCK address parsing and printing
+  exportfs: add AF_VSOCK support to set_addrlist()
+  exportfs: add support for "vsock:" exports(5) syntax
+  nfsd: add --vsock (-v) option to nfsd
+  tests: add "vsock:" exports(5) test case
 
-(Note that "i++" isn't necessary, as "i" is not accessed again in
-this function.).
+ tests/Makefile.am          |   3 +-
+ support/include/exportfs.h |   6 ++
+ support/include/sockaddr.h |  29 +++++++
+ utils/nfsd/nfssvc.h        |   1 +
+ support/export/client.c    |   8 +-
+ support/export/hostname.c  | 183 +++++++++++++++++++++++++++++++++++++++++++--
+ support/nfs/getport.c      |  16 +++-
+ utils/exportfs/exportfs.c  |  42 +++++++++--
+ utils/mount/network.c      |  10 ++-
+ utils/mount/stropts.c      |  67 +++++++++++++++--
+ utils/mountd/auth.c        |   2 +-
+ utils/mountd/cache.c       |  10 +--
+ utils/mountd/mountd.c      |   4 +-
+ utils/mountd/rmtab.c       |   2 +-
+ utils/nfsd/nfsd.c          |  18 ++++-
+ utils/nfsd/nfssvc.c        |  62 +++++++++++++++
+ tests/t0002-vsock-basic.sh |  53 +++++++++++++
+ 17 files changed, 474 insertions(+), 42 deletions(-)
+ create mode 100755 tests/t0002-vsock-basic.sh
 
-I'm sure there's a better way to fix this. For instance, since
-the last element of rq_pages is always NULL, perhaps the structure
-definition could be
-
-	struct page *rq_pages[RPCSVC_MAXPAGES + 1];
-
-And the logic in svc_alloc_arg() could be adjusted accordingly
-to fill in at most RPCSVC_MAXPAGES pages.
-
-
->> --b.
->> 
->>> Then svc_alloc_args() needs to ask for pages according to this
->>> same formula, otherwise it will never allocate enough.
->>> 
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>> include/linux/sunrpc/svc.h |    3 +--
->>> net/sunrpc/svc_xprt.c      |    8 +++++---
->>> 2 files changed, 6 insertions(+), 5 deletions(-)
->>> 
->>> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
->>> index 11cef5a..35c274f 100644
->>> --- a/include/linux/sunrpc/svc.h
->>> +++ b/include/linux/sunrpc/svc.h
->>> @@ -176,8 +176,7 @@ static inline void svc_get(struct svc_serv *serv)
->>> * We using ->sendfile to return read data, we might need one extra page
->>> * if the request is not page-aligned.  So add another '1'.
->>> */
->>> -#define RPCSVC_MAXPAGES		((RPCSVC_MAXPAYLOAD+PAGE_SIZE-1)/PAGE_SIZE \
->>> -				+ 2 + 1)
->>> +#define RPCSVC_MAXPAGES	((RPCSVC_MAXPAYLOAD + PAGE_SIZE) / PAGE_SIZE + 2 + 1)
->>> 
->>> static inline u32 svc_getnl(struct kvec *iov)
->>> {
->>> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
->>> index 7bfe1fb..9bd484d 100644
->>> --- a/net/sunrpc/svc_xprt.c
->>> +++ b/net/sunrpc/svc_xprt.c
->>> @@ -659,11 +659,13 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
->>> 	int i;
->>> 
->>> 	/* now allocate needed pages.  If we get a failure, sleep briefly */
->>> -	pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
->>> -	WARN_ON_ONCE(pages >= RPCSVC_MAXPAGES);
->>> -	if (pages >= RPCSVC_MAXPAGES)
->>> +	pages = (serv->sv_max_mesg + (2 * PAGE_SIZE)) >> PAGE_SHIFT;
->>> +	if (pages >= RPCSVC_MAXPAGES) {
->>> +		pr_warn_once("svc: warning: pages=%u >= RPCSVC_MAXPAGES=%lu\n",
->>> +			     pages, RPCSVC_MAXPAGES);
->>> 		/* use as many pages as possible */
->>> 		pages = RPCSVC_MAXPAGES - 1;
->>> +	}
->>> 	for (i = 0; i < pages ; i++)
->>> 		while (rqstp->rq_pages[i] == NULL) {
->>> 			struct page *p = alloc_page(GFP_KERNEL);
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+-- 
+2.9.4
 
