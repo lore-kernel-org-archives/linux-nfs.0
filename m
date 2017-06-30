@@ -1,204 +1,178 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54362 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751695AbdF3PZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 11:25:34 -0400
-Subject: Re: [PATCH nfs-utils v2 11/12] nfsd: add --vsock (-v) option to nfsd
-To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>
-References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-12-stefanha@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <99deb619-7e39-6689-79b3-2e7d252145b0@RedHat.com>
-Date: Fri, 30 Jun 2017 11:25:31 -0400
-MIME-Version: 1.0
-In-Reply-To: <20170630132120.31578-12-stefanha@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:31505 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751605AbdF3PwZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jun 2017 11:52:25 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170630132120.31578-6-stefanha@redhat.com>
+Date: Fri, 30 Jun 2017 11:52:15 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>,
+        Steve Dickson <steved@redhat.com>
+Message-Id: <952499A1-FBBA-4FD8-97A6-B0014FA5065D@oracle.com>
+References: <20170630132120.31578-1-stefanha@redhat.com> <20170630132120.31578-6-stefanha@redhat.com>
+To: Stefan Hajnoczi <stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Stefan-
 
 
-On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> The following command-line serves NFSv4.1 over AF_VSOCK:
+> On Jun 30, 2017, at 9:21 AM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
 > 
->   nfsd -TU -N3 -V4.1 -v 2049
-So this specifying no-tcp, no-udp (which is no longer needed since 
-udp is off by default), no-v3, only-v4.1, vsock listiner,
-and you are missing a -p because I don't think you want to
-start up 2049 process. 
+> Neither libtirpc nor getprotobyname(3) know about AF_VSOCK.
 
-How does this work with the standard NFS server? Are the
-co-compatible?
+Why?
 
-Also the --vsock needs to be documented. Also can the
---vsock flag just mean all of these specifics... Meaning
-so they don't have to be specified on the command line?
+Basically you are building a lot of specialized
+awareness in applications and leaving the
+network layer alone. That seems backwards to me.
 
-steved.
-  
+
+> For similar
+> reasons as for "rdma"/"rmda6", translate "vsock" manually in getport.c.
+
+rdma/rdma6 are specified by standards, and appear
+in the IANA Network Identifiers database:
+
+https://www.iana.org/assignments/rpc-netids/rpc-netids.xhtml
+
+Is there a standard netid for vsock? If not,
+there needs to be some discussion with the nfsv4
+Working Group to get this worked out.
+
+Because AF_VSOCK is an address family and the RPC
+framing is the same as TCP, the netid should be
+something like "tcpv" and not "vsock". I've
+complained about this before and there has been
+no response of any kind.
+
+I'll note that rdma/rdma6 do not use alternate
+address families: an IP address is specified and
+mapped to a GUID by the underlying transport.
+We purposely did not expose GUIDs to NFS, which
+is based on AF_INET/AF_INET6.
+
+rdma co-exists with IP. vsock doesn't have this
+fallback.
+
+It might be a better approach to use well-known
+(say, link-local or loopback) addresses and let
+the underlying network layer figure it out.
+
+Then hide all this stuff with DNS and let the
+client mount the server by hostname and use
+normal sockaddr's and "proto=tcp". Then you don't
+need _any_ application layer changes.
+
+Without hostnames, how does a client pick a
+Kerberos service principal for the server?
+
+Does rpcbind implement "vsock" netids?
+
+Does the NFSv4.0 client advertise "vsock" in
+SETCLIENTID, and provide a "vsock" callback
+service?
+
+
+> It is now possible to mount a file system from the host (hypervisor)
+> over AF_VSOCK like this:
 > 
+>  (guest)$ mount.nfs 2:/export /mnt -v -o clientaddr=3,proto=vsock
+> 
+> The VM's cid address is 3 and the hypervisor is 2.
+
+The mount command is supposed to supply "clientaddr"
+automatically. This mount option is exposed only for
+debugging purposes or very special cases (like
+disabling NFSv4 callback operations).
+
+I mean the whole point of this exercise is to get
+rid of network configuration, but here you're
+adding the need to additionally specify both the
+proto option and the clientaddr option to get this
+to work. Seems like that isn't zero-configuration
+at all.
+
+Wouldn't it be nicer if it worked like this:
+
+(guest)$ cat /etc/hosts
+129.0.0.2  localhyper
+(guest)$ mount.nfs localhyper:/export /mnt
+
+And the result was a working NFS mount of the
+local hypervisor, using whatever NFS version the
+two both support, with no changes needed to the
+NFS implementation or the understanding of the
+system administrator?
+
+
 > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 > ---
->  utils/nfsd/nfssvc.h |  1 +
->  utils/nfsd/nfsd.c   | 18 +++++++++++++---
->  utils/nfsd/nfssvc.c | 62 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  3 files changed, 78 insertions(+), 3 deletions(-)
+> support/nfs/getport.c | 16 ++++++++++++----
+> 1 file changed, 12 insertions(+), 4 deletions(-)
 > 
-> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-> index 39ebf37..1d251ca 100644
-> --- a/utils/nfsd/nfssvc.h
-> +++ b/utils/nfsd/nfssvc.h
-> @@ -26,6 +26,7 @@ int	nfssvc_set_sockets(const unsigned int protobits,
->  			   const char *host, const char *port);
->  void	nfssvc_set_time(const char *type, const int seconds);
->  int	nfssvc_set_rdmaport(const char *port);
-> +int	nfssvc_set_vsock(const char *port);
->  void	nfssvc_setvers(unsigned int ctlbits, unsigned int minorvers4, unsigned int minorvers4set);
->  int	nfssvc_threads(int nrservs);
->  void	nfssvc_get_minormask(unsigned int *mask);
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index 2b38249..f969da0 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -53,6 +53,7 @@ static struct option longopts[] =
->  	{ "rdma", 2, 0, 'R' },
->  	{ "grace-time", 1, 0, 'G'},
->  	{ "lease-time", 1, 0, 'L'},
-> +	{ "vsock", 1, 0, 'v' },
->  	{ NULL, 0, 0, 0 }
->  };
->  
-> @@ -61,6 +62,7 @@ main(int argc, char **argv)
->  {
->  	int	count = NFSD_NPROC, c, i, error = 0, portnum, fd, found_one;
->  	char *p, *progname, *port, *rdma_port = NULL;
-> +	char *vsock_port = NULL;
->  	char **haddr = NULL;
->  	int hcounter = 0;
->  	struct conf_list *hosts;
-> @@ -145,7 +147,7 @@ main(int argc, char **argv)
->  		}
->  	}
->  
-> -	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTituUrG:L:", longopts, NULL)) != EOF) {
-> +	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:stTituUrG:L:v:", longopts, NULL)) != EOF) {
->  		switch(c) {
->  		case 'd':
->  			xlog_config(D_ALL, 1);
-> @@ -180,7 +182,9 @@ main(int argc, char **argv)
->  			else
->  				rdma_port = "nfsrdma";
->  			break;
-> -
-> +		case 'v': /* --vsock */
-> +			vsock_port = optarg;
-> +			break;
->  		case 'N':
->  			switch((c = strtol(optarg, &p, 0))) {
->  			case 4:
-> @@ -306,7 +310,8 @@ main(int argc, char **argv)
->  	}
->  
->  	if (NFSCTL_VERISSET(versbits, 4) &&
-> -	    !NFSCTL_TCPISSET(protobits)) {
-> +	    !NFSCTL_TCPISSET(protobits) &&
-> +	    !vsock_port) {
->  		xlog(L_ERROR, "version 4 requires the TCP protocol");
->  		exit(1);
->  	}
-> @@ -350,6 +355,13 @@ main(int argc, char **argv)
->  		if (!error)
->  			socket_up = 1;
->  	}
-> +
-> +	if (vsock_port) {
-> +		error = nfssvc_set_vsock(vsock_port);
-> +		if (!error)
-> +			socket_up = 1;
-> +	}
-> +
->  set_threads:
->  	/* don't start any threads if unable to hand off any sockets */
->  	if (!socket_up) {
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index e8609c1..e867454 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -15,6 +15,7 @@
->  #include <netdb.h>
->  #include <netinet/in.h>
->  #include <arpa/inet.h>
-> +#include <linux/vm_sockets.h>
->  #include <sys/stat.h>
->  #include <unistd.h>
->  #include <fcntl.h>
-> @@ -304,6 +305,67 @@ nfssvc_set_rdmaport(const char *port)
->  	return ret;
->  }
->  
-> +int
-> +nfssvc_set_vsock(const char *port)
-> +{
-> +	struct sockaddr_vm svm;
-> +	int nport;
-> +	char buf[20];
-> +	int rc = 1;
-> +	int sockfd = -1;
-> +	int fd = -1;
-> +	char *ep;
-> +
-> +	nport = strtol(port, &ep, 10);
-> +	if (!*port || *ep) {
-> +		xlog(L_ERROR, "unable to interpret port name %s",
-> +		     port);
-> +		goto out;
-> +	}
-> +
-> +	sockfd = socket(AF_VSOCK, SOCK_STREAM, 0);
-> +	if (sockfd < 0) {
-> +		xlog(L_ERROR, "unable to create AF_VSOCK socket: "
-> +			      "errno %d (%m)", errno);
-> +		goto out;
-> +	}
-> +
-> +	svm.svm_family = AF_VSOCK;
-> +	svm.svm_port = nport;
-> +	svm.svm_cid = VMADDR_CID_ANY;
-> +
-> +	if (bind(sockfd, (struct sockaddr*)&svm, sizeof(svm))) {
-> +		xlog(L_ERROR, "unable to bind AF_VSOCK socket: "
-> +			      "errno %d (%m)", errno);
-> +		goto out;
-> +	}
-> +
-> +	if (listen(sockfd, 64)) {
-> +		xlog(L_ERROR, "unable to create listening socket: "
-> +			      "errno %d (%m)", errno);
-> +		goto out;
-> +	}
-> +
-> +	fd = open(NFSD_PORTS_FILE, O_WRONLY);
-> +	if (fd < 0) {
-> +		xlog(L_ERROR, "couldn't open ports file: errno "
-> +		     "%d (%m)", errno);
-> +		goto out;
-> +	}
-> +	snprintf(buf, sizeof(buf), "%d\n", sockfd);
-> +	if (write(fd, buf, strlen(buf)) != (ssize_t)strlen(buf)) {
-> +		xlog(L_ERROR, "unable to request vsock services: %m");
-> +		goto out;
-> +	}
-> +	rc = 0;
-> +out:
-> +	if (fd != -1)
-> +		close(fd);
-> +	if (sockfd != -1)
-> +		close(sockfd);
-> +	return rc;
-> +}
-> +
->  void
->  nfssvc_set_time(const char *type, const int seconds)
->  {
+> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+> index 081594c..0b857af 100644
+> --- a/support/nfs/getport.c
+> +++ b/support/nfs/getport.c
+> @@ -217,8 +217,7 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+> 	struct protoent *proto;
 > 
+> 	/*
+> -	 * IANA does not define a protocol number for rdma netids,
+> -	 * since "rdma" is not an IP protocol.
+> +	 * IANA does not define protocol numbers for non-IP netids.
+> 	 */
+> 	if (strcmp(netid, "rdma") == 0) {
+> 		*family = AF_INET;
+> @@ -230,6 +229,11 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+> 		*protocol = NFSPROTO_RDMA;
+> 		return 1;
+> 	}
+> +	if (strcmp(netid, "vsock") == 0) {
+> +		*family = AF_VSOCK;
+> +		*protocol = 0;
+> +		return 1;
+> +	}
+> 
+> 	nconf = getnetconfigent(netid);
+> 	if (nconf == NULL)
+> @@ -258,14 +262,18 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+> 	struct protoent *proto;
+> 
+> 	/*
+> -	 * IANA does not define a protocol number for rdma netids,
+> -	 * since "rdma" is not an IP protocol.
+> +	 * IANA does not define protocol numbers for non-IP netids.
+> 	 */
+> 	if (strcmp(netid, "rdma") == 0) {
+> 		*family = AF_INET;
+> 		*protocol = NFSPROTO_RDMA;
+> 		return 1;
+> 	}
+> +	if (strcmp(netid, "vsock") == 0) {
+> +		*family = AF_VSOCK;
+> +		*protocol = 0;
+> +		return 1;
+> +	}
+> 
+> 	proto = getprotobyname(netid);
+> 	if (proto == NULL)
+> -- 
+> 2.9.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
