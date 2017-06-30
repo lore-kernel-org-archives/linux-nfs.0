@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50462 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41716 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752368AbdF3NYO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 09:24:14 -0400
+        id S1752381AbdF3NYZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:24:25 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Abbas Naderi <abiusx@google.com>,
@@ -12,70 +12,93 @@ Cc: Abbas Naderi <abiusx@google.com>,
         Jeff Layton <jlayton@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH v3 04/14] SUNRPC: extract xs_stream_reset_state()
-Date: Fri, 30 Jun 2017 14:23:42 +0100
-Message-Id: <20170630132352.32133-5-stefanha@redhat.com>
+Subject: [PATCH v3 07/14] SUNRPC: drop unnecessary svc_bc_tcp_create() helper
+Date: Fri, 30 Jun 2017 14:23:45 +0100
+Message-Id: <20170630132352.32133-8-stefanha@redhat.com>
 In-Reply-To: <20170630132352.32133-1-stefanha@redhat.com>
 References: <20170630132352.32133-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Extract a function to reset the record fragment parser.
+svc_bc_tcp_create() is a helper function that simply calls
+svc_bc_create_socket() with an added IPPROTO_TCP argument.
+
+svc_bc_create_socket() then checks that the protocol argument is indeed
+IPPROTO_TCP.
+
+This isn't necessary since svc_bc_tcp_create() is the only
+svc_bc_create_socket() caller.  The next patch adds a second caller for
+AF_VSOCK where IPPROTO_TCP will not be used.
+
+Scrap this scheme and just call svc_bc_create_socket() directly.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- net/sunrpc/xprtsock.c | 31 +++++++++++++++++++++++--------
- 1 file changed, 23 insertions(+), 8 deletions(-)
+ net/sunrpc/svcsock.c | 21 +++------------------
+ 1 file changed, 3 insertions(+), 18 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 184e263..fd0c8b1 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1552,6 +1552,28 @@ static void xs_stream_data_receive_workfn(struct work_struct *work)
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 2b720fa..394e7a2 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -71,7 +71,7 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+ 					  struct net *, struct sockaddr *,
+ 					  int, int);
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+-static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
+ 					     struct net *, struct sockaddr *,
+ 					     int, int);
+ static void svc_bc_sock_free(struct svc_xprt *xprt);
+@@ -1212,25 +1212,17 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
  }
  
- /**
-+ * xs_stream_reset_state - reset SOCK_STREAM record parser
-+ * @transport: socket transport
-+ * @read_sock: tcp_read_sock()-like function
-+ *
-+ */
-+static void xs_stream_reset_state(struct rpc_xprt *xprt,
-+				  int (*read_sock)(struct sock *,
-+						   read_descriptor_t *,
-+						   sk_read_actor_t))
-+{
-+	struct sock_xprt *transport = container_of(xprt,
-+			struct sock_xprt, xprt);
-+
-+	transport->stream_offset = 0;
-+	transport->stream_reclen = 0;
-+	transport->stream_copied = 0;
-+	transport->stream_flags =
-+		STREAM_RCV_COPY_FRAGHDR | STREAM_RCV_COPY_XID;
-+	transport->stream_read_sock = read_sock;
-+}
-+
-+/**
-  * xs_tcp_state_change - callback to handle TCP socket state changes
-  * @sk: socket whose state has changed
-  *
-@@ -1577,14 +1599,7 @@ static void xs_tcp_state_change(struct sock *sk)
- 	case TCP_ESTABLISHED:
- 		spin_lock(&xprt->transport_lock);
- 		if (!xprt_test_and_set_connected(xprt)) {
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+-static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
++static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
+ 					     struct net *, struct sockaddr *,
+ 					     int, int);
+ static void svc_bc_sock_free(struct svc_xprt *xprt);
+ 
+-static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
+-				       struct net *net,
+-				       struct sockaddr *sa, int salen,
+-				       int flags)
+-{
+-	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+-}
 -
--			/* Reset stream record info */
--			transport->stream_offset = 0;
--			transport->stream_reclen = 0;
--			transport->stream_copied = 0;
--			transport->stream_flags =
--				STREAM_RCV_COPY_FRAGHDR | STREAM_RCV_COPY_XID;
--			transport->stream_read_sock = tcp_read_sock;
-+			xs_stream_reset_state(xprt, tcp_read_sock);
- 			xprt->connect_cookie++;
- 			clear_bit(XPRT_SOCK_CONNECTING, &transport->sock_state);
- 			xprt_clear_connecting(xprt);
+ static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
+ {
+ }
+ 
+ static struct svc_xprt_ops svc_tcp_bc_ops = {
+-	.xpo_create = svc_bc_tcp_create,
++	.xpo_create = svc_bc_create_socket,
+ 	.xpo_detach = svc_bc_tcp_sock_detach,
+ 	.xpo_free = svc_bc_sock_free,
+ 	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+@@ -1615,7 +1607,6 @@ static void svc_sock_free(struct svc_xprt *xprt)
+  * Create a back channel svc_xprt which shares the fore channel socket.
+  */
+ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+-					     int protocol,
+ 					     struct net *net,
+ 					     struct sockaddr *sin, int len,
+ 					     int flags)
+@@ -1623,12 +1614,6 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+ 	struct svc_sock *svsk;
+ 	struct svc_xprt *xprt;
+ 
+-	if (protocol != IPPROTO_TCP) {
+-		printk(KERN_WARNING "svc: only TCP sockets"
+-			" supported on shared back channel\n");
+-		return ERR_PTR(-EINVAL);
+-	}
+-
+ 	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
+ 	if (!svsk)
+ 		return ERR_PTR(-ENOMEM);
 -- 
 2.9.4
 
