@@ -1,50 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52720 "EHLO fieldses.org"
+Received: from mx144.netapp.com ([216.240.21.25]:35305 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752046AbdF3Ri3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 13:38:29 -0400
-Date: Fri, 30 Jun 2017 13:38:18 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: hch <hch@lst.de>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-Subject: Re: open by handle support for NFS V2
-Message-ID: <20170630173818.GC14868@fieldses.org>
-References: <20170629133453.19641-1-hch@lst.de>
- <20170629154650.GC1651@fieldses.org>
- <1498842056.6728.1.camel@primarydata.com>
+        id S1751072AbdF3SoD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 14:44:03 -0400
+Subject: Re: [PATCH 1/1] PNFS fix EACCESS on commit to DS handling
+To: Olga Kornievskaia <kolga@netapp.com>,
+        <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+References: <20170623142659.81480-1-kolga@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <bbe23013-1a27-e159-2035-c9a2d10bd376@Netapp.com>
+Date: Fri, 30 Jun 2017 14:43:46 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1498842056.6728.1.camel@primarydata.com>
+In-Reply-To: <20170623142659.81480-1-kolga@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jun 30, 2017 at 05:00:59PM +0000, Trond Myklebust wrote:
-> The main use case for open by filehandle was (and still should be) the
-> promise of being able to do the sort of tricks you normally associate
-> with object storage on a standard filesystem.
+Hi Olga,
+
+On 06/23/2017 10:26 AM, Olga Kornievskaia wrote:
+> Commit fabbbee0eb0f "PNFS fix fallback to MDS if got error on
+> commit to DS" moved the pnfs_set_lo_fail() to unhandled errors
+> which was not correct and lead to a kernel oops on umount.
 > 
-> Imagine that you are trying to build an application for indexing and
-> searching the data on your storage. You basically want to trawl through
-> the filesystem on a regular basis and build up a database of key words
-> and other metadata to tell you what is in the files. For that kind of
-> application, the namespace is a real PITA to deal with, because files
-> get renamed, moved and deleted all the time; so if you can store
-> something that is independent of the namespace and that will give you
-> access to the file contents, then why wouldn't you do so? Normally,
-> applications like that use the inode number, but you can't open a file
-> by inode number, and you have the same problems with inode number reuse
-> that a NFS server has.
+> Instead, fix the original EACCESS on commit to DS error by
+> getting the new layout and re-doing the IO.
 > 
-> That's the sort of thing I'd think we want to allow through open by
-> filehandle, and I see no reason why NFS should be excluded from that
-> type of application.
+> Fixes: fabbbee0eb0f ("PNFS fix fallback to MDS if got error on commit to DS")
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/filelayout/filelayout.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+> index 61dcb4b..8075efe 100644
+> --- a/fs/nfs/filelayout/filelayout.c
+> +++ b/fs/nfs/filelayout/filelayout.c
+> @@ -153,6 +153,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+>  	case -NFS4ERR_RETRY_UNCACHED_REP:
+>  		break;
+>  	/* Invalidate Layout errors */
+> +	case -NFS4ERR_ACCESS:
 
-Thanks, that makes sense.
+Should this be -EACCES instead?  The fields right below this are using mapped errors based on the nfs_errtbl in nfs4xdr.c, so NFS4ERR_ACCESS might not ever get passed to this function.
 
-We've had open_by_handle support for most filesystems since 2011, is
-there evidence of anyone doing this?
+Thanks,
+Anna
 
---b.
+>  	case -NFS4ERR_PNFS_NO_LAYOUT:
+>  	case -ESTALE:           /* mapped NFS4ERR_STALE */
+>  	case -EBADHANDLE:       /* mapped NFS4ERR_BADHANDLE */
+> @@ -183,10 +184,10 @@ static int filelayout_async_handle_error(struct rpc_task *task,
+>  			task->tk_status);
+>  		nfs4_mark_deviceid_unavailable(devid);
+>  		pnfs_error_mark_layout_for_return(inode, lseg);
+> +		pnfs_set_lo_fail(lseg);
+>  		rpc_wake_up(&tbl->slot_tbl_waitq);
+>  		/* fall through */
+>  	default:
+> -		pnfs_set_lo_fail(lseg);
+>  reset:
+>  		dprintk("%s Retry through MDS. Error %d\n", __func__,
+>  			task->tk_status);
+> 
