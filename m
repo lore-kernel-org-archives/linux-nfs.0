@@ -1,58 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:21766 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751952AbdF3RBH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 30 Jun 2017 13:01:07 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>, hch <hch@lst.de>
-CC: "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+Received: from fieldses.org ([173.255.197.46]:52720 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752046AbdF3Ri3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 13:38:29 -0400
+Date: Fri, 30 Jun 2017 13:38:18 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: hch <hch@lst.de>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
 Subject: Re: open by handle support for NFS V2
-Date: Fri, 30 Jun 2017 17:00:59 +0000
-Message-ID: <1498842056.6728.1.camel@primarydata.com>
+Message-ID: <20170630173818.GC14868@fieldses.org>
 References: <20170629133453.19641-1-hch@lst.de>
-         <20170629154650.GC1651@fieldses.org>
-In-Reply-To: <20170629154650.GC1651@fieldses.org>
+ <20170629154650.GC1651@fieldses.org>
+ <1498842056.6728.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1498842056.6728.1.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA2LTI5IGF0IDExOjQ2IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFRodSwgSnVuIDI5LCAyMDE3IGF0IDA2OjM0OjQ5QU0gLTA3MDAsIENocmlzdG9waCBI
-ZWxsd2lnIHdyb3RlOg0KPiA+IHRoaXMgcmVzdXJyZWN0cyBwYXJ0cyBvZiBhbiBvbGQgc2VyaWVz
-IHRvIGFkZCBvcGVuIGJ5IGhhbmRsZQ0KPiA+IHN1cHBvcnQgdG8NCj4gPiBORlMuwqDCoFRoZSBw
-cmltZSBpbnRlbnQgaGVyZSBpcyB0byBzdXBwb3J0IHRoZSBhY3R1YWwgb3BlbiBieSBoYW5kbGUN
-Cj4gPiBpb2N0bHMsIGFsdGhvdWdoIGl0IHdpbGwgYWxzbyBhbGxvdyB2ZXJ5IGNydWRlIHJlLQ0K
-PiA+IGV4cG9ydGluZy7CoMKgV2l0aG91dA0KPiA+IHRoZSBvdGhlciBwYXRjaGVzIGZyb20gSmVm
-ZidzIHNlcmllcyB0aGF0IHJlLWV4cG9ydGluZyB3aWxsIHN1Y2sNCj4gPiBiYWRseQ0KPiA+IHRo
-b3VnaC4NCj4gDQo+IFdoeSBkbyB3ZSB3YW50IHRoaXM/DQo+IA0KPiBBbnkgcmUtZXhwb3J0IHN1
-cHBvcnQgaXMgZ29pbmcgdG8gaGF2ZSBzb21lIG1ham9yIGxpbWl0YXRpb25zLsKgwqAoTm8NCj4g
-ZmlsZQ0KPiBsb2NraW5nLCBhbmQgcmUtZXhwb3J0IG9mIE5GU3Y0IHByb2JhYmx5IG5vdCBwb3Nz
-aWJsZT8pDQo+IA0KPiBMYXN0IEkgaGVhcmQgdGhlIG9ubHkgbW90aXZhdGlvbiB3YXMgZXh0cmVt
-ZWx5IHNwZWNpZmljIHRvIFByaW1hcnkNCj4gRGF0YSdzIHNldHVwLsKgwqBJJ20gaGFwcHkgdG8g
-aGVscCB0aGVtLCBidXQgSSB0aGluayB3ZSBuZWVkICpzb21lKg0KPiBldmlkZW5jZSB0aGlzIHdp
-bGwgYmUgdXNlZnVsIHRvIHVwc3RyZWFtIHVzZXJzLg0KPiANCg0KVGhlIG1haW4gdXNlIGNhc2Ug
-Zm9yIG9wZW4gYnkgZmlsZWhhbmRsZSB3YXMgKGFuZCBzdGlsbCBzaG91bGQgYmUpIHRoZQ0KcHJv
-bWlzZSBvZiBiZWluZyBhYmxlIHRvIGRvIHRoZSBzb3J0IG9mIHRyaWNrcyB5b3Ugbm9ybWFsbHkg
-YXNzb2NpYXRlDQp3aXRoIG9iamVjdCBzdG9yYWdlIG9uIGEgc3RhbmRhcmQgZmlsZXN5c3RlbS4N
-Cg0KSW1hZ2luZSB0aGF0IHlvdSBhcmUgdHJ5aW5nIHRvIGJ1aWxkIGFuIGFwcGxpY2F0aW9uIGZv
-ciBpbmRleGluZyBhbmQNCnNlYXJjaGluZyB0aGUgZGF0YSBvbiB5b3VyIHN0b3JhZ2UuIFlvdSBi
-YXNpY2FsbHkgd2FudCB0byB0cmF3bCB0aHJvdWdoDQp0aGUgZmlsZXN5c3RlbSBvbiBhIHJlZ3Vs
-YXIgYmFzaXMgYW5kIGJ1aWxkIHVwIGEgZGF0YWJhc2Ugb2Yga2V5IHdvcmRzDQphbmQgb3RoZXIg
-bWV0YWRhdGEgdG8gdGVsbCB5b3Ugd2hhdCBpcyBpbiB0aGUgZmlsZXMuIEZvciB0aGF0IGtpbmQg
-b2YNCmFwcGxpY2F0aW9uLCB0aGUgbmFtZXNwYWNlIGlzIGEgcmVhbCBQSVRBIHRvIGRlYWwgd2l0
-aCwgYmVjYXVzZSBmaWxlcw0KZ2V0IHJlbmFtZWQsIG1vdmVkIGFuZCBkZWxldGVkIGFsbCB0aGUg
-dGltZTsgc28gaWYgeW91IGNhbiBzdG9yZQ0Kc29tZXRoaW5nIHRoYXQgaXMgaW5kZXBlbmRlbnQg
-b2YgdGhlIG5hbWVzcGFjZSBhbmQgdGhhdCB3aWxsIGdpdmUgeW91DQphY2Nlc3MgdG8gdGhlIGZp
-bGUgY29udGVudHMsIHRoZW4gd2h5IHdvdWxkbid0IHlvdSBkbyBzbz8gTm9ybWFsbHksDQphcHBs
-aWNhdGlvbnMgbGlrZSB0aGF0IHVzZSB0aGUgaW5vZGUgbnVtYmVyLCBidXQgeW91IGNhbid0IG9w
-ZW4gYSBmaWxlDQpieSBpbm9kZSBudW1iZXIsIGFuZCB5b3UgaGF2ZSB0aGUgc2FtZSBwcm9ibGVt
-cyB3aXRoIGlub2RlIG51bWJlciByZXVzZQ0KdGhhdCBhIE5GUyBzZXJ2ZXIgaGFzLg0KDQpUaGF0
-J3MgdGhlIHNvcnQgb2YgdGhpbmcgSSdkIHRoaW5rIHdlIHdhbnQgdG8gYWxsb3cgdGhyb3VnaCBv
-cGVuIGJ5DQpmaWxlaGFuZGxlLCBhbmQgSSBzZWUgbm8gcmVhc29uIHdoeSBORlMgc2hvdWxkIGJl
-IGV4Y2x1ZGVkIGZyb20gdGhhdA0KdHlwZSBvZiBhcHBsaWNhdGlvbi4NCg0KLS0gDQpUcm9uZCBN
-eWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25k
-Lm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+On Fri, Jun 30, 2017 at 05:00:59PM +0000, Trond Myklebust wrote:
+> The main use case for open by filehandle was (and still should be) the
+> promise of being able to do the sort of tricks you normally associate
+> with object storage on a standard filesystem.
+> 
+> Imagine that you are trying to build an application for indexing and
+> searching the data on your storage. You basically want to trawl through
+> the filesystem on a regular basis and build up a database of key words
+> and other metadata to tell you what is in the files. For that kind of
+> application, the namespace is a real PITA to deal with, because files
+> get renamed, moved and deleted all the time; so if you can store
+> something that is independent of the namespace and that will give you
+> access to the file contents, then why wouldn't you do so? Normally,
+> applications like that use the inode number, but you can't open a file
+> by inode number, and you have the same problems with inode number reuse
+> that a NFS server has.
+> 
+> That's the sort of thing I'd think we want to allow through open by
+> filehandle, and I see no reason why NFS should be excluded from that
+> type of application.
 
+Thanks, that makes sense.
+
+We've had open_by_handle support for most filesystems since 2011, is
+there evidence of anyone doing this?
+
+--b.
