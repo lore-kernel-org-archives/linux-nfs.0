@@ -1,63 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.web.de ([212.227.17.11]:53644 "EHLO mout.web.de"
+Received: from mx62.netapp.com ([216.240.31.182]:49596 "EHLO mx62.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750914AbdFHOGu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Jun 2017 10:06:50 -0400
+        id S1752666AbdF3UFU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 16:05:20 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 1/1] PNFS fix dangling DS mount
+Date: Fri, 30 Jun 2017 15:52:01 -0400
+Message-ID: <20170630195201.95597-1-kolga@netapp.com>
 MIME-Version: 1.0
-Message-ID: <trinity-7226e167-068f-4dac-bbe6-baecf1666bc3-1496930792511@3capp-webde-bap44>
-From: devzero@web.de
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, pf@artcom-gmbh.de, rnews@altium.nl,
-        jlayton@redhat.com
-Subject: Aw: Re: How to avoid rebooting Linux NFS-client when NFS-server is
- not available?
-Content-Type: text/plain; charset=UTF-8
-Date: Thu, 8 Jun 2017 16:06:32 +0200
-In-Reply-To: <20170608133423.GG26995@fieldses.org>
-References: <trinity-f2c19596-3afe-4a3f-ad07-78e6cfda9cb5-1496911790012@3capp-webde-bap34>
- <20170608133423.GG26995@fieldses.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Ripping out the storage from underneath your applications is a pretty
-> drastic step and may lose data,
+There is a regression by commit 8d40b0f14846 ("NFS filelayout:call
+GETDEVICEINFO after pnfs_layout_process completes"). It leaves the
+DS mount dangling.
 
-We did not rip out our storage, it`s still there and reachable without problems. Our hung nfs is NEVER being caused by nfs server reboots or poweroff, it seems to happen on network disruption or whatever.
+Previously, filelayout_alloc_sec() would call filelayout_check_layout()
+which would call nfs4_find_get_deviceid which ups the count on the
+device_id. It's only called once and it's matched by the
+filelayout_free_lseg() that calls nfs4_fl_put_deviceid().
 
-Maybe the problem is the WAN connection or some firewall session invalidation - or the nfs server itself (freenas, btw) not responding in a way the client expects.
+After that patch, each read/write ends up calling nfs4_find_get_deviceid
+and there is no balance for that. Instead, do nfs4_fl_put_deviceid()
+in the filelayout's .pg_cleanup and remove it from filelayout_free_lseg.
 
-For my curiousity, after switching off the fake ip and do a showmount -e to the original server where we had the hung nfs mount (to show you it`s still there and reachable), the mount suddenly unmounts cleanly, even without -f. 
+But we still need a reference to hold over the lifetime of the segment.
+For every new lseg that's created we need to take a reference on deviceid
+that uses it. It will be released in the "free_lseg" routine.
 
-And i can remount it without any problem.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfs/filelayout/filelayout.c         | 21 +++++++++++++++++----
+ fs/nfs/flexfilelayout/flexfilelayout.c |  9 ++++++---
+ fs/nfs/pnfs.c                          | 13 ++++++++++---
+ fs/nfs/pnfs.h                          |  3 ++-
+ 4 files changed, 35 insertions(+), 11 deletions(-)
 
-It looks as if the interim fake nfs server (which did not export any share) made the client work correctly again...
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 1cf85d6..86d694e 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -909,9 +909,10 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ 	struct pnfs_layout_hdr *lo;
+ 	struct nfs4_filelayout_segment *fl;
+ 	int status;
++	bool new_layout = false;
+ 
+ 	lseg = pnfs_update_layout(ino, ctx, pos, count, iomode, strict_iomode,
+-				  gfp_flags);
++				  gfp_flags, &new_layout);
+ 	if (!lseg)
+ 		lseg = ERR_PTR(-ENOMEM);
+ 	if (IS_ERR(lseg))
+@@ -924,7 +925,8 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ 	if (status) {
+ 		pnfs_put_lseg(lseg);
+ 		lseg = ERR_PTR(status);
+-	}
++	} else if (new_layout)
++		nfs4_get_deviceid(&fl->dsaddr->id_node);
+ out:
+ 	return lseg;
+ }
+@@ -991,18 +993,29 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ 	nfs_pageio_reset_write_mds(pgio);
+ }
+ 
++static void filelayout_pg_cleanup(struct nfs_pageio_descriptor *desc)
++{
++	if (desc->pg_lseg) {
++		struct nfs4_filelayout_segment *fl =
++			FILELAYOUT_LSEG(desc->pg_lseg);
++
++		nfs4_fl_put_deviceid(fl->dsaddr);
++	}
++	pnfs_generic_pg_cleanup(desc);
++}
++
+ static const struct nfs_pageio_ops filelayout_pg_read_ops = {
+ 	.pg_init = filelayout_pg_init_read,
+ 	.pg_test = filelayout_pg_test,
+ 	.pg_doio = pnfs_generic_pg_readpages,
+-	.pg_cleanup = pnfs_generic_pg_cleanup,
++	.pg_cleanup = filelayout_pg_cleanup,
+ };
+ 
+ static const struct nfs_pageio_ops filelayout_pg_write_ops = {
+ 	.pg_init = filelayout_pg_init_write,
+ 	.pg_test = filelayout_pg_test,
+ 	.pg_doio = pnfs_generic_pg_writepages,
+-	.pg_cleanup = pnfs_generic_pg_cleanup,
++	.pg_cleanup = filelayout_pg_cleanup,
+ };
+ 
+ static u32 select_bucket_index(struct nfs4_filelayout_segment *fl, u32 j)
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 23542dc..53a4a19 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -820,7 +820,8 @@ static bool ff_layout_has_rw_segments(struct pnfs_layout_hdr *layout)
+ 					   NFS4_MAX_UINT64,
+ 					   IOMODE_READ,
+ 					   strict_iomode,
+-					   GFP_KERNEL);
++					   GFP_KERNEL,
++					   NULL);
+ 	if (IS_ERR(pgio->pg_lseg)) {
+ 		pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 		pgio->pg_lseg = NULL;
+@@ -904,7 +905,8 @@ static bool ff_layout_has_rw_segments(struct pnfs_layout_hdr *layout)
+ 						   NFS4_MAX_UINT64,
+ 						   IOMODE_RW,
+ 						   false,
+-						   GFP_NOFS);
++						   GFP_NOFS,
++						   NULL);
+ 		if (IS_ERR(pgio->pg_lseg)) {
+ 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 			pgio->pg_lseg = NULL;
+@@ -960,7 +962,8 @@ static bool ff_layout_has_rw_segments(struct pnfs_layout_hdr *layout)
+ 						   NFS4_MAX_UINT64,
+ 						   IOMODE_RW,
+ 						   false,
+-						   GFP_NOFS);
++						   GFP_NOFS,
++						   NULL);
+ 		if (IS_ERR(pgio->pg_lseg)) {
+ 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 			pgio->pg_lseg = NULL;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index c383d09..fb011c6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1698,7 +1698,8 @@ struct pnfs_layout_segment *
+ 		   u64 count,
+ 		   enum pnfs_iomode iomode,
+ 		   bool strict_iomode,
+-		   gfp_t gfp_flags)
++		   gfp_t gfp_flags,
++		   bool *new)
+ {
+ 	struct pnfs_layout_range arg = {
+ 		.iomode = iomode,
+@@ -1764,8 +1765,12 @@ struct pnfs_layout_segment *
+ 	if (lseg) {
+ 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+ 				PNFS_UPDATE_LAYOUT_FOUND_CACHED);
++		if (new)
++			*new = false;
+ 		goto out_unlock;
+ 	}
++	if (new)
++		*new = true;
+ 
+ 	if (!nfs4_valid_open_stateid(ctx->state)) {
+ 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
+@@ -2126,7 +2131,8 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 						   rd_size,
+ 						   IOMODE_READ,
+ 						   false,
+-						   GFP_KERNEL);
++						   GFP_KERNEL,
++						   NULL);
+ 		if (IS_ERR(pgio->pg_lseg)) {
+ 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 			pgio->pg_lseg = NULL;
+@@ -2153,7 +2159,8 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
+ 						   wb_size,
+ 						   IOMODE_RW,
+ 						   false,
+-						   GFP_NOFS);
++						   GFP_NOFS,
++						   NULL);
+ 		if (IS_ERR(pgio->pg_lseg)) {
+ 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
+ 			pgio->pg_lseg = NULL;
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 99731e3..978fab0 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -291,7 +291,8 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
+ 					       u64 count,
+ 					       enum pnfs_iomode iomode,
+ 					       bool strict_iomode,
+-					       gfp_t gfp_flags);
++					       gfp_t gfp_flags,
++					       bool *new);
+ void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
+ 		const nfs4_stateid *arg_stateid,
+ 		const struct pnfs_layout_range *range,
+-- 
+1.8.3.1
 
-regards
-Roland
-
-> Gesendet: Donnerstag, 08. Juni 2017 um 15:34 Uhr
-> Von: "J. Bruce Fields" <bfields@fieldses.org>
-> An: devzero@web.de
-> Cc: linux-nfs@vger.kernel.org, pf@artcom-gmbh.de, rnews@altium.nl, jlayton@redhat.com
-> Betreff: Re: How to avoid rebooting Linux NFS-client when NFS-server is not available?
->
-> On Thu, Jun 08, 2017 at 10:49:50AM +0200, devzero@web.de wrote:
-> > Any hint on how to circumvent rebooting to remount the nfs share or proactively avoid stale NFS mounts would be very appreciated. (disabling NFS by module unload/load is no option, as our XEN servers do have other NFS mounts for shared storage)
-> 
-> Neil had some recent posts that might be relevant:
-> 
-> 	http://marc.info/?l=util-linux-ng&m=149662998931157&w=2
-> 
-> Ripping out the storage from underneath your applications is a pretty
-> drastic step and may lose data, so NFS hasn't traditionally tried very
-> hard to make it easy.  But it may be possible at this point if you kill
-> -9 all the users and umount carefully.
-> 
-> > I`m not sure if linux-nfs ML will allow anonymous posts (probably
-> > not), so maybe someone subscribed be so kind to reply with list cc´ed.
-> > I`d like to avoid subscribing to a list because of a single post...
-> 
-> That's fine.
-> 
-> --b.
->
