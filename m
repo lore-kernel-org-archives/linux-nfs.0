@@ -1,19 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43910 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41672 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751675AbdF3Oe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 10:34:57 -0400
-Subject: Re: [PATCH nfs-utils v2 01/12] mount: don't use IPPROTO_UDP for
- address resolution
+        id S1751668AbdF3Okw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 10:40:52 -0400
+Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
 To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>
 References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-2-stefanha@redhat.com>
+ <20170630132120.31578-4-stefanha@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <0983a632-3f1d-06eb-2ffc-e04536c6c34c@RedHat.com>
-Date: Fri, 30 Jun 2017 10:34:54 -0400
+Message-ID: <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
+Date: Fri, 30 Jun 2017 10:40:49 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170630132120.31578-2-stefanha@redhat.com>
+In-Reply-To: <20170630132120.31578-4-stefanha@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -21,37 +20,47 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 
 On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> Although getaddrinfo(3) with IPPROTO_UDP works fine for AF_INET and
-> AF_INET6, the AF_VSOCK address family does not support IPPROTO_UDP and
-> produces an error.
-> 
-> Drop IPPROTO_UDP and use the 0 default (TCP) which works for all address
-> families.  Modern NFS uses TCP anyway so it's strange to specify UDP.
+> Format vsock hosts as "vsock:<cid>" so the addresses can be easily
+> distinguished from IPv4 and IPv6 addresses.
 > 
 > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
 > ---
->  utils/mount/stropts.c | 4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
+>  utils/mount/network.c | 8 ++++++++
+>  1 file changed, 8 insertions(+)
 > 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index c2a739b..99656dd 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -909,9 +909,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
->  	int result = 0;
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index 281e935..b5dcaa5 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -45,6 +45,8 @@
+>  #include <rpc/pmap_prot.h>
+>  #include <rpc/pmap_clnt.h>
 >  
->  	if (mi->address == NULL) {
-> -		struct addrinfo hint = {
-> -			.ai_protocol	= (int)IPPROTO_UDP,
-> -		};
-> +		struct addrinfo hint = {};
-Just curious as to why not simply pass a NULL hints parameter 
-verses an empty hints structure?
+> +#include <linux/vm_sockets.h>
+In the previous patch you had this surrounded by #ifdef AF_VSOCK
+I'm not keen on sprinkling a bunch ifdefs around since 
+I think it makes the code harder to read. So my question 
+is why is the ifdef need in the previous patch and
+not needed in this patch and are they needed in the
+previous patch?
 
 steved.
 
->  		int error;
->  		struct addrinfo *address;
+> +
+>  #include "sockaddr.h"
+>  #include "xcommon.h"
+>  #include "mount.h"
+> @@ -325,6 +327,12 @@ int nfs_string_to_sockaddr(const char *address, struct sockaddr *sap,
+>  int nfs_present_sockaddr(const struct sockaddr *sap, const socklen_t salen,
+>  			 char *buf, const size_t buflen)
+>  {
+> +	if (sap->sa_family == AF_VSOCK) {
+> +		snprintf(buf, buflen, "vsock:%u",
+> +			 ((struct sockaddr_vm *)sap)->svm_cid);
+> +		return 1;
+> +	}
+> +
+>  #ifdef HAVE_GETNAMEINFO
+>  	int result;
 >  
 > 
