@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59090 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50936 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751560AbdF3NYb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 09:24:31 -0400
+        id S1751887AbdF3NYd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:24:33 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Abbas Naderi <abiusx@google.com>,
@@ -12,109 +12,94 @@ Cc: Abbas Naderi <abiusx@google.com>,
         Jeff Layton <jlayton@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH v3 09/14] SUNRPC: add AF_VSOCK backchannel support
-Date: Fri, 30 Jun 2017 14:23:47 +0100
-Message-Id: <20170630132352.32133-10-stefanha@redhat.com>
+Subject: [PATCH v3 10/14] NFS: add AF_VSOCK support to NFS client
+Date: Fri, 30 Jun 2017 14:23:48 +0100
+Message-Id: <20170630132352.32133-11-stefanha@redhat.com>
 In-Reply-To: <20170630132352.32133-1-stefanha@redhat.com>
 References: <20170630132352.32133-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch adds AF_VSOCK to the NFS client.  Mounts can now use the
+"vsock" proto option and pass "vsock:<cid>" address strings, which are
+interpreted by sunrpc for xprt creation.
+
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- net/sunrpc/svcsock.c  | 27 +++++++++++++++++++++++++++
- net/sunrpc/xprtsock.c | 25 +++++++++++++++++++++++++
- 2 files changed, 52 insertions(+)
+ fs/nfs/client.c |  2 ++
+ fs/nfs/super.c  | 11 ++++++++++-
+ 2 files changed, 12 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 394e7a2..0c09f3f 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1236,14 +1236,41 @@ static struct svc_xprt_class svc_tcp_bc_class = {
- 	.xcl_max_payload = RPCSVC_MAXPAYLOAD_TCP,
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index ee5ddbd..80688a7 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -35,6 +35,7 @@
+ #include <linux/vfs.h>
+ #include <linux/inet.h>
+ #include <linux/in6.h>
++#include <linux/vm_sockets.h>
+ #include <linux/slab.h>
+ #include <linux/idr.h>
+ #include <net/ipv6.h>
+@@ -447,6 +448,7 @@ void nfs_init_timeout_values(struct rpc_timeout *to, int proto,
+ 	switch (proto) {
+ 	case XPRT_TRANSPORT_TCP:
+ 	case XPRT_TRANSPORT_RDMA:
++	case XPRT_TRANSPORT_VSOCK:
+ 		if (retrans == NFS_UNSPEC_RETRANS)
+ 			to->to_retries = NFS_DEF_TCP_RETRANS;
+ 		if (timeo == NFS_UNSPEC_TIMEO || to->to_retries == 0)
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index eceb4ea..675404f 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -191,7 +191,7 @@ static const match_table_t nfs_mount_option_tokens = {
+ 
+ enum {
+ 	Opt_xprt_udp, Opt_xprt_udp6, Opt_xprt_tcp, Opt_xprt_tcp6, Opt_xprt_rdma,
+-	Opt_xprt_rdma6,
++	Opt_xprt_rdma6, Opt_xprt_vsock,
+ 
+ 	Opt_xprt_err
  };
+@@ -203,6 +203,7 @@ static const match_table_t nfs_xprt_protocol_tokens = {
+ 	{ Opt_xprt_tcp6, "tcp6" },
+ 	{ Opt_xprt_rdma, "rdma" },
+ 	{ Opt_xprt_rdma6, "rdma6" },
++	{ Opt_xprt_vsock, "vsock" },
  
-+#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+static void svc_bc_vsock_sock_detach(struct svc_xprt *xprt)
-+{
-+}
-+
-+static struct svc_xprt_ops svc_vsock_bc_ops = {
-+	.xpo_create = svc_bc_create_socket,
-+	.xpo_detach = svc_bc_vsock_sock_detach,
-+	.xpo_free = svc_bc_sock_free,
-+	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-+	.xpo_secure_port = svc_sock_secure_port,
-+};
-+
-+static struct svc_xprt_class svc_vsock_bc_class = {
-+	.xcl_name = "vsock-bc",
-+	.xcl_owner = THIS_MODULE,
-+	.xcl_ops = &svc_vsock_bc_ops,
-+	.xcl_max_payload = RPCSVC_MAXPAYLOAD,
-+};
-+#endif /* CONFIG_SUNRPC_XPRT_VSOCK */
-+
- static void svc_init_bc_xprt_sock(void)
- {
- 	svc_reg_xprt_class(&svc_tcp_bc_class);
-+#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+	svc_reg_xprt_class(&svc_vsock_bc_class);
-+#endif
- }
- 
- static void svc_cleanup_bc_xprt_sock(void)
- {
- 	svc_unreg_xprt_class(&svc_tcp_bc_class);
-+#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+	svc_unreg_xprt_class(&svc_vsock_bc_class);
-+#endif
- }
- #else /* CONFIG_SUNRPC_BACKCHANNEL */
- static void svc_init_bc_xprt_sock(void)
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index cc343b91..ccadb3a 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1430,6 +1430,24 @@ static size_t xs_tcp_bc_maxpayload(struct rpc_xprt *xprt)
- {
- 	return PAGE_SIZE;
- }
-+
-+#ifdef CONFIG_SUNRPC_XPRT_VSOCK
-+static int xs_vsock_bc_up(struct svc_serv *serv, struct net *net)
-+{
-+	int ret;
-+
-+	ret = svc_create_xprt(serv, "vsock-bc", net, AF_VSOCK, 0,
-+			      SVC_SOCK_ANONYMOUS);
-+	if (ret < 0)
-+		return ret;
-+	return 0;
-+}
-+
-+static size_t xs_vsock_bc_maxpayload(struct rpc_xprt *xprt)
-+{
-+	return PAGE_SIZE;
-+}
-+#endif /* !CONFIG_SUNRPC_XPRT_VSOCK */
- #else
- static inline int _xs_stream_read_data(struct rpc_xprt *xprt,
- 				       struct xdr_skb_reader *desc)
-@@ -3494,6 +3512,13 @@ static struct rpc_xprt_ops xs_vsock_ops = {
- 	.close			= xs_tcp_shutdown,
- 	.destroy		= xs_destroy,
- 	.print_stats		= xs_vsock_print_stats,
-+#ifdef CONFIG_SUNRPC_BACKCHANNEL
-+	.bc_setup		= xprt_setup_bc,
-+	.bc_up			= xs_vsock_bc_up,
-+	.bc_maxpayload		= xs_vsock_bc_maxpayload,
-+	.bc_free_rqst		= xprt_free_bc_rqst,
-+	.bc_destroy		= xprt_destroy_bc,
-+#endif
+ 	{ Opt_xprt_err, NULL }
  };
+@@ -964,6 +965,8 @@ static int nfs_verify_server_address(struct sockaddr *addr)
+ 		struct in6_addr *sa = &((struct sockaddr_in6 *)addr)->sin6_addr;
+ 		return !ipv6_addr_any(sa);
+ 	}
++	case AF_VSOCK:
++		return 1;
+ 	}
  
- static const struct rpc_timeout xs_vsock_default_timeout = {
+ 	dfprintk(MOUNT, "NFS: Invalid IP address specified\n");
+@@ -993,6 +996,7 @@ static void nfs_validate_transport_protocol(struct nfs_parsed_mount_data *mnt)
+ 	case XPRT_TRANSPORT_UDP:
+ 	case XPRT_TRANSPORT_TCP:
+ 	case XPRT_TRANSPORT_RDMA:
++	case XPRT_TRANSPORT_VSOCK:
+ 		break;
+ 	default:
+ 		mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+@@ -1474,6 +1478,11 @@ static int nfs_parse_mount_options(char *raw,
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
+ 				xprt_load_transport(string);
+ 				break;
++			case Opt_xprt_vsock:
++				protofamily = AF_VSOCK;
++				mnt->flags &= ~NFS_MOUNT_TCP;
++				mnt->nfs_server.protocol = XPRT_TRANSPORT_VSOCK;
++				break;
+ 			default:
+ 				dfprintk(MOUNT, "NFS:   unrecognized "
+ 						"transport protocol\n");
 -- 
 2.9.4
 
