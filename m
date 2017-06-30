@@ -1,196 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx62.netapp.com ([216.240.31.182]:49596 "EHLO mx62.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:52918 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752666AbdF3UFU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 16:05:20 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 1/1] PNFS fix dangling DS mount
-Date: Fri, 30 Jun 2017 15:52:01 -0400
-Message-ID: <20170630195201.95597-1-kolga@netapp.com>
+        id S1752444AbdF3UQx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 16:16:53 -0400
+Date: Fri, 30 Jun 2017 16:16:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v1] sunrpc: Allocate up to RPCSVC_MAXPAGES per svc_rqst
+Message-ID: <20170630201653.GD14868@fieldses.org>
+References: <20170630160258.11995.10205.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170630160258.11995.10205.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a regression by commit 8d40b0f14846 ("NFS filelayout:call
-GETDEVICEINFO after pnfs_layout_process completes"). It leaves the
-DS mount dangling.
+I like that better.
 
-Previously, filelayout_alloc_sec() would call filelayout_check_layout()
-which would call nfs4_find_get_deviceid which ups the count on the
-device_id. It's only called once and it's matched by the
-filelayout_free_lseg() that calls nfs4_fl_put_deviceid().
+I'm still pretty confused.
 
-After that patch, each read/write ends up calling nfs4_find_get_deviceid
-and there is no balance for that. Instead, do nfs4_fl_put_deviceid()
-in the filelayout's .pg_cleanup and remove it from filelayout_free_lseg.
+The long comment above RPCSVC_MAXPAGES convinces me that it's
+calculating the maximum number of pages a TCP request might need.  But
+apparently rq_pages has never been large enough to hold that many pages.
+Has nobody ever tried an unaligned 1MB read?
 
-But we still need a reference to hold over the lifetime of the segment.
-For every new lseg that's created we need to take a reference on deviceid
-that uses it. It will be released in the "free_lseg" routine.
+We could use comments each time elsewhere when we add another random 1
+or 2 somewhere.  What does sv_max_mesg really mean, why are we adding 2
+to it in svc_alloc_arg, etc.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/filelayout/filelayout.c         | 21 +++++++++++++++++----
- fs/nfs/flexfilelayout/flexfilelayout.c |  9 ++++++---
- fs/nfs/pnfs.c                          | 13 ++++++++++---
- fs/nfs/pnfs.h                          |  3 ++-
- 4 files changed, 35 insertions(+), 11 deletions(-)
+Might make more sense if RPCSVC_MAXPAYLOAD was explicitly calculated as
+a max over the compiled-in transports, too.
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 1cf85d6..86d694e 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -909,9 +909,10 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
- 	struct pnfs_layout_hdr *lo;
- 	struct nfs4_filelayout_segment *fl;
- 	int status;
-+	bool new_layout = false;
- 
- 	lseg = pnfs_update_layout(ino, ctx, pos, count, iomode, strict_iomode,
--				  gfp_flags);
-+				  gfp_flags, &new_layout);
- 	if (!lseg)
- 		lseg = ERR_PTR(-ENOMEM);
- 	if (IS_ERR(lseg))
-@@ -924,7 +925,8 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
- 	if (status) {
- 		pnfs_put_lseg(lseg);
- 		lseg = ERR_PTR(status);
--	}
-+	} else if (new_layout)
-+		nfs4_get_deviceid(&fl->dsaddr->id_node);
- out:
- 	return lseg;
- }
-@@ -991,18 +993,29 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
- 	nfs_pageio_reset_write_mds(pgio);
- }
- 
-+static void filelayout_pg_cleanup(struct nfs_pageio_descriptor *desc)
-+{
-+	if (desc->pg_lseg) {
-+		struct nfs4_filelayout_segment *fl =
-+			FILELAYOUT_LSEG(desc->pg_lseg);
-+
-+		nfs4_fl_put_deviceid(fl->dsaddr);
-+	}
-+	pnfs_generic_pg_cleanup(desc);
-+}
-+
- static const struct nfs_pageio_ops filelayout_pg_read_ops = {
- 	.pg_init = filelayout_pg_init_read,
- 	.pg_test = filelayout_pg_test,
- 	.pg_doio = pnfs_generic_pg_readpages,
--	.pg_cleanup = pnfs_generic_pg_cleanup,
-+	.pg_cleanup = filelayout_pg_cleanup,
- };
- 
- static const struct nfs_pageio_ops filelayout_pg_write_ops = {
- 	.pg_init = filelayout_pg_init_write,
- 	.pg_test = filelayout_pg_test,
- 	.pg_doio = pnfs_generic_pg_writepages,
--	.pg_cleanup = pnfs_generic_pg_cleanup,
-+	.pg_cleanup = filelayout_pg_cleanup,
- };
- 
- static u32 select_bucket_index(struct nfs4_filelayout_segment *fl, u32 j)
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 23542dc..53a4a19 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -820,7 +820,8 @@ static bool ff_layout_has_rw_segments(struct pnfs_layout_hdr *layout)
- 					   NFS4_MAX_UINT64,
- 					   IOMODE_READ,
- 					   strict_iomode,
--					   GFP_KERNEL);
-+					   GFP_KERNEL,
-+					   NULL);
- 	if (IS_ERR(pgio->pg_lseg)) {
- 		pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 		pgio->pg_lseg = NULL;
-@@ -904,7 +905,8 @@ static bool ff_layout_has_rw_segments(struct pnfs_layout_hdr *layout)
- 						   NFS4_MAX_UINT64,
- 						   IOMODE_RW,
- 						   false,
--						   GFP_NOFS);
-+						   GFP_NOFS,
-+						   NULL);
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -960,7 +962,8 @@ static bool ff_layout_has_rw_segments(struct pnfs_layout_hdr *layout)
- 						   NFS4_MAX_UINT64,
- 						   IOMODE_RW,
- 						   false,
--						   GFP_NOFS);
-+						   GFP_NOFS,
-+						   NULL);
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index c383d09..fb011c6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1698,7 +1698,8 @@ struct pnfs_layout_segment *
- 		   u64 count,
- 		   enum pnfs_iomode iomode,
- 		   bool strict_iomode,
--		   gfp_t gfp_flags)
-+		   gfp_t gfp_flags,
-+		   bool *new)
- {
- 	struct pnfs_layout_range arg = {
- 		.iomode = iomode,
-@@ -1764,8 +1765,12 @@ struct pnfs_layout_segment *
- 	if (lseg) {
- 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
- 				PNFS_UPDATE_LAYOUT_FOUND_CACHED);
-+		if (new)
-+			*new = false;
- 		goto out_unlock;
- 	}
-+	if (new)
-+		*new = true;
- 
- 	if (!nfs4_valid_open_stateid(ctx->state)) {
- 		trace_pnfs_update_layout(ino, pos, count, iomode, lo, lseg,
-@@ -2126,7 +2131,8 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
- 						   rd_size,
- 						   IOMODE_READ,
- 						   false,
--						   GFP_KERNEL);
-+						   GFP_KERNEL,
-+						   NULL);
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-@@ -2153,7 +2159,8 @@ void pnfs_error_mark_layout_for_return(struct inode *inode,
- 						   wb_size,
- 						   IOMODE_RW,
- 						   false,
--						   GFP_NOFS);
-+						   GFP_NOFS,
-+						   NULL);
- 		if (IS_ERR(pgio->pg_lseg)) {
- 			pgio->pg_error = PTR_ERR(pgio->pg_lseg);
- 			pgio->pg_lseg = NULL;
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 99731e3..978fab0 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -291,7 +291,8 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
- 					       u64 count,
- 					       enum pnfs_iomode iomode,
- 					       bool strict_iomode,
--					       gfp_t gfp_flags);
-+					       gfp_t gfp_flags,
-+					       bool *new);
- void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
- 		const nfs4_stateid *arg_stateid,
- 		const struct pnfs_layout_range *range,
--- 
-1.8.3.1
+I feel like we've actually been through this before, but somehow I'm
+still confused every time I look at it.
 
+--b.
+
+On Fri, Jun 30, 2017 at 12:03:54PM -0400, Chuck Lever wrote:
+> svcrdma needs 259 pages for 1MB NFSv4.0 READ requests:
+> 
+>  - 1 page for the transport header and head iovec
+>  - 256 pages for the data payload
+>  - 1 page for the trailing GETATTR request (since NFSD XDR decoding
+>    does not look for a tail iovec, the GETATTR is stuck at the end
+>    of the rqstp->rq_arg.pages list)
+>  - 1 page for building the reply xdr_buf
+> 
+> But RPCSVC_MAXPAGES is already 259 (on x86_64). The problem is that
+> svc_alloc_arg never allocates that many pages. To address this:
+> 
+> 1. The final element of rq_pages always points to NULL. To
+>    accommodate up to 259 pages in rq_pages, add an extra element
+>    to rq_pages for the array termination sentinel.
+> 
+> 2. Adjust the calculation of "pages" to match how RPCSVC_MAXPAGES
+>    is calculated, so it can go up to 259. Bruce noted that the
+>    calculation assumes sv_max_mesg is a multiple of PAGE_SIZE,
+>    which might not always be true. I didn't change this assumption.
+> 
+> 3. Change the loop boundaries to allow 259 pages to be allocated.
+> 
+> Additional clean-up: WARN_ON_ONCE adds an extra conditional branch,
+> which is basically never taken. And there's no need to dump the
+> stack here because svc_alloc_arg has only one caller.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> Hi Bruce-
+> 
+> This is what I proposed yesterday evening. Instead of changing
+> the value of RPCSVC_MAXPAGES, ensure that svc_alloc_arg can
+> safely allocate that many pages.
+> 
+> 
+>  include/linux/sunrpc/svc.h |    2 +-
+>  net/sunrpc/svc_xprt.c      |   10 ++++++----
+>  2 files changed, 7 insertions(+), 5 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 11cef5a..d741399 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -246,7 +246,7 @@ struct svc_rqst {
+>  	size_t			rq_xprt_hlen;	/* xprt header len */
+>  	struct xdr_buf		rq_arg;
+>  	struct xdr_buf		rq_res;
+> -	struct page *		rq_pages[RPCSVC_MAXPAGES];
+> +	struct page		*rq_pages[RPCSVC_MAXPAGES + 1];
+>  	struct page *		*rq_respages;	/* points into rq_pages */
+>  	struct page *		*rq_next_page; /* next reply page to use */
+>  	struct page *		*rq_page_end;  /* one past the last page */
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 7bfe1fb..d16a8b4 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -659,11 +659,13 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+>  	int i;
+>  
+>  	/* now allocate needed pages.  If we get a failure, sleep briefly */
+> -	pages = (serv->sv_max_mesg + PAGE_SIZE) / PAGE_SIZE;
+> -	WARN_ON_ONCE(pages >= RPCSVC_MAXPAGES);
+> -	if (pages >= RPCSVC_MAXPAGES)
+> +	pages = (serv->sv_max_mesg + 2 * PAGE_SIZE) >> PAGE_SHIFT;
+> +	if (pages > RPCSVC_MAXPAGES) {
+> +		pr_warn_once("svc: warning: pages=%u > RPCSVC_MAXPAGES=%lu\n",
+> +			     pages, RPCSVC_MAXPAGES);
+>  		/* use as many pages as possible */
+> -		pages = RPCSVC_MAXPAGES - 1;
+> +		pages = RPCSVC_MAXPAGES;
+> +	}
+>  	for (i = 0; i < pages ; i++)
+>  		while (rqstp->rq_pages[i] == NULL) {
+>  			struct page *p = alloc_page(GFP_KERNEL);
