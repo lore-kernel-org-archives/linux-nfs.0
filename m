@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41672 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38742 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751668AbdF3Okw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 10:40:52 -0400
-Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
+        id S1751545AbdF3PBR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 11:01:17 -0400
+Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
 To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
 Cc: Jeff Layton <jlayton@redhat.com>, Abbas Naderi <abiusx@google.com>
 References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-4-stefanha@redhat.com>
+ <20170630132120.31578-6-stefanha@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
-Date: Fri, 30 Jun 2017 10:40:49 -0400
+Message-ID: <6a9210af-b1e3-c768-2be8-8c6f761e82d0@RedHat.com>
+Date: Fri, 30 Jun 2017 11:01:13 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170630132120.31578-4-stefanha@redhat.com>
+In-Reply-To: <20170630132120.31578-6-stefanha@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
@@ -20,47 +20,75 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 
 On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> Format vsock hosts as "vsock:<cid>" so the addresses can be easily
-> distinguished from IPv4 and IPv6 addresses.
+> Neither libtirpc nor getprotobyname(3) know about AF_VSOCK.  For similar
+> reasons as for "rdma"/"rmda6", translate "vsock" manually in getport.c.
+> 
+> It is now possible to mount a file system from the host (hypervisor)
+> over AF_VSOCK like this:
+> 
+>   (guest)$ mount.nfs 2:/export /mnt -v -o clientaddr=3,proto=vsock
+> 
+> The VM's cid address is 3 and the hypervisor is 2.
+So this is how vsocks are going to look... 
+There is not going to be a way to lookup an vsock address?
+Since the format of the clientaddr parameter shouldn't
+that be documented in the man page?
+
+I guess a general question, is this new mount type
+documented anywhere? 
+
+steved.
 > 
 > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 > ---
->  utils/mount/network.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
+>  support/nfs/getport.c | 16 ++++++++++++----
+>  1 file changed, 12 insertions(+), 4 deletions(-)
 > 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index 281e935..b5dcaa5 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -45,6 +45,8 @@
->  #include <rpc/pmap_prot.h>
->  #include <rpc/pmap_clnt.h>
+> diff --git a/support/nfs/getport.c b/support/nfs/getport.c
+> index 081594c..0b857af 100644
+> --- a/support/nfs/getport.c
+> +++ b/support/nfs/getport.c
+> @@ -217,8 +217,7 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+>  	struct protoent *proto;
 >  
-> +#include <linux/vm_sockets.h>
-In the previous patch you had this surrounded by #ifdef AF_VSOCK
-I'm not keen on sprinkling a bunch ifdefs around since 
-I think it makes the code harder to read. So my question 
-is why is the ifdef need in the previous patch and
-not needed in this patch and are they needed in the
-previous patch?
-
-steved.
-
-> +
->  #include "sockaddr.h"
->  #include "xcommon.h"
->  #include "mount.h"
-> @@ -325,6 +327,12 @@ int nfs_string_to_sockaddr(const char *address, struct sockaddr *sap,
->  int nfs_present_sockaddr(const struct sockaddr *sap, const socklen_t salen,
->  			 char *buf, const size_t buflen)
->  {
-> +	if (sap->sa_family == AF_VSOCK) {
-> +		snprintf(buf, buflen, "vsock:%u",
-> +			 ((struct sockaddr_vm *)sap)->svm_cid);
+>  	/*
+> -	 * IANA does not define a protocol number for rdma netids,
+> -	 * since "rdma" is not an IP protocol.
+> +	 * IANA does not define protocol numbers for non-IP netids.
+>  	 */
+>  	if (strcmp(netid, "rdma") == 0) {
+>  		*family = AF_INET;
+> @@ -230,6 +229,11 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+>  		*protocol = NFSPROTO_RDMA;
+>  		return 1;
+>  	}
+> +	if (strcmp(netid, "vsock") == 0) {
+> +		*family = AF_VSOCK;
+> +		*protocol = 0;
 > +		return 1;
 > +	}
-> +
->  #ifdef HAVE_GETNAMEINFO
->  	int result;
 >  
+>  	nconf = getnetconfigent(netid);
+>  	if (nconf == NULL)
+> @@ -258,14 +262,18 @@ nfs_get_proto(const char *netid, sa_family_t *family, unsigned long *protocol)
+>  	struct protoent *proto;
+>  
+>  	/*
+> -	 * IANA does not define a protocol number for rdma netids,
+> -	 * since "rdma" is not an IP protocol.
+> +	 * IANA does not define protocol numbers for non-IP netids.
+>  	 */
+>  	if (strcmp(netid, "rdma") == 0) {
+>  		*family = AF_INET;
+>  		*protocol = NFSPROTO_RDMA;
+>  		return 1;
+>  	}
+> +	if (strcmp(netid, "vsock") == 0) {
+> +		*family = AF_VSOCK;
+> +		*protocol = 0;
+> +		return 1;
+> +	}
+>  
+>  	proto = getprotobyname(netid);
+>  	if (proto == NULL)
 > 
