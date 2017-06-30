@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44604 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59776 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752434AbdF3NYq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 30 Jun 2017 09:24:46 -0400
+        id S1751927AbdF3NYh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 30 Jun 2017 09:24:37 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Abbas Naderi <abiusx@google.com>,
@@ -12,48 +12,57 @@ Cc: Abbas Naderi <abiusx@google.com>,
         Jeff Layton <jlayton@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH v3 12/14] SUNRPC: add AF_VSOCK lock class
-Date: Fri, 30 Jun 2017 14:23:50 +0100
-Message-Id: <20170630132352.32133-13-stefanha@redhat.com>
+Subject: [PATCH v3 11/14] nfsd: support vsock xprt creation
+Date: Fri, 30 Jun 2017 14:23:49 +0100
+Message-Id: <20170630132352.32133-12-stefanha@redhat.com>
 In-Reply-To: <20170630132352.32133-1-stefanha@redhat.com>
 References: <20170630132352.32133-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+nfs-utils will write the vsock address details to /proc/fs/nfsd/portlist
+to start listening for NFS client connections.
+
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- net/sunrpc/svcsock.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ fs/nfsd/nfsctl.c | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 0c09f3f..e67b097 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -78,8 +78,8 @@ static void svc_bc_sock_free(struct svc_xprt *xprt);
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 6493df6..1b71c28 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -768,15 +768,22 @@ static ssize_t __write_ports_addxprt(char *buf, struct net *net)
+ 	if (err != 0)
+ 		return err;
  
- #ifdef CONFIG_DEBUG_LOCK_ALLOC
--static struct lock_class_key svc_key[2];
--static struct lock_class_key svc_slock_key[2];
-+static struct lock_class_key svc_key[3];
-+static struct lock_class_key svc_slock_key[3];
+-	err = svc_create_xprt(nn->nfsd_serv, transport, net,
+-				PF_INET, port, SVC_SOCK_ANONYMOUS);
+-	if (err < 0)
+-		goto out_err;
++	if (!strcmp(transport, "vsock")) {
++		err = svc_create_xprt(nn->nfsd_serv, transport, net,
++					AF_VSOCK, port, SVC_SOCK_ANONYMOUS);
++		if (err < 0)
++			goto out_err;
++	} else {
++		err = svc_create_xprt(nn->nfsd_serv, transport, net,
++					PF_INET, port, SVC_SOCK_ANONYMOUS);
++		if (err < 0)
++			goto out_err;
  
- static void svc_reclassify_socket(struct socket *sock)
- {
-@@ -103,6 +103,13 @@ static void svc_reclassify_socket(struct socket *sock)
- 					      &svc_key[1]);
- 		break;
+-	err = svc_create_xprt(nn->nfsd_serv, transport, net,
+-				PF_INET6, port, SVC_SOCK_ANONYMOUS);
+-	if (err < 0 && err != -EAFNOSUPPORT)
+-		goto out_close;
++		err = svc_create_xprt(nn->nfsd_serv, transport, net,
++					PF_INET6, port, SVC_SOCK_ANONYMOUS);
++		if (err < 0 && err != -EAFNOSUPPORT)
++			goto out_close;
++	}
  
-+	case AF_VSOCK:
-+		sock_lock_init_class_and_name(sk, "slock-AF_VSOCK-NFSD",
-+					      &svc_slock_key[2],
-+					      "sk_xprt.xpt_lock-AF_VSOCK-NFSD",
-+					      &svc_key[2]);
-+		break;
-+
- 	default:
- 		BUG();
- 	}
+ 	/* Decrease the count, but don't shut down the service */
+ 	nn->nfsd_serv->sv_nrthreads--;
 -- 
 2.9.4
 
