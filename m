@@ -1,97 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from sainfoin-smtp-out.extra.cea.fr ([132.167.192.228]:51752 "EHLO
-        sainfoin-smtp-out.extra.cea.fr" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750861AbdGCGo5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jul 2017 02:44:57 -0400
-Received: from pisaure.intra.cea.fr (pisaure.intra.cea.fr [132.166.88.21])
-        by sainfoin-sys.extra.cea.fr (8.14.7/8.14.7/CEAnet-Internet-out-4.0) with ESMTP id v636dYQW020921
-        for <linux-nfs@vger.kernel.org>; Mon, 3 Jul 2017 08:39:34 +0200
-Received: from pisaure.intra.cea.fr (localhost [127.0.0.1])
-        by localhost (Postfix) with SMTP id 3774720623F
-        for <linux-nfs@vger.kernel.org>; Mon,  3 Jul 2017 08:39:34 +0200 (CEST)
-Received: from muguet1.intra.cea.fr (muguet1.intra.cea.fr [132.166.192.6])
-        by pisaure.intra.cea.fr (Postfix) with ESMTP id 2E6A72061F0
-        for <linux-nfs@vger.kernel.org>; Mon,  3 Jul 2017 08:39:34 +0200 (CEST)
-Received: from zia.cdc.esteban.ctsi (out.dam.intra.cea.fr [132.165.76.10])
-        by muguet1.intra.cea.fr (8.15.2/8.15.2/CEAnet-Intranet-out-1.4) with SMTP id v636dXJ4024406
-        for <linux-nfs@vger.kernel.org>; Mon, 3 Jul 2017 08:39:33 +0200
-Subject: Re: open by handle support for NFS V2
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <trondmy@primarydata.com>,
-        Christoph Hellwig <hch@lst.de>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        schumaker anna <schumaker.anna@gmail.com>
-References: <20170629133453.19641-1-hch@lst.de>
- <20170629154650.GC1651@fieldses.org>
- <1498842056.6728.1.camel@primarydata.com>
- <20170630173818.GC14868@fieldses.org>
- <995885135.19496849.1498901676399.JavaMail.zimbra@desy.de>
-From: DENIEL Philippe <philippe.deniel@cea.fr>
-Message-ID: <d800776d-722a-0f20-5616-4d236e9d6130@cea.fr>
-Date: Mon, 3 Jul 2017 08:39:32 +0200
+Received: from mx1.redhat.com ([209.132.183.28]:40570 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753258AbdGCIzO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Jul 2017 04:55:14 -0400
+Date: Mon, 3 Jul 2017 09:55:06 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>
+Subject: Re: [PATCH nfs-utils v2 01/12] mount: don't use IPPROTO_UDP for
+ address resolution
+Message-ID: <20170703085506.GB22607@stefanha-x1.localdomain>
+References: <20170630132120.31578-1-stefanha@redhat.com>
+ <20170630132120.31578-2-stefanha@redhat.com>
+ <0983a632-3f1d-06eb-2ffc-e04536c6c34c@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <995885135.19496849.1498901676399.JavaMail.zimbra@desy.de>
-Content-Type: text/plain; charset="utf-8"; format=flowed
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="l76fUT7nc3MelDdI"
+In-Reply-To: <0983a632-3f1d-06eb-2ffc-e04536c6c34c@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/01/17 11:34, Mkrtchyan, Tigran wrote:
->
-> ----- Original Message -----
->> From: "J. Bruce Fields" <bfields@fieldses.org>
->> To: "Trond Myklebust" <trondmy@primarydata.com>
->> Cc: "Christoph Hellwig" <hch@lst.de>, "Jeff Layton" <jlayton@poochiereds.net>, "linux-nfs" <linux-nfs@vger.kernel.org>,
->> "schumaker anna" <schumaker.anna@gmail.com>
->> Sent: Friday, June 30, 2017 7:38:18 PM
->> Subject: Re: open by handle support for NFS V2
->> On Fri, Jun 30, 2017 at 05:00:59PM +0000, Trond Myklebust wrote:
->>> The main use case for open by filehandle was (and still should be) the
->>> promise of being able to do the sort of tricks you normally associate
->>> with object storage on a standard filesystem.
->>>
->>> Imagine that you are trying to build an application for indexing and
->>> searching the data on your storage. You basically want to trawl through
->>> the filesystem on a regular basis and build up a database of key words
->>> and other metadata to tell you what is in the files. For that kind of
->>> application, the namespace is a real PITA to deal with, because files
->>> get renamed, moved and deleted all the time; so if you can store
->>> something that is independent of the namespace and that will give you
->>> access to the file contents, then why wouldn't you do so? Normally,
->>> applications like that use the inode number, but you can't open a file
->>> by inode number, and you have the same problems with inode number reuse
->>> that a NFS server has.
->>>
->>> That's the sort of thing I'd think we want to allow through open by
->>> filehandle, and I see no reason why NFS should be excluded from that
->>> type of application.
->> Thanks, that makes sense.
->>
->> We've had open_by_handle support for most filesystems since 2011, is
->> there evidence of anyone doing this?
->
-> I am pretty sure that nfs-ganesha is using this in one the backend
-> implementations.
->
-> Tigran.
-Tigran is right: nfs-ganesha does something a bit similar to this in its 
-"FSAL_VFS" module (the backed module based the usage of on 
-open_by_handle_at() and name_to_handle_at() ).
 
-     regards
+--l76fUT7nc3MelDdI
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-         Philippe
+On Fri, Jun 30, 2017 at 10:34:54AM -0400, Steve Dickson wrote:
+>=20
+>=20
+> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
+> > Although getaddrinfo(3) with IPPROTO_UDP works fine for AF_INET and
+> > AF_INET6, the AF_VSOCK address family does not support IPPROTO_UDP and
+> > produces an error.
+> >=20
+> > Drop IPPROTO_UDP and use the 0 default (TCP) which works for all address
+> > families.  Modern NFS uses TCP anyway so it's strange to specify UDP.
+> >=20
+> > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+> > Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  utils/mount/stropts.c | 4 +---
+> >  1 file changed, 1 insertion(+), 3 deletions(-)
+> >=20
+> > diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> > index c2a739b..99656dd 100644
+> > --- a/utils/mount/stropts.c
+> > +++ b/utils/mount/stropts.c
+> > @@ -909,9 +909,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+> >  	int result =3D 0;
+> > =20
+> >  	if (mi->address =3D=3D NULL) {
+> > -		struct addrinfo hint =3D {
+> > -			.ai_protocol	=3D (int)IPPROTO_UDP,
+> > -		};
+> > +		struct addrinfo hint =3D {};
+> Just curious as to why not simply pass a NULL hints parameter=20
+> verses an empty hints structure?
 
->
->> --b.
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It's not clear from the surrounding unified diff context but the code
+does set .ai_family later on:
 
+  hint.ai_family =3D (int)mi->family;
 
+Would you prefer it if I move that up into the variable definition?
+
+  struct addrinfo hint =3D {
+          .ai_family =3D (int)mi->family,
+  };
+
+--l76fUT7nc3MelDdI
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEcBAEBAgAGBQJZWgZpAAoJEJykq7OBq3PIFA4IALx1b4pFRL2PMRFomVnHEqf5
+/P+Du9doFX+hCaQxXMErazCj0YNObTalBA0z8OeSEzUelEMxK1lglYQUKbmihjWQ
+hkKrDXNYz2AKWYA/CTxUmtVo0uQVCa3aw/0IYTHmbS3LUXqZx0oTSSkX3QEtyQQF
+F1/d25djF/nSjbz0rTLrmzWuIUnGS3cGJ8lcPIz8/Ql+OsmZY2v+CgPTlOcxa87k
+IcLxwi7PWsbzKbSa9NQ1zaXFiE0wp3qLTkkmOH9s/M1gnRAz4rq4OljKSLN0s3Qf
+MlLjoP1nh8zRop4I6zbyA3hMEJjCI6OXrVPWXT2zkZb0IS7FhPTpP8jA7mY3ydg=
+=GerE
+-----END PGP SIGNATURE-----
+
+--l76fUT7nc3MelDdI--
