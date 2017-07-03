@@ -1,82 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44602 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753307AbdGCJA4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Jul 2017 05:00:56 -0400
-Date: Mon, 3 Jul 2017 10:00:48 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Steve Dickson <SteveD@RedHat.com>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>
-Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
-Message-ID: <20170703090048.GC22607@stefanha-x1.localdomain>
-References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-4-stefanha@redhat.com>
- <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:58170 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1755285AbdGCO6s (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jul 2017 10:58:48 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "aglo@umich.edu" <aglo@umich.edu>
+Subject: Re: [RFC] fix parallelism for rpc tasks
+Date: Mon, 3 Jul 2017 14:58:43 +0000
+Message-ID: <1499093918.79205.3.camel@primarydata.com>
+References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="da4uJneut+ArUgXk"
-In-Reply-To: <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+T24gVGh1LCAyMDE3LTA2LTI5IGF0IDA5OjI1IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gSGkgZm9sa3MsDQo+IA0KPiBPbiBhIG11bHRpLWNvcmUgbWFjaGluZSwgaXMgaXQgZXhw
+ZWN0ZWQgdGhhdCB3ZSBjYW4gaGF2ZSBwYXJhbGxlbA0KPiBSUENzDQo+IGhhbmRsZWQgYnkgZWFj
+aCBvZiB0aGUgcGVyLWNvcmUgd29ya3F1ZXVlPw0KPiANCj4gSW4gdGVzdGluZyBhIHJlYWQgd29y
+a2xvYWQsIG9ic2VydmluZyB2aWEgInRvcCIgY29tbWFuZCB0aGF0IGEgc2luZ2xlDQo+ICJrd29y
+a2VyIiB0aHJlYWQgaXMgcnVubmluZyBzZXJ2aWNpbmcgdGhlIHJlcXVlc3RzIChubyBwYXJhbGxl
+bGlzbSkuDQo+IEl0J3MgbW9yZSBwcm9taW5lbnQgd2hpbGUgZG9pbmcgdGhlc2Ugb3BlcmF0aW9u
+cyBvdmVyIGtyYjVwIG1vdW50Lg0KPiANCj4gV2hhdCBoYXMgYmVlbiBzdWdnZXN0ZWQgYnkgQnJ1
+Y2UgaXMgdG8gdHJ5IHRoaXMgYW5kIGluIG15IHRlc3RpbmcgSQ0KPiBzZWUgdGhlbiB0aGUgcmVh
+ZCB3b3JrbG9hZCBzcHJlYWQgYW1vbmcgYWxsIHRoZSBrd29ya2VyIHRocmVhZHMuDQo+IA0KPiBT
+aWduZWQtb2ZmLWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gDQo+
+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3NjaGVkLmMgYi9uZXQvc3VucnBjL3NjaGVkLmMNCj4g
+aW5kZXggMGNjODM4My4uZjgwZTY4OCAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9zY2hlZC5j
+DQo+ICsrKyBiL25ldC9zdW5ycGMvc2NoZWQuYw0KPiBAQCAtMTA5NSw3ICsxMDk1LDcgQEAgc3Rh
+dGljIGludCBycGNpb2Rfc3RhcnQodm9pZCkNCj4gwqAgKiBDcmVhdGUgdGhlIHJwY2lvZCB0aHJl
+YWQgYW5kIHdhaXQgZm9yIGl0IHRvIHN0YXJ0Lg0KPiDCoCAqLw0KPiDCoCBkcHJpbnRrKCJSUEM6
+wqDCoMKgwqDCoMKgwqBjcmVhdGluZyB3b3JrcXVldWUgcnBjaW9kXG4iKTsNCj4gLSB3cSA9IGFs
+bG9jX3dvcmtxdWV1ZSgicnBjaW9kIiwgV1FfTUVNX1JFQ0xBSU0sIDApOw0KPiArIHdxID0gYWxs
+b2Nfd29ya3F1ZXVlKCJycGNpb2QiLCBXUV9NRU1fUkVDTEFJTSB8IFdRX1VOQk9VTkQsIDApOw0K
+PiDCoCBpZiAoIXdxKQ0KPiDCoCBnb3RvIG91dF9mYWlsZWQ7DQo+IMKgIHJwY2lvZF93b3JrcXVl
+dWUgPSB3cTsNCj4gDQoNCldRX1VOQk9VTkQgdHVybnMgb2ZmIGNvbmN1cnJlbmN5IG1hbmFnZW1l
+bnQgb24gdGhlIHRocmVhZCBwb29sIChTZWUNCkRvY3VtZW50YXRpb24vY29yZS1hcGkvd29ya3F1
+ZXVlLnJzdC4gSXQgYWxzbyBtZWFucyB3ZSBjb250ZW5kIGZvciB3b3JrDQppdGVtIHF1ZXVpbmcv
+ZGVxdWV1aW5nIGxvY2tzLCBzaW5jZSB0aGUgdGhyZWFkcyB3aGljaCBydW4gdGhlIHdvcmsNCml0
+ZW1zIGFyZSBub3QgYm91bmQgdG8gYSBDUFUuDQoNCklPVzogVGhpcyBpcyBub3QgYSBzbGFtLWR1
+bmsgb2J2aW91cyBnYWluLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
+dCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNv
+bQ0K
 
---da4uJneut+ArUgXk
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, Jun 30, 2017 at 10:40:49AM -0400, Steve Dickson wrote:
-> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> > Format vsock hosts as "vsock:<cid>" so the addresses can be easily
-> > distinguished from IPv4 and IPv6 addresses.
-> >=20
-> > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
-> > ---
-> >  utils/mount/network.c | 8 ++++++++
-> >  1 file changed, 8 insertions(+)
-> >=20
-> > diff --git a/utils/mount/network.c b/utils/mount/network.c
-> > index 281e935..b5dcaa5 100644
-> > --- a/utils/mount/network.c
-> > +++ b/utils/mount/network.c
-> > @@ -45,6 +45,8 @@
-> >  #include <rpc/pmap_prot.h>
-> >  #include <rpc/pmap_clnt.h>
-> > =20
-> > +#include <linux/vm_sockets.h>
-> In the previous patch you had this surrounded by #ifdef AF_VSOCK
-> I'm not keen on sprinkling a bunch ifdefs around since=20
-> I think it makes the code harder to read. So my question=20
-> is why is the ifdef need in the previous patch and
-> not needed in this patch and are they needed in the
-> previous patch?
-
-The lack of #ifdef is my mistake.
-
-My impression of nfs-utils is that the code is written to work in a
-variety of configurations and still support older kernels.  So I am
-wrapping AF_VSOCK logic with an #ifdef.
-
-AF_VSOCK has been in Linux since v3.9 in commit
-d021c344051af91f42c5ba9fdedc176740cbd238 ("VSOCK: Introduce VM
-Sockets").
-
-I'd love to eliminate the #ifdefs, but would it be acceptable to simply
-drop them?
-
---da4uJneut+ArUgXk
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEcBAEBAgAGBQJZWgfAAAoJEJykq7OBq3PIH3oH+waXtsFudVfZ4JtowXCzDSzB
-OnJzFWpjV4c4eryX39F1Qf563m7RlAPnWrbmpWj/2nYF2n6FOaL6fnGVkIzyvmBg
-mZwwKrOYIn+EY8M24boXdxk4Yswhovtb9oo+CS/OUPnXSpe+Dg+TsoZUKxRwchJ5
-gULNz2n1KwOXgLCvlfw18RbelxioNwD4ylr5s8FTuom3ibJREwB+1YaEgTcrDhBQ
-LLz3lm0FikJnpN15WOngemJEllo9twFW16GODs4zVAbsXk3UIMPTHBvV08dyalp3
-//GlzdCuP8GELOlaNhZxVh8lqGn11vDcEA/ZDo1SIROMuDyaaxaKEiO5eS8GECU=
-=QXb+
------END PGP SIGNATURE-----
-
---da4uJneut+ArUgXk--
