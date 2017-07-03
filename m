@@ -1,60 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51352 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:51357 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750793AbdGCF17 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Jul 2017 01:27:59 -0400
+        id S1750861AbdGCF2F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Jul 2017 01:28:05 -0400
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date: Mon, 03 Jul 2017 15:27:26 +1000
-Subject: [PATCH 0/2] Protect against a demented NFS server.
+Subject: [PATCH 1/2] NFS: guard against confused server in nfs_atomic_open()
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <149905933708.6926.8527235505351389675.stgit@noble>
+Message-ID: <149905964664.6926.2427823210014981309.stgit@noble>
+In-Reply-To: <149905933708.6926.8527235505351389675.stgit@noble>
+References: <149905933708.6926.8527235505351389675.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-You wouldn't expect an NFS server to get be unable to decide if
-something is a file or a directory, but
+A confused server could return a filehandle for an
+NFSv4 OPEN request, which it previously returned for a directory.
+So the inode returned by  ->open_context() in nfs_atomic_open()
+could conceivably be a directory inode.
 
-[32337914.127428] nfs_update_inode: inode 134 mode changed, 0100600 to 0040755
-[32337914.127447] nfs_update_inode: inode 136 mode changed, 0100640 to 0040755
-[32337914.128485] nfs_update_inode: inode 138 mode changed, 0100640 to 0040755
-[32337914.128497] nfs_update_inode: inode 139 mode changed, 0100640 to 0040755
-[32337914.128510] nfs_update_inode: inode 140 mode changed, 0100640 to 0040755
-[32337914.128521] nfs_update_inode: inode 141 mode changed, 0100640 to 0040755
-[32337914.129614] nfs_update_inode: inode 142 mode changed, 0100640 to 0040755
-[32337916.233248] nfs_update_inode: inode 144 mode changed, 0100640 to 0040700
-[33296458.909828] nfs_update_inode: inode 132 mode changed, 0042770 to 0100755
-[33296458.909847] nfs_update_inode: inode 133 mode changed, 0042770 to 0100755
+This has particular implications for the call to
+nfs_file_set_open_context() in nfs_finish_open().
+If that is called on a directory inode, then the nfs_open_context
+that gets stored in the filp->private_data will be linked to
+nfs_inode->open_files.
 
-is an actual excerpt from the 'dmesg' logs of a production machine.
+When the directory is closed, nfs_closedir() will (ultimately)
+free the ->private_data, but not unlink it from nfs_inode->open_files
+(because it doesn't expect an nfs_open_context there).
 
-You might expect this to cause various system calls to return ESTALE
-or EIO or EISDIR or similar, but it actually resulted in a crash.
-->private_data is very different for a directory and a file, and
-on a 3.0 kernel, the above can lead to confusion of the two data structures.
+Subsequently the memory could get used for something else and eventually
+if the ->open_files list is walked, the walker will fall off the end and
+crash.
 
-I'm not sure if the same sequence would cause the same problem on a
-current kernel, but there are a couple of places where extra checks
-will make us safer.  The following two patches add those checks.
+So: change nfs_finish_open() to only call nfs_file_set_open_context()
+for regular-file inodes.
 
-Thanks,
-NeilBrown
+This failure mode has been seen in a production setting (unknown NFS
+server implementation).  The kernel was v3.0 and the specific sequence
+seen would not affect more recent kernels, but I think a risk is still
+present, and caution is wise.
 
-
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
+ fs/nfs/dir.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-NeilBrown (2):
-      NFS: guard against confused server in nfs_atomic_open()
-      NFS: check for nfs_refresh_inode() errors in nfs_fhget()
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2ac00bf4ecf1..4f0706bd387f 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1427,8 +1427,10 @@ static int nfs_finish_open(struct nfs_open_context *ctx,
+ 	err = finish_open(file, dentry, do_open, opened);
+ 	if (err)
+ 		goto out;
+-	nfs_file_set_open_context(file, ctx);
+-
++	if (S_ISREG(file->f_path.dentry->d_inode->i_mode))
++		nfs_file_set_open_context(file, ctx);
++	else
++		err = -ESTALE;
+ out:
+ 	return err;
+ }
 
-
- fs/nfs/dir.c   |    6 ++++--
- fs/nfs/inode.c |   10 ++++++++--
- 2 files changed, 12 insertions(+), 4 deletions(-)
-
---
-Signature
 
