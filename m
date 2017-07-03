@@ -1,47 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:58170 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755285AbdGCO6s (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Jul 2017 10:58:48 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "aglo@umich.edu" <aglo@umich.edu>
-Subject: Re: [RFC] fix parallelism for rpc tasks
-Date: Mon, 3 Jul 2017 14:58:43 +0000
-Message-ID: <1499093918.79205.3.camel@primarydata.com>
-References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:43432 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754534AbdGCQft (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 3 Jul 2017 12:35:49 -0400
+Subject: Re: [PATCH nfs-utils v2 01/12] mount: don't use IPPROTO_UDP for
+ address resolution
+To: Stefan Hajnoczi <stefanha@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>
+References: <20170630132120.31578-1-stefanha@redhat.com>
+ <20170630132120.31578-2-stefanha@redhat.com>
+ <0983a632-3f1d-06eb-2ffc-e04536c6c34c@RedHat.com>
+ <20170703085506.GB22607@stefanha-x1.localdomain>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <ed717485-fe5d-7437-ac74-a2b759dceffe@RedHat.com>
+Date: Mon, 3 Jul 2017 12:35:44 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20170703085506.GB22607@stefanha-x1.localdomain>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA2LTI5IGF0IDA5OjI1IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gSGkgZm9sa3MsDQo+IA0KPiBPbiBhIG11bHRpLWNvcmUgbWFjaGluZSwgaXMgaXQgZXhw
-ZWN0ZWQgdGhhdCB3ZSBjYW4gaGF2ZSBwYXJhbGxlbA0KPiBSUENzDQo+IGhhbmRsZWQgYnkgZWFj
-aCBvZiB0aGUgcGVyLWNvcmUgd29ya3F1ZXVlPw0KPiANCj4gSW4gdGVzdGluZyBhIHJlYWQgd29y
-a2xvYWQsIG9ic2VydmluZyB2aWEgInRvcCIgY29tbWFuZCB0aGF0IGEgc2luZ2xlDQo+ICJrd29y
-a2VyIiB0aHJlYWQgaXMgcnVubmluZyBzZXJ2aWNpbmcgdGhlIHJlcXVlc3RzIChubyBwYXJhbGxl
-bGlzbSkuDQo+IEl0J3MgbW9yZSBwcm9taW5lbnQgd2hpbGUgZG9pbmcgdGhlc2Ugb3BlcmF0aW9u
-cyBvdmVyIGtyYjVwIG1vdW50Lg0KPiANCj4gV2hhdCBoYXMgYmVlbiBzdWdnZXN0ZWQgYnkgQnJ1
-Y2UgaXMgdG8gdHJ5IHRoaXMgYW5kIGluIG15IHRlc3RpbmcgSQ0KPiBzZWUgdGhlbiB0aGUgcmVh
-ZCB3b3JrbG9hZCBzcHJlYWQgYW1vbmcgYWxsIHRoZSBrd29ya2VyIHRocmVhZHMuDQo+IA0KPiBT
-aWduZWQtb2ZmLWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gDQo+
-IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3NjaGVkLmMgYi9uZXQvc3VucnBjL3NjaGVkLmMNCj4g
-aW5kZXggMGNjODM4My4uZjgwZTY4OCAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy9zY2hlZC5j
-DQo+ICsrKyBiL25ldC9zdW5ycGMvc2NoZWQuYw0KPiBAQCAtMTA5NSw3ICsxMDk1LDcgQEAgc3Rh
-dGljIGludCBycGNpb2Rfc3RhcnQodm9pZCkNCj4gwqAgKiBDcmVhdGUgdGhlIHJwY2lvZCB0aHJl
-YWQgYW5kIHdhaXQgZm9yIGl0IHRvIHN0YXJ0Lg0KPiDCoCAqLw0KPiDCoCBkcHJpbnRrKCJSUEM6
-wqDCoMKgwqDCoMKgwqBjcmVhdGluZyB3b3JrcXVldWUgcnBjaW9kXG4iKTsNCj4gLSB3cSA9IGFs
-bG9jX3dvcmtxdWV1ZSgicnBjaW9kIiwgV1FfTUVNX1JFQ0xBSU0sIDApOw0KPiArIHdxID0gYWxs
-b2Nfd29ya3F1ZXVlKCJycGNpb2QiLCBXUV9NRU1fUkVDTEFJTSB8IFdRX1VOQk9VTkQsIDApOw0K
-PiDCoCBpZiAoIXdxKQ0KPiDCoCBnb3RvIG91dF9mYWlsZWQ7DQo+IMKgIHJwY2lvZF93b3JrcXVl
-dWUgPSB3cTsNCj4gDQoNCldRX1VOQk9VTkQgdHVybnMgb2ZmIGNvbmN1cnJlbmN5IG1hbmFnZW1l
-bnQgb24gdGhlIHRocmVhZCBwb29sIChTZWUNCkRvY3VtZW50YXRpb24vY29yZS1hcGkvd29ya3F1
-ZXVlLnJzdC4gSXQgYWxzbyBtZWFucyB3ZSBjb250ZW5kIGZvciB3b3JrDQppdGVtIHF1ZXVpbmcv
-ZGVxdWV1aW5nIGxvY2tzLCBzaW5jZSB0aGUgdGhyZWFkcyB3aGljaCBydW4gdGhlIHdvcmsNCml0
-ZW1zIGFyZSBub3QgYm91bmQgdG8gYSBDUFUuDQoNCklPVzogVGhpcyBpcyBub3QgYSBzbGFtLWR1
-bmsgb2J2aW91cyBnYWluLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVu
-dCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNv
-bQ0K
+
+
+On 07/03/2017 04:55 AM, Stefan Hajnoczi wrote:
+> On Fri, Jun 30, 2017 at 10:34:54AM -0400, Steve Dickson wrote:
+>>
+>>
+>> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
+>>> Although getaddrinfo(3) with IPPROTO_UDP works fine for AF_INET and
+>>> AF_INET6, the AF_VSOCK address family does not support IPPROTO_UDP and
+>>> produces an error.
+>>>
+>>> Drop IPPROTO_UDP and use the 0 default (TCP) which works for all address
+>>> families.  Modern NFS uses TCP anyway so it's strange to specify UDP.
+>>>
+>>> Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+>>> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>>  utils/mount/stropts.c | 4 +---
+>>>  1 file changed, 1 insertion(+), 3 deletions(-)
+>>>
+>>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>>> index c2a739b..99656dd 100644
+>>> --- a/utils/mount/stropts.c
+>>> +++ b/utils/mount/stropts.c
+>>> @@ -909,9 +909,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+>>>  	int result = 0;
+>>>  
+>>>  	if (mi->address == NULL) {
+>>> -		struct addrinfo hint = {
+>>> -			.ai_protocol	= (int)IPPROTO_UDP,
+>>> -		};
+>>> +		struct addrinfo hint = {};
+>> Just curious as to why not simply pass a NULL hints parameter 
+>> verses an empty hints structure?
+> 
+> It's not clear from the surrounding unified diff context but the code
+> does set .ai_family later on:
+> 
+>   hint.ai_family = (int)mi->family;
+Ah... I did miss this...
+
+> 
+> Would you prefer it if I move that up into the variable definition?
+> 
+>   struct addrinfo hint = {
+>           .ai_family = (int)mi->family,
+>   };
+> 
+It's good as is.
+
+steved.
 
