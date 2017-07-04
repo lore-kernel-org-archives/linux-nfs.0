@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga04.intel.com ([192.55.52.120]:58463 "EHLO mga04.intel.com"
+Received: from mga02.intel.com ([134.134.136.20]:18651 "EHLO mga02.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752338AbdGDM5K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:57:10 -0400
+        id S1752665AbdGDM45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:56:57 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 23/36] net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:18 +0300
-Message-Id: <1499172811-16271-24-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 22/36] net, rds: convert rds_mr.r_refcount from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:17 +0300
+Message-Id: <1499172811-16271-23-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,60 +40,81 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/rds/message.c | 12 ++++++------
- net/rds/rds.h     |  2 +-
+ net/rds/rdma.c | 10 +++++-----
+ net/rds/rds.h  |  4 ++--
  2 files changed, 7 insertions(+), 7 deletions(-)
 
-diff --git a/net/rds/message.c b/net/rds/message.c
-index 49bfb51..4318cc9 100644
---- a/net/rds/message.c
-+++ b/net/rds/message.c
-@@ -48,8 +48,8 @@ static unsigned int	rds_exthdr_size[__RDS_EXTHDR_MAX] = {
- 
- void rds_message_addref(struct rds_message *rm)
- {
--	rdsdebug("addref rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
--	atomic_inc(&rm->m_refcount);
-+	rdsdebug("addref rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
-+	refcount_inc(&rm->m_refcount);
+diff --git a/net/rds/rdma.c b/net/rds/rdma.c
+index f06fac4..8886f15 100644
+--- a/net/rds/rdma.c
++++ b/net/rds/rdma.c
+@@ -84,7 +84,7 @@ static struct rds_mr *rds_mr_tree_walk(struct rb_root *root, u64 key,
+ 	if (insert) {
+ 		rb_link_node(&insert->r_rb_node, parent, p);
+ 		rb_insert_color(&insert->r_rb_node, root);
+-		atomic_inc(&insert->r_refcount);
++		refcount_inc(&insert->r_refcount);
+ 	}
+ 	return NULL;
  }
- EXPORT_SYMBOL_GPL(rds_message_addref);
+@@ -99,7 +99,7 @@ static void rds_destroy_mr(struct rds_mr *mr)
+ 	unsigned long flags;
  
-@@ -83,9 +83,9 @@ static void rds_message_purge(struct rds_message *rm)
+ 	rdsdebug("RDS: destroy mr key is %x refcnt %u\n",
+-			mr->r_key, atomic_read(&mr->r_refcount));
++			mr->r_key, refcount_read(&mr->r_refcount));
  
- void rds_message_put(struct rds_message *rm)
- {
--	rdsdebug("put rm %p ref %d\n", rm, atomic_read(&rm->m_refcount));
--	WARN(!atomic_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
--	if (atomic_dec_and_test(&rm->m_refcount)) {
-+	rdsdebug("put rm %p ref %d\n", rm, refcount_read(&rm->m_refcount));
-+	WARN(!refcount_read(&rm->m_refcount), "danger refcount zero on %p\n", rm);
-+	if (refcount_dec_and_test(&rm->m_refcount)) {
- 		BUG_ON(!list_empty(&rm->m_sock_item));
- 		BUG_ON(!list_empty(&rm->m_conn_item));
- 		rds_message_purge(rm);
-@@ -206,7 +206,7 @@ struct rds_message *rds_message_alloc(unsigned int extra_len, gfp_t gfp)
- 	rm->m_used_sgs = 0;
- 	rm->m_total_sgs = extra_len / sizeof(struct scatterlist);
+ 	if (test_and_set_bit(RDS_MR_DEAD, &mr->r_state))
+ 		return;
+@@ -223,7 +223,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
+ 		goto out;
+ 	}
  
--	atomic_set(&rm->m_refcount, 1);
-+	refcount_set(&rm->m_refcount, 1);
- 	INIT_LIST_HEAD(&rm->m_sock_item);
- 	INIT_LIST_HEAD(&rm->m_conn_item);
- 	spin_lock_init(&rm->m_rs_lock);
+-	atomic_set(&mr->r_refcount, 1);
++	refcount_set(&mr->r_refcount, 1);
+ 	RB_CLEAR_NODE(&mr->r_rb_node);
+ 	mr->r_trans = rs->rs_transport;
+ 	mr->r_sock = rs;
+@@ -307,7 +307,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
+ 
+ 	rdsdebug("RDS: get_mr key is %x\n", mr->r_key);
+ 	if (mr_ret) {
+-		atomic_inc(&mr->r_refcount);
++		refcount_inc(&mr->r_refcount);
+ 		*mr_ret = mr;
+ 	}
+ 
+@@ -756,7 +756,7 @@ int rds_cmsg_rdma_dest(struct rds_sock *rs, struct rds_message *rm,
+ 	if (!mr)
+ 		err = -EINVAL;	/* invalid r_key */
+ 	else
+-		atomic_inc(&mr->r_refcount);
++		refcount_inc(&mr->r_refcount);
+ 	spin_unlock_irqrestore(&rs->rs_rdma_lock, flags);
+ 
+ 	if (mr) {
 diff --git a/net/rds/rds.h b/net/rds/rds.h
-index ea72d6e..516bcc8 100644
+index 35ceaa2..ea72d6e 100644
 --- a/net/rds/rds.h
 +++ b/net/rds/rds.h
-@@ -356,7 +356,7 @@ static inline u32 rds_rdma_cookie_offset(rds_rdma_cookie_t cookie)
- #define RDS_MSG_FLUSH		8
+@@ -277,7 +277,7 @@ struct rds_incoming {
  
- struct rds_message {
--	atomic_t		m_refcount;
-+	refcount_t		m_refcount;
- 	struct list_head	m_sock_item;
- 	struct list_head	m_conn_item;
- 	struct rds_incoming	m_inc;
+ struct rds_mr {
+ 	struct rb_node		r_rb_node;
+-	atomic_t		r_refcount;
++	refcount_t		r_refcount;
+ 	u32			r_key;
+ 
+ 	/* A copy of the creation flags */
+@@ -857,7 +857,7 @@ int rds_cmsg_atomic(struct rds_sock *rs, struct rds_message *rm,
+ void __rds_put_mr_final(struct rds_mr *mr);
+ static inline void rds_mr_put(struct rds_mr *mr)
+ {
+-	if (atomic_dec_and_test(&mr->r_refcount))
++	if (refcount_dec_and_test(&mr->r_refcount))
+ 		__rds_put_mr_final(mr);
+ }
+ 
 -- 
 2.7.4
 
