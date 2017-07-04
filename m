@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:3794 "EHLO mga02.intel.com"
+Received: from mga07.intel.com ([134.134.136.100]:1295 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752051AbdGDM6D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:58:03 -0400
+        id S1752051AbdGDM5y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:57:54 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 29/36] net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:24 +0300
-Message-Id: <1499172811-16271-30-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 28/36] net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:23 +0300
+Message-Id: <1499172811-16271-29-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,62 +40,63 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/sctp/auth.h | 5 +++--
- net/sctp/auth.c         | 4 ++--
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ include/net/xfrm.h    | 6 +++---
+ net/xfrm/xfrm_input.c | 4 ++--
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/include/net/sctp/auth.h b/include/net/sctp/auth.h
-index 171244b..e5c57d0 100644
---- a/include/net/sctp/auth.h
-+++ b/include/net/sctp/auth.h
-@@ -31,6 +31,7 @@
- #define __sctp_auth_h__
- 
- #include <linux/list.h>
-+#include <linux/refcount.h>
- 
- struct sctp_endpoint;
- struct sctp_association;
-@@ -53,7 +54,7 @@ struct sctp_hmac {
-  * over SCTP-AUTH
-  */
- struct sctp_auth_bytes {
--	atomic_t refcnt;
-+	refcount_t refcnt;
- 	__u32 len;
- 	__u8  data[];
+diff --git a/include/net/xfrm.h b/include/net/xfrm.h
+index e1bd1de..c0916ab 100644
+--- a/include/net/xfrm.h
++++ b/include/net/xfrm.h
+@@ -1030,7 +1030,7 @@ struct xfrm_offload {
  };
-@@ -76,7 +77,7 @@ static inline void sctp_auth_key_hold(struct sctp_auth_bytes *key)
- 	if (!key)
- 		return;
  
--	atomic_inc(&key->refcnt);
-+	refcount_inc(&key->refcnt);
+ struct sec_path {
+-	atomic_t		refcnt;
++	refcount_t		refcnt;
+ 	int			len;
+ 	int			olen;
+ 
+@@ -1051,7 +1051,7 @@ static inline struct sec_path *
+ secpath_get(struct sec_path *sp)
+ {
+ 	if (sp)
+-		atomic_inc(&sp->refcnt);
++		refcount_inc(&sp->refcnt);
+ 	return sp;
  }
  
- void sctp_auth_key_put(struct sctp_auth_bytes *key);
-diff --git a/net/sctp/auth.c b/net/sctp/auth.c
-index 8ffa598..e001b01 100644
---- a/net/sctp/auth.c
-+++ b/net/sctp/auth.c
-@@ -63,7 +63,7 @@ void sctp_auth_key_put(struct sctp_auth_bytes *key)
- 	if (!key)
- 		return;
+@@ -1060,7 +1060,7 @@ void __secpath_destroy(struct sec_path *sp);
+ static inline void
+ secpath_put(struct sec_path *sp)
+ {
+-	if (sp && atomic_dec_and_test(&sp->refcnt))
++	if (sp && refcount_dec_and_test(&sp->refcnt))
+ 		__secpath_destroy(sp);
+ }
  
--	if (atomic_dec_and_test(&key->refcnt)) {
-+	if (refcount_dec_and_test(&key->refcnt)) {
- 		kzfree(key);
- 		SCTP_DBG_OBJCNT_DEC(keys);
+diff --git a/net/xfrm/xfrm_input.c b/net/xfrm/xfrm_input.c
+index 9de4b1d..923205e 100644
+--- a/net/xfrm/xfrm_input.c
++++ b/net/xfrm/xfrm_input.c
+@@ -116,7 +116,7 @@ struct sec_path *secpath_dup(struct sec_path *src)
+ 		for (i = 0; i < sp->len; i++)
+ 			xfrm_state_hold(sp->xvec[i]);
  	}
-@@ -84,7 +84,7 @@ static struct sctp_auth_bytes *sctp_auth_create_key(__u32 key_len, gfp_t gfp)
- 		return NULL;
+-	atomic_set(&sp->refcnt, 1);
++	refcount_set(&sp->refcnt, 1);
+ 	return sp;
+ }
+ EXPORT_SYMBOL(secpath_dup);
+@@ -126,7 +126,7 @@ int secpath_set(struct sk_buff *skb)
+ 	struct sec_path *sp;
  
- 	key->len = key_len;
--	atomic_set(&key->refcnt, 1);
-+	refcount_set(&key->refcnt, 1);
- 	SCTP_DBG_OBJCNT_INC(keys);
- 
- 	return key;
+ 	/* Allocate new secpath or COW existing one. */
+-	if (!skb->sp || atomic_read(&skb->sp->refcnt) != 1) {
++	if (!skb->sp || refcount_read(&skb->sp->refcnt) != 1) {
+ 		sp = secpath_dup(skb->sp);
+ 		if (!sp)
+ 			return -ENOMEM;
 -- 
 2.7.4
 
