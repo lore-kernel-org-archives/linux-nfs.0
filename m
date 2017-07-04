@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:18651 "EHLO mga02.intel.com"
+Received: from mga14.intel.com ([192.55.52.115]:19647 "EHLO mga14.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752665AbdGDM45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:56:57 -0400
+        id S1753056AbdGDM4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:56:49 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 22/36] net, rds: convert rds_mr.r_refcount from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:17 +0300
-Message-Id: <1499172811-16271-23-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 20/36] net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:15 +0300
+Message-Id: <1499172811-16271-21-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,81 +40,92 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/rds/rdma.c | 10 +++++-----
- net/rds/rds.h  |  4 ++--
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ net/rds/ib.c      | 12 ++++++------
+ net/rds/ib.h      |  2 +-
+ net/rds/ib_rdma.c |  4 ++--
+ 3 files changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/net/rds/rdma.c b/net/rds/rdma.c
-index f06fac4..8886f15 100644
---- a/net/rds/rdma.c
-+++ b/net/rds/rdma.c
-@@ -84,7 +84,7 @@ static struct rds_mr *rds_mr_tree_walk(struct rb_root *root, u64 key,
- 	if (insert) {
- 		rb_link_node(&insert->r_rb_node, parent, p);
- 		rb_insert_color(&insert->r_rb_node, root);
--		atomic_inc(&insert->r_refcount);
-+		refcount_inc(&insert->r_refcount);
- 	}
- 	return NULL;
- }
-@@ -99,7 +99,7 @@ static void rds_destroy_mr(struct rds_mr *mr)
- 	unsigned long flags;
+diff --git a/net/rds/ib.c b/net/rds/ib.c
+index 7a64c8d..a0954ac 100644
+--- a/net/rds/ib.c
++++ b/net/rds/ib.c
+@@ -118,8 +118,8 @@ static void rds_ib_dev_free(struct work_struct *work)
  
- 	rdsdebug("RDS: destroy mr key is %x refcnt %u\n",
--			mr->r_key, atomic_read(&mr->r_refcount));
-+			mr->r_key, refcount_read(&mr->r_refcount));
- 
- 	if (test_and_set_bit(RDS_MR_DEAD, &mr->r_state))
- 		return;
-@@ -223,7 +223,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
- 		goto out;
- 	}
- 
--	atomic_set(&mr->r_refcount, 1);
-+	refcount_set(&mr->r_refcount, 1);
- 	RB_CLEAR_NODE(&mr->r_rb_node);
- 	mr->r_trans = rs->rs_transport;
- 	mr->r_sock = rs;
-@@ -307,7 +307,7 @@ static int __rds_rdma_map(struct rds_sock *rs, struct rds_get_mr_args *args,
- 
- 	rdsdebug("RDS: get_mr key is %x\n", mr->r_key);
- 	if (mr_ret) {
--		atomic_inc(&mr->r_refcount);
-+		refcount_inc(&mr->r_refcount);
- 		*mr_ret = mr;
- 	}
- 
-@@ -756,7 +756,7 @@ int rds_cmsg_rdma_dest(struct rds_sock *rs, struct rds_message *rm,
- 	if (!mr)
- 		err = -EINVAL;	/* invalid r_key */
- 	else
--		atomic_inc(&mr->r_refcount);
-+		refcount_inc(&mr->r_refcount);
- 	spin_unlock_irqrestore(&rs->rs_rdma_lock, flags);
- 
- 	if (mr) {
-diff --git a/net/rds/rds.h b/net/rds/rds.h
-index 35ceaa2..ea72d6e 100644
---- a/net/rds/rds.h
-+++ b/net/rds/rds.h
-@@ -277,7 +277,7 @@ struct rds_incoming {
- 
- struct rds_mr {
- 	struct rb_node		r_rb_node;
--	atomic_t		r_refcount;
-+	refcount_t		r_refcount;
- 	u32			r_key;
- 
- 	/* A copy of the creation flags */
-@@ -857,7 +857,7 @@ int rds_cmsg_atomic(struct rds_sock *rs, struct rds_message *rm,
- void __rds_put_mr_final(struct rds_mr *mr);
- static inline void rds_mr_put(struct rds_mr *mr)
+ void rds_ib_dev_put(struct rds_ib_device *rds_ibdev)
  {
--	if (atomic_dec_and_test(&mr->r_refcount))
-+	if (refcount_dec_and_test(&mr->r_refcount))
- 		__rds_put_mr_final(mr);
+-	BUG_ON(atomic_read(&rds_ibdev->refcount) <= 0);
+-	if (atomic_dec_and_test(&rds_ibdev->refcount))
++	BUG_ON(refcount_read(&rds_ibdev->refcount) == 0);
++	if (refcount_dec_and_test(&rds_ibdev->refcount))
+ 		queue_work(rds_wq, &rds_ibdev->free_work);
  }
  
+@@ -137,7 +137,7 @@ static void rds_ib_add_one(struct ib_device *device)
+ 		return;
+ 
+ 	spin_lock_init(&rds_ibdev->spinlock);
+-	atomic_set(&rds_ibdev->refcount, 1);
++	refcount_set(&rds_ibdev->refcount, 1);
+ 	INIT_WORK(&rds_ibdev->free_work, rds_ib_dev_free);
+ 
+ 	rds_ibdev->max_wrs = device->attrs.max_qp_wr;
+@@ -205,10 +205,10 @@ static void rds_ib_add_one(struct ib_device *device)
+ 	down_write(&rds_ib_devices_lock);
+ 	list_add_tail_rcu(&rds_ibdev->list, &rds_ib_devices);
+ 	up_write(&rds_ib_devices_lock);
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ 
+ 	ib_set_client_data(device, &rds_ib_client, rds_ibdev);
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ 
+ 	rds_ib_nodev_connect();
+ 
+@@ -239,7 +239,7 @@ struct rds_ib_device *rds_ib_get_client_data(struct ib_device *device)
+ 	rcu_read_lock();
+ 	rds_ibdev = ib_get_client_data(device, &rds_ib_client);
+ 	if (rds_ibdev)
+-		atomic_inc(&rds_ibdev->refcount);
++		refcount_inc(&rds_ibdev->refcount);
+ 	rcu_read_unlock();
+ 	return rds_ibdev;
+ }
+diff --git a/net/rds/ib.h b/net/rds/ib.h
+index ec55062..bf48224 100644
+--- a/net/rds/ib.h
++++ b/net/rds/ib.h
+@@ -230,7 +230,7 @@ struct rds_ib_device {
+ 	unsigned int		max_initiator_depth;
+ 	unsigned int		max_responder_resources;
+ 	spinlock_t		spinlock;	/* protect the above */
+-	atomic_t		refcount;
++	refcount_t		refcount;
+ 	struct work_struct	free_work;
+ 	int			*vector_load;
+ };
+diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
+index 977f698..9a3c54e 100644
+--- a/net/rds/ib_rdma.c
++++ b/net/rds/ib_rdma.c
+@@ -52,7 +52,7 @@ static struct rds_ib_device *rds_ib_get_device(__be32 ipaddr)
+ 	list_for_each_entry_rcu(rds_ibdev, &rds_ib_devices, list) {
+ 		list_for_each_entry_rcu(i_ipaddr, &rds_ibdev->ipaddr_list, list) {
+ 			if (i_ipaddr->ipaddr == ipaddr) {
+-				atomic_inc(&rds_ibdev->refcount);
++				refcount_inc(&rds_ibdev->refcount);
+ 				rcu_read_unlock();
+ 				return rds_ibdev;
+ 			}
+@@ -134,7 +134,7 @@ void rds_ib_add_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *con
+ 	spin_unlock_irq(&ib_nodev_conns_lock);
+ 
+ 	ic->rds_ibdev = rds_ibdev;
+-	atomic_inc(&rds_ibdev->refcount);
++	refcount_inc(&rds_ibdev->refcount);
+ }
+ 
+ void rds_ib_remove_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *conn)
 -- 
 2.7.4
 
