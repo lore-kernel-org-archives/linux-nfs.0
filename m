@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga04.intel.com ([192.55.52.120]:16991 "EHLO mga04.intel.com"
+Received: from mga04.intel.com ([192.55.52.120]:12579 "EHLO mga04.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752829AbdGDMzj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:55:39 -0400
+        id S1752173AbdGDMza (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:55:30 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 13/36] net, lapb: convert lapb_cb.refcnt from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:08 +0300
-Message-Id: <1499172811-16271-14-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 12/36] net, sched: convert Qdisc.refcnt from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:07 +0300
+Message-Id: <1499172811-16271-13-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,59 +40,112 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/lapb.h    | 3 ++-
- net/lapb/lapb_iface.c | 6 +++---
- 2 files changed, 5 insertions(+), 4 deletions(-)
+ include/net/sch_generic.h | 3 ++-
+ net/sched/sch_api.c       | 8 ++++----
+ net/sched/sch_generic.c   | 8 ++++----
+ 3 files changed, 10 insertions(+), 9 deletions(-)
 
-diff --git a/include/net/lapb.h b/include/net/lapb.h
-index 9510f87..85e7737 100644
---- a/include/net/lapb.h
-+++ b/include/net/lapb.h
-@@ -1,6 +1,7 @@
- #ifndef _LAPB_H
- #define _LAPB_H 
- #include <linux/lapb.h>
+diff --git a/include/net/sch_generic.h b/include/net/sch_generic.h
+index 3688501..1c123e2 100644
+--- a/include/net/sch_generic.h
++++ b/include/net/sch_generic.h
+@@ -9,6 +9,7 @@
+ #include <linux/percpu.h>
+ #include <linux/dynamic_queue_limits.h>
+ #include <linux/list.h>
 +#include <linux/refcount.h>
+ #include <net/gen_stats.h>
+ #include <net/rtnetlink.h>
  
- #define	LAPB_HEADER_LEN	20		/* LAPB over Ethernet + a bit more */
- 
-@@ -101,7 +102,7 @@ struct lapb_cb {
- 	struct lapb_frame	frmr_data;
- 	unsigned char		frmr_type;
- 
+@@ -95,7 +96,7 @@ struct Qdisc {
+ 	struct sk_buff		*skb_bad_txq;
+ 	struct rcu_head		rcu_head;
+ 	int			padded;
 -	atomic_t		refcnt;
 +	refcount_t		refcnt;
+ 
+ 	spinlock_t		busylock ____cacheline_aligned_in_smp;
  };
+diff --git a/net/sched/sch_api.c b/net/sched/sch_api.c
+index 43b94c7..bd24a55 100644
+--- a/net/sched/sch_api.c
++++ b/net/sched/sch_api.c
+@@ -839,7 +839,7 @@ static int qdisc_graft(struct net_device *dev, struct Qdisc *parent,
  
- /* lapb_iface.c */
-diff --git a/net/lapb/lapb_iface.c b/net/lapb/lapb_iface.c
-index b50b64a..e15314e 100644
---- a/net/lapb/lapb_iface.c
-+++ b/net/lapb/lapb_iface.c
-@@ -54,12 +54,12 @@ static void lapb_free_cb(struct lapb_cb *lapb)
+ 			old = dev_graft_qdisc(dev_queue, new);
+ 			if (new && i > 0)
+-				atomic_inc(&new->refcnt);
++				refcount_inc(&new->refcnt);
  
- static __inline__ void lapb_hold(struct lapb_cb *lapb)
- {
--	atomic_inc(&lapb->refcnt);
-+	refcount_inc(&lapb->refcnt);
- }
+ 			if (!ingress)
+ 				qdisc_destroy(old);
+@@ -850,7 +850,7 @@ static int qdisc_graft(struct net_device *dev, struct Qdisc *parent,
+ 			notify_and_destroy(net, skb, n, classid,
+ 					   dev->qdisc, new);
+ 			if (new && !new->ops->attach)
+-				atomic_inc(&new->refcnt);
++				refcount_inc(&new->refcnt);
+ 			dev->qdisc = new ? : &noop_qdisc;
  
- static __inline__ void lapb_put(struct lapb_cb *lapb)
- {
--	if (atomic_dec_and_test(&lapb->refcnt))
-+	if (refcount_dec_and_test(&lapb->refcnt))
- 		lapb_free_cb(lapb);
- }
+ 			if (new && new->ops->attach)
+@@ -1259,7 +1259,7 @@ static int tc_modify_qdisc(struct sk_buff *skb, struct nlmsghdr *n,
+ 				if (q == p ||
+ 				    (p && check_loop(q, p, 0)))
+ 					return -ELOOP;
+-				atomic_inc(&q->refcnt);
++				refcount_inc(&q->refcnt);
+ 				goto graft;
+ 			} else {
+ 				if (!q)
+@@ -1374,7 +1374,7 @@ static int tc_fill_qdisc(struct sk_buff *skb, struct Qdisc *q, u32 clid,
+ 	tcm->tcm_ifindex = qdisc_dev(q)->ifindex;
+ 	tcm->tcm_parent = clid;
+ 	tcm->tcm_handle = q->handle;
+-	tcm->tcm_info = atomic_read(&q->refcnt);
++	tcm->tcm_info = refcount_read(&q->refcnt);
+ 	if (nla_put_string(skb, TCA_KIND, q->ops->id))
+ 		goto nla_put_failure;
+ 	if (q->ops->dump && q->ops->dump(q, skb) < 0)
+diff --git a/net/sched/sch_generic.c b/net/sched/sch_generic.c
+index 52a2c55..57ba406 100644
+--- a/net/sched/sch_generic.c
++++ b/net/sched/sch_generic.c
+@@ -633,7 +633,7 @@ struct Qdisc *qdisc_alloc(struct netdev_queue *dev_queue,
+ 	sch->dequeue = ops->dequeue;
+ 	sch->dev_queue = dev_queue;
+ 	dev_hold(dev);
+-	atomic_set(&sch->refcnt, 1);
++	refcount_set(&sch->refcnt, 1);
  
-@@ -136,7 +136,7 @@ static struct lapb_cb *lapb_create_cb(void)
- 	lapb->mode    = LAPB_DEFAULT_MODE;
- 	lapb->window  = LAPB_DEFAULT_WINDOW;
- 	lapb->state   = LAPB_STATE_0;
--	atomic_set(&lapb->refcnt, 1);
-+	refcount_set(&lapb->refcnt, 1);
- out:
- 	return lapb;
- }
+ 	return sch;
+ errout:
+@@ -701,7 +701,7 @@ void qdisc_destroy(struct Qdisc *qdisc)
+ 	const struct Qdisc_ops  *ops = qdisc->ops;
+ 
+ 	if (qdisc->flags & TCQ_F_BUILTIN ||
+-	    !atomic_dec_and_test(&qdisc->refcnt))
++	    !refcount_dec_and_test(&qdisc->refcnt))
+ 		return;
+ 
+ #ifdef CONFIG_NET_SCHED
+@@ -739,7 +739,7 @@ struct Qdisc *dev_graft_qdisc(struct netdev_queue *dev_queue,
+ 	spin_lock_bh(root_lock);
+ 
+ 	/* Prune old scheduler */
+-	if (oqdisc && atomic_read(&oqdisc->refcnt) <= 1)
++	if (oqdisc && refcount_read(&oqdisc->refcnt) <= 1)
+ 		qdisc_reset(oqdisc);
+ 
+ 	/* ... and graft new one */
+@@ -785,7 +785,7 @@ static void attach_default_qdiscs(struct net_device *dev)
+ 	    dev->priv_flags & IFF_NO_QUEUE) {
+ 		netdev_for_each_tx_queue(dev, attach_one_default_qdisc, NULL);
+ 		dev->qdisc = txq->qdisc_sleeping;
+-		atomic_inc(&dev->qdisc->refcnt);
++		refcount_inc(&dev->qdisc->refcnt);
+ 	} else {
+ 		qdisc = qdisc_create_dflt(txq, &mq_qdisc_ops, TC_H_ROOT);
+ 		if (qdisc) {
 -- 
 2.7.4
 
