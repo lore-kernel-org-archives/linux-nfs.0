@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:56925 "EHLO mga03.intel.com"
+Received: from mga05.intel.com ([192.55.52.43]:29824 "EHLO mga05.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752702AbdGDM6c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:58:32 -0400
+        id S1752707AbdGDM63 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:58:29 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 31/36] net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:26 +0300
-Message-Id: <1499172811-16271-32-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 32/36] net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:27 +0300
+Message-Id: <1499172811-16271-33-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -41,49 +41,60 @@ Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
  include/net/sctp/structs.h | 2 +-
- net/sctp/sm_make_chunk.c   | 6 +++---
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ net/sctp/transport.c       | 8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 4d7c855..0dfc5c1 100644
+index 0dfc5c1..6a0d372 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -524,7 +524,7 @@ int sctp_chunk_abandoned(struct sctp_chunk *);
- struct sctp_chunk {
- 	struct list_head list;
+@@ -735,7 +735,7 @@ struct sctp_transport {
+ 	struct rhlist_head node;
  
+ 	/* Reference counting. */
 -	atomic_t refcnt;
 +	refcount_t refcnt;
+ 		/* RTO-Pending : A flag used to track if one of the DATA
+ 		 *		chunks sent to this address is currently being
+ 		 *		used to compute a RTT. If this flag is 0,
+diff --git a/net/sctp/transport.c b/net/sctp/transport.c
+index 7cdd6bc..80a97c8 100644
+--- a/net/sctp/transport.c
++++ b/net/sctp/transport.c
+@@ -99,7 +99,7 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
+ 	/* Initialize the 64-bit random nonce sent with heartbeat. */
+ 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
  
- 	/* How many times this chunk have been sent, for prsctp RTX policy */
- 	int sent_count;
-diff --git a/net/sctp/sm_make_chunk.c b/net/sctp/sm_make_chunk.c
-index 3af4dd0..4e16b02 100644
---- a/net/sctp/sm_make_chunk.c
-+++ b/net/sctp/sm_make_chunk.c
-@@ -1345,7 +1345,7 @@ struct sctp_chunk *sctp_chunkify(struct sk_buff *skb,
- 	INIT_LIST_HEAD(&retval->transmitted_list);
- 	INIT_LIST_HEAD(&retval->frag_list);
- 	SCTP_DBG_OBJCNT_INC(chunk);
--	atomic_set(&retval->refcnt, 1);
-+	refcount_set(&retval->refcnt, 1);
+-	atomic_set(&peer->refcnt, 1);
++	refcount_set(&peer->refcnt, 1);
  
- nodata:
- 	return retval;
-@@ -1458,13 +1458,13 @@ void sctp_chunk_free(struct sctp_chunk *chunk)
- /* Grab a reference to the chunk. */
- void sctp_chunk_hold(struct sctp_chunk *ch)
+ 	return peer;
+ }
+@@ -172,7 +172,7 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
+  */
+ static void sctp_transport_destroy(struct sctp_transport *transport)
  {
--	atomic_inc(&ch->refcnt);
-+	refcount_inc(&ch->refcnt);
+-	if (unlikely(atomic_read(&transport->refcnt))) {
++	if (unlikely(refcount_read(&transport->refcnt))) {
+ 		WARN(1, "Attempt to destroy undead transport %p!\n", transport);
+ 		return;
+ 	}
+@@ -311,7 +311,7 @@ void sctp_transport_route(struct sctp_transport *transport,
+ /* Hold a reference to a transport.  */
+ int sctp_transport_hold(struct sctp_transport *transport)
+ {
+-	return atomic_add_unless(&transport->refcnt, 1, 0);
++	return refcount_inc_not_zero(&transport->refcnt);
  }
  
- /* Release a reference to the chunk. */
- void sctp_chunk_put(struct sctp_chunk *ch)
+ /* Release a reference to a transport and clean up
+@@ -319,7 +319,7 @@ int sctp_transport_hold(struct sctp_transport *transport)
+  */
+ void sctp_transport_put(struct sctp_transport *transport)
  {
--	if (atomic_dec_and_test(&ch->refcnt))
-+	if (refcount_dec_and_test(&ch->refcnt))
- 		sctp_chunk_destroy(ch);
+-	if (atomic_dec_and_test(&transport->refcnt))
++	if (refcount_dec_and_test(&transport->refcnt))
+ 		sctp_transport_destroy(transport);
  }
  
 -- 
