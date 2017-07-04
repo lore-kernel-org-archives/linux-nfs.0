@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga05.intel.com ([192.55.52.43]:29824 "EHLO mga05.intel.com"
+Received: from mga01.intel.com ([192.55.52.88]:47351 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752707AbdGDM63 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:58:29 -0400
+        id S1752051AbdGDM6L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:58:11 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 32/36] net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:27 +0300
-Message-Id: <1499172811-16271-33-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 30/36] net, sctp: convert sctp_datamsg.refcnt from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:25 +0300
+Message-Id: <1499172811-16271-31-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -41,60 +41,49 @@ Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
  include/net/sctp/structs.h | 2 +-
- net/sctp/transport.c       | 8 ++++----
- 2 files changed, 5 insertions(+), 5 deletions(-)
+ net/sctp/chunk.c           | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/include/net/sctp/structs.h b/include/net/sctp/structs.h
-index 0dfc5c1..6a0d372 100644
+index 07c11fe..4d7c855 100644
 --- a/include/net/sctp/structs.h
 +++ b/include/net/sctp/structs.h
-@@ -735,7 +735,7 @@ struct sctp_transport {
- 	struct rhlist_head node;
- 
+@@ -496,7 +496,7 @@ struct sctp_datamsg {
+ 	/* Chunks waiting to be submitted to lower layer. */
+ 	struct list_head chunks;
  	/* Reference counting. */
 -	atomic_t refcnt;
 +	refcount_t refcnt;
- 		/* RTO-Pending : A flag used to track if one of the DATA
- 		 *		chunks sent to this address is currently being
- 		 *		used to compute a RTT. If this flag is 0,
-diff --git a/net/sctp/transport.c b/net/sctp/transport.c
-index 7cdd6bc..80a97c8 100644
---- a/net/sctp/transport.c
-+++ b/net/sctp/transport.c
-@@ -99,7 +99,7 @@ static struct sctp_transport *sctp_transport_init(struct net *net,
- 	/* Initialize the 64-bit random nonce sent with heartbeat. */
- 	get_random_bytes(&peer->hb_nonce, sizeof(peer->hb_nonce));
- 
--	atomic_set(&peer->refcnt, 1);
-+	refcount_set(&peer->refcnt, 1);
- 
- 	return peer;
- }
-@@ -172,7 +172,7 @@ static void sctp_transport_destroy_rcu(struct rcu_head *head)
-  */
- static void sctp_transport_destroy(struct sctp_transport *transport)
+ 	/* When is this message no longer interesting to the peer? */
+ 	unsigned long expires_at;
+ 	/* Did the messenge fail to send? */
+diff --git a/net/sctp/chunk.c b/net/sctp/chunk.c
+index 81466f6..1323d41 100644
+--- a/net/sctp/chunk.c
++++ b/net/sctp/chunk.c
+@@ -49,7 +49,7 @@
+ /* Initialize datamsg from memory. */
+ static void sctp_datamsg_init(struct sctp_datamsg *msg)
  {
--	if (unlikely(atomic_read(&transport->refcnt))) {
-+	if (unlikely(refcount_read(&transport->refcnt))) {
- 		WARN(1, "Attempt to destroy undead transport %p!\n", transport);
- 		return;
- 	}
-@@ -311,7 +311,7 @@ void sctp_transport_route(struct sctp_transport *transport,
- /* Hold a reference to a transport.  */
- int sctp_transport_hold(struct sctp_transport *transport)
+-	atomic_set(&msg->refcnt, 1);
++	refcount_set(&msg->refcnt, 1);
+ 	msg->send_failed = 0;
+ 	msg->send_error = 0;
+ 	msg->can_delay = 1;
+@@ -136,13 +136,13 @@ static void sctp_datamsg_destroy(struct sctp_datamsg *msg)
+ /* Hold a reference. */
+ static void sctp_datamsg_hold(struct sctp_datamsg *msg)
  {
--	return atomic_add_unless(&transport->refcnt, 1, 0);
-+	return refcount_inc_not_zero(&transport->refcnt);
+-	atomic_inc(&msg->refcnt);
++	refcount_inc(&msg->refcnt);
  }
  
- /* Release a reference to a transport and clean up
-@@ -319,7 +319,7 @@ int sctp_transport_hold(struct sctp_transport *transport)
-  */
- void sctp_transport_put(struct sctp_transport *transport)
+ /* Release a reference. */
+ void sctp_datamsg_put(struct sctp_datamsg *msg)
  {
--	if (atomic_dec_and_test(&transport->refcnt))
-+	if (refcount_dec_and_test(&transport->refcnt))
- 		sctp_transport_destroy(transport);
+-	if (atomic_dec_and_test(&msg->refcnt))
++	if (refcount_dec_and_test(&msg->refcnt))
+ 		sctp_datamsg_destroy(msg);
  }
  
 -- 
