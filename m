@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:60829 "EHLO mga01.intel.com"
+Received: from mga03.intel.com ([134.134.136.65]:43703 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752684AbdGDMyz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:54:55 -0400
+        id S1752686AbdGDMy5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:54:57 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 08/36] net, atm: convert in_cache_entry.use from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:03 +0300
-Message-Id: <1499172811-16271-9-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 07/36] net, atm: convert lec_arp_table.usage from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:02 +0300
+Message-Id: <1499172811-16271-8-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,89 +40,51 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/atm/mpoa_caches.c | 12 ++++++------
- net/atm/mpoa_caches.h |  3 ++-
- 2 files changed, 8 insertions(+), 7 deletions(-)
+ net/atm/lec.c      | 6 +++---
+ net/atm/lec_arpc.h | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/atm/mpoa_caches.c b/net/atm/mpoa_caches.c
-index a89fdeb..05e89e9 100644
---- a/net/atm/mpoa_caches.c
-+++ b/net/atm/mpoa_caches.c
-@@ -40,7 +40,7 @@ static in_cache_entry *in_cache_get(__be32 dst_ip,
- 	entry = client->in_cache;
- 	while (entry != NULL) {
- 		if (entry->ctrl_info.in_dst_ip == dst_ip) {
--			atomic_inc(&entry->use);
-+			refcount_inc(&entry->use);
- 			read_unlock_bh(&client->ingress_lock);
- 			return entry;
- 		}
-@@ -61,7 +61,7 @@ static in_cache_entry *in_cache_get_with_mask(__be32 dst_ip,
- 	entry = client->in_cache;
- 	while (entry != NULL) {
- 		if ((entry->ctrl_info.in_dst_ip & mask) == (dst_ip & mask)) {
--			atomic_inc(&entry->use);
-+			refcount_inc(&entry->use);
- 			read_unlock_bh(&client->ingress_lock);
- 			return entry;
- 		}
-@@ -82,7 +82,7 @@ static in_cache_entry *in_cache_get_by_vcc(struct atm_vcc *vcc,
- 	entry = client->in_cache;
- 	while (entry != NULL) {
- 		if (entry->shortcut == vcc) {
--			atomic_inc(&entry->use);
-+			refcount_inc(&entry->use);
- 			read_unlock_bh(&client->ingress_lock);
- 			return entry;
- 		}
-@@ -105,7 +105,7 @@ static in_cache_entry *in_cache_add_entry(__be32 dst_ip,
- 
- 	dprintk("adding an ingress entry, ip = %pI4\n", &dst_ip);
- 
--	atomic_set(&entry->use, 1);
-+	refcount_set(&entry->use, 1);
- 	dprintk("new_in_cache_entry: about to lock\n");
- 	write_lock_bh(&client->ingress_lock);
- 	entry->next = client->in_cache;
-@@ -121,7 +121,7 @@ static in_cache_entry *in_cache_add_entry(__be32 dst_ip,
- 	entry->count = 1;
- 	entry->entry_state = INGRESS_INVALID;
- 	entry->ctrl_info.holding_time = HOLDING_TIME_DEFAULT;
--	atomic_inc(&entry->use);
-+	refcount_inc(&entry->use);
- 
- 	write_unlock_bh(&client->ingress_lock);
- 	dprintk("new_in_cache_entry: unlocked\n");
-@@ -178,7 +178,7 @@ static int cache_hit(in_cache_entry *entry, struct mpoa_client *mpc)
- 
- static void in_cache_put(in_cache_entry *entry)
+diff --git a/net/atm/lec.c b/net/atm/lec.c
+index 7554571..093fe87 100644
+--- a/net/atm/lec.c
++++ b/net/atm/lec.c
+@@ -101,12 +101,12 @@ static void lec_vcc_close(struct lec_priv *priv, struct atm_vcc *vcc);
+ /* must be done under lec_arp_lock */
+ static inline void lec_arp_hold(struct lec_arp_table *entry)
  {
--	if (atomic_dec_and_test(&entry->use)) {
-+	if (refcount_dec_and_test(&entry->use)) {
- 		memset(entry, 0, sizeof(in_cache_entry));
+-	atomic_inc(&entry->usage);
++	refcount_inc(&entry->usage);
+ }
+ 
+ static inline void lec_arp_put(struct lec_arp_table *entry)
+ {
+-	if (atomic_dec_and_test(&entry->usage))
++	if (refcount_dec_and_test(&entry->usage))
  		kfree(entry);
- 	}
-diff --git a/net/atm/mpoa_caches.h b/net/atm/mpoa_caches.h
-index 8e5f78c..38a4e7e 100644
---- a/net/atm/mpoa_caches.h
-+++ b/net/atm/mpoa_caches.h
-@@ -6,6 +6,7 @@
- #include <linux/atm.h>
- #include <linux/atmdev.h>
- #include <linux/atmmpc.h>
-+#include <linux/refcount.h>
+ }
  
- struct mpoa_client;
+@@ -1564,7 +1564,7 @@ static struct lec_arp_table *make_entry(struct lec_priv *priv,
+ 	to_return->last_used = jiffies;
+ 	to_return->priv = priv;
+ 	skb_queue_head_init(&to_return->tx_wait);
+-	atomic_set(&to_return->usage, 1);
++	refcount_set(&to_return->usage, 1);
+ 	return to_return;
+ }
  
-@@ -25,7 +26,7 @@ typedef struct in_cache_entry {
- 	struct   atm_vcc *shortcut;
- 	uint8_t  MPS_ctrl_ATM_addr[ATM_ESA_LEN];
- 	struct   in_ctrl_info ctrl_info;
--	atomic_t use;
-+	refcount_t use;
- } in_cache_entry;
+diff --git a/net/atm/lec_arpc.h b/net/atm/lec_arpc.h
+index ec67435..d923f53 100644
+--- a/net/atm/lec_arpc.h
++++ b/net/atm/lec_arpc.h
+@@ -47,7 +47,7 @@ struct lec_arp_table {
+ 					 * the length of the tlvs array
+ 					 */
+ 	struct sk_buff_head tx_wait;	/* wait queue for outgoing packets */
+-	atomic_t usage;			/* usage count */
++	refcount_t usage;		/* usage count */
+ };
  
- struct in_cache_ops{
+ /*
 -- 
 2.7.4
 
