@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:54915 "EHLO mga09.intel.com"
+Received: from mga04.intel.com ([192.55.52.120]:16991 "EHLO mga04.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751648AbdGDM4C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:56:02 -0400
+        id S1752829AbdGDMzj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:55:39 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 15/36] net, ipx: convert ipx_route.refcnt from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:10 +0300
-Message-Id: <1499172811-16271-16-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 13/36] net, lapb: convert lapb_cb.refcnt from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:08 +0300
+Message-Id: <1499172811-16271-14-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,51 +40,59 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ipx.h   | 6 +++---
- net/ipx/ipx_route.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ include/net/lapb.h    | 3 ++-
+ net/lapb/lapb_iface.c | 6 +++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
-diff --git a/include/net/ipx.h b/include/net/ipx.h
-index 2de1281..af32b97 100644
---- a/include/net/ipx.h
-+++ b/include/net/ipx.h
-@@ -81,7 +81,7 @@ struct ipx_route {
- 	unsigned char		ir_routed;
- 	unsigned char		ir_router_node[IPX_NODE_LEN];
- 	struct list_head	node; /* node in ipx_routes list */
+diff --git a/include/net/lapb.h b/include/net/lapb.h
+index 9510f87..85e7737 100644
+--- a/include/net/lapb.h
++++ b/include/net/lapb.h
+@@ -1,6 +1,7 @@
+ #ifndef _LAPB_H
+ #define _LAPB_H 
+ #include <linux/lapb.h>
++#include <linux/refcount.h>
+ 
+ #define	LAPB_HEADER_LEN	20		/* LAPB over Ethernet + a bit more */
+ 
+@@ -101,7 +102,7 @@ struct lapb_cb {
+ 	struct lapb_frame	frmr_data;
+ 	unsigned char		frmr_type;
+ 
 -	atomic_t		refcnt;
 +	refcount_t		refcnt;
  };
  
- struct ipx_cb {
-@@ -164,12 +164,12 @@ static __inline__ void ipxitf_put(struct ipx_interface *intrfc)
+ /* lapb_iface.c */
+diff --git a/net/lapb/lapb_iface.c b/net/lapb/lapb_iface.c
+index b50b64a..e15314e 100644
+--- a/net/lapb/lapb_iface.c
++++ b/net/lapb/lapb_iface.c
+@@ -54,12 +54,12 @@ static void lapb_free_cb(struct lapb_cb *lapb)
  
- static __inline__ void ipxrtr_hold(struct ipx_route *rt)
+ static __inline__ void lapb_hold(struct lapb_cb *lapb)
  {
--	        atomic_inc(&rt->refcnt);
-+	        refcount_inc(&rt->refcnt);
+-	atomic_inc(&lapb->refcnt);
++	refcount_inc(&lapb->refcnt);
  }
  
- static __inline__ void ipxrtr_put(struct ipx_route *rt)
+ static __inline__ void lapb_put(struct lapb_cb *lapb)
  {
--	        if (atomic_dec_and_test(&rt->refcnt))
-+	        if (refcount_dec_and_test(&rt->refcnt))
- 			                kfree(rt);
+-	if (atomic_dec_and_test(&lapb->refcnt))
++	if (refcount_dec_and_test(&lapb->refcnt))
+ 		lapb_free_cb(lapb);
  }
- #endif /* _NET_INET_IPX_H_ */
-diff --git a/net/ipx/ipx_route.c b/net/ipx/ipx_route.c
-index 3e2a32a..b5d9144 100644
---- a/net/ipx/ipx_route.c
-+++ b/net/ipx/ipx_route.c
-@@ -59,7 +59,7 @@ int ipxrtr_add_route(__be32 network, struct ipx_interface *intrfc,
- 		if (!rt)
- 			goto out;
  
--		atomic_set(&rt->refcnt, 1);
-+		refcount_set(&rt->refcnt, 1);
- 		ipxrtr_hold(rt);
- 		write_lock_bh(&ipx_routes_lock);
- 		list_add(&rt->node, &ipx_routes);
+@@ -136,7 +136,7 @@ static struct lapb_cb *lapb_create_cb(void)
+ 	lapb->mode    = LAPB_DEFAULT_MODE;
+ 	lapb->window  = LAPB_DEFAULT_WINDOW;
+ 	lapb->state   = LAPB_STATE_0;
+-	atomic_set(&lapb->refcnt, 1);
++	refcount_set(&lapb->refcnt, 1);
+ out:
+ 	return lapb;
+ }
 -- 
 2.7.4
 
