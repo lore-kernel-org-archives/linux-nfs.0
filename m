@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga09.intel.com ([134.134.136.24]:35996 "EHLO mga09.intel.com"
+Received: from mga11.intel.com ([192.55.52.93]:17674 "EHLO mga11.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752254AbdGDM7G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:59:06 -0400
+        id S1751852AbdGDM6z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:58:55 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 36/36] net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:31 +0300
-Message-Id: <1499172811-16271-37-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 34/36] net, ax25: convert ax25_uid_assoc.refcount from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:29 +0300
+Message-Id: <1499172811-16271-35-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,50 +40,59 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/ax25.h | 6 +++---
- net/ax25/af_ax25.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ include/net/ax25.h  | 8 ++++----
+ net/ax25/ax25_uid.c | 2 +-
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/include/net/ax25.h b/include/net/ax25.h
-index e3467ba..c4a0cf6 100644
+index e602f81..edd82f0 100644
 --- a/include/net/ax25.h
 +++ b/include/net/ax25.h
-@@ -244,7 +244,7 @@ typedef struct ax25_cb {
- 	unsigned char		window;
- 	struct timer_list	timer, dtimer;
- 	struct sock		*sk;		/* Backlink to socket */
+@@ -11,7 +11,7 @@
+ #include <linux/timer.h>
+ #include <linux/list.h>
+ #include <linux/slab.h>
+-#include <linux/atomic.h>
++#include <linux/refcount.h>
+ #include <net/neighbour.h>
+ #include <net/sock.h>
+ 
+@@ -158,7 +158,7 @@ enum {
+ 
+ typedef struct ax25_uid_assoc {
+ 	struct hlist_node	uid_node;
 -	atomic_t		refcount;
 +	refcount_t		refcount;
- } ax25_cb;
+ 	kuid_t			uid;
+ 	ax25_address		call;
+ } ax25_uid_assoc;
+@@ -167,11 +167,11 @@ typedef struct ax25_uid_assoc {
+ 	hlist_for_each_entry(__ax25, list, uid_node)
  
- struct ax25_sock {
-@@ -266,11 +266,11 @@ static inline struct ax25_cb *sk_to_ax25(const struct sock *sk)
- 	hlist_for_each_entry(__ax25, list, ax25_node)
+ #define ax25_uid_hold(ax25) \
+-	atomic_inc(&((ax25)->refcount))
++	refcount_inc(&((ax25)->refcount))
  
- #define ax25_cb_hold(__ax25) \
--	atomic_inc(&((__ax25)->refcount))
-+	refcount_inc(&((__ax25)->refcount))
- 
- static __inline__ void ax25_cb_put(ax25_cb *ax25)
+ static inline void ax25_uid_put(ax25_uid_assoc *assoc)
  {
--	if (atomic_dec_and_test(&ax25->refcount)) {
-+	if (refcount_dec_and_test(&ax25->refcount)) {
- 		kfree(ax25->digipeat);
- 		kfree(ax25);
+-	if (atomic_dec_and_test(&assoc->refcount)) {
++	if (refcount_dec_and_test(&assoc->refcount)) {
+ 		kfree(assoc);
  	}
-diff --git a/net/ax25/af_ax25.c b/net/ax25/af_ax25.c
-index 0c92ba0..f3f9d18 100644
---- a/net/ax25/af_ax25.c
-+++ b/net/ax25/af_ax25.c
-@@ -510,7 +510,7 @@ ax25_cb *ax25_create_cb(void)
- 	if ((ax25 = kzalloc(sizeof(*ax25), GFP_ATOMIC)) == NULL)
- 		return NULL;
+ }
+diff --git a/net/ax25/ax25_uid.c b/net/ax25/ax25_uid.c
+index 0403b0d..83b035f 100644
+--- a/net/ax25/ax25_uid.c
++++ b/net/ax25/ax25_uid.c
+@@ -107,7 +107,7 @@ int ax25_uid_ioctl(int cmd, struct sockaddr_ax25 *sax)
+ 		if ((ax25_uid = kmalloc(sizeof(*ax25_uid), GFP_KERNEL)) == NULL)
+ 			return -ENOMEM;
  
--	atomic_set(&ax25->refcount, 1);
-+	refcount_set(&ax25->refcount, 1);
+-		atomic_set(&ax25_uid->refcount, 1);
++		refcount_set(&ax25_uid->refcount, 1);
+ 		ax25_uid->uid  = sax25_kuid;
+ 		ax25_uid->call = sax->sax25_call;
  
- 	skb_queue_head_init(&ax25->write_queue);
- 	skb_queue_head_init(&ax25->frag_queue);
 -- 
 2.7.4
 
