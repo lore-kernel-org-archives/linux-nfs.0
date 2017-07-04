@@ -1,88 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout02.posteo.de ([185.67.36.66]:33835 "EHLO mout02.posteo.de"
+Received: from mga03.intel.com ([134.134.136.65]:65270 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753171AbdGCVFk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 3 Jul 2017 17:05:40 -0400
-Received: from submission (posteo.de [89.146.220.130])
-        by mout02.posteo.de (Postfix) with ESMTPS id 2E9A120F74
-        for <linux-nfs@vger.kernel.org>; Mon,  3 Jul 2017 23:05:38 +0200 (CEST)
-Date: Mon, 3 Jul 2017 17:04:19 -0400
-From: Felix Janda <felix.janda@posteo.de>
-To: Steve Dickson <SteveD@RedHat.com>
-Cc: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>
-Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
-Message-ID: <20170703210419.GA851@nyan>
-References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-4-stefanha@redhat.com>
- <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
- <20170703090048.GC22607@stefanha-x1.localdomain>
- <2730896d-f9d6-352d-e829-d672d8735bd3@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2730896d-f9d6-352d-e829-d672d8735bd3@RedHat.com>
+        id S1752327AbdGDMxq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:53:46 -0400
+From: Elena Reshetova <elena.reshetova@intel.com>
+To: netdev@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org,
+        linux-decnet-user@lists.sourceforge.net, davem@davemloft.net,
+        jmorris@namei.org, kaber@trash.net, yoshfuji@linux-ipv6.org,
+        kuznet@ms2.inr.ac.ru, 3chas3@gmail.com, ralf@linux-mips.org,
+        stephen@networkplumber.org, jchapman@katalix.com, jhs@mojatatu.com,
+        bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org,
+        linux-x25@vger.kernel.org, peterz@infradead.org,
+        keescook@chromium.org, linux-rdma@vger.kernel.org,
+        linux-sctp@vger.kernel.org, vyasevich@gmail.com,
+        nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com,
+        sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net,
+        steffen.klassert@secunet.com, herbert@gondor.apana.org.au,
+        santosh.shilimkar@oracle.com, jreuter@yaina.de,
+        Elena Reshetova <elena.reshetova@intel.com>
+Subject: [PATCH 00/36] v2 net subsystem misc refcounter conversions
+Date: Tue,  4 Jul 2017 15:52:55 +0300
+Message-Id: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson wrote:
-> 
-> 
-> On 07/03/2017 05:00 AM, Stefan Hajnoczi wrote:
-> > On Fri, Jun 30, 2017 at 10:40:49AM -0400, Steve Dickson wrote:
-> >> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> >>> Format vsock hosts as "vsock:<cid>" so the addresses can be easily
-> >>> distinguished from IPv4 and IPv6 addresses.
-> >>>
-> >>> Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
-> >>> ---
-> >>>  utils/mount/network.c | 8 ++++++++
-> >>>  1 file changed, 8 insertions(+)
-> >>>
-> >>> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> >>> index 281e935..b5dcaa5 100644
-> >>> --- a/utils/mount/network.c
-> >>> +++ b/utils/mount/network.c
-> >>> @@ -45,6 +45,8 @@
-> >>>  #include <rpc/pmap_prot.h>
-> >>>  #include <rpc/pmap_clnt.h>
-> >>>  
-> >>> +#include <linux/vm_sockets.h>
-> >> In the previous patch you had this surrounded by #ifdef AF_VSOCK
-> >> I'm not keen on sprinkling a bunch ifdefs around since 
-> >> I think it makes the code harder to read. So my question 
-> >> is why is the ifdef need in the previous patch and
-> >> not needed in this patch and are they needed in the
-> >> previous patch?
-> > 
-> > The lack of #ifdef is my mistake.
-> Fair enough.
-> 
-> > 
-> > My impression of nfs-utils is that the code is written to work in a
-> > variety of configurations and still support older kernels.  So I am
-> > wrapping AF_VSOCK logic with an #ifdef.
-> > 
-> > AF_VSOCK has been in Linux since v3.9 in commit
-> > d021c344051af91f42c5ba9fdedc176740cbd238 ("VSOCK: Introduce VM
-> > Sockets").
-> > 
-> > I'd love to eliminate the #ifdefs, but would it be acceptable to simply
-> > drop them?
-> Very good question... 
-> 
-> CC-ing Felix... Would not ifdef-ing AF_VSOCK break compiling 
-> with the musl libc? 
+Changes in v2:
+ * rebase on top of net-next
+ * currently by default refcount_t = atomic_t (*) and uses all 
+   atomic standard operations unless CONFIG_REFCOUNT_FULL is enabled.
+   This is a compromise for the systems that are critical on
+   performance (such as net) and cannot accept even slight delay
+   on the refcounter operations.
 
-musl has AF_VSOCK since 2013 (v0.9.12):
+This series, for various misc network components, replaces atomic_t reference
+counters with the new refcount_t type and API (see include/linux/refcount.h).
+By doing this we prevent intentional or accidental
+underflows or overflows that can led to use-after-free vulnerabilities.
+These are the last networking-related conversions with the exception of
+network drivers (to be send separately).
 
-http://git.musl-libc.org/cgit/musl/commit/?id=3d4583c3fba8989a596506619277ecd68768d9ab
+Please excuse the long patch set, but seems like breaking it up
+won't save that much on CC list and most of the changes are
+trivial.
 
-I doubt that many people are using a version of musl older than that.
+The patches are fully independent and can be cherry-picked separately.
+In order to try with refcount functionality enabled in run-time,
+CONFIG_REFCOUNT_FULL must be enabled.
 
-Felix
+NOTE: automatic kernel builder for some reason doesn't like all my
+network branches and regularly times out the builds on these branches.
+Suggestion for "waiting a day for a good coverage" doesn't work, as
+we have seen with generic network conversions. So please wait for the
+full report from kernel test rebot before merging further up.
+This has been compile-tested in 116 configs, but 71 timed out (including
+all s390-related configs again). I am trying to see if they can fix
+build coverage for me in meanwhile.
 
-> Are there other implementations out there that would cause breakage?
-> I'm pretty sure nfs-utils is only used in Linux environments, right?
-> 
-> steved.
+* The respective change is currently merged into -next as
+  "locking/refcount: Create unchecked atomic_t implementation".
+
+Elena Reshetova (36):
+  net, llc: convert llc_sap.refcnt from atomic_t to refcount_t
+  net, l2tp: convert l2tp_tunnel.ref_count from atomic_t to refcount_t
+  net, l2tp: convert l2tp_session.ref_count from atomic_t to refcount_t
+  net, vxlan: convert vxlan_sock.refcnt from atomic_t to refcount_t
+  net, decnet: convert dn_fib_info.fib_clntref from atomic_t to
+    refcount_t
+  net, atm: convert atm_dev.refcnt from atomic_t to refcount_t
+  net, atm: convert lec_arp_table.usage from atomic_t to refcount_t
+  net, atm: convert in_cache_entry.use from atomic_t to refcount_t
+  net, atm: convert eg_cache_entry.use from atomic_t to refcount_t
+  net, bridge: convert net_bridge_vlan.refcnt from atomic_t to
+    refcount_t
+  net, calipso: convert calipso_doi.refcount from atomic_t to refcount_t
+  net, sched: convert Qdisc.refcnt from atomic_t to refcount_t
+  net, lapb: convert lapb_cb.refcnt from atomic_t to refcount_t
+  net, ipx: convert ipx_interface.refcnt from atomic_t to refcount_t
+  net, ipx: convert ipx_route.refcnt from atomic_t to refcount_t
+  net, netrom: convert nr_neigh.refcount from atomic_t to refcount_t
+  net, netrom: convert nr_node.refcount from atomic_t to refcount_t
+  net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
+  net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
+  net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
+  net, rds: convert rds_incoming.i_refcount from atomic_t to refcount_t
+  net, rds: convert rds_mr.r_refcount from atomic_t to refcount_t
+  net, rds: convert rds_message.m_refcount from atomic_t to refcount_t
+  net, x25: convert x25_route.refcnt from atomic_t to refcount_t
+  net, x25: convert x25_neigh.refcnt from atomic_t to refcount_t
+  net, xfrm: convert xfrm_state.refcnt from atomic_t to refcount_t
+  net, xfrm: convert xfrm_policy.refcnt from atomic_t to refcount_t
+  net, xfrm: convert sec_path.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_auth_bytes.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_datamsg.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_chunk.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_transport.refcnt from atomic_t to refcount_t
+  net, sctp: convert sctp_ep_common.refcnt from atomic_t to refcount_t
+  net, ax25: convert ax25_uid_assoc.refcount from atomic_t to refcount_t
+  net, ax25: convert ax25_route.refcount from atomic_t to refcount_t
+  net, ax25: convert ax25_cb.refcount from atomic_t to refcount_t
+
+ drivers/net/vxlan.c             | 10 +++++-----
+ include/linux/atmdev.h          |  7 ++++---
+ include/linux/sunrpc/auth_gss.h |  3 ++-
+ include/net/ax25.h              | 20 ++++++++++----------
+ include/net/calipso.h           |  4 ++--
+ include/net/dn_fib.h            |  5 +++--
+ include/net/ipx.h               | 13 +++++++------
+ include/net/lapb.h              |  3 ++-
+ include/net/llc.h               |  6 +++---
+ include/net/netrom.h            | 13 +++++++------
+ include/net/sch_generic.h       |  3 ++-
+ include/net/sctp/auth.h         |  5 +++--
+ include/net/sctp/structs.h      |  8 ++++----
+ include/net/vxlan.h             |  2 +-
+ include/net/x25.h               | 13 +++++++------
+ include/net/xfrm.h              | 21 +++++++++++----------
+ net/atm/lec.c                   |  6 +++---
+ net/atm/lec_arpc.h              |  2 +-
+ net/atm/mpoa_caches.c           | 26 +++++++++++++-------------
+ net/atm/mpoa_caches.h           |  5 +++--
+ net/atm/proc.c                  |  2 +-
+ net/atm/resources.c             |  2 +-
+ net/ax25/af_ax25.c              |  2 +-
+ net/ax25/ax25_route.c           |  2 +-
+ net/ax25/ax25_uid.c             |  2 +-
+ net/bridge/br_private.h         |  3 ++-
+ net/bridge/br_vlan.c            |  8 ++++----
+ net/decnet/dn_fib.c             |  6 +++---
+ net/ipv6/calipso.c              | 12 ++++++------
+ net/ipx/af_ipx.c                |  6 +++---
+ net/ipx/ipx_proc.c              |  2 +-
+ net/ipx/ipx_route.c             |  2 +-
+ net/key/af_key.c                |  2 +-
+ net/l2tp/l2tp_core.c            | 16 ++++++++--------
+ net/l2tp/l2tp_core.h            | 13 +++++++------
+ net/l2tp/l2tp_debugfs.c         |  4 ++--
+ net/l2tp/l2tp_ppp.c             |  2 +-
+ net/lapb/lapb_iface.c           |  6 +++---
+ net/llc/llc_core.c              |  2 +-
+ net/netrom/nr_route.c           |  6 +++---
+ net/rds/ib.c                    | 12 ++++++------
+ net/rds/ib.h                    |  2 +-
+ net/rds/ib_rdma.c               |  4 ++--
+ net/rds/message.c               | 12 ++++++------
+ net/rds/rdma.c                  | 10 +++++-----
+ net/rds/rds.h                   |  9 +++++----
+ net/rds/recv.c                  | 12 ++++++------
+ net/sched/sch_api.c             |  8 ++++----
+ net/sched/sch_generic.c         |  8 ++++----
+ net/sctp/associola.c            |  6 +++---
+ net/sctp/auth.c                 |  4 ++--
+ net/sctp/chunk.c                |  6 +++---
+ net/sctp/endpointola.c          |  6 +++---
+ net/sctp/sm_make_chunk.c        |  6 +++---
+ net/sctp/transport.c            |  8 ++++----
+ net/sunrpc/auth_gss/auth_gss.c  | 28 ++++++++++++++--------------
+ net/x25/x25_link.c              |  2 +-
+ net/x25/x25_route.c             |  2 +-
+ net/xfrm/xfrm_input.c           |  4 ++--
+ net/xfrm/xfrm_policy.c          |  4 ++--
+ net/xfrm/xfrm_state.c           |  4 ++--
+ 61 files changed, 223 insertions(+), 209 deletions(-)
+
+-- 
+2.7.4
+
