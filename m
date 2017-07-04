@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga05.intel.com ([192.55.52.43]:45549 "EHLO mga05.intel.com"
+Received: from mga01.intel.com ([192.55.52.88]:15687 "EHLO mga01.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752052AbdGDMyi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:54:38 -0400
+        id S1752582AbdGDMy2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:54:28 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 05/36] net, decnet: convert dn_fib_info.fib_clntref from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:00 +0300
-Message-Id: <1499172811-16271-6-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 03/36] net, l2tp: convert l2tp_session.ref_count from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:52:58 +0300
+Message-Id: <1499172811-16271-4-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,71 +40,68 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/dn_fib.h | 5 +++--
- net/decnet/dn_fib.c  | 6 +++---
- 2 files changed, 6 insertions(+), 5 deletions(-)
+ net/l2tp/l2tp_core.c |  2 +-
+ net/l2tp/l2tp_core.h | 10 +++++-----
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/include/net/dn_fib.h b/include/net/dn_fib.h
-index f2ca135..81210a8 100644
---- a/include/net/dn_fib.h
-+++ b/include/net/dn_fib.h
-@@ -2,6 +2,7 @@
- #define _NET_DN_FIB_H
+diff --git a/net/l2tp/l2tp_core.c b/net/l2tp/l2tp_core.c
+index 203c4aa..b0c2d4a 100644
+--- a/net/l2tp/l2tp_core.c
++++ b/net/l2tp/l2tp_core.c
+@@ -1854,7 +1854,7 @@ struct l2tp_session *l2tp_session_create(int priv_size, struct l2tp_tunnel *tunn
+ 		/* Bump the reference count. The session context is deleted
+ 		 * only when this drops to zero.
+ 		 */
+-		l2tp_session_inc_refcount(session);
++		refcount_set(&session->ref_count, 1);
+ 		l2tp_tunnel_inc_refcount(tunnel);
  
- #include <linux/netlink.h>
-+#include <linux/refcount.h>
+ 		/* Ensure tunnel socket isn't deleted */
+diff --git a/net/l2tp/l2tp_core.h b/net/l2tp/l2tp_core.h
+index da58fad..cdb6e33 100644
+--- a/net/l2tp/l2tp_core.h
++++ b/net/l2tp/l2tp_core.h
+@@ -99,7 +99,7 @@ struct l2tp_session {
+ 	int			nr_oos_count;	/* For OOS recovery */
+ 	int			nr_oos_count_max;
+ 	struct hlist_node	hlist;		/* Hash list node */
+-	atomic_t		ref_count;
++	refcount_t		ref_count;
  
- extern const struct nla_policy rtm_dn_policy[];
- 
-@@ -28,7 +29,7 @@ struct dn_fib_info {
- 	struct dn_fib_info	*fib_next;
- 	struct dn_fib_info	*fib_prev;
- 	int 			fib_treeref;
--	atomic_t		fib_clntref;
-+	refcount_t		fib_clntref;
- 	int			fib_dead;
- 	unsigned int		fib_flags;
- 	int			fib_protocol;
-@@ -130,7 +131,7 @@ void dn_fib_free_info(struct dn_fib_info *fi);
- 
- static inline void dn_fib_info_put(struct dn_fib_info *fi)
+ 	char			name[32];	/* for logging */
+ 	char			ifname[IFNAMSIZ];
+@@ -274,12 +274,12 @@ int l2tp_ioctl(struct sock *sk, int cmd, unsigned long arg);
+  */
+ static inline void l2tp_session_inc_refcount_1(struct l2tp_session *session)
  {
--	if (atomic_dec_and_test(&fi->fib_clntref))
-+	if (refcount_dec_and_test(&fi->fib_clntref))
- 		dn_fib_free_info(fi);
+-	atomic_inc(&session->ref_count);
++	refcount_inc(&session->ref_count);
  }
  
-diff --git a/net/decnet/dn_fib.c b/net/decnet/dn_fib.c
-index f9058eb..f9f6fb3 100644
---- a/net/decnet/dn_fib.c
-+++ b/net/decnet/dn_fib.c
-@@ -389,7 +389,7 @@ struct dn_fib_info *dn_fib_create_info(const struct rtmsg *r, struct nlattr *att
- 	}
+ static inline void l2tp_session_dec_refcount_1(struct l2tp_session *session)
+ {
+-	if (atomic_dec_and_test(&session->ref_count))
++	if (refcount_dec_and_test(&session->ref_count))
+ 		l2tp_session_free(session);
+ }
  
- 	fi->fib_treeref++;
--	atomic_inc(&fi->fib_clntref);
-+	refcount_set(&fi->fib_clntref, 1);
- 	spin_lock(&dn_fib_info_lock);
- 	fi->fib_next = dn_fib_info_list;
- 	fi->fib_prev = NULL;
-@@ -425,7 +425,7 @@ int dn_fib_semantic_match(int type, struct dn_fib_info *fi, const struct flowidn
- 		switch (type) {
- 		case RTN_NAT:
- 			DN_FIB_RES_RESET(*res);
--			atomic_inc(&fi->fib_clntref);
-+			refcount_inc(&fi->fib_clntref);
- 			return 0;
- 		case RTN_UNICAST:
- 		case RTN_LOCAL:
-@@ -438,7 +438,7 @@ int dn_fib_semantic_match(int type, struct dn_fib_info *fi, const struct flowidn
- 			}
- 			if (nhsel < fi->fib_nhs) {
- 				res->nh_sel = nhsel;
--				atomic_inc(&fi->fib_clntref);
-+				refcount_inc(&fi->fib_clntref);
- 				return 0;
- 			}
- 			endfor_nexthops(fi);
+@@ -288,14 +288,14 @@ static inline void l2tp_session_dec_refcount_1(struct l2tp_session *session)
+ do {									\
+ 	pr_debug("l2tp_session_inc_refcount: %s:%d %s: cnt=%d\n",	\
+ 		 __func__, __LINE__, (_s)->name,			\
+-		 atomic_read(&_s->ref_count));				\
++		 refcount_read(&_s->ref_count));			\
+ 	l2tp_session_inc_refcount_1(_s);				\
+ } while (0)
+ #define l2tp_session_dec_refcount(_s)					\
+ do {									\
+ 	pr_debug("l2tp_session_dec_refcount: %s:%d %s: cnt=%d\n",	\
+ 		 __func__, __LINE__, (_s)->name,			\
+-		 atomic_read(&_s->ref_count));				\
++		 refcount_read(&_s->ref_count));			\
+ 	l2tp_session_dec_refcount_1(_s);				\
+ } while (0)
+ #else
 -- 
 2.7.4
 
