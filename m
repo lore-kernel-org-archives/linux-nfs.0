@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:58310 "EHLO mga11.intel.com"
+Received: from mga06.intel.com ([134.134.136.31]:24205 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752080AbdGDMyZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:54:25 -0400
+        id S1752447AbdGDMx7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:53:59 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 04/36] net, vxlan: convert vxlan_sock.refcnt from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:52:59 +0300
-Message-Id: <1499172811-16271-5-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 01/36] net, llc: convert llc_sap.refcnt from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:52:56 +0300
+Message-Id: <1499172811-16271-2-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,68 +40,53 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- drivers/net/vxlan.c | 10 +++++-----
- include/net/vxlan.h |  2 +-
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ include/net/llc.h  | 6 +++---
+ net/llc/llc_core.c | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/drivers/net/vxlan.c b/drivers/net/vxlan.c
-index b04e103..96aa7e6 100644
---- a/drivers/net/vxlan.c
-+++ b/drivers/net/vxlan.c
-@@ -1034,11 +1034,11 @@ static bool vxlan_group_used(struct vxlan_net *vn, struct vxlan_dev *dev)
- 	/* The vxlan_sock is only used by dev, leaving group has
- 	 * no effect on other vxlan devices.
- 	 */
--	if (family == AF_INET && sock4 && atomic_read(&sock4->refcnt) == 1)
-+	if (family == AF_INET && sock4 && refcount_read(&sock4->refcnt) == 1)
- 		return false;
- #if IS_ENABLED(CONFIG_IPV6)
- 	sock6 = rtnl_dereference(dev->vn6_sock);
--	if (family == AF_INET6 && sock6 && atomic_read(&sock6->refcnt) == 1)
-+	if (family == AF_INET6 && sock6 && refcount_read(&sock6->refcnt) == 1)
- 		return false;
- #endif
+diff --git a/include/net/llc.h b/include/net/llc.h
+index e8e61d4..dc35f25 100644
+--- a/include/net/llc.h
++++ b/include/net/llc.h
+@@ -55,7 +55,7 @@ struct llc_sap {
+ 	unsigned char	 state;
+ 	unsigned char	 p_bit;
+ 	unsigned char	 f_bit;
+-	atomic_t         refcnt;
++	refcount_t		 refcnt;
+ 	int		 (*rcv_func)(struct sk_buff *skb,
+ 				     struct net_device *dev,
+ 				     struct packet_type *pt,
+@@ -113,14 +113,14 @@ struct llc_sap *llc_sap_open(unsigned char lsap,
+ 					struct net_device *orig_dev));
+ static inline void llc_sap_hold(struct llc_sap *sap)
+ {
+-	atomic_inc(&sap->refcnt);
++	refcount_inc(&sap->refcnt);
+ }
  
-@@ -1075,7 +1075,7 @@ static bool __vxlan_sock_release_prep(struct vxlan_sock *vs)
+ void llc_sap_close(struct llc_sap *sap);
  
- 	if (!vs)
- 		return false;
--	if (!atomic_dec_and_test(&vs->refcnt))
-+	if (!refcount_dec_and_test(&vs->refcnt))
- 		return false;
+ static inline void llc_sap_put(struct llc_sap *sap)
+ {
+-	if (atomic_dec_and_test(&sap->refcnt))
++	if (refcount_dec_and_test(&sap->refcnt))
+ 		llc_sap_close(sap);
+ }
  
- 	vn = net_generic(sock_net(vs->sock->sk), vxlan_net_id);
-@@ -2825,7 +2825,7 @@ static struct vxlan_sock *vxlan_socket_create(struct net *net, bool ipv6,
+diff --git a/net/llc/llc_core.c b/net/llc/llc_core.c
+index 842851c..8904126 100644
+--- a/net/llc/llc_core.c
++++ b/net/llc/llc_core.c
+@@ -41,7 +41,7 @@ static struct llc_sap *llc_sap_alloc(void)
+ 		spin_lock_init(&sap->sk_lock);
+ 		for (i = 0; i < LLC_SK_LADDR_HASH_ENTRIES; i++)
+ 			INIT_HLIST_NULLS_HEAD(&sap->sk_laddr_hash[i], i);
+-		atomic_set(&sap->refcnt, 1);
++		refcount_set(&sap->refcnt, 1);
  	}
- 
- 	vs->sock = sock;
--	atomic_set(&vs->refcnt, 1);
-+	refcount_set(&vs->refcnt, 1);
- 	vs->flags = (flags & VXLAN_F_RCV_FLAGS);
- 
- 	spin_lock(&vn->sock_lock);
-@@ -2860,7 +2860,7 @@ static int __vxlan_sock_add(struct vxlan_dev *vxlan, bool ipv6)
- 		spin_lock(&vn->sock_lock);
- 		vs = vxlan_find_sock(vxlan->net, ipv6 ? AF_INET6 : AF_INET,
- 				     vxlan->cfg.dst_port, vxlan->cfg.flags);
--		if (vs && !atomic_add_unless(&vs->refcnt, 1, 0)) {
-+		if (vs && !refcount_inc_not_zero(&vs->refcnt)) {
- 			spin_unlock(&vn->sock_lock);
- 			return -EBUSY;
- 		}
-diff --git a/include/net/vxlan.h b/include/net/vxlan.h
-index 326e849..3f430e3 100644
---- a/include/net/vxlan.h
-+++ b/include/net/vxlan.h
-@@ -183,7 +183,7 @@ struct vxlan_sock {
- 	struct hlist_node hlist;
- 	struct socket	 *sock;
- 	struct hlist_head vni_list[VNI_HASH_SIZE];
--	atomic_t	  refcnt;
-+	refcount_t	  refcnt;
- 	u32		  flags;
- };
- 
+ 	return sap;
+ }
 -- 
 2.7.4
 
