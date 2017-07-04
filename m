@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga14.intel.com ([192.55.52.115]:19647 "EHLO mga14.intel.com"
+Received: from mga11.intel.com ([192.55.52.93]:55385 "EHLO mga11.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753056AbdGDM4t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:56:49 -0400
+        id S1753009AbdGDM4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:56:35 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 20/36] net, rds: convert rds_ib_device.refcount from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:15 +0300
-Message-Id: <1499172811-16271-21-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 19/36] net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:14 +0300
+Message-Id: <1499172811-16271-20-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,92 +40,108 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/rds/ib.c      | 12 ++++++------
- net/rds/ib.h      |  2 +-
- net/rds/ib_rdma.c |  4 ++--
- 3 files changed, 9 insertions(+), 9 deletions(-)
+ net/sunrpc/auth_gss/auth_gss.c | 22 +++++++++++-----------
+ 1 file changed, 11 insertions(+), 11 deletions(-)
 
-diff --git a/net/rds/ib.c b/net/rds/ib.c
-index 7a64c8d..a0954ac 100644
---- a/net/rds/ib.c
-+++ b/net/rds/ib.c
-@@ -118,8 +118,8 @@ static void rds_ib_dev_free(struct work_struct *work)
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 72f129c..9463af4 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -287,7 +287,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
+ #define UPCALL_BUF_LEN 128
  
- void rds_ib_dev_put(struct rds_ib_device *rds_ibdev)
+ struct gss_upcall_msg {
+-	atomic_t count;
++	refcount_t count;
+ 	kuid_t	uid;
+ 	struct rpc_pipe_msg msg;
+ 	struct list_head list;
+@@ -328,7 +328,7 @@ static void
+ gss_release_msg(struct gss_upcall_msg *gss_msg)
  {
--	BUG_ON(atomic_read(&rds_ibdev->refcount) <= 0);
--	if (atomic_dec_and_test(&rds_ibdev->refcount))
-+	BUG_ON(refcount_read(&rds_ibdev->refcount) == 0);
-+	if (refcount_dec_and_test(&rds_ibdev->refcount))
- 		queue_work(rds_wq, &rds_ibdev->free_work);
- }
- 
-@@ -137,7 +137,7 @@ static void rds_ib_add_one(struct ib_device *device)
+ 	struct net *net = gss_msg->auth->net;
+-	if (!atomic_dec_and_test(&gss_msg->count))
++	if (!refcount_dec_and_test(&gss_msg->count))
  		return;
- 
- 	spin_lock_init(&rds_ibdev->spinlock);
--	atomic_set(&rds_ibdev->refcount, 1);
-+	refcount_set(&rds_ibdev->refcount, 1);
- 	INIT_WORK(&rds_ibdev->free_work, rds_ib_dev_free);
- 
- 	rds_ibdev->max_wrs = device->attrs.max_qp_wr;
-@@ -205,10 +205,10 @@ static void rds_ib_add_one(struct ib_device *device)
- 	down_write(&rds_ib_devices_lock);
- 	list_add_tail_rcu(&rds_ibdev->list, &rds_ib_devices);
- 	up_write(&rds_ib_devices_lock);
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
- 
- 	ib_set_client_data(device, &rds_ib_client, rds_ibdev);
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
- 
- 	rds_ib_nodev_connect();
- 
-@@ -239,7 +239,7 @@ struct rds_ib_device *rds_ib_get_client_data(struct ib_device *device)
- 	rcu_read_lock();
- 	rds_ibdev = ib_get_client_data(device, &rds_ib_client);
- 	if (rds_ibdev)
--		atomic_inc(&rds_ibdev->refcount);
-+		refcount_inc(&rds_ibdev->refcount);
- 	rcu_read_unlock();
- 	return rds_ibdev;
- }
-diff --git a/net/rds/ib.h b/net/rds/ib.h
-index ec55062..bf48224 100644
---- a/net/rds/ib.h
-+++ b/net/rds/ib.h
-@@ -230,7 +230,7 @@ struct rds_ib_device {
- 	unsigned int		max_initiator_depth;
- 	unsigned int		max_responder_resources;
- 	spinlock_t		spinlock;	/* protect the above */
--	atomic_t		refcount;
-+	refcount_t		refcount;
- 	struct work_struct	free_work;
- 	int			*vector_load;
- };
-diff --git a/net/rds/ib_rdma.c b/net/rds/ib_rdma.c
-index 977f698..9a3c54e 100644
---- a/net/rds/ib_rdma.c
-+++ b/net/rds/ib_rdma.c
-@@ -52,7 +52,7 @@ static struct rds_ib_device *rds_ib_get_device(__be32 ipaddr)
- 	list_for_each_entry_rcu(rds_ibdev, &rds_ib_devices, list) {
- 		list_for_each_entry_rcu(i_ipaddr, &rds_ibdev->ipaddr_list, list) {
- 			if (i_ipaddr->ipaddr == ipaddr) {
--				atomic_inc(&rds_ibdev->refcount);
-+				refcount_inc(&rds_ibdev->refcount);
- 				rcu_read_unlock();
- 				return rds_ibdev;
- 			}
-@@ -134,7 +134,7 @@ void rds_ib_add_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *con
- 	spin_unlock_irq(&ib_nodev_conns_lock);
- 
- 	ic->rds_ibdev = rds_ibdev;
--	atomic_inc(&rds_ibdev->refcount);
-+	refcount_inc(&rds_ibdev->refcount);
+ 	put_pipe_version(net);
+ 	BUG_ON(!list_empty(&gss_msg->list));
+@@ -348,7 +348,7 @@ __gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid, const struct gss_auth *auth
+ 			continue;
+ 		if (auth && pos->auth->service != auth->service)
+ 			continue;
+-		atomic_inc(&pos->count);
++		refcount_inc(&pos->count);
+ 		dprintk("RPC:       %s found msg %p\n", __func__, pos);
+ 		return pos;
+ 	}
+@@ -369,7 +369,7 @@ gss_add_msg(struct gss_upcall_msg *gss_msg)
+ 	spin_lock(&pipe->lock);
+ 	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
+ 	if (old == NULL) {
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		list_add(&gss_msg->list, &pipe->in_downcall);
+ 	} else
+ 		gss_msg = old;
+@@ -383,7 +383,7 @@ __gss_unhash_msg(struct gss_upcall_msg *gss_msg)
+ 	list_del_init(&gss_msg->list);
+ 	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
+ 	wake_up_all(&gss_msg->waitqueue);
+-	atomic_dec(&gss_msg->count);
++	refcount_dec(&gss_msg->count);
  }
  
- void rds_ib_remove_conn(struct rds_ib_device *rds_ibdev, struct rds_connection *conn)
+ static void
+@@ -506,7 +506,7 @@ gss_alloc_msg(struct gss_auth *gss_auth,
+ 	INIT_LIST_HEAD(&gss_msg->list);
+ 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+ 	init_waitqueue_head(&gss_msg->waitqueue);
+-	atomic_set(&gss_msg->count, 1);
++	refcount_set(&gss_msg->count, 1);
+ 	gss_msg->uid = uid;
+ 	gss_msg->auth = gss_auth;
+ 	switch (vers) {
+@@ -542,11 +542,11 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
+ 	gss_msg = gss_add_msg(gss_new);
+ 	if (gss_msg == gss_new) {
+ 		int res;
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
+ 		if (res) {
+ 			gss_unhash_msg(gss_new);
+-			atomic_dec(&gss_msg->count);
++			refcount_dec(&gss_msg->count);
+ 			gss_release_msg(gss_new);
+ 			gss_msg = ERR_PTR(res);
+ 		}
+@@ -595,7 +595,7 @@ gss_refresh_upcall(struct rpc_task *task)
+ 		task->tk_timeout = 0;
+ 		gss_cred->gc_upcall = gss_msg;
+ 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		rpc_sleep_on(&gss_msg->rpc_waitqueue, task, gss_upcall_callback);
+ 	} else {
+ 		gss_handle_downcall_result(gss_cred, gss_msg);
+@@ -815,7 +815,7 @@ gss_pipe_release(struct inode *inode)
+ 		if (!list_empty(&gss_msg->msg.list))
+ 			continue;
+ 		gss_msg->msg.errno = -EPIPE;
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		__gss_unhash_msg(gss_msg);
+ 		spin_unlock(&pipe->lock);
+ 		gss_release_msg(gss_msg);
+@@ -834,7 +834,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
+ 	if (msg->errno < 0) {
+ 		dprintk("RPC:       %s releasing msg %p\n",
+ 			__func__, gss_msg);
+-		atomic_inc(&gss_msg->count);
++		refcount_inc(&gss_msg->count);
+ 		gss_unhash_msg(gss_msg);
+ 		if (msg->errno == -ETIMEDOUT)
+ 			warn_gssd();
 -- 
 2.7.4
 
