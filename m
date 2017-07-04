@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga01.intel.com ([192.55.52.88]:44716 "EHLO mga01.intel.com"
+Received: from mga07.intel.com ([134.134.136.100]:4768 "EHLO mga07.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752970AbdGDM4N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:56:13 -0400
+        id S1752559AbdGDM4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:56:10 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 17/36] net, netrom: convert nr_node.refcount from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:12 +0300
-Message-Id: <1499172811-16271-18-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 16/36] net, netrom: convert nr_neigh.refcount from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:11 +0300
+Message-Id: <1499172811-16271-17-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,50 +40,67 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- include/net/netrom.h  | 6 +++---
- net/netrom/nr_route.c | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ include/net/netrom.h  | 7 ++++---
+ net/netrom/nr_route.c | 4 ++--
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
 diff --git a/include/net/netrom.h b/include/net/netrom.h
-index cecb4fd..443a4ff 100644
+index 110350a..cecb4fd 100644
 --- a/include/net/netrom.h
 +++ b/include/net/netrom.h
-@@ -110,7 +110,7 @@ struct nr_node {
- 	unsigned char		which;
- 	unsigned char		count;
- 	struct nr_route		routes[3];
+@@ -11,6 +11,7 @@
+ #include <linux/list.h>
+ #include <linux/slab.h>
+ #include <net/sock.h>
++#include <linux/refcount.h>
+ 
+ #define	NR_NETWORK_LEN			15
+ #define	NR_TRANSPORT_LEN		5
+@@ -93,7 +94,7 @@ struct nr_neigh {
+ 	unsigned short		count;
+ 	unsigned int		number;
+ 	unsigned char		failed;
 -	atomic_t		refcount;
 +	refcount_t		refcount;
- 	spinlock_t		node_lock;
  };
  
-@@ -119,11 +119,11 @@ struct nr_node {
-  *********************************************************************/
- 
- #define nr_node_hold(__nr_node) \
--	atomic_inc(&((__nr_node)->refcount))
-+	refcount_inc(&((__nr_node)->refcount))
- 
- static __inline__ void nr_node_put(struct nr_node *nr_node)
- {
--	if (atomic_dec_and_test(&nr_node->refcount)) {
-+	if (refcount_dec_and_test(&nr_node->refcount)) {
- 		kfree(nr_node);
- 	}
+ struct nr_route {
+@@ -128,11 +129,11 @@ static __inline__ void nr_node_put(struct nr_node *nr_node)
  }
+ 
+ #define nr_neigh_hold(__nr_neigh) \
+-	atomic_inc(&((__nr_neigh)->refcount))
++	refcount_inc(&((__nr_neigh)->refcount))
+ 
+ static __inline__ void nr_neigh_put(struct nr_neigh *nr_neigh)
+ {
+-	if (atomic_dec_and_test(&nr_neigh->refcount)) {
++	if (refcount_dec_and_test(&nr_neigh->refcount)) {
+ 		if (nr_neigh->ax25)
+ 			ax25_cb_put(nr_neigh->ax25);
+ 		kfree(nr_neigh->digipeat);
 diff --git a/net/netrom/nr_route.c b/net/netrom/nr_route.c
-index 6b72970..0c59354 100644
+index d72a4f1..6b72970 100644
 --- a/net/netrom/nr_route.c
 +++ b/net/netrom/nr_route.c
-@@ -184,7 +184,7 @@ static int __must_check nr_add_node(ax25_address *nr, const char *mnemonic,
+@@ -149,7 +149,7 @@ static int __must_check nr_add_node(ax25_address *nr, const char *mnemonic,
+ 		nr_neigh->count    = 0;
+ 		nr_neigh->number   = nr_neigh_no++;
+ 		nr_neigh->failed   = 0;
+-		atomic_set(&nr_neigh->refcount, 1);
++		refcount_set(&nr_neigh->refcount, 1);
  
- 		nr_node->which = 0;
- 		nr_node->count = 1;
--		atomic_set(&nr_node->refcount, 1);
-+		refcount_set(&nr_node->refcount, 1);
- 		spin_lock_init(&nr_node->node_lock);
+ 		if (ax25_digi != NULL && ax25_digi->ndigi > 0) {
+ 			nr_neigh->digipeat = kmemdup(ax25_digi,
+@@ -431,7 +431,7 @@ static int __must_check nr_add_neigh(ax25_address *callsign,
+ 	nr_neigh->count    = 0;
+ 	nr_neigh->number   = nr_neigh_no++;
+ 	nr_neigh->failed   = 0;
+-	atomic_set(&nr_neigh->refcount, 1);
++	refcount_set(&nr_neigh->refcount, 1);
  
- 		nr_node->routes[0].quality   = quality;
+ 	if (ax25_digi != NULL && ax25_digi->ndigi > 0) {
+ 		nr_neigh->digipeat = kmemdup(ax25_digi, sizeof(*ax25_digi),
 -- 
 2.7.4
 
