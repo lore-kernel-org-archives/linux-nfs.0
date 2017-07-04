@@ -1,69 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:57756 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752174AbdGDWBK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Jul 2017 18:01:10 -0400
-Date: Tue, 04 Jul 2017 23:00:40 +0100 (WEST)
-Message-Id: <20170704.230040.195111189904913382.davem@davemloft.net>
-To: elena.reshetova@intel.com
-Cc: netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-decnet-user@lists.sourceforge.net, jmorris@namei.org,
-        kaber@trash.net, yoshfuji@linux-ipv6.org, kuznet@ms2.inr.ac.ru,
-        3chas3@gmail.com, ralf@linux-mips.org, stephen@networkplumber.org,
-        jchapman@katalix.com, jhs@mojatatu.com,
-        bridge@lists.linux-foundation.org, linux-hams@vger.kernel.org,
-        linux-x25@vger.kernel.org, peterz@infradead.org,
-        keescook@chromium.org, linux-rdma@vger.kernel.org,
-        linux-sctp@vger.kernel.org, vyasevich@gmail.com,
-        nhorman@tuxdriver.com, linux-nfs@vger.kernel.org, zyan@redhat.com,
-        sage@redhat.com, bfields@fieldses.org, jlayton@poochiereds.net,
-        steffen.klassert@secunet.com, herbert@gondor.apana.org.au,
-        santosh.shilimkar@oracle.com, jreuter@yaina.de
-Subject: Re: [PATCH 00/36] v2 net subsystem misc refcounter conversions
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
-References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from mx2.suse.de ([195.135.220.15]:56415 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752257AbdGDWU7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 18:20:59 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@RedHat.com>
+Date: Wed, 05 Jul 2017 08:20:49 +1000
+Cc: systemd-devel@freedesktop.org, linux-nfs@vger.kernel.org,
+        Lennart Poettering <lennart@poettering.net>
+Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option and systemd.
+In-Reply-To: <87tw43fgrf.fsf@notabene.neil.brown.name>
+References: <87lgpkgwrw.fsf@notabene.neil.brown.name> <20170529133814.GC17967@gardel-login> <87tw43fgrf.fsf@notabene.neil.brown.name>
+Message-ID: <87zicjyhby.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Elena Reshetova <elena.reshetova@intel.com>
-Date: Tue,  4 Jul 2017 15:52:55 +0300
+--=-=-=
+Content-Type: text/plain
 
-> Changes in v2:
->  * rebase on top of net-next
->  * currently by default refcount_t = atomic_t (*) and uses all 
->    atomic standard operations unless CONFIG_REFCOUNT_FULL is enabled.
->    This is a compromise for the systems that are critical on
->    performance (such as net) and cannot accept even slight delay
->    on the refcounter operations.
-> 
-> This series, for various misc network components, replaces atomic_t reference
-> counters with the new refcount_t type and API (see include/linux/refcount.h).
-> By doing this we prevent intentional or accidental
-> underflows or overflows that can led to use-after-free vulnerabilities.
-> These are the last networking-related conversions with the exception of
-> network drivers (to be send separately).
-> 
-> Please excuse the long patch set, but seems like breaking it up
-> won't save that much on CC list and most of the changes are
-> trivial.
-> 
-> The patches are fully independent and can be cherry-picked separately.
-> In order to try with refcount functionality enabled in run-time,
-> CONFIG_REFCOUNT_FULL must be enabled.
-> 
-> NOTE: automatic kernel builder for some reason doesn't like all my
-> network branches and regularly times out the builds on these branches.
-> Suggestion for "waiting a day for a good coverage" doesn't work, as
-> we have seen with generic network conversions. So please wait for the
-> full report from kernel test rebot before merging further up.
-> This has been compile-tested in 116 configs, but 71 timed out (including
-> all s390-related configs again). I am trying to see if they can fix
-> build coverage for me in meanwhile.
-> 
-> * The respective change is currently merged into -next as
->   "locking/refcount: Create unchecked atomic_t implementation".
+On Tue, May 30 2017, NeilBrown wrote:
 
-Series applied, that's enough for this cycle, please.
+> Systemd does not, and will not, support "bg" correctly.
+> It has other, better, ways to handle "background" mounting.
+
+For those who aren't closely watching systemd development, a
+patch was recently accepted which causes systemd to work correctly with
+NFS bg mounts.  So the above "and will not" was, happily, not correct.
+
+So this patch to the nfs documentation is no longer relevant.
+
+Thanks everyone,
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAllcFMIACgkQOeye3VZi
+gblj3xAAiBJDTVvhElEneQSwKJZHCzf87WnrLnFm2eYl1hLrQVMeXIAeRqPuGaye
+uBO342iAg+m3AoWWyysQ29SwZKXY3H9RBwcvycyL/bCG4mrVzOhVF2TMcxMzhF4c
+v+g8vgX+pEKW99J7vfUg2ZeI2mJiPQyYUabF7bjK8IQ91dZLuzl/U+apWQQCIh6R
+7LqK7/M+wwtnUBdKejsVDWDQ6oRJJv50Yovs62NKeBFuqKobca//Dv1425ZbwCw+
+sUDokFTga2hzKK/qKdKDZ50xE/IZkDV5yMcfiQ5V71z8AL6ZFSExUbmTbvoim5GO
+3X0rS9oJBev5YXZ9yGL5SJzCpePu7HaN1LLKbQ/DxIJCdLyvGstpIkNgBPf76G2+
+0KjvN/2YBh2CfAwFxSkq2xNSTVLEEWtu0xioWOqz2TSq4lw3SAyuvP7G/xGwDtY/
++LuN7jecMEHJ7R7c9TyLnCVgbVes48eyq1VCUT7SGR33ZLerWGuxgs6CgjOrKt7u
+B6UgvxH1yLvbO3BOpny9gefXPoFe9r5SWgHBP8XSV58tA/kBs8wJrQW3RlzBRIXi
+cyT29cNWBp7lL4s0G3hqay/kHXbjMVOHEK0K3eql56yusHmMbpTLFK+rmG3IJX0S
+42cVHSTvyB6lQ5sdfEeKOUrnNP8baOjSLU7A9SnFhlhtikixYgg=
+=2RFB
+-----END PGP SIGNATURE-----
+--=-=-=--
