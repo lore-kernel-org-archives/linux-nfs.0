@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:55385 "EHLO mga11.intel.com"
+Received: from mga06.intel.com ([134.134.136.31]:3809 "EHLO mga06.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753009AbdGDM4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 08:56:35 -0400
+        id S1753008AbdGDM41 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 4 Jul 2017 08:56:27 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: netdev@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org,
@@ -21,9 +21,9 @@ Cc: linux-kernel@vger.kernel.org,
         Elena Reshetova <elena.reshetova@intel.com>,
         Hans Liljestrand <ishkamiel@gmail.com>,
         David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 19/36] net, sunrpc: convert gss_upcall_msg.count from atomic_t to refcount_t
-Date: Tue,  4 Jul 2017 15:53:14 +0300
-Message-Id: <1499172811-16271-20-git-send-email-elena.reshetova@intel.com>
+Subject: [PATCH 18/36] net, sunrpc: convert gss_cl_ctx.count from atomic_t to refcount_t
+Date: Tue,  4 Jul 2017 15:53:13 +0300
+Message-Id: <1499172811-16271-19-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -40,108 +40,61 @@ Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Kees Cook <keescook@chromium.org>
 Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ include/linux/sunrpc/auth_gss.h | 3 ++-
+ net/sunrpc/auth_gss/auth_gss.c  | 6 +++---
+ 2 files changed, 5 insertions(+), 4 deletions(-)
 
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index 36eebc4..cebdf87 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -13,6 +13,7 @@
+ #define _LINUX_SUNRPC_AUTH_GSS_H
+ 
+ #ifdef __KERNEL__
++#include <linux/refcount.h>
+ #include <linux/sunrpc/auth.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/gss_api.h>
+@@ -65,7 +66,7 @@ struct rpc_gss_init_res {
+  * the wire when communicating with a server. */
+ 
+ struct gss_cl_ctx {
+-	atomic_t		count;
++	refcount_t		count;
+ 	enum rpc_gss_proc	gc_proc;
+ 	u32			gc_seq;
+ 	spinlock_t		gc_seq_lock;
 diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 72f129c..9463af4 100644
+index 4f16953..72f129c 100644
 --- a/net/sunrpc/auth_gss/auth_gss.c
 +++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -287,7 +287,7 @@ gss_fill_context(const void *p, const void *end, struct gss_cl_ctx *ctx, struct
- #define UPCALL_BUF_LEN 128
- 
- struct gss_upcall_msg {
--	atomic_t count;
-+	refcount_t count;
- 	kuid_t	uid;
- 	struct rpc_pipe_msg msg;
- 	struct list_head list;
-@@ -328,7 +328,7 @@ static void
- gss_release_msg(struct gss_upcall_msg *gss_msg)
+@@ -117,14 +117,14 @@ static const struct rpc_pipe_ops gss_upcall_ops_v1;
+ static inline struct gss_cl_ctx *
+ gss_get_ctx(struct gss_cl_ctx *ctx)
  {
- 	struct net *net = gss_msg->auth->net;
--	if (!atomic_dec_and_test(&gss_msg->count))
-+	if (!refcount_dec_and_test(&gss_msg->count))
- 		return;
- 	put_pipe_version(net);
- 	BUG_ON(!list_empty(&gss_msg->list));
-@@ -348,7 +348,7 @@ __gss_find_upcall(struct rpc_pipe *pipe, kuid_t uid, const struct gss_auth *auth
- 			continue;
- 		if (auth && pos->auth->service != auth->service)
- 			continue;
--		atomic_inc(&pos->count);
-+		refcount_inc(&pos->count);
- 		dprintk("RPC:       %s found msg %p\n", __func__, pos);
- 		return pos;
- 	}
-@@ -369,7 +369,7 @@ gss_add_msg(struct gss_upcall_msg *gss_msg)
- 	spin_lock(&pipe->lock);
- 	old = __gss_find_upcall(pipe, gss_msg->uid, gss_msg->auth);
- 	if (old == NULL) {
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		list_add(&gss_msg->list, &pipe->in_downcall);
- 	} else
- 		gss_msg = old;
-@@ -383,7 +383,7 @@ __gss_unhash_msg(struct gss_upcall_msg *gss_msg)
- 	list_del_init(&gss_msg->list);
- 	rpc_wake_up_status(&gss_msg->rpc_waitqueue, gss_msg->msg.errno);
- 	wake_up_all(&gss_msg->waitqueue);
--	atomic_dec(&gss_msg->count);
-+	refcount_dec(&gss_msg->count);
+-	atomic_inc(&ctx->count);
++	refcount_inc(&ctx->count);
+ 	return ctx;
  }
  
- static void
-@@ -506,7 +506,7 @@ gss_alloc_msg(struct gss_auth *gss_auth,
- 	INIT_LIST_HEAD(&gss_msg->list);
- 	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
- 	init_waitqueue_head(&gss_msg->waitqueue);
--	atomic_set(&gss_msg->count, 1);
-+	refcount_set(&gss_msg->count, 1);
- 	gss_msg->uid = uid;
- 	gss_msg->auth = gss_auth;
- 	switch (vers) {
-@@ -542,11 +542,11 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
- 	gss_msg = gss_add_msg(gss_new);
- 	if (gss_msg == gss_new) {
- 		int res;
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		res = rpc_queue_upcall(gss_new->pipe, &gss_new->msg);
- 		if (res) {
- 			gss_unhash_msg(gss_new);
--			atomic_dec(&gss_msg->count);
-+			refcount_dec(&gss_msg->count);
- 			gss_release_msg(gss_new);
- 			gss_msg = ERR_PTR(res);
- 		}
-@@ -595,7 +595,7 @@ gss_refresh_upcall(struct rpc_task *task)
- 		task->tk_timeout = 0;
- 		gss_cred->gc_upcall = gss_msg;
- 		/* gss_upcall_callback will release the reference to gss_upcall_msg */
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		rpc_sleep_on(&gss_msg->rpc_waitqueue, task, gss_upcall_callback);
- 	} else {
- 		gss_handle_downcall_result(gss_cred, gss_msg);
-@@ -815,7 +815,7 @@ gss_pipe_release(struct inode *inode)
- 		if (!list_empty(&gss_msg->msg.list))
- 			continue;
- 		gss_msg->msg.errno = -EPIPE;
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		__gss_unhash_msg(gss_msg);
- 		spin_unlock(&pipe->lock);
- 		gss_release_msg(gss_msg);
-@@ -834,7 +834,7 @@ gss_pipe_destroy_msg(struct rpc_pipe_msg *msg)
- 	if (msg->errno < 0) {
- 		dprintk("RPC:       %s releasing msg %p\n",
- 			__func__, gss_msg);
--		atomic_inc(&gss_msg->count);
-+		refcount_inc(&gss_msg->count);
- 		gss_unhash_msg(gss_msg);
- 		if (msg->errno == -ETIMEDOUT)
- 			warn_gssd();
+ static inline void
+ gss_put_ctx(struct gss_cl_ctx *ctx)
+ {
+-	if (atomic_dec_and_test(&ctx->count))
++	if (refcount_dec_and_test(&ctx->count))
+ 		gss_free_ctx(ctx);
+ }
+ 
+@@ -200,7 +200,7 @@ gss_alloc_context(void)
+ 		ctx->gc_proc = RPC_GSS_PROC_DATA;
+ 		ctx->gc_seq = 1;	/* NetApp 6.4R1 doesn't accept seq. no. 0 */
+ 		spin_lock_init(&ctx->gc_seq_lock);
+-		atomic_set(&ctx->count,1);
++		refcount_set(&ctx->count,1);
+ 	}
+ 	return ctx;
+ }
 -- 
 2.7.4
 
