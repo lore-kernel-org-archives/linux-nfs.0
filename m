@@ -1,34 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47834 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751681AbdGEPms (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 5 Jul 2017 11:42:48 -0400
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: ANNOUNCE: libtirpc-1.0.2 released.
-To: libtirpc <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-ID: <5fa3b385-a07d-297d-0a65-64bd4c3d5dff@RedHat.com>
-Date: Wed, 5 Jul 2017 11:42:46 -0400
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39615 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751654AbdGEPqj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jul 2017 11:46:39 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "aglo@umich.edu" <aglo@umich.edu>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC] fix parallelism for rpc tasks
+Date: Wed, 5 Jul 2017 15:46:35 +0000
+Message-ID: <1499269592.6496.1.camel@primarydata.com>
+References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
+         <1499093918.79205.3.camel@primarydata.com>
+         <CAN-5tyHy=c6z4v5oTecSJMVpTe28CCVAkBQxj56iruJwetjHqQ@mail.gmail.com>
+         <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com>
+In-Reply-To: <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+T24gV2VkLCAyMDE3LTA3LTA1IGF0IDExOjExIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBKdWwgNSwgMjAxNywgYXQgMTA6NDQgQU0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
+aWNoLmVkdT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiBPbiBNb24sIEp1bCAzLCAyMDE3IGF0IDEw
+OjU4IEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA8dHJvbmRteUBwcmltYXJ5ZGF0YS5jb20+IHdy
+b3RlOg0KPiA+ID4gT24gVGh1LCAyMDE3LTA2LTI5IGF0IDA5OjI1IC0wNDAwLCBPbGdhIEtvcm5p
+ZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gSGkgZm9sa3MsDQo+ID4gPiA+IA0KPiA+ID4gPiBPbiBh
+IG11bHRpLWNvcmUgbWFjaGluZSwgaXMgaXQgZXhwZWN0ZWQgdGhhdCB3ZSBjYW4gaGF2ZQ0KPiA+
+ID4gPiBwYXJhbGxlbA0KPiA+ID4gPiBSUENzDQo+ID4gPiA+IGhhbmRsZWQgYnkgZWFjaCBvZiB0
+aGUgcGVyLWNvcmUgd29ya3F1ZXVlPw0KPiA+ID4gPiANCj4gPiA+ID4gSW4gdGVzdGluZyBhIHJl
+YWQgd29ya2xvYWQsIG9ic2VydmluZyB2aWEgInRvcCIgY29tbWFuZCB0aGF0IGENCj4gPiA+ID4g
+c2luZ2xlDQo+ID4gPiA+ICJrd29ya2VyIiB0aHJlYWQgaXMgcnVubmluZyBzZXJ2aWNpbmcgdGhl
+IHJlcXVlc3RzIChubw0KPiA+ID4gPiBwYXJhbGxlbGlzbSkuDQo+ID4gPiA+IEl0J3MgbW9yZSBw
+cm9taW5lbnQgd2hpbGUgZG9pbmcgdGhlc2Ugb3BlcmF0aW9ucyBvdmVyIGtyYjVwDQo+ID4gPiA+
+IG1vdW50Lg0KPiA+ID4gPiANCj4gPiA+ID4gV2hhdCBoYXMgYmVlbiBzdWdnZXN0ZWQgYnkgQnJ1
+Y2UgaXMgdG8gdHJ5IHRoaXMgYW5kIGluIG15DQo+ID4gPiA+IHRlc3RpbmcgSQ0KPiA+ID4gPiBz
+ZWUgdGhlbiB0aGUgcmVhZCB3b3JrbG9hZCBzcHJlYWQgYW1vbmcgYWxsIHRoZSBrd29ya2VyDQo+
+ID4gPiA+IHRocmVhZHMuDQo+ID4gPiA+IA0KPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBPbGdhIEtv
+cm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gPiA+ID4gDQo+ID4gPiA+IGRpZmYgLS1n
+aXQgYS9uZXQvc3VucnBjL3NjaGVkLmMgYi9uZXQvc3VucnBjL3NjaGVkLmMNCj4gPiA+ID4gaW5k
+ZXggMGNjODM4My4uZjgwZTY4OCAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvbmV0L3N1bnJwYy9zY2hl
+ZC5jDQo+ID4gPiA+ICsrKyBiL25ldC9zdW5ycGMvc2NoZWQuYw0KPiA+ID4gPiBAQCAtMTA5NSw3
+ICsxMDk1LDcgQEAgc3RhdGljIGludCBycGNpb2Rfc3RhcnQodm9pZCkNCj4gPiA+ID4gwqAqIENy
+ZWF0ZSB0aGUgcnBjaW9kIHRocmVhZCBhbmQgd2FpdCBmb3IgaXQgdG8gc3RhcnQuDQo+ID4gPiA+
+IMKgKi8NCj4gPiA+ID4gwqBkcHJpbnRrKCJSUEM6wqDCoMKgwqDCoMKgwqBjcmVhdGluZyB3b3Jr
+cXVldWUgcnBjaW9kXG4iKTsNCj4gPiA+ID4gLSB3cSA9IGFsbG9jX3dvcmtxdWV1ZSgicnBjaW9k
+IiwgV1FfTUVNX1JFQ0xBSU0sIDApOw0KPiA+ID4gPiArIHdxID0gYWxsb2Nfd29ya3F1ZXVlKCJy
+cGNpb2QiLCBXUV9NRU1fUkVDTEFJTSB8IFdRX1VOQk9VTkQsDQo+ID4gPiA+IDApOw0KPiA+ID4g
+PiDCoGlmICghd3EpDQo+ID4gPiA+IMKgZ290byBvdXRfZmFpbGVkOw0KPiA+ID4gPiDCoHJwY2lv
+ZF93b3JrcXVldWUgPSB3cTsNCj4gPiA+ID4gDQo+ID4gPiANCj4gPiA+IFdRX1VOQk9VTkQgdHVy
+bnMgb2ZmIGNvbmN1cnJlbmN5IG1hbmFnZW1lbnQgb24gdGhlIHRocmVhZCBwb29sDQo+ID4gPiAo
+U2VlDQo+ID4gPiBEb2N1bWVudGF0aW9uL2NvcmUtYXBpL3dvcmtxdWV1ZS5yc3QuIEl0IGFsc28g
+bWVhbnMgd2UgY29udGVuZA0KPiA+ID4gZm9yIHdvcmsNCj4gPiA+IGl0ZW0gcXVldWluZy9kZXF1
+ZXVpbmcgbG9ja3MsIHNpbmNlIHRoZSB0aHJlYWRzIHdoaWNoIHJ1biB0aGUNCj4gPiA+IHdvcmsN
+Cj4gPiA+IGl0ZW1zIGFyZSBub3QgYm91bmQgdG8gYSBDUFUuDQo+ID4gPiANCj4gPiA+IElPVzog
+VGhpcyBpcyBub3QgYSBzbGFtLWR1bmsgb2J2aW91cyBnYWluLg0KPiA+IA0KPiA+IEkgYWdyZWUg
+YnV0IEkgdGhpbmsgaXQncyB3b3J0aCBjb25zaWRlcmF0aW9uLiBJJ20gd2FpdGluZyB0byBnZXQN
+Cj4gPiAocmVhbCkgcGVyZm9ybWFuY2UgbnVtYmVycyBvZiBpbXByb3ZlbWVudCAoaW5zdGVhZCBv
+ZiBteSBWTSBzZXR1cCkNCj4gPiB0bw0KPiA+IGhlbHAgbXkgY2FzZS4gSG93ZXZlciwgaXQgd2Fz
+IHJlcG9ydGVkIDkwJSBkZWdyYWRhdGlvbiBmb3IgdGhlIHJlYWQNCj4gPiBwZXJmb3JtYW5jZSBv
+dmVyIGtyYjVwIHdoZW4gMUNQVSBpcyBleGVjdXRpbmcgYWxsIG9wcy4NCj4gPiANCj4gPiBJcyB0
+aGVyZSBhIGRpZmZlcmVudCB3YXkgdG8gbWFrZSBzdXJlIHRoYXQgb24gYSBtdWx0aS1wcm9jZXNz
+b3INCj4gPiBtYWNoaW5lIHdlIGNhbiB0YWtlIGFkdmFudGFnZSBvZiBhbGwgYXZhaWxhYmxlIENQ
+VXM/IFNpbXBsZSBrZXJuZWwNCj4gPiB0aHJlYWRzIGluc3RlYWQgb2YgYSB3b3JrIHF1ZXVlPw0K
+PiANCj4gVGhlcmUgaXMgYSB0cmFkZS1vZmYgYmV0d2VlbiBzcHJlYWRpbmcgdGhlIHdvcmssIGFu
+ZCBlbnN1cmluZyBpdA0KPiBpcyBleGVjdXRlZCBvbiBhIENQVSBjbG9zZSB0byB0aGUgSS9PIGFu
+ZCBhcHBsaWNhdGlvbi4gSU1PIFVOQk9VTkQNCj4gaXMgYSBnb29kIHdheSB0byBkbyB0aGF0LiBV
+TkJPVU5EIHdpbGwgYXR0ZW1wdCB0byBzY2hlZHVsZSB0aGUNCj4gd29yayBvbiB0aGUgcHJlZmVy
+cmVkIENQVSwgYnV0IGFsbG93IGl0IHRvIGJlIG1pZ3JhdGVkIGlmIHRoYXQNCj4gQ1BVIGlzIGJ1
+c3kuDQo+IA0KPiBUaGUgYWR2YW50YWdlIG9mIHRoaXMgaXMgdGhhdCB3aGVuIHRoZSBjbGllbnQg
+d29ya2xvYWQgaXMgQ1BVDQo+IGludGVuc2l2ZSAoc2F5LCBhIHNvZnR3YXJlIGJ1aWxkKSwgUlBD
+IGNsaWVudCB3b3JrIGNhbiBiZSBzY2hlZHVsZWQNCj4gYW5kIHJ1biBtb3JlIHF1aWNrbHksIHdo
+aWNoIHJlZHVjZXMgbGF0ZW5jeS4NCj4gDQoNClRoYXQgc2hvdWxkIG5vIGxvbmdlciBiZSBhIGh1
+Z2UgaXNzdWUsIHNpbmNlIHF1ZXVlX3dvcmsoKSB3aWxsIG5vdw0KZGVmYXVsdCB0byB0aGUgV09S
+S19DUFVfVU5CT1VORCBmbGFnLCB3aGljaCBwcmVmZXJzIHRoZSBsb2NhbCBDUFUsIGJ1dA0Kd2ls
+bCBzY2hlZHVsZSBlbHNld2hlcmUgaWYgdGhlIGxvY2FsIENQVSBpcyBjb25nZXN0ZWQuDQoNCi0t
+IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlE
+YXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-The 1.0.2 version of libtirpc has just been release.
-
-In this release is a number of bug fixes, close a few
-memory leaks and fixed a CVE
-
-The tarball:
-   http://sourceforge.net/projects/libtirpc/files/libtirpc/1.0.2/libtirpc-1.0.2.tar.bz2
-
-Release notes:
-    http://sourceforge.net/projects/libtirpc/files/libtirpc/1.0.2/Release-1.0.2.txt
-
-The git tree is at:
-   git://linux-nfs.org/~steved/libtirpc
-
-
-steved.
