@@ -1,132 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f193.google.com ([209.85.220.193]:33346 "EHLO
-        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751744AbdGERdL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jul 2017 13:33:11 -0400
-Received: by mail-qk0-f193.google.com with SMTP id p21so32175001qke.0
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Jul 2017 10:33:10 -0700 (PDT)
+Received: from mail-vk0-f44.google.com ([209.85.213.44]:35325 "EHLO
+        mail-vk0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752057AbdGEU3Y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jul 2017 16:29:24 -0400
+Received: by mail-vk0-f44.google.com with SMTP id 191so82540vko.2
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Jul 2017 13:29:23 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <1499271287.10445.1.camel@primarydata.com>
-References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
- <1499093918.79205.3.camel@primarydata.com> <CAN-5tyHy=c6z4v5oTecSJMVpTe28CCVAkBQxj56iruJwetjHqQ@mail.gmail.com>
- <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com> <1499269592.6496.1.camel@primarydata.com>
- <CAN-5tyHaT_j+fNPVbYzBLUh5_jbFxhFDVP+eby=Mf25V=JtpBw@mail.gmail.com> <1499271287.10445.1.camel@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 5 Jul 2017 13:33:09 -0400
-Message-ID: <CAN-5tyFeN3cUCi8u8VnHAQmGD=GE5+3ox-dyLrSdL52L4Lfrng@mail.gmail.com>
-Subject: Re: [RFC] fix parallelism for rpc tasks
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+In-Reply-To: <20170702085354.GA20685@kroah.com>
+References: <20170628144758.12225-1-trond.myklebust@primarydata.com> <20170702085354.GA20685@kroah.com>
+From: Robert Kudyba <rkudyba@fordham.edu>
+Date: Wed, 5 Jul 2017 16:29:22 -0400
+Message-ID: <CAFHi+KQShB-m6GT87uKO=KN0AF-1t0+uXbW7UE2NFyi_wOSLDg@mail.gmail.com>
+Subject: Re: [PATCH] Stable request to fix a reference leak and list corruption
+To: Greg KH <greg@kroah.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        stable@vger.kernel.org, Kinglong Mee <kinglongmee@gmail.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jul 5, 2017 at 12:14 PM, Trond Myklebust
-<trondmy@primarydata.com> wrote:
-> On Wed, 2017-07-05 at 12:09 -0400, Olga Kornievskaia wrote:
->> On Wed, Jul 5, 2017 at 11:46 AM, Trond Myklebust
->> <trondmy@primarydata.com> wrote:
->> > On Wed, 2017-07-05 at 11:11 -0400, Chuck Lever wrote:
->> > > > On Jul 5, 2017, at 10:44 AM, Olga Kornievskaia <aglo@umich.edu>
->> > > > wrote:
->> > > >
->> > > > On Mon, Jul 3, 2017 at 10:58 AM, Trond Myklebust
->> > > > <trondmy@primarydata.com> wrote:
->> > > > > On Thu, 2017-06-29 at 09:25 -0400, Olga Kornievskaia wrote:
->> > > > > > Hi folks,
->> > > > > >
->> > > > > > On a multi-core machine, is it expected that we can have
->> > > > > > parallel
->> > > > > > RPCs
->> > > > > > handled by each of the per-core workqueue?
->> > > > > >
->> > > > > > In testing a read workload, observing via "top" command
->> > > > > > that a
->> > > > > > single
->> > > > > > "kworker" thread is running servicing the requests (no
->> > > > > > parallelism).
->> > > > > > It's more prominent while doing these operations over krb5p
->> > > > > > mount.
->> > > > > >
->> > > > > > What has been suggested by Bruce is to try this and in my
->> > > > > > testing I
->> > > > > > see then the read workload spread among all the kworker
->> > > > > > threads.
->> > > > > >
->> > > > > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> > > > > >
->> > > > > > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
->> > > > > > index 0cc8383..f80e688 100644
->> > > > > > --- a/net/sunrpc/sched.c
->> > > > > > +++ b/net/sunrpc/sched.c
->> > > > > > @@ -1095,7 +1095,7 @@ static int rpciod_start(void)
->> > > > > >  * Create the rpciod thread and wait for it to start.
->> > > > > >  */
->> > > > > >  dprintk("RPC:       creating workqueue rpciod\n");
->> > > > > > - wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM, 0);
->> > > > > > + wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM |
->> > > > > > WQ_UNBOUND,
->> > > > > > 0);
->> > > > > >  if (!wq)
->> > > > > >  goto out_failed;
->> > > > > >  rpciod_workqueue = wq;
->> > > > > >
->> > > > >
->> > > > > WQ_UNBOUND turns off concurrency management on the thread
->> > > > > pool
->> > > > > (See
->> > > > > Documentation/core-api/workqueue.rst. It also means we
->> > > > > contend
->> > > > > for work
->> > > > > item queuing/dequeuing locks, since the threads which run the
->> > > > > work
->> > > > > items are not bound to a CPU.
->> > > > >
->> > > > > IOW: This is not a slam-dunk obvious gain.
->> > > >
->> > > > I agree but I think it's worth consideration. I'm waiting to
->> > > > get
->> > > > (real) performance numbers of improvement (instead of my VM
->> > > > setup)
->> > > > to
->> > > > help my case. However, it was reported 90% degradation for the
->> > > > read
->> > > > performance over krb5p when 1CPU is executing all ops.
->> > > >
->> > > > Is there a different way to make sure that on a multi-processor
->> > > > machine we can take advantage of all available CPUs? Simple
->> > > > kernel
->> > > > threads instead of a work queue?
->> > >
->> > > There is a trade-off between spreading the work, and ensuring it
->> > > is executed on a CPU close to the I/O and application. IMO
->> > > UNBOUND
->> > > is a good way to do that. UNBOUND will attempt to schedule the
->> > > work on the preferred CPU, but allow it to be migrated if that
->> > > CPU is busy.
->> > >
->> > > The advantage of this is that when the client workload is CPU
->> > > intensive (say, a software build), RPC client work can be
->> > > scheduled
->> > > and run more quickly, which reduces latency.
->> > >
->> >
->> > That should no longer be a huge issue, since queue_work() will now
->> > default to the WORK_CPU_UNBOUND flag, which prefers the local CPU,
->> > but
->> > will schedule elsewhere if the local CPU is congested.
->>
->> I don't believe NFS use workqueue_congested() to somehow schedule the
->> work elsewhere. Unless the queue is marked UNBOUNDED I don't believe
->> there is any intention of balancing the CPU load.
->>
+>> Could we please queue up the following patch as a stable fix for
+>> commit a974deee47? It needs to be applied to v4.10 and older.
 >
-> I shouldn't have to test the queue when scheduling with
-> WORK_CPU_UNBOUND.
->
+> Now applied, thanks.
 
-Comments in the code says that "if CPU dies" it'll be re-scheduled on
-another. I think the code requires to mark the queue UNBOUND to really
-be scheduled on a different CPU. Just my reading of the code and it
-matches what is seen with the krb5 workload.
+Until kernel 4.11.9 is into Fedora's updates, I downgraded our server
+acting as the NIS master to 4.10.16-200. But all NIS users time out
+with "ypserv: #011-> Error #-3. Could this be a different issue with
+rpcbind or nfs-utils? Here are some debug enabled logs for RPC with a
+different error "xs_error_report client ffff8d8223caa000, error=113"
+
+Jul  5 16:13:05 dsm kernel: RPC:       looking up machine cred for service *
+Jul  5 16:13:05 dsm kernel: RPC:       set up xprt to 150.108.64.64
+(port 2049) via tcp
+Jul  5 16:13:05 dsm kernel: RPC:       created transport
+ffff8d8223cab800 with 65536 slots
+Jul  5 16:13:05 dsm kernel: RPC:       creating nfs client for erdos
+(xprt ffff8d8223cab800)
+Jul  5 16:13:05 dsm kernel: RPC:       creating GSS authenticator for
+client ffff8d8102d37c00
+Jul  5 16:13:05 dsm kernel: RPC:       Couldn't create auth handle
+(flavor 390004)
+Jul  5 16:13:05 dsm kernel: RPC:       destroying transport ffff8d8223cab800
+Jul  5 16:13:05 dsm kernel: RPC:       xs_destroy xprt ffff8d8223cab800
+Jul  5 16:13:05 dsm kernel: RPC:       xs_close xprt ffff8d8223cab800
+Jul  5 16:13:05 dsm kernel: RPC:       disconnected transport ffff8d8223cab800
+Jul  5 16:13:05 dsm kernel: RPC:       set up xprt to ourip (port 2049) via tcp
+Jul  5 16:13:05 dsm kernel: RPC:       created transport
+ffff8d8223caa000 with 65536 slots
+Jul  5 16:13:05 dsm kernel: RPC:       creating nfs client for erdos
+(xprt ffff8d8223caa000)
+Jul  5 16:13:05 dsm kernel: RPC:       creating UNIX authenticator for
+client ffff8d8102d37c00
+Jul  5 16:13:05 dsm kernel: RPC:       new task initialized, procpid 5281
+Jul  5 16:13:05 dsm kernel: RPC:       allocated task ffff8d822385a900
+Jul  5 16:13:05 dsm kernel: RPC: 65012 __rpc_execute flags=0x680
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_start nfs4 proc NULL (sync)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_reserve (status 0)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 reserved req ffff8d8102d36000
+xid fea54e04
+Jul  5 16:13:05 dsm kernel: RPC:       wake_up_first(ffff8d8223caa170
+"xprt_sending")
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_reserveresult (status 0)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_refresh (status 0)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 holding NULL cred ffffffffc036e440
+Jul  5 16:13:05 dsm kernel: RPC: 65012 refreshing NULL cred ffffffffc036e440
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_refreshresult (status 0)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_allocate (status 0)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 allocated buffer of size 96 at
+ffff8d8223caa800
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_bind (status 0)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_connect xprt
+ffff8d8223caa000 is not connected
+Jul  5 16:13:05 dsm kernel: RPC: 65012 xprt_connect xprt
+ffff8d8223caa000 is not connected
+Jul  5 16:13:05 dsm kernel: RPC: 65012 sleep_on(queue "xprt_pending"
+time 4557317640)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 added to queue ffff8d8223caa218
+"xprt_pending"
+Jul  5 16:13:05 dsm kernel: RPC: 65012 setting alarm for 60000 ms
+Jul  5 16:13:05 dsm kernel: RPC:       xs_connect scheduled xprt
+ffff8d8223caa000
+Jul  5 16:13:05 dsm kernel: RPC: 65012 sync task going to sleep
+Jul  5 16:13:05 dsm kernel: RPC:       xs_bind 0.0.0.0:699: ok (0)
+Jul  5 16:13:05 dsm kernel: RPC:       worker connecting xprt
+ffff8d8223caa000 via tcp to our ip (port 2049)
+Jul  5 16:13:05 dsm kernel: RPC:       ffff8d8223caa000 connect status
+115 connected 0 sock state 2
+Jul  5 16:13:05 dsm kernel: RPC:       wake_up_first(ffff8d8223caa170
+"xprt_sending")
+Jul  5 16:13:05 dsm kernel: RPC:       xs_error_report client
+ffff8d8223caa000, error=113...
+Jul  5 16:13:05 dsm kernel: RPC: 65012 __rpc_wake_up_task (now 4557317640)
+Jul  5 16:13:05 dsm kernel: RPC: 65012 disabling timer
+Jul  5 16:13:05 dsm kernel: RPC: 65012 removed from queue
+ffff8d8223caa218 "xprt_pending"
+Jul  5 16:13:05 dsm kernel: RPC:       __rpc_wake_up_task done
+Jul  5 16:13:05 dsm kernel: RPC: 65012 sync task resuming
+Jul  5 16:13:05 dsm kernel: RPC:       xs_tcp_state_change client
+ffff8d8223caa000...
+Jul  5 16:13:05 dsm kernel: RPC:       state 7 conn 0 dead 0 zapped 1
+sk_shutdown 3
+Jul  5 16:13:05 dsm kernel: RPC: 65012 xprt_connect_status: retrying
+Jul  5 16:13:05 dsm kernel: RPC: 65012 call_connect_status (status -113)
+Jul  5 16:13:05 dsm kernel: RPC:       disconnected transport ffff8d8223caa000
+Jul  5 16:13:05 dsm kernel: RPC: 65012 return 0, status -113
