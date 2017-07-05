@@ -1,97 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:43261 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751444AbdGEQPC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jul 2017 12:15:02 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: [RFC] fix parallelism for rpc tasks
-Date: Wed, 5 Jul 2017 16:14:51 +0000
-Message-ID: <1499271287.10445.1.camel@primarydata.com>
-References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
-         <1499093918.79205.3.camel@primarydata.com>
-         <CAN-5tyHy=c6z4v5oTecSJMVpTe28CCVAkBQxj56iruJwetjHqQ@mail.gmail.com>
-         <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com>
-         <1499269592.6496.1.camel@primarydata.com>
-         <CAN-5tyHaT_j+fNPVbYzBLUh5_jbFxhFDVP+eby=Mf25V=JtpBw@mail.gmail.com>
-In-Reply-To: <CAN-5tyHaT_j+fNPVbYzBLUh5_jbFxhFDVP+eby=Mf25V=JtpBw@mail.gmail.com>
+Received: from mail-qk0-f193.google.com ([209.85.220.193]:33346 "EHLO
+        mail-qk0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751744AbdGERdL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jul 2017 13:33:11 -0400
+Received: by mail-qk0-f193.google.com with SMTP id p21so32175001qke.0
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Jul 2017 10:33:10 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1499271287.10445.1.camel@primarydata.com>
+References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
+ <1499093918.79205.3.camel@primarydata.com> <CAN-5tyHy=c6z4v5oTecSJMVpTe28CCVAkBQxj56iruJwetjHqQ@mail.gmail.com>
+ <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com> <1499269592.6496.1.camel@primarydata.com>
+ <CAN-5tyHaT_j+fNPVbYzBLUh5_jbFxhFDVP+eby=Mf25V=JtpBw@mail.gmail.com> <1499271287.10445.1.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 5 Jul 2017 13:33:09 -0400
+Message-ID: <CAN-5tyFeN3cUCi8u8VnHAQmGD=GE5+3ox-dyLrSdL52L4Lfrng@mail.gmail.com>
+Subject: Re: [RFC] fix parallelism for rpc tasks
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTA3LTA1IGF0IDEyOjA5IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gV2VkLCBKdWwgNSwgMjAxNyBhdCAxMTo0NiBBTSwgVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gT24gV2VkLCAyMDE3LTA3LTA1
-IGF0IDExOjExIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gT24gSnVsIDUsIDIw
-MTcsIGF0IDEwOjQ0IEFNLCBPbGdhIEtvcm5pZXZza2FpYSA8YWdsb0B1bWljaC5lZHU+DQo+ID4g
-PiA+IHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gT24gTW9uLCBKdWwgMywgMjAxNyBhdCAxMDo1
-OCBBTSwgVHJvbmQgTXlrbGVidXN0DQo+ID4gPiA+IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4g
-d3JvdGU6DQo+ID4gPiA+ID4gT24gVGh1LCAyMDE3LTA2LTI5IGF0IDA5OjI1IC0wNDAwLCBPbGdh
-IEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPiA+IEhpIGZvbGtzLA0KPiA+ID4gPiA+ID4g
-DQo+ID4gPiA+ID4gPiBPbiBhIG11bHRpLWNvcmUgbWFjaGluZSwgaXMgaXQgZXhwZWN0ZWQgdGhh
-dCB3ZSBjYW4gaGF2ZQ0KPiA+ID4gPiA+ID4gcGFyYWxsZWwNCj4gPiA+ID4gPiA+IFJQQ3MNCj4g
-PiA+ID4gPiA+IGhhbmRsZWQgYnkgZWFjaCBvZiB0aGUgcGVyLWNvcmUgd29ya3F1ZXVlPw0KPiA+
-ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBJbiB0ZXN0aW5nIGEgcmVhZCB3b3JrbG9hZCwgb2JzZXJ2
-aW5nIHZpYSAidG9wIiBjb21tYW5kDQo+ID4gPiA+ID4gPiB0aGF0IGENCj4gPiA+ID4gPiA+IHNp
-bmdsZQ0KPiA+ID4gPiA+ID4gImt3b3JrZXIiIHRocmVhZCBpcyBydW5uaW5nIHNlcnZpY2luZyB0
-aGUgcmVxdWVzdHMgKG5vDQo+ID4gPiA+ID4gPiBwYXJhbGxlbGlzbSkuDQo+ID4gPiA+ID4gPiBJ
-dCdzIG1vcmUgcHJvbWluZW50IHdoaWxlIGRvaW5nIHRoZXNlIG9wZXJhdGlvbnMgb3ZlciBrcmI1
-cA0KPiA+ID4gPiA+ID4gbW91bnQuDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFdoYXQgaGFz
-IGJlZW4gc3VnZ2VzdGVkIGJ5IEJydWNlIGlzIHRvIHRyeSB0aGlzIGFuZCBpbiBteQ0KPiA+ID4g
-PiA+ID4gdGVzdGluZyBJDQo+ID4gPiA+ID4gPiBzZWUgdGhlbiB0aGUgcmVhZCB3b3JrbG9hZCBz
-cHJlYWQgYW1vbmcgYWxsIHRoZSBrd29ya2VyDQo+ID4gPiA+ID4gPiB0aHJlYWRzLg0KPiA+ID4g
-PiA+ID4gDQo+ID4gPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBPbGdhIEtvcm5pZXZza2FpYSA8a29s
-Z2FAbmV0YXBwLmNvbT4NCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gZGlmZiAtLWdpdCBhL25l
-dC9zdW5ycGMvc2NoZWQuYyBiL25ldC9zdW5ycGMvc2NoZWQuYw0KPiA+ID4gPiA+ID4gaW5kZXgg
-MGNjODM4My4uZjgwZTY4OCAxMDA2NDQNCj4gPiA+ID4gPiA+IC0tLSBhL25ldC9zdW5ycGMvc2No
-ZWQuYw0KPiA+ID4gPiA+ID4gKysrIGIvbmV0L3N1bnJwYy9zY2hlZC5jDQo+ID4gPiA+ID4gPiBA
-QCAtMTA5NSw3ICsxMDk1LDcgQEAgc3RhdGljIGludCBycGNpb2Rfc3RhcnQodm9pZCkNCj4gPiA+
-ID4gPiA+IMKgKiBDcmVhdGUgdGhlIHJwY2lvZCB0aHJlYWQgYW5kIHdhaXQgZm9yIGl0IHRvIHN0
-YXJ0Lg0KPiA+ID4gPiA+ID4gwqAqLw0KPiA+ID4gPiA+ID4gwqBkcHJpbnRrKCJSUEM6wqDCoMKg
-wqDCoMKgwqBjcmVhdGluZyB3b3JrcXVldWUgcnBjaW9kXG4iKTsNCj4gPiA+ID4gPiA+IC0gd3Eg
-PSBhbGxvY193b3JrcXVldWUoInJwY2lvZCIsIFdRX01FTV9SRUNMQUlNLCAwKTsNCj4gPiA+ID4g
-PiA+ICsgd3EgPSBhbGxvY193b3JrcXVldWUoInJwY2lvZCIsIFdRX01FTV9SRUNMQUlNIHwNCj4g
-PiA+ID4gPiA+IFdRX1VOQk9VTkQsDQo+ID4gPiA+ID4gPiAwKTsNCj4gPiA+ID4gPiA+IMKgaWYg
-KCF3cSkNCj4gPiA+ID4gPiA+IMKgZ290byBvdXRfZmFpbGVkOw0KPiA+ID4gPiA+ID4gwqBycGNp
-b2Rfd29ya3F1ZXVlID0gd3E7DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBX
-UV9VTkJPVU5EIHR1cm5zIG9mZiBjb25jdXJyZW5jeSBtYW5hZ2VtZW50IG9uIHRoZSB0aHJlYWQN
-Cj4gPiA+ID4gPiBwb29sDQo+ID4gPiA+ID4gKFNlZQ0KPiA+ID4gPiA+IERvY3VtZW50YXRpb24v
-Y29yZS1hcGkvd29ya3F1ZXVlLnJzdC4gSXQgYWxzbyBtZWFucyB3ZQ0KPiA+ID4gPiA+IGNvbnRl
-bmQNCj4gPiA+ID4gPiBmb3Igd29yaw0KPiA+ID4gPiA+IGl0ZW0gcXVldWluZy9kZXF1ZXVpbmcg
-bG9ja3MsIHNpbmNlIHRoZSB0aHJlYWRzIHdoaWNoIHJ1biB0aGUNCj4gPiA+ID4gPiB3b3JrDQo+
-ID4gPiA+ID4gaXRlbXMgYXJlIG5vdCBib3VuZCB0byBhIENQVS4NCj4gPiA+ID4gPiANCj4gPiA+
-ID4gPiBJT1c6IFRoaXMgaXMgbm90IGEgc2xhbS1kdW5rIG9idmlvdXMgZ2Fpbi4NCj4gPiA+ID4g
-DQo+ID4gPiA+IEkgYWdyZWUgYnV0IEkgdGhpbmsgaXQncyB3b3J0aCBjb25zaWRlcmF0aW9uLiBJ
-J20gd2FpdGluZyB0bw0KPiA+ID4gPiBnZXQNCj4gPiA+ID4gKHJlYWwpIHBlcmZvcm1hbmNlIG51
-bWJlcnMgb2YgaW1wcm92ZW1lbnQgKGluc3RlYWQgb2YgbXkgVk0NCj4gPiA+ID4gc2V0dXApDQo+
-ID4gPiA+IHRvDQo+ID4gPiA+IGhlbHAgbXkgY2FzZS4gSG93ZXZlciwgaXQgd2FzIHJlcG9ydGVk
-IDkwJSBkZWdyYWRhdGlvbiBmb3IgdGhlDQo+ID4gPiA+IHJlYWQNCj4gPiA+ID4gcGVyZm9ybWFu
-Y2Ugb3ZlciBrcmI1cCB3aGVuIDFDUFUgaXMgZXhlY3V0aW5nIGFsbCBvcHMuDQo+ID4gPiA+IA0K
-PiA+ID4gPiBJcyB0aGVyZSBhIGRpZmZlcmVudCB3YXkgdG8gbWFrZSBzdXJlIHRoYXQgb24gYSBt
-dWx0aS1wcm9jZXNzb3INCj4gPiA+ID4gbWFjaGluZSB3ZSBjYW4gdGFrZSBhZHZhbnRhZ2Ugb2Yg
-YWxsIGF2YWlsYWJsZSBDUFVzPyBTaW1wbGUNCj4gPiA+ID4ga2VybmVsDQo+ID4gPiA+IHRocmVh
-ZHMgaW5zdGVhZCBvZiBhIHdvcmsgcXVldWU/DQo+ID4gPiANCj4gPiA+IFRoZXJlIGlzIGEgdHJh
-ZGUtb2ZmIGJldHdlZW4gc3ByZWFkaW5nIHRoZSB3b3JrLCBhbmQgZW5zdXJpbmcgaXQNCj4gPiA+
-IGlzIGV4ZWN1dGVkIG9uIGEgQ1BVIGNsb3NlIHRvIHRoZSBJL08gYW5kIGFwcGxpY2F0aW9uLiBJ
-TU8NCj4gPiA+IFVOQk9VTkQNCj4gPiA+IGlzIGEgZ29vZCB3YXkgdG8gZG8gdGhhdC4gVU5CT1VO
-RCB3aWxsIGF0dGVtcHQgdG8gc2NoZWR1bGUgdGhlDQo+ID4gPiB3b3JrIG9uIHRoZSBwcmVmZXJy
-ZWQgQ1BVLCBidXQgYWxsb3cgaXQgdG8gYmUgbWlncmF0ZWQgaWYgdGhhdA0KPiA+ID4gQ1BVIGlz
-IGJ1c3kuDQo+ID4gPiANCj4gPiA+IFRoZSBhZHZhbnRhZ2Ugb2YgdGhpcyBpcyB0aGF0IHdoZW4g
-dGhlIGNsaWVudCB3b3JrbG9hZCBpcyBDUFUNCj4gPiA+IGludGVuc2l2ZSAoc2F5LCBhIHNvZnR3
-YXJlIGJ1aWxkKSwgUlBDIGNsaWVudCB3b3JrIGNhbiBiZQ0KPiA+ID4gc2NoZWR1bGVkDQo+ID4g
-PiBhbmQgcnVuIG1vcmUgcXVpY2tseSwgd2hpY2ggcmVkdWNlcyBsYXRlbmN5Lg0KPiA+ID4gDQo+
-ID4gDQo+ID4gVGhhdCBzaG91bGQgbm8gbG9uZ2VyIGJlIGEgaHVnZSBpc3N1ZSwgc2luY2UgcXVl
-dWVfd29yaygpIHdpbGwgbm93DQo+ID4gZGVmYXVsdCB0byB0aGUgV09SS19DUFVfVU5CT1VORCBm
-bGFnLCB3aGljaCBwcmVmZXJzIHRoZSBsb2NhbCBDUFUsDQo+ID4gYnV0DQo+ID4gd2lsbCBzY2hl
-ZHVsZSBlbHNld2hlcmUgaWYgdGhlIGxvY2FsIENQVSBpcyBjb25nZXN0ZWQuDQo+IA0KPiBJIGRv
-bid0IGJlbGlldmUgTkZTIHVzZSB3b3JrcXVldWVfY29uZ2VzdGVkKCkgdG8gc29tZWhvdyBzY2hl
-ZHVsZSB0aGUNCj4gd29yayBlbHNld2hlcmUuIFVubGVzcyB0aGUgcXVldWUgaXMgbWFya2VkIFVO
-Qk9VTkRFRCBJIGRvbid0IGJlbGlldmUNCj4gdGhlcmUgaXMgYW55IGludGVudGlvbiBvZiBiYWxh
-bmNpbmcgdGhlIENQVSBsb2FkLg0KPiANCg0KSSBzaG91bGRuJ3QgaGF2ZSB0byB0ZXN0IHRoZSBx
-dWV1ZSB3aGVuIHNjaGVkdWxpbmcgd2l0aA0KV09SS19DUFVfVU5CT1VORC4NCg0KLS0gDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRy
-b25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+On Wed, Jul 5, 2017 at 12:14 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Wed, 2017-07-05 at 12:09 -0400, Olga Kornievskaia wrote:
+>> On Wed, Jul 5, 2017 at 11:46 AM, Trond Myklebust
+>> <trondmy@primarydata.com> wrote:
+>> > On Wed, 2017-07-05 at 11:11 -0400, Chuck Lever wrote:
+>> > > > On Jul 5, 2017, at 10:44 AM, Olga Kornievskaia <aglo@umich.edu>
+>> > > > wrote:
+>> > > >
+>> > > > On Mon, Jul 3, 2017 at 10:58 AM, Trond Myklebust
+>> > > > <trondmy@primarydata.com> wrote:
+>> > > > > On Thu, 2017-06-29 at 09:25 -0400, Olga Kornievskaia wrote:
+>> > > > > > Hi folks,
+>> > > > > >
+>> > > > > > On a multi-core machine, is it expected that we can have
+>> > > > > > parallel
+>> > > > > > RPCs
+>> > > > > > handled by each of the per-core workqueue?
+>> > > > > >
+>> > > > > > In testing a read workload, observing via "top" command
+>> > > > > > that a
+>> > > > > > single
+>> > > > > > "kworker" thread is running servicing the requests (no
+>> > > > > > parallelism).
+>> > > > > > It's more prominent while doing these operations over krb5p
+>> > > > > > mount.
+>> > > > > >
+>> > > > > > What has been suggested by Bruce is to try this and in my
+>> > > > > > testing I
+>> > > > > > see then the read workload spread among all the kworker
+>> > > > > > threads.
+>> > > > > >
+>> > > > > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> > > > > >
+>> > > > > > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+>> > > > > > index 0cc8383..f80e688 100644
+>> > > > > > --- a/net/sunrpc/sched.c
+>> > > > > > +++ b/net/sunrpc/sched.c
+>> > > > > > @@ -1095,7 +1095,7 @@ static int rpciod_start(void)
+>> > > > > >  * Create the rpciod thread and wait for it to start.
+>> > > > > >  */
+>> > > > > >  dprintk("RPC:       creating workqueue rpciod\n");
+>> > > > > > - wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM, 0);
+>> > > > > > + wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM |
+>> > > > > > WQ_UNBOUND,
+>> > > > > > 0);
+>> > > > > >  if (!wq)
+>> > > > > >  goto out_failed;
+>> > > > > >  rpciod_workqueue = wq;
+>> > > > > >
+>> > > > >
+>> > > > > WQ_UNBOUND turns off concurrency management on the thread
+>> > > > > pool
+>> > > > > (See
+>> > > > > Documentation/core-api/workqueue.rst. It also means we
+>> > > > > contend
+>> > > > > for work
+>> > > > > item queuing/dequeuing locks, since the threads which run the
+>> > > > > work
+>> > > > > items are not bound to a CPU.
+>> > > > >
+>> > > > > IOW: This is not a slam-dunk obvious gain.
+>> > > >
+>> > > > I agree but I think it's worth consideration. I'm waiting to
+>> > > > get
+>> > > > (real) performance numbers of improvement (instead of my VM
+>> > > > setup)
+>> > > > to
+>> > > > help my case. However, it was reported 90% degradation for the
+>> > > > read
+>> > > > performance over krb5p when 1CPU is executing all ops.
+>> > > >
+>> > > > Is there a different way to make sure that on a multi-processor
+>> > > > machine we can take advantage of all available CPUs? Simple
+>> > > > kernel
+>> > > > threads instead of a work queue?
+>> > >
+>> > > There is a trade-off between spreading the work, and ensuring it
+>> > > is executed on a CPU close to the I/O and application. IMO
+>> > > UNBOUND
+>> > > is a good way to do that. UNBOUND will attempt to schedule the
+>> > > work on the preferred CPU, but allow it to be migrated if that
+>> > > CPU is busy.
+>> > >
+>> > > The advantage of this is that when the client workload is CPU
+>> > > intensive (say, a software build), RPC client work can be
+>> > > scheduled
+>> > > and run more quickly, which reduces latency.
+>> > >
+>> >
+>> > That should no longer be a huge issue, since queue_work() will now
+>> > default to the WORK_CPU_UNBOUND flag, which prefers the local CPU,
+>> > but
+>> > will schedule elsewhere if the local CPU is congested.
+>>
+>> I don't believe NFS use workqueue_congested() to somehow schedule the
+>> work elsewhere. Unless the queue is marked UNBOUNDED I don't believe
+>> there is any intention of balancing the CPU load.
+>>
+>
+> I shouldn't have to test the queue when scheduling with
+> WORK_CPU_UNBOUND.
+>
 
+Comments in the code says that "if CPU dies" it'll be re-scheduled on
+another. I think the code requires to mark the queue UNBOUND to really
+be scheduled on a different CPU. Just my reading of the code and it
+matches what is seen with the krb5 workload.
