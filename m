@@ -1,144 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45316 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752459AbdGECWc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 4 Jul 2017 22:22:32 -0400
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Date: Wed, 05 Jul 2017 12:22:20 +1000
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        LKML <linux-kernel@vger.kernel.org>
-Subject: [PATCH] NFS: only invalidate dentrys that are clearly invalid.
-Message-ID: <87wp7ny65f.fsf@notabene.neil.brown.name>
+Received: from mga01.intel.com ([192.55.52.88]:40998 "EHLO mga01.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751966AbdGEJDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 5 Jul 2017 05:03:14 -0400
+From: "Reshetova, Elena" <elena.reshetova@intel.com>
+To: David Miller <davem@davemloft.net>
+CC: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-decnet-user@lists.sourceforge.net"
+        <linux-decnet-user@lists.sourceforge.net>,
+        "jmorris@namei.org" <jmorris@namei.org>,
+        "kaber@trash.net" <kaber@trash.net>,
+        "yoshfuji@linux-ipv6.org" <yoshfuji@linux-ipv6.org>,
+        "kuznet@ms2.inr.ac.ru" <kuznet@ms2.inr.ac.ru>,
+        "3chas3@gmail.com" <3chas3@gmail.com>,
+        "ralf@linux-mips.org" <ralf@linux-mips.org>,
+        "stephen@networkplumber.org" <stephen@networkplumber.org>,
+        "jchapman@katalix.com" <jchapman@katalix.com>,
+        "jhs@mojatatu.com" <jhs@mojatatu.com>,
+        "bridge@lists.linux-foundation.org"
+        <bridge@lists.linux-foundation.org>,
+        "linux-hams@vger.kernel.org" <linux-hams@vger.kernel.org>,
+        "linux-x25@vger.kernel.org" <linux-x25@vger.kernel.org>,
+        "peterz@infradead.org" <peterz@infradead.org>,
+        "keescook@chromium.org" <keescook@chromium.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-sctp@vger.kernel.org" <linux-sctp@vger.kernel.org>,
+        "vyasevich@gmail.com" <vyasevich@gmail.com>,
+        "nhorman@tuxdriver.com" <nhorman@tuxdriver.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "zyan@redhat.com" <zyan@redhat.com>,
+        "sage@redhat.com" <sage@redhat.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "steffen.klassert@secunet.com" <steffen.klassert@secunet.com>,
+        "herbert@gondor.apana.org.au" <herbert@gondor.apana.org.au>,
+        "santosh.shilimkar@oracle.com" <santosh.shilimkar@oracle.com>,
+        "jreuter@yaina.de" <jreuter@yaina.de>
+Subject: RE: [PATCH 00/36] v2 net subsystem misc refcounter conversions
+Date: Wed, 5 Jul 2017 09:03:06 +0000
+Message-ID: <2236FBA76BA1254E88B949DDB74E612B6FF20D45@IRSMSX102.ger.corp.intel.com>
+References: <1499172811-16271-1-git-send-email-elena.reshetova@intel.com>
+ <20170704.230040.195111189904913382.davem@davemloft.net>
+In-Reply-To: <20170704.230040.195111189904913382.davem@davemloft.net>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
+> From: Elena Reshetova <elena.reshetova@intel.com>
+> Date: Tue,  4 Jul 2017 15:52:55 +0300
+> 
+> > Changes in v2:
+> >  * rebase on top of net-next
+> >  * currently by default refcount_t = atomic_t (*) and uses all
+> >    atomic standard operations unless CONFIG_REFCOUNT_FULL is enabled.
+> >    This is a compromise for the systems that are critical on
+> >    performance (such as net) and cannot accept even slight delay
+> >    on the refcounter operations.
+> >
+> > This series, for various misc network components, replaces atomic_t reference
+> > counters with the new refcount_t type and API (see include/linux/refcount.h).
+> > By doing this we prevent intentional or accidental
+> > underflows or overflows that can led to use-after-free vulnerabilities.
+> > These are the last networking-related conversions with the exception of
+> > network drivers (to be send separately).
+> >
+> > Please excuse the long patch set, but seems like breaking it up
+> > won't save that much on CC list and most of the changes are
+> > trivial.
+> >
+> > The patches are fully independent and can be cherry-picked separately.
+> > In order to try with refcount functionality enabled in run-time,
+> > CONFIG_REFCOUNT_FULL must be enabled.
+> >
+> > NOTE: automatic kernel builder for some reason doesn't like all my
+> > network branches and regularly times out the builds on these branches.
+> > Suggestion for "waiting a day for a good coverage" doesn't work, as
+> > we have seen with generic network conversions. So please wait for the
+> > full report from kernel test rebot before merging further up.
+> > This has been compile-tested in 116 configs, but 71 timed out (including
+> > all s390-related configs again). I am trying to see if they can fix
+> > build coverage for me in meanwhile.
+> >
+> > * The respective change is currently merged into -next as
+> >   "locking/refcount: Create unchecked atomic_t implementation".
+> 
+> Series applied, that's enough for this cycle, please.
 
-Since commit bafc9b754f75 ("vfs: More precise tests in d_invalidate")
-in v3.18, a return of '0' from ->d_revalidate() will cause the dentry
-to be invalidated even if it has filesystems mounted on or it or on a
-descendant.  The mounted filesystem is unmounted.
+Thank you very much David! I really appreciate you taking so many of these conversions in
+one go! I will stop for now :) 
 
-This means we need to be careful not to return 0 unless the directory
-referred to truly is invalid.  So -ESTALE or -ENOENT should invalidate
-the directory.  Other errors such a -EPERM or -ERESTARTSYS should be
-returned from ->d_revalidate() so they are propagated to the caller.
+With regards to net, I only have networking drivers left (16 patches in total), but I can submit them in the
+next round. Will go bug other subsystem maintainers next :) 
 
-A particular problem can be demonstrated by:
-
-1/ mount an NFS filesystem using NFSv3 on /mnt
-2/ mount any other filesystem on /mnt/foo
-3/ ls /mnt/foo
-4/ turn off network, or otherwise make the server unable to respond
-5/ ls /mnt/foo &
-6/ cat /proc/$!/stack # note that nfs_lookup_revalidate is in the call stack
-7/ kill -9 $! # this results in -ERESTARTSYS being returned
-8/ observe that /mnt/foo has been unmounted.
-
-This patch changes nfs_lookup_revalidate() to only treat
-  -ESTALE from nfs_lookup_verify_inode() and
-  -ESTALE or -ENOENT from ->lookup()
-as indicating an invalid inode.  Other errors are returned.
-
-Also nfs_check_inode_attributes() is changed to return -ESTALE rather
-than -EIO.  This is consistent with the error returned in similar
-circumstances from nfs_update_inode().
-
-As this bug allows any user to unmount a filesystem mounted on an NFS
-filesystem, this fix is suitable for stable kernels.
-
-Fixes: bafc9b754f75 ("vfs: More precise tests in d_invalidate")
-Cc: stable@vger.kernel.org (v3.18+)
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- fs/nfs/dir.c   | 12 ++++++++----
- fs/nfs/inode.c |  4 ++--
- 2 files changed, 10 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4f0706bd387f..727c5a53417a 100644
-=2D-- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1115,11 +1115,13 @@ static int nfs_lookup_revalidate(struct dentry *den=
-try, unsigned int flags)
- 	/* Force a full look up iff the parent directory has changed */
- 	if (!nfs_is_exclusive_create(dir, flags) &&
- 	    nfs_check_verifier(dir, dentry, flags & LOOKUP_RCU)) {
-=2D
-=2D		if (nfs_lookup_verify_inode(inode, flags)) {
-+		error =3D nfs_lookup_verify_inode(inode, flags);
-+		if (error) {
- 			if (flags & LOOKUP_RCU)
- 				return -ECHILD;
-=2D			goto out_zap_parent;
-+			if (error =3D=3D -ESTALE)
-+				goto out_zap_parent;
-+			goto out_error;
- 		}
- 		nfs_advise_use_readdirplus(dir);
- 		goto out_valid;
-@@ -1144,8 +1146,10 @@ static int nfs_lookup_revalidate(struct dentry *dent=
-ry, unsigned int flags)
- 	trace_nfs_lookup_revalidate_enter(dir, dentry, flags);
- 	error =3D NFS_PROTO(dir)->lookup(dir, &dentry->d_name, fhandle, fattr, la=
-bel);
- 	trace_nfs_lookup_revalidate_exit(dir, dentry, flags, error);
-=2D	if (error)
-+	if (error =3D=3D -ESTALE || error =3D=3D -ENOENT)
- 		goto out_bad;
-+	if (error)
-+		goto out_error;
- 	if (nfs_compare_fh(NFS_FH(inode), fhandle))
- 		goto out_bad;
- 	if ((error =3D nfs_refresh_inode(inode, fattr)) !=3D 0)
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 5751c1310177..7e7a894601b9 100644
-=2D-- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1321,9 +1321,9 @@ static int nfs_check_inode_attributes(struct inode *i=
-node, struct nfs_fattr *fat
- 		return 0;
- 	/* Has the inode gone and changed behind our back? */
- 	if ((fattr->valid & NFS_ATTR_FATTR_FILEID) && nfsi->fileid !=3D fattr->fi=
-leid)
-=2D		return -EIO;
-+		return -ESTALE;
- 	if ((fattr->valid & NFS_ATTR_FATTR_TYPE) && (inode->i_mode & S_IFMT) !=3D=
- (fattr->mode & S_IFMT))
-=2D		return -EIO;
-+		return -ESTALE;
-=20
- 	if (!nfs_file_has_buffered_writers(nfsi)) {
- 		/* Verify a few of the more important attributes */
-=2D-=20
-2.12.2
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAllcTV0ACgkQOeye3VZi
-gblrMw/+Povgb/Yh10pAiphWt3Q45GoYdVq1kU4dfR9nvdY2lf9JLRGqaMJAwo6g
-cKhA2Hcy1SAzxQXBbz5a0f7xuSxUGErCIZ5/wn4p9+NW8hqpJ5GYOwT3hV7+BKDE
-ov94hPtmm34AydxHZL/k/JZiBM4HEyGwVxSu06RtwiKMgKxGTns0fBtL6gS8j+1s
-IZ2n6PZTTSUki8cXyIz8x70dkBCkOyfbBLpvDl5AOxjNctELWxpB1bL3NG9bN5Ie
-Mmr0qzMrMtBhDsoJ3a0wRHGli6qJh/p42VInnD4qzsWJA6UvUKrMYSCfbZ8sz+9l
-iBnaBjvktX/RBqH0P0VL3T2yoSMmcrWgzJZ6TDPuxop5aDoGsfjytd/PJMNIGXD6
-RCIUy0wHUXduXuiv6IjpQiQZd2BcCg7lVKznD3lgBfJT7aQYEkgdMBxr4JqhZu6p
-dY/6A6+Z4wV8/axwAk2CnxQNqWBdQaFMTJwKV4WcHs1EgtIWPNcggY+/sqwP80K3
-3lsubwJJmerI+nAWeIKXj5IAh8P+R0CetotxwXahTGvzE30f237DRb/qPgc0sInA
-G3lDRfVrcl2yphV9mxWbDborA8VjuTP9HR2qe3SJW2mjx/fvRCZAu/eJ0oqN8Gw4
-Ay8BzV/9UTx/zlz60x/GPZwfl1tiaT6t14wtUJU8qSWYtJWK/VI=
-=op9x
------END PGP SIGNATURE-----
---=-=-=--
+Best Regards,
+Elena.
