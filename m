@@ -1,80 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39615 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751654AbdGEPqj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jul 2017 11:46:39 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
-        "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC] fix parallelism for rpc tasks
-Date: Wed, 5 Jul 2017 15:46:35 +0000
-Message-ID: <1499269592.6496.1.camel@primarydata.com>
-References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
-         <1499093918.79205.3.camel@primarydata.com>
-         <CAN-5tyHy=c6z4v5oTecSJMVpTe28CCVAkBQxj56iruJwetjHqQ@mail.gmail.com>
-         <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com>
-In-Reply-To: <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com>
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:33438 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751858AbdGEQJV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Jul 2017 12:09:21 -0400
+Received: by mail-qt0-f194.google.com with SMTP id c20so31140861qte.0
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Jul 2017 09:09:15 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1499269592.6496.1.camel@primarydata.com>
+References: <CAN-5tyEX1Z_3EB3h6=z_S1E=gpTObOrcP5Ub2HmVKBB5RaU1DQ@mail.gmail.com>
+ <1499093918.79205.3.camel@primarydata.com> <CAN-5tyHy=c6z4v5oTecSJMVpTe28CCVAkBQxj56iruJwetjHqQ@mail.gmail.com>
+ <B944CE35-FC0A-461D-B43A-223B0CFDAD50@oracle.com> <1499269592.6496.1.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 5 Jul 2017 12:09:14 -0400
+Message-ID: <CAN-5tyHaT_j+fNPVbYzBLUh5_jbFxhFDVP+eby=Mf25V=JtpBw@mail.gmail.com>
+Subject: Re: [RFC] fix parallelism for rpc tasks
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTA3LTA1IGF0IDExOjExIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBKdWwgNSwgMjAxNywgYXQgMTA6NDQgQU0sIE9sZ2EgS29ybmlldnNrYWlhIDxhZ2xvQHVt
-aWNoLmVkdT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiBPbiBNb24sIEp1bCAzLCAyMDE3IGF0IDEw
-OjU4IEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA8dHJvbmRteUBwcmltYXJ5ZGF0YS5jb20+IHdy
-b3RlOg0KPiA+ID4gT24gVGh1LCAyMDE3LTA2LTI5IGF0IDA5OjI1IC0wNDAwLCBPbGdhIEtvcm5p
-ZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gSGkgZm9sa3MsDQo+ID4gPiA+IA0KPiA+ID4gPiBPbiBh
-IG11bHRpLWNvcmUgbWFjaGluZSwgaXMgaXQgZXhwZWN0ZWQgdGhhdCB3ZSBjYW4gaGF2ZQ0KPiA+
-ID4gPiBwYXJhbGxlbA0KPiA+ID4gPiBSUENzDQo+ID4gPiA+IGhhbmRsZWQgYnkgZWFjaCBvZiB0
-aGUgcGVyLWNvcmUgd29ya3F1ZXVlPw0KPiA+ID4gPiANCj4gPiA+ID4gSW4gdGVzdGluZyBhIHJl
-YWQgd29ya2xvYWQsIG9ic2VydmluZyB2aWEgInRvcCIgY29tbWFuZCB0aGF0IGENCj4gPiA+ID4g
-c2luZ2xlDQo+ID4gPiA+ICJrd29ya2VyIiB0aHJlYWQgaXMgcnVubmluZyBzZXJ2aWNpbmcgdGhl
-IHJlcXVlc3RzIChubw0KPiA+ID4gPiBwYXJhbGxlbGlzbSkuDQo+ID4gPiA+IEl0J3MgbW9yZSBw
-cm9taW5lbnQgd2hpbGUgZG9pbmcgdGhlc2Ugb3BlcmF0aW9ucyBvdmVyIGtyYjVwDQo+ID4gPiA+
-IG1vdW50Lg0KPiA+ID4gPiANCj4gPiA+ID4gV2hhdCBoYXMgYmVlbiBzdWdnZXN0ZWQgYnkgQnJ1
-Y2UgaXMgdG8gdHJ5IHRoaXMgYW5kIGluIG15DQo+ID4gPiA+IHRlc3RpbmcgSQ0KPiA+ID4gPiBz
-ZWUgdGhlbiB0aGUgcmVhZCB3b3JrbG9hZCBzcHJlYWQgYW1vbmcgYWxsIHRoZSBrd29ya2VyDQo+
-ID4gPiA+IHRocmVhZHMuDQo+ID4gPiA+IA0KPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBPbGdhIEtv
-cm5pZXZza2FpYSA8a29sZ2FAbmV0YXBwLmNvbT4NCj4gPiA+ID4gDQo+ID4gPiA+IGRpZmYgLS1n
-aXQgYS9uZXQvc3VucnBjL3NjaGVkLmMgYi9uZXQvc3VucnBjL3NjaGVkLmMNCj4gPiA+ID4gaW5k
-ZXggMGNjODM4My4uZjgwZTY4OCAxMDA2NDQNCj4gPiA+ID4gLS0tIGEvbmV0L3N1bnJwYy9zY2hl
-ZC5jDQo+ID4gPiA+ICsrKyBiL25ldC9zdW5ycGMvc2NoZWQuYw0KPiA+ID4gPiBAQCAtMTA5NSw3
-ICsxMDk1LDcgQEAgc3RhdGljIGludCBycGNpb2Rfc3RhcnQodm9pZCkNCj4gPiA+ID4gwqAqIENy
-ZWF0ZSB0aGUgcnBjaW9kIHRocmVhZCBhbmQgd2FpdCBmb3IgaXQgdG8gc3RhcnQuDQo+ID4gPiA+
-IMKgKi8NCj4gPiA+ID4gwqBkcHJpbnRrKCJSUEM6wqDCoMKgwqDCoMKgwqBjcmVhdGluZyB3b3Jr
-cXVldWUgcnBjaW9kXG4iKTsNCj4gPiA+ID4gLSB3cSA9IGFsbG9jX3dvcmtxdWV1ZSgicnBjaW9k
-IiwgV1FfTUVNX1JFQ0xBSU0sIDApOw0KPiA+ID4gPiArIHdxID0gYWxsb2Nfd29ya3F1ZXVlKCJy
-cGNpb2QiLCBXUV9NRU1fUkVDTEFJTSB8IFdRX1VOQk9VTkQsDQo+ID4gPiA+IDApOw0KPiA+ID4g
-PiDCoGlmICghd3EpDQo+ID4gPiA+IMKgZ290byBvdXRfZmFpbGVkOw0KPiA+ID4gPiDCoHJwY2lv
-ZF93b3JrcXVldWUgPSB3cTsNCj4gPiA+ID4gDQo+ID4gPiANCj4gPiA+IFdRX1VOQk9VTkQgdHVy
-bnMgb2ZmIGNvbmN1cnJlbmN5IG1hbmFnZW1lbnQgb24gdGhlIHRocmVhZCBwb29sDQo+ID4gPiAo
-U2VlDQo+ID4gPiBEb2N1bWVudGF0aW9uL2NvcmUtYXBpL3dvcmtxdWV1ZS5yc3QuIEl0IGFsc28g
-bWVhbnMgd2UgY29udGVuZA0KPiA+ID4gZm9yIHdvcmsNCj4gPiA+IGl0ZW0gcXVldWluZy9kZXF1
-ZXVpbmcgbG9ja3MsIHNpbmNlIHRoZSB0aHJlYWRzIHdoaWNoIHJ1biB0aGUNCj4gPiA+IHdvcmsN
-Cj4gPiA+IGl0ZW1zIGFyZSBub3QgYm91bmQgdG8gYSBDUFUuDQo+ID4gPiANCj4gPiA+IElPVzog
-VGhpcyBpcyBub3QgYSBzbGFtLWR1bmsgb2J2aW91cyBnYWluLg0KPiA+IA0KPiA+IEkgYWdyZWUg
-YnV0IEkgdGhpbmsgaXQncyB3b3J0aCBjb25zaWRlcmF0aW9uLiBJJ20gd2FpdGluZyB0byBnZXQN
-Cj4gPiAocmVhbCkgcGVyZm9ybWFuY2UgbnVtYmVycyBvZiBpbXByb3ZlbWVudCAoaW5zdGVhZCBv
-ZiBteSBWTSBzZXR1cCkNCj4gPiB0bw0KPiA+IGhlbHAgbXkgY2FzZS4gSG93ZXZlciwgaXQgd2Fz
-IHJlcG9ydGVkIDkwJSBkZWdyYWRhdGlvbiBmb3IgdGhlIHJlYWQNCj4gPiBwZXJmb3JtYW5jZSBv
-dmVyIGtyYjVwIHdoZW4gMUNQVSBpcyBleGVjdXRpbmcgYWxsIG9wcy4NCj4gPiANCj4gPiBJcyB0
-aGVyZSBhIGRpZmZlcmVudCB3YXkgdG8gbWFrZSBzdXJlIHRoYXQgb24gYSBtdWx0aS1wcm9jZXNz
-b3INCj4gPiBtYWNoaW5lIHdlIGNhbiB0YWtlIGFkdmFudGFnZSBvZiBhbGwgYXZhaWxhYmxlIENQ
-VXM/IFNpbXBsZSBrZXJuZWwNCj4gPiB0aHJlYWRzIGluc3RlYWQgb2YgYSB3b3JrIHF1ZXVlPw0K
-PiANCj4gVGhlcmUgaXMgYSB0cmFkZS1vZmYgYmV0d2VlbiBzcHJlYWRpbmcgdGhlIHdvcmssIGFu
-ZCBlbnN1cmluZyBpdA0KPiBpcyBleGVjdXRlZCBvbiBhIENQVSBjbG9zZSB0byB0aGUgSS9PIGFu
-ZCBhcHBsaWNhdGlvbi4gSU1PIFVOQk9VTkQNCj4gaXMgYSBnb29kIHdheSB0byBkbyB0aGF0LiBV
-TkJPVU5EIHdpbGwgYXR0ZW1wdCB0byBzY2hlZHVsZSB0aGUNCj4gd29yayBvbiB0aGUgcHJlZmVy
-cmVkIENQVSwgYnV0IGFsbG93IGl0IHRvIGJlIG1pZ3JhdGVkIGlmIHRoYXQNCj4gQ1BVIGlzIGJ1
-c3kuDQo+IA0KPiBUaGUgYWR2YW50YWdlIG9mIHRoaXMgaXMgdGhhdCB3aGVuIHRoZSBjbGllbnQg
-d29ya2xvYWQgaXMgQ1BVDQo+IGludGVuc2l2ZSAoc2F5LCBhIHNvZnR3YXJlIGJ1aWxkKSwgUlBD
-IGNsaWVudCB3b3JrIGNhbiBiZSBzY2hlZHVsZWQNCj4gYW5kIHJ1biBtb3JlIHF1aWNrbHksIHdo
-aWNoIHJlZHVjZXMgbGF0ZW5jeS4NCj4gDQoNClRoYXQgc2hvdWxkIG5vIGxvbmdlciBiZSBhIGh1
-Z2UgaXNzdWUsIHNpbmNlIHF1ZXVlX3dvcmsoKSB3aWxsIG5vdw0KZGVmYXVsdCB0byB0aGUgV09S
-S19DUFVfVU5CT1VORCBmbGFnLCB3aGljaCBwcmVmZXJzIHRoZSBsb2NhbCBDUFUsIGJ1dA0Kd2ls
-bCBzY2hlZHVsZSBlbHNld2hlcmUgaWYgdGhlIGxvY2FsIENQVSBpcyBjb25nZXN0ZWQuDQoNCi0t
-IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlE
-YXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On Wed, Jul 5, 2017 at 11:46 AM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Wed, 2017-07-05 at 11:11 -0400, Chuck Lever wrote:
+>> > On Jul 5, 2017, at 10:44 AM, Olga Kornievskaia <aglo@umich.edu>
+>> > wrote:
+>> >
+>> > On Mon, Jul 3, 2017 at 10:58 AM, Trond Myklebust
+>> > <trondmy@primarydata.com> wrote:
+>> > > On Thu, 2017-06-29 at 09:25 -0400, Olga Kornievskaia wrote:
+>> > > > Hi folks,
+>> > > >
+>> > > > On a multi-core machine, is it expected that we can have
+>> > > > parallel
+>> > > > RPCs
+>> > > > handled by each of the per-core workqueue?
+>> > > >
+>> > > > In testing a read workload, observing via "top" command that a
+>> > > > single
+>> > > > "kworker" thread is running servicing the requests (no
+>> > > > parallelism).
+>> > > > It's more prominent while doing these operations over krb5p
+>> > > > mount.
+>> > > >
+>> > > > What has been suggested by Bruce is to try this and in my
+>> > > > testing I
+>> > > > see then the read workload spread among all the kworker
+>> > > > threads.
+>> > > >
+>> > > > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> > > >
+>> > > > diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+>> > > > index 0cc8383..f80e688 100644
+>> > > > --- a/net/sunrpc/sched.c
+>> > > > +++ b/net/sunrpc/sched.c
+>> > > > @@ -1095,7 +1095,7 @@ static int rpciod_start(void)
+>> > > >  * Create the rpciod thread and wait for it to start.
+>> > > >  */
+>> > > >  dprintk("RPC:       creating workqueue rpciod\n");
+>> > > > - wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM, 0);
+>> > > > + wq = alloc_workqueue("rpciod", WQ_MEM_RECLAIM | WQ_UNBOUND,
+>> > > > 0);
+>> > > >  if (!wq)
+>> > > >  goto out_failed;
+>> > > >  rpciod_workqueue = wq;
+>> > > >
+>> > >
+>> > > WQ_UNBOUND turns off concurrency management on the thread pool
+>> > > (See
+>> > > Documentation/core-api/workqueue.rst. It also means we contend
+>> > > for work
+>> > > item queuing/dequeuing locks, since the threads which run the
+>> > > work
+>> > > items are not bound to a CPU.
+>> > >
+>> > > IOW: This is not a slam-dunk obvious gain.
+>> >
+>> > I agree but I think it's worth consideration. I'm waiting to get
+>> > (real) performance numbers of improvement (instead of my VM setup)
+>> > to
+>> > help my case. However, it was reported 90% degradation for the read
+>> > performance over krb5p when 1CPU is executing all ops.
+>> >
+>> > Is there a different way to make sure that on a multi-processor
+>> > machine we can take advantage of all available CPUs? Simple kernel
+>> > threads instead of a work queue?
+>>
+>> There is a trade-off between spreading the work, and ensuring it
+>> is executed on a CPU close to the I/O and application. IMO UNBOUND
+>> is a good way to do that. UNBOUND will attempt to schedule the
+>> work on the preferred CPU, but allow it to be migrated if that
+>> CPU is busy.
+>>
+>> The advantage of this is that when the client workload is CPU
+>> intensive (say, a software build), RPC client work can be scheduled
+>> and run more quickly, which reduces latency.
+>>
+>
+> That should no longer be a huge issue, since queue_work() will now
+> default to the WORK_CPU_UNBOUND flag, which prefers the local CPU, but
+> will schedule elsewhere if the local CPU is congested.
 
+I don't believe NFS use workqueue_congested() to somehow schedule the
+work elsewhere. Unless the queue is marked UNBOUNDED I don't believe
+there is any intention of balancing the CPU load.
+
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
