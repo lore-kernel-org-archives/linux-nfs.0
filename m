@@ -1,78 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45047 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1753296AbdGGDSF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 6 Jul 2017 23:18:05 -0400
-From: NeilBrown <neilb@suse.com>
-To: Chuck Lever <chuck.lever@oracle.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>
-Date: Fri, 07 Jul 2017 13:17:54 +1000
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
-In-Reply-To: <952499A1-FBBA-4FD8-97A6-B0014FA5065D@oracle.com>
-References: <20170630132120.31578-1-stefanha@redhat.com> <20170630132120.31578-6-stefanha@redhat.com> <952499A1-FBBA-4FD8-97A6-B0014FA5065D@oracle.com>
-Message-ID: <87wp7lvst9.fsf@notabene.neil.brown.name>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:56788 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753321AbdGGDTq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Jul 2017 23:19:46 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>, hch <hch@lst.de>,
+        "neilb@suse.com" <neilb@suse.com>
+CC: "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
+Subject: Re: open by handle support for NFS V2
+Date: Fri, 7 Jul 2017 03:19:28 +0000
+Message-ID: <1499397566.36826.1.camel@primarydata.com>
+References: <20170629133453.19641-1-hch@lst.de>
+         <20170629154650.GC1651@fieldses.org>
+         <1498842056.6728.1.camel@primarydata.com>
+         <87zichvuh9.fsf@notabene.neil.brown.name>
+In-Reply-To: <87zichvuh9.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+T24gRnJpLCAyMDE3LTA3LTA3IGF0IDEyOjQxICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IEZyaSwgSnVuIDMwIDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gT24gVGh1
+LCAyMDE3LTA2LTI5IGF0IDExOjQ2IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+ID4g
+PiBPbiBUaHUsIEp1biAyOSwgMjAxNyBhdCAwNjozNDo0OUFNIC0wNzAwLCBDaHJpc3RvcGggSGVs
+bHdpZw0KPiA+ID4gd3JvdGU6DQo+ID4gPiA+IHRoaXMgcmVzdXJyZWN0cyBwYXJ0cyBvZiBhbiBv
+bGQgc2VyaWVzIHRvIGFkZCBvcGVuIGJ5IGhhbmRsZQ0KPiA+ID4gPiBzdXBwb3J0IHRvDQo+ID4g
+PiA+IE5GUy7CoMKgVGhlIHByaW1lIGludGVudCBoZXJlIGlzIHRvIHN1cHBvcnQgdGhlIGFjdHVh
+bCBvcGVuIGJ5DQo+ID4gPiA+IGhhbmRsZQ0KPiA+ID4gPiBpb2N0bHMsIGFsdGhvdWdoIGl0IHdp
+bGwgYWxzbyBhbGxvdyB2ZXJ5IGNydWRlIHJlLQ0KPiA+ID4gPiBleHBvcnRpbmcuwqDCoFdpdGhv
+dXQNCj4gPiA+ID4gdGhlIG90aGVyIHBhdGNoZXMgZnJvbSBKZWZmJ3Mgc2VyaWVzIHRoYXQgcmUt
+ZXhwb3J0aW5nIHdpbGwNCj4gPiA+ID4gc3Vjaw0KPiA+ID4gPiBiYWRseQ0KPiA+ID4gPiB0aG91
+Z2guDQo+ID4gPiANCj4gPiA+IFdoeSBkbyB3ZSB3YW50IHRoaXM/DQo+ID4gPiANCj4gPiA+IEFu
+eSByZS1leHBvcnQgc3VwcG9ydCBpcyBnb2luZyB0byBoYXZlIHNvbWUgbWFqb3INCj4gPiA+IGxp
+bWl0YXRpb25zLsKgwqAoTm8NCj4gPiA+IGZpbGUNCj4gPiA+IGxvY2tpbmcsIGFuZCByZS1leHBv
+cnQgb2YgTkZTdjQgcHJvYmFibHkgbm90IHBvc3NpYmxlPykNCj4gPiA+IA0KPiA+ID4gTGFzdCBJ
+IGhlYXJkIHRoZSBvbmx5IG1vdGl2YXRpb24gd2FzIGV4dHJlbWVseSBzcGVjaWZpYyB0bw0KPiA+
+ID4gUHJpbWFyeQ0KPiA+ID4gRGF0YSdzIHNldHVwLsKgwqBJJ20gaGFwcHkgdG8gaGVscCB0aGVt
+LCBidXQgSSB0aGluayB3ZSBuZWVkICpzb21lKg0KPiA+ID4gZXZpZGVuY2UgdGhpcyB3aWxsIGJl
+IHVzZWZ1bCB0byB1cHN0cmVhbSB1c2Vycy4NCj4gPiA+IA0KPiA+IA0KPiA+IFRoZSBtYWluIHVz
+ZSBjYXNlIGZvciBvcGVuIGJ5IGZpbGVoYW5kbGUgd2FzIChhbmQgc3RpbGwgc2hvdWxkIGJlKQ0K
+PiA+IHRoZQ0KPiA+IHByb21pc2Ugb2YgYmVpbmcgYWJsZSB0byBkbyB0aGUgc29ydCBvZiB0cmlj
+a3MgeW91IG5vcm1hbGx5DQo+ID4gYXNzb2NpYXRlDQo+ID4gd2l0aCBvYmplY3Qgc3RvcmFnZSBv
+biBhIHN0YW5kYXJkIGZpbGVzeXN0ZW0uDQo+ID4gDQo+ID4gSW1hZ2luZSB0aGF0IHlvdSBhcmUg
+dHJ5aW5nIHRvIGJ1aWxkIGFuIGFwcGxpY2F0aW9uIGZvciBpbmRleGluZw0KPiA+IGFuZA0KPiA+
+IHNlYXJjaGluZyB0aGUgZGF0YSBvbiB5b3VyIHN0b3JhZ2UuIFlvdSBiYXNpY2FsbHkgd2FudCB0
+byB0cmF3bA0KPiA+IHRocm91Z2gNCj4gPiB0aGUgZmlsZXN5c3RlbSBvbiBhIHJlZ3VsYXIgYmFz
+aXMgYW5kIGJ1aWxkIHVwIGEgZGF0YWJhc2Ugb2Yga2V5DQo+ID4gd29yZHMNCj4gPiBhbmQgb3Ro
+ZXIgbWV0YWRhdGEgdG8gdGVsbCB5b3Ugd2hhdCBpcyBpbiB0aGUgZmlsZXMuIEZvciB0aGF0IGtp
+bmQNCj4gPiBvZg0KPiA+IGFwcGxpY2F0aW9uLCB0aGUgbmFtZXNwYWNlIGlzIGEgcmVhbCBQSVRB
+IHRvIGRlYWwgd2l0aCwgYmVjYXVzZQ0KPiA+IGZpbGVzDQo+ID4gZ2V0IHJlbmFtZWQsIG1vdmVk
+IGFuZCBkZWxldGVkIGFsbCB0aGUgdGltZTsgc28gaWYgeW91IGNhbiBzdG9yZQ0KPiA+IHNvbWV0
+aGluZyB0aGF0IGlzIGluZGVwZW5kZW50IG9mIHRoZSBuYW1lc3BhY2UgYW5kIHRoYXQgd2lsbCBn
+aXZlDQo+ID4geW91DQo+ID4gYWNjZXNzIHRvIHRoZSBmaWxlIGNvbnRlbnRzLCB0aGVuIHdoeSB3
+b3VsZG4ndCB5b3UgZG8gc28/IE5vcm1hbGx5LA0KPiA+IGFwcGxpY2F0aW9ucyBsaWtlIHRoYXQg
+dXNlIHRoZSBpbm9kZSBudW1iZXIsIGJ1dCB5b3UgY2FuJ3Qgb3BlbiBhDQo+ID4gZmlsZQ0KPiA+
+IGJ5IGlub2RlIG51bWJlciwgYW5kIHlvdSBoYXZlIHRoZSBzYW1lIHByb2JsZW1zIHdpdGggaW5v
+ZGUgbnVtYmVyDQo+ID4gcmV1c2UNCj4gPiB0aGF0IGEgTkZTIHNlcnZlciBoYXMuDQo+ID4gDQo+
+ID4gVGhhdCdzIHRoZSBzb3J0IG9mIHRoaW5nIEknZCB0aGluayB3ZSB3YW50IHRvIGFsbG93IHRo
+cm91Z2ggb3BlbiBieQ0KPiA+IGZpbGVoYW5kbGUsIGFuZCBJIHNlZSBubyByZWFzb24gd2h5IE5G
+UyBzaG91bGQgYmUgZXhjbHVkZWQgZnJvbQ0KPiA+IHRoYXQNCj4gPiB0eXBlIG9mIGFwcGxpY2F0
+aW9uLg0KPiANCj4gR2l2ZW4gdGhhdCB0aGUgZ29hbCwgYW5kIHByZXN1bWFibHkgdGhlIHRlc3Rp
+bmcsIGlzIGZvY3VzZWQgb24gdGhpcw0KPiB1c2UtY2FzZSwgSSB3b25kZXIgaWYgd2Ugc2hvdWxk
+IHRha2Ugc3RlcHMgdG8gZGlzYWJsZSB0aGUgTkZTLXJlLQ0KPiBleHBvcnQNCj4gdXNlIGNhc2Uu
+DQo+IEFzIHRoZSBwYXRjaCBzdGFuZHMsIEkgc3VzcGVjdCB0aGF0IE5GUyByZS1leHBvcnQgd291
+bGQgYXBwZWFyIHRvDQo+IHdvcmssDQo+IGJ1dCAtIGFzIEJydWNlIHN1Z2dlc3RzIC0gd291bGQg
+bGlrZWx5IGhpdCBzb21lIHByb2JsZW1zLsKgwqBUaGlzIG1pZ2h0DQo+IG5vdCBiZSBhIHVzZXIt
+ZnJpZW5kbHkgdGhpbmcgdG8gZG8uDQo+IA0KPiBQcm9iYWJseSB0aGUgaWRlYWwgd291bGQgYmUg
+dG8ga2VlcCByZS1leHBvcnQgZGlzYWJsZWQgYnkgZGVmYXVsdCwNCj4gYnV0DQo+IHRvIGFsbG93
+IGl0IHRvIGJlIGVuYWJsZWQgdXNpbmcgYSBtb2R1bGUgcGFyYW1ldGVyLg0KPiBJJ20gbm90IHN1
+cmUgdGhlIGJlc3Qgd2F5IGZvciBORlMgdG8gdGVsbCBuZnNkIHRoYXQgZXhwb3J0IHNob3VsZG4n
+dA0KPiBiZQ0KPiB0cnVzdGVkLg0KPiBNYXliZSBhZGQgYSAiZmxhZ3MiIGZpZWxkIHRvIHN0cnVj
+dCBleHBvcnRfb3BlcmF0aW9ucywgd2hpY2ggY2FuDQo+IGNvbnRhaW4NCj4gYSAiTm8gTkZTIGV4
+cG9ydCIgZmxhZyA/Pw0KPiANCg0KWW91IGNvdWxkLCBidXQgdGhlIHJlYXNvbiB3aHkgd2UgZGV2
+ZWxvcGVkIHRoZSBjb2RlIGluIHRoZSBmaXJzdCBwbGFjZSwNCndhcyBiZWNhdXNlIHdlIGhhdmUg
+YW4gaW50ZXJuYWwgdXNlIGNhc2Ugd2hpY2ggZG9lcyBpbnZvbHZlIHJlLWV4cG9ydA0Kb2YgTkZT
+LCBzbyB3ZSdyZSBmYW1pbGlhciB3aXRoIHRoZSBsaW1pdGF0aW9ucy4NCg0KRllJLCB0aGUgbGlt
+aXRhdGlvbnMgYXJlOg0KMSkgUmVjb3Zlcnkgb2YgbG9ja3MgaXMgbm90IHBvc3NpYmxlIHdoZW4g
+dGhlIHJlLWV4cG9ydGluZyBzZXJ2ZXIgaXMNCnRoZSBvbmUgYmVpbmcgcmVib290ZWQuIEl0IHdv
+cmtzIGp1c3QgZmluZSBmb3IgYWxsIG90aGVyIGNhc2VzLg0KMikgUmUtZXhwb3J0aW5nIGFueXRo
+aW5nIHRvIE5GU3YyIGlzIG5vdCBwb3NzaWJsZS4NCjMpIFJlLWV4cG9ydCBvZiBmaWxlc3lzdGVt
+cyB3aXRoIHZlcnkgbGFyZ2UgZmlsZW5hbmRsZXMgY291bGQgYmUNCnByb2JsZW1hdGljLiBUaGlz
+IHdvdWxkIGFsc28gYWZmZWN0IG9wZW4tYnktZmlsZWhhbmRsZS4gSW4gcHJhY3RpY2UgaXQNCnR1
+cm5zIG91dCB0byBiZSBhIG5vbi1pc3N1ZSBiZWNhdXNlIG5vYm9keSB1c2VzIGZpbGVoYW5kbGVz
+ID4gNjQgYnl0ZXMuDQo0KSBTdGF0ZWxlc3MgTkZTdjMgcmVhZHMgYW5kIHdyaXRlcyBjYW4gYmUg
+YSBwcm9ibGVtIHdpdGggTkZTdjQgd2hlbg0KdGhlIGFwcGxpY2F0aW9uIHVzZWVzIG9kZCBtb2Rl
+Yml0IHNldHRpbmdzIHN1Y2ggYXMgMDAwLg0KDQpJT1c6IGluIHByYWN0aWNlIHRoaXMgaXMgbm8g
+d29yc2UgdGhhbiBhbGwgdGhlIG90aGVyIHJlLWV4cG9ydGVycyBzdWNoDQphcyBhbHJlYWR5IGV4
+aXN0IGZvciBnbHVzdGVyIC0+IE5GU3YzLCBjZXBoIC0+IE5GU3YzLCBORlMgLT4gU01CLC4uLg0K
+YW5kIHdoaWNoIGV2ZXJ5b25lIHNlZW1zIGhhcHB5IHRvIHVzZS4NCg0KLS0gDQpUcm9uZCBNeWts
+ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15
+a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-On Fri, Jun 30 2017, Chuck Lever wrote:
->
-> Wouldn't it be nicer if it worked like this:
->
-> (guest)$ cat /etc/hosts
-> 129.0.0.2  localhyper
-> (guest)$ mount.nfs localhyper:/export /mnt
->
-> And the result was a working NFS mount of the
-> local hypervisor, using whatever NFS version the
-> two both support, with no changes needed to the
-> NFS implementation or the understanding of the
-> system administrator?
-
-Yes. Yes. Definitely Yes.
-Though I suspect you mean "127.0.0.2", not "129..."??
-
-There must be some way to redirect TCP connections to some address
-transparently through to the vsock protocol.
-The "sshuttle" program does this to transparently forward TCP connections
-over an ssh connection.  Using a similar technique to forward
-connections over vsock shouldn't be hard.
-
-Or is performance really critical, and you get too much copying when you
-try forwarding connections?  I suspect that is fixable, but it would be
-a little less straight forward.
-
-I would really *not* like to see vsock support being bolted into one
-network tool after another.
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlle/WMACgkQOeye3VZi
-gbk2Ow//Z59h3Oms4SZHQGea6qeLnxrxuZwMHKiFeSaIIQnTcKPZC2ANS3bxkZTj
-oyMiMVky9Fwu/BkqYGZUZmYODKUPOkDMQqJ+FEIeQJEfRKn42f/CPjB6f5PtQXOK
-P4MZ4KxWX9adAks6h99IZ8o6aFBJSrksT6jhXYU5qYOAvOzv5gFpFOL0HQkBb/RT
-YQ1igObfOTDOa5M1iUX1zHwAWuqqrsVQ8C4gBS/11uRAWVDJquvXp1H+EkxHLIl1
-gZy4fFcA+eSeRuiOGvPGg8YmjBdMuTnoU+1vNWASjuNx0I2azvGVWOUMfz4RzCo5
-b9+pXygsQuSB2GmC94dQRHy94tm8VdkSJ++/1uvIn9X3qML2U07yxGfMJvPLObnn
-/qLKDedt2Y6qg44dPoCeWagCJag3I5VMvCjdEipAgnCgxNf8mXFd3Jsau0p2Qb2O
-LVapXCLfVJT5LOPPsbxyZ2z46Sl513PDZOu6dczMyHGdgWzoO2qV9GAMHN8+87k3
-HXxYbjElycqacwH1/dnFvxs2GttoX7onBpC3Ic0jZimQ8wjvZ5/oAo3kBwErGEWn
-4tNKgRENmuce19AcQRYZ/TV216KlF+hYhw9PyPDC5U39IqDtQYi9jAh4MCaUczgK
-BN/YOOolJvpOGD/hOr5sc7HA4BOo/SVeHQKfzwEeP3b2pbEhTQ0=
-=QGcl
------END PGP SIGNATURE-----
---=-=-=--
