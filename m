@@ -1,162 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47473 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750749AbdGGE1p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 7 Jul 2017 00:27:45 -0400
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "bfields\@fieldses.org" <bfields@fieldses.org>, hch <hch@lst.de>
-Date: Fri, 07 Jul 2017 14:27:34 +1000
-Cc: "jlayton\@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna\@gmail.com" <schumaker.anna@gmail.com>
-Subject: Re: open by handle support for NFS V2
-In-Reply-To: <1499397566.36826.1.camel@primarydata.com>
-References: <20170629133453.19641-1-hch@lst.de> <20170629154650.GC1651@fieldses.org> <1498842056.6728.1.camel@primarydata.com> <87zichvuh9.fsf@notabene.neil.brown.name> <1499397566.36826.1.camel@primarydata.com>
-Message-ID: <87r2xsx45l.fsf@notabene.neil.brown.name>
+Received: from mx.cs.uchicago.edu ([128.135.164.214]:35825 "EHLO
+        mx.cs.uchicago.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750983AbdGGFVB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Jul 2017 01:21:01 -0400
+Received: from localhost (localhost [127.0.0.1])
+        by mx.cs.uchicago.edu (Postfix) with ESMTP id F0017605C9
+        for <linux-nfs@vger.kernel.org>; Fri,  7 Jul 2017 00:21:00 -0500 (CDT)
+Received: from mx.cs.uchicago.edu ([127.0.0.1])
+        by localhost (mx.cs.uchicago.edu [127.0.0.1]) (amavisd-new, port 10024)
+        with LMTP id 6IQib9TGgRgZ for <linux-nfs@vger.kernel.org>;
+        Fri,  7 Jul 2017 00:21:00 -0500 (CDT)
+Received: from pippin.local (c-98-212-54-164.hsd1.il.comcast.net [98.212.54.164])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mx.cs.uchicago.edu (Postfix) with ESMTPSA id 210D4605B5
+        for <linux-nfs@vger.kernel.org>; Fri,  7 Jul 2017 00:21:00 -0500 (CDT)
+Subject: Re: /etc/mtab read ~900 times by rpc.mountd
+To: linux-nfs@vger.kernel.org
+References: <f9dcc371-cd94-6b39-dd6a-b412bdf03df4@cs.uchicago.edu>
+ <8737a9x9ky.fsf@notabene.neil.brown.name>
+From: Phil Kauffman <kauffman@cs.uchicago.edu>
+Message-ID: <595F1A3A.7070405@cs.uchicago.edu>
+Date: Fri, 7 Jul 2017 00:20:58 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <8737a9x9ky.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-
-On Fri, Jul 07 2017, Trond Myklebust wrote:
-
-> On Fri, 2017-07-07 at 12:41 +1000, NeilBrown wrote:
->> On Fri, Jun 30 2017, Trond Myklebust wrote:
->>=20
->> > On Thu, 2017-06-29 at 11:46 -0400, J. Bruce Fields wrote:
->> > > On Thu, Jun 29, 2017 at 06:34:49AM -0700, Christoph Hellwig
->> > > wrote:
->> > > > this resurrects parts of an old series to add open by handle
->> > > > support to
->> > > > NFS.=C2=A0=C2=A0The prime intent here is to support the actual ope=
-n by
->> > > > handle
->> > > > ioctls, although it will also allow very crude re-
->> > > > exporting.=C2=A0=C2=A0Without
->> > > > the other patches from Jeff's series that re-exporting will
->> > > > suck
->> > > > badly
->> > > > though.
->> > >=20
->> > > Why do we want this?
->> > >=20
->> > > Any re-export support is going to have some major
->> > > limitations.=C2=A0=C2=A0(No
->> > > file
->> > > locking, and re-export of NFSv4 probably not possible?)
->> > >=20
->> > > Last I heard the only motivation was extremely specific to
->> > > Primary
->> > > Data's setup.=C2=A0=C2=A0I'm happy to help them, but I think we need=
- *some*
->> > > evidence this will be useful to upstream users.
->> > >=20
->> >=20
->> > The main use case for open by filehandle was (and still should be)
->> > the
->> > promise of being able to do the sort of tricks you normally
->> > associate
->> > with object storage on a standard filesystem.
->> >=20
->> > Imagine that you are trying to build an application for indexing
->> > and
->> > searching the data on your storage. You basically want to trawl
->> > through
->> > the filesystem on a regular basis and build up a database of key
->> > words
->> > and other metadata to tell you what is in the files. For that kind
->> > of
->> > application, the namespace is a real PITA to deal with, because
->> > files
->> > get renamed, moved and deleted all the time; so if you can store
->> > something that is independent of the namespace and that will give
->> > you
->> > access to the file contents, then why wouldn't you do so? Normally,
->> > applications like that use the inode number, but you can't open a
->> > file
->> > by inode number, and you have the same problems with inode number
->> > reuse
->> > that a NFS server has.
->> >=20
->> > That's the sort of thing I'd think we want to allow through open by
->> > filehandle, and I see no reason why NFS should be excluded from
->> > that
->> > type of application.
->>=20
->> Given that the goal, and presumably the testing, is focused on this
->> use-case, I wonder if we should take steps to disable the NFS-re-
->> export
->> use case.
->> As the patch stands, I suspect that NFS re-export would appear to
->> work,
->> but - as Bruce suggests - would likely hit some problems.=C2=A0=C2=A0Thi=
-s might
->> not be a user-friendly thing to do.
->>=20
->> Probably the ideal would be to keep re-export disabled by default,
->> but
->> to allow it to be enabled using a module parameter.
->> I'm not sure the best way for NFS to tell nfsd that export shouldn't
->> be
->> trusted.
->> Maybe add a "flags" field to struct export_operations, which can
->> contain
->> a "No NFS export" flag ??
->>=20
+> I can imagine /etc/mtab being read once for every line in /etc/exports,
+> but unless your /etc/exports is very big, I can't easily see why it
+> would be read 900 times.
+> Maybe lots of different mount points are being accessed by something and
+> each one triggers a few reads...
 >
-> You could, but the reason why we developed the code in the first place,
-> was because we have an internal use case which does involve re-export
-> of NFS, so we're familiar with the limitations.
->
-> FYI, the limitations are:
-> 1) Recovery of locks is not possible when the re-exporting server is
-> the one being rebooted. It works just fine for all other cases.
-> 2) Re-exporting anything to NFSv2 is not possible.
-> 3) Re-export of filesystems with very large filenandles could be
-> problematic. This would also affect open-by-filehandle. In practice it
-> turns out to be a non-issue because nobody uses filehandles > 64 bytes.
-> 4) Stateless NFSv3 reads and writes can be a problem with NFSv4 when
-> the application usees odd modebit settings such as 000.
->
-> IOW: in practice this is no worse than all the other re-exporters such
-> as already exist for gluster -> NFSv3, ceph -> NFSv3, NFS -> SMB,...
-> and which everyone seems happy to use.
->
+> Can you show your /etc/exports file?
 
-Thanks.  That isn't as bad as I feared.  Maybe it would be useful to put
-notes like in this in the nfs(5) man page.
-For the NFSv2 export I suspect that in some cases you might be
-able to successfully mount, but then not access anything.
-The linux NFS server uses a very small file handles for an export-point.
-It might be good to have nfs_encode_fh always fail if *max_len <=3D 32/4
-just to ensure that NFSv2 doesn't even get off the ground.
+These get generated via puppet and dropped into /etc/exports.d/
 
-Thanks,
-NeilBrown
+Any given host will have 3 files associated with it:
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+root@charlie-storage1:~# cat 
+/etc/exports.d/client1.cs.uchicago.edu.charliestorage1_fsidroot.charliestorage1_fsidroot.exports
+/tank 
+client1.cs.uchicago.edu(fsid=0,rw,async,no_subtree_check,insecure,crossmnt)
+root@charlie-storage1:~# cat 
+/etc/exports.d/client1.cs.uchicago.edu.charliestorage1_homes.charliestorage1_homes.exports 
 
------BEGIN PGP SIGNATURE-----
+/tank/homes 
+client1.cs.uchicago.edu(rw,async,no_subtree_check,insecure,crossmnt)
+root@charlie-storage1:~# cat 
+/etc/exports.d/client1.cs.uchicago.edu.charliestorage1_stage.charliestorage1_stage.exports
+/tank/stage 
+client1.cs.uchicago.edu(rw,async,no_subtree_check,insecure,crossmnt)
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAllfDbcACgkQOeye3VZi
-gbm+yxAAmXGMC8Ych+6fux8MW3FAupeSP6HP8IPU8HWUA3JkYxWyinFLEZHC6Ico
-Zjdtac1wa6g2aqdKgHwSGoPve1kHrx3S3poFf+wB74EudAuK9VNLLPAGjLmzlTt2
-GynMU/cwuYhI2gHwoLONawC4otthZQgAythqB0N9++67ZgXsLmgxcyD8j7+BnSkU
-RLvdHHhxAEYJY9N0CAtazULTnwyDzQ4v7Bess6vmBZ7Gbu6jW/X6zUwX1Im8uzLr
-bGW2j6f1WiPwx5vkYj8X+Ivt/sVGTYK2S4oWRxfYGxDGBDIm85dbzMb24Zz78Bi4
-okPuloz09DJyCtjtCXUcQr1jYC9lpFSn1wVQu7EAAiFUtRWNwaoNGjsO1ZDMTK/V
-cBvsYgoPnDC4Lq0bwhUmBrrsDGMqQGaM8gwRpHAZT9o6JFfwMIdJVJgawASL3qN7
-NFscrYr4VRZNbLtEDVfrMbA0kexioyAqfgdSgx4nXPqRaE3oe5gpZStPi5UNOPgL
-exjqhsyy/84EmLCzmMykLmbqS5ozaw5RwFHaHy2NrZwrzfw6r17Ve9myMckhhy8U
-bXqPbswln4gwwsKik/b96n51bVoQ8Umcuym+COlrDwC3Q+hGsRHE1vG2slRPqHf6
-YsUBRr85YFPXjjKv7vAgyNP5VH9XnvsA25VL4gQD3nZdTAMYEoo=
-=YApJ
------END PGP SIGNATURE-----
---=-=-=--
+Here we can see that there are 960 files in /etc/exports.d
+root@storage1:~# find /etc/exports.d/ -type f | wc
+960 960 88701
+
+You probably don't want or need this but here is a link to all of my 
+/etc/exports.d/ combined into one file which I redacted the hostnames: 
+http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/all_etc_exports.d_in_one_file.txt
+
+> I don't recommend this approach.  If you have data, just provide it.  If
+> it is really really big, provide a link.
+> You have my attention now.  You might not get it again when you send the
+> strace.  You might have wasted your opportunity.
+> Yes - please provide the strace showing lots of reads through
+> /etc/mtab.  Don't provide it privately to me.  Either post it to the
+> list, or post a link to it.
+
+Thanks for the advice.
+
+Here is a link to a best effort redacted strace: 
+http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/redacted_strace.txt
+
+I would prefer to keep user name leakage to a minimum.
+
+
+Cheers,
+
+Phil
+
+
+-- 
+Phil Kauffman
+Systems Admin
+Dept. of Computer Science
+University of Chicago
+kauffman@cs.uchicago.edu
+773-702-3913
