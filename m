@@ -1,62 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55346 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754748AbdGJSOu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Jul 2017 14:14:50 -0400
-Date: Mon, 10 Jul 2017 19:14:47 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Steve Dickson <SteveD@RedHat.com>
-Cc: Felix Janda <felix.janda@posteo.de>, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>
-Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
-Message-ID: <20170710181447.GW14195@stefanha-x1.localdomain>
-References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-4-stefanha@redhat.com>
- <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
- <20170703090048.GC22607@stefanha-x1.localdomain>
- <2730896d-f9d6-352d-e829-d672d8735bd3@RedHat.com>
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:35912 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754293AbdGJSad (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jul 2017 14:30:33 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="/Y6L//1es8ezVqBy"
-In-Reply-To: <2730896d-f9d6-352d-e829-d672d8735bd3@RedHat.com>
+In-Reply-To: <CAN-5tyGX0pMqMWDCUL2UB0sbmdhtOyUVsQP-m+mUO3nGDYKmqQ@mail.gmail.com>
+References: <20170630205803.95725-1-kolga@netapp.com> <CAN-5tyGX0pMqMWDCUL2UB0sbmdhtOyUVsQP-m+mUO3nGDYKmqQ@mail.gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 10 Jul 2017 14:30:31 -0400
+Message-ID: <CAN-5tyHmvTy73NKMb1peEpbVu2XkM+zrXn7=WN4fw9ApgB3OSQ@mail.gmail.com>
+Subject: Re: [PATCH v2 1/1] VFS permit cross device vfs_copy_file_range
+To: Olga Kornievskaia <kolga@netapp.com>, viro@zeniv.linux.org.uk
+Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Al,
 
---/Y6L//1es8ezVqBy
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Do you have plans merging this patch? I have addressed the comments
+from Jeff Layton.
 
-On Mon, Jul 03, 2017 at 12:51:07PM -0400, Steve Dickson wrote:
-> On 07/03/2017 05:00 AM, Stefan Hajnoczi wrote:
-> > On Fri, Jun 30, 2017 at 10:40:49AM -0400, Steve Dickson wrote:
-> >> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> Are there other implementations out there that would cause breakage?
-> I'm pretty sure nfs-utils is only used in Linux environments, right?
+Thank you.
 
-Does nfs-utils have a set of minimum distro versions that are supported?
-
-For example, "the latest nfs-utils release is supported on RHEL 6, SLES
-11, and Debian 8 jessie".
-
-If yes, then I could go check that these distros ship AF_VSOCK and
-<linux/vm_sockets.h>.
-
-Stefan
-
---/Y6L//1es8ezVqBy
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEcBAEBAgAGBQJZY8QXAAoJEJykq7OBq3PIkiMH/iqY5HfSH3iY0SROv38xR0e9
-FphHe8z86d94euFkS8z9cDxAQzDrTleiTtD/uCnRC4iWvmZKojcRynpKpkDbQpEt
-v10HZ4D3D9ckfcEWV5GV5rsbCx0rgFK+0WAJ93FbjhL5NdTVYKTwEZ5SfjPFVbJC
-YQS+bnMoZkuqoX9LHvhwbbRweoZdsyJL9Ew+jQO6iOFmO1scQJ2uEgopIPba9ECs
-MnmypiJCRaKjwbeK8F7NTqRBm6F5JjNdAcirQPGl7t+Uk/VbJtluUVZjSDdHNWJW
-YlRc6Y55ntBTeIXY03njG/pK5l/X+nqdpx7Jk/HmhWAH0PPwEdDpd9VcyuZhttI=
-=4VfN
------END PGP SIGNATURE-----
-
---/Y6L//1es8ezVqBy--
+On Thu, Jul 6, 2017 at 4:58 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> Hi folks,
+>
+> Are there any more comments? Will this be accepted?
+>
+> On Fri, Jun 30, 2017 at 4:58 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
+>> Allow copy_file_range to copy between different superblocks but only
+>> of the same file system types.
+>>
+>> This feature is needed by NFSv4.2 to perform file copy operation on
+>> the same server or file copy between different NFSv4.2 servers.
+>>
+>> If a file system's fileoperations copy_file_range operation prohibits
+>> cross-device copies, fall back to do_splice_direct. This would be
+>> needed for the NFS (destination) server side implementation of the
+>> file copy and currently for CIFS.
+>>
+>> Besides NFS, there is only 1 implementor of the copy_file_range FS
+>> operation -- CIFS. CIFS assumes incoming file descriptors are both
+>> CIFS but it will check if they are coming from different servers and
+>> return error code to fall back to do_splice_direct.
+>>
+>> NFS will allow for copies between different NFS servers.
+>>
+>> Adding to the vfs.txt documentation to explicitly warn about allowing
+>> for different superblocks of the same file type to be passed into the
+>> copy_file_range for the future users of copy_file_range method.
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>>  Documentation/filesystems/vfs.txt |  7 +++++++
+>>  fs/read_write.c                   | 13 ++++++-------
+>>  2 files changed, 13 insertions(+), 7 deletions(-)
+>>
+>> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+>> index f42b906..0c243f6 100644
+>> --- a/Documentation/filesystems/vfs.txt
+>> +++ b/Documentation/filesystems/vfs.txt
+>> @@ -845,6 +845,8 @@ struct file_operations {
+>>  #ifndef CONFIG_MMU
+>>         unsigned (*mmap_capabilities)(struct file *);
+>>  #endif
+>> +       ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
+>> +                                  loff_t, size_t, unsigned int);
+>>  };
+>>
+>>  Again, all methods are called without any locks being held, unless
+>> @@ -913,6 +915,11 @@ otherwise noted.
+>>
+>>    fallocate: called by the VFS to preallocate blocks or punch a hole.
+>>
+>> +  copy_file_range: called by copy_file_range(2) system call. This method
+>> +                  works on two file descriptors that might reside on
+>> +                  different superblocks of the same type of file system.
+>> +
+>> +
+>>  Note that the file operations are implemented by the specific
+>>  filesystem in which the inode resides. When opening a device node
+>>  (character or block special) most filesystems will call special
+>> diff --git a/fs/read_write.c b/fs/read_write.c
+>> index 47c1d44..f981d49 100644
+>> --- a/fs/read_write.c
+>> +++ b/fs/read_write.c
+>> @@ -1589,10 +1589,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>             (file_out->f_flags & O_APPEND))
+>>                 return -EBADF;
+>>
+>> -       /* this could be relaxed once a method supports cross-fs copies */
+>> -       if (inode_in->i_sb != inode_out->i_sb)
+>> -               return -EXDEV;
+>> -
+>>         if (len == 0)
+>>                 return 0;
+>>
+>> @@ -1602,7 +1598,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>          * Try cloning first, this is supported by more file systems, and
+>>          * more efficient if both clone and copy are supported (e.g. NFS).
+>>          */
+>> -       if (file_in->f_op->clone_file_range) {
+>> +       if (inode_in->i_sb == inode_out->i_sb &&
+>> +                       file_in->f_op->clone_file_range) {
+>>                 ret = file_in->f_op->clone_file_range(file_in, pos_in,
+>>                                 file_out, pos_out, len);
+>>                 if (ret == 0) {
+>> @@ -1611,10 +1608,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+>>                 }
+>>         }
+>>
+>> -       if (file_out->f_op->copy_file_range) {
+>> +       if (file_out->f_op->copy_file_range &&
+>> +                       (file_in->f_op->copy_file_range ==
+>> +                               file_out->f_op->copy_file_range)) {
+>>                 ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+>>                                                       pos_out, len, flags);
+>> -               if (ret != -EOPNOTSUPP)
+>> +               if (ret != -EOPNOTSUPP && ret != -EXDEV)
+>>                         goto done;
+>>         }
+>>
+>> --
+>> 1.8.3.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
