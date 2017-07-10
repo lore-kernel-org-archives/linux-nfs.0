@@ -1,132 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:35912 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754293AbdGJSad (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jul 2017 14:30:33 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:57744 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754756AbdGJSfM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 10 Jul 2017 14:35:12 -0400
+Date: Mon, 10 Jul 2017 19:35:04 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>
+Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
+Message-ID: <20170710183504.GX14195@stefanha-x1.localdomain>
+References: <20170630132120.31578-1-stefanha@redhat.com>
+ <20170630132120.31578-6-stefanha@redhat.com>
+ <6a9210af-b1e3-c768-2be8-8c6f761e82d0@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyGX0pMqMWDCUL2UB0sbmdhtOyUVsQP-m+mUO3nGDYKmqQ@mail.gmail.com>
-References: <20170630205803.95725-1-kolga@netapp.com> <CAN-5tyGX0pMqMWDCUL2UB0sbmdhtOyUVsQP-m+mUO3nGDYKmqQ@mail.gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Mon, 10 Jul 2017 14:30:31 -0400
-Message-ID: <CAN-5tyHmvTy73NKMb1peEpbVu2XkM+zrXn7=WN4fw9ApgB3OSQ@mail.gmail.com>
-Subject: Re: [PATCH v2 1/1] VFS permit cross device vfs_copy_file_range
-To: Olga Kornievskaia <kolga@netapp.com>, viro@zeniv.linux.org.uk
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="aSOv3uy5xJSQbCk1"
+In-Reply-To: <6a9210af-b1e3-c768-2be8-8c6f761e82d0@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Al,
 
-Do you have plans merging this patch? I have addressed the comments
-from Jeff Layton.
+--aSOv3uy5xJSQbCk1
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Thank you.
+On Fri, Jun 30, 2017 at 11:01:13AM -0400, Steve Dickson wrote:
+> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
+> > Neither libtirpc nor getprotobyname(3) know about AF_VSOCK.  For similar
+> > reasons as for "rdma"/"rmda6", translate "vsock" manually in getport.c.
+> >=20
+> > It is now possible to mount a file system from the host (hypervisor)
+> > over AF_VSOCK like this:
+> >=20
+> >   (guest)$ mount.nfs 2:/export /mnt -v -o clientaddr=3D3,proto=3Dvsock
+> >=20
+> > The VM's cid address is 3 and the hypervisor is 2.
+> So this is how vsocks are going to look...=20
+> There is not going to be a way to lookup an vsock address?
+> Since the format of the clientaddr parameter shouldn't
+> that be documented in the man page?
 
-On Thu, Jul 6, 2017 at 4:58 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> Hi folks,
->
-> Are there any more comments? Will this be accepted?
->
-> On Fri, Jun 30, 2017 at 4:58 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
->> Allow copy_file_range to copy between different superblocks but only
->> of the same file system types.
->>
->> This feature is needed by NFSv4.2 to perform file copy operation on
->> the same server or file copy between different NFSv4.2 servers.
->>
->> If a file system's fileoperations copy_file_range operation prohibits
->> cross-device copies, fall back to do_splice_direct. This would be
->> needed for the NFS (destination) server side implementation of the
->> file copy and currently for CIFS.
->>
->> Besides NFS, there is only 1 implementor of the copy_file_range FS
->> operation -- CIFS. CIFS assumes incoming file descriptors are both
->> CIFS but it will check if they are coming from different servers and
->> return error code to fall back to do_splice_direct.
->>
->> NFS will allow for copies between different NFS servers.
->>
->> Adding to the vfs.txt documentation to explicitly warn about allowing
->> for different superblocks of the same file type to be passed into the
->> copy_file_range for the future users of copy_file_range method.
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  Documentation/filesystems/vfs.txt |  7 +++++++
->>  fs/read_write.c                   | 13 ++++++-------
->>  2 files changed, 13 insertions(+), 7 deletions(-)
->>
->> diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
->> index f42b906..0c243f6 100644
->> --- a/Documentation/filesystems/vfs.txt
->> +++ b/Documentation/filesystems/vfs.txt
->> @@ -845,6 +845,8 @@ struct file_operations {
->>  #ifndef CONFIG_MMU
->>         unsigned (*mmap_capabilities)(struct file *);
->>  #endif
->> +       ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
->> +                                  loff_t, size_t, unsigned int);
->>  };
->>
->>  Again, all methods are called without any locks being held, unless
->> @@ -913,6 +915,11 @@ otherwise noted.
->>
->>    fallocate: called by the VFS to preallocate blocks or punch a hole.
->>
->> +  copy_file_range: called by copy_file_range(2) system call. This method
->> +                  works on two file descriptors that might reside on
->> +                  different superblocks of the same type of file system.
->> +
->> +
->>  Note that the file operations are implemented by the specific
->>  filesystem in which the inode resides. When opening a device node
->>  (character or block special) most filesystems will call special
->> diff --git a/fs/read_write.c b/fs/read_write.c
->> index 47c1d44..f981d49 100644
->> --- a/fs/read_write.c
->> +++ b/fs/read_write.c
->> @@ -1589,10 +1589,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>             (file_out->f_flags & O_APPEND))
->>                 return -EBADF;
->>
->> -       /* this could be relaxed once a method supports cross-fs copies */
->> -       if (inode_in->i_sb != inode_out->i_sb)
->> -               return -EXDEV;
->> -
->>         if (len == 0)
->>                 return 0;
->>
->> @@ -1602,7 +1598,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>          * Try cloning first, this is supported by more file systems, and
->>          * more efficient if both clone and copy are supported (e.g. NFS).
->>          */
->> -       if (file_in->f_op->clone_file_range) {
->> +       if (inode_in->i_sb == inode_out->i_sb &&
->> +                       file_in->f_op->clone_file_range) {
->>                 ret = file_in->f_op->clone_file_range(file_in, pos_in,
->>                                 file_out, pos_out, len);
->>                 if (ret == 0) {
->> @@ -1611,10 +1608,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
->>                 }
->>         }
->>
->> -       if (file_out->f_op->copy_file_range) {
->> +       if (file_out->f_op->copy_file_range &&
->> +                       (file_in->f_op->copy_file_range ==
->> +                               file_out->f_op->copy_file_range)) {
->>                 ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
->>                                                       pos_out, len, flags);
->> -               if (ret != -EOPNOTSUPP)
->> +               if (ret != -EOPNOTSUPP && ret != -EXDEV)
->>                         goto done;
->>         }
->>
->> --
->> 1.8.3.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+AF_VSOCK does not have name resolution.  The scope of the CID addresses
+is just the hypervisor that the VMs are running on.  Inter-VM
+communication is not allowed.  The virtualization software has the CIDs
+so there's not much use for name resolution.
+
+> I guess a general question, is this new mount type
+> documented anywhere?=20
+
+Thanks for pointing this out.  I'll update the man pages in the next
+revision of this patch series.
+
+--aSOv3uy5xJSQbCk1
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEcBAEBAgAGBQJZY8jYAAoJEJykq7OBq3PIcHEH/Ax7EnlfiOAoURlvtYNKxMvT
+B4K240FD8OtSz4gL84xyul68y++kHwO9tFQOv65DOm72VJR05yN/fX8rxHdDqZqW
+7OcseUaKWTvBSJGRR/ZfoARmMDAkSqO+SgHmsHrPlpB9cm8HadCFX5R6VWg+9oVQ
+CUUvHGlYV6yXc1l5MYLKYacuEvfMZTc527CsilB4SnX9mEH5kMclz4MjzBL8zxSn
+edV8XIP/XwRqcwSyVO1y9/LSEtUFg+1VaHyFjCfTtbT4t47AOeD0mWixK7vTluia
+6rJ5HJ9MglAJXUXCV5NCHZ18cS9uDuOPbiI2FeLeuwK2yj2suBQZBGRcVPRtbZc=
+=wMfZ
+-----END PGP SIGNATURE-----
+
+--aSOv3uy5xJSQbCk1--
