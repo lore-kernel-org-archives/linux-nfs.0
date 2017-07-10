@@ -1,71 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [209.132.183.28] ([209.132.183.28]:35136 "EHLO mx1.redhat.com"
-        rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-        id S932095AbdGJSkB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Jul 2017 14:40:01 -0400
-Date: Mon, 10 Jul 2017 19:39:30 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Steve Dickson <SteveD@RedHat.com>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>
-Subject: Re: [PATCH nfs-utils v2 11/12] nfsd: add --vsock (-v) option to nfsd
-Message-ID: <20170710183930.GY14195@stefanha-x1.localdomain>
-References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-12-stefanha@redhat.com>
- <99deb619-7e39-6689-79b3-2e7d252145b0@RedHat.com>
+Received: from mx.cs.uchicago.edu ([128.135.164.214]:40593 "EHLO
+        mx.cs.uchicago.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754312AbdGJU75 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Jul 2017 16:59:57 -0400
+Received: from localhost (localhost [127.0.0.1])
+        by mx.cs.uchicago.edu (Postfix) with ESMTP id E7EEC606E0
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Jul 2017 15:59:46 -0500 (CDT)
+Received: from mx.cs.uchicago.edu ([127.0.0.1])
+        by localhost (mx.cs.uchicago.edu [127.0.0.1]) (amavisd-new, port 10024)
+        with LMTP id qoleAGv4tNUJ for <linux-nfs@vger.kernel.org>;
+        Mon, 10 Jul 2017 15:59:45 -0500 (CDT)
+Received: from [128.135.11.234] (hester2.cs.uchicago.edu [128.135.11.234])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+        (No client certificate requested)
+        by mx.cs.uchicago.edu (Postfix) with ESMTPSA id DC7AC606DC
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Jul 2017 15:59:45 -0500 (CDT)
+Subject: Re: /etc/mtab read ~900 times by rpc.mountd
+To: linux-nfs@vger.kernel.org
+References: <f9dcc371-cd94-6b39-dd6a-b412bdf03df4@cs.uchicago.edu>
+ <8737a9x9ky.fsf@notabene.neil.brown.name> <595F1A3A.7070405@cs.uchicago.edu>
+ <87efto69rs.fsf@notabene.neil.brown.name>
+From: Phil Kauffman <kauffman@cs.uchicago.edu>
+Message-ID: <4ec2a8fc-3ca5-d26b-7742-be4e2f749c21@cs.uchicago.edu>
+Date: Mon, 10 Jul 2017 15:59:45 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="FvpZCdL3V2P9482l"
-In-Reply-To: <99deb619-7e39-6689-79b3-2e7d252145b0@RedHat.com>
+In-Reply-To: <87efto69rs.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 07/10/2017 02:17 AM, NeilBrown wrote:
+> Another is to move the code around.  In your case there are really just
+> 3 exports to each of 300+ clients (I assume "client.cs.uchicago.edu" in
+> the combined exports file is really different in different files).
+> So any one client only needs to consider 3 exports, not 300.
+This assumption is correct. We have ~300 clients and growing (slowly).
 
---FvpZCdL3V2P9482l
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+> Could you test with this patch applied and see what
+> difference it makes?
+After being confused by conflicting test results and determining that the service nfs-server takes a bit longer to start than 'systemctl' will let you believe, I believe Niel's patch works.
 
-On Fri, Jun 30, 2017 at 11:25:31AM -0400, Steve Dickson wrote:
-> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
-> > The following command-line serves NFSv4.1 over AF_VSOCK:
-> >=20
-> >   nfsd -TU -N3 -V4.1 -v 2049
-> So this specifying no-tcp, no-udp (which is no longer needed since=20
-> udp is off by default), no-v3, only-v4.1, vsock listiner,
-> and you are missing a -p because I don't think you want to
-> start up 2049 process.=20
 
--v takes an argument (the AF_VSOCK port number to listen on), so the
-2049 is consumed and not interpreted as the number of processes.
+The new cache.c file I am using to test with: http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/test_with_patch/cache.c
+  It also contains the official patch from this thread: http://marc.info/?l=linux-nfs&m=138900709311582&w=2
 
-> How does this work with the standard NFS server? Are the
-> co-compatible?
+Building the new deb packages: http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/test_with_patch/build_deb.txt
 
-I'll test tcp + vsock in a single nfsd and make sure it works for the
-next revision of this patch series.  Nothing in the kernel or nfs-utils
-code intentionally prevents them from being used at the same time.  My
-intention is that /etc/exports dictates which exports are visible over
-TCP, vsock, or both.
+Install nfs-kernel-server and nfs-common debs on server and nfs-common on client.
 
-> Also the --vsock needs to be documented. Also can the
-> --vsock flag just mean all of these specifics... Meaning
-> so they don't have to be specified on the command line?
 
-Thanks, will document the --vsock <port> option.
+I reboot everything: client and server
 
---FvpZCdL3V2P9482l
-Content-Type: application/pgp-signature; name="signature.asc"
+Run ssh for loop (no stracing) with the result that every user was able to ssh in under a second (I consider this to be a success).
+  http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/test_with_patch/ssh_result_no-strace.txt
 
------BEGIN PGP SIGNATURE-----
+I then used a larger sample size of users (~/f) and got a similar result.
 
-iQEcBAEBAgAGBQJZY8niAAoJEJykq7OBq3PIJmIIAIxr12b200JO9oBUfT7ywYDD
-p9Zv6fX7ev89KJLmcwRgYKOOmI1IPlpFx36JnPc0AEe54FiByJAJ4ZM0/WsBGaAM
-9qgTESPYxyp6uK7yI6j5Ucwj7mmPq/TuyQDeSzxgf/+B+0UTljNLCb/f4cKfkknP
-mP8aPQjaen8dtiSCqMUkQ5te8897TANLR8/IX8fAiE9QRd+kR7yszoJVPbCTFjwZ
-MSuYdW0pVa5GtXdOA98q9sWbL8W02NWyQusKvhXcCoVKX7Vtd2v5gkPqofBdbTh1
-5x3c4Lo9Tp4VhwyzmAd1scTcSF8aeWOxAYVVVGjyhXZBqbuvjmmisFmsm7/waYA=
-=/R7/
------END PGP SIGNATURE-----
 
---FvpZCdL3V2P9482l--
+Now lets strace rpc.mountd while sshing with one user:
+
+$ time ssh -o BatchMode=yes $CLIENTHOSTNAME -l user_not_in_list_f
+Permission denied (publickey,password).
+
+real	0m0.352s
+user	0m0.020s
+sys	0m0.012s
+
+The resulting strace seems entirely reasonable: http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/test_with_patch/ssh_one_user_strace.txt
+
+
+$ for user in $(cat ~/users | grep -E "^g*"); do time ssh -o BatchMode=yes $CLIENTHOSTNAME -l $user; done
+  The first few dozen users whos usernames happen to start with 'g': 
+    http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/test_with_patch/ssh_multiple_user_strace.txt
+
+
+
+-- 
+Phil Kauffman
+Systems Admin
+Dept. of Computer Science
+University of Chicago
+kauffman@cs.uchicago.edu
+
