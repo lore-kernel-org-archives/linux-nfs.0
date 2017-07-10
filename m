@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37074 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:38679 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1754020AbdGJW45 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Jul 2017 18:56:57 -0400
+        id S1754888AbdGJXTk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 10 Jul 2017 19:19:40 -0400
 From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@RedHat.com>
-Date: Tue, 11 Jul 2017 08:56:44 +1000
-Cc: systemd-devel@freedesktop.org, linux-nfs@vger.kernel.org,
-        Lennart Poettering <lennart@poettering.net>
-Subject: Re: [PATCH] nfs.man: document incompatibility between "bg" option and systemd.
-In-Reply-To: <8403677d-cb85-41b2-3c9c-179b82928b80@RedHat.com>
-References: <87lgpkgwrw.fsf@notabene.neil.brown.name> <20170529133814.GC17967@gardel-login> <87tw43fgrf.fsf@notabene.neil.brown.name> <87zicjyhby.fsf@notabene.neil.brown.name> <8403677d-cb85-41b2-3c9c-179b82928b80@RedHat.com>
-Message-ID: <877ezf6gur.fsf@notabene.neil.brown.name>
+To: Karel Zak <kzak@redhat.com>
+Date: Tue, 11 Jul 2017 09:19:30 +1000
+Cc: Phil Kauffman <kauffman@cs.uchicago.edu>, linux-nfs@vger.kernel.org
+Subject: Re: /etc/mtab read ~900 times by rpc.mountd
+In-Reply-To: <20170710114730.i6dono3adt3xi3tf@ws.net.home>
+References: <f9dcc371-cd94-6b39-dd6a-b412bdf03df4@cs.uchicago.edu> <8737a9x9ky.fsf@notabene.neil.brown.name> <595F1A3A.7070405@cs.uchicago.edu> <87efto69rs.fsf@notabene.neil.brown.name> <20170710114730.i6dono3adt3xi3tf@ws.net.home>
+Message-ID: <871spn6fst.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -22,65 +21,94 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Jul 10 2017, Steve Dickson wrote:
+On Mon, Jul 10 2017, Karel Zak wrote:
 
-> Hey Neil,
+> On Mon, Jul 10, 2017 at 05:17:27PM +1000, NeilBrown wrote:
+>> On Fri, Jul 07 2017, Phil Kauffman wrote:
+>>=20
+>> >> I can imagine /etc/mtab being read once for every line in /etc/export=
+s,
+>> >> but unless your /etc/exports is very big, I can't easily see why it
+>> >> would be read 900 times.
+>> >> Maybe lots of different mount points are being accessed by something =
+and
+>> >> each one triggers a few reads...
+>> >>
+>> >> Can you show your /etc/exports file?
+>> >
+>> > These get generated via puppet and dropped into /etc/exports.d/
+>> ...
+>> >
+>> > Here we can see that there are 960 files in /etc/exports.d
+>> > root@storage1:~# find /etc/exports.d/ -type f | wc
+>> > 960 960 88701
+>>=20
+>> Ahhh.. 960 exports.  That could do it.
+>>=20
+>> $ grep -c crossmnt all_etc_exports.d_in_one_file.txt
+>> 957
+>>=20
+>> I get 957 - much the same number.
+>>=20
+>> $ grep open redacted_strace.txt | uniq -c
+>>       2 open("/var/lib/nfs/etab", O_RDONLY)     =3D 6
+>>     942 open("/etc/mtab", O_RDONLY|O_CLOEXEC)   =3D 6
+>>       1 open("/proc/net/rpc/nfsd.export/channel", O_WRONLY|O_CREAT|O_TRU=
+NC, 0666) =3D 6
+>>=20
+>> /etc/mtab was ready 942 for a single access.  I would have expected 957,
+>> but maybe the system is dynamic and something changed between the two
+>> samples.
+>>=20
+>> This makes it fairly clear what is happening.  Now we just need to fix
+>> it.
+>> One option would be to cache some of the details extracted from
+>> /etc/mtab, but that could get messy.
 >
-> On 07/04/2017 06:20 PM, NeilBrown wrote:
->> On Tue, May 30 2017, NeilBrown wrote:
->>=20
->>> Systemd does not, and will not, support "bg" correctly.
->>> It has other, better, ways to handle "background" mounting.
->>=20
->> For those who aren't closely watching systemd development, a
->> patch was recently accepted which causes systemd to work correctly with
->> NFS bg mounts.  So the above "and will not" was, happily, not correct.
-> Could you please post a pointer to the thread?
+> Would be possible to read /proc/self/mounts only once and use poll()
+> to detect changes?
 
-The main commmit is
- https://github.com/systemd/systemd/commit/65e1dee7dcf1668c25c32f0238c93570=
-8dbffbcf
+Sure it is possible.  All we need is code....
 
-The link in the title leads to
-  https://github.com/systemd/systemd/pull/6103
-which is the discussion of the pull request.
-The "Fixes" link at the bottom leads to
- https://github.com/systemd/systemd/issues/6046
-which is an 'issue' that started out as "we should warn if 'bg' is used"
-but became "here is a fix so bg works".
+>
+> The issue is not only the open()+read() in the process, but also=20
+> kernel has to compose the file from the mount tree. It's expensive.
 
-I've been wondering if we should add text to nfs.5 suggesting that
-automount is often a good match for NFS, and can particularly be useful
-where "bg" is currently used.  Not sure what to do about timeouts
-though.
-systemd currently waits for the mount command to fail, or kills it after
-90 seconds.  It doesn't return an error to accesses of the mount point
-(typically ENODEV) until mount exits.  I think I would prefer a shorter
-timeout before the error, but a longer timeout before killing mount.
-But I'm not really sure.  Does anyone have opinions?
+That certainly contributes to the problem.  If we cache the content, we
+can process it fast.  If we avoid wanting to look at the content, it
+doesn't matter how fast processes it is (because we don't).
+
+So yes, that might be part of the solution.  But not the whole solution.
 
 Thanks,
 NeilBrown
 
 
+>
+>     Karel
+>
+>
+> --=20
+>  Karel Zak  <kzak@redhat.com>
+>  http://karelzak.blogspot.com
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAllkBi4ACgkQOeye3VZi
-gblf2hAAkGgsx+IID8uc2bypBZh24iFd0TlNnqkz9xPc/gr8GHSCrCg43XGocecv
-65satFGyvluo9ErHgnG+q6vRRM3mYWQBqzh8ssp9CTk8/4KUl991/yGhzhZ3FoNz
-xad3vHR4sb+ti/CJGtFHbnTwWryhOdKzr822BImtErxvQM/fVHLplltN/pYu6zq1
-p3cYeQqNizFDVhGxJIACGEqBADUjVXKyDQY3Tms3kRen0T82mfVBYW0btH2zEWet
-RKMkErEesC2xD7FZzNX56yxvEu0h0ajS3C9xqI7H7Rmbx4ieHYkkO7dPwFjVEds2
-a5G+uFpfiuFAoA9Hb5aHJUeBCptYOOT+hAILoL+Z/HczMapVQ8lpUBpcQfLQi5+O
-nQ3ChUKeXIYFVFECinFAv6599zyyRgsBnVB91W7FkVAPfGl8UlH6vl+qx16esoGq
-II2iMNnjFmdlkTMDbgdHQSq5M6a8KACBlu7dR8Ai7ZiGl1xeqk35sLvfbSJF4lCd
-raQaVtya8PXvNPmIfNmnCQdcovyJUbslgWs/UV996RBDQh2E0CoCH+kTDCxhNetF
-Jw3c27KDWsNJBc2rWxA3Tnd570yqWvkn42NldRaAArtNYIkZ8lQn2k7nS0uPWSMq
-6rFw4cVm1I7liUQht086altDlzWHUot/ZyDqce81ItrsTekTi9Y=
-=1eb4
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAllkC4QACgkQOeye3VZi
+gbntHw//Wwx1fISW7M9eZVPto1t0hgqi5E7sfAZobjodjAEsXIEr/6izfby4WvQc
+dl07DMgSPqMGHpOqNba3LZ2tatKcna78D6mKETFTn3UN7BV/CkCM/p2tZMDrgbs5
+Y77uzeEnEoaww148pp2IyTztqQNJCbaZGp/NxX4hUlRGg0IlIywUqQUVydG+Cxm9
+EwtgWmZVvkS8OJNHKVdPgdQ/KDl2VzxHJFLhk+26oid1FjsAg39/XsjGYU2uBLJx
+qcAfsbPqLVa5JSqDyPK95GgmspUBQ+RBXY75vJPXokZGJOUt/WNdUzhwJ+bISWp1
+lbuL9rGm0ZZqTEb4hdD7sZxZEagNTXMHE0PT3xkCsX2odPBtMhG/PeGJNbYQANvS
++AMrQG/ZHY/uowTvuzygJTTfQQssTyjCxSCsrqxof2JgozOvWho4EjQd1hIp1Sd4
+olEfNagQmCWfiocDsNa4UL+3ZZhD+Hr1otDJYFE3VyS5gX/YOSREK6NTF67qaMkv
+AcqUrxtHO/ijFxtZFUoY+8FDgtLDzaFrvnHtib8Mz4U/q5tzPOxQ4vfXF7aft1Hl
+lvZ8HGJ3gaO43FkNp9L4dQl7dj0ii4ntqoRlp33Hyzg8MWPXe+uA30IeaFfD4INN
+FSdJJKSAsTMzdoZ9SeL3CIo5P+fvJRuopE9jJtRC1c+qOYSE46Q=
+=ie/G
 -----END PGP SIGNATURE-----
 --=-=-=--
