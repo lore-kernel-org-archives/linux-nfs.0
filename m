@@ -1,57 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55382 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44738 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754859AbdGJSFb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 10 Jul 2017 14:05:31 -0400
-Date: Mon, 10 Jul 2017 19:05:28 +0100
+        id S1754891AbdGJSKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 10 Jul 2017 14:10:00 -0400
+Date: Mon, 10 Jul 2017 19:09:57 +0100
 From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Abbas Naderi <abiusx@google.com>
-Cc: linux-nfs@vger.kernel.org,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@RedHat.com>, linux-nfs@vger.kernel.org,
         Jeff Layton <jlayton@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v3 14/14] SUNRPC: add AF_VSOCK support to auth.unix.ip
-Message-ID: <20170710180528.GU14195@stefanha-x1.localdomain>
-References: <20170630132352.32133-1-stefanha@redhat.com>
- <20170630132352.32133-15-stefanha@redhat.com>
- <19D7C0EF-17AB-43AD-ADFF-19D1DBC73F37@google.com>
+        Abbas Naderi <abiusx@google.com>
+Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
+Message-ID: <20170710180957.GV14195@stefanha-x1.localdomain>
+References: <20170630132120.31578-1-stefanha@redhat.com>
+ <20170630132120.31578-4-stefanha@redhat.com>
+ <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
+ <20170703090048.GC22607@stefanha-x1.localdomain>
+ <20170706171626.GA30737@fieldses.org>
 MIME-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="CYcXvPfqKSDi0QhV"
-In-Reply-To: <19D7C0EF-17AB-43AD-ADFF-19D1DBC73F37@google.com>
+        protocol="application/pgp-signature"; boundary="Pbi2MkfjSbXbI4MN"
+In-Reply-To: <20170706171626.GA30737@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---CYcXvPfqKSDi0QhV
-Content-Type: text/plain; charset=utf-8
+--Pbi2MkfjSbXbI4MN
+Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On Thu, Jul 06, 2017 at 11:46:05AM -0700, Abbas Naderi wrote:
-> Without CONFIG_SUNRPC_BACKCHANNEL, many things such as =E2=80=9Csvc_vsock=
-_bc_class=E2=80=9D are undefined, and then used throughout the code.
-> Most of the =E2=80=9CCONFIG_SUNRPC_XPRT_VSOCK=E2=80=9D guards in sunrpc/s=
-vcsock.c should also be guarded by CONFIG_SUNRPC_BACKCHANNEL.
+On Thu, Jul 06, 2017 at 01:16:26PM -0400, J. Bruce Fields wrote:
+> On Mon, Jul 03, 2017 at 10:00:48AM +0100, Stefan Hajnoczi wrote:
+> > On Fri, Jun 30, 2017 at 10:40:49AM -0400, Steve Dickson wrote:
+> > > On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
+> > > > Format vsock hosts as "vsock:<cid>" so the addresses can be easily
+> > > > distinguished from IPv4 and IPv6 addresses.
+> > > >=20
+> > > > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+> > > > ---
+> > > >  utils/mount/network.c | 8 ++++++++
+> > > >  1 file changed, 8 insertions(+)
+> > > >=20
+> > > > diff --git a/utils/mount/network.c b/utils/mount/network.c
+> > > > index 281e935..b5dcaa5 100644
+> > > > --- a/utils/mount/network.c
+> > > > +++ b/utils/mount/network.c
+> > > > @@ -45,6 +45,8 @@
+> > > >  #include <rpc/pmap_prot.h>
+> > > >  #include <rpc/pmap_clnt.h>
+> > > > =20
+> > > > +#include <linux/vm_sockets.h>
+> > > In the previous patch you had this surrounded by #ifdef AF_VSOCK
+> > > I'm not keen on sprinkling a bunch ifdefs around since=20
+> > > I think it makes the code harder to read. So my question=20
+> > > is why is the ifdef need in the previous patch and
+> > > not needed in this patch and are they needed in the
+> > > previous patch?
+> >=20
+> > The lack of #ifdef is my mistake.
+> >=20
+> > My impression of nfs-utils is that the code is written to work in a
+> > variety of configurations and still support older kernels.  So I am
+> > wrapping AF_VSOCK logic with an #ifdef.
+>=20
+> It needs to be able to support older kernels at run-time, and I don't
+> understand how #ifdefs would help with that.
 
-Thanks, Abbas!  Will fix in v4.
+I will test the nfs-utils binaries against a kernel without AF_VSOCK
+support.  What should happen is that an error is returned when creating
+a socket, adding an export, etc fails.  I'll make sure the errors are
+graceful/meaningful.
 
 Stefan
 
---CYcXvPfqKSDi0QhV
+--Pbi2MkfjSbXbI4MN
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQEcBAEBAgAGBQJZY8HoAAoJEJykq7OBq3PIvJ4H/0AMd2ffOqr7RbHrbQUH0u1U
-08RlJbaKGIwqTTO2lbRZ6i19mMHmrrEKz3jCXxPmEs0cmN3FYI8AnsAg/cOWd8C9
-sckKfJX55lWnhL1kT8S+jseCK8mQYm8UBoEVphT0spv2hHqHBEE8o235izcCk9ac
-9QR/SDBobVawc/La8qgLBaU0fg9eQ1h/0H8iflUUdx0VJ6bqCEybeWw1l0sz+H83
-+D/1fJ5xasZwq2KFNLOQovb5XzXIrEJhi2vQMxzQEY1kjfLIv33xX129/5Z1uVZf
-NMgvkhOd1yjD5FSEOB+joKmjXm1qHMR3nTplHdNKAjpKXZDVlZTJrZZiZJHs+Sk=
-=SmN/
+iQEcBAEBAgAGBQJZY8L1AAoJEJykq7OBq3PIUi0H/Anb3dUk6rRXyriJbNy4Xmkq
+WhL05jLReAlT/TNaAQ2+vrSkQhodIHm1JekaWk3thRFaeSDdVe3A8OqZIiNPKZGU
+ETKc3sTgeNYcycYp22/pNuM+tI1VH6j815A1GHBMxmpNIMcDgFtf9DyUn2KupQSK
+vJ8sTxxJ7Z21C2Kr0QSkXgvqZ+SPvW9WdwKb65+g6XR4F1NX0pCuGO2KjDBSfWwP
+20j+Im9i6fsseebG1CK9GgKJ4bj2jnG7z2OOBewkJsBLV84mHRHr7O9tpMM66XaE
+gfrSQVAih5PiqWxcEX/dbCWYAVRi1cPSRmcssxYK2bpHEWu9vhMZ9CeIt0Ov1CA=
+=pCT5
 -----END PGP SIGNATURE-----
 
---CYcXvPfqKSDi0QhV--
+--Pbi2MkfjSbXbI4MN--
