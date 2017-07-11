@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:32928 "EHLO mx142.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:58566 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934050AbdGKQoy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 11 Jul 2017 12:44:54 -0400
+        id S934061AbdGKQoz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Jul 2017 12:44:55 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>,
         <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v3 36/42] NFSD handle OFFLOAD_CANCEL op
-Date: Tue, 11 Jul 2017 12:44:10 -0400
-Message-ID: <20170711164416.1982-37-kolga@netapp.com>
+Subject: [RFC v3 37/42] NFSD stop queued async copies on client shutdown
+Date: Tue, 11 Jul 2017 12:44:11 -0400
+Message-ID: <20170711164416.1982-38-kolga@netapp.com>
 In-Reply-To: <20170711164416.1982-1-kolga@netapp.com>
 References: <20170711164416.1982-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -17,102 +17,98 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Upon receiving OFFLOAD_CANCEL search the list of copy stateids,
-if found remove it and it will lead to following READs failing
-with ERR_PARTNER_NO_AUTH.
+If client is shutting down and there are still async copies going
+on, then stop queued async copies.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c  | 11 +++++++++++
- fs/nfsd/nfs4state.c | 30 ++++++++++++++++++++----------
+ fs/nfsd/nfs4proc.c  | 21 ++++++++++++++++-----
+ fs/nfsd/nfs4state.c |  1 +
  fs/nfsd/state.h     |  2 ++
- 3 files changed, 33 insertions(+), 10 deletions(-)
+ 3 files changed, 19 insertions(+), 5 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index a977142..7e7b416 100644
+index 7e7b416..b93713d 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -1579,6 +1579,17 @@ static void nfsd4_do_async_copy(struct work_struct *work)
- 		     struct nfsd4_compound_state *cstate,
- 		     struct nfsd4_offload_status *os)
- {
-+
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	__be32 status;
-+	struct nfs4_cp_state *state = NULL;
-+
-+	status = find_cp_state(nn, &os->stateid, &state);
-+	if (!status) {
-+		list_del(&state->cp_list);
-+		nfs4_free_cp_state(state);
-+	}
-+
- 	return 0;
+@@ -92,6 +92,12 @@ void nfsd4_destroy_copy_queue(void)
+ 	destroy_workqueue(copy_wq);
  }
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d391ce5..bcd87c9 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -743,6 +743,22 @@ static void nfs4_free_cp_statelist(struct nfs4_stid *stid)
- 	}
- }
- 
-+__be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
-+			    struct nfs4_cp_state **cps)
++void nfsd4_shutdown_copy(struct nfs4_client *clp)
 +{
-+	struct nfs4_cp_state *state = NULL;
-+
-+	if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
-+		return nfserr_bad_stateid;
-+	spin_lock(&nn->s2s_cp_lock);
-+	state = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
-+	spin_unlock(&nn->s2s_cp_lock);
-+	if (!state)
-+		return nfserr_bad_stateid;
-+	*cps = state;
-+	return 0;
++	set_bit(NFSD4_CLIENT_COPY_KILL, &clp->cl_flags);
++	flush_workqueue(copy_wq);
 +}
 +
- /*
-  * A READ from an inter server to server COPY will have a
-  * copy stateid. Return the parent nfs4_stid.
-@@ -750,18 +766,12 @@ static void nfs4_free_cp_statelist(struct nfs4_stid *stid)
- static __be32 find_cp_state_parent(struct nfsd_net *nn, stateid_t *st,
- 				   struct nfs4_stid **stid)
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 
+ static u32 nfsd_attrmask[] = {
+@@ -1416,15 +1422,16 @@ static void nfsd4_do_async_copy(struct work_struct *work)
  {
-+	__be32 status;
- 	struct nfs4_cp_state *cps = NULL;
+ 	struct nfsd4_copy *copy =
+ 		container_of(work, struct nfsd4_copy, cp_work);
+-	struct nfsd4_copy *cb_copy;
++	struct nfsd4_copy *cb_copy = NULL;
++
++	if (test_bit(NFSD4_CLIENT_COPY_KILL, &copy->cp_clp->cl_flags))
++		goto out_err;
  
--	if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
--		return nfserr_bad_stateid;
--	spin_lock(&nn->s2s_cp_lock);
--	cps = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
--	spin_unlock(&nn->s2s_cp_lock);
--	if (!cps) {
--		pr_info("NFSD: find_cp_state cl_id %d so_id %d NOT FOUND\n",
--			st->si_opaque.so_clid.cl_id, st->si_opaque.so_id);
--		return nfserr_bad_stateid;
--	}
-+	status = find_cp_state(nn, st, &cps);
-+	if (status)
-+		return status;
+ 	if (copy->cp_src.nl_nsvr > 0) { /* Inter server SSC */
+ 		copy->fh_src = nfs42_ssc_open(copy->ss_mnt, &copy->c_fh,
+ 						&copy->stateid);
+-		if (IS_ERR(copy->fh_src)) {
+-			nfsd4_interssc_disconnect(copy->ss_mnt);
+-			return;
+-		}
++		if (IS_ERR(copy->fh_src))
++			goto out_err;
+ 	}
+ 	copy->nfserr = nfsd4_do_copy(copy, 0);
+ 	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+@@ -1439,6 +1446,10 @@ static void nfsd4_do_async_copy(struct work_struct *work)
+ 	nfsd4_run_cb(&cb_copy->cp_cb);
+ out:
+ 	kfree(copy);
++	return;
++out_err:
++	nfsd4_interssc_disconnect(copy->ss_mnt);
++	goto out;
+ }
  
- 	/* Did the inter server to server copy start in time? */
- 	if (cps->cp_active == false && !time_after(cps->cp_timeout, jiffies))
+ static __be32
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index bcd87c9..7727ce53 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1995,6 +1995,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ 	}
+ 	nfsd4_return_all_client_layouts(clp);
+ 	nfsd4_shutdown_callback(clp);
++	nfsd4_shutdown_copy(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+ 	free_client(clp);
 diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2acea23..ebf968d 100644
+index ebf968d..fa749763 100644
 --- a/fs/nfsd/state.h
 +++ b/fs/nfsd/state.h
-@@ -651,6 +651,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
- extern int nfsd4_create_copy_queue(void);
- extern void nfsd4_destroy_copy_queue(void);
-+extern __be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
-+			struct nfs4_cp_state **cps);
- 
- struct nfs4_file *find_file(struct knfsd_fh *fh);
- void put_nfs4_file(struct nfs4_file *fi);
+@@ -336,6 +336,7 @@ struct nfs4_client {
+ #define NFSD4_CLIENT_RECLAIM_COMPLETE	(3)	/* reclaim_complete done */
+ #define NFSD4_CLIENT_CONFIRMED		(4)	/* client is confirmed */
+ #define NFSD4_CLIENT_UPCALL_LOCK	(5)	/* upcall serialization */
++#define NFSD4_CLIENT_COPY_KILL		(6)	/* stop copy workqueue */
+ #define NFSD4_CLIENT_CB_FLAG_MASK	(1 << NFSD4_CLIENT_CB_UPDATE | \
+ 					 1 << NFSD4_CLIENT_CB_KILL)
+ 	unsigned long		cl_flags;
+@@ -645,6 +646,7 @@ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
++extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
+ extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
 -- 
 1.8.3.1
 
