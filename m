@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:37871 "EHLO mx141.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:1982 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934047AbdGKQoh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 11 Jul 2017 12:44:37 -0400
+        id S933233AbdGKQom (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 11 Jul 2017 12:44:42 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>,
         <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [RFC v3 19/42] NFS also send OFFLOAD_CANCEL to source server
-Date: Tue, 11 Jul 2017 12:43:53 -0400
-Message-ID: <20170711164416.1982-20-kolga@netapp.com>
+Subject: [RFC v3 24/42] NFSD add ca_source_server<> to COPY
+Date: Tue, 11 Jul 2017 12:43:58 -0400
+Message-ID: <20170711164416.1982-25-kolga@netapp.com>
 In-Reply-To: <20170711164416.1982-1-kolga@netapp.com>
 References: <20170711164416.1982-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -17,35 +17,151 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In case of copy is cancelled, also send OFFLOAD_CANCEL to the source
-server.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Note: followed conventions and have struct nfsd4_compoundargs pointer as a
+parameter even though it is unused.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/nfs42proc.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4xdr.c | 75 +++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfsd/xdr4.h    |  4 +++
+ 2 files changed, 77 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 36b265a..b7c08a9 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -206,12 +206,14 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	if (copy->count <= 0)
- 		status = -copy->error;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 26780d5..031d06d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -41,6 +41,7 @@
+ #include <linux/utsname.h>
+ #include <linux/pagemap.h>
+ #include <linux/sunrpc/svcauth_gss.h>
++#include <linux/sunrpc/addr.h>
  
-+out_free:
- 	kfree(copy);
- 	return status;
- out_cancel:
- 	nfs42_do_offload_cancel_async(dst, &copy->stateid);
--	kfree(copy);
--	return status;
-+	if (!nfs42_files_from_same_server(src, dst))
-+		nfs42_do_offload_cancel_async(src, src_stateid);
-+	goto out_free;
+ #include "idmap.h"
+ #include "acl.h"
+@@ -1726,11 +1727,58 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ 	DECODE_TAIL;
  }
  
- static ssize_t _nfs42_proc_copy(struct file *src,
++static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
++				      struct nl4_server *ns)
++{
++	DECODE_HEAD;
++	struct nfs42_netaddr *naddr;
++
++	READ_BUF(4);
++	ns->nl4_type = be32_to_cpup(p++);
++
++	/* currently support for 1 inter-server source server */
++	switch (ns->nl4_type) {
++	case NL4_NAME:
++	case NL4_URL:
++		READ_BUF(4);
++		ns->u.nl4_str_sz = be32_to_cpup(p++);
++		if (ns->u.nl4_str_sz > NFS4_OPAQUE_LIMIT)
++			goto xdr_error;
++
++		READ_BUF(ns->u.nl4_str_sz);
++		COPYMEM(ns->u.nl4_str,
++			ns->u.nl4_str_sz);
++		break;
++	case NL4_NETADDR:
++		naddr = &ns->u.nl4_addr;
++
++		READ_BUF(4);
++		naddr->na_netid_len = be32_to_cpup(p++);
++		if (naddr->na_netid_len > RPCBIND_MAXNETIDLEN)
++			goto xdr_error;
++
++		READ_BUF(naddr->na_netid_len + 4); /* 4 for uaddr len */
++		COPYMEM(naddr->na_netid, naddr->na_netid_len);
++
++		naddr->na_uaddr_len = be32_to_cpup(p++);
++		if (naddr->na_uaddr_len > RPCBIND_MAXUADDRLEN)
++			goto xdr_error;
++
++		READ_BUF(naddr->na_uaddr_len);
++		COPYMEM(naddr->na_uaddr, naddr->na_uaddr_len);
++		break;
++	default:
++		goto xdr_error;
++	}
++	DECODE_TAIL;
++}
++
+ static __be32
+ nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
+ {
+ 	DECODE_HEAD;
+-	unsigned int tmp;
++	struct nl4_server *ns;
++	int i;
+ 
+ 	status = nfsd4_decode_stateid(argp, &copy->cp_src_stateid);
+ 	if (status)
+@@ -1745,8 +1793,29 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ 	p = xdr_decode_hyper(p, &copy->cp_count);
+ 	copy->cp_consecutive = be32_to_cpup(p++);
+ 	copy->cp_synchronous = be32_to_cpup(p++);
+-	tmp = be32_to_cpup(p); /* Source server list not supported */
++	copy->cp_src.nl_nsvr = be32_to_cpup(p++);
+ 
++	if (copy->cp_src.nl_nsvr == 0) /* intra-server copy */
++		goto intra;
++
++	/** Support NFSD4_MAX_SSC_SRC number of source servers.
++	 * freed in nfsd4_encode_copy
++	 */
++	if (copy->cp_src.nl_nsvr > NFSD4_MAX_SSC_SRC)
++		copy->cp_src.nl_nsvr = NFSD4_MAX_SSC_SRC;
++	copy->cp_src.nl_svr = kmalloc(copy->cp_src.nl_nsvr *
++					sizeof(struct nl4_server), GFP_KERNEL);
++	if (copy->cp_src.nl_svr == NULL)
++		return nfserrno(-ENOMEM);
++
++	ns = copy->cp_src.nl_svr;
++	for (i = 0; i < copy->cp_src.nl_nsvr; i++) {
++		status = nfsd4_decode_nl4_server(argp, ns);
++		if (status)
++			return status;
++		ns++;
++	}
++intra:
+ 	DECODE_TAIL;
+ }
+ 
+@@ -4300,6 +4369,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 		*p++ = cpu_to_be32(copy->cp_consecutive);
+ 		*p++ = cpu_to_be32(copy->cp_synchronous);
+ 	}
++	/* allocated in nfsd4_decode_copy */
++	kfree(copy->cp_src.nl_svr);
+ 	return nfserr;
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 8fda4ab..6b1a61fc 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -509,6 +509,9 @@ struct nfsd42_write_res {
+ 	nfs4_verifier		wr_verifier;
+ };
+ 
++/*  support 1 source server for now */
++#define NFSD4_MAX_SSC_SRC       1
++
+ struct nfsd4_copy {
+ 	/* request */
+ 	stateid_t	cp_src_stateid;
+@@ -516,6 +519,7 @@ struct nfsd4_copy {
+ 	u64		cp_src_pos;
+ 	u64		cp_dst_pos;
+ 	u64		cp_count;
++	struct nl4_servers cp_src;
+ 
+ 	/* both */
+ 	bool		cp_consecutive;
 -- 
 1.8.3.1
 
