@@ -1,101 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33880 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933186AbdGKVxy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jul 2017 17:53:54 -0400
-Received: by mail-it0-f65.google.com with SMTP id o202so533679itc.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Jul 2017 14:53:54 -0700 (PDT)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:36237 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933186AbdGKVyj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Jul 2017 17:54:39 -0400
+Received: by mail-io0-f196.google.com with SMTP id h134so488465iof.3
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Jul 2017 14:54:39 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Don't run wake_up_bit() when nobody is waiting...
-Date: Tue, 11 Jul 2017 17:53:48 -0400
-Message-Id: <20170711215348.18596-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 1/4] NFS: Refactor NFS access to kernel access mask calculation
+Date: Tue, 11 Jul 2017 17:54:32 -0400
+Message-Id: <20170711215435.18736-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"perf lock" shows fairly heavy contention for the bit waitqueue locks
-when doing an I/O heavy workload.
-Use a bit to tell whether or not there has been contention for a lock
-so that we can optimise away the bit waitqueue options in those cases.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pagelist.c        | 17 ++++++++++++++++-
- include/linux/nfs_page.h |  2 ++
- 2 files changed, 18 insertions(+), 1 deletion(-)
+ fs/nfs/dir.c | 31 +++++++++++++++++++++++--------
+ 1 file changed, 23 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index ce5f8d2875ae..046162b79b4b 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -155,9 +155,12 @@ nfs_page_group_lock(struct nfs_page *req, bool nonblock)
- 	if (!test_and_set_bit(PG_HEADLOCK, &head->wb_flags))
- 		return 0;
- 
--	if (!nonblock)
-+	if (!nonblock) {
-+		set_bit(PG_CONTENDED1, &head->wb_flags);
-+		smp_mb__after_atomic();
- 		return wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
- 				TASK_UNINTERRUPTIBLE);
-+	}
- 
- 	return -EAGAIN;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2ac00bf4ecf1..13f9ec3d4d8e 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2362,16 +2362,31 @@ void nfs_access_add_cache(struct inode *inode, struct nfs_access_entry *set)
  }
-@@ -175,6 +178,10 @@ nfs_page_group_lock_wait(struct nfs_page *req)
+ EXPORT_SYMBOL_GPL(nfs_access_add_cache);
  
- 	WARN_ON_ONCE(head != head->wb_head);
- 
-+	if (!test_bit(PG_HEADLOCK, &head->wb_flags))
-+		return;
-+	set_bit(PG_CONTENDED1, &head->wb_flags);
-+	smp_mb__after_atomic();
- 	wait_on_bit(&head->wb_flags, PG_HEADLOCK,
- 		TASK_UNINTERRUPTIBLE);
- }
-@@ -193,6 +200,8 @@ nfs_page_group_unlock(struct nfs_page *req)
- 	smp_mb__before_atomic();
- 	clear_bit(PG_HEADLOCK, &head->wb_flags);
- 	smp_mb__after_atomic();
-+	if (!test_bit(PG_CONTENDED1, &head->wb_flags))
-+		return;
- 	wake_up_bit(&head->wb_flags, PG_HEADLOCK);
- }
- 
-@@ -383,6 +392,8 @@ void nfs_unlock_request(struct nfs_page *req)
- 	smp_mb__before_atomic();
- 	clear_bit(PG_BUSY, &req->wb_flags);
- 	smp_mb__after_atomic();
-+	if (!test_bit(PG_CONTENDED2, &req->wb_flags))
-+		return;
- 	wake_up_bit(&req->wb_flags, PG_BUSY);
- }
- 
-@@ -465,6 +476,10 @@ void nfs_release_request(struct nfs_page *req)
- int
- nfs_wait_on_request(struct nfs_page *req)
++#define NFS_MAY_READ (NFS4_ACCESS_READ)
++#define NFS_MAY_WRITE (NFS4_ACCESS_MODIFY | \
++		NFS4_ACCESS_EXTEND | \
++		NFS4_ACCESS_DELETE)
++#define NFS_MAY_LOOKUP (NFS4_ACCESS_LOOKUP)
++#define NFS_MAY_EXECUTE (NFS4_ACCESS_EXECUTE)
++static int
++nfs_access_calc_mask(u32 access_result)
++{
++	int mask = 0;
++
++	if (access_result & NFS_MAY_READ)
++		mask |= MAY_READ;
++	if (access_result & NFS_MAY_WRITE)
++		mask |= MAY_WRITE;
++	if (access_result & NFS_MAY_LOOKUP)
++		mask |= MAY_EXEC;
++	if (access_result & NFS_MAY_EXECUTE)
++		mask |= MAY_EXEC;
++	return mask;
++}
++
+ void nfs_access_set_mask(struct nfs_access_entry *entry, u32 access_result)
  {
-+	if (!test_bit(PG_BUSY, &req->wb_flags))
-+		return 0;
-+	set_bit(PG_CONTENDED2, &req->wb_flags);
-+	smp_mb__after_atomic();
- 	return wait_on_bit_io(&req->wb_flags, PG_BUSY,
- 			      TASK_UNINTERRUPTIBLE);
+-	entry->mask = 0;
+-	if (access_result & NFS4_ACCESS_READ)
+-		entry->mask |= MAY_READ;
+-	if (access_result &
+-	    (NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND | NFS4_ACCESS_DELETE))
+-		entry->mask |= MAY_WRITE;
+-	if (access_result & (NFS4_ACCESS_LOOKUP|NFS4_ACCESS_EXECUTE))
+-		entry->mask |= MAY_EXEC;
++	entry->mask = nfs_access_calc_mask(access_result);
  }
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index abbee2d15dce..d67b67ae6c8b 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -33,6 +33,8 @@ enum {
- 	PG_UPTODATE,		/* page group sync bit in read path */
- 	PG_WB_END,		/* page group sync bit in write path */
- 	PG_REMOVE,		/* page group sync bit in write path */
-+	PG_CONTENDED1,		/* Is someone waiting for a lock? */
-+	PG_CONTENDED2,		/* Is someone waiting for a lock? */
- };
+ EXPORT_SYMBOL_GPL(nfs_access_set_mask);
  
- struct nfs_inode;
 -- 
 2.13.0
 
