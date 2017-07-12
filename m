@@ -1,46 +1,33 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:35949 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751247AbdGLXLI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2017 19:11:08 -0400
-Received: by mail-it0-f67.google.com with SMTP id k3so4446613ita.3
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Jul 2017 16:11:07 -0700 (PDT)
+Received: from mail-it0-f66.google.com ([209.85.214.66]:33964 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750766AbdGLXLF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2017 19:11:05 -0400
+Received: by mail-it0-f66.google.com with SMTP id o202so4451940itc.1
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Jul 2017 16:11:05 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/4] pNFS/flexfiles: Handle expired layout segments in ff_layout_initiate_commit()
-Date: Wed, 12 Jul 2017 19:10:58 -0400
-Message-Id: <20170712231059.32293-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20170712231059.32293-3-trond.myklebust@primarydata.com>
-References: <20170712231059.32293-1-trond.myklebust@primarydata.com>
- <20170712231059.32293-2-trond.myklebust@primarydata.com>
- <20170712231059.32293-3-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 0/4] pNFS/NFS COMMIT fixups
+Date: Wed, 12 Jul 2017 19:10:55 -0400
+Message-Id: <20170712231059.32293-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the layout has expired due to a fencing event, then we should not
-attempt to commit to the DS.
+v2: Fix a bug in "NFS: Fix another COMMIT race in pNFS"
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/flexfilelayout/flexfilelayout.c | 4 ++++
- 1 file changed, 4 insertions(+)
+Trond Myklebust (4):
+  NFS: Fix a COMMIT race in pNFS
+  NFS: Fix another COMMIT race in pNFS
+  pNFS/flexfiles: Handle expired layout segments in
+    ff_layout_initiate_commit()
+  Revert commit 722f0b891198 ("pNFS: Don't send COMMITs to the DSes
+    if...")
 
-diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-index 23542dc44a25..d41e1f2c5991 100644
---- a/fs/nfs/flexfilelayout/flexfilelayout.c
-+++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-@@ -1875,6 +1875,10 @@ static int ff_layout_initiate_commit(struct nfs_commit_data *data, int how)
- 	int vers, ret;
- 	struct nfs_fh *fh;
- 
-+	if (!lseg || !(pnfs_is_valid_lseg(lseg) ||
-+	    test_bit(NFS_LSEG_LAYOUTRETURN, &lseg->pls_flags)))
-+		goto out_err;
-+
- 	idx = calc_ds_index_from_commit(lseg, data->ds_commit_index);
- 	ds = nfs4_ff_layout_prepare_ds(lseg, idx, true);
- 	if (!ds)
+ fs/nfs/flexfilelayout/flexfilelayout.c |  4 ++++
+ fs/nfs/pnfs_nfs.c                      | 24 +++++++++++++-----------
+ 2 files changed, 17 insertions(+), 11 deletions(-)
+
 -- 
 2.13.0
 
