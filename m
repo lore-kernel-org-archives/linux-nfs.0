@@ -1,50 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45030 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752191AbdGLO0K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 12 Jul 2017 10:26:10 -0400
-Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: Felix Janda <felix.janda@posteo.de>, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>
-References: <20170630132120.31578-1-stefanha@redhat.com>
- <20170630132120.31578-4-stefanha@redhat.com>
- <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
- <20170703090048.GC22607@stefanha-x1.localdomain>
- <2730896d-f9d6-352d-e829-d672d8735bd3@RedHat.com>
- <20170710181447.GW14195@stefanha-x1.localdomain>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <4e57a6f2-87a2-b601-4727-041f6bffcdff@RedHat.com>
-Date: Wed, 12 Jul 2017 10:26:02 -0400
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33326 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752767AbdGLOwH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2017 10:52:07 -0400
+Received: by mail-it0-f65.google.com with SMTP id 188so2337351itx.0
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Jul 2017 07:52:07 -0700 (PDT)
+Subject: Re: [RFC v3 14/42] NFS if we got partial copy ignore errors
+To: Olga Kornievskaia <kolga@netapp.com>,
+        Trond.Myklebust@primarydata.com, anna.schumaker@netapp.com,
+        bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org
+References: <20170711164416.1982-1-kolga@netapp.com>
+ <20170711164416.1982-15-kolga@netapp.com>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Message-ID: <910cad89-5ca7-4ebd-97b0-fe96284aebc7@gmail.com>
+Date: Wed, 12 Jul 2017 10:52:04 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170710181447.GW14195@stefanha-x1.localdomain>
-Content-Type: text/plain; charset=windows-1252
+In-Reply-To: <20170711164416.1982-15-kolga@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Olga,
 
+On 07/11/2017 12:43 PM, Olga Kornievskaia wrote:
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/nfs42proc.c | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index dba2b62..dfd43bc 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -179,7 +179,8 @@ static int handle_async_copy(struct nfs42_copy_res *res,
+>  out:
+>  	*ret_count = copy->count;
+>  	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
+> -	status = -copy->error;
+> +	if (copy->count <= 0)
+> +		status = -copy->error;
 
-On 07/10/2017 02:14 PM, Stefan Hajnoczi wrote:
-> On Mon, Jul 03, 2017 at 12:51:07PM -0400, Steve Dickson wrote:
->> On 07/03/2017 05:00 AM, Stefan Hajnoczi wrote:
->>> On Fri, Jun 30, 2017 at 10:40:49AM -0400, Steve Dickson wrote:
->>>> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
->> Are there other implementations out there that would cause breakage?
->> I'm pretty sure nfs-utils is only used in Linux environments, right?
-> 
-> Does nfs-utils have a set of minimum distro versions that are supported?
-Not that I'm aware of... Now there are certain package versions nfs-utils
-is dependent on but not particular distro.
+This is a pretty small change.  Can you squash this patch into patch 8
+("NFS add support for asynchronous COPY") that way the code is correct from
+the time it's added?
 
-steved.
- 
-> 
-> For example, "the latest nfs-utils release is supported on RHEL 6, SLES
-> 11, and Debian 8 jessie".
-> 
-> If yes, then I could go check that these distros ship AF_VSOCK and
-> <linux/vm_sockets.h>.
-> 
-> Stefan
+Thanks,
+Anna
+
+>  
+>  	kfree(copy);
+>  	return status;
 > 
