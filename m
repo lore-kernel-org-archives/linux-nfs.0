@@ -1,175 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36098 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751842AbdGLTjl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2017 15:39:41 -0400
-Received: by mail-it0-f65.google.com with SMTP id k3so3539820ita.3
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Jul 2017 12:39:41 -0700 (PDT)
-Subject: Re: [RFC v3 32/42] NFSD OFFLOAD_STATUS xdr
-To: Olga Kornievskaia <kolga@netapp.com>,
-        Trond.Myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@redhat.com
+Received: from fieldses.org ([173.255.197.46]:33708 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752928AbdGLT6A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 Jul 2017 15:58:00 -0400
+Date: Wed, 12 Jul 2017 15:57:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-References: <20170711164416.1982-1-kolga@netapp.com>
- <20170711164416.1982-33-kolga@netapp.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <7836b917-9867-8a38-b273-bf88be8f432e@gmail.com>
-Date: Wed, 12 Jul 2017 15:39:38 -0400
+Subject: Re: [PATCH] sunrpc: Remove NULL element at the end of rq_pages
+Message-ID: <20170712195759.GA19030@fieldses.org>
+References: <20170712160657.24663.66681.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <20170711164416.1982-33-kolga@netapp.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170712160657.24663.66681.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Olga,
-
-On 07/11/2017 12:44 PM, Olga Kornievskaia wrote:
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+On Wed, Jul 12, 2017 at 12:10:40PM -0400, Chuck Lever wrote:
+> Bruce points out that the NULL final element of rq_pages is unneeded
+> by nfs_read_actor. Remove it.
+> 
+> Thus the 260th element of rq_pages is also no longer needed.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  fs/nfsd/nfs4proc.c | 20 ++++++++++++++++++++
->  fs/nfsd/nfs4xdr.c  | 30 ++++++++++++++++++++++++++++--
->  fs/nfsd/xdr4.h     | 10 ++++++++++
->  3 files changed, 58 insertions(+), 2 deletions(-)
+> Hi Bruce-
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 3d8ed3f..6d20ee1 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1468,6 +1468,13 @@ extern struct file *nfs42_ssc_open(struct vfsmount *ss_mnt,
->  	fput(file);
->  	return status;
->  }
-> +static __be32
-> +nfsd4_offload_status(struct svc_rqst *rqstp,
-> +		     struct nfsd4_compound_state *cstate,
-> +		     struct nfsd4_offload_status *os)
-> +{
-> +	return nfserr_notsupp;
-> +}
-
-One small comment on the placement of this function: I think it should go above nfsd4_fallocate() to keep fallocate / allocate / deallocate together.
-
-Thanks!
-Anna
-
->  
->  static __be32
->  nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> @@ -2436,6 +2443,14 @@ static inline u32 nfsd4_copy_notify_rsize(struct svc_rqst *rqstp,
->  		* sizeof(__be32);
->  }
->  
-> +static inline u32 nfsd4_offload_status_rsize(struct svc_rqst *rqstp,
-> +					     struct nfsd4_op *op)
-> +{
-> +	return (op_encode_hdr_size +
-> +		2 /* osr_count */ +
-> +		1 /* osr_complete<1> optional 0 for now */) * sizeof(__be32);
-> +}
-> +
->  #ifdef CONFIG_NFSD_PNFS
->  static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  {
-> @@ -2846,6 +2861,11 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  		.op_name = "OP_COPY_NOTIFY",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_copy_notify_rsize,
->  	},
-> +	[OP_OFFLOAD_STATUS] = {
-> +		.op_func = (nfsd4op_func)nfsd4_offload_status,
-> +		.op_name = "OP_OFFLOAD_STATUS",
-> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_offload_status_rsize,
-> +	},
->  };
->  
->  /**
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index c4438ac..f032178 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1836,6 +1836,13 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
->  }
->  
->  static __be32
-> +nfsd4_decode_offload_status(struct nfsd4_compoundargs *argp,
-> +			    struct nfsd4_offload_status *os)
-> +{
-> +	return nfsd4_decode_stateid(argp, &os->stateid);
-> +}
-> +
-> +static __be32
->  nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
->  {
->  	DECODE_HEAD;
-> @@ -1942,7 +1949,7 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
->  	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
->  	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
->  	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> -	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
->  	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
->  	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
->  	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
-> @@ -4483,6 +4490,25 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
->  }
->  
->  static __be32
-> +nfsd4_encode_offload_status(struct nfsd4_compoundres *resp, __be32 nfserr,
-> +			    struct nfsd4_offload_status *os)
-> +{
-> +	struct xdr_stream *xdr = &resp->xdr;
-> +	__be32 *p;
-> +
-> +	if (nfserr)
-> +		return nfserr;
-> +
-> +	p = xdr_reserve_space(xdr, 8 + 4);
-> +	if (!p)
-> +		return nfserr_resource;
-> +	p = xdr_encode_hyper(p, os->count);
-> +	*p++ = cpu_to_be32(0);
-> +
-> +	return nfserr;
-> +}
-> +
-> +static __be32
->  nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
->  		  struct nfsd4_seek *seek)
->  {
-> @@ -4588,7 +4614,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
->  	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_LAYOUTSTATS]	= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
-> -	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_offload_status,
->  	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
->  	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index e6fa914..c3e6907 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -561,6 +561,15 @@ struct nfsd4_copy_notify {
->  	struct nl4_servers	cpn_src;
->  };
->  
-> +struct nfsd4_offload_status {
-> +	/* request */
-> +	stateid_t	stateid;
-> +
-> +	/* response */
-> +	u64		count;
-> +	u32		status;
-> +};
-> +
->  struct nfsd4_op {
->  	int					opnum;
->  	__be32					status;
-> @@ -617,6 +626,7 @@ struct nfsd4_op {
->  		struct nfsd4_clone		clone;
->  		struct nfsd4_copy		copy;
->  		struct nfsd4_copy_notify	copy_notify;
-> +		struct nfsd4_offload_status	offload_status;
->  		struct nfsd4_seek		seek;
->  	} u;
->  	struct nfs4_replay *			replay;
+> I've been testing this one. No issues for NFSv4.0 on RDMA with
+> krb5i, but NFSv4.0 on TCP with krb5i encounters a problem. The
+> server log shows this message:
 > 
+> rpc-srv/tcp: nfsd: sent only 108 when sending 140 bytes - shutting down socket
+> 
+> And iozone stalls on the client. I haven't looked more closely.
+
+Huh.
+
+OK, well maybe there is some code I haven't spotted that depends on that
+final NULL in rq_pages, or maybe this is just an unrelated bug, but I
+think it's safest just to stick your previous version (from Message-ID:
+<20170630160258.11995.10205.stgit@klimt.1015granger.net>) back into the
+series and then sort this out later.
+
+But we should clean up these constants and comments, it's confusing
+stuff in exactly the sort of code where a mistake could mean letting
+anyone on the internet write to your memory.
+
+--b.
+
+> 
+> 
+>  include/linux/sunrpc/svc.h |    2 +-
+>  net/sunrpc/svc_xprt.c      |    1 -
+>  2 files changed, 1 insertion(+), 2 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index d741399..5500544 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -246,7 +246,7 @@ struct svc_rqst {
+>  	size_t			rq_xprt_hlen;	/* xprt header len */
+>  	struct xdr_buf		rq_arg;
+>  	struct xdr_buf		rq_res;
+> -	struct page		*rq_pages[RPCSVC_MAXPAGES + 1];
+> +	struct page		*rq_pages[RPCSVC_MAXPAGES];
+>  	struct page *		*rq_respages;	/* points into rq_pages */
+>  	struct page *		*rq_next_page; /* next reply page to use */
+>  	struct page *		*rq_page_end;  /* one past the last page */
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index d16a8b4..b7efd16 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -680,7 +680,6 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+>  			rqstp->rq_pages[i] = p;
+>  		}
+>  	rqstp->rq_page_end = &rqstp->rq_pages[i];
+> -	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
+>  
+>  	/* Make arg->head point to first page and arg->pages point to rest */
+>  	arg = &rqstp->rq_arg;
