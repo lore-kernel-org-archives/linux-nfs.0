@@ -1,63 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f54.google.com ([209.85.214.54]:38480 "EHLO
-        mail-it0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751167AbdGLOGi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Jul 2017 10:06:38 -0400
-Received: by mail-it0-f54.google.com with SMTP id k192so13605720ith.1
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Jul 2017 07:06:37 -0700 (PDT)
-Subject: Re: [RFC v3 11/42] NFS test for intra vs inter COPY
-To: Olga Kornievskaia <kolga@netapp.com>,
-        Trond.Myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org
-References: <20170711164416.1982-1-kolga@netapp.com>
- <20170711164416.1982-12-kolga@netapp.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <bd9f4062-6c6d-d310-b4b9-812c1a1628b9@gmail.com>
-Date: Wed, 12 Jul 2017 10:06:35 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:45030 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752191AbdGLO0K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 12 Jul 2017 10:26:10 -0400
+Subject: Re: [PATCH nfs-utils v2 03/12] mount: present AF_VSOCK addresses
+To: Stefan Hajnoczi <stefanha@redhat.com>
+Cc: Felix Janda <felix.janda@posteo.de>, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>
+References: <20170630132120.31578-1-stefanha@redhat.com>
+ <20170630132120.31578-4-stefanha@redhat.com>
+ <dc1bd4ee-621f-d988-2914-61b1c144f146@RedHat.com>
+ <20170703090048.GC22607@stefanha-x1.localdomain>
+ <2730896d-f9d6-352d-e829-d672d8735bd3@RedHat.com>
+ <20170710181447.GW14195@stefanha-x1.localdomain>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <4e57a6f2-87a2-b601-4727-041f6bffcdff@RedHat.com>
+Date: Wed, 12 Jul 2017 10:26:02 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170711164416.1982-12-kolga@netapp.com>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20170710181447.GW14195@stefanha-x1.localdomain>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Olga,
 
-On 07/11/2017 12:43 PM, Olga Kornievskaia wrote:
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfs/internal.h | 10 ++++++++++
->  1 file changed, 10 insertions(+)
+
+On 07/10/2017 02:14 PM, Stefan Hajnoczi wrote:
+> On Mon, Jul 03, 2017 at 12:51:07PM -0400, Steve Dickson wrote:
+>> On 07/03/2017 05:00 AM, Stefan Hajnoczi wrote:
+>>> On Fri, Jun 30, 2017 at 10:40:49AM -0400, Steve Dickson wrote:
+>>>> On 06/30/2017 09:21 AM, Stefan Hajnoczi wrote:
+>> Are there other implementations out there that would cause breakage?
+>> I'm pretty sure nfs-utils is only used in Linux environments, right?
 > 
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 3e24392..dcbcffb 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -7,6 +7,7 @@
->  #include <linux/security.h>
->  #include <linux/crc32.h>
->  #include <linux/nfs_page.h>
-> +#include <linux/sunrpc/addr.h>
->  
->  #define NFS_MS_MASK (MS_RDONLY|MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_SYNCHRONOUS)
->  
-> @@ -766,3 +767,12 @@ static inline bool nfs_error_is_fatal(int err)
->  		return false;
->  	}
->  }
-> +
-> +static inline bool nfs42_files_from_same_server(struct file *in, struct file *out)
-> +{
-> +	struct nfs_client *c_in = (NFS_SERVER(file_inode(in)))->nfs_client;
-> +	struct nfs_client *c_out = (NFS_SERVER(file_inode(out)))->nfs_client;
-> +
-> +	return rpc_cmp_addr((struct sockaddr *)&c_in->cl_addr,
-> +				(struct sockaddr *)&c_out->cl_addr);
-> +}
+> Does nfs-utils have a set of minimum distro versions that are supported?
+Not that I'm aware of... Now there are certain package versions nfs-utils
+is dependent on but not particular distro.
 
-Can you move this to nfs42.h instead of internal.h?
-
-Thanks,
-Anna
-
+steved.
+ 
+> 
+> For example, "the latest nfs-utils release is supported on RHEL 6, SLES
+> 11, and Debian 8 jessie".
+> 
+> If yes, then I could go check that these distros ship AF_VSOCK and
+> <linux/vm_sockets.h>.
+> 
+> Stefan
 > 
