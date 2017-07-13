@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47494 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:47485 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751062AbdGMGap (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 13 Jul 2017 02:30:45 -0400
+        id S1750748AbdGMGaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Jul 2017 02:30:39 -0400
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <steved@redhat.com>
 Date: Thu, 13 Jul 2017 16:30:05 +1000
-Subject: [PATCH 3/4] mount: move handling of "-t nfs4" into nfs_nfs_version()
+Subject: [PATCH 2/4] mount: use version string that is supported by old
+ kernels.
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <149992740560.9181.15169927556408775845.stgit@noble>
+Message-ID: <149992740544.9181.557538576003487649.stgit@noble>
 In-Reply-To: <149992731965.9181.6611555845253022123.stgit@noble>
 References: <149992731965.9181.6611555845253022123.stgit@noble>
 MIME-Version: 1.0
@@ -16,118 +17,58 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Current "-t nfs4" causes other mount options to be ignored
-and an NFSv4 version to be negotiated.
-This is even true when "-o vers=4.1" is given.
+All kernels which support NFSv4.2 understand "vers=4.2".
+Some kernels which support NFSv4.1 only understand "vers=4,minorversion=1".
+All later kernels also support this.
 
-To address this, we need to move the handled of "-t nfs4"
-into nfs_nfs_version, which means passing in the filesystem type.
+Some kernels which support NFSv4.0 only understand "vers=4".
+All later kernels also support this.
+
+So use the string that is most appropriate for each version.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- utils/mount/configfile.c |    2 +-
- utils/mount/network.c    |   11 ++++++-----
- utils/mount/network.h    |    2 +-
- utils/mount/nfsumount.c  |    2 +-
- utils/mount/stropts.c    |    8 +-------
- 5 files changed, 10 insertions(+), 15 deletions(-)
+ utils/mount/stropts.c |   20 ++++++++++++++++++--
+ 1 file changed, 18 insertions(+), 2 deletions(-)
 
-diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index dc964c79107f..e4b39ef86bad 100644
---- a/utils/mount/configfile.c
-+++ b/utils/mount/configfile.c
-@@ -260,7 +260,7 @@ default_value(char *mopt)
- 		}
- 	} else if (strncasecmp(field, "vers", strlen("vers")) == 0) {
- 		if ((options = po_split(field)) != NULL) {
--			if (!nfs_nfs_version(options, &config_default_vers)) {
-+			if (!nfs_nfs_version("nfs", options, &config_default_vers)) {
- 				xlog_warn("Unable to set default version: %s", 
- 					strerror(errno));
- 				
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 92457c726be7..d673391b5fff 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -1260,7 +1260,7 @@ nfs_nfs_program(struct mount_options *options, unsigned long *program)
-  * or FALSE if the option was specified with an invalid value.
-  */
- int
--nfs_nfs_version(struct mount_options *options, struct nfs_version *version)
-+nfs_nfs_version(char *type, struct mount_options *options, struct nfs_version *version)
- {
- 	char *version_key, *version_val, *cptr;
- 	int i, found = 0;
-@@ -1275,10 +1275,11 @@ nfs_nfs_version(struct mount_options *options, struct nfs_version *version)
- 		}
- 	}
- 
--	if (!found)
-+	if (!found && strcmp(type, "nfs4") == 0)
-+		version_val = type + 3;
-+	else if (!found)
- 		return 1;
--
--	if (i <= 2 ) {
-+	else if (i <= 2 ) {
- 		/* v2, v3, v4 */
- 		version_val = version_key + 1;
- 		version->v_mode = V_SPECIFIC;
-@@ -1650,7 +1651,7 @@ int nfs_options2pmap(struct mount_options *options,
- 
- 	if (!nfs_nfs_program(options, &nfs_pmap->pm_prog))
- 		return 0;
--	if (!nfs_nfs_version(options, &version))
-+	if (!nfs_nfs_version("nfs", options, &version))
- 		return 0;
- 	if (version.v_mode == V_DEFAULT)
- 		nfs_pmap->pm_vers = 0;
-diff --git a/utils/mount/network.h b/utils/mount/network.h
-index 9cc5decf19fa..ecaac33d88de 100644
---- a/utils/mount/network.h
-+++ b/utils/mount/network.h
-@@ -72,7 +72,7 @@ struct nfs_version {
- 
- int nfs_nfs_proto_family(struct mount_options *options, sa_family_t *family);
- int nfs_mount_proto_family(struct mount_options *options, sa_family_t *family);
--int nfs_nfs_version(struct mount_options *options, struct nfs_version *version);
-+int nfs_nfs_version(char *type, struct mount_options *options, struct nfs_version *version);
- int  nfs_nfs_protocol(struct mount_options *options, unsigned long *protocol);
- 
- int nfs_options2pmap(struct mount_options *,
-diff --git a/utils/mount/nfsumount.c b/utils/mount/nfsumount.c
-index de284f2419da..e16fb6a1bbb1 100644
---- a/utils/mount/nfsumount.c
-+++ b/utils/mount/nfsumount.c
-@@ -180,7 +180,7 @@ static int nfs_umount_is_vers4(const struct mntentchn *mc)
- 		options = po_split(pmc->m.mnt_opts);
- 		if (options != NULL) {
- 			struct nfs_version version;
--			int rc = nfs_nfs_version(options, &version);
-+			int rc = nfs_nfs_version("nfs", options, &version);
- 			po_destroy(options);
- 			if (rc && version.major == 4)
- 				goto out_nfs4;
 diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 0a371bf1811e..eb9a27ba2f50 100644
+index c2a739bca854..0a371bf1811e 100644
 --- a/utils/mount/stropts.c
 +++ b/utils/mount/stropts.c
-@@ -327,15 +327,9 @@ static int nfs_append_sloppy_option(struct mount_options *options)
- 
- static int nfs_set_version(struct nfsmount_info *mi)
+@@ -727,7 +727,7 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
  {
--	if (!nfs_nfs_version(mi->options, &mi->version))
-+	if (!nfs_nfs_version(mi->type, mi->options, &mi->version))
- 		return 0;
+ 	struct mount_options *options = po_dup(mi->options);
+ 	int result = 0;
+-	char version_opt[16];
++	char version_opt[32];
+ 	char *extra_opts = NULL;
  
--	if (strncmp(mi->type, "nfs4", 4) == 0) {
--		/* Set to default values */
--		mi->version.major = NFS_DEFAULT_MAJOR;
--		mi->version.minor = NFS_DEFAULT_MINOR;
--		mi->version.v_mode = V_GENERAL;
--	}
- 	/*
- 	 * Before 2.6.32, the kernel NFS client didn't
- 	 * support "-t nfs vers=4" mounts, so NFS version
+ 	if (!options) {
+@@ -749,8 +749,24 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
+ 	}
+ 
+ 	if (mi->version.v_mode != V_SPECIFIC) {
++		char *fmt;
++		switch (mi->version.minor) {
++			/* Old kernels don't support the new "vers=x.y"
++			 * option, but do support old versions of NFS4.
++			 * So use the format that is most widely understood.
++			 */
++		case 0:
++			fmt = "vers=%lu";
++			break;
++		case 1:
++			fmt = "vers=%lu,minorversion=%lu";
++			break;
++		default:
++			fmt = "vers=%lu.%lu";
++			break;
++		}
+ 		snprintf(version_opt, sizeof(version_opt) - 1,
+-			"vers=%lu.%lu", mi->version.major,
++			fmt, mi->version.major,
+ 			mi->version.minor);
+ 
+ 		if (po_append(options, version_opt) == PO_FAILED) {
 
 
