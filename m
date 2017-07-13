@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:47485 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:47504 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750748AbdGMGaj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 13 Jul 2017 02:30:39 -0400
+        id S1751067AbdGMGau (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Jul 2017 02:30:50 -0400
 From: NeilBrown <neilb@suse.com>
 To: Steve Dickson <steved@redhat.com>
 Date: Thu, 13 Jul 2017 16:30:05 +1000
-Subject: [PATCH 2/4] mount: use version string that is supported by old
- kernels.
+Subject: [PATCH 4/4] mount: Fix problems with parsing minorversion=
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <149992740544.9181.557538576003487649.stgit@noble>
+Message-ID: <149992740578.9181.10837920531865843446.stgit@noble>
 In-Reply-To: <149992731965.9181.6611555845253022123.stgit@noble>
 References: <149992731965.9181.6611555845253022123.stgit@noble>
 MIME-Version: 1.0
@@ -17,58 +16,71 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All kernels which support NFSv4.2 understand "vers=4.2".
-Some kernels which support NFSv4.1 only understand "vers=4,minorversion=1".
-All later kernels also support this.
+1/ minorversion=0 is not recognized, as errors from
+   strtol() are not correctly detected.
+2/ when there is an error in the minorversion= value,
+   no message is presented.
+3/ Current code recognizes "minorversion" and sets V_SPECIFIC,
+   but then because *cptr == '\0', the v_mode is reset to V_GENERAL.
+   This results in minorversion negotiation, which is not wanted.
 
-Some kernels which support NFSv4.0 only understand "vers=4".
-All later kernels also support this.
-
-So use the string that is most appropriate for each version.
+This patch addresses all of these.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- utils/mount/stropts.c |   20 ++++++++++++++++++--
- 1 file changed, 18 insertions(+), 2 deletions(-)
+ utils/mount/network.c |   22 +++++++++++++---------
+ 1 file changed, 13 insertions(+), 9 deletions(-)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index c2a739bca854..0a371bf1811e 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -727,7 +727,7 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
- {
- 	struct mount_options *options = po_dup(mi->options);
- 	int result = 0;
--	char version_opt[16];
-+	char version_opt[32];
- 	char *extra_opts = NULL;
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index d673391b5fff..11ee818f9705 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -100,7 +100,6 @@ static const char *nfs_version_opttbl[] = {
+ 	"v4",
+ 	"vers",
+ 	"nfsvers",
+-	"minorversion",
+ 	NULL,
+ };
  
- 	if (!options) {
-@@ -749,8 +749,24 @@ static int nfs_do_mount_v4(struct nfsmount_info *mi,
- 	}
+@@ -1291,17 +1290,19 @@ nfs_nfs_version(char *type, struct mount_options *options, struct nfs_version *v
+ 	if (!version_val)
+ 		goto ret_error;
  
- 	if (mi->version.v_mode != V_SPECIFIC) {
-+		char *fmt;
-+		switch (mi->version.minor) {
-+			/* Old kernels don't support the new "vers=x.y"
-+			 * option, but do support old versions of NFS4.
-+			 * So use the format that is most widely understood.
-+			 */
-+		case 0:
-+			fmt = "vers=%lu";
-+			break;
-+		case 1:
-+			fmt = "vers=%lu,minorversion=%lu";
-+			break;
-+		default:
-+			fmt = "vers=%lu.%lu";
-+			break;
-+		}
- 		snprintf(version_opt, sizeof(version_opt) - 1,
--			"vers=%lu.%lu", mi->version.major,
-+			fmt, mi->version.major,
- 			mi->version.minor);
+-	if (!(version->major = strtol(version_val, &cptr, 10)))
++	version->major = strtol(version_val, &cptr, 10);
++	if (cptr == version_val || (*cptr && *cptr != '.'))
+ 		goto ret_error;
+-
+-	if (strcmp(nfs_version_opttbl[i], "minorversion") == 0) {
++	if (version->major == 4 && *cptr != '.' &&
++	    (version_val = po_get(options, "minorversion")) != NULL) {
++		version->minor = strtol(version_val, &cptr, 10);
++		i = -1;
++		if (*cptr)
++			goto ret_error;
+ 		version->v_mode = V_SPECIFIC;
+-		version->minor = version->major;
+-		version->major = 4;
+ 	} else if (version->major < 4)
+ 		version->v_mode = V_SPECIFIC;
+-
+-	if (*cptr == '.') {
++	else if (*cptr == '.') {
+ 		version_val = ++cptr;
+ 		if (!(version->minor = strtol(version_val, &cptr, 10)) && cptr == version_val)
+ 			goto ret_error;
+@@ -1315,7 +1316,10 @@ nfs_nfs_version(char *type, struct mount_options *options, struct nfs_version *v
+ 	return 1;
  
- 		if (po_append(options, version_opt) == PO_FAILED) {
+ ret_error:
+-	if (i <= 2 ) {
++	if (i < 0) {
++		nfs_error(_("%s: parsing error on 'minorversion=' option"),
++			progname);
++	} else if (i <= 2 ) {
+ 		nfs_error(_("%s: parsing error on 'v' option"),
+ 			progname);
+ 	} else if (i == 3 ) {
 
 
