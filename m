@@ -1,32 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f51.google.com ([209.85.218.51]:36403 "EHLO
-        mail-oi0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751350AbdGMVnP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Jul 2017 17:43:15 -0400
+Received: from fieldses.org ([173.255.197.46]:36072 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752766AbdGNBjP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 13 Jul 2017 21:39:15 -0400
+Date: Thu, 13 Jul 2017 21:39:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Colin King <colin.king@canonical.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "David S . Miller" <davem@davemloft.net>,
+        Sagi Grimberg <sagi@grimberg.me>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH][net-next] svcrdma: fix an incorrect check on -E2BIG and
+ -EINVAL
+Message-ID: <20170714013914.GA14085@fieldses.org>
+References: <20170713175115.9044-1-colin.king@canonical.com>
+ <1D2A804A-9BEC-4D34-AF01-960F35E297E7@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
-References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 13 Jul 2017 14:43:14 -0700
-Message-ID: <CA+55aFz=JhykX-zU0f2FwrPbGndR8skQkuODU_YjQKTVs6OioQ@mail.gmail.com>
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1D2A804A-9BEC-4D34-AF01-960F35E297E7@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jul 13, 2017 at 2:16 PM, Anna Schumaker
-<schumaker.anna@gmail.com> wrote:
->
->   git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.13-1
+On Thu, Jul 13, 2017 at 01:53:10PM -0400, Chuck Lever wrote:
+> 
+> > On Jul 13, 2017, at 1:51 PM, Colin King <colin.king@canonical.com> wrote:
+> > 
+> > From: Colin Ian King <colin.king@canonical.com>
+> > 
+> > The current check will always be true and will always jump to
+> > err1, this looks dubious to me. I believe && should be used
+> > instead of ||.
+> > 
+> > Detected by CoverityScan, CID#1450120 ("Logically Dead Code")
+> > 
+> > Fixes: 107c1d0a991a ("svcrdma: Avoid Send Queue overflow")
+> > Signed-off-by: Colin Ian King <colin.king@canonical.com>
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+> 
+> Dan reported this today, and I have a similar patch in my
+> "pending for-rc" series. This one works too.
 
-Btw, your key seems to have expired, and doing a refresh on it doesn't fix it.
+Applied and merged upstream, thanks.
 
-I'm sure you've refreshed your key, but apparently that refresh hasn't
-been percolated to the public keyservers?
-
-                   Linus
+--b.
