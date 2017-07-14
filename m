@@ -1,140 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37366 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751062AbdGNUZD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Jul 2017 16:25:03 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/5] opdesc will be useful outside nfs4proc.c
-Date: Fri, 14 Jul 2017 16:24:52 -0400
-Message-Id: <1500063895-29457-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1500063895-29457-1-git-send-email-bfields@redhat.com>
-References: <1500063895-29457-1-git-send-email-bfields@redhat.com>
+Received: from mail-lf0-f68.google.com ([209.85.215.68]:34753 "EHLO
+        mail-lf0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751004AbdGNU2a (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2017 16:28:30 -0400
+Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Kees Cook <keescook@chromium.org>
+Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Daniel Micay <danielmicay@gmail.com>,
+        Dave Jones <davej@codemonkey.org.uk>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Alexander Potapenko <glider@google.com>,
+        Dmitry Vyukov <dvyukov@google.com>, kasan-dev@googlegroups.com
+References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
+ <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
+ <CA+55aFx=jOBws09qMfOyy22uz6CxezfS_DbKs7Ks6ZNqeZN6sQ@mail.gmail.com>
+ <4c68e120-5ada-6ce1-30fd-e26155c9704e@virtuozzo.com>
+ <CA+55aFyH-bL6NhX_jvqS50L4G5Y1QBgYhdiX9d1OH8Ze25EU6w@mail.gmail.com>
+From: Andrey Rybainin <ryabinin.a.a@gmail.com>
+Message-ID: <e1a3afb4-dd45-ac0a-cc07-031757ef3463@gmail.com>
+Date: Fri, 14 Jul 2017 23:26:22 +0300
+MIME-Version: 1.0
+In-Reply-To: <CA+55aFyH-bL6NhX_jvqS50L4G5Y1QBgYhdiX9d1OH8Ze25EU6w@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
----
- fs/nfsd/nfs4proc.c | 25 +++++++++++--------------
- fs/nfsd/nfs4xdr.c  |  1 +
- fs/nfsd/xdr4.h     |  2 ++
- 3 files changed, 14 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9a627a6c52aa..01d7f2456f62 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1578,7 +1578,7 @@ static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
- 	return nfs_ok;
- }
- 
--static inline const struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
-+const struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
- {
- 	return &nfsd4_ops[op->opnum];
- }
-@@ -1651,7 +1651,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 	struct nfsd4_compoundargs *args = rqstp->rq_argp;
- 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
- 	struct nfsd4_op	*op;
--	const struct nfsd4_operation *opdesc;
- 	struct nfsd4_compound_state *cstate = &resp->cstate;
- 	struct svc_fh *current_fh = &cstate->current_fh;
- 	struct svc_fh *save_fh = &cstate->save_fh;
-@@ -1704,15 +1703,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 			goto encode_op;
- 		}
- 
--		opdesc = OPDESC(op);
--
- 		if (!current_fh->fh_dentry) {
--			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
-+			if (!(op->opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
- 				op->status = nfserr_nofilehandle;
- 				goto encode_op;
- 			}
- 		} else if (current_fh->fh_export->ex_fslocs.migrated &&
--			  !(opdesc->op_flags & ALLOWED_ON_ABSENT_FS)) {
-+			  !(op->opdesc->op_flags & ALLOWED_ON_ABSENT_FS)) {
- 			op->status = nfserr_moved;
- 			goto encode_op;
- 		}
-@@ -1720,12 +1717,12 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 		fh_clear_wcc(current_fh);
- 
- 		/* If op is non-idempotent */
--		if (opdesc->op_flags & OP_MODIFIES_SOMETHING) {
-+		if (op->opdesc->op_flags & OP_MODIFIES_SOMETHING) {
- 			/*
- 			 * Don't execute this op if we couldn't encode a
- 			 * succesful reply:
- 			 */
--			u32 plen = opdesc->op_rsize_bop(rqstp, op);
-+			u32 plen = op->opdesc->op_rsize_bop(rqstp, op);
- 			/*
- 			 * Plus if there's another operation, make sure
- 			 * we'll have space to at least encode an error:
-@@ -1738,9 +1735,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 		if (op->status)
- 			goto encode_op;
- 
--		if (opdesc->op_get_currentstateid)
--			opdesc->op_get_currentstateid(cstate, &op->u);
--		op->status = opdesc->op_func(rqstp, cstate, &op->u);
-+		if (op->opdesc->op_get_currentstateid)
-+			op->opdesc->op_get_currentstateid(cstate, &op->u);
-+		op->status = op->opdesc->op_func(rqstp, cstate, &op->u);
- 
- 		/* Only from SEQUENCE */
- 		if (cstate->status == nfserr_replay_cache) {
-@@ -1749,10 +1746,10 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 			goto out;
- 		}
- 		if (!op->status) {
--			if (opdesc->op_set_currentstateid)
--				opdesc->op_set_currentstateid(cstate, &op->u);
-+			if (op->opdesc->op_set_currentstateid)
-+				op->opdesc->op_set_currentstateid(cstate, &op->u);
- 
--			if (opdesc->op_flags & OP_CLEAR_STATEID)
-+			if (op->opdesc->op_flags & OP_CLEAR_STATEID)
- 				clear_current_stateid(cstate);
- 
- 			if (need_wrongsec_check(rqstp))
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 20fbcab97753..40ed23fda814 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1929,6 +1929,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 			op->opnum = OP_ILLEGAL;
- 			op->status = nfserr_op_illegal;
- 		}
-+		op->opdesc = OPDESC(op);
- 		/*
- 		 * We'll try to cache the result in the DRC if any one
- 		 * op in the compound wants to be cached:
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index fcdfe1c3ff4f..90b928006bc7 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -538,6 +538,7 @@ struct nfsd4_seek {
- 
- struct nfsd4_op {
- 	int					opnum;
-+	const struct nfsd4_operation *		opdesc;
- 	__be32					status;
- 	union nfsd4_op_u {
- 		struct nfsd4_access		access;
-@@ -661,6 +662,7 @@ static inline bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
- 	return argp->opcnt == resp->opcnt;
- }
- 
-+const struct nfsd4_operation *OPDESC(struct nfsd4_op *op);
- int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op);
- void warn_on_nonidempotent_op(struct nfsd4_op *op);
- 
--- 
-2.9.4
+On 07/14/2017 10:58 PM, Linus Torvalds wrote:
+> On Fri, Jul 14, 2017 at 12:43 PM, Andrey Ryabinin
+> <aryabinin@virtuozzo.com> wrote:
+>>
+>>> yet when I look at the generated code for __ip_map_lookup, I see
+>>>
+>>>        movl    $32, %edx       #,
+>>>        movq    %r13, %rsi      # class,
+>>>        leaq    48(%rax), %rdi  #, tmp126
+>>>        call    strscpy #
+>>>
+>>> what's the bug here? Look at that third argume8nt - %rdx. It is
+>>> initialized to 32.
+>>
+>> It's not a compiler bug, it's a bug in our strcpy().
+>> Whoever wrote this strcpy() into strscpy() code apparently didn't read carefully
+>> enough gcc manual about __builtin_object_size().
+>>
+>> Summary from https://gcc.gnu.org/onlinedocs/gcc/Object-Size-Checking.html :
+>>
+>>         __builtin_object_size(ptr, type) returns a constant number of bytes from 'ptr' to the end of the object 'ptr'
+>>         pointer points to. "type" is an integer constant from 0 to 3. If the least significant bit is clear, objects
+>>         are whole variables, if it is set, a closest surrounding subobject is considered the object a pointer points to.
+>>         The second bit determines if maximum or minimum of remaining bytes is computed.
+>>
+>> We have type = 0 in strcpy(), so the least significant bit is clear. So the 'ptr' is considered as a pointer to the whole
+>> variable i.e. pointer to struct ip_map ip;
+>> And the number of bytes from 'ip.m_class' to the end of the ip object is exactly 32.
+>>
+>> I suppose that changing the type to 1 should fix this bug.
+> 
+> Oh, that absolutely needs to be done.
+> 
+> Because that "strcpy() -> strscpy()" conversion really depends on that
+> size being the right size (well, in this case minimal safe size) for
+> the actual accesses, exactly because "strscpy()" is perfectly willing
+> to write *past* the end of the destination string within that given
+> size limit (ie it reads and writes in the same 8-byte chunks).
+> 
+> So if you have a small target string that is contained in a big
+> object, then the "hardened" strcpy() code can actually end up
+> overwriting things past the end of the strring, even if the string
+> itself were to have fit in the buffer.
+> 
+> I note that every single use in string.h is buggy, and it worries me
+> that __compiletime_object_size() does this too. The only user of that
+> seems to be check_copy_size(), and now I'm a bit worried what that bug
+> may have hidden.
+> 
+> I find "hardening" code that adds bugs to be particularly bad and
+> ugly, the same way that I absolutely *hate* debugging code that turns
+> out to make debugging impossible (we had that with the "better" stack
+> tracing code that caused kernel panics to kill the machine entirely
+> rather than show the backtrace, and I'm still bitter about it a decade
+> after the fact).
+> 
 
+A have some more news to make you even more "happier" :)
+strcpy() choose to copy 32-bytes instead of smaller 5-bytes because it has one more bug :)
+
+GCC couldn't determine size of class (which is 5-byte string):
+	strcpy(ip.m_class, class);
+
+So, p_size = 32 and q_size  = -1, this "if (p_size == (size_t)-1 && q_size == (size_t)-1)" is false
+(because of bogus '&&', obviously we should have '||' here)
+
+and since (32 < (size_t)-1) 
+	if (strscpy(p, q, p_size < q_size ? p_size : q_size) < 0)
+
+we end up with 32-bytes strscpy().
+
+Enjoy :)
+
+
+> There is something actively *evil* about it. Daniel, Kees, please jump on this.
+> 
+> Andrey, thanks for noticing this thing,
+> 
+>                           Linus
+> 
