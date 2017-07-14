@@ -1,123 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ve1eur01on0091.outbound.protection.outlook.com ([104.47.1.91]:20819
-        "EHLO EUR01-VE1-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750917AbdGNTpZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 14 Jul 2017 15:45:25 -0400
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-        Dave Jones <davej@codemonkey.org.uk>,
-        Anna Schumaker <schumaker.anna@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Alexander Potapenko <glider@google.com>,
-        Dmitry Vyukov <dvyukov@google.com>
-Cc: kasan-dev@googlegroups.com
-References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
- <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
- <CA+55aFx=jOBws09qMfOyy22uz6CxezfS_DbKs7Ks6ZNqeZN6sQ@mail.gmail.com>
-From: Andrey Ryabinin <aryabinin@virtuozzo.com>
-Message-ID: <4c68e120-5ada-6ce1-30fd-e26155c9704e@virtuozzo.com>
-Date: Fri, 14 Jul 2017 22:43:07 +0300
-MIME-Version: 1.0
-In-Reply-To: <CA+55aFx=jOBws09qMfOyy22uz6CxezfS_DbKs7Ks6ZNqeZN6sQ@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Received: from userp1040.oracle.com ([156.151.31.81]:30922 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751012AbdGNTtD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2017 15:49:03 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: NFSv2 mounts use AUTH_NULL no matter what sec= is specified
+Date: Fri, 14 Jul 2017 15:48:56 -0400
+Message-Id: <E61926F0-2402-487C-8BEA-F36D7B86DDD5@oracle.com>
+Cc: Dros Adamson <dros@primarydata.com>,
+        Jeff Layton <jlayton@redhat.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi-
+
+I was trying to test a server NFS/RDMA change that happened to
+effect the NFSv2 XDR decoders, and ran into this issue.
+
+When I try to mount with NFSv2 and sec=sys, the mount succeeds,
+but the RPCs use AUTH_NULL credentials. LOOKUP fails immediately
+with EACCES if the server's export does not permit AUTH_NULL.
+
+In v3.12, Jeff introduced a change to use a mock mount flavor
+list for MNTv1, which does not return one:
+
+commit fb9b02fda06798cfca975c8b7fae3e6188a30572
+Author:     Jeff Layton <jlayton@redhat.com>
+AuthorDate: Thu Jun 27 15:54:40 2013 -0400
+Commit:     Trond Myklebust <Trond.Myklebust@netapp.com>
+CommitDate: Fri Jun 28 15:51:51 2013 -0400
+
+    nfs: have nfs_mount fake up a auth_flavs list when the server didn't provide it
+
+The flavor list contains only AUTH_NULL. That is probably a
+related change, though NFSv2 is still working at that point.
+
+A full bisect ends on this commit, introduced in v3.13:
+
+[cel@manet bisect]$ git bisect good
+4d4b69dd847a098cdca341c45326f6c6f61b8691 is the first bad commit
+commit 4d4b69dd847a098cdca341c45326f6c6f61b8691
+Author: Weston Andros Adamson <dros@netapp.com>
+Date:   Fri Oct 18 15:15:19 2013 -0400
+
+    NFS: add support for multiple sec= mount options
+    
+    This patch adds support for multiple security options which can be
+    specified using a colon-delimited list of security flavors (the same
+    syntax as nfsd's exports file).
+    
+    This is useful, for instance, when NFSv4.x mounts cross SECINFO
+    boundaries. With this patch a user can use "sec=krb5i,krb5p"
+    to mount a remote filesystem using krb5i, but can still cross
+    into krb5p-only exports.
+    
+    New mounts will try all security options before failing.  NFSv4.x
+    SECINFO results will be compared against the sec= flavors to
+    find the first flavor in both lists or if no match is found will
+    return -EPERM.
+    
+    Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+
+:040000 040000 bd52b0280a77fcf84b9c97e12824f2ce552d4a68 4b7ff476542ef06fe6dfb009437dd50d16c593c7 M	fs
+:040000 040000 d40e43b33868ecb3175e38773f4967005a05791f ba78d1063471fb6e2653234f1feda1c48f1762d2 M	include
+[cel@manet bisect]$
+
+There are some interesting quandaries here:
+
+ - The mount uses AUTH_NULL no matter what "sec=" setting is
+   specified; thus "sec=" is not effective on NFSv2 mounts
+ - Shouldn't a "sec=sys" mount be rejected immediately if the
+   only entry in the mount flavor list is AUTH_NULL ?
+ - If "vers=3" is specified, there is a UID associated with
+   each NFS operation, but if "vers=2" is specified, they will
+   all be associated with "nobody" (assuming the export permits
+   AUTH_NULL access)
+ - Back in 2013, the community hadn't stopped testing NFSv2
+   yet (I think) but this still got by somehow
 
 
-On 07/14/2017 10:05 PM, Linus Torvalds wrote:
-> On Fri, Jul 14, 2017 at 7:25 AM, Dave Jones <davej@codemonkey.org.uk> wrote:
->> On Thu, Jul 13, 2017 at 05:16:24PM -0400, Anna Schumaker wrote:
->>  >
->>  >   git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.13-1
->>
->> Since this landed, I'm seeing this during boot..
->>
->>  ==================================================================
->>  BUG: KASAN: global-out-of-bounds in strscpy+0x4a/0x230
->>  Read of size 8 at addr ffffffffb4eeaf20 by task nfsd/688
-> 
-> Is KASAN aware that strscpy() does the word-at-a-time optimistic reads
-> of the sources?
-> 
+WHY YOU SHOULD CARE ;-)
 
-Nope.
+Even though this is NFSv2, this problem effects a large number
+of kernels that are currently in use by distributions which
+still ostensibly support NFSv2. Therefore I feel it needs to
+be addressed upstream and backported to stable and distribution
+kernels from v3.13 and newer. Unfortunately I won't have the
+time to address this myself for a few weeks, so I'm posting
+here hoping that someone closer to this code can have a crack
+at it soon.
 
-> The problem may be that the source is initialized from the global
-> string "nfsd", and KASAN may be unhappy abotu the fact that we read 8
-> bytes from a 5-byte string (four plus NUL) as we do the word-at-a-time
-> strscpy..
-> 
+The reproducer is straightforward:
 
-Right.
+1. sudo mount -o vers=2,tcp,sec=sys server:/export /mnt
+2. ls -l /mnt
 
-> That said, we do check the size first (because we also *write* 8 bytes
-> at a time), so maybe KASAN shouldn't even need to care.
->
+This step fails with "Permission denied" on broken kernels.
 
-Perhaps we could fallback to unoptimzed copy for KASAN case by setting max = 0
-in strscpy().
-
- 
-> Hmm. it really looks to me like this is actually a compiler bug (I'm
-> using current gcc in F26, which is gcc-7.1.1 - I'm assuming DaveJ is
-> the same).
-> 
-> This is the source code in __ip_map_lookup:
-> 
->         struct ip_map ip;
->      .....
->         strcpy(ip.m_class, class);
-> 
-> and "m_class" is 8 bytes in size:
-> 
->     struct ip_map {
->     ...
->             char                    m_class[8]; /* e.g. "nfsd" */
->     ...
-> 
-> yet when I look at the generated code for __ip_map_lookup, I see
-> 
->         movl    $32, %edx       #,
->         movq    %r13, %rsi      # class,
->         leaq    48(%rax), %rdi  #, tmp126
->         call    strscpy #
-> 
-> what's the bug here? Look at that third argume8nt - %rdx. It is
-> initialized to 32.
-> 
-> WTF?
-> 
+3. sudo umount /mnt
 
 
-It's not a compiler bug, it's a bug in our strcpy().
-Whoever wrote this strcpy() into strscpy() code apparently didn't read carefully
-enough gcc manual about __builtin_object_size().
-
-Summary from https://gcc.gnu.org/onlinedocs/gcc/Object-Size-Checking.html :
-
-	__builtin_object_size(ptr, type) returns a constant number of bytes from 'ptr' to the end of the object 'ptr'
-	pointer points to. "type" is an integer constant from 0 to 3. If the least significant bit is clear, objects
-	are whole variables, if it is set, a closest surrounding subobject is considered the object a pointer points to.
-	The second bit determines if maximum or minimum of remaining bytes is computed. 
-
-We have type = 0 in strcpy(), so the least significant bit is clear. So the 'ptr' is considered as a pointer to the whole
-variable i.e. pointer to struct ip_map ip;
-And the number of bytes from 'ip.m_class' to the end of the ip object is exactly 32.
-
-I suppose that changing the type to 1 should fix this bug.
+--
+Chuck Lever
 
 
 
-> The code to turn "strcpy()" into "strscpy()" should pick the *smaller*
-> of the two object sizes as the size argument. How the hell is that
-> size argument 32?
-> 
-> Am I missing something? DaveJ, do you see the same?
-> 
->                        Linus
-> 
