@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lf0-f68.google.com ([209.85.215.68]:34753 "EHLO
-        mail-lf0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751004AbdGNU2a (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2017 16:28:30 -0400
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:35613 "EHLO
+        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751019AbdGNUii (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Jul 2017 16:38:38 -0400
+Message-ID: <1500064716.3755.1.camel@gmail.com>
 Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
+From: Daniel Micay <danielmicay@gmail.com>
 To: Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
         Kees Cook <keescook@chromium.org>
-Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
-        Daniel Micay <danielmicay@gmail.com>,
-        Dave Jones <davej@codemonkey.org.uk>,
+Cc: Dave Jones <davej@codemonkey.org.uk>,
         Anna Schumaker <schumaker.anna@gmail.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         linux-fsdevel <linux-fsdevel@vger.kernel.org>,
@@ -16,52 +17,56 @@ Cc: Andrey Ryabinin <aryabinin@virtuozzo.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Alexander Potapenko <glider@google.com>,
         Dmitry Vyukov <dvyukov@google.com>, kasan-dev@googlegroups.com
-References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
- <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
- <CA+55aFx=jOBws09qMfOyy22uz6CxezfS_DbKs7Ks6ZNqeZN6sQ@mail.gmail.com>
- <4c68e120-5ada-6ce1-30fd-e26155c9704e@virtuozzo.com>
- <CA+55aFyH-bL6NhX_jvqS50L4G5Y1QBgYhdiX9d1OH8Ze25EU6w@mail.gmail.com>
-From: Andrey Rybainin <ryabinin.a.a@gmail.com>
-Message-ID: <e1a3afb4-dd45-ac0a-cc07-031757ef3463@gmail.com>
-Date: Fri, 14 Jul 2017 23:26:22 +0300
-MIME-Version: 1.0
+Date: Fri, 14 Jul 2017 16:38:36 -0400
 In-Reply-To: <CA+55aFyH-bL6NhX_jvqS50L4G5Y1QBgYhdiX9d1OH8Ze25EU6w@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
+         <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
+         <CA+55aFx=jOBws09qMfOyy22uz6CxezfS_DbKs7Ks6ZNqeZN6sQ@mail.gmail.com>
+         <4c68e120-5ada-6ce1-30fd-e26155c9704e@virtuozzo.com>
+         <CA+55aFyH-bL6NhX_jvqS50L4G5Y1QBgYhdiX9d1OH8Ze25EU6w@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 07/14/2017 10:58 PM, Linus Torvalds wrote:
+On Fri, 2017-07-14 at 12:58 -0700, Linus Torvalds wrote:
 > On Fri, Jul 14, 2017 at 12:43 PM, Andrey Ryabinin
 > <aryabinin@virtuozzo.com> wrote:
->>
->>> yet when I look at the generated code for __ip_map_lookup, I see
->>>
->>>        movl    $32, %edx       #,
->>>        movq    %r13, %rsi      # class,
->>>        leaq    48(%rax), %rdi  #, tmp126
->>>        call    strscpy #
->>>
->>> what's the bug here? Look at that third argume8nt - %rdx. It is
->>> initialized to 32.
->>
->> It's not a compiler bug, it's a bug in our strcpy().
->> Whoever wrote this strcpy() into strscpy() code apparently didn't read carefully
->> enough gcc manual about __builtin_object_size().
->>
->> Summary from https://gcc.gnu.org/onlinedocs/gcc/Object-Size-Checking.html :
->>
->>         __builtin_object_size(ptr, type) returns a constant number of bytes from 'ptr' to the end of the object 'ptr'
->>         pointer points to. "type" is an integer constant from 0 to 3. If the least significant bit is clear, objects
->>         are whole variables, if it is set, a closest surrounding subobject is considered the object a pointer points to.
->>         The second bit determines if maximum or minimum of remaining bytes is computed.
->>
->> We have type = 0 in strcpy(), so the least significant bit is clear. So the 'ptr' is considered as a pointer to the whole
->> variable i.e. pointer to struct ip_map ip;
->> And the number of bytes from 'ip.m_class' to the end of the ip object is exactly 32.
->>
->> I suppose that changing the type to 1 should fix this bug.
+> > 
+> > > yet when I look at the generated code for __ip_map_lookup, I see
+> > > 
+> > >        movl    $32, %edx       #,
+> > >        movq    %r13, %rsi      # class,
+> > >        leaq    48(%rax), %rdi  #, tmp126
+> > >        call    strscpy #
+> > > 
+> > > what's the bug here? Look at that third argume8nt - %rdx. It is
+> > > initialized to 32.
+> > 
+> > It's not a compiler bug, it's a bug in our strcpy().
+> > Whoever wrote this strcpy() into strscpy() code apparently didn't
+> > read carefully
+> > enough gcc manual about __builtin_object_size().
+> > 
+> > Summary from https://gcc.gnu.org/onlinedocs/gcc/Object-Size-Checking
+> > .html :
+> > 
+> >         __builtin_object_size(ptr, type) returns a constant number
+> > of bytes from 'ptr' to the end of the object 'ptr'
+> >         pointer points to. "type" is an integer constant from 0 to
+> > 3. If the least significant bit is clear, objects
+> >         are whole variables, if it is set, a closest surrounding
+> > subobject is considered the object a pointer points to.
+> >         The second bit determines if maximum or minimum of remaining
+> > bytes is computed.
+> > 
+> > We have type = 0 in strcpy(), so the least significant bit is clear.
+> > So the 'ptr' is considered as a pointer to the whole
+> > variable i.e. pointer to struct ip_map ip;
+> > And the number of bytes from 'ip.m_class' to the end of the ip
+> > object is exactly 32.
+> > 
+> > I suppose that changing the type to 1 should fix this bug.
 > 
 > Oh, that absolutely needs to be done.
 > 
@@ -88,27 +93,29 @@ On 07/14/2017 10:58 PM, Linus Torvalds wrote:
 > rather than show the backtrace, and I'm still bitter about it a decade
 > after the fact).
 > 
-
-A have some more news to make you even more "happier" :)
-strcpy() choose to copy 32-bytes instead of smaller 5-bytes because it has one more bug :)
-
-GCC couldn't determine size of class (which is 5-byte string):
-	strcpy(ip.m_class, class);
-
-So, p_size = 32 and q_size  = -1, this "if (p_size == (size_t)-1 && q_size == (size_t)-1)" is false
-(because of bogus '&&', obviously we should have '||' here)
-
-and since (32 < (size_t)-1) 
-	if (strscpy(p, q, p_size < q_size ? p_size : q_size) < 0)
-
-we end up with 32-bytes strscpy().
-
-Enjoy :)
-
-
-> There is something actively *evil* about it. Daniel, Kees, please jump on this.
+> There is something actively *evil* about it. Daniel, Kees, please jump
+> on this.
 > 
 > Andrey, thanks for noticing this thing,
 > 
 >                           Linus
-> 
+
+The issue is the usage of strscpy then, not the __builtin_object_size
+type parameter. The type is set 0 rather than 1 to be more lenient by
+not detecting intra-object overflow, which is going to come later.
+
+If strscpy treats the count parameter as a *guarantee* of the dest size
+rather than a limit, it's wrong to use it there, whether or not the type
+parameter for __builtin_object_size is 0 or 1 since it can still return
+a larger size. It's a limit with no guaranteed minimum.
+
+My initial patch used strlcpy there, because I wasn't aware of strscpy
+before it was suggested:
+
+http://www.openwall.com/lists/kernel-hardening/2017/05/04/11
+
+I was wrong to move it to strscpy. It could be switched back to strlcpy
+again unless the kernel considers the count parameter to be a guarantee
+that could be leveraged in the future. Using the fortified strlen +
+memcpy would provide the improvement that strscpy was meant to provide
+there over strlcpy.
