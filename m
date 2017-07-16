@@ -1,88 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from scorn.kernelslacker.org ([45.56.101.199]:36448 "EHLO
-        scorn.kernelslacker.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751244AbdGPVPe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Jul 2017 17:15:34 -0400
-Date: Sun, 16 Jul 2017 17:15:30 -0400
-From: Dave Jones <davej@codemonkey.org.uk>
-To: Anna Schumaker <schumaker.anna@gmail.com>,
-        torvalds@linux-foundation.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:59019 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751124AbdGPW5c (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Jul 2017 18:57:32 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
+        "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
-Message-ID: <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
+Date: Sun, 16 Jul 2017 22:57:27 +0000
+Message-ID: <1500245845.13893.3.camel@primarydata.com>
 References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
- <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
+         <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
+         <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
+In-Reply-To: <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jul 14, 2017 at 10:25:43AM -0400, Dave Jones wrote:
- > On Thu, Jul 13, 2017 at 05:16:24PM -0400, Anna Schumaker wrote:
- >  > Hi Linus,
- >  > 
- >  > The following changes since commit 32c1431eea4881a6b17bd7c639315010aeefa452:
- >  > 
- >  >   Linux 4.12-rc5 (2017-06-11 16:48:20 -0700)
- >  > 
- >  > are available in the git repository at:
- >  > 
- >  >   git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.13-1
- >  > 
- >  > for you to fetch changes up to b4f937cffa66b3d56eb8f586e620d0b223a281a3:
- >  > 
- >  >   NFS: Don't run wake_up_bit() when nobody is waiting... (2017-07-13 16:57:18 -0400)
- > 
- > Since this landed, I'm seeing this during boot..
- > 
- >  ==================================================================
- >  BUG: KASAN: global-out-of-bounds in strscpy+0x4a/0x230
- >  Read of size 8 at addr ffffffffb4eeaf20 by task nfsd/688
-
-Now that this one got fixed, this one fell out instead..
-Will dig deeper tomorrow.
-
-==================================================================
-BUG: KASAN: global-out-of-bounds in call_start+0x93/0x100
-Read of size 8 at addr ffffffff8d582588 by task kworker/0:1/22
-
-CPU: 0 PID: 22 Comm: kworker/0:1 Not tainted 4.13.0-rc1-firewall+ #1 
-Workqueue: rpciod rpc_async_schedule
-Call Trace:
- dump_stack+0x68/0x94
- print_address_description+0x2c/0x270
- ? call_start+0x93/0x100
- kasan_report+0x239/0x350
- __asan_load8+0x55/0x90
- call_start+0x93/0x100
- ? rpc_default_callback+0x10/0x10
- ? rpc_default_callback+0x10/0x10
- __rpc_execute+0x170/0x740
- ? rpc_wake_up_queued_task+0x50/0x50
- ? __lock_is_held+0x9f/0x110
- rpc_async_schedule+0x12/0x20
- process_one_work+0x4ba/0xb10
- ? process_one_work+0x401/0xb10
- ? pwq_dec_nr_in_flight+0x120/0x120
- worker_thread+0x91/0x670
- ? __sched_text_start+0x8/0x8
- kthread+0x1ab/0x200
- ? process_one_work+0xb10/0xb10
- ? __kthread_create_on_node+0x340/0x340
- ret_from_fork+0x27/0x40
-
-The buggy address belongs to the variable:
- nfs_cb_version+0x8/0x740
-
-Memory state around the buggy address:
- ffffffff8d582480: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
- ffffffff8d582500: 00 00 00 00 00 00 00 00 00 00 fa fa fa fa fa fa
->ffffffff8d582580: 00 fa fa fa fa fa fa fa 00 00 00 00 00 00 00 00
-                      ^
- ffffffff8d582600: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
- ffffffff8d582680: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-==================================================================
+SGkgRGF2ZSwNCg0KT24gU3VuLCAyMDE3LTA3LTE2IGF0IDE3OjE1IC0wNDAwLCBEYXZlIEpvbmVz
+IHdyb3RlOg0KPiBPbiBGcmksIEp1bCAxNCwgMjAxNyBhdCAxMDoyNTo0M0FNIC0wNDAwLCBEYXZl
+IEpvbmVzIHdyb3RlOg0KPiAgPiBPbiBUaHUsIEp1bCAxMywgMjAxNyBhdCAwNToxNjoyNFBNIC0w
+NDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToNCj4gID4gID4gSGkgTGludXMsDQo+ICA+ICA+IA0K
+PiAgPiAgPiBUaGUgZm9sbG93aW5nIGNoYW5nZXMgc2luY2UgY29tbWl0DQo+IDMyYzE0MzFlZWE0
+ODgxYTZiMTdiZDdjNjM5MzE1MDEwYWVlZmE0NTI6DQo+ICA+ICA+IA0KPiAgPiAgPiAgIExpbnV4
+IDQuMTItcmM1ICgyMDE3LTA2LTExIDE2OjQ4OjIwIC0wNzAwKQ0KPiAgPiAgPiANCj4gID4gID4g
+YXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9zaXRvcnkgYXQ6DQo+ICA+ICA+IA0KPiAgPiAg
+PiAgIGdpdDovL2dpdC5saW51eC1uZnMub3JnL3Byb2plY3RzL2FubmEvbGludXgtbmZzLmdpdCB0
+YWdzL25mcy0NCj4gZm9yLTQuMTMtMQ0KPiAgPiAgPiANCj4gID4gID4gZm9yIHlvdSB0byBmZXRj
+aCBjaGFuZ2VzIHVwIHRvDQo+IGI0ZjkzN2NmZmE2NmIzZDU2ZWI4ZjU4NmU2MjBkMGIyMjNhMjgx
+YTM6DQo+ICA+ICA+IA0KPiAgPiAgPiAgIE5GUzogRG9uJ3QgcnVuIHdha2VfdXBfYml0KCkgd2hl
+biBub2JvZHkgaXMgd2FpdGluZy4uLiAoMjAxNy0NCj4gMDctMTMgMTY6NTc6MTggLTA0MDApDQo+
+ICA+IA0KPiAgPiBTaW5jZSB0aGlzIGxhbmRlZCwgSSdtIHNlZWluZyB0aGlzIGR1cmluZyBib290
+Li4NCj4gID4gDQo+ICA+ICA9PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PQ0KPiA9DQo+ICA+ICBCVUc6IEtBU0FOOiBnbG9iYWwt
+b3V0LW9mLWJvdW5kcyBpbiBzdHJzY3B5KzB4NGEvMHgyMzANCj4gID4gIFJlYWQgb2Ygc2l6ZSA4
+IGF0IGFkZHIgZmZmZmZmZmZiNGVlYWYyMCBieSB0YXNrIG5mc2QvNjg4DQo+IA0KPiBOb3cgdGhh
+dCB0aGlzIG9uZSBnb3QgZml4ZWQsIHRoaXMgb25lIGZlbGwgb3V0IGluc3RlYWQuLg0KPiBXaWxs
+IGRpZyBkZWVwZXIgdG9tb3Jyb3cuDQo+IA0KPiA9PT09PT09PT09PT09PT09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0NCj4gQlVHOiBLQVNBTjogZ2xv
+YmFsLW91dC1vZi1ib3VuZHMgaW4gY2FsbF9zdGFydCsweDkzLzB4MTAwDQo+IFJlYWQgb2Ygc2l6
+ZSA4IGF0IGFkZHIgZmZmZmZmZmY4ZDU4MjU4OCBieSB0YXNrIGt3b3JrZXIvMDoxLzIyDQo+IA0K
+PiBDUFU6IDAgUElEOiAyMiBDb21tOiBrd29ya2VyLzA6MSBOb3QgdGFpbnRlZCA0LjEzLjAtcmMx
+LWZpcmV3YWxsKyAjMSANCj4gV29ya3F1ZXVlOiBycGNpb2QgcnBjX2FzeW5jX3NjaGVkdWxlDQo+
+IENhbGwgVHJhY2U6DQo+ICBkdW1wX3N0YWNrKzB4NjgvMHg5NA0KPiAgcHJpbnRfYWRkcmVzc19k
+ZXNjcmlwdGlvbisweDJjLzB4MjcwDQo+ICA/IGNhbGxfc3RhcnQrMHg5My8weDEwMA0KPiAga2Fz
+YW5fcmVwb3J0KzB4MjM5LzB4MzUwDQo+ICBfX2FzYW5fbG9hZDgrMHg1NS8weDkwDQo+ICBjYWxs
+X3N0YXJ0KzB4OTMvMHgxMDANCj4gID8gcnBjX2RlZmF1bHRfY2FsbGJhY2srMHgxMC8weDEwDQo+
+ICA/IHJwY19kZWZhdWx0X2NhbGxiYWNrKzB4MTAvMHgxMA0KPiAgX19ycGNfZXhlY3V0ZSsweDE3
+MC8weDc0MA0KPiAgPyBycGNfd2FrZV91cF9xdWV1ZWRfdGFzaysweDUwLzB4NTANCj4gID8gX19s
+b2NrX2lzX2hlbGQrMHg5Zi8weDExMA0KPiAgcnBjX2FzeW5jX3NjaGVkdWxlKzB4MTIvMHgyMA0K
+PiAgcHJvY2Vzc19vbmVfd29yaysweDRiYS8weGIxMA0KPiAgPyBwcm9jZXNzX29uZV93b3JrKzB4
+NDAxLzB4YjEwDQo+ICA/IHB3cV9kZWNfbnJfaW5fZmxpZ2h0KzB4MTIwLzB4MTIwDQo+ICB3b3Jr
+ZXJfdGhyZWFkKzB4OTEvMHg2NzANCj4gID8gX19zY2hlZF90ZXh0X3N0YXJ0KzB4OC8weDgNCj4g
+IGt0aHJlYWQrMHgxYWIvMHgyMDANCj4gID8gcHJvY2Vzc19vbmVfd29yaysweGIxMC8weGIxMA0K
+PiAgPyBfX2t0aHJlYWRfY3JlYXRlX29uX25vZGUrMHgzNDAvMHgzNDANCj4gIHJldF9mcm9tX2Zv
+cmsrMHgyNy8weDQwDQo+IA0KPiBUaGUgYnVnZ3kgYWRkcmVzcyBiZWxvbmdzIHRvIHRoZSB2YXJp
+YWJsZToNCj4gIG5mc19jYl92ZXJzaW9uKzB4OC8weDc0MA0KDQpEb2VzIHRoZSBmb2xsb3dpbmcg
+cGF0Y2ggZml4IGl0Pw0KDQpDaGVlcnMNCiAgVHJvbmQNCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSBiOTIzMGNkZmJiZWU5MDE3OGExMzE4ZDIwY2QzMzcz
+ZmZiNzU4Nzg4IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0
+IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KRGF0ZTogU3VuLCAxNiBKdWwgMjAx
+NyAxODo1MjoxOCAtMDQwMA0KU3ViamVjdDogW1BBVENIXSBuZnNkOiBGaXggYSBtZW1vcnkgc2Ny
+aWJibGUgaW4gdGhlIGNhbGxiYWNrIGNoYW5uZWwNCg0KVGhlIG9mZnNldCBvZiB0aGUgZW50cnkg
+aW4gc3RydWN0IHJwY192ZXJzaW9uIGhhcyB0byBtYXRjaCB0aGUgdmVyc2lvbg0KbnVtYmVyLg0K
+DQpSZXBvcnRlZC1ieTogRGF2ZSBKb25lcyA8ZGF2ZWpAY29kZW1vbmtleS5vcmcudWs+DQpGaXhl
+czogMWM1ODc2ZGRiZGI0ICgic3VucnBjOiBtb3ZlIHBfY291bnQgb3V0IG9mIHN0cnVjdCBycGNf
+cHJvY2luZm8iKQ0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1
+c3RAcHJpbWFyeWRhdGEuY29tPg0KLS0tDQogZnMvbmZzZC9uZnM0Y2FsbGJhY2suYyB8IDYgKysr
+LS0tDQogMSBmaWxlIGNoYW5nZWQsIDMgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCg0K
+ZGlmZiAtLWdpdCBhL2ZzL25mc2QvbmZzNGNhbGxiYWNrLmMgYi9mcy9uZnNkL25mczRjYWxsYmFj
+ay5jDQppbmRleCBiNDUwODNjMGY5YWUuLjQ5YjBhOWU3ZmYxOCAxMDA2NDQNCi0tLSBhL2ZzL25m
+c2QvbmZzNGNhbGxiYWNrLmMNCisrKyBiL2ZzL25mc2QvbmZzNGNhbGxiYWNrLmMNCkBAIC03MjAs
+OCArNzIwLDggQEAgc3RhdGljIGNvbnN0IHN0cnVjdCBycGNfdmVyc2lvbiBuZnNfY2JfdmVyc2lv
+bjQgPSB7DQogCS5jb3VudHMJCQk9IG5mczRfY2JfY291bnRzLA0KIH07DQogDQotc3RhdGljIGNv
+bnN0IHN0cnVjdCBycGNfdmVyc2lvbiAqbmZzX2NiX3ZlcnNpb25bXSA9IHsNCi0JJm5mc19jYl92
+ZXJzaW9uNCwNCitzdGF0aWMgY29uc3Qgc3RydWN0IHJwY192ZXJzaW9uICpuZnNfY2JfdmVyc2lv
+blsyXSA9IHsNCisJWzFdID0gJm5mc19jYl92ZXJzaW9uNCwNCiB9Ow0KIA0KIHN0YXRpYyBjb25z
+dCBzdHJ1Y3QgcnBjX3Byb2dyYW0gY2JfcHJvZ3JhbTsNCkBAIC03OTUsNyArNzk1LDcgQEAgc3Rh
+dGljIGludCBzZXR1cF9jYWxsYmFja19jbGllbnQoc3RydWN0IG5mczRfY2xpZW50ICpjbHAsIHN0
+cnVjdCBuZnM0X2NiX2Nvbm4gKmMNCiAJCS5zYWRkcmVzcwk9IChzdHJ1Y3Qgc29ja2FkZHIgKikg
+JmNvbm4tPmNiX3NhZGRyLA0KIAkJLnRpbWVvdXQJPSAmdGltZXBhcm1zLA0KIAkJLnByb2dyYW0J
+PSAmY2JfcHJvZ3JhbSwNCi0JCS52ZXJzaW9uCT0gMCwNCisJCS52ZXJzaW9uCT0gMSwNCiAJCS5m
+bGFncwkJPSAoUlBDX0NMTlRfQ1JFQVRFX05PUElORyB8IFJQQ19DTE5UX0NSRUFURV9RVUlFVCks
+DQogCX07DQogCXN0cnVjdCBycGNfY2xudCAqY2xpZW50Ow0KLS0gDQoyLjEzLjMNCg0KLS0gDQpU
+cm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGEN
+CnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
