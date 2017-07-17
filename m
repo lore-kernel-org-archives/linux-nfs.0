@@ -1,150 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f180.google.com ([209.85.216.180]:36555 "EHLO
-        mail-qt0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751280AbdGQMCs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2017 08:02:48 -0400
-Received: by mail-qt0-f180.google.com with SMTP id 21so28537763qtx.3
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Jul 2017 05:02:47 -0700 (PDT)
-Message-ID: <1500292965.4766.2.camel@redhat.com>
-Subject: Re: open by handle support for NFS V2
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>, hch <hch@lst.de>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-Date: Mon, 17 Jul 2017 08:02:45 -0400
-In-Reply-To: <87r2xsx45l.fsf@notabene.neil.brown.name>
-References: <20170629133453.19641-1-hch@lst.de>
-         <20170629154650.GC1651@fieldses.org>
-         <1498842056.6728.1.camel@primarydata.com>
-         <87zichvuh9.fsf@notabene.neil.brown.name>
-         <1499397566.36826.1.camel@primarydata.com>
-         <87r2xsx45l.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:55784 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751317AbdGQMIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Jul 2017 08:08:11 -0400
+Date: Mon, 17 Jul 2017 20:08:09 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@lst.de>
+Subject: [4.13-rc1 regression] fstests generic/013 crashed nfsd on ppc64 host
+Message-ID: <20170717120809.GQ2478@eguan.usersys.redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-07-07 at 14:27 +1000, NeilBrown wrote:
-> On Fri, Jul 07 2017, Trond Myklebust wrote:
-> 
-> > On Fri, 2017-07-07 at 12:41 +1000, NeilBrown wrote:
-> > > On Fri, Jun 30 2017, Trond Myklebust wrote:
-> > > 
-> > > > On Thu, 2017-06-29 at 11:46 -0400, J. Bruce Fields wrote:
-> > > > > On Thu, Jun 29, 2017 at 06:34:49AM -0700, Christoph Hellwig
-> > > > > wrote:
-> > > > > > this resurrects parts of an old series to add open by handle
-> > > > > > support to
-> > > > > > NFS.  The prime intent here is to support the actual open by
-> > > > > > handle
-> > > > > > ioctls, although it will also allow very crude re-
-> > > > > > exporting.  Without
-> > > > > > the other patches from Jeff's series that re-exporting will
-> > > > > > suck
-> > > > > > badly
-> > > > > > though.
-> > > > > 
-> > > > > Why do we want this?
-> > > > > 
-> > > > > Any re-export support is going to have some major
-> > > > > limitations.  (No
-> > > > > file
-> > > > > locking, and re-export of NFSv4 probably not possible?)
-> > > > > 
-> > > > > Last I heard the only motivation was extremely specific to
-> > > > > Primary
-> > > > > Data's setup.  I'm happy to help them, but I think we need *some*
-> > > > > evidence this will be useful to upstream users.
-> > > > > 
-> > > > 
-> > > > The main use case for open by filehandle was (and still should be)
-> > > > the
-> > > > promise of being able to do the sort of tricks you normally
-> > > > associate
-> > > > with object storage on a standard filesystem.
-> > > > 
-> > > > Imagine that you are trying to build an application for indexing
-> > > > and
-> > > > searching the data on your storage. You basically want to trawl
-> > > > through
-> > > > the filesystem on a regular basis and build up a database of key
-> > > > words
-> > > > and other metadata to tell you what is in the files. For that kind
-> > > > of
-> > > > application, the namespace is a real PITA to deal with, because
-> > > > files
-> > > > get renamed, moved and deleted all the time; so if you can store
-> > > > something that is independent of the namespace and that will give
-> > > > you
-> > > > access to the file contents, then why wouldn't you do so? Normally,
-> > > > applications like that use the inode number, but you can't open a
-> > > > file
-> > > > by inode number, and you have the same problems with inode number
-> > > > reuse
-> > > > that a NFS server has.
-> > > > 
-> > > > That's the sort of thing I'd think we want to allow through open by
-> > > > filehandle, and I see no reason why NFS should be excluded from
-> > > > that
-> > > > type of application.
-> > > 
-> > > Given that the goal, and presumably the testing, is focused on this
-> > > use-case, I wonder if we should take steps to disable the NFS-re-
-> > > export
-> > > use case.
-> > > As the patch stands, I suspect that NFS re-export would appear to
-> > > work,
-> > > but - as Bruce suggests - would likely hit some problems.  This might
-> > > not be a user-friendly thing to do.
-> > > 
-> > > Probably the ideal would be to keep re-export disabled by default,
-> > > but
-> > > to allow it to be enabled using a module parameter.
-> > > I'm not sure the best way for NFS to tell nfsd that export shouldn't
-> > > be
-> > > trusted.
-> > > Maybe add a "flags" field to struct export_operations, which can
-> > > contain
-> > > a "No NFS export" flag ??
-> > > 
-> > 
-> > You could, but the reason why we developed the code in the first place,
-> > was because we have an internal use case which does involve re-export
-> > of NFS, so we're familiar with the limitations.
-> > 
-> > FYI, the limitations are:
-> > 1) Recovery of locks is not possible when the re-exporting server is
-> > the one being rebooted. It works just fine for all other cases.
-> > 2) Re-exporting anything to NFSv2 is not possible.
-> > 3) Re-export of filesystems with very large filenandles could be
-> > problematic. This would also affect open-by-filehandle. In practice it
-> > turns out to be a non-issue because nobody uses filehandles > 64 bytes.
-> > 4) Stateless NFSv3 reads and writes can be a problem with NFSv4 when
-> > the application usees odd modebit settings such as 000.
-> > 
-> > IOW: in practice this is no worse than all the other re-exporters such
-> > as already exist for gluster -> NFSv3, ceph -> NFSv3, NFS -> SMB,...
-> > and which everyone seems happy to use.
-> > 
-> 
-> Thanks.  That isn't as bad as I feared.  Maybe it would be useful to put
-> notes like in this in the nfs(5) man page.
-> For the NFSv2 export I suspect that in some cases you might be
-> able to successfully mount, but then not access anything.
-> The linux NFS server uses a very small file handles for an export-point.
-> It might be good to have nfs_encode_fh always fail if *max_len <= 32/4
-> just to ensure that NFSv2 doesn't even get off the ground.
-> 
+Hi all,
 
-I just saw this on the LWN article entitled "4.13 Merge window, part 2":
+I hit a nfsd crash in fstests generic/013 run with 4.13-rc1 kernel, NFS
+version 4.0/4.1/4.2, v3 passed the test, and it only happens on
+ppc64/ppc64le hosts for me. git bisect pointed first bad to
 
-   - NFS filesystems can now be re-exported over NFS.
+commit 1c5876ddbdb401f814ef717394826e7dfb6704d4
+Author: Christoph Hellwig <hch@lst.de>
+Date:   Mon May 8 23:27:10 2017 +0200
 
-I'm posting a comment there to try and clarify this, but it's a little
-worrisome that this misconception is already getting out. I think we
-need to do something to clear up this confusion, whether via
-documentation or other means.
--- 
-Jeff Layton <jlayton@redhat.com>
+    sunrpc: move p_count out of struct rpc_procinfo
+
+    p_count is the only writeable memeber of struct rpc_procinfo, which is
+    a good candidate to be const-ified as it contains function pointers.
+
+    This patch moves it into out out struct rpc_procinfo, and into a
+    separate writable array that is pointed to by struct rpc_version and
+    indexed by p_statidx.
+
+    Signed-off-by: Christoph Hellwig <hch@lst.de>
+
+I was testing with a local mounted NFS share, but I can also reproduce
+it by running generic/013 from a remote nfs client. If you need more
+information please let me know.
+
+Thanks,
+Eryu
+
+[  992.581712] run fstests generic/013 at 2017-07-16 07:30:42 
+[  993.895088] Unable to handle kernel paging request for data at address 0x2f7362696e2f6e76 
+[  993.895113] Faulting instruction address: 0xd000000006660428 
+[  993.895121] Oops: Kernel access of bad area, sig: 11 [#1] 
+[  993.895126] SMP NR_CPUS=2048  
+[  993.895127] NUMA  
+[  993.895130] pSeries 
+[  993.895137] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache ext4 mbcache jbd2 nx_crypto sg pseries_rng nfsd auth_rpcgss nfs_acl lockd sunrpc grace ip_tables xfs libcrc32c sd_mod ibmvscsi scsi_transport_srp ibmveth 
+[  993.895168] CPU: 11 PID: 335 Comm: kworker/11:1 Not tainted 4.13.0-rc1 #1 
+[  993.895197] Workqueue: rpciod .rpc_async_schedule [sunrpc] 
+[  993.895203] task: c0000001f94cf780 task.stack: c0000001f952c000 
+[  993.895208] NIP: d000000006660428 LR: d0000000066748d4 CTR: d0000000066603d0 
+[  993.895214] REGS: c0000001f952f7e0 TRAP: 0380   Not tainted  (4.13.0-rc1) 
+[  993.895219] MSR: 800000000280b032 <SF,VEC,VSX,EE,FP,ME,IR,DR,RI> 
+[  993.895225]   CR: 22004024  XER: 00000001 
+[  993.895233] CFAR: d0000000066748d0 SOFTE: 1  
+[  993.895233] GPR00: d0000000066748d4 c0000001f952fa60 d0000000066b5d78 c0000001bcee7d00  
+[  993.895233] GPR04: c0000000fefc19e8 c0000001bcee7d48 002d1e7473db58e8 0000000000000001  
+[  993.895233] GPR08: d0000000079dd588 2f7362696e2f6e66 0000000000000008 d0000000079d45f8  
+[  993.895233] GPR12: d000000006660010 c00000000e986e00 c000000000110ab0 c0000001f81d0040  
+[  993.895233] GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000000000  
+[  993.895233] GPR20: 0000000000000000 fffffffffffffe00 0000000000000000 0000000000000001  
+[  993.895233] GPR24: d0000000066b9f34 c0000001bcee7d30 0000000000000000 d0000000066aac68  
+[  993.895233] GPR28: c0000001bc79cc00 0000000000000001 c0000001bc79cc00 c0000001bcee7d00  
+[  993.895313] NIP [d000000006660428] .call_start+0x58/0x120 [sunrpc] 
+[  993.895337] LR [d0000000066748d4] .__rpc_execute+0xc4/0x540 [sunrpc] 
+[  993.895342] Call Trace: 
+[  993.895346] [c0000001f952fa60] [0000000000000001] 0x1 (unreliable) 
+[  993.895370] [c0000001f952faf0] [d0000000066748d4] .__rpc_execute+0xc4/0x540 [sunrpc] 
+[  993.895379] [c0000001f952fbe0] [c000000000108e74] .process_one_work+0x194/0x480 
+[  993.895387] [c0000001f952fc90] [c0000000001091e8] .worker_thread+0x88/0x510 
+[  993.895393] [c0000001f952fd70] [c000000000110c0c] .kthread+0x15c/0x1a0 
+[  993.895401] [c0000001f952fe30] [c00000000000b520] .ret_from_kernel_thread+0x58/0xb8 
+[  993.895407] Instruction dump: 
+[  993.895411] e9430078 ebc300a8 7928ffe3 ebaa0026 40c2006c e95e0180 80fe0044 e90a0010  
+[  993.895421] 78ea1f24 7d28502a 2fa90000 419e0018 <e9490010> 7ba91764 7d0a482e 39080001  
+[  993.895433] ---[ end trace aeee2c84dc1574c0 ]--- 
+
+And gdb shows:
+
+(gdb) l *(call_start+0x60)
+0x4b0 is in call_start (net/sunrpc/clnt.c:1529).
+1524                            rpc_proc_name(task),
+1525                            (RPC_IS_ASYNC(task) ? "async" : "sync"));
+1526
+1527            /* Increment call count (version might not be valid for ping) */
+1528            if (clnt->cl_program->version[clnt->cl_vers])
+1529                    clnt->cl_program->version[clnt->cl_vers]->counts[idx]++;
+1530            clnt->cl_stats->rpccnt++;
+1531            task->tk_action = call_reserve;
+1532    }
+1533
