@@ -1,91 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:29782 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751284AbdGQQEN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2017 12:04:13 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: i_lock contention during heavy I/O
-Date: Mon, 17 Jul 2017 16:04:09 +0000
-Message-ID: <1500307447.4036.7.camel@primarydata.com>
-References: <2EBEB743-9230-4C7D-9BC5-FA6F58CAF5AB@oracle.com>
-         <1500297979.4036.1.camel@primarydata.com>
-In-Reply-To: <1500297979.4036.1.camel@primarydata.com>
+Received: from fieldses.org ([173.255.197.46]:42564 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751325AbdGQRbU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 17 Jul 2017 13:31:20 -0400
+Date: Mon, 17 Jul 2017 13:31:19 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "eguan@redhat.com" <eguan@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        hch <hch@lst.de>
+Subject: Re: [4.13-rc1 regression] fstests generic/013 crashed nfsd on ppc64
+ host
+Message-ID: <20170717173119.GB9334@fieldses.org>
+References: <20170717120809.GQ2478@eguan.usersys.redhat.com>
+ <1500307208.4036.5.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1500307208.4036.5.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTA3LTE3IGF0IDEzOjI2ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIE1vbiwgMjAxNy0wNy0xNyBhdCAxMToyMiArMDIwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6
-DQo+ID4gRllJLCBJIGZvdW5kIHRoaXMgaW4gbXkgbm90ZXMuIEl0IGdpdmVzIGEgZmxhdm9yIG9m
-IHRoZQ0KPiA+IGtpbmQgb2YgbG9jayBjb250ZW50aW9uIHdlIHdlcmUgZGlzY3Vzc2luZyBsYXN0
-IHdlZWsuDQo+ID4gDQo+ID4gTXkgY2xpZW50IGlzIGEgMTItY29yZSBkdWFsIHNvY2tldCBzeXN0
-ZW0uIE5ldHdvcmtpbmcNCj4gPiBpcyA1NkdicHMgSUIsIE5GUy9SRE1BLiBJJ20gcnVubmluZyBz
-b21lIG11bHRpLXRocmVhZGVkDQo+ID4gaW96b25lIHRlc3RzLiBIZXJlIEkgd2FzIG1peGluZyBi
-dWZmZXJlZCBhbmQgZGlyZWN0IEkvTw0KPiA+IHRlc3RzLCBzbyBJIGNhbid0IHNheSBmb3IgY2Vy
-dGFpbiBpZiBvbmUgaXMgd29yc2UgdGhhbg0KPiA+IHRoZSBvdGhlci4NCj4gPiANCj4gPiBUaGUg
-b3V0cHV0IGJlbG93IGlzIHRoZSBmaXJzdCBlbnRyeSBpbiAvcHJvYy9sb2NrX3N0YXQuDQo+ID4g
-DQo+ID4gInNiLT5zX3R5cGUtPmlfbG9ja19rZXkiIGxvb2tlZCBsaWtlIGl0IHdhcyByZWxhdGVk
-IHRvDQo+ID4gdGhlIHN1cGVyYmxvY2ssIGJ1dCBsb29raW5nIGF0IHRoZSBhY3R1YWwgY29kZSBp
-biB0aGUNCj4gPiBmdW5jdGlvbnMgbmFtZWQgYmVsb3csIHRoaXMgaXMgcHJvYmFibHkgdGhlIGlu
-b2RlIGxvY2suDQo+ID4gDQo+ID4gVGhlIG1heCBsb2NrIGhvbGR0aW1lIGlzIDgyIG1pbGxpc2Vj
-b25kcywgaWYgSSByZWFkIHRoaXMNCj4gPiBjb3JyZWN0bHkuIEl0J3Mgbm90IGNsZWFyIGhvdyBv
-ZnRlbiB0aGF0IGhhcHBlbnMsIGJ1dA0KPiA+IHRoYXQgbG9va3MgcGF0aG9sb2dpY2FsLg0KPiA+
-IA0KPiA+IA0KPiA+IGxvY2tfc3RhdCB2ZXJzaW9uIDAuNA0KPiA+IC0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiAt
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tDQo+ID4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4g
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2xhc3MgbmFtZSAgICBjb24tDQo+ID4gYm91
-bmNlcyAgICBjb250ZW50aW9ucyAgIHdhaXR0aW1lLW1pbiAgIHdhaXR0aW1lLW1heCB3YWl0dGlt
-ZS0NCj4gPiB0b3RhbCAgIHdhaXR0aW1lLWF2ZyAgICBhY3EtYm91bmNlcyAgIGFjcXVpc2l0aW9u
-cyAgIGhvbGR0aW1lLQ0KPiA+IG1pbiAgIGhvbGR0aW1lLW1heCBob2xkdGltZS10b3RhbCAgIGhv
-bGR0aW1lLWF2Zw0KPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LQ0KPiA+IC0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ID4gDQo+ID4gICAgICAgICAgICAgICAgJnNi
-LT5zX3R5cGUtDQo+ID4gPiBpX2xvY2tfa2V5IzI6ICAgICAgMjMxODU3NDYgICAgICAgMjMyNzU5
-NTIgICAgICAgICAgIDAuMTAgICAgICAgOA0KPiA+ID4gMTc3DQo+ID4gDQo+ID4gMS4wMyAgICAy
-Nzk4MDE3Mi4zMSAgICAgICAgICAgMS4yMCAgICAgICA4MTQ2NzI5NyAgICAgIDIzODIwOTk0NSAg
-IA0KPiA+ICAgDQo+ID4gICAgICAgMC4wOSAgICAgICA4MTg0Mi4xMiAgICA4MDUxMzcxMC42OCAg
-ICAgICAgICAgMC4zNA0KPiA+ICAgICAgICAgICAgICAgIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0NCj4gPiAgICAgICAgICAgICAgICAmc2ItPnNfdHlwZS0NCj4gPiA+IGlfbG9ja19rZXkjMiAg
-ICAgICAgMTQ1MzM3OCAgICAgICAgICBbPGZmZmZmZmZmYTA2YzZlNDk+XQ0KPiA+IA0KPiA+IG5m
-c19mbHVzaF9pbmNvbXBhdGlibGUrMHg3NS8weDFhZCBbbmZzXQ0KPiA+ICAgICAgICAgICAgICAg
-ICZzYi0+c190eXBlLQ0KPiA+ID4gaV9sb2NrX2tleSMyICAgICAgICA0Nzc3MDAwICAgICAgICAg
-IFs8ZmZmZmZmZmZhMDZjNGVkNj5dDQo+ID4gDQo+ID4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVz
-dHMrMHg2OC8weDJhMyBbbmZzXQ0KPiA+ICAgICAgICAgICAgICAgICZzYi0+c190eXBlLQ0KPiA+
-ID4gaV9sb2NrX2tleSMyICAgICAgICAgMTU3MzE1ICAgICAgICAgIFs8ZmZmZmZmZmZhMDZjNzJm
-NT5dDQo+ID4gDQo+ID4gbmZzX3VwZGF0ZXBhZ2UrMHgzNzQvMHg5MTIgW25mc10NCj4gPiAgICAg
-ICAgICAgICAgICAmc2ItPnNfdHlwZS0NCj4gPiA+IGlfbG9ja19rZXkjMiAgICAgICAgMjA4NTQ0
-NyAgICAgICAgICBbPGZmZmZmZmZmYTA2Yzc0ZDc+XQ0KPiA+IA0KPiA+IG5mc191cGRhdGVwYWdl
-KzB4NTU2LzB4OTEyIFtuZnNdDQo+ID4gICAgICAgICAgICAgICAgLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLQ0KPiA+ICAgICAgICAgICAgICAgICZzYi0+c190eXBlLQ0KPiA+ID4gaV9sb2NrX2tl
-eSMyICAgICAgICAgICAgMTMyICAgICAgICAgIFs8ZmZmZmZmZmY4MTIzY2MyYz5dDQo+ID4gDQo+
-ID4gd3JpdGViYWNrX3NiX2lub2RlcysweGZiLzB4NTBjDQo+ID4gICAgICAgICAgICAgICAgJnNi
-LT5zX3R5cGUtDQo+ID4gPiBpX2xvY2tfa2V5IzIgICAgICAgIDc4NTg5MjggICAgICAgICAgWzxm
-ZmZmZmZmZmEwNmM0ZWQ2Pl0NCj4gPiANCj4gPiBuZnNfbG9ja19hbmRfam9pbl9yZXF1ZXN0cysw
-eDY4LzB4MmEzIFtuZnNdDQo+ID4gICAgICAgICAgICAgICAgJnNiLT5zX3R5cGUtDQo+ID4gPiBp
-X2xvY2tfa2V5IzIgICAgICAgIDEyMjU4MzUgICAgICAgICAgWzxmZmZmZmZmZmEwNmM2ZTQ5Pl0N
-Cj4gPiANCj4gPiBuZnNfZmx1c2hfaW5jb21wYXRpYmxlKzB4NzUvMHgxYWQgW25mc10NCj4gPiAg
-ICAgICAgICAgICAgICAmc2ItPnNfdHlwZS0NCj4gPiA+IGlfbG9ja19rZXkjMiAgICAgICAgIDEx
-MTgyMSAgICAgICAgICBbPGZmZmZmZmZmYTA2YzcyZjU+XQ0KPiA+IA0KPiA+IG5mc191cGRhdGVw
-YWdlKzB4Mzc0LzB4OTEyIFtuZnNdDQo+ID4gDQo+ID4gDQo+IA0KPiBJbnRlcmVzdGluZy4uLiBU
-aGVyZSBhcmUgZGVmaW5pdGVseSBzb21lIG9wdGltaXNhdGlvbnMgd2UgY2FuIGRvDQo+IHRoZXJl
-DQo+IGluIG9yZGVyIHRvIGdldCByaWQgb2Ygc29tZSBvZiB0aGlzIGNvbnRlbnRpb24gKGZvciBp
-bnN0YW5jZSBzaW1wbGUNCj4gdGhpbmdzIGxpa2UgZG9pbmcgYSBsb2NrbGVzcyBjaGVjayBmb3IN
-Cj4gUGFnZVByaXZhdGUocGFnZSl8fFBhZ2VTd2FwQ2FjaGUocGFnZSkgYmVmb3JlIHdlIGdyYWIg
-dGhlIGxvY2sgaW4NCj4gbmZzX3BhZ2VfZmluZF9oZWFkX3JlcXVlc3QoKS4NCj4gDQo+IFRoYW5r
-cyBDaHVjayEgSSdsbCB0YWtlIGEgZGVlcGVyIGxvb2sgYXQgdGhpcyB0b2RheS4NCj4gDQoNClNv
-LCB0aGUgb3RoZXIgdGhpbmcgdG8gbm90ZSBpcyB0aGF0IHRoZSBpbm9kZS0+aV9sb2NrIHByb3Rl
-Y3Rpb24gaW4NCm5mc19sb2NrX2FuZF9qb2luX3JlcXVlc3RzKCkgaXMgcHJldHR5IG11Y2ggd29y
-dGhsZXNzIG9uY2Ugd2UndmUgZm91bmQNCnRoZSBwYWdlIGhlYWQuIEFmdGVyIHRoYXQsIHdlIGNh
-biBhbmQgc2hvdWxkIHJlbHkgb24gdGhlIHBhZ2UgYW5kIHBhZ2UNCmdyb3VwIGxvY2tzLiBJJ20g
-cnVubmluZyBhIHRlc3Qgb24gYSBzZXQgb2YgcGF0Y2hlcyB0aGF0IGNsZWFuIHVwIHRoZQ0KbG9j
-a2luZyB0aGVyZSBhbmQgc2hvdWxkIGhvcGVmdWxseSBnZXQgcmlkIG9mIHRoZSBjb250ZW50aW9u
-Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQ
-cmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Mon, Jul 17, 2017 at 04:00:10PM +0000, Trond Myklebust wrote:
+> Please see the patch that I posted yesterday in response to Dave Jones'
+> report of the same issue.
+> 
+> Bruce, do you want me to resend?
 
+I've got it, thanks!
+
+(Had to grep through the code to figure out why it doesn't change the
+on-the-wire version number.  OK, I see, that's in rpc_version->number,
+which is unchanged.)
+
+--b.
