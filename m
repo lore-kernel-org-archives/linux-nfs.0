@@ -1,96 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55784 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751317AbdGQMIL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 17 Jul 2017 08:08:11 -0400
-Date: Mon, 17 Jul 2017 20:08:09 +0800
-From: Eryu Guan <eguan@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@lst.de>
-Subject: [4.13-rc1 regression] fstests generic/013 crashed nfsd on ppc64 host
-Message-ID: <20170717120809.GQ2478@eguan.usersys.redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:28198 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751278AbdGQN0Z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Jul 2017 09:26:25 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: i_lock contention during heavy I/O
+Date: Mon, 17 Jul 2017 13:26:20 +0000
+Message-ID: <1500297979.4036.1.camel@primarydata.com>
+References: <2EBEB743-9230-4C7D-9BC5-FA6F58CAF5AB@oracle.com>
+In-Reply-To: <2EBEB743-9230-4C7D-9BC5-FA6F58CAF5AB@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi all,
+T24gTW9uLCAyMDE3LTA3LTE3IGF0IDExOjIyICswMjAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+RllJLCBJIGZvdW5kIHRoaXMgaW4gbXkgbm90ZXMuIEl0IGdpdmVzIGEgZmxhdm9yIG9mIHRoZQ0K
+PiBraW5kIG9mIGxvY2sgY29udGVudGlvbiB3ZSB3ZXJlIGRpc2N1c3NpbmcgbGFzdCB3ZWVrLg0K
+PiANCj4gTXkgY2xpZW50IGlzIGEgMTItY29yZSBkdWFsIHNvY2tldCBzeXN0ZW0uIE5ldHdvcmtp
+bmcNCj4gaXMgNTZHYnBzIElCLCBORlMvUkRNQS4gSSdtIHJ1bm5pbmcgc29tZSBtdWx0aS10aHJl
+YWRlZA0KPiBpb3pvbmUgdGVzdHMuIEhlcmUgSSB3YXMgbWl4aW5nIGJ1ZmZlcmVkIGFuZCBkaXJl
+Y3QgSS9PDQo+IHRlc3RzLCBzbyBJIGNhbid0IHNheSBmb3IgY2VydGFpbiBpZiBvbmUgaXMgd29y
+c2UgdGhhbg0KPiB0aGUgb3RoZXIuDQo+IA0KPiBUaGUgb3V0cHV0IGJlbG93IGlzIHRoZSBmaXJz
+dCBlbnRyeSBpbiAvcHJvYy9sb2NrX3N0YXQuDQo+IA0KPiAic2ItPnNfdHlwZS0+aV9sb2NrX2tl
+eSIgbG9va2VkIGxpa2UgaXQgd2FzIHJlbGF0ZWQgdG8NCj4gdGhlIHN1cGVyYmxvY2ssIGJ1dCBs
+b29raW5nIGF0IHRoZSBhY3R1YWwgY29kZSBpbiB0aGUNCj4gZnVuY3Rpb25zIG5hbWVkIGJlbG93
+LCB0aGlzIGlzIHByb2JhYmx5IHRoZSBpbm9kZSBsb2NrLg0KPiANCj4gVGhlIG1heCBsb2NrIGhv
+bGR0aW1lIGlzIDgyIG1pbGxpc2Vjb25kcywgaWYgSSByZWFkIHRoaXMNCj4gY29ycmVjdGx5LiBJ
+dCdzIG5vdCBjbGVhciBob3cgb2Z0ZW4gdGhhdCBoYXBwZW5zLCBidXQNCj4gdGhhdCBsb29rcyBw
+YXRob2xvZ2ljYWwuDQo+IA0KPiANCj4gbG9ja19zdGF0IHZlcnNpb24gMC40DQo+IC0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0NCj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLQ0KPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+IC0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNsYXNzIG5hbWUgICAgY29uLQ0KPiBib3Vu
+Y2VzICAgIGNvbnRlbnRpb25zICAgd2FpdHRpbWUtbWluICAgd2FpdHRpbWUtbWF4IHdhaXR0aW1l
+LQ0KPiB0b3RhbCAgIHdhaXR0aW1lLWF2ZyAgICBhY3EtYm91bmNlcyAgIGFjcXVpc2l0aW9ucyAg
+IGhvbGR0aW1lLQ0KPiBtaW4gICBob2xkdGltZS1tYXggaG9sZHRpbWUtdG90YWwgICBob2xkdGlt
+ZS1hdmcNCj4gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiAtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+IC0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCj4gLS0tLS0t
+LS0tLS0tLS0tLS0tLS0NCj4gDQo+ICAgICAgICAgICAgICAgICZzYi0+c190eXBlLQ0KPiA+aV9s
+b2NrX2tleSMyOiAgICAgIDIzMTg1NzQ2ICAgICAgIDIzMjc1OTUyICAgICAgICAgICAwLjEwICAg
+ICAgIDgxNzcNCj4gMS4wMyAgICAyNzk4MDE3Mi4zMSAgICAgICAgICAgMS4yMCAgICAgICA4MTQ2
+NzI5NyAgICAgIDIzODIwOTk0NSAgICAgDQo+ICAgICAgIDAuMDkgICAgICAgODE4NDIuMTIgICAg
+ODA1MTM3MTAuNjggICAgICAgICAgIDAuMzQNCj4gICAgICAgICAgICAgICAgLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLQ0KPiAgICAgICAgICAgICAgICAmc2ItPnNfdHlwZS0NCj4gPmlfbG9ja19r
+ZXkjMiAgICAgICAgMTQ1MzM3OCAgICAgICAgICBbPGZmZmZmZmZmYTA2YzZlNDk+XQ0KPiBuZnNf
+Zmx1c2hfaW5jb21wYXRpYmxlKzB4NzUvMHgxYWQgW25mc10NCj4gICAgICAgICAgICAgICAgJnNi
+LT5zX3R5cGUtDQo+ID5pX2xvY2tfa2V5IzIgICAgICAgIDQ3NzcwMDAgICAgICAgICAgWzxmZmZm
+ZmZmZmEwNmM0ZWQ2Pl0NCj4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVzdHMrMHg2OC8weDJhMyBb
+bmZzXQ0KPiAgICAgICAgICAgICAgICAmc2ItPnNfdHlwZS0NCj4gPmlfbG9ja19rZXkjMiAgICAg
+ICAgIDE1NzMxNSAgICAgICAgICBbPGZmZmZmZmZmYTA2YzcyZjU+XQ0KPiBuZnNfdXBkYXRlcGFn
+ZSsweDM3NC8weDkxMiBbbmZzXQ0KPiAgICAgICAgICAgICAgICAmc2ItPnNfdHlwZS0NCj4gPmlf
+bG9ja19rZXkjMiAgICAgICAgMjA4NTQ0NyAgICAgICAgICBbPGZmZmZmZmZmYTA2Yzc0ZDc+XQ0K
+PiBuZnNfdXBkYXRlcGFnZSsweDU1Ni8weDkxMiBbbmZzXQ0KPiAgICAgICAgICAgICAgICAtLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tDQo+ICAgICAgICAgICAgICAgICZzYi0+c190eXBlLQ0KPiA+
+aV9sb2NrX2tleSMyICAgICAgICAgICAgMTMyICAgICAgICAgIFs8ZmZmZmZmZmY4MTIzY2MyYz5d
+DQo+IHdyaXRlYmFja19zYl9pbm9kZXMrMHhmYi8weDUwYw0KPiAgICAgICAgICAgICAgICAmc2It
+PnNfdHlwZS0NCj4gPmlfbG9ja19rZXkjMiAgICAgICAgNzg1ODkyOCAgICAgICAgICBbPGZmZmZm
+ZmZmYTA2YzRlZDY+XQ0KPiBuZnNfbG9ja19hbmRfam9pbl9yZXF1ZXN0cysweDY4LzB4MmEzIFtu
+ZnNdDQo+ICAgICAgICAgICAgICAgICZzYi0+c190eXBlLQ0KPiA+aV9sb2NrX2tleSMyICAgICAg
+ICAxMjI1ODM1ICAgICAgICAgIFs8ZmZmZmZmZmZhMDZjNmU0OT5dDQo+IG5mc19mbHVzaF9pbmNv
+bXBhdGlibGUrMHg3NS8weDFhZCBbbmZzXQ0KPiAgICAgICAgICAgICAgICAmc2ItPnNfdHlwZS0N
+Cj4gPmlfbG9ja19rZXkjMiAgICAgICAgIDExMTgyMSAgICAgICAgICBbPGZmZmZmZmZmYTA2Yzcy
+ZjU+XQ0KPiBuZnNfdXBkYXRlcGFnZSsweDM3NC8weDkxMiBbbmZzXQ0KPiANCj4gDQpJbnRlcmVz
+dGluZy4uLiBUaGVyZSBhcmUgZGVmaW5pdGVseSBzb21lIG9wdGltaXNhdGlvbnMgd2UgY2FuIGRv
+IHRoZXJlDQppbiBvcmRlciB0byBnZXQgcmlkIG9mIHNvbWUgb2YgdGhpcyBjb250ZW50aW9uIChm
+b3IgaW5zdGFuY2Ugc2ltcGxlDQp0aGluZ3MgbGlrZSBkb2luZyBhIGxvY2tsZXNzIGNoZWNrIGZv
+cg0KUGFnZVByaXZhdGUocGFnZSl8fFBhZ2VTd2FwQ2FjaGUocGFnZSkgYmVmb3JlIHdlIGdyYWIg
+dGhlIGxvY2sgaW4NCm5mc19wYWdlX2ZpbmRfaGVhZF9yZXF1ZXN0KCkuDQoNClRoYW5rcyBDaHVj
+ayEgSSdsbCB0YWtlIGEgZGVlcGVyIGxvb2sgYXQgdGhpcyB0b2RheS4NCg0KQ2hlZXJzDQogIFRy
+b25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
+IFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-I hit a nfsd crash in fstests generic/013 run with 4.13-rc1 kernel, NFS
-version 4.0/4.1/4.2, v3 passed the test, and it only happens on
-ppc64/ppc64le hosts for me. git bisect pointed first bad to
-
-commit 1c5876ddbdb401f814ef717394826e7dfb6704d4
-Author: Christoph Hellwig <hch@lst.de>
-Date:   Mon May 8 23:27:10 2017 +0200
-
-    sunrpc: move p_count out of struct rpc_procinfo
-
-    p_count is the only writeable memeber of struct rpc_procinfo, which is
-    a good candidate to be const-ified as it contains function pointers.
-
-    This patch moves it into out out struct rpc_procinfo, and into a
-    separate writable array that is pointed to by struct rpc_version and
-    indexed by p_statidx.
-
-    Signed-off-by: Christoph Hellwig <hch@lst.de>
-
-I was testing with a local mounted NFS share, but I can also reproduce
-it by running generic/013 from a remote nfs client. If you need more
-information please let me know.
-
-Thanks,
-Eryu
-
-[  992.581712] run fstests generic/013 at 2017-07-16 07:30:42 
-[  993.895088] Unable to handle kernel paging request for data at address 0x2f7362696e2f6e76 
-[  993.895113] Faulting instruction address: 0xd000000006660428 
-[  993.895121] Oops: Kernel access of bad area, sig: 11 [#1] 
-[  993.895126] SMP NR_CPUS=2048  
-[  993.895127] NUMA  
-[  993.895130] pSeries 
-[  993.895137] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache ext4 mbcache jbd2 nx_crypto sg pseries_rng nfsd auth_rpcgss nfs_acl lockd sunrpc grace ip_tables xfs libcrc32c sd_mod ibmvscsi scsi_transport_srp ibmveth 
-[  993.895168] CPU: 11 PID: 335 Comm: kworker/11:1 Not tainted 4.13.0-rc1 #1 
-[  993.895197] Workqueue: rpciod .rpc_async_schedule [sunrpc] 
-[  993.895203] task: c0000001f94cf780 task.stack: c0000001f952c000 
-[  993.895208] NIP: d000000006660428 LR: d0000000066748d4 CTR: d0000000066603d0 
-[  993.895214] REGS: c0000001f952f7e0 TRAP: 0380   Not tainted  (4.13.0-rc1) 
-[  993.895219] MSR: 800000000280b032 <SF,VEC,VSX,EE,FP,ME,IR,DR,RI> 
-[  993.895225]   CR: 22004024  XER: 00000001 
-[  993.895233] CFAR: d0000000066748d0 SOFTE: 1  
-[  993.895233] GPR00: d0000000066748d4 c0000001f952fa60 d0000000066b5d78 c0000001bcee7d00  
-[  993.895233] GPR04: c0000000fefc19e8 c0000001bcee7d48 002d1e7473db58e8 0000000000000001  
-[  993.895233] GPR08: d0000000079dd588 2f7362696e2f6e66 0000000000000008 d0000000079d45f8  
-[  993.895233] GPR12: d000000006660010 c00000000e986e00 c000000000110ab0 c0000001f81d0040  
-[  993.895233] GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000000000  
-[  993.895233] GPR20: 0000000000000000 fffffffffffffe00 0000000000000000 0000000000000001  
-[  993.895233] GPR24: d0000000066b9f34 c0000001bcee7d30 0000000000000000 d0000000066aac68  
-[  993.895233] GPR28: c0000001bc79cc00 0000000000000001 c0000001bc79cc00 c0000001bcee7d00  
-[  993.895313] NIP [d000000006660428] .call_start+0x58/0x120 [sunrpc] 
-[  993.895337] LR [d0000000066748d4] .__rpc_execute+0xc4/0x540 [sunrpc] 
-[  993.895342] Call Trace: 
-[  993.895346] [c0000001f952fa60] [0000000000000001] 0x1 (unreliable) 
-[  993.895370] [c0000001f952faf0] [d0000000066748d4] .__rpc_execute+0xc4/0x540 [sunrpc] 
-[  993.895379] [c0000001f952fbe0] [c000000000108e74] .process_one_work+0x194/0x480 
-[  993.895387] [c0000001f952fc90] [c0000000001091e8] .worker_thread+0x88/0x510 
-[  993.895393] [c0000001f952fd70] [c000000000110c0c] .kthread+0x15c/0x1a0 
-[  993.895401] [c0000001f952fe30] [c00000000000b520] .ret_from_kernel_thread+0x58/0xb8 
-[  993.895407] Instruction dump: 
-[  993.895411] e9430078 ebc300a8 7928ffe3 ebaa0026 40c2006c e95e0180 80fe0044 e90a0010  
-[  993.895421] 78ea1f24 7d28502a 2fa90000 419e0018 <e9490010> 7ba91764 7d0a482e 39080001  
-[  993.895433] ---[ end trace aeee2c84dc1574c0 ]--- 
-
-And gdb shows:
-
-(gdb) l *(call_start+0x60)
-0x4b0 is in call_start (net/sunrpc/clnt.c:1529).
-1524                            rpc_proc_name(task),
-1525                            (RPC_IS_ASYNC(task) ? "async" : "sync"));
-1526
-1527            /* Increment call count (version might not be valid for ping) */
-1528            if (clnt->cl_program->version[clnt->cl_vers])
-1529                    clnt->cl_program->version[clnt->cl_vers]->counts[idx]++;
-1530            clnt->cl_stats->rpccnt++;
-1531            task->tk_action = call_reserve;
-1532    }
-1533
