@@ -1,54 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lf0-f67.google.com ([209.85.215.67]:35749 "EHLO
-        mail-lf0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751835AbdGROYz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jul 2017 10:24:55 -0400
-Received: by mail-lf0-f67.google.com with SMTP id z78so1994163lff.2
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Jul 2017 07:24:55 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:44394 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751413AbdGROyD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 18 Jul 2017 10:54:03 -0400
+Date: Tue, 18 Jul 2017 10:54:03 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Kees Cook <keescook@chromium.org>
+Cc: Daniel Micay <danielmicay@gmail.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrey Ryabinin <aryabinin@virtuozzo.com>,
+        Dave Jones <davej@codemonkey.org.uk>,
+        Anna Schumaker <schumaker.anna@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Alexander Potapenko <glider@google.com>,
+        Dmitry Vyukov <dvyukov@google.com>,
+        kasan-dev <kasan-dev@googlegroups.com>
+Subject: Re: [PATCH] replace incorrect strscpy use in FORTIFY_SOURCE
+Message-ID: <20170718145403.GC19030@fieldses.org>
+References: <20170714212812.30297-1-danielmicay@gmail.com>
+ <CAGXu5j+yRZWTouM9m1gKg3MtxT5tGgjoZOYWeAHZDz8MgjYdng@mail.gmail.com>
 MIME-Version: 1.0
-Reply-To: mrs.melianatrump@yahoo.com
-From: "Mrs.Meliana Trump" <ugochukwuonuorah12@gmail.com>
-Date: Tue, 18 Jul 2017 07:24:53 -0700
-Message-ID: <CAOYsR4hfz2d52khW4AfuD1=vcXCDM7z18SBkgtTCuHGeZVr_Og@mail.gmail.com>
-Subject: Attention To me and get back to me urgent
-To: undisclosed-recipients:;
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAGXu5j+yRZWTouM9m1gKg3MtxT5tGgjoZOYWeAHZDz8MgjYdng@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Attention:Beneficiary
+On Fri, Jul 14, 2017 at 04:51:31PM -0700, Kees Cook wrote:
+> On Fri, Jul 14, 2017 at 2:28 PM, Daniel Micay <danielmicay@gmail.com> wrote:
+> > Using strscpy was wrong because FORTIFY_SOURCE is passing the maximum
+> > possible size of the outermost object, but strscpy defines the count
+> > parameter as the exact buffer size, so this could copy past the end of
+> > the source. This would still be wrong with the planned usage of
+> > __builtin_object_size(p, 1) for intra-object overflow checks since it's
+> > the maximum possible size of the specified object with no guarantee of
+> > it being that large.
+> >
+> > Reuse of the fortified functions like this currently makes the runtime
+> > error reporting less precise but that can be improved later on.
+> >
+> > Signed-off-by: Daniel Micay <danielmicay@gmail.com>
+> 
+> Thanks for fixing this! Linus, do you want to take this directly or
+> have it go via -mm where fortify landed originally?
+> 
+> Acked-by: Kees Cook <keescook@chromium.org>
+> 
+> As far as testing goes, was the NFS tree not in -next, or was a test
+> not running against -next? I'm curious why it took until the NFS tree
+> landed in Linus's tree for this to get noticed. Fortify was in -next
+> for a while...
 
-I am  Meliana Trump, and I am writing to inform you about your Bank
-Check Draft brought back 16/07/2017 by the United Embassy Mr John
-Moore from the government of Benin Republic in the white house
-Washington DC been mandated to be deliver to your home address once
-you reconfirm it with the one we have here with us to avoid wrong
-delivery of your check draft Eighteen million united states dollars
-$18,000,000,00usd that was assigned to be delivered to your humble
-home address by Honorable president Donald Trump the president of this
-great country this week by a delivery agent Mr John Moore
+There was a last-minute rebase of that tree.  I don't see anything
+relevant there.  The code in question has been the same for ages.  But I
+most be overlooking something....  I guess it could be interesting to
+bisect to figure out when the warning started.
 
-Also reconfirm your details for the check delivery by filling the form
-below and send it immediately to our mrs.melianatrump@yahoo.com  in
-for verification and for prompt collection of your fund.
-
-Fill The Form Below:
-
-1. Residential Address :
-2. Next of Kin :
-3. Mobile Number:
-4. Fax Number :
-5. Occupation :
-6. Sex :
-7. Age :
-8. Nationality :
-9. Country :
-10. Marital Status :
-
-
-Accept my hearty congratulation again!
-
-Yours Sincerely,
-MRS MELIANA TRUMP
-FIRST_LADY
-1600 Pennsylvania Ave NW, Washington, DC 20500, United States
+--b.
