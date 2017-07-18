@@ -1,42 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44368 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752336AbdGROU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 18 Jul 2017 10:20:58 -0400
-Date: Tue, 18 Jul 2017 10:20:58 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: [GIT PULL] Please pull an nfsd bugfix for 4.13
-Message-ID: <20170718142058.GB19030@fieldses.org>
-References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
- <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
- <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
- <1500245845.13893.3.camel@primarydata.com>
- <20170717030504.qca74wsswct26ytn@codemonkey.org.uk>
- <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com>
+Received: from mail-lf0-f67.google.com ([209.85.215.67]:35749 "EHLO
+        mail-lf0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751835AbdGROYz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Jul 2017 10:24:55 -0400
+Received: by mail-lf0-f67.google.com with SMTP id z78so1994163lff.2
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Jul 2017 07:24:55 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com>
+Reply-To: mrs.melianatrump@yahoo.com
+From: "Mrs.Meliana Trump" <ugochukwuonuorah12@gmail.com>
+Date: Tue, 18 Jul 2017 07:24:53 -0700
+Message-ID: <CAOYsR4hfz2d52khW4AfuD1=vcXCDM7z18SBkgtTCuHGeZVr_Og@mail.gmail.com>
+Subject: Attention To me and get back to me urgent
+To: undisclosed-recipients:;
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull:
+Attention:Beneficiary
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.13-1
+I am  Meliana Trump, and I am writing to inform you about your Bank
+Check Draft brought back 16/07/2017 by the United Embassy Mr John
+Moore from the government of Benin Republic in the white house
+Washington DC been mandated to be deliver to your home address once
+you reconfirm it with the one we have here with us to avoid wrong
+delivery of your check draft Eighteen million united states dollars
+$18,000,000,00usd that was assigned to be delivered to your humble
+home address by Honorable president Donald Trump the president of this
+great country this week by a delivery agent Mr John Moore
 
-One fix for a problem introduced in the most recent merge window and
-found by Dave Jones and KASAN.
+Also reconfirm your details for the check delivery by filling the form
+below and send it immediately to our mrs.melianatrump@yahoo.com  in
+for verification and for prompt collection of your fund.
 
---b.
+Fill The Form Below:
 
-Trond Myklebust (1):
-      nfsd: Fix a memory scribble in the callback channel
+1. Residential Address :
+2. Next of Kin :
+3. Mobile Number:
+4. Fax Number :
+5. Occupation :
+6. Sex :
+7. Age :
+8. Nationality :
+9. Country :
+10. Marital Status :
 
- fs/nfsd/nfs4callback.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+
+Accept my hearty congratulation again!
+
+Yours Sincerely,
+MRS MELIANA TRUMP
+FIRST_LADY
+1600 Pennsylvania Ave NW, Washington, DC 20500, United States
