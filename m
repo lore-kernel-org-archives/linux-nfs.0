@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35932 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755526AbdGSWKR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jul 2017 18:10:17 -0400
-Received: by mail-io0-f195.google.com with SMTP id p185so384736iof.3
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 15:10:16 -0700 (PDT)
+Received: from mail-io0-f193.google.com ([209.85.223.193]:35609 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755529AbdGSWKT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jul 2017 18:10:19 -0400
+Received: by mail-io0-f193.google.com with SMTP id f1so817574ioj.2
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 15:10:19 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 14/20] NFS: Fix nfs_page_group_destroy() and nfs_lock_and_join_requests() race cases
-Date: Wed, 19 Jul 2017 18:09:49 -0400
-Message-Id: <20170719220955.58210-15-trond.myklebust@primarydata.com>
-In-Reply-To: <20170719220955.58210-14-trond.myklebust@primarydata.com>
+Subject: [PATCH 17/20] NFS: Remove unused parameter from nfs_page_group_lock()
+Date: Wed, 19 Jul 2017 18:09:52 -0400
+Message-Id: <20170719220955.58210-18-trond.myklebust@primarydata.com>
+In-Reply-To: <20170719220955.58210-17-trond.myklebust@primarydata.com>
 References: <20170719220955.58210-1-trond.myklebust@primarydata.com>
  <20170719220955.58210-2-trond.myklebust@primarydata.com>
  <20170719220955.58210-3-trond.myklebust@primarydata.com>
@@ -25,129 +25,148 @@ References: <20170719220955.58210-1-trond.myklebust@primarydata.com>
  <20170719220955.58210-12-trond.myklebust@primarydata.com>
  <20170719220955.58210-13-trond.myklebust@primarydata.com>
  <20170719220955.58210-14-trond.myklebust@primarydata.com>
+ <20170719220955.58210-15-trond.myklebust@primarydata.com>
+ <20170719220955.58210-16-trond.myklebust@primarydata.com>
+ <20170719220955.58210-17-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since nfs_page_group_destroy() does not take any locks on the requests
-to be freed, we need to ensure that we don't inadvertently free the
-request in nfs_destroy_unlinked_subrequests() while the last reference
-is being released elsewhere.
-
-Do this by:
-
-1) Taking a reference to the request unless it is already being freed
-2) Checking (under the page group lock) if PG_TEARDOWN is already set before
-   freeing an unreferenced request in nfs_destroy_unlinked_subrequests()
+nfs_page_group_lock() is now always called with the 'nonblock'
+parameter set to 'false'.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/write.c | 58 +++++++++++++++++++++++++++++-----------------------------
- 1 file changed, 29 insertions(+), 29 deletions(-)
+ fs/nfs/pagelist.c        | 31 +++++++++++--------------------
+ fs/nfs/write.c           |  6 +++---
+ include/linux/nfs_page.h |  2 +-
+ 3 files changed, 15 insertions(+), 24 deletions(-)
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 1ee5d89380d9..ffb9934607ef 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -384,10 +384,11 @@ nfs_unroll_locks(struct inode *inode, struct nfs_page *head,
- 	struct nfs_page *tmp;
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index ced7974622dd..af6731dd4324 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -134,19 +134,14 @@ EXPORT_SYMBOL_GPL(nfs_async_iocounter_wait);
+ /*
+  * nfs_page_group_lock - lock the head of the page group
+  * @req - request in group that is to be locked
+- * @nonblock - if true don't block waiting for lock
+  *
+- * this lock must be held if modifying the page group list
++ * this lock must be held when traversing or modifying the page
++ * group list
+  *
+- * return 0 on success, < 0 on error: -EDELAY if nonblocking or the
+- * result from wait_on_bit_lock
+- *
+- * NOTE: calling with nonblock=false should always have set the
+- *       lock bit (see fs/buffer.c and other uses of wait_on_bit_lock
+- *       with TASK_UNINTERRUPTIBLE), so there is no need to check the result.
++ * return 0 on success, < 0 on error
+  */
+ int
+-nfs_page_group_lock(struct nfs_page *req, bool nonblock)
++nfs_page_group_lock(struct nfs_page *req)
+ {
+ 	struct nfs_page *head = req->wb_head;
  
- 	/* relinquish all the locks successfully grabbed this run */
--	for (tmp = head->wb_this_page ; tmp != req; tmp = tmp->wb_this_page)
--		nfs_unlock_request(tmp);
+@@ -155,14 +150,10 @@ nfs_page_group_lock(struct nfs_page *req, bool nonblock)
+ 	if (!test_and_set_bit(PG_HEADLOCK, &head->wb_flags))
+ 		return 0;
+ 
+-	if (!nonblock) {
+-		set_bit(PG_CONTENDED1, &head->wb_flags);
+-		smp_mb__after_atomic();
+-		return wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
++	set_bit(PG_CONTENDED1, &head->wb_flags);
++	smp_mb__after_atomic();
++	return wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
+ 				TASK_UNINTERRUPTIBLE);
+-	}
 -
--	WARN_ON_ONCE(test_bit(PG_TEARDOWN, &req->wb_flags));
-+	for (tmp = head->wb_this_page ; tmp != req; tmp = tmp->wb_this_page) {
-+		if (!kref_read(&tmp->wb_kref))
-+			continue;
-+		nfs_unlock_and_release_request(tmp);
-+	}
+-	return -EAGAIN;
  }
  
  /*
-@@ -414,36 +415,32 @@ nfs_destroy_unlinked_subrequests(struct nfs_page *destroy_list,
- 		WARN_ON_ONCE(old_head != subreq->wb_head);
+@@ -225,7 +216,7 @@ bool nfs_page_group_sync_on_bit(struct nfs_page *req, unsigned int bit)
+ {
+ 	bool ret;
  
- 		/* make sure old group is not used */
--		subreq->wb_head = subreq;
- 		subreq->wb_this_page = subreq;
+-	nfs_page_group_lock(req, false);
++	nfs_page_group_lock(req);
+ 	ret = nfs_page_group_sync_on_bit_locked(req, bit);
+ 	nfs_page_group_unlock(req);
  
--		/* subreq is now totally disconnected from page group or any
--		 * write / commit lists. last chance to wake any waiters */
--		nfs_unlock_request(subreq);
--
--		if (!test_bit(PG_TEARDOWN, &subreq->wb_flags)) {
--			/* release ref on old head request */
--			nfs_release_request(old_head);
-+		/* Note: races with nfs_page_group_destroy() */
-+		if (!kref_read(&subreq->wb_kref)) {
-+			bool freeme = test_bit(PG_TEARDOWN, &subreq->wb_flags);
+@@ -1016,7 +1007,7 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 	unsigned int bytes_left = 0;
+ 	unsigned int offset, pgbase;
  
- 			nfs_page_group_clear_bits(subreq);
-+			/* Check if we raced with nfs_page_group_destroy() */
-+			if (freeme)
-+				nfs_free_request(subreq);
-+			continue;
-+		}
+-	nfs_page_group_lock(req, false);
++	nfs_page_group_lock(req);
  
--			/* release the PG_INODE_REF reference */
--			if (test_and_clear_bit(PG_INODE_REF, &subreq->wb_flags)) {
--				nfs_release_request(subreq);
--				spin_lock(&inode->i_lock);
--				NFS_I(inode)->nrequests--;
--				spin_unlock(&inode->i_lock);
--			} else
--				WARN_ON_ONCE(1);
--		} else {
--			WARN_ON_ONCE(test_bit(PG_CLEAN, &subreq->wb_flags));
--			/* zombie requests have already released the last
--			 * reference and were waiting on the rest of the
--			 * group to complete. Since it's no longer part of a
--			 * group, simply free the request */
--			nfs_page_group_clear_bits(subreq);
--			nfs_free_request(subreq);
-+		subreq->wb_head = subreq;
-+
-+		if (test_and_clear_bit(PG_INODE_REF, &subreq->wb_flags)) {
-+			nfs_release_request(subreq);
-+			spin_lock(&inode->i_lock);
-+			NFS_I(inode)->nrequests--;
-+			spin_unlock(&inode->i_lock);
+ 	subreq = req;
+ 	bytes_left = subreq->wb_bytes;
+@@ -1038,7 +1029,7 @@ static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 			if (mirror->pg_recoalesce)
+ 				return 0;
+ 			/* retry add_request for this subreq */
+-			nfs_page_group_lock(req, false);
++			nfs_page_group_lock(req);
+ 			continue;
  		}
-+
-+		nfs_page_group_clear_bits(subreq);
-+		/* subreq is now totally disconnected from page group or any
-+		 * write / commit lists. last chance to wake any waiters */
-+		nfs_unlock_and_release_request(subreq);
+ 
+@@ -1135,7 +1126,7 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
+ 
+ 	for (midx = 0; midx < desc->pg_mirror_count; midx++) {
+ 		if (midx) {
+-			nfs_page_group_lock(req, false);
++			nfs_page_group_lock(req);
+ 
+ 			/* find the last request */
+ 			for (lastreq = req->wb_head;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 20d44ea328b6..0f418d825185 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -271,7 +271,7 @@ static bool nfs_page_group_covers_page(struct nfs_page *req)
+ 	unsigned int pos = 0;
+ 	unsigned int len = nfs_page_length(req->wb_page);
+ 
+-	nfs_page_group_lock(req, false);
++	nfs_page_group_lock(req);
+ 
+ 	do {
+ 		tmp = nfs_page_group_search_locked(req->wb_head, pos);
+@@ -480,7 +480,7 @@ nfs_lock_and_join_requests(struct page *page)
  	}
- }
+ 	spin_unlock(&inode->i_lock);
  
-@@ -512,6 +509,8 @@ nfs_lock_and_join_requests(struct page *page)
- 	for (subreq = head->wb_this_page; subreq != head;
- 			subreq = subreq->wb_this_page) {
- 
-+		if (!kref_get_unless_zero(&subreq->wb_kref))
-+			continue;
- 		while (!nfs_lock_request(subreq)) {
- 			/*
- 			 * Unlock page to allow nfs_page_group_sync_on_bit()
-@@ -523,6 +522,7 @@ nfs_lock_and_join_requests(struct page *page)
- 				ret = nfs_page_group_lock(head, false);
+-	ret = nfs_page_group_lock(head, false);
++	ret = nfs_page_group_lock(head);
+ 	if (ret < 0) {
+ 		nfs_unlock_and_release_request(head);
+ 		return ERR_PTR(ret);
+@@ -501,7 +501,7 @@ nfs_lock_and_join_requests(struct page *page)
+ 			nfs_page_group_unlock(head);
+ 			ret = nfs_wait_on_request(subreq);
+ 			if (!ret)
+-				ret = nfs_page_group_lock(head, false);
++				ret = nfs_page_group_lock(head);
  			if (ret < 0) {
  				nfs_unroll_locks(inode, head, subreq);
-+				nfs_release_request(subreq);
- 				nfs_unlock_and_release_request(head);
- 				return ERR_PTR(ret);
- 			}
-@@ -537,8 +537,8 @@ nfs_lock_and_join_requests(struct page *page)
- 		} else if (WARN_ON_ONCE(subreq->wb_offset < head->wb_offset ||
- 			    ((subreq->wb_offset + subreq->wb_bytes) >
- 			     (head->wb_offset + total_bytes)))) {
--			nfs_unlock_request(subreq);
- 			nfs_unroll_locks(inode, head, subreq);
-+			nfs_unlock_and_release_request(subreq);
- 			nfs_page_group_unlock(head);
- 			nfs_unlock_and_release_request(head);
- 			return ERR_PTR(-EIO);
+ 				nfs_release_request(subreq);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index de1d24cedaa2..2f4fdafb6746 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -139,7 +139,7 @@ extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+ extern  int nfs_wait_on_request(struct nfs_page *);
+ extern	void nfs_unlock_request(struct nfs_page *req);
+ extern	void nfs_unlock_and_release_request(struct nfs_page *);
+-extern int nfs_page_group_lock(struct nfs_page *, bool);
++extern int nfs_page_group_lock(struct nfs_page *);
+ extern void nfs_page_group_unlock(struct nfs_page *);
+ extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
+ extern bool nfs_async_iocounter_wait(struct rpc_task *, struct nfs_lock_context *);
 -- 
 2.13.3
 
