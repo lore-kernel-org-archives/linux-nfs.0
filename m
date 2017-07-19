@@ -1,89 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:42303 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750822AbdGSEFR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Jul 2017 00:05:17 -0400
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Date: Wed, 19 Jul 2017 14:05:01 +1000
-Cc: "David S. Miller" <davem@davemloft.net>,
-        Eric Dumazet <edumazet@google.com>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] net/sunrpc/xprt_sock: fix regression in connection error reporting.
-Message-ID: <87r2xdxeaa.fsf@notabene.neil.brown.name>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:50901 "EHLO smtp-o-3.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753198AbdGSN60 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Jul 2017 09:58:26 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 0361328005D
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 15:58:25 +0200 (CEST)
+Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
+        by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id C308F1364
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 15:58:24 +0200 (MEST)
+Date: Wed, 19 Jul 2017 15:58:24 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <1535638152.4367330.1500472704645.JavaMail.zimbra@desy.de>
+Subject: SETATTR without stateid
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Dear friends,
+
+By running xfstest (generic/013) I have discovered client side misbehavior.
+Consider the following test code:
+
+-----
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 
-Commit 3d4762639dd3 ("tcp: remove poll() flakes when receiving
-RST") in v4.12 changed the order in which ->sk_state_change()
-and ->sk_error_report() are called when a socket is shut
-down - sk_state_change() is now called first.
+int main(int argc, char **argv)
+{
 
-This causes xs_tcp_state_change() -> xs_sock_mark_closed() ->
-xprt_disconnect_done() to wake all pending tasked with -EAGAIN.
-When the ->sk_error_report() callback arrives, it is too late to
-pass the error on, and it is lost.
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s <path>\n", argv[0]);
+    exit(1);
+  }
 
-As easy way to demonstrate the problem caused is to try to start
-rpc.nfsd while rcpbind isn't running.
-nfsd will attempt a tcp connection to rpcbind.  A ECONNREFUSED
-error is returned, but sunrpc code loses the error and keeps
-retrying.  If it saw the ECONNREFUSED, it would abort.
-
-To fix this, handle the sk->sk_err in the TCP_CLOSE branch of
-xs_tcp_state_change().
-
-Fixes: 3d4762639dd3 ("tcp: remove poll() flakes when receiving RST")
-Cc: stable@vger.kernel.org (v4.12)
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- net/sunrpc/xprtsock.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index d5b54c020dec..4f154d388748 100644
-=2D-- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1624,6 +1624,8 @@ static void xs_tcp_state_change(struct sock *sk)
- 		if (test_and_clear_bit(XPRT_SOCK_CONNECTING,
- 					&transport->sock_state))
- 			xprt_clear_connecting(xprt);
-+		if (sk->sk_err)
-+			xprt_wake_pending_tasks(xprt, -sk->sk_err);
- 		xs_sock_mark_closed(xprt);
- 	}
-  out:
-=2D-=20
-2.12.2
+  int rc = truncate(argv[1], 8192);
+  if (rc < 0) {
+    perror("Failed to truncate the file");
+    exit(4);
+  }
+  exit(0);
+}
 
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+----
 
------BEGIN PGP SIGNATURE-----
+The expectation is that client will send a valid open stateid with SETATTR (rfc7530#16.32.4).
+However, this is not the case - client just send's a SETATTR with size, but without any open.
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAllu2nAACgkQOeye3VZi
-gbmeZA//Q8wtVydWnaSmch48kUWOy8LYkVv1uHUVm7vTce+4Sd9321lgkgAOI+Cc
-h8s6AipYKGTFyBm/Kssii+Oa33F4+TT+9NBP7GDf7j/5b/vq35ozR/Xmc+Ra+xJW
-FC++eibIl6YDnZH2S918mgt29qBpomvPF/YN0itlfIatPiZ3OpNMa4a54vz2s6JA
-5TcfZJJoAvSvm9RbF7/5eQs1YkxpvvYnVw+6k+QNHLEkUAqZOKqp1dYXFjayofz3
-27QzvwDvzuPHG3ikhacypRbhkVDwc0zgXADDEnXX6vEQyHy9MlRZSS3q4yBYukvT
-HlhMydrHaaa/ZfGE8LSZKXz5fJMFGf9GkEIw8DCR4g1dYuysTU/avvtX1n4kOeDE
-bWsCcsW8ZJ6fD0Cer7eEUEyAsDNdoXPV+a9LFfDsD6skB/heJ2UsIPdWGXQG59Mc
-ZA1KiiUPjw8xvFzyX4uliukXbCLvi+IsFIQhvGPaAMzzLLrS3NTBTam98WvuEiOQ
-EM5guYgf2OR455egWtCLONB/DfXQUS7mb4QVxUQLHJ3T+yQrrUYN+6dS2sWwGESx
-Ny5jbNjdJdMPSSsj8arVjQ1kDsypA11trxf8kZYlnBvY+JApXeo7ifn4eTei+98j
-snwod/PiazgGC0GPWN6p09+v3UrJ7qh0sXgaP+fUGj2IMVlCseI=
-=AsPR
------END PGP SIGNATURE-----
---=-=-=--
+BTW, older clients (RHEL6) will fail with EIO, latest kernel, 4.13.0-rc1 goes into an
+infinite loop of SETATTR requests.
+
+On the other hand, ftruncate works as expected, e.q. following example:
+
+---
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <fcntl.h>
+
+
+int main(int argc, char **argv)
+{
+
+  if (argc != 2) {
+    fprintf(stderr, "Usage: %s <path>\n", argv[0]);
+    exit(1);
+  }
+
+  int fd = open(argv[1], O_RDWR, 0644);
+  if (fd < 0) {
+    perror("Failed to open file");
+    exit(2);
+  }
+
+  int rc = ftruncate(fd, 8192);
+  if (rc < 0) {
+    perror("Failed to truncate the file");
+    exit(4);
+  }
+
+  close(fd);
+  exit(0);
+}
+----
+Will provide an open stateid with SETATTR requests as mandated by rfc.
+
+Tigran.
