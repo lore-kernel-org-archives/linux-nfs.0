@@ -1,52 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33630 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:3215 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752955AbdGSUyA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Jul 2017 16:54:00 -0400
+        id S1754265AbdGSUyB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Jul 2017 16:54:01 -0400
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id D601A806C9
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:53:59 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 9D55C5BECD
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:54:01 +0000 (UTC)
 Received: from steved.boston.devel.redhat.com (ovpn-122-174.rdu2.redhat.com [10.10.122.174])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 8831617C14
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:53:59 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 55C315D9C7
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:54:01 +0000 (UTC)
 From: Steve Dickson <steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 07/11] device-discovery.c: removed a warning
-Date: Wed, 19 Jul 2017 16:53:50 -0400
-Message-Id: <20170719205354.10006-8-steved@redhat.com>
+Subject: [PATCH 11/11] nfsdcltrack.c: remove a warning
+Date: Wed, 19 Jul 2017 16:53:54 -0400
+Message-Id: <20170719205354.10006-12-steved@redhat.com>
 In-Reply-To: <20170719205354.10006-1-steved@redhat.com>
 References: <20170719205354.10006-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-device-discovery.c:171:13: warning: In the GNU C Library, "major" is defined
- by <sys/sysmacros.h>. For historical compatibility, it is
- currently defined by <sys/types.h> as well, but we plan to
- remove this soon. To use "major", include <sys/sysmacros.h>
- directly. If you did not intend to use a system-defined macro
- "major", you should undefine it after including <sys/types.h>.
-  } else if (dm_is_dm_major(major(dev)))
-             ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+nfsdcltrack.c:581:4: warning: this statement may fall through [-Wimplicit-fallthrough=]
 
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/blkmapd/device-discovery.c | 1 +
+ utils/nfsdcltrack/nfsdcltrack.c | 1 +
  1 file changed, 1 insertion(+)
 
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index c66669d..29bafb2 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -26,6 +26,7 @@
-  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
-+#include <sys/sysmacros.h>
- #include <sys/types.h>
- #include <sys/stat.h>
- #include <sys/ioctl.h>
+diff --git a/utils/nfsdcltrack/nfsdcltrack.c b/utils/nfsdcltrack/nfsdcltrack.c
+index 124c923..0baaa3e 100644
+--- a/utils/nfsdcltrack/nfsdcltrack.c
++++ b/utils/nfsdcltrack/nfsdcltrack.c
+@@ -579,6 +579,7 @@ main(int argc, char **argv)
+ 		switch (arg) {
+ 		case 'd':
+ 			xlog_config(D_ALL, 1);
++			break;
+ 		case 'f':
+ 			xlog_syslog(0);
+ 			xlog_stderr(1);
 -- 
 2.13.3
 
