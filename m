@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33009 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755272AbdGSWKN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jul 2017 18:10:13 -0400
-Received: by mail-it0-f66.google.com with SMTP id t6so860548itb.0
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 15:10:13 -0700 (PDT)
+Received: from mail-it0-f68.google.com ([209.85.214.68]:34537 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753904AbdGSWKM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Jul 2017 18:10:12 -0400
+Received: by mail-it0-f68.google.com with SMTP id o202so858169itc.1
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 15:10:11 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 10/20] NFS: Teach nfs_try_to_update_request() to deal with request page_groups
-Date: Wed, 19 Jul 2017 18:09:45 -0400
-Message-Id: <20170719220955.58210-11-trond.myklebust@primarydata.com>
-In-Reply-To: <20170719220955.58210-10-trond.myklebust@primarydata.com>
+Subject: [PATCH 09/20] NFS: Fix the inode request accounting when pages have subrequests
+Date: Wed, 19 Jul 2017 18:09:44 -0400
+Message-Id: <20170719220955.58210-10-trond.myklebust@primarydata.com>
+In-Reply-To: <20170719220955.58210-9-trond.myklebust@primarydata.com>
 References: <20170719220955.58210-1-trond.myklebust@primarydata.com>
  <20170719220955.58210-2-trond.myklebust@primarydata.com>
  <20170719220955.58210-3-trond.myklebust@primarydata.com>
@@ -20,99 +20,80 @@ References: <20170719220955.58210-1-trond.myklebust@primarydata.com>
  <20170719220955.58210-7-trond.myklebust@primarydata.com>
  <20170719220955.58210-8-trond.myklebust@primarydata.com>
  <20170719220955.58210-9-trond.myklebust@primarydata.com>
- <20170719220955.58210-10-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simplify the code, and avoid some flushes to disk.
+Both nfs_destroy_unlinked_subrequests() and nfs_lock_and_join_requests()
+manipulate the inode flags adjusting the NFS_I(inode)->nrequests.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/write.c | 60 ++++++++++++++++++++--------------------------------------
- 1 file changed, 20 insertions(+), 40 deletions(-)
+ fs/nfs/write.c | 27 +++++++++++++++------------
+ 1 file changed, 15 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index ee981353d4aa..0b4d1ef168e0 100644
+index bb38c881fc48..ee981353d4aa 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -1107,39 +1107,19 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
+@@ -418,7 +418,8 @@ nfs_unroll_locks_and_wait(struct inode *inode, struct nfs_page *head,
+  */
+ static void
+ nfs_destroy_unlinked_subrequests(struct nfs_page *destroy_list,
+-				 struct nfs_page *old_head)
++				 struct nfs_page *old_head,
++				 struct inode *inode)
+ {
+ 	while (destroy_list) {
+ 		struct nfs_page *subreq = destroy_list;
+@@ -443,9 +444,12 @@ nfs_destroy_unlinked_subrequests(struct nfs_page *destroy_list,
+ 			nfs_page_group_clear_bits(subreq);
  
- 	end = offset + bytes;
+ 			/* release the PG_INODE_REF reference */
+-			if (test_and_clear_bit(PG_INODE_REF, &subreq->wb_flags))
++			if (test_and_clear_bit(PG_INODE_REF, &subreq->wb_flags)) {
+ 				nfs_release_request(subreq);
+-			else
++				spin_lock(&inode->i_lock);
++				NFS_I(inode)->nrequests--;
++				spin_unlock(&inode->i_lock);
++			} else
+ 				WARN_ON_ONCE(1);
+ 		} else {
+ 			WARN_ON_ONCE(test_bit(PG_CLEAN, &subreq->wb_flags));
+@@ -572,25 +576,24 @@ nfs_lock_and_join_requests(struct page *page)
+ 		head->wb_bytes = total_bytes;
+ 	}
  
--	for (;;) {
--		if (!(PagePrivate(page) || PageSwapCache(page)))
--			return NULL;
--		spin_lock(&inode->i_lock);
--		req = nfs_page_find_head_request_locked(NFS_I(inode), page);
--		if (req == NULL)
--			goto out_unlock;
++	/* Postpone destruction of this request */
++	if (test_and_clear_bit(PG_REMOVE, &head->wb_flags)) {
++		set_bit(PG_INODE_REF, &head->wb_flags);
++		kref_get(&head->wb_kref);
++		NFS_I(inode)->nrequests++;
++	}
++
+ 	/*
+ 	 * prepare head request to be added to new pgio descriptor
+ 	 */
+ 	nfs_page_group_clear_bits(head);
+ 
+-	/*
+-	 * some part of the group was still on the inode list - otherwise
+-	 * the group wouldn't be involved in async write.
+-	 * grab a reference for the head request, iff it needs one.
+-	 */
+-	if (!test_and_set_bit(PG_INODE_REF, &head->wb_flags))
+-		kref_get(&head->wb_kref);
 -
--		/* should be handled by nfs_flush_incompatible */
--		WARN_ON_ONCE(req->wb_head != req);
--		WARN_ON_ONCE(req->wb_this_page != req);
--
--		rqend = req->wb_offset + req->wb_bytes;
--		/*
--		 * Tell the caller to flush out the request if
--		 * the offsets are non-contiguous.
--		 * Note: nfs_flush_incompatible() will already
--		 * have flushed out requests having wrong owners.
--		 */
--		if (offset > rqend
--		    || end < req->wb_offset)
--			goto out_flushme;
--
--		if (nfs_lock_request(req))
--			break;
-+	req = nfs_lock_and_join_requests(page);
-+	if (IS_ERR_OR_NULL(req))
-+		return req;
+ 	nfs_page_group_unlock(head);
  
--		/* The request is locked, so wait and then retry */
--		spin_unlock(&inode->i_lock);
--		error = nfs_wait_on_request(req);
--		nfs_release_request(req);
--		if (error != 0)
--			goto out_err;
--	}
-+	rqend = req->wb_offset + req->wb_bytes;
-+	/*
-+	 * Tell the caller to flush out the request if
-+	 * the offsets are non-contiguous.
-+	 * Note: nfs_flush_incompatible() will already
-+	 * have flushed out requests having wrong owners.
-+	 */
-+	if (offset > rqend || end < req->wb_offset)
-+		goto out_flushme;
+ 	/* drop lock to clean uprequests on destroy list */
+ 	spin_unlock(&inode->i_lock);
  
- 	/* Okay, the request matches. Update the region */
- 	if (offset < req->wb_offset) {
-@@ -1150,17 +1130,17 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
- 		req->wb_bytes = end - req->wb_offset;
- 	else
- 		req->wb_bytes = rqend - req->wb_offset;
--out_unlock:
--	if (req)
--		nfs_clear_request_commit(req);
--	spin_unlock(&inode->i_lock);
- 	return req;
- out_flushme:
--	spin_unlock(&inode->i_lock);
--	nfs_release_request(req);
-+	/*
-+	 * Note: we mark the request dirty here because
-+	 * nfs_lock_and_join_requests() cannot preserve
-+	 * commit flags, so we have to replay the write.
-+	 */
-+	nfs_mark_request_dirty(req);
-+	nfs_unlock_and_release_request(req);
- 	error = nfs_wb_page(inode, page);
--out_err:
--	return ERR_PTR(error);
-+	return (error < 0) ? ERR_PTR(error) : NULL;
- }
+-	nfs_destroy_unlinked_subrequests(destroy_list, head);
++	nfs_destroy_unlinked_subrequests(destroy_list, head, inode);
  
- /*
+ 	/* still holds ref on head from nfs_page_find_head_request_locked
+ 	 * and still has lock on head from lock loop */
 -- 
 2.13.3
 
