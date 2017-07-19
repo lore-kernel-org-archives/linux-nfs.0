@@ -1,65 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52570 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36400 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754180AbdGSUx7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 19 Jul 2017 16:53:59 -0400
+        id S1752811AbdGSUyA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 19 Jul 2017 16:54:00 -0400
 Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id EA1CA80467
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:53:58 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 4EA9261E4C
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:54:00 +0000 (UTC)
 Received: from steved.boston.devel.redhat.com (ovpn-122-174.rdu2.redhat.com [10.10.122.174])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 9E53117C14
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:53:58 +0000 (UTC)
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 01E1A17C66
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Jul 2017 20:53:59 +0000 (UTC)
 From: Steve Dickson <steved@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 05/11] nfsd.c: removed a few warnings
-Date: Wed, 19 Jul 2017 16:53:48 -0400
-Message-Id: <20170719205354.10006-6-steved@redhat.com>
+Subject: [PATCH 08/11] network.c: removed some warnings
+Date: Wed, 19 Jul 2017 16:53:51 -0400
+Message-Id: <20170719205354.10006-9-steved@redhat.com>
 In-Reply-To: <20170719205354.10006-1-steved@redhat.com>
 References: <20170719205354.10006-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd.c:187:8: warning: this statement may fall through [-Wimplicit-fallthrough=]
-nfsd.c:213:8: warning: this statement may fall through [-Wimplicit-fallthrough=]nfsd.c:263:4: warning: this statement may fall through [-Wimplicit-fallthrough=]
-
+network.c:1234:6: warning: this statement may fall through [-Wimplicit-fallthrough=]
+network.c:1382:6: warning: this statement may fall through [-Wimplicit-fallthrough=]
+network.c:1477:6: warning: this statement may fall through [-Wimplicit-fallthrough=]
+network.c:1508:6: warning: this statement may fall through [-Wimplicit-fallthrough=]
+network.c:1574:6: warning: this statement may fall through [-Wimplicit-fallthrough=]
 Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- utils/nfsd/nfsd.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ utils/mount/network.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 2b38249..1d35658 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -198,6 +198,7 @@ main(int argc, char **argv)
- 					minorvers = 0;
- 					minorversset = minormask;
- 				}
-+				break;
- 			case 3:
- 			case 2:
- 				NFSCTL_VERUNSET(versbits, c);
-@@ -220,6 +221,7 @@ main(int argc, char **argv)
- 					NFSCTL_MINORSET(minorvers, i);
- 				} else
- 					minorvers = minorversset = minormask;
-+				break;
- 			case 3:
- 			case 2:
- 				NFSCTL_VERSET(versbits, c);
-@@ -261,8 +263,9 @@ main(int argc, char **argv)
- 			break;
- 		default:
- 			fprintf(stderr, "Invalid argument: '%c'\n", c);
-+			/* FALLTHRU */
- 		case 'h':
--			usage(progname);
-+			usage(progname); /* usage does not return */
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 281e935..19f14e5 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1235,6 +1235,7 @@ nfs_nfs_program(struct mount_options *options, unsigned long *program)
+ 			*program = tmp;
+ 			return 1;
  		}
- 	}
- 
++		break;
+ 	case PO_BAD_VALUE:
+ 		nfs_error(_("%s: invalid value for 'nfsprog=' option"),
+ 				progname);
+@@ -1383,6 +1384,7 @@ nfs_nfs_port(struct mount_options *options, unsigned long *port)
+ 			*port = tmp;
+ 			return 1;
+ 		}
++		break;
+ 	case PO_BAD_VALUE:
+ 		nfs_error(_("%s: invalid value for 'port=' option"),
+ 				progname);
+@@ -1478,6 +1480,7 @@ nfs_mount_program(struct mount_options *options, unsigned long *program)
+ 			*program = tmp;
+ 			return 1;
+ 		}
++		break;
+ 	case PO_BAD_VALUE:
+ 		nfs_error(_("%s: invalid value for 'mountprog=' option"),
+ 				progname);
+@@ -1509,6 +1512,7 @@ nfs_mount_version(struct mount_options *options, unsigned long *version)
+ 			*version = tmp;
+ 			return 1;
+ 		}
++		break;
+ 	case PO_BAD_VALUE:
+ 		nfs_error(_("%s: invalid value for 'mountvers=' option"),
+ 				progname);
+@@ -1575,6 +1579,7 @@ nfs_mount_port(struct mount_options *options, unsigned long *port)
+ 			*port = tmp;
+ 			return 1;
+ 		}
++		break;
+ 	case PO_BAD_VALUE:
+ 		nfs_error(_("%s: invalid value for 'mountport=' option"),
+ 				progname);
 -- 
 2.13.3
 
