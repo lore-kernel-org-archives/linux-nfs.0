@@ -1,64 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58642 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935400AbdGTUYX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 20 Jul 2017 16:24:23 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id F196D6574B
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Jul 2017 20:24:22 +0000 (UTC)
-From: Scott Mayhew <smayhew@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [nfs-utils PATCH v4] systemd: add instructions for disabling gssd to nfs.systemd.man
-Date: Thu, 20 Jul 2017 16:24:22 -0400
-Message-Id: <20170720202422.14153-1-smayhew@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:20005 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S936098AbdGTVJt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jul 2017 17:09:49 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "kolga@netapp.com" <kolga@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3 1/1] PNFS fix dangling DS mount
+Date: Thu, 20 Jul 2017 21:09:43 +0000
+Message-ID: <1500584980.6577.4.camel@primarydata.com>
+References: <20170630195201.95597-1-kolga@netapp.com>
+         <1500580582.5457.1.camel@primarydata.com>
+         <4C765F1F-4958-4D1B-922A-95AE9CB69288@netapp.com>
+In-Reply-To: <4C765F1F-4958-4D1B-922A-95AE9CB69288@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We've had several users complain about gssd automatically starting.  Not
-everyone who has a krb5.keytab want to use secure NFS; the instructions
-for disabling gssd ought to be on the man page in addition to the README
-(which may not even be included in a distro's nfs-utils package).
-
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- systemd/nfs.systemd.man | 17 ++++++++++++++++-
- 1 file changed, 16 insertions(+), 1 deletion(-)
-
-diff --git a/systemd/nfs.systemd.man b/systemd/nfs.systemd.man
-index 01801eb..7675320 100644
---- a/systemd/nfs.systemd.man
-+++ b/systemd/nfs.systemd.man
-@@ -79,11 +79,26 @@ unit should be enabled.
- Several other units which might be considered to be optional, such as
- .I rpc-gssd.service
- are careful to only start if the required configuration file exists.
--.I rpc-gsdd.service
-+.I rpc-gssd.service
- will not start if the
- .I krb5.keytab
- file does not exist (typically in
- .IR /etc ).
-+.B rpc.gssd
-+is assumed to be needed if the
-+.I krb5.keytab
-+file is present.  If a site needs this file present but does not want
-+.B rpc.gssd
-+running, it should create
-+.B /etc/systemd/system/rpc-gssd.service.d/01-disable.conf
-+containing
-+.RS
-+.nf
-+[Unit]
-+ConditionNull=false
-+.fi
-+.RE
-+
- .SS Restarting NFS services
- Most NFS daemons can be restarted at any time.  They will reload any
- state that they need, and continue servicing requests.  This is rarely
--- 
-2.9.4
+T24gVGh1LCAyMDE3LTA3LTIwIGF0IDE2OjE0IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gPiBPbiBKdWwgMjAsIDIwMTcsIGF0IDM6NTYgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJv
+bmRteUBwcmltYXJ5ZGF0YS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IEhpIE9sZ2EsDQo+
+ID4gDQo+ID4gQXBvbG9naWVzIGZvciBtaXNzaW5nIHRoaXMgcGF0Y2guIEl0IHdhcyBoaWRpbmcg
+aW4gbXkgJ2xpbnV4LQ0KPiA+IGZzZGV2ZWwnDQo+ID4gbWFpbGJveCwgc28gSSBkaWRuJ3QgcmVj
+b2duaXNlIGl0IGFzIGEgTkZTIHBhdGNoLg0KPiA+IA0KPiANCj4gWWVhaCBhZnRlciBJIG1haWxl
+ZCBpdCBvdXQgSSByZWFsaXplZCBJIGNjLWVkIGZzZGV2ZWwgaW5jb3JyZWN0bHkuDQo+IA0KPiA+
+IE9uIEZyaSwgMjAxNy0wNi0zMCBhdCAxNTo1MiAtMDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3Jv
+dGU6DQo+ID4gPiBUaGVyZSBpcyBhIHJlZ3Jlc3Npb24gYnkgY29tbWl0IDhkNDBiMGYxNDg0NiAo
+Ik5GUw0KPiA+ID4gZmlsZWxheW91dDpjYWxsDQo+ID4gPiBHRVRERVZJQ0VJTkZPIGFmdGVyIHBu
+ZnNfbGF5b3V0X3Byb2Nlc3MgY29tcGxldGVzIikuIEl0IGxlYXZlcw0KPiA+ID4gdGhlDQo+ID4g
+PiBEUyBtb3VudCBkYW5nbGluZy4NCj4gPiA+IA0KPiA+ID4gUHJldmlvdXNseSwgZmlsZWxheW91
+dF9hbGxvY19zZWMoKSB3b3VsZCBjYWxsDQo+ID4gPiBmaWxlbGF5b3V0X2NoZWNrX2xheW91dCgp
+DQo+ID4gPiB3aGljaCB3b3VsZCBjYWxsIG5mczRfZmluZF9nZXRfZGV2aWNlaWQgd2hpY2ggdXBz
+IHRoZSBjb3VudCBvbg0KPiA+ID4gdGhlDQo+ID4gPiBkZXZpY2VfaWQuIEl0J3Mgb25seSBjYWxs
+ZWQgb25jZSBhbmQgaXQncyBtYXRjaGVkIGJ5IHRoZQ0KPiA+ID4gZmlsZWxheW91dF9mcmVlX2xz
+ZWcoKSB0aGF0IGNhbGxzIG5mczRfZmxfcHV0X2RldmljZWlkKCkuDQo+ID4gPiANCj4gPiA+IEFm
+dGVyIHRoYXQgcGF0Y2gsIGVhY2ggcmVhZC93cml0ZSBlbmRzIHVwIGNhbGxpbmcNCj4gPiA+IG5m
+czRfZmluZF9nZXRfZGV2aWNlaWQNCj4gPiA+IGFuZCB0aGVyZSBpcyBubyBiYWxhbmNlIGZvciB0
+aGF0LiBJbnN0ZWFkLCBkbw0KPiA+ID4gbmZzNF9mbF9wdXRfZGV2aWNlaWQoKQ0KPiA+ID4gaW4g
+dGhlIGZpbGVsYXlvdXQncyAucGdfY2xlYW51cCBhbmQgcmVtb3ZlIGl0IGZyb20NCj4gPiA+IGZp
+bGVsYXlvdXRfZnJlZV9sc2VnLg0KPiA+ID4gDQo+ID4gPiBCdXQgd2Ugc3RpbGwgbmVlZCBhIHJl
+ZmVyZW5jZSB0byBob2xkIG92ZXIgdGhlIGxpZmV0aW1lIG9mIHRoZQ0KPiA+ID4gc2VnbWVudC4N
+Cj4gPiA+IEZvciBldmVyeSBuZXcgbHNlZyB0aGF0J3MgY3JlYXRlZCB3ZSBuZWVkIHRvIHRha2Ug
+YSByZWZlcmVuY2Ugb24NCj4gPiA+IGRldmljZWlkDQo+ID4gPiB0aGF0IHVzZXMgaXQuIEl0IHdp
+bGwgYmUgcmVsZWFzZWQgaW4gdGhlICJmcmVlX2xzZWciIHJvdXRpbmUuDQo+ID4gDQo+ID4gVGhp
+cyBpcyB3aGF0IEknbSBub3QgdW5kZXJzdGFuZGluZy4gSWYgeW91IGhhdmUgYSByZWZlcmVuY2Ug
+aW4gdGhlDQo+ID4gbGF5b3V0IHNlZ21lbnQsIHRoZW4gd2h5IGRvIHlvdSBuZWVkIHRvIGNhbGwN
+Cj4gPiBuZnM0X2ZpbmRfZ2V0X2RldmljZWlkKCkNCj4gPiBpbiB0aGUgcmVhZC93cml0ZSBjb2Rl
+Pw0KPiANCj4gSSB0aGluayBJ4oCZbSBwcm9iYWJseSBtaXN1bmRlcnN0YW5kaW5nIHRoZSBxdWVz
+dGlvbi4gSXQgc291bmRzIHRvIG1lDQo+IHRoYXQgeW91IGFza2luZyBtZSBmb3Igd2h5IHRoZSBj
+b21taXQgOGQ0MGIwZjE0ODQ2IHdhcyBkb25lIHRoZSB3YXkNCj4gaXQgd2FzIGRvbmUgKEnigJlk
+IHdvdWxkIHNheSBpdCB3YXMgZG9uZSBhcyBwZXIgeW91ciBzdWdnZXN0aW9uKS4NCj4gDQo+IEkg
+d291bGQgc2F5IHRoZSBjYWxsIHRvIG5mczRfZmluZF9nZXRfZGV2aWNlaWQoKSBoYXMgYWx3YXlz
+IGJlZW4gaW4NCj4gdGhlIHJlYWQvd3JpdGUgY29kZS4gSXQgd2FzIGEgcGFydCBvZiB0aGUgcG5m
+c191cGRhdGVfbGF5b3V0KCkgYnV0DQo+IHRoZSBjb21taXQgOGQ0MGIwZjE0ODQ2IG1vdmVkIGl0
+IG91dCBvZiBpdCAoc28gdGhhdCB0aGUgbGF5b3V0Z2V0IHdhcw0KPiBjb21wbGV0ZSkgYW5kIHRo
+ZW4gdGhlIGNhbGwgdG8gdGhlIGdldGRldmljZWluZm8gd291bGQgYmUgZG9uZS4gDQo+IA0KPiA+
+IElzbid0IGl0IHN1ZmZpY2llbnQgdG8gY2hhbmdlIHRoZSAicGdfaW5pdCIgY2FsbHMgdG8gY2hl
+Y2sgd2hldGhlcg0KPiA+IG9yDQo+ID4gbm90IHRoZSBzdHJ1Y3QgbmZzNF9maWxlbGF5b3V0X3Nl
+Z21lbnQgaGFzIHNldCBhIHZhbHVlIGZvciBkc2FkZHINCj4gPiAodGhhdA0KPiA+IG5lZWRzIHRv
+IGJlIGRvbmUgd2l0aCBjYXJlIHRvIGF2b2lkIHJhY2VzIC0gY21weGNoZygpIGlzIHlvdXINCj4g
+PiBmcmllbmQpLA0KPiA+IGFuZCB0aGVuIHJlbHkgb24gdGhhdCByZWZlcmVuY2UgYmVpbmcgc2V0
+IGZvciB0aGUgcmVtYWluZGVyIG9mIHRoZQ0KPiA+IGxheW91dCBzZWdtZW50IGxpZmV0aW1lPw0K
+PiANCj4gQXJlIHlvdSBzdWdnZXN0aW5nIHRvIGNoYW5nZSB3aGVuIGdldGRldmljZWluZm8gaXMg
+c3VwcG9zZSB0byBiZQ0KPiBjYWxsZWQ/DQo+IA0KDQpOby4gTm93IHRoYXQgSSdtIGxvb2tpbmcg
+YXQgZmlsZWxheW91dF9jaGVja19kZXZpY2VpZCgpLCBoZXJlIGlzIHdoYXQgSQ0KIHN1Z2dlc3Q6
+IHdlIG5lZWQgdG8gZW5zdXJlIHRoYXQgZmlsZWxheW91dF9jaGVja19kZXZpY2VpZCgpIHNldHMg
+dGhlDQpkZXZpY2VpZCBvbmNlLCBhbmQgb25seSBvbmNlIQ0KDQpIb3cgYWJvdXQgc29tZXRoaW5n
+IGxpa2UgdGhlIGZvbGxvd2luZyAodW50ZXN0ZWQpIHBhdGNoPw0KDQo4PC0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMWU0MGVlMTM5
+NTBkMDNhZDJhNTRhMGQxZGJhMzVmMmEwNGMyOGNhMCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDEN
+CkZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4N
+CkRhdGU6IFRodSwgMjAgSnVsIDIwMTcgMTc6MDA6MDIgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0g
+TkZTL2ZpbGVsYXlvdXQ6IEZpeCByYWN5IHNldHRpbmcgb2YgZmwtPmRzYWRkciBpbg0KIGZpbGVs
+YXlvdXRfY2hlY2tfZGV2aWNlaWQoKQ0KDQpXZSBtdXN0IHNldCBmbC0+ZHNhZGRyIG9uY2UsIGFu
+ZCBvbmNlIG9ubHksIGV2ZW4gaWYgdGhlcmUgYXJlIG11bHRpcGxlDQpwcm9jZXNzZXMgY2FsbGlu
+ZyBmaWxlbGF5b3V0X2NoZWNrX2RldmljZWlkKCkgZm9yIHRoZSBzYW1lIGxheW91dA0Kc2VnbWVu
+dC4NCg0KUmVwb3J0ZWQtYnk6IE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0K
+U2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
+dGEuY29tPg0KLS0tDQogZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jIHwgMTMgKysrKysr
+KysrKystLQ0KIDEgZmlsZSBjaGFuZ2VkLCAxMSBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygt
+KQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jIGIvZnMvbmZz
+L2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jDQppbmRleCAwODBmYzZiMjc4YmQuLjQ0YzYzOGI3ODc2
+YyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXQuYw0KKysrIGIvZnMv
+bmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jDQpAQCAtNTQyLDYgKzU0MiwxMCBAQCBmaWxlbGF5
+b3V0X2NoZWNrX2RldmljZWlkKHN0cnVjdCBwbmZzX2xheW91dF9oZHIgKmxvLA0KIAlzdHJ1Y3Qg
+bmZzNF9maWxlX2xheW91dF9kc2FkZHIgKmRzYWRkcjsNCiAJaW50IHN0YXR1cyA9IC1FSU5WQUw7
+DQogDQorCS8qIElzIHRoZSBkZXZpY2VpZCBhbHJlYWR5IHNldD8gSWYgc28sIHdlJ3JlIGdvb2Qu
+ICovDQorCWlmIChmbC0+ZHNhZGRyICE9IE5VTEwpDQorCQlyZXR1cm4gMDsNCisNCiAJLyogZmlu
+ZCBhbmQgcmVmZXJlbmNlIHRoZSBkZXZpY2VpZCAqLw0KIAlkID0gbmZzNF9maW5kX2dldF9kZXZp
+Y2VpZChORlNfU0VSVkVSKGxvLT5wbGhfaW5vZGUpLCAmZmwtPmRldmljZWlkLA0KIAkJCWxvLT5w
+bGhfbGNfY3JlZCwgZ2ZwX2ZsYWdzKTsNCkBAIC01NTMsOCArNTU3LDYgQEAgZmlsZWxheW91dF9j
+aGVja19kZXZpY2VpZChzdHJ1Y3QgcG5mc19sYXlvdXRfaGRyICpsbywNCiAJaWYgKGZpbGVsYXlv
+dXRfdGVzdF9kZXZpZF91bmF2YWlsYWJsZSgmZHNhZGRyLT5pZF9ub2RlKSkNCiAJCWdvdG8gb3V0
+X3B1dDsNCiANCi0JZmwtPmRzYWRkciA9IGRzYWRkcjsNCi0NCiAJaWYgKGZsLT5maXJzdF9zdHJp
+cGVfaW5kZXggPj0gZHNhZGRyLT5zdHJpcGVfY291bnQpIHsNCiAJCWRwcmludGsoIiVzIEJhZCBm
+aXJzdF9zdHJpcGVfaW5kZXggJXVcbiIsDQogCQkJCV9fZnVuY19fLCBmbC0+Zmlyc3Rfc3RyaXBl
+X2luZGV4KTsNCkBAIC01NzAsNiArNTcyLDEzIEBAIGZpbGVsYXlvdXRfY2hlY2tfZGV2aWNlaWQo
+c3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8sDQogCQlnb3RvIG91dF9wdXQ7DQogCX0NCiAJc3Rh
+dHVzID0gMDsNCisNCisJLyoNCisJICogQXRvbWljIGNvbXBhcmUgYW5kIHhjaGFuZ2UgdG8gZW5z
+dXJlIHdlIGRvbid0IHNjcmliYmxlDQorCSAqIG92ZXIgYSBub24tTlVMTCBwb2ludGVyLg0KKwkg
+Ki8NCisJaWYgKGNtcHhjaGcoJmZsLT5kc2FkZHIsIE5VTEwsIGRzYWRkcikgIT0gTlVMTCkNCisJ
+CWdvdG8gb3V0X3B1dDsNCiBvdXQ6DQogCXJldHVybiBzdGF0dXM7DQogb3V0X3B1dDoNCi0tIA0K
+Mi4xMy4zDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
