@@ -1,50 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:41278 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S934475AbdGTT42 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jul 2017 15:56:28 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "kolga@netapp.com" <kolga@netapp.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Received: from mx144.netapp.com ([216.240.21.25]:63468 "EHLO mx144.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S965453AbdGTUOM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 20 Jul 2017 16:14:12 -0400
+Content-Type: text/plain; charset=utf-8
+MIME-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Subject: Re: [PATCH v3 1/1] PNFS fix dangling DS mount
-Date: Thu, 20 Jul 2017 19:56:24 +0000
-Message-ID: <1500580582.5457.1.camel@primarydata.com>
+From: Olga Kornievskaia <kolga@netapp.com>
+In-Reply-To: <1500580582.5457.1.camel@primarydata.com>
+Date: Thu, 20 Jul 2017 16:14:01 -0400
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-ID: <4C765F1F-4958-4D1B-922A-95AE9CB69288@netapp.com>
 References: <20170630195201.95597-1-kolga@netapp.com>
-In-Reply-To: <20170630195201.95597-1-kolga@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+ <1500580582.5457.1.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgT2xnYSwNCg0KQXBvbG9naWVzIGZvciBtaXNzaW5nIHRoaXMgcGF0Y2guIEl0IHdhcyBoaWRp
-bmcgaW4gbXkgJ2xpbnV4LWZzZGV2ZWwnDQptYWlsYm94LCBzbyBJIGRpZG4ndCByZWNvZ25pc2Ug
-aXQgYXMgYSBORlMgcGF0Y2guDQoNCk9uIEZyaSwgMjAxNy0wNi0zMCBhdCAxNTo1MiAtMDQwMCwg
-T2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+IFRoZXJlIGlzIGEgcmVncmVzc2lvbiBieSBjb21t
-aXQgOGQ0MGIwZjE0ODQ2ICgiTkZTIGZpbGVsYXlvdXQ6Y2FsbA0KPiBHRVRERVZJQ0VJTkZPIGFm
-dGVyIHBuZnNfbGF5b3V0X3Byb2Nlc3MgY29tcGxldGVzIikuIEl0IGxlYXZlcyB0aGUNCj4gRFMg
-bW91bnQgZGFuZ2xpbmcuDQo+IA0KPiBQcmV2aW91c2x5LCBmaWxlbGF5b3V0X2FsbG9jX3NlYygp
-IHdvdWxkIGNhbGwNCj4gZmlsZWxheW91dF9jaGVja19sYXlvdXQoKQ0KPiB3aGljaCB3b3VsZCBj
-YWxsIG5mczRfZmluZF9nZXRfZGV2aWNlaWQgd2hpY2ggdXBzIHRoZSBjb3VudCBvbiB0aGUNCj4g
-ZGV2aWNlX2lkLiBJdCdzIG9ubHkgY2FsbGVkIG9uY2UgYW5kIGl0J3MgbWF0Y2hlZCBieSB0aGUN
-Cj4gZmlsZWxheW91dF9mcmVlX2xzZWcoKSB0aGF0IGNhbGxzIG5mczRfZmxfcHV0X2RldmljZWlk
-KCkuDQo+IA0KPiBBZnRlciB0aGF0IHBhdGNoLCBlYWNoIHJlYWQvd3JpdGUgZW5kcyB1cCBjYWxs
-aW5nDQo+IG5mczRfZmluZF9nZXRfZGV2aWNlaWQNCj4gYW5kIHRoZXJlIGlzIG5vIGJhbGFuY2Ug
-Zm9yIHRoYXQuIEluc3RlYWQsIGRvIG5mczRfZmxfcHV0X2RldmljZWlkKCkNCj4gaW4gdGhlIGZp
-bGVsYXlvdXQncyAucGdfY2xlYW51cCBhbmQgcmVtb3ZlIGl0IGZyb20NCj4gZmlsZWxheW91dF9m
-cmVlX2xzZWcuDQo+IA0KPiBCdXQgd2Ugc3RpbGwgbmVlZCBhIHJlZmVyZW5jZSB0byBob2xkIG92
-ZXIgdGhlIGxpZmV0aW1lIG9mIHRoZQ0KPiBzZWdtZW50Lg0KPiBGb3IgZXZlcnkgbmV3IGxzZWcg
-dGhhdCdzIGNyZWF0ZWQgd2UgbmVlZCB0byB0YWtlIGEgcmVmZXJlbmNlIG9uDQo+IGRldmljZWlk
-DQo+IHRoYXQgdXNlcyBpdC4gSXQgd2lsbCBiZSByZWxlYXNlZCBpbiB0aGUgImZyZWVfbHNlZyIg
-cm91dGluZS4NCg0KVGhpcyBpcyB3aGF0IEknbSBub3QgdW5kZXJzdGFuZGluZy4gSWYgeW91IGhh
-dmUgYSByZWZlcmVuY2UgaW4gdGhlDQpsYXlvdXQgc2VnbWVudCwgdGhlbiB3aHkgZG8geW91IG5l
-ZWQgdG8gY2FsbCBuZnM0X2ZpbmRfZ2V0X2RldmljZWlkKCkNCmluIHRoZSByZWFkL3dyaXRlIGNv
-ZGU/DQoNCklzbid0IGl0IHN1ZmZpY2llbnQgdG8gY2hhbmdlIHRoZSAicGdfaW5pdCIgY2FsbHMg
-dG8gY2hlY2sgd2hldGhlciBvcg0Kbm90IHRoZSBzdHJ1Y3QgbmZzNF9maWxlbGF5b3V0X3NlZ21l
-bnQgaGFzIHNldCBhIHZhbHVlIGZvciBkc2FkZHIgKHRoYXQNCm5lZWRzIHRvIGJlIGRvbmUgd2l0
-aCBjYXJlIHRvIGF2b2lkIHJhY2VzIC0gY21weGNoZygpIGlzIHlvdXIgZnJpZW5kKSwNCmFuZCB0
-aGVuIHJlbHkgb24gdGhhdCByZWZlcmVuY2UgYmVpbmcgc2V0IGZvciB0aGUgcmVtYWluZGVyIG9m
-IHRoZQ0KbGF5b3V0IHNlZ21lbnQgbGlmZXRpbWU/DQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QN
-CkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVz
-dEBwcmltYXJ5ZGF0YS5jb20NCg==
+
+> On Jul 20, 2017, at 3:56 PM, Trond Myklebust <trondmy@primarydata.com> =
+wrote:
+>=20
+> Hi Olga,
+>=20
+> Apologies for missing this patch. It was hiding in my 'linux-fsdevel'
+> mailbox, so I didn't recognise it as a NFS patch.
+>=20
+
+Yeah after I mailed it out I realized I cc-ed fsdevel incorrectly.
+
+> On Fri, 2017-06-30 at 15:52 -0400, Olga Kornievskaia wrote:
+>> There is a regression by commit 8d40b0f14846 ("NFS filelayout:call
+>> GETDEVICEINFO after pnfs_layout_process completes"). It leaves the
+>> DS mount dangling.
+>>=20
+>> Previously, filelayout_alloc_sec() would call
+>> filelayout_check_layout()
+>> which would call nfs4_find_get_deviceid which ups the count on the
+>> device_id. It's only called once and it's matched by the
+>> filelayout_free_lseg() that calls nfs4_fl_put_deviceid().
+>>=20
+>> After that patch, each read/write ends up calling
+>> nfs4_find_get_deviceid
+>> and there is no balance for that. Instead, do nfs4_fl_put_deviceid()
+>> in the filelayout's .pg_cleanup and remove it from
+>> filelayout_free_lseg.
+>>=20
+>> But we still need a reference to hold over the lifetime of the
+>> segment.
+>> For every new lseg that's created we need to take a reference on
+>> deviceid
+>> that uses it. It will be released in the "free_lseg" routine.
+>=20
+> This is what I'm not understanding. If you have a reference in the
+> layout segment, then why do you need to call nfs4_find_get_deviceid()
+> in the read/write code?
+
+I think I=E2=80=99m probably misunderstanding the question. It sounds to =
+me that you asking me for why the commit 8d40b0f14846 was done the way =
+it was done (I=E2=80=99d would say it was done as per your suggestion).
+
+I would say the call to nfs4_find_get_deviceid() has always been in the =
+read/write code. It was a part of the pnfs_update_layout() but the =
+commit 8d40b0f14846 moved it out of it (so that the layoutget was =
+complete) and then the call to the getdeviceinfo would be done.=20
+
+> Isn't it sufficient to change the "pg_init" calls to check whether or
+> not the struct nfs4_filelayout_segment has set a value for dsaddr =
+(that
+> needs to be done with care to avoid races - cmpxchg() is your friend),
+> and then rely on that reference being set for the remainder of the
+> layout segment lifetime?
+
+Are you suggesting to change when getdeviceinfo is suppose to be called?
+
+>=20
+>=20
+> --=20
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
 
