@@ -1,45 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37438 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43400 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754550AbdGUQiL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 21 Jul 2017 12:38:11 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id C24F23B729
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Jul 2017 16:38:11 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (ovpn-121-35.rdu2.redhat.com [10.10.121.35])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 762ED60C14
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Jul 2017 16:38:11 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 09/11] nfsmount: remove a warning
-Date: Fri, 21 Jul 2017 12:38:04 -0400
-Message-Id: <20170721163806.15803-10-steved@redhat.com>
-In-Reply-To: <20170721163806.15803-1-steved@redhat.com>
-References: <20170721163806.15803-1-steved@redhat.com>
+        id S1753905AbdGURil (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 21 Jul 2017 13:38:41 -0400
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Don't add a new lock on an interrupted wait for LOCK
+Date: Fri, 21 Jul 2017 13:38:39 -0400
+Message-Id: <52d3e3b1547ca33b59349c40ae5236bbb8993729.1500658655.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsmount.c:684:8: warning: this statement may fall through [-Wimplicit-fallthrough=]
+If the wait for a LOCK operation is interrupted, and then the file is
+closed, the locks cleanup code will assume that no new locks will be added
+to the inode after it has completed.  We already have a mechanism to detect
+if there was an interrupt, so let's use that to avoid recreating the local
+lock once the RPC completes.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- utils/mount/nfsmount.c | 1 +
- 1 file changed, 1 insertion(+)
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/utils/mount/nfsmount.c b/utils/mount/nfsmount.c
-index 930622d..ae4a3da 100644
---- a/utils/mount/nfsmount.c
-+++ b/utils/mount/nfsmount.c
-@@ -683,6 +683,7 @@ nfsmount(const char *spec, const char *node, int flags,
- 			case RPC_SYSTEMERROR:
- 				if (errno == ETIMEDOUT)
- 					break;
-+				/* FALLTHRU */
- 			default:
- 				rpc_mount_errors(*nfs_server.hostname, 0, bg);
- 		        goto fail;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index dbfa18900e25..5256f429c268 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6100,7 +6100,7 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
+ 	case 0:
+ 		renew_lease(NFS_SERVER(d_inode(data->ctx->dentry)),
+ 				data->timestamp);
+-		if (data->arg.new_lock) {
++		if (data->arg.new_lock && !data->cancelled) {
+ 			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
+ 			if (locks_lock_inode_wait(lsp->ls_state->inode, &data->fl) < 0) {
+ 				rpc_restart_call_prepare(task);
 -- 
-2.13.3
+2.9.3
 
