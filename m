@@ -1,107 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:20005 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S936098AbdGTVJt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Jul 2017 17:09:49 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "kolga@netapp.com" <kolga@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 1/1] PNFS fix dangling DS mount
-Date: Thu, 20 Jul 2017 21:09:43 +0000
-Message-ID: <1500584980.6577.4.camel@primarydata.com>
-References: <20170630195201.95597-1-kolga@netapp.com>
-         <1500580582.5457.1.camel@primarydata.com>
-         <4C765F1F-4958-4D1B-922A-95AE9CB69288@netapp.com>
-In-Reply-To: <4C765F1F-4958-4D1B-922A-95AE9CB69288@netapp.com>
+Received: from smtp-o-1.desy.de ([131.169.56.154]:40313 "EHLO smtp-o-1.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752152AbdGUM3s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 21 Jul 2017 08:29:48 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+        by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 32E962804AA
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Jul 2017 14:29:46 +0200 (CEST)
+Received: from z-mbx-2.desy.de (z-mbx-2.desy.de [131.169.55.140])
+        by smtp-intra-1.desy.de (DESY-INTRA-1) with ESMTP id F40B43E901
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Jul 2017 14:29:45 +0200 (MEST)
+Date: Fri, 21 Jul 2017 14:29:45 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <2136011996.159391.1500640185938.JavaMail.zimbra@desy.de>
+Subject: Kernel Oops with 4.13.0-0.rc1
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA3LTIwIGF0IDE2OjE0IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gPiBPbiBKdWwgMjAsIDIwMTcsIGF0IDM6NTYgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJv
-bmRteUBwcmltYXJ5ZGF0YS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IEhpIE9sZ2EsDQo+
-ID4gDQo+ID4gQXBvbG9naWVzIGZvciBtaXNzaW5nIHRoaXMgcGF0Y2guIEl0IHdhcyBoaWRpbmcg
-aW4gbXkgJ2xpbnV4LQ0KPiA+IGZzZGV2ZWwnDQo+ID4gbWFpbGJveCwgc28gSSBkaWRuJ3QgcmVj
-b2duaXNlIGl0IGFzIGEgTkZTIHBhdGNoLg0KPiA+IA0KPiANCj4gWWVhaCBhZnRlciBJIG1haWxl
-ZCBpdCBvdXQgSSByZWFsaXplZCBJIGNjLWVkIGZzZGV2ZWwgaW5jb3JyZWN0bHkuDQo+IA0KPiA+
-IE9uIEZyaSwgMjAxNy0wNi0zMCBhdCAxNTo1MiAtMDQwMCwgT2xnYSBLb3JuaWV2c2thaWEgd3Jv
-dGU6DQo+ID4gPiBUaGVyZSBpcyBhIHJlZ3Jlc3Npb24gYnkgY29tbWl0IDhkNDBiMGYxNDg0NiAo
-Ik5GUw0KPiA+ID4gZmlsZWxheW91dDpjYWxsDQo+ID4gPiBHRVRERVZJQ0VJTkZPIGFmdGVyIHBu
-ZnNfbGF5b3V0X3Byb2Nlc3MgY29tcGxldGVzIikuIEl0IGxlYXZlcw0KPiA+ID4gdGhlDQo+ID4g
-PiBEUyBtb3VudCBkYW5nbGluZy4NCj4gPiA+IA0KPiA+ID4gUHJldmlvdXNseSwgZmlsZWxheW91
-dF9hbGxvY19zZWMoKSB3b3VsZCBjYWxsDQo+ID4gPiBmaWxlbGF5b3V0X2NoZWNrX2xheW91dCgp
-DQo+ID4gPiB3aGljaCB3b3VsZCBjYWxsIG5mczRfZmluZF9nZXRfZGV2aWNlaWQgd2hpY2ggdXBz
-IHRoZSBjb3VudCBvbg0KPiA+ID4gdGhlDQo+ID4gPiBkZXZpY2VfaWQuIEl0J3Mgb25seSBjYWxs
-ZWQgb25jZSBhbmQgaXQncyBtYXRjaGVkIGJ5IHRoZQ0KPiA+ID4gZmlsZWxheW91dF9mcmVlX2xz
-ZWcoKSB0aGF0IGNhbGxzIG5mczRfZmxfcHV0X2RldmljZWlkKCkuDQo+ID4gPiANCj4gPiA+IEFm
-dGVyIHRoYXQgcGF0Y2gsIGVhY2ggcmVhZC93cml0ZSBlbmRzIHVwIGNhbGxpbmcNCj4gPiA+IG5m
-czRfZmluZF9nZXRfZGV2aWNlaWQNCj4gPiA+IGFuZCB0aGVyZSBpcyBubyBiYWxhbmNlIGZvciB0
-aGF0LiBJbnN0ZWFkLCBkbw0KPiA+ID4gbmZzNF9mbF9wdXRfZGV2aWNlaWQoKQ0KPiA+ID4gaW4g
-dGhlIGZpbGVsYXlvdXQncyAucGdfY2xlYW51cCBhbmQgcmVtb3ZlIGl0IGZyb20NCj4gPiA+IGZp
-bGVsYXlvdXRfZnJlZV9sc2VnLg0KPiA+ID4gDQo+ID4gPiBCdXQgd2Ugc3RpbGwgbmVlZCBhIHJl
-ZmVyZW5jZSB0byBob2xkIG92ZXIgdGhlIGxpZmV0aW1lIG9mIHRoZQ0KPiA+ID4gc2VnbWVudC4N
-Cj4gPiA+IEZvciBldmVyeSBuZXcgbHNlZyB0aGF0J3MgY3JlYXRlZCB3ZSBuZWVkIHRvIHRha2Ug
-YSByZWZlcmVuY2Ugb24NCj4gPiA+IGRldmljZWlkDQo+ID4gPiB0aGF0IHVzZXMgaXQuIEl0IHdp
-bGwgYmUgcmVsZWFzZWQgaW4gdGhlICJmcmVlX2xzZWciIHJvdXRpbmUuDQo+ID4gDQo+ID4gVGhp
-cyBpcyB3aGF0IEknbSBub3QgdW5kZXJzdGFuZGluZy4gSWYgeW91IGhhdmUgYSByZWZlcmVuY2Ug
-aW4gdGhlDQo+ID4gbGF5b3V0IHNlZ21lbnQsIHRoZW4gd2h5IGRvIHlvdSBuZWVkIHRvIGNhbGwN
-Cj4gPiBuZnM0X2ZpbmRfZ2V0X2RldmljZWlkKCkNCj4gPiBpbiB0aGUgcmVhZC93cml0ZSBjb2Rl
-Pw0KPiANCj4gSSB0aGluayBJ4oCZbSBwcm9iYWJseSBtaXN1bmRlcnN0YW5kaW5nIHRoZSBxdWVz
-dGlvbi4gSXQgc291bmRzIHRvIG1lDQo+IHRoYXQgeW91IGFza2luZyBtZSBmb3Igd2h5IHRoZSBj
-b21taXQgOGQ0MGIwZjE0ODQ2IHdhcyBkb25lIHRoZSB3YXkNCj4gaXQgd2FzIGRvbmUgKEnigJlk
-IHdvdWxkIHNheSBpdCB3YXMgZG9uZSBhcyBwZXIgeW91ciBzdWdnZXN0aW9uKS4NCj4gDQo+IEkg
-d291bGQgc2F5IHRoZSBjYWxsIHRvIG5mczRfZmluZF9nZXRfZGV2aWNlaWQoKSBoYXMgYWx3YXlz
-IGJlZW4gaW4NCj4gdGhlIHJlYWQvd3JpdGUgY29kZS4gSXQgd2FzIGEgcGFydCBvZiB0aGUgcG5m
-c191cGRhdGVfbGF5b3V0KCkgYnV0DQo+IHRoZSBjb21taXQgOGQ0MGIwZjE0ODQ2IG1vdmVkIGl0
-IG91dCBvZiBpdCAoc28gdGhhdCB0aGUgbGF5b3V0Z2V0IHdhcw0KPiBjb21wbGV0ZSkgYW5kIHRo
-ZW4gdGhlIGNhbGwgdG8gdGhlIGdldGRldmljZWluZm8gd291bGQgYmUgZG9uZS4gDQo+IA0KPiA+
-IElzbid0IGl0IHN1ZmZpY2llbnQgdG8gY2hhbmdlIHRoZSAicGdfaW5pdCIgY2FsbHMgdG8gY2hl
-Y2sgd2hldGhlcg0KPiA+IG9yDQo+ID4gbm90IHRoZSBzdHJ1Y3QgbmZzNF9maWxlbGF5b3V0X3Nl
-Z21lbnQgaGFzIHNldCBhIHZhbHVlIGZvciBkc2FkZHINCj4gPiAodGhhdA0KPiA+IG5lZWRzIHRv
-IGJlIGRvbmUgd2l0aCBjYXJlIHRvIGF2b2lkIHJhY2VzIC0gY21weGNoZygpIGlzIHlvdXINCj4g
-PiBmcmllbmQpLA0KPiA+IGFuZCB0aGVuIHJlbHkgb24gdGhhdCByZWZlcmVuY2UgYmVpbmcgc2V0
-IGZvciB0aGUgcmVtYWluZGVyIG9mIHRoZQ0KPiA+IGxheW91dCBzZWdtZW50IGxpZmV0aW1lPw0K
-PiANCj4gQXJlIHlvdSBzdWdnZXN0aW5nIHRvIGNoYW5nZSB3aGVuIGdldGRldmljZWluZm8gaXMg
-c3VwcG9zZSB0byBiZQ0KPiBjYWxsZWQ/DQo+IA0KDQpOby4gTm93IHRoYXQgSSdtIGxvb2tpbmcg
-YXQgZmlsZWxheW91dF9jaGVja19kZXZpY2VpZCgpLCBoZXJlIGlzIHdoYXQgSQ0KIHN1Z2dlc3Q6
-IHdlIG5lZWQgdG8gZW5zdXJlIHRoYXQgZmlsZWxheW91dF9jaGVja19kZXZpY2VpZCgpIHNldHMg
-dGhlDQpkZXZpY2VpZCBvbmNlLCBhbmQgb25seSBvbmNlIQ0KDQpIb3cgYWJvdXQgc29tZXRoaW5n
-IGxpa2UgdGhlIGZvbGxvd2luZyAodW50ZXN0ZWQpIHBhdGNoPw0KDQo4PC0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMWU0MGVlMTM5
-NTBkMDNhZDJhNTRhMGQxZGJhMzVmMmEwNGMyOGNhMCBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDEN
-CkZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4N
-CkRhdGU6IFRodSwgMjAgSnVsIDIwMTcgMTc6MDA6MDIgLTA0MDANClN1YmplY3Q6IFtQQVRDSF0g
-TkZTL2ZpbGVsYXlvdXQ6IEZpeCByYWN5IHNldHRpbmcgb2YgZmwtPmRzYWRkciBpbg0KIGZpbGVs
-YXlvdXRfY2hlY2tfZGV2aWNlaWQoKQ0KDQpXZSBtdXN0IHNldCBmbC0+ZHNhZGRyIG9uY2UsIGFu
-ZCBvbmNlIG9ubHksIGV2ZW4gaWYgdGhlcmUgYXJlIG11bHRpcGxlDQpwcm9jZXNzZXMgY2FsbGlu
-ZyBmaWxlbGF5b3V0X2NoZWNrX2RldmljZWlkKCkgZm9yIHRoZSBzYW1lIGxheW91dA0Kc2VnbWVu
-dC4NCg0KUmVwb3J0ZWQtYnk6IE9sZ2EgS29ybmlldnNrYWlhIDxrb2xnYUBuZXRhcHAuY29tPg0K
-U2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
-dGEuY29tPg0KLS0tDQogZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jIHwgMTMgKysrKysr
-KysrKystLQ0KIDEgZmlsZSBjaGFuZ2VkLCAxMSBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygt
-KQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jIGIvZnMvbmZz
-L2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jDQppbmRleCAwODBmYzZiMjc4YmQuLjQ0YzYzOGI3ODc2
-YyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXQuYw0KKysrIGIvZnMv
-bmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jDQpAQCAtNTQyLDYgKzU0MiwxMCBAQCBmaWxlbGF5
-b3V0X2NoZWNrX2RldmljZWlkKHN0cnVjdCBwbmZzX2xheW91dF9oZHIgKmxvLA0KIAlzdHJ1Y3Qg
-bmZzNF9maWxlX2xheW91dF9kc2FkZHIgKmRzYWRkcjsNCiAJaW50IHN0YXR1cyA9IC1FSU5WQUw7
-DQogDQorCS8qIElzIHRoZSBkZXZpY2VpZCBhbHJlYWR5IHNldD8gSWYgc28sIHdlJ3JlIGdvb2Qu
-ICovDQorCWlmIChmbC0+ZHNhZGRyICE9IE5VTEwpDQorCQlyZXR1cm4gMDsNCisNCiAJLyogZmlu
-ZCBhbmQgcmVmZXJlbmNlIHRoZSBkZXZpY2VpZCAqLw0KIAlkID0gbmZzNF9maW5kX2dldF9kZXZp
-Y2VpZChORlNfU0VSVkVSKGxvLT5wbGhfaW5vZGUpLCAmZmwtPmRldmljZWlkLA0KIAkJCWxvLT5w
-bGhfbGNfY3JlZCwgZ2ZwX2ZsYWdzKTsNCkBAIC01NTMsOCArNTU3LDYgQEAgZmlsZWxheW91dF9j
-aGVja19kZXZpY2VpZChzdHJ1Y3QgcG5mc19sYXlvdXRfaGRyICpsbywNCiAJaWYgKGZpbGVsYXlv
-dXRfdGVzdF9kZXZpZF91bmF2YWlsYWJsZSgmZHNhZGRyLT5pZF9ub2RlKSkNCiAJCWdvdG8gb3V0
-X3B1dDsNCiANCi0JZmwtPmRzYWRkciA9IGRzYWRkcjsNCi0NCiAJaWYgKGZsLT5maXJzdF9zdHJp
-cGVfaW5kZXggPj0gZHNhZGRyLT5zdHJpcGVfY291bnQpIHsNCiAJCWRwcmludGsoIiVzIEJhZCBm
-aXJzdF9zdHJpcGVfaW5kZXggJXVcbiIsDQogCQkJCV9fZnVuY19fLCBmbC0+Zmlyc3Rfc3RyaXBl
-X2luZGV4KTsNCkBAIC01NzAsNiArNTcyLDEzIEBAIGZpbGVsYXlvdXRfY2hlY2tfZGV2aWNlaWQo
-c3RydWN0IHBuZnNfbGF5b3V0X2hkciAqbG8sDQogCQlnb3RvIG91dF9wdXQ7DQogCX0NCiAJc3Rh
-dHVzID0gMDsNCisNCisJLyoNCisJICogQXRvbWljIGNvbXBhcmUgYW5kIHhjaGFuZ2UgdG8gZW5z
-dXJlIHdlIGRvbid0IHNjcmliYmxlDQorCSAqIG92ZXIgYSBub24tTlVMTCBwb2ludGVyLg0KKwkg
-Ki8NCisJaWYgKGNtcHhjaGcoJmZsLT5kc2FkZHIsIE5VTEwsIGRzYWRkcikgIT0gTlVMTCkNCisJ
-CWdvdG8gb3V0X3B1dDsNCiBvdXQ6DQogCXJldHVybiBzdGF0dXM7DQogb3V0X3B1dDoNCi0tIA0K
-Mi4xMy4zDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
-ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
+
+FYI. Triggered by xfstest generic/013
+
+
+[  955.424063] BUG: unable to handle kernel paging request at ffffffffc0bb5118
+[  955.424086] IP: report_bug+0x94/0x120
+[  955.424090] PGD 29e0c067 
+[  955.424091] P4D 29e0c067 
+[  955.424094] PUD 29e0e067 
+[  955.424097] PMD 1265ab067 
+[  955.424100] PTE 80000000c2d46161
+
+[  955.424108] Oops: 0003 [#1] SMP
+[  955.424112] Modules linked in: nfs_layout_flexfiles rpcsec_gss_krb5 nfsv4 dns_resolver nfs lockd grace fscache binfmt_misc nf_conntrack_netbios_ns nf_conntrack_broadcast xt_CT ip6t_rpfilter ip6t_REJECT nf_reject_ipv6 xt_conntrack ip_set nfnetlink ebtable_nat ebtable_broute bridge stp llc ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_raw ip6table_security iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack libcrc32c iptable_mangle iptable_raw iptable_security ebtable_filter ebtables ip6table_filter ip6_tables btrfs xor raid6_pq coretemp kvm_intel kvm irqbypass iTCO_wdt iTCO_vendor_support snd_hda_codec_idt gpio_ich ppdev snd_hda_codec_generic pcspkr snd_hda_intel snd_hda_codec i2c_i801 snd_hda_core lpc_ich snd_hwdep snd_seq tpm_tis tpm_tis_core
+[  955.424175]  tpm snd_seq_device snd_pcm winbond_cir rc_core snd_timer parport_pc parport snd soundcore x38_edac acpi_cpufreq shpchp auth_rpcgss sunrpc ata_generic pata_acpi nouveau video serio_raw firewire_ohci mxm_wmi wmi i2c_algo_bit firewire_core drm_kms_helper ttm crc_itu_t drm e1000e pata_marvell ptp pps_core
+[  955.424205] CPU: 1 PID: 4549 Comm: fsstress Tainted: G        W I     4.13.0-0.rc1.git1.1.vanilla.knurd.1.fc26.x86_64 #1
+[  955.424211] Hardware name: Comptronic pczW1007/DX38BT, BIOS BTX3810J.86A.1893.2008.1009.1712 10/09/2008
+[  955.424216] task: ffff9f7f2a4d4a00 task.stack: ffffb79290914000
+[  955.424221] RIP: 0010:report_bug+0x94/0x120
+[  955.424224] RSP: 0018:ffffb79290917860 EFLAGS: 00010202
+[  955.424229] RAX: 0000000000000907 RBX: ffffb792909179c8 RCX: ffffffffc0bb510e
+[  955.424233] RDX: 0000000000000001 RSI: 0000000000000378 RDI: 0000000000000001
+[  955.424238] RBP: ffffb79290917880 R08: ffffb79290918000 R09: 00000000000002c0
+[  955.424242] R10: ffffffff85e06a80 R11: ffffffffffffffff R12: ffffffffc0ba5f18
+[  955.424248] R13: ffffffffc0bb4966 R14: 0000000000000004 R15: ffffb792909179c8
+[  955.424253] FS:  00007f3a5e58ae80(0000) GS:ffff9f7f2fc80000(0000) knlGS:0000000000000000
+[  955.424257] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  955.424262] CR2: ffffffffc0bb5118 CR3: 00000000c40ac000 CR4: 00000000000406e0
+[  955.424266] Call Trace:
+[  955.424290]  ? nfs_pageio_add_request+0x238/0x260 [nfs]
+[  955.424300]  fixup_bug+0x2e/0x50
+[  955.424304]  do_trap+0x119/0x150
+[  955.424308]  do_error_trap+0x89/0x110
+[  955.424318]  ? nfs_pageio_add_request+0x238/0x260 [nfs]
+[  955.424326]  ? nfs_put_client+0x13/0x20 [nfs]
+[  955.424358]  ? pnfs_put_layout_hdr+0x4a/0x180 [nfsv4]
+[  955.424370]  ? nfs4_wait_clnt_recover+0x3f/0x80 [nfsv4]
+[  955.424663]  ? pnfs_update_layout+0x675/0x1320 [nfsv4]
+[  955.425013]  do_invalid_op+0x20/0x30
+[  955.425013]  invalid_op+0x1e/0x30
+[  955.425013] RIP: 0010:nfs_pageio_add_request+0x238/0x260 [nfs]
+[  955.425013] RSP: 0018:ffffb79290917a78 EFLAGS: 00010246
+[  955.425013] RAX: 0000000000000001 RBX: ffffb79290917c28 RCX: 0000000000000000
+[  955.425013] RDX: 0000000000000000 RSI: 0000000000000000 RDI: ffff9f7f2881f100
+[  955.425013] RBP: ffffb79290917aa8 R08: ffffffffffffffff R09: ffffffffffffffff
+[  955.425013] R10: ffffb79290917a58 R11: ffffffffffffffff R12: ffff9f7ec2f69880
+[  955.425013] R13: ffffb79290917c28 R14: ffff9f7ec2f69880 R15: 0000000000000000
+[  955.425013]  ? nfs_pageio_add_request+0x3f/0x260 [nfs]
+[  955.425013]  nfs_do_writepage+0x1fd/0x340 [nfs]
+[  955.425013]  nfs_writepages_callback+0x14/0x30 [nfs]
+[  955.425013]  write_cache_pages+0x1e2/0x510
+[  955.425013]  ? btrfs_clear_bit_hook+0x164/0x420 [btrfs]
+[  955.425013]  ? nfs_do_writepage+0x340/0x340 [nfs]
+[  955.425013]  nfs_writepages+0xbc/0x120 [nfs]
+[  955.425013]  do_writepages+0x48/0xe0
+[  955.425013]  ? __enqueue_entity+0x6c/0x70
+[  955.425013]  ? enqueue_entity+0x109/0x7a0
+[  955.425013]  __filemap_fdatawrite_range+0xc1/0x100
+[  955.425013]  ? __filemap_fdatawrite_range+0xc1/0x100
+[  955.425013]  filemap_write_and_wait_range+0x41/0xa0
+[  955.425013]  nfs_file_fsync+0x96/0x1d0 [nfs]
+[  955.425013]  vfs_fsync_range+0x49/0xa0
+[  955.425013]  vfs_fsync+0x1c/0x20
+[  955.425013]  nfs4_file_flush+0x57/0x80 [nfsv4]
+[  955.425013]  filp_close+0x2c/0x80
+[  955.425013]  __close_fd+0x81/0xa0
+[  955.425013]  SyS_close+0x23/0x50
+[  955.425013]  entry_SYSCALL_64_fastpath+0x1a/0xa5
+[  955.425013] RIP: 0033:0x7f3a5dd761e0
+[  955.425013] RSP: 002b:00007ffc3aad15c8 EFLAGS: 00000246 ORIG_RAX: 0000000000000003
+[  955.425013] RAX: ffffffffffffffda RBX: 0000000000000008 RCX: 00007f3a5dd761e0
+[  955.425013] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000003
+[  955.425013] RBP: 00000000000120cf R08: 00007f3a580009d0 R09: 0000000000000090
+[  955.425013] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000003
+[  955.425013] R13: 00000000000d6a90 R14: 00007f3a58001b60 R15: 0000000000000000
+[  955.425013] Code: 74 59 0f b7 41 0a 4c 63 69 04 0f b7 71 08 89 c7 49 01 cd 83 e7 01 a8 02 74 15 66 85 ff 74 10 a8 04 ba 01 00 00 00 75 26 83 c8 04 <66> 89 41 0a 66 85 ff 74 49 0f b6 49 0b 4c 89 e2 45 31 c9 49 89 
+[  955.425013] RIP: report_bug+0x94/0x120 RSP: ffffb79290917860
+[  955.425013] CR2: ffffffffc0bb5118
+[  955.425013] ---[ end trace a5ecaff0687a5621 ]---
+
+
+Tigran.
