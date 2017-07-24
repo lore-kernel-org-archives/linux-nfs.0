@@ -1,15 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41277 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:41284 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752092AbdGXDbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 23 Jul 2017 23:31:37 -0400
+        id S1752092AbdGXDbq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 23 Jul 2017 23:31:46 -0400
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date: Mon, 24 Jul 2017 13:18:50 +1000
-Subject: [PATCH 1/2] NFS: invalidate file size when taking a lock.
+Subject: [PATCH 2/2] NFS: Optimize fallocate by refreshing mapping when
+ needed.
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <150086633057.13837.5774453985896444097.stgit@noble>
+Message-ID: <150086633062.13837.17311566890209843076.stgit@noble>
 In-Reply-To: <150086579083.13837.3550463220871996964.stgit@noble>
 References: <150086579083.13837.3550463220871996964.stgit@noble>
 MIME-Version: 1.0
@@ -17,51 +18,49 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Prior to commit ca0daa277aca ("NFS: Cache aggressively when file is open
-for writing"), NFS would revalidate, or invalidate, the file size when
-taking a lock.  Since that commit it only invalidates the file content.
+posix_fallocate() will allocate space in an NFS file by considering
+the last byte of every 4K block.  If it is before EOF, it will read
+the byte and if it is zero, a zero is written out.  If it is after EOF,
+the zero is unconditionally written.
 
-If the file size is changed on the server while wait for the lock, the
-client will have an incorrect understanding of the file size and could
-corrupt data.  This particularly happens when writing beyond the
-(supposed) end of file and can be easily be demonstrated with
-posix_fallocate().
+For the blocks beyond EOF, if NFS believes its cache is valid, it will
+expand these writes to write full pages, and then will merge the pages.
+This results if (typically) 1MB writes.  If NFS believes its cache is
+not valid (particularly if NFS_INO_INVALID_DATA or
+NFS_INO_REVAL_PAGECACHE are set - see nfs_write_pageuptodate()), it will
+send the individual 1-byte writes. This results in (typically) 256 times
+as many RPC requests, and can be substantially slower.
 
-If an application opens an empty file, waits for a write lock, and then
-calls posix_fallocate(), glibc will determine that the underlying
-filesystem doesn't support fallocate (assuming version 4.1 or earlier)
-and will write out a '0' byte at the end of each 4K page in the region
-being fallocated that is after the end of the file.
-NFS will (usually) detect that these writes are beyond EOF and will
-expand them to cover the whole page, and then will merge the pages.
-Consequently, NFS will write out large blocks of zeroes beyond where it
-thought EOF was.  If EOF had moved, the pre-existing part of the file
-will be over-written.  Locking should have protected against this,
-but it doesn't.
+Currently nfs_revalidate_mapping() is only used when reading a file or
+mmapping a file, as these are times when the content needs to be
+up-to-date.  Writes don't generally need the cache to be up-to-date, but
+writes beyond EOF can benefit, particularly in the posix_fallocate()
+case.
 
-This patch restores the use of nfs_zap_caches() which invalidated the
-cached attributes.  When posix_fallocate() asks for the file size, the
-request will go to the server and get a correct answer.
+So this patch calls nfs_revalidate_mapping() when writing beyond EOF -
+i.e. when there is a gap between the end of the file and the start of
+the write.  If the cache is thought to be out of date (as happens after
+taking a file lock), this will cause a GETATTR, and the two flags
+mentioned above will be cleared.  With this, posix_fallocate() on a
+newly locked file does not generate excessive tiny writes.
 
-cc: stable@vger.kernel.org (v4.8+)
-Fixes: ca0daa277aca ("NFS: Cache aggressively when file is open for writing")
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/file.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/file.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
 diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index 5713eb32a45e..d264363559db 100644
+index d264363559db..af330c31f627 100644
 --- a/fs/nfs/file.c
 +++ b/fs/nfs/file.c
-@@ -750,7 +750,7 @@ do_setlk(struct file *filp, int cmd, struct file_lock *fl, int is_local)
- 	 */
- 	nfs_sync_mapping(filp->f_mapping);
- 	if (!NFS_PROTO(inode)->have_delegation(inode, FMODE_READ))
--		nfs_zap_mapping(inode, filp->f_mapping);
-+		nfs_zap_caches(inode);
- out:
- 	return status;
- }
+@@ -617,6 +617,8 @@ ssize_t nfs_file_write(struct kiocb *iocb, struct iov_iter *from)
+ 		if (result)
+ 			goto out;
+ 	}
++	if (iocb->ki_pos > i_size_read(inode))
++		nfs_revalidate_mapping(inode, file->f_mapping);
+ 
+ 	nfs_start_io_write(inode);
+ 	result = generic_write_checks(iocb, from);
 
 
