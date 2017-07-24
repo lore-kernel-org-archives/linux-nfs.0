@@ -1,139 +1,221 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38679 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:41266 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751491AbdGVWzE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 22 Jul 2017 18:55:04 -0400
+        id S1752092AbdGXDbb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 23 Jul 2017 23:31:31 -0400
 From: NeilBrown <neilb@suse.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Date: Sun, 23 Jul 2017 08:54:53 +1000
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH v4] systemd: add instructions for disabling gssd to nfs.systemd.man
-In-Reply-To: <20170722162540.aonaowrupf555trn@tonberry.usersys.redhat.com>
-References: <20170720202422.14153-1-smayhew@redhat.com> <87a83wyi00.fsf@notabene.neil.brown.name> <20170722162540.aonaowrupf555trn@tonberry.usersys.redhat.com>
-Message-ID: <874lu4xete.fsf@notabene.neil.brown.name>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Date: Mon, 24 Jul 2017 13:18:50 +1000
+Subject: [PATCH 0/2] Fix NFS issues with posix_fallocate() in locked file.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <150086579083.13837.3550463220871996964.stgit@noble>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+These two patches address two issues I found while examining the
+behaviour of posix_fallocate() on a file which had recently
+been locked. posix_fallocate() allocates space in a file by writing
+bytes, so locking is important if sharing is possible.
 
-On Sat, Jul 22 2017, Scott Mayhew wrote:
+The first patch fixes a bug which can lead to data corruption.
+The second fixes a performance issue which can be demonstrated without
+the first patch, but is made more likely by that patch (it was the
+performance issue that caused me to start looking).
 
-> On Sat, 22 Jul 2017, NeilBrown wrote:
->
->> On Thu, Jul 20 2017, Scott Mayhew wrote:
->>=20
->> > We've had several users complain about gssd automatically starting.  N=
-ot
->> > everyone who has a krb5.keytab want to use secure NFS; the instructions
->> > for disabling gssd ought to be on the man page in addition to the READ=
-ME
->> > (which may not even be included in a distro's nfs-utils package).
->> >
->> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
->> > ---
->> >  systemd/nfs.systemd.man | 17 ++++++++++++++++-
->> >  1 file changed, 16 insertions(+), 1 deletion(-)
->> >
->> > diff --git a/systemd/nfs.systemd.man b/systemd/nfs.systemd.man
->> > index 01801eb..7675320 100644
->> > --- a/systemd/nfs.systemd.man
->> > +++ b/systemd/nfs.systemd.man
->> > @@ -79,11 +79,26 @@ unit should be enabled.
->> >  Several other units which might be considered to be optional, such as
->> >  .I rpc-gssd.service
->> >  are careful to only start if the required configuration file exists.
->> > -.I rpc-gsdd.service
->> > +.I rpc-gssd.service
->> >  will not start if the
->> >  .I krb5.keytab
->> >  file does not exist (typically in
->> >  .IR /etc ).
->> > +.B rpc.gssd
->> > +is assumed to be needed if the
->> > +.I krb5.keytab
->> > +file is present.  If a site needs this file present but does not want
->> > +.B rpc.gssd
->> > +running, it should create
->> > +.B /etc/systemd/system/rpc-gssd.service.d/01-disable.conf
->>=20
->> A substantially simpler approach would be to recommend
->>=20
->>   systemctl mask rpc-gssd.service
->
-> Thanks, Neil.  I had actually tried that a while back, but it doesn't seem
-> to work in RHEL.  It works fine for rpcbind, so I thought that maybe the
-> Condition clause in the unit file took precedence over masking or
-> something.  I see now that masking rpc-gssd works in Fedora, so I'll go
-> digging in systemd to see if there's a bug fix that might need to be
-> backported to RHEL.
->
-> Anyways, any objection to listing both methods in the man page?
+The program below can be used to demonstrate both problems.
+Given a remote filesystem and 2 mount points, it mounts the filesystem
+twice using nosharecache so that it acts like two separate clients.
+It then creates a file and uses locking and posix_fallocate to trigger
+the behaviours.
+There are two threads.  Each reads the first byte, increments it, and
+writes it out again.  This is done with proper file locking, so the
+result should be '2'.  With the current kernel it is '1'. because one
+of the posix_fallocate() corrupts a '1' making it '0'.
 
-It depends on why "mask" doesn't work in RHEL.
-If the reason is specific to RHEL, then I don't think it should be
-documented in upstream nfs-utils.
-If the reason is specific to some version(s) of systemd, then
-Maybe document it as "use using systemd prior to XXXX, do this instead".
+Mount options can be specified, so it can be confirmed that the
+befaviour is the same for v3 and v4.1.  If used with v4.2 to a server
+that supports ALLOCATE, the corruption doesn't happen.
 
+To see the performance issue, a network trace is required.  Allocating
+1 megabyte as this program does, doesn't take very long and it is hard
+to measure a performance difference.  Allocating several gigabytes can
+make the difference quite noticeable.
+
+Thanks,
 NeilBrown
+---
+
+NeilBrown (2):
+      NFS: invalidate file size when taking a lock.
+      NFS: Optimize fallocate by refreshing mapping when needed.
 
 
->
-> -Scott
->>=20
->> "mask" is also useful for disabling rpcbind if you use NFSv4 only and
->> don't want the extra service.
->>=20
->> NeilBrown
->>=20
->>=20
->> > +containing
->> > +.RS
->> > +.nf
->> > +[Unit]
->> > +ConditionNull=3Dfalse
->> > +.fi
->> > +.RE
->> > +
->> >  .SS Restarting NFS services
->> >  Most NFS daemons can be restarted at any time.  They will reload any
->> >  state that they need, and continue servicing requests.  This is rarely
->> > --=20
->> > 2.9.4
->> >
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ fs/nfs/file.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+--
 
------BEGIN PGP SIGNATURE-----
+/* nfs-lock-allocate.c
+ * Test for performing fallocate() after locking an NFS file.
+ * The nfs client must revalidate the size after getting the
+ * lock, and should merge all the 1-byte writes past EOF into
+ * fewer large writes.
+ */
+#define _GNU_SOURCE
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/mount.h>
+#include <sys/wait.h>
+#include <sys/fcntl.h>
+#include <stdio.h>
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAllz178ACgkQOeye3VZi
-gbnHfg//cw4E0IO/RXkkTmqAIi14s1zW1pe0X2XI8X3lT3G1vNaPz6in1w83nqcp
-gjPE0pDMGy0prOAQsbe3ndhoTK95wLD1/jx69mAssX7nWSSMTCq5iVeQtD76l57s
-8fQN8iLp3grNdHHklwX9QKF1a5LlLOwOcHXI3Zcw+VfileeQHgLzsZQPfZuskLU9
-xFAFgFyYrmTf6AM40rVjVjyKdmOTYFmLZrb3dTlVfWQMGx3/sfGLviA8WSgC/FRj
-1c6mkcC6JUP8WzUe25+PEPM4I2GVGL0/hgKFoEzgpe+GlKh0v9uAZ/SwVatwNynO
-+B1z3MQB3yMPmh7/Hs2x6J2pt52TcQ1BwLvLJqNDyf0rIiyXEc0ByvYEeC2nNbVP
-Ut9ftdAIMlw4SBqdejTTBxLCI9SAfatWDyp+1U9nGdX3fEEPlO8KusTJ6hp2Dcor
-eSe5ho0UYYByW2WLY1Ia961W+2oPARfXlkzhBu101BiLGT8aU6/7FU3BzIww0ysJ
-caCPJhigH1fuevDRQmS6mK1zUo6fPnON5PurghQATZZ2G4WTWdEAJPwxWG64hgTM
-1VvsvqvFiwEeBlMKbIG/WL9qMMH3Rd5oUF5K9Kc++KIIi2MDF8h0GRuEkxr4GdM4
-1LWM4hiLMBKeAOUnGEWO+fRcVqoXdVaMKHb0B60Ac6WurwMQfvE=
-=+GUT
------END PGP SIGNATURE-----
---=-=-=--
+static void setup(char *mnt, char *remote, char *options)
+{
+	char *buf = NULL;
+	int fd;
+
+	asprintf(&buf, "/bin/mount %s %s -o %s,nosharecache",
+		 remote, mnt, options);
+	system(buf);
+	free(buf);
+}
+
+static void prepare(char *mnt, char *file)
+{
+	char *buf = NULL;
+	int fd;
+
+	asprintf(&buf, "%s/%s", mnt, file);
+	unlink(buf);
+	fd = open(buf, O_RDWR|O_CREAT|O_TRUNC, 0600);
+	close(fd);
+	free(buf);
+}
+
+static void teardown(char *mnt)
+{
+	umount(mnt);
+}
+
+static void test(int thread, char *mnt, char *file, int sync_fd)
+{
+
+	/* thread 1 writes a zero the file.
+	 * thread 1 then gets the lock, allocates the file, and increments the byte.
+	 * thread 2 then gets the lock and increments the byte.
+	 */
+
+	char *path = NULL;
+	int fd;
+	char buf[100];
+	struct flock lk;
+	asprintf(&path, "%s/%s", mnt, file);
+	fd = open(path, O_RDWR, 0600);
+	if (fd < 0) {
+		perror(path);
+		exit(1);
+	}
+	free(path);
+	buf[0] = 0;
+	if (thread == 1) {
+		write(fd, buf, 1);
+		fsync(fd);
+	}
+
+	if (thread == 2) {
+		/* Allow thread 1 to get the lock first */
+		write(sync_fd, buf, 1);
+		read(sync_fd, buf, 1);
+	}
+
+	lk.l_type = F_WRLCK;
+	lk.l_whence = SEEK_SET;
+	lk.l_start = 0;
+	lk.l_len = 0;
+	fcntl(fd, F_SETLKW, &lk);
+	if (thread == 1) {
+		/* Now thread 2 can wait for the lock */
+		write(sync_fd, buf, 1);
+		read(sync_fd, buf, 1);
+	}
+	posix_fallocate(fd, 0, 1024*1024);
+	lseek(fd, 0, 0);
+	read(fd, buf, 1);
+	lseek(fd, 0, 0);
+	buf[0] += 1;
+	write(fd, buf, 1);
+	close(fd);
+}
+
+static int check(char *mnt, char *file)
+{
+	char *path = NULL;
+	char buf[100];
+	int fd;
+
+	asprintf(&path, "%s/%s", mnt, file);
+	fd = open(path, O_RDWR|O_CREAT, 0600);
+	if (read(fd, buf, 1) != 1) {
+		perror("read");
+		close(fd);
+		return 2;
+	}
+	close(fd);
+	if (buf[0] != 2)
+		return 3;
+	return 0;
+}
+
+int main(int argc, char *argv[])
+{
+	char *remote;
+	char *options;
+	char *mnt1;
+	char *mnt2;
+	char *file;
+	int socks[2];
+	int ret;
+
+	if (argc != 6) {
+		fprintf(stderr, "Usage: %s server:/path mount-options /mntpoint1 /mntpoint2 file\n", argv[0]);
+		exit(1);
+	}
+	remote = argv[1];
+	options = argv[2];
+	mnt1 = argv[3];
+	mnt2 = argv[4];
+	file = argv[5];
+
+	setup(mnt1, remote, options);
+	setup(mnt2, remote, options);
+	prepare(mnt1, file);
+	socketpair(AF_UNIX, SOCK_STREAM, 0, socks);
+	switch (fork()) {
+	case -1:
+		perror("fork");
+		exit(1);
+	case 0: /* child */
+		test(1, mnt1, file, socks[0]);
+		exit(1);
+		break;
+	default:
+		test(2, mnt2, file, socks[1]);
+		break;
+	}
+	wait(NULL);
+	teardown(mnt1);
+	teardown(mnt2);
+	setup(mnt1, remote, options);
+	ret = check(mnt1, file);
+	teardown(mnt1);
+	if (ret == 3)
+		fprintf(stderr, "File was corrupted\n");
+
+	exit(ret);
+}
+
