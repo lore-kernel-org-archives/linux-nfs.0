@@ -1,106 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35891 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751801AbdGYENE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2017 00:13:04 -0400
-Received: by mail-it0-f65.google.com with SMTP id r9so7997223ita.3
-        for <linux-nfs@vger.kernel.org>; Mon, 24 Jul 2017 21:13:04 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH 00/20] Reducing inode->i_lock contention in writebacks
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <20170719220955.58210-1-trond.myklebust@primarydata.com>
-Date: Tue, 25 Jul 2017 00:13:01 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:55250 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750864AbdGYKFP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 25 Jul 2017 06:05:15 -0400
+Date: Tue, 25 Jul 2017 11:05:13 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: NeilBrown <neilb@suse.com>
 Cc: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <E656DD8D-522A-4D8A-BE90-BBB7A57BF3B0@monkey.org>
-References: <20170719220955.58210-1-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
+Message-ID: <20170725100513.GA5073@stefanha-x1.localdomain>
+References: <20170630132120.31578-1-stefanha@redhat.com>
+ <20170630132120.31578-6-stefanha@redhat.com>
+ <952499A1-FBBA-4FD8-97A6-B0014FA5065D@oracle.com>
+ <87wp7lvst9.fsf@notabene.neil.brown.name>
+ <87tw2ox4st.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="huq684BweRXVnRxX"
+In-Reply-To: <87tw2ox4st.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Jul 19, 2017, at 6:09 PM, Trond Myklebust =
-<trond.myklebust@primarydata.com> wrote:
->=20
-> Chuck Lever has presented measurements, that would appear to indicate =
-that
-> the inode->i_lock can be a source of contention when doing writeback =
-using
-> high performance networks. This patch series is therefore an attempt =
-to
-> address the sources of contention that his measurements pointed to.
->=20
-> According to Chuck's table, the main sources of contention appear to
-> be in nfs_flush_incompatible(), nfs_lock_and_join_requests() and
-> nfs_updatepage(). Most of this patch series focuses on fixing
-> nfs_lock_and_join_requests(), since it holds the inode lock, while
-> taking locks on the page group and the sub-requests themselves,
-> rolling them all back if ever there is contention.
-> By noting a few simple rules that are mostly already in place, we
-> can simplify that locking to ensure that we only have to keep the
-> spin lock while we're dereferencing and locking the head page pointer
-> that is stored in page_private(page).
->=20
-> Along the way, the patches also simplify the code a little, and fix
-> a number of subtle races which mainly occur when you set wsize to
-> some value smaller than the page size. The most notable such race
-> occurs between nfs_lock_and_join_requests() and =
-nfs_page_group_destroy(),
-> and could lead to a double free() of some of the sub-requests.
->=20
-> Finally, there are 2 patches tacked onto the end of the series that
-> attempt to improve the throttling of writes when the RPC layer is
-> congested. They do so by forcing each caller of nfs_initiate_pgio()
-> to wait until the request is being transmitted. The expectation is
-> that this might help improve latencies when there are several =
-processes
-> competing for access to the RPC transport.
->=20
-> Trond Myklebust (20):
->  NFS: Simplify page writeback
->  NFS: Reduce lock contention in nfs_page_find_head_request()
->  NFS: Reduce lock contention in nfs_try_to_update_request()
->  NFS: Ensure we always dereference the page head last
->  NFS: Fix a reference and lock leak in nfs_lock_and_join_requests()
->  NFS: Fix an ABBA issue in nfs_lock_and_join_requests()
->  NFS: Don't check request offset and size without holding a lock
->  NFS: Don't unlock writebacks before declaring PG_WB_END
->  NFS: Fix the inode request accounting when pages have subrequests
->  NFS: Teach nfs_try_to_update_request() to deal with request
->    page_groups
->  NFS: Remove page group limit in nfs_flush_incompatible()
->  NFS: Reduce inode->i_lock contention in nfs_lock_and_join_requests()
->  NFS: Further optimise nfs_lock_and_join_requests()
->  NFS: Fix nfs_page_group_destroy() and nfs_lock_and_join_requests()
->    race cases
->  NFS: Remove nfs_page_group_clear_bits()
->  NFS: Remove unuse function nfs_page_group_lock_wait()
->  NFS: Remove unused parameter from nfs_page_group_lock()
->  NFS: Fix up nfs_page_group_covers_page()
->  SUNRPC: Add a function to allow waiting for RPC transmission
->  NFS: Throttle I/O to the NFS server
+--huq684BweRXVnRxX
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-This was a lot to look at, but it looks good to me.
-
--dros
-
+On Fri, Jul 07, 2017 at 02:13:38PM +1000, NeilBrown wrote:
+> On Fri, Jul 07 2017, NeilBrown wrote:
 >=20
-> fs/nfs/pagelist.c            |  64 +++------
-> fs/nfs/write.c               | 313 =
-++++++++++++++++++-------------------------
-> include/linux/nfs_page.h     |   3 +-
-> include/linux/sunrpc/sched.h |   3 +
-> net/sunrpc/sched.c           |  22 +++
-> net/sunrpc/xprt.c            |   6 +
-> 6 files changed, 177 insertions(+), 234 deletions(-)
+> > On Fri, Jun 30 2017, Chuck Lever wrote:
+> >>
+> >> Wouldn't it be nicer if it worked like this:
+> >>
+> >> (guest)$ cat /etc/hosts
+> >> 129.0.0.2  localhyper
+> >> (guest)$ mount.nfs localhyper:/export /mnt
+> >>
+> >> And the result was a working NFS mount of the
+> >> local hypervisor, using whatever NFS version the
+> >> two both support, with no changes needed to the
+> >> NFS implementation or the understanding of the
+> >> system administrator?
+> >
+> > Yes. Yes. Definitely Yes.
+> > Though I suspect you mean "127.0.0.2", not "129..."??
+> >
+> > There must be some way to redirect TCP connections to some address
+> > transparently through to the vsock protocol.
+> > The "sshuttle" program does this to transparently forward TCP connectio=
+ns
+> > over an ssh connection.  Using a similar technique to forward
+> > connections over vsock shouldn't be hard.
+> >
+> > Or is performance really critical, and you get too much copying when you
+> > try forwarding connections?  I suspect that is fixable, but it would be
+> > a little less straight forward.
+> >
+> > I would really *not* like to see vsock support being bolted into one
+> > network tool after another.
 >=20
-> --=20
-> 2.13.3
+> I've been digging into this a big more.  I came across
+>   https://vmsplice.net/~stefan/stefanha-kvm-forum-2015.pdf
 >=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> which (on page 7) lists some reasons not to use TCP/IP between guest
+> and host.
+>=20
+>  . Adding & configuring guest interfaces is invasive
+>=20
+> That is possibly true.  But adding support for a new address family to
+> NFS, NFSD, and nfs-utils is also very invasive.  You would need to
+> install this software on the guest.  I suggest you install different
+> software on the guest which solves the problem better.
 
+Two different types of "invasive":
+1. Requiring guest configuration changes that are likely to cause
+   conflicts.
+2. Requiring changes to the software stack.  Once installed there are no
+   conflicts.
+
+I'm interested and open to a different solution but it must avoid
+invasive configuration changes, especially inside the guest.
+
+>  . Prone to break due to config changes inside guest
+>=20
+> This is, I suspect, a key issue.  With vsock, the address of the
+> guest-side interface is defined by options passed to qemu.  With
+> normal IP addressing, the guest has to configure the address.
+>=20
+> However I think that IPv6 autoconfig makes this work well without vsock.
+> If I create a bridge interface on the host, run
+>   ip -6 addr  add fe80::1 dev br0
+> then run a guest with
+>    -net nic,macaddr=3DCh:oo:se:an:ad:dr \
+>    -net bridge,br=3Dbr0 \
+>=20
+> then the client can
+>   mount [fe80::1%interfacename]:/path /mountpoint
+>=20
+> and the host will see a connection from
+>    fe80::ch:oo:se:an:ad:dr
+>=20
+> So from the guest side, I have achieved zero-config NFS mounts from the
+> host.
+
+It is not zero-configuration since [fe80::1%interfacename] contains a
+variable, "interfacename", whose value is unknown ahead of time.  This
+will make documentation as well as ability to share configuration
+between VMs more difficult.  In other words, we're back to something
+that requires per-guest configuration and doesn't just work everywhere.
+
+> I don't think the server can filter connections based on which interface
+> a link-local address came from.  If that was a problem that someone
+> wanted to be fixed, I'm sure we can fix it.
+>=20
+> If you need to be sure that clients don't fake their IPv6 address, I'm
+> sure netfilter is up to the task.
+
+Yes, it's common to prevent spoofing on the host using netfilter and I
+think it wouldn't be a problem.
+
+>  . Creates network interfaces on host that must be managed
+>=20
+> What vsock does is effectively create a hidden interface on the host that=
+ only the
+> kernel knows about and so the sysadmin cannot break it.  The only
+> difference between this and an explicit interface on the host is that
+> the latter requires a competent sysadmin.
+>=20
+> If you have other reasons for preferring the use of vsock for NFS, I'd be
+> happy to hear them.  So far I'm not convinced.
+
+Before working on AF_VSOCK I originally proposed adding dedicated
+network interfaces to guests, similar to what you've suggested, but
+there was resistance for additional reasons that weren't covered in the
+presentation:
+
+Using AF_INET exposes the host's network stack to guests, and through
+accidental misconfiguration even external traffic could reach the host's
+network stack.  AF_VSOCK doesn't do routing or forwarding so we can be
+sure that any activity is intentional.
+
+Some virtualization use cases run guests without any network interfaces
+as a matter of security policy.  One could argue that AF_VSOCK is just
+another network channel, but due to it's restricted usage, the attack
+surface is much smaller than an AF_INET network interface.
+
+--huq684BweRXVnRxX
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEcBAEBAgAGBQJZdxfZAAoJEJykq7OBq3PIPuoH/19NeBQ8Gjfg6y0tqcgojovP
+xpQCbyaCGK/TqTzV+E6D+1bt7i5IZh0HtKxNLTzFFrucHZ0ON2t5zzwGJahvE1YI
+dHvaM15oOrtw50pPeyORnjm5TsmDe89p4lUXB+cfP8UNxVs3rsk3fP6BEGrQKi4O
+EW076mEAhhyJpXwz9PQfK7yq82fxHYipN0bbABbezFn89M6ayZzXDIe7QdAxobjd
+/t27sm8W5huVzj37uorDud4mwATA3qLIK2wX9dsHqQLcctN7xF/o8PkKzaVxLBtd
++N/0J7fP4WV6bKgaVrR+k/mCdnzjCjGeieJaBjqmSjldaSLHvkJE/VRrENSC51Q=
+=IVHF
+-----END PGP SIGNATURE-----
+
+--huq684BweRXVnRxX--
