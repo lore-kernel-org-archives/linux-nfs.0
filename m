@@ -1,69 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.linuxfoundation.org ([140.211.169.12]:35234 "EHLO
-        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752002AbdGYTW0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2017 15:22:26 -0400
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: linux-kernel@vger.kernel.org
-Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
-        stable@vger.kernel.org, "Jason A. Donenfeld" <Jason@zx2c4.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>
-Subject: [PATCH 4.9 100/125] sunrpc: use constant time memory comparison for mac
-Date: Tue, 25 Jul 2017 12:20:15 -0700
-Message-Id: <20170725192019.882994901@linuxfoundation.org>
-In-Reply-To: <20170725192014.314851996@linuxfoundation.org>
-References: <20170725192014.314851996@linuxfoundation.org>
+Received: from fieldses.org ([173.255.197.46]:41404 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751996AbdGYUvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 25 Jul 2017 16:51:00 -0400
+Date: Tue, 25 Jul 2017 16:51:00 -0400
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 03/11] atomicio: removed a warning
+Message-ID: <20170725205100.GA15694@fieldses.org>
+References: <20170721163806.15803-1-steved@redhat.com>
+ <20170721163806.15803-4-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170721163806.15803-4-steved@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-4.9-stable review patch.  If anyone has any objections, please let me know.
+On Fri, Jul 21, 2017 at 12:37:58PM -0400, Steve Dickson wrote:
+> atomicio.c:43:7: warning: this statement may fall through [-Wimplicit-fallthrough=]
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  support/nfs/atomicio.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/support/nfs/atomicio.c b/support/nfs/atomicio.c
+> index 5e760e6..9bf65b9 100644
+> --- a/support/nfs/atomicio.c
+> +++ b/support/nfs/atomicio.c
+> @@ -42,6 +42,8 @@ ssize_t atomicio(ssize_t(*f) (int, void *, size_t), int fd, void *_s, size_t n)
+>  		case -1:
+>  			if (errno == EINTR || errno == EAGAIN)
+>  				continue;
+> +			break;
+> +			/* FALLTHRU */
 
-------------------
+And I thought I was confused before!
 
-From: Jason A. Donenfeld <Jason@zx2c4.com>
+--b.
 
-commit 15a8b93fd5690de017ce665382ea45e5d61811a4 upstream.
-
-Otherwise, we enable a MAC forgery via timing attack.
-
-Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@poochiereds.net>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-
----
- net/sunrpc/auth_gss/gss_krb5_crypto.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -34,6 +34,7 @@
-  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
-  */
- 
-+#include <crypto/algapi.h>
- #include <crypto/hash.h>
- #include <crypto/skcipher.h>
- #include <linux/err.h>
-@@ -927,7 +928,7 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kc
- 	if (ret)
- 		goto out_err;
- 
--	if (memcmp(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
-+	if (crypto_memneq(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
- 		ret = GSS_S_BAD_SIG;
- 		goto out_err;
- 	}
-
-
+>  		case 0:
+>  			if (pos != 0)
+>  				return pos;
+> -- 
+> 2.13.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
