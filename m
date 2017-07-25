@@ -1,91 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:38082 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751983AbdGYTwj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2017 15:52:39 -0400
-Received: by mail-io0-f195.google.com with SMTP id l7so9936147iof.5
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Jul 2017 12:52:39 -0700 (PDT)
-Subject: Re: [4.13-rc2 regression] NFSv4 fails file permission tests in
- fstests generic/126
-To: Eryu Guan <eguan@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-References: <20170724141935.GF9167@eguan.usersys.redhat.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <2a18fac0-1b5c-e3d7-43b6-d932709e7655@gmail.com>
-Date: Tue, 25 Jul 2017 15:52:36 -0400
+Received: from mail.linuxfoundation.org ([140.211.169.12]:35234 "EHLO
+        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752002AbdGYTW0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2017 15:22:26 -0400
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: linux-kernel@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        stable@vger.kernel.org, "Jason A. Donenfeld" <Jason@zx2c4.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+Subject: [PATCH 4.9 100/125] sunrpc: use constant time memory comparison for mac
+Date: Tue, 25 Jul 2017 12:20:15 -0700
+Message-Id: <20170725192019.882994901@linuxfoundation.org>
+In-Reply-To: <20170725192014.314851996@linuxfoundation.org>
+References: <20170725192014.314851996@linuxfoundation.org>
 MIME-Version: 1.0
-In-Reply-To: <20170724141935.GF9167@eguan.usersys.redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Eryu,
+4.9-stable review patch.  If anyone has any objections, please let me know.
 
-On 07/24/2017 10:19 AM, Eryu Guan wrote:
-> Hi all,
-> 
-> I saw a new NFS failure in 4.13-rc2 kernel when running fstests
-> generic/126 on NFSv4 mounts, 4.13-rc1 kernel passed the same test.
-> 
-> git bisect pointed the first bad to commit bd8b2441742b.
-> 
-> commit bd8b2441742b49c76bec707757bd9c028ea9838e
-> Author: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date:   Tue Jul 11 17:54:34 2017 -0400
-> 
->     NFS: Store the raw NFS access mask in the inode's access cache
->     
->     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
-> 
-> I can reproduce it manually with these steps:
-> 
-> mount -t nfs -o vers=4.1 server:/export /mnt/nfs
-> cp /usr/bin/ls /mnt/nfs
-> chmod 001 /mnt/nfs/ls
-> chown 99:99 /mnt/nfs/ls
-> su testuser -c "/mnt/nfs/ls"
-> 
-> (testuser uid and gid are not 99.)
-> 
-> The last command got permission denied with 4.13-rc2.
+------------------
 
-Thanks for letting me know!  I think I see the problem: the patch changed how the
-access system call is cached but didn't update caching for NFSv4 opens (which is why
-v3 still passes).  Does this patch help?
+From: Jason A. Donenfeld <Jason@zx2c4.com>
 
+commit 15a8b93fd5690de017ce665382ea45e5d61811a4 upstream.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index e1a26c653e78..4893c9f9829b 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2250,16 +2250,16 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
-         */
-        if (openflags & __FMODE_EXEC) {
-                /* ONLY check for exec rights */
--               mask = MAY_EXEC;
-+               mask = NFS4_ACCESS_EXECUTE;
-        } else if ((fmode & FMODE_READ) && !opendata->file_created)
--               mask = MAY_READ;
-+               mask = NFS4_ACCESS_READ;
+Otherwise, we enable a MAC forgery via timing attack.
+
+Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@poochiereds.net>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -34,6 +34,7 @@
+  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+  */
  
-        cache.cred = cred;
-        cache.jiffies = jiffies;
-        nfs_access_set_mask(&cache, opendata->o_res.access_result);
-        nfs_access_add_cache(state->inode, &cache);
++#include <crypto/algapi.h>
+ #include <crypto/hash.h>
+ #include <crypto/skcipher.h>
+ #include <linux/err.h>
+@@ -927,7 +928,7 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kc
+ 	if (ret)
+ 		goto out_err;
  
--       if ((mask & ~cache.mask & (MAY_READ | MAY_EXEC)) == 0)
-+       if ((mask & ~cache.mask & (NFS4_ACCESS_READ | NFS4_ACCESS_EXECUTE)) == 0)
-                return 0;
- 
-        return -EACCES;
+-	if (memcmp(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
++	if (crypto_memneq(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
+ 		ret = GSS_S_BAD_SIG;
+ 		goto out_err;
+ 	}
 
 
-> 
-> Thanks,
-> Eryu
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
