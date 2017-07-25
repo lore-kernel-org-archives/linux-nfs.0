@@ -1,322 +1,183 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx.cs.uchicago.edu ([128.135.164.214]:37439 "EHLO
-        mx.cs.uchicago.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751091AbdGYVMM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2017 17:12:12 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by mx.cs.uchicago.edu (Postfix) with ESMTP id 38B745FCB6
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Jul 2017 16:12:12 -0500 (CDT)
-Received: from mx.cs.uchicago.edu ([127.0.0.1])
-        by localhost (mx.cs.uchicago.edu [127.0.0.1]) (amavisd-new, port 10024)
-        with LMTP id IYaalMqEnbjZ for <linux-nfs@vger.kernel.org>;
-        Tue, 25 Jul 2017 16:12:10 -0500 (CDT)
-Received: from [128.135.11.234] (hester2.cs.uchicago.edu [128.135.11.234])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mx.cs.uchicago.edu (Postfix) with ESMTPSA id 8C58B5FBFD
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Jul 2017 16:12:10 -0500 (CDT)
-Subject: Re: /etc/mtab read ~900 times by rpc.mountd
-To: linux-nfs@vger.kernel.org
-References: <f9dcc371-cd94-6b39-dd6a-b412bdf03df4@cs.uchicago.edu>
- <8737a9x9ky.fsf@notabene.neil.brown.name> <595F1A3A.7070405@cs.uchicago.edu>
- <87efto69rs.fsf@notabene.neil.brown.name>
- <4ec2a8fc-3ca5-d26b-7742-be4e2f749c21@cs.uchicago.edu>
- <87y3rv4zrb.fsf@notabene.neil.brown.name>
- <1740081e-6180-1c88-0a0c-8747a92c65a1@cs.uchicago.edu>
- <87bmoq4h41.fsf@notabene.neil.brown.name>
- <9e16d6c3-a675-b53e-c6f3-dfa9cdf1d5c9@cs.uchicago.edu>
- <871spj1pfr.fsf@notabene.neil.brown.name>
-From: Phil Kauffman <kauffman@cs.uchicago.edu>
-Message-ID: <03636068-4cc7-896e-5f8b-8c3ebfd2aa94@cs.uchicago.edu>
-Date: Tue, 25 Jul 2017 16:12:10 -0500
+Received: from mx2.suse.de ([195.135.220.15]:51668 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750897AbdGYWRE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 25 Jul 2017 18:17:04 -0400
+From: NeilBrown <neilb@suse.com>
+To: Scott Mayhew <smayhew@redhat.com>
+Date: Wed, 26 Jul 2017 08:16:52 +1000
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH v4] systemd: add instructions for disabling gssd to nfs.systemd.man
+In-Reply-To: <20170725151858.giqjb6dhogrl4lvj@tonberry.usersys.redhat.com>
+References: <20170720202422.14153-1-smayhew@redhat.com> <87a83wyi00.fsf@notabene.neil.brown.name> <20170722162540.aonaowrupf555trn@tonberry.usersys.redhat.com> <874lu4xete.fsf@notabene.neil.brown.name> <20170725151858.giqjb6dhogrl4lvj@tonberry.usersys.redhat.com>
+Message-ID: <87pocow4a3.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <871spj1pfr.fsf@notabene.neil.brown.name>
-Content-Type: multipart/mixed;
- boundary="------------2FA5FA7FFC31E637DECECB54"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------2FA5FA7FFC31E637DECECB54
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Transfer-Encoding: 7bit
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-On 07/14/2017 01:51 AM, NeilBrown wrote:
-> Please try this (against a clean nfs-utils.  i.e. remove the previous
-> patch).
-> It is a hack and would need to be totally re-written, but hopely the
-> measurements you make and strace that you report could be useful.
-> Also, for the strace, please use "-ttt" rather than "-tt" like I asked
-> before.  It is easier to find the difference between two times with
-> -ttt. And add -T as well.
+On Tue, Jul 25 2017, Scott Mayhew wrote:
 
-Sorry this took so long but I had to be sure of my results.
+> On Sun, 23 Jul 2017, NeilBrown wrote:
+>
+>> On Sat, Jul 22 2017, Scott Mayhew wrote:
+>>=20
+>> > On Sat, 22 Jul 2017, NeilBrown wrote:
+>> >
+>> >> On Thu, Jul 20 2017, Scott Mayhew wrote:
+>> >>=20
+>> >> > We've had several users complain about gssd automatically starting.=
+  Not
+>> >> > everyone who has a krb5.keytab want to use secure NFS; the instruct=
+ions
+>> >> > for disabling gssd ought to be on the man page in addition to the R=
+EADME
+>> >> > (which may not even be included in a distro's nfs-utils package).
+>> >> >
+>> >> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+>> >> > ---
+>> >> >  systemd/nfs.systemd.man | 17 ++++++++++++++++-
+>> >> >  1 file changed, 16 insertions(+), 1 deletion(-)
+>> >> >
+>> >> > diff --git a/systemd/nfs.systemd.man b/systemd/nfs.systemd.man
+>> >> > index 01801eb..7675320 100644
+>> >> > --- a/systemd/nfs.systemd.man
+>> >> > +++ b/systemd/nfs.systemd.man
+>> >> > @@ -79,11 +79,26 @@ unit should be enabled.
+>> >> >  Several other units which might be considered to be optional, such=
+ as
+>> >> >  .I rpc-gssd.service
+>> >> >  are careful to only start if the required configuration file exist=
+s.
+>> >> > -.I rpc-gsdd.service
+>> >> > +.I rpc-gssd.service
+>> >> >  will not start if the
+>> >> >  .I krb5.keytab
+>> >> >  file does not exist (typically in
+>> >> >  .IR /etc ).
+>> >> > +.B rpc.gssd
+>> >> > +is assumed to be needed if the
+>> >> > +.I krb5.keytab
+>> >> > +file is present.  If a site needs this file present but does not w=
+ant
+>> >> > +.B rpc.gssd
+>> >> > +running, it should create
+>> >> > +.B /etc/systemd/system/rpc-gssd.service.d/01-disable.conf
+>> >>=20
+>> >> A substantially simpler approach would be to recommend
+>> >>=20
+>> >>   systemctl mask rpc-gssd.service
+>> >
+>> > Thanks, Neil.  I had actually tried that a while back, but it doesn't =
+seem
+>> > to work in RHEL.  It works fine for rpcbind, so I thought that maybe t=
+he
+>> > Condition clause in the unit file took precedence over masking or
+>> > something.  I see now that masking rpc-gssd works in Fedora, so I'll go
+>> > digging in systemd to see if there's a bug fix that might need to be
+>> > backported to RHEL.
+>> >
+>> > Anyways, any objection to listing both methods in the man page?
+>>=20
+>> It depends on why "mask" doesn't work in RHEL.
+>> If the reason is specific to RHEL, then I don't think it should be
+>> documented in upstream nfs-utils.
+>> If the reason is specific to some version(s) of systemd, then
+>> Maybe document it as "use using systemd prior to XXXX, do this instead".
+>
+> It turns out that we have rpc-gssd.service symlinked to
+> nfs-secure.service in both RHEL and Fedora for backward compatibility
+> purposes, so it's necessary to mask both.
 
-With your latest patch applied I am unable to mount my NFS shares and 
-thus continue with the tests from before.
+That makes sense.  I have a similar sort of hack (different specifics)
+in SUSE to try to provide back-compatibility.  It also has problematic
+failure modes.
 
-Since the patch you provided cannot be applied cleanly to the source 
-used to build '1:1.2.8-9ubuntu12.1' for Ubuntu Xenial I chose to build a 
-couple of VMs to continue this testing. They should be identical to the 
-machines I was using before except they are under powered and not using 
-nfs-common, nfs-kernel-server package version 1:1.2.8-9ubuntu12.1. Most 
-importantly the zfs datasets and the files in /etc/exports.d are the same.
+systemd actually has a fairly robust "alias" mechanism that it uses
+internally, but it is only available for devices.  Every "/dev/..'
+device unit declares that it "Follows" the corresponding
+"/sys/devices/..." device unit (which is "Followed-by" the dev units).
+I would have loved to have the infrastructure for creating compat
+aliases ... but it isn't available :-(
 
-I found that utils/mountd/cache.c was last modified in 1.3.4, so I 
-tested both 1.3.4 and 2.1.1 without your patch as a baseline. I was able 
-to mount my shares in both versions.
+>
+> I'll send a patch documenting masking just the rpc-gssd.service.
 
-I then reverted my VMs to a state before the baseline install and 
-installed again with your patch applied.
-
-I get the following with your patch applied on 1.3.4 and 2.1.1:
-
-root@nfsclient:~# mount -avv
-/                        : ignored
-/boot                    : already mounted
-none                     : ignored
-mount.nfs4: timeout set for Tue Jul 25 15:43:13 2017
-mount.nfs4: trying text-based options 
-'ac,hard,rsize=16384,wsize=16384,vers=4.2,addr=10.135.24.23,clientaddr=10.135.24.22'
-mount.nfs4: mount(2): No such file or directory
-mount.nfs4: trying text-based options 
-'ac,hard,rsize=16384,wsize=16384,addr=10.135.24.23'
-mount.nfs4: prog 100003, trying vers=3, prot=6
-mount.nfs4: trying 10.135.24.23 prog 100003 vers 3 prot TCP port 2049
-mount.nfs4: prog 100005, trying vers=3, prot=17
-mount.nfs4: trying 10.135.24.23 prog 100005 vers 3 prot UDP port 41598
-mount.nfs4: mount(2): Permission denied
-mount.nfs4: access denied by server while mounting 
-nfsserver.cs.uchicago.edu:/homes
-mount.nfs4: timeout set for Tue Jul 25 15:43:14 2017
-mount.nfs4: trying text-based options 
-'ac,hard,rsize=16384,wsize=16384,vers=4.2,addr=10.135.24.23,clientaddr=10.135.24.22'
-mount.nfs4: mount(2): No such file or directory
-mount.nfs4: trying text-based options 
-'ac,hard,rsize=16384,wsize=16384,addr=10.135.24.23'
-mount.nfs4: prog 100003, trying vers=3, prot=6
-mount.nfs4: trying 10.135.24.23 prog 100003 vers 3 prot TCP port 2049
-mount.nfs4: prog 100005, trying vers=3, prot=17
-mount.nfs4: trying 10.135.24.23 prog 100005 vers 3 prot UDP port 41598
-mount.nfs4: mount(2): Permission denied
-mount.nfs4: access denied by server while mounting 
-nfsserver.cs.uchicago.edu:/stage
+Thanks,
+NeilBrown
 
 
-Attached are my install notes and the strace during the failed mount above.
+>
+> -Scott
+>>=20
+>> NeilBrown
+>>=20
+>>=20
+>> >
+>> > -Scott
+>> >>=20
+>> >> "mask" is also useful for disabling rpcbind if you use NFSv4 only and
+>> >> don't want the extra service.
+>> >>=20
+>> >> NeilBrown
+>> >>=20
+>> >>=20
+>> >> > +containing
+>> >> > +.RS
+>> >> > +.nf
+>> >> > +[Unit]
+>> >> > +ConditionNull=3Dfalse
+>> >> > +.fi
+>> >> > +.RE
+>> >> > +
+>> >> >  .SS Restarting NFS services
+>> >> >  Most NFS daemons can be restarted at any time.  They will reload a=
+ny
+>> >> >  state that they need, and continue servicing requests.  This is ra=
+rely
+>> >> > --=20
+>> >> > 2.9.4
+>> >> >
+>> >> > --
+>> >> > To unsubscribe from this list: send the line "unsubscribe linux-nfs=
+" in
+>> >> > the body of a message to majordomo@vger.kernel.org
+>> >> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> >
+>> >
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
+-----BEGIN PGP SIGNATURE-----
 
-
--- 
-Phil Kauffman
-Systems Admin
-Dept. of Computer Science
-University of Chicago
-kauffman@cs.uchicago.edu
-
---------------2FA5FA7FFC31E637DECECB54
-Content-Type: text/plain; charset=UTF-8;
- name="nfs_test_notes.txt"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="nfs_test_notes.txt"
-
-IyBhbGwKdW1hc2sgMDIyCmFwdC1nZXQgYnVpbGQtZGVwIG5mcy1rZXJuZWwtc2VydmVyCmFw
-dC1nZXQgaW5zdGFsbCBycGNiaW5kIHN0cmFjZQpzeXN0ZW1jdGwgZW5hYmxlIHJwY2JpbmQK
-CmdpdCBjbG9uZSBnaXQ6Ly9naXQubGludXgtbmZzLm9yZy9wcm9qZWN0cy9zdGV2ZWQvbmZz
-LXV0aWxzLmdpdApjZCBuZnMtdXRpbHMKIyBjaG9vc2UgdGhlIHZlcnNpb24gdG8gdGVzdAoj
-Z2l0IGNoZWNrb3V0IHRhZ3MvbmZzLXV0aWxzLTEtMy00IC1iIDEuMy40CiNnaXQgY2hlY2tv
-dXQgdGFncy9uZnMtdXRpbHMtMi0xLTEgLWIgMi4xLjEKCiMgaWYgcGF0Y2hpbmcKd2dldCBo
-dHRwOi8vcGVvcGxlLmNzLnVjaGljYWdvLmVkdS9+a2F1ZmZtYW4vbmZzLWtlcm5lbC1zZXJ2
-ZXIvdGFrZTMvbmIyLnBhdGNoCnBhdGNoIC1wMSB1dGlscy9tb3VudGQvY2FjaGUuYyA8IG5i
-Mi5wYXRjaApybSBuYjIucGF0Y2gKCgojIFNlcnZlcgouL2F1dG9nZW4uc2ggJiYgLi9jb25m
-aWd1cmUgLS13aXRoLXN5c3RlbWQgLS1kaXNhYmxlLWdzcyAmJiBtYWtlICYmIG1ha2UgaW5z
-dGFsbAp0b3VjaCAvZXRjL2RlZmF1bHQvbmZzLWtlcm5lbC1zZXJ2ZXIgL2V0Yy9kZWZhdWx0
-L25mcy1jb21tb24KbWtkaXIgLXAgL3Vzci9saWJleGVjL25mcy11dGlscwpjcCAuLi9uZnMt
-dXRpbHMvZGViaWFuL25mcy11dGlsc19lbnYuc2ggL3Vzci9saWJleGVjL25mcy11dGlscy8K
-dG91Y2ggL2V0Yy9leHBvcnRzICYmIG1rZGlyIC1wIC9ldGMvZXhwb3J0cy5kCnN5c3RlbWN0
-bCBlbmFibGUgbmZzLXNlcnZlci5zZXJ2aWNlCnN5c3RlbWN0bCBlbmFibGUgbmZzLXV0aWxz
-LnNlcnZpY2UKcmVib290CgojIGNsaWVudAouL2F1dG9nZW4uc2ggJiYgLi9jb25maWd1cmUg
-LS13aXRoLXN5c3RlbWQgLS1kaXNhYmxlLWdzcyAmJiBtYWtlICYmIG1ha2UgaW5zdGFsbAp0
-b3VjaCAvZXRjL2RlZmF1bHQvbmZzLWNvbW1vbgpjaG1vZCA2NDQgL3Vzci9saWIvc3lzdGVt
-ZC9zeXN0ZW0vKgpzeXN0ZW1jdGwgZW5hYmxlIG5mcy1jbGllbnQudGFyZ2V0CnN5c3RlbWN0
-bCBlbmFibGUgcnBjLXN0YXRkLnNlcnZpY2UKcmVib290CgoKcm9vdEBuZnNzZXJ2ZXI6fi9u
-ZnMtdXRpbHMjIGNhdCAvZXRjL2RlZmF1bHQvbmZzLWNvbW1vbgpORUVEX1NUQVREPXllcwpT
-VEFURE9QVFM9Ii0tcG9ydCA0NDYzNCIKTkVFRF9HU1NEPQoKcm9vdEBuZnNzZXJ2ZXI6fi9u
-ZnMtdXRpbHMjIGNhdCAvZXRjL2RlZmF1bHQvbmZzLWtlcm5lbC1zZXJ2ZXIKUlBDTkZTRENP
-VU5UPQpSUENORlNEUFJJT1JJVFk9MApSUENNT1VOVERPUFRTPQpORUVEX1NWQ0dTU0Q9ClJQ
-Q1NWQ0dTU0RPUFRTPQpSUENORlNET1BUUz0nLS1zeXNsb2cnCgo=
---------------2FA5FA7FFC31E637DECECB54
-Content-Type: text/plain; charset=UTF-8;
- name="strace_no_mount.txt"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="strace_no_mount.txt"
-
-c3RyYWNlOiBQcm9jZXNzIDMyNTUyIGF0dGFjaGVkCjE1MDEwMTYwMjAuNTM0NzE1IHNlbGVj
-dCgxMDI0LCBbMyA0IDUgNyA4IDkgMTAgMTEgMTIgMTMgMTQgMTUgMTYgMTcgMThdLCBOVUxM
-LCBOVUxMLCBOVUxMKSA9IDEgKGluIFszXSkgPDIuMzM0NDgxPgoxNTAxMDE2MDIyLjg2OTMz
-OCByZWFkKDMsICJuZnNkIDEwLjEzNS4yNC4yMlxuIiwgMzI3NjgpID0gMTggPDAuMDAwMDI5
-PgoxNTAxMDE2MDIyLjg2OTQ0MyBvcGVuKCIvdmFyL2xpYi9uZnMvZXRhYiIsIE9fUkRPTkxZ
-KSA9IDIwIDwwLjAwMDA1OD4KMTUwMTAxNjAyMi44Njk1NjYgZnN0YXQoMjAsIHtzdF9tb2Rl
-PVNfSUZSRUd8MDY0NCwgc3Rfc2l6ZT0yMzQ5OTAsIC4uLn0pID0gMCA8MC4wMDAwMzY+CjE1
-MDEwMTYwMjIuODY5NjczIGNsb3NlKDIwKSAgICAgICAgICAgICA9IDAgPDAuMDAwMDQ1Pgox
-NTAxMDE2MDIyLjg3MDAxNSB3cml0ZSgzLCAibmZzZCAxMC4xMzUuMjQuMjIgMTUwMTAxNzgy
-MiBuZnMiLi4uLCA1NikgPSA1NiA8MC4wMDAwNDI+CjE1MDEwMTYwMjIuODcwMDk0IHNlbGVj
-dCgxMDI0LCBbMyA0IDUgNyA4IDkgMTAgMTEgMTIgMTMgMTQgMTUgMTYgMTcgMThdLCBOVUxM
-LCBOVUxMLCBOVUxMKSA9IDEgKGluIFs1XSkgPDAuMTg5OTU2PgoxNTAxMDE2MDIzLjA2MDEy
-NCByZWFkKDUsICJuZnNjbGllbnQuY3MudWNoaWNhZ28uZWR1IDEgXFx4MDAiLi4uLCAzMjc2
-OCkgPSAzOSA8MC4wMDAwNDY+CjE1MDEwMTYwMjMuMDYwMjIwIG9wZW4oIi92YXIvbGliL25m
-cy9ldGFiIiwgT19SRE9OTFkpID0gMjAgPDAuMDAwMDI4PgoxNTAxMDE2MDIzLjA2MDI5MiBm
-c3RhdCgyMCwge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTIzNDk5MCwgLi4ufSkg
-PSAwIDwwLjAwMDAyMT4KMTUwMTAxNjAyMy4wNjAzNTAgY2xvc2UoMjApICAgICAgICAgICAg
-ID0gMCA8MC4wMDAwMjI+CjE1MDEwMTYwMjMuMDYwNDIzIHdyaXRlKDUsICJuZnNjbGllbnQu
-Y3MudWNoaWNhZ28uZWR1IDEgXFx4MDAiLi4uLCA1MSkgPSA1MSA8MC4wMDAwMzI+CjE1MDEw
-MTYwMjMuMDYwNDg4IHNlbGVjdCgxMDI0LCBbMyA0IDUgNyA4IDkgMTAgMTEgMTIgMTMgMTQg
-MTUgMTYgMTcgMThdLCBOVUxMLCBOVUxMLCBOVUxMKSA9IDEgKGluIFsxNV0pIDwwLjA1MDY5
-OT4KMTUwMTAxNjAyMy4xMTEyNjUgcmVjdm1zZygxNSwge21zZ19uYW1lKDE2KT17c2FfZmFt
-aWx5PUFGX0lORVQsIHNpbl9wb3J0PWh0b25zKDUxMTQxKSwgc2luX2FkZHI9aW5ldF9hZGRy
-KCIxMC4xMzUuMjQuMjIiKX0sIG1zZ19pb3YoMSk9W3siWXZcMzFcMzU0XDBcMFwwXDBcMFww
-XDBcMlwwXDFcMjA2XDI0NVwwXDBcMFwzXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwIi4uLiwg
-ODgwMH1dLCBtc2dfY29udHJvbGxlbj0zMiwgW3tjbXNnX2xlbj0yOCwgY21zZ19sZXZlbD1T
-T0xfSVAsIGNtc2dfdHlwZT1JUF9QS1RJTkZPLCB7aXBpX2lmaW5kZXg9aWZfbmFtZXRvaW5k
-ZXgoImVuczE4IiksIGlwaV9zcGVjX2RzdD1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMyIpLCBp
-cGlfYWRkcj1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMyIpfX1dLCBtc2dfZmxhZ3M9MH0sIDAp
-ID0gNDAgPDAuMDAwMDI5PgoxNTAxMDE2MDIzLjExMTQzNSBzdGF0KCIvZXRjL2hvc3RzLmFs
-bG93Iiwge3N0X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTQxMSwgLi4ufSkgPSAwIDww
-LjAwMDAzMD4KMTUwMTAxNjAyMy4xMTE1MjIgc3RhdCgiL2V0Yy9ob3N0cy5kZW55Iiwge3N0
-X21vZGU9U19JRlJFR3wwNjQ0LCBzdF9zaXplPTcxMSwgLi4ufSkgPSAwIDwwLjAwMDAyOD4K
-MTUwMTAxNjAyMy4xMTE2MTAgc2VuZG1zZygxNSwge21zZ19uYW1lKDE2KT17c2FfZmFtaWx5
-PUFGX0lORVQsIHNpbl9wb3J0PWh0b25zKDUxMTQxKSwgc2luX2FkZHI9aW5ldF9hZGRyKCIx
-MC4xMzUuMjQuMjIiKX0sIG1zZ19pb3YoMSk9W3siWXZcMzFcMzU0XDBcMFwwXDFcMFwwXDBc
-MFwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMCIsIDI0fV0sIG1zZ19jb250cm9sbGVuPTMyLCBb
-e2Ntc2dfbGVuPTI4LCBjbXNnX2xldmVsPVNPTF9JUCwgY21zZ190eXBlPUlQX1BLVElORk8s
-IHtpcGlfaWZpbmRleD0wLCBpcGlfc3BlY19kc3Q9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjMi
-KSwgaXBpX2FkZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjMiKX19XSwgbXNnX2ZsYWdzPTB9
-LCAwKSA9IDI0IDwwLjAwMDA1MT4KMTUwMTAxNjAyMy4xMTE3Mjcgc2VsZWN0KDEwMjQsIFsz
-IDQgNSA3IDggOSAxMCAxMSAxMiAxMyAxNCAxNSAxNiAxNyAxOF0sIE5VTEwsIE5VTEwsIE5V
-TEwpID0gMSAoaW4gWzE1XSkgPDAuMDAwMjMyPgoxNTAxMDE2MDIzLjExMjAxNSByZWN2bXNn
-KDE1LCB7bXNnX25hbWUoMTYpPXtzYV9mYW1pbHk9QUZfSU5FVCwgc2luX3BvcnQ9aHRvbnMo
-OTg5KSwgc2luX2FkZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjIiKX0sIG1zZ19pb3YoMSk9
-W3siLlwzMTRQJFwwXDBcMFwwXDBcMFwwXDJcMFwxXDIwNlwyNDVcMFwwXDBcM1wwXDBcMFww
-XDBcMFwwXDBcMFwwXDBcMCIuLi4sIDg4MDB9XSwgbXNnX2NvbnRyb2xsZW49MzIsIFt7Y21z
-Z19sZW49MjgsIGNtc2dfbGV2ZWw9U09MX0lQLCBjbXNnX3R5cGU9SVBfUEtUSU5GTywge2lw
-aV9pZmluZGV4PWlmX25hbWV0b2luZGV4KCJlbnMxOCIpLCBpcGlfc3BlY19kc3Q9aW5ldF9h
-ZGRyKCIxMC4xMzUuMjQuMjMiKSwgaXBpX2FkZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjMi
-KX19XSwgbXNnX2ZsYWdzPTB9LCAwKSA9IDQwIDwwLjAwMDAyMz4KMTUwMTAxNjAyMy4xMTIw
-OTMgc3RhdCgiL2V0Yy9ob3N0cy5hbGxvdyIsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwgc3Rf
-c2l6ZT00MTEsIC4uLn0pID0gMCA8MC4wMDAwNTQ+CjE1MDEwMTYwMjMuMTEyMTg4IHN0YXQo
-Ii9ldGMvaG9zdHMuZGVueSIsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwgc3Rfc2l6ZT03MTEs
-IC4uLn0pID0gMCA8MC4wMDAwMjE+CjE1MDEwMTYwMjMuMTEyMjU0IHNlbmRtc2coMTUsIHtt
-c2dfbmFtZSgxNik9e3NhX2ZhbWlseT1BRl9JTkVULCBzaW5fcG9ydD1odG9ucyg5ODkpLCBz
-aW5fYWRkcj1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMiIpfSwgbXNnX2lvdigxKT1beyIuXDMx
-NFAkXDBcMFwwXDFcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMCIsIDI0fV0sIG1z
-Z19jb250cm9sbGVuPTMyLCBbe2Ntc2dfbGVuPTI4LCBjbXNnX2xldmVsPVNPTF9JUCwgY21z
-Z190eXBlPUlQX1BLVElORk8sIHtpcGlfaWZpbmRleD0wLCBpcGlfc3BlY19kc3Q9aW5ldF9h
-ZGRyKCIxMC4xMzUuMjQuMjMiKSwgaXBpX2FkZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjMi
-KX19XSwgbXNnX2ZsYWdzPTB9LCAwKSA9IDI0IDwwLjAwMDAzOT4KMTUwMTAxNjAyMy4xMTIz
-NDAgc2VsZWN0KDEwMjQsIFszIDQgNSA3IDggOSAxMCAxMSAxMiAxMyAxNCAxNSAxNiAxNyAx
-OF0sIE5VTEwsIE5VTEwsIE5VTEwpID0gMSAoaW4gWzE1XSkgPDAuMDAwMDgzPgoxNTAxMDE2
-MDIzLjExMjQ2NiByZWN2bXNnKDE1LCB7bXNnX25hbWUoMTYpPXtzYV9mYW1pbHk9QUZfSU5F
-VCwgc2luX3BvcnQ9aHRvbnMoOTg5KSwgc2luX2FkZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQu
-MjIiKX0sIG1zZ19pb3YoMSk9W3siL1wzMTRQJFwwXDBcMFwwXDBcMFwwXDJcMFwxXDIwNlwy
-NDVcMFwwXDBcM1wwXDBcMFwxXDBcMFwwXDFcMFwwXDAkIi4uLiwgODgwMH1dLCBtc2dfY29u
-dHJvbGxlbj0zMiwgW3tjbXNnX2xlbj0yOCwgY21zZ19sZXZlbD1TT0xfSVAsIGNtc2dfdHlw
-ZT1JUF9QS1RJTkZPLCB7aXBpX2lmaW5kZXg9aWZfbmFtZXRvaW5kZXgoImVuczE4IiksIGlw
-aV9zcGVjX2RzdD1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMyIpLCBpcGlfYWRkcj1pbmV0X2Fk
-ZHIoIjEwLjEzNS4yNC4yMyIpfX1dLCBtc2dfZmxhZ3M9MH0sIDApID0gODggPDAuMDAwMDIz
-PgoxNTAxMDE2MDIzLjExMjUzNyBzdGF0KCIvZXRjL2hvc3RzLmFsbG93Iiwge3N0X21vZGU9
-U19JRlJFR3wwNjQ0LCBzdF9zaXplPTQxMSwgLi4ufSkgPSAwIDwwLjAwMDAyMj4KMTUwMTAx
-NjAyMy4xMTI1OTcgc3RhdCgiL2V0Yy9ob3N0cy5kZW55Iiwge3N0X21vZGU9U19JRlJFR3ww
-NjQ0LCBzdF9zaXplPTcxMSwgLi4ufSkgPSAwIDwwLjAwMDAyMj4KMTUwMTAxNjAyMy4xMTI2
-Njkgb3BlbigiL3Zhci9saWIvbmZzL2V0YWIiLCBPX1JET05MWSkgPSAyMCA8MC4wMDAwMjc+
-CjE1MDEwMTYwMjMuMTEyNzM0IGZzdGF0KDIwLCB7c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0
-X3NpemU9MjM0OTkwLCAuLi59KSA9IDAgPDAuMDAwMDMwPgoxNTAxMDE2MDIzLjExMjg1NiBj
-bG9zZSgyMCkgICAgICAgICAgICAgPSAwIDwwLjAwMDA1Nz4KMTUwMTAxNjAyMy4xMTI5Nzcg
-bHN0YXQoIi9ob21lcyIsIDB4N2ZmYzA5MTdiOTAwKSA9IC0xIEVOT0VOVCAoTm8gc3VjaCBm
-aWxlIG9yIGRpcmVjdG9yeSkgPDAuMDAwMDU5PgoxNTAxMDE2MDIzLjExMzU5MyBzZW5kdG8o
-NiwgIjwyOD5KdWwgMjUgMTU6NTM6NDMgcnBjLm1vdW50ZFszIi4uLiwgMTA3LCBNU0dfTk9T
-SUdOQUwsIE5VTEwsIDApID0gMTA3IDwwLjAwMDA1ND4KMTUwMTAxNjAyMy4xMTQzMzMgc2Vu
-ZG1zZygxNSwge21zZ19uYW1lKDE2KT17c2FfZmFtaWx5PUFGX0lORVQsIHNpbl9wb3J0PWh0
-b25zKDk4OSksIHNpbl9hZGRyPWluZXRfYWRkcigiMTAuMTM1LjI0LjIyIil9LCBtc2dfaW92
-KDEpPVt7Ii9cMzE0UCRcMFwwXDBcMVwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFww
-XDBcMFwwXHIiLCAyOH1dLCBtc2dfY29udHJvbGxlbj0zMiwgW3tjbXNnX2xlbj0yOCwgY21z
-Z19sZXZlbD1TT0xfSVAsIGNtc2dfdHlwZT1JUF9QS1RJTkZPLCB7aXBpX2lmaW5kZXg9MCwg
-aXBpX3NwZWNfZHN0PWluZXRfYWRkcigiMTAuMTM1LjI0LjIzIiksIGlwaV9hZGRyPWluZXRf
-YWRkcigiMTAuMTM1LjI0LjIzIil9fV0sIG1zZ19mbGFncz0wfSwgMCkgPSAyOCA8MC4wMDAw
-NjU+CjE1MDEwMTYwMjMuMTE0NDgwIHNlbGVjdCgxMDI0LCBbMyA0IDUgNyA4IDkgMTAgMTEg
-MTIgMTMgMTQgMTUgMTYgMTcgMThdLCBOVUxMLCBOVUxMLCBOVUxMKSA9IDEgKGluIFsxNV0p
-IDwwLjE5NjUxNT4KMTUwMTAxNjAyMy4zMTExMzAgcmVjdm1zZygxNSwge21zZ19uYW1lKDE2
-KT17c2FfZmFtaWx5PUFGX0lORVQsIHNpbl9wb3J0PWh0b25zKDQ5NTM5KSwgc2luX2FkZHI9
-aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjIiKX0sIG1zZ19pb3YoMSk9W3siWXNuUFwwXDBcMFww
-XDBcMFwwXDJcMFwxXDIwNlwyNDVcMFwwXDBcM1wwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMCIu
-Li4sIDg4MDB9XSwgbXNnX2NvbnRyb2xsZW49MzIsIFt7Y21zZ19sZW49MjgsIGNtc2dfbGV2
-ZWw9U09MX0lQLCBjbXNnX3R5cGU9SVBfUEtUSU5GTywge2lwaV9pZmluZGV4PWlmX25hbWV0
-b2luZGV4KCJlbnMxOCIpLCBpcGlfc3BlY19kc3Q9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjMi
-KSwgaXBpX2FkZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjMiKX19XSwgbXNnX2ZsYWdzPTB9
-LCAwKSA9IDQwIDwwLjAwMDA1MT4KMTUwMTAxNjAyMy4zMTEyOTIgc3RhdCgiL2V0Yy9ob3N0
-cy5hbGxvdyIsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwgc3Rfc2l6ZT00MTEsIC4uLn0pID0g
-MCA8MC4wMDAwNDI+CjE1MDEwMTYwMjMuMzExNDA2IHN0YXQoIi9ldGMvaG9zdHMuZGVueSIs
-IHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwgc3Rfc2l6ZT03MTEsIC4uLn0pID0gMCA8MC4wMDAw
-Mzg+CjE1MDEwMTYwMjMuMzExNTA0IHNlbmRtc2coMTUsIHttc2dfbmFtZSgxNik9e3NhX2Zh
-bWlseT1BRl9JTkVULCBzaW5fcG9ydD1odG9ucyg0OTUzOSksIHNpbl9hZGRyPWluZXRfYWRk
-cigiMTAuMTM1LjI0LjIyIil9LCBtc2dfaW92KDEpPVt7IllzblBcMFwwXDBcMVwwXDBcMFww
-XDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwIiwgMjR9XSwgbXNnX2NvbnRyb2xsZW49MzIsIFt7
-Y21zZ19sZW49MjgsIGNtc2dfbGV2ZWw9U09MX0lQLCBjbXNnX3R5cGU9SVBfUEtUSU5GTywg
-e2lwaV9pZmluZGV4PTAsIGlwaV9zcGVjX2RzdD1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMyIp
-LCBpcGlfYWRkcj1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMyIpfX1dLCBtc2dfZmxhZ3M9MH0s
-IDApID0gMjQgPDAuMDAwMDY0PgoxNTAxMDE2MDIzLjMxMTY1MyBzZWxlY3QoMTAyNCwgWzMg
-NCA1IDcgOCA5IDEwIDExIDEyIDEzIDE0IDE1IDE2IDE3IDE4XSwgTlVMTCwgTlVMTCwgTlVM
-TCkgPSAxIChpbiBbMTVdKSA8MC4wMDAxNzU+CjE1MDEwMTYwMjMuMzExOTA3IHJlY3Ztc2co
-MTUsIHttc2dfbmFtZSgxNik9e3NhX2ZhbWlseT1BRl9JTkVULCBzaW5fcG9ydD1odG9ucyg5
-NzEpLCBzaW5fYWRkcj1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMiIpfSwgbXNnX2lvdigxKT1b
-eyJcZltrQVwwXDBcMFwwXDBcMFwwXDJcMFwxXDIwNlwyNDVcMFwwXDBcM1wwXDBcMFwwXDBc
-MFwwXDBcMFwwXDBcMCIuLi4sIDg4MDB9XSwgbXNnX2NvbnRyb2xsZW49MzIsIFt7Y21zZ19s
-ZW49MjgsIGNtc2dfbGV2ZWw9U09MX0lQLCBjbXNnX3R5cGU9SVBfUEtUSU5GTywge2lwaV9p
-ZmluZGV4PWlmX25hbWV0b2luZGV4KCJlbnMxOCIpLCBpcGlfc3BlY19kc3Q9aW5ldF9hZGRy
-KCIxMC4xMzUuMjQuMjMiKSwgaXBpX2FkZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjMiKX19
-XSwgbXNnX2ZsYWdzPTB9LCAwKSA9IDQwIDwwLjAwMDA0Nz4KMTUwMTAxNjAyMy4zMTIwNDQg
-c3RhdCgiL2V0Yy9ob3N0cy5hbGxvdyIsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwgc3Rfc2l6
-ZT00MTEsIC4uLn0pID0gMCA8MC4wMDAwNTA+CjE1MDEwMTYwMjMuMzEyMTM2IHN0YXQoIi9l
-dGMvaG9zdHMuZGVueSIsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwgc3Rfc2l6ZT03MTEsIC4u
-Ln0pID0gMCA8MC4wMDAwMjM+CjE1MDEwMTYwMjMuMzEyMjI0IHNlbmRtc2coMTUsIHttc2df
-bmFtZSgxNik9e3NhX2ZhbWlseT1BRl9JTkVULCBzaW5fcG9ydD1odG9ucyg5NzEpLCBzaW5f
-YWRkcj1pbmV0X2FkZHIoIjEwLjEzNS4yNC4yMiIpfSwgbXNnX2lvdigxKT1beyJcZltrQVww
-XDBcMFwxXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXDAiLCAyNH1dLCBtc2dfY29u
-dHJvbGxlbj0zMiwgW3tjbXNnX2xlbj0yOCwgY21zZ19sZXZlbD1TT0xfSVAsIGNtc2dfdHlw
-ZT1JUF9QS1RJTkZPLCB7aXBpX2lmaW5kZXg9MCwgaXBpX3NwZWNfZHN0PWluZXRfYWRkcigi
-MTAuMTM1LjI0LjIzIiksIGlwaV9hZGRyPWluZXRfYWRkcigiMTAuMTM1LjI0LjIzIil9fV0s
-IG1zZ19mbGFncz0wfSwgMCkgPSAyNCA8MC4wMDAwNDE+CjE1MDEwMTYwMjMuMzEyMzE3IHNl
-bGVjdCgxMDI0LCBbMyA0IDUgNyA4IDkgMTAgMTEgMTIgMTMgMTQgMTUgMTYgMTcgMThdLCBO
-VUxMLCBOVUxMLCBOVUxMKSA9IDEgKGluIFsxNV0pIDwwLjAwMDA4Mz4KMTUwMTAxNjAyMy4z
-MTI0NDAgcmVjdm1zZygxNSwge21zZ19uYW1lKDE2KT17c2FfZmFtaWx5PUFGX0lORVQsIHNp
-bl9wb3J0PWh0b25zKDk3MSksIHNpbl9hZGRyPWluZXRfYWRkcigiMTAuMTM1LjI0LjIyIil9
-LCBtc2dfaW92KDEpPVt7IlxyW2tBXDBcMFwwXDBcMFwwXDBcMlwwXDFcMjA2XDI0NVwwXDBc
-MFwzXDBcMFwwXDFcMFwwXDBcMVwwXDBcMCQiLi4uLCA4ODAwfV0sIG1zZ19jb250cm9sbGVu
-PTMyLCBbe2Ntc2dfbGVuPTI4LCBjbXNnX2xldmVsPVNPTF9JUCwgY21zZ190eXBlPUlQX1BL
-VElORk8sIHtpcGlfaWZpbmRleD1pZl9uYW1ldG9pbmRleCgiZW5zMTgiKSwgaXBpX3NwZWNf
-ZHN0PWluZXRfYWRkcigiMTAuMTM1LjI0LjIzIiksIGlwaV9hZGRyPWluZXRfYWRkcigiMTAu
-MTM1LjI0LjIzIil9fV0sIG1zZ19mbGFncz0wfSwgMCkgPSA4OCA8MC4wMDAwMjE+CjE1MDEw
-MTYwMjMuMzEyNTEzIHN0YXQoIi9ldGMvaG9zdHMuYWxsb3ciLCB7c3RfbW9kZT1TX0lGUkVH
-fDA2NDQsIHN0X3NpemU9NDExLCAuLi59KSA9IDAgPDAuMDAwMDI2PgoxNTAxMDE2MDIzLjMx
-MjU3NiBzdGF0KCIvZXRjL2hvc3RzLmRlbnkiLCB7c3RfbW9kZT1TX0lGUkVHfDA2NDQsIHN0
-X3NpemU9NzExLCAuLi59KSA9IDAgPDAuMDAwMDE5PgoxNTAxMDE2MDIzLjMxMjYzNSBvcGVu
-KCIvdmFyL2xpYi9uZnMvZXRhYiIsIE9fUkRPTkxZKSA9IDIwIDwwLjAwMDAyMz4KMTUwMTAx
-NjAyMy4zMTI2OTEgZnN0YXQoMjAsIHtzdF9tb2RlPVNfSUZSRUd8MDY0NCwgc3Rfc2l6ZT0y
-MzQ5OTAsIC4uLn0pID0gMCA8MC4wMDAwMTk+CjE1MDEwMTYwMjMuMzEyNzQxIGNsb3NlKDIw
-KSAgICAgICAgICAgICA9IDAgPDAuMDAwMDE5PgoxNTAxMDE2MDIzLjMxMjc5MCBsc3RhdCgi
-L3N0YWdlIiwge3N0X21vZGU9U19JRkRJUnwwNzU1LCBzdF9zaXplPTQwOTYsIC4uLn0pID0g
-MCA8MC4wMDAwNDU+CjE1MDEwMTYwMjMuMzEzMDQzIHNlbmR0byg2LCAiPDI4Pkp1bCAyNSAx
-NTo1Mzo0MyBycGMubW91bnRkWzMiLi4uLCAxMDcsIE1TR19OT1NJR05BTCwgTlVMTCwgMCkg
-PSAxMDcgPDAuMDAwMDI3PgoxNTAxMDE2MDIzLjMxMzQwMCBzZW5kbXNnKDE1LCB7bXNnX25h
-bWUoMTYpPXtzYV9mYW1pbHk9QUZfSU5FVCwgc2luX3BvcnQ9aHRvbnMoOTcxKSwgc2luX2Fk
-ZHI9aW5ldF9hZGRyKCIxMC4xMzUuMjQuMjIiKX0sIG1zZ19pb3YoMSk9W3siXHJba0FcMFww
-XDBcMVwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXDBcMFwwXHIiLCAyOH1dLCBt
-c2dfY29udHJvbGxlbj0zMiwgW3tjbXNnX2xlbj0yOCwgY21zZ19sZXZlbD1TT0xfSVAsIGNt
-c2dfdHlwZT1JUF9QS1RJTkZPLCB7aXBpX2lmaW5kZXg9MCwgaXBpX3NwZWNfZHN0PWluZXRf
-YWRkcigiMTAuMTM1LjI0LjIzIiksIGlwaV9hZGRyPWluZXRfYWRkcigiMTAuMTM1LjI0LjIz
-Iil9fV0sIG1zZ19mbGFncz0wfSwgMCkgPSAyOCA8MC4wMDAwMzY+CjE1MDEwMTYwMjMuMzEz
-NDg1IHNlbGVjdCgxMDI0LCBbMyA0IDUgNyA4IDkgMTAgMTEgMTIgMTMgMTQgMTUgMTYgMTcg
-MThdLCBOVUxMLCBOVUxMLCBOVUxM
---------------2FA5FA7FFC31E637DECECB54--
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAll3w1YACgkQOeye3VZi
+gbnKDA//ZHWsIwVm4nBnkinw4MGdJ1STuv//sf8Y9lyv+5rYMv3vceeeC+HHuwkF
+QLgf+6FXzjK/YFsn6PHRhOeFsXdjTQbyyf0yQUAW7TVcUJmbFdCKfwnOxD/ghVAY
+adogVTD0wdP4cxU390r0D1Ku8GhhaDV72VUm9fIELhHTwr02EmVeKahVfHy10Z84
+sTyCRO0NG6wUpA9auF7DowwdZj4YtMZjdr4RkgHl5VGbTT2uUWxiHJggOelDAKmV
+LP/tLl/H4Wu1SJka3tHsf/AhQnLx98pOIUyz6jJ82rpavua0xZJJpHF+zgk20mXe
+DJ5TfsTlb7HV93ao34FUHDvphS5+5D+/JrIXiTZNP3tEG5lSTng20hT/vNGPU04u
+GRNJxtyc4j5BjIAxx/eA5G88tKlU85fw7cCwWSrO0KYQwa1nCl5K0UyiVjC1dJul
+CvxsorNcvMHACdy9aDvswR6v2GIQtVE5hgA6NyDvWmzYLk2UFUi+ybPl4Sf4+T77
+T82s7vFxRwnssHYRfIHsmORBEODfqsL8CeSEf70J5DLtWwym86T7jUkMBw6U/REw
+8z28ghuMDWN1oW8I7Ojd08FwhvpAt79m3Fe4Scz5YkFCKSvZuryhXMOuF3ov8GJz
+QSfE445H278SPRJNCgOIau1ZKtxpko7ra0dBMboBYWMgYq2AoRs=
+=DYx9
+-----END PGP SIGNATURE-----
+--=-=-=--
