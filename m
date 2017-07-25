@@ -1,86 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f178.google.com ([209.85.216.178]:33642 "EHLO
-        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752377AbdGYPzX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2017 11:55:23 -0400
-Received: by mail-qt0-f178.google.com with SMTP id a18so12584455qta.0
-        for <linux-nfs@vger.kernel.org>; Tue, 25 Jul 2017 08:55:23 -0700 (PDT)
-Message-ID: <1500998120.27030.0.camel@redhat.com>
-Subject: Re: [PATCH 00/20] Reducing inode->i_lock contention in writebacks
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Date: Tue, 25 Jul 2017 11:55:20 -0400
-In-Reply-To: <20170719220955.58210-1-trond.myklebust@primarydata.com>
-References: <20170719220955.58210-1-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail.linuxfoundation.org ([140.211.169.12]:36958 "EHLO
+        mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754204AbdGYTZd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Jul 2017 15:25:33 -0400
+From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+To: linux-kernel@vger.kernel.org
+Cc: Greg Kroah-Hartman <gregkh@linuxfoundation.org>,
+        stable@vger.kernel.org, "Jason A. Donenfeld" <Jason@zx2c4.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+Subject: [PATCH 4.12 149/196] sunrpc: use constant time memory comparison for mac
+Date: Tue, 25 Jul 2017 12:22:28 -0700
+Message-Id: <20170725192053.327878085@linuxfoundation.org>
+In-Reply-To: <20170725192046.422343510@linuxfoundation.org>
+References: <20170725192046.422343510@linuxfoundation.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-07-19 at 18:09 -0400, Trond Myklebust wrote:
-> Chuck Lever has presented measurements, that would appear to indicate that
-> the inode->i_lock can be a source of contention when doing writeback using
-> high performance networks. This patch series is therefore an attempt to
-> address the sources of contention that his measurements pointed to.
-> 
-> According to Chuck's table, the main sources of contention appear to
-> be in nfs_flush_incompatible(), nfs_lock_and_join_requests() and
-> nfs_updatepage(). Most of this patch series focuses on fixing
-> nfs_lock_and_join_requests(), since it holds the inode lock, while
-> taking locks on the page group and the sub-requests themselves,
-> rolling them all back if ever there is contention.
-> By noting a few simple rules that are mostly already in place, we
-> can simplify that locking to ensure that we only have to keep the
-> spin lock while we're dereferencing and locking the head page pointer
-> that is stored in page_private(page).
-> 
-> Along the way, the patches also simplify the code a little, and fix
-> a number of subtle races which mainly occur when you set wsize to
-> some value smaller than the page size. The most notable such race
-> occurs between nfs_lock_and_join_requests() and nfs_page_group_destroy(),
-> and could lead to a double free() of some of the sub-requests.
-> 
-> Finally, there are 2 patches tacked onto the end of the series that
-> attempt to improve the throttling of writes when the RPC layer is
-> congested. They do so by forcing each caller of nfs_initiate_pgio()
-> to wait until the request is being transmitted. The expectation is
-> that this might help improve latencies when there are several processes
-> competing for access to the RPC transport.
-> 
-> Trond Myklebust (20):
->   NFS: Simplify page writeback
->   NFS: Reduce lock contention in nfs_page_find_head_request()
->   NFS: Reduce lock contention in nfs_try_to_update_request()
->   NFS: Ensure we always dereference the page head last
->   NFS: Fix a reference and lock leak in nfs_lock_and_join_requests()
->   NFS: Fix an ABBA issue in nfs_lock_and_join_requests()
->   NFS: Don't check request offset and size without holding a lock
->   NFS: Don't unlock writebacks before declaring PG_WB_END
->   NFS: Fix the inode request accounting when pages have subrequests
->   NFS: Teach nfs_try_to_update_request() to deal with request
->     page_groups
->   NFS: Remove page group limit in nfs_flush_incompatible()
->   NFS: Reduce inode->i_lock contention in nfs_lock_and_join_requests()
->   NFS: Further optimise nfs_lock_and_join_requests()
->   NFS: Fix nfs_page_group_destroy() and nfs_lock_and_join_requests()
->     race cases
->   NFS: Remove nfs_page_group_clear_bits()
->   NFS: Remove unuse function nfs_page_group_lock_wait()
->   NFS: Remove unused parameter from nfs_page_group_lock()
->   NFS: Fix up nfs_page_group_covers_page()
->   SUNRPC: Add a function to allow waiting for RPC transmission
->   NFS: Throttle I/O to the NFS server
-> 
->  fs/nfs/pagelist.c            |  64 +++------
->  fs/nfs/write.c               | 313 ++++++++++++++++++-------------------------
->  include/linux/nfs_page.h     |   3 +-
->  include/linux/sunrpc/sched.h |   3 +
->  net/sunrpc/sched.c           |  22 +++
->  net/sunrpc/xprt.c            |   6 +
->  6 files changed, 177 insertions(+), 234 deletions(-)
-> 
+4.12-stable review patch.  If anyone has any objections, please let me know.
 
-Looks good:
+------------------
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+From: Jason A. Donenfeld <Jason@zx2c4.com>
+
+commit 15a8b93fd5690de017ce665382ea45e5d61811a4 upstream.
+
+Otherwise, we enable a MAC forgery via timing attack.
+
+Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@poochiereds.net>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+
+---
+ net/sunrpc/auth_gss/gss_krb5_crypto.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -34,6 +34,7 @@
+  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+  */
+ 
++#include <crypto/algapi.h>
+ #include <crypto/hash.h>
+ #include <crypto/skcipher.h>
+ #include <linux/err.h>
+@@ -927,7 +928,7 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kc
+ 	if (ret)
+ 		goto out_err;
+ 
+-	if (memcmp(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
++	if (crypto_memneq(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
+ 		ret = GSS_S_BAD_SIG;
+ 		goto out_err;
+ 	}
+
+
