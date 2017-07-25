@@ -1,127 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57344 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:44542 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752542AbdGYPTA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 25 Jul 2017 11:19:00 -0400
-Date: Tue, 25 Jul 2017 11:18:58 -0400
+        id S1752186AbdGYPTU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 25 Jul 2017 11:19:20 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.phx2.redhat.com [10.5.11.13])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id B8F28C0D473F
+        for <linux-nfs@vger.kernel.org>; Tue, 25 Jul 2017 15:19:20 +0000 (UTC)
 From: Scott Mayhew <smayhew@redhat.com>
-To: NeilBrown <neilb@suse.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH v4] systemd: add instructions for disabling
- gssd to nfs.systemd.man
-Message-ID: <20170725151858.giqjb6dhogrl4lvj@tonberry.usersys.redhat.com>
-References: <20170720202422.14153-1-smayhew@redhat.com>
- <87a83wyi00.fsf@notabene.neil.brown.name>
- <20170722162540.aonaowrupf555trn@tonberry.usersys.redhat.com>
- <874lu4xete.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <874lu4xete.fsf@notabene.neil.brown.name>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] systemd: add a blurb about masking rpc-gssd to the man page
+Date: Tue, 25 Jul 2017 11:19:20 -0400
+Message-Id: <20170725151920.21760-1-smayhew@redhat.com>
+In-Reply-To: <87a83wyi00.fsf@notabene.neil.brown.name>
+References: <87a83wyi00.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 23 Jul 2017, NeilBrown wrote:
+This is helpful for users that have a krb5.keytab but do not want to use
+secure NFS.  Also fixed a typo that appears earlier on the page.
 
-> On Sat, Jul 22 2017, Scott Mayhew wrote:
-> 
-> > On Sat, 22 Jul 2017, NeilBrown wrote:
-> >
-> >> On Thu, Jul 20 2017, Scott Mayhew wrote:
-> >> 
-> >> > We've had several users complain about gssd automatically starting.  Not
-> >> > everyone who has a krb5.keytab want to use secure NFS; the instructions
-> >> > for disabling gssd ought to be on the man page in addition to the README
-> >> > (which may not even be included in a distro's nfs-utils package).
-> >> >
-> >> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> >> > ---
-> >> >  systemd/nfs.systemd.man | 17 ++++++++++++++++-
-> >> >  1 file changed, 16 insertions(+), 1 deletion(-)
-> >> >
-> >> > diff --git a/systemd/nfs.systemd.man b/systemd/nfs.systemd.man
-> >> > index 01801eb..7675320 100644
-> >> > --- a/systemd/nfs.systemd.man
-> >> > +++ b/systemd/nfs.systemd.man
-> >> > @@ -79,11 +79,26 @@ unit should be enabled.
-> >> >  Several other units which might be considered to be optional, such as
-> >> >  .I rpc-gssd.service
-> >> >  are careful to only start if the required configuration file exists.
-> >> > -.I rpc-gsdd.service
-> >> > +.I rpc-gssd.service
-> >> >  will not start if the
-> >> >  .I krb5.keytab
-> >> >  file does not exist (typically in
-> >> >  .IR /etc ).
-> >> > +.B rpc.gssd
-> >> > +is assumed to be needed if the
-> >> > +.I krb5.keytab
-> >> > +file is present.  If a site needs this file present but does not want
-> >> > +.B rpc.gssd
-> >> > +running, it should create
-> >> > +.B /etc/systemd/system/rpc-gssd.service.d/01-disable.conf
-> >> 
-> >> A substantially simpler approach would be to recommend
-> >> 
-> >>   systemctl mask rpc-gssd.service
-> >
-> > Thanks, Neil.  I had actually tried that a while back, but it doesn't seem
-> > to work in RHEL.  It works fine for rpcbind, so I thought that maybe the
-> > Condition clause in the unit file took precedence over masking or
-> > something.  I see now that masking rpc-gssd works in Fedora, so I'll go
-> > digging in systemd to see if there's a bug fix that might need to be
-> > backported to RHEL.
-> >
-> > Anyways, any objection to listing both methods in the man page?
-> 
-> It depends on why "mask" doesn't work in RHEL.
-> If the reason is specific to RHEL, then I don't think it should be
-> documented in upstream nfs-utils.
-> If the reason is specific to some version(s) of systemd, then
-> Maybe document it as "use using systemd prior to XXXX, do this instead".
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ systemd/nfs.systemd.man | 18 ++++++++++++++----
+ 1 file changed, 14 insertions(+), 4 deletions(-)
 
-It turns out that we have rpc-gssd.service symlinked to
-nfs-secure.service in both RHEL and Fedora for backward compatibility
-purposes, so it's necessary to mask both.
-
-I'll send a patch documenting masking just the rpc-gssd.service.
-
--Scott
-> 
-> NeilBrown
-> 
-> 
-> >
-> > -Scott
-> >> 
-> >> "mask" is also useful for disabling rpcbind if you use NFSv4 only and
-> >> don't want the extra service.
-> >> 
-> >> NeilBrown
-> >> 
-> >> 
-> >> > +containing
-> >> > +.RS
-> >> > +.nf
-> >> > +[Unit]
-> >> > +ConditionNull=false
-> >> > +.fi
-> >> > +.RE
-> >> > +
-> >> >  .SS Restarting NFS services
-> >> >  Most NFS daemons can be restarted at any time.  They will reload any
-> >> >  state that they need, and continue servicing requests.  This is rarely
-> >> > -- 
-> >> > 2.9.4
-> >> >
-> >> > --
-> >> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> > the body of a message to majordomo@vger.kernel.org
-> >> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >
-> >
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/systemd/nfs.systemd.man b/systemd/nfs.systemd.man
+index 01801eb..46b476a 100644
+--- a/systemd/nfs.systemd.man
++++ b/systemd/nfs.systemd.man
+@@ -79,7 +79,7 @@ unit should be enabled.
+ Several other units which might be considered to be optional, such as
+ .I rpc-gssd.service
+ are careful to only start if the required configuration file exists.
+-.I rpc-gsdd.service
++.I rpc-gssd.service
+ will not start if the
+ .I krb5.keytab
+ file does not exist (typically in
+@@ -120,10 +120,11 @@ be needed to reduce system load to an absolute minimum, or to reduce
+ attack surface by not running daemons that are not absolutely
+ required.
+ .PP
+-Two particular services which this can apply to are
+-.I rpcbind
++Three particular services which this can apply to are
++.IR rpcbind ,
++.IR idmapd ,
+ and
+-.IR idmapd .
++.IR rpc-gssd .
+ .I rpcbind
+ is not part of the
+ .I nfs-utils
+@@ -155,6 +156,15 @@ is not needed and not wanted, it can be masked with
+ .RS
+ .B systemctl mask idmapd
+ .RE
++.I rpc-gssd
++is assumed to be needed if the
++.I krb5.keytab
++file is present.  If a site needs this file present but does not want
++.I rpc-gssd
++running, it can be masked with
++.RS
++.B systemctl mask rpc-gssd
++.RE
+ .SH FILES
+ /etc/nfs.conf
+ .br
+-- 
+2.9.4
 
