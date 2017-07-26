@@ -1,113 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52169 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750897AbdGYWUj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 25 Jul 2017 18:20:39 -0400
-From: NeilBrown <neilb@suse.com>
-To: Scott Mayhew <smayhew@redhat.com>, steved@redhat.com
-Date: Wed, 26 Jul 2017 08:20:29 +1000
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] systemd: add a blurb about masking rpc-gssd to the man page
-In-Reply-To: <20170725151920.21760-1-smayhew@redhat.com>
-References: <87a83wyi00.fsf@notabene.neil.brown.name> <20170725151920.21760-1-smayhew@redhat.com>
-Message-ID: <87mv7sw442.fsf@notabene.neil.brown.name>
+Received: from mx1.redhat.com ([209.132.183.28]:52740 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750710AbdGZFCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 26 Jul 2017 01:02:20 -0400
+Date: Wed, 26 Jul 2017 13:02:18 +0800
+From: Eryu Guan <eguan@redhat.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [4.13-rc2 regression] NFSv4 fails file permission tests in
+ fstests generic/126
+Message-ID: <20170726050218.GS9167@eguan.usersys.redhat.com>
+References: <20170724141935.GF9167@eguan.usersys.redhat.com>
+ <2a18fac0-1b5c-e3d7-43b6-d932709e7655@gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2a18fac0-1b5c-e3d7-43b6-d932709e7655@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Tue, Jul 25, 2017 at 03:52:36PM -0400, Anna Schumaker wrote:
+> Hi Eryu,
+> 
+> On 07/24/2017 10:19 AM, Eryu Guan wrote:
+> > Hi all,
+> > 
+> > I saw a new NFS failure in 4.13-rc2 kernel when running fstests
+> > generic/126 on NFSv4 mounts, 4.13-rc1 kernel passed the same test.
+> > 
+> > git bisect pointed the first bad to commit bd8b2441742b.
+> > 
+> > commit bd8b2441742b49c76bec707757bd9c028ea9838e
+> > Author: Trond Myklebust <trond.myklebust@primarydata.com>
+> > Date:   Tue Jul 11 17:54:34 2017 -0400
+> > 
+> >     NFS: Store the raw NFS access mask in the inode's access cache
+> >     
+> >     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> >     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> > 
+> > I can reproduce it manually with these steps:
+> > 
+> > mount -t nfs -o vers=4.1 server:/export /mnt/nfs
+> > cp /usr/bin/ls /mnt/nfs
+> > chmod 001 /mnt/nfs/ls
+> > chown 99:99 /mnt/nfs/ls
+> > su testuser -c "/mnt/nfs/ls"
+> > 
+> > (testuser uid and gid are not 99.)
+> > 
+> > The last command got permission denied with 4.13-rc2.
+> 
+> Thanks for letting me know!  I think I see the problem: the patch changed how the
+> access system call is cached but didn't update caching for NFSv4 opens (which is why
+> v3 still passes).  Does this patch help?
 
-On Tue, Jul 25 2017, Scott Mayhew wrote:
+Yes, this patch solved generic/126 failure, I tested with nfsv4.0/1/2
+and nfsv3, all passed now. But I didn't do further tests against this
+patch.
 
-> This is helpful for users that have a krb5.keytab but do not want to use
-> secure NFS.  Also fixed a typo that appears earlier on the page.
->
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Thanks!
 
+Eryu
 
- Reviewed-by: NeilBrown <neilb@suse.com>
-
-Thanks,
-NeilBrown
-
-> ---
->  systemd/nfs.systemd.man | 18 ++++++++++++++----
->  1 file changed, 14 insertions(+), 4 deletions(-)
->
-> diff --git a/systemd/nfs.systemd.man b/systemd/nfs.systemd.man
-> index 01801eb..46b476a 100644
-> --- a/systemd/nfs.systemd.man
-> +++ b/systemd/nfs.systemd.man
-> @@ -79,7 +79,7 @@ unit should be enabled.
->  Several other units which might be considered to be optional, such as
->  .I rpc-gssd.service
->  are careful to only start if the required configuration file exists.
-> -.I rpc-gsdd.service
-> +.I rpc-gssd.service
->  will not start if the
->  .I krb5.keytab
->  file does not exist (typically in
-> @@ -120,10 +120,11 @@ be needed to reduce system load to an absolute mini=
-mum, or to reduce
->  attack surface by not running daemons that are not absolutely
->  required.
->  .PP
-> -Two particular services which this can apply to are
-> -.I rpcbind
-> +Three particular services which this can apply to are
-> +.IR rpcbind ,
-> +.IR idmapd ,
->  and
-> -.IR idmapd .
-> +.IR rpc-gssd .
->  .I rpcbind
->  is not part of the
->  .I nfs-utils
-> @@ -155,6 +156,15 @@ is not needed and not wanted, it can be masked with
->  .RS
->  .B systemctl mask idmapd
->  .RE
-> +.I rpc-gssd
-> +is assumed to be needed if the
-> +.I krb5.keytab
-> +file is present.  If a site needs this file present but does not want
-> +.I rpc-gssd
-> +running, it can be masked with
-> +.RS
-> +.B systemctl mask rpc-gssd
-> +.RE
->  .SH FILES
->  /etc/nfs.conf
->  .br
-> --=20
-> 2.9.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAll3xC4ACgkQOeye3VZi
-gbnJzQ/+OoQHtw4XFw0EevE99zS3zp27epJOSdn+z39iVI6MwfRe4WTQ+NPJyCwh
-FVLnZbdWbJV4hC6gDqf/1m9aT1cRSa5EFLa9obt325+Ec97acgf91bI7x7iPjJtf
-rXmDcj06qb7DBpnE2DwKzqPZCrxzl8h7bJlJEQ5LNtiemyuCSZOzi+rYBor0MB8n
-d7YjDO5jt+vpQeDpdSvyZBAEHDKala1kx0BSimD6pgMvGAXdyjxqCGeV/Wy9V5Gn
-8K0YBy6Jq5kvgWPRRgV1RL0BoQTwQ8mFS6uGYacpBuAroPdViY+SrNkEG1YbYChN
-xZgOb5vAxsALl/HjOwqFYKBgbVD10QvJvWxY7yP0zxlK27Lui7mXztfQF5bHBptP
-UP9fbM7crw991W/f/FAbJUnOG0+5fwAPjgrnezWf9LaNGrXl1YkMN7b8SxdVllba
-1D4OQvABYeZu6d7RpLef/guWzUKac0zP043oyZ6uGUv2ytZvuO7jroVMqHS3rjYn
-8BWlInar4aOfElRwtZQ9e9hQEdgoccZUkl44dQuTYHOPWZxAOQBgHzkEURGkOkQO
-OBa9GxHqIWpPmRWHcSqUEAnuzTzr6sl0a9aYRsoo73XcmDLnK+k/1PV0DOOpU//1
-petkJxZkRnrZy33QMSTk4rsu+RvQhc2pWB3hVGJ6LTqhSIbNkCQ=
-=V42P
------END PGP SIGNATURE-----
---=-=-=--
+> 
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index e1a26c653e78..4893c9f9829b 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2250,16 +2250,16 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
+>          */
+>         if (openflags & __FMODE_EXEC) {
+>                 /* ONLY check for exec rights */
+> -               mask = MAY_EXEC;
+> +               mask = NFS4_ACCESS_EXECUTE;
+>         } else if ((fmode & FMODE_READ) && !opendata->file_created)
+> -               mask = MAY_READ;
+> +               mask = NFS4_ACCESS_READ;
+>  
+>         cache.cred = cred;
+>         cache.jiffies = jiffies;
+>         nfs_access_set_mask(&cache, opendata->o_res.access_result);
+>         nfs_access_add_cache(state->inode, &cache);
+>  
+> -       if ((mask & ~cache.mask & (MAY_READ | MAY_EXEC)) == 0)
+> +       if ((mask & ~cache.mask & (NFS4_ACCESS_READ | NFS4_ACCESS_EXECUTE)) == 0)
+>                 return 0;
+>  
+>         return -EACCES;
+> 
+> 
+> > 
+> > Thanks,
+> > Eryu
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
