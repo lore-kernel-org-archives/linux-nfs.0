@@ -1,67 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:37979 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751857AbdGZNhe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Jul 2017 09:37:34 -0400
-Subject: Re: [REGRESSION 4.13-rc] NFS returns -EACCESS at the first read
-To: Takashi Iwai <tiwai@suse.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <s5h4ltzl5oq.wl-tiwai@suse.de>
- <acfb6b19-b183-16ef-a6c5-2fc97cf8eb6b@gmail.com>
- <s5hzibrjpge.wl-tiwai@suse.de>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <0b39602f-b92f-bc65-1116-fcf446232849@gmail.com>
-Date: Wed, 26 Jul 2017 09:37:31 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:42504 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750867AbdGZPIx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 26 Jul 2017 11:08:53 -0400
+Subject: Fwd: Re: [nfsv4] The Fall Bakeathon in Westford, Ma
+References: <da19e075-7607-3e86-880f-36cc1cb2fd6f@RedHat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        NFSv4 <nfsv4@ietf.org>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <aa6b1b92-45d8-bb34-65e5-2a7eb7a0f29c@RedHat.com>
+Date: Wed, 26 Jul 2017 11:08:52 -0400
 MIME-Version: 1.0
-In-Reply-To: <s5hzibrjpge.wl-tiwai@suse.de>
+In-Reply-To: <da19e075-7607-3e86-880f-36cc1cb2fd6f@RedHat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+Hello,
 
-On 07/26/2017 09:30 AM, Takashi Iwai wrote:
-> On Wed, 26 Jul 2017 14:57:07 +0200,
-> Anna Schumaker wrote:
->>
->> Hi Takashi,
->>
->> On 07/26/2017 08:54 AM, Takashi Iwai wrote:
->>> Hi,
->>>
->>> I seem hitting a regression of NFS client on the today's Linus git
->>> tree.  The symptom is that the file read over NFS returns occasionally
->>> -EACCESS at the first read.  When I try to read the same file again
->>> (or do some other thing), I can read it successfully.
->>>
->>> The git bisection leaded to the commit
->>> bd8b2441742b49c76bec707757bd9c028ea9838e
->>>     NFS: Store the raw NFS access mask in the inode's access cache
->>>
->>>
->>> Any further hint for debugging?
->>
->> Does the patch in this email thread help? http://www.spinics.net/lists/linux-nfs/msg64930.html
-> 
-> Thanks, I gave it a shot and the result looks good.  Feel free to my
-> tested-by tag:
->   Tested-by: Takashi Iwai <tiwai@suse.de>
-> 
-> 
-> Though, when I look around the code, I feel somehow uneasy by that
-> still MAY_XXX is used for nfs_access_entry.mask, e.g. in
-> nfs3_proc_access() or nfs4_proc_access().  Are these function OK
-> without the similar conversion?
+Just a quick reminder the BAT is a little more
+than two months out... 
 
-I just started looking at that at the end of the day yesterday.  I think they work by accident, since all the bits in the mask are set by nfs_do_access().  They should probably be converted, but I don't think it's urgent.
+All the hotels now good to go, you about a month
+before the block rates expire. 
 
-Anna
+Starting next week I will be on an extend PTO
+for the first three weeks in Aug which I may
+not have access to the internet. So if I don't
+reply its probably because I probably can't!
 
+After PTO, which will be about a month out,
+I'll will to catch up. 
+
+All the details are on the website
+   http://nfsv4bat.org/Events/2017/September/BAT/index.html
+
+I hope to see you there! 
+
+steved.
+-------- Forwarded Message --------
+Subject: Re: [nfsv4] The Fall Bakeathon in Westford, Ma
+Date: Thu, 22 Jun 2017 16:54:26 -0400
+From: Steve Dickson <SteveD@RedHat.com>
+To: NFSv4 <nfsv4@ietf.org>, Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+
+Hello,
+
+On 06/15/2017 04:18 PM, Steve Dickson wrote:
+> Red Hat is pleased to announce the Fall NFS Bake-a-ton will be
+> hosted by Red Hat in Westford, MA office 
+> The Date: *The last week in Sept (25th - 29th)*
 > 
-> 
-> thanks,
-> 
-> Takashi
-> 
+> Details and registration info:
+>     http://nfsv4bat.org/Events/2017/September/BAT/index.html
+Tomorrow morning the website will be updated with the current
+hotel information, but in a nutshell:
+
+Westford Regency Inn: $113.00 
+   Ask for the Red Hat Corporate Rate
+
+Hampton Inn & Suites Westford: $129.00
+   Use 'BAT' as the group code under 'Add special rate code'
+
+Residence Inn Marriott: $129.00
+   There is a link to click on the web page that 
+   will give you that price.
+
+The block rates for the Hampton and Marriott
+expire a month before the event.
+
+All have shuttles to Red Hat.
+
+Both the Hampton and Marriott have continental breakfast
+and the Marriott has a light dinner
+
+The Marriott is the closest but not walk-able.
+
+The Hampton is the farthest from Red Hat but walk-able
+to a couple decent restaurants/bars
+
+The Regency Inn is the only one with a bar and
+restaurant. They also are claiming they have a 
+number "updated" rooms. I would ask for one of
+those since it is the oldest. 
+
+Any questions... you know where I live ;-)
+
+steved.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
