@@ -1,50 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43241 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751413AbdG0Rj0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 27 Jul 2017 13:39:26 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+Received: from mx.cs.uchicago.edu ([128.135.164.214]:57316 "EHLO
+        mx.cs.uchicago.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751633AbdG0VkH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jul 2017 17:40:07 -0400
+Received: from localhost (localhost [127.0.0.1])
+        by mx.cs.uchicago.edu (Postfix) with ESMTP id 619845FFB0
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2017 16:40:07 -0500 (CDT)
+Received: from mx.cs.uchicago.edu ([127.0.0.1])
+        by localhost (mx.cs.uchicago.edu [127.0.0.1]) (amavisd-new, port 10024)
+        with LMTP id 4k9eMe_Q93fE for <linux-nfs@vger.kernel.org>;
+        Thu, 27 Jul 2017 16:40:06 -0500 (CDT)
+Received: from [128.135.11.234] (hester2.cs.uchicago.edu [128.135.11.234])
+        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id EB6AB496
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2017 17:39:25 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id BB7754D751
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2017 17:39:25 +0000 (UTC)
-Subject: Re: [PATCH] mountstats: remove shebang
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20170727144048.6062-1-steved@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <aab53856-3b59-8b59-0f2e-e7fdfca1af46@RedHat.com>
-Date: Thu, 27 Jul 2017 13:39:25 -0400
+        by mx.cs.uchicago.edu (Postfix) with ESMTPSA id 9004C5FD8E
+        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2017 16:40:06 -0500 (CDT)
+Subject: Re: /etc/mtab read ~900 times by rpc.mountd
+To: linux-nfs@vger.kernel.org
+References: <f9dcc371-cd94-6b39-dd6a-b412bdf03df4@cs.uchicago.edu>
+ <8737a9x9ky.fsf@notabene.neil.brown.name> <595F1A3A.7070405@cs.uchicago.edu>
+ <87efto69rs.fsf@notabene.neil.brown.name>
+ <4ec2a8fc-3ca5-d26b-7742-be4e2f749c21@cs.uchicago.edu>
+ <87y3rv4zrb.fsf@notabene.neil.brown.name>
+ <1740081e-6180-1c88-0a0c-8747a92c65a1@cs.uchicago.edu>
+ <87bmoq4h41.fsf@notabene.neil.brown.name>
+ <9e16d6c3-a675-b53e-c6f3-dfa9cdf1d5c9@cs.uchicago.edu>
+ <871spj1pfr.fsf@notabene.neil.brown.name>
+ <03636068-4cc7-896e-5f8b-8c3ebfd2aa94@cs.uchicago.edu>
+ <87h8xywl4t.fsf@notabene.neil.brown.name>
+From: Phil Kauffman <kauffman@cs.uchicago.edu>
+Message-ID: <3fd8c348-13ee-ce90-a1d5-d0c652f66c89@cs.uchicago.edu>
+Date: Thu, 27 Jul 2017 16:40:06 -0500
 MIME-Version: 1.0
-In-Reply-To: <20170727144048.6062-1-steved@redhat.com>
+In-Reply-To: <87h8xywl4t.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 07/26/2017 11:37 PM, NeilBrown wrote:
+> Weird.
+I thought so as well.
+
+> So it seems like the context is different in some way.
+It is in the sense that I am now using 1.3.4 and 2.1.1 vanilla on Ubuntu Xenial(provides 1.2.8) without any of debian's patches or niceties. 
+
+ 
+> Your nfs_test_notes.txt doesn't show /etc/export.d getting filled in
+> ... maybe that it done automatically somehow...
+I copied the files from the original NFS server into /etc/exports.d  as part of the VM snapshot I revert back to. My notes say 'mkdir -p /etc/exports.d', but this step is not necessary.
+
+root@nfsserver:~# ls /etc/exports.d/ | wc -l
+972
+
+I only added 3 extra files so that 'nfsclient' would be able to mount from the testing server (nfsserver).
+
+The ZFS datasets were also precreated:
+
+root@nfsserver:~# zfs list | wc -l
+6062
 
 
-On 07/27/2017 10:40 AM, Steve Dickson wrote:
-> There might be an issue that the script is executed with unwanted
-> version of <lang>.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
+> Can you try with unpatches 2.1.1?
+I assume you mean without any patches. vanilla 2.1.1
 
-steved.
-> ---
->  tools/mountstats/mountstats.py | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-> index 88ccdae..a68d702 100644
-> --- a/tools/mountstats/mountstats.py
-> +++ b/tools/mountstats/mountstats.py
-> @@ -1,4 +1,4 @@
-> -#!/usr/bin/env python
-> +#!/usr/bin/python
->  # -*- python-mode -*-
->  """Parse /proc/self/mountstats and display it in human readable form
->  """
-> 
+> Also maybe provide an strace starting before any attempt to mount
+> anything, and with an extra option "-s 1000"..
+
+This is all that happens *before* trying to mount from the client.
+root@nfsserver:~# systemctl restart nfs-server; exportfs -f; m=$(pgrep rpc.mountd); strace -s 1000 -ttt -T -p $m 2>&1 | tee strace_rpc.mountd2.txt
+strace: Process 2517 attached
+1501190436.659800 select(1024, [3 4 5 7 8 9 10 11 12 13 14 15 16 17 18], NULL, NULL, NULL
+
+Stracing rpc.nfsd:
+root@nfsserver:~# exportfs -f; strace -s1000 -ttt -T /usr/sbin/rpc.nfsd 0 2>&1| tee strace_nfsd.txt; /usr/sbin/sm-notify
+http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/take3/strace_rpc.nfsd.txt
+
+When mounting from the client I get a strace that is 1.3G (it seems '-s' was not respected for some reason): http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/take3/strace_rpc.mountd.txt 
+
+
+
+
+-- 
+Phil Kauffman
+Systems Admin
+Dept. of Computer Science
+University of Chicago
+kauffman@cs.uchicago.edu
