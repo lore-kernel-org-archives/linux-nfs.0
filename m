@@ -1,88 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx.cs.uchicago.edu ([128.135.164.214]:57316 "EHLO
-        mx.cs.uchicago.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751633AbdG0VkH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Jul 2017 17:40:07 -0400
-Received: from localhost (localhost [127.0.0.1])
-        by mx.cs.uchicago.edu (Postfix) with ESMTP id 619845FFB0
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2017 16:40:07 -0500 (CDT)
-Received: from mx.cs.uchicago.edu ([127.0.0.1])
-        by localhost (mx.cs.uchicago.edu [127.0.0.1]) (amavisd-new, port 10024)
-        with LMTP id 4k9eMe_Q93fE for <linux-nfs@vger.kernel.org>;
-        Thu, 27 Jul 2017 16:40:06 -0500 (CDT)
-Received: from [128.135.11.234] (hester2.cs.uchicago.edu [128.135.11.234])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
-        (No client certificate requested)
-        by mx.cs.uchicago.edu (Postfix) with ESMTPSA id 9004C5FD8E
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Jul 2017 16:40:06 -0500 (CDT)
-Subject: Re: /etc/mtab read ~900 times by rpc.mountd
-To: linux-nfs@vger.kernel.org
-References: <f9dcc371-cd94-6b39-dd6a-b412bdf03df4@cs.uchicago.edu>
- <8737a9x9ky.fsf@notabene.neil.brown.name> <595F1A3A.7070405@cs.uchicago.edu>
- <87efto69rs.fsf@notabene.neil.brown.name>
- <4ec2a8fc-3ca5-d26b-7742-be4e2f749c21@cs.uchicago.edu>
- <87y3rv4zrb.fsf@notabene.neil.brown.name>
- <1740081e-6180-1c88-0a0c-8747a92c65a1@cs.uchicago.edu>
- <87bmoq4h41.fsf@notabene.neil.brown.name>
- <9e16d6c3-a675-b53e-c6f3-dfa9cdf1d5c9@cs.uchicago.edu>
- <871spj1pfr.fsf@notabene.neil.brown.name>
- <03636068-4cc7-896e-5f8b-8c3ebfd2aa94@cs.uchicago.edu>
- <87h8xywl4t.fsf@notabene.neil.brown.name>
-From: Phil Kauffman <kauffman@cs.uchicago.edu>
-Message-ID: <3fd8c348-13ee-ce90-a1d5-d0c652f66c89@cs.uchicago.edu>
-Date: Thu, 27 Jul 2017 16:40:06 -0500
+Received: from mx2.suse.de ([195.135.220.15]:57051 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751551AbdG0XLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 27 Jul 2017 19:11:34 -0400
+From: NeilBrown <neilb@suse.com>
+To: Stefan Hajnoczi <stefanha@redhat.com>
+Date: Fri, 28 Jul 2017 09:11:22 +1000
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
+In-Reply-To: <20170727105835.GF10129@stefanha-x1.localdomain>
+References: <20170630132120.31578-1-stefanha@redhat.com> <20170630132120.31578-6-stefanha@redhat.com> <952499A1-FBBA-4FD8-97A6-B0014FA5065D@oracle.com> <87wp7lvst9.fsf@notabene.neil.brown.name> <87tw2ox4st.fsf@notabene.neil.brown.name> <20170725100513.GA5073@stefanha-x1.localdomain> <87eft2wjfy.fsf@notabene.neil.brown.name> <20170727105835.GF10129@stefanha-x1.localdomain>
+Message-ID: <8760edwk4l.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <87h8xywl4t.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=utf-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 07/26/2017 11:37 PM, NeilBrown wrote:
-> Weird.
-I thought so as well.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> So it seems like the context is different in some way.
-It is in the sense that I am now using 1.3.4 and 2.1.1 vanilla on Ubuntu Xenial(provides 1.2.8) without any of debian's patches or niceties. 
+On Thu, Jul 27 2017, Stefan Hajnoczi wrote:
 
- 
-> Your nfs_test_notes.txt doesn't show /etc/export.d getting filled in
-> ... maybe that it done automatically somehow...
-I copied the files from the original NFS server into /etc/exports.d  as part of the VM snapshot I revert back to. My notes say 'mkdir -p /etc/exports.d', but this step is not necessary.
+> On Thu, Jul 27, 2017 at 03:13:53PM +1000, NeilBrown wrote:
+>> On Tue, Jul 25 2017, Stefan Hajnoczi wrote:
+>> > On Fri, Jul 07, 2017 at 02:13:38PM +1000, NeilBrown wrote:
+>> >> On Fri, Jul 07 2017, NeilBrown wrote:
+>> >> > On Fri, Jun 30 2017, Chuck Lever wrote:
+>> >> I don't think the server can filter connections based on which interf=
+ace
+>> >> a link-local address came from.  If that was a problem that someone
+>> >> wanted to be fixed, I'm sure we can fix it.
+>> >>=20
+>> >> If you need to be sure that clients don't fake their IPv6 address, I'm
+>> >> sure netfilter is up to the task.
+>> >
+>> > Yes, it's common to prevent spoofing on the host using netfilter and I
+>> > think it wouldn't be a problem.
+>> >
+>> >>  . Creates network interfaces on host that must be managed
+>> >>=20
+>> >> What vsock does is effectively create a hidden interface on the host =
+that only the
+>> >> kernel knows about and so the sysadmin cannot break it.  The only
+>> >> difference between this and an explicit interface on the host is that
+>> >> the latter requires a competent sysadmin.
+>> >>=20
+>> >> If you have other reasons for preferring the use of vsock for NFS, I'=
+d be
+>> >> happy to hear them.  So far I'm not convinced.
+>> >
+>> > Before working on AF_VSOCK I originally proposed adding dedicated
+>> > network interfaces to guests, similar to what you've suggested, but
+>> > there was resistance for additional reasons that weren't covered in the
+>> > presentation:
+>>=20
+>> I would like to suggest that this is critical information for
+>> understanding the design rationale for AF_VSOCK and should be easily
+>> found from http://wiki.qemu.org/Features/VirtioVsock
+>
+> Thanks, I have updated the wiki.
 
-root@nfsserver:~# ls /etc/exports.d/ | wc -l
-972
+Thanks.  How this one:
 
-I only added 3 extra files so that 'nfsclient' would be able to mount from the testing server (nfsserver).
+  Can be used with VMs that have no network interfaces
 
-The ZFS datasets were also precreated:
+is really crying out for some sort of justification.
 
-root@nfsserver:~# zfs list | wc -l
-6062
+And given that ethernet/tcpip  must be some of the most attacked (and
+hence hardened" code in Linux, some explanation of why it is thought
+that they expose more of an attack surface than some brand new code,
+might be helpful.
+
+>
+>> To achieve zero-config, I think link-local addresses are by far the best
+>> answer.  To achieve isolation, some targeted filtering seems like the
+>> best approach.
+>>=20
+>> If you really want traffic between guest and host to go over a vsock,
+>> then some sort of packet redirection should be possible.
+>
+> The issue we seem to hit with designs using AF_INET and network
+> interfaces is that they cannot meet the "it must avoid invasive
+> configuration changes, especially inside the guest" requirement.  It's
+> very hard to autoconfigure in a way that doesn't conflict with the
+> user's network configuration inside the guest.
+>
+> One thought about solving the interface naming problem: if the dedicated
+> NIC uses a well-known OUI dedicated for this purpose then udev could
+> assign a persistent name (e.g. "virtguestif").  This gets us one step
+> closer to non-invasive automatic configuration.
+
+I think this is well worth pursuing.  As you say, an OUI allows the
+guest to reliably detect the right interface to use a link-local address
+on.
+
+Thanks,
+NeilBrown
 
 
-> Can you try with unpatches 2.1.1?
-I assume you mean without any patches. vanilla 2.1.1
+>
+> Stefan
 
-> Also maybe provide an strace starting before any attempt to mount
-> anything, and with an extra option "-s 1000"..
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
-This is all that happens *before* trying to mount from the client.
-root@nfsserver:~# systemctl restart nfs-server; exportfs -f; m=$(pgrep rpc.mountd); strace -s 1000 -ttt -T -p $m 2>&1 | tee strace_rpc.mountd2.txt
-strace: Process 2517 attached
-1501190436.659800 select(1024, [3 4 5 7 8 9 10 11 12 13 14 15 16 17 18], NULL, NULL, NULL
+-----BEGIN PGP SIGNATURE-----
 
-Stracing rpc.nfsd:
-root@nfsserver:~# exportfs -f; strace -s1000 -ttt -T /usr/sbin/rpc.nfsd 0 2>&1| tee strace_nfsd.txt; /usr/sbin/sm-notify
-http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/take3/strace_rpc.nfsd.txt
-
-When mounting from the client I get a strace that is 1.3G (it seems '-s' was not respected for some reason): http://people.cs.uchicago.edu/~kauffman/nfs-kernel-server/take3/strace_rpc.mountd.txt 
-
-
-
-
--- 
-Phil Kauffman
-Systems Admin
-Dept. of Computer Science
-University of Chicago
-kauffman@cs.uchicago.edu
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAll6cxwACgkQOeye3VZi
+gbnOlBAAmFqgnHgF3Xo41FzBZxjk7PD91mCdWGZY5BhBW2M99+mCDuqnIOGR0ZyO
+2vWR6K+XboL5Ej7v/gBYGmLIFP/EegOrC1LD6OnoxanHtuLV9ErgZ4xkJG3N7FHC
+KSfgtIaKCrzsoJeJVqOkRL/bsc1YKRNxfvOCr2FsPhGUBbPln/i+WgIBZ+KannNS
+Fbhug0Lp5k7fLMA2MIj3CmSzoKYlUfHr+We/1SBpdyGWW6Uy02k+tCnbely3vxiF
+K/OS2mBFoJcjg2DQe+OyaUkLShaG9uUyIYcOU6DB4vcZfBMCdvl/Mt9iG3/It6Be
+T/sXCXodjdClubt/ooIIEVFo/QpbjPFICEg5H0N7DXIQDfwQx1sJj42zjQtY6nhy
+1MoysVxiy0BN3PINEn5SGoxKJLiIE74FcY/XUgpPsX9BkIqm2wmgyajPbDRzenuT
+8gY7uq1tfEftHZWQY4PWFlYDCVZU1vS6SzYigp30HgjdJ0JWvURk5pZlIruPq8DR
+m4hOQt1zbIZnX4sWFZgyxdNVfVfbA+1M2wCB5viBm7vDdAWkEJ9+7ckxIJbpawrC
+cQGRSemosjdbvU7nk2ih7klZHtMF2xygYMpL8dEJywAaIvRbga0ATmMBCq+3pqcx
+WRUvUu8G0B3Erv/yDV84yIIEqQcI2jIbqdduucJTjNsnMTKES3E=
+=uNR0
+-----END PGP SIGNATURE-----
+--=-=-=--
