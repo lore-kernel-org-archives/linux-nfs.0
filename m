@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx143.netapp.com ([216.240.21.24]:53523 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752947AbdG1Uu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        id S1752949AbdG1Uu1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
         Fri, 28 Jul 2017 16:50:27 -0400
 From: <andros@netapp.com>
 To: <steved@redhat.com>
 CC: <anna.schumaker@netapp.com>, <olga.kornievskaia@netapp.com>,
         <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 1/2] GSSD: Add RPCSEC_GSS version to downcall
-Date: Fri, 28 Jul 2017 16:50:21 -0400
-Message-ID: <1501275022-24313-2-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 4 2/2] GSSD add option to not put gss version in downcall
+Date: Fri, 28 Jul 2017 16:50:22 -0400
+Message-ID: <1501275022-24313-3-git-send-email-andros@netapp.com>
 In-Reply-To: <1501275022-24313-1-git-send-email-andros@netapp.com>
 References: <1501275022-24313-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -19,73 +19,88 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-retry without gss_vers on downcall failure
+This results in using GSSv1, and not trying GSSv3
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- configure.ac           |  1 +
- utils/gssd/gssd_proc.c | 17 +++++++++++++++--
- 2 files changed, 16 insertions(+), 2 deletions(-)
+ utils/gssd/gssd.c      | 9 +++++++--
+ utils/gssd/gssd.h      | 1 +
+ utils/gssd/gssd_proc.c | 2 +-
+ 3 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 1ca1603..77827c7 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -9,6 +9,7 @@ AC_PREREQ(2.59)
- AC_PREFIX_DEFAULT(/usr)
- AM_MAINTAINER_MODE
- AC_USE_SYSTEM_EXTENSIONS
-+AC_PROG_RANLIB
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index 4d18d35..58cd0b2 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -89,6 +89,8 @@ unsigned int  rpc_timeout = 5;
+ char *preferred_realm = NULL;
+ /* Avoid DNS reverse lookups on server names */
+ static bool avoid_dns = true;
++/* Add gss version to downcall for GSSv3 */
++bool use_gss_vers = true;
+ int thread_started = false;
+ pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
+ pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
+@@ -832,7 +834,7 @@ sig_die(int signal)
+ static void
+ usage(char *progname)
+ {
+-	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
++	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D] [-G]\n",
+ 		progname);
+ 	exit(1);
+ }
+@@ -877,7 +879,7 @@ main(int argc, char *argv[])
+ 	if (s)
+ 		preferred_realm = s;
  
- dnl *************************************************************
- dnl * Define the set of applicable options
+-	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
++	while ((opt = getopt(argc, argv, "DGfvrlmnMp:k:d:t:T:R:")) != -1) {
+ 		switch (opt) {
+ 			case 'f':
+ 				fg = 1;
+@@ -925,6 +927,9 @@ main(int argc, char *argv[])
+ 			case 'D':
+ 				avoid_dns = false;
+ 				break;
++			case 'G':
++				use_gss_vers = false;
++				break;
+ 			default:
+ 				usage(argv[0]);
+ 				break;
+diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+index f4f5975..e2604c0 100644
+--- a/utils/gssd/gssd.h
++++ b/utils/gssd/gssd.h
+@@ -66,6 +66,7 @@ extern pthread_mutex_t ple_lock;
+ extern pthread_cond_t pcond;
+ extern pthread_mutex_t pmutex;
+ extern int thread_started;
++extern bool use_gss_vers;
+ 
+ struct clnt_info {
+ 	TAILQ_ENTRY(clnt_info)	list;
 diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index d74d372..689d916 100644
+index 689d916..f2cee58 100644
 --- a/utils/gssd/gssd_proc.c
 +++ b/utils/gssd/gssd_proc.c
-@@ -149,13 +149,19 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+@@ -149,7 +149,6 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
  	char    *buf = NULL, *p = NULL, *end = NULL;
  	unsigned int timeout = context_timeout;
  	unsigned int buf_size = 0;
-+	bool use_gss_vers = true;
+-	bool use_gss_vers = true;
  
--	printerr(2, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
--		lifetime_rec, acceptor->length, acceptor->value);
-+retry:
-+	printerr(2, "doing downcall: lifetime_rec=%u acceptor=%.*s"
-+		"gss vers %d\n", lifetime_rec, acceptor->length,
-+		acceptor->value, use_gss_vers ? pd->pd_gss_vers : 1);
- 	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
- 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
- 		sizeof(context_token->length) + context_token->length +
- 		sizeof(acceptor->length) + acceptor->length;
-+	if (use_gss_vers)
-+		buf_size += sizeof(pd->pd_gss_vers);
-+
- 	p = buf = malloc(buf_size);
- 	if (!buf)
- 		goto out_err;
-@@ -171,6 +177,8 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
- 	if (write_buffer(&p, end, &pd->pd_ctx_hndl)) goto out_err;
- 	if (write_buffer(&p, end, context_token)) goto out_err;
- 	if (write_buffer(&p, end, acceptor)) goto out_err;
-+	if (use_gss_vers)
-+		if (WRITE_BYTES(&p, end, pd->pd_gss_vers)) goto out_err;
- 
- 	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
- 	free(buf);
-@@ -178,6 +186,11 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
- out_err:
- 	free(buf);
- 	printerr(1, "Failed to write downcall!\n");
-+	if (use_gss_vers) {
-+		printerr(1, "Retry downcall without gss_vers\n");
-+		use_gss_vers = false;
-+		goto retry;
-+	}
- 	return;
- }
- 
+ retry:
+ 	printerr(2, "doing downcall: lifetime_rec=%u acceptor=%.*s"
+@@ -330,6 +329,7 @@ create_auth_rpc_client(struct clnt_info *clp,
+ 	sec.svc = RPCSEC_GSS_SVC_NONE;
+ 	sec.cred = cred;
+ 	sec.req_flags = 0;
++	sec.gss_vers = use_gss_vers ? RPCSEC_GSS3_VERSION : RPCSEC_GSS_VERSION;
+ 	if (authtype == AUTHTYPE_KRB5) {
+ 		sec.mech = (gss_OID)&krb5oid;
+ 		sec.req_flags = GSS_C_MUTUAL_FLAG;
 -- 
 1.8.3.1
 
