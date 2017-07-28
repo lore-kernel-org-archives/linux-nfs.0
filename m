@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx61.netapp.com ([216.240.31.181]:5252 "EHLO mx61.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752710AbdG1Ubi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 28 Jul 2017 16:31:38 -0400
+        id S1752710AbdG1Ubg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 28 Jul 2017 16:31:36 -0400
 From: <andros@netapp.com>
 To: <anna.schumaker@netapp.com>
 CC: <trond.myklebust@primarydata.com>, <bfields@redhat.com>,
         <olga.kornievskaia@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 6 01/12] SELINUX export security_current_sid_to_context
-Date: Fri, 28 Jul 2017 16:21:47 -0400
-Message-ID: <1501273318-14200-2-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 6 09/12] SUNRPC SVCAUTH_GSS gss3 reply verifier
+Date: Fri, 28 Jul 2017 16:21:55 -0400
+Message-ID: <1501273318-14200-10-git-send-email-andros@netapp.com>
 In-Reply-To: <1501273318-14200-1-git-send-email-andros@netapp.com>
 References: <1501273318-14200-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -20,58 +20,220 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-RPCSEC_GSS Version 3 label assertions require the client thread
-sid in string context form, and so needs this interface
-or one like it.
+The new GSS Version 3 reply  verifier is taken over the same data as
+the call verifier, caveat REPLY direction
+
+verifier data
+
+ rpc_header (6 u32s)
+   XID (put32) rqstp->rq_xid
+   type REPLY (putnl) always a 1.
+   rpcvers u32
+   prog (getnl) rqstp->rq_prog
+   vers (getnl) rqstp->rq_vers
+   proc (getnl) rqstp->rq_proc
+
+ credential (7 u32s plus data)
+     flavor (getnl) (new rq_flav)
+     length (getnl) (new gc_crlen)
+     gss version  gc_v u32 (svcauth_gss_accept)
+     gss proceedure u32 gc_proc
+     gss seq num    u32 gc_seq
+     gss service    u32 gc_svc
+     gss context length u32 gc_ctx->len
+
+      gss context gc_ctx->data
+
+size is 13 + gc_ctx->len.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- include/linux/selinux.h  |  7 +++++++
- security/selinux/hooks.c | 10 ++++++++++
- 2 files changed, 17 insertions(+)
+ include/linux/sunrpc/auth_gss.h   |  1 +
+ net/sunrpc/auth_gss/svcauth_gss.c | 77 ++++++++++++++++++++++++++++++++-------
+ 2 files changed, 65 insertions(+), 13 deletions(-)
 
-diff --git a/include/linux/selinux.h b/include/linux/selinux.h
-index 44f4596..e82a4ba 100644
---- a/include/linux/selinux.h
-+++ b/include/linux/selinux.h
-@@ -24,12 +24,19 @@
-  * selinux_is_enabled - is SELinux enabled?
-  */
- bool selinux_is_enabled(void);
-+int security_current_sid_to_context(char **scontext, u32 *scontext_len);
- #else
+diff --git a/include/linux/sunrpc/auth_gss.h b/include/linux/sunrpc/auth_gss.h
+index 16b4f20..c333448 100644
+--- a/include/linux/sunrpc/auth_gss.h
++++ b/include/linux/sunrpc/auth_gss.h
+@@ -40,6 +40,7 @@ enum rpc_gss_svc {
  
- static inline bool selinux_is_enabled(void)
- {
- 	return false;
- }
-+
-+static inline int
-+security_current_sid_to_context(char **scontext, u32 *scontext_len)
-+{
-+	return -EINVAL;
-+}
- #endif	/* CONFIG_SECURITY_SELINUX */
- 
- #endif /* _LINUX_SELINUX_H */
-diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-index 819fd68..ba6974b 100644
---- a/security/selinux/hooks.c
-+++ b/security/selinux/hooks.c
-@@ -6516,3 +6516,13 @@ int selinux_disable(void)
+ /* on-the-wire gss cred: */
+ struct rpc_gss_wire_cred {
++	u32			gc_crlen;
+ 	u32			gc_v;		/* version */
+ 	u32			gc_proc;	/* control procedure */
+ 	u32			gc_seq;		/* sequence number */
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index f7aa8c4..22176e5 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -715,8 +715,50 @@ static inline u32 round_up_to_quad(u32 i)
  	return 0;
  }
- #endif
-+
-+int security_current_sid_to_context(char **scontext, u32 *scontext_len)
+ 
++/**
++ * The new GSS Version 3 reply  verifier is taken over the same data as
++ * the call verifier, caveat REPLY direction
++ */
++static void *
++gss3_svc_reply_verifier(struct svc_rqst *rqstp, struct rpc_gss_wire_cred *gc,
++			struct kvec *iov, u32 seq)
 +{
-+	const struct task_security_struct *ts = current_security();
++	void	*gss3_buf = NULL;
++	__be32	*ptr = NULL;
++	int	len;
 +
-+	if (!selinux_enabled)
-+		return -EINVAL;
-+	return security_sid_to_context(ts->sid, scontext, scontext_len);
++	/* freed in gss_write_verf */
++	len = (13 * 4) + gc->gc_ctx.len;
++	gss3_buf = kmalloc(len, GFP_KERNEL);
++	if (!gss3_buf)
++		return NULL;
++
++	iov->iov_len = 0;
++	iov->iov_base = gss3_buf;
++	/* 12  __be32's plus iov_len = 13 */
++	svc_putnl(iov, rqstp->rq_xid);
++	svc_putnl(iov, RPC_REPLY);
++	svc_putnl(iov, 2);
++	svc_putnl(iov, rqstp->rq_prog);
++	svc_putnl(iov, rqstp->rq_vers);
++	svc_putnl(iov, rqstp->rq_proc);
++	svc_putnl(iov, RPC_AUTH_GSS);
++	svc_putnl(iov, gc->gc_crlen);
++	svc_putnl(iov, gc->gc_v);
++	svc_putnl(iov, gc->gc_proc);
++	svc_putnl(iov, seq);
++	svc_putnl(iov, gc->gc_svc);
++	ptr = iov->iov_base + iov->iov_len;
++
++	ptr = xdr_encode_netobj(ptr, &gc->gc_ctx);
++	iov->iov_len += sizeof(__be32); /* for ctx length */
++	iov->iov_len += gc->gc_ctx.len;
++	return gss3_buf;
 +}
-+EXPORT_SYMBOL_GPL(security_current_sid_to_context);
++
+ static int
+-gss_write_verf(struct svc_rqst *rqstp, struct gss_ctx *ctx_id, u32 seq)
++gss_write_verf(struct svc_rqst *rqstp, struct gss_ctx *ctx_id,
++	       struct rpc_gss_wire_cred *gc, u32 seq)
+ {
+ 	__be32			*xdr_seq;
+ 	u32			maj_stat;
+@@ -724,6 +766,7 @@ static inline u32 round_up_to_quad(u32 i)
+ 	struct xdr_netobj	mic;
+ 	__be32			*p;
+ 	struct kvec		iov;
++	void			*g3_buf = NULL;
+ 	int err = -1;
+ 
+ 	svc_putnl(rqstp->rq_res.head, RPC_AUTH_GSS);
+@@ -732,12 +775,20 @@ static inline u32 round_up_to_quad(u32 i)
+ 		return -1;
+ 	*xdr_seq = htonl(seq);
+ 
+-	iov.iov_base = xdr_seq;
+-	iov.iov_len = 4;
++	if (gc->gc_v == 1) {
++		iov.iov_base = xdr_seq;
++		iov.iov_len = 4;
++	}
++	if (gc->gc_v == 3) {
++		g3_buf = gss3_svc_reply_verifier(rqstp, gc, &iov, seq);
++		if (!g3_buf)
++			return -1;
++	}
+ 	xdr_buf_from_iov(&iov, &verf_data);
+ 	p = rqstp->rq_res.head->iov_base + rqstp->rq_res.head->iov_len;
+ 	mic.data = (u8 *)(p + 1);
+ 	maj_stat = gss_get_mic(ctx_id, &verf_data, &mic);
++	kfree(g3_buf);
+ 	if (maj_stat != GSS_S_COMPLETE)
+ 		goto out;
+ 	*p++ = htonl(mic.len);
+@@ -976,7 +1027,8 @@ struct gss_svc_data {
+ }
+ 
+ static inline int
+-gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp, u32 gssv,
++gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
++		    struct rpc_gss_wire_cred *gc,
+ 		    struct xdr_netobj *out_handle, int *major_status)
+ {
+ 	struct rsc *rsci;
+@@ -990,8 +1042,8 @@ struct gss_svc_data {
+ 		return gss_write_null_verf(rqstp);
+ 	}
+ 	/* set the RPCSEC_GSS version in the context */
+-	rsci->mechctx->gss_version = gssv;
+-	rc = gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
++	rsci->mechctx->gss_version = gc->gc_v;
++	rc = gss_write_verf(rqstp, rsci->mechctx, gc, GSS_SEQ_WIN);
+ 	cache_put(&rsci->h, cd);
+ 	return rc;
+ }
+@@ -1132,7 +1184,7 @@ static int svcauth_gss_legacy_init(struct svc_rqst *rqstp,
+ 
+ 	ret = SVC_CLOSE;
+ 	/* Got an answer to the upcall; use it: */
+-	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc->gc_v,
++	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc,
+ 				&rsip->out_handle, &rsip->major_status))
+ 		goto out;
+ 	if (gss_write_resv(resv, PAGE_SIZE,
+@@ -1261,7 +1313,7 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
+ 	}
+ 
+ 	/* Got an answer to the upcall; use it: */
+-	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc->gc_v,
++	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc,
+ 				&cli_handle, &ud.major_status))
+ 		goto out;
+ 	if (gss_write_resv(resv, PAGE_SIZE,
+@@ -1408,7 +1460,6 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ {
+ 	struct kvec	*argv = &rqstp->rq_arg.head[0];
+ 	struct kvec	*resv = &rqstp->rq_res.head[0];
+-	u32		crlen;
+ 	struct gss_svc_data *svcdata = rqstp->rq_auth_data;
+ 	struct rpc_gss_wire_cred *gc;
+ 	struct rsc	*rsci = NULL;
+@@ -1443,7 +1494,7 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 
+ 	if (argv->iov_len < 5 * 4)
+ 		goto auth_err;
+-	crlen = svc_getnl(argv);
++	gc->gc_crlen = svc_getnl(argv);
+ 	gc->gc_v = svc_getnl(argv);
+ 	if ((gc->gc_v != RPC_GSS_VERSION) && (gc->gc_v != RPC_GSS3_VERSION))
+ 		goto auth_err;
+@@ -1452,7 +1503,7 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 	gc->gc_svc = svc_getnl(argv);
+ 	if (svc_safe_getnetobj(argv, &gc->gc_ctx))
+ 		goto auth_err;
+-	if (crlen != round_up_to_quad(gc->gc_ctx.len) + 5 * 4)
++	if (gc->gc_crlen != round_up_to_quad(gc->gc_ctx.len) + 5 * 4)
+ 		goto auth_err;
+ 
+ 	if ((gc->gc_proc != RPC_GSS_PROC_DATA) && (rqstp->rq_proc != 0))
+@@ -1495,7 +1546,7 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 	/* now act upon the command: */
+ 	switch (gc->gc_proc) {
+ 	case RPC_GSS_PROC_DESTROY:
+-		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
++		if (gss_write_verf(rqstp, rsci->mechctx, gc, gc->gc_seq))
+ 			goto auth_err;
+ 		/* Delete the entry from the cache_list and call cache_put */
+ 		sunrpc_cache_unhash(sn->rsc_cache, &rsci->h);
+@@ -1506,7 +1557,7 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 	case RPC_GSS_PROC_DATA:
+ 		*authp = rpcsec_gsserr_ctxproblem;
+ 		svcdata->verf_start = resv->iov_base + resv->iov_len;
+-		if (gss_write_verf(rqstp, rsci->mechctx, gc->gc_seq))
++		if (gss_write_verf(rqstp, rsci->mechctx, gc, gc->gc_seq))
+ 			goto auth_err;
+ 		rqstp->rq_cred = rsci->cred;
+ 		get_group_info(rsci->cred.cr_group_info);
 -- 
 1.8.3.1
 
