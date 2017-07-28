@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:52446 "EHLO mx142.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:62496 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752633AbdG1UW3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 28 Jul 2017 16:22:29 -0400
+        id S1752633AbdG1UWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 28 Jul 2017 16:22:11 -0400
 From: <andros@netapp.com>
 To: <anna.schumaker@netapp.com>
 CC: <trond.myklebust@primarydata.com>, <bfields@redhat.com>,
         <olga.kornievskaia@netapp.com>, <linux-nfs@vger.kernel.org>,
         Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 6 04/12] SUNRPC AUTH_GSS gss3 reply verifier
-Date: Fri, 28 Jul 2017 16:21:50 -0400
-Message-ID: <1501273318-14200-5-git-send-email-andros@netapp.com>
+Subject: [PATCH Version 6 08/12] SUNRPC SVCAUTH_GSS allow RPCSEC_GSS version 1 or 3
+Date: Fri, 28 Jul 2017 16:21:54 -0400
+Message-ID: <1501273318-14200-9-git-send-email-andros@netapp.com>
 In-Reply-To: <1501273318-14200-1-git-send-email-andros@netapp.com>
 References: <1501273318-14200-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
@@ -20,122 +20,99 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Andy Adamson <andros@netapp.com>
 
-The new GSS Version 3 reply  verifier is taken over the same data as
-the call verifier, caveat REPLY direction
-
-Verifier Data
-
-   xid          tk_rqstp->rq_xid
-   direction    REPLY (always a 1) RPC_REPLY
-   rpcvers      RPC_VERSION
-   prog         clnt->cl_prog
-   vers         clnt->cl_vers
-   proc         tk_msg.rpc_proc->p_proc
-   credential
-         flavor       RPC_AUTH_GSS
-         length       cred_len is in gss_marshal (new gv_crlen)
-         gss version  ctx->gc_v
-         gss proc     ctx->gv_proc
-         gss seq      tk_rqstp->rq_seqno
-         gss svc      gss_cred->gc_service
-         gss ctx len  ctx->gc_wire_ctx
-         gss ctx data ctx->gc_wire_ctx
+Store the version used in the context INIT phase with the context.
+Check the incoming rpcsec gss version against the stored context version.
 
 Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- net/sunrpc/auth_gss/auth_gss.c | 59 ++++++++++++++++++++++++++++++++++++++++--
- 1 file changed, 57 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/gss_api.h    |  1 +
+ net/sunrpc/auth_gss/svcauth_gss.c | 20 ++++++++++++++------
+ 2 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 3c7fa5d..28c5491 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1629,6 +1629,53 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
- 	return 0;
+diff --git a/include/linux/sunrpc/gss_api.h b/include/linux/sunrpc/gss_api.h
+index 4e02204..d4cff5a 100644
+--- a/include/linux/sunrpc/gss_api.h
++++ b/include/linux/sunrpc/gss_api.h
+@@ -28,6 +28,7 @@ struct gss3_assert {
+ /* The mechanism-independent gss-api context: */
+ struct gss_ctx {
+ 	struct gss_api_mech	*mech_type;
++	u32			 gss_version;
+ 	void			*internal_ctx_id;
+ };
+ 
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index aa7cb3b..f7aa8c4 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -976,8 +976,8 @@ struct gss_svc_data {
  }
  
-+/**
-+ * gss3_reply_verifier: The new gssv3 verifier uses same data as call
-+ * caveat REPLY direction - see rpc_encode_header
-+ */
-+static  void *
-+gss3_reply_verifier(struct rpc_cred *cred, struct gss_cl_ctx *ctx,
-+		    struct rpc_task *task, __be32 *seq, struct kvec *iov)
-+{
-+	struct gss_cred *g_cred = container_of(cred, struct gss_cred, gc_base);
-+	void	*gss3_buf = NULL;
-+	__be32 *crlen, *ptr = NULL;
-+	int len;
-+
-+	/* freed in gss_validate */
-+	len = (13 * 4) + ctx->gc_wire_ctx.len;
-+	gss3_buf = kmalloc(len, GFP_NOFS);
-+	if (!gss3_buf) {
-+		gss3_buf = ERR_PTR(-EIO);
-+		goto out;
-+	}
-+	ptr = (__be32 *)gss3_buf;
-+
-+	*ptr++ = htonl(task->tk_rqstp->rq_xid);
-+	*ptr++ = htonl(RPC_REPLY);
-+	*ptr++ = htonl(RPC_VERSION);
-+	*ptr++ = htonl(task->tk_client->cl_prog);
-+	*ptr++ = htonl(task->tk_client->cl_vers);
-+	*ptr++ = htonl(task->tk_msg.rpc_proc->p_proc);
-+	*ptr++ = htonl(RPC_AUTH_GSS);
-+
-+	/* credential */
-+	crlen = ptr++;
-+	*ptr++ = htonl(ctx->gc_v);
-+	*ptr++ = htonl(ctx->gc_proc);
-+	*ptr++ = *seq;
-+	*ptr++ = htonl(g_cred->gc_service);
-+	ptr = xdr_encode_netobj(ptr, &ctx->gc_wire_ctx);
-+
-+	/* backfill cred length */
-+	*crlen = htonl((ptr - (crlen + 1)) << 2);
-+
-+	iov->iov_base = gss3_buf;
-+	iov->iov_len = (ptr - (__be32 *)gss3_buf) << 2;
-+out:
-+	return gss3_buf;
-+}
-+
- static __be32 *
- gss_validate(struct rpc_task *task, __be32 *p)
+ static inline int
+-gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp,
+-		struct xdr_netobj *out_handle, int *major_status)
++gss_write_init_verf(struct cache_detail *cd, struct svc_rqst *rqstp, u32 gssv,
++		    struct xdr_netobj *out_handle, int *major_status)
  {
-@@ -1638,6 +1685,7 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
- 	struct kvec	iov;
- 	struct xdr_buf	verf_buf;
- 	struct xdr_netobj mic;
-+	void	*g3_buf = NULL;
- 	u32		flav,len;
- 	u32		maj_stat;
- 	__be32		*ret = ERR_PTR(-EIO);
-@@ -1653,14 +1701,21 @@ static int gss_cred_is_negative_entry(struct rpc_cred *cred)
- 	if (!seq)
- 		goto out_bad;
- 	*seq = htonl(task->tk_rqstp->rq_seqno);
--	iov.iov_base = seq;
--	iov.iov_len = 4;
-+	if (ctx->gc_v == RPC_GSS_VERSION) {
-+		iov.iov_base = seq;
-+		iov.iov_len = 4;
-+	} else if (ctx->gc_v == RPC_GSS3_VERSION) {
-+		g3_buf = gss3_reply_verifier(cred, ctx, task, seq, &iov);
-+		if (IS_ERR(g3_buf))
-+			goto out_bad;
-+	}
- 	xdr_buf_from_iov(&iov, &verf_buf);
- 	mic.data = (u8 *)p;
- 	mic.len = len;
+ 	struct rsc *rsci;
+ 	int        rc;
+@@ -989,6 +989,8 @@ struct gss_svc_data {
+ 		*major_status = GSS_S_NO_CONTEXT;
+ 		return gss_write_null_verf(rqstp);
+ 	}
++	/* set the RPCSEC_GSS version in the context */
++	rsci->mechctx->gss_version = gssv;
+ 	rc = gss_write_verf(rqstp, rsci->mechctx, GSS_SEQ_WIN);
+ 	cache_put(&rsci->h, cd);
+ 	return rc;
+@@ -1130,7 +1132,7 @@ static int svcauth_gss_legacy_init(struct svc_rqst *rqstp,
  
- 	ret = ERR_PTR(-EACCES);
- 	maj_stat = gss_verify_mic(ctx->gc_gss_ctx, &verf_buf, &mic);
-+	kfree(g3_buf);
- 	if (maj_stat == GSS_S_CONTEXT_EXPIRED)
- 		clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
- 	if (maj_stat) {
+ 	ret = SVC_CLOSE;
+ 	/* Got an answer to the upcall; use it: */
+-	if (gss_write_init_verf(sn->rsc_cache, rqstp,
++	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc->gc_v,
+ 				&rsip->out_handle, &rsip->major_status))
+ 		goto out;
+ 	if (gss_write_resv(resv, PAGE_SIZE,
+@@ -1259,7 +1261,7 @@ static int svcauth_gss_proxy_init(struct svc_rqst *rqstp,
+ 	}
+ 
+ 	/* Got an answer to the upcall; use it: */
+-	if (gss_write_init_verf(sn->rsc_cache, rqstp,
++	if (gss_write_init_verf(sn->rsc_cache, rqstp, gc->gc_v,
+ 				&cli_handle, &ud.major_status))
+ 		goto out;
+ 	if (gss_write_resv(resv, PAGE_SIZE,
+@@ -1435,14 +1437,15 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 	rpcstart -= 7;
+ 
+ 	/* credential is:
+-	 *   version(==1), proc(0,1,2,3), seq, service (1,2,3), handle
++	 *   version(==1 or 3), proc(0,1,2,3), seq, service (1,2,3), handle
+ 	 * at least 5 u32s, and is preceded by length, so that makes 6.
+ 	 */
+ 
+ 	if (argv->iov_len < 5 * 4)
+ 		goto auth_err;
+ 	crlen = svc_getnl(argv);
+-	if (svc_getnl(argv) != RPC_GSS_VERSION)
++	gc->gc_v = svc_getnl(argv);
++	if ((gc->gc_v != RPC_GSS_VERSION) && (gc->gc_v != RPC_GSS3_VERSION))
+ 		goto auth_err;
+ 	gc->gc_proc = svc_getnl(argv);
+ 	gc->gc_seq = svc_getnl(argv);
+@@ -1470,6 +1473,11 @@ static void destroy_use_gss_proxy_proc_entry(struct net *net) {}
+ 		rsci = gss_svc_searchbyctx(sn->rsc_cache, &gc->gc_ctx);
+ 		if (!rsci)
+ 			goto auth_err;
++		if (rsci->mechctx->gss_version != gc->gc_v) {
++			pr_warn("NFSD:  RPCSEC_GSS version mismatch (%u:%u)\n",
++				rsci->mechctx->gss_version, gc->gc_v);
++			goto auth_err;
++		}
+ 		switch (gss_verify_header(rqstp, rsci, rpcstart, gc, authp)) {
+ 		case SVC_OK:
+ 			break;
 -- 
 1.8.3.1
 
