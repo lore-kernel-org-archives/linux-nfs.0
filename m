@@ -1,60 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:53029 "EHLO mx144.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752944AbdG1Uu0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 28 Jul 2017 16:50:26 -0400
-From: <andros@netapp.com>
-To: <steved@redhat.com>
-CC: <anna.schumaker@netapp.com>, <olga.kornievskaia@netapp.com>,
-        <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 4 0/2] GSSD changes for RPCSEC_GSS version 3
-Date: Fri, 28 Jul 2017 16:50:20 -0400
-Message-ID: <1501275022-24313-1-git-send-email-andros@netapp.com>
+Received: from resqmta-ch2-04v.sys.comcast.net ([69.252.207.36]:59298 "EHLO
+        resqmta-ch2-04v.sys.comcast.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750808AbdGaEZd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jul 2017 00:25:33 -0400
+To: libtirpc-devel@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org, Joshua Kinard <kumba@gentoo.org>
+From: Joshua Kinard <kumba@gentoo.org>
+Subject: [PATCH] Replace bzero() calls with equivalent memset() calls
+Message-ID: <47646199-1784-f1ac-23ae-eedaf3a24c95@gentoo.org>
+Date: Mon, 31 Jul 2017 00:25:29 -0400
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+As annotated in the bzero(3) man page, bzero() was marked as LEGACY in
+POSIX.1-2001 and removed in POSIX.1-2008, and should be replaced with
+memset() calls to write zeros to a memory region.  The attached patch
+replaces two bzero() calls and one __bzero() call in libtirpc with
+equivalent memset() calls.  The latter replacement fixes a compile error
+under uclibc-ng, which lacks a definition for __bzero()
 
-Adds RPCSEC_GSS version 3 negotiation to GSSD
+Signed-off-by: Joshua Kinard <kumba@gentoo.org>
+---
 
-Requires
---------
-libtirpc patches "Version 4 Libtirpc changes for RPCSEC_GSS version 3"
-        0001-Use-RPCSEC_GSS-version-3.patch
-        0002-RPCSEC_GSSv3-new-reply-verifier.patch
+ src/auth_time.c    |    2 +-
+ src/des_impl.c     |    2 +-
+ src/svc_auth_des.c |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
 
-kernel: RPCSEC_GSS Version 3 Full MOde MAC Labeling
-        SELINUX export security_current_sid_to_context
-        SUNRPC GSSv3: base definitions
-        SUNRPC AUTH_GSS get RPCSEC_GSS version from gssd downcall
-        SUNRPC AUTH_GSS gss3 reply verifier
-        SUNRPC AUTH_GSS RPCSEC_GSS_CREATE with label payload
-        SUNRPC AUTH_GSS store and use gss3 label assertion
-        SUNRPC-AUTH_GSS gss3_free_assertions
-        SUNRPC SVCAUTH_GSS allow RPCSEC_GSS version 1 or 3
-        SUNRPC SVCAUTH_GSS gss3 reply verifier
-        SUNRPC SVCAUTH_GSS gss3 create label
-        SUNRPC SVCAUTH_GSS set gss3 label on nfsd thread
-        SUNRPC SVCAUTH_gss store gss3 child handles in parent rsc
-
-GSSD netotiates RPCSEC_GSS version 3 contexts with server, and falls back
-RPCSEC_GSS version 1 upon AUTH_ERR.
-
-New GSSD option "-G" turns off GSSv3 negotation so that RPCSEC_GSS version 1
-only is used
-
-Andy Adamson (2):
-  GSSD: Add RPCSEC_GSS version to downcall
-  GSSD add option to not put gss version in downcall
-
- configure.ac           |  1 +
- utils/gssd/gssd.c      |  9 +++++++--
- utils/gssd/gssd.h      |  1 +
- utils/gssd/gssd_proc.c | 17 +++++++++++++++--
- 4 files changed, 24 insertions(+), 4 deletions(-)
-
--- 
-1.8.3.1
+diff --git a/src/auth_time.c b/src/auth_time.c
+index 7f83ab4..210d251 100644
+--- a/src/auth_time.c
++++ b/src/auth_time.c
+@@ -317,7 +317,7 @@ __rpc_get_time_offset(td, srv, thost, uaddr, netid)
+ 	sprintf(ipuaddr, "%d.%d.%d.%d.0.111", a1, a2, a3, a4);
+ 	useua = &ipuaddr[0];
+ 
+-	bzero((char *)&sin, sizeof(sin));
++	memset((char *)&sin, 0, sizeof(sin));
+ 	if (uaddr_to_sockaddr(useua, &sin)) {
+ 		msg("unable to translate uaddr to sockaddr.");
+ 		if (needfree)
+diff --git a/src/des_impl.c b/src/des_impl.c
+index 9dbccaf..15bec2a 100644
+--- a/src/des_impl.c
++++ b/src/des_impl.c
+@@ -588,7 +588,7 @@ _des_crypt (char *buf, unsigned len, struct desparams *desp)
+     }
+   tin0 = tin1 = tout0 = tout1 = xor0 = xor1 = 0;
+   tbuf[0] = tbuf[1] = 0;
+-  __bzero (schedule, sizeof (schedule));
++  memset (schedule, 0, sizeof (schedule));
+ 
+   return (1);
+ }
+diff --git a/src/svc_auth_des.c b/src/svc_auth_des.c
+index 2e90146..64a7682 100644
+--- a/src/svc_auth_des.c
++++ b/src/svc_auth_des.c
+@@ -356,7 +356,7 @@ cache_init()
+ 
+ 	authdes_cache = (struct cache_entry *)
+ 		mem_alloc(sizeof(struct cache_entry) * AUTHDES_CACHESZ);	
+-	bzero((char *)authdes_cache, 
++	memset((char *)authdes_cache, 0,
+ 		sizeof(struct cache_entry) * AUTHDES_CACHESZ);
+ 
+ 	authdes_lru = (short *)mem_alloc(sizeof(short) * AUTHDES_CACHESZ);
 
