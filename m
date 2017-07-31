@@ -1,113 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37228 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751054AbdGaNux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 31 Jul 2017 09:50:53 -0400
-Subject: Re: [PATCH Version 4 2/2] GSSD add option to not put gss version in
- downcall
-To: andros@netapp.com
-Cc: anna.schumaker@netapp.com, olga.kornievskaia@netapp.com,
-        linux-nfs@vger.kernel.org
-References: <1501275022-24313-1-git-send-email-andros@netapp.com>
- <1501275022-24313-3-git-send-email-andros@netapp.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <9da61b7a-bb4f-f5c3-94f8-c377cb328e8b@RedHat.com>
-Date: Mon, 31 Jul 2017 09:50:51 -0400
-MIME-Version: 1.0
-In-Reply-To: <1501275022-24313-3-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset=utf-8
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34079 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752071AbdGaOfh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jul 2017 10:35:37 -0400
+Received: by mail-io0-f193.google.com with SMTP id m88so14467034iod.1
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Jul 2017 07:35:36 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [Libtirpc-devel] [PATCH] Replace bzero() calls with equivalent memset() calls
+From: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <47646199-1784-f1ac-23ae-eedaf3a24c95@gentoo.org>
+Date: Mon, 31 Jul 2017 10:35:34 -0400
+Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <C52540F1-EF74-4D0F-BA55-43F094AC8D8E@gmail.com>
+References: <47646199-1784-f1ac-23ae-eedaf3a24c95@gentoo.org>
+To: Joshua Kinard <kumba@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+> On Jul 31, 2017, at 12:25 AM, Joshua Kinard <kumba@gentoo.org> wrote:
+>=20
+> As annotated in the bzero(3) man page, bzero() was marked as LEGACY in
+> POSIX.1-2001 and removed in POSIX.1-2008, and should be replaced with
+> memset() calls to write zeros to a memory region.  The attached patch
+> replaces two bzero() calls and one __bzero() call in libtirpc with
+> equivalent memset() calls.  The latter replacement fixes a compile =
+error
+> under uclibc-ng, which lacks a definition for __bzero()
 
-On 07/28/2017 04:50 PM, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
-> 
-> This results in using GSSv1, and not trying GSSv3
-> 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
+OK. Nits below.
+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+
+
+> Signed-off-by: Joshua Kinard <kumba@gentoo.org>
 > ---
->  utils/gssd/gssd.c      | 9 +++++++--
->  utils/gssd/gssd.h      | 1 +
->  utils/gssd/gssd_proc.c | 2 +-
-This needs a man page update... 
+>=20
+> src/auth_time.c    |    2 +-
+> src/des_impl.c     |    2 +-
+> src/svc_auth_des.c |    2 +-
+> 3 files changed, 3 insertions(+), 3 deletions(-)
+>=20
+> diff --git a/src/auth_time.c b/src/auth_time.c
+> index 7f83ab4..210d251 100644
+> --- a/src/auth_time.c
+> +++ b/src/auth_time.c
+> @@ -317,7 +317,7 @@ __rpc_get_time_offset(td, srv, thost, uaddr, =
+netid)
+> 	sprintf(ipuaddr, "%d.%d.%d.%d.0.111", a1, a2, a3, a4);
+> 	useua =3D &ipuaddr[0];
+>=20
+> -	bzero((char *)&sin, sizeof(sin));
+> +	memset((char *)&sin, 0, sizeof(sin));
 
-steved.
+The type cast is likely to be unnecessary, and
+could be removed in this patch.
 
->  3 files changed, 9 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 4d18d35..58cd0b2 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -89,6 +89,8 @@ unsigned int  rpc_timeout = 5;
->  char *preferred_realm = NULL;
->  /* Avoid DNS reverse lookups on server names */
->  static bool avoid_dns = true;
-> +/* Add gss version to downcall for GSSv3 */
-> +bool use_gss_vers = true;
->  int thread_started = false;
->  pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
->  pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
-> @@ -832,7 +834,7 @@ sig_die(int signal)
->  static void
->  usage(char *progname)
->  {
-> -	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
-> +	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D] [-G]\n",
->  		progname);
->  	exit(1);
->  }
-> @@ -877,7 +879,7 @@ main(int argc, char *argv[])
->  	if (s)
->  		preferred_realm = s;
->  
-> -	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
-> +	while ((opt = getopt(argc, argv, "DGfvrlmnMp:k:d:t:T:R:")) != -1) {
->  		switch (opt) {
->  			case 'f':
->  				fg = 1;
-> @@ -925,6 +927,9 @@ main(int argc, char *argv[])
->  			case 'D':
->  				avoid_dns = false;
->  				break;
-> +			case 'G':
-> +				use_gss_vers = false;
-> +				break;
->  			default:
->  				usage(argv[0]);
->  				break;
-> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> index f4f5975..e2604c0 100644
-> --- a/utils/gssd/gssd.h
-> +++ b/utils/gssd/gssd.h
-> @@ -66,6 +66,7 @@ extern pthread_mutex_t ple_lock;
->  extern pthread_cond_t pcond;
->  extern pthread_mutex_t pmutex;
->  extern int thread_started;
-> +extern bool use_gss_vers;
->  
->  struct clnt_info {
->  	TAILQ_ENTRY(clnt_info)	list;
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 689d916..f2cee58 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -149,7 +149,6 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
->  	char    *buf = NULL, *p = NULL, *end = NULL;
->  	unsigned int timeout = context_timeout;
->  	unsigned int buf_size = 0;
-> -	bool use_gss_vers = true;
->  
->  retry:
->  	printerr(2, "doing downcall: lifetime_rec=%u acceptor=%.*s"
-> @@ -330,6 +329,7 @@ create_auth_rpc_client(struct clnt_info *clp,
->  	sec.svc = RPCSEC_GSS_SVC_NONE;
->  	sec.cred = cred;
->  	sec.req_flags = 0;
-> +	sec.gss_vers = use_gss_vers ? RPCSEC_GSS3_VERSION : RPCSEC_GSS_VERSION;
->  	if (authtype == AUTHTYPE_KRB5) {
->  		sec.mech = (gss_OID)&krb5oid;
->  		sec.req_flags = GSS_C_MUTUAL_FLAG;
-> 
+
+> 	if (uaddr_to_sockaddr(useua, &sin)) {
+> 		msg("unable to translate uaddr to sockaddr.");
+> 		if (needfree)
+> diff --git a/src/des_impl.c b/src/des_impl.c
+> index 9dbccaf..15bec2a 100644
+> --- a/src/des_impl.c
+> +++ b/src/des_impl.c
+> @@ -588,7 +588,7 @@ _des_crypt (char *buf, unsigned len, struct =
+desparams *desp)
+>     }
+>   tin0 =3D tin1 =3D tout0 =3D tout1 =3D xor0 =3D xor1 =3D 0;
+>   tbuf[0] =3D tbuf[1] =3D 0;
+> -  __bzero (schedule, sizeof (schedule));
+> +  memset (schedule, 0, sizeof (schedule));
+
+You should fix the white space damage here
+(space before left paren, x2).
+
+
+>   return (1);
+> }
+> diff --git a/src/svc_auth_des.c b/src/svc_auth_des.c
+> index 2e90146..64a7682 100644
+> --- a/src/svc_auth_des.c
+> +++ b/src/svc_auth_des.c
+> @@ -356,7 +356,7 @@ cache_init()
+>=20
+> 	authdes_cache =3D (struct cache_entry *)
+> 		mem_alloc(sizeof(struct cache_entry) * AUTHDES_CACHESZ);=09=
+
+> -	bzero((char *)authdes_cache,=20
+> +	memset((char *)authdes_cache, 0,
+> 		sizeof(struct cache_entry) * AUTHDES_CACHESZ);
+
+Type cast is unnecessary.
+
+
+> 	authdes_lru =3D (short *)mem_alloc(sizeof(short) * =
+AUTHDES_CACHESZ);
+>=20
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
+
