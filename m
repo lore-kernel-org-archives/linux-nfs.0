@@ -1,87 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:10538 "EHLO mx141.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37228 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751199AbdGaNCe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 31 Jul 2017 09:02:34 -0400
-Subject: Re: [RFC PATCH] NFS: Fix the access mask checks in NFSv4
-To: Catalin Marinas <catalin.marinas@arm.com>,
-        <linux-nfs@vger.kernel.org>
-CC: <linux-kernel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-References: <20170728175452.49057-1-catalin.marinas@arm.com>
- <20170731111928.g6rlpmwnn57hcexb@armageddon.cambridge.arm.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <a977bcf7-3e9f-49dc-fd65-7526aff6d569@Netapp.com>
-Date: Mon, 31 Jul 2017 09:02:28 -0400
+        id S1751054AbdGaNux (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 31 Jul 2017 09:50:53 -0400
+Subject: Re: [PATCH Version 4 2/2] GSSD add option to not put gss version in
+ downcall
+To: andros@netapp.com
+Cc: anna.schumaker@netapp.com, olga.kornievskaia@netapp.com,
+        linux-nfs@vger.kernel.org
+References: <1501275022-24313-1-git-send-email-andros@netapp.com>
+ <1501275022-24313-3-git-send-email-andros@netapp.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <9da61b7a-bb4f-f5c3-94f8-c377cb328e8b@RedHat.com>
+Date: Mon, 31 Jul 2017 09:50:51 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170731111928.g6rlpmwnn57hcexb@armageddon.cambridge.arm.com>
+In-Reply-To: <1501275022-24313-3-git-send-email-andros@netapp.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Catalin,
 
-On 07/31/2017 07:19 AM, Catalin Marinas wrote:
-> Anna, Trond,
-> 
-> On Fri, Jul 28, 2017 at 06:54:52PM +0100, Catalin Marinas wrote:
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -2236,7 +2236,7 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
->>  				int openflags)
->>  {
->>  	struct nfs_access_entry cache;
->> -	u32 mask;
->> +	int mask, cache_mask;
->>  
->>  	/* access call failed or for some reason the server doesn't
->>  	 * support any access modes -- defer access call until later */
->> @@ -2259,7 +2259,8 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
->>  	nfs_access_set_mask(&cache, opendata->o_res.access_result);
->>  	nfs_access_add_cache(state->inode, &cache);
->>  
->> -	if ((mask & ~cache.mask & (MAY_READ | MAY_EXEC)) == 0)
->> +	cache_mask = nfs_access_calc_mask(cache.mask, state->inode->i_mode);
->> +	if ((mask & ~cache_mask & (MAY_READ | MAY_EXEC)) == 0)
->>  		return 0;
->>  
->>  	return -EACCES;
-> 
-> I noticed -rc3 already has a fix here, commit 1e6f209515a0 ("NFS: Use
-> raw NFS access mask in nfs4_opendata_access()"), without having to
-> export nfs_access_calc_mask().
-> 
->> @@ -3870,25 +3871,9 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
->>  		.rpc_resp = &res,
->>  		.rpc_cred = entry->cred,
->>  	};
->> -	int mode = entry->mask;
->>  	int status = 0;
->>  
->> -	/*
->> -	 * Determine which access bits we want to ask for...
->> -	 */
->> -	if (mode & MAY_READ)
->> -		args.access |= NFS4_ACCESS_READ;
->> -	if (S_ISDIR(inode->i_mode)) {
->> -		if (mode & MAY_WRITE)
->> -			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND | NFS4_ACCESS_DELETE;
->> -		if (mode & MAY_EXEC)
->> -			args.access |= NFS4_ACCESS_LOOKUP;
->> -	} else {
->> -		if (mode & MAY_WRITE)
->> -			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND;
->> -		if (mode & MAY_EXEC)
->> -			args.access |= NFS4_ACCESS_EXECUTE;
->> -	}
->> +	args.access = entry->mask;
-> 
-> However, AFAICT, 'entry->mask' already uses the NFS4_* bits, so checking
-> 'mode' against MAY_READ etc. to build up args.access is incorrect. Is
-> this hunk still needed?
-> 
 
-I think the code is okay short term, because all the bits it's checking against are set in entry->mask whenever we enter this function.  Long term, yes it should be updated.  I have patches to do this in a generic way that can be used for both NFS v3 and NFS v4, but they'll probably go into 4.14
+On 07/28/2017 04:50 PM, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> This results in using GSSv1, and not trying GSSv3
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  utils/gssd/gssd.c      | 9 +++++++--
+>  utils/gssd/gssd.h      | 1 +
+>  utils/gssd/gssd_proc.c | 2 +-
+This needs a man page update... 
 
-Thanks,
-Anna
+steved.
+
+>  3 files changed, 9 insertions(+), 3 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 4d18d35..58cd0b2 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -89,6 +89,8 @@ unsigned int  rpc_timeout = 5;
+>  char *preferred_realm = NULL;
+>  /* Avoid DNS reverse lookups on server names */
+>  static bool avoid_dns = true;
+> +/* Add gss version to downcall for GSSv3 */
+> +bool use_gss_vers = true;
+>  int thread_started = false;
+>  pthread_mutex_t pmutex = PTHREAD_MUTEX_INITIALIZER;
+>  pthread_cond_t pcond = PTHREAD_COND_INITIALIZER;
+> @@ -832,7 +834,7 @@ sig_die(int signal)
+>  static void
+>  usage(char *progname)
+>  {
+> -	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D]\n",
+> +	fprintf(stderr, "usage: %s [-f] [-l] [-M] [-n] [-v] [-r] [-p pipefsdir] [-k keytab] [-d ccachedir] [-t timeout] [-R preferred realm] [-D] [-G]\n",
+>  		progname);
+>  	exit(1);
+>  }
+> @@ -877,7 +879,7 @@ main(int argc, char *argv[])
+>  	if (s)
+>  		preferred_realm = s;
+>  
+> -	while ((opt = getopt(argc, argv, "DfvrlmnMp:k:d:t:T:R:")) != -1) {
+> +	while ((opt = getopt(argc, argv, "DGfvrlmnMp:k:d:t:T:R:")) != -1) {
+>  		switch (opt) {
+>  			case 'f':
+>  				fg = 1;
+> @@ -925,6 +927,9 @@ main(int argc, char *argv[])
+>  			case 'D':
+>  				avoid_dns = false;
+>  				break;
+> +			case 'G':
+> +				use_gss_vers = false;
+> +				break;
+>  			default:
+>  				usage(argv[0]);
+>  				break;
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index f4f5975..e2604c0 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -66,6 +66,7 @@ extern pthread_mutex_t ple_lock;
+>  extern pthread_cond_t pcond;
+>  extern pthread_mutex_t pmutex;
+>  extern int thread_started;
+> +extern bool use_gss_vers;
+>  
+>  struct clnt_info {
+>  	TAILQ_ENTRY(clnt_info)	list;
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index 689d916..f2cee58 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -149,7 +149,6 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+>  	char    *buf = NULL, *p = NULL, *end = NULL;
+>  	unsigned int timeout = context_timeout;
+>  	unsigned int buf_size = 0;
+> -	bool use_gss_vers = true;
+>  
+>  retry:
+>  	printerr(2, "doing downcall: lifetime_rec=%u acceptor=%.*s"
+> @@ -330,6 +329,7 @@ create_auth_rpc_client(struct clnt_info *clp,
+>  	sec.svc = RPCSEC_GSS_SVC_NONE;
+>  	sec.cred = cred;
+>  	sec.req_flags = 0;
+> +	sec.gss_vers = use_gss_vers ? RPCSEC_GSS3_VERSION : RPCSEC_GSS_VERSION;
+>  	if (authtype == AUTHTYPE_KRB5) {
+>  		sec.mech = (gss_OID)&krb5oid;
+>  		sec.req_flags = GSS_C_MUTUAL_FLAG;
+> 
