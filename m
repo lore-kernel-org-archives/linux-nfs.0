@@ -1,104 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:34079 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752071AbdGaOfh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jul 2017 10:35:37 -0400
-Received: by mail-io0-f193.google.com with SMTP id m88so14467034iod.1
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Jul 2017 07:35:36 -0700 (PDT)
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34884 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752448AbdGaOrg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jul 2017 10:47:36 -0400
+Received: by mail-io0-f194.google.com with SMTP id f1so19231498ioj.2
+        for <linux-nfs@vger.kernel.org>; Mon, 31 Jul 2017 07:47:35 -0700 (PDT)
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [Libtirpc-devel] [PATCH] Replace bzero() calls with equivalent memset() calls
+Subject: Re: [Libtirpc-devel] [PATCH] Replace bcopy() calls with equivalent memmove() calls
 From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <47646199-1784-f1ac-23ae-eedaf3a24c95@gentoo.org>
-Date: Mon, 31 Jul 2017 10:35:34 -0400
+In-Reply-To: <d64c84f4-6253-5a31-0bff-771ebff2fa28@gentoo.org>
+Date: Mon, 31 Jul 2017 10:47:33 -0400
 Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C52540F1-EF74-4D0F-BA55-43F094AC8D8E@gmail.com>
-References: <47646199-1784-f1ac-23ae-eedaf3a24c95@gentoo.org>
+Message-Id: <8B18C258-8434-42B0-80D9-89773DAD748F@gmail.com>
+References: <d64c84f4-6253-5a31-0bff-771ebff2fa28@gentoo.org>
 To: Joshua Kinard <kumba@gentoo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Jul 31, 2017, at 12:25 AM, Joshua Kinard <kumba@gentoo.org> wrote:
->=20
-> As annotated in the bzero(3) man page, bzero() was marked as LEGACY in
+> On Jul 31, 2017, at 12:26 AM, Joshua Kinard <kumba@gentoo.org> wrote:
+> 
+> As annotated in the bcopy(3) man page, bcopy() was marked as LEGACY in
 > POSIX.1-2001 and removed in POSIX.1-2008, and should be replaced with
-> memset() calls to write zeros to a memory region.  The attached patch
-> replaces two bzero() calls and one __bzero() call in libtirpc with
-> equivalent memset() calls.  The latter replacement fixes a compile =
-error
-> under uclibc-ng, which lacks a definition for __bzero()
+> either memcpy() or memmove() calls to copy bytes from one memory region to
+> another.  The attached patch replaces all bcopy() calls in libtirpc with
+> equivalent memmove() calls.
 
-OK. Nits below.
+As far as I can tell these are all deprecated code paths.
+memmove(3) should be safe in all cases, but there's no way
+to test the change.
 
 Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
 
 > Signed-off-by: Joshua Kinard <kumba@gentoo.org>
 > ---
->=20
+> 
 > src/auth_time.c    |    2 +-
-> src/des_impl.c     |    2 +-
+> src/crypt_client.c |    8 ++++----
 > src/svc_auth_des.c |    2 +-
-> 3 files changed, 3 insertions(+), 3 deletions(-)
->=20
+> 3 files changed, 6 insertions(+), 6 deletions(-)
+> 
 > diff --git a/src/auth_time.c b/src/auth_time.c
-> index 7f83ab4..210d251 100644
+> index 210d251..5426902 100644
 > --- a/src/auth_time.c
 > +++ b/src/auth_time.c
-> @@ -317,7 +317,7 @@ __rpc_get_time_offset(td, srv, thost, uaddr, =
-netid)
-> 	sprintf(ipuaddr, "%d.%d.%d.%d.0.111", a1, a2, a3, a4);
-> 	useua =3D &ipuaddr[0];
->=20
-> -	bzero((char *)&sin, sizeof(sin));
-> +	memset((char *)&sin, 0, sizeof(sin));
-
-The type cast is likely to be unnecessary, and
-could be removed in this patch.
-
-
-> 	if (uaddr_to_sockaddr(useua, &sin)) {
-> 		msg("unable to translate uaddr to sockaddr.");
-> 		if (needfree)
-> diff --git a/src/des_impl.c b/src/des_impl.c
-> index 9dbccaf..15bec2a 100644
-> --- a/src/des_impl.c
-> +++ b/src/des_impl.c
-> @@ -588,7 +588,7 @@ _des_crypt (char *buf, unsigned len, struct =
-desparams *desp)
->     }
->   tin0 =3D tin1 =3D tout0 =3D tout1 =3D xor0 =3D xor1 =3D 0;
->   tbuf[0] =3D tbuf[1] =3D 0;
-> -  __bzero (schedule, sizeof (schedule));
-> +  memset (schedule, 0, sizeof (schedule));
-
-You should fix the white space damage here
-(space before left paren, x2).
-
-
->   return (1);
+> @@ -104,7 +104,7 @@ static int uaddr_to_sockaddr(uaddr, sin)
+> 	p_bytes[1] = (unsigned char)a[5] & 0x000000FF;
+> 
+> 	sin->sin_family = AF_INET; /* always */
+> -	bcopy((char *)&p_bytes, (char *)&sin->sin_port, 2);
+> +	memmove((char *)&sin->sin_port, (char *)&p_bytes, 2);
+> 
+> 	return (0);
 > }
+> diff --git a/src/crypt_client.c b/src/crypt_client.c
+> index f393926..b8c5767 100644
+> --- a/src/crypt_client.c
+> +++ b/src/crypt_client.c
+> @@ -75,8 +75,8 @@ _des_crypt_call(buf, len, dparms)
+> 	des_crypt_1_arg.desbuf.desbuf_val = buf;
+> 	des_crypt_1_arg.des_dir = dparms->des_dir;
+> 	des_crypt_1_arg.des_mode = dparms->des_mode;
+> -	bcopy(dparms->des_ivec, des_crypt_1_arg.des_ivec, 8);
+> -	bcopy(dparms->des_key, des_crypt_1_arg.des_key, 8);
+> +	memmove(des_crypt_1_arg.des_ivec, dparms->des_ivec, 8);
+> +	memmove(des_crypt_1_arg.des_key, dparms->des_key, 8);
+> 
+> 	result_1 = des_crypt_1(&des_crypt_1_arg, clnt);
+> 	if (result_1 == (desresp *) NULL) {
+> @@ -88,8 +88,8 @@ _des_crypt_call(buf, len, dparms)
+> 
+> 	if (result_1->stat == DESERR_NONE ||
+> 	    result_1->stat == DESERR_NOHWDEVICE) {
+> -		bcopy(result_1->desbuf.desbuf_val, buf, len);
+> -		bcopy(result_1->des_ivec, dparms->des_ivec, 8);
+> +		memmove(buf, result_1->desbuf.desbuf_val, len);
+> +		memmove(dparms->des_ivec, result_1->des_ivec, 8);
+> 	}
+> 
+> 	clnt_freeres(clnt, (xdrproc_t)xdr_desresp, result_1);
 > diff --git a/src/svc_auth_des.c b/src/svc_auth_des.c
-> index 2e90146..64a7682 100644
+> index 64a7682..5813c5a 100644
 > --- a/src/svc_auth_des.c
 > +++ b/src/svc_auth_des.c
-> @@ -356,7 +356,7 @@ cache_init()
->=20
-> 	authdes_cache =3D (struct cache_entry *)
-> 		mem_alloc(sizeof(struct cache_entry) * AUTHDES_CACHESZ);=09=
-
-> -	bzero((char *)authdes_cache,=20
-> +	memset((char *)authdes_cache, 0,
-> 		sizeof(struct cache_entry) * AUTHDES_CACHESZ);
-
-Type cast is unnecessary.
-
-
-> 	authdes_lru =3D (short *)mem_alloc(sizeof(short) * =
-AUTHDES_CACHESZ);
->=20
+> @@ -145,7 +145,7 @@ _svcauth_des(rqst, msg)
+> 			return (AUTH_BADCRED);
+> 		}
+> 		cred->adc_fullname.name = area->area_netname;
+> -		bcopy((char *)ixdr, cred->adc_fullname.name, 
+> +		memmove(cred->adc_fullname.name, (char *)ixdr,
+> 			(u_int)namelen);
+> 		cred->adc_fullname.name[namelen] = 0;
+> 		ixdr += (RNDUP(namelen) / BYTES_PER_XDR_UNIT);
+> 
 
 --
 Chuck Lever
