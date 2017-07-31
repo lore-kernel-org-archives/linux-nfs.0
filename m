@@ -1,83 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from resqmta-ch2-09v.sys.comcast.net ([69.252.207.41]:57278 "EHLO
-        resqmta-ch2-09v.sys.comcast.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750810AbdGaE1B (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jul 2017 00:27:01 -0400
-To: libtirpc-devel@lists.sourceforge.net
-Cc: linux-nfs@vger.kernel.org, Joshua Kinard <kumba@gentoo.org>
-From: Joshua Kinard <kumba@gentoo.org>
-Subject: [PATCH] Replace bcopy() calls with equivalent memmove() calls
-Message-ID: <d64c84f4-6253-5a31-0bff-771ebff2fa28@gentoo.org>
-Date: Mon, 31 Jul 2017 00:26:58 -0400
+Received: from usa-sjc-mx-foss1.foss.arm.com ([217.140.101.70]:49580 "EHLO
+        foss.arm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751705AbdGaLTd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 31 Jul 2017 07:19:33 -0400
+Date: Mon, 31 Jul 2017 12:19:29 +0100
+From: Catalin Marinas <catalin.marinas@arm.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+Subject: Re: [RFC PATCH] NFS: Fix the access mask checks in NFSv4
+Message-ID: <20170731111928.g6rlpmwnn57hcexb@armageddon.cambridge.arm.com>
+References: <20170728175452.49057-1-catalin.marinas@arm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170728175452.49057-1-catalin.marinas@arm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As annotated in the bcopy(3) man page, bcopy() was marked as LEGACY in
-POSIX.1-2001 and removed in POSIX.1-2008, and should be replaced with
-either memcpy() or memmove() calls to copy bytes from one memory region to
-another.  The attached patch replaces all bcopy() calls in libtirpc with
-equivalent memmove() calls.
+Anna, Trond,
 
-Signed-off-by: Joshua Kinard <kumba@gentoo.org>
----
+On Fri, Jul 28, 2017 at 06:54:52PM +0100, Catalin Marinas wrote:
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2236,7 +2236,7 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
+>  				int openflags)
+>  {
+>  	struct nfs_access_entry cache;
+> -	u32 mask;
+> +	int mask, cache_mask;
+>  
+>  	/* access call failed or for some reason the server doesn't
+>  	 * support any access modes -- defer access call until later */
+> @@ -2259,7 +2259,8 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
+>  	nfs_access_set_mask(&cache, opendata->o_res.access_result);
+>  	nfs_access_add_cache(state->inode, &cache);
+>  
+> -	if ((mask & ~cache.mask & (MAY_READ | MAY_EXEC)) == 0)
+> +	cache_mask = nfs_access_calc_mask(cache.mask, state->inode->i_mode);
+> +	if ((mask & ~cache_mask & (MAY_READ | MAY_EXEC)) == 0)
+>  		return 0;
+>  
+>  	return -EACCES;
 
- src/auth_time.c    |    2 +-
- src/crypt_client.c |    8 ++++----
- src/svc_auth_des.c |    2 +-
- 3 files changed, 6 insertions(+), 6 deletions(-)
+I noticed -rc3 already has a fix here, commit 1e6f209515a0 ("NFS: Use
+raw NFS access mask in nfs4_opendata_access()"), without having to
+export nfs_access_calc_mask().
 
-diff --git a/src/auth_time.c b/src/auth_time.c
-index 210d251..5426902 100644
---- a/src/auth_time.c
-+++ b/src/auth_time.c
-@@ -104,7 +104,7 @@ static int uaddr_to_sockaddr(uaddr, sin)
- 	p_bytes[1] = (unsigned char)a[5] & 0x000000FF;
- 
- 	sin->sin_family = AF_INET; /* always */
--	bcopy((char *)&p_bytes, (char *)&sin->sin_port, 2);
-+	memmove((char *)&sin->sin_port, (char *)&p_bytes, 2);
- 
- 	return (0);
- }
-diff --git a/src/crypt_client.c b/src/crypt_client.c
-index f393926..b8c5767 100644
---- a/src/crypt_client.c
-+++ b/src/crypt_client.c
-@@ -75,8 +75,8 @@ _des_crypt_call(buf, len, dparms)
- 	des_crypt_1_arg.desbuf.desbuf_val = buf;
- 	des_crypt_1_arg.des_dir = dparms->des_dir;
- 	des_crypt_1_arg.des_mode = dparms->des_mode;
--	bcopy(dparms->des_ivec, des_crypt_1_arg.des_ivec, 8);
--	bcopy(dparms->des_key, des_crypt_1_arg.des_key, 8);
-+	memmove(des_crypt_1_arg.des_ivec, dparms->des_ivec, 8);
-+	memmove(des_crypt_1_arg.des_key, dparms->des_key, 8);
- 
- 	result_1 = des_crypt_1(&des_crypt_1_arg, clnt);
- 	if (result_1 == (desresp *) NULL) {
-@@ -88,8 +88,8 @@ _des_crypt_call(buf, len, dparms)
- 
- 	if (result_1->stat == DESERR_NONE ||
- 	    result_1->stat == DESERR_NOHWDEVICE) {
--		bcopy(result_1->desbuf.desbuf_val, buf, len);
--		bcopy(result_1->des_ivec, dparms->des_ivec, 8);
-+		memmove(buf, result_1->desbuf.desbuf_val, len);
-+		memmove(dparms->des_ivec, result_1->des_ivec, 8);
- 	}
- 
- 	clnt_freeres(clnt, (xdrproc_t)xdr_desresp, result_1);
-diff --git a/src/svc_auth_des.c b/src/svc_auth_des.c
-index 64a7682..5813c5a 100644
---- a/src/svc_auth_des.c
-+++ b/src/svc_auth_des.c
-@@ -145,7 +145,7 @@ _svcauth_des(rqst, msg)
- 			return (AUTH_BADCRED);
- 		}
- 		cred->adc_fullname.name = area->area_netname;
--		bcopy((char *)ixdr, cred->adc_fullname.name, 
-+		memmove(cred->adc_fullname.name, (char *)ixdr,
- 			(u_int)namelen);
- 		cred->adc_fullname.name[namelen] = 0;
- 		ixdr += (RNDUP(namelen) / BYTES_PER_XDR_UNIT);
+> @@ -3870,25 +3871,9 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+>  		.rpc_resp = &res,
+>  		.rpc_cred = entry->cred,
+>  	};
+> -	int mode = entry->mask;
+>  	int status = 0;
+>  
+> -	/*
+> -	 * Determine which access bits we want to ask for...
+> -	 */
+> -	if (mode & MAY_READ)
+> -		args.access |= NFS4_ACCESS_READ;
+> -	if (S_ISDIR(inode->i_mode)) {
+> -		if (mode & MAY_WRITE)
+> -			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND | NFS4_ACCESS_DELETE;
+> -		if (mode & MAY_EXEC)
+> -			args.access |= NFS4_ACCESS_LOOKUP;
+> -	} else {
+> -		if (mode & MAY_WRITE)
+> -			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND;
+> -		if (mode & MAY_EXEC)
+> -			args.access |= NFS4_ACCESS_EXECUTE;
+> -	}
+> +	args.access = entry->mask;
 
+However, AFAICT, 'entry->mask' already uses the NFS4_* bits, so checking
+'mode' against MAY_READ etc. to build up args.access is incorrect. Is
+this hunk still needed?
+
+-- 
+Catalin
