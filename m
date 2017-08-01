@@ -1,140 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56891 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751591AbdHAFWs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Aug 2017 01:22:48 -0400
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@RedHat.com>,
-        Michael Orlitzky <michael@orlitzky.com>,
-        linux-nfs@vger.kernel.org
-Date: Tue, 01 Aug 2017 15:22:39 +1000
-Subject: Re: [PATCH 1/1] autotools: install rpcbind to --sbindir.
-In-Reply-To: <ab9fa53d-8301-f6e8-50d5-0ccddd2dccb6@RedHat.com>
-References: <20170728135253.24542-1-michael@orlitzky.com> <20170728135253.24542-2-michael@orlitzky.com> <ab9fa53d-8301-f6e8-50d5-0ccddd2dccb6@RedHat.com>
-Message-ID: <87efsvvp40.fsf@notabene.neil.brown.name>
+Received: from mail-oi0-f43.google.com ([209.85.218.43]:34214 "EHLO
+        mail-oi0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750763AbdHAFfr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 01:35:47 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <20170731154322.tfzkukscda4fe7wm@codemonkey.org.uk>
+References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
+ <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk> <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
+ <1500245845.13893.3.camel@primarydata.com> <20170717030504.qca74wsswct26ytn@codemonkey.org.uk>
+ <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com> <20170731154322.tfzkukscda4fe7wm@codemonkey.org.uk>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Mon, 31 Jul 2017 22:35:45 -0700
+Message-ID: <CA+55aFwwkc-YJ8WQzE6Ax3BAJ3XXR8fhN+0AEH_U8TtcQn7opg@mail.gmail.com>
+Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
+To: "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Mon, Jul 31 2017, Steve Dickson wrote:
-
-> On 07/28/2017 09:52 AM, Michael Orlitzky wrote:
->> According to its own man page, the rpcbind program "can only be
->> started by the super-user." On systems where a distinction is made, it
->> therefore makes sense to install rpcbind to the autotools sbindir
->> rather than the regular bindir where it is currently installed. This
->> is accomplished by three small changes:
->>=20
->>   1. Move rpcbind from bin_PROGRAMS to sbin_PROGRAMS in Makefile.am.
->>   2. Change @_bindir@ to @_sbindir@ in the rpcbind systemd service file.
->>   3. Tell configure.ac that it should substitute the value of $sbindir
->>      into @_sbindir@ instead of $bindir$ into @_bindir@.
->>=20
->> The rpcinfo tool remains where it is, in bindir, since unprivileged
->> users are able to usefully run it. This avoids forcing maintainers to
->> choose between two bad options: hiding rpcinfo from unprivileged
->> users, or installing a useless rpcbind for them.
->> ---
->>  Makefile.am                | 3 ++-
->>  configure.ac               | 6 +++---
->>  systemd/rpcbind.service.in | 2 +-
->>  3 files changed, 6 insertions(+), 5 deletions(-)
-> A couple things... You are  missing a Signed-off-by line
+On Mon, Jul 31, 2017 at 8:43 AM, davej@codemonkey.org.uk
+<davej@codemonkey.org.uk> wrote:
+> Another NFSv4 KASAN splat, this time from rc3.
 >
-> Also I would like some more input from others about
-> changing the default install directory to sbin
+> BUG: KASAN: use-after-free in nfs4_exchange_id_done+0x3d7/0x8e0 [nfsv4]
+
+Ugh. It's really hard to tell what access that it - KASAN doesn't
+actually give enough information. There's lots of 8-byte accesses
+there in that function.
+
+Any chance of getting the output from
+
+   ./scripts/faddr2line vmlinux nfs4_exchange_id_done+0x3d7/0x8e0
+
+or something? That would be extremely useful in general for
+stacktraces, but it's doubly useful for KASAN because most *other*
+stacktraces tend to have a very limited number of things that can warn
+(ie there's one or two WARN_ON() calls in a function), but KASAN can
+have tens or hundreds..
+
+                       Linus
+
+
+> Read of size 8 at addr ffff8804508af528 by task kworker/2:1/34
 >
-> Anybody have a problem with this?
-
-In SUSE we run
-  ./configure --bindir=3D/sbin .....
-for rpcbind.
-
-So: no, we do not have a problem with this.  Nor do I personally.
-
-This came up before in the thread starting
-  https://www.spinics.net/lists/linux-nfs/msg60349.html
-but didn't quite get resolved for some reason that I don't recall.
-
-Thanks,
-NeilBrown
-
+> CPU: 2 PID: 34 Comm: kworker/2:1 Not tainted 4.13.0-rc3-think+ #1
+> Workqueue: rpciod rpc_async_schedule [sunrpc]
+> Call Trace:
+>  dump_stack+0x68/0xa1
+>  print_address_description+0xd9/0x270
+>  kasan_report+0x257/0x370
+>  ? nfs4_exchange_id_done+0x3d7/0x8e0 [nfsv4]
+>  check_memory_region+0x13a/0x1a0
+>  __asan_loadN+0xf/0x20
+>  nfs4_exchange_id_done+0x3d7/0x8e0 [nfsv4]
+>  ? nfs4_exchange_id_release+0xb0/0xb0 [nfsv4]
+>  rpc_exit_task+0x69/0x110 [sunrpc]
+>  ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+>  ? rpc_destroy_wait_queue+0x20/0x20 [sunrpc]
+>  __rpc_execute+0x1a0/0x840 [sunrpc]
+>  ? rpc_wake_up_queued_task+0x50/0x50 [sunrpc]
+>  ? __lock_is_held+0x9a/0x100
+>  ? debug_lockdep_rcu_enabled.part.16+0x1a/0x30
+>  rpc_async_schedule+0x12/0x20 [sunrpc]
+>  process_one_work+0x4d5/0xa70
+>  ? flush_delayed_work+0x70/0x70
+>  ? lock_acquire+0xfc/0x220
+>  worker_thread+0x88/0x630
+>  ? pci_mmcfg_check_reserved+0xc0/0xc0
+>  kthread+0x1a6/0x1f0
+>  ? process_one_work+0xa70/0xa70
+>  ? kthread_create_on_node+0xc0/0xc0
+>  ret_from_fork+0x27/0x40
 >
-> steved.
->>=20
->> diff --git a/Makefile.am b/Makefile.am
->> index 43c2710..c160a95 100644
->> --- a/Makefile.am
->> +++ b/Makefile.am
->> @@ -29,7 +29,8 @@ if LIBWRAP
->>  AM_CPPFLAGS +=3D	-DLIBWRAP
->>  endif
->>=20=20
->> -bin_PROGRAMS =3D rpcbind rpcinfo
->> +bin_PROGRAMS =3D rpcinfo
->> +sbin_PROGRAMS =3D rpcbind
->>=20=20
->>  rpcbind_SOURCES =3D \
->>  	src/check_bound.c \
->> diff --git a/configure.ac b/configure.ac
->> index 3790310..359a418 100644
->> --- a/configure.ac
->> +++ b/configure.ac
->> @@ -61,9 +61,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
->>=20=20
->>  AC_CHECK_HEADERS([nss.h rpcsvc/mount.h])
->>=20=20
->> -# make bindir available for substitution in config file
->> +# make sbindir available for substitution in config file
->>  # 2 "evals" needed to expand variable names
->> -AC_SUBST([_bindir])
->> -AC_CONFIG_COMMANDS_PRE([eval eval _bindir=3D$bindir])
->> +AC_SUBST([_sbindir])
->> +AC_CONFIG_COMMANDS_PRE([eval eval _sbindir=3D$sbindir])
->>=20=20
->>  AC_OUTPUT([Makefile systemd/rpcbind.service])
->> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
->> index 03a9e0b..f8cfa9f 100644
->> --- a/systemd/rpcbind.service.in
->> +++ b/systemd/rpcbind.service.in
->> @@ -12,7 +12,7 @@ After=3Drpcbind.socket
->>  [Service]
->>  Type=3Dnotify
->>  # distro can provide a drop-in adding EnvironmentFile=3D-/??? if needed.
->> -ExecStart=3D@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
->> +ExecStart=3D@_sbindir@/rpcbind $RPCBIND_OPTIONS -w -f
->>=20=20
->>  [Install]
->>  WantedBy=3Dmulti-user.target
->>=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmAECAACgkQOeye3VZi
-gbm/YBAAs+jImxdCSddkmHKXwqOX8Xb9ChhG1VGgbNTpkyJwQp2uVHYymOerkZWT
-ouz1yqB+ABKkP534Et6MsgwtRyGAsWG/Dr5/IsdMoBP6XAwZKEEMWYnecR2o4hZm
-DbsfZdM+zq/IJMj4c3CTwDkKcRNoOKK1kw3UtqG54APyZSFyf3txeUEA3vNUTFYT
-n1xXE2zTWv/Mj+WBTlCqiB676u5H/zDxKV5l8gyBLPHQnDFtScp65euNJiznv2Aj
-O8YK+NxZ3aLBwYS/qqmecSvAyHa84940J1sOu6gMGPJ/ZWxrofZPMtbdeZzGDoJl
-60JIOPDK7CZ95CdzRuAzgoo1/iB3CqWEpLcLVzzRR9dOcjlcAQzGbYi/RktiakqE
-qAfDrUjm6Ay76NEFpB/5fOxsLkYl3NS2b2oisClls0nPpS/vQEEtt0xyi3/w10Yn
-HRvpI3krxZM6RhaGk9HlB87EMs3K1/epyN2+jF/CPqGpNsZVJQUIzJ8Gd0RFxBfO
-KJK9eLeSJrqJSeORJCLAKlr44CBNx+mS3ay3dIIknEJR1FVYwreAjUDJOsnw4wM3
-kWdleUgCGc/RGY2uqeiV4dfKwcM3NWzznw7asMSFy7aaqY3FB0PS8IO6r0lN/78/
-7+BgxbO9JJaq7pbfUzn/OMDItSdoteonWyQAdeow4YLLXvpJkx8=
-=u/FU
------END PGP SIGNATURE-----
---=-=-=--
+> Allocated by task 1:
+>  save_stack_trace+0x1b/0x20
+>  save_stack+0x46/0xd0
+>  kasan_kmalloc+0xad/0xe0
+>  kasan_slab_alloc+0x12/0x20
+>  kmem_cache_alloc+0xe0/0x2f0
+>  getname_flags+0x43/0x220
+>  getname+0x12/0x20
+>  do_sys_open+0x14c/0x2b0
+>  SyS_open+0x1e/0x20
+>  do_syscall_64+0xea/0x260
+>  return_from_SYSCALL_64+0x0/0x7a
+>
+> Freed by task 1:
+>  save_stack_trace+0x1b/0x20
+>  save_stack+0x46/0xd0
+>  kasan_slab_free+0x72/0xc0
+>  kmem_cache_free+0xa8/0x300
+>  putname+0x80/0x90
+>  do_sys_open+0x22f/0x2b0
+>  SyS_open+0x1e/0x20
+>  do_syscall_64+0xea/0x260
+>  return_from_SYSCALL_64+0x0/0x7a
+>
+> The buggy address belongs to the object at ffff8804508aeac0\x0a which belongs to the cache names_cache of size 4096
+> The buggy address is located 2664 bytes inside of\x0a 4096-byte region [ffff8804508aeac0, ffff8804508afac0)
+> The buggy address belongs to the page:
+> page:ffffea0011422a00 count:1 mapcount:0 mapping:          (null) index:0x0
+> [CONT START]  compound_mapcount: 0
+> flags: 0x8000000000008100(slab|head)
+> raw: 8000000000008100 0000000000000000 0000000000000000 0000000100070007
+> raw: ffffea00113d6020 ffffea001136e220 ffff8804664f8040 0000000000000000
+> page dumped because: kasan: bad access detected
+>
+> Memory state around the buggy address:
+>  ffff8804508af400: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>  ffff8804508af480: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>>ffff8804508af500: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>                                   ^
+>  ffff8804508af580: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+>  ffff8804508af600: fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb fb
+> ==================================================================
+>
