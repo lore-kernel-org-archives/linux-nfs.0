@@ -1,61 +1,49 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:28408 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752109AbdHAUHd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 16:07:33 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 5/5] NFSv4: Cleanup setting of the migration flags.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170801200251.130635-5-trond.myklebust@primarydata.com>
-Date: Tue, 1 Aug 2017 16:07:20 -0400
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        davej@codemonkey.org.uk,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <AC277398-BD32-4517-AB34-4161129B3B46@oracle.com>
-References: <20170801200251.130635-1-trond.myklebust@primarydata.com> <20170801200251.130635-2-trond.myklebust@primarydata.com> <20170801200251.130635-3-trond.myklebust@primarydata.com> <20170801200251.130635-4-trond.myklebust@primarydata.com> <20170801200251.130635-5-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@redhat.com>
+Message-ID: <1501618320.4702.14.camel@redhat.com>
+Subject: Re: [PATCH] NFSv4: Don't add a new lock on an interrupted wait for
+ LOCK
+From: Jeff Layton <jlayton@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>, Trond Myklebust
+ <trond.myklebust@primarydata.com>, Anna Schumaker
+ <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 01 Aug 2017 16:12:00 -0400
+In-Reply-To: <52d3e3b1547ca33b59349c40ae5236bbb8993729.1500658655.git.bcodding@redhat.com>
+References: 
+	<52d3e3b1547ca33b59349c40ae5236bbb8993729.1500658655.git.bcodding@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Aug 1, 2017, at 4:02 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Fri, 2017-07-21 at 13:38 -0400, Benjamin Coddington wrote:
+> If the wait for a LOCK operation is interrupted, and then the file is
+> closed, the locks cleanup code will assume that no new locks will be added
+> to the inode after it has completed.  We already have a mechanism to detect
+> if there was an interrupt, so let's use that to avoid recreating the local
+> lock once the RPC completes.
 > 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+nit: "if there was a signal"
+
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 > ---
-> fs/nfs/nfs4proc.c | 9 +++------
-> 1 file changed, 3 insertions(+), 6 deletions(-)
+>  fs/nfs/nfs4proc.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
 > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index d9fc34dedcf8..15e91f003adc 100644
+> index dbfa18900e25..5256f429c268 100644
 > --- a/fs/nfs/nfs4proc.c
 > +++ b/fs/nfs/nfs4proc.c
-> @@ -7498,13 +7498,10 @@ nfs4_run_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
-> 				sizeof(calldata->args.verifier.data));
-> 	}
-> 	calldata->args.client = clp;
-> -#ifdef CONFIG_NFS_V4_1_MIGRATION
-> -	calldata->args.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER |
-> -	EXCHGID4_FLAG_BIND_PRINC_STATEID |
-> -	EXCHGID4_FLAG_SUPP_MOVED_MIGR,
-> -#else
-> 	calldata->args.flags = EXCHGID4_FLAG_SUPP_MOVED_REFER |
-> -	EXCHGID4_FLAG_BIND_PRINC_STATEID,
-> +	EXCHGID4_FLAG_BIND_PRINC_STATEID;
-> +#ifdef CONFIG_NFS_V4_1_MIGRATION
-> +	calldata->args.flags |= EXCHGID4_FLAG_SUPP_MOVED_MIGR;
-> #endif
-> 	msg.rpc_argp = &calldata->args;
-> 	msg.rpc_resp = &calldata->res;
+> @@ -6100,7 +6100,7 @@ static void nfs4_lock_done(struct rpc_task *task, void *calldata)
+>  	case 0:
+>  		renew_lease(NFS_SERVER(d_inode(data->ctx->dentry)),
+>  				data->timestamp);
+> -		if (data->arg.new_lock) {
+> +		if (data->arg.new_lock && !data->cancelled) {
+>  			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
+>  			if (locks_lock_inode_wait(lsp->ls_state->inode, &data->fl) < 0) {
+>  				rpc_restart_call_prepare(task);
 
-I think NFSv4.1 migration is supported well enough now
-that the CONFIG_NFS_V4_1_MIGRATION configuration option
-might be removed, leaving SUPP_MOVED_MIGR asserted all
-the time.
+Patch looks fine though:
 
-
---
-Chuck Lever
-
-
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
