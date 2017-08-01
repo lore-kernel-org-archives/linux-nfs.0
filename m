@@ -1,93 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:33994 "EHLO
+Received: from mail-it0-f65.google.com ([209.85.214.65]:34001 "EHLO
         mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752166AbdHAUDA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 16:03:00 -0400
-Received: by mail-it0-f65.google.com with SMTP id t78so2400722ita.1
-        for <linux-nfs@vger.kernel.org>; Tue, 01 Aug 2017 13:03:00 -0700 (PDT)
+        with ESMTP id S1752235AbdHAUDD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 16:03:03 -0400
+Received: by mail-it0-f65.google.com with SMTP id t78so2400807ita.1
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Aug 2017 13:03:02 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <anna.schumaker@netapp.com>
 Cc: davej@codemonkey.org.uk, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] NFSv4: Fix double frees in nfs4_test_session_trunk()
-Date: Tue,  1 Aug 2017 16:02:48 -0400
-Message-Id: <20170801200251.130635-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20170801200251.130635-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 4/5] NFSv4.1: Ensure we clear the SP4_MACH_CRED flags in nfs4_sp4_select_mode()
+Date: Tue,  1 Aug 2017 16:02:50 -0400
+Message-Id: <20170801200251.130635-4-trond.myklebust@primarydata.com>
+In-Reply-To: <20170801200251.130635-3-trond.myklebust@primarydata.com>
 References: <20170801200251.130635-1-trond.myklebust@primarydata.com>
+ <20170801200251.130635-2-trond.myklebust@primarydata.com>
+ <20170801200251.130635-3-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpc_clnt_add_xprt() expects the callback function to be synchronous, and
-expects to release the transport and switch references itself.
+If the server changes, so that it no longer supports SP4_MACH_CRED, or
+that it doesn't support the same set of SP4_MACH_CRED functionality,
+then we want to ensure that we clear the unsupported flags.
 
-Fixes: 04fa2c6bb51b1 ("NFS pnfs data server multipath session trunking")
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4client.c |  3 ---
- fs/nfs/nfs4proc.c   | 16 +++-------------
- 2 files changed, 3 insertions(+), 16 deletions(-)
+ fs/nfs/nfs4proc.c | 26 +++++++++++++++-----------
+ 1 file changed, 15 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 50566acb5469..e9bea90dc017 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -660,9 +660,6 @@ int nfs4_detect_session_trunking(struct nfs_client *clp,
- 	if (!nfs4_check_server_scope(clp->cl_serverscope, res->server_scope))
- 		goto out_err;
- 
--	/* Session trunking passed, add the xprt */
--	rpc_clnt_xprt_switch_add_xprt(clp->cl_rpcclient, xprt);
--
- 	pr_info("NFS:  %s: Session trunking succeeded for %s\n",
- 		clp->cl_hostname,
- 		xprt->address_strings[RPC_DISPLAY_ADDR]);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 0cd98e253e23..ffd2e712595d 100644
+index 34190c2c0900..d9fc34dedcf8 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -7474,10 +7474,6 @@ static void nfs4_exchange_id_release(void *data)
- 	struct nfs41_exchange_id_data *cdata =
- 					(struct nfs41_exchange_id_data *)data;
- 
--	if (cdata->xprt) {
--		xprt_put(cdata->xprt);
--		rpc_clnt_xprt_switch_put(cdata->args.client->cl_rpcclient);
--	}
- 	nfs_put_client(cdata->args.client);
- 	kfree(cdata->res.impl_id);
- 	kfree(cdata->res.server_scope);
-@@ -7506,7 +7502,7 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 		.rpc_client = clp->cl_rpcclient,
- 		.callback_ops = &nfs4_exchange_id_call_ops,
- 		.rpc_message = &msg,
--		.flags = RPC_TASK_ASYNC | RPC_TASK_TIMEOUT,
-+		.flags = RPC_TASK_TIMEOUT,
+@@ -7319,7 +7319,9 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+ 		      1 << (OP_DESTROY_SESSION - 32) |
+ 		      1 << (OP_DESTROY_CLIENTID - 32)
  	};
- 	struct nfs41_exchange_id_data *calldata;
- 	struct rpc_task *task;
-@@ -7560,8 +7556,7 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 	if (xprt) {
- 		calldata->xprt = xprt;
- 		task_setup_data.rpc_xprt = xprt;
--		task_setup_data.flags =
--				RPC_TASK_SOFT|RPC_TASK_SOFTCONN|RPC_TASK_ASYNC;
-+		task_setup_data.flags |= RPC_TASK_SOFTCONN;
- 		memcpy(calldata->args.verifier.data, clp->cl_confirm.data,
- 				sizeof(calldata->args.verifier.data));
++	unsigned long flags = 0;
+ 	unsigned int i;
++	int ret = 0;
+ 
+ 	if (sp->how == SP4_MACH_CRED) {
+ 		/* Print state protect result */
+@@ -7335,7 +7337,8 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+ 		for (i = 0; i < NFS4_OP_MAP_NUM_WORDS; i++) {
+ 			if (sp->enforce.u.words[i] & ~supported_enforce[i]) {
+ 				dfprintk(MOUNT, "sp4_mach_cred: disabled\n");
+-				return -EINVAL;
++				ret = -EINVAL;
++				goto out;
+ 			}
+ 		}
+ 
+@@ -7354,10 +7357,11 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+ 		    test_bit(OP_DESTROY_CLIENTID, sp->enforce.u.longs)) {
+ 			dfprintk(MOUNT, "sp4_mach_cred:\n");
+ 			dfprintk(MOUNT, "  minimal mode enabled\n");
+-			set_bit(NFS_SP4_MACH_CRED_MINIMAL, &clp->cl_sp4_flags);
++			__set_bit(NFS_SP4_MACH_CRED_MINIMAL, &flags);
+ 		} else {
+ 			dfprintk(MOUNT, "sp4_mach_cred: disabled\n");
+-			return -EINVAL;
++			ret = -EINVAL;
++			goto out;
+ 		}
+ 
+ 		if (test_bit(OP_CLOSE, sp->allow.u.longs) &&
+@@ -7365,38 +7369,38 @@ static int nfs4_sp4_select_mode(struct nfs_client *clp,
+ 		    test_bit(OP_DELEGRETURN, sp->allow.u.longs) &&
+ 		    test_bit(OP_LOCKU, sp->allow.u.longs)) {
+ 			dfprintk(MOUNT, "  cleanup mode enabled\n");
+-			set_bit(NFS_SP4_MACH_CRED_CLEANUP, &clp->cl_sp4_flags);
++			__set_bit(NFS_SP4_MACH_CRED_CLEANUP, &flags);
+ 		}
+ 
+ 		if (test_bit(OP_LAYOUTRETURN, sp->allow.u.longs)) {
+ 			dfprintk(MOUNT, "  pnfs cleanup mode enabled\n");
+-			set_bit(NFS_SP4_MACH_CRED_PNFS_CLEANUP,
+-				&clp->cl_sp4_flags);
++			__set_bit(NFS_SP4_MACH_CRED_PNFS_CLEANUP, &flags);
+ 		}
+ 
+ 		if (test_bit(OP_SECINFO, sp->allow.u.longs) &&
+ 		    test_bit(OP_SECINFO_NO_NAME, sp->allow.u.longs)) {
+ 			dfprintk(MOUNT, "  secinfo mode enabled\n");
+-			set_bit(NFS_SP4_MACH_CRED_SECINFO, &clp->cl_sp4_flags);
++			__set_bit(NFS_SP4_MACH_CRED_SECINFO, &flags);
+ 		}
+ 
+ 		if (test_bit(OP_TEST_STATEID, sp->allow.u.longs) &&
+ 		    test_bit(OP_FREE_STATEID, sp->allow.u.longs)) {
+ 			dfprintk(MOUNT, "  stateid mode enabled\n");
+-			set_bit(NFS_SP4_MACH_CRED_STATEID, &clp->cl_sp4_flags);
++			__set_bit(NFS_SP4_MACH_CRED_STATEID, &flags);
+ 		}
+ 
+ 		if (test_bit(OP_WRITE, sp->allow.u.longs)) {
+ 			dfprintk(MOUNT, "  write mode enabled\n");
+-			set_bit(NFS_SP4_MACH_CRED_WRITE, &clp->cl_sp4_flags);
++			__set_bit(NFS_SP4_MACH_CRED_WRITE, &flags);
+ 		}
+ 
+ 		if (test_bit(OP_COMMIT, sp->allow.u.longs)) {
+ 			dfprintk(MOUNT, "  commit mode enabled\n");
+-			set_bit(NFS_SP4_MACH_CRED_COMMIT, &clp->cl_sp4_flags);
++			__set_bit(NFS_SP4_MACH_CRED_COMMIT, &flags);
+ 		}
  	}
-@@ -7582,12 +7577,7 @@ static int _nfs4_proc_exchange_id(struct nfs_client *clp, struct rpc_cred *cred,
- 	if (IS_ERR(task))
- 		return PTR_ERR(task);
+-
++out:
++	clp->cl_sp4_flags = flags;
+ 	return 0;
+ }
  
--	if (!xprt) {
--		status = rpc_wait_for_completion_task(task);
--		if (!status)
--			status = calldata->rpc_status;
--	} else	/* session trunking test */
--		status = calldata->rpc_status;
-+	status = calldata->rpc_status;
- 
- 	rpc_put_task(task);
- out:
 -- 
 2.13.3
 
