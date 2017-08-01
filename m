@@ -1,88 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:24274 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751860AbdHARai (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 13:30:38 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
-        "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
-Date: Tue, 1 Aug 2017 17:30:30 +0000
-Message-ID: <1501608628.70813.1.camel@primarydata.com>
-References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
-         <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
-         <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
-         <1500245845.13893.3.camel@primarydata.com>
-         <20170717030504.qca74wsswct26ytn@codemonkey.org.uk>
-         <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com>
-         <20170731154322.tfzkukscda4fe7wm@codemonkey.org.uk>
-         <CA+55aFwwkc-YJ8WQzE6Ax3BAJ3XXR8fhN+0AEH_U8TtcQn7opg@mail.gmail.com>
-         <20170801155131.xy7nbw5ih7ml5fmf@codemonkey.org.uk>
-         <CA+55aFyQdHt0qYQ0uBSK+9wfPOyFfx8mJE4r9FfWoxa3Gyei9g@mail.gmail.com>
-In-Reply-To: <CA+55aFyQdHt0qYQ0uBSK+9wfPOyFfx8mJE4r9FfWoxa3Gyei9g@mail.gmail.com>
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:57477 "EHLO mx1.molgen.mpg.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751496AbdHARtw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 1 Aug 2017 13:49:52 -0400
+Subject: Re: Locking problems with Linux 4.9 and 4.11 with NFSD and
+ `fs/iomap.c`
+To: Brian Foster <bfoster@redhat.com>, Christoph Hellwig <hch@lst.de>
+Cc: it+linux-nfs@molgen.mpg.de, linux-nfs@vger.kernel.org,
+        linux-xfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+References: <de171adc29600902515d1424fd800678@molgen.mpg.de>
+ <20170508131843.GB29840@bfoster.bfoster> <20170509090534.GB2378@lst.de>
+ <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de>
+ <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de>
+ <20170510171757.GA10534@localhost.localdomain>
+ <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
+From: Paul Menzel <pmenzel@molgen.mpg.de>
+Message-ID: <979473d1-9e8a-51ba-28d9-9ace63f8105b@molgen.mpg.de>
+Date: Tue, 1 Aug 2017 19:49:50 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTA4LTAxIGF0IDEwOjIwIC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
-Cj4gT24gVHVlLCBBdWcgMSwgMjAxNyBhdCA4OjUxIEFNLCBkYXZlakBjb2RlbW9ua2V5Lm9yZy51
-aw0KPiA8ZGF2ZWpAY29kZW1vbmtleS5vcmcudWs+IHdyb3RlOg0KPiA+IE9uIE1vbiwgSnVsIDMx
-LCAyMDE3IGF0IDEwOjM1OjQ1UE0gLTA3MDAsIExpbnVzIFRvcnZhbGRzIHdyb3RlOg0KPiA+ICA+
-IEFueSBjaGFuY2Ugb2YgZ2V0dGluZyB0aGUgb3V0cHV0IGZyb20NCj4gPiAgPg0KPiA+ICA+ICAg
-IC4vc2NyaXB0cy9mYWRkcjJsaW5lIHZtbGludXgNCj4gPiBuZnM0X2V4Y2hhbmdlX2lkX2RvbmUr
-MHgzZDcvMHg4ZTANCj4gPiANCj4gPiANCj4gPiBIbSwgdGhhdCBwb2ludHMgdG8gdGhpcy4uDQo+
-ID4gDQo+ID4gNzQ2MyAgICAgICAgICAgICAgICAgLyogU2F2ZSB0aGUgRVhDSEFOR0VfSUQgdmVy
-aWZpZXIgc2Vzc2lvbiB0cnVuaw0KPiA+IHRlc3RzICovDQo+ID4gNzQ2NCAgICAgICAgICAgICAg
-ICAgbWVtY3B5KGNscC0+Y2xfY29uZmlybS5kYXRhLCBjZGF0YS0NCj4gPiA+YXJncy52ZXJpZmll
-ci0+ZGF0YSwNCj4gPiA3NDY1ICAgICAgICAgICAgICAgICAgICAgICAgc2l6ZW9mKGNscC0+Y2xf
-Y29uZmlybS5kYXRhKSk7DQo+IA0KPiBPaywgdGhhdCBjZXJ0YWlubHkgbWFkZSBubyBzZW5zZSB0
-byBtZSwgYmVjYXVzZSB0aGUgS0FTQU4gcmVwb3J0IG1hZGUNCj4gaXQgbG9vayBsaWtlIGEgc3Rh
-bGUgcGF0aG5hbWUgYWNjZXNzIChhbGxvY2F0ZWQgaW4gZ2V0bmFtZSwgZnJlZWQgaW4NCj4gcHV0
-bmFtZSksIGJ1dCBJIHRoaW5rIHRoZSBpc3N1ZSBpcyBtb3JlIGZ1bmRhbWVudGFsIHRoYW4gdGhh
-dC4NCj4gDQo+IFRoYXQgY2RhdGEtPmFyZ3MudmVyaWZpZXIgc2VlbXMgdG8gYmUgZW50aXJlbHkg
-YnJva2VuLiBBVCBsZWFzdCBmb3INCj4gdGhlICJ4cHJ0ID09IE5VTEwiIGNhc2UsIGl0IGRvZXMg
-dGhlIGZvbGxvd2luZzoNCj4gDQo+ICAtIHVzZSB0aGUgYWRkcmVzcyBvZiBhIGxvY2FsIHZhcmlh
-YmxlICgiJnZlcmlmaWVyIikNCj4gDQo+ICAtIHdhaXQgZm9yIHRoZSBycGMgY29tcGxldGlvbiB1
-c2luZyBycGNfd2FpdF9mb3JfY29tcGxldGlvbl90YXNrKCkuDQo+IA0KPiBUaGF0J3MgdW5hY2Nl
-cHRhYmx5IGJ1Z2d5IGNyYXAuIHJwY193YWl0X2Zvcl9jb21wbGV0aW9uX3Rhc2soKSB3aWxsDQo+
-IGhhcHBpbHkgZXhpdCBvbiBhIGRlYWRseSBzaWduYWwgZXZlbiBpZiB0aGUgcnBjIGhhc24ndCBi
-ZWVuDQo+IGNvbXBsZXRlZCwNCj4gc28gbm93IHlvdSdsbCBoYXZlIGEgc3RhbGUgcG9pbnRlciB0
-byBhIHN0YWNrIHRoYXQgaGFzIGJlZW4gZnJlZWQuDQo+IA0KPiBTbyBJIHRoaW5rIHRoZSAncGF0
-aG5hbWUnIHBhcnQgbWF5IGFjdHVhbGx5IGJlIGVudGlyZWx5IGEgcmVkDQo+IGhlcnJpbmcsDQo+
-IGFuZCBpdCdzIHRoZSB1bmRlcmx5aW5nIGFjY2VzcyBpdHNlbGYgdGhhdCBqdXN0IHBpY2tzIHVw
-IGEgcmFuZG9tDQo+IHBvaW50ZXIgZnJvbSBhIHN0YWNrIHRoYXQgbm93IGNvbnRhaW5zIHNvbWV0
-aGluZyBkaWZmZXJlbnQuIEFuZCBLQVNBTg0KPiBkaWRuJ3Qgbm90aWNlIHRoZSBzdGFsZSBzdGFj
-ayBhY2Nlc3MgaXRzZWxmLCBiZWNhdXNlIHRoZSBzdGFjayBzbG90DQo+IGlzDQo+IHN0aWxsIHZh
-bGlkIC0gaXQncyBqdXN0IG5vIGxvbmdlciB0aGUgb3JpZ2luYWwgJ3ZlcmlmaWVyJyBhbGxvY2F0
-aW9uLg0KPiANCj4gT3IgKnNvbWV0aGluZyogbGlrZSB0aGF0Lg0KPiANCj4gTm9uZSBvZiB0aGlz
-IGxvb2tzIGV2ZW4gcmVtb3RlbHkgbmV3LCB0aG91Z2ggLSB0aGUgY29kZSBzZWVtcyB0byBnbw0K
-PiBiYWNrIHRvIDIwMDkuIEhhdmUgeW91IGp1c3QgY2hhbmdlZCB3aGF0IHlvdSdyZSB0ZXN0aW5n
-IHRvIHRyaWdnZXINCj4gdGhlc2UgdGhpbmdzPw0KPiANCj4gSSdtIG5vdCBldmVuIHN1cmUgd2h5
-IGl0IGRvZXMgdGhhdCBzdHVwaWQgc3RhY2sgYWxsb2NhdGlvbi4gSXQgZG9lcyBhDQo+ICpyZWFs
-KiBhbGxvY2F0aW9uIGp1c3QgYSBmZXcgbGluZXMgbGF0ZXI6DQo+IA0KPiAgICAgICAgIHN0cnVj
-dCBuZnM0MV9leGNoYW5nZV9pZF9kYXRhICpjYWxsZGF0YQ0KPiAgICAgICAgIC4uLg0KPiAgICAg
-ICAgIGNhbGxkYXRhID0ga3phbGxvYyhzaXplb2YoKmNhbGxkYXRhKSwgR0ZQX05PRlMpOw0KPiAN
-Cj4gYW5kIHRoZSB3aG9sZSB2ZXJpZmllciBzdHJ1Y3R1cmUgY291bGQgZWFzaWx5IGhhdmUgYmVl
-biBwYXJ0IG9mIHRoYXQNCj4gc2FtZSBhbGxvY2F0aW9uIGFzIGZhciBhcyBJIGNhbiB0ZWxsLg0K
-PiANCj4gQW5kIHRoYXQgcmVhbGx5IG1pZ2h0IHNlZW0gdG8gYmUgdGhlIHJpZ2h0IHRoaW5nIHRv
-IGRvLg0KPiANCj4gVE9UQUxMWSBVTlRFU1RFRCBQUk9CQUJMWSBDT01QTEVURSBDUkFQIHBhdGNo
-IGF0dGF0Y2hlZC4NCj4gDQo+IFRoYXQgcGF0Y2ggY29tcGlsZXMgZm9yIG1lLiBJdCAqbWlnaHQq
-IGV2ZW4gd29yay4gT3IgaXQgbWlnaHQganVzdCBiZQ0KPiB0aGUgcmFtYmxpbmdzIG9mIGEgZGlz
-ZWFzZWQgbWluZC4NCj4gDQo+IEFubmE/IFRyb25kPw0KPiANCg0KSSBjYW1lIHRvIHRoZSBzYW1l
-IGNvbmNsdXNpb24geWVzdGVyZGF5LCBhbmQgaGF2ZSBhIHN0YWJsZSBwYXRjaCB0aGF0DQpkb2Vz
-IHNvbWV0aGluZyBzaW1pbGFyLiBJIGp1c3QgZ290IGRpc3RyYWN0ZWQgd2l0aCB0aGUgb3RoZXIg
-YnVncyB0aGF0DQp3ZXJlIGludHJvZHVjZWQgYnkgdGhlIGV4Y2hhbmdlaWQgcGF0Y2ggc2VyaWVz
-IGluIExpbnV4LTQuOSAoaW5jbHVkaW5nDQp3aGF0IGxvb2tzIGxpa2UgYSBkdXBsaWNhdGUgZnJl
-ZSBpc3N1ZSBpbiBuZnM0X3Rlc3Rfc2Vzc2lvbl90cnVuaygpKS4NCg0KSSBjYW4gcGFzcyBhIGZl
-dyBvZiB0aGUgbW9yZSBjcml0aWNhbCBwYXRjaGVzIG9uIHRvIEFubmEgZm9yIG1lcmdpbmcgaW4N
-CnRoaXMgY3ljbGUsIHRoZW4gSSd2ZSBnb3Qgc29tZSBjbGVhbiB1cHMgcmVhZHkgZm9yIHRoZSA0
-LjE0IG1lcmdlDQp3aW5kb3cuDQoNCkNoZWVycw0KICBUcm9uZA0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
-bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Dear Brian, dear Christoph,
 
+
+On 06/27/17 13:59, Paul Menzel wrote:
+
+> Just a small update that we were hit by the problem on a different 
+> machine (identical model) with Linux 4.9.32 and the exact same symptoms.
+> 
+> ```
+> $ sudo cat /proc/2085/stack
+> [<ffffffff811f920c>] iomap_write_begin+0x8c/0x120
+> [<ffffffff811f982b>] iomap_zero_range_actor+0xeb/0x210
+> [<ffffffff811f9a82>] iomap_apply+0xa2/0x110
+> [<ffffffff811f9c58>] iomap_zero_range+0x58/0x80
+> [<ffffffff8133c7de>] xfs_zero_eof+0x4e/0xb0
+> [<ffffffff8133c9dd>] xfs_file_aio_write_checks+0x19d/0x1c0
+> [<ffffffff8133ce89>] xfs_file_buffered_aio_write+0x79/0x2d0
+> [<ffffffff8133d17e>] xfs_file_write_iter+0x9e/0x150
+> [<ffffffff81198dc0>] do_iter_readv_writev+0xa0/0xf0
+> [<ffffffff81199fba>] do_readv_writev+0x18a/0x230
+> [<ffffffff8119a2ac>] vfs_writev+0x3c/0x50
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> ```
+> 
+> We haven’t had time to set up a test system yet to analyze that further.
+
+Today, two systems with Linux 4.9.23 exhibited the problem of `top` 
+showing that `nfsd` is at 100 %. Restarting one machine into Linux 
+*4.9.38* showed the same problem. One of them with a 1 GBit/s network 
+device got traffic from a 10 GBit/s system, so the connection was saturated.
+
+But looking at the current processes, process with ID 829 does not show 
+that CPU usage value. (I don’t remember what the behavior during the 
+other incidents on other machines was.)
+
+This is from 4.9.38.
+
+The stack trace of the process with ID 857 is below.
+
+```
+$ sudo cat /proc/857/stack
+[<ffffffff811f94fc>] iomap_write_begin+0x6c/0x120
+[<ffffffffffffffff>] 0xffffffffffffffff
+```
+
+Then I executed Brian’s commands.
+
+```
+$ trace-cmd start -p function -l iomap* -P <pid>
+$ cat /sys/kernel/debug/tracing/trace_pipe
+```
+
+This produced output.
+
+```
+             nfsd-857   [005] ....   426.650413: iomap_write_end 
+<-iomap_zero_range_actor
+             nfsd-857   [005] ....   426.650414: iomap_write_begin 
+<-iomap_zero_range_actor
+CPU:5 [LOST 115621695 EVENTS]
+             nfsd-857   [005] ....   453.070439: iomap_write_begin 
+<-iomap_zero_range_actor
+             nfsd-857   [005] ....   453.070440: iomap_write_end 
+<-iomap_zero_range_actor
+```
+
+This continues endlessly.
+
+
+Kind regards,
+
+Paul
