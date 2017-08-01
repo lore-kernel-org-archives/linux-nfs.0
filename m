@@ -1,54 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f171.google.com ([209.85.216.171]:35808 "EHLO
-        mail-qt0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751610AbdGaUuG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jul 2017 16:50:06 -0400
-Received: by mail-qt0-f171.google.com with SMTP id p3so113312278qtg.2
-        for <linux-nfs@vger.kernel.org>; Mon, 31 Jul 2017 13:50:06 -0700 (PDT)
-Message-ID: <1501534204.4663.18.camel@redhat.com>
-Subject: Re: lockd: server not responding
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Mon, 31 Jul 2017 16:50:04 -0400
-In-Reply-To: <7B576AFA-7EF1-459E-827E-8793F50DB50C@oracle.com>
-References: <7B576AFA-7EF1-459E-827E-8793F50DB50C@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from resqmta-ch2-11v.sys.comcast.net ([69.252.207.43]:49100 "EHLO
+        resqmta-ch2-11v.sys.comcast.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751729AbdHAAym (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 31 Jul 2017 20:54:42 -0400
+To: libtirpc-devel@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org, Joshua Kinard <kumba@gentoo.org>
+From: Joshua Kinard <kumba@gentoo.org>
+Subject: [PATCH v2] Replace bzero() calls with equivalent memset() calls
+Message-ID: <796573dc-6d91-c04b-873b-92c7efbaa216@gentoo.org>
+Date: Mon, 31 Jul 2017 20:54:34 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-07-31 at 16:28 -0400, Chuck Lever wrote:
-> Hi Jeff-
-> 
-> Observed with v4.13-rc[23] during NFSv3 connectation testing.
-> The lock test stalls for a minute or two during test #7.
-> 
-> If you haven't already seen this, I can dig deeper.
-> 
-> Jul 31 16:11:08 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:864 for /export/tmp (/export/tmp)
-> Jul 31 16:11:28 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:740 for /export/tmp (/export/tmp)
-> Jul 31 16:11:28 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:844 for /export/tmp (/export/tmp)
-> Jul 31 16:12:35 klimt kernel: lockd: server manet.1015granger.net not responding, timed out
-> Jul 31 16:12:49 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:989 for /export/tmp (/export/tmp)
-> Jul 31 16:12:49 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:844 for /export/tmp (/export/tmp)
-> Jul 31 16:13:10 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:813 for /export/tmp (/export/tmp)
-> Jul 31 16:13:10 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:860 for /export/tmp (/export/tmp)
-> Jul 31 16:14:25 klimt kernel: lockd: server manet.1015granger.net not responding, timed out
-> Jul 31 16:14:30 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:636 for /export/tmp (/export/tmp)
-> Jul 31 16:14:30 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:960 for /export/tmp (/export/tmp)
-> Jul 31 16:14:51 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:884 for /export/tmp (/export/tmp)
-> Jul 31 16:14:51 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:822 for /export/tmp (/export/tmp)
-> Jul 31 16:17:02 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:778 for /export/tmp (/export/tmp)
-> 
-> 
+As annotated in the bzero(3) man page, bzero() was marked as LEGACY in
+POSIX.1-2001 and removed in POSIX.1-2008, and should be replaced with
+memset() calls to write zeros to a memory region.  The attached patch
+replaces two bzero() calls and one __bzero() call in libtirpc with
+equivalent memset() calls.  The latter replacement fixes a compile error
+under uclibc-ng, which lacks a definition for __bzero()
 
-That's not anything that I've seen, but I haven't been doing any v3
-testing. Let me know what you find.
+Signed-off-by: Joshua Kinard <kumba@gentoo.org>
+---
 
-FWIW, the only real file locking change this cycle was a patch from
-Christoph to clean up the fcntl getlk/setlk syscalls. lockd hooks in a
-bit below that layer so I'd be surprised if that would affect it.
+Changes in v2:
+Removed the typecasts on the replacement memset() calls in
+src/auth_time.c and src/svc_auth_des.c
 
--- 
-Jeff Layton <jlayton@redhat.com>
+---
+
+ src/auth_time.c    |    2 +-
+ src/des_impl.c     |    2 +-
+ src/svc_auth_des.c |    2 +-
+ 3 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/src/auth_time.c b/src/auth_time.c
+index 7f83ab4..69400bc 100644
+--- a/src/auth_time.c
++++ b/src/auth_time.c
+@@ -317,7 +317,7 @@ __rpc_get_time_offset(td, srv, thost, uaddr, netid)
+ 	sprintf(ipuaddr, "%d.%d.%d.%d.0.111", a1, a2, a3, a4);
+ 	useua = &ipuaddr[0];
+ 
+-	bzero((char *)&sin, sizeof(sin));
++	memset(&sin, 0, sizeof(sin));
+ 	if (uaddr_to_sockaddr(useua, &sin)) {
+ 		msg("unable to translate uaddr to sockaddr.");
+ 		if (needfree)
+diff --git a/src/des_impl.c b/src/des_impl.c
+index 9dbccaf..15bec2a 100644
+--- a/src/des_impl.c
++++ b/src/des_impl.c
+@@ -588,7 +588,7 @@ _des_crypt (char *buf, unsigned len, struct desparams *desp)
+     }
+   tin0 = tin1 = tout0 = tout1 = xor0 = xor1 = 0;
+   tbuf[0] = tbuf[1] = 0;
+-  __bzero (schedule, sizeof (schedule));
++  memset (schedule, 0, sizeof (schedule));
+ 
+   return (1);
+ }
+diff --git a/src/svc_auth_des.c b/src/svc_auth_des.c
+index 2e90146..19a7c60 100644
+--- a/src/svc_auth_des.c
++++ b/src/svc_auth_des.c
+@@ -356,7 +356,7 @@ cache_init()
+ 
+ 	authdes_cache = (struct cache_entry *)
+ 		mem_alloc(sizeof(struct cache_entry) * AUTHDES_CACHESZ);	
+-	bzero((char *)authdes_cache, 
++	memset(authdes_cache, 0,
+ 		sizeof(struct cache_entry) * AUTHDES_CACHESZ);
+ 
+ 	authdes_lru = (short *)mem_alloc(sizeof(short) * AUTHDES_CACHESZ);
