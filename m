@@ -1,54 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from scorn.kernelslacker.org ([45.56.101.199]:58106 "EHLO
-        scorn.kernelslacker.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751648AbdHAPvg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 11:51:36 -0400
-Date: Tue, 1 Aug 2017 11:51:31 -0400
-From: "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
-Message-ID: <20170801155131.xy7nbw5ih7ml5fmf@codemonkey.org.uk>
-References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
- <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
- <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
- <1500245845.13893.3.camel@primarydata.com>
- <20170717030504.qca74wsswct26ytn@codemonkey.org.uk>
- <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com>
- <20170731154322.tfzkukscda4fe7wm@codemonkey.org.uk>
- <CA+55aFwwkc-YJ8WQzE6Ax3BAJ3XXR8fhN+0AEH_U8TtcQn7opg@mail.gmail.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:37227 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751872AbdHAP7n (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 11:59:43 -0400
+Received: by mail-it0-f65.google.com with SMTP id 77so1924162itj.4
+        for <linux-nfs@vger.kernel.org>; Tue, 01 Aug 2017 08:59:43 -0700 (PDT)
+Subject: [PATCH v1 0/4] NFS server clean ups for v4.14
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 01 Aug 2017 11:59:41 -0400
+Message-ID: <20170801155738.14944.10842.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFwwkc-YJ8WQzE6Ax3BAJ3XXR8fhN+0AEH_U8TtcQn7opg@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jul 31, 2017 at 10:35:45PM -0700, Linus Torvalds wrote:
- > On Mon, Jul 31, 2017 at 8:43 AM, davej@codemonkey.org.uk
- > <davej@codemonkey.org.uk> wrote:
- > > Another NFSv4 KASAN splat, this time from rc3.
- > >
- > > BUG: KASAN: use-after-free in nfs4_exchange_id_done+0x3d7/0x8e0 [nfsv4]
- > 
- > Ugh. It's really hard to tell what access that it - KASAN doesn't
- > actually give enough information. There's lots of 8-byte accesses
- > there in that function.
- > 
- > Any chance of getting the output from
- > 
- >    ./scripts/faddr2line vmlinux nfs4_exchange_id_done+0x3d7/0x8e0
- 
+Hi Bruce-
 
-Hm, that points to this..
+Follow-on to Christoph's const-ification of the proc arrays, and a
+clean-up suggested by Dan Carpenter. More to come.
 
-7463                 /* Save the EXCHANGE_ID verifier session trunk tests */
-7464                 memcpy(clp->cl_confirm.data, cdata->args.verifier->data,
-7465                        sizeof(clp->cl_confirm.data));
+---
 
-	Dave
+Chuck Lever (4):
+      sunrpc: Const-ify instances of struct svc_xprt_ops
+      nfsd: Const-ify NFSv4 encoding and decoding ops arrays
+      sunrpc: Const-ify struct sv_serv_ops
+      svcrdma: Clean up svc_rdma_build_read_chunk()
 
+
+ fs/lockd/svc.c                           |    2 +-
+ fs/nfs/callback.c                        |   10 +++++-----
+ fs/nfsd/nfs4xdr.c                        |    4 ++--
+ fs/nfsd/nfssvc.c                         |    2 +-
+ include/linux/sunrpc/svc.h               |    6 +++---
+ include/linux/sunrpc/svc_xprt.h          |    4 ++--
+ net/sunrpc/svc.c                         |    6 +++---
+ net/sunrpc/svcsock.c                     |    6 +++---
+ net/sunrpc/xprtrdma/svc_rdma_rw.c        |    8 +++++---
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |    4 ++--
+ 10 files changed, 27 insertions(+), 25 deletions(-)
+
+--
+Chuck Lever
