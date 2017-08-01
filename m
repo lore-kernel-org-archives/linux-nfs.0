@@ -1,136 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f66.google.com ([209.85.218.66]:37721 "EHLO
-        mail-oi0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751496AbdHARUd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 13:20:33 -0400
-MIME-Version: 1.0
-In-Reply-To: <20170801155131.xy7nbw5ih7ml5fmf@codemonkey.org.uk>
-References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
- <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk> <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
- <1500245845.13893.3.camel@primarydata.com> <20170717030504.qca74wsswct26ytn@codemonkey.org.uk>
- <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com>
- <20170731154322.tfzkukscda4fe7wm@codemonkey.org.uk> <CA+55aFwwkc-YJ8WQzE6Ax3BAJ3XXR8fhN+0AEH_U8TtcQn7opg@mail.gmail.com>
- <20170801155131.xy7nbw5ih7ml5fmf@codemonkey.org.uk>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 1 Aug 2017 10:20:31 -0700
-Message-ID: <CA+55aFyQdHt0qYQ0uBSK+9wfPOyFfx8mJE4r9FfWoxa3Gyei9g@mail.gmail.com>
-Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
-To: "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>,
-        Trond Myklebust <trondmy@primarydata.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:24274 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751860AbdHARai (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 13:30:38 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "bfields@fieldses.org" <bfields@fieldses.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
+        "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>,
         "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Content-Type: multipart/mixed; boundary="001a113cddac5b7af10555b45d8c"
+Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
+Date: Tue, 1 Aug 2017 17:30:30 +0000
+Message-ID: <1501608628.70813.1.camel@primarydata.com>
+References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
+         <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
+         <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
+         <1500245845.13893.3.camel@primarydata.com>
+         <20170717030504.qca74wsswct26ytn@codemonkey.org.uk>
+         <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com>
+         <20170731154322.tfzkukscda4fe7wm@codemonkey.org.uk>
+         <CA+55aFwwkc-YJ8WQzE6Ax3BAJ3XXR8fhN+0AEH_U8TtcQn7opg@mail.gmail.com>
+         <20170801155131.xy7nbw5ih7ml5fmf@codemonkey.org.uk>
+         <CA+55aFyQdHt0qYQ0uBSK+9wfPOyFfx8mJE4r9FfWoxa3Gyei9g@mail.gmail.com>
+In-Reply-To: <CA+55aFyQdHt0qYQ0uBSK+9wfPOyFfx8mJE4r9FfWoxa3Gyei9g@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---001a113cddac5b7af10555b45d8c
-Content-Type: text/plain; charset="UTF-8"
+T24gVHVlLCAyMDE3LTA4LTAxIGF0IDEwOjIwIC0wNzAwLCBMaW51cyBUb3J2YWxkcyB3cm90ZToN
+Cj4gT24gVHVlLCBBdWcgMSwgMjAxNyBhdCA4OjUxIEFNLCBkYXZlakBjb2RlbW9ua2V5Lm9yZy51
+aw0KPiA8ZGF2ZWpAY29kZW1vbmtleS5vcmcudWs+IHdyb3RlOg0KPiA+IE9uIE1vbiwgSnVsIDMx
+LCAyMDE3IGF0IDEwOjM1OjQ1UE0gLTA3MDAsIExpbnVzIFRvcnZhbGRzIHdyb3RlOg0KPiA+ICA+
+IEFueSBjaGFuY2Ugb2YgZ2V0dGluZyB0aGUgb3V0cHV0IGZyb20NCj4gPiAgPg0KPiA+ICA+ICAg
+IC4vc2NyaXB0cy9mYWRkcjJsaW5lIHZtbGludXgNCj4gPiBuZnM0X2V4Y2hhbmdlX2lkX2RvbmUr
+MHgzZDcvMHg4ZTANCj4gPiANCj4gPiANCj4gPiBIbSwgdGhhdCBwb2ludHMgdG8gdGhpcy4uDQo+
+ID4gDQo+ID4gNzQ2MyAgICAgICAgICAgICAgICAgLyogU2F2ZSB0aGUgRVhDSEFOR0VfSUQgdmVy
+aWZpZXIgc2Vzc2lvbiB0cnVuaw0KPiA+IHRlc3RzICovDQo+ID4gNzQ2NCAgICAgICAgICAgICAg
+ICAgbWVtY3B5KGNscC0+Y2xfY29uZmlybS5kYXRhLCBjZGF0YS0NCj4gPiA+YXJncy52ZXJpZmll
+ci0+ZGF0YSwNCj4gPiA3NDY1ICAgICAgICAgICAgICAgICAgICAgICAgc2l6ZW9mKGNscC0+Y2xf
+Y29uZmlybS5kYXRhKSk7DQo+IA0KPiBPaywgdGhhdCBjZXJ0YWlubHkgbWFkZSBubyBzZW5zZSB0
+byBtZSwgYmVjYXVzZSB0aGUgS0FTQU4gcmVwb3J0IG1hZGUNCj4gaXQgbG9vayBsaWtlIGEgc3Rh
+bGUgcGF0aG5hbWUgYWNjZXNzIChhbGxvY2F0ZWQgaW4gZ2V0bmFtZSwgZnJlZWQgaW4NCj4gcHV0
+bmFtZSksIGJ1dCBJIHRoaW5rIHRoZSBpc3N1ZSBpcyBtb3JlIGZ1bmRhbWVudGFsIHRoYW4gdGhh
+dC4NCj4gDQo+IFRoYXQgY2RhdGEtPmFyZ3MudmVyaWZpZXIgc2VlbXMgdG8gYmUgZW50aXJlbHkg
+YnJva2VuLiBBVCBsZWFzdCBmb3INCj4gdGhlICJ4cHJ0ID09IE5VTEwiIGNhc2UsIGl0IGRvZXMg
+dGhlIGZvbGxvd2luZzoNCj4gDQo+ICAtIHVzZSB0aGUgYWRkcmVzcyBvZiBhIGxvY2FsIHZhcmlh
+YmxlICgiJnZlcmlmaWVyIikNCj4gDQo+ICAtIHdhaXQgZm9yIHRoZSBycGMgY29tcGxldGlvbiB1
+c2luZyBycGNfd2FpdF9mb3JfY29tcGxldGlvbl90YXNrKCkuDQo+IA0KPiBUaGF0J3MgdW5hY2Nl
+cHRhYmx5IGJ1Z2d5IGNyYXAuIHJwY193YWl0X2Zvcl9jb21wbGV0aW9uX3Rhc2soKSB3aWxsDQo+
+IGhhcHBpbHkgZXhpdCBvbiBhIGRlYWRseSBzaWduYWwgZXZlbiBpZiB0aGUgcnBjIGhhc24ndCBi
+ZWVuDQo+IGNvbXBsZXRlZCwNCj4gc28gbm93IHlvdSdsbCBoYXZlIGEgc3RhbGUgcG9pbnRlciB0
+byBhIHN0YWNrIHRoYXQgaGFzIGJlZW4gZnJlZWQuDQo+IA0KPiBTbyBJIHRoaW5rIHRoZSAncGF0
+aG5hbWUnIHBhcnQgbWF5IGFjdHVhbGx5IGJlIGVudGlyZWx5IGEgcmVkDQo+IGhlcnJpbmcsDQo+
+IGFuZCBpdCdzIHRoZSB1bmRlcmx5aW5nIGFjY2VzcyBpdHNlbGYgdGhhdCBqdXN0IHBpY2tzIHVw
+IGEgcmFuZG9tDQo+IHBvaW50ZXIgZnJvbSBhIHN0YWNrIHRoYXQgbm93IGNvbnRhaW5zIHNvbWV0
+aGluZyBkaWZmZXJlbnQuIEFuZCBLQVNBTg0KPiBkaWRuJ3Qgbm90aWNlIHRoZSBzdGFsZSBzdGFj
+ayBhY2Nlc3MgaXRzZWxmLCBiZWNhdXNlIHRoZSBzdGFjayBzbG90DQo+IGlzDQo+IHN0aWxsIHZh
+bGlkIC0gaXQncyBqdXN0IG5vIGxvbmdlciB0aGUgb3JpZ2luYWwgJ3ZlcmlmaWVyJyBhbGxvY2F0
+aW9uLg0KPiANCj4gT3IgKnNvbWV0aGluZyogbGlrZSB0aGF0Lg0KPiANCj4gTm9uZSBvZiB0aGlz
+IGxvb2tzIGV2ZW4gcmVtb3RlbHkgbmV3LCB0aG91Z2ggLSB0aGUgY29kZSBzZWVtcyB0byBnbw0K
+PiBiYWNrIHRvIDIwMDkuIEhhdmUgeW91IGp1c3QgY2hhbmdlZCB3aGF0IHlvdSdyZSB0ZXN0aW5n
+IHRvIHRyaWdnZXINCj4gdGhlc2UgdGhpbmdzPw0KPiANCj4gSSdtIG5vdCBldmVuIHN1cmUgd2h5
+IGl0IGRvZXMgdGhhdCBzdHVwaWQgc3RhY2sgYWxsb2NhdGlvbi4gSXQgZG9lcyBhDQo+ICpyZWFs
+KiBhbGxvY2F0aW9uIGp1c3QgYSBmZXcgbGluZXMgbGF0ZXI6DQo+IA0KPiAgICAgICAgIHN0cnVj
+dCBuZnM0MV9leGNoYW5nZV9pZF9kYXRhICpjYWxsZGF0YQ0KPiAgICAgICAgIC4uLg0KPiAgICAg
+ICAgIGNhbGxkYXRhID0ga3phbGxvYyhzaXplb2YoKmNhbGxkYXRhKSwgR0ZQX05PRlMpOw0KPiAN
+Cj4gYW5kIHRoZSB3aG9sZSB2ZXJpZmllciBzdHJ1Y3R1cmUgY291bGQgZWFzaWx5IGhhdmUgYmVl
+biBwYXJ0IG9mIHRoYXQNCj4gc2FtZSBhbGxvY2F0aW9uIGFzIGZhciBhcyBJIGNhbiB0ZWxsLg0K
+PiANCj4gQW5kIHRoYXQgcmVhbGx5IG1pZ2h0IHNlZW0gdG8gYmUgdGhlIHJpZ2h0IHRoaW5nIHRv
+IGRvLg0KPiANCj4gVE9UQUxMWSBVTlRFU1RFRCBQUk9CQUJMWSBDT01QTEVURSBDUkFQIHBhdGNo
+IGF0dGF0Y2hlZC4NCj4gDQo+IFRoYXQgcGF0Y2ggY29tcGlsZXMgZm9yIG1lLiBJdCAqbWlnaHQq
+IGV2ZW4gd29yay4gT3IgaXQgbWlnaHQganVzdCBiZQ0KPiB0aGUgcmFtYmxpbmdzIG9mIGEgZGlz
+ZWFzZWQgbWluZC4NCj4gDQo+IEFubmE/IFRyb25kPw0KPiANCg0KSSBjYW1lIHRvIHRoZSBzYW1l
+IGNvbmNsdXNpb24geWVzdGVyZGF5LCBhbmQgaGF2ZSBhIHN0YWJsZSBwYXRjaCB0aGF0DQpkb2Vz
+IHNvbWV0aGluZyBzaW1pbGFyLiBJIGp1c3QgZ290IGRpc3RyYWN0ZWQgd2l0aCB0aGUgb3RoZXIg
+YnVncyB0aGF0DQp3ZXJlIGludHJvZHVjZWQgYnkgdGhlIGV4Y2hhbmdlaWQgcGF0Y2ggc2VyaWVz
+IGluIExpbnV4LTQuOSAoaW5jbHVkaW5nDQp3aGF0IGxvb2tzIGxpa2UgYSBkdXBsaWNhdGUgZnJl
+ZSBpc3N1ZSBpbiBuZnM0X3Rlc3Rfc2Vzc2lvbl90cnVuaygpKS4NCg0KSSBjYW4gcGFzcyBhIGZl
+dyBvZiB0aGUgbW9yZSBjcml0aWNhbCBwYXRjaGVzIG9uIHRvIEFubmEgZm9yIG1lcmdpbmcgaW4N
+CnRoaXMgY3ljbGUsIHRoZW4gSSd2ZSBnb3Qgc29tZSBjbGVhbiB1cHMgcmVhZHkgZm9yIHRoZSA0
+LjE0IG1lcmdlDQp3aW5kb3cuDQoNCkNoZWVycw0KICBUcm9uZA0KDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
+bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-On Tue, Aug 1, 2017 at 8:51 AM, davej@codemonkey.org.uk
-<davej@codemonkey.org.uk> wrote:
-> On Mon, Jul 31, 2017 at 10:35:45PM -0700, Linus Torvalds wrote:
->  > Any chance of getting the output from
->  >
->  >    ./scripts/faddr2line vmlinux nfs4_exchange_id_done+0x3d7/0x8e0
->
->
-> Hm, that points to this..
->
-> 7463                 /* Save the EXCHANGE_ID verifier session trunk tests */
-> 7464                 memcpy(clp->cl_confirm.data, cdata->args.verifier->data,
-> 7465                        sizeof(clp->cl_confirm.data));
-
-Ok, that certainly made no sense to me, because the KASAN report made
-it look like a stale pathname access (allocated in getname, freed in
-putname), but I think the issue is more fundamental than that.
-
-That cdata->args.verifier seems to be entirely broken. AT least for
-the "xprt == NULL" case, it does the following:
-
- - use the address of a local variable ("&verifier")
-
- - wait for the rpc completion using rpc_wait_for_completion_task().
-
-That's unacceptably buggy crap. rpc_wait_for_completion_task() will
-happily exit on a deadly signal even if the rpc hasn't been completed,
-so now you'll have a stale pointer to a stack that has been freed.
-
-So I think the 'pathname' part may actually be entirely a red herring,
-and it's the underlying access itself that just picks up a random
-pointer from a stack that now contains something different. And KASAN
-didn't notice the stale stack access itself, because the stack slot is
-still valid - it's just no longer the original 'verifier' allocation.
-
-Or *something* like that.
-
-None of this looks even remotely new, though - the code seems to go
-back to 2009. Have you just changed what you're testing to trigger
-these things?
-
-I'm not even sure why it does that stupid stack allocation. It does a
-*real* allocation just a few lines later:
-
-        struct nfs41_exchange_id_data *calldata
-        ...
-        calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
-
-and the whole verifier structure could easily have been part of that
-same allocation as far as I can tell.
-
-And that really might seem to be the right thing to do.
-
-TOTALLY UNTESTED PROBABLY COMPLETE CRAP patch attatched.
-
-That patch compiles for me. It *might* even work. Or it might just be
-the ramblings of a diseased mind.
-
-Anna? Trond?
-
-So caveat probatorem,
-
-              Linus
-
---001a113cddac5b7af10555b45d8c
-Content-Type: text/plain; charset="US-ASCII"; name="patch.diff"
-Content-Disposition: attachment; filename="patch.diff"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_j5tujz6x0
-
-IGZzL25mcy9uZnM0cHJvYy5jIHwgMTkgKysrKysrKysrKysrKystLS0tLQogMSBmaWxlIGNoYW5n
-ZWQsIDE0IGluc2VydGlvbnMoKyksIDUgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvZnMvbmZz
-L25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYwppbmRleCAxOGNhNjg3OWQ4ZGUuLjA3MTJh
-ZjNkMzhmOCAxMDA2NDQKLS0tIGEvZnMvbmZzL25mczRwcm9jLmMKKysrIGIvZnMvbmZzL25mczRw
-cm9jLmMKQEAgLTc0OTAsNiArNzQ5MCwxMSBAQCBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxs
-X29wcyBuZnM0X2V4Y2hhbmdlX2lkX2NhbGxfb3BzID0gewogCS5ycGNfcmVsZWFzZSA9IG5mczRf
-ZXhjaGFuZ2VfaWRfcmVsZWFzZSwKIH07CiAKK3N0cnVjdCB2ZXJpZmllcl9hbmRfY2FsbGRhdGEg
-eworCXN0cnVjdCBuZnM0MV9leGNoYW5nZV9pZF9kYXRhIGNhbGxkYXRhOworCW5mczRfdmVyaWZp
-ZXIgdmVyaWZpZXI7Cit9OworCiAvKgogICogX25mczRfcHJvY19leGNoYW5nZV9pZCgpCiAgKgpA
-QCAtNzQ5OCw3ICs3NTAzLDggQEAgc3RhdGljIGNvbnN0IHN0cnVjdCBycGNfY2FsbF9vcHMgbmZz
-NF9leGNoYW5nZV9pZF9jYWxsX29wcyA9IHsKIHN0YXRpYyBpbnQgX25mczRfcHJvY19leGNoYW5n
-ZV9pZChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQsCiAJCQl1
-MzIgc3A0X2hvdywgc3RydWN0IHJwY194cHJ0ICp4cHJ0KQogewotCW5mczRfdmVyaWZpZXIgdmVy
-aWZpZXI7CisJc3RydWN0IHZlcmlmaWVyX2FuZF9jYWxsZGF0YSAqdm5hOworCW5mczRfdmVyaWZp
-ZXIgKnZlcmlmaWVyOwogCXN0cnVjdCBycGNfbWVzc2FnZSBtc2cgPSB7CiAJCS5ycGNfcHJvYyA9
-ICZuZnM0X3Byb2NlZHVyZXNbTkZTUFJPQzRfQ0xOVF9FWENIQU5HRV9JRF0sCiAJCS5ycGNfY3Jl
-ZCA9IGNyZWQsCkBAIC03NTE2LDE0ICs3NTIyLDE3IEBAIHN0YXRpYyBpbnQgX25mczRfcHJvY19l
-eGNoYW5nZV9pZChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQs
-CiAJaWYgKCFhdG9taWNfaW5jX25vdF96ZXJvKCZjbHAtPmNsX2NvdW50KSkKIAkJcmV0dXJuIC1F
-SU87CiAKLQljYWxsZGF0YSA9IGt6YWxsb2Moc2l6ZW9mKCpjYWxsZGF0YSksIEdGUF9OT0ZTKTsK
-LQlpZiAoIWNhbGxkYXRhKSB7CisJdm5hID0ga3phbGxvYyhzaXplb2YoKnZuYSksIEdGUF9OT0ZT
-KTsKKwlpZiAoIXZuYSkgewogCQluZnNfcHV0X2NsaWVudChjbHApOwogCQlyZXR1cm4gLUVOT01F
-TTsKIAl9CisJLyoga2ZyZWUoKSBvZiBjYWxsZGF0YSB3aWxsIGFsc28gZnJlZSB0aGUgdmVyaWZp
-ZXIgKi8KKwljYWxsZGF0YSA9ICZ2bmEtPmNhbGxkYXRhOworCXZlcmlmaWVyID0gJnZuYS0+dmVy
-aWZpZXI7CiAKIAlpZiAoIXhwcnQpCi0JCW5mczRfaW5pdF9ib290X3ZlcmlmaWVyKGNscCwgJnZl
-cmlmaWVyKTsKKwkJbmZzNF9pbml0X2Jvb3RfdmVyaWZpZXIoY2xwLCB2ZXJpZmllcik7CiAKIAlz
-dGF0dXMgPSBuZnM0X2luaXRfdW5pZm9ybV9jbGllbnRfc3RyaW5nKGNscCk7CiAJaWYgKHN0YXR1
-cykKQEAgLTc1NjYsNyArNzU3NSw3IEBAIHN0YXRpYyBpbnQgX25mczRfcHJvY19leGNoYW5nZV9p
-ZChzdHJ1Y3QgbmZzX2NsaWVudCAqY2xwLCBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQsCiAJCQkJUlBD
-X1RBU0tfU09GVHxSUENfVEFTS19TT0ZUQ09OTnxSUENfVEFTS19BU1lOQzsKIAkJY2FsbGRhdGEt
-PmFyZ3MudmVyaWZpZXIgPSAmY2xwLT5jbF9jb25maXJtOwogCX0gZWxzZSB7Ci0JCWNhbGxkYXRh
-LT5hcmdzLnZlcmlmaWVyID0gJnZlcmlmaWVyOworCQljYWxsZGF0YS0+YXJncy52ZXJpZmllciA9
-IHZlcmlmaWVyOwogCX0KIAljYWxsZGF0YS0+YXJncy5jbGllbnQgPSBjbHA7CiAjaWZkZWYgQ09O
-RklHX05GU19WNF8xX01JR1JBVElPTgo=
---001a113cddac5b7af10555b45d8c--
