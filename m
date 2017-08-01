@@ -1,273 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:25980 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:34465 "EHLO
         userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751727AbdHAORy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 10:17:54 -0400
+        with ESMTP id S1751670AbdHAO0O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 10:26:14 -0400
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH Version 4 2/2] RPCSEC_GSSv3 new reply verifier
+Subject: Re: [PATCH Version 4 1/2] Use RPCSEC_GSS version 3
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1501275000-24236-3-git-send-email-andros@netapp.com>
-Date: Tue, 1 Aug 2017 10:17:43 -0400
+In-Reply-To: <1501275000-24236-2-git-send-email-andros@netapp.com>
+Date: Tue, 1 Aug 2017 10:26:06 -0400
 Cc: Steve Dickson <steved@redhat.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         olga.kornievskaia@netapp.com,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <256669A6-894B-43EC-9305-4F4BA8D6A2DB@oracle.com>
-References: <1501275000-24236-1-git-send-email-andros@netapp.com> <1501275000-24236-3-git-send-email-andros@netapp.com>
+Message-Id: <ABDF2826-C777-4A5F-A724-8EB7A92B8BF2@oracle.com>
+References: <1501275000-24236-1-git-send-email-andros@netapp.com> <1501275000-24236-2-git-send-email-andros@netapp.com>
 To: "William A. (Andy) Adamson" <andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Andy-
 
-
-> On Jul 28, 2017, at 4:50 PM, andros@netapp.com wrote:
+> On Jul 28, 2017, at 4:49 PM, andros@netapp.com wrote:
 > 
 > From: Andy Adamson <andros@netapp.com>
 > 
+> Pass gss version to authgss_create
+> If version 3 fails, fall back to version 1
+> 
 > Signed-off-by: Andy Adamson <andros@netapp.com>
 > ---
-> src/auth_gss.c | 133 +++++++++++++++++++++++++++++++++++++++++++++++++++++++--
-> src/clnt_vc.c  |   1 +
-> 2 files changed, 131 insertions(+), 3 deletions(-)
+> autogen.sh           |  0
+> src/auth_gss.c       | 19 +++++++++++++++----
+> tirpc/rpc/auth_gss.h |  8 +++++++-
+> 3 files changed, 22 insertions(+), 5 deletions(-)
+> mode change 100644 => 100755 autogen.sh
 > 
+> diff --git a/autogen.sh b/autogen.sh
+> old mode 100644
+> new mode 100755
 > diff --git a/src/auth_gss.c b/src/auth_gss.c
-> index 8f3da2c..c015552 100644
+> index cf96ada..8f3da2c 100644
 > --- a/src/auth_gss.c
 > +++ b/src/auth_gss.c
-> @@ -47,6 +47,7 @@
-> #include <rpc/auth_gss.h>
-> #include <rpc/rpcsec_gss.h>
-> #include <rpc/clnt.h>
-> +#include <rpc/rpc_msg.h>
-> #include <netinet/in.h>
+> @@ -132,6 +132,7 @@ char *p;
+> 	fprintf(stderr, "     qop: %d\n", ptr->qop);
+> 	fprintf(stderr, "     service: %d\n", ptr->svc);
+> 	fprintf(stderr, "     cred: %p\n", ptr->cred);
+> +	fprintf(stderr, "     gss version: %d\n", ptr->gss_vers);
+> }
 > 
-> #include "debug.h"
-> @@ -209,6 +210,7 @@ retry_gssv1:
-> 	if (!authgss_refresh(auth, NULL)) {
-> 		if (vers == RPCSEC_GSS3_VERSION) {
-> 			vers = RPCSEC_GSS_VERSION;
-> +			gss_log_debug("authgss_create() RETRY with GSSv1\n");
-
-The debug message should be added in 1/2 instead.
-
-
-> 			goto retry_gssv1;
-> 		} else
-> 			auth = NULL;
-> @@ -436,17 +438,33 @@ static bool_t
-> _rpc_gss_refresh(AUTH *auth, rpc_gss_options_ret_t *options_ret)
-> {
+> struct rpc_gss_data {
+> @@ -156,9 +157,14 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
+> 	AUTH			*auth, *save_auth;
 > 	struct rpc_gss_data	*gd;
-> +	struct rpc_gss_cred	pregc = {
-> +		.gc_v = 0,
-> +	};
-
-pregc seems to be initialized unconditionally, just below.
-Is there a reason also to have a static initializer here?
-
-
-> 	struct rpc_gss_init_res	 gr;
-> 	gss_buffer_desc		*recv_tokenp, send_token;
-> 	OM_uint32		 maj_stat, min_stat, call_stat, ret_flags,
-> 				 time_ret;
-> 	gss_OID			 actual_mech_type;
-> 	char			*mechanism;
-> +	unsigned char		*buf = NULL;
-> +	int32_t			*ptr;
+> 	OM_uint32		min_stat = 0;
+> +	int                     vers;
 > 
-> 	gss_log_debug("in authgss_refresh()");
+> 	gss_log_debug("in authgss_create()");
 > 
-> 	gd = AUTH_PRIVATE(auth);
+> +	/* Old gssd versions do not set gss_vers */
+> +	vers = sec->gss_vers == 0 ? RPCSEC_GSS_VERSION : sec->gss_vers;
+> +
+> +retry_gssv1:
+> 	memset(&rpc_createerr, 0, sizeof(rpc_createerr));
 > 
-> +	/** The RPCSEC_GSSv3 verifier is over the call header data caveat
-> +	 * the gss seq_num which is the current to be sent seq_num, and the
-> +	 * mtype which is changed from CALL to REPLY.
-> +	 * Save the input rpc_gss_cred to use values before they are changed.
-> +	 */
-> +	pregc = gd->gc;
-> +
-> +	gss_log_debug("PREGC gc_v %d gc_proc %d gc_svc %d  gc_ctx.length %d",
-> +			pregc.gc_v, pregc.gc_proc, pregc.gc_svc,
-> +			pregc.gc_ctx.length);
-> +
-> 	if (gd->established)
-> 		return (TRUE);
+> 	if ((auth = calloc(sizeof(*auth), 1)) == NULL) {
+> @@ -190,7 +196,7 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
+> 	gd->ctx = GSS_C_NO_CONTEXT;
+> 	gd->sec = *sec;
 > 
-> @@ -534,15 +552,124 @@ _rpc_gss_refresh(AUTH *auth, rpc_gss_options_ret_t *options_ret)
-> 			gss_buffer_desc   bufout;
-> 			u_int seq, qop_state = 0;
+> -	gd->gc.gc_v = RPCSEC_GSS_VERSION;
+> +	gd->gc.gc_v = vers;
+> 	gd->gc.gc_proc = RPCSEC_GSS_INIT;
+> 	gd->gc.gc_svc = gd->sec.svc;
 > 
-> -			seq = htonl(gr.gr_win);
-> -			bufin.value = (unsigned char *)&seq;
-> -			bufin.length = sizeof(seq);
-> +			if (gd->gc.gc_v == RPCSEC_GSS_VERSION) {
-> +				seq = htonl(gr.gr_win);
-> +				bufin.value = (unsigned char *)&seq;
-> +				bufin.length = sizeof(seq);
-> +			}
-
-OK, here IMO we need to have better checking of the value
-in the gc_v field. What does this code do if GSS2_VERSION is
-passed? What if there's garbage in that field?
-
-Also I feel the source code could be better organized if
-you use "switch (gd->gc.gc_v)" and call individual helper
-functions (per version) that decode the relevant header
-fields. I'm not certain that is going to be possible since
-this ancient code tends to rely on function global variables.
-
-
-> +			if (gd->gc.gc_v == RPCSEC_GSS3_VERSION) {
-> +				int32_t dummy, crlen;
-> +				/*
-> +				 * GSSv3 draft: "compute the verifier using the
-
-Love the in-source documentation! So, would it be correct to
-say "RFC 7861" here instead of GSSv3 draft?
-
-
-> +				 * exact same input as is used to compute the
-> +				 * request verfier, except for the mtype is
-> +				 * changed from CALL to REPLY.
-> +				 *
-> +				 * NOTE: Need to add: the sequence number is
-> +				 * also different - as it is the seq number
-> +				 * for the reply. (same seq for gssv1)
-> +				 *
-> +				 * NOTE: RFC 2203: creation requests the
-> +				 * seq_num and the service fields are
-> +				 * undefined and must be ignored by the server.
-> +				 * So, send the same gc_svc as used in the call
-> +				 * as this is what the server should return??.
-> +				 *
-> +				 * 1.XID  CLNT_CONTROL(cl, CLGET_XID, <dest>)
-> +				 * gets the xid of the PREVIOUS call
-> +				 * see clnt_vc_control, CLGET_XID
-> +				 *
-> +				 * 2. direction	REPLY
-> +				 * 3. rpcvers	RPC_MSG_VERSION
-> +				 * 4.  prog		RPCBPROG
-> +				 * 5.  vers		RPCBVERS
-> +				 * 6.  proc             NULLPROC
-> +				 *
-> +				 * 	credential
-> +				 * 	NOTE: need to use pregc credential
-> +				 * 	as that is what was passed in CALL
-> +				 *
-> +				 * 7. flavor	RPCSEC_GSS
-> +				 * 8. length
-> +				 * 	xdr_rpc_gss_cred may do this for you
-> +				 * 	gd->gc
-> +				 * 9. gss version     gc_v
-> +				 * 10. gss proc	   gc_proc
-> +				 * 11. gss seq	gr.gr_win used above for v1
-> +				 * 12. gss service
-> +				 * --------------
-> +				 *  total 12 xdr units
-> +				 * gss ctx
-> +				 * 13. 	len  1 xdr unit
-> +				 * 	data
-> +				 */
-> +				crlen = ((5 * BYTES_PER_XDR_UNIT)
-> +					 + RNDUP(pregc.gc_ctx.length));
-> +
-> +				buf = (u_char *)malloc((8 * BYTES_PER_XDR_UNIT)
-> +					 + crlen);
-
-In the final version of this patch, use mem_alloc,
-not malloc. There are a couple of spots where I didn't,
-when recently adding new APIs, and those are "wrong".
-
-
-> +				if (buf == NULL)
-> +					return (FALSE);
-> +				ptr = (int32_t *)buf;
-> +
-> +				/* XID */
-> +				CLNT_CONTROL(gd->clnt, CLGET_XID, &dummy);
-> +				*ptr++ = dummy;  /* hmm, need htonl?*/
-
-Have you checked this? I think no htonl is necessary,
-but I'd rather be certain and remove this comment.
-
-
-> +
-> +				/* direction */
-> +				IXDR_PUT_ENUM(ptr, REPLY);
-> +
-> +				/* rpc vers */
-> +				IXDR_PUT_LONG(ptr, RPC_MSG_VERSION);
-> +
-> +				/* program (NFS) */
-> +				CLNT_CONTROL(gd->clnt, CLGET_PROG, &dummy);
-> +				*ptr++ = htonl(dummy);
-> +
-> +				/* version (NFS version 4) */
-> +				CLNT_CONTROL(gd->clnt, CLGET_VERS, &dummy);
-> +				*ptr++ = htonl(dummy);
-> +
-> +				/* NFS Program */
-> +				IXDR_PUT_LONG(ptr, NULLPROC);
-> +
-> +				/* credential */
-> +				/* flavor */
-> +				IXDR_PUT_LONG(ptr, RPCSEC_GSS);
-> +
-> +				/* cred length goes here */
-> +				IXDR_PUT_LONG(ptr, crlen);
-> +
-> +				/* gss version */
-> +				IXDR_PUT_LONG(ptr, gd->gc.gc_v);
-> +
-> +				/* gss proc from CALL */
-> +				IXDR_PUT_LONG(ptr, pregc.gc_proc);
-> +
-> +				/* gss seq */
-> +				IXDR_PUT_LONG(ptr, gr.gr_win);
-> +
-> +				/* gss service from CALL */
-> +				IXDR_PUT_LONG(ptr, pregc.gc_svc);
-> +
-> +				/* gss ctx len */
-> +				IXDR_PUT_LONG(ptr, pregc.gc_ctx.length);
-> +				if (pregc.gc_ctx.length > 0) {
-> +					memcpy(ptr, pregc.gc_ctx.value,
-> +						pregc.gc_ctx.length);
-> +				}
-> +				ptr += RNDUP(pregc.gc_ctx.length);
-> +				bufin.value = buf;
-> +				bufin.length = (8 * BYTES_PER_XDR_UNIT) + crlen;
-> +			}
-> 			bufout.value = (unsigned char *)gd->gc_wire_verf.value;
-> 			bufout.length = gd->gc_wire_verf.length;
+> @@ -200,9 +206,13 @@ authgss_create(CLIENT *clnt, gss_name_t name, struct rpc_gss_sec *sec)
+> 	save_auth = clnt->cl_auth;
+> 	clnt->cl_auth = auth;
 > 
-> 			maj_stat = gss_verify_mic(&min_stat, gd->ctx,
-> 				&bufin, &bufout, &qop_state);
+> -	if (!authgss_refresh(auth, NULL))
+> -		auth = NULL;
+> -	else
+> +	if (!authgss_refresh(auth, NULL)) {
+> +		if (vers == RPCSEC_GSS3_VERSION) {
+> +			vers = RPCSEC_GSS_VERSION;
+> +			goto retry_gssv1;
+
+How often does authgss_refresh fail for a reason other
+than "GSS3_VERSION is not supported" ? Any such failure
+will trigger a damp squib retry with GSSv1, which will
+also fail.
+
+Perhaps _rpc_gss_refresh should be changed to return an
+error value instead of a boolean, and you should call that
+here, directly, instead of authgss_refresh?
+
+I suggest that because ah_refresh is part of a structure
+of ops that is visible to library consumers; I'm not sure
+it is feasible to change the synopsis of ah_refresh.
+
+
+> +		} else
+> +			auth = NULL;
+> +	} else
+> 		auth_get(auth); /* Reference for caller */
 > 
-> +			if (buf && gd->gc.gc_v == RPCSEC_GSS3_VERSION)
-> +				free(buf);
-> 			if (maj_stat != GSS_S_COMPLETE
-> 					|| qop_state != gd->sec.qop) {
-> 				gss_log_status("authgss_refresh: gss_verify_mic", 
-> diff --git a/src/clnt_vc.c b/src/clnt_vc.c
-> index a72f9f7..e6b2ff1 100644
-> --- a/src/clnt_vc.c
-> +++ b/src/clnt_vc.c
-> @@ -574,6 +574,7 @@ clnt_vc_control(cl, request, info)
-> 		 * first element in the call structure
-> 		 * This will get the xid of the PREVIOUS call
-> 		 */
-> +		fprintf(stderr, "GETXID xid 0x%x\n", ntohl(ct->ct_u.ct_mcalli));
-
-I assume this is for debugging, and thus should be removed before
-this change is merged.
-
-
-> 		*(u_int32_t *)info =
-> 		    ntohl(*(u_int32_t *)(void *)&ct->ct_u.ct_mcalli);
-> 		break;
+> 	clnt->cl_auth = save_auth;
+> @@ -263,6 +273,7 @@ authgss_get_private_data(AUTH *auth, struct authgss_private_data *pd)
+> 	pd->pd_ctx = gd->ctx;
+> 	pd->pd_ctx_hndl = gd->gc.gc_ctx;
+> 	pd->pd_seq_win = gd->win;
+> +	pd->pd_gss_vers = gd->gc.gc_v;
+> 	/*
+> 	 * We've given this away -- don't try to use it ourself any more
+> 	 * Caller should call authgss_free_private_data to free data.
+> diff --git a/tirpc/rpc/auth_gss.h b/tirpc/rpc/auth_gss.h
+> index a17b34b..a311e08 100644
+> --- a/tirpc/rpc/auth_gss.h
+> +++ b/tirpc/rpc/auth_gss.h
+> @@ -45,7 +45,10 @@ typedef enum {
+> 	RPCSEC_GSS_DATA = 0,
+> 	RPCSEC_GSS_INIT = 1,
+> 	RPCSEC_GSS_CONTINUE_INIT = 2,
+> -	RPCSEC_GSS_DESTROY = 3
+> +	RPCSEC_GSS_DESTROY = 3,
+> +	RPCSEC_GSS_BIND_CHANNEL = 4,	/* GSSv2, not used */
+> +	RPCSEC_GSS_CREATE = 5,		/* GSSv3 */
+> +	RPCSEC_GSS_LIST = 6		/* GSSv3 */
+> } rpc_gss_proc_t;
+> 
+> /* RPCSEC_GSS services. */
+> @@ -56,6 +59,7 @@ typedef enum {
+> } rpc_gss_svc_t;
+> 
+> #define RPCSEC_GSS_VERSION	1
+> +#define RPCSEC_GSS3_VERSION	3
+> 
+> /* RPCSEC_GSS security triple. */
+> struct rpc_gss_sec {
+> @@ -64,6 +68,7 @@ struct rpc_gss_sec {
+> 	rpc_gss_svc_t	svc;		/* service */
+> 	gss_cred_id_t	cred;		/* cred handle */
+> 	u_int		req_flags;	/* req flags for init_sec_context */
+> +	int		gss_vers;	/* highest supported gss version */
+> };
+> 
+> /* Private data required for kernel implementation */
+> @@ -71,6 +76,7 @@ struct authgss_private_data {
+> 	gss_ctx_id_t	pd_ctx;		/* Session context handle */
+> 	gss_buffer_desc	pd_ctx_hndl;	/* Credentials context handle */
+> 	u_int		pd_seq_win;	/* Sequence window */
+> +	u_int		pd_gss_vers;	/* RPCSEC_GSS version */
+> };
+> 
+> #define g_OID_equal(o1, o2) \
 > -- 
 > 1.8.3.1
 > 
