@@ -1,99 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3.molgen.mpg.de ([141.14.17.11]:57477 "EHLO mx1.molgen.mpg.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751496AbdHARtw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 1 Aug 2017 13:49:52 -0400
-Subject: Re: Locking problems with Linux 4.9 and 4.11 with NFSD and
- `fs/iomap.c`
-To: Brian Foster <bfoster@redhat.com>, Christoph Hellwig <hch@lst.de>
-Cc: it+linux-nfs@molgen.mpg.de, linux-nfs@vger.kernel.org,
-        linux-xfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-References: <de171adc29600902515d1424fd800678@molgen.mpg.de>
- <20170508131843.GB29840@bfoster.bfoster> <20170509090534.GB2378@lst.de>
- <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de>
- <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de>
- <20170510171757.GA10534@localhost.localdomain>
- <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
-From: Paul Menzel <pmenzel@molgen.mpg.de>
-Message-ID: <979473d1-9e8a-51ba-28d9-9ace63f8105b@molgen.mpg.de>
-Date: Tue, 1 Aug 2017 19:49:50 +0200
+Received: from scorn.kernelslacker.org ([45.56.101.199]:58562 "EHLO
+        scorn.kernelslacker.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751496AbdHARud (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Aug 2017 13:50:33 -0400
+Date: Tue, 1 Aug 2017 13:50:31 -0400
+From: "davej@codemonkey.org.uk" <davej@codemonkey.org.uk>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [GIT PULL] Please pull NFS client changes for Linux 4.13
+Message-ID: <20170801175031.74llpntgz3qirv3s@codemonkey.org.uk>
+References: <cf7efbe6-899c-368d-6d56-c2cb3eb28acc@gmail.com>
+ <20170714142543.k5xcbnb4mww3sxpy@codemonkey.org.uk>
+ <20170716211530.sx7mn35f2mhmykug@codemonkey.org.uk>
+ <1500245845.13893.3.camel@primarydata.com>
+ <20170717030504.qca74wsswct26ytn@codemonkey.org.uk>
+ <CA+55aFy6kUwPTbzKebO4=BovEc_Nq3XCoYMeofgCM3ypxrkvJg@mail.gmail.com>
+ <20170731154322.tfzkukscda4fe7wm@codemonkey.org.uk>
+ <CA+55aFwwkc-YJ8WQzE6Ax3BAJ3XXR8fhN+0AEH_U8TtcQn7opg@mail.gmail.com>
+ <20170801155131.xy7nbw5ih7ml5fmf@codemonkey.org.uk>
+ <CA+55aFyQdHt0qYQ0uBSK+9wfPOyFfx8mJE4r9FfWoxa3Gyei9g@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+55aFyQdHt0qYQ0uBSK+9wfPOyFfx8mJE4r9FfWoxa3Gyei9g@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear Brian, dear Christoph,
+On Tue, Aug 01, 2017 at 10:20:31AM -0700, Linus Torvalds wrote:
 
+ > So I think the 'pathname' part may actually be entirely a red herring,
+ > and it's the underlying access itself that just picks up a random
+ > pointer from a stack that now contains something different. And KASAN
+ > didn't notice the stale stack access itself, because the stack slot is
+ > still valid - it's just no longer the original 'verifier' allocation.
+ > 
+ > Or *something* like that.
+ > 
+ > None of this looks even remotely new, though - the code seems to go
+ > back to 2009. Have you just changed what you're testing to trigger
+ > these things?
 
-On 06/27/17 13:59, Paul Menzel wrote:
+No idea why it only just showed up, but it isn't 100% reproducable
+either.  A month or so ago I did disable the V4 code on the server
+completely (as I was using v3 everywhere else), so maybe I started hitting
+a fallback path somewhere.  *shrug*
 
-> Just a small update that we were hit by the problem on a different 
-> machine (identical model) with Linux 4.9.32 and the exact same symptoms.
-> 
-> ```
-> $ sudo cat /proc/2085/stack
-> [<ffffffff811f920c>] iomap_write_begin+0x8c/0x120
-> [<ffffffff811f982b>] iomap_zero_range_actor+0xeb/0x210
-> [<ffffffff811f9a82>] iomap_apply+0xa2/0x110
-> [<ffffffff811f9c58>] iomap_zero_range+0x58/0x80
-> [<ffffffff8133c7de>] xfs_zero_eof+0x4e/0xb0
-> [<ffffffff8133c9dd>] xfs_file_aio_write_checks+0x19d/0x1c0
-> [<ffffffff8133ce89>] xfs_file_buffered_aio_write+0x79/0x2d0
-> [<ffffffff8133d17e>] xfs_file_write_iter+0x9e/0x150
-> [<ffffffff81198dc0>] do_iter_readv_writev+0xa0/0xf0
-> [<ffffffff81199fba>] do_readv_writev+0x18a/0x230
-> [<ffffffff8119a2ac>] vfs_writev+0x3c/0x50
-> [<ffffffffffffffff>] 0xffffffffffffffff
-> ```
-> 
-> We haven’t had time to set up a test system yet to analyze that further.
+	Dave
 
-Today, two systems with Linux 4.9.23 exhibited the problem of `top` 
-showing that `nfsd` is at 100 %. Restarting one machine into Linux 
-*4.9.38* showed the same problem. One of them with a 1 GBit/s network 
-device got traffic from a 10 GBit/s system, so the connection was saturated.
-
-But looking at the current processes, process with ID 829 does not show 
-that CPU usage value. (I don’t remember what the behavior during the 
-other incidents on other machines was.)
-
-This is from 4.9.38.
-
-The stack trace of the process with ID 857 is below.
-
-```
-$ sudo cat /proc/857/stack
-[<ffffffff811f94fc>] iomap_write_begin+0x6c/0x120
-[<ffffffffffffffff>] 0xffffffffffffffff
-```
-
-Then I executed Brian’s commands.
-
-```
-$ trace-cmd start -p function -l iomap* -P <pid>
-$ cat /sys/kernel/debug/tracing/trace_pipe
-```
-
-This produced output.
-
-```
-             nfsd-857   [005] ....   426.650413: iomap_write_end 
-<-iomap_zero_range_actor
-             nfsd-857   [005] ....   426.650414: iomap_write_begin 
-<-iomap_zero_range_actor
-CPU:5 [LOST 115621695 EVENTS]
-             nfsd-857   [005] ....   453.070439: iomap_write_begin 
-<-iomap_zero_range_actor
-             nfsd-857   [005] ....   453.070440: iomap_write_end 
-<-iomap_zero_range_actor
-```
-
-This continues endlessly.
-
-
-Kind regards,
-
-Paul
