@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:34602 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751247AbdHCNpy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 09:45:54 -0400
-Received: by mail-it0-f68.google.com with SMTP id t78so1320805ita.1
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 06:45:54 -0700 (PDT)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:33200 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751879AbdHCNps (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 09:45:48 -0400
+Received: by mail-io0-f195.google.com with SMTP id q64so1310690ioi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 06:45:48 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 16/28] NFS: Remove unuse function nfs_page_group_lock_wait()
-Date: Thu,  3 Aug 2017 09:45:11 -0400
-Message-Id: <20170803134523.4922-17-trond.myklebust@primarydata.com>
-In-Reply-To: <20170803134523.4922-16-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 11/28] NFS: Remove page group limit in nfs_flush_incompatible()
+Date: Thu,  3 Aug 2017 09:45:06 -0400
+Message-Id: <20170803134523.4922-12-trond.myklebust@primarydata.com>
+In-Reply-To: <20170803134523.4922-11-trond.myklebust@primarydata.com>
 References: <20170803134523.4922-1-trond.myklebust@primarydata.com>
  <20170803134523.4922-2-trond.myklebust@primarydata.com>
  <20170803134523.4922-3-trond.myklebust@primarydata.com>
@@ -22,64 +22,29 @@ References: <20170803134523.4922-1-trond.myklebust@primarydata.com>
  <20170803134523.4922-9-trond.myklebust@primarydata.com>
  <20170803134523.4922-10-trond.myklebust@primarydata.com>
  <20170803134523.4922-11-trond.myklebust@primarydata.com>
- <20170803134523.4922-12-trond.myklebust@primarydata.com>
- <20170803134523.4922-13-trond.myklebust@primarydata.com>
- <20170803134523.4922-14-trond.myklebust@primarydata.com>
- <20170803134523.4922-15-trond.myklebust@primarydata.com>
- <20170803134523.4922-16-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+nfs_try_to_update_request() should be able to cope now.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pagelist.c        | 21 ---------------------
- include/linux/nfs_page.h |  1 -
- 2 files changed, 22 deletions(-)
+ fs/nfs/write.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index a6f2bbd709ba..ced7974622dd 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -166,27 +166,6 @@ nfs_page_group_lock(struct nfs_page *req, bool nonblock)
- }
- 
- /*
-- * nfs_page_group_lock_wait - wait for the lock to clear, but don't grab it
-- * @req - a request in the group
-- *
-- * This is a blocking call to wait for the group lock to be cleared.
-- */
--void
--nfs_page_group_lock_wait(struct nfs_page *req)
--{
--	struct nfs_page *head = req->wb_head;
--
--	WARN_ON_ONCE(head != head->wb_head);
--
--	if (!test_bit(PG_HEADLOCK, &head->wb_flags))
--		return;
--	set_bit(PG_CONTENDED1, &head->wb_flags);
--	smp_mb__after_atomic();
--	wait_on_bit(&head->wb_flags, PG_HEADLOCK,
--		TASK_UNINTERRUPTIBLE);
--}
--
--/*
-  * nfs_page_group_unlock - unlock the head of the page group
-  * @req - request in group that is to be unlocked
-  */
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index d67b67ae6c8b..de1d24cedaa2 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -140,7 +140,6 @@ extern  int nfs_wait_on_request(struct nfs_page *);
- extern	void nfs_unlock_request(struct nfs_page *req);
- extern	void nfs_unlock_and_release_request(struct nfs_page *);
- extern int nfs_page_group_lock(struct nfs_page *, bool);
--extern void nfs_page_group_lock_wait(struct nfs_page *);
- extern void nfs_page_group_unlock(struct nfs_page *);
- extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
- extern bool nfs_async_iocounter_wait(struct rpc_task *, struct nfs_lock_context *);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0b4d1ef168e0..08c1ce968cce 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1205,8 +1205,6 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
+ 		l_ctx = req->wb_lock_context;
+ 		do_flush = req->wb_page != page ||
+ 			!nfs_match_open_context(req->wb_context, ctx);
+-		/* for now, flush if more than 1 request in page_group */
+-		do_flush |= req->wb_this_page != req;
+ 		if (l_ctx && flctx &&
+ 		    !(list_empty_careful(&flctx->flc_posix) &&
+ 		      list_empty_careful(&flctx->flc_flock))) {
 -- 
 2.13.3
 
