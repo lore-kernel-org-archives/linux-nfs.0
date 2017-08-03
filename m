@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33507 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751933AbdHCSax (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 14:30:53 -0400
-Received: by mail-io0-f194.google.com with SMTP id q64so1832192ioi.0
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 11:30:53 -0700 (PDT)
-Subject: [PATCH v1 7/7] xprtrdma: Clean up XDR decoding in
- rpcrdma_update_granted_credits()
+Received: from mail-io0-f195.google.com ([209.85.223.195]:35532 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752000AbdHCSa3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 14:30:29 -0400
+Received: by mail-io0-f195.google.com with SMTP id h70so971399ioi.2
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 11:30:29 -0700 (PDT)
+Subject: [PATCH v1 4/7] xprtrdma: Replace rpcrdma_count_chunks()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Thu, 03 Aug 2017 14:30:52 -0400
-Message-ID: <20170803183052.14672.45308.stgit@manet.1015granger.net>
+Date: Thu, 03 Aug 2017 14:30:27 -0400
+Message-ID: <20170803183027.14672.29625.stgit@manet.1015granger.net>
 In-Reply-To: <20170803182623.14672.77636.stgit@manet.1015granger.net>
 References: <20170803182623.14672.77636.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -19,53 +18,284 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Replace C-structure based XDR decoding for consistency
-with other areas.
-
-struct rpcrdma_rep is rearranged slightly so that the relevant fields
-are in cache when the Receive completion handler is invoked.
+Clean up chunk list decoding by using the xdr_stream set up in
+rpcrdma_reply_handler. This hardens decoding by checking for buffer
+overflow at every step while unmarshaling variable-length XDR
+objects.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c     |    4 ++--
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |  221 +++++++++++++++++++++++-----------------
+ 1 file changed, 127 insertions(+), 94 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 5d36c06..c78fb27 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -139,11 +139,11 @@
- static void
- rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 56f2277..e422c0f 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -792,48 +792,6 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	return PTR_ERR(iptr);
+ }
+ 
+-/*
+- * Chase down a received write or reply chunklist to get length
+- * RDMA'd by server. See map at rpcrdma_create_chunks()! :-)
+- */
+-static int
+-rpcrdma_count_chunks(struct rpcrdma_rep *rep, int wrchunk, __be32 **iptrp)
+-{
+-	unsigned int i, total_len;
+-	struct rpcrdma_write_chunk *cur_wchunk;
+-	char *base = (char *)rdmab_to_msg(rep->rr_rdmabuf);
+-
+-	i = be32_to_cpu(**iptrp);
+-	cur_wchunk = (struct rpcrdma_write_chunk *) (*iptrp + 1);
+-	total_len = 0;
+-	while (i--) {
+-		struct rpcrdma_segment *seg = &cur_wchunk->wc_target;
+-		ifdebug(FACILITY) {
+-			u64 off;
+-			xdr_decode_hyper((__be32 *)&seg->rs_offset, &off);
+-			dprintk("RPC:       %s: chunk %d@0x%016llx:0x%08x\n",
+-				__func__,
+-				be32_to_cpu(seg->rs_length),
+-				(unsigned long long)off,
+-				be32_to_cpu(seg->rs_handle));
+-		}
+-		total_len += be32_to_cpu(seg->rs_length);
+-		++cur_wchunk;
+-	}
+-	/* check and adjust for properly terminated write chunk */
+-	if (wrchunk) {
+-		__be32 *w = (__be32 *) cur_wchunk;
+-		if (*w++ != xdr_zero)
+-			return -1;
+-		cur_wchunk = (struct rpcrdma_write_chunk *) w;
+-	}
+-	if ((char *)cur_wchunk > base + rep->rr_len)
+-		return -1;
+-
+-	*iptrp = (__be32 *) cur_wchunk;
+-	return total_len;
+-}
+-
+ /**
+  * rpcrdma_inline_fixup - Scatter inline received data into rqst's iovecs
+  * @rqst: controlling RPC request
+@@ -1004,89 +962,164 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ }
+ #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
+ 
+-static int
+-rpcrdma_decode_msg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
+-		   struct rpc_rqst *rqst)
++static int decode_rdma_segment(struct xdr_stream *xdr, u32 *length)
  {
--	struct rpcrdma_msg *rmsgp = rdmab_to_msg(rep->rr_rdmabuf);
- 	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
-+	__be32 *p = rep->rr_rdmabuf->rg_base;
- 	u32 credits;
+-	struct xdr_stream *xdr = &rep->rr_stream;
+-	int rdmalen, status;
+ 	__be32 *p;
  
--	credits = be32_to_cpu(rmsgp->rm_credit);
-+	credits = be32_to_cpup(p + 2);
- 	if (credits == 0)
- 		credits = 1;	/* don't deadlock */
- 	else if (credits > buffer->rb_max_requests)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index d4a897a..52e73ea 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -220,13 +220,13 @@ struct rpcrdma_rep {
- 	struct ib_cqe		rr_cqe;
- 	int			rr_wc_flags;
- 	u32			rr_inv_rkey;
-+	struct rpcrdma_regbuf	*rr_rdmabuf;
- 	struct rpcrdma_xprt	*rr_rxprt;
- 	struct work_struct	rr_work;
- 	struct xdr_buf		rr_hdrbuf;
- 	struct xdr_stream	rr_stream;
- 	struct list_head	rr_list;
- 	struct ib_recv_wr	rr_recv_wr;
--	struct rpcrdma_regbuf	*rr_rdmabuf;
- };
+-	p = xdr_inline_decode(xdr, 2 * sizeof(*p));
++	p = xdr_inline_decode(xdr, 4 * sizeof(*p));
+ 	if (unlikely(!p))
+ 		return -EIO;
  
- /*
+-	/* never expect read list */
+-	if (unlikely(*p++ != xdr_zero))
+-		return -EIO;
++	ifdebug(FACILITY) {
++		u64 offset;
++		u32 handle;
+ 
+-	/* Write list */
+-	if (*p != xdr_zero) {
+-		char *base = rep->rr_hdrbuf.head[0].iov_base;
++		handle = be32_to_cpup(p++);
++		*length = be32_to_cpup(p++);
++		xdr_decode_hyper(p, &offset);
++		dprintk("RPC:       %s:   segment %u@0x%016llx:0x%08x\n",
++			__func__, *length, (unsigned long long)offset,
++			handle);
++	} else {
++		*length = be32_to_cpup(p + 1);
++	}
+ 
+-		p++;
+-		rdmalen = rpcrdma_count_chunks(rep, 1, &p);
+-		if (rdmalen < 0 || *p++ != xdr_zero)
++	return 0;
++}
++
++static int decode_write_chunk(struct xdr_stream *xdr, u32 *length)
++{
++	u32 segcount, seglength;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, sizeof(*p));
++	if (unlikely(!p))
++		return -EIO;
++
++	*length = 0;
++	segcount = be32_to_cpup(p);
++	while (segcount--) {
++		if (decode_rdma_segment(xdr, &seglength))
+ 			return -EIO;
++		*length += seglength;
++	}
+ 
+-		rep->rr_len -= (char *)p - base;
+-		status = rep->rr_len + rdmalen;
+-		r_xprt->rx_stats.total_rdma_reply += rdmalen;
++	dprintk("RPC:       %s: segcount=%u, %u bytes\n",
++		__func__, be32_to_cpup(p), *length);
++	return 0;
++}
+ 
+-		/* special case - last segment may omit padding */
+-		rdmalen &= 3;
+-		if (rdmalen) {
+-			rdmalen = 4 - rdmalen;
+-			status += rdmalen;
+-		}
+-	} else {
++/* In RPC-over-RDMA Version One replies, a Read list is never
++ * expected. This decoder is a stub that returns an error if
++ * a Read list is present.
++ */
++static int decode_read_list(struct xdr_stream *xdr)
++{
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, sizeof(*p));
++	if (unlikely(!p))
++		return -EIO;
++	if (unlikely(*p != xdr_zero))
++		return -EIO;
++	return 0;
++}
++
++/* Supports only one Write chunk in the Write list
++ */
++static int decode_write_list(struct xdr_stream *xdr, u32 *length)
++{
++	u32 chunklen;
++	bool first;
++	__be32 *p;
++
++	*length = 0;
++	first = true;
++	do {
+ 		p = xdr_inline_decode(xdr, sizeof(*p));
+-		if (!p)
++		if (unlikely(!p))
++			return -EIO;
++		if (*p == xdr_zero)
++			break;
++		if (!first)
+ 			return -EIO;
+ 
+-		/* never expect reply chunk */
+-		if (*p++ != xdr_zero)
++		if (decode_write_chunk(xdr, &chunklen))
+ 			return -EIO;
+-		rdmalen = 0;
+-		rep->rr_len -= RPCRDMA_HDRLEN_MIN;
+-		status = rep->rr_len;
+-	}
++		*length += chunklen;
++		first = false;
++	} while (true);
++	return 0;
++}
++
++static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
++{
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, sizeof(*p));
++	if (unlikely(!p))
++		return -EIO;
++
++	*length = 0;
++	if (*p != xdr_zero)
++		if (decode_write_chunk(xdr, length))
++			return -EIO;
++	return 0;
++}
+ 
++static int
++rpcrdma_decode_msg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
++		   struct rpc_rqst *rqst)
++{
++	struct xdr_stream *xdr = &rep->rr_stream;
++	u32 writelist, replychunk, rpclen;
++	char *base;
++
++	/* Decode the chunk lists */
++	if (decode_read_list(xdr))
++		return -EIO;
++	if (decode_write_list(xdr, &writelist))
++		return -EIO;
++	if (decode_reply_chunk(xdr, &replychunk))
++		return -EIO;
++
++	/* RDMA_MSG sanity checks */
++	if (unlikely(replychunk))
++		return -EIO;
++
++	/* Build the RPC reply's Payload stream in rqst->rq_rcv_buf */
++	base = (char *)xdr_inline_decode(xdr, 0);
++	rpclen = xdr_stream_remaining(xdr);
+ 	r_xprt->rx_stats.fixup_copy_count +=
+-		rpcrdma_inline_fixup(rqst, (char *)p, rep->rr_len,
+-				     rdmalen);
++		rpcrdma_inline_fixup(rqst, base, rpclen, writelist & 3);
+ 
+-	return status;
++	r_xprt->rx_stats.total_rdma_reply += writelist;
++	return rpclen + xdr_align_size(writelist);
+ }
+ 
+ static noinline int
+ rpcrdma_decode_nomsg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
+ {
+ 	struct xdr_stream *xdr = &rep->rr_stream;
+-	int rdmalen;
+-	__be32 *p;
++	u32 writelist, replychunk;
+ 
+-	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
+-	if (unlikely(!p))
++	/* Decode the chunk lists */
++	if (decode_read_list(xdr))
+ 		return -EIO;
+-
+-	/* never expect Read chunks */
+-	if (unlikely(*p++ != xdr_zero))
++	if (decode_write_list(xdr, &writelist))
+ 		return -EIO;
+-	/* never expect Write chunks */
+-	if (unlikely(*p++ != xdr_zero))
+-		return -EIO;
+-	/* always expect a Reply chunk */
+-	if (unlikely(*p++ == xdr_zero))
++	if (decode_reply_chunk(xdr, &replychunk))
+ 		return -EIO;
+ 
+-	rdmalen = rpcrdma_count_chunks(rep, 0, &p);
+-	if (rdmalen < 0)
++	/* RDMA_NOMSG sanity checks */
++	if (unlikely(writelist))
++		return -EIO;
++	if (unlikely(!replychunk))
+ 		return -EIO;
+-	r_xprt->rx_stats.total_rdma_reply += rdmalen;
+ 
+-	/* Reply chunk buffer already is the reply vector - no fixup. */
+-	return rdmalen;
++	/* Reply chunk buffer already is the reply vector */
++	r_xprt->rx_stats.total_rdma_reply += replychunk;
++	return replychunk;
+ }
+ 
+ static noinline int
 
