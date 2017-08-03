@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35760 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751700AbdHCSaF (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 14:30:05 -0400
-Received: by mail-it0-f68.google.com with SMTP id v127so1855002itd.2
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 11:30:05 -0700 (PDT)
-Subject: [PATCH v1 1/7] xprtrdma: Add xdr_init_decode to
- rpcrdma_reply_handler()
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35819 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751700AbdHCSaV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 14:30:21 -0400
+Received: by mail-it0-f65.google.com with SMTP id v127so1855454itd.2
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 11:30:21 -0700 (PDT)
+Subject: [PATCH v1 3/7] xprtrdma: Refactor rpcrdma_reply_handler()
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Thu, 03 Aug 2017 14:30:03 -0400
-Message-ID: <20170803183003.14672.27177.stgit@manet.1015granger.net>
+Date: Thu, 03 Aug 2017 14:30:19 -0400
+Message-ID: <20170803183019.14672.85928.stgit@manet.1015granger.net>
 In-Reply-To: <20170803182623.14672.77636.stgit@manet.1015granger.net>
 References: <20170803182623.14672.77636.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -19,182 +18,282 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Transport header decoding deals with untrusted input data, therefore
-decoding this header needs to be hardened.
+Refactor the reply handler's transport header decoding logic to make
+it easier to understand and update.
 
-Adopt the same infrastructure that is used when XDR decoding NFS
-replies. This is slightly more CPU-intensive than the replaced code,
-but we're not adding new atomics, locking, or context switches. The
-cost is manageable.
-
-Start by initializing an xdr_stream in rpcrdma_reply_handler().
+Convert some of the handler to use xdr_streams, which will enable
+stricter validation of input data and enable the eventual addition
+of support for new combinations of chunks, such as "Write + Reply"
+or "PZRC + normal Read".
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |   37 +++++++++++++++++++++++--------------
- net/sunrpc/xprtrdma/verbs.c     |    3 +++
- net/sunrpc/xprtrdma/xprt_rdma.h |    8 ++++++++
- 3 files changed, 34 insertions(+), 14 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c |  212 +++++++++++++++++++++++++---------------
+ 1 file changed, 130 insertions(+), 82 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index ca4d6e4..24f58c7 100644
+index 9b5ab59..56f2277 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -993,10 +993,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	struct rpcrdma_xprt *r_xprt = rep->rr_rxprt;
- 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
- 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
-+	struct xdr_stream *xdr = &rep->rr_stream;
- 	struct rpcrdma_msg *headerp;
- 	struct rpcrdma_req *req;
- 	struct rpc_rqst *rqst;
--	__be32 *iptr;
-+	__be32 *iptr, *p, xid, vers, proc;
- 	int rdmalen, status, rmerr;
- 	unsigned long cwnd;
- 	struct list_head mws;
-@@ -1005,8 +1006,18 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+@@ -1004,6 +1004,124 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ }
+ #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
  
- 	if (rep->rr_len == RPCRDMA_BAD_LEN)
- 		goto out_badstatus;
--	if (rep->rr_len < RPCRDMA_HDRLEN_ERR)
-+
-+	xdr_init_decode(xdr, &rep->rr_hdrbuf,
-+			rep->rr_hdrbuf.head[0].iov_base);
-+
-+	/* Fixed transport header fields */
-+	p = xdr_inline_decode(xdr, 4 * sizeof(*p));
-+	if (unlikely(!p))
- 		goto out_shortreply;
-+	xid = *p++;
-+	vers = *p++;
-+	p++;	/* credits */
-+	proc = *p++;
- 
- 	headerp = rdmab_to_msg(rep->rr_rdmabuf);
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
-@@ -1018,8 +1029,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	 * get context for handling any incoming chunks.
- 	 */
- 	spin_lock(&buf->rb_lock);
--	req = rpcrdma_lookup_req_locked(&r_xprt->rx_buf,
--					headerp->rm_xid);
-+	req = rpcrdma_lookup_req_locked(&r_xprt->rx_buf, xid);
- 	if (!req)
- 		goto out_nomatch;
- 	if (req->rl_reply)
-@@ -1035,7 +1045,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	spin_unlock(&buf->rb_lock);
- 
- 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
--		__func__, rep, req, be32_to_cpu(headerp->rm_xid));
-+		__func__, rep, req, be32_to_cpu(xid));
- 
- 	/* Invalidate and unmap the data payloads before waking the
- 	 * waiting application. This guarantees the memory regions
-@@ -1052,16 +1062,16 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	 * the rep, rqst, and rq_task pointers remain stable.
- 	 */
- 	spin_lock_bh(&xprt->transport_lock);
--	rqst = xprt_lookup_rqst(xprt, headerp->rm_xid);
-+	rqst = xprt_lookup_rqst(xprt, xid);
- 	if (!rqst)
- 		goto out_norqst;
- 	xprt->reestablish_timeout = 0;
--	if (headerp->rm_vers != rpcrdma_version)
-+	if (vers != rpcrdma_version)
- 		goto out_badversion;
- 
- 	/* check for expected message types */
- 	/* The order of some of these tests is important. */
--	switch (headerp->rm_type) {
-+	switch (proc) {
- 	case rdma_msg:
- 		/* never expect read chunks */
- 		/* never expect reply chunks (two ways to check) */
-@@ -1123,7 +1133,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	default:
- 		dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
- 			rqst->rq_task->tk_pid, __func__,
--			be32_to_cpu(headerp->rm_type));
-+			be32_to_cpu(proc));
- 		status = -EIO;
- 		r_xprt->rx_stats.bad_reply_count++;
- 		break;
-@@ -1161,7 +1171,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
-  */
- out_badversion:
- 	dprintk("RPC:       %s: invalid version %d\n",
--		__func__, be32_to_cpu(headerp->rm_vers));
-+		__func__, be32_to_cpu(vers));
- 	status = -EIO;
- 	r_xprt->rx_stats.bad_reply_count++;
- 	goto out;
-@@ -1204,16 +1214,15 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 
- out_nomatch:
- 	spin_unlock(&buf->rb_lock);
--	dprintk("RPC:       %s: no match for incoming xid 0x%08x len %d\n",
--		__func__, be32_to_cpu(headerp->rm_xid),
--		rep->rr_len);
-+	dprintk("RPC:       %s: no match for incoming xid 0x%08x\n",
-+		__func__, be32_to_cpu(xid));
- 	goto repost;
- 
- out_duplicate:
- 	spin_unlock(&buf->rb_lock);
- 	dprintk("RPC:       %s: "
- 		"duplicate reply %p to RPC request %p: xid 0x%08x\n",
--		__func__, rep, req, be32_to_cpu(headerp->rm_xid));
-+		__func__, rep, req, be32_to_cpu(xid));
- 
- /* If no pending RPC transaction was matched, post a replacement
-  * receive buffer before returning.
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index e4171f2..f1b1c37 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -180,6 +180,7 @@
- 		__func__, rep, wc->byte_len);
- 
- 	rep->rr_len = wc->byte_len;
-+	rpcrdma_set_xdrlen(&rep->rr_hdrbuf, wc->byte_len);
- 	rep->rr_wc_flags = wc->wc_flags;
- 	rep->rr_inv_rkey = wc->ex.invalidate_rkey;
- 
-@@ -974,6 +975,8 @@ struct rpcrdma_rep *
- 		rc = PTR_ERR(rep->rr_rdmabuf);
- 		goto out_free;
- 	}
-+	xdr_buf_init(&rep->rr_hdrbuf, rep->rr_rdmabuf->rg_base,
-+		     rdmab_length(rep->rr_rdmabuf));
- 
- 	rep->rr_cqe.done = rpcrdma_wc_receive;
- 	rep->rr_rxprt = r_xprt;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index b282d3f..13556ae 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -223,6 +223,8 @@ struct rpcrdma_rep {
- 	u32			rr_inv_rkey;
- 	struct rpcrdma_xprt	*rr_rxprt;
- 	struct work_struct	rr_work;
-+	struct xdr_buf		rr_hdrbuf;
-+	struct xdr_stream	rr_stream;
- 	struct list_head	rr_list;
- 	struct ib_recv_wr	rr_recv_wr;
- 	struct rpcrdma_regbuf	*rr_rdmabuf;
-@@ -642,6 +644,12 @@ bool rpcrdma_prepare_send_sges(struct rpcrdma_ia *, struct rpcrdma_req *,
- void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *);
- void rpcrdma_reply_handler(struct work_struct *work);
- 
-+static inline void rpcrdma_set_xdrlen(struct xdr_buf *xdr, size_t len)
++static int
++rpcrdma_decode_msg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
++		   struct rpc_rqst *rqst)
 +{
-+	xdr->head[0].iov_len = len;
-+	xdr->len = len;
++	struct xdr_stream *xdr = &rep->rr_stream;
++	int rdmalen, status;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 2 * sizeof(*p));
++	if (unlikely(!p))
++		return -EIO;
++
++	/* never expect read list */
++	if (unlikely(*p++ != xdr_zero))
++		return -EIO;
++
++	/* Write list */
++	if (*p != xdr_zero) {
++		char *base = rep->rr_hdrbuf.head[0].iov_base;
++
++		p++;
++		rdmalen = rpcrdma_count_chunks(rep, 1, &p);
++		if (rdmalen < 0 || *p++ != xdr_zero)
++			return -EIO;
++
++		rep->rr_len -= (char *)p - base;
++		status = rep->rr_len + rdmalen;
++		r_xprt->rx_stats.total_rdma_reply += rdmalen;
++
++		/* special case - last segment may omit padding */
++		rdmalen &= 3;
++		if (rdmalen) {
++			rdmalen = 4 - rdmalen;
++			status += rdmalen;
++		}
++	} else {
++		p = xdr_inline_decode(xdr, sizeof(*p));
++		if (!p)
++			return -EIO;
++
++		/* never expect reply chunk */
++		if (*p++ != xdr_zero)
++			return -EIO;
++		rdmalen = 0;
++		rep->rr_len -= RPCRDMA_HDRLEN_MIN;
++		status = rep->rr_len;
++	}
++
++	r_xprt->rx_stats.fixup_copy_count +=
++		rpcrdma_inline_fixup(rqst, (char *)p, rep->rr_len,
++				     rdmalen);
++
++	return status;
 +}
 +
- /* RPC/RDMA module init - xprtrdma/transport.c
-  */
- extern unsigned int xprt_rdma_max_inline_read;
++static noinline int
++rpcrdma_decode_nomsg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
++{
++	struct xdr_stream *xdr = &rep->rr_stream;
++	int rdmalen;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
++	if (unlikely(!p))
++		return -EIO;
++
++	/* never expect Read chunks */
++	if (unlikely(*p++ != xdr_zero))
++		return -EIO;
++	/* never expect Write chunks */
++	if (unlikely(*p++ != xdr_zero))
++		return -EIO;
++	/* always expect a Reply chunk */
++	if (unlikely(*p++ == xdr_zero))
++		return -EIO;
++
++	rdmalen = rpcrdma_count_chunks(rep, 0, &p);
++	if (rdmalen < 0)
++		return -EIO;
++	r_xprt->rx_stats.total_rdma_reply += rdmalen;
++
++	/* Reply chunk buffer already is the reply vector - no fixup. */
++	return rdmalen;
++}
++
++static noinline int
++rpcrdma_decode_error(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
++		     struct rpc_rqst *rqst)
++{
++	struct xdr_stream *xdr = &rep->rr_stream;
++	__be32 *p;
++
++	p = xdr_inline_decode(xdr, sizeof(*p));
++	if (unlikely(!p))
++		return -EIO;
++
++	switch (*p) {
++	case err_vers:
++		p = xdr_inline_decode(xdr, 2 * sizeof(*p));
++		if (!p)
++			break;
++		dprintk("RPC: %5u: %s: server reports version error (%u-%u)\n",
++			rqst->rq_task->tk_pid, __func__,
++			be32_to_cpup(p), be32_to_cpu(*(p + 1)));
++		break;
++	case err_chunk:
++		dprintk("RPC: %5u: %s: server reports header decoding error\n",
++			rqst->rq_task->tk_pid, __func__);
++		break;
++	default:
++		dprintk("RPC: %5u: %s: server reports unrecognized error %d\n",
++			rqst->rq_task->tk_pid, __func__, be32_to_cpup(p));
++	}
++
++	r_xprt->rx_stats.bad_reply_count++;
++	return -EREMOTEIO;
++}
++
+ /* Process received RPC/RDMA messages.
+  *
+  * Errors must result in the RPC task either being awakened, or
+@@ -1018,13 +1136,12 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+ 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
+ 	struct xdr_stream *xdr = &rep->rr_stream;
+-	struct rpcrdma_msg *headerp;
+ 	struct rpcrdma_req *req;
+ 	struct rpc_rqst *rqst;
+-	__be32 *iptr, *p, xid, vers, proc;
+-	int rdmalen, status, rmerr;
++	__be32 *p, xid, vers, proc;
+ 	unsigned long cwnd;
+ 	struct list_head mws;
++	int status;
+ 
+ 	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
+ 
+@@ -1043,7 +1160,6 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	p++;	/* credits */
+ 	proc = *p++;
+ 
+-	headerp = rdmab_to_msg(rep->rr_rdmabuf);
+ 	if (rpcrdma_is_bcall(r_xprt, rep, xid, proc))
+ 		return;
+ 
+@@ -1091,75 +1207,21 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	if (vers != rpcrdma_version)
+ 		goto out_badversion;
+ 
+-	/* check for expected message types */
+-	/* The order of some of these tests is important. */
+ 	switch (proc) {
+ 	case rdma_msg:
+-		/* never expect read chunks */
+-		/* never expect reply chunks (two ways to check) */
+-		if (headerp->rm_body.rm_chunks[0] != xdr_zero ||
+-		    (headerp->rm_body.rm_chunks[1] == xdr_zero &&
+-		     headerp->rm_body.rm_chunks[2] != xdr_zero))
+-			goto badheader;
+-		if (headerp->rm_body.rm_chunks[1] != xdr_zero) {
+-			/* count any expected write chunks in read reply */
+-			/* start at write chunk array count */
+-			iptr = &headerp->rm_body.rm_chunks[2];
+-			rdmalen = rpcrdma_count_chunks(rep, 1, &iptr);
+-			/* check for validity, and no reply chunk after */
+-			if (rdmalen < 0 || *iptr++ != xdr_zero)
+-				goto badheader;
+-			rep->rr_len -=
+-			    ((unsigned char *)iptr - (unsigned char *)headerp);
+-			status = rep->rr_len + rdmalen;
+-			r_xprt->rx_stats.total_rdma_reply += rdmalen;
+-			/* special case - last chunk may omit padding */
+-			if (rdmalen &= 3) {
+-				rdmalen = 4 - rdmalen;
+-				status += rdmalen;
+-			}
+-		} else {
+-			/* else ordinary inline */
+-			rdmalen = 0;
+-			iptr = (__be32 *)((unsigned char *)headerp +
+-							RPCRDMA_HDRLEN_MIN);
+-			rep->rr_len -= RPCRDMA_HDRLEN_MIN;
+-			status = rep->rr_len;
+-		}
+-
+-		r_xprt->rx_stats.fixup_copy_count +=
+-			rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len,
+-					     rdmalen);
++		status = rpcrdma_decode_msg(r_xprt, rep, rqst);
+ 		break;
+-
+ 	case rdma_nomsg:
+-		/* never expect read or write chunks, always reply chunks */
+-		if (headerp->rm_body.rm_chunks[0] != xdr_zero ||
+-		    headerp->rm_body.rm_chunks[1] != xdr_zero ||
+-		    headerp->rm_body.rm_chunks[2] != xdr_one)
+-			goto badheader;
+-		iptr = (__be32 *)((unsigned char *)headerp +
+-							RPCRDMA_HDRLEN_MIN);
+-		rdmalen = rpcrdma_count_chunks(rep, 0, &iptr);
+-		if (rdmalen < 0)
+-			goto badheader;
+-		r_xprt->rx_stats.total_rdma_reply += rdmalen;
+-		/* Reply chunk buffer already is the reply vector - no fixup. */
+-		status = rdmalen;
++		status = rpcrdma_decode_nomsg(r_xprt, rep);
+ 		break;
+-
+ 	case rdma_error:
+-		goto out_rdmaerr;
+-
+-badheader:
++		status = rpcrdma_decode_error(r_xprt, rep, rqst);
++		break;
+ 	default:
+-		dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
+-			rqst->rq_task->tk_pid, __func__,
+-			be32_to_cpu(proc));
+ 		status = -EIO;
+-		r_xprt->rx_stats.bad_reply_count++;
+-		break;
+ 	}
++	if (status < 0)
++		goto out_badheader;
+ 
+ out:
+ 	cwnd = xprt->cwnd;
+@@ -1192,25 +1254,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	r_xprt->rx_stats.bad_reply_count++;
+ 	goto out;
+ 
+-out_rdmaerr:
+-	rmerr = be32_to_cpu(headerp->rm_body.rm_error.rm_err);
+-	switch (rmerr) {
+-	case ERR_VERS:
+-		pr_err("%s: server reports header version error (%u-%u)\n",
+-		       __func__,
+-		       be32_to_cpu(headerp->rm_body.rm_error.rm_vers_low),
+-		       be32_to_cpu(headerp->rm_body.rm_error.rm_vers_high));
+-		break;
+-	case ERR_CHUNK:
+-		pr_err("%s: server reports header decoding error\n",
+-		       __func__);
+-		break;
+-	default:
+-		pr_err("%s: server reports unknown error %d\n",
+-		       __func__, rmerr);
+-	}
+-	status = -EREMOTEIO;
++out_badheader:
++	dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
++		rqst->rq_task->tk_pid, __func__, be32_to_cpu(proc));
+ 	r_xprt->rx_stats.bad_reply_count++;
++	status = -EIO;
+ 	goto out;
+ 
+ /* The req was still available, but by the time the transport_lock
 
