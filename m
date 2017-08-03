@@ -1,111 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:51377 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751010AbdHCPjz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 11:39:55 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 00/28] Reducing inode->i_lock contention in writebacks
-Date: Thu, 3 Aug 2017 15:39:47 +0000
-Message-ID: <1501774784.3680.1.camel@primarydata.com>
-References: <20170803134523.4922-1-trond.myklebust@primarydata.com>
-         <26E54933-A2AB-4F99-9317-0BF300B36A5D@oracle.com>
-In-Reply-To: <26E54933-A2AB-4F99-9317-0BF300B36A5D@oracle.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:38868 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751696AbdHCS34 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 14:29:56 -0400
+Received: by mail-it0-f67.google.com with SMTP id h199so1839153ith.5
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 11:29:56 -0700 (PDT)
+Subject: [PATCH v1 0/7] Clean up XDR decoding of RPC/RDMA xprt hdrs
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 03 Aug 2017 14:29:54 -0400
+Message-ID: <20170803182623.14672.77636.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA4LTAzIGF0IDExOjA0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBBdWcgMywgMjAxNywgYXQgOTo0NCBBTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWts
-ZWJ1c3RAcHJpbWFyDQo+ID4geWRhdGEuY29tPiB3cm90ZToNCj4gPiANCj4gPiBDaHVjayBMZXZl
-ciBoYXMgcHJlc2VudGVkIG1lYXN1cmVtZW50cywgdGhhdCB3b3VsZCBhcHBlYXIgdG8NCj4gPiBp
-bmRpY2F0ZSB0aGF0DQo+ID4gdGhlIGlub2RlLT5pX2xvY2sgY2FuIGJlIGEgc291cmNlIG9mIGNv
-bnRlbnRpb24gd2hlbiBkb2luZw0KPiA+IHdyaXRlYmFjayB1c2luZw0KPiA+IGhpZ2ggcGVyZm9y
-bWFuY2UgbmV0d29ya3MuIFRoaXMgcGF0Y2ggc2VyaWVzIGlzIHRoZXJlZm9yZSBhbg0KPiA+IGF0
-dGVtcHQgdG8NCj4gPiBhZGRyZXNzIHRoZSBzb3VyY2VzIG9mIGNvbnRlbnRpb24gdGhhdCBoaXMg
-bWVhc3VyZW1lbnRzIHBvaW50ZWQgdG8uDQo+ID4gDQo+ID4gQWNjb3JkaW5nIHRvIENodWNrJ3Mg
-dGFibGUsIHRoZSBtYWluIHNvdXJjZXMgb2YgY29udGVudGlvbiBhcHBlYXINCj4gPiB0bw0KPiA+
-IGJlIGluIG5mc19mbHVzaF9pbmNvbXBhdGlibGUoKSwgbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVz
-dHMoKSBhbmQNCj4gPiBuZnNfdXBkYXRlcGFnZSgpLiBNb3N0IG9mIHRoaXMgcGF0Y2ggc2VyaWVz
-IGZvY3VzZXMgb24gZml4aW5nDQo+ID4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVzdHMoKSwgc2lu
-Y2UgaXQgaG9sZHMgdGhlIGlub2RlIGxvY2ssIHdoaWxlDQo+ID4gdGFraW5nIGxvY2tzIG9uIHRo
-ZSBwYWdlIGdyb3VwIGFuZCB0aGUgc3ViLXJlcXVlc3RzIHRoZW1zZWx2ZXMsDQo+ID4gcm9sbGlu
-ZyB0aGVtIGFsbCBiYWNrIGlmIGV2ZXIgdGhlcmUgaXMgY29udGVudGlvbi4NCj4gPiBCeSBub3Rp
-bmcgYSBmZXcgc2ltcGxlIHJ1bGVzIHRoYXQgYXJlIG1vc3RseSBhbHJlYWR5IGluIHBsYWNlLCB3
-ZQ0KPiA+IGNhbiBzaW1wbGlmeSB0aGF0IGxvY2tpbmcgdG8gZW5zdXJlIHRoYXQgd2Ugb25seSBo
-YXZlIHRvIGtlZXAgdGhlDQo+ID4gc3BpbiBsb2NrIHdoaWxlIHdlJ3JlIGRlcmVmZXJlbmNpbmcg
-YW5kIGxvY2tpbmcgdGhlIGhlYWQgcGFnZQ0KPiA+IHBvaW50ZXINCj4gPiB0aGF0IGlzIHN0b3Jl
-ZCBpbiBwYWdlX3ByaXZhdGUocGFnZSkuDQo+ID4gDQo+ID4gQWxvbmcgdGhlIHdheSwgdGhlIHBh
-dGNoZXMgYWxzbyBzaW1wbGlmeSB0aGUgY29kZSBhIGxpdHRsZSwgYW5kIGZpeA0KPiA+IGEgbnVt
-YmVyIG9mIHN1YnRsZSByYWNlcyB3aGljaCBtYWlubHkgb2NjdXIgd2hlbiB5b3Ugc2V0IHdzaXpl
-IHRvDQo+ID4gc29tZSB2YWx1ZSBzbWFsbGVyIHRoYW4gdGhlIHBhZ2Ugc2l6ZS4gVGhlIG1vc3Qg
-bm90YWJsZSBzdWNoIHJhY2UNCj4gPiBvY2N1cnMgYmV0d2VlbiBuZnNfbG9ja19hbmRfam9pbl9y
-ZXF1ZXN0cygpIGFuZA0KPiA+IG5mc19wYWdlX2dyb3VwX2Rlc3Ryb3koKSwNCj4gPiBhbmQgY291
-bGQgbGVhZCB0byBhIGRvdWJsZSBmcmVlKCkgb2Ygc29tZSBvZiB0aGUgc3ViLXJlcXVlc3RzLg0K
-PiA+IA0KPiA+IEZpbmFsbHksIHRoZXJlIGFyZSAyIHBhdGNoZXMgdGFja2VkIG9udG8gdGhlIGVu
-ZCBvZiB0aGUgc2VyaWVzIHRoYXQNCj4gPiBhdHRlbXB0IHRvIGltcHJvdmUgdGhlIHRocm90dGxp
-bmcgb2Ygd3JpdGVzIHdoZW4gdGhlIFJQQyBsYXllciBpcw0KPiA+IGNvbmdlc3RlZC4gVGhleSBk
-byBzbyBieSBmb3JjaW5nIGVhY2ggY2FsbGVyIG9mIG5mc19pbml0aWF0ZV9wZ2lvKCkNCj4gPiB0
-byB3YWl0IHVudGlsIHRoZSByZXF1ZXN0IGlzIGJlaW5nIHRyYW5zbWl0dGVkLiBUaGUgZXhwZWN0
-YXRpb24gaXMNCj4gPiB0aGF0IHRoaXMgbWlnaHQgaGVscCBpbXByb3ZlIGxhdGVuY2llcyB3aGVu
-IHRoZXJlIGFyZSBzZXZlcmFsDQo+ID4gcHJvY2Vzc2VzDQo+ID4gY29tcGV0aW5nIGZvciBhY2Nl
-c3MgdG8gdGhlIFJQQyB0cmFuc3BvcnQuDQo+ID4gDQo+ID4gdjI6IEZ1cnRoZXIgcGF0Y2hlcyB0
-byBlbGltaW5hdGUgdXNlIG9mIGlub2RlLT5pX2xvY2sgdG8gcHJvdGVjdA0KPiA+IHRoZQ0KPiA+
-ICAgIHBhZ2UtPnByaXZhdGUgY29udGVudHMuDQo+ID4gICAgUHJvdGVjdCB0aGUgKGxhcmdlISkg
-bGlzdCBvZiB1bnN0YWJsZSBwYWdlcyB1c2luZyBhIGRlZGljYXRlZA0KPiA+ICAgIE5GU19JKGlu
-b2RlKS0+Y29tbWl0X211dGV4IGluc3RlYWQgb2YgdGhlIGlub2RlLT5pX2xvY2suDQo+ID4gDQo+
-ID4gVHJvbmQgTXlrbGVidXN0ICgyOCk6DQo+ID4gIE5GUzogU2ltcGxpZnkgcGFnZSB3cml0ZWJh
-Y2sNCj4gPiAgTkZTOiBSZWR1Y2UgbG9jayBjb250ZW50aW9uIGluIG5mc19wYWdlX2ZpbmRfaGVh
-ZF9yZXF1ZXN0KCkNCj4gPiAgTkZTOiBSZWR1Y2UgbG9jayBjb250ZW50aW9uIGluIG5mc190cnlf
-dG9fdXBkYXRlX3JlcXVlc3QoKQ0KPiA+ICBORlM6IEVuc3VyZSB3ZSBhbHdheXMgZGVyZWZlcmVu
-Y2UgdGhlIHBhZ2UgaGVhZCBsYXN0DQo+ID4gIE5GUzogRml4IGEgcmVmZXJlbmNlIGFuZCBsb2Nr
-IGxlYWsgaW4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVzdHMoKQ0KPiA+ICBORlM6IEZpeCBhbiBB
-QkJBIGlzc3VlIGluIG5mc19sb2NrX2FuZF9qb2luX3JlcXVlc3RzKCkNCj4gPiAgTkZTOiBEb24n
-dCBjaGVjayByZXF1ZXN0IG9mZnNldCBhbmQgc2l6ZSB3aXRob3V0IGhvbGRpbmcgYSBsb2NrDQo+
-ID4gIE5GUzogRG9uJ3QgdW5sb2NrIHdyaXRlYmFja3MgYmVmb3JlIGRlY2xhcmluZyBQR19XQl9F
-TkQNCj4gPiAgTkZTOiBGaXggdGhlIGlub2RlIHJlcXVlc3QgYWNjb3VudGluZyB3aGVuIHBhZ2Vz
-IGhhdmUgc3VicmVxdWVzdHMNCj4gPiAgTkZTOiBUZWFjaCBuZnNfdHJ5X3RvX3VwZGF0ZV9yZXF1
-ZXN0KCkgdG8gZGVhbCB3aXRoIHJlcXVlc3QNCj4gPiAgICBwYWdlX2dyb3Vwcw0KPiA+ICBORlM6
-IFJlbW92ZSBwYWdlIGdyb3VwIGxpbWl0IGluIG5mc19mbHVzaF9pbmNvbXBhdGlibGUoKQ0KPiA+
-ICBORlM6IFJlZHVjZSBpbm9kZS0+aV9sb2NrIGNvbnRlbnRpb24gaW4NCj4gPiBuZnNfbG9ja19h
-bmRfam9pbl9yZXF1ZXN0cygpDQo+ID4gIE5GUzogRnVydGhlciBvcHRpbWlzZSBuZnNfbG9ja19h
-bmRfam9pbl9yZXF1ZXN0cygpDQo+ID4gIE5GUzogRml4IG5mc19wYWdlX2dyb3VwX2Rlc3Ryb3ko
-KSBhbmQgbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVzdHMoKQ0KPiA+ICAgIHJhY2UgY2FzZXMNCj4g
-PiAgTkZTOiBSZW1vdmUgbmZzX3BhZ2VfZ3JvdXBfY2xlYXJfYml0cygpDQo+ID4gIE5GUzogUmVt
-b3ZlIHVudXNlIGZ1bmN0aW9uIG5mc19wYWdlX2dyb3VwX2xvY2tfd2FpdCgpDQo+ID4gIE5GUzog
-UmVtb3ZlIHVudXNlZCBwYXJhbWV0ZXIgZnJvbSBuZnNfcGFnZV9ncm91cF9sb2NrKCkNCj4gPiAg
-TkZTOiBGaXggdXAgbmZzX3BhZ2VfZ3JvdXBfY292ZXJzX3BhZ2UoKQ0KPiA+ICBORlN2NDogQ29u
-dmVydCBuZnNfbG9ja19hbmRfam9pbl9yZXF1ZXN0cygpIHRvIHVzZQ0KPiA+ICAgIG5mc19wYWdl
-X2ZpbmRfaGVhZF9yZXF1ZXN0KCkNCj4gPiAgTkZTOiBSZWZhY3RvciBuZnNfcGFnZV9maW5kX2hl
-YWRfcmVxdWVzdCgpDQo+ID4gIE5GU3Y0OiBVc2UgYSBtdXRleCB0byBwcm90ZWN0IHRoZSBwZXIt
-aW5vZGUgY29tbWl0IGxpc3RzDQo+ID4gIE5GUzogVXNlIGFuIGF0b21pY19sb25nX3QgdG8gY291
-bnQgdGhlIG51bWJlciBvZiByZXF1ZXN0cw0KPiA+ICBORlM6IFVzZSBhbiBhdG9taWNfbG9uZ190
-IHRvIGNvdW50IHRoZSBudW1iZXIgb2YgY29tbWl0cw0KPiA+ICBORlM6IFN3aXRjaCB0byB1c2lu
-ZyBtYXBwaW5nLT5wcml2YXRlX2xvY2sgZm9yIHBhZ2Ugd3JpdGViYWNrDQo+ID4gbG9va3Vwcy4N
-Cj4gPiAgTkZTdjQvcG5mczogUmVwbGFjZSBwbmZzX3B1dF9sc2VnX2xvY2tlZCgpIHdpdGggcG5m
-c19wdXRfbHNlZygpDQo+ID4gIE5GUzogV2FpdCBmb3IgcmVxdWVzdHMgdGhhdCBhcmUgbG9ja2Vk
-IG9uIHRoZSBjb21taXQgbGlzdA0KPiA+ICBTVU5SUEM6IEFkZCBhIGZ1bmN0aW9uIHRvIGFsbG93
-IHdhaXRpbmcgZm9yIFJQQyB0cmFuc21pc3Npb24NCj4gPiAgTkZTOiBUaHJvdHRsZSBJL08gdG8g
-dGhlIE5GUyBzZXJ2ZXINCj4gPiANCj4gPiBmcy9uZnMvY2FsbGJhY2tfcHJvYy5jICAgICAgIHwg
-ICAyICstDQo+ID4gZnMvbmZzL2RlbGVnYXRpb24uYyAgICAgICAgICB8ICAgMiArLQ0KPiA+IGZz
-L25mcy9kaXJlY3QuYyAgICAgICAgICAgICAgfCAgIDQgKy0NCj4gPiBmcy9uZnMvaW5vZGUuYyAg
-ICAgICAgICAgICAgIHwgIDEwICstDQo+ID4gZnMvbmZzL3BhZ2VsaXN0LmMgICAgICAgICAgICB8
-ICA3MCArKystLS0tDQo+ID4gZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAgICB8ICA0MSAtLS0t
-DQo+ID4gZnMvbmZzL3BuZnMuaCAgICAgICAgICAgICAgICB8ICAgMiAtDQo+ID4gZnMvbmZzL3Bu
-ZnNfbmZzLmMgICAgICAgICAgICB8ICAzNyArKy0tDQo+ID4gZnMvbmZzL3dyaXRlLmMgICAgICAg
-ICAgICAgICB8IDQ0MCArKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0NCj4gPiAtLS0tLS0t
-LS0tLS0tDQo+ID4gaW5jbHVkZS9saW51eC9uZnNfZnMuaCAgICAgICB8ICAgNSArLQ0KPiA+IGlu
-Y2x1ZGUvbGludXgvbmZzX3BhZ2UuaCAgICAgfCAgIDMgKy0NCj4gPiBpbmNsdWRlL2xpbnV4L25m
-c194ZHIuaCAgICAgIHwgICAyICstDQo+ID4gaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCB8
-ICAgMyArDQo+ID4gbmV0L3N1bnJwYy9zY2hlZC5jICAgICAgICAgICB8ICAyMiArKysNCj4gPiBu
-ZXQvc3VucnBjL3hwcnQuYyAgICAgICAgICAgIHwgICA2ICsNCj4gPiAxNSBmaWxlcyBjaGFuZ2Vk
-LCAyOTUgaW5zZXJ0aW9ucygrKSwgMzU0IGRlbGV0aW9ucygtKQ0KPiANCj4gSGV5IFRyb25kLCBk
-byB5b3UgaGF2ZSBhIHRvcGljIGJyYW5jaCBzb21ld2hlcmUgSSBjYW4gcHVsbCB0aGlzPw0KPiAN
-Cg0KWWVwLiBJJ3ZlIHB1c2hlZCB0aGUgIndyaXRlYmFjayIgdG9waWMgYnJhbmNoIHRvIGdpdC5s
-aW51eC5vcmcuIEl0IGhhcw0KMSBleHRyYSBkZWJ1Z2dpbmcgY29tbWl0IGF0dGFjaGVkIHRvIHRo
-ZSBlbmQsIGJ1dCBJIGRvbid0IGV4cGVjdCB0aGF0DQp0byBib3RoZXIgeW91Lg0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0K
-dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Hi Anna-
 
+These patches harden xprtrdma's reply handler code path, particu-
+larly XDR decoding of incoming transport headers. I didn't copy
+linux-rdma on this series since it is strictly XDR-related.
+
+Please have a look at these and let me know if they are not
+acceptable for v4.14.
+
+---
+
+Chuck Lever (7):
+      xprtrdma: Add xdr_init_decode to rpcrdma_reply_handler()
+      xprtrdma: Harden backchannel call decoding
+      xprtrdma: Refactor rpcrdma_reply_handler()
+      xprtrdma: Replace rpcrdma_count_chunks()
+      xprtrdma: Remove opcode check in Receive completion handler
+      xprtrdma: Remove rpcrdma_rep::rr_len
+      xprtrdma: Clean up XDR decoding in rpcrdma_update_granted_credits()
+
+
+ include/linux/sunrpc/xdr.h        |   13 +
+ net/sunrpc/xprtrdma/backchannel.c |   40 +---
+ net/sunrpc/xprtrdma/rpc_rdma.c    |  422 +++++++++++++++++++++++--------------
+ net/sunrpc/xprtrdma/verbs.c       |   21 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h   |   13 +
+ 5 files changed, 304 insertions(+), 205 deletions(-)
+
+--
+Chuck Lever
