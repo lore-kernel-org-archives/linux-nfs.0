@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35819 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751700AbdHCSaV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 14:30:21 -0400
-Received: by mail-it0-f65.google.com with SMTP id v127so1855454itd.2
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 11:30:21 -0700 (PDT)
-Subject: [PATCH v1 3/7] xprtrdma: Refactor rpcrdma_reply_handler()
+Received: from mail-io0-f194.google.com ([209.85.223.194]:37997 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751700AbdHCSaN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 14:30:13 -0400
+Received: by mail-io0-f194.google.com with SMTP id o9so1817562iod.5
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 11:30:13 -0700 (PDT)
+Subject: [PATCH v1 2/7] xprtrdma: Harden backchannel call decoding
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Date: Thu, 03 Aug 2017 14:30:19 -0400
-Message-ID: <20170803183019.14672.85928.stgit@manet.1015granger.net>
+Date: Thu, 03 Aug 2017 14:30:11 -0400
+Message-ID: <20170803183011.14672.87022.stgit@manet.1015granger.net>
 In-Reply-To: <20170803182623.14672.77636.stgit@manet.1015granger.net>
 References: <20170803182623.14672.77636.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -18,282 +18,224 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Refactor the reply handler's transport header decoding logic to make
-it easier to understand and update.
-
-Convert some of the handler to use xdr_streams, which will enable
-stricter validation of input data and enable the eventual addition
-of support for new combinations of chunks, such as "Write + Reply"
-or "PZRC + normal Read".
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |  212 +++++++++++++++++++++++++---------------
- 1 file changed, 130 insertions(+), 82 deletions(-)
+ include/linux/sunrpc/xdr.h        |   13 ++++++++
+ net/sunrpc/xprtrdma/backchannel.c |   40 ++++++--------------------
+ net/sunrpc/xprtrdma/rpc_rdma.c    |   58 ++++++++++++++++++++++++-------------
+ 3 files changed, 59 insertions(+), 52 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 9b5ab59..56f2277 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1004,6 +1004,124 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- }
- #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 261b48a..86b59e3 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -239,6 +239,19 @@ extern void xdr_init_decode_pages(struct xdr_stream *xdr, struct xdr_buf *buf,
+ extern void xdr_enter_page(struct xdr_stream *xdr, unsigned int len);
+ extern int xdr_process_buf(struct xdr_buf *buf, unsigned int offset, unsigned int len, int (*actor)(struct scatterlist *, void *), void *data);
  
-+static int
-+rpcrdma_decode_msg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
-+		   struct rpc_rqst *rqst)
++/**
++ * xdr_stream_remaining - Return the number of bytes remaining in the stream
++ * @xdr: pointer to struct xdr_stream
++ *
++ * Return value:
++ *   Number of bytes remaining in @xdr before xdr->end
++ */
++static inline size_t
++xdr_stream_remaining(const struct xdr_stream *xdr)
 +{
-+	struct xdr_stream *xdr = &rep->rr_stream;
-+	int rdmalen, status;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 2 * sizeof(*p));
-+	if (unlikely(!p))
-+		return -EIO;
-+
-+	/* never expect read list */
-+	if (unlikely(*p++ != xdr_zero))
-+		return -EIO;
-+
-+	/* Write list */
-+	if (*p != xdr_zero) {
-+		char *base = rep->rr_hdrbuf.head[0].iov_base;
-+
-+		p++;
-+		rdmalen = rpcrdma_count_chunks(rep, 1, &p);
-+		if (rdmalen < 0 || *p++ != xdr_zero)
-+			return -EIO;
-+
-+		rep->rr_len -= (char *)p - base;
-+		status = rep->rr_len + rdmalen;
-+		r_xprt->rx_stats.total_rdma_reply += rdmalen;
-+
-+		/* special case - last segment may omit padding */
-+		rdmalen &= 3;
-+		if (rdmalen) {
-+			rdmalen = 4 - rdmalen;
-+			status += rdmalen;
-+		}
-+	} else {
-+		p = xdr_inline_decode(xdr, sizeof(*p));
-+		if (!p)
-+			return -EIO;
-+
-+		/* never expect reply chunk */
-+		if (*p++ != xdr_zero)
-+			return -EIO;
-+		rdmalen = 0;
-+		rep->rr_len -= RPCRDMA_HDRLEN_MIN;
-+		status = rep->rr_len;
-+	}
-+
-+	r_xprt->rx_stats.fixup_copy_count +=
-+		rpcrdma_inline_fixup(rqst, (char *)p, rep->rr_len,
-+				     rdmalen);
-+
-+	return status;
++	return xdr->nwords << 2;
 +}
 +
-+static noinline int
-+rpcrdma_decode_nomsg(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
-+{
-+	struct xdr_stream *xdr = &rep->rr_stream;
-+	int rdmalen;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
-+	if (unlikely(!p))
-+		return -EIO;
-+
-+	/* never expect Read chunks */
-+	if (unlikely(*p++ != xdr_zero))
-+		return -EIO;
-+	/* never expect Write chunks */
-+	if (unlikely(*p++ != xdr_zero))
-+		return -EIO;
-+	/* always expect a Reply chunk */
-+	if (unlikely(*p++ == xdr_zero))
-+		return -EIO;
-+
-+	rdmalen = rpcrdma_count_chunks(rep, 0, &p);
-+	if (rdmalen < 0)
-+		return -EIO;
-+	r_xprt->rx_stats.total_rdma_reply += rdmalen;
-+
-+	/* Reply chunk buffer already is the reply vector - no fixup. */
-+	return rdmalen;
-+}
-+
-+static noinline int
-+rpcrdma_decode_error(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
-+		     struct rpc_rqst *rqst)
-+{
-+	struct xdr_stream *xdr = &rep->rr_stream;
-+	__be32 *p;
-+
-+	p = xdr_inline_decode(xdr, sizeof(*p));
-+	if (unlikely(!p))
-+		return -EIO;
-+
-+	switch (*p) {
-+	case err_vers:
-+		p = xdr_inline_decode(xdr, 2 * sizeof(*p));
-+		if (!p)
-+			break;
-+		dprintk("RPC: %5u: %s: server reports version error (%u-%u)\n",
-+			rqst->rq_task->tk_pid, __func__,
-+			be32_to_cpup(p), be32_to_cpu(*(p + 1)));
-+		break;
-+	case err_chunk:
-+		dprintk("RPC: %5u: %s: server reports header decoding error\n",
-+			rqst->rq_task->tk_pid, __func__);
-+		break;
-+	default:
-+		dprintk("RPC: %5u: %s: server reports unrecognized error %d\n",
-+			rqst->rq_task->tk_pid, __func__, be32_to_cpup(p));
-+	}
-+
-+	r_xprt->rx_stats.bad_reply_count++;
-+	return -EREMOTEIO;
-+}
-+
- /* Process received RPC/RDMA messages.
+ ssize_t xdr_stream_decode_string_dup(struct xdr_stream *xdr, char **str,
+ 		size_t maxlen, gfp_t gfp_flags);
+ /**
+diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
+index 03f6b58..183a103 100644
+--- a/net/sunrpc/xprtrdma/backchannel.c
++++ b/net/sunrpc/xprtrdma/backchannel.c
+@@ -271,9 +271,6 @@ void xprt_rdma_bc_free_rqst(struct rpc_rqst *rqst)
+  * @xprt: transport receiving the call
+  * @rep: receive buffer containing the call
   *
-  * Errors must result in the RPC task either being awakened, or
-@@ -1018,13 +1136,12 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
+- * Called in the RPC reply handler, which runs in a tasklet.
+- * Be quick about it.
+- *
+  * Operational assumptions:
+  *    o Backchannel credits are ignored, just as the NFS server
+  *      forechannel currently does
+@@ -284,7 +281,6 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
+ 			     struct rpcrdma_rep *rep)
+ {
  	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
- 	struct xdr_stream *xdr = &rep->rr_stream;
 -	struct rpcrdma_msg *headerp;
+ 	struct svc_serv *bc_serv;
  	struct rpcrdma_req *req;
  	struct rpc_rqst *rqst;
--	__be32 *iptr, *p, xid, vers, proc;
--	int rdmalen, status, rmerr;
-+	__be32 *p, xid, vers, proc;
- 	unsigned long cwnd;
- 	struct list_head mws;
-+	int status;
- 
- 	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
- 
-@@ -1043,7 +1160,6 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	p++;	/* credits */
- 	proc = *p++;
+@@ -292,24 +288,15 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
+ 	size_t size;
+ 	__be32 *p;
  
 -	headerp = rdmab_to_msg(rep->rr_rdmabuf);
- 	if (rpcrdma_is_bcall(r_xprt, rep, xid, proc))
- 		return;
++	p = xdr_inline_decode(&rep->rr_stream, 0);
++	size = xdr_stream_remaining(&rep->rr_stream);
++
+ #ifdef RPCRDMA_BACKCHANNEL_DEBUG
+ 	pr_info("RPC:       %s: callback XID %08x, length=%u\n",
+-		__func__, be32_to_cpu(headerp->rm_xid), rep->rr_len);
+-	pr_info("RPC:       %s: %*ph\n", __func__, rep->rr_len, headerp);
++		__func__, be32_to_cpup(p), size);
++	pr_info("RPC:       %s: %*ph\n", __func__, size, p);
+ #endif
  
-@@ -1091,75 +1207,21 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	if (vers != rpcrdma_version)
- 		goto out_badversion;
+-	/* Sanity check:
+-	 * Need at least enough bytes for RPC/RDMA header, as code
+-	 * here references the header fields by array offset. Also,
+-	 * backward calls are always inline, so ensure there
+-	 * are some bytes beyond the RPC/RDMA header.
+-	 */
+-	if (rep->rr_len < RPCRDMA_HDRLEN_MIN + 24)
+-		goto out_short;
+-	p = (__be32 *)((unsigned char *)headerp + RPCRDMA_HDRLEN_MIN);
+-	size = rep->rr_len - RPCRDMA_HDRLEN_MIN;
+-
+ 	/* Grab a free bc rqst */
+ 	spin_lock(&xprt->bc_pa_lock);
+ 	if (list_empty(&xprt->bc_pa_list)) {
+@@ -325,7 +312,7 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
+ 	/* Prepare rqst */
+ 	rqst->rq_reply_bytes_recvd = 0;
+ 	rqst->rq_bytes_sent = 0;
+-	rqst->rq_xid = headerp->rm_xid;
++	rqst->rq_xid = *p;
  
--	/* check for expected message types */
--	/* The order of some of these tests is important. */
- 	switch (proc) {
- 	case rdma_msg:
--		/* never expect read chunks */
--		/* never expect reply chunks (two ways to check) */
--		if (headerp->rm_body.rm_chunks[0] != xdr_zero ||
--		    (headerp->rm_body.rm_chunks[1] == xdr_zero &&
--		     headerp->rm_body.rm_chunks[2] != xdr_zero))
--			goto badheader;
--		if (headerp->rm_body.rm_chunks[1] != xdr_zero) {
--			/* count any expected write chunks in read reply */
--			/* start at write chunk array count */
--			iptr = &headerp->rm_body.rm_chunks[2];
--			rdmalen = rpcrdma_count_chunks(rep, 1, &iptr);
--			/* check for validity, and no reply chunk after */
--			if (rdmalen < 0 || *iptr++ != xdr_zero)
--				goto badheader;
--			rep->rr_len -=
--			    ((unsigned char *)iptr - (unsigned char *)headerp);
--			status = rep->rr_len + rdmalen;
--			r_xprt->rx_stats.total_rdma_reply += rdmalen;
--			/* special case - last chunk may omit padding */
--			if (rdmalen &= 3) {
--				rdmalen = 4 - rdmalen;
--				status += rdmalen;
--			}
--		} else {
--			/* else ordinary inline */
--			rdmalen = 0;
--			iptr = (__be32 *)((unsigned char *)headerp +
--							RPCRDMA_HDRLEN_MIN);
--			rep->rr_len -= RPCRDMA_HDRLEN_MIN;
--			status = rep->rr_len;
--		}
+ 	rqst->rq_private_buf.len = size;
+ 	set_bit(RPC_BC_PA_IN_USE, &rqst->rq_bc_pa_state);
+@@ -337,9 +324,9 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
+ 	buf->len = size;
+ 
+ 	/* The receive buffer has to be hooked to the rpcrdma_req
+-	 * so that it can be reposted after the server is done
+-	 * parsing it but just before sending the backward
+-	 * direction reply.
++	 * so that it is not released while the req is pointing
++	 * to its buffer, and so that it can be reposted after
++	 * the Upper Layer is done decoding it.
+ 	 */
+ 	req = rpcr_to_rdmar(rqst);
+ 	dprintk("RPC:       %s: attaching rep %p to req %p\n",
+@@ -367,13 +354,4 @@ void rpcrdma_bc_receive_call(struct rpcrdma_xprt *r_xprt,
+ 	 * when the connection is re-established.
+ 	 */
+ 	return;
 -
--		r_xprt->rx_stats.fixup_copy_count +=
--			rpcrdma_inline_fixup(rqst, (char *)iptr, rep->rr_len,
--					     rdmalen);
-+		status = rpcrdma_decode_msg(r_xprt, rep, rqst);
- 		break;
+-out_short:
+-	pr_warn("RPC/RDMA short backward direction call\n");
 -
- 	case rdma_nomsg:
--		/* never expect read or write chunks, always reply chunks */
--		if (headerp->rm_body.rm_chunks[0] != xdr_zero ||
--		    headerp->rm_body.rm_chunks[1] != xdr_zero ||
--		    headerp->rm_body.rm_chunks[2] != xdr_one)
--			goto badheader;
--		iptr = (__be32 *)((unsigned char *)headerp +
--							RPCRDMA_HDRLEN_MIN);
--		rdmalen = rpcrdma_count_chunks(rep, 0, &iptr);
--		if (rdmalen < 0)
--			goto badheader;
--		r_xprt->rx_stats.total_rdma_reply += rdmalen;
--		/* Reply chunk buffer already is the reply vector - no fixup. */
--		status = rdmalen;
-+		status = rpcrdma_decode_nomsg(r_xprt, rep);
- 		break;
--
- 	case rdma_error:
--		goto out_rdmaerr;
--
--badheader:
-+		status = rpcrdma_decode_error(r_xprt, rep, rqst);
-+		break;
- 	default:
--		dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
--			rqst->rq_task->tk_pid, __func__,
--			be32_to_cpu(proc));
- 		status = -EIO;
--		r_xprt->rx_stats.bad_reply_count++;
--		break;
+-	if (rpcrdma_ep_post_recv(&r_xprt->rx_ia, rep))
+-		xprt_disconnect_done(xprt);
+-	else
+-		pr_warn("RPC:       %s: reposting rep %p\n",
+-			__func__, rep);
+ }
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 24f58c7..9b5ab59 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -949,35 +949,59 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		}
+ }
+ 
+-#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ /* By convention, backchannel calls arrive via rdma_msg type
+  * messages, and never populate the chunk lists. This makes
+  * the RPC/RDMA header small and fixed in size, so it is
+  * straightforward to check the RPC header's direction field.
+  */
+ static bool
+-rpcrdma_is_bcall(struct rpcrdma_msg *headerp)
++rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
++		 __be32 xid, __be32 proc)
++#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ {
+-	__be32 *p = (__be32 *)headerp;
++	struct xdr_stream *xdr = &rep->rr_stream;
++	__be32 *p;
+ 
+-	if (headerp->rm_type != rdma_msg)
++	if (proc != rdma_msg)
+ 		return false;
+-	if (headerp->rm_body.rm_chunks[0] != xdr_zero)
++
++	/* Peek at stream contents without advancing. */
++	p = xdr_inline_decode(xdr, 0);
++
++	/* Chunk lists */
++	if (*p++ != xdr_zero)
+ 		return false;
+-	if (headerp->rm_body.rm_chunks[1] != xdr_zero)
++	if (*p++ != xdr_zero)
+ 		return false;
+-	if (headerp->rm_body.rm_chunks[2] != xdr_zero)
++	if (*p++ != xdr_zero)
+ 		return false;
+ 
+-	/* sanity */
+-	if (p[7] != headerp->rm_xid)
++	/* RPC header */
++	if (*p++ != xid)
+ 		return false;
+-	/* call direction */
+-	if (p[8] != cpu_to_be32(RPC_CALL))
++	if (*p != cpu_to_be32(RPC_CALL))
+ 		return false;
+ 
++	/* Now that we are sure this is a backchannel call,
++	 * advance to the RPC header.
++	 */
++	p = xdr_inline_decode(xdr, 3 * sizeof(*p));
++	if (unlikely(!p))
++		goto out_short;
++
++	rpcrdma_bc_receive_call(r_xprt, rep);
++	return true;
++
++out_short:
++	pr_warn("RPC/RDMA short backward direction call\n");
++	if (rpcrdma_ep_post_recv(&r_xprt->rx_ia, rep))
++		xprt_disconnect_done(&r_xprt->rx_xprt);
+ 	return true;
+ }
++#else	/* CONFIG_SUNRPC_BACKCHANNEL */
++{
++	return false;
++}
+ #endif	/* CONFIG_SUNRPC_BACKCHANNEL */
+ 
+ /* Process received RPC/RDMA messages.
+@@ -1020,10 +1044,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	proc = *p++;
+ 
+ 	headerp = rdmab_to_msg(rep->rr_rdmabuf);
+-#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+-	if (rpcrdma_is_bcall(headerp))
+-		goto out_bcall;
+-#endif
++	if (rpcrdma_is_bcall(r_xprt, rep, xid, proc))
++		return;
+ 
+ 	/* Match incoming rpcrdma_rep to an rpcrdma_req to
+ 	 * get context for handling any incoming chunks.
+@@ -1159,12 +1181,6 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
  	}
-+	if (status < 0)
-+		goto out_badheader;
+ 	return;
  
- out:
- 	cwnd = xprt->cwnd;
-@@ -1192,25 +1254,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	r_xprt->rx_stats.bad_reply_count++;
- 	goto out;
- 
--out_rdmaerr:
--	rmerr = be32_to_cpu(headerp->rm_body.rm_error.rm_err);
--	switch (rmerr) {
--	case ERR_VERS:
--		pr_err("%s: server reports header version error (%u-%u)\n",
--		       __func__,
--		       be32_to_cpu(headerp->rm_body.rm_error.rm_vers_low),
--		       be32_to_cpu(headerp->rm_body.rm_error.rm_vers_high));
--		break;
--	case ERR_CHUNK:
--		pr_err("%s: server reports header decoding error\n",
--		       __func__);
--		break;
--	default:
--		pr_err("%s: server reports unknown error %d\n",
--		       __func__, rmerr);
--	}
--	status = -EREMOTEIO;
-+out_badheader:
-+	dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
-+		rqst->rq_task->tk_pid, __func__, be32_to_cpu(proc));
- 	r_xprt->rx_stats.bad_reply_count++;
-+	status = -EIO;
- 	goto out;
- 
- /* The req was still available, but by the time the transport_lock
+-#if defined(CONFIG_SUNRPC_BACKCHANNEL)
+-out_bcall:
+-	rpcrdma_bc_receive_call(r_xprt, rep);
+-	return;
+-#endif
+-
+ /* If the incoming reply terminated a pending RPC, the next
+  * RPC call will post a replacement receive buffer as it is
+  * being marshaled.
 
