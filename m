@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx142.netapp.com ([216.240.21.19]:2372 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751696AbdHCSfM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 Aug 2017 14:35:12 -0400
+        id S1751251AbdHCSfN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 3 Aug 2017 14:35:13 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
-Subject: [RFC 1/3] VFS adding destroy_creds call
-Date: Thu, 3 Aug 2017 14:35:06 -0400
-Message-ID: <20170803183508.24565-2-kolga@netapp.com>
+Subject: [RFC 3/3] SUNRPC mark user credentials destroyed
+Date: Thu, 3 Aug 2017 14:35:08 -0400
+Message-ID: <20170803183508.24565-4-kolga@netapp.com>
 In-Reply-To: <20170803183508.24565-1-kolga@netapp.com>
 References: <20170803183508.24565-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -15,134 +15,117 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Filesystems (like NFS) would benefit from an ability to destroy
-credentials for the current uid.
-
-Systemcall takes in a file descriptor that's a mount point of the
-file system. If a non-directory file descriptor supplied it will
-failed with EINVAL. It will return 1 upto success. If the file
-system doesn't define a destroy_creds callout, it will return 0.
+Provide an API -- rpcauth_key_set_destroy() -- to mark specific
+gss user's creds destroyed. Afterwards, these credentials come up
+as expired and require new credentials to be established. If
+previously the user did a kdestroy, then user has no access to
+the nfs mount.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- arch/x86/entry/syscalls/syscall_32.tbl |  1 +
- arch/x86/entry/syscalls/syscall_64.tbl |  1 +
- fs/read_write.c                        | 20 ++++++++++++++++++++
- include/linux/fs.h                     |  2 ++
- include/linux/syscalls.h               |  2 +-
- include/uapi/asm-generic/unistd.h      |  4 +++-
- kernel/sys_ni.c                        |  1 +
- 7 files changed, 29 insertions(+), 2 deletions(-)
+ include/linux/sunrpc/auth.h    |  5 +++++
+ net/sunrpc/auth.c              |  9 +++++++++
+ net/sunrpc/auth_generic.c      | 15 +++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c |  3 +++
+ 4 files changed, 32 insertions(+)
 
-diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
-index 448ac21..298e72b 100644
---- a/arch/x86/entry/syscalls/syscall_32.tbl
-+++ b/arch/x86/entry/syscalls/syscall_32.tbl
-@@ -391,3 +391,4 @@
- 382	i386	pkey_free		sys_pkey_free
- 383	i386	statx			sys_statx
- 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
-+385	i386	destroy_creds		sys_destroy_creds
-diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
-index 5aef183..c8a7e38 100644
---- a/arch/x86/entry/syscalls/syscall_64.tbl
-+++ b/arch/x86/entry/syscalls/syscall_64.tbl
-@@ -339,6 +339,7 @@
- 330	common	pkey_alloc		sys_pkey_alloc
- 331	common	pkey_free		sys_pkey_free
- 332	common	statx			sys_statx
-+333	common	destroy_creds		sys_destroy_creds
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 8fd3504..2ab0bc9 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -76,6 +76,7 @@ struct rpc_cred {
+ #define RPCAUTH_CRED_UPTODATE	1
+ #define RPCAUTH_CRED_HASHED	2
+ #define RPCAUTH_CRED_NEGATIVE	3
++#define RPCAUTH_CRED_DESTROYED	4
  
- #
- # x32-specific system call numbers start at 512 to avoid cache impact
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 406d1c6..2a3cce5 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -2085,3 +2085,23 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
- 	return ret;
- }
- EXPORT_SYMBOL(vfs_dedupe_file_range);
-+
-+long vfs_destroy_creds(struct file *fd)
-+{
-+	if (!IS_DIR(fd))
-+		return -EINVAL;
-+	if (fd->f_op->destroy_creds)
-+		return fd->f_op->destroy_creds(fd);
-+	return 0;
-+}
-+EXPORT_SYMBOL(vfs_destroy_creds);
-+
-+SYSCALL_DEFINE1(destroy_creds, int, fd_in)
-+{
-+	struct fd f_in;
-+
-+	f_in = fdget(fd_in);
-+	if (!f_in.file)
-+		return 0;
-+	return vfs_destroy_creds(f_in.file);
-+}
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 803e5a9..28f93e9 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1690,6 +1690,7 @@ struct file_operations {
- 			u64);
- 	ssize_t (*dedupe_file_range)(struct file *, u64, u64, struct file *,
- 			u64);
-+	int (*destroy_creds)(struct file *);
+ /* rpc_auth au_flags */
+ #define RPCAUTH_AUTH_NO_CRKEY_TIMEOUT	0x0001 /* underlying cred has no key timeout */
+@@ -136,6 +137,8 @@ struct rpc_authops {
+ 						struct rpcsec_gss_info *);
+ 	int			(*key_timeout)(struct rpc_auth *,
+ 						struct rpc_cred *);
++	int			(*key_destroy)(struct rpc_auth *,
++						struct rpc_cred *);
  };
  
- struct inode_operations {
-@@ -1770,6 +1771,7 @@ extern int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
- 					 loff_t len, bool *is_same);
- extern int vfs_dedupe_file_range(struct file *file,
- 				 struct file_dedupe_range *same);
-+extern long vfs_destroy_creds(struct file *fd);
+ struct rpc_credops {
+@@ -198,6 +201,8 @@ int			rpcauth_get_gssinfo(rpc_authflavor_t,
+ void			rpcauth_clear_credcache(struct rpc_cred_cache *);
+ int			rpcauth_key_timeout_notify(struct rpc_auth *,
+ 						struct rpc_cred *);
++int			rpcauth_key_set_destroy(struct rpc_auth *,
++						struct rpc_cred *);
+ bool			rpcauth_cred_key_to_expire(struct rpc_auth *, struct rpc_cred *);
+ char *			rpcauth_stringify_acceptor(struct rpc_cred *);
  
- struct super_operations {
-    	struct inode *(*alloc_inode)(struct super_block *sb);
-diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
-index 980c3c9..586d0ae 100644
---- a/include/linux/syscalls.h
-+++ b/include/linux/syscalls.h
-@@ -905,5 +905,5 @@ asmlinkage long sys_pkey_mprotect(unsigned long start, size_t len,
- asmlinkage long sys_pkey_free(int pkey);
- asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
- 			  unsigned mask, struct statx __user *buffer);
--
-+asmlinkage long sys_destroy_creds(int fd_in);
- #endif
-diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
-index 061185a..8d9e9fe 100644
---- a/include/uapi/asm-generic/unistd.h
-+++ b/include/uapi/asm-generic/unistd.h
-@@ -731,9 +731,11 @@
- __SYSCALL(__NR_pkey_free,     sys_pkey_free)
- #define __NR_statx 291
- __SYSCALL(__NR_statx,     sys_statx)
-+#define __NR_copy_file_range 292
-+__SYSCALL(__NR_destroy_creds, sys_destroy_creds)
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index d2623b9..408452c 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -357,6 +357,15 @@ struct rpc_auth *
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
  
- #undef __NR_syscalls
--#define __NR_syscalls 292
-+#define __NR_syscalls 293
++int
++rpcauth_key_set_destroy(struct rpc_auth *auth, struct rpc_cred *cred)
++{
++	if (!cred->cr_auth->au_ops->key_destroy)
++		return 0;
++	return cred->cr_auth->au_ops->key_destroy(auth, cred);
++}
++EXPORT_SYMBOL_GPL(rpcauth_key_set_destroy);
++
+ bool
+ rpcauth_cred_key_to_expire(struct rpc_auth *auth, struct rpc_cred *cred)
+ {
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+index f1df983..f434a03 100644
+--- a/net/sunrpc/auth_generic.c
++++ b/net/sunrpc/auth_generic.c
+@@ -223,6 +223,20 @@ void rpc_destroy_generic_auth(void)
+  * on the acred ac_flags and return 0.
+  */
+ static int
++generic_key_destroy(struct rpc_auth *auth, struct rpc_cred *cred)
++{
++	struct auth_cred *acred = &container_of(cred, struct generic_cred,
++						gc_base)->acred;
++	struct rpc_cred *tcred;
++
++	tcred = auth->au_ops->lookup_cred(auth, acred, 0);
++	if (IS_ERR(tcred))
++		return -EACCES;
++	set_bit(RPCAUTH_CRED_DESTROYED, &tcred->cr_flags);
++	return 1;
++}
++
++static int
+ generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
+ {
+ 	struct auth_cred *acred = &container_of(cred, struct generic_cred,
+@@ -270,6 +284,7 @@ void rpc_destroy_generic_auth(void)
+ 	.lookup_cred = generic_lookup_cred,
+ 	.crcreate = generic_create_cred,
+ 	.key_timeout = generic_key_timeout,
++	.key_destroy = generic_key_destroy,
+ };
  
- /*
-  * All syscalls below here should go away really,
-diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
-index 8acef85..cb9ee0b 100644
---- a/kernel/sys_ni.c
-+++ b/kernel/sys_ni.c
-@@ -178,6 +178,7 @@ asmlinkage long sys_ni_syscall(void)
- cond_syscall(sys_capget);
- cond_syscall(sys_capset);
- cond_syscall(sys_copy_file_range);
-+cond_syscall(sys_destroy_creds);
+ static struct rpc_auth generic_auth = {
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 4f16953..75f062c 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1473,6 +1473,9 @@ static void gss_pipe_free(struct gss_pipe *p)
+ 	if (ret == 0)
+ 		return ret;
  
- /* arch-specific weak syscall entries */
- cond_syscall(sys_pciconfig_read);
++	if (test_bit(RPCAUTH_CRED_DESTROYED, &rc->cr_flags))
++		return 0;
++
+ 	/* Notify acred users of GSS context expiration timeout */
+ 	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags) &&
+ 	    (gss_key_timeout(rc) != 0)) {
 -- 
 1.8.3.1
 
