@@ -1,102 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:37522 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751599AbdHCNpc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 09:45:32 -0400
-Received: by mail-it0-f67.google.com with SMTP id 77so1306750itj.4
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 06:45:31 -0700 (PDT)
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36473 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751600AbdHCNpe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 09:45:34 -0400
+Received: by mail-it0-f68.google.com with SMTP id r9so1312688ita.3
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 06:45:33 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 00/28] Reducing inode->i_lock contention in writebacks
-Date: Thu,  3 Aug 2017 09:44:55 -0400
-Message-Id: <20170803134523.4922-1-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 02/28] NFS: Reduce lock contention in nfs_page_find_head_request()
+Date: Thu,  3 Aug 2017 09:44:57 -0400
+Message-Id: <20170803134523.4922-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20170803134523.4922-2-trond.myklebust@primarydata.com>
+References: <20170803134523.4922-1-trond.myklebust@primarydata.com>
+ <20170803134523.4922-2-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Chuck Lever has presented measurements, that would appear to indicate that
-the inode->i_lock can be a source of contention when doing writeback using
-high performance networks. This patch series is therefore an attempt to
-address the sources of contention that his measurements pointed to.
+Add a lockless check for whether or not the page might be carrying
+an existing writeback before we grab the inode->i_lock.
 
-According to Chuck's table, the main sources of contention appear to
-be in nfs_flush_incompatible(), nfs_lock_and_join_requests() and
-nfs_updatepage(). Most of this patch series focuses on fixing
-nfs_lock_and_join_requests(), since it holds the inode lock, while
-taking locks on the page group and the sub-requests themselves,
-rolling them all back if ever there is contention.
-By noting a few simple rules that are mostly already in place, we
-can simplify that locking to ensure that we only have to keep the
-spin lock while we're dereferencing and locking the head page pointer
-that is stored in page_private(page).
+Reported-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/write.c | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
 
-Along the way, the patches also simplify the code a little, and fix
-a number of subtle races which mainly occur when you set wsize to
-some value smaller than the page size. The most notable such race
-occurs between nfs_lock_and_join_requests() and nfs_page_group_destroy(),
-and could lead to a double free() of some of the sub-requests.
-
-Finally, there are 2 patches tacked onto the end of the series that
-attempt to improve the throttling of writes when the RPC layer is
-congested. They do so by forcing each caller of nfs_initiate_pgio()
-to wait until the request is being transmitted. The expectation is
-that this might help improve latencies when there are several processes
-competing for access to the RPC transport.
-
-v2: Further patches to eliminate use of inode->i_lock to protect the
-    page->private contents.
-    Protect the (large!) list of unstable pages using a dedicated
-    NFS_I(inode)->commit_mutex instead of the inode->i_lock.
-
-Trond Myklebust (28):
-  NFS: Simplify page writeback
-  NFS: Reduce lock contention in nfs_page_find_head_request()
-  NFS: Reduce lock contention in nfs_try_to_update_request()
-  NFS: Ensure we always dereference the page head last
-  NFS: Fix a reference and lock leak in nfs_lock_and_join_requests()
-  NFS: Fix an ABBA issue in nfs_lock_and_join_requests()
-  NFS: Don't check request offset and size without holding a lock
-  NFS: Don't unlock writebacks before declaring PG_WB_END
-  NFS: Fix the inode request accounting when pages have subrequests
-  NFS: Teach nfs_try_to_update_request() to deal with request
-    page_groups
-  NFS: Remove page group limit in nfs_flush_incompatible()
-  NFS: Reduce inode->i_lock contention in nfs_lock_and_join_requests()
-  NFS: Further optimise nfs_lock_and_join_requests()
-  NFS: Fix nfs_page_group_destroy() and nfs_lock_and_join_requests()
-    race cases
-  NFS: Remove nfs_page_group_clear_bits()
-  NFS: Remove unuse function nfs_page_group_lock_wait()
-  NFS: Remove unused parameter from nfs_page_group_lock()
-  NFS: Fix up nfs_page_group_covers_page()
-  NFSv4: Convert nfs_lock_and_join_requests() to use
-    nfs_page_find_head_request()
-  NFS: Refactor nfs_page_find_head_request()
-  NFSv4: Use a mutex to protect the per-inode commit lists
-  NFS: Use an atomic_long_t to count the number of requests
-  NFS: Use an atomic_long_t to count the number of commits
-  NFS: Switch to using mapping->private_lock for page writeback lookups.
-  NFSv4/pnfs: Replace pnfs_put_lseg_locked() with pnfs_put_lseg()
-  NFS: Wait for requests that are locked on the commit list
-  SUNRPC: Add a function to allow waiting for RPC transmission
-  NFS: Throttle I/O to the NFS server
-
- fs/nfs/callback_proc.c       |   2 +-
- fs/nfs/delegation.c          |   2 +-
- fs/nfs/direct.c              |   4 +-
- fs/nfs/inode.c               |  10 +-
- fs/nfs/pagelist.c            |  70 +++----
- fs/nfs/pnfs.c                |  41 ----
- fs/nfs/pnfs.h                |   2 -
- fs/nfs/pnfs_nfs.c            |  37 ++--
- fs/nfs/write.c               | 440 ++++++++++++++++++++-----------------------
- include/linux/nfs_fs.h       |   5 +-
- include/linux/nfs_page.h     |   3 +-
- include/linux/nfs_xdr.h      |   2 +-
- include/linux/sunrpc/sched.h |   3 +
- net/sunrpc/sched.c           |  22 +++
- net/sunrpc/xprt.c            |   6 +
- 15 files changed, 295 insertions(+), 354 deletions(-)
-
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 1d447e37f472..06e150c4e315 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -190,9 +190,11 @@ static struct nfs_page *nfs_page_find_head_request(struct page *page)
+ 	struct inode *inode = page_file_mapping(page)->host;
+ 	struct nfs_page *req = NULL;
+ 
+-	spin_lock(&inode->i_lock);
+-	req = nfs_page_find_head_request_locked(NFS_I(inode), page);
+-	spin_unlock(&inode->i_lock);
++	if (PagePrivate(page) || PageSwapCache(page)) {
++		spin_lock(&inode->i_lock);
++		req = nfs_page_find_head_request_locked(NFS_I(inode), page);
++		spin_unlock(&inode->i_lock);
++	}
+ 	return req;
+ }
+ 
 -- 
 2.13.3
 
