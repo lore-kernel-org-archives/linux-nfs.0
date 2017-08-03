@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35243 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751942AbdHCNp5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 09:45:57 -0400
-Received: by mail-it0-f65.google.com with SMTP id v127so1319561itd.2
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 06:45:57 -0700 (PDT)
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36506 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751700AbdHCNpm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Aug 2017 09:45:42 -0400
+Received: by mail-it0-f68.google.com with SMTP id r9so1312996ita.3
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Aug 2017 06:45:42 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2 18/28] NFS: Fix up nfs_page_group_covers_page()
-Date: Thu,  3 Aug 2017 09:45:13 -0400
-Message-Id: <20170803134523.4922-19-trond.myklebust@primarydata.com>
-In-Reply-To: <20170803134523.4922-18-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 07/28] NFS: Don't check request offset and size without holding a lock
+Date: Thu,  3 Aug 2017 09:45:02 -0400
+Message-Id: <20170803134523.4922-8-trond.myklebust@primarydata.com>
+In-Reply-To: <20170803134523.4922-7-trond.myklebust@primarydata.com>
 References: <20170803134523.4922-1-trond.myklebust@primarydata.com>
  <20170803134523.4922-2-trond.myklebust@primarydata.com>
  <20170803134523.4922-3-trond.myklebust@primarydata.com>
@@ -18,68 +18,62 @@ References: <20170803134523.4922-1-trond.myklebust@primarydata.com>
  <20170803134523.4922-5-trond.myklebust@primarydata.com>
  <20170803134523.4922-6-trond.myklebust@primarydata.com>
  <20170803134523.4922-7-trond.myklebust@primarydata.com>
- <20170803134523.4922-8-trond.myklebust@primarydata.com>
- <20170803134523.4922-9-trond.myklebust@primarydata.com>
- <20170803134523.4922-10-trond.myklebust@primarydata.com>
- <20170803134523.4922-11-trond.myklebust@primarydata.com>
- <20170803134523.4922-12-trond.myklebust@primarydata.com>
- <20170803134523.4922-13-trond.myklebust@primarydata.com>
- <20170803134523.4922-14-trond.myklebust@primarydata.com>
- <20170803134523.4922-15-trond.myklebust@primarydata.com>
- <20170803134523.4922-16-trond.myklebust@primarydata.com>
- <20170803134523.4922-17-trond.myklebust@primarydata.com>
- <20170803134523.4922-18-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix up the test in nfs_page_group_covers_page(). The simplest implementation
-is to check that we have a set of intersecting or contiguous subrequests
-that connect page offset 0 to nfs_page_length(req->wb_page).
+Request offsets and sizes are not guaranteed to be stable unless you
+are holding the request locked.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/write.c | 18 ++++++------------
- 1 file changed, 6 insertions(+), 12 deletions(-)
+ fs/nfs/write.c | 24 ++++++++++++------------
+ 1 file changed, 12 insertions(+), 12 deletions(-)
 
 diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 0f418d825185..759e37d26acf 100644
+index c940e615f5dc..84b6818e5278 100644
 --- a/fs/nfs/write.c
 +++ b/fs/nfs/write.c
-@@ -243,9 +243,6 @@ nfs_page_group_search_locked(struct nfs_page *head, unsigned int page_offset)
- {
- 	struct nfs_page *req;
- 
--	WARN_ON_ONCE(head != head->wb_head);
--	WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &head->wb_head->wb_flags));
+@@ -523,6 +523,17 @@ nfs_lock_and_join_requests(struct page *page)
+ 	total_bytes = head->wb_bytes;
+ 	for (subreq = head->wb_this_page; subreq != head;
+ 			subreq = subreq->wb_this_page) {
++		if (!nfs_lock_request(subreq)) {
++			/* releases page group bit lock and
++			 * inode spin lock and all references */
++			ret = nfs_unroll_locks_and_wait(inode, head,
++				subreq);
++
++			if (ret == 0)
++				goto try_again;
++
++			return ERR_PTR(ret);
++		}
+ 		/*
+ 		 * Subrequests are always contiguous, non overlapping
+ 		 * and in order - but may be repeated (mirrored writes).
+@@ -533,21 +544,10 @@ nfs_lock_and_join_requests(struct page *page)
+ 		} else if (WARN_ON_ONCE(subreq->wb_offset < head->wb_offset ||
+ 			    ((subreq->wb_offset + subreq->wb_bytes) >
+ 			     (head->wb_offset + total_bytes)))) {
++			nfs_unlock_request(subreq);
+ 			nfs_unroll_locks_and_wait(inode, head, subreq);
+ 			return ERR_PTR(-EIO);
+ 		}
 -
- 	req = head;
- 	do {
- 		if (page_offset >= req->wb_pgbase &&
-@@ -273,18 +270,15 @@ static bool nfs_page_group_covers_page(struct nfs_page *req)
- 
- 	nfs_page_group_lock(req);
- 
--	do {
-+	for (;;) {
- 		tmp = nfs_page_group_search_locked(req->wb_head, pos);
--		if (tmp) {
--			/* no way this should happen */
--			WARN_ON_ONCE(tmp->wb_pgbase != pos);
--			pos += tmp->wb_bytes - (pos - tmp->wb_pgbase);
+-		if (!nfs_lock_request(subreq)) {
+-			/* releases page group bit lock and
+-			 * inode spin lock and all references */
+-			ret = nfs_unroll_locks_and_wait(inode, head,
+-				subreq);
+-
+-			if (ret == 0)
+-				goto try_again;
+-
+-			return ERR_PTR(ret);
 -		}
--	} while (tmp && pos < len);
-+		if (!tmp)
-+			break;
-+		pos = tmp->wb_pgbase + tmp->wb_bytes;
-+	}
+ 	}
  
- 	nfs_page_group_unlock(req);
--	WARN_ON_ONCE(pos > len);
--	return pos == len;
-+	return pos >= len;
- }
- 
- /* We can set the PG_uptodate flag if we see that a write request
+ 	/* Now that all requests are locked, make sure they aren't on any list.
 -- 
 2.13.3
 
