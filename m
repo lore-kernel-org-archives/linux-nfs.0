@@ -1,112 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59341 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752253AbdHDWgD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 4 Aug 2017 18:36:03 -0400
-From: NeilBrown <neilb@suse.com>
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Date: Sat, 05 Aug 2017 08:35:52 +1000
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
-In-Reply-To: <20170804155657.GH14565@stefanha-x1.localdomain>
-References: <20170630132120.31578-6-stefanha@redhat.com> <952499A1-FBBA-4FD8-97A6-B0014FA5065D@oracle.com> <87wp7lvst9.fsf@notabene.neil.brown.name> <87tw2ox4st.fsf@notabene.neil.brown.name> <20170725100513.GA5073@stefanha-x1.localdomain> <87eft2wjfy.fsf@notabene.neil.brown.name> <20170727105835.GF10129@stefanha-x1.localdomain> <8760edwk4l.fsf@notabene.neil.brown.name> <20170803152446.GA24890@stefanha-x1.localdomain> <87tw1otjf1.fsf@notabene.neil.brown.name> <20170804155657.GH14565@stefanha-x1.localdomain>
-Message-ID: <87d18bt0zb.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from aserp1040.oracle.com ([141.146.126.69]:34243 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751268AbdHDXDp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Aug 2017 19:03:45 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: lockd: server not responding
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1501534204.4663.18.camel@redhat.com>
+Date: Fri, 4 Aug 2017 19:03:36 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E75522C7-FC8B-4D5F-9DFD-820A6AA7BC79@oracle.com>
+References: <7B576AFA-7EF1-459E-827E-8793F50DB50C@oracle.com> <1501534204.4663.18.camel@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
-On Fri, Aug 04 2017, Stefan Hajnoczi wrote:
+> On Jul 31, 2017, at 4:50 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> On Mon, 2017-07-31 at 16:28 -0400, Chuck Lever wrote:
+>> Hi Jeff-
+>> 
+>> Observed with v4.13-rc[23] during NFSv3 connectation testing.
+>> The lock test stalls for a minute or two during test #7.
+>> 
+>> If you haven't already seen this, I can dig deeper.
+>> 
+>> Jul 31 16:11:08 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:864 for /export/tmp (/export/tmp)
+>> Jul 31 16:11:28 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:740 for /export/tmp (/export/tmp)
+>> Jul 31 16:11:28 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:844 for /export/tmp (/export/tmp)
+>> Jul 31 16:12:35 klimt kernel: lockd: server manet.1015granger.net not responding, timed out
+>> Jul 31 16:12:49 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:989 for /export/tmp (/export/tmp)
+>> Jul 31 16:12:49 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:844 for /export/tmp (/export/tmp)
+>> Jul 31 16:13:10 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:813 for /export/tmp (/export/tmp)
+>> Jul 31 16:13:10 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:860 for /export/tmp (/export/tmp)
+>> Jul 31 16:14:25 klimt kernel: lockd: server manet.1015granger.net not responding, timed out
+>> Jul 31 16:14:30 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:636 for /export/tmp (/export/tmp)
+>> Jul 31 16:14:30 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:960 for /export/tmp (/export/tmp)
+>> Jul 31 16:14:51 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:884 for /export/tmp (/export/tmp)
+>> Jul 31 16:14:51 klimt rpc.mountd[1640]: authenticated mount request from 192.168.2.2:822 for /export/tmp (/export/tmp)
+>> Jul 31 16:17:02 klimt rpc.mountd[1640]: authenticated unmount request from 192.168.2.2:778 for /export/tmp (/export/tmp)
+>> 
+>> 
+> 
+> That's not anything that I've seen, but I haven't been doing any v3
+> testing. Let me know what you find.
+> 
+> FWIW, the only real file locking change this cycle was a patch from
+> Christoph to clean up the fcntl getlk/setlk syscalls. lockd hooks in a
+> bit below that layer so I'd be surprised if that would affect it.
 
-> On Fri, Aug 04, 2017 at 07:45:22AM +1000, NeilBrown wrote:
->> On Thu, Aug 03 2017, Stefan Hajnoczi wrote:
->> > On Fri, Jul 28, 2017 at 09:11:22AM +1000, NeilBrown wrote:
->> >> On Thu, Jul 27 2017, Stefan Hajnoczi wrote:
->> >> > On Thu, Jul 27, 2017 at 03:13:53PM +1000, NeilBrown wrote:
->> >> >> On Tue, Jul 25 2017, Stefan Hajnoczi wrote:
->> >> >> > On Fri, Jul 07, 2017 at 02:13:38PM +1000, NeilBrown wrote:
->> >> >> >> On Fri, Jul 07 2017, NeilBrown wrote:
->> >> >> >> > On Fri, Jun 30 2017, Chuck Lever wrote:
->> > I still see these as blockers preventing guest<->host file system
->> > sharing.  Users can already manually add a NIC and configure NFS today,
->> > but the goal here is to offer this as a feature that works in an
->> > automated way (useful both for GUI-style virtual machine management and
->> > for OpenStack clouds where guest configuration must be simple and
->> > scale).
->> >
->> > In contrast, AF_VSOCK works as long as the driver is loaded.  There is
->> > no configuration.
->>=20
->> I think we all agree that providing something that "just works" is a
->> worth goal.  In only question is about how much new code can be
->> justified, and where it should be put.
->>=20
->> Given that almost everything you need already exists, it seems best to
->> just tie those pieces together.
->
-> Neil,
-> You said downthread you're losing interest but there's a point that I
-> hope you have time to consider because it's key:
->
-> Even if the NFS transport can be set up automatically without
-> conflicting with the user's system configuration, it needs to stay
-> available going forward.  A network interface is prone to user
-> configuration changes through network management tools, firewalls, and
-> other utilities.  The risk of it breakage is significant.
-
-I've already addressed this issue.  I wrote:
-
-	  True, the admin might delete the link-local address themselves.  They
-	  might also delete /sbin/mount.nfs.  Maybe they could even "rm -rf /".
-	  A rogue admin can always shoot themselves in the foot.  Trying to
-	  prevent this is pointless.
+Filed https://bugzilla.linux-nfs.org/show_bug.cgi?id=311 to track
+this issue.
 
 
->
-> That's not really a technical problem - it will be caused by some user
-> action - but using the existing Linux AF_VSOCK feature that whole class
-> of issues can be eliminated.
-
-I suggest you look up the proverb about making things fool-proof and
-learn to apply it.
-
-Meanwhile I have another issue.  Is it possible for tcpdump, or some
-other tool, to capture all the packets flowing over a vsock?  If it
-isn't possible to analyse the traffic with wireshark, it will be much
-harder to diagnose issues that customers have.
-
-NeilBrown
+--
+Chuck Lever
 
 
->
-> Stefan
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmE9soACgkQOeye3VZi
-gbnlHA/+LoNeOpY6WeOBmwppucTWk/spLjgDfB1feUjlMiwbKd3ckp+1RgxUu2qZ
-PBDR+UbdaM7Ti333R6cKrlZnGxQiBLYoWGaZyBLP6wnhwFLMSf5wI3/w+1u+yGJ7
-xqHFa9s12WPLTfqJnKt4p+lh876Bp4MGic3hc8ceMRv6nMoWum7rfUzIl6NdKVz+
-3iKC0XA4Lr5FbuXbVyk+dWIaFwTqIv+lAJPNQ23k8K75BHVm2oir/ciVqV+Bv4D0
-0dBPi6505Nx8/9yYGrx/feJUw28qR8Ep+slFBAJM7xRNf+vOc7UCFQ+ZVwoA2uM/
-TQxEbVC/wtJXfRoUYICX2IdKvv1SZ3K04e6LS3cuhJtYsLjSM6pAEFg/nwyrgBal
-Ow1M0pdYbMvn2rJm/7H6HKXmyjDv4+rdTZcF9U+NIKUUL05bG2fxuRAr0QcgSlFJ
-vNfl87Lh/noR51B0LjdzDyEJGp5qe7lNAeOW/yIs2XvFJKaYJlEkVZ6n2+RrlVeD
-JY3e+ChYCv01x7rkgGBUNNS8KxLF/+zqxaKnOdD0+YVqkv1L0APW12BIerdJqHMc
-lXRBNCmL/IAp5Ctd+PacoyxgrLLOQz1fYANmjtJ3CdDr1RzY1xJQj8RlxqsWW0DO
-HCzzsMSFinWnH4eRS6wCSyckC89EhuUqP926+wc6DTM9QSQXk7M=
-=hme/
------END PGP SIGNATURE-----
---=-=-=--
