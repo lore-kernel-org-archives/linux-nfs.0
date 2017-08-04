@@ -1,98 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39477 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751845AbdHDDZp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 3 Aug 2017 23:25:45 -0400
-From: NeilBrown <neilb@suse.com>
-To: Matt Benjamin <mbenjami@redhat.com>
-Date: Fri, 04 Aug 2017 13:25:33 +1000
-Cc: Stefan Hajnoczi <stefanha@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        Abbas Naderi <abiusx@google.com>,
-        Steve Dickson <steved@redhat.com>
-Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
-In-Reply-To: <CAKOnarmMT2FRF8U84tQDZnm-GMeZrEU2UXZHmNXUeqTHpMYo9w@mail.gmail.com>
-References: <20170630132120.31578-1-stefanha@redhat.com> <20170630132120.31578-6-stefanha@redhat.com> <952499A1-FBBA-4FD8-97A6-B0014FA5065D@oracle.com> <87wp7lvst9.fsf@notabene.neil.brown.name> <87tw2ox4st.fsf@notabene.neil.brown.name> <20170725100513.GA5073@stefanha-x1.localdomain> <87eft2wjfy.fsf@notabene.neil.brown.name> <20170727105835.GF10129@stefanha-x1.localdomain> <8760edwk4l.fsf@notabene.neil.brown.name> <20170803152446.GA24890@stefanha-x1.localdomain> <87tw1otjf1.fsf@notabene.neil.brown.name> <CAKOnarmMT2FRF8U84tQDZnm-GMeZrEU2UXZHmNXUeqTHpMYo9w@mail.gmail.com>
-Message-ID: <87r2wst3o2.fsf@notabene.neil.brown.name>
+Received: from mx142.netapp.com ([216.240.21.19]:30472 "EHLO mx142.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752038AbdHDOtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 4 Aug 2017 10:49:43 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+Subject: [RFC v2 1/3] VFS adding destroy_creds call
+Date: Fri, 4 Aug 2017 10:49:37 -0400
+Message-ID: <20170804144939.25374-2-kolga@netapp.com>
+In-Reply-To: <20170804144939.25374-1-kolga@netapp.com>
+References: <20170804144939.25374-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+Filesystems (like NFS) would benefit from an ability to destroy
+credentials for the current uid.
 
-On Thu, Aug 03 2017, Matt Benjamin wrote:
+Systemcall takes in a file descriptor that's a mount point of the
+file system. If a non-directory file descriptor supplied it will
+failed with EINVAL. It will return 1 upto success. If the file
+system doesn't define a destroy_creds callout, it will return 0.
 
-> Hi Neil,
->
-> On Thu, Aug 3, 2017 at 5:45 PM, NeilBrown <neilb@suse.com> wrote:
->> On Thu, Aug 03 2017, Stefan Hajnoczi wrote:
->
-> Since the vsock address family is in the tin since 4.8, this argument
-> appears to be about, precisely, tying existing pieces together.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ arch/x86/entry/syscalls/syscall_32.tbl |  1 +
+ arch/x86/entry/syscalls/syscall_64.tbl |  1 +
+ fs/read_write.c                        | 22 ++++++++++++++++++++++
+ include/linux/fs.h                     |  2 ++
+ include/linux/syscalls.h               |  2 +-
+ include/uapi/asm-generic/unistd.h      |  4 +++-
+ kernel/sys_ni.c                        |  1 +
+ 7 files changed, 31 insertions(+), 2 deletions(-)
 
-No, it is about adding new, unnecessary pieces into various places.
+diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+index 448ac21..298e72b 100644
+--- a/arch/x86/entry/syscalls/syscall_32.tbl
++++ b/arch/x86/entry/syscalls/syscall_32.tbl
+@@ -391,3 +391,4 @@
+ 382	i386	pkey_free		sys_pkey_free
+ 383	i386	statx			sys_statx
+ 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
++385	i386	destroy_creds		sys_destroy_creds
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 5aef183..c8a7e38 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -339,6 +339,7 @@
+ 330	common	pkey_alloc		sys_pkey_alloc
+ 331	common	pkey_free		sys_pkey_free
+ 332	common	statx			sys_statx
++333	common	destroy_creds		sys_destroy_creds
+ 
+ #
+ # x32-specific system call numbers start at 512 to avoid cache impact
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 406d1c6..2e05287 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -2085,3 +2085,25 @@ int vfs_dedupe_file_range(struct file *file, struct file_dedupe_range *same)
+ 	return ret;
+ }
+ EXPORT_SYMBOL(vfs_dedupe_file_range);
++
++long vfs_destroy_creds(struct file *fd)
++{
++	struct inode *inode = file_inode(fd);
++
++	if (!S_ISDIR(inode->i_mode))
++		return -EINVAL;
++	if (fd->f_op->destroy_creds)
++		return fd->f_op->destroy_creds(fd);
++	return 0;
++}
++EXPORT_SYMBOL(vfs_destroy_creds);
++
++SYSCALL_DEFINE1(destroy_creds, int, fd_in)
++{
++	struct fd f_in;
++
++	f_in = fdget(fd_in);
++	if (!f_in.file)
++		return 0;
++	return vfs_destroy_creds(f_in.file);
++}
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 803e5a9..28f93e9 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1690,6 +1690,7 @@ struct file_operations {
+ 			u64);
+ 	ssize_t (*dedupe_file_range)(struct file *, u64, u64, struct file *,
+ 			u64);
++	int (*destroy_creds)(struct file *);
+ };
+ 
+ struct inode_operations {
+@@ -1770,6 +1771,7 @@ extern int vfs_dedupe_file_range_compare(struct inode *src, loff_t srcoff,
+ 					 loff_t len, bool *is_same);
+ extern int vfs_dedupe_file_range(struct file *file,
+ 				 struct file_dedupe_range *same);
++extern long vfs_destroy_creds(struct file *fd);
+ 
+ struct super_operations {
+    	struct inode *(*alloc_inode)(struct super_block *sb);
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 980c3c9..586d0ae 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -905,5 +905,5 @@ asmlinkage long sys_pkey_mprotect(unsigned long start, size_t len,
+ asmlinkage long sys_pkey_free(int pkey);
+ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
+ 			  unsigned mask, struct statx __user *buffer);
+-
++asmlinkage long sys_destroy_creds(int fd_in);
+ #endif
+diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
+index 061185a..0ad6a0d 100644
+--- a/include/uapi/asm-generic/unistd.h
++++ b/include/uapi/asm-generic/unistd.h
+@@ -731,9 +731,11 @@
+ __SYSCALL(__NR_pkey_free,     sys_pkey_free)
+ #define __NR_statx 291
+ __SYSCALL(__NR_statx,     sys_statx)
++#define __NR_destroy_creds 292
++__SYSCALL(__NR_destroy_creds, sys_destroy_creds)
+ 
+ #undef __NR_syscalls
+-#define __NR_syscalls 292
++#define __NR_syscalls 293
+ 
+ /*
+  * All syscalls below here should go away really,
+diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+index 8acef85..cb9ee0b 100644
+--- a/kernel/sys_ni.c
++++ b/kernel/sys_ni.c
+@@ -178,6 +178,7 @@ asmlinkage long sys_ni_syscall(void)
+ cond_syscall(sys_capget);
+ cond_syscall(sys_capset);
+ cond_syscall(sys_copy_file_range);
++cond_syscall(sys_destroy_creds);
+ 
+ /* arch-specific weak syscall entries */
+ cond_syscall(sys_pciconfig_read);
+-- 
+1.8.3.1
 
->                                                                  The
-> ceph developers working on openstack manila did find the nfs over
-> vsock use case compelling.  I appreciate this because it has
-> encouraged more interest in the cephfs community around using the
-> standardized NFS protocol for deployment.
-
-I'm sure the ceph developers find zero-conf NFS a compelling use case.
-I would be surprised if they care whether it is over vsock or IPv6.
-
-But I'm losing interest here.  I'm not a gate-keeper.  If you can
-convince Steve/Trond/Anna/Brice to accept your code, then good luck to
-you.  I don't think a convincing case has been made though.
-
-NeilBrown
-
-
->
-> Matt
->
->>
->> I think we all agree that providing something that "just works" is a
->> worth goal.  In only question is about how much new code can be
->> justified, and where it should be put.
->>
->> Given that almost everything you need already exists, it seems best to
->> just tie those pieces together.
->>
->> NeilBrown
->>
->>
->>>
->>> The changes required to Linux and nfs-utils are related to the sunrpc
->>> transport and configuration.  They do not introduce risks to core NFS or
->>> TCP/IP.  I would really like to get patches merged because I currently
->>> have to direct interested users to building Linux and nfs-utils from
->>> source to try this out.
->>>
->>> Stefan
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmD6S8ACgkQOeye3VZi
-gblQ/xAAn+EdHkxJAuuvam5nLquE1cyI30lzH10/2JU6lutB8X/50KTUuVL+RdtD
-Nc0PYe+kiABr2hIuU//Fp7ndRs7H0ULpit5eSH1I6jmHNlTf7mgGyKJlEkKd3lCZ
-Lfk8H/xZhJ95bKxIWj9eOQrkMecEtamTBOcIr1iRybzacGKer3oGVIEl1B3xtgax
-kgVkp5qJhUYTu1SlpPrYcxo+6R4UYXHmqADOdhVQQlZ9ys2ltbt5PenFxe7fuRHD
-TG3h1IWr/hzdmY/reJSDiJrCYV+dIQ/5ikS0u3/4LD+OWtfxrrnhLM/tgA9Ggb3g
-LqqhQY+0TpmP+02vtkW4Zf1fjSioBHxGG33HoGPLuzKwACLSfdQ+L8D7S5EsvLwU
-M095qOYFhZxlGj3i7hKkeW34hVv/bOfa/oUdrkDZjZfnUsEhLzSphyE/Gx44ccdX
-5I6/LU4R2feSdLkVJYHNkkcKUmcO37Rp7kT4YDag5HCOBns0CbLxChDyRDkZ/QUS
-OHk23LX+UmhYvO6hbL2ZHkCmF47DpbODI7S6l7LodTURJ/0KdsMea71eCHYI4JMD
-fOPQ2Zb70RFdKrAery9lDOWVpFe5B69U0wwdrVxQ5n3KVt+DRHamd4axaYGDt5BF
-d8Rg7PEBScWkyTscG0Szq/8g1UgU8vNlXMVeYIOSsVx968kTFNI=
-=gvpT
------END PGP SIGNATURE-----
---=-=-=--
