@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx142.netapp.com ([216.240.21.19]:1517 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751662AbdHGVYA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 Aug 2017 17:24:00 -0400
+        id S1751869AbdHGVYB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 7 Aug 2017 17:24:01 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
         <linux-api@vger.kernel.org>
-Subject: [RFC 1/1] destroy_creds.2: new page documenting destroy_creds()
-Date: Mon, 7 Aug 2017 17:23:53 -0400
-Message-ID: <20170807212355.29127-3-kolga@netapp.com>
+Subject: [RFC v3 2/3] SUNRPC mark user credentials destroyed
+Date: Mon, 7 Aug 2017 17:23:54 -0400
+Message-ID: <20170807212355.29127-4-kolga@netapp.com>
 In-Reply-To: <20170807212355.29127-1-kolga@netapp.com>
 References: <20170807212355.29127-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,153 +16,117 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-destroy_creds() is a new system call for destroying file system
-credentials. This is usefulf for file systems that manage its
-own security contexts that were bootstrapped via some user land
-credentials (such as Kerberos).
+Provide an API -- rpcauth_key_set_destroy() -- to mark specific
+gss user's creds destroyed. Afterwards, these credentials come up
+as expired and require new credentials to be established. If
+previously the user did a kdestroy, then user has no access to
+the nfs mount.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- man2/destroy_creds.2 | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 130 insertions(+)
- create mode 100644 man2/destroy_creds.2
+ include/linux/sunrpc/auth.h    |  5 +++++
+ net/sunrpc/auth.c              |  9 +++++++++
+ net/sunrpc/auth_generic.c      | 15 +++++++++++++++
+ net/sunrpc/auth_gss/auth_gss.c |  3 +++
+ 4 files changed, 32 insertions(+)
 
-diff --git a/man2/destroy_creds.2 b/man2/destroy_creds.2
-new file mode 100644
-index 0000000..7b41c9d
---- /dev/null
-+++ b/man2/destroy_creds.2
-@@ -0,0 +1,130 @@
-+.\"This manpage is Copyright (C) 2015 Olga Kornievskaia <kolga@Netapp.com>
-+.\"
-+.\" %%%LICENSE_START(VERBATIM)
-+.\" Permission is granted to make and distribute verbatim copies of this
-+.\" manual provided the copyright notice and this permission notice are
-+.\" preserved on all copies.
-+.\"
-+.\" Permission is granted to copy and distribute modified versions of
-+.\" this manual under the conditions for verbatim copying, provided that
-+.\" the entire resulting derived work is distributed under the terms of
-+.\" a permission notice identical to this one.
-+.\"
-+.\" Since the Linux kernel and libraries are constantly changing, this
-+.\" manual page may be incorrect or out-of-date.  The author(s) assume
-+.\" no responsibility for errors or omissions, or for damages resulting
-+.\" from the use of the information contained herein.  The author(s) may
-+.\" not have taken the same level of care in the production of this
-+.\" manual, which is licensed free of charge, as they might when working
-+.\" professionally.
-+.\"
-+.\" Formatted or processed versions of this manual, if unaccompanied by
-+.\" the source, must acknowledge the copyright and authors of this work.
-+.\" %%%LICENSE_END
-+.\"
-+.TH COPY 2 2017-08-07 "Linux" "Linux Programmer's Manual"
-+.SH NAME
-+destroy_creds \- destroy current user's file system credentials for a mount point
-+.SH SYNOPSIS
-+.nf
-+.B #include <sys/syscall.h>
-+.B #include <unistd.h>
-+
-+.BI "int destroy_creds(int " fd ");
-+.fi
-+.SH DESCRIPTION
-+The
-+.BR destroy ()
-+system call performs destruction of file system credentials for the current
-+user. It identifies the file system by the supplied file descriptor in
-+.I fd
-+that represents a mount point.
-+
-+.SH RETURN VALUE
-+Upon successful completion,
-+.BR destroy_creds ()
-+will return 0.
-+
-+On error,
-+.BR destroy_creds ()
-+returns \-1 and
-+.I errno
-+is set to indicate the error.
-+.SH ERRORS
-+.TP
-+.B EBADF
-+.I fd
-+file descriptor is not valid
-+.TP
-+.B EINVAL
-+if the input file descriptor is not a directory
-+.TP
-+.B ENOENT
-+no credentials found
-+.TP
-+.B EACCES
-+unable to access credentials
-+.TP
-+.B ENOSYS
-+file system does not implement destroy_creds() functionality
-+.SH VERSIONS
-+The
-+.BR destroy_creds ()
-+system call first appeared in Linux 4.1?.
-+.SH CONFORMING TO
-+The
-+.BR destroy_creds ()
-+system call is a nonstandard Linux extension.
-+.SH NOTES
-+
-+.BR destroy_creds ()
-+gives filesystems an opportunity to destroy credentials. For instance,
-+NFS uses Kerberos credentials stored in Kerberos credential cache to
-+create its security contexts that then are stored and managed by the
-+kernel. Once the user logs out and destroys Kerberos credentials via
-+kdestroy, NFS security contexts associate with that user are valid 
-+until they expire. fslogout application such provided by the example
-+allows the user driven credential destruction in the file system.
-+
-+.SH EXAMPLE
-+.nf
-+#define _GNU_SOURCE
-+#include <fcntl.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <sys/stat.h>
-+#include <sys/syscall.h>
-+#include <unistd.h>
-+
-+static int
-+destroy_creds(int fd)
-+{
-+    return syscall(__NR_destroy_creds, fd);
-+}
-+
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 8fd3504..2ab0bc9 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -76,6 +76,7 @@ struct rpc_cred {
+ #define RPCAUTH_CRED_UPTODATE	1
+ #define RPCAUTH_CRED_HASHED	2
+ #define RPCAUTH_CRED_NEGATIVE	3
++#define RPCAUTH_CRED_DESTROYED	4
+ 
+ /* rpc_auth au_flags */
+ #define RPCAUTH_AUTH_NO_CRKEY_TIMEOUT	0x0001 /* underlying cred has no key timeout */
+@@ -136,6 +137,8 @@ struct rpc_authops {
+ 						struct rpcsec_gss_info *);
+ 	int			(*key_timeout)(struct rpc_auth *,
+ 						struct rpc_cred *);
++	int			(*key_destroy)(struct rpc_auth *,
++						struct rpc_cred *);
+ };
+ 
+ struct rpc_credops {
+@@ -198,6 +201,8 @@ int			rpcauth_get_gssinfo(rpc_authflavor_t,
+ void			rpcauth_clear_credcache(struct rpc_cred_cache *);
+ int			rpcauth_key_timeout_notify(struct rpc_auth *,
+ 						struct rpc_cred *);
++int			rpcauth_key_set_destroy(struct rpc_auth *,
++						struct rpc_cred *);
+ bool			rpcauth_cred_key_to_expire(struct rpc_auth *, struct rpc_cred *);
+ char *			rpcauth_stringify_acceptor(struct rpc_cred *);
+ 
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index d2623b9..408452c 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -357,6 +357,15 @@ struct rpc_auth *
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
+ 
 +int
-+main(int argc, char **argv)
++rpcauth_key_set_destroy(struct rpc_auth *auth, struct rpc_cred *cred)
 +{
-+    int fd, ret;
-+
-+    if (argc != 2) {
-+        fprintf(stderr, "Usage: %s <mount point>\\n", argv[0]);
-+        exit(EXIT_FAILURE);
-+    }
-+
-+    fd = open(argv[1], O_DIRECTORY|O_RDONLY);
-+    if (fd == \-1) {
-+        perror("open (argv[1])");
-+        exit(EXIT_FAILURE);
-+    }
-+
-+    ret = destroy_creds(fd);
-+    if (ret == \-1) {
-+        perror("destroy_creds");
-+        exit(EXIT_FAILURE);
-+    }
-+
-+    close(fd);
-+    exit(EXIT_SUCCESS);
++	if (!cred->cr_auth->au_ops->key_destroy)
++		return 0;
++	return cred->cr_auth->au_ops->key_destroy(auth, cred);
 +}
-+.fi
++EXPORT_SYMBOL_GPL(rpcauth_key_set_destroy);
++
+ bool
+ rpcauth_cred_key_to_expire(struct rpc_auth *auth, struct rpc_cred *cred)
+ {
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+index f1df983..f1b1088 100644
+--- a/net/sunrpc/auth_generic.c
++++ b/net/sunrpc/auth_generic.c
+@@ -263,6 +263,20 @@ void rpc_destroy_generic_auth(void)
+ 	return ret;
+ }
+ 
++static int
++generic_key_destroy(struct rpc_auth *auth, struct rpc_cred *cred)
++{
++	struct auth_cred *acred = &container_of(cred, struct generic_cred,
++						gc_base)->acred;
++	struct rpc_cred *tcred;
++
++	tcred = auth->au_ops->lookup_cred(auth, acred, 0);
++	if (IS_ERR(tcred))
++		return -ENOENT;
++	set_bit(RPCAUTH_CRED_DESTROYED, &tcred->cr_flags);
++	return 0;
++}
++
+ static const struct rpc_authops generic_auth_ops = {
+ 	.owner = THIS_MODULE,
+ 	.au_name = "Generic",
+@@ -270,6 +284,7 @@ void rpc_destroy_generic_auth(void)
+ 	.lookup_cred = generic_lookup_cred,
+ 	.crcreate = generic_create_cred,
+ 	.key_timeout = generic_key_timeout,
++	.key_destroy = generic_key_destroy,
+ };
+ 
+ static struct rpc_auth generic_auth = {
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 9463af4..2c1370a 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1473,6 +1473,9 @@ static void gss_pipe_free(struct gss_pipe *p)
+ 	if (ret == 0)
+ 		return ret;
+ 
++	if (test_bit(RPCAUTH_CRED_DESTROYED, &rc->cr_flags))
++		return 0;
++
+ 	/* Notify acred users of GSS context expiration timeout */
+ 	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags) &&
+ 	    (gss_key_timeout(rc) != 0)) {
 -- 
 1.8.3.1
 
