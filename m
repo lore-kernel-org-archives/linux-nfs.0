@@ -1,132 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:1517 "EHLO mx142.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37354 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751869AbdHGVYB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 7 Aug 2017 17:24:01 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <linux-api@vger.kernel.org>
-Subject: [RFC v3 2/3] SUNRPC mark user credentials destroyed
-Date: Mon, 7 Aug 2017 17:23:54 -0400
-Message-ID: <20170807212355.29127-4-kolga@netapp.com>
-In-Reply-To: <20170807212355.29127-1-kolga@netapp.com>
-References: <20170807212355.29127-1-kolga@netapp.com>
+        id S1752104AbdHHOHm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 8 Aug 2017 10:07:42 -0400
+Date: Tue, 8 Aug 2017 15:07:38 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: NeilBrown <neilb@suse.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        Abbas Naderi <abiusx@google.com>,
+        Steve Dickson <steved@redhat.com>
+Subject: Re: [PATCH nfs-utils v2 05/12] getport: recognize "vsock" netid
+Message-ID: <20170808140738.GQ16801@stefanha-x1.localdomain>
+References: <87wp7lvst9.fsf@notabene.neil.brown.name>
+ <87tw2ox4st.fsf@notabene.neil.brown.name>
+ <20170725100513.GA5073@stefanha-x1.localdomain>
+ <87eft2wjfy.fsf@notabene.neil.brown.name>
+ <20170727105835.GF10129@stefanha-x1.localdomain>
+ <8760edwk4l.fsf@notabene.neil.brown.name>
+ <20170803152446.GA24890@stefanha-x1.localdomain>
+ <87tw1otjf1.fsf@notabene.neil.brown.name>
+ <20170804155657.GH14565@stefanha-x1.localdomain>
+ <87d18bt0zb.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="pwWdILMQNxDD/Cps"
+In-Reply-To: <87d18bt0zb.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide an API -- rpcauth_key_set_destroy() -- to mark specific
-gss user's creds destroyed. Afterwards, these credentials come up
-as expired and require new credentials to be established. If
-previously the user did a kdestroy, then user has no access to
-the nfs mount.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- include/linux/sunrpc/auth.h    |  5 +++++
- net/sunrpc/auth.c              |  9 +++++++++
- net/sunrpc/auth_generic.c      | 15 +++++++++++++++
- net/sunrpc/auth_gss/auth_gss.c |  3 +++
- 4 files changed, 32 insertions(+)
+--pwWdILMQNxDD/Cps
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 8fd3504..2ab0bc9 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -76,6 +76,7 @@ struct rpc_cred {
- #define RPCAUTH_CRED_UPTODATE	1
- #define RPCAUTH_CRED_HASHED	2
- #define RPCAUTH_CRED_NEGATIVE	3
-+#define RPCAUTH_CRED_DESTROYED	4
- 
- /* rpc_auth au_flags */
- #define RPCAUTH_AUTH_NO_CRKEY_TIMEOUT	0x0001 /* underlying cred has no key timeout */
-@@ -136,6 +137,8 @@ struct rpc_authops {
- 						struct rpcsec_gss_info *);
- 	int			(*key_timeout)(struct rpc_auth *,
- 						struct rpc_cred *);
-+	int			(*key_destroy)(struct rpc_auth *,
-+						struct rpc_cred *);
- };
- 
- struct rpc_credops {
-@@ -198,6 +201,8 @@ int			rpcauth_get_gssinfo(rpc_authflavor_t,
- void			rpcauth_clear_credcache(struct rpc_cred_cache *);
- int			rpcauth_key_timeout_notify(struct rpc_auth *,
- 						struct rpc_cred *);
-+int			rpcauth_key_set_destroy(struct rpc_auth *,
-+						struct rpc_cred *);
- bool			rpcauth_cred_key_to_expire(struct rpc_auth *, struct rpc_cred *);
- char *			rpcauth_stringify_acceptor(struct rpc_cred *);
- 
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index d2623b9..408452c 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -357,6 +357,15 @@ struct rpc_auth *
- }
- EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
- 
-+int
-+rpcauth_key_set_destroy(struct rpc_auth *auth, struct rpc_cred *cred)
-+{
-+	if (!cred->cr_auth->au_ops->key_destroy)
-+		return 0;
-+	return cred->cr_auth->au_ops->key_destroy(auth, cred);
-+}
-+EXPORT_SYMBOL_GPL(rpcauth_key_set_destroy);
-+
- bool
- rpcauth_cred_key_to_expire(struct rpc_auth *auth, struct rpc_cred *cred)
- {
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index f1df983..f1b1088 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -263,6 +263,20 @@ void rpc_destroy_generic_auth(void)
- 	return ret;
- }
- 
-+static int
-+generic_key_destroy(struct rpc_auth *auth, struct rpc_cred *cred)
-+{
-+	struct auth_cred *acred = &container_of(cred, struct generic_cred,
-+						gc_base)->acred;
-+	struct rpc_cred *tcred;
-+
-+	tcred = auth->au_ops->lookup_cred(auth, acred, 0);
-+	if (IS_ERR(tcred))
-+		return -ENOENT;
-+	set_bit(RPCAUTH_CRED_DESTROYED, &tcred->cr_flags);
-+	return 0;
-+}
-+
- static const struct rpc_authops generic_auth_ops = {
- 	.owner = THIS_MODULE,
- 	.au_name = "Generic",
-@@ -270,6 +284,7 @@ void rpc_destroy_generic_auth(void)
- 	.lookup_cred = generic_lookup_cred,
- 	.crcreate = generic_create_cred,
- 	.key_timeout = generic_key_timeout,
-+	.key_destroy = generic_key_destroy,
- };
- 
- static struct rpc_auth generic_auth = {
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 9463af4..2c1370a 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1473,6 +1473,9 @@ static void gss_pipe_free(struct gss_pipe *p)
- 	if (ret == 0)
- 		return ret;
- 
-+	if (test_bit(RPCAUTH_CRED_DESTROYED, &rc->cr_flags))
-+		return 0;
-+
- 	/* Notify acred users of GSS context expiration timeout */
- 	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags) &&
- 	    (gss_key_timeout(rc) != 0)) {
--- 
-1.8.3.1
+On Sat, Aug 05, 2017 at 08:35:52AM +1000, NeilBrown wrote:
+> On Fri, Aug 04 2017, Stefan Hajnoczi wrote:
+>=20
+> > On Fri, Aug 04, 2017 at 07:45:22AM +1000, NeilBrown wrote:
+> >> On Thu, Aug 03 2017, Stefan Hajnoczi wrote:
+> >> > On Fri, Jul 28, 2017 at 09:11:22AM +1000, NeilBrown wrote:
+> >> >> On Thu, Jul 27 2017, Stefan Hajnoczi wrote:
+> >> >> > On Thu, Jul 27, 2017 at 03:13:53PM +1000, NeilBrown wrote:
+> >> >> >> On Tue, Jul 25 2017, Stefan Hajnoczi wrote:
+> >> >> >> > On Fri, Jul 07, 2017 at 02:13:38PM +1000, NeilBrown wrote:
+> >> >> >> >> On Fri, Jul 07 2017, NeilBrown wrote:
+> >> >> >> >> > On Fri, Jun 30 2017, Chuck Lever wrote:
+> >> > I still see these as blockers preventing guest<->host file system
+> >> > sharing.  Users can already manually add a NIC and configure NFS tod=
+ay,
+> >> > but the goal here is to offer this as a feature that works in an
+> >> > automated way (useful both for GUI-style virtual machine management =
+and
+> >> > for OpenStack clouds where guest configuration must be simple and
+> >> > scale).
+> >> >
+> >> > In contrast, AF_VSOCK works as long as the driver is loaded.  There =
+is
+> >> > no configuration.
+> >>=20
+> >> I think we all agree that providing something that "just works" is a
+> >> worth goal.  In only question is about how much new code can be
+> >> justified, and where it should be put.
+> >>=20
+> >> Given that almost everything you need already exists, it seems best to
+> >> just tie those pieces together.
+> >
+> > Neil,
+> > You said downthread you're losing interest but there's a point that I
+> > hope you have time to consider because it's key:
+> >
+> > Even if the NFS transport can be set up automatically without
+> > conflicting with the user's system configuration, it needs to stay
+> > available going forward.  A network interface is prone to user
+> > configuration changes through network management tools, firewalls, and
+> > other utilities.  The risk of it breakage is significant.
+>=20
+> I've already addressed this issue.  I wrote:
+>=20
+> 	  True, the admin might delete the link-local address themselves.  They
+> 	  might also delete /sbin/mount.nfs.  Maybe they could even "rm -rf /".
+> 	  A rogue admin can always shoot themselves in the foot.  Trying to
+> 	  prevent this is pointless.
 
+These are not things that I'm worried about.  I agree that it's
+pointless trying to prevent them.
+
+The issue is genuine configuration changes either by the user or by
+software they are running that simply interfere with the host<->guest
+interface.  For example, a default DROP iptables policy.
+
+> Meanwhile I have another issue.  Is it possible for tcpdump, or some
+> other tool, to capture all the packets flowing over a vsock?  If it
+> isn't possible to analyse the traffic with wireshark, it will be much
+> harder to diagnose issues that customers have.
+
+Yes, packet capture is possible.  The vsockmon driver was added in Linux
+4.11.  Wireshark has a dissector for AF_VSOCK.
+
+Stefan
+
+--pwWdILMQNxDD/Cps
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEcBAEBAgAGBQJZicWqAAoJEJykq7OBq3PIsgQIAL8WfVYUF1B02UJ55foL5z5D
+J+UpkHs+mfqvKurRhbJelpoaJ5ygMKEEPXvBUx8l2JFNtSKjGLjfFlYiU2+7nkwg
+PYFoCNbxbcA4reKofvmqziSq7RosvjZO0gf8nLeRstiVRUbljJL7NpLsxb8ra+sU
+cFyjtNsKJujebzEef7UEXcqNk5E8Kkk70FMHSJOkjY0NV5qXd9snboMcRoJ9ukuq
+Wwe3yc2NSNznvfx+JD3PLuyIaaMf3ypwiyauDPI8dkcxjufQLcouRUvghE9YWUOU
+iMb5TBq1uFcYydc0csflpTuzPA7DzSBONzWsbvtlIAIaXLySemzhbbggiuFYGvI=
+=MJJ6
+-----END PGP SIGNATURE-----
+
+--pwWdILMQNxDD/Cps--
