@@ -1,88 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f42.google.com ([209.85.213.42]:33931 "EHLO
-        mail-vk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752613AbdHIQI6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Aug 2017 12:08:58 -0400
-Received: by mail-vk0-f42.google.com with SMTP id n125so27410435vke.1
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Aug 2017 09:08:58 -0700 (PDT)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34026 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752219AbdHIWEv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Aug 2017 18:04:51 -0400
+Received: by mail-it0-f67.google.com with SMTP id t78so592697ita.1
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Aug 2017 15:04:51 -0700 (PDT)
+Subject: [PATCH RFC] NLM: GRANTED_MSG fails after client remount
+From: Chuck Lever <chuck.lever@oracle.com>
+To: trond.myklebust@primarydata.com, jlayton@redhat.com,
+        manjunath.patil@oracle.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 09 Aug 2017 18:04:49 -0400
+Message-ID: <20170809220335.12343.40647.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <20170807212355.29127-3-kolga@netapp.com>
-References: <20170807212355.29127-1-kolga@netapp.com> <20170807212355.29127-3-kolga@netapp.com>
-From: Andy Lutomirski <luto@amacapital.net>
-Date: Wed, 9 Aug 2017 09:08:36 -0700
-Message-ID: <CALCETrXL2AkgMqHPonWJX-5Zckk1BELPtaikL-VkLqiPZ7Qf7A@mail.gmail.com>
-Subject: Re: [RFC 1/1] destroy_creds.2: new page documenting destroy_creds()
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Linux FS Devel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, Linux API <linux-api@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Aug 7, 2017 at 2:23 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
-> destroy_creds() is a new system call for destroying file system
-> credentials. This is usefulf for file systems that manage its
-> own security contexts that were bootstrapped via some user land
-> credentials (such as Kerberos).
->
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  man2/destroy_creds.2 | 130 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 130 insertions(+)
->  create mode 100644 man2/destroy_creds.2
->
-> diff --git a/man2/destroy_creds.2 b/man2/destroy_creds.2
-> new file mode 100644
-> index 0000000..7b41c9d
-> --- /dev/null
-> +++ b/man2/destroy_creds.2
-> @@ -0,0 +1,130 @@
-> +.\"This manpage is Copyright (C) 2015 Olga Kornievskaia <kolga@Netapp.com>
-> +.\"
-> +.\" %%%LICENSE_START(VERBATIM)
-> +.\" Permission is granted to make and distribute verbatim copies of this
-> +.\" manual provided the copyright notice and this permission notice are
-> +.\" preserved on all copies.
-> +.\"
-> +.\" Permission is granted to copy and distribute modified versions of
-> +.\" this manual under the conditions for verbatim copying, provided that
-> +.\" the entire resulting derived work is distributed under the terms of
-> +.\" a permission notice identical to this one.
-> +.\"
-> +.\" Since the Linux kernel and libraries are constantly changing, this
-> +.\" manual page may be incorrect or out-of-date.  The author(s) assume
-> +.\" no responsibility for errors or omissions, or for damages resulting
-> +.\" from the use of the information contained herein.  The author(s) may
-> +.\" not have taken the same level of care in the production of this
-> +.\" manual, which is licensed free of charge, as they might when working
-> +.\" professionally.
-> +.\"
-> +.\" Formatted or processed versions of this manual, if unaccompanied by
-> +.\" the source, must acknowledge the copyright and authors of this work.
-> +.\" %%%LICENSE_END
-> +.\"
-> +.TH COPY 2 2017-08-07 "Linux" "Linux Programmer's Manual"
-> +.SH NAME
-> +destroy_creds \- destroy current user's file system credentials for a mount point
-> +.SH SYNOPSIS
-> +.nf
-> +.B #include <sys/syscall.h>
-> +.B #include <unistd.h>
-> +
-> +.BI "int destroy_creds(int " fd ");
-> +.fi
-> +.SH DESCRIPTION
-> +The
-> +.BR destroy ()
-> +system call performs destruction of file system credentials for the current
-> +user. It identifies the file system by the supplied file descriptor in
-> +.I fd
-> +that represents a mount point.
+If I repeatedly run the cthon04 lock test on NFSv3, at some point
+the Linux NFS server reports "lockd: server not responding". The NFS
+server is sending a GRANTED_MSG request via TCP, but the NFS client
+lockd has restarted and changed ports. The correct recovery is for
+the NFS server to rebind and reconnect to the new client port, but
+the server never rebinds, and the request times out and fails.
 
-Does this mean that whatever credentials are used for the current
-*fsuid* are destroyed?  Are there actually per-uid credentials in the
-first place?
+The underlying problem is that the RPC client on the NFS server is
+attempting to reconnect in a loop, and does not return control to
+the NLM layer until the request times out. There is never a chance
+for the NLM layer to force a rebind until the request has failed.
 
-What privileges, if any, are needed to call this?
+To address this, set the RPC_TASK_SOFTCONN flag when sending async
+NLM requests. The request fails immediately if it cannot connect,
+and the code can force a rebind and then retry the request.
 
-What if fd points to a bind mount?
+Sidebar: Using SOFTCONN could be reasonable for the NFS client side
+as well.
+
+Sidebar: Is h_nextrebind appropriate for NLM on TCP?
+
+Sidebar: If XPRT_BOUND is cleared while the RPC client is
+connecting, the connect can fail in xs_tcp_finish_connecting:
+
+2353         if (!xprt_bound(xprt))
+2354                 goto out;
+
+There's no recovery in xs_tcp_setup_socket for this case, so an
+error message is logged, and connection set up fails. The error
+is noise. Does the RPC client try to connect again in this case?
+
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=311
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/lockd/clntproc.c |    2 +-
+ fs/lockd/host.c     |    7 ++++++-
+ fs/lockd/svclock.c  |    2 +-
+ 3 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 066ac31..5806e1a 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -342,7 +342,7 @@ static struct rpc_task *__nlm_async_call(struct nlm_rqst *req, u32 proc, struct
+ 		.rpc_message = msg,
+ 		.callback_ops = tk_ops,
+ 		.callback_data = req,
+-		.flags = RPC_TASK_ASYNC,
++		.flags = RPC_TASK_ASYNC | RPC_TASK_SOFTCONN,
+ 	};
+ 
+ 	dprintk("lockd: call procedure %d on %s (async)\n",
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index d716c99..be0f847 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -490,7 +490,12 @@ struct rpc_clnt *
+ nlm_rebind_host(struct nlm_host *host)
+ {
+ 	dprintk("lockd: rebind host %s\n", host->h_name);
+-	if (host->h_rpcclnt && time_after_eq(jiffies, host->h_nextrebind)) {
++
++	if (!host->h_rpcclnt)
++		return;
++
++	if (time_after_eq(jiffies, host->h_nextrebind) ||
++	    host->h_proto == IPPROTO_TCP) {
+ 		rpc_force_rebind(host->h_rpcclnt);
+ 		host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+ 	}
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 3507c80..2f64a6b 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -830,7 +830,7 @@ static void nlmsvc_grant_callback(struct rpc_task *task, void *data)
+ 	 * can be done, though. */
+ 	if (task->tk_status < 0) {
+ 		/* RPC error: Re-insert for retransmission */
+-		timeout = 10 * HZ;
++		timeout = 5 * HZ;
+ 	} else {
+ 		/* Call was successful, now wait for client callback */
+ 		timeout = 60 * HZ;
+
