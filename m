@@ -1,119 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:37912 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752334AbdHIWGG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Aug 2017 18:06:06 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH RFC] NLM: GRANTED_MSG fails after client remount
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170809220335.12343.40647.stgit@klimt.1015granger.net>
-Date: Wed, 9 Aug 2017 18:05:57 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C0841FB8-5054-40AF-8356-4554BB5AEC5D@oracle.com>
-References: <20170809220335.12343.40647.stgit@klimt.1015granger.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Manjunath Patil <manjunath.b.patil@oracle.com>
+Received: from mx2.suse.de ([195.135.220.15]:39964 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750841AbdHJGdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 Aug 2017 02:33:04 -0400
+From: NeilBrown <neilb@suse.com>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Date: Thu, 10 Aug 2017 16:30:36 +1000
+Subject: [PATCH] VFS: lookup path of "-o remount" the same way as "umount"
+cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>
+Message-ID: <87shh0q6ib.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Try to get Manjunath's e-mail address right.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
-> On Aug 9, 2017, at 6:04 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> If I repeatedly run the cthon04 lock test on NFSv3, at some point
-> the Linux NFS server reports "lockd: server not responding". The NFS
-> server is sending a GRANTED_MSG request via TCP, but the NFS client
-> lockd has restarted and changed ports. The correct recovery is for
-> the NFS server to rebind and reconnect to the new client port, but
-> the server never rebinds, and the request times out and fails.
-> 
-> The underlying problem is that the RPC client on the NFS server is
-> attempting to reconnect in a loop, and does not return control to
-> the NLM layer until the request times out. There is never a chance
-> for the NLM layer to force a rebind until the request has failed.
-> 
-> To address this, set the RPC_TASK_SOFTCONN flag when sending async
-> NLM requests. The request fails immediately if it cannot connect,
-> and the code can force a rebind and then retry the request.
-> 
-> Sidebar: Using SOFTCONN could be reasonable for the NFS client side
-> as well.
-> 
-> Sidebar: Is h_nextrebind appropriate for NLM on TCP?
-> 
-> Sidebar: If XPRT_BOUND is cleared while the RPC client is
-> connecting, the connect can fail in xs_tcp_finish_connecting:
-> 
-> 2353         if (!xprt_bound(xprt))
-> 2354                 goto out;
-> 
-> There's no recovery in xs_tcp_setup_socket for this case, so an
-> error message is logged, and connection set up fails. The error
-> is noise. Does the RPC client try to connect again in this case?
-> 
-> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=311
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> fs/lockd/clntproc.c |    2 +-
-> fs/lockd/host.c     |    7 ++++++-
-> fs/lockd/svclock.c  |    2 +-
-> 3 files changed, 8 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-> index 066ac31..5806e1a 100644
-> --- a/fs/lockd/clntproc.c
-> +++ b/fs/lockd/clntproc.c
-> @@ -342,7 +342,7 @@ static struct rpc_task *__nlm_async_call(struct nlm_rqst *req, u32 proc, struct
-> 		.rpc_message = msg,
-> 		.callback_ops = tk_ops,
-> 		.callback_data = req,
-> -		.flags = RPC_TASK_ASYNC,
-> +		.flags = RPC_TASK_ASYNC | RPC_TASK_SOFTCONN,
-> 	};
-> 
-> 	dprintk("lockd: call procedure %d on %s (async)\n",
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index d716c99..be0f847 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -490,7 +490,12 @@ struct rpc_clnt *
-> nlm_rebind_host(struct nlm_host *host)
-> {
-> 	dprintk("lockd: rebind host %s\n", host->h_name);
-> -	if (host->h_rpcclnt && time_after_eq(jiffies, host->h_nextrebind)) {
-> +
-> +	if (!host->h_rpcclnt)
-> +		return;
-> +
-> +	if (time_after_eq(jiffies, host->h_nextrebind) ||
-> +	    host->h_proto == IPPROTO_TCP) {
-> 		rpc_force_rebind(host->h_rpcclnt);
-> 		host->h_nextrebind = jiffies + NLM_HOST_REBIND;
-> 	}
-> diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-> index 3507c80..2f64a6b 100644
-> --- a/fs/lockd/svclock.c
-> +++ b/fs/lockd/svclock.c
-> @@ -830,7 +830,7 @@ static void nlmsvc_grant_callback(struct rpc_task *task, void *data)
-> 	 * can be done, though. */
-> 	if (task->tk_status < 0) {
-> 		/* RPC error: Re-insert for retransmission */
-> -		timeout = 10 * HZ;
-> +		timeout = 5 * HZ;
-> 	} else {
-> 		/* Call was successful, now wait for client callback */
-> 		timeout = 60 * HZ;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+"mount -o remount" does not need to validate the target directory
+for the same reasons that "umount" doesn't.  It just needs to
+find the mountpoint and verify it is a mountpount.
 
---
-Chuck Lever
+So change do_mount() to use user_path_mountpoint_at() in the
+MS_REMOUNT case.
+
+This means that mount(.., MS_REMOUNT|MS_RO, ..) on a network
+attached filesystem will only access the network if there
+is data to be written out.  This reduces the chance of a hang
+when the network is down.
+
+Systemd-shutdown currently calls
+   mount(NULL, path, NULL, MS_REMOUNT|MS_RDONLY, ...);
+   umount2(path, 0);
+
+which is not unreasonable for local filesystems which may still
+be in use, but causes a hang for NFS filesystems which have not
+been unmounted.
+
+Note that this change does not affect
+   /usr/bin/mount -o remount,ro ...
+as that currently calls "lstat()" on the mount point.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ fs/namespace.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/fs/namespace.c b/fs/namespace.c
+index f8893dc6a989..31ded3a1cdff 100644
+=2D-- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -2718,7 +2718,10 @@ long do_mount(const char *dev_name, const char __use=
+r *dir_name,
+ 		((char *)data_page)[PAGE_SIZE - 1] =3D 0;
+=20
+ 	/* ... and get the mountpoint */
+=2D	retval =3D user_path(dir_name, &path);
++	if (flags & MS_REMOUNT)
++		retval =3D user_path_mountpoint_at(AT_FDCWD, dir_name, 0, &path);
++	else
++		retval =3D user_path(dir_name, &path);
+ 	if (retval)
+ 		return retval;
+=20
+=2D-=20
+2.12.2
 
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmL/Y4ACgkQOeye3VZi
+gbktyw//ZJMrHhtJMHwdShovN7P7eHEQwEprJeW9JmgU6A5ck3Buy8+sCdnwJEnL
+SFZq/41HwS6mc0n2nIoMDgn/G6VlSFLmjE3oJqkaa0B68OFKFQ9SHv4kvtggUQ9h
+VbQ2tZmiXrKldsZgc1aTr6SEGAVzXJTwvcSSY/bDyM2jGMuVdi/E28Bx9v/9tEAQ
+C0VIcqe8wEpHnfgVQFgmRQX1M/sfSm5mjWDe53yB+XX+Ytj8XySVhjxB+0L9wiwp
+yWFCxDCrS+LVxQl1j27zWnAl2QRzPoZF2yK8r+NW6XMDXyPNqO5qKOPSyAkO90KJ
+Ic+d8c3nBDr6QWicpQL9NIDVl25Q5kRV9DJPwRSwJn+FSJbZSyLC33eZCczkSnkZ
+VB5GhvxyrtJPeOpKU0SxJycOUJ9SfglkFvUTEaYgHTLkTCb7BZ8hM9EQAfBLF16e
+PfwV/i34wy/yZSYGGES7zePtffZmi6VCx2Eb3gFwCIxfduELhGhhfBDRnENHk779
+IoKJxKosabbqmiJ47s/ALMP/q55ZBj9xFEdc7NC4L7CUdzcJGgCg3tuC+640Y7uX
+R6pHW9V4ytHxYH+T7TGkbEB3qVgMKL2W1ltqsO1Ij2Q5GcbO93df9POrK08sP9V6
+OJjwS4N/rbjjy2QDcAC/qU7CyWiCDPBIWBHUdGXrBYKsp/GVhuk=
+=RZs+
+-----END PGP SIGNATURE-----
+--=-=-=--
