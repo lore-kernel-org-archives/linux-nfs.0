@@ -1,195 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailrelay.collogia.de ([194.8.207.98]:34152 "HELO
-        mailrelay.collogia.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1752807AbdHJUAE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Aug 2017 16:00:04 -0400
-From: Markus Stockhausen <stockhausen@collogia.de>
-To: 'Paul Menzel' <pmenzel@molgen.mpg.de>,
-        Dave Chinner <david@fromorbit.com>
-CC: "it+linux-nfs@molgen.mpg.de" <it+linux-nfs@molgen.mpg.de>,
-        Brian Foster <bfoster@redhat.com>,
-        Christoph Hellwig <hch@lst.de>,
-        "it+linux-nfs@molgen.mpg.de" <it+linux-nfs@molgen.mpg.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-Subject: AW: Locking problems with Linux 4.9 and 4.11 with NFSD and
- `fs/iomap.c`
-Date: Thu, 10 Aug 2017 19:54:51 +0000
-Message-ID: <12EF8D94C6F8734FB2FF37B9FBEDD173010E032482@EXCHANGE.collogia.de>
-References: <de171adc29600902515d1424fd800678@molgen.mpg.de>
- <20170508131843.GB29840@bfoster.bfoster> <20170509090534.GB2378@lst.de>
- <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de>
- <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de>
- <20170510171757.GA10534@localhost.localdomain>
- <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
- <979473d1-9e8a-51ba-28d9-9ace63f8105b@molgen.mpg.de>
- <20170801225144.GP17762@dastard>
- <92d0933c-f031-f4e7-191e-eb3c9b1260aa@molgen.mpg.de>
-In-Reply-To: <92d0933c-f031-f4e7-191e-eb3c9b1260aa@molgen.mpg.de>
-Content-Type: multipart/mixed;
-        boundary="----=_NextPartTM-000-c42412c4-fea1-4a1c-a36f-283f3cc26cc3"
+Received: from mail-io0-f195.google.com ([209.85.223.195]:33330 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753126AbdHJUdb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Aug 2017 16:33:31 -0400
+Received: by mail-io0-f195.google.com with SMTP id q64so2288602ioi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2017 13:33:31 -0700 (PDT)
+Received: from manet.1015granger.net (c-68-46-169-226.hsd1.mi.comcast.net. [68.46.169.226])
+        by smtp.gmail.com with ESMTPSA id s204sm3435577iod.42.2017.08.10.13.33.30
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 10 Aug 2017 13:33:30 -0700 (PDT)
+Subject: [PATCH v1] NFS: Fix NFSv2 security settings
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 10 Aug 2017 16:33:29 -0400
+Message-ID: <20170810203329.11254.69554.stgit@manet.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+For a while now all NFSv2 mounts have used only AUTH_NULL, no matter
+what the sec= mount option setting was. Commit e68fd7c8071d ("mount:
+use sec= that was specified on the command line") attempted to
+address a very similar problem with NFSv3, but had a bug.
 
-This is a multi-part message in MIME format.
+The MNTv1 MNT procedure does not return a list of security flavors,
+so our client makes up a list containing just AUTH_NULL. This should
+enable nfs_verify_authflavors to assign the sec= specified flavor,
+but instead, it incorrectly sets it to AUTH_NULL.
 
-------=_NextPartTM-000-c42412c4-fea1-4a1c-a36f-283f3cc26cc3
-Content-Type: text/plain; charset="utf-8"
-Content-Transfer-Encoding: base64
+I expect this would also be a problem for any NFSv3 server whose
+MNTv3 MNT procedure returned a security flavor list containing only
+AUTH_NULL.
 
-SGkgUGF1bCBldCBhbCwNCg0KPiBEZWFyIERhdmUsDQo+DQo+DQo+IE9uIDA4LzAyLzE3IDAwOjUx
-LCBEYXZlIENoaW5uZXIgd3JvdGU6DQo+ID4gT24gVHVlLCBBdWcgMDEsIDIwMTcgYXQgMDc6NDk6
-NTBQTSArMDIwMCwgUGF1bCBNZW56ZWwgd3JvdGU6DQo+DQo+ID4+IE9uIDA2LzI3LzE3IDEzOjU5
-LCBQYXVsIE1lbnplbCB3cm90ZToNCj4gPj4NCj4gPj4+IEp1c3QgYSBzbWFsbCB1cGRhdGUgdGhh
-dCB3ZSB3ZXJlIGhpdCBieSB0aGUgcHJvYmxlbSBvbiBhIGRpZmZlcmVudCANCj4gPj4+IG1hY2hp
-bmUgKGlkZW50aWNhbCBtb2RlbCkgd2l0aCBMaW51eCA0LjkuMzIgYW5kIHRoZSBleGFjdCBzYW1l
-IA0KPiA+Pj4gc3ltcHRvbXMuDQo+ID4+Pg0KPiA+Pj4gYGBgDQo+ID4+PiAkIHN1ZG8gY2F0IC9w
-cm9jLzIwODUvc3RhY2sNCj4gPj4+IFs8ZmZmZmZmZmY4MTFmOTIwYz5dIGlvbWFwX3dyaXRlX2Jl
-Z2luKzB4OGMvMHgxMjAgDQo+ID4+PiBbPGZmZmZmZmZmODExZjk4MmI+XSBpb21hcF96ZXJvX3Jh
-bmdlX2FjdG9yKzB4ZWIvMHgyMTAgDQo+ID4+PiBbPGZmZmZmZmZmODExZjlhODI+XSBpb21hcF9h
-cHBseSsweGEyLzB4MTEwIFs8ZmZmZmZmZmY4MTFmOWM1OD5dIA0KPiA+Pj4gaW9tYXBfemVyb19y
-YW5nZSsweDU4LzB4ODAgWzxmZmZmZmZmZjgxMzNjN2RlPl0gDQo+ID4+PiB4ZnNfemVyb19lb2Yr
-MHg0ZS8weGIwIFs8ZmZmZmZmZmY4MTMzYzlkZD5dIA0KPiA+Pj4geGZzX2ZpbGVfYWlvX3dyaXRl
-X2NoZWNrcysweDE5ZC8weDFjMA0KPiA+Pj4gWzxmZmZmZmZmZjgxMzNjZTg5Pl0geGZzX2ZpbGVf
-YnVmZmVyZWRfYWlvX3dyaXRlKzB4NzkvMHgyZDANCj4gPj4+IFs8ZmZmZmZmZmY4MTMzZDE3ZT5d
-IHhmc19maWxlX3dyaXRlX2l0ZXIrMHg5ZS8weDE1MCANCj4gPj4+IFs8ZmZmZmZmZmY4MTE5OGRj
-MD5dIGRvX2l0ZXJfcmVhZHZfd3JpdGV2KzB4YTAvMHhmMCANCj4gPj4+IFs8ZmZmZmZmZmY4MTE5
-OWZiYT5dIGRvX3JlYWR2X3dyaXRldisweDE4YS8weDIzMCANCj4gPj4+IFs8ZmZmZmZmZmY4MTE5
-YTJhYz5dIHZmc193cml0ZXYrMHgzYy8weDUwIFs8ZmZmZmZmZmZmZmZmZmZmZj5dIA0KPiA+Pj4g
-MHhmZmZmZmZmZmZmZmZmZmZmIGBgYA0KPiA+Pj4NCj4gPj4+IFdlIGhhdmVu4oCZdCBoYWQgdGlt
-ZSB0byBzZXQgdXAgYSB0ZXN0IHN5c3RlbSB5ZXQgdG8gYW5hbHl6ZSB0aGF0IGZ1cnRoZXIuDQo+
-ID4+DQo+ID4+IFRvZGF5LCB0d28gc3lzdGVtcyB3aXRoIExpbnV4IDQuOS4yMyBleGhpYml0ZWQg
-dGhlIHByb2JsZW0gb2YgYHRvcGAgDQo+ID4+IHNob3dpbmcgdGhhdCBgbmZzZGAgaXMgYXQgMTAw
-ICUuIFJlc3RhcnRpbmcgb25lIG1hY2hpbmUgaW50byBMaW51eA0KPiA+PiAqNC45LjM4KiBzaG93
-ZWQgdGhlIHNhbWUgcHJvYmxlbS4gT25lIG9mIHRoZW0gd2l0aCBhIDEgR0JpdC9zIG5ldHdvcmsg
-DQo+ID4+IGRldmljZSBnb3QgdHJhZmZpYyBmcm9tIGEgMTAgR0JpdC9zIHN5c3RlbSwgc28gdGhl
-IGNvbm5lY3Rpb24gd2FzIA0KPiA+PiBzYXR1cmF0ZWQuDQo+ID4gDQo+ID4gU28gdGhlIHF1ZXN0
-aW9uIGlzIHRoaXM6IGlzIHRoZXJlIElPIGJlaW5nIGlzc3VlZCBoZXJlLCBpcyB0aGUgcGFnZSAN
-Cj4gPiBjYWNoZSBncm93aW5nLCBvciBpcyBpdCBpbiBhIHRpZ2h0IGxvb3AgZG9pbmcgbm90aGlu
-Zz8gRGV0YWlscyBvZiB5b3VyIA0KPiA+IGhhcmR3YXJlLCBYRlMgY29uZmlnIGFuZCBORlMgc2Vy
-dmVyIGNvbmZpZyBpcyBraW5kYSBpbXBvcnRhbnQgaGVyZSwgDQo+ID4gdG9vLg0KDQpMb29raW5n
-IGF0IDY0IGJpdCBpbnB1dCBmb3IgdmFyaWFibGUgY291bnQgb2YNCg0KaW9tYXBfemVyb19yYW5n
-ZV9hY3RvcihzdHJ1Y3QgaW5vZGUgKmlub2RlLCBsb2ZmX3QgcG9zLCBsb2ZmX3QgY291bnQsDQoJ
-CXZvaWQgKmRhdGEsIHN0cnVjdCBpb21hcCAqaW9tYXApDQoNCg0KYW5kIDMyIGJpdCBpbnRlcm5h
-bCB2YXJpYWJsZXMNCg0KCQl1bnNpZ25lZCBvZmZzZXQsIGJ5dGVzOw0KDQpjdWxwcml0IGNvdWxk
-IGJlDQoNCgkJYnl0ZXMgPSBtaW5fdCh1bnNpZ25lZCwgUEFHRV9TSVpFIC0gb2Zmc2V0LCBjb3Vu
-dCk7DQoNCkxldHMgc2F5IHlvdSBhcmUgdHJ5aW5nIHRvIHplcm8gbXVsdGlwbGUgb2YgNEdCIGNo
-dW5rcy4gV2l0aCBieXRlcw0KZXZhbHVhdGVkIHRvd2FyZHMgMCB0aGlzIHdpbGwgaGl0IGFuIGVu
-ZGxlc3MgbG9vcCB3aXRoaW4gdGhhdCBpb21hcA0KZnVuY3Rpb24uIFRoYXQgbWlnaHQgZXhwbGFp
-biB5b3VyIG9ic2VydmF0aW9uLiBJZiB0aGF0IGlzIHJpZ2h0IGEgYnVnZml4DQp3b3VsZCBxdWFs
-aWZ5IGZvciBzdGFibGUgNC44Kw0KDQpCZXN0IHJlZ2FyZHMuDQoNCk1hcmt1cw0KDQo+IENvdWxk
-IHlvdSBwbGVhc2UgZ3VpZGUgbWUsIHdoZXJlIEkgY2FuIGdldCB0aGUgaW5mb3JtYXRpb24geW91
-IHJlcXVlc3Q/DQo+DQo+IFRoZSBoYXJkd2FyZSByYW5nZXMgZnJvbSBzbG93IDEyIHRocmVhZCBz
-eXN0ZW1zIHdpdGggOTYgR0IgUkFNIHRvIDgwIHRocmVhZCAxIFRCIFJBTSBtYWNoaW5lcy4gT2Z0
-ZW4gYmlnIGZpbGVzICh1cCB0byAxMDAgR0IpIGFyZSB3cml0dGVuLg0KPg0KPiA+IEZvciBleGFt
-cGxlLCBpZiB0aGUgTkZTIHNlcnZlciBJTyBwYXR0ZXJucyB0cmlnZ2VyIGEgbGFyZ2Ugc3BlY3Vs
-YXRpdmUgDQo+ID4gZGVsYXllZCBhbGxvY2F0aW9uLCB0aGVuIHRoZSBjbGllbnQgZG9lcyBhIHdy
-aXRlIGF0IHRoZSBlbmQgb2YgdGhlIA0KPiA+IHNwZWN1bGF0aXZlIGRlbGFsbG9jIHJhbmdlLCB3
-ZSB3aWxsIHplcm8gdGhlIGVudGlyZSBzcGVjdWxhdGl2ZSANCj4gPiBkZWxhbGxvYyByYW5nZS4g
-VGhhdCBjb3VsZCBiZSBzZXZlcmFsIEdCIG9mIHplcm9zIHRoYXQgbmVlZCB0byBiZSANCj4gPiB3
-cml0dGVuIGhlcmUuIEl0J3Mgc3ViLW9wdGltYWwsIHllcywgYW5kIGJ1dCBsYXJnZSB6ZXJvaW5n
-IGlzIHJhcmUgDQo+ID4gZW5vdWdoIHRoYXQgd2UgaGF2ZW4ndCBuZWVkZWQgdG8gb3B0aW1pc2Ug
-aXQgYnkgYWxsb2NhdGluZyB1bndyaXR0ZW4gDQo+ID4gZXh0ZW50cyBpbnN0ZWFkLiAgSXQgd291
-bGQgYmUgcmVhbGx5IGhhbmR5IHRvIGtub3cgd2hhdCBhcHBsaWNhdGlvbiANCj4gPiB0aGUgTkZT
-IGNsaWVudCBpcyBydW5uaW5nIGFzIHRoYXQgbWlnaHQgZ2l2ZSBpbnNpZ2h0IGludG8gdGhlIHRy
-aWdnZXIgDQo+ID4gYmVoYXZpb3VyIGFuZCB3aGV0aGVyIHlvdSBhcmUgaGl0dGluZyB0aGlzIGNh
-c2UuDQo+DQo+IEl0IHJhbmdlcyBmcm9tIHNpbXBsZSBgY3BgIHRvIHNjcmlwdHMgd3JpdGluZyBG
-QVNUUSBmaWxlcyB3aXRoIGJpb2xvZ2ljYWwgc2VxdWVuY2VzIGluIGl0Lg0KPg0KPiA+ID4gQWxz
-bywgaWYgdGhlIE5GUyBjbGllbnQgaXMgb25seSB3cml0aW5nIHRvIG9uZSBmaWxlLCB0aGVuIGFs
-bCB0aGUgDQo+ID4gb3RoZXIgd3JpdGVzIHRoYXQgYXJlIG9uIHRoZSB3aXJlIHdpbGwgZW5kIHVw
-IGJlaW5nIHNlcnZpY2VkIGJ5IG5mc2QgDQo+ID4gdGhyZWFkcyB0aGF0IHRoZW4gYmxvY2sgd2Fp
-dGluZyBmb3IgdGhlIGlub2RlIGxvY2suIElmIHRoZSBjbGllbnQgDQo+ID4gaXNzdWVzIG1vcmUg
-d3JpdGVzIG9uIHRoZSB3aXJlIHRoYW4gdGhlIE5GUyBzZXJ2ZXIgaGFzIHdvcmtlciB0aHJlYWRz
-LCANCj4gPiB0aGUgY2xpZW50IHNpZGUgd3JpdGUgd2lsbCBzdGFydmUgdGhlIE5GUyBzZXJ2ZXIg
-b2Ygd29ya2VyIHRocmVhZHMgDQo+ID4gdW50aWwgdGhlIHplcm9pbmcgY29tcGxldGVzLiBUaGlz
-IGlzIHRoZSBiZWhhdmlvdXIgeW91IGFyZSBzZWVpbmcgLSANCj4gPiBpdCdzIGEgY29tbW9uIHNl
-cnZlciBzaWRlIGNvbmZpZyBlcnJvciB0aGF0J3MgYmVlbiBrbm93biBmb3IgYXQgbGVhc3QgDQo+
-ID4gMTUgeWVhcnMuLi4NCj4gPiANCj4gPiBGV0lXLCBpdCB1c2VkIHRvIGJlIHRoYXQgYSBsaW51
-eCBORlMgY2xpZW50IGNvdWxkIGhhdmUgMTYgY29uY3VycmVudCANCj4gPiBvdXRzdGFuZGluZyBO
-RlMgUlBDcyB0byBhIHNlcnZlciBhdCBhIHRpbWUgLSBJIGRvbid0IGtub3cgaWYgdGhhdCANCj4g
-PiBsaW1pdCBzdGlsbCBleGlzdHMgb3Igd2hldGhlciBpdCdzIGJlZW4gaW5jcmVhc2VkLiBIb3dl
-dmVyLCB0aGUgDQo+ID4gdHlwaWNhbCBrbmZzZCBkZWZhdWx0IGlzIChzdGlsbCkgb25seSA4IHdv
-cmtlciB0aHJlYWRzLCBtZWFuaW5nIGEgDQo+ID4gc2luZ2xlIGNsaWVudCBhbmQgc2VydmVyIHVz
-aW5nIGRlZmF1bHQgY29uZmlncyBjYW4gY2F1c2UgdGhlIGFib3ZlIA0KPiA+IHNlcnZlciBET1Mg
-aXNzdWUuIGUuZyBvbiBhIGJsZWVkaW5nIGVkZ2UgZGViaWFuIGRpc3RybyBpbnN0YWxsOg0KPiA+
-IA0KPiA+ICQgaGVhZCAtMiAvZXRjL2RlZmF1bHQvbmZzLWtlcm5lbC1zZXJ2ZXIgIyBOdW1iZXIg
-b2Ygc2VydmVycyB0byBzdGFydCANCj4gPiB1cA0KPiA+IFJQQ05GU0RDT1VOVD04DQo+ID4gJA0K
-PiA+IA0KPiA+IFNvLCB5ZWFoLCBkaXN0cm9zIHN0aWxsIG9ubHkgY29uZmlndXJlIHRoZSBuZnMg
-c2VydmVyIHdpdGggOCB3b3JrZXIgDQo+ID4gdGhyZWFkIGJ5IGRlZmF1bHQuIElmIGl0J3MgYSBk
-ZWRpY2F0ZWQgTkZTIHNlcnZlciwgdGhlbiBJJ2QgYmUgdXNpbmcgDQo+ID4gc29tZXdoZXJlIGFy
-b3VuZCA2NCBORlNEIHRocmVhZHMgKnBlciBDUFUqIGFzIGEgc3RhcnRpbmcgcG9pbnQgZm9yIHRo
-ZSANCj4gPiBzZXJ2ZXIgY29uZmlnLi4uDQo+ID4gDQo+ID4gQXQgbWluaW11bSwgeW91IG5lZWQg
-dG8gZW5zdXJlIHRoYXQgdGhlIE5GUyBzZXJ2ZXIgaGFzIGF0IGxlYXN0IGRvdWJsZSANCj4gPiB0
-aGUgbnVtYmVyIG9mIHNlcnZlciB0aHJlYWRzIGFzIHRoZSBsYXJnZXN0IGNsaWVudCBzaWRlIGNv
-bmN1cnJlbnQgUlBDIA0KPiA+IGNvdW50IHNvIHRoYXQgYSBzaW5nbGUgY2xpZW50IGNhbid0IERP
-UyB0aGUgTkZTIHNlcnZlciB3aXRoIGEgc2luZ2xlIA0KPiA+IGJsb2NrZWQgd3JpdGUgc3RyZWFt
-Lg0KPg0KPiBUaGF04oCZcyBub3QgdGhlIGlzc3VlIGhlcmUuIEl04oCZcyBzdGFydGVkIHdpdGgg
-NjQgdGhyZWFkcyBoZXJlLiBBbHNvIHRoaXMgZG9lc27igJl0IGV4cGxhaW4sIHdoeSBpdCB3b3Jr
-cyB3aXRoIHRoZSA0LjQgc2VyaWVzLiANCj4NCj4gVGhlIGRpcmVjdG9yeSBjYW5ub3QgYmUgYWNj
-ZXNzZWQgYXQgYWxsLiBgbHMgL21vdW50ZWQvcGF0aGAganVzdCBoYW5ncyBvbiByZW1vdGUgc3lz
-dGVtcy4NCj4NCj4NCj4gS2luZCByZWdhcmRzLA0KPg0KPiBQYXVsDQoNCg==
-------=_NextPartTM-000-c42412c4-fea1-4a1c-a36f-283f3cc26cc3
-Content-Type: text/plain;
-	name="InterScan_Disclaimer.txt"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename="InterScan_Disclaimer.txt"
+Fixes: e68fd7c8071d ("mount: use sec= that was specified on ... ")
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=310
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/super.c |   12 ++++++++----
+ 1 file changed, 8 insertions(+), 4 deletions(-)
 
-****************************************************************************
-Diese E-Mail enthält vertrauliche und/oder rechtlich geschützte
-Informationen. Wenn Sie nicht der richtige Adressat sind oder diese E-Mail
-irrtümlich erhalten haben, informieren Sie bitte sofort den Absender und
-vernichten Sie diese Mail. Das unerlaubte Kopieren sowie die unbefugte
-Weitergabe dieser Mail ist nicht gestattet.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index d828ef8..6b179af 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1691,8 +1691,8 @@ static int nfs_verify_authflavors(struct nfs_parsed_mount_data *args,
+ 			rpc_authflavor_t *server_authlist, unsigned int count)
+ {
+ 	rpc_authflavor_t flavor = RPC_AUTH_MAXFLAVOR;
++	bool found_auth_null = false;
+ 	unsigned int i;
+-	int use_auth_null = false;
+ 
+ 	/*
+ 	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
+@@ -1701,6 +1701,10 @@ static int nfs_verify_authflavors(struct nfs_parsed_mount_data *args,
+ 	 * AUTH_NULL has a special meaning when it's in the server list - it
+ 	 * means that the server will ignore the rpc creds, so any flavor
+ 	 * can be used but still use the sec= that was specified.
++	 *
++	 * Note also that the MNT procedure in MNTv1 does not return a list
++	 * of supported security flavors. In this case, nfs_mount() fabricates
++	 * a security flavor list containing just AUTH_NULL.
+ 	 */
+ 	for (i = 0; i < count; i++) {
+ 		flavor = server_authlist[i];
+@@ -1709,11 +1713,11 @@ static int nfs_verify_authflavors(struct nfs_parsed_mount_data *args,
+ 			goto out;
+ 
+ 		if (flavor == RPC_AUTH_NULL)
+-			use_auth_null = true;
++			found_auth_null = true;
+ 	}
+ 
+-	if (use_auth_null) {
+-		flavor = RPC_AUTH_NULL;
++	if (found_auth_null) {
++		flavor = args->auth_info.flavors[0];
+ 		goto out;
+ 	}
+ 
 
-Über das Internet versandte E-Mails können unter fremden Namen erstellt oder
-manipuliert werden. Deshalb ist diese als E-Mail verschickte Nachricht keine
-rechtsverbindliche Willenserklärung.
-
-Collogia
-Unternehmensberatung AG
-Ubierring 11
-D-50678 Köln
-
-Vorstand:
-Kadir Akin
-Dr. Michael Höhnerbach
-
-Vorsitzender des Aufsichtsrates:
-Hans Kristian Langva
-
-Registergericht: Amtsgericht Köln
-Registernummer: HRB 52 497
-
-This e-mail may contain confidential and/or privileged information. If you
-are not the intended recipient (or have received this e-mail in error)
-please notify the sender immediately and destroy this e-mail. Any
-unauthorized copying, disclosure or distribution of the material in this
-e-mail is strictly forbidden.
-
-e-mails sent over the internet may have been written under a wrong name or
-been manipulated. That is why this message sent as an e-mail is not a
-legally binding declaration of intention.
-
-Collogia
-Unternehmensberatung AG
-Ubierring 11
-D-50678 Köln
-
-executive board:
-Kadir Akin
-Dr. Michael Höhnerbach
-
-President of the supervisory board:
-Hans Kristian Langva
-
-Registry office: district court Cologne
-Register number: HRB 52 497
-
-****************************************************************************
-
-------=_NextPartTM-000-c42412c4-fea1-4a1c-a36f-283f3cc26cc3--
