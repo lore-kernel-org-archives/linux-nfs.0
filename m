@@ -1,93 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39964 "EHLO mx1.suse.de"
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:48275 "EHLO mx1.molgen.mpg.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750841AbdHJGdE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 10 Aug 2017 02:33:04 -0400
-From: NeilBrown <neilb@suse.com>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Date: Thu, 10 Aug 2017 16:30:36 +1000
-Subject: [PATCH] VFS: lookup path of "-o remount" the same way as "umount"
-cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>
-Message-ID: <87shh0q6ib.fsf@notabene.neil.brown.name>
+        id S1752558AbdHJOLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 10 Aug 2017 10:11:37 -0400
+Subject: Re: Locking problems with Linux 4.9 and 4.11 with NFSD and
+ `fs/iomap.c`
+To: Dave Chinner <david@fromorbit.com>
+Cc: it+linux-nfs@molgen.mpg.de, Brian Foster <bfoster@redhat.com>,
+        Christoph Hellwig <hch@lst.de>, it+linux-nfs@molgen.mpg.de,
+        linux-nfs@vger.kernel.org, linux-xfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+References: <de171adc29600902515d1424fd800678@molgen.mpg.de>
+ <20170508131843.GB29840@bfoster.bfoster> <20170509090534.GB2378@lst.de>
+ <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de>
+ <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de>
+ <20170510171757.GA10534@localhost.localdomain>
+ <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
+ <979473d1-9e8a-51ba-28d9-9ace63f8105b@molgen.mpg.de>
+ <20170801225144.GP17762@dastard>
+From: Paul Menzel <pmenzel@molgen.mpg.de>
+Message-ID: <92d0933c-f031-f4e7-191e-eb3c9b1260aa@molgen.mpg.de>
+Date: Thu, 10 Aug 2017 16:11:34 +0200
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <20170801225144.GP17762@dastard>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Dear Dave,
 
 
-"mount -o remount" does not need to validate the target directory
-for the same reasons that "umount" doesn't.  It just needs to
-find the mountpoint and verify it is a mountpount.
+On 08/02/17 00:51, Dave Chinner wrote:
+> On Tue, Aug 01, 2017 at 07:49:50PM +0200, Paul Menzel wrote:
 
-So change do_mount() to use user_path_mountpoint_at() in the
-MS_REMOUNT case.
+>> On 06/27/17 13:59, Paul Menzel wrote:
+>>
+>>> Just a small update that we were hit by the problem on a different
+>>> machine (identical model) with Linux 4.9.32 and the exact same
+>>> symptoms.
+>>>
+>>> ```
+>>> $ sudo cat /proc/2085/stack
+>>> [<ffffffff811f920c>] iomap_write_begin+0x8c/0x120
+>>> [<ffffffff811f982b>] iomap_zero_range_actor+0xeb/0x210
+>>> [<ffffffff811f9a82>] iomap_apply+0xa2/0x110
+>>> [<ffffffff811f9c58>] iomap_zero_range+0x58/0x80
+>>> [<ffffffff8133c7de>] xfs_zero_eof+0x4e/0xb0
+>>> [<ffffffff8133c9dd>] xfs_file_aio_write_checks+0x19d/0x1c0
+>>> [<ffffffff8133ce89>] xfs_file_buffered_aio_write+0x79/0x2d0
+>>> [<ffffffff8133d17e>] xfs_file_write_iter+0x9e/0x150
+>>> [<ffffffff81198dc0>] do_iter_readv_writev+0xa0/0xf0
+>>> [<ffffffff81199fba>] do_readv_writev+0x18a/0x230
+>>> [<ffffffff8119a2ac>] vfs_writev+0x3c/0x50
+>>> [<ffffffffffffffff>] 0xffffffffffffffff
+>>> ```
+>>>
+>>> We haven’t had time to set up a test system yet to analyze that further.
+>>
+>> Today, two systems with Linux 4.9.23 exhibited the problem of `top`
+>> showing that `nfsd` is at 100 %. Restarting one machine into Linux
+>> *4.9.38* showed the same problem. One of them with a 1 GBit/s
+>> network device got traffic from a 10 GBit/s system, so the
+>> connection was saturated.
+> 
+> So the question is this: is there IO being issued here, is the page
+> cache growing, or is it in a tight loop doing nothing? Details of
+> your hardware, XFS config and NFS server config is kinda important
+> here, too.
 
-This means that mount(.., MS_REMOUNT|MS_RO, ..) on a network
-attached filesystem will only access the network if there
-is data to be written out.  This reduces the chance of a hang
-when the network is down.
+Could you please guide me, where I can get the information you request?
 
-Systemd-shutdown currently calls
-   mount(NULL, path, NULL, MS_REMOUNT|MS_RDONLY, ...);
-   umount2(path, 0);
+The hardware ranges from slow 12 thread systems with 96 GB RAM to 80 
+thread 1 TB RAM machines. Often big files (up to 100 GB) are written.
 
-which is not unreasonable for local filesystems which may still
-be in use, but causes a hang for NFS filesystems which have not
-been unmounted.
+> For example, if the NFS server IO patterns trigger a large
+> speculative delayed allocation, then the client does a write at the
+> end of the speculative delalloc range, we will zero the entire
+> speculative delalloc range. That could be several GB of zeros that
+> need to be written here. It's sub-optimal, yes, and but large
+> zeroing is rare enough that we haven't needed to optimise it by
+> allocating unwritten extents instead.  It would be really handy to
+> know what application the NFS client is running as that might give
+> insight into the trigger behaviour and whether you are hitting this
+> case.
 
-Note that this change does not affect
-   /usr/bin/mount -o remount,ro ...
-as that currently calls "lstat()" on the mount point.
+It ranges from simple `cp` to scripts writing FASTQ files with 
+biological sequences in it.
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- fs/namespace.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+> Also, if the NFS client is only writing to one file, then all the
+> other writes that are on the wire will end up being serviced by nfsd
+> threads that then block waiting for the inode lock. If the client
+> issues more writes on the wire than the NFS server has worker
+> threads, the client side write will starve the NFS server of
+> worker threads until the zeroing completes. This is the behaviour
+> you are seeing - it's a common server side config error that's been
+> known for at least 15 years...
+> 
+> FWIW, it used to be that a linux NFS client could have 16 concurrent
+> outstanding NFS RPCs to a server at a time - I don't know if that
+> limit still exists or whether it's been increased. However, the
+> typical knfsd default is (still) only 8 worker threads, meaning a
+> single client and server using default configs can cause the above
+> server DOS issue. e.g on a bleeding edge debian distro install:
+> 
+> $ head -2 /etc/default/nfs-kernel-server
+> # Number of servers to start up
+> RPCNFSDCOUNT=8
+> $
+> 
+> So, yeah, distros still only configure the nfs server with 8 worker
+> thread by default. If it's a dedicated NFS server, then I'd be using
+> somewhere around 64 NFSD threads *per CPU* as a starting point for
+> the server config...
+> 
+> At minimum, you need to ensure that the NFS server has at least
+> double the number of server threads as the largest client side
+> concurrent RPC count so that a single client can't DOS the NFS
+> server with a single blocked write stream.
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index f8893dc6a989..31ded3a1cdff 100644
-=2D-- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -2718,7 +2718,10 @@ long do_mount(const char *dev_name, const char __use=
-r *dir_name,
- 		((char *)data_page)[PAGE_SIZE - 1] =3D 0;
-=20
- 	/* ... and get the mountpoint */
-=2D	retval =3D user_path(dir_name, &path);
-+	if (flags & MS_REMOUNT)
-+		retval =3D user_path_mountpoint_at(AT_FDCWD, dir_name, 0, &path);
-+	else
-+		retval =3D user_path(dir_name, &path);
- 	if (retval)
- 		return retval;
-=20
-=2D-=20
-2.12.2
+That’s not the issue here. It’s started with 64 threads here. Also this 
+doesn’t explain, why it works with the 4.4 series.
+
+The directory cannot be accessed at all. `ls /mounted/path` just hangs 
+on remote systems.
 
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+Kind regards,
 
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmL/Y4ACgkQOeye3VZi
-gbktyw//ZJMrHhtJMHwdShovN7P7eHEQwEprJeW9JmgU6A5ck3Buy8+sCdnwJEnL
-SFZq/41HwS6mc0n2nIoMDgn/G6VlSFLmjE3oJqkaa0B68OFKFQ9SHv4kvtggUQ9h
-VbQ2tZmiXrKldsZgc1aTr6SEGAVzXJTwvcSSY/bDyM2jGMuVdi/E28Bx9v/9tEAQ
-C0VIcqe8wEpHnfgVQFgmRQX1M/sfSm5mjWDe53yB+XX+Ytj8XySVhjxB+0L9wiwp
-yWFCxDCrS+LVxQl1j27zWnAl2QRzPoZF2yK8r+NW6XMDXyPNqO5qKOPSyAkO90KJ
-Ic+d8c3nBDr6QWicpQL9NIDVl25Q5kRV9DJPwRSwJn+FSJbZSyLC33eZCczkSnkZ
-VB5GhvxyrtJPeOpKU0SxJycOUJ9SfglkFvUTEaYgHTLkTCb7BZ8hM9EQAfBLF16e
-PfwV/i34wy/yZSYGGES7zePtffZmi6VCx2Eb3gFwCIxfduELhGhhfBDRnENHk779
-IoKJxKosabbqmiJ47s/ALMP/q55ZBj9xFEdc7NC4L7CUdzcJGgCg3tuC+640Y7uX
-R6pHW9V4ytHxYH+T7TGkbEB3qVgMKL2W1ltqsO1Ij2Q5GcbO93df9POrK08sP9V6
-OJjwS4N/rbjjy2QDcAC/qU7CyWiCDPBIWBHUdGXrBYKsp/GVhuk=
-=RZs+
------END PGP SIGNATURE-----
---=-=-=--
+Paul
