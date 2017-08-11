@@ -1,97 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:35719 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752631AbdHKOS0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 10:18:26 -0400
-Received: by mail-it0-f66.google.com with SMTP id 76so3737863ith.2
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Aug 2017 07:18:26 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH] nfs/flexfiles: fix leak of nfs4_ff_ds_version arrays
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <435422355.5999768.1501765030094.JavaMail.zimbra@desy.de>
-Date: Fri, 11 Aug 2017 10:18:23 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <19806192-AF74-4091-BB63-FF41A7687B7F@monkey.org>
-References: <20170801202501.4876-1-dros@primarydata.com>
- <A49F4A5C-4101-4D60-A14F-FC20D4F53897@monkey.org>
- <435422355.5999768.1501765030094.JavaMail.zimbra@desy.de>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Received: from mail-qt0-f178.google.com ([209.85.216.178]:36276 "EHLO
+        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752724AbdHKOWY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 10:22:24 -0400
+Received: by mail-qt0-f178.google.com with SMTP id v29so21777755qtv.3
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Aug 2017 07:22:24 -0700 (PDT)
+Message-ID: <1502461341.4762.1.camel@redhat.com>
+Subject: Re: [RFC 1/1] destroy_creds.2: new page documenting destroy_creds()
+From: Jeff Layton <jlayton@redhat.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: NeilBrown <neilb@suse.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
+        David Howells <dhowells@redhat.com>
+Date: Fri, 11 Aug 2017 10:22:21 -0400
+In-Reply-To: <E127503D-3DFC-4FD3-99F6-012D100C168B@netapp.com>
+References: <20170807212355.29127-1-kolga@netapp.com>
+         <20170807212355.29127-3-kolga@netapp.com>
+         <1502281848.12841.2.camel@redhat.com>
+         <87378yr2sx.fsf@notabene.neil.brown.name>
+         <1502450305.4950.4.camel@redhat.com>
+         <E127503D-3DFC-4FD3-99F6-012D100C168B@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Tigran,
+On Fri, 2017-08-11 at 09:49 -0400, Olga Kornievskaia wrote:
+> > On Aug 11, 2017, at 7:18 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > On Fri, 2017-08-11 at 17:17 +1000, NeilBrown wrote:
+> > > On Wed, Aug 09 2017, Jeff Layton wrote:
+> > > ....
+> > > > Thanks, that helps a bit. I'm less clear on what the higher-level
+> > > > vision is here though:
+> > > > 
+> > > > Are we all going to be running scripts on logout that scrape
+> > > > /proc/mounts and run fslogout on each? Will this be added to kdestroy?
+> > > > 
+> > > > Or are you aiming to have KCM do this on some trigger? (see:
+> > > > https://fedoraproject.org/wiki/Changes/KerberosKCMCache)
+> > > > 
+> > > > Also, doing this per-mount seems wrong to me. Shouldn't this be done on
+> > > > a per-net-namespace basis or maybe even globally?
+> > > 
+> > > Having looked at the code, I think this is invalidating cached
+> > > credentials globally -- or at least, globally for all filesystems that
+> > > use sunrpc.
+> > > 
+> > > I actually question the premise for wanting to do this.  Tickets have a
+> > > timeout and will expire.  Any code that is allowed to get a ticket, can
+> > > hold on to it as long as it likes - but it will cease to work after the
+> > > expiry time.  Hunting out all the places that a key might be cached, and
+> > > invalidating them, seems to deviate from the model.  If you are concerned
+> > > about leaving credentials around where they can theoretically be
+> > > misused, then set a smaller expiry time.
+> > > 
+> > > What is the threat-model that this change is supposed to guard against?
+> > > 
+> > > Looking that the syscall itself:
+> > > 1/ why restrict the call to directories only?
+> > > 2/ Every new syscall should have a 'flags' argument, because you never
+> > >    know when you'll need one.
+> > > 
+> > 
+> > I have some of the same concerns. For instance, we don't kill off ssh
+> > sessions that were established with krb5 just because the credcache was
+> > destroyed. RPC is a bit different since we authenticate every call, but
+> > is this fundamentally different from keeping an ssh session around that
+> > was established before the credcache was destroyed?
+> 
+> Probably because fundamentally, it’s the same user that keeps using it.
+> If the same ssh connection was shared by multiple users that were inserting
+> and deleting their credentials then it would be as problematic.
+> 
+> > Are we just getting tickets with too long a lifetime here? Maybe we just
+> > need to be more cavalier about destroying cached creds on some event or
+> > on a more timely basis?
+> > 
+> > Also, the whole gssapi credcache in the kernel is showing its age a bit.
+> > struct auth_cred has had this over it for about as long as I've been
+> > doing kernel work:
+> > 
+> >    /* Work around the lack of a VFS credential */
+> > 
+> > We've had struct cred for ages now.
+> > 
+> > David and I were chatting about this the other day and were wondering if
+> > we could change the RPC gssapi code to cache credentials in one of the
+> > keyrings in struct cred. Then, once the struct cred goes away, the key
+> > would go away as well. It wouldn't be destroyed on kdestroy, but once
+> > the last process with those creds exits, they would go away.
+> 
+> One argument against it: Kerberos has changed their storage location 
+> over the years (FILES … to keyring). What if they change again? Then NFS 
+> would have to change their implementation as well.
+> 
+> Having said that: outside of the fs-mailing list, I have asked Trond that
+> if VFS decides to reject the syscall idea, what would be an alternative 
+> and one of the choices is the keyring. Of course there are variations of 
+> how the keyring would be used. One option would be to totally switch to 
+> storing credentials in the keyring. To what what Andy had originally 
+> proposed of introducing a gss key type and storing the gss context in 
+> the keyring.
+> 
+> 
 
-I don't think so, this fixes a simple memory leak where memory is not =
-freed and nothing holds a reference to it. It should not lead to any =
-invalid pointers, but will eventually lead to the OOM killer killing a =
-bunch of processes.
+I think I wasn't clear here. I'm not proposing that you move everyone to
+KEYRING: credcaches. This would not be a visible change to userland.
+We'd still use rpc.gssd to upcall for creds.
 
-There have been other recent changes that may have addressed this. Can =
-you reproduce with the latest changes?
+What I'm saying is that instead of storing the creds in a hashtable like
+we do today, we'd just stash them in one of the keyrings hanging off of
+struct cred.
 
--dros
+Change all of the authgss_ops operations to do query/store from the
+appropriate keyring directly. With that, the effective lifetime of
+GSSAPI creds would be bounded by the lifetime of the keyrings that hold
+references to it.
 
-> On Aug 3, 2017, at 8:57 AM, Mkrtchyan, Tigran =
-<tigran.mkrtchyan@desy.de> wrote:
->=20
-> Hi Dros,
->=20
-> can this leak be the source of issue described here:  =
-http://www.spinics.net/lists/linux-nfs/msg64890.html
->=20
-> Tigran.
->=20
-> ----- Original Message -----
->> From: "Weston Andros Adamson" <dros@monkey.org>
->> To: "Trond Myklebust" <trond.myklebust@primarydata.com>, "Anna =
-Schumaker" <anna.schumaker@netapp.com>
->> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
->> Sent: Thursday, August 3, 2017 4:07:28 AM
->> Subject: Re: [PATCH] nfs/flexfiles: fix leak of nfs4_ff_ds_version =
-arrays
->=20
->> This should probably be CCed to some stable releases too. I'll figure =
-it out
->> soon.
->>=20
->> -dros
->>=20
->>> On Aug 1, 2017, at 4:25 PM, Weston Andros Adamson <dros@monkey.org> =
-wrote:
->>>=20
->>> The client was freeing the nfs4_ff_layout_ds, but not the contained
->>> nfs4_ff_ds_version array.
->>>=20
->>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->>> ---
->>> fs/nfs/flexfilelayout/flexfilelayoutdev.c | 1 +
->>> 1 file changed, 1 insertion(+)
->>>=20
->>> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> index 6df7a0cf5660..f32c58bbe556 100644
->>> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
->>> @@ -32,6 +32,7 @@ void nfs4_ff_layout_free_deviceid(struct =
-nfs4_ff_layout_ds
->>> *mirror_ds)
->>> {
->>> 	nfs4_print_deviceid(&mirror_ds->id_node.deviceid);
->>> 	nfs4_pnfs_ds_put(mirror_ds->ds);
->>> +	kfree(mirror_ds->ds_versions);
->>> 	kfree_rcu(mirror_ds, id_node.rcu);
->>> }
->>>=20
->>> --
->>> 2.11.0 (Apple Git-81)
->>>=20
->>=20
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We'd probably need a new key_type for this to ensure that this couldn't
+be manipulated directly from userland. Or...maybe you'd still want to
+allow userland to destroy the creds? No need for a new syscall with that
+-- they can just do a "keyctl unlink". There are a lot of options here.
 
+It's a non-trivial amount of work though (rpcauth_lookupcred() on down
+would probably need to be reworked) and I haven't looked at it detail.
+Still, it seems like it could be a more modern and cleaner design than
+what we have today.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
