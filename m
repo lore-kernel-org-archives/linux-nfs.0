@@ -1,115 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f194.google.com ([209.85.220.194]:35220 "EHLO
-        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752631AbdHKOJi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 10:09:38 -0400
-MIME-Version: 1.0
-In-Reply-To: <87378yr2sx.fsf@notabene.neil.brown.name>
-References: <20170807212355.29127-1-kolga@netapp.com> <20170807212355.29127-3-kolga@netapp.com>
- <1502281848.12841.2.camel@redhat.com> <87378yr2sx.fsf@notabene.neil.brown.name>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 11 Aug 2017 10:09:36 -0400
-Message-ID: <CAN-5tyEYcdGDLmQZvfdnrvCS+ndLVnjrg4GhFt2JYBhHNk2-ZQ@mail.gmail.com>
-Subject: Re: [RFC 1/1] destroy_creds.2: new page documenting destroy_creds()
-To: NeilBrown <neilb@suse.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        Linux API <linux-api@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-it0-f66.google.com ([209.85.214.66]:35719 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752631AbdHKOS0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 10:18:26 -0400
+Received: by mail-it0-f66.google.com with SMTP id 76so3737863ith.2
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Aug 2017 07:18:26 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: [PATCH] nfs/flexfiles: fix leak of nfs4_ff_ds_version arrays
+From: Weston Andros Adamson <dros@monkey.org>
+In-Reply-To: <435422355.5999768.1501765030094.JavaMail.zimbra@desy.de>
+Date: Fri, 11 Aug 2017 10:18:23 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <19806192-AF74-4091-BB63-FF41A7687B7F@monkey.org>
+References: <20170801202501.4876-1-dros@primarydata.com>
+ <A49F4A5C-4101-4D60-A14F-FC20D4F53897@monkey.org>
+ <435422355.5999768.1501765030094.JavaMail.zimbra@desy.de>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-apologies for duplicates (first attempt bounced from the mailing lists)
+Hey Tigran,
 
-On Fri, Aug 11, 2017 at 3:17 AM, NeilBrown <neilb@suse.com> wrote:
-> On Wed, Aug 09 2017, Jeff Layton wrote:
-> ....
->>
->> Thanks, that helps a bit. I'm less clear on what the higher-level
->> vision is here though:
->>
->> Are we all going to be running scripts on logout that scrape
->> /proc/mounts and run fslogout on each? Will this be added to kdestroy?
->>
->> Or are you aiming to have KCM do this on some trigger? (see:
->> https://fedoraproject.org/wiki/Changes/KerberosKCMCache)
->>
->> Also, doing this per-mount seems wrong to me. Shouldn't this be done on
->> a per-net-namespace basis or maybe even globally?
->
-> Having looked at the code, I think this is invalidating cached
-> credentials globally -- or at least, globally for all filesystems that
-> use sunrpc.
+I don't think so, this fixes a simple memory leak where memory is not =
+freed and nothing holds a reference to it. It should not lead to any =
+invalid pointers, but will eventually lead to the OOM killer killing a =
+bunch of processes.
 
-Yes all filesystems that use sunrpc could benefit from by calling the
-same routine that NFS calls. It only does it per =E2=80=9Cauth=E2=80=9D fla=
-vor. If you
-have multiple flavor mounts, only specified one is effected.
+There have been other recent changes that may have addressed this. Can =
+you reproduce with the latest changes?
 
->
-> I actually question the premise for wanting to do this.  Tickets have a
-> timeout and will expire.  Any code that is allowed to get a ticket, can
-> hold on to it as long as it likes - but it will cease to work after the
-> expiry time.
+-dros
 
-However, when kdestroy is called, then any code that tries to use it
-will yet. User land is unaware that the kernel has cached his
-credentials.
-
-> Hunting out all the places that a key might be cached, and
-> invalidating them, seems to deviate from the model.
-
-No caching should be valid after credentials were explicitly removed.
-
-> If you are concerned
-> about leaving credentials around where they can theoretically be
-> misused, then set a smaller expiry time.
-
-That=E2=80=99s correct. The only means that people who have complained
-about is left with is using short credentials. But security context
-establishment is not for-free and impacts performance.
-
->
-> What is the threat-model that this change is supposed to guard against?
-
-It=E2=80=99s a limitation of a system that I feel has solution of providing=
- the
-extension to kdestroy that destroys FS creds.
-
-What=E2=80=99s the disadvantage of providing this feature? There are folks =
-who
-have been asking for it. It tightens up the security.
-
->
-> Looking that the syscall itself:
->  1/ why restrict the call to directories only?
-
-No real reason. It seems unlikely that the practical unlog application woul=
-d
-open a filesystem specific file and then call the unlog on that file. It=E2=
-=80=99ll be
-problematic as without creds no close can be done and would leave state
-on the server?
-
->  2/ Every new syscall should have a 'flags' argument, because you never
->     know when you'll need one.
->
-> NeilBrown
->
->
->>
->> It seems like we can afford to be rather cavalier about destroying
->> creds here. Even if we purge creds for a user that should have remained
->> valid, we just end up having to re-upcall for them, right?
-
-Ok.
-
+> On Aug 3, 2017, at 8:57 AM, Mkrtchyan, Tigran =
+<tigran.mkrtchyan@desy.de> wrote:
+>=20
+> Hi Dros,
+>=20
+> can this leak be the source of issue described here:  =
+http://www.spinics.net/lists/linux-nfs/msg64890.html
+>=20
+> Tigran.
+>=20
+> ----- Original Message -----
+>> From: "Weston Andros Adamson" <dros@monkey.org>
+>> To: "Trond Myklebust" <trond.myklebust@primarydata.com>, "Anna =
+Schumaker" <anna.schumaker@netapp.com>
+>> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
+>> Sent: Thursday, August 3, 2017 4:07:28 AM
+>> Subject: Re: [PATCH] nfs/flexfiles: fix leak of nfs4_ff_ds_version =
+arrays
+>=20
+>> This should probably be CCed to some stable releases too. I'll figure =
+it out
+>> soon.
+>>=20
+>> -dros
+>>=20
+>>> On Aug 1, 2017, at 4:25 PM, Weston Andros Adamson <dros@monkey.org> =
+wrote:
+>>>=20
+>>> The client was freeing the nfs4_ff_layout_ds, but not the contained
+>>> nfs4_ff_ds_version array.
+>>>=20
+>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>>> ---
+>>> fs/nfs/flexfilelayout/flexfilelayoutdev.c | 1 +
+>>> 1 file changed, 1 insertion(+)
+>>>=20
+>>> diff --git a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> index 6df7a0cf5660..f32c58bbe556 100644
+>>> --- a/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> +++ b/fs/nfs/flexfilelayout/flexfilelayoutdev.c
+>>> @@ -32,6 +32,7 @@ void nfs4_ff_layout_free_deviceid(struct =
+nfs4_ff_layout_ds
+>>> *mirror_ds)
+>>> {
+>>> 	nfs4_print_deviceid(&mirror_ds->id_node.deviceid);
+>>> 	nfs4_pnfs_ds_put(mirror_ds->ds);
+>>> +	kfree(mirror_ds->ds_versions);
+>>> 	kfree_rcu(mirror_ds, id_node.rcu);
+>>> }
+>>>=20
+>>> --
+>>> 2.11.0 (Apple Git-81)
+>>>=20
+>>=20
 >> --
->> Jeff Layton <jlayton@redhat.com>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
 >> the body of a message to majordomo@vger.kernel.org
 >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
