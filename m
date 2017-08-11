@@ -1,96 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:44350 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751299AbdHKEbW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Aug 2017 00:31:22 -0400
-From: NeilBrown <neilb@suse.com>
-To: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
-Date: Fri, 11 Aug 2017 14:31:10 +1000
-Subject: Do we really need d_weak_revalidate???
-cc: Michal Koutny <mkoutny@suse.com>
-cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
-Message-ID: <87bmnmrai9.fsf@notabene.neil.brown.name>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:33816 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751376AbdHKFzw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 01:55:52 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "jlayton@redhat.com" <jlayton@redhat.com>,
+        "neilb@suse.com" <neilb@suse.com>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "mkoutny@suse.com" <mkoutny@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: Do we really need d_weak_revalidate???
+Date: Fri, 11 Aug 2017 05:55:46 +0000
+Message-ID: <1502430944.3822.1.camel@primarydata.com>
+References: <87bmnmrai9.fsf@notabene.neil.brown.name>
+In-Reply-To: <87bmnmrai9.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+T24gRnJpLCAyMDE3LTA4LTExIGF0IDE0OjMxICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IEZ1
+bm55IHN0b3J5LiAgNC41IHllYXJzIGFnbyB3ZSBkaXNjYXJkZWQgdGhlIEZTX1JFVkFMX0RPVCBz
+dXBlcmJsb2NrDQo+IGZsYWcgYW5kIGludHJvZHVjZWQgdGhlIGRfd2Vha19yZXZhbGlkYXRlIGRl
+bnRyeSBvcGVyYXRpb24gaW5zdGVhZC4NCj4gV2UgZHVseSByZW1vdmVkIHRoZSBmbGFnIGZyb20g
+TkZTIHN1cGVyYmxvY2tzIGFuZCBORlN2NCBzdXBlcmJsb2NrcywNCj4gYW5kIGFkZGVkIHRoZSBu
+ZXcgZGVudHJ5IG9wZXJhdGlvbiB0byBORlMgZGVudHJpZXMgLi4uLiBidXQgbm90IHRvDQo+IE5G
+U3Y0DQo+IGRlbnRyaWVzLg0KPiANCj4gQW5kIG5vYm9keSBub3RpY2VkLg0KPiANCj4gVW50aWwg
+dG9kYXkuDQo+IA0KPiBBIGN1c3RvbWVyIHJlcG9ydHMgYSBzaXR1YXRpb24gd2hlcmUgbW91bnQo
+Li4uLixNU19SRU1PVU5ULC4uKSBvbiBhbg0KPiBORlMNCj4gZmlsZXN5c3RlbSBoYW5ncyBiZWNh
+dXNlIHRoZSBuZXR3b3JrIGhhcyBiZWVuIGRlY29uZmlndXJlZC4gIFRoaXMNCj4gbWFrZXMNCj4g
+cGVyZmVjdCBzZW5zZSBhbmQgSSBzdWdnZXN0ZWQgYSBjb2RlIGNoYW5nZSB0byBmaXggdGhlIHBy
+b2JsZW0uDQo+IEhvd2V2ZXIgd2hlbiBhIGNvbGxlYWd1ZSB3YXMgdHJ5aW5nIHRvIHJlcHJvZHVj
+ZSB0aGUgcHJvYmxlbSB0bw0KPiB2YWxpZGF0ZQ0KPiB0aGUgZml4LCBoZSBjb3VsZG4ndC4gIFRo
+ZW4gbm9yIGNvdWxkIEkuDQo+IA0KPiBUaGUgcHJvYmxlbSBpcyB0cml2aWFsbHkgcmVwcm9kdWNp
+YmxlIHdpdGggTkZTdjMsIGFuZCBub3QgYXQgYWxsIHdpdGgNCj4gTkZTdjQuICBUaGUgcmVhc29u
+IGlzIHRoZSBtaXNzaW5nIGRfd2Vha19yZXZhbGlkYXRlLg0KPiANCj4gV2UgY291bGQgc2ltcGx5
+IGFkZCBkX3dlYWtfcmV2YWxpZGF0ZSBmb3IgTkZTdjQsIGJ1dCBnaXZlbiB0aGF0IGl0DQo+IGhh
+cyBiZWVuIG1pc3NpbmcgZm9yIDQuNSB5ZWFycywgYW5kIHRoZSBvbmx5IHRpbWUgYW55b25lIG5v
+dGljZWQgd2FzDQo+IHdoZW4gdGhlIG9tbWlzc2lvbiByZXN1bHRlZCBpbiBhIGJldHRlciB1c2Vy
+IGV4cGVyaWVuY2UsIEkgZG8gd29uZGVyDQo+IGlmDQo+IHdlIG5lZWQgdG8uICBDYW4gd2UganVz
+dCBkaXNjYXJkIGRfd2Vha19yZXZhbGlkYXRlPyAgV2hhdCBwdXJwb3NlDQo+IGRvZXMNCj4gaXQg
+c2VydmU/ICBJIGNvdWxkbid0IGZpbmQgb25lLg0KPiANCj4gVGhhbmtzLA0KPiBOZWlsQnJvd24N
+Cj4gDQo+IEZvciByZWZlcmVuY2UsIHNlZQ0KPiBDb21taXQ6IGVjZjNkMWYxYWE3NCAoInZmczog
+a2lsbCBGU19SRVZBTF9ET1QgYnkgYWRkaW5nIGENCj4gZF93ZWFrX3JldmFsaWRhdGUgZGVudHJ5
+IG9wIikNCj4gDQo+IA0KPiANCj4gVG8gcmVwcm9kdWNlIHRoZSBwcm9ibGVtIGF0IGhvbWUsIG9u
+IGEgc3lzdGVtIHRoYXQgdXNlcyBzeXN0ZW1kOg0KPiAxLyBwbGFjZSAob3IgZmluZCkgYSBmaWxl
+c3lzdGVtIGltYWdlIGluIGEgZmlsZSBvbiBhbiBORlMgZmlsZXN5c3RlbS4NCj4gMi8gbW91bnQg
+dGhlIG5mcyBmaWxlc3lzdGVtIHdpdGggIm5vYWMiIC0gY2hvb3NlIHYzIG9yIHY0DQo+IDMvIGxv
+b3AtbW91bnQgdGhlIGZpbGVzeXN0ZW0gaW1hZ2UgcmVhZC1vbmx5IHNvbWV3aGVyZQ0KPiA0LyBy
+ZWJvb3QNCj4gDQo+IElmIHlvdSBjaG9vc2UgdjQsIHRoZSByZWJvb3Qgd2lsbCBzdWNjZWVkLCBw
+b3NzaWJseSBhZnRlciBhIDkwc2Vjb25kDQo+IHRpbWVvdXQuDQo+IElmIHlvdSBjaG9vc2UgdjMs
+IHRoZSByZWJvb3Qgd2lsbCBoYW5nIGluZGVmaW5pdGVseSBpbiBzeXN0ZW1kLQ0KPiBzaHV0ZG93
+biB3aGlsZQ0KPiByZW1vdW50aW5nIHRoZSBuZnMgZmlsZXN5c3RlbSByZWFkLW9ubHkuDQo+IA0K
+PiBJZiB5b3UgZG9uJ3QgdXNlICJub2FjIiBpdCBjYW4gc3RpbGwgaGFuZywgYnV0IG9ubHkgaWYg
+c29tZXRoaW5nDQo+IHNsb3dzDQo+IGRvd24gdGhlIHJlYm9vdCBlbm91Z2ggdGhhdCBhdHRyaWJ1
+dGVzIGhhdmUgdGltZWQgb3V0IGJ5IHRoZSB0aW1lDQo+IHRoYXQNCj4gc3lzdGVtZC1zaHV0ZG93
+biBydW5zLiAgVGhpcyBoYXBwZW5zIGZvciBvdXIgY3VzdG9tZXIuDQo+IA0KPiBJZiB0aGUgbG9v
+cC1tb3VudGVkIGZpbGVzeXN0ZW0gaXMgbm90IHJlYWQtb25seSwgeW91IGdldCBvdGhlcg0KPiBw
+cm9ibGVtcy4NCj4gDQo+IFdlIHJlYWxseSB3YW50IHN5c3RlbWQgdG8gZmlndXJlIG91dCB0aGF0
+IHRoZSBsb29wLW1vdW50IG5lZWRzIHRvIGJlDQo+IHVubW91bnRlZCBmaXJzdC4gIEkgaGF2ZSBp
+ZGVhcyBjb25jZXJuaW5nIHRoYXQsIGJ1dCBpdCBpcyBtZXNzeS4gIEJ1dA0KPiB0aGF0IGlzbid0
+IHRoZSBvbmx5IGJ1ZyBoZXJlLg0KDQpUaGUgbWFpbiBwdXJwb3NlIG9mIGRfd2Vha19yZXZhbGlk
+YXRlKCkgd2FzIHRvIGNhdGNoIHRoZSBpc3N1ZXMgdGhhdA0KYXJpc2Ugd2hlbiBzb21lb25lIGNo
+YW5nZXMgdGhlIGNvbnRlbnRzIG9mIHRoZSBjdXJyZW50IHdvcmtpbmcNCmRpcmVjdG9yeSBvciBp
+dHMgcGFyZW50IG9uIHRoZSBzZXJ2ZXIuIFNpbmNlICcuJyBhbmQgJy4uJyBhcmUgdHJlYXRlZA0K
+c3BlY2lhbGx5IGluIHRoZSBsb29rdXAgY29kZSwgdGhleSB3b3VsZCBub3QgYmUgcmV2YWxpZGF0
+ZWQgd2l0aG91dA0Kc3BlY2lhbCB0cmVhdG1lbnQuIFRoYXQgbGVhZHMgdG8gaXNzdWVzIHdoZW4g
+bG9va2luZyB1cCBmaWxlcyBhcw0KLi88ZmlsZW5hbWU+IG9yIC4uLzxmaWxlbmFtZT4sIHNpbmNl
+IHRoZSBjbGllbnQgd29uJ3QgZGV0ZWN0IHRoYXQgaXRzDQpkY2FjaGUgaXMgc3RhbGUgdW50aWwg
+aXQgdHJpZXMgdG8gdXNlIHRoZSBjYWNoZWQgZGVudHJ5K2lub2RlLg0KDQpUaGUgb25lIHRoaW5n
+IHRoYXQgaGFzIGNoYW5nZWQgc2luY2UgaXRzIGludHJvZHVjdGlvbiBpcywgSSBiZWxpZXZlLA0K
+dGhlIEVTVEFMRSBoYW5kbGluZyBpbiB0aGUgVkZTIGxheWVyLiBUaGF0IG1pZ2h0IGZpeCBhIGxv
+dCBvZiB0aGUNCmRjYWNoZSBsb29rdXAgYnVncyB0aGF0IHdlcmUgcHJldmlvdXNseSBoYW5kbGVk
+IGJ5IGRfd2Vha19yZXZhbGlkYXRlKCkuDQpJIGhhdmVuJ3QgZG9uZSBhbiBhdWRpdCB0byBmaWd1
+cmUgb3V0IGlmIGl0IGFjdHVhbGx5IGNhbiBoYW5kbGUgYWxsIG9mDQp0aGVtLg0KDQotLSANClRy
+b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0K
+dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-
-Funny story.  4.5 years ago we discarded the FS_REVAL_DOT superblock
-flag and introduced the d_weak_revalidate dentry operation instead.
-We duly removed the flag from NFS superblocks and NFSv4 superblocks,
-and added the new dentry operation to NFS dentries .... but not to NFSv4
-dentries.
-
-And nobody noticed.
-
-Until today.
-
-A customer reports a situation where mount(....,MS_REMOUNT,..) on an NFS
-filesystem hangs because the network has been deconfigured.  This makes
-perfect sense and I suggested a code change to fix the problem.
-However when a colleague was trying to reproduce the problem to validate
-the fix, he couldn't.  Then nor could I.
-
-The problem is trivially reproducible with NFSv3, and not at all with
-NFSv4.  The reason is the missing d_weak_revalidate.
-
-We could simply add d_weak_revalidate for NFSv4, but given that it
-has been missing for 4.5 years, and the only time anyone noticed was
-when the ommission resulted in a better user experience, I do wonder if
-we need to.  Can we just discard d_weak_revalidate?  What purpose does
-it serve?  I couldn't find one.
-
-Thanks,
-NeilBrown
-
-For reference, see
-Commit: ecf3d1f1aa74 ("vfs: kill FS_REVAL_DOT by adding a d_weak_revalidate dentry op")
-
-
-
-To reproduce the problem at home, on a system that uses systemd:
-1/ place (or find) a filesystem image in a file on an NFS filesystem.
-2/ mount the nfs filesystem with "noac" - choose v3 or v4
-3/ loop-mount the filesystem image read-only somewhere
-4/ reboot
-
-If you choose v4, the reboot will succeed, possibly after a 90second timeout.
-If you choose v3, the reboot will hang indefinitely in systemd-shutdown while
-remounting the nfs filesystem read-only.
-
-If you don't use "noac" it can still hang, but only if something slows
-down the reboot enough that attributes have timed out by the time that
-systemd-shutdown runs.  This happens for our customer.
-
-If the loop-mounted filesystem is not read-only, you get other problems.
-
-We really want systemd to figure out that the loop-mount needs to be
-unmounted first.  I have ideas concerning that, but it is messy.  But
-that isn't the only bug here.
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmNMxEACgkQOeye3VZi
-gbngcBAAr/WifI4hL0Bb9c/EJo6CnaOKRxiJxdafUGpNnCCtcIO7E0suDM8nh8kx
-KktEcDzjou70k/d0/YVWpHKNbRLBvpRrTRb+Gb/+parrAXZwsLeKUNQX88YEJuSG
-AeWfy7HdX3sPgpZWjE5JkcrHWj4eBBhQGce1gdZuv3kY8evqC3ZrNoUk7fk4bRzR
-eh0D7034LAeZJLLeTmHxR1kM1D8Iv1CKLZr0hQZKl8JZu+FeY7pZeeX7j2WD3jFw
-t9TgMTf1k66ftytSv9xO8wdKaQGwjcw/RVSz7jHDNxSY3rXv6G5WFrL81KuHmcE4
-KYXF4sGoYaUwJm4p9P9XYgkxSicxtx2w2xXR6ugLpUHgxzVX1zk861TLLSNsdggx
-b6tEgEjZaGWa4WiEW+3x6uKapey2WBOZYWpVed7vNl7WgFDLwEPq6xcVzr41kddg
-kM4rEm467ibWqMAeMLVmaMLuoTuKG0PVab6jHpxdVVRWpgCVsq6AHcNT1Zb9AFZP
-BsKlbGDb6Lmuj3jPArXCkkRKxb62N3U01bosS5KR2zexJwqWZdfWYa2Fs6LbRuUg
-o6Vpr4WjX5kL7HAtbny6QLRntvtBQp1gr5Pz2rBexE/jdvrMIxCP/B0wofvPKC+y
-SXVDmy3jk0Wr09yl2o2QayhvymNJalK/wJbtZLrSC0499YGv5Ls=
-=zajR
------END PGP SIGNATURE-----
---=-=-=--
