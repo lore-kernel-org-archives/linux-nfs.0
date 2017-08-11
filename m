@@ -1,59 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:39873 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752901AbdHKPOM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Aug 2017 11:14:12 -0400
-Date: Fri, 11 Aug 2017 17:14:11 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        linux-nfs@vger.kernel.org
-Cc: Arnd Bergmann <arnd@arndb.de>
-Subject: Re: [PATCH] pnfs/blocklayout: =?utf-8?Q?re?=
-        =?utf-8?Q?quire_64-bit_=D1=95ector=5Ft?=
-Message-ID: <20170811151411.GA4301@lst.de>
-References: <20170805085914.3188-1-hch@lst.de>
+Received: from mx3.molgen.mpg.de ([141.14.17.11]:44111 "EHLO mx1.molgen.mpg.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752989AbdHKPOR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Aug 2017 11:14:17 -0400
+Subject: Re: Locking problems with Linux 4.9 and 4.11 with NFSD and
+ `fs/iomap.c`
+To: Christoph Hellwig <hch@lst.de>,
+        Markus Stockhausen <stockhausen@collogia.de>
+Cc: Dave Chinner <david@fromorbit.com>,
+        "it+linux-nfs@molgen.mpg.de" <it+linux-nfs@molgen.mpg.de>,
+        Brian Foster <bfoster@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+References: <20170508131843.GB29840@bfoster.bfoster>
+ <20170509090534.GB2378@lst.de>
+ <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de>
+ <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de>
+ <20170510171757.GA10534@localhost.localdomain>
+ <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de>
+ <979473d1-9e8a-51ba-28d9-9ace63f8105b@molgen.mpg.de>
+ <20170801225144.GP17762@dastard>
+ <92d0933c-f031-f4e7-191e-eb3c9b1260aa@molgen.mpg.de>
+ <12EF8D94C6F8734FB2FF37B9FBEDD173010E032482@EXCHANGE.collogia.de>
+ <20170811101513.GA11531@lst.de>
+From: Paul Menzel <pmenzel@molgen.mpg.de>
+Message-ID: <1853b5d0-891c-6cdd-7270-a2eaedc4072e@molgen.mpg.de>
+Date: Fri, 11 Aug 2017 17:14:15 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170805085914.3188-1-hch@lst.de>
+In-Reply-To: <20170811101513.GA11531@lst.de>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond, Anna,
+Dear Christoph, dear Markus,
 
-can you pick this up?  Maybe even for 3.13 given that it should
-be pretty harmless for 98% of the configfs, and will prevent problems
-for the others.
 
-On Sat, Aug 05, 2017 at 10:59:14AM +0200, Christoph Hellwig wrote:
-> The blocklayout code does not compile cleanly for a 32-bit sector_t,
-> and also has no reliable checks for devices sizes, which makes it
-> unsafe to use with a kernel that doesn't support large block devices.
+On 08/11/17 12:15, Christoph Hellwig wrote:
+> On Thu, Aug 10, 2017 at 07:54:51PM +0000, Markus Stockhausen wrote:
+>> Lets say you are trying to zero multiple of 4GB chunks. With bytes
+>> evaluated towards 0 this will hit an endless loop within that iomap
+>> function. That might explain your observation. If that is right a bugfix
+>> would qualify for stable 4.8+
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> Reported-by: Arnd Bergmann <arnd@arndb.de>
-> Fixes: 5c83746a0cf2 ("pnfs/blocklayout: in-kernel GETDEVICEINFO XDR parsing")
-> ---
->  fs/nfs/Kconfig | 1 +
->  1 file changed, 1 insertion(+)
+> Yes, it seems like min_t casts arguments 2 and 3 to the type in argument
+> 1, which could lead to incorrect truncation.
 > 
-> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
-> index 69d02cf8cf37..5f93cfacb3d1 100644
-> --- a/fs/nfs/Kconfig
-> +++ b/fs/nfs/Kconfig
-> @@ -121,6 +121,7 @@ config PNFS_FILE_LAYOUT
->  config PNFS_BLOCK
->  	tristate
->  	depends on NFS_V4_1 && BLK_DEV_DM
-> +	depends on 64BIT || LBDAF
->  	default NFS_V4
->  
->  config PNFS_FLEXFILE_LAYOUT
-> -- 
-> 2.11.0
+> Paul, please try the patch below:
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
----end quoted text---
+> diff --git a/fs/iomap.c b/fs/iomap.c
+> index 039266128b7f..59cc98ad7577 100644
+> --- a/fs/iomap.c
+> +++ b/fs/iomap.c
+> @@ -278,7 +278,7 @@ iomap_dirty_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
+>   		unsigned long bytes;	/* Bytes to write to page */
+>   
+>   		offset = (pos & (PAGE_SIZE - 1));
+> -		bytes = min_t(unsigned long, PAGE_SIZE - offset, length);
+> +		bytes = min_t(loff_t, PAGE_SIZE - offset, length);
+>   
+>   		rpage = __iomap_read_page(inode, pos);
+>   		if (IS_ERR(rpage))
+> @@ -373,7 +373,7 @@ iomap_zero_range_actor(struct inode *inode, loff_t pos, loff_t count,
+>   		unsigned offset, bytes;
+>   
+>   		offset = pos & (PAGE_SIZE - 1); /* Within page */
+> -		bytes = min_t(unsigned, PAGE_SIZE - offset, count);
+> +		bytes = min_t(loff_t, PAGE_SIZE - offset, count);
+>   
+>   		if (IS_DAX(inode))
+>   			status = iomap_dax_zero(pos, offset, bytes, iomap);
+
+I applied this on top of Linux 4.9.41. Even when writing 40 100 GB in 
+parallel on an NFS exported directory from different systems, and 
+keeping the load high on the system, the NFS exported directory was 
+always accessible from all hosts.
+
+Markus, thank you very much for looking into this and spotting the bug. 
+A bug thank you to all people helping to analyze this issue.
+
+I’ll keep you posted, but until know.
+
+Tested-by: Paul Menzel <pmenzel@molgen.mpg.de>
+
+
+Kind regards,
+
+Paul
