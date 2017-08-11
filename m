@@ -1,88 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:35662 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752942AbdHJUld (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Aug 2017 16:41:33 -0400
-Received: by mail-it0-f65.google.com with SMTP id 76so2422847ith.2
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Aug 2017 13:41:32 -0700 (PDT)
-Received: from manet.1015granger.net (c-68-46-169-226.hsd1.mi.comcast.net. [68.46.169.226])
-        by smtp.gmail.com with ESMTPSA id z75sm3651152ita.18.2017.08.10.13.41.31
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 10 Aug 2017 13:41:31 -0700 (PDT)
-Subject: [PATCH v2] NFS: Fix NFSv2 security settings
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Date: Thu, 10 Aug 2017 16:41:31 -0400
-Message-ID: <20170810204110.11398.85077.stgit@manet.1015granger.net>
+Received: from mx2.suse.de ([195.135.220.15]:44350 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751299AbdHKEbW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Aug 2017 00:31:22 -0400
+From: NeilBrown <neilb@suse.com>
+To: Jeff Layton <jlayton@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>
+Date: Fri, 11 Aug 2017 14:31:10 +1000
+Subject: Do we really need d_weak_revalidate???
+cc: Michal Koutny <mkoutny@suse.com>
+cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>
+Message-ID: <87bmnmrai9.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-For a while now any NFSv2 mount where sec= is specified uses
-AUTH_NULL. If sec= is not specified, the mount uses AUTH_UNIX.
-Commit e68fd7c8071d ("mount: use sec= that was specified on the
-command line") attempted to address a very similar problem with
-NFSv3, and should have fixed this too, but it has a bug.
+--=-=-=
+Content-Type: text/plain
 
-The MNTv1 MNT procedure does not return a list of security flavors,
-so our client makes up a list containing just AUTH_NULL. This should
-enable nfs_verify_authflavors() to assign the sec= specified flavor,
-but instead, it incorrectly sets it to AUTH_NULL.
 
-I expect this would also be a problem for any NFSv3 server whose
-MNTv3 MNT procedure returned a security flavor list containing only
-AUTH_NULL.
+Funny story.  4.5 years ago we discarded the FS_REVAL_DOT superblock
+flag and introduced the d_weak_revalidate dentry operation instead.
+We duly removed the flag from NFS superblocks and NFSv4 superblocks,
+and added the new dentry operation to NFS dentries .... but not to NFSv4
+dentries.
 
-Fixes: e68fd7c8071d ("mount: use sec= that was specified on ... ")
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=310
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/super.c |   12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+And nobody noticed.
 
-Changes since v1:
-- Description edited for accuracy
+Until today.
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index d828ef8..6b179af 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -1691,8 +1691,8 @@ static int nfs_verify_authflavors(struct nfs_parsed_mount_data *args,
- 			rpc_authflavor_t *server_authlist, unsigned int count)
- {
- 	rpc_authflavor_t flavor = RPC_AUTH_MAXFLAVOR;
-+	bool found_auth_null = false;
- 	unsigned int i;
--	int use_auth_null = false;
- 
- 	/*
- 	 * If the sec= mount option is used, the specified flavor or AUTH_NULL
-@@ -1701,6 +1701,10 @@ static int nfs_verify_authflavors(struct nfs_parsed_mount_data *args,
- 	 * AUTH_NULL has a special meaning when it's in the server list - it
- 	 * means that the server will ignore the rpc creds, so any flavor
- 	 * can be used but still use the sec= that was specified.
-+	 *
-+	 * Note also that the MNT procedure in MNTv1 does not return a list
-+	 * of supported security flavors. In this case, nfs_mount() fabricates
-+	 * a security flavor list containing just AUTH_NULL.
- 	 */
- 	for (i = 0; i < count; i++) {
- 		flavor = server_authlist[i];
-@@ -1709,11 +1713,11 @@ static int nfs_verify_authflavors(struct nfs_parsed_mount_data *args,
- 			goto out;
- 
- 		if (flavor == RPC_AUTH_NULL)
--			use_auth_null = true;
-+			found_auth_null = true;
- 	}
- 
--	if (use_auth_null) {
--		flavor = RPC_AUTH_NULL;
-+	if (found_auth_null) {
-+		flavor = args->auth_info.flavors[0];
- 		goto out;
- 	}
- 
+A customer reports a situation where mount(....,MS_REMOUNT,..) on an NFS
+filesystem hangs because the network has been deconfigured.  This makes
+perfect sense and I suggested a code change to fix the problem.
+However when a colleague was trying to reproduce the problem to validate
+the fix, he couldn't.  Then nor could I.
 
+The problem is trivially reproducible with NFSv3, and not at all with
+NFSv4.  The reason is the missing d_weak_revalidate.
+
+We could simply add d_weak_revalidate for NFSv4, but given that it
+has been missing for 4.5 years, and the only time anyone noticed was
+when the ommission resulted in a better user experience, I do wonder if
+we need to.  Can we just discard d_weak_revalidate?  What purpose does
+it serve?  I couldn't find one.
+
+Thanks,
+NeilBrown
+
+For reference, see
+Commit: ecf3d1f1aa74 ("vfs: kill FS_REVAL_DOT by adding a d_weak_revalidate dentry op")
+
+
+
+To reproduce the problem at home, on a system that uses systemd:
+1/ place (or find) a filesystem image in a file on an NFS filesystem.
+2/ mount the nfs filesystem with "noac" - choose v3 or v4
+3/ loop-mount the filesystem image read-only somewhere
+4/ reboot
+
+If you choose v4, the reboot will succeed, possibly after a 90second timeout.
+If you choose v3, the reboot will hang indefinitely in systemd-shutdown while
+remounting the nfs filesystem read-only.
+
+If you don't use "noac" it can still hang, but only if something slows
+down the reboot enough that attributes have timed out by the time that
+systemd-shutdown runs.  This happens for our customer.
+
+If the loop-mounted filesystem is not read-only, you get other problems.
+
+We really want systemd to figure out that the loop-mount needs to be
+unmounted first.  I have ideas concerning that, but it is messy.  But
+that isn't the only bug here.
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmNMxEACgkQOeye3VZi
+gbngcBAAr/WifI4hL0Bb9c/EJo6CnaOKRxiJxdafUGpNnCCtcIO7E0suDM8nh8kx
+KktEcDzjou70k/d0/YVWpHKNbRLBvpRrTRb+Gb/+parrAXZwsLeKUNQX88YEJuSG
+AeWfy7HdX3sPgpZWjE5JkcrHWj4eBBhQGce1gdZuv3kY8evqC3ZrNoUk7fk4bRzR
+eh0D7034LAeZJLLeTmHxR1kM1D8Iv1CKLZr0hQZKl8JZu+FeY7pZeeX7j2WD3jFw
+t9TgMTf1k66ftytSv9xO8wdKaQGwjcw/RVSz7jHDNxSY3rXv6G5WFrL81KuHmcE4
+KYXF4sGoYaUwJm4p9P9XYgkxSicxtx2w2xXR6ugLpUHgxzVX1zk861TLLSNsdggx
+b6tEgEjZaGWa4WiEW+3x6uKapey2WBOZYWpVed7vNl7WgFDLwEPq6xcVzr41kddg
+kM4rEm467ibWqMAeMLVmaMLuoTuKG0PVab6jHpxdVVRWpgCVsq6AHcNT1Zb9AFZP
+BsKlbGDb6Lmuj3jPArXCkkRKxb62N3U01bosS5KR2zexJwqWZdfWYa2Fs6LbRuUg
+o6Vpr4WjX5kL7HAtbny6QLRntvtBQp1gr5Pz2rBexE/jdvrMIxCP/B0wofvPKC+y
+SXVDmy3jk0Wr09yl2o2QayhvymNJalK/wJbtZLrSC0499YGv5Ls=
+=zajR
+-----END PGP SIGNATURE-----
+--=-=-=--
