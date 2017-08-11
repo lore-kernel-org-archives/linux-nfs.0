@@ -1,68 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:5183 "EHLO mx142.netapp.com"
+Received: from mx144.netapp.com ([216.240.21.25]:14359 "EHLO mx144.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753158AbdHKTAl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Aug 2017 15:00:41 -0400
-Subject: =?UTF-8?Q?Re:_[PATCH]_pnfs/blocklayout:_require_64-bit_=d1=95ector?=
- =?UTF-8?Q?=5ft?=
-To: Christoph Hellwig <hch@lst.de>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        <linux-nfs@vger.kernel.org>
-CC: Arnd Bergmann <arnd@arndb.de>
-References: <20170805085914.3188-1-hch@lst.de> <20170811151411.GA4301@lst.de>
+        id S1752941AbdHKUC5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Aug 2017 16:02:57 -0400
+Subject: Re: [PATCH v1 0/5] Clean up XDR encoding of RPC/RDMA xprt hdrs
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: <linux-nfs@vger.kernel.org>
+References: <20170810164425.23774.91430.stgit@manet.1015granger.net>
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <51b0ddfc-49bd-a48d-c1cd-db7c9bc0ed56@Netapp.com>
-Date: Fri, 11 Aug 2017 15:00:25 -0400
+Message-ID: <4359ffc0-6e29-925b-e6f9-5ec4794fefc2@Netapp.com>
+Date: Fri, 11 Aug 2017 16:02:49 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170811151411.GA4301@lst.de>
+In-Reply-To: <20170810164425.23774.91430.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Christoph,
 
-On 08/11/2017 11:14 AM, Christoph Hellwig wrote:
-> Trond, Anna,
+
+On 08/10/2017 12:47 PM, Chuck Lever wrote:
+> Hi Anna-
 > 
-> can you pick this up?  Maybe even for 3.13 given that it should
-> be pretty harmless for 98% of the configfs, and will prevent problems
-> for the others.
+> These patches harden xprtrdma's send_request code path, particu-
+> larly XDR encoding of outgoing transport headers. This is the flip
+> side of the series I sent last week. Again, I didn't copy
+> linux-rdma on this series since it is strictly XDR-related.
+> 
+> Please have a look at these and let me know if they are not
+> acceptable for v4.14.
 
-The patch looks okay to me, so I'll take it for the next rc.
-
-Anna
+Thanks!  They look good to me!
 
 > 
-> On Sat, Aug 05, 2017 at 10:59:14AM +0200, Christoph Hellwig wrote:
->> The blocklayout code does not compile cleanly for a 32-bit sector_t,
->> and also has no reliable checks for devices sizes, which makes it
->> unsafe to use with a kernel that doesn't support large block devices.
->>
->> Signed-off-by: Christoph Hellwig <hch@lst.de>
->> Reported-by: Arnd Bergmann <arnd@arndb.de>
->> Fixes: 5c83746a0cf2 ("pnfs/blocklayout: in-kernel GETDEVICEINFO XDR parsing")
->> ---
->>  fs/nfs/Kconfig | 1 +
->>  1 file changed, 1 insertion(+)
->>
->> diff --git a/fs/nfs/Kconfig b/fs/nfs/Kconfig
->> index 69d02cf8cf37..5f93cfacb3d1 100644
->> --- a/fs/nfs/Kconfig
->> +++ b/fs/nfs/Kconfig
->> @@ -121,6 +121,7 @@ config PNFS_FILE_LAYOUT
->>  config PNFS_BLOCK
->>  	tristate
->>  	depends on NFS_V4_1 && BLK_DEV_DM
->> +	depends on 64BIT || LBDAF
->>  	default NFS_V4
->>  
->>  config PNFS_FLEXFILE_LAYOUT
->> -- 
->> 2.11.0
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> ---end quoted text---
+> ---
+> 
+> Chuck Lever (5):
+>       xprtrdma: Clean up rpcrdma_marshal_req() synopsis
+>       xprtrdma: Remove rpclen from rpcrdma_marshal_req
+>       xprtrdma: Set up an xdr_stream in rpcrdma_marshal_req()
+>       xprtrdma: Harden chunk list encoding against send buffer overflow
+>       xprtrdma: Clean up rpcrdma_bc_marshal_reply()
+> 
+> 
+>  net/sunrpc/xprtrdma/backchannel.c |   31 ++--
+>  net/sunrpc/xprtrdma/rpc_rdma.c    |  280 +++++++++++++++++++++++--------------
+>  net/sunrpc/xprtrdma/transport.c   |    3 
+>  net/sunrpc/xprtrdma/xprt_rdma.h   |    4 -
+>  4 files changed, 199 insertions(+), 119 deletions(-)
+> 
+> --
+> Chuck Lever
 > 
