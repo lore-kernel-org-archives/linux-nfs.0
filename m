@@ -1,81 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:33816 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751376AbdHKFzw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 01:55:52 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "jlayton@redhat.com" <jlayton@redhat.com>,
-        "neilb@suse.com" <neilb@suse.com>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "mkoutny@suse.com" <mkoutny@suse.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: Do we really need d_weak_revalidate???
-Date: Fri, 11 Aug 2017 05:55:46 +0000
-Message-ID: <1502430944.3822.1.camel@primarydata.com>
-References: <87bmnmrai9.fsf@notabene.neil.brown.name>
-In-Reply-To: <87bmnmrai9.fsf@notabene.neil.brown.name>
+Received: from mx2.suse.de ([195.135.220.15]:51592 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752169AbdHKGyH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 11 Aug 2017 02:54:07 -0400
+From: NeilBrown <neilb@suse.com>
+To: Olga Kornievskaia <aglo@umich.edu>,
+        David Howells <dhowells@redhat.com>
+Date: Fri, 11 Aug 2017 16:53:55 +1000
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        Linux API <linux-api@vger.kernel.org>
+Subject: Re: [RFC v3 0/3] VFS/NFS support to destroy FS credentials
+In-Reply-To: <CAN-5tyE11DaCCXdn3y+Q4V+Lyt_UgtzU+JBhwP68gxQc5_v6pQ@mail.gmail.com>
+References: <20170807212355.29127-1-kolga@netapp.com> <9674.1502283345@warthog.procyon.org.uk> <CAN-5tyE11DaCCXdn3y+Q4V+Lyt_UgtzU+JBhwP68gxQc5_v6pQ@mail.gmail.com>
+Message-ID: <8760dur3wc.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA4LTExIGF0IDE0OjMxICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IEZ1
-bm55IHN0b3J5LiAgNC41IHllYXJzIGFnbyB3ZSBkaXNjYXJkZWQgdGhlIEZTX1JFVkFMX0RPVCBz
-dXBlcmJsb2NrDQo+IGZsYWcgYW5kIGludHJvZHVjZWQgdGhlIGRfd2Vha19yZXZhbGlkYXRlIGRl
-bnRyeSBvcGVyYXRpb24gaW5zdGVhZC4NCj4gV2UgZHVseSByZW1vdmVkIHRoZSBmbGFnIGZyb20g
-TkZTIHN1cGVyYmxvY2tzIGFuZCBORlN2NCBzdXBlcmJsb2NrcywNCj4gYW5kIGFkZGVkIHRoZSBu
-ZXcgZGVudHJ5IG9wZXJhdGlvbiB0byBORlMgZGVudHJpZXMgLi4uLiBidXQgbm90IHRvDQo+IE5G
-U3Y0DQo+IGRlbnRyaWVzLg0KPiANCj4gQW5kIG5vYm9keSBub3RpY2VkLg0KPiANCj4gVW50aWwg
-dG9kYXkuDQo+IA0KPiBBIGN1c3RvbWVyIHJlcG9ydHMgYSBzaXR1YXRpb24gd2hlcmUgbW91bnQo
-Li4uLixNU19SRU1PVU5ULC4uKSBvbiBhbg0KPiBORlMNCj4gZmlsZXN5c3RlbSBoYW5ncyBiZWNh
-dXNlIHRoZSBuZXR3b3JrIGhhcyBiZWVuIGRlY29uZmlndXJlZC4gIFRoaXMNCj4gbWFrZXMNCj4g
-cGVyZmVjdCBzZW5zZSBhbmQgSSBzdWdnZXN0ZWQgYSBjb2RlIGNoYW5nZSB0byBmaXggdGhlIHBy
-b2JsZW0uDQo+IEhvd2V2ZXIgd2hlbiBhIGNvbGxlYWd1ZSB3YXMgdHJ5aW5nIHRvIHJlcHJvZHVj
-ZSB0aGUgcHJvYmxlbSB0bw0KPiB2YWxpZGF0ZQ0KPiB0aGUgZml4LCBoZSBjb3VsZG4ndC4gIFRo
-ZW4gbm9yIGNvdWxkIEkuDQo+IA0KPiBUaGUgcHJvYmxlbSBpcyB0cml2aWFsbHkgcmVwcm9kdWNp
-YmxlIHdpdGggTkZTdjMsIGFuZCBub3QgYXQgYWxsIHdpdGgNCj4gTkZTdjQuICBUaGUgcmVhc29u
-IGlzIHRoZSBtaXNzaW5nIGRfd2Vha19yZXZhbGlkYXRlLg0KPiANCj4gV2UgY291bGQgc2ltcGx5
-IGFkZCBkX3dlYWtfcmV2YWxpZGF0ZSBmb3IgTkZTdjQsIGJ1dCBnaXZlbiB0aGF0IGl0DQo+IGhh
-cyBiZWVuIG1pc3NpbmcgZm9yIDQuNSB5ZWFycywgYW5kIHRoZSBvbmx5IHRpbWUgYW55b25lIG5v
-dGljZWQgd2FzDQo+IHdoZW4gdGhlIG9tbWlzc2lvbiByZXN1bHRlZCBpbiBhIGJldHRlciB1c2Vy
-IGV4cGVyaWVuY2UsIEkgZG8gd29uZGVyDQo+IGlmDQo+IHdlIG5lZWQgdG8uICBDYW4gd2UganVz
-dCBkaXNjYXJkIGRfd2Vha19yZXZhbGlkYXRlPyAgV2hhdCBwdXJwb3NlDQo+IGRvZXMNCj4gaXQg
-c2VydmU/ICBJIGNvdWxkbid0IGZpbmQgb25lLg0KPiANCj4gVGhhbmtzLA0KPiBOZWlsQnJvd24N
-Cj4gDQo+IEZvciByZWZlcmVuY2UsIHNlZQ0KPiBDb21taXQ6IGVjZjNkMWYxYWE3NCAoInZmczog
-a2lsbCBGU19SRVZBTF9ET1QgYnkgYWRkaW5nIGENCj4gZF93ZWFrX3JldmFsaWRhdGUgZGVudHJ5
-IG9wIikNCj4gDQo+IA0KPiANCj4gVG8gcmVwcm9kdWNlIHRoZSBwcm9ibGVtIGF0IGhvbWUsIG9u
-IGEgc3lzdGVtIHRoYXQgdXNlcyBzeXN0ZW1kOg0KPiAxLyBwbGFjZSAob3IgZmluZCkgYSBmaWxl
-c3lzdGVtIGltYWdlIGluIGEgZmlsZSBvbiBhbiBORlMgZmlsZXN5c3RlbS4NCj4gMi8gbW91bnQg
-dGhlIG5mcyBmaWxlc3lzdGVtIHdpdGggIm5vYWMiIC0gY2hvb3NlIHYzIG9yIHY0DQo+IDMvIGxv
-b3AtbW91bnQgdGhlIGZpbGVzeXN0ZW0gaW1hZ2UgcmVhZC1vbmx5IHNvbWV3aGVyZQ0KPiA0LyBy
-ZWJvb3QNCj4gDQo+IElmIHlvdSBjaG9vc2UgdjQsIHRoZSByZWJvb3Qgd2lsbCBzdWNjZWVkLCBw
-b3NzaWJseSBhZnRlciBhIDkwc2Vjb25kDQo+IHRpbWVvdXQuDQo+IElmIHlvdSBjaG9vc2UgdjMs
-IHRoZSByZWJvb3Qgd2lsbCBoYW5nIGluZGVmaW5pdGVseSBpbiBzeXN0ZW1kLQ0KPiBzaHV0ZG93
-biB3aGlsZQ0KPiByZW1vdW50aW5nIHRoZSBuZnMgZmlsZXN5c3RlbSByZWFkLW9ubHkuDQo+IA0K
-PiBJZiB5b3UgZG9uJ3QgdXNlICJub2FjIiBpdCBjYW4gc3RpbGwgaGFuZywgYnV0IG9ubHkgaWYg
-c29tZXRoaW5nDQo+IHNsb3dzDQo+IGRvd24gdGhlIHJlYm9vdCBlbm91Z2ggdGhhdCBhdHRyaWJ1
-dGVzIGhhdmUgdGltZWQgb3V0IGJ5IHRoZSB0aW1lDQo+IHRoYXQNCj4gc3lzdGVtZC1zaHV0ZG93
-biBydW5zLiAgVGhpcyBoYXBwZW5zIGZvciBvdXIgY3VzdG9tZXIuDQo+IA0KPiBJZiB0aGUgbG9v
-cC1tb3VudGVkIGZpbGVzeXN0ZW0gaXMgbm90IHJlYWQtb25seSwgeW91IGdldCBvdGhlcg0KPiBw
-cm9ibGVtcy4NCj4gDQo+IFdlIHJlYWxseSB3YW50IHN5c3RlbWQgdG8gZmlndXJlIG91dCB0aGF0
-IHRoZSBsb29wLW1vdW50IG5lZWRzIHRvIGJlDQo+IHVubW91bnRlZCBmaXJzdC4gIEkgaGF2ZSBp
-ZGVhcyBjb25jZXJuaW5nIHRoYXQsIGJ1dCBpdCBpcyBtZXNzeS4gIEJ1dA0KPiB0aGF0IGlzbid0
-IHRoZSBvbmx5IGJ1ZyBoZXJlLg0KDQpUaGUgbWFpbiBwdXJwb3NlIG9mIGRfd2Vha19yZXZhbGlk
-YXRlKCkgd2FzIHRvIGNhdGNoIHRoZSBpc3N1ZXMgdGhhdA0KYXJpc2Ugd2hlbiBzb21lb25lIGNo
-YW5nZXMgdGhlIGNvbnRlbnRzIG9mIHRoZSBjdXJyZW50IHdvcmtpbmcNCmRpcmVjdG9yeSBvciBp
-dHMgcGFyZW50IG9uIHRoZSBzZXJ2ZXIuIFNpbmNlICcuJyBhbmQgJy4uJyBhcmUgdHJlYXRlZA0K
-c3BlY2lhbGx5IGluIHRoZSBsb29rdXAgY29kZSwgdGhleSB3b3VsZCBub3QgYmUgcmV2YWxpZGF0
-ZWQgd2l0aG91dA0Kc3BlY2lhbCB0cmVhdG1lbnQuIFRoYXQgbGVhZHMgdG8gaXNzdWVzIHdoZW4g
-bG9va2luZyB1cCBmaWxlcyBhcw0KLi88ZmlsZW5hbWU+IG9yIC4uLzxmaWxlbmFtZT4sIHNpbmNl
-IHRoZSBjbGllbnQgd29uJ3QgZGV0ZWN0IHRoYXQgaXRzDQpkY2FjaGUgaXMgc3RhbGUgdW50aWwg
-aXQgdHJpZXMgdG8gdXNlIHRoZSBjYWNoZWQgZGVudHJ5K2lub2RlLg0KDQpUaGUgb25lIHRoaW5n
-IHRoYXQgaGFzIGNoYW5nZWQgc2luY2UgaXRzIGludHJvZHVjdGlvbiBpcywgSSBiZWxpZXZlLA0K
-dGhlIEVTVEFMRSBoYW5kbGluZyBpbiB0aGUgVkZTIGxheWVyLiBUaGF0IG1pZ2h0IGZpeCBhIGxv
-dCBvZiB0aGUNCmRjYWNoZSBsb29rdXAgYnVncyB0aGF0IHdlcmUgcHJldmlvdXNseSBoYW5kbGVk
-IGJ5IGRfd2Vha19yZXZhbGlkYXRlKCkuDQpJIGhhdmVuJ3QgZG9uZSBhbiBhdWRpdCB0byBmaWd1
-cmUgb3V0IGlmIGl0IGFjdHVhbGx5IGNhbiBoYW5kbGUgYWxsIG9mDQp0aGVtLg0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0K
-dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+--=-=-=
+Content-Type: text/plain
 
+On Thu, Aug 10 2017, Olga Kornievskaia wrote:
+
+> On Wed, Aug 9, 2017 at 8:55 AM, David Howells <dhowells@redhat.com> wrote:
+>> You may also want to flush any outstanding dirty data and wait for in-progress
+>> operations.
+>
+> Sorry for the delayed response but I've been thinking about it as this
+> is a tricky one (for me at least).
+>
+> Even currently, each file system needs a way to deal with flushing
+> cached data to storage in the situation where creds might have expired
+> in between when the kernel returned control back to the user but
+> before all of buffered writes are flushed. NFS4.1 has wording in the
+> spec for using machine credentials in that case.
+>
+> At the VFS layer, there no what to tell which dirty data belongs to
+> which user. Flushing all data under the superblock seems like a bad
+> idea?
+
+NFS flushes data when the file descriptor is closed.  So as long as the
+user does have any open-for-write file descriptors, their data should be
+safe.  Purging credentials while you still have open-for-write file
+descriptors is probably not a good idea.
+
+This is not the case if you "nocto" mount option is used, but that is
+recommended only for read-mostly mounts.
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmNVIUACgkQOeye3VZi
+gbl03g//dlMLAoWD/cORU21y0HTUgjLnQAI6ovj6OpIYjdbO6D42jSr7f8BmCrjq
+wi5caEa0RUyAhwassJr0HpCfmunW0hhDnulItxnzMGJPFsnhwjV3ALm5+lospGAE
+deYtT8iy22WQAH7WsQyznUOqSxxFlvGQ3xE43k+YzzAE1urAWF25utIykN9mykTa
+sMIUsiSrSPBEXcklGaWj1gklNz83G7NXvUHC5PfDw8Xup2li+zt9RmZfss5w9rH6
+rO8PpYYM+OEf9uU75Egd7/3OL6TmyZRw2w5kEilObhIF2knyAGXWi6JTeHE8Nv0G
+jVQRzjx6p2FdjZMH6nQpoBbclPgCgAZQEek94/lEgc34M076TlQ5Cn9rra07fMuk
+cymBx5qZqVZUu5D+vhS+hb7JNb08sfPbr5Uz9vZvSA2MI9cyyl36ZtLsFLLhbElN
+YWvLaRyVkjs8XjHx/Lqp1SPz7S6LJzzsF8u8tqHuvrNYc5Ufd8Hzr9eD29Ddwdn1
+W95Ntm1FCveGLvTdTRoT7ac059MleyyskFWmzcveR2yWepwHRpLyGPxO9Zha5eXv
+38tMHM8Z8G7P3k51Ac10Yk5MHMOFp7HhSUTEIynNYecORSMgQ6oTnhIYdV3PZ3sx
+Urp4hXAHx+fle0QoBsjw6z5agpTGIaPlB+INS9yQPC4ITiZgaiY=
+=CPOV
+-----END PGP SIGNATURE-----
+--=-=-=--
