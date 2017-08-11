@@ -1,60 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.211]:38089 "EHLO newverein.lst.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752631AbdHKKPP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 11 Aug 2017 06:15:15 -0400
-Date: Fri, 11 Aug 2017 12:15:13 +0200
-From: Christoph Hellwig <hch@lst.de>
-To: Markus Stockhausen <stockhausen@collogia.de>
-Cc: 'Paul Menzel' <pmenzel@molgen.mpg.de>,
-        Dave Chinner <david@fromorbit.com>,
-        "it+linux-nfs@molgen.mpg.de" <it+linux-nfs@molgen.mpg.de>,
-        Brian Foster <bfoster@redhat.com>,
-        Christoph Hellwig <hch@lst.de>,
+Received: from mail-qt0-f169.google.com ([209.85.216.169]:33846 "EHLO
+        mail-qt0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751618AbdHKLBw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 07:01:52 -0400
+Received: by mail-qt0-f169.google.com with SMTP id s6so19063496qtc.1
+        for <linux-nfs@vger.kernel.org>; Fri, 11 Aug 2017 04:01:51 -0700 (PDT)
+Message-ID: <1502449309.4950.2.camel@redhat.com>
+Subject: Re: Do we really need d_weak_revalidate???
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "neilb@suse.com" <neilb@suse.com>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "mkoutny@suse.com" <mkoutny@suse.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: AW: Locking problems with Linux 4.9 and 4.11 with NFSD and
-        `fs/iomap.c`
-Message-ID: <20170811101513.GA11531@lst.de>
-References: <20170508131843.GB29840@bfoster.bfoster> <20170509090534.GB2378@lst.de> <7ae18b0d-38e3-9b12-0989-ede68956ad43@molgen.mpg.de> <358037e8-6784-ebca-9fbb-ec7eef3977d6@molgen.mpg.de> <20170510171757.GA10534@localhost.localdomain> <f6115b81-918d-ecfe-e3d9-812bccf7c80f@molgen.mpg.de> <979473d1-9e8a-51ba-28d9-9ace63f8105b@molgen.mpg.de> <20170801225144.GP17762@dastard> <92d0933c-f031-f4e7-191e-eb3c9b1260aa@molgen.mpg.de> <12EF8D94C6F8734FB2FF37B9FBEDD173010E032482@EXCHANGE.collogia.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <12EF8D94C6F8734FB2FF37B9FBEDD173010E032482@EXCHANGE.collogia.de>
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Date: Fri, 11 Aug 2017 07:01:49 -0400
+In-Reply-To: <1502430944.3822.1.camel@primarydata.com>
+References: <87bmnmrai9.fsf@notabene.neil.brown.name>
+         <1502430944.3822.1.camel@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Aug 10, 2017 at 07:54:51PM +0000, Markus Stockhausen wrote:
-> Lets say you are trying to zero multiple of 4GB chunks. With bytes
-> evaluated towards 0 this will hit an endless loop within that iomap
-> function. That might explain your observation. If that is right a bugfix
-> would qualify for stable 4.8+
+On Fri, 2017-08-11 at 05:55 +0000, Trond Myklebust wrote:
+> On Fri, 2017-08-11 at 14:31 +1000, NeilBrown wrote:
+> > Funny story.  4.5 years ago we discarded the FS_REVAL_DOT superblock
+> > flag and introduced the d_weak_revalidate dentry operation instead.
+> > We duly removed the flag from NFS superblocks and NFSv4 superblocks,
+> > and added the new dentry operation to NFS dentries .... but not to
+> > NFSv4
+> > dentries.
+> > 
+> > And nobody noticed.
+> > 
+> > Until today.
+> > 
+> > A customer reports a situation where mount(....,MS_REMOUNT,..) on an
+> > NFS
+> > filesystem hangs because the network has been deconfigured.  This
+> > makes
+> > perfect sense and I suggested a code change to fix the problem.
+> > However when a colleague was trying to reproduce the problem to
+> > validate
+> > the fix, he couldn't.  Then nor could I.
+> > 
+> > The problem is trivially reproducible with NFSv3, and not at all with
+> > NFSv4.  The reason is the missing d_weak_revalidate.
+> > 
+> > We could simply add d_weak_revalidate for NFSv4, but given that it
+> > has been missing for 4.5 years, and the only time anyone noticed was
+> > when the ommission resulted in a better user experience, I do wonder
+> > if
+> > we need to.  Can we just discard d_weak_revalidate?  What purpose
+> > does
+> > it serve?  I couldn't find one.
+> > 
+> > Thanks,
+> > NeilBrown
+> > 
+> > For reference, see
+> > Commit: ecf3d1f1aa74 ("vfs: kill FS_REVAL_DOT by adding a
+> > d_weak_revalidate dentry op")
+> > 
+> > 
+> > 
+> > To reproduce the problem at home, on a system that uses systemd:
+> > 1/ place (or find) a filesystem image in a file on an NFS filesystem.
+> > 2/ mount the nfs filesystem with "noac" - choose v3 or v4
+> > 3/ loop-mount the filesystem image read-only somewhere
+> > 4/ reboot
+> > 
+> > If you choose v4, the reboot will succeed, possibly after a 90second
+> > timeout.
+> > If you choose v3, the reboot will hang indefinitely in systemd-
+> > shutdown while
+> > remounting the nfs filesystem read-only.
+> > 
+> > If you don't use "noac" it can still hang, but only if something
+> > slows
+> > down the reboot enough that attributes have timed out by the time
+> > that
+> > systemd-shutdown runs.  This happens for our customer.
+> > 
+> > If the loop-mounted filesystem is not read-only, you get other
+> > problems.
+> > 
+> > We really want systemd to figure out that the loop-mount needs to be
+> > unmounted first.  I have ideas concerning that, but it is messy.  But
+> > that isn't the only bug here.
+> 
+> The main purpose of d_weak_revalidate() was to catch the issues that
+> arise when someone changes the contents of the current working
+> directory or its parent on the server. Since '.' and '..' are treated
+> specially in the lookup code, they would not be revalidated without
+> special treatment. That leads to issues when looking up files as
+> ./<filename> or ../<filename>, since the client won't detect that its
+> dcache is stale until it tries to use the cached dentry+inode.
+> 
+> The one thing that has changed since its introduction is, I believe,
+> the ESTALE handling in the VFS layer. That might fix a lot of the
+> dcache lookup bugs that were previously handled by d_weak_revalidate().
+> I haven't done an audit to figure out if it actually can handle all of
+> them.
+> 
 
-Yes, it seems like min_t casts arguments 2 and 3 to the type in argument
-1, which could lead to incorrect truncation.
+It may also be related to 8033426e6bdb2690d302872ac1e1fadaec1a5581:
 
-Paul, please try the patch below:
+    vfs: allow umount to handle mountpoints without revalidating them
 
-diff --git a/fs/iomap.c b/fs/iomap.c
-index 039266128b7f..59cc98ad7577 100644
---- a/fs/iomap.c
-+++ b/fs/iomap.c
-@@ -278,7 +278,7 @@ iomap_dirty_actor(struct inode *inode, loff_t pos, loff_t length, void *data,
- 		unsigned long bytes;	/* Bytes to write to page */
- 
- 		offset = (pos & (PAGE_SIZE - 1));
--		bytes = min_t(unsigned long, PAGE_SIZE - offset, length);
-+		bytes = min_t(loff_t, PAGE_SIZE - offset, length);
- 
- 		rpage = __iomap_read_page(inode, pos);
- 		if (IS_ERR(rpage))
-@@ -373,7 +373,7 @@ iomap_zero_range_actor(struct inode *inode, loff_t pos, loff_t count,
- 		unsigned offset, bytes;
- 
- 		offset = pos & (PAGE_SIZE - 1); /* Within page */
--		bytes = min_t(unsigned, PAGE_SIZE - offset, count);
-+		bytes = min_t(loff_t, PAGE_SIZE - offset, count);
- 
- 		if (IS_DAX(inode))
- 			status = iomap_dax_zero(pos, offset, bytes, iomap);
+Possibly the fact that we no longer try to revalidate during unmount
+means that this is no longer necessary?
+
+The original patch that added d_weak_revalidate had a reproducer in the
+patch description. Have you verified that that problem is still not
+reproducible when you remove d_weak_revalidate?
+-- 
+Jeff Layton <jlayton@redhat.com>
