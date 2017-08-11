@@ -1,132 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f178.google.com ([209.85.216.178]:36276 "EHLO
-        mail-qt0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752724AbdHKOWY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 10:22:24 -0400
-Received: by mail-qt0-f178.google.com with SMTP id v29so21777755qtv.3
-        for <linux-nfs@vger.kernel.org>; Fri, 11 Aug 2017 07:22:24 -0700 (PDT)
-Message-ID: <1502461341.4762.1.camel@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:42436 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752901AbdHKPMV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Aug 2017 11:12:21 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "jlayton@redhat.com" <jlayton@redhat.com>,
+        "kolga@netapp.com" <kolga@netapp.com>
+CC: "dhowells@redhat.com" <dhowells@redhat.com>,
+        "neilb@suse.com" <neilb@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: [RFC 1/1] destroy_creds.2: new page documenting destroy_creds()
-From: Jeff Layton <jlayton@redhat.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: NeilBrown <neilb@suse.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-api@vger.kernel.org,
-        David Howells <dhowells@redhat.com>
-Date: Fri, 11 Aug 2017 10:22:21 -0400
-In-Reply-To: <E127503D-3DFC-4FD3-99F6-012D100C168B@netapp.com>
+Date: Fri, 11 Aug 2017 15:12:13 +0000
+Message-ID: <1502464329.5352.1.camel@primarydata.com>
 References: <20170807212355.29127-1-kolga@netapp.com>
          <20170807212355.29127-3-kolga@netapp.com>
          <1502281848.12841.2.camel@redhat.com>
          <87378yr2sx.fsf@notabene.neil.brown.name>
          <1502450305.4950.4.camel@redhat.com>
          <E127503D-3DFC-4FD3-99F6-012D100C168B@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+         <1502461341.4762.1.camel@redhat.com>
+In-Reply-To: <1502461341.4762.1.camel@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-08-11 at 09:49 -0400, Olga Kornievskaia wrote:
-> > On Aug 11, 2017, at 7:18 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > On Fri, 2017-08-11 at 17:17 +1000, NeilBrown wrote:
-> > > On Wed, Aug 09 2017, Jeff Layton wrote:
-> > > ....
-> > > > Thanks, that helps a bit. I'm less clear on what the higher-level
-> > > > vision is here though:
-> > > > 
-> > > > Are we all going to be running scripts on logout that scrape
-> > > > /proc/mounts and run fslogout on each? Will this be added to kdestroy?
-> > > > 
-> > > > Or are you aiming to have KCM do this on some trigger? (see:
-> > > > https://fedoraproject.org/wiki/Changes/KerberosKCMCache)
-> > > > 
-> > > > Also, doing this per-mount seems wrong to me. Shouldn't this be done on
-> > > > a per-net-namespace basis or maybe even globally?
-> > > 
-> > > Having looked at the code, I think this is invalidating cached
-> > > credentials globally -- or at least, globally for all filesystems that
-> > > use sunrpc.
-> > > 
-> > > I actually question the premise for wanting to do this.  Tickets have a
-> > > timeout and will expire.  Any code that is allowed to get a ticket, can
-> > > hold on to it as long as it likes - but it will cease to work after the
-> > > expiry time.  Hunting out all the places that a key might be cached, and
-> > > invalidating them, seems to deviate from the model.  If you are concerned
-> > > about leaving credentials around where they can theoretically be
-> > > misused, then set a smaller expiry time.
-> > > 
-> > > What is the threat-model that this change is supposed to guard against?
-> > > 
-> > > Looking that the syscall itself:
-> > > 1/ why restrict the call to directories only?
-> > > 2/ Every new syscall should have a 'flags' argument, because you never
-> > >    know when you'll need one.
-> > > 
-> > 
-> > I have some of the same concerns. For instance, we don't kill off ssh
-> > sessions that were established with krb5 just because the credcache was
-> > destroyed. RPC is a bit different since we authenticate every call, but
-> > is this fundamentally different from keeping an ssh session around that
-> > was established before the credcache was destroyed?
-> 
-> Probably because fundamentally, it’s the same user that keeps using it.
-> If the same ssh connection was shared by multiple users that were inserting
-> and deleting their credentials then it would be as problematic.
-> 
-> > Are we just getting tickets with too long a lifetime here? Maybe we just
-> > need to be more cavalier about destroying cached creds on some event or
-> > on a more timely basis?
-> > 
-> > Also, the whole gssapi credcache in the kernel is showing its age a bit.
-> > struct auth_cred has had this over it for about as long as I've been
-> > doing kernel work:
-> > 
-> >    /* Work around the lack of a VFS credential */
-> > 
-> > We've had struct cred for ages now.
-> > 
-> > David and I were chatting about this the other day and were wondering if
-> > we could change the RPC gssapi code to cache credentials in one of the
-> > keyrings in struct cred. Then, once the struct cred goes away, the key
-> > would go away as well. It wouldn't be destroyed on kdestroy, but once
-> > the last process with those creds exits, they would go away.
-> 
-> One argument against it: Kerberos has changed their storage location 
-> over the years (FILES … to keyring). What if they change again? Then NFS 
-> would have to change their implementation as well.
-> 
-> Having said that: outside of the fs-mailing list, I have asked Trond that
-> if VFS decides to reject the syscall idea, what would be an alternative 
-> and one of the choices is the keyring. Of course there are variations of 
-> how the keyring would be used. One option would be to totally switch to 
-> storing credentials in the keyring. To what what Andy had originally 
-> proposed of introducing a gss key type and storing the gss context in 
-> the keyring.
-> 
-> 
+T24gRnJpLCAyMDE3LTA4LTExIGF0IDEwOjIyIC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
+SSB0aGluayBJIHdhc24ndCBjbGVhciBoZXJlLiBJJ20gbm90IHByb3Bvc2luZyB0aGF0IHlvdSBt
+b3ZlIGV2ZXJ5b25lDQo+IHRvDQo+IEtFWVJJTkc6IGNyZWRjYWNoZXMuIFRoaXMgd291bGQgbm90
+IGJlIGEgdmlzaWJsZSBjaGFuZ2UgdG8gdXNlcmxhbmQuDQo+IFdlJ2Qgc3RpbGwgdXNlIHJwYy5n
+c3NkIHRvIHVwY2FsbCBmb3IgY3JlZHMuDQo+IA0KPiBXaGF0IEknbSBzYXlpbmcgaXMgdGhhdCBp
+bnN0ZWFkIG9mIHN0b3JpbmcgdGhlIGNyZWRzIGluIGEgaGFzaHRhYmxlDQo+IGxpa2UNCj4gd2Ug
+ZG8gdG9kYXksIHdlJ2QganVzdCBzdGFzaCB0aGVtIGluIG9uZSBvZiB0aGUga2V5cmluZ3MgaGFu
+Z2luZyBvZmYNCj4gb2YNCj4gc3RydWN0IGNyZWQuDQo+IA0KPiBDaGFuZ2UgYWxsIG9mIHRoZSBh
+dXRoZ3NzX29wcyBvcGVyYXRpb25zIHRvIGRvIHF1ZXJ5L3N0b3JlIGZyb20gdGhlDQo+IGFwcHJv
+cHJpYXRlIGtleXJpbmcgZGlyZWN0bHkuIFdpdGggdGhhdCwgdGhlIGVmZmVjdGl2ZSBsaWZldGlt
+ZSBvZg0KPiBHU1NBUEkgY3JlZHMgd291bGQgYmUgYm91bmRlZCBieSB0aGUgbGlmZXRpbWUgb2Yg
+dGhlIGtleXJpbmdzIHRoYXQNCj4gaG9sZA0KPiByZWZlcmVuY2VzIHRvIGl0Lg0KPiANCj4gV2Un
+ZCBwcm9iYWJseSBuZWVkIGEgbmV3IGtleV90eXBlIGZvciB0aGlzIHRvIGVuc3VyZSB0aGF0IHRo
+aXMNCj4gY291bGRuJ3QNCj4gYmUgbWFuaXB1bGF0ZWQgZGlyZWN0bHkgZnJvbSB1c2VybGFuZC4g
+T3IuLi5tYXliZSB5b3UnZCBzdGlsbCB3YW50IHRvDQo+IGFsbG93IHVzZXJsYW5kIHRvIGRlc3Ry
+b3kgdGhlIGNyZWRzPyBObyBuZWVkIGZvciBhIG5ldyBzeXNjYWxsIHdpdGgNCj4gdGhhdA0KPiAt
+LSB0aGV5IGNhbiBqdXN0IGRvIGEgImtleWN0bCB1bmxpbmsiLiBUaGVyZSBhcmUgYSBsb3Qgb2Yg
+b3B0aW9ucw0KPiBoZXJlLg0KPiANCj4gSXQncyBhIG5vbi10cml2aWFsIGFtb3VudCBvZiB3b3Jr
+IHRob3VnaCAocnBjYXV0aF9sb29rdXBjcmVkKCkgb24NCj4gZG93bg0KPiB3b3VsZCBwcm9iYWJs
+eSBuZWVkIHRvIGJlIHJld29ya2VkKSBhbmQgSSBoYXZlbid0IGxvb2tlZCBhdCBpdA0KPiBkZXRh
+aWwuDQo+IFN0aWxsLCBpdCBzZWVtcyBsaWtlIGl0IGNvdWxkIGJlIGEgbW9yZSBtb2Rlcm4gYW5k
+IGNsZWFuZXIgZGVzaWduDQo+IHRoYW4NCj4gd2hhdCB3ZSBoYXZlIHRvZGF5Lg0KPiANCg0KVGhl
+IG1haW4gYW5ub3lhbmNlIHdpdGggZ29pbmcgZnJvbSBhIGdsb2JhbCB0byBhIGxvY2FsIGNhY2hl
+IHN1Y2ggYXMNCnRoZSBrZXlyaW5ncyBpcyB0aGF0IGl0IG1ha2VzIGNvbXBhcmluZyBjcmVkZW50
+aWFscyBhIGxvdCBtb3JlIHdvcmsuDQpUb2RheSwgYmVjYXVzZSB0aGUgY3JlZGVudGlhbHMgYXJl
+IGVzc2VudGlhbGx5IHVuaXF1ZSBwZXIgc2VydmVyLCB3ZQ0KanVzdCBkbyBwb2ludGVyIGNvbXBh
+cmlzb25zLiBPbmNlIHdlIGhhdmUgbm9uLWdsb2JhbCBjYWNoZXMsIHdlIHdvdWxkDQpuZWVkIHRv
+IGRvIG1vcmUgZWxhYm9yYXRlIGNvbXBhcmlzb25zIHRvIGVuc3VyZSB0aGF0IHRoZSB1aWQsIGdp
+ZCwgYW5kDQpsaXN0IG9mIGdyb3VwcyBtYXRjaC4NClRoYXQncyBhbHNvIHdoeSB3ZSBuZXZlciBt
+YWRlIHRoZSBsZWFwIHRvIHVzaW5nICdzdHJ1Y3QgY3JlZCcsIGJ0dy4uLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJv
+bmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-I think I wasn't clear here. I'm not proposing that you move everyone to
-KEYRING: credcaches. This would not be a visible change to userland.
-We'd still use rpc.gssd to upcall for creds.
-
-What I'm saying is that instead of storing the creds in a hashtable like
-we do today, we'd just stash them in one of the keyrings hanging off of
-struct cred.
-
-Change all of the authgss_ops operations to do query/store from the
-appropriate keyring directly. With that, the effective lifetime of
-GSSAPI creds would be bounded by the lifetime of the keyrings that hold
-references to it.
-
-We'd probably need a new key_type for this to ensure that this couldn't
-be manipulated directly from userland. Or...maybe you'd still want to
-allow userland to destroy the creds? No need for a new syscall with that
--- they can just do a "keyctl unlink". There are a lot of options here.
-
-It's a non-trivial amount of work though (rpcauth_lookupcred() on down
-would probably need to be reworked) and I haven't looked at it detail.
-Still, it seems like it could be a more modern and cleaner design than
-what we have today.
-
--- 
-Jeff Layton <jlayton@redhat.com>
