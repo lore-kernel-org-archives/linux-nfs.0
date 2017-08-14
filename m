@@ -1,92 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f182.google.com ([209.85.223.182]:35358 "EHLO
-        mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751098AbdHNTxn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2017 15:53:43 -0400
-Received: by mail-io0-f182.google.com with SMTP id m88so41728871iod.2
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2017 12:53:43 -0700 (PDT)
-Subject: [PATCH v1] NLM: GRANTED_MSG fails after client remount
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org, manjunath.b.patil@oracle.com,
-        trond.myklebust@primarydata.com, jlayton@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Aug 2017 15:53:41 -0400
-Message-ID: <20170814195255.9419.84211.stgit@klimt.1015granger.net>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:20398 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752326AbdHNUIE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2017 16:08:04 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] SUNRPC: Don't hold the transport lock across socket
+ copy operations
+Date: Mon, 14 Aug 2017 20:07:59 +0000
+Message-ID: <1502741277.19246.7.camel@primarydata.com>
+References: <20170814191652.18263-1-trond.myklebust@primarydata.com>
+         <20170814191652.18263-2-trond.myklebust@primarydata.com>
+         <003E7C40-57BD-4F02-9157-97919FA206D5@oracle.com>
+In-Reply-To: <003E7C40-57BD-4F02-9157-97919FA206D5@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If I repeatedly run the cthon04 lock test on NFSv3, at some point
-the Linux NFS server reports "lockd: server not responding". The NFS
-server is sending a GRANTED_MSG request via TCP, but the NFS client
-lockd has restarted and changed ports. The correct recovery is for
-the NFS server to rebind and reconnect to the new client port, but
-the server never rebinds, and the request times out and fails.
-
-The underlying problem is that the RPC client on the NFS server is
-attempting to reconnect in a loop, and does not return control to
-the NLM layer until the request times out. There is never a chance
-for the NLM layer to force a rebind until the request has failed.
-
-To address this, set the RPC_TASK_SOFTCONN flag when sending async
-NLM requests. The request fails immediately if it cannot connect,
-and the code can force a rebind and then retry the request.
-
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=311
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-Changes from RFC:
-- Use nlmsvc_timeout instead of hard-coding 10 * HZ
-
- fs/lockd/clntproc.c |    2 +-
- fs/lockd/host.c     |    7 ++++++-
- fs/lockd/svclock.c  |    2 +-
- 3 files changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
-index 066ac31..5806e1a 100644
---- a/fs/lockd/clntproc.c
-+++ b/fs/lockd/clntproc.c
-@@ -342,7 +342,7 @@ static struct rpc_task *__nlm_async_call(struct nlm_rqst *req, u32 proc, struct
- 		.rpc_message = msg,
- 		.callback_ops = tk_ops,
- 		.callback_data = req,
--		.flags = RPC_TASK_ASYNC,
-+		.flags = RPC_TASK_ASYNC | RPC_TASK_SOFTCONN,
- 	};
- 
- 	dprintk("lockd: call procedure %d on %s (async)\n",
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index d716c99..be0f847 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -490,7 +490,12 @@ struct rpc_clnt *
- nlm_rebind_host(struct nlm_host *host)
- {
- 	dprintk("lockd: rebind host %s\n", host->h_name);
--	if (host->h_rpcclnt && time_after_eq(jiffies, host->h_nextrebind)) {
-+
-+	if (!host->h_rpcclnt)
-+		return;
-+
-+	if (time_after_eq(jiffies, host->h_nextrebind) ||
-+	    host->h_proto == IPPROTO_TCP) {
- 		rpc_force_rebind(host->h_rpcclnt);
- 		host->h_nextrebind = jiffies + NLM_HOST_REBIND;
- 	}
-diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
-index 3507c80..b65b093 100644
---- a/fs/lockd/svclock.c
-+++ b/fs/lockd/svclock.c
-@@ -830,7 +830,7 @@ static void nlmsvc_grant_callback(struct rpc_task *task, void *data)
- 	 * can be done, though. */
- 	if (task->tk_status < 0) {
- 		/* RPC error: Re-insert for retransmission */
--		timeout = 10 * HZ;
-+		timeout = nlmsvc_timeout;
- 	} else {
- 		/* Call was successful, now wait for client callback */
- 		timeout = 60 * HZ;
+T24gTW9uLCAyMDE3LTA4LTE0IGF0IDE1OjI4IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBBdWcgMTQsIDIwMTcsIGF0IDM6MTYgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlr
+bGVidXN0QHByaW1hDQo+ID4gcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gSW5zdGVhZCBh
+ZGQgYSBtZWNoYW5pc20gdG8gZW5zdXJlIHRoYXQgdGhlIHJlcXVlc3QgZG9lc24ndA0KPiA+IGRp
+c2FwcGVhcg0KPiA+IGZyb20gdW5kZXJuZWF0aCB1cyB3aGlsZSBjb3B5aW5nIGZyb20gdGhlIHNv
+Y2tldC4gV2UgZG8gdGhpcyBieQ0KPiA+IHByZXZlbnRpbmcgeHBydF9yZWxlYXNlKCkgZnJvbSBm
+cmVlaW5nIHRoZSBYRFIgYnVmZmVycyB1bnRpbCB0aGUNCj4gPiBmbGFnIFJQQ19UQVNLX01TR19S
+RUNWIGhhcyBiZWVuIGNsZWFyZWQgZnJvbSB0aGUgcmVxdWVzdC4NCj4gPiANCj4gPiBTaWduZWQt
+b2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+
+DQo+ID4gLS0tDQo+ID4gaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCB8ICAyICsrDQo+ID4g
+aW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oICB8ICAyICsrDQo+ID4gbmV0L3N1bnJwYy94cHJ0
+LmMgICAgICAgICAgICB8IDQyDQo+ID4gKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
+KysrKysrKysrDQo+ID4gbmV0L3N1bnJwYy94cHJ0c29jay5jICAgICAgICB8IDI3ICsrKysrKysr
+KysrKysrKysrKysrKystLS0tLQ0KPiA+IDQgZmlsZXMgY2hhbmdlZCwgNjggaW5zZXJ0aW9ucygr
+KSwgNSBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvaW5jbHVkZS9saW51eC9z
+dW5ycGMvc2NoZWQuaA0KPiA+IGIvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaA0KPiA+IGlu
+ZGV4IDE1YmMxY2Q2ZWU1Yy4uZTk3MmQ5ZTA1NDI2IDEwMDY0NA0KPiA+IC0tLSBhL2luY2x1ZGUv
+bGludXgvc3VucnBjL3NjaGVkLmgNCj4gPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hl
+ZC5oDQo+ID4gQEAgLTE0MSw2ICsxNDEsOCBAQCBzdHJ1Y3QgcnBjX3Rhc2tfc2V0dXAgew0KPiA+
+ICNkZWZpbmUgUlBDX1RBU0tfQUNUSVZFCQkyDQo+ID4gI2RlZmluZSBSUENfVEFTS19NU0dfWE1J
+VAkzDQo+ID4gI2RlZmluZSBSUENfVEFTS19NU0dfWE1JVF9XQUlUCTQNCj4gPiArI2RlZmluZSBS
+UENfVEFTS19NU0dfUkVDVgk1DQo+ID4gKyNkZWZpbmUgUlBDX1RBU0tfTVNHX1JFQ1ZfV0FJVAk2
+DQo+ID4gDQo+ID4gI2RlZmluZSBSUENfSVNfUlVOTklORyh0KQl0ZXN0X2JpdChSUENfVEFTS19S
+VU5OSU5HLCAmKHQpLQ0KPiA+ID50a19ydW5zdGF0ZSkNCj4gPiAjZGVmaW5lIHJwY19zZXRfcnVu
+bmluZyh0KQlzZXRfYml0KFJQQ19UQVNLX1JVTk5JTkcsICYodCktDQo+ID4gPnRrX3J1bnN0YXRl
+KQ0KPiA+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgNCj4gPiBiL2lu
+Y2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaA0KPiA+IGluZGV4IGVhYjFjNzQ5ZTE5Mi4uNjViOWUw
+MjI0NzUzIDEwMDY0NA0KPiA+IC0tLSBhL2luY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaA0KPiA+
+ICsrKyBiL2luY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaA0KPiA+IEBAIC0zNzIsNiArMzcyLDgg
+QEAgdm9pZAkJCXhwcnRfd3JpdGVfc3BhY2Uoc3QNCj4gPiBydWN0IHJwY194cHJ0ICp4cHJ0KTsN
+Cj4gPiB2b2lkCQkJeHBydF9hZGp1c3RfY3duZChzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQsDQo+ID4g
+c3RydWN0IHJwY190YXNrICp0YXNrLCBpbnQgcmVzdWx0KTsNCj4gPiBzdHJ1Y3QgcnBjX3Jxc3Qg
+Kgl4cHJ0X2xvb2t1cF9ycXN0KHN0cnVjdCBycGNfeHBydCAqeHBydCwNCj4gPiBfX2JlMzIgeGlk
+KTsNCj4gPiB2b2lkCQkJeHBydF9jb21wbGV0ZV9ycXN0KHN0cnVjdCBycGNfdGFzaw0KPiA+ICp0
+YXNrLCBpbnQgY29waWVkKTsNCj4gPiArdm9pZAkJCXhwcnRfcGluX3Jxc3Qoc3RydWN0IHJwY19y
+cXN0ICpyZXEpOw0KPiA+ICt2b2lkCQkJeHBydF91bnBpbl9ycXN0KHN0cnVjdCBycGNfcnFzdCAq
+cmVxKTsNCj4gPiB2b2lkCQkJeHBydF9yZWxlYXNlX3Jxc3RfY29uZyhzdHJ1Y3QgcnBjX3Rhc2sN
+Cj4gPiAqdGFzayk7DQo+ID4gdm9pZAkJCXhwcnRfZGlzY29ubmVjdF9kb25lKHN0cnVjdCBycGNf
+eHBydA0KPiA+ICp4cHJ0KTsNCj4gPiB2b2lkCQkJeHBydF9mb3JjZV9kaXNjb25uZWN0KHN0cnVj
+dCBycGNfeHBydA0KPiA+ICp4cHJ0KTsNCj4gPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0
+LmMgYi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+IGluZGV4IDc4OGMxYjYxMzhjMi4uNjJjMzc5ODY1
+ZjdjIDEwMDY0NA0KPiA+IC0tLSBhL25ldC9zdW5ycGMveHBydC5jDQo+ID4gKysrIGIvbmV0L3N1
+bnJwYy94cHJ0LmMNCj4gPiBAQCAtODQ0LDYgKzg0NCw0NyBAQCBzdHJ1Y3QgcnBjX3Jxc3QgKnhw
+cnRfbG9va3VwX3Jxc3Qoc3RydWN0DQo+ID4gcnBjX3hwcnQgKnhwcnQsIF9fYmUzMiB4aWQpDQo+
+ID4gfQ0KPiA+IEVYUE9SVF9TWU1CT0xfR1BMKHhwcnRfbG9va3VwX3Jxc3QpOw0KPiA+IA0KPiA+
+ICsvKioNCj4gPiArICogeHBydF9waW5fcnFzdCAtIFBpbiBhIHJlcXVlc3Qgb24gdGhlIHRyYW5z
+cG9ydCByZWNlaXZlIGxpc3QNCj4gPiArICogQHJlcTogUmVxdWVzdCB0byBwaW4NCj4gPiArICoN
+Cj4gPiArICogQ2FsbGVyIG11c3QgZW5zdXJlIHRoaXMgaXMgYXRvbWljIHdpdGggdGhlIGNhbGwg
+dG8NCj4gPiB4cHJ0X2xvb2t1cF9ycXN0KCkNCj4gPiArICogc28gc2hvdWxkIGJlIGhvbGRpbmcg
+dGhlIHhwcnQgdHJhbnNwb3J0IGxvY2suDQo+ID4gKyAqLw0KPiA+ICt2b2lkIHhwcnRfcGluX3Jx
+c3Qoc3RydWN0IHJwY19ycXN0ICpyZXEpDQo+ID4gK3sNCj4gPiArCXNldF9iaXQoUlBDX1RBU0tf
+TVNHX1JFQ1YsICZyZXEtPnJxX3Rhc2stPnRrX3J1bnN0YXRlKTsNCj4gPiArfQ0KPiA+ICsNCj4g
+PiArLyoqDQo+ID4gKyAqIHhwcnRfdW5waW5fcnFzdCAtIFVucGluIGEgcmVxdWVzdCBvbiB0aGUg
+dHJhbnNwb3J0IHJlY2VpdmUgbGlzdA0KPiA+ICsgKiBAcmVxOiBSZXF1ZXN0IHRvIHBpbg0KPiA+
+ICsgKg0KPiA+ICsgKiBDYWxsZXIgc2hvdWxkIGJlIGhvbGRpbmcgdGhlIHhwcnQgdHJhbnNwb3J0
+IGxvY2suDQo+ID4gKyAqLw0KPiA+ICt2b2lkIHhwcnRfdW5waW5fcnFzdChzdHJ1Y3QgcnBjX3Jx
+c3QgKnJlcSkNCj4gPiArew0KPiA+ICsJc3RydWN0IHJwY190YXNrICp0YXNrID0gcmVxLT5ycV90
+YXNrOw0KPiA+ICsNCj4gPiArCWNsZWFyX2JpdChSUENfVEFTS19NU0dfUkVDViwgJnRhc2stPnRr
+X3J1bnN0YXRlKTsNCj4gPiArCWlmICh0ZXN0X2JpdChSUENfVEFTS19NU0dfUkVDVl9XQUlULCAm
+dGFzay0+dGtfcnVuc3RhdGUpKQ0KPiA+ICsJCXdha2VfdXBfYml0KCZ0YXNrLT50a19ydW5zdGF0
+ZSwNCj4gPiBSUENfVEFTS19NU0dfUkVDVik7DQo+ID4gK30NCj4gPiArDQo+ID4gK3N0YXRpYyB2
+b2lkIHhwcnRfd2FpdF9vbl9waW5uZWRfcnFzdChzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSkNCj4gPiAr
+X19tdXN0X2hvbGQoJnJlcS0+cnFfeHBydC0+dHJhbnNwb3J0X2xvY2spDQo+ID4gK3sNCj4gPiAr
+CXN0cnVjdCBycGNfdGFzayAqdGFzayA9IHJlcS0+cnFfdGFzazsNCj4gPiArCWlmICh0ZXN0X2Jp
+dChSUENfVEFTS19NU0dfUkVDViwgJnRhc2stPnRrX3J1bnN0YXRlKSkgew0KPiA+ICsJCXNwaW5f
+dW5sb2NrX2JoKCZyZXEtPnJxX3hwcnQtPnRyYW5zcG9ydF9sb2NrKTsNCj4gPiArCQlzZXRfYml0
+KFJQQ19UQVNLX01TR19SRUNWX1dBSVQsICZ0YXNrLQ0KPiA+ID50a19ydW5zdGF0ZSk7DQo+ID4g
+KwkJd2FpdF9vbl9iaXQoJnRhc2stPnRrX3J1bnN0YXRlLCBSUENfVEFTS19NU0dfUkVDViwNCj4g
+PiArCQkJCVRBU0tfVU5JTlRFUlJVUFRJQkxFKTsNCj4gPiArCQljbGVhcl9iaXQoUlBDX1RBU0tf
+TVNHX1JFQ1ZfV0FJVCwgJnRhc2stDQo+ID4gPnRrX3J1bnN0YXRlKTsNCj4gPiArCQlzcGluX2xv
+Y2tfYmgoJnJlcS0+cnFfeHBydC0+dHJhbnNwb3J0X2xvY2spOw0KPiA+ICsJfQ0KPiA+ICt9DQo+
+ID4gKw0KPiA+IHN0YXRpYyB2b2lkIHhwcnRfdXBkYXRlX3J0dChzdHJ1Y3QgcnBjX3Rhc2sgKnRh
+c2spDQo+ID4gew0KPiA+IAlzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSA9IHRhc2stPnRrX3Jxc3RwOw0K
+PiA+IEBAIC0xMzAxLDYgKzEzNDIsNyBAQCB2b2lkIHhwcnRfcmVsZWFzZShzdHJ1Y3QgcnBjX3Rh
+c2sgKnRhc2spDQo+ID4gCQlsaXN0X2RlbCgmcmVxLT5ycV9saXN0KTsNCj4gPiAJeHBydC0+bGFz
+dF91c2VkID0gamlmZmllczsNCj4gPiAJeHBydF9zY2hlZHVsZV9hdXRvZGlzY29ubmVjdCh4cHJ0
+KTsNCj4gPiArCXhwcnRfd2FpdF9vbl9waW5uZWRfcnFzdChyZXEpOw0KPiA+IAlzcGluX3VubG9j
+a19iaCgmeHBydC0+dHJhbnNwb3J0X2xvY2spOw0KPiANCj4gSXMgaXQgT0sgdG8gY2FsbCB3YWl0
+X29uX2JpdChUQVNLX1VOSU5URVJSVVBUSUJMRSkgd2hpbGUgaG9sZGluZw0KPiBhIEJIIHNwaW4g
+bG9jaz8gVGhpcyBjb3VsZCBiZSBwcm9uZSB0byBkZWFkbG9jay4NCg0KV2UgZHJvcCB0aGUgbG9j
+ayBpbnNpZGUgeHBydF93YWl0X29uX3Bpbm5lZF9ycXN0KCkgaWYgd2UgbmVlZCB0byB3YWl0Lg0K
+DQpUaGUgcmVhc29uIHdoeSB3ZSB3YW50IHRvIGhvbGQgdGhlIGxvY2sgdGhlcmUgaXMgdG8gYXZv
+aWQgYSB1c2UtYWZ0ZXItDQpmcmVlIGluIHhwcnRfdW5waW5fcnFzdCgpLiBXaXRob3V0IHRoZSBs
+b2NrLCB0aGVyZSBpcyBhIHJpc2sgdGhhdA0KeHBydF9yZWxlYXNlKCkgY291bGQgY29tcGxldGUs
+IGFuZCB0aGUgdGFzayBnZXQgZnJlZWQgYmVmb3JlIHdlIGhhdmUNCmNvbXBsZXRlZCB3YWtlX3Vw
+X2JpdCgpLg0KDQoNCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFp
+bnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
