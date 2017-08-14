@@ -1,269 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:36980 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752159AbdHNTic (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2017 15:38:32 -0400
-Received: by mail-it0-f65.google.com with SMTP id 77so8554068itj.4
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2017 12:38:32 -0700 (PDT)
-Subject: [PATCH v1 2/2] xprtrdma: Remove imul instructions from chunk list
- encoders
+Received: from mail-io0-f182.google.com ([209.85.223.182]:35358 "EHLO
+        mail-io0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751098AbdHNTxn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2017 15:53:43 -0400
+Received: by mail-io0-f182.google.com with SMTP id m88so41728871iod.2
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2017 12:53:43 -0700 (PDT)
+Subject: [PATCH v1] NLM: GRANTED_MSG fails after client remount
 From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
+To: bfields@fieldses.org, manjunath.b.patil@oracle.com,
+        trond.myklebust@primarydata.com, jlayton@redhat.com
 Cc: linux-nfs@vger.kernel.org
-Date: Mon, 14 Aug 2017 15:38:30 -0400
-Message-ID: <20170814193830.25033.97752.stgit@manet.1015granger.net>
-In-Reply-To: <20170814192946.25033.43917.stgit@manet.1015granger.net>
-References: <20170814192946.25033.43917.stgit@manet.1015granger.net>
+Date: Mon, 14 Aug 2017 15:53:41 -0400
+Message-ID: <20170814195255.9419.84211.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Re-arrange the pointer arithmetic in the chunk list encoders to
-eliminate several more integer multiplication instructions during
-Transport Header encoding.
+If I repeatedly run the cthon04 lock test on NFSv3, at some point
+the Linux NFS server reports "lockd: server not responding". The NFS
+server is sending a GRANTED_MSG request via TCP, but the NFS client
+lockd has restarted and changed ports. The correct recovery is for
+the NFS server to rebind and reconnect to the new client port, but
+the server never rebinds, and the request times out and fails.
 
+The underlying problem is that the RPC client on the NFS server is
+attempting to reconnect in a loop, and does not return control to
+the NLM layer until the request times out. There is never a chance
+for the NLM layer to force a rebind until the request has failed.
+
+To address this, set the RPC_TASK_SOFTCONN flag when sending async
+NLM requests. The request fails immediately if it cannot connect,
+and the code can force a rebind and then retry the request.
+
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=311
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c   |   10 ++++-----
- net/sunrpc/xprtrdma/frwr_ops.c  |   12 +++++-----
- net/sunrpc/xprtrdma/rpc_rdma.c  |   45 ++++++++++++++++++---------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 ++-
- 4 files changed, 34 insertions(+), 36 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index d3f84bb..6c71513 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -177,7 +177,7 @@ enum {
- /* Use the ib_map_phys_fmr() verb to register a memory region
-  * for remote access via RDMA READ or RDMA WRITE.
-  */
--static int
-+static struct rpcrdma_mr_seg *
- fmr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	   int nsegs, bool writing, struct rpcrdma_mw **out)
+Changes from RFC:
+- Use nlmsvc_timeout instead of hard-coding 10 * HZ
+
+ fs/lockd/clntproc.c |    2 +-
+ fs/lockd/host.c     |    7 ++++++-
+ fs/lockd/svclock.c  |    2 +-
+ 3 files changed, 8 insertions(+), 3 deletions(-)
+
+diff --git a/fs/lockd/clntproc.c b/fs/lockd/clntproc.c
+index 066ac31..5806e1a 100644
+--- a/fs/lockd/clntproc.c
++++ b/fs/lockd/clntproc.c
+@@ -342,7 +342,7 @@ static struct rpc_task *__nlm_async_call(struct nlm_rqst *req, u32 proc, struct
+ 		.rpc_message = msg,
+ 		.callback_ops = tk_ops,
+ 		.callback_data = req,
+-		.flags = RPC_TASK_ASYNC,
++		.flags = RPC_TASK_ASYNC | RPC_TASK_SOFTCONN,
+ 	};
+ 
+ 	dprintk("lockd: call procedure %d on %s (async)\n",
+diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+index d716c99..be0f847 100644
+--- a/fs/lockd/host.c
++++ b/fs/lockd/host.c
+@@ -490,7 +490,12 @@ struct rpc_clnt *
+ nlm_rebind_host(struct nlm_host *host)
  {
-@@ -188,7 +188,7 @@ enum {
- 
- 	mw = rpcrdma_get_mw(r_xprt);
- 	if (!mw)
--		return -ENOBUFS;
-+		return ERR_PTR(-ENOBUFS);
- 
- 	pageoff = offset_in_page(seg1->mr_offset);
- 	seg1->mr_offset -= pageoff;	/* start of page */
-@@ -232,13 +232,13 @@ enum {
- 	mw->mw_offset = dma_pages[0] + pageoff;
- 
- 	*out = mw;
--	return mw->mw_nents;
-+	return seg;
- 
- out_dmamap_err:
- 	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
- 	       mw->mw_sg, i);
- 	rpcrdma_put_mw(r_xprt, mw);
--	return -EIO;
-+	return ERR_PTR(-EIO);
- 
- out_maperr:
- 	pr_err("rpcrdma: ib_map_phys_fmr %u@0x%llx+%i (%d) status %i\n",
-@@ -247,7 +247,7 @@ enum {
- 	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
- 			mw->mw_sg, mw->mw_nents, mw->mw_dir);
- 	rpcrdma_put_mw(r_xprt, mw);
--	return -EIO;
-+	return ERR_PTR(-EIO);
- }
- 
- /* Invalidate all memory regions that were registered for "req".
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 6aea36a..5a936a6 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -344,7 +344,7 @@
- /* Post a REG_MR Work Request to register a memory region
-  * for remote access via RDMA READ or RDMA WRITE.
-  */
--static int
-+static struct rpcrdma_mr_seg *
- frwr_op_map(struct rpcrdma_xprt *r_xprt, struct rpcrdma_mr_seg *seg,
- 	    int nsegs, bool writing, struct rpcrdma_mw **out)
- {
-@@ -364,7 +364,7 @@
- 			rpcrdma_defer_mr_recovery(mw);
- 		mw = rpcrdma_get_mw(r_xprt);
- 		if (!mw)
--			return -ENOBUFS;
-+			return ERR_PTR(-ENOBUFS);
- 	} while (mw->frmr.fr_state != FRMR_IS_INVALID);
- 	frmr = &mw->frmr;
- 	frmr->fr_state = FRMR_IS_VALID;
-@@ -429,25 +429,25 @@
- 	mw->mw_offset = mr->iova;
- 
- 	*out = mw;
--	return mw->mw_nents;
-+	return seg;
- 
- out_dmamap_err:
- 	pr_err("rpcrdma: failed to DMA map sg %p sg_nents %d\n",
- 	       mw->mw_sg, i);
- 	frmr->fr_state = FRMR_IS_INVALID;
- 	rpcrdma_put_mw(r_xprt, mw);
--	return -EIO;
-+	return ERR_PTR(-EIO);
- 
- out_mapmr_err:
- 	pr_err("rpcrdma: failed to map mr %p (%d/%d)\n",
- 	       frmr->fr_mr, n, mw->mw_nents);
- 	rpcrdma_defer_mr_recovery(mw);
--	return -EIO;
-+	return ERR_PTR(-EIO);
- 
- out_senderr:
- 	pr_err("rpcrdma: FRMR registration ib_post_send returned %i\n", rc);
- 	rpcrdma_defer_mr_recovery(mw);
--	return -ENOTCONN;
-+	return ERR_PTR(-ENOTCONN);
- }
- 
- /* Invalidate all memory regions that were registered for "req".
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 211ac4b..84584ca 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -349,7 +349,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
- 	unsigned int pos;
--	int n, nsegs;
-+	int nsegs;
- 
- 	pos = rqst->rq_snd_buf.head[0].iov_len;
- 	if (rtype == rpcrdma_areadch)
-@@ -361,10 +361,10 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		return nsegs;
- 
- 	do {
--		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
--						 false, &mw);
--		if (n < 0)
--			return n;
-+		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
-+						   false, &mw);
-+		if (IS_ERR(seg))
-+			return PTR_ERR(seg);
- 		rpcrdma_push_mw(mw, &req->rl_registered);
- 
- 		if (encode_read_segment(xdr, mw, pos) < 0)
-@@ -373,11 +373,10 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		dprintk("RPC: %5u %s: pos %u %u@0x%016llx:0x%08x (%s)\n",
- 			rqst->rq_task->tk_pid, __func__, pos,
- 			mw->mw_length, (unsigned long long)mw->mw_offset,
--			mw->mw_handle, n < nsegs ? "more" : "last");
-+			mw->mw_handle, mw->mw_nents < nsegs ? "more" : "last");
- 
- 		r_xprt->rx_stats.read_chunk_count++;
--		seg += n;
--		nsegs -= n;
-+		nsegs -= mw->mw_nents;
- 	} while (nsegs);
- 
- 	return 0;
-@@ -405,7 +404,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	struct xdr_stream *xdr = &req->rl_stream;
- 	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
--	int n, nsegs, nchunks;
-+	int nsegs, nchunks;
- 	__be32 *segcount;
- 
- 	seg = req->rl_segments;
-@@ -424,10 +423,10 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 
- 	nchunks = 0;
- 	do {
--		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
--						 true, &mw);
--		if (n < 0)
--			return n;
-+		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
-+						   true, &mw);
-+		if (IS_ERR(seg))
-+			return PTR_ERR(seg);
- 		rpcrdma_push_mw(mw, &req->rl_registered);
- 
- 		if (encode_rdma_segment(xdr, mw) < 0)
-@@ -436,13 +435,12 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		dprintk("RPC: %5u %s: %u@0x016%llx:0x%08x (%s)\n",
- 			rqst->rq_task->tk_pid, __func__,
- 			mw->mw_length, (unsigned long long)mw->mw_offset,
--			mw->mw_handle, n < nsegs ? "more" : "last");
-+			mw->mw_handle, mw->mw_nents < nsegs ? "more" : "last");
- 
- 		r_xprt->rx_stats.write_chunk_count++;
- 		r_xprt->rx_stats.total_rdma_request += seg->mr_len;
- 		nchunks++;
--		seg   += n;
--		nsegs -= n;
-+		nsegs -= mw->mw_nents;
- 	} while (nsegs);
- 
- 	/* Update count of segments in this Write chunk */
-@@ -470,7 +468,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	struct xdr_stream *xdr = &req->rl_stream;
- 	struct rpcrdma_mr_seg *seg;
- 	struct rpcrdma_mw *mw;
--	int n, nsegs, nchunks;
-+	int nsegs, nchunks;
- 	__be32 *segcount;
- 
- 	seg = req->rl_segments;
-@@ -487,10 +485,10 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 
- 	nchunks = 0;
- 	do {
--		n = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
--						 true, &mw);
--		if (n < 0)
--			return n;
-+		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
-+						   true, &mw);
-+		if (IS_ERR(seg))
-+			return PTR_ERR(seg);
- 		rpcrdma_push_mw(mw, &req->rl_registered);
- 
- 		if (encode_rdma_segment(xdr, mw) < 0)
-@@ -499,13 +497,12 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		dprintk("RPC: %5u %s: %u@0x%016llx:0x%08x (%s)\n",
- 			rqst->rq_task->tk_pid, __func__,
- 			mw->mw_length, (unsigned long long)mw->mw_offset,
--			mw->mw_handle, n < nsegs ? "more" : "last");
-+			mw->mw_handle, mw->mw_nents < nsegs ? "more" : "last");
- 
- 		r_xprt->rx_stats.reply_chunk_count++;
- 		r_xprt->rx_stats.total_rdma_request += seg->mr_len;
- 		nchunks++;
--		seg   += n;
--		nsegs -= n;
-+		nsegs -= mw->mw_nents;
- 	} while (nsegs);
- 
- 	/* Update count of segments in the Reply chunk */
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 2af9106..546c264 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -466,7 +466,8 @@ struct rpcrdma_stats {
-  */
- struct rpcrdma_xprt;
- struct rpcrdma_memreg_ops {
--	int		(*ro_map)(struct rpcrdma_xprt *,
-+	struct rpcrdma_mr_seg *
-+			(*ro_map)(struct rpcrdma_xprt *,
- 				  struct rpcrdma_mr_seg *, int, bool,
- 				  struct rpcrdma_mw **);
- 	void		(*ro_unmap_sync)(struct rpcrdma_xprt *,
+ 	dprintk("lockd: rebind host %s\n", host->h_name);
+-	if (host->h_rpcclnt && time_after_eq(jiffies, host->h_nextrebind)) {
++
++	if (!host->h_rpcclnt)
++		return;
++
++	if (time_after_eq(jiffies, host->h_nextrebind) ||
++	    host->h_proto == IPPROTO_TCP) {
+ 		rpc_force_rebind(host->h_rpcclnt);
+ 		host->h_nextrebind = jiffies + NLM_HOST_REBIND;
+ 	}
+diff --git a/fs/lockd/svclock.c b/fs/lockd/svclock.c
+index 3507c80..b65b093 100644
+--- a/fs/lockd/svclock.c
++++ b/fs/lockd/svclock.c
+@@ -830,7 +830,7 @@ static void nlmsvc_grant_callback(struct rpc_task *task, void *data)
+ 	 * can be done, though. */
+ 	if (task->tk_status < 0) {
+ 		/* RPC error: Re-insert for retransmission */
+-		timeout = 10 * HZ;
++		timeout = nlmsvc_timeout;
+ 	} else {
+ 		/* Call was successful, now wait for client callback */
+ 		timeout = 60 * HZ;
 
