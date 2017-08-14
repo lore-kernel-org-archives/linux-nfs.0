@@ -1,158 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f175.google.com ([209.85.216.175]:38844 "EHLO
-        mail-qt0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752714AbdHNKKf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2017 06:10:35 -0400
-Received: by mail-qt0-f175.google.com with SMTP id t37so48819809qtg.5
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Aug 2017 03:10:34 -0700 (PDT)
-Message-ID: <1502705432.4978.1.camel@redhat.com>
-Subject: Re: Do we really need d_weak_revalidate???
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "mkoutny@suse.com" <mkoutny@suse.com>,
+Received: from mail-qt0-f179.google.com ([209.85.216.179]:36725 "EHLO
+        mail-qt0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751785AbdHNPnj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2017 11:43:39 -0400
+MIME-Version: 1.0
+In-Reply-To: <1502624339.4839.4.camel@redhat.com>
+References: <20170807212355.29127-1-kolga@netapp.com> <20170807212355.29127-3-kolga@netapp.com>
+ <1502281848.12841.2.camel@redhat.com> <87378yr2sx.fsf@notabene.neil.brown.name>
+ <1502450305.4950.4.camel@redhat.com> <E127503D-3DFC-4FD3-99F6-012D100C168B@netapp.com>
+ <1502461341.4762.1.camel@redhat.com> <1502464329.5352.1.camel@primarydata.com>
+ <1502624339.4839.4.camel@redhat.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 14 Aug 2017 11:43:36 -0400
+Message-ID: <CAN-5tyFJ9gYrkKfLzjC5WADYSV7J2hcApibFzFxJUDSbWUK9CA@mail.gmail.com>
+Subject: Re: [RFC 1/1] destroy_creds.2: new page documenting destroy_creds()
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "kolga@netapp.com" <kolga@netapp.com>,
+        "dhowells@redhat.com" <dhowells@redhat.com>,
+        "neilb@suse.com" <neilb@suse.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-api@vger.kernel.org" <linux-api@vger.kernel.org>,
         "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Date: Mon, 14 Aug 2017 06:10:32 -0400
-In-Reply-To: <87zib3niqn.fsf@notabene.neil.brown.name>
-References: <87bmnmrai9.fsf@notabene.neil.brown.name>
-         <1502430944.3822.1.camel@primarydata.com>
-         <1502449309.4950.2.camel@redhat.com>
-         <87zib3niqn.fsf@notabene.neil.brown.name>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-08-14 at 09:36 +1000, NeilBrown wrote:
-> On Fri, Aug 11 2017, Jeff Layton wrote:
-> 
-> > On Fri, 2017-08-11 at 05:55 +0000, Trond Myklebust wrote:
-> > > On Fri, 2017-08-11 at 14:31 +1000, NeilBrown wrote:
-> > > > Funny story.  4.5 years ago we discarded the FS_REVAL_DOT superblock
-> > > > flag and introduced the d_weak_revalidate dentry operation instead.
-> > > > We duly removed the flag from NFS superblocks and NFSv4 superblocks,
-> > > > and added the new dentry operation to NFS dentries .... but not to
-> > > > NFSv4
-> > > > dentries.
-> > > > 
-> > > > And nobody noticed.
-> > > > 
-> > > > Until today.
-> > > > 
-> > > > A customer reports a situation where mount(....,MS_REMOUNT,..) on an
-> > > > NFS
-> > > > filesystem hangs because the network has been deconfigured.  This
-> > > > makes
-> > > > perfect sense and I suggested a code change to fix the problem.
-> > > > However when a colleague was trying to reproduce the problem to
-> > > > validate
-> > > > the fix, he couldn't.  Then nor could I.
-> > > > 
-> > > > The problem is trivially reproducible with NFSv3, and not at all with
-> > > > NFSv4.  The reason is the missing d_weak_revalidate.
-> > > > 
-> > > > We could simply add d_weak_revalidate for NFSv4, but given that it
-> > > > has been missing for 4.5 years, and the only time anyone noticed was
-> > > > when the ommission resulted in a better user experience, I do wonder
-> > > > if
-> > > > we need to.  Can we just discard d_weak_revalidate?  What purpose
-> > > > does
-> > > > it serve?  I couldn't find one.
-> > > > 
-> > > > Thanks,
-> > > > NeilBrown
-> > > > 
-> > > > For reference, see
-> > > > Commit: ecf3d1f1aa74 ("vfs: kill FS_REVAL_DOT by adding a
-> > > > d_weak_revalidate dentry op")
-> > > > 
-> > > > 
-> > > > 
-> > > > To reproduce the problem at home, on a system that uses systemd:
-> > > > 1/ place (or find) a filesystem image in a file on an NFS filesystem.
-> > > > 2/ mount the nfs filesystem with "noac" - choose v3 or v4
-> > > > 3/ loop-mount the filesystem image read-only somewhere
-> > > > 4/ reboot
-> > > > 
-> > > > If you choose v4, the reboot will succeed, possibly after a 90second
-> > > > timeout.
-> > > > If you choose v3, the reboot will hang indefinitely in systemd-
-> > > > shutdown while
-> > > > remounting the nfs filesystem read-only.
-> > > > 
-> > > > If you don't use "noac" it can still hang, but only if something
-> > > > slows
-> > > > down the reboot enough that attributes have timed out by the time
-> > > > that
-> > > > systemd-shutdown runs.  This happens for our customer.
-> > > > 
-> > > > If the loop-mounted filesystem is not read-only, you get other
-> > > > problems.
-> > > > 
-> > > > We really want systemd to figure out that the loop-mount needs to be
-> > > > unmounted first.  I have ideas concerning that, but it is messy.  But
-> > > > that isn't the only bug here.
-> > > 
-> > > The main purpose of d_weak_revalidate() was to catch the issues that
-> > > arise when someone changes the contents of the current working
-> > > directory or its parent on the server. Since '.' and '..' are treated
-> > > specially in the lookup code, they would not be revalidated without
-> > > special treatment. That leads to issues when looking up files as
-> > > ./<filename> or ../<filename>, since the client won't detect that its
-> > > dcache is stale until it tries to use the cached dentry+inode.
-> > > 
-> > > The one thing that has changed since its introduction is, I believe,
-> > > the ESTALE handling in the VFS layer. That might fix a lot of the
-> > > dcache lookup bugs that were previously handled by d_weak_revalidate().
-> > > I haven't done an audit to figure out if it actually can handle all of
-> > > them.
-> > > 
-> > 
-> > It may also be related to 8033426e6bdb2690d302872ac1e1fadaec1a5581:
-> > 
-> >     vfs: allow umount to handle mountpoints without revalidating them
-> 
-> You say in the comment for that commit:
-> 
->      but there
->     are cases where we do want to revalidate the root of the fs.
-> 
-> Do you happen to remember what those cases are?
-> 
+On Sun, Aug 13, 2017 at 7:38 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Fri, 2017-08-11 at 15:12 +0000, Trond Myklebust wrote:
+>> On Fri, 2017-08-11 at 10:22 -0400, Jeff Layton wrote:
+>> > I think I wasn't clear here. I'm not proposing that you move everyone
+>> > to
+>> > KEYRING: credcaches. This would not be a visible change to userland.
+>> > We'd still use rpc.gssd to upcall for creds.
+>> >
+>> > What I'm saying is that instead of storing the creds in a hashtable
+>> > like
+>> > we do today, we'd just stash them in one of the keyrings hanging off
+>> > of
+>> > struct cred.
+>> >
+>> > Change all of the authgss_ops operations to do query/store from the
+>> > appropriate keyring directly. With that, the effective lifetime of
+>> > GSSAPI creds would be bounded by the lifetime of the keyrings that
+>> > hold
+>> > references to it.
+>> >
+>> > We'd probably need a new key_type for this to ensure that this
+>> > couldn't
+>> > be manipulated directly from userland. Or...maybe you'd still want to
+>> > allow userland to destroy the creds? No need for a new syscall with
+>> > that
+>> > -- they can just do a "keyctl unlink". There are a lot of options
+>> > here.
+>> >
+>> > It's a non-trivial amount of work though (rpcauth_lookupcred() on
+>> > down
+>> > would probably need to be reworked) and I haven't looked at it
+>> > detail.
+>> > Still, it seems like it could be a more modern and cleaner design
+>> > than
+>> > what we have today.
+>> >
+>>
+>> The main annoyance with going from a global to a local cache such as
+>> the keyrings is that it makes comparing credentials a lot more work.
+>> Today, because the credentials are essentially unique per server, we
+>> just do pointer comparisons. Once we have non-global caches, we would
+>> need to do more elaborate comparisons to ensure that the uid, gid, and
+>> list of groups match.
+>> That's also why we never made the leap to using 'struct cred', btw...
+>
+>
+> Ok, it does seem better to have a global cache from that standpoint.
+> Still, a new syscall for this doesn't seem very elegant. I also worry a
+> bit about writeback here too (like David and Neil have pointed out).
+>
+> What about changing how we hold references on these objects instead?
+>
+> After we look up an auth token in e.g. rpcauth_lookupcred, take a
+> reference to it and stash a pointer to it somewhere in the cred.
+> Possibly in the thread or process keyrings, but it may work better
+> elsewhere.
+>
+> When we go to look up creds from that thread in the future, we can get
+> to it directly (which is a nice bonus). When the cred is destroyed
+> (usually on process destruction), we'd drop the reference to the object,
+> which would drop the reference to the global cache object.
+>
+> The global cache could then be changed to have a pretty short timeout (a
+> few seconds?) and reap the object soon afterward when there are no more
+> active processes that have used it.
 
-Not exactly, but I _think_ I might have been assuming that we needed to
-ensure that the inode attrs on the root were up to date after the
-pathwalk.
+Wouldn=E2=80=99t that produce a lot of unnecessary context re-establishment=
+s.
 
-I think that was probably wrong. d_revalidate is really intended to
-ensure that the dentry in question still points to the same inode. In
-the case of the root of the mount though, we don't really care about the
-dentry on the server at all. We're attaching the root of the mount to an
-inode and don't care of the dentry name changes. If we do need to ensure
-the inode attrs are updated, we'll just revalidate them at that point.
+> It's a bit more work and we might need to grow struct cred to handle it
+> (maybe give it its own keyring?), but it seems like that might be a
+> cleaner solution than giving userland knobs to manage the kernel's
+> caches.
 
-> > 
-> > Possibly the fact that we no longer try to revalidate during unmount
-> > means that this is no longer necessary?
-> > 
-> > The original patch that added d_weak_revalidate had a reproducer in the
-> > patch description. Have you verified that that problem is still not
-> > reproducible when you remove d_weak_revalidate?
-> 
-> I did try the reproducer and it works as expected both with and without
-> d_weak_revalidate.
-> On reflection, the problem it displayed was caused by d_revalidate()
-> being called when the dentry name was irrelevant.  We remove that
-> (fixing the problem) and introduce d_weak_revalidate because we thought
-> that minimum functionality was still useful.  I'm currently not
-> convinced that even that is needed.
-> 
-> If we discarded d_weak_revalidate(), we could get rid of the special
-> handling of umount....
+Userland is the only place that know that kdestroy ran and is the best
+place to tell the kernel to remove its cache. Everything else is guessing.
 
-I like idea. I say go for it and we can see what (if anything) breaks?
--- 
-Jeff Layton <jlayton@redhat.com>
+> --
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
