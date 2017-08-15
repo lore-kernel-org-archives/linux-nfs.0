@@ -1,401 +1,328 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:49546 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752236AbdHOOXw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Aug 2017 10:23:52 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 1/3] SUNRPC: Don't hold the transport lock across socket copy operations
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1502759921.22283.23.camel@primarydata.com>
-Date: Tue, 15 Aug 2017 10:23:46 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <DE137089-1D71-47C3-BDC4-3BCE73DF235A@oracle.com>
-References: <20170814191652.18263-1-trond.myklebust@primarydata.com> <20170814191652.18263-2-trond.myklebust@primarydata.com> <003E7C40-57BD-4F02-9157-97919FA206D5@oracle.com> <1502741277.19246.7.camel@primarydata.com> <55994DBE-0CE4-450A-8B19-B8C8F4CA0B69@oracle.com> <1502743109.19246.19.camel@primarydata.com> <7C0D016C-FBC3-4103-BA81-37AE0D6BAF5B@oracle.com> <1502759921.22283.23.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:27784 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751665AbdHOPBE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Aug 2017 11:01:04 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/3] SUNRPC: Don't hold the transport lock across socket
+ copy operations
+Date: Tue, 15 Aug 2017 15:00:58 +0000
+Message-ID: <1502809254.7593.19.camel@primarydata.com>
+References: <20170814191652.18263-1-trond.myklebust@primarydata.com>
+         <20170814191652.18263-2-trond.myklebust@primarydata.com>
+         <003E7C40-57BD-4F02-9157-97919FA206D5@oracle.com>
+         <1502741277.19246.7.camel@primarydata.com>
+         <55994DBE-0CE4-450A-8B19-B8C8F4CA0B69@oracle.com>
+         <1502743109.19246.19.camel@primarydata.com>
+         <7C0D016C-FBC3-4103-BA81-37AE0D6BAF5B@oracle.com>
+         <1502759921.22283.23.camel@primarydata.com>
+         <DE137089-1D71-47C3-BDC4-3BCE73DF235A@oracle.com>
+In-Reply-To: <DE137089-1D71-47C3-BDC4-3BCE73DF235A@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Aug 14, 2017, at 9:18 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
-> 
-> On Mon, 2017-08-14 at 18:25 -0400, Chuck Lever wrote:
->>> On Aug 14, 2017, at 4:38 PM, Trond Myklebust <trondmy@primarydata.c
->>> om> wrote:
->>> 
->>> On Mon, 2017-08-14 at 16:23 -0400, Chuck Lever wrote:
->>>>> On Aug 14, 2017, at 4:07 PM, Trond Myklebust <trondmy@primaryda
->>>>> ta.c
->>>>> om> wrote:
->>>>> 
->>>>> On Mon, 2017-08-14 at 15:28 -0400, Chuck Lever wrote:
->>>>>>> On Aug 14, 2017, at 3:16 PM, Trond Myklebust <trond.myklebu
->>>>>>> st@p
->>>>>>> rima
->>>>>>> rydata.com> wrote:
->>>>>>> 
->>>>>>> Instead add a mechanism to ensure that the request doesn't
->>>>>>> disappear
->>>>>>> from underneath us while copying from the socket. We do
->>>>>>> this by
->>>>>>> preventing xprt_release() from freeing the XDR buffers
->>>>>>> until
->>>>>>> the
->>>>>>> flag RPC_TASK_MSG_RECV has been cleared from the request.
->>>>>>> 
->>>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata
->>>>>>> .com
->>>>>>>> 
->>>>>>> 
->>>>>>> ---
->>>>>>> include/linux/sunrpc/sched.h |  2 ++
->>>>>>> include/linux/sunrpc/xprt.h  |  2 ++
->>>>>>> net/sunrpc/xprt.c            | 42
->>>>>>> ++++++++++++++++++++++++++++++++++++++++++
->>>>>>> net/sunrpc/xprtsock.c        | 27 ++++++++++++++++++++++---
->>>>>>> --
->>>>>>> 4 files changed, 68 insertions(+), 5 deletions(-)
->>>>>>> 
->>>>>>> diff --git a/include/linux/sunrpc/sched.h
->>>>>>> b/include/linux/sunrpc/sched.h
->>>>>>> index 15bc1cd6ee5c..e972d9e05426 100644
->>>>>>> --- a/include/linux/sunrpc/sched.h
->>>>>>> +++ b/include/linux/sunrpc/sched.h
->>>>>>> @@ -141,6 +141,8 @@ struct rpc_task_setup {
->>>>>>> #define RPC_TASK_ACTIVE		2
->>>>>>> #define RPC_TASK_MSG_XMIT	3
->>>>>>> #define RPC_TASK_MSG_XMIT_WAIT	4
->>>>>>> +#define RPC_TASK_MSG_RECV	5
->>>>>>> +#define RPC_TASK_MSG_RECV_WAIT	6
->>>>>>> 
->>>>>>> #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING,
->>>>>>> &(t)-
->>>>>>>> tk_runstate)
->>>>>>> 
->>>>>>> #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING,
->>>>>>> &(t)-
->>>>>>>> tk_runstate)
->>>>>>> 
->>>>>>> diff --git a/include/linux/sunrpc/xprt.h
->>>>>>> b/include/linux/sunrpc/xprt.h
->>>>>>> index eab1c749e192..65b9e0224753 100644
->>>>>>> --- a/include/linux/sunrpc/xprt.h
->>>>>>> +++ b/include/linux/sunrpc/xprt.h
->>>>>>> @@ -372,6 +372,8 @@ void			xprt_write_
->>>>>>> spac
->>>>>>> e(st
->>>>>>> ruct rpc_xprt *xprt);
->>>>>>> void			xprt_adjust_cwnd(struct
->>>>>>> rpc_xprt
->>>>>>> *xprt,
->>>>>>> struct rpc_task *task, int result);
->>>>>>> struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt
->>>>>>> *xprt,
->>>>>>> __be32 xid);
->>>>>>> void			xprt_complete_rqst(struct
->>>>>>> rpc_task
->>>>>>> *task, int copied);
->>>>>>> +void			xprt_pin_rqst(struct rpc_rqst
->>>>>>> *req);
->>>>>>> +void			xprt_unpin_rqst(struct
->>>>>>> rpc_rqst
->>>>>>> *req);
->>>>>>> void			xprt_release_rqst_cong(struct
->>>>>>> rpc_task
->>>>>>> *task);
->>>>>>> void			xprt_disconnect_done(struct
->>>>>>> rpc_xprt
->>>>>>> *xprt);
->>>>>>> void			xprt_force_disconnect(struct
->>>>>>> rpc_xprt
->>>>>>> *xprt);
->>>>>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>>>>>> index 788c1b6138c2..62c379865f7c 100644
->>>>>>> --- a/net/sunrpc/xprt.c
->>>>>>> +++ b/net/sunrpc/xprt.c
->>>>>>> @@ -844,6 +844,47 @@ struct rpc_rqst
->>>>>>> *xprt_lookup_rqst(struct
->>>>>>> rpc_xprt *xprt, __be32 xid)
->>>>>>> }
->>>>>>> EXPORT_SYMBOL_GPL(xprt_lookup_rqst);
->>>>>>> 
->>>>>>> +/**
->>>>>>> + * xprt_pin_rqst - Pin a request on the transport receive
->>>>>>> list
->>>>>>> + * @req: Request to pin
->>>>>>> + *
->>>>>>> + * Caller must ensure this is atomic with the call to
->>>>>>> xprt_lookup_rqst()
->>>>>>> + * so should be holding the xprt transport lock.
->>>>>>> + */
->>>>>>> +void xprt_pin_rqst(struct rpc_rqst *req)
->>>>>>> +{
->>>>>>> +	set_bit(RPC_TASK_MSG_RECV, &req->rq_task-
->>>>>>>> tk_runstate);
->>>>>>> 
->>>>>>> +}
->>>>>>> +
->>>>>>> +/**
->>>>>>> + * xprt_unpin_rqst - Unpin a request on the transport
->>>>>>> receive
->>>>>>> list
->>>>>>> + * @req: Request to pin
->>>>>>> + *
->>>>>>> + * Caller should be holding the xprt transport lock.
->>>>>>> + */
->>>>>>> +void xprt_unpin_rqst(struct rpc_rqst *req)
->>>>>>> +{
->>>>>>> +	struct rpc_task *task = req->rq_task;
->>>>>>> +
->>>>>>> +	clear_bit(RPC_TASK_MSG_RECV, &task->tk_runstate);
->>>>>>> +	if (test_bit(RPC_TASK_MSG_RECV_WAIT, &task-
->>>>>>>> tk_runstate))
->>>>>>> 
->>>>>>> +		wake_up_bit(&task->tk_runstate,
->>>>>>> RPC_TASK_MSG_RECV);
->>>>>>> +}
->>>>>>> +
->>>>>>> +static void xprt_wait_on_pinned_rqst(struct rpc_rqst *req)
->>>>>>> +__must_hold(&req->rq_xprt->transport_lock)
->>>>>>> +{
->>>>>>> +	struct rpc_task *task = req->rq_task;
->>>>>>> +	if (test_bit(RPC_TASK_MSG_RECV, &task-
->>>>>>>> tk_runstate)) {
->>>>>>> +		spin_unlock_bh(&req->rq_xprt-
->>>>>>>> transport_lock);
->>>>>>> +		set_bit(RPC_TASK_MSG_RECV_WAIT, &task-
->>>>>>>> tk_runstate);
->>>>>>> 
->>>>>>> +		wait_on_bit(&task->tk_runstate,
->>>>>>> RPC_TASK_MSG_RECV,
->>>>>>> +				TASK_UNINTERRUPTIBLE);
->>>>>>> +		clear_bit(RPC_TASK_MSG_RECV_WAIT, &task-
->>>>>>>> tk_runstate);
->>>>>>> 
->>>>>>> +		spin_lock_bh(&req->rq_xprt-
->>>>>>>> transport_lock);
->>>>>>> +	}
->>>>>>> +}
-
-Looking at xprt_wait_for_pinned_rqst, I'm wondering
-though what happens if a soft timeout occurs but the
-RPC Reply never arrives because the server died. Will
-it wait forever in that case?
-
-I can't tell if wait-for-pinned always waits for the
-Reply, or if it can allow the RPC to exit cleanly if
-the Reply hasn't arrived.
-
-
->>>>>>> +
->>>>>>> static void xprt_update_rtt(struct rpc_task *task)
->>>>>>> {
->>>>>>> 	struct rpc_rqst *req = task->tk_rqstp;
->>>>>>> @@ -1301,6 +1342,7 @@ void xprt_release(struct rpc_task
->>>>>>> *task)
->>>>>>> 		list_del(&req->rq_list);
->>>>>>> 	xprt->last_used = jiffies;
->>>>>>> 	xprt_schedule_autodisconnect(xprt);
->>>>>>> +	xprt_wait_on_pinned_rqst(req);
->>>>>>> 	spin_unlock_bh(&xprt->transport_lock);
->>>>>> 
->>>>>> Is it OK to call wait_on_bit(TASK_UNINTERRUPTIBLE) while
->>>>>> holding
->>>>>> a BH spin lock? This could be prone to deadlock.
->>>>> 
->>>>> We drop the lock inside xprt_wait_on_pinned_rqst() if we need
->>>>> to
->>>>> wait.
->>>>> 
->>>>> The reason why we want to hold the lock there is to avoid a
->>>>> use-
->>>>> after-
->>>>> free in xprt_unpin_rqst(). Without the lock, there is a risk
->>>>> that
->>>>> xprt_release() could complete, and the task get freed before we
->>>>> have
->>>>> completed wake_up_bit().
->>>> 
->>>> Agree with the last bit. I had that challenge with the order of
->>>> memory invalidation (which waits) and
->>>> xprt_lookup_rqst/complete_rqst
->>>> in rpcrdma_reply_handler.
->>>> 
->>>> However my concern is that there are many other users of the
->>>> transport_lock. Does it become more tricky not to introduce a
->>>> problem by changing any one of the sites that take
->>>> transport_lock?
->>> 
->>> What is your concern? The main reason for taking the transport lock
->>> in
->>> the current code is twofold:
->>> 
->>> 1) Perform the lookup of the request on the receive list
->>> 2) Ensure the request doesn't disappear while we're writing to it.
->> 
->> Yes, I think we see the same problem space.
->> 
->> I missed, though, that xprt_wait_on_pinned_rqst always releases
->> transport_lock before invoking wait_on_bit.
->> 
->> 
->>>> Despite the deadlock concern, I don't think it makes sense to
->>>> call
->>>> wait_on_bit while holding a spin lock simply because spin locks
->>>> are
->>>> supposed to be for things that are quick, like updating a data
->>>> structure.
->>>> 
->>>> wait_on_bit can take microseconds: prepare_to_wait and
->>>> finish_wait
->>>> can both take a irqsave spin_lock, for example. bit_wait is the
->>>> action that is done if the bit is not ready, and that calls
->>>> schedule(). On a busy system, that kind of context switch can
->>>> take
->>>> dozens of microseconds.
->>> 
->>> Agreed, but we should only very rarely be hitting the wait case. In
->>> all
->>> successful RPC calls, the receive will have happened long before we
->>> call xprt_release(). In fact, the only 2 cases where this can
->>> happen
->>> would be when the RPC call itself is interrupted. Either:
->>> 
->>> 1) The task is synchronous and was interrupted by the user.
->>> 2) The task is terminating early due to a soft timeout.
->>> 
->>> In both those cases, we're in a non-performance path. Furthermore,
->>> they
->>> would currently end up spinning against the transport lock.
->> 
->> OK, no argument that there is any performance concern.
->> 
->> I can hit this case 2 or 3 times out of 5 with generic/029 on
->> NFSv4/RDMA. These days, the worse that happens is the client drops
->> the RDMA connection because I've spent a very long time immersed
->> in these code paths, trying to make the two cases you list above
->> work 100% without deadlock or crash. See commits 04d25b7d5d1b
->> through 431af645cf66, and commit 68791649a725.
->> 
->> It makes me uncertain that waiting for anything in xprt_release
->> is safe, even if the transport_lock is not being held. xprtrdma
->> used to perform synchronous memory invalidation in ->buf_free.
->> It doesn't any more for this reason.
-> 
-> 
-> Full disclosure: I didn't actually enable this code for RDMA.
-
-Noted that; I assumed I would be responsible for it
-if it could be applied to xprtrdma.
-
-
-> The reason is firstly that I won't pretend to understand the locking in
-> rpcrdma_reply_handler(), but furthermore that RDMA doesn't really have
-> a problem with bulk copy in the same way that the socket based code
-> does: the direct placement into the reply buffer means the bulk of the
-> code in rpcrdma_reply_handler() is all about checking the alignment
-> (with, admittedly some scary bits in rpcrdma_inline_fixup()).
-
-rpcrdma_reply_handler actually can use xprt_pin_rqst.
-
-It's not doing a data copy (except for the pull-up in
-rpcrdma_inline_fixup), but it is performing a possibly
-long-running synchronous memory invalidation. During
-that invalidation, the transport_lock cannot be held.
-
-With xprt_pin_rqst, rpcrdma_reply_handler would
-probably work like this:
-
-
-spin_lock(transport_lock)
-xprt_lookup_rqst
-xprt_pin_rqst
-spin_unlock(transport_lock)
-
-invalidate memory associated with this rqst, and wait
-for it to complete
-
-reconstruct the Reply in rqst->rq_rcv_buf, including
-maybe a substantial pull-up if the Reply is large and
-inline
-
-spin_lock(transport_lock)
-xprt_complete_rqst
-xprt_unpin_rqst
-spin_unlock(transport_lock)
-
-
-This would have to co-ordinate with xprt_rdma_free. If
-there are still memory regions registered when
-xprt_rdma_free is called, that means the RPC was
-terminated before the Reply arrived. They still need to
-be invalidated, but these functions have to ensure that
-invalidation does not occur twice.
-
-
->>>>>>> IMO it would be a lot nicer if we had an FSM state
->>>>>>> available that
->>>> could allow another sleep while an RPC task during xprt_release.
->>> 
->>> Why would that be preferable, if the argument holds that this only
->>> happens in these 2 rare error cases?
->> 
->> Because FSM steps are the way this code manages sleeps. That
->> makes it easier to understand and less brittle. I don't think
->> it would be more overhead than test_bit().
-> 
-> The problem is that it would add new states to a number of functions
-> that currently call xprt_release(). Right now, that would mean
-> 
-> call_reserveresult()
-> rpc_verify_header()
-> rpc_exit_task()
-
-Right. That's why I wasn't bold enough to actually try adding
-the FSM myself.
-
-Your solution is helped somewhat by checking to see if a Call
-was actually sent and a Reply is therefore expected. In some
-of these cases, that means waiting can be avoided entirely
-when the RPC exits before call_transmit.
-
-
-> In addition, we'd need a separate solution for rpc_put_task(), and
-> probably also for rpc_release_task() (since these are both called from
-> outside the main state machine loop).
-> 
-> I'm getting a little worried about your reply above: the RPC engine
-> offers no real-time guarantees, so if the RDMA code is really this
-> latency-sensitive, then what will happen if we enable pre-emption
-> and/or we just have a very congested workqueue?
-
-The sensitivity is only performance-related. On CPU-intensive
-workloads, RPC execution time can increase considerably. The
-RDMA transport doesn't rely on timely execution for proper
-operation, but maybe I don't understand your worry.
-
-
-> Also, how would a state machine solution help? I'd expect that to make
-> the latency worse not better, since the work item would end up getting
-> requeued. If the worker thread then gets rescheduled as well...
-> 
-> One solution may be to simply say we're never going to use this
-> mechanism for RDMA. I suspect that if we just replace the use of xprt-
->> transport_lock when protecting the receive queue with a new lock that
-> wouldn't need to be bh-safe then that might suffice to deal with the
-> RDMA latency issues. I have less confidence that would work for the
-> others due to the bulk data copy issue.
-
-I would like a separate non-BH lock, if that can be made to
-work. That's in fact how xprtrdma currently works. xprtrdma
-has its own receive list at the moment so that it can find
-memory associated with a rqst _without_ needing to call
-xprt_lookup_rqst. A non-BH lock is used to protect that
-list.
-
-
---
-Chuck Lever
-
-
+T24gVHVlLCAyMDE3LTA4LTE1IGF0IDEwOjIzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBBdWcgMTQsIDIwMTcsIGF0IDk6MTggUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
+cmltYXJ5ZGF0YS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIE1vbiwgMjAxNy0wOC0x
+NCBhdCAxODoyNSAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIEF1ZyAxNCwg
+MjAxNywgYXQgNDozOCBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYQ0KPiA+
+ID4gPiB0YS5jDQo+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IE9uIE1vbiwg
+MjAxNy0wOC0xNCBhdCAxNjoyMyAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+ID4g
+PiBPbiBBdWcgMTQsIDIwMTcsIGF0IDQ6MDcgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
+cmltYQ0KPiA+ID4gPiA+ID4gcnlkYQ0KPiA+ID4gPiA+ID4gdGEuYw0KPiA+ID4gPiA+ID4gb20+
+IHdyb3RlOg0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiBPbiBNb24sIDIwMTctMDgtMTQgYXQg
+MTU6MjggLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiA+ID4gPiA+IE9uIEF1ZyAx
+NCwgMjAxNywgYXQgMzoxNiBQTSwgVHJvbmQgTXlrbGVidXN0DQo+ID4gPiA+ID4gPiA+ID4gPHRy
+b25kLm15a2xlYnUNCj4gPiA+ID4gPiA+ID4gPiBzdEBwDQo+ID4gPiA+ID4gPiA+ID4gcmltYQ0K
+PiA+ID4gPiA+ID4gPiA+IHJ5ZGF0YS5jb20+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiA+IA0KPiA+
+ID4gPiA+ID4gPiA+IEluc3RlYWQgYWRkIGEgbWVjaGFuaXNtIHRvIGVuc3VyZSB0aGF0IHRoZSBy
+ZXF1ZXN0DQo+ID4gPiA+ID4gPiA+ID4gZG9lc24ndA0KPiA+ID4gPiA+ID4gPiA+IGRpc2FwcGVh
+cg0KPiA+ID4gPiA+ID4gPiA+IGZyb20gdW5kZXJuZWF0aCB1cyB3aGlsZSBjb3B5aW5nIGZyb20g
+dGhlIHNvY2tldC4gV2UgZG8NCj4gPiA+ID4gPiA+ID4gPiB0aGlzIGJ5DQo+ID4gPiA+ID4gPiA+
+ID4gcHJldmVudGluZyB4cHJ0X3JlbGVhc2UoKSBmcm9tIGZyZWVpbmcgdGhlIFhEUiBidWZmZXJz
+DQo+ID4gPiA+ID4gPiA+ID4gdW50aWwNCj4gPiA+ID4gPiA+ID4gPiB0aGUNCj4gPiA+ID4gPiA+
+ID4gPiBmbGFnIFJQQ19UQVNLX01TR19SRUNWIGhhcyBiZWVuIGNsZWFyZWQgZnJvbSB0aGUNCj4g
+PiA+ID4gPiA+ID4gPiByZXF1ZXN0Lg0KPiA+ID4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+
+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnkN
+Cj4gPiA+ID4gPiA+ID4gPiBkYXRhDQo+ID4gPiA+ID4gPiA+ID4gLmNvbQ0KPiA+ID4gPiA+ID4g
+PiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gLS0tDQo+ID4gPiA+ID4g
+PiA+ID4gaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaCB8ICAyICsrDQo+ID4gPiA+ID4gPiA+
+ID4gaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oICB8ICAyICsrDQo+ID4gPiA+ID4gPiA+ID4g
+bmV0L3N1bnJwYy94cHJ0LmMgICAgICAgICAgICB8IDQyDQo+ID4gPiA+ID4gPiA+ID4gKysrKysr
+KysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrDQo+ID4gPiA+ID4gPiA+ID4gbmV0
+L3N1bnJwYy94cHJ0c29jay5jICAgICAgICB8IDI3DQo+ID4gPiA+ID4gPiA+ID4gKysrKysrKysr
+KysrKysrKysrKysrKy0tLQ0KPiA+ID4gPiA+ID4gPiA+IC0tDQo+ID4gPiA+ID4gPiA+ID4gNCBm
+aWxlcyBjaGFuZ2VkLCA2OCBpbnNlcnRpb25zKCspLCA1IGRlbGV0aW9ucygtKQ0KPiA+ID4gPiA+
+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJw
+Yy9zY2hlZC5oDQo+ID4gPiA+ID4gPiA+ID4gYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5o
+DQo+ID4gPiA+ID4gPiA+ID4gaW5kZXggMTViYzFjZDZlZTVjLi5lOTcyZDllMDU0MjYgMTAwNjQ0
+DQo+ID4gPiA+ID4gPiA+ID4gLS0tIGEvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaA0KPiA+
+ID4gPiA+ID4gPiA+ICsrKyBiL2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmgNCj4gPiA+ID4g
+PiA+ID4gPiBAQCAtMTQxLDYgKzE0MSw4IEBAIHN0cnVjdCBycGNfdGFza19zZXR1cCB7DQo+ID4g
+PiA+ID4gPiA+ID4gI2RlZmluZSBSUENfVEFTS19BQ1RJVkUJCTINCj4gPiA+ID4gPiA+ID4gPiAj
+ZGVmaW5lIFJQQ19UQVNLX01TR19YTUlUCTMNCj4gPiA+ID4gPiA+ID4gPiAjZGVmaW5lIFJQQ19U
+QVNLX01TR19YTUlUX1dBSVQJNA0KPiA+ID4gPiA+ID4gPiA+ICsjZGVmaW5lIFJQQ19UQVNLX01T
+R19SRUNWCTUNCj4gPiA+ID4gPiA+ID4gPiArI2RlZmluZSBSUENfVEFTS19NU0dfUkVDVl9XQUlU
+CTYNCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiAjZGVmaW5lIFJQQ19JU19SVU5O
+SU5HKHQpCXRlc3RfYml0KFJQQ19UQVNLX1JVTk4NCj4gPiA+ID4gPiA+ID4gPiBJTkcsDQo+ID4g
+PiA+ID4gPiA+ID4gJih0KS0NCj4gPiA+ID4gPiA+ID4gPiA+IHRrX3J1bnN0YXRlKQ0KPiA+ID4g
+PiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ICNkZWZpbmUgcnBjX3NldF9ydW5uaW5nKHQpCXNl
+dF9iaXQoUlBDX1RBU0tfUlVOTg0KPiA+ID4gPiA+ID4gPiA+IElORywNCj4gPiA+ID4gPiA+ID4g
+PiAmKHQpLQ0KPiA+ID4gPiA+ID4gPiA+ID4gdGtfcnVuc3RhdGUpDQo+ID4gPiA+ID4gPiA+ID4g
+DQo+ID4gPiA+ID4gPiA+ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL3hwcnQu
+aA0KPiA+ID4gPiA+ID4gPiA+IGIvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+ID4gPiA+
+ID4gPiA+ID4gaW5kZXggZWFiMWM3NDllMTkyLi42NWI5ZTAyMjQ3NTMgMTAwNjQ0DQo+ID4gPiA+
+ID4gPiA+ID4gLS0tIGEvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+ID4gPiA+ID4gPiA+
+ID4gKysrIGIvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+ID4gPiA+ID4gPiA+ID4gQEAg
+LTM3Miw2ICszNzIsOCBAQCB2b2lkCQkJeHBydF93cg0KPiA+ID4gPiA+ID4gPiA+IGl0ZV8NCj4g
+PiA+ID4gPiA+ID4gPiBzcGFjDQo+ID4gPiA+ID4gPiA+ID4gZShzdA0KPiA+ID4gPiA+ID4gPiA+
+IHJ1Y3QgcnBjX3hwcnQgKnhwcnQpOw0KPiA+ID4gPiA+ID4gPiA+IHZvaWQJCQl4cHJ0X2FkanVz
+dF9jd25kKHN0cnVjdA0KPiA+ID4gPiA+ID4gPiA+IHJwY194cHJ0DQo+ID4gPiA+ID4gPiA+ID4g
+KnhwcnQsDQo+ID4gPiA+ID4gPiA+ID4gc3RydWN0IHJwY190YXNrICp0YXNrLCBpbnQgcmVzdWx0
+KTsNCj4gPiA+ID4gPiA+ID4gPiBzdHJ1Y3QgcnBjX3Jxc3QgKgl4cHJ0X2xvb2t1cF9ycXN0KHN0
+cnVjdA0KPiA+ID4gPiA+ID4gPiA+IHJwY194cHJ0DQo+ID4gPiA+ID4gPiA+ID4gKnhwcnQsDQo+
+ID4gPiA+ID4gPiA+ID4gX19iZTMyIHhpZCk7DQo+ID4gPiA+ID4gPiA+ID4gdm9pZAkJCXhwcnRf
+Y29tcGxldGVfcnFzdChzdHJ1Y3QNCj4gPiA+ID4gPiA+ID4gPiBycGNfdGFzaw0KPiA+ID4gPiA+
+ID4gPiA+ICp0YXNrLCBpbnQgY29waWVkKTsNCj4gPiA+ID4gPiA+ID4gPiArdm9pZAkJCXhwcnRf
+cGluX3Jxc3Qoc3RydWN0DQo+ID4gPiA+ID4gPiA+ID4gcnBjX3Jxc3QNCj4gPiA+ID4gPiA+ID4g
+PiAqcmVxKTsNCj4gPiA+ID4gPiA+ID4gPiArdm9pZAkJCXhwcnRfdW5waW5fcnFzdChzdHJ1Y3QN
+Cj4gPiA+ID4gPiA+ID4gPiBycGNfcnFzdA0KPiA+ID4gPiA+ID4gPiA+ICpyZXEpOw0KPiA+ID4g
+PiA+ID4gPiA+IHZvaWQJCQl4cHJ0X3JlbGVhc2VfcnFzdF9jb25nKHN0cnUNCj4gPiA+ID4gPiA+
+ID4gPiBjdA0KPiA+ID4gPiA+ID4gPiA+IHJwY190YXNrDQo+ID4gPiA+ID4gPiA+ID4gKnRhc2sp
+Ow0KPiA+ID4gPiA+ID4gPiA+IHZvaWQJCQl4cHJ0X2Rpc2Nvbm5lY3RfZG9uZShzdHJ1Y3QNCj4g
+PiA+ID4gPiA+ID4gPiBycGNfeHBydA0KPiA+ID4gPiA+ID4gPiA+ICp4cHJ0KTsNCj4gPiA+ID4g
+PiA+ID4gPiB2b2lkCQkJeHBydF9mb3JjZV9kaXNjb25uZWN0KHN0cnVjDQo+ID4gPiA+ID4gPiA+
+ID4gdA0KPiA+ID4gPiA+ID4gPiA+IHJwY194cHJ0DQo+ID4gPiA+ID4gPiA+ID4gKnhwcnQpOw0K
+PiA+ID4gPiA+ID4gPiA+IGRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25ldC9zdW5y
+cGMveHBydC5jDQo+ID4gPiA+ID4gPiA+ID4gaW5kZXggNzg4YzFiNjEzOGMyLi42MmMzNzk4NjVm
+N2MgMTAwNjQ0DQo+ID4gPiA+ID4gPiA+ID4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0LmMNCj4gPiA+
+ID4gPiA+ID4gPiArKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+ID4gPiA+ID4gPiA+IEBAIC04
+NDQsNiArODQ0LDQ3IEBAIHN0cnVjdCBycGNfcnFzdA0KPiA+ID4gPiA+ID4gPiA+ICp4cHJ0X2xv
+b2t1cF9ycXN0KHN0cnVjdA0KPiA+ID4gPiA+ID4gPiA+IHJwY194cHJ0ICp4cHJ0LCBfX2JlMzIg
+eGlkKQ0KPiA+ID4gPiA+ID4gPiA+IH0NCj4gPiA+ID4gPiA+ID4gPiBFWFBPUlRfU1lNQk9MX0dQ
+TCh4cHJ0X2xvb2t1cF9ycXN0KTsNCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiAr
+LyoqDQo+ID4gPiA+ID4gPiA+ID4gKyAqIHhwcnRfcGluX3Jxc3QgLSBQaW4gYSByZXF1ZXN0IG9u
+IHRoZSB0cmFuc3BvcnQNCj4gPiA+ID4gPiA+ID4gPiByZWNlaXZlDQo+ID4gPiA+ID4gPiA+ID4g
+bGlzdA0KPiA+ID4gPiA+ID4gPiA+ICsgKiBAcmVxOiBSZXF1ZXN0IHRvIHBpbg0KPiA+ID4gPiA+
+ID4gPiA+ICsgKg0KPiA+ID4gPiA+ID4gPiA+ICsgKiBDYWxsZXIgbXVzdCBlbnN1cmUgdGhpcyBp
+cyBhdG9taWMgd2l0aCB0aGUgY2FsbCB0bw0KPiA+ID4gPiA+ID4gPiA+IHhwcnRfbG9va3VwX3Jx
+c3QoKQ0KPiA+ID4gPiA+ID4gPiA+ICsgKiBzbyBzaG91bGQgYmUgaG9sZGluZyB0aGUgeHBydCB0
+cmFuc3BvcnQgbG9jay4NCj4gPiA+ID4gPiA+ID4gPiArICovDQo+ID4gPiA+ID4gPiA+ID4gK3Zv
+aWQgeHBydF9waW5fcnFzdChzdHJ1Y3QgcnBjX3Jxc3QgKnJlcSkNCj4gPiA+ID4gPiA+ID4gPiAr
+ew0KPiA+ID4gPiA+ID4gPiA+ICsJc2V0X2JpdChSUENfVEFTS19NU0dfUkVDViwgJnJlcS0+cnFf
+dGFzay0NCj4gPiA+ID4gPiA+ID4gPiA+IHRrX3J1bnN0YXRlKTsNCj4gPiA+ID4gPiA+ID4gPiAN
+Cj4gPiA+ID4gPiA+ID4gPiArfQ0KPiA+ID4gPiA+ID4gPiA+ICsNCj4gPiA+ID4gPiA+ID4gPiAr
+LyoqDQo+ID4gPiA+ID4gPiA+ID4gKyAqIHhwcnRfdW5waW5fcnFzdCAtIFVucGluIGEgcmVxdWVz
+dCBvbiB0aGUgdHJhbnNwb3J0DQo+ID4gPiA+ID4gPiA+ID4gcmVjZWl2ZQ0KPiA+ID4gPiA+ID4g
+PiA+IGxpc3QNCj4gPiA+ID4gPiA+ID4gPiArICogQHJlcTogUmVxdWVzdCB0byBwaW4NCj4gPiA+
+ID4gPiA+ID4gPiArICoNCj4gPiA+ID4gPiA+ID4gPiArICogQ2FsbGVyIHNob3VsZCBiZSBob2xk
+aW5nIHRoZSB4cHJ0IHRyYW5zcG9ydCBsb2NrLg0KPiA+ID4gPiA+ID4gPiA+ICsgKi8NCj4gPiA+
+ID4gPiA+ID4gPiArdm9pZCB4cHJ0X3VucGluX3Jxc3Qoc3RydWN0IHJwY19ycXN0ICpyZXEpDQo+
+ID4gPiA+ID4gPiA+ID4gK3sNCj4gPiA+ID4gPiA+ID4gPiArCXN0cnVjdCBycGNfdGFzayAqdGFz
+ayA9IHJlcS0+cnFfdGFzazsNCj4gPiA+ID4gPiA+ID4gPiArDQo+ID4gPiA+ID4gPiA+ID4gKwlj
+bGVhcl9iaXQoUlBDX1RBU0tfTVNHX1JFQ1YsICZ0YXNrLQ0KPiA+ID4gPiA+ID4gPiA+ID50a19y
+dW5zdGF0ZSk7DQo+ID4gPiA+ID4gPiA+ID4gKwlpZiAodGVzdF9iaXQoUlBDX1RBU0tfTVNHX1JF
+Q1ZfV0FJVCwgJnRhc2stDQo+ID4gPiA+ID4gPiA+ID4gPiB0a19ydW5zdGF0ZSkpDQo+ID4gPiA+
+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gKwkJd2FrZV91cF9iaXQoJnRhc2stPnRrX3J1bnN0
+YXRlLA0KPiA+ID4gPiA+ID4gPiA+IFJQQ19UQVNLX01TR19SRUNWKTsNCj4gPiA+ID4gPiA+ID4g
+PiArfQ0KPiA+ID4gPiA+ID4gPiA+ICsNCj4gPiA+ID4gPiA+ID4gPiArc3RhdGljIHZvaWQgeHBy
+dF93YWl0X29uX3Bpbm5lZF9ycXN0KHN0cnVjdCBycGNfcnFzdA0KPiA+ID4gPiA+ID4gPiA+ICpy
+ZXEpDQo+ID4gPiA+ID4gPiA+ID4gK19fbXVzdF9ob2xkKCZyZXEtPnJxX3hwcnQtPnRyYW5zcG9y
+dF9sb2NrKQ0KPiA+ID4gPiA+ID4gPiA+ICt7DQo+ID4gPiA+ID4gPiA+ID4gKwlzdHJ1Y3QgcnBj
+X3Rhc2sgKnRhc2sgPSByZXEtPnJxX3Rhc2s7DQo+ID4gPiA+ID4gPiA+ID4gKwlpZiAodGVzdF9i
+aXQoUlBDX1RBU0tfTVNHX1JFQ1YsICZ0YXNrLQ0KPiA+ID4gPiA+ID4gPiA+ID4gdGtfcnVuc3Rh
+dGUpKSB7DQo+ID4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+ID4gKwkJc3Bpbl91bmxvY2tf
+YmgoJnJlcS0+cnFfeHBydC0NCj4gPiA+ID4gPiA+ID4gPiA+IHRyYW5zcG9ydF9sb2NrKTsNCj4g
+PiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiArCQlzZXRfYml0KFJQQ19UQVNLX01TR19S
+RUNWX1dBSVQsICZ0YXNrLQ0KPiA+ID4gPiA+ID4gPiA+ID4gdGtfcnVuc3RhdGUpOw0KPiA+ID4g
+PiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gPiA+ICsJCXdhaXRfb25fYml0KCZ0YXNrLT50a19ydW5z
+dGF0ZSwNCj4gPiA+ID4gPiA+ID4gPiBSUENfVEFTS19NU0dfUkVDViwNCj4gPiA+ID4gPiA+ID4g
+PiArCQkJCVRBU0tfVU5JTlRFUlJVUFRJQkxFKTsNCj4gPiA+ID4gPiA+ID4gPiArCQljbGVhcl9i
+aXQoUlBDX1RBU0tfTVNHX1JFQ1ZfV0FJVCwNCj4gPiA+ID4gPiA+ID4gPiAmdGFzay0NCj4gPiA+
+ID4gPiA+ID4gPiA+IHRrX3J1bnN0YXRlKTsNCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+
+ID4gPiArCQlzcGluX2xvY2tfYmgoJnJlcS0+cnFfeHBydC0NCj4gPiA+ID4gPiA+ID4gPiA+IHRy
+YW5zcG9ydF9sb2NrKTsNCj4gPiA+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ID4gPiArCX0NCj4g
+PiA+ID4gPiA+ID4gPiArfQ0KPiANCj4gTG9va2luZyBhdCB4cHJ0X3dhaXRfZm9yX3Bpbm5lZF9y
+cXN0LCBJJ20gd29uZGVyaW5nDQo+IHRob3VnaCB3aGF0IGhhcHBlbnMgaWYgYSBzb2Z0IHRpbWVv
+dXQgb2NjdXJzIGJ1dCB0aGUNCj4gUlBDIFJlcGx5IG5ldmVyIGFycml2ZXMgYmVjYXVzZSB0aGUg
+c2VydmVyIGRpZWQuIFdpbGwNCj4gaXQgd2FpdCBmb3JldmVyIGluIHRoYXQgY2FzZT8NCj4gDQo+
+IEkgY2FuJ3QgdGVsbCBpZiB3YWl0LWZvci1waW5uZWQgYWx3YXlzIHdhaXRzIGZvciB0aGUNCj4g
+UmVwbHksIG9yIGlmIGl0IGNhbiBhbGxvdyB0aGUgUlBDIHRvIGV4aXQgY2xlYW5seSBpZg0KPiB0
+aGUgUmVwbHkgaGFzbid0IGFycml2ZWQuDQoNCk9oLi4uIEkgdGhpbmsgSSBzZWUgd2hhdCB5b3Vy
+IGNvbmNlcm4gaXMuDQoNClNvIG15IGFzc3VtcHRpb24gaXMgdGhhdCB0aGUgYml0IHdpbGwgYWx3
+YXlzIGJlIHNldCBhbmQgcmVsZWFzZWQgaW4NCnhzX3RjcF9yZWFkX3JlcGx5KCkgKGFuZCBlcXVp
+dmFsZW50KS4gSXQgc2hvdWxkIG5ldmVyIGJlIHNldCB3aGlsZQ0Kd2FpdGluZyBmb3IgZGF0YS4g
+SXQgaXMgb25seSBzZXQgd2hlbiBkb2luZyBfbm9uLWJsb2NraW5nXyBjb3B5aW5nIG9mDQpkYXRh
+IGZyb20gdGhlIHNvY2tldCB0byB0aGUgYnVmZmVycy4NCg0KSU9XOiB3YWl0X2Zvcl9waW5uZWQg
+d2lsbCB3YWl0IG9ubHkgaWYgbmV3IHJlcGx5IGRhdGEgYXJyaXZlcyBvbiB0aGUNCnNvY2tldCBp
+biB0aGUgaW5zdGFuY2Ugd2hlbiB0aGUgc3BlY2lmaWMgcmVxdWVzdCB0byB3aGljaCBpdCBpcyBi
+ZWluZw0KZGVsaXZlcmVkIGlzIGJlaW5nIHRvcm4gZG93bi4gSWYgdGhlcmUgaXMgbm8gZGF0YSBm
+b3IgdGhlIHJlcXVlc3QgaW4NCnRoZSBzb2NrZXQsIHRoZW4gdGhlcmUgaXMgbm8gd2FpdC4gSXQg
+ZG9lc24ndCBtYXR0ZXIgaWYgdGhlcmUgaGFzIGJlZW4NCmEgcGFydGlhbCBkZWxpdmVyeSBvZiBk
+YXRhIHByZXZpb3VzbHkgKG9yIG5vIGRlbGl2ZXJ5KTsgdW5sZXNzDQp4c190Y3BfcmVhZF9yZXBs
+eSgpIGlzIGFjdHVhbGx5IHJ1bm5pbmcgYW5kIHBpbm5pbmcgdGhlIHJlcXVlc3QsIHRoZXJlDQpp
+cyBubyB3YWl0Lg0KDQoNCj4gPiA+ID4gPiA+ID4gPiArDQo+ID4gPiA+ID4gPiA+ID4gc3RhdGlj
+IHZvaWQgeHBydF91cGRhdGVfcnR0KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gPiA+ID4gPiA+
+ID4gPiB7DQo+ID4gPiA+ID4gPiA+ID4gCXN0cnVjdCBycGNfcnFzdCAqcmVxID0gdGFzay0+dGtf
+cnFzdHA7DQo+ID4gPiA+ID4gPiA+ID4gQEAgLTEzMDEsNiArMTM0Miw3IEBAIHZvaWQgeHBydF9y
+ZWxlYXNlKHN0cnVjdCBycGNfdGFzaw0KPiA+ID4gPiA+ID4gPiA+ICp0YXNrKQ0KPiA+ID4gPiA+
+ID4gPiA+IAkJbGlzdF9kZWwoJnJlcS0+cnFfbGlzdCk7DQo+ID4gPiA+ID4gPiA+ID4gCXhwcnQt
+Pmxhc3RfdXNlZCA9IGppZmZpZXM7DQo+ID4gPiA+ID4gPiA+ID4gCXhwcnRfc2NoZWR1bGVfYXV0
+b2Rpc2Nvbm5lY3QoeHBydCk7DQo+ID4gPiA+ID4gPiA+ID4gKwl4cHJ0X3dhaXRfb25fcGlubmVk
+X3Jxc3QocmVxKTsNCj4gPiA+ID4gPiA+ID4gPiAJc3Bpbl91bmxvY2tfYmgoJnhwcnQtPnRyYW5z
+cG9ydF9sb2NrKTsNCj4gPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiA+IElzIGl0IE9LIHRvIGNh
+bGwgd2FpdF9vbl9iaXQoVEFTS19VTklOVEVSUlVQVElCTEUpIHdoaWxlDQo+ID4gPiA+ID4gPiA+
+IGhvbGRpbmcNCj4gPiA+ID4gPiA+ID4gYSBCSCBzcGluIGxvY2s/IFRoaXMgY291bGQgYmUgcHJv
+bmUgdG8gZGVhZGxvY2suDQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFdlIGRyb3AgdGhlIGxv
+Y2sgaW5zaWRlIHhwcnRfd2FpdF9vbl9waW5uZWRfcnFzdCgpIGlmIHdlDQo+ID4gPiA+ID4gPiBu
+ZWVkDQo+ID4gPiA+ID4gPiB0bw0KPiA+ID4gPiA+ID4gd2FpdC4NCj4gPiA+ID4gPiA+IA0KPiA+
+ID4gPiA+ID4gVGhlIHJlYXNvbiB3aHkgd2Ugd2FudCB0byBob2xkIHRoZSBsb2NrIHRoZXJlIGlz
+IHRvIGF2b2lkIGENCj4gPiA+ID4gPiA+IHVzZS0NCj4gPiA+ID4gPiA+IGFmdGVyLQ0KPiA+ID4g
+PiA+ID4gZnJlZSBpbiB4cHJ0X3VucGluX3Jxc3QoKS4gV2l0aG91dCB0aGUgbG9jaywgdGhlcmUg
+aXMgYQ0KPiA+ID4gPiA+ID4gcmlzaw0KPiA+ID4gPiA+ID4gdGhhdA0KPiA+ID4gPiA+ID4geHBy
+dF9yZWxlYXNlKCkgY291bGQgY29tcGxldGUsIGFuZCB0aGUgdGFzayBnZXQgZnJlZWQNCj4gPiA+
+ID4gPiA+IGJlZm9yZSB3ZQ0KPiA+ID4gPiA+ID4gaGF2ZQ0KPiA+ID4gPiA+ID4gY29tcGxldGVk
+IHdha2VfdXBfYml0KCkuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gQWdyZWUgd2l0aCB0aGUgbGFz
+dCBiaXQuIEkgaGFkIHRoYXQgY2hhbGxlbmdlIHdpdGggdGhlIG9yZGVyDQo+ID4gPiA+ID4gb2YN
+Cj4gPiA+ID4gPiBtZW1vcnkgaW52YWxpZGF0aW9uICh3aGljaCB3YWl0cykgYW5kDQo+ID4gPiA+
+ID4geHBydF9sb29rdXBfcnFzdC9jb21wbGV0ZV9ycXN0DQo+ID4gPiA+ID4gaW4gcnBjcmRtYV9y
+ZXBseV9oYW5kbGVyLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEhvd2V2ZXIgbXkgY29uY2VybiBp
+cyB0aGF0IHRoZXJlIGFyZSBtYW55IG90aGVyIHVzZXJzIG9mIHRoZQ0KPiA+ID4gPiA+IHRyYW5z
+cG9ydF9sb2NrLiBEb2VzIGl0IGJlY29tZSBtb3JlIHRyaWNreSBub3QgdG8gaW50cm9kdWNlIGEN
+Cj4gPiA+ID4gPiBwcm9ibGVtIGJ5IGNoYW5naW5nIGFueSBvbmUgb2YgdGhlIHNpdGVzIHRoYXQg
+dGFrZQ0KPiA+ID4gPiA+IHRyYW5zcG9ydF9sb2NrPw0KPiA+ID4gPiANCj4gPiA+ID4gV2hhdCBp
+cyB5b3VyIGNvbmNlcm4/IFRoZSBtYWluIHJlYXNvbiBmb3IgdGFraW5nIHRoZSB0cmFuc3BvcnQN
+Cj4gPiA+ID4gbG9jaw0KPiA+ID4gPiBpbg0KPiA+ID4gPiB0aGUgY3VycmVudCBjb2RlIGlzIHR3
+b2ZvbGQ6DQo+ID4gPiA+IA0KPiA+ID4gPiAxKSBQZXJmb3JtIHRoZSBsb29rdXAgb2YgdGhlIHJl
+cXVlc3Qgb24gdGhlIHJlY2VpdmUgbGlzdA0KPiA+ID4gPiAyKSBFbnN1cmUgdGhlIHJlcXVlc3Qg
+ZG9lc24ndCBkaXNhcHBlYXIgd2hpbGUgd2UncmUgd3JpdGluZyB0bw0KPiA+ID4gPiBpdC4NCj4g
+PiA+IA0KPiA+ID4gWWVzLCBJIHRoaW5rIHdlIHNlZSB0aGUgc2FtZSBwcm9ibGVtIHNwYWNlLg0K
+PiA+ID4gDQo+ID4gPiBJIG1pc3NlZCwgdGhvdWdoLCB0aGF0IHhwcnRfd2FpdF9vbl9waW5uZWRf
+cnFzdCBhbHdheXMgcmVsZWFzZXMNCj4gPiA+IHRyYW5zcG9ydF9sb2NrIGJlZm9yZSBpbnZva2lu
+ZyB3YWl0X29uX2JpdC4NCj4gPiA+IA0KPiA+ID4gDQo+ID4gPiA+ID4gRGVzcGl0ZSB0aGUgZGVh
+ZGxvY2sgY29uY2VybiwgSSBkb24ndCB0aGluayBpdCBtYWtlcyBzZW5zZSB0bw0KPiA+ID4gPiA+
+IGNhbGwNCj4gPiA+ID4gPiB3YWl0X29uX2JpdCB3aGlsZSBob2xkaW5nIGEgc3BpbiBsb2NrIHNp
+bXBseSBiZWNhdXNlIHNwaW4NCj4gPiA+ID4gPiBsb2Nrcw0KPiA+ID4gPiA+IGFyZQ0KPiA+ID4g
+PiA+IHN1cHBvc2VkIHRvIGJlIGZvciB0aGluZ3MgdGhhdCBhcmUgcXVpY2ssIGxpa2UgdXBkYXRp
+bmcgYQ0KPiA+ID4gPiA+IGRhdGENCj4gPiA+ID4gPiBzdHJ1Y3R1cmUuDQo+ID4gPiA+ID4gDQo+
+ID4gPiA+ID4gd2FpdF9vbl9iaXQgY2FuIHRha2UgbWljcm9zZWNvbmRzOiBwcmVwYXJlX3RvX3dh
+aXQgYW5kDQo+ID4gPiA+ID4gZmluaXNoX3dhaXQNCj4gPiA+ID4gPiBjYW4gYm90aCB0YWtlIGEg
+aXJxc2F2ZSBzcGluX2xvY2ssIGZvciBleGFtcGxlLiBiaXRfd2FpdCBpcw0KPiA+ID4gPiA+IHRo
+ZQ0KPiA+ID4gPiA+IGFjdGlvbiB0aGF0IGlzIGRvbmUgaWYgdGhlIGJpdCBpcyBub3QgcmVhZHks
+IGFuZCB0aGF0IGNhbGxzDQo+ID4gPiA+ID4gc2NoZWR1bGUoKS4gT24gYSBidXN5IHN5c3RlbSwg
+dGhhdCBraW5kIG9mIGNvbnRleHQgc3dpdGNoIGNhbg0KPiA+ID4gPiA+IHRha2UNCj4gPiA+ID4g
+PiBkb3plbnMgb2YgbWljcm9zZWNvbmRzLg0KPiA+ID4gPiANCj4gPiA+ID4gQWdyZWVkLCBidXQg
+d2Ugc2hvdWxkIG9ubHkgdmVyeSByYXJlbHkgYmUgaGl0dGluZyB0aGUgd2FpdA0KPiA+ID4gPiBj
+YXNlLiBJbg0KPiA+ID4gPiBhbGwNCj4gPiA+ID4gc3VjY2Vzc2Z1bCBSUEMgY2FsbHMsIHRoZSBy
+ZWNlaXZlIHdpbGwgaGF2ZSBoYXBwZW5lZCBsb25nDQo+ID4gPiA+IGJlZm9yZSB3ZQ0KPiA+ID4g
+PiBjYWxsIHhwcnRfcmVsZWFzZSgpLiBJbiBmYWN0LCB0aGUgb25seSAyIGNhc2VzIHdoZXJlIHRo
+aXMgY2FuDQo+ID4gPiA+IGhhcHBlbg0KPiA+ID4gPiB3b3VsZCBiZSB3aGVuIHRoZSBSUEMgY2Fs
+bCBpdHNlbGYgaXMgaW50ZXJydXB0ZWQuIEVpdGhlcjoNCj4gPiA+ID4gDQo+ID4gPiA+IDEpIFRo
+ZSB0YXNrIGlzIHN5bmNocm9ub3VzIGFuZCB3YXMgaW50ZXJydXB0ZWQgYnkgdGhlIHVzZXIuDQo+
+ID4gPiA+IDIpIFRoZSB0YXNrIGlzIHRlcm1pbmF0aW5nIGVhcmx5IGR1ZSB0byBhIHNvZnQgdGlt
+ZW91dC4NCj4gPiA+ID4gDQo+ID4gPiA+IEluIGJvdGggdGhvc2UgY2FzZXMsIHdlJ3JlIGluIGEg
+bm9uLXBlcmZvcm1hbmNlIHBhdGguDQo+ID4gPiA+IEZ1cnRoZXJtb3JlLA0KPiA+ID4gPiB0aGV5
+DQo+ID4gPiA+IHdvdWxkIGN1cnJlbnRseSBlbmQgdXAgc3Bpbm5pbmcgYWdhaW5zdCB0aGUgdHJh
+bnNwb3J0IGxvY2suDQo+ID4gPiANCj4gPiA+IE9LLCBubyBhcmd1bWVudCB0aGF0IHRoZXJlIGlz
+IGFueSBwZXJmb3JtYW5jZSBjb25jZXJuLg0KPiA+ID4gDQo+ID4gPiBJIGNhbiBoaXQgdGhpcyBj
+YXNlIDIgb3IgMyB0aW1lcyBvdXQgb2YgNSB3aXRoIGdlbmVyaWMvMDI5IG9uDQo+ID4gPiBORlN2
+NC9SRE1BLiBUaGVzZSBkYXlzLCB0aGUgd29yc2UgdGhhdCBoYXBwZW5zIGlzIHRoZSBjbGllbnQN
+Cj4gPiA+IGRyb3BzDQo+ID4gPiB0aGUgUkRNQSBjb25uZWN0aW9uIGJlY2F1c2UgSSd2ZSBzcGVu
+dCBhIHZlcnkgbG9uZyB0aW1lIGltbWVyc2VkDQo+ID4gPiBpbiB0aGVzZSBjb2RlIHBhdGhzLCB0
+cnlpbmcgdG8gbWFrZSB0aGUgdHdvIGNhc2VzIHlvdSBsaXN0IGFib3ZlDQo+ID4gPiB3b3JrIDEw
+MCUgd2l0aG91dCBkZWFkbG9jayBvciBjcmFzaC4gU2VlIGNvbW1pdHMgMDRkMjViN2Q1ZDFiDQo+
+ID4gPiB0aHJvdWdoIDQzMWFmNjQ1Y2Y2NiwgYW5kIGNvbW1pdCA2ODc5MTY0OWE3MjUuDQo+ID4g
+PiANCj4gPiA+IEl0IG1ha2VzIG1lIHVuY2VydGFpbiB0aGF0IHdhaXRpbmcgZm9yIGFueXRoaW5n
+IGluIHhwcnRfcmVsZWFzZQ0KPiA+ID4gaXMgc2FmZSwgZXZlbiBpZiB0aGUgdHJhbnNwb3J0X2xv
+Y2sgaXMgbm90IGJlaW5nIGhlbGQuIHhwcnRyZG1hDQo+ID4gPiB1c2VkIHRvIHBlcmZvcm0gc3lu
+Y2hyb25vdXMgbWVtb3J5IGludmFsaWRhdGlvbiBpbiAtPmJ1Zl9mcmVlLg0KPiA+ID4gSXQgZG9l
+c24ndCBhbnkgbW9yZSBmb3IgdGhpcyByZWFzb24uDQo+ID4gDQo+ID4gDQo+ID4gRnVsbCBkaXNj
+bG9zdXJlOiBJIGRpZG4ndCBhY3R1YWxseSBlbmFibGUgdGhpcyBjb2RlIGZvciBSRE1BLg0KPiAN
+Cj4gTm90ZWQgdGhhdDsgSSBhc3N1bWVkIEkgd291bGQgYmUgcmVzcG9uc2libGUgZm9yIGl0DQo+
+IGlmIGl0IGNvdWxkIGJlIGFwcGxpZWQgdG8geHBydHJkbWEuDQo+IA0KPiANCj4gPiBUaGUgcmVh
+c29uIGlzIGZpcnN0bHkgdGhhdCBJIHdvbid0IHByZXRlbmQgdG8gdW5kZXJzdGFuZCB0aGUNCj4g
+PiBsb2NraW5nIGluDQo+ID4gcnBjcmRtYV9yZXBseV9oYW5kbGVyKCksIGJ1dCBmdXJ0aGVybW9y
+ZSB0aGF0IFJETUEgZG9lc24ndCByZWFsbHkNCj4gPiBoYXZlDQo+ID4gYSBwcm9ibGVtIHdpdGgg
+YnVsayBjb3B5IGluIHRoZSBzYW1lIHdheSB0aGF0IHRoZSBzb2NrZXQgYmFzZWQgY29kZQ0KPiA+
+IGRvZXM6IHRoZSBkaXJlY3QgcGxhY2VtZW50IGludG8gdGhlIHJlcGx5IGJ1ZmZlciBtZWFucyB0
+aGUgYnVsayBvZg0KPiA+IHRoZQ0KPiA+IGNvZGUgaW4gcnBjcmRtYV9yZXBseV9oYW5kbGVyKCkg
+aXMgYWxsIGFib3V0IGNoZWNraW5nIHRoZSBhbGlnbm1lbnQNCj4gPiAod2l0aCwgYWRtaXR0ZWRs
+eSBzb21lIHNjYXJ5IGJpdHMgaW4gcnBjcmRtYV9pbmxpbmVfZml4dXAoKSkuDQo+IA0KPiBycGNy
+ZG1hX3JlcGx5X2hhbmRsZXIgYWN0dWFsbHkgY2FuIHVzZSB4cHJ0X3Bpbl9ycXN0Lg0KPiANCj4g
+SXQncyBub3QgZG9pbmcgYSBkYXRhIGNvcHkgKGV4Y2VwdCBmb3IgdGhlIHB1bGwtdXAgaW4NCj4g
+cnBjcmRtYV9pbmxpbmVfZml4dXApLCBidXQgaXQgaXMgcGVyZm9ybWluZyBhIHBvc3NpYmx5DQo+
+IGxvbmctcnVubmluZyBzeW5jaHJvbm91cyBtZW1vcnkgaW52YWxpZGF0aW9uLiBEdXJpbmcNCj4g
+dGhhdCBpbnZhbGlkYXRpb24sIHRoZSB0cmFuc3BvcnRfbG9jayBjYW5ub3QgYmUgaGVsZC4NCj4g
+DQo+IFdpdGggeHBydF9waW5fcnFzdCwgcnBjcmRtYV9yZXBseV9oYW5kbGVyIHdvdWxkDQo+IHBy
+b2JhYmx5IHdvcmsgbGlrZSB0aGlzOg0KPiANCj4gDQo+IHNwaW5fbG9jayh0cmFuc3BvcnRfbG9j
+aykNCj4geHBydF9sb29rdXBfcnFzdA0KPiB4cHJ0X3Bpbl9ycXN0DQo+IHNwaW5fdW5sb2NrKHRy
+YW5zcG9ydF9sb2NrKQ0KPiANCj4gaW52YWxpZGF0ZSBtZW1vcnkgYXNzb2NpYXRlZCB3aXRoIHRo
+aXMgcnFzdCwgYW5kIHdhaXQNCj4gZm9yIGl0IHRvIGNvbXBsZXRlDQo+IA0KPiByZWNvbnN0cnVj
+dCB0aGUgUmVwbHkgaW4gcnFzdC0+cnFfcmN2X2J1ZiwgaW5jbHVkaW5nDQo+IG1heWJlIGEgc3Vi
+c3RhbnRpYWwgcHVsbC11cCBpZiB0aGUgUmVwbHkgaXMgbGFyZ2UgYW5kDQo+IGlubGluZQ0KPiAN
+Cj4gc3Bpbl9sb2NrKHRyYW5zcG9ydF9sb2NrKQ0KPiB4cHJ0X2NvbXBsZXRlX3Jxc3QNCj4geHBy
+dF91bnBpbl9ycXN0DQo+IHNwaW5fdW5sb2NrKHRyYW5zcG9ydF9sb2NrKQ0KPiANCj4gDQo+IFRo
+aXMgd291bGQgaGF2ZSB0byBjby1vcmRpbmF0ZSB3aXRoIHhwcnRfcmRtYV9mcmVlLiBJZg0KPiB0
+aGVyZSBhcmUgc3RpbGwgbWVtb3J5IHJlZ2lvbnMgcmVnaXN0ZXJlZCB3aGVuDQo+IHhwcnRfcmRt
+YV9mcmVlIGlzIGNhbGxlZCwgdGhhdCBtZWFucyB0aGUgUlBDIHdhcw0KPiB0ZXJtaW5hdGVkIGJl
+Zm9yZSB0aGUgUmVwbHkgYXJyaXZlZC4gVGhleSBzdGlsbCBuZWVkIHRvDQo+IGJlIGludmFsaWRh
+dGVkLCBidXQgdGhlc2UgZnVuY3Rpb25zIGhhdmUgdG8gZW5zdXJlIHRoYXQNCj4gaW52YWxpZGF0
+aW9uIGRvZXMgbm90IG9jY3VyIHR3aWNlLg0KPiANCj4gDQo+ID4gPiA+ID4gPiA+ID4gSU1PIGl0
+IHdvdWxkIGJlIGEgbG90IG5pY2VyIGlmIHdlIGhhZCBhbiBGU00gc3RhdGUNCj4gPiA+ID4gPiA+
+ID4gPiBhdmFpbGFibGUgdGhhdA0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IGNvdWxkIGFsbG93IGFu
+b3RoZXIgc2xlZXAgd2hpbGUgYW4gUlBDIHRhc2sgZHVyaW5nDQo+ID4gPiA+ID4geHBydF9yZWxl
+YXNlLg0KPiA+ID4gPiANCj4gPiA+ID4gV2h5IHdvdWxkIHRoYXQgYmUgcHJlZmVyYWJsZSwgaWYg
+dGhlIGFyZ3VtZW50IGhvbGRzIHRoYXQgdGhpcw0KPiA+ID4gPiBvbmx5DQo+ID4gPiA+IGhhcHBl
+bnMgaW4gdGhlc2UgMiByYXJlIGVycm9yIGNhc2VzPw0KPiA+ID4gDQo+ID4gPiBCZWNhdXNlIEZT
+TSBzdGVwcyBhcmUgdGhlIHdheSB0aGlzIGNvZGUgbWFuYWdlcyBzbGVlcHMuIFRoYXQNCj4gPiA+
+IG1ha2VzIGl0IGVhc2llciB0byB1bmRlcnN0YW5kIGFuZCBsZXNzIGJyaXR0bGUuIEkgZG9uJ3Qg
+dGhpbmsNCj4gPiA+IGl0IHdvdWxkIGJlIG1vcmUgb3ZlcmhlYWQgdGhhbiB0ZXN0X2JpdCgpLg0K
+PiA+IA0KPiA+IFRoZSBwcm9ibGVtIGlzIHRoYXQgaXQgd291bGQgYWRkIG5ldyBzdGF0ZXMgdG8g
+YSBudW1iZXIgb2YNCj4gPiBmdW5jdGlvbnMNCj4gPiB0aGF0IGN1cnJlbnRseSBjYWxsIHhwcnRf
+cmVsZWFzZSgpLiBSaWdodCBub3csIHRoYXQgd291bGQgbWVhbg0KPiA+IA0KPiA+IGNhbGxfcmVz
+ZXJ2ZXJlc3VsdCgpDQo+ID4gcnBjX3ZlcmlmeV9oZWFkZXIoKQ0KPiA+IHJwY19leGl0X3Rhc2so
+KQ0KPiANCj4gUmlnaHQuIFRoYXQncyB3aHkgSSB3YXNuJ3QgYm9sZCBlbm91Z2ggdG8gYWN0dWFs
+bHkgdHJ5IGFkZGluZw0KPiB0aGUgRlNNIG15c2VsZi4NCj4gDQo+IFlvdXIgc29sdXRpb24gaXMg
+aGVscGVkIHNvbWV3aGF0IGJ5IGNoZWNraW5nIHRvIHNlZSBpZiBhIENhbGwNCj4gd2FzIGFjdHVh
+bGx5IHNlbnQgYW5kIGEgUmVwbHkgaXMgdGhlcmVmb3JlIGV4cGVjdGVkLiBJbiBzb21lDQo+IG9m
+IHRoZXNlIGNhc2VzLCB0aGF0IG1lYW5zIHdhaXRpbmcgY2FuIGJlIGF2b2lkZWQgZW50aXJlbHkN
+Cj4gd2hlbiB0aGUgUlBDIGV4aXRzIGJlZm9yZSBjYWxsX3RyYW5zbWl0Lg0KPiANCj4gDQo+ID4g
+SW4gYWRkaXRpb24sIHdlJ2QgbmVlZCBhIHNlcGFyYXRlIHNvbHV0aW9uIGZvciBycGNfcHV0X3Rh
+c2soKSwgYW5kDQo+ID4gcHJvYmFibHkgYWxzbyBmb3IgcnBjX3JlbGVhc2VfdGFzaygpIChzaW5j
+ZSB0aGVzZSBhcmUgYm90aCBjYWxsZWQNCj4gPiBmcm9tDQo+ID4gb3V0c2lkZSB0aGUgbWFpbiBz
+dGF0ZSBtYWNoaW5lIGxvb3ApLg0KPiA+IA0KPiA+IEknbSBnZXR0aW5nIGEgbGl0dGxlIHdvcnJp
+ZWQgYWJvdXQgeW91ciByZXBseSBhYm92ZTogdGhlIFJQQyBlbmdpbmUNCj4gPiBvZmZlcnMgbm8g
+cmVhbC10aW1lIGd1YXJhbnRlZXMsIHNvIGlmIHRoZSBSRE1BIGNvZGUgaXMgcmVhbGx5IHRoaXMN
+Cj4gPiBsYXRlbmN5LXNlbnNpdGl2ZSwgdGhlbiB3aGF0IHdpbGwgaGFwcGVuIGlmIHdlIGVuYWJs
+ZSBwcmUtZW1wdGlvbg0KPiA+IGFuZC9vciB3ZSBqdXN0IGhhdmUgYSB2ZXJ5IGNvbmdlc3RlZCB3
+b3JrcXVldWU/DQo+IA0KPiBUaGUgc2Vuc2l0aXZpdHkgaXMgb25seSBwZXJmb3JtYW5jZS1yZWxh
+dGVkLiBPbiBDUFUtaW50ZW5zaXZlDQo+IHdvcmtsb2FkcywgUlBDIGV4ZWN1dGlvbiB0aW1lIGNh
+biBpbmNyZWFzZSBjb25zaWRlcmFibHkuIFRoZQ0KPiBSRE1BIHRyYW5zcG9ydCBkb2Vzbid0IHJl
+bHkgb24gdGltZWx5IGV4ZWN1dGlvbiBmb3IgcHJvcGVyDQo+IG9wZXJhdGlvbiwgYnV0IG1heWJl
+IEkgZG9uJ3QgdW5kZXJzdGFuZCB5b3VyIHdvcnJ5Lg0KPiANCj4gDQo+ID4gQWxzbywgaG93IHdv
+dWxkIGEgc3RhdGUgbWFjaGluZSBzb2x1dGlvbiBoZWxwPyBJJ2QgZXhwZWN0IHRoYXQgdG8NCj4g
+PiBtYWtlDQo+ID4gdGhlIGxhdGVuY3kgd29yc2Ugbm90IGJldHRlciwgc2luY2UgdGhlIHdvcmsg
+aXRlbSB3b3VsZCBlbmQgdXANCj4gPiBnZXR0aW5nDQo+ID4gcmVxdWV1ZWQuIElmIHRoZSB3b3Jr
+ZXIgdGhyZWFkIHRoZW4gZ2V0cyByZXNjaGVkdWxlZCBhcyB3ZWxsLi4uDQo+ID4gDQo+ID4gT25l
+IHNvbHV0aW9uIG1heSBiZSB0byBzaW1wbHkgc2F5IHdlJ3JlIG5ldmVyIGdvaW5nIHRvIHVzZSB0
+aGlzDQo+ID4gbWVjaGFuaXNtIGZvciBSRE1BLiBJIHN1c3BlY3QgdGhhdCBpZiB3ZSBqdXN0IHJl
+cGxhY2UgdGhlIHVzZSBvZg0KPiA+IHhwcnQtDQo+ID4gPiB0cmFuc3BvcnRfbG9jayB3aGVuIHBy
+b3RlY3RpbmcgdGhlIHJlY2VpdmUgcXVldWUgd2l0aCBhIG5ldyBsb2NrDQo+ID4gPiB0aGF0DQo+
+ID4gDQo+ID4gd291bGRuJ3QgbmVlZCB0byBiZSBiaC1zYWZlIHRoZW4gdGhhdCBtaWdodCBzdWZm
+aWNlIHRvIGRlYWwgd2l0aA0KPiA+IHRoZQ0KPiA+IFJETUEgbGF0ZW5jeSBpc3N1ZXMuIEkgaGF2
+ZSBsZXNzIGNvbmZpZGVuY2UgdGhhdCB3b3VsZCB3b3JrIGZvciB0aGUNCj4gPiBvdGhlcnMgZHVl
+IHRvIHRoZSBidWxrIGRhdGEgY29weSBpc3N1ZS4NCj4gDQo+IEkgd291bGQgbGlrZSBhIHNlcGFy
+YXRlIG5vbi1CSCBsb2NrLCBpZiB0aGF0IGNhbiBiZSBtYWRlIHRvDQo+IHdvcmsuIFRoYXQncyBp
+biBmYWN0IGhvdyB4cHJ0cmRtYSBjdXJyZW50bHkgd29ya3MuIHhwcnRyZG1hDQo+IGhhcyBpdHMg
+b3duIHJlY2VpdmUgbGlzdCBhdCB0aGUgbW9tZW50IHNvIHRoYXQgaXQgY2FuIGZpbmQNCj4gbWVt
+b3J5IGFzc29jaWF0ZWQgd2l0aCBhIHJxc3QgX3dpdGhvdXRfIG5lZWRpbmcgdG8gY2FsbA0KPiB4
+cHJ0X2xvb2t1cF9ycXN0LiBBIG5vbi1CSCBsb2NrIGlzIHVzZWQgdG8gcHJvdGVjdCB0aGF0DQo+
+IGxpc3QuDQoNClRoYXQgY2FuIGRlZmluaXRlbHkgYmUgYWRkZWQuIEkgc2VlIHRoYXQgYXMgYSBz
+ZXBhcmF0ZSBpc3N1ZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20N
+Cg==
 
