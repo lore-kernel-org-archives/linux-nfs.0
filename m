@@ -1,234 +1,401 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:57032 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753189AbdHOBSw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Aug 2017 21:18:52 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/3] SUNRPC: Don't hold the transport lock across socket
- copy operations
-Date: Tue, 15 Aug 2017 01:18:43 +0000
-Message-ID: <1502759921.22283.23.camel@primarydata.com>
-References: <20170814191652.18263-1-trond.myklebust@primarydata.com>
-         <20170814191652.18263-2-trond.myklebust@primarydata.com>
-         <003E7C40-57BD-4F02-9157-97919FA206D5@oracle.com>
-         <1502741277.19246.7.camel@primarydata.com>
-         <55994DBE-0CE4-450A-8B19-B8C8F4CA0B69@oracle.com>
-         <1502743109.19246.19.camel@primarydata.com>
-         <7C0D016C-FBC3-4103-BA81-37AE0D6BAF5B@oracle.com>
-In-Reply-To: <7C0D016C-FBC3-4103-BA81-37AE0D6BAF5B@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:49546 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752236AbdHOOXw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Aug 2017 10:23:52 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH 1/3] SUNRPC: Don't hold the transport lock across socket copy operations
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1502759921.22283.23.camel@primarydata.com>
+Date: Tue, 15 Aug 2017 10:23:46 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <DE137089-1D71-47C3-BDC4-3BCE73DF235A@oracle.com>
+References: <20170814191652.18263-1-trond.myklebust@primarydata.com> <20170814191652.18263-2-trond.myklebust@primarydata.com> <003E7C40-57BD-4F02-9157-97919FA206D5@oracle.com> <1502741277.19246.7.camel@primarydata.com> <55994DBE-0CE4-450A-8B19-B8C8F4CA0B69@oracle.com> <1502743109.19246.19.camel@primarydata.com> <7C0D016C-FBC3-4103-BA81-37AE0D6BAF5B@oracle.com> <1502759921.22283.23.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTA4LTE0IGF0IDE4OjI1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBBdWcgMTQsIDIwMTcsIGF0IDQ6MzggUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
-cmltYXJ5ZGF0YS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIE1vbiwgMjAxNy0wOC0x
-NCBhdCAxNjoyMyAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIEF1ZyAxNCwg
-MjAxNywgYXQgNDowNyBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYQ0KPiA+
-ID4gPiB0YS5jDQo+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IE9uIE1vbiwg
-MjAxNy0wOC0xNCBhdCAxNToyOCAtMDQwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+ID4g
-PiBPbiBBdWcgMTQsIDIwMTcsIGF0IDM6MTYgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlr
-bGVidQ0KPiA+ID4gPiA+ID4gc3RAcA0KPiA+ID4gPiA+ID4gcmltYQ0KPiA+ID4gPiA+ID4gcnlk
-YXRhLmNvbT4gd3JvdGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IEluc3RlYWQgYWRkIGEg
-bWVjaGFuaXNtIHRvIGVuc3VyZSB0aGF0IHRoZSByZXF1ZXN0IGRvZXNuJ3QNCj4gPiA+ID4gPiA+
-IGRpc2FwcGVhcg0KPiA+ID4gPiA+ID4gZnJvbSB1bmRlcm5lYXRoIHVzIHdoaWxlIGNvcHlpbmcg
-ZnJvbSB0aGUgc29ja2V0LiBXZSBkbw0KPiA+ID4gPiA+ID4gdGhpcyBieQ0KPiA+ID4gPiA+ID4g
-cHJldmVudGluZyB4cHJ0X3JlbGVhc2UoKSBmcm9tIGZyZWVpbmcgdGhlIFhEUiBidWZmZXJzDQo+
-ID4gPiA+ID4gPiB1bnRpbA0KPiA+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gPiBmbGFnIFJQQ19U
-QVNLX01TR19SRUNWIGhhcyBiZWVuIGNsZWFyZWQgZnJvbSB0aGUgcmVxdWVzdC4NCj4gPiA+ID4g
-PiA+IA0KPiA+ID4gPiA+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5t
-eWtsZWJ1c3RAcHJpbWFyeWRhdGENCj4gPiA+ID4gPiA+IC5jb20NCj4gPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IC0tLQ0KPiA+ID4gPiA+ID4gaW5jbHVkZS9saW51eC9z
-dW5ycGMvc2NoZWQuaCB8ICAyICsrDQo+ID4gPiA+ID4gPiBpbmNsdWRlL2xpbnV4L3N1bnJwYy94
-cHJ0LmggIHwgIDIgKysNCj4gPiA+ID4gPiA+IG5ldC9zdW5ycGMveHBydC5jICAgICAgICAgICAg
-fCA0Mg0KPiA+ID4gPiA+ID4gKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysr
-KysrDQo+ID4gPiA+ID4gPiBuZXQvc3VucnBjL3hwcnRzb2NrLmMgICAgICAgIHwgMjcgKysrKysr
-KysrKysrKysrKysrKysrKy0tLQ0KPiA+ID4gPiA+ID4gLS0NCj4gPiA+ID4gPiA+IDQgZmlsZXMg
-Y2hhbmdlZCwgNjggaW5zZXJ0aW9ucygrKSwgNSBkZWxldGlvbnMoLSkNCj4gPiA+ID4gPiA+IA0K
-PiA+ID4gPiA+ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL3NjaGVkLmgNCj4g
-PiA+ID4gPiA+IGIvaW5jbHVkZS9saW51eC9zdW5ycGMvc2NoZWQuaA0KPiA+ID4gPiA+ID4gaW5k
-ZXggMTViYzFjZDZlZTVjLi5lOTcyZDllMDU0MjYgMTAwNjQ0DQo+ID4gPiA+ID4gPiAtLS0gYS9p
-bmNsdWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5oDQo+ID4gPiA+ID4gPiArKysgYi9pbmNsdWRlL2xp
-bnV4L3N1bnJwYy9zY2hlZC5oDQo+ID4gPiA+ID4gPiBAQCAtMTQxLDYgKzE0MSw4IEBAIHN0cnVj
-dCBycGNfdGFza19zZXR1cCB7DQo+ID4gPiA+ID4gPiAjZGVmaW5lIFJQQ19UQVNLX0FDVElWRQkJ
-Mg0KPiA+ID4gPiA+ID4gI2RlZmluZSBSUENfVEFTS19NU0dfWE1JVAkzDQo+ID4gPiA+ID4gPiAj
-ZGVmaW5lIFJQQ19UQVNLX01TR19YTUlUX1dBSVQJNA0KPiA+ID4gPiA+ID4gKyNkZWZpbmUgUlBD
-X1RBU0tfTVNHX1JFQ1YJNQ0KPiA+ID4gPiA+ID4gKyNkZWZpbmUgUlBDX1RBU0tfTVNHX1JFQ1Zf
-V0FJVAk2DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+ICNkZWZpbmUgUlBDX0lTX1JVTk5JTkco
-dCkJdGVzdF9iaXQoUlBDX1RBU0tfUlVOTklORywNCj4gPiA+ID4gPiA+ICYodCktDQo+ID4gPiA+
-ID4gPiA+IHRrX3J1bnN0YXRlKQ0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiAjZGVmaW5lIHJw
-Y19zZXRfcnVubmluZyh0KQlzZXRfYml0KFJQQ19UQVNLX1JVTk5JTkcsDQo+ID4gPiA+ID4gPiAm
-KHQpLQ0KPiA+ID4gPiA+ID4gPiB0a19ydW5zdGF0ZSkNCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+
-ID4gZGlmZiAtLWdpdCBhL2luY2x1ZGUvbGludXgvc3VucnBjL3hwcnQuaA0KPiA+ID4gPiA+ID4g
-Yi9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgNCj4gPiA+ID4gPiA+IGluZGV4IGVhYjFjNzQ5
-ZTE5Mi4uNjViOWUwMjI0NzUzIDEwMDY0NA0KPiA+ID4gPiA+ID4gLS0tIGEvaW5jbHVkZS9saW51
-eC9zdW5ycGMveHBydC5oDQo+ID4gPiA+ID4gPiArKysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy94
-cHJ0LmgNCj4gPiA+ID4gPiA+IEBAIC0zNzIsNiArMzcyLDggQEAgdm9pZAkJCXhwcnRfd3JpdGVf
-DQo+ID4gPiA+ID4gPiBzcGFjDQo+ID4gPiA+ID4gPiBlKHN0DQo+ID4gPiA+ID4gPiBydWN0IHJw
-Y194cHJ0ICp4cHJ0KTsNCj4gPiA+ID4gPiA+IHZvaWQJCQl4cHJ0X2FkanVzdF9jd25kKHN0cnVj
-dA0KPiA+ID4gPiA+ID4gcnBjX3hwcnQNCj4gPiA+ID4gPiA+ICp4cHJ0LA0KPiA+ID4gPiA+ID4g
-c3RydWN0IHJwY190YXNrICp0YXNrLCBpbnQgcmVzdWx0KTsNCj4gPiA+ID4gPiA+IHN0cnVjdCBy
-cGNfcnFzdCAqCXhwcnRfbG9va3VwX3Jxc3Qoc3RydWN0IHJwY194cHJ0DQo+ID4gPiA+ID4gPiAq
-eHBydCwNCj4gPiA+ID4gPiA+IF9fYmUzMiB4aWQpOw0KPiA+ID4gPiA+ID4gdm9pZAkJCXhwcnRf
-Y29tcGxldGVfcnFzdChzdHJ1Y3QNCj4gPiA+ID4gPiA+IHJwY190YXNrDQo+ID4gPiA+ID4gPiAq
-dGFzaywgaW50IGNvcGllZCk7DQo+ID4gPiA+ID4gPiArdm9pZAkJCXhwcnRfcGluX3Jxc3Qoc3Ry
-dWN0IHJwY19ycXN0DQo+ID4gPiA+ID4gPiAqcmVxKTsNCj4gPiA+ID4gPiA+ICt2b2lkCQkJeHBy
-dF91bnBpbl9ycXN0KHN0cnVjdA0KPiA+ID4gPiA+ID4gcnBjX3Jxc3QNCj4gPiA+ID4gPiA+ICpy
-ZXEpOw0KPiA+ID4gPiA+ID4gdm9pZAkJCXhwcnRfcmVsZWFzZV9ycXN0X2Nvbmcoc3RydWN0DQo+
-ID4gPiA+ID4gPiBycGNfdGFzaw0KPiA+ID4gPiA+ID4gKnRhc2spOw0KPiA+ID4gPiA+ID4gdm9p
-ZAkJCXhwcnRfZGlzY29ubmVjdF9kb25lKHN0cnVjdA0KPiA+ID4gPiA+ID4gcnBjX3hwcnQNCj4g
-PiA+ID4gPiA+ICp4cHJ0KTsNCj4gPiA+ID4gPiA+IHZvaWQJCQl4cHJ0X2ZvcmNlX2Rpc2Nvbm5l
-Y3Qoc3RydWN0DQo+ID4gPiA+ID4gPiBycGNfeHBydA0KPiA+ID4gPiA+ID4gKnhwcnQpOw0KPiA+
-ID4gPiA+ID4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydC5jIGIvbmV0L3N1bnJwYy94cHJ0
-LmMNCj4gPiA+ID4gPiA+IGluZGV4IDc4OGMxYjYxMzhjMi4uNjJjMzc5ODY1ZjdjIDEwMDY0NA0K
-PiA+ID4gPiA+ID4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0LmMNCj4gPiA+ID4gPiA+ICsrKyBiL25l
-dC9zdW5ycGMveHBydC5jDQo+ID4gPiA+ID4gPiBAQCAtODQ0LDYgKzg0NCw0NyBAQCBzdHJ1Y3Qg
-cnBjX3Jxc3QNCj4gPiA+ID4gPiA+ICp4cHJ0X2xvb2t1cF9ycXN0KHN0cnVjdA0KPiA+ID4gPiA+
-ID4gcnBjX3hwcnQgKnhwcnQsIF9fYmUzMiB4aWQpDQo+ID4gPiA+ID4gPiB9DQo+ID4gPiA+ID4g
-PiBFWFBPUlRfU1lNQk9MX0dQTCh4cHJ0X2xvb2t1cF9ycXN0KTsNCj4gPiA+ID4gPiA+IA0KPiA+
-ID4gPiA+ID4gKy8qKg0KPiA+ID4gPiA+ID4gKyAqIHhwcnRfcGluX3Jxc3QgLSBQaW4gYSByZXF1
-ZXN0IG9uIHRoZSB0cmFuc3BvcnQgcmVjZWl2ZQ0KPiA+ID4gPiA+ID4gbGlzdA0KPiA+ID4gPiA+
-ID4gKyAqIEByZXE6IFJlcXVlc3QgdG8gcGluDQo+ID4gPiA+ID4gPiArICoNCj4gPiA+ID4gPiA+
-ICsgKiBDYWxsZXIgbXVzdCBlbnN1cmUgdGhpcyBpcyBhdG9taWMgd2l0aCB0aGUgY2FsbCB0bw0K
-PiA+ID4gPiA+ID4geHBydF9sb29rdXBfcnFzdCgpDQo+ID4gPiA+ID4gPiArICogc28gc2hvdWxk
-IGJlIGhvbGRpbmcgdGhlIHhwcnQgdHJhbnNwb3J0IGxvY2suDQo+ID4gPiA+ID4gPiArICovDQo+
-ID4gPiA+ID4gPiArdm9pZCB4cHJ0X3Bpbl9ycXN0KHN0cnVjdCBycGNfcnFzdCAqcmVxKQ0KPiA+
-ID4gPiA+ID4gK3sNCj4gPiA+ID4gPiA+ICsJc2V0X2JpdChSUENfVEFTS19NU0dfUkVDViwgJnJl
-cS0+cnFfdGFzay0NCj4gPiA+ID4gPiA+ID4gdGtfcnVuc3RhdGUpOw0KPiA+ID4gPiA+ID4gDQo+
-ID4gPiA+ID4gPiArfQ0KPiA+ID4gPiA+ID4gKw0KPiA+ID4gPiA+ID4gKy8qKg0KPiA+ID4gPiA+
-ID4gKyAqIHhwcnRfdW5waW5fcnFzdCAtIFVucGluIGEgcmVxdWVzdCBvbiB0aGUgdHJhbnNwb3J0
-DQo+ID4gPiA+ID4gPiByZWNlaXZlDQo+ID4gPiA+ID4gPiBsaXN0DQo+ID4gPiA+ID4gPiArICog
-QHJlcTogUmVxdWVzdCB0byBwaW4NCj4gPiA+ID4gPiA+ICsgKg0KPiA+ID4gPiA+ID4gKyAqIENh
-bGxlciBzaG91bGQgYmUgaG9sZGluZyB0aGUgeHBydCB0cmFuc3BvcnQgbG9jay4NCj4gPiA+ID4g
-PiA+ICsgKi8NCj4gPiA+ID4gPiA+ICt2b2lkIHhwcnRfdW5waW5fcnFzdChzdHJ1Y3QgcnBjX3Jx
-c3QgKnJlcSkNCj4gPiA+ID4gPiA+ICt7DQo+ID4gPiA+ID4gPiArCXN0cnVjdCBycGNfdGFzayAq
-dGFzayA9IHJlcS0+cnFfdGFzazsNCj4gPiA+ID4gPiA+ICsNCj4gPiA+ID4gPiA+ICsJY2xlYXJf
-Yml0KFJQQ19UQVNLX01TR19SRUNWLCAmdGFzay0+dGtfcnVuc3RhdGUpOw0KPiA+ID4gPiA+ID4g
-KwlpZiAodGVzdF9iaXQoUlBDX1RBU0tfTVNHX1JFQ1ZfV0FJVCwgJnRhc2stDQo+ID4gPiA+ID4g
-PiA+IHRrX3J1bnN0YXRlKSkNCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gKwkJd2FrZV91cF9i
-aXQoJnRhc2stPnRrX3J1bnN0YXRlLA0KPiA+ID4gPiA+ID4gUlBDX1RBU0tfTVNHX1JFQ1YpOw0K
-PiA+ID4gPiA+ID4gK30NCj4gPiA+ID4gPiA+ICsNCj4gPiA+ID4gPiA+ICtzdGF0aWMgdm9pZCB4
-cHJ0X3dhaXRfb25fcGlubmVkX3Jxc3Qoc3RydWN0IHJwY19ycXN0ICpyZXEpDQo+ID4gPiA+ID4g
-PiArX19tdXN0X2hvbGQoJnJlcS0+cnFfeHBydC0+dHJhbnNwb3J0X2xvY2spDQo+ID4gPiA+ID4g
-PiArew0KPiA+ID4gPiA+ID4gKwlzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sgPSByZXEtPnJxX3Rhc2s7
-DQo+ID4gPiA+ID4gPiArCWlmICh0ZXN0X2JpdChSUENfVEFTS19NU0dfUkVDViwgJnRhc2stDQo+
-ID4gPiA+ID4gPiA+dGtfcnVuc3RhdGUpKSB7DQo+ID4gPiA+ID4gPiArCQlzcGluX3VubG9ja19i
-aCgmcmVxLT5ycV94cHJ0LQ0KPiA+ID4gPiA+ID4gPnRyYW5zcG9ydF9sb2NrKTsNCj4gPiA+ID4g
-PiA+ICsJCXNldF9iaXQoUlBDX1RBU0tfTVNHX1JFQ1ZfV0FJVCwgJnRhc2stDQo+ID4gPiA+ID4g
-PiA+IHRrX3J1bnN0YXRlKTsNCj4gPiA+ID4gPiA+IA0KPiA+ID4gPiA+ID4gKwkJd2FpdF9vbl9i
-aXQoJnRhc2stPnRrX3J1bnN0YXRlLA0KPiA+ID4gPiA+ID4gUlBDX1RBU0tfTVNHX1JFQ1YsDQo+
-ID4gPiA+ID4gPiArCQkJCVRBU0tfVU5JTlRFUlJVUFRJQkxFKTsNCj4gPiA+ID4gPiA+ICsJCWNs
-ZWFyX2JpdChSUENfVEFTS19NU0dfUkVDVl9XQUlULCAmdGFzay0NCj4gPiA+ID4gPiA+ID4gdGtf
-cnVuc3RhdGUpOw0KPiA+ID4gPiA+ID4gDQo+ID4gPiA+ID4gPiArCQlzcGluX2xvY2tfYmgoJnJl
-cS0+cnFfeHBydC0NCj4gPiA+ID4gPiA+ID50cmFuc3BvcnRfbG9jayk7DQo+ID4gPiA+ID4gPiAr
-CX0NCj4gPiA+ID4gPiA+ICt9DQo+ID4gPiA+ID4gPiArDQo+ID4gPiA+ID4gPiBzdGF0aWMgdm9p
-ZCB4cHJ0X3VwZGF0ZV9ydHQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiA+ID4gPiA+ID4gew0K
-PiA+ID4gPiA+ID4gCXN0cnVjdCBycGNfcnFzdCAqcmVxID0gdGFzay0+dGtfcnFzdHA7DQo+ID4g
-PiA+ID4gPiBAQCAtMTMwMSw2ICsxMzQyLDcgQEAgdm9pZCB4cHJ0X3JlbGVhc2Uoc3RydWN0IHJw
-Y190YXNrDQo+ID4gPiA+ID4gPiAqdGFzaykNCj4gPiA+ID4gPiA+IAkJbGlzdF9kZWwoJnJlcS0+
-cnFfbGlzdCk7DQo+ID4gPiA+ID4gPiAJeHBydC0+bGFzdF91c2VkID0gamlmZmllczsNCj4gPiA+
-ID4gPiA+IAl4cHJ0X3NjaGVkdWxlX2F1dG9kaXNjb25uZWN0KHhwcnQpOw0KPiA+ID4gPiA+ID4g
-Kwl4cHJ0X3dhaXRfb25fcGlubmVkX3Jxc3QocmVxKTsNCj4gPiA+ID4gPiA+IAlzcGluX3VubG9j
-a19iaCgmeHBydC0+dHJhbnNwb3J0X2xvY2spOw0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IElzIGl0
-IE9LIHRvIGNhbGwgd2FpdF9vbl9iaXQoVEFTS19VTklOVEVSUlVQVElCTEUpIHdoaWxlDQo+ID4g
-PiA+ID4gaG9sZGluZw0KPiA+ID4gPiA+IGEgQkggc3BpbiBsb2NrPyBUaGlzIGNvdWxkIGJlIHBy
-b25lIHRvIGRlYWRsb2NrLg0KPiA+ID4gPiANCj4gPiA+ID4gV2UgZHJvcCB0aGUgbG9jayBpbnNp
-ZGUgeHBydF93YWl0X29uX3Bpbm5lZF9ycXN0KCkgaWYgd2UgbmVlZA0KPiA+ID4gPiB0bw0KPiA+
-ID4gPiB3YWl0Lg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIHJlYXNvbiB3aHkgd2Ugd2FudCB0byBo
-b2xkIHRoZSBsb2NrIHRoZXJlIGlzIHRvIGF2b2lkIGENCj4gPiA+ID4gdXNlLQ0KPiA+ID4gPiBh
-ZnRlci0NCj4gPiA+ID4gZnJlZSBpbiB4cHJ0X3VucGluX3Jxc3QoKS4gV2l0aG91dCB0aGUgbG9j
-aywgdGhlcmUgaXMgYSByaXNrDQo+ID4gPiA+IHRoYXQNCj4gPiA+ID4geHBydF9yZWxlYXNlKCkg
-Y291bGQgY29tcGxldGUsIGFuZCB0aGUgdGFzayBnZXQgZnJlZWQgYmVmb3JlIHdlDQo+ID4gPiA+
-IGhhdmUNCj4gPiA+ID4gY29tcGxldGVkIHdha2VfdXBfYml0KCkuDQo+ID4gPiANCj4gPiA+IEFn
-cmVlIHdpdGggdGhlIGxhc3QgYml0LiBJIGhhZCB0aGF0IGNoYWxsZW5nZSB3aXRoIHRoZSBvcmRl
-ciBvZg0KPiA+ID4gbWVtb3J5IGludmFsaWRhdGlvbiAod2hpY2ggd2FpdHMpIGFuZA0KPiA+ID4g
-eHBydF9sb29rdXBfcnFzdC9jb21wbGV0ZV9ycXN0DQo+ID4gPiBpbiBycGNyZG1hX3JlcGx5X2hh
-bmRsZXIuDQo+ID4gPiANCj4gPiA+IEhvd2V2ZXIgbXkgY29uY2VybiBpcyB0aGF0IHRoZXJlIGFy
-ZSBtYW55IG90aGVyIHVzZXJzIG9mIHRoZQ0KPiA+ID4gdHJhbnNwb3J0X2xvY2suIERvZXMgaXQg
-YmVjb21lIG1vcmUgdHJpY2t5IG5vdCB0byBpbnRyb2R1Y2UgYQ0KPiA+ID4gcHJvYmxlbSBieSBj
-aGFuZ2luZyBhbnkgb25lIG9mIHRoZSBzaXRlcyB0aGF0IHRha2UNCj4gPiA+IHRyYW5zcG9ydF9s
-b2NrPw0KPiA+IA0KPiA+IFdoYXQgaXMgeW91ciBjb25jZXJuPyBUaGUgbWFpbiByZWFzb24gZm9y
-IHRha2luZyB0aGUgdHJhbnNwb3J0IGxvY2sNCj4gPiBpbg0KPiA+IHRoZSBjdXJyZW50IGNvZGUg
-aXMgdHdvZm9sZDoNCj4gPiANCj4gPiAxKSBQZXJmb3JtIHRoZSBsb29rdXAgb2YgdGhlIHJlcXVl
-c3Qgb24gdGhlIHJlY2VpdmUgbGlzdA0KPiA+IDIpIEVuc3VyZSB0aGUgcmVxdWVzdCBkb2Vzbid0
-IGRpc2FwcGVhciB3aGlsZSB3ZSdyZSB3cml0aW5nIHRvIGl0Lg0KPiANCj4gWWVzLCBJIHRoaW5r
-IHdlIHNlZSB0aGUgc2FtZSBwcm9ibGVtIHNwYWNlLg0KPiANCj4gSSBtaXNzZWQsIHRob3VnaCwg
-dGhhdCB4cHJ0X3dhaXRfb25fcGlubmVkX3Jxc3QgYWx3YXlzIHJlbGVhc2VzDQo+IHRyYW5zcG9y
-dF9sb2NrIGJlZm9yZSBpbnZva2luZyB3YWl0X29uX2JpdC4NCj4gDQo+IA0KPiA+ID4gRGVzcGl0
-ZSB0aGUgZGVhZGxvY2sgY29uY2VybiwgSSBkb24ndCB0aGluayBpdCBtYWtlcyBzZW5zZSB0bw0K
-PiA+ID4gY2FsbA0KPiA+ID4gd2FpdF9vbl9iaXQgd2hpbGUgaG9sZGluZyBhIHNwaW4gbG9jayBz
-aW1wbHkgYmVjYXVzZSBzcGluIGxvY2tzDQo+ID4gPiBhcmUNCj4gPiA+IHN1cHBvc2VkIHRvIGJl
-IGZvciB0aGluZ3MgdGhhdCBhcmUgcXVpY2ssIGxpa2UgdXBkYXRpbmcgYSBkYXRhDQo+ID4gPiBz
-dHJ1Y3R1cmUuDQo+ID4gPiANCj4gPiA+IHdhaXRfb25fYml0IGNhbiB0YWtlIG1pY3Jvc2Vjb25k
-czogcHJlcGFyZV90b193YWl0IGFuZA0KPiA+ID4gZmluaXNoX3dhaXQNCj4gPiA+IGNhbiBib3Ro
-IHRha2UgYSBpcnFzYXZlIHNwaW5fbG9jaywgZm9yIGV4YW1wbGUuIGJpdF93YWl0IGlzIHRoZQ0K
-PiA+ID4gYWN0aW9uIHRoYXQgaXMgZG9uZSBpZiB0aGUgYml0IGlzIG5vdCByZWFkeSwgYW5kIHRo
-YXQgY2FsbHMNCj4gPiA+IHNjaGVkdWxlKCkuIE9uIGEgYnVzeSBzeXN0ZW0sIHRoYXQga2luZCBv
-ZiBjb250ZXh0IHN3aXRjaCBjYW4NCj4gPiA+IHRha2UNCj4gPiA+IGRvemVucyBvZiBtaWNyb3Nl
-Y29uZHMuDQo+ID4gDQo+ID4gQWdyZWVkLCBidXQgd2Ugc2hvdWxkIG9ubHkgdmVyeSByYXJlbHkg
-YmUgaGl0dGluZyB0aGUgd2FpdCBjYXNlLiBJbg0KPiA+IGFsbA0KPiA+IHN1Y2Nlc3NmdWwgUlBD
-IGNhbGxzLCB0aGUgcmVjZWl2ZSB3aWxsIGhhdmUgaGFwcGVuZWQgbG9uZyBiZWZvcmUgd2UNCj4g
-PiBjYWxsIHhwcnRfcmVsZWFzZSgpLiBJbiBmYWN0LCB0aGUgb25seSAyIGNhc2VzIHdoZXJlIHRo
-aXMgY2FuDQo+ID4gaGFwcGVuDQo+ID4gd291bGQgYmUgd2hlbiB0aGUgUlBDIGNhbGwgaXRzZWxm
-IGlzIGludGVycnVwdGVkLiBFaXRoZXI6DQo+ID4gDQo+ID4gMSkgVGhlIHRhc2sgaXMgc3luY2hy
-b25vdXMgYW5kIHdhcyBpbnRlcnJ1cHRlZCBieSB0aGUgdXNlci4NCj4gPiAyKSBUaGUgdGFzayBp
-cyB0ZXJtaW5hdGluZyBlYXJseSBkdWUgdG8gYSBzb2Z0IHRpbWVvdXQuDQo+ID4gDQo+ID4gSW4g
-Ym90aCB0aG9zZSBjYXNlcywgd2UncmUgaW4gYSBub24tcGVyZm9ybWFuY2UgcGF0aC4gRnVydGhl
-cm1vcmUsDQo+ID4gdGhleQ0KPiA+IHdvdWxkIGN1cnJlbnRseSBlbmQgdXAgc3Bpbm5pbmcgYWdh
-aW5zdCB0aGUgdHJhbnNwb3J0IGxvY2suDQo+IA0KPiBPSywgbm8gYXJndW1lbnQgdGhhdCB0aGVy
-ZSBpcyBhbnkgcGVyZm9ybWFuY2UgY29uY2Vybi4NCj4gDQo+IEkgY2FuIGhpdCB0aGlzIGNhc2Ug
-MiBvciAzIHRpbWVzIG91dCBvZiA1IHdpdGggZ2VuZXJpYy8wMjkgb24NCj4gTkZTdjQvUkRNQS4g
-VGhlc2UgZGF5cywgdGhlIHdvcnNlIHRoYXQgaGFwcGVucyBpcyB0aGUgY2xpZW50IGRyb3BzDQo+
-IHRoZSBSRE1BIGNvbm5lY3Rpb24gYmVjYXVzZSBJJ3ZlIHNwZW50IGEgdmVyeSBsb25nIHRpbWUg
-aW1tZXJzZWQNCj4gaW4gdGhlc2UgY29kZSBwYXRocywgdHJ5aW5nIHRvIG1ha2UgdGhlIHR3byBj
-YXNlcyB5b3UgbGlzdCBhYm92ZQ0KPiB3b3JrIDEwMCUgd2l0aG91dCBkZWFkbG9jayBvciBjcmFz
-aC4gU2VlIGNvbW1pdHMgMDRkMjViN2Q1ZDFiDQo+IHRocm91Z2ggNDMxYWY2NDVjZjY2LCBhbmQg
-Y29tbWl0IDY4NzkxNjQ5YTcyNS4NCj4gDQo+IEl0IG1ha2VzIG1lIHVuY2VydGFpbiB0aGF0IHdh
-aXRpbmcgZm9yIGFueXRoaW5nIGluIHhwcnRfcmVsZWFzZQ0KPiBpcyBzYWZlLCBldmVuIGlmIHRo
-ZSB0cmFuc3BvcnRfbG9jayBpcyBub3QgYmVpbmcgaGVsZC4geHBydHJkbWENCj4gdXNlZCB0byBw
-ZXJmb3JtIHN5bmNocm9ub3VzIG1lbW9yeSBpbnZhbGlkYXRpb24gaW4gLT5idWZfZnJlZS4NCj4g
-SXQgZG9lc24ndCBhbnkgbW9yZSBmb3IgdGhpcyByZWFzb24uDQoNCg0KRnVsbCBkaXNjbG9zdXJl
-OiBJIGRpZG4ndCBhY3R1YWxseSBlbmFibGUgdGhpcyBjb2RlIGZvciBSRE1BLiBUaGUNCnJlYXNv
-biBpcyBmaXJzdGx5IHRoYXQgSSB3b24ndCBwcmV0ZW5kIHRvIHVuZGVyc3RhbmQgdGhlIGxvY2tp
-bmcgaW4NCnJwY3JkbWFfcmVwbHlfaGFuZGxlcigpLCBidXQgZnVydGhlcm1vcmUgdGhhdCBSRE1B
-IGRvZXNuJ3QgcmVhbGx5IGhhdmUNCmEgcHJvYmxlbSB3aXRoIGJ1bGsgY29weSBpbiB0aGUgc2Ft
-ZSB3YXkgdGhhdCB0aGUgc29ja2V0IGJhc2VkIGNvZGUNCmRvZXM6IHRoZSBkaXJlY3QgcGxhY2Vt
-ZW50IGludG8gdGhlIHJlcGx5IGJ1ZmZlciBtZWFucyB0aGUgYnVsayBvZiB0aGUNCmNvZGUgaW4g
-cnBjcmRtYV9yZXBseV9oYW5kbGVyKCkgaXMgYWxsIGFib3V0IGNoZWNraW5nIHRoZSBhbGlnbm1l
-bnQNCih3aXRoLCBhZG1pdHRlZGx5IHNvbWUgc2NhcnkgYml0cyBpbiBycGNyZG1hX2lubGluZV9m
-aXh1cCgpKS4NCg0KDQoNCj4gPiA+ID4gPiA+IElNTyBpdCB3b3VsZCBiZSBhIGxvdCBuaWNlciBp
-ZiB3ZSBoYWQgYW4gRlNNIHN0YXRlDQo+ID4gPiA+ID4gPiBhdmFpbGFibGUgdGhhdA0KPiA+ID4g
-Y291bGQgYWxsb3cgYW5vdGhlciBzbGVlcCB3aGlsZSBhbiBSUEMgdGFzayBkdXJpbmcgeHBydF9y
-ZWxlYXNlLg0KPiA+IA0KPiA+IFdoeSB3b3VsZCB0aGF0IGJlIHByZWZlcmFibGUsIGlmIHRoZSBh
-cmd1bWVudCBob2xkcyB0aGF0IHRoaXMgb25seQ0KPiA+IGhhcHBlbnMgaW4gdGhlc2UgMiByYXJl
-IGVycm9yIGNhc2VzPw0KPiANCj4gQmVjYXVzZSBGU00gc3RlcHMgYXJlIHRoZSB3YXkgdGhpcyBj
-b2RlIG1hbmFnZXMgc2xlZXBzLiBUaGF0DQo+IG1ha2VzIGl0IGVhc2llciB0byB1bmRlcnN0YW5k
-IGFuZCBsZXNzIGJyaXR0bGUuIEkgZG9uJ3QgdGhpbmsNCj4gaXQgd291bGQgYmUgbW9yZSBvdmVy
-aGVhZCB0aGFuIHRlc3RfYml0KCkuDQoNClRoZSBwcm9ibGVtIGlzIHRoYXQgaXQgd291bGQgYWRk
-IG5ldyBzdGF0ZXMgdG8gYSBudW1iZXIgb2YgZnVuY3Rpb25zDQp0aGF0IGN1cnJlbnRseSBjYWxs
-IHhwcnRfcmVsZWFzZSgpLiBSaWdodCBub3csIHRoYXQgd291bGQgbWVhbg0KDQpjYWxsX3Jlc2Vy
-dmVyZXN1bHQoKQ0KcnBjX3ZlcmlmeV9oZWFkZXIoKQ0KcnBjX2V4aXRfdGFzaygpDQoNCkluIGFk
-ZGl0aW9uLCB3ZSdkIG5lZWQgYSBzZXBhcmF0ZSBzb2x1dGlvbiBmb3IgcnBjX3B1dF90YXNrKCks
-IGFuZA0KcHJvYmFibHkgYWxzbyBmb3IgcnBjX3JlbGVhc2VfdGFzaygpIChzaW5jZSB0aGVzZSBh
-cmUgYm90aCBjYWxsZWQgZnJvbQ0Kb3V0c2lkZSB0aGUgbWFpbiBzdGF0ZSBtYWNoaW5lIGxvb3Ap
-Lg0KDQpJJ20gZ2V0dGluZyBhIGxpdHRsZSB3b3JyaWVkIGFib3V0IHlvdXIgcmVwbHkgYWJvdmU6
-IHRoZSBSUEMgZW5naW5lDQpvZmZlcnMgbm8gcmVhbC10aW1lIGd1YXJhbnRlZXMsIHNvIGlmIHRo
-ZSBSRE1BIGNvZGUgaXMgcmVhbGx5IHRoaXMNCmxhdGVuY3ktc2Vuc2l0aXZlLCB0aGVuIHdoYXQg
-d2lsbCBoYXBwZW4gaWYgd2UgZW5hYmxlIHByZS1lbXB0aW9uDQphbmQvb3Igd2UganVzdCBoYXZl
-IGEgdmVyeSBjb25nZXN0ZWQgd29ya3F1ZXVlPw0KQWxzbywgaG93IHdvdWxkIGEgc3RhdGUgbWFj
-aGluZSBzb2x1dGlvbiBoZWxwPyBJJ2QgZXhwZWN0IHRoYXQgdG8gbWFrZQ0KdGhlIGxhdGVuY3kg
-d29yc2Ugbm90IGJldHRlciwgc2luY2UgdGhlIHdvcmsgaXRlbSB3b3VsZCBlbmQgdXAgZ2V0dGlu
-Zw0KcmVxdWV1ZWQuIElmIHRoZSB3b3JrZXIgdGhyZWFkIHRoZW4gZ2V0cyByZXNjaGVkdWxlZCBh
-cyB3ZWxsLi4uDQoNCk9uZSBzb2x1dGlvbiBtYXkgYmUgdG8gc2ltcGx5IHNheSB3ZSdyZSBuZXZl
-ciBnb2luZyB0byB1c2UgdGhpcw0KbWVjaGFuaXNtIGZvciBSRE1BLiBJIHN1c3BlY3QgdGhhdCBp
-ZiB3ZSBqdXN0IHJlcGxhY2UgdGhlIHVzZSBvZiB4cHJ0LQ0KPnRyYW5zcG9ydF9sb2NrIHdoZW4g
-cHJvdGVjdGluZyB0aGUgcmVjZWl2ZSBxdWV1ZSB3aXRoIGEgbmV3IGxvY2sgdGhhdA0Kd291bGRu
-J3QgbmVlZCB0byBiZSBiaC1zYWZlIHRoZW4gdGhhdCBtaWdodCBzdWZmaWNlIHRvIGRlYWwgd2l0
-aCB0aGUNClJETUEgbGF0ZW5jeSBpc3N1ZXMuIEkgaGF2ZSBsZXNzIGNvbmZpZGVuY2UgdGhhdCB3
-b3VsZCB3b3JrIGZvciB0aGUNCm90aGVycyBkdWUgdG8gdGhlIGJ1bGsgZGF0YSBjb3B5IGlzc3Vl
-Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQ
-cmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+
+> On Aug 14, 2017, at 9:18 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Mon, 2017-08-14 at 18:25 -0400, Chuck Lever wrote:
+>>> On Aug 14, 2017, at 4:38 PM, Trond Myklebust <trondmy@primarydata.c
+>>> om> wrote:
+>>> 
+>>> On Mon, 2017-08-14 at 16:23 -0400, Chuck Lever wrote:
+>>>>> On Aug 14, 2017, at 4:07 PM, Trond Myklebust <trondmy@primaryda
+>>>>> ta.c
+>>>>> om> wrote:
+>>>>> 
+>>>>> On Mon, 2017-08-14 at 15:28 -0400, Chuck Lever wrote:
+>>>>>>> On Aug 14, 2017, at 3:16 PM, Trond Myklebust <trond.myklebu
+>>>>>>> st@p
+>>>>>>> rima
+>>>>>>> rydata.com> wrote:
+>>>>>>> 
+>>>>>>> Instead add a mechanism to ensure that the request doesn't
+>>>>>>> disappear
+>>>>>>> from underneath us while copying from the socket. We do
+>>>>>>> this by
+>>>>>>> preventing xprt_release() from freeing the XDR buffers
+>>>>>>> until
+>>>>>>> the
+>>>>>>> flag RPC_TASK_MSG_RECV has been cleared from the request.
+>>>>>>> 
+>>>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata
+>>>>>>> .com
+>>>>>>>> 
+>>>>>>> 
+>>>>>>> ---
+>>>>>>> include/linux/sunrpc/sched.h |  2 ++
+>>>>>>> include/linux/sunrpc/xprt.h  |  2 ++
+>>>>>>> net/sunrpc/xprt.c            | 42
+>>>>>>> ++++++++++++++++++++++++++++++++++++++++++
+>>>>>>> net/sunrpc/xprtsock.c        | 27 ++++++++++++++++++++++---
+>>>>>>> --
+>>>>>>> 4 files changed, 68 insertions(+), 5 deletions(-)
+>>>>>>> 
+>>>>>>> diff --git a/include/linux/sunrpc/sched.h
+>>>>>>> b/include/linux/sunrpc/sched.h
+>>>>>>> index 15bc1cd6ee5c..e972d9e05426 100644
+>>>>>>> --- a/include/linux/sunrpc/sched.h
+>>>>>>> +++ b/include/linux/sunrpc/sched.h
+>>>>>>> @@ -141,6 +141,8 @@ struct rpc_task_setup {
+>>>>>>> #define RPC_TASK_ACTIVE		2
+>>>>>>> #define RPC_TASK_MSG_XMIT	3
+>>>>>>> #define RPC_TASK_MSG_XMIT_WAIT	4
+>>>>>>> +#define RPC_TASK_MSG_RECV	5
+>>>>>>> +#define RPC_TASK_MSG_RECV_WAIT	6
+>>>>>>> 
+>>>>>>> #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING,
+>>>>>>> &(t)-
+>>>>>>>> tk_runstate)
+>>>>>>> 
+>>>>>>> #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING,
+>>>>>>> &(t)-
+>>>>>>>> tk_runstate)
+>>>>>>> 
+>>>>>>> diff --git a/include/linux/sunrpc/xprt.h
+>>>>>>> b/include/linux/sunrpc/xprt.h
+>>>>>>> index eab1c749e192..65b9e0224753 100644
+>>>>>>> --- a/include/linux/sunrpc/xprt.h
+>>>>>>> +++ b/include/linux/sunrpc/xprt.h
+>>>>>>> @@ -372,6 +372,8 @@ void			xprt_write_
+>>>>>>> spac
+>>>>>>> e(st
+>>>>>>> ruct rpc_xprt *xprt);
+>>>>>>> void			xprt_adjust_cwnd(struct
+>>>>>>> rpc_xprt
+>>>>>>> *xprt,
+>>>>>>> struct rpc_task *task, int result);
+>>>>>>> struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt
+>>>>>>> *xprt,
+>>>>>>> __be32 xid);
+>>>>>>> void			xprt_complete_rqst(struct
+>>>>>>> rpc_task
+>>>>>>> *task, int copied);
+>>>>>>> +void			xprt_pin_rqst(struct rpc_rqst
+>>>>>>> *req);
+>>>>>>> +void			xprt_unpin_rqst(struct
+>>>>>>> rpc_rqst
+>>>>>>> *req);
+>>>>>>> void			xprt_release_rqst_cong(struct
+>>>>>>> rpc_task
+>>>>>>> *task);
+>>>>>>> void			xprt_disconnect_done(struct
+>>>>>>> rpc_xprt
+>>>>>>> *xprt);
+>>>>>>> void			xprt_force_disconnect(struct
+>>>>>>> rpc_xprt
+>>>>>>> *xprt);
+>>>>>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>>>>>> index 788c1b6138c2..62c379865f7c 100644
+>>>>>>> --- a/net/sunrpc/xprt.c
+>>>>>>> +++ b/net/sunrpc/xprt.c
+>>>>>>> @@ -844,6 +844,47 @@ struct rpc_rqst
+>>>>>>> *xprt_lookup_rqst(struct
+>>>>>>> rpc_xprt *xprt, __be32 xid)
+>>>>>>> }
+>>>>>>> EXPORT_SYMBOL_GPL(xprt_lookup_rqst);
+>>>>>>> 
+>>>>>>> +/**
+>>>>>>> + * xprt_pin_rqst - Pin a request on the transport receive
+>>>>>>> list
+>>>>>>> + * @req: Request to pin
+>>>>>>> + *
+>>>>>>> + * Caller must ensure this is atomic with the call to
+>>>>>>> xprt_lookup_rqst()
+>>>>>>> + * so should be holding the xprt transport lock.
+>>>>>>> + */
+>>>>>>> +void xprt_pin_rqst(struct rpc_rqst *req)
+>>>>>>> +{
+>>>>>>> +	set_bit(RPC_TASK_MSG_RECV, &req->rq_task-
+>>>>>>>> tk_runstate);
+>>>>>>> 
+>>>>>>> +}
+>>>>>>> +
+>>>>>>> +/**
+>>>>>>> + * xprt_unpin_rqst - Unpin a request on the transport
+>>>>>>> receive
+>>>>>>> list
+>>>>>>> + * @req: Request to pin
+>>>>>>> + *
+>>>>>>> + * Caller should be holding the xprt transport lock.
+>>>>>>> + */
+>>>>>>> +void xprt_unpin_rqst(struct rpc_rqst *req)
+>>>>>>> +{
+>>>>>>> +	struct rpc_task *task = req->rq_task;
+>>>>>>> +
+>>>>>>> +	clear_bit(RPC_TASK_MSG_RECV, &task->tk_runstate);
+>>>>>>> +	if (test_bit(RPC_TASK_MSG_RECV_WAIT, &task-
+>>>>>>>> tk_runstate))
+>>>>>>> 
+>>>>>>> +		wake_up_bit(&task->tk_runstate,
+>>>>>>> RPC_TASK_MSG_RECV);
+>>>>>>> +}
+>>>>>>> +
+>>>>>>> +static void xprt_wait_on_pinned_rqst(struct rpc_rqst *req)
+>>>>>>> +__must_hold(&req->rq_xprt->transport_lock)
+>>>>>>> +{
+>>>>>>> +	struct rpc_task *task = req->rq_task;
+>>>>>>> +	if (test_bit(RPC_TASK_MSG_RECV, &task-
+>>>>>>>> tk_runstate)) {
+>>>>>>> +		spin_unlock_bh(&req->rq_xprt-
+>>>>>>>> transport_lock);
+>>>>>>> +		set_bit(RPC_TASK_MSG_RECV_WAIT, &task-
+>>>>>>>> tk_runstate);
+>>>>>>> 
+>>>>>>> +		wait_on_bit(&task->tk_runstate,
+>>>>>>> RPC_TASK_MSG_RECV,
+>>>>>>> +				TASK_UNINTERRUPTIBLE);
+>>>>>>> +		clear_bit(RPC_TASK_MSG_RECV_WAIT, &task-
+>>>>>>>> tk_runstate);
+>>>>>>> 
+>>>>>>> +		spin_lock_bh(&req->rq_xprt-
+>>>>>>>> transport_lock);
+>>>>>>> +	}
+>>>>>>> +}
+
+Looking at xprt_wait_for_pinned_rqst, I'm wondering
+though what happens if a soft timeout occurs but the
+RPC Reply never arrives because the server died. Will
+it wait forever in that case?
+
+I can't tell if wait-for-pinned always waits for the
+Reply, or if it can allow the RPC to exit cleanly if
+the Reply hasn't arrived.
+
+
+>>>>>>> +
+>>>>>>> static void xprt_update_rtt(struct rpc_task *task)
+>>>>>>> {
+>>>>>>> 	struct rpc_rqst *req = task->tk_rqstp;
+>>>>>>> @@ -1301,6 +1342,7 @@ void xprt_release(struct rpc_task
+>>>>>>> *task)
+>>>>>>> 		list_del(&req->rq_list);
+>>>>>>> 	xprt->last_used = jiffies;
+>>>>>>> 	xprt_schedule_autodisconnect(xprt);
+>>>>>>> +	xprt_wait_on_pinned_rqst(req);
+>>>>>>> 	spin_unlock_bh(&xprt->transport_lock);
+>>>>>> 
+>>>>>> Is it OK to call wait_on_bit(TASK_UNINTERRUPTIBLE) while
+>>>>>> holding
+>>>>>> a BH spin lock? This could be prone to deadlock.
+>>>>> 
+>>>>> We drop the lock inside xprt_wait_on_pinned_rqst() if we need
+>>>>> to
+>>>>> wait.
+>>>>> 
+>>>>> The reason why we want to hold the lock there is to avoid a
+>>>>> use-
+>>>>> after-
+>>>>> free in xprt_unpin_rqst(). Without the lock, there is a risk
+>>>>> that
+>>>>> xprt_release() could complete, and the task get freed before we
+>>>>> have
+>>>>> completed wake_up_bit().
+>>>> 
+>>>> Agree with the last bit. I had that challenge with the order of
+>>>> memory invalidation (which waits) and
+>>>> xprt_lookup_rqst/complete_rqst
+>>>> in rpcrdma_reply_handler.
+>>>> 
+>>>> However my concern is that there are many other users of the
+>>>> transport_lock. Does it become more tricky not to introduce a
+>>>> problem by changing any one of the sites that take
+>>>> transport_lock?
+>>> 
+>>> What is your concern? The main reason for taking the transport lock
+>>> in
+>>> the current code is twofold:
+>>> 
+>>> 1) Perform the lookup of the request on the receive list
+>>> 2) Ensure the request doesn't disappear while we're writing to it.
+>> 
+>> Yes, I think we see the same problem space.
+>> 
+>> I missed, though, that xprt_wait_on_pinned_rqst always releases
+>> transport_lock before invoking wait_on_bit.
+>> 
+>> 
+>>>> Despite the deadlock concern, I don't think it makes sense to
+>>>> call
+>>>> wait_on_bit while holding a spin lock simply because spin locks
+>>>> are
+>>>> supposed to be for things that are quick, like updating a data
+>>>> structure.
+>>>> 
+>>>> wait_on_bit can take microseconds: prepare_to_wait and
+>>>> finish_wait
+>>>> can both take a irqsave spin_lock, for example. bit_wait is the
+>>>> action that is done if the bit is not ready, and that calls
+>>>> schedule(). On a busy system, that kind of context switch can
+>>>> take
+>>>> dozens of microseconds.
+>>> 
+>>> Agreed, but we should only very rarely be hitting the wait case. In
+>>> all
+>>> successful RPC calls, the receive will have happened long before we
+>>> call xprt_release(). In fact, the only 2 cases where this can
+>>> happen
+>>> would be when the RPC call itself is interrupted. Either:
+>>> 
+>>> 1) The task is synchronous and was interrupted by the user.
+>>> 2) The task is terminating early due to a soft timeout.
+>>> 
+>>> In both those cases, we're in a non-performance path. Furthermore,
+>>> they
+>>> would currently end up spinning against the transport lock.
+>> 
+>> OK, no argument that there is any performance concern.
+>> 
+>> I can hit this case 2 or 3 times out of 5 with generic/029 on
+>> NFSv4/RDMA. These days, the worse that happens is the client drops
+>> the RDMA connection because I've spent a very long time immersed
+>> in these code paths, trying to make the two cases you list above
+>> work 100% without deadlock or crash. See commits 04d25b7d5d1b
+>> through 431af645cf66, and commit 68791649a725.
+>> 
+>> It makes me uncertain that waiting for anything in xprt_release
+>> is safe, even if the transport_lock is not being held. xprtrdma
+>> used to perform synchronous memory invalidation in ->buf_free.
+>> It doesn't any more for this reason.
+> 
+> 
+> Full disclosure: I didn't actually enable this code for RDMA.
+
+Noted that; I assumed I would be responsible for it
+if it could be applied to xprtrdma.
+
+
+> The reason is firstly that I won't pretend to understand the locking in
+> rpcrdma_reply_handler(), but furthermore that RDMA doesn't really have
+> a problem with bulk copy in the same way that the socket based code
+> does: the direct placement into the reply buffer means the bulk of the
+> code in rpcrdma_reply_handler() is all about checking the alignment
+> (with, admittedly some scary bits in rpcrdma_inline_fixup()).
+
+rpcrdma_reply_handler actually can use xprt_pin_rqst.
+
+It's not doing a data copy (except for the pull-up in
+rpcrdma_inline_fixup), but it is performing a possibly
+long-running synchronous memory invalidation. During
+that invalidation, the transport_lock cannot be held.
+
+With xprt_pin_rqst, rpcrdma_reply_handler would
+probably work like this:
+
+
+spin_lock(transport_lock)
+xprt_lookup_rqst
+xprt_pin_rqst
+spin_unlock(transport_lock)
+
+invalidate memory associated with this rqst, and wait
+for it to complete
+
+reconstruct the Reply in rqst->rq_rcv_buf, including
+maybe a substantial pull-up if the Reply is large and
+inline
+
+spin_lock(transport_lock)
+xprt_complete_rqst
+xprt_unpin_rqst
+spin_unlock(transport_lock)
+
+
+This would have to co-ordinate with xprt_rdma_free. If
+there are still memory regions registered when
+xprt_rdma_free is called, that means the RPC was
+terminated before the Reply arrived. They still need to
+be invalidated, but these functions have to ensure that
+invalidation does not occur twice.
+
+
+>>>>>>> IMO it would be a lot nicer if we had an FSM state
+>>>>>>> available that
+>>>> could allow another sleep while an RPC task during xprt_release.
+>>> 
+>>> Why would that be preferable, if the argument holds that this only
+>>> happens in these 2 rare error cases?
+>> 
+>> Because FSM steps are the way this code manages sleeps. That
+>> makes it easier to understand and less brittle. I don't think
+>> it would be more overhead than test_bit().
+> 
+> The problem is that it would add new states to a number of functions
+> that currently call xprt_release(). Right now, that would mean
+> 
+> call_reserveresult()
+> rpc_verify_header()
+> rpc_exit_task()
+
+Right. That's why I wasn't bold enough to actually try adding
+the FSM myself.
+
+Your solution is helped somewhat by checking to see if a Call
+was actually sent and a Reply is therefore expected. In some
+of these cases, that means waiting can be avoided entirely
+when the RPC exits before call_transmit.
+
+
+> In addition, we'd need a separate solution for rpc_put_task(), and
+> probably also for rpc_release_task() (since these are both called from
+> outside the main state machine loop).
+> 
+> I'm getting a little worried about your reply above: the RPC engine
+> offers no real-time guarantees, so if the RDMA code is really this
+> latency-sensitive, then what will happen if we enable pre-emption
+> and/or we just have a very congested workqueue?
+
+The sensitivity is only performance-related. On CPU-intensive
+workloads, RPC execution time can increase considerably. The
+RDMA transport doesn't rely on timely execution for proper
+operation, but maybe I don't understand your worry.
+
+
+> Also, how would a state machine solution help? I'd expect that to make
+> the latency worse not better, since the work item would end up getting
+> requeued. If the worker thread then gets rescheduled as well...
+> 
+> One solution may be to simply say we're never going to use this
+> mechanism for RDMA. I suspect that if we just replace the use of xprt-
+>> transport_lock when protecting the receive queue with a new lock that
+> wouldn't need to be bh-safe then that might suffice to deal with the
+> RDMA latency issues. I have less confidence that would work for the
+> others due to the bulk data copy issue.
+
+I would like a separate non-BH lock, if that can be made to
+work. That's in fact how xprtrdma currently works. xprtrdma
+has its own receive list at the moment so that it can find
+memory associated with a rqst _without_ needing to call
+xprt_lookup_rqst. A non-BH lock is used to protect that
+list.
+
+
+--
+Chuck Lever
+
+
 
