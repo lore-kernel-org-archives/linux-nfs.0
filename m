@@ -1,247 +1,209 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lf0-f53.google.com ([209.85.215.53]:37478 "EHLO
-        mail-lf0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752494AbdHPAvt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Aug 2017 20:51:49 -0400
-Received: by mail-lf0-f53.google.com with SMTP id m86so10132552lfi.4
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Aug 2017 17:51:48 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:50500 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752848AbdHPCoL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 15 Aug 2017 22:44:11 -0400
+From: NeilBrown <neilb@suse.com>
+To: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "viro\@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
+Date: Wed, 16 Aug 2017 12:43:58 +1000
+Cc: "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "mkoutny\@suse.com" <mkoutny@suse.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: Do we really need d_weak_revalidate???
+In-Reply-To: <1502705432.4978.1.camel@redhat.com>
+References: <87bmnmrai9.fsf@notabene.neil.brown.name> <1502430944.3822.1.camel@primarydata.com> <1502449309.4950.2.camel@redhat.com> <87zib3niqn.fsf@notabene.neil.brown.name> <1502705432.4978.1.camel@redhat.com>
+Message-ID: <877ey4nsep.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-From: Bennett Amodio <bamodio@purestorage.com>
-Date: Tue, 15 Aug 2017 17:51:46 -0700
-Message-ID: <CAKk7tABaTxA102tUHEuYyC8rtbNDjzHX6MdVcCkTy_26yfVkvA@mail.gmail.com>
-Subject: [RFC v3 2/2] SUNRPC: Mask XIDs to prevent replay cache collision
-To: linux-nfs@vger.kernel.org
-Cc: anna.schumaker@netapp.com, trond.myklebust@primarydata.com,
-        Igor Ostrovsky <igor@purestorage.com>,
-        Vas Chellappa <vas@purestorage.com>,
-        Jui-Yu Chang <juchang@purestorage.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Modify transport behavior so transports mask their XIDs. xid_mask is
-the mask which clears the top several bits. masked_xid is the ID
-(unique to each transport which belongs to the same NFS mount).
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-We also removed xprt_init_xid, since the XID is now initialized
-through rpc_create (and passed in via xprtargs). Since the
-initialization of xid, masked_id and xid_mask occur in
-xprt_create_transport, this should work with rpcrdma as well.
+On Mon, Aug 14 2017, Jeff Layton wrote:
 
-Signed-off-by: Bennett Amodio <bamodio@purestorage.com>
----
- include/linux/sunrpc/xprt.h |  5 +++++
- net/sunrpc/clnt.c           |  8 ++++++++
- net/sunrpc/xprt.c           | 14 ++++++--------
- 3 files changed, 19 insertions(+), 8 deletions(-)
-
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index eab1c74..c80edc4 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -207,6 +207,8 @@ struct rpc_xprt {
-  * Multipath
-  */
-  struct list_head xprt_switch;
-+ u32 masked_id;
-+ u32 xid_mask;
-
-  /*
-  * Connection of transports
-@@ -306,6 +308,9 @@ struct xprt_create {
-  struct svc_xprt *bc_xprt; /* NFSv4.1 backchannel */
-  struct rpc_xprt_switch *bc_xps;
-  unsigned int flags;
-+ u32 transport_id;
-+ u32 bitmask_len;
-+ u32 init_xid;
- };
-
- struct xprt_class {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index bb39f07..8556370 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -520,6 +520,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *arg=
-s)
-  .addrlen =3D args->addrsize,
-  .servername =3D args->servername,
-  .bc_xprt =3D args->bc_xprt,
-+ .init_xid =3D prandom_u32(),
-  };
-  char servername[48];
-  struct rpc_clnt *clnt;
-@@ -572,6 +573,12 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *ar=
-gs)
-  xprtargs.servername =3D servername;
-  }
-
-+ if (args->nconnect)
-+ xprtargs.bitmask_len =3D fls(args->nconnect - 1);
-+ else
-+ xprtargs.bitmask_len =3D 0;
-+ xprtargs.transport_id =3D 0;
-+
-  xprt =3D xprt_create_transport(&xprtargs);
-  if (IS_ERR(xprt))
-  return (struct rpc_clnt *)xprt;
-@@ -591,6 +598,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *arg=
-s)
-  return clnt;
-
-  for (i =3D 0; i < args->nconnect - 1; i++) {
-+ xprtargs.transport_id +=3D 1;
-  if (rpc_clnt_add_xprt(clnt, &xprtargs, NULL, NULL) < 0)
-  break;
-  }
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 3e63c5e..49fd56e 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1231,12 +1231,7 @@ void xprt_retry_reserve(struct rpc_task *task)
-
- static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
- {
-- return (__force __be32)xprt->xid++;
--}
--
--static inline void xprt_init_xid(struct rpc_xprt *xprt)
--{
-- xprt->xid =3D prandom_u32();
-+ return (__force __be32) (xprt->xid++ & xprt->xid_mask) | xprt->masked_id;
- }
-
- static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt=
-)
-@@ -1334,8 +1329,6 @@ static void xprt_init(struct rpc_xprt *xprt,
-struct net *net)
-  rpc_init_priority_wait_queue(&xprt->sending, "xprt_sending");
-  rpc_init_priority_wait_queue(&xprt->backlog, "xprt_backlog");
-
-- xprt_init_xid(xprt);
--
-  xprt->xprt_net =3D get_net(net);
- }
-
-@@ -1367,6 +1360,11 @@ struct rpc_xprt *xprt_create_transport(struct
-xprt_create *args)
-  -PTR_ERR(xprt));
-  goto out;
-  }
-+
-+ xprt->xid_mask =3D 0xffffffff >> args->bitmask_len;
-+ xprt->masked_id =3D args->transport_id << (32 - args->bitmask_len);
-+ xprt->xid =3D args->init_xid;
-+
-  if (args->flags & XPRT_CREATE_NO_IDLE_TIMEOUT)
-  xprt->idle_timeout =3D 0;
-  INIT_WORK(&xprt->task_cleanup, xprt_autoclose);
---=20
-1.9.1
-
-On Tue, Aug 15, 2017 at 5:48 PM, Bennett Amodio <bamodio@purestorage.com> w=
-rote:
-> Enable nconnect mount option and multipathing behavior for NFSv3 and NFSv=
-4.
+> On Mon, 2017-08-14 at 09:36 +1000, NeilBrown wrote:
+>> On Fri, Aug 11 2017, Jeff Layton wrote:
+>>=20
+>> > On Fri, 2017-08-11 at 05:55 +0000, Trond Myklebust wrote:
+>> > > On Fri, 2017-08-11 at 14:31 +1000, NeilBrown wrote:
+>> > > > Funny story.  4.5 years ago we discarded the FS_REVAL_DOT superblo=
+ck
+>> > > > flag and introduced the d_weak_revalidate dentry operation instead.
+>> > > > We duly removed the flag from NFS superblocks and NFSv4 superblock=
+s,
+>> > > > and added the new dentry operation to NFS dentries .... but not to
+>> > > > NFSv4
+>> > > > dentries.
+>> > > >=20
+>> > > > And nobody noticed.
+>> > > >=20
+>> > > > Until today.
+>> > > >=20
+>> > > > A customer reports a situation where mount(....,MS_REMOUNT,..) on =
+an
+>> > > > NFS
+>> > > > filesystem hangs because the network has been deconfigured.  This
+>> > > > makes
+>> > > > perfect sense and I suggested a code change to fix the problem.
+>> > > > However when a colleague was trying to reproduce the problem to
+>> > > > validate
+>> > > > the fix, he couldn't.  Then nor could I.
+>> > > >=20
+>> > > > The problem is trivially reproducible with NFSv3, and not at all w=
+ith
+>> > > > NFSv4.  The reason is the missing d_weak_revalidate.
+>> > > >=20
+>> > > > We could simply add d_weak_revalidate for NFSv4, but given that it
+>> > > > has been missing for 4.5 years, and the only time anyone noticed w=
+as
+>> > > > when the ommission resulted in a better user experience, I do wond=
+er
+>> > > > if
+>> > > > we need to.  Can we just discard d_weak_revalidate?  What purpose
+>> > > > does
+>> > > > it serve?  I couldn't find one.
+>> > > >=20
+>> > > > Thanks,
+>> > > > NeilBrown
+>> > > >=20
+>> > > > For reference, see
+>> > > > Commit: ecf3d1f1aa74 ("vfs: kill FS_REVAL_DOT by adding a
+>> > > > d_weak_revalidate dentry op")
+>> > > >=20
+>> > > >=20
+>> > > >=20
+>> > > > To reproduce the problem at home, on a system that uses systemd:
+>> > > > 1/ place (or find) a filesystem image in a file on an NFS filesyst=
+em.
+>> > > > 2/ mount the nfs filesystem with "noac" - choose v3 or v4
+>> > > > 3/ loop-mount the filesystem image read-only somewhere
+>> > > > 4/ reboot
+>> > > >=20
+>> > > > If you choose v4, the reboot will succeed, possibly after a 90seco=
+nd
+>> > > > timeout.
+>> > > > If you choose v3, the reboot will hang indefinitely in systemd-
+>> > > > shutdown while
+>> > > > remounting the nfs filesystem read-only.
+>> > > >=20
+>> > > > If you don't use "noac" it can still hang, but only if something
+>> > > > slows
+>> > > > down the reboot enough that attributes have timed out by the time
+>> > > > that
+>> > > > systemd-shutdown runs.  This happens for our customer.
+>> > > >=20
+>> > > > If the loop-mounted filesystem is not read-only, you get other
+>> > > > problems.
+>> > > >=20
+>> > > > We really want systemd to figure out that the loop-mount needs to =
+be
+>> > > > unmounted first.  I have ideas concerning that, but it is messy.  =
+But
+>> > > > that isn't the only bug here.
+>> > >=20
+>> > > The main purpose of d_weak_revalidate() was to catch the issues that
+>> > > arise when someone changes the contents of the current working
+>> > > directory or its parent on the server. Since '.' and '..' are treated
+>> > > specially in the lookup code, they would not be revalidated without
+>> > > special treatment. That leads to issues when looking up files as
+>> > > ./<filename> or ../<filename>, since the client won't detect that its
+>> > > dcache is stale until it tries to use the cached dentry+inode.
+>> > >=20
+>> > > The one thing that has changed since its introduction is, I believe,
+>> > > the ESTALE handling in the VFS layer. That might fix a lot of the
+>> > > dcache lookup bugs that were previously handled by d_weak_revalidate=
+().
+>> > > I haven't done an audit to figure out if it actually can handle all =
+of
+>> > > them.
+>> > >=20
+>> >=20
+>> > It may also be related to 8033426e6bdb2690d302872ac1e1fadaec1a5581:
+>> >=20
+>> >     vfs: allow umount to handle mountpoints without revalidating them
+>>=20
+>> You say in the comment for that commit:
+>>=20
+>>      but there
+>>     are cases where we do want to revalidate the root of the fs.
+>>=20
+>> Do you happen to remember what those cases are?
+>>=20
 >
-> Signed-off-by: Jui-Yu Chang <juchang@purestorage.com>
-> ---
->  fs/nfs/client.c     | 3 +++
->  fs/nfs/nfs4client.c | 2 +-
->  2 files changed, 4 insertions(+), 1 deletion(-)
+> Not exactly, but I _think_ I might have been assuming that we needed to
+> ensure that the inode attrs on the root were up to date after the
+> pathwalk.
 >
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 08baa66..8d11a11 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -653,6 +653,9 @@ static int nfs_init_server(struct nfs_server *server,
->   struct nfs_client *clp;
->   int error;
+> I think that was probably wrong. d_revalidate is really intended to
+> ensure that the dentry in question still points to the same inode. In
+> the case of the root of the mount though, we don't really care about the
+> dentry on the server at all. We're attaching the root of the mount to an
+> inode and don't care of the dentry name changes. If we do need to ensure
+> the inode attrs are updated, we'll just revalidate them at that point.
 >
-> + if (data->nfs_server.protocol =3D=3D XPRT_TRANSPORT_TCP)
-> + cl_init.nconnect =3D data->nfs_server.nconnect;
-> +
->   nfs_init_timeout_values(&timeparms, data->nfs_server.protocol,
->   data->timeo, data->retrans);
->   if (data->flags & NFS_MOUNT_NORESVPORT)
-> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> index f11dec1..6ef1baa 100644
-> --- a/fs/nfs/nfs4client.c
-> +++ b/fs/nfs/nfs4client.c
-> @@ -849,7 +849,7 @@ static int nfs4_set_client(struct nfs_server *server,
->   };
->   struct nfs_client *clp;
+>> >=20
+>> > Possibly the fact that we no longer try to revalidate during unmount
+>> > means that this is no longer necessary?
+>> >=20
+>> > The original patch that added d_weak_revalidate had a reproducer in the
+>> > patch description. Have you verified that that problem is still not
+>> > reproducible when you remove d_weak_revalidate?
+>>=20
+>> I did try the reproducer and it works as expected both with and without
+>> d_weak_revalidate.
+>> On reflection, the problem it displayed was caused by d_revalidate()
+>> being called when the dentry name was irrelevant.  We remove that
+>> (fixing the problem) and introduce d_weak_revalidate because we thought
+>> that minimum functionality was still useful.  I'm currently not
+>> convinced that even that is needed.
+>>=20
+>> If we discarded d_weak_revalidate(), we could get rid of the special
+>> handling of umount....
 >
-> - if (minorversion > 0 && proto =3D=3D XPRT_TRANSPORT_TCP)
-> + if (proto =3D=3D XPRT_TRANSPORT_TCP)
->   cl_init.nconnect =3D nconnect;
->   if (server->flags & NFS_MOUNT_NORESVPORT)
->   set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
-> --
-> 1.9.1
->
-> On Tue, Aug 15, 2017 at 5:46 PM, Bennett Amodio <bamodio@purestorage.com>=
- wrote:
->> After seeing Trond=E2=80=99s patches for NFS multipathing on NFSv4.1, we
->> decided to try using the same concept for NFSv3/4.  The primary issue
->> we identified was XID collision in the duplicate request cache (replay
->> cache) for NFSv3/4.  In NFSv3/4, entries are hashed based on XID
->> instead of the slot ID and sequence ID that NFSv4.1 uses.  Since the
->> XIDs are generated by the RPC transports, and Trond=E2=80=99s patches cr=
-eate
->> multiple transports for multipathing, different transports can end up
->> using an overlapping set of XIDs.
->>
->>
->> To fix this, we apply a mask to XIDs. Each transport is constrained to
->> its own segment of the total XID range, and they can never overlap.
->> In terms of loss of entropy, by masking out just enough bits from the
->> XID, we are convinced that the probability of XID wraparound or
->> collision on NFS client restart has not increased to a problematic
->> level (so long as the RPCs are distributed round-robin, as in Trond=E2=
-=80=99s
->> patches).
->>
->>
->> We tested multipathing out and discovered that it enables NFS to get
->> more bandwidth on a bonded interface (instead of using only one
->> physical link, it can use multiple).  Specifically, we tested on a
->> setup where the client was connected to the server via 4 bonded 10Gb/s
->> links.  Without multipathing, the client could only achieve 10Gb/s
->> (using one physical link).  With multipathing, the client was able to
->> achieve a maximum of close to 40Gb/s.
->>
->>
->> However, although the maximum performance was close to 40Gb/s,
->> achieving an average throughput of even 30Gb/s required many
->> connections.  The performance of individual trials had a high
->> variance.  We traced this uneven performance to colliding network
->> paths.  With round-robin distribution of RPCs, no single TCP
->> connection can exceed the performance of the slowest one.  If the
->> connections are distributed unevenly across network paths, some
->> connections can bottleneck others.  To solve this problem, we are
->> currently working on patches to provide load-balancing as an
->> alternative to round-robin for distributing RPCs.
->>
->>
->> To use these patches, you first have to apply Trond's 5 patches
->> (Available at https://www.spinics.net/lists/linux-nfs/msg63368.html).
->> Let us know what you think or if you have any ideas for improving
->> this.
->>
->>
->> Jui-Yu Chang (1):
->>   NFS: Allow multiple connections to NFSv3 and NFSv4.0 servers
->>
->> Bennett Amodio (1):
->>   SUNRPC: Mask XIDs to prevent replay cache collision
->>
->>  fs/nfs/client.c             |  3 +++
->>  fs/nfs/nfs4client.c         |  2 +-
->>  include/linux/sunrpc/xprt.h |  5 +++++
->>  net/sunrpc/clnt.c           |  8 ++++++++
->>  net/sunrpc/xprt.c           | 14 ++++++--------
->>  5 files changed, 23 insertions(+), 9 deletions(-)
->>
->> --
->> 1.9.1
+> I like idea. I say go for it and we can see what (if anything) breaks?
+
+Getting rid of d_weak_revalidate is easy enough - hardly any users.
+
+Getting rid of filename_mountpoint() isn't so easy unfortunately.
+autofs4 uses kern_path_mountpoint() - presumably to avoid getting stuck
+in autofs4_d_manage()?  It would be a shame to keep this infrastructure
+around just so that one part of autofs4 can talk to another part of
+autofs4.
+
+Do you know if the fact that filename_mountpoint() skips ->d_manage is
+important for sys_umount ??
+
+Thanks,
+NeilBrown
+
+
+> --=20
+> Jeff Layton <jlayton@redhat.com>
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmTsXAACgkQOeye3VZi
+gbl3tRAAu2HWFMSVnykYixyqptZDIJhhpg5HyEPjc9VUwvRFxSDqgLJD/A3EMEkG
+ZFnvIhBSkpokpw9c4FvIMZyz/40+oUuJRyil8QcDhdlH9j7M3z9XCOQM+mPHSp8i
+B30yMqvSXX0ryfvihWQv5WtiOSQouhL8hdUHDULxlsRVSjW+SKG7lPfbIWkwiKdU
+vyW0jJVWFloBZQQ/dawhwwz+d9mtqqQvc1Lzy57ZRqyc1fiD74B2qWrUwwYonOpb
+HBsulCtohGZQHRpvfg89eggSc5N/CYUTfDMSaYD4Z0bRDayREVRhWkOOwZUhlfYf
+Bf+KXxCYMaQMHndAllfnjn4pfoZWvHAAZBEJmFsiAIroL4R5/09jmcvI3PuExrI5
+WfPpY67rT38uYnaJ0fv8nYpiapuRR211F/5nzzWn2s0LbH5KPjK/VwYnvpcnAyDy
+2uR42fN71x44YwOFGG++vi3GKD6JfF1eW6MlTXFN0cigNVxacvULaWLc2xzbhxXP
+OS5vWG7s4c52RTRx0IyV356XithNpQp3+UDXEFMl+YLsDZjlMnKXcABL/HBr0H3W
+SqbUVuUWk8Wx7GGPhU1JpQP67/HfB0jespxdITTGjZgsv417mB1FdO8FlwGhGMXa
+KxbCON6kWxixfddWwCFFc8tYK1LrFFYemXUTWb1b18CPWZzNHq8=
+=JeT1
+-----END PGP SIGNATURE-----
+--=-=-=--
