@@ -1,104 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:40180 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751517AbdHPQFn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Aug 2017 12:05:43 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-Subject: Re: [PATCH 1/3] SUNRPC: Don't hold the transport lock across socket
- copy operations
-Date: Wed, 16 Aug 2017 16:05:38 +0000
-Message-ID: <1502899535.5613.1.camel@primarydata.com>
-References: <20170814191652.18263-1-trond.myklebust@primarydata.com>
-         <20170814191652.18263-2-trond.myklebust@primarydata.com>
-         <a71e206a-71cd-7b67-8fb6-34db7dc25954@gmail.com>
-In-Reply-To: <a71e206a-71cd-7b67-8fb6-34db7dc25954@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-io0-f196.google.com ([209.85.223.196]:38436 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751575AbdHPQTd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Aug 2017 12:19:33 -0400
+Received: by mail-io0-f196.google.com with SMTP id o9so2553195iod.5
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Aug 2017 09:19:32 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/6] RPC client latency fixes
+Date: Wed, 16 Aug 2017 12:19:23 -0400
+Message-Id: <20170816161929.11271-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTA4LTE2IGF0IDExOjQ1IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gSGkgVHJvbmQsDQo+IA0KPiBPbiAwOC8xNC8yMDE3IDAzOjE2IFBNLCBUcm9uZCBNeWtsZWJ1
-c3Qgd3JvdGU6DQo+ID4gSW5zdGVhZCBhZGQgYSBtZWNoYW5pc20gdG8gZW5zdXJlIHRoYXQgdGhl
-IHJlcXVlc3QgZG9lc24ndA0KPiA+IGRpc2FwcGVhcg0KPiA+IGZyb20gdW5kZXJuZWF0aCB1cyB3
-aGlsZSBjb3B5aW5nIGZyb20gdGhlIHNvY2tldC4gV2UgZG8gdGhpcyBieQ0KPiA+IHByZXZlbnRp
-bmcgeHBydF9yZWxlYXNlKCkgZnJvbSBmcmVlaW5nIHRoZSBYRFIgYnVmZmVycyB1bnRpbCB0aGUN
-Cj4gPiBmbGFnIFJQQ19UQVNLX01TR19SRUNWIGhhcyBiZWVuIGNsZWFyZWQgZnJvbSB0aGUgcmVx
-dWVzdC4NCj4gPiANCj4gPiBTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
-a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+IA0KPiBJIHNlZSB0aGUgZm9sbG93aW5nIGtlcm5l
-bCBjcmFzaCBhZnRlciBhcHBseWluZyB0aGlzIHBhdGNoIGFuZA0KPiBydW5uaW5nIHhmc3Rlc3Rz
-IGdlbmVyaWMvMDg5Og0KPiANCj4gWyAgIDI1LjQwODQxNF0gQlVHOiB1bmFibGUgdG8gaGFuZGxl
-IGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UNCj4gYXQgMDAwMDAwMDAwMDAwMDAzMA0K
-PiBbICAgMjUuNDA5MjUzXSBJUDogeHBydF9waW5fcnFzdCsweDIzLzB4MzAgW3N1bnJwY10NCj4g
-WyAgIDI1LjQwOTcyOF0gUEdEIDMyZWYyMDY3IA0KPiBbICAgMjUuNDA5NzI5XSBQNEQgMzJlZjIw
-NjcgDQo+IFsgICAyNS40MTAwMDNdIFBVRCAzMmVkMDA2NyANCj4gWyAgIDI1LjQxMDI3Nl0gUE1E
-IDAgDQo+IFsgICAyNS40MTA1NjFdIA0KPiBbICAgMjUuNDEwOTM1XSBPb3BzOiAwMDAyIFsjMV0g
-UFJFRU1QVCBTTVANCj4gWyAgIDI1LjQxMTMyNl0gTW9kdWxlcyBsaW5rZWQgaW46IHJwY3NlY19n
-c3Nfa3JiNSBuZnN2NCBuZnMgZnNjYWNoZQ0KPiBycGNyZG1hIGNmZzgwMjExIHJma2lsbCBjcmN0
-MTBkaWZfcGNsbXVsIGNyYzMyX3BjbG11bCBnaGFzaF8NCj4gY2xtdWxuaV9pbnRlbCBwY2JjIGpv
-eWRldiB2bXdnZnggbW91c2VkZXYgcHBkZXYgc25kX2hkYV9jb2RlY19nZW5lcmljDQo+IGFlc25p
-X2ludGVsIGRybV9rbXNfaGVscGVyIGFlc194ODZfNjQgY3J5cHRvX3NpbWQgc25kX2hkYV8NCj4g
-aW50ZWwgY3J5cHRkIGV2ZGV2IGdsdWVfaGVscGVyIGlucHV0X2xlZHMgbGVkX2NsYXNzIHNuZF9o
-ZGFfY29kZWMNCj4gcHNtb3VzZSBtYWNfaGlkIHBjc3BrciBzbmRfaHdkZXAgc3lzY29weWFyZWEg
-c25kX2hkYV9jb3JlIHN5c2YNCj4gaWxscmVjdCBzeXNpbWdibHQgZmJfc3lzX2ZvcHMgc25kX3Bj
-bSB0dG0gc25kX3RpbWVyIHBhcnBvcnRfcGMgZHJtDQo+IHB2cGFuaWMgcGFycG9ydCBzbmQgaW50
-ZWxfYWdwIHNvdW5kY29yZSBpbnRlbF9ndHQgaTJjX3BpaXg0IGINCj4gdXR0b24gc2NoX2ZxX2Nv
-ZGVsIG5mc2QgYXV0aF9ycGNnc3Mgb2lkX3JlZ2lzdHJ5IG5mc19hY2wgbG9ja2QgZ3JhY2UNCj4g
-c3VucnBjIGlwX3RhYmxlcyB4X3RhYmxlcyBhdGFfZ2VuZXJpYyBwYXRhX2FjcGkgc2VyaW9fcmF3
-IGENCj4gdGtiZCBsaWJwczIgYXRhX3BpaXggaTgwNDIgc2VyaW8gZmxvcHB5IGxpYmF0YSBzY3Np
-X21vZCB1aGNpX2hjZA0KPiBlaGNpX3BjaSBlaGNpX2hjZCB1c2Jjb3JlIHVzYl9jb21tb24gdmly
-dGlvX2JhbGxvb24geGZzIGxpYmNyYzMNCj4gMmMgY3JjMzJjX2dlbmVyaWMgY3JjMzJjX2ludGVs
-IHZpcnRpb19uZXQNCj4gWyAgIDI1LjQxODMzMl0gIHZpcnRpb19wY2kgdmlydGlvX2JsayB2aXJ0
-aW9fcmluZyB2aXJ0aW8NCj4gWyAgIDI1LjQxODg1M10gQ1BVOiAxIFBJRDogODQgQ29tbToga3dv
-cmtlci8xOjFIIE5vdCB0YWludGVkIDQuMTMuMC0NCj4gcmM1LUFOTkErICM0MDM5DQo+IFsgICAy
-NS40MTk2MDNdIEhhcmR3YXJlIG5hbWU6IEJvY2hzIEJvY2hzLCBCSU9TIEJvY2hzIDAxLzAxLzIw
-MTENCj4gWyAgIDI1LjQyMDE2Nl0gV29ya3F1ZXVlOiB4cHJ0aW9kIHhzX3RjcF9kYXRhX3JlY2Vp
-dmVfd29ya2ZuIFtzdW5ycGNdDQo+IFsgICAyNS40MjA3OTZdIHRhc2s6IGZmZmY4ODAwM2M2NDU4
-ODAgdGFzay5zdGFjazogZmZmZmM5MDAwMDU0YzAwMA0KPiBbICAgMjUuNDIxNzAyXSBSSVA6IDAw
-MTA6eHBydF9waW5fcnFzdCsweDIzLzB4MzAgW3N1bnJwY10NCj4gWyAgIDI1LjQyMjUwN10gUlNQ
-OiAwMDE4OmZmZmZjOTAwMDA1NGZkMDggRUZMQUdTOiAwMDAxMDI4Mg0KPiBbICAgMjUuNDIzMzI3
-XSBSQVg6IDAwMDAwMDAwMDAwMDAwMDAgUkJYOiAwMDAwMDAwMDAwMDAwMGNjIFJDWDoNCj4gMDAw
-MDAwMDAwMDAwMTAwMA0KPiBbICAgMjUuNDI0MzQwXSBSRFg6IDAwMDAwMDAwMDAwMDAwMDEgUlNJ
-OiAwMDAwMTAwMDAwMDAwMDAwIFJESToNCj4gZmZmZjg4MDAzN2JjZmMwMA0KPiBbICAgMjUuNDI1
-MzM4XSBSQlA6IGZmZmZjOTAwMDA1NGZkMDggUjA4OiBmZmZmODgwMDM4Nzc4NTY4IFIwOToNCj4g
-ZmZmZjg4MDAzZmMxODc4MA0KPiBbICAgMjUuNDI2MzI5XSBSMTA6IGZmZmY4ODAwM2RiZTczMDAg
-UjExOiAwMDAwMDAwMDAwMDAwMDAwIFIxMjoNCj4gZmZmZjg4MDAzODc3ODQzOA0KPiBbICAgMjUu
-NDI3MzI0XSBSMTM6IGZmZmY4ODAwMzg3NzgwMDAgUjE0OiBmZmZmZmZmZmEwMmJhMWJiIFIxNToN
-Cj4gZmZmZjg4MDAzN2JjZmMwMA0KPiBbICAgMjUuNDI4MzE2XSBGUzogIDAwMDAwMDAwMDAwMDAw
-MDAoMDAwMCkgR1M6ZmZmZjg4MDAzZmQwMDAwMCgwMDAwKQ0KPiBrbmxHUzowMDAwMDAwMDAwMDAw
-MDAwDQo+IFsgICAyNS40Mjk3MDRdIENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBDUjA6IDAw
-MDAwMDAwODAwNTAwMzMNCj4gWyAgIDI1LjQzMDU4NV0gQ1IyOiAwMDAwMDAwMDAwMDAwMDMwIENS
-MzogMDAwMDAwMDAzMmVhNzAwMCBDUjQ6DQo+IDAwMDAwMDAwMDAxNDA2ZTANCj4gWyAgIDI1LjQz
-MTYxM10gQ2FsbCBUcmFjZToNCj4gWyAgIDI1LjQzMjE4OF0gIHhzX3RjcF9kYXRhX3JlY3YrMHg1
-OTgvMHhhNDAgW3N1bnJwY10NCj4gWyAgIDI1LjQzMjk4OF0gID8gcnBjX3dha2VfdXBfZmlyc3Rf
-b25fd3ErMHhhMC8weDFkMCBbc3VucnBjXQ0KPiBbICAgMjUuNDM0NDAzXSAgPyBjYWxsX2RlY29k
-ZSsweDgzMC8weDgzMCBbc3VucnBjXQ0KPiBbICAgMjUuNDM1MjYzXSAgPyB4cHJ0X3JlbGVhc2Vf
-eHBydCsweDg2LzB4OTAgW3N1bnJwY10NCj4gWyAgIDI1LjQzNjA3NF0gIHRjcF9yZWFkX3NvY2sr
-MHg5OC8weDFkMA0KPiBbICAgMjUuNDM2NzYwXSAgPyB4c190Y3BfY2hlY2tfZnJhZ2hkci5wYXJ0
-LjArMHg2MC8weDYwIFtzdW5ycGNdDQo+IFsgICAyNS40Mzc3MDJdICB4c190Y3BfZGF0YV9yZWNl
-aXZlX3dvcmtmbisweGMyLzB4MTcwIFtzdW5ycGNdDQo+IFsgICAyNS40Mzg1NTRdICBwcm9jZXNz
-X29uZV93b3JrKzB4MWVkLzB4NDMwDQo+IFsgICAyNS40MzkyNDJdICB3b3JrZXJfdGhyZWFkKzB4
-NTYvMHg0MDANCj4gWyAgIDI1LjQzOTk0Ml0gIGt0aHJlYWQrMHgxMzQvMHgxNTANCj4gWyAgIDI1
-LjQ0MDU1NF0gID8gcHJvY2Vzc19vbmVfd29yaysweDQzMC8weDQzMA0KPiBbICAgMjUuNDQxMjM1
-XSAgPyBrdGhyZWFkX2NyZWF0ZV9vbl9ub2RlKzB4ODAvMHg4MA0KPiBbICAgMjUuNDQxOTQ2XSAg
-cmV0X2Zyb21fZm9yaysweDI1LzB4MzANCj4gWyAgIDI1LjQ0MjU1NV0gQ29kZTogMGYgMWYgODQg
-MDAgMDAgMDAgMDAgMDAgMGYgMWYgNDQgMDAgMDAgNTUgNDggODkNCj4gZTUgNDggODEgZWMgMjAg
-MTAgMDAgMDAgNDggODMgMGMgMjQgMDAgNDggODEgYzQgMjAgMTAgMDAgMDANCj4gIDQ4IDhiIDg3
-IDg4IDAwIDAwIDAwIDxmMD4gODAgNDggMzAgMDggNWQgYzMgNjYgMGYgMWYgNDQgMDAgMDAgMGYg
-MWYNCj4gNDQgMDAgMDAgNDggOGIgODcgDQo+IFsgICAyNS40NDUwOTZdIFJJUDogeHBydF9waW5f
-cnFzdCsweDIzLzB4MzAgW3N1bnJwY10gUlNQOg0KPiBmZmZmYzkwMDAwNTRmZDA4DQo+IFsgICAy
-NS40NDYwMDddIENSMjogMDAwMDAwMDAwMDAwMDAzMA0KPiBbICAgMjUuNDQ2NjAxXSAtLS1bIGVu
-ZCB0cmFjZSA5ZDcxMWVlMzlkNTk1NTE3IF0tLS0NCj4gWyAgIDI1LjQ0NzMyMF0gS2VybmVsIHBh
-bmljIC0gbm90IHN5bmNpbmc6IEZhdGFsIGV4Y2VwdGlvbiBpbg0KPiBpbnRlcnJ1cHQNCj4gWyAg
-IDI1LjQ0ODI5Ml0gS2VybmVsIE9mZnNldDogZGlzYWJsZWQNCj4gWyAgIDI1LjQ0ODkwNF0gLS0t
-WyBlbmQgS2VybmVsIHBhbmljIC0gbm90IHN5bmNpbmc6IEZhdGFsIGV4Y2VwdGlvbg0KPiBpbiBp
-bnRlcnJ1cHQNCg0KQWguLi4gVGhhdCBsb29rcyBsaWtlIGl0IG1pZ2h0IGJlIHRoZSBjYWxsYmFj
-ayBjaGFubmVsLCB3aGljaCBkb2Vzbid0DQpoYXZlIGFuIGFzc29jaWF0ZWQgcnFfdGFzay4NCg0K
-SG1tLi4uIFRoYXQgY29kZSBsb29rcyBhcyBpZiB3ZSBjYW4ganVzdCBza2lwIHRoZSBwaW5uaW5n
-IGFsdG9nZXRoZXIsDQpzaW5jZSBhIGNhbGxiYWNrIHJlcXVlc3QgaXMgZ29pbmcgbm93aGVyZSB1
-bnRpbCBpdCBhY3R1YWxseSBoYXMNCnJlY2VpdmVkIGRhdGEuDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWts
-ZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+The following patches apply on top of the writeback patches sent last
+week. They start the process of reducing contention in the RPC client
+receive code due to excessive holding of the transport lock.
+
+The first patch is the most important in that it allows the client to
+drop the transport lock while copying data from the socket into the
+RPC call's reply buffers.
+The second ensures that we don't keep hogging the workqueue worker thread
+forever, but that we reschedule the receive job if it keeps looping.
+Finally, a small cleanup to avoid having to make a copy of the
+struct xdr_skb_reader on the stack.
+
+v2: Reorder patches to add I/O throttling after the core RPC latency
+changes
+    Fix a crash when receiving backchannel requests.
+
+Trond Myklebust (6):
+  SUNRPC: Don't hold the transport lock across socket copy operations
+  SUNRPC: Don't hold the transport lock when receiving backchannel data
+  SUNRPC: Don't loop forever in xs_tcp_data_receive()
+  SUNRPC: Cleanup xs_tcp_read_common()
+  SUNRPC: Add a function to allow waiting for RPC transmission
+  NFS: Throttle I/O to the NFS server
+
+ fs/nfs/pagelist.c             |  3 +-
+ include/linux/sunrpc/sched.h  |  5 ++++
+ include/linux/sunrpc/xprt.h   |  2 ++
+ net/sunrpc/backchannel_rqst.c |  4 +--
+ net/sunrpc/sched.c            | 22 +++++++++++++++
+ net/sunrpc/xprt.c             | 48 +++++++++++++++++++++++++++++++
+ net/sunrpc/xprtsock.c         | 66 ++++++++++++++++++++++---------------------
+ 7 files changed, 115 insertions(+), 35 deletions(-)
+
+-- 
+2.13.5
 
