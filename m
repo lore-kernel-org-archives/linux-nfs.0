@@ -1,126 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:38224 "EHLO
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36351 "EHLO
         mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751635AbdHPQTn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Aug 2017 12:19:43 -0400
-Received: by mail-it0-f67.google.com with SMTP id f16so2665558itb.5
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Aug 2017 09:19:42 -0700 (PDT)
+        with ESMTP id S1751695AbdHPQTk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Aug 2017 12:19:40 -0400
+Received: by mail-it0-f67.google.com with SMTP id o72so2675175ita.3
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Aug 2017 09:19:40 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 5/6] SUNRPC: Add a function to allow waiting for RPC transmission
-Date: Wed, 16 Aug 2017 12:19:28 -0400
-Message-Id: <20170816161929.11271-6-trond.myklebust@primarydata.com>
-In-Reply-To: <20170816161929.11271-5-trond.myklebust@primarydata.com>
+Subject: [PATCH v2 3/6] SUNRPC: Don't loop forever in xs_tcp_data_receive()
+Date: Wed, 16 Aug 2017 12:19:26 -0400
+Message-Id: <20170816161929.11271-4-trond.myklebust@primarydata.com>
+In-Reply-To: <20170816161929.11271-3-trond.myklebust@primarydata.com>
 References: <20170816161929.11271-1-trond.myklebust@primarydata.com>
  <20170816161929.11271-2-trond.myklebust@primarydata.com>
  <20170816161929.11271-3-trond.myklebust@primarydata.com>
- <20170816161929.11271-4-trond.myklebust@primarydata.com>
- <20170816161929.11271-5-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sometimes, we only want to know that the RPC message is in the process
-of being transmitted. Add a function to allow that.
+Ensure that we don't hog the workqueue thread by requeuing the job
+every 64 loops.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- include/linux/sunrpc/sched.h |  3 +++
- net/sunrpc/sched.c           | 22 ++++++++++++++++++++++
- net/sunrpc/xprt.c            |  6 ++++++
- 3 files changed, 31 insertions(+)
+ net/sunrpc/xprtsock.c | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/sched.h b/include/linux/sunrpc/sched.h
-index c1768f9d993b..148cd6c5d2eb 100644
---- a/include/linux/sunrpc/sched.h
-+++ b/include/linux/sunrpc/sched.h
-@@ -141,6 +141,8 @@ struct rpc_task_setup {
- #define RPC_TASK_ACTIVE		2
- #define RPC_TASK_MSG_RECV	3
- #define RPC_TASK_MSG_RECV_WAIT	4
-+#define RPC_TASK_MSG_XMIT	5
-+#define RPC_TASK_MSG_XMIT_WAIT	6
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index a2312f14beb4..e8f44fc76754 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1526,6 +1526,7 @@ static void xs_tcp_data_receive(struct sock_xprt *transport)
+ 		.arg.data = xprt,
+ 	};
+ 	unsigned long total = 0;
++	int loop;
+ 	int read = 0;
  
- #define RPC_IS_RUNNING(t)	test_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
- #define rpc_set_running(t)	set_bit(RPC_TASK_RUNNING, &(t)->tk_runstate)
-@@ -246,6 +248,7 @@ void		rpc_free(struct rpc_task *);
- int		rpciod_up(void);
- void		rpciod_down(void);
- int		__rpc_wait_for_completion_task(struct rpc_task *task, wait_bit_action_f *);
-+int		rpc_wait_for_msg_send(struct rpc_task *task);
- #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
- struct net;
- void		rpc_show_tasks(struct net *);
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 0cc83839c13c..30509a4d7e00 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -320,6 +320,19 @@ int __rpc_wait_for_completion_task(struct rpc_task *task, wait_bit_action_f *act
- EXPORT_SYMBOL_GPL(__rpc_wait_for_completion_task);
+ 	mutex_lock(&transport->recv_mutex);
+@@ -1534,20 +1535,20 @@ static void xs_tcp_data_receive(struct sock_xprt *transport)
+ 		goto out;
  
- /*
-+ * Allow callers to wait for completion of an RPC call
-+ */
-+int rpc_wait_for_msg_send(struct rpc_task *task)
-+{
-+	if (!test_bit(RPC_TASK_MSG_XMIT, &task->tk_runstate))
-+		return 0;
-+	set_bit(RPC_TASK_MSG_XMIT_WAIT, &task->tk_runstate);
-+	return wait_on_bit_action(&task->tk_runstate, RPC_TASK_MSG_XMIT,
-+			rpc_wait_bit_killable, TASK_KILLABLE);
-+}
-+EXPORT_SYMBOL_GPL(rpc_wait_for_msg_send);
-+
-+/*
-  * Make an RPC task runnable.
-  *
-  * Note: If the task is ASYNC, and is being made runnable after sitting on an
-@@ -700,6 +713,7 @@ rpc_reset_task_statistics(struct rpc_task *task)
- {
- 	task->tk_timeouts = 0;
- 	task->tk_flags &= ~(RPC_CALL_MAJORSEEN|RPC_TASK_KILLED|RPC_TASK_SENT);
-+	set_bit(RPC_TASK_MSG_XMIT, &task->tk_runstate);
- 
- 	rpc_init_task_statistics(task);
- }
-@@ -928,6 +942,7 @@ static void rpc_init_task(struct rpc_task *task, const struct rpc_task_setup *ta
- 	memset(task, 0, sizeof(*task));
- 	atomic_set(&task->tk_count, 1);
- 	task->tk_flags  = task_setup_data->flags;
-+	task->tk_runstate = BIT(RPC_TASK_MSG_XMIT);
- 	task->tk_ops = task_setup_data->callback_ops;
- 	task->tk_calldata = task_setup_data->callback_data;
- 	INIT_LIST_HEAD(&task->tk_task);
-@@ -1012,6 +1027,13 @@ static void rpc_async_release(struct work_struct *work)
- 
- static void rpc_release_resources_task(struct rpc_task *task)
- {
-+	if (test_bit(RPC_TASK_MSG_XMIT, &task->tk_runstate)) {
-+		clear_bit(RPC_TASK_MSG_XMIT, &task->tk_runstate);
-+		smp_mb__after_atomic();
-+		if (test_bit(RPC_TASK_MSG_XMIT_WAIT, &task->tk_runstate))
-+			wake_up_bit(&task->tk_runstate, RPC_TASK_MSG_XMIT);
-+	}
-+
- 	xprt_release(task);
- 	if (task->tk_msg.rpc_cred) {
- 		put_rpccred(task->tk_msg.rpc_cred);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index a558e8c620c0..62c379865f7c 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -978,6 +978,12 @@ bool xprt_prepare_transmit(struct rpc_task *task)
- 		goto out_unlock;
+ 	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
+-	for (;;) {
++	for (loop = 0; loop < 64; loop++) {
+ 		lock_sock(sk);
+ 		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
+ 		if (read <= 0) {
+ 			clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
+ 			release_sock(sk);
+-			if (!test_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
+-				break;
+-		} else {
+-			release_sock(sk);
+-			total += read;
++			break;
+ 		}
++		release_sock(sk);
++		total += read;
+ 		rd_desc.count = 65536;
  	}
- 	ret = true;
-+	if (test_bit(RPC_TASK_MSG_XMIT, &task->tk_runstate)) {
-+		clear_bit(RPC_TASK_MSG_XMIT, &task->tk_runstate);
-+		smp_mb__after_atomic();
-+		if (test_bit(RPC_TASK_MSG_XMIT_WAIT, &task->tk_runstate))
-+			wake_up_bit(&task->tk_runstate, RPC_TASK_MSG_XMIT);
-+	}
- out_unlock:
- 	spin_unlock_bh(&xprt->transport_lock);
- 	return ret;
++	if (test_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
++		queue_work(xprtiod_workqueue, &transport->recv_worker);
+ out:
+ 	mutex_unlock(&transport->recv_mutex);
+ 	trace_xs_tcp_data_ready(xprt, read, total);
 -- 
 2.13.5
 
