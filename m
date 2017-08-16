@@ -1,69 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:33138 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752377AbdHPXAU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Aug 2017 19:00:20 -0400
-Received: by mail-io0-f194.google.com with SMTP id q64so3128394ioi.0
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Aug 2017 16:00:20 -0700 (PDT)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:34212 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752377AbdHPXAQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Aug 2017 19:00:16 -0400
+Received: by mail-io0-f195.google.com with SMTP id m88so3127718iod.1
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Aug 2017 16:00:16 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 3/5] SUNRPC: Don't loop forever in xs_tcp_data_receive()
-Date: Wed, 16 Aug 2017 19:00:06 -0400
-Message-Id: <20170816230008.20006-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20170816230008.20006-3-trond.myklebust@primarydata.com>
+Subject: [PATCH v3 2/5] SUNRPC: Don't hold the transport lock when receiving backchannel data
+Date: Wed, 16 Aug 2017 19:00:05 -0400
+Message-Id: <20170816230008.20006-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20170816230008.20006-2-trond.myklebust@primarydata.com>
 References: <20170816230008.20006-1-trond.myklebust@primarydata.com>
  <20170816230008.20006-2-trond.myklebust@primarydata.com>
- <20170816230008.20006-3-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that we don't hog the workqueue thread by requeuing the job
-every 64 loops.
+The backchannel request has no associated task, so it is going nowhere
+until we call xprt_complete_bc_request().
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/xprtsock.c | 13 +++++++------
- 1 file changed, 7 insertions(+), 6 deletions(-)
+ net/sunrpc/backchannel_rqst.c | 4 ++--
+ net/sunrpc/xprtsock.c         | 5 +----
+ 2 files changed, 3 insertions(+), 6 deletions(-)
 
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index ac701c28f44f..c2c68a15b59d 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -171,10 +171,10 @@ int xprt_setup_bc(struct rpc_xprt *xprt, unsigned int min_reqs)
+ 	/*
+ 	 * Add the temporary list to the backchannel preallocation list
+ 	 */
+-	spin_lock_bh(&xprt->bc_pa_lock);
++	spin_lock(&xprt->bc_pa_lock);
+ 	list_splice(&tmp_list, &xprt->bc_pa_list);
+ 	xprt_inc_alloc_count(xprt, min_reqs);
+-	spin_unlock_bh(&xprt->bc_pa_lock);
++	spin_unlock(&xprt->bc_pa_lock);
+ 
+ 	dprintk("RPC:       setup backchannel transport done\n");
+ 	return 0;
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index a2312f14beb4..e8f44fc76754 100644
+index 04dbc7027712..a2312f14beb4 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -1526,6 +1526,7 @@ static void xs_tcp_data_receive(struct sock_xprt *transport)
- 		.arg.data = xprt,
- 	};
- 	unsigned long total = 0;
-+	int loop;
- 	int read = 0;
+@@ -1389,11 +1389,9 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
+ 				container_of(xprt, struct sock_xprt, xprt);
+ 	struct rpc_rqst *req;
  
- 	mutex_lock(&transport->recv_mutex);
-@@ -1534,20 +1535,20 @@ static void xs_tcp_data_receive(struct sock_xprt *transport)
- 		goto out;
+-	/* Look up and lock the request corresponding to the given XID */
+-	spin_lock_bh(&xprt->transport_lock);
++	/* Look up the request corresponding to the given XID */
+ 	req = xprt_lookup_bc_request(xprt, transport->tcp_xid);
+ 	if (req == NULL) {
+-		spin_unlock_bh(&xprt->transport_lock);
+ 		printk(KERN_WARNING "Callback slot table overflowed\n");
+ 		xprt_force_disconnect(xprt);
+ 		return -1;
+@@ -1404,7 +1402,6 @@ static int xs_tcp_read_callback(struct rpc_xprt *xprt,
  
- 	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
--	for (;;) {
-+	for (loop = 0; loop < 64; loop++) {
- 		lock_sock(sk);
- 		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
- 		if (read <= 0) {
- 			clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state);
- 			release_sock(sk);
--			if (!test_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
--				break;
--		} else {
--			release_sock(sk);
--			total += read;
-+			break;
- 		}
-+		release_sock(sk);
-+		total += read;
- 		rd_desc.count = 65536;
- 	}
-+	if (test_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
-+		queue_work(xprtiod_workqueue, &transport->recv_worker);
- out:
- 	mutex_unlock(&transport->recv_mutex);
- 	trace_xs_tcp_data_ready(xprt, read, total);
+ 	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
+ 		xprt_complete_bc_request(req, transport->tcp_copied);
+-	spin_unlock_bh(&xprt->transport_lock);
+ 
+ 	return 0;
+ }
 -- 
 2.13.5
 
