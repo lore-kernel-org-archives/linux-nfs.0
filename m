@@ -1,11 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40086 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:40750 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751605AbdHQDYK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 16 Aug 2017 23:24:10 -0400
+        id S1751552AbdHQDeA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 16 Aug 2017 23:34:00 -0400
 From: NeilBrown <neilb@suse.com>
 To: Bennett Amodio <bamodio@purestorage.com>, linux-nfs@vger.kernel.org
-Date: Thu, 17 Aug 2017 13:23:58 +1000
+Date: Thu, 17 Aug 2017 13:33:49 +1000
 Cc: anna.schumaker@netapp.com, trond.myklebust@primarydata.com,
         Igor Ostrovsky <igor@purestorage.com>,
         Vas Chellappa <vas@purestorage.com>,
@@ -13,7 +13,7 @@ Cc: anna.schumaker@netapp.com, trond.myklebust@primarydata.com,
 Subject: Re: [RFC v3 2/2] SUNRPC: Mask XIDs to prevent replay cache collision
 In-Reply-To: <CAKk7tABaTxA102tUHEuYyC8rtbNDjzHX6MdVcCkTy_26yfVkvA@mail.gmail.com>
 References: <CAKk7tABaTxA102tUHEuYyC8rtbNDjzHX6MdVcCkTy_26yfVkvA@mail.gmail.com>
-Message-ID: <87pobunagh.fsf@notabene.neil.brown.name>
+Message-ID: <87mv6yna02.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -21,50 +21,45 @@ Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain
 
 On Tue, Aug 15 2017, Bennett Amodio wrote:
-
-> + xprt->xid_mask =3D 0xffffffff >> args->bitmask_len;
-> + xprt->masked_id =3D args->transport_id << (32 - args->bitmask_len);
+>
+>   for (i = 0; i < args->nconnect - 1; i++) {
+> +     xprtargs.transport_id += 1;
+>       if (rpc_clnt_add_xprt(clnt, &xprtargs, NULL, NULL) < 0)
+>           break;
+>   }
 
 hi,
- the above isn't safe when bitmask_len is zero.
- Shifting a u32 32 bits to the left is undefined in C.
+ this is a tiny point, but I think this code would look nicer as
 
-        The result is undefined if the right operand is negative, or
-        greater than or equal to the number of bits in the left
-        expression=E2=80=99s type.
-
- if (args->bitmask_len)
-	xprt->masked_id =3D args->transport_id << (32 - args->bitmask_len);
- else
-        xprt->masked_id =3D 0;
+   for (i = 1; i < args->nconnect; i++) {
+           xprtargs.transport_id = i;
+           if (rpc_clnt_add_xprt(clnt, &xprtargs, NULL, NULL) < 0)
+                   break;
+   }
 
 Thanks,
 NeilBrown
-
-> + xprt->xid =3D args->init_xid;
-> +
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmVDFAACgkQOeye3VZi
-gbmdbA/9HERuobdvk3eFcztzYgAsX+9YVz+EE6ncgXh2kqZBd26z3eMISz/y/uM/
-pqTHyDCQQL/mzMp5OX3f8nfflR+OGGKWc92DxEqtUCCdL+eLzCwLq+ysmIA+arXf
-/fEKDcipQyK6tccLWBy4g7Z2wjW31cVV7UUQywdeab+6hoDjtxDXWDt8ZEe8EGVV
-0BW/PPZY+nHM2q6gzMgBahWjvDPkOoftVg61Nf2aujWZkpWZpofaN61PxSk2A4S7
-KyOQR+h67Kzu+vDI+EvbDZosnORrJrAGxLgxcLZCNETV3j2k1AZ2JfHW8KwdchiW
-1v0Z1wNO/gGlYNPcENm0Gij980PMNKpiI8N2KJ7DDcKcb74XR3Ktkw4idOcGezSf
-AwB8Mr7RJ7kNgzO4t50uvI0L2P2El2rPET+aXNrkReo/8k1oJ0PPfh4pXLNF2FCg
-TYR5HYN/Hh6rWbXmbQIkGKlYQ3pF3pglqGczCwMigSpCCFER2s5/GHhkM06Jvhf7
-5HQF3TdaMHrxT+3i2VQmnXY9GaxyBFeioQDqg1dT/ADR6WmA+GfHXzS/O0Y/kO4H
-8YNpJEg4nDUs7EgaA1thX7TYD/hvJbVfAt8aVcdhWANBeIRqq3gCyUwWZs7N0SQH
-LNAZK5+yT6JASZsIYDsW1ZLooBpD2u77t74fgoriqGNVfaeBTBk=
-=hH96
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmVDp8ACgkQOeye3VZi
+gbn4OA//a5Fy/Fz3NPMClC0JbO/G/5WK0pJJMd6qefdQwdS3FbVuzMuGbP2F/Pei
+olZw8PPMqsdLckkkicuir/GbCIVpSOpwGzxOhyo8of0n9KZM9iWywHxXd0gBzkUp
+DwXc++z1LZWcuoKExGezjaNE+mhfj6tm+J/P9p0rcny8QKjHgoLvWRTrABHcbk9T
+syHmDuiFzT4lp+2zJ63wbQzsz0JBn9Kh+kkLjZXhdXOGHAY0YRBXUc6ODMEWtZNi
+PIApm2K9ePaRjR17dJe95NoyAmhhXTekaq7gd2/pN3VgS6NuTSxTdfj72SAYjwVn
+LxqA3zFIsjBlA5er30GpErvwbwUFjkk5A6jywwCjVYglhMqovcpWXrokh8waSdf+
+I1K6OQnFfN253vM36XK1AMfTIAIvZu8l2AHsxQ1ugvxMBE/opAjV8quuS1S5bT6j
+UOs+oB8Oba8gNFzWIyFnTw5s2HIVEFYDPzuww1rv4mVqGJWbsDAear9cfEzk8GgO
+eAAY7hFCDFdrs88c5/dTEZVGik+wq0K4r013cQ+Iupy4k4HJQcLwj6MvAM/fsb/O
+qXhZUcOBNcMjgaZn6Hpdk4KxhKN7Bf2LvdvA6Yf/jn0qS25wFZJApDlyuugNLYMi
+wYBGdbl4jmtcFd/dByf0K3EeNE3VS80QVAq6GKUNBk44DfzdD0Y=
+=E+Uj
 -----END PGP SIGNATURE-----
 --=-=-=--
