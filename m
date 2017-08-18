@@ -1,87 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:37771 "EHLO
-        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751246AbdHRQEM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 12:04:12 -0400
-Received: by mail-qk0-f181.google.com with SMTP id z18so55205328qka.4
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Aug 2017 09:04:11 -0700 (PDT)
-Message-ID: <1503072249.4719.22.camel@redhat.com>
-Subject: Re: [PATCH 2/2] lockd: Adjust 61 checks for null pointers
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "colin.king@canonical.com" <colin.king@canonical.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>, hch <hch@lst.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "elfring@users.sourceforge.net" <elfring@users.sourceforge.net>,
-        bcodding redhat <bcodding@redhat.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>
-Date: Fri, 18 Aug 2017 12:04:09 -0400
-In-Reply-To: <1503071631.44656.4.camel@primarydata.com>
-References: <e53b2d3a-239a-268c-5674-3c50b02c966f@users.sourceforge.net>
-         <e76e873f-f18e-5bdd-cc93-255321b3d98f@users.sourceforge.net>
-         <1503071631.44656.4.camel@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:30895 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751037AbdHRQkD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 12:40:03 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4: cinfo->atomic and file creation
+Date: Fri, 18 Aug 2017 16:39:58 +0000
+Message-ID: <1503074395.44656.14.camel@primarydata.com>
+References: <33567B9C-C04A-436F-A4F6-F5AB745D3323@oracle.com>
+In-Reply-To: <33567B9C-C04A-436F-A4F6-F5AB745D3323@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-08-18 at 15:53 +0000, Trond Myklebust wrote:
-> On Thu, 2017-08-17 at 16:34 +0200, SF Markus Elfring wrote:
-> > From: Markus Elfring <elfring@users.sourceforge.net>
-> > Date: Thu, 17 Aug 2017 16:00:18 +0200
-> > MIME-Version: 1.0
-> > Content-Type: text/plain; charset=UTF-8
-> > Content-Transfer-Encoding: 8bit
-> > 
-> > The script “checkpatch.pl” pointed information out like the
-> > following.
-> > 
-> > Comparison to NULL could be written …
-> > 
-> > Thus fix the affected source code places.
-> > 
-> > Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
-> > ---
-> >  fs/lockd/clnt4xdr.c | 12 ++++++------
-> >  fs/lockd/clntlock.c | 10 +++++-----
-> >  fs/lockd/clntproc.c | 12 ++++++------
-> >  fs/lockd/clntxdr.c  | 12 ++++++------
-> >  fs/lockd/host.c     | 22 +++++++++++-----------
-> >  fs/lockd/mon.c      | 16 ++++++++--------
-> >  fs/lockd/svc.c      |  4 ++--
-> >  fs/lockd/svc4proc.c |  6 +++---
-> >  fs/lockd/svclock.c  | 14 +++++++-------
-> >  fs/lockd/svcproc.c  |  6 +++---
-> >  fs/lockd/svcshare.c |  2 +-
-> >  fs/lockd/svcsubs.c  |  3 +--
-> >  12 files changed, 59 insertions(+), 60 deletions(-)
-> > 
-> > diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
-> > index c349fc0f9b80..ec6473d194fd 100644
-> > --- a/fs/lockd/clnt4xdr.c
-> > +++ b/fs/lockd/clnt4xdr.c
-> > @@ -131,7 +131,7 @@ static int decode_netobj(struct xdr_stream *xdr,
-> >  	__be32 *p;
-> >  
-> >  	p = xdr_inline_decode(xdr, 4);
-> > -	if (unlikely(p == NULL))
-> > +	if (unlikely(!p))
-> 
-> Oh STOP with the checkpatch wankfest!
-> 
+T24gRnJpLCAyMDE3LTA2LTA5IGF0IDE0OjA0IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGkgVHJvbmQtDQo+IA0KPiBBcyB3ZSBkaXNjdXNzZWQgeWVzdGVyZGF5LCBJJ20gY29uY2VybmVk
+IGFib3V0IHRoZSB0ZXN0IGluDQo+IF9uZnM0X3Byb2Nfb3BlbiB0aGF0IHVzZXMgdGhlIHZhbHVl
+cyBvZiB0aGUgY2luZm8uYmVmb3JlIGFuZA0KPiBjaW5mby5hZnRlciBmaWVsZHMgd2l0aG91dCBj
+aGVja2luZyBjaW5mby5hdG9taWMuDQo+IA0KPiAyMjg4ICAgICAgICAgaWYgKG9fYXJnLT5vcGVu
+X2ZsYWdzICYgT19DUkVBVCkgew0KPiAyMjg5ICAgICAgICAgICAgICAgICBpZiAob19hcmctPm9w
+ZW5fZmxhZ3MgJiBPX0VYQ0wpDQo+IDIyOTAgICAgICAgICAgICAgICAgICAgICAgICAgZGF0YS0+
+ZmlsZV9jcmVhdGVkID0gMTsNCj4gMjI5MSAgICAgICAgICAgICAgICAgZWxzZSBpZiAob19yZXMt
+PmNpbmZvLmJlZm9yZSAhPSBvX3Jlcy0NCj4gPmNpbmZvLmFmdGVyKQ0KPiAyMjkyICAgICAgICAg
+ICAgICAgICAgICAgICAgIGRhdGEtPmZpbGVfY3JlYXRlZCA9IDE7DQo+IDIyOTMgICAgICAgICAg
+ICAgICAgIGlmIChkYXRhLT5maWxlX2NyZWF0ZWQgfHwgZGlyLT5pX3ZlcnNpb24gIT0NCj4gb19y
+ZXMtPmNpbmZvLmFmdGVyKQ0KPiAyMjk0ICAgICAgICAgICAgICAgICAgICAgICAgIHVwZGF0ZV9j
+aGFuZ2VhdHRyKGRpciwgJm9fcmVzLT5jaW5mbywNCj4gMjI5NSAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgb19yZXMtPmZfYXR0ci0NCj4gPnRpbWVfc3RhcnQpOw0KPiAy
+Mjk2ICAgICAgICAgfQ0KPiANCj4gTGluZSAyMjkxIGlzIHRoZSBpc3N1ZS4NCj4gDQo+IFN1cHBv
+c2UgdGhlIHNlcnZlciBmaWxlc3lzdGVtIHN1YnN0aXR1dGVzIGEgd2VhayBjdGltZSBmb3INCj4g
+dGhlIGNoYW5nZSBhdHRyaWJ1dGUuIFNvbWV0aW1lcyB3aGVuIGEgZmlsZSBpcyBzdWNjZXNzZnVs
+bHkNCj4gY3JlYXRlZCBvbiB0aGUgc2VydmVyLCB0aGUgY3RpbWUgb2YgdGhlIHBhcmVudCBkb2Vz
+bid0DQo+IGNoYW5nZS4gVGhpcyB0ZXN0IHRoZW4gZmFpbHMgYW5kIGxlYXZlcyBmaWxlX2NyZWF0
+ZWQgc2V0DQo+IHRvIHplcm8uDQoNCkEgc2VydmVyIHdoaWNoIHVzZXMgYSBjdGltZSB3aXRoIGlu
+c3VmZmljaWVudCByZXNvbHV0aW9uIGlzIGluDQp2aW9sYXRpb24gb2YgdGhlIHJlcXVpcmVtZW50
+cyBmb3IgYSBjaGFuZ2UgYXR0cmlidXRlLiBUaGUgc3BlYw0KZXhwbGljaXRseSBkaXNhbGxvd3Mg
+aXQgaW4gaHR0cHM6Ly90b29scy5pZXRmLm9yZy9odG1sL3JmYzU2NjEjc2VjdGlvbi0NCjUuOC4x
+LjQNCg0KSU9XOiB0aGUgcmVtYWluZGVyIG9mIHRoZSBzcGVjIChpbmNsdWRpbmcgdGhlIGRlZmlu
+aXRpb24gb2YgT1BFTikgZG9lcw0KZXhwZWN0IHRoYXQgeW91IGNhbiByZWx5IG9uIHRoZSBjaGFu
+Z2UgYXR0cmlidXRlIGZvciBkZXRlY3RpbmcgZmlsZQ0KY2hhbmdlcy4NCg0KPiBMYXRlciwgbmZz
+NF9vcGVuZGF0YV9hY2Nlc3MgbG9va3MgYXQgZmlsZV9jcmVhdGVkLiBJZiBub3QNCj4gc2V0LCB0
+aGUgYWNjZXNzIGNoZWNrIGZhaWxzIGFuZCBvcGVuKDIpIHJldHVybnMgRUFDQ0VTIGFzDQo+IGEg
+cmVzdWx0LCBldmVuIHRob3VnaCB0aGUgZmlsZSB3YXMgY3JlYXRlZCBzdWNjZXNzZnVsbHkNCj4g
+YW5kIE9QRU4gcmV0dXJuZWQgTkZTNF9PSy4NCj4gDQo+IFlvdSBtZW50aW9uZWQgdGhhdCB0aGUg
+c2VydmVyIHNob3VsZCBzZXQgY2luZm8uYXRvbWljIHRvDQo+IGJlIGZhbHNlIHdoZW4gYSB3ZWFr
+IGN0aW1lIGlzIHVzZWQgYXMgdGhlIGNoYW5nZSBhdHRyaWJ1dGUuDQo+IFdpbGwgdGhhdCBoZWxw
+IGluIHRoaXMgY2FzZT8NCg0KTm8uIFRoZSBjaW5mby5hdG9taWMgZmxhZyBpcyB0aGVyZSB0byBs
+ZXQgeW91IGtub3cgdGhhdCB0aGUgY2hhbmdlIHlvdQ0KYXJlIHNlZWluZyBpbiB0aGUgZGlyZWN0
+b3J5IHdhcyBjYXVzZWQgYnkgdGhlIG9wZXJhdGlvbiB0aGF0IGp1c3QNCmV4ZWN1dGVkLiBJZiBp
+dCBpcyBzZXQgdG8gImZhbHNlIiB0aGVuIHRoYXQgZG9lcyBub3QgcmVhbGx5IHRlbGwgeW91DQpt
+dWNoIGFib3V0IHdoZXRoZXIgb3Igbm90IHlvdSBjYW4gdHJ1c3QgdGhhdCBhIGNoYW5nZSBvY2N1
+cnJlZC4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+ciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-:)
-
-To elaborate: these kinds of patches are particularly unwelcome. In
-particular, these sorts of changes make it difficult to backport later
-patches to earlier kernels.
-
-If you're doing meaningful work in these areas of code, then feel free
-to change the style at the same time. If not though, it's best to leave
-them alone.
-
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
