@@ -1,99 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:49704 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751594AbdHRQxV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 12:53:21 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:41113 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750971AbdHRRvK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 13:51:10 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: NFSv4: cinfo->atomic and file creation
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1503074395.44656.14.camel@primarydata.com>
-Date: Fri, 18 Aug 2017 12:53:14 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <795F514B-3478-4DF5-AEF7-22F8411A1509@oracle.com>
-References: <33567B9C-C04A-436F-A4F6-F5AB745D3323@oracle.com> <1503074395.44656.14.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Date: Fri, 18 Aug 2017 17:51:06 +0000
+Message-ID: <1503078661.3276.2.camel@primarydata.com>
+References: <33567B9C-C04A-436F-A4F6-F5AB745D3323@oracle.com>
+         <1503074395.44656.14.camel@primarydata.com>
+         <795F514B-3478-4DF5-AEF7-22F8411A1509@oracle.com>
+In-Reply-To: <795F514B-3478-4DF5-AEF7-22F8411A1509@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Aug 18, 2017, at 12:39 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
-> 
-> On Fri, 2017-06-09 at 14:04 -0400, Chuck Lever wrote:
->> Hi Trond-
->> 
->> As we discussed yesterday, I'm concerned about the test in
->> _nfs4_proc_open that uses the values of the cinfo.before and
->> cinfo.after fields without checking cinfo.atomic.
->> 
->> 2288         if (o_arg->open_flags & O_CREAT) {
->> 2289                 if (o_arg->open_flags & O_EXCL)
->> 2290                         data->file_created = 1;
->> 2291                 else if (o_res->cinfo.before != o_res-
->>> cinfo.after)
->> 2292                         data->file_created = 1;
->> 2293                 if (data->file_created || dir->i_version !=
->> o_res->cinfo.after)
->> 2294                         update_changeattr(dir, &o_res->cinfo,
->> 2295                                         o_res->f_attr-
->>> time_start);
->> 2296         }
->> 
->> Line 2291 is the issue.
->> 
->> Suppose the server filesystem substitutes a weak ctime for
->> the change attribute. Sometimes when a file is successfully
->> created on the server, the ctime of the parent doesn't
->> change. This test then fails and leaves file_created set
->> to zero.
-> 
-> A server which uses a ctime with insufficient resolution is in
-> violation of the requirements for a change attribute. The spec
-> explicitly disallows it in https://tools.ietf.org/html/rfc5661#section-
-> 5.8.1.4
-> 
-> IOW: the remainder of the spec (including the definition of OPEN) does
-> expect that you can rely on the change attribute for detecting file
-> changes.
-
-Fair enough.
-
-It's been suggested that Linux should prevent NFSv4 access of
-any filesystem that can't support the change attribute
-adequately. That would block existing xfs filesystems with
-older on-disk formats. Any xfs filesystem formatted on a RHEL7
-system has one of these older formats.
-
-This is actually a pretty difficult problem for legacy file
-systems. In this case I wonder if RFC 5661 is impractically
-draconian.
-
-The alternative is that the Linux NFS server will have to
-recognize such filesystems and somehow generate proper change
-attributes for them, even though it can't save them on disk.
-
-
->> Later, nfs4_opendata_access looks at file_created. If not
->> set, the access check fails and open(2) returns EACCES as
->> a result, even though the file was created successfully
->> and OPEN returned NFS4_OK.
->> 
->> You mentioned that the server should set cinfo.atomic to
->> be false when a weak ctime is used as the change attribute.
->> Will that help in this case?
-> 
-> No. The cinfo.atomic flag is there to let you know that the change you
-> are seeing in the directory was caused by the operation that just
-> executed. If it is set to "false" then that does not really tell you
-> much about whether or not you can trust that a change occurred.
-
-A client can't trust the change attribute when cinfo.atomic
-is false. In that case, the client might depend on other means
-to ensure correct operation.
-
-
---
-Chuck Lever
-
-
+T24gRnJpLCAyMDE3LTA4LTE4IGF0IDEyOjUzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBBdWcgMTgsIDIwMTcsIGF0IDEyOjM5IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kbXlA
+cHJpbWFyeWRhdGEuDQo+ID4gY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIwMTctMDYt
+MDkgYXQgMTQ6MDQgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gSGkgVHJvbmQtDQo+
+ID4gPiANCj4gPiA+IEFzIHdlIGRpc2N1c3NlZCB5ZXN0ZXJkYXksIEknbSBjb25jZXJuZWQgYWJv
+dXQgdGhlIHRlc3QgaW4NCj4gPiA+IF9uZnM0X3Byb2Nfb3BlbiB0aGF0IHVzZXMgdGhlIHZhbHVl
+cyBvZiB0aGUgY2luZm8uYmVmb3JlIGFuZA0KPiA+ID4gY2luZm8uYWZ0ZXIgZmllbGRzIHdpdGhv
+dXQgY2hlY2tpbmcgY2luZm8uYXRvbWljLg0KPiA+ID4gDQo+ID4gPiAyMjg4ICAgICAgICAgaWYg
+KG9fYXJnLT5vcGVuX2ZsYWdzICYgT19DUkVBVCkgew0KPiA+ID4gMjI4OSAgICAgICAgICAgICAg
+ICAgaWYgKG9fYXJnLT5vcGVuX2ZsYWdzICYgT19FWENMKQ0KPiA+ID4gMjI5MCAgICAgICAgICAg
+ICAgICAgICAgICAgICBkYXRhLT5maWxlX2NyZWF0ZWQgPSAxOw0KPiA+ID4gMjI5MSAgICAgICAg
+ICAgICAgICAgZWxzZSBpZiAob19yZXMtPmNpbmZvLmJlZm9yZSAhPSBvX3Jlcy0NCj4gPiA+ID4g
+Y2luZm8uYWZ0ZXIpDQo+ID4gPiANCj4gPiA+IDIyOTIgICAgICAgICAgICAgICAgICAgICAgICAg
+ZGF0YS0+ZmlsZV9jcmVhdGVkID0gMTsNCj4gPiA+IDIyOTMgICAgICAgICAgICAgICAgIGlmIChk
+YXRhLT5maWxlX2NyZWF0ZWQgfHwgZGlyLT5pX3ZlcnNpb24gIT0NCj4gPiA+IG9fcmVzLT5jaW5m
+by5hZnRlcikNCj4gPiA+IDIyOTQgICAgICAgICAgICAgICAgICAgICAgICAgdXBkYXRlX2NoYW5n
+ZWF0dHIoZGlyLCAmb19yZXMtDQo+ID4gPiA+Y2luZm8sDQo+ID4gPiAyMjk1ICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvX3Jlcy0+Zl9hdHRyLQ0KPiA+ID4gPiB0aW1l
+X3N0YXJ0KTsNCj4gPiA+IA0KPiA+ID4gMjI5NiAgICAgICAgIH0NCj4gPiA+IA0KPiA+ID4gTGlu
+ZSAyMjkxIGlzIHRoZSBpc3N1ZS4NCj4gPiA+IA0KPiA+ID4gU3VwcG9zZSB0aGUgc2VydmVyIGZp
+bGVzeXN0ZW0gc3Vic3RpdHV0ZXMgYSB3ZWFrIGN0aW1lIGZvcg0KPiA+ID4gdGhlIGNoYW5nZSBh
+dHRyaWJ1dGUuIFNvbWV0aW1lcyB3aGVuIGEgZmlsZSBpcyBzdWNjZXNzZnVsbHkNCj4gPiA+IGNy
+ZWF0ZWQgb24gdGhlIHNlcnZlciwgdGhlIGN0aW1lIG9mIHRoZSBwYXJlbnQgZG9lc24ndA0KPiA+
+ID4gY2hhbmdlLiBUaGlzIHRlc3QgdGhlbiBmYWlscyBhbmQgbGVhdmVzIGZpbGVfY3JlYXRlZCBz
+ZXQNCj4gPiA+IHRvIHplcm8uDQo+ID4gDQo+ID4gQSBzZXJ2ZXIgd2hpY2ggdXNlcyBhIGN0aW1l
+IHdpdGggaW5zdWZmaWNpZW50IHJlc29sdXRpb24gaXMgaW4NCj4gPiB2aW9sYXRpb24gb2YgdGhl
+IHJlcXVpcmVtZW50cyBmb3IgYSBjaGFuZ2UgYXR0cmlidXRlLiBUaGUgc3BlYw0KPiA+IGV4cGxp
+Y2l0bHkgZGlzYWxsb3dzIGl0IGluIGh0dHBzOi8vdG9vbHMuaWV0Zi5vcmcvaHRtbC9yZmM1NjYx
+I3NlY3QNCj4gPiBpb24tDQo+ID4gNS44LjEuNA0KPiA+IA0KPiA+IElPVzogdGhlIHJlbWFpbmRl
+ciBvZiB0aGUgc3BlYyAoaW5jbHVkaW5nIHRoZSBkZWZpbml0aW9uIG9mIE9QRU4pDQo+ID4gZG9l
+cw0KPiA+IGV4cGVjdCB0aGF0IHlvdSBjYW4gcmVseSBvbiB0aGUgY2hhbmdlIGF0dHJpYnV0ZSBm
+b3IgZGV0ZWN0aW5nIGZpbGUNCj4gPiBjaGFuZ2VzLg0KPiANCj4gRmFpciBlbm91Z2guDQo+IA0K
+PiBJdCdzIGJlZW4gc3VnZ2VzdGVkIHRoYXQgTGludXggc2hvdWxkIHByZXZlbnQgTkZTdjQgYWNj
+ZXNzIG9mDQo+IGFueSBmaWxlc3lzdGVtIHRoYXQgY2FuJ3Qgc3VwcG9ydCB0aGUgY2hhbmdlIGF0
+dHJpYnV0ZQ0KPiBhZGVxdWF0ZWx5LiBUaGF0IHdvdWxkIGJsb2NrIGV4aXN0aW5nIHhmcyBmaWxl
+c3lzdGVtcyB3aXRoDQo+IG9sZGVyIG9uLWRpc2sgZm9ybWF0cy4gQW55IHhmcyBmaWxlc3lzdGVt
+IGZvcm1hdHRlZCBvbiBhIFJIRUw3DQo+IHN5c3RlbSBoYXMgb25lIG9mIHRoZXNlIG9sZGVyIGZv
+cm1hdHMuDQo+IA0KPiBUaGlzIGlzIGFjdHVhbGx5IGEgcHJldHR5IGRpZmZpY3VsdCBwcm9ibGVt
+IGZvciBsZWdhY3kgZmlsZQ0KPiBzeXN0ZW1zLiBJbiB0aGlzIGNhc2UgSSB3b25kZXIgaWYgUkZD
+IDU2NjEgaXMgaW1wcmFjdGljYWxseQ0KPiBkcmFjb25pYW4uDQo+IA0KPiBUaGUgYWx0ZXJuYXRp
+dmUgaXMgdGhhdCB0aGUgTGludXggTkZTIHNlcnZlciB3aWxsIGhhdmUgdG8NCj4gcmVjb2duaXpl
+IHN1Y2ggZmlsZXN5c3RlbXMgYW5kIHNvbWVob3cgZ2VuZXJhdGUgcHJvcGVyIGNoYW5nZQ0KPiBh
+dHRyaWJ1dGVzIGZvciB0aGVtLCBldmVuIHRob3VnaCBpdCBjYW4ndCBzYXZlIHRoZW0gb24gZGlz
+ay4NCj4gDQo+IA0KPiA+ID4gTGF0ZXIsIG5mczRfb3BlbmRhdGFfYWNjZXNzIGxvb2tzIGF0IGZp
+bGVfY3JlYXRlZC4gSWYgbm90DQo+ID4gPiBzZXQsIHRoZSBhY2Nlc3MgY2hlY2sgZmFpbHMgYW5k
+IG9wZW4oMikgcmV0dXJucyBFQUNDRVMgYXMNCj4gPiA+IGEgcmVzdWx0LCBldmVuIHRob3VnaCB0
+aGUgZmlsZSB3YXMgY3JlYXRlZCBzdWNjZXNzZnVsbHkNCj4gPiA+IGFuZCBPUEVOIHJldHVybmVk
+IE5GUzRfT0suDQo+ID4gPiANCj4gPiA+IFlvdSBtZW50aW9uZWQgdGhhdCB0aGUgc2VydmVyIHNo
+b3VsZCBzZXQgY2luZm8uYXRvbWljIHRvDQo+ID4gPiBiZSBmYWxzZSB3aGVuIGEgd2VhayBjdGlt
+ZSBpcyB1c2VkIGFzIHRoZSBjaGFuZ2UgYXR0cmlidXRlLg0KPiA+ID4gV2lsbCB0aGF0IGhlbHAg
+aW4gdGhpcyBjYXNlPw0KPiA+IA0KPiA+IE5vLiBUaGUgY2luZm8uYXRvbWljIGZsYWcgaXMgdGhl
+cmUgdG8gbGV0IHlvdSBrbm93IHRoYXQgdGhlIGNoYW5nZQ0KPiA+IHlvdQ0KPiA+IGFyZSBzZWVp
+bmcgaW4gdGhlIGRpcmVjdG9yeSB3YXMgY2F1c2VkIGJ5IHRoZSBvcGVyYXRpb24gdGhhdCBqdXN0
+DQo+ID4gZXhlY3V0ZWQuIElmIGl0IGlzIHNldCB0byAiZmFsc2UiIHRoZW4gdGhhdCBkb2VzIG5v
+dCByZWFsbHkgdGVsbA0KPiA+IHlvdQ0KPiA+IG11Y2ggYWJvdXQgd2hldGhlciBvciBub3QgeW91
+IGNhbiB0cnVzdCB0aGF0IGEgY2hhbmdlIG9jY3VycmVkLg0KPiANCj4gQSBjbGllbnQgY2FuJ3Qg
+dHJ1c3QgdGhlIGNoYW5nZSBhdHRyaWJ1dGUgd2hlbiBjaW5mby5hdG9taWMNCj4gaXMgZmFsc2Uu
+IEluIHRoYXQgY2FzZSwgdGhlIGNsaWVudCBtaWdodCBkZXBlbmQgb24gb3RoZXIgbWVhbnMNCj4g
+dG8gZW5zdXJlIGNvcnJlY3Qgb3BlcmF0aW9uLg0KPiANCg0KSSd2ZSBhbHdheXMgcmVhZCB0aGUg
+c3BlYyBhcyBzYXlpbmcgdGhhdCBpdCBpcyBzdXBwb3NlZCB0byBiZSBhYmxlIHRvDQp0cnVzdCB0
+aGUgYWN0dWFsIHZhbHVlIG9mIHRoZSBjaGFuZ2UgYXR0cmlidXRlLiBJdCBqdXN0IGNhbm5vdCB0
+cnVzdA0KdGhhdCB0aGUgY2hhbmdlIGNhbWUgZnJvbSB0aGlzIG9wZXJhdGlvbi4gSXQgY291bGQg
+YmUgZHVlIHRvIGFub3RoZXINCm9wZXJhdGlvbiB0aGF0IGFjdGVkIG9uIHRoZSBzYW1lIGRpcmVj
+dG9yeSBhbmQgcmFjZWQgd2l0aCB0aGlzIG9uZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
+bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBw
+cmltYXJ5ZGF0YS5jb20NCg==
 
