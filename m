@@ -1,87 +1,279 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:41113 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750971AbdHRRvK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 13:51:10 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4: cinfo->atomic and file creation
-Date: Fri, 18 Aug 2017 17:51:06 +0000
-Message-ID: <1503078661.3276.2.camel@primarydata.com>
-References: <33567B9C-C04A-436F-A4F6-F5AB745D3323@oracle.com>
-         <1503074395.44656.14.camel@primarydata.com>
-         <795F514B-3478-4DF5-AEF7-22F8411A1509@oracle.com>
-In-Reply-To: <795F514B-3478-4DF5-AEF7-22F8411A1509@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from userp1040.oracle.com ([156.151.31.81]:22440 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751646AbdHRSLO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 14:11:14 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v3 5/5] SUNRPC: Add a separate spinlock to protect the RPC request receive list
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170816230008.20006-6-trond.myklebust@primarydata.com>
+Date: Fri, 18 Aug 2017 14:11:09 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <BF5FDF10-EC9C-4F4A-8192-4586CF758099@oracle.com>
+References: <20170816230008.20006-1-trond.myklebust@primarydata.com> <20170816230008.20006-2-trond.myklebust@primarydata.com> <20170816230008.20006-3-trond.myklebust@primarydata.com> <20170816230008.20006-4-trond.myklebust@primarydata.com> <20170816230008.20006-5-trond.myklebust@primarydata.com> <20170816230008.20006-6-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA4LTE4IGF0IDEyOjUzIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBBdWcgMTgsIDIwMTcsIGF0IDEyOjM5IFBNLCBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kbXlA
-cHJpbWFyeWRhdGEuDQo+ID4gY29tPiB3cm90ZToNCj4gPiANCj4gPiBPbiBGcmksIDIwMTctMDYt
-MDkgYXQgMTQ6MDQgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gSGkgVHJvbmQtDQo+
-ID4gPiANCj4gPiA+IEFzIHdlIGRpc2N1c3NlZCB5ZXN0ZXJkYXksIEknbSBjb25jZXJuZWQgYWJv
-dXQgdGhlIHRlc3QgaW4NCj4gPiA+IF9uZnM0X3Byb2Nfb3BlbiB0aGF0IHVzZXMgdGhlIHZhbHVl
-cyBvZiB0aGUgY2luZm8uYmVmb3JlIGFuZA0KPiA+ID4gY2luZm8uYWZ0ZXIgZmllbGRzIHdpdGhv
-dXQgY2hlY2tpbmcgY2luZm8uYXRvbWljLg0KPiA+ID4gDQo+ID4gPiAyMjg4ICAgICAgICAgaWYg
-KG9fYXJnLT5vcGVuX2ZsYWdzICYgT19DUkVBVCkgew0KPiA+ID4gMjI4OSAgICAgICAgICAgICAg
-ICAgaWYgKG9fYXJnLT5vcGVuX2ZsYWdzICYgT19FWENMKQ0KPiA+ID4gMjI5MCAgICAgICAgICAg
-ICAgICAgICAgICAgICBkYXRhLT5maWxlX2NyZWF0ZWQgPSAxOw0KPiA+ID4gMjI5MSAgICAgICAg
-ICAgICAgICAgZWxzZSBpZiAob19yZXMtPmNpbmZvLmJlZm9yZSAhPSBvX3Jlcy0NCj4gPiA+ID4g
-Y2luZm8uYWZ0ZXIpDQo+ID4gPiANCj4gPiA+IDIyOTIgICAgICAgICAgICAgICAgICAgICAgICAg
-ZGF0YS0+ZmlsZV9jcmVhdGVkID0gMTsNCj4gPiA+IDIyOTMgICAgICAgICAgICAgICAgIGlmIChk
-YXRhLT5maWxlX2NyZWF0ZWQgfHwgZGlyLT5pX3ZlcnNpb24gIT0NCj4gPiA+IG9fcmVzLT5jaW5m
-by5hZnRlcikNCj4gPiA+IDIyOTQgICAgICAgICAgICAgICAgICAgICAgICAgdXBkYXRlX2NoYW5n
-ZWF0dHIoZGlyLCAmb19yZXMtDQo+ID4gPiA+Y2luZm8sDQo+ID4gPiAyMjk1ICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBvX3Jlcy0+Zl9hdHRyLQ0KPiA+ID4gPiB0aW1l
-X3N0YXJ0KTsNCj4gPiA+IA0KPiA+ID4gMjI5NiAgICAgICAgIH0NCj4gPiA+IA0KPiA+ID4gTGlu
-ZSAyMjkxIGlzIHRoZSBpc3N1ZS4NCj4gPiA+IA0KPiA+ID4gU3VwcG9zZSB0aGUgc2VydmVyIGZp
-bGVzeXN0ZW0gc3Vic3RpdHV0ZXMgYSB3ZWFrIGN0aW1lIGZvcg0KPiA+ID4gdGhlIGNoYW5nZSBh
-dHRyaWJ1dGUuIFNvbWV0aW1lcyB3aGVuIGEgZmlsZSBpcyBzdWNjZXNzZnVsbHkNCj4gPiA+IGNy
-ZWF0ZWQgb24gdGhlIHNlcnZlciwgdGhlIGN0aW1lIG9mIHRoZSBwYXJlbnQgZG9lc24ndA0KPiA+
-ID4gY2hhbmdlLiBUaGlzIHRlc3QgdGhlbiBmYWlscyBhbmQgbGVhdmVzIGZpbGVfY3JlYXRlZCBz
-ZXQNCj4gPiA+IHRvIHplcm8uDQo+ID4gDQo+ID4gQSBzZXJ2ZXIgd2hpY2ggdXNlcyBhIGN0aW1l
-IHdpdGggaW5zdWZmaWNpZW50IHJlc29sdXRpb24gaXMgaW4NCj4gPiB2aW9sYXRpb24gb2YgdGhl
-IHJlcXVpcmVtZW50cyBmb3IgYSBjaGFuZ2UgYXR0cmlidXRlLiBUaGUgc3BlYw0KPiA+IGV4cGxp
-Y2l0bHkgZGlzYWxsb3dzIGl0IGluIGh0dHBzOi8vdG9vbHMuaWV0Zi5vcmcvaHRtbC9yZmM1NjYx
-I3NlY3QNCj4gPiBpb24tDQo+ID4gNS44LjEuNA0KPiA+IA0KPiA+IElPVzogdGhlIHJlbWFpbmRl
-ciBvZiB0aGUgc3BlYyAoaW5jbHVkaW5nIHRoZSBkZWZpbml0aW9uIG9mIE9QRU4pDQo+ID4gZG9l
-cw0KPiA+IGV4cGVjdCB0aGF0IHlvdSBjYW4gcmVseSBvbiB0aGUgY2hhbmdlIGF0dHJpYnV0ZSBm
-b3IgZGV0ZWN0aW5nIGZpbGUNCj4gPiBjaGFuZ2VzLg0KPiANCj4gRmFpciBlbm91Z2guDQo+IA0K
-PiBJdCdzIGJlZW4gc3VnZ2VzdGVkIHRoYXQgTGludXggc2hvdWxkIHByZXZlbnQgTkZTdjQgYWNj
-ZXNzIG9mDQo+IGFueSBmaWxlc3lzdGVtIHRoYXQgY2FuJ3Qgc3VwcG9ydCB0aGUgY2hhbmdlIGF0
-dHJpYnV0ZQ0KPiBhZGVxdWF0ZWx5LiBUaGF0IHdvdWxkIGJsb2NrIGV4aXN0aW5nIHhmcyBmaWxl
-c3lzdGVtcyB3aXRoDQo+IG9sZGVyIG9uLWRpc2sgZm9ybWF0cy4gQW55IHhmcyBmaWxlc3lzdGVt
-IGZvcm1hdHRlZCBvbiBhIFJIRUw3DQo+IHN5c3RlbSBoYXMgb25lIG9mIHRoZXNlIG9sZGVyIGZv
-cm1hdHMuDQo+IA0KPiBUaGlzIGlzIGFjdHVhbGx5IGEgcHJldHR5IGRpZmZpY3VsdCBwcm9ibGVt
-IGZvciBsZWdhY3kgZmlsZQ0KPiBzeXN0ZW1zLiBJbiB0aGlzIGNhc2UgSSB3b25kZXIgaWYgUkZD
-IDU2NjEgaXMgaW1wcmFjdGljYWxseQ0KPiBkcmFjb25pYW4uDQo+IA0KPiBUaGUgYWx0ZXJuYXRp
-dmUgaXMgdGhhdCB0aGUgTGludXggTkZTIHNlcnZlciB3aWxsIGhhdmUgdG8NCj4gcmVjb2duaXpl
-IHN1Y2ggZmlsZXN5c3RlbXMgYW5kIHNvbWVob3cgZ2VuZXJhdGUgcHJvcGVyIGNoYW5nZQ0KPiBh
-dHRyaWJ1dGVzIGZvciB0aGVtLCBldmVuIHRob3VnaCBpdCBjYW4ndCBzYXZlIHRoZW0gb24gZGlz
-ay4NCj4gDQo+IA0KPiA+ID4gTGF0ZXIsIG5mczRfb3BlbmRhdGFfYWNjZXNzIGxvb2tzIGF0IGZp
-bGVfY3JlYXRlZC4gSWYgbm90DQo+ID4gPiBzZXQsIHRoZSBhY2Nlc3MgY2hlY2sgZmFpbHMgYW5k
-IG9wZW4oMikgcmV0dXJucyBFQUNDRVMgYXMNCj4gPiA+IGEgcmVzdWx0LCBldmVuIHRob3VnaCB0
-aGUgZmlsZSB3YXMgY3JlYXRlZCBzdWNjZXNzZnVsbHkNCj4gPiA+IGFuZCBPUEVOIHJldHVybmVk
-IE5GUzRfT0suDQo+ID4gPiANCj4gPiA+IFlvdSBtZW50aW9uZWQgdGhhdCB0aGUgc2VydmVyIHNo
-b3VsZCBzZXQgY2luZm8uYXRvbWljIHRvDQo+ID4gPiBiZSBmYWxzZSB3aGVuIGEgd2VhayBjdGlt
-ZSBpcyB1c2VkIGFzIHRoZSBjaGFuZ2UgYXR0cmlidXRlLg0KPiA+ID4gV2lsbCB0aGF0IGhlbHAg
-aW4gdGhpcyBjYXNlPw0KPiA+IA0KPiA+IE5vLiBUaGUgY2luZm8uYXRvbWljIGZsYWcgaXMgdGhl
-cmUgdG8gbGV0IHlvdSBrbm93IHRoYXQgdGhlIGNoYW5nZQ0KPiA+IHlvdQ0KPiA+IGFyZSBzZWVp
-bmcgaW4gdGhlIGRpcmVjdG9yeSB3YXMgY2F1c2VkIGJ5IHRoZSBvcGVyYXRpb24gdGhhdCBqdXN0
-DQo+ID4gZXhlY3V0ZWQuIElmIGl0IGlzIHNldCB0byAiZmFsc2UiIHRoZW4gdGhhdCBkb2VzIG5v
-dCByZWFsbHkgdGVsbA0KPiA+IHlvdQ0KPiA+IG11Y2ggYWJvdXQgd2hldGhlciBvciBub3QgeW91
-IGNhbiB0cnVzdCB0aGF0IGEgY2hhbmdlIG9jY3VycmVkLg0KPiANCj4gQSBjbGllbnQgY2FuJ3Qg
-dHJ1c3QgdGhlIGNoYW5nZSBhdHRyaWJ1dGUgd2hlbiBjaW5mby5hdG9taWMNCj4gaXMgZmFsc2Uu
-IEluIHRoYXQgY2FzZSwgdGhlIGNsaWVudCBtaWdodCBkZXBlbmQgb24gb3RoZXIgbWVhbnMNCj4g
-dG8gZW5zdXJlIGNvcnJlY3Qgb3BlcmF0aW9uLg0KPiANCg0KSSd2ZSBhbHdheXMgcmVhZCB0aGUg
-c3BlYyBhcyBzYXlpbmcgdGhhdCBpdCBpcyBzdXBwb3NlZCB0byBiZSBhYmxlIHRvDQp0cnVzdCB0
-aGUgYWN0dWFsIHZhbHVlIG9mIHRoZSBjaGFuZ2UgYXR0cmlidXRlLiBJdCBqdXN0IGNhbm5vdCB0
-cnVzdA0KdGhhdCB0aGUgY2hhbmdlIGNhbWUgZnJvbSB0aGlzIG9wZXJhdGlvbi4gSXQgY291bGQg
-YmUgZHVlIHRvIGFub3RoZXINCm9wZXJhdGlvbiB0aGF0IGFjdGVkIG9uIHRoZSBzYW1lIGRpcmVj
-dG9yeSBhbmQgcmFjZWQgd2l0aCB0aGlzIG9uZS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxp
-bnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBw
-cmltYXJ5ZGF0YS5jb20NCg==
+
+> On Aug 16, 2017, at 7:00 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> This further reduces contention with the transport_lock, and allows us
+> to convert to using a non-bh-safe spinlock, since the list is now never
+> accessed from a bh context.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> include/linux/sunrpc/xprt.h    |  1 +
+> net/sunrpc/xprt.c              | 20 ++++++++++++--------
+> net/sunrpc/xprtrdma/rpc_rdma.c |  8 ++++----
+> net/sunrpc/xprtsock.c          | 30 ++++++++++++++++--------------
+> 4 files changed, 33 insertions(+), 26 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 65b9e0224753..a97e6de5f9f2 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -232,6 +232,7 @@ struct rpc_xprt {
+> 	 */
+> 	spinlock_t		transport_lock;	/* lock transport info */
+> 	spinlock_t		reserve_lock;	/* lock slot table */
+> +	spinlock_t		recv_lock;	/* lock receive list */
+> 	u32			xid;		/* Next XID value to use */
+> 	struct rpc_task *	snd_task;	/* Task blocked in send */
+> 	struct svc_xprt		*bc_xprt;	/* NFSv4.1 backchannel */
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 3eb9ec16eec4..2af189c5ac3e 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -872,17 +872,17 @@ void xprt_unpin_rqst(struct rpc_rqst *req)
+> }
+> 
+> static void xprt_wait_on_pinned_rqst(struct rpc_rqst *req)
+> -__must_hold(&req->rq_xprt->transport_lock)
+> +__must_hold(&req->rq_xprt->recv_lock)
+> {
+> 	struct rpc_task *task = req->rq_task;
+> 	
+> 	if (task && test_bit(RPC_TASK_MSG_RECV, &task->tk_runstate)) {
+> -		spin_unlock_bh(&req->rq_xprt->transport_lock);
+> +		spin_unlock(&req->rq_xprt->recv_lock);
+> 		set_bit(RPC_TASK_MSG_RECV_WAIT, &task->tk_runstate);
+> 		wait_on_bit(&task->tk_runstate, RPC_TASK_MSG_RECV,
+> 				TASK_UNINTERRUPTIBLE);
+> 		clear_bit(RPC_TASK_MSG_RECV_WAIT, &task->tk_runstate);
+> -		spin_lock_bh(&req->rq_xprt->transport_lock);
+> +		spin_lock(&req->rq_xprt->recv_lock);
+> 	}
+> }
+> 
+> @@ -1008,13 +1008,13 @@ void xprt_transmit(struct rpc_task *task)
+> 			/*
+> 			 * Add to the list only if we're expecting a reply
+> 			 */
+> -			spin_lock_bh(&xprt->transport_lock);
+> 			/* Update the softirq receive buffer */
+> 			memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+> 					sizeof(req->rq_private_buf));
+> 			/* Add request to the receive list */
+> +			spin_lock(&xprt->recv_lock);
+> 			list_add_tail(&req->rq_list, &xprt->recv);
+> -			spin_unlock_bh(&xprt->transport_lock);
+> +			spin_unlock(&xprt->recv_lock);
+> 			xprt_reset_majortimeo(req);
+> 			/* Turn off autodisconnect */
+> 			del_singleshot_timer_sync(&xprt->timer);
+> @@ -1329,15 +1329,18 @@ void xprt_release(struct rpc_task *task)
+> 		task->tk_ops->rpc_count_stats(task, task->tk_calldata);
+> 	else if (task->tk_client)
+> 		rpc_count_iostats(task, task->tk_client->cl_metrics);
+> +	spin_lock(&xprt->recv_lock);
+> +	if (!list_empty(&req->rq_list)) {
+> +		list_del(&req->rq_list);
+> +		xprt_wait_on_pinned_rqst(req);
+> +	}
+> +	spin_unlock(&xprt->recv_lock);
+> 	spin_lock_bh(&xprt->transport_lock);
+> 	xprt->ops->release_xprt(xprt, task);
+> 	if (xprt->ops->release_request)
+> 		xprt->ops->release_request(task);
+> -	if (!list_empty(&req->rq_list))
+> -		list_del(&req->rq_list);
+> 	xprt->last_used = jiffies;
+> 	xprt_schedule_autodisconnect(xprt);
+> -	xprt_wait_on_pinned_rqst(req);
+> 	spin_unlock_bh(&xprt->transport_lock);
+> 	if (req->rq_buffer)
+> 		xprt->ops->buf_free(task);
+> @@ -1361,6 +1364,7 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
+> 
+> 	spin_lock_init(&xprt->transport_lock);
+> 	spin_lock_init(&xprt->reserve_lock);
+> +	spin_lock_init(&xprt->recv_lock);
+> 
+> 	INIT_LIST_HEAD(&xprt->free);
+> 	INIT_LIST_HEAD(&xprt->recv);
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index ca4d6e4528f3..dfa748a0c8de 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -1051,7 +1051,7 @@ rpcrdma_reply_handler(struct work_struct *work)
+> 	 * RPC completion while holding the transport lock to ensure
+> 	 * the rep, rqst, and rq_task pointers remain stable.
+> 	 */
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->recv_lock);
+> 	rqst = xprt_lookup_rqst(xprt, headerp->rm_xid);
+> 	if (!rqst)
+> 		goto out_norqst;
+> @@ -1136,7 +1136,7 @@ rpcrdma_reply_handler(struct work_struct *work)
+> 		xprt_release_rqst_cong(rqst->rq_task);
+> 
+> 	xprt_complete_rqst(rqst->rq_task, status);
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+
+svc_rdma_handle_bc_reply in net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+also needs this change.
+
+
+> 	dprintk("RPC:       %s: xprt_complete_rqst(0x%p, 0x%p, %d)\n",
+> 		__func__, xprt, rqst, status);
+> 	return;
+> @@ -1187,12 +1187,12 @@ rpcrdma_reply_handler(struct work_struct *work)
+> 	r_xprt->rx_stats.bad_reply_count++;
+> 	goto out;
+> 
+> -/* The req was still available, but by the time the transport_lock
+> +/* The req was still available, but by the time the recv_lock
+>  * was acquired, the rqst and task had been released. Thus the RPC
+>  * has already been terminated.
+>  */
+> out_norqst:
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+> 	rpcrdma_buffer_put(req);
+> 	dprintk("RPC:       %s: race, no rqst left for req %p\n",
+> 		__func__, req);
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index a344bea15fc7..2b918137aaa0 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -969,12 +969,12 @@ static void xs_local_data_read_skb(struct rpc_xprt *xprt,
+> 		return;
+> 
+> 	/* Look up and lock the request corresponding to the given XID */
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->recv_lock);
+> 	rovr = xprt_lookup_rqst(xprt, *xp);
+> 	if (!rovr)
+> 		goto out_unlock;
+> 	xprt_pin_rqst(rovr);
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+> 	task = rovr->rq_task;
+> 
+> 	copied = rovr->rq_private_buf.buflen;
+> @@ -983,16 +983,16 @@ static void xs_local_data_read_skb(struct rpc_xprt *xprt,
+> 
+> 	if (xs_local_copy_to_xdr(&rovr->rq_private_buf, skb)) {
+> 		dprintk("RPC:       sk_buff copy failed\n");
+> -		spin_lock_bh(&xprt->transport_lock);
+> +		spin_lock(&xprt->recv_lock);
+> 		goto out_unpin;
+> 	}
+> 
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->recv_lock);
+> 	xprt_complete_rqst(task, copied);
+> out_unpin:
+> 	xprt_unpin_rqst(rovr);
+>  out_unlock:
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+> }
+> 
+> static void xs_local_data_receive(struct sock_xprt *transport)
+> @@ -1055,12 +1055,12 @@ static void xs_udp_data_read_skb(struct rpc_xprt *xprt,
+> 		return;
+> 
+> 	/* Look up and lock the request corresponding to the given XID */
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->recv_lock);
+> 	rovr = xprt_lookup_rqst(xprt, *xp);
+> 	if (!rovr)
+> 		goto out_unlock;
+> 	xprt_pin_rqst(rovr);
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+> 	task = rovr->rq_task;
+> 
+> 	if ((copied = rovr->rq_private_buf.buflen) > repsize)
+> @@ -1069,7 +1069,7 @@ static void xs_udp_data_read_skb(struct rpc_xprt *xprt,
+> 	/* Suck it into the iovec, verify checksum if not done by hw. */
+> 	if (csum_partial_copy_to_xdr(&rovr->rq_private_buf, skb)) {
+> 		__UDPX_INC_STATS(sk, UDP_MIB_INERRORS);
+> -		spin_lock_bh(&xprt->transport_lock);
+> +		spin_lock(&xprt->recv_lock);
+> 		goto out_unpin;
+> 	}
+> 
+> @@ -1077,11 +1077,13 @@ static void xs_udp_data_read_skb(struct rpc_xprt *xprt,
+> 
+> 	spin_lock_bh(&xprt->transport_lock);
+> 	xprt_adjust_cwnd(xprt, task, copied);
+> +	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->recv_lock);
+> 	xprt_complete_rqst(task, copied);
+> out_unpin:
+> 	xprt_unpin_rqst(rovr);
+>  out_unlock:
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+> }
+> 
+> static void xs_udp_data_receive(struct sock_xprt *transport)
+> @@ -1344,24 +1346,24 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
+> 	dprintk("RPC:       read reply XID %08x\n", ntohl(transport->tcp_xid));
+> 
+> 	/* Find and lock the request corresponding to this xid */
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->recv_lock);
+> 	req = xprt_lookup_rqst(xprt, transport->tcp_xid);
+> 	if (!req) {
+> 		dprintk("RPC:       XID %08x request not found!\n",
+> 				ntohl(transport->tcp_xid));
+> -		spin_unlock_bh(&xprt->transport_lock);
+> +		spin_unlock(&xprt->recv_lock);
+> 		return -1;
+> 	}
+> 	xprt_pin_rqst(req);
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+> 
+> 	xs_tcp_read_common(xprt, desc, req);
+> 
+> -	spin_lock_bh(&xprt->transport_lock);
+> +	spin_lock(&xprt->recv_lock);
+> 	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
+> 		xprt_complete_rqst(req->rq_task, transport->tcp_copied);
+> 	xprt_unpin_rqst(req);
+> -	spin_unlock_bh(&xprt->transport_lock);
+> +	spin_unlock(&xprt->recv_lock);
+> 	return 0;
+> }
+> 
+> -- 
+> 2.13.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
 
