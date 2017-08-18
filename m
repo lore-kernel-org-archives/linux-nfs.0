@@ -1,250 +1,195 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60764 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:51618 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750775AbdHRIDL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Aug 2017 04:03:11 -0400
-Date: Fri, 18 Aug 2017 04:03:00 -0400
-From: Richard Guy Briggs <rgb@redhat.com>
-To: Paul Moore <paul@paul-moore.com>
-Cc: David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        cgroups@vger.kernel.org, linux-api@vger.kernel.org,
-        containers@lists.linux-foundation.org, linux-audit@redhat.com,
-        mszeredi@redhat.com, jlayton@redhat.com, viro@zeniv.linux.org.uk,
-        luto@kernel.org, trondmy@primarydata.com, serge@hallyn.com,
-        ebiederm@xmission.com
-Subject: Re: [PATCH 2/9] Implement containers as kernel objects
-Message-ID: <20170818080300.GQ7187@madcap2.tricolour.ca>
-References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
- <149547016213.10599.1969443294414531853.stgit@warthog.procyon.org.uk>
- <20170814054711.GB29957@madcap2.tricolour.ca>
- <CAHC9VhRgPRa7KeMt8G700aeFvqVYc0gMx__82K31TYY6oQQqTw@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHC9VhRgPRa7KeMt8G700aeFvqVYc0gMx__82K31TYY6oQQqTw@mail.gmail.com>
+        id S1750729AbdHRKCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Aug 2017 06:02:21 -0400
+From: Vadim Lomovtsev <vlomovts@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        bfields@fieldses.org, jlayton@poochiereds.net, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pabeni@redhat.com
+Cc: Vadim Lomovtsev <vlomovts@redhat.com>
+Subject: [PATCH] net: sunrpc: svcsock: fix NULL-pointer exception
+Date: Fri, 18 Aug 2017 06:00:47 -0400
+Message-Id: <1503050447-13362-1-git-send-email-vlomovts@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2017-08-16 18:21, Paul Moore wrote:
-> On Mon, Aug 14, 2017 at 1:47 AM, Richard Guy Briggs <rgb@redhat.com> wrote:
-> > Hi David,
-> >
-> > I wanted to respond to this thread to attempt some constructive feedback,
-> > better late than never.  I had a look at your fsopen/fsmount() patchset(s) to
-> > support this patchset which was interesting, but doesn't directly affect my
-> > work.  The primary patch of interest to the audit kernel folks (Paul Moore and
-> > me) is this patch while the rest of the patchset is interesting, but not likely
-> > to directly affect us.  This patch has most of what we need to solve our
-> > problem.
-> >
-> > Paul and I agree that audit is going to have a difficult time identifying
-> > containers or even namespaces without some change to the kernel.  The audit
-> > subsystem in the kernel needs at least a basic clue about which container
-> > caused an event to be able to report this at the appropriate level and ignore
-> > it at other levels to avoid a DoS.
-> 
-> While there is some increased risk of "death by audit", this is really
-> only an issue once we start supporting multiple audit daemons; simply
-> associating auditable events with the container that triggered them
-> shouldn't add any additional overhead (I hope).  For a number of use
-> cases, a single auditd running outside the containers, but recording
-> all their events with some type of container attribution will be
-> sufficient.  This is step #1.
-> 
-> However, we will obviously want to go a bit further and support
-> multiple audit daemons on the system to allow containers to
-> record/process their own events (side note: the non-container auditd
-> instance will still see all the events).  There are a number of ways
-> we could tackle this, both via in-kernel and in-userspace record
-> routing, each with their own pros/cons.  However, how this works is
-> going to be dependent on how we identify containers and track their
-> audit events: the bits from step #1.  For this reason I'm not really
-> interested in worrying about the multiple auditd problem just yet;
-> it's obviously important, and something to keep in mind while working
-> up a solution, but it isn't something we should focus on right now.
-> 
-> > We also agree that there will need to be some sort of trigger from userspace to
-> > indicate the creation of a container and its allocated resources and we're not
-> > really picky how that is done, such as a clone flag, a syscall or a sysfs write
-> > (or even a read, I suppose), but there will need to be some permission
-> > restrictions, obviously.  (I'd like to see capabilities used for this by adding
-> > a specific container bit to the capabilities bitmask.)
-> 
-> To be clear, from an audit perspective I think the only thing we would
-> really care about controlling access to is the creation and assignment
-> of a new audit container ID/token, not necessarily the container
-> itself.  It's a small point, but an important one I think.
-> 
-> > I doubt we will be able to accomodate all definitions or concepts of a
-> > container in a timely fashion.  We'll need to start somewhere with a minimum
-> > definition so that we can get traction and actually move forward before another
-> > compelling shared kernel microservice method leaves our entire community
-> > behind.  I'd like to declare that a container is a full set of cloned
-> > namespaces, but this is inefficient, overly constricting and unnecessary for
-> > our needs.  If we could agree on a minimum definition of a container (which may
-> > have only one specific cloned namespace) then we have something on which to
-> > build.  I could even see a container being defined by a trigger sent from
-> > userspace about a process (task) from which all its children are considered to
-> > be within that container, subject to further nesting.
-> 
-> I really would prefer if we could avoid defining the term "container".
-> Even if we manage to get it right at this particular moment, we will
-> surely be made fools a year or two from now when things change.  At
-> the very least lets avoid a rigid definition of container, I'll
-> concede that we will probably need to have some definition simply so
-> we can implement something, I just don't want the design or
-> implementation to depend on a particular definition.
-> 
-> This comment is jumping ahead a bit, but from an audit perspective I
-> think we handle this by emitting an audit record whenever a container
-> ID is created which describes it as the kernel sees it; as of now that
-> probably means a list of namespace IDs.  Richard mentions this in his
-> email, I just wanted to make it clear that I think we should see this
-> as a flexible mechanism.  At the very least we will likely see a few
-> more namespaces before the world moves on from containers.
-> 
-> > In the simplest usable model for audit, if a container (definition implies and)
-> > starts a PID namespace, then the container ID could simply be the container's
-> > "init" process PID in the initial PID namespace.  This assumes that as soon as
-> > that process vanishes, that entire container and all its children are killed
-> > off (which you've done).  There may be some container orchestration systems
-> > that don't use a unique PID namespace per container and that imposing this will
-> > cause them challenges.
-> 
-> I don't follow how this would cause challenges if the containers do
-> not use a unique PID namespace; you are suggesting using the PID from
-> in the context of the initial PID namespace, yes?
+While running nfs/connectathon tests kernel NULL-pointer exception
+has been observed due to races in svcsock.c.
 
-The PID of the "init" process of a container (PID=1 inside container,
-but PID=containerID from the initial PID namespace perspective).
+Race is appear when kernel accepts connection by kernel_accept
+(which creates new socket) and start queuing ingress packets
+to new socket. This happanes in ksoftirq context which concurrently
+on a differnt core while new socket setup is not done yet.
 
-> Regardless, I do worry that using a PID could potentially be a bit
-> racy once we start jumping between kernel and userspace (audit
-> configuration, logs, etc.).
+The fix is to re-order socket user data init sequence, add NULL-ptr
+check before callback call along with barriers to prevent kernel crash.
 
-How do you think this could be racy?  An event happenning before or as
-the container has been defined?
+Test results: nfs/connectathon reports '0' failed tests for about 200+ iterations.
 
-> > If containers have at minimum a unique mount namespace then the root path
-> > dentry inode device and inode number could be used, but there are likely better
-> > identifiers.  Again, there may be container orchestrators that don't use a
-> > unique mount namespace per container and that imposing this will cause
-> > challenges.
-> >
-> > I expect there are similar examples for each of the other namespaces.
-> 
-> The PID case is a bit unique as each process is going to have a unique
-> PID regardless of namespaces, but even that has some drawbacks as
-> discussed above.  As for the other namespaces, I agree that we can't
-> rely on them (see my earlier comments).
+Crash log:
+---<-snip->---
+[ 6708.638984] Unable to handle kernel NULL pointer dereference at virtual address 00000000
+[ 6708.647093] pgd = ffff0000094e0000
+[ 6708.650497] [00000000] *pgd=0000010ffff90003, *pud=0000010ffff90003, *pmd=0000010ffff80003, *pte=0000000000000000
+[ 6708.660761] Internal error: Oops: 86000005 [#1] SMP
+[ 6708.665630] Modules linked in: nfsv3 nfnetlink_queue nfnetlink_log nfnetlink rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache overlay xt_CONNSECMARK xt_SECMARK xt_conntrack iptable_security ip_tables ah4 xfrm4_mode_transport sctp tun binfmt_misc ext4 jbd2 mbcache loop tcp_diag udp_diag inet_diag rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_core nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack vfat fat ghash_ce sha2_ce sha1_ce cavium_rng_vf i2c_thunderx sg thunderx_edac i2c_smbus edac_core cavium_rng nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c nicvf nicpf ast i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops
+[ 6708.736446]  ttm drm i2c_core thunder_bgx thunder_xcv mdio_thunder mdio_cavium dm_mirror dm_region_hash dm_log dm_mod [last unloaded: stap_3c300909c5b3f46dcacd49aab3334af_87021]
+[ 6708.752275] CPU: 84 PID: 0 Comm: swapper/84 Tainted: G        W  OE   4.11.0-4.el7.aarch64 #1
+[ 6708.760787] Hardware name: www.cavium.com CRB-2S/CRB-2S, BIOS 0.3 Mar 13 2017
+[ 6708.767910] task: ffff810006842e80 task.stack: ffff81000689c000
+[ 6708.773822] PC is at 0x0
+[ 6708.776739] LR is at svc_data_ready+0x38/0x88 [sunrpc]
+[ 6708.781866] pc : [<0000000000000000>] lr : [<ffff0000029d7378>] pstate: 60000145
+[ 6708.789248] sp : ffff810ffbad3900
+[ 6708.792551] x29: ffff810ffbad3900 x28: ffff000008c73d58
+[ 6708.797853] x27: 0000000000000000 x26: ffff81000bbe1e00
+[ 6708.803156] x25: 0000000000000020 x24: ffff800f7410bf28
+[ 6708.808458] x23: ffff000008c63000 x22: ffff000008c63000
+[ 6708.813760] x21: ffff800f7410bf28 x20: ffff81000bbe1e00
+[ 6708.819063] x19: ffff810012412400 x18: 00000000d82a9df2
+[ 6708.824365] x17: 0000000000000000 x16: 0000000000000000
+[ 6708.829667] x15: 0000000000000000 x14: 0000000000000001
+[ 6708.834969] x13: 0000000000000000 x12: 722e736f622e676e
+[ 6708.840271] x11: 00000000f814dd99 x10: 0000000000000000
+[ 6708.845573] x9 : 7374687225000000 x8 : 0000000000000000
+[ 6708.850875] x7 : 0000000000000000 x6 : 0000000000000000
+[ 6708.856177] x5 : 0000000000000028 x4 : 0000000000000000
+[ 6708.861479] x3 : 0000000000000000 x2 : 00000000e5000000
+[ 6708.866781] x1 : 0000000000000000 x0 : ffff81000bbe1e00
+[ 6708.872084]
+[ 6708.873565] Process swapper/84 (pid: 0, stack limit = 0xffff81000689c000)
+[ 6708.880341] Stack: (0xffff810ffbad3900 to 0xffff8100068a0000)
+[ 6708.886075] Call trace:
+[ 6708.888513] Exception stack(0xffff810ffbad3710 to 0xffff810ffbad3840)
+[ 6708.894942] 3700:                                   ffff810012412400 0001000000000000
+[ 6708.902759] 3720: ffff810ffbad3900 0000000000000000 0000000060000145 ffff800f79300000
+[ 6708.910577] 3740: ffff000009274d00 00000000000003ea 0000000000000015 ffff000008c63000
+[ 6708.918395] 3760: ffff810ffbad3830 ffff800f79300000 000000000000004d 0000000000000000
+[ 6708.926212] 3780: ffff810ffbad3890 ffff0000080f88dc ffff800f79300000 000000000000004d
+[ 6708.934030] 37a0: ffff800f7930093c ffff000008c63000 0000000000000000 0000000000000140
+[ 6708.941848] 37c0: ffff000008c2c000 0000000000040b00 ffff81000bbe1e00 0000000000000000
+[ 6708.949665] 37e0: 00000000e5000000 0000000000000000 0000000000000000 0000000000000028
+[ 6708.957483] 3800: 0000000000000000 0000000000000000 0000000000000000 7374687225000000
+[ 6708.965300] 3820: 0000000000000000 00000000f814dd99 722e736f622e676e 0000000000000000
+[ 6708.973117] [<          (null)>]           (null)
+[ 6708.977824] [<ffff0000086f9fa4>] tcp_data_queue+0x754/0xc5c
+[ 6708.983386] [<ffff0000086fa64c>] tcp_rcv_established+0x1a0/0x67c
+[ 6708.989384] [<ffff000008704120>] tcp_v4_do_rcv+0x15c/0x22c
+[ 6708.994858] [<ffff000008707418>] tcp_v4_rcv+0xaf0/0xb58
+[ 6709.000077] [<ffff0000086df784>] ip_local_deliver_finish+0x10c/0x254
+[ 6709.006419] [<ffff0000086dfea4>] ip_local_deliver+0xf0/0xfc
+[ 6709.011980] [<ffff0000086dfad4>] ip_rcv_finish+0x208/0x3a4
+[ 6709.017454] [<ffff0000086e018c>] ip_rcv+0x2dc/0x3c8
+[ 6709.022328] [<ffff000008692fc8>] __netif_receive_skb_core+0x2f8/0xa0c
+[ 6709.028758] [<ffff000008696068>] __netif_receive_skb+0x38/0x84
+[ 6709.034580] [<ffff00000869611c>] netif_receive_skb_internal+0x68/0xdc
+[ 6709.041010] [<ffff000008696bc0>] napi_gro_receive+0xcc/0x1a8
+[ 6709.046690] [<ffff0000014b0fc4>] nicvf_cq_intr_handler+0x59c/0x730 [nicvf]
+[ 6709.053559] [<ffff0000014b1380>] nicvf_poll+0x38/0xb8 [nicvf]
+[ 6709.059295] [<ffff000008697a6c>] net_rx_action+0x2f8/0x464
+[ 6709.064771] [<ffff000008081824>] __do_softirq+0x11c/0x308
+[ 6709.070164] [<ffff0000080d14e4>] irq_exit+0x12c/0x174
+[ 6709.075206] [<ffff00000813101c>] __handle_domain_irq+0x78/0xc4
+[ 6709.081027] [<ffff000008081608>] gic_handle_irq+0x94/0x190
+[ 6709.086501] Exception stack(0xffff81000689fdf0 to 0xffff81000689ff20)
+[ 6709.092929] fde0:                                   0000810ff2ec0000 ffff000008c10000
+[ 6709.100747] fe00: ffff000008c70ef4 0000000000000001 0000000000000000 ffff810ffbad9b18
+[ 6709.108565] fe20: ffff810ffbad9c70 ffff8100169d3800 ffff810006843ab0 ffff81000689fe80
+[ 6709.116382] fe40: 0000000000000bd0 0000ffffdf979cd0 183f5913da192500 0000ffff8a254ce4
+[ 6709.124200] fe60: 0000ffff8a254b78 0000aaab10339808 0000000000000000 0000ffff8a0c2a50
+[ 6709.132018] fe80: 0000ffffdf979b10 ffff000008d6d450 ffff000008c10000 ffff000008d6d000
+[ 6709.139836] fea0: 0000000000000054 ffff000008cd3dbc 0000000000000000 0000000000000000
+[ 6709.147653] fec0: 0000000000000000 0000000000000000 0000000000000000 ffff81000689ff20
+[ 6709.155471] fee0: ffff000008085240 ffff81000689ff20 ffff000008085244 0000000060000145
+[ 6709.163289] ff00: ffff81000689ff10 ffff00000813f1e4 ffffffffffffffff ffff00000813f238
+[ 6709.171107] [<ffff000008082eb4>] el1_irq+0xb4/0x140
+[ 6709.175976] [<ffff000008085244>] arch_cpu_idle+0x44/0x11c
+[ 6709.181368] [<ffff0000087bf3b8>] default_idle_call+0x20/0x30
+[ 6709.187020] [<ffff000008116d50>] do_idle+0x158/0x1e4
+[ 6709.191973] [<ffff000008116ff4>] cpu_startup_entry+0x2c/0x30
+[ 6709.197624] [<ffff00000808e7cc>] secondary_start_kernel+0x13c/0x160
+[ 6709.203878] [<0000000001bc71c4>] 0x1bc71c4
+[ 6709.207967] Code: bad PC value
+[ 6709.211061] SMP: stopping secondary CPUs
+[ 6709.218830] Starting crashdump kernel...
+[ 6709.222749] Bye!
+---<-snip>---
 
-(In general can you specify which earlier comments so we can be sure to
-what you are referring?)
+Signed-off-by: Vadim Lomovtsev <vlomovts@redhat.com>
+---
+ net/sunrpc/svcsock.c | 24 ++++++++++++++++++------
+ 1 file changed, 18 insertions(+), 6 deletions(-)
 
-> > If we could pick one namespace type for consensus for which each container has
-> > a unique instance of that namespace, we could use the dev/ino tuple from that
-> > namespace as had originally been suggested by Aristeu Rozanski more than 4
-> > years ago as part of the set of namespace IDs.  I had also attempted to
-> > solve this problem by using the namespace' proc inode, then switched over to
-> > generate a unique kernel serial number for each namespace and then went back to
-> > namespace proc dev/ino once Al Viro implemented nsfs:
-> >         v1      https://lkml.org/lkml/2014/4/22/662
-> >         v2      https://lkml.org/lkml/2014/5/9/637
-> >         v3      https://lkml.org/lkml/2014/5/20/287
-> >         v4      https://lkml.org/lkml/2014/8/20/844
-> >         v5      https://lkml.org/lkml/2014/10/6/25
-> >         v6      https://lkml.org/lkml/2015/4/17/48
-> >         v7      https://lkml.org/lkml/2015/5/12/773
-> >
-> > These patches don't use a container ID, but track all namespaces in use for an
-> > event.  This has the benefit of punting this tracking to userspace for some
-> > other tool to analyse and determine to which container an event belongs.
-> > This will use a lot of bandwidth in audit log files when a single
-> > container ID that doesn't require nesting information to be complete
-> > would be a much more efficient use of audit log bandwidth.
-> 
-> Relying on a particular namespace to identify a containers is a
-> non-starter from my perspective for all the reasons previously
-> discussed.
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 2b720fa..b6496f3 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -421,7 +421,9 @@ static void svc_data_ready(struct sock *sk)
+ 		dprintk("svc: socket %p(inet %p), busy=%d\n",
+ 			svsk, sk,
+ 			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
+-		svsk->sk_odata(sk);
++		rmb();
++		if (svsk->sk_odata)
++			svsk->sk_odata(sk);
+ 		if (!test_and_set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags))
+ 			svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+@@ -437,7 +439,9 @@ static void svc_write_space(struct sock *sk)
+ 	if (svsk) {
+ 		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
+ 			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
+-		svsk->sk_owspace(sk);
++		rmb();
++		if (svsk->sk_owspace)
++			svsk->sk_owspace(sk);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+ }
+@@ -760,8 +764,12 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+ 	dprintk("svc: socket %p TCP (listen) state change %d\n",
+ 		sk, sk->sk_state);
+ 
+-	if (svsk)
+-		svsk->sk_odata(sk);
++	if (svsk) { 
++		rmb();
++		if (svsk->sk_odata)
++			svsk->sk_odata(sk);
++	}
++
+ 	/*
+ 	 * This callback may called twice when a new connection
+ 	 * is established as a child socket inherits everything
+@@ -794,7 +802,10 @@ static void svc_tcp_state_change(struct sock *sk)
+ 	if (!svsk)
+ 		printk("svc: socket %p: no user data\n", sk);
+ 	else {
+-		svsk->sk_ostate(sk);
++		rmb();
++		if (svsk->sk_ostate)
++			svsk->sk_ostate(sk);
++
+ 		if (sk->sk_state != TCP_ESTABLISHED) {
+ 			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 			svc_xprt_enqueue(&svsk->sk_xprt);
+@@ -1381,12 +1392,13 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 		return ERR_PTR(err);
+ 	}
+ 
+-	inet->sk_user_data = svsk;
+ 	svsk->sk_sock = sock;
+ 	svsk->sk_sk = inet;
+ 	svsk->sk_ostate = inet->sk_state_change;
+ 	svsk->sk_odata = inet->sk_data_ready;
+ 	svsk->sk_owspace = inet->sk_write_space;
++	wmb();
++	inet->sk_user_data = svsk;
+ 
+ 	/* Initialize the socket */
+ 	if (sock->type == SOCK_DGRAM)
+-- 
+1.8.3.1
 
-I'd rather not either and suspect there isn't much danger of it, but if
-it is determined that there is one namespace in particular that is a
-minimum requirement, I'd prefer to use that nsID instead of creating an
-additional ID.
-
-> > If we rely only on the setting of arbitrary container names from userspace,
-> > then we must provide a map or tree back to the initial audit domain for that
-> > running kernel to be able to differentiate between potentially identical
-> > container names assigned in a nested container system.  If we assign a
-> > container serial number sequentially (atomic64_inc) from the kernel on request
-> > from userspace like the sessionID and log the creation with all nsIDs and the
-> > parent container serial number and/or container name, the nesting is clear due
-> > to lack of ambiguity in potential duplicate names in nesting.  If a container
-> > serial number is used, the tree of inheritance of nested containers can be
-> > rebuilt from the audit records showing what containers were spawned from what
-> > parent.
-> 
-> I believe we are going to need a container ID to container definition
-> (namespace, etc.) mapping mechanism regardless of if the container ID
-> is provided by userspace or a kernel generated serial number.  This
-> mapping should be recorded in the audit log when the container ID is
-> created/defined.
-
-Agreed.
-
-> > As was suggested in one of the previous threads, if there are any events not
-> > associated with a task (incoming network packets) we log the namespace ID and
-> > then only concern ourselves with its container serial number or container name
-> > once it becomes associated with a task at which point that tracking will be
-> > more important anyways.
-> 
-> Agreed.  After all, a single namespace can be shared between multiple
-> containers.  For those security officers who need to track individual
-> events like this they will have the container ID mapping information
-> in the logs as well so they should be able to trace the unassociated
-> event to a set of containers.
-> 
-> > I'm not convinced that a userspace or kernel generated UUID is that useful
-> > since they are large, not human readable and may not be globally unique given
-> > the "pets vs cattle" direction we are going with potentially identical
-> > conditions in hosts or containers spawning containers, but I see no need to
-> > restrict them.
-> 
-> From a kernel perspective I think an int should suffice; after all,
-> you can't have more containers then you have processes.  If the
-> container engine requires something more complex, it can use the int
-> as input to its own mapping function.
-
-PIDs roll over.  That already causes some ambiguity in reporting.  If a
-system is constantly spawning and reaping containers, especially
-single-process containers, I don't want to have to worry about that ID
-rolling to keep track of it even though there should be audit records of
-the spawn and death of each container.  There isn't significant cost
-added here compared with some of the other overhead we're dealing with.
-
-> > How do we deal with setns()?  Once it is determined that action is permitted,
-> > given the new combinaiton of namespaces and potential membership in a different
-> > container, record the transition from one container to another including all
-> > namespaces if the latter are a different subset than the target container
-> > initial set.
-> 
-> That is a fun one, isn't it?  I think this is where the container
-> ID-to-definition mapping comes into play.  If setns() changes the
-> process such that the existing container ID is no longer valid then we
-> need to do a new lookup in the table to see if another container ID is
-> valid; if no established container ID mappings are valid, the
-> container ID becomes "undefined".
-
-Hopefully we can design this stuff so that container IDs are still valid
-while that transition occurs.
-
-> paul moore
-
-- RGB
-
---
-Richard Guy Briggs <rgb@redhat.com>
-Sr. S/W Engineer, Kernel Security, Base Operating Systems
-Remote, Ottawa, Red Hat Canada
-IRC: rgb, SunRaycer
-Voice: +1.647.777.2635, Internal: (81) 32635
