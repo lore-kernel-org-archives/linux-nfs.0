@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55411 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:55376 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750916AbdHRHNr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Aug 2017 03:13:47 -0400
+        id S1750881AbdHRHNl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Aug 2017 03:13:41 -0400
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date: Fri, 18 Aug 2017 17:12:51 +1000
-Subject: [PATCH 2/8] NFSv4: don't let hanging mounts block other mounts
+Subject: [PATCH 1/8] SUNRPC: ECONNREFUSED should cause a rebind.
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <150304037188.30218.6679182255685764801.stgit@noble>
+Message-ID: <150304037184.30218.7244179303036576085.stgit@noble>
 In-Reply-To: <150304014011.30218.1636255532744321171.stgit@noble>
 References: <150304014011.30218.1636255532744321171.stgit@noble>
 MIME-Version: 1.0
@@ -17,47 +17,46 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If you try an NFSv4 mount from an inaccessible server, it will hang as
-you would expect.
-If you then try an NFSv4 mount from a different accessible server,
-it will also hang.  This is not expected.
+If you
+ - mount and NFSv3 filesystem
+ - do some file locking which requires the server
+   to make a GRANT call back
+ - unmount
+ - mount again and do the same locking
 
-The second mount is blocked in
-  nfs4_init_client()
-  -> nfs4_discover_server_trunking()
-  -> nfs40_discover_server_trunking()
-  -> nfs40_walk_client_list()
-  -> nfs4_match_client()
-  -> nfs_wait_client_init_complete()
-It is waiting for the first mount to complete so that it can then
-see if the two servers are really one and the same.
+then the second attempt at locking suffers a 30 second delay.
+Unmounting and remounting causes lockd to stop and restart,
+which causes it to bind to a new port.
+The server still thinks the old port is valid and gets ECONNREFUSED
+when trying to contact it.
+ECONNREFUSED should be seen as a hard error that is not worth
+retrying.  Rebinding is the only reasonable response.
 
-It is not necessary to wait here when an nfs_client cl_cons_state is
-NFS_CS_INITING.  Such a client will, after changing cl_cons_state, call
-nfs4_discover_server_trunking() itself.  So if the current client just
-skips those clients, trunking will still be discovered if necessary.
-
-I am unsure of situation with NFS_CS_SESSION_INITING, but I suspect
-that the comment "Wait for CREATE_SESSION to finish" implies that
-it is only clients in NFS_CS_SESSION_INITING that need to be waited for.
+This patch forces a rebind if that makes sense.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/nfs4client.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/clnt.c |    8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index e9bea90dc017..d8b9b7ff19a9 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -482,7 +482,7 @@ static int nfs4_match_client(struct nfs_client  *pos,  struct nfs_client *new,
- 	 * remaining fields in "pos", especially the client
- 	 * ID and serverowner fields.  Wait for CREATE_SESSION
- 	 * to finish. */
--	if (pos->cl_cons_state > NFS_CS_READY) {
-+	if (pos->cl_cons_state == NFS_CS_SESSION_INITING) {
- 		atomic_inc(&pos->cl_count);
- 		spin_unlock(&nn->nfs_client_lock);
- 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 2e49d1f892b7..69a9e5953744 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1903,6 +1903,14 @@ call_connect_status(struct rpc_task *task)
+ 	task->tk_status = 0;
+ 	switch (status) {
+ 	case -ECONNREFUSED:
++		/* A positive refusal suggests a rebind is needed. */
++		if (RPC_IS_SOFTCONN(task))
++			break;
++		if (clnt->cl_autobind) {
++			rpc_force_rebind(clnt);
++			task->tk_action = call_bind;
++			return;
++		}
+ 	case -ECONNRESET:
+ 	case -ECONNABORTED:
+ 	case -ENETUNREACH:
 
 
