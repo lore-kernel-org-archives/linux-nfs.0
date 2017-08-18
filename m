@@ -1,72 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:30019 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750984AbdHRTPP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 15:15:15 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "neilb@suse.com" <neilb@suse.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/8] NFS: flush out dirty data on file fput().
-Date: Fri, 18 Aug 2017 19:15:07 +0000
-Message-ID: <1503083704.11511.9.camel@primarydata.com>
-References: <150304014011.30218.1636255532744321171.stgit@noble>
-         <150304037195.30218.15740287358704674869.stgit@noble>
-In-Reply-To: <150304037195.30218.15740287358704674869.stgit@noble>
+Received: from mail-lf0-f41.google.com ([209.85.215.41]:37036 "EHLO
+        mail-lf0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751668AbdHRUPn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 16:15:43 -0400
+Received: by mail-lf0-f41.google.com with SMTP id f7so27129379lfg.4
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Aug 2017 13:15:42 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1503068252.44656.2.camel@primarydata.com>
+References: <CAKk7tABTTRNxZDD3SXmNpw55CqHaR=gGV6H-eRK5-m0vmkOLWQ@mail.gmail.com>
+ <1503068252.44656.2.camel@primarydata.com>
+From: Bennett Amodio <bamodio@purestorage.com>
+Date: Fri, 18 Aug 2017 13:15:40 -0700
+Message-ID: <CAKk7tACdKx9gEPf1Fqi8kEimEUZxhX5pC+0wXJgWMu4SLbn2wg@mail.gmail.com>
+Subject: Re: [RFC v3 0/2] NFSv3 and NFSv4 Multipathing
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "juchang@purestorage.com" <juchang@purestorage.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "vas@purestorage.com" <vas@purestorage.com>,
+        "igor@purestorage.com" <igor@purestorage.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA4LTE4IGF0IDE3OjEyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IEFu
-eSBkaXJ0eSBORlMgcGFnZSBob2xkcyBhbiBzX2FjdGl2ZSByZWZlcmVuY2Ugb24gdGhlIHN1cGVy
-YmxvY2ssDQo+IGJlY2F1c2UgcGFnZV9wcml2YXRlKCkgcmVmZXJlbmNlcyBhbiBuZnNfcGFnZSwg
-d2hpY2ggcmVmZXJlbmNlcyBhbg0KPiBvcGVuIGNvbnRleHQsIHdoaWNoIHJlZmVyZW5jZXMgdGhl
-IHN1cGVyYmxvY2suDQo+IA0KPiBTbyBpZiB0aGVyZSBhcmUgYW55IGRpcnR5IHBhZ2VzIHdoZW4g
-dGhlIGZpbGVzeXN0ZW0gaXMgdW5tb3VudGVkLCB0aGUNCj4gdW5tb3VudCB3aWxsIGFjdCBsaWtl
-IGEgImxhenkiIHVubW91bnQgYW5kIG5vdCBjYWxsIC0+a2lsbF9zYigpLg0KPiBCYWNrZ3JvdW5k
-IHdyaXRlLWJhY2sgY2FuIHRoZW4gd3JpdGUgb3V0IHRoZSBwYWdlcyAqYWZ0ZXIqIHRoZQ0KPiBm
-aWxlc3lzdGVtDQo+IHVubW91bnQgaGFzIGFwcGFyZW50bHkgY29tcGxldGVkLg0KPiANCj4gVGhp
-cyBjb250cmFzdHMgd2l0aCBvdGhlciBmaWxlc3lzdGVtcyB3aGljaCBkbyBub3QgaG9sZCBleHRy
-YQ0KPiBzX2FjdGl2ZQ0KPiByZWZlcmVuY2VzLCBzbyAtPmtpbGxfc2IoKSBpcyByZWxpYWJseSBj
-YWxsZWQgb24gdW5tb3VudCwgYW5kDQo+IGdlbmVyaWNfc2h1dGRvd25fc3VwZXIoKSB3aWxsIGNh
-bGwgc3luY19maWxlc3lzdGVtKCkgdG8gZmx1c2gNCj4gZXZlcnl0aGluZyBvdXQgYmVmb3JlIHRo
-ZSB1bm1vdW50IGNvbXBsZXRlcy4NCj4gDQo+IFdoZW4gb3Blbi93cml0ZS9jbG9zZSBpcyB1c2Vk
-IHRvIG1vZGlmeSBmaWxlcywgdGhlIGZpbmFsIGNsb3NlIGNhdXNlcw0KPiBmX29wLT5mbHVzaCB0
-byBiZSBjYWxsZWQsIHdoaWNoIGZsdXNoZXMgYWxsIGRpcnR5IHBhZ2VzLiAgSG93ZXZlciBpZg0K
-PiBvcGVuL21tYXAvY2xvc2UvbW9kaWZ5LW1lbW9yeS91bm1hcCBpcyB1c2VkLCBkaXJ0eSBwYWdl
-cyBjYW4gcmVtYWluDQo+IGluDQo+IG1lbW9yeSBhZnRlciB0aGUgYXBwbGljYXRpb24gaGFzIGRy
-b3BwZWQgYWxsIHJlZmVyZW5jZXMgdG8gdGhlIGZpbGUuDQo+IFNpbWlsYXJseSBpZiBhIGxvb3At
-bW91bnQgaXMgZG9uZSB3aXRoIGEgTkZTIGZpbGUsIHRoZXJlIGlzIG5vIGZpbmFsDQo+IGZsdXNo
-IHdoZW4gdGhlIGxvb3AgZGV2aWNlIGlzIGRlc3Ryb3llZCBhbmQgdGhlIGZpbGUgY2FuIGhhdmUg
-ZGlydHkNCj4gZGF0YSBhZnRlciB0aGUgbGFzdCAiY2xvc2UiLg0KPiANCj4gQWxzbywgYSBsb29w
-LWJhY2sgbW91bnQgb2YgYSBkZXZpY2UgZG9lcyBub3QgImNsb3NlIiB0aGUgZmlsZSB3aGVuDQo+
-IHRoZQ0KPiBsb29wIGRldmljZSBpcyBkZXN0cm95ZWQuICBUaGlzIGNhbiBsZWF2ZSBkaXJ0eSBw
-YWdlIGNhY2hlIHBhZ2VzIHRvby4NCj4gDQo+IEZpeCB0aGlzIGJ5IGNhbGxpbmcgdmZzX2ZzeW5j
-KCkgaW4gbmZzX2ZpbGVfcmVsZWFzZSAoYWthDQo+IGZfb3AtPnJlbGVhc2UoKSkuICBUaGlzIG1l
-YW5zIHRoYXQgb24gdGhlIGZpbmFsIHVubWFwIG9mIGEgZmlsZSAob3INCj4gZGVzdHJ1Y3Rpb24g
-b2YgYSBsb29wIGRldmljZSksIGFsbCBjaGFuZ2VzIGFyZSBmbHVzaGVkLCBhbmQgZW5zdXJlcw0K
-PiB0aGF0DQo+IHdoZW4gdW5tb3VudCBpcyByZXF1ZXN0ZWQgdGhlcmUgd2lsbCBiZSBubyBkaXJ0
-eSBwYWdlcyB0byBkZWxheSB0aGUNCj4gZmluYWwgdW5tb3VudC4NCj4gDQo+IFdpdGhvdXQgdGhp
-cyBwYXRjaCwgaXQgaXMgbm90IHNhZmUgdG8gc3RvcCBvciBkaXNjb25uZWN0IHRoZSBORlMNCj4g
-c2VydmVyIGFmdGVyIGFsbCBjbGllbnRzIGhhdmUgdW5tb3VudGVkLiAgVGhleSBuZWVkIHRvIHVu
-bW91bnQgYW5kDQo+IGNhbGwgInN5bmMiLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogTmVpbEJyb3du
-IDxuZWlsYkBzdXNlLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvZmlsZS5jIHwgICAgNiArKysrKysN
-Cj4gIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKykNCj4gDQo+IGRpZmYgLS1naXQgYS9m
-cy9uZnMvZmlsZS5jIGIvZnMvbmZzL2ZpbGUuYw0KPiBpbmRleCBhZjMzMGMzMWY2MjcuLmFhODgz
-ZDhiMjRlNiAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2ZpbGUuYw0KPiArKysgYi9mcy9uZnMvZmls
-ZS5jDQo+IEBAIC04MSw2ICs4MSwxMiBAQCBuZnNfZmlsZV9yZWxlYXNlKHN0cnVjdCBpbm9kZSAq
-aW5vZGUsIHN0cnVjdCBmaWxlDQo+ICpmaWxwKQ0KPiAgew0KPiAgCWRwcmludGsoIk5GUzogcmVs
-ZWFzZSglcEQyKVxuIiwgZmlscCk7DQo+ICANCj4gKwlpZiAoZmlscC0+Zl9tb2RlICYgRk1PREVf
-V1JJVEUpDQo+ICsJCS8qIEVuc3VyZSBkaXJ0eSBtbWFwcGVkIHBhZ2VzIGFyZSBmbHVzaGVkDQo+
-ICsJCSAqIHNvIHRoZXJlIHdpbGwgYmUgbm8gZGlydHkgcGFnZXMgdG8NCj4gKwkJICogcHJldmVu
-dCBhbiB1bm1vdW50IGZyb20gY29tcGxldGluZy4NCj4gKwkJICovDQo+ICsJCXZmc19mc3luYyhm
-aWxwLCAwKTsNCj4gIAluZnNfaW5jX3N0YXRzKGlub2RlLCBORlNJT1NfVkZTUkVMRUFTRSk7DQo+
-ICAJbmZzX2ZpbGVfY2xlYXJfb3Blbl9jb250ZXh0KGZpbHApOw0KPiAgCXJldHVybiAwOw0KDQpU
-aGUgcmlnaHQgZml4IGhlcmUgaXMgdG8gZW5zdXJlIHRoYXQgdW1vdW50KCkgZmx1c2hlcyB0aGUg
-ZGlydHkgZGF0YSwNCmFuZCB0aGF0IGl0IGFib3J0cyB0aGUgdW1vdW50IGF0dGVtcHQgaWYgdGhl
-IGZsdXNoIGZhaWxzLiBPdGhlcndpc2UsIGENCnNpZ25hbCB0byB0aGUgYWJvdmUgZnN5bmMgY2Fs
-bCB3aWxsIGNhdXNlIHRoZSBwcm9ibGVtIHRvIHJlb2NjdXIuDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWts
-ZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On Fri, Aug 18, 2017 at 7:57 AM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Tue, 2017-08-15 at 17:46 -0700, Bennett Amodio wrote:
+>> After seeing Trond=E2=80=99s patches for NFS multipathing on NFSv4.1, we
+>> decided to try using the same concept for NFSv3/4.  The primary issue
+>> we identified was XID collision in the duplicate request cache
+>> (replay
+>> cache) for NFSv3/4.  In NFSv3/4, entries are hashed based on XID
+>> instead of the slot ID and sequence ID that NFSv4.1 uses.  Since the
+>> XIDs are generated by the RPC transports, and Trond=E2=80=99s patches cr=
+eate
+>> multiple transports for multipathing, different transports can end up
+>> using an overlapping set of XIDs.
+>
+> Why is that a problem? You should end up with connections that show
+> different combinations of source IP+port and/or destination IP+port. It
+> should be trivial to distinguish between XIDs.
 
+Although the Linux NFS server hashes cache entries based on source IP
+and source port as well as XID, this is not a requirement of the
+NFSv3/v4 specification, so NFS server implementations may exist which
+hash only based on source IP and XID.  In practice, is this uncommon
+enough that it's not worth addressing?
+
+> Quite frankly, I do not want to start carving up the XID space, since a
+> 32-bit number is really not that big in these days of 100GigE networks.
+
+This is a good point, and we also think that carving up the XID space
+is not a great solution.  If XID collision is a problem, another
+solution could be an atomic XID shared between transports which belong
+to the same client.
+
+If there's no problem in the first place, that's even better.  We
+thought when you said "I don't feel comfortable subjecting NFSv3/v4
+replay caches to this treatment yet" that you were referring to XID
+collision.  Is there another potential issue with multipathing and
+replay caches?
+
+Cheers!
+Bennett Amodio
