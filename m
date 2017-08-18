@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55376 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:55421 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750881AbdHRHNl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Aug 2017 03:13:41 -0400
+        id S1750773AbdHRHNx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Aug 2017 03:13:53 -0400
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date: Fri, 18 Aug 2017 17:12:51 +1000
-Subject: [PATCH 1/8] SUNRPC: ECONNREFUSED should cause a rebind.
+Subject: [PATCH 3/8] NFS: don't expect errors from mempool_alloc().
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <150304037184.30218.7244179303036576085.stgit@noble>
+Message-ID: <150304037191.30218.12891416109766472128.stgit@noble>
 In-Reply-To: <150304014011.30218.1636255532744321171.stgit@noble>
 References: <150304014011.30218.1636255532744321171.stgit@noble>
 MIME-Version: 1.0
@@ -17,46 +17,34 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If you
- - mount and NFSv3 filesystem
- - do some file locking which requires the server
-   to make a GRANT call back
- - unmount
- - mount again and do the same locking
+Commit fbe77c30e9ab ("NFS: move rw_mode to nfs_pageio_header")
+reintroduced some pointless code that commit 518662e0fcb9 ("NFS: fix
+usage of mempools.") had recently removed.
 
-then the second attempt at locking suffers a 30 second delay.
-Unmounting and remounting causes lockd to stop and restart,
-which causes it to bind to a new port.
-The server still thinks the old port is valid and gets ECONNREFUSED
-when trying to contact it.
-ECONNREFUSED should be seen as a hard error that is not worth
-retrying.  Rebinding is the only reasonable response.
+Remove it again.
 
-This patch forces a rebind if that makes sense.
-
+Cc: Benjamin Coddington <bcodding@redhat.com>
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- net/sunrpc/clnt.c |    8 ++++++++
- 1 file changed, 8 insertions(+)
+ fs/nfs/write.c |    6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 2e49d1f892b7..69a9e5953744 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1903,6 +1903,14 @@ call_connect_status(struct rpc_task *task)
- 	task->tk_status = 0;
- 	switch (status) {
- 	case -ECONNREFUSED:
-+		/* A positive refusal suggests a rebind is needed. */
-+		if (RPC_IS_SOFTCONN(task))
-+			break;
-+		if (clnt->cl_autobind) {
-+			rpc_force_rebind(clnt);
-+			task->tk_action = call_bind;
-+			return;
-+		}
- 	case -ECONNRESET:
- 	case -ECONNABORTED:
- 	case -ENETUNREACH:
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index b1af5dee5e0a..e833179d0d49 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -102,10 +102,8 @@ static struct nfs_pgio_header *nfs_writehdr_alloc(void)
+ {
+ 	struct nfs_pgio_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
+ 
+-	if (p) {
+-		memset(p, 0, sizeof(*p));
+-		p->rw_mode = FMODE_WRITE;
+-	}
++	memset(p, 0, sizeof(*p));
++	p->rw_mode = FMODE_WRITE;
+ 	return p;
+ }
+ 
 
 
