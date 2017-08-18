@@ -1,168 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:34231 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751740AbdHRPMh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 11:12:37 -0400
-Received: by mail-it0-f67.google.com with SMTP id s132so6082668ita.1
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Aug 2017 08:12:36 -0700 (PDT)
-Subject: [PATCH v1 3/3] svcrdma: Populate tail iovec when receiving
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 18 Aug 2017 11:12:35 -0400
-Message-ID: <20170818151235.26571.42925.stgit@klimt.1015granger.net>
-In-Reply-To: <20170818150957.26571.12169.stgit@klimt.1015granger.net>
-References: <20170818150957.26571.12169.stgit@klimt.1015granger.net>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:22880 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751045AbdHRPyA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 11:54:00 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "colin.king@canonical.com" <colin.king@canonical.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>, hch <hch@lst.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "elfring@users.sourceforge.net" <elfring@users.sourceforge.net>,
+        "bcodding redhat" <bcodding@redhat.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>
+Subject: Re: [PATCH 2/2] lockd: Adjust 61 checks for null pointers
+Date: Fri, 18 Aug 2017 15:53:53 +0000
+Message-ID: <1503071631.44656.4.camel@primarydata.com>
+References: <e53b2d3a-239a-268c-5674-3c50b02c966f@users.sourceforge.net>
+         <e76e873f-f18e-5bdd-cc93-255321b3d98f@users.sourceforge.net>
+In-Reply-To: <e76e873f-f18e-5bdd-cc93-255321b3d98f@users.sourceforge.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-So that NFS WRITE payloads can eventually be placed directly into a
-file's page cache, enable the RPC-over-RDMA transport to present
-these payloads in the xdr_buf's page list, while placing trailing
-content (such as a GETATTR operation) in the xdr_buf's tail.
-
-After this change, the RPC-over-RDMA's "copy tail" hack, added by
-commit a97c331f9aa9 ("svcrdma: Handle additional inline content"),
-is no longer needed and can be removed.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/svc_rdma_rw.c |  108 +++++--------------------------------
- 1 file changed, 15 insertions(+), 93 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 1f34fae..7dcda45 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -691,78 +691,6 @@ static int svc_rdma_build_read_chunk(struct svc_rqst *rqstp,
- 	return ret;
- }
- 
--/* If there is inline content following the Read chunk, append it to
-- * the page list immediately following the data payload. This has to
-- * be done after the reader function has determined how many pages
-- * were consumed for RDMA Read.
-- *
-- * On entry, ri_pageno and ri_pageoff point directly to the end of the
-- * page list. On exit, both have been updated to the new "next byte".
-- *
-- * Assumptions:
-- *	- Inline content fits entirely in rq_pages[0]
-- *	- Trailing content is only a handful of bytes
-- */
--static int svc_rdma_copy_tail(struct svc_rqst *rqstp,
--			      struct svc_rdma_read_info *info)
--{
--	struct svc_rdma_op_ctxt *head = info->ri_readctxt;
--	unsigned int tail_length, remaining;
--	u8 *srcp, *destp;
--
--	/* Assert that all inline content fits in page 0. This is an
--	 * implementation limit, not a protocol limit.
--	 */
--	if (head->arg.head[0].iov_len > PAGE_SIZE) {
--		pr_warn_once("svcrdma: too much trailing inline content\n");
--		return -EINVAL;
--	}
--
--	srcp = head->arg.head[0].iov_base;
--	srcp += info->ri_position;
--	tail_length = head->arg.head[0].iov_len - info->ri_position;
--	remaining = tail_length;
--
--	/* If there is room on the last page in the page list, try to
--	 * fit the trailing content there.
--	 */
--	if (info->ri_pageoff > 0) {
--		unsigned int len;
--
--		len = min_t(unsigned int, remaining,
--			    PAGE_SIZE - info->ri_pageoff);
--		destp = page_address(rqstp->rq_pages[info->ri_pageno]);
--		destp += info->ri_pageoff;
--
--		memcpy(destp, srcp, len);
--		srcp += len;
--		destp += len;
--		info->ri_pageoff += len;
--		remaining -= len;
--
--		if (info->ri_pageoff == PAGE_SIZE) {
--			info->ri_pageno++;
--			info->ri_pageoff = 0;
--		}
--	}
--
--	/* Otherwise, a fresh page is needed. */
--	if (remaining) {
--		head->arg.pages[info->ri_pageno] =
--				rqstp->rq_pages[info->ri_pageno];
--		head->count++;
--
--		destp = page_address(rqstp->rq_pages[info->ri_pageno]);
--		memcpy(destp, srcp, remaining);
--		info->ri_pageoff += remaining;
--	}
--
--	head->arg.page_len += tail_length;
--	head->arg.len += tail_length;
--	head->arg.buflen += tail_length;
--	return 0;
--}
--
- /* Construct RDMA Reads to pull over a normal Read chunk. The chunk
-  * data lands in the page list of head->arg.pages.
-  *
-@@ -787,34 +715,28 @@ static int svc_rdma_build_normal_read_chunk(struct svc_rqst *rqstp,
- 	if (ret < 0)
- 		goto out;
- 
--	/* Read chunk may need XDR round-up (see RFC 5666, s. 3.7).
-+	/* Split the Receive buffer between the head and tail
-+	 * buffers at Read chunk's position. XDR roundup of the
-+	 * chunk is not included in either the pagelist or in
-+	 * the tail.
- 	 */
--	if (info->ri_chunklen & 3) {
--		u32 padlen = 4 - (info->ri_chunklen & 3);
--
--		info->ri_chunklen += padlen;
-+	head->arg.tail[0].iov_base =
-+		head->arg.head[0].iov_base + info->ri_position;
-+	head->arg.tail[0].iov_len =
-+		head->arg.head[0].iov_len - info->ri_position;
-+	head->arg.head[0].iov_len = info->ri_position;
- 
--		/* NB: data payload always starts on XDR alignment,
--		 * thus the pad can never contain a page boundary.
--		 */
--		info->ri_pageoff += padlen;
--		if (info->ri_pageoff == PAGE_SIZE) {
--			info->ri_pageno++;
--			info->ri_pageoff = 0;
--		}
--	}
-+	/* Read chunk may need XDR roundup (see RFC 5666, s. 3.7).
-+	 *
-+	 * NFSv2/3 write decoders need the length of the tail to
-+	 * contain the size of the roundup padding.
-+	 */
-+	head->arg.tail[0].iov_len += 4 - (info->ri_chunklen & 3);
- 
- 	head->arg.page_len = info->ri_chunklen;
- 	head->arg.len += info->ri_chunklen;
- 	head->arg.buflen += info->ri_chunklen;
- 
--	if (info->ri_position < head->arg.head[0].iov_len) {
--		ret = svc_rdma_copy_tail(rqstp, info);
--		if (ret < 0)
--			goto out;
--	}
--	head->arg.head[0].iov_len = info->ri_position;
--
- out:
- 	return ret;
- }
+T24gVGh1LCAyMDE3LTA4LTE3IGF0IDE2OjM0ICswMjAwLCBTRiBNYXJrdXMgRWxmcmluZyB3cm90
+ZToNCj4gRnJvbTogTWFya3VzIEVsZnJpbmcgPGVsZnJpbmdAdXNlcnMuc291cmNlZm9yZ2UubmV0
+Pg0KPiBEYXRlOiBUaHUsIDE3IEF1ZyAyMDE3IDE2OjAwOjE4ICswMjAwDQo+IE1JTUUtVmVyc2lv
+bjogMS4wDQo+IENvbnRlbnQtVHlwZTogdGV4dC9wbGFpbjsgY2hhcnNldD1VVEYtOA0KPiBDb250
+ZW50LVRyYW5zZmVyLUVuY29kaW5nOiA4Yml0DQo+IA0KPiBUaGUgc2NyaXB0IOKAnGNoZWNrcGF0
+Y2gucGzigJ0gcG9pbnRlZCBpbmZvcm1hdGlvbiBvdXQgbGlrZSB0aGUNCj4gZm9sbG93aW5nLg0K
+PiANCj4gQ29tcGFyaXNvbiB0byBOVUxMIGNvdWxkIGJlIHdyaXR0ZW4g4oCmDQo+IA0KPiBUaHVz
+IGZpeCB0aGUgYWZmZWN0ZWQgc291cmNlIGNvZGUgcGxhY2VzLg0KPiANCj4gU2lnbmVkLW9mZi1i
+eTogTWFya3VzIEVsZnJpbmcgPGVsZnJpbmdAdXNlcnMuc291cmNlZm9yZ2UubmV0Pg0KPiAtLS0N
+Cj4gIGZzL2xvY2tkL2NsbnQ0eGRyLmMgfCAxMiArKysrKystLS0tLS0NCj4gIGZzL2xvY2tkL2Ns
+bnRsb2NrLmMgfCAxMCArKysrKy0tLS0tDQo+ICBmcy9sb2NrZC9jbG50cHJvYy5jIHwgMTIgKysr
+KysrLS0tLS0tDQo+ICBmcy9sb2NrZC9jbG50eGRyLmMgIHwgMTIgKysrKysrLS0tLS0tDQo+ICBm
+cy9sb2NrZC9ob3N0LmMgICAgIHwgMjIgKysrKysrKysrKystLS0tLS0tLS0tLQ0KPiAgZnMvbG9j
+a2QvbW9uLmMgICAgICB8IDE2ICsrKysrKysrLS0tLS0tLS0NCj4gIGZzL2xvY2tkL3N2Yy5jICAg
+ICAgfCAgNCArKy0tDQo+ICBmcy9sb2NrZC9zdmM0cHJvYy5jIHwgIDYgKysrLS0tDQo+ICBmcy9s
+b2NrZC9zdmNsb2NrLmMgIHwgMTQgKysrKysrKy0tLS0tLS0NCj4gIGZzL2xvY2tkL3N2Y3Byb2Mu
+YyAgfCAgNiArKystLS0NCj4gIGZzL2xvY2tkL3N2Y3NoYXJlLmMgfCAgMiArLQ0KPiAgZnMvbG9j
+a2Qvc3Zjc3Vicy5jICB8ICAzICstLQ0KPiAgMTIgZmlsZXMgY2hhbmdlZCwgNTkgaW5zZXJ0aW9u
+cygrKSwgNjAgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZmIC0tZ2l0IGEvZnMvbG9ja2QvY2xudDR4
+ZHIuYyBiL2ZzL2xvY2tkL2NsbnQ0eGRyLmMNCj4gaW5kZXggYzM0OWZjMGY5YjgwLi5lYzY0NzNk
+MTk0ZmQgMTAwNjQ0DQo+IC0tLSBhL2ZzL2xvY2tkL2NsbnQ0eGRyLmMNCj4gKysrIGIvZnMvbG9j
+a2QvY2xudDR4ZHIuYw0KPiBAQCAtMTMxLDcgKzEzMSw3IEBAIHN0YXRpYyBpbnQgZGVjb2RlX25l
+dG9iaihzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLA0KPiAgCV9fYmUzMiAqcDsNCj4gIA0KPiAgCXAg
+PSB4ZHJfaW5saW5lX2RlY29kZSh4ZHIsIDQpOw0KPiAtCWlmICh1bmxpa2VseShwID09IE5VTEwp
+KQ0KPiArCWlmICh1bmxpa2VseSghcCkpDQoNCk9oIFNUT1Agd2l0aCB0aGUgY2hlY2twYXRjaCB3
+YW5rZmVzdCENCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
