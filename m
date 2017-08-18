@@ -1,231 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45162 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751017AbdHRLeP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Aug 2017 07:34:15 -0400
-Date: Fri, 18 Aug 2017 07:34:09 -0400
-From: Vadim Lomovtsev <vlomovts@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, davem@davemloft.net,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, pabeni@redhat.com,
-        vlomovts@redhat.com
-Subject: Re: [PATCH] net: sunrpc: svcsock: fix NULL-pointer exception
-Message-ID: <20170818113409.GB24643@dhcp187-32.khw.lab.eng.bos.redhat.com>
-References: <1503050447-13362-1-git-send-email-vlomovts@redhat.com>
- <1503052052.4719.15.camel@redhat.com>
- <20170818110817.GA24643@dhcp187-32.khw.lab.eng.bos.redhat.com>
- <1503055005.4719.17.camel@redhat.com>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:39765 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750966AbdHROkr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 10:40:47 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1503055005.4719.17.camel@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH 1/8] SUNRPC: ECONNREFUSED should cause a rebind.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <150304037184.30218.7244179303036576085.stgit@noble>
+Date: Fri, 18 Aug 2017 10:40:36 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <EA245E4A-892D-4534-8402-DD62545CEF8E@oracle.com>
+References: <150304014011.30218.1636255532744321171.stgit@noble> <150304037184.30218.7244179303036576085.stgit@noble>
+To: NeilBrown <neilb@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 18, 2017 at 07:16:45AM -0400, Jeff Layton wrote:
-> On Fri, 2017-08-18 at 07:08 -0400, Vadim Lomovtsev wrote:
-> > Hi Jeff,
-> > 
-> > On Fri, Aug 18, 2017 at 06:27:32AM -0400, Jeff Layton wrote:
-> > > On Fri, 2017-08-18 at 06:00 -0400, Vadim Lomovtsev wrote:
-> > > > While running nfs/connectathon tests kernel NULL-pointer exception
-> > > > has been observed due to races in svcsock.c.
-> > > > 
-> > > > Race is appear when kernel accepts connection by kernel_accept
-> > > > (which creates new socket) and start queuing ingress packets
-> > > > to new socket. This happanes in ksoftirq context which concurrently
-> > > > on a differnt core while new socket setup is not done yet.
-> > > > 
-> > > > The fix is to re-order socket user data init sequence, add NULL-ptr
-> > > > check before callback call along with barriers to prevent kernel crash.
-> > > > 
-> > > > Test results: nfs/connectathon reports '0' failed tests for about 200+ iterations.
-> > > > 
-> > > > Crash log:
-> > > > ---<-snip->---
-> > > > [ 6708.638984] Unable to handle kernel NULL pointer dereference at virtual address 00000000
-> > > > [ 6708.647093] pgd = ffff0000094e0000
-> > > > [ 6708.650497] [00000000] *pgd=0000010ffff90003, *pud=0000010ffff90003, *pmd=0000010ffff80003, *pte=0000000000000000
-> > > > [ 6708.660761] Internal error: Oops: 86000005 [#1] SMP
-> > > > [ 6708.665630] Modules linked in: nfsv3 nfnetlink_queue nfnetlink_log nfnetlink rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache overlay xt_CONNSECMARK xt_SECMARK xt_conntrack iptable_security ip_tables ah4 xfrm4_mode_transport sctp tun binfmt_misc ext4 jbd2 mbcache loop tcp_diag udp_diag inet_diag rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_core nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack vfat fat ghash_ce sha2_ce sha1_ce cavium_rng_vf i2c_thunderx sg thunderx_edac i2c_smbus edac_core cavium_rng nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c nicvf nicpf ast i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops
-> > > > [ 6708.736446]  ttm drm i2c_core thunder_bgx thunder_xcv mdio_thunder mdio_cavium dm_mirror dm_region_hash dm_log dm_mod [last unloaded: stap_3c300909c5b3f46dcacd49aab3334af_87021]
-> > > > [ 6708.752275] CPU: 84 PID: 0 Comm: swapper/84 Tainted: G        W  OE   4.11.0-4.el7.aarch64 #1
-> > > > [ 6708.760787] Hardware name: www.cavium.com CRB-2S/CRB-2S, BIOS 0.3 Mar 13 2017
-> > > > [ 6708.767910] task: ffff810006842e80 task.stack: ffff81000689c000
-> > > > [ 6708.773822] PC is at 0x0
-> > > > [ 6708.776739] LR is at svc_data_ready+0x38/0x88 [sunrpc]
-> > > > [ 6708.781866] pc : [<0000000000000000>] lr : [<ffff0000029d7378>] pstate: 60000145
-> > > > [ 6708.789248] sp : ffff810ffbad3900
-> > > > [ 6708.792551] x29: ffff810ffbad3900 x28: ffff000008c73d58
-> > > > [ 6708.797853] x27: 0000000000000000 x26: ffff81000bbe1e00
-> > > > [ 6708.803156] x25: 0000000000000020 x24: ffff800f7410bf28
-> > > > [ 6708.808458] x23: ffff000008c63000 x22: ffff000008c63000
-> > > > [ 6708.813760] x21: ffff800f7410bf28 x20: ffff81000bbe1e00
-> > > > [ 6708.819063] x19: ffff810012412400 x18: 00000000d82a9df2
-> > > > [ 6708.824365] x17: 0000000000000000 x16: 0000000000000000
-> > > > [ 6708.829667] x15: 0000000000000000 x14: 0000000000000001
-> > > > [ 6708.834969] x13: 0000000000000000 x12: 722e736f622e676e
-> > > > [ 6708.840271] x11: 00000000f814dd99 x10: 0000000000000000
-> > > > [ 6708.845573] x9 : 7374687225000000 x8 : 0000000000000000
-> > > > [ 6708.850875] x7 : 0000000000000000 x6 : 0000000000000000
-> > > > [ 6708.856177] x5 : 0000000000000028 x4 : 0000000000000000
-> > > > [ 6708.861479] x3 : 0000000000000000 x2 : 00000000e5000000
-> > > > [ 6708.866781] x1 : 0000000000000000 x0 : ffff81000bbe1e00
-> > > > [ 6708.872084]
-> > > > [ 6708.873565] Process swapper/84 (pid: 0, stack limit = 0xffff81000689c000)
-> > > > [ 6708.880341] Stack: (0xffff810ffbad3900 to 0xffff8100068a0000)
-> > > > [ 6708.886075] Call trace:
-> > > > [ 6708.888513] Exception stack(0xffff810ffbad3710 to 0xffff810ffbad3840)
-> > > > [ 6708.894942] 3700:                                   ffff810012412400 0001000000000000
-> > > > [ 6708.902759] 3720: ffff810ffbad3900 0000000000000000 0000000060000145 ffff800f79300000
-> > > > [ 6708.910577] 3740: ffff000009274d00 00000000000003ea 0000000000000015 ffff000008c63000
-> > > > [ 6708.918395] 3760: ffff810ffbad3830 ffff800f79300000 000000000000004d 0000000000000000
-> > > > [ 6708.926212] 3780: ffff810ffbad3890 ffff0000080f88dc ffff800f79300000 000000000000004d
-> > > > [ 6708.934030] 37a0: ffff800f7930093c ffff000008c63000 0000000000000000 0000000000000140
-> > > > [ 6708.941848] 37c0: ffff000008c2c000 0000000000040b00 ffff81000bbe1e00 0000000000000000
-> > > > [ 6708.949665] 37e0: 00000000e5000000 0000000000000000 0000000000000000 0000000000000028
-> > > > [ 6708.957483] 3800: 0000000000000000 0000000000000000 0000000000000000 7374687225000000
-> > > > [ 6708.965300] 3820: 0000000000000000 00000000f814dd99 722e736f622e676e 0000000000000000
-> > > > [ 6708.973117] [<          (null)>]           (null)
-> > > > [ 6708.977824] [<ffff0000086f9fa4>] tcp_data_queue+0x754/0xc5c
-> > > > [ 6708.983386] [<ffff0000086fa64c>] tcp_rcv_established+0x1a0/0x67c
-> > > > [ 6708.989384] [<ffff000008704120>] tcp_v4_do_rcv+0x15c/0x22c
-> > > > [ 6708.994858] [<ffff000008707418>] tcp_v4_rcv+0xaf0/0xb58
-> > > > [ 6709.000077] [<ffff0000086df784>] ip_local_deliver_finish+0x10c/0x254
-> > > > [ 6709.006419] [<ffff0000086dfea4>] ip_local_deliver+0xf0/0xfc
-> > > > [ 6709.011980] [<ffff0000086dfad4>] ip_rcv_finish+0x208/0x3a4
-> > > > [ 6709.017454] [<ffff0000086e018c>] ip_rcv+0x2dc/0x3c8
-> > > > [ 6709.022328] [<ffff000008692fc8>] __netif_receive_skb_core+0x2f8/0xa0c
-> > > > [ 6709.028758] [<ffff000008696068>] __netif_receive_skb+0x38/0x84
-> > > > [ 6709.034580] [<ffff00000869611c>] netif_receive_skb_internal+0x68/0xdc
-> > > > [ 6709.041010] [<ffff000008696bc0>] napi_gro_receive+0xcc/0x1a8
-> > > > [ 6709.046690] [<ffff0000014b0fc4>] nicvf_cq_intr_handler+0x59c/0x730 [nicvf]
-> > > > [ 6709.053559] [<ffff0000014b1380>] nicvf_poll+0x38/0xb8 [nicvf]
-> > > > [ 6709.059295] [<ffff000008697a6c>] net_rx_action+0x2f8/0x464
-> > > > [ 6709.064771] [<ffff000008081824>] __do_softirq+0x11c/0x308
-> > > > [ 6709.070164] [<ffff0000080d14e4>] irq_exit+0x12c/0x174
-> > > > [ 6709.075206] [<ffff00000813101c>] __handle_domain_irq+0x78/0xc4
-> > > > [ 6709.081027] [<ffff000008081608>] gic_handle_irq+0x94/0x190
-> > > > [ 6709.086501] Exception stack(0xffff81000689fdf0 to 0xffff81000689ff20)
-> > > > [ 6709.092929] fde0:                                   0000810ff2ec0000 ffff000008c10000
-> > > > [ 6709.100747] fe00: ffff000008c70ef4 0000000000000001 0000000000000000 ffff810ffbad9b18
-> > > > [ 6709.108565] fe20: ffff810ffbad9c70 ffff8100169d3800 ffff810006843ab0 ffff81000689fe80
-> > > > [ 6709.116382] fe40: 0000000000000bd0 0000ffffdf979cd0 183f5913da192500 0000ffff8a254ce4
-> > > > [ 6709.124200] fe60: 0000ffff8a254b78 0000aaab10339808 0000000000000000 0000ffff8a0c2a50
-> > > > [ 6709.132018] fe80: 0000ffffdf979b10 ffff000008d6d450 ffff000008c10000 ffff000008d6d000
-> > > > [ 6709.139836] fea0: 0000000000000054 ffff000008cd3dbc 0000000000000000 0000000000000000
-> > > > [ 6709.147653] fec0: 0000000000000000 0000000000000000 0000000000000000 ffff81000689ff20
-> > > > [ 6709.155471] fee0: ffff000008085240 ffff81000689ff20 ffff000008085244 0000000060000145
-> > > > [ 6709.163289] ff00: ffff81000689ff10 ffff00000813f1e4 ffffffffffffffff ffff00000813f238
-> > > > [ 6709.171107] [<ffff000008082eb4>] el1_irq+0xb4/0x140
-> > > > [ 6709.175976] [<ffff000008085244>] arch_cpu_idle+0x44/0x11c
-> > > > [ 6709.181368] [<ffff0000087bf3b8>] default_idle_call+0x20/0x30
-> > > > [ 6709.187020] [<ffff000008116d50>] do_idle+0x158/0x1e4
-> > > > [ 6709.191973] [<ffff000008116ff4>] cpu_startup_entry+0x2c/0x30
-> > > > [ 6709.197624] [<ffff00000808e7cc>] secondary_start_kernel+0x13c/0x160
-> > > > [ 6709.203878] [<0000000001bc71c4>] 0x1bc71c4
-> > > > [ 6709.207967] Code: bad PC value
-> > > > [ 6709.211061] SMP: stopping secondary CPUs
-> > > > [ 6709.218830] Starting crashdump kernel...
-> > > > [ 6709.222749] Bye!
-> > > > ---<-snip>---
-> > > > 
-> > > > Signed-off-by: Vadim Lomovtsev <vlomovts@redhat.com>
-> > > > ---
-> > > >  net/sunrpc/svcsock.c | 24 ++++++++++++++++++------
-> > > >  1 file changed, 18 insertions(+), 6 deletions(-)
-> > > > 
-> > > > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > > > index 2b720fa..b6496f3 100644
-> > > > --- a/net/sunrpc/svcsock.c
-> > > > +++ b/net/sunrpc/svcsock.c
-> > > > @@ -421,7 +421,9 @@ static void svc_data_ready(struct sock *sk)
-> > > >  		dprintk("svc: socket %p(inet %p), busy=%d\n",
-> > > >  			svsk, sk,
-> > > >  			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
-> > > > -		svsk->sk_odata(sk);
-> > > > +		rmb();
-> > > > +		if (svsk->sk_odata)
-> > > > +			svsk->sk_odata(sk);
-> > > 
-> > > I'm not convinced these checks will really do much, though you might
-> > > need the rmb() calls there...see below...
-> > > 
-> > > >  		if (!test_and_set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags))
-> > > >  			svc_xprt_enqueue(&svsk->sk_xprt);
-> > > >  	}
-> > > > @@ -437,7 +439,9 @@ static void svc_write_space(struct sock *sk)
-> > > >  	if (svsk) {
-> > > >  		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
-> > > >  			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
-> > > > -		svsk->sk_owspace(sk);
-> > > > +		rmb();
-> > > > +		if (svsk->sk_owspace)
-> > > > +			svsk->sk_owspace(sk);
-> > > >  		svc_xprt_enqueue(&svsk->sk_xprt);
-> > > >  	}
-> > > >  }
-> > > > @@ -760,8 +764,12 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
-> > > >  	dprintk("svc: socket %p TCP (listen) state change %d\n",
-> > > >  		sk, sk->sk_state);
-> > > >  
-> > > > -	if (svsk)
-> > > > -		svsk->sk_odata(sk);
-> > > > +	if (svsk) { 
-> > > > +		rmb();
-> > > > +		if (svsk->sk_odata)
-> > > > +			svsk->sk_odata(sk);
-> > > > +	}
-> > > > +
-> > > >  	/*
-> > > >  	 * This callback may called twice when a new connection
-> > > >  	 * is established as a child socket inherits everything
-> > > > @@ -794,7 +802,10 @@ static void svc_tcp_state_change(struct sock *sk)
-> > > >  	if (!svsk)
-> > > >  		printk("svc: socket %p: no user data\n", sk);
-> > > >  	else {
-> > > > -		svsk->sk_ostate(sk);
-> > > > +		rmb();
-> > > > +		if (svsk->sk_ostate)
-> > > > +			svsk->sk_ostate(sk);
-> > > > +
-> > > >  		if (sk->sk_state != TCP_ESTABLISHED) {
-> > > >  			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-> > > >  			svc_xprt_enqueue(&svsk->sk_xprt);
-> > > > @@ -1381,12 +1392,13 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
-> > > >  		return ERR_PTR(err);
-> > > >  	}
-> > > >  
-> > > > -	inet->sk_user_data = svsk;
-> > > >  	svsk->sk_sock = sock;
-> > > >  	svsk->sk_sk = inet;
-> > > >  	svsk->sk_ostate = inet->sk_state_change;
-> > > >  	svsk->sk_odata = inet->sk_data_ready;
-> > > >  	svsk->sk_owspace = inet->sk_write_space;
-> > > > +	wmb();
-> > > > +	inet->sk_user_data = svsk;
-> > > >  
-> > > >  	/* Initialize the socket */
-> > > >  	if (sock->type == SOCK_DGRAM)
-> > > 
-> > > Since we always check whether svsk is NULL before calling the functions,
-> > > then the above hunk and maybe the rmb() calls might be all that's needed
-> > > here. I don't see how we'd ever get a sk_odata value (for instance)
-> > > that's NULL with the above change.
-> > 
-> > Thanks for feed-back. I'll update patch then, run test cycle once again
-> > (hope couple days would be enough) and re-send v2 to review. 
-> > 
+
+> On Aug 18, 2017, at 3:12 AM, NeilBrown <neilb@suse.com> wrote:
 > 
-> Great. It might also be nice to sprinkle in some comments that document
-> how the rmb/wmb calls are paired together too.
+> If you
+> - mount and NFSv3 filesystem
+> - do some file locking which requires the server
+>   to make a GRANT call back
+> - unmount
+> - mount again and do the same locking
 > 
+> then the second attempt at locking suffers a 30 second delay.
+> Unmounting and remounting causes lockd to stop and restart,
+> which causes it to bind to a new port.
+> The server still thinks the old port is valid and gets ECONNREFUSED
+> when trying to contact it.
+> ECONNREFUSED should be seen as a hard error that is not worth
+> retrying.  Rebinding is the only reasonable response.
+> 
+> This patch forces a rebind if that makes sense.
 
-Got it. Will do.
+I also reported this problem recently, and found a similar
+(but rather lockd-centric) solution.
 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
 
-WBR,
-Vadim
+
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+> net/sunrpc/clnt.c |    8 ++++++++
+> 1 file changed, 8 insertions(+)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 2e49d1f892b7..69a9e5953744 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1903,6 +1903,14 @@ call_connect_status(struct rpc_task *task)
+> 	task->tk_status = 0;
+> 	switch (status) {
+> 	case -ECONNREFUSED:
+> +		/* A positive refusal suggests a rebind is needed. */
+> +		if (RPC_IS_SOFTCONN(task))
+> +			break;
+> +		if (clnt->cl_autobind) {
+> +			rpc_force_rebind(clnt);
+> +			task->tk_action = call_bind;
+> +			return;
+> +		}
+> 	case -ECONNRESET:
+> 	case -ECONNABORTED:
+> 	case -ENETUNREACH:
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
