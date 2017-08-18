@@ -1,32 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:42336 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751350AbdHRS06 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 14:26:58 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 5/5] SUNRPC: Add a separate spinlock to protect the RPC
- request receive list
-Date: Fri, 18 Aug 2017 18:26:54 +0000
-Message-ID: <1503080810.11511.2.camel@primarydata.com>
-References: <20170816230008.20006-1-trond.myklebust@primarydata.com>
-         <20170816230008.20006-2-trond.myklebust@primarydata.com>
-         <20170816230008.20006-3-trond.myklebust@primarydata.com>
-         <20170816230008.20006-4-trond.myklebust@primarydata.com>
-         <20170816230008.20006-5-trond.myklebust@primarydata.com>
-         <20170816230008.20006-6-trond.myklebust@primarydata.com>
-         <BF5FDF10-EC9C-4F4A-8192-4586CF758099@oracle.com>
-In-Reply-To: <BF5FDF10-EC9C-4F4A-8192-4586CF758099@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-io0-f195.google.com ([209.85.223.195]:33338 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752467AbdHRSv7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 14:51:59 -0400
+Received: by mail-io0-f195.google.com with SMTP id 1so1833574ioy.0
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Aug 2017 11:51:58 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 0/5] RPC client latency fixes
+Date: Fri, 18 Aug 2017 14:51:48 -0400
+Message-Id: <20170818185153.20023-1-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA4LTE4IGF0IDE0OjExIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiANCj4gc3ZjX3JkbWFfaGFuZGxlX2JjX3JlcGx5IGluDQo+IG5ldC9zdW5ycGMveHBydHJkbWEv
-c3ZjX3JkbWFfYmFja2NoYW5uZWwuYw0KPiBhbHNvIG5lZWRzIHRoaXMgY2hhbmdlLg0KDQpHb29k
-IHBvaW50LiBJbiBmYWN0IHdlIG5lZWQgaXQgaW4gcmVjZWl2ZV9jYl9yZXBseSgpIHRvby4uLg0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
-YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+The following patches apply on top of the writeback patches sent last
+week. They start the process of reducing contention in the RPC client
+receive code due to excessive holding of the transport lock.
+
+The first patch is the most important in that it allows the client to
+drop the transport lock while copying data from the socket into the
+RPC call's reply buffers.
+The second ensures that we don't keep hogging the workqueue worker thread
+forever, but that we reschedule the receive job if it keeps looping.
+Finally, a small cleanup to avoid having to make a copy of the
+struct xdr_skb_reader on the stack.
+
+v2: Reorder patches to add I/O throttling after the core RPC latency
+    changes
+    Fix a crash when receiving backchannel requests.
+
+v3: Another bugfix for backchannel requests.
+    Add a separate spinlock to protect the RPC request receive list
+    Remove I/O throttling patches
+
+v4: Fix up the two remaining callers of xprt_lookup_rqst() and
+    xprt_complete_rqst() to use the new locking
+
+
+Trond Myklebust (5):
+  SUNRPC: Don't hold the transport lock across socket copy operations
+  SUNRPC: Don't hold the transport lock when receiving backchannel data
+  SUNRPC: Don't loop forever in xs_tcp_data_receive()
+  SUNRPC: Cleanup xs_tcp_read_common()
+  SUNRPC: Add a separate spinlock to protect the RPC request receive
+    list
+
+ include/linux/sunrpc/sched.h               |  2 +
+ include/linux/sunrpc/xprt.h                |  3 ++
+ net/sunrpc/backchannel_rqst.c              |  4 +-
+ net/sunrpc/svcsock.c                       |  6 +--
+ net/sunrpc/xprt.c                          | 55 ++++++++++++++++++--
+ net/sunrpc/xprtrdma/rpc_rdma.c             |  8 +--
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  7 ++-
+ net/sunrpc/xprtsock.c                      | 82 ++++++++++++++++--------------
+ 8 files changed, 113 insertions(+), 54 deletions(-)
+
+-- 
+2.13.5
 
