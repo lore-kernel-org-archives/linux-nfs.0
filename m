@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55427 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:55434 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750807AbdHRHN7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Aug 2017 03:13:59 -0400
+        id S1750729AbdHRHOF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Aug 2017 03:14:05 -0400
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
-Date: Fri, 18 Aug 2017 17:12:51 +1000
-Subject: [PATCH 4/8] NFS: flush out dirty data on file fput().
+Date: Fri, 18 Aug 2017 17:12:52 +1000
+Subject: [PATCH 5/8] SUNRPC: remove some dead code.
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <150304037195.30218.15740287358704674869.stgit@noble>
+Message-ID: <150304037198.30218.6645228572942182998.stgit@noble>
 In-Reply-To: <150304014011.30218.1636255532744321171.stgit@noble>
 References: <150304014011.30218.1636255532744321171.stgit@noble>
 MIME-Version: 1.0
@@ -17,62 +17,50 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Any dirty NFS page holds an s_active reference on the superblock,
-because page_private() references an nfs_page, which references an
-open context, which references the superblock.
+RPC_TASK_NO_RETRANS_TIMEOUT is set when cl_noretranstimeo
+is set, which happens when  RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT is set,
+which happens when NFS_CS_NO_RETRANS_TIMEOUT is set.
 
-So if there are any dirty pages when the filesystem is unmounted, the
-unmount will act like a "lazy" unmount and not call ->kill_sb().
-Background write-back can then write out the pages *after* the filesystem
-unmount has apparently completed.
+This flag means "don't resend on a timeout, only resend if the
+connection gets broken for some reason".
 
-This contrasts with other filesystems which do not hold extra s_active
-references, so ->kill_sb() is reliably called on unmount, and
-generic_shutdown_super() will call sync_filesystem() to flush
-everything out before the unmount completes.
+cl_discrtry is set when RPC_CLNT_CREATE_DISCRTRY is set, which
+happens when NFS_CS_DISCRTRY is set.
 
-When open/write/close is used to modify files, the final close causes
-f_op->flush to be called, which flushes all dirty pages.  However if
-open/mmap/close/modify-memory/unmap is used, dirty pages can remain in
-memory after the application has dropped all references to the file.
-Similarly if a loop-mount is done with a NFS file, there is no final
-flush when the loop device is destroyed and the file can have dirty
-data after the last "close".
+This flag means "always disconnect before resending".
 
-Also, a loop-back mount of a device does not "close" the file when the
-loop device is destroyed.  This can leave dirty page cache pages too.
+NFS_CS_NO_RETRANS_TIMEOUT and NFS_CS_DISCRTRY are both only set
+in nfs4_init_client(), and it always sets both.
 
-Fix this by calling vfs_fsync() in nfs_file_release (aka
-f_op->release()).  This means that on the final unmap of a file (or
-destruction of a loop device), all changes are flushed, and ensures that
-when unmount is requested there will be no dirty pages to delay the
-final unmount.
+So we will never have a situation where only one of the flags is set.
+So this code, which tests if timeout retransmits are allowed, and
+disconnection is required, will never run.
 
-Without this patch, it is not safe to stop or disconnect the NFS
-server after all clients have unmounted.  They need to unmount and
-call "sync".
+So it makes sense to remove this code as it cannot be tested and
+could confuse people reading the code (like me).
+
+(alternately we could leave it there with a comment saying
+ it is never actually used).
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/file.c |    6 ++++++
- 1 file changed, 6 insertions(+)
+ net/sunrpc/clnt.c |    4 ----
+ 1 file changed, 4 deletions(-)
 
-diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-index af330c31f627..aa883d8b24e6 100644
---- a/fs/nfs/file.c
-+++ b/fs/nfs/file.c
-@@ -81,6 +81,12 @@ nfs_file_release(struct inode *inode, struct file *filp)
- {
- 	dprintk("NFS: release(%pD2)\n", filp);
- 
-+	if (filp->f_mode & FMODE_WRITE)
-+		/* Ensure dirty mmapped pages are flushed
-+		 * so there will be no dirty pages to
-+		 * prevent an unmount from completing.
-+		 */
-+		vfs_fsync(filp, 0);
- 	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
- 	nfs_file_clear_open_context(filp);
- 	return 0;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 69a9e5953744..2ad827db2704 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2147,10 +2147,6 @@ call_status(struct rpc_task *task)
+ 		rpc_delay(task, 3*HZ);
+ 	case -ETIMEDOUT:
+ 		task->tk_action = call_timeout;
+-		if (!(task->tk_flags & RPC_TASK_NO_RETRANS_TIMEOUT)
+-		    && task->tk_client->cl_discrtry)
+-			xprt_conditional_disconnect(req->rq_xprt,
+-					req->rq_connect_cookie);
+ 		break;
+ 	case -ECONNREFUSED:
+ 	case -ECONNRESET:
 
 
