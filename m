@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52137 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:52549 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751054AbdHSAun (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Aug 2017 20:50:43 -0400
+        id S1751017AbdHSBCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Aug 2017 21:02:20 -0400
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trondmy@primarydata.com>,
         "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>
-Date: Sat, 19 Aug 2017 10:50:31 +1000
+Date: Sat, 19 Aug 2017 11:02:11 +1000
 Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/8] NFSv4: don't let hanging mounts block other mounts
-In-Reply-To: <1503083150.11511.4.camel@primarydata.com>
-References: <150304014011.30218.1636255532744321171.stgit@noble> <150304037188.30218.6679182255685764801.stgit@noble> <1503083150.11511.4.camel@primarydata.com>
-Message-ID: <87378omld4.fsf@notabene.neil.brown.name>
+Subject: Re: [PATCH 4/8] NFS: flush out dirty data on file fput().
+In-Reply-To: <1503083704.11511.9.camel@primarydata.com>
+References: <150304014011.30218.1636255532744321171.stgit@noble> <150304037195.30218.15740287358704674869.stgit@noble> <1503083704.11511.9.camel@primarydata.com>
+Message-ID: <87ziawl698.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -25,67 +25,89 @@ Content-Transfer-Encoding: quoted-printable
 On Fri, Aug 18 2017, Trond Myklebust wrote:
 
 > On Fri, 2017-08-18 at 17:12 +1000, NeilBrown wrote:
->> If you try an NFSv4 mount from an inaccessible server, it will hang
->> as
->> you would expect.
->> If you then try an NFSv4 mount from a different accessible server,
->> it will also hang.  This is not expected.
+>> Any dirty NFS page holds an s_active reference on the superblock,
+>> because page_private() references an nfs_page, which references an
+>> open context, which references the superblock.
 >>=20
->> The second mount is blocked in
->>   nfs4_init_client()
->>   -> nfs4_discover_server_trunking()
->>   -> nfs40_discover_server_trunking()
->>   -> nfs40_walk_client_list()
->>   -> nfs4_match_client()
->>   -> nfs_wait_client_init_complete()
->> It is waiting for the first mount to complete so that it can then
->> see if the two servers are really one and the same.
+>> So if there are any dirty pages when the filesystem is unmounted, the
+>> unmount will act like a "lazy" unmount and not call ->kill_sb().
+>> Background write-back can then write out the pages *after* the
+>> filesystem
+>> unmount has apparently completed.
 >>=20
->> It is not necessary to wait here when an nfs_client cl_cons_state is
->> NFS_CS_INITING.  Such a client will, after changing cl_cons_state,
->> call
->> nfs4_discover_server_trunking() itself.  So if the current client
->> just
->> skips those clients, trunking will still be discovered if necessary.
+>> This contrasts with other filesystems which do not hold extra
+>> s_active
+>> references, so ->kill_sb() is reliably called on unmount, and
+>> generic_shutdown_super() will call sync_filesystem() to flush
+>> everything out before the unmount completes.
 >>=20
->> I am unsure of situation with NFS_CS_SESSION_INITING, but I suspect
->> that the comment "Wait for CREATE_SESSION to finish" implies that
->> it is only clients in NFS_CS_SESSION_INITING that need to be waited
->> for.
+>> When open/write/close is used to modify files, the final close causes
+>> f_op->flush to be called, which flushes all dirty pages.  However if
+>> open/mmap/close/modify-memory/unmap is used, dirty pages can remain
+>> in
+>> memory after the application has dropped all references to the file.
+>> Similarly if a loop-mount is done with a NFS file, there is no final
+>> flush when the loop device is destroyed and the file can have dirty
+>> data after the last "close".
+>>=20
+>> Also, a loop-back mount of a device does not "close" the file when
+>> the
+>> loop device is destroyed.  This can leave dirty page cache pages too.
+>>=20
+>> Fix this by calling vfs_fsync() in nfs_file_release (aka
+>> f_op->release()).  This means that on the final unmap of a file (or
+>> destruction of a loop device), all changes are flushed, and ensures
+>> that
+>> when unmount is requested there will be no dirty pages to delay the
+>> final unmount.
+>>=20
+>> Without this patch, it is not safe to stop or disconnect the NFS
+>> server after all clients have unmounted.  They need to unmount and
+>> call "sync".
 >>=20
 >> Signed-off-by: NeilBrown <neilb@suse.com>
 >> ---
->>  fs/nfs/nfs4client.c |    2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>  fs/nfs/file.c |    6 ++++++
+>>  1 file changed, 6 insertions(+)
 >>=20
->> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
->> index e9bea90dc017..d8b9b7ff19a9 100644
->> --- a/fs/nfs/nfs4client.c
->> +++ b/fs/nfs/nfs4client.c
->> @@ -482,7 +482,7 @@ static int nfs4_match_client(struct
->> nfs_client  *pos,  struct nfs_client *new,
->>  	 * remaining fields in "pos", especially the client
->>  	 * ID and serverowner fields.  Wait for CREATE_SESSION
->>  	 * to finish. */
->> -	if (pos->cl_cons_state > NFS_CS_READY) {
->> +	if (pos->cl_cons_state =3D=3D NFS_CS_SESSION_INITING) {
->>  		atomic_inc(&pos->cl_count);
->>  		spin_unlock(&nn->nfs_client_lock);
+>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> index af330c31f627..aa883d8b24e6 100644
+>> --- a/fs/nfs/file.c
+>> +++ b/fs/nfs/file.c
+>> @@ -81,6 +81,12 @@ nfs_file_release(struct inode *inode, struct file
+>> *filp)
+>>  {
+>>  	dprintk("NFS: release(%pD2)\n", filp);
+>>=20=20
+>> +	if (filp->f_mode & FMODE_WRITE)
+>> +		/* Ensure dirty mmapped pages are flushed
+>> +		 * so there will be no dirty pages to
+>> +		 * prevent an unmount from completing.
+>> +		 */
+>> +		vfs_fsync(filp, 0);
+>>  	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
+>>  	nfs_file_clear_open_context(filp);
+>>  	return 0;
 >
-> This could cause us to declare a false positive match with a client
-> that is uninitialised.
+> The right fix here is to ensure that umount() flushes the dirty data,
+> and that it aborts the umount attempt if the flush fails. Otherwise, a
+> signal to the above fsync call will cause the problem to reoccur.
 
-Thanks for the review.
+The only way to ensure that umount flushes dirty data is to revert
+commit 1daef0a86837 ("NFS: Clean up nfs_sb_active/nfs_sb_deactive").
+As long as we are taking extra references to s_active, umount won't do
+what it ought to do.
 
-A positive match is reported by returning zero.
-If cl_cons_state is not NFS_CS_READY, nfs4_match_client() will not
-return zero.
+I do wonder what we should do when you try to unmount a filesystem
+mounted from an inaccessible server.
+Blocking is awkward for scripts to work with.  Failing with EBUSY might
+be misleading.
+I don't think that using MNT_FORCE guarantees success does it?  It would
+need to discard any dirty data and abort any other background tasks.
 
-So I don't see how a false positive is possible.
-
-A false negative might be possible with an uninitialized client, but
-once that client is initialised, it will call walk_client_list and find
-the match.  Won't it?
+I think I would be in favor of EBUSY rather than a hang, and of making
+MNT_FORCE a silver bullet providing there are no open file descriptors
+on the filesystem.
 
 Thanks,
 NeilBrown
@@ -95,18 +117,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmXi1kACgkQOeye3VZi
-gbnW3g//ZiHdvXWYhAEE5mWBhR/h1LNWIWdniV+cmysQDUyN+fc1irAEqHkJcQYM
-NUE6A/fjFrBNhe2NoGkTmi36i5dVBEDRTZtCTFN6CXUq+cdqoK84xKnjd0jqy9Q4
-ppyvxlci1QzghW9BzP/iePR4s1+haCUj4k5q290pBA/YsafI531Ld5XWuYHO8yxx
-Bt4hCuAji4armjBF/oYxgHK7o3F4kh3Ee0qClMOORUrkMY0fJ6czVHEVfFeShDG/
-A8fqZxjkjH48foEIu8ixJbyT5WYSM+DL4expclBG9h412AFUAFeS8Q3CsGEalOwe
-Zn8UDBrpxyFHlgt9o2otxeP2C0SBX8kghQXKctiC7ZnMjz1/bUWQKybR72brC5be
-MisW426RHqGhrNdp6y2cpjHMtuZPj/U8STccb0lBp88lBKxzL/zepRg0RutAQUFr
-esEO9X2fYBqTp3uI5s8jIcznPwCWzkHXvNH0jSw2M6fB87dgzVk7ZsPxXDtxKjRs
-z7bQF/oDZFqLglrvQTHkaAioXYjEhXpjCXzeI1NHF/K1ZkrWM8schMdVYm71PS80
-ek79x8hT/zSiZM4W8nRaFS9g1hwKASzEmB/f4glMMc79X9s7IKqYTaeWHqqE/ALa
-G4sTCy1HSapevRqB9GVewmwG64pC6RpsjVz8PF72uYRc8+PXubY=
-=dFLv
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmXjhUACgkQOeye3VZi
+gbnK4A/+PIP1dFfniz9/QJLr/atQGw8Idjs8wThaT75JYnL/3jcA9TY15rRzqvsK
+rOFBM0wbH1oG8VSfixfQdNJPD2JPjZMoK9XN8hHk6ALqipMihPOPbrdFIXSRjBag
+k4DU6qa8W67oLpLOoDxhNo2GLuKO8UGxyDzTGI3gJ0gvdnLqTWYlBDpS9DHa26hC
+Do5KXoOgseAoMts42qTSkIJshcbu2BORA57d6p80KpDyV370SvRTRkq3Ioc/sRen
+MeCXmXONnUTIfrVfcBfW2mamV++d+d8RUD2htiGm/xjc7fhGnroth3xzDgaISw3l
+/SLpur/5M0YRHgxDo/zyj5pP7xnRhT0QVSEmSfVcofDmN9SaRo9c+xFMpTr9HBM1
+FpqcnSjHkQzH1TzGyRtFwNgt9FGeS9kwHKPIO7m9IDrlSb8mo8Vpj5htuuxJYh+Q
+gM3mrrfVn71bcJJQX8/DK12cB8k/ZJjAfvLWtS9TfrkwiyWMQDBqEm0rD9D7PYnN
+f3hv2I+wIAXuYvFb1y0GQTrqbfbNFUxRRzaRnUKON/FYi/KsSFFgOpkTPS2Yxdk5
+bK2ULS+Vkz3OjIuLtAivLrxg08KjUsHOz8ijaT+7kXb858OITHoz5UjB2N148NQh
+UpcVmD5kA7ZOr4U467VXKPjW9fknUOY45gtQtK95uc0M2sGfy2k=
+=N9GH
 -----END PGP SIGNATURE-----
 --=-=-=--
