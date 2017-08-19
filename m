@@ -1,77 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:27592 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751045AbdHRXbT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 19:31:19 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bamodio@purestorage.com" <bamodio@purestorage.com>
-CC: "juchang@purestorage.com" <juchang@purestorage.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "vas@purestorage.com" <vas@purestorage.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "igor@purestorage.com" <igor@purestorage.com>
-Subject: Re: [RFC v3 0/2] NFSv3 and NFSv4 Multipathing
-Date: Fri, 18 Aug 2017 23:31:15 +0000
-Message-ID: <1503099073.3451.13.camel@primarydata.com>
-References: <CAKk7tABTTRNxZDD3SXmNpw55CqHaR=gGV6H-eRK5-m0vmkOLWQ@mail.gmail.com>
-         <1503068252.44656.2.camel@primarydata.com>
-         <CAKk7tACdKx9gEPf1Fqi8kEimEUZxhX5pC+0wXJgWMu4SLbn2wg@mail.gmail.com>
-In-Reply-To: <CAKk7tACdKx9gEPf1Fqi8kEimEUZxhX5pC+0wXJgWMu4SLbn2wg@mail.gmail.com>
+Received: from mx2.suse.de ([195.135.220.15]:52137 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751054AbdHSAun (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 18 Aug 2017 20:50:43 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>
+Date: Sat, 19 Aug 2017 10:50:31 +1000
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/8] NFSv4: don't let hanging mounts block other mounts
+In-Reply-To: <1503083150.11511.4.camel@primarydata.com>
+References: <150304014011.30218.1636255532744321171.stgit@noble> <150304037188.30218.6679182255685764801.stgit@noble> <1503083150.11511.4.camel@primarydata.com>
+Message-ID: <87378omld4.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA4LTE4IGF0IDEzOjE1IC0wNzAwLCBCZW5uZXR0IEFtb2RpbyB3cm90ZToN
-Cj4gT24gRnJpLCBBdWcgMTgsIDIwMTcgYXQgNzo1NyBBTSwgVHJvbmQgTXlrbGVidXN0DQo+IDx0
-cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JvdGU6DQo+ID4gT24gVHVlLCAyMDE3LTA4LTE1IGF0
-IDE3OjQ2IC0wNzAwLCBCZW5uZXR0IEFtb2RpbyB3cm90ZToNCj4gPiA+IEFmdGVyIHNlZWluZyBU
-cm9uZOKAmXMgcGF0Y2hlcyBmb3IgTkZTIG11bHRpcGF0aGluZyBvbiBORlN2NC4xLCB3ZQ0KPiA+
-ID4gZGVjaWRlZCB0byB0cnkgdXNpbmcgdGhlIHNhbWUgY29uY2VwdCBmb3IgTkZTdjMvNC4gIFRo
-ZSBwcmltYXJ5DQo+ID4gPiBpc3N1ZQ0KPiA+ID4gd2UgaWRlbnRpZmllZCB3YXMgWElEIGNvbGxp
-c2lvbiBpbiB0aGUgZHVwbGljYXRlIHJlcXVlc3QgY2FjaGUNCj4gPiA+IChyZXBsYXkNCj4gPiA+
-IGNhY2hlKSBmb3IgTkZTdjMvNC4gIEluIE5GU3YzLzQsIGVudHJpZXMgYXJlIGhhc2hlZCBiYXNl
-ZCBvbiBYSUQNCj4gPiA+IGluc3RlYWQgb2YgdGhlIHNsb3QgSUQgYW5kIHNlcXVlbmNlIElEIHRo
-YXQgTkZTdjQuMSB1c2VzLiAgU2luY2UNCj4gPiA+IHRoZQ0KPiA+ID4gWElEcyBhcmUgZ2VuZXJh
-dGVkIGJ5IHRoZSBSUEMgdHJhbnNwb3J0cywgYW5kIFRyb25k4oCZcyBwYXRjaGVzDQo+ID4gPiBj
-cmVhdGUNCj4gPiA+IG11bHRpcGxlIHRyYW5zcG9ydHMgZm9yIG11bHRpcGF0aGluZywgZGlmZmVy
-ZW50IHRyYW5zcG9ydHMgY2FuDQo+ID4gPiBlbmQgdXANCj4gPiA+IHVzaW5nIGFuIG92ZXJsYXBw
-aW5nIHNldCBvZiBYSURzLg0KPiA+IA0KPiA+IFdoeSBpcyB0aGF0IGEgcHJvYmxlbT8gWW91IHNo
-b3VsZCBlbmQgdXAgd2l0aCBjb25uZWN0aW9ucyB0aGF0IHNob3cNCj4gPiBkaWZmZXJlbnQgY29t
-YmluYXRpb25zIG9mIHNvdXJjZSBJUCtwb3J0IGFuZC9vciBkZXN0aW5hdGlvbg0KPiA+IElQK3Bv
-cnQuIEl0DQo+ID4gc2hvdWxkIGJlIHRyaXZpYWwgdG8gZGlzdGluZ3Vpc2ggYmV0d2VlbiBYSURz
-Lg0KPiANCj4gQWx0aG91Z2ggdGhlIExpbnV4IE5GUyBzZXJ2ZXIgaGFzaGVzIGNhY2hlIGVudHJp
-ZXMgYmFzZWQgb24gc291cmNlIElQDQo+IGFuZCBzb3VyY2UgcG9ydCBhcyB3ZWxsIGFzIFhJRCwg
-dGhpcyBpcyBub3QgYSByZXF1aXJlbWVudCBvZiB0aGUNCj4gTkZTdjMvdjQgc3BlY2lmaWNhdGlv
-biwgc28gTkZTIHNlcnZlciBpbXBsZW1lbnRhdGlvbnMgbWF5IGV4aXN0IHdoaWNoDQo+IGhhc2gg
-b25seSBiYXNlZCBvbiBzb3VyY2UgSVAgYW5kIFhJRC4gIEluIHByYWN0aWNlLCBpcyB0aGlzIHVu
-Y29tbW9uDQo+IGVub3VnaCB0aGF0IGl0J3Mgbm90IHdvcnRoIGFkZHJlc3Npbmc/DQoNClRoZXJl
-IGlzIG5vdGhpbmcgaW4gUkZDMTgxMyB0aGF0IGdpdmVzIGFueSBkaXJlY3Rpb24gb24gaG93IHRv
-IHNldCB1cCBhDQpkdXBsaWNhdGUgcmVwbGF5IGNhY2hlIChEUkMpLiBIb3dldmVyIGVzdGFibGlz
-aGVkIHByYWN0aWNlIGRpY3RhdGVzDQp0aGF0IHRoZSBzZXJ2ZXIgc2hvdWxkIGJlIHByZXBhcmVk
-IGZvciBkdXBsaWNhdGUgWElEcyB0aGF0IG9yaWdpbmF0ZQ0KZnJvbSB0aGUgc2FtZSBJUCBhZGRy
-ZXNzLg0KSW4gcGFydGljdWxhciwgaWYgdGhlIGxpbnV4IGNsaWVudCBjb25uZWN0cyBtb3JlIHRo
-YW4gb25jZSB0byB5b3VyDQpzZXJ2ZXIgKGUuZy4gdGhyb3VnaCAyIGRpZmZlcmVudCBJUCBhZGRy
-ZXNzZXMpIGl0IHdpbGwgYXNzdW1lIHRoZSBYSURzDQphcmUgcGVyIGNvbm5lY3Rpb24uIERpdHRv
-IGlmIHVzaW5nIFVEUC4NCg0KPiA+IFF1aXRlIGZyYW5rbHksIEkgZG8gbm90IHdhbnQgdG8gc3Rh
-cnQgY2FydmluZyB1cCB0aGUgWElEIHNwYWNlLA0KPiA+IHNpbmNlIGENCj4gPiAzMi1iaXQgbnVt
-YmVyIGlzIHJlYWxseSBub3QgdGhhdCBiaWcgaW4gdGhlc2UgZGF5cyBvZiAxMDBHaWdFDQo+ID4g
-bmV0d29ya3MuDQo+IA0KPiBUaGlzIGlzIGEgZ29vZCBwb2ludCwgYW5kIHdlIGFsc28gdGhpbmsg
-dGhhdCBjYXJ2aW5nIHVwIHRoZSBYSUQgc3BhY2UNCj4gaXMgbm90IGEgZ3JlYXQgc29sdXRpb24u
-ICBJZiBYSUQgY29sbGlzaW9uIGlzIGEgcHJvYmxlbSwgYW5vdGhlcg0KPiBzb2x1dGlvbiBjb3Vs
-ZCBiZSBhbiBhdG9taWMgWElEIHNoYXJlZCBiZXR3ZWVuIHRyYW5zcG9ydHMgd2hpY2gNCj4gYmVs
-b25nDQo+IHRvIHRoZSBzYW1lIGNsaWVudC4NCj4gDQo+IElmIHRoZXJlJ3Mgbm8gcHJvYmxlbSBp
-biB0aGUgZmlyc3QgcGxhY2UsIHRoYXQncyBldmVuIGJldHRlci4gIFdlDQo+IHRob3VnaHQgd2hl
-biB5b3Ugc2FpZCAiSSBkb24ndCBmZWVsIGNvbWZvcnRhYmxlIHN1YmplY3RpbmcgTkZTdjMvdjQN
-Cj4gcmVwbGF5IGNhY2hlcyB0byB0aGlzIHRyZWF0bWVudCB5ZXQiIHRoYXQgeW91IHdlcmUgcmVm
-ZXJyaW5nIHRvIFhJRA0KPiBjb2xsaXNpb24uICBJcyB0aGVyZSBhbm90aGVyIHBvdGVudGlhbCBp
-c3N1ZSB3aXRoIG11bHRpcGF0aGluZyBhbmQNCj4gcmVwbGF5IGNhY2hlcz8NCg0KVGhlcmUgaXMg
-dGhlIHF1ZXN0aW9uIG9mIHdoYXQgdG8gZG8gd2hlbiBhIE5JQyBnb2VzIGRvd24uIERvIHdlIGZh
-aWwNCm92ZXIgdG8gYSBkaWZmZXJlbnQgY29ubmVjdGlvbiBvciBub3Q/IFRoZSBleGlzdGluZyBw
-cmFjdGljZXMgdy5yLnQuDQpEUkNzIHN1Z2dlc3QgdGhhdCB3ZSBjYW5ub3QgZG8gc287IGZvciBp
-bnN0YW5jZSB0aGUgTGludXggc2VydmVyIERSQw0Kd291bGQgYnJlYWsgaW4gdGhhdCBjYXNlLCBs
-ZWFkaW5nIHBvdGVudGlhbGx5IHRvIGlzc3VlcyB3aXRoIG5vbi0NCmlkZW1wb3RlbnQgb3BlcmF0
-aW9ucyB0aGF0IG5lZWQgdG8gYmUgcmVwbGF5ZWQuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
-aW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RA
-cHJpbWFyeWRhdGEuY29tDQo=
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+On Fri, Aug 18 2017, Trond Myklebust wrote:
+
+> On Fri, 2017-08-18 at 17:12 +1000, NeilBrown wrote:
+>> If you try an NFSv4 mount from an inaccessible server, it will hang
+>> as
+>> you would expect.
+>> If you then try an NFSv4 mount from a different accessible server,
+>> it will also hang.  This is not expected.
+>>=20
+>> The second mount is blocked in
+>>   nfs4_init_client()
+>>   -> nfs4_discover_server_trunking()
+>>   -> nfs40_discover_server_trunking()
+>>   -> nfs40_walk_client_list()
+>>   -> nfs4_match_client()
+>>   -> nfs_wait_client_init_complete()
+>> It is waiting for the first mount to complete so that it can then
+>> see if the two servers are really one and the same.
+>>=20
+>> It is not necessary to wait here when an nfs_client cl_cons_state is
+>> NFS_CS_INITING.  Such a client will, after changing cl_cons_state,
+>> call
+>> nfs4_discover_server_trunking() itself.  So if the current client
+>> just
+>> skips those clients, trunking will still be discovered if necessary.
+>>=20
+>> I am unsure of situation with NFS_CS_SESSION_INITING, but I suspect
+>> that the comment "Wait for CREATE_SESSION to finish" implies that
+>> it is only clients in NFS_CS_SESSION_INITING that need to be waited
+>> for.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  fs/nfs/nfs4client.c |    2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>=20
+>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>> index e9bea90dc017..d8b9b7ff19a9 100644
+>> --- a/fs/nfs/nfs4client.c
+>> +++ b/fs/nfs/nfs4client.c
+>> @@ -482,7 +482,7 @@ static int nfs4_match_client(struct
+>> nfs_client  *pos,  struct nfs_client *new,
+>>  	 * remaining fields in "pos", especially the client
+>>  	 * ID and serverowner fields.  Wait for CREATE_SESSION
+>>  	 * to finish. */
+>> -	if (pos->cl_cons_state > NFS_CS_READY) {
+>> +	if (pos->cl_cons_state =3D=3D NFS_CS_SESSION_INITING) {
+>>  		atomic_inc(&pos->cl_count);
+>>  		spin_unlock(&nn->nfs_client_lock);
+>
+> This could cause us to declare a false positive match with a client
+> that is uninitialised.
+
+Thanks for the review.
+
+A positive match is reported by returning zero.
+If cl_cons_state is not NFS_CS_READY, nfs4_match_client() will not
+return zero.
+
+So I don't see how a false positive is possible.
+
+A false negative might be possible with an uninitialized client, but
+once that client is initialised, it will call walk_client_list and find
+the match.  Won't it?
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmXi1kACgkQOeye3VZi
+gbnW3g//ZiHdvXWYhAEE5mWBhR/h1LNWIWdniV+cmysQDUyN+fc1irAEqHkJcQYM
+NUE6A/fjFrBNhe2NoGkTmi36i5dVBEDRTZtCTFN6CXUq+cdqoK84xKnjd0jqy9Q4
+ppyvxlci1QzghW9BzP/iePR4s1+haCUj4k5q290pBA/YsafI531Ld5XWuYHO8yxx
+Bt4hCuAji4armjBF/oYxgHK7o3F4kh3Ee0qClMOORUrkMY0fJ6czVHEVfFeShDG/
+A8fqZxjkjH48foEIu8ixJbyT5WYSM+DL4expclBG9h412AFUAFeS8Q3CsGEalOwe
+Zn8UDBrpxyFHlgt9o2otxeP2C0SBX8kghQXKctiC7ZnMjz1/bUWQKybR72brC5be
+MisW426RHqGhrNdp6y2cpjHMtuZPj/U8STccb0lBp88lBKxzL/zepRg0RutAQUFr
+esEO9X2fYBqTp3uI5s8jIcznPwCWzkHXvNH0jSw2M6fB87dgzVk7ZsPxXDtxKjRs
+z7bQF/oDZFqLglrvQTHkaAioXYjEhXpjCXzeI1NHF/K1ZkrWM8schMdVYm71PS80
+ek79x8hT/zSiZM4W8nRaFS9g1hwKASzEmB/f4glMMc79X9s7IKqYTaeWHqqE/ALa
+G4sTCy1HSapevRqB9GVewmwG64pC6RpsjVz8PF72uYRc8+PXubY=
+=dFLv
+-----END PGP SIGNATURE-----
+--=-=-=--
