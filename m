@@ -1,134 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52549 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751017AbdHSBCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 18 Aug 2017 21:02:20 -0400
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>
-Date: Sat, 19 Aug 2017 11:02:11 +1000
-Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:37429 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751106AbdHSB10 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 21:27:26 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "neilb@suse.com" <neilb@suse.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 4/8] NFS: flush out dirty data on file fput().
-In-Reply-To: <1503083704.11511.9.camel@primarydata.com>
-References: <150304014011.30218.1636255532744321171.stgit@noble> <150304037195.30218.15740287358704674869.stgit@noble> <1503083704.11511.9.camel@primarydata.com>
-Message-ID: <87ziawl698.fsf@notabene.neil.brown.name>
+Date: Sat, 19 Aug 2017 01:27:20 +0000
+Message-ID: <1503106038.10673.11.camel@primarydata.com>
+References: <150304014011.30218.1636255532744321171.stgit@noble>
+         <150304037195.30218.15740287358704674869.stgit@noble>
+         <1503083704.11511.9.camel@primarydata.com>
+         <87ziawl698.fsf@notabene.neil.brown.name>
+In-Reply-To: <87ziawl698.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+T24gU2F0LCAyMDE3LTA4LTE5IGF0IDExOjAyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IEZyaSwgQXVnIDE4IDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gT24gRnJp
+LCAyMDE3LTA4LTE4IGF0IDE3OjEyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+ID4gPiBBbnkg
+ZGlydHkgTkZTIHBhZ2UgaG9sZHMgYW4gc19hY3RpdmUgcmVmZXJlbmNlIG9uIHRoZSBzdXBlcmJs
+b2NrLA0KPiA+ID4gYmVjYXVzZSBwYWdlX3ByaXZhdGUoKSByZWZlcmVuY2VzIGFuIG5mc19wYWdl
+LCB3aGljaCByZWZlcmVuY2VzDQo+ID4gPiBhbg0KPiA+ID4gb3BlbiBjb250ZXh0LCB3aGljaCBy
+ZWZlcmVuY2VzIHRoZSBzdXBlcmJsb2NrLg0KPiA+ID4gDQo+ID4gPiBTbyBpZiB0aGVyZSBhcmUg
+YW55IGRpcnR5IHBhZ2VzIHdoZW4gdGhlIGZpbGVzeXN0ZW0gaXMgdW5tb3VudGVkLA0KPiA+ID4g
+dGhlDQo+ID4gPiB1bm1vdW50IHdpbGwgYWN0IGxpa2UgYSAibGF6eSIgdW5tb3VudCBhbmQgbm90
+IGNhbGwgLT5raWxsX3NiKCkuDQo+ID4gPiBCYWNrZ3JvdW5kIHdyaXRlLWJhY2sgY2FuIHRoZW4g
+d3JpdGUgb3V0IHRoZSBwYWdlcyAqYWZ0ZXIqIHRoZQ0KPiA+ID4gZmlsZXN5c3RlbQ0KPiA+ID4g
+dW5tb3VudCBoYXMgYXBwYXJlbnRseSBjb21wbGV0ZWQuDQo+ID4gPiANCj4gPiA+IFRoaXMgY29u
+dHJhc3RzIHdpdGggb3RoZXIgZmlsZXN5c3RlbXMgd2hpY2ggZG8gbm90IGhvbGQgZXh0cmENCj4g
+PiA+IHNfYWN0aXZlDQo+ID4gPiByZWZlcmVuY2VzLCBzbyAtPmtpbGxfc2IoKSBpcyByZWxpYWJs
+eSBjYWxsZWQgb24gdW5tb3VudCwgYW5kDQo+ID4gPiBnZW5lcmljX3NodXRkb3duX3N1cGVyKCkg
+d2lsbCBjYWxsIHN5bmNfZmlsZXN5c3RlbSgpIHRvIGZsdXNoDQo+ID4gPiBldmVyeXRoaW5nIG91
+dCBiZWZvcmUgdGhlIHVubW91bnQgY29tcGxldGVzLg0KPiA+ID4gDQo+ID4gPiBXaGVuIG9wZW4v
+d3JpdGUvY2xvc2UgaXMgdXNlZCB0byBtb2RpZnkgZmlsZXMsIHRoZSBmaW5hbCBjbG9zZQ0KPiA+
+ID4gY2F1c2VzDQo+ID4gPiBmX29wLT5mbHVzaCB0byBiZSBjYWxsZWQsIHdoaWNoIGZsdXNoZXMg
+YWxsIGRpcnR5IHBhZ2VzLiAgSG93ZXZlcg0KPiA+ID4gaWYNCj4gPiA+IG9wZW4vbW1hcC9jbG9z
+ZS9tb2RpZnktbWVtb3J5L3VubWFwIGlzIHVzZWQsIGRpcnR5IHBhZ2VzIGNhbg0KPiA+ID4gcmVt
+YWluDQo+ID4gPiBpbg0KPiA+ID4gbWVtb3J5IGFmdGVyIHRoZSBhcHBsaWNhdGlvbiBoYXMgZHJv
+cHBlZCBhbGwgcmVmZXJlbmNlcyB0byB0aGUNCj4gPiA+IGZpbGUuDQo+ID4gPiBTaW1pbGFybHkg
+aWYgYSBsb29wLW1vdW50IGlzIGRvbmUgd2l0aCBhIE5GUyBmaWxlLCB0aGVyZSBpcyBubw0KPiA+
+ID4gZmluYWwNCj4gPiA+IGZsdXNoIHdoZW4gdGhlIGxvb3AgZGV2aWNlIGlzIGRlc3Ryb3llZCBh
+bmQgdGhlIGZpbGUgY2FuIGhhdmUNCj4gPiA+IGRpcnR5DQo+ID4gPiBkYXRhIGFmdGVyIHRoZSBs
+YXN0ICJjbG9zZSIuDQo+ID4gPiANCj4gPiA+IEFsc28sIGEgbG9vcC1iYWNrIG1vdW50IG9mIGEg
+ZGV2aWNlIGRvZXMgbm90ICJjbG9zZSIgdGhlIGZpbGUNCj4gPiA+IHdoZW4NCj4gPiA+IHRoZQ0K
+PiA+ID4gbG9vcCBkZXZpY2UgaXMgZGVzdHJveWVkLiAgVGhpcyBjYW4gbGVhdmUgZGlydHkgcGFn
+ZSBjYWNoZSBwYWdlcw0KPiA+ID4gdG9vLg0KPiA+ID4gDQo+ID4gPiBGaXggdGhpcyBieSBjYWxs
+aW5nIHZmc19mc3luYygpIGluIG5mc19maWxlX3JlbGVhc2UgKGFrYQ0KPiA+ID4gZl9vcC0+cmVs
+ZWFzZSgpKS4gIFRoaXMgbWVhbnMgdGhhdCBvbiB0aGUgZmluYWwgdW5tYXAgb2YgYSBmaWxlDQo+
+ID4gPiAob3INCj4gPiA+IGRlc3RydWN0aW9uIG9mIGEgbG9vcCBkZXZpY2UpLCBhbGwgY2hhbmdl
+cyBhcmUgZmx1c2hlZCwgYW5kDQo+ID4gPiBlbnN1cmVzDQo+ID4gPiB0aGF0DQo+ID4gPiB3aGVu
+IHVubW91bnQgaXMgcmVxdWVzdGVkIHRoZXJlIHdpbGwgYmUgbm8gZGlydHkgcGFnZXMgdG8gZGVs
+YXkNCj4gPiA+IHRoZQ0KPiA+ID4gZmluYWwgdW5tb3VudC4NCj4gPiA+IA0KPiA+ID4gV2l0aG91
+dCB0aGlzIHBhdGNoLCBpdCBpcyBub3Qgc2FmZSB0byBzdG9wIG9yIGRpc2Nvbm5lY3QgdGhlIE5G
+Uw0KPiA+ID4gc2VydmVyIGFmdGVyIGFsbCBjbGllbnRzIGhhdmUgdW5tb3VudGVkLiAgVGhleSBu
+ZWVkIHRvIHVubW91bnQNCj4gPiA+IGFuZA0KPiA+ID4gY2FsbCAic3luYyIuDQo+ID4gPiANCj4g
+PiA+IFNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5jb20+DQo+ID4gPiAtLS0N
+Cj4gPiA+ICBmcy9uZnMvZmlsZS5jIHwgICAgNiArKysrKysNCj4gPiA+ICAxIGZpbGUgY2hhbmdl
+ZCwgNiBpbnNlcnRpb25zKCspDQo+ID4gPiANCj4gPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvZmls
+ZS5jIGIvZnMvbmZzL2ZpbGUuYw0KPiA+ID4gaW5kZXggYWYzMzBjMzFmNjI3Li5hYTg4M2Q4YjI0
+ZTYgMTAwNjQ0DQo+ID4gPiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+ID4gPiArKysgYi9mcy9uZnMv
+ZmlsZS5jDQo+ID4gPiBAQCAtODEsNiArODEsMTIgQEAgbmZzX2ZpbGVfcmVsZWFzZShzdHJ1Y3Qg
+aW5vZGUgKmlub2RlLCBzdHJ1Y3QNCj4gPiA+IGZpbGUNCj4gPiA+ICpmaWxwKQ0KPiA+ID4gIHsN
+Cj4gPiA+ICAJZHByaW50aygiTkZTOiByZWxlYXNlKCVwRDIpXG4iLCBmaWxwKTsNCj4gPiA+ICAN
+Cj4gPiA+ICsJaWYgKGZpbHAtPmZfbW9kZSAmIEZNT0RFX1dSSVRFKQ0KPiA+ID4gKwkJLyogRW5z
+dXJlIGRpcnR5IG1tYXBwZWQgcGFnZXMgYXJlIGZsdXNoZWQNCj4gPiA+ICsJCSAqIHNvIHRoZXJl
+IHdpbGwgYmUgbm8gZGlydHkgcGFnZXMgdG8NCj4gPiA+ICsJCSAqIHByZXZlbnQgYW4gdW5tb3Vu
+dCBmcm9tIGNvbXBsZXRpbmcuDQo+ID4gPiArCQkgKi8NCj4gPiA+ICsJCXZmc19mc3luYyhmaWxw
+LCAwKTsNCj4gPiA+ICAJbmZzX2luY19zdGF0cyhpbm9kZSwgTkZTSU9TX1ZGU1JFTEVBU0UpOw0K
+PiA+ID4gIAluZnNfZmlsZV9jbGVhcl9vcGVuX2NvbnRleHQoZmlscCk7DQo+ID4gPiAgCXJldHVy
+biAwOw0KPiA+IA0KPiA+IFRoZSByaWdodCBmaXggaGVyZSBpcyB0byBlbnN1cmUgdGhhdCB1bW91
+bnQoKSBmbHVzaGVzIHRoZSBkaXJ0eQ0KPiA+IGRhdGEsDQo+ID4gYW5kIHRoYXQgaXQgYWJvcnRz
+IHRoZSB1bW91bnQgYXR0ZW1wdCBpZiB0aGUgZmx1c2ggZmFpbHMuDQo+ID4gT3RoZXJ3aXNlLCBh
+DQo+ID4gc2lnbmFsIHRvIHRoZSBhYm92ZSBmc3luYyBjYWxsIHdpbGwgY2F1c2UgdGhlIHByb2Js
+ZW0gdG8gcmVvY2N1ci4NCj4gDQo+IFRoZSBvbmx5IHdheSB0byBlbnN1cmUgdGhhdCB1bW91bnQg
+Zmx1c2hlcyBkaXJ0eSBkYXRhIGlzIHRvIHJldmVydA0KPiBjb21taXQgMWRhZWYwYTg2ODM3ICgi
+TkZTOiBDbGVhbiB1cCBuZnNfc2JfYWN0aXZlL25mc19zYl9kZWFjdGl2ZSIpLg0KPiBBcyBsb25n
+IGFzIHdlIGFyZSB0YWtpbmcgZXh0cmEgcmVmZXJlbmNlcyB0byBzX2FjdGl2ZSwgdW1vdW50IHdv
+bid0DQo+IGRvDQo+IHdoYXQgaXQgb3VnaHQgdG8gZG8uDQo+IA0KDQpSZXZlcnRpbmcgdGhhdCBw
+YXRjaCBpcyBub3Qgc3VmZmljaWVudC4gWW91J2Qgc3RpbGwgbmVlZCB0byBjYWxsDQpzeW5jX2Zp
+bGVzeXN0ZW0oKSwgYW5kIGFib3J0IHRoZSB1bW91bnQgaWYgdGhlIGxhdHRlciBmYWlscy4NCg0K
+PiBJIGRvIHdvbmRlciB3aGF0IHdlIHNob3VsZCBkbyB3aGVuIHlvdSB0cnkgdG8gdW5tb3VudCBh
+IGZpbGVzeXN0ZW0NCj4gbW91bnRlZCBmcm9tIGFuIGluYWNjZXNzaWJsZSBzZXJ2ZXIuDQo+IEJs
+b2NraW5nIGlzIGF3a3dhcmQgZm9yIHNjcmlwdHMgdG8gd29yayB3aXRoLiAgRmFpbGluZyB3aXRo
+IEVCVVNZDQo+IG1pZ2h0DQo+IGJlIG1pc2xlYWRpbmcuDQo+IEkgZG9uJ3QgdGhpbmsgdGhhdCB1
+c2luZyBNTlRfRk9SQ0UgZ3VhcmFudGVlcyBzdWNjZXNzIGRvZXMgaXQ/ICBJdA0KPiB3b3VsZA0K
+PiBuZWVkIHRvIGRpc2NhcmQgYW55IGRpcnR5IGRhdGEgYW5kIGFib3J0IGFueSBvdGhlciBiYWNr
+Z3JvdW5kIHRhc2tzLg0KDQpNTlRfRk9SQ0Ugd2lsbCBvbmx5IGFib3J0IGFueSBvdXRzdGFuZGlu
+ZyBSUEMgY2FsbHMuIEl0IGlzIGNvbnN0cmFpbmVkDQpieSB0aGUgZmFjdCB0aGF0IHdlIGRvbid0
+IHNlcmlhbGlzZSB1bW91bnQgYW5kIG1vdW50LCBhbmQgdGhhdCB0aGUNCmZpbGVzeXN0ZW0gb24g
+d2hpY2ggd2UgYXJlIG9wZXJhdGluZyBtYXkgYmUgbW91bnRlZCBpbiBzZXZlcmFsIHBsYWNlcw0K
+aW4gdGhlIG1haW4gbmFtZXNwYWNlIGFuZCBpbmRlZWQgaW4gc2V2ZXJhbCBwcml2YXRlIG5hbWVz
+cGFjZXMgdG8gYm9vdC4NCg0KPiBJIHRoaW5rIEkgd291bGQgYmUgaW4gZmF2b3Igb2YgRUJVU1kg
+cmF0aGVyIHRoYW4gYSBoYW5nLCBhbmQgb2YNCj4gbWFraW5nDQo+IE1OVF9GT1JDRSBhIHNpbHZl
+ciBidWxsZXQgcHJvdmlkaW5nIHRoZXJlIGFyZSBubyBvcGVuIGZpbGUNCj4gZGVzY3JpcHRvcnMN
+Cj4gb24gdGhlIGZpbGVzeXN0ZW0uDQoNCkFsbCBvdGhlciBmaWxlc3lzdGVtcyB0cmlnZ2VyIHN5
+bmNfZmlsZXN5c3RlbSgpLCBhbmQgdGhhdCdzIHdoYXQgdGhlDQpWRlMgZXhwZWN0cyB1cyB0byBk
+by4gVGhlIHByb2JsZW0gaXMgdGhlIFZGUyBhc3N1bWVzIHRoYXQgY2FsbCB3aWxsDQphbHdheXMg
+c3VjY2VlZCwgYW5kIHdvbid0IGV2ZXIgcmV0dXJuIGFuIGVycm9yLg0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQu
+bXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-On Fri, Aug 18 2017, Trond Myklebust wrote:
-
-> On Fri, 2017-08-18 at 17:12 +1000, NeilBrown wrote:
->> Any dirty NFS page holds an s_active reference on the superblock,
->> because page_private() references an nfs_page, which references an
->> open context, which references the superblock.
->>=20
->> So if there are any dirty pages when the filesystem is unmounted, the
->> unmount will act like a "lazy" unmount and not call ->kill_sb().
->> Background write-back can then write out the pages *after* the
->> filesystem
->> unmount has apparently completed.
->>=20
->> This contrasts with other filesystems which do not hold extra
->> s_active
->> references, so ->kill_sb() is reliably called on unmount, and
->> generic_shutdown_super() will call sync_filesystem() to flush
->> everything out before the unmount completes.
->>=20
->> When open/write/close is used to modify files, the final close causes
->> f_op->flush to be called, which flushes all dirty pages.  However if
->> open/mmap/close/modify-memory/unmap is used, dirty pages can remain
->> in
->> memory after the application has dropped all references to the file.
->> Similarly if a loop-mount is done with a NFS file, there is no final
->> flush when the loop device is destroyed and the file can have dirty
->> data after the last "close".
->>=20
->> Also, a loop-back mount of a device does not "close" the file when
->> the
->> loop device is destroyed.  This can leave dirty page cache pages too.
->>=20
->> Fix this by calling vfs_fsync() in nfs_file_release (aka
->> f_op->release()).  This means that on the final unmap of a file (or
->> destruction of a loop device), all changes are flushed, and ensures
->> that
->> when unmount is requested there will be no dirty pages to delay the
->> final unmount.
->>=20
->> Without this patch, it is not safe to stop or disconnect the NFS
->> server after all clients have unmounted.  They need to unmount and
->> call "sync".
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->>  fs/nfs/file.c |    6 ++++++
->>  1 file changed, 6 insertions(+)
->>=20
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index af330c31f627..aa883d8b24e6 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -81,6 +81,12 @@ nfs_file_release(struct inode *inode, struct file
->> *filp)
->>  {
->>  	dprintk("NFS: release(%pD2)\n", filp);
->>=20=20
->> +	if (filp->f_mode & FMODE_WRITE)
->> +		/* Ensure dirty mmapped pages are flushed
->> +		 * so there will be no dirty pages to
->> +		 * prevent an unmount from completing.
->> +		 */
->> +		vfs_fsync(filp, 0);
->>  	nfs_inc_stats(inode, NFSIOS_VFSRELEASE);
->>  	nfs_file_clear_open_context(filp);
->>  	return 0;
->
-> The right fix here is to ensure that umount() flushes the dirty data,
-> and that it aborts the umount attempt if the flush fails. Otherwise, a
-> signal to the above fsync call will cause the problem to reoccur.
-
-The only way to ensure that umount flushes dirty data is to revert
-commit 1daef0a86837 ("NFS: Clean up nfs_sb_active/nfs_sb_deactive").
-As long as we are taking extra references to s_active, umount won't do
-what it ought to do.
-
-I do wonder what we should do when you try to unmount a filesystem
-mounted from an inaccessible server.
-Blocking is awkward for scripts to work with.  Failing with EBUSY might
-be misleading.
-I don't think that using MNT_FORCE guarantees success does it?  It would
-need to discard any dirty data and abort any other background tasks.
-
-I think I would be in favor of EBUSY rather than a hang, and of making
-MNT_FORCE a silver bullet providing there are no open file descriptors
-on the filesystem.
-
-Thanks,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmXjhUACgkQOeye3VZi
-gbnK4A/+PIP1dFfniz9/QJLr/atQGw8Idjs8wThaT75JYnL/3jcA9TY15rRzqvsK
-rOFBM0wbH1oG8VSfixfQdNJPD2JPjZMoK9XN8hHk6ALqipMihPOPbrdFIXSRjBag
-k4DU6qa8W67oLpLOoDxhNo2GLuKO8UGxyDzTGI3gJ0gvdnLqTWYlBDpS9DHa26hC
-Do5KXoOgseAoMts42qTSkIJshcbu2BORA57d6p80KpDyV370SvRTRkq3Ioc/sRen
-MeCXmXONnUTIfrVfcBfW2mamV++d+d8RUD2htiGm/xjc7fhGnroth3xzDgaISw3l
-/SLpur/5M0YRHgxDo/zyj5pP7xnRhT0QVSEmSfVcofDmN9SaRo9c+xFMpTr9HBM1
-FpqcnSjHkQzH1TzGyRtFwNgt9FGeS9kwHKPIO7m9IDrlSb8mo8Vpj5htuuxJYh+Q
-gM3mrrfVn71bcJJQX8/DK12cB8k/ZJjAfvLWtS9TfrkwiyWMQDBqEm0rD9D7PYnN
-f3hv2I+wIAXuYvFb1y0GQTrqbfbNFUxRRzaRnUKON/FYi/KsSFFgOpkTPS2Yxdk5
-bK2ULS+Vkz3OjIuLtAivLrxg08KjUsHOz8ijaT+7kXb858OITHoz5UjB2N148NQh
-UpcVmD5kA7ZOr4U467VXKPjW9fknUOY45gtQtK95uc0M2sGfy2k=
-=N9GH
------END PGP SIGNATURE-----
---=-=-=--
