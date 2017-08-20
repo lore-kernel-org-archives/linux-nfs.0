@@ -1,107 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:37429 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751106AbdHSB10 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Aug 2017 21:27:26 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "neilb@suse.com" <neilb@suse.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/8] NFS: flush out dirty data on file fput().
-Date: Sat, 19 Aug 2017 01:27:20 +0000
-Message-ID: <1503106038.10673.11.camel@primarydata.com>
-References: <150304014011.30218.1636255532744321171.stgit@noble>
-         <150304037195.30218.15740287358704674869.stgit@noble>
-         <1503083704.11511.9.camel@primarydata.com>
-         <87ziawl698.fsf@notabene.neil.brown.name>
-In-Reply-To: <87ziawl698.fsf@notabene.neil.brown.name>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35515 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752956AbdHTOcb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 20 Aug 2017 10:32:31 -0400
+Received: by mail-it0-f68.google.com with SMTP id 76so8491859ith.2
+        for <linux-nfs@vger.kernel.org>; Sun, 20 Aug 2017 07:32:30 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: JianhongYin <yin-jianhong@163.com>
+Subject: [PATCH] NFSv4: Fix up mirror allocation
+Date: Sun, 20 Aug 2017 10:32:26 -0400
+Message-Id: <20170820143226.5711-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU2F0LCAyMDE3LTA4LTE5IGF0IDExOjAyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
-IEZyaSwgQXVnIDE4IDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gT24gRnJp
-LCAyMDE3LTA4LTE4IGF0IDE3OjEyICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+ID4gPiBBbnkg
-ZGlydHkgTkZTIHBhZ2UgaG9sZHMgYW4gc19hY3RpdmUgcmVmZXJlbmNlIG9uIHRoZSBzdXBlcmJs
-b2NrLA0KPiA+ID4gYmVjYXVzZSBwYWdlX3ByaXZhdGUoKSByZWZlcmVuY2VzIGFuIG5mc19wYWdl
-LCB3aGljaCByZWZlcmVuY2VzDQo+ID4gPiBhbg0KPiA+ID4gb3BlbiBjb250ZXh0LCB3aGljaCBy
-ZWZlcmVuY2VzIHRoZSBzdXBlcmJsb2NrLg0KPiA+ID4gDQo+ID4gPiBTbyBpZiB0aGVyZSBhcmUg
-YW55IGRpcnR5IHBhZ2VzIHdoZW4gdGhlIGZpbGVzeXN0ZW0gaXMgdW5tb3VudGVkLA0KPiA+ID4g
-dGhlDQo+ID4gPiB1bm1vdW50IHdpbGwgYWN0IGxpa2UgYSAibGF6eSIgdW5tb3VudCBhbmQgbm90
-IGNhbGwgLT5raWxsX3NiKCkuDQo+ID4gPiBCYWNrZ3JvdW5kIHdyaXRlLWJhY2sgY2FuIHRoZW4g
-d3JpdGUgb3V0IHRoZSBwYWdlcyAqYWZ0ZXIqIHRoZQ0KPiA+ID4gZmlsZXN5c3RlbQ0KPiA+ID4g
-dW5tb3VudCBoYXMgYXBwYXJlbnRseSBjb21wbGV0ZWQuDQo+ID4gPiANCj4gPiA+IFRoaXMgY29u
-dHJhc3RzIHdpdGggb3RoZXIgZmlsZXN5c3RlbXMgd2hpY2ggZG8gbm90IGhvbGQgZXh0cmENCj4g
-PiA+IHNfYWN0aXZlDQo+ID4gPiByZWZlcmVuY2VzLCBzbyAtPmtpbGxfc2IoKSBpcyByZWxpYWJs
-eSBjYWxsZWQgb24gdW5tb3VudCwgYW5kDQo+ID4gPiBnZW5lcmljX3NodXRkb3duX3N1cGVyKCkg
-d2lsbCBjYWxsIHN5bmNfZmlsZXN5c3RlbSgpIHRvIGZsdXNoDQo+ID4gPiBldmVyeXRoaW5nIG91
-dCBiZWZvcmUgdGhlIHVubW91bnQgY29tcGxldGVzLg0KPiA+ID4gDQo+ID4gPiBXaGVuIG9wZW4v
-d3JpdGUvY2xvc2UgaXMgdXNlZCB0byBtb2RpZnkgZmlsZXMsIHRoZSBmaW5hbCBjbG9zZQ0KPiA+
-ID4gY2F1c2VzDQo+ID4gPiBmX29wLT5mbHVzaCB0byBiZSBjYWxsZWQsIHdoaWNoIGZsdXNoZXMg
-YWxsIGRpcnR5IHBhZ2VzLiAgSG93ZXZlcg0KPiA+ID4gaWYNCj4gPiA+IG9wZW4vbW1hcC9jbG9z
-ZS9tb2RpZnktbWVtb3J5L3VubWFwIGlzIHVzZWQsIGRpcnR5IHBhZ2VzIGNhbg0KPiA+ID4gcmVt
-YWluDQo+ID4gPiBpbg0KPiA+ID4gbWVtb3J5IGFmdGVyIHRoZSBhcHBsaWNhdGlvbiBoYXMgZHJv
-cHBlZCBhbGwgcmVmZXJlbmNlcyB0byB0aGUNCj4gPiA+IGZpbGUuDQo+ID4gPiBTaW1pbGFybHkg
-aWYgYSBsb29wLW1vdW50IGlzIGRvbmUgd2l0aCBhIE5GUyBmaWxlLCB0aGVyZSBpcyBubw0KPiA+
-ID4gZmluYWwNCj4gPiA+IGZsdXNoIHdoZW4gdGhlIGxvb3AgZGV2aWNlIGlzIGRlc3Ryb3llZCBh
-bmQgdGhlIGZpbGUgY2FuIGhhdmUNCj4gPiA+IGRpcnR5DQo+ID4gPiBkYXRhIGFmdGVyIHRoZSBs
-YXN0ICJjbG9zZSIuDQo+ID4gPiANCj4gPiA+IEFsc28sIGEgbG9vcC1iYWNrIG1vdW50IG9mIGEg
-ZGV2aWNlIGRvZXMgbm90ICJjbG9zZSIgdGhlIGZpbGUNCj4gPiA+IHdoZW4NCj4gPiA+IHRoZQ0K
-PiA+ID4gbG9vcCBkZXZpY2UgaXMgZGVzdHJveWVkLiAgVGhpcyBjYW4gbGVhdmUgZGlydHkgcGFn
-ZSBjYWNoZSBwYWdlcw0KPiA+ID4gdG9vLg0KPiA+ID4gDQo+ID4gPiBGaXggdGhpcyBieSBjYWxs
-aW5nIHZmc19mc3luYygpIGluIG5mc19maWxlX3JlbGVhc2UgKGFrYQ0KPiA+ID4gZl9vcC0+cmVs
-ZWFzZSgpKS4gIFRoaXMgbWVhbnMgdGhhdCBvbiB0aGUgZmluYWwgdW5tYXAgb2YgYSBmaWxlDQo+
-ID4gPiAob3INCj4gPiA+IGRlc3RydWN0aW9uIG9mIGEgbG9vcCBkZXZpY2UpLCBhbGwgY2hhbmdl
-cyBhcmUgZmx1c2hlZCwgYW5kDQo+ID4gPiBlbnN1cmVzDQo+ID4gPiB0aGF0DQo+ID4gPiB3aGVu
-IHVubW91bnQgaXMgcmVxdWVzdGVkIHRoZXJlIHdpbGwgYmUgbm8gZGlydHkgcGFnZXMgdG8gZGVs
-YXkNCj4gPiA+IHRoZQ0KPiA+ID4gZmluYWwgdW5tb3VudC4NCj4gPiA+IA0KPiA+ID4gV2l0aG91
-dCB0aGlzIHBhdGNoLCBpdCBpcyBub3Qgc2FmZSB0byBzdG9wIG9yIGRpc2Nvbm5lY3QgdGhlIE5G
-Uw0KPiA+ID4gc2VydmVyIGFmdGVyIGFsbCBjbGllbnRzIGhhdmUgdW5tb3VudGVkLiAgVGhleSBu
-ZWVkIHRvIHVubW91bnQNCj4gPiA+IGFuZA0KPiA+ID4gY2FsbCAic3luYyIuDQo+ID4gPiANCj4g
-PiA+IFNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5jb20+DQo+ID4gPiAtLS0N
-Cj4gPiA+ICBmcy9uZnMvZmlsZS5jIHwgICAgNiArKysrKysNCj4gPiA+ICAxIGZpbGUgY2hhbmdl
-ZCwgNiBpbnNlcnRpb25zKCspDQo+ID4gPiANCj4gPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvZmls
-ZS5jIGIvZnMvbmZzL2ZpbGUuYw0KPiA+ID4gaW5kZXggYWYzMzBjMzFmNjI3Li5hYTg4M2Q4YjI0
-ZTYgMTAwNjQ0DQo+ID4gPiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+ID4gPiArKysgYi9mcy9uZnMv
-ZmlsZS5jDQo+ID4gPiBAQCAtODEsNiArODEsMTIgQEAgbmZzX2ZpbGVfcmVsZWFzZShzdHJ1Y3Qg
-aW5vZGUgKmlub2RlLCBzdHJ1Y3QNCj4gPiA+IGZpbGUNCj4gPiA+ICpmaWxwKQ0KPiA+ID4gIHsN
-Cj4gPiA+ICAJZHByaW50aygiTkZTOiByZWxlYXNlKCVwRDIpXG4iLCBmaWxwKTsNCj4gPiA+ICAN
-Cj4gPiA+ICsJaWYgKGZpbHAtPmZfbW9kZSAmIEZNT0RFX1dSSVRFKQ0KPiA+ID4gKwkJLyogRW5z
-dXJlIGRpcnR5IG1tYXBwZWQgcGFnZXMgYXJlIGZsdXNoZWQNCj4gPiA+ICsJCSAqIHNvIHRoZXJl
-IHdpbGwgYmUgbm8gZGlydHkgcGFnZXMgdG8NCj4gPiA+ICsJCSAqIHByZXZlbnQgYW4gdW5tb3Vu
-dCBmcm9tIGNvbXBsZXRpbmcuDQo+ID4gPiArCQkgKi8NCj4gPiA+ICsJCXZmc19mc3luYyhmaWxw
-LCAwKTsNCj4gPiA+ICAJbmZzX2luY19zdGF0cyhpbm9kZSwgTkZTSU9TX1ZGU1JFTEVBU0UpOw0K
-PiA+ID4gIAluZnNfZmlsZV9jbGVhcl9vcGVuX2NvbnRleHQoZmlscCk7DQo+ID4gPiAgCXJldHVy
-biAwOw0KPiA+IA0KPiA+IFRoZSByaWdodCBmaXggaGVyZSBpcyB0byBlbnN1cmUgdGhhdCB1bW91
-bnQoKSBmbHVzaGVzIHRoZSBkaXJ0eQ0KPiA+IGRhdGEsDQo+ID4gYW5kIHRoYXQgaXQgYWJvcnRz
-IHRoZSB1bW91bnQgYXR0ZW1wdCBpZiB0aGUgZmx1c2ggZmFpbHMuDQo+ID4gT3RoZXJ3aXNlLCBh
-DQo+ID4gc2lnbmFsIHRvIHRoZSBhYm92ZSBmc3luYyBjYWxsIHdpbGwgY2F1c2UgdGhlIHByb2Js
-ZW0gdG8gcmVvY2N1ci4NCj4gDQo+IFRoZSBvbmx5IHdheSB0byBlbnN1cmUgdGhhdCB1bW91bnQg
-Zmx1c2hlcyBkaXJ0eSBkYXRhIGlzIHRvIHJldmVydA0KPiBjb21taXQgMWRhZWYwYTg2ODM3ICgi
-TkZTOiBDbGVhbiB1cCBuZnNfc2JfYWN0aXZlL25mc19zYl9kZWFjdGl2ZSIpLg0KPiBBcyBsb25n
-IGFzIHdlIGFyZSB0YWtpbmcgZXh0cmEgcmVmZXJlbmNlcyB0byBzX2FjdGl2ZSwgdW1vdW50IHdv
-bid0DQo+IGRvDQo+IHdoYXQgaXQgb3VnaHQgdG8gZG8uDQo+IA0KDQpSZXZlcnRpbmcgdGhhdCBw
-YXRjaCBpcyBub3Qgc3VmZmljaWVudC4gWW91J2Qgc3RpbGwgbmVlZCB0byBjYWxsDQpzeW5jX2Zp
-bGVzeXN0ZW0oKSwgYW5kIGFib3J0IHRoZSB1bW91bnQgaWYgdGhlIGxhdHRlciBmYWlscy4NCg0K
-PiBJIGRvIHdvbmRlciB3aGF0IHdlIHNob3VsZCBkbyB3aGVuIHlvdSB0cnkgdG8gdW5tb3VudCBh
-IGZpbGVzeXN0ZW0NCj4gbW91bnRlZCBmcm9tIGFuIGluYWNjZXNzaWJsZSBzZXJ2ZXIuDQo+IEJs
-b2NraW5nIGlzIGF3a3dhcmQgZm9yIHNjcmlwdHMgdG8gd29yayB3aXRoLiAgRmFpbGluZyB3aXRo
-IEVCVVNZDQo+IG1pZ2h0DQo+IGJlIG1pc2xlYWRpbmcuDQo+IEkgZG9uJ3QgdGhpbmsgdGhhdCB1
-c2luZyBNTlRfRk9SQ0UgZ3VhcmFudGVlcyBzdWNjZXNzIGRvZXMgaXQ/ICBJdA0KPiB3b3VsZA0K
-PiBuZWVkIHRvIGRpc2NhcmQgYW55IGRpcnR5IGRhdGEgYW5kIGFib3J0IGFueSBvdGhlciBiYWNr
-Z3JvdW5kIHRhc2tzLg0KDQpNTlRfRk9SQ0Ugd2lsbCBvbmx5IGFib3J0IGFueSBvdXRzdGFuZGlu
-ZyBSUEMgY2FsbHMuIEl0IGlzIGNvbnN0cmFpbmVkDQpieSB0aGUgZmFjdCB0aGF0IHdlIGRvbid0
-IHNlcmlhbGlzZSB1bW91bnQgYW5kIG1vdW50LCBhbmQgdGhhdCB0aGUNCmZpbGVzeXN0ZW0gb24g
-d2hpY2ggd2UgYXJlIG9wZXJhdGluZyBtYXkgYmUgbW91bnRlZCBpbiBzZXZlcmFsIHBsYWNlcw0K
-aW4gdGhlIG1haW4gbmFtZXNwYWNlIGFuZCBpbmRlZWQgaW4gc2V2ZXJhbCBwcml2YXRlIG5hbWVz
-cGFjZXMgdG8gYm9vdC4NCg0KPiBJIHRoaW5rIEkgd291bGQgYmUgaW4gZmF2b3Igb2YgRUJVU1kg
-cmF0aGVyIHRoYW4gYSBoYW5nLCBhbmQgb2YNCj4gbWFraW5nDQo+IE1OVF9GT1JDRSBhIHNpbHZl
-ciBidWxsZXQgcHJvdmlkaW5nIHRoZXJlIGFyZSBubyBvcGVuIGZpbGUNCj4gZGVzY3JpcHRvcnMN
-Cj4gb24gdGhlIGZpbGVzeXN0ZW0uDQoNCkFsbCBvdGhlciBmaWxlc3lzdGVtcyB0cmlnZ2VyIHN5
-bmNfZmlsZXN5c3RlbSgpLCBhbmQgdGhhdCdzIHdoYXQgdGhlDQpWRlMgZXhwZWN0cyB1cyB0byBk
-by4gVGhlIHByb2JsZW0gaXMgdGhlIFZGUyBhc3N1bWVzIHRoYXQgY2FsbCB3aWxsDQphbHdheXMg
-c3VjY2VlZCwgYW5kIHdvbid0IGV2ZXIgcmV0dXJuIGFuIGVycm9yLg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQu
-bXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+There are a number of callers of nfs_pageio_complete() that want to
+continue using the nfs_pageio_descriptor without needing to call
+nfs_pageio_init() again. Examples include nfs_pageio_resend() and
+nfs_pageio_cond_complete().
+
+The problem is that nfs_pageio_complete() also calls
+nfs_pageio_cleanup_mirroring(), which frees up the array of mirrors.
+This can lead to writeback errors, in the next call to
+nfs_pageio_setup_mirroring().
+
+Fix by simply moving the allocation of the mirrors to
+nfs_pageio_setup_mirroring().
+
+Link: https://bugzilla.kernel.org/show_bug.cgi?id=196709
+Reported-by: JianhongYin <yin-jianhong@163.com>
+Cc: stable@vger.kernel.org # 4.0+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pagelist.c | 73 +++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 39 insertions(+), 34 deletions(-)
+
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 548ebc7256ff..1c7e625824dc 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -685,9 +685,6 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 		     int io_flags,
+ 		     gfp_t gfp_flags)
+ {
+-	struct nfs_pgio_mirror *new;
+-	int i;
+-
+ 	desc->pg_moreio = 0;
+ 	desc->pg_inode = inode;
+ 	desc->pg_ops = pg_ops;
+@@ -703,21 +700,9 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_mirror_count = 1;
+ 	desc->pg_mirror_idx = 0;
+ 
+-	if (pg_ops->pg_get_mirror_count) {
+-		/* until we have a request, we don't have an lseg and no
+-		 * idea how many mirrors there will be */
+-		new = kcalloc(NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX,
+-			      sizeof(struct nfs_pgio_mirror), gfp_flags);
+-		desc->pg_mirrors_dynamic = new;
+-		desc->pg_mirrors = new;
+-
+-		for (i = 0; i < NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX; i++)
+-			nfs_pageio_mirror_init(&desc->pg_mirrors[i], bsize);
+-	} else {
+-		desc->pg_mirrors_dynamic = NULL;
+-		desc->pg_mirrors = desc->pg_mirrors_static;
+-		nfs_pageio_mirror_init(&desc->pg_mirrors[0], bsize);
+-	}
++	desc->pg_mirrors_dynamic = NULL;
++	desc->pg_mirrors = desc->pg_mirrors_static;
++	nfs_pageio_mirror_init(&desc->pg_mirrors[0], bsize);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_init);
+ 
+@@ -836,32 +821,52 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ 	return ret;
+ }
+ 
++static struct nfs_pgio_mirror *
++nfs_pageio_alloc_mirrors(struct nfs_pageio_descriptor *desc,
++		unsigned int mirror_count)
++{
++	struct nfs_pgio_mirror *ret;
++	unsigned int i;
++
++	kfree(desc->pg_mirrors_dynamic);
++	desc->pg_mirrors_dynamic = NULL;
++	if (mirror_count == 1)
++		return desc->pg_mirrors_static;
++	ret = kmalloc_array(mirror_count, sizeof(*ret), GFP_NOFS);
++	if (ret != NULL) {
++		for (i = 0; i < mirror_count; i++)
++			nfs_pageio_mirror_init(&ret[i], desc->pg_bsize);
++		desc->pg_mirrors_dynamic = ret;
++	}
++	return ret;
++}
++
+ /*
+  * nfs_pageio_setup_mirroring - determine if mirroring is to be used
+  *				by calling the pg_get_mirror_count op
+  */
+-static int nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
++static void nfs_pageio_setup_mirroring(struct nfs_pageio_descriptor *pgio,
+ 				       struct nfs_page *req)
+ {
+-	int mirror_count = 1;
++	unsigned int mirror_count = 1;
+ 
+-	if (!pgio->pg_ops->pg_get_mirror_count)
+-		return 0;
+-
+-	mirror_count = pgio->pg_ops->pg_get_mirror_count(pgio, req);
+-
+-	if (pgio->pg_error < 0)
+-		return pgio->pg_error;
+-
+-	if (!mirror_count || mirror_count > NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX)
+-		return -EINVAL;
++	if (pgio->pg_ops->pg_get_mirror_count)
++		mirror_count = pgio->pg_ops->pg_get_mirror_count(pgio, req);
++	if (mirror_count == pgio->pg_mirror_count || pgio->pg_error < 0)
++		return;
+ 
+-	if (WARN_ON_ONCE(!pgio->pg_mirrors_dynamic))
+-		return -EINVAL;
++	if (!mirror_count || mirror_count > NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX) {
++		pgio->pg_error = -EINVAL;
++		return;
++	}
+ 
++	pgio->pg_mirrors = nfs_pageio_alloc_mirrors(pgio, mirror_count);
++	if (pgio->pg_mirrors == NULL) {
++		pgio->pg_error = -ENOMEM;
++		pgio->pg_mirrors = pgio->pg_mirrors_static;
++		mirror_count = 1;
++	}
+ 	pgio->pg_mirror_count = mirror_count;
+-
+-	return 0;
+ }
+ 
+ /*
+-- 
+2.13.5
 
