@@ -1,298 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:39603 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751190AbdHUHqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 21 Aug 2017 03:46:42 -0400
-From: NeilBrown <neilb@suse.com>
-To: Ian Kent <ikent@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "viro\@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
-Date: Mon, 21 Aug 2017 17:46:30 +1000
-Cc: "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "mkoutny\@suse.com" <mkoutny@suse.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>
-Subject: Re: Do we really need d_weak_revalidate???
-In-Reply-To: <733c15c2-ffbb-9a89-90ec-3ba1d574590e@redhat.com>
-References: <87bmnmrai9.fsf@notabene.neil.brown.name> <1502430944.3822.1.camel@primarydata.com> <1502449309.4950.2.camel@redhat.com> <87zib3niqn.fsf@notabene.neil.brown.name> <1502705432.4978.1.camel@redhat.com> <877ey4nsep.fsf@notabene.neil.brown.name> <1502883253.4847.6.camel@redhat.com> <1e4665a6-30d6-c16a-760a-2892fb147760@redhat.com> <878tihmora.fsf@notabene.neil.brown.name> <2e289bba-677b-cc50-5fa3-2d24d1f6b858@redhat.com> <87h8x1l9qp.fsf@notabene.neil.brown.name> <733c15c2-ffbb-9a89-90ec-3ba1d574590e@redhat.com>
-Message-ID: <87efs5l5wp.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mx1.redhat.com ([209.132.183.28]:37228 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751069AbdHUIpU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 21 Aug 2017 04:45:20 -0400
+From: Vadim Lomovtsev <vlomovts@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        bfields@fieldses.org, jlayton@poochiereds.net, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pabeni@redhat.com
+Cc: Vadim Lomovtsev <vlomovts@redhat.com>
+Subject: [PATCH v2] net: sunrpc: svcsock: fix NULL-pointer exception
+Date: Mon, 21 Aug 2017 04:44:45 -0400
+Message-Id: <1503305085-5488-1-git-send-email-vlomovts@redhat.com>
+In-Reply-To: <1503050447-13362-1-git-send-email-vlomovts@redhat.com>
+References: <1503050447-13362-1-git-send-email-vlomovts@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+While running nfs/connectathon tests kernel NULL-pointer exception
+has been observed due to races in svcsock.c.
 
-On Mon, Aug 21 2017, Ian Kent wrote:
+Race is appear when kernel accepts connection by kernel_accept
+(which creates new socket) and start queuing ingress packets
+to new socket. This happens in ksoftirq context which could run
+concurrently on a different core while new socket setup is not done yet.
 
-> On 21/08/17 14:23, NeilBrown wrote:
->> On Fri, Aug 18 2017, Ian Kent wrote:
->>=20
->>> On 18/08/17 13:24, NeilBrown wrote:
->>>> On Thu, Aug 17 2017, Ian Kent wrote:
->>>>
->>>>> On 16/08/17 19:34, Jeff Layton wrote:
->>>>>> On Wed, 2017-08-16 at 12:43 +1000, NeilBrown wrote:
->>>>>>> On Mon, Aug 14 2017, Jeff Layton wrote:
->>>>>>>
->>>>>>>> On Mon, 2017-08-14 at 09:36 +1000, NeilBrown wrote:
->>>>>>>>> On Fri, Aug 11 2017, Jeff Layton wrote:
->>>>>>>>>
->>>>>>>>>> On Fri, 2017-08-11 at 05:55 +0000, Trond Myklebust wrote:
->>>>>>>>>>> On Fri, 2017-08-11 at 14:31 +1000, NeilBrown wrote:
->>>>>>>>>>>> Funny story.  4.5 years ago we discarded the FS_REVAL_DOT supe=
-rblock
->>>>>>>>>>>> flag and introduced the d_weak_revalidate dentry operation ins=
-tead.
->>>>>>>>>>>> We duly removed the flag from NFS superblocks and NFSv4 superb=
-locks,
->>>>>>>>>>>> and added the new dentry operation to NFS dentries .... but no=
-t to
->>>>>>>>>>>> NFSv4
->>>>>>>>>>>> dentries.
->>>>>>>>>>>>
->>>>>>>>>>>> And nobody noticed.
->>>>>>>>>>>>
->>>>>>>>>>>> Until today.
->>>>>>>>>>>>
->>>>>>>>>>>> A customer reports a situation where mount(....,MS_REMOUNT,..)=
- on an
->>>>>>>>>>>> NFS
->>>>>>>>>>>> filesystem hangs because the network has been deconfigured.  T=
-his
->>>>>>>>>>>> makes
->>>>>>>>>>>> perfect sense and I suggested a code change to fix the problem.
->>>>>>>>>>>> However when a colleague was trying to reproduce the problem to
->>>>>>>>>>>> validate
->>>>>>>>>>>> the fix, he couldn't.  Then nor could I.
->>>>>>>>>>>>
->>>>>>>>>>>> The problem is trivially reproducible with NFSv3, and not at a=
-ll with
->>>>>>>>>>>> NFSv4.  The reason is the missing d_weak_revalidate.
->>>>>>>>>>>>
->>>>>>>>>>>> We could simply add d_weak_revalidate for NFSv4, but given tha=
-t it
->>>>>>>>>>>> has been missing for 4.5 years, and the only time anyone notic=
-ed was
->>>>>>>>>>>> when the ommission resulted in a better user experience, I do =
-wonder
->>>>>>>>>>>> if
->>>>>>>>>>>> we need to.  Can we just discard d_weak_revalidate?  What purp=
-ose
->>>>>>>>>>>> does
->>>>>>>>>>>> it serve?  I couldn't find one.
->>>>>>>>>>>>
->>>>>>>>>>>> Thanks,
->>>>>>>>>>>> NeilBrown
->>>>>>>>>>>>
->>>>>>>>>>>> For reference, see
->>>>>>>>>>>> Commit: ecf3d1f1aa74 ("vfs: kill FS_REVAL_DOT by adding a
->>>>>>>>>>>> d_weak_revalidate dentry op")
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>>
->>>>>>>>>>>> To reproduce the problem at home, on a system that uses system=
-d:
->>>>>>>>>>>> 1/ place (or find) a filesystem image in a file on an NFS file=
-system.
->>>>>>>>>>>> 2/ mount the nfs filesystem with "noac" - choose v3 or v4
->>>>>>>>>>>> 3/ loop-mount the filesystem image read-only somewhere
->>>>>>>>>>>> 4/ reboot
->>>>>>>>>>>>
->>>>>>>>>>>> If you choose v4, the reboot will succeed, possibly after a 90=
-second
->>>>>>>>>>>> timeout.
->>>>>>>>>>>> If you choose v3, the reboot will hang indefinitely in systemd-
->>>>>>>>>>>> shutdown while
->>>>>>>>>>>> remounting the nfs filesystem read-only.
->>>>>>>>>>>>
->>>>>>>>>>>> If you don't use "noac" it can still hang, but only if somethi=
-ng
->>>>>>>>>>>> slows
->>>>>>>>>>>> down the reboot enough that attributes have timed out by the t=
-ime
->>>>>>>>>>>> that
->>>>>>>>>>>> systemd-shutdown runs.  This happens for our customer.
->>>>>>>>>>>>
->>>>>>>>>>>> If the loop-mounted filesystem is not read-only, you get other
->>>>>>>>>>>> problems.
->>>>>>>>>>>>
->>>>>>>>>>>> We really want systemd to figure out that the loop-mount needs=
- to be
->>>>>>>>>>>> unmounted first.  I have ideas concerning that, but it is mess=
-y.  But
->>>>>>>>>>>> that isn't the only bug here.
->>>>>>>>>>>
->>>>>>>>>>> The main purpose of d_weak_revalidate() was to catch the issues=
- that
->>>>>>>>>>> arise when someone changes the contents of the current working
->>>>>>>>>>> directory or its parent on the server. Since '.' and '..' are t=
-reated
->>>>>>>>>>> specially in the lookup code, they would not be revalidated wit=
-hout
->>>>>>>>>>> special treatment. That leads to issues when looking up files as
->>>>>>>>>>> ./<filename> or ../<filename>, since the client won't detect th=
-at its
->>>>>>>>>>> dcache is stale until it tries to use the cached dentry+inode.
->>>>>>>>>>>
->>>>>>>>>>> The one thing that has changed since its introduction is, I bel=
-ieve,
->>>>>>>>>>> the ESTALE handling in the VFS layer. That might fix a lot of t=
-he
->>>>>>>>>>> dcache lookup bugs that were previously handled by d_weak_reval=
-idate().
->>>>>>>>>>> I haven't done an audit to figure out if it actually can handle=
- all of
->>>>>>>>>>> them.
->>>>>>>>>>>
->>>>>>>>>>
->>>>>>>>>> It may also be related to 8033426e6bdb2690d302872ac1e1fadaec1a55=
-81:
->>>>>>>>>>
->>>>>>>>>>     vfs: allow umount to handle mountpoints without revalidating=
- them
->>>>>>>>>
->>>>>>>>> You say in the comment for that commit:
->>>>>>>>>
->>>>>>>>>      but there
->>>>>>>>>     are cases where we do want to revalidate the root of the fs.
->>>>>>>>>
->>>>>>>>> Do you happen to remember what those cases are?
->>>>>>>>>
->>>>>>>>
->>>>>>>> Not exactly, but I _think_ I might have been assuming that we need=
-ed to
->>>>>>>> ensure that the inode attrs on the root were up to date after the
->>>>>>>> pathwalk.
->>>>>>>>
->>>>>>>> I think that was probably wrong. d_revalidate is really intended to
->>>>>>>> ensure that the dentry in question still points to the same inode.=
- In
->>>>>>>> the case of the root of the mount though, we don't really care abo=
-ut the
->>>>>>>> dentry on the server at all. We're attaching the root of the mount=
- to an
->>>>>>>> inode and don't care of the dentry name changes. If we do need to =
-ensure
->>>>>>>> the inode attrs are updated, we'll just revalidate them at that po=
-int.
->>>>>>>>
->>>>>>>>>>
->>>>>>>>>> Possibly the fact that we no longer try to revalidate during unm=
-ount
->>>>>>>>>> means that this is no longer necessary?
->>>>>>>>>>
->>>>>>>>>> The original patch that added d_weak_revalidate had a reproducer=
- in the
->>>>>>>>>> patch description. Have you verified that that problem is still =
-not
->>>>>>>>>> reproducible when you remove d_weak_revalidate?
->>>>>>>>>
->>>>>>>>> I did try the reproducer and it works as expected both with and w=
-ithout
->>>>>>>>> d_weak_revalidate.
->>>>>>>>> On reflection, the problem it displayed was caused by d_revalidat=
-e()
->>>>>>>>> being called when the dentry name was irrelevant.  We remove that
->>>>>>>>> (fixing the problem) and introduce d_weak_revalidate because we t=
-hought
->>>>>>>>> that minimum functionality was still useful.  I'm currently not
->>>>>>>>> convinced that even that is needed.
->>>>>>>>>
->>>>>>>>> If we discarded d_weak_revalidate(), we could get rid of the spec=
-ial
->>>>>>>>> handling of umount....
->>>>>>>>
->>>>>>>> I like idea. I say go for it and we can see what (if anything) bre=
-aks?
->>>>>>>
->>>>>>> Getting rid of d_weak_revalidate is easy enough - hardly any users.
->>>>>>>
->>>>>>> Getting rid of filename_mountpoint() isn't so easy unfortunately.
->>>>>>> autofs4 uses kern_path_mountpoint() - presumably to avoid getting s=
-tuck
->>>>>>> in autofs4_d_manage()?  It would be a shame to keep this infrastruc=
-ture
->>>>>>> around just so that one part of autofs4 can talk to another part of
->>>>>>> autofs4.
->>>>>
->>>>> When this was first implemented autofs didn't use kern_path_mountpoin=
-t()
->>>>> (it didn't exist) it used a path lookup on the parent and a separate
->>>>> lookup for the last component.
->>>>
->>>> This was before commit 4e44b6852e03 ("Get rid of path_lookup in
->>>> autofs4").  This used kern_path().
->>>
->>> I have to plead not guilty of this one.
->>>
->>> IIRC it broke the requirement of "lookup parent then lookup last compon=
-ent"
->>> rather it walked the whole path then followed up to find the mount point
->>> struct path.
->>>
->>> Like it says in the description of ac8387199656 the caller might not yet
->>> "own" the autofs mount which causes a mount to be triggered during the
->>> walk that can't be satisfied because of the deadlock that occurs.
->>=20
->> A mount isn't triggered by kern_path(pathname, 0, &path).
->> That '0' would need to include one of
->>   LOOKUP_PARENT | LOOKUP_DIRECTORY |
->>   LOOKUP_OPEN | LOOKUP_CREATE | LOOKUP_AUTOMOUNT
->>=20
->> to trigger an automount (otherwise you just get -EISDIR).
->
-> It's perfectly sensible to think that but there is a case where a
-> a mount is triggered when using kern_path().
->
-> The EISDIR return occurs for positive dentrys, negative dentrys
-> will still trigger an automount (which is autofs specific,
-> indirect mount map using nobrowse option, the install default).
+The fix is to re-order socket user data init sequence and add
+write/read barrier calls to be sure that we got proper values
+for callback pointers before actually calling them.
 
-Ahh  -  light dawns.  Thanks :-)
+Test results: nfs/connectathon reports '0' failed tests for about 200+ iterations.
 
-NeilBrown
+Crash log:
+---<-snip->---
+[ 6708.638984] Unable to handle kernel NULL pointer dereference at virtual address 00000000
+[ 6708.647093] pgd = ffff0000094e0000
+[ 6708.650497] [00000000] *pgd=0000010ffff90003, *pud=0000010ffff90003, *pmd=0000010ffff80003, *pte=0000000000000000
+[ 6708.660761] Internal error: Oops: 86000005 [#1] SMP
+[ 6708.665630] Modules linked in: nfsv3 nfnetlink_queue nfnetlink_log nfnetlink rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache overlay xt_CONNSECMARK xt_SECMARK xt_conntrack iptable_security ip_tables ah4 xfrm4_mode_transport sctp tun binfmt_misc ext4 jbd2 mbcache loop tcp_diag udp_diag inet_diag rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_core nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack vfat fat ghash_ce sha2_ce sha1_ce cavium_rng_vf i2c_thunderx sg thunderx_edac i2c_smbus edac_core cavium_rng nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c nicvf nicpf ast i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops
+[ 6708.736446]  ttm drm i2c_core thunder_bgx thunder_xcv mdio_thunder mdio_cavium dm_mirror dm_region_hash dm_log dm_mod [last unloaded: stap_3c300909c5b3f46dcacd49aab3334af_87021]
+[ 6708.752275] CPU: 84 PID: 0 Comm: swapper/84 Tainted: G        W  OE   4.11.0-4.el7.aarch64 #1
+[ 6708.760787] Hardware name: www.cavium.com CRB-2S/CRB-2S, BIOS 0.3 Mar 13 2017
+[ 6708.767910] task: ffff810006842e80 task.stack: ffff81000689c000
+[ 6708.773822] PC is at 0x0
+[ 6708.776739] LR is at svc_data_ready+0x38/0x88 [sunrpc]
+[ 6708.781866] pc : [<0000000000000000>] lr : [<ffff0000029d7378>] pstate: 60000145
+[ 6708.789248] sp : ffff810ffbad3900
+[ 6708.792551] x29: ffff810ffbad3900 x28: ffff000008c73d58
+[ 6708.797853] x27: 0000000000000000 x26: ffff81000bbe1e00
+[ 6708.803156] x25: 0000000000000020 x24: ffff800f7410bf28
+[ 6708.808458] x23: ffff000008c63000 x22: ffff000008c63000
+[ 6708.813760] x21: ffff800f7410bf28 x20: ffff81000bbe1e00
+[ 6708.819063] x19: ffff810012412400 x18: 00000000d82a9df2
+[ 6708.824365] x17: 0000000000000000 x16: 0000000000000000
+[ 6708.829667] x15: 0000000000000000 x14: 0000000000000001
+[ 6708.834969] x13: 0000000000000000 x12: 722e736f622e676e
+[ 6708.840271] x11: 00000000f814dd99 x10: 0000000000000000
+[ 6708.845573] x9 : 7374687225000000 x8 : 0000000000000000
+[ 6708.850875] x7 : 0000000000000000 x6 : 0000000000000000
+[ 6708.856177] x5 : 0000000000000028 x4 : 0000000000000000
+[ 6708.861479] x3 : 0000000000000000 x2 : 00000000e5000000
+[ 6708.866781] x1 : 0000000000000000 x0 : ffff81000bbe1e00
+[ 6708.872084]
+[ 6708.873565] Process swapper/84 (pid: 0, stack limit = 0xffff81000689c000)
+[ 6708.880341] Stack: (0xffff810ffbad3900 to 0xffff8100068a0000)
+[ 6708.886075] Call trace:
+[ 6708.888513] Exception stack(0xffff810ffbad3710 to 0xffff810ffbad3840)
+[ 6708.894942] 3700:                                   ffff810012412400 0001000000000000
+[ 6708.902759] 3720: ffff810ffbad3900 0000000000000000 0000000060000145 ffff800f79300000
+[ 6708.910577] 3740: ffff000009274d00 00000000000003ea 0000000000000015 ffff000008c63000
+[ 6708.918395] 3760: ffff810ffbad3830 ffff800f79300000 000000000000004d 0000000000000000
+[ 6708.926212] 3780: ffff810ffbad3890 ffff0000080f88dc ffff800f79300000 000000000000004d
+[ 6708.934030] 37a0: ffff800f7930093c ffff000008c63000 0000000000000000 0000000000000140
+[ 6708.941848] 37c0: ffff000008c2c000 0000000000040b00 ffff81000bbe1e00 0000000000000000
+[ 6708.949665] 37e0: 00000000e5000000 0000000000000000 0000000000000000 0000000000000028
+[ 6708.957483] 3800: 0000000000000000 0000000000000000 0000000000000000 7374687225000000
+[ 6708.965300] 3820: 0000000000000000 00000000f814dd99 722e736f622e676e 0000000000000000
+[ 6708.973117] [<          (null)>]           (null)
+[ 6708.977824] [<ffff0000086f9fa4>] tcp_data_queue+0x754/0xc5c
+[ 6708.983386] [<ffff0000086fa64c>] tcp_rcv_established+0x1a0/0x67c
+[ 6708.989384] [<ffff000008704120>] tcp_v4_do_rcv+0x15c/0x22c
+[ 6708.994858] [<ffff000008707418>] tcp_v4_rcv+0xaf0/0xb58
+[ 6709.000077] [<ffff0000086df784>] ip_local_deliver_finish+0x10c/0x254
+[ 6709.006419] [<ffff0000086dfea4>] ip_local_deliver+0xf0/0xfc
+[ 6709.011980] [<ffff0000086dfad4>] ip_rcv_finish+0x208/0x3a4
+[ 6709.017454] [<ffff0000086e018c>] ip_rcv+0x2dc/0x3c8
+[ 6709.022328] [<ffff000008692fc8>] __netif_receive_skb_core+0x2f8/0xa0c
+[ 6709.028758] [<ffff000008696068>] __netif_receive_skb+0x38/0x84
+[ 6709.034580] [<ffff00000869611c>] netif_receive_skb_internal+0x68/0xdc
+[ 6709.041010] [<ffff000008696bc0>] napi_gro_receive+0xcc/0x1a8
+[ 6709.046690] [<ffff0000014b0fc4>] nicvf_cq_intr_handler+0x59c/0x730 [nicvf]
+[ 6709.053559] [<ffff0000014b1380>] nicvf_poll+0x38/0xb8 [nicvf]
+[ 6709.059295] [<ffff000008697a6c>] net_rx_action+0x2f8/0x464
+[ 6709.064771] [<ffff000008081824>] __do_softirq+0x11c/0x308
+[ 6709.070164] [<ffff0000080d14e4>] irq_exit+0x12c/0x174
+[ 6709.075206] [<ffff00000813101c>] __handle_domain_irq+0x78/0xc4
+[ 6709.081027] [<ffff000008081608>] gic_handle_irq+0x94/0x190
+[ 6709.086501] Exception stack(0xffff81000689fdf0 to 0xffff81000689ff20)
+[ 6709.092929] fde0:                                   0000810ff2ec0000 ffff000008c10000
+[ 6709.100747] fe00: ffff000008c70ef4 0000000000000001 0000000000000000 ffff810ffbad9b18
+[ 6709.108565] fe20: ffff810ffbad9c70 ffff8100169d3800 ffff810006843ab0 ffff81000689fe80
+[ 6709.116382] fe40: 0000000000000bd0 0000ffffdf979cd0 183f5913da192500 0000ffff8a254ce4
+[ 6709.124200] fe60: 0000ffff8a254b78 0000aaab10339808 0000000000000000 0000ffff8a0c2a50
+[ 6709.132018] fe80: 0000ffffdf979b10 ffff000008d6d450 ffff000008c10000 ffff000008d6d000
+[ 6709.139836] fea0: 0000000000000054 ffff000008cd3dbc 0000000000000000 0000000000000000
+[ 6709.147653] fec0: 0000000000000000 0000000000000000 0000000000000000 ffff81000689ff20
+[ 6709.155471] fee0: ffff000008085240 ffff81000689ff20 ffff000008085244 0000000060000145
+[ 6709.163289] ff00: ffff81000689ff10 ffff00000813f1e4 ffffffffffffffff ffff00000813f238
+[ 6709.171107] [<ffff000008082eb4>] el1_irq+0xb4/0x140
+[ 6709.175976] [<ffff000008085244>] arch_cpu_idle+0x44/0x11c
+[ 6709.181368] [<ffff0000087bf3b8>] default_idle_call+0x20/0x30
+[ 6709.187020] [<ffff000008116d50>] do_idle+0x158/0x1e4
+[ 6709.191973] [<ffff000008116ff4>] cpu_startup_entry+0x2c/0x30
+[ 6709.197624] [<ffff00000808e7cc>] secondary_start_kernel+0x13c/0x160
+[ 6709.203878] [<0000000001bc71c4>] 0x1bc71c4
+[ 6709.207967] Code: bad PC value
+[ 6709.211061] SMP: stopping secondary CPUs
+[ 6709.218830] Starting crashdump kernel...
+[ 6709.222749] Bye!
+---<-snip>---
 
+Signed-off-by: Vadim Lomovtsev <vlomovts@redhat.com>
+---
+ net/sunrpc/svcsock.c | 27 +++++++++++++++++++++++++--
+ 1 file changed, 25 insertions(+), 2 deletions(-)
 
->
->>=20
->> That is why I assumed that ->d_managed was the problem.
->>=20
->>>
->>>>
->>>> I'm more interested in commit ac8387199656 ("autofs4 - fix device ioctl
->>>> mount lookup")  which replaced the use of kern_path() with
->>>> kern_path_mountpoint().
->>>
->>> Probably should have had a Fixes: 4e44b6852e03 ...
->>=20
->> Still a bit confused as to exactly what was fixed...
->
-> Hopefully also considering the negative dentry case will clear that up.
->
-> Ian
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index 2b720fa..2be967f 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -421,6 +421,10 @@ static void svc_data_ready(struct sock *sk)
+ 		dprintk("svc: socket %p(inet %p), busy=%d\n",
+ 			svsk, sk,
+ 			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
++		/* this barrier is necessary to prevent kernel crash
++		   (due to bad CPU-value) caused by races aginst
++		   svc_setup_socket() while calling sk_odata() callback. */
++		rmb();
+ 		svsk->sk_odata(sk);
+ 		if (!test_and_set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags))
+ 			svc_xprt_enqueue(&svsk->sk_xprt);
+@@ -437,6 +441,10 @@ static void svc_write_space(struct sock *sk)
+ 	if (svsk) {
+ 		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
+ 			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
++		/* this barrier is necessary to prevent kernel crash
++		   (due to bad CPU-value) caused by races aginst
++		   svc_setup_socket() while calling sk_owspace() callback. */
++		rmb();
+ 		svsk->sk_owspace(sk);
+ 		svc_xprt_enqueue(&svsk->sk_xprt);
+ 	}
+@@ -760,8 +768,14 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+ 	dprintk("svc: socket %p TCP (listen) state change %d\n",
+ 		sk, sk->sk_state);
+ 
+-	if (svsk)
++	if (svsk) {
++		/* this barrier is necessary to prevent kernel crash
++		   (due to bad CPU-value) caused by races aginst
++		   svc_setup_socket() while calling sk_odata() callback.*/
++		rmb();
+ 		svsk->sk_odata(sk);
++	}
++
+ 	/*
+ 	 * This callback may called twice when a new connection
+ 	 * is established as a child socket inherits everything
+@@ -794,7 +808,12 @@ static void svc_tcp_state_change(struct sock *sk)
+ 	if (!svsk)
+ 		printk("svc: socket %p: no user data\n", sk);
+ 	else {
++		/* this barrier is necessary to prevent kernel crash
++		   (due to bad CPU-value) caused by races aginst
++		   svc_setup_socket() while calling sk_odata() callback. */
++		rmb();
+ 		svsk->sk_ostate(sk);
++
+ 		if (sk->sk_state != TCP_ESTABLISHED) {
+ 			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+ 			svc_xprt_enqueue(&svsk->sk_xprt);
+@@ -1381,12 +1400,16 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 		return ERR_PTR(err);
+ 	}
+ 
+-	inet->sk_user_data = svsk;
+ 	svsk->sk_sock = sock;
+ 	svsk->sk_sk = inet;
+ 	svsk->sk_ostate = inet->sk_state_change;
+ 	svsk->sk_odata = inet->sk_data_ready;
+ 	svsk->sk_owspace = inet->sk_write_space;
++	/* this barrier is necessary in order to prevent race condition
++	   with svc_data_ready(), svc_listen_data_ready()
++	   and others when calling callbacks above */
++	wmb();
++	inet->sk_user_data = svsk;
+ 
+ 	/* Initialize the socket */
+ 	if (sock->type == SOCK_DGRAM)
+-- 
+1.8.3.1
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmaj9gACgkQOeye3VZi
-gbmspxAAhCoaLsnsJCQmPT7JdIXq0U/c+/IN0vG7zY1l0qC22bkLW9OgQr9GVges
-E83Bj7sbzyAnRiFFWVEX3CRMH65zz3Z1uyfnPTwa3PVvziWhKCUbLlqg81uKLkRW
-FDp45OZChawBcEYrCfx+XPLB/IqjBZr7KhknVxUW8rsQqQmBxLPYkd2WqOQh9T+j
-NNANP2MIB7sZYsoWb7TsiBvWz8cef6/jFBjxMoISPaMfGLlJRnP51mH5Gunualuc
-n0RtHzCEdZRFEzabxUBsCrd4bnRSPNKPTyY2jtP1hqw3UkZ/7QIXBRkKjk0p32O7
-ejUqUTnB3WjaNt7Rf0kwUs0yl7olkN08lbA9WhMyTBi4dISPH5LMN1Nvu16sB64h
-+c1KPzhy1sbWfH0dHu9EbuJhSlUsYRBnv8LN1XKm8bH/jaZJvzy6XHM/BMjj+tXE
-rXo8EneWEQFWpXkdSp+MLe9lnzjSYcH6+n1zuJMEXqTsFrE9DYYWBhr8M/3mYK6z
-LiBqmi3fJb7cQxFbs+f5qJvXix64KxOZhezUbiUDHWfMbj1gmB/R8Uk5W0wDoVjd
-dFNyFPq47TX9p17bDBgysM/LHr/R3LJRX19A84DWF8vZoFs1wtVFjNdxoVJdNBlT
-mQ+6IY4E2iIEtr2x6VDKxhbuWrNwCNciOptJvFR5MrieweT408g=
-=Qn6N
------END PGP SIGNATURE-----
---=-=-=--
