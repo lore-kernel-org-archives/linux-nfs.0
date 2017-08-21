@@ -1,198 +1,404 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36016 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750967AbdHULXP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 21 Aug 2017 07:23:15 -0400
-From: Vadim Lomovtsev <vlomovts@redhat.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, jlayton@poochiereds.net, davem@davemloft.net,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, pabeni@redhat.com
-Cc: Vadim Lomovtsev <vlomovts@redhat.com>
-Subject: [PATCH v4] net: sunrpc: svcsock: fix NULL-pointer exception
-Date: Mon, 21 Aug 2017 07:23:07 -0400
-Message-Id: <1503314587-15420-1-git-send-email-vlomovts@redhat.com>
-In-Reply-To: <1503305779-6064-1-git-send-email-vlomovts@redhat.com>
-References: <1503305779-6064-1-git-send-email-vlomovts@redhat.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:38536 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753527AbdHUTAv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Aug 2017 15:00:51 -0400
+Received: by mail-io0-f196.google.com with SMTP id g71so3836912ioe.5
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Aug 2017 12:00:51 -0700 (PDT)
+Received: from manet.1015granger.net (c-68-46-169-226.hsd1.mi.comcast.net. [68.46.169.226])
+        by smtp.gmail.com with ESMTPSA id c67sm6139170ioj.73.2017.08.21.12.00.49
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 21 Aug 2017 12:00:49 -0700 (PDT)
+Subject: [PATCH RFC] NFS: Add static NFS I/O tracepoints
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Mon, 21 Aug 2017 15:00:49 -0400
+Message-ID: <20170821190049.11352.87544.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While running nfs/connectathon tests kernel NULL-pointer exception
-has been observed due to races in svcsock.c.
+Tools like tcpdump and rpcdebug can be very useful. But there are
+plenty of environments where they are difficult or impossible to
+use. For example, we've had customers report I/O failures during
+workloads so heavy that collecting network traffic or enabling
+RPC debugging are themselves onerous.
 
-Race is appear when kernel accepts connection by kernel_accept
-(which creates new socket) and start queuing ingress packets
-to new socket. This happens in ksoftirq context which could run
-concurrently on a different core while new socket setup is not done yet.
+The kernel's static tracepoints are lightweight (less likely to
+introduce timing changes) and efficient (the trace data is compact).
+They also work in scenarios where capturing network traffic is not
+possible due to lack of hardware support (some InfiniBand HCAs) or
+where data or network privacy is a concern.
 
-The fix is to re-order socket user data init sequence and add
-write/read barrier calls to be sure that we got proper values
-for callback pointers before actually calling them.
+Introduce tracepoints that show when an NFS READ, WRITE, or COMMIT
+is initiated, and when it completes. Record the arguments and
+results of each operation, which are not shown by existing sunrpc
+module's tracepoints.
 
-Test results: nfs/connectathon reports '0' failed tests for about 200+ iterations.
+For instance, the recorded offset and count can be used to match an
+"initiate" event to a "done" event. If an NFS READ result returns
+fewer bytes than requested or zero, seeing the EOF flag can be
+probative. Seeing an NFS4ERR_BAD_STATEID result is also indication
+of a particular class of problems. The timing information attached
+to each event record can often be useful as well.
 
-Crash log:
----<-snip->---
-[ 6708.638984] Unable to handle kernel NULL pointer dereference at virtual address 00000000
-[ 6708.647093] pgd = ffff0000094e0000
-[ 6708.650497] [00000000] *pgd=0000010ffff90003, *pud=0000010ffff90003, *pmd=0000010ffff80003, *pte=0000000000000000
-[ 6708.660761] Internal error: Oops: 86000005 [#1] SMP
-[ 6708.665630] Modules linked in: nfsv3 nfnetlink_queue nfnetlink_log nfnetlink rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache overlay xt_CONNSECMARK xt_SECMARK xt_conntrack iptable_security ip_tables ah4 xfrm4_mode_transport sctp tun binfmt_misc ext4 jbd2 mbcache loop tcp_diag udp_diag inet_diag rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_core nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack vfat fat ghash_ce sha2_ce sha1_ce cavium_rng_vf i2c_thunderx sg thunderx_edac i2c_smbus edac_core cavium_rng nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c nicvf nicpf ast i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops
-[ 6708.736446]  ttm drm i2c_core thunder_bgx thunder_xcv mdio_thunder mdio_cavium dm_mirror dm_region_hash dm_log dm_mod [last unloaded: stap_3c300909c5b3f46dcacd49aab3334af_87021]
-[ 6708.752275] CPU: 84 PID: 0 Comm: swapper/84 Tainted: G        W  OE   4.11.0-4.el7.aarch64 #1
-[ 6708.760787] Hardware name: www.cavium.com CRB-2S/CRB-2S, BIOS 0.3 Mar 13 2017
-[ 6708.767910] task: ffff810006842e80 task.stack: ffff81000689c000
-[ 6708.773822] PC is at 0x0
-[ 6708.776739] LR is at svc_data_ready+0x38/0x88 [sunrpc]
-[ 6708.781866] pc : [<0000000000000000>] lr : [<ffff0000029d7378>] pstate: 60000145
-[ 6708.789248] sp : ffff810ffbad3900
-[ 6708.792551] x29: ffff810ffbad3900 x28: ffff000008c73d58
-[ 6708.797853] x27: 0000000000000000 x26: ffff81000bbe1e00
-[ 6708.803156] x25: 0000000000000020 x24: ffff800f7410bf28
-[ 6708.808458] x23: ffff000008c63000 x22: ffff000008c63000
-[ 6708.813760] x21: ffff800f7410bf28 x20: ffff81000bbe1e00
-[ 6708.819063] x19: ffff810012412400 x18: 00000000d82a9df2
-[ 6708.824365] x17: 0000000000000000 x16: 0000000000000000
-[ 6708.829667] x15: 0000000000000000 x14: 0000000000000001
-[ 6708.834969] x13: 0000000000000000 x12: 722e736f622e676e
-[ 6708.840271] x11: 00000000f814dd99 x10: 0000000000000000
-[ 6708.845573] x9 : 7374687225000000 x8 : 0000000000000000
-[ 6708.850875] x7 : 0000000000000000 x6 : 0000000000000000
-[ 6708.856177] x5 : 0000000000000028 x4 : 0000000000000000
-[ 6708.861479] x3 : 0000000000000000 x2 : 00000000e5000000
-[ 6708.866781] x1 : 0000000000000000 x0 : ffff81000bbe1e00
-[ 6708.872084]
-[ 6708.873565] Process swapper/84 (pid: 0, stack limit = 0xffff81000689c000)
-[ 6708.880341] Stack: (0xffff810ffbad3900 to 0xffff8100068a0000)
-[ 6708.886075] Call trace:
-[ 6708.888513] Exception stack(0xffff810ffbad3710 to 0xffff810ffbad3840)
-[ 6708.894942] 3700:                                   ffff810012412400 0001000000000000
-[ 6708.902759] 3720: ffff810ffbad3900 0000000000000000 0000000060000145 ffff800f79300000
-[ 6708.910577] 3740: ffff000009274d00 00000000000003ea 0000000000000015 ffff000008c63000
-[ 6708.918395] 3760: ffff810ffbad3830 ffff800f79300000 000000000000004d 0000000000000000
-[ 6708.926212] 3780: ffff810ffbad3890 ffff0000080f88dc ffff800f79300000 000000000000004d
-[ 6708.934030] 37a0: ffff800f7930093c ffff000008c63000 0000000000000000 0000000000000140
-[ 6708.941848] 37c0: ffff000008c2c000 0000000000040b00 ffff81000bbe1e00 0000000000000000
-[ 6708.949665] 37e0: 00000000e5000000 0000000000000000 0000000000000000 0000000000000028
-[ 6708.957483] 3800: 0000000000000000 0000000000000000 0000000000000000 7374687225000000
-[ 6708.965300] 3820: 0000000000000000 00000000f814dd99 722e736f622e676e 0000000000000000
-[ 6708.973117] [<          (null)>]           (null)
-[ 6708.977824] [<ffff0000086f9fa4>] tcp_data_queue+0x754/0xc5c
-[ 6708.983386] [<ffff0000086fa64c>] tcp_rcv_established+0x1a0/0x67c
-[ 6708.989384] [<ffff000008704120>] tcp_v4_do_rcv+0x15c/0x22c
-[ 6708.994858] [<ffff000008707418>] tcp_v4_rcv+0xaf0/0xb58
-[ 6709.000077] [<ffff0000086df784>] ip_local_deliver_finish+0x10c/0x254
-[ 6709.006419] [<ffff0000086dfea4>] ip_local_deliver+0xf0/0xfc
-[ 6709.011980] [<ffff0000086dfad4>] ip_rcv_finish+0x208/0x3a4
-[ 6709.017454] [<ffff0000086e018c>] ip_rcv+0x2dc/0x3c8
-[ 6709.022328] [<ffff000008692fc8>] __netif_receive_skb_core+0x2f8/0xa0c
-[ 6709.028758] [<ffff000008696068>] __netif_receive_skb+0x38/0x84
-[ 6709.034580] [<ffff00000869611c>] netif_receive_skb_internal+0x68/0xdc
-[ 6709.041010] [<ffff000008696bc0>] napi_gro_receive+0xcc/0x1a8
-[ 6709.046690] [<ffff0000014b0fc4>] nicvf_cq_intr_handler+0x59c/0x730 [nicvf]
-[ 6709.053559] [<ffff0000014b1380>] nicvf_poll+0x38/0xb8 [nicvf]
-[ 6709.059295] [<ffff000008697a6c>] net_rx_action+0x2f8/0x464
-[ 6709.064771] [<ffff000008081824>] __do_softirq+0x11c/0x308
-[ 6709.070164] [<ffff0000080d14e4>] irq_exit+0x12c/0x174
-[ 6709.075206] [<ffff00000813101c>] __handle_domain_irq+0x78/0xc4
-[ 6709.081027] [<ffff000008081608>] gic_handle_irq+0x94/0x190
-[ 6709.086501] Exception stack(0xffff81000689fdf0 to 0xffff81000689ff20)
-[ 6709.092929] fde0:                                   0000810ff2ec0000 ffff000008c10000
-[ 6709.100747] fe00: ffff000008c70ef4 0000000000000001 0000000000000000 ffff810ffbad9b18
-[ 6709.108565] fe20: ffff810ffbad9c70 ffff8100169d3800 ffff810006843ab0 ffff81000689fe80
-[ 6709.116382] fe40: 0000000000000bd0 0000ffffdf979cd0 183f5913da192500 0000ffff8a254ce4
-[ 6709.124200] fe60: 0000ffff8a254b78 0000aaab10339808 0000000000000000 0000ffff8a0c2a50
-[ 6709.132018] fe80: 0000ffffdf979b10 ffff000008d6d450 ffff000008c10000 ffff000008d6d000
-[ 6709.139836] fea0: 0000000000000054 ffff000008cd3dbc 0000000000000000 0000000000000000
-[ 6709.147653] fec0: 0000000000000000 0000000000000000 0000000000000000 ffff81000689ff20
-[ 6709.155471] fee0: ffff000008085240 ffff81000689ff20 ffff000008085244 0000000060000145
-[ 6709.163289] ff00: ffff81000689ff10 ffff00000813f1e4 ffffffffffffffff ffff00000813f238
-[ 6709.171107] [<ffff000008082eb4>] el1_irq+0xb4/0x140
-[ 6709.175976] [<ffff000008085244>] arch_cpu_idle+0x44/0x11c
-[ 6709.181368] [<ffff0000087bf3b8>] default_idle_call+0x20/0x30
-[ 6709.187020] [<ffff000008116d50>] do_idle+0x158/0x1e4
-[ 6709.191973] [<ffff000008116ff4>] cpu_startup_entry+0x2c/0x30
-[ 6709.197624] [<ffff00000808e7cc>] secondary_start_kernel+0x13c/0x160
-[ 6709.203878] [<0000000001bc71c4>] 0x1bc71c4
-[ 6709.207967] Code: bad PC value
-[ 6709.211061] SMP: stopping secondary CPUs
-[ 6709.218830] Starting crashdump kernel...
-[ 6709.222749] Bye!
----<-snip>---
+Usage example:
 
-Signed-off-by: Vadim Lomovtsev <vlomovts@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+[root@manet tmp]# trace-cmd record -e nfs:*initiate* -e nfs:*done
+/sys/kernel/debug/tracing/events/nfs/*initiate*/filter
+/sys/kernel/debug/tracing/events/nfs/*done/filter
+Hit Ctrl^C to stop recording
+^CKernel buffer statistics:
+  Note: "entries" are the entries left in the kernel ring buffer and are not
+        recorded in the trace data. They should all be zero.
+
+CPU: 0
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 3680
+oldest event ts:    78.367422
+now ts:   100.124419
+dropped events: 0
+read events: 74
+
+... and so on.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/svcsock.c | 22 ++++++++++++++++++++--
- 1 file changed, 20 insertions(+), 2 deletions(-)
+ fs/nfs/nfstrace.h |  248 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/read.c     |    4 +
+ fs/nfs/write.c    |    7 +
+ 3 files changed, 259 insertions(+)
 
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 2b720fa..e185001 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -421,6 +421,9 @@ static void svc_data_ready(struct sock *sk)
- 		dprintk("svc: socket %p(inet %p), busy=%d\n",
- 			svsk, sk,
- 			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
+diff --git a/fs/nfs/nfstrace.h b/fs/nfs/nfstrace.h
+index 2ca9167..5517110 100644
+--- a/fs/nfs/nfstrace.h
++++ b/fs/nfs/nfstrace.h
+@@ -719,6 +719,254 @@
+ 			__get_str(name)
+ 		)
+ );
 +
-+		/* Refer to svc_setup_socket() for details. */
-+		rmb();
- 		svsk->sk_odata(sk);
- 		if (!test_and_set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags))
- 			svc_xprt_enqueue(&svsk->sk_xprt);
-@@ -437,6 +440,9 @@ static void svc_write_space(struct sock *sk)
- 	if (svsk) {
- 		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
- 			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
++TRACE_EVENT(nfs_initiate_read,
++		TP_PROTO(
++			const struct inode *inode,
++			loff_t offset, unsigned long count
++		),
 +
-+		/* Refer to svc_setup_socket() for details. */
-+		rmb();
- 		svsk->sk_owspace(sk);
- 		svc_xprt_enqueue(&svsk->sk_xprt);
- 	}
-@@ -760,8 +766,12 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
- 	dprintk("svc: socket %p TCP (listen) state change %d\n",
- 		sk, sk->sk_state);
- 
--	if (svsk)
-+	if (svsk) {
-+		/* Refer to svc_setup_socket() for details. */
-+		rmb();
- 		svsk->sk_odata(sk);
-+	}
++		TP_ARGS(inode, offset, count),
 +
- 	/*
- 	 * This callback may called twice when a new connection
- 	 * is established as a child socket inherits everything
-@@ -794,6 +804,8 @@ static void svc_tcp_state_change(struct sock *sk)
- 	if (!svsk)
- 		printk("svc: socket %p: no user data\n", sk);
- 	else {
-+		/* Refer to svc_setup_socket() for details. */
-+		rmb();
- 		svsk->sk_ostate(sk);
- 		if (sk->sk_state != TCP_ESTABLISHED) {
- 			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
-@@ -1381,12 +1393,18 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 		return ERR_PTR(err);
- 	}
++		TP_STRUCT__entry(
++			__field(loff_t, offset)
++			__field(unsigned long, count)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++		),
++
++		TP_fast_assign(
++			const struct nfs_inode *nfsi = NFS_I(inode);
++
++			__entry->offset = offset;
++			__entry->count = count;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%lu",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			__entry->offset, __entry->count
++		)
++);
++
++TRACE_EVENT(nfs_readpage_done,
++		TP_PROTO(
++			const struct inode *inode,
++			int status, loff_t offset, bool eof
++		),
++
++		TP_ARGS(inode, status, offset, eof),
++
++		TP_STRUCT__entry(
++			__field(int, status)
++			__field(loff_t, offset)
++			__field(bool, eof)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++		),
++
++		TP_fast_assign(
++			const struct nfs_inode *nfsi = NFS_I(inode);
++
++			__entry->status = status;
++			__entry->offset = offset;
++			__entry->eof = eof;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld status=%d%s",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			__entry->offset, __entry->status,
++			__entry->eof ? " eof" : ""
++		)
++);
++
++/*
++ * XXX: I tried using NFS_UNSTABLE and friends in this table, but they
++ * all evaluate to 0 for some reason, even if I include linux/nfs.h.
++ */
++#define nfs_show_stable(stable) \
++	__print_symbolic(stable, \
++			{ 0, " (UNSTABLE)" }, \
++			{ 1, " (DATA_SYNC)" }, \
++			{ 2, " (FILE_SYNC)" })
++
++TRACE_EVENT(nfs_initiate_write,
++		TP_PROTO(
++			const struct inode *inode,
++			loff_t offset, unsigned long count,
++			enum nfs3_stable_how stable
++		),
++
++		TP_ARGS(inode, offset, count, stable),
++
++		TP_STRUCT__entry(
++			__field(loff_t, offset)
++			__field(unsigned long, count)
++			__field(enum nfs3_stable_how, stable)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++		),
++
++		TP_fast_assign(
++			const struct nfs_inode *nfsi = NFS_I(inode);
++
++			__entry->offset = offset;
++			__entry->count = count;
++			__entry->stable = stable;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%lu stable=%d%s",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			__entry->offset, __entry->count,
++			__entry->stable, nfs_show_stable(__entry->stable)
++		)
++);
++
++TRACE_EVENT(nfs_writeback_done,
++		TP_PROTO(
++			const struct inode *inode,
++			int status,
++			loff_t offset,
++			struct nfs_writeverf *writeverf
++		),
++
++		TP_ARGS(inode, status, offset, writeverf),
++
++		TP_STRUCT__entry(
++			__field(int, status)
++			__field(loff_t, offset)
++			__field(enum nfs3_stable_how, stable)
++			__field(unsigned long long, verifier)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++		),
++
++		TP_fast_assign(
++			const struct nfs_inode *nfsi = NFS_I(inode);
++
++			__entry->status = status;
++			__entry->offset = offset;
++			__entry->stable = writeverf->committed;
++			memcpy(&__entry->verifier, &writeverf->verifier,
++			       sizeof(__entry->verifier));
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld status=%d stable=%d%s "
++			"verifier 0x%016llx",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			__entry->offset, __entry->status,
++			__entry->stable, nfs_show_stable(__entry->stable),
++			__entry->verifier
++		)
++);
++
++TRACE_EVENT(nfs_initiate_commit,
++		TP_PROTO(
++			const struct nfs_commit_data *data
++		),
++
++		TP_ARGS(data),
++
++		TP_STRUCT__entry(
++			__field(loff_t, offset)
++			__field(unsigned long, count)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++		),
++
++		TP_fast_assign(
++			const struct inode *inode = data->inode;
++			const struct nfs_inode *nfsi = NFS_I(inode);
++
++			__entry->offset = data->args.offset;
++			__entry->count = data->args.count;
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld count=%lu",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			__entry->offset, __entry->count
++		)
++);
++
++TRACE_EVENT(nfs_commit_done,
++		TP_PROTO(
++			const struct nfs_commit_data *data
++		),
++
++		TP_ARGS(data),
++
++		TP_STRUCT__entry(
++			__field(int, status)
++			__field(loff_t, offset)
++			__field(unsigned long long, verifier)
++			__field(dev_t, dev)
++			__field(u32, fhandle)
++			__field(u64, fileid)
++		),
++
++		TP_fast_assign(
++			const struct inode *inode = data->inode;
++			const struct nfs_inode *nfsi = NFS_I(inode);
++
++			__entry->status = data->res.op_status;
++			__entry->offset = data->args.offset;
++			memcpy(&__entry->verifier, &data->verf.verifier,
++			       sizeof(__entry->verifier));
++			__entry->dev = inode->i_sb->s_dev;
++			__entry->fileid = nfsi->fileid;
++			__entry->fhandle = nfs_fhandle_hash(&nfsi->fh);
++		),
++
++		TP_printk(
++			"fileid=%02x:%02x:%llu fhandle=0x%08x "
++			"offset=%lld status=%d verifier 0x%016llx",
++			MAJOR(__entry->dev), MINOR(__entry->dev),
++			(unsigned long long)__entry->fileid,
++			__entry->fhandle,
++			__entry->offset, __entry->status,
++			__entry->verifier
++		)
++);
++
+ #endif /* _TRACE_NFS_H */
  
--	inet->sk_user_data = svsk;
- 	svsk->sk_sock = sock;
- 	svsk->sk_sk = inet;
- 	svsk->sk_ostate = inet->sk_state_change;
- 	svsk->sk_odata = inet->sk_data_ready;
- 	svsk->sk_owspace = inet->sk_write_space;
-+	/*
-+	 * This barrier is necessary in order to prevent race condition
-+	 * with svc_data_ready(), svc_listen_data_ready() and others
-+	 * when calling callbacks above.
-+	 */
-+	wmb();
-+	inet->sk_user_data = svsk;
+ #undef TRACE_INCLUDE_PATH
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index a8421d9..bbc6fa5 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -25,6 +25,7 @@
+ #include "iostat.h"
+ #include "fscache.h"
+ #include "pnfs.h"
++#include "nfstrace.h"
  
- 	/* Initialize the socket */
- 	if (sock->type == SOCK_DGRAM)
--- 
-1.8.3.1
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -200,6 +201,7 @@ static void nfs_initiate_read(struct nfs_pgio_header *hdr,
+ 
+ 	task_setup_data->flags |= swap_flags;
+ 	rpc_ops->read_setup(hdr, msg);
++	trace_nfs_initiate_read(inode, hdr->io_start, hdr->good_bytes);
+ }
+ 
+ static void
+@@ -232,6 +234,8 @@ static int nfs_readpage_done(struct rpc_task *task,
+ 		return status;
+ 
+ 	nfs_add_stats(inode, NFSIOS_SERVERREADBYTES, hdr->res.count);
++	trace_nfs_readpage_done(inode, task->tk_status,
++				hdr->args.offset, hdr->res.eof);
+ 
+ 	if (task->tk_status == -ESTALE) {
+ 		set_bit(NFS_INO_STALE, &NFS_I(inode)->flags);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index b1af5de..bc7ad5cb 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1399,6 +1399,8 @@ static void nfs_initiate_write(struct nfs_pgio_header *hdr,
+ 
+ 	task_setup_data->priority = priority;
+ 	rpc_ops->write_setup(hdr, msg);
++	trace_nfs_initiate_write(hdr->inode, hdr->io_start, hdr->good_bytes,
++				 hdr->args.stable);
+ 
+ 	nfs4_state_protect_write(NFS_SERVER(hdr->inode)->nfs_client,
+ 				 &task_setup_data->rpc_client, msg, hdr);
+@@ -1557,7 +1559,10 @@ static int nfs_writeback_done(struct rpc_task *task,
+ 	status = NFS_PROTO(inode)->write_done(task, hdr);
+ 	if (status != 0)
+ 		return status;
++
+ 	nfs_add_stats(inode, NFSIOS_SERVERWRITTENBYTES, hdr->res.count);
++	trace_nfs_writeback_done(inode, task->tk_status,
++				 hdr->args.offset, hdr->res.verf);
+ 
+ 	if (hdr->res.verf->committed < hdr->args.stable &&
+ 	    task->tk_status >= 0) {
+@@ -1686,6 +1691,7 @@ int nfs_initiate_commit(struct rpc_clnt *clnt, struct nfs_commit_data *data,
+ 	};
+ 	/* Set up the initial task struct.  */
+ 	nfs_ops->commit_setup(data, &msg);
++	trace_nfs_initiate_commit(data);
+ 
+ 	dprintk("NFS: initiated commit call\n");
+ 
+@@ -1810,6 +1816,7 @@ static void nfs_commit_done(struct rpc_task *task, void *calldata)
+ 
+ 	/* Call the NFS version-specific code */
+ 	NFS_PROTO(data->inode)->commit_done(task, data);
++	trace_nfs_commit_done(data);
+ }
+ 
+ static void nfs_commit_release_pages(struct nfs_commit_data *data)
 
