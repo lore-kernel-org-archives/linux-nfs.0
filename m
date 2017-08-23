@@ -1,93 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42034 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55372 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932459AbdHWSsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 23 Aug 2017 14:48:32 -0400
-Subject: Re: [PATCH v2 1/1] autotools: install rpcbind to --sbindir.
-To: Michael Orlitzky <michael@orlitzky.com>, linux-nfs@vger.kernel.org
-References: <20170801185525.13063-1-michael@orlitzky.com>
- <20170801185525.13063-2-michael@orlitzky.com>
+        id S932356AbdHWS7b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Aug 2017 14:59:31 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id C5C08883D9
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Aug 2017 18:59:31 +0000 (UTC)
+Subject: Re: [nfs-utils PATCH] idmapd: daemonize earlier
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+References: <20170807190914.7422-1-smayhew@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <29f23ec0-621c-354d-5739-0b909528a788@RedHat.com>
-Date: Wed, 23 Aug 2017 14:48:31 -0400
+Message-ID: <a81dc663-9e0e-1c8d-d1da-fc6a2cbb7a8b@RedHat.com>
+Date: Wed, 23 Aug 2017 14:59:31 -0400
 MIME-Version: 1.0
-In-Reply-To: <20170801185525.13063-2-michael@orlitzky.com>
+In-Reply-To: <20170807190914.7422-1-smayhew@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 08/01/2017 02:55 PM, Michael Orlitzky wrote:
-> According to its own man page, the rpcbind program "can only be
-> started by the super-user." On systems where a distinction is made, it
-> therefore makes sense to install rpcbind to the autotools sbindir
-> rather than the regular bindir where it is currently installed. This
-> is accomplished by three small changes:
+On 08/07/2017 03:09 PM, Scott Mayhew wrote:
+> daemon_init() calls closeall() to close any "unneeded" file descriptors.
+> This causes the following issue with idmapd on systems that are
+> configured to have SSSD handle local users and groups:
 > 
->   1. Move rpcbind from bin_PROGRAMS to sbin_PROGRAMS in Makefile.am.
->   2. Change @_bindir@ to @_sbindir@ in the rpcbind systemd service file.
->   3. Tell configure.ac that it should substitute the value of $sbindir
->      into @_sbindir@ instead of $bindir$ into @_bindir@.
+> 1. During startup, rpc.idmapd calls getpwnam("nobody") and
+>    getgrnam("nobody")
+> 2. sss_nss_mc_get{pw,gr}nam from libnss_sss open the cache files for
+>    users and groups and store the fd's in a struct sss_cli_mc_ctx.  The
+>    passwd cache is fd 3 and the group cache is fd 4.
+> 3. idmapd calls daemon_init() which sets fd's 0, 1, and 2 to /dev/null
+>    and fd 3 to the write end of the pipe that the child uses to report
+>    it's startup status.  It then closes all fd's >= 4.
+> 4. idmapd then calls event_init() which leads to epoll_create1() which
+>    returns 4 as the epoll fd.
+> 6. An NFSv4 mount request comes in from a client, triggering an nfsdcb
+>    callback.
+> 7. idmapd calls getgrgid_r() which leads to a call to
+>    sss_nss_check_header() which determines that the cache needs to be
+>    reinitialized.  sss_nss_mc_destroy_ctx() is called, which closes the
+>    ctx->fd which now corresponds to the epoll file rather than the group
+>    cache file.
+> 8. event_dispatch() calls epoll_wait() with epfd=4, and -EBADF is
+>    returned.  idmapd logs the following error and exits with  a nonzero
+>    status:
 > 
-> The rpcinfo tool remains where it is, in bindir, since unprivileged
-> users are able to usefully run it. This avoids forcing maintainers to
-> choose between two bad options: hiding rpcinfo from unprivileged
-> users, or installing a useless rpcbind for them.
+> rpc.idmapd[650]: main: event_dispatch returns errno 9 (Bad file descriptor)
 > 
-> Signed-off-by: Michael Orlitzky <michael@orlitzky.com>
-Committed.... 
+> Moving the deamon_init() call so that it happens before get{pw,gr}nam()
+> fixes this.
+> 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed... 
 
 steved.
-
 > ---
->  Makefile.am                | 3 ++-
->  configure.ac               | 6 +++---
->  systemd/rpcbind.service.in | 2 +-
->  3 files changed, 6 insertions(+), 5 deletions(-)
+>  utils/idmapd/idmapd.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> diff --git a/Makefile.am b/Makefile.am
-> index 43c2710..c160a95 100644
-> --- a/Makefile.am
-> +++ b/Makefile.am
-> @@ -29,7 +29,8 @@ if LIBWRAP
->  AM_CPPFLAGS +=	-DLIBWRAP
->  endif
+> diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
+> index c12e878..4cbe148 100644
+> --- a/utils/idmapd/idmapd.c
+> +++ b/utils/idmapd/idmapd.c
+> @@ -312,6 +312,8 @@ main(int argc, char **argv)
 >  
-> -bin_PROGRAMS = rpcbind rpcinfo
-> +bin_PROGRAMS = rpcinfo
-> +sbin_PROGRAMS = rpcbind
+>  	strncat(pipefsdir, "/nfs", sizeof(pipefsdir));
 >  
->  rpcbind_SOURCES = \
->  	src/check_bound.c \
-> diff --git a/configure.ac b/configure.ac
-> index 3790310..359a418 100644
-> --- a/configure.ac
-> +++ b/configure.ac
-> @@ -61,9 +61,9 @@ AC_SEARCH_LIBS([pthread_create], [pthread])
+> +	daemon_init(fg);
+> +
+>  	if ((pw = getpwnam(nobodyuser)) == NULL)
+>  		errx(1, "Could not find user \"%s\"", nobodyuser);
+>  	nobodyuid = pw->pw_uid;
+> @@ -328,8 +330,6 @@ main(int argc, char **argv)
+>  	if (nfs4_init_name_mapping(conf_path))
+>  		errx(1, "Unable to create name to user id mappings.");
 >  
->  AC_CHECK_HEADERS([nss.h rpcsvc/mount.h])
+> -	daemon_init(fg);
+> -
+>  	event_init();
 >  
-> -# make bindir available for substitution in config file
-> +# make sbindir available for substitution in config file
->  # 2 "evals" needed to expand variable names
-> -AC_SUBST([_bindir])
-> -AC_CONFIG_COMMANDS_PRE([eval eval _bindir=$bindir])
-> +AC_SUBST([_sbindir])
-> +AC_CONFIG_COMMANDS_PRE([eval eval _sbindir=$sbindir])
->  
->  AC_OUTPUT([Makefile systemd/rpcbind.service])
-> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
-> index 03a9e0b..f8cfa9f 100644
-> --- a/systemd/rpcbind.service.in
-> +++ b/systemd/rpcbind.service.in
-> @@ -12,7 +12,7 @@ After=rpcbind.socket
->  [Service]
->  Type=notify
->  # distro can provide a drop-in adding EnvironmentFile=-/??? if needed.
-> -ExecStart=@_bindir@/rpcbind $RPCBIND_OPTIONS -w -f
-> +ExecStart=@_sbindir@/rpcbind $RPCBIND_OPTIONS -w -f
->  
->  [Install]
->  WantedBy=multi-user.target
+>  	if (verbose > 0)
 > 
