@@ -1,83 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:40865 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932539AbdHWT5X (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2017 15:57:23 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: SteveD redhat <steved@redhat.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFS: Fix NFSv2 security settings
-Date: Wed, 23 Aug 2017 19:57:11 +0000
-Message-ID: <1503518229.75671.1.camel@primarydata.com>
-References: <20170810204110.11398.85077.stgit@manet.1015granger.net>
-         <5498B4D8-2CE9-4956-BEC1-A8A5F2B649F7@oracle.com>
-In-Reply-To: <5498B4D8-2CE9-4956-BEC1-A8A5F2B649F7@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42280 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932443AbdHWULY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Aug 2017 16:11:24 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] NFSv4: Don't add a new lock on an interrupted wait for
+ LOCK
+Date: Wed, 23 Aug 2017 16:11:22 -0400
+Message-ID: <D7F32DDE-7DE7-46F6-87AA-F6FF68397BE3@redhat.com>
+In-Reply-To: <cda7d9d6f145289d2855eb733a8d795938e67453.1501673116.git.bcodding@redhat.com>
+References: <1501618320.4702.14.camel@redhat.com>
+ <cda7d9d6f145289d2855eb733a8d795938e67453.1501673116.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTA4LTIzIGF0IDE1OjMxIC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-UGluZy4uLg0KDQpBcHBsaWVkIHRvIHRoZSAndGVzdGluZycgYW5kICdsaW51eC1uZXh0JyBicmFu
-Y2hlcyBmb3IgdGhlIDQuMTQgbWVyZ2UNCndpbmRvdzoNCiAgaHR0cDovL2dpdC5saW51eC1uZnMu
-b3JnLz9wPXRyb25kbXkvbGludXgtbmZzLmdpdDthPXNob3J0bG9nO2g9cmVmcy9oDQplYWRzL2xp
-bnV4LW5leHQNCg0KPiANCj4gDQo+ID4gT24gQXVnIDEwLCAyMDE3LCBhdCA0OjQxIFBNLCBDaHVj
-ayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiBG
-b3IgYSB3aGlsZSBub3cgYW55IE5GU3YyIG1vdW50IHdoZXJlIHNlYz0gaXMgc3BlY2lmaWVkIHVz
-ZXMNCj4gPiBBVVRIX05VTEwuIElmIHNlYz0gaXMgbm90IHNwZWNpZmllZCwgdGhlIG1vdW50IHVz
-ZXMgQVVUSF9VTklYLg0KPiA+IENvbW1pdCBlNjhmZDdjODA3MWQgKCJtb3VudDogdXNlIHNlYz0g
-dGhhdCB3YXMgc3BlY2lmaWVkIG9uIHRoZQ0KPiA+IGNvbW1hbmQgbGluZSIpIGF0dGVtcHRlZCB0
-byBhZGRyZXNzIGEgdmVyeSBzaW1pbGFyIHByb2JsZW0gd2l0aA0KPiA+IE5GU3YzLCBhbmQgc2hv
-dWxkIGhhdmUgZml4ZWQgdGhpcyB0b28sIGJ1dCBpdCBoYXMgYSBidWcuDQo+ID4gDQo+ID4gVGhl
-IE1OVHYxIE1OVCBwcm9jZWR1cmUgZG9lcyBub3QgcmV0dXJuIGEgbGlzdCBvZiBzZWN1cml0eSBm
-bGF2b3JzLA0KPiA+IHNvIG91ciBjbGllbnQgbWFrZXMgdXAgYSBsaXN0IGNvbnRhaW5pbmcganVz
-dCBBVVRIX05VTEwuIFRoaXMNCj4gPiBzaG91bGQNCj4gPiBlbmFibGUgbmZzX3ZlcmlmeV9hdXRo
-Zmxhdm9ycygpIHRvIGFzc2lnbiB0aGUgc2VjPSBzcGVjaWZpZWQNCj4gPiBmbGF2b3IsDQo+ID4g
-YnV0IGluc3RlYWQsIGl0IGluY29ycmVjdGx5IHNldHMgaXQgdG8gQVVUSF9OVUxMLg0KPiA+IA0K
-PiA+IEkgZXhwZWN0IHRoaXMgd291bGQgYWxzbyBiZSBhIHByb2JsZW0gZm9yIGFueSBORlN2MyBz
-ZXJ2ZXIgd2hvc2UNCj4gPiBNTlR2MyBNTlQgcHJvY2VkdXJlIHJldHVybmVkIGEgc2VjdXJpdHkg
-Zmxhdm9yIGxpc3QgY29udGFpbmluZyBvbmx5DQo+ID4gQVVUSF9OVUxMLg0KPiA+IA0KPiA+IEZp
-eGVzOiBlNjhmZDdjODA3MWQgKCJtb3VudDogdXNlIHNlYz0gdGhhdCB3YXMgc3BlY2lmaWVkIG9u
-IC4uLiAiKQ0KPiA+IEJ1Z0xpbms6IGh0dHBzOi8vYnVnemlsbGEubGludXgtbmZzLm9yZy9zaG93
-X2J1Zy5jZ2k/aWQ9MzEwDQo+ID4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxl
-dmVyQG9yYWNsZS5jb20+DQo+ID4gLS0tDQo+ID4gZnMvbmZzL3N1cGVyLmMgfCAgIDEyICsrKysr
-KysrLS0tLQ0KPiA+IDEgZmlsZSBjaGFuZ2VkLCA4IGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25z
-KC0pDQo+ID4gDQo+ID4gQ2hhbmdlcyBzaW5jZSB2MToNCj4gPiAtIERlc2NyaXB0aW9uIGVkaXRl
-ZCBmb3IgYWNjdXJhY3kNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL3N1cGVyLmMgYi9m
-cy9uZnMvc3VwZXIuYw0KPiA+IGluZGV4IGQ4MjhlZjguLjZiMTc5YWYgMTAwNjQ0DQo+ID4gLS0t
-IGEvZnMvbmZzL3N1cGVyLmMNCj4gPiArKysgYi9mcy9uZnMvc3VwZXIuYw0KPiA+IEBAIC0xNjkx
-LDggKzE2OTEsOCBAQCBzdGF0aWMgaW50IG5mc192ZXJpZnlfYXV0aGZsYXZvcnMoc3RydWN0DQo+
-ID4gbmZzX3BhcnNlZF9tb3VudF9kYXRhICphcmdzLA0KPiA+IAkJCXJwY19hdXRoZmxhdm9yX3Qg
-KnNlcnZlcl9hdXRobGlzdCwgdW5zaWduZWQgaW50DQo+ID4gY291bnQpDQo+ID4gew0KPiA+IAly
-cGNfYXV0aGZsYXZvcl90IGZsYXZvciA9IFJQQ19BVVRIX01BWEZMQVZPUjsNCj4gPiArCWJvb2wg
-Zm91bmRfYXV0aF9udWxsID0gZmFsc2U7DQo+ID4gCXVuc2lnbmVkIGludCBpOw0KPiA+IC0JaW50
-IHVzZV9hdXRoX251bGwgPSBmYWxzZTsNCj4gPiANCj4gPiAJLyoNCj4gPiAJICogSWYgdGhlIHNl
-Yz0gbW91bnQgb3B0aW9uIGlzIHVzZWQsIHRoZSBzcGVjaWZpZWQgZmxhdm9yIG9yDQo+ID4gQVVU
-SF9OVUxMDQo+ID4gQEAgLTE3MDEsNiArMTcwMSwxMCBAQCBzdGF0aWMgaW50IG5mc192ZXJpZnlf
-YXV0aGZsYXZvcnMoc3RydWN0DQo+ID4gbmZzX3BhcnNlZF9tb3VudF9kYXRhICphcmdzLA0KPiA+
-IAkgKiBBVVRIX05VTEwgaGFzIGEgc3BlY2lhbCBtZWFuaW5nIHdoZW4gaXQncyBpbiB0aGUgc2Vy
-dmVyIGxpc3QNCj4gPiAtIGl0DQo+ID4gCSAqIG1lYW5zIHRoYXQgdGhlIHNlcnZlciB3aWxsIGln
-bm9yZSB0aGUgcnBjIGNyZWRzLCBzbyBhbnkNCj4gPiBmbGF2b3INCj4gPiAJICogY2FuIGJlIHVz
-ZWQgYnV0IHN0aWxsIHVzZSB0aGUgc2VjPSB0aGF0IHdhcyBzcGVjaWZpZWQuDQo+ID4gKwkgKg0K
-PiA+ICsJICogTm90ZSBhbHNvIHRoYXQgdGhlIE1OVCBwcm9jZWR1cmUgaW4gTU5UdjEgZG9lcyBu
-b3QNCj4gPiByZXR1cm4gYSBsaXN0DQo+ID4gKwkgKiBvZiBzdXBwb3J0ZWQgc2VjdXJpdHkgZmxh
-dm9ycy4gSW4gdGhpcyBjYXNlLA0KPiA+IG5mc19tb3VudCgpIGZhYnJpY2F0ZXMNCj4gPiArCSAq
-IGEgc2VjdXJpdHkgZmxhdm9yIGxpc3QgY29udGFpbmluZyBqdXN0IEFVVEhfTlVMTC4NCj4gPiAJ
-ICovDQo+ID4gCWZvciAoaSA9IDA7IGkgPCBjb3VudDsgaSsrKSB7DQo+ID4gCQlmbGF2b3IgPSBz
-ZXJ2ZXJfYXV0aGxpc3RbaV07DQo+ID4gQEAgLTE3MDksMTEgKzE3MTMsMTEgQEAgc3RhdGljIGlu
-dCBuZnNfdmVyaWZ5X2F1dGhmbGF2b3JzKHN0cnVjdA0KPiA+IG5mc19wYXJzZWRfbW91bnRfZGF0
-YSAqYXJncywNCj4gPiAJCQlnb3RvIG91dDsNCj4gPiANCj4gPiAJCWlmIChmbGF2b3IgPT0gUlBD
-X0FVVEhfTlVMTCkNCj4gPiAtCQkJdXNlX2F1dGhfbnVsbCA9IHRydWU7DQo+ID4gKwkJCWZvdW5k
-X2F1dGhfbnVsbCA9IHRydWU7DQo+ID4gCX0NCj4gPiANCj4gPiAtCWlmICh1c2VfYXV0aF9udWxs
-KSB7DQo+ID4gLQkJZmxhdm9yID0gUlBDX0FVVEhfTlVMTDsNCj4gPiArCWlmIChmb3VuZF9hdXRo
-X251bGwpIHsNCj4gPiArCQlmbGF2b3IgPSBhcmdzLT5hdXRoX2luZm8uZmxhdm9yc1swXTsNCj4g
-PiAJCWdvdG8gb3V0Ow0KPiA+IAl9DQo+ID4gDQo+ID4gDQo+ID4gLS0NCj4gPiBUbyB1bnN1YnNj
-cmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtDQo+
-ID4gbmZzIiBpbg0KPiA+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5r
-ZXJuZWwub3JnDQo+ID4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVs
-Lm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4g
-DQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwg
-UHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+Ping on this one as well -- it was buried in a thread:
 
+Ben
+
+On 2 Aug 2017, at 7:27, Benjamin Coddington wrote:
+
+> If the wait for a LOCK operation is interrupted, and then the file is
+> closed, the locks cleanup code will assume that no new locks will be 
+> added
+> to the inode after it has completed.  We already have a mechanism to 
+> detect
+> if there was signal, so let's use that to avoid recreating the local 
+> lock
+> once the RPC completes.
+>
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/nfs4proc.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index dbfa18900e25..5256f429c268 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -6100,7 +6100,7 @@ static void nfs4_lock_done(struct rpc_task 
+> *task, void *calldata)
+>  	case 0:
+>  		renew_lease(NFS_SERVER(d_inode(data->ctx->dentry)),
+>  				data->timestamp);
+> -		if (data->arg.new_lock) {
+> +		if (data->arg.new_lock && !data->cancelled) {
+>  			data->fl.fl_flags &= ~(FL_SLEEP | FL_ACCESS);
+>  			if (locks_lock_inode_wait(lsp->ls_state->inode, &data->fl) < 0) {
+>  				rpc_restart_call_prepare(task);
+> -- 
+> 2.9.3
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
