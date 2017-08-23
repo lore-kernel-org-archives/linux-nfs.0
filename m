@@ -1,45 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:50338 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751092AbdHWVkb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2017 17:40:31 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
-Date: Wed, 23 Aug 2017 21:40:25 +0000
-Message-ID: <1503524423.84215.1.camel@primarydata.com>
-References: <20170823210344.7677.48608.stgit@manet.1015granger.net>
-In-Reply-To: <20170823210344.7677.48608.stgit@manet.1015granger.net>
+Received: from mail-lf0-f46.google.com ([209.85.215.46]:35794 "EHLO
+        mail-lf0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750715AbdHWXnu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2017 19:43:50 -0400
+Received: by mail-lf0-f46.google.com with SMTP id k186so6858607lfe.2
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Aug 2017 16:43:49 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1503099073.3451.13.camel@primarydata.com>
+References: <CAKk7tABTTRNxZDD3SXmNpw55CqHaR=gGV6H-eRK5-m0vmkOLWQ@mail.gmail.com>
+ <1503068252.44656.2.camel@primarydata.com> <CAKk7tACdKx9gEPf1Fqi8kEimEUZxhX5pC+0wXJgWMu4SLbn2wg@mail.gmail.com>
+ <1503099073.3451.13.camel@primarydata.com>
+From: Bennett Amodio <bamodio@purestorage.com>
+Date: Wed, 23 Aug 2017 16:43:48 -0700
+Message-ID: <CAKk7tABB7JNJnxgw5z1L_Gu2OSThLasn4+iO5MEjpRHoyyHmig@mail.gmail.com>
+Subject: Re: [RFC v3 0/2] NFSv3 and NFSv4 Multipathing
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "juchang@purestorage.com" <juchang@purestorage.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "vas@purestorage.com" <vas@purestorage.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "igor@purestorage.com" <igor@purestorage.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTA4LTIzIGF0IDE3OjA1IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-QWRvcHQgdGhlIHVzZSBvZiB4cHJ0X3Bpbl9ycXN0IHRvIGVsaW1pbmF0ZSBjb250ZW50aW9uIGJl
-dHdlZW4NCj4gQ2FsbC1zaWRlIHVzZXJzIG9mIHJiX2xvY2sgYW5kIHRoZSB1c2Ugb2YgcmJfbG9j
-ayBpbg0KPiBycGNyZG1hX3JlcGx5X2hhbmRsZXIuDQo+IA0KPiBUaGlzIHJlcGxhY2VzIHRoZSBt
-ZWNoYW5pc20gaW50cm9kdWNlZCBpbiA0MzFhZjY0NWNmNjYgKCJ4cHJ0cmRtYToNCj4gRml4IGNs
-aWVudCBsb2NrLXVwIGFmdGVyIGFwcGxpY2F0aW9uIHNpZ25hbCBmaXJlcyIpLg0KPiANCj4gVXNl
-IHJlY3ZfbG9jayB0byBxdWlja2x5IGZpbmQgdGhlIGNvbXBsZXRpbmcgcnFzdCwgcGluIGl0LCB0
-aGVuDQo+IGRyb3AgdGhlIGxvY2suIEF0IHRoYXQgcG9pbnQgaW52YWxpZGF0aW9uIGFuZCBwdWxs
-LXVwIG9mIHRoZSBSZXBseQ0KPiBYRFIgY2FuIGJlIGRvbmUuIEJvdGggYXJlIG9mdGVuIGV4cGVu
-c2l2ZSBvcGVyYXRpb25zLg0KPiANCj4gRmluYWxseSwgdGFrZSByZWN2X2xvY2sgYWdhaW4gdG8g
-c2lnbmFsIGNvbXBsZXRpb24gdG8gdGhlIFJQQw0KPiBsYXllci4gSXQgYWxzbyBwcm90ZWN0cyBh
-ZGp1c3RtZW50IG9mICJjd25kIi4NCj4gDQo+IFRoaXMgZ3JlYXRseSByZWR1Y2VzIHRoZSBhbW91
-bnQgb2YgdGltZSBhIGxvY2sgaXMgaGVsZCBieSB0aGUNCj4gcmVwbHkgaGFuZGxlci4gQ29tcGFy
-aW5nIGxvY2tfc3RhdCByZXN1bHRzIHNob3dzIGEgbWFya2VkIGRlY3JlYXNlDQo+IGluIGNvbnRl
-bnRpb24gb24gcmJfbG9jayBhbmQgcmVjdl9sb2NrLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogQ2h1
-Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQo+IC0tLQ0KPiBIaS0NCj4gDQo+IElm
-IFRyb25kJ3MgbG9jayBjb250ZW50aW9uIHNlcmllcyBpcyBnb2luZyBpbnRvIHY0LjE0LCBJJ2Qg
-bGlrZSB5b3UNCj4gdG8gY29uc2lkZXIgdGhpcyBvbmUgKGFwcGxpZWQgYXQgdGhlIGVuZCBvZiB0
-aGF0IHNlcmllcykgYXMgd2VsbC4NCj4gV2l0aG91dCBpdCwgTkZTL1JETUEgcGVyZm9ybWFuY2Ug
-cmVncmVzc2VzIGEgYml0IGFmdGVyIHRoZQ0KPiBmaXJzdCB4cHJ0X3Bpbl9ycXN0IHBhdGNoIGlz
-IGFwcGxpZWQuIFRoYW5rcyENCj4gDQoNCklmIEFubmEgaXMgT0sgd2l0aCBpdCwgdGhlbiBJIGNh
-biBhcHBseSB0aGlzIHBhdGNoIG9uY2Ugc2hlJ3Mgc2VudCBtZQ0KdGhlIHB1bGwgcmVxdWVzdCBm
-b3IgdGhlIG90aGVyIFJETUEgY2xpZW50IHBhdGNoZXMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1
-c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On Fri, Aug 18, 2017 at 4:31 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Fri, 2017-08-18 at 13:15 -0700, Bennett Amodio wrote:
+>> On Fri, Aug 18, 2017 at 7:57 AM, Trond Myklebust
+>> <trondmy@primarydata.com> wrote:
+>> > On Tue, 2017-08-15 at 17:46 -0700, Bennett Amodio wrote:
+>> > > After seeing Trond=E2=80=99s patches for NFS multipathing on NFSv4.1=
+, we
+>> > > decided to try using the same concept for NFSv3/4.  The primary
+>> > > issue
+>> > > we identified was XID collision in the duplicate request cache
+>> > > (replay
+>> > > cache) for NFSv3/4.  In NFSv3/4, entries are hashed based on XID
+>> > > instead of the slot ID and sequence ID that NFSv4.1 uses.  Since
+>> > > the
+>> > > XIDs are generated by the RPC transports, and Trond=E2=80=99s patche=
+s
+>> > > create
+>> > > multiple transports for multipathing, different transports can
+>> > > end up
+>> > > using an overlapping set of XIDs.
+>> >
+>> > Why is that a problem? You should end up with connections that show
+>> > different combinations of source IP+port and/or destination
+>> > IP+port. It
+>> > should be trivial to distinguish between XIDs.
+>>
+>> Although the Linux NFS server hashes cache entries based on source IP
+>> and source port as well as XID, this is not a requirement of the
+>> NFSv3/v4 specification, so NFS server implementations may exist which
+>> hash only based on source IP and XID.  In practice, is this uncommon
+>> enough that it's not worth addressing?
+>
+> There is nothing in RFC1813 that gives any direction on how to set up a
+> duplicate replay cache (DRC). However established practice dictates
+> that the server should be prepared for duplicate XIDs that originate
+> from the same IP address.
+> In particular, if the linux client connects more than once to your
+> server (e.g. through 2 different IP addresses) it will assume the XIDs
+> are per connection. Ditto if using UDP.
 
+Understood, thanks for the clarification!
+
+>> > Quite frankly, I do not want to start carving up the XID space,
+>> > since a
+>> > 32-bit number is really not that big in these days of 100GigE
+>> > networks.
+>>
+>> This is a good point, and we also think that carving up the XID space
+>> is not a great solution.  If XID collision is a problem, another
+>> solution could be an atomic XID shared between transports which
+>> belong
+>> to the same client.
+>>
+>> If there's no problem in the first place, that's even better.  We
+>> thought when you said "I don't feel comfortable subjecting NFSv3/v4
+>> replay caches to this treatment yet" that you were referring to XID
+>> collision.  Is there another potential issue with multipathing and
+>> replay caches?
+>
+> There is the question of what to do when a NIC goes down. Do we fail
+> over to a different connection or not? The existing practices w.r.t.
+> DRCs suggest that we cannot do so; for instance the Linux server DRC
+> would break in that case, leading potentially to issues with non-
+> idempotent operations that need to be replayed.
+
+If I'm understanding correctly, what you're suggesting is that a
+failover could cause a duplicate request with a different source IP
+(from the new interface).  This would lead to the server not
+recognizing the request as a duplicate and re-running a non-idempotent
+operation.  I don't see how this is a new problem, though.  If you
+have one connection, going through one interface, and that interface
+goes down, don't you still have to choose between (potentially bad)
+failover and hanging?
+
+If the interfaces are bonded, I don't think this is an issue at all, is it?
+
+Cheers!
+Bennett Amodio
