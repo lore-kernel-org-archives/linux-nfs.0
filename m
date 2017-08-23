@@ -1,47 +1,83 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
-	<anna.schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:46514 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932407AbdHWUZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Aug 2017 16:25:43 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v2] NFSv4: Don't add a new lock on an interrupted wait for
  LOCK
-Date: Wed, 23 Aug 2017 20:15:08 +0000
-Message-ID: <1503519306.78164.1.camel@primarydata.com>
+Date: Wed, 23 Aug 2017 16:25:42 -0400
+Message-ID: <ED0CEBFE-82F4-41CE-BB7B-A7E7A73753FB@redhat.com>
+In-Reply-To: <1503519306.78164.1.camel@primarydata.com>
 References: <1501618320.4702.14.camel@redhat.com>
-	 <cda7d9d6f145289d2855eb733a8d795938e67453.1501673116.git.bcodding@redhat.com>
-	 <D7F32DDE-7DE7-46F6-87AA-F6FF68397BE3@redhat.com>
-In-Reply-To: <D7F32DDE-7DE7-46F6-87AA-F6FF68397BE3@redhat.com>
+ <cda7d9d6f145289d2855eb733a8d795938e67453.1501673116.git.bcodding@redhat.com>
+ <D7F32DDE-7DE7-46F6-87AA-F6FF68397BE3@redhat.com>
+ <1503519306.78164.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTA4LTIzIGF0IDE2OjExIC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBQaW5nIG9uIHRoaXMgb25lIGFzIHdlbGwgLS0gaXQgd2FzIGJ1cmllZCBpbiBhIHRo
-cmVhZDoNCj4gDQo+IEJlbg0KPiANCj4gT24gMiBBdWcgMjAxNywgYXQgNzoyNywgQmVuamFtaW4g
-Q29kZGluZ3RvbiB3cm90ZToNCj4gDQo+ID4gSWYgdGhlIHdhaXQgZm9yIGEgTE9DSyBvcGVyYXRp
-b24gaXMgaW50ZXJydXB0ZWQsIGFuZCB0aGVuIHRoZSBmaWxlDQo+ID4gaXMNCj4gPiBjbG9zZWQs
-IHRoZSBsb2NrcyBjbGVhbnVwIGNvZGUgd2lsbCBhc3N1bWUgdGhhdCBubyBuZXcgbG9ja3Mgd2ls
-bA0KPiA+IGJlIA0KPiA+IGFkZGVkDQo+ID4gdG8gdGhlIGlub2RlIGFmdGVyIGl0IGhhcyBjb21w
-bGV0ZWQuICBXZSBhbHJlYWR5IGhhdmUgYSBtZWNoYW5pc20NCj4gPiB0byANCj4gPiBkZXRlY3QN
-Cj4gPiBpZiB0aGVyZSB3YXMgc2lnbmFsLCBzbyBsZXQncyB1c2UgdGhhdCB0byBhdm9pZCByZWNy
-ZWF0aW5nIHRoZQ0KPiA+IGxvY2FsIA0KPiA+IGxvY2sNCj4gPiBvbmNlIHRoZSBSUEMgY29tcGxl
-dGVzLg0KPiA+IA0KPiA+IFNpZ25lZC1vZmYtYnk6IEJlbmphbWluIENvZGRpbmd0b24gPGJjb2Rk
-aW5nQHJlZGhhdC5jb20+DQo+ID4gUmV2aWV3ZWQtYnk6IEplZmYgTGF5dG9uIDxqbGF5dG9uQHJl
-ZGhhdC5jb20+DQo+ID4gLS0tDQo+ID4gIGZzL25mcy9uZnM0cHJvYy5jIHwgMiArLQ0KPiA+ICAx
-IGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCj4gPiANCj4gPiBk
-aWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IGlu
-ZGV4IGRiZmExODkwMGUyNS4uNTI1NmY0MjljMjY4IDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9u
-ZnM0cHJvYy5jDQo+ID4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtNjEwMCw3ICs2
-MTAwLDcgQEAgc3RhdGljIHZvaWQgbmZzNF9sb2NrX2RvbmUoc3RydWN0IHJwY190YXNrIA0KPiA+
-ICp0YXNrLCB2b2lkICpjYWxsZGF0YSkNCj4gPiAgCWNhc2UgMDoNCj4gPiAgCQlyZW5ld19sZWFz
-ZShORlNfU0VSVkVSKGRfaW5vZGUoZGF0YS0+Y3R4LQ0KPiA+ID5kZW50cnkpKSwNCj4gPiAgCQkJ
-CWRhdGEtPnRpbWVzdGFtcCk7DQo+ID4gLQkJaWYgKGRhdGEtPmFyZy5uZXdfbG9jaykgew0KPiA+
-ICsJCWlmIChkYXRhLT5hcmcubmV3X2xvY2sgJiYgIWRhdGEtPmNhbmNlbGxlZCkgew0KPiA+ICAJ
-CQlkYXRhLT5mbC5mbF9mbGFncyAmPSB+KEZMX1NMRUVQIHwNCj4gPiBGTF9BQ0NFU1MpOw0KPiA+
-ICAJCQlpZiAobG9ja3NfbG9ja19pbm9kZV93YWl0KGxzcC0+bHNfc3RhdGUtDQo+ID4gPmlub2Rl
-LCAmZGF0YS0+ZmwpIDwgMCkgew0KPiA+ICAJCQkJcnBjX3Jlc3RhcnRfY2FsbF9wcmVwYXJlKHRh
-c2spOw0KPiA+IA0KDQpXaHkgZG8gd2Ugd2FudCB0byBzcGVjaWFsIGNhc2UgJzAnPyBTdXJlbHkg
-d2UgZG9uJ3Qgd2FudCB0byByZXN0YXJ0IHRoZQ0KUlBDIGNhbGwgZm9yIGFueSBvZiB0aGUgZXJy
-b3IgY2FzZXMgaWYgZGF0YS0+Y2FuY2VsbGVkIGlzIHNldC4NCg0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
-bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+
+
+On 23 Aug 2017, at 16:15, Trond Myklebust wrote:
+
+> On Wed, 2017-08-23 at 16:11 -0400, Benjamin Coddington wrote:
+>> Ping on this one as well -- it was buried in a thread:
+>>
+>> Ben
+>>
+>> On 2 Aug 2017, at 7:27, Benjamin Coddington wrote:
+>>
+>>> If the wait for a LOCK operation is interrupted, and then the file
+>>> is
+>>> closed, the locks cleanup code will assume that no new locks will
+>>> be
+>>> added
+>>> to the inode after it has completed.  We already have a mechanism
+>>> to
+>>> detect
+>>> if there was signal, so let's use that to avoid recreating the
+>>> local
+>>> lock
+>>> once the RPC completes.
+>>>
+>>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>>> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>>  fs/nfs/nfs4proc.c | 2 +-
+>>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index dbfa18900e25..5256f429c268 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -6100,7 +6100,7 @@ static void nfs4_lock_done(struct rpc_task
+>>> *task, void *calldata)
+>>>  	case 0:
+>>>  		renew_lease(NFS_SERVER(d_inode(data->ctx-
+>>>> dentry)),
+>>>  				data->timestamp);
+>>> -		if (data->arg.new_lock) {
+>>> +		if (data->arg.new_lock && !data->cancelled) {
+>>>  			data->fl.fl_flags &= ~(FL_SLEEP |
+>>> FL_ACCESS);
+>>>  			if (locks_lock_inode_wait(lsp->ls_state-
+>>>> inode, &data->fl) < 0) {
+>>>  				rpc_restart_call_prepare(task);
+>>>
+>
+> Why do we want to special case '0'? Surely we don't want to restart the
+> RPC call for any of the error cases if data->cancelled is set.
+
+We don't want to add the local lock if data->cancelled is set.  It's
+possible that the file has already been closed and the locks cleanup code
+has removed all of the local locks, so if this races in and adds a lock we
+end up with one left over.
+
+I don't understand what you mean about restarting the RPC call - we'd only
+restart the RPC call here if there was an error adding the local lock.
+
+Ben
