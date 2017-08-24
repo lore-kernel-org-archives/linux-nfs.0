@@ -1,60 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36842 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751615AbdHXRsD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 24 Aug 2017 13:48:03 -0400
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: NFSv4 <nfsv4@ietf.org>
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: Reminder: Bakeathon in Westford
-Message-ID: <6afa886d-cccd-599f-4eb9-7da8853aaecc@RedHat.com>
-Date: Thu, 24 Aug 2017 13:48:02 -0400
+Received: from mail-io0-f195.google.com ([209.85.223.195]:33332 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752071AbdHXSS0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2017 14:18:26 -0400
+Received: by mail-io0-f195.google.com with SMTP id s101so157778ioe.0
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Aug 2017 11:18:26 -0700 (PDT)
+Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <20170823210344.7677.48608.stgit@manet.1015granger.net>
+ <1503524423.84215.1.camel@primarydata.com>
+From: Anna Schumaker <schumaker.anna@gmail.com>
+Message-ID: <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
+Date: Thu, 24 Aug 2017 14:18:22 -0400
 MIME-Version: 1.0
+In-Reply-To: <1503524423.84215.1.camel@primarydata.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
 
-Just a quick reminder the hotel blocks expires 
-*tomorrow at 5pm (EST)*. If there is a chance you 
-might be coming go ahead reserve a room... You can always cancel
-Here is the info on that:
-    http://nfsv4bat.org/Events/2017/September/BAT/index.html
 
-If you are coming and have not communicated that please do so ASAP.
+On 08/23/2017 05:40 PM, Trond Myklebust wrote:
+> On Wed, 2017-08-23 at 17:05 -0400, Chuck Lever wrote:
+>> Adopt the use of xprt_pin_rqst to eliminate contention between
+>> Call-side users of rb_lock and the use of rb_lock in
+>> rpcrdma_reply_handler.
+>>
+>> This replaces the mechanism introduced in 431af645cf66 ("xprtrdma:
+>> Fix client lock-up after application signal fires").
+>>
+>> Use recv_lock to quickly find the completing rqst, pin it, then
+>> drop the lock. At that point invalidation and pull-up of the Reply
+>> XDR can be done. Both are often expensive operations.
+>>
+>> Finally, take recv_lock again to signal completion to the RPC
+>> layer. It also protects adjustment of "cwnd".
+>>
+>> This greatly reduces the amount of time a lock is held by the
+>> reply handler. Comparing lock_stat results shows a marked decrease
+>> in contention on rb_lock and recv_lock.
+>>
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> Hi-
+>>
+>> If Trond's lock contention series is going into v4.14, I'd like you
+>> to consider this one (applied at the end of that series) as well.
+>> Without it, NFS/RDMA performance regresses a bit after the
+>> first xprt_pin_rqst patch is applied. Thanks!
+>>
+> 
+> If Anna is OK with it, then I can apply this patch once she's sent me
+> the pull request for the other RDMA client patches.
 
-Finally, Chuck Lever will be giving a two part talk/class on how
-to support NFS/RDMA. Tentatively the first part will be
-on Tues Sept 26 and the send part on Wed Sept 27.
-
-Each talk/class will about 90mins and we are thinking they
-would start around 9am EST, but that is flexible since
-I have the room all day on both days.
-
-Title:
-Introduction to NFS/RDMA for sustaining engineers
-
-Abstract:
-The presentation explains how NFS/RDMA works, for those who
-are already familiar with NFS. Attendees would learn about
-operation and architecture of NFS/RDMA. Skills can then be
-applied to understanding network captures and debugging
-output.
-
-Syllabus:
- - NFS/RDMA: benefits and weaknesses
- - Introduction to the RDMA verbs API (RFC 5040)
- - How do RDMA-enabled storage protocols use RDMA verbs?
- - An overview of RPC-over-RDMA operation (RFC 8166)
- - The NFS Upper Layer binding to RPC-over-RDMA (RFC 5667)
- - Live demo of the wireshark RPC-over-RDMA dissector
-
-Chuck estimates each item would take 20 to 30 minutes
-
-A Telepresence will be available via  bluejeans or WebEx,
-plus I'm hoping to record both sessions. 
-
-Chuck will also make the slides available in PDF form.
-
-I think that is it... 
+Works for me.  Thanks!
+> 
