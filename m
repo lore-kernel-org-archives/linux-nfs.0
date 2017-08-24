@@ -1,189 +1,236 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:32810 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750715AbdHXCws (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Aug 2017 22:52:48 -0400
-Received: by mail-it0-f66.google.com with SMTP id 191so861505itb.0
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Aug 2017 19:52:48 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: [PATCH v1 1/3] nfsd: Limit end of page list when decoding NFSv4
- WRITE
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <20170824011805.GB10035@fieldses.org>
-Date: Wed, 23 Aug 2017 22:52:44 -0400
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <2A4FC869-7F2A-41C5-AEDB-54B72AEAF030@monkey.org>
-References: <20170818150957.26571.12169.stgit@klimt.1015granger.net>
- <20170818151219.26571.31977.stgit@klimt.1015granger.net>
- <20170821211359.GA14949@fieldses.org>
- <BC15F5B8-7B61-4A0C-8F80-2513FB6C12EF@oracle.com>
- <20170821212140.GB14949@fieldses.org>
- <4307538A-9A23-4F8D-AC80-BA850E6422E5@oracle.com>
- <20170822214513.GA28543@fieldses.org>
- <C680E88E-B51D-464C-AC4C-5F9C0B31ED9B@oracle.com>
- <20170824011805.GB10035@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mx2.suse.de ([195.135.220.15]:58623 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750715AbdHXDVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 23 Aug 2017 23:21:45 -0400
+From: NeilBrown <neilb@suse.com>
+To: Ian Kent <ikent@redhat.com>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "viro\@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>
+Date: Thu, 24 Aug 2017 13:21:33 +1000
+Cc: "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "mkoutny\@suse.com" <mkoutny@suse.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>
+Subject: Re: Do we really need d_weak_revalidate???
+In-Reply-To: <1bfd81b3-4f16-b0a7-6b51-0c0cb23ed0a0@redhat.com>
+References: <87bmnmrai9.fsf@notabene.neil.brown.name> <1502430944.3822.1.camel@primarydata.com> <1502449309.4950.2.camel@redhat.com> <87zib3niqn.fsf@notabene.neil.brown.name> <1502705432.4978.1.camel@redhat.com> <877ey4nsep.fsf@notabene.neil.brown.name> <1502883253.4847.6.camel@redhat.com> <1e4665a6-30d6-c16a-760a-2892fb147760@redhat.com> <878tihmora.fsf@notabene.neil.brown.name> <2e289bba-677b-cc50-5fa3-2d24d1f6b858@redhat.com> <87h8x1l9qp.fsf@notabene.neil.brown.name> <733c15c2-ffbb-9a89-90ec-3ba1d574590e@redhat.com> <87r2w3jdn5.fsf@notabene.neil.brown.name> <42ba2fa5-d756-d70f-370c-c2fe1a61c5bf@redhat.com> <1bfd81b3-4f16-b0a7-6b51-0c0cb23ed0a0@redhat.com>
+Message-ID: <87lgm9k5vm.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> On Aug 23, 2017, at 9:18 PM, J. Bruce Fields <bfields@fieldses.org> =
-wrote:
->=20
-> On Wed, Aug 23, 2017 at 02:36:33PM -0400, Chuck Lever wrote:
->>=20
->>> On Aug 22, 2017, at 5:45 PM, J. Bruce Fields <bfields@fieldses.org> =
-wrote:
->>>=20
->>> On Mon, Aug 21, 2017 at 06:08:15PM -0400, Chuck Lever wrote:
->>>>=20
->>>>> On Aug 21, 2017, at 5:21 PM, J. Bruce Fields =
-<bfields@fieldses.org> wrote:
->>>>>=20
->>>>> On Mon, Aug 21, 2017 at 05:15:38PM -0400, Chuck Lever wrote:
->>>>>>=20
->>>>>>> On Aug 21, 2017, at 5:13 PM, J. Bruce Fields =
-<bfields@fieldses.org> wrote:
->>>>>>>=20
->>>>>>> On Fri, Aug 18, 2017 at 11:12:19AM -0400, Chuck Lever wrote:
->>>>>>>> When processing an NFSv4 WRITE operation, argp->end should =
-never
->>>>>>>> point past the end of the data in the final page of the page =
-list.
->>>>>>>> Otherwise, nfsd4_decode_compound can walk into uninitialized =
-memory.
->>>>>>>>=20
->>>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>>>> ---
->>>>>>>> fs/nfsd/nfs4xdr.c |    6 ++----
->>>>>>>> 1 file changed, 2 insertions(+), 4 deletions(-)
->>>>>>>>=20
->>>>>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>>>>>>> index 51e729a..7c48d68 100644
->>>>>>>> --- a/fs/nfsd/nfs4xdr.c
->>>>>>>> +++ b/fs/nfsd/nfs4xdr.c
->>>>>>>> @@ -144,7 +144,7 @@ static void next_decode_page(struct =
-nfsd4_compoundargs *argp)
->>>>>>>> 	argp->p =3D page_address(argp->pagelist[0]);
->>>>>>>> 	argp->pagelist++;
->>>>>>>> 	if (argp->pagelen < PAGE_SIZE) {
->>>>>>>> -		argp->end =3D argp->p + (argp->pagelen>>2);
->>>>>>>> +		argp->end =3D argp->p + =
-XDR_QUADLEN(argp->pagelen);
->>>>=20
->>>>                    ^^^^^^^^^^^^^^ A
->>>>=20
->>>>>>>> 		argp->pagelen =3D 0;
->>>>>>>> 	} else {
->>>>>>>> 		argp->end =3D argp->p + (PAGE_SIZE>>2);
->>>>>>>> @@ -1279,9 +1279,7 @@ static __be32 nfsd4_decode_opaque(struct =
-nfsd4_compoundargs *argp, struct xdr_ne
->>>>>>>> 		argp->pagelen -=3D pages * PAGE_SIZE;
->>>>>>>> 		len -=3D pages * PAGE_SIZE;
->>>>>>>>=20
->>>>>>>> -		argp->p =3D (__be32 =
-*)page_address(argp->pagelist[0]);
->>>>>>>> -		argp->pagelist++;
->>>>>>>> -		argp->end =3D argp->p + XDR_QUADLEN(PAGE_SIZE);
->>>>=20
->>>>                    ^^^^^^^^^^^^^^ B
->>>>=20
->>>>>>>> +		next_decode_page(argp);
->>>>>>>=20
->>>>>>> I think there's no change in behavior here *except* for adding a =
-new
->>>>>>> argp->pagelen=3D0 (or argp->pagelen -=3D PAGE_SIZE).
->>>>>>=20
->>>>>> The code around this change is currently working correctly,
->>>>>> so there is no change in behavior AFAICT. This is a defensive
->>>>>> change, but it also replaces duplicate code.
->>>>>=20
->>>>> I don't understand.  I'm saying that by calling next_decode_page() =
-there
->>>>> you've added a new argp->pagelen assignment.  I don't understand =
-how
->>>>> that can't change behavior, unless there's another bug in our =
-bounds
->>>>> checking someplace.
->>>>=20
->>>> Because of line B above, argp->end always points to the
->>>> end of the final page in the page list. However, the
->>>> buffer might end somewhere in the middle of that page,
->>>> in which case, the transport hasn't initialized any of
->>>> the bytes between the end of the buffer and the end of
->>>> the page.
->>>>=20
->>>> As long as the other fields in the xdr_buf are set up
->>>> properly, the XDR decoder will not walk into that uninit-
->>>> ialized section of the last page. But there's nothing
->>>> preventing a decoder or transport bug from causing it
->>>> to walk into the uninitialized area. And always setting
->>>> to the end of the page is confusing when the buffer
->>>> itself is actually shorter.
->>>>=20
->>>> The key is to replace line B above with line A. argp->end
->>>> is advanced by the remaining part of the final page rather
->>>> than by a whole page.
->>>=20
->>> Got it, I agree with that part of the change, it's the pagelen =
-change I
->>> was having trouble with.
->>>=20
->>> But looking at it more, I think your patch is a fix and the current =
-code
->>> is wrong.
->>>=20
->>>> The next patch uses this new behavior to signal precisely
->>>> when it has to move from the page list to the tail iovec.
->>>>=20
->>>>=20
->>>>> Most likely it could cause subsequent op parsers to believe =
-there's less
->>>>> space in the argument buffer than there really is, so it might =
-fail to
->>>>> parse a compound with a write plus some other ops, if that puts =
-the
->>>>> total call close to the maximum size?
->>>>=20
->>>> Where is argp->pagelen used after the final next_decode_page
->>>> call?
->>>=20
->>> Well, it's checked in every read_buf and next_decode_page to decide =
-how
->>> much space is left.
->>=20
->> Right, and I didn't change the pagelen adjustment that occurs
->> in the loop. Just the final adjustment should be different.
->>=20
->>=20
->>> It looks to me like the current code is wrong not to be decreasing
->>> page_len at the end there.  So I wonder if there's a bug right now.
->>> E.g. maybe a compound with multiple writes could leave the xdr =
-decoding
->>> thinking it has more space than it does and allow someone to write
->>> unrelated memory to some file.
->>=20
->> I believe that's possible.
->=20
-> Yeah, I can totally crash the server this way.
->=20
-> I'll send this along for stable.  (And see if I can figure out how to =
-get
-> a test for this kind of thing into pynfs.  Unfortunately it's seems to
-> require some contortions to get it to produce bad xdr.)
+On Wed, Aug 23 2017, Ian Kent wrote:
 
-Having a generic way to include bad XDR would be a really useful feature =
-for pynfs.
+> On 23/08/17 10:32, Ian Kent wrote:
+>> On 23/08/17 09:06, NeilBrown wrote:
+>>> On Mon, Aug 21 2017, Ian Kent wrote:
+>>>
+>>>>>
+>>>>> A mount isn't triggered by kern_path(pathname, 0, &path).
+>>>>> That '0' would need to include one of
+>>>>>   LOOKUP_PARENT | LOOKUP_DIRECTORY |
+>>>>>   LOOKUP_OPEN | LOOKUP_CREATE | LOOKUP_AUTOMOUNT
+>>>>>
+>>>>> to trigger an automount (otherwise you just get -EISDIR).
+>>>>
+>>>> It's perfectly sensible to think that but there is a case where a
+>>>> a mount is triggered when using kern_path().
+>>>>
+>>>> The EISDIR return occurs for positive dentrys, negative dentrys
+>>>> will still trigger an automount (which is autofs specific,
+>>>> indirect mount map using nobrowse option, the install default).
+>>>
+>>> Ok, I understand this better now.  This difference between direct and
+>>> indirect mounts is slightly awkward. It is visible from user-space, but
+>>> not elegant to document.
+>>> When you use O_PATH to open a direct automount that has not already been
+>>> triggered, the open returns the underlying directory (and fstatfs
+>>> confirms that it is AUTOFS_SUPER_MAGIC).  When you use O_PATH on
+>>> an indirect automount, it *will* trigger the automount when "nobrowse" =
+is
+>>> in effect, but it won't when "browse" is in effect.
+>>=20
+>> That inconsistency has bothered me for quite a while now.
+>>=20
+>> It was carried over from the autofs module behavior when automounting
+>> support was added to the VFS. What's worse is it prevents the use of
+>> the AT_NO_AUTOMOUNT flag from working properly with fstatat(2) and with
+>> statx().
+>>=20
+>> There is some risk in changing that so it does work but it really does
+>> need to work to enable userspace to not trigger an automount by using
+>> this flag.
+>>=20
+>> So that's (hopefully) going to change soonish, see:
+>> http://ozlabs.org/~akpm/mmotm/broken-out/autofs-fix-at_no_automount-not-=
+being-honored.patch
+>>=20
+>> The result should be that stat family calls don't trigger automounts exc=
+ept
+>> for fstatat(2) and statx() which will require the AT_NO_AUTOMOUNT flag.
+>>=20
+>>>
+>>> So we cannot just say "O_PATH doesn't trigger automounts", which is
+>>> essentially what I said in
+>>>
+>>> https://git.kernel.org/pub/scm/docs/man-pages/man-pages.git/commit/?id=
+=3D97a45d02e6671482e8b2cdcce3951930bf6bdb94
+>>>
+>>> It might be possible to modify automount so that it was more consistent
+>>> - i.e. if the point is triggered by a mkdir has been done, just to the
+>>> mkdir.  If it is triggered after a mkdir has been done, do the mount.  I
+>>> guess that might be racy, and in any case is hard to justify.
+>>>
+>>> Maybe I should change it to be about "direct automounts", and add a note
+>>> that indirect automounts aren't so predictable.
+>>=20
+>> Right and the semantics should be much more consistent in the near futur=
+e.
+>> I hope (and expect) this semantic change won't cause problems.
+>>=20
+>>>
+>>> But back to my original issue of wanting to discard
+>>> kern_path_mountpoint, what would you think of the following approach -
+>>> slight revised from before.
+>>>
+>>> Thanks,
+>>> NeilBrown
+>>>
+>>> diff --git a/fs/autofs4/autofs_i.h b/fs/autofs4/autofs_i.h
+>>> index beef981aa54f..7663ea82e68d 100644
+>>> --- a/fs/autofs4/autofs_i.h
+>>> +++ b/fs/autofs4/autofs_i.h
+>>> @@ -135,10 +135,13 @@ static inline struct autofs_info *autofs4_dentry_=
+ino(struct dentry *dentry)
+>>>  /* autofs4_oz_mode(): do we see the man behind the curtain?  (The
+>>>   * processes which do manipulations for us in user space sees the raw
+>>>   * filesystem without "magic".)
+>>> + * A process performing certain ioctls can get temporary oz status.
+>>>   */
+>>> +extern struct task_struct *autofs_tmp_oz;
+>>>  static inline int autofs4_oz_mode(struct autofs_sb_info *sbi)
+>>>  {
+>>> -	return sbi->catatonic || task_pgrp(current) =3D=3D sbi->oz_pgrp;
+>>> +	return sbi->catatonic || task_pgrp(current) =3D=3D sbi->oz_pgrp ||
+>>> +		autofs_tmp_oz =3D=3D current;
+>>>  }
+>>>=20=20
+>>>  struct inode *autofs4_get_inode(struct super_block *, umode_t);
+>>> diff --git a/fs/autofs4/dev-ioctl.c b/fs/autofs4/dev-ioctl.c
+>>> index dd9f1bebb5a3..d76401669a20 100644
+>>> --- a/fs/autofs4/dev-ioctl.c
+>>> +++ b/fs/autofs4/dev-ioctl.c
+>>> @@ -200,6 +200,20 @@ static int autofs_dev_ioctl_protosubver(struct fil=
+e *fp,
+>>>  	return 0;
+>>>  }
+>>>=20=20
+>>> +struct task_struct *autofs_tmp_oz;
+>>> +int kern_path_oz(const char *pathname, int flags, struct path *path)
+>>> +{
+>>> +	static DEFINE_MUTEX(autofs_oz);
+>>> +	int err;
+>>> +
+>>> +	mutex_lock(&autofs_oz);
+>>> +	autofs_tmp_oz =3D current;
+>>> +	err =3D kern_path(pathname, flags, path);
+>>> +	autofs_tmp_oz =3D NULL;
+>>> +	mutex_unlock(&autofs_oz);
+>>> +	return err;
+>>> +}
+>>> +
+>>=20
+>> It's simple enough but does look like it will attract criticism as being
+>> a hack!
+>>=20
+>> The kern_path_locked() function is very similar to what was originally
+>> done, along with code to look down the mount stack (rather than up the
+>> way it does now) to get the mount point. In this case, to be valid the
+>> dentry can't be a symlink so that fits kern_path_locked() too.
+>
+> Oh wait, that __lookup_hash() tries too hard to resolve the dentry,
+> that won't quite work, and maybe d_lookup() can't be used safely in
+> this context either ....
+>
 
--dros
+Why do you think that __look_hash() tries too hard?
+It does call into the filesystem ->lookup() if the name isn't in the
+cache, which probably isn't strictly needed, but that isn't harmful and
+the current code does that.
 
->=20
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Some the following seems sensible to me (though I haven't tested it).
 
+Thanks,
+NeilBrown
+
+
+diff --git a/fs/autofs4/dev-ioctl.c b/fs/autofs4/dev-ioctl.c
+index dd9f1bebb5a3..859c198d0163 100644
+=2D-- a/fs/autofs4/dev-ioctl.c
++++ b/fs/autofs4/dev-ioctl.c
+@@ -208,12 +208,16 @@ static int find_autofs_mount(const char *pathname,
+ {
+ 	struct path path;
+ 	int err;
++	struct dentry *de, *parent;
++
++	de =3D kern_path_locked(pathname, &path);
++	if (IS_ERR(de))
++		return PTR_ERR(de);
++	parent =3D path.dentry;
++	path.dentry =3D de;
+=20
+=2D	err =3D kern_path_mountpoint(AT_FDCWD, pathname, &path, 0);
+=2D	if (err)
+=2D		return err;
+ 	err =3D -ENOENT;
+=2D	while (path.dentry =3D=3D path.mnt->mnt_root) {
++	do {
+ 		if (path.dentry->d_sb->s_magic =3D=3D AUTOFS_SUPER_MAGIC) {
+ 			if (test(&path, data)) {
+ 				path_get(&path);
+@@ -222,10 +226,11 @@ static int find_autofs_mount(const char *pathname,
+ 				break;
+ 			}
+ 		}
+=2D		if (!follow_up(&path))
+=2D			break;
+=2D	}
++	} while (follow_down_one(&path));
++
+ 	path_put(&path);
++	inode_unlock(d_inode(parent));
++	dput(parent);
+ 	return err;
+ }
+=20
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmeRj4ACgkQOeye3VZi
+gbmq0Q//V+b/eWQA5dsXlxt8pbRURik46jhtIKDLG7W+73+gZNTsKy0GCWEdQiX0
+h/4VKqKwtwfF5ZFQrL/xBd8UgNR9Nq2PmbscSmXc0FiGx7SnhtqSqupJlPuuz5HR
+3cZFM9oTn6SiBkXxcFvkINv1Z9wBj0vAG9B2Aslt25rWqvSST+Mz9nULPBVWYw/I
+ydLqx9G7JYsq3EmPS2l3VRJCiuozE8D3UaweNzb9pMot9CPrpEz18hp9k4iegr9M
++HpT+ZMWwtfpllVEq362g4Wz15JlsvM4OtRm7MjO9GMNkUoZ8KxJM6z6aE31fXhB
+b/RmepkD445SocJJGbuznjPNeUnG5OMQulTtjn4gD8O3fn7tOHDzMxY48T5oxlkj
+Kx08k/yB38t2sPveRAmmiGD4qTLa+p0eDdydptULJrk0bi1qT0VGQgsPB9n2PFVu
+5NODU5434xee94bZjynILyYRHlZuAl2Mbjsfof15Flo82hj/1+9jaCnYQTxjMowY
+yVHJgwTwidVxezUg9vFululvqLMqh2vDeYVlLnWIbpEmP5RIsJTMYxh4bsX6iaNc
+bNxf2US0tCJoCuRRt/Gzo99DNHxOqX5tG+gO84rl9esinans2KJGoL40VuHsVn06
+RnNiztf41FARWMhxtCGz5Ypbq1PWllAPG5u7kF/iVAIckeIWJjM=
+=50eC
+-----END PGP SIGNATURE-----
+--=-=-=--
