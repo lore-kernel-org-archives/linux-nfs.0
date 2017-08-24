@@ -1,60 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:33332 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752071AbdHXSS0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2017 14:18:26 -0400
-Received: by mail-io0-f195.google.com with SMTP id s101so157778ioe.0
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Aug 2017 11:18:26 -0700 (PDT)
-Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <20170823210344.7677.48608.stgit@manet.1015granger.net>
- <1503524423.84215.1.camel@primarydata.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
-Date: Thu, 24 Aug 2017 14:18:22 -0400
+Received: from fieldses.org ([173.255.197.46]:36360 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753025AbdHXTvu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 24 Aug 2017 15:51:50 -0400
+Date: Thu, 24 Aug 2017 15:51:50 -0400
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Pull request for pynfs
+Message-ID: <20170824195150.GC21609@fieldses.org>
+References: <047901d31558$dadb5930$90920b90$@mindspring.com>
 MIME-Version: 1.0
-In-Reply-To: <1503524423.84215.1.camel@primarydata.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <047901d31558$dadb5930$90920b90$@mindspring.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sorry for the delay--I've taken that patch, thanks!
 
+(BTW, for future reference the URL I need is
+https://github.com/ffilz/pynfs.git.)
 
-On 08/23/2017 05:40 PM, Trond Myklebust wrote:
-> On Wed, 2017-08-23 at 17:05 -0400, Chuck Lever wrote:
->> Adopt the use of xprt_pin_rqst to eliminate contention between
->> Call-side users of rb_lock and the use of rb_lock in
->> rpcrdma_reply_handler.
->>
->> This replaces the mechanism introduced in 431af645cf66 ("xprtrdma:
->> Fix client lock-up after application signal fires").
->>
->> Use recv_lock to quickly find the completing rqst, pin it, then
->> drop the lock. At that point invalidation and pull-up of the Reply
->> XDR can be done. Both are often expensive operations.
->>
->> Finally, take recv_lock again to signal completion to the RPC
->> layer. It also protects adjustment of "cwnd".
->>
->> This greatly reduces the amount of time a lock is held by the
->> reply handler. Comparing lock_stat results shows a marked decrease
->> in contention on rb_lock and recv_lock.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> Hi-
->>
->> If Trond's lock contention series is going into v4.14, I'd like you
->> to consider this one (applied at the end of that series) as well.
->> Without it, NFS/RDMA performance regresses a bit after the
->> first xprt_pin_rqst patch is applied. Thanks!
->>
+--b.
+
+On Mon, Aug 14, 2017 at 04:55:48PM -0700, Frank Filz wrote:
+> Bruce,
 > 
-> If Anna is OK with it, then I can apply this patch once she's sent me
-> the pull request for the other RDMA client patches.
-
-Works for me.  Thanks!
+> Please pull from https://github.com/ffilz/pynfs/commits/master
 > 
+> This patch fixes CSESS29 to issue the invalid CREATE_SESSION inside a valid
+> session so that the SEQUENCE op will renew the lease on the clientid. This
+> test may take sufficient time on some servers to have the unconfirmed
+> clientid expire, requiring setting a long lease period for testing that
+> impacts the overall run time.
+> 
+> Thanks
+> 
+> Frank
+> 
+> 
+> ---
+> This email has been checked for viruses by Avast antivirus software.
+> https://www.avast.com/antivirus
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
