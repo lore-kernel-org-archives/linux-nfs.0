@@ -1,172 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out1.informatik.tu-muenchen.de ([131.159.0.8]:49430 "EHLO
-        mail-out1.informatik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754191AbdHYCWf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2017 22:22:35 -0400
-Received: (Authenticated sender: erlacher)
-        by mail.in.tum.de (Postfix) with ESMTPSA id 305E21C137B
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Aug 2017 04:14:19 +0200 (CEST)
-        (Extended-Queue-bit tech_zdhje@fff.in.tum.de)
-From: Lukas Erlacher <erlacher@in.tum.de>
-Subject: No option for client bind address in NFS?
-To: linux-nfs@vger.kernel.org
-Message-ID: <7830cf28-5753-ddd5-339c-497e2ad6a10c@in.tum.de>
-Date: Fri, 25 Aug 2017 12:14:13 +1000
+Received: from mail2.candelatech.com ([208.74.158.173]:48062 "EHLO
+        mail2.candelatech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754248AbdHYDVf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Aug 2017 23:21:35 -0400
+Subject: Re: No option for client bind address in NFS?
+To: Lukas Erlacher <erlacher@in.tum.de>, linux-nfs@vger.kernel.org
+References: <7830cf28-5753-ddd5-339c-497e2ad6a10c@in.tum.de>
+From: Ben Greear <greearb@candelatech.com>
+Message-ID: <040f1042-d6c8-d73b-a1b1-250e33f6bd1c@candelatech.com>
+Date: Thu, 24 Aug 2017 20:21:33 -0700
 MIME-Version: 1.0
-Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256; boundary="------------ms070408070501060803020804"
+In-Reply-To: <7830cf28-5753-ddd5-339c-497e2ad6a10c@in.tum.de>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a cryptographically signed message in MIME format.
 
---------------ms070408070501060803020804
-Content-Type: text/plain; charset=utf-8; format=flowed
-Content-Language: en-US
-Content-Transfer-Encoding: quoted-printable
+On 08/24/2017 07:14 PM, Lukas Erlacher wrote:
+> [Note: I accidentally sent this to linux-kernel initially due to a misclick. Sorry for that.]
+>
+> Hello,
+>
+> after reading the NFS(5) manpage and doing some searching through the mailing list archive (of course, due to it being ubiquitous in posted logs, searching for "addr" and "clientaddr" was a bit hopeless) I have come to conclude that NFS does not have an option for explicitly specifying an address for the client socket to bind to.
+>
+> This is problematic for my usecase, which is "securing" NFS shares by exporting them to specific client hostnames only.
+>
+> Most of my NFS client machines have multiple IP addresses and since configuring IP addresses and routes on debian-ish systems can be quite an art, I don't want to trust on the default route going via the correct IP so that the NFS server recognizes the host; I also don't want to go to the effort of having the shares exported to every possible IP that might be configured on the client.
+>
+> Most utilities (e.g. ping, dig) have an option to specify an explicit client socket bind address.
+>
+> Why doesn't NFS have that? (As I understand it, the clientaddr option firstly is only interpreted by NFSv4 and secondly, is not the bind address but only used by the server for callbacks)
+>
+> For reference, my NFS server are Ubuntu 14.04/16.04 VMs using the nfs-kernel-server package, as well as Solaris machines using the "sharenfs" option on ZFS pools; my clients are Ubuntu 14.04/16.04 VMs using nfs-common package.
+>
+> Best,
+>
+> Lukas Erlacher
+> RBG Systemgruppe
+> Rechnerbetriebsgruppe der Fakultäten Informatik und Mathematik
+> Technische Universität München
 
-[Note: I accidentally sent this to linux-kernel initially due to a=20
-misclick. Sorry for that.]
+I've posted patches in the past to add this feature, and they are currently in my
+kernels.  Would love to see them upstream, but there was no interest in the past.
 
-Hello,
+https://github.com/greearb
 
-after reading the NFS(5) manpage and doing some searching through the=20
-mailing list archive (of course, due to it being ubiquitous in posted=20
-logs, searching for "addr" and "clientaddr" was a bit hopeless) I have=20
-come to conclude that NFS does not have an option for explicitly=20
-specifying an address for the client socket to bind to.
-
-This is problematic for my usecase, which is "securing" NFS shares by=20
-exporting them to specific client hostnames only.
-
-Most of my NFS client machines have multiple IP addresses and since=20
-configuring IP addresses and routes on debian-ish systems can be quite=20
-an art, I don't want to trust on the default route going via the correct =
-
-IP so that the NFS server recognizes the host; I also don't want to go=20
-to the effort of having the shares exported to every possible IP that=20
-might be configured on the client.
-
-Most utilities (e.g. ping, dig) have an option to specify an explicit=20
-client socket bind address.
-
-Why doesn't NFS have that? (As I understand it, the clientaddr option=20
-firstly is only interpreted by NFSv4 and secondly, is not the bind=20
-address but only used by the server for callbacks)
-
-For reference, my NFS server are Ubuntu 14.04/16.04 VMs using the=20
-nfs-kernel-server package, as well as Solaris machines using the=20
-"sharenfs" option on ZFS pools; my clients are Ubuntu 14.04/16.04 VMs=20
-using nfs-common package.
-
-Best,
-
-Lukas Erlacher
-RBG Systemgruppe
-Rechnerbetriebsgruppe der Fakult=C3=A4ten Informatik und Mathematik
-Technische Universit=C3=A4t M=C3=BCnchen
+Thanks,
+Ben
 
 
-
---------------ms070408070501060803020804
-Content-Type: application/pkcs7-signature; name="smime.p7s"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Description: S/MIME Cryptographic Signature
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADCABgkqhkiG9w0BBwEAAKCC
-EHIwggTVMIIDvaADAgECAghQTsb1PRG0ZDANBgkqhkiG9w0BAQsFADBxMQswCQYDVQQGEwJE
-RTEcMBoGA1UEChMTRGV1dHNjaGUgVGVsZWtvbSBBRzEfMB0GA1UECxMWVC1UZWxlU2VjIFRy
-dXN0IENlbnRlcjEjMCEGA1UEAxMaRGV1dHNjaGUgVGVsZWtvbSBSb290IENBIDIwHhcNMTQw
-NzIyMTIwODI2WhcNMTkwNzA5MjM1OTAwWjBaMQswCQYDVQQGEwJERTETMBEGA1UEChMKREZO
-LVZlcmVpbjEQMA4GA1UECxMHREZOLVBLSTEkMCIGA1UEAxMbREZOLVZlcmVpbiBQQ0EgR2xv
-YmFsIC0gRzAxMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA6ZvDZ4X5Da71jVTD
-llA1PWLpbkztlNcAW5UidNQg6zSP1uzAMQQLmYHiphTSUqAoI4SLdIkEXlvg4njBeMsWyyg1
-OXstkEXQ7aAAeny/Sg4bAMOG6VwrMRF7DPOCJEOMHDiLamgAmu7cT3ir0sYTm3at7t4m6O8B
-r3QPwQmi9mvOvdPNFDBP9eXjpMhim4IaAycwDQJlYE3t0QkjKpY1WCfTdsZxtpAdxO3/NYZ9
-bzOz2w/FEcKKg6GUXUFr2NIQ9Uz9ylGs2b3vkoO72uuLFlZWQ8/h1RM9ph8nMM1JVNvJEzSa
-cXXFbOqnC5j5IZ0nrz6jOTlIaoytyZn7wxLyvQIDAQABo4IBhjCCAYIwDgYDVR0PAQH/BAQD
-AgEGMB0GA1UdDgQWBBRJt8bP6D0ff+pEexMp9/EKcD7eZDAfBgNVHSMEGDAWgBQxw3kbuvVT
-1xfgiXotF2wKsyudMzASBgNVHRMBAf8ECDAGAQH/AgECMGIGA1UdIARbMFkwEQYPKwYBBAGB
-rSGCLAEBBAICMBEGDysGAQQBga0hgiwBAQQDADARBg8rBgEEAYGtIYIsAQEEAwEwDwYNKwYB
-BAGBrSGCLAEBBDANBgsrBgEEAYGtIYIsHjA+BgNVHR8ENzA1MDOgMaAvhi1odHRwOi8vcGtp
-MDMzNi50ZWxlc2VjLmRlL3JsL0RUX1JPT1RfQ0FfMi5jcmwweAYIKwYBBQUHAQEEbDBqMCwG
-CCsGAQUFBzABhiBodHRwOi8vb2NzcDAzMzYudGVsZXNlYy5kZS9vY3NwcjA6BggrBgEFBQcw
-AoYuaHR0cDovL3BraTAzMzYudGVsZXNlYy5kZS9jcnQvRFRfUk9PVF9DQV8yLmNlcjANBgkq
-hkiG9w0BAQsFAAOCAQEAYyAo/ZwhhnK+OUZZOTIlvKkBmw3Myn1BnIZtCm4ssxNZdbEzkhth
-Jxb/w7LVNYL7hCoBSb1mu2YvssIGXW4/buMBWlvKQ2NclbbhMacf1QdfTeZlgk4y+cN8ekvN
-TVx07iHydQLsUj7SyWrTkCNuSWc1vn9NVqTszC/Pt6GXqHI+ybxA1lqkCD3WvILDt7cyjrEs
-jmpttzUCGc/1OURYY6ckABCwu/xOr24vOLulV0k/2G5QbyyXltwdRpplic+uzPLl2Z9Tsz6h
-L5Kp2AvGhB8Exuse6J99tXulAvEkxSRjETTMWpMgKnmIOiVCkKllO3yG0xIVIyn8LNrMOVtU
-FzCCBR0wggQFoAMCAQICBxeQYN/0AdkwDQYJKoZIhvcNAQELBQAwWjELMAkGA1UEBhMCREUx
-EzARBgNVBAoTCkRGTi1WZXJlaW4xEDAOBgNVBAsTB0RGTi1QS0kxJDAiBgNVBAMTG0RGTi1W
-ZXJlaW4gUENBIEdsb2JhbCAtIEcwMTAeFw0xNDA1MTIxNTA1NTFaFw0xOTA3MDkyMzU5MDBa
-MGAxCzAJBgNVBAYTAkRFMSkwJwYDVQQKEyBUZWNobmlzY2hlIFVuaXZlcnNpdGFldCBNdWVu
-Y2hlbjEmMCQGA1UEAxMdWmVydGlmaXppZXJ1bmdzc3RlbGxlIGRlciBUVU0wggEiMA0GCSqG
-SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCo7+jT2ARcyfmRC3OiXxP+WoGv+yuy1jFQR2b6IXSW
-Rnd9aTfUBH80HqYdJIqrJtV+ZB62j7U3PYzB/EiwEgSOOSaaTUkmEX8Oo+kYygOz1ErUX1dH
-auXATwZeRacQGNt5QMzM2PuhEBKt/4UvCGt8xuUObGibHPvQdkqPPoL2lcGYa1oXuzYcr1am
-DIgaUxPX21Ymod1K+VXQ6XBm7G/wakQ8Uazgo0HTUOkwkB3yFBA00DFv3M49cG4C8a6fLAeV
-5cDD1+3Ng6Psgclm3K5IrXRhHmoHFqgtYHPKQ/3/DySKFXluHMutD4x0SH2AtDQVb4PT9L4r
-sBRMljNe26yPAgMBAAGjggHgMIIB3DASBgNVHRMBAf8ECDAGAQH/AgEBMA4GA1UdDwEB/wQE
-AwIBBjARBgNVHSAECjAIMAYGBFUdIAAwHQYDVR0OBBYEFJ2fI/AZG37HI10nKsylNjqmaeWJ
-MB8GA1UdIwQYMBaAFEm3xs/oPR9/6kR7Eyn38QpwPt5kMIGIBgNVHR8EgYAwfjA9oDugOYY3
-aHR0cDovL2NkcDEucGNhLmRmbi5kZS9nbG9iYWwtcm9vdC1jYS9wdWIvY3JsL2NhY3JsLmNy
-bDA9oDugOYY3aHR0cDovL2NkcDIucGNhLmRmbi5kZS9nbG9iYWwtcm9vdC1jYS9wdWIvY3Js
-L2NhY3JsLmNybDCB1wYIKwYBBQUHAQEEgcowgccwMwYIKwYBBQUHMAGGJ2h0dHA6Ly9vY3Nw
-LnBjYS5kZm4uZGUvT0NTUC1TZXJ2ZXIvT0NTUDBHBggrBgEFBQcwAoY7aHR0cDovL2NkcDEu
-cGNhLmRmbi5kZS9nbG9iYWwtcm9vdC1jYS9wdWIvY2FjZXJ0L2NhY2VydC5jcnQwRwYIKwYB
-BQUHMAKGO2h0dHA6Ly9jZHAyLnBjYS5kZm4uZGUvZ2xvYmFsLXJvb3QtY2EvcHViL2NhY2Vy
-dC9jYWNlcnQuY3J0MA0GCSqGSIb3DQEBCwUAA4IBAQDWhWCB88I6b+iVRHQ4ZGvzWsnXDf00
-sQxGMCO2Cd+EpVG5OxVcpCEQVpU0fLhMFKoQYDbadUYPiqvKkkvQ7Up6ThuRKj78SUTeecfc
-zQqmb1iDZ1VPqdFf8jk5/pmAQZYEIYIsUsQZGp2PFaDwXI69v4unHJNTHPHKN22WvIt9qgq1
-9BNJjgxqIaRFQOrJZTZEVOjaMy0nJ2m+7ImzzeyvcN4Gwl+tcgj3077ZolqKya/xoLS0eA+x
-nM4aA6H6yaQc8UmnIHJG2T4qyBIJaEWS/tV/ZAAI5Gv4RF4fimHd6pAnTYjADPPvz6K+CoPG
-P5dZPgg7ncM8A8QEvR9LXF5eMIIGdDCCBVygAwIBAgIMHSJtH9tE9Tx8Cb9+MA0GCSqGSIb3
-DQEBCwUAMGAxCzAJBgNVBAYTAkRFMSkwJwYDVQQKEyBUZWNobmlzY2hlIFVuaXZlcnNpdGFl
-dCBNdWVuY2hlbjEmMCQGA1UEAxMdWmVydGlmaXppZXJ1bmdzc3RlbGxlIGRlciBUVU0wHhcN
-MTcwNDI4MDczMDIzWhcNMTgwNjAxMDIwMDAwWjCBwjELMAkGA1UEBhMCREUxDzANBgNVBAgM
-BkJheWVybjERMA8GA1UEBwwITXVlbmNoZW4xKTAnBgNVBAoMIFRlY2huaXNjaGUgVW5pdmVy
-c2l0YWV0IE11ZW5jaGVuMSIwIAYDVQQLDBlGYWt1bHRhZXQgZnVlciBJbmZvcm1hdGlrMRcw
-FQYDVQQDDA5MdWthcyBFcmxhY2hlcjEnMCUGCSqGSIb3DQEJARYYbHVrYXMuZXJsYWNoZXJA
-aW4udHVtLmRlMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA06kAHxv/gw0ki3O8
-fa5YNl6MsOmeRNreUiFSqtb0S0hjsOFhcejJtdHNi1XWUj5huFAvfrOr4IeDMkSg3uDSFPaH
-IoIOD0iR35QNmQuloadrJD1G/GVXxNTuRirerdEMqlcuAnRqre/Wn5ocgqMrGUkpJxGm72aq
-dgtWDqGhZdrQX5Om0kntbtBjyDI/XpUhNQVsHv1YGjU1JdHVYlEFGddaNYiWxF1C/m4iSHnw
-mnFvntuxe0ZtPtp03c6XCsEA+VG1ug3bpjvhy76Doemm4Lh2oyTu5jow+rGK/KEWzNMFW5aw
-jYg3WQOm+LsNwb8QkxKXhdVbKvs8BWJsNAG1qQIDAQABo4ICyTCCAsUwQAYDVR0gBDkwNzAR
-Bg8rBgEEAYGtIYIsAQEEAwUwEQYPKwYBBAGBrSGCLAIBBAMBMA8GDSsGAQQBga0hgiwBAQQw
-CQYDVR0TBAIwADAOBgNVHQ8BAf8EBAMCBeAwKQYDVR0lBCIwIAYIKwYBBQUHAwIGCCsGAQUF
-BwMEBgorBgEEAYI3FAICMB0GA1UdDgQWBBS7cwrwi8STG2lANodOHYDYY5FBzzAfBgNVHSME
-GDAWgBSdnyPwGRt+xyNdJyrMpTY6pmnliTCBtwYDVR0RBIGvMIGsgRJlcmxhY2hlckBpbi50
-dW0uZGWBE2VybGFjaGVyQGNzLnR1bS5lZHWBImVybGFjaGVyQGluZm9ybWF0aWsudHUtbXVl
-bmNoZW4uZGWBGGx1a2FzLmVybGFjaGVyQGluLnR1bS5kZYEZbHVrYXMuZXJsYWNoZXJAY3Mu
-dHVtLmVkdYEobHVrYXMuZXJsYWNoZXJAaW5mb3JtYXRpay50dS1tdWVuY2hlbi5kZTB3BgNV
-HR8EcDBuMDWgM6Axhi9odHRwOi8vY2RwMS5wY2EuZGZuLmRlL3R1bS1jYS9wdWIvY3JsL2Nh
-Y3JsLmNybDA1oDOgMYYvaHR0cDovL2NkcDIucGNhLmRmbi5kZS90dW0tY2EvcHViL2NybC9j
-YWNybC5jcmwwgccGCCsGAQUFBwEBBIG6MIG3MDMGCCsGAQUFBzABhidodHRwOi8vb2NzcC5w
-Y2EuZGZuLmRlL09DU1AtU2VydmVyL09DU1AwPwYIKwYBBQUHMAKGM2h0dHA6Ly9jZHAxLnBj
-YS5kZm4uZGUvdHVtLWNhL3B1Yi9jYWNlcnQvY2FjZXJ0LmNydDA/BggrBgEFBQcwAoYzaHR0
-cDovL2NkcDIucGNhLmRmbi5kZS90dW0tY2EvcHViL2NhY2VydC9jYWNlcnQuY3J0MA0GCSqG
-SIb3DQEBCwUAA4IBAQBCG0flc78KJJpP/kCUtG63IcHL/YiAZYP5uJlJhrUL6fhWzd1Dqddm
-GPFTXaWDRLLcR9bCa65v5JtwdK5RavUj4+Jj4yywnbpvsffSNDENTvGjqRpRcq6OMVTJyd3c
-oJWVy5WqHxMg+CMCjXj7UrTnsg/tLqh0CTOI/21IiNxq0iT+03Cd+npk+X06vJpmARX+H0CI
-HXYDXHeQBQYsNFJCnErJtJ/yvEtZvjXXSXxhpZmqgX8EvaUQ2v+PGfwNDqFJWHePYc/oyT3s
-gtE28GpyVr0XPnIk15QbqHDq35oNR6GZarxxqjEZmeWX5nSNfYT5TC490Z5+KCUh3VIAypGm
-MYIDezCCA3cCAQEwcDBgMQswCQYDVQQGEwJERTEpMCcGA1UEChMgVGVjaG5pc2NoZSBVbml2
-ZXJzaXRhZXQgTXVlbmNoZW4xJjAkBgNVBAMTHVplcnRpZml6aWVydW5nc3N0ZWxsZSBkZXIg
-VFVNAgwdIm0f20T1PHwJv34wDQYJYIZIAWUDBAIBBQCgggHcMBgGCSqGSIb3DQEJAzELBgkq
-hkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTE3MDgyNTAyMTQxM1owLwYJKoZIhvcNAQkEMSIE
-IG0X8SsBizX9RrkPZFB1aMd4gFSsJ/r2dgbUjg766sRkMGwGCSqGSIb3DQEJDzFfMF0wCwYJ
-YIZIAWUDBAEqMAsGCWCGSAFlAwQBAjAKBggqhkiG9w0DBzAOBggqhkiG9w0DAgICAIAwDQYI
-KoZIhvcNAwICAUAwBwYFKw4DAgcwDQYIKoZIhvcNAwICASgwfwYJKwYBBAGCNxAEMXIwcDBg
-MQswCQYDVQQGEwJERTEpMCcGA1UEChMgVGVjaG5pc2NoZSBVbml2ZXJzaXRhZXQgTXVlbmNo
-ZW4xJjAkBgNVBAMTHVplcnRpZml6aWVydW5nc3N0ZWxsZSBkZXIgVFVNAgwdIm0f20T1PHwJ
-v34wgYEGCyqGSIb3DQEJEAILMXKgcDBgMQswCQYDVQQGEwJERTEpMCcGA1UEChMgVGVjaG5p
-c2NoZSBVbml2ZXJzaXRhZXQgTXVlbmNoZW4xJjAkBgNVBAMTHVplcnRpZml6aWVydW5nc3N0
-ZWxsZSBkZXIgVFVNAgwdIm0f20T1PHwJv34wDQYJKoZIhvcNAQEBBQAEggEAYsfDpAuvXBYk
-sKMYc1XBBCW5S9300IfOJi/2thhNL6jrBACDTWXfipYosS0TZbUkT+0MagTAvvZVNDDXgNhY
-o2hT+C4K5h1+iYC5KAw6RMWPnkFwBnqvXsCu8q60wOGg3mV1gP5VFAMeb48/RhCaezyHLl8X
-qcYMkhd9xsQiiKy+j6DkvL7E3s4Ut/ImrUGipDRbYP+53B6hiZ1oVhvBT8d+QPNJchSAO69N
-TMZIAnlR7aYYEJ9C5LiPbEjiCef98Q7h7nbJRrklnvFA0ihTzSRP3ng3PvgNhYBXI9u8Vfwc
-ATI5C3FII3iMGS1Ed83Cg6aPmyGSQkqvTWGdXgA55wAAAAAAAA==
---------------ms070408070501060803020804--
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
