@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f65.google.com ([74.125.83.65]:33915 "EHLO
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:34488 "EHLO
         mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756575AbdHYOWK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2017 10:22:10 -0400
+        with ESMTP id S932562AbdHYOXd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2017 10:23:33 -0400
 From: Bhumika Goyal <bhumirks@gmail.com>
 To: julia.lawall@lip6.fr, marcel@holtmann.org, gustavo@padovan.org,
         johan.hedberg@gmail.com, davem@davemloft.net, pablo@netfilter.org,
@@ -17,32 +17,35 @@ To: julia.lawall@lip6.fr, marcel@holtmann.org, gustavo@padovan.org,
         linux-wpan@vger.kernel.org, linux-rdma@vger.kernel.org,
         rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
 Cc: Bhumika Goyal <bhumirks@gmail.com>
-Subject: [PATCH 0/7] net: make some structures const
-Date: Fri, 25 Aug 2017 19:51:40 +0530
-Message-Id: <1503670907-23221-1-git-send-email-bhumirks@gmail.com>
+Subject: [PATCH 5/7] RDS: make rhashtable_params const
+Date: Fri, 25 Aug 2017 19:51:45 +0530
+Message-Id: <1503670907-23221-6-git-send-email-bhumirks@gmail.com>
+In-Reply-To: <1503670907-23221-1-git-send-email-bhumirks@gmail.com>
+References: <1503670907-23221-1-git-send-email-bhumirks@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make these const as they are not modified.
+Make this const as it is either used during a copy operation or passed
+to a const argument of the function rhltable_init
 
-Bhumika Goyal (7):
-  Bluetooth: 6lowpan: make header_ops const
-  bridge: make ebt_table const
-  ieee802154: 6lowpan: make header_ops const
-  ipv4: make net_protocol const
-  RDS: make rhashtable_params const
-  netfilter: nat: make rhashtable_params const
-  SUNRPC: make kvec const
+Signed-off-by: Bhumika Goyal <bhumirks@gmail.com>
+---
+ net/rds/bind.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- net/bluetooth/6lowpan.c            | 2 +-
- net/bridge/netfilter/ebtable_nat.c | 2 +-
- net/ieee802154/6lowpan/core.c      | 2 +-
- net/ipv4/af_inet.c                 | 4 ++--
- net/netfilter/nf_nat_core.c        | 2 +-
- net/rds/bind.c                     | 2 +-
- net/sunrpc/xdr.c                   | 2 +-
- 7 files changed, 8 insertions(+), 8 deletions(-)
-
+diff --git a/net/rds/bind.c b/net/rds/bind.c
+index 3a915be..75d43dc 100644
+--- a/net/rds/bind.c
++++ b/net/rds/bind.c
+@@ -40,7 +40,7 @@
+ 
+ static struct rhashtable bind_hash_table;
+ 
+-static struct rhashtable_params ht_parms = {
++static const struct rhashtable_params ht_parms = {
+ 	.nelem_hint = 768,
+ 	.key_len = sizeof(u64),
+ 	.key_offset = offsetof(struct rds_sock, rs_bound_key),
 -- 
 1.9.1
 
