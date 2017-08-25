@@ -1,438 +1,206 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:38316 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:38356 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756309AbdHYVwj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 25 Aug 2017 17:52:39 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/3] fs: hide another detail of delegation logic
-Date: Fri, 25 Aug 2017 17:52:37 -0400
-Message-Id: <1503697958-6122-3-git-send-email-bfields@redhat.com>
-In-Reply-To: <1503697958-6122-1-git-send-email-bfields@redhat.com>
-References: <1503697958-6122-1-git-send-email-bfields@redhat.com>
+        id S933375AbdHYWB2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 25 Aug 2017 18:01:28 -0400
+Date: Fri, 25 Aug 2017 18:01:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Vadim Lomovtsev <vlomovts@redhat.com>
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        jlayton@poochiereds.net, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pabeni@redhat.com
+Subject: Re: [PATCH] net: sunrpc: svcsock: fix NULL-pointer exception
+Message-ID: <20170825220128.GA6276@fieldses.org>
+References: <1503050447-13362-1-git-send-email-vlomovts@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1503050447-13362-1-git-send-email-vlomovts@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, Aug 18, 2017 at 06:00:47AM -0400, Vadim Lomovtsev wrote:
+> While running nfs/connectathon tests kernel NULL-pointer exception
+> has been observed due to races in svcsock.c.
+> 
+> Race is appear when kernel accepts connection by kernel_accept
+> (which creates new socket) and start queuing ingress packets
+> to new socket. This happanes in ksoftirq context which concurrently
+> on a differnt core while new socket setup is not done yet.
+> 
+> The fix is to re-order socket user data init sequence, add NULL-ptr
+> check before callback call along with barriers to prevent kernel crash.
+> 
+> Test results: nfs/connectathon reports '0' failed tests for about 200+ iterations.
 
-Pass around a new struct deleg_break_ctl instead of pointers to inode
-pointers; in a future patch I want to use this to pass a little more
-information from the nfs server to the lease code.
+By the way, is there anything special about your setup that allows you
+to reproduce this?  There's nothing special about connectathon tests, so
+I'm just wondering why we haven't had a lot of reports of this.
 
-No change in behavior.
+--b.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/attr.c          | 10 +++++-----
- fs/namei.c         | 50 +++++++++++++++++++++++++-------------------------
- fs/open.c          | 12 ++++++------
- fs/utimes.c        |  6 +++---
- include/linux/fs.h | 34 ++++++++++++++++++++--------------
- 5 files changed, 59 insertions(+), 53 deletions(-)
-
-diff --git a/fs/attr.c b/fs/attr.c
-index 135304146120..255315dbca32 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -185,23 +185,23 @@ EXPORT_SYMBOL(setattr_copy);
-  * notify_change - modify attributes of a filesytem object
-  * @dentry:	object affected
-  * @iattr:	new attributes
-- * @delegated_inode: returns inode, if the inode is delegated
-+ * @deleg_break_ctl: used to return inode, if the inode is delegated
-  *
-  * The caller must hold the i_mutex on the affected object.
-  *
-  * If notify_change discovers a delegation in need of breaking,
-  * it will return -EWOULDBLOCK and return a reference to the inode in
-- * delegated_inode.  The caller should then break the delegation and
-+ * deleg_break_ctl.  The caller should then break the delegation and
-  * retry.  Because breaking a delegation may take a long time, the
-  * caller should drop the i_mutex before doing so.
-  *
-- * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * Alternatively, a caller may pass NULL for deleg_break_ctl. This may
-  * be appropriate for callers that expect the underlying filesystem not
-  * to be NFS exported.  Also, passing NULL is fine for callers holding
-  * the file open for write, as there can be no conflicting delegation in
-  * that case.
-  */
--int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **delegated_inode)
-+int notify_change(struct dentry * dentry, struct iattr * attr, struct deleg_break_ctl *deleg_break_ctl)
- {
- 	struct inode *inode = dentry->d_inode;
- 	umode_t mode = inode->i_mode;
-@@ -304,7 +304,7 @@ int notify_change(struct dentry * dentry, struct iattr * attr, struct inode **de
- 	error = security_inode_setattr(dentry, attr);
- 	if (error)
- 		return error;
--	error = try_break_deleg(inode, delegated_inode);
-+	error = try_break_deleg(inode, deleg_break_ctl);
- 	if (error)
- 		return error;
- 
-diff --git a/fs/namei.c b/fs/namei.c
-index 5a93be7b2c9c..a75ab583aee7 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3941,21 +3941,21 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
-  * vfs_unlink - unlink a filesystem object
-  * @dir:	parent directory
-  * @dentry:	victim
-- * @delegated_inode: returns victim inode, if the inode is delegated.
-+ * @deleg_break_ctl: used to return victim inode, if the inode is delegated.
-  *
-  * The caller must hold dir->i_mutex.
-  *
-  * If vfs_unlink discovers a delegation, it will return -EWOULDBLOCK and
-- * return a reference to the inode in delegated_inode.  The caller
-+ * return a reference to the inode in deleg_break_ctl.  The caller
-  * should then break the delegation on that inode and retry.  Because
-  * breaking a delegation may take a long time, the caller should drop
-  * dir->i_mutex before doing so.
-  *
-- * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * Alternatively, a caller may pass NULL for deleg_break_ctl.  This may
-  * be appropriate for callers that expect the underlying filesystem not
-  * to be NFS exported.
-  */
--int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
-+int vfs_unlink(struct inode *dir, struct dentry *dentry, struct deleg_break_ctl *deleg_break_ctl)
- {
- 	struct inode *target = dentry->d_inode;
- 	int error = may_delete(dir, dentry, 0);
-@@ -3972,7 +3972,7 @@ int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegate
- 	else {
- 		error = security_inode_unlink(dir, dentry);
- 		if (!error) {
--			error = try_break_deleg(target, delegated_inode);
-+			error = try_break_deleg(target, deleg_break_ctl);
- 			if (error)
- 				goto out;
- 			error = dir->i_op->unlink(dir, dentry);
-@@ -4010,7 +4010,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	struct qstr last;
- 	int type;
- 	struct inode *inode = NULL;
--	struct inode *delegated_inode = NULL;
-+	struct deleg_break_ctl deleg_break_ctl = {};
- 	unsigned int lookup_flags = 0;
- retry:
- 	name = filename_parentat(dfd, getname(pathname), lookup_flags,
-@@ -4040,7 +4040,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 		error = security_path_unlink(&path, dentry);
- 		if (error)
- 			goto exit2;
--		error = vfs_unlink(path.dentry->d_inode, dentry, &delegated_inode);
-+		error = vfs_unlink(path.dentry->d_inode, dentry, &deleg_break_ctl);
- exit2:
- 		dput(dentry);
- 	}
-@@ -4048,7 +4048,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
- 	if (inode)
- 		iput(inode);	/* truncate the inode here */
- 	inode = NULL;
--	error = break_deleg_wait(&delegated_inode, error);
-+	error = break_deleg_wait(&deleg_break_ctl, error);
- 	if (error == DELEG_RETRY)
- 		goto retry_deleg;
- 	mnt_drop_write(path.mnt);
-@@ -4150,21 +4150,21 @@ SYSCALL_DEFINE2(symlink, const char __user *, oldname, const char __user *, newn
-  * @old_dentry:	object to be linked
-  * @dir:	new parent
-  * @new_dentry:	where to create the new link
-- * @delegated_inode: returns inode needing a delegation break
-+ * @deleg_break_ctl: returns inode needing a delegation break
-  *
-  * The caller must hold dir->i_mutex
-  *
-  * If vfs_link discovers a delegation on the to-be-linked file in need
-  * of breaking, it will return -EWOULDBLOCK and return a reference to the
-- * inode in delegated_inode.  The caller should then break the delegation
-+ * inode in deleg_break_ctl.  The caller should then break the delegation
-  * and retry.  Because breaking a delegation may take a long time, the
-  * caller should drop the i_mutex before doing so.
-  *
-- * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * Alternatively, a caller may pass NULL for deleg_break_ctl.  This may
-  * be appropriate for callers that expect the underlying filesystem not
-  * to be NFS exported.
-  */
--int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct inode **delegated_inode)
-+int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry, struct deleg_break_ctl *deleg_break_ctl)
- {
- 	struct inode *inode = old_dentry->d_inode;
- 	unsigned max_links = dir->i_sb->s_max_links;
-@@ -4208,7 +4208,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	else if (max_links && inode->i_nlink >= max_links)
- 		error = -EMLINK;
- 	else {
--		error = try_break_deleg(inode, delegated_inode);
-+		error = try_break_deleg(inode, deleg_break_ctl);
- 		if (!error)
- 			error = dir->i_op->link(old_dentry, dir, new_dentry);
- 	}
-@@ -4239,7 +4239,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- {
- 	struct dentry *new_dentry;
- 	struct path old_path, new_path;
--	struct inode *delegated_inode = NULL;
-+	struct deleg_break_ctl deleg_break_ctl = {};
- 	int how = 0;
- 	int error;
- 
-@@ -4278,10 +4278,10 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
- 	error = security_path_link(old_path.dentry, &new_path, new_dentry);
- 	if (error)
- 		goto out_dput;
--	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &delegated_inode);
-+	error = vfs_link(old_path.dentry, new_path.dentry->d_inode, new_dentry, &deleg_break_ctl);
- out_dput:
- 	done_path_create(&new_path, new_dentry);
--	error = break_deleg_wait(&delegated_inode, error);
-+	error = break_deleg_wait(&deleg_break_ctl, error);
- 	if (error == DELEG_RETRY) {
- 		path_put(&old_path);
- 		goto retry;
-@@ -4308,19 +4308,19 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
-  * @old_dentry:	source
-  * @new_dir:	parent of destination
-  * @new_dentry:	destination
-- * @delegated_inode: returns an inode needing a delegation break
-+ * @deleg_break_ctl: used to return an inode needing a delegation break
-  * @flags:	rename flags
-  *
-  * The caller must hold multiple mutexes--see lock_rename()).
-  *
-  * If vfs_rename discovers a delegation in need of breaking at either
-  * the source or destination, it will return -EWOULDBLOCK and return a
-- * reference to the inode in delegated_inode.  The caller should then
-+ * reference to the inode in deleg_break_ctl.  The caller should then
-  * break the delegation and retry.  Because breaking a delegation may
-  * take a long time, the caller should drop all locks before doing
-  * so.
-  *
-- * Alternatively, a caller may pass NULL for delegated_inode.  This may
-+ * Alternatively, a caller may pass NULL for deleg_break_ctl.  This may
-  * be appropriate for callers that expect the underlying filesystem not
-  * to be NFS exported.
-  *
-@@ -4354,7 +4354,7 @@ SYSCALL_DEFINE2(link, const char __user *, oldname, const char __user *, newname
-  */
- int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	       struct inode *new_dir, struct dentry *new_dentry,
--	       struct inode **delegated_inode, unsigned int flags)
-+	       struct deleg_break_ctl *deleg_break_ctl, unsigned int flags)
- {
- 	int error;
- 	bool is_dir = d_is_dir(old_dentry);
-@@ -4431,12 +4431,12 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (is_dir && !(flags & RENAME_EXCHANGE) && target)
- 		shrink_dcache_parent(new_dentry);
- 	if (!is_dir) {
--		error = try_break_deleg(source, delegated_inode);
-+		error = try_break_deleg(source, deleg_break_ctl);
- 		if (error)
- 			goto out;
- 	}
- 	if (target && !new_is_dir) {
--		error = try_break_deleg(target, delegated_inode);
-+		error = try_break_deleg(target, deleg_break_ctl);
- 		if (error)
- 			goto out;
- 	}
-@@ -4485,7 +4485,7 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
- 	struct path old_path, new_path;
- 	struct qstr old_last, new_last;
- 	int old_type, new_type;
--	struct inode *delegated_inode = NULL;
-+	struct deleg_break_ctl deleg_break_ctl = {};
- 	struct filename *from;
- 	struct filename *to;
- 	unsigned int lookup_flags = 0, target_flags = LOOKUP_RENAME_TARGET;
-@@ -4590,14 +4590,14 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
- 		goto exit5;
- 	error = vfs_rename(old_path.dentry->d_inode, old_dentry,
- 			   new_path.dentry->d_inode, new_dentry,
--			   &delegated_inode, flags);
-+			   &deleg_break_ctl, flags);
- exit5:
- 	dput(new_dentry);
- exit4:
- 	dput(old_dentry);
- exit3:
- 	unlock_rename(new_path.dentry, old_path.dentry);
--	error = break_deleg_wait(&delegated_inode, error);
-+	error = break_deleg_wait(&deleg_break_ctl, error);
- 	if (error == DELEG_RETRY)
- 		goto retry_deleg;
- 	mnt_drop_write(old_path.mnt);
-diff --git a/fs/open.c b/fs/open.c
-index d49e9385e45d..6c6443476316 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -515,7 +515,7 @@ SYSCALL_DEFINE1(chroot, const char __user *, filename)
- static int chmod_common(const struct path *path, umode_t mode)
- {
- 	struct inode *inode = path->dentry->d_inode;
--	struct inode *delegated_inode = NULL;
-+	struct deleg_break_ctl deleg_break_ctl = {};
- 	struct iattr newattrs;
- 	int error;
- 
-@@ -529,10 +529,10 @@ static int chmod_common(const struct path *path, umode_t mode)
- 		goto out_unlock;
- 	newattrs.ia_mode = (mode & S_IALLUGO) | (inode->i_mode & ~S_IALLUGO);
- 	newattrs.ia_valid = ATTR_MODE | ATTR_CTIME;
--	error = notify_change(path->dentry, &newattrs, &delegated_inode);
-+	error = notify_change(path->dentry, &newattrs, &deleg_break_ctl);
- out_unlock:
- 	inode_unlock(inode);
--	error = break_deleg_wait(&delegated_inode, error);
-+	error = break_deleg_wait(&deleg_break_ctl, error);
- 	if (error == DELEG_RETRY)
- 		goto retry_deleg;
- 	mnt_drop_write(path->mnt);
-@@ -578,7 +578,7 @@ SYSCALL_DEFINE2(chmod, const char __user *, filename, umode_t, mode)
- static int chown_common(const struct path *path, uid_t user, gid_t group)
- {
- 	struct inode *inode = path->dentry->d_inode;
--	struct inode *delegated_inode = NULL;
-+	struct deleg_break_ctl deleg_break_ctl = {};
- 	int error;
- 	struct iattr newattrs;
- 	kuid_t uid;
-@@ -607,9 +607,9 @@ static int chown_common(const struct path *path, uid_t user, gid_t group)
- 	inode_lock(inode);
- 	error = security_path_chown(path, uid, gid);
- 	if (!error)
--		error = notify_change(path->dentry, &newattrs, &delegated_inode);
-+		error = notify_change(path->dentry, &newattrs, &deleg_break_ctl);
- 	inode_unlock(inode);
--	error = break_deleg_wait(&delegated_inode, error);
-+	error = break_deleg_wait(&deleg_break_ctl, error);
- 	if (error == DELEG_RETRY)
- 		goto retry_deleg;
- 	return error;
-diff --git a/fs/utimes.c b/fs/utimes.c
-index 75467b7ebfce..9af7ca3810db 100644
---- a/fs/utimes.c
-+++ b/fs/utimes.c
-@@ -49,7 +49,7 @@ static int utimes_common(const struct path *path, struct timespec *times)
- 	int error;
- 	struct iattr newattrs;
- 	struct inode *inode = path->dentry->d_inode;
--	struct inode *delegated_inode = NULL;
-+	struct deleg_break_ctl deleg_break_ctl = {};
- 
- 	error = mnt_want_write(path->mnt);
- 	if (error)
-@@ -87,9 +87,9 @@ static int utimes_common(const struct path *path, struct timespec *times)
- 	}
- retry_deleg:
- 	inode_lock(inode);
--	error = notify_change(path->dentry, &newattrs, &delegated_inode);
-+	error = notify_change(path->dentry, &newattrs, &deleg_break_ctl);
- 	inode_unlock(inode);
--	error = break_deleg_wait(&delegated_inode, error);
-+	error = break_deleg_wait(&deleg_break_ctl, error);
- 	if (error == DELEG_RETRY)
- 		goto retry_deleg;
- 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 1d0d2fde1766..20a07375e60c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1564,6 +1564,11 @@ static inline void sb_start_intwrite(struct super_block *sb)
- 
- extern bool inode_owner_or_capable(const struct inode *inode);
- 
-+/* Used to pass some information used by NFSv4 delegations */
-+struct deleg_break_ctl {
-+	struct inode *delegated_inode; /* inode with in-progress break */
-+};
-+
- /*
-  * VFS helper functions..
-  */
-@@ -1571,10 +1576,10 @@ extern int vfs_create(struct inode *, struct dentry *, umode_t, bool);
- extern int vfs_mkdir(struct inode *, struct dentry *, umode_t);
- extern int vfs_mknod(struct inode *, struct dentry *, umode_t, dev_t);
- extern int vfs_symlink(struct inode *, struct dentry *, const char *);
--extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct inode **);
-+extern int vfs_link(struct dentry *, struct inode *, struct dentry *, struct deleg_break_ctl *);
- extern int vfs_rmdir(struct inode *, struct dentry *);
--extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
--extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **, unsigned int);
-+extern int vfs_unlink(struct inode *, struct dentry *, struct deleg_break_ctl *);
-+extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct deleg_break_ctl *, unsigned int);
- extern int vfs_whiteout(struct inode *, struct dentry *);
- 
- extern struct dentry *vfs_tmpfile(struct dentry *dentry, umode_t mode,
-@@ -2276,13 +2281,13 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
--static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+static inline int try_break_deleg(struct inode *inode, struct deleg_break_ctl *deleg_break_ctl)
- {
- 	int ret;
- 
- 	ret = break_deleg(inode, O_WRONLY|O_NONBLOCK);
--	if (ret == -EWOULDBLOCK && delegated_inode) {
--		*delegated_inode = inode;
-+	if (ret == -EWOULDBLOCK && deleg_break_ctl) {
-+		deleg_break_ctl->delegated_inode = inode;
- 		ihold(inode);
- 	}
- 	return ret;
-@@ -2290,13 +2295,14 @@ static inline int try_break_deleg(struct inode *inode, struct inode **delegated_
- 
- #define DELEG_RETRY 1
- 
--static inline int break_deleg_wait(struct inode **delegated_inode, int error)
-+static inline int break_deleg_wait(struct deleg_break_ctl *deleg_break_ctl, int error)
- {
--	if (!*delegated_inode)
-+	if (!deleg_break_ctl->delegated_inode)
- 		return error;
--	error = break_deleg(*delegated_inode, O_WRONLY);
--	iput(*delegated_inode);
--	*delegated_inode = NULL;
-+
-+	error = break_deleg(deleg_break_ctl->delegated_inode, O_WRONLY);
-+	iput(deleg_break_ctl->delegated_inode);
-+	deleg_break_ctl->delegated_inode = NULL;
- 	return error ? error : DELEG_RETRY;
- }
- 
-@@ -2321,12 +2327,12 @@ static inline int break_deleg(struct inode *inode, unsigned int mode)
- 	return 0;
- }
- 
--static inline int try_break_deleg(struct inode *inode, struct inode **delegated_inode)
-+static inline int try_break_deleg(struct inode *inode, struct deleg_break_ctl *deleg_break_ctl)
- {
- 	return 0;
- }
- 
--static inline int break_deleg_wait(struct inode **delegated_inode)
-+static inline int break_deleg_wait(struct deleg_break_ctl *deleg_break_ctl, int error)
- {
- 	BUG();
- 	return 0;
-@@ -2639,7 +2645,7 @@ extern void emergency_remount(void);
- #ifdef CONFIG_BLOCK
- extern sector_t bmap(struct inode *, sector_t);
- #endif
--extern int notify_change(struct dentry *, struct iattr *, struct inode **);
-+extern int notify_change(struct dentry *, struct iattr *, struct deleg_break_ctl *);
- extern int inode_permission(struct inode *, int);
- extern int __inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
--- 
-2.13.5
-
+> 
+> Crash log:
+> ---<-snip->---
+> [ 6708.638984] Unable to handle kernel NULL pointer dereference at virtual address 00000000
+> [ 6708.647093] pgd = ffff0000094e0000
+> [ 6708.650497] [00000000] *pgd=0000010ffff90003, *pud=0000010ffff90003, *pmd=0000010ffff80003, *pte=0000000000000000
+> [ 6708.660761] Internal error: Oops: 86000005 [#1] SMP
+> [ 6708.665630] Modules linked in: nfsv3 nfnetlink_queue nfnetlink_log nfnetlink rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache overlay xt_CONNSECMARK xt_SECMARK xt_conntrack iptable_security ip_tables ah4 xfrm4_mode_transport sctp tun binfmt_misc ext4 jbd2 mbcache loop tcp_diag udp_diag inet_diag rpcrdma ib_isert iscsi_target_mod ib_iser rdma_cm iw_cm libiscsi scsi_transport_iscsi ib_srpt target_core_mod ib_srp scsi_transport_srp ib_ipoib ib_ucm ib_uverbs ib_umad ib_cm ib_core nls_koi8_u nls_cp932 ts_kmp nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack vfat fat ghash_ce sha2_ce sha1_ce cavium_rng_vf i2c_thunderx sg thunderx_edac i2c_smbus edac_core cavium_rng nfsd auth_rpcgss nfs_acl lockd grace sunrpc xfs libcrc32c nicvf nicpf ast i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops
+> [ 6708.736446]  ttm drm i2c_core thunder_bgx thunder_xcv mdio_thunder mdio_cavium dm_mirror dm_region_hash dm_log dm_mod [last unloaded: stap_3c300909c5b3f46dcacd49aab3334af_87021]
+> [ 6708.752275] CPU: 84 PID: 0 Comm: swapper/84 Tainted: G        W  OE   4.11.0-4.el7.aarch64 #1
+> [ 6708.760787] Hardware name: www.cavium.com CRB-2S/CRB-2S, BIOS 0.3 Mar 13 2017
+> [ 6708.767910] task: ffff810006842e80 task.stack: ffff81000689c000
+> [ 6708.773822] PC is at 0x0
+> [ 6708.776739] LR is at svc_data_ready+0x38/0x88 [sunrpc]
+> [ 6708.781866] pc : [<0000000000000000>] lr : [<ffff0000029d7378>] pstate: 60000145
+> [ 6708.789248] sp : ffff810ffbad3900
+> [ 6708.792551] x29: ffff810ffbad3900 x28: ffff000008c73d58
+> [ 6708.797853] x27: 0000000000000000 x26: ffff81000bbe1e00
+> [ 6708.803156] x25: 0000000000000020 x24: ffff800f7410bf28
+> [ 6708.808458] x23: ffff000008c63000 x22: ffff000008c63000
+> [ 6708.813760] x21: ffff800f7410bf28 x20: ffff81000bbe1e00
+> [ 6708.819063] x19: ffff810012412400 x18: 00000000d82a9df2
+> [ 6708.824365] x17: 0000000000000000 x16: 0000000000000000
+> [ 6708.829667] x15: 0000000000000000 x14: 0000000000000001
+> [ 6708.834969] x13: 0000000000000000 x12: 722e736f622e676e
+> [ 6708.840271] x11: 00000000f814dd99 x10: 0000000000000000
+> [ 6708.845573] x9 : 7374687225000000 x8 : 0000000000000000
+> [ 6708.850875] x7 : 0000000000000000 x6 : 0000000000000000
+> [ 6708.856177] x5 : 0000000000000028 x4 : 0000000000000000
+> [ 6708.861479] x3 : 0000000000000000 x2 : 00000000e5000000
+> [ 6708.866781] x1 : 0000000000000000 x0 : ffff81000bbe1e00
+> [ 6708.872084]
+> [ 6708.873565] Process swapper/84 (pid: 0, stack limit = 0xffff81000689c000)
+> [ 6708.880341] Stack: (0xffff810ffbad3900 to 0xffff8100068a0000)
+> [ 6708.886075] Call trace:
+> [ 6708.888513] Exception stack(0xffff810ffbad3710 to 0xffff810ffbad3840)
+> [ 6708.894942] 3700:                                   ffff810012412400 0001000000000000
+> [ 6708.902759] 3720: ffff810ffbad3900 0000000000000000 0000000060000145 ffff800f79300000
+> [ 6708.910577] 3740: ffff000009274d00 00000000000003ea 0000000000000015 ffff000008c63000
+> [ 6708.918395] 3760: ffff810ffbad3830 ffff800f79300000 000000000000004d 0000000000000000
+> [ 6708.926212] 3780: ffff810ffbad3890 ffff0000080f88dc ffff800f79300000 000000000000004d
+> [ 6708.934030] 37a0: ffff800f7930093c ffff000008c63000 0000000000000000 0000000000000140
+> [ 6708.941848] 37c0: ffff000008c2c000 0000000000040b00 ffff81000bbe1e00 0000000000000000
+> [ 6708.949665] 37e0: 00000000e5000000 0000000000000000 0000000000000000 0000000000000028
+> [ 6708.957483] 3800: 0000000000000000 0000000000000000 0000000000000000 7374687225000000
+> [ 6708.965300] 3820: 0000000000000000 00000000f814dd99 722e736f622e676e 0000000000000000
+> [ 6708.973117] [<          (null)>]           (null)
+> [ 6708.977824] [<ffff0000086f9fa4>] tcp_data_queue+0x754/0xc5c
+> [ 6708.983386] [<ffff0000086fa64c>] tcp_rcv_established+0x1a0/0x67c
+> [ 6708.989384] [<ffff000008704120>] tcp_v4_do_rcv+0x15c/0x22c
+> [ 6708.994858] [<ffff000008707418>] tcp_v4_rcv+0xaf0/0xb58
+> [ 6709.000077] [<ffff0000086df784>] ip_local_deliver_finish+0x10c/0x254
+> [ 6709.006419] [<ffff0000086dfea4>] ip_local_deliver+0xf0/0xfc
+> [ 6709.011980] [<ffff0000086dfad4>] ip_rcv_finish+0x208/0x3a4
+> [ 6709.017454] [<ffff0000086e018c>] ip_rcv+0x2dc/0x3c8
+> [ 6709.022328] [<ffff000008692fc8>] __netif_receive_skb_core+0x2f8/0xa0c
+> [ 6709.028758] [<ffff000008696068>] __netif_receive_skb+0x38/0x84
+> [ 6709.034580] [<ffff00000869611c>] netif_receive_skb_internal+0x68/0xdc
+> [ 6709.041010] [<ffff000008696bc0>] napi_gro_receive+0xcc/0x1a8
+> [ 6709.046690] [<ffff0000014b0fc4>] nicvf_cq_intr_handler+0x59c/0x730 [nicvf]
+> [ 6709.053559] [<ffff0000014b1380>] nicvf_poll+0x38/0xb8 [nicvf]
+> [ 6709.059295] [<ffff000008697a6c>] net_rx_action+0x2f8/0x464
+> [ 6709.064771] [<ffff000008081824>] __do_softirq+0x11c/0x308
+> [ 6709.070164] [<ffff0000080d14e4>] irq_exit+0x12c/0x174
+> [ 6709.075206] [<ffff00000813101c>] __handle_domain_irq+0x78/0xc4
+> [ 6709.081027] [<ffff000008081608>] gic_handle_irq+0x94/0x190
+> [ 6709.086501] Exception stack(0xffff81000689fdf0 to 0xffff81000689ff20)
+> [ 6709.092929] fde0:                                   0000810ff2ec0000 ffff000008c10000
+> [ 6709.100747] fe00: ffff000008c70ef4 0000000000000001 0000000000000000 ffff810ffbad9b18
+> [ 6709.108565] fe20: ffff810ffbad9c70 ffff8100169d3800 ffff810006843ab0 ffff81000689fe80
+> [ 6709.116382] fe40: 0000000000000bd0 0000ffffdf979cd0 183f5913da192500 0000ffff8a254ce4
+> [ 6709.124200] fe60: 0000ffff8a254b78 0000aaab10339808 0000000000000000 0000ffff8a0c2a50
+> [ 6709.132018] fe80: 0000ffffdf979b10 ffff000008d6d450 ffff000008c10000 ffff000008d6d000
+> [ 6709.139836] fea0: 0000000000000054 ffff000008cd3dbc 0000000000000000 0000000000000000
+> [ 6709.147653] fec0: 0000000000000000 0000000000000000 0000000000000000 ffff81000689ff20
+> [ 6709.155471] fee0: ffff000008085240 ffff81000689ff20 ffff000008085244 0000000060000145
+> [ 6709.163289] ff00: ffff81000689ff10 ffff00000813f1e4 ffffffffffffffff ffff00000813f238
+> [ 6709.171107] [<ffff000008082eb4>] el1_irq+0xb4/0x140
+> [ 6709.175976] [<ffff000008085244>] arch_cpu_idle+0x44/0x11c
+> [ 6709.181368] [<ffff0000087bf3b8>] default_idle_call+0x20/0x30
+> [ 6709.187020] [<ffff000008116d50>] do_idle+0x158/0x1e4
+> [ 6709.191973] [<ffff000008116ff4>] cpu_startup_entry+0x2c/0x30
+> [ 6709.197624] [<ffff00000808e7cc>] secondary_start_kernel+0x13c/0x160
+> [ 6709.203878] [<0000000001bc71c4>] 0x1bc71c4
+> [ 6709.207967] Code: bad PC value
+> [ 6709.211061] SMP: stopping secondary CPUs
+> [ 6709.218830] Starting crashdump kernel...
+> [ 6709.222749] Bye!
+> ---<-snip>---
+> 
+> Signed-off-by: Vadim Lomovtsev <vlomovts@redhat.com>
+> ---
+>  net/sunrpc/svcsock.c | 24 ++++++++++++++++++------
+>  1 file changed, 18 insertions(+), 6 deletions(-)
+> 
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 2b720fa..b6496f3 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -421,7 +421,9 @@ static void svc_data_ready(struct sock *sk)
+>  		dprintk("svc: socket %p(inet %p), busy=%d\n",
+>  			svsk, sk,
+>  			test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
+> -		svsk->sk_odata(sk);
+> +		rmb();
+> +		if (svsk->sk_odata)
+> +			svsk->sk_odata(sk);
+>  		if (!test_and_set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags))
+>  			svc_xprt_enqueue(&svsk->sk_xprt);
+>  	}
+> @@ -437,7 +439,9 @@ static void svc_write_space(struct sock *sk)
+>  	if (svsk) {
+>  		dprintk("svc: socket %p(inet %p), write_space busy=%d\n",
+>  			svsk, sk, test_bit(XPT_BUSY, &svsk->sk_xprt.xpt_flags));
+> -		svsk->sk_owspace(sk);
+> +		rmb();
+> +		if (svsk->sk_owspace)
+> +			svsk->sk_owspace(sk);
+>  		svc_xprt_enqueue(&svsk->sk_xprt);
+>  	}
+>  }
+> @@ -760,8 +764,12 @@ static void svc_tcp_listen_data_ready(struct sock *sk)
+>  	dprintk("svc: socket %p TCP (listen) state change %d\n",
+>  		sk, sk->sk_state);
+>  
+> -	if (svsk)
+> -		svsk->sk_odata(sk);
+> +	if (svsk) { 
+> +		rmb();
+> +		if (svsk->sk_odata)
+> +			svsk->sk_odata(sk);
+> +	}
+> +
+>  	/*
+>  	 * This callback may called twice when a new connection
+>  	 * is established as a child socket inherits everything
+> @@ -794,7 +802,10 @@ static void svc_tcp_state_change(struct sock *sk)
+>  	if (!svsk)
+>  		printk("svc: socket %p: no user data\n", sk);
+>  	else {
+> -		svsk->sk_ostate(sk);
+> +		rmb();
+> +		if (svsk->sk_ostate)
+> +			svsk->sk_ostate(sk);
+> +
+>  		if (sk->sk_state != TCP_ESTABLISHED) {
+>  			set_bit(XPT_CLOSE, &svsk->sk_xprt.xpt_flags);
+>  			svc_xprt_enqueue(&svsk->sk_xprt);
+> @@ -1381,12 +1392,13 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+>  		return ERR_PTR(err);
+>  	}
+>  
+> -	inet->sk_user_data = svsk;
+>  	svsk->sk_sock = sock;
+>  	svsk->sk_sk = inet;
+>  	svsk->sk_ostate = inet->sk_state_change;
+>  	svsk->sk_odata = inet->sk_data_ready;
+>  	svsk->sk_owspace = inet->sk_write_space;
+> +	wmb();
+> +	inet->sk_user_data = svsk;
+>  
+>  	/* Initialize the socket */
+>  	if (sock->type == SOCK_DGRAM)
+> -- 
+> 1.8.3.1
