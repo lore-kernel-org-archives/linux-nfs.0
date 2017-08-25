@@ -1,71 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f52.google.com ([209.85.214.52]:35177 "EHLO
-        mail-it0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754646AbdHYU1I (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Aug 2017 16:27:08 -0400
-Received: by mail-it0-f52.google.com with SMTP id f1so55491ith.0
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Aug 2017 13:27:08 -0700 (PDT)
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Subject: [GIT PULL] Please pull NFSoRDMA client changes for Linux 4.14
-Message-ID: <a4f65696-0602-cde6-fd6e-3017e268297f@gmail.com>
-Date: Fri, 25 Aug 2017 16:27:05 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from fieldses.org ([173.255.197.46]:38312 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755253AbdHYVwj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 25 Aug 2017 17:52:39 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 0/3] Eliminate delegation self-conflicts
+Date: Fri, 25 Aug 2017 17:52:35 -0400
+Message-Id: <1503697958-6122-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The following changes since commit 16f73eb02d7e1765ccab3d2018e0bd98eb93d973:
+This is my attempt to fix the NFS server so we don't unnecessarily
+recall delegations when the operation breaking the delegation comes from
+the same client that holds the delegation.
 
-  Linux 4.13-rc3 (2017-07-30 12:40:36 -0700)
+To do that we need some way to pass the identity of the breaker down
+through the VFS.
 
-are available in the git repository at:
+I didn't feel like adding another argument to all the VFS functions that
+this might need to be passed down through.  But all of those functions
+already take a struct inode **delegated inode, so instead I turned that
+into a single-member struct deleg_ctrl *, which I then added a second
+member to.
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-rdma-for-4.14-1
+I dunno, welcome any more straightforward ways of doing this if anyone
+has suggestions.
 
-for you to fetch changes up to 67af6f652f9ccad772c48f7c959ad5aa23bdfb40:
+My first attempt was to do this by instead checking for conflicts in the
+caller (nfsd) and then passing down one just one bit telling the lease
+code conflicts had already been checked so it didn't need to.  But
+that's much too early to check for conflicts, since the caller doesn't
+have the necessary inode locks yet.
 
-  xprtrdma: Re-arrange struct rx_stats (2017-08-22 16:19:32 -0400)
+I'm still missing testing.  Regression tests pass, but I haven't
+actually confirmed that the self-conflicts are gone!  Off to go hack on
+pynfs....
 
-----------------------------------------------------------------
-These are mostly cleanups that remove unused variables, improve cache handling in structs,
-and improve XDR encoding and decoding by switching over to xdr_streams.  This pull request
-does not include "xprtdrdma: Use xprt_pin_rqst in rpcrdma_reply_handler" that you said you
-could put on top of your other patches.
+--b.
 
-Thanks,
-Anna
-----------------------------------------------------------------
-Chuck Lever (16):
-      sunrpc: Const-ify all instances of struct rpc_xprt_ops
-      xprtrdma: Add xdr_init_decode to rpcrdma_reply_handler()
-      xprtrdma: Harden backchannel call decoding
-      xprtrdma: Refactor rpcrdma_reply_handler()
-      xprtrdma: Replace rpcrdma_count_chunks()
-      xprtrdma: Remove opcode check in Receive completion handler
-      xprtrdma: Remove rpcrdma_rep::rr_len
-      xprtrdma: Clean up XDR decoding in rpcrdma_update_granted_credits()
-      xprtrdma: Clean up rpcrdma_marshal_req() synopsis
-      xprtrdma: Remove rpclen from rpcrdma_marshal_req
-      xprtrdma: Set up an xdr_stream in rpcrdma_marshal_req()
-      xprtrdma: Harden chunk list encoding against send buffer overflow
-      xprtrdma: Clean up rpcrdma_bc_marshal_reply()
-      xprtrdma: Remove imul instructions from rpcrdma_convert_iovs()
-      xprtrdma: Remove imul instructions from chunk list encoders
-      xprtrdma: Re-arrange struct rx_stats
+J. Bruce Fields (3):
+  fs: cleanup to hide some details of delegation logic
+  fs: hide another detail of delegation logic
+  nfsd: clients don't need to break their own delegations
 
- include/linux/sunrpc/xdr.h                 |  13 ++++
- include/linux/sunrpc/xprt.h                |   2 +-
- net/sunrpc/xprtrdma/backchannel.c          |  71 +++++++-----------
- net/sunrpc/xprtrdma/fmr_ops.c              |  10 +--
- net/sunrpc/xprtrdma/frwr_ops.c             |  12 +--
- net/sunrpc/xprtrdma/rpc_rdma.c             | 844 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++------------------------------------------------------------------------------------
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |   2 +-
- net/sunrpc/xprtrdma/transport.c            |   7 +-
- net/sunrpc/xprtrdma/verbs.c                |  21 +++---
- net/sunrpc/xprtrdma/xprt_rdma.h            |  33 ++++++---
- net/sunrpc/xprtsock.c                      |   8 +-
- 11 files changed, 597 insertions(+), 426 deletions(-)
+ Documentation/filesystems/Locking |  2 ++
+ fs/attr.c                         | 10 +++---
+ fs/locks.c                        |  7 +++-
+ fs/namei.c                        | 70 ++++++++++++++++++---------------------
+ fs/nfsd/nfs4state.c               | 40 ++++++++++++++++++++++
+ fs/nfsd/vfs.c                     | 26 ++++++++++++---
+ fs/open.c                         | 24 ++++++--------
+ fs/utimes.c                       | 12 +++----
+ include/linux/fs.h                | 61 +++++++++++++++++++++-------------
+ 9 files changed, 159 insertions(+), 93 deletions(-)
+
+-- 
+2.13.5
+
