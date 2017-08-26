@@ -1,97 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:45780 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750737AbdHZSGM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Aug 2017 14:06:12 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 0/3] Eliminate delegation self-conflicts
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1503697958-6122-1-git-send-email-bfields@redhat.com>
-Date: Sat, 26 Aug 2017 14:06:05 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <1BD0901E-8339-4993-A012-9F8402BF16EF@oracle.com>
-References: <1503697958-6122-1-git-send-email-bfields@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
+Received: from [111.205.110.81] ([111.205.110.81]:3377 "EHLO cww.net.cn"
+        rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751061AbdHZTFe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 26 Aug 2017 15:05:34 -0400
+Reply-To: <EMAILQUNFA@163.COM>
+Message-ID: <20170827023610766117@cww.net.cn>
+Subject: =?utf-8?B?4piFMjAxNzAzMTMxNzIzMDg3NDg4Lg==?=
+        =?utf-8?B?anBnLS3igJxKRUMgd29ybGQgMjAxOA==?=
+        =?utf-8?B?IOS4lueVjOWkjeWQiOadkOaWmeWxleiniOWPiuS8muiuruKAneWwhuS6juKAnDPmnIgwNg==?=
+        =?utf-8?B?LTA45pel4oCd5Zyo4oCc5rOV5Zu95be06buO4oCd5Li+6KGMICAgIO+8iOWcsA==?=
+        =?utf-8?B?5Y+zUDEtTC1NZe+8iQ==?=
+Date: Sun, 27 Aug 2017 02:36:01 +0800
+MIME-Version: 1.0
+Content-Type: text/plain;
+        charset="utf-8"
+From: linux-nfs-owner@vger.kernel.org
+To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Aug 25, 2017, at 5:52 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> 
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> This is my attempt to fix the NFS server so we don't unnecessarily
-> recall delegations when the operation breaking the delegation comes from
-> the same client that holds the delegation.
-> 
-> To do that we need some way to pass the identity of the breaker down
-> through the VFS.
-> 
-> I didn't feel like adding another argument to all the VFS functions that
-> this might need to be passed down through.  But all of those functions
-> already take a struct inode **delegated inode, so instead I turned that
-> into a single-member struct deleg_ctrl *, which I then added a second
-> member to.
-> 
-> I dunno, welcome any more straightforward ways of doing this if anyone
-> has suggestions.
-> 
-> My first attempt was to do this by instead checking for conflicts in the
-> caller (nfsd) and then passing down one just one bit telling the lease
-> code conflicts had already been checked so it didn't need to.  But
-> that's much too early to check for conflicts, since the caller doesn't
-> have the necessary inode locks yet.
-> 
-> I'm still missing testing.  Regression tests pass, but I haven't
-> actually confirmed that the self-conflicts are gone!  Off to go hack on
-> pynfs....
-
-FWIW, I observe a lot of delegation recall activity when running
-the git regression tests on an NFSv4.x mount. This is a single
-client.
-
-Unpack a recent release of the git tarball.
-
-$ cd src/git
-$ make clean
-$ make
-$ make test
-
-Easily scriptable, and you can "cd t/" and run individual
-regression tests if you like.
-
-
-> --b.
-> 
-> J. Bruce Fields (3):
->  fs: cleanup to hide some details of delegation logic
->  fs: hide another detail of delegation logic
->  nfsd: clients don't need to break their own delegations
-> 
-> Documentation/filesystems/Locking |  2 ++
-> fs/attr.c                         | 10 +++---
-> fs/locks.c                        |  7 +++-
-> fs/namei.c                        | 70 ++++++++++++++++++---------------------
-> fs/nfsd/nfs4state.c               | 40 ++++++++++++++++++++++
-> fs/nfsd/vfs.c                     | 26 ++++++++++++---
-> fs/open.c                         | 24 ++++++--------
-> fs/utimes.c                       | 12 +++----
-> include/linux/fs.h                | 61 +++++++++++++++++++++-------------
-> 9 files changed, 159 insertions(+), 93 deletions(-)
-> 
-> -- 
-> 2.13.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
+5bCK5pWs55qEIDIwMTcwMzEzMTcyMzA4NzQ4OC5qcGdAMGVfMG9fMGxfNDAwaF80MDB3XzUwcS5q
+cGcg5LyB5Lia6aKG5a+8L+WFrOWPuOi0n+i0o+S6ui/kuJrnlYzkuJPlrrbvvIzmgqjlpb3vvJoN
+CuOAgOOAgA0K44CA44CA5paw5p2Q5paZ5Li6MjHkuJbnuqrkuInlpKflhbHmgKflhbPplK7mioDm
+nK/kuYvkuIDvvIzlt7LmiJDkuLrlhajnkIPnu4/mtY7ov4XpgJ/lop7plb/nmoTmupDliqjlipvl
+kozmj5DljYfmoLjlv4Pnq57kuonlipvnmoTmiJjnlaXnhKbngrnjgILmnZDmlpnkvZzkuLrliLbp
+gKDkuJrnmoTln7rnoYDvvIznibnliKvmmK/mlrDmnZDmlpnnoJTnqbblkozkuqfkuJrlj5HlsZXn
+moTmsLTlubPkuI7op4TmqKHvvIzlt7Lnu4/miJDkuLrooaHph4/kuIDkuKrlm73lrrbnp5HmioDo
+v5vmraXlkoznu7zlkIjlrp7lipvnmoTph43opoHmoIflv5fjgILlnKjmlrDmnZDmlpnlj5HlsZXk
+uI7lupTnlKjkuK3vvIzlpI3lkIjmnZDmlpnljaDmnInnm7jlvZPph43opoHnmoTlnLDkvY3vvIzn
+ibnliKvlub/ms5vnmoTlupTnlKjlnKjmsb3ovabjgIHkuqTpgJrjgIHpo47og73jgIHoiKrnqbrj
+gIHoiKrlpKnjgIHlhbXlmajjgIHoiLnoiLbjgIHlm73pmLLjgIHmnLrmorDjgIHnlLXlrZDjgIHl
+jJblt6XjgIHlu7rnrZHjgIHlhpzkuJrjgIHmuJTkuJrjgIHnurrnu4fjgIHov5DliqjlmajmnZDn
+rYnpoobln5/vvIzkuIDnm7TmmK/kuJbnlYzlkITlm73kvJjlhYjlj5HlsZXlkoznq57kuonmv4Dn
+g4jnmoTph43opoHooYzkuJrjgIINCuOAgOOAgA0K44CA44CA4oCcSkVD5LiW55WM5aSN5ZCI5p2Q
+5paZ5bGV6KeI5Y+K5Lya6K6u4oCd77yISkVDIHdvcmxkIENvbXBvc2l0ZXMgU2hvdyAmIENvbmZl
+cmVuY2Vz77yJ5Yib5Yqe5LqOMTk2M+W5tO+8jOavj+W5tOS4vuWKnuS4gOWxiu+8jOiHszIwMTfl
+ubTmgLvlhbHkuL7lip7kuoY1MuWxiu+8jOS4u+WKnuWNleS9jeaYr+azleWbvUpFQ+WkjeWQiOad
+kOaWmeWPkeWxleS/g+i/m+S8mi9KRUPpm4blm6LvvIzkuK3lm73mgLvlsZXlm6LlsZXllYbnu4Tn
+u4fljZXkvY3kuLrmmKDlvrflm73pmYXkvJrlsZXpm4blm6LkuK3lm73ku6PooajlpITvvIzlnKjl
+jJfkuqzjgIHkuIrmtbfnrYnlnLDorr7mnInliIbmlK/mnLrmnoTvvIzotJ/otKPor6XlsZXkvJrl
+nKjkuK3lm73nmoTmjqjlub/lkozmi5vllYblt6XkvZzvvIhKRUPkuK3lm73mgLvlsZXlm6LmiqXl
+kI3ng63nur/vvJo0MDAwLTY4MC04NjDovaw4MTQ044CBNTIyMO+8ieOAgkpFQ+WkjeWQiOadkOaW
+meWxleW3suaIkOS4uuS4lueVjOS4iuWOhuWPsuacgOaCoOS5heOAgeinhOaooeacgOWkp+eahOWk
+jeWQiOadkOaWmeihjOS4muS4k+S4muWxleiniOS8mu+8jOWxleekuuWSjOWPjeaYoOS6huW9k+WJ
+jeWkjeWQiOadkOaWmeihjOS4mueahOacgOaWsOaKgOacr+WSjOW6lOeUqOaIkOaenOOAgg0K44CA
+44CADQrjgIDjgIDkuLrkuoblop7ov5vlm73lhoXlpJblpI3lkIjmnZDmlpnooYzkuJrnmoTkuqTm
+tYHkuI7lkIjkvZzvvIzlkIzml7blsZXnpLrmiJHlm73lpI3lkIjmnZDmlpnkuqfkuJrnmoTlj5Hl
+sZXkuI7miJDlsLHvvIzluK7liqnlooPlhoXkvIHkuJrlvIDmi5Plm73lhoXlpJbluILlnLrvvIzk
+uK3lm73lm73pmYXlpI3mnZDljY/kvJrjgIHmmKDlvrflm73pmYXkvJrlsZXpm4blm6LvvIhZT05E
+IEVYUE/vvInkuK3lm73ku6PooajlpITlt7Lov5HljYHlubTnu4Tnu4fkuK3lm73kvIHkuJrlj4Lk
+uI7or6XlsZXkvJrvvIzkuLrkuK3lm73lpI3lkIjmnZDmlpnpm4blm6LjgIHkuK3mnZDnp5HmioDj
+gIHkuK3pkqLpm4blm6LjgIHkuK3lm73lu7rmnZDpm4blm6LjgIHkuK3lm73llYbpo57jgIHljJfk
+uqznjrvpkqLpmaLjgIHkuIrmtbfmnbDkuovmnbDmlrDmnZDmlpnpm4blm6LjgIHph43luoblm73p
+mYXlpI3lkIjmnZDmlpnjgIHkuK3ljZfmjqfogqHpm4blm6LjgIHnp6bnmoflspvogIDljY7njrvn
+koPpkqLjgIHng5/lj7DmsKjnurbjgIHlpKnpqazpm4blm6LjgIHljY7kuJznkIblt6XlpKflrabj
+gIHlk4jlsJTmu6jlt6XkuJrlpKflrabjgIHlt6jnn7Ppm4blm6LjgIHkuK3lhrbpm4blm6LjgIHp
+h5HlhYnpm4blm6LjgIHmsZ/oi4/mgZLnpZ7nuqTnu7TmnZDmlpnjgIHph43luoblpKflrabjgIHk
+uIrmtbfnjrvnkoPpkqLnoJTnqbbpmaLjgIHkuK3ljZflpKflrabjgIHlk4jlsJTmu6jnjrvnkoPp
+kqLnoJTnqbbpmaLnrYnkvJflpJrooYzkuJrlt6jlpLTlkoznn6XlkI3mnLrmnoTmj5Dkvpvkuobk
+vJjotKjpq5jmlYjnmoTlooPlpJblsZXotLjmnI3liqHjgIINCuOAgOOAgA0K44CA44CA4oCcSkVD
+IHdvcmxkIDIwMTgg56ys5LqU5Y2B5LiJ5LiW55WM5aSN5ZCI5p2Q5paZ5bGV6KeI5Y+K5Lya6K6u
+4oCd5bCG5LqO4oCcM+aciDA2LTA45pel4oCd5Zyo4oCc5rOV5Zu95be06buO5bGV6KeI5Lya6K6u
+5Lit5b+D4oCd5YaN5bqm5Li+6KGM77yM5oiR5Lus6K+a6YKA5YWo5Zu95ZCE5Zyw5aSN5ZCI5p2Q
+5paZ5Y+K5paw5p2Q5paZ55u45YWz5Y2V5L2N5LiO5Lia55WM5Lq65aOr5Yqg5YWl5ZKx5Lus55qE
+5Lit5Zu95oC75bGV5Zui5YmN5b6A5Y+C5bGV5Y+C6KeC44CC44CA44CADQrjgIDjgIANCuOAgOOA
+gOacieWFs+WPguWxleWPguinguKAnEpFQ+S4lueVjOWkjeWQiOadkOaWmeWxleKAneS6i+WunO+8
+jOivt+iBlOe7nOOAkOS4reWbveaAu+WxleWbouOAkee7hOWKnuaWueKAlOKAlCDlhajlm73nu5/k
+uIDlrqLmnI3ng63nur/vvJo0MDAwLTU4MC04NTDvvIjovaw1MjIw44CBODE0NOOAgTg4ODjvvInj
+gIEwMTDigJQ2OTIzLTY5NDTvvJsg6YKu566xL1FR77yaMTI4MDkzOTUjcXEuY29t77ybIOW+ruS/
+oe+8miBDYW5aaGFuWGlhb1hp77yI5Y+C5bGV5raI5oGv77yJ44CBWmhhblNoYW5nWmhpSmlh77yI
+5bGV5ZWG5LmL5a6277yJ77ybIOW+ruWNmu+8mmh0dHA6Ly93ZWliby5jb20vamVjc2hvd++8iOWx
+leS8mu+8ieOAgWh0dHA6Ly93ZWliby5jb20veWluZ2RlaHVpemhhbu+8iOWFrOWPuO+8ieOAgg0K
+44CA44CADQrjgIDjgIDlj4LliqBKRUPlsZXkvJrmmK/kuIDkuKrlpI3lkIjmnZDmlpnlj4rmlrDm
+nZDmlpnkvIHkuJrotbDlkJHlm73pmYXljJbnmoTmoIflv5flkozpgJTlvoTvvIENCuOAgOOAgA0K
+44CA44CADQrjgIDjgIANCuOAgOOAgA0KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX+OAgOOAgA0K
+77yI55m+5LiH576k5Y+R57O757uffOS4uuaCqOWPkemAgXzlpoLkuI3luIzmnJvlho3mlLbliLDm
+raTooYzkuJrotYTorq986K+35Zue5aSN4oCcVEQrSkVD4oCd6Iez6YKu566xMTA1NTgwMDgxMkBx
+cS5jb23vvIkNCg==
 
 
