@@ -1,82 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from [111.205.110.81] ([111.205.110.81]:3377 "EHLO cww.net.cn"
-        rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751061AbdHZTFe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 26 Aug 2017 15:05:34 -0400
-Reply-To: <EMAILQUNFA@163.COM>
-Message-ID: <20170827023610766117@cww.net.cn>
-Subject: =?utf-8?B?4piFMjAxNzAzMTMxNzIzMDg3NDg4Lg==?=
-        =?utf-8?B?anBnLS3igJxKRUMgd29ybGQgMjAxOA==?=
-        =?utf-8?B?IOS4lueVjOWkjeWQiOadkOaWmeWxleiniOWPiuS8muiuruKAneWwhuS6juKAnDPmnIgwNg==?=
-        =?utf-8?B?LTA45pel4oCd5Zyo4oCc5rOV5Zu95be06buO4oCd5Li+6KGMICAgIO+8iOWcsA==?=
-        =?utf-8?B?5Y+zUDEtTC1NZe+8iQ==?=
-Date: Sun, 27 Aug 2017 02:36:01 +0800
+Received: from mx2.suse.de ([195.135.220.15]:36534 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751405AbdH0XZC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 27 Aug 2017 19:25:02 -0400
+From: NeilBrown <neilb@suse.com>
+To: Jeff Layton <jlayton@redhat.com>, Jeff Layton <jlayton@kernel.org>,
+        trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Date: Mon, 28 Aug 2017 09:24:43 +1000
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH] nfs: track writeback errors with errseq_t
+In-Reply-To: <1503683981.22608.0.camel@redhat.com>
+References: <20170720194227.7830-1-jlayton@kernel.org> <1503683981.22608.0.camel@redhat.com>
+Message-ID: <87h8wsiog4.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="utf-8"
-From: linux-nfs-owner@vger.kernel.org
-To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-5bCK5pWs55qEIDIwMTcwMzEzMTcyMzA4NzQ4OC5qcGdAMGVfMG9fMGxfNDAwaF80MDB3XzUwcS5q
-cGcg5LyB5Lia6aKG5a+8L+WFrOWPuOi0n+i0o+S6ui/kuJrnlYzkuJPlrrbvvIzmgqjlpb3vvJoN
-CuOAgOOAgA0K44CA44CA5paw5p2Q5paZ5Li6MjHkuJbnuqrkuInlpKflhbHmgKflhbPplK7mioDm
-nK/kuYvkuIDvvIzlt7LmiJDkuLrlhajnkIPnu4/mtY7ov4XpgJ/lop7plb/nmoTmupDliqjlipvl
-kozmj5DljYfmoLjlv4Pnq57kuonlipvnmoTmiJjnlaXnhKbngrnjgILmnZDmlpnkvZzkuLrliLbp
-gKDkuJrnmoTln7rnoYDvvIznibnliKvmmK/mlrDmnZDmlpnnoJTnqbblkozkuqfkuJrlj5HlsZXn
-moTmsLTlubPkuI7op4TmqKHvvIzlt7Lnu4/miJDkuLrooaHph4/kuIDkuKrlm73lrrbnp5HmioDo
-v5vmraXlkoznu7zlkIjlrp7lipvnmoTph43opoHmoIflv5fjgILlnKjmlrDmnZDmlpnlj5HlsZXk
-uI7lupTnlKjkuK3vvIzlpI3lkIjmnZDmlpnljaDmnInnm7jlvZPph43opoHnmoTlnLDkvY3vvIzn
-ibnliKvlub/ms5vnmoTlupTnlKjlnKjmsb3ovabjgIHkuqTpgJrjgIHpo47og73jgIHoiKrnqbrj
-gIHoiKrlpKnjgIHlhbXlmajjgIHoiLnoiLbjgIHlm73pmLLjgIHmnLrmorDjgIHnlLXlrZDjgIHl
-jJblt6XjgIHlu7rnrZHjgIHlhpzkuJrjgIHmuJTkuJrjgIHnurrnu4fjgIHov5DliqjlmajmnZDn
-rYnpoobln5/vvIzkuIDnm7TmmK/kuJbnlYzlkITlm73kvJjlhYjlj5HlsZXlkoznq57kuonmv4Dn
-g4jnmoTph43opoHooYzkuJrjgIINCuOAgOOAgA0K44CA44CA4oCcSkVD5LiW55WM5aSN5ZCI5p2Q
-5paZ5bGV6KeI5Y+K5Lya6K6u4oCd77yISkVDIHdvcmxkIENvbXBvc2l0ZXMgU2hvdyAmIENvbmZl
-cmVuY2Vz77yJ5Yib5Yqe5LqOMTk2M+W5tO+8jOavj+W5tOS4vuWKnuS4gOWxiu+8jOiHszIwMTfl
-ubTmgLvlhbHkuL7lip7kuoY1MuWxiu+8jOS4u+WKnuWNleS9jeaYr+azleWbvUpFQ+WkjeWQiOad
-kOaWmeWPkeWxleS/g+i/m+S8mi9KRUPpm4blm6LvvIzkuK3lm73mgLvlsZXlm6LlsZXllYbnu4Tn
-u4fljZXkvY3kuLrmmKDlvrflm73pmYXkvJrlsZXpm4blm6LkuK3lm73ku6PooajlpITvvIzlnKjl
-jJfkuqzjgIHkuIrmtbfnrYnlnLDorr7mnInliIbmlK/mnLrmnoTvvIzotJ/otKPor6XlsZXkvJrl
-nKjkuK3lm73nmoTmjqjlub/lkozmi5vllYblt6XkvZzvvIhKRUPkuK3lm73mgLvlsZXlm6LmiqXl
-kI3ng63nur/vvJo0MDAwLTY4MC04NjDovaw4MTQ044CBNTIyMO+8ieOAgkpFQ+WkjeWQiOadkOaW
-meWxleW3suaIkOS4uuS4lueVjOS4iuWOhuWPsuacgOaCoOS5heOAgeinhOaooeacgOWkp+eahOWk
-jeWQiOadkOaWmeihjOS4muS4k+S4muWxleiniOS8mu+8jOWxleekuuWSjOWPjeaYoOS6huW9k+WJ
-jeWkjeWQiOadkOaWmeihjOS4mueahOacgOaWsOaKgOacr+WSjOW6lOeUqOaIkOaenOOAgg0K44CA
-44CADQrjgIDjgIDkuLrkuoblop7ov5vlm73lhoXlpJblpI3lkIjmnZDmlpnooYzkuJrnmoTkuqTm
-tYHkuI7lkIjkvZzvvIzlkIzml7blsZXnpLrmiJHlm73lpI3lkIjmnZDmlpnkuqfkuJrnmoTlj5Hl
-sZXkuI7miJDlsLHvvIzluK7liqnlooPlhoXkvIHkuJrlvIDmi5Plm73lhoXlpJbluILlnLrvvIzk
-uK3lm73lm73pmYXlpI3mnZDljY/kvJrjgIHmmKDlvrflm73pmYXkvJrlsZXpm4blm6LvvIhZT05E
-IEVYUE/vvInkuK3lm73ku6PooajlpITlt7Lov5HljYHlubTnu4Tnu4fkuK3lm73kvIHkuJrlj4Lk
-uI7or6XlsZXkvJrvvIzkuLrkuK3lm73lpI3lkIjmnZDmlpnpm4blm6LjgIHkuK3mnZDnp5HmioDj
-gIHkuK3pkqLpm4blm6LjgIHkuK3lm73lu7rmnZDpm4blm6LjgIHkuK3lm73llYbpo57jgIHljJfk
-uqznjrvpkqLpmaLjgIHkuIrmtbfmnbDkuovmnbDmlrDmnZDmlpnpm4blm6LjgIHph43luoblm73p
-mYXlpI3lkIjmnZDmlpnjgIHkuK3ljZfmjqfogqHpm4blm6LjgIHnp6bnmoflspvogIDljY7njrvn
-koPpkqLjgIHng5/lj7DmsKjnurbjgIHlpKnpqazpm4blm6LjgIHljY7kuJznkIblt6XlpKflrabj
-gIHlk4jlsJTmu6jlt6XkuJrlpKflrabjgIHlt6jnn7Ppm4blm6LjgIHkuK3lhrbpm4blm6LjgIHp
-h5HlhYnpm4blm6LjgIHmsZ/oi4/mgZLnpZ7nuqTnu7TmnZDmlpnjgIHph43luoblpKflrabjgIHk
-uIrmtbfnjrvnkoPpkqLnoJTnqbbpmaLjgIHkuK3ljZflpKflrabjgIHlk4jlsJTmu6jnjrvnkoPp
-kqLnoJTnqbbpmaLnrYnkvJflpJrooYzkuJrlt6jlpLTlkoznn6XlkI3mnLrmnoTmj5Dkvpvkuobk
-vJjotKjpq5jmlYjnmoTlooPlpJblsZXotLjmnI3liqHjgIINCuOAgOOAgA0K44CA44CA4oCcSkVD
-IHdvcmxkIDIwMTgg56ys5LqU5Y2B5LiJ5LiW55WM5aSN5ZCI5p2Q5paZ5bGV6KeI5Y+K5Lya6K6u
-4oCd5bCG5LqO4oCcM+aciDA2LTA45pel4oCd5Zyo4oCc5rOV5Zu95be06buO5bGV6KeI5Lya6K6u
-5Lit5b+D4oCd5YaN5bqm5Li+6KGM77yM5oiR5Lus6K+a6YKA5YWo5Zu95ZCE5Zyw5aSN5ZCI5p2Q
-5paZ5Y+K5paw5p2Q5paZ55u45YWz5Y2V5L2N5LiO5Lia55WM5Lq65aOr5Yqg5YWl5ZKx5Lus55qE
-5Lit5Zu95oC75bGV5Zui5YmN5b6A5Y+C5bGV5Y+C6KeC44CC44CA44CADQrjgIDjgIANCuOAgOOA
-gOacieWFs+WPguWxleWPguinguKAnEpFQ+S4lueVjOWkjeWQiOadkOaWmeWxleKAneS6i+WunO+8
-jOivt+iBlOe7nOOAkOS4reWbveaAu+WxleWbouOAkee7hOWKnuaWueKAlOKAlCDlhajlm73nu5/k
-uIDlrqLmnI3ng63nur/vvJo0MDAwLTU4MC04NTDvvIjovaw1MjIw44CBODE0NOOAgTg4ODjvvInj
-gIEwMTDigJQ2OTIzLTY5NDTvvJsg6YKu566xL1FR77yaMTI4MDkzOTUjcXEuY29t77ybIOW+ruS/
-oe+8miBDYW5aaGFuWGlhb1hp77yI5Y+C5bGV5raI5oGv77yJ44CBWmhhblNoYW5nWmhpSmlh77yI
-5bGV5ZWG5LmL5a6277yJ77ybIOW+ruWNmu+8mmh0dHA6Ly93ZWliby5jb20vamVjc2hvd++8iOWx
-leS8mu+8ieOAgWh0dHA6Ly93ZWliby5jb20veWluZ2RlaHVpemhhbu+8iOWFrOWPuO+8ieOAgg0K
-44CA44CADQrjgIDjgIDlj4LliqBKRUPlsZXkvJrmmK/kuIDkuKrlpI3lkIjmnZDmlpnlj4rmlrDm
-nZDmlpnkvIHkuJrotbDlkJHlm73pmYXljJbnmoTmoIflv5flkozpgJTlvoTvvIENCuOAgOOAgA0K
-44CA44CADQrjgIDjgIANCuOAgOOAgA0KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX+OAgOOAgA0K
-77yI55m+5LiH576k5Y+R57O757uffOS4uuaCqOWPkemAgXzlpoLkuI3luIzmnJvlho3mlLbliLDm
-raTooYzkuJrotYTorq986K+35Zue5aSN4oCcVEQrSkVD4oCd6Iez6YKu566xMTA1NTgwMDgxMkBx
-cS5jb23vvIkNCg==
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+On Fri, Aug 25 2017, Jeff Layton wrote:
+
+> On Thu, 2017-07-20 at 15:42 -0400, Jeff Layton wrote:
+>> From: Jeff Layton <jlayton@redhat.com>
+>>=20
+>> There is some ambiguity in nfs about how writeback errors are tracked.
+>>=20
+>> For instance, nfs_pageio_add_request calls mapping_set_error when the
+>> add fails, but we track errors that occur after adding the request
+>> with a dedicated int error in the open context.
+>>=20
+>> Now that we have better infrastructure for the vfs layer, this
+>> latter int is now unnecessary. Just have nfs_context_set_write_error set
+>> the error in the mapping when one occurs.
+>>=20
+>> Have NFS use file_write_and_wait_range to initiate and wait on writeback
+>> of the data, and then check again after issuing the commit(s).
+>>=20
+>> With this, we also don't need to pay attention to the ERROR_WRITE
+>> flag for reporting, and just clear it to indicate to subsequent
+>> writers that they should try to go asynchronous again.
+>>=20
+>> In nfs_page_async_flush, sample the error before locking and joining
+>> the requests, and check for errors since that point.
+>>=20
+>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>> ---
+>>  fs/nfs/file.c          | 24 +++++++++++-------------
+>>  fs/nfs/inode.c         |  3 +--
+>>  fs/nfs/write.c         |  8 ++++++--
+>>  include/linux/nfs_fs.h |  1 -
+>>  4 files changed, 18 insertions(+), 18 deletions(-)
+>>=20
+>> I have a baling wire and duct tape solution for testing this with
+>> xfstests (using iptables REJECT targets and soft mounts). This seems to
+>> make nfs do the right thing.
+>>=20
+>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> index 5713eb32a45e..15d3c6faafd3 100644
+>> --- a/fs/nfs/file.c
+>> +++ b/fs/nfs/file.c
+>> @@ -212,25 +212,23 @@ nfs_file_fsync_commit(struct file *file, loff_t st=
+art, loff_t end, int datasync)
+>>  {
+>>  	struct nfs_open_context *ctx =3D nfs_file_open_context(file);
+>>  	struct inode *inode =3D file_inode(file);
+>> -	int have_error, do_resend, status;
+>> -	int ret =3D 0;
+>> +	int do_resend, status;
+>> +	int ret;
+>>=20=20
+>>  	dprintk("NFS: fsync file(%pD2) datasync %d\n", file, datasync);
+>>=20=20
+>>  	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+>>  	do_resend =3D test_and_clear_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flag=
+s);
+>> -	have_error =3D test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags=
+);
+>> -	status =3D nfs_commit_inode(inode, FLUSH_SYNC);
+>> -	have_error |=3D test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+>> -	if (have_error) {
+>> -		ret =3D xchg(&ctx->error, 0);
+>> -		if (ret)
+>> -			goto out;
+>> -	}
+>> -	if (status < 0) {
+>> +	clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+>> +	ret =3D nfs_commit_inode(inode, FLUSH_SYNC);
+>> +
+>> +	/* Recheck and advance after the commit */
+>> +	status =3D file_check_and_advance_wb_err(file);
+
+This change makes the code inconsistent with the comment above the
+function, which still references ctx->error.  The intent of the comment
+is still correct, but the details have changed.
+
+Also, there is a call to mapping_set_error() in
+nfs_pageio_add_request().
+I wonder if that should be changed to
+  nfs_context_set_write_error(req->wb_context, desc->pg_error)
+??
+
+Otherwise, patch looks good to me.
+Thanks,
+NeilBrown
 
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmjVL0ACgkQOeye3VZi
+gblXpA//R5w0TjQRrI+W1OfhuaGOook7KoPpogpUWqElp/Ub2hs6geYIVEClB8SI
+DqDXJ9PwHR9CE4SDzGQs/uEWx9xmVaC77JuAajaE1FE7CgHGjD5fLM4rIdU70yzW
+FVuTCkFkE1Hc23Uy2Z2w0lpxt1r3JlX623pFlIYOp1d7l9boM5AAiLdRPnbaOVIs
+rIyCeR5YkQOE1wSACQTeIcrUDJ0phCsAvxY7L0ru/fcnRR+Ju5ZCpmMaG23GD6Sg
+jzfU9o5Yxbj650YNoOWO9i/0kotSaRMDbAJLAyo5g2oHg9+4wuu4jfZmqUrZkTjQ
+iiK+f5nrdGgKHD4dH/KrJLjy536nCpi4XeSCzdRPvn4FxRWvMADCQaeubvqxQH/V
+BjsVecaku+o1oQLg+klkrwPeBPhMg8MtNup+b8AJ/4ghvu7V48Ref3n+LeXnfaSY
+wObUWUTgUOib0t9SvEXbaDzagRT0a2FaZLwKcG/j1x05aQVY7VoCstCU32fnpghg
+ROXRZD4BLMhTxx6LiZv20tMP7d39CHee2b83J/pCgn0TL+F7u5yBqWz3JGsnrIoC
+EZyhqIKjxBZlXg4isRhufB89tMypjx/eyxbymsnUYAkep9RdUcwtpc1uc/EJ08ZI
+8t+FPEGHbSAB5vDFgG7WxbjUxe/dxPc43kODt3AVs4aVWXCRTfQ=
+=TexK
+-----END PGP SIGNATURE-----
+--=-=-=--
