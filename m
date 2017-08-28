@@ -1,67 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:48266 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751182AbdH1EnO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 28 Aug 2017 00:43:14 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Date: Mon, 28 Aug 2017 14:43:05 +1000
-Cc: linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH 2/3] fs: hide another detail of delegation logic
-In-Reply-To: <1503697958-6122-3-git-send-email-bfields@redhat.com>
-References: <1503697958-6122-1-git-send-email-bfields@redhat.com> <1503697958-6122-3-git-send-email-bfields@redhat.com>
-Message-ID: <878ti4i9pi.fsf@notabene.neil.brown.name>
+Received: from mx1.redhat.com ([209.132.183.28]:46740 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751672AbdH1IiN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 28 Aug 2017 04:38:13 -0400
+Date: Mon, 28 Aug 2017 04:38:10 -0400
+From: Vadim Lomovtsev <vlomovts@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        jlayton@poochiereds.net, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org, pabeni@redhat.com,
+        vlomovts@redhat.com
+Subject: Re: [PATCH] net: sunrpc: svcsock: fix NULL-pointer exception
+Message-ID: <20170828083810.GB7864@dhcp187-32.khw.lab.eng.bos.redhat.com>
+References: <1503050447-13362-1-git-send-email-vlomovts@redhat.com>
+ <20170825220128.GA6276@fieldses.org>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170825220128.GA6276@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-
-On Fri, Aug 25 2017, J. Bruce Fields wrote:
-
-> From: "J. Bruce Fields" <bfields@redhat.com>
->
-> Pass around a new struct deleg_break_ctl instead of pointers to inode
-> pointers; in a future patch I want to use this to pass a little more
-> information from the nfs server to the lease code.
-
-The information you are passing from the nfs server to the lease code is
-largely ignored by the lease code and is passed back to the nfs server,
-in the sm_breaker_owns_lease call back.
-
-If try_break_deleg() passed the 'delegated_inode' pointer though to
-__break_lease(), it could pass it through any_leases_conflict() and
-leases_conflict() to the lm_breaker_owns_lease() callback.
-Then container_of() could be used to access whatever other data nfsd had
-stashed near the inode.  The common code wouldn't need to know any of
-the details.
-
-Just a thought...
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmjn1oACgkQOeye3VZi
-gbmpnBAAg8BpgHJOI9NJAi4SVihXPQXpaBsd9HerhLcRTNKg7GD/2yDEgMQJidD8
-Du6ejO/CMDtyVmFt2d5bxr4IZPLpEv8lXSxNo66nSHdQ30Dpi+KtzsVrxjCNym26
-zcyVrtCa6tCwYjh6Iu8WyYRtoah6KdZ+n/WBc8jKkbx3V4um0fy0adbHHaLuGPQo
-sODkcrPX4wBT9bo3r4kX8PM6O32ZjNASF3eecrkiPOXSgT2+62YrXqBCffnJwqO0
-hvruL0kzLEjuicK3P92jsiCuC77NmyrmybgGYx0hJQsiG7YvwQYBOsTPey+usUF5
-dO3UFFyW+JRu8SaJydZKZE2qG/CgcBy2D2Q2e6xgyeoy4vXwPXnxbsEv1idoJwTV
-lIBWHz0rdXuiFf2xy1ibGkyePwK4bZgjyh1vIjETW8acU8yQbU/38bH0EMldHvBb
-fmhdF4EfBEUifXCwE++WNe/EmXLCNPTUsbXqEoJCL1nt9itLht+jNseAZHyhRGyV
-+XsRKoVkHQgFr4e5gSwMPCR8/iNYQ/RTRFzDLw+FWnn+JopTHfqO0+DohfYxkMLO
-QfWG1Ht0sHb4h9wrOqm2epica5eEWqIhuba3o5AqMiZzzEsbKw813TKwsIVFU/Oo
-6HaJvY0VSTlcelbyMWg3FNS0vLMjA6D9HNbVIN4fgi65PPByFRU=
-=y60G
------END PGP SIGNATURE-----
---=-=-=--
+On Fri, Aug 25, 2017 at 06:01:28PM -0400, J. Bruce Fields wrote:
+> On Fri, Aug 18, 2017 at 06:00:47AM -0400, Vadim Lomovtsev wrote:
+> > While running nfs/connectathon tests kernel NULL-pointer exception
+> > has been observed due to races in svcsock.c.
+> > 
+> > Race is appear when kernel accepts connection by kernel_accept
+> > (which creates new socket) and start queuing ingress packets
+> > to new socket. This happanes in ksoftirq context which concurrently
+> > on a differnt core while new socket setup is not done yet.
+> > 
+> > The fix is to re-order socket user data init sequence, add NULL-ptr
+> > check before callback call along with barriers to prevent kernel crash.
+> > 
+> > Test results: nfs/connectathon reports '0' failed tests for about 200+ iterations.
+> 
+> By the way, is there anything special about your setup that allows you
+> to reproduce this?  There's nothing special about connectathon tests, so
+> I'm just wondering why we haven't had a lot of reports of this.
