@@ -1,39 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from shards.monkeyblade.net ([184.105.139.130]:45292 "EHLO
-        shards.monkeyblade.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751221AbdH1SaS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Aug 2017 14:30:18 -0400
-Date: Mon, 28 Aug 2017 11:30:15 -0700 (PDT)
-Message-Id: <20170828.113015.1454742226773245453.davem@davemloft.net>
-To: bhumirks@gmail.com
-Cc: julia.lawall@lip6.fr, marcel@holtmann.org, gustavo@padovan.org,
-        johan.hedberg@gmail.com, pablo@netfilter.org,
-        kadlec@blackhole.kfki.hu, fw@strlen.de, stephen@networkplumber.org,
-        alex.aring@gmail.com, stefan@osg.samsung.com, kuznet@ms2.inr.ac.ru,
-        yoshfuji@linux-ipv6.org, santosh.shilimkar@oracle.com,
-        trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        linux-bluetooth@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, netfilter-devel@vger.kernel.org,
-        coreteam@netfilter.org, bridge@lists.linux-foundation.org,
-        linux-wpan@vger.kernel.org, linux-rdma@vger.kernel.org,
-        rds-devel@oss.oracle.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] bridge: make ebt_table const
-From: David Miller <davem@davemloft.net>
-In-Reply-To: <1503670907-23221-3-git-send-email-bhumirks@gmail.com>
-References: <1503670907-23221-1-git-send-email-bhumirks@gmail.com>
-        <1503670907-23221-3-git-send-email-bhumirks@gmail.com>
-Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Received: from mail-io0-f194.google.com ([209.85.223.194]:38280 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751218AbdH1TF7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Aug 2017 15:05:59 -0400
+Subject: [PATCH 0/3] Final NFS/RDMA server patches proposed for v4.14
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 28 Aug 2017 15:05:57 -0400
+Message-ID: <20170828190229.13285.76410.stgit@klimt.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Bhumika Goyal <bhumirks@gmail.com>
-Date: Fri, 25 Aug 2017 19:51:42 +0530
+Hi Bruce-
 
-> Make this const as it is only passed to a const argument of the function
-> ebt_register_table.
-> 
-> Signed-off-by: Bhumika Goyal <bhumirks@gmail.com>
+These patches allow svcrdma to adjust more precisely to the limits
+of the underlying RDMA device on the server.
 
-Applied.
+These have been floating around for several months, and were posted
+a few weeks ago for review on linux-rdma. They should be ready for
+you to take for v4.14.
+
+These are the final server-side patches I have for for v4.14 cycle.
+
+
+---
+
+Chuck Lever (3):
+      svcrdma: Limit RQ depth
+      rdma core: Add rdma_rw_mr_payload()
+      svcrdma: Estimate Send Queue depth properly
+
+
+ drivers/infiniband/core/rw.c             |   24 ++++++++++++++++++++
+ include/rdma/rw.h                        |    2 ++
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   36 +++++++++++++++++++++---------
+ 3 files changed, 51 insertions(+), 11 deletions(-)
+
+--
+Chuck Lever
