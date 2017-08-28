@@ -1,17 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:36534 "EHLO mx1.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:45558 "EHLO mx1.suse.de"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751405AbdH0XZC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 27 Aug 2017 19:25:02 -0400
+        id S1751768AbdH1DyX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 27 Aug 2017 23:54:23 -0400
 From: NeilBrown <neilb@suse.com>
-To: Jeff Layton <jlayton@redhat.com>, Jeff Layton <jlayton@kernel.org>,
-        trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Date: Mon, 28 Aug 2017 09:24:43 +1000
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] nfs: track writeback errors with errseq_t
-In-Reply-To: <1503683981.22608.0.camel@redhat.com>
-References: <20170720194227.7830-1-jlayton@kernel.org> <1503683981.22608.0.camel@redhat.com>
-Message-ID: <87h8wsiog4.fsf@notabene.neil.brown.name>
+To: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Date: Mon, 28 Aug 2017 13:54:12 +1000
+Cc: linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: Re: [PATCH 1/3] fs: cleanup to hide some details of delegation logic
+In-Reply-To: <1503697958-6122-2-git-send-email-bfields@redhat.com>
+References: <1503697958-6122-1-git-send-email-bfields@redhat.com> <1503697958-6122-2-git-send-email-bfields@redhat.com>
+Message-ID: <87efrwibyz.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -20,112 +21,79 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
-On Fri, Aug 25 2017, Jeff Layton wrote:
+On Fri, Aug 25 2017, J. Bruce Fields wrote:
 
-> On Thu, 2017-07-20 at 15:42 -0400, Jeff Layton wrote:
->> From: Jeff Layton <jlayton@redhat.com>
->>=20
->> There is some ambiguity in nfs about how writeback errors are tracked.
->>=20
->> For instance, nfs_pageio_add_request calls mapping_set_error when the
->> add fails, but we track errors that occur after adding the request
->> with a dedicated int error in the open context.
->>=20
->> Now that we have better infrastructure for the vfs layer, this
->> latter int is now unnecessary. Just have nfs_context_set_write_error set
->> the error in the mapping when one occurs.
->>=20
->> Have NFS use file_write_and_wait_range to initiate and wait on writeback
->> of the data, and then check again after issuing the commit(s).
->>=20
->> With this, we also don't need to pay attention to the ERROR_WRITE
->> flag for reporting, and just clear it to indicate to subsequent
->> writers that they should try to go asynchronous again.
->>=20
->> In nfs_page_async_flush, sample the error before locking and joining
->> the requests, and check for errors since that point.
->>=20
->> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->> ---
->>  fs/nfs/file.c          | 24 +++++++++++-------------
->>  fs/nfs/inode.c         |  3 +--
->>  fs/nfs/write.c         |  8 ++++++--
->>  include/linux/nfs_fs.h |  1 -
->>  4 files changed, 18 insertions(+), 18 deletions(-)
->>=20
->> I have a baling wire and duct tape solution for testing this with
->> xfstests (using iptables REJECT targets and soft mounts). This seems to
->> make nfs do the right thing.
->>=20
->> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
->> index 5713eb32a45e..15d3c6faafd3 100644
->> --- a/fs/nfs/file.c
->> +++ b/fs/nfs/file.c
->> @@ -212,25 +212,23 @@ nfs_file_fsync_commit(struct file *file, loff_t st=
-art, loff_t end, int datasync)
->>  {
->>  	struct nfs_open_context *ctx =3D nfs_file_open_context(file);
->>  	struct inode *inode =3D file_inode(file);
->> -	int have_error, do_resend, status;
->> -	int ret =3D 0;
->> +	int do_resend, status;
->> +	int ret;
->>=20=20
->>  	dprintk("NFS: fsync file(%pD2) datasync %d\n", file, datasync);
->>=20=20
->>  	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
->>  	do_resend =3D test_and_clear_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flag=
-s);
->> -	have_error =3D test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags=
-);
->> -	status =3D nfs_commit_inode(inode, FLUSH_SYNC);
->> -	have_error |=3D test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
->> -	if (have_error) {
->> -		ret =3D xchg(&ctx->error, 0);
->> -		if (ret)
->> -			goto out;
->> -	}
->> -	if (status < 0) {
->> +	clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
->> +	ret =3D nfs_commit_inode(inode, FLUSH_SYNC);
->> +
->> +	/* Recheck and advance after the commit */
->> +	status =3D file_check_and_advance_wb_err(file);
+> From: "J. Bruce Fields" <bfields@redhat.com>
+>
+> Pull the checks for delegated_inode into break_deleg_wait() to simplify
+> the callers a little.
+>
+> No change in behavior.
+>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/namei.c         | 26 ++++++++++----------------
+>  fs/open.c          | 16 ++++++----------
+>  fs/utimes.c        |  8 +++-----
+>  include/linux/fs.h | 12 +++++++-----
+>  4 files changed, 26 insertions(+), 36 deletions(-)
+>
+> diff --git a/fs/namei.c b/fs/namei.c
+> index ddb6a7c2b3d4..5a93be7b2c9c 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -4048,11 +4048,9 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+>  	if (inode)
+>  		iput(inode);	/* truncate the inode here */
+>  	inode = NULL;
+> -	if (delegated_inode) {
+> -		error = break_deleg_wait(&delegated_inode);
+> -		if (!error)
+> -			goto retry_deleg;
+> -	}
+> +	error = break_deleg_wait(&delegated_inode, error);
+> +	if (error == DELEG_RETRY)
+> +		goto retry_deleg;
 
-This change makes the code inconsistent with the comment above the
-function, which still references ctx->error.  The intent of the comment
-is still correct, but the details have changed.
+<mode=bikeshed>
 
-Also, there is a call to mapping_set_error() in
-nfs_pageio_add_request().
-I wonder if that should be changed to
-  nfs_context_set_write_error(req->wb_context, desc->pg_error)
-??
+I don't like the "DELEG_RETRY".  You are comparing it against an
+'error', but it doesn't start with '-E', so I get confused (happens
+often).
 
-Otherwise, patch looks good to me.
+If this read:
+
+     if (error > 0)
+          goto retry_deleg;
+
+it would be must more obvious to me what was happening.  Clearly the
+return value isn't an error, and it isn't "success" either.  This is a
+pattern I've seen elsewhere.
+
+Alternately you could use "-EAGAIN", but I suspect there is a risk of
+unwanted side-effects if you re-use and existing code.
+
 Thanks,
 NeilBrown
-
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmjVL0ACgkQOeye3VZi
-gblXpA//R5w0TjQRrI+W1OfhuaGOook7KoPpogpUWqElp/Ub2hs6geYIVEClB8SI
-DqDXJ9PwHR9CE4SDzGQs/uEWx9xmVaC77JuAajaE1FE7CgHGjD5fLM4rIdU70yzW
-FVuTCkFkE1Hc23Uy2Z2w0lpxt1r3JlX623pFlIYOp1d7l9boM5AAiLdRPnbaOVIs
-rIyCeR5YkQOE1wSACQTeIcrUDJ0phCsAvxY7L0ru/fcnRR+Ju5ZCpmMaG23GD6Sg
-jzfU9o5Yxbj650YNoOWO9i/0kotSaRMDbAJLAyo5g2oHg9+4wuu4jfZmqUrZkTjQ
-iiK+f5nrdGgKHD4dH/KrJLjy536nCpi4XeSCzdRPvn4FxRWvMADCQaeubvqxQH/V
-BjsVecaku+o1oQLg+klkrwPeBPhMg8MtNup+b8AJ/4ghvu7V48Ref3n+LeXnfaSY
-wObUWUTgUOib0t9SvEXbaDzagRT0a2FaZLwKcG/j1x05aQVY7VoCstCU32fnpghg
-ROXRZD4BLMhTxx6LiZv20tMP7d39CHee2b83J/pCgn0TL+F7u5yBqWz3JGsnrIoC
-EZyhqIKjxBZlXg4isRhufB89tMypjx/eyxbymsnUYAkep9RdUcwtpc1uc/EJ08ZI
-8t+FPEGHbSAB5vDFgG7WxbjUxe/dxPc43kODt3AVs4aVWXCRTfQ=
-=TexK
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmjk+cACgkQOeye3VZi
+gblQAw//Sswv/WdGETz1Gs9kOrG9T3zpz9xTwWNHH3Rx1KB4geD/2qgNr3vWLad3
+KfJIAjmCtamNFQ8taI1PyoKgufkrgjwXErXTCuCaCL7PLw1/wO7VQ+HnFjGen9NH
+6pm5wKuLISSUfT4LT5qmx+eDX7+Bz/brmtk9hjnl0AFY5+r8L8l0caudvU3Qu9AD
+QOZzcOnQZy+i36utiuvpbFG+svwm7jU4TFWEm5cvbEaaEyDbz2hQSlkYdZ3do6KZ
+XlfwiSwqhE8j06OnQNEz6mpA6ikDpn8/6iWR2VdRzeQp73sacGvG3SMNpf9nOYen
+da4kRa0WCkz7KX6pBSByfI2as1MUzt6ncsqNtn3wyuppnJLxieaghWCbmej8iKBp
+N638vrzxXFNa96X0VGaCFX4saO5xY1hAnW92aygEz7QcUpxx7BgvmqvYgXuNATGE
+mNetEjUMxppaArz+ZR/2EWEuiKNdmbkAPHf0yEaVcxv36k0OSAfZ93AMnq6tESlX
+1e7ZqQduapMwP43OVkReDsVc8Mphcx5UKJ7gDjJUWxGLRyL2MnzXFTA84p0BS6ee
+cKipz0XgSFzhyoKQYLBSl00DJBfznVMHb3XkhxhF+7jRVJTGmF1GU9VZs3X+g9eV
+1xcSDWcGM7z68ibJZPpyaq4UljrQj8VPYJec1UuSaspD9/O0IOY=
+=Novj
 -----END PGP SIGNATURE-----
 --=-=-=--
