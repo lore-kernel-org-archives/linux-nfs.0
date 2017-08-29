@@ -1,183 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:37281 "EHLO
-        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751066AbdH2KyV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2017 06:54:21 -0400
-Received: by mail-qk0-f181.google.com with SMTP id k126so13344002qkb.4
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Aug 2017 03:54:20 -0700 (PDT)
-Message-ID: <1504004058.4679.7.camel@redhat.com>
-Subject: Re: [PATCH] nfs: track writeback errors with errseq_t
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@kernel.org>,
-        trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Date: Tue, 29 Aug 2017 06:54:18 -0400
-In-Reply-To: <87pobfgo9q.fsf@notabene.neil.brown.name>
-References: <20170720194227.7830-1-jlayton@kernel.org>
-         <1503683981.22608.0.camel@redhat.com>
-         <87h8wsiog4.fsf@notabene.neil.brown.name>
-         <1503920855.4563.12.camel@redhat.com>
-         <87pobfgo9q.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:49342 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751272AbdH2Vhd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 Aug 2017 17:37:33 -0400
+Date: Tue, 29 Aug 2017 17:37:32 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: NeilBrown <neilb@suse.com>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 1/3] fs: cleanup to hide some details of delegation logic
+Message-ID: <20170829213731.GH8822@parsley.fieldses.org>
+References: <1503697958-6122-1-git-send-email-bfields@redhat.com>
+ <1503697958-6122-2-git-send-email-bfields@redhat.com>
+ <87efrwibyz.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87efrwibyz.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-08-29 at 11:23 +1000, NeilBrown wrote:
-> On Mon, Aug 28 2017, Jeff Layton wrote:
+On Mon, Aug 28, 2017 at 01:54:12PM +1000, NeilBrown wrote:
+> On Fri, Aug 25 2017, J. Bruce Fields wrote:
 > 
-> > On Mon, 2017-08-28 at 09:24 +1000, NeilBrown wrote:
-> > > On Fri, Aug 25 2017, Jeff Layton wrote:
-> > > 
-> > > > On Thu, 2017-07-20 at 15:42 -0400, Jeff Layton wrote:
-> > > > > From: Jeff Layton <jlayton@redhat.com>
-> > > > > 
-> > > > > There is some ambiguity in nfs about how writeback errors are
-> > > > > tracked.
-> > > > > 
-> > > > > For instance, nfs_pageio_add_request calls mapping_set_error when
-> > > > > the
-> > > > > add fails, but we track errors that occur after adding the
-> > > > > request
-> > > > > with a dedicated int error in the open context.
-> > > > > 
-> > > > > Now that we have better infrastructure for the vfs layer, this
-> > > > > latter int is now unnecessary. Just have
-> > > > > nfs_context_set_write_error set
-> > > > > the error in the mapping when one occurs.
-> > > > > 
-> > > > > Have NFS use file_write_and_wait_range to initiate and wait on
-> > > > > writeback
-> > > > > of the data, and then check again after issuing the commit(s).
-> > > > > 
-> > > > > With this, we also don't need to pay attention to the ERROR_WRITE
-> > > > > flag for reporting, and just clear it to indicate to subsequent
-> > > > > writers that they should try to go asynchronous again.
-> > > > > 
-> > > > > In nfs_page_async_flush, sample the error before locking and
-> > > > > joining
-> > > > > the requests, and check for errors since that point.
-> > > > > 
-> > > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > > > ---
-> > > > >  fs/nfs/file.c          | 24 +++++++++++-------------
-> > > > >  fs/nfs/inode.c         |  3 +--
-> > > > >  fs/nfs/write.c         |  8 ++++++--
-> > > > >  include/linux/nfs_fs.h |  1 -
-> > > > >  4 files changed, 18 insertions(+), 18 deletions(-)
-> > > > > 
-> > > > > I have a baling wire and duct tape solution for testing this with
-> > > > > xfstests (using iptables REJECT targets and soft mounts). This
-> > > > > seems to
-> > > > > make nfs do the right thing.
-> > > > > 
-> > > > > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
-> > > > > index 5713eb32a45e..15d3c6faafd3 100644
-> > > > > --- a/fs/nfs/file.c
-> > > > > +++ b/fs/nfs/file.c
-> > > > > @@ -212,25 +212,23 @@ nfs_file_fsync_commit(struct file *file,
-> > > > > loff_t start, loff_t end, int datasync)
-> > > > >  {
-> > > > >  	struct nfs_open_context *ctx =
-> > > > > nfs_file_open_context(file);
-> > > > >  	struct inode *inode = file_inode(file);
-> > > > > -	int have_error, do_resend, status;
-> > > > > -	int ret = 0;
-> > > > > +	int do_resend, status;
-> > > > > +	int ret;
-> > > > >  
-> > > > >  	dprintk("NFS: fsync file(%pD2) datasync %d\n", file,
-> > > > > datasync);
-> > > > >  
-> > > > >  	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
-> > > > >  	do_resend =
-> > > > > test_and_clear_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flags);
-> > > > > -	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE,
-> > > > > &ctx->flags);
-> > > > > -	status = nfs_commit_inode(inode, FLUSH_SYNC);
-> > > > > -	have_error |= test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx-
-> > > > > > flags);
-> > > > > 
-> > > > > -	if (have_error) {
-> > > > > -		ret = xchg(&ctx->error, 0);
-> > > > > -		if (ret)
-> > > > > -			goto out;
-> > > > > -	}
-> > > > > -	if (status < 0) {
-> > > > > +	clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
-> > > > > +	ret = nfs_commit_inode(inode, FLUSH_SYNC);
-> > > > > +
-> > > > > +	/* Recheck and advance after the commit */
-> > > > > +	status = file_check_and_advance_wb_err(file);
-> > > 
-> > > This change makes the code inconsistent with the comment above the
-> > > function, which still references ctx->error.  The intent of the
-> > > comment
-> > > is still correct, but the details have changed.
-> > > 
-> > 
-> > Good catch. I'll fix that up in a respin.
-> > 
-> > > Also, there is a call to mapping_set_error() in
-> > > nfs_pageio_add_request().
-> > > I wonder if that should be changed to
-> > >   nfs_context_set_write_error(req->wb_context, desc->pg_error)
-> > > ??
-> > > 
-> > 
-> > Trickier question...
-> > 
-> > I'm not quite sure what semantics we're looking for with
-> > NFS_CONTEXT_ERROR_WRITE. I know that it forces writes to be
-> > synchronous, but I'm not quite sure why it gets cleared the way it
-> > does. It's set on any error but cleared before issuing a commit.
-> > 
-> > I added a similar flag to Ceph inodes recently, but only clear it when
-> > a write succeeds. Wouldn't that make more sense here as well?
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> >
+> > Pull the checks for delegated_inode into break_deleg_wait() to simplify
+> > the callers a little.
+> >
+> > No change in behavior.
+> >
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/namei.c         | 26 ++++++++++----------------
+> >  fs/open.c          | 16 ++++++----------
+> >  fs/utimes.c        |  8 +++-----
+> >  include/linux/fs.h | 12 +++++++-----
+> >  4 files changed, 26 insertions(+), 36 deletions(-)
+> >
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index ddb6a7c2b3d4..5a93be7b2c9c 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -4048,11 +4048,9 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+> >  	if (inode)
+> >  		iput(inode);	/* truncate the inode here */
+> >  	inode = NULL;
+> > -	if (delegated_inode) {
+> > -		error = break_deleg_wait(&delegated_inode);
+> > -		if (!error)
+> > -			goto retry_deleg;
+> > -	}
+> > +	error = break_deleg_wait(&delegated_inode, error);
+> > +	if (error == DELEG_RETRY)
+> > +		goto retry_deleg;
 > 
-> It is a bit hard to wrap one's mind around.
+> <mode=bikeshed>
 > 
-> In the original code (commit 7b159fc18d417980) it looks like:
->  - test-and-clear bit
->  - write and sync
->  - test-bit
+> I don't like the "DELEG_RETRY".  You are comparing it against an
+> 'error', but it doesn't start with '-E', so I get confused (happens
+> often).
 > 
-> This does, I think, seem safer than "clear on successful write" as the
-> writes could complete out-of-order and I wouldn't be surprised if the
-> unsuccessful ones completed with an error before the successful one -
-> particularly with an error like EDQUOT.
+> If this read:
 > 
-> However the current code does the writes before the test-and-clear, and
-> only does the commit afterwards.  That makes it less clear why the
-> current sequence is a good idea.
+>      if (error > 0)
+>           goto retry_deleg;
 > 
-> However ... nfs_file_fsync_commit() is only called if
-> filemap_write_and_wait_range() returned with success, so we only clear
-> the flag after successful writes(?).
+> it would be must more obvious to me what was happening.  Clearly the
+> return value isn't an error, and it isn't "success" either.  This is a
+> pattern I've seen elsewhere.
 > 
-> Oh....
-> This patch from me:
-> 
-> Commit: 2edb6bc3852c ("NFS - fix recent breakage to NFS error handling.")
-> 
-> seems to have been reverted by
-> 
-> Commit: 7b281ee02655 ("NFS: fsync() must exit with an error if page writeback failed")
-> 
-> which probably isn't good.  It appears that this code is very fragile
-> and easily broken.
-> Maybe we need to work out exactly what is required, and document it - so
-> we can stop breaking it.
-> Or maybe we need some unit tests.....
-> 
+> Alternately you could use "-EAGAIN", but I suspect there is a risk of
+> unwanted side-effects if you re-use and existing code.
 
-Yes, laying out what's necessary for this would be very helpful. We
-clearly want to set the flag when an error occurs. Under what
-circumstances should we be clearing it?
+Yes.  OK, I think I like your suggestion.  The change would look like
+the following (untested).
 
-I'm not sure we can really do much better than clearing it on a
-successful write. With Ceph, was that this is just a hint to the write
-submission mechanism and we generally aren't too concerned if a few slip
-past in either direction.
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
+
+diff --git a/fs/namei.c b/fs/namei.c
+index 5a93be7b2c9c..e8688498aff7 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -4049,7 +4049,7 @@ static long do_unlinkat(int dfd, const char __user *pathname)
+ 		iput(inode);	/* truncate the inode here */
+ 	inode = NULL;
+ 	error = break_deleg_wait(&delegated_inode, error);
+-	if (error == DELEG_RETRY)
++	if (error > 0)
+ 		goto retry_deleg;
+ 	mnt_drop_write(path.mnt);
+ exit1:
+@@ -4282,7 +4282,7 @@ SYSCALL_DEFINE5(linkat, int, olddfd, const char __user *, oldname,
+ out_dput:
+ 	done_path_create(&new_path, new_dentry);
+ 	error = break_deleg_wait(&delegated_inode, error);
+-	if (error == DELEG_RETRY) {
++	if (error > 0) {
+ 		path_put(&old_path);
+ 		goto retry;
+ 	}
+@@ -4598,7 +4598,7 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
+ exit3:
+ 	unlock_rename(new_path.dentry, old_path.dentry);
+ 	error = break_deleg_wait(&delegated_inode, error);
+-	if (error == DELEG_RETRY)
++	if (error > 0)
+ 		goto retry_deleg;
+ 	mnt_drop_write(old_path.mnt);
+ exit2:
+diff --git a/fs/open.c b/fs/open.c
+index d49e9385e45d..80975c4dd146 100644
+--- a/fs/open.c
++++ b/fs/open.c
+@@ -533,7 +533,7 @@ static int chmod_common(const struct path *path, umode_t mode)
+ out_unlock:
+ 	inode_unlock(inode);
+ 	error = break_deleg_wait(&delegated_inode, error);
+-	if (error == DELEG_RETRY)
++	if (error > 0)
+ 		goto retry_deleg;
+ 	mnt_drop_write(path->mnt);
+ 	return error;
+@@ -610,7 +610,7 @@ static int chown_common(const struct path *path, uid_t user, gid_t group)
+ 		error = notify_change(path->dentry, &newattrs, &delegated_inode);
+ 	inode_unlock(inode);
+ 	error = break_deleg_wait(&delegated_inode, error);
+-	if (error == DELEG_RETRY)
++	if (error > 0)
+ 		goto retry_deleg;
+ 	return error;
+ }
+diff --git a/fs/utimes.c b/fs/utimes.c
+index 75467b7ebfce..4dc6717638e6 100644
+--- a/fs/utimes.c
++++ b/fs/utimes.c
+@@ -90,7 +90,7 @@ static int utimes_common(const struct path *path, struct timespec *times)
+ 	error = notify_change(path->dentry, &newattrs, &delegated_inode);
+ 	inode_unlock(inode);
+ 	error = break_deleg_wait(&delegated_inode, error);
+-	if (error == DELEG_RETRY)
++	if (error > 0)
+ 		goto retry_deleg;
+ 
+ 	mnt_drop_write(path->mnt);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 1d0d2fde1766..1c7f7be3f26d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2288,8 +2288,6 @@ static inline int try_break_deleg(struct inode *inode, struct inode **delegated_
+ 	return ret;
+ }
+ 
+-#define DELEG_RETRY 1
+-
+ static inline int break_deleg_wait(struct inode **delegated_inode, int error)
+ {
+ 	if (!*delegated_inode)
+@@ -2297,7 +2295,13 @@ static inline int break_deleg_wait(struct inode **delegated_inode, int error)
+ 	error = break_deleg(*delegated_inode, O_WRONLY);
+ 	iput(*delegated_inode);
+ 	*delegated_inode = NULL;
+-	return error ? error : DELEG_RETRY;
++	if (error)
++		return error;
++	/*
++	 * Signal to the caller that it can retry the original operation
++	 * now that the delegation is broken:
++	 */
++	return 1;
+ }
+ 
+ static inline int break_layout(struct inode *inode, bool wait)
