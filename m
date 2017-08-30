@@ -1,86 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:51175 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751368AbdH2XjW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Aug 2017 19:39:22 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 0/3] Eliminate delegation self-conflicts
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170829215209.GA13385@fieldses.org>
-Date: Tue, 29 Aug 2017 19:39:14 -0400
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+Received: from mx2.suse.de ([195.135.220.15]:56922 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751290AbdH3AoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 29 Aug 2017 20:44:02 -0400
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Date: Wed, 30 Aug 2017 10:43:52 +1000
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <287C6A02-4C3D-4BC8-AA63-A7AAB3F21564@oracle.com>
-References: <1503697958-6122-1-git-send-email-bfields@redhat.com> <1BD0901E-8339-4993-A012-9F8402BF16EF@oracle.com> <20170829215209.GA13385@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 2/3] fs: hide another detail of delegation logic
+In-Reply-To: <20170829214026.GI8822@parsley.fieldses.org>
+References: <1503697958-6122-1-git-send-email-bfields@redhat.com> <1503697958-6122-3-git-send-email-bfields@redhat.com> <878ti4i9pi.fsf@notabene.neil.brown.name> <20170829214026.GI8822@parsley.fieldses.org>
+Message-ID: <8760d5hol3.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> On Aug 29, 2017, at 5:52 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Sat, Aug 26, 2017 at 02:06:05PM -0400, Chuck Lever wrote:
->> 
->>> On Aug 25, 2017, at 5:52 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->>> 
->>> From: "J. Bruce Fields" <bfields@redhat.com>
->>> 
->>> This is my attempt to fix the NFS server so we don't unnecessarily
->>> recall delegations when the operation breaking the delegation comes from
->>> the same client that holds the delegation.
->>> 
->>> To do that we need some way to pass the identity of the breaker down
->>> through the VFS.
->>> 
->>> I didn't feel like adding another argument to all the VFS functions that
->>> this might need to be passed down through.  But all of those functions
->>> already take a struct inode **delegated inode, so instead I turned that
->>> into a single-member struct deleg_ctrl *, which I then added a second
->>> member to.
->>> 
->>> I dunno, welcome any more straightforward ways of doing this if anyone
->>> has suggestions.
->>> 
->>> My first attempt was to do this by instead checking for conflicts in the
->>> caller (nfsd) and then passing down one just one bit telling the lease
->>> code conflicts had already been checked so it didn't need to.  But
->>> that's much too early to check for conflicts, since the caller doesn't
->>> have the necessary inode locks yet.
->>> 
->>> I'm still missing testing.  Regression tests pass, but I haven't
->>> actually confirmed that the self-conflicts are gone!  Off to go hack on
->>> pynfs....
->> 
->> FWIW, I observe a lot of delegation recall activity when running
-> 
-> How are you measuring that?
+On Tue, Aug 29 2017, J. Bruce Fields wrote:
 
-My observation is based on wire traces.
+> On Mon, Aug 28, 2017 at 02:43:05PM +1000, NeilBrown wrote:
+>> On Fri, Aug 25 2017, J. Bruce Fields wrote:
+>>=20
+>> > From: "J. Bruce Fields" <bfields@redhat.com>
+>> >
+>> > Pass around a new struct deleg_break_ctl instead of pointers to inode
+>> > pointers; in a future patch I want to use this to pass a little more
+>> > information from the nfs server to the lease code.
+>>=20
+>> The information you are passing from the nfs server to the lease code is
+>> largely ignored by the lease code and is passed back to the nfs server,
+>> in the sm_breaker_owns_lease call back.
+>>=20
+>> If try_break_deleg() passed the 'delegated_inode' pointer though to
+>> __break_lease(), it could pass it through any_leases_conflict() and
+>> leases_conflict() to the lm_breaker_owns_lease() callback.
+>> Then container_of() could be used to access whatever other data nfsd had
+>> stashed near the inode.  The common code wouldn't need to know any of
+>> the details.
+>
+> The new information that we need is some notion of "who" (really, which
+> NFSv4 client) is doing the operation (unlink, whatever) that breaks the
+> lease.  We can't get that information from an inode pointer.
+>
+> I may just not understand your suggestion.
 
+Probably I was too terse.
 
->> the git regression tests on an NFSv4.x mount. This is a single
->> client.
-> 
->> 
->> Unpack a recent release of the git tarball.
->> 
->> $ cd src/git
->> $ make clean
->> $ make
->> $ make test
->> 
->> Easily scriptable, and you can "cd t/" and run individual
->> regression tests if you like.
-> 
-> Thanks, I'll look into that.
-> 
-> --b.
+I'm suggesting that nfsd have a local "struct deleg_break_ctl" (or
+whatever name you like) which contains a 'struct inode *delegated_inode'
+plus whatever else is useful to nfsd.
+Then nfsd/vfs.c, when it calls things like vfs_unlink(), passes
+ &dbc.delegated_inode
+(where 'struct deleg_break_ctl dbc').
+So the vfs codes doesn't know about 'struct deleg_break_ctl', it just
+knows about the 'struct inode ** inodep' like it does now, though with the
+understanding that "DELEG_NO_WAIT" in the **inodep means that same as
+inodep=3D=3DNULL.
 
---
-Chuck Lever
+The vfs passes this same 'struct **inode' to lm_breaker_owns_lease() and
+the nfsd code uses
+   dbc =3D container_of(inodep, struct deleg_break_ctl, delegated_inode)
+to get the dbc, and it can use the other fields however it likes.
 
+Then instead of the rather task-specific name "lm_breaker_owns_lease" we
+could have a more general name like "lm_lease_compatible" ... or
+something.  "lm_break_doesn't_see_this_lease_as_being_in_conflict" is a
+bit long, and contains "'".
 
+Thanks,
+NeilBrown
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlmmCkoACgkQOeye3VZi
+gbkT/A/+Igjbk2V5TWsgpe5UWJ1O0ZKtWC3NXfawDfPUsZ62AKTO6Or1pf/PDvA5
+XiT8kZMKih5DcJwAJ4k9E/nrWqx0hn9G5t6VrpvXSA4+kJtFImmNKNU/yhs9PPoE
+nsR6WaJAi+iO38/49MEYSAZKPx+tUIYba8uaDQUFPA4VCY2fLLJg1IupbLaebQHx
+CYvyQhb/iTRDumn8cIO23tYpGpN6gxP0UOhsVy/iAwgs9M1GHihW3evXrXGzgIcc
+Xmo/C86nhIpyxlPGdgEjrR1uGN4H+oacebqBNq/5hEGGP1Z6/SNYJiZP6CKPz61H
+3rdmrAI5SPdpAuYYfiC2GISe4Yychebf3FfJqMtroF3cHp4b0Z6AOV2bdjheRo3q
+u1iSaUeqGZ7+qcpidGIXav6/ttJqtliOx/e9/BpmlTSgVFFrqpclLomRoCsPnNrA
+9Y5SVUxuJtMkX49iT6ZjChd2fnuiooC33XKv+QBuM/shYSM0FXopyFP418mj/yYR
+gv4zAmukn/A76T4Zjf2qZYfZj4j7JgiWflqE3F4Lr0AHGtuImmhUdjPds0aXFWAK
+UHcNowM9zgD184Trc5/iBeH5DuMSpYuCLuK6pdtuTi5b6fai4DuMrBJo1bpNuI7l
+GcgplQW9U/fRpIArIhuB7AA/4FZj3KxRwcUGaJoD9qQjEMANnvI=
+=0mMw
+-----END PGP SIGNATURE-----
+--=-=-=--
