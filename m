@@ -1,94 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f170.google.com ([209.85.223.170]:33632 "EHLO
-        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750955AbdIASoO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Sep 2017 14:44:14 -0400
-Received: by mail-io0-f170.google.com with SMTP id b2so6178311iof.0
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Sep 2017 11:44:14 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:47640 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752503AbdIATlc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 1 Sep 2017 15:41:32 -0400
+Date: Fri, 1 Sep 2017 15:41:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [RFC v1 00/17] NFSD support for inter+async COPY
+Message-ID: <20170901194130.GA27922@parsley.fieldses.org>
+References: <20170302160142.30413-1-kolga@netapp.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
-Subject: Re: linux>=4.10: PUTFH|GETATTR|CLOSE, GETATTR fails, CLOSE not
- re-issued
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <CAOFvWm9a6zrAc60Y388czZtUdL79Wf7AAaA=vTpAwS313Y44yg@mail.gmail.com>
-Date: Fri, 1 Sep 2017 14:44:11 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
-        Thorvald Natvig <thorvald@medallia.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <F24109A7-778E-4655-BE5F-DCF2528E3A61@monkey.org>
-References: <CAOFvWm9a6zrAc60Y388czZtUdL79Wf7AAaA=vTpAwS313Y44yg@mail.gmail.com>
-To: Kjetil Joergensen <kjetil@medallia.com>
+In-Reply-To: <20170302160142.30413-1-kolga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Nice analysis! I think post d8d849835eb2082ea17655538a83fa467633927f, we
-need to retry with a [PUTFH, CLOSE] if the GETATTR fails.
+Apologies, remind me:
 
-The problem as I see it is the GETATTR is tied to the CURRENT_FH, which =
-is
-stale for new operations since the file was unlinked, but the CLOSE is =
-tied to the
-(CURRENT_FH, open stateid) pair and is not stale because the state id is =
-still
-valid.
+	- does wireshark have support for all of this?  (Or are there
+	  patches?)
+	- How are you testing?
+	- What's the status of the client side?
+	- Do we have any user documentation?  Does the client or server
+	  administrator need to do any special setup, or is it just a
+	  matter of exporting and mounting over 4.1 and calling
+	  copy_file_range()?
+	- what currently happens if you try to copy across krb5 mounts?
 
-Trond is out on PTO, should be back on or before next Tuesday. The =
-recent change
-was his and he might have a better idea how to handle this.
+--b.
 
--dros
-
-
-> On Aug 31, 2017, at 1:34 PM, Kjetil Joergensen <kjetil@medallia.com> =
-wrote:
->=20
-> Hi,
->=20
-> (Now - I do not actually know the specification(s) all that well, so
-> it may be that I've by accident cherry picked the bits that partially
-> turns this into a linux-nfs-client bug, and I'd be more than happy
-> with responses that'd be useful to yell at netapp with).
->=20
-> after d8d849835eb2082ea17655538a83fa467633927f (NFSv4: Place the
-> GETATTR operation before the CLOSE). If GETATTR actually fails, CLOSE
-> will never be processed by the server, and it seems the linux nfs
-> client never tries to re-issue CLOSE.
->=20
-> We have client A holding file F open,  client B goes ahead and unlinks
-> F, at some point client a does PUTFH,GETATTR, for which the server
-> responds NFS4ERR_STALE.
->=20
-> Now, client A goes ahead and tries to clean up it's internal state,
-> and sends the server compound PUTFH,GETATTR,CLOSE, for which the
-> server responds with PUTFH(NFS4_OK),GETATTR(NFS4ERR_STALE).
->=20
-> Which seems correct in the eyes of RFC7530 section 14.2., which says
-> the server should stop processing the compound when a subop fails.
->=20
-> The server has not processed the CLOSE op, and in the case of netapp
-> it appears it keeps holding on to the stateid, waiting for the client
-> to CLOSE it.
->=20
-> Judging from tcpdump, the client never attempts to re-issue the CLOSE
-> op that weren't processed.
->=20
-> On the server side, the stateid sticks around until we tear down the
-> client completely (umount or re-boot). Over time, this leads the
-> netapp to bleed stateids.
->=20
-> Compare this to pre d8d849835eb2082ea17655538a83fa467633927f, the
-> client issues PUTFH,CLOSE,GETATTR. Both PUTFH & CLOSE succeeds,
-> GETATTR as expected still gets NFS4ERR_STALE. The server did however
-> process CLOSE, and retired it's stateid.
->=20
-> Cheers,
->=20
-> --=20
-> Kjetil Joergensen <kjetil@medallia.com>
-> Phone: +1 (650) 739-6580
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+On Thu, Mar 02, 2017 at 11:01:24AM -0500, Olga Kornievskaia wrote:
+> This is server-side support for NFSv4.2 inter and async COPY which is
+> on top of existing intra sync COPY. It also depends on the NFS client
+> piece for NFSv4.2 to do client side of the destination server piece
+> in the inter SSC.
+> 
+> NFSD determines if COPY is intra or inter and if sync or async. For
+> inter, NSFD uses NFSv4.1 protocol and creates an internal mount point
+> (superblock). It will destroy the mount point when copy is done.
+> 
+> To do asynchronous copies, NFSD creates a single threaded workqueue
+> and does not tie up an NFSD thread to complete the copy. Upon receiving
+> the COPY, it generates a unique copy stateid (stores a global list
+> for keeping track of state for OFFLOAD_STATUS to be queried by),
+> queues up a workqueue for the copy, and replies back to the client.
+> nfsd4_copy arguments that are allocated on the stack are copied for
+> the work item.
+> 
+> In the async copy handler, it calls into VFS copy_file_range() with
+> 4MB chunks and loops until it completes the requested copy size. If
+> error is encountered it's saved but also we save the amount of data
+> copied so far. Once done, the results are queued for the callback
+> workqueue and sent via CB_OFFLOAD. Also currently, choosing to clean
+> up the copy state information stored in the global list when cope is
+> done and not doing it when callback's release function (it could be
+> done there alternatively if needed it?).
+> 
+> On the source server, upon receiving a COPY_NOTIFY, it generate a
+> unique stateid that's kept in the global list. Upon receiving a READ
+> with a stateid, the code checks the normal list of open stateid and
+> now additionally, it'll check the copy state list as well before
+> deciding to either fail with BAD_STATEID or find one that matches.
+> The stored stateid is only valid to be used for the first time
+> with a choosen lease period (90s currently). When the source server
+> received an OFFLOAD_CANCEL, it will remove the stateid from the
+> global list. Otherwise, the copy stateid is removed upon the removal
+> of its "parent" stateid (open/lock/delegation stateid).
+> 
+> 
+> Andy Adamson (7):
+>   NFSD add ca_source_server<> to COPY
+>   NFSD generalize nfsd4_compound_state flag names
+>   NFSD: allow inter server COPY to have a STALE source server fh
+>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+>   NFSD add COPY_NOTIFY operation
+>   NFSD add nfs4 inter ssc to nfsd4_copy
+>   NFSD Unique stateid_t for inter server to server COPY authentication
+> 
+> Olga Kornievskaia (10):
+>   NFSD CB_OFFLOAD xdr
+>   NFSD OFFLOAD_STATUS xdr
+>   NFSD OFFLOAD_CANCEL xdr
+>   NFSD xdr callback stateid in async COPY reply
+>   NFSD first draft of async copy
+>   NFSD handle OFFLOAD_CANCEL op
+>   NFSD stop queued async copies on client shutdown
+>   NFSD create new stateid for async copy
+>   NFSD define EBADF in nfserrno
+>   NFSD support OFFLOAD_STATUS
+> 
+>  fs/nfsd/Kconfig        |  10 +
+>  fs/nfsd/netns.h        |   8 +
+>  fs/nfsd/nfs4callback.c |  95 +++++++
+>  fs/nfsd/nfs4proc.c     | 704 ++++++++++++++++++++++++++++++++++++++++++++++---
+>  fs/nfsd/nfs4state.c    | 142 +++++++++-
+>  fs/nfsd/nfs4xdr.c      | 266 ++++++++++++++++++-
+>  fs/nfsd/nfsctl.c       |   2 +
+>  fs/nfsd/nfsd.h         |   2 +
+>  fs/nfsd/nfsproc.c      |   1 +
+>  fs/nfsd/state.h        |  32 ++-
+>  fs/nfsd/xdr4.h         |  53 +++-
+>  fs/nfsd/xdr4cb.h       |  10 +
+>  include/linux/nfs4.h   |   1 +
+>  13 files changed, 1273 insertions(+), 53 deletions(-)
+> 
+> -- 
+> 1.8.3.1
+> 
