@@ -1,175 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44104 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751968AbdIAQSK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 Sep 2017 12:18:10 -0400
-Date: Fri, 1 Sep 2017 12:18:09 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: NeilBrown <neilb@suse.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 2/3] fs: hide another detail of delegation logic
-Message-ID: <20170901161809.GA22140@parsley.fieldses.org>
-References: <1503697958-6122-1-git-send-email-bfields@redhat.com>
- <1503697958-6122-3-git-send-email-bfields@redhat.com>
- <878ti4i9pi.fsf@notabene.neil.brown.name>
- <20170829214026.GI8822@parsley.fieldses.org>
- <8760d5hol3.fsf@notabene.neil.brown.name>
- <20170830170938.GC24373@parsley.fieldses.org>
- <87wp5kfxi3.fsf@notabene.neil.brown.name>
- <20170831190531.GA8223@parsley.fieldses.org>
- <873787fhc5.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
+Received: from mail-io0-f170.google.com ([209.85.223.170]:33632 "EHLO
+        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750955AbdIASoO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Sep 2017 14:44:14 -0400
+Received: by mail-io0-f170.google.com with SMTP id b2so6178311iof.0
+        for <linux-nfs@vger.kernel.org>; Fri, 01 Sep 2017 11:44:14 -0700 (PDT)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <873787fhc5.fsf@notabene.neil.brown.name>
+Mime-Version: 1.0 (Mac OS X Mail 10.3 \(3273\))
+Subject: Re: linux>=4.10: PUTFH|GETATTR|CLOSE, GETATTR fails, CLOSE not
+ re-issued
+From: Weston Andros Adamson <dros@monkey.org>
+In-Reply-To: <CAOFvWm9a6zrAc60Y388czZtUdL79Wf7AAaA=vTpAwS313Y44yg@mail.gmail.com>
+Date: Fri, 1 Sep 2017 14:44:11 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
+        Thorvald Natvig <thorvald@medallia.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Message-Id: <F24109A7-778E-4655-BE5F-DCF2528E3A61@monkey.org>
+References: <CAOFvWm9a6zrAc60Y388czZtUdL79Wf7AAaA=vTpAwS313Y44yg@mail.gmail.com>
+To: Kjetil Joergensen <kjetil@medallia.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 01, 2017 at 09:27:54AM +1000, NeilBrown wrote:
-> On Thu, Aug 31 2017, J. Bruce Fields wrote:
-> > Only nfsd fills in the "who" field of deleg_break_ctl.  But non-nfsd
-> > users do need to pass a non-NULL delegated_inode.
-> 
-> Yes, of course...
+Nice analysis! I think post d8d849835eb2082ea17655538a83fa467633927f, we
+need to retry with a [PUTFH, CLOSE] if the GETATTR fails.
 
-Just to be clear, I've taken your suggestion to pass the nfs4_client
-instead of the request so we only have to do a comparison in callback.
-Among other things that should be a safe approach if we ever have
-non-nfs breakers that want to pass a "who".  Patch appended below if
-you're curious.
+The problem as I see it is the GETATTR is tied to the CURRENT_FH, which =
+is
+stale for new operations since the file was unlinked, but the CLOSE is =
+tied to the
+(CURRENT_FH, open stateid) pair and is not stale because the state id is =
+still
+valid.
 
-> So having been wrong about this code twice, I'm starting to get a feel
-> for what it does and why.  I still wonder if there might be a better
-> approach though.
-> 
-> You are changing the interface to pass a magic cookie with the meaning
-> "Don't bother breaking a delegation which matches this magic cookie".
-> Would it not be better to pass a delegation, and say "Don't bother
-> breaking this delegation".  And if it were a WRITE delegation, that
-> could be optimised as "don't bother breaking any delegation, I have a
-> write delegation so I have exclusive access".
-> 
-> Whenever we call a vfs_* function that will need to break delegations we
-> have already done the lookup and have the dentry and inode, so finding a
-> delegation shouldn't be prohibitive.
-> 
-> nfsd would need to find that delegation, prevent further delegations
-> being handed out, and check that there aren't already conflicting
-> delegations.  If there are conflicts, recall them.  Once there are no
-> conflicting delegations, make the vfs_ request.
+Trond is out on PTO, should be back on or before next Tuesday. The =
+recent change
+was his and he might have a better idea how to handle this.
 
-The way that we currently serialize setting, unsetting, and breaking
-delegations is by locks on the delegated inodes which aren't taken till
-deeper in the vfs code.
+-dros
 
-I guess you're suggesting adding a second mechanism to prevent
-delegations being given out on the inode.  We could add an atomic
-counter taken by each nfsd breaker while it's in progress.  Hrm.
 
---b.
+> On Aug 31, 2017, at 1:34 PM, Kjetil Joergensen <kjetil@medallia.com> =
+wrote:
+>=20
+> Hi,
+>=20
+> (Now - I do not actually know the specification(s) all that well, so
+> it may be that I've by accident cherry picked the bits that partially
+> turns this into a linux-nfs-client bug, and I'd be more than happy
+> with responses that'd be useful to yell at netapp with).
+>=20
+> after d8d849835eb2082ea17655538a83fa467633927f (NFSv4: Place the
+> GETATTR operation before the CLOSE). If GETATTR actually fails, CLOSE
+> will never be processed by the server, and it seems the linux nfs
+> client never tries to re-issue CLOSE.
+>=20
+> We have client A holding file F open,  client B goes ahead and unlinks
+> F, at some point client a does PUTFH,GETATTR, for which the server
+> responds NFS4ERR_STALE.
+>=20
+> Now, client A goes ahead and tries to clean up it's internal state,
+> and sends the server compound PUTFH,GETATTR,CLOSE, for which the
+> server responds with PUTFH(NFS4_OK),GETATTR(NFS4ERR_STALE).
+>=20
+> Which seems correct in the eyes of RFC7530 section 14.2., which says
+> the server should stop processing the compound when a subop fails.
+>=20
+> The server has not processed the CLOSE op, and in the case of netapp
+> it appears it keeps holding on to the stateid, waiting for the client
+> to CLOSE it.
+>=20
+> Judging from tcpdump, the client never attempts to re-issue the CLOSE
+> op that weren't processed.
+>=20
+> On the server side, the stateid sticks around until we tear down the
+> client completely (umount or re-boot). Over time, this leads the
+> netapp to bleed stateids.
+>=20
+> Compare this to pre d8d849835eb2082ea17655538a83fa467633927f, the
+> client issues PUTFH,CLOSE,GETATTR. Both PUTFH & CLOSE succeeds,
+> GETATTR as expected still gets NFS4ERR_STALE. The server did however
+> process CLOSE, and retired it's stateid.
+>=20
+> Cheers,
+>=20
+> --=20
+> Kjetil Joergensen <kjetil@medallia.com>
+> Phone: +1 (650) 739-6580
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> One downside of this is that nfsd delegations would be recalled before
-> any others, rather than doing them all in parallel.  This could be
-> addressed by calling try_break_deleg() when recalling the nfsd
-> delegations.
-> 
-> This approach seems to be half-way between your original attempt that
-> you described, which is racy, and the attempt you posted which adds the
-> callback that I don't particularly like.
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fb15efcc4e08..b50a7492f47f 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3825,7 +3825,7 @@ nfsd_break_deleg_cb(struct file_lock *fl)
- 	return ret;
- }
- 
--static struct nfs4_client *nfsd4_client_from_rqst(struct svc_rqst *rqst)
-+void *nfsd4_client_from_rqst(struct svc_rqst *rqst)
- {
- 	struct nfsd4_compoundres *resp;
- 
-@@ -3843,19 +3843,14 @@ static struct nfs4_client *nfsd4_client_from_rqst(struct svc_rqst *rqst)
- 
- static bool nfsd_breaker_owns_lease(void *who, struct file_lock *fl)
- {
--	struct svc_rqst *rqst = who;
- 	struct nfs4_client *cl;
- 	struct nfs4_delegation *dl;
- 	struct nfs4_file *fi = (struct nfs4_file *)fl->fl_owner;
- 	bool ret = true;
- 
--	cl = nfsd4_client_from_rqst(rqst);
--	if (!cl)
--		return false;
--
- 	spin_lock(&fi->fi_lock);
- 	list_for_each_entry(dl, &fi->fi_delegations, dl_perfile) {
--		if (dl->dl_stid.sc_client != cl) {
-+		if (dl->dl_stid.sc_client != who) {
- 			ret = false;
- 			break;
- 		}
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index b9c538ab7a59..f7819ce6c817 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -125,6 +125,7 @@ void nfs4_reset_lease(time_t leasetime);
- int nfs4_reset_recoverydir(char *recdir);
- char * nfs4_recoverydir(void);
- bool nfsd4_spo_must_allow(struct svc_rqst *rqstp);
-+void *nfsd4_client_from_rqst(struct svc_rqst *rqst);
- #else
- static inline int nfsd4_init_slabs(void) { return 0; }
- static inline void nfsd4_free_slabs(void) { }
-@@ -139,6 +140,7 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
- {
- 	return false;
- }
-+void *nfsd4_client_from_rqst(struct svc_rqst *rqst) { return NULL; }
- #endif
- 
- /*
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index fe62bc744143..fc9b9ad1d444 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -395,8 +395,8 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	bool		get_write_count;
- 	bool		size_change = (iap->ia_valid & ATTR_SIZE);
- 	struct deleg_break_ctl deleg_break_ctl = {
--			.delegated_inode = DELEG_NO_WAIT,
--			.who = rqstp
-+		.delegated_inode = DELEG_NO_WAIT,
-+		.who = nfsd4_client_from_rqst(rqstp),
- 	};
- 
- 	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-@@ -1559,7 +1559,7 @@ nfsd_link(struct svc_rqst *rqstp, struct svc_fh *ffhp,
- 	int		host_err;
- 	struct deleg_break_ctl deleg_break_ctl = {
- 		.delegated_inode = DELEG_NO_WAIT,
--		.who = rqstp
-+		.who = nfsd4_client_from_rqst(rqstp),
- 	};
- 
- 	err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_CREATE);
-@@ -1636,7 +1636,7 @@ nfsd_rename(struct svc_rqst *rqstp, struct svc_fh *ffhp, char *fname, int flen,
- 	int		host_err;
- 	struct deleg_break_ctl deleg_break_ctl = {
- 		.delegated_inode = DELEG_NO_WAIT,
--		.who = rqstp
-+		.who = nfsd4_client_from_rqst(rqstp),
- 	};
- 
- 	err = fh_verify(rqstp, ffhp, S_IFDIR, NFSD_MAY_REMOVE);
-@@ -1736,7 +1736,7 @@ nfsd_unlink(struct svc_rqst *rqstp, struct svc_fh *fhp, int type,
- 	int		host_err;
- 	struct deleg_break_ctl deleg_break_ctl = {
- 		.delegated_inode = DELEG_NO_WAIT,
--		.who = rqstp
-+		.who = nfsd4_client_from_rqst(rqstp),
- 	};
- 
- 	err = nfserr_acces;
