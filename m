@@ -1,293 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49320 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752473AbdIAVYh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 Sep 2017 17:24:37 -0400
-Date: Fri, 1 Sep 2017 17:24:35 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [RFC v1 04/18] NFSD: allow inter server COPY to have a STALE
- source server fh
-Message-ID: <20170901212435.GE2743@parsley.fieldses.org>
-References: <20170302160142.30413-1-kolga@netapp.com>
- <20170302160142.30413-5-kolga@netapp.com>
- <20170901202312.GB2743@parsley.fieldses.org>
- <48971F0D-086B-4DE1-9B69-0FD04E6558FD@netapp.com>
- <20170901211614.GC2743@parsley.fieldses.org>
+Received: from mx2.suse.de ([195.135.220.15]:40241 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750961AbdIDEw7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 4 Sep 2017 00:52:59 -0400
+From: NeilBrown <neilb@suse.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Date: Mon, 04 Sep 2017 14:52:43 +1000
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 2/3] fs: hide another detail of delegation logic
+In-Reply-To: <20170901161809.GA22140@parsley.fieldses.org>
+References: <1503697958-6122-1-git-send-email-bfields@redhat.com> <1503697958-6122-3-git-send-email-bfields@redhat.com> <878ti4i9pi.fsf@notabene.neil.brown.name> <20170829214026.GI8822@parsley.fieldses.org> <8760d5hol3.fsf@notabene.neil.brown.name> <20170830170938.GC24373@parsley.fieldses.org> <87wp5kfxi3.fsf@notabene.neil.brown.name> <20170831190531.GA8223@parsley.fieldses.org> <873787fhc5.fsf@notabene.neil.brown.name> <20170901161809.GA22140@parsley.fieldses.org>
+Message-ID: <871snndq04.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20170901211614.GC2743@parsley.fieldses.org>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 01, 2017 at 05:16:14PM -0400, J. Bruce Fields wrote:
-> On Fri, Sep 01, 2017 at 04:25:53PM -0400, Olga Kornievskaia wrote:
-> > 
-> > > On Sep 1, 2017, at 4:23 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > > 
-> > > On Thu, Mar 02, 2017 at 11:01:28AM -0500, Olga Kornievskaia wrote:
-> > >> From: Andy Adamson <andros@netapp.com>
-> > >> 
-> > >> The inter server to server COPY source server filehandle
-> > >> is guaranteed to be stale as the COPY is sent to the destination
-> > >> server.
-> > > 
-> > > This is definitely not true.  That filehandle could very well mean
-> > > something to the source server, even if it's just by accident.
-> > > 
-> > > In the case the source filehandle refers to a file on a different
-> > > server, nfsd knows that, and should not call fh_verify on it at all.
-> > 
-> > At the time of processing the FH it doesn’t know that there is a COPY
-> > operation coming in the compound. So how does it know it refers to 
-> > a file on a different server?
-> 
-> Sorry, of course you're right, I missed that these filehandles are
-> passed by PUTFH and SAVEFH.  Yuch.
-> 
-> I don't like that we're doing a filehandle lookup at all on this
-> "foreign" filehandle.  But maybe it doesn't cause big problems in
-> practice.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-But could you please check that this does the right thing in practice
-if, for example, the source filehandle happens by coincidence to
-succesfully verify?
+On Fri, Sep 01 2017, J. Bruce Fields wrote:
 
---b.
+>>=20
+>> nfsd would need to find that delegation, prevent further delegations
+>> being handed out, and check that there aren't already conflicting
+>> delegations.  If there are conflicts, recall them.  Once there are no
+>> conflicting delegations, make the vfs_ request.
+>
+> The way that we currently serialize setting, unsetting, and breaking
+> delegations is by locks on the delegated inodes which aren't taken till
+> deeper in the vfs code.
 
-> 
-> --b.
-> 
-> > 
-> > > 
-> > > --b.
-> > > 
-> > >> 
-> > >> Signed-off-by: Andy Adamson <andros@netapp.com>
-> > >> ---
-> > >> fs/nfsd/nfs4proc.c | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
-> > >> fs/nfsd/nfs4xdr.c  | 26 +++++++++++++++++++++++++-
-> > >> fs/nfsd/nfsd.h     |  2 ++
-> > >> fs/nfsd/xdr4.h     |  4 ++++
-> > >> 4 files changed, 77 insertions(+), 2 deletions(-)
-> > >> 
-> > >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > >> index a680c8c..733a9aa 100644
-> > >> --- a/fs/nfsd/nfs4proc.c
-> > >> +++ b/fs/nfsd/nfs4proc.c
-> > >> @@ -496,11 +496,19 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
-> > >> nfsd4_putfh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> > >> 	    struct nfsd4_putfh *putfh)
-> > >> {
-> > >> +	__be32 ret;
-> > >> +
-> > >> 	fh_put(&cstate->current_fh);
-> > >> 	cstate->current_fh.fh_handle.fh_size = putfh->pf_fhlen;
-> > >> 	memcpy(&cstate->current_fh.fh_handle.fh_base, putfh->pf_fhval,
-> > >> 	       putfh->pf_fhlen);
-> > >> -	return fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
-> > >> +	ret = fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
-> > >> +	if (ret == nfserr_stale && HAS_CSTATE_FLAG(cstate, NO_VERIFY_FH)) {
-> > >> +		CLEAR_CSTATE_FLAG(cstate, NO_VERIFY_FH);
-> > >> +		SET_CSTATE_FLAG(cstate, IS_STALE_FH);
-> > >> +		ret = 0;
-> > >> +	}
-> > >> +	return ret;
-> > >> }
-> > >> 
-> > >> static __be32
-> > >> @@ -533,6 +541,16 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
-> > >> nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> > >> 	     void *arg)
-> > >> {
-> > >> +	/**
-> > >> +	* This is either an inter COPY (most likely) or an intra COPY with a
-> > >> +	* stale file handle. If the latter, nfsd4_copy will reset the PUTFH to
-> > >> +	* return nfserr_stale. No fh_dentry, just copy the file handle
-> > >> +	* to use with the inter COPY READ.
-> > >> +	*/
-> > >> +	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
-> > >> +		cstate->save_fh = cstate->current_fh;
-> > >> +		return nfs_ok;
-> > >> +	}
-> > >> 	if (!cstate->current_fh.fh_dentry)
-> > >> 		return nfserr_nofilehandle;
-> > >> 
-> > >> @@ -1067,6 +1085,13 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
-> > >> 	if (status)
-> > >> 		goto out;
-> > >> 
-> > >> +	/* Intra copy source fh is stale. PUTFH will fail with ESTALE */
-> > >> +	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
-> > >> +		CLEAR_CSTATE_FLAG(cstate, IS_STALE_FH);
-> > >> +		cstate->status = nfserr_copy_stalefh;
-> > >> +		goto out_put;
-> > >> +	}
-> > >> +
-> > >> 	bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
-> > >> 			dst, copy->cp_dst_pos, copy->cp_count);
-> > >> 
-> > >> @@ -1081,6 +1106,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
-> > >> 		status = nfs_ok;
-> > >> 	}
-> > >> 
-> > >> +out_put:
-> > >> 	fput(src);
-> > >> 	fput(dst);
-> > >> out:
-> > >> @@ -1776,6 +1802,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> > >> 	struct nfsd4_compound_state *cstate = &resp->cstate;
-> > >> 	struct svc_fh *current_fh = &cstate->current_fh;
-> > >> 	struct svc_fh *save_fh = &cstate->save_fh;
-> > >> +	int		i;
-> > >> 	__be32		status;
-> > >> 
-> > >> 	svcxdr_init_encode(rqstp, resp);
-> > >> @@ -1808,6 +1835,12 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> > >> 		goto encode_op;
-> > >> 	}
-> > >> 
-> > >> +	/* NFSv4.2 COPY source file handle may be from a different server */
-> > >> +	for (i = 0; i < args->opcnt; i++) {
-> > >> +		op = &args->ops[i];
-> > >> +		if (op->opnum == OP_COPY)
-> > >> +			SET_CSTATE_FLAG(cstate, NO_VERIFY_FH);
-> > >> +	}
-> > >> 	while (!status && resp->opcnt < args->opcnt) {
-> > >> 		op = &args->ops[resp->opcnt++];
-> > >> 
-> > >> @@ -1827,6 +1860,9 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> > >> 
-> > >> 		opdesc = OPDESC(op);
-> > >> 
-> > >> +		if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
-> > >> +			goto call_op;
-> > >> +
-> > >> 		if (!current_fh->fh_dentry) {
-> > >> 			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
-> > >> 				op->status = nfserr_nofilehandle;
-> > >> @@ -1861,6 +1897,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> > >> 
-> > >> 		if (opdesc->op_get_currentstateid)
-> > >> 			opdesc->op_get_currentstateid(cstate, &op->u);
-> > >> +call_op:
-> > >> 		op->status = opdesc->op_func(rqstp, cstate, &op->u);
-> > >> 
-> > >> 		if (!op->status) {
-> > >> @@ -1881,6 +1918,14 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> > >> 			status = op->status;
-> > >> 			goto out;
-> > >> 		}
-> > >> +		/* Only from intra COPY */
-> > >> +		if (cstate->status == nfserr_copy_stalefh) {
-> > >> +			dprintk("%s NFS4.2 intra COPY stale src filehandle\n",
-> > >> +				__func__);
-> > >> +			status = nfserr_stale;
-> > >> +			nfsd4_adjust_encode(resp);
-> > >> +			goto out;
-> > >> +		}
-> > >> 		if (op->status == nfserr_replay_me) {
-> > >> 			op->replay = &cstate->replay_owner->so_replay;
-> > >> 			nfsd4_encode_replay(&resp->xdr, op);
-> > >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> > >> index c632156..328ff9c 100644
-> > >> --- a/fs/nfsd/nfs4xdr.c
-> > >> +++ b/fs/nfsd/nfs4xdr.c
-> > >> @@ -4619,15 +4619,28 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
-> > >> 	return nfserr_rep_too_big;
-> > >> }
-> > >> 
-> > >> +/** Rewind the encoding to return nfserr_stale on the PUTFH
-> > >> + * in this failed Intra COPY compound
-> > >> + */
-> > >> +void
-> > >> +nfsd4_adjust_encode(struct nfsd4_compoundres *resp)
-> > >> +{
-> > >> +	__be32 *p;
-> > >> +
-> > >> +	p = resp->cstate.putfh_errp;
-> > >> +	*p++ = nfserr_stale;
-> > >> +}
-> > >> +
-> > >> void
-> > >> nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
-> > >> {
-> > >> 	struct xdr_stream *xdr = &resp->xdr;
-> > >> 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
-> > >> +	struct nfsd4_compound_state *cstate = &resp->cstate;
-> > >> 	struct svc_rqst *rqstp = resp->rqstp;
-> > >> 	int post_err_offset;
-> > >> 	nfsd4_enc encoder;
-> > >> -	__be32 *p;
-> > >> +	__be32 *p, *statp;
-> > >> 
-> > >> 	p = xdr_reserve_space(xdr, 8);
-> > >> 	if (!p) {
-> > >> @@ -4636,9 +4649,20 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
-> > >> 	}
-> > >> 	*p++ = cpu_to_be32(op->opnum);
-> > >> 	post_err_offset = xdr->buf->len;
-> > >> +	statp = p;
-> > >> 
-> > >> 	if (op->opnum == OP_ILLEGAL)
-> > >> 		goto status;
-> > >> +
-> > >> +	/** This is a COPY compound with a stale source server file handle.
-> > >> +	 * If OP_COPY processing determines that this is an intra server to
-> > >> +	 * server COPY, then this PUTFH should return nfserr_ stale so the
-> > >> +	 * putfh_errp will be set to nfserr_stale. If this is an inter server
-> > >> +	 * to server COPY, ignore the nfserr_stale.
-> > >> +	 */
-> > >> +	if (op->opnum == OP_PUTFH && HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
-> > >> +		cstate->putfh_errp = statp;
-> > >> +
-> > >> 	BUG_ON(op->opnum < 0 || op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
-> > >> 	       !nfsd4_enc_ops[op->opnum]);
-> > >> 	encoder = nfsd4_enc_ops[op->opnum];
-> > >> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> > >> index d966068..8d6fb0f 100644
-> > >> --- a/fs/nfsd/nfsd.h
-> > >> +++ b/fs/nfsd/nfsd.h
-> > >> @@ -272,6 +272,8 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
-> > >> #define	nfserr_replay_me	cpu_to_be32(11001)
-> > >> /* nfs41 replay detected */
-> > >> #define	nfserr_replay_cache	cpu_to_be32(11002)
-> > >> +/* nfs42 intra copy failed with nfserr_stale */
-> > >> +#define nfserr_copy_stalefh	cpu_to_be32(1103)
-> > >> 
-> > >> /* Check for dir entries '.' and '..' */
-> > >> #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
-> > >> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> > >> index 38fcb4f..aa94295 100644
-> > >> --- a/fs/nfsd/xdr4.h
-> > >> +++ b/fs/nfsd/xdr4.h
-> > >> @@ -45,6 +45,8 @@
-> > >> 
-> > >> #define CURRENT_STATE_ID_FLAG (1<<0)
-> > >> #define SAVED_STATE_ID_FLAG (1<<1)
-> > >> +#define NO_VERIFY_FH (1<<2)
-> > >> +#define IS_STALE_FH  (1<<3)
-> > >> 
-> > >> #define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
-> > >> #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
-> > >> @@ -63,6 +65,7 @@ struct nfsd4_compound_state {
-> > >> 	size_t			iovlen;
-> > >> 	u32			minorversion;
-> > >> 	__be32			status;
-> > >> +	__be32			*putfh_errp;
-> > >> 	stateid_t	current_stateid;
-> > >> 	stateid_t	save_stateid;
-> > >> 	/* to indicate current and saved state id presents */
-> > >> @@ -705,6 +708,7 @@ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
-> > >> int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
-> > >> 		struct nfsd4_compoundres *);
-> > >> __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
-> > >> +void nfsd4_adjust_encode(struct nfsd4_compoundres *);
-> > >> void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
-> > >> void nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op);
-> > >> __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
-> > >> -- 
-> > >> 1.8.3.1
-> > >> 
-> > 
+Do we?
+I can see nfs4_set_delegation adding a new delegation for a new client
+without entering the vfs at all if there is already a lease held.
+If there isn't a lease already, vfs_setlease() is called, which doesn't
+its own internal locking of course.  Much the same applies to unsetting
+delegations.
+Breaking delegations involves nfsd_break_deleg_cb() which has a comment
+that it is called with i_lock held.... that seems to be used to
+be sure that it is safe to a reference to the delegation state id.
+Is that the only dependency on the vfs locking, or did I miss something?
+
+>
+> I guess you're suggesting adding a second mechanism to prevent
+> delegations being given out on the inode.  We could add an atomic
+> counter taken by each nfsd breaker while it's in progress.  Hrm.
+
+Something like that.
+We would also need to be able to look up an nfs4_file by inode (why
+*are* they hashed by file handle??) and add some wait queue somewhere
+so the breaker could wait for a delegation to be returned.
+
+My big-picture point is that any complexity created by NFSD's choice to
+merge delegations to multiple clients into a single vfs-level delegation
+should be handled by NFSD, and not imposed on the VFS.
+It certainly makes sense for the VFS to understand that certain
+operations are being performed by an fl_owner_t, and to allow
+delegations to that owner to remain.  It doesn't make as much sense for
+the VFS to understand that there is a finer granularity of ownership
+than the one that it already supports.
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlms3B0ACgkQOeye3VZi
+gbnvxg/+LlMdokAEr9lIrYLgLsUwCdGZEwXKUmzuV2o6Rbn4zau/IXoTvylAOsU5
+tLtzYpQtgDoxaJr0mgL24QBlllopsS287QZgbbH8gZ02h/8d0Ovp94eVIAykhdu3
+oS8Dsn1Tya/icsD5EPRtBddLikBGE+qEhuxo0z1+hs80Vg5R2aFiZ8q+ikici8BV
+iDEzc8JwjKoj+X8pWPUYdg+o9ckHqXXEMgGYslXpLPYu2//c+SjvW+cW9u9ic7D6
+wNJlWQnabxYWTsWlKiIWkTVnFNaciGATIwamH/GOMZ/uGt7sRNEcy4eBhWZBAIzp
+wCKSKRh6FR9pPoTKd6JmI2Q+oVrrvWvfA5N8QUYHxeC0ihShCweW/RChlgMLmC4v
+ylNdywHIAG50Ln/evM1T2An+0iFRxXqMfN0ULgcIg6ovchvN14849lC+xYcNqugV
+78UrjA+EJ9c7GnsRGQaTEPWEOJDW3uKA3p+NY2ABhiWUEavVPgVCrBlseURjbdww
+4UU/x4un8xr63B+WnB4FXpRpXw2p/yXBe6sZUTok6ADTNPTVfiKpUtpo89+yJnYg
+859inIOhmtOyuEnM6UjWjPFAZVRvCXqZ44K9W1Q3CTZY/6ctHyNjExlix+iFaVZN
+hI5MbiNyZW/9ILnN+hzosV8YScaNPTs+iwiHWPz3SYI92XF6jdQ=
+=ikwy
+-----END PGP SIGNATURE-----
+--=-=-=--
