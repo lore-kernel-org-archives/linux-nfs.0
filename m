@@ -1,36 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:42609 "EHLO quartz.orcorp.ca"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753286AbdIEUGO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Sep 2017 16:06:14 -0400
-Date: Tue, 5 Sep 2017 14:06:08 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: sagi@grimberg.me, linux-rdma@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC 0/5] xprtrdma Send completion batching
-Message-ID: <20170905200608.GA4055@obsidianresearch.com>
-References: <20170905164347.11106.27140.stgit@manet.1015granger.net>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39403 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752760AbdIEUdU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2017 16:33:20 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
+Date: Tue, 5 Sep 2017 20:33:14 +0000
+Message-ID: <1504643592.18516.3.camel@primarydata.com>
+References: <20170823210344.7677.48608.stgit@manet.1015granger.net>
+         <1503524423.84215.1.camel@primarydata.com>
+         <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
+In-Reply-To: <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170905164347.11106.27140.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 05, 2017 at 01:00:10PM -0400, Chuck Lever wrote:
+T24gVGh1LCAyMDE3LTA4LTI0IGF0IDE0OjE4IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
+Cj4gDQo+IE9uIDA4LzIzLzIwMTcgMDU6NDAgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4g
+PiBPbiBXZWQsIDIwMTctMDgtMjMgYXQgMTc6MDUgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0K
+PiA+ID4gQWRvcHQgdGhlIHVzZSBvZiB4cHJ0X3Bpbl9ycXN0IHRvIGVsaW1pbmF0ZSBjb250ZW50
+aW9uIGJldHdlZW4NCj4gPiA+IENhbGwtc2lkZSB1c2VycyBvZiByYl9sb2NrIGFuZCB0aGUgdXNl
+IG9mIHJiX2xvY2sgaW4NCj4gPiA+IHJwY3JkbWFfcmVwbHlfaGFuZGxlci4NCj4gPiA+IA0KPiA+
+ID4gVGhpcyByZXBsYWNlcyB0aGUgbWVjaGFuaXNtIGludHJvZHVjZWQgaW4gNDMxYWY2NDVjZjY2
+DQo+ID4gPiAoInhwcnRyZG1hOg0KPiA+ID4gRml4IGNsaWVudCBsb2NrLXVwIGFmdGVyIGFwcGxp
+Y2F0aW9uIHNpZ25hbCBmaXJlcyIpLg0KPiA+ID4gDQo+ID4gPiBVc2UgcmVjdl9sb2NrIHRvIHF1
+aWNrbHkgZmluZCB0aGUgY29tcGxldGluZyBycXN0LCBwaW4gaXQsIHRoZW4NCj4gPiA+IGRyb3Ag
+dGhlIGxvY2suIEF0IHRoYXQgcG9pbnQgaW52YWxpZGF0aW9uIGFuZCBwdWxsLXVwIG9mIHRoZQ0K
+PiA+ID4gUmVwbHkNCj4gPiA+IFhEUiBjYW4gYmUgZG9uZS4gQm90aCBhcmUgb2Z0ZW4gZXhwZW5z
+aXZlIG9wZXJhdGlvbnMuDQo+ID4gPiANCj4gPiA+IEZpbmFsbHksIHRha2UgcmVjdl9sb2NrIGFn
+YWluIHRvIHNpZ25hbCBjb21wbGV0aW9uIHRvIHRoZSBSUEMNCj4gPiA+IGxheWVyLiBJdCBhbHNv
+IHByb3RlY3RzIGFkanVzdG1lbnQgb2YgImN3bmQiLg0KPiA+ID4gDQo+ID4gPiBUaGlzIGdyZWF0
+bHkgcmVkdWNlcyB0aGUgYW1vdW50IG9mIHRpbWUgYSBsb2NrIGlzIGhlbGQgYnkgdGhlDQo+ID4g
+PiByZXBseSBoYW5kbGVyLiBDb21wYXJpbmcgbG9ja19zdGF0IHJlc3VsdHMgc2hvd3MgYSBtYXJr
+ZWQNCj4gPiA+IGRlY3JlYXNlDQo+ID4gPiBpbiBjb250ZW50aW9uIG9uIHJiX2xvY2sgYW5kIHJl
+Y3ZfbG9jay4NCj4gPiA+IA0KPiA+ID4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNr
+LmxldmVyQG9yYWNsZS5jb20+DQo+ID4gPiAtLS0NCj4gPiA+IEhpLQ0KPiA+ID4gDQo+ID4gPiBJ
+ZiBUcm9uZCdzIGxvY2sgY29udGVudGlvbiBzZXJpZXMgaXMgZ29pbmcgaW50byB2NC4xNCwgSSdk
+IGxpa2UNCj4gPiA+IHlvdQ0KPiA+ID4gdG8gY29uc2lkZXIgdGhpcyBvbmUgKGFwcGxpZWQgYXQg
+dGhlIGVuZCBvZiB0aGF0IHNlcmllcykgYXMgd2VsbC4NCj4gPiA+IFdpdGhvdXQgaXQsIE5GUy9S
+RE1BIHBlcmZvcm1hbmNlIHJlZ3Jlc3NlcyBhIGJpdCBhZnRlciB0aGUNCj4gPiA+IGZpcnN0IHhw
+cnRfcGluX3Jxc3QgcGF0Y2ggaXMgYXBwbGllZC4gVGhhbmtzIQ0KPiA+ID4gDQo+ID4gDQo+ID4g
+SWYgQW5uYSBpcyBPSyB3aXRoIGl0LCB0aGVuIEkgY2FuIGFwcGx5IHRoaXMgcGF0Y2ggb25jZSBz
+aGUncyBzZW50DQo+ID4gbWUNCj4gPiB0aGUgcHVsbCByZXF1ZXN0IGZvciB0aGUgb3RoZXIgUkRN
+QSBjbGllbnQgcGF0Y2hlcy4NCj4gDQo+IFdvcmtzIGZvciBtZS4gIFRoYW5rcyENCg0KUGxlYXNl
+IGNhbiB5b3UgYm90aCBjaGVjayBodHRwOi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9s
+aW51eC1uZnMNCi5naXQ7YT1jb21taXQ7aD1iMWRhNWQ5MDg1N2VlNGI4ZjVhY2VlMTE0MzcwNTQx
+MmIxNmZjZTU2IGFuZCBzZWUgaWYgYWxsDQppcyB3ZWxsPw0KDQpEbyBub3RlIHRoYXQgSSBkaWQg
+cmVtb3ZlIHRoZSBjYWxsIHRvIHJwY3JkbWFfYnVmZmVyX3B1dCgpIHdoaWNoIHdhcw0KYmVpbmcg
+Y2FsbGVkIHdpdGggYW4gdW5pbml0aWFsaXNlZCBhcmd1bWVudC4NCg0KQ2hlZXJzDQogIFRyb25k
+DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFBy
+aW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-> - Send completions are batched to reduce interrupts, but still
->   provide a periodic heartbeat signal for SQ housekeeping
-
-I would scrub this commentary, it is very misleading.
-
-The idea of a periodic completion does not match how verbs works at
-all, it was an incomplete root cause analysis from a HCA that uses
-different rules for freeing space in the SQ.
-
-Instead, I would say this series creates strong SQ accounting and
-properly guarentees the SQ can never overflow by only releasing SQ's
-back into the pool when the HCA has confirmed they are completed via a
-CQ.
-
-Jason
