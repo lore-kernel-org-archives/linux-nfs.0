@@ -1,59 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:54919 "EHLO quartz.orcorp.ca"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754080AbdIEWDc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Sep 2017 18:03:32 -0400
-Date: Tue, 5 Sep 2017 16:03:25 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Sagi Grimberg <sagi@grimberg.me>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC 0/5] xprtrdma Send completion batching
-Message-ID: <20170905220325.GA10835@obsidianresearch.com>
-References: <20170905164347.11106.27140.stgit@manet.1015granger.net>
- <20170905200608.GA4055@obsidianresearch.com>
- <0D960F54-0BC7-4A5A-8001-0391673892DF@oracle.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:51372 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753808AbdIEWbO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2017 18:31:14 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
+Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
+Date: Tue, 5 Sep 2017 22:31:09 +0000
+Message-ID: <1504650666.29712.0.camel@primarydata.com>
+References: <20170823210344.7677.48608.stgit@manet.1015granger.net>
+         <1503524423.84215.1.camel@primarydata.com>
+         <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
+         <1504643592.18516.3.camel@primarydata.com>
+         <CEEC5F17-B01F-4751-A82D-16FAD3267125@oracle.com>
+In-Reply-To: <CEEC5F17-B01F-4751-A82D-16FAD3267125@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <0D960F54-0BC7-4A5A-8001-0391673892DF@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Sep 05, 2017 at 05:22:04PM -0400, Chuck Lever wrote:
-> 
-> > On Sep 5, 2017, at 4:06 PM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
-> > 
-> > On Tue, Sep 05, 2017 at 01:00:10PM -0400, Chuck Lever wrote:
-> > 
-> >> - Send completions are batched to reduce interrupts, but still
-> >>  provide a periodic heartbeat signal for SQ housekeeping
-> > 
-> > I would scrub this commentary, it is very misleading.
-> > 
-> > The idea of a periodic completion does not match how verbs works at
-> > all, it was an incomplete root cause analysis from a HCA that uses
-> > different rules for freeing space in the SQ.
-> 
-> I think it does bear mentioning that, given this diagnosis, it is
-> still safe to remove the ib_post_send counting mechanism in 5/5,
-> which has been in xprtrdma for as long as I can recall, and has
-> been effective (with a few minor adjustments) at preventing SQ
-> overflow.
+T24gVHVlLCAyMDE3LTA5LTA1IGF0IDE3OjA2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBTZXAgNSwgMjAxNywgYXQgNDozMyBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHBy
+aW1hcnlkYXRhLmNvDQo+ID4gbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gVGh1LCAyMDE3LTA4LTI0
+IGF0IDE0OjE4IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToNCj4gPiA+IA0KPiA+ID4gT24g
+MDgvMjMvMjAxNyAwNTo0MCBQTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gPiBPbiBX
+ZWQsIDIwMTctMDgtMjMgYXQgMTc6MDUgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4g
+PiA+IEFkb3B0IHRoZSB1c2Ugb2YgeHBydF9waW5fcnFzdCB0byBlbGltaW5hdGUgY29udGVudGlv
+bg0KPiA+ID4gPiA+IGJldHdlZW4NCj4gPiA+ID4gPiBDYWxsLXNpZGUgdXNlcnMgb2YgcmJfbG9j
+ayBhbmQgdGhlIHVzZSBvZiByYl9sb2NrIGluDQo+ID4gPiA+ID4gcnBjcmRtYV9yZXBseV9oYW5k
+bGVyLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRoaXMgcmVwbGFjZXMgdGhlIG1lY2hhbmlzbSBp
+bnRyb2R1Y2VkIGluIDQzMWFmNjQ1Y2Y2Ng0KPiA+ID4gPiA+ICgieHBydHJkbWE6DQo+ID4gPiA+
+ID4gRml4IGNsaWVudCBsb2NrLXVwIGFmdGVyIGFwcGxpY2F0aW9uIHNpZ25hbCBmaXJlcyIpLg0K
+PiA+ID4gPiA+IA0KPiA+ID4gPiA+IFVzZSByZWN2X2xvY2sgdG8gcXVpY2tseSBmaW5kIHRoZSBj
+b21wbGV0aW5nIHJxc3QsIHBpbiBpdCwNCj4gPiA+ID4gPiB0aGVuDQo+ID4gPiA+ID4gZHJvcCB0
+aGUgbG9jay4gQXQgdGhhdCBwb2ludCBpbnZhbGlkYXRpb24gYW5kIHB1bGwtdXAgb2YgdGhlDQo+
+ID4gPiA+ID4gUmVwbHkNCj4gPiA+ID4gPiBYRFIgY2FuIGJlIGRvbmUuIEJvdGggYXJlIG9mdGVu
+IGV4cGVuc2l2ZSBvcGVyYXRpb25zLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEZpbmFsbHksIHRh
+a2UgcmVjdl9sb2NrIGFnYWluIHRvIHNpZ25hbCBjb21wbGV0aW9uIHRvIHRoZSBSUEMNCj4gPiA+
+ID4gPiBsYXllci4gSXQgYWxzbyBwcm90ZWN0cyBhZGp1c3RtZW50IG9mICJjd25kIi4NCj4gPiA+
+ID4gPiANCj4gPiA+ID4gPiBUaGlzIGdyZWF0bHkgcmVkdWNlcyB0aGUgYW1vdW50IG9mIHRpbWUg
+YSBsb2NrIGlzIGhlbGQgYnkgdGhlDQo+ID4gPiA+ID4gcmVwbHkgaGFuZGxlci4gQ29tcGFyaW5n
+IGxvY2tfc3RhdCByZXN1bHRzIHNob3dzIGEgbWFya2VkDQo+ID4gPiA+ID4gZGVjcmVhc2UNCj4g
+PiA+ID4gPiBpbiBjb250ZW50aW9uIG9uIHJiX2xvY2sgYW5kIHJlY3ZfbG9jay4NCj4gPiA+ID4g
+PiANCj4gPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3Jh
+Y2xlLmNvbT4NCj4gPiA+ID4gPiAtLS0NCj4gPiA+ID4gPiBIaS0NCj4gPiA+ID4gPiANCj4gPiA+
+ID4gPiBJZiBUcm9uZCdzIGxvY2sgY29udGVudGlvbiBzZXJpZXMgaXMgZ29pbmcgaW50byB2NC4x
+NCwgSSdkDQo+ID4gPiA+ID4gbGlrZQ0KPiA+ID4gPiA+IHlvdQ0KPiA+ID4gPiA+IHRvIGNvbnNp
+ZGVyIHRoaXMgb25lIChhcHBsaWVkIGF0IHRoZSBlbmQgb2YgdGhhdCBzZXJpZXMpIGFzDQo+ID4g
+PiA+ID4gd2VsbC4NCj4gPiA+ID4gPiBXaXRob3V0IGl0LCBORlMvUkRNQSBwZXJmb3JtYW5jZSBy
+ZWdyZXNzZXMgYSBiaXQgYWZ0ZXIgdGhlDQo+ID4gPiA+ID4gZmlyc3QgeHBydF9waW5fcnFzdCBw
+YXRjaCBpcyBhcHBsaWVkLiBUaGFua3MhDQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBJ
+ZiBBbm5hIGlzIE9LIHdpdGggaXQsIHRoZW4gSSBjYW4gYXBwbHkgdGhpcyBwYXRjaCBvbmNlIHNo
+ZSdzDQo+ID4gPiA+IHNlbnQNCj4gPiA+ID4gbWUNCj4gPiA+ID4gdGhlIHB1bGwgcmVxdWVzdCBm
+b3IgdGhlIG90aGVyIFJETUEgY2xpZW50IHBhdGNoZXMuDQo+ID4gPiANCj4gPiA+IFdvcmtzIGZv
+ciBtZS4gIFRoYW5rcyENCj4gPiANCj4gPiBQbGVhc2UgY2FuIHlvdSBib3RoIGNoZWNrIGh0dHA6
+Ly9naXQubGludXgtbmZzLm9yZy8/cD10cm9uZG15L2xpbnV4DQo+ID4gLW5mcw0KPiA+IC5naXQ7
+YT1jb21taXQ7aD1iMWRhNWQ5MDg1N2VlNGI4ZjVhY2VlMTE0MzcwNTQxMmIxNmZjZTU2IGFuZCBz
+ZWUgaWYNCj4gPiBhbGwNCj4gPiBpcyB3ZWxsPw0KPiA+IA0KPiA+IERvIG5vdGUgdGhhdCBJIGRp
+ZCByZW1vdmUgdGhlIGNhbGwgdG8gcnBjcmRtYV9idWZmZXJfcHV0KCkgd2hpY2gNCj4gPiB3YXMN
+Cj4gPiBiZWluZyBjYWxsZWQgd2l0aCBhbiB1bmluaXRpYWxpc2VkIGFyZ3VtZW50Lg0KPiANCj4g
+TG9va2luZyBhdCB0aGF0IGFnYWluLiBycGNyZG1hX2J1ZmZlcl9wdXQoKSBkb2VzIGxvb2sgdW5u
+ZWNlc3NhcnksDQo+IHNpbmNlIG91dF9ub3Jxc3QgaXMgYmVpbmcgY2FsbGVkIG5vdyBiZWZvcmUg
+InJlcSIgaXMgaW5pdGlhbGl6ZWQuDQo+IA0KPiBPbiBmdXJ0aGVyIGluc3BlY3Rpb24sICJyZXR1
+cm47IiBzaG91bGQgYmUgcmVwbGFjZWQgd2l0aA0KPiAiZ290byByZXBvc3Q7Ii4gVGhpcyBpcyBz
+aW1pbGFyIHRvICJvdXRfbm9tYXRjaCIgYW5kDQo+ICJvdXRfZHVwbGljYXRlIiwgd2hpY2ggYXJl
+IGJvdGggYmVpbmcgcmVwbGFjZWQgaW4gdGhpcyBwYXRjaC4NCj4gDQo+IFNvLCBvdXRfbm9ycXN0
+IHNob3VsZCBsb29rIHNvbWV0aGluZyBsaWtlIHRoaXM6DQo+IA0KPiANCj4gb3V0X25vcnFzdDoN
+Cj4gICAgICAgICBzcGluX3VubG9jaygmeHBydC0+cmVjdl9sb2NrKTsNCj4gICAgICAgICBkcHJp
+bnRrKCJSUEM6ICAgICAgICVzOiBubyBtYXRjaCBmb3IgaW5jb21pbmcgeGlkIDB4JTA4eFxuIiwN
+Cj4gICAgICAgICAgICAgICAgIF9fZnVuY19fLCBiZTMyX3RvX2NwdSh4aWQpKTsNCj4gICAgICAg
+ICBnb3RvIHJlcG9zdDsNCj4gDQo+IA0KPiBPdGhlcndpc2UsIEkgZG9uJ3Qgc2VlIGFueSBvYnZp
+b3VzIHByb2JsZW1zLg0KPiANCg0KUGF0Y2ggdXBkYXRlZC4gUGxlYXNlIHNlZSBodHRwOi8vZ2l0
+LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9saW51eC1uZnMNCi5naXQ7YT1jb21taXQ7aD05NTkw
+ZDA4M2MxYmIxNDE5Yjc5OTI2MDlkMWEwYTNlMzUxN2QzODkzDQoNCi0tIA0KVHJvbmQgTXlrbGVi
+dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWts
+ZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-Sure, but lets just talk about it in the context of ensuing the SQ
-does not go full, and not some nebulous idea of heartbeat.
-
-The new approach directly prevents overflow, and the past failings in
-NFS all boiled down to stuffing SQEs into a full SQ, as some NICs do
-not 'empty' the SQ until the CQ is generated.
-
-> I'm not able to test this change with every HCA the Linux kernel
-> currently supports, unfortunately. The best I can do is offer a
-> "proof of correctness" and hope that vendors will jump on this
-> and try it out.
-
-Assuming it is implemented properly in NFS, any HCA that fails with
-this is broken by definition.. A HCA must work correctly if the SQ is
-full, and all but the last entry are unsignaled.
-
-Jason
