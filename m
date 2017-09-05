@@ -1,58 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39403 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752760AbdIEUdU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2017 16:33:20 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+Received: from mx143.netapp.com ([216.240.21.24]:35290 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752110AbdIEU5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Sep 2017 16:57:00 -0400
+Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
+To: Trond Myklebust <trondmy@primarydata.com>,
         "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>,
         "chuck.lever@oracle.com" <chuck.lever@oracle.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
-Date: Tue, 5 Sep 2017 20:33:14 +0000
-Message-ID: <1504643592.18516.3.camel@primarydata.com>
 References: <20170823210344.7677.48608.stgit@manet.1015granger.net>
-         <1503524423.84215.1.camel@primarydata.com>
-         <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
-In-Reply-To: <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
+ <1503524423.84215.1.camel@primarydata.com>
+ <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
+ <1504643592.18516.3.camel@primarydata.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <a10d79dc-d569-53a2-955b-fda92d1a4914@Netapp.com>
+Date: Tue, 5 Sep 2017 16:56:52 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1504643592.18516.3.camel@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA4LTI0IGF0IDE0OjE4IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gDQo+IE9uIDA4LzIzLzIwMTcgMDU6NDAgUE0sIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4g
-PiBPbiBXZWQsIDIwMTctMDgtMjMgYXQgMTc6MDUgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0K
-PiA+ID4gQWRvcHQgdGhlIHVzZSBvZiB4cHJ0X3Bpbl9ycXN0IHRvIGVsaW1pbmF0ZSBjb250ZW50
-aW9uIGJldHdlZW4NCj4gPiA+IENhbGwtc2lkZSB1c2VycyBvZiByYl9sb2NrIGFuZCB0aGUgdXNl
-IG9mIHJiX2xvY2sgaW4NCj4gPiA+IHJwY3JkbWFfcmVwbHlfaGFuZGxlci4NCj4gPiA+IA0KPiA+
-ID4gVGhpcyByZXBsYWNlcyB0aGUgbWVjaGFuaXNtIGludHJvZHVjZWQgaW4gNDMxYWY2NDVjZjY2
-DQo+ID4gPiAoInhwcnRyZG1hOg0KPiA+ID4gRml4IGNsaWVudCBsb2NrLXVwIGFmdGVyIGFwcGxp
-Y2F0aW9uIHNpZ25hbCBmaXJlcyIpLg0KPiA+ID4gDQo+ID4gPiBVc2UgcmVjdl9sb2NrIHRvIHF1
-aWNrbHkgZmluZCB0aGUgY29tcGxldGluZyBycXN0LCBwaW4gaXQsIHRoZW4NCj4gPiA+IGRyb3Ag
-dGhlIGxvY2suIEF0IHRoYXQgcG9pbnQgaW52YWxpZGF0aW9uIGFuZCBwdWxsLXVwIG9mIHRoZQ0K
-PiA+ID4gUmVwbHkNCj4gPiA+IFhEUiBjYW4gYmUgZG9uZS4gQm90aCBhcmUgb2Z0ZW4gZXhwZW5z
-aXZlIG9wZXJhdGlvbnMuDQo+ID4gPiANCj4gPiA+IEZpbmFsbHksIHRha2UgcmVjdl9sb2NrIGFn
-YWluIHRvIHNpZ25hbCBjb21wbGV0aW9uIHRvIHRoZSBSUEMNCj4gPiA+IGxheWVyLiBJdCBhbHNv
-IHByb3RlY3RzIGFkanVzdG1lbnQgb2YgImN3bmQiLg0KPiA+ID4gDQo+ID4gPiBUaGlzIGdyZWF0
-bHkgcmVkdWNlcyB0aGUgYW1vdW50IG9mIHRpbWUgYSBsb2NrIGlzIGhlbGQgYnkgdGhlDQo+ID4g
-PiByZXBseSBoYW5kbGVyLiBDb21wYXJpbmcgbG9ja19zdGF0IHJlc3VsdHMgc2hvd3MgYSBtYXJr
-ZWQNCj4gPiA+IGRlY3JlYXNlDQo+ID4gPiBpbiBjb250ZW50aW9uIG9uIHJiX2xvY2sgYW5kIHJl
-Y3ZfbG9jay4NCj4gPiA+IA0KPiA+ID4gU2lnbmVkLW9mZi1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNr
-LmxldmVyQG9yYWNsZS5jb20+DQo+ID4gPiAtLS0NCj4gPiA+IEhpLQ0KPiA+ID4gDQo+ID4gPiBJ
-ZiBUcm9uZCdzIGxvY2sgY29udGVudGlvbiBzZXJpZXMgaXMgZ29pbmcgaW50byB2NC4xNCwgSSdk
-IGxpa2UNCj4gPiA+IHlvdQ0KPiA+ID4gdG8gY29uc2lkZXIgdGhpcyBvbmUgKGFwcGxpZWQgYXQg
-dGhlIGVuZCBvZiB0aGF0IHNlcmllcykgYXMgd2VsbC4NCj4gPiA+IFdpdGhvdXQgaXQsIE5GUy9S
-RE1BIHBlcmZvcm1hbmNlIHJlZ3Jlc3NlcyBhIGJpdCBhZnRlciB0aGUNCj4gPiA+IGZpcnN0IHhw
-cnRfcGluX3Jxc3QgcGF0Y2ggaXMgYXBwbGllZC4gVGhhbmtzIQ0KPiA+ID4gDQo+ID4gDQo+ID4g
-SWYgQW5uYSBpcyBPSyB3aXRoIGl0LCB0aGVuIEkgY2FuIGFwcGx5IHRoaXMgcGF0Y2ggb25jZSBz
-aGUncyBzZW50DQo+ID4gbWUNCj4gPiB0aGUgcHVsbCByZXF1ZXN0IGZvciB0aGUgb3RoZXIgUkRN
-QSBjbGllbnQgcGF0Y2hlcy4NCj4gDQo+IFdvcmtzIGZvciBtZS4gIFRoYW5rcyENCg0KUGxlYXNl
-IGNhbiB5b3UgYm90aCBjaGVjayBodHRwOi8vZ2l0LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9s
-aW51eC1uZnMNCi5naXQ7YT1jb21taXQ7aD1iMWRhNWQ5MDg1N2VlNGI4ZjVhY2VlMTE0MzcwNTQx
-MmIxNmZjZTU2IGFuZCBzZWUgaWYgYWxsDQppcyB3ZWxsPw0KDQpEbyBub3RlIHRoYXQgSSBkaWQg
-cmVtb3ZlIHRoZSBjYWxsIHRvIHJwY3JkbWFfYnVmZmVyX3B1dCgpIHdoaWNoIHdhcw0KYmVpbmcg
-Y2FsbGVkIHdpdGggYW4gdW5pbml0aWFsaXNlZCBhcmd1bWVudC4NCg0KQ2hlZXJzDQogIFRyb25k
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFBy
-aW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
+
+On 09/05/2017 04:33 PM, Trond Myklebust wrote:
+> On Thu, 2017-08-24 at 14:18 -0400, Anna Schumaker wrote:
+>>
+>> On 08/23/2017 05:40 PM, Trond Myklebust wrote:
+>>> On Wed, 2017-08-23 at 17:05 -0400, Chuck Lever wrote:
+>>>> Adopt the use of xprt_pin_rqst to eliminate contention between
+>>>> Call-side users of rb_lock and the use of rb_lock in
+>>>> rpcrdma_reply_handler.
+>>>>
+>>>> This replaces the mechanism introduced in 431af645cf66
+>>>> ("xprtrdma:
+>>>> Fix client lock-up after application signal fires").
+>>>>
+>>>> Use recv_lock to quickly find the completing rqst, pin it, then
+>>>> drop the lock. At that point invalidation and pull-up of the
+>>>> Reply
+>>>> XDR can be done. Both are often expensive operations.
+>>>>
+>>>> Finally, take recv_lock again to signal completion to the RPC
+>>>> layer. It also protects adjustment of "cwnd".
+>>>>
+>>>> This greatly reduces the amount of time a lock is held by the
+>>>> reply handler. Comparing lock_stat results shows a marked
+>>>> decrease
+>>>> in contention on rb_lock and recv_lock.
+>>>>
+>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>> ---
+>>>> Hi-
+>>>>
+>>>> If Trond's lock contention series is going into v4.14, I'd like
+>>>> you
+>>>> to consider this one (applied at the end of that series) as well.
+>>>> Without it, NFS/RDMA performance regresses a bit after the
+>>>> first xprt_pin_rqst patch is applied. Thanks!
+>>>>
+>>>
+>>> If Anna is OK with it, then I can apply this patch once she's sent
+>>> me
+>>> the pull request for the other RDMA client patches.
+>>
+>> Works for me.  Thanks!
+> 
+> Please can you both check http://git.linux-nfs.org/?p=trondmy/linux-nfs
+> .git;a=commit;h=b1da5d90857ee4b8f5acee1143705412b16fce56 and see if all
+> is well?
+
+Looks okay to me.
+
+Anna
+
+> 
+> Do note that I did remove the call to rpcrdma_buffer_put() which was
+> being called with an uninitialised argument.
+> 
+> Cheers
+>   Trond
+> 
