@@ -1,81 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:51372 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753808AbdIEWbO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2017 18:31:14 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "schumaker.anna@gmail.com" <schumaker.anna@gmail.com>
-Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
-Date: Tue, 5 Sep 2017 22:31:09 +0000
-Message-ID: <1504650666.29712.0.camel@primarydata.com>
-References: <20170823210344.7677.48608.stgit@manet.1015granger.net>
-         <1503524423.84215.1.camel@primarydata.com>
-         <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com>
-         <1504643592.18516.3.camel@primarydata.com>
-         <CEEC5F17-B01F-4751-A82D-16FAD3267125@oracle.com>
-In-Reply-To: <CEEC5F17-B01F-4751-A82D-16FAD3267125@oracle.com>
+Received: from mail-io0-f172.google.com ([209.85.223.172]:38682 "EHLO
+        mail-io0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753789AbdIEWbm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2017 18:31:42 -0400
+Received: by mail-io0-f172.google.com with SMTP id q64so20445059iod.5
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Sep 2017 15:31:42 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <4E7FE08F-D3EB-4AE2-8F8A-0688B68DA8B5@monkey.org>
+References: <CAOFvWm9a6zrAc60Y388czZtUdL79Wf7AAaA=vTpAwS313Y44yg@mail.gmail.com>
+ <F24109A7-778E-4655-BE5F-DCF2528E3A61@monkey.org> <4E7FE08F-D3EB-4AE2-8F8A-0688B68DA8B5@monkey.org>
+From: Kjetil Joergensen <kjetil@medallia.com>
+Date: Tue, 5 Sep 2017 15:31:41 -0700
+Message-ID: <CAOFvWm8gJWZ=U1fU+hMjozt9ZW4qZVoV08HK1Wb+=OfE3OYNxw@mail.gmail.com>
+Subject: Re: linux>=4.10: PUTFH|GETATTR|CLOSE, GETATTR fails, CLOSE not re-issued
+To: Weston Andros Adamson <dros@monkey.org>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>,
+        Thorvald Natvig <thorvald@medallia.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTA5LTA1IGF0IDE3OjA2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBTZXAgNSwgMjAxNywgYXQgNDozMyBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHBy
-aW1hcnlkYXRhLmNvDQo+ID4gbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gVGh1LCAyMDE3LTA4LTI0
-IGF0IDE0OjE4IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToNCj4gPiA+IA0KPiA+ID4gT24g
-MDgvMjMvMjAxNyAwNTo0MCBQTSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gPiBPbiBX
-ZWQsIDIwMTctMDgtMjMgYXQgMTc6MDUgLTA0MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4g
-PiA+IEFkb3B0IHRoZSB1c2Ugb2YgeHBydF9waW5fcnFzdCB0byBlbGltaW5hdGUgY29udGVudGlv
-bg0KPiA+ID4gPiA+IGJldHdlZW4NCj4gPiA+ID4gPiBDYWxsLXNpZGUgdXNlcnMgb2YgcmJfbG9j
-ayBhbmQgdGhlIHVzZSBvZiByYl9sb2NrIGluDQo+ID4gPiA+ID4gcnBjcmRtYV9yZXBseV9oYW5k
-bGVyLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IFRoaXMgcmVwbGFjZXMgdGhlIG1lY2hhbmlzbSBp
-bnRyb2R1Y2VkIGluIDQzMWFmNjQ1Y2Y2Ng0KPiA+ID4gPiA+ICgieHBydHJkbWE6DQo+ID4gPiA+
-ID4gRml4IGNsaWVudCBsb2NrLXVwIGFmdGVyIGFwcGxpY2F0aW9uIHNpZ25hbCBmaXJlcyIpLg0K
-PiA+ID4gPiA+IA0KPiA+ID4gPiA+IFVzZSByZWN2X2xvY2sgdG8gcXVpY2tseSBmaW5kIHRoZSBj
-b21wbGV0aW5nIHJxc3QsIHBpbiBpdCwNCj4gPiA+ID4gPiB0aGVuDQo+ID4gPiA+ID4gZHJvcCB0
-aGUgbG9jay4gQXQgdGhhdCBwb2ludCBpbnZhbGlkYXRpb24gYW5kIHB1bGwtdXAgb2YgdGhlDQo+
-ID4gPiA+ID4gUmVwbHkNCj4gPiA+ID4gPiBYRFIgY2FuIGJlIGRvbmUuIEJvdGggYXJlIG9mdGVu
-IGV4cGVuc2l2ZSBvcGVyYXRpb25zLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEZpbmFsbHksIHRh
-a2UgcmVjdl9sb2NrIGFnYWluIHRvIHNpZ25hbCBjb21wbGV0aW9uIHRvIHRoZSBSUEMNCj4gPiA+
-ID4gPiBsYXllci4gSXQgYWxzbyBwcm90ZWN0cyBhZGp1c3RtZW50IG9mICJjd25kIi4NCj4gPiA+
-ID4gPiANCj4gPiA+ID4gPiBUaGlzIGdyZWF0bHkgcmVkdWNlcyB0aGUgYW1vdW50IG9mIHRpbWUg
-YSBsb2NrIGlzIGhlbGQgYnkgdGhlDQo+ID4gPiA+ID4gcmVwbHkgaGFuZGxlci4gQ29tcGFyaW5n
-IGxvY2tfc3RhdCByZXN1bHRzIHNob3dzIGEgbWFya2VkDQo+ID4gPiA+ID4gZGVjcmVhc2UNCj4g
-PiA+ID4gPiBpbiBjb250ZW50aW9uIG9uIHJiX2xvY2sgYW5kIHJlY3ZfbG9jay4NCj4gPiA+ID4g
-PiANCj4gPiA+ID4gPiBTaWduZWQtb2ZmLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3Jh
-Y2xlLmNvbT4NCj4gPiA+ID4gPiAtLS0NCj4gPiA+ID4gPiBIaS0NCj4gPiA+ID4gPiANCj4gPiA+
-ID4gPiBJZiBUcm9uZCdzIGxvY2sgY29udGVudGlvbiBzZXJpZXMgaXMgZ29pbmcgaW50byB2NC4x
-NCwgSSdkDQo+ID4gPiA+ID4gbGlrZQ0KPiA+ID4gPiA+IHlvdQ0KPiA+ID4gPiA+IHRvIGNvbnNp
-ZGVyIHRoaXMgb25lIChhcHBsaWVkIGF0IHRoZSBlbmQgb2YgdGhhdCBzZXJpZXMpIGFzDQo+ID4g
-PiA+ID4gd2VsbC4NCj4gPiA+ID4gPiBXaXRob3V0IGl0LCBORlMvUkRNQSBwZXJmb3JtYW5jZSBy
-ZWdyZXNzZXMgYSBiaXQgYWZ0ZXIgdGhlDQo+ID4gPiA+ID4gZmlyc3QgeHBydF9waW5fcnFzdCBw
-YXRjaCBpcyBhcHBsaWVkLiBUaGFua3MhDQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBJ
-ZiBBbm5hIGlzIE9LIHdpdGggaXQsIHRoZW4gSSBjYW4gYXBwbHkgdGhpcyBwYXRjaCBvbmNlIHNo
-ZSdzDQo+ID4gPiA+IHNlbnQNCj4gPiA+ID4gbWUNCj4gPiA+ID4gdGhlIHB1bGwgcmVxdWVzdCBm
-b3IgdGhlIG90aGVyIFJETUEgY2xpZW50IHBhdGNoZXMuDQo+ID4gPiANCj4gPiA+IFdvcmtzIGZv
-ciBtZS4gIFRoYW5rcyENCj4gPiANCj4gPiBQbGVhc2UgY2FuIHlvdSBib3RoIGNoZWNrIGh0dHA6
-Ly9naXQubGludXgtbmZzLm9yZy8/cD10cm9uZG15L2xpbnV4DQo+ID4gLW5mcw0KPiA+IC5naXQ7
-YT1jb21taXQ7aD1iMWRhNWQ5MDg1N2VlNGI4ZjVhY2VlMTE0MzcwNTQxMmIxNmZjZTU2IGFuZCBz
-ZWUgaWYNCj4gPiBhbGwNCj4gPiBpcyB3ZWxsPw0KPiA+IA0KPiA+IERvIG5vdGUgdGhhdCBJIGRp
-ZCByZW1vdmUgdGhlIGNhbGwgdG8gcnBjcmRtYV9idWZmZXJfcHV0KCkgd2hpY2gNCj4gPiB3YXMN
-Cj4gPiBiZWluZyBjYWxsZWQgd2l0aCBhbiB1bmluaXRpYWxpc2VkIGFyZ3VtZW50Lg0KPiANCj4g
-TG9va2luZyBhdCB0aGF0IGFnYWluLiBycGNyZG1hX2J1ZmZlcl9wdXQoKSBkb2VzIGxvb2sgdW5u
-ZWNlc3NhcnksDQo+IHNpbmNlIG91dF9ub3Jxc3QgaXMgYmVpbmcgY2FsbGVkIG5vdyBiZWZvcmUg
-InJlcSIgaXMgaW5pdGlhbGl6ZWQuDQo+IA0KPiBPbiBmdXJ0aGVyIGluc3BlY3Rpb24sICJyZXR1
-cm47IiBzaG91bGQgYmUgcmVwbGFjZWQgd2l0aA0KPiAiZ290byByZXBvc3Q7Ii4gVGhpcyBpcyBz
-aW1pbGFyIHRvICJvdXRfbm9tYXRjaCIgYW5kDQo+ICJvdXRfZHVwbGljYXRlIiwgd2hpY2ggYXJl
-IGJvdGggYmVpbmcgcmVwbGFjZWQgaW4gdGhpcyBwYXRjaC4NCj4gDQo+IFNvLCBvdXRfbm9ycXN0
-IHNob3VsZCBsb29rIHNvbWV0aGluZyBsaWtlIHRoaXM6DQo+IA0KPiANCj4gb3V0X25vcnFzdDoN
-Cj4gICAgICAgICBzcGluX3VubG9jaygmeHBydC0+cmVjdl9sb2NrKTsNCj4gICAgICAgICBkcHJp
-bnRrKCJSUEM6ICAgICAgICVzOiBubyBtYXRjaCBmb3IgaW5jb21pbmcgeGlkIDB4JTA4eFxuIiwN
-Cj4gICAgICAgICAgICAgICAgIF9fZnVuY19fLCBiZTMyX3RvX2NwdSh4aWQpKTsNCj4gICAgICAg
-ICBnb3RvIHJlcG9zdDsNCj4gDQo+IA0KPiBPdGhlcndpc2UsIEkgZG9uJ3Qgc2VlIGFueSBvYnZp
-b3VzIHByb2JsZW1zLg0KPiANCg0KUGF0Y2ggdXBkYXRlZC4gUGxlYXNlIHNlZSBodHRwOi8vZ2l0
-LmxpbnV4LW5mcy5vcmcvP3A9dHJvbmRteS9saW51eC1uZnMNCi5naXQ7YT1jb21taXQ7aD05NTkw
-ZDA4M2MxYmIxNDE5Yjc5OTI2MDlkMWEwYTNlMzUxN2QzODkzDQoNCi0tIA0KVHJvbmQgTXlrbGVi
-dXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWts
-ZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+Hi,
 
+On Tue, Sep 5, 2017 at 10:51 AM, Weston Andros Adamson <dros@monkey.org> wrote:
+>
+> I chatted with Trond about this and he says it's a server bug if an unlinked file
+> keeps stateids around - the client doesn't need to issue a close in this case.
+
+We don't disagree that this is a bug with the server, it is after all
+a rather efficient
+denial-of-service attack against it (Especially if you don't dismantle
+your clients
+all that often).
+
+Although, not calling CLOSE under certain circumstances doesn't seem correct.
+
+Continuing to cherrypick from RFCs:
+
+RFC5661 - 8.2.4.  Stateid Lifetime and Validation
+   Stateids must remain valid until either a client restart or a server
+   restart or until the client returns all of the locks associated with
+   the stateid by means of an operation such as CLOSE or DELEGRETURN.
+   If the locks are lost due to revocation, as long as the client ID is
+   valid, the stateid remains a valid designation of that revoked state
+   until the client frees it by using FREE_STATEID.
+
+> What version of ONTAP are you running?
+
+Version: NetApp Release 8.2.4P6 7-Mode: Wed Jan 11 01:07:08 PST 2017
+
+
+>
+>
+> -dros
+>
+>
+> > On Sep 1, 2017, at 2:44 PM, Weston Andros Adamson <dros@monkey.org> wrote:
+> >
+> > Nice analysis! I think post d8d849835eb2082ea17655538a83fa467633927f, we
+> > need to retry with a [PUTFH, CLOSE] if the GETATTR fails.
+> >
+> > The problem as I see it is the GETATTR is tied to the CURRENT_FH, which is
+> > stale for new operations since the file was unlinked, but the CLOSE is tied to the
+> > (CURRENT_FH, open stateid) pair and is not stale because the state id is still
+> > valid.
+> >
+> > Trond is out on PTO, should be back on or before next Tuesday. The recent change
+> > was his and he might have a better idea how to handle this.
+> >
+> > -dros
+> >
+> >
+> >> On Aug 31, 2017, at 1:34 PM, Kjetil Joergensen <kjetil@medallia.com> wrote:
+> >>
+> >> Hi,
+> >>
+> >> (Now - I do not actually know the specification(s) all that well, so
+> >> it may be that I've by accident cherry picked the bits that partially
+> >> turns this into a linux-nfs-client bug, and I'd be more than happy
+> >> with responses that'd be useful to yell at netapp with).
+> >>
+> >> after d8d849835eb2082ea17655538a83fa467633927f (NFSv4: Place the
+> >> GETATTR operation before the CLOSE). If GETATTR actually fails, CLOSE
+> >> will never be processed by the server, and it seems the linux nfs
+> >> client never tries to re-issue CLOSE.
+> >>
+> >> We have client A holding file F open,  client B goes ahead and unlinks
+> >> F, at some point client a does PUTFH,GETATTR, for which the server
+> >> responds NFS4ERR_STALE.
+> >>
+> >> Now, client A goes ahead and tries to clean up it's internal state,
+> >> and sends the server compound PUTFH,GETATTR,CLOSE, for which the
+> >> server responds with PUTFH(NFS4_OK),GETATTR(NFS4ERR_STALE).
+> >>
+> >> Which seems correct in the eyes of RFC7530 section 14.2., which says
+> >> the server should stop processing the compound when a subop fails.
+> >>
+> >> The server has not processed the CLOSE op, and in the case of netapp
+> >> it appears it keeps holding on to the stateid, waiting for the client
+> >> to CLOSE it.
+> >>
+> >> Judging from tcpdump, the client never attempts to re-issue the CLOSE
+> >> op that weren't processed.
+> >>
+> >> On the server side, the stateid sticks around until we tear down the
+> >> client completely (umount or re-boot). Over time, this leads the
+> >> netapp to bleed stateids.
+> >>
+> >> Compare this to pre d8d849835eb2082ea17655538a83fa467633927f, the
+> >> client issues PUTFH,CLOSE,GETATTR. Both PUTFH & CLOSE succeeds,
+> >> GETATTR as expected still gets NFS4ERR_STALE. The server did however
+> >> process CLOSE, and retired it's stateid.
+> >>
+> >> Cheers,
+> >>
+> >> --
+> >> Kjetil Joergensen <kjetil@medallia.com>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
+>
+
+
+
+-- 
+Kjetil Joergensen <kjetil@medallia.com>
+SRE, Medallia Inc
