@@ -1,126 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:40627 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932196AbdIFNrc (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Sep 2017 09:47:32 -0400
+Received: from h2.hallyn.com ([78.46.35.8]:47454 "EHLO h2.hallyn.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932171AbdIFODa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Sep 2017 10:03:30 -0400
+Date: Wed, 6 Sep 2017 09:03:42 -0500
+From: "Serge E. Hallyn" <serge@hallyn.com>
+To: Richard Guy Briggs <rgb@redhat.com>
+Cc: Paul Moore <paul@paul-moore.com>,
+        David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        cgroups@vger.kernel.org, linux-api@vger.kernel.org,
+        containers@lists.linux-foundation.org, linux-audit@redhat.com,
+        mszeredi@redhat.com, jlayton@redhat.com, viro@zeniv.linux.org.uk,
+        luto@kernel.org, trondmy@primarydata.com, serge@hallyn.com,
+        ebiederm@xmission.com
+Subject: Re: [PATCH 2/9] Implement containers as kernel objects
+Message-ID: <20170906140341.GA8729@mail.hallyn.com>
+References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
+ <149547016213.10599.1969443294414531853.stgit@warthog.procyon.org.uk>
+ <20170814054711.GB29957@madcap2.tricolour.ca>
+ <CAHC9VhRgPRa7KeMt8G700aeFvqVYc0gMx__82K31TYY6oQQqTw@mail.gmail.com>
+ <20170818080300.GQ7187@madcap2.tricolour.ca>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1504650666.29712.0.camel@primarydata.com>
-Date: Wed, 6 Sep 2017 09:47:24 -0400
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Anna Schumaker <schumaker.anna@gmail.com>
-Message-Id: <2F3E5364-AD08-4101-A225-816C8EA9F507@oracle.com>
-References: <20170823210344.7677.48608.stgit@manet.1015granger.net> <1503524423.84215.1.camel@primarydata.com> <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com> <1504643592.18516.3.camel@primarydata.com> <CEEC5F17-B01F-4751-A82D-16FAD3267125@oracle.com> <1504650666.29712.0.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+In-Reply-To: <20170818080300.GQ7187@madcap2.tricolour.ca>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Sep 5, 2017, at 6:31 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+Quoting Richard Guy Briggs (rgb@redhat.com):
+...
+> > I believe we are going to need a container ID to container definition
+> > (namespace, etc.) mapping mechanism regardless of if the container ID
+> > is provided by userspace or a kernel generated serial number.  This
+> > mapping should be recorded in the audit log when the container ID is
+> > created/defined.
 > 
-> On Tue, 2017-09-05 at 17:06 -0400, Chuck Lever wrote:
->>> On Sep 5, 2017, at 4:33 PM, Trond Myklebust <trondmy@primarydata.co
->>> m> wrote:
->>> 
->>> On Thu, 2017-08-24 at 14:18 -0400, Anna Schumaker wrote:
->>>> 
->>>> On 08/23/2017 05:40 PM, Trond Myklebust wrote:
->>>>> On Wed, 2017-08-23 at 17:05 -0400, Chuck Lever wrote:
->>>>>> Adopt the use of xprt_pin_rqst to eliminate contention
->>>>>> between
->>>>>> Call-side users of rb_lock and the use of rb_lock in
->>>>>> rpcrdma_reply_handler.
->>>>>> 
->>>>>> This replaces the mechanism introduced in 431af645cf66
->>>>>> ("xprtrdma:
->>>>>> Fix client lock-up after application signal fires").
->>>>>> 
->>>>>> Use recv_lock to quickly find the completing rqst, pin it,
->>>>>> then
->>>>>> drop the lock. At that point invalidation and pull-up of the
->>>>>> Reply
->>>>>> XDR can be done. Both are often expensive operations.
->>>>>> 
->>>>>> Finally, take recv_lock again to signal completion to the RPC
->>>>>> layer. It also protects adjustment of "cwnd".
->>>>>> 
->>>>>> This greatly reduces the amount of time a lock is held by the
->>>>>> reply handler. Comparing lock_stat results shows a marked
->>>>>> decrease
->>>>>> in contention on rb_lock and recv_lock.
->>>>>> 
->>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>> ---
->>>>>> Hi-
->>>>>> 
->>>>>> If Trond's lock contention series is going into v4.14, I'd
->>>>>> like
->>>>>> you
->>>>>> to consider this one (applied at the end of that series) as
->>>>>> well.
->>>>>> Without it, NFS/RDMA performance regresses a bit after the
->>>>>> first xprt_pin_rqst patch is applied. Thanks!
->>>>>> 
->>>>> 
->>>>> If Anna is OK with it, then I can apply this patch once she's
->>>>> sent
->>>>> me
->>>>> the pull request for the other RDMA client patches.
->>>> 
->>>> Works for me.  Thanks!
->>> 
->>> Please can you both check http://git.linux-nfs.org/?p=trondmy/linux
->>> -nfs
->>> .git;a=commit;h=b1da5d90857ee4b8f5acee1143705412b16fce56 and see if
->>> all
->>> is well?
->>> 
->>> Do note that I did remove the call to rpcrdma_buffer_put() which
->>> was
->>> being called with an uninitialised argument.
->> 
->> Looking at that again. rpcrdma_buffer_put() does look unnecessary,
->> since out_norqst is being called now before "req" is initialized.
->> 
->> On further inspection, "return;" should be replaced with
->> "goto repost;". This is similar to "out_nomatch" and
->> "out_duplicate", which are both being replaced in this patch.
->> 
->> So, out_norqst should look something like this:
->> 
->> 
->> out_norqst:
->>        spin_unlock(&xprt->recv_lock);
->>        dprintk("RPC:       %s: no match for incoming xid 0x%08x\n",
->>                __func__, be32_to_cpu(xid));
->>        goto repost;
->> 
->> 
->> Otherwise, I don't see any obvious problems.
->> 
+> Agreed.
 > 
-> Patch updated. Please see http://git.linux-nfs.org/?p=trondmy/linux-nfs
-> .git;a=commit;h=9590d083c1bb1419b7992609d1a0a3e3517d3893
+> > > As was suggested in one of the previous threads, if there are any events not
+> > > associated with a task (incoming network packets) we log the namespace ID and
+> > > then only concern ourselves with its container serial number or container name
+> > > once it becomes associated with a task at which point that tracking will be
+> > > more important anyways.
+> > 
+> > Agreed.  After all, a single namespace can be shared between multiple
+> > containers.  For those security officers who need to track individual
+> > events like this they will have the container ID mapping information
+> > in the logs as well so they should be able to trace the unassociated
+> > event to a set of containers.
+> > 
+> > > I'm not convinced that a userspace or kernel generated UUID is that useful
+> > > since they are large, not human readable and may not be globally unique given
+> > > the "pets vs cattle" direction we are going with potentially identical
+> > > conditions in hosts or containers spawning containers, but I see no need to
+> > > restrict them.
+> > 
+> > From a kernel perspective I think an int should suffice; after all,
+> > you can't have more containers then you have processes.  If the
+> > container engine requires something more complex, it can use the int
+> > as input to its own mapping function.
+> 
+> PIDs roll over.  That already causes some ambiguity in reporting.  If a
+> system is constantly spawning and reaping containers, especially
+> single-process containers, I don't want to have to worry about that ID
+> rolling to keep track of it even though there should be audit records of
+> the spawn and death of each container.  There isn't significant cost
+> added here compared with some of the other overhead we're dealing with.
 
-out_norqst looks correct.
+Strawman proposal:
 
-Note that for out_shortreply:
+1. Each clone/unshare/setns involving a namespace type generates an audit
+message along the lines of:
 
+PID 9512 (pid in init_pid_ns) in auditnsid 00000001 cloned CLONE_NEWNS|CLONE_NEWNET
+new auditnsid: 00000002
+associated namespaces: (list of all namespace filesystem inode numbers)
 
-+out_shortreply:
-+       dprintk("RPC:       %s: short/invalid reply\n", __func__);
-+       goto repost;
+2. Userspace (i.e. the container logging deamon here) can watch the audit log
+for all messages relating to auditnsid 00000002.  Presumably there will be
+messages along the lines of "PID 9513 in auditnsid 00000002 cloned...".  The
+container logging daemon can track those messages and add the new auditnsids
+to the list it watches.
 
+3. If a container is migrated (checkpointed and restored here or elsewhere),
+userspace can just follow the appropriate logs for the new containers.
 
-The "goto repost;" can be dropped, since this code drops
-right into "repost:". That's harmless, though.
+Userspace does not ever *request* a auditnsid.  They are ephemeral, just a
+tool to track the namespaces through the audit log.  They are however guaranteed
+to never be re-used until reboot.
 
+(Feels like someone must have proposed this before)
 
---
-Chuck Lever
-
-
-
+-serge
