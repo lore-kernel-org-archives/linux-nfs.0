@@ -1,65 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37065 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753952AbdIFAFn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2017 20:05:43 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "kjetil@medallia.com" <kjetil@medallia.com>
-CC: "thorvald@medallia.com" <thorvald@medallia.com>,
-        "dros@monkey.org" <dros@monkey.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: linux>=4.10: PUTFH|GETATTR|CLOSE, GETATTR fails, CLOSE not
- re-issued
-Date: Wed, 6 Sep 2017 00:05:38 +0000
-Message-ID: <1504656335.3501.3.camel@primarydata.com>
-References: <CAOFvWm9a6zrAc60Y388czZtUdL79Wf7AAaA=vTpAwS313Y44yg@mail.gmail.com>
-         <F24109A7-778E-4655-BE5F-DCF2528E3A61@monkey.org>
-         <4E7FE08F-D3EB-4AE2-8F8A-0688B68DA8B5@monkey.org>
-         <CAOFvWm8gJWZ=U1fU+hMjozt9ZW4qZVoV08HK1Wb+=OfE3OYNxw@mail.gmail.com>
-         <8804AFED-986B-4C93-92D4-65899A6F8707@primarydata.com>
-In-Reply-To: <8804AFED-986B-4C93-92D4-65899A6F8707@primarydata.com>
+Received: from p3plsmtpa07-02.prod.phx3.secureserver.net ([173.201.192.231]:56582
+        "EHLO p3plsmtpa07-02.prod.phx3.secureserver.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752943AbdIFBgn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Sep 2017 21:36:43 -0400
+Subject: Re: [PATCH RFC 0/5] xprtrdma Send completion batching
+To: Chuck Lever <chuck.lever@oracle.com>,
+        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+Cc: Sagi Grimberg <sagi@grimberg.me>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20170905164347.11106.27140.stgit@manet.1015granger.net>
+ <20170905200608.GA4055@obsidianresearch.com>
+ <0D960F54-0BC7-4A5A-8001-0391673892DF@oracle.com>
+From: Tom Talpey <tom@talpey.com>
+Message-ID: <bdc2a166-d5d9-2919-9abb-fa05f7ea9f84@talpey.com>
+Date: Tue, 5 Sep 2017 21:28:52 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <0D960F54-0BC7-4A5A-8001-0391673892DF@oracle.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTA5LTA1IGF0IDIyOjQ0ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+ID4gT24gU2VwIDUsIDIwMTcsIGF0IDE4OjMxLCBLamV0aWwgSm9lcmdlbnNlbiA8a2pldGls
-QG1lZGFsbGlhLmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiBIaSwNCj4gPiANCj4gPiBPbiBU
-dWUsIFNlcCA1LCAyMDE3IGF0IDEwOjUxIEFNLCBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NA
-bW9ua2V5DQo+ID4gLm9yZz4gd3JvdGU6DQo+ID4gPiBJIGNoYXR0ZWQgd2l0aCBUcm9uZCBhYm91
-dCB0aGlzIGFuZCBoZSBzYXlzIGl0J3MgYSBzZXJ2ZXIgYnVnIGlmDQo+ID4gPiBhbiB1bmxpbmtl
-ZCBmaWxlDQo+ID4gPiBrZWVwcyBzdGF0ZWlkcyBhcm91bmQgLSB0aGUgY2xpZW50IGRvZXNuJ3Qg
-bmVlZCB0byBpc3N1ZSBhIGNsb3NlDQo+ID4gPiBpbiB0aGlzIGNhc2UuDQo+ID4gIA0KPiA+IFdl
-IGRvbid0IGRpc2FncmVlIHRoYXQgdGhpcyBpcyBhIGJ1ZyB3aXRoIHRoZSBzZXJ2ZXIsIGl0IGlz
-IGFmdGVyDQo+ID4gYWxsDQo+ID4gYSByYXRoZXIgZWZmaWNpZW50DQo+ID4gZGVuaWFsLW9mLXNl
-cnZpY2UgYXR0YWNrIGFnYWluc3QgaXQgKEVzcGVjaWFsbHkgaWYgeW91IGRvbid0DQo+ID4gZGlz
-bWFudGxlDQo+ID4geW91ciBjbGllbnRzDQo+ID4gYWxsIHRoYXQgb2Z0ZW4pLg0KPiA+IA0KPiA+
-IEFsdGhvdWdoLCBub3QgY2FsbGluZyBDTE9TRSB1bmRlciBjZXJ0YWluIGNpcmN1bXN0YW5jZXMg
-ZG9lc24ndA0KPiA+IHNlZW0gY29ycmVjdC4NCj4gPiANCj4gPiBDb250aW51aW5nIHRvIGNoZXJy
-eXBpY2sgZnJvbSBSRkNzOg0KPiA+IA0KPiA+IFJGQzU2NjEgLSA4LjIuNC4gIFN0YXRlaWQgTGlm
-ZXRpbWUgYW5kIFZhbGlkYXRpb24NCj4gPiAgIFN0YXRlaWRzIG11c3QgcmVtYWluIHZhbGlkIHVu
-dGlsIGVpdGhlciBhIGNsaWVudCByZXN0YXJ0IG9yIGENCj4gPiBzZXJ2ZXINCj4gPiAgIHJlc3Rh
-cnQgb3IgdW50aWwgdGhlIGNsaWVudCByZXR1cm5zIGFsbCBvZiB0aGUgbG9ja3MgYXNzb2NpYXRl
-ZA0KPiA+IHdpdGgNCj4gPiAgIHRoZSBzdGF0ZWlkIGJ5IG1lYW5zIG9mIGFuIG9wZXJhdGlvbiBz
-dWNoIGFzIENMT1NFIG9yDQo+ID4gREVMRUdSRVRVUk4uDQo+ID4gICBJZiB0aGUgbG9ja3MgYXJl
-IGxvc3QgZHVlIHRvIHJldm9jYXRpb24sIGFzIGxvbmcgYXMgdGhlIGNsaWVudCBJRA0KPiA+IGlz
-DQo+ID4gICB2YWxpZCwgdGhlIHN0YXRlaWQgcmVtYWlucyBhIHZhbGlkIGRlc2lnbmF0aW9uIG9m
-IHRoYXQgcmV2b2tlZA0KPiA+IHN0YXRlDQo+ID4gICB1bnRpbCB0aGUgY2xpZW50IGZyZWVzIGl0
-IGJ5IHVzaW5nIEZSRUVfU1RBVEVJRC4NCj4gPiANCj4gPiA+IFdoYXQgdmVyc2lvbiBvZiBPTlRB
-UCBhcmUgeW91IHJ1bm5pbmc/DQo+ID4gIA0KPiA+IFZlcnNpb246IE5ldEFwcCBSZWxlYXNlIDgu
-Mi40UDYgNy1Nb2RlOiBXZWQgSmFuIDExIDAxOjA3OjA4IFBTVA0KPiA+IDIwMTcNCj4gPiANCj4g
-PiANCj4gDQo+IFdl4oCZcmUgbm90IGZpeGluZyBhbnkgc2VydmVyIGJ1Z3Mgb24gdGhlIGNsaWVu
-dCwgYW5kIHRoaXMgaXMNCj4gZGVmaW5pdGVseSBhIHNlcnZlciBidWcuIFlvdSBjYW7igJl0IGhh
-dmUgc3RhdGUgYXNzb2NpYXRlZCB3aXRoIGEgbm9uLQ0KPiBleGlzdGVudCBvciBjb21wbGV0ZWx5
-IGluYWNjZXNzaWJsZSBmaWxlLg0KPiANCg0KQ29uY2VybmluZyB5b3VyIHF1b3RlIHRoZXJlIGFi
-b3V0IEZSRUVfU1RBVEVJRCwgdGhhdCBoYXMgbm90aGluZyB0byBkbw0Kd2l0aCBkZWxldGVkIGZp
-bGVzLiBJdCBpcyBhIG1lY2hhbmlzbSB0byBhbGxvdyB0aGUgc2VydmVyIHRvIHNhZmVseQ0KY2Fj
-aGUgb3BlbiBzdGF0ZSBpbiB0aGUgcGFydGljdWxhciBjYXNlIHdoZXJlIGEgbmV0d29yayBwYXJ0
-aXRpb24NCnByZXZlbnRzIHRoZSBjbGllbnQgZnJvbSByZW5ld2luZyBpdHMgbGVhc2UuIFRoZXJl
-IGlzIG5vdGhpbmcgdGhhdCBzYXlzDQppdCBhcHBsaWVzIHRvIGRlbGV0ZWQgZmlsZXMsIGFuZCBu
-b3IgaXMgdGhlcmUgYW55IHJlYXNvbiB3aHkgd2Ugd291bGQNCndhbnQgdG8gY2FjaGUgb3BlbiBv
-ciBsb2NrIHN0YXRlIGluIGEgY2FzZSB3aGVyZSB0aGUgZmlsZWhhbmRsZSBpcw0Kc3RhbGUuDQoN
-Ci0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1h
-cnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On 9/5/2017 5:22 PM, Chuck Lever wrote:
+> I think it does bear mentioning that, given this diagnosis, it is
+> still safe to remove the ib_post_send counting mechanism in 5/5,
+> which has been in xprtrdma for as long as I can recall, and has
 
+2007. :-)
+
+> been effective (with a few minor adjustments) at preventing SQ
+> overflow.
+> 
+> I'm not able to test this change with every HCA the Linux kernel
+> currently supports, unfortunately. The best I can do is offer a
+> "proof of correctness" and hope that vendors will jump on this
+> and try it out.
+
+Someday, a proper set of verbs test cases? Alas.
+
+Tom.
