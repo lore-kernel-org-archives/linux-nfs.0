@@ -1,39 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f181.google.com ([209.85.128.181]:38184 "EHLO
-        mail-wr0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753190AbdIFLyY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Sep 2017 07:54:24 -0400
-Subject: Re: [PATCH RFC 0/5] xprtrdma Send completion batching
-To: Chuck Lever <chuck.lever@oracle.com>,
-        jgunthorpe@obsidianresearch.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-References: <20170905164347.11106.27140.stgit@manet.1015granger.net>
-From: Sagi Grimberg <sagi@grimberg.me>
-Message-ID: <1230f9d9-07c1-6d00-b197-f408712fb5c1@grimberg.me>
-Date: Wed, 6 Sep 2017 14:54:20 +0300
-MIME-Version: 1.0
-In-Reply-To: <20170905164347.11106.27140.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from aserp1040.oracle.com ([141.146.126.69]:40627 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932196AbdIFNrc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Sep 2017 09:47:32 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1] xprtrdma: Use xprt_pin_rqst in rpcrdma_reply_handler
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1504650666.29712.0.camel@primarydata.com>
+Date: Wed, 6 Sep 2017 09:47:24 -0400
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Anna Schumaker <schumaker.anna@gmail.com>
+Message-Id: <2F3E5364-AD08-4101-A225-816C8EA9F507@oracle.com>
+References: <20170823210344.7677.48608.stgit@manet.1015granger.net> <1503524423.84215.1.camel@primarydata.com> <64ae2e4d-9fb5-25f7-a82e-32ec5006f903@gmail.com> <1504643592.18516.3.camel@primarydata.com> <CEEC5F17-B01F-4751-A82D-16FAD3267125@oracle.com> <1504650666.29712.0.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Hi Jason, Sagi-
 
-Hey Chuck,
-
-> As we discussed a few weeks ago, this patch series implements the
-> following:
+> On Sep 5, 2017, at 6:31 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
 > 
-> - Send SGEs are now managed via lock-less, wait-free circular queues
-> - Send SGEs referring to page cache pages are DMA unmapped during
->    Send completion
-> - Send completions are batched to reduce interrupts, but still
->    provide a periodic heartbeat signal for SQ housekeeping
-> - The circular queue prevents Send Queue overflow
+> On Tue, 2017-09-05 at 17:06 -0400, Chuck Lever wrote:
+>>> On Sep 5, 2017, at 4:33 PM, Trond Myklebust <trondmy@primarydata.co
+>>> m> wrote:
+>>> 
+>>> On Thu, 2017-08-24 at 14:18 -0400, Anna Schumaker wrote:
+>>>> 
+>>>> On 08/23/2017 05:40 PM, Trond Myklebust wrote:
+>>>>> On Wed, 2017-08-23 at 17:05 -0400, Chuck Lever wrote:
+>>>>>> Adopt the use of xprt_pin_rqst to eliminate contention
+>>>>>> between
+>>>>>> Call-side users of rb_lock and the use of rb_lock in
+>>>>>> rpcrdma_reply_handler.
+>>>>>> 
+>>>>>> This replaces the mechanism introduced in 431af645cf66
+>>>>>> ("xprtrdma:
+>>>>>> Fix client lock-up after application signal fires").
+>>>>>> 
+>>>>>> Use recv_lock to quickly find the completing rqst, pin it,
+>>>>>> then
+>>>>>> drop the lock. At that point invalidation and pull-up of the
+>>>>>> Reply
+>>>>>> XDR can be done. Both are often expensive operations.
+>>>>>> 
+>>>>>> Finally, take recv_lock again to signal completion to the RPC
+>>>>>> layer. It also protects adjustment of "cwnd".
+>>>>>> 
+>>>>>> This greatly reduces the amount of time a lock is held by the
+>>>>>> reply handler. Comparing lock_stat results shows a marked
+>>>>>> decrease
+>>>>>> in contention on rb_lock and recv_lock.
+>>>>>> 
+>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>> ---
+>>>>>> Hi-
+>>>>>> 
+>>>>>> If Trond's lock contention series is going into v4.14, I'd
+>>>>>> like
+>>>>>> you
+>>>>>> to consider this one (applied at the end of that series) as
+>>>>>> well.
+>>>>>> Without it, NFS/RDMA performance regresses a bit after the
+>>>>>> first xprt_pin_rqst patch is applied. Thanks!
+>>>>>> 
+>>>>> 
+>>>>> If Anna is OK with it, then I can apply this patch once she's
+>>>>> sent
+>>>>> me
+>>>>> the pull request for the other RDMA client patches.
+>>>> 
+>>>> Works for me.  Thanks!
+>>> 
+>>> Please can you both check http://git.linux-nfs.org/?p=trondmy/linux
+>>> -nfs
+>>> .git;a=commit;h=b1da5d90857ee4b8f5acee1143705412b16fce56 and see if
+>>> all
+>>> is well?
+>>> 
+>>> Do note that I did remove the call to rpcrdma_buffer_put() which
+>>> was
+>>> being called with an uninitialised argument.
+>> 
+>> Looking at that again. rpcrdma_buffer_put() does look unnecessary,
+>> since out_norqst is being called now before "req" is initialized.
+>> 
+>> On further inspection, "return;" should be replaced with
+>> "goto repost;". This is similar to "out_nomatch" and
+>> "out_duplicate", which are both being replaced in this patch.
+>> 
+>> So, out_norqst should look something like this:
+>> 
+>> 
+>> out_norqst:
+>>        spin_unlock(&xprt->recv_lock);
+>>        dprintk("RPC:       %s: no match for incoming xid 0x%08x\n",
+>>                __func__, be32_to_cpu(xid));
+>>        goto repost;
+>> 
+>> 
+>> Otherwise, I don't see any obvious problems.
+>> 
 > 
-> The purpose of this change is to address the issue Sagi reported
-> where the HCA continues to retry a delayed Send request _after_ RPC
-> completion, resulting in a DMA error.
+> Patch updated. Please see http://git.linux-nfs.org/?p=trondmy/linux-nfs
+> .git;a=commit;h=9590d083c1bb1419b7992609d1a0a3e3517d3893
 
-Question, what happens in direct-io for example? Can a mapped buffer be
-reclaimed/free'd before the send completion arrives?
+out_norqst looks correct.
+
+Note that for out_shortreply:
+
+
++out_shortreply:
++       dprintk("RPC:       %s: short/invalid reply\n", __func__);
++       goto repost;
+
+
+The "goto repost;" can be dropped, since this code drops
+right into "repost:". That's harmless, though.
+
+
+--
+Chuck Lever
+
+
+
