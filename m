@@ -1,74 +1,147 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:36237 "EHLO quartz.orcorp.ca"
+Received: from fieldses.org ([173.255.197.46]:59464 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752313AbdIFVLH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 6 Sep 2017 17:11:07 -0400
-Date: Wed, 6 Sep 2017 15:11:03 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Sagi Grimberg <sagi@grimberg.me>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC 0/5] xprtrdma Send completion batching
-Message-ID: <20170906211103.GA26642@obsidianresearch.com>
-References: <1230f9d9-07c1-6d00-b197-f408712fb5c1@grimberg.me>
- <890CC58C-7F8F-4B7E-8620-21F07007D3AA@oracle.com>
- <6dcdcc25-2613-cdb5-1db2-6c944f05242b@grimberg.me>
- <4E2E5580-69A5-4C3B-9FCA-E61AE2042E6B@oracle.com>
- <9059315f-1985-042e-a59f-26a66fbece3e@grimberg.me>
- <5B2F42B8-2CBD-43F4-BBAD-71EDD4F871FB@oracle.com>
- <20170906193946.GC18461@obsidianresearch.com>
- <4D7ECF64-0F68-4137-B72A-9E942147C8D4@oracle.com>
- <20170906200957.GB22567@obsidianresearch.com>
- <C5144079-7F9C-4783-AF4D-A73411420D5E@oracle.com>
+        id S1752404AbdIFVeW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Sep 2017 17:34:22 -0400
+Date: Wed, 6 Sep 2017 17:34:21 -0400
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, anna.schumaker@netapp.com,
+        bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC v3 25/42] NFSD add COPY_NOTIFY operation
+Message-ID: <20170906213421.GD24694@fieldses.org>
+References: <20170711164416.1982-1-kolga@netapp.com>
+ <20170711164416.1982-26-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <C5144079-7F9C-4783-AF4D-A73411420D5E@oracle.com>
+In-Reply-To: <20170711164416.1982-26-kolga@netapp.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 06, 2017 at 05:00:29PM -0400, Chuck Lever wrote:
-
-> What I implemented was a scheme to invalidate the memory of a
-> (POSIX) signaled RPC before it completes, in case the RPC Reply
-> hadn't yet arrived.
+On Tue, Jul 11, 2017 at 12:43:59PM -0400, Olga Kornievskaia wrote:
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c |  98 ++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4xdr.c  | 112 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/nfsd/xdr4.h     |  13 +++++++
+>  3 files changed, 221 insertions(+), 2 deletions(-)
 > 
-> Currently, the only time the QP might be killed is if the server
-> attempts to RDMA Write an RPC Reply into one of these invalidated
-> memory regions. That case can't be avoided with the current RPC-
-> over-RDMA protocol.
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index dadb3bf..ed6b9f2 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -35,6 +35,7 @@
+>  #include <linux/file.h>
+>  #include <linux/falloc.h>
+>  #include <linux/slab.h>
+> +#include <linux/sunrpc/addr.h>
+>  
+>  #include "idmap.h"
+>  #include "cache.h"
+> @@ -1087,6 +1088,82 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>  }
+>  
+>  static __be32
+> +nfsd4_set_src_nl4_netaddr(struct svc_rqst *rqstp, struct nl4_servers *svrs)
+> +{
+> +	const struct sockaddr *addr = (struct sockaddr *)&rqstp->rq_daddr;
+> +	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
+> +	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
+> +	int uaddr_len = rqstp->rq_daddrlen + 4 + 1; /* port (4) and '\0' (1) */
+> +	struct nfs42_netaddr *naddr;
+> +	size_t ret;
+> +	unsigned short port;
+> +
+> +	/* freed in nfsd4_encode_copy_notify */
+> +	svrs->nl_svr = kmalloc_array(svrs->nl_nsvr, sizeof(struct nl4_server),
+> +				GFP_KERNEL);
+> +	if (svrs->nl_svr == NULL)
+> +		return nfserrno(-ENOMEM);
+> +
+> +	svrs->nl_svr->nl4_type = NL4_NETADDR;
+> +	naddr = &svrs->nl_svr->u.nl4_addr;
+> +
+> +	switch (addr->sa_family) {
+> +	case AF_INET:
+> +		port = ntohs(sin->sin_port);
+> +		sprintf(naddr->na_netid, "tcp");
+> +		naddr->na_netid_len = 3;
+> +		break;
+> +	case AF_INET6:
+> +		port = ntohs(sin6->sin6_port);
+> +		sprintf(naddr->na_netid, "tcp6");
+> +		naddr->na_netid_len = 4;
+> +		break;
+> +	default:
+> +		dprintk("NFSD  nfsd4_set_notify_src: unknown address type: %d",
+> +			addr->sa_family);
+> +		kfree(svrs->nl_svr);
+> +		return nfserrno(-EINVAL);
+> +	}
+> +	ret = rpc_ntop(addr, naddr->na_uaddr, sizeof(naddr->na_uaddr));
+> +	snprintf(naddr->na_uaddr + ret, uaddr_len, ".%u.%u",
+> +		 port >> 8, port & 255);
+> +	naddr->na_uaddr_len = strlen(naddr->na_uaddr);
+> +	return 0;
+> +}
+> +
+> +static __be32
+> +nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +		  struct nfsd4_copy_notify *cn)
+> +{
+> +	__be32 status;
+> +	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+> +
+> +	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+> +					&cn->cpn_src_stateid, RD_STATE, NULL,
+> +					NULL);
+> +	if (status)
+> +		return status;
+> +
+> +	cn->cpn_sec = nn->nfsd4_lease;
+> +	cn->cpn_nsec = 0;
+> +
+> +
+> +	/** XXX Save cpn_src_statid, cpn_src, and any other returned source
+> +	 * server addresses on which the source server is williing to accept
+> +	 * connections from the destination e.g. what is returned in cpn_src,
+> +	 * to verify READ from dest server.
+> +	 */
 
-Okay..
+Either we should fix the stuff mentioned in the comment or figure out
+why it's not necessary.
 
-> And again, we want to preserve the connection if it is healthy.
+I guess I don't see what the value would be of verifying the IP address.
+Our choice of IP address to return here is a little arbitrary anyway.
+And I assume the eventualy READ calls are going to be verified with all
+the usual export and file permission checks.
 
-Well, if SENDs are not completing then it is not healthly. It is
-analogous to what TCP Keep Alive does.
+If we don't save the cna_src_stateid, then I guess that means the COPY
+might still succeed after the original OPEN/LOCK stateid is no longer
+valid?  I can't decide if that will cause problems in practice or not.
 
-> > How does sockets based NFS handle this? Doesn't it zero copy from these
-> > same buffers into SKBs? How does it cancel the SKBs before the NIC
-> > transmits them?
-> > 
-> > Seems like exactly the same kind of problem to me..
-> 
-> TCP has keep-alive, where the sockets consumer is notified as soon
-> as the network layer determines the remote is unresponsive. The
-> connection is closed from underneath the consumer.
+>  static __be32
+> +nfsd42_encode_nl4_server(struct nfsd4_compoundres *resp, struct nl4_server *ns)
+> +{
+> +	struct xdr_stream *xdr = &resp->xdr;
+> +	struct nfs42_netaddr *addr;
+> +	__be32 *p;
+> +
+> +	p = xdr_reserve_space(xdr, 4);
+> +	*p++ = cpu_to_be32(ns->nl4_type);
+> +
+> +	switch (ns->nl4_type) {
+> +	case NL4_NAME:
+> +	case NL4_URL:
+> +		p = xdr_reserve_space(xdr, 4 /* url or name len */ +
+> +				      (XDR_QUADLEN(ns->u.nl4_str_sz) * 4));
+> +		if (!p)
+> +			return nfserr_resource;
+> +		*p++ = cpu_to_be32(ns->u.nl4_str_sz);
+> +		p = xdr_encode_opaque_fixed(p, ns->u.nl4_str, ns->u.nl4_str_sz);
+> +			break;
 
-keep-alive is something different, it pings the remote periodicaly and
-detects dead connections even when there is no traffic.
+This code will never be used as far as I can tell.  We could
+BUG_ON(nl4_type != NL4_NETADDR) (or even just remove nl4_type).
 
-RDMA detects dead connections via retries and timeouts, but only if
-there is traffic.
-
-My questions was about how the same situation is handled in TCP. If it
-does DMA directly from the source buffers by chaining them into SKBs
-then it has exactly the same problem, it cannot release the buffers
-until SKB is released from the TCP stack after NIC xmit. Like in RDMA,
-this only happens once TCP has got the ack back.
-
-Perhaps the answer is that TCP does not zero copy these buffers, or
-TCP doesn't care about transmitting random memory, but it seems a
-question worth asking.
-
-Jason
+--b.
