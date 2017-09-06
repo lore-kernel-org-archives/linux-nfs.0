@@ -1,357 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59376 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752663AbdIFUpX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 6 Sep 2017 16:45:23 -0400
-Date: Wed, 6 Sep 2017 16:45:23 -0400
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Trond.Myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [RFC v3 25/42] NFSD add COPY_NOTIFY operation
-Message-ID: <20170906204523.GC24694@fieldses.org>
-References: <20170711164416.1982-1-kolga@netapp.com>
- <20170711164416.1982-26-kolga@netapp.com>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:50650 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752409AbdIFVAm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Sep 2017 17:00:42 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170711164416.1982-26-kolga@netapp.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH RFC 0/5] xprtrdma Send completion batching
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20170906200957.GB22567@obsidianresearch.com>
+Date: Wed, 6 Sep 2017 17:00:29 -0400
+Cc: Sagi Grimberg <sagi@grimberg.me>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <C5144079-7F9C-4783-AF4D-A73411420D5E@oracle.com>
+References: <20170905164347.11106.27140.stgit@manet.1015granger.net> <1230f9d9-07c1-6d00-b197-f408712fb5c1@grimberg.me> <890CC58C-7F8F-4B7E-8620-21F07007D3AA@oracle.com> <6dcdcc25-2613-cdb5-1db2-6c944f05242b@grimberg.me> <4E2E5580-69A5-4C3B-9FCA-E61AE2042E6B@oracle.com> <9059315f-1985-042e-a59f-26a66fbece3e@grimberg.me> <5B2F42B8-2CBD-43F4-BBAD-71EDD4F871FB@oracle.com> <20170906193946.GC18461@obsidianresearch.com> <4D7ECF64-0F68-4137-B72A-9E942147C8D4@oracle.com> <20170906200957.GB22567@obsidianresearch.com>
+To: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jul 11, 2017 at 12:43:59PM -0400, Olga Kornievskaia wrote:
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfsd/nfs4proc.c |  98 ++++++++++++++++++++++++++++++++++++++++++++++
->  fs/nfsd/nfs4xdr.c  | 112 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
->  fs/nfsd/xdr4.h     |  13 +++++++
->  3 files changed, 221 insertions(+), 2 deletions(-)
+
+> On Sep 6, 2017, at 4:09 PM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
 > 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index dadb3bf..ed6b9f2 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -35,6 +35,7 @@
->  #include <linux/file.h>
->  #include <linux/falloc.h>
->  #include <linux/slab.h>
-> +#include <linux/sunrpc/addr.h>
->  
->  #include "idmap.h"
->  #include "cache.h"
-> @@ -1087,6 +1088,82 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
->  }
->  
->  static __be32
-> +nfsd4_set_src_nl4_netaddr(struct svc_rqst *rqstp, struct nl4_servers *svrs)
-> +{
-> +	const struct sockaddr *addr = (struct sockaddr *)&rqstp->rq_daddr;
-> +	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
-> +	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
-> +	int uaddr_len = rqstp->rq_daddrlen + 4 + 1; /* port (4) and '\0' (1) */
-> +	struct nfs42_netaddr *naddr;
-> +	size_t ret;
-> +	unsigned short port;
-> +
-> +	/* freed in nfsd4_encode_copy_notify */
-> +	svrs->nl_svr = kmalloc_array(svrs->nl_nsvr, sizeof(struct nl4_server),
-> +				GFP_KERNEL);
-> +	if (svrs->nl_svr == NULL)
-> +		return nfserrno(-ENOMEM);
-> +
-> +	svrs->nl_svr->nl4_type = NL4_NETADDR;
-> +	naddr = &svrs->nl_svr->u.nl4_addr;
-> +
-> +	switch (addr->sa_family) {
-> +	case AF_INET:
-> +		port = ntohs(sin->sin_port);
-> +		sprintf(naddr->na_netid, "tcp");
-> +		naddr->na_netid_len = 3;
-> +		break;
-> +	case AF_INET6:
-> +		port = ntohs(sin6->sin6_port);
-> +		sprintf(naddr->na_netid, "tcp6");
-> +		naddr->na_netid_len = 4;
-> +		break;
-> +	default:
-> +		dprintk("NFSD  nfsd4_set_notify_src: unknown address type: %d",
-> +			addr->sa_family);
-> +		kfree(svrs->nl_svr);
-> +		return nfserrno(-EINVAL);
-> +	}
-> +	ret = rpc_ntop(addr, naddr->na_uaddr, sizeof(naddr->na_uaddr));
-> +	snprintf(naddr->na_uaddr + ret, uaddr_len, ".%u.%u",
-> +		 port >> 8, port & 255);
-> +	naddr->na_uaddr_len = strlen(naddr->na_uaddr);
-
-I'm a little surprised there isn't already a standard helper for
-this....  Actually, does net/sunrpc:addr.c:rpc_sockaddr2uaddr() do it?
-
-(Looks like there's other potential users in
-fs/nfsd/flexfilelayout.c:nfsd4_ff_proc_getdeviceinfo() and in flexfiles
-code on client side and probably some other places too.)
-
---b.
-
-> +	return 0;
-> +}
-> +
-> +static __be32
-> +nfsd4_copy_notify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> +		  struct nfsd4_copy_notify *cn)
-> +{
-> +	__be32 status;
-> +	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-> +
-> +	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
-> +					&cn->cpn_src_stateid, RD_STATE, NULL,
-> +					NULL);
-> +	if (status)
-> +		return status;
-> +
-> +	cn->cpn_sec = nn->nfsd4_lease;
-> +	cn->cpn_nsec = 0;
-> +
-> +
-> +	/** XXX Save cpn_src_statid, cpn_src, and any other returned source
-> +	 * server addresses on which the source server is williing to accept
-> +	 * connections from the destination e.g. what is returned in cpn_src,
-> +	 * to verify READ from dest server.
-> +	 */
-> +
-> +	/**
-> +	 * For now, only return one server address in cpn_src, the
-> +	 * address used by the client to connect to this server.
-> +	 */
-> +	cn->cpn_src.nl_nsvr = 1;
-> +
-> +	return nfsd4_set_src_nl4_netaddr(rqstp, &cn->cpn_src);
-> +}
-> +
-> +static __be32
->  nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		struct nfsd4_fallocate *fallocate, int flags)
->  {
-> @@ -2042,6 +2119,21 @@ static inline u32 nfsd4_copy_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  		1 /* cr_synchronous */) * sizeof(__be32);
->  }
->  
-> +static inline u32 nfsd4_copy_notify_rsize(struct svc_rqst *rqstp,
-> +					struct nfsd4_op *op)
-> +{
-> +	return (op_encode_hdr_size +
-> +		3 /* cnr_lease_time */ +
-> +		1 /* We support one cnr_source_server */ +
-> +		1 /* cnr_stateid seq */ +
-> +		op_encode_stateid_maxsz /* cnr_stateid */ +
-> +		1 /* num cnr_source_server*/ +
-> +		1 /* nl4_type */ +
-> +		1 /* nl4 size */ +
-> +		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) /*nl4_loc + nl4_loc_sz */)
-> +		* sizeof(__be32);
-> +}
-> +
->  #ifdef CONFIG_NFSD_PNFS
->  static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  {
-> @@ -2446,6 +2538,12 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
->  		.op_name = "OP_SEEK",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_seek_rsize,
->  	},
-> +	[OP_COPY_NOTIFY] = {
-> +		.op_func = (nfsd4op_func)nfsd4_copy_notify,
-> +		.op_flags = OP_MODIFIES_SOMETHING | OP_CACHEME,
-> +		.op_name = "OP_COPY_NOTIFY",
-> +		.op_rsize_bop = (nfsd4op_rsize)nfsd4_copy_notify_rsize,
-> +	},
->  };
->  
->  /**
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 031d06d..3e08c15 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1820,6 +1820,22 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
->  }
->  
->  static __be32
-> +nfsd4_decode_copy_notify(struct nfsd4_compoundargs *argp,
-> +			 struct nfsd4_copy_notify *cn)
-> +{
-> +	int status;
-> +
-> +	status = nfsd4_decode_stateid(argp, &cn->cpn_src_stateid);
-> +	if (status)
-> +		return status;
-> +	status = nfsd4_decode_nl4_server(argp, &cn->cpn_dst);
-> +	if (status)
-> +		return status;
-> +
-> +	return status;
-> +}
-> +
-> +static __be32
->  nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
->  {
->  	DECODE_HEAD;
-> @@ -1920,7 +1936,7 @@ static __be32 nfsd4_decode_nl4_server(struct nfsd4_compoundargs *argp,
->  	/* new operations for NFSv4.2 */
->  	[OP_ALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
->  	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_copy,
-> -	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> +	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_copy_notify,
->  	[OP_DEALLOCATE]		= (nfsd4_dec)nfsd4_decode_fallocate,
->  	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
->  	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> @@ -4355,6 +4371,52 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
->  }
->  
->  static __be32
-> +nfsd42_encode_nl4_server(struct nfsd4_compoundres *resp, struct nl4_server *ns)
-> +{
-> +	struct xdr_stream *xdr = &resp->xdr;
-> +	struct nfs42_netaddr *addr;
-> +	__be32 *p;
-> +
-> +	p = xdr_reserve_space(xdr, 4);
-> +	*p++ = cpu_to_be32(ns->nl4_type);
-> +
-> +	switch (ns->nl4_type) {
-> +	case NL4_NAME:
-> +	case NL4_URL:
-> +		p = xdr_reserve_space(xdr, 4 /* url or name len */ +
-> +				      (XDR_QUADLEN(ns->u.nl4_str_sz) * 4));
-> +		if (!p)
-> +			return nfserr_resource;
-> +		*p++ = cpu_to_be32(ns->u.nl4_str_sz);
-> +		p = xdr_encode_opaque_fixed(p, ns->u.nl4_str, ns->u.nl4_str_sz);
-> +			break;
-> +	case NL4_NETADDR:
-> +		addr = &ns->u.nl4_addr;
-> +
-> +		/** netid_len, netid, uaddr_len, uaddr (port included
-> +		 * in RPCBIND_MAXUADDRLEN)
-> +		 */
-> +		p = xdr_reserve_space(xdr,
-> +			4 /* netid len */ +
-> +			(XDR_QUADLEN(addr->na_netid_len) * 4) +
-> +			4 /* uaddr len */ +
-> +			(XDR_QUADLEN(addr->na_uaddr_len) * 4));
-> +		if (!p)
-> +			return nfserr_resource;
-> +
-> +		*p++ = cpu_to_be32(addr->na_netid_len);
-> +		p = xdr_encode_opaque_fixed(p, addr->na_netid,
-> +					    addr->na_netid_len);
-> +		*p++ = cpu_to_be32(addr->na_uaddr_len);
-> +		p = xdr_encode_opaque_fixed(p, addr->na_uaddr,
-> +					addr->na_uaddr_len);
-> +		break;
-> +	}
-> +
-> +	return 0;
-> +}
-> +
-> +static __be32
->  nfsd4_encode_copy(struct nfsd4_compoundres *resp, __be32 nfserr,
->  		  struct nfsd4_copy *copy)
->  {
-> @@ -4375,6 +4437,52 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
->  }
->  
->  static __be32
-> +nfsd4_encode_copy_notify(struct nfsd4_compoundres *resp, __be32 nfserr,
-> +			 struct nfsd4_copy_notify *cn)
-> +{
-> +	struct xdr_stream *xdr = &resp->xdr;
-> +	struct nl4_server *ns;
-> +	__be32 *p;
-> +	int i;
-> +
-> +	if (nfserr)
-> +		return nfserr;
-> +
-> +	/* 8 sec, 4 nsec */
-> +	p = xdr_reserve_space(xdr, 12);
-> +	if (!p)
-> +		return nfserr_resource;
-> +
-> +	/* cnr_lease_time */
-> +	p = xdr_encode_hyper(p, cn->cpn_sec);
-> +	*p++ = cpu_to_be32(cn->cpn_nsec);
-> +
-> +	/* cnr_stateid */
-> +	nfserr = nfsd4_encode_stateid(xdr, &cn->cpn_src_stateid);
-> +	if (nfserr)
-> +		return nfserr;
-> +
-> +	/* cnr_src.nl_nsvr */
-> +	p = xdr_reserve_space(xdr, 4);
-> +	if (!p)
-> +		return nfserr_resource;
-> +
-> +	*p++ = cpu_to_be32(cn->cpn_src.nl_nsvr);
-> +
-> +	ns = cn->cpn_src.nl_svr;
-> +	for (i = 0; i < cn->cpn_src.nl_nsvr; i++) {
-> +		nfserr = nfsd42_encode_nl4_server(resp, ns);
-> +		if (nfserr)
-> +			return nfserr;
-> +		ns++;
-> +	}
-> +
-> +	/* allocated in nfsd4_copy_notify */
-> +	kfree(cn->cpn_src.nl_svr);
-> +	return nfserr;
-> +}
-> +
-> +static __be32
->  nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
->  		  struct nfsd4_seek *seek)
->  {
-> @@ -4474,7 +4582,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
->  	/* NFSv4.2 operations */
->  	[OP_ALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_copy,
-> -	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_copy_notify,
->  	[OP_DEALLOCATE]		= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index 6b1a61fc..5db7cd8 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -540,6 +540,18 @@ struct nfsd4_seek {
->  	loff_t		seek_pos;
->  };
->  
-> +struct nfsd4_copy_notify {
-> +	/* request */
-> +	stateid_t		cpn_src_stateid;
-> +	struct nl4_server	cpn_dst;
-> +
-> +	/* response */
-> +	/* Note: cpn_src_stateid is used for cnr_stateid */
-> +	u64			cpn_sec;
-> +	u32			cpn_nsec;
-> +	struct nl4_servers	cpn_src;
-> +};
-> +
->  struct nfsd4_op {
->  	int					opnum;
->  	__be32					status;
-> @@ -595,6 +607,7 @@ struct nfsd4_op {
->  		struct nfsd4_fallocate		deallocate;
->  		struct nfsd4_clone		clone;
->  		struct nfsd4_copy		copy;
-> +		struct nfsd4_copy_notify	copy_notify;
->  		struct nfsd4_seek		seek;
->  	} u;
->  	struct nfs4_replay *			replay;
-> -- 
-> 1.8.3.1
+> On Wed, Sep 06, 2017 at 04:02:24PM -0400, Chuck Lever wrote:
+>> 
+>>> On Sep 6, 2017, at 3:39 PM, Jason Gunthorpe <jgunthorpe@obsidianresearch.com> wrote:
+>>> 
+>>> On Wed, Sep 06, 2017 at 02:33:50PM -0400, Chuck Lever wrote:
+>>> 
+>>>> B. Force RPC completion to wait for Send completion, which
+>>>> would allow the post-v4.6 scatter-gather code to work
+>>>> safely. This would need some guarantee that Sends will
+>>>> always complete in a short period.
+>>> 
+>>> Why is waiting for the send completion so fundamentally different from
+>>> waiting for the remote RPC reply?
+>>> 
+>>> I would say that 99% of time the send completion and RPC reply
+>>> completion will occure approximately concurrently.
+>>> 
+>>> eg It is quite likely the RPC reply SEND carries an embeded ack
+>>> for the requesting SEND..
+>> 
+>> Depends on implementation. Average RTT on IB is 3-5 usecs.
+>> Average RPC RTT is about an order of magnitude more. Typically
+>> the Send is ACK'd more quickly than the RPC Reply can be sent.
+>> 
+>> But I get your point: the normal case isn't a problem.
+>> 
+>> The problematic case arises when the Send is not able to complete
+>> because the NFS server is not reachable. User starts pounding on
+>> ^C, RPC can't complete because Send won't complete, control
+>> doesn't return to user.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Sure, but why is that so different from the NFS server not generating
+> a response?
+> 
+> I thought you already implemetned a ctrl-c scheme that killed the QP?
+> Or was that just a discussion?
+
+No, we want to _avoid_ killing the QP if we can. A ctrl-C (or a
+timer signal, say) on an otherwise healthy connection must not
+perturb other outstanding RPCs, if possible.
+
+What I implemented was a scheme to invalidate the memory of a
+(POSIX) signaled RPC before it completes, in case the RPC Reply
+hadn't yet arrived.
+
+Currently, the only time the QP might be killed is if the server
+attempts to RDMA Write an RPC Reply into one of these invalidated
+memory regions. That case can't be avoided with the current RPC-
+over-RDMA protocol.
+
+
+> That is the only way to async terminate outstanding RPCs and clean
+> up. Killing the QP will allow the send to be 'completed'.
+
+It forces outstanding Sends to flush.
+
+But as you explained it at the time, xprtrdma needs to wait
+somehow for the QP to complete it's transition to error state
+before allowing RPCs to complete. Probably ib_drain_qp would be
+enough.
+
+And again, we want to preserve the connection if it is healthy.
+
+
+> Having ctrl-c escalate to a QP tear down after a short timeout seems
+> reasonable. 99% of cases will not need the teardown since the send
+> will complete..
+
+So I think we are partially there already. If an RPC timeout occurs
+(which should be after a few minutes) then xprtrdma does disconnect,
+which tears down the QP.
+
+If a timer signal fires on an RPC waiting for a server that is
+unreachable, the application won't see the signal until the RPC
+times out. Maybe that's how it works now?
+
+And, otherwise, a ^C on an app waiting for an unresponsive server
+will not have immediate results. But again, I think that's how it
+works now.
+
+
+> How does sockets based NFS handle this? Doesn't it zero copy from these
+> same buffers into SKBs? How does it cancel the SKBs before the NIC
+> transmits them?
+> 
+> Seems like exactly the same kind of problem to me..
+
+TCP has keep-alive, where the sockets consumer is notified as soon
+as the network layer determines the remote is unresponsive. The
+connection is closed from underneath the consumer.
+
+For RDMA, which has no keep-alive mechanism, we seem to be going
+with waiting for the RPC to time out, then the consumer itself
+breaks the connection.
+
+
+--
+Chuck Lever
+
+
+
