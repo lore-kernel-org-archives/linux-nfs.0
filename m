@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35702 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54942 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754109AbdIGG5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Sep 2017 02:57:36 -0400
+        id S1752783AbdIGHAr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 Sep 2017 03:00:47 -0400
 From: "Jianhong.Yin" <yin-jianhong@163.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH] nfsman: document minorversion
-Date: Thu,  7 Sep 2017 14:57:29 +0800
-Message-Id: <20170907065729.4636-1-yin-jianhong@163.com>
+Subject: [PATCH] nfs-utils: nfsman: document minorversion
+Date: Thu,  7 Sep 2017 15:00:40 +0800
+Message-Id: <20170907070040.4882-1-yin-jianhong@163.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
