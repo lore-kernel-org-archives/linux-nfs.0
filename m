@@ -1,41 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:28832 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755468AbdIGPMK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Sep 2017 11:12:10 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "tarangg@amazon.com" <tarangg@amazon.com>
-CC: "jsstraus@amazon.com" <jsstraus@amazon.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFS: Sync the correct byte range during synchronous
- writes
-Date: Thu, 7 Sep 2017 15:12:05 +0000
-Message-ID: <1504797123.7816.0.camel@primarydata.com>
-References: <20170907132923.49969-1-tarangg@amazon.com>
-In-Reply-To: <20170907132923.49969-1-tarangg@amazon.com>
+Received: from mail-qk0-f182.google.com ([209.85.220.182]:36119 "EHLO
+        mail-qk0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753819AbdIGPOp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Sep 2017 11:14:45 -0400
+Received: by mail-qk0-f182.google.com with SMTP id z143so27671100qkb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Sep 2017 08:14:45 -0700 (PDT)
+Received: from hut.sorensonfamily.com ([2603:300a:2104:9500:4eeb:42ff:fec7:ee1c])
+        by smtp.gmail.com with ESMTPSA id y31sm1818242qta.83.2017.09.07.08.14.43
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 07 Sep 2017 08:14:43 -0700 (PDT)
+To: linux-nfs@vger.kernel.org
+From: Frank Sorenson <sorenson@redhat.com>
+Subject: [PATCH RFC] nfs-utils: mount: handle EACCES during version
+ negotiation
+Message-ID: <279c0751-8284-5289-3407-129dc9c9d3e8@redhat.com>
+Date: Thu, 7 Sep 2017 10:14:42 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTA5LTA3IGF0IDA5OjI5IC0wNDAwLCB0YXJhbmdnQGFtYXpvbi5jb20gd3Jv
-dGU6DQo+IFNpbmNlIGNvbW1pdCAxODI5MDY1MGIxYzggKCJORlM6IE1vdmUgYnVmZmVyZWQgSS9P
-IGxvY2tpbmcgaW50bw0KPiBuZnNfZmlsZV93cml0ZSgpIikgbmZzX2ZpbGVfd3JpdGUoKSBoYXMg
-bm90IGZsdXNoZWQgdGhlIGNvcnJlY3QgYnl0ZQ0KPiByYW5nZSBkdXJpbmcgc3luY2hyb25vdXMg
-d3JpdGVzLiAgZ2VuZXJpY193cml0ZV9zeW5jKCkgZXhwZWN0cyB0aGF0DQo+IGlvY2ItPmtpX3Bv
-cyBwb2ludHMgdG8gdGhlIHJpZ2h0IGVkZ2Ugb2YgdGhlIHJhbmdlIHJhdGhlciB0aGFuIHRoZQ0K
-PiBsZWZ0IGVkZ2UuDQo+IA0KPiBUbyByZXBsaWNhdGUgdGhlIHByb2JsZW0sIG9wZW4gYSBmaWxl
-IHdpdGggT19EU1lOQywgaGF2ZSB0aGUgY2xpZW50DQo+IHdyaXRlIGF0IGluY3JlYXNpbmcgb2Zm
-c2V0cywgYW5kIHRoZW4gcHJpbnQgdGhlIHN1Y2Nlc3NmdWwgb2Zmc2V0cy4NCj4gQmxvY2sgcG9y
-dCAyMDQ5IHBhcnR3YXkgdGhyb3VnaCB0aGF0IHNlcXVlbmNlLCBhbmQgb2JzZXJ2ZSB0aGF0IHRo
-ZQ0KPiBjbGllbnQgYXBwbGljYXRpb24gaW5kaWNhdGVzIHN1Y2Nlc3NmdWwgd3JpdGVzIGluIGFk
-dmFuY2Ugb2Ygd2hhdCB0aGUNCj4gc2VydmVyIHJlY2VpdmVkLg0KPiANCj4gRml4ZXM6IDE4Mjkw
-NjUwYjFjOCAoIk5GUzogTW92ZSBidWZmZXJlZCBJL08gbG9ja2luZyBpbnRvDQo+IG5mc19maWxl
-X3dyaXRlKCkiKQ0KPiBTaWduZWQtb2ZmLWJ5OiBKYWNvYiBTdHJhdXNzIDxqc3N0cmF1c0BhbWF6
-b24uY29tPg0KPiBTaWduZWQtb2ZmLWJ5OiBUYXJhbmcgR3VwdGEgPHRhcmFuZ2dAYW1hem9uLmNv
-bT4NCj4gVGVzdGVkLWJ5OiBUYXJhbmcgR3VwdGEgPHRhcmFuZ2dAYW1hem9uLmNvbT4NCg0KVGhh
-bmtzISBOaWNlIGNhdGNoIQ0KDQpQYXRjaCBpcyBhcHBsaWVkIGFuZCB3aWxsIGJlIHF1ZXVlZCBm
-b3Igc3RhYmxlIDQuOCsuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
-b20NCg==
+mount() can return EACCES for servers which permit 4.0
+but are configured not to allow 4.1  This is currently
+only handled by the default case, so these mounts fail
+without retrying a lower minor.
+
+Add handling for EACCES to be retried with a lower
+minor version.
+
+Signed-off-by: Frank Sorenson <sorenson@redhat.com>
+---
+ utils/mount/stropts.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 1d30d34..4401314 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -862,6 +862,9 @@ check_result:
+ 	case EINVAL:
+ 		/* A less clear indication that our client
+ 		 * does not support NFSv4 minor version. */
++	case EACCES:
++		/* An unclear indication that the server
++		 * may not support NFSv4 minor version. */
+ 		if (mi->version.v_mode != V_SPECIFIC) {
+ 			if (mi->version.minor > 0) {
+ 				mi->version.minor--;
+-- 
+2.13.5
 
