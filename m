@@ -1,44 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from quartz.orcorp.ca ([184.70.90.242]:33948 "EHLO quartz.orcorp.ca"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750742AbdIGPIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Sep 2017 11:08:41 -0400
-Date: Thu, 7 Sep 2017 09:08:29 -0600
-From: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
-To: Tom Talpey <tom@talpey.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Sagi Grimberg <sagi@grimberg.me>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC 0/5] xprtrdma Send completion batching
-Message-ID: <20170907150829.GA20644@obsidianresearch.com>
-References: <20170905164347.11106.27140.stgit@manet.1015granger.net>
- <1230f9d9-07c1-6d00-b197-f408712fb5c1@grimberg.me>
- <890CC58C-7F8F-4B7E-8620-21F07007D3AA@oracle.com>
- <6dcdcc25-2613-cdb5-1db2-6c944f05242b@grimberg.me>
- <4E2E5580-69A5-4C3B-9FCA-E61AE2042E6B@oracle.com>
- <9059315f-1985-042e-a59f-26a66fbece3e@grimberg.me>
- <5B2F42B8-2CBD-43F4-BBAD-71EDD4F871FB@oracle.com>
- <20170906193946.GC18461@obsidianresearch.com>
- <f2cb453d-a59f-de64-7a42-09e075562895@talpey.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:28832 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1755468AbdIGPMK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Sep 2017 11:12:10 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "tarangg@amazon.com" <tarangg@amazon.com>
+CC: "jsstraus@amazon.com" <jsstraus@amazon.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFS: Sync the correct byte range during synchronous
+ writes
+Date: Thu, 7 Sep 2017 15:12:05 +0000
+Message-ID: <1504797123.7816.0.camel@primarydata.com>
+References: <20170907132923.49969-1-tarangg@amazon.com>
+In-Reply-To: <20170907132923.49969-1-tarangg@amazon.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <f2cb453d-a59f-de64-7a42-09e075562895@talpey.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 07, 2017 at 09:17:16AM -0400, Tom Talpey wrote:
+T24gVGh1LCAyMDE3LTA5LTA3IGF0IDA5OjI5IC0wNDAwLCB0YXJhbmdnQGFtYXpvbi5jb20gd3Jv
+dGU6DQo+IFNpbmNlIGNvbW1pdCAxODI5MDY1MGIxYzggKCJORlM6IE1vdmUgYnVmZmVyZWQgSS9P
+IGxvY2tpbmcgaW50bw0KPiBuZnNfZmlsZV93cml0ZSgpIikgbmZzX2ZpbGVfd3JpdGUoKSBoYXMg
+bm90IGZsdXNoZWQgdGhlIGNvcnJlY3QgYnl0ZQ0KPiByYW5nZSBkdXJpbmcgc3luY2hyb25vdXMg
+d3JpdGVzLiAgZ2VuZXJpY193cml0ZV9zeW5jKCkgZXhwZWN0cyB0aGF0DQo+IGlvY2ItPmtpX3Bv
+cyBwb2ludHMgdG8gdGhlIHJpZ2h0IGVkZ2Ugb2YgdGhlIHJhbmdlIHJhdGhlciB0aGFuIHRoZQ0K
+PiBsZWZ0IGVkZ2UuDQo+IA0KPiBUbyByZXBsaWNhdGUgdGhlIHByb2JsZW0sIG9wZW4gYSBmaWxl
+IHdpdGggT19EU1lOQywgaGF2ZSB0aGUgY2xpZW50DQo+IHdyaXRlIGF0IGluY3JlYXNpbmcgb2Zm
+c2V0cywgYW5kIHRoZW4gcHJpbnQgdGhlIHN1Y2Nlc3NmdWwgb2Zmc2V0cy4NCj4gQmxvY2sgcG9y
+dCAyMDQ5IHBhcnR3YXkgdGhyb3VnaCB0aGF0IHNlcXVlbmNlLCBhbmQgb2JzZXJ2ZSB0aGF0IHRo
+ZQ0KPiBjbGllbnQgYXBwbGljYXRpb24gaW5kaWNhdGVzIHN1Y2Nlc3NmdWwgd3JpdGVzIGluIGFk
+dmFuY2Ugb2Ygd2hhdCB0aGUNCj4gc2VydmVyIHJlY2VpdmVkLg0KPiANCj4gRml4ZXM6IDE4Mjkw
+NjUwYjFjOCAoIk5GUzogTW92ZSBidWZmZXJlZCBJL08gbG9ja2luZyBpbnRvDQo+IG5mc19maWxl
+X3dyaXRlKCkiKQ0KPiBTaWduZWQtb2ZmLWJ5OiBKYWNvYiBTdHJhdXNzIDxqc3N0cmF1c0BhbWF6
+b24uY29tPg0KPiBTaWduZWQtb2ZmLWJ5OiBUYXJhbmcgR3VwdGEgPHRhcmFuZ2dAYW1hem9uLmNv
+bT4NCj4gVGVzdGVkLWJ5OiBUYXJhbmcgR3VwdGEgPHRhcmFuZ2dAYW1hem9uLmNvbT4NCg0KVGhh
+bmtzISBOaWNlIGNhdGNoIQ0KDQpQYXRjaCBpcyBhcHBsaWVkIGFuZCB3aWxsIGJlIHF1ZXVlZCBm
+b3Igc3RhYmxlIDQuOCsuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
+b20NCg==
 
-> >Why is waiting for the send completion so fundamentally different from
-> >waiting for the remote RPC reply?
-> >
-> >I would say that 99% of time the send completion and RPC reply
-> >completion will occure approximately concurrently.
-> 
-> Absolutely not. The RPC reply requires upper layer processing at
-> the server, which involves work requests, context switches, file
-
-I should have said '99% of the time the SEND will occure approximately
-concurrently or sooner'
-
-Jason
