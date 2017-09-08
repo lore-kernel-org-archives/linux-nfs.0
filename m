@@ -1,747 +1,288 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35352 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:35468 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756761AbdIHSLD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 8 Sep 2017 14:11:03 -0400
-Date: Fri, 8 Sep 2017 14:11:02 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>
-Subject: [GIT PULL] nfsd changes for 4.14
-Message-ID: <20170908181102.GA18220@fieldses.org>
+        id S1756652AbdIHTih (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 8 Sep 2017 15:38:37 -0400
+Date: Fri, 8 Sep 2017 15:38:36 -0400
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, anna.schumaker@netapp.com,
+        bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [RFC v3 27/42] NFSD: allow inter server COPY to have a STALE
+ source server fh
+Message-ID: <20170908193836.GB18220@fieldses.org>
+References: <20170711164416.1982-1-kolga@netapp.com>
+ <20170711164416.1982-28-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170711164416.1982-28-kolga@netapp.com>
 From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 4.14 from
+Some questions below, but really I think this approach can't work.  Keep
+in mind this has to work not just for the one compound the current
+client uses, but for *any* compound containing a COPY, including those
+sent by future clients that may do something more complicated, or by
+malcious clients that may intentionally send weird compounds to make the
+server crash.
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.14
+I think we want to flag the filehandle itself somehow, not the cstate.
 
+And check very carefully to make sure that ops other than COPY can't get
+tripped up by one of these foreign filehandles.
 
-More RDMA work and some op-structure constification from Chuck Lever,
-and a small cleanup to our xdr encoding.
+On Tue, Jul 11, 2017 at 12:44:01PM -0400, Olga Kornievskaia wrote:
+> The inter server to server COPY source server filehandle
+> is guaranteed to be stale as the COPY is sent to the destination
+> server.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
+>  fs/nfsd/nfs4xdr.c  | 26 +++++++++++++++++++++++++-
+>  fs/nfsd/nfsd.h     |  2 ++
+>  fs/nfsd/xdr4.h     |  4 ++++
+>  4 files changed, 77 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index b49ff31..ceee852 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -496,11 +496,19 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+>  nfsd4_putfh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	    struct nfsd4_putfh *putfh)
+>  {
+> +	__be32 ret;
+> +
+>  	fh_put(&cstate->current_fh);
+>  	cstate->current_fh.fh_handle.fh_size = putfh->pf_fhlen;
+>  	memcpy(&cstate->current_fh.fh_handle.fh_base, putfh->pf_fhval,
+>  	       putfh->pf_fhlen);
+> -	return fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
+> +	ret = fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
+> +	if (ret == nfserr_stale && HAS_CSTATE_FLAG(cstate, NO_VERIFY_FH)) {
+> +		CLEAR_CSTATE_FLAG(cstate, NO_VERIFY_FH);
+> +		SET_CSTATE_FLAG(cstate, IS_STALE_FH);
+> +		ret = 0;
+> +	}
+> +	return ret;
+>  }
+>  
+>  static __be32
+> @@ -533,6 +541,16 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+>  nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	     void *arg)
+>  {
+> +	/**
+> +	* This is either an inter COPY (most likely) or an intra COPY with a
+> +	* stale file handle. If the latter, nfsd4_copy will reset the PUTFH to
+> +	* return nfserr_stale. No fh_dentry, just copy the file handle
+> +	* to use with the inter COPY READ.
+> +	*/
+> +	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
+> +		cstate->save_fh = cstate->current_fh;
+> +		return nfs_ok;
+> +	}
+>  	if (!cstate->current_fh.fh_dentry)
+>  		return nfserr_nofilehandle;
+>  
+> @@ -1067,6 +1085,13 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>  	if (status)
+>  		goto out;
+>  
+> +	/* Intra copy source fh is stale. PUTFH will fail with ESTALE */
+> +	if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
+> +		CLEAR_CSTATE_FLAG(cstate, IS_STALE_FH);
+> +		cstate->status = nfserr_copy_stalefh;
+> +		goto out_put;
+> +	}
+> +
+>  	bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
+>  			dst, copy->cp_dst_pos, copy->cp_count);
+>  
+> @@ -1081,6 +1106,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>  		status = nfs_ok;
+>  	}
+>  
+> +out_put:
+>  	fput(src);
+>  	fput(dst);
+>  out:
+> @@ -1759,6 +1785,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  	struct nfsd4_compound_state *cstate = &resp->cstate;
+>  	struct svc_fh *current_fh = &cstate->current_fh;
+>  	struct svc_fh *save_fh = &cstate->save_fh;
+> +	int		i;
+>  	__be32		status;
+>  
+>  	svcxdr_init_encode(rqstp, resp);
+> @@ -1791,6 +1818,12 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  		goto encode_op;
+>  	}
+>  
+> +	/* NFSv4.2 COPY source file handle may be from a different server */
+> +	for (i = 0; i < args->opcnt; i++) {
+> +		op = &args->ops[i];
+> +		if (op->opnum == OP_COPY)
+> +			SET_CSTATE_FLAG(cstate, NO_VERIFY_FH);
+> +	}
 
---b.
+So, if a compound has a COPY anywhere in it, then a PUTFH with a stale
+filehandle anywhere in the compound will temporarily succeed and result in
+IS_STALE_FH being set.
 
-Chuck Lever (9):
-      sunrpc: Const-ify instances of struct svc_xprt_ops
-      nfsd: Const-ify NFSv4 encoding and decoding ops arrays
-      sunrpc: Const-ify struct sv_serv_ops
-      svcrdma: Clean up svc_rdma_build_read_chunk()
-      nfsd: Incoming xdr_bufs may have content in tail buffer
-      svcrdma: Populate tail iovec when receiving
-      svcrdma: Limit RQ depth
-      rdma core: Add rdma_rw_mr_payload()
-      svcrdma: Estimate Send Queue depth properly
+>  	while (!status && resp->opcnt < args->opcnt) {
+>  		op = &args->ops[resp->opcnt++];
+>  
+> @@ -1810,6 +1843,9 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  
+>  		opdesc = OPDESC(op);
+>  
+> +		if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
+> +			goto call_op;
+> +
 
-J. Bruce Fields (6):
-      nfsd4: move some nfsd4 op definitions to xdr4.h
-      nfsd4: opdesc will be useful outside nfs4proc.c
-      nfsd4: define ->op_release for compound ops
-      nfsd4: skip encoder in trivial error cases
-      nfsd4: individual encoders no longer see error cases
-      merge nfsd 4.13 bugfixes into nfsd for-4.14 branch
+That means that once IS_STALE_FH is set, we will skip:
 
- Documentation/device-mapper/dm-raid.txt            |    1 +
- .../bindings/crypto/inside-secure-safexcel.txt     |    2 -
- .../devicetree/bindings/mmc/exynos-dw-mshc.txt     |    1 -
- .../devicetree/bindings/mmc/img-dw-mshc.txt        |    1 -
- .../devicetree/bindings/mmc/k3-dw-mshc.txt         |    2 -
- .../devicetree/bindings/mmc/synopsys-dw-mshc.txt   |   16 +-
- .../devicetree/bindings/mmc/zx-dw-mshc.txt         |    1 -
- .../devicetree/bindings/net/brcm,amac.txt          |    1 +
- .../devicetree/bindings/net/brcm,bgmac-nsp.txt     |   24 -
- .../devicetree/bindings/nvmem/rockchip-efuse.txt   |    2 +-
- .../devicetree/bindings/ptp/brcm,ptp-dte.txt       |   15 +-
- .../devicetree/bindings/serial/fsl-imx-uart.txt    |    2 -
- MAINTAINERS                                        | 5110 ++++++++++----------
- Makefile                                           |    2 +-
- arch/alpha/include/uapi/asm/ioctls.h               |    2 +-
- arch/arc/mm/dma.c                                  |    2 +-
- arch/arm/include/asm/bug.h                         |    2 +-
- arch/arm/include/asm/cacheflush.h                  |    2 +-
- arch/arm/include/asm/kexec.h                       |    5 +
- arch/arm/include/asm/ucontext.h                    |    6 +
- arch/arm/kernel/machine_kexec.c                    |   11 +-
- arch/arm/kernel/setup.c                            |    3 +
- arch/arm/kernel/signal.c                           |   78 +-
- arch/arm/mach-omap2/hsmmc.c                        |  239 +-
- arch/arm/mach-omap2/hsmmc.h                        |    9 -
- arch/arm/mach-ux500/cpu-db8500.c                   |    1 +
- arch/arm/mm/dma-mapping-nommu.c                    |   45 +-
- arch/arm/mm/dma-mapping.c                          |    2 +-
- arch/arm64/include/asm/atomic_lse.h                |    2 +-
- arch/arm64/include/asm/bug.h                       |    2 +-
- arch/arm64/include/asm/sysreg.h                    |    4 +-
- arch/arm64/include/asm/uaccess.h                   |    2 +-
- arch/arm64/kernel/cpu_ops.c                        |    4 +-
- arch/arm64/kernel/smp.c                            |   12 +-
- arch/arm64/kernel/topology.c                       |   22 +-
- arch/arm64/kernel/traps.c                          |    8 +-
- arch/arm64/lib/copy_page.S                         |    9 +-
- arch/arm64/mm/dma-mapping.c                        |    4 +-
- arch/arm64/mm/mmu.c                                |   18 +-
- arch/arm64/mm/numa.c                               |    7 +-
- arch/blackfin/include/asm/bug.h                    |    4 +-
- arch/blackfin/include/asm/flat.h                   |    3 +-
- arch/blackfin/kernel/flat.c                        |    4 +-
- arch/h8300/include/asm/flat.h                      |    2 +-
- arch/m68k/include/asm/flat.h                       |    3 +-
- arch/mips/include/uapi/asm/ioctls.h                |    2 +-
- arch/mips/mm/dma-default.c                         |    2 +-
- arch/mn10300/include/asm/bug.h                     |    2 +-
- arch/parisc/configs/712_defconfig                  |   41 +-
- arch/parisc/configs/a500_defconfig                 |   50 +-
- arch/parisc/configs/b180_defconfig                 |   17 +-
- arch/parisc/configs/c3000_defconfig                |   38 +-
- arch/parisc/configs/c8000_defconfig                |   17 +-
- arch/parisc/configs/default_defconfig              |   49 +-
- arch/parisc/configs/generic-32bit_defconfig        |   21 +-
- arch/parisc/configs/generic-64bit_defconfig        |   48 +-
- arch/parisc/include/asm/bug.h                      |    6 +-
- arch/parisc/include/asm/pdcpat.h                   |   16 +-
- arch/parisc/include/uapi/asm/ioctls.h              |    2 +-
- arch/parisc/kernel/cache.c                         |   36 +-
- arch/parisc/kernel/firmware.c                      |   36 +-
- arch/parisc/kernel/irq.c                           |    8 +-
- arch/parisc/kernel/pdt.c                           |   23 +-
- arch/parisc/kernel/process.c                       |    2 +
- arch/parisc/kernel/vmlinux.lds.S                   |    2 +
- arch/powerpc/Makefile                              |   25 +-
- arch/powerpc/include/asm/book3s/64/hash.h          |    1 +
- arch/powerpc/include/asm/book3s/64/mmu.h           |   15 +-
- arch/powerpc/include/asm/book3s/64/pgtable.h       |    1 +
- arch/powerpc/include/asm/book3s/64/radix.h         |    1 +
- arch/powerpc/include/asm/bug.h                     |    8 +-
- arch/powerpc/include/asm/mmu_context.h             |   18 +-
- arch/powerpc/include/asm/pgtable.h                 |    7 +
- arch/powerpc/include/uapi/asm/ioctls.h             |    2 +-
- arch/powerpc/kernel/exceptions-64s.S               |   28 +-
- arch/powerpc/kernel/idle_book3s.S                  |   15 +-
- arch/powerpc/kvm/book3s_64_mmu_hv.c                |    4 +-
- arch/powerpc/kvm/book3s_hv.c                       |    2 +
- arch/powerpc/kvm/book3s_hv_rmhandlers.S            |   59 +-
- arch/powerpc/mm/mem.c                              |    1 +
- arch/powerpc/mm/mmu_context_book3s64.c             |    5 +-
- arch/powerpc/mm/pgtable-hash64.c                   |   44 +-
- arch/powerpc/mm/pgtable-radix.c                    |   62 +-
- arch/powerpc/mm/pgtable_64.c                       |    8 +
- arch/powerpc/mm/subpage-prot.c                     |    2 +-
- arch/powerpc/mm/tlb-radix.c                        |   45 +-
- arch/powerpc/platforms/powernv/opal.c              |    2 +-
- arch/powerpc/platforms/pseries/reconfig.c          |    1 -
- arch/s390/include/asm/bug.h                        |    4 +-
- arch/s390/kernel/perf_cpum_sf.c                    |    2 +-
- arch/s390/kvm/kvm-s390.c                           |    8 +-
- arch/s390/mm/pgtable.c                             |    6 +-
- arch/sh/include/asm/bug.h                          |    4 +-
- arch/sh/include/uapi/asm/ioctls.h                  |    2 +-
- arch/sparc/include/asm/trap_block.h                |    1 +
- arch/sparc/include/uapi/asm/ioctls.h               |    2 +-
- arch/sparc/kernel/pci_sun4v.c                      |   12 +-
- arch/sparc/kernel/smp_64.c                         |  185 +-
- arch/sparc/kernel/sun4v_ivec.S                     |   15 +
- arch/sparc/kernel/traps_64.c                       |    1 +
- arch/x86/Kconfig.debug                             |    1 +
- arch/x86/boot/Makefile                             |    5 +-
- arch/x86/boot/compressed/Makefile                  |    1 +
- arch/x86/boot/string.c                             |    9 +
- arch/x86/configs/i386_defconfig                    |    3 -
- arch/x86/configs/x86_64_defconfig                  |    3 -
- arch/x86/entry/entry_64.S                          |    1 +
- arch/x86/events/core.c                             |    4 +-
- arch/x86/events/intel/core.c                       |  164 +-
- arch/x86/events/intel/cstate.c                     |   26 +-
- arch/x86/events/intel/ds.c                         |   22 +-
- arch/x86/events/intel/lbr.c                        |    4 +
- arch/x86/events/intel/uncore_snbep.c               |   51 +-
- arch/x86/events/perf_event.h                       |    2 +
- arch/x86/include/asm/bug.h                         |    4 +-
- arch/x86/include/asm/entry_arch.h                  |    2 +
- arch/x86/include/asm/hardirq.h                     |    1 +
- arch/x86/include/asm/hw_irq.h                      |    2 +
- arch/x86/include/asm/io.h                          |    4 +-
- arch/x86/include/asm/irq_vectors.h                 |    3 +-
- arch/x86/include/asm/kprobes.h                     |    8 +-
- arch/x86/include/asm/mmu_context.h                 |    2 +-
- arch/x86/include/asm/paravirt_types.h              |   16 +-
- arch/x86/include/asm/processor.h                   |    2 +-
- arch/x86/kernel/acpi/boot.c                        |    8 +
- arch/x86/kernel/apic/io_apic.c                     |    2 +-
- arch/x86/kernel/cpu/amd.c                          |    1 +
- arch/x86/kernel/devicetree.c                       |    3 +-
- arch/x86/kernel/irq.c                              |   19 +
- arch/x86/kernel/irqinit.c                          |    2 +
- arch/x86/kernel/kprobes/core.c                     |   10 +-
- arch/x86/kernel/reboot.c                           |    6 +-
- arch/x86/kvm/Kconfig                               |    2 +-
- arch/x86/kvm/hyperv.c                              |    7 +-
- arch/x86/kvm/lapic.c                               |   17 +-
- arch/x86/kvm/vmx.c                                 |   71 +-
- arch/x86/kvm/x86.c                                 |    4 +-
- arch/x86/math-emu/Makefile                         |    4 +-
- arch/x86/math-emu/fpu_emu.h                        |    2 +-
- arch/x86/math-emu/reg_compare.c                    |   16 +-
- .../intel-mid/device_libs/platform_max7315.c       |    6 +-
- arch/x86/platform/uv/tlb_uv.c                      |   29 +-
- arch/x86/xen/smp_pv.c                              |    3 +-
- arch/x86/xen/time.c                                |    1 -
- arch/xtensa/include/uapi/asm/ioctls.h              |    2 +-
- block/bfq-iosched.c                                |    3 +
- block/bfq-iosched.h                                |    2 +-
- block/bfq-wf2q.c                                   |    2 +-
- block/blk-core.c                                   |    4 +
- block/blk-mq-cpumap.c                              |    4 +-
- crypto/authencesn.c                                |    5 +
- drivers/acpi/ec.c                                  |   39 +
- drivers/acpi/internal.h                            |    4 +
- drivers/acpi/nfit/core.c                           |   10 +-
- drivers/acpi/numa.c                                |    2 +-
- drivers/acpi/sleep.c                               |    6 +-
- drivers/android/binder.c                           |   17 +-
- drivers/atm/zatm.c                                 |    2 +-
- drivers/base/dma-coherent.c                        |  164 +-
- drivers/base/dma-mapping.c                         |    2 +-
- drivers/base/power/domain.c                        |    8 +-
- drivers/base/regmap/regmap-w1.c                    |    4 +-
- drivers/block/nbd.c                                |   20 +-
- drivers/block/virtio_blk.c                         |    7 +-
- drivers/block/xen-blkfront.c                       |   25 +-
- drivers/clocksource/timer-of.c                     |   12 +-
- drivers/cpufreq/intel_pstate.c                     |   21 +-
- drivers/crypto/Kconfig                             |    2 +-
- drivers/crypto/bcm/spu2.c                          |    1 +
- drivers/crypto/cavium/nitrox/nitrox_main.c         |    3 +-
- drivers/crypto/inside-secure/safexcel.c            |    5 +-
- drivers/dax/device-dax.h                           |    2 +-
- drivers/dax/device.c                               |   33 +-
- drivers/dax/pmem.c                                 |   12 +-
- drivers/dax/super.c                                |    6 +
- drivers/dma-buf/dma-fence.c                        |   17 +-
- drivers/dma-buf/sync_debug.c                       |    2 +-
- drivers/dma-buf/sync_file.c                        |    8 +-
- drivers/fsi/fsi-core.c                             |    7 +-
- drivers/gpu/drm/amd/amdgpu/amdgpu_amdkfd.c         |    3 +-
- drivers/gpu/drm/amd/amdgpu/amdgpu_bo_list.c        |   10 +-
- drivers/gpu/drm/amd/amdgpu/gfx_v9_0.c              |   24 +-
- drivers/gpu/drm/amd/amdkfd/kfd_device.c            |    4 -
- .../gpu/drm/amd/amdkfd/kfd_device_queue_manager.c  |    7 -
- .../gpu/drm/amd/amdkfd/kfd_device_queue_manager.h  |    1 -
- drivers/gpu/drm/amd/include/kgd_kfd_interface.h    |    3 -
- drivers/gpu/drm/amd/powerplay/hwmgr/vega10_hwmgr.c |   12 +-
- drivers/gpu/drm/drm_dp_helper.c                    |    5 +-
- drivers/gpu/drm/drm_dp_mst_topology.c              |   41 +-
- drivers/gpu/drm/exynos/Kconfig                     |    1 +
- drivers/gpu/drm/exynos/exynos_drm_drv.c            |    1 -
- drivers/gpu/drm/exynos/exynos_drm_dsi.c            |   10 +-
- drivers/gpu/drm/exynos/exynos_drm_mic.c            |   24 +-
- drivers/gpu/drm/exynos/exynos_hdmi.c               |   10 +-
- drivers/gpu/drm/exynos/exynos_mixer.c              |   10 +-
- drivers/gpu/drm/i915/gvt/display.c                 |   22 +-
- drivers/gpu/drm/i915/i915_gem_clflush.c            |    7 +-
- drivers/gpu/drm/i915/i915_gem_clflush.h            |    2 +-
- drivers/gpu/drm/i915/i915_gem_execbuffer.c         |   24 +-
- drivers/gpu/drm/i915/i915_vma.h                    |    2 +-
- drivers/gpu/drm/i915/intel_ddi.c                   |    4 +-
- drivers/gpu/drm/i915/intel_display.c               |   86 +-
- drivers/gpu/drm/i915/intel_gvt.c                   |    2 +-
- drivers/gpu/drm/i915/intel_pm.c                    |    4 +-
- drivers/gpu/drm/i915/selftests/mock_gem_device.c   |    2 +-
- drivers/gpu/drm/imx/ipuv3-plane.c                  |    2 +-
- drivers/gpu/drm/imx/parallel-display.c             |    2 +-
- drivers/gpu/drm/nouveau/nouveau_connector.c        |    2 -
- drivers/gpu/drm/nouveau/nouveau_display.c          |    5 -
- drivers/gpu/drm/nouveau/nv50_display.c             |   31 +-
- drivers/gpu/drm/nouveau/nvkm/engine/disp/ior.h     |    1 +
- drivers/gpu/drm/nouveau/nvkm/engine/disp/nv50.h    |    2 +-
- drivers/gpu/drm/nouveau/nvkm/engine/disp/outp.c    |    1 +
- drivers/gpu/drm/nouveau/nvkm/subdev/bar/gf100.c    |    2 +-
- drivers/gpu/drm/nouveau/nvkm/subdev/i2c/Kbuild     |    1 +
- drivers/gpu/drm/nouveau/nvkm/subdev/i2c/aux.c      |    4 +
- drivers/gpu/drm/nouveau/nvkm/subdev/i2c/aux.h      |    6 +
- drivers/gpu/drm/nouveau/nvkm/subdev/i2c/auxg94.c   |   30 +-
- drivers/gpu/drm/nouveau/nvkm/subdev/i2c/auxgf119.c |   35 +
- drivers/gpu/drm/nouveau/nvkm/subdev/i2c/auxgm200.c |    5 +-
- drivers/gpu/drm/nouveau/nvkm/subdev/i2c/padgf119.c |    4 +-
- drivers/gpu/drm/radeon/radeon_kfd.c                |    1 -
- drivers/gpu/drm/rockchip/Kconfig                   |   19 +-
- drivers/gpu/drm/vc4/vc4_crtc.c                     |   66 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_buffer.c             |   24 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf.c             |   10 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_cmdbuf_res.c         |    4 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_context.c            |    6 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_cotable.c            |    2 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_drv.c                |    8 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_execbuf.c            |    8 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_fence.c              |   10 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_gmrid_manager.c      |    2 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_kms.c                |    9 +
- drivers/gpu/drm/vmwgfx/vmwgfx_mob.c                |    6 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_msg.c                |    6 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_resource.c           |    4 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_shader.c             |    6 +-
- drivers/gpu/drm/vmwgfx/vmwgfx_stdu.c               |    4 +-
- drivers/gpu/host1x/dev.c                           |    8 +-
- drivers/hid/hid-core.c                             |    1 +
- drivers/hid/hid-ids.h                              |    1 +
- drivers/hid/hid-logitech-hidpp.c                   |    3 +
- drivers/hid/hid-multitouch.c                       |   16 +-
- drivers/hid/hid-ortek.c                            |    6 +-
- drivers/hid/usbhid/hid-core.c                      |   16 +-
- drivers/hv/channel.c                               |    2 +
- drivers/hwmon/applesmc.c                           |   13 +-
- drivers/ide/ide-timings.c                          |   18 +-
- drivers/infiniband/core/addr.c                     |   46 +-
- drivers/infiniband/core/cma.c                      |   34 +-
- drivers/infiniband/core/roce_gid_mgmt.c            |   11 +-
- drivers/infiniband/core/rw.c                       |   24 +
- drivers/infiniband/core/uverbs_cmd.c               |   36 +-
- drivers/infiniband/core/verbs.c                    |   51 +-
- drivers/infiniband/hw/bnxt_re/bnxt_re.h            |    9 +
- drivers/infiniband/hw/bnxt_re/ib_verbs.c           |  119 +-
- drivers/infiniband/hw/bnxt_re/ib_verbs.h           |    3 +-
- drivers/infiniband/hw/bnxt_re/main.c               |    1 +
- drivers/infiniband/hw/bnxt_re/qplib_fp.c           |   29 +
- drivers/infiniband/hw/bnxt_re/qplib_fp.h           |    1 +
- drivers/infiniband/hw/bnxt_re/qplib_sp.c           |   16 +
- drivers/infiniband/hw/bnxt_re/qplib_sp.h           |    3 +
- drivers/infiniband/hw/cxgb3/iwch_provider.c        |    9 +-
- drivers/infiniband/hw/cxgb4/cq.c                   |    1 +
- drivers/infiniband/hw/cxgb4/qp.c                   |    2 +-
- drivers/infiniband/hw/hfi1/chip.c                  |    7 +-
- drivers/infiniband/hw/hfi1/qp.c                    |    7 +-
- drivers/infiniband/hw/hfi1/qp.h                    |    3 +-
- drivers/infiniband/hw/hns/hns_roce_hw_v1.c         |   86 +-
- drivers/infiniband/hw/hns/hns_roce_main.c          |    3 -
- drivers/infiniband/hw/i40iw/i40iw.h                |    1 +
- drivers/infiniband/hw/i40iw/i40iw_cm.c             |    5 +-
- drivers/infiniband/hw/i40iw/i40iw_ctrl.c           |    2 +
- drivers/infiniband/hw/i40iw/i40iw_main.c           |   60 +-
- drivers/infiniband/hw/i40iw/i40iw_puda.c           |    5 +-
- drivers/infiniband/hw/i40iw/i40iw_utils.c          |   60 +-
- drivers/infiniband/hw/i40iw/i40iw_verbs.c          |   19 +-
- drivers/infiniband/hw/i40iw/i40iw_verbs.h          |    2 +-
- drivers/infiniband/hw/mlx4/cm.c                    |    4 +
- drivers/infiniband/hw/mlx4/cq.c                    |    6 +-
- drivers/infiniband/hw/mlx4/main.c                  |    2 +-
- drivers/infiniband/hw/mlx4/mcg.c                   |    2 +-
- drivers/infiniband/hw/mlx4/mlx4_ib.h               |    1 -
- drivers/infiniband/hw/mlx4/qp.c                    |   40 +-
- drivers/infiniband/hw/mlx4/srq.c                   |    8 +-
- drivers/infiniband/hw/mlx5/mr.c                    |   38 +-
- drivers/infiniband/hw/nes/nes_hw.c                 |    4 +-
- drivers/infiniband/hw/ocrdma/ocrdma_verbs.c        |    4 +-
- drivers/infiniband/hw/qedr/verbs.c                 |   16 +-
- drivers/infiniband/hw/qib/qib_qp.c                 |   15 +-
- drivers/infiniband/hw/qib/qib_verbs.h              |    4 +-
- drivers/infiniband/sw/rdmavt/qp.c                  |   52 +-
- drivers/infiniband/sw/rxe/rxe_net.c                |    3 +
- drivers/infiniband/sw/rxe/rxe_resp.c               |    3 +
- drivers/infiniband/sw/rxe/rxe_verbs.c              |    5 +
- drivers/infiniband/ulp/ipoib/ipoib_cm.c            |   20 +-
- drivers/infiniband/ulp/ipoib/ipoib_ib.c            |    2 +-
- drivers/infiniband/ulp/ipoib/ipoib_main.c          |   32 +-
- drivers/infiniband/ulp/iser/iscsi_iser.c           |   11 +
- drivers/infiniband/ulp/iser/iser_initiator.c       |    6 +-
- drivers/infiniband/ulp/iser/iser_verbs.c           |   10 +-
- drivers/irqchip/irq-digicolor.c                    |    2 +-
- drivers/irqchip/irq-gic-realview.c                 |    2 +-
- drivers/irqchip/irq-mips-cpu.c                     |    2 +-
- drivers/irqchip/irq-mips-gic.c                     |    2 -
- drivers/isdn/divert/isdn_divert.c                  |   25 +-
- drivers/isdn/hardware/avm/c4.c                     |    2 +-
- drivers/isdn/hardware/eicon/divasmain.c            |    2 +-
- drivers/isdn/hardware/mISDN/avmfritz.c             |    2 +-
- drivers/isdn/hardware/mISDN/hfcmulti.c             |    2 +-
- drivers/isdn/hardware/mISDN/hfcpci.c               |    2 +-
- drivers/isdn/hardware/mISDN/netjet.c               |    2 +-
- drivers/isdn/hardware/mISDN/w6692.c                |    2 +-
- drivers/isdn/hisax/config.c                        |    2 +-
- drivers/isdn/hisax/hfc4s8s_l1.c                    |    2 +-
- drivers/isdn/hisax/hisax_fcpcipnp.c                |    2 +-
- drivers/lightnvm/pblk-rb.c                         |    4 +-
- drivers/lightnvm/pblk-read.c                       |   23 +-
- drivers/lightnvm/pblk.h                            |    2 +-
- drivers/md/bitmap.c                                |    3 +-
- drivers/md/dm-bufio.c                              |    3 +-
- drivers/md/dm-integrity.c                          |   22 +-
- drivers/md/dm-raid.c                               |   29 +-
- drivers/md/dm-table.c                              |   35 +
- drivers/md/dm-verity-fec.c                         |   21 +-
- drivers/md/dm-zoned-metadata.c                     |   12 +-
- drivers/md/dm-zoned-reclaim.c                      |    2 +-
- drivers/md/dm-zoned-target.c                       |    8 +-
- drivers/md/md.c                                    |    2 +-
- drivers/md/md.h                                    |   58 +-
- drivers/md/raid1-10.c                              |   81 +
- drivers/md/raid1.c                                 |   68 +-
- drivers/md/raid10.c                                |   25 +-
- drivers/md/raid5-ppl.c                             |    2 +-
- drivers/md/raid5.c                                 |   15 +-
- drivers/mmc/host/dw_mmc.c                          |    2 +-
- drivers/mmc/host/omap_hsmmc.c                      |   11 -
- drivers/mmc/host/sunxi-mmc.c                       |    8 +-
- drivers/mux/Kconfig                                |   19 +-
- drivers/mux/mux-core.c                             |    2 +-
- drivers/net/bonding/bond_main.c                    |    2 +-
- drivers/net/dsa/b53/b53_common.c                   |    1 +
- drivers/net/dsa/mv88e6xxx/chip.c                   |    1 +
- drivers/net/ethernet/apm/xgene/xgene_enet_main.c   |   22 +-
- drivers/net/ethernet/broadcom/bgmac-platform.c     |   21 +-
- drivers/net/ethernet/broadcom/bgmac.c              |   70 +-
- drivers/net/ethernet/broadcom/bgmac.h              |    1 +
- .../net/ethernet/broadcom/bnx2x/bnx2x_ethtool.c    |    7 +-
- drivers/net/ethernet/broadcom/genet/bcmgenet.c     |  299 +-
- drivers/net/ethernet/broadcom/genet/bcmgenet.h     |    2 +
- drivers/net/ethernet/cavium/liquidio/lio_ethtool.c |    2 +-
- drivers/net/ethernet/cavium/thunder/thunder_bgx.c  |    2 +-
- drivers/net/ethernet/chelsio/cxgb4/cxgb4_ptp.c     |    3 +-
- drivers/net/ethernet/chelsio/cxgb4/t4_pci_id_tbl.h |    2 +
- drivers/net/ethernet/hisilicon/hns/hns_ae_adapt.c  |    3 +-
- drivers/net/ethernet/hisilicon/hns/hns_dsaf_misc.c |   58 +-
- drivers/net/ethernet/mellanox/mlx4/alloc.c         |   37 +-
- drivers/net/ethernet/mellanox/mlx4/cq.c            |    4 +-
- drivers/net/ethernet/mellanox/mlx4/en_rx.c         |    7 +-
- drivers/net/ethernet/mellanox/mlx4/en_tx.c         |    2 +-
- drivers/net/ethernet/mellanox/mlx4/icm.c           |    7 +-
- drivers/net/ethernet/mellanox/mlx4/icm.h           |    3 +-
- drivers/net/ethernet/mellanox/mlx4/mlx4.h          |    4 +-
- drivers/net/ethernet/mellanox/mlx4/mr.c            |   17 +-
- drivers/net/ethernet/mellanox/mlx4/qp.c            |   20 +-
- .../net/ethernet/mellanox/mlx4/resource_tracker.c  |    4 +-
- drivers/net/ethernet/mellanox/mlx4/srq.c           |    4 +-
- drivers/net/ethernet/qualcomm/emac/emac.c          |   10 +-
- drivers/net/ethernet/sgi/ioc3-eth.c                |   14 +-
- drivers/net/ethernet/stmicro/stmmac/dwmac4_core.c  |    2 +-
- drivers/net/ethernet/stmicro/stmmac/stmmac_main.c  |    9 +-
- drivers/net/ethernet/sun/niu.c                     |    4 +-
- drivers/net/ethernet/tehuti/tehuti.c               |    2 +
- drivers/net/ethernet/ti/cpsw.c                     |   49 +-
- drivers/net/phy/mdio-mux.c                         |    4 +-
- drivers/net/ppp/ppp_generic.c                      |   30 +-
- drivers/net/usb/cdc_ncm.c                          |   28 +
- drivers/net/usb/huawei_cdc_ncm.c                   |    6 +
- drivers/net/usb/smsc95xx.c                         |    1 +
- drivers/net/virtio_net.c                           |    2 +-
- drivers/net/vmxnet3/vmxnet3_int.h                  |    2 +-
- drivers/net/wireless/ralink/rt2x00/rt2800lib.c     |    2 +-
- drivers/nvdimm/core.c                              |    7 +-
- drivers/nvme/host/core.c                           |    8 +-
- drivers/nvme/host/fc.c                             |  121 +-
- drivers/nvme/host/pci.c                            |   49 +-
- drivers/nvme/target/admin-cmd.c                    |   16 +-
- drivers/nvme/target/configfs.c                     |   30 +-
- drivers/nvme/target/core.c                         |    5 +-
- drivers/nvme/target/fc.c                           |  109 +-
- drivers/nvme/target/nvmet.h                        |    2 +-
- drivers/nvmem/rockchip-efuse.c                     |    2 +-
- drivers/of/irq.c                                   |    2 +-
- drivers/parisc/pdc_stable.c                        |    2 +-
- drivers/perf/arm_pmu.c                             |   41 +-
- drivers/perf/arm_pmu_platform.c                    |    9 +-
- drivers/perf/qcom_l2_pmu.c                         |    2 +
- drivers/s390/cio/chp.c                             |    1 +
- drivers/scsi/cxlflash/main.c                       |   11 +-
- drivers/scsi/hisi_sas/hisi_sas_v2_hw.c             |   10 +-
- drivers/scsi/hpsa.c                                |    2 +-
- drivers/scsi/isci/request.c                        |   14 +-
- drivers/scsi/libfc/fc_disc.c                       |    2 +-
- drivers/scsi/qedf/qedf_main.c                      |    2 +-
- drivers/scsi/qedi/qedi.h                           |   17 +
- drivers/scsi/qedi/qedi_fw.c                        |    2 +-
- drivers/scsi/qedi/qedi_main.c                      |  419 ++
- drivers/scsi/qedi/qedi_nvm_iscsi_cfg.h             |  210 +
- drivers/scsi/qla2xxx/qla_target.c                  |    2 +-
- drivers/scsi/sg.c                                  |    8 +-
- drivers/scsi/smartpqi/smartpqi.h                   |    2 +-
- drivers/scsi/virtio_scsi.c                         |    1 +
- drivers/spmi/spmi-pmic-arb.c                       |   17 +-
- drivers/spmi/spmi.c                                |   12 +
- drivers/staging/Kconfig                            |    2 +
- drivers/staging/Makefile                           |    1 +
- drivers/staging/comedi/drivers/ni_mio_common.c     |    3 +-
- .../staging/lustre/lnet/klnds/o2iblnd/o2iblnd_cb.c |   19 +-
- drivers/staging/rtl8188eu/core/rtw_cmd.c           |    2 +-
- drivers/staging/rtl8188eu/os_dep/usb_intf.c        |    1 +
- drivers/staging/sm750fb/ddk750_chip.c              |    2 +-
- drivers/staging/sm750fb/sm750.c                    |   24 +
- drivers/staging/speakup/main.c                     |    2 +
- drivers/staging/speakup/spk_priv.h                 |    2 +
- drivers/staging/speakup/spk_ttyio.c                |   22 +-
- drivers/staging/vboxvideo/Kconfig                  |   12 +
- drivers/staging/vboxvideo/Makefile                 |    7 +
- drivers/staging/vboxvideo/TODO                     |    9 +
- drivers/staging/vboxvideo/hgsmi_base.c             |  246 +
- drivers/staging/vboxvideo/hgsmi_ch_setup.h         |   66 +
- drivers/staging/vboxvideo/hgsmi_channels.h         |   53 +
- drivers/staging/vboxvideo/hgsmi_defs.h             |   92 +
- drivers/staging/vboxvideo/modesetting.c            |  142 +
- drivers/staging/vboxvideo/vbox_drv.c               |  286 ++
- drivers/staging/vboxvideo/vbox_drv.h               |  296 ++
- drivers/staging/vboxvideo/vbox_err.h               |   50 +
- drivers/staging/vboxvideo/vbox_fb.c                |  412 ++
- drivers/staging/vboxvideo/vbox_hgsmi.c             |  115 +
- drivers/staging/vboxvideo/vbox_irq.c               |  197 +
- drivers/staging/vboxvideo/vbox_main.c              |  534 ++
- drivers/staging/vboxvideo/vbox_mode.c              |  877 ++++
- drivers/staging/vboxvideo/vbox_prime.c             |   74 +
- drivers/staging/vboxvideo/vbox_ttm.c               |  472 ++
- drivers/staging/vboxvideo/vboxvideo.h              |  491 ++
- drivers/staging/vboxvideo/vboxvideo_guest.h        |   95 +
- drivers/staging/vboxvideo/vboxvideo_vbe.h          |   84 +
- drivers/staging/vboxvideo/vbva_base.c              |  233 +
- .../vc04_services/interface/vchiq_arm/vchiq_arm.c  |   10 +-
- drivers/thunderbolt/switch.c                       |   11 +-
- drivers/thunderbolt/tb.h                           |    4 +-
- drivers/thunderbolt/tb_msgs.h                      |   12 +-
- drivers/tty/pty.c                                  |   85 +-
- drivers/tty/serial/fsl_lpuart.c                    |   24 +-
- drivers/tty/serial/imx.c                           |   27 +-
- drivers/tty/serial/sh-sci.c                        |   12 +-
- drivers/tty/serial/st-asc.c                        |    1 +
- drivers/usb/class/cdc-acm.c                        |    3 +
- drivers/usb/dwc2/gadget.c                          |    3 +
- drivers/usb/dwc3/core.c                            |    6 +-
- drivers/usb/dwc3/dwc3-omap.c                       |   18 +-
- drivers/usb/dwc3/gadget.c                          |    8 +-
- drivers/usb/gadget/function/f_mass_storage.c       |    2 +-
- drivers/usb/gadget/function/f_uac1.c               |   20 +-
- drivers/usb/gadget/function/f_uac2.c               |   25 +-
- drivers/usb/gadget/udc/Kconfig                     |    5 +-
- drivers/usb/gadget/udc/renesas_usb3.c              |   14 +-
- drivers/usb/gadget/udc/snps_udc_plat.c             |    6 +-
- drivers/usb/host/pci-quirks.c                      |   54 +
- drivers/usb/host/pci-quirks.h                      |    2 +
- drivers/usb/host/xhci-hub.c                        |   14 +-
- drivers/usb/host/xhci-pci.c                        |    6 +
- drivers/usb/host/xhci-ring.c                       |   11 +-
- drivers/usb/host/xhci.c                            |   10 +-
- drivers/usb/host/xhci.h                            |    1 +
- drivers/usb/renesas_usbhs/common.c                 |    4 +-
- drivers/usb/renesas_usbhs/mod_gadget.c             |   31 +-
- drivers/usb/storage/isd200.c                       |    5 +-
- drivers/usb/typec/ucsi/ucsi.h                      |    1 +
- drivers/virtio/virtio_balloon.c                    |   28 +-
- drivers/w1/masters/omap_hdq.c                      |    3 +-
- drivers/w1/w1.c                                    |    4 +-
- drivers/xen/balloon.c                              |    3 +
- drivers/xen/events/events_base.c                   |   13 +-
- drivers/xen/grant-table.c                          |    9 +-
- drivers/xen/xen-balloon.c                          |   22 +-
- drivers/xen/xen-selfballoon.c                      |    4 +-
- drivers/xen/xenfs/super.c                          |    1 -
- fs/binfmt_flat.c                                   |    2 +-
- fs/btrfs/extent-tree.c                             |   11 +-
- fs/btrfs/tree-log.c                                |    3 +-
- fs/btrfs/volumes.c                                 |    4 +-
- fs/ceph/dir.c                                      |    5 +
- fs/ext2/acl.c                                      |   43 +-
- fs/f2fs/acl.c                                      |    2 +-
- fs/f2fs/checkpoint.c                               |   10 +
- fs/f2fs/file.c                                     |    5 +-
- fs/f2fs/sysfs.c                                    |    1 +
- fs/hfsplus/posix_acl.c                             |   30 +-
- fs/isofs/inode.c                                   |    8 +-
- fs/jfs/acl.c                                       |   24 +-
- fs/jfs/resize.c                                    |    4 +-
- fs/jfs/super.c                                     |    4 +-
- fs/lockd/svc.c                                     |    2 +-
- fs/mount.h                                         |    4 +-
- fs/namei.c                                         |    2 +-
- fs/nfs/callback.c                                  |   10 +-
- fs/nfs/client.c                                    |    1 +
- fs/nfs/dir.c                                       |   47 +-
- fs/nfs/file.c                                      |    4 +-
- fs/nfs/filelayout/filelayout.c                     |   13 +-
- fs/nfs/flexfilelayout/flexfilelayout.c             |    4 +
- fs/nfs/mount_clnt.c                                |    2 +-
- fs/nfs/nfs3proc.c                                  |   11 +-
- fs/nfs/nfs4proc.c                                  |   14 +-
- fs/nfs/pnfs_nfs.c                                  |   24 +-
- fs/nfsd/nfs4proc.c                                 |  110 +-
- fs/nfsd/nfs4xdr.c                                  |  346 +-
- fs/nfsd/nfssvc.c                                   |    2 +-
- fs/nfsd/xdr4.h                                     |   50 +
- fs/overlayfs/dir.c                                 |   22 +-
- fs/overlayfs/inode.c                               |   32 +-
- fs/overlayfs/namei.c                               |   41 +-
- fs/overlayfs/overlayfs.h                           |   10 +-
- fs/overlayfs/readdir.c                             |    5 +-
- fs/overlayfs/super.c                               |   13 +-
- fs/overlayfs/util.c                                |    7 +-
- fs/proc/internal.h                                 |    6 +-
- fs/reiserfs/xattr_acl.c                            |   17 +-
- fs/xfs/libxfs/xfs_bmap.c                           |   21 +
- fs/xfs/libxfs/xfs_btree.c                          |    6 +-
- fs/xfs/libxfs/xfs_dir2_data.c                      |    4 +
- fs/xfs/libxfs/xfs_refcount.c                       |    4 +
- fs/xfs/xfs_qm.c                                    |    3 +
- fs/xfs/xfs_reflink.c                               |    4 +-
- include/acpi/acpi_numa.h                           |    1 +
- include/linux/binfmts.h                            |    4 +-
- include/linux/bpf-cgroup.h                         |    2 +-
- include/linux/bpf_verifier.h                       |    1 +
- include/linux/cdev.h                               |    2 +-
- include/linux/ceph/ceph_features.h                 |    8 +-
- include/linux/compiler-gcc.h                       |   13 +-
- include/linux/compiler.h                           |    5 +
- include/linux/cred.h                               |    4 +-
- include/linux/dax.h                                |    1 +
- include/linux/dcache.h                             |    2 +-
- include/linux/dma-fence.h                          |    2 +
- include/linux/dma-mapping.h                        |   40 +-
- include/linux/fs.h                                 |   17 +-
- include/linux/fs_struct.h                          |    2 +-
- include/linux/ftrace.h                             |    6 +-
- include/linux/ipc.h                                |    2 +-
- include/linux/ipc_namespace.h                      |    2 +-
- include/linux/irq.h                                |    7 +-
- include/linux/jhash.h                              |   29 +-
- include/linux/key-type.h                           |    4 +-
- include/linux/kmod.h                               |    2 +-
- include/linux/kobject.h                            |    2 +-
- include/linux/kvm_host.h                           |    1 +
- include/linux/llist.h                              |   21 +-
- include/linux/lsm_hooks.h                          |    4 +-
- include/linux/mlx4/device.h                        |   10 +-
- include/linux/mm_types.h                           |    4 +-
- include/linux/module.h                             |    4 +-
- include/linux/mount.h                              |    2 +-
- include/linux/msg.h                                |    2 +-
- include/linux/netfilter.h                          |    9 -
- include/linux/nfs_fs.h                             |    2 +-
- include/linux/nvme-fc.h                            |   19 +
- include/linux/nvme.h                               |   16 +-
- include/linux/path.h                               |    2 +-
- include/linux/perf/arm_pmu.h                       |    4 +
- include/linux/pid_namespace.h                      |    2 +-
- include/linux/platform_data/hsmmc-omap.h           |   10 -
- include/linux/proc_ns.h                            |    2 +-
- include/linux/sched.h                              |   16 +-
- include/linux/sched/signal.h                       |    2 +-
- include/linux/sem.h                                |    2 +-
- include/linux/shm.h                                |    2 +-
- include/linux/sunrpc/svc.h                         |    6 +-
- include/linux/sunrpc/svc_xprt.h                    |    4 +-
- include/linux/sysctl.h                             |    2 +-
- include/linux/trace_events.h                       |    2 +-
- include/linux/tty.h                                |    2 +-
- include/linux/tty_driver.h                         |    4 +-
- include/linux/usb/audio-v2.h                       |   14 +-
- include/linux/usb/cdc_ncm.h                        |    1 +
- include/linux/user_namespace.h                     |    2 +-
- include/linux/utsname.h                            |    2 +-
- include/linux/uuid.h                               |   14 -
- include/linux/wait.h                               |    8 +-
- include/net/af_unix.h                              |    2 +-
- include/net/neighbour.h                            |    2 +-
- include/net/net_namespace.h                        |    2 +-
- include/net/netlink.h                              |    4 +-
- include/net/sctp/sctp.h                            |    4 +
- include/net/sock.h                                 |    2 +-
- include/rdma/ib_addr.h                             |    6 +-
- include/rdma/ib_verbs.h                            |   18 +-
- include/rdma/rdma_vt.h                             |    5 +-
- include/rdma/rdmavt_qp.h                           |   14 +
- include/rdma/rw.h                                  |    2 +
- include/uapi/asm-generic/ioctls.h                  |    2 +-
- include/uapi/linux/usb/audio.h                     |    6 +-
- include/xen/balloon.h                              |    8 +
- kernel/audit.c                                     |    1 +
- kernel/bpf/verifier.c                              |  108 +-
- kernel/cpu.c                                       |    3 +-
- kernel/events/core.c                               |   33 +-
- kernel/futex.c                                     |    4 +-
- kernel/irq/chip.c                                  |   10 -
- kernel/irq/cpuhotplug.c                            |    9 +-
- kernel/irq/internals.h                             |   10 +
- kernel/irq/manage.c                                |   63 +-
- kernel/irq/pm.c                                    |    2 +
- kernel/locking/rtmutex.c                           |    1 -
- kernel/sched/core.c                                |    2 +-
- kernel/sched/cputime.c                             |    6 +-
- kernel/sched/deadline.c                            |   14 +-
- kernel/trace/ftrace.c                              |   41 +-
- kernel/trace/ring_buffer.c                         |   10 +-
- kernel/trace/trace.c                               |    1 +
- kernel/trace/trace.h                               |    6 +-
- lib/test_uuid.c                                    |    2 +-
- net/bridge/br_device.c                             |    3 +-
- net/bridge/br_input.c                              |    3 +-
- net/ceph/messenger.c                               |    6 +-
- net/ceph/osd_client.c                              |    5 +-
- net/ceph/osdmap.c                                  |   31 +-
- net/core/dev_ioctl.c                               |    3 +
- net/core/fib_rules.c                               |    3 +-
- net/core/filter.c                                  |    2 +-
- net/core/netpoll.c                                 |    2 +-
- net/core/rtnetlink.c                               |    4 +-
- net/dccp/input.c                                   |    2 +-
- net/ipv4/fib_frontend.c                            |    9 +-
- net/ipv4/ip_output.c                               |    8 +-
- net/ipv4/netfilter/nf_tables_arp.c                 |    3 +-
- net/ipv4/syncookies.c                              |    1 +
- net/ipv4/tcp_bbr.c                                 |   49 +-
- net/ipv4/udp.c                                     |   13 +-
- net/ipv6/output_core.c                             |    8 +-
- net/ipv6/syncookies.c                              |    1 +
- net/netfilter/core.c                               |  147 +-
- net/netfilter/nf_conntrack_expect.c                |    2 +-
- net/netfilter/nf_nat_core.c                        |   17 +-
- net/netfilter/nfnetlink.c                          |    6 +-
- net/openvswitch/conntrack.c                        |   51 +-
- net/packet/af_packet.c                             |    6 +-
- net/rds/send.c                                     |    6 +-
- net/sched/act_api.c                                |    4 +-
- net/sctp/sm_make_chunk.c                           |    4 +-
- net/sunrpc/svc.c                                   |    6 +-
- net/sunrpc/svcsock.c                               |    6 +-
- net/sunrpc/xprtrdma/svc_rdma_rw.c                  |  116 +-
- net/sunrpc/xprtrdma/svc_rdma_transport.c           |   40 +-
- net/sunrpc/xprtsock.c                              |    2 +
- scripts/dtc/dtx_diff                               |    2 +-
- scripts/parse-maintainers.pl                       |   77 +
- security/keys/internal.h                           |    2 +-
- sound/pci/fm801.c                                  |    4 +-
- sound/pci/hda/patch_conexant.c                     |    1 +
- sound/pci/hda/patch_hdmi.c                         |   27 +
- sound/pci/hda/patch_realtek.c                      |  144 +-
- tools/kvm/kvm_stat/kvm_stat                        |   22 +-
- tools/lib/bpf/bpf.c                                |    4 +-
- tools/lib/bpf/bpf.h                                |    2 +-
- tools/perf/ui/browser.c                            |    2 +-
- tools/perf/util/evsel.c                            |    8 +-
- tools/perf/util/machine.c                          |    2 +-
- tools/testing/selftests/bpf/test_align.c           |    2 +-
- tools/testing/selftests/bpf/test_verifier.c        |  480 +-
- virt/kvm/kvm_main.c                                |   35 +-
- 673 files changed, 14037 insertions(+), 6368 deletions(-)
- delete mode 100644 Documentation/devicetree/bindings/net/brcm,bgmac-nsp.txt
- create mode 100644 drivers/gpu/drm/nouveau/nvkm/subdev/i2c/auxgf119.c
- create mode 100644 drivers/md/raid1-10.c
- create mode 100644 drivers/scsi/qedi/qedi_nvm_iscsi_cfg.h
- create mode 100644 drivers/staging/vboxvideo/Kconfig
- create mode 100644 drivers/staging/vboxvideo/Makefile
- create mode 100644 drivers/staging/vboxvideo/TODO
- create mode 100644 drivers/staging/vboxvideo/hgsmi_base.c
- create mode 100644 drivers/staging/vboxvideo/hgsmi_ch_setup.h
- create mode 100644 drivers/staging/vboxvideo/hgsmi_channels.h
- create mode 100644 drivers/staging/vboxvideo/hgsmi_defs.h
- create mode 100644 drivers/staging/vboxvideo/modesetting.c
- create mode 100644 drivers/staging/vboxvideo/vbox_drv.c
- create mode 100644 drivers/staging/vboxvideo/vbox_drv.h
- create mode 100644 drivers/staging/vboxvideo/vbox_err.h
- create mode 100644 drivers/staging/vboxvideo/vbox_fb.c
- create mode 100644 drivers/staging/vboxvideo/vbox_hgsmi.c
- create mode 100644 drivers/staging/vboxvideo/vbox_irq.c
- create mode 100644 drivers/staging/vboxvideo/vbox_main.c
- create mode 100644 drivers/staging/vboxvideo/vbox_mode.c
- create mode 100644 drivers/staging/vboxvideo/vbox_prime.c
- create mode 100644 drivers/staging/vboxvideo/vbox_ttm.c
- create mode 100644 drivers/staging/vboxvideo/vboxvideo.h
- create mode 100644 drivers/staging/vboxvideo/vboxvideo_guest.h
- create mode 100644 drivers/staging/vboxvideo/vboxvideo_vbe.h
- create mode 100644 drivers/staging/vboxvideo/vbva_base.c
- create mode 100644 scripts/parse-maintainers.pl
+	- nofilehandle checking
+	- moved checking
+	- fh_clear_wcc()
+	- resp_size checking
+	- current stateid capture
+
+on every subsequent op.  Can that really be right?
+
+>  		if (!current_fh->fh_dentry) {
+>  			if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
+>  				op->status = nfserr_nofilehandle;
+> @@ -1844,6 +1880,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  
+>  		if (opdesc->op_get_currentstateid)
+>  			opdesc->op_get_currentstateid(cstate, &op->u);
+> +call_op:
+>  		op->status = opdesc->op_func(rqstp, cstate, &op->u);
+>  
+>  		/* Only from SEQUENCE */
+> @@ -1862,6 +1899,14 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  			if (need_wrongsec_check(rqstp))
+>  				op->status = check_nfsd_access(current_fh->fh_export, rqstp);
+>  		}
+> +		/* Only from intra COPY */
+> +		if (cstate->status == nfserr_copy_stalefh) {
+> +			dprintk("%s NFS4.2 intra COPY stale src filehandle\n",
+> +				__func__);
+> +			status = nfserr_stale;
+> +			nfsd4_adjust_encode(resp);
+
+Are you sure it's safe just to throw away any operations since that
+stale PUTFH?  What if some of those operations had side effects?
+
+> +			goto out;
+> +		}
+>  encode_op:
+>  		if (op->status == nfserr_replay_me) {
+>  			op->replay = &cstate->replay_owner->so_replay;
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 3e08c15..2896a11 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -4624,15 +4624,28 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+>  	return nfserr_rep_too_big;
+>  }
+>  
+> +/** Rewind the encoding to return nfserr_stale on the PUTFH
+> + * in this failed Intra COPY compound
+> + */
+> +void
+> +nfsd4_adjust_encode(struct nfsd4_compoundres *resp)
+> +{
+> +	__be32 *p;
+> +
+> +	p = resp->cstate.putfh_errp;
+> +	*p++ = nfserr_stale;
+> +}
+> +
+>  void
+>  nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+>  {
+>  	struct xdr_stream *xdr = &resp->xdr;
+>  	struct nfs4_stateowner *so = resp->cstate.replay_owner;
+> +	struct nfsd4_compound_state *cstate = &resp->cstate;
+>  	struct svc_rqst *rqstp = resp->rqstp;
+>  	int post_err_offset;
+>  	nfsd4_enc encoder;
+> -	__be32 *p;
+> +	__be32 *p, *statp;
+>  
+>  	p = xdr_reserve_space(xdr, 8);
+>  	if (!p) {
+> @@ -4641,9 +4654,20 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+>  	}
+>  	*p++ = cpu_to_be32(op->opnum);
+>  	post_err_offset = xdr->buf->len;
+> +	statp = p;
+>  
+>  	if (op->opnum == OP_ILLEGAL)
+>  		goto status;
+> +
+> +	/** This is a COPY compound with a stale source server file handle.
+> +	 * If OP_COPY processing determines that this is an intra server to
+> +	 * server COPY, then this PUTFH should return nfserr_ stale so the
+> +	 * putfh_errp will be set to nfserr_stale. If this is an inter server
+> +	 * to server COPY, ignore the nfserr_stale.
+> +	 */
+> +	if (op->opnum == OP_PUTFH && HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
+> +		cstate->putfh_errp = statp;
+> +
+>  	BUG_ON(op->opnum < 0 || op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
+>  	       !nfsd4_enc_ops[op->opnum]);
+>  	encoder = nfsd4_enc_ops[op->opnum];
+> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+> index d966068..8d6fb0f 100644
+> --- a/fs/nfsd/nfsd.h
+> +++ b/fs/nfsd/nfsd.h
+> @@ -272,6 +272,8 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+>  #define	nfserr_replay_me	cpu_to_be32(11001)
+>  /* nfs41 replay detected */
+>  #define	nfserr_replay_cache	cpu_to_be32(11002)
+> +/* nfs42 intra copy failed with nfserr_stale */
+> +#define nfserr_copy_stalefh	cpu_to_be32(1103)
+>  
+>  /* Check for dir entries '.' and '..' */
+>  #define isdotent(n, l)	(l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 38fcb4f..aa94295 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -45,6 +45,8 @@
+>  
+>  #define CURRENT_STATE_ID_FLAG (1<<0)
+>  #define SAVED_STATE_ID_FLAG (1<<1)
+> +#define NO_VERIFY_FH (1<<2)
+> +#define IS_STALE_FH  (1<<3)
+>  
+>  #define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
+>  #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
+> @@ -63,6 +65,7 @@ struct nfsd4_compound_state {
+>  	size_t			iovlen;
+>  	u32			minorversion;
+>  	__be32			status;
+> +	__be32			*putfh_errp;
+>  	stateid_t	current_stateid;
+>  	stateid_t	save_stateid;
+>  	/* to indicate current and saved state id presents */
+> @@ -705,6 +708,7 @@ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
+>  int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
+>  		struct nfsd4_compoundres *);
+>  __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
+> +void nfsd4_adjust_encode(struct nfsd4_compoundres *);
+>  void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
+>  void nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op);
+>  __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
