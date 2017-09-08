@@ -1,280 +1,315 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lf0-f48.google.com ([209.85.215.48]:38118 "EHLO
-        mail-lf0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756905AbdIHUC1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Sep 2017 16:02:27 -0400
-Received: by mail-lf0-f48.google.com with SMTP id q132so7764900lfe.5
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Sep 2017 13:02:27 -0700 (PDT)
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33651 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756860AbdIHUJE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Sep 2017 16:09:04 -0400
+Received: by mail-it0-f65.google.com with SMTP id f64so1632029itf.0
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Sep 2017 13:09:04 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20170818080300.GQ7187@madcap2.tricolour.ca>
-References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
- <149547016213.10599.1969443294414531853.stgit@warthog.procyon.org.uk>
- <20170814054711.GB29957@madcap2.tricolour.ca> <CAHC9VhRgPRa7KeMt8G700aeFvqVYc0gMx__82K31TYY6oQQqTw@mail.gmail.com>
- <20170818080300.GQ7187@madcap2.tricolour.ca>
-From: Paul Moore <paul@paul-moore.com>
-Date: Fri, 8 Sep 2017 16:02:25 -0400
-Message-ID: <CAHC9VhQaWSpde6e2M5moERwK-hqff0UH-Z8r7upkGJWqcSXMow@mail.gmail.com>
-Subject: Re: [PATCH 2/9] Implement containers as kernel objects
-To: Richard Guy Briggs <rgb@redhat.com>
-Cc: David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        cgroups@vger.kernel.org, linux-api@vger.kernel.org,
-        containers@lists.linux-foundation.org, linux-audit@redhat.com,
-        mszeredi@redhat.com, jlayton@redhat.com, viro@zeniv.linux.org.uk,
-        luto@kernel.org, trondmy@primarydata.com, serge@hallyn.com,
-        ebiederm@xmission.com
+In-Reply-To: <20170908195701.GA1883@parsley.fieldses.org>
+References: <20170711164416.1982-1-kolga@netapp.com> <20170711164416.1982-28-kolga@netapp.com>
+ <20170908193836.GB18220@fieldses.org> <CAN-5tyG3C=qLOdgg4AGgYFoSQkfT7zgAiTR-LhHGf2RzTXgW-Q@mail.gmail.com>
+ <20170908195701.GA1883@parsley.fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 8 Sep 2017 16:09:02 -0400
+Message-ID: <CAN-5tyH6ryO+C6hJiJb49SJi1W5F4C=t0nQiSoPWzMSkBqF80g@mail.gmail.com>
+Subject: Re: [RFC v3 27/42] NFSD: allow inter server COPY to have a STALE
+ source server fh
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Aug 18, 2017 at 4:03 AM, Richard Guy Briggs <rgb@redhat.com> wrote:
-> On 2017-08-16 18:21, Paul Moore wrote:
->> On Mon, Aug 14, 2017 at 1:47 AM, Richard Guy Briggs <rgb@redhat.com> wrote:
->> > Hi David,
+On Fri, Sep 8, 2017 at 3:57 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> On Fri, Sep 08, 2017 at 03:52:53PM -0400, Olga Kornievskaia wrote:
+>> What if instead the client won't send the 2nd FH in case of the inter
+>> server to server COPY and it would avoid all this stale handle
+>> business. So for the "intra" COPY it'll still be PUTFH, SAVEFH, PUTFH,
+>> COPY but for the "inter" COPY it'll be PUTFH, COPY.
+>
+> That might be easier to implement, but it'd require a change to the
+> protocol, right?  I may not understand what you're proposing.
+
+Sigh. You are right.
+
+>
+> --b.
+>
+>>
+>> On Fri, Sep 8, 2017 at 3:38 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> > Some questions below, but really I think this approach can't work.  Keep
+>> > in mind this has to work not just for the one compound the current
+>> > client uses, but for *any* compound containing a COPY, including those
+>> > sent by future clients that may do something more complicated, or by
+>> > malcious clients that may intentionally send weird compounds to make the
+>> > server crash.
 >> >
->> > I wanted to respond to this thread to attempt some constructive feedback,
->> > better late than never.  I had a look at your fsopen/fsmount() patchset(s) to
->> > support this patchset which was interesting, but doesn't directly affect my
->> > work.  The primary patch of interest to the audit kernel folks (Paul Moore and
->> > me) is this patch while the rest of the patchset is interesting, but not likely
->> > to directly affect us.  This patch has most of what we need to solve our
->> > problem.
+>> > I think we want to flag the filehandle itself somehow, not the cstate.
 >> >
->> > Paul and I agree that audit is going to have a difficult time identifying
->> > containers or even namespaces without some change to the kernel.  The audit
->> > subsystem in the kernel needs at least a basic clue about which container
->> > caused an event to be able to report this at the appropriate level and ignore
->> > it at other levels to avoid a DoS.
->>
->> While there is some increased risk of "death by audit", this is really
->> only an issue once we start supporting multiple audit daemons; simply
->> associating auditable events with the container that triggered them
->> shouldn't add any additional overhead (I hope).  For a number of use
->> cases, a single auditd running outside the containers, but recording
->> all their events with some type of container attribution will be
->> sufficient.  This is step #1.
->>
->> However, we will obviously want to go a bit further and support
->> multiple audit daemons on the system to allow containers to
->> record/process their own events (side note: the non-container auditd
->> instance will still see all the events).  There are a number of ways
->> we could tackle this, both via in-kernel and in-userspace record
->> routing, each with their own pros/cons.  However, how this works is
->> going to be dependent on how we identify containers and track their
->> audit events: the bits from step #1.  For this reason I'm not really
->> interested in worrying about the multiple auditd problem just yet;
->> it's obviously important, and something to keep in mind while working
->> up a solution, but it isn't something we should focus on right now.
->>
->> > We also agree that there will need to be some sort of trigger from userspace to
->> > indicate the creation of a container and its allocated resources and we're not
->> > really picky how that is done, such as a clone flag, a syscall or a sysfs write
->> > (or even a read, I suppose), but there will need to be some permission
->> > restrictions, obviously.  (I'd like to see capabilities used for this by adding
->> > a specific container bit to the capabilities bitmask.)
->>
->> To be clear, from an audit perspective I think the only thing we would
->> really care about controlling access to is the creation and assignment
->> of a new audit container ID/token, not necessarily the container
->> itself.  It's a small point, but an important one I think.
->>
->> > I doubt we will be able to accomodate all definitions or concepts of a
->> > container in a timely fashion.  We'll need to start somewhere with a minimum
->> > definition so that we can get traction and actually move forward before another
->> > compelling shared kernel microservice method leaves our entire community
->> > behind.  I'd like to declare that a container is a full set of cloned
->> > namespaces, but this is inefficient, overly constricting and unnecessary for
->> > our needs.  If we could agree on a minimum definition of a container (which may
->> > have only one specific cloned namespace) then we have something on which to
->> > build.  I could even see a container being defined by a trigger sent from
->> > userspace about a process (task) from which all its children are considered to
->> > be within that container, subject to further nesting.
->>
->> I really would prefer if we could avoid defining the term "container".
->> Even if we manage to get it right at this particular moment, we will
->> surely be made fools a year or two from now when things change.  At
->> the very least lets avoid a rigid definition of container, I'll
->> concede that we will probably need to have some definition simply so
->> we can implement something, I just don't want the design or
->> implementation to depend on a particular definition.
->>
->> This comment is jumping ahead a bit, but from an audit perspective I
->> think we handle this by emitting an audit record whenever a container
->> ID is created which describes it as the kernel sees it; as of now that
->> probably means a list of namespace IDs.  Richard mentions this in his
->> email, I just wanted to make it clear that I think we should see this
->> as a flexible mechanism.  At the very least we will likely see a few
->> more namespaces before the world moves on from containers.
->>
->> > In the simplest usable model for audit, if a container (definition implies and)
->> > starts a PID namespace, then the container ID could simply be the container's
->> > "init" process PID in the initial PID namespace.  This assumes that as soon as
->> > that process vanishes, that entire container and all its children are killed
->> > off (which you've done).  There may be some container orchestration systems
->> > that don't use a unique PID namespace per container and that imposing this will
->> > cause them challenges.
->>
->> I don't follow how this would cause challenges if the containers do
->> not use a unique PID namespace; you are suggesting using the PID from
->> in the context of the initial PID namespace, yes?
->
-> The PID of the "init" process of a container (PID=1 inside container,
-> but PID=containerID from the initial PID namespace perspective).
-
-Yep.  I still don't see how a container not creating a unique PID
-namespace presents a challenge here as the unique information would be
-taken from the initial PID namespace.
-
-However, based on some off-list discussions I expect this is going to
-be a non-issue in the next proposal.
-
->> Regardless, I do worry that using a PID could potentially be a bit
->> racy once we start jumping between kernel and userspace (audit
->> configuration, logs, etc.).
->
-> How do you think this could be racy?  An event happenning before or as
-> the container has been defined?
-
-It's racy for the same reasons why we have the pid struct in the
-kernel.  If the orchestrator is referencing things via a PID there is
-always some danger of a mixup.
-
->> > If containers have at minimum a unique mount namespace then the root path
->> > dentry inode device and inode number could be used, but there are likely better
->> > identifiers.  Again, there may be container orchestrators that don't use a
->> > unique mount namespace per container and that imposing this will cause
->> > challenges.
+>> > And check very carefully to make sure that ops other than COPY can't get
+>> > tripped up by one of these foreign filehandles.
 >> >
->> > I expect there are similar examples for each of the other namespaces.
->>
->> The PID case is a bit unique as each process is going to have a unique
->> PID regardless of namespaces, but even that has some drawbacks as
->> discussed above.  As for the other namespaces, I agree that we can't
->> rely on them (see my earlier comments).
->
-> (In general can you specify which earlier comments so we can be sure to
-> what you are referring?)
-
-Really?  How about the race condition concerns.  Come on Richard ...
-
->> > If we could pick one namespace type for consensus for which each container has
->> > a unique instance of that namespace, we could use the dev/ino tuple from that
->> > namespace as had originally been suggested by Aristeu Rozanski more than 4
->> > years ago as part of the set of namespace IDs.  I had also attempted to
->> > solve this problem by using the namespace' proc inode, then switched over to
->> > generate a unique kernel serial number for each namespace and then went back to
->> > namespace proc dev/ino once Al Viro implemented nsfs:
->> >         v1      https://lkml.org/lkml/2014/4/22/662
->> >         v2      https://lkml.org/lkml/2014/5/9/637
->> >         v3      https://lkml.org/lkml/2014/5/20/287
->> >         v4      https://lkml.org/lkml/2014/8/20/844
->> >         v5      https://lkml.org/lkml/2014/10/6/25
->> >         v6      https://lkml.org/lkml/2015/4/17/48
->> >         v7      https://lkml.org/lkml/2015/5/12/773
+>> > On Tue, Jul 11, 2017 at 12:44:01PM -0400, Olga Kornievskaia wrote:
+>> >> The inter server to server COPY source server filehandle
+>> >> is guaranteed to be stale as the COPY is sent to the destination
+>> >> server.
+>> >>
+>> >> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> >> ---
+>> >>  fs/nfsd/nfs4proc.c | 47 ++++++++++++++++++++++++++++++++++++++++++++++-
+>> >>  fs/nfsd/nfs4xdr.c  | 26 +++++++++++++++++++++++++-
+>> >>  fs/nfsd/nfsd.h     |  2 ++
+>> >>  fs/nfsd/xdr4.h     |  4 ++++
+>> >>  4 files changed, 77 insertions(+), 2 deletions(-)
+>> >>
+>> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> >> index b49ff31..ceee852 100644
+>> >> --- a/fs/nfsd/nfs4proc.c
+>> >> +++ b/fs/nfsd/nfs4proc.c
+>> >> @@ -496,11 +496,19 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+>> >>  nfsd4_putfh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>> >>           struct nfsd4_putfh *putfh)
+>> >>  {
+>> >> +     __be32 ret;
+>> >> +
+>> >>       fh_put(&cstate->current_fh);
+>> >>       cstate->current_fh.fh_handle.fh_size = putfh->pf_fhlen;
+>> >>       memcpy(&cstate->current_fh.fh_handle.fh_base, putfh->pf_fhval,
+>> >>              putfh->pf_fhlen);
+>> >> -     return fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
+>> >> +     ret = fh_verify(rqstp, &cstate->current_fh, 0, NFSD_MAY_BYPASS_GSS);
+>> >> +     if (ret == nfserr_stale && HAS_CSTATE_FLAG(cstate, NO_VERIFY_FH)) {
+>> >> +             CLEAR_CSTATE_FLAG(cstate, NO_VERIFY_FH);
+>> >> +             SET_CSTATE_FLAG(cstate, IS_STALE_FH);
+>> >> +             ret = 0;
+>> >> +     }
+>> >> +     return ret;
+>> >>  }
+>> >>
+>> >>  static __be32
+>> >> @@ -533,6 +541,16 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
+>> >>  nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>> >>            void *arg)
+>> >>  {
+>> >> +     /**
+>> >> +     * This is either an inter COPY (most likely) or an intra COPY with a
+>> >> +     * stale file handle. If the latter, nfsd4_copy will reset the PUTFH to
+>> >> +     * return nfserr_stale. No fh_dentry, just copy the file handle
+>> >> +     * to use with the inter COPY READ.
+>> >> +     */
+>> >> +     if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
+>> >> +             cstate->save_fh = cstate->current_fh;
+>> >> +             return nfs_ok;
+>> >> +     }
+>> >>       if (!cstate->current_fh.fh_dentry)
+>> >>               return nfserr_nofilehandle;
+>> >>
+>> >> @@ -1067,6 +1085,13 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>> >>       if (status)
+>> >>               goto out;
+>> >>
+>> >> +     /* Intra copy source fh is stale. PUTFH will fail with ESTALE */
+>> >> +     if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH)) {
+>> >> +             CLEAR_CSTATE_FLAG(cstate, IS_STALE_FH);
+>> >> +             cstate->status = nfserr_copy_stalefh;
+>> >> +             goto out_put;
+>> >> +     }
+>> >> +
+>> >>       bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
+>> >>                       dst, copy->cp_dst_pos, copy->cp_count);
+>> >>
+>> >> @@ -1081,6 +1106,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>> >>               status = nfs_ok;
+>> >>       }
+>> >>
+>> >> +out_put:
+>> >>       fput(src);
+>> >>       fput(dst);
+>> >>  out:
+>> >> @@ -1759,6 +1785,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>> >>       struct nfsd4_compound_state *cstate = &resp->cstate;
+>> >>       struct svc_fh *current_fh = &cstate->current_fh;
+>> >>       struct svc_fh *save_fh = &cstate->save_fh;
+>> >> +     int             i;
+>> >>       __be32          status;
+>> >>
+>> >>       svcxdr_init_encode(rqstp, resp);
+>> >> @@ -1791,6 +1818,12 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>> >>               goto encode_op;
+>> >>       }
+>> >>
+>> >> +     /* NFSv4.2 COPY source file handle may be from a different server */
+>> >> +     for (i = 0; i < args->opcnt; i++) {
+>> >> +             op = &args->ops[i];
+>> >> +             if (op->opnum == OP_COPY)
+>> >> +                     SET_CSTATE_FLAG(cstate, NO_VERIFY_FH);
+>> >> +     }
 >> >
->> > These patches don't use a container ID, but track all namespaces in use for an
->> > event.  This has the benefit of punting this tracking to userspace for some
->> > other tool to analyse and determine to which container an event belongs.
->> > This will use a lot of bandwidth in audit log files when a single
->> > container ID that doesn't require nesting information to be complete
->> > would be a much more efficient use of audit log bandwidth.
->>
->> Relying on a particular namespace to identify a containers is a
->> non-starter from my perspective for all the reasons previously
->> discussed.
->
-> I'd rather not either and suspect there isn't much danger of it, but if
-> it is determined that there is one namespace in particular that is a
-> minimum requirement, I'd prefer to use that nsID instead of creating an
-> additional ID.
->
->> > If we rely only on the setting of arbitrary container names from userspace,
->> > then we must provide a map or tree back to the initial audit domain for that
->> > running kernel to be able to differentiate between potentially identical
->> > container names assigned in a nested container system.  If we assign a
->> > container serial number sequentially (atomic64_inc) from the kernel on request
->> > from userspace like the sessionID and log the creation with all nsIDs and the
->> > parent container serial number and/or container name, the nesting is clear due
->> > to lack of ambiguity in potential duplicate names in nesting.  If a container
->> > serial number is used, the tree of inheritance of nested containers can be
->> > rebuilt from the audit records showing what containers were spawned from what
->> > parent.
->>
->> I believe we are going to need a container ID to container definition
->> (namespace, etc.) mapping mechanism regardless of if the container ID
->> is provided by userspace or a kernel generated serial number.  This
->> mapping should be recorded in the audit log when the container ID is
->> created/defined.
->
-> Agreed.
->
->> > As was suggested in one of the previous threads, if there are any events not
->> > associated with a task (incoming network packets) we log the namespace ID and
->> > then only concern ourselves with its container serial number or container name
->> > once it becomes associated with a task at which point that tracking will be
->> > more important anyways.
->>
->> Agreed.  After all, a single namespace can be shared between multiple
->> containers.  For those security officers who need to track individual
->> events like this they will have the container ID mapping information
->> in the logs as well so they should be able to trace the unassociated
->> event to a set of containers.
->>
->> > I'm not convinced that a userspace or kernel generated UUID is that useful
->> > since they are large, not human readable and may not be globally unique given
->> > the "pets vs cattle" direction we are going with potentially identical
->> > conditions in hosts or containers spawning containers, but I see no need to
->> > restrict them.
->>
->> From a kernel perspective I think an int should suffice; after all,
->> you can't have more containers then you have processes.  If the
->> container engine requires something more complex, it can use the int
->> as input to its own mapping function.
->
-> PIDs roll over.  That already causes some ambiguity in reporting.  If a
-> system is constantly spawning and reaping containers, especially
-> single-process containers, I don't want to have to worry about that ID
-> rolling to keep track of it even though there should be audit records of
-> the spawn and death of each container.  There isn't significant cost
-> added here compared with some of the other overhead we're dealing with.
-
-Fine, make it a u64.  I believe that's what I've been proposing in the
-off-list discussion if memory serves.
-
-A UUID or string are not acceptable from my perspective.  Too big for
-the audit records and not really necessary anyway, a u64 should be
-just fine.
-
-... and if anyone dares bring up that 640kb quote I swear I'll NACK
-all their patches for the next year :)
-
->> > How do we deal with setns()?  Once it is determined that action is permitted,
->> > given the new combinaiton of namespaces and potential membership in a different
->> > container, record the transition from one container to another including all
->> > namespaces if the latter are a different subset than the target container
->> > initial set.
->>
->> That is a fun one, isn't it?  I think this is where the container
->> ID-to-definition mapping comes into play.  If setns() changes the
->> process such that the existing container ID is no longer valid then we
->> need to do a new lookup in the table to see if another container ID is
->> valid; if no established container ID mappings are valid, the
->> container ID becomes "undefined".
->
-> Hopefully we can design this stuff so that container IDs are still valid
-> while that transition occurs.
->
->> paul moore
->
-> - RGB
->
-> --
-> Richard Guy Briggs <rgb@redhat.com>
-> Sr. S/W Engineer, Kernel Security, Base Operating Systems
-> Remote, Ottawa, Red Hat Canada
-> IRC: rgb, SunRaycer
-> Voice: +1.647.777.2635, Internal: (81) 32635
-
--- 
-paul moore
-www.paul-moore.com
+>> > So, if a compound has a COPY anywhere in it, then a PUTFH with a stale
+>> > filehandle anywhere in the compound will temporarily succeed and result in
+>> > IS_STALE_FH being set.
+>> >
+>> >>       while (!status && resp->opcnt < args->opcnt) {
+>> >>               op = &args->ops[resp->opcnt++];
+>> >>
+>> >> @@ -1810,6 +1843,9 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>> >>
+>> >>               opdesc = OPDESC(op);
+>> >>
+>> >> +             if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
+>> >> +                     goto call_op;
+>> >> +
+>> >
+>> > That means that once IS_STALE_FH is set, we will skip:
+>> >
+>> >         - nofilehandle checking
+>> >         - moved checking
+>> >         - fh_clear_wcc()
+>> >         - resp_size checking
+>> >         - current stateid capture
+>> >
+>> > on every subsequent op.  Can that really be right?
+>> >
+>> >>               if (!current_fh->fh_dentry) {
+>> >>                       if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
+>> >>                               op->status = nfserr_nofilehandle;
+>> >> @@ -1844,6 +1880,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>> >>
+>> >>               if (opdesc->op_get_currentstateid)
+>> >>                       opdesc->op_get_currentstateid(cstate, &op->u);
+>> >> +call_op:
+>> >>               op->status = opdesc->op_func(rqstp, cstate, &op->u);
+>> >>
+>> >>               /* Only from SEQUENCE */
+>> >> @@ -1862,6 +1899,14 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>> >>                       if (need_wrongsec_check(rqstp))
+>> >>                               op->status = check_nfsd_access(current_fh->fh_export, rqstp);
+>> >>               }
+>> >> +             /* Only from intra COPY */
+>> >> +             if (cstate->status == nfserr_copy_stalefh) {
+>> >> +                     dprintk("%s NFS4.2 intra COPY stale src filehandle\n",
+>> >> +                             __func__);
+>> >> +                     status = nfserr_stale;
+>> >> +                     nfsd4_adjust_encode(resp);
+>> >
+>> > Are you sure it's safe just to throw away any operations since that
+>> > stale PUTFH?  What if some of those operations had side effects?
+>> >
+>> >> +                     goto out;
+>> >> +             }
+>> >>  encode_op:
+>> >>               if (op->status == nfserr_replay_me) {
+>> >>                       op->replay = &cstate->replay_owner->so_replay;
+>> >> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> >> index 3e08c15..2896a11 100644
+>> >> --- a/fs/nfsd/nfs4xdr.c
+>> >> +++ b/fs/nfsd/nfs4xdr.c
+>> >> @@ -4624,15 +4624,28 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+>> >>       return nfserr_rep_too_big;
+>> >>  }
+>> >>
+>> >> +/** Rewind the encoding to return nfserr_stale on the PUTFH
+>> >> + * in this failed Intra COPY compound
+>> >> + */
+>> >> +void
+>> >> +nfsd4_adjust_encode(struct nfsd4_compoundres *resp)
+>> >> +{
+>> >> +     __be32 *p;
+>> >> +
+>> >> +     p = resp->cstate.putfh_errp;
+>> >> +     *p++ = nfserr_stale;
+>> >> +}
+>> >> +
+>> >>  void
+>> >>  nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+>> >>  {
+>> >>       struct xdr_stream *xdr = &resp->xdr;
+>> >>       struct nfs4_stateowner *so = resp->cstate.replay_owner;
+>> >> +     struct nfsd4_compound_state *cstate = &resp->cstate;
+>> >>       struct svc_rqst *rqstp = resp->rqstp;
+>> >>       int post_err_offset;
+>> >>       nfsd4_enc encoder;
+>> >> -     __be32 *p;
+>> >> +     __be32 *p, *statp;
+>> >>
+>> >>       p = xdr_reserve_space(xdr, 8);
+>> >>       if (!p) {
+>> >> @@ -4641,9 +4654,20 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+>> >>       }
+>> >>       *p++ = cpu_to_be32(op->opnum);
+>> >>       post_err_offset = xdr->buf->len;
+>> >> +     statp = p;
+>> >>
+>> >>       if (op->opnum == OP_ILLEGAL)
+>> >>               goto status;
+>> >> +
+>> >> +     /** This is a COPY compound with a stale source server file handle.
+>> >> +      * If OP_COPY processing determines that this is an intra server to
+>> >> +      * server COPY, then this PUTFH should return nfserr_ stale so the
+>> >> +      * putfh_errp will be set to nfserr_stale. If this is an inter server
+>> >> +      * to server COPY, ignore the nfserr_stale.
+>> >> +      */
+>> >> +     if (op->opnum == OP_PUTFH && HAS_CSTATE_FLAG(cstate, IS_STALE_FH))
+>> >> +             cstate->putfh_errp = statp;
+>> >> +
+>> >>       BUG_ON(op->opnum < 0 || op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
+>> >>              !nfsd4_enc_ops[op->opnum]);
+>> >>       encoder = nfsd4_enc_ops[op->opnum];
+>> >> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+>> >> index d966068..8d6fb0f 100644
+>> >> --- a/fs/nfsd/nfsd.h
+>> >> +++ b/fs/nfsd/nfsd.h
+>> >> @@ -272,6 +272,8 @@ static inline bool nfsd4_spo_must_allow(struct svc_rqst *rqstp)
+>> >>  #define      nfserr_replay_me        cpu_to_be32(11001)
+>> >>  /* nfs41 replay detected */
+>> >>  #define      nfserr_replay_cache     cpu_to_be32(11002)
+>> >> +/* nfs42 intra copy failed with nfserr_stale */
+>> >> +#define nfserr_copy_stalefh  cpu_to_be32(1103)
+>> >>
+>> >>  /* Check for dir entries '.' and '..' */
+>> >>  #define isdotent(n, l)       (l < 3 && n[0] == '.' && (l == 1 || n[1] == '.'))
+>> >> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+>> >> index 38fcb4f..aa94295 100644
+>> >> --- a/fs/nfsd/xdr4.h
+>> >> +++ b/fs/nfsd/xdr4.h
+>> >> @@ -45,6 +45,8 @@
+>> >>
+>> >>  #define CURRENT_STATE_ID_FLAG (1<<0)
+>> >>  #define SAVED_STATE_ID_FLAG (1<<1)
+>> >> +#define NO_VERIFY_FH (1<<2)
+>> >> +#define IS_STALE_FH  (1<<3)
+>> >>
+>> >>  #define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
+>> >>  #define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
+>> >> @@ -63,6 +65,7 @@ struct nfsd4_compound_state {
+>> >>       size_t                  iovlen;
+>> >>       u32                     minorversion;
+>> >>       __be32                  status;
+>> >> +     __be32                  *putfh_errp;
+>> >>       stateid_t       current_stateid;
+>> >>       stateid_t       save_stateid;
+>> >>       /* to indicate current and saved state id presents */
+>> >> @@ -705,6 +708,7 @@ int nfs4svc_decode_compoundargs(struct svc_rqst *, __be32 *,
+>> >>  int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
+>> >>               struct nfsd4_compoundres *);
+>> >>  __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
+>> >> +void nfsd4_adjust_encode(struct nfsd4_compoundres *);
+>> >>  void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
+>> >>  void nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op);
+>> >>  __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
+>> >> --
+>> >> 1.8.3.1
+>> >>
+>> >> --
+>> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> >> the body of a message to majordomo@vger.kernel.org
+>> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
