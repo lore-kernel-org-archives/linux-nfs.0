@@ -1,117 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:33934 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932322AbdIHUwA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Sep 2017 16:52:00 -0400
-Received: by mail-io0-f196.google.com with SMTP id b142so1665249ioe.1
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Sep 2017 13:52:00 -0700 (PDT)
+Received: from mail-io0-f194.google.com ([209.85.223.194]:34926 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753485AbdIINTf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Sep 2017 09:19:35 -0400
+Received: by mail-io0-f194.google.com with SMTP id d16so411580ioj.2
+        for <linux-nfs@vger.kernel.org>; Sat, 09 Sep 2017 06:19:35 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Fix 2 use after free issues in the I/O code
+Date: Sat,  9 Sep 2017 09:19:29 -0400
+Message-Id: <20170909131929.17547-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <20170906203520.GB24694@fieldses.org>
-References: <20170711164416.1982-1-kolga@netapp.com> <20170711164416.1982-17-kolga@netapp.com>
- <20170906203520.GB24694@fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 8 Sep 2017 16:51:59 -0400
-Message-ID: <CAN-5tyFrVnC0dRVMxbUwaFoiGHbMDdF=Q-V69tihYPWy6gmYJQ@mail.gmail.com>
-Subject: Re: [RFC v3 16/42] NFS NFSD defining nl4_servers structure needed by both
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 6, 2017 at 4:35 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Tue, Jul 11, 2017 at 12:43:50PM -0400, Olga Kornievskaia wrote:
->> These structures are needed by COPY_NOTIFY on the client and needed
->> by the nfsd as well
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  include/linux/nfs4.h | 33 +++++++++++++++++++++++++++++++++
->>  1 file changed, 33 insertions(+)
->>
->> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->> index 7262908..4179c78 100644
->> --- a/include/linux/nfs4.h
->> +++ b/include/linux/nfs4.h
->> @@ -15,6 +15,7 @@
->>  #include <linux/list.h>
->>  #include <linux/uidgid.h>
->>  #include <uapi/linux/nfs4.h>
->> +#include <linux/sunrpc/msg_prot.h>
->>
->>  enum nfs4_acl_whotype {
->>       NFS4_ACL_WHO_NAMED = 0,
->> @@ -659,4 +660,36 @@ struct nfs4_op_map {
->>       } u;
->>  };
->>
->> +struct nfs42_netaddr {
->> +     unsigned int    na_netid_len;
->> +     char            na_netid[RPCBIND_MAXNETIDLEN + 1];
->> +     unsigned int    na_uaddr_len;
->> +     char            na_uaddr[RPCBIND_MAXUADDRLEN + 1];
->> +};
->> +
->> +enum netloc_type4 {
->> +     NL4_NAME                = 1,
->> +     NL4_URL                 = 2,
->> +     NL4_NETADDR             = 3,
->> +};
->> +
->> +struct nl4_server {
->> +     enum netloc_type4       nl4_type;
->> +     union {
->> +             struct { /* NL4_NAME, NL4_URL */
->> +                     int     nl4_str_sz;
->> +                     char    nl4_str[NFS4_OPAQUE_LIMIT + 1];
->> +             };
->> +             struct nfs42_netaddr    nl4_addr; /* NL4_NETADDR */
->> +     } u;
->> +};
->> +
->> +/*  support 1 nl4_server for now */
->> +#define NFS42_MAX_SSC_SRC       1
->
-> In that case, let's just build that assumption into the data structures
-> and embed struct nl4_server in nl4_servers and drop the unnecessary
-> kmalloc()s.
+The writeback code wants to send a commit after processing the pages,
+which is why we want to delay releasing the struct path until after
+that's done.
 
-Wouldn't we still want to malloc as the structure is too big to be
-allocated on the stack?
+Also, the layout code expects that we do not free the inode before
+we've put the layout segments in pnfs_writehdr_free() and
+pnfs_readhdr_free()
 
-Anna has also suggested dropping nl4_servers since the code sets maximum to 1.
-I have resisted making the change because I felt like it was easier to
-increase the
-MAX_SSC_SRC to say something like 10 and support a multi-home server. Then
-the destination server can add smarts to chose between the available address to
-connect to the source server with.
+Fixes: 919e3bd9a875 ("NFS: Ensure we commit after writeback is complete")
+Fixes: 4714fb51fd03 ("nfs: remove pgio_header refcount, related cleanup")
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/internal.h |  1 -
+ fs/nfs/pagelist.c | 26 ++++++++++++--------------
+ fs/nfs/pnfs.c     |  2 --
+ 3 files changed, 12 insertions(+), 17 deletions(-)
 
-Is this not a good argument to keep the structures? Should I change
-value to 2 to
-indicate desire to support multi-path?
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index dc456416d2be..68cc22083639 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -251,7 +251,6 @@ int nfs_iocounter_wait(struct nfs_lock_context *l_ctx);
+ extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
+ struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *);
+ void nfs_pgio_header_free(struct nfs_pgio_header *);
+-void nfs_pgio_data_destroy(struct nfs_pgio_header *);
+ int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
+ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_header *hdr,
+ 		      struct rpc_cred *cred, const struct nfs_rpc_ops *rpc_ops,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 23cf4a82d94c..bec120ec1967 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -501,16 +501,6 @@ struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *ops)
+ }
+ EXPORT_SYMBOL_GPL(nfs_pgio_header_alloc);
+ 
+-/*
+- * nfs_pgio_header_free - Free a read or write header
+- * @hdr: The header to free
+- */
+-void nfs_pgio_header_free(struct nfs_pgio_header *hdr)
+-{
+-	hdr->rw_ops->rw_free_header(hdr);
+-}
+-EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+-
+ /**
+  * nfs_pgio_data_destroy - make @hdr suitable for reuse
+  *
+@@ -519,14 +509,24 @@ EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+  *
+  * @hdr: A header that has had nfs_generic_pgio called
+  */
+-void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
++static void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
+ {
+ 	if (hdr->args.context)
+ 		put_nfs_open_context(hdr->args.context);
+ 	if (hdr->page_array.pagevec != hdr->page_array.page_array)
+ 		kfree(hdr->page_array.pagevec);
+ }
+-EXPORT_SYMBOL_GPL(nfs_pgio_data_destroy);
++
++/*
++ * nfs_pgio_header_free - Free a read or write header
++ * @hdr: The header to free
++ */
++void nfs_pgio_header_free(struct nfs_pgio_header *hdr)
++{
++	nfs_pgio_data_destroy(hdr);
++	hdr->rw_ops->rw_free_header(hdr);
++}
++EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+ 
+ /**
+  * nfs_pgio_rpcsetup - Set up arguments for a pageio call
+@@ -640,7 +640,6 @@ EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
+ static void nfs_pgio_error(struct nfs_pgio_header *hdr)
+ {
+ 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
+-	nfs_pgio_data_destroy(hdr);
+ 	hdr->completion_ops->completion(hdr);
+ }
+ 
+@@ -651,7 +650,6 @@ static void nfs_pgio_error(struct nfs_pgio_header *hdr)
+ static void nfs_pgio_release(void *calldata)
+ {
+ 	struct nfs_pgio_header *hdr = calldata;
+-	nfs_pgio_data_destroy(hdr);
+ 	hdr->completion_ops->completion(hdr);
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3125a9d7b237..7879ed8ceb76 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2233,7 +2233,6 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_write_mds(desc);
+ 		mirror->pg_recoalesce = 1;
+ 	}
+-	nfs_pgio_data_destroy(hdr);
+ 	hdr->release(hdr);
+ }
+ 
+@@ -2357,7 +2356,6 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_read_mds(desc);
+ 		mirror->pg_recoalesce = 1;
+ 	}
+-	nfs_pgio_data_destroy(hdr);
+ 	hdr->release(hdr);
+ }
+ 
+-- 
+2.13.5
 
->
-> --b.
->
->> +
->> +struct nl4_servers {
->> +     int                     nl_nsvr;
->> +     struct nl4_server       *nl_svr;
->> +};
->> +
->>  #endif
->> --
->> 1.8.3.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
