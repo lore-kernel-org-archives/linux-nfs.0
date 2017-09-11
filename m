@@ -1,170 +1,507 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37191 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750853AbdIKUyw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2017 16:54:52 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client changes for 4.14
-Date: Mon, 11 Sep 2017 20:54:47 +0000
-Message-ID: <1505163285.11130.1.camel@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:52362 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750877AbdIKVwV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Sep 2017 17:52:21 -0400
+From: NeilBrown <neilb@suse.com>
+To: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton\@kernel.org" <jlayton@kernel.org>
+Date: Tue, 12 Sep 2017 07:52:11 +1000
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH] nfs: track writeback errors with errseq_t
+In-Reply-To: <1505126785.4916.7.camel@redhat.com>
+References: <20170720194227.7830-1-jlayton@kernel.org> <1503683981.22608.0.camel@redhat.com> <87h8wsiog4.fsf@notabene.neil.brown.name> <1503920855.4563.12.camel@redhat.com> <87pobfgo9q.fsf@notabene.neil.brown.name> <1504004058.4679.7.camel@redhat.com> <87efrjb2mn.fsf@notabene.neil.brown.name> <1504784132.4954.12.camel@redhat.com> <1504796087.3561.7.camel@primarydata.com> <874ls9diij.fsf@notabene.neil.brown.name> <1505126785.4916.7.camel@redhat.com>
+Message-ID: <87poawc390.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgZWY5NTQ4NDRj
-N2FjZTYyZjc3M2Y0ZjIzZTI4ZDJkOTE1YWRjNDE5ZjoNCg0KICBMaW51eCA0LjEzLXJjNSAoMjAx
-Ny0wOC0xMyAxNjowMTozMiAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
-aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
-aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE0LTENCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
-Z2VzIHVwIHRvIDFiZDVkNmQwOGVhN2VkMDc5NGM4YTM5MDgzODNkNmQ2ZmMyMDJjZGQ6DQoNCiAg
-TkZTOiBDb3VudCB0aGUgYnl0ZXMgb2Ygc2tpcHBlZCBzdWJyZXF1ZXN0cyBpbiBuZnNfbG9ja19h
-bmRfam9pbl9yZXF1ZXN0cygpICgyMDE3LTA5LTA5IDE2OjQzOjA5IC0wNDAwKQ0KDQotLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-DQpORlMgY2xpZW50IHVwZGF0ZXMgZm9yIExpbnV4IDQuMTQNCg0KSGlnaHRsaWdodHMgaW5jbHVk
-ZToNCg0KU3RhYmxlIGJ1Z2ZpeGVzOg0KLSBGaXggbWlycm9yIGFsbG9jYXRpb24gaW4gdGhlIHdy
-aXRlYmFjayBjb2RlIHRvIGF2b2lkIGEgdXNlIGFmdGVyIGZyZWUNCi0gRml4IHRoZSBPX0RTWU5D
-IHdyaXRlcyB0byB1c2UgdGhlIGNvcnJlY3QgYnl0ZSByYW5nZQ0KLSBGaXggMiB1c2UgYWZ0ZXIg
-ZnJlZSBpc3N1ZXMgaW4gdGhlIEkvTyBjb2RlDQoNCkZlYXR1cmVzOg0KLSBXcml0ZWJhY2sgZml4
-ZXMgdG8gc3BsaXQgdXAgdGhlIGlub2RlLT5pX2xvY2sgaW4gb3JkZXIgdG8gcmVkdWNlIGNvbnRl
-bnRpb24NCi0gUlBDIGNsaWVudCByZWNlaXZlIGZpeGVzIHRvIHJlZHVjZSB0aGUgYW1vdW50IG9m
-IHRpbWUgdGhlDQogIHhwcnQtPnRyYW5zcG9ydF9sb2NrIGlzIGhlbGQgd2hlbiByZWNlaXZpbmcg
-ZGF0YSBmcm9tIGEgc29ja2V0IGludG8gYW0NCiAgWERSIGJ1ZmZlci4NCi0gRGl0dG8gZml4ZXMg
-dG8gcmVkdWNlIGNvbnRlbnRpb24gYmV0d2VlbiBjYWxsIHNpZGUgdXNlcnMgb2YgdGhlIHJkbWEN
-CiAgcmJfbG9jaywgYW5kIGl0cyB1c2UgaW4gcnBjcmRtYV9yZXBseV9oYW5kbGVyLg0KLSBSZS1h
-cnJhbmdlIHJkbWEgc3RhdHMgdG8gcmVkdWNlIGZhbHNlIGNhY2hlbGluZSBzaGFyaW5nLg0KLSBW
-YXJpb3VzIHJkbWEgY2xlYW51cHMgYW5kIG9wdGltaXNhdGlvbnMuDQotIFJlZmFjdG9yIHRoZSBO
-RlN2NC4xIGV4Y2hhbmdlIGlkIGNvZGUgYW5kIGNsZWFuIHVwIHRoZSBjb2RlLg0KLSBDb25zdC1p
-ZnkgYWxsIGluc3RhbmNlcyBvZiBzdHJ1Y3QgcnBjX3hwcnRfb3BzDQoNCkJ1Z2ZpeGVzOg0KLSBG
-aXggdGhlIE5GU3YyICdzZWM9JyBtb3VudCBvcHRpb24uDQotIE5GU3Y0LjE6IGRvbid0IHVzZSBt
-YWNoaW5lIGNyZWRlbnRpYWxzIGZvciBDTE9TRSB3aGVuIHVzaW5nICdzZWM9c3lzJw0KLSBGaXgg
-dGhlIE5GU3YzIEdSQU5UIGNhbGxiYWNrIHdoZW4gdGhlIHBvcnQgY2hhbmdlcyBvbiB0aGUgc2Vy
-dmVyLg0KLSBGaXggbGl2ZWxvY2sgaXNzdWVzIHdpdGggQ09NTUlUDQotIE5GU3Y0OiBVc2UgY29y
-cmVjdCBpbm9kZSBpbiBfbmZzNF9vcGVuZGF0YV90b19uZnM0X3N0YXRlKCkgd2hlbiBkb2luZw0K
-ICBhbmQgTkZTdjQuMSBvcGVuIGJ5IGZpbGVoYW5kbGUuDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkNodWNrIExldmVy
-ICgxOCk6DQogICAgICBzdW5ycGM6IENvbnN0LWlmeSBhbGwgaW5zdGFuY2VzIG9mIHN0cnVjdCBy
-cGNfeHBydF9vcHMNCiAgICAgIHhwcnRyZG1hOiBBZGQgeGRyX2luaXRfZGVjb2RlIHRvIHJwY3Jk
-bWFfcmVwbHlfaGFuZGxlcigpDQogICAgICB4cHJ0cmRtYTogSGFyZGVuIGJhY2tjaGFubmVsIGNh
-bGwgZGVjb2RpbmcNCiAgICAgIHhwcnRyZG1hOiBSZWZhY3RvciBycGNyZG1hX3JlcGx5X2hhbmRs
-ZXIoKQ0KICAgICAgeHBydHJkbWE6IFJlcGxhY2UgcnBjcmRtYV9jb3VudF9jaHVua3MoKQ0KICAg
-ICAgeHBydHJkbWE6IFJlbW92ZSBvcGNvZGUgY2hlY2sgaW4gUmVjZWl2ZSBjb21wbGV0aW9uIGhh
-bmRsZXINCiAgICAgIHhwcnRyZG1hOiBSZW1vdmUgcnBjcmRtYV9yZXA6OnJyX2xlbg0KICAgICAg
-eHBydHJkbWE6IENsZWFuIHVwIFhEUiBkZWNvZGluZyBpbiBycGNyZG1hX3VwZGF0ZV9ncmFudGVk
-X2NyZWRpdHMoKQ0KICAgICAgeHBydHJkbWE6IENsZWFuIHVwIHJwY3JkbWFfbWFyc2hhbF9yZXEo
-KSBzeW5vcHNpcw0KICAgICAgeHBydHJkbWE6IFJlbW92ZSBycGNsZW4gZnJvbSBycGNyZG1hX21h
-cnNoYWxfcmVxDQogICAgICB4cHJ0cmRtYTogU2V0IHVwIGFuIHhkcl9zdHJlYW0gaW4gcnBjcmRt
-YV9tYXJzaGFsX3JlcSgpDQogICAgICB4cHJ0cmRtYTogSGFyZGVuIGNodW5rIGxpc3QgZW5jb2Rp
-bmcgYWdhaW5zdCBzZW5kIGJ1ZmZlciBvdmVyZmxvdw0KICAgICAgeHBydHJkbWE6IENsZWFuIHVw
-IHJwY3JkbWFfYmNfbWFyc2hhbF9yZXBseSgpDQogICAgICB4cHJ0cmRtYTogUmVtb3ZlIGltdWwg
-aW5zdHJ1Y3Rpb25zIGZyb20gcnBjcmRtYV9jb252ZXJ0X2lvdnMoKQ0KICAgICAgeHBydHJkbWE6
-IFJlbW92ZSBpbXVsIGluc3RydWN0aW9ucyBmcm9tIGNodW5rIGxpc3QgZW5jb2RlcnMNCiAgICAg
-IE5GUzogRml4IE5GU3YyIHNlY3VyaXR5IHNldHRpbmdzDQogICAgICB4cHJ0cmRtYTogUmUtYXJy
-YW5nZSBzdHJ1Y3Qgcnhfc3RhdHMNCiAgICAgIHhwcnRyZG1hOiBVc2UgeHBydF9waW5fcnFzdCBp
-biBycGNyZG1hX3JlcGx5X2hhbmRsZXINCg0KTWFya3VzIEVsZnJpbmcgKDEpOg0KICAgICAgbG9j
-a2Q6IERlbGV0ZSBhbiBlcnJvciBtZXNzYWdlIGZvciBhIGZhaWxlZCBtZW1vcnkgYWxsb2NhdGlv
-biBpbiByZWNsYWltZXIoKQ0KDQpOZWlsQnJvd24gKDYpOg0KICAgICAgU1VOUlBDOiBFQ09OTlJF
-RlVTRUQgc2hvdWxkIGNhdXNlIGEgcmViaW5kLg0KICAgICAgTkZTdjQuMTogZG9uJ3QgdXNlIG1h
-Y2hpbmUgY3JlZGVudGlhbHMgZm9yIENMT1NFIHdoZW4gdXNpbmcgJ3NlYz1zeXMnDQogICAgICBO
-RlM6IGRvbid0IGV4cGVjdCBlcnJvcnMgZnJvbSBtZW1wb29sX2FsbG9jKCkuDQogICAgICBTVU5S
-UEM6IHJlbW92ZSBzb21lIGRlYWQgY29kZS4NCiAgICAgIE5GUzogZmx1c2ggZGF0YSB3aGVuIGxv
-Y2tpbmcgYSBmaWxlIHRvIGVuc3VyZSBjYWNoZSBjb2hlcmVuY2UgZm9yIG1tYXAuDQogICAgICBO
-RlM6IHJlbW92ZSBqaWZmaWVzIGZpZWxkIGZyb20gYWNjZXNzIGNhY2hlDQoNClRyb25kIE15a2xl
-YnVzdCAoNDgpOg0KICAgICAgTkZTdjQ6IFJlZmFjdG9yIF9uZnM0X3Byb2NfZXhjaGFuZ2VfaWQo
-KQ0KICAgICAgTkZTdjQuMTogRW5zdXJlIHdlIGNsZWFyIHRoZSBTUDRfTUFDSF9DUkVEIGZsYWdz
-IGluIG5mczRfc3A0X3NlbGVjdF9tb2RlKCkNCiAgICAgIE5GU3Y0OiBDbGVhbnVwIHNldHRpbmcg
-b2YgdGhlIG1pZ3JhdGlvbiBmbGFncy4NCiAgICAgIE1lcmdlIGJyYW5jaCAnZXhjaGFuZ2VfaWQn
-DQogICAgICBORlN2NDogVXNlIGNvcnJlY3QgaW5vZGUgaW4gX25mczRfb3BlbmRhdGFfdG9fbmZz
-NF9zdGF0ZSgpDQogICAgICBORlN2NDogVXNlIHRoZSBuZnM0X3N0YXRlIGJlaW5nIHJlY292ZXJl
-ZCBpbiBfbmZzNF9vcGVuZGF0YV90b19uZnM0X3N0YXRlKCkNCiAgICAgIE1lcmdlIGJyYW5jaCAn
-b3Blbl9zdGF0ZScNCiAgICAgIE5GUzogU2ltcGxpZnkgcGFnZSB3cml0ZWJhY2sNCiAgICAgIE5G
-UzogUmVkdWNlIGxvY2sgY29udGVudGlvbiBpbiBuZnNfcGFnZV9maW5kX2hlYWRfcmVxdWVzdCgp
-DQogICAgICBORlM6IFJlZHVjZSBsb2NrIGNvbnRlbnRpb24gaW4gbmZzX3RyeV90b191cGRhdGVf
-cmVxdWVzdCgpDQogICAgICBORlM6IEVuc3VyZSB3ZSBhbHdheXMgZGVyZWZlcmVuY2UgdGhlIHBh
-Z2UgaGVhZCBsYXN0DQogICAgICBORlM6IEZpeCBhIHJlZmVyZW5jZSBhbmQgbG9jayBsZWFrIGlu
-IG5mc19sb2NrX2FuZF9qb2luX3JlcXVlc3RzKCkNCiAgICAgIE5GUzogRml4IGFuIEFCQkEgaXNz
-dWUgaW4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVzdHMoKQ0KICAgICAgTkZTOiBEb24ndCBjaGVj
-ayByZXF1ZXN0IG9mZnNldCBhbmQgc2l6ZSB3aXRob3V0IGhvbGRpbmcgYSBsb2NrDQogICAgICBO
-RlM6IERvbid0IHVubG9jayB3cml0ZWJhY2tzIGJlZm9yZSBkZWNsYXJpbmcgUEdfV0JfRU5EDQog
-ICAgICBORlM6IEZpeCB0aGUgaW5vZGUgcmVxdWVzdCBhY2NvdW50aW5nIHdoZW4gcGFnZXMgaGF2
-ZSBzdWJyZXF1ZXN0cw0KICAgICAgTkZTOiBUZWFjaCBuZnNfdHJ5X3RvX3VwZGF0ZV9yZXF1ZXN0
-KCkgdG8gZGVhbCB3aXRoIHJlcXVlc3QgcGFnZV9ncm91cHMNCiAgICAgIE5GUzogUmVtb3ZlIHBh
-Z2UgZ3JvdXAgbGltaXQgaW4gbmZzX2ZsdXNoX2luY29tcGF0aWJsZSgpDQogICAgICBORlM6IFJl
-ZHVjZSBpbm9kZS0+aV9sb2NrIGNvbnRlbnRpb24gaW4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVz
-dHMoKQ0KICAgICAgTkZTOiBGdXJ0aGVyIG9wdGltaXNlIG5mc19sb2NrX2FuZF9qb2luX3JlcXVl
-c3RzKCkNCiAgICAgIE5GUzogRml4IG5mc19wYWdlX2dyb3VwX2Rlc3Ryb3koKSBhbmQgbmZzX2xv
-Y2tfYW5kX2pvaW5fcmVxdWVzdHMoKSByYWNlIGNhc2VzDQogICAgICBORlM6IFJlbW92ZSBuZnNf
-cGFnZV9ncm91cF9jbGVhcl9iaXRzKCkNCiAgICAgIE5GUzogUmVtb3ZlIHVudXNlIGZ1bmN0aW9u
-IG5mc19wYWdlX2dyb3VwX2xvY2tfd2FpdCgpDQogICAgICBORlM6IFJlbW92ZSB1bnVzZWQgcGFy
-YW1ldGVyIGZyb20gbmZzX3BhZ2VfZ3JvdXBfbG9jaygpDQogICAgICBORlM6IEZpeCB1cCBuZnNf
-cGFnZV9ncm91cF9jb3ZlcnNfcGFnZSgpDQogICAgICBORlN2NDogQ29udmVydCBuZnNfbG9ja19h
-bmRfam9pbl9yZXF1ZXN0cygpIHRvIHVzZSBuZnNfcGFnZV9maW5kX2hlYWRfcmVxdWVzdCgpDQog
-ICAgICBORlM6IFJlZmFjdG9yIG5mc19wYWdlX2ZpbmRfaGVhZF9yZXF1ZXN0KCkNCiAgICAgIE5G
-U3Y0OiBVc2UgYSBtdXRleCB0byBwcm90ZWN0IHRoZSBwZXItaW5vZGUgY29tbWl0IGxpc3RzDQog
-ICAgICBORlM6IFVzZSBhbiBhdG9taWNfbG9uZ190IHRvIGNvdW50IHRoZSBudW1iZXIgb2YgcmVx
-dWVzdHMNCiAgICAgIE5GUzogVXNlIGFuIGF0b21pY19sb25nX3QgdG8gY291bnQgdGhlIG51bWJl
-ciBvZiBjb21taXRzDQogICAgICBORlM6IFN3aXRjaCB0byB1c2luZyBtYXBwaW5nLT5wcml2YXRl
-X2xvY2sgZm9yIHBhZ2Ugd3JpdGViYWNrIGxvb2t1cHMuDQogICAgICBORlN2NC9wbmZzOiBSZXBs
-YWNlIHBuZnNfcHV0X2xzZWdfbG9ja2VkKCkgd2l0aCBwbmZzX3B1dF9sc2VnKCkNCiAgICAgIE5G
-UzogV2FpdCBmb3IgcmVxdWVzdHMgdGhhdCBhcmUgbG9ja2VkIG9uIHRoZSBjb21taXQgbGlzdA0K
-ICAgICAgU1VOUlBDOiBEb24ndCBob2xkIHRoZSB0cmFuc3BvcnQgbG9jayBhY3Jvc3Mgc29ja2V0
-IGNvcHkgb3BlcmF0aW9ucw0KICAgICAgU1VOUlBDOiBEb24ndCBob2xkIHRoZSB0cmFuc3BvcnQg
-bG9jayB3aGVuIHJlY2VpdmluZyBiYWNrY2hhbm5lbCBkYXRhDQogICAgICBTVU5SUEM6IERvbid0
-IGxvb3AgZm9yZXZlciBpbiB4c190Y3BfZGF0YV9yZWNlaXZlKCkNCiAgICAgIFNVTlJQQzogQ2xl
-YW51cCB4c190Y3BfcmVhZF9jb21tb24oKQ0KICAgICAgU1VOUlBDOiBBZGQgYSBzZXBhcmF0ZSBz
-cGlubG9jayB0byBwcm90ZWN0IHRoZSBSUEMgcmVxdWVzdCByZWNlaXZlIGxpc3QNCiAgICAgIE1l
-cmdlIGJyYW5jaCAnd3JpdGViYWNrJw0KICAgICAgTkZTdjQ6IEZpeCB1cCBtaXJyb3IgYWxsb2Nh
-dGlvbg0KICAgICAgTkZTOiBSZW1vdmUgdW51c2VkIHBhcmFtZXRlciBnZnBfZmxhZ3MgZnJvbSBu
-ZnNfcGFnZWlvX2luaXQoKQ0KICAgICAgTWVyZ2UgYnJhbmNoICdidWdmaXhlcycNCiAgICAgIE1l
-cmdlIHRhZyAnbmZzLXJkbWEtZm9yLTQuMTQtMScgb2YgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcv
-cHJvamVjdHMvYW5uYS9saW51eC1uZnMgaW50byBsaW51eC1uZXh0DQogICAgICBORlM6IEZpeCAy
-IHVzZSBhZnRlciBmcmVlIGlzc3VlcyBpbiB0aGUgSS9PIGNvZGUNCiAgICAgIE5GUzogbmZzX2xv
-Y2tfYW5kX2pvaW5fcmVxdWVzdHMgYW5kIG5mc19zY2FuX2NvbW1pdF9saXN0IGNhbiBkZWFkbG9j
-aw0KICAgICAgTkZTOiBSZW1vdmUgcG5mc19nZW5lcmljX3RyYW5zZmVyX2NvbW1pdF9saXN0KCkN
-CiAgICAgIE5GUzogRG9uJ3QgaG9sZCB0aGUgZ3JvdXAgbG9jayB3aGVuIGNhbGxpbmcgbmZzX3Jl
-bGVhc2VfcmVxdWVzdCgpDQogICAgICBORlM6IENvdW50IHRoZSBieXRlcyBvZiBza2lwcGVkIHN1
-YnJlcXVlc3RzIGluIG5mc19sb2NrX2FuZF9qb2luX3JlcXVlc3RzKCkNCg0KdGFyYW5nZ0BhbWF6
-b24uY29tICgxKToNCiAgICAgIE5GUzogU3luYyB0aGUgY29ycmVjdCBieXRlIHJhbmdlIGR1cmlu
-ZyBzeW5jaHJvbm91cyB3cml0ZXMNCg0KIGZzL2xvY2tkL2NsbnRsb2NrLmMgICAgICAgICAgICAg
-ICAgICAgICAgICB8ICAgNiArLQ0KIGZzL25mcy9jYWxsYmFja19wcm9jLmMgICAgICAgICAgICAg
-ICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9kZWxlZ2F0aW9uLmMgICAgICAgICAgICAgICAgICAg
-ICAgICB8ICAgMiArLQ0KIGZzL25mcy9kaXIuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICB8ICAgNCAtDQogZnMvbmZzL2RpcmVjdC5jICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwg
-ICA0ICstDQogZnMvbmZzL2ZpbGUuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDE3
-ICstDQogZnMvbmZzL2lub2RlLmMgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDEwICst
-DQogZnMvbmZzL2ludGVybmFsLmggICAgICAgICAgICAgICAgICAgICAgICAgIHwgICAxIC0NCiBm
-cy9uZnMvbmZzNF9mcy5oICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMTEgKw0KIGZzL25m
-cy9uZnM0cHJvYy5jICAgICAgICAgICAgICAgICAgICAgICAgICB8IDI3NCArKysrKy0tLS0NCiBm
-cy9uZnMvcGFnZWxpc3QuYyAgICAgICAgICAgICAgICAgICAgICAgICAgfCAxNzAgKysrLS0tDQog
-ZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDQzIC0tDQogZnMv
-bmZzL3BuZnMuaCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgICAyIC0NCiBmcy9uZnMv
-cG5mc19uZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgNDQgKy0NCiBmcy9uZnMvcmVh
-ZC5jICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgIDIgKy0NCiBmcy9uZnMvc3VwZXIu
-YyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMTIgKy0NCiBmcy9uZnMvd3JpdGUuYyAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgfCA0NTcgKysrKysrKy0tLS0tLS0tDQogaW5jbHVk
-ZS9saW51eC9uZnNfZnMuaCAgICAgICAgICAgICAgICAgICAgIHwgICA2ICstDQogaW5jbHVkZS9s
-aW51eC9uZnNfcGFnZS5oICAgICAgICAgICAgICAgICAgIHwgICA2ICstDQogaW5jbHVkZS9saW51
-eC9uZnNfeGRyLmggICAgICAgICAgICAgICAgICAgIHwgICAyICstDQogaW5jbHVkZS9saW51eC9z
-dW5ycGMvc2NoZWQuaCAgICAgICAgICAgICAgIHwgICAyICsNCiBpbmNsdWRlL2xpbnV4L3N1bnJw
-Yy94ZHIuaCAgICAgICAgICAgICAgICAgfCAgMTMgKw0KIGluY2x1ZGUvbGludXgvc3VucnBjL3hw
-cnQuaCAgICAgICAgICAgICAgICB8ICAgNSArLQ0KIG5ldC9zdW5ycGMvYmFja2NoYW5uZWxfcnFz
-dC5jICAgICAgICAgICAgICB8ICAgNCArLQ0KIG5ldC9zdW5ycGMvY2xudC5jICAgICAgICAgICAg
-ICAgICAgICAgICAgICB8ICAxMiArLQ0KIG5ldC9zdW5ycGMvc3Zjc29jay5jICAgICAgICAgICAg
-ICAgICAgICAgICB8ICAgNiArLQ0KIG5ldC9zdW5ycGMveHBydC5jICAgICAgICAgICAgICAgICAg
-ICAgICAgICB8ICA1NyArLQ0KIG5ldC9zdW5ycGMveHBydHJkbWEvYmFja2NoYW5uZWwuYyAgICAg
-ICAgICB8ICA3MSArLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL2Ztcl9vcHMuYyAgICAgICAgICAg
-ICAgfCAgMTAgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL2Zyd3Jfb3BzLmMgICAgICAgICAgICAg
-fCAgMTIgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3JwY19yZG1hLmMgICAgICAgICAgICAgfCA5
-MDIgKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3N2
-Y19yZG1hX2JhY2tjaGFubmVsLmMgfCAgIDkgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5z
-cG9ydC5jICAgICAgICAgICAgfCAgIDggKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMg
-ICAgICAgICAgICAgICAgfCAgMjIgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3hwcnRfcmRtYS5o
-ICAgICAgICAgICAgfCAgNjMgKy0NCiBuZXQvc3VucnBjL3hwcnRzb2NrLmMgICAgICAgICAgICAg
-ICAgICAgICAgfCAgOTAgKy0tDQogMzYgZmlsZXMgY2hhbmdlZCwgMTIyOCBpbnNlcnRpb25zKCsp
-LCAxMTMzIGRlbGV0aW9ucygtKQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
-b20NCg==
+
+> On Mon, 2017-09-11 at 13:24 +1000, NeilBrown wrote:
+>> On Thu, Sep 07 2017, Trond Myklebust wrote:
+>> 
+>> > On Thu, 2017-09-07 at 07:35 -0400, Jeff Layton wrote:
+>> > > On Thu, 2017-09-07 at 13:37 +1000, NeilBrown wrote:
+>> > > > On Tue, Aug 29 2017, Jeff Layton wrote:
+>> > > > 
+>> > > > > On Tue, 2017-08-29 at 11:23 +1000, NeilBrown wrote:
+>> > > > > > On Mon, Aug 28 2017, Jeff Layton wrote:
+>> > > > > > 
+>> > > > > > > On Mon, 2017-08-28 at 09:24 +1000, NeilBrown wrote:
+>> > > > > > > > On Fri, Aug 25 2017, Jeff Layton wrote:
+>> > > > > > > > 
+>> > > > > > > > > On Thu, 2017-07-20 at 15:42 -0400, Jeff Layton wrote:
+>> > > > > > > > > > From: Jeff Layton <jlayton@redhat.com>
+>> > > > > > > > > > 
+>> > > > > > > > > > There is some ambiguity in nfs about how writeback
+>> > > > > > > > > > errors are
+>> > > > > > > > > > tracked.
+>> > > > > > > > > > 
+>> > > > > > > > > > For instance, nfs_pageio_add_request calls
+>> > > > > > > > > > mapping_set_error when
+>> > > > > > > > > > the
+>> > > > > > > > > > add fails, but we track errors that occur after adding
+>> > > > > > > > > > the
+>> > > > > > > > > > request
+>> > > > > > > > > > with a dedicated int error in the open context.
+>> > > > > > > > > > 
+>> > > > > > > > > > Now that we have better infrastructure for the vfs
+>> > > > > > > > > > layer, this
+>> > > > > > > > > > latter int is now unnecessary. Just have
+>> > > > > > > > > > nfs_context_set_write_error set
+>> > > > > > > > > > the error in the mapping when one occurs.
+>> > > > > > > > > > 
+>> > > > > > > > > > Have NFS use file_write_and_wait_range to initiate and
+>> > > > > > > > > > wait on
+>> > > > > > > > > > writeback
+>> > > > > > > > > > of the data, and then check again after issuing the
+>> > > > > > > > > > commit(s).
+>> > > > > > > > > > 
+>> > > > > > > > > > With this, we also don't need to pay attention to the
+>> > > > > > > > > > ERROR_WRITE
+>> > > > > > > > > > flag for reporting, and just clear it to indicate to
+>> > > > > > > > > > subsequent
+>> > > > > > > > > > writers that they should try to go asynchronous again.
+>> > > > > > > > > > 
+>> > > > > > > > > > In nfs_page_async_flush, sample the error before
+>> > > > > > > > > > locking and
+>> > > > > > > > > > joining
+>> > > > > > > > > > the requests, and check for errors since that point.
+>> > > > > > > > > > 
+>> > > > > > > > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>> > > > > > > > > > ---
+>> > > > > > > > > >  fs/nfs/file.c          | 24 +++++++++++-------------
+>> > > > > > > > > >  fs/nfs/inode.c         |  3 +--
+>> > > > > > > > > >  fs/nfs/write.c         |  8 ++++++--
+>> > > > > > > > > >  include/linux/nfs_fs.h |  1 -
+>> > > > > > > > > >  4 files changed, 18 insertions(+), 18 deletions(-)
+>> > > > > > > > > > 
+>> > > > > > > > > > I have a baling wire and duct tape solution for testing
+>> > > > > > > > > > this with
+>> > > > > > > > > > xfstests (using iptables REJECT targets and soft
+>> > > > > > > > > > mounts). This
+>> > > > > > > > > > seems to
+>> > > > > > > > > > make nfs do the right thing.
+>> > > > > > > > > > 
+>> > > > > > > > > > diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> > > > > > > > > > index 5713eb32a45e..15d3c6faafd3 100644
+>> > > > > > > > > > --- a/fs/nfs/file.c
+>> > > > > > > > > > +++ b/fs/nfs/file.c
+>> > > > > > > > > > @@ -212,25 +212,23 @@ nfs_file_fsync_commit(struct file
+>> > > > > > > > > > *file,
+>> > > > > > > > > > loff_t start, loff_t end, int datasync)
+>> > > > > > > > > >  {
+>> > > > > > > > > >  	struct nfs_open_context *ctx =
+>> > > > > > > > > > nfs_file_open_context(file);
+>> > > > > > > > > >  	struct inode *inode = file_inode(file);
+>> > > > > > > > > > -	int have_error, do_resend, status;
+>> > > > > > > > > > -	int ret = 0;
+>> > > > > > > > > > +	int do_resend, status;
+>> > > > > > > > > > +	int ret;
+>> > > > > > > > > >  
+>> > > > > > > > > >  	dprintk("NFS: fsync file(%pD2) datasync %d\n",
+>> > > > > > > > > > file,
+>> > > > > > > > > > datasync);
+>> > > > > > > > > >  
+>> > > > > > > > > >  	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+>> > > > > > > > > >  	do_resend =
+>> > > > > > > > > > test_and_clear_bit(NFS_CONTEXT_RESEND_WRITES, &ctx-
+>> > > > > > > > > > > flags);
+>> > > > > > > > > > 
+>> > > > > > > > > > -	have_error =
+>> > > > > > > > > > test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE,
+>> > > > > > > > > > &ctx->flags);
+>> > > > > > > > > > -	status = nfs_commit_inode(inode, FLUSH_SYNC);
+>> > > > > > > > > > -	have_error |=
+>> > > > > > > > > > test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx-
+>> > > > > > > > > > > flags);
+>> > > > > > > > > > 
+>> > > > > > > > > > -	if (have_error) {
+>> > > > > > > > > > -		ret = xchg(&ctx->error, 0);
+>> > > > > > > > > > -		if (ret)
+>> > > > > > > > > > -			goto out;
+>> > > > > > > > > > -	}
+>> > > > > > > > > > -	if (status < 0) {
+>> > > > > > > > > > +	clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx-
+>> > > > > > > > > > > flags);
+>> > > > > > > > > > 
+>> > > > > > > > > > +	ret = nfs_commit_inode(inode, FLUSH_SYNC);
+>> > > > > > > > > > +
+>> > > > > > > > > > +	/* Recheck and advance after the commit */
+>> > > > > > > > > > +	status = file_check_and_advance_wb_err(file);
+>> > > > > > > > 
+>> > > > > > > > This change makes the code inconsistent with the comment
+>> > > > > > > > above the
+>> > > > > > > > function, which still references ctx->error.  The intent of
+>> > > > > > > > the
+>> > > > > > > > comment
+>> > > > > > > > is still correct, but the details have changed.
+>> > > > > > > > 
+>> > > > > > > 
+>> > > > > > > Good catch. I'll fix that up in a respin.
+>> > > > > > > 
+>> > > > > > > > Also, there is a call to mapping_set_error() in
+>> > > > > > > > nfs_pageio_add_request().
+>> > > > > > > > I wonder if that should be changed to
+>> > > > > > > >   nfs_context_set_write_error(req->wb_context, desc-
+>> > > > > > > > > pg_error)
+>> > > > > > > > 
+>> > > > > > > > ??
+>> > > > > > > > 
+>> > > > > > > 
+>> > > > > > > Trickier question...
+>> > > > > > > 
+>> > > > > > > I'm not quite sure what semantics we're looking for with
+>> > > > > > > NFS_CONTEXT_ERROR_WRITE. I know that it forces writes to be
+>> > > > > > > synchronous, but I'm not quite sure why it gets cleared the
+>> > > > > > > way it
+>> > > > > > > does. It's set on any error but cleared before issuing a
+>> > > > > > > commit.
+>> > > > > > > 
+>> > > > > > > I added a similar flag to Ceph inodes recently, but only
+>> > > > > > > clear it when
+>> > > > > > > a write succeeds. Wouldn't that make more sense here as well?
+>> > > > > > 
+>> > > > > > It is a bit hard to wrap one's mind around.
+>> > > > > > 
+>> > > > > > In the original code (commit 7b159fc18d417980) it looks like:
+>> > > > > >  - test-and-clear bit
+>> > > > > >  - write and sync
+>> > > > > >  - test-bit
+>> > > > > > 
+>> > > > > > This does, I think, seem safer than "clear on successful write"
+>> > > > > > as the
+>> > > > > > writes could complete out-of-order and I wouldn't be surprised
+>> > > > > > if the
+>> > > > > > unsuccessful ones completed with an error before the successful
+>> > > > > > one -
+>> > > > > > particularly with an error like EDQUOT.
+>> > > > > > 
+>> > > > > > However the current code does the writes before the test-and-
+>> > > > > > clear, and
+>> > > > > > only does the commit afterwards.  That makes it less clear why
+>> > > > > > the
+>> > > > > > current sequence is a good idea.
+>> > > > > > 
+>> > > > > > However ... nfs_file_fsync_commit() is only called if
+>> > > > > > filemap_write_and_wait_range() returned with success, so we
+>> > > > > > only clear
+>> > > > > > the flag after successful writes(?).
+>> > > > > > 
+>> > > > > > Oh....
+>> > > > > > This patch from me:
+>> > > > > > 
+>> > > > > > Commit: 2edb6bc3852c ("NFS - fix recent breakage to NFS error
+>> > > > > > handling.")
+>> > > > > > 
+>> > > > > > seems to have been reverted by
+>> > > > > > 
+>> > > > > > Commit: 7b281ee02655 ("NFS: fsync() must exit with an error if
+>> > > > > > page writeback failed")
+>> > > > > > 
+>> > > > > > which probably isn't good.  It appears that this code is very
+>> > > > > > fragile
+>> > > > > > and easily broken.
+>> > > > 
+>> > > > On further investigation, I think the problem that I fixed and then
+>> > > > we
+>> > > > reintroduced will be fixed again - more permanently - by your
+>> > > > patch.
+>> > > > The root problem is that nfs keeps error codes in a different way
+>> > > > to the
+>> > > > MM core.  By unifying those, the problem goes.
+>> > > > (The specific problem is that writes which hit EDQUOT on the server
+>> > > > can
+>> > > >  report EIO on the client).
+>> > > > 
+>> > > > 
+>> > > > > > Maybe we need to work out exactly what is required, and
+>> > > > > > document it - so
+>> > > > > > we can stop breaking it.
+>> > > > > > Or maybe we need some unit tests.....
+>> > > > > > 
+>> > > > > 
+>> > > > > Yes, laying out what's necessary for this would be very helpful.
+>> > > > > We
+>> > > > > clearly want to set the flag when an error occurs. Under what
+>> > > > > circumstances should we be clearing it?
+>> > > > 
+>> > > > Well.... looking back at  7b159fc18d417980f57ae which introduced
+>> > > > the
+>> > > > flag, prior to that write errors (ctx->error) were only reported by
+>> > > > nfs_file_flush and nfs_fsync, so only one close() and fsync().
+>> > > > 
+>> > > > After that commit, setting the flag would mean that errors could be
+>> > > > returned by 'write'.  So clearing as part of returning the error
+>> > > > makes
+>> > > > perfect sense.
+>> > > > 
+>> > > > As long as the error gets recorded, and gets returned when it is
+>> > > > recorded, it doesn't much matter when the flag is cleared.  With
+>> > > > your
+>> > > > patches we don't need to flag any more to get errors reliably
+>> > > > reported.
+>> > > > 
+>> > > > Leaving the flag set means that writes go more slowly - we don't
+>> > > > get
+>> > > > large queue of background rights building up but destined for
+>> > > > failure.
+>> > > > This is the main point made in the comment message when the flag
+>> > > > was
+>> > > > introduced.
+>> > > > Of course, by the time we first get an error there could already
+>> > > > by a large queue, so we probably want that to drain completely
+>> > > > before
+>> > > > allowing async writes again.
+>> > 
+>> > We already have this functionality implemented in the existing code.
+>> > 
+>> > > > 
+>> > > > It might make sense to have 2 flags.  One which says "writes should
+>> > > > be
+>> > > > synchronous", another that says "There was an error recently".
+>> > > > We clear the error flag before calling nfs_fsync, and if it is
+>> > > > still
+>> > > > clear afterwards, we clear the sync-writes flag.  Maybe that is
+>> > > > more
+>> > > > complex than needed though.
+>> > > > 
+>> > 
+>> > We also need to preserve the NFS_CONTEXT_RESEND_WRITES flag. I don't
+>> > see any global mechanism that will replace that.
+>> > 
+>> > > > I'm leaning towards your suggestion that it doesn't matter very
+>> > > > much
+>> > > > when it gets cleared, and clearing it on any successful write is
+>> > > > simplest.
+>> > > > 
+>> > > > So I'm still in favor of using nfs_context_set_write_error() in
+>> > > > nfs_pageio_add_request(), primarily because it is most consistent -
+>> > > > we
+>> > > > don't need exceptions.
+>> > > 
+>> > > Thanks for taking a closer look. I can easily make the change above,
+>> > > and
+>> > > I do think that keeping this mechanism as simple as possible will
+>> > > make
+>> > > it easier to prevent bitrot.
+>> > > 
+>> > > That said... NFS_CONTEXT_ERROR_WRITE is a per ctx flag, and the ctx
+>> > > is a
+>> > > per open file description object.
+>> > > 
+>> > > Is that the correct way to track this? All of the ctx's will share
+>> > > the
+>> > > same inode. If we're getting writeback errors for one context, it's
+>> > > quite likely that we'll be seeing them via others.
+>> > > 
+>> > > I suppose the counterargument is when we have things like expiring
+>> > > krb5
+>> > > tickets. Write failures via an expiring set of creds may have no
+>> > > effect
+>> > > on writeback via other creds.
+>> > > 
+>> > > Still, I think a per-inode flag might make more sense here.
+>> > > 
+>> > > Thoughts?
+>> > 
+>> > As far as I'm concerned, that would be a regression. The most common
+>> > problem when flushing writeback data to the server aside from ENOSPC
+>> > (and possibly ESTALE) is EACCES, which is particular to the file
+>> > descriptor that opened the file.
+>> > 
+>> > File contexts, and NFS_CONTEXT_ERROR_WRITE solve that problem by being
+>> > private to the file descriptor.
+>> 
+>> Thanks for the reminder that errors are per-context and this patch drops
+>> this.  The per-context nature of errors in NFS was the reason that I
+>> nagged Jeff to make errseq_t a stand-alone type rather than just a part
+>> of address_space.  I had envisaged that it would be embedded in the
+>> open_context as well.
+>> We still could do that, but as there is precisely one open-file for each
+>> open_context, the gains are not great.
+>> 
+>> However, while looking over the code to make sure I really understood it
+>> and all the possible consequences of changing to errseq_t I found a few
+>> anomalies.  The patch below addresses them all.
+>> 
+>> Would you see if they may sense to you?
+>> 
+>> Thanks,
+>> NeilBrown
+>> 
+>> 
+>> From: NeilBrown <neilb@suse.com>
+>> Date: Mon, 11 Sep 2017 13:15:50 +1000
+>> Subject: [PATCH] NFS: various changes relating to reporting IO errors.
+>> 
+>> 1/ remove 'start' and 'end' args from nfs_file_fsync_commit().
+>>    They aren't used.
+>> 
+>> 2/ Make nfs_context_set_write_error() a "static inline" in internal.h
+>>    so we can...
+>> 
+>> 3/ Use nfs_context_set_write_error() instead of mapping_set_error()
+>>    if nfs_pageio_add_request() fails before sending any request.
+>>    NFS generally keeps errors in the open_context, not the mapping,
+>>    so this is more consistent.
+>> 
+>> 4/ If filemap_write_and_write_range() reports any error, still
+>>    check ctx->error.  The value in ctx->error is likely to be
+>>    more useful.  As part of this, NFS_CONTEXT_ERROR_WRITE is
+>>    cleared slightly earlier, before nfs_file_fsync_commit() is called,
+>>    rather than at the start of that function.
+>> 
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>  fs/nfs/file.c     | 16 ++++++++++------
+>>  fs/nfs/internal.h |  7 +++++++
+>>  fs/nfs/pagelist.c |  4 ++--
+>>  fs/nfs/write.c    |  7 -------
+>>  4 files changed, 19 insertions(+), 15 deletions(-)
+>> 
+>> diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+>> index af330c31f627..ab324f14081f 100644
+>> --- a/fs/nfs/file.c
+>> +++ b/fs/nfs/file.c
+>> @@ -208,21 +208,19 @@ EXPORT_SYMBOL_GPL(nfs_file_mmap);
+>>   * fall back to doing a synchronous write.
+>>   */
+>>  static int
+>> -nfs_file_fsync_commit(struct file *file, loff_t start, loff_t end, int datasync)
+>> +nfs_file_fsync_commit(struct file *file, int datasync)
+>>  {
+>>  	struct nfs_open_context *ctx = nfs_file_open_context(file);
+>>  	struct inode *inode = file_inode(file);
+>> -	int have_error, do_resend, status;
+>> +	int do_resend, status;
+>>  	int ret = 0;
+>>  
+>>  	dprintk("NFS: fsync file(%pD2) datasync %d\n", file, datasync);
+>>  
+>>  	nfs_inc_stats(inode, NFSIOS_VFSFSYNC);
+>>  	do_resend = test_and_clear_bit(NFS_CONTEXT_RESEND_WRITES, &ctx->flags);
+>> -	have_error = test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+>>  	status = nfs_commit_inode(inode, FLUSH_SYNC);
+>> -	have_error |= test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+>> -	if (have_error) {
+>> +	if (test_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags)) {
+>>  		ret = xchg(&ctx->error, 0);
+>>  		if (ret)
+>>  			goto out;
+>> @@ -247,10 +245,16 @@ nfs_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
+>>  	trace_nfs_fsync_enter(inode);
+>>  
+>>  	do {
+>> +		struct nfs_open_context *ctx = nfs_file_open_context(file);
+>>  		ret = filemap_write_and_wait_range(inode->i_mapping, start, end);
+>> +		if (test_and_clear_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags)) {
+>> +			int ret2 = xchg(&ctx->error, 0);
+>> +			if (ret2)
+>> +				ret = ret2;
+>> +		}
+>>  		if (ret != 0)
+>>  			break;
+>> -		ret = nfs_file_fsync_commit(file, start, end, datasync);
+>> +		ret = nfs_file_fsync_commit(file, datasync);
+>>  		if (!ret)
+>>  			ret = pnfs_sync_inode(inode, !!datasync);
+>>  		/*
+>> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+>> index dc456416d2be..44c8962fec91 100644
+>> --- a/fs/nfs/internal.h
+>> +++ b/fs/nfs/internal.h
+>> @@ -769,3 +769,10 @@ static inline bool nfs_error_is_fatal(int err)
+>>  		return false;
+>>  	}
+>>  }
+>> +
+>> +static inline void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+>> +{
+>> +	ctx->error = error;
+>> +	smp_wmb();
+>> +	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+>> +}
+>> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+>> index de9066a92c0d..0ebd26b9a6bd 100644
+>> --- a/fs/nfs/pagelist.c
+>> +++ b/fs/nfs/pagelist.c
+>> @@ -1198,8 +1198,8 @@ out_failed:
+>>  
+>>  		/* remember fatal errors */
+>>  		if (nfs_error_is_fatal(desc->pg_error))
+>> -			mapping_set_error(desc->pg_inode->i_mapping,
+>> -					  desc->pg_error);
+>> +			nfs_context_set_write_error(req->wb_context,
+>> +						    desc->pg_error);
+>>  
+>>  		func = desc->pg_completion_ops->error_cleanup;
+>>  		for (midx = 0; midx < desc->pg_mirror_count; midx++) {
+>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>> index b1af5dee5e0a..f702bf2def79 100644
+>> --- a/fs/nfs/write.c
+>> +++ b/fs/nfs/write.c
+>> @@ -147,13 +147,6 @@ static void nfs_io_completion_put(struct nfs_io_completion *ioc)
+>>  		kref_put(&ioc->refcount, nfs_io_completion_release);
+>>  }
+>>  
+>> -static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+>> -{
+>> -	ctx->error = error;
+>> -	smp_wmb();
+>> -	set_bit(NFS_CONTEXT_ERROR_WRITE, &ctx->flags);
+>> -}
+>> -
+>>  /*
+>>   * nfs_page_find_head_request_locked - find head request associated with @page
+>>   *
+>
+> This should probably be broken out into at least a 2-3 different
+> patches.
+>
+> Ok, so to make sure I understand:
+>
+> All writeback is done under the aegis of an open context, and writes
+> from different open contexts are not mergeable. We also flush to the
+> server in the case that a dirty page is written via an incompatible open
+> context. So with that we can always tie
+
+Not quite.  Writes from different open contexts are sometimes mergeable,
+providing the credential is the same and there are no locks that might
+get in the way. (nfs_flush_incompatible() gets rid of conflicts writes
+to the same page as part of nfs_write_begin().
+When writes are merged, all contexts remain reachable from the request
+through an 'nfs_page'. nfs_write_completion() iterates over all the
+nfs_pages attached to the nfs_pgio_header, and sets the context
+write_error from the hdr->error.
+
+>
+> In that case, yes...mixing in errseq_t doesn't really buy us much here,
+> and I agree with most of the changes above.
+>
+> That said...I'm still not thrilled with how NFS_CONTEXT_ERROR_WRITE is
+> handled in this code. That flag is set when a write fails, but is only
+> cleared on fsync.
+>
+> That seems wrong to me. Why wait for an fsync to start doing async
+> writes again once they start working? What if the application never does
+> an fsync? Clearing that flag on a successful WRITE seems like it'd make
+> more sense.
+
+We don't really 'wait' for an fsync.  Having NFS_CONTEXT_ERROR_WRITE
+means that the very next write will force an fsync
+(nfs_need_check_write()).  So we really just wait for the next write.
+The current code doesn't seem "obviously right" to me, but it isn't
+"obviously wrong" either, and I can only make it obviously right to me
+by making it more complex, and I don't think I can justify that.
+
+Thanks,
+NeilBrown
+
+> -- 
+> Jeff Layton <jlayton@redhat.com>
 
