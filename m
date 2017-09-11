@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f196.google.com ([209.85.192.196]:38175 "EHLO
-        mail-pf0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751515AbdIKPQA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2017 11:16:00 -0400
-Subject: [PATCH v1 2/7] xprtrdma: Change return value of
- rpcrdma_prepare_send_sges()
+Received: from mail-pf0-f178.google.com ([209.85.192.178]:35641 "EHLO
+        mail-pf0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751787AbdIKPQT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2017 11:16:19 -0400
+Subject: [PATCH v1 3/7] xprtrdma: Add data structure to manage RDMA Send
+ arguments
 From: Chuck Lever <chuck.lever@oracle.com>
 To: jgunthorpe@obsidianresearch.com, sagi@grimberg.me
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 11 Sep 2017 11:17:54 -0400
-Message-ID: <150514306906.1307.8979554419454501550.stgit@lebasque.1015granger.net>
+Date: Mon, 11 Sep 2017 11:18:12 -0400
+Message-ID: <150514308753.1307.8509442348376091123.stgit@lebasque.1015granger.net>
 In-Reply-To: <150514269466.1307.1991885208569456320.stgit@lebasque.1015granger.net>
 References: <150514269466.1307.1991885208569456320.stgit@lebasque.1015granger.net>
 MIME-Version: 1.0
@@ -17,161 +17,446 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Make rpcrdma_prepare_send_sges() return a negative errno
-instead of a bool. Soon callers will want distinct treatments of
-different types of failures.
+Problem statement:
 
+Recently Sagi Grimberg <sagi@grimberg.me> observed that kernel RDMA-
+enabled storage initiators don't handle delayed Send completion
+correctly. If Send completion is delayed beyond the end of a ULP
+transaction, the ULP may release resources that are still being used
+by the HCA to complete a long-running Send operation.
+
+This is a common design trait amongst our initiators. Most Send
+operations are faster than the ULP transaction they are part of.
+Waiting for a completion for these is typically unnecessary.
+
+Infrequently, a network partition or some other problem crops up
+where an ordering problem can occur. In NFS parlance, the RPC Reply
+arrives and completes the RPC, but the HCA is still retrying the
+Send WR that conveyed the RPC Call. In this case, the HCA can try
+to use memory that has been invalidated or DMA unmapped, and the
+connection is lost. If that memory has been re-used for something
+else (possibly not related to NFS), and the Send retransmission
+exposes that data on the wire.
+
+Thus we cannot assume that it is safe to release Send-related
+resources just because a ULP reply has arrived.
+
+After some analysis, we have determined that the completion
+housekeeping will not be difficult for xprtrdma:
+
+ - Inline Send buffers are registered via the local DMA key, and
+   are already left DMA mapped for the lifetime of a transport
+   connection, thus no additional handling is necessary for those
+ - Gathered Sends involving page cache pages _will_ need to
+   DMA unmap those pages after the Send completes. But like
+   inline send buffers, they are registered via the local DMA key,
+   and thus will not need to be invalidated
+
+In addition, RPC completion will need to wait for Send completion
+in the latter case. However, nearly always, the Send that conveys
+the RPC Call will have completed long before the RPC Reply
+arrives, and thus no additional latency will be accrued.
+
+Design notes:
+
+In this patch, the rpcrdma_sendctx object is introduced, and a
+lock-free circular queue is added to manage a set of them per
+transport.
+
+The RPC client's send path already prevents sending more than one
+RPC Call at the same time. This allows us to treat the consumer
+side of the queue (rpcrdma_sendctx_get_locked) as if there is a
+single consumer thread.
+
+The producer side of the queue (rpcrdma_sendctx_put_locked) is
+invoked only from the Send completion handler, which is a single
+thread of execution (soft IRQ).
+
+The only care that needs to be taken is with the tail index, which
+is shared between the producer and consumer. Only the producer
+updates the tail index. The consumer compares the head with the
+tail to ensure that the a sendctx that is in use is never handed
+out again (or, expressed more conventionally, the queue is empty).
+
+When the sendctx queue empties completely, there are enough Sends
+outstanding that posting more Send operations can result in a Send
+Queue overflow. In this case, the ULP is told to wait and try again.
+This introduces strong Send Queue accounting to xprtrdma.
+
+As a final touch, Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
+suggested a mechanism that does not require signaling every Send.
+We signal once every N Sends, and perform SGE unmapping of N Send
+operations during that one completion.
+
+Reported-by: Sagi Grimberg <sagi@grimberg.me>
+Suggested-by: Jason Gunthorpe <jgunthorpe@obsidianresearch.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    6 +++-
- net/sunrpc/xprtrdma/rpc_rdma.c    |   52 +++++++++++++++++++++++--------------
- net/sunrpc/xprtrdma/xprt_rdma.h   |    6 +++-
- 3 files changed, 40 insertions(+), 24 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++
+ net/sunrpc/xprtrdma/transport.c |    5 +
+ net/sunrpc/xprtrdma/verbs.c     |  169 +++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/xprt_rdma.h |   41 +++++++++
+ 4 files changed, 235 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index d31d0ac..90a0438 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -206,6 +206,7 @@ int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_xprt);
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	__be32 *p;
-+	int rc;
- 
- 	rpcrdma_set_xdrlen(&req->rl_hdrbuf, 0);
- 	xdr_init_encode(&req->rl_stream, &req->rl_hdrbuf,
-@@ -222,8 +223,9 @@ int rpcrdma_bc_marshal_reply(struct rpc_rqst *rqst)
- 	*p++ = xdr_zero;
- 	*p = xdr_zero;
- 
--	if (!rpcrdma_prepare_send_sges(&r_xprt->rx_ia, req, RPCRDMA_HDRLEN_MIN,
--				       &rqst->rq_snd_buf, rpcrdma_noch))
-+	rc = rpcrdma_prepare_send_sges(r_xprt, req, RPCRDMA_HDRLEN_MIN,
-+				       &rqst->rq_snd_buf, rpcrdma_noch);
-+	if (rc)
- 		return -EIO;
- 	return 0;
- }
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index bc464b1..0db7ba0 100644
+index 0db7ba0..62ec1f7 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -522,7 +522,7 @@ rpcrdma_prepare_hdr_sge(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
- 
- 	if (unlikely(!rpcrdma_regbuf_is_mapped(rb))) {
- 		if (!__rpcrdma_dma_map_regbuf(ia, rb))
--			return false;
-+			goto out_regbuf;
- 		sge->addr = rdmab_addr(rb);
- 		sge->lkey = rdmab_lkey(rb);
- 	}
-@@ -532,6 +532,10 @@ rpcrdma_prepare_hdr_sge(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
- 				      sge->length, DMA_TO_DEVICE);
- 	req->rl_send_wr.num_sge++;
- 	return true;
-+
-+out_regbuf:
-+	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
-+	return false;
+@@ -697,6 +697,28 @@ rpcrdma_unmap_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
  }
  
- /* Prepare the Send SGEs. The head and tail iovec, and each entry
-@@ -552,7 +556,7 @@ rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
- 	 * DMA-mapped. Sync the content that has changed.
- 	 */
- 	if (!rpcrdma_dma_map_regbuf(ia, rb))
--		return false;
-+		goto out_regbuf;
- 	sge_no = 1;
- 	sge[sge_no].addr = rdmab_addr(rb);
- 	sge[sge_no].length = xdr->head[0].iov_len;
-@@ -639,6 +643,10 @@ rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
- 	req->rl_mapped_sges = sge_no - 1;
- 	return true;
- 
-+out_regbuf:
-+	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
-+	return false;
-+
- out_mapping_overflow:
- 	pr_err("rpcrdma: too many Send SGEs (%u)\n", sge_no);
- 	return false;
-@@ -648,25 +656,31 @@ rpcrdma_prepare_msg_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
- 	return false;
- }
- 
--bool
--rpcrdma_prepare_send_sges(struct rpcrdma_ia *ia, struct rpcrdma_req *req,
--			  u32 hdrlen, struct xdr_buf *xdr,
--			  enum rpcrdma_chunktype rtype)
-+/**
-+ * rpcrdma_prepare_send_sges - Construct SGEs for a Send WR
-+ * @r_xprt: controlling transport
-+ * @req: context of RPC Call being marshalled
-+ * @hdrlen: size of transport header, in bytes
-+ * @xdr: xdr_buf containing RPC Call
-+ * @rtype: chunk type being encoded
+ /**
++ * __rpcrdma_unmap_send_sges - DMA-unmap Send buffers
++ * @sc: send_ctx containing SGEs to unmap
 + *
-+ * Returns 0 on success; otherwise a negative errno is returned.
++ * The first two SGEs are always left mapped. They contain the transport
++ * header and the inline buffer.
 + */
-+int
-+rpcrdma_prepare_send_sges(struct rpcrdma_xprt *r_xprt,
-+			  struct rpcrdma_req *req, u32 hdrlen,
-+			  struct xdr_buf *xdr, enum rpcrdma_chunktype rtype)
- {
- 	req->rl_send_wr.num_sge = 0;
- 
--	if (!rpcrdma_prepare_hdr_sge(ia, req, hdrlen))
--		goto out_map;
-+	if (!rpcrdma_prepare_hdr_sge(&r_xprt->rx_ia, req, hdrlen))
-+		return -EIO;
- 
- 	if (rtype != rpcrdma_areadch)
--		if (!rpcrdma_prepare_msg_sges(ia, req, xdr, rtype))
--			goto out_map;
--
--	return true;
-+		if (!rpcrdma_prepare_msg_sges(&r_xprt->rx_ia, req, xdr, rtype))
-+			return -EIO;
- 
--out_map:
--	pr_err("rpcrdma: failed to DMA map a Send buffer\n");
--	return false;
-+	return 0;
++void
++__rpcrdma_unmap_send_sges(struct rpcrdma_sendctx *sc)
++{
++	struct ib_sge *sge;
++	unsigned int count;
++
++	dprintk("RPC:       %s: unmapping %u sges for sc=%p\n",
++		__func__, sc->sc_unmap_count, sc);
++
++	sge = &sc->sc_sges[2];
++	for (count = sc->sc_unmap_count; count; ++sge, --count)
++		ib_dma_unmap_page(sc->sc_device, sge->addr, sge->length,
++				  DMA_TO_DEVICE);
++}
++
++/**
+  * rpcrdma_marshal_req - Marshal and send one RPC request
+  * @r_xprt: controlling transport
+  * @rqst: RPC request to be marshaled
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index b680591..18cb8b4 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -790,11 +790,12 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ 		   r_xprt->rx_stats.failed_marshal_count,
+ 		   r_xprt->rx_stats.bad_reply_count,
+ 		   r_xprt->rx_stats.nomsg_call_count);
+-	seq_printf(seq, "%lu %lu %lu %lu\n",
++	seq_printf(seq, "%lu %lu %lu %lu %lu\n",
+ 		   r_xprt->rx_stats.mrs_recovered,
+ 		   r_xprt->rx_stats.mrs_orphaned,
+ 		   r_xprt->rx_stats.mrs_allocated,
+-		   r_xprt->rx_stats.local_inv_needed);
++		   r_xprt->rx_stats.local_inv_needed,
++		   r_xprt->rx_stats.empty_sendctx_q);
  }
  
- void
-@@ -833,12 +847,10 @@ rpcrdma_marshal_req(struct rpcrdma_xprt *r_xprt, struct rpc_rqst *rqst)
- 		transfertypes[rtype], transfertypes[wtype],
- 		xdr_stream_pos(xdr));
+ static int
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index c78fb27..219f2d8 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -52,6 +52,8 @@
+ #include <linux/prefetch.h>
+ #include <linux/sunrpc/addr.h>
+ #include <linux/sunrpc/svc_rdma.h>
++
++#include <asm-generic/barrier.h>
+ #include <asm/bitops.h>
  
--	if (!rpcrdma_prepare_send_sges(&r_xprt->rx_ia, req,
--				       xdr_stream_pos(xdr),
--				       &rqst->rq_snd_buf, rtype)) {
--		ret = -EIO;
-+	ret = rpcrdma_prepare_send_sges(r_xprt, req, xdr_stream_pos(xdr),
-+					&rqst->rq_snd_buf, rtype);
-+	if (ret)
- 		goto out_err;
--	}
+ #include <rdma/ib_cm.h>
+@@ -564,6 +566,9 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 		ep->rep_attr.cap.max_recv_sge);
+ 
+ 	/* set trigger for requesting send completion */
++	ep->rep_send_batch = min_t(unsigned int, RPCRDMA_MAX_SEND_BATCH,
++				   cdata->max_requests >> 2);
++	ep->rep_send_count = ep->rep_send_batch;
+ 	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
+ 	if (ep->rep_cqinit <= 2)
+ 		ep->rep_cqinit = 0;	/* always signal? */
+@@ -846,6 +851,164 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	ib_drain_qp(ia->ri_id->qp);
+ }
+ 
++/* Fixed-size circular FIFO queue. This implementation is wait-free and
++ * lock-free.
++ *
++ * Consumer is the code path that posts Sends. This path dequeues a
++ * sendctx for use by a Send operation. Multiple consumer threads are
++ * serialized by the RPC transport lock, which allows only one
++ * ->send_request at a time.
++ *
++ * Producer is the code path that handles Send completions. This path
++ * enqueues a sendctx that has been completed. Multiple producer threads
++ * are serialized by the ib_poll_cq() function.
++ */
++
++/* rpcrdma_sendctxs_destroy() assumes caller has already quiesced
++ * queue activity, and ib_drain_qp has flushed all remaining Send
++ * requests.
++ */
++static void rpcrdma_sendctxs_destroy(struct rpcrdma_buffer *buf)
++{
++	kfree(buf->rb_sc_ctxs);
++}
++
++static struct rpcrdma_sendctx *rpcrdma_sendctx_create(unsigned int max_sges)
++{
++	struct rpcrdma_sendctx *sc;
++
++	sc = kzalloc(sizeof(*sc) + max_sges * sizeof(struct ib_sge),
++		     GFP_KERNEL);
++	if (!sc)
++		return NULL;
++
++	sc->sc_wr.next = NULL;
++	sc->sc_wr.wr_cqe = &sc->sc_cqe;
++	sc->sc_wr.sg_list = sc->sc_sges;
++	sc->sc_wr.opcode = IB_WR_SEND;
++	sc->sc_cqe.done = rpcrdma_wc_send;
++	return sc;
++}
++
++static int rpcrdma_sendctxs_create(struct rpcrdma_xprt *r_xprt)
++{
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
++	unsigned long i;
++
++	/* Maximum number of concurrent outstanding Send WRs */
++	i = buf->rb_max_requests + RPCRDMA_MAX_BC_REQUESTS;
++	dprintk("RPC:       %s: allocating %lu send_ctxs (batch size %u)\n",
++		__func__, i, r_xprt->rx_ep.rep_send_batch);
++	buf->rb_sc_ctxs = kcalloc(i, sizeof(struct rpcrdma_sendctx *),
++				  GFP_KERNEL);
++	if (!buf->rb_sc_ctxs)
++		return -ENOMEM;
++
++	buf->rb_sc_last = i - 1;
++	for (i = 0; i <= buf->rb_sc_last; i++) {
++		struct rpcrdma_sendctx *sc;
++
++		sc = rpcrdma_sendctx_create(r_xprt->rx_ia.ri_max_send_sges);
++		if (!sc)
++			goto out_destroy;
++
++		sc->sc_buffers = buf;
++		buf->rb_sc_ctxs[i] = sc;
++	}
++
++	return 0;
++
++out_destroy:
++	rpcrdma_sendctxs_destroy(buf);
++	return -ENOMEM;
++}
++
++/* The sendctx queue is not guaranteed to have a size that is
++ * a power of two, thus the helpers in circ_buf.h cannot be used.
++ * The other option is to use modulus (%), which can be expensive.
++ */
++static unsigned long rpcrdma_sendctx_next(struct rpcrdma_buffer *buf,
++					  unsigned long item)
++{
++	return likely(item < buf->rb_sc_last) ? item + 1 : 0;
++}
++
++/**
++ * rpcrdma_sendctx_get_locked - Acquire a send context
++ * @buf: transport buffers from which to acquire an unused context
++ *
++ * Returns pointer to a free send completion context; or NULL if
++ * the queue is empty.
++ *
++ * Usage: Called before Send WR is posted to acquire an
++ * SGE array.
++ *
++ * The caller serializes calls to this function (per rpcrdma_buffer),
++ * and provides an effective memory barrier that flushes the new value
++ * of rb_sc_head.
++ */
++struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf)
++{
++	struct rpcrdma_xprt *r_xprt;
++	struct rpcrdma_sendctx *sc;
++	unsigned long next_head;
++
++	next_head = rpcrdma_sendctx_next(buf, buf->rb_sc_head);
++
++	if (next_head == READ_ONCE(buf->rb_sc_tail))
++		goto out_emptyq;
++
++	/* ORDER: item must be accessed _before_ head is updated */
++	sc = buf->rb_sc_ctxs[next_head];
++
++	/* Releasing the lock in the caller acts as a memory
++	 * barrier that flushes rb_sc_head.
++	 */
++	buf->rb_sc_head = next_head;
++
++	return sc;
++
++out_emptyq:
++	/* The queue is "empty" if there have not been enough Send
++	 * completions recently. This is a sign the Send Queue is
++	 * backing up. Cause the caller to pause and try again.
++	 */
++	dprintk("RPC:       %s: empty sendctx queue\n", __func__);
++	r_xprt = container_of(buf, struct rpcrdma_xprt, rx_buf);
++	r_xprt->rx_stats.empty_sendctx_q++;
++	return NULL;
++}
++
++/**
++ * rpcrdma_sendctx_put_locked - Release a send context
++ * @sc: send context to release
++ *
++ * Usage: Called when Send completes to return a
++ * completed send context to the queue.
++ *
++ * The caller serializes calls to this function (per rpcrdma_buffer).
++ */
++void rpcrdma_sendctx_put_locked(struct rpcrdma_sendctx *sc)
++{
++	struct rpcrdma_buffer *buf = sc->sc_buffers;
++	unsigned long next_tail;
++
++	/* Unmap SGEs of previously completed by unsignaled
++	 * Sends by walking up the queue until @sc is found.
++	 */
++	next_tail = buf->rb_sc_tail;
++	do {
++		next_tail = rpcrdma_sendctx_next(buf, next_tail);
++
++		/* ORDER: item must be accessed _before_ tail is updated */
++		rpcrdma_unmap_send_sges(buf->rb_sc_ctxs[next_tail]);
++
++	} while (buf->rb_sc_ctxs[next_tail] != sc);
++
++	/* Paired with READ_ONCE */
++	smp_store_release(&buf->rb_sc_tail, next_tail);
++}
++
+ static void
+ rpcrdma_mr_recovery_worker(struct work_struct *work)
+ {
+@@ -1041,6 +1204,10 @@ rpcrdma_buffer_create(struct rpcrdma_xprt *r_xprt)
+ 		list_add(&rep->rr_list, &buf->rb_recv_bufs);
+ 	}
+ 
++	rc = rpcrdma_sendctxs_create(r_xprt);
++	if (rc)
++		goto out;
++
  	return 0;
+ out:
+ 	rpcrdma_buffer_destroy(buf);
+@@ -1117,6 +1284,8 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 	cancel_delayed_work_sync(&buf->rb_recovery_worker);
+ 	cancel_delayed_work_sync(&buf->rb_refresh_worker);
  
- out_err:
++	rpcrdma_sendctxs_destroy(buf);
++
+ 	while (!list_empty(&buf->rb_recv_bufs)) {
+ 		struct rpcrdma_rep *rep;
+ 
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 45dab24..93f3a36 100644
+index 93f3a36..f9ac1fd 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -640,8 +640,10 @@ enum rpcrdma_chunktype {
- 	rpcrdma_replych
+@@ -93,6 +93,8 @@ enum {
+  */
+ 
+ struct rpcrdma_ep {
++	unsigned int		rep_send_count;
++	unsigned int		rep_send_batch;
+ 	atomic_t		rep_cqcount;
+ 	int			rep_cqinit;
+ 	int			rep_connected;
+@@ -229,6 +231,20 @@ struct rpcrdma_rep {
+ 	struct ib_recv_wr	rr_recv_wr;
  };
  
--bool rpcrdma_prepare_send_sges(struct rpcrdma_ia *, struct rpcrdma_req *,
--			       u32, struct xdr_buf *, enum rpcrdma_chunktype);
-+int rpcrdma_prepare_send_sges(struct rpcrdma_xprt *r_xprt,
-+			      struct rpcrdma_req *req, u32 hdrlen,
-+			      struct xdr_buf *xdr,
-+			      enum rpcrdma_chunktype rtype);
++/* struct rpcrdma_sendctx - DMA mapped SGEs to unmap after Send completes
++ */
++struct rpcrdma_buffer;
++struct rpcrdma_sendctx {
++	struct ib_send_wr		sc_wr;
++	struct ib_cqe			sc_cqe;
++
++	struct rpcrdma_buffer		*sc_buffers;
++
++	unsigned int			sc_unmap_count;
++	struct ib_device		*sc_device;
++	struct ib_sge			sc_sges[];
++};
++
+ /*
+  * struct rpcrdma_mw - external memory region metadata
+  *
+@@ -337,6 +353,16 @@ enum {
+ 	RPCRDMA_MAX_SEND_SGES = 1 + 1 + RPCRDMA_MAX_PAGE_SGES + 1,
+ };
+ 
++/* Limit the number of SGEs that can be unmapped during one
++ * Send completion. This caps the amount of work a single
++ * completion can do before returning to the provider.
++ *
++ * Setting this to zero disables Send completion batching.
++ */
++enum {
++	RPCRDMA_MAX_SEND_BATCH = 16,
++};
++
+ struct rpcrdma_buffer;
+ struct rpcrdma_req {
+ 	struct list_head	rl_list;
+@@ -400,6 +426,11 @@ struct rpcrdma_buffer {
+ 	struct list_head	rb_mws;
+ 	struct list_head	rb_all;
+ 
++	unsigned long		rb_sc_head;
++	unsigned long		rb_sc_tail;
++	unsigned long		rb_sc_last;
++	struct rpcrdma_sendctx	**rb_sc_ctxs;
++
+ 	spinlock_t		rb_lock;	/* protect buf lists */
+ 	int			rb_send_count, rb_recv_count;
+ 	struct list_head	rb_send_bufs;
+@@ -455,6 +486,7 @@ struct rpcrdma_stats {
+ 	unsigned long		mrs_recovered;
+ 	unsigned long		mrs_orphaned;
+ 	unsigned long		mrs_allocated;
++	unsigned long		empty_sendctx_q;
+ 
+ 	/* accessed when receiving a reply */
+ 	unsigned long long	total_rdma_reply;
+@@ -556,6 +588,8 @@ struct rpcrdma_rep *rpcrdma_create_rep(struct rpcrdma_xprt *);
+ void rpcrdma_destroy_req(struct rpcrdma_req *);
+ int rpcrdma_buffer_create(struct rpcrdma_xprt *);
+ void rpcrdma_buffer_destroy(struct rpcrdma_buffer *);
++struct rpcrdma_sendctx *rpcrdma_sendctx_get_locked(struct rpcrdma_buffer *buf);
++void rpcrdma_sendctx_put_locked(struct rpcrdma_sendctx *sc);
+ 
+ static inline void
+ rpcrdma_insert_req(struct rpcrdma_buffer *buffers, struct rpcrdma_req *req)
+@@ -645,6 +679,7 @@ int rpcrdma_prepare_send_sges(struct rpcrdma_xprt *r_xprt,
+ 			      struct xdr_buf *xdr,
+ 			      enum rpcrdma_chunktype rtype);
  void rpcrdma_unmap_sges(struct rpcrdma_ia *, struct rpcrdma_req *);
++void __rpcrdma_unmap_send_sges(struct rpcrdma_sendctx *sc);
  int rpcrdma_marshal_req(struct rpcrdma_xprt *r_xprt, struct rpc_rqst *rqst);
  void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *);
+ void rpcrdma_reply_handler(struct work_struct *work);
+@@ -655,6 +690,12 @@ static inline void rpcrdma_set_xdrlen(struct xdr_buf *xdr, size_t len)
+ 	xdr->len = len;
+ }
+ 
++static inline void rpcrdma_unmap_send_sges(struct rpcrdma_sendctx *sc)
++{
++	if (unlikely(sc->sc_unmap_count))
++		__rpcrdma_unmap_send_sges(sc);
++}
++
+ /* RPC/RDMA module init - xprtrdma/transport.c
+  */
+ extern unsigned int xprt_rdma_max_inline_read;
 
