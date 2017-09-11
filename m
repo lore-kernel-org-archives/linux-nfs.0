@@ -1,123 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41118 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751514AbdIKQWS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 11 Sep 2017 12:22:18 -0400
-Date: Mon, 11 Sep 2017 12:22:17 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC v3 16/42] NFS NFSD defining nl4_servers structure needed by
- both
-Message-ID: <20170911162217.GB31845@fieldses.org>
-References: <20170711164416.1982-1-kolga@netapp.com>
- <20170711164416.1982-17-kolga@netapp.com>
- <20170906203520.GB24694@fieldses.org>
- <CAN-5tyFrVnC0dRVMxbUwaFoiGHbMDdF=Q-V69tihYPWy6gmYJQ@mail.gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:37191 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750853AbdIKUyw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2017 16:54:52 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client changes for 4.14
+Date: Mon, 11 Sep 2017 20:54:47 +0000
+Message-ID: <1505163285.11130.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyFrVnC0dRVMxbUwaFoiGHbMDdF=Q-V69tihYPWy6gmYJQ@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Sep 08, 2017 at 04:51:59PM -0400, Olga Kornievskaia wrote:
-> On Wed, Sep 6, 2017 at 4:35 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Tue, Jul 11, 2017 at 12:43:50PM -0400, Olga Kornievskaia wrote:
-> >> These structures are needed by COPY_NOTIFY on the client and needed
-> >> by the nfsd as well
-> >>
-> >> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> >> ---
-> >>  include/linux/nfs4.h | 33 +++++++++++++++++++++++++++++++++
-> >>  1 file changed, 33 insertions(+)
-> >>
-> >> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> >> index 7262908..4179c78 100644
-> >> --- a/include/linux/nfs4.h
-> >> +++ b/include/linux/nfs4.h
-> >> @@ -15,6 +15,7 @@
-> >>  #include <linux/list.h>
-> >>  #include <linux/uidgid.h>
-> >>  #include <uapi/linux/nfs4.h>
-> >> +#include <linux/sunrpc/msg_prot.h>
-> >>
-> >>  enum nfs4_acl_whotype {
-> >>       NFS4_ACL_WHO_NAMED = 0,
-> >> @@ -659,4 +660,36 @@ struct nfs4_op_map {
-> >>       } u;
-> >>  };
-> >>
-> >> +struct nfs42_netaddr {
-> >> +     unsigned int    na_netid_len;
-> >> +     char            na_netid[RPCBIND_MAXNETIDLEN + 1];
-> >> +     unsigned int    na_uaddr_len;
-> >> +     char            na_uaddr[RPCBIND_MAXUADDRLEN + 1];
-> >> +};
-> >> +
-> >> +enum netloc_type4 {
-> >> +     NL4_NAME                = 1,
-> >> +     NL4_URL                 = 2,
-> >> +     NL4_NETADDR             = 3,
-> >> +};
-> >> +
-> >> +struct nl4_server {
-> >> +     enum netloc_type4       nl4_type;
-> >> +     union {
-> >> +             struct { /* NL4_NAME, NL4_URL */
-> >> +                     int     nl4_str_sz;
-> >> +                     char    nl4_str[NFS4_OPAQUE_LIMIT + 1];
-> >> +             };
-> >> +             struct nfs42_netaddr    nl4_addr; /* NL4_NETADDR */
-> >> +     } u;
-> >> +};
-> >> +
-> >> +/*  support 1 nl4_server for now */
-> >> +#define NFS42_MAX_SSC_SRC       1
-> >
-> > In that case, let's just build that assumption into the data structures
-> > and embed struct nl4_server in nl4_servers and drop the unnecessary
-> > kmalloc()s.
-> 
-> Wouldn't we still want to malloc as the structure is too big to be
-> allocated on the stack?
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgZWY5NTQ4NDRj
+N2FjZTYyZjc3M2Y0ZjIzZTI4ZDJkOTE1YWRjNDE5ZjoNCg0KICBMaW51eCA0LjEzLXJjNSAoMjAx
+Ny0wOC0xMyAxNjowMTozMiAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE0LTENCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
+Z2VzIHVwIHRvIDFiZDVkNmQwOGVhN2VkMDc5NGM4YTM5MDgzODNkNmQ2ZmMyMDJjZGQ6DQoNCiAg
+TkZTOiBDb3VudCB0aGUgYnl0ZXMgb2Ygc2tpcHBlZCBzdWJyZXF1ZXN0cyBpbiBuZnNfbG9ja19h
+bmRfam9pbl9yZXF1ZXN0cygpICgyMDE3LTA5LTA5IDE2OjQzOjA5IC0wNDAwKQ0KDQotLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+DQpORlMgY2xpZW50IHVwZGF0ZXMgZm9yIExpbnV4IDQuMTQNCg0KSGlnaHRsaWdodHMgaW5jbHVk
+ZToNCg0KU3RhYmxlIGJ1Z2ZpeGVzOg0KLSBGaXggbWlycm9yIGFsbG9jYXRpb24gaW4gdGhlIHdy
+aXRlYmFjayBjb2RlIHRvIGF2b2lkIGEgdXNlIGFmdGVyIGZyZWUNCi0gRml4IHRoZSBPX0RTWU5D
+IHdyaXRlcyB0byB1c2UgdGhlIGNvcnJlY3QgYnl0ZSByYW5nZQ0KLSBGaXggMiB1c2UgYWZ0ZXIg
+ZnJlZSBpc3N1ZXMgaW4gdGhlIEkvTyBjb2RlDQoNCkZlYXR1cmVzOg0KLSBXcml0ZWJhY2sgZml4
+ZXMgdG8gc3BsaXQgdXAgdGhlIGlub2RlLT5pX2xvY2sgaW4gb3JkZXIgdG8gcmVkdWNlIGNvbnRl
+bnRpb24NCi0gUlBDIGNsaWVudCByZWNlaXZlIGZpeGVzIHRvIHJlZHVjZSB0aGUgYW1vdW50IG9m
+IHRpbWUgdGhlDQogIHhwcnQtPnRyYW5zcG9ydF9sb2NrIGlzIGhlbGQgd2hlbiByZWNlaXZpbmcg
+ZGF0YSBmcm9tIGEgc29ja2V0IGludG8gYW0NCiAgWERSIGJ1ZmZlci4NCi0gRGl0dG8gZml4ZXMg
+dG8gcmVkdWNlIGNvbnRlbnRpb24gYmV0d2VlbiBjYWxsIHNpZGUgdXNlcnMgb2YgdGhlIHJkbWEN
+CiAgcmJfbG9jaywgYW5kIGl0cyB1c2UgaW4gcnBjcmRtYV9yZXBseV9oYW5kbGVyLg0KLSBSZS1h
+cnJhbmdlIHJkbWEgc3RhdHMgdG8gcmVkdWNlIGZhbHNlIGNhY2hlbGluZSBzaGFyaW5nLg0KLSBW
+YXJpb3VzIHJkbWEgY2xlYW51cHMgYW5kIG9wdGltaXNhdGlvbnMuDQotIFJlZmFjdG9yIHRoZSBO
+RlN2NC4xIGV4Y2hhbmdlIGlkIGNvZGUgYW5kIGNsZWFuIHVwIHRoZSBjb2RlLg0KLSBDb25zdC1p
+ZnkgYWxsIGluc3RhbmNlcyBvZiBzdHJ1Y3QgcnBjX3hwcnRfb3BzDQoNCkJ1Z2ZpeGVzOg0KLSBG
+aXggdGhlIE5GU3YyICdzZWM9JyBtb3VudCBvcHRpb24uDQotIE5GU3Y0LjE6IGRvbid0IHVzZSBt
+YWNoaW5lIGNyZWRlbnRpYWxzIGZvciBDTE9TRSB3aGVuIHVzaW5nICdzZWM9c3lzJw0KLSBGaXgg
+dGhlIE5GU3YzIEdSQU5UIGNhbGxiYWNrIHdoZW4gdGhlIHBvcnQgY2hhbmdlcyBvbiB0aGUgc2Vy
+dmVyLg0KLSBGaXggbGl2ZWxvY2sgaXNzdWVzIHdpdGggQ09NTUlUDQotIE5GU3Y0OiBVc2UgY29y
+cmVjdCBpbm9kZSBpbiBfbmZzNF9vcGVuZGF0YV90b19uZnM0X3N0YXRlKCkgd2hlbiBkb2luZw0K
+ICBhbmQgTkZTdjQuMSBvcGVuIGJ5IGZpbGVoYW5kbGUuDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkNodWNrIExldmVy
+ICgxOCk6DQogICAgICBzdW5ycGM6IENvbnN0LWlmeSBhbGwgaW5zdGFuY2VzIG9mIHN0cnVjdCBy
+cGNfeHBydF9vcHMNCiAgICAgIHhwcnRyZG1hOiBBZGQgeGRyX2luaXRfZGVjb2RlIHRvIHJwY3Jk
+bWFfcmVwbHlfaGFuZGxlcigpDQogICAgICB4cHJ0cmRtYTogSGFyZGVuIGJhY2tjaGFubmVsIGNh
+bGwgZGVjb2RpbmcNCiAgICAgIHhwcnRyZG1hOiBSZWZhY3RvciBycGNyZG1hX3JlcGx5X2hhbmRs
+ZXIoKQ0KICAgICAgeHBydHJkbWE6IFJlcGxhY2UgcnBjcmRtYV9jb3VudF9jaHVua3MoKQ0KICAg
+ICAgeHBydHJkbWE6IFJlbW92ZSBvcGNvZGUgY2hlY2sgaW4gUmVjZWl2ZSBjb21wbGV0aW9uIGhh
+bmRsZXINCiAgICAgIHhwcnRyZG1hOiBSZW1vdmUgcnBjcmRtYV9yZXA6OnJyX2xlbg0KICAgICAg
+eHBydHJkbWE6IENsZWFuIHVwIFhEUiBkZWNvZGluZyBpbiBycGNyZG1hX3VwZGF0ZV9ncmFudGVk
+X2NyZWRpdHMoKQ0KICAgICAgeHBydHJkbWE6IENsZWFuIHVwIHJwY3JkbWFfbWFyc2hhbF9yZXEo
+KSBzeW5vcHNpcw0KICAgICAgeHBydHJkbWE6IFJlbW92ZSBycGNsZW4gZnJvbSBycGNyZG1hX21h
+cnNoYWxfcmVxDQogICAgICB4cHJ0cmRtYTogU2V0IHVwIGFuIHhkcl9zdHJlYW0gaW4gcnBjcmRt
+YV9tYXJzaGFsX3JlcSgpDQogICAgICB4cHJ0cmRtYTogSGFyZGVuIGNodW5rIGxpc3QgZW5jb2Rp
+bmcgYWdhaW5zdCBzZW5kIGJ1ZmZlciBvdmVyZmxvdw0KICAgICAgeHBydHJkbWE6IENsZWFuIHVw
+IHJwY3JkbWFfYmNfbWFyc2hhbF9yZXBseSgpDQogICAgICB4cHJ0cmRtYTogUmVtb3ZlIGltdWwg
+aW5zdHJ1Y3Rpb25zIGZyb20gcnBjcmRtYV9jb252ZXJ0X2lvdnMoKQ0KICAgICAgeHBydHJkbWE6
+IFJlbW92ZSBpbXVsIGluc3RydWN0aW9ucyBmcm9tIGNodW5rIGxpc3QgZW5jb2RlcnMNCiAgICAg
+IE5GUzogRml4IE5GU3YyIHNlY3VyaXR5IHNldHRpbmdzDQogICAgICB4cHJ0cmRtYTogUmUtYXJy
+YW5nZSBzdHJ1Y3Qgcnhfc3RhdHMNCiAgICAgIHhwcnRyZG1hOiBVc2UgeHBydF9waW5fcnFzdCBp
+biBycGNyZG1hX3JlcGx5X2hhbmRsZXINCg0KTWFya3VzIEVsZnJpbmcgKDEpOg0KICAgICAgbG9j
+a2Q6IERlbGV0ZSBhbiBlcnJvciBtZXNzYWdlIGZvciBhIGZhaWxlZCBtZW1vcnkgYWxsb2NhdGlv
+biBpbiByZWNsYWltZXIoKQ0KDQpOZWlsQnJvd24gKDYpOg0KICAgICAgU1VOUlBDOiBFQ09OTlJF
+RlVTRUQgc2hvdWxkIGNhdXNlIGEgcmViaW5kLg0KICAgICAgTkZTdjQuMTogZG9uJ3QgdXNlIG1h
+Y2hpbmUgY3JlZGVudGlhbHMgZm9yIENMT1NFIHdoZW4gdXNpbmcgJ3NlYz1zeXMnDQogICAgICBO
+RlM6IGRvbid0IGV4cGVjdCBlcnJvcnMgZnJvbSBtZW1wb29sX2FsbG9jKCkuDQogICAgICBTVU5S
+UEM6IHJlbW92ZSBzb21lIGRlYWQgY29kZS4NCiAgICAgIE5GUzogZmx1c2ggZGF0YSB3aGVuIGxv
+Y2tpbmcgYSBmaWxlIHRvIGVuc3VyZSBjYWNoZSBjb2hlcmVuY2UgZm9yIG1tYXAuDQogICAgICBO
+RlM6IHJlbW92ZSBqaWZmaWVzIGZpZWxkIGZyb20gYWNjZXNzIGNhY2hlDQoNClRyb25kIE15a2xl
+YnVzdCAoNDgpOg0KICAgICAgTkZTdjQ6IFJlZmFjdG9yIF9uZnM0X3Byb2NfZXhjaGFuZ2VfaWQo
+KQ0KICAgICAgTkZTdjQuMTogRW5zdXJlIHdlIGNsZWFyIHRoZSBTUDRfTUFDSF9DUkVEIGZsYWdz
+IGluIG5mczRfc3A0X3NlbGVjdF9tb2RlKCkNCiAgICAgIE5GU3Y0OiBDbGVhbnVwIHNldHRpbmcg
+b2YgdGhlIG1pZ3JhdGlvbiBmbGFncy4NCiAgICAgIE1lcmdlIGJyYW5jaCAnZXhjaGFuZ2VfaWQn
+DQogICAgICBORlN2NDogVXNlIGNvcnJlY3QgaW5vZGUgaW4gX25mczRfb3BlbmRhdGFfdG9fbmZz
+NF9zdGF0ZSgpDQogICAgICBORlN2NDogVXNlIHRoZSBuZnM0X3N0YXRlIGJlaW5nIHJlY292ZXJl
+ZCBpbiBfbmZzNF9vcGVuZGF0YV90b19uZnM0X3N0YXRlKCkNCiAgICAgIE1lcmdlIGJyYW5jaCAn
+b3Blbl9zdGF0ZScNCiAgICAgIE5GUzogU2ltcGxpZnkgcGFnZSB3cml0ZWJhY2sNCiAgICAgIE5G
+UzogUmVkdWNlIGxvY2sgY29udGVudGlvbiBpbiBuZnNfcGFnZV9maW5kX2hlYWRfcmVxdWVzdCgp
+DQogICAgICBORlM6IFJlZHVjZSBsb2NrIGNvbnRlbnRpb24gaW4gbmZzX3RyeV90b191cGRhdGVf
+cmVxdWVzdCgpDQogICAgICBORlM6IEVuc3VyZSB3ZSBhbHdheXMgZGVyZWZlcmVuY2UgdGhlIHBh
+Z2UgaGVhZCBsYXN0DQogICAgICBORlM6IEZpeCBhIHJlZmVyZW5jZSBhbmQgbG9jayBsZWFrIGlu
+IG5mc19sb2NrX2FuZF9qb2luX3JlcXVlc3RzKCkNCiAgICAgIE5GUzogRml4IGFuIEFCQkEgaXNz
+dWUgaW4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVzdHMoKQ0KICAgICAgTkZTOiBEb24ndCBjaGVj
+ayByZXF1ZXN0IG9mZnNldCBhbmQgc2l6ZSB3aXRob3V0IGhvbGRpbmcgYSBsb2NrDQogICAgICBO
+RlM6IERvbid0IHVubG9jayB3cml0ZWJhY2tzIGJlZm9yZSBkZWNsYXJpbmcgUEdfV0JfRU5EDQog
+ICAgICBORlM6IEZpeCB0aGUgaW5vZGUgcmVxdWVzdCBhY2NvdW50aW5nIHdoZW4gcGFnZXMgaGF2
+ZSBzdWJyZXF1ZXN0cw0KICAgICAgTkZTOiBUZWFjaCBuZnNfdHJ5X3RvX3VwZGF0ZV9yZXF1ZXN0
+KCkgdG8gZGVhbCB3aXRoIHJlcXVlc3QgcGFnZV9ncm91cHMNCiAgICAgIE5GUzogUmVtb3ZlIHBh
+Z2UgZ3JvdXAgbGltaXQgaW4gbmZzX2ZsdXNoX2luY29tcGF0aWJsZSgpDQogICAgICBORlM6IFJl
+ZHVjZSBpbm9kZS0+aV9sb2NrIGNvbnRlbnRpb24gaW4gbmZzX2xvY2tfYW5kX2pvaW5fcmVxdWVz
+dHMoKQ0KICAgICAgTkZTOiBGdXJ0aGVyIG9wdGltaXNlIG5mc19sb2NrX2FuZF9qb2luX3JlcXVl
+c3RzKCkNCiAgICAgIE5GUzogRml4IG5mc19wYWdlX2dyb3VwX2Rlc3Ryb3koKSBhbmQgbmZzX2xv
+Y2tfYW5kX2pvaW5fcmVxdWVzdHMoKSByYWNlIGNhc2VzDQogICAgICBORlM6IFJlbW92ZSBuZnNf
+cGFnZV9ncm91cF9jbGVhcl9iaXRzKCkNCiAgICAgIE5GUzogUmVtb3ZlIHVudXNlIGZ1bmN0aW9u
+IG5mc19wYWdlX2dyb3VwX2xvY2tfd2FpdCgpDQogICAgICBORlM6IFJlbW92ZSB1bnVzZWQgcGFy
+YW1ldGVyIGZyb20gbmZzX3BhZ2VfZ3JvdXBfbG9jaygpDQogICAgICBORlM6IEZpeCB1cCBuZnNf
+cGFnZV9ncm91cF9jb3ZlcnNfcGFnZSgpDQogICAgICBORlN2NDogQ29udmVydCBuZnNfbG9ja19h
+bmRfam9pbl9yZXF1ZXN0cygpIHRvIHVzZSBuZnNfcGFnZV9maW5kX2hlYWRfcmVxdWVzdCgpDQog
+ICAgICBORlM6IFJlZmFjdG9yIG5mc19wYWdlX2ZpbmRfaGVhZF9yZXF1ZXN0KCkNCiAgICAgIE5G
+U3Y0OiBVc2UgYSBtdXRleCB0byBwcm90ZWN0IHRoZSBwZXItaW5vZGUgY29tbWl0IGxpc3RzDQog
+ICAgICBORlM6IFVzZSBhbiBhdG9taWNfbG9uZ190IHRvIGNvdW50IHRoZSBudW1iZXIgb2YgcmVx
+dWVzdHMNCiAgICAgIE5GUzogVXNlIGFuIGF0b21pY19sb25nX3QgdG8gY291bnQgdGhlIG51bWJl
+ciBvZiBjb21taXRzDQogICAgICBORlM6IFN3aXRjaCB0byB1c2luZyBtYXBwaW5nLT5wcml2YXRl
+X2xvY2sgZm9yIHBhZ2Ugd3JpdGViYWNrIGxvb2t1cHMuDQogICAgICBORlN2NC9wbmZzOiBSZXBs
+YWNlIHBuZnNfcHV0X2xzZWdfbG9ja2VkKCkgd2l0aCBwbmZzX3B1dF9sc2VnKCkNCiAgICAgIE5G
+UzogV2FpdCBmb3IgcmVxdWVzdHMgdGhhdCBhcmUgbG9ja2VkIG9uIHRoZSBjb21taXQgbGlzdA0K
+ICAgICAgU1VOUlBDOiBEb24ndCBob2xkIHRoZSB0cmFuc3BvcnQgbG9jayBhY3Jvc3Mgc29ja2V0
+IGNvcHkgb3BlcmF0aW9ucw0KICAgICAgU1VOUlBDOiBEb24ndCBob2xkIHRoZSB0cmFuc3BvcnQg
+bG9jayB3aGVuIHJlY2VpdmluZyBiYWNrY2hhbm5lbCBkYXRhDQogICAgICBTVU5SUEM6IERvbid0
+IGxvb3AgZm9yZXZlciBpbiB4c190Y3BfZGF0YV9yZWNlaXZlKCkNCiAgICAgIFNVTlJQQzogQ2xl
+YW51cCB4c190Y3BfcmVhZF9jb21tb24oKQ0KICAgICAgU1VOUlBDOiBBZGQgYSBzZXBhcmF0ZSBz
+cGlubG9jayB0byBwcm90ZWN0IHRoZSBSUEMgcmVxdWVzdCByZWNlaXZlIGxpc3QNCiAgICAgIE1l
+cmdlIGJyYW5jaCAnd3JpdGViYWNrJw0KICAgICAgTkZTdjQ6IEZpeCB1cCBtaXJyb3IgYWxsb2Nh
+dGlvbg0KICAgICAgTkZTOiBSZW1vdmUgdW51c2VkIHBhcmFtZXRlciBnZnBfZmxhZ3MgZnJvbSBu
+ZnNfcGFnZWlvX2luaXQoKQ0KICAgICAgTWVyZ2UgYnJhbmNoICdidWdmaXhlcycNCiAgICAgIE1l
+cmdlIHRhZyAnbmZzLXJkbWEtZm9yLTQuMTQtMScgb2YgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcv
+cHJvamVjdHMvYW5uYS9saW51eC1uZnMgaW50byBsaW51eC1uZXh0DQogICAgICBORlM6IEZpeCAy
+IHVzZSBhZnRlciBmcmVlIGlzc3VlcyBpbiB0aGUgSS9PIGNvZGUNCiAgICAgIE5GUzogbmZzX2xv
+Y2tfYW5kX2pvaW5fcmVxdWVzdHMgYW5kIG5mc19zY2FuX2NvbW1pdF9saXN0IGNhbiBkZWFkbG9j
+aw0KICAgICAgTkZTOiBSZW1vdmUgcG5mc19nZW5lcmljX3RyYW5zZmVyX2NvbW1pdF9saXN0KCkN
+CiAgICAgIE5GUzogRG9uJ3QgaG9sZCB0aGUgZ3JvdXAgbG9jayB3aGVuIGNhbGxpbmcgbmZzX3Jl
+bGVhc2VfcmVxdWVzdCgpDQogICAgICBORlM6IENvdW50IHRoZSBieXRlcyBvZiBza2lwcGVkIHN1
+YnJlcXVlc3RzIGluIG5mc19sb2NrX2FuZF9qb2luX3JlcXVlc3RzKCkNCg0KdGFyYW5nZ0BhbWF6
+b24uY29tICgxKToNCiAgICAgIE5GUzogU3luYyB0aGUgY29ycmVjdCBieXRlIHJhbmdlIGR1cmlu
+ZyBzeW5jaHJvbm91cyB3cml0ZXMNCg0KIGZzL2xvY2tkL2NsbnRsb2NrLmMgICAgICAgICAgICAg
+ICAgICAgICAgICB8ICAgNiArLQ0KIGZzL25mcy9jYWxsYmFja19wcm9jLmMgICAgICAgICAgICAg
+ICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9kZWxlZ2F0aW9uLmMgICAgICAgICAgICAgICAgICAg
+ICAgICB8ICAgMiArLQ0KIGZzL25mcy9kaXIuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICB8ICAgNCAtDQogZnMvbmZzL2RpcmVjdC5jICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwg
+ICA0ICstDQogZnMvbmZzL2ZpbGUuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDE3
+ICstDQogZnMvbmZzL2lub2RlLmMgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDEwICst
+DQogZnMvbmZzL2ludGVybmFsLmggICAgICAgICAgICAgICAgICAgICAgICAgIHwgICAxIC0NCiBm
+cy9uZnMvbmZzNF9mcy5oICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMTEgKw0KIGZzL25m
+cy9uZnM0cHJvYy5jICAgICAgICAgICAgICAgICAgICAgICAgICB8IDI3NCArKysrKy0tLS0NCiBm
+cy9uZnMvcGFnZWxpc3QuYyAgICAgICAgICAgICAgICAgICAgICAgICAgfCAxNzAgKysrLS0tDQog
+ZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgIDQzIC0tDQogZnMv
+bmZzL3BuZnMuaCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHwgICAyIC0NCiBmcy9uZnMv
+cG5mc19uZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgNDQgKy0NCiBmcy9uZnMvcmVh
+ZC5jICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgIDIgKy0NCiBmcy9uZnMvc3VwZXIu
+YyAgICAgICAgICAgICAgICAgICAgICAgICAgICAgfCAgMTIgKy0NCiBmcy9uZnMvd3JpdGUuYyAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgfCA0NTcgKysrKysrKy0tLS0tLS0tDQogaW5jbHVk
+ZS9saW51eC9uZnNfZnMuaCAgICAgICAgICAgICAgICAgICAgIHwgICA2ICstDQogaW5jbHVkZS9s
+aW51eC9uZnNfcGFnZS5oICAgICAgICAgICAgICAgICAgIHwgICA2ICstDQogaW5jbHVkZS9saW51
+eC9uZnNfeGRyLmggICAgICAgICAgICAgICAgICAgIHwgICAyICstDQogaW5jbHVkZS9saW51eC9z
+dW5ycGMvc2NoZWQuaCAgICAgICAgICAgICAgIHwgICAyICsNCiBpbmNsdWRlL2xpbnV4L3N1bnJw
+Yy94ZHIuaCAgICAgICAgICAgICAgICAgfCAgMTMgKw0KIGluY2x1ZGUvbGludXgvc3VucnBjL3hw
+cnQuaCAgICAgICAgICAgICAgICB8ICAgNSArLQ0KIG5ldC9zdW5ycGMvYmFja2NoYW5uZWxfcnFz
+dC5jICAgICAgICAgICAgICB8ICAgNCArLQ0KIG5ldC9zdW5ycGMvY2xudC5jICAgICAgICAgICAg
+ICAgICAgICAgICAgICB8ICAxMiArLQ0KIG5ldC9zdW5ycGMvc3Zjc29jay5jICAgICAgICAgICAg
+ICAgICAgICAgICB8ICAgNiArLQ0KIG5ldC9zdW5ycGMveHBydC5jICAgICAgICAgICAgICAgICAg
+ICAgICAgICB8ICA1NyArLQ0KIG5ldC9zdW5ycGMveHBydHJkbWEvYmFja2NoYW5uZWwuYyAgICAg
+ICAgICB8ICA3MSArLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL2Ztcl9vcHMuYyAgICAgICAgICAg
+ICAgfCAgMTAgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL2Zyd3Jfb3BzLmMgICAgICAgICAgICAg
+fCAgMTIgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3JwY19yZG1hLmMgICAgICAgICAgICAgfCA5
+MDIgKysrKysrKysrKysrKysrKystLS0tLS0tLS0tLS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3N2
+Y19yZG1hX2JhY2tjaGFubmVsLmMgfCAgIDkgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5z
+cG9ydC5jICAgICAgICAgICAgfCAgIDggKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMg
+ICAgICAgICAgICAgICAgfCAgMjIgKy0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3hwcnRfcmRtYS5o
+ICAgICAgICAgICAgfCAgNjMgKy0NCiBuZXQvc3VucnBjL3hwcnRzb2NrLmMgICAgICAgICAgICAg
+ICAgICAgICAgfCAgOTAgKy0tDQogMzYgZmlsZXMgY2hhbmdlZCwgMTIyOCBpbnNlcnRpb25zKCsp
+LCAxMTMzIGRlbGV0aW9ucygtKQ0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGll
+bnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
+b20NCg==
 
-Is it allocated on the stack?  I thought it was embedded in
-nfsd4_compoundargs.
-
-Anyway, I'm not that fixated on removing kmalloc()'s, it's OK if you
-need them.
-
-Looking at that definition again, NFS4_OPAQUE_LIMIT is 1K, that's bigger
-than I'd want embedded in nfsd4_compoundargs too, so yes, it might still
-be worth kmalloc()'ing.  Or consider whether we really need the maximum
-size for our current use (just ascii-encoded IP addresses?), or whether
-we should do the parsing earlier and just store the resulting socket
-address.
-
-> Anna has also suggested dropping nl4_servers since the code sets maximum to 1.
-> I have resisted making the change because I felt like it was easier to
-> increase the
-> MAX_SSC_SRC to say something like 10 and support a multi-home server. Then
-> the destination server can add smarts to chose between the available address to
-> connect to the source server with.
-> 
-> Is this not a good argument to keep the structures? Should I change
-> value to 2 to
-> indicate desire to support multi-path?
-
-In the first version of this patchset I recommend dropping anything
-that's not necessary.
-
-It's easy enough to add this back in later.  The hard part is going to
-be getting in any server-to-server patches at all, so we need to make
-them as simple as possible.
-
-The only reason to keep this in the initial version, I think, would be
-if you think it's an important enough feature that server-to-server copy
-isn't useful at all without it.
-
---b.
