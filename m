@@ -1,55 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:45232 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751151AbdILF3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Sep 2017 01:29:47 -0400
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton\@redhat.com" <jlayton@redhat.com>,
-        "jlayton\@kernel.org" <jlayton@kernel.org>
-Date: Tue, 12 Sep 2017 15:29:37 +1000
-Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH] nfs: track writeback errors with errseq_t
-In-Reply-To: <1505183055.31542.2.camel@primarydata.com>
-References: <20170720194227.7830-1-jlayton@kernel.org> <1503683981.22608.0.camel@redhat.com> <87h8wsiog4.fsf@notabene.neil.brown.name> <1503920855.4563.12.camel@redhat.com> <87pobfgo9q.fsf@notabene.neil.brown.name> <1504004058.4679.7.camel@redhat.com> <87efrjb2mn.fsf@notabene.neil.brown.name> <1504784132.4954.12.camel@redhat.com> <1504796087.3561.7.camel@primarydata.com> <874ls9diij.fsf@notabene.neil.brown.name> <1505183055.31542.2.camel@primarydata.com>
-Message-ID: <87k214bi2m.fsf@notabene.neil.brown.name>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:38126 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751289AbdILN1x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Sep 2017 09:27:53 -0400
+Received: by mail-io0-f193.google.com with SMTP id j141so8521745ioj.5
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Sep 2017 06:27:52 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] pNFS: Use the standard I/O stateid when calling LAYOUTGET
+Date: Tue, 12 Sep 2017 09:27:48 -0400
+Message-Id: <20170912132748.6403-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+Instead of having a private method for copying the open/delegation stateid,
+use the same call that is used for standard I/O through the MDS.
 
-On Tue, Sep 12 2017, Trond Myklebust wrote:
->
-> That makes sense to me. I'm applying and will send as an update to
-> 4.14...
->
+Note that this means we transmit the stateid with a zero seqid, avoiding
+issues with NFS4ERR_OLD_STATEID.
 
-Thanks!
-NeilBrown
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/pnfs.c | 14 +++++++++-----
+ 1 file changed, 9 insertions(+), 5 deletions(-)
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 7879ed8ceb76..3bcd669a3152 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1664,7 +1664,7 @@ pnfs_update_layout(struct inode *ino,
+ 		.offset = pos,
+ 		.length = count,
+ 	};
+-	unsigned pg_offset, seq;
++	unsigned pg_offset;
+ 	struct nfs_server *server = NFS_SERVER(ino);
+ 	struct nfs_client *clp = server->nfs_client;
+ 	struct pnfs_layout_hdr *lo = NULL;
+@@ -1754,10 +1754,14 @@ pnfs_update_layout(struct inode *ino,
+ 		}
+ 
+ 		first = true;
+-		do {
+-			seq = read_seqbegin(&ctx->state->seqlock);
+-			nfs4_stateid_copy(&stateid, &ctx->state->stateid);
+-		} while (read_seqretry(&ctx->state->seqlock, seq));
++		if (nfs4_select_rw_stateid(ctx->state,
++					iomode == IOMODE_RW ? FMODE_WRITE : FMODE_READ,
++					NULL, &stateid, NULL) != 0) {
++			trace_pnfs_update_layout(ino, pos, count,
++					iomode, lo, lseg,
++					PNFS_UPDATE_LAYOUT_INVALID_OPEN);
++			goto out_unlock;
++		}
+ 	} else {
+ 		nfs4_stateid_copy(&stateid, &lo->plh_stateid);
+ 	}
+-- 
+2.13.5
 
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlm3cMEACgkQOeye3VZi
-gbl2mw//UVzdj9Y27pRWj9S4RfhqXCQYbDzlInnv9GaWj/Xf7x6fcHNaSSr8Bu2S
-1HsD2mkfMMqvm7uITJh5cWvkGTWX9mwMcj5GMnEnY+aV1zmIHivntqeYN+iuZtCV
-WfF4ZWW50tV0ray0r69xaUjGbU5korp1Q9PWwLDcU84y6MeoP7WUVLwb/hZfa/k3
-Y5h0LRHsf7Qk4c9bliiwLEyvxIUeP+6t3L5sq1V+1/qvAH4s+9QDQ+6mW1D8apBj
-es9cQTh9f6REHmGNiX3IMGcGTcBuAXf2FY7a5kCsXR1gv0wMzd/OdFAUtP9evkKM
-UB3LhEgm+BYIhUOubWi14stitqoUPX6wr9EWFi/cIXo6vcEccCOjhbXjeFgZ4fZR
-wtNDXGxvvn25iTbERK5VR04ou5Xjrz5fuxxZjjSKT/GdMQGy3Uihu/v9nUZzT//I
-cmOYOZtpjlHp8ryMkOz7/43KwKqlO3tRz5JrxTZ7hK7L9E7awon32vdNa9tmx4bv
-LWybdLq2irolcRPhoPOqwyR9KZiNhaMnCfvDTtgWHXLvZr/bwLq7xYetSyvUC/J2
-iBx0rYgHsH2gDdYEJRONNb83Hflk2Om+MWd7tB0YryhX36Cj2kXjKIZNt353jQIC
-GoeJI7bHv1DaTBRDIrR7q8jcrtg27zzVDvTRm997mSklh4Bl+3g=
-=4Jph
------END PGP SIGNATURE-----
---=-=-=--
