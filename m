@@ -1,123 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:32626 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750969AbdILCYY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Sep 2017 22:24:24 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@redhat.com" <jlayton@redhat.com>,
-        "neilb@suse.com" <neilb@suse.com>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:45232 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751151AbdILF3r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 12 Sep 2017 01:29:47 -0400
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker\@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton\@redhat.com" <jlayton@redhat.com>,
+        "jlayton\@kernel.org" <jlayton@kernel.org>
+Date: Tue, 12 Sep 2017 15:29:37 +1000
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: [PATCH] nfs: track writeback errors with errseq_t
-Date: Tue, 12 Sep 2017 02:24:17 +0000
-Message-ID: <1505183055.31542.2.camel@primarydata.com>
-References: <20170720194227.7830-1-jlayton@kernel.org>
-         <1503683981.22608.0.camel@redhat.com>
-         <87h8wsiog4.fsf@notabene.neil.brown.name>
-         <1503920855.4563.12.camel@redhat.com>
-         <87pobfgo9q.fsf@notabene.neil.brown.name>
-         <1504004058.4679.7.camel@redhat.com>
-         <87efrjb2mn.fsf@notabene.neil.brown.name>
-         <1504784132.4954.12.camel@redhat.com>
-         <1504796087.3561.7.camel@primarydata.com>
-         <874ls9diij.fsf@notabene.neil.brown.name>
-In-Reply-To: <874ls9diij.fsf@notabene.neil.brown.name>
+In-Reply-To: <1505183055.31542.2.camel@primarydata.com>
+References: <20170720194227.7830-1-jlayton@kernel.org> <1503683981.22608.0.camel@redhat.com> <87h8wsiog4.fsf@notabene.neil.brown.name> <1503920855.4563.12.camel@redhat.com> <87pobfgo9q.fsf@notabene.neil.brown.name> <1504004058.4679.7.camel@redhat.com> <87efrjb2mn.fsf@notabene.neil.brown.name> <1504784132.4954.12.camel@redhat.com> <1504796087.3561.7.camel@primarydata.com> <874ls9diij.fsf@notabene.neil.brown.name> <1505183055.31542.2.camel@primarydata.com>
+Message-ID: <87k214bi2m.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTA5LTExIGF0IDEzOjI0ICsxMDAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IEhv
-d2V2ZXIsIHdoaWxlIGxvb2tpbmcgb3ZlciB0aGUgY29kZSB0byBtYWtlIHN1cmUgSSByZWFsbHkg
-dW5kZXJzdG9vZA0KPiBpdA0KPiBhbmQgYWxsIHRoZSBwb3NzaWJsZSBjb25zZXF1ZW5jZXMgb2Yg
-Y2hhbmdpbmcgdG8gZXJyc2VxX3QgSSBmb3VuZCBhDQo+IGZldw0KPiBhbm9tYWxpZXMuICBUaGUg
-cGF0Y2ggYmVsb3cgYWRkcmVzc2VzIHRoZW0gYWxsLg0KPiANCj4gV291bGQgeW91IHNlZSBpZiB0
-aGV5IG1heSBzZW5zZSB0byB5b3U/DQo+IA0KPiBUaGFua3MsDQo+IE5laWxCcm93bg0KPiANCj4g
-DQo+IEZyb206IE5laWxCcm93biA8bmVpbGJAc3VzZS5jb20+DQo+IERhdGU6IE1vbiwgMTEgU2Vw
-IDIwMTcgMTM6MTU6NTAgKzEwMDANCj4gU3ViamVjdDogW1BBVENIXSBORlM6IHZhcmlvdXMgY2hh
-bmdlcyByZWxhdGluZyB0byByZXBvcnRpbmcgSU8NCj4gZXJyb3JzLg0KPiANCj4gMS8gcmVtb3Zl
-ICdzdGFydCcgYW5kICdlbmQnIGFyZ3MgZnJvbSBuZnNfZmlsZV9mc3luY19jb21taXQoKS4NCj4g
-ICAgVGhleSBhcmVuJ3QgdXNlZC4NCj4gDQo+IDIvIE1ha2UgbmZzX2NvbnRleHRfc2V0X3dyaXRl
-X2Vycm9yKCkgYSAic3RhdGljIGlubGluZSIgaW4gaW50ZXJuYWwuaA0KPiAgICBzbyB3ZSBjYW4u
-Li4NCj4gDQo+IDMvIFVzZSBuZnNfY29udGV4dF9zZXRfd3JpdGVfZXJyb3IoKSBpbnN0ZWFkIG9m
-IG1hcHBpbmdfc2V0X2Vycm9yKCkNCj4gICAgaWYgbmZzX3BhZ2Vpb19hZGRfcmVxdWVzdCgpIGZh
-aWxzIGJlZm9yZSBzZW5kaW5nIGFueSByZXF1ZXN0Lg0KPiAgICBORlMgZ2VuZXJhbGx5IGtlZXBz
-IGVycm9ycyBpbiB0aGUgb3Blbl9jb250ZXh0LCBub3QgdGhlIG1hcHBpbmcsDQo+ICAgIHNvIHRo
-aXMgaXMgbW9yZSBjb25zaXN0ZW50Lg0KPiANCj4gNC8gSWYgZmlsZW1hcF93cml0ZV9hbmRfd3Jp
-dGVfcmFuZ2UoKSByZXBvcnRzIGFueSBlcnJvciwgc3RpbGwNCj4gICAgY2hlY2sgY3R4LT5lcnJv
-ci4gIFRoZSB2YWx1ZSBpbiBjdHgtPmVycm9yIGlzIGxpa2VseSB0byBiZQ0KPiAgICBtb3JlIHVz
-ZWZ1bC4gIEFzIHBhcnQgb2YgdGhpcywgTkZTX0NPTlRFWFRfRVJST1JfV1JJVEUgaXMNCj4gICAg
-Y2xlYXJlZCBzbGlnaHRseSBlYXJsaWVyLCBiZWZvcmUgbmZzX2ZpbGVfZnN5bmNfY29tbWl0KCkg
-aXMNCj4gY2FsbGVkLA0KPiAgICByYXRoZXIgdGhhbiBhdCB0aGUgc3RhcnQgb2YgdGhhdCBmdW5j
-dGlvbi4NCj4gDQo+IFNpZ25lZC1vZmYtYnk6IE5laWxCcm93biA8bmVpbGJAc3VzZS5jb20+DQo+
-IC0tLQ0KPiAgZnMvbmZzL2ZpbGUuYyAgICAgfCAxNiArKysrKysrKysrLS0tLS0tDQo+ICBmcy9u
-ZnMvaW50ZXJuYWwuaCB8ICA3ICsrKysrKysNCj4gIGZzL25mcy9wYWdlbGlzdC5jIHwgIDQgKyst
-LQ0KPiAgZnMvbmZzL3dyaXRlLmMgICAgfCAgNyAtLS0tLS0tDQo+ICA0IGZpbGVzIGNoYW5nZWQs
-IDE5IGluc2VydGlvbnMoKyksIDE1IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2Zz
-L25mcy9maWxlLmMgYi9mcy9uZnMvZmlsZS5jDQo+IGluZGV4IGFmMzMwYzMxZjYyNy4uYWIzMjRm
-MTQwODFmIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvZmlsZS5jDQo+ICsrKyBiL2ZzL25mcy9maWxl
-LmMNCj4gQEAgLTIwOCwyMSArMjA4LDE5IEBAIEVYUE9SVF9TWU1CT0xfR1BMKG5mc19maWxlX21t
-YXApOw0KPiAgICogZmFsbCBiYWNrIHRvIGRvaW5nIGEgc3luY2hyb25vdXMgd3JpdGUuDQo+ICAg
-Ki8NCj4gIHN0YXRpYyBpbnQNCj4gLW5mc19maWxlX2ZzeW5jX2NvbW1pdChzdHJ1Y3QgZmlsZSAq
-ZmlsZSwgbG9mZl90IHN0YXJ0LCBsb2ZmX3QgZW5kLA0KPiBpbnQgZGF0YXN5bmMpDQo+ICtuZnNf
-ZmlsZV9mc3luY19jb21taXQoc3RydWN0IGZpbGUgKmZpbGUsIGludCBkYXRhc3luYykNCj4gIHsN
-Cj4gIAlzdHJ1Y3QgbmZzX29wZW5fY29udGV4dCAqY3R4ID0gbmZzX2ZpbGVfb3Blbl9jb250ZXh0
-KGZpbGUpOw0KPiAgCXN0cnVjdCBpbm9kZSAqaW5vZGUgPSBmaWxlX2lub2RlKGZpbGUpOw0KPiAt
-CWludCBoYXZlX2Vycm9yLCBkb19yZXNlbmQsIHN0YXR1czsNCj4gKwlpbnQgZG9fcmVzZW5kLCBz
-dGF0dXM7DQo+ICAJaW50IHJldCA9IDA7DQo+ICANCj4gIAlkcHJpbnRrKCJORlM6IGZzeW5jIGZp
-bGUoJXBEMikgZGF0YXN5bmMgJWRcbiIsIGZpbGUsDQo+IGRhdGFzeW5jKTsNCj4gIA0KPiAgCW5m
-c19pbmNfc3RhdHMoaW5vZGUsIE5GU0lPU19WRlNGU1lOQyk7DQo+ICAJZG9fcmVzZW5kID0gdGVz
-dF9hbmRfY2xlYXJfYml0KE5GU19DT05URVhUX1JFU0VORF9XUklURVMsDQo+ICZjdHgtPmZsYWdz
-KTsNCj4gLQloYXZlX2Vycm9yID0gdGVzdF9hbmRfY2xlYXJfYml0KE5GU19DT05URVhUX0VSUk9S
-X1dSSVRFLA0KPiAmY3R4LT5mbGFncyk7DQo+ICAJc3RhdHVzID0gbmZzX2NvbW1pdF9pbm9kZShp
-bm9kZSwgRkxVU0hfU1lOQyk7DQo+IC0JaGF2ZV9lcnJvciB8PSB0ZXN0X2JpdChORlNfQ09OVEVY
-VF9FUlJPUl9XUklURSwgJmN0eC0NCj4gPmZsYWdzKTsNCj4gLQlpZiAoaGF2ZV9lcnJvcikgew0K
-PiArCWlmICh0ZXN0X2JpdChORlNfQ09OVEVYVF9FUlJPUl9XUklURSwgJmN0eC0+ZmxhZ3MpKSB7
-DQo+ICAJCXJldCA9IHhjaGcoJmN0eC0+ZXJyb3IsIDApOw0KPiAgCQlpZiAocmV0KQ0KPiAgCQkJ
-Z290byBvdXQ7DQo+IEBAIC0yNDcsMTAgKzI0NSwxNiBAQCBuZnNfZmlsZV9mc3luYyhzdHJ1Y3Qg
-ZmlsZSAqZmlsZSwgbG9mZl90IHN0YXJ0LA0KPiBsb2ZmX3QgZW5kLCBpbnQgZGF0YXN5bmMpDQo+
-ICAJdHJhY2VfbmZzX2ZzeW5jX2VudGVyKGlub2RlKTsNCj4gIA0KPiAgCWRvIHsNCj4gKwkJc3Ry
-dWN0IG5mc19vcGVuX2NvbnRleHQgKmN0eCA9DQo+IG5mc19maWxlX29wZW5fY29udGV4dChmaWxl
-KTsNCj4gIAkJcmV0ID0gZmlsZW1hcF93cml0ZV9hbmRfd2FpdF9yYW5nZShpbm9kZS0+aV9tYXBw
-aW5nLCANCj4gc3RhcnQsIGVuZCk7DQo+ICsJCWlmICh0ZXN0X2FuZF9jbGVhcl9iaXQoTkZTX0NP
-TlRFWFRfRVJST1JfV1JJVEUsDQo+ICZjdHgtPmZsYWdzKSkgew0KPiArCQkJaW50IHJldDIgPSB4
-Y2hnKCZjdHgtPmVycm9yLCAwKTsNCj4gKwkJCWlmIChyZXQyKQ0KPiArCQkJCXJldCA9IHJldDI7
-DQo+ICsJCX0NCj4gIAkJaWYgKHJldCAhPSAwKQ0KPiAgCQkJYnJlYWs7DQo+IC0JCXJldCA9IG5m
-c19maWxlX2ZzeW5jX2NvbW1pdChmaWxlLCBzdGFydCwgZW5kLA0KPiBkYXRhc3luYyk7DQo+ICsJ
-CXJldCA9IG5mc19maWxlX2ZzeW5jX2NvbW1pdChmaWxlLCBkYXRhc3luYyk7DQo+ICAJCWlmICgh
-cmV0KQ0KPiAgCQkJcmV0ID0gcG5mc19zeW5jX2lub2RlKGlub2RlLCAhIWRhdGFzeW5jKTsNCj4g
-IAkJLyoNCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9pbnRlcm5hbC5oIGIvZnMvbmZzL2ludGVybmFs
-LmgNCj4gaW5kZXggZGM0NTY0MTZkMmJlLi40NGM4OTYyZmVjOTEgMTAwNjQ0DQo+IC0tLSBhL2Zz
-L25mcy9pbnRlcm5hbC5oDQo+ICsrKyBiL2ZzL25mcy9pbnRlcm5hbC5oDQo+IEBAIC03NjksMyAr
-NzY5LDEwIEBAIHN0YXRpYyBpbmxpbmUgYm9vbCBuZnNfZXJyb3JfaXNfZmF0YWwoaW50IGVycikN
-Cj4gIAkJcmV0dXJuIGZhbHNlOw0KPiAgCX0NCj4gIH0NCj4gKw0KPiArc3RhdGljIGlubGluZSB2
-b2lkIG5mc19jb250ZXh0X3NldF93cml0ZV9lcnJvcihzdHJ1Y3QNCj4gbmZzX29wZW5fY29udGV4
-dCAqY3R4LCBpbnQgZXJyb3IpDQo+ICt7DQo+ICsJY3R4LT5lcnJvciA9IGVycm9yOw0KPiArCXNt
-cF93bWIoKTsNCj4gKwlzZXRfYml0KE5GU19DT05URVhUX0VSUk9SX1dSSVRFLCAmY3R4LT5mbGFn
-cyk7DQo+ICt9DQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvcGFnZWxpc3QuYyBiL2ZzL25mcy9wYWdl
-bGlzdC5jDQo+IGluZGV4IGRlOTA2NmE5MmMwZC4uMGViZDI2YjlhNmJkIDEwMDY0NA0KPiAtLS0g
-YS9mcy9uZnMvcGFnZWxpc3QuYw0KPiArKysgYi9mcy9uZnMvcGFnZWxpc3QuYw0KPiBAQCAtMTE5
-OCw4ICsxMTk4LDggQEAgb3V0X2ZhaWxlZDoNCj4gIA0KPiAgCQkvKiByZW1lbWJlciBmYXRhbCBl
-cnJvcnMgKi8NCj4gIAkJaWYgKG5mc19lcnJvcl9pc19mYXRhbChkZXNjLT5wZ19lcnJvcikpDQo+
-IC0JCQltYXBwaW5nX3NldF9lcnJvcihkZXNjLT5wZ19pbm9kZS0+aV9tYXBwaW5nLA0KPiAtCQkJ
-CQkgIGRlc2MtPnBnX2Vycm9yKTsNCj4gKwkJCW5mc19jb250ZXh0X3NldF93cml0ZV9lcnJvcihy
-ZXEtPndiX2NvbnRleHQsDQo+ICsJCQkJCQkgICAgZGVzYy0+cGdfZXJyb3IpOw0KPiAgDQo+ICAJ
-CWZ1bmMgPSBkZXNjLT5wZ19jb21wbGV0aW9uX29wcy0+ZXJyb3JfY2xlYW51cDsNCj4gIAkJZm9y
-IChtaWR4ID0gMDsgbWlkeCA8IGRlc2MtPnBnX21pcnJvcl9jb3VudDsgbWlkeCsrKQ0KPiB7DQo+
-IGRpZmYgLS1naXQgYS9mcy9uZnMvd3JpdGUuYyBiL2ZzL25mcy93cml0ZS5jDQo+IGluZGV4IGIx
-YWY1ZGVlNWUwYS4uZjcwMmJmMmRlZjc5IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvd3JpdGUuYw0K
-PiArKysgYi9mcy9uZnMvd3JpdGUuYw0KPiBAQCAtMTQ3LDEzICsxNDcsNiBAQCBzdGF0aWMgdm9p
-ZCBuZnNfaW9fY29tcGxldGlvbl9wdXQoc3RydWN0DQo+IG5mc19pb19jb21wbGV0aW9uICppb2Mp
-DQo+ICAJCWtyZWZfcHV0KCZpb2MtPnJlZmNvdW50LCBuZnNfaW9fY29tcGxldGlvbl9yZWxlYXNl
-KTsNCj4gIH0NCj4gIA0KPiAtc3RhdGljIHZvaWQgbmZzX2NvbnRleHRfc2V0X3dyaXRlX2Vycm9y
-KHN0cnVjdCBuZnNfb3Blbl9jb250ZXh0DQo+ICpjdHgsIGludCBlcnJvcikNCj4gLXsNCj4gLQlj
-dHgtPmVycm9yID0gZXJyb3I7DQo+IC0Jc21wX3dtYigpOw0KPiAtCXNldF9iaXQoTkZTX0NPTlRF
-WFRfRVJST1JfV1JJVEUsICZjdHgtPmZsYWdzKTsNCj4gLX0NCj4gLQ0KPiAgLyoNCj4gICAqIG5m
-c19wYWdlX2ZpbmRfaGVhZF9yZXF1ZXN0X2xvY2tlZCAtIGZpbmQgaGVhZCByZXF1ZXN0IGFzc29j
-aWF0ZWQNCj4gd2l0aCBAcGFnZQ0KPiAgICoNCg0KVGhhdCBtYWtlcyBzZW5zZSB0byBtZS4gSSdt
-IGFwcGx5aW5nIGFuZCB3aWxsIHNlbmQgYXMgYW4gdXBkYXRlIHRvDQo0LjE0Li4uDQoNCi0tIA0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRh
-DQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+--=-=-=
+Content-Type: text/plain
 
+On Tue, Sep 12 2017, Trond Myklebust wrote:
+>
+> That makes sense to me. I'm applying and will send as an update to
+> 4.14...
+>
+
+Thanks!
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlm3cMEACgkQOeye3VZi
+gbl2mw//UVzdj9Y27pRWj9S4RfhqXCQYbDzlInnv9GaWj/Xf7x6fcHNaSSr8Bu2S
+1HsD2mkfMMqvm7uITJh5cWvkGTWX9mwMcj5GMnEnY+aV1zmIHivntqeYN+iuZtCV
+WfF4ZWW50tV0ray0r69xaUjGbU5korp1Q9PWwLDcU84y6MeoP7WUVLwb/hZfa/k3
+Y5h0LRHsf7Qk4c9bliiwLEyvxIUeP+6t3L5sq1V+1/qvAH4s+9QDQ+6mW1D8apBj
+es9cQTh9f6REHmGNiX3IMGcGTcBuAXf2FY7a5kCsXR1gv0wMzd/OdFAUtP9evkKM
+UB3LhEgm+BYIhUOubWi14stitqoUPX6wr9EWFi/cIXo6vcEccCOjhbXjeFgZ4fZR
+wtNDXGxvvn25iTbERK5VR04ou5Xjrz5fuxxZjjSKT/GdMQGy3Uihu/v9nUZzT//I
+cmOYOZtpjlHp8ryMkOz7/43KwKqlO3tRz5JrxTZ7hK7L9E7awon32vdNa9tmx4bv
+LWybdLq2irolcRPhoPOqwyR9KZiNhaMnCfvDTtgWHXLvZr/bwLq7xYetSyvUC/J2
+iBx0rYgHsH2gDdYEJRONNb83Hflk2Om+MWd7tB0YryhX36Cj2kXjKIZNt353jQIC
+GoeJI7bHv1DaTBRDIrR7q8jcrtg27zzVDvTRm997mSklh4Bl+3g=
+=4Jph
+-----END PGP SIGNATURE-----
+--=-=-=--
