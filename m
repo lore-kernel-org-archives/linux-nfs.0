@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56006 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60806 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751661AbdIMK1A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 13 Sep 2017 06:27:00 -0400
+        id S1751661AbdIMK1I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 13 Sep 2017 06:27:08 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
@@ -10,100 +10,115 @@ Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
         "J . Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>,
         Steve Dickson <steved@redhat.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
-Date: Wed, 13 Sep 2017 11:26:36 +0100
-Message-Id: <20170913102650.10377-1-stefanha@redhat.com>
+        Stefan Hajnoczi <stefanha@redhat.com>,
+        Jorgen Hansen <jhansen@vmware.com>
+Subject: [PATCH nfs-utils v3 02/14] nfs-utils: add vsock.h
+Date: Wed, 13 Sep 2017 11:26:38 +0100
+Message-Id: <20170913102650.10377-3-stefanha@redhat.com>
+In-Reply-To: <20170913102650.10377-1-stefanha@redhat.com>
+References: <20170913102650.10377-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v3:
- * Documented vsock syntax in exports.man, nfs.man, and nfsd.man
- * Added clientaddr autodetection in mount.nfs(8)
- * Replaced #ifdefs with a single vsock.h header file
- * Tested nfsd serving both IPv4 and vsock at the same time
+AF_VSOCK has been in Linux since 2013 but nfs-utils should compile
+cleanly on systems that lack this feature or have incomplete header
+files (see vsock.h file in this patch for details).
 
-Status:
+This patch allows code to #include "vsock.h" to use AF_VSOCK and struct
+sockaddr_vm without #ifdefs.
 
- * The last revision was somewhat controversial because it's already possible
-   to share files between a hypervisor and virtual machine using TCP/IP, so why
-   add AF_VSOCK support to the stack?  TCP/IP based solutions require the
-   virtual machine administrator to be involved in the configuration and are
-   therefore not suitable for automatic management by OpenStack, oVirt, etc.
-   Maintainers, is this feature acceptable?
-
- * Need advice on netid: is there agreement to use "tcpv" instead of "vsock" as
-   Chuck Lever suggested and how to ask IESG to assign it?
-
-The AF_VSOCK address family allows virtual machines to communicate with the
-hypervisor using a zero-configuration transport.  KVM, VMware, and Hyper-V
-hypervisors support AF_VSOCK and it was first introduced in Linux 3.9.
-
-This patch series adds AF_VSOCK support to mount.nfs(8) and rpc.nfsd(8).  To
-mount an export from the hypervisor (CID 2):
-
-  # mount.nfs 2:/srv/vm01 /mnt -o proto=vsock
-
-To serve exports over vsock port 2049:
-
-  # nfsd ... --vsock 2049
-
-This series extends exports(5) syntax to handle vsock:<CID> or vsock:*.  For
-example, the guest with CID 3 can be given access using vsock:3.
-
-nfsd can export over IPv4/IPv6 and vsock at the same time.  See the changes to
-exports.man, nfs.man, and nfsd.man in the patches for syntax details.
-
-NFSv4 and later are supported.
-
-The code is also available here:
-https://github.com/stefanha/nfs-utils/tree/vsock-nfsd
-
-The latest kernel patches are available here:
-https://github.com/stefanha/linux/tree/vsock-nfsd
-
-Stefan Hajnoczi (14):
-  mount: don't use IPPROTO_UDP for address resolution
-  nfs-utils: add vsock.h
-  nfs-utils: add AF_VSOCK support to sockaddr.h
-  mount: present AF_VSOCK addresses
-  mount: accept AF_VSOCK in nfs_verify_family()
-  mount: generate AF_VSOCK clientaddr
-  getport: recognize "vsock" netid
-  mount: AF_VSOCK address parsing
-  exportfs: introduce host_freeaddrinfo()
-  exportfs: add AF_VSOCK address parsing and printing
-  exportfs: add AF_VSOCK support to set_addrlist()
-  exportfs: add support for "vsock:" exports(5) syntax
-  nfsd: add --vsock (-v) option to nfsd
-  tests: add "vsock:" exports(5) test case
-
- tests/Makefile.am          |   3 +-
- support/include/exportfs.h |   4 ++
- support/include/sockaddr.h |  18 +++++
- support/include/vsock.h    |  59 +++++++++++++++++
- utils/nfsd/nfssvc.h        |   1 +
- support/export/client.c    |   8 +--
- support/export/hostname.c  | 161 +++++++++++++++++++++++++++++++++++++++++++--
- support/nfs/getport.c      |  16 +++--
- utils/exportfs/exportfs.c  |  42 ++++++++++--
- utils/mount/network.c      |  37 ++++++++++-
- utils/mount/stropts.c      |  61 ++++++++++++++---
- utils/mountd/auth.c        |   2 +-
- utils/mountd/cache.c       |  10 +--
- utils/mountd/mountd.c      |   4 +-
- utils/mountd/rmtab.c       |   2 +-
- utils/nfsd/nfsd.c          |  18 ++++-
- utils/nfsd/nfssvc.c        |  62 +++++++++++++++++
- configure.ac               |   3 +
- tests/t0002-vsock-basic.sh |  53 +++++++++++++++
- utils/exportfs/exports.man |  12 +++-
- utils/mount/nfs.man        |  20 ++++--
- utils/nfsd/nfsd.man        |   4 ++
- 22 files changed, 552 insertions(+), 48 deletions(-)
+Cc: Jorgen Hansen <jhansen@vmware.com>
+Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
+--
+Jorgen: The header file in linux.git is GPLv2-only licensed.  nfs-utils
+is GPLv2-or-later.  The only authors of the Linux header file are
+@vmware.com.  Could you please post a GPLv2-or-later version of this
+file?  Thanks!
+---
+ support/include/vsock.h | 59 +++++++++++++++++++++++++++++++++++++++++++++++++
+ configure.ac            |  3 +++
+ 2 files changed, 62 insertions(+)
  create mode 100644 support/include/vsock.h
- create mode 100755 tests/t0002-vsock-basic.sh
 
+diff --git a/support/include/vsock.h b/support/include/vsock.h
+new file mode 100644
+index 0000000..8d1bb79
+--- /dev/null
++++ b/support/include/vsock.h
+@@ -0,0 +1,59 @@
++/*
++ * AF_VSOCK constants and struct definitions
++ *
++ * Copyright (C) 2007-2013 VMware, Inc. All rights reserved.
++ * Copyright (C) 2017 Red Hat, Inc.
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the Free
++ * Software Foundation version 2 and no later version.
++ *
++ * This program is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
++ * more details.
++ */
++
++#ifndef _VSOCK_H
++#define _VSOCK_H
++
++/*
++ * This header includes the vsock system headers.  Distros have been known to
++ * ship with:
++ * 1. vsock-capable kernels but no AF_VSOCK constant
++ * 2. AF_VSOCK but no <linux/vm_sockets.h>
++ *
++ * Define constants and structs ourselves, if necessary.  This avoids #ifdefs
++ * in many places throughout the code.  If the kernel really does not support
++ * AF_VSOCK then socket(2) returns an EAFNOSUPPORT errno.
++ */
++
++#include <sys/socket.h>
++
++#ifndef AF_VSOCK
++#define AF_VSOCK 40
++#endif
++
++#ifdef HAVE_LINUX_VM_SOCKETS_H
++#include <linux/vm_sockets.h>
++#else /* !HAVE_LINUX_VM_SOCKETS_H */
++
++#define VMADDR_CID_ANY (-1U)
++
++struct sockaddr_vm
++{
++	sa_family_t svm_family;
++	unsigned short svm_reserved1;
++	unsigned int svm_port;
++	unsigned int svm_cid;
++	unsigned char svm_zero[sizeof(struct sockaddr) -
++			       sizeof(sa_family_t) -
++			       sizeof(unsigned short) -
++			       sizeof(unsigned int) - sizeof(unsigned int)];
++};
++
++#define IOCTL_VM_SOCKETS_GET_LOCAL_CID _IO(7, 0xb9)
++
++#endif /* !HAVE_LINUX_VM_SOCKETS_H */
++
++#endif /* !_VSOCK_H */
+diff --git a/configure.ac b/configure.ac
+index 1ca1603..7d82d37 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -410,6 +410,9 @@ fi
+ dnl Check for IPv6 support
+ AC_IPV6
+ 
++dnl Check for AF_VSOCK support
++AC_CHECK_HEADERS([linux/vm_sockets.h], , , [#include <sys/socket.h>])
++
+ dnl *************************************************************
+ dnl Check for headers
+ dnl *************************************************************
 -- 
 2.13.5
 
