@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56716 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:38294 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751678AbdIMK1g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 13 Sep 2017 06:27:36 -0400
+        id S1751864AbdIMK1j (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 13 Sep 2017 06:27:39 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
@@ -11,130 +11,94 @@ Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Steve Dickson <steved@redhat.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH nfs-utils v3 12/14] exportfs: add support for "vsock:" exports(5) syntax
-Date: Wed, 13 Sep 2017 11:26:48 +0100
-Message-Id: <20170913102650.10377-13-stefanha@redhat.com>
+Subject: [PATCH nfs-utils v3 14/14] tests: add "vsock:" exports(5) test case
+Date: Wed, 13 Sep 2017 11:26:50 +0100
+Message-Id: <20170913102650.10377-15-stefanha@redhat.com>
 In-Reply-To: <20170913102650.10377-1-stefanha@redhat.com>
 References: <20170913102650.10377-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow exports to be restricted to AF_VSOCK clients:
-
-  # exportfs vsock:3:/export
-
-and:
-
-  # cat /etc/exports
-  /export       vsock:*(rw,no_root_squash,insecure,subtree_check)
+This simple test case checks that the new syntax works for AF_VSOCK.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- utils/exportfs/exportfs.c  | 32 ++++++++++++++++++++++++++++++++
- utils/exportfs/exports.man | 12 ++++++++++--
- 2 files changed, 42 insertions(+), 2 deletions(-)
+ tests/Makefile.am          |  3 ++-
+ tests/t0002-vsock-basic.sh | 53 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 55 insertions(+), 1 deletion(-)
+ create mode 100755 tests/t0002-vsock-basic.sh
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 3ded733..6bf67f1 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -299,6 +299,20 @@ static int exportfs_generic(char *arg, char *options, int verbose)
- 	return 0;
- }
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 1f96264..c4e2792 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -10,5 +10,6 @@ SUBDIRS = nsm_client
  
-+static int exportfs_vsock(char *arg, char *options, int verbose)
-+{
-+	char *path;
+ MAINTAINERCLEANFILES = Makefile.in
+ 
+-TESTS = t0001-statd-basic-mon-unmon.sh
++TESTS = t0001-statd-basic-mon-unmon.sh \
++	t0002-vsock-basic.sh
+ EXTRA_DIST = test-lib.sh $(TESTS)
+diff --git a/tests/t0002-vsock-basic.sh b/tests/t0002-vsock-basic.sh
+new file mode 100755
+index 0000000..21a3884
+--- /dev/null
++++ b/tests/t0002-vsock-basic.sh
+@@ -0,0 +1,53 @@
++#!/bin/bash
++#
++# t0002-vsock-basic.sh -- test basic NFSv4 over AF_VSOCK functionality
++#
++# Copyright (C) 2017  Red Hat, Stefan Hajnoczi <stefanha@redhat.com>
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License
++# as published by the Free Software Foundation; either version 2
++# of the License, or (at your option) any later version.
++#
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write to the Free Software Foundation, Inc.,
++# 51 Franklin Street, Fifth Floor, Boston, MA 0211-1301 USA
++#
 +
-+	if ((path = strchr(arg + strlen("vsock:"), ':')) != NULL)
-+		*path++ = '\0';
++. ./test-lib.sh
 +
-+	if (!path || *path != '/')
-+		return 1;
++check_root
 +
-+	exportfs_parsed(arg, path, options, verbose);
-+	return 0;
++test_exportfs() {
++	client_addr="$1"
++	export_spec="$client_addr:$(realpath .)"
++
++	echo "TEST: $client_addr"
++
++	"$srcdir/../utils/exportfs/exportfs" "$export_spec"
++	if [ $? -ne 0 ]; then
++		echo "FAIL: exportfs failed"
++		exit 1
++	fi
++
++	expected_etab="$(realpath .)	$client_addr("
++	grep --fixed-strings -q "$expected_etab" /var/lib/nfs/etab
++	if [ $? -ne 0 ]; then
++		echo "FAIL: etab doesn't contain entry"
++		exit 1
++	fi
++
++	"$srcdir/../utils/exportfs/exportfs" -u "$export_spec"
++	if [ $? -ne 0 ]; then
++		echo "FAIL: exportfs -u failed"
++		exit 1
++	fi
 +}
 +
- static int exportfs_ipv6(char *arg, char *options, int verbose)
- {
- 	char *path, *c;
-@@ -332,6 +346,8 @@ exportfs(char *arg, char *options, int verbose)
- 
- 	if (*arg == '[')
- 		failed = exportfs_ipv6(arg, options, verbose);
-+	else if (strncmp(arg, "vsock:", strlen("vsock:")) == 0)
-+		failed = exportfs_vsock(arg, options, verbose);
- 	else
- 		failed = exportfs_generic(arg, options, verbose);
- 	if (failed)
-@@ -412,6 +428,20 @@ static int unexportfs_generic(char *arg, int verbose)
- 	return 0;
- }
- 
-+static int unexportfs_vsock(char *arg, int verbose)
-+{
-+	char *path;
-+
-+	if ((path = strchr(arg + strlen("vsock:"), ':')) != NULL)
-+		*path++ = '\0';
-+
-+	if (!path || *path != '/')
-+		return 1;
-+
-+	unexportfs_parsed(arg, path, verbose);
-+	return 0;
-+}
-+
- static int unexportfs_ipv6(char *arg, int verbose)
- {
- 	char *path, *c;
-@@ -445,6 +475,8 @@ unexportfs(char *arg, int verbose)
- 
- 	if (*arg == '[')
- 		failed = unexportfs_ipv6(arg, verbose);
-+	else if (strncmp(arg, "vsock:", strlen("vsock:")) == 0)
-+		failed = unexportfs_vsock(arg, verbose);
- 	else
- 		failed = unexportfs_generic(arg, verbose);
- 	if (failed)
-diff --git a/utils/exportfs/exports.man b/utils/exportfs/exports.man
-index d8de6be..35b5612 100644
---- a/utils/exportfs/exports.man
-+++ b/utils/exportfs/exports.man
-@@ -47,7 +47,9 @@ NFS clients may be specified in a number of ways:
- .IP "single host
- You may specify a host either by an
- abbreviated name recognized be the resolver, the fully qualified domain
--name, an IPv4 address, or an IPv6 address. IPv6 addresses must not be
-+name, an IPv4 address, an IPv6 address, or a vsock address prefixed with
-+.BR vsock: .
-+IPv6 addresses must not be
- inside square brackets in /etc/exports lest they be confused with
- character-class wildcard matches.
- .IP "IP networks
-@@ -492,6 +494,12 @@ export entry for
- .B /home/joe
- in the example section below, which maps all requests to uid 150 (which
- is supposedly that of user joe).
-+.SS Multiple Address Families
-+When machines are specified using IPv4, IPv6, or vsock addresses they have
-+access from the given network addresses.  The wildcard \fI*\fR by itself
-+matches machines of all address families.
-+.BR vsock:*
-+can be used to match only vsock machines.
- .SS Extra Export Tables
- After reading 
- .I /etc/exports 
-@@ -510,7 +518,7 @@ The format for extra export tables is the same as
- .nf
- .ta +3i
- # sample /etc/exports file
--/               master(rw) trusty(rw,no_root_squash)
-+/               master(rw) trusty(rw,no_root_squash) vsock:3(rw)
- /projects       proj*.local.domain(rw)
- /usr            *.local.domain(ro) @trusted(rw)
- /home/joe       pc001(rw,all_squash,anonuid=150,anongid=100)
++test_exportfs "vsock:3"
++test_exportfs "vsock:*"
 -- 
 2.13.5
 
