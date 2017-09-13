@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60718 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56276 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751661AbdIMK1E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 13 Sep 2017 06:27:04 -0400
+        id S1751678AbdIMK1O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 13 Sep 2017 06:27:14 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
@@ -11,41 +11,38 @@ Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Steve Dickson <steved@redhat.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH nfs-utils v3 01/14] mount: don't use IPPROTO_UDP for address resolution
-Date: Wed, 13 Sep 2017 11:26:37 +0100
-Message-Id: <20170913102650.10377-2-stefanha@redhat.com>
+Subject: [PATCH nfs-utils v3 04/14] mount: present AF_VSOCK addresses
+Date: Wed, 13 Sep 2017 11:26:40 +0100
+Message-Id: <20170913102650.10377-5-stefanha@redhat.com>
 In-Reply-To: <20170913102650.10377-1-stefanha@redhat.com>
 References: <20170913102650.10377-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Although getaddrinfo(3) with IPPROTO_UDP works fine for AF_INET and
-AF_INET6, the AF_VSOCK address family does not support IPPROTO_UDP and
-produces an error.
-
-Drop IPPROTO_UDP and use the 0 default (TCP) which works for all address
-families.  Modern NFS uses TCP anyway so it's strange to specify UDP.
+Format vsock hosts as "vsock:<cid>" so the addresses can be easily
+distinguished from IPv4 and IPv6 addresses.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
 ---
- utils/mount/stropts.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+ utils/mount/network.c | 6 ++++++
+ 1 file changed, 6 insertions(+)
 
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 1d30d34..033f254 100644
---- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -919,9 +919,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
- 	int result = 0;
- 
- 	if (mi->address == NULL) {
--		struct addrinfo hint = {
--			.ai_protocol	= (int)IPPROTO_UDP,
--		};
-+		struct addrinfo hint = {};
- 		int error;
- 		struct addrinfo *address;
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 8ab5be8..0fa9029 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -330,6 +330,12 @@ int nfs_string_to_sockaddr(const char *address, struct sockaddr *sap,
+ int nfs_present_sockaddr(const struct sockaddr *sap, const socklen_t salen,
+ 			 char *buf, const size_t buflen)
+ {
++	if (sap->sa_family == AF_VSOCK) {
++		snprintf(buf, buflen, "vsock:%u",
++			 ((struct sockaddr_vm *)sap)->svm_cid);
++		return 1;
++	}
++
+ #ifdef HAVE_GETNAMEINFO
+ 	int result;
  
 -- 
 2.13.5
