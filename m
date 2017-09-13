@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32910 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60246 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751678AbdIMK1a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 13 Sep 2017 06:27:30 -0400
+        id S1751678AbdIMK10 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 13 Sep 2017 06:27:26 -0400
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
@@ -11,236 +11,314 @@ Cc: NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Steve Dickson <steved@redhat.com>,
         Stefan Hajnoczi <stefanha@redhat.com>
-Subject: [PATCH nfs-utils v3 10/14] exportfs: add AF_VSOCK address parsing and printing
-Date: Wed, 13 Sep 2017 11:26:46 +0100
-Message-Id: <20170913102650.10377-11-stefanha@redhat.com>
+Subject: [PATCH nfs-utils v3 09/14] exportfs: introduce host_freeaddrinfo()
+Date: Wed, 13 Sep 2017 11:26:45 +0100
+Message-Id: <20170913102650.10377-10-stefanha@redhat.com>
 In-Reply-To: <20170913102650.10377-1-stefanha@redhat.com>
 References: <20170913102650.10377-1-stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add code to parse and print AF_VSOCK addresses since the getaddrinfo(3)
-family of functions don't handle this address family.
+The AF_VSOCK address family is not supported by the getaddrinfo(3)
+family of functions so we will have to arrange our own struct addrinfo
+for vsock addresses.
+
+Different libc implementations can allocate struct addrinfo and struct
+sockaddr in different ways.  Since the memory allocation details of
+getaddrinfo(3) results are private to libc we cannot call freeaddrinfo()
+on a struct addrinfo we allocated ourselves.
+
+Introduce a freeaddrinfo(3) wrapper function that will be used to safely
+free AF_VSOCK struct addrinfo in a later patch.  Just introduce the
+wrapper function now so this patch is easy to review without
+AF_VSOCK-specific changes.
 
 Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 ---
- support/export/hostname.c | 133 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 133 insertions(+)
+ support/include/exportfs.h |  1 +
+ support/export/client.c    |  8 ++++----
+ support/export/hostname.c  | 28 +++++++++++++++++++++-------
+ utils/exportfs/exportfs.c  | 10 +++++-----
+ utils/mountd/auth.c        |  2 +-
+ utils/mountd/cache.c       | 10 +++++-----
+ utils/mountd/mountd.c      |  4 ++--
+ utils/mountd/rmtab.c       |  2 +-
+ 8 files changed, 40 insertions(+), 25 deletions(-)
 
-diff --git a/support/export/hostname.c b/support/export/hostname.c
-index 7f8a6f8..36e75ff 100644
---- a/support/export/hostname.c
-+++ b/support/export/hostname.c
-@@ -30,6 +30,105 @@
- #include "sockaddr.h"
- #include "exportfs.h"
+diff --git a/support/include/exportfs.h b/support/include/exportfs.h
+index 8af47a8..98d45c5 100644
+--- a/support/include/exportfs.h
++++ b/support/include/exportfs.h
+@@ -161,6 +161,7 @@ __attribute__((__malloc__))
+ struct addrinfo *		host_reliable_addrinfo(const struct sockaddr *sap);
+ __attribute__((__malloc__))
+ struct addrinfo *		host_numeric_addrinfo(const struct sockaddr *sap);
++void				host_freeaddrinfo(struct addrinfo * ai);
  
-+static char *
-+host_ntop_vsock(const struct sockaddr *sap, char *buf, const size_t buflen)
-+{
-+	struct sockaddr_vm *svm = (struct sockaddr_vm *)sap;
-+	snprintf(buf, buflen, "vsock:%u", svm->svm_cid);
-+	return buf;
-+}
-+
-+/* Allocate an addrinfo for AF_VSOCK.  Free with host_freeaddrinfo(). */
-+static struct addrinfo *
-+vsock_alloc_addrinfo(struct sockaddr_vm **svm)
-+{
-+	struct {
-+		struct addrinfo ai;
-+		struct sockaddr_vm svm;
-+	} *vai;
-+
-+	vai = calloc(1, sizeof(*vai));
-+	if (!vai)
-+		return NULL;
-+
-+	vai->ai.ai_family = AF_VSOCK;
-+	vai->ai.ai_socktype = SOCK_STREAM;
-+	vai->ai.ai_addrlen = sizeof(vai->svm);
-+	vai->ai.ai_addr = (struct sockaddr *)&vai->svm;
-+	vai->svm.svm_family = AF_VSOCK;
-+
-+	if (svm)
-+		*svm = &vai->svm;
-+
-+	return &vai->ai;
-+}
-+
-+/* hostname -> addrinfo */
-+static struct addrinfo *
-+vsock_hostname_addrinfo(const char *hostname)
-+{
-+	const char *cid_str;
-+	char *end_ptr;
-+	struct addrinfo *ai;
-+	struct sockaddr_vm *svm;
-+	long cid;
-+
-+	cid_str = hostname + strlen("vsock:");
-+	cid = strtol(cid_str, &end_ptr, 10);
-+	if (end_ptr == cid_str || *end_ptr != '\0')
-+		return NULL;
-+	if (cid < 0 || cid > UINT32_MAX)
-+		return NULL;
-+
-+	ai = vsock_alloc_addrinfo(&svm);
-+	if (!ai)
-+		return NULL;
-+
-+	ai->ai_canonname = strdup(hostname);
-+	if (!ai->ai_canonname) {
-+		host_freeaddrinfo(ai);
-+		return NULL;
-+	}
-+
-+	svm->svm_cid = cid;
-+	return ai;
-+}
-+
-+/* sockaddr -> hostname */
-+static char *
-+vsock_canonname(const struct sockaddr *sap)
-+{
-+	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)sap;
-+	char *canonname;
-+
-+	if (asprintf(&canonname, "vsock:%u", svm->svm_cid) < 0)
-+		return NULL;
-+	return canonname;
-+}
-+
-+/* sockaddr -> addrinfo */
-+static struct addrinfo *
-+vsock_sockaddr_addrinfo(const struct sockaddr *sap)
-+{
-+	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)sap;
-+	struct sockaddr_vm *ai_svm;
-+	struct addrinfo *ai;
-+
-+	ai = vsock_alloc_addrinfo(&ai_svm);
-+	if (!ai)
-+		return NULL;
-+
-+	*ai_svm = *svm;
-+
-+	ai->ai_canonname = vsock_canonname(sap);
-+	if (!ai->ai_canonname) {
-+		host_freeaddrinfo(ai);
-+		return NULL;
-+	}
-+
-+	return ai;
-+}
-+
- /**
-  * host_ntop - generate presentation address given a sockaddr
-  * @sap: pointer to socket address
-@@ -52,6 +151,9 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
- 		return buf;
- 	}
+ struct nfskey *			key_lookup(char *hname);
  
-+	if (sap->sa_family == AF_VSOCK)
-+		return host_ntop_vsock(sap, buf, buflen);
-+
- 	error = getnameinfo(sap, salen, buf, (socklen_t)buflen,
- 						NULL, 0, NI_NUMERICHOST);
- 	if (error != 0) {
-@@ -69,6 +171,9 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
+diff --git a/support/export/client.c b/support/export/client.c
+index 2346f99..881c776 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -210,7 +210,7 @@ init_subnetwork(nfs_client *clp)
+ 	set_addrlist(clp, 0, ai->ai_addr);
+ 	family = ai->ai_addr->sa_family;
  
- 	memset(buf, 0, buflen);
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
  
-+	if (sap->sa_family == AF_VSOCK)
-+		return host_ntop_vsock(sap, buf, buflen);
-+
- 	if (sin->sin_family != AF_INET) {
- 		(void)strncpy(buf, "bad family", buflen - 1);
- 		return buf;
-@@ -120,6 +225,10 @@ host_pton(const char *paddr)
- 			__func__);
- 		return NULL;
- 	}
-+
-+	if (strncmp(paddr, "vsock:", strlen("vsock:")) == 0)
-+		return vsock_hostname_addrinfo(paddr);
-+
- 	inet4 = 1;
- 	if (inet_pton(AF_INET, paddr, &sin.sin_addr) == 0)
- 		inet4 = 0;
-@@ -174,6 +283,9 @@ host_addrinfo(const char *hostname)
- 	};
- 	int error;
+ 	switch (family) {
+ 	case AF_INET:
+@@ -309,7 +309,7 @@ client_lookup(char *hname, int canonical)
+ 		init_addrlist(clp, ai);
  
-+	if (strncmp(hostname, "vsock:", strlen("vsock:")) == 0)
-+		return vsock_hostname_addrinfo(hostname);
-+
- 	error = getaddrinfo(hostname, NULL, &hint, &ai);
- 	switch (error) {
- 	case 0:
-@@ -202,6 +314,12 @@ host_addrinfo(const char *hostname)
- void
- host_freeaddrinfo(struct addrinfo *ai)
- {
-+	if (ai && ai->ai_family == AF_VSOCK) {
-+		free(ai->ai_canonname);
-+		free(ai);
-+		return;
-+	}
-+
- 	freeaddrinfo(ai);
+ out:
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
+ 	return clp;
  }
  
-@@ -225,6 +343,9 @@ host_canonname(const struct sockaddr *sap)
- 	char buf[NI_MAXHOST];
- 	int error;
+@@ -378,7 +378,7 @@ client_freeall(void)
+  * @sap: pointer to socket address to resolve
+  *
+  * Returns an addrinfo structure, or NULL if some problem occurred.
+- * Caller must free the result with freeaddrinfo(3).
++ * Caller must free the result with host_freeaddrinfo().
+  */
+ struct addrinfo *
+ client_resolve(const struct sockaddr *sap)
+@@ -673,7 +673,7 @@ check_netgroup(const nfs_client *clp, const struct addrinfo *ai)
+ 	tmp = host_pton(hname);
+ 	if (tmp != NULL) {
+ 		char *cname = host_canonname(tmp->ai_addr);
+-		freeaddrinfo(tmp);
++		host_freeaddrinfo(tmp);
  
-+	if (sap->sa_family == AF_VSOCK)
-+		return vsock_canonname(sap);
-+
- 	if (salen == 0) {
- 		xlog(D_GENERAL, "%s: unsupported address family %d",
- 				__func__, sap->sa_family);
-@@ -260,6 +381,9 @@ host_canonname(const struct sockaddr *sap)
- 	const struct in_addr *addr = &sin->sin_addr;
- 	struct hostent *hp;
+ 		/* The resulting FQDN may be in our netgroup. */
+ 		if (cname != NULL) {
+diff --git a/support/export/hostname.c b/support/export/hostname.c
+index 5c4c824..7f8a6f8 100644
+--- a/support/export/hostname.c
++++ b/support/export/hostname.c
+@@ -89,7 +89,7 @@ host_ntop(const struct sockaddr *sap, char *buf, const size_t buflen)
+  *		IP presentation address
+  *
+  * Returns address info structure, or NULL if an error occurs.  Caller
+- * must free the returned structure with freeaddrinfo(3).
++ * must free the returned structure with host_freeaddrinfo().
+  */
+ __attribute__((__malloc__))
+ struct addrinfo *
+@@ -155,7 +155,7 @@ host_pton(const char *paddr)
+  *
+  * Returns address info structure with ai_canonname filled in, or NULL
+  * if no information is available for @hostname.  Caller must free the
+- * returned structure with freeaddrinfo(3).
++ * returned structure with host_freeaddrinfo().
+  */
+ __attribute__((__malloc__))
+ struct addrinfo *
+@@ -192,6 +192,20 @@ host_addrinfo(const char *hostname)
+ }
  
-+	if (sap->sa_family == AF_VSOCK)
-+		return vsock_canonname(sap);
+ /**
++ * host_freeaddrinfo - free addrinfo obtained from host_*() functions
++ * @ai: pointer to addrinfo to free
++ *
++ * The addrinfos returned by host_*() functions may not have been allocated by
++ * a call to getaddrinfo(3).  It is not safe to free them directly with
++ * freeaddrinfo(3).  Use this function instead.
++ */
++void
++host_freeaddrinfo(struct addrinfo *ai)
++{
++	freeaddrinfo(ai);
++}
 +
- 	if (sap->sa_family != AF_INET)
++/**
+  * host_canonname - return canonical hostname bound to an address
+  * @sap: pointer to socket address to look up
+  *
+@@ -268,7 +282,7 @@ host_canonname(const struct sockaddr *sap)
+  * ai_canonname filled in. If there is a problem with resolution or
+  * the resolved records don't match up properly then it returns NULL
+  *
+- * Caller must free the returned structure with freeaddrinfo(3).
++ * Caller must free the returned structure with host_freeaddrinfo().
+  */
+ __attribute__((__malloc__))
+ struct addrinfo *
+@@ -290,7 +304,7 @@ host_reliable_addrinfo(const struct sockaddr *sap)
+ 		if (nfs_compare_sockaddr(a->ai_addr, sap))
+ 			break;
+ 
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
+ 	if (!a)
+ 		goto out_free_hostname;
+ 
+@@ -314,7 +328,7 @@ out_free_hostname:
+  * @sap: pointer to socket address
+  *
+  * Returns address info structure, or NULL if an error occurred.
+- * Caller must free the returned structure with freeaddrinfo(3).
++ * Caller must free the returned structure with host_freeaddrinfo().
+  */
+ #ifdef HAVE_GETNAMEINFO
+ __attribute__((__malloc__))
+@@ -357,7 +371,7 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 		free(ai->ai_canonname);		/* just in case */
+ 		ai->ai_canonname = strdup(buf);
+ 		if (ai->ai_canonname == NULL) {
+-			freeaddrinfo(ai);
++			host_freeaddrinfo(ai);
+ 			ai = NULL;
+ 		}
+ 	}
+@@ -390,7 +404,7 @@ host_numeric_addrinfo(const struct sockaddr *sap)
+ 	if (ai != NULL) {
+ 		ai->ai_canonname = strdup(buf);
+ 		if (ai->ai_canonname == NULL) {
+-			freeaddrinfo(ai);
++			host_freeaddrinfo(ai);
+ 			ai = NULL;
+ 		}
+ 	}
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index beed1b3..3ded733 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -282,7 +282,7 @@ exportfs_parsed(char *hname, char *path, char *options, int verbose)
+ 	validate_export(exp);
+ 
+ out:
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
+ }
+ 
+ static int exportfs_generic(char *arg, char *options, int verbose)
+@@ -395,7 +395,7 @@ unexportfs_parsed(char *hname, char *path, int verbose)
+ 	if (!success)
+ 		xlog(L_ERROR, "Could not find '%s:%s' to unexport.", hname, path);
+ 
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
+ }
+ 
+ static int unexportfs_generic(char *arg, int verbose)
+@@ -588,7 +588,7 @@ address_list(const char *hostname)
+ 	if (ai != NULL) {
+ 		/* @hostname was a presentation address */
+ 		cname = host_canonname(ai->ai_addr);
+-		freeaddrinfo(ai);
++		host_freeaddrinfo(ai);
+ 		if (cname != NULL)
+ 			goto out;
+ 	}
+@@ -639,8 +639,8 @@ matchhostname(const char *hostname1, const char *hostname2)
+ 			}
+ 
+ out:
+-	freeaddrinfo(results1);
+-	freeaddrinfo(results2);
++	host_freeaddrinfo(results1);
++	host_freeaddrinfo(results2);
+ 	return result;
+ }
+ 
+diff --git a/utils/mountd/auth.c b/utils/mountd/auth.c
+index 8299256..dee0f3d 100644
+--- a/utils/mountd/auth.c
++++ b/utils/mountd/auth.c
+@@ -297,7 +297,7 @@ auth_authenticate(const char *what, const struct sockaddr *caller,
+ 			path, epath, error);
+ 	}
+ 
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
+ 	return exp;
+ }
+ 
+diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+index e49300d..e062aea 100644
+--- a/utils/mountd/cache.c
++++ b/utils/mountd/cache.c
+@@ -113,7 +113,7 @@ static void auth_unix_ip(int f)
+ 		ai = client_resolve(tmp->ai_addr);
+ 		if (ai) {
+ 			client = client_compose(ai);
+-			freeaddrinfo(ai);
++			host_freeaddrinfo(ai);
+ 		}
+ 	}
+ 	bp = buf; blen = sizeof(buf);
+@@ -133,7 +133,7 @@ static void auth_unix_ip(int f)
+ 	xlog(D_CALL, "auth_unix_ip: client %p '%s'", client, client?client: "DEFAULT");
+ 
+ 	free(client);
+-	freeaddrinfo(tmp);
++	host_freeaddrinfo(tmp);
+ 
+ }
+ 
+@@ -667,7 +667,7 @@ static struct addrinfo *lookup_client_addr(char *dom)
+ 	if (tmp == NULL)
  		return NULL;
+ 	ret = client_resolve(tmp->ai_addr);
+-	freeaddrinfo(tmp);
++	host_freeaddrinfo(tmp);
+ 	return ret;
+ }
  
-@@ -291,6 +415,9 @@ host_reliable_addrinfo(const struct sockaddr *sap)
- 	struct addrinfo *ai, *a;
- 	char *hostname;
+@@ -834,7 +834,7 @@ static void nfsd_fh(int f)
+ out:
+ 	if (found_path)
+ 		free(found_path);
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
+ 	free(dom);
+ 	xlog(D_CALL, "nfsd_fh: found %p path %s", found, found ? found->e_path : NULL);
+ }
+@@ -1364,7 +1364,7 @@ static void nfsd_export(int f)
+ 	xlog(D_CALL, "nfsd_export: found %p path %s", found, path ? path : NULL);
+ 	if (dom) free(dom);
+ 	if (path) free(path);
+-	freeaddrinfo(ai);
++	host_freeaddrinfo(ai);
+ }
  
-+	if (sap->sa_family == AF_VSOCK)
-+		return vsock_sockaddr_addrinfo(sap);
-+
- 	hostname = host_canonname(sap);
- 	if (hostname == NULL)
- 		return NULL;
-@@ -340,6 +467,9 @@ host_numeric_addrinfo(const struct sockaddr *sap)
- 	struct addrinfo *ai;
- 	int error;
  
-+	if (sap->sa_family == AF_VSOCK)
-+		return vsock_sockaddr_addrinfo(sap);
-+
- 	if (salen == 0) {
- 		xlog(D_GENERAL, "%s: unsupported address family %d",
- 				__func__, sap->sa_family);
-@@ -388,6 +518,9 @@ host_numeric_addrinfo(const struct sockaddr *sap)
- 	char buf[INET_ADDRSTRLEN];
- 	struct addrinfo *ai;
- 
-+	if (sap->sa_family == AF_VSOCK)
-+		return vsock_sockaddr_addrinfo(sap);
-+
- 	if (sap->sa_family != AF_INET)
- 		return NULL;
- 
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 829f803..3193ded 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -578,10 +578,10 @@ static void prune_clients(nfs_export *exp, struct exportnode *e)
+ 				*cp = c->gr_next;
+ 				xfree(c->gr_name);
+ 				xfree(c);
+-				freeaddrinfo(ai);
++				host_freeaddrinfo(ai);
+ 				continue;
+ 			}
+-			freeaddrinfo(ai);
++			host_freeaddrinfo(ai);
+ 		}
+ 		cp = &(c->gr_next);
+ 	}
+diff --git a/utils/mountd/rmtab.c b/utils/mountd/rmtab.c
+index 3ae0dbb..99f7474 100644
+--- a/utils/mountd/rmtab.c
++++ b/utils/mountd/rmtab.c
+@@ -226,7 +226,7 @@ mountlist_list(void)
+ 				ai = host_pton(rep->r_client);
+ 				if (ai != NULL) {
+ 					m->ml_hostname = host_canonname(ai->ai_addr);
+-					freeaddrinfo(ai);
++					host_freeaddrinfo(ai);
+ 				}
+ 			}
+ 			if (m->ml_hostname == NULL)
 -- 
 2.13.5
 
