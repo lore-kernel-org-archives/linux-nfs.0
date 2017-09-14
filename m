@@ -1,194 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f181.google.com ([209.85.220.181]:49040 "EHLO
-        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751966AbdINKtD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Sep 2017 06:49:03 -0400
-Received: by mail-qk0-f181.google.com with SMTP id a128so6278098qkc.5
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Sep 2017 03:49:03 -0700 (PDT)
-Message-ID: <1505386139.4870.10.camel@redhat.com>
-Subject: Re: [RFC PATCH manpages] write.2, fsync.2, close.2: update
- description of error codes
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>,
-        "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>,
+Received: from mail-wr0-f194.google.com ([209.85.128.194]:33481 "EHLO
+        mail-wr0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751420AbdINNi5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Sep 2017 09:38:57 -0400
+MIME-Version: 1.0
+Reply-To: mtk.manpages@gmail.com
+In-Reply-To: <87valci55j.fsf@notabene.neil.brown.name>
+References: <87bmnmrai9.fsf@notabene.neil.brown.name> <1502430944.3822.1.camel@primarydata.com>
+ <1502449309.4950.2.camel@redhat.com> <87zib3niqn.fsf@notabene.neil.brown.name>
+ <1502705432.4978.1.camel@redhat.com> <877ey4nsep.fsf@notabene.neil.brown.name>
+ <1502883253.4847.6.camel@redhat.com> <1e4665a6-30d6-c16a-760a-2892fb147760@redhat.com>
+ <878tihmora.fsf@notabene.neil.brown.name> <2e289bba-677b-cc50-5fa3-2d24d1f6b858@redhat.com>
+ <87h8x1l9qp.fsf@notabene.neil.brown.name> <733c15c2-ffbb-9a89-90ec-3ba1d574590e@redhat.com>
+ <87r2w3jdn5.fsf@notabene.neil.brown.name> <42ba2fa5-d756-d70f-370c-c2fe1a61c5bf@redhat.com>
+ <87inhdk3rq.fsf@notabene.neil.brown.name> <CAKgNAki1SYjr7-6g-i3shGjQRjwy81gS0QisfZRy-x-bHFtXmA@mail.gmail.com>
+ <87valci55j.fsf@notabene.neil.brown.name>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Date: Thu, 14 Sep 2017 15:38:34 +0200
+Message-ID: <CAKgNAkinKkG8cR1ng0V3K1D9QNQ9MSeNkPpvpeGSUd5RqFiwSw@mail.gmail.com>
+Subject: Re: [PATCH manpages] stat.2: correct AT_NO_AUTOMOUNT text and general revisions.
+To: NeilBrown <neilb@suse.com>
+Cc: Ian Kent <ikent@redhat.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trondmy@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-Cc: linux-man@vger.kernel.org,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "mkoutny@suse.com" <mkoutny@suse.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Date: Thu, 14 Sep 2017 06:48:59 -0400
-In-Reply-To: <87ingm9n04.fsf@notabene.neil.brown.name>
-References: <20170720194227.7830-1-jlayton@kernel.org>
-         <1503683981.22608.0.camel@redhat.com>
-         <87h8wsiog4.fsf@notabene.neil.brown.name>
-         <1503920855.4563.12.camel@redhat.com>
-         <87pobfgo9q.fsf@notabene.neil.brown.name>
-         <1504004058.4679.7.camel@redhat.com>
-         <87efrjb2mn.fsf@notabene.neil.brown.name>
-         <1504784132.4954.12.camel@redhat.com>
-         <1504796087.3561.7.camel@primarydata.com>
-         <874ls9diij.fsf@notabene.neil.brown.name>
-         <1505126785.4916.7.camel@redhat.com>
-         <87poawc390.fsf@notabene.neil.brown.name>
-         <1505229616.28831.26.camel@redhat.com>
-         <87efrbbne1.fsf@notabene.neil.brown.name>
-         <1505305391.4822.13.camel@redhat.com>
-         <87ingm9n04.fsf@notabene.neil.brown.name>
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>,
+        "H. Peter Anvin" <hpa@zytor.com>,
+        Michael Kerrisk <mtk.manpages@gmail.com>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-09-14 at 09:50 +1000, NeilBrown wrote:
-> Since 4.13, errors from writeback are more reliably reported
-> to all file descriptors that might be relevant.
-> 
-> Add notes to this effect, and also add details about ENOSPC and EDQUOT
-> which can be delayed in a similar manner to EIO - for NFS in particular.
-> 
+Hi Neil,
+
+On 25 August 2017 at 07:32, NeilBrown <neilb@suse.com> wrote:
+>
+> Expand on the relationship between fstatat() and the other
+> three functions, and improve the description of AT_NO_AUTOMOUNT.
+> Specifically, both  stat() and lstat() act the same way
+> with respect to automounts, and that behavior matches
+> fstatat with the AT_NO_AUTOMOUNT flag.
+>
+> The text in the NOTES is removed and places with the text for
+> AT_NO_AUTOMOUNT to improve cohesion.
+>
+> New text for a difference to be introduced in 4.14.
+
+Has the 4.14 piece gone in?
+
+Cheers,
+
+Michael
+
+> Cc: Ian Kent <ikent@redhat.com>
 > Signed-off-by: NeilBrown <neilb@suse.com>
 > ---
-> 
-> This is my summary of recent changes, and details that have been made
-> clear during the exploration of those changes.
-> 
-> I haven't mentioned the fact that EPERM can be returned by
-> write/fsync/close on NFS if the permissions on the server are changed.
-> We probably should ... are there other errors that are worth mentioning
-> along with EPERM, ENOSPC, EDQUOT ??
-> 
-> Thanks,
-> NeilBronw
-> 
-
-Many thanks for doing this! It was on my to-do list. Comments below:
-
-> 
->  man2/close.2 |  9 +++++++++
->  man2/fsync.2 | 19 ++++++++++++++++++-
->  man2/write.2 | 20 +++++++++++++++++---
->  3 files changed, 44 insertions(+), 4 deletions(-)
-> 
-> diff --git a/man2/close.2 b/man2/close.2
-> index 751ec322b1f1..9776c839b8b6 100644
-> --- a/man2/close.2
-> +++ b/man2/close.2
-> @@ -82,6 +82,15 @@ call was interrupted by a signal; see
->  .TP
->  .B EIO
->  An I/O error occurred.
-> +.TP
-> +.BR ENOSPC ", " EDQUOT
-> +On NFS, these errors are not normally reported against the first write
-> +which exceeds the available storage space, but instead against a
-> +subsequent
-> +.BR write (2),
-> +.BR fsync (2),
-> +or
-> +.BR close (2).
+>
+> Thanks Ian and Michael.  I considered your input and read
+> through the whole again, and came up with this which is
+> quite different to what I suggested before.
+>
+> If this patch is applied, the result probably shouldn't be released
+> until the relevant patch actually lands in Linus's tree.
+>
+> NeilBrown
+>
+>
+>  man2/stat.2 | 37 ++++++++++++++++++++++++-------------
+>  1 file changed, 24 insertions(+), 13 deletions(-)
+>
+> diff --git a/man2/stat.2 b/man2/stat.2
+> index d8a9e76b3d9f..c6dddfe0d3a7 100644
+> --- a/man2/stat.2
+> +++ b/man2/stat.2
+> @@ -260,9 +260,12 @@ For further information on the above fields, see
+>  .SS fstatat()
+>  The
+>  .BR fstatat ()
+> -system call operates in exactly the same way as
+> +system call is a more general interface for accessing file information
+> +which can still provide exactly the behavior of each of
+>  .BR stat (),
+> -except for the differences described here.
+> +.BR lstat (),
+> +and
+> +.BR fstat ().
 >  .PP
->  See NOTES for a discussion of why
->  .BR close ()
-> diff --git a/man2/fsync.2 b/man2/fsync.2
-> index f1a01301da0f..e706a08d360d 100644
-> --- a/man2/fsync.2
-> +++ b/man2/fsync.2
-> @@ -120,12 +120,29 @@ is set appropriately.
->  is not a valid open file descriptor.
+>  If the pathname given in
+>  .I pathname
+> @@ -272,6 +275,8 @@ referred to by the file descriptor
+>  (rather than relative to the current working directory of
+>  the calling process, as is done by
+>  .BR stat ()
+> +and
+> +.BR lstat ()
+>  for a relative pathname).
+>  .PP
+>  If
+> @@ -284,7 +289,9 @@ then
+>  .I pathname
+>  is interpreted relative to the current working
+>  directory of the calling process (like
+> -.BR stat ()).
+> +.BR stat ()
+> +and
+> +.BR lstat ()).
+>  .PP
+>  If
+>  .I pathname
+> @@ -307,7 +314,11 @@ is an empty string, operate on the file referred to by
+>  flag).
+>  In this case,
+>  .I dirfd
+> -can refer to any type of file, not just a directory.
+> +can refer to any type of file, not just a directory, and
+> +the behavior of
+> +.BR fstatat ()
+> +is similar to that of
+> +.BR fstat ().
+>  If
+>  .I dirfd
+>  is
+> @@ -324,6 +335,8 @@ Don't automount the terminal ("basename") component of
+>  if it is a directory that is an automount point.
+>  This allows the caller to gather attributes of an automount point
+>  (rather than the location it would mount).
+> +Since Linux 4.14, also don't instantiate a non-existent name in an
+> +on-demand directory such as used for automounter indirect maps.
+>  This flag can be used in tools that scan directories
+>  to prevent mass-automounting of a directory of automount points.
+>  The
+> @@ -333,6 +346,13 @@ This flag is Linux-specific; define
+>  .B _GNU_SOURCE
+>  .\" Before glibc 2.16, defining _ATFILE_SOURCE sufficed
+>  to obtain its definition.
+> +Both
+> +.BR stat ()
+> +and
+> +.BR lstat ()
+> +act as though
+> +.B AT_NO_AUTOMOUNT
+> +was set.
 >  .TP
->  .B EIO
-> -An error occurred during synchronization.
-> +An error occurred during synchronization.  This error may relate
-> +to data written to some other file descriptor on the same file.
-> +.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
-> +Since Linux 4.13 errors from write-back will be reported to
-> +all file descriptors that might have written the data which triggered
-> +the error, and which are still open.
-
-This is a little awkward. How could we report to a fd that was no longer
-open? How about:
-
-"Since Linux 4.13, errors from write-back will be reported to all file
-descriptors that were open at the time that the error was recorded."
-
->   Some filesystems (e.g. NFS)
-> +keep close track of which data came through which file descriptor,
-> +and give more precise reporting.  Other filesystems (e.g. most local
-> +filesystems) will report errors to all file descriptors on the same
-> +file.
->  .TP
->  .BR EROFS ", " EINVAL
->  .I fd
->  is bound to a special file (e.g., a pipe, FIFO, or socket)
->  which does not support synchronization.
-> +.TP
-> +.BR ENOSPC ", " EDQUOT
-> +.I fd
-> +is bound to a file on NFS or another filesystem which does not allocate
-> +space at the time of a
-> +.BR write (2)
-> +system call, and some previous write failed due to insufficient
-> +storage space.
->  .SH CONFORMING TO
->  POSIX.1-2001, POSIX.1-2008, 4.3BSD.
->  .SH AVAILABILITY
-> diff --git a/man2/write.2 b/man2/write.2
-> index 6a39b5b5541d..1a9a86b03b04 100644
-> --- a/man2/write.2
-> +++ b/man2/write.2
-> @@ -47,7 +47,7 @@ write \- write to a file descriptor
->  .BR write ()
->  writes up to
->  .I count
-> -bytes from the buffer pointed
-> +bytes from the buffer starting at
->  .I buf
->  to the file referred to by the file descriptor
->  .IR fd .
-> @@ -181,6 +181,14 @@ or the file offset is not suitably aligned.
->  .TP
->  .B EIO
->  A low-level I/O error occurred while modifying the inode.
-> +This error may relate to data written by an earlier
-> +.BR write (2),
-> +which may have been issued to a different file descriptor on
-> +the same file.  Since Linux 4.13 errors from write-back will
-> +be reported to all file descriptors that might have
-> +written the data which triggered the error, and which are still
-> +open.
+>  .B AT_SYMLINK_NOFOLLOW
+>  If
+> @@ -474,15 +494,6 @@ fields may be less portable.
+>  The interpretation differs between systems,
+>  and possibly on a single system when NFS mounts are involved.)
+>  .SH NOTES
+> -On Linux,
+> -.BR lstat ()
+> -will generally not trigger automounter action, whereas
+> -.BR stat ()
+> -will (but see the description of the
+> -.BR fstatat ()
+> -.B AT_NO_AUTOMOUNT
+> -fag, above).
+> -.\"
+>  .SS Timestamp fields
+>  Older kernels and older standards did not support nanosecond timestamp
+>  fields.
+> --
+> 2.14.0.rc0.dirty
+>
 
 
-This is where things get a little more vague.
-
-Some filesystems will return errors on a subsequent write(2) when
-previous writeback has failed -- some don't. In either case though,
-write(2) should never advance your errseq_t cursor, so only an fsync
-will "clear" an earlier error.
-
-I'm not sure how best to convey that in the manpages though.
-
-> +.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
->  .TP
->  .B ENOSPC
->  The device containing the file referred to by
-> @@ -222,8 +230,14 @@ unsigned and signed integer data types specified by POSIX.1.
->  A successful return from
->  .BR write ()
->  does not make any guarantee that data has been committed to disk.
-> -In fact, on some buggy implementations, it does not even guarantee
-> -that space has successfully been reserved for the data.
-> +On some filesystems, including NFS, it does not even guarantee
-> +that space has successfully been reserved for the data.  In the case,
-> +some errors might be delayed to a future
-> +.BR write (2)
-> +or to
-> +.BR fsync (2)
-> +or even
-> +.BR close (2).
->  The only way to be sure is to call
->  .BR fsync (2)
->  after you are done writing all your data.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
