@@ -1,133 +1,194 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:37600 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750798AbdINFr6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Sep 2017 01:47:58 -0400
-Date: Thu, 14 Sep 2017 01:47:45 -0400
-From: Richard Guy Briggs <rgb@redhat.com>
-To: "Serge E. Hallyn" <serge@hallyn.com>
-Cc: Paul Moore <paul@paul-moore.com>,
-        David Howells <dhowells@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        cgroups@vger.kernel.org, linux-api@vger.kernel.org,
-        containers@lists.linux-foundation.org, linux-audit@redhat.com,
-        mszeredi@redhat.com, jlayton@redhat.com, viro@zeniv.linux.org.uk,
-        luto@kernel.org, trondmy@primarydata.com, ebiederm@xmission.com
-Subject: Re: [PATCH 2/9] Implement containers as kernel objects
-Message-ID: <20170914054745.GS3405@madcap2.tricolour.ca>
-References: <149547014649.10599.12025037906646164347.stgit@warthog.procyon.org.uk>
- <149547016213.10599.1969443294414531853.stgit@warthog.procyon.org.uk>
- <20170814054711.GB29957@madcap2.tricolour.ca>
- <CAHC9VhRgPRa7KeMt8G700aeFvqVYc0gMx__82K31TYY6oQQqTw@mail.gmail.com>
- <20170818080300.GQ7187@madcap2.tricolour.ca>
- <20170906140341.GA8729@mail.hallyn.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170906140341.GA8729@mail.hallyn.com>
+Received: from mail-qk0-f181.google.com ([209.85.220.181]:49040 "EHLO
+        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751966AbdINKtD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Sep 2017 06:49:03 -0400
+Received: by mail-qk0-f181.google.com with SMTP id a128so6278098qkc.5
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Sep 2017 03:49:03 -0700 (PDT)
+Message-ID: <1505386139.4870.10.camel@redhat.com>
+Subject: Re: [RFC PATCH manpages] write.2, fsync.2, close.2: update
+ description of error codes
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.com>,
+        "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+Cc: linux-man@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Date: Thu, 14 Sep 2017 06:48:59 -0400
+In-Reply-To: <87ingm9n04.fsf@notabene.neil.brown.name>
+References: <20170720194227.7830-1-jlayton@kernel.org>
+         <1503683981.22608.0.camel@redhat.com>
+         <87h8wsiog4.fsf@notabene.neil.brown.name>
+         <1503920855.4563.12.camel@redhat.com>
+         <87pobfgo9q.fsf@notabene.neil.brown.name>
+         <1504004058.4679.7.camel@redhat.com>
+         <87efrjb2mn.fsf@notabene.neil.brown.name>
+         <1504784132.4954.12.camel@redhat.com>
+         <1504796087.3561.7.camel@primarydata.com>
+         <874ls9diij.fsf@notabene.neil.brown.name>
+         <1505126785.4916.7.camel@redhat.com>
+         <87poawc390.fsf@notabene.neil.brown.name>
+         <1505229616.28831.26.camel@redhat.com>
+         <87efrbbne1.fsf@notabene.neil.brown.name>
+         <1505305391.4822.13.camel@redhat.com>
+         <87ingm9n04.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2017-09-06 09:03, Serge E. Hallyn wrote:
-> Quoting Richard Guy Briggs (rgb@redhat.com):
-> ...
-> > > I believe we are going to need a container ID to container definition
-> > > (namespace, etc.) mapping mechanism regardless of if the container ID
-> > > is provided by userspace or a kernel generated serial number.  This
-> > > mapping should be recorded in the audit log when the container ID is
-> > > created/defined.
-> > 
-> > Agreed.
-> > 
-> > > > As was suggested in one of the previous threads, if there are any events not
-> > > > associated with a task (incoming network packets) we log the namespace ID and
-> > > > then only concern ourselves with its container serial number or container name
-> > > > once it becomes associated with a task at which point that tracking will be
-> > > > more important anyways.
-> > > 
-> > > Agreed.  After all, a single namespace can be shared between multiple
-> > > containers.  For those security officers who need to track individual
-> > > events like this they will have the container ID mapping information
-> > > in the logs as well so they should be able to trace the unassociated
-> > > event to a set of containers.
-> > > 
-> > > > I'm not convinced that a userspace or kernel generated UUID is that useful
-> > > > since they are large, not human readable and may not be globally unique given
-> > > > the "pets vs cattle" direction we are going with potentially identical
-> > > > conditions in hosts or containers spawning containers, but I see no need to
-> > > > restrict them.
-> > > 
-> > > From a kernel perspective I think an int should suffice; after all,
-> > > you can't have more containers then you have processes.  If the
-> > > container engine requires something more complex, it can use the int
-> > > as input to its own mapping function.
-> > 
-> > PIDs roll over.  That already causes some ambiguity in reporting.  If a
-> > system is constantly spawning and reaping containers, especially
-> > single-process containers, I don't want to have to worry about that ID
-> > rolling to keep track of it even though there should be audit records of
-> > the spawn and death of each container.  There isn't significant cost
-> > added here compared with some of the other overhead we're dealing with.
+On Thu, 2017-09-14 at 09:50 +1000, NeilBrown wrote:
+> Since 4.13, errors from writeback are more reliably reported
+> to all file descriptors that might be relevant.
 > 
-> Strawman proposal:
+> Add notes to this effect, and also add details about ENOSPC and EDQUOT
+> which can be delayed in a similar manner to EIO - for NFS in particular.
 > 
-> 1. Each clone/unshare/setns involving a namespace type generates an audit
-> message along the lines of:
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
 > 
-> PID 9512 (pid in init_pid_ns) in auditnsid 00000001 cloned CLONE_NEWNS|CLONE_NEWNET
-> new auditnsid: 00000002
-> associated namespaces: (list of all namespace filesystem inode numbers)
+> This is my summary of recent changes, and details that have been made
+> clear during the exploration of those changes.
+> 
+> I haven't mentioned the fact that EPERM can be returned by
+> write/fsync/close on NFS if the permissions on the server are changed.
+> We probably should ... are there other errors that are worth mentioning
+> along with EPERM, ENOSPC, EDQUOT ??
+> 
+> Thanks,
+> NeilBronw
+> 
 
-As you will have seen, this is pretty much what my most recent proposal suggests.
+Many thanks for doing this! It was on my to-do list. Comments below:
 
-> 2. Userspace (i.e. the container logging deamon here) can watch the audit log
-> for all messages relating to auditnsid 00000002.  Presumably there will be
-> messages along the lines of "PID 9513 in auditnsid 00000002 cloned...".  The
-> container logging daemon can track those messages and add the new auditnsids
-> to the list it watches.
+> 
+>  man2/close.2 |  9 +++++++++
+>  man2/fsync.2 | 19 ++++++++++++++++++-
+>  man2/write.2 | 20 +++++++++++++++++---
+>  3 files changed, 44 insertions(+), 4 deletions(-)
+> 
+> diff --git a/man2/close.2 b/man2/close.2
+> index 751ec322b1f1..9776c839b8b6 100644
+> --- a/man2/close.2
+> +++ b/man2/close.2
+> @@ -82,6 +82,15 @@ call was interrupted by a signal; see
+>  .TP
+>  .B EIO
+>  An I/O error occurred.
+> +.TP
+> +.BR ENOSPC ", " EDQUOT
+> +On NFS, these errors are not normally reported against the first write
+> +which exceeds the available storage space, but instead against a
+> +subsequent
+> +.BR write (2),
+> +.BR fsync (2),
+> +or
+> +.BR close (2).
+>  .PP
+>  See NOTES for a discussion of why
+>  .BR close ()
+> diff --git a/man2/fsync.2 b/man2/fsync.2
+> index f1a01301da0f..e706a08d360d 100644
+> --- a/man2/fsync.2
+> +++ b/man2/fsync.2
+> @@ -120,12 +120,29 @@ is set appropriately.
+>  is not a valid open file descriptor.
+>  .TP
+>  .B EIO
+> -An error occurred during synchronization.
+> +An error occurred during synchronization.  This error may relate
+> +to data written to some other file descriptor on the same file.
+> +.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
+> +Since Linux 4.13 errors from write-back will be reported to
+> +all file descriptors that might have written the data which triggered
+> +the error, and which are still open.
 
-Yes.
+This is a little awkward. How could we report to a fd that was no longer
+open? How about:
 
-> 3. If a container is migrated (checkpointed and restored here or elsewhere),
-> userspace can just follow the appropriate logs for the new containers.
+"Since Linux 4.13, errors from write-back will be reported to all file
+descriptors that were open at the time that the error was recorded."
 
-Yes.
+>   Some filesystems (e.g. NFS)
+> +keep close track of which data came through which file descriptor,
+> +and give more precise reporting.  Other filesystems (e.g. most local
+> +filesystems) will report errors to all file descriptors on the same
+> +file.
+>  .TP
+>  .BR EROFS ", " EINVAL
+>  .I fd
+>  is bound to a special file (e.g., a pipe, FIFO, or socket)
+>  which does not support synchronization.
+> +.TP
+> +.BR ENOSPC ", " EDQUOT
+> +.I fd
+> +is bound to a file on NFS or another filesystem which does not allocate
+> +space at the time of a
+> +.BR write (2)
+> +system call, and some previous write failed due to insufficient
+> +storage space.
+>  .SH CONFORMING TO
+>  POSIX.1-2001, POSIX.1-2008, 4.3BSD.
+>  .SH AVAILABILITY
+> diff --git a/man2/write.2 b/man2/write.2
+> index 6a39b5b5541d..1a9a86b03b04 100644
+> --- a/man2/write.2
+> +++ b/man2/write.2
+> @@ -47,7 +47,7 @@ write \- write to a file descriptor
+>  .BR write ()
+>  writes up to
+>  .I count
+> -bytes from the buffer pointed
+> +bytes from the buffer starting at
+>  .I buf
+>  to the file referred to by the file descriptor
+>  .IR fd .
+> @@ -181,6 +181,14 @@ or the file offset is not suitably aligned.
+>  .TP
+>  .B EIO
+>  A low-level I/O error occurred while modifying the inode.
+> +This error may relate to data written by an earlier
+> +.BR write (2),
+> +which may have been issued to a different file descriptor on
+> +the same file.  Since Linux 4.13 errors from write-back will
+> +be reported to all file descriptors that might have
+> +written the data which triggered the error, and which are still
+> +open.
 
-> Userspace does not ever *request* a auditnsid.  They are ephemeral, just a
-> tool to track the namespaces through the audit log.  They are however guaranteed
-> to never be re-used until reboot.
 
-Well, this is where things get controvertial...  I had wanted this, a
-kernel-generated serial number unique to a running kernel to track every
-container initiation, but this does have some CRIU challenges pointed
-out by Eric Biederman.  Nested containers will not have a consistent
-view on a new host and no way to make it consistent.  If we could
-guarantee that containers would never be nested, this could be workable.
-I think nesting is inevitable in the future given the variety and
-creativity of the orchestration tools, so restricting this seems
-short-sighted.
+This is where things get a little more vague.
 
-At the moment the approch is to let the orchestrator determine the ID of
-a container.  Some have argued for as small as u32 and others for a full
-UUID.  A u32 runs the risk of rolling, so a u64 seems like a reasonable
-step to solve that issue.  Others would like to be able to store a full
-UUID which seemed like a good idea on the outset, but on further
-thinking, this is something the orchestrator can manage while minimising
-the number of bits of required information per audit record to guarantee
-we can identify the provenance of a particular audit event.  Let's see
-if we can make it work with a u64.
+Some filesystems will return errors on a subsequent write(2) when
+previous writeback has failed -- some don't. In either case though,
+write(2) should never advance your errseq_t cursor, so only an fsync
+will "clear" an earlier error.
 
-> (Feels like someone must have proposed this before)
+I'm not sure how best to convey that in the manpages though.
 
-Thsee ideas have been thrown around a few times and I'm starting to
-understand them better.
+> +.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
+>  .TP
+>  .B ENOSPC
+>  The device containing the file referred to by
+> @@ -222,8 +230,14 @@ unsigned and signed integer data types specified by POSIX.1.
+>  A successful return from
+>  .BR write ()
+>  does not make any guarantee that data has been committed to disk.
+> -In fact, on some buggy implementations, it does not even guarantee
+> -that space has successfully been reserved for the data.
+> +On some filesystems, including NFS, it does not even guarantee
+> +that space has successfully been reserved for the data.  In the case,
+> +some errors might be delayed to a future
+> +.BR write (2)
+> +or to
+> +.BR fsync (2)
+> +or even
+> +.BR close (2).
+>  The only way to be sure is to call
+>  .BR fsync (2)
+>  after you are done writing all your data.
 
-> -serge
-
-- RGB
-
---
-Richard Guy Briggs <rgb@redhat.com>
-Sr. S/W Engineer, Kernel Security, Base Operating Systems
-Remote, Ottawa, Red Hat Canada
-IRC: rgb, SunRaycer
-Voice: +1.647.777.2635, Internal: (81) 32635
+-- 
+Jeff Layton <jlayton@redhat.com>
