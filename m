@@ -1,20 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46946 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49276 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751380AbdINOGp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Sep 2017 10:06:45 -0400
+        id S1751476AbdINOHl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Sep 2017 10:07:41 -0400
 Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 9637E87649
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Sep 2017 14:06:45 +0000 (UTC)
-Message-ID: <1505398003.3665.10.camel@redhat.com>
-Subject: [PATCH 6/7] integrate libnfsidmap code with rest of nfs-utils
+        by mx1.redhat.com (Postfix) with ESMTPS id 09CDA5F7B2
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Sep 2017 14:07:41 +0000 (UTC)
+Message-ID: <1505398058.3665.11.camel@redhat.com>
+Subject: [PATCH 7/7] nfs-utils: cleanup warnings from merged libnfsidmap code
 From: Justin Mitchell <jumitche@redhat.com>
 To: Steve Dickson <steved@redhat.com>
 Cc: linux-nfs <linux-nfs@vger.kernel.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Date: Thu, 14 Sep 2017 15:06:43 +0100
+Date: Thu, 14 Sep 2017 15:07:38 +0100
 In-Reply-To: <1505397745.3665.4.camel@redhat.com>
 References: <1505397745.3665.4.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -22,292 +22,234 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Modify libnfsidmap to use the now shared conffile code,
-adjust the build structure to generate everything correctly,
-and modify the other utils to use the merged version of libnfsidmap
-instead of testing for an external dependancy.
+Clean up a bunch of warnings about unused parameters,
+signedness differences, etc that we inherited from
+the merged libnfsidmap code.
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- configure.ac                   | 50 ++++++++++++++++++++++++++++++++++++------
- support/Makefile.am            |  8 ++++++-
- support/nfsidmap/Makefile.am   |  5 ++---
- support/nfsidmap/libnfsidmap.c |  5 +++--
- support/nfsidmap/nss.c         |  2 +-
- support/nfsidmap/static.c      |  5 ++---
- support/nfsidmap/umich_ldap.c  |  2 +-
- utils/Makefile.am              |  2 --
- utils/gssd/Makefile.am         |  3 ++-
- utils/idmapd/Makefile.am       |  4 +++-
- utils/nfsidmap/Makefile.am     |  4 +++-
- 11 files changed, 67 insertions(+), 23 deletions(-)
+ support/nfsidmap/libnfsidmap.c       | 10 ++++++----
+ support/nfsidmap/nfsidmap_internal.h |  7 +++++++
+ support/nfsidmap/nss.c               |  6 +++---
+ support/nfsidmap/static.c            | 20 +++++++++++---------
+ support/nfsidmap/umich_ldap.c        | 11 ++++++-----
+ 5 files changed, 33 insertions(+), 21 deletions(-)
 
-diff --git a/configure.ac b/configure.ac
-index 1ca1603..0513ff7 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -304,9 +304,6 @@ if test "$enable_nfsv4" = yes; then
-   dnl check for libevent libraries and headers
-   AC_LIBEVENT
- 
--  dnl check for nfsidmap libraries and headers
--  AC_LIBNFSIDMAP
--
-   dnl check for the keyutils libraries and headers
-   AC_KEYUTILS
- 
-@@ -339,7 +336,6 @@ fi
- 
- dnl enable nfsidmap when its support by libnfsidmap
- AM_CONDITIONAL(CONFIG_NFSDCLTRACK, [test "$enable_nfsdcltrack" = "yes" ])
--AM_CONDITIONAL(CONFIG_NFSIDMAP, [test "$ac_cv_header_keyutils_h$ac_cv_lib_nfsidmap_nfs4_owner_to_uid" = "yesyes"])
- 
- 
- if test "$knfsd_cv_glibc2" = no; then
-@@ -382,9 +378,6 @@ if test "$enable_gss" = yes; then
-   dnl check for libevent libraries and headers
-   AC_LIBEVENT
- 
--  dnl 'gss' also depends on nfsidmap.h - at least for svcgssd_proc.c
--  AC_LIBNFSIDMAP
--
-   dnl Check for Kerberos V5
-   AC_KERBEROS_V5
- 
-@@ -407,6 +400,47 @@ if test "$enable_gss" = yes; then
-   fi
- fi
- 
-+dnl libdnsidmap specific checks
-+AC_CHECK_LIB([resolv], [__res_querydomain], , AC_MSG_ERROR(res_querydomain needed))
-+
-+AC_ARG_ENABLE([ldap],
-+	[AS_HELP_STRING([--disable-ldap],[Disable support for LDAP @<:default=detect@:>@])])
-+
-+dnl will libdnsidmap support LDAP ?
-+if test "x$enable_ldap" != "xno" ; then
-+        AC_CHECK_HEADER([ldap.h],
-+                [AC_CHECK_LIB([ldap], [ldap_initialize],
-+                              [have_ldap="yes"],[have_ldap="no"])],
-+                [have_ldap="no"])
-+        if test "x$have_ldap" = "xyes" ; then
-+                AC_DEFINE([ENABLE_LDAP], 1, [Enable LDAP Support])
-+        elif test "x$enable_ldap$have_ldap" = "xyesno" ; then
-+                AC_MSG_ERROR(LDAP support not found!)
-+        fi
-+fi
-+AM_CONDITIONAL(ENABLE_LDAP, test "x$have_ldap" = "xyes")
-+
-+dnl Should we build gums mapping library?
-+AC_ARG_ENABLE([gums],
-+        [AS_HELP_STRING([--enable-gums],[Enable support for the GUMS mapping library @<:@default=false@:>@])])
-+if test "x$enable_gums" = "xyes" ; then
-+        AC_DEFINE([ENABLE_GUMS], 1, [Enable GUMS mapping library support])
-+fi
-+AM_CONDITIONAL(ENABLE_GUMS, test "x$enable_gums" = "xyes")
-+
-+dnl Where do the Plugins live
-+AC_ARG_WITH(pluginpath,
-+    [AS_HELP_STRING([--with-pluginpath=/foo],[Causes the library to look in /foo instead of /usr/lib/libnfsidmap for plugins
-+    ])],
-+    path_plugins=$withval,
-+    path_plugins=""
-+    )
-+if test -n "$path_plugins" ; then
-+        AC_DEFINE_UNQUOTED(PATH_PLUGINS, "$path_plugins",
-+                [Define this to change the plugins path])
-+fi
-+AM_CONDITIONAL(PATH_PLUGINS, test -n "$path_plugins")
-+
- dnl Check for IPv6 support
- AC_IPV6
- 
-@@ -537,6 +571,8 @@ AC_CONFIG_FILES([
- 	support/misc/Makefile
- 	support/nfs/Makefile
- 	support/nsm/Makefile
-+	support/nfsidmap/Makefile
-+	support/nfsidmap/libnfsidmap.pc
- 	tools/Makefile
- 	tools/locktest/Makefile
- 	tools/nlmtest/Makefile
-diff --git a/support/Makefile.am b/support/Makefile.am
-index cb37733..8365d3b 100644
---- a/support/Makefile.am
-+++ b/support/Makefile.am
-@@ -1,6 +1,12 @@
- ## Process this file with automake to produce Makefile.in
- 
--SUBDIRS = export include misc nfs nsm
-+OPTDIRS =
-+
-+if CONFIG_NFSV4
-+OPTDIRS += nfsidmap
-+endif
-+
-+SUBDIRS = export include misc nfs nsm $(OPTDIRS)
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/support/nfsidmap/Makefile.am b/support/nfsidmap/Makefile.am
-index 85f19c8..458944f 100644
---- a/support/nfsidmap/Makefile.am
-+++ b/support/nfsidmap/Makefile.am
-@@ -1,4 +1,3 @@
--ACLOCAL_AMFLAGS = -I m4
- 
- if ENABLE_LDAP
- UMICH_LDAP_LIB = umich_ldap.la
-@@ -25,9 +24,9 @@ pkglib_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_LIB)
- #  <age> 	The number of previous additional interfaces supported
- #  		by this library.
- 
--libnfsidmap_la_SOURCES = libnfsidmap.c cfg.c strlcpy.c cfg.h nfsidmap_internal.h queue.h
-+libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_internal.h
- libnfsidmap_la_LDFLAGS = -version-info 3:0:3
--libnfsidmap_la_LIBADD = -ldl
-+libnfsidmap_la_LIBADD = -ldl ../../support/nfs/libnfsconf.la
- 
- nsswitch_la_SOURCES = nss.c
- nsswitch_la_LDFLAGS = -module -avoid-version
 diff --git a/support/nfsidmap/libnfsidmap.c b/support/nfsidmap/libnfsidmap.c
-index d484101..aa368b7 100644
+index aa368b7..931387a 100644
 --- a/support/nfsidmap/libnfsidmap.c
 +++ b/support/nfsidmap/libnfsidmap.c
-@@ -59,7 +59,7 @@
+@@ -103,7 +103,7 @@ nfs4_idmap_log_function_t idmap_log_func = default_logger;
  
- #include "nfsidmap.h"
- #include "nfsidmap_internal.h"
--#include "cfg.h"
-+#include "conffile.h"
+ static char * toupper_str(char *s)
+ {
+-	int i;
++	size_t i;
+ 	for (i=0; i < strlen(s); i++)
+ 		s[i] = toupper(s[i]);
+ 	return s;
+@@ -128,7 +128,8 @@ static int id_as_chars(char *name, uid_t *id)
+ static int dns_txt_query(char *domain, char **nfs4domain)
+ {
+ 	char *txtname = NFS4DNSTXTREC;
+-	char *msg, *answ, *eom, *mptr; 
++	unsigned char *msg, *eom, *mptr;
++	char *answ;
+ 	int len, status = -1;
+ 	HEADER *hdr;
+ 	
+@@ -323,7 +324,8 @@ out:
+ 		unload_plugins(plgns);
+ 	return ret;
+ }
+-void nfs4_cleanup_name_mapping()
++
++void nfs4_cleanup_name_mapping(void)
+ {
+ 	if (nfs4_plugins)
+ 		unload_plugins(nfs4_plugins);
+@@ -534,7 +536,7 @@ struct conf_list *get_local_realms(void)
+ }
  
- static char *default_domain;
- static struct conf_list *local_realms;
-@@ -340,6 +340,7 @@ int nfs4_init_name_mapping(char *conffile)
- 	char *nobody_user, *nobody_group;
- 	char *nostrip;
- 	char *reformatgroup;
-+	char *conf_path;
+ int
+-nfs4_get_default_domain(char *server, char *domain, size_t len)
++nfs4_get_default_domain(char *UNUSED(server), char *domain, size_t len)
+ {
+ 	char *d = get_default_domain();
  
- 	/* XXX: need to be able to reload configurations... */
- 	if (nfs4_plugins) /* already succesfully initialized */
-@@ -348,7 +349,7 @@ int nfs4_init_name_mapping(char *conffile)
- 		conf_path = conffile;
- 	else
- 		conf_path = PATH_IDMAPDCONF;
--	conf_init();
-+	conf_init(conf_path);
- 	default_domain = conf_get_str("General", "Domain");
- 	if (default_domain == NULL) {
- 		dflt = 1;
+diff --git a/support/nfsidmap/nfsidmap_internal.h b/support/nfsidmap/nfsidmap_internal.h
+index 6696f50..a327862 100644
+--- a/support/nfsidmap/nfsidmap_internal.h
++++ b/support/nfsidmap/nfsidmap_internal.h
+@@ -70,3 +70,10 @@ extern nfs4_idmap_log_function_t idmap_log_func;
+ /* Level zero always prints, others print depending on verbosity level */
+ #define IDMAP_LOG(LVL, MSG) \
+ 	do { if (LVL <= idmap_verbosity) (*idmap_log_func)MSG; } while (0)
++
++#ifdef __GNUC__
++#define UNUSED(foo) UNUSED_ ## foo __attribute__((__unused__))
++#else
++#define UNUSED(foo) UNUSED_ ## foo
++#endif
++
 diff --git a/support/nfsidmap/nss.c b/support/nfsidmap/nss.c
-index 82799ce..48215ff 100644
+index 48215ff..a86d768 100644
 --- a/support/nfsidmap/nss.c
 +++ b/support/nfsidmap/nss.c
-@@ -48,7 +48,7 @@
- #include <ctype.h>
- #include "nfsidmap.h"
- #include "nfsidmap_internal.h"
--#include "cfg.h"
-+#include "conffile.h"
- #include <syslog.h>
+@@ -379,7 +379,7 @@ out:
  
- /*
+ static int nss_gss_princ_to_ids(char *secname, char *princ,
+ 				uid_t *uid, uid_t *gid,
+-				extra_mapping_params **ex)
++				extra_mapping_params **UNUSED(ex))
+ {
+ 	struct passwd *pw;
+ 	int err = 0;
+@@ -429,7 +429,7 @@ out:
+ 
+ int nss_gss_princ_to_grouplist(char *secname, char *princ,
+ 			       gid_t *groups, int *ngroups,
+-			       extra_mapping_params **ex)
++			       extra_mapping_params **UNUSED(ex))
+ {
+ 	struct passwd *pw;
+ 	int ret = -EINVAL;
+@@ -462,7 +462,7 @@ struct trans_func nss_trans = {
+ 	.gss_princ_to_grouplist = nss_gss_princ_to_grouplist,
+ };
+ 
+-struct trans_func *libnfsidmap_plugin_init()
++struct trans_func *libnfsidmap_plugin_init(void)
+ {
+ 	return (&nss_trans);
+ }
 diff --git a/support/nfsidmap/static.c b/support/nfsidmap/static.c
-index 9f587af..37b293b 100644
+index 37b293b..c82d7f3 100644
 --- a/support/nfsidmap/static.c
 +++ b/support/nfsidmap/static.c
-@@ -41,8 +41,7 @@
- #include <errno.h>
- #include <err.h>
+@@ -92,7 +92,8 @@ static __inline__ u_int8_t gid_hash (gid_t gid)
+ LIST_HEAD (uid_mappings, uid_mapping) uid_mappings[256];
+ LIST_HEAD (gid_mappings, gid_mapping) gid_mappings[256];
  
--#include "queue.h"
--#include "cfg.h"
-+#include "conffile.h"
- #include "nfsidmap.h"
- #include "nfsidmap_internal.h"
+-static struct passwd *static_getpwnam(const char *name, const char *domain,
++static struct passwd *static_getpwnam(const char *name,
++				      const char *UNUSED(domain),
+ 				      int *err_p)
+ {
+ 	struct passwd *pw;
+@@ -142,8 +143,9 @@ err:
+ 	return NULL;
+ }
  
-@@ -317,7 +316,7 @@ static int static_init() {
- 		LIST_INIT (&uid_mappings[i]);
+-static struct group *static_getgrnam(const char *name, const char *domain,
+-				      int *err_p)
++static struct group *static_getgrnam(const char *name,
++				     const char *UNUSED(domain),
++				     int *err_p)
+ {
+ 	struct group *gr;
+ 	struct grbuf *buf;
+@@ -194,7 +196,7 @@ err:
  
- 	//get all principals for which we have mappings
--	princ_list = conf_get_tag_list("Static");
-+	princ_list = conf_get_tag_list("Static", NULL);
+ static int static_gss_princ_to_ids(char *secname, char *princ,
+ 				   uid_t *uid, uid_t *gid,
+-				   extra_mapping_params **ex)
++				   extra_mapping_params **UNUSED(ex))
+ {
+ 	struct passwd *pw;
+ 	int err;
+@@ -216,7 +218,7 @@ static int static_gss_princ_to_ids(char *secname, char *princ,
  
- 	if (!princ_list) {
- 		return -ENOENT;
+ static int static_gss_princ_to_grouplist(char *secname, char *princ,
+ 					 gid_t *groups, int *ngroups,
+-					 extra_mapping_params **ex)
++					 extra_mapping_params **UNUSED(ex))
+ {
+ 	struct passwd *pw;
+ 	int err;
+@@ -266,7 +268,7 @@ static int static_name_to_gid(char *name, gid_t *gid)
+ 	return -err;
+ }
+ 
+-static int static_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
++static int static_uid_to_name(uid_t uid, char *UNUSED(domain), char *name, size_t UNUSED(len))
+ {
+ 	struct uid_mapping * um;
+ 
+@@ -281,7 +283,7 @@ static int static_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
+ 	return -ENOENT;
+ }
+ 
+-static int static_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
++static int static_gid_to_name(gid_t gid, char *UNUSED(domain), char *name, size_t UNUSED(len))
+ {
+ 	struct gid_mapping * gm;
+ 
+@@ -301,7 +303,7 @@ static int static_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
+  * uid_to_name functions will be fast enough.
+  */
+ 
+-static int static_init() {	
++static int static_init(void) {	
+ 	int err;
+ 	struct conf_list * princ_list = NULL;
+ 	struct conf_list_node * cln, *next;
+@@ -404,7 +406,7 @@ struct trans_func static_trans = {
+ 	.gss_princ_to_grouplist	= static_gss_princ_to_grouplist,
+ };
+ 
+-struct trans_func *libnfsidmap_plugin_init()
++struct trans_func *libnfsidmap_plugin_init(void)
+ {
+ 	return (&static_trans);
+ }
 diff --git a/support/nfsidmap/umich_ldap.c b/support/nfsidmap/umich_ldap.c
-index 886fa0c..664f282 100644
+index 664f282..2258aa8 100644
 --- a/support/nfsidmap/umich_ldap.c
 +++ b/support/nfsidmap/umich_ldap.c
-@@ -48,7 +48,7 @@
- #include <ldap.h>
- #include "nfsidmap.h"
- #include "nfsidmap_internal.h"
--#include "cfg.h"
-+#include "conffile.h"
+@@ -970,7 +970,8 @@ out:
+  */
+ static int
+ umichldap_gss_princ_to_ids(char *secname, char *principal,
+-			   uid_t *uid, gid_t *gid, extra_mapping_params **ex)
++			   uid_t *uid, gid_t *gid,
++			   extra_mapping_params **UNUSED(ex))
+ {
+ 	uid_t rtnd_uid = -1;
+ 	gid_t rtnd_gid = -1;
+@@ -1012,20 +1013,20 @@ umichldap_name_to_gid(char *name, gid_t *gid)
+ }
  
- /* attribute/objectclass default mappings */
- #define DEFAULT_UMICH_OBJCLASS_REMOTE_PERSON	"NFSv4RemotePerson"
-diff --git a/utils/Makefile.am b/utils/Makefile.am
-index b892dc8..c75a5a0 100644
---- a/utils/Makefile.am
-+++ b/utils/Makefile.am
-@@ -4,10 +4,8 @@ OPTDIRS =
+ static int
+-umichldap_uid_to_name(uid_t uid, char *domain, char *name, size_t len)
++umichldap_uid_to_name(uid_t uid, char *UNUSED(domain), char *name, size_t len)
+ {
+ 	return umich_id_to_name(uid, IDTYPE_USER, &name, len, &ldap_info);
+ }
  
- if CONFIG_NFSV4
- OPTDIRS += idmapd
--if CONFIG_NFSIDMAP
- OPTDIRS += nfsidmap
- endif
--endif
+ static int
+-umichldap_gid_to_name(gid_t gid, char *domain, char *name, size_t len)
++umichldap_gid_to_name(gid_t gid, char *UNUSED(domain), char *name, size_t len)
+ {
+ 	return umich_id_to_name(gid, IDTYPE_GROUP, &name, len, &ldap_info);
+ }
  
- if CONFIG_NFSV41
- OPTDIRS += blkmapd
-diff --git a/utils/gssd/Makefile.am b/utils/gssd/Makefile.am
-index 09a455e..beb3e8e 100644
---- a/utils/gssd/Makefile.am
-+++ b/utils/gssd/Makefile.am
-@@ -75,7 +75,8 @@ svcgssd_SOURCES = \
+ static int
+ umichldap_gss_princ_to_grouplist(char *secname, char *principal,
+-		gid_t *groups, int *ngroups, extra_mapping_params **ex)
++		gid_t *groups, int *ngroups, extra_mapping_params **UNUSED(ex))
+ {
+ 	int err = -EINVAL;
  
- svcgssd_LDADD = \
- 	../../support/nfs/libnfs.la \
--	$(RPCSECGSS_LIBS) $(LIBNFSIDMAP) \
-+	../../support/nfsidmap/libnfsidmap.la \
-+	$(RPCSECGSS_LIBS) \
- 	$(KRBLIBS) $(GSSAPI_LIBS) $(LIBTIRPC)
+@@ -1296,7 +1297,7 @@ struct trans_func umichldap_trans = {
+ 	.gss_princ_to_grouplist = umichldap_gss_princ_to_grouplist,
+ };
  
- svcgssd_LDFLAGS = $(KRBLDFLAGS)
-diff --git a/utils/idmapd/Makefile.am b/utils/idmapd/Makefile.am
-index b4cac93..d768eec 100644
---- a/utils/idmapd/Makefile.am
-+++ b/utils/idmapd/Makefile.am
-@@ -15,7 +15,9 @@ idmapd_SOURCES = \
- 	nfs_idmap.h \
- 	queue.h
- 
--idmapd_LDADD = ../../support/nfs/libnfs.la $(LIBEVENT) $(LIBNFSIDMAP)
-+idmapd_LDADD = ../../support/nfs/libnfs.la \
-+	       ../../support/nfsidmap/libnfsidmap.la \
-+	       $(LIBEVENT)
- 
- MAINTAINERCLEANFILES = Makefile.in
- 
-diff --git a/utils/nfsidmap/Makefile.am b/utils/nfsidmap/Makefile.am
-index 8af22d0..49158df 100644
---- a/utils/nfsidmap/Makefile.am
-+++ b/utils/nfsidmap/Makefile.am
-@@ -4,7 +4,9 @@ man8_MANS = nfsidmap.man
- sbin_PROGRAMS	= nfsidmap
- 
- nfsidmap_SOURCES = nfsidmap.c
--nfsidmap_LDADD = $(LIBNFSIDMAP) -lkeyutils ../../support/nfs/libnfs.la
-+nfsidmap_LDADD = -lkeyutils \
-+		 ../../support/nfs/libnfs.la \
-+		 ../../support/nfsidmap/libnfsidmap.la
- 
- MAINTAINERCLEANFILES = Makefile.in
- EXTRA_DIST = id_resolver.conf $(man8_MANS)
+-struct trans_func *libnfsidmap_plugin_init()
++struct trans_func *libnfsidmap_plugin_init(void)
+ {
+ 	return (&umichldap_trans);
+ }
 -- 
 1.8.3.1
 
