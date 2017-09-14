@@ -1,58 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38628 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:41888 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751323AbdINRMF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Sep 2017 13:12:05 -0400
-Subject: Re: [PATCH] nfsman: document minorversion
-To: "Jianhong.Yin" <yin-jianhong@163.com>
-Cc: linux-nfs@vger.kernel.org
-References: <20170907065729.4636-1-yin-jianhong@163.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <558c70e5-c278-0a8c-5ed0-af7637dccd23@RedHat.com>
-Date: Thu, 14 Sep 2017 13:12:05 -0400
+        id S1751316AbdINRhb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Sep 2017 13:37:31 -0400
+Date: Thu, 14 Sep 2017 13:37:30 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org,
+        NeilBrown <neilb@suse.com>, Matt Benjamin <mbenjami@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
+Message-ID: <20170914173730.GD4673@fieldses.org>
+References: <20170913102650.10377-1-stefanha@redhat.com>
+ <9adfce4d-dbd7-55a9-eb73-7389dbf900ac@RedHat.com>
+ <0a5452ff-6cb9-4336-779b-ae65cfe156b8@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <20170907065729.4636-1-yin-jianhong@163.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <0a5452ff-6cb9-4336-779b-ae65cfe156b8@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 09/07/2017 02:57 AM, Jianhong.Yin wrote:
-> Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
-> ---
->  utils/mount/nfs.man | 17 +++++++++++++++++
->  1 file changed, 17 insertions(+)
-Committed....
-
-steved.
+On Thu, Sep 14, 2017 at 11:55:51AM -0400, Steve Dickson wrote:
 > 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index cc6e992..7d42f19 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -779,6 +779,23 @@ so if this mount option is not specified, the NFS version 4 client
->  uses the TCP protocol.
->  Refer to the TRANSPORT METHODS section for more details.
->  .TP 1.5i
-> +.BI minorversion= n
-> +Specifies the protocol minor version number.
-> +NFSv4 introduces "minor versioning," where NFS protocol enhancements can
-> +be introduced without bumping the NFS protocol version number.
-> +Before kernel 2.6.38, the minor version is always zero, and this
-> +option is not recognized.
-> +After this kernel, specifying "minorversion=1" enables a number of
-> +advanced features, such as NFSv4 sessions.
-> +.IP
-> +Recent kernels allow the minor version to be specified using the
-> +.B vers=
-> +option.
-> +For example, specifying
-> +.B vers=4.1
-> +is the same as specifying
-> +.BR vers=4,minorversion=1 .
-> +.TP 1.5i
->  .BI port= n
->  The numeric value of the server's NFS service port.
->  If the server's NFS service is not available on the specified port,
 > 
+> On 09/14/2017 11:39 AM, Steve Dickson wrote:
+> > Hello
+> > 
+> > On 09/13/2017 06:26 AM, Stefan Hajnoczi wrote:
+> >> v3:
+> >>  * Documented vsock syntax in exports.man, nfs.man, and nfsd.man
+> >>  * Added clientaddr autodetection in mount.nfs(8)
+> >>  * Replaced #ifdefs with a single vsock.h header file
+> >>  * Tested nfsd serving both IPv4 and vsock at the same time
+> > Just curious as to the status of the kernel patches... Are
+> > they slated for any particular release?
+> Maybe I should have read the thread before replying ;-) 
+> 
+> I now see the status of the patches... not good!  8-)
+
+To be specific, the code itself is probably fine, it's just that nobody
+on the NFS side seems convinced that NFS/VSOCK is necessary.
+
+--b.
