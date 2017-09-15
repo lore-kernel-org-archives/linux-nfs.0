@@ -1,79 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51972 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751543AbdINWZh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Sep 2017 18:25:37 -0400
-From: NeilBrown <neilb@suse.com>
-To: "Michael Kerrisk \(man-pages\)" <mtk.manpages@gmail.com>
-Date: Fri, 15 Sep 2017 08:25:23 +1000
-Cc: Ian Kent <ikent@redhat.com>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "viro\@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "mkoutny\@suse.com" <mkoutny@suse.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>,
-        "H. Peter Anvin" <hpa@zytor.com>,
-        Michael Kerrisk <mtk.manpages@gmail.com>
-Subject: Re: [PATCH manpages] stat.2: correct AT_NO_AUTOMOUNT text and general revisions.
-In-Reply-To: <CAKgNAkinKkG8cR1ng0V3K1D9QNQ9MSeNkPpvpeGSUd5RqFiwSw@mail.gmail.com>
-References: <87bmnmrai9.fsf@notabene.neil.brown.name> <1502430944.3822.1.camel@primarydata.com> <1502449309.4950.2.camel@redhat.com> <87zib3niqn.fsf@notabene.neil.brown.name> <1502705432.4978.1.camel@redhat.com> <877ey4nsep.fsf@notabene.neil.brown.name> <1502883253.4847.6.camel@redhat.com> <1e4665a6-30d6-c16a-760a-2892fb147760@redhat.com> <878tihmora.fsf@notabene.neil.brown.name> <2e289bba-677b-cc50-5fa3-2d24d1f6b858@redhat.com> <87h8x1l9qp.fsf@notabene.neil.brown.name> <733c15c2-ffbb-9a89-90ec-3ba1d574590e@redhat.com> <87r2w3jdn5.fsf@notabene.neil.brown.name> <42ba2fa5-d756-d70f-370c-c2fe1a61c5bf@redhat.com> <87inhdk3rq.fsf@notabene.neil.brown.name> <CAKgNAki1SYjr7-6g-i3shGjQRjwy81gS0QisfZRy-x-bHFtXmA@mail.gmail.com> <87valci55j.fsf@notabene.neil.brown.name> <CAKgNAkinKkG8cR1ng0V3K1D9QNQ9MSeNkPpvpeGSUd5RqFiwSw@mail.gmail.com>
-Message-ID: <87r2v89auk.fsf@notabene.neil.brown.name>
+Received: from mx1.redhat.com ([209.132.183.28]:32904 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751657AbdIOBr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Sep 2017 21:47:26 -0400
+Date: Thu, 14 Sep 2017 21:47:23 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC v3 27/42] NFSD: allow inter server COPY to have a STALE
+ source server fh
+Message-ID: <20170915014722.GF7734@parsley.fieldses.org>
+References: <20170711164416.1982-1-kolga@netapp.com>
+ <20170711164416.1982-28-kolga@netapp.com>
+ <20170908193836.GB18220@fieldses.org>
+ <CAN-5tyE17rgXnkzZJM_TVih1cqC5CL4CSp6i5c7bNe+G2vX-Lg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyE17rgXnkzZJM_TVih1cqC5CL4CSp6i5c7bNe+G2vX-Lg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
+On Thu, Sep 14, 2017 at 02:44:32PM -0400, Olga Kornievskaia wrote:
+> How about changing it to be more restrictive by checking within the
+> while loop that
+> if it's a PUTFH and it's followed by the SAVE_FH+PUTFH+COPY only
+> then set the NO_VERIFY_FH.
 
-On Thu, Sep 14 2017, Michael Kerrisk (man-pages) wrote:
+I agree that the only op that could reasonably follow the first PUTFH of
+a foreign filehandle is a SAVEFH.  But once we've saved the foreign
+filehandle, the client could in theory do all sorts of stuff, as you
+say:
 
-> Hi Neil,
->
-> On 25 August 2017 at 07:32, NeilBrown <neilb@suse.com> wrote:
->>
->> Expand on the relationship between fstatat() and the other
->> three functions, and improve the description of AT_NO_AUTOMOUNT.
->> Specifically, both  stat() and lstat() act the same way
->> with respect to automounts, and that behavior matches
->> fstatat with the AT_NO_AUTOMOUNT flag.
->>
->> The text in the NOTES is removed and places with the text for
->> AT_NO_AUTOMOUNT to improve cohesion.
->>
->> New text for a difference to be introduced in 4.14.
->
-> Has the 4.14 piece gone in?
->
+> I guess we can allow some other operations between the 2nd PUTFH and
+> COPY because the 2nd filehandle will be validated and must be valid to
+> continue processing the compound.
 
-Yes.
+PUTHF+SAVEFH+PUTFH+GETATTR+COPY might be useful to get pre-copy
+attributes of the target file, for example?
 
-Commit: 42f461482178 ("autofs: fix AT_NO_AUTOMOUNT not being honored")
+I'd rather not restrict this if we don't need to.
 
-Thanks,
-NeilBrown
+We could do something like:
 
+	- if this op is PUTFH
+	- if the following is not SAVEFH, stop and verify the
+	  filehandle.
+	- otherwise, skip to the next operation that uses a saved
+	  filehandle.  The possibilities are:
+		- RENAME, LINK, RESTOREFH, CLONE: stop and verify the
+		  filehandle.
+		- COPY: if it's a local copy, stop and verify the
+		  filehandle.  Otherwise, allow the PUTFH to succeed and
+		  delay verification.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+> Somewhere else you were talking about how a "foreign" file handle can
+> mean something to the server. If that's the case and we do allow for
+> operations between putfh, savefh, putfh then we'll get into trouble
+> that I can't think we can get out of.
+> 
+> If it's a inter copy and the source file handle means something to the
+> server I can think of the following scenario: the state won't be
+> flagged IS_STALE then the filehandle would go thru the checks you
+> listed below and can (unintentionally) result in an error (eg.,
+> err_moved?).
 
------BEGIN PGP SIGNATURE-----
+I don't see any problem with just leaving those checks in.  If the
+current filehandle is not validated, then there's already a
+current_fh->fh_dentry check that skips the ABSENT_FH check, for example.
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlm7AdQACgkQOeye3VZi
-gbnHERAAoDDQf5i1aNFIMBZicAfDObxqec7VR6Ryy0nw0AHnUBQE5tCqhH3D7LaP
-V4OwIGHq+lHcGu+va0Khdxxf/YX+OmXXI2BvL3FqqoOjen06mCzH9nT2GOOw1wUp
-EKKgdE18290R+fUWS1ZB18oV1u4E4/o6/FdZSgPc8S8lFXGgvMvRvm2i75+42ejm
-WnpC9GF3H0Hdx/slKzHy4t7oyPqIbyQq1HR8+ui24HEMuTk7v6Xl0ok3IqVRWWxN
-xz8+kwvl/Zs+flYyf+hkRZheLz2Zj41TWRELIvEYBH67OZoh+OBfPp8Qjca9UOmN
-suO7PvlmnPGziVmHjk+cyqOTBC0q2DHqONl2IlD/DmKG7cKKAGdCWqYJStwcbBNA
-Zl6xobVdKJrXhWsaS+Eoys6AgQZ9/FCj0j02trREVXoGrBmdPDd6A61bszEPJF2D
-ba6xVCm1XH3LWUJrp/yXNtMXiIfZxcijNenyXd1J1p4st9Is8A4LxkGJpUEe3pzs
-iG127frPBla0I5GyN0/l6IlO0M5tkiRT2qdCuZdQI1C/5nZKhp+HgZOqXYUXUM+i
-PLua2egebnroI8qkZjny3tEQtz5A5/zmZepTvzhPedw+9zYasNwuOz5zuIFPsms9
-e+owD6Wf3W2RhxmW10vld87QOZhF7JN91CtZOrKxj14d4Ghfy2g=
-=sKxl
------END PGP SIGNATURE-----
---=-=-=--
+> This should be changed to
+> if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH) && op->opnum == OP_SAVEFH)
+> then we need to skip the checks for savefh as it has no valid file handle.
+> 
+> Does that address your concern?
+
+I think you only need to skip the nofilehandle check in this case, not
+the other stuff.
+
+I don't think the IS_STALE_FH flag is needed at all.
+
+> >>               if (!current_fh->fh_dentry) {
+> >>                       if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
+> >>                               op->status = nfserr_nofilehandle;
+> >> @@ -1844,6 +1880,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+> >>
+> >>               if (opdesc->op_get_currentstateid)
+> >>                       opdesc->op_get_currentstateid(cstate, &op->u);
+> >> +call_op:
+> >>               op->status = opdesc->op_func(rqstp, cstate, &op->u);
+> >>
+> >>               /* Only from SEQUENCE */
+> >> @@ -1862,6 +1899,14 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+> >>                       if (need_wrongsec_check(rqstp))
+> >>                               op->status = check_nfsd_access(current_fh->fh_export, rqstp);
+> >>               }
+> >> +             /* Only from intra COPY */
+> >> +             if (cstate->status == nfserr_copy_stalefh) {
+> >> +                     dprintk("%s NFS4.2 intra COPY stale src filehandle\n",
+> >> +                             __func__);
+> >> +                     status = nfserr_stale;
+> >> +                     nfsd4_adjust_encode(resp);
+> >
+> > Are you sure it's safe just to throw away any operations since that
+> > stale PUTFH?  What if some of those operations had side effects?
+> 
+> If COPY comes in PUTFH,SAVEFH, PUTFH,COPY compound then
+> I think it's safe?
+
+The spec says "If a server supports the inter-server copy feature, a
+PUTFH followed by a SAVEFH MUST NOT return NFS4ERR_STALE for either
+operation.  These restrictions do not pose substantial difficulties for
+servers.  CURRENT_FH and SAVED_FH may be validated in the context of the
+operation referencing them and an NFS4ERR_STALE error returned for an
+invalid filehandle at that point."
+
+So we're supposed to return NFS4ERR_STALE on the COPY, not the PUTFH.
+So there's no need for this backtracking.
+
+--b.
