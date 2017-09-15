@@ -1,124 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32904 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751657AbdIOBr0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Sep 2017 21:47:26 -0400
-Date: Thu, 14 Sep 2017 21:47:23 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [RFC v3 27/42] NFSD: allow inter server COPY to have a STALE
- source server fh
-Message-ID: <20170915014722.GF7734@parsley.fieldses.org>
-References: <20170711164416.1982-1-kolga@netapp.com>
- <20170711164416.1982-28-kolga@netapp.com>
- <20170908193836.GB18220@fieldses.org>
- <CAN-5tyE17rgXnkzZJM_TVih1cqC5CL4CSp6i5c7bNe+G2vX-Lg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyE17rgXnkzZJM_TVih1cqC5CL4CSp6i5c7bNe+G2vX-Lg@mail.gmail.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:33774 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751703AbdIOCnr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Sep 2017 22:43:47 -0400
+Message-ID: <1505443424.11417.1.camel@gmail.com>
+Subject: [GIT PULL] Please pull 3 more NFS client fixes...
+From: Trond Myklebust <trondmy@gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Date: Thu, 14 Sep 2017 22:43:44 -0400
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 14, 2017 at 02:44:32PM -0400, Olga Kornievskaia wrote:
-> How about changing it to be more restrictive by checking within the
-> while loop that
-> if it's a PUTFH and it's followed by the SAVE_FH+PUTFH+COPY only
-> then set the NO_VERIFY_FH.
+Hi Linus,
 
-I agree that the only op that could reasonably follow the first PUTFH of
-a foreign filehandle is a SAVEFH.  But once we've saved the foreign
-filehandle, the client could in theory do all sorts of stuff, as you
-say:
+The following changes since commit 1bd5d6d08ea7ed0794c8a3908383d6d6fc202cdd:
 
-> I guess we can allow some other operations between the 2nd PUTFH and
-> COPY because the 2nd filehandle will be validated and must be valid to
-> continue processing the compound.
+  NFS: Count the bytes of skipped subrequests in nfs_lock_and_join_requests() (2017-09-09 16:43:09 -0400)
 
-PUTHF+SAVEFH+PUTFH+GETATTR+COPY might be useful to get pre-copy
-attributes of the target file, for example?
+are available in the git repository at:
 
-I'd rather not restrict this if we don't need to.
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-4.14-2
 
-We could do something like:
+for you to fetch changes up to bf4b49059718b2217339eb15c60f8753d5b0da99:
 
-	- if this op is PUTFH
-	- if the following is not SAVEFH, stop and verify the
-	  filehandle.
-	- otherwise, skip to the next operation that uses a saved
-	  filehandle.  The possibilities are:
-		- RENAME, LINK, RESTOREFH, CLONE: stop and verify the
-		  filehandle.
-		- COPY: if it's a local copy, stop and verify the
-		  filehandle.  Otherwise, allow the PUTFH to succeed and
-		  delay verification.
+  NFS: various changes relating to reporting IO errors. (2017-09-11 22:28:56 -0400)
 
-> Somewhere else you were talking about how a "foreign" file handle can
-> mean something to the server. If that's the case and we do allow for
-> operations between putfh, savefh, putfh then we'll get into trouble
-> that I can't think we can get out of.
-> 
-> If it's a inter copy and the source file handle means something to the
-> server I can think of the following scenario: the state won't be
-> flagged IS_STALE then the filehandle would go thru the checks you
-> listed below and can (unintentionally) result in an error (eg.,
-> err_moved?).
+----------------------------------------------------------------
+NFS client bugfixes for Linux 4.14
 
-I don't see any problem with just leaving those checks in.  If the
-current filehandle is not validated, then there's already a
-current_fh->fh_dentry check that skips the ABSENT_FH check, for example.
+Hightlights include:
 
-> This should be changed to
-> if (HAS_CSTATE_FLAG(cstate, IS_STALE_FH) && op->opnum == OP_SAVEFH)
-> then we need to skip the checks for savefh as it has no valid file handle.
-> 
-> Does that address your concern?
+bugfixes:
+- Various changes relating to reporting IO errors.
+- pnfs: Use the standard I/O stateid when calling LAYOUTGET
 
-I think you only need to skip the nofilehandle check in this case, not
-the other stuff.
+Features:
+- Add static NFS I/O tracepoints for debugging
 
-I don't think the IS_STALE_FH flag is needed at all.
+----------------------------------------------------------------
+Chuck Lever (1):
+      NFS: Add static NFS I/O tracepoints
 
-> >>               if (!current_fh->fh_dentry) {
-> >>                       if (!(opdesc->op_flags & ALLOWED_WITHOUT_FH)) {
-> >>                               op->status = nfserr_nofilehandle;
-> >> @@ -1844,6 +1880,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> >>
-> >>               if (opdesc->op_get_currentstateid)
-> >>                       opdesc->op_get_currentstateid(cstate, &op->u);
-> >> +call_op:
-> >>               op->status = opdesc->op_func(rqstp, cstate, &op->u);
-> >>
-> >>               /* Only from SEQUENCE */
-> >> @@ -1862,6 +1899,14 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
-> >>                       if (need_wrongsec_check(rqstp))
-> >>                               op->status = check_nfsd_access(current_fh->fh_export, rqstp);
-> >>               }
-> >> +             /* Only from intra COPY */
-> >> +             if (cstate->status == nfserr_copy_stalefh) {
-> >> +                     dprintk("%s NFS4.2 intra COPY stale src filehandle\n",
-> >> +                             __func__);
-> >> +                     status = nfserr_stale;
-> >> +                     nfsd4_adjust_encode(resp);
-> >
-> > Are you sure it's safe just to throw away any operations since that
-> > stale PUTFH?  What if some of those operations had side effects?
-> 
-> If COPY comes in PUTFH,SAVEFH, PUTFH,COPY compound then
-> I think it's safe?
+NeilBrown (1):
+      NFS: various changes relating to reporting IO errors.
 
-The spec says "If a server supports the inter-server copy feature, a
-PUTFH followed by a SAVEFH MUST NOT return NFS4ERR_STALE for either
-operation.  These restrictions do not pose substantial difficulties for
-servers.  CURRENT_FH and SAVED_FH may be validated in the context of the
-operation referencing them and an NFS4ERR_STALE error returned for an
-invalid filehandle at that point."
+Trond Myklebust (1):
+      pNFS: Use the standard I/O stateid when calling LAYOUTGET
 
-So we're supposed to return NFS4ERR_STALE on the COPY, not the PUTFH.
-So there's no need for this backtracking.
-
---b.
+ fs/nfs/file.c     |  16 ++--
+ fs/nfs/internal.h |   7 ++
+ fs/nfs/nfstrace.h | 248 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pagelist.c |   4 +-
+ fs/nfs/pnfs.c     |  14 +--
+ fs/nfs/read.c     |   4 +
+ fs/nfs/write.c    |  14 +--
+ 7 files changed, 287 insertions(+), 20 deletions(-)
