@@ -1,95 +1,207 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38258 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751698AbdIODFJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Sep 2017 23:05:09 -0400
-From: NeilBrown <neilb@suse.com>
-To: "Jianhong.Yin" <yin-jianhong@163.com>, steved@redhat.com
-Date: Fri, 15 Sep 2017 13:05:01 +1000
-Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: Re: [PATCH] nfsman: document minorversion
-In-Reply-To: <20170907065729.4636-1-yin-jianhong@163.com>
-References: <20170907065729.4636-1-yin-jianhong@163.com>
-Message-ID: <87a81w8xwi.fsf@notabene.neil.brown.name>
+Received: from mail-wr0-f193.google.com ([209.85.128.193]:35642 "EHLO
+        mail-wr0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751226AbdIOHuf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Sep 2017 03:50:35 -0400
+Cc: mtk.manpages@gmail.com, linux-man@vger.kernel.org,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: Re: [RFC PATCH manpages] write.2, fsync.2, close.2: update
+ description of error codes
+To: Jeff Layton <jlayton@redhat.com>, NeilBrown <neilb@suse.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+References: <20170720194227.7830-1-jlayton@kernel.org>
+ <1503683981.22608.0.camel@redhat.com>
+ <87h8wsiog4.fsf@notabene.neil.brown.name>
+ <1503920855.4563.12.camel@redhat.com>
+ <87pobfgo9q.fsf@notabene.neil.brown.name>
+ <1504004058.4679.7.camel@redhat.com>
+ <87efrjb2mn.fsf@notabene.neil.brown.name>
+ <1504784132.4954.12.camel@redhat.com>
+ <1504796087.3561.7.camel@primarydata.com>
+ <874ls9diij.fsf@notabene.neil.brown.name>
+ <1505126785.4916.7.camel@redhat.com>
+ <87poawc390.fsf@notabene.neil.brown.name>
+ <1505229616.28831.26.camel@redhat.com>
+ <87efrbbne1.fsf@notabene.neil.brown.name>
+ <1505305391.4822.13.camel@redhat.com>
+ <87ingm9n04.fsf@notabene.neil.brown.name>
+ <1505386139.4870.10.camel@redhat.com>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Message-ID: <28da8888-e8f9-31d5-a3dd-d3c2a5e9037a@gmail.com>
+Date: Fri, 15 Sep 2017 09:50:28 +0200
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <1505386139.4870.10.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hi Neil,
 
-On Thu, Sep 07 2017, Jianhong.Yin wrote:
+Will you revise this patch to incorporate Jeff's comments, or
+should I try manually editing them in. (I'd prefer the former.)
 
-> Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
-> ---
->  utils/mount/nfs.man | 17 +++++++++++++++++
->  1 file changed, 17 insertions(+)
->
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index cc6e992..7d42f19 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -779,6 +779,23 @@ so if this mount option is not specified, the NFS ve=
-rsion 4 client
->  uses the TCP protocol.
->  Refer to the TRANSPORT METHODS section for more details.
->  .TP 1.5i
-> +.BI minorversion=3D n
-> +Specifies the protocol minor version number.
-> +NFSv4 introduces "minor versioning," where NFS protocol enhancements can
-> +be introduced without bumping the NFS protocol version number.
-> +Before kernel 2.6.38, the minor version is always zero, and this
-> +option is not recognized.
-> +After this kernel, specifying "minorversion=3D1" enables a number of
-> +advanced features, such as NFSv4 sessions.
+Cheers,
 
-This is not quite correct.  nfs-utils now defaults to the most recent
-version of NFS that is supported by the kernel.  So if your kernel
-supports v4.2, then specifying "minorversion=3D1" *disables* some features.
-
-NeilBrown
+Michael
 
 
-> +.IP
-> +Recent kernels allow the minor version to be specified using the
-> +.B vers=3D
-> +option.
-> +For example, specifying
-> +.B vers=3D4.1
-> +is the same as specifying
-> +.BR vers=3D4,minorversion=3D1 .
-> +.TP 1.5i
->  .BI port=3D n
->  The numeric value of the server's NFS service port.
->  If the server's NFS service is not available on the specified port,
-> --=20
-> 2.13.5
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On 09/14/2017 12:48 PM, Jeff Layton wrote:
+> On Thu, 2017-09-14 at 09:50 +1000, NeilBrown wrote:
+>> Since 4.13, errors from writeback are more reliably reported
+>> to all file descriptors that might be relevant.
+>>
+>> Add notes to this effect, and also add details about ENOSPC and EDQUOT
+>> which can be delayed in a similar manner to EIO - for NFS in particular.
+>>
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>
+>> This is my summary of recent changes, and details that have been made
+>> clear during the exploration of those changes.
+>>
+>> I haven't mentioned the fact that EPERM can be returned by
+>> write/fsync/close on NFS if the permissions on the server are changed.
+>> We probably should ... are there other errors that are worth mentioning
+>> along with EPERM, ENOSPC, EDQUOT ??
+>>
+>> Thanks,
+>> NeilBronw
+>>
+> 
+> Many thanks for doing this! It was on my to-do list. Comments below:
+> 
+>>
+>>  man2/close.2 |  9 +++++++++
+>>  man2/fsync.2 | 19 ++++++++++++++++++-
+>>  man2/write.2 | 20 +++++++++++++++++---
+>>  3 files changed, 44 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/man2/close.2 b/man2/close.2
+>> index 751ec322b1f1..9776c839b8b6 100644
+>> --- a/man2/close.2
+>> +++ b/man2/close.2
+>> @@ -82,6 +82,15 @@ call was interrupted by a signal; see
+>>  .TP
+>>  .B EIO
+>>  An I/O error occurred.
+>> +.TP
+>> +.BR ENOSPC ", " EDQUOT
+>> +On NFS, these errors are not normally reported against the first write
+>> +which exceeds the available storage space, but instead against a
+>> +subsequent
+>> +.BR write (2),
+>> +.BR fsync (2),
+>> +or
+>> +.BR close (2).
+>>  .PP
+>>  See NOTES for a discussion of why
+>>  .BR close ()
+>> diff --git a/man2/fsync.2 b/man2/fsync.2
+>> index f1a01301da0f..e706a08d360d 100644
+>> --- a/man2/fsync.2
+>> +++ b/man2/fsync.2
+>> @@ -120,12 +120,29 @@ is set appropriately.
+>>  is not a valid open file descriptor.
+>>  .TP
+>>  .B EIO
+>> -An error occurred during synchronization.
+>> +An error occurred during synchronization.  This error may relate
+>> +to data written to some other file descriptor on the same file.
+>> +.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
+>> +Since Linux 4.13 errors from write-back will be reported to
+>> +all file descriptors that might have written the data which triggered
+>> +the error, and which are still open.
+> 
+> This is a little awkward. How could we report to a fd that was no longer
+> open? How about:
+> 
+> "Since Linux 4.13, errors from write-back will be reported to all file
+> descriptors that were open at the time that the error was recorded."
+> 
+>>   Some filesystems (e.g. NFS)
+>> +keep close track of which data came through which file descriptor,
+>> +and give more precise reporting.  Other filesystems (e.g. most local
+>> +filesystems) will report errors to all file descriptors on the same
+>> +file.
+>>  .TP
+>>  .BR EROFS ", " EINVAL
+>>  .I fd
+>>  is bound to a special file (e.g., a pipe, FIFO, or socket)
+>>  which does not support synchronization.
+>> +.TP
+>> +.BR ENOSPC ", " EDQUOT
+>> +.I fd
+>> +is bound to a file on NFS or another filesystem which does not allocate
+>> +space at the time of a
+>> +.BR write (2)
+>> +system call, and some previous write failed due to insufficient
+>> +storage space.
+>>  .SH CONFORMING TO
+>>  POSIX.1-2001, POSIX.1-2008, 4.3BSD.
+>>  .SH AVAILABILITY
+>> diff --git a/man2/write.2 b/man2/write.2
+>> index 6a39b5b5541d..1a9a86b03b04 100644
+>> --- a/man2/write.2
+>> +++ b/man2/write.2
+>> @@ -47,7 +47,7 @@ write \- write to a file descriptor
+>>  .BR write ()
+>>  writes up to
+>>  .I count
+>> -bytes from the buffer pointed
+>> +bytes from the buffer starting at
+>>  .I buf
+>>  to the file referred to by the file descriptor
+>>  .IR fd .
+>> @@ -181,6 +181,14 @@ or the file offset is not suitably aligned.
+>>  .TP
+>>  .B EIO
+>>  A low-level I/O error occurred while modifying the inode.
+>> +This error may relate to data written by an earlier
+>> +.BR write (2),
+>> +which may have been issued to a different file descriptor on
+>> +the same file.  Since Linux 4.13 errors from write-back will
+>> +be reported to all file descriptors that might have
+>> +written the data which triggered the error, and which are still
+>> +open.
+> 
+> 
+> This is where things get a little more vague.
+> 
+> Some filesystems will return errors on a subsequent write(2) when
+> previous writeback has failed -- some don't. In either case though,
+> write(2) should never advance your errseq_t cursor, so only an fsync
+> will "clear" an earlier error.
+> 
+> I'm not sure how best to convey that in the manpages though.
+> 
+>> +.\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
+>>  .TP
+>>  .B ENOSPC
+>>  The device containing the file referred to by
+>> @@ -222,8 +230,14 @@ unsigned and signed integer data types specified by POSIX.1.
+>>  A successful return from
+>>  .BR write ()
+>>  does not make any guarantee that data has been committed to disk.
+>> -In fact, on some buggy implementations, it does not even guarantee
+>> -that space has successfully been reserved for the data.
+>> +On some filesystems, including NFS, it does not even guarantee
+>> +that space has successfully been reserved for the data.  In the case,
+>> +some errors might be delayed to a future
+>> +.BR write (2)
+>> +or to
+>> +.BR fsync (2)
+>> +or even
+>> +.BR close (2).
+>>  The only way to be sure is to call
+>>  .BR fsync (2)
+>>  after you are done writing all your data.
+> 
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
 
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlm7Q14ACgkQOeye3VZi
-gbnrdA/7BE954t6/GGiXjurjUulF7qSgFDvAzp7c7yJ1Vevln217vKA+rZkLwIUM
-Iq1NhVdelh42bbLy3pNJbQVyyOgWsMGMvysopmlY2HuPE+m7oDOT3wkLV2n+2ASz
-l2CMMj+5xPDVeCgDuZswq1BywHMTwl2ECj2yTml0bH2H4wmyWW9TgzDmi6NE1Sqq
-dtceC2KpgHSKJuwcAsxbzivmgu4aq1Tgcu1K+YDiJzc3aff8A9SmTZBxs4PEwPu7
-uStJmLoeACgA2Jq1mWWJB0H3ch+GHPKwXeCYsi4TPZusP785a3fgaXSvgQv6qW7K
-jMhyj5m1FDf4IBvcpPG7gkn+4PsrZLQgK82vStzUPpN1E6Uh7hXrUKLOZwIdt5Go
-QSECd36LkJ1DAcnPkh4GRzB7l/1l2Rca5GWC0+q4j0kR3FuM09bnCgqWWuwAadM0
-+f55sf8fv4ofvPz6osDOkcaJ63hAx0SiQ6NygXAeJAtml7j6VWdgh8SfkmOFcxNY
-GH1DJDvzJn7cC+A/0JbWBlhyGhhIXeMDjPhLDjPNTuT82qW2lnN1AmBBc8+OdmUB
-NRScAnozREVf3gPd95LXqNO0TXgmsGUAs15eb6dljqjPoZWVXHFmwAAks4i3RHV/
-/E+S6st+I1YYlMC/wiXy1XuzNlDi/Hsc0qKTV9QRj0k/5xmbn4U=
-=4ArB
------END PGP SIGNATURE-----
---=-=-=--
+-- 
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
