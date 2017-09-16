@@ -1,82 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f193.google.com ([209.85.128.193]:37444 "EHLO
-        mail-wr0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751185AbdIPNLW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Sep 2017 09:11:22 -0400
-Cc: mtk.manpages@gmail.com, Ian Kent <ikent@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "mkoutny@suse.com" <mkoutny@suse.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        David Howells <dhowells@redhat.com>,
-        "H. Peter Anvin" <hpa@zytor.com>
-Subject: Re: [PATCH manpages] stat.2: correct AT_NO_AUTOMOUNT text and general
- revisions.
-To: NeilBrown <neilb@suse.com>
-References: <87bmnmrai9.fsf@notabene.neil.brown.name>
- <1502430944.3822.1.camel@primarydata.com>
- <1502449309.4950.2.camel@redhat.com>
- <87zib3niqn.fsf@notabene.neil.brown.name>
- <1502705432.4978.1.camel@redhat.com>
- <877ey4nsep.fsf@notabene.neil.brown.name>
- <1502883253.4847.6.camel@redhat.com>
- <1e4665a6-30d6-c16a-760a-2892fb147760@redhat.com>
- <878tihmora.fsf@notabene.neil.brown.name>
- <2e289bba-677b-cc50-5fa3-2d24d1f6b858@redhat.com>
- <87h8x1l9qp.fsf@notabene.neil.brown.name>
- <733c15c2-ffbb-9a89-90ec-3ba1d574590e@redhat.com>
- <87r2w3jdn5.fsf@notabene.neil.brown.name>
- <42ba2fa5-d756-d70f-370c-c2fe1a61c5bf@redhat.com>
- <87inhdk3rq.fsf@notabene.neil.brown.name>
- <CAKgNAki1SYjr7-6g-i3shGjQRjwy81gS0QisfZRy-x-bHFtXmA@mail.gmail.com>
- <87valci55j.fsf@notabene.neil.brown.name>
- <CAKgNAkinKkG8cR1ng0V3K1D9QNQ9MSeNkPpvpeGSUd5RqFiwSw@mail.gmail.com>
- <87r2v89auk.fsf@notabene.neil.brown.name>
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Message-ID: <e554a428-5a6f-164a-4e9c-17dbef8ddfe7@gmail.com>
-Date: Sat, 16 Sep 2017 15:11:16 +0200
+Received: from fieldses.org ([173.255.197.46]:45534 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751249AbdIPOo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 16 Sep 2017 10:44:29 -0400
+Date: Sat, 16 Sep 2017 10:44:29 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [RFC v3 27/42] NFSD: allow inter server COPY to have a STALE
+ source server fh
+Message-ID: <20170916144429.GA3866@fieldses.org>
+References: <20170711164416.1982-1-kolga@netapp.com>
+ <20170711164416.1982-28-kolga@netapp.com>
+ <20170908193836.GB18220@fieldses.org>
+ <CAN-5tyE17rgXnkzZJM_TVih1cqC5CL4CSp6i5c7bNe+G2vX-Lg@mail.gmail.com>
+ <20170915014722.GF7734@parsley.fieldses.org>
+ <CAN-5tyHasLG79AQoduP=Bt=L9Tpwy4KVi39J+47nzH2jQnseUw@mail.gmail.com>
+ <20170915200221.GA23720@parsley.fieldses.org>
+ <20170915200628.GB23720@parsley.fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <87r2v89auk.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170915200628.GB23720@parsley.fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 09/15/2017 12:25 AM, NeilBrown wrote:
-> On Thu, Sep 14 2017, Michael Kerrisk (man-pages) wrote:
-> 
->> Hi Neil,
->>
->> On 25 August 2017 at 07:32, NeilBrown <neilb@suse.com> wrote:
->>>
->>> Expand on the relationship between fstatat() and the other
->>> three functions, and improve the description of AT_NO_AUTOMOUNT.
->>> Specifically, both  stat() and lstat() act the same way
->>> with respect to automounts, and that behavior matches
->>> fstatat with the AT_NO_AUTOMOUNT flag.
->>>
->>> The text in the NOTES is removed and places with the text for
->>> AT_NO_AUTOMOUNT to improve cohesion.
->>>
->>> New text for a difference to be introduced in 4.14.
->>
->> Has the 4.14 piece gone in?
->>
-> 
-> Yes.
-> 
-> Commit: 42f461482178 ("autofs: fix AT_NO_AUTOMOUNT not being honored")
+On Fri, Sep 15, 2017 at 04:06:29PM -0400, J. Bruce Fields wrote:
+> By the way, I think the current check in nfsd4_savefh is redundant; we
+> can probably apply something like the following.  (Untested.)
 
-Thanks. I've applied the patch.
+Fixed and tested version for 4.15.
 
-Cheers,
+--b.
 
-Michael
+commit 6eb90459308b
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Fri Sep 15 16:02:52 2017 -0400
 
+    nfsd: remove unnecessary nofilehandle checks
+    
+    These checks should have already be done centrally in
+    nfsd4_proc_compound, the checks in each individual operation are
+    unnecessary.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
--- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 3c69db7d4905..7aff6d383d34 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -485,9 +485,6 @@ static __be32
+ nfsd4_getfh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	    union nfsd4_op_u *u)
+ {
+-	if (!cstate->current_fh.fh_dentry)
+-		return nfserr_nofilehandle;
+-
+ 	u->getfh = &cstate->current_fh;
+ 	return nfs_ok;
+ }
+@@ -535,9 +532,6 @@ static __be32
+ nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	     union nfsd4_op_u *u)
+ {
+-	if (!cstate->current_fh.fh_dentry)
+-		return nfserr_nofilehandle;
+-
+ 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
+ 	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG)) {
+ 		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
+@@ -703,10 +697,8 @@ nfsd4_link(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	   union nfsd4_op_u *u)
+ {
+ 	struct nfsd4_link *link = &u->link;
+-	__be32 status = nfserr_nofilehandle;
++	__be32 status;
+ 
+-	if (!cstate->save_fh.fh_dentry)
+-		return status;
+ 	status = nfsd_link(rqstp, &cstate->current_fh,
+ 			   link->li_name, link->li_namelen, &cstate->save_fh);
+ 	if (!status)
+@@ -850,10 +842,8 @@ nfsd4_rename(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	     union nfsd4_op_u *u)
+ {
+ 	struct nfsd4_rename *rename = &u->rename;
+-	__be32 status = nfserr_nofilehandle;
++	__be32 status;
+ 
+-	if (!cstate->save_fh.fh_dentry)
+-		return status;
+ 	if (opens_in_grace(SVC_NET(rqstp)) &&
+ 		!(cstate->save_fh.fh_export->ex_flags & NFSEXP_NOSUBTREECHECK))
+ 		return nfserr_grace;
