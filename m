@@ -1,144 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53570 "EHLO mx1.suse.de"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751213AbdIOX3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Sep 2017 19:29:52 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J . Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>
-Date: Sat, 16 Sep 2017 09:29:38 +1000
-Cc: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org,
-        Matt Benjamin <mbenjami@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Steve Dickson <SteveD@RedHat.com>
-Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
-In-Reply-To: <20170915151755.GD23557@fieldses.org>
-References: <20170913102650.10377-1-stefanha@redhat.com> <9adfce4d-dbd7-55a9-eb73-7389dbf900ac@RedHat.com> <0a5452ff-6cb9-4336-779b-ae65cfe156b8@RedHat.com> <20170914173730.GD4673@fieldses.org> <1505473626.4781.9.camel@redhat.com> <20170915151755.GD23557@fieldses.org>
-Message-ID: <874ls38rrx.fsf@notabene.neil.brown.name>
+Received: from mail-wr0-f193.google.com ([209.85.128.193]:37444 "EHLO
+        mail-wr0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751185AbdIPNLW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Sep 2017 09:11:22 -0400
+Cc: mtk.manpages@gmail.com, Ian Kent <ikent@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "mkoutny@suse.com" <mkoutny@suse.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>,
+        "H. Peter Anvin" <hpa@zytor.com>
+Subject: Re: [PATCH manpages] stat.2: correct AT_NO_AUTOMOUNT text and general
+ revisions.
+To: NeilBrown <neilb@suse.com>
+References: <87bmnmrai9.fsf@notabene.neil.brown.name>
+ <1502430944.3822.1.camel@primarydata.com>
+ <1502449309.4950.2.camel@redhat.com>
+ <87zib3niqn.fsf@notabene.neil.brown.name>
+ <1502705432.4978.1.camel@redhat.com>
+ <877ey4nsep.fsf@notabene.neil.brown.name>
+ <1502883253.4847.6.camel@redhat.com>
+ <1e4665a6-30d6-c16a-760a-2892fb147760@redhat.com>
+ <878tihmora.fsf@notabene.neil.brown.name>
+ <2e289bba-677b-cc50-5fa3-2d24d1f6b858@redhat.com>
+ <87h8x1l9qp.fsf@notabene.neil.brown.name>
+ <733c15c2-ffbb-9a89-90ec-3ba1d574590e@redhat.com>
+ <87r2w3jdn5.fsf@notabene.neil.brown.name>
+ <42ba2fa5-d756-d70f-370c-c2fe1a61c5bf@redhat.com>
+ <87inhdk3rq.fsf@notabene.neil.brown.name>
+ <CAKgNAki1SYjr7-6g-i3shGjQRjwy81gS0QisfZRy-x-bHFtXmA@mail.gmail.com>
+ <87valci55j.fsf@notabene.neil.brown.name>
+ <CAKgNAkinKkG8cR1ng0V3K1D9QNQ9MSeNkPpvpeGSUd5RqFiwSw@mail.gmail.com>
+ <87r2v89auk.fsf@notabene.neil.brown.name>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Message-ID: <e554a428-5a6f-164a-4e9c-17dbef8ddfe7@gmail.com>
+Date: Sat, 16 Sep 2017 15:11:16 +0200
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+In-Reply-To: <87r2v89auk.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On 09/15/2017 12:25 AM, NeilBrown wrote:
+> On Thu, Sep 14 2017, Michael Kerrisk (man-pages) wrote:
+> 
+>> Hi Neil,
+>>
+>> On 25 August 2017 at 07:32, NeilBrown <neilb@suse.com> wrote:
+>>>
+>>> Expand on the relationship between fstatat() and the other
+>>> three functions, and improve the description of AT_NO_AUTOMOUNT.
+>>> Specifically, both  stat() and lstat() act the same way
+>>> with respect to automounts, and that behavior matches
+>>> fstatat with the AT_NO_AUTOMOUNT flag.
+>>>
+>>> The text in the NOTES is removed and places with the text for
+>>> AT_NO_AUTOMOUNT to improve cohesion.
+>>>
+>>> New text for a difference to be introduced in 4.14.
+>>
+>> Has the 4.14 piece gone in?
+>>
+> 
+> Yes.
+> 
+> Commit: 42f461482178 ("autofs: fix AT_NO_AUTOMOUNT not being honored")
 
-On Fri, Sep 15 2017, J . Bruce Fields wrote:
+Thanks. I've applied the patch.
 
-> On Fri, Sep 15, 2017 at 07:07:06AM -0400, Jeff Layton wrote:
->> On Thu, 2017-09-14 at 13:37 -0400, J . Bruce Fields wrote:
->> > On Thu, Sep 14, 2017 at 11:55:51AM -0400, Steve Dickson wrote:
->> > >=20
->> > >=20
->> > > On 09/14/2017 11:39 AM, Steve Dickson wrote:
->> > > > Hello
->> > > >=20
->> > > > On 09/13/2017 06:26 AM, Stefan Hajnoczi wrote:
->> > > > > v3:
->> > > > >  * Documented vsock syntax in exports.man, nfs.man, and nfsd.man
->> > > > >  * Added clientaddr autodetection in mount.nfs(8)
->> > > > >  * Replaced #ifdefs with a single vsock.h header file
->> > > > >  * Tested nfsd serving both IPv4 and vsock at the same time
->> > > >=20
->> > > > Just curious as to the status of the kernel patches... Are
->> > > > they slated for any particular release?
->> > >=20
->> > > Maybe I should have read the thread before replying ;-)=20
->> > >=20
->> > > I now see the status of the patches... not good!  8-)
->> >=20
->> > To be specific, the code itself is probably fine, it's just that nobody
->> > on the NFS side seems convinced that NFS/VSOCK is necessary.
->> >=20
->>=20
->> ...and to be even more clear, the problem you've outlined (having a zero
->> config network between an HV and guest) is a valid one. The issue here
->> is that the solution in these patches is horribly invasive and will
->> create an ongoing maintenance burden.
->>=20
->> What would be much cleaner (IMNSHO) is a new type of virtual network
->> interface driver that has similar communication characteristics (only
->> allowing HV<->guest communication) and that autoconfigures itself when
->> plugged in (or only does so with minimal setup).
->>=20
->> Then you could achieve the same result without having to completely
->> rework all of this code. That's also something potentially backportable
->> to earlier kernels, which is a nice bonus.
->
-> We're talking about NFS/VSOCK here, but everything you've said would
-> apply to any protocol over VSOCK.
->
-> And yet, we have VSOCK.  So I still feel like we must be missing
-> some perspective.
+Cheers,
 
-Being in the kernel doesn't prove much.  devfs was in the kernel, so was
-the tux http service.  configfs is still in the kernel ! :-)
+Michael
 
-Possibly some perspective is missing.  A charitable reading of the
-situation is that the proponents of VSOCK aren't very good at
-communicating their requirements and vision.  A less charitable
-interpretation is that they have too much invested in VSOCK to be able
-to conceive an alternative.
 
-The thing we hear about is "zero-conf" and that is obviously a good
-idea, but can be done without VSOCK.  What we hear less about is
-"fool-proof" which is hard to define and hard to sell, yet it seems to
-be an important part of their agenda.
-
->
-> I wonder if part of the problem is that we're imagining that the typical
-> VM has a sysadmin.  Isn't it more likely that you build the VM
-> automatically from some root image that you don't even maintain
-> yourself?  So fixing it to not, say, block all network traffic on every
-> interface, isn't something you can automate--you've no idea where the
-> iptables configuration lives in the image.
-
-You are describing a situation where someone builds an important part of
-their infrastructure from something they don't understand and cannot
-maintain.  Obviously that happens, but when it does I would expect there
-to be someone who does understand.  A vendor or support organization
-probably.  If the end result doesn't fit the customer's needs, then that
-creates a market opportunity for someone to fill.
-
-It does seem that the unpredictability of network filtering is part of
-the goal of VSOCK, though creating a new network path that cannot be
-filtered doesn't seem to me like the cleverest idea in the long term.
-There seems to be more though.  There was a suggestion that some people
-don't want any network interface at all (but still want to use a
-networked file system).  This sounds like superstition, but was not
-backed up with data so I cannot be sure.
-
-It does seem justifiable to want a simple and reliable way to ensure
-that traffic from the NFS client to the host is not filtered.  My
-feeling is that talking to network/firewall people is the best way to
-achieve that.  The approach that has been taken looks like an end-run
-around exactly the people who are in the best position to help.
-
-How do network namespaces work?  Does each namespace get separate
-iptables?  Could we perform an NFS mount in an unfiltered namespace,
-then make everything else run with filters in place?
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlm8YmQACgkQOeye3VZi
-gbnG8A/9ESxXl3vUhdViJMGya8cWLgqVNhAejrZ7zfH7fCYQjFmN5sZhXjgkwQR8
-TGHAAHFnezlNZQMXGoyO9hMX0N4Nkkvj0ztrpxbkFfIMNWg76LoH9d1Uq1b2dD0F
-P0oX8wZGbuusDPlzD2aDMPbpdO5UQ+BtFLh4/N2vpIEZ20GdZN2+TunYh7tIz1Bu
-Re2yu4+cSIiFPQxO3j80OwXWR9fYvAQcrQ4JtdBb4gnxDZ3chjv7GEkIsPSEcb5G
-NfzFed98ODK8RsaHGCqt1He9C9Fv2GTcRoA4eBTWl+WwHEkuD5RTTsGMWe0tzoaA
-B0PXbGScN9Mlcs7WivOB6F8agAcRCaTj55xurRkLyl0aLzMJzq/SgTyzSD5z5uek
-ooSLwgVT26/FlDF4/b/oUZ8Ig44qTOSjFVtjrbrRtsTmU8tY6LDaQthpr3ktUnJQ
-0g/KXnLwyu1igyOvP5Qjha8gi9d1XIX/xMx3t8vdOyoFLGC6bWr6Y8mRZTdC7RC8
-6mswsYOrZWZZbeLie7uI7h8G/zVgRG0InJWOSkFp8koUmBxqW11sejtyPiuAiC1f
-oN+B+a5m6+/4h4eMspzGbbyoY49+3YvvGueQR2mJOzGpqIu1SFedzOhdoJ42aeW2
-4wn2nv3n6rYhLDsSlFlEQHsiQKtd01cERAHwnhTB9X2yK18QqBI=
-=+7X2
------END PGP SIGNATURE-----
---=-=-=--
+-- 
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
