@@ -1,367 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga03.intel.com ([134.134.136.65]:33365 "EHLO mga03.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750744AbdIQFEJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 17 Sep 2017 01:04:09 -0400
-Date: Sun, 17 Sep 2017 13:03:32 +0800
-From: kbuild test robot <fengguang.wu@intel.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: kbuild-all@01.org, linux-nfs@vger.kernel.org
-Subject: [nfs:ioctl 2/5] fs/nfs/ioctl.c:108: undefined reference to
- `__ucmpdi2'
-Message-ID: <201709171326.NUSNFN7M%fengguang.wu@intel.com>
+Received: from mail-pg0-f51.google.com ([74.125.83.51]:46276 "EHLO
+        mail-pg0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750761AbdIQHZz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 17 Sep 2017 03:25:55 -0400
+Date: Sun, 17 Sep 2017 00:25:47 -0700
+From: Eric Biggers <ebiggers3@gmail.com>
+To: David Howells <dhowells@redhat.com>
+Cc: keyrings@vger.kernel.org, linux-api@vger.kernel.org,
+        linux-cifs@vger.kernel.org, linux-fscrypt@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Gwendal Grignou <gwendal@chromium.org>,
+        Jaegeuk Kim <jaegeuk@kernel.org>,
+        Paul Crowley <paulcrowley@google.com>,
+        Richard Weinberger <richard@nod.at>,
+        Ryo Hashimoto <hashimoto@google.com>,
+        Tyler Hicks <tyhicks@canonical.com>, stable@vger.kernel.org
+Subject: Re: [PATCH v2] KEYS: make keyctl_invalidate() also require Setattr
+ permission
+Message-ID: <20170917072547.GC10599@zzz.localdomain>
+References: <20170905183250.GA92687@gmail.com>
+ <20170816211403.121920-1-ebiggers3@gmail.com>
+ <13221.1504605295@warthog.procyon.org.uk>
+ <610.1504885300@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="huq684BweRXVnRxX"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <610.1504885300@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi David,
 
---huq684BweRXVnRxX
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+On Fri, Sep 08, 2017 at 04:41:40PM +0100, David Howells wrote:
+> Eric Biggers <ebiggers3@gmail.com> wrote:
+> 
+> > True, but Setattr permission has already been overloaded to allow several
+> > different types of modifications,
+> 
+> Perhaps therein lies the problem.  Setattr is too overloaded and really needs
+> splitting along the following lines:
+> 
+>  (1) Security: ownership, access, security label, restrictions.
+> 
+>  (2) Content: alter/update, timeout.
+> 
+>  (3) Revocation and invalidation.
+> 
+> Maybe I should create some sort of ACL for keys and map setperm onto that.
+> 
+> I wonder if this could also intersect with user namespaces in some way so that
+> you can make an ACL that has users from multiple namespaces - might be tricky,
+> though.
 
-tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git ioctl
-head:   d60bb8b2798b19dd5a38f80012ba9c3a5f5a4436
-commit: 33296e02268c7186bf01bf80e3d5aa8669b10488 [2/5] NFS: Add an ioctl to flush and invalidate a limited range of data
-config: blackfin-BF561-ACVILON_defconfig (attached as .config)
-compiler: bfin-uclinux-gcc (GCC) 6.2.0
-reproduce:
-        wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
-        chmod +x ~/bin/make.cross
-        git checkout 33296e02268c7186bf01bf80e3d5aa8669b10488
-        # save the attached .config to linux build tree
-        make.cross ARCH=blackfin 
+There would be a *lot* of changes needed to implement ACLs for keys.  Setting
+them, getting them, evaluating them, updating all the LSMs to understand any new
+permissions, deciding how the existing keyctl operations affect the ACL,
+deciding what ACL to use by default, etc...  And it would make the keyrings
+permissions system even more complicated, when people already have trouble
+understanding it.  Complicated permissions systems are difficult to use
+correctly.
 
-All errors (new ones prefixed by >>):
+Also I suppose that Invalidate would be implied by the old "Search" permission,
+so users would need to use a new keyctl to remove Invalidate permission from the
+ACL to get sane behavior?  That would be a pain, in comparison to having the bug
+fixed by default.
 
-   bfin-uclinux-ld: L1 text overflow!
-   fs/nfs/ioctl.o: In function `nfs_ioctl_cachectl':
->> fs/nfs/ioctl.c:108: undefined reference to `__ucmpdi2'
+> 
+> > and it makes *much* more sense than Search permission which should not allow
+> > any modifications.  And in practice I expect people care more about whether
+> > modifications are permitted or not, than the details of the finer-grained
+> > permissions.
+> 
+> I disagree still.  To allow users to invalidate a key you would *also* have to
+> give them the ability to muck around with the permissions.
+> 
 
-vim +108 fs/nfs/ioctl.c
+True, though actually keyctl_setperm() also requires that the user own the key
+or be root.
 
-33296e02 Trond Myklebust 2012-11-14   99  
-1f0b13a9 Trond Myklebust 2012-11-14  100  static long nfs_ioctl_cachectl(struct file *filp, struct nfs_cachectl __user *argp)
-1f0b13a9 Trond Myklebust 2012-11-14  101  {
-1f0b13a9 Trond Myklebust 2012-11-14  102  	u64 cmd;
-1f0b13a9 Trond Myklebust 2012-11-14  103  
-1f0b13a9 Trond Myklebust 2012-11-14  104  	if (!(filp->f_mode & (FMODE_READ|FMODE_WRITE)))
-1f0b13a9 Trond Myklebust 2012-11-14  105  		return -EBADF;
-1f0b13a9 Trond Myklebust 2012-11-14  106  	if (copy_from_user(&cmd, &argp->cmd, sizeof(cmd)))
-1f0b13a9 Trond Myklebust 2012-11-14  107  		return -EFAULT;
-1f0b13a9 Trond Myklebust 2012-11-14 @108  	switch (cmd) {
-1f0b13a9 Trond Myklebust 2012-11-14  109  	case NFS_CACHECTL_REVALIDATE_ALL:
-1f0b13a9 Trond Myklebust 2012-11-14  110  		return nfs_ioctl_cache_revalidate(filp, true, true);
-1f0b13a9 Trond Myklebust 2012-11-14  111  	case NFS_CACHECTL_REVALIDATE_METADATA:
-1f0b13a9 Trond Myklebust 2012-11-14  112  		return nfs_ioctl_cache_revalidate(filp, true, false);
-1f0b13a9 Trond Myklebust 2012-11-14  113  	case NFS_CACHECTL_REVALIDATE_DATA:
-1f0b13a9 Trond Myklebust 2012-11-14  114  		return nfs_ioctl_cache_revalidate(filp, false, true);
-33296e02 Trond Myklebust 2012-11-14  115  	case NFS_CACHECTL_REVALIDATE_RANGE:
-33296e02 Trond Myklebust 2012-11-14  116  		return nfs_ioctl_revalidate_range(filp, argp);
-1f0b13a9 Trond Myklebust 2012-11-14  117  	}
-1f0b13a9 Trond Myklebust 2012-11-14  118  	return -EINVAL;
-1f0b13a9 Trond Myklebust 2012-11-14  119  }
-1f0b13a9 Trond Myklebust 2012-11-14  120  
+And while finer-grained permissions are preferable in theory, out of curiosity
+do you have an example of an actual user who needs to be able to invalidate, or
+perhaps in plainer language, "delete" keys without otherwise being able to
+modify the keys or their containing keyring(s)?
 
-:::::: The code at line 108 was first introduced by commit
-:::::: 1f0b13a9d1c9c50891777988ada7e0bfaf8ead6d NFS: Add an ioctl to allow applications limited control over caching
+Meanwhile, users of filesystem-level encryption need to set up keys that can be
+searched by non-root users but not deleted.  This *should* be a normal, very
+boring use case, since being able to grant read-only access should be a
+fundamental part of any access control system.  But not with the keyrings
+permission system, apparently :-)
 
-:::::: TO: Trond Myklebust <Trond.Myklebust@netapp.com>
-:::::: CC: Trond Myklebust <trond.myklebust@primarydata.com>
+> > Sort of, but actually keyctl_set_timeout() can be called at any time, and
+> > the timeout can be set to as little as 1 second.  So I don't see how
+> > keyctl_revoke() is that much different, fundamentally.
+> 
+> The timeout is a property of the key content and revoked is one of the states
+> the key can be in.
+> 
+> > >  (1) I add a flag to a key to say that it can be invalidated and a keyctl to
+> > >      change that flag.
+> > 
+> > And who would have permission to change that flag?  It seems to be the same
+> > problem again.
+> 
+> No.  Setperm would be required to change the flag, but not to apply the
+> invalidate operation if the flag is set.  Think of Invalidate as being a
+> mass-unlink operation effected by the garbage collector.
+> 
+> Kernel-created DNS keys, for example, don't grant Setperm to anyone.
+> 
 
----
-0-DAY kernel test infrastructure                Open Source Technology Center
-https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
+Perhaps keyctl_invalidate() should by default require Setattr permission, or
+perhaps owning the key --- but after a call to a new keyctl_set_invalidatable()
+which would require Setattr permission, just Search permission would be
+required?  It seems that would address your concern about needing to grant
+Setattr permission to invalidate keys.
 
---huq684BweRXVnRxX
-Content-Type: application/gzip
-Content-Disposition: attachment; filename=".config.gz"
-Content-Transfer-Encoding: base64
+> 
+> > What would the behavior be if ->allow_invalidation() was not supplied?
+> 
+> The obvious would be to check that you're the owner of the key.
+> 
+> > In other words, would the purpose of this be to lock down invalidation of
+> > dns_resolver keys, or to restrict invalidation to *only* dns_resolver keys?
+> 
+> To restrict who could invalidate keys of a particular type.  Actually, it
+> wants to be per-key not per-key-type.  Hmmm...
+> 
+> > Granted by who, and how?  And do you mean keyctl_clear(), or
+> > keyctl_invalidate()?
+> 
+> keyctl_clear().  Empty the keyring, not render it unusable.
+> 
+> 
+> David
 
-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
-p5HiUnnrvbfZHrz96vDh/wjnyYmq/wAA
+If there is a "keyctl_set_invalidatable()" being added too, I don't really see
+the point of adding an ->allow_invalidation() method and mucking around with
+keyctl_clear() permissions as well.
 
---huq684BweRXVnRxX--
+Eric
