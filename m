@@ -1,111 +1,250 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:41495 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751223AbdIPPz3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Sep 2017 11:55:29 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20170915164223.GE23557@fieldses.org>
-Date: Sat, 16 Sep 2017 08:55:21 -0700
-Cc: Stefan Hajnoczi <stefanha@redhat.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Matt Benjamin <mbenjami@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>
-Message-Id: <A1844833-18E1-4F03-BB20-A06A6FE4AB62@oracle.com>
-References: <20170913102650.10377-1-stefanha@redhat.com> <9adfce4d-dbd7-55a9-eb73-7389dbf900ac@RedHat.com> <0a5452ff-6cb9-4336-779b-ae65cfe156b8@RedHat.com> <20170914173730.GD4673@fieldses.org> <20170915131224.GC14994@stefanha-x1.localdomain> <20170915133145.GA23557@fieldses.org> <DE7FAAE5-26F5-4B11-A83D-F74C9B7D81FB@oracle.com> <20170915164223.GE23557@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mga06.intel.com ([134.134.136.31]:18641 "EHLO mga06.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751457AbdIQB4k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 16 Sep 2017 21:56:40 -0400
+Date: Sun, 17 Sep 2017 09:56:16 +0800
+From: kbuild test robot <fengguang.wu@intel.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: kbuild-all@01.org, linux-nfs@vger.kernel.org
+Subject: [nfs:ioctl 2/5] ERROR: "__ucmpdi2" [fs/nfs/nfs.ko] undefined!
+Message-ID: <201709170913.54LRGMN0%fengguang.wu@intel.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="OgqxwSJOaUobr8KG"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Sep 15, 2017, at 9:42 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> 
-> On Fri, Sep 15, 2017 at 06:59:45AM -0700, Chuck Lever wrote:
->> 
->>> On Sep 15, 2017, at 6:31 AM, J . Bruce Fields <bfields@fieldses.org> wrote:
->>> 
->>> On Fri, Sep 15, 2017 at 02:12:24PM +0100, Stefan Hajnoczi wrote:
->>>> On Thu, Sep 14, 2017 at 01:37:30PM -0400, J . Bruce Fields wrote:
->>>>> On Thu, Sep 14, 2017 at 11:55:51AM -0400, Steve Dickson wrote:
->>>>>> On 09/14/2017 11:39 AM, Steve Dickson wrote:
->>>>>>> Hello
->>>>>>> 
->>>>>>> On 09/13/2017 06:26 AM, Stefan Hajnoczi wrote:
->>>>>>>> v3:
->>>>>>>> * Documented vsock syntax in exports.man, nfs.man, and nfsd.man
->>>>>>>> * Added clientaddr autodetection in mount.nfs(8)
->>>>>>>> * Replaced #ifdefs with a single vsock.h header file
->>>>>>>> * Tested nfsd serving both IPv4 and vsock at the same time
->>>>>>> Just curious as to the status of the kernel patches... Are
->>>>>>> they slated for any particular release?
->>>>>> Maybe I should have read the thread before replying ;-) 
->>>>>> 
->>>>>> I now see the status of the patches... not good!  8-)
->>>>> 
->>>>> To be specific, the code itself is probably fine, it's just that nobody
->>>>> on the NFS side seems convinced that NFS/VSOCK is necessary.
->>>> 
->>>> Yes, the big question is whether the Linux NFS maintainers can see this
->>>> feature being merged.  It allows host<->guest file sharing in a way that
->>>> management tools can automate.
->>>> 
->>>> I have gotten feedback multiple times that NFS over TCP/IP is not an
->>>> option for management tools like libvirt to automate.
->>> 
->>> We're having trouble understanding why this is.
->> 
->> I'm also having trouble understanding why NFS is a better solution
->> in this case than a virtual disk, which does not require any net-
->> working to be configured. What exactly is expected to be shared
->> between the hypervisor and each guest?
-> 
-> They have said before there are uses for storage that's actually shared.
-> (And I assume it would be mainly shared between guests rather than
-> between guest and hypervisor?)
+--OgqxwSJOaUobr8KG
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-But this works today with IP-based networking. We certainly use
-this kind of arrangement with OVM (Oracle's Xen-based hypervisor).
-I agree NFS in the hypervisor is useful in interesting cases, but
-I'm separating the need for a local NFS service with the need for
-it to be zero-configuration.
+tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git ioctl
+head:   d60bb8b2798b19dd5a38f80012ba9c3a5f5a4436
+commit: 33296e02268c7186bf01bf80e3d5aa8669b10488 [2/5] NFS: Add an ioctl to flush and invalidate a limited range of data
+config: blackfin-BF561-EZKIT-SMP_defconfig (attached as .config)
+compiler: bfin-uclinux-gcc (GCC) 6.2.0
+reproduce:
+        wget https://raw.githubusercontent.com/intel/lkp-tests/master/sbin/make.cross -O ~/bin/make.cross
+        chmod +x ~/bin/make.cross
+        git checkout 33296e02268c7186bf01bf80e3d5aa8669b10488
+        # save the attached .config to linux build tree
+        make.cross ARCH=blackfin 
 
-The other use case that's been presented for NFS/VSOCK is an NFS
-share that contains configuration information for each guest (in
-particular, network configuration information). This is the case
-I refer to above when I ask whether this can be done with a
-virtual disk.
+All errors (new ones prefixed by >>):
 
-I don't see any need for concurrent access by the hypervisor and
-guest, and one presumably should not share a guest's specific
-configuration information with other guests. There would be no
-sharing requirement, and therefore I would expect a virtual disk
-filesystem would be adequate in this case and perhaps even
-preferred, being more secure and less complex.
+>> ERROR: "__ucmpdi2" [fs/nfs/nfs.ko] undefined!
 
+---
+0-DAY kernel test infrastructure                Open Source Technology Center
+https://lists.01.org/pipermail/kbuild-all                   Intel Corporation
 
->> I do understand the use cases for a full-featured NFS server in
->> the hypervisor, but not why it needs to be zero-config.
-> 
-> "It" in that question refers to the client, not the server, right?
+--OgqxwSJOaUobr8KG
+Content-Type: application/gzip
+Content-Disposition: attachment; filename=".config.gz"
+Content-Transfer-Encoding: base64
 
-The hypervisor gets a VSOCK address too, which makes it zero-
-configuration for any access via VSOCK transports from its guests.
-I probably don't understand your question.
+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
+ShAlvjvXBo2Ru4K2pVAn7P8BGu2zWKmmAAA=
 
-Note that an NFS server could also run in one of the guests, but
-I assume that the VSOCK use cases are in particular about an NFS
-service in the hypervisor that can be made available very early
-in the life of a guest instance. I make that guess because all
-the guests have the same VSOCK address (as I understand it), so
-that would make it difficult to discover and access an NFS/VSOCK
-service in another guest.
-
-
---
-Chuck Lever
-
-
-
+--OgqxwSJOaUobr8KG--
