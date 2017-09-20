@@ -1,47 +1,41 @@
-Return-Path: <tibbs@math.uh.edu>
-From: Jason L Tibbitts III <tibbs@math.uh.edu>
-To: "Benjamin Coddington" <bcodding@redhat.com>
-Cc: "Michael Sterrett" <michael@sterretts.net>,  linux-nfs@vger.kernel.org
-Subject: Re: f30cb757f680f965ba8a2e53cb3588052a01aeb5 regression
-References: <CA+rTEUMDy-Okdpo1EuWHS5n_6HAm5RKa4OVHPQPddRLP4hdtxw@mail.gmail.com>
-	<B4CA251B-5BE1-4D57-B4EC-990AAE7F4AAE@redhat.com>
-Date: Wed, 20 Sep 2017 17:12:44 -0500
-In-Reply-To: <B4CA251B-5BE1-4D57-B4EC-990AAE7F4AAE@redhat.com> (Benjamin
-	Coddington's message of "Wed, 20 Sep 2017 08:13:13 -0400")
-Message-ID: <ufao9q5aujn.fsf@epithumia.math.uh.edu>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-qk0-f171.google.com ([209.85.220.171]:48841 "EHLO
+        mail-qk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751787AbdITWR5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Sep 2017 18:17:57 -0400
+Received: by mail-qk0-f171.google.com with SMTP id a128so4161665qkc.5
+        for <linux-nfs@vger.kernel.org>; Wed, 20 Sep 2017 15:17:57 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain
+From: Manjunath Patil <mbpatil.linux@gmail.com>
+Date: Wed, 20 Sep 2017 15:17:56 -0700
+Message-ID: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
+Subject: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS server
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->>>>> "BC" == Benjamin Coddington <bcodding@redhat.com> writes:
+Hi,
 
-BC> Hi Michael, can you clarify what you mean by "client machine locks
-BC> up"?  Are you receiving reports of a hung task in the kernel logs?
+With autoclose trying to close the connection, after the idle timeout
+in NFSv3 mounts,
+a bad NFS server may not send the final FIN, leading the client stay
+in FIN_WAIT_2 state forever.
+This is easily reproducible by simulating the bad server behavior. I
+used 'netstat -an | grep 2049' to observer socket state.
 
-I'll chime in to say that I'm seeing something which may potentially
-related that I haven't been able to spend the time to track down
-properly.  Basically, I can make NFS hang just by editing a file with
-vim on the client.  When I attempt to write the file, the vim process
-goes into the 'D' state, probably trying to do some sort of locking (as
-I have a lot of stuff running inside of vim).  I think this may require
-that you not have write permissions on the directory containing the file
-I'm editing, so that vim is forced to write backups or do locking or
-something back in my NFS-mounted home directory.
+This is will also stall the other RPC requests from connecting and
+proceeding as XPRT_CLOSING flag is already set.
 
-Once this happens, the server actually gets into an odd state.  I have
-seen vim instances running on the server hang (probably trying to lock a
-file) until the client is rebooted.  And even after the client is
-rebooted, it still can't mount anything from the server.  Instead the
-mount call itself just hangs, along with a kernel thread named
-"[172.21.86.85-ma]".  This state will persist until the server itself is
-rebooted.
+This can be observed in the 4.14-rc1 as well.
+This behavior is introduced with the following commit -
+caf4ccd SUNRPC: Make xs_tcp_close() do a socket shutdown rather than a
+sock_release
 
-Server: Fedora 26, kernel 4.12.9 (need to reboot into 4.12.13 soon).
-Clients: Fedora 25, various 4.11.X and 4.12.X.
+Once we reverse this commit, the FIN_WAIT_2 state lasts only for 60 seconds.
 
-All mounts are via NFS4.2/krb5i.
+Any thoughts correcting this behavior?
+or is this behavior expected?
 
-I think this might have come in when I updated this server to something
-in the 4.12 kernel series but I'm not completely sure at this point.
-
- - J<
+-Thanks,
+Manjunath
