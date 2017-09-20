@@ -1,40 +1,47 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:32796 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751524AbdITVyA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Sep 2017 17:54:00 -0400
-Date: Thu, 21 Sep 2017 00:53:46 +0300
-From: Dan Carpenter <dan.carpenter@oracle.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org
-Subject: [PATCH] NFS: Cleanup error handling in nfs_idmap_request_key()
-Message-ID: <20170920215346.bgucxg77ayrcx6zy@mwanda>
+Return-Path: <tibbs@math.uh.edu>
+From: Jason L Tibbitts III <tibbs@math.uh.edu>
+To: "Benjamin Coddington" <bcodding@redhat.com>
+Cc: "Michael Sterrett" <michael@sterretts.net>,  linux-nfs@vger.kernel.org
+Subject: Re: f30cb757f680f965ba8a2e53cb3588052a01aeb5 regression
+References: <CA+rTEUMDy-Okdpo1EuWHS5n_6HAm5RKa4OVHPQPddRLP4hdtxw@mail.gmail.com>
+	<B4CA251B-5BE1-4D57-B4EC-990AAE7F4AAE@redhat.com>
+Date: Wed, 20 Sep 2017 17:12:44 -0500
+In-Reply-To: <B4CA251B-5BE1-4D57-B4EC-990AAE7F4AAE@redhat.com> (Benjamin
+	Coddington's message of "Wed, 20 Sep 2017 08:13:13 -0400")
+Message-ID: <ufao9q5aujn.fsf@epithumia.math.uh.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_idmap_get_desc() can't actually return zero.  But if it did then
-we would return ERR_PTR(0) which is NULL and the caller,
-nfs_idmap_get_key(), doesn't expect that so it leads to a NULL pointer
-dereference.
+>>>>> "BC" == Benjamin Coddington <bcodding@redhat.com> writes:
 
-I've cleaned this up by changing the "<=" to "<" so it's more clear that
-we don't return ERR_PTR(0).
+BC> Hi Michael, can you clarify what you mean by "client machine locks
+BC> up"?  Are you receiving reports of a hung task in the kernel logs?
 
-Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+I'll chime in to say that I'm seeing something which may potentially
+related that I haven't been able to spend the time to track down
+properly.  Basically, I can make NFS hang just by editing a file with
+vim on the client.  When I attempt to write the file, the vim process
+goes into the 'D' state, probably trying to do some sort of locking (as
+I have a lot of stuff running inside of vim).  I think this may require
+that you not have write permissions on the directory containing the file
+I'm editing, so that vim is forced to write backups or do locking or
+something back in my NFS-mounted home directory.
 
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index dd5d27da8c0c..30426c1a1bbd 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -274,7 +274,7 @@ static struct key *nfs_idmap_request_key(const char *name, size_t namelen,
- 	ssize_t ret;
- 
- 	ret = nfs_idmap_get_desc(name, namelen, type, strlen(type), &desc);
--	if (ret <= 0)
-+	if (ret < 0)
- 		return ERR_PTR(ret);
- 
- 	rkey = request_key(&key_type_id_resolver, desc, "");
+Once this happens, the server actually gets into an odd state.  I have
+seen vim instances running on the server hang (probably trying to lock a
+file) until the client is rebooted.  And even after the client is
+rebooted, it still can't mount anything from the server.  Instead the
+mount call itself just hangs, along with a kernel thread named
+"[172.21.86.85-ma]".  This state will persist until the server itself is
+rebooted.
+
+Server: Fedora 26, kernel 4.12.9 (need to reboot into 4.12.13 soon).
+Clients: Fedora 25, various 4.11.X and 4.12.X.
+
+All mounts are via NFS4.2/krb5i.
+
+I think this might have come in when I updated this server to something
+in the 4.12 kernel series but I'm not completely sure at this point.
+
+ - J<
