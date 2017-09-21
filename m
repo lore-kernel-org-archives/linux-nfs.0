@@ -1,84 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f170.google.com ([209.85.220.170]:44725 "EHLO
-        mail-qk0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751788AbdIURFz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Sep 2017 13:05:55 -0400
-Received: by mail-qk0-f170.google.com with SMTP id b23so6424089qkg.1
-        for <linux-nfs@vger.kernel.org>; Thu, 21 Sep 2017 10:05:55 -0700 (PDT)
-Message-ID: <1506013553.7873.13.camel@redhat.com>
-Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS
- server
-From: David Wysochanski <dwysocha@redhat.com>
-To: Manjunath Patil <mbpatil.linux@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 21 Sep 2017 13:05:53 -0400
-In-Reply-To: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
-References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:33076 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751792AbdIVIcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Sep 2017 04:32:05 -0400
+Date: Thu, 21 Sep 2017 18:00:17 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Daniel P. Berrange" <berrange@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Matt Benjamin <mbenjami@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
+Message-ID: <20170921170017.GK32364@stefanha-x1.localdomain>
+References: <DE7FAAE5-26F5-4B11-A83D-F74C9B7D81FB@oracle.com>
+ <20170915164223.GE23557@fieldses.org>
+ <A1844833-18E1-4F03-BB20-A06A6FE4AB62@oracle.com>
+ <20170918180927.GD12759@stefanha-x1.localdomain>
+ <20170919093140.GF9536@redhat.com>
+ <67608054-B771-44F4-8B2F-5F7FDC506CDD@oracle.com>
+ <20170919151051.GS9536@redhat.com>
+ <3534278B-FC7B-4AA5-AF86-92AA19BFD1DC@oracle.com>
+ <20170919164427.GV9536@redhat.com>
+ <20170919172452.GB29104@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170919172452.GB29104@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-09-20 at 15:17 -0700, Manjunath Patil wrote:
-> Hi,
+On Tue, Sep 19, 2017 at 01:24:52PM -0400, J. Bruce Fields wrote:
+> On Tue, Sep 19, 2017 at 05:44:27PM +0100, Daniel P. Berrange wrote:
+> > On Tue, Sep 19, 2017 at 11:48:10AM -0400, Chuck Lever wrote:
+> > > 
+> > > > On Sep 19, 2017, at 11:10 AM, Daniel P. Berrange <berrange@redhat.com> wrote:
+> > > > VSOCK requires no guest configuration, it won't be broken accidentally
+> > > > by NetworkManager (or equivalent), it won't be mistakenly blocked by
+> > > > guest admin/OS adding "deny all" default firewall policy. Similar
+> > > > applies on the host side, and since there's separation from IP networking,
+> > > > there is no possibility of the guest ever getting a channel out to the
+> > > > LAN, even if the host is mis-configurated.
+> > > 
+> > > We don't seem to have configuration fragility problems with other
+> > > deployments that scale horizontally.
+> > > 
+> > > IMO you should focus on making IP reliable rather than trying to
+> > > move familiar IP-based services to other network fabrics.
+> > 
+> > I don't see that ever happening, except in a scenario where a single
+> > org is in tight control of the whole stack (host & guest), which is
+> > not the case for cloud in general - only some on-site clouds.
 > 
-> With autoclose trying to close the connection, after the idle timeout
-> in NFSv3 mounts,
-> a bad NFS server may not send the final FIN, leading the client stay
-> in FIN_WAIT_2 state forever.
-> This is easily reproducible by simulating the bad server behavior. I
-> used 'netstat -an | grep 2049' to observer socket state.
+> Can you elaborate?
 > 
-How long did you wait and how did you simulate the failure?  I am very
-interested in your test case.
+> I think we're having trouble understanding why you can't just say "don't
+> do that" to someone whose guest configuration is interfering with the
+> network interface they need for NFS.
 
-I am not sure which kernels you are testing but in my tests (simulating
-a dropped FIN from the NFS server but not blocking the ACK or further
-packets) I've seen that the sunrpc TCP keepalive commit
-7f260e8575bf53b93b77978c1e39f8e67612759c caused a RST to happen after
-around 4 minutes so it won't get stuck forever.  The only way I could
-get a FIN_WAIT_2 indefinite hang was to block all traffic from the
-server port which arguably, if that happens you'll get a hang but only a
-bit later so I concluded such a test seems invalid.
+Dan can add more information on the OpenStack use case, but your
+question is equally relevant to the other use case I mentioned - easy
+file sharing between host and guest.
 
+Management tools like virt-manager (https://virt-manager.org/) should
+support a "share directory with VM" feature.  The user chooses a
+directory on the host, a mount point inside the guest, and then clicks
+OK.  The directory should appear inside the guest.
 
-> This is will also stall the other RPC requests from connecting and
-> proceeding as XPRT_CLOSING flag is already set.
-> 
-> This can be observed in the 4.14-rc1 as well.
-> This behavior is introduced with the following commit -
-> caf4ccd SUNRPC: Make xs_tcp_close() do a socket shutdown rather than a
-> sock_release
-> 
-> Once we reverse this commit, the FIN_WAIT_2 state lasts only for 60 seconds.
-> 
+VMware, VirtualBox, etc have had file sharing for a long time.  It's a
+standard feature.
 
-Interesting maybe the problem is back on some upstream kernels (I mostly
-test RHEL6, RHEL7, and some fedora).  Do you know what is actually
-firing to get the TCP connection out of FIN_WAIT_2?  Have you tried to
-trace this?
+Here is how to implement it using AF_VSOCK:
+1. Check presence of virtio-vsock device in VM or hotplug it.
+2. Export directory from host NFS server (nfs-ganesha, nfsd, etc).
+3. Send qemu-guest-agent command to (optionally) add /etc/fstab entry
+   and then mount.
 
-I first saw FIN_WAIT_2 hangs after commit
-9cbc94fb06f98de0e8d393eaff09c790f4c3ba46 which removed
-xs_tcp_scheduler_linger_timeout was backported to RHEL6.  Later we added
-the TCP keepalive commit which seems to have resolved these hangs as far
-as I know.
+The user does not need to take any action inside the guest.
+Non-technical users can share files without even knowing what NFS is.
 
+There are too many scenarios where guest administrator action is
+required with NFS over TCP/IP.  We can't tell them "don't do that"
+because it makes this feature unreliable.
 
-> Any thoughts correcting this behavior?
-> or is this behavior expected?
-> 
-Depending on your test, it may be expected behavior but it sounds like
-not if truly you are stuck in FIN_WAIT_2 indefinitely and you've not got
-some permanent firewall rule blocking traffic, etc.
+Today we ask users to set up NFS or CIFS themselves.  In many cases that
+is inconvenient and an easy file sharing feature would be much better.
 
-
-
-> -Thanks,
-> Manjunath
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
+Stefan
