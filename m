@@ -1,122 +1,180 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:33124 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751795AbdIVTVQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Sep 2017 15:21:16 -0400
-Received: by mail-qt0-f196.google.com with SMTP id b1so1299051qtc.0
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Sep 2017 12:21:16 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1506013553.7873.13.camel@redhat.com>
-References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
- <1506013553.7873.13.camel@redhat.com>
-From: Manjunath Patil <mbpatil.linux@gmail.com>
-Date: Fri, 22 Sep 2017 12:21:13 -0700
-Message-ID: <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
-Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS server
-To: David Wysochanski <dwysocha@redhat.com>
-Cc: linux-nfs@vger.kernel.org, manjunath.b.patil@oracle.com
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:53190 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751845AbdIVUPi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Sep 2017 16:15:38 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs/filelayout: pin lseg until dsaddr has been set
+Date: Fri, 22 Sep 2017 16:15:37 -0400
+Message-Id: <20170922201537.15147-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi David,
+We're occasionally seeing the following oops with the filelayout driver:
 
-On Thu, Sep 21, 2017 at 10:05 AM, David Wysochanski <dwysocha@redhat.com> wrote:
-> On Wed, 2017-09-20 at 15:17 -0700, Manjunath Patil wrote:
->> Hi,
->>
->> With autoclose trying to close the connection, after the idle timeout
->> in NFSv3 mounts,
->> a bad NFS server may not send the final FIN, leading the client stay
->> in FIN_WAIT_2 state forever.
->> This is easily reproducible by simulating the bad server behavior. I
->> used 'netstat -an | grep 2049' to observer socket state.
->>
-> How long did you wait and how did you simulate the failure?  I am very
-> interested in your test case.
-I observer this in ct environment. In this case the fin_wait_2 stayed forever.
-ct had to restart the node to get out.
+[ 1967.645207] BUG: unable to handle kernel NULL pointer dereference at 0000000000000030
+[ 1967.646010] IP: [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
+[ 1967.646010] PGD c08bc067 PUD 915d3067 PMD 0
+[ 1967.753036] Oops: 0000 [#1] SMP
+[ 1967.753036] Modules linked in: nfs_layout_nfsv41_files ext4 mbcache jbd2 loop rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache amd64_edac_mod ipmi_ssif edac_mce_amd edac_core kvm_amd sg kvm ipmi_si ipmi_devintf irqbypass pcspkr k8temp ipmi_msghandler i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod crc_t10dif crct10dif_generic crct10dif_common amdkfd amd_iommu_v2 radeon i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops mptsas ttm scsi_transport_sas mptscsih drm mptbase serio_raw i2c_core bnx2 dm_mirror dm_region_hash dm_log dm_mod
+[ 1967.790031] CPU: 2 PID: 1370 Comm: ls Not tainted 3.10.0-709.el7.test.bz1463784.x86_64 #1
+[ 1967.790031] Hardware name: IBM BladeCenter LS21 -[7971AC1]-/Server Blade, BIOS -[BAE155AUS-1.10]- 06/03/2009
+[ 1967.790031] task: ffff8800c42a3f40 ti: ffff8800c4064000 task.ti: ffff8800c4064000
+[ 1967.790031] RIP: 0010:[<ffffffffc06d6aea>]  [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
+[ 1967.790031] RSP: 0000:ffff8800c4067978  EFLAGS: 00010246
+[ 1967.790031] RAX: ffffffffc062f000 RBX: ffff8801d468a540 RCX: dead000000000200
+[ 1967.790031] RDX: ffff8800c40679f8 RSI: ffff8800c4067a0c RDI: 0000000000000000
+[ 1967.790031] RBP: ffff8800c4067980 R08: ffff8801d468a540 R09: 0000000000000000
+[ 1967.790031] R10: 0000000000000000 R11: ffffffffffffffff R12: ffff8801d468a540
+[ 1967.790031] R13: ffff8800c40679f8 R14: ffff8801d5645300 R15: ffff880126f15ff0
+[ 1967.790031] FS:  00007f11053c9800(0000) GS:ffff88012bd00000(0000) knlGS:0000000000000000
+[ 1967.790031] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 1967.790031] CR2: 0000000000000030 CR3: 0000000094b55000 CR4: 00000000000007e0
+[ 1967.790031] Stack:
+[ 1967.790031]  ffff8801d468a540 ffff8800c4067990 ffffffffc062d2fe ffff8800c40679b0
+[ 1967.790031]  ffffffffc062b5b4 ffff8800c40679f8 ffff8801d468a540 ffff8800c40679d8
+[ 1967.790031]  ffffffffc06d39af ffff8800c40679f8 ffff880126f16078 0000000000000001
+[ 1967.790031] Call Trace:
+[ 1967.790031]  [<ffffffffc062d2fe>] nfs4_fl_put_deviceid+0xe/0x10 [nfs_layout_nfsv41_files]
+[ 1967.790031]  [<ffffffffc062b5b4>] filelayout_free_lseg+0x24/0x90 [nfs_layout_nfsv41_files]
+[ 1967.790031]  [<ffffffffc06d39af>] pnfs_free_lseg_list+0x5f/0x80 [nfsv4]
+[ 1967.790031]  [<ffffffffc06d5a67>] _pnfs_return_layout+0x157/0x270 [nfsv4]
+[ 1967.790031]  [<ffffffffc06c17dd>] nfs4_evict_inode+0x4d/0x70 [nfsv4]
+[ 1967.790031]  [<ffffffff8121de19>] evict+0xa9/0x180
+[ 1967.790031]  [<ffffffff8121e729>] iput+0xf9/0x190
+[ 1967.790031]  [<ffffffffc0652cea>] nfs_dentry_iput+0x3a/0x50 [nfs]
+[ 1967.790031]  [<ffffffff8121ab4f>] shrink_dentry_list+0x20f/0x490
+[ 1967.790031]  [<ffffffff8121b018>] d_invalidate+0xd8/0x150
+[ 1967.790031]  [<ffffffffc065446b>] nfs_readdir_page_filler+0x40b/0x600 [nfs]
+[ 1967.790031]  [<ffffffffc0654bbd>] nfs_readdir_xdr_to_array+0x20d/0x3b0 [nfs]
+[ 1967.790031]  [<ffffffff811f3482>] ? __mem_cgroup_commit_charge+0xe2/0x2f0
+[ 1967.790031]  [<ffffffff81183208>] ? __add_to_page_cache_locked+0x48/0x170
+[ 1967.790031]  [<ffffffffc0654d60>] ? nfs_readdir_xdr_to_array+0x3b0/0x3b0 [nfs]
+[ 1967.790031]  [<ffffffffc0654d82>] nfs_readdir_filler+0x22/0x90 [nfs]
+[ 1967.790031]  [<ffffffff8118351f>] do_read_cache_page+0x7f/0x190
+[ 1967.790031]  [<ffffffff81215d30>] ? fillonedir+0xe0/0xe0
+[ 1967.790031]  [<ffffffff8118366c>] read_cache_page+0x1c/0x30
+[ 1967.790031]  [<ffffffffc0654f9b>] nfs_readdir+0x1ab/0x6b0 [nfs]
+[ 1967.790031]  [<ffffffffc06bd1c0>] ? nfs4_xdr_dec_layoutget+0x270/0x270 [nfsv4]
+[ 1967.790031]  [<ffffffff81215d30>] ? fillonedir+0xe0/0xe0
+[ 1967.790031]  [<ffffffff81215c20>] vfs_readdir+0xb0/0xe0
+[ 1967.790031]  [<ffffffff81216045>] SyS_getdents+0x95/0x120
+[ 1967.790031]  [<ffffffff816b9449>] system_call_fastpath+0x16/0x1b
+[ 1967.790031] Code: 90 31 d2 48 89 d0 5d c3 85 f6 74 f5 8d 4e 01 89 f0 f0 0f b1 0f 39 f0 74 e2 89 c6 eb eb 0f 1f 40 00 66 66 66 66 90 55 48 89 e5 53 <48> 8b 47 30 48 89 fb a8 04 74 3b 8b 57 60 83 fa 02 74 19 8d 4a
+[ 1967.790031] RIP  [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
+[ 1967.790031]  RSP <ffff8800c4067978>
+[ 1967.790031] CR2: 0000000000000030
 
-We tried to simulate this behavior in Linux nfs server by stopping the
-incoming FIN
-for 2049 port inside kernel. This prevented the server from sending
-the final FIN for some time.
+Since a filelayout segment is initially inserted with a NULL dsaddr, it
+looks like there's a window where filelayout_free_lseg() (e.g. via
+nfs4_evict_inode() called by another process) can be called which will
+trigger an oops in nfs4_put_deviceid_node() when it tries to access the
+nfs4_deviceid_node->flags.  Take an extra reference on the layout
+segment to prevent that, and check for a NULL dsaddr in
+filelayout_free_lseg().
 
-The linux server eventually sent a FIN after some delay. Though I am
-not sure, I think this is due to
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/filelayout/filelayout.c | 18 +++++++++++++++++-
+ fs/nfs/pnfs.c                  |  6 ++++--
+ fs/nfs/pnfs.h                  |  4 ++++
+ 3 files changed, 25 insertions(+), 3 deletions(-)
 
-/* apparently the "standard" is that clients close
- * idle connections after 5 minutes, servers after
- * 6 minutes
- *   http://www.connectathon.org/talks96/nfstcp.pdf
- */
-static int svc_conn_age_period = 6*60;
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 44c638b..92d5357 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -579,6 +579,9 @@ filelayout_check_deviceid(struct pnfs_layout_hdr *lo,
+ 	 */
+ 	if (cmpxchg(&fl->dsaddr, NULL, dsaddr) != NULL)
+ 		goto out_put;
++	else
++		/* Matched by pnfs_get_lseg in filelayout_add_lseg */
++		pnfs_put_lseg(&fl->generic_hdr);
+ out:
+ 	return status;
+ out_put:
+@@ -645,6 +648,17 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
+ 	kfree(fl);
+ }
+ 
++static void
++filelayout_add_lseg(struct pnfs_layout_hdr *lo,
++		struct pnfs_layout_segment *lseg,
++		struct list_head *free_me)
++{
++	/* Matched by pnfs_put_lseg in filelayout_check_deviceid */
++	pnfs_get_lseg(lseg);
++	pnfs_generic_layout_insert_lseg(lo, lseg, pnfs_lseg_range_is_after,
++			pnfs_lseg_no_merge, free_me);
++}
++
+ static int
+ filelayout_decode_layout(struct pnfs_layout_hdr *flo,
+ 			 struct nfs4_filelayout_segment *fl,
+@@ -745,7 +759,8 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+ 
+ 	dprintk("--> %s\n", __func__);
+-	nfs4_fl_put_deviceid(fl->dsaddr);
++	if (fl->dsaddr != NULL)
++		nfs4_fl_put_deviceid(fl->dsaddr);
+ 	/* This assumes a single RW lseg */
+ 	if (lseg->pls_range.iomode == IOMODE_RW) {
+ 		struct nfs4_filelayout *flo;
+@@ -1169,6 +1184,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
+ 	.free_layout_hdr	= filelayout_free_layout_hdr,
+ 	.alloc_lseg		= filelayout_alloc_lseg,
+ 	.free_lseg		= filelayout_free_lseg,
++	.add_lseg		= filelayout_add_lseg,
+ 	.pg_read_ops		= &filelayout_pg_read_ops,
+ 	.pg_write_ops		= &filelayout_pg_write_ops,
+ 	.get_ds_info		= &filelayout_get_ds_info,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3bcd669..cfed429 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1366,19 +1366,21 @@ pnfs_lseg_range_cmp(const struct pnfs_layout_range *l1,
+ 	return (int)(l1->iomode == IOMODE_READ) - (int)(l2->iomode == IOMODE_READ);
+ }
+ 
+-static bool
++bool
+ pnfs_lseg_range_is_after(const struct pnfs_layout_range *l1,
+ 		const struct pnfs_layout_range *l2)
+ {
+ 	return pnfs_lseg_range_cmp(l1, l2) > 0;
+ }
++EXPORT_SYMBOL_GPL(pnfs_lseg_range_is_after);
+ 
+-static bool
++bool
+ pnfs_lseg_no_merge(struct pnfs_layout_segment *lseg,
+ 		struct pnfs_layout_segment *old)
+ {
+ 	return false;
+ }
++EXPORT_SYMBOL_GPL(pnfs_lseg_no_merge);
+ 
+ void
+ pnfs_generic_layout_insert_lseg(struct pnfs_layout_hdr *lo,
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 87f144f..d571929 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -295,6 +295,10 @@ void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
+ 		const struct pnfs_layout_range *range,
+ 		const nfs4_stateid *stateid);
+ 
++bool pnfs_lseg_range_is_after(const struct pnfs_layout_range *l1,
++		const struct pnfs_layout_range *l2);
++bool pnfs_lseg_no_merge(struct pnfs_layout_segment *lseg,
++		struct pnfs_layout_segment *old);
+ void pnfs_generic_layout_insert_lseg(struct pnfs_layout_hdr *lo,
+ 		   struct pnfs_layout_segment *lseg,
+ 		   bool (*is_after)(const struct pnfs_layout_range *lseg_range,
+-- 
+2.9.5
 
->
-> I am not sure which kernels you are testing but in my tests (simulating
-> a dropped FIN from the NFS server but not blocking the ACK or further
-> packets) I've seen that the sunrpc TCP keepalive commit
-> 7f260e8575bf53b93b77978c1e39f8e67612759c caused a RST to happen after
-> around 4 minutes so it won't get stuck forever.  The only way I could
-> get a FIN_WAIT_2 indefinite hang was to block all traffic from the
-> server port which arguably, if that happens you'll get a hang but only a
-> bit later so I concluded such a test seems invalid.
-I have observed this behavior with OL6 and upsteam 4.14-rc1 kernel.
-I do not see tcp-keepalive causing a RST, rather the FIN_WAIT_2 state
-stays till it gets
-the final FIN from server.
->
->
->> This is will also stall the other RPC requests from connecting and
->> proceeding as XPRT_CLOSING flag is already set.
->>
->> This can be observed in the 4.14-rc1 as well.
->> This behavior is introduced with the following commit -
->> caf4ccd SUNRPC: Make xs_tcp_close() do a socket shutdown rather than a
->> sock_release
->>
->> Once we reverse this commit, the FIN_WAIT_2 state lasts only for 60 seconds.
->>
->
-> Interesting maybe the problem is back on some upstream kernels (I mostly
-> test RHEL6, RHEL7, and some fedora).  Do you know what is actually
-> firing to get the TCP connection out of FIN_WAIT_2?  Have you tried to
-> trace this?
-I think this is because, caf4ccd introduces the half close behavior to
-xprt_autoclose()
-In this case, its expected to wait for final FIN from server. However
-if a bad server
-chose to not send the final FIN, I think we do not have a  backup plan
-on client side.
-
-In the earlier behavior of full close, the tcp clears the FIN_WAIT_2
-state after /proc/sys/net/ipv4/tcp_fin_timeout
-which is 60 seconds.
-
->
-> I first saw FIN_WAIT_2 hangs after commit
-> 9cbc94fb06f98de0e8d393eaff09c790f4c3ba46 which removed
-> xs_tcp_scheduler_linger_timeout was backported to RHEL6.  Later we added
-> the TCP keepalive commit which seems to have resolved these hangs as far
-> as I know.
->
->
->> Any thoughts correcting this behavior?
->> or is this behavior expected?
->>
-> Depending on your test, it may be expected behavior but it sounds like
-> not if truly you are stuck in FIN_WAIT_2 indefinitely and you've not got
-> some permanent firewall rule blocking traffic, etc.
->
->
->
->> -Thanks,
->> Manjunath
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
--Thanks,
-Manjunath
