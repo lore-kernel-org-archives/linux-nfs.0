@@ -1,180 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53190 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52326 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751845AbdIVUPi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Sep 2017 16:15:38 -0400
+        id S1751845AbdIVUPy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Sep 2017 16:15:54 -0400
 From: Scott Mayhew <smayhew@redhat.com>
 To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs/filelayout: pin lseg until dsaddr has been set
-Date: Fri, 22 Sep 2017 16:15:37 -0400
-Message-Id: <20170922201537.15147-1-smayhew@redhat.com>
+Subject: [PATCH] nfs: override uid and gid for exclusive creates in nfs3_proc_create
+Date: Fri, 22 Sep 2017 16:15:51 -0400
+Message-Id: <20170922201551.15222-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We're occasionally seeing the following oops with the filelayout driver:
+RFC 1813 section 3.3.8 states
 
-[ 1967.645207] BUG: unable to handle kernel NULL pointer dereference at 0000000000000030
-[ 1967.646010] IP: [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
-[ 1967.646010] PGD c08bc067 PUD 915d3067 PMD 0
-[ 1967.753036] Oops: 0000 [#1] SMP
-[ 1967.753036] Modules linked in: nfs_layout_nfsv41_files ext4 mbcache jbd2 loop rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache amd64_edac_mod ipmi_ssif edac_mce_amd edac_core kvm_amd sg kvm ipmi_si ipmi_devintf irqbypass pcspkr k8temp ipmi_msghandler i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod crc_t10dif crct10dif_generic crct10dif_common amdkfd amd_iommu_v2 radeon i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops mptsas ttm scsi_transport_sas mptscsih drm mptbase serio_raw i2c_core bnx2 dm_mirror dm_region_hash dm_log dm_mod
-[ 1967.790031] CPU: 2 PID: 1370 Comm: ls Not tainted 3.10.0-709.el7.test.bz1463784.x86_64 #1
-[ 1967.790031] Hardware name: IBM BladeCenter LS21 -[7971AC1]-/Server Blade, BIOS -[BAE155AUS-1.10]- 06/03/2009
-[ 1967.790031] task: ffff8800c42a3f40 ti: ffff8800c4064000 task.ti: ffff8800c4064000
-[ 1967.790031] RIP: 0010:[<ffffffffc06d6aea>]  [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
-[ 1967.790031] RSP: 0000:ffff8800c4067978  EFLAGS: 00010246
-[ 1967.790031] RAX: ffffffffc062f000 RBX: ffff8801d468a540 RCX: dead000000000200
-[ 1967.790031] RDX: ffff8800c40679f8 RSI: ffff8800c4067a0c RDI: 0000000000000000
-[ 1967.790031] RBP: ffff8800c4067980 R08: ffff8801d468a540 R09: 0000000000000000
-[ 1967.790031] R10: 0000000000000000 R11: ffffffffffffffff R12: ffff8801d468a540
-[ 1967.790031] R13: ffff8800c40679f8 R14: ffff8801d5645300 R15: ffff880126f15ff0
-[ 1967.790031] FS:  00007f11053c9800(0000) GS:ffff88012bd00000(0000) knlGS:0000000000000000
-[ 1967.790031] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 1967.790031] CR2: 0000000000000030 CR3: 0000000094b55000 CR4: 00000000000007e0
-[ 1967.790031] Stack:
-[ 1967.790031]  ffff8801d468a540 ffff8800c4067990 ffffffffc062d2fe ffff8800c40679b0
-[ 1967.790031]  ffffffffc062b5b4 ffff8800c40679f8 ffff8801d468a540 ffff8800c40679d8
-[ 1967.790031]  ffffffffc06d39af ffff8800c40679f8 ffff880126f16078 0000000000000001
-[ 1967.790031] Call Trace:
-[ 1967.790031]  [<ffffffffc062d2fe>] nfs4_fl_put_deviceid+0xe/0x10 [nfs_layout_nfsv41_files]
-[ 1967.790031]  [<ffffffffc062b5b4>] filelayout_free_lseg+0x24/0x90 [nfs_layout_nfsv41_files]
-[ 1967.790031]  [<ffffffffc06d39af>] pnfs_free_lseg_list+0x5f/0x80 [nfsv4]
-[ 1967.790031]  [<ffffffffc06d5a67>] _pnfs_return_layout+0x157/0x270 [nfsv4]
-[ 1967.790031]  [<ffffffffc06c17dd>] nfs4_evict_inode+0x4d/0x70 [nfsv4]
-[ 1967.790031]  [<ffffffff8121de19>] evict+0xa9/0x180
-[ 1967.790031]  [<ffffffff8121e729>] iput+0xf9/0x190
-[ 1967.790031]  [<ffffffffc0652cea>] nfs_dentry_iput+0x3a/0x50 [nfs]
-[ 1967.790031]  [<ffffffff8121ab4f>] shrink_dentry_list+0x20f/0x490
-[ 1967.790031]  [<ffffffff8121b018>] d_invalidate+0xd8/0x150
-[ 1967.790031]  [<ffffffffc065446b>] nfs_readdir_page_filler+0x40b/0x600 [nfs]
-[ 1967.790031]  [<ffffffffc0654bbd>] nfs_readdir_xdr_to_array+0x20d/0x3b0 [nfs]
-[ 1967.790031]  [<ffffffff811f3482>] ? __mem_cgroup_commit_charge+0xe2/0x2f0
-[ 1967.790031]  [<ffffffff81183208>] ? __add_to_page_cache_locked+0x48/0x170
-[ 1967.790031]  [<ffffffffc0654d60>] ? nfs_readdir_xdr_to_array+0x3b0/0x3b0 [nfs]
-[ 1967.790031]  [<ffffffffc0654d82>] nfs_readdir_filler+0x22/0x90 [nfs]
-[ 1967.790031]  [<ffffffff8118351f>] do_read_cache_page+0x7f/0x190
-[ 1967.790031]  [<ffffffff81215d30>] ? fillonedir+0xe0/0xe0
-[ 1967.790031]  [<ffffffff8118366c>] read_cache_page+0x1c/0x30
-[ 1967.790031]  [<ffffffffc0654f9b>] nfs_readdir+0x1ab/0x6b0 [nfs]
-[ 1967.790031]  [<ffffffffc06bd1c0>] ? nfs4_xdr_dec_layoutget+0x270/0x270 [nfsv4]
-[ 1967.790031]  [<ffffffff81215d30>] ? fillonedir+0xe0/0xe0
-[ 1967.790031]  [<ffffffff81215c20>] vfs_readdir+0xb0/0xe0
-[ 1967.790031]  [<ffffffff81216045>] SyS_getdents+0x95/0x120
-[ 1967.790031]  [<ffffffff816b9449>] system_call_fastpath+0x16/0x1b
-[ 1967.790031] Code: 90 31 d2 48 89 d0 5d c3 85 f6 74 f5 8d 4e 01 89 f0 f0 0f b1 0f 39 f0 74 e2 89 c6 eb eb 0f 1f 40 00 66 66 66 66 90 55 48 89 e5 53 <48> 8b 47 30 48 89 fb a8 04 74 3b 8b 57 60 83 fa 02 74 19 8d 4a
-[ 1967.790031] RIP  [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
-[ 1967.790031]  RSP <ffff8800c4067978>
-[ 1967.790031] CR2: 0000000000000030
+      Once the client has performed a successful exclusive
+      create, it must issue a SETATTR to set the correct file
+      attributes.  Until it does so, it should not rely upon any
+      of the file attributes, since the server implementation
+      may need to overload file metadata to store the verifier.
 
-Since a filelayout segment is initially inserted with a NULL dsaddr, it
-looks like there's a window where filelayout_free_lseg() (e.g. via
-nfs4_evict_inode() called by another process) can be called which will
-trigger an oops in nfs4_put_deviceid_node() when it tries to access the
-nfs4_deviceid_node->flags.  Take an extra reference on the layout
-segment to prevent that, and check for a NULL dsaddr in
-filelayout_free_lseg().
+HP-UX expects the client to send the uid and gid in the post-create
+setattr for exclusive creates.  Customers are sometimes seeing bogus
+values because the Linux NFS client is only updating the atime and
+mtime.
 
 Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfs/filelayout/filelayout.c | 18 +++++++++++++++++-
- fs/nfs/pnfs.c                  |  6 ++++--
- fs/nfs/pnfs.h                  |  4 ++++
- 3 files changed, 25 insertions(+), 3 deletions(-)
+ fs/nfs/nfs3proc.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 44c638b..92d5357 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -579,6 +579,9 @@ filelayout_check_deviceid(struct pnfs_layout_hdr *lo,
- 	 */
- 	if (cmpxchg(&fl->dsaddr, NULL, dsaddr) != NULL)
- 		goto out_put;
-+	else
-+		/* Matched by pnfs_get_lseg in filelayout_add_lseg */
-+		pnfs_put_lseg(&fl->generic_hdr);
- out:
- 	return status;
- out_put:
-@@ -645,6 +648,17 @@ static void _filelayout_free_lseg(struct nfs4_filelayout_segment *fl)
- 	kfree(fl);
- }
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index d1e87ec..4d77d2d 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -370,6 +370,13 @@ nfs3_proc_create(struct inode *dir, struct dentry *dentry, struct iattr *sattr,
+ 	if (data->arg.create.createmode == NFS3_CREATE_EXCLUSIVE) {
+ 		dprintk("NFS call  setattr (post-create)\n");
  
-+static void
-+filelayout_add_lseg(struct pnfs_layout_hdr *lo,
-+		struct pnfs_layout_segment *lseg,
-+		struct list_head *free_me)
-+{
-+	/* Matched by pnfs_put_lseg in filelayout_check_deviceid */
-+	pnfs_get_lseg(lseg);
-+	pnfs_generic_layout_insert_lseg(lo, lseg, pnfs_lseg_range_is_after,
-+			pnfs_lseg_no_merge, free_me);
-+}
-+
- static int
- filelayout_decode_layout(struct pnfs_layout_hdr *flo,
- 			 struct nfs4_filelayout_segment *fl,
-@@ -745,7 +759,8 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
- 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
- 
- 	dprintk("--> %s\n", __func__);
--	nfs4_fl_put_deviceid(fl->dsaddr);
-+	if (fl->dsaddr != NULL)
-+		nfs4_fl_put_deviceid(fl->dsaddr);
- 	/* This assumes a single RW lseg */
- 	if (lseg->pls_range.iomode == IOMODE_RW) {
- 		struct nfs4_filelayout *flo;
-@@ -1169,6 +1184,7 @@ static struct pnfs_layoutdriver_type filelayout_type = {
- 	.free_layout_hdr	= filelayout_free_layout_hdr,
- 	.alloc_lseg		= filelayout_alloc_lseg,
- 	.free_lseg		= filelayout_free_lseg,
-+	.add_lseg		= filelayout_add_lseg,
- 	.pg_read_ops		= &filelayout_pg_read_ops,
- 	.pg_write_ops		= &filelayout_pg_write_ops,
- 	.get_ds_info		= &filelayout_get_ds_info,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3bcd669..cfed429 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1366,19 +1366,21 @@ pnfs_lseg_range_cmp(const struct pnfs_layout_range *l1,
- 	return (int)(l1->iomode == IOMODE_READ) - (int)(l2->iomode == IOMODE_READ);
- }
- 
--static bool
-+bool
- pnfs_lseg_range_is_after(const struct pnfs_layout_range *l1,
- 		const struct pnfs_layout_range *l2)
- {
- 	return pnfs_lseg_range_cmp(l1, l2) > 0;
- }
-+EXPORT_SYMBOL_GPL(pnfs_lseg_range_is_after);
- 
--static bool
-+bool
- pnfs_lseg_no_merge(struct pnfs_layout_segment *lseg,
- 		struct pnfs_layout_segment *old)
- {
- 	return false;
- }
-+EXPORT_SYMBOL_GPL(pnfs_lseg_no_merge);
- 
- void
- pnfs_generic_layout_insert_lseg(struct pnfs_layout_hdr *lo,
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 87f144f..d571929 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -295,6 +295,10 @@ void pnfs_layoutreturn_free_lsegs(struct pnfs_layout_hdr *lo,
- 		const struct pnfs_layout_range *range,
- 		const nfs4_stateid *stateid);
- 
-+bool pnfs_lseg_range_is_after(const struct pnfs_layout_range *l1,
-+		const struct pnfs_layout_range *l2);
-+bool pnfs_lseg_no_merge(struct pnfs_layout_segment *lseg,
-+		struct pnfs_layout_segment *old);
- void pnfs_generic_layout_insert_lseg(struct pnfs_layout_hdr *lo,
- 		   struct pnfs_layout_segment *lseg,
- 		   bool (*is_after)(const struct pnfs_layout_range *lseg_range,
++		sattr->ia_uid = current_fsuid();
++		sattr->ia_valid |= ATTR_UID;
++		if (dir->i_mode & S_ISGID)
++			sattr->ia_gid = dir->i_gid;
++		else
++			sattr->ia_gid = current_fsgid();
++		sattr->ia_valid |= ATTR_GID;
+ 		if (!(sattr->ia_valid & ATTR_ATIME_SET))
+ 			sattr->ia_valid |= ATTR_ATIME;
+ 		if (!(sattr->ia_valid & ATTR_MTIME_SET))
 -- 
 2.9.5
 
