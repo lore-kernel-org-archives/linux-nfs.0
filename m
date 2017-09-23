@@ -1,119 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:21009 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752094AbdIVVfy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Sep 2017 17:35:54 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs/filelayout: pin lseg until dsaddr has been set
-Date: Fri, 22 Sep 2017 21:35:50 +0000
-Message-ID: <1506116148.2557.15.camel@primarydata.com>
-References: <20170922201537.15147-1-smayhew@redhat.com>
-In-Reply-To: <20170922201537.15147-1-smayhew@redhat.com>
+Received: from mail.kalahimbra.net ([138.201.151.60]:53724 "EHLO
+        mail.kalahimbra.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750839AbdIWWGe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Sep 2017 18:06:34 -0400
+Received: from [192.168.178.46] (p5DC77C94.dip0.t-ipconnect.de [93.199.124.148])
+        by mail.kalahimbra.net (Postfix) with ESMTPSA id 1FE3820237
+        for <linux-nfs@vger.kernel.org>; Sat, 23 Sep 2017 23:59:37 +0200 (CEST)
+From: =?UTF-8?B?QXJtaW4gR3LDtsOfbGluZ2Vy?=
+        <armin.groesslinger@uni-passau.de>
+Subject: NFS client hangs with NFSv4 and Kerberos
+To: linux-nfs@vger.kernel.org
+Message-ID: <d913624b-098c-a205-9c08-457a5341de42@uni-passau.de>
+Date: Sun, 24 Sep 2017 00:00:22 +0200
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTA5LTIyIGF0IDE2OjE1IC0wNDAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IFdlJ3JlIG9jY2FzaW9uYWxseSBzZWVpbmcgdGhlIGZvbGxvd2luZyBvb3BzIHdpdGggdGhlIGZp
-bGVsYXlvdXQNCj4gZHJpdmVyOg0KPiANCj4gWyAxOTY3LjY0NTIwN10gQlVHOiB1bmFibGUgdG8g
-aGFuZGxlIGtlcm5lbCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UNCj4gYXQgMDAwMDAwMDAwMDAw
-MDAzMA0KPiBbIDE5NjcuNjQ2MDEwXSBJUDogWzxmZmZmZmZmZmMwNmQ2YWVhPl0NCj4gbmZzNF9w
-dXRfZGV2aWNlaWRfbm9kZSsweGEvMHg5MCBbbmZzdjRdDQo+IFsgMTk2Ny42NDYwMTBdIFBHRCBj
-MDhiYzA2NyBQVUQgOTE1ZDMwNjcgUE1EIDANCj4gWyAxOTY3Ljc1MzAzNl0gT29wczogMDAwMCBb
-IzFdIFNNUA0KPiBbIDE5NjcuNzUzMDM2XSBNb2R1bGVzIGxpbmtlZCBpbjogbmZzX2xheW91dF9u
-ZnN2NDFfZmlsZXMgZXh0NA0KPiBtYmNhY2hlIGpiZDIgbG9vcCBycGNzZWNfZ3NzX2tyYjUgbmZz
-djQgZG5zX3Jlc29sdmVyIG5mcyBmc2NhY2hlDQo+IGFtZDY0X2VkYWNfbW9kIGlwbWlfc3NpZiBl
-ZGFjX21jZV9hbWQgZWRhY19jb3JlIGt2bV9hbWQgc2cga3ZtDQo+IGlwbWlfc2kgaXBtaV9kZXZp
-bnRmIGlycWJ5cGFzcyBwY3Nwa3Igazh0ZW1wIGlwbWlfbXNnaGFuZGxlcg0KPiBpMmNfcGlpeDQg
-c2hwY2hwIG5mc2QgYXV0aF9ycGNnc3MgbmZzX2FjbCBsb2NrZCBncmFjZSBzdW5ycGMNCj4gaXBf
-dGFibGVzIHhmcyBsaWJjcmMzMmMgc2RfbW9kIGNyY190MTBkaWYgY3JjdDEwZGlmX2dlbmVyaWMN
-Cj4gY3JjdDEwZGlmX2NvbW1vbiBhbWRrZmQgYW1kX2lvbW11X3YyIHJhZGVvbiBpMmNfYWxnb19i
-aXQNCj4gZHJtX2ttc19oZWxwZXIgc3lzY29weWFyZWEgc3lzZmlsbHJlY3Qgc3lzaW1nYmx0IGZi
-X3N5c19mb3BzIG1wdHNhcw0KPiB0dG0gc2NzaV90cmFuc3BvcnRfc2FzIG1wdHNjc2loIGRybSBt
-cHRiYXNlIHNlcmlvX3JhdyBpMmNfY29yZSBibngyDQo+IGRtX21pcnJvciBkbV9yZWdpb25faGFz
-aCBkbV9sb2cgZG1fbW9kDQo+IFsgMTk2Ny43OTAwMzFdIENQVTogMiBQSUQ6IDEzNzAgQ29tbTog
-bHMgTm90IHRhaW50ZWQgMy4xMC4wLQ0KPiA3MDkuZWw3LnRlc3QuYnoxNDYzNzg0Lng4Nl82NCAj
-MQ0KPiBbIDE5NjcuNzkwMDMxXSBIYXJkd2FyZSBuYW1lOiBJQk0gQmxhZGVDZW50ZXIgTFMyMSAt
-Wzc5NzFBQzFdLS9TZXJ2ZXIgDQo+IEJsYWRlLCBCSU9TIC1bQkFFMTU1QVVTLTEuMTBdLSAwNi8w
-My8yMDA5DQo+IFsgMTk2Ny43OTAwMzFdIHRhc2s6IGZmZmY4ODAwYzQyYTNmNDAgdGk6IGZmZmY4
-ODAwYzQwNjQwMDAgdGFzay50aToNCj4gZmZmZjg4MDBjNDA2NDAwMA0KPiBbIDE5NjcuNzkwMDMx
-XSBSSVA6IDAwMTA6WzxmZmZmZmZmZmMwNmQ2YWVhPl0gIFs8ZmZmZmZmZmZjMDZkNmFlYT5dDQo+
-IG5mczRfcHV0X2RldmljZWlkX25vZGUrMHhhLzB4OTAgW25mc3Y0XQ0KPiBbIDE5NjcuNzkwMDMx
-XSBSU1A6IDAwMDA6ZmZmZjg4MDBjNDA2Nzk3OCAgRUZMQUdTOiAwMDAxMDI0Ng0KPiBbIDE5Njcu
-NzkwMDMxXSBSQVg6IGZmZmZmZmZmYzA2MmYwMDAgUkJYOiBmZmZmODgwMWQ0NjhhNTQwIFJDWDoN
-Cj4gZGVhZDAwMDAwMDAwMDIwMA0KPiBbIDE5NjcuNzkwMDMxXSBSRFg6IGZmZmY4ODAwYzQwNjc5
-ZjggUlNJOiBmZmZmODgwMGM0MDY3YTBjIFJESToNCj4gMDAwMDAwMDAwMDAwMDAwMA0KPiBbIDE5
-NjcuNzkwMDMxXSBSQlA6IGZmZmY4ODAwYzQwNjc5ODAgUjA4OiBmZmZmODgwMWQ0NjhhNTQwIFIw
-OToNCj4gMDAwMDAwMDAwMDAwMDAwMA0KPiBbIDE5NjcuNzkwMDMxXSBSMTA6IDAwMDAwMDAwMDAw
-MDAwMDAgUjExOiBmZmZmZmZmZmZmZmZmZmZmIFIxMjoNCj4gZmZmZjg4MDFkNDY4YTU0MA0KPiBb
-IDE5NjcuNzkwMDMxXSBSMTM6IGZmZmY4ODAwYzQwNjc5ZjggUjE0OiBmZmZmODgwMWQ1NjQ1MzAw
-IFIxNToNCj4gZmZmZjg4MDEyNmYxNWZmMA0KPiBbIDE5NjcuNzkwMDMxXSBGUzogIDAwMDA3ZjEx
-MDUzYzk4MDAoMDAwMCkgR1M6ZmZmZjg4MDEyYmQwMDAwMCgwMDAwKQ0KPiBrbmxHUzowMDAwMDAw
-MDAwMDAwMDAwDQo+IFsgMTk2Ny43OTAwMzFdIENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAwMCBD
-UjA6IDAwMDAwMDAwODAwNTAwM2INCj4gWyAxOTY3Ljc5MDAzMV0gQ1IyOiAwMDAwMDAwMDAwMDAw
-MDMwIENSMzogMDAwMDAwMDA5NGI1NTAwMCBDUjQ6DQo+IDAwMDAwMDAwMDAwMDA3ZTANCj4gWyAx
-OTY3Ljc5MDAzMV0gU3RhY2s6DQo+IFsgMTk2Ny43OTAwMzFdICBmZmZmODgwMWQ0NjhhNTQwIGZm
-ZmY4ODAwYzQwNjc5OTAgZmZmZmZmZmZjMDYyZDJmZQ0KPiBmZmZmODgwMGM0MDY3OWIwDQo+IFsg
-MTk2Ny43OTAwMzFdICBmZmZmZmZmZmMwNjJiNWI0IGZmZmY4ODAwYzQwNjc5ZjggZmZmZjg4MDFk
-NDY4YTU0MA0KPiBmZmZmODgwMGM0MDY3OWQ4DQo+IFsgMTk2Ny43OTAwMzFdICBmZmZmZmZmZmMw
-NmQzOWFmIGZmZmY4ODAwYzQwNjc5ZjggZmZmZjg4MDEyNmYxNjA3OA0KPiAwMDAwMDAwMDAwMDAw
-MDAxDQo+IFsgMTk2Ny43OTAwMzFdIENhbGwgVHJhY2U6DQo+IFsgMTk2Ny43OTAwMzFdICBbPGZm
-ZmZmZmZmYzA2MmQyZmU+XSBuZnM0X2ZsX3B1dF9kZXZpY2VpZCsweGUvMHgxMA0KPiBbbmZzX2xh
-eW91dF9uZnN2NDFfZmlsZXNdDQo+IFsgMTk2Ny43OTAwMzFdICBbPGZmZmZmZmZmYzA2MmI1YjQ+
-XSBmaWxlbGF5b3V0X2ZyZWVfbHNlZysweDI0LzB4OTANCj4gW25mc19sYXlvdXRfbmZzdjQxX2Zp
-bGVzXQ0KPiBbIDE5NjcuNzkwMDMxXSAgWzxmZmZmZmZmZmMwNmQzOWFmPl0gcG5mc19mcmVlX2xz
-ZWdfbGlzdCsweDVmLzB4ODANCj4gW25mc3Y0XQ0KPiBbIDE5NjcuNzkwMDMxXSAgWzxmZmZmZmZm
-ZmMwNmQ1YTY3Pl0gX3BuZnNfcmV0dXJuX2xheW91dCsweDE1Ny8weDI3MA0KPiBbbmZzdjRdDQo+
-IFsgMTk2Ny43OTAwMzFdICBbPGZmZmZmZmZmYzA2YzE3ZGQ+XSBuZnM0X2V2aWN0X2lub2RlKzB4
-NGQvMHg3MA0KPiBbbmZzdjRdDQo+IFsgMTk2Ny43OTAwMzFdICBbPGZmZmZmZmZmODEyMWRlMTk+
-XSBldmljdCsweGE5LzB4MTgwDQo+IFsgMTk2Ny43OTAwMzFdICBbPGZmZmZmZmZmODEyMWU3Mjk+
-XSBpcHV0KzB4ZjkvMHgxOTANCj4gWyAxOTY3Ljc5MDAzMV0gIFs8ZmZmZmZmZmZjMDY1MmNlYT5d
-IG5mc19kZW50cnlfaXB1dCsweDNhLzB4NTAgW25mc10NCj4gWyAxOTY3Ljc5MDAzMV0gIFs8ZmZm
-ZmZmZmY4MTIxYWI0Zj5dIHNocmlua19kZW50cnlfbGlzdCsweDIwZi8weDQ5MA0KPiBbIDE5Njcu
-NzkwMDMxXSAgWzxmZmZmZmZmZjgxMjFiMDE4Pl0gZF9pbnZhbGlkYXRlKzB4ZDgvMHgxNTANCj4g
-WyAxOTY3Ljc5MDAzMV0gIFs8ZmZmZmZmZmZjMDY1NDQ2Yj5dDQo+IG5mc19yZWFkZGlyX3BhZ2Vf
-ZmlsbGVyKzB4NDBiLzB4NjAwIFtuZnNdDQo+IFsgMTk2Ny43OTAwMzFdICBbPGZmZmZmZmZmYzA2
-NTRiYmQ+XQ0KPiBuZnNfcmVhZGRpcl94ZHJfdG9fYXJyYXkrMHgyMGQvMHgzYjAgW25mc10NCj4g
-WyAxOTY3Ljc5MDAzMV0gIFs8ZmZmZmZmZmY4MTFmMzQ4Mj5dID8NCj4gX19tZW1fY2dyb3VwX2Nv
-bW1pdF9jaGFyZ2UrMHhlMi8weDJmMA0KPiBbIDE5NjcuNzkwMDMxXSAgWzxmZmZmZmZmZjgxMTgz
-MjA4Pl0gPw0KPiBfX2FkZF90b19wYWdlX2NhY2hlX2xvY2tlZCsweDQ4LzB4MTcwDQo+IFsgMTk2
-Ny43OTAwMzFdICBbPGZmZmZmZmZmYzA2NTRkNjA+XSA/DQo+IG5mc19yZWFkZGlyX3hkcl90b19h
-cnJheSsweDNiMC8weDNiMCBbbmZzXQ0KPiBbIDE5NjcuNzkwMDMxXSAgWzxmZmZmZmZmZmMwNjU0
-ZDgyPl0gbmZzX3JlYWRkaXJfZmlsbGVyKzB4MjIvMHg5MA0KPiBbbmZzXQ0KPiBbIDE5NjcuNzkw
-MDMxXSAgWzxmZmZmZmZmZjgxMTgzNTFmPl0gZG9fcmVhZF9jYWNoZV9wYWdlKzB4N2YvMHgxOTAN
-Cj4gWyAxOTY3Ljc5MDAzMV0gIFs8ZmZmZmZmZmY4MTIxNWQzMD5dID8gZmlsbG9uZWRpcisweGUw
-LzB4ZTANCj4gWyAxOTY3Ljc5MDAzMV0gIFs8ZmZmZmZmZmY4MTE4MzY2Yz5dIHJlYWRfY2FjaGVf
-cGFnZSsweDFjLzB4MzANCj4gWyAxOTY3Ljc5MDAzMV0gIFs8ZmZmZmZmZmZjMDY1NGY5Yj5dIG5m
-c19yZWFkZGlyKzB4MWFiLzB4NmIwIFtuZnNdDQo+IFsgMTk2Ny43OTAwMzFdICBbPGZmZmZmZmZm
-YzA2YmQxYzA+XSA/DQo+IG5mczRfeGRyX2RlY19sYXlvdXRnZXQrMHgyNzAvMHgyNzAgW25mc3Y0
-XQ0KPiBbIDE5NjcuNzkwMDMxXSAgWzxmZmZmZmZmZjgxMjE1ZDMwPl0gPyBmaWxsb25lZGlyKzB4
-ZTAvMHhlMA0KPiBbIDE5NjcuNzkwMDMxXSAgWzxmZmZmZmZmZjgxMjE1YzIwPl0gdmZzX3JlYWRk
-aXIrMHhiMC8weGUwDQo+IFsgMTk2Ny43OTAwMzFdICBbPGZmZmZmZmZmODEyMTYwNDU+XSBTeVNf
-Z2V0ZGVudHMrMHg5NS8weDEyMA0KPiBbIDE5NjcuNzkwMDMxXSAgWzxmZmZmZmZmZjgxNmI5NDQ5
-Pl0gc3lzdGVtX2NhbGxfZmFzdHBhdGgrMHgxNi8weDFiDQo+IFsgMTk2Ny43OTAwMzFdIENvZGU6
-IDkwIDMxIGQyIDQ4IDg5IGQwIDVkIGMzIDg1IGY2IDc0IGY1IDhkIDRlIDAxIDg5DQo+IGYwIGYw
-IDBmIGIxIDBmIDM5IGYwIDc0IGUyIDg5IGM2IGViIGViIDBmIDFmIDQwIDAwIDY2IDY2IDY2IDY2
-IDkwIDU1DQo+IDQ4IDg5IGU1IDUzIDw0OD4gOGIgNDcgMzAgNDggODkgZmIgYTggMDQgNzQgM2Ig
-OGIgNTcgNjAgODMgZmEgMDIgNzQNCj4gMTkgOGQgNGENCj4gWyAxOTY3Ljc5MDAzMV0gUklQICBb
-PGZmZmZmZmZmYzA2ZDZhZWE+XQ0KPiBuZnM0X3B1dF9kZXZpY2VpZF9ub2RlKzB4YS8weDkwIFtu
-ZnN2NF0NCj4gWyAxOTY3Ljc5MDAzMV0gIFJTUCA8ZmZmZjg4MDBjNDA2Nzk3OD4NCj4gWyAxOTY3
-Ljc5MDAzMV0gQ1IyOiAwMDAwMDAwMDAwMDAwMDMwDQo+IA0KPiBTaW5jZSBhIGZpbGVsYXlvdXQg
-c2VnbWVudCBpcyBpbml0aWFsbHkgaW5zZXJ0ZWQgd2l0aCBhIE5VTEwgZHNhZGRyLA0KPiBpdA0K
-PiBsb29rcyBsaWtlIHRoZXJlJ3MgYSB3aW5kb3cgd2hlcmUgZmlsZWxheW91dF9mcmVlX2xzZWco
-KSAoZS5nLiB2aWENCj4gbmZzNF9ldmljdF9pbm9kZSgpIGNhbGxlZCBieSBhbm90aGVyIHByb2Nl
-c3MpIGNhbiBiZSBjYWxsZWQgd2hpY2gNCj4gd2lsbA0KPiB0cmlnZ2VyIGFuIG9vcHMgaW4gbmZz
-NF9wdXRfZGV2aWNlaWRfbm9kZSgpIHdoZW4gaXQgdHJpZXMgdG8gYWNjZXNzDQo+IHRoZQ0KPiBu
-ZnM0X2RldmljZWlkX25vZGUtPmZsYWdzLiAgVGFrZSBhbiBleHRyYSByZWZlcmVuY2Ugb24gdGhl
-IGxheW91dA0KPiBzZWdtZW50IHRvIHByZXZlbnQgdGhhdCwgYW5kIGNoZWNrIGZvciBhIE5VTEwg
-ZHNhZGRyIGluDQo+IGZpbGVsYXlvdXRfZnJlZV9sc2VnKCkuDQo+IA0KPiANCg0KV2h5IGlzbid0
-IGl0IHN1ZmZpY2llbnQganVzdCB0byBhZGQgYSBjaGVjayBmb3IgYSBOVUxMIHBvaW50ZXIgaW4N
-Cm5mczRfZmxfcHV0X2RldmljZWlkKCk/IElmIHlvdSdyZSBpbiBmaWxlbGF5b3V0X2ZyZWVfbHNl
-ZygpIHRoZW4gbm9ib2R5DQogaG9sZHMgYSByZWZlcmVuY2UgdG8gdGhlIGxheW91dCBzZWdtZW50
-LCBhbmQgc28gaWYgZmwtPmRzYWRkciBpcyBOVUxMLA0KdGhlbiBpdCB3aWxsIHN0YXkgdGhhdCB3
-YXkuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
-IFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+Hi,
+
+we are experiencing issues with Linux as NFS client with NFSv4 and Kerberos.
+Occasionally, processes get stuck in NFS operations and the kernel reports
+a blocked task and claims that the NFS server is not responding. When this
+happens, the hanging process and the kernel never recover from the situation.
+
+After some experimenting, I could create a small test program which seems
+to trigger this behavior; it can be found here:
+https://www.infosun.fim.uni-passau.de/cl/staff/groesslinger/writesync.c
+
+The test program only performs lseek(), write() and fsync() on a file
+(given as command line argument) in an endless loop. For the hang to occur,
+it seems to be important not to write linearly to the file (therefore the
+lseek()s to write with different strides). Usually after a few thousand
+iterations, the process hangs uninterruptibly and the kernel logs something
+like
+
+[ 1272.779598] nfs: server nexstaff not responding, still trying
+[ 1330.122586] INFO: task writesync:1443 blocked for more than 120 seconds.
+[ 1330.122905]       Not tainted 4.14.0-rc1 #1
+[ 1330.123141] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[ 1330.123407] writesync       D    0  1443   1442 0x00000000
+[ 1330.123413] Call Trace:
+[ 1330.123436]  __schedule+0x3c2/0x8b0
+[ 1330.123441]  schedule+0x36/0x80
+[ 1330.123452]  io_schedule+0x16/0x40
+[ 1330.123468]  wait_on_page_bit_common+0xf8/0x190
+[ 1330.123473]  ? page_cache_tree_insert+0xb0/0xb0
+[ 1330.123478]  __filemap_fdatawait_range+0x123/0x190
+[ 1330.123484]  filemap_write_and_wait_range+0x4b/0x90
+[ 1330.123515]  nfs_file_fsync+0x3b/0x1f0 [nfs]
+[ 1330.123536]  vfs_fsync_range+0x4b/0xb0
+[ 1330.123541]  do_fsync+0x3d/0x70
+[ 1330.123546]  SyS_fsync+0x10/0x20
+[ 1330.123552]  entry_SYSCALL_64_fastpath+0x1e/0xa9
+[ 1330.123556] RIP: 0033:0x7fa8e61ff730
+[ 1330.123558] RSP: 002b:00007ffe159f2a28 EFLAGS: 00000246 ORIG_RAX: 000000000000004a
+[ 1330.123562] RAX: ffffffffffffffda RBX: 0000000000000005 RCX: 00007fa8e61ff730
+[ 1330.123564] RDX: 0000000000000001 RSI: 00000000004008f0 RDI: 0000000000000003
+[ 1330.123565] RBP: 00007ffe159f03a0 R08: 00007fa8e64c8770 R09: 00007fa8e66cb700
+[ 1330.123567] R10: 0000000000000000 R11: 0000000000000246 R12: 0000000000000005
+[ 1330.123568] R13: 0000000000000001 R14: 00007fa8e64c7540 R15: 0000000000000000
+
+I have performed a few experiments to see under which configurations
+these hangs occurs:
+
+- Kernels 3.16.48, 4.9.51, 4.13.2, 4.14-rc1 all show this behavior.
+  (I'm not aware of a kernel version which does not show this behavior.)
+
+- The hangs seem to occur only when NFSv4 is used together with Kerberos
+  (sec=krb5, krb5i or krb5p all show the hangs), but I do not observe
+  these hangs with sec=sys.
+
+- nfs_utils versions on the clients used were 1.2.8 (Ubuntu 16.04) and
+  1.3.4 (Debian 9).
+
+- It does not occur with NFSv3 or NFSv4.1 or NFSv4.2 (with or without Kerberos).
+
+- I can reproduce the hangs with Nexenta and Debian 9 (Kernel 4.9) as NFS server.
+
+- I could not reproduce the hangs with FreeBSD 11.1 as client.
+
+Since our department's productive server (running Nexenta) does not offer
+NFSv4.1/4.2, using one of these protocol versions, which do not seem to be
+affected, is unfortunately not an option. Our users are affected by the kernel
+hangs every few days. We first observed the hangs with programs using SQLite,
+e.g., Firefox often triggers the hangs when writing its databases.
+(I constructed the test program by looking at what operations SQLite
+does on the databases when the hangs occur.)
+
+I'll be happy to provide further information (kernel dumps or similar);
+please instruct me how to gather the information needed. I'd also be
+happy to try kernel patches if somebody can suggest a fix for the problem.
+
+Best regards,
+Armin Groesslinger
 
