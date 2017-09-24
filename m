@@ -1,58 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46046 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750839AbdIXBaV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 23 Sep 2017 21:30:21 -0400
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: Bakeathon Talk: NFS/RDMA Basics
-Cc: NFSv4 <nfsv4@ietf.org>
-Message-ID: <95bbeb61-7e73-8cef-6d9f-da365b0057b4@RedHat.com>
-Date: Sat, 23 Sep 2017 21:30:11 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mx1.gtisc.gatech.edu ([143.215.130.81]:54139 "EHLO
+        mx1.gtisc.gatech.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752416AbdIXRHa (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Sep 2017 13:07:30 -0400
+From: Meng Xu <mengxu.gatech@gmail.com>
+To: bfields@fieldses.org, jlayton@poochiereds.net,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: meng.xu@gatech.edu, sanidhya@gatech.edu, taesoo@gatech.edu,
+        Meng Xu <mengxu.gatech@gmail.com>
+Subject: [PATCH] nfsd4: ensure cm_xid does not change across userspace fetches
+Date: Sun, 24 Sep 2017 12:59:40 -0400
+Message-Id: <1506272380-17769-1-git-send-email-mengxu.gatech@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello All!
+cld_pipe_downcall() has two fetches from an overapped userspace memory.
+The first fetch copy_from_user(&xid, &cmsg->cm_xid, sizeof(xid)) get
+the xid and use xid to lookup the parent struct cld_upcall *cup.
+The second fetch copy_from_user(&cup->cu_msg, src, mlen) place the whole
+message into &cup->cu_msg.
 
-At the upcoming Bakeathon Chuck Lever will be giving
-a 3 part talk on the basics of NFS over RDMA and the ins
-and outs on how to support it. The meeting is open to 
-everyone who is interested so please feel free to join in.
+Since the userspace thread has full control over this &cmsg->cm_xid,
+it can race condition to change the cm_xid value across the two fetches,
+(say, change from 1 to 2), therefore, de-listing the cup with
+cu_msg.cm_xid == 1 but later put cu_msg.cm_xid = 2.
 
-The talks will be given at the Red Hat office in 
-Westford MA. The address is: 314 Littleton Rd, Westford, MA 01886
+Whether this double-fetch situation is a security critical bug depends
+on how cup->cu_msg is used later. However, given that it is hard to
+enumerate all the possible use cases, a safer way might be to ensure
+that the xid does not change across the fetches, which is what this
+patch is for.
 
-The bluejeans access: https://bluejeans.com/5642721552/
-(I've been told downloading the app works well)
+Signed-off-by: Meng Xu <mengxu.gatech@gmail.com>
+---
+ fs/nfsd/nfs4recover.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-The call in info: 1-888-847-2201 Conf code: 564.272.1552
+diff --git a/fs/nfsd/nfs4recover.c b/fs/nfsd/nfs4recover.c
+index 66eaeb1..1abe9ed 100644
+--- a/fs/nfsd/nfs4recover.c
++++ b/fs/nfsd/nfs4recover.c
+@@ -753,6 +753,11 @@ cld_pipe_downcall(struct file *filp, const char __user *src, size_t mlen)
+ 	if (copy_from_user(&cup->cu_msg, src, mlen) != 0)
+ 		return -EFAULT;
+ 
++	/* ensure that the xid has not been changed */
++	if (cup->cu_msg.cm_xid != xid) {
++		return -EFAULT;
++	}
++
+ 	wake_up_process(cup->cu_task);
+ 	return mlen;
+ }
+-- 
+2.7.4
 
-The talk times are:
-   *Tues Sept 26 10:00 am (EST)*
-   *Tues Sept 26 03:00 pm (EST)*
-   *Weds Sept 27 10:00 am (EST)*
-
-
-The talks will be recorded and posted on either 
-http://nfsv4bat.org/ or http://linux-nfs.org or both. 
-
-Here is the synopsis of the talks
-
-1. Introduction to RDMA verbs. This background talk describes the
-building blocks used to implement RDMA-enabled storage protocols.
-
-2. RPC-over-RDMA and NFS/RDMA. We'll discuss the details of how
-RDMA verbs are used to move RPC and NFS requests, followed by a
-look at actual wire traffic samples using Wireshark.
-
-3. Code walk-through. This section is for folks who are permitted
-to view GPL code. We'll examine the structure of the Linux NFS/RDMA
-client and server implementations.
-
-We are hoping for vibrant discussion. (Relevant) questions are welcome
-at any time. Chuck will adjust the presentation depending on whether
-there is already sufficient group knowledge in a topic area.
-
-steved.
