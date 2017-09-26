@@ -1,65 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f196.google.com ([209.85.128.196]:35997 "EHLO
-        mail-wr0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S966733AbdIZHQU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 26 Sep 2017 03:16:20 -0400
-From: Corentin Labbe <clabbe.montjoie@gmail.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, jlayton@poochiereds.net,
-        viro@zeniv.linux.org.uk
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        Corentin Labbe <clabbe.montjoie@gmail.com>
-Subject: [PATCH 2/3] nfs_common: move locks_in_grace comment at the right place
-Date: Tue, 26 Sep 2017 09:14:06 +0200
-Message-Id: <20170926071407.31719-3-clabbe.montjoie@gmail.com>
-In-Reply-To: <20170926071407.31719-1-clabbe.montjoie@gmail.com>
-References: <20170926071407.31719-1-clabbe.montjoie@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:45602 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751396AbdIZK42 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Sep 2017 06:56:28 -0400
+Date: Tue, 26 Sep 2017 11:56:26 +0100
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: NeilBrown <neilb@suse.com>,
+        "Daniel P. Berrange" <berrange@redhat.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Matt Benjamin <mbenjami@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Justin Mitchell <jumitche@redhat.com>
+Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
+Message-ID: <20170926105626.GH16834@stefanha-x1.localdomain>
+References: <20170919151051.GS9536@redhat.com>
+ <3534278B-FC7B-4AA5-AF86-92AA19BFD1DC@oracle.com>
+ <20170919164427.GV9536@redhat.com>
+ <20170919172452.GB29104@fieldses.org>
+ <20170921170017.GK32364@stefanha-x1.localdomain>
+ <d760ecdc-988d-8145-f816-6faf8f2abf03@redhat.com>
+ <E5B4D2FF-0DB4-417D-998A-6BBFC36C35C5@oracle.com>
+ <20170922115524.GN12725@redhat.com>
+ <87efqu6wl4.fsf@notabene.neil.brown.name>
+ <20170926034026.GA19283@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170926034026.GA19283@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit c87fb4a378f9 ("lockd: NLM grace period shouldn't block NFSv4 opens")
-made the locks_in_grace() comment be in the wrong place.
+On Mon, Sep 25, 2017 at 11:40:26PM -0400, J. Bruce Fields wrote:
+> On Tue, Sep 26, 2017 at 12:08:07PM +1000, NeilBrown wrote:
+> > On Fri, Sep 22 2017, Daniel P. Berrange wrote:
+> > Rather than a flag, it might work to use network namespaces.
+> > Very early in the init sequence the filesystem gets mounted using the
+> > IPv6 link-local address on a client->host interface, and then a new
+> > network namespace is created which does not include that interface, and
+> > which everything else including firewall code runs in.  Maybe.
+> 
+> That seems closer, since it allows you to hide the interface from most
+> of the guest while letting some special software--qemu guest agent?--
+> still work with it.  That agent would also need to be the one to do the
+> mount, and would need to be able to make that mount usable to the rest
+> of the guest.
+> 
+> Sounds doable to me?
+> 
+> There's still the problem of the paranoid security bureaucracy.
+> 
+> It should be pretty easy to demonstrate that the host only allows
+> point-to-point traffic on these interfaces.  I'd hope that that, plus
+> the appeal of the feature, would be enough to win out in the end.  This
+> is not a class of problem that I have experience dealing with, though!
 
-This patch move this comment just at the right place.
+Programs wishing to use host<->guest networking might still need the
+main network namespace for UNIX domain sockets and other communication.
 
-Signed-off-by: Corentin Labbe <clabbe.montjoie@gmail.com>
----
- fs/nfs_common/grace.c | 14 +++++++-------
- 1 file changed, 7 insertions(+), 7 deletions(-)
+For example, the QEMU guest agent has a command to report the IP
+addresses of the guest.  It must access the main network namespace to
+collect this information while using a host<->guest socket to
+communicate with the hypervisor.
 
-diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
-index 519396967e79..c030cd618b99 100644
---- a/fs/nfs_common/grace.c
-+++ b/fs/nfs_common/grace.c
-@@ -55,13 +55,6 @@ locks_end_grace(struct lock_manager *lm)
- }
- EXPORT_SYMBOL_GPL(locks_end_grace);
- 
--/**
-- * locks_in_grace
-- *
-- * Lock managers call this function to determine when it is OK for them
-- * to answer ordinary lock requests, and when they should accept only
-- * lock reclaims.
-- */
- static int
- __state_in_grace(struct net *net, bool open)
- {
-@@ -78,6 +71,13 @@ __state_in_grace(struct net *net, bool open)
- 	return false;
- }
- 
-+/**
-+ * locks_in_grace
-+ *
-+ * Lock managers call this function to determine when it is OK for them
-+ * to answer ordinary lock requests, and when they should accept only
-+ * lock reclaims.
-+ */
- int locks_in_grace(struct net *net)
- {
- 	return __state_in_grace(net, 0);
--- 
-2.13.5
+I think this can be achieved as follows:
+1. open /proc/self/ns/net (stash the file descriptor)
+2. open /var/run/netns/hvnet & call setns(2) to switch namespaces
+3. socket(AF_INET6, SOCK_STREAM, 0) to create host<->guest socket
+4. call setns(2) to switch back to main namespace
 
+In other words, the program stays mostly in the main network namespace
+and only enters the host<->guest namespace to create sockets.
+
+setns(2) with a network namespace requires CAP_SYS_ADMIN so it's not
+very practical.
+
+Is there an alternative that makes using the host<->guest network
+namespace less clunky?
+
+Stefan
