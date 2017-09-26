@@ -1,66 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58886 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:54016 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934627AbdIZNYg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 26 Sep 2017 09:24:36 -0400
-Subject: Re: Bakeathon Talk: NFS/RDMA Basics
-From: Steve Dickson <SteveD@RedHat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: NFSv4 <nfsv4@ietf.org>
-References: <95bbeb61-7e73-8cef-6d9f-da365b0057b4@RedHat.com>
-Message-ID: <dd3d47f0-1b03-0a67-6673-54614045c57d@RedHat.com>
-Date: Tue, 26 Sep 2017 09:24:19 -0400
+        id S934627AbdIZNZx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Sep 2017 09:25:53 -0400
+Date: Tue, 26 Sep 2017 09:25:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Corentin Labbe <clabbe.montjoie@gmail.com>,
+        trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 0/3] nfs_common: misc patchs
+Message-ID: <20170926132553.GA25286@fieldses.org>
+References: <20170926071407.31719-1-clabbe.montjoie@gmail.com>
+ <1506424509.3182.0.camel@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <95bbeb61-7e73-8cef-6d9f-da365b0057b4@RedHat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1506424509.3182.0.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a quick reminder... this will start in 30mins or so... 
+On Tue, Sep 26, 2017 at 07:15:09AM -0400, Jeff Layton wrote:
+> On Tue, 2017-09-26 at 09:14 +0200, Corentin Labbe wrote:
+> > Hello
+> > 
+> > The origin of this series is a build warning fix.
+> > But reading the code show me two other possible patch.
+> > 
+> > Regards
+> > 
+> > Corentin Labbe (3):
+> >   nfs_common: fix build warning in grace.c
+> >   nfs_common: move locks_in_grace comment at the right place
+> >   nfs_common: convert int to bool
+> > 
+> >  fs/nfs_common/grace.c | 24 ++++++++++++------------
+> >  include/linux/fs.h    |  4 ++--
+> >  2 files changed, 14 insertions(+), 14 deletions(-)
+> > 
+> 
+> Looks like a reasonable set of cleanups. Probably fine for v4.15?
+> 
+> Reviewed-by: Jeff Layton <jlayton@redhat.com>
 
-steved.
+Yep, applying, thanks.
 
-On 09/23/2017 09:30 PM, Steve Dickson wrote:
-> Hello All!
-> 
-> At the upcoming Bakeathon Chuck Lever will be giving
-> a 3 part talk on the basics of NFS over RDMA and the ins
-> and outs on how to support it. The meeting is open to 
-> everyone who is interested so please feel free to join in.
-> 
-> The talks will be given at the Red Hat office in 
-> Westford MA. The address is: 314 Littleton Rd, Westford, MA 01886
-> 
-> The bluejeans access: https://bluejeans.com/5642721552/
-> (I've been told downloading the app works well)
-> 
-> The call in info: 1-888-847-2201 Conf code: 564.272.1552
-> 
-> The talk times are:
->    *Tues Sept 26 10:00 am (EST)*
->    *Tues Sept 26 03:00 pm (EST)*
->    *Weds Sept 27 10:00 am (EST)*
-> 
-> 
-> The talks will be recorded and posted on either 
-> http://nfsv4bat.org/ or http://linux-nfs.org or both. 
-> 
-> Here is the synopsis of the talks
-> 
-> 1. Introduction to RDMA verbs. This background talk describes the
-> building blocks used to implement RDMA-enabled storage protocols.
-> 
-> 2. RPC-over-RDMA and NFS/RDMA. We'll discuss the details of how
-> RDMA verbs are used to move RPC and NFS requests, followed by a
-> look at actual wire traffic samples using Wireshark.
-> 
-> 3. Code walk-through. This section is for folks who are permitted
-> to view GPL code. We'll examine the structure of the Linux NFS/RDMA
-> client and server implementations.
-> 
-> We are hoping for vibrant discussion. (Relevant) questions are welcome
-> at any time. Chuck will adjust the presentation depending on whether
-> there is already sufficient group knowledge in a topic area.
-> 
-> steved.
-> 
+--b.
