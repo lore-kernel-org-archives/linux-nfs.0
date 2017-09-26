@@ -1,38 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54050 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:43604 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S967470AbdIZNmk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 26 Sep 2017 09:42:40 -0400
-Date: Tue, 26 Sep 2017 09:42:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.com>
-Cc: "Daniel P. Berrange" <berrange@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Stefan Hajnoczi <stefanha@redhat.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Matt Benjamin <mbenjami@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Justin Mitchell <jumitche@redhat.com>
-Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
-Message-ID: <20170926134239.GC25286@fieldses.org>
-References: <3534278B-FC7B-4AA5-AF86-92AA19BFD1DC@oracle.com>
- <20170919164427.GV9536@redhat.com>
- <20170919172452.GB29104@fieldses.org>
- <20170921170017.GK32364@stefanha-x1.localdomain>
- <d760ecdc-988d-8145-f816-6faf8f2abf03@redhat.com>
- <E5B4D2FF-0DB4-417D-998A-6BBFC36C35C5@oracle.com>
- <20170922115524.GN12725@redhat.com>
- <87efqu6wl4.fsf@notabene.neil.brown.name>
- <20170926034026.GA19283@fieldses.org>
- <20170926133949.GB25286@fieldses.org>
+        id S1751528AbdIZPMc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 26 Sep 2017 11:12:32 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 263045AFC4
+        for <linux-nfs@vger.kernel.org>; Tue, 26 Sep 2017 15:12:32 +0000 (UTC)
+To: Stefan Hajnoczi <stefanha@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        "Daniel P. Berrange" <berrange@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Subject: NFS/VSOCK Discussion
+Message-ID: <d95905e8-ca17-5dce-5f15-93d8f8092208@RedHat.com>
+Date: Tue, 26 Sep 2017 11:12:28 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170926133949.GB25286@fieldses.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-By the way, do we know anything about likely performance of NFS/VSOCK?
+Hello,
 
---b.
+Since a number of us are here at Bakathon, it was
+suggested that we have a public discussion
+on V_SOCK and NFS and how we move forward or not.
+
+Time: Thur Sept 28 @ 10:00 am EST
+Dial-in: +1 888.847.2201 Conf# 564.272.1552
+bluejeans: https://redhat.bluejeans.com/5642721552/
+
+steved
+
