@@ -1,58 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56156 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:56356 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752734AbdI0Nqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 27 Sep 2017 09:46:34 -0400
-Date: Wed, 27 Sep 2017 09:46:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stefan Hajnoczi <stefanha@redhat.com>
-Cc: NeilBrown <neilb@suse.com>,
-        "Daniel P. Berrange" <berrange@redhat.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Steven Whitehouse <swhiteho@redhat.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Matt Benjamin <mbenjami@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Justin Mitchell <jumitche@redhat.com>
-Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
-Message-ID: <20170927134634.GB9585@fieldses.org>
-References: <20170919172452.GB29104@fieldses.org>
- <20170921170017.GK32364@stefanha-x1.localdomain>
- <d760ecdc-988d-8145-f816-6faf8f2abf03@redhat.com>
- <E5B4D2FF-0DB4-417D-998A-6BBFC36C35C5@oracle.com>
- <20170922115524.GN12725@redhat.com>
- <87efqu6wl4.fsf@notabene.neil.brown.name>
- <20170926034026.GA19283@fieldses.org>
- <20170926133949.GB25286@fieldses.org>
- <20170926134239.GC25286@fieldses.org>
- <20170927122258.GC14579@stefanha-x1.localdomain>
+        id S1752884AbdI0Nr1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 27 Sep 2017 09:47:27 -0400
+Subject: Re: Bakeathon Talk: NFS/RDMA Basics
+From: Steve Dickson <SteveD@RedHat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Cc: NFSv4 <nfsv4@ietf.org>
+References: <95bbeb61-7e73-8cef-6d9f-da365b0057b4@RedHat.com>
+ <dd3d47f0-1b03-0a67-6673-54614045c57d@RedHat.com>
+ <401b356a-588c-7c44-4f35-b003f97b07e2@RedHat.com>
+Message-ID: <2fb843b6-7615-a3c9-ea1e-934cad674bf5@RedHat.com>
+Date: Wed, 27 Sep 2017 09:47:14 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170927122258.GC14579@stefanha-x1.localdomain>
+In-Reply-To: <401b356a-588c-7c44-4f35-b003f97b07e2@RedHat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 27, 2017 at 01:22:58PM +0100, Stefan Hajnoczi wrote:
-> On Tue, Sep 26, 2017 at 09:42:39AM -0400, J. Bruce Fields wrote:
-> > By the way, do we know anything about likely performance of NFS/VSOCK?
+The third and final NFSoRDMA talk will begin in 15mis or so... 
+
+The slides: http://nfsv4bat.org/Documents/BakeAThon/2017/index.html
+
+The bluejeans access: https://bluejeans.com/5642721552/
+
+The call in info: 1-888-847-2201 Conf code: 564.272.1552
+
+steved.
+
+On 09/26/2017 02:47 PM, Steve Dickson wrote:
+> The second part of Chuck's will be starting in 15mins or so
+> Here is a link to the slides
+>    http://nfsv4bat.org/Documents/BakeAThon/2017/index.html
 > 
-> virtio-vsock is designed for reliable host<->guest communication, not
-> performance.  It is not a fast-path to avoid Ethernet/IP.  I haven't run
-> benchmarks on NFS over AF_VSOCK but don't expect its performance to set
-> it apart from virtio-net.
-
-OK.
-
-But if we implement NFS/VSOCK and it turns out to be a success, I expect
-people will start using it for things that weren't expected and
-complaining about performance issues.
-
-I guess I'm not too concerned about performance of the initial
-implementation but it'd be nice to know that there's the possibility to
-optimize later on.
-
-But if our answer will be just to go figure out how to use a proper
-NFS/TCP mount instead then I suppose that's OK.
-
---b.
+> steved.
+> 
+> On 09/26/2017 09:24 AM, Steve Dickson wrote:
+>> Just a quick reminder... this will start in 30mins or so... 
+>>
+>> steved.
+>>
+>> On 09/23/2017 09:30 PM, Steve Dickson wrote:
+>>> Hello All!
+>>>
+>>> At the upcoming Bakeathon Chuck Lever will be giving
+>>> a 3 part talk on the basics of NFS over RDMA and the ins
+>>> and outs on how to support it. The meeting is open to 
+>>> everyone who is interested so please feel free to join in.
+>>>
+>>> The talks will be given at the Red Hat office in 
+>>> Westford MA. The address is: 314 Littleton Rd, Westford, MA 01886
+>>>
+>>> The bluejeans access: https://bluejeans.com/5642721552/
+>>> (I've been told downloading the app works well)
+>>>
+>>> The call in info: 1-888-847-2201 Conf code: 564.272.1552
+>>>
+>>> The talk times are:
+>>>    *Tues Sept 26 10:00 am (EST)*
+>>>    *Tues Sept 26 03:00 pm (EST)*
+>>>    *Weds Sept 27 10:00 am (EST)*
+>>>
+>>>
+>>> The talks will be recorded and posted on either 
+>>> http://nfsv4bat.org/ or http://linux-nfs.org or both. 
+>>>
+>>> Here is the synopsis of the talks
+>>>
+>>> 1. Introduction to RDMA verbs. This background talk describes the
+>>> building blocks used to implement RDMA-enabled storage protocols.
+>>>
+>>> 2. RPC-over-RDMA and NFS/RDMA. We'll discuss the details of how
+>>> RDMA verbs are used to move RPC and NFS requests, followed by a
+>>> look at actual wire traffic samples using Wireshark.
+>>>
+>>> 3. Code walk-through. This section is for folks who are permitted
+>>> to view GPL code. We'll examine the structure of the Linux NFS/RDMA
+>>> client and server implementations.
+>>>
+>>> We are hoping for vibrant discussion. (Relevant) questions are welcome
+>>> at any time. Chuck will adjust the presentation depending on whether
+>>> there is already sufficient group knowledge in a topic area.
+>>>
+>>> steved.
+>>>
