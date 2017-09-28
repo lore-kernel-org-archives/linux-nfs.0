@@ -1,163 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:45444 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751484AbdI1UkS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Sep 2017 16:40:18 -0400
-Received: by mail-it0-f68.google.com with SMTP id x15so3068726itb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 28 Sep 2017 13:40:17 -0700 (PDT)
-Subject: Re: [PATCH v4 12/12] NFS add a simple sync nfs4_proc_commit after
- async COPY
-To: Olga Kornievskaia <aglo@umich.edu>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34057 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751345AbdI1Ulq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 28 Sep 2017 16:41:46 -0400
+Received: by mail-io0-f193.google.com with SMTP id g32so1600737ioj.1
+        for <linux-nfs@vger.kernel.org>; Thu, 28 Sep 2017 13:41:45 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <183b0ab6-b865-6912-5854-c4f7a205fd16@Netapp.com>
+References: <20170928172819.50703-1-kolga@netapp.com> <20170928172819.50703-5-kolga@netapp.com>
+ <183b0ab6-b865-6912-5854-c4f7a205fd16@Netapp.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 28 Sep 2017 16:41:44 -0400
+Message-ID: <CAN-5tyEOX8gobd-=QyHqMqTEG3RVGgE4+5MYF3dBU-xG-0tUwg@mail.gmail.com>
+Subject: Re: [PATCH v4 04/12] NFS OFFLOAD_STATUS op
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Cc: Olga Kornievskaia <kolga@netapp.com>,
         Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
         linux-nfs <linux-nfs@vger.kernel.org>
-References: <20170928172819.50703-1-kolga@netapp.com>
- <20170928172819.50703-13-kolga@netapp.com>
- <81151f31-a9d1-6f75-30b3-1608bdc1d432@gmail.com>
- <CAN-5tyFQvHPJBK4dPdfWfOQncDz0eGmZL1MTExHNebg0FvCcJQ@mail.gmail.com>
-From: Anna Schumaker <schumaker.anna@gmail.com>
-Message-ID: <6ff26d9f-6f94-7a35-dfd1-c228dd0086e7@gmail.com>
-Date: Thu, 28 Sep 2017 16:40:15 -0400
-MIME-Version: 1.0
-In-Reply-To: <CAN-5tyFQvHPJBK4dPdfWfOQncDz0eGmZL1MTExHNebg0FvCcJQ@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Sep 28, 2017 at 4:32 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> Hi Olga,
+>
+> On 09/28/2017 01:28 PM, Olga Kornievskaia wrote:
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>>  fs/nfs/nfs42.h     |  5 ++++-
+>>  fs/nfs/nfs42proc.c | 42 ++++++++++++++++++++++++++++++++++++++++++
+>>  2 files changed, 46 insertions(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
+>> index b6cd153..6b9decf 100644
+>> --- a/fs/nfs/nfs42.h
+>> +++ b/fs/nfs/nfs42.h
+>> @@ -11,6 +11,7 @@
+>>   */
+>>  #define PNFS_LAYOUTSTATS_MAXDEV (4)
+>>
+>> +#if defined(CONFIG_NFS_V4_2)
+>>  /* nfs4.2proc.c */
+>>  int nfs42_proc_allocate(struct file *, loff_t, loff_t);
+>>  ssize_t nfs42_proc_copy(struct file *, loff_t, struct file *, loff_t, size_t);
+>> @@ -19,5 +20,7 @@
+>>  int nfs42_proc_layoutstats_generic(struct nfs_server *,
+>>                                  struct nfs42_layoutstat_data *);
+>>  int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
+>> -
+>> +int nfs42_proc_offload_status(struct file *, nfs4_stateid *,
+>> +                           struct nfs42_offload_status_res *);
+>> +#endif /* CONFIG_NFS_V4_2) */
+>>  #endif /* __LINUX_FS_NFS_NFS4_2_H */
+>> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+>> index 6c2db51..5c42e71 100644
+>> --- a/fs/nfs/nfs42proc.c
+>> +++ b/fs/nfs/nfs42proc.c
+>> @@ -263,6 +263,48 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+>>       return err;
+>>  }
+>>
+>> +int _nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
+>> +                             struct nfs42_offload_status_res *res)
+>
+> Does res have to be passed as a pointer here?  The struct is fairly small, so it couldn't it be allocated on the stack?
 
+Yes I'm assuming whatever is calling nfs42_proc_offload_status() would
+be the one providing storage for the result and wanting to see the
+results there.
 
-On 09/28/2017 04:34 PM, Olga Kornievskaia wrote:
-> On Thu, Sep 28, 2017 at 4:13 PM, Anna Schumaker
-> <schumaker.anna@gmail.com> wrote:
->>
->>
->> On 09/28/2017 01:28 PM, Olga Kornievskaia wrote:
->>> A COPY with unstable write data needs a simple commit that doesn't
->>> deal with inodes
->>>
->>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->>> ---
->>>  fs/nfs/nfs42proc.c | 22 ++++++++++++++++++++++
->>>  fs/nfs/nfs4_fs.h   |  2 +-
->>>  fs/nfs/nfs4proc.c  | 33 +++++++++++++++++++++++++++++++++
->>>  3 files changed, 56 insertions(+), 1 deletion(-)
->>>
->>> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
->>> index b9e47a2..2064d11 100644
->>> --- a/fs/nfs/nfs42proc.c
->>> +++ b/fs/nfs/nfs42proc.c
->>> @@ -252,6 +252,28 @@ static ssize_t _nfs42_proc_copy(struct file *src,
->>>                       return status;
->>>       }
->>>
->>> +     if ((!res->synchronous || !args->sync) &&
->>> +                     res->write_res.verifier.committed != NFS_FILE_SYNC) {
->>> +             struct nfs_commitres cres;
->>> +
->>> +             cres.verf = kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
->>> +             if (!cres.verf)
->>> +                     return -ENOMEM;
->>> +
->>> +             status = nfs4_proc_commit(dst, pos_dst, res->write_res.count,
->>> +                                       &cres);
->>> +             if (status) {
->>> +                     kfree(cres.verf);
->>> +                     return status;
->>> +             }
->>> +             if (!nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
->>> +                                         &cres.verf->verifier)) {
->>> +                     /* what are we suppose to do here ? */
->>> +                     dprintk("commit verf differs from copy verf\n");
->>
->> I assume you should retry the commit, but we're retrying the whole operation in the synchronous case so I'm not sure.
-> 
-> Urgh. I forgot about this. I guess I should retry the whole copy here..
-> 
->>
->>> +             }
->>> +             kfree(cres.verf);
->>> +     }
->>> +
->>
->> _nfs42_proc_copy() does a lot of stuff right now.  Can you do the whole commit process into a separate function to make it easier to follow?
-> 
-> got it.
-> 
->>
->>>       truncate_pagecache_range(dst_inode, pos_dst,
->>>                                pos_dst + res->write_res.count);
->>>
->>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->>> index c7225bb..5edb161 100644
->>> --- a/fs/nfs/nfs4_fs.h
->>> +++ b/fs/nfs/nfs4_fs.h
->>> @@ -475,7 +475,7 @@ extern int nfs4_sequence_done(struct rpc_task *task,
->>>                             struct nfs4_sequence_res *res);
->>>
->>>  extern void nfs4_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp);
->>> -
->>> +extern int nfs4_proc_commit(struct file *dst, __u64 offset, __u32 count, struct nfs_commitres *res);
->>>  extern const nfs4_stateid zero_stateid;
->>>
->>>  /* nfs4super.c */
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index f1bf19e..30829ce 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -4829,6 +4829,39 @@ static void nfs4_proc_commit_setup(struct nfs_commit_data *data, struct rpc_mess
->>>       nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
->>>  }
->>>
->>> +static int _nfs4_proc_commit(struct file *dst, struct nfs_commitargs *args,
->>> +                             struct nfs_commitres *res)
->>> +{
->>> +     struct inode *dst_inode = file_inode(dst);
->>> +     struct nfs_server *server = NFS_SERVER(dst_inode);
->>> +     struct rpc_message msg = {
->>> +             .rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT],
->>> +             .rpc_argp = args,
->>> +             .rpc_resp = res,
->>> +     };
->>> +     return nfs4_call_sync(server->client, server, &msg,
->>> +                     &args->seq_args, &res->seq_res, 1);
->>> +}
->>> +
->>> +int nfs4_proc_commit(struct file *dst, __u64 offset, __u32 count, struct nfs_commitres *res)
->>> +{
->>> +     struct nfs_commitargs args = {
->>> +             .fh = NFS_FH(file_inode(dst)),
->>
->> How worried do we need to be about filehandles changing if we need to enter recovery during this operation?
-> 
-> This is the same thing we do in the copy and other operations (llseek, clone)?
+>
+>> +{
+>> +     struct nfs42_offload_status_args args;
+>> +     struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
+>> +     struct rpc_message msg = {
+>> +             .rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OFFLOAD_STATUS],
+>> +             .rpc_resp = res,
+>> +             .rpc_argp = &args,
+>> +     };
+>> +     int status;
+>> +
+>> +     args.osa_src_fh = NFS_FH(file_inode(dst));
+>
+> This could probably be set in the struct initializer, similar to how msg is initialized.
 
-Yeah, it's to match what we do in the other operations.  Otherwise  we could end up with a different filehandle if we need to do open recovery.
+Got it.
 
-> 
+>> +     memcpy(&args.osa_stateid, stateid, sizeof(args.osa_stateid));
+>> +     status = nfs4_call_sync(dst_server->client, dst_server, &msg,
+>> +                             &args.osa_seq_args, &res->osr_seq_res, 0);
+>> +     if (status == -ENOTSUPP)
+>> +             dst_server->caps &= ~NFS_CAP_OFFLOAD_STATUS;
+>> +
+>> +     return status;
+>> +}
+>> +
+>> +int nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
+>> +                             struct nfs42_offload_status_res *res)
+>
+> Same question about the nfs42_offload_status_res here.
+>
+> How have you been testing offload status?  As far as I can tell, nfs42_proc_offload_status() has no callers.  I guess I'm uncomfortable about adding something that never gets used.
+
+I have tested offload status by instead of going to wait on the
+completion of the cb_offload, it would send the offload status and
+then go to sleep for a little bit. It would poll until it received all
+the bytes or received the cb_offload.
+
+I needed a way to test the OFFLOAD_STATUS for the server which is a
+MUST for the asynchronous copy.
+
+Functionality is contained in this patch so it could be just excluded
+if desired.
+
+> Anna
+>
+>> +{
+>> +     struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
+>> +     struct nfs4_exception exception = { };
+>> +     int status;
+>> +
+>> +     if (!(dst_server->caps & NFS_CAP_OFFLOAD_STATUS))
+>> +             return -EOPNOTSUPP;
+>> +
+>> +     do {
+>> +             status = _nfs42_proc_offload_status(dst, stateid, res);
+>> +             if (status == -ENOTSUPP)
+>> +                     return -EOPNOTSUPP;
+>> +             status = nfs4_handle_exception(dst_server, status, &exception);
+>> +     } while (exception.retry);
+>> +
+>> +     return status;
+>> +}
+>> +
+>>  static loff_t _nfs42_proc_llseek(struct file *filep,
+>>               struct nfs_lock_context *lock, loff_t offset, int whence)
+>>  {
 >>
->> Thanks,
->> Anna
->>
->>> +             .offset = offset,
->>> +             .count = count,
->>> +     };
->>> +     struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
->>> +     struct nfs4_exception exception = { };
->>> +     int status;
->>> +
->>> +     do {
->>> +             status = _nfs4_proc_commit(dst, &args, res);> +         status = nfs4_handle_exception(dst_server, status, &exception);
->>> +     } while (exception.retry);
->>> +
->>> +     return status;
->>> +}
->>> +
->>>  struct nfs4_renewdata {
->>>       struct nfs_client       *client;
->>>       unsigned long           timestamp;
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
