@@ -1,108 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:14889 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:6053 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752223AbdI1Ra0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:30:26 -0400
+        id S1752472AbdI1RaM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:30:12 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 5/8] NFSD generalize nfsd4_compound_state flag names
-Date: Thu, 28 Sep 2017 13:29:59 -0400
-Message-ID: <20170928173002.50818-6-kolga@netapp.com>
-In-Reply-To: <20170928173002.50818-1-kolga@netapp.com>
-References: <20170928173002.50818-1-kolga@netapp.com>
+Subject: [PATCH v4 08/10] NFSD handle OFFLOAD_CANCEL op
+Date: Thu, 28 Sep 2017 13:29:43 -0400
+Message-ID: <20170928172945.50780-9-kolga@netapp.com>
+In-Reply-To: <20170928172945.50780-1-kolga@netapp.com>
+References: <20170928172945.50780-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+Upon receiving OFFLOAD_CANCEL search the list of copy stateids,
+if found mark it cancelled. If copy has more interations to
+call vfs_copy_file_range, it'll stop it. Server won't be sending
+CB_OFFLOAD to the client since it received a cancel.
 
-Allow for sid_flag field non-stateid use.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c  | 8 ++++----
- fs/nfsd/nfs4state.c | 7 ++++---
- fs/nfsd/xdr4.h      | 6 +++---
- 3 files changed, 11 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4proc.c  | 26 ++++++++++++++++++++++++--
+ fs/nfsd/nfs4state.c | 16 ++++++++++++++++
+ fs/nfsd/state.h     |  4 ++++
+ 3 files changed, 44 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0a2bab0..72a0bc5 100644
+index 3cddebb..f4f3d93 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -546,9 +546,9 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
- 		return nfserr_restorefh;
+@@ -1139,6 +1139,7 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
+ 	size_t bytes_to_copy;
+ 	u64 src_pos = copy->cp_src_pos;
+ 	u64 dst_pos = copy->cp_dst_pos;
++	bool cancelled = false;
  
- 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
--	if (HAS_STATE_ID(cstate, SAVED_STATE_ID_FLAG)) {
-+	if (HAS_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG)) {
- 		memcpy(&cstate->current_stateid, &cstate->save_stateid, sizeof(stateid_t));
--		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
- 	}
- 	return nfs_ok;
+ 	do {
+ 		bytes_to_copy = min_t(u64, bytes_total, MAX_RW_COUNT);
+@@ -1150,7 +1151,12 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
+ 		copy->cp_res.wr_bytes_written += bytes_copied;
+ 		src_pos += bytes_copied;
+ 		dst_pos += bytes_copied;
+-	} while (bytes_total > 0 && !copy->cp_synchronous);
++		if (!copy->cp_synchronous) {
++			spin_lock(&copy->cps->cp_lock);
++			cancelled = copy->cps->cp_cancelled;
++			spin_unlock(&copy->cps->cp_lock);
++		}
++	} while (bytes_total > 0 && !copy->cp_synchronous && !cancelled);
+ 	return bytes_copied;
  }
-@@ -561,9 +561,9 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
- 		return nfserr_nofilehandle;
  
- 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
--	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG)) {
-+	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG)) {
- 		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
--		SET_STATE_ID(cstate, SAVED_STATE_ID_FLAG);
-+		SET_CSTATE_FLAG(cstate, SAVED_STATE_ID_FLAG);
- 	}
- 	return nfs_ok;
+@@ -1198,6 +1204,10 @@ static void nfsd4_do_async_copy(struct work_struct *work)
+ 	struct nfsd4_copy *cb_copy;
+ 
+ 	copy->nfserr = nfsd4_do_copy(copy, 0);
++
++	if (copy->cps->cp_cancelled)
++		goto out;
++
+ 	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+ 	if (!cb_copy)
+ 		goto out;
+@@ -1269,7 +1279,19 @@ static void nfsd4_do_async_copy(struct work_struct *work)
+ 		     struct nfsd4_compound_state *cstate,
+ 		     union nfsd4_op_u *u)
+ {
+-	return 0;
++	struct nfsd4_offload_status *os = &u->offload_status;
++	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
++	__be32 status;
++	struct nfs4_cp_state *state = NULL;
++
++	status = find_cp_state(nn, &os->stateid, &state);
++	if (state) {
++		spin_lock(&state->cp_lock);
++		state->cp_cancelled = true;
++		spin_unlock(&state->cp_lock);
++	}
++
++	return status;
  }
+ 
+ static __be32
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e28447d..b11d1a5 100644
+index be59baf..97ab3f8 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -7226,7 +7226,8 @@ static int nfs4_state_create_net(struct net *net)
- static void
- get_stateid(struct nfsd4_compound_state *cstate, stateid_t *stateid)
- {
--	if (HAS_STATE_ID(cstate, CURRENT_STATE_ID_FLAG) && CURRENT_STATEID(stateid))
-+	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG) &&
-+	    CURRENT_STATEID(stateid))
- 		memcpy(stateid, &cstate->current_stateid, sizeof(stateid_t));
+@@ -752,6 +752,22 @@ static void nfs4_free_deleg(struct nfs4_stid *stid)
+ 	atomic_long_dec(&num_delegations);
  }
  
-@@ -7235,14 +7236,14 @@ static int nfs4_state_create_net(struct net *net)
- {
- 	if (cstate->minorversion) {
- 		memcpy(&cstate->current_stateid, stateid, sizeof(stateid_t));
--		SET_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+		SET_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
- 	}
- }
- 
- void
- clear_current_stateid(struct nfsd4_compound_state *cstate)
- {
--	CLEAR_STATE_ID(cstate, CURRENT_STATE_ID_FLAG);
-+	CLEAR_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG);
- }
++__be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
++			    struct nfs4_cp_state **cps)
++{
++	struct nfs4_cp_state *state = NULL;
++
++	if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
++		return nfserr_bad_stateid;
++	spin_lock(&nn->s2s_cp_lock);
++	state = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
++	spin_unlock(&nn->s2s_cp_lock);
++	if (!state)
++		return nfserr_bad_stateid;
++	*cps = state;
++	return 0;
++}
++
+ /*
+  * When we recall a delegation, we should be careful not to hand it
+  * out again straight away.
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 8724955..7a070d5 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -111,6 +111,8 @@ struct nfs4_cp_state {
+ 	stateid_t		cp_stateid;
+ 	struct list_head	cp_list;	/* per parent nfs4_stid */
+ 	struct nfs4_stid        *cp_p_stid;     /* pointer to parent */
++	bool                    cp_cancelled;   /* copy cancelled */
++	spinlock_t              cp_lock;
+ };
  
  /*
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 79f8ed4..c979235 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -46,9 +46,9 @@
- #define CURRENT_STATE_ID_FLAG (1<<0)
- #define SAVED_STATE_ID_FLAG (1<<1)
+@@ -647,6 +649,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+ extern int nfsd4_create_copy_queue(void);
+ extern void nfsd4_destroy_copy_queue(void);
++extern __be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
++			struct nfs4_cp_state **cps);
  
--#define SET_STATE_ID(c, f) ((c)->sid_flags |= (f))
--#define HAS_STATE_ID(c, f) ((c)->sid_flags & (f))
--#define CLEAR_STATE_ID(c, f) ((c)->sid_flags &= ~(f))
-+#define SET_CSTATE_FLAG(c, f) ((c)->sid_flags |= (f))
-+#define HAS_CSTATE_FLAG(c, f) ((c)->sid_flags & (f))
-+#define CLEAR_CSTATE_FLAG(c, f) ((c)->sid_flags &= ~(f))
- 
- struct nfsd4_compound_state {
- 	struct svc_fh		current_fh;
+ struct nfs4_file *find_file(struct knfsd_fh *fh);
+ void put_nfs4_file(struct nfs4_file *fi);
 -- 
 1.8.3.1
 
