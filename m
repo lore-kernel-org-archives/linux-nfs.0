@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:18018 "EHLO mx143.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:18010 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751957AbdI1R20 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:28:26 -0400
+        id S1752069AbdI1R2Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:28:25 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 07/12] NFS add support for asynchronous COPY
-Date: Thu, 28 Sep 2017 13:28:14 -0400
-Message-ID: <20170928172819.50703-8-kolga@netapp.com>
+Subject: [PATCH v4 05/12] NFS OFFLOAD_CANCEL xdr
+Date: Thu, 28 Sep 2017 13:28:12 -0400
+Message-ID: <20170928172819.50703-6-kolga@netapp.com>
 In-Reply-To: <20170928172819.50703-1-kolga@netapp.com>
 References: <20170928172819.50703-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,262 +16,176 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change xdr to always send COPY asynchronously.
-
-Keep the list copies send in a list under a server structure.
-Once copy is sent, it waits on a completion structure that will
-be signalled by the callback thread that receives CB_OFFLOAD.
-
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/callback_proc.c    | 38 ++++++++++++++++++++++++++++++-
- fs/nfs/client.c           |  1 +
- fs/nfs/nfs42proc.c        | 57 ++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfs/nfs42xdr.c         |  8 ++++---
- include/linux/nfs_fs.h    |  9 ++++++++
+ fs/nfs/nfs42xdr.c         | 68 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/nfs4proc.c         |  1 +
+ fs/nfs/nfs4xdr.c          |  1 +
+ include/linux/nfs4.h      |  1 +
  include/linux/nfs_fs_sb.h |  1 +
- include/linux/nfs_xdr.h   |  1 +
- 7 files changed, 106 insertions(+), 9 deletions(-)
+ 5 files changed, 72 insertions(+)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index eef2728..d3e7b61 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -657,9 +657,45 @@ __be32 nfs4_callback_notify_lock(void *argp, void *resp,
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index 3ebbb41..940621a 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -30,6 +30,9 @@
+ #define decode_offload_status_maxsz	(op_decode_hdr_maxsz + \
+ 					 2 /* osr_count */ + \
+ 					 1 + 1 /* osr_complete<1> */)
++#define encode_offload_cancel_maxsz	(op_encode_hdr_maxsz + \
++					 XDR_QUADLEN(NFS4_STATEID_SIZE))
++#define decode_offload_cancel_maxsz	(op_decode_hdr_maxsz)
+ #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
+ 					 encode_fallocate_maxsz)
+ #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
+@@ -85,6 +88,12 @@
+ #define NFS4_dec_offload_status_sz	(compound_decode_hdr_maxsz + \
+ 					 decode_putfh_maxsz + \
+ 					 decode_offload_status_maxsz)
++#define NFS4_enc_offload_cancel_sz	(compound_encode_hdr_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_offload_cancel_maxsz)
++#define NFS4_dec_offload_cancel_sz	(compound_decode_hdr_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_offload_cancel_maxsz)
+ #define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
+ 					 encode_putfh_maxsz + \
+ 					 encode_deallocate_maxsz + \
+@@ -163,6 +172,14 @@ static void encode_offload_status(struct xdr_stream *xdr,
+ 	encode_nfs4_stateid(xdr, &args->osa_stateid);
  }
- #endif /* CONFIG_NFS_V4_1 */
- #ifdef CONFIG_NFS_V4_2
--__be32 nfs4_callback_offload(void *args, void *dummy,
-+static void nfs4_copy_cb_args(struct nfs4_copy_state *cp_state,
-+				struct cb_offloadargs *args)
+ 
++static void encode_offload_cancel(struct xdr_stream *xdr,
++				  const struct nfs42_offload_status_args *args,
++				  struct compound_hdr *hdr)
 +{
-+	cp_state->count = args->wr_count;
-+	cp_state->error = args->error;
-+	if (!args->error) {
-+		cp_state->verf.committed = args->wr_writeverf.committed;
-+		memcpy(&cp_state->verf.verifier.data[0],
-+			&args->wr_writeverf.verifier.data[0],
-+			NFS4_VERIFIER_SIZE);
-+	}
++	encode_op_hdr(xdr, OP_OFFLOAD_CANCEL, decode_offload_cancel_maxsz, hdr);
++	encode_nfs4_stateid(xdr, &args->osa_stateid);
 +}
 +
-+__be32 nfs4_callback_offload(void *data, void *dummy,
- 			     struct cb_process_state *cps)
- {
-+	struct cb_offloadargs *args = data;
-+	struct nfs_server *server;
-+	struct nfs4_copy_state *copy;
-+
-+	rcu_read_lock();
-+	list_for_each_entry_rcu(server, &cps->clp->cl_superblocks,
-+				client_link) {
-+		spin_lock(&server->nfs_client->cl_lock);
-+		list_for_each_entry(copy, &server->ss_copies, copies) {
-+			if (memcmp(args->coa_stateid.other,
-+					copy->stateid.other,
-+					sizeof(args->coa_stateid.other)))
-+				continue;
-+			nfs4_copy_cb_args(copy, args);
-+			complete(&copy->completion);
-+			spin_unlock(&server->nfs_client->cl_lock);
-+			goto out;
-+		}
-+		spin_unlock(&server->nfs_client->cl_lock);
-+	}
-+out:
-+	rcu_read_unlock();
-+
- 	return 0;
- }
- #endif /* CONFIG_NFS_V4_2 */
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index efebe6c..7b338be 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -876,6 +876,7 @@ struct nfs_server *nfs_alloc_server(void)
- 	INIT_LIST_HEAD(&server->delegations);
- 	INIT_LIST_HEAD(&server->layouts);
- 	INIT_LIST_HEAD(&server->state_owners_lru);
-+	INIT_LIST_HEAD(&server->ss_copies);
- 
- 	atomic_set(&server->active, 0);
- 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 5c42e71..c8ca353 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -129,6 +129,39 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
- 	return err;
+ static void encode_deallocate(struct xdr_stream *xdr,
+ 			      const struct nfs42_falloc_args *args,
+ 			      struct compound_hdr *hdr)
+@@ -298,6 +315,25 @@ static void nfs4_xdr_enc_offload_status(struct rpc_rqst *req,
  }
  
-+static int handle_async_copy(struct nfs42_copy_res *res,
-+			     struct nfs_server *server,
-+			     struct file *src,
-+			     struct file *dst,
-+			     nfs4_stateid *src_stateid,
-+			     uint64_t *ret_count)
+ /*
++ * Encode OFFLOAD_CANEL request
++ */
++static void nfs4_xdr_enc_offload_cancel(struct rpc_rqst *req,
++					struct xdr_stream *xdr,
++					const void *data)
 +{
-+	struct nfs4_copy_state *copy;
++	const struct nfs42_offload_status_args *args = data;
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->osa_seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->osa_seq_args, &hdr);
++	encode_putfh(xdr, args->osa_src_fh, &hdr);
++	encode_offload_cancel(xdr, args, &hdr);
++	encode_nops(&hdr);
++}
++
++/*
+  * Encode DEALLOCATE request
+  */
+ static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
+@@ -475,6 +511,12 @@ static int decode_offload_status(struct xdr_stream *xdr,
+ 	return -EIO;
+ }
+ 
++static int decode_offload_cancel(struct xdr_stream *xdr,
++				 struct nfs42_offload_status_res *res)
++{
++	return decode_op_hdr(xdr, OP_OFFLOAD_CANCEL);
++}
++
+ static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *res)
+ {
+ 	return decode_op_hdr(xdr, OP_DEALLOCATE);
+@@ -601,6 +643,32 @@ static int nfs4_xdr_dec_offload_status(struct rpc_rqst *rqstp,
+ }
+ 
+ /*
++ * Decode OFFLOAD_CANCEL response
++ */
++static int nfs4_xdr_dec_offload_cancel(struct rpc_rqst *rqstp,
++				       struct xdr_stream *xdr,
++				       void *data)
++{
++	struct nfs42_offload_status_res *res = data;
++	struct compound_hdr hdr;
 +	int status;
 +
-+	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
-+	if (!copy)
-+		return -ENOMEM;
-+	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
-+	init_completion(&copy->completion);
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->osr_seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_offload_cancel(xdr, res);
 +
-+	spin_lock(&server->nfs_client->cl_lock);
-+	list_add_tail(&copy->copies, &server->ss_copies);
-+	spin_unlock(&server->nfs_client->cl_lock);
-+
-+	wait_for_completion_interruptible(&copy->completion);
-+	spin_lock(&server->nfs_client->cl_lock);
-+	list_del_init(&copy->copies);
-+	spin_unlock(&server->nfs_client->cl_lock);
-+	*ret_count = copy->count;
-+	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
-+	if (copy->count <= 0)
-+		status = -copy->error;
-+
-+	kfree(copy);
++out:
 +	return status;
 +}
 +
- static ssize_t _nfs42_proc_copy(struct file *src,
- 				struct nfs_lock_context *src_lock,
- 				struct file *dst,
-@@ -167,9 +200,13 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 	if (status)
- 		return status;
- 
--	res->commit_res.verf = kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
--	if (!res->commit_res.verf)
--		return -ENOMEM;
-+	res->commit_res.verf = NULL;
-+	if (args->sync) {
-+		res->commit_res.verf =
-+			kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
-+		if (!res->commit_res.verf)
-+			return -ENOMEM;
-+	}
- 	status = nfs4_call_sync(server->client, server, &msg,
- 				&args->seq_args, &res->seq_res, 0);
- 	if (status == -ENOTSUPP)
-@@ -177,18 +214,27 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 	if (status)
- 		goto out;
- 
--	if (nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
-+	if (args->sync &&
-+		!nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
- 				    &res->commit_res.verf->verifier)) {
- 		status = -EAGAIN;
- 		goto out;
- 	}
- 
-+	if (!res->synchronous) {
-+		status = handle_async_copy(res, server, src, dst,
-+				&args->src_stateid, &res->write_res.count);
-+		if (status)
-+			return status;
-+	}
-+
- 	truncate_pagecache_range(dst_inode, pos_dst,
- 				 pos_dst + res->write_res.count);
- 
- 	status = res->write_res.count;
- out:
--	kfree(res->commit_res.verf);
-+	if (args->sync)
-+		kfree(res->commit_res.verf);
- 	return status;
- }
- 
-@@ -205,6 +251,7 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 		.dst_fh		= NFS_FH(file_inode(dst)),
- 		.dst_pos	= pos_dst,
- 		.count		= count,
-+		.sync		= false,
- 	};
- 	struct nfs42_copy_res res;
- 	struct nfs4_exception src_exception = {
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 9e557ad..2c37c66 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -160,7 +160,7 @@ static void encode_copy(struct xdr_stream *xdr,
- 	encode_uint64(xdr, args->count);
- 
- 	encode_uint32(xdr, 1); /* consecutive = true */
--	encode_uint32(xdr, 1); /* synchronous = true */
-+	encode_uint32(xdr, args->sync);
- 	encode_uint32(xdr, 0); /* src server list */
- }
- 
-@@ -291,7 +291,8 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
- 	encode_savefh(xdr, &hdr);
- 	encode_putfh(xdr, args->dst_fh, &hdr);
- 	encode_copy(xdr, args, &hdr);
--	encode_copy_commit(xdr, args, &hdr);
-+	if (args->sync)
-+		encode_copy_commit(xdr, args, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -613,7 +614,8 @@ static int nfs4_xdr_dec_copy(struct rpc_rqst *rqstp,
- 	status = decode_copy(xdr, res);
- 	if (status)
- 		goto out;
--	status = decode_commit(xdr, &res->commit_res);
-+	if (res->commit_res.verf)
-+		status = decode_commit(xdr, &res->commit_res);
- out:
- 	return status;
- }
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index a0282ce..580a8d9 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -183,6 +183,15 @@ struct nfs_inode {
- 	struct inode		vfs_inode;
++/*
+  * Decode DEALLOCATE request
+  */
+ static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7d59593..3926f11 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -9296,6 +9296,7 @@ static bool nfs4_match_stateid(const nfs4_stateid *s1,
+ 		| NFS_CAP_ALLOCATE
+ 		| NFS_CAP_COPY
+ 		| NFS_CAP_OFFLOAD_STATUS
++		| NFS_CAP_OFFLOAD_CANCEL
+ 		| NFS_CAP_DEALLOCATE
+ 		| NFS_CAP_SEEK
+ 		| NFS_CAP_LAYOUTSTATS
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5406f1d..e45f74b 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -7734,6 +7734,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	PROC(CLONE,		enc_clone,		dec_clone),
+ 	PROC(COPY,		enc_copy,		dec_copy),
+ 	PROC(OFFLOAD_STATUS,	enc_offload_status,	dec_offload_status),
++	PROC(OFFLOAD_CANCEL,    enc_offload_cancel,     dec_offload_cancel),
+ #endif /* CONFIG_NFS_V4_2 */
  };
  
-+struct nfs4_copy_state {
-+	struct list_head	copies;
-+	nfs4_stateid		stateid;
-+	struct completion	completion;
-+	uint64_t		count;
-+	struct nfs_writeverf	verf;
-+	int			error;
-+};
-+
- /*
-  * Cache validity bit flags
-  */
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 0f37785..fde1670 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -525,6 +525,7 @@ enum {
+ 	NFSPROC4_CLNT_CLONE,
+ 	NFSPROC4_CLNT_COPY,
+ 	NFSPROC4_CLNT_OFFLOAD_STATUS,
++	NFSPROC4_CLNT_OFFLOAD_CANCEL,
+ };
+ 
+ /* nfs41 types */
 diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index de1eafe..511eefb 100644
+index fb4e2b8..de1eafe 100644
 --- a/include/linux/nfs_fs_sb.h
 +++ b/include/linux/nfs_fs_sb.h
-@@ -206,6 +206,7 @@ struct nfs_server {
- 	struct list_head	state_owners_lru;
- 	struct list_head	layouts;
- 	struct list_head	delegations;
-+	struct list_head	ss_copies;
+@@ -253,5 +253,6 @@ struct nfs_server {
+ #define NFS_CAP_CLONE		(1U << 23)
+ #define NFS_CAP_COPY		(1U << 24)
+ #define NFS_CAP_OFFLOAD_STATUS	(1U << 25)
++#define NFS_CAP_OFFLOAD_CANCEL	(1U << 26)
  
- 	unsigned long		mig_gen;
- 	unsigned long		mig_status;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 784ec8d..020d958 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1384,6 +1384,7 @@ struct nfs42_copy_args {
- 	u64				dst_pos;
- 
- 	u64				count;
-+	bool				sync;
- };
- 
- struct nfs42_write_res {
+ #endif
 -- 
 1.8.3.1
 
