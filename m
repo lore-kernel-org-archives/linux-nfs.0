@@ -1,79 +1,113 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:3623 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:18048 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751813AbdI1R2l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:28:41 -0400
+        id S1752202AbdI1R2m (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:28:42 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 00/11] NFS support for "inter" server-to-server COPY
-Date: Thu, 28 Sep 2017 13:28:28 -0400
-Message-ID: <20170928172839.50741-1-kolga@netapp.com>
+Subject: [PATCH v4 01/11] VFS permit cross device vfs_copy_file_range
+Date: Thu, 28 Sep 2017 13:28:29 -0400
+Message-ID: <20170928172839.50741-2-kolga@netapp.com>
+In-Reply-To: <20170928172839.50741-1-kolga@netapp.com>
+References: <20170928172839.50741-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series builds on top of async COPY series.
+Allow copy_file_range to copy between different superblocks but only
+of the same file system types.
 
-In case, of the "inter" SSC copy files reside on different servers and
-thus under different superblocks and require that VFS removes the
-restriction that src and dst files must be on the same superblock.
+This feature is needed by NFSv4.2 to perform file copy operation on
+the same server or file copy between different NFSv4.2 servers.
 
-NFS's copy_file_range() determines if the copy is "intra" or "inter"
-and for "inter" it sends the COPY_NOTIFY to the source server. Then,
-it would send of an asynchronous COPY to the destination server.
+If a file system's fileoperations copy_file_range operation prohibits
+cross-device copies, fall back to do_splice_direct. This would be
+needed for the NFS (destination) server side implementation of the
+file copy and currently for CIFS.
 
-A couple of patches are added for the destination server acting as the
-client when talking to the source server. It's now acting as a client
-and needs to do a special "open" and "close". Since destination server
-doesn't do an open on the wire, we "fake" create the needed data structures
-and that's done in the new function nfs42_ssc_open(). To clean up this open
-but not trigger the CLOSE on the wire, we have a new function
-nfs42_ssc_close() that accomplishes that. This is patch "NFS inter ssc open"
+Besides NFS, there is only 1 implementor of the copy_file_range FS
+operation -- CIFS. CIFS assumes incoming file descriptors are both
+CIFS but it will check if they are coming from different servers and
+return error code to fall back to do_splice_direct.
 
-Handling reboot of the destination server when client is waiting on the
-CB_OFFLOAD happens when SEQUENCE discovers that destination server rebooted.
-The open state initially is marked to be NFS_CLNT_DST_SSC_COPY_STATE
-during the COPY. Then during the recovery if state is marked as such,
-then look thru the list of copies for the server and see if any are
-associated with this recovering open, if so mark the copy rebooted and
-wake up the waiting copy. Upon wake up the waiting copy, will restart the
-copy from scratch. This is patch "NFS skip recovery of copy open on
-dest server".
+NFS will allow for copies between different NFS servers.
 
-If the server returned ESTALE or ERR_OFFLOAD_DENIED fallback on the 
-traditional copy.
+Adding to the vfs.txt documentation to explicitly warn about allowing
+for different superblocks of the same file type to be passed into the
+copy_file_range for the future users of copy_file_range method.
 
-Olga Kornievskaia (11):
-  VFS permit cross device vfs_copy_file_range
-  NFS test for intra vs inter COPY
-  NFS recover from destination server reboot for copies
-  NFS NFSD defining nl4_servers structure needed by both
-  NFS add COPY_NOTIFY operation
-  NFS add ca_source_server<> to COPY
-  NFS also send OFFLOAD_CANCEL to source server
-  NFS inter ssc open
-  NFS skip recovery of copy open on dest server
-  NFS for "inter" copy treat ESTALE as ENOTSUPP
-  NFS COPY handle ERR_OFFLOAD_DENIED
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ Documentation/filesystems/vfs.txt |  6 ++++++
+ fs/read_write.c                   | 13 ++++++-------
+ 2 files changed, 12 insertions(+), 7 deletions(-)
 
- Documentation/filesystems/vfs.txt |   6 ++
- fs/nfs/nfs42.h                    |  14 ++-
- fs/nfs/nfs42proc.c                | 141 +++++++++++++++++++++++++---
- fs/nfs/nfs42xdr.c                 | 193 +++++++++++++++++++++++++++++++++++++-
- fs/nfs/nfs4_fs.h                  |  13 +++
- fs/nfs/nfs4file.c                 | 135 +++++++++++++++++++++++++-
- fs/nfs/nfs4proc.c                 |   6 +-
- fs/nfs/nfs4state.c                |  31 +++++-
- fs/nfs/nfs4xdr.c                  |   1 +
- fs/read_write.c                   |  13 ++-
- include/linux/nfs4.h              |  25 +++++
- include/linux/nfs_fs.h            |   2 +
- include/linux/nfs_fs_sb.h         |   1 +
- include/linux/nfs_xdr.h           |  17 ++++
- 14 files changed, 571 insertions(+), 27 deletions(-)
-
+diff --git a/Documentation/filesystems/vfs.txt b/Documentation/filesystems/vfs.txt
+index 5fd325d..f78d9b6 100644
+--- a/Documentation/filesystems/vfs.txt
++++ b/Documentation/filesystems/vfs.txt
+@@ -880,6 +880,8 @@ struct file_operations {
+ #ifndef CONFIG_MMU
+ 	unsigned (*mmap_capabilities)(struct file *);
+ #endif
++	ssize_t (*copy_file_range)(struct file *, loff_t, struct file *,
++				   loff_t, size_t, unsigned int);
+ };
+ 
+ Again, all methods are called without any locks being held, unless
+@@ -949,6 +951,10 @@ otherwise noted.
+ 
+   fallocate: called by the VFS to preallocate blocks or punch a hole.
+ 
++  copy_file_range: called by copy_file_range(2) system call. This method
++		   works on two file descriptors that might reside on
++		   different superblocks of the same type of file system.
++
+ Note that the file operations are implemented by the specific
+ filesystem in which the inode resides. When opening a device node
+ (character or block special) most filesystems will call special
+diff --git a/fs/read_write.c b/fs/read_write.c
+index 47aec8e..00d4332 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1571,10 +1571,6 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	    (file_out->f_flags & O_APPEND))
+ 		return -EBADF;
+ 
+-	/* this could be relaxed once a method supports cross-fs copies */
+-	if (inode_in->i_sb != inode_out->i_sb)
+-		return -EXDEV;
+-
+ 	if (len == 0)
+ 		return 0;
+ 
+@@ -1584,7 +1580,8 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	 * Try cloning first, this is supported by more file systems, and
+ 	 * more efficient if both clone and copy are supported (e.g. NFS).
+ 	 */
+-	if (file_in->f_op->clone_file_range) {
++	if (inode_in->i_sb == inode_out->i_sb &&
++			file_in->f_op->clone_file_range) {
+ 		ret = file_in->f_op->clone_file_range(file_in, pos_in,
+ 				file_out, pos_out, len);
+ 		if (ret == 0) {
+@@ -1593,10 +1590,12 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 		}
+ 	}
+ 
+-	if (file_out->f_op->copy_file_range) {
++	if (file_out->f_op->copy_file_range &&
++			(file_in->f_op->copy_file_range ==
++				file_out->f_op->copy_file_range)) {
+ 		ret = file_out->f_op->copy_file_range(file_in, pos_in, file_out,
+ 						      pos_out, len, flags);
+-		if (ret != -EOPNOTSUPP)
++		if (ret != -EOPNOTSUPP && ret != -EXDEV)
+ 			goto done;
+ 	}
+ 
 -- 
 1.8.3.1
 
