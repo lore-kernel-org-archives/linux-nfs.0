@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:46303 "EHLO mx142.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:13487 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752308AbdI1R2c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:28:32 -0400
+        id S1751957AbdI1R2W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:28:22 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 12/12] NFS add a simple sync nfs4_proc_commit after async COPY
-Date: Thu, 28 Sep 2017 13:28:19 -0400
-Message-ID: <20170928172819.50703-13-kolga@netapp.com>
+Subject: [PATCH v4 01/12] fs: Don't copy beyond the end of the file
+Date: Thu, 28 Sep 2017 13:28:08 -0400
+Message-ID: <20170928172819.50703-2-kolga@netapp.com>
 In-Reply-To: <20170928172819.50703-1-kolga@netapp.com>
 References: <20170928172819.50703-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,106 +16,27 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A COPY with unstable write data needs a simple commit that doesn't
-deal with inodes
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/nfs42proc.c | 22 ++++++++++++++++++++++
- fs/nfs/nfs4_fs.h   |  2 +-
- fs/nfs/nfs4proc.c  | 33 +++++++++++++++++++++++++++++++++
- 3 files changed, 56 insertions(+), 1 deletion(-)
+ fs/read_write.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index b9e47a2..2064d11 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -252,6 +252,28 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 			return status;
- 	}
+diff --git a/fs/read_write.c b/fs/read_write.c
+index a2b9a47..47aec8e 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1563,6 +1563,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (unlikely(ret))
+ 		return ret;
  
-+	if ((!res->synchronous || !args->sync) &&
-+			res->write_res.verifier.committed != NFS_FILE_SYNC) {
-+		struct nfs_commitres cres;
++	if (pos_in >= i_size_read(inode_in))
++		return -EINVAL;
 +
-+		cres.verf = kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
-+		if (!cres.verf)
-+			return -ENOMEM;
-+
-+		status = nfs4_proc_commit(dst, pos_dst, res->write_res.count,
-+					  &cres);
-+		if (status) {
-+			kfree(cres.verf);
-+			return status;
-+		}
-+		if (!nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
-+					    &cres.verf->verifier)) {
-+			/* what are we suppose to do here ? */
-+			dprintk("commit verf differs from copy verf\n");
-+		}
-+		kfree(cres.verf);
-+	}
-+
- 	truncate_pagecache_range(dst_inode, pos_dst,
- 				 pos_dst + res->write_res.count);
- 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index c7225bb..5edb161 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -475,7 +475,7 @@ extern int nfs4_sequence_done(struct rpc_task *task,
- 			      struct nfs4_sequence_res *res);
- 
- extern void nfs4_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp);
--
-+extern int nfs4_proc_commit(struct file *dst, __u64 offset, __u32 count, struct nfs_commitres *res);
- extern const nfs4_stateid zero_stateid;
- 
- /* nfs4super.c */
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f1bf19e..30829ce 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4829,6 +4829,39 @@ static void nfs4_proc_commit_setup(struct nfs_commit_data *data, struct rpc_mess
- 	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
- }
- 
-+static int _nfs4_proc_commit(struct file *dst, struct nfs_commitargs *args,
-+				struct nfs_commitres *res)
-+{
-+	struct inode *dst_inode = file_inode(dst);
-+	struct nfs_server *server = NFS_SERVER(dst_inode);
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_COMMIT],
-+		.rpc_argp = args,
-+		.rpc_resp = res,
-+	};
-+	return nfs4_call_sync(server->client, server, &msg,
-+			&args->seq_args, &res->seq_res, 1);
-+}
-+
-+int nfs4_proc_commit(struct file *dst, __u64 offset, __u32 count, struct nfs_commitres *res)
-+{
-+	struct nfs_commitargs args = {
-+		.fh = NFS_FH(file_inode(dst)),
-+		.offset = offset,
-+		.count = count,
-+	};
-+	struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
-+	struct nfs4_exception exception = { };
-+	int status;
-+
-+	do {
-+		status = _nfs4_proc_commit(dst, &args, res);
-+		status = nfs4_handle_exception(dst_server, status, &exception);
-+	} while (exception.retry);
-+
-+	return status;
-+}
-+
- struct nfs4_renewdata {
- 	struct nfs_client	*client;
- 	unsigned long		timestamp;
+ 	if (!(file_in->f_mode & FMODE_READ) ||
+ 	    !(file_out->f_mode & FMODE_WRITE) ||
+ 	    (file_out->f_flags & O_APPEND))
 -- 
 1.8.3.1
 
