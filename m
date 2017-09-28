@@ -1,78 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx143.netapp.com ([216.240.21.24]:25116 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752433AbdI1RaT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:30:19 -0400
+        id S1751663AbdI1RaR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:30:17 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 6/8] nfsd: remove unnecessary nofilehandle checks
-Date: Thu, 28 Sep 2017 13:30:00 -0400
-Message-ID: <20170928173002.50818-7-kolga@netapp.com>
-In-Reply-To: <20170928173002.50818-1-kolga@netapp.com>
-References: <20170928173002.50818-1-kolga@netapp.com>
+Subject: [PATCH v4 0/8] NFSD support for "inter" server-to-server COPY
+Date: Thu, 28 Sep 2017 13:29:54 -0400
+Message-ID: <20170928173002.50818-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These checks should have already be done centrally in
-nfsd4_proc_compound, the checks in each individual operation are
-unnecessary.
+This depends on the async NFSD series and it depends on the client's
+inter copy series that provide nfs4_ssc_open/close functions and
+reboot recovery support for the destination server.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c | 14 ++------------
- 1 file changed, 2 insertions(+), 12 deletions(-)
+NFSD determines if COPY is intra or inter and if sync or async. For
+inter, NSFD uses NFSv4.1 protocol and creates an internal mount point
+(superblock). It will destroy the mount point when copy is done.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 72a0bc5..a0536a6 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -507,9 +507,6 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
- nfsd4_getfh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	    union nfsd4_op_u *u)
- {
--	if (!cstate->current_fh.fh_dentry)
--		return nfserr_nofilehandle;
--
- 	u->getfh = &cstate->current_fh;
- 	return nfs_ok;
- }
-@@ -557,9 +554,6 @@ static __be32 nfsd4_open_omfg(struct svc_rqst *rqstp, struct nfsd4_compound_stat
- nfsd4_savefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	     union nfsd4_op_u *u)
- {
--	if (!cstate->current_fh.fh_dentry)
--		return nfserr_nofilehandle;
--
- 	fh_dup2(&cstate->save_fh, &cstate->current_fh);
- 	if (HAS_CSTATE_FLAG(cstate, CURRENT_STATE_ID_FLAG)) {
- 		memcpy(&cstate->save_stateid, &cstate->current_stateid, sizeof(stateid_t));
-@@ -725,10 +719,8 @@ static void gen_boot_verifier(nfs4_verifier *verifier, struct net *net)
- 	   union nfsd4_op_u *u)
- {
- 	struct nfsd4_link *link = &u->link;
--	__be32 status = nfserr_nofilehandle;
-+	__be32 status;
- 
--	if (!cstate->save_fh.fh_dentry)
--		return status;
- 	status = nfsd_link(rqstp, &cstate->current_fh,
- 			   link->li_name, link->li_namelen, &cstate->save_fh);
- 	if (!status)
-@@ -873,10 +865,8 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
- 	     union nfsd4_op_u *u)
- {
- 	struct nfsd4_rename *rename = &u->rename;
--	__be32 status = nfserr_nofilehandle;
-+	__be32 status;
- 
--	if (!cstate->save_fh.fh_dentry)
--		return status;
- 	if (opens_in_grace(SVC_NET(rqstp)) &&
- 		!(cstate->save_fh.fh_export->ex_flags & NFSEXP_NOSUBTREECHECK))
- 		return nfserr_grace;
+On the source server, upon receiving a COPY_NOTIFY, it generate a
+unique stateid that's kept in the global list. Upon receiving a READ
+with a stateid, the code checks the normal list of open stateid and
+now additionally, it'll check the copy state list as well before
+deciding to either fail with BAD_STATEID or find one that matches.
+The stored stateid is only valid to be used for the first time
+with a choosen lease period (90s currently). When the source server
+received an OFFLOAD_CANCEL, it will remove the stateid from the
+global list. Otherwise, the copy stateid is removed upon the removal
+of its "parent" stateid (open/lock/delegation stateid).
+
+v4:
+* Don't have the IS_STALE_FH in the compount state structure. Instead
+mark the filehandle FOREIGN. If the server gets a PUTFH,SAVEFH,PUTFH...
+COPY compount then it'll allow for the PUTFH to be STALE (foreign)
+handle. It 
+* This series has Bruce's proposed "nfsd: remove unnecessary nofilehandle
+checks" patch as I didn't see it committed yet.
+* dropped the support for multiple server netaddrs in the COPY_NOTIFY/
+COPY
+* made sure to return OFFLOAD_DENIED when mount to the source server
+fails which triggers the client to fallback on the traditional copy.
+
+Andy Adamson (1):
+  NFSD generalize nfsd4_compound_state flag names
+
+Olga Kornievskaia (7):
+  NFSD fill-in netloc4 structure
+  NFSD add ca_source_server<> to COPY
+  NFSD add COPY_NOTIFY operation
+  NFSD check stateids against copy stateids
+  nfsd: remove unnecessary nofilehandle checks
+  NFSD: allow inter server COPY to have a STALE source server fh
+  NFSD add nfs4 inter ssc to nfsd4_copy
+
+ fs/nfsd/Kconfig      |  10 ++
+ fs/nfsd/nfs4proc.c   | 427 ++++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4state.c  |  37 ++++-
+ fs/nfsd/nfs4xdr.c    | 168 +++++++++++++++++++-
+ fs/nfsd/nfsd.h       |  31 +++-
+ fs/nfsd/nfsfh.h      |   5 +-
+ fs/nfsd/state.h      |   5 +-
+ fs/nfsd/xdr4.h       |  25 ++-
+ include/linux/nfs4.h |   1 +
+ 9 files changed, 657 insertions(+), 52 deletions(-)
+
 -- 
 1.8.3.1
 
