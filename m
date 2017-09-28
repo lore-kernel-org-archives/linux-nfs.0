@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx141.netapp.com ([216.240.21.12]:2773 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752299AbdI1R3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:29:52 -0400
+        id S1752299AbdI1R3u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:29:50 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 09/10] NFSD support OFFLOAD_STATUS
-Date: Thu, 28 Sep 2017 13:29:44 -0400
-Message-ID: <20170928172945.50780-10-kolga@netapp.com>
+Subject: [PATCH v4 04/10] NFSD xdr callback stateid in async COPY reply
+Date: Thu, 28 Sep 2017 13:29:39 -0400
+Message-ID: <20170928172945.50780-5-kolga@netapp.com>
 In-Reply-To: <20170928172945.50780-1-kolga@netapp.com>
 References: <20170928172945.50780-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,61 +16,56 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update number of bytes copied in the copy state and query that
-value under lock if OFFLOAD_STATUS operation received.
-
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 16 +++++++++++++++-
- fs/nfsd/state.h    |  1 +
- 2 files changed, 16 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4xdr.c | 21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index f4f3d93..74bfa4b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1154,6 +1154,8 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
- 		if (!copy->cp_synchronous) {
- 			spin_lock(&copy->cps->cp_lock);
- 			cancelled = copy->cps->cp_cancelled;
-+			copy->cps->cp_bytes_copied =
-+				copy->cp_res.wr_bytes_written;
- 			spin_unlock(&copy->cps->cp_lock);
- 		}
- 	} while (bytes_total > 0 && !copy->cp_synchronous && !cancelled);
-@@ -1321,7 +1323,19 @@ static void nfsd4_do_async_copy(struct work_struct *work)
- 		     struct nfsd4_compound_state *cstate,
- 		     union nfsd4_op_u *u)
- {
--	return nfserr_notsupp;
-+	struct nfsd4_offload_status *os = &u->offload_status;
-+	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	__be32 status;
-+	struct nfs4_cp_state *state = NULL;
-+
-+	status = find_cp_state(nn, &os->stateid, &state);
-+
-+	if (state) {
-+		spin_lock(&state->cp_lock);
-+		os->count = state->cp_bytes_copied;
-+		spin_unlock(&state->cp_lock);
-+	}
-+	return status;
- }
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 31ee5e1..5f5058e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4190,15 +4190,27 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ #endif /* CONFIG_NFSD_PNFS */
  
  static __be32
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 7a070d5..c31025c 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -113,6 +113,7 @@ struct nfs4_cp_state {
- 	struct nfs4_stid        *cp_p_stid;     /* pointer to parent */
- 	bool                    cp_cancelled;   /* copy cancelled */
- 	spinlock_t              cp_lock;
-+	ssize_t                 cp_bytes_copied;/* copy progress */
- };
+-nfsd42_encode_write_res(struct nfsd4_compoundres *resp, struct nfsd42_write_res *write)
++nfsd42_encode_write_res(struct nfsd4_compoundres *resp,
++		struct nfsd42_write_res *write, bool sync)
+ {
+ 	__be32 *p;
++	p = xdr_reserve_space(&resp->xdr, 4);
++	if (!p)
++		return nfserr_resource;
  
- /*
+-	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 4 + NFS4_VERIFIER_SIZE);
++	if (sync)
++		*p++ = cpu_to_be32(0);
++	else {
++		__be32 nfserr;
++		*p++ = cpu_to_be32(1);
++		nfserr = nfsd4_encode_stateid(&resp->xdr, &write->cb_stateid);
++		if (nfserr)
++			return nfserr;
++	}
++	p = xdr_reserve_space(&resp->xdr, 8 + 4 + NFS4_VERIFIER_SIZE);
+ 	if (!p)
+ 		return nfserr_resource;
+ 
+-	*p++ = cpu_to_be32(0);
+ 	p = xdr_encode_hyper(p, write->wr_bytes_written);
+ 	*p++ = cpu_to_be32(write->wr_stable_how);
+ 	p = xdr_encode_opaque_fixed(p, write->wr_verifier.data,
+@@ -4212,7 +4224,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ {
+ 	__be32 *p;
+ 
+-	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res);
++	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res,
++			copy->cp_synchronous);
+ 	if (nfserr)
+ 		return nfserr;
+ 
 -- 
 1.8.3.1
 
