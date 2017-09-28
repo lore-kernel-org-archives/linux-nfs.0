@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx142.netapp.com ([216.240.21.19]:46321 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752177AbdI1R2n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:28:43 -0400
+        id S1752190AbdI1R2o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:28:44 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 03/11] NFS recover from destination server reboot for copies
-Date: Thu, 28 Sep 2017 13:28:31 -0400
-Message-ID: <20170928172839.50741-4-kolga@netapp.com>
+Subject: [PATCH v4 04/11] NFS NFSD defining nl4_servers structure needed by both
+Date: Thu, 28 Sep 2017 13:28:32 -0400
+Message-ID: <20170928172839.50741-5-kolga@netapp.com>
 In-Reply-To: <20170928172839.50741-1-kolga@netapp.com>
 References: <20170928172839.50741-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,154 +16,54 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mark the destination state to indicate a server-side copy is
-happening. On detecting a reboot and recovering open state check
-if any state is engaged in a server-side copy, if so, find the
-copy and mark it and then signal the waiting thread. Upon wakeup,
-if copy was marked then propage EAGAIN to the nfsd_copy_file_range
-and restart the copy from scratch (no partial state is being
-queried at this point).
+These structures are needed by COPY_NOTIFY on the client and needed
+by the nfsd as well
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42proc.c     | 16 +++++++++++++---
- fs/nfs/nfs4_fs.h       |  4 ++++
- fs/nfs/nfs4file.c      |  9 +++++++--
- fs/nfs/nfs4state.c     | 15 +++++++++++++++
- include/linux/nfs_fs.h |  2 ++
- 5 files changed, 41 insertions(+), 5 deletions(-)
+ include/linux/nfs4.h | 24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 2064d11..378d774 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -140,6 +140,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	struct nfs4_copy_state *copy;
- 	int status = NFS4_OK;
- 	bool found_pending = false;
-+	struct nfs_open_context *ctx = nfs_file_open_context(dst);
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index fde1670..5b330ab 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -15,6 +15,7 @@
+ #include <linux/list.h>
+ #include <linux/uidgid.h>
+ #include <uapi/linux/nfs4.h>
++#include <linux/sunrpc/msg_prot.h>
  
- 	spin_lock(&server->nfs_client->cl_lock);
- 	list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
-@@ -163,6 +164,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	}
- 	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
- 	init_completion(&copy->completion);
-+	copy->parent_state = ctx->state;
- 
- 	list_add_tail(&copy->copies, &server->ss_copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
-@@ -172,9 +174,10 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	list_del_init(&copy->copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
- 	if (status == -ERESTARTSYS) {
--		nfs42_do_offload_cancel_async(dst, &copy->stateid);
--		kfree(copy);
--		return status;
-+		goto out_cancel;
-+	} else if (copy->flags) {
-+		status = -EAGAIN;
-+		goto out_cancel;
- 	}
- out:
- 	*ret_count = copy->count;
-@@ -184,6 +187,10 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 
- 	kfree(copy);
- 	return status;
-+out_cancel:
-+	nfs42_do_offload_cancel_async(dst, &copy->stateid);
-+	kfree(copy);
-+	return status;
- }
- 
- static ssize_t _nfs42_proc_copy(struct file *src,
-@@ -231,6 +238,9 @@ static ssize_t _nfs42_proc_copy(struct file *src,
- 		if (!res->commit_res.verf)
- 			return -ENOMEM;
- 	}
-+	set_bit(NFS_CLNT_DST_SSC_COPY_STATE,
-+		&dst_lock->open_context->state->flags);
-+
- 	status = nfs4_call_sync(server->client, server, &msg,
- 				&args->seq_args, &res->seq_res, 0);
- 	if (status == -ENOTSUPP)
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 5edb161..2ea141c 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -161,6 +161,10 @@ enum {
- 	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
- 	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
- 	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
-+#ifdef CONFIG_NFS_V4_2
-+	NFS_CLNT_DST_SSC_COPY_STATE,	/* dst server open state on client*/
-+#endif /* CONFIG_NFS_V4_2 */
-+
+ enum nfs4_acl_whotype {
+ 	NFS4_ACL_WHO_NAMED = 0,
+@@ -660,4 +661,27 @@ struct nfs4_op_map {
+ 	} u;
  };
  
- struct nfs4_state {
-diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-index 0efba77..881b819 100644
---- a/fs/nfs/nfs4file.c
-+++ b/fs/nfs/nfs4file.c
-@@ -133,10 +133,15 @@ static ssize_t nfs4_copy_file_range(struct file *file_in, loff_t pos_in,
- 				    struct file *file_out, loff_t pos_out,
- 				    size_t count, unsigned int flags)
- {
-+	ssize_t ret;
++struct nfs42_netaddr {
++	char		netid[RPCBIND_MAXNETIDLEN];
++	char		addr[RPCBIND_MAXUADDRLEN + 1];
++	u32		netid_len;
++	u32 addr_len;
++};
 +
- 	if (file_inode(file_in) == file_inode(file_out))
- 		return -EINVAL;
--
--	return nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-+retry:
-+	ret = nfs42_proc_copy(file_in, pos_in, file_out, pos_out, count);
-+	if (ret == -EAGAIN)
-+		goto retry;
-+	return ret;
- }
- 
- static loff_t nfs4_file_llseek(struct file *filep, loff_t offset, int whence)
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 0378e225..0f14800 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1546,6 +1546,21 @@ static int nfs4_reclaim_open_state(struct nfs4_state_owner *sp, const struct nfs
- 					&state->flags);
- 				nfs4_put_open_state(state);
- 				spin_lock(&sp->so_lock);
-+#ifdef CONFIG_NFS_V4_2
-+				if (test_bit(NFS_CLNT_DST_SSC_COPY_STATE, &state->flags)) {
-+					struct nfs4_copy_state *copy;
++enum netloc_type4 {
++	NL4_NAME		= 1,
++	NL4_URL			= 2,
++	NL4_NETADDR		= 3,
++};
 +
-+					spin_lock(&sp->so_server->nfs_client->cl_lock);
-+					list_for_each_entry(copy, &sp->so_server->ss_copies, copies) {
-+						if (memcmp(&state->stateid.other, &copy->parent_state->stateid.other, NFS4_STATEID_SIZE))
-+							continue;
-+						copy->flags = 1;
-+						complete(&copy->completion);
-+						break;
-+					}
-+					spin_unlock(&sp->so_server->nfs_client->cl_lock);
-+				}
-+#endif /* CONFIG_NFS_V4_2 */
- 				goto restart;
- 			}
- 		}
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 580a8d9..85fcd8f 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -190,6 +190,8 @@ struct nfs4_copy_state {
- 	uint64_t		count;
- 	struct nfs_writeverf	verf;
- 	int			error;
-+	int			flags;
-+	struct nfs4_state	*parent_state;
- };
- 
- /*
++struct nl4_server {
++	enum netloc_type4	nl4_type;
++	union {
++		struct { /* NL4_NAME, NL4_URL */
++			int	nl4_str_sz;
++			char	nl4_str[NFS4_OPAQUE_LIMIT + 1];
++		};
++		struct nfs42_netaddr	nl4_addr; /* NL4_NETADDR */
++	} u;
++};
+ #endif
 -- 
 1.8.3.1
 
