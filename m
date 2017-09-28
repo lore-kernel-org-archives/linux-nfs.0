@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54604 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:46014 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751880AbdI1Keq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 06:34:46 -0400
-Date: Thu, 28 Sep 2017 11:34:44 +0100
+        id S1752764AbdI1Koq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 06:44:46 -0400
+Date: Thu, 28 Sep 2017 11:44:44 +0100
 From: Stefan Hajnoczi <stefanha@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: NeilBrown <neilb@suse.com>,
+To: NeilBrown <neilb@suse.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
         "Daniel P. Berrange" <berrange@redhat.com>,
         Chuck Lever <chuck.lever@oracle.com>,
         Steven Whitehouse <swhiteho@redhat.com>,
@@ -16,47 +16,108 @@ Cc: NeilBrown <neilb@suse.com>,
         Jeff Layton <jlayton@redhat.com>,
         Justin Mitchell <jumitche@redhat.com>
 Subject: Re: [PATCH nfs-utils v3 00/14] add NFS over AF_VSOCK support
-Message-ID: <20170928103444.GD12157@stefanha-x1.localdomain>
+Message-ID: <20170928104444.GE12157@stefanha-x1.localdomain>
 References: <20170921170017.GK32364@stefanha-x1.localdomain>
  <d760ecdc-988d-8145-f816-6faf8f2abf03@redhat.com>
  <E5B4D2FF-0DB4-417D-998A-6BBFC36C35C5@oracle.com>
  <20170922115524.GN12725@redhat.com>
  <87efqu6wl4.fsf@notabene.neil.brown.name>
  <20170926034026.GA19283@fieldses.org>
- <20170926133949.GB25286@fieldses.org>
- <20170926134239.GC25286@fieldses.org>
- <20170927122258.GC14579@stefanha-x1.localdomain>
- <20170927134634.GB9585@fieldses.org>
+ <20170926105626.GH16834@stefanha-x1.localdomain>
+ <87bmlx6kbm.fsf@notabene.neil.brown.name>
+ <20170927130523.GD14579@stefanha-x1.localdomain>
+ <8760c37pfn.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170927134634.GB9585@fieldses.org>
+In-Reply-To: <8760c37pfn.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 27, 2017 at 09:46:34AM -0400, J. Bruce Fields wrote:
-> On Wed, Sep 27, 2017 at 01:22:58PM +0100, Stefan Hajnoczi wrote:
-> > On Tue, Sep 26, 2017 at 09:42:39AM -0400, J. Bruce Fields wrote:
-> > > By the way, do we know anything about likely performance of NFS/VSOCK?
-> > 
-> > virtio-vsock is designed for reliable host<->guest communication, not
-> > performance.  It is not a fast-path to avoid Ethernet/IP.  I haven't run
-> > benchmarks on NFS over AF_VSOCK but don't expect its performance to set
-> > it apart from virtio-net.
+On Thu, Sep 28, 2017 at 08:21:48AM +1000, NeilBrown wrote:
+> On Wed, Sep 27 2017, Stefan Hajnoczi wrote:
 > 
-> OK.
+> > On Wed, Sep 27, 2017 at 10:45:17AM +1000, NeilBrown wrote:
+> >> On Tue, Sep 26 2017, Stefan Hajnoczi wrote:
+> >> 
+> >> > On Mon, Sep 25, 2017 at 11:40:26PM -0400, J. Bruce Fields wrote:
+> >> >> On Tue, Sep 26, 2017 at 12:08:07PM +1000, NeilBrown wrote:
+> >> >> > On Fri, Sep 22 2017, Daniel P. Berrange wrote:
+> >> >> > Rather than a flag, it might work to use network namespaces.
+> >> >> > Very early in the init sequence the filesystem gets mounted using the
+> >> >> > IPv6 link-local address on a client->host interface, and then a new
+> >> >> > network namespace is created which does not include that interface, and
+> >> >> > which everything else including firewall code runs in.  Maybe.
+> >> >> 
+> >> >> That seems closer, since it allows you to hide the interface from most
+> >> >> of the guest while letting some special software--qemu guest agent?--
+> >> >> still work with it.  That agent would also need to be the one to do the
+> >> >> mount, and would need to be able to make that mount usable to the rest
+> >> >> of the guest.
+> >> >> 
+> >> >> Sounds doable to me?
+> >> >> 
+> >> >> There's still the problem of the paranoid security bureaucracy.
+> >> >> 
+> >> >> It should be pretty easy to demonstrate that the host only allows
+> >> >> point-to-point traffic on these interfaces.  I'd hope that that, plus
+> >> >> the appeal of the feature, would be enough to win out in the end.  This
+> >> >> is not a class of problem that I have experience dealing with, though!
+> >> >
+> >> > Programs wishing to use host<->guest networking might still need the
+> >> > main network namespace for UNIX domain sockets and other
+> >> > communication.
+> >> 
+> >> Did I miss something.... the whole premise of this work seems to be that
+> >> programs (nfs in particular) cannot rely on host<->guest networking
+> >> because some rogue firewall might interfere with it, but now you say
+> >> that some programs might rely on it....
+> >
+> > Programs rely on IPC (e.g. UNIX domain sockets) and that's affected by
+> > network namespace isolation.  This is what I was interested in.
+> >
+> > But I've checked that UNIX domain socket connect(2) works across network
+> > namespaces for pathname sockets.  The path to the socket file just needs
+> > to be accessible via the file system.
+> >
+> >> However I think you missed the important point - maybe I didn't explain
+> >> it clearly.
+> >> 
+> >> My idea is that the "root" network namespace is only available in early
+> >> boot.  An NFS mount happens then (and possibly a daemon hangs around in
+> >> this network namespace to refresh the NFS mount).  A new network
+> >> namespace is created and *everthing*else* runs in that subordinate
+> >> namespace.
+> >> 
+> >> If you want host<->guest networking in this subordinate namespace you
+> >> are quite welcome to configure that - maybe a vethX interface which
+> >> bridges out to the host interface.
+> >> But the important point is that any iptables rules configured in the
+> >> subordinate namespace will not affect the primary namespace and so will
+> >> not hurt the NFS mount. They will be entirely local.
+> >
+> > Using the "root" (initial) network namespace is invasive.  Hotplugged
+> > NICs appear in the initial network netspace and interfaces move there if
+> > a subordinate namespace is destroyed.  Were you thinking of this
+> > approach because it could share a single NIC (you mentioned bridging)?
 > 
-> But if we implement NFS/VSOCK and it turns out to be a success, I expect
-> people will start using it for things that weren't expected and
-> complaining about performance issues.
+> I was thinking of this approach because you appear to want isolation to
+> protect the NFS mount from random firewalls, and the general approach of
+> namespaces is to place the thing you want to contain (the firewall etc)
+> in a subordinate namespace.
 > 
-> I guess I'm not too concerned about performance of the initial
-> implementation but it'd be nice to know that there's the possibility to
-> optimize later on.
-> 
-> But if our answer will be just to go figure out how to use a proper
-> NFS/TCP mount instead then I suppose that's OK.
+> However, if a different arrangement works better then a different
+> arrangement should be pursued.  I knew nothing about network namespaces
+> until a couple of days ago, so I'm largely guessing.
 
-Yes, virtio-vsock can be extended in the future for performance
-optimizations.
+Me neither.
 
-Stefan
+> The problem I assumed you would have with putting NFS in a subordinate
+> namespace is that the root namespace could still get in and mess it up,
+> whereas once you are in a subordinate namespace, I assume you cannot
+> get out (I assume that is part of the point).  But maybe you can stop
+> processes from the root namespace getting in, or maybe you can choose
+> that that is not part of the threat scenario.
+
+Good point, I didn't think about enforcing isolation.  I was assuming
+that anything running in the initial namespace will not mess with the
+host<->guest namespace accidentally.  That's probably a mistake :).
