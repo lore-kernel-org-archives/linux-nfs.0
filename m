@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49191 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36864 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752542AbdI1SHG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 14:07:06 -0400
-Date: Thu, 28 Sep 2017 14:07:04 -0400
+        id S1750819AbdI1SQT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 14:16:19 -0400
+Date: Thu, 28 Sep 2017 14:16:13 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Olga Kornievskaia <kolga@netapp.com>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: [PATCH v4 05/10] NFSD first draft of async copy
-Message-ID: <20170928180703.GE10182@parsley.fieldses.org>
+Message-ID: <20170928181612.GF10182@parsley.fieldses.org>
 References: <20170928172945.50780-1-kolga@netapp.com>
  <20170928172945.50780-6-kolga@netapp.com>
 MIME-Version: 1.0
@@ -20,22 +20,20 @@ List-ID: <linux-nfs.vger.kernel.org>
 On Thu, Sep 28, 2017 at 01:29:40PM -0400, Olga Kornievskaia wrote:
 > Asynchronous copies are handled by a single threaded workqueue.
 > If we get asynchronous request, make sure to copy the needed
-> arguments/state from the stack before starting the copy. Then
+> arguments/state from the stack before starting the copy.
+
+I'm worried by those copies--I suspect you want to be taking actual
+references (so, bumping reference counts) to the clp and the
+filehandles, not just copying pointers.
+
+--b.
+
+> Then
 > queue work and reply back to the client indicating copy is
 > asynchronous.
 > 
 > nfsd_copy_file_range() will copy in 4MBchunk so do a loop over
-> the total number of bytes need to copy.
-
-I don't think you need to do this--just call vfs_copy_file_range()
-directly, as nfsd_copy_file_range does.
-
-The 4MB chunking was only there to prevent a synchronous copy from
-taking too long, which isn't an issue in the async case.
-
---b.
-
-> In case a failure
+> the total number of bytes need to copy. In case a failure
 > happens in the middle, we can return an error as well as how
 > much we copied so far. Once done creating a workitem for the
 > callback workqueue and send CB_OFFLOAD with the results.
