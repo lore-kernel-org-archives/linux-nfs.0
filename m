@@ -1,73 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx143.netapp.com ([216.240.21.24]:25116 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751663AbdI1RaR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 28 Sep 2017 13:30:17 -0400
+        id S1752264AbdI1RaO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 28 Sep 2017 13:30:14 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v4 0/8] NFSD support for "inter" server-to-server COPY
-Date: Thu, 28 Sep 2017 13:29:54 -0400
-Message-ID: <20170928173002.50818-1-kolga@netapp.com>
+Subject: [PATCH v4 10/10] NFSD stop queued async copies on client shutdown
+Date: Thu, 28 Sep 2017 13:29:45 -0400
+Message-ID: <20170928172945.50780-11-kolga@netapp.com>
+In-Reply-To: <20170928172945.50780-1-kolga@netapp.com>
+References: <20170928172945.50780-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This depends on the async NFSD series and it depends on the client's
-inter copy series that provide nfs4_ssc_open/close functions and
-reboot recovery support for the destination server.
+If client is shutting down and there are still async copies going
+on, then stop queued async copies.
 
-NFSD determines if COPY is intra or inter and if sync or async. For
-inter, NSFD uses NFSv4.1 protocol and creates an internal mount point
-(superblock). It will destroy the mount point when copy is done.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfsd/nfs4proc.c  | 9 +++++++++
+ fs/nfsd/nfs4state.c | 1 +
+ fs/nfsd/state.h     | 2 ++
+ 3 files changed, 12 insertions(+)
 
-On the source server, upon receiving a COPY_NOTIFY, it generate a
-unique stateid that's kept in the global list. Upon receiving a READ
-with a stateid, the code checks the normal list of open stateid and
-now additionally, it'll check the copy state list as well before
-deciding to either fail with BAD_STATEID or find one that matches.
-The stored stateid is only valid to be used for the first time
-with a choosen lease period (90s currently). When the source server
-received an OFFLOAD_CANCEL, it will remove the stateid from the
-global list. Otherwise, the copy stateid is removed upon the removal
-of its "parent" stateid (open/lock/delegation stateid).
-
-v4:
-* Don't have the IS_STALE_FH in the compount state structure. Instead
-mark the filehandle FOREIGN. If the server gets a PUTFH,SAVEFH,PUTFH...
-COPY compount then it'll allow for the PUTFH to be STALE (foreign)
-handle. It 
-* This series has Bruce's proposed "nfsd: remove unnecessary nofilehandle
-checks" patch as I didn't see it committed yet.
-* dropped the support for multiple server netaddrs in the COPY_NOTIFY/
-COPY
-* made sure to return OFFLOAD_DENIED when mount to the source server
-fails which triggers the client to fallback on the traditional copy.
-
-Andy Adamson (1):
-  NFSD generalize nfsd4_compound_state flag names
-
-Olga Kornievskaia (7):
-  NFSD fill-in netloc4 structure
-  NFSD add ca_source_server<> to COPY
-  NFSD add COPY_NOTIFY operation
-  NFSD check stateids against copy stateids
-  nfsd: remove unnecessary nofilehandle checks
-  NFSD: allow inter server COPY to have a STALE source server fh
-  NFSD add nfs4 inter ssc to nfsd4_copy
-
- fs/nfsd/Kconfig      |  10 ++
- fs/nfsd/nfs4proc.c   | 427 ++++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/nfs4state.c  |  37 ++++-
- fs/nfsd/nfs4xdr.c    | 168 +++++++++++++++++++-
- fs/nfsd/nfsd.h       |  31 +++-
- fs/nfsd/nfsfh.h      |   5 +-
- fs/nfsd/state.h      |   5 +-
- fs/nfsd/xdr4.h       |  25 ++-
- include/linux/nfs4.h |   1 +
- 9 files changed, 657 insertions(+), 52 deletions(-)
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 74bfa4b..8d0c87f 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -91,6 +91,12 @@ void nfsd4_destroy_copy_queue(void)
+ 	destroy_workqueue(copy_wq);
+ }
+ 
++void nfsd4_shutdown_copy(struct nfs4_client *clp)
++{
++	set_bit(NFSD4_CLIENT_COPY_KILL, &clp->cl_flags);
++	flush_workqueue(copy_wq);
++}
++
+ #define NFSDDBG_FACILITY		NFSDDBG_PROC
+ 
+ static u32 nfsd_attrmask[] = {
+@@ -1205,6 +1211,9 @@ static void nfsd4_do_async_copy(struct work_struct *work)
+ 		container_of(work, struct nfsd4_copy, cp_work);
+ 	struct nfsd4_copy *cb_copy;
+ 
++	if (test_bit(NFSD4_CLIENT_COPY_KILL, &copy->cp_clp->cl_flags))
++		goto out;
++
+ 	copy->nfserr = nfsd4_do_copy(copy, 0);
+ 
+ 	if (copy->cps->cp_cancelled)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 97ab3f8..f4b193e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1961,6 +1961,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ 	}
+ 	nfsd4_return_all_client_layouts(clp);
+ 	nfsd4_shutdown_callback(clp);
++	nfsd4_shutdown_copy(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+ 	free_client(clp);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index c31025c..55f09a9 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -336,6 +336,7 @@ struct nfs4_client {
+ #define NFSD4_CLIENT_RECLAIM_COMPLETE	(3)	/* reclaim_complete done */
+ #define NFSD4_CLIENT_CONFIRMED		(4)	/* client is confirmed */
+ #define NFSD4_CLIENT_UPCALL_LOCK	(5)	/* upcall serialization */
++#define NFSD4_CLIENT_COPY_KILL		(6)	/* stop copy workqueue */
+ #define NFSD4_CLIENT_CB_FLAG_MASK	(1 << NFSD4_CLIENT_CB_UPDATE | \
+ 					 1 << NFSD4_CLIENT_CB_KILL)
+ 	unsigned long		cl_flags;
+@@ -644,6 +645,7 @@ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
++extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
+ extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
 -- 
 1.8.3.1
 
