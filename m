@@ -1,89 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:49744 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:45864 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751866AbdI2HEB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 29 Sep 2017 03:04:01 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 6A57781DE1
-        for <linux-nfs@vger.kernel.org>; Fri, 29 Sep 2017 07:04:01 +0000 (UTC)
-From: Eryu Guan <eguan@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J . Bruce Fields" <bfields@redhat.com>,
-        Eryu Guan <eguan@redhat.com>
-Subject: [PATCH] nfsd4: define nfsd4_secinfo_no_name_release()
-Date: Fri, 29 Sep 2017 15:01:10 +0800
-Message-Id: <20170929070110.13442-1-eguan@redhat.com>
+        id S1751349AbdI2Ngo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 29 Sep 2017 09:36:44 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs/filelayout: fix oops when freeing filelayout segment
+Date: Fri, 29 Sep 2017 09:36:43 -0400
+Message-Id: <20170929133643.11841-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 34b1744c91cc ("nfsd4: define ->op_release for compound ops")
-defined a couple ->op_release functions and run them if necessary.
+Check for a NULL dsaddr in filelayout_free_lseg() before calling
+nfs4_fl_put_deviceid().  This fixes the following oops:
 
-But there's a problem with that is that it reused
-nfsd4_secinfo_release() as the op_release of OP_SECINFO_NO_NAME, and
-caused a leak on struct nfsd4_secinfo_no_name in
-nfsd4_encode_secinfo_no_name(), because there's no .si_exp field in
-struct nfsd4_secinfo_no_name.
+[ 1967.645207] BUG: unable to handle kernel NULL pointer dereference at 0000000000000030
+[ 1967.646010] IP: [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
+[ 1967.646010] PGD c08bc067 PUD 915d3067 PMD 0
+[ 1967.753036] Oops: 0000 [#1] SMP
+[ 1967.753036] Modules linked in: nfs_layout_nfsv41_files ext4 mbcache jbd2 loop rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache amd64_edac_mod ipmi_ssif edac_mce_amd edac_core kvm_amd sg kvm ipmi_si ipmi_devintf irqbypass pcspkr k8temp ipmi_msghandler i2c_piix4 shpchp nfsd auth_rpcgss nfs_acl lockd grace sunrpc ip_tables xfs libcrc32c sd_mod crc_t10dif crct10dif_generic crct10dif_common amdkfd amd_iommu_v2 radeon i2c_algo_bit drm_kms_helper syscopyarea sysfillrect sysimgblt fb_sys_fops mptsas ttm scsi_transport_sas mptscsih drm mptbase serio_raw i2c_core bnx2 dm_mirror dm_region_hash dm_log dm_mod
+[ 1967.790031] CPU: 2 PID: 1370 Comm: ls Not tainted 3.10.0-709.el7.test.bz1463784.x86_64 #1
+[ 1967.790031] Hardware name: IBM BladeCenter LS21 -[7971AC1]-/Server Blade, BIOS -[BAE155AUS-1.10]- 06/03/2009
+[ 1967.790031] task: ffff8800c42a3f40 ti: ffff8800c4064000 task.ti: ffff8800c4064000
+[ 1967.790031] RIP: 0010:[<ffffffffc06d6aea>]  [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
+[ 1967.790031] RSP: 0000:ffff8800c4067978  EFLAGS: 00010246
+[ 1967.790031] RAX: ffffffffc062f000 RBX: ffff8801d468a540 RCX: dead000000000200
+[ 1967.790031] RDX: ffff8800c40679f8 RSI: ffff8800c4067a0c RDI: 0000000000000000
+[ 1967.790031] RBP: ffff8800c4067980 R08: ffff8801d468a540 R09: 0000000000000000
+[ 1967.790031] R10: 0000000000000000 R11: ffffffffffffffff R12: ffff8801d468a540
+[ 1967.790031] R13: ffff8800c40679f8 R14: ffff8801d5645300 R15: ffff880126f15ff0
+[ 1967.790031] FS:  00007f11053c9800(0000) GS:ffff88012bd00000(0000) knlGS:0000000000000000
+[ 1967.790031] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 1967.790031] CR2: 0000000000000030 CR3: 0000000094b55000 CR4: 00000000000007e0
+[ 1967.790031] Stack:
+[ 1967.790031]  ffff8801d468a540 ffff8800c4067990 ffffffffc062d2fe ffff8800c40679b0
+[ 1967.790031]  ffffffffc062b5b4 ffff8800c40679f8 ffff8801d468a540 ffff8800c40679d8
+[ 1967.790031]  ffffffffc06d39af ffff8800c40679f8 ffff880126f16078 0000000000000001
+[ 1967.790031] Call Trace:
+[ 1967.790031]  [<ffffffffc062d2fe>] nfs4_fl_put_deviceid+0xe/0x10 [nfs_layout_nfsv41_files]
+[ 1967.790031]  [<ffffffffc062b5b4>] filelayout_free_lseg+0x24/0x90 [nfs_layout_nfsv41_files]
+[ 1967.790031]  [<ffffffffc06d39af>] pnfs_free_lseg_list+0x5f/0x80 [nfsv4]
+[ 1967.790031]  [<ffffffffc06d5a67>] _pnfs_return_layout+0x157/0x270 [nfsv4]
+[ 1967.790031]  [<ffffffffc06c17dd>] nfs4_evict_inode+0x4d/0x70 [nfsv4]
+[ 1967.790031]  [<ffffffff8121de19>] evict+0xa9/0x180
+[ 1967.790031]  [<ffffffff8121e729>] iput+0xf9/0x190
+[ 1967.790031]  [<ffffffffc0652cea>] nfs_dentry_iput+0x3a/0x50 [nfs]
+[ 1967.790031]  [<ffffffff8121ab4f>] shrink_dentry_list+0x20f/0x490
+[ 1967.790031]  [<ffffffff8121b018>] d_invalidate+0xd8/0x150
+[ 1967.790031]  [<ffffffffc065446b>] nfs_readdir_page_filler+0x40b/0x600 [nfs]
+[ 1967.790031]  [<ffffffffc0654bbd>] nfs_readdir_xdr_to_array+0x20d/0x3b0 [nfs]
+[ 1967.790031]  [<ffffffff811f3482>] ? __mem_cgroup_commit_charge+0xe2/0x2f0
+[ 1967.790031]  [<ffffffff81183208>] ? __add_to_page_cache_locked+0x48/0x170
+[ 1967.790031]  [<ffffffffc0654d60>] ? nfs_readdir_xdr_to_array+0x3b0/0x3b0 [nfs]
+[ 1967.790031]  [<ffffffffc0654d82>] nfs_readdir_filler+0x22/0x90 [nfs]
+[ 1967.790031]  [<ffffffff8118351f>] do_read_cache_page+0x7f/0x190
+[ 1967.790031]  [<ffffffff81215d30>] ? fillonedir+0xe0/0xe0
+[ 1967.790031]  [<ffffffff8118366c>] read_cache_page+0x1c/0x30
+[ 1967.790031]  [<ffffffffc0654f9b>] nfs_readdir+0x1ab/0x6b0 [nfs]
+[ 1967.790031]  [<ffffffffc06bd1c0>] ? nfs4_xdr_dec_layoutget+0x270/0x270 [nfsv4]
+[ 1967.790031]  [<ffffffff81215d30>] ? fillonedir+0xe0/0xe0
+[ 1967.790031]  [<ffffffff81215c20>] vfs_readdir+0xb0/0xe0
+[ 1967.790031]  [<ffffffff81216045>] SyS_getdents+0x95/0x120
+[ 1967.790031]  [<ffffffff816b9449>] system_call_fastpath+0x16/0x1b
+[ 1967.790031] Code: 90 31 d2 48 89 d0 5d c3 85 f6 74 f5 8d 4e 01 89 f0 f0 0f b1 0f 39 f0 74 e2 89 c6 eb eb 0f 1f 40 00 66 66 66 66 90 55 48 89 e5 53 <48> 8b 47 30 48 89 fb a8 04 74 3b 8b 57 60 83 fa 02 74 19 8d 4a
+[ 1967.790031] RIP  [<ffffffffc06d6aea>] nfs4_put_deviceid_node+0xa/0x90 [nfsv4]
+[ 1967.790031]  RSP <ffff8800c4067978>
+[ 1967.790031] CR2: 0000000000000030
 
-I found this because I was unable to umount an ext4 partition after
-exporting it via NFS & run fsstress on the nfs mount. A simplified
-reproducer would be:
-
- # mount a local-fs device at /mnt/test, and export it via NFS with
- # fsid=0 export option (this is required)
- mount /dev/sda5 /mnt/test
- echo "/mnt/test *(rw,no_root_squash,fsid=0)" >> /etc/exports
- service nfs restart
-
- # locally mount the nfs export with all default, note that I have
- # nfsv4.1 configured as the default nfs version, because of the
- # fsid export option, v4 mount would fail and fall back to v3
- mount localhost:/mnt/test /mnt/nfs
-
- # try to umount the underlying device, but got EBUSY
- umount /mnt/nfs
- service nfs stop
- umount /mnt/test <=== EBUSY here
-
-Fixed it by defining a separate nfsd4_secinfo_no_name_release()
-function as the op_release method of OP_SECINFO_NO_NAME that
-releases the correct nfsd4_secinfo_no_name structure.
-
-Fixes: 34b1744c91cc ("nfsd4: define ->op_release for compound ops")
-Signed-off-by: Eryu Guan <eguan@redhat.com>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- fs/nfsd/nfs4proc.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/nfs/filelayout/filelayout.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 3c69db7d4905..8487486ec496 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -927,6 +927,13 @@ nfsd4_secinfo_release(union nfsd4_op_u *u)
- 		exp_put(u->secinfo.si_exp);
- }
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 44c638b..508126e 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -745,7 +745,8 @@ filelayout_free_lseg(struct pnfs_layout_segment *lseg)
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
  
-+static void
-+nfsd4_secinfo_no_name_release(union nfsd4_op_u *u)
-+{
-+	if (u->secinfo_no_name.sin_exp)
-+		exp_put(u->secinfo_no_name.sin_exp);
-+}
-+
- static __be32
- nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	      union nfsd4_op_u *u)
-@@ -2375,7 +2382,7 @@ static const struct nfsd4_operation nfsd4_ops[] = {
- 	},
- 	[OP_SECINFO_NO_NAME] = {
- 		.op_func = nfsd4_secinfo_no_name,
--		.op_release = nfsd4_secinfo_release,
-+		.op_release = nfsd4_secinfo_no_name_release,
- 		.op_flags = OP_HANDLES_WRONGSEC,
- 		.op_name = "OP_SECINFO_NO_NAME",
- 		.op_rsize_bop = nfsd4_secinfo_rsize,
+ 	dprintk("--> %s\n", __func__);
+-	nfs4_fl_put_deviceid(fl->dsaddr);
++	if (fl->dsaddr != NULL)
++		nfs4_fl_put_deviceid(fl->dsaddr);
+ 	/* This assumes a single RW lseg */
+ 	if (lseg->pls_range.iomode == IOMODE_RW) {
+ 		struct nfs4_filelayout *flo;
 -- 
-2.13.6
+2.9.5
 
