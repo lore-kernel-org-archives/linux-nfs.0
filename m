@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from osg.samsung.com ([64.30.133.232]:55533 "EHLO osg.samsung.com"
+Received: from fieldses.org ([173.255.197.46]:52398 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751082AbdJBQsd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 2 Oct 2017 12:48:33 -0400
-Date: Mon, 2 Oct 2017 13:37:34 -0300
-From: Mauro Carvalho Chehab <mchehab@s-opensource.com>
-To: =?UTF-8?B?SsOpcsOpbXk=?= Lefaure <jeremy.lefaure@lse.epita.fr>
-Cc: "Tobin C. Harding" <me@tobin.cc>, alsa-devel@alsa-project.org,
+        id S1751132AbdJBTWZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 2 Oct 2017 15:22:25 -0400
+Date: Mon, 2 Oct 2017 15:22:24 -0400
+To: Greg KH <greg@kroah.com>
+Cc: =?utf-8?B?SsOpcsOpbXk=?= Lefaure <jeremy.lefaure@lse.epita.fr>,
+        "Tobin C. Harding" <me@tobin.cc>, alsa-devel@alsa-project.org,
         nouveau@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
         dm-devel@redhat.com, brcm80211-dev-list@cypress.com,
         devel@driverdev.osuosl.org, linux-scsi@vger.kernel.org,
@@ -22,23 +22,45 @@ Cc: "Tobin C. Harding" <me@tobin.cc>, alsa-devel@alsa-project.org,
         linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
         linux-kernel@vger.kernel.org, linux-integrity@vger.kernel.org
 Subject: Re: [PATCH 00/18] use ARRAY_SIZE macro
-Message-ID: <20171002133734.6ac10ded@recife.lan>
-In-Reply-To: <20171001205220.10b78086@blatinox-laptop.localdomain>
+Message-ID: <20171002192224.GD1903@fieldses.org>
 References: <20171001193101.8898-1-jeremy.lefaure@lse.epita.fr>
-        <20171001220131.GA11812@eros>
-        <20171001205220.10b78086@blatinox-laptop.localdomain>
+ <20171001220131.GA11812@eros>
+ <20171001205220.10b78086@blatinox-laptop.localdomain>
+ <20171002053554.GA28743@kroah.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20171002053554.GA28743@kroah.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Em Sun, 1 Oct 2017 20:52:20 -0400
-Jérémy Lefaure <jeremy.lefaure@lse.epita.fr> escreveu:
+On Mon, Oct 02, 2017 at 07:35:54AM +0200, Greg KH wrote:
+> On Sun, Oct 01, 2017 at 08:52:20PM -0400, Jérémy Lefaure wrote:
+> > On Mon, 2 Oct 2017 09:01:31 +1100
+> > "Tobin C. Harding" <me@tobin.cc> wrote:
+> > 
+> > > > In order to reduce the size of the To: and Cc: lines, each patch of the
+> > > > series is sent only to the maintainers and lists concerned by the patch.
+> > > > This cover letter is sent to every list concerned by this series.  
+> > > 
+> > > Why don't you just send individual patches for each subsystem? I'm not a maintainer but I don't see
+> > > how any one person is going to be able to apply this whole series, it is making it hard for
+> > > maintainers if they have to pick patches out from among the series (if indeed any will bother
+> > > doing that).
+> > Yeah, maybe it would have been better to send individual patches.
+> > 
+> > From my point of view it's a series because the patches are related (I
+> > did a git format-patch from my local branch). But for the maintainers
+> > point of view, they are individual patches.
+> 
+> And the maintainers view is what matters here, if you wish to get your
+> patches reviewed and accepted...
 
-> Anyway, I can tell to each maintainer that they can apply the patches
-> they're concerned about and next time I may send individual patches.
+Mainly I'd just like to know which you're asking for.  Do you want me to
+apply this, or to ACK it so someone else can?  If it's sent as a series
+I tend to assume the latter.
 
-In the case of media, we'll handle it as if they were individual ones.
+But in this case I'm assuming it's the former, so I'll pick up the nfsd
+one....
 
-Thanks,
-Mauro
+--b.
