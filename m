@@ -1,55 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:58994 "EHLO mx1.redhat.com"
+Received: from osg.samsung.com ([64.30.133.232]:55533 "EHLO osg.samsung.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751127AbdJBQiy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 2 Oct 2017 12:38:54 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 5934325778
-        for <linux-nfs@vger.kernel.org>; Mon,  2 Oct 2017 16:38:54 +0000 (UTC)
-Date: Mon, 2 Oct 2017 12:38:52 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Steve Dickson <SteveD@RedHat.com>
-Cc: Justin Mitchell <jumitche@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/7] nfs-utils: Merge libnfsidmap tree with nfs-utils
- UPDATED
-Message-ID: <20171002163852.GC16092@parsley.fieldses.org>
-References: <1505397745.3665.4.camel@redhat.com>
- <300b358d-689a-1e6b-c91d-c8e46c740ab1@RedHat.com>
+        id S1751082AbdJBQsd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 2 Oct 2017 12:48:33 -0400
+Date: Mon, 2 Oct 2017 13:37:34 -0300
+From: Mauro Carvalho Chehab <mchehab@s-opensource.com>
+To: =?UTF-8?B?SsOpcsOpbXk=?= Lefaure <jeremy.lefaure@lse.epita.fr>
+Cc: "Tobin C. Harding" <me@tobin.cc>, alsa-devel@alsa-project.org,
+        nouveau@lists.freedesktop.org, dri-devel@lists.freedesktop.org,
+        dm-devel@redhat.com, brcm80211-dev-list@cypress.com,
+        devel@driverdev.osuosl.org, linux-scsi@vger.kernel.org,
+        linux-rdma@vger.kernel.org, amd-gfx@lists.freedesktop.org,
+        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        linux-acpi@vger.kernel.org, linux-video@atrey.karlin.mff.cuni.cz,
+        intel-wired-lan@lists.osuosl.org, linux-media@vger.kernel.org,
+        intel-gfx@lists.freedesktop.org, ecryptfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
+        openipmi-developer@lists.sourceforge.net,
+        intel-gvt-dev@lists.freedesktop.org, devel@acpica.org,
+        brcm80211-dev-list.pdl@broadcom.com, netdev@vger.kernel.org,
+        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-integrity@vger.kernel.org
+Subject: Re: [PATCH 00/18] use ARRAY_SIZE macro
+Message-ID: <20171002133734.6ac10ded@recife.lan>
+In-Reply-To: <20171001205220.10b78086@blatinox-laptop.localdomain>
+References: <20171001193101.8898-1-jeremy.lefaure@lse.epita.fr>
+        <20171001220131.GA11812@eros>
+        <20171001205220.10b78086@blatinox-laptop.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <300b358d-689a-1e6b-c91d-c8e46c740ab1@RedHat.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 02, 2017 at 10:03:06AM -0400, Steve Dickson wrote:
-> 
-> 
-> On 09/14/2017 10:02 AM, Justin Mitchell wrote:
-> > It was suggested that merging the trees is more desirable than splitting
-> > the common code out into a shared library, so this patch set attempts to
-> > merge the libnfsidmap code into nfs-utils.
-> > 
-> > The main body of the code, copyright notices, and readme are copied
-> > across, omitting the shared conffile code, and trimming unused files
-> > like strlcpy.c and queue.h. The build files of both are adjusted to the
-> > new structure, and the dependent nfs-utils now link to the included
-> > shared library instead of an external one.
-> > 
-> > The source libnfsidmap tree did include some packaging files for
-> > debian/dkpg which have been omitted, there are no packaging materials in
-> > nfs-utils to merge them with, and i welcome advice on what should be
-> > done here.
-> > 
-> > Change: libnfsidmap imported as support/nfsidmap/ 
-> A quick status on this... I'm working on this but this patch is going
-> to cause a packaging nightmare... since the libnfsidmap package is 
-> required by nfs-utils which now is installing that lib... so
-> this might take some time... 
+Em Sun, 1 Oct 2017 20:52:20 -0400
+Jérémy Lefaure <jeremy.lefaure@lse.epita.fr> escreveu:
 
-Would it help to start by keeping the separate libnfsidmap rpm, but just
-building it from nfs-utils instead of from separate source?
+> Anyway, I can tell to each maintainer that they can apply the patches
+> they're concerned about and next time I may send individual patches.
 
---b.
+In the case of media, we'll handle it as if they were individual ones.
+
+Thanks,
+Mauro
