@@ -1,55 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from blatinox.fr ([51.254.120.209]:41844 "EHLO vps202351.ovh.net"
+Received: from mx1.redhat.com ([209.132.183.28]:37928 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751421AbdJCBis (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 2 Oct 2017 21:38:48 -0400
-Date: Mon, 2 Oct 2017 21:33:12 -0400
-From: =?UTF-8?B?SsOpcsOpbXk=?= Lefaure <jeremy.lefaure@lse.epita.fr>
-To: bfields@fieldses.org (J. Bruce Fields)
-Cc: Greg KH <greg@kroah.com>, "Tobin C. Harding" <me@tobin.cc>,
-        alsa-devel@alsa-project.org, nouveau@lists.freedesktop.org,
-        dri-devel@lists.freedesktop.org, dm-devel@redhat.com,
-        brcm80211-dev-list@cypress.com, devel@driverdev.osuosl.org,
-        linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
-        amd-gfx@lists.freedesktop.org,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        linux-acpi@vger.kernel.org, linux-video@atrey.karlin.mff.cuni.cz,
-        intel-wired-lan@lists.osuosl.org, linux-media@vger.kernel.org,
-        intel-gfx@lists.freedesktop.org, ecryptfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-        openipmi-developer@lists.sourceforge.net,
-        intel-gvt-dev@lists.freedesktop.org, devel@acpica.org,
-        brcm80211-dev-list.pdl@broadcom.com, netdev@vger.kernel.org,
-        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-integrity@vger.kernel.org,
-        jlayton@redhat.com
-Subject: Re: [PATCH 00/18] use ARRAY_SIZE macro
-Message-ID: <20171002213312.3f904290@blatinox-laptop.localdomain>
-In-Reply-To: <20171002192224.GD1903@fieldses.org>
-References: <20171001193101.8898-1-jeremy.lefaure@lse.epita.fr>
-        <20171001220131.GA11812@eros>
-        <20171001205220.10b78086@blatinox-laptop.localdomain>
-        <20171002053554.GA28743@kroah.com>
-        <20171002192224.GD1903@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+        id S1751111AbdJCIPJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 3 Oct 2017 04:15:09 -0400
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 9EECE81E19
+        for <linux-nfs@vger.kernel.org>; Tue,  3 Oct 2017 08:15:09 +0000 (UTC)
+Message-ID: <1507018507.3567.8.camel@redhat.com>
+Subject: Re: [PATCH 0/7] nfs-utils: Merge libnfsidmap tree with nfs-utils
+ UPDATED
+From: Justin Mitchell <jumitche@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Steve Dickson <SteveD@RedHat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Date: Tue, 03 Oct 2017 09:15:07 +0100
+In-Reply-To: <20171002163852.GC16092@parsley.fieldses.org>
+References: <1505397745.3665.4.camel@redhat.com>
+         <300b358d-689a-1e6b-c91d-c8e46c740ab1@RedHat.com>
+         <20171002163852.GC16092@parsley.fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Oct 2017 15:22:24 -0400
-bfields@fieldses.org (J. Bruce Fields) wrote:
-
-> Mainly I'd just like to know which you're asking for.  Do you want me to
-> apply this, or to ACK it so someone else can?  If it's sent as a series
-> I tend to assume the latter.
+On Mon, 2017-10-02 at 12:38 -0400, J. Bruce Fields wrote:
+> On Mon, Oct 02, 2017 at 10:03:06AM -0400, Steve Dickson wrote:
+> > 
+> > 
+> > On 09/14/2017 10:02 AM, Justin Mitchell wrote:
+> > > It was suggested that merging the trees is more desirable than splitting
+> > > the common code out into a shared library, so this patch set attempts to
+> > > merge the libnfsidmap code into nfs-utils.
+> > > 
+> > > The main body of the code, copyright notices, and readme are copied
+> > > across, omitting the shared conffile code, and trimming unused files
+> > > like strlcpy.c and queue.h. The build files of both are adjusted to the
+> > > new structure, and the dependent nfs-utils now link to the included
+> > > shared library instead of an external one.
+> > > 
+> > > The source libnfsidmap tree did include some packaging files for
+> > > debian/dkpg which have been omitted, there are no packaging materials in
+> > > nfs-utils to merge them with, and i welcome advice on what should be
+> > > done here.
+> > > 
+> > > Change: libnfsidmap imported as support/nfsidmap/ 
+> > A quick status on this... I'm working on this but this patch is going
+> > to cause a packaging nightmare... since the libnfsidmap package is 
+> > required by nfs-utils which now is installing that lib... so
+> > this might take some time... 
 > 
-> But in this case I'm assuming it's the former, so I'll pick up the nfsd
-> one....
-Could you to apply the NFSD patch ("nfsd: use ARRAY_SIZE") with the
-Reviewed-by: Jeff Layton <jlayton@redhat.com>) tag please ?
+> Would it help to start by keeping the separate libnfsidmap rpm, but just
+> building it from nfs-utils instead of from separate source?
 
-This patch is an individual patch and it should not have been sent in a
-series (sorry about that).
+The BuildRequires for libnfsidmap is no longer necessary, as when you
+configure and build nfs-utils from the top it will automatically build
+and link to the merged libnfsidmap code.
 
-Thank you,
-Jérémy
+I would expect then to list libnfsidmap as a sub-package within the
+nfs-utils spec file so that the end result is the same set of rpms out
+as we had before the merge.
+
+Neither source tree contained any rpm packaging materials otherwise I
+would have adjusted and tested it as part of the patch set.
+
