@@ -1,89 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58536 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:36040 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752008AbdJESp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Oct 2017 14:45:57 -0400
-Date: Thu, 5 Oct 2017 14:45:57 -0400
-To: Eryu Guan <eguan@redhat.com>
-Cc: linux-nfs@vger.kernel.org, "J . Bruce Fields" <bfields@redhat.com>
-Subject: Re: [PATCH] nfsd4: define nfsd4_secinfo_no_name_release()
-Message-ID: <20171005184557.GB19093@fieldses.org>
-References: <20170929070110.13442-1-eguan@redhat.com>
+        id S1751966AbdJEUIl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Oct 2017 16:08:41 -0400
+Date: Thu, 5 Oct 2017 16:08:35 -0400
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Steve Dickson <steved@redhat.com>,
+        Matt Benjamin <mbenjami@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        Daniel Berrange <berrange@redhat.com>
+Subject: Draft RFC for ONC RPC over AF_VSOCK
+Message-ID: <20171005200835.GA31525@stefanha-x1.localdomain>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170929070110.13442-1-eguan@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 4.14.--b.
+I have previously submitted patches that implement NFS client and nfsd
+support for the AF_VSOCK address family.  In order for this to be
+acceptable for merge the AF_VSOCK transport needs to be defined in an
+IETF RFC.  Below is a draft RFC that defines ONC RPC over AF_VSOCK.
 
-On Fri, Sep 29, 2017 at 03:01:10PM +0800, Eryu Guan wrote:
-> Commit 34b1744c91cc ("nfsd4: define ->op_release for compound ops")
-> defined a couple ->op_release functions and run them if necessary.
-> 
-> But there's a problem with that is that it reused
-> nfsd4_secinfo_release() as the op_release of OP_SECINFO_NO_NAME, and
-> caused a leak on struct nfsd4_secinfo_no_name in
-> nfsd4_encode_secinfo_no_name(), because there's no .si_exp field in
-> struct nfsd4_secinfo_no_name.
-> 
-> I found this because I was unable to umount an ext4 partition after
-> exporting it via NFS & run fsstress on the nfs mount. A simplified
-> reproducer would be:
-> 
->  # mount a local-fs device at /mnt/test, and export it via NFS with
->  # fsid=0 export option (this is required)
->  mount /dev/sda5 /mnt/test
->  echo "/mnt/test *(rw,no_root_squash,fsid=0)" >> /etc/exports
->  service nfs restart
-> 
->  # locally mount the nfs export with all default, note that I have
->  # nfsv4.1 configured as the default nfs version, because of the
->  # fsid export option, v4 mount would fail and fall back to v3
->  mount localhost:/mnt/test /mnt/nfs
-> 
->  # try to umount the underlying device, but got EBUSY
->  umount /mnt/nfs
->  service nfs stop
->  umount /mnt/test <=== EBUSY here
-> 
-> Fixed it by defining a separate nfsd4_secinfo_no_name_release()
-> function as the op_release method of OP_SECINFO_NO_NAME that
-> releases the correct nfsd4_secinfo_no_name structure.
-> 
-> Fixes: 34b1744c91cc ("nfsd4: define ->op_release for compound ops")
-> Signed-off-by: Eryu Guan <eguan@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c | 9 ++++++++-
->  1 file changed, 8 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 3c69db7d4905..8487486ec496 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -927,6 +927,13 @@ nfsd4_secinfo_release(union nfsd4_op_u *u)
->  		exp_put(u->secinfo.si_exp);
->  }
->  
-> +static void
-> +nfsd4_secinfo_no_name_release(union nfsd4_op_u *u)
-> +{
-> +	if (u->secinfo_no_name.sin_exp)
-> +		exp_put(u->secinfo_no_name.sin_exp);
-> +}
-> +
->  static __be32
->  nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	      union nfsd4_op_u *u)
-> @@ -2375,7 +2382,7 @@ static const struct nfsd4_operation nfsd4_ops[] = {
->  	},
->  	[OP_SECINFO_NO_NAME] = {
->  		.op_func = nfsd4_secinfo_no_name,
-> -		.op_release = nfsd4_secinfo_release,
-> +		.op_release = nfsd4_secinfo_no_name_release,
->  		.op_flags = OP_HANDLES_WRONGSEC,
->  		.op_name = "OP_SECINFO_NO_NAME",
->  		.op_rsize_bop = nfsd4_secinfo_rsize,
-> -- 
-> 2.13.6
+My patches use netid "vsock" but "tcpv" has also been suggested.  This draft
+RFC still uses "vsock" but I'll update it to "tcpv" if there is consensus.
+
+The uaddr format proposed in this RFC is not implemented yet.  RPCBIND and the
+NFSv4 callback were not supported in my previous patch submissions but it's
+clear that a uaddr format is required for full ONC RPC support so I've
+included it.
+
+Discussion and pointers for getting this in shape for submission with
+the IETF would be appreciated!  I will apply final RFC formatting before
+submission and am mostly concerned about content at this stage.
+
+Thanks,
+Stefan
+---
+
+Remote Procedure Call (RPC) Network Identifier and Universal Address Format
+Definitions for the AF_VSOCK Transport
+
+S. Hajnoczi
+Red Hat, Inc.
+October 2017
+
+1. Introduction and Motivation
+
+The AF_VSOCK address family facilitates socket communication between a
+hypervisor and virtual machines running on the hypervisor.  It was implemented
+in Linux 3.9 with initial transport support for VMware.  Further transports
+were added for KVM and Hyper-V hypervisors later.  AF_VSOCK services can
+run on any supported hypervisor because the network address and semantics
+remain the same across AF_VSOCK transports.
+
+ONC RPC services are bound to transport addresses (RFC 1833 [1]).  Transport
+addresses are described by netid and universal address strings.  This standard
+representation of transport addresses allows address information to be
+communicated between client programs and RPC services, including the RPCBIND
+program.
+
+It is necessary to define a network identifier and universal address
+representation so that ONC RPC may be used over AF_VSOCK.  This document
+describes string representations for the AF_VSOCK netid and universal
+addresses.
+
+2. Requirements Language
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
+"SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
+interpreted as described in RFC 2119 [2].
+
+3. Security Considerations
+
+AF_VSOCK addresses are local to the hypervisor instance that the virtual
+machine is running on.  Source address spoofing is not possible because the
+hypervisor enforces the assigned address of the virtual machine.  RPC services
+running on the hypervisor MAY use the source address for authorization if they
+do not implement additional security features.
+
+4. Intended Use
+
+The intended use of this new ONC RPC transport is Network File System (NFS)
+v4.1 (RFC5661 [3]) to export file systems from the hypervisor into virtual
+machines.  Other RPC services could also be used with the hypervisor offering
+the service to the virtual machine or vice versa.
+
+The need for an AF_VSOCK transport arises because management tools require the
+ability to deploy RPC services for virtual machines in an automated fashion.
+Existing TCP/IP network interface configuration, including firewall
+configuration, is difficult to automate without risk of interfering with the
+virtual machine owner's networking configuration.  AF_VSOCK provides a
+zero-configuration communications channel with the dedicated purpose of
+communicating between a hypervisor and virtual machines without these
+configuration difficulties.
+
+5. Network addresses
+
+AF_VSOCK addresses contain an unsigned 32-bit integer called the Context
+Identifier (CID) that is the network address.  An unsigned 32-bit integer port
+number acts as the transport selector so that multiple services can be offered
+on a single network address.
+
+CID values in the range [0, 2] are reserved.  Virtual machines are assigned
+values outside this range.  The hypervisor exposes services on the well-known
+CID value 2.
+
+Ports in the range [0, 1023] are privileged and can only be bound by programs
+that have sufficient privilege.
+
+6. Netid for AF_VSOCK
+
+The netid for AF_VSOCK is given in Table 1.
+
+   +---------+----------+-------------------------------+------+------+
+   | Netid   | Constant | RFC(s) and Description (if    | PoC  | CR   |
+   |         | Name     | needed)                       |      |      |
+   +---------+----------+-------------------------------+------+------+
+   | "vsock" | NC_VSOCK | Netid for AF_VSOCK.           | IESG | TBD1 |
+   |         |          | Section 6 of RFC TBD1.        |      |      |
+   +---------+----------+----------------------------- -+------+------+
+
+PoC: Point of Contact.
+
+CR: Cross Reference to the Uaddr Format Registry.
+
+Table 1: Netid for AF_VSOCK
+
+7. Uaddr Format for AF_VSOCK
+
+The format of the uaddr for AF_VSOCK is the US-ASCII string:
+
+   cid.port
+
+The "cid" prefix is the ASCII-decimal representation of the CID network
+address.  The "port" suffix is the ASCII-decimal representation of the
+port number transport selector.
+
+   +-------+------------------------------------+------+-------+
+   | Basis | Description and/or Reference       | PoC  | CR    |
+   +-------+------------------------------------+------+-------+
+   | STDS  | Uaddr format for AF_VSOCK.         | IESG | TBD1  |
+   |       | Section 7 of RFC TBD1.             |      |       |
+   +-------+------------------------------------+------+-------+
+
+Table 2: Uaddr format for AF_VSOCK
+
+8. Record Marking
+
+AF_VSOCK sockets of type SOCK_STREAM are used for connection-oriented,
+in-order, guaranteed delivery semantics.  These bytestream semantics require
+that RPC messages are delimited so message boundaries can be detected.
+
+The Record Marking Standard, defined in RFC 1831 Section 10 [4], is used for
+this purpose.
+
+9. References
+
+   [1]   Srinivasan, R., "Binding Protocols for ONC RPC Version 2",
+         RFC 1833, August 1995.
+
+   [2]   Bradner, S., "Key words for use in RFCs to Indicate Requirement
+         Levels", BCP 14, RFC 2119, March 1997.
+
+   [3]   Eisler, M., "IANA Considerations for Remote Procedure Call (RPC)
+	 Network Identifiers and Universal Address Formats", RFC 5665,
+         January 2010.
+
+   [4]   Srinivasan, R., "RPC: Remote Procedure Call Protocol Specification
+         Version 2", RFC 1831, August 1995.
