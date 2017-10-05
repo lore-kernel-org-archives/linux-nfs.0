@@ -1,73 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54492 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:58368 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751083AbdJEO4x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Oct 2017 10:56:53 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 0FE5A129B
-        for <linux-nfs@vger.kernel.org>; Thu,  5 Oct 2017 14:56:53 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id D3AE35E1A6
-        for <linux-nfs@vger.kernel.org>; Thu,  5 Oct 2017 14:56:52 +0000 (UTC)
-Subject: Re: [PATCH] rpc.nfsd: Do not fail when all address families are not
- support.
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20171002142033.25493-1-steved@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <e3116140-3315-e192-f6bf-26ddf284d3f6@RedHat.com>
-Date: Thu, 5 Oct 2017 10:56:52 -0400
+        id S1751286AbdJER5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Oct 2017 13:57:15 -0400
+Date: Thu, 5 Oct 2017 13:57:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: =?utf-8?B?SsOpcsOpbXk=?= Lefaure <jeremy.lefaure@lse.epita.fr>
+Cc: Greg KH <greg@kroah.com>, "Tobin C. Harding" <me@tobin.cc>,
+        alsa-devel@alsa-project.org, nouveau@lists.freedesktop.org,
+        dri-devel@lists.freedesktop.org, dm-devel@redhat.com,
+        brcm80211-dev-list@cypress.com, devel@driverdev.osuosl.org,
+        linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
+        amd-gfx@lists.freedesktop.org,
+        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
+        linux-acpi@vger.kernel.org, linux-video@atrey.karlin.mff.cuni.cz,
+        intel-wired-lan@lists.osuosl.org, linux-media@vger.kernel.org,
+        intel-gfx@lists.freedesktop.org, ecryptfs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
+        openipmi-developer@lists.sourceforge.net,
+        intel-gvt-dev@lists.freedesktop.org, devel@acpica.org,
+        brcm80211-dev-list.pdl@broadcom.com, netdev@vger.kernel.org,
+        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-integrity@vger.kernel.org,
+        jlayton@redhat.com
+Subject: Re: [PATCH 00/18] use ARRAY_SIZE macro
+Message-ID: <20171005175715.GA19093@fieldses.org>
+References: <20171001193101.8898-1-jeremy.lefaure@lse.epita.fr>
+ <20171001220131.GA11812@eros>
+ <20171001205220.10b78086@blatinox-laptop.localdomain>
+ <20171002053554.GA28743@kroah.com>
+ <20171002192224.GD1903@fieldses.org>
+ <20171002213312.3f904290@blatinox-laptop.localdomain>
 MIME-Version: 1.0
-In-Reply-To: <20171002142033.25493-1-steved@redhat.com>
 Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20171002213312.3f904290@blatinox-laptop.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 10/02/2017 10:20 AM, Steve Dickson wrote:
-> Commit 2f8a6020 introduce a regression causing rpc.nfsd
-> to fail when IPv6 is not supported. rpc.nfsd should not
-> fail when there is at least one bounded socket.
+On Mon, Oct 02, 2017 at 09:33:12PM -0400, Jérémy Lefaure wrote:
+> On Mon, 2 Oct 2017 15:22:24 -0400
+> bfields@fieldses.org (J. Bruce Fields) wrote:
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed.... 
+> > Mainly I'd just like to know which you're asking for.  Do you want me to
+> > apply this, or to ACK it so someone else can?  If it's sent as a series
+> > I tend to assume the latter.
+> > 
+> > But in this case I'm assuming it's the former, so I'll pick up the nfsd
+> > one....
+> Could you to apply the NFSD patch ("nfsd: use ARRAY_SIZE") with the
+> Reviewed-by: Jeff Layton <jlayton@redhat.com>) tag please ?
+> 
+> This patch is an individual patch and it should not have been sent in a
+> series (sorry about that).
 
-steved.
-> ---
->  utils/nfsd/nfssvc.c | 6 ++++--
->  1 file changed, 4 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index e8609c1..fc36792 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -112,7 +112,7 @@ static int
->  nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
->  {
->  	int fd, on = 1, fac = L_ERROR;
-> -	int sockfd = -1, rc = 0;
-> +	int sockfd = -1, rc = 0, bounded = 0;
->  	struct addrinfo *addrhead = NULL, *addr;
->  	char *proto, *family;
->  
-> @@ -233,6 +233,8 @@ nfssvc_setfds(const struct addrinfo *hints, const char *node, const char *port)
->  			rc = errno;
->  			goto error;
->  		}
-> +		bounded++;
-> +
->  		close(fd);
->  		close(sockfd);
->  		sockfd = fd = -1;
-> @@ -245,7 +247,7 @@ error:
->  		close(sockfd);
->  	if (addrhead)
->  		freeaddrinfo(addrhead);
-> -	return rc;
-> +	return (bounded ? 0 : rc);
->  }
->  
->  int
-> 
+Applying for 4.15, thanks.--b.
