@@ -1,56 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58368 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:58536 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751286AbdJER5P (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Oct 2017 13:57:15 -0400
-Date: Thu, 5 Oct 2017 13:57:15 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: =?utf-8?B?SsOpcsOpbXk=?= Lefaure <jeremy.lefaure@lse.epita.fr>
-Cc: Greg KH <greg@kroah.com>, "Tobin C. Harding" <me@tobin.cc>,
-        alsa-devel@alsa-project.org, nouveau@lists.freedesktop.org,
-        dri-devel@lists.freedesktop.org, dm-devel@redhat.com,
-        brcm80211-dev-list@cypress.com, devel@driverdev.osuosl.org,
-        linux-scsi@vger.kernel.org, linux-rdma@vger.kernel.org,
-        amd-gfx@lists.freedesktop.org,
-        Jason Gunthorpe <jgunthorpe@obsidianresearch.com>,
-        linux-acpi@vger.kernel.org, linux-video@atrey.karlin.mff.cuni.cz,
-        intel-wired-lan@lists.osuosl.org, linux-media@vger.kernel.org,
-        intel-gfx@lists.freedesktop.org, ecryptfs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-raid@vger.kernel.org,
-        openipmi-developer@lists.sourceforge.net,
-        intel-gvt-dev@lists.freedesktop.org, devel@acpica.org,
-        brcm80211-dev-list.pdl@broadcom.com, netdev@vger.kernel.org,
-        linux-usb@vger.kernel.org, linux-wireless@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-integrity@vger.kernel.org,
-        jlayton@redhat.com
-Subject: Re: [PATCH 00/18] use ARRAY_SIZE macro
-Message-ID: <20171005175715.GA19093@fieldses.org>
-References: <20171001193101.8898-1-jeremy.lefaure@lse.epita.fr>
- <20171001220131.GA11812@eros>
- <20171001205220.10b78086@blatinox-laptop.localdomain>
- <20171002053554.GA28743@kroah.com>
- <20171002192224.GD1903@fieldses.org>
- <20171002213312.3f904290@blatinox-laptop.localdomain>
+        id S1752008AbdJESp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Oct 2017 14:45:57 -0400
+Date: Thu, 5 Oct 2017 14:45:57 -0400
+To: Eryu Guan <eguan@redhat.com>
+Cc: linux-nfs@vger.kernel.org, "J . Bruce Fields" <bfields@redhat.com>
+Subject: Re: [PATCH] nfsd4: define nfsd4_secinfo_no_name_release()
+Message-ID: <20171005184557.GB19093@fieldses.org>
+References: <20170929070110.13442-1-eguan@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20171002213312.3f904290@blatinox-laptop.localdomain>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20170929070110.13442-1-eguan@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 02, 2017 at 09:33:12PM -0400, Jérémy Lefaure wrote:
-> On Mon, 2 Oct 2017 15:22:24 -0400
-> bfields@fieldses.org (J. Bruce Fields) wrote:
-> 
-> > Mainly I'd just like to know which you're asking for.  Do you want me to
-> > apply this, or to ACK it so someone else can?  If it's sent as a series
-> > I tend to assume the latter.
-> > 
-> > But in this case I'm assuming it's the former, so I'll pick up the nfsd
-> > one....
-> Could you to apply the NFSD patch ("nfsd: use ARRAY_SIZE") with the
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>) tag please ?
-> 
-> This patch is an individual patch and it should not have been sent in a
-> series (sorry about that).
+Thanks, applying for 4.14.--b.
 
-Applying for 4.15, thanks.--b.
+On Fri, Sep 29, 2017 at 03:01:10PM +0800, Eryu Guan wrote:
+> Commit 34b1744c91cc ("nfsd4: define ->op_release for compound ops")
+> defined a couple ->op_release functions and run them if necessary.
+> 
+> But there's a problem with that is that it reused
+> nfsd4_secinfo_release() as the op_release of OP_SECINFO_NO_NAME, and
+> caused a leak on struct nfsd4_secinfo_no_name in
+> nfsd4_encode_secinfo_no_name(), because there's no .si_exp field in
+> struct nfsd4_secinfo_no_name.
+> 
+> I found this because I was unable to umount an ext4 partition after
+> exporting it via NFS & run fsstress on the nfs mount. A simplified
+> reproducer would be:
+> 
+>  # mount a local-fs device at /mnt/test, and export it via NFS with
+>  # fsid=0 export option (this is required)
+>  mount /dev/sda5 /mnt/test
+>  echo "/mnt/test *(rw,no_root_squash,fsid=0)" >> /etc/exports
+>  service nfs restart
+> 
+>  # locally mount the nfs export with all default, note that I have
+>  # nfsv4.1 configured as the default nfs version, because of the
+>  # fsid export option, v4 mount would fail and fall back to v3
+>  mount localhost:/mnt/test /mnt/nfs
+> 
+>  # try to umount the underlying device, but got EBUSY
+>  umount /mnt/nfs
+>  service nfs stop
+>  umount /mnt/test <=== EBUSY here
+> 
+> Fixed it by defining a separate nfsd4_secinfo_no_name_release()
+> function as the op_release method of OP_SECINFO_NO_NAME that
+> releases the correct nfsd4_secinfo_no_name structure.
+> 
+> Fixes: 34b1744c91cc ("nfsd4: define ->op_release for compound ops")
+> Signed-off-by: Eryu Guan <eguan@redhat.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 9 ++++++++-
+>  1 file changed, 8 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 3c69db7d4905..8487486ec496 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -927,6 +927,13 @@ nfsd4_secinfo_release(union nfsd4_op_u *u)
+>  		exp_put(u->secinfo.si_exp);
+>  }
+>  
+> +static void
+> +nfsd4_secinfo_no_name_release(union nfsd4_op_u *u)
+> +{
+> +	if (u->secinfo_no_name.sin_exp)
+> +		exp_put(u->secinfo_no_name.sin_exp);
+> +}
+> +
+>  static __be32
+>  nfsd4_setattr(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	      union nfsd4_op_u *u)
+> @@ -2375,7 +2382,7 @@ static const struct nfsd4_operation nfsd4_ops[] = {
+>  	},
+>  	[OP_SECINFO_NO_NAME] = {
+>  		.op_func = nfsd4_secinfo_no_name,
+> -		.op_release = nfsd4_secinfo_release,
+> +		.op_release = nfsd4_secinfo_no_name_release,
+>  		.op_flags = OP_HANDLES_WRONGSEC,
+>  		.op_name = "OP_SECINFO_NO_NAME",
+>  		.op_rsize_bop = nfsd4_secinfo_rsize,
+> -- 
+> 2.13.6
