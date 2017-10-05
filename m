@@ -1,77 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54980 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:34268 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751395AbdJEOz0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Oct 2017 10:55:26 -0400
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A1ACC7EAA1
-        for <linux-nfs@vger.kernel.org>; Thu,  5 Oct 2017 14:55:25 +0000 (UTC)
-Subject: Re: [PATCH nfs-utils] merge vers= and nfsvers= options in mount.nfs
-To: Justin Mitchell <jumitche@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <1506931344.3753.3.camel@redhat.com>
+        id S1751501AbdJEO4D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Oct 2017 10:56:03 -0400
+Subject: Re: [PATCH] nfsiostat: avoid parsing "no device mounted ..." line
+To: Manjunath Patil <manjunath.b.patil@oracle.com>,
+        linux-nfs@vger.kernel.org
+Cc: mbpatil.linux@gmail.com
+References: <1506112900-15638-1-git-send-email-manjunath.b.patil@oracle.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <813301d8-a3ca-ebb0-3ac0-5f8e13f40706@RedHat.com>
-Date: Thu, 5 Oct 2017 10:55:24 -0400
+Message-ID: <b546bd8a-7356-0d68-6f38-21e4c5162509@RedHat.com>
+Date: Thu, 5 Oct 2017 10:56:02 -0400
 MIME-Version: 1.0
-In-Reply-To: <1506931344.3753.3.camel@redhat.com>
+In-Reply-To: <1506112900-15638-1-git-send-email-manjunath.b.patil@oracle.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 10/02/2017 04:02 AM, Justin Mitchell wrote:
-> When using mount.nfs if an nfsvers= option is set in a config file,
-> and a vers= option is given on the commandline, then they are not
-> always correctly combined and this can result in both being present
-> in the resulting mount call.
+On 09/22/2017 04:41 PM, Manjunath Patil wrote:
+> Present nfsiostat includes the "no device mounted ..." line from
+> /proc/self/mountstats as addition description of the preceding mount
+> point. If the preceding mount point is NFS mountpoint, nfsiostat fails
+> to parse this line eventually. This patch avoids parsing this line.
 > 
-> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
-Committed... 
+> Signed-off-by: Manjunath Patil <manjunath.b.patil@oracle.com>
+Committed... Sorry it took so long... 
 
 steved.
+
 > ---
->  utils/mount/configfile.c | 8 +++++---
->  1 file changed, 5 insertions(+), 3 deletions(-)
+>  tools/nfs-iostat/nfs-iostat.py |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
 > 
-> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-> index e4b39ef..64688bf 100644
-> --- a/utils/mount/configfile.c
-> +++ b/utils/mount/configfile.c
-> @@ -66,6 +66,7 @@ struct mnt_alias {
->  	{"background", "bg", MNT_NOARG},
->  	{"foreground", "fg", MNT_NOARG},
->  	{"sloppy", "sloppy", MNT_NOARG},
-> +	{"nfsvers", "vers", MNT_UNSET},
->  };
->  int mnt_alias_sz = (sizeof(mnt_alias_tab)/sizeof(mnt_alias_tab[0]));
->  
-> @@ -292,20 +293,21 @@ conf_parse_mntopts(char *section, char *arg, char *opts)
->  
->  	list = conf_get_tag_list(section, arg);
->  	TAILQ_FOREACH(node, &list->fields, link) {
-> +		/* check first if this is an alias for another option */
-> +		field = mountopts_alias(node->field, &argtype);
->  		/*
->  		 * Do not overwrite options if already exists 
->  		 */
-> -		snprintf(buf, BUFSIZ, "%s=", node->field);
-> +		snprintf(buf, BUFSIZ, "%s=", field);
->  		if (opts && strcasestr(opts, buf) != NULL)
->  			continue;
->  
-> -		if (lookup_entry(node->field) != NULL)
-> +		if (lookup_entry(field) != NULL)
->  			continue;
->  		buf[0] = '\0';
->  		value = conf_get_section(section, arg, node->field);
->  		if (value == NULL)
->  			continue;
-> -		field = mountopts_alias(node->field, &argtype);
->  		if (strcasecmp(value, "false") == 0) {
->  			if (argtype != MNT_NOARG)
->  				snprintf(buf, BUFSIZ, "no%s", field);
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+> index 61d15a5..577a23d 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -429,6 +429,8 @@ def parse_stats_file(filename):
+>          words = line.split()
+>          if len(words) == 0:
+>              continue
+> +	if line.startswith("no device mounted") :
+> +            continue
+>          if words[0] == 'device':
+>              key = words[4]
+>              new = [ line.strip() ]
 > 
