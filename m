@@ -1,100 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:60379 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751850AbdJFWiX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Oct 2017 18:38:23 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "mbpatil.linux@gmail.com" <mbpatil.linux@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dwysocha@redhat.com" <dwysocha@redhat.com>,
-        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
-Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS
- server
-Date: Fri, 6 Oct 2017 22:38:18 +0000
-Message-ID: <1507329496.10354.15.camel@primarydata.com>
-References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
-         <1506013553.7873.13.camel@redhat.com>
-         <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
-         <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com>
-         <1507323087.10354.11.camel@primarydata.com>
-         <CANnNPBb--DVL1263G=BQSW-kK7QacWEE8sL+KNrtdYpCwq6HJA@mail.gmail.com>
-In-Reply-To: <CANnNPBb--DVL1263G=BQSW-kK7QacWEE8sL+KNrtdYpCwq6HJA@mail.gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54100 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751980AbdJFXNE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 6 Oct 2017 19:13:04 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <27530b6a-7290-2171-899e-6c16c14f402e@infradead.org>
+References: <27530b6a-7290-2171-899e-6c16c14f402e@infradead.org> <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk> <150730496982.6182.10042997820796149075.stgit@warthog.procyon.org.uk>
+To: Randy Dunlap <rdunlap@infradead.org>
+Cc: dhowells@redhat.com, viro@ZenIV.linux.org.uk,
+        linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+Subject: Re: [PATCH 03/14] VFS: Implement a filesystem superblock creation/configuration context [ver #6]
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="us-ascii"
+Date: Sat, 07 Oct 2017 00:13:01 +0100
+Message-ID: <25218.1507331581@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTEwLTA2IGF0IDE1OjEyIC0wNzAwLCBNYW5qdW5hdGggUGF0aWwgd3JvdGU6
-DQo+IE9uIEZyaSwgT2N0IDYsIDIwMTcgYXQgMTo1MSBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9u
-ZG15QHByaW1hcnlkYXRhLg0KPiBjb20+IHdyb3RlOg0KPiA+IE9uIEZyaSwgMjAxNy0xMC0wNiBh
-dCAxMjoxMyAtMDcwMCwgTWFuanVuYXRoIFBhdGlsIHdyb3RlOg0KPiA+ID4gSGkgRGF2aWQsDQo+
-ID4gPiANCj4gPiA+IE9uIEZyaSwgU2VwIDIyLCAyMDE3IGF0IDEyOjIxIFBNLCBNYW5qdW5hdGgg
-UGF0aWwNCj4gPiA+IDxtYnBhdGlsLmxpbnV4QGdtYWlsLmNvbT4gd3JvdGU6DQo+ID4gPiA+IEhp
-IERhdmlkLA0KPiA+ID4gPiANCj4gPiA+ID4gT24gVGh1LCBTZXAgMjEsIDIwMTcgYXQgMTA6MDUg
-QU0sIERhdmlkIFd5c29jaGFuc2tpIDxkd3lzb2NoYUByDQo+ID4gPiA+IGVkaGENCj4gPiA+ID4g
-dC5jb20+IHdyb3RlOg0KPiA+ID4gPiA+IE9uIFdlZCwgMjAxNy0wOS0yMCBhdCAxNToxNyAtMDcw
-MCwgTWFuanVuYXRoIFBhdGlsIHdyb3RlOg0KPiA+ID4gPiA+ID4gSGksDQo+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+IFdpdGggYXV0b2Nsb3NlIHRyeWluZyB0byBjbG9zZSB0aGUgY29ubmVjdGlv
-biwgYWZ0ZXIgdGhlDQo+ID4gPiA+ID4gPiBpZGxlDQo+ID4gPiA+ID4gPiB0aW1lb3V0DQo+ID4g
-PiA+ID4gPiBpbiBORlN2MyBtb3VudHMsDQo+ID4gPiA+ID4gPiBhIGJhZCBORlMgc2VydmVyIG1h
-eSBub3Qgc2VuZCB0aGUgZmluYWwgRklOLCBsZWFkaW5nIHRoZQ0KPiA+ID4gPiA+ID4gY2xpZW50
-DQo+ID4gPiA+ID4gPiBzdGF5DQo+ID4gPiA+ID4gPiBpbiBGSU5fV0FJVF8yIHN0YXRlIGZvcmV2
-ZXIuDQo+ID4gPiA+ID4gPiBUaGlzIGlzIGVhc2lseSByZXByb2R1Y2libGUgYnkgc2ltdWxhdGlu
-ZyB0aGUgYmFkIHNlcnZlcg0KPiA+ID4gPiA+ID4gYmVoYXZpb3IuIEkNCj4gPiA+ID4gPiA+IHVz
-ZWQgJ25ldHN0YXQgLWFuIHwgZ3JlcCAyMDQ5JyB0byBvYnNlcnZlciBzb2NrZXQgc3RhdGUuDQo+
-ID4gPiA+ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBIb3cgbG9uZyBkaWQgeW91IHdhaXQg
-YW5kIGhvdyBkaWQgeW91IHNpbXVsYXRlIHRoZQ0KPiA+ID4gPiA+IGZhaWx1cmU/ICBJIGFtDQo+
-ID4gPiA+ID4gdmVyeQ0KPiA+ID4gPiA+IGludGVyZXN0ZWQgaW4geW91ciB0ZXN0IGNhc2UuDQo+
-ID4gPiA+IA0KPiA+ID4gPiBJIG9ic2VydmVyIHRoaXMgaW4gY3QgZW52aXJvbm1lbnQuIEluIHRo
-aXMgY2FzZSB0aGUgZmluX3dhaXRfMg0KPiA+ID4gPiBzdGF5ZWQgZm9yZXZlci4NCj4gPiA+ID4g
-Y3QgaGFkIHRvIHJlc3RhcnQgdGhlIG5vZGUgdG8gZ2V0IG91dC4NCj4gPiA+ID4gDQo+ID4gPiA+
-IFdlIHRyaWVkIHRvIHNpbXVsYXRlIHRoaXMgYmVoYXZpb3IgaW4gTGludXggbmZzIHNlcnZlciBi
-eQ0KPiA+ID4gPiBzdG9wcGluZw0KPiA+ID4gPiB0aGUNCj4gPiA+ID4gaW5jb21pbmcgRklODQo+
-ID4gPiA+IGZvciAyMDQ5IHBvcnQgaW5zaWRlIGtlcm5lbC4gVGhpcyBwcmV2ZW50ZWQgdGhlIHNl
-cnZlciBmcm9tDQo+ID4gPiA+IHNlbmRpbmcNCj4gPiA+ID4gdGhlIGZpbmFsIEZJTiBmb3Igc29t
-ZSB0aW1lLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIGxpbnV4IHNlcnZlciBldmVudHVhbGx5IHNl
-bnQgYSBGSU4gYWZ0ZXIgc29tZSBkZWxheS4gVGhvdWdoDQo+ID4gPiA+IEkNCj4gPiA+ID4gYW0N
-Cj4gPiA+ID4gbm90IHN1cmUsIEkgdGhpbmsgdGhpcyBpcyBkdWUgdG8NCj4gPiA+ID4gDQo+ID4g
-PiA+IC8qIGFwcGFyZW50bHkgdGhlICJzdGFuZGFyZCIgaXMgdGhhdCBjbGllbnRzIGNsb3NlDQo+
-ID4gPiA+ICAqIGlkbGUgY29ubmVjdGlvbnMgYWZ0ZXIgNSBtaW51dGVzLCBzZXJ2ZXJzIGFmdGVy
-DQo+ID4gPiA+ICAqIDYgbWludXRlcw0KPiA+ID4gPiAgKiAgIGh0dHA6Ly93d3cuY29ubmVjdGF0
-aG9uLm9yZy90YWxrczk2L25mc3RjcC5wZGYNCj4gPiA+ID4gICovDQo+ID4gPiA+IHN0YXRpYyBp
-bnQgc3ZjX2Nvbm5fYWdlX3BlcmlvZCA9IDYqNjA7DQo+ID4gPiANCj4gPiA+IEkgdHJpZWQgdG8g
-aW5jcmVhc2UgdGhpcyB2YWx1ZS4NCj4gPiA+IEFmdGVyIHNldHRpbmcgdGhpcyB2YWx1ZSB0byBh
-IGhpZ2ggdmFsdWUgWzYwKjYwXSwgSSBjb3VsZCBzZWUgdGhlDQo+ID4gPiBjbGllbnQgc3RheWlu
-ZyBpbiBGSU5fV0FJVF8yIHN0YXRlIGZvcmV2ZXIuDQo+ID4gPiANCj4gPiA+IFRvIHJlcGVhdCwg
-bXkgdGVzdCBjYXNlIGlzLA0KPiA+ID4gMS4gVGFrZSBhIG5mcyBzZXJ2ZXIgYW5kIG1ha2UgaXQg
-bm90IHNlbmQgdGhlIEZJTiBvbiAyMDQ5IHBvcnQNCj4gPiA+IDIuIFVzZSBhbnkgdXBzdHJlYW0g
-a2VybmVsIFtJIHVzZWQgNC4xNC1yYzFdIGFzIG5mcyBjbGllbnQNCj4gPiA+IDMuIExldCB0aGUg
-bW91bnQgYmUgaWRsZSBmb3IgNSBtaW5zIHNvIHRoYXQgYXV0b2Nsb3NlIGdldHMNCj4gPiA+IHRy
-aWdnZXJlZC4NCj4gPiA+IDQuIGFmdGVyIHRoaXMsIGNsaWVudCBzdGF5cyBpbiBGSU5fV0FJVF8y
-IHN0YXRlW3dlIGNhbiBvYnNlcnZlcg0KPiA+ID4gaXQNCj4gPiA+IHdpdGggbmV0c3RhdCAtYW4g
-fCBncmVwIDIwNDldLg0KPiA+ID4gNS4gQXQgdGhpcyBwb2ludCBubyBuZXcgTkZTIGNvbm5lY3Rp
-b24gaXMgYWxsb3dlZCBvbiB0aGlzIHBvcnQuDQo+ID4gPiBTbw0KPiA+ID4gbW91bnQgaXMgaHVu
-ZyBmb3IgYXBwbGljYXRpb24uDQo+ID4gDQo+ID4gV2hhdCBkbyB5b3UgbWVhbiB3aGVuIHlvdSBz
-YXkgIm1ha2UgaXQgbm90IHNlbmQgRklOIj8gQXJlIHlvdSBqdXN0DQo+ID4gZmlsdGVyaW5nIGFs
-bCBwYWNrZXRzIHdpdGggYSBGSU4gZmxhZyBzZXQ/IE5vcm1hbGx5LCBhIEZJTiBpcw0KPiA+IGV4
-cGVjdGVkDQo+ID4gdG8gYmUgQUNLZWQgYnkgdGhlIHJlY2lwaWVudCBzbyB0aGF0IGl0IGNhbiBi
-ZSByZXRyYW5zbWl0dGVkIGlmDQo+ID4gbG9zdC4NCj4gDQo+IEluIG15IHRlc3QtY2FzZSBJIHBy
-ZXZlbnRlZCBUQ1AgbGF5ZXIgaXRzZWxmW2J5IGNvZGUgY2hhbmdlXSBmcm9tDQo+IHNlbmRpbmcg
-RklOIHBhY2tldCBvbiBwb3J0IDIwNDkuDQo+IA0KPiBUaGUgY2xpZW50IHNlbmRzIEZJTiwgZ2V0
-cyBhIEFDSw0KPiB0aGVuDQo+IENsaWVudCBleHBlY3RzIGZpbmFsIEZJTiwgc2VydmVyIG5ldmVy
-IHNlbmRzIGl0Lg0KPiA+IA0KPiA+IA0KPiA+IEhvd2V2ZXIsIGV2ZW4gaWYgaXQgZG9lcyBub3Qg
-cmVjZWl2ZSB0aGUgRklOIGZyb20gdGhlIHNlcnZlciwgdGhlbg0KPiA+IHRoZQ0KPiA+IEZJTl9X
-QUlUMiBzdGF0ZSBzaG91bGQgYXV0b21hdGljYWxseSB0aW1lIG91dCBhZnRlcg0KPiA+IC9wcm9j
-L3N5cy9uZXQvaXB2NC90Y3BfZmluX3RpbWVvdXQgc2Vjb25kcyAoc2VlIHRoZSBkZXNjcmlwdGlv
-biBpbg0KPiA+IHRoZQ0KPiA+IFNPX0xJTkdFUjIgc29ja2V0IG9wdGlvbikuIElzbid0IHRoaXMg
-d29ya2luZz8NCj4gPiANCj4gDQo+IEkgdGhpbmsgdGhpcyBiZWhhdmlvciBpcyB0cnVlIG9ubHkg
-Zm9yIGZ1bGwgY2xvc2Ugb2Ygc29ja2V0LiBUaGUNCj4gcHJlc2VudCBpc3N1ZSBpcyBoYXBwZW5p
-bmcgb25seSB3aXRoIGF1dG9jbG9zZSgpDQo+IFRoZSBhdXRvY2xvc2UgYmVoYXZpb3IgaXMgY2hh
-bmdlZCBmcm9tIGZ1bGwgY2xvc2UgdG8gaGFsZiBjbG9zZSB3aXRoDQo+IHRoZSBmb2xsb3dpbmcg
-Y29tbWl0IC0NCj4gY2FmNGNjZCBTVU5SUEM6IE1ha2UgeHNfdGNwX2Nsb3NlKCkgZG8gYSBzb2Nr
-ZXQgc2h1dGRvd24gcmF0aGVyIHRoYW4NCj4gYQ0KPiBzb2NrX3JlbGVhc2UNCj4gDQo+IFRoZSBm
-b2xsb3dpbmcgY29tbWl0IG1pZ2h0IGJlIHJlbGF0ZWQgdG9vIC0NCj4gOWNiYzk0ZiBTVU5SUEM6
-IFJlbW92ZSBUQ1Agc29ja2V0IGxpbmdlciBjb2RlDQo+IA0KDQpbdHJvbmRteUBsZWlyYSBsaW51
-eF0kIGdyZXAgc29ja19zaHV0ZG93biBuZXQvc3VucnBjL3hwcnRzb2NrLmMgDQoJa2VybmVsX3Nv
-Y2tfc2h1dGRvd24oc29jaywgU0hVVF9SRFdSKTsNCgkJa2VybmVsX3NvY2tfc2h1dGRvd24oc29j
-aywgU0hVVF9SRFdSKTsNCg0KU0hVVF9SRFdSIGlzIGEgZnVsbCBjbG9zZSBBRkFJSy4uLg0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5
-RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Randy Dunlap <rdunlap@infradead.org> wrote:
 
+> (in fs/namespace.c:)
+
+Ummm?
+
+David
