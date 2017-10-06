@@ -1,16 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:8184 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:49560 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752268AbdJFPuH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Oct 2017 11:50:07 -0400
-Subject: [PATCH 07/14] VFS: Add a sample program for fsopen/fsmount [ver #6]
+        id S1752495AbdJFPtz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 6 Oct 2017 11:49:55 -0400
+Subject: [PATCH 06/14] VFS: Implement fsmount() to effect a pre-configured
+ mount [ver #6]
 From: David Howells <dhowells@redhat.com>
 To: viro@ZenIV.linux.org.uk
 Cc: linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         jlayton@redhat.com
-Date: Fri, 06 Oct 2017 16:50:00 +0100
-Message-ID: <150730500019.6182.15975727444128962384.stgit@warthog.procyon.org.uk>
+Date: Fri, 06 Oct 2017 16:49:52 +0100
+Message-ID: <150730499269.6182.8121149524716523148.stgit@warthog.procyon.org.uk>
 In-Reply-To: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
 References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,113 +19,163 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add a sample program for driving fsopen/fsmount.
+Provide a system call by which a filesystem opened with fsopen() and
+configured by a series of writes can be mounted:
+
+	int ret = fsmount(int fsfd, int dfd, const char *path,
+			  unsigned int at_flags, unsigned int flags);
+
+where fsfd is the fd returned by fsopen(), dfd, path and at_flags locate
+the mountpoint and flags are the applicable MS_* flags.  dfd can be
+AT_FDCWD or an fd open to a directory.
+
+In the event that fsmount() fails, it may be possible to get an error
+message by calling read().  If no message is available, ENODATA will be
+reported.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- samples/fsmount/test-fsmount.c |   94 ++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 94 insertions(+)
- create mode 100644 samples/fsmount/test-fsmount.c
+ arch/x86/entry/syscalls/syscall_32.tbl |    1 
+ arch/x86/entry/syscalls/syscall_64.tbl |    1 
+ fs/namespace.c                         |   82 ++++++++++++++++++++++++++++++++
+ include/linux/syscalls.h               |    2 +
+ kernel/sys_ni.c                        |    1 
+ 5 files changed, 87 insertions(+)
 
-diff --git a/samples/fsmount/test-fsmount.c b/samples/fsmount/test-fsmount.c
-new file mode 100644
-index 000000000000..75f91d272a19
---- /dev/null
-+++ b/samples/fsmount/test-fsmount.c
-@@ -0,0 +1,94 @@
-+/* fd-based mount test.
-+ *
-+ * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
-+ * Written by David Howells (dhowells@redhat.com)
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public Licence
-+ * as published by the Free Software Foundation; either version
-+ * 2 of the Licence, or (at your option) any later version.
+diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+index 9bf8d4c62f85..abe6ea95e0e6 100644
+--- a/arch/x86/entry/syscalls/syscall_32.tbl
++++ b/arch/x86/entry/syscalls/syscall_32.tbl
+@@ -392,3 +392,4 @@
+ 383	i386	statx			sys_statx
+ 384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
+ 385	i386	fsopen			sys_fsopen
++386	i386	fsmount			sys_fsmount
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 9b198c5fc412..0977c5079831 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -340,6 +340,7 @@
+ 331	common	pkey_free		sys_pkey_free
+ 332	common	statx			sys_statx
+ 333	common	fsopen			sys_fsopen
++334	common	fsmount			sys_fsmount
+ 
+ #
+ # x32-specific system call numbers start at 512 to avoid cache impact
+diff --git a/fs/namespace.c b/fs/namespace.c
+index d6b0b0067f6d..8676658b6b2c 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -3188,6 +3188,88 @@ struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
+ EXPORT_SYMBOL_GPL(kern_mount_data);
+ 
+ /*
++ * Mount a new, prepared superblock (specified by fs_fd) on the location
++ * specified by dfd and dir_name.  dfd can be AT_FDCWD, a dir fd or a container
++ * fd.  This cannot be used for binding, moving or remounting mounts.
 + */
-+
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <unistd.h>
-+#include <errno.h>
-+#include <fcntl.h>
-+#include <sys/prctl.h>
-+#include <sys/wait.h>
-+
-+#define PR_ERRMSG_ENABLE		48
-+#define PR_ERRMSG_READ			49
-+
-+#define E(x) do { if ((x) == -1) { perror(#x); exit(1); } } while(0)
-+
-+static __attribute__((noreturn))
-+void mount_error(int fd, const char *s)
++SYSCALL_DEFINE5(fsmount, int, fs_fd, int, dfd, const char __user *, dir_name,
++		unsigned int, at_flags, unsigned int, flags)
 +{
-+	char buf[4096];
-+	int err, n, perr;
++	struct fs_context *fc;
++	struct path mountpoint;
++	struct fd f;
++	unsigned int lookup_flags, mnt_flags = 0;
++	long ret;
 +
-+	do {
-+		err = errno;
-+		errno = 0;
-+		n = prctl(PR_ERRMSG_READ, buf, sizeof(buf));
-+		perr = errno;
-+		errno = err;
-+		if (n > 0) {
-+			fprintf(stderr, "Error: '%s': %*.*s: %m\n", s, n, n, buf);
-+		} else {
-+			fprintf(stderr, "%s: %m\n", s);
-+		}
-+	} while (perr == 0);
-+	exit(1);
-+}
++	if ((at_flags & ~(AT_SYMLINK_NOFOLLOW | AT_NO_AUTOMOUNT |
++			  AT_EMPTY_PATH)) != 0)
++		return -EINVAL;
 +
-+#define E_write(fd, s)							\
-+	do {								\
-+		if (write(fd, s, sizeof(s) - 1) == -1)			\
-+			mount_error(fd, s);				\
-+	} while (0)
++	if (flags & ~(MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC |
++		      MS_NOATIME | MS_NODIRATIME | MS_RELATIME | MS_STRICTATIME))
++		return -EINVAL;
 +
-+static inline int fsopen(const char *fs_name, int flags,
-+			 void *reserved3, void *reserved4, void *reserved5);
++	if (flags & MS_RDONLY)
++		mnt_flags |= MNT_READONLY;
++	if (flags & MS_NOSUID)
++		mnt_flags |= MNT_NOSUID;
++	if (flags & MS_NODEV)
++		mnt_flags |= MNT_NODEV;
++	if (flags & MS_NOEXEC)
++		mnt_flags |= MNT_NOEXEC;
++	if (flags & MS_NODIRATIME)
++		mnt_flags |= MNT_NODIRATIME;
 +
-+{
-+	return syscall(333, fs_name, flags, reserved3, reserved4, reserved5);
-+}
-+
-+static inline int fsmount(int fsfd, int dfd, const char *path,
-+			  unsigned int at_flags, unsigned int flags)
-+{
-+	return syscall(334, fsfd, dfd, path, at_flags, flags);
-+}
-+
-+int main()
-+{
-+	int mfd;
-+
-+	if (prctl(PR_ERRMSG_ENABLE, 1) < 0) {
-+		perror("prctl/en");
-+		exit(1);
++	if (flags & MS_STRICTATIME) {
++		if (flags & MS_NOATIME)
++			return -EINVAL;
++	} else if (flags & MS_NOATIME) {
++		mnt_flags |= MNT_NOATIME;
++	} else {
++		mnt_flags |= MNT_RELATIME;
 +	}
 +
-+	/* Mount an NFS filesystem */
-+	mfd = fsopen("nfs4", 0, NULL, NULL, NULL);
-+	if (mfd == -1) {
-+		perror("fsopen");
-+		exit(1);
-+	}
++	f = fdget(fs_fd);
++	if (!f.file)
++		return -EBADF;
 +
-+	E_write(mfd, "s warthog:/data");
-+	E_write(mfd, "o fsc");
-+	E_write(mfd, "o sync");
-+	E_write(mfd, "o intr");
-+	E_write(mfd, "o vers=4.2");
-+	E_write(mfd, "o addr=90.155.74.18");
-+	E_write(mfd, "o clientaddr=90.155.74.21");
-+	E_write(mfd, "x create");
-+	if (fsmount(mfd, AT_FDCWD, "/mnt", 0, 0) < 0)
-+		mount_error(mfd, "fsmount");
-+	E(close(mfd));
++	ret = -EINVAL;
++	if (f.file->f_op != &fs_fs_fops)
++		goto err_fsfd;
 +
-+	exit(0);
++	fc = f.file->private_data;
++
++	ret = -EPERM;
++	if (!may_mount() ||
++	    ((fc->sb_flags & MS_MANDLOCK) && !may_mandlock()))
++		goto err_fsfd;
++
++	/* There must be a valid superblock or we can't mount it */
++	ret = -EINVAL;
++	if (!fc->root)
++		goto err_fsfd;
++
++	/* Find the mountpoint.  A container can be specified in dfd. */
++	lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
++	if (at_flags & AT_SYMLINK_NOFOLLOW)
++		lookup_flags &= ~LOOKUP_FOLLOW;
++	if (at_flags & AT_NO_AUTOMOUNT)
++		lookup_flags &= ~LOOKUP_AUTOMOUNT;
++	if (at_flags & AT_EMPTY_PATH)
++		lookup_flags |= LOOKUP_EMPTY;
++	ret = user_path_at(dfd, dir_name, lookup_flags, &mountpoint);
++	if (ret < 0)
++		goto err_fsfd;
++
++	ret = do_new_mount_fc(fc, &mountpoint, mnt_flags);
++
++	path_put(&mountpoint);
++err_fsfd:
++	fdput(f);
++	return ret;
 +}
++
++/*
+  * Return true if path is reachable from root
+  *
+  * namespace_sem or mount_lock is held
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index 7cd1b65a4152..e82dde171ce8 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -942,5 +942,7 @@ asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
+ 			  unsigned mask, struct statx __user *buffer);
+ asmlinkage long sys_fsopen(const char *fs_name, unsigned int flags,
+ 			   void *reserved3, void *reserved4, void *reserved5);
++asmlinkage long sys_fsmount(int fsfd, int dfd, const char *path, unsigned int at_flags,
++			    unsigned int flags);
+ 
+ #endif
+diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+index de1dc63e7e47..a0fe764bd5dd 100644
+--- a/kernel/sys_ni.c
++++ b/kernel/sys_ni.c
+@@ -261,3 +261,4 @@ cond_syscall(sys_pkey_free);
+ 
+ /* fd-based mount */
+ cond_syscall(sys_fsopen);
++cond_syscall(sys_fsmount);
 
