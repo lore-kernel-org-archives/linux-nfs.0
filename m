@@ -1,142 +1,148 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f193.google.com ([209.85.216.193]:44508 "EHLO
-        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751639AbdJFTNi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Oct 2017 15:13:38 -0400
-Received: by mail-qt0-f193.google.com with SMTP id v28so24458921qtv.1
-        for <linux-nfs@vger.kernel.org>; Fri, 06 Oct 2017 12:13:38 -0700 (PDT)
+Received: from bombadil.infradead.org ([65.50.211.133]:51229 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753052AbdJFUeW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Oct 2017 16:34:22 -0400
+Subject: Re: [PATCH 03/14] VFS: Implement a filesystem superblock
+ creation/configuration context [ver #6]
+To: David Howells <dhowells@redhat.com>, viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jlayton@redhat.com
+References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
+ <150730496982.6182.10042997820796149075.stgit@warthog.procyon.org.uk>
+From: Randy Dunlap <rdunlap@infradead.org>
+Message-ID: <27530b6a-7290-2171-899e-6c16c14f402e@infradead.org>
+Date: Fri, 6 Oct 2017 13:34:19 -0700
 MIME-Version: 1.0
-In-Reply-To: <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
-References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
- <1506013553.7873.13.camel@redhat.com> <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
-From: Manjunath Patil <mbpatil.linux@gmail.com>
-Date: Fri, 6 Oct 2017 12:13:36 -0700
-Message-ID: <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com>
-Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS server
-To: David Wysochanski <dwysocha@redhat.com>
-Cc: linux-nfs@vger.kernel.org, manjunath.b.patil@oracle.com
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <150730496982.6182.10042997820796149075.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi David,
+On 10/06/17 08:49, David Howells wrote:
+> 
+> diff --git a/fs/fs_context.c b/fs/fs_context.c
+> new file mode 100644
+> index 000000000000..a3a7ccb4323d
+> --- /dev/null
+> +++ b/fs/fs_context.c
 
-On Fri, Sep 22, 2017 at 12:21 PM, Manjunath Patil
-<mbpatil.linux@gmail.com> wrote:
-> Hi David,
->
-> On Thu, Sep 21, 2017 at 10:05 AM, David Wysochanski <dwysocha@redhat.com> wrote:
->> On Wed, 2017-09-20 at 15:17 -0700, Manjunath Patil wrote:
->>> Hi,
->>>
->>> With autoclose trying to close the connection, after the idle timeout
->>> in NFSv3 mounts,
->>> a bad NFS server may not send the final FIN, leading the client stay
->>> in FIN_WAIT_2 state forever.
->>> This is easily reproducible by simulating the bad server behavior. I
->>> used 'netstat -an | grep 2049' to observer socket state.
->>>
->> How long did you wait and how did you simulate the failure?  I am very
->> interested in your test case.
-> I observer this in ct environment. In this case the fin_wait_2 stayed forever.
-> ct had to restart the node to get out.
->
-> We tried to simulate this behavior in Linux nfs server by stopping the
-> incoming FIN
-> for 2049 port inside kernel. This prevented the server from sending
-> the final FIN for some time.
->
-> The linux server eventually sent a FIN after some delay. Though I am
-> not sure, I think this is due to
->
-> /* apparently the "standard" is that clients close
->  * idle connections after 5 minutes, servers after
->  * 6 minutes
->  *   http://www.connectathon.org/talks96/nfstcp.pdf
->  */
-> static int svc_conn_age_period = 6*60;
+> +/**
+> + * generic_parse_monolithic - Parse key[=val][,key[=val]]* mount data
+> + * @mc: The superblock configuration to fill in.
 
-I tried to increase this value.
-After setting this value to a high value [60*60], I could see the
-client staying in FIN_WAIT_2 state forever.
+function argument is &struct fs_context *ctx, not @mc
 
-To repeat, my test case is,
-1. Take a nfs server and make it not send the FIN on 2049 port
-2. Use any upstream kernel [I used 4.14-rc1] as nfs client
-3. Let the mount be idle for 5 mins so that autoclose gets triggered.
-4. after this, client stays in FIN_WAIT_2 state[we can observer it
-with netstat -an | grep 2049].
-5. At this point no new NFS connection is allowed on this port. So
-mount is hung for application.
+> + * @data: The data to parse
+> + *
+> + * Parse a blob of data that's in key[=val][,key[=val]]* form.  This can be
+> + * called from the ->monolithic_mount_data() fs_context operation.
+> + *
+> + * Returns 0 on success or the error returned by the ->parse_option() fs_context
+> + * operation on failure.
+> + */
+> +int generic_parse_monolithic(struct fs_context *ctx, void *data)
+> +{
+> +	char *options = data, *p;
+> +	int ret;
+> +
+> +	if (!options)
+> +		return 0;
+> +
+> +	while ((p = strsep(&options, ",")) != NULL) {
+> +		if (*p) {
+> +			ret = vfs_parse_mount_option(ctx, p);
+> +			if (ret < 0)
+> +				return ret;
+> +		}
+> +	}
+> +
+> +	return 0;
+> +}
+> +EXPORT_SYMBOL(generic_parse_monolithic);
+> +
 
--Thanks,
-Manjunath
->
->>
->> I am not sure which kernels you are testing but in my tests (simulating
->> a dropped FIN from the NFS server but not blocking the ACK or further
->> packets) I've seen that the sunrpc TCP keepalive commit
->> 7f260e8575bf53b93b77978c1e39f8e67612759c caused a RST to happen after
->> around 4 minutes so it won't get stuck forever.  The only way I could
->> get a FIN_WAIT_2 indefinite hang was to block all traffic from the
->> server port which arguably, if that happens you'll get a hang but only a
->> bit later so I concluded such a test seems invalid.
-> I have observed this behavior with OL6 and upsteam 4.14-rc1 kernel.
-> I do not see tcp-keepalive causing a RST, rather the FIN_WAIT_2 state
-> stays till it gets
-> the final FIN from server.
->>
->>
->>> This is will also stall the other RPC requests from connecting and
->>> proceeding as XPRT_CLOSING flag is already set.
->>>
->>> This can be observed in the 4.14-rc1 as well.
->>> This behavior is introduced with the following commit -
->>> caf4ccd SUNRPC: Make xs_tcp_close() do a socket shutdown rather than a
->>> sock_release
->>>
->>> Once we reverse this commit, the FIN_WAIT_2 state lasts only for 60 seconds.
->>>
->>
->> Interesting maybe the problem is back on some upstream kernels (I mostly
->> test RHEL6, RHEL7, and some fedora).  Do you know what is actually
->> firing to get the TCP connection out of FIN_WAIT_2?  Have you tried to
->> trace this?
-> I think this is because, caf4ccd introduces the half close behavior to
-> xprt_autoclose()
-> In this case, its expected to wait for final FIN from server. However
-> if a bad server
-> chose to not send the final FIN, I think we do not have a  backup plan
-> on client side.
->
-> In the earlier behavior of full close, the tcp clears the FIN_WAIT_2
-> state after /proc/sys/net/ipv4/tcp_fin_timeout
-> which is 60 seconds.
->
->>
->> I first saw FIN_WAIT_2 hangs after commit
->> 9cbc94fb06f98de0e8d393eaff09c790f4c3ba46 which removed
->> xs_tcp_scheduler_linger_timeout was backported to RHEL6.  Later we added
->> the TCP keepalive commit which seems to have resolved these hangs as far
->> as I know.
->>
->>
->>> Any thoughts correcting this behavior?
->>> or is this behavior expected?
->>>
->> Depending on your test, it may be expected behavior but it sounds like
->> not if truly you are stuck in FIN_WAIT_2 indefinitely and you've not got
->> some permanent firewall rule blocking traffic, etc.
->>
->>
->>
->>> -Thanks,
->>> Manjunath
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
->>
-> -Thanks,
-> Manjunath
+> +
+> +/**
+> + * put_fs_context - Dispose of a superblock configuration context.
+> + * @sc: The context to dispose of.
+
+      @fc:
+
+> + */
+> +void put_fs_context(struct fs_context *fc)
+> +{
+> +	struct super_block *sb;
+> +
+> +	if (fc->root) {
+> +		sb = fc->root->d_sb;
+> +		dput(fc->root);
+> +		fc->root = NULL;
+> +		deactivate_super(sb);
+> +	}
+> +
+> +	if (fc->ops && fc->ops->free)
+> +		fc->ops->free(fc);
+> +
+> +	security_fs_context_free(fc);
+> +	if (fc->net_ns)
+> +		put_net(fc->net_ns);
+> +	put_user_ns(fc->user_ns);
+> +	if (fc->cred)
+> +		put_cred(fc->cred);
+> +	kfree(fc->subtype);
+> +	put_filesystem(fc->fs_type);
+> +	kfree(fc->source);
+> +	kfree(fc);
+> +}
+> +EXPORT_SYMBOL(put_fs_context);
+
+
+(in fs/namespace.c:)
+
+> +/**
+> + * vfs_create_mount - Create a mount for a configured superblock
+> + * fc: The configuration context with the superblock attached
+
+      @fc:
+
+> + *
+> + * Create a mount to an already configured superblock.  If necessary, the
+> + * caller should invoke vfs_get_tree() before calling this.
+> + *
+> + * Note that this does not attach the mount to anything.
+> + */
+> +struct vfsmount *vfs_create_mount(struct fs_context *fc)
+> +{
+> +	struct mount *mnt;
+> +
+> +	if (!fc->root)
+> +		return ERR_PTR(-EINVAL);
+> +
+> +	mnt = alloc_vfsmnt(fc->source ?: "none");
+> +	if (!mnt)
+> +		return ERR_PTR(-ENOMEM);
+> +
+> +	if (fc->purpose == FS_CONTEXT_FOR_KERNEL_MOUNT)
+> +		/* It's a longterm mount, don't release mnt until we unmount
+> +		 * before file sys is unregistered
+> +		 */
+> +		mnt->mnt.mnt_flags = MNT_INTERNAL;
+> +
+> +	atomic_inc(&fc->root->d_sb->s_active);
+> +	mnt->mnt.mnt_sb		= fc->root->d_sb;
+> +	mnt->mnt.mnt_root	= dget(fc->root);
+> +	mnt->mnt_mountpoint	= mnt->mnt.mnt_root;
+> +	mnt->mnt_parent		= mnt;
+> +
+> +	lock_mount_hash();
+> +	list_add_tail(&mnt->mnt_instance, &mnt->mnt.mnt_sb->s_mounts);
+> +	unlock_mount_hash();
+> +	return &mnt->mnt;
+> +}
+> +EXPORT_SYMBOL(vfs_create_mount);
+
+
+-- 
+~Randy
