@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:46982 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4135 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751862AbdJFPua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Oct 2017 11:50:30 -0400
-Subject: [PATCH 10/14] ipc: Convert mqueue fs to fs_context [ver #6]
+        id S1751487AbdJFPvA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 6 Oct 2017 11:51:00 -0400
+Subject: [PATCH 14/14] VFS: Remove kern_mount_data() [ver #6]
 From: David Howells <dhowells@redhat.com>
 To: viro@ZenIV.linux.org.uk
 Cc: linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         jlayton@redhat.com
-Date: Fri, 06 Oct 2017 16:50:28 +0100
-Message-ID: <150730502858.6182.8072842763914901286.stgit@warthog.procyon.org.uk>
+Date: Fri, 06 Oct 2017 16:50:58 +0100
+Message-ID: <150730505814.6182.8657701161394210225.stgit@warthog.procyon.org.uk>
 In-Reply-To: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
 References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,171 +18,42 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Convert the mqueue filesystem to use the filesystem context stuff.
-
-Notes:
-
- (1) The relevant ipc namespace is selected in when the context is
-     initialised (and it defaults to the current task's ipc namespace).
-     The caller can override this before calling vfs_get_tree().
-
- (2) Rather than simply calling kern_mount_data(), mq_init_ns() creates a
-     context, adjusts it and then does the rest of the mount procedure.
+The kern_mount_data() isn't used any more so remove it.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- ipc/mqueue.c |   90 ++++++++++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 68 insertions(+), 22 deletions(-)
+ fs/namespace.c     |    6 ------
+ include/linux/fs.h |    1 -
+ 2 files changed, 7 deletions(-)
 
-diff --git a/ipc/mqueue.c b/ipc/mqueue.c
-index 9649ecd8a73a..561460675734 100644
---- a/ipc/mqueue.c
-+++ b/ipc/mqueue.c
-@@ -18,6 +18,7 @@
- #include <linux/pagemap.h>
- #include <linux/file.h>
- #include <linux/mount.h>
-+#include <linux/fs_context.h>
- #include <linux/namei.h>
- #include <linux/sysctl.h>
- #include <linux/poll.h>
-@@ -42,6 +43,11 @@
- #include <net/sock.h>
- #include "util.h"
- 
-+struct mqueue_fs_context {
-+	struct fs_context	fc;
-+	struct ipc_namespace	*ipc_ns;
-+};
-+
- #define MQUEUE_MAGIC	0x19800202
- #define DIRENT_SIZE	20
- #define FILENT_SIZE	80
-@@ -90,6 +96,7 @@ struct mqueue_inode_info {
- static const struct inode_operations mqueue_dir_inode_operations;
- static const struct file_operations mqueue_file_operations;
- static const struct super_operations mqueue_super_ops;
-+static const struct fs_context_operations mqueue_fs_context_ops;
- static void remove_notification(struct mqueue_inode_info *info);
- 
- static struct kmem_cache *mqueue_inode_cachep;
-@@ -305,7 +312,7 @@ static struct inode *mqueue_get_inode(struct super_block *sb,
- 	return ERR_PTR(ret);
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 8676658b6b2c..091a63a63fa5 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -3181,12 +3181,6 @@ struct vfsmount *kern_mount(struct file_system_type *type)
  }
+ EXPORT_SYMBOL_GPL(kern_mount);
  
--static int mqueue_fill_super(struct super_block *sb, void *data, int silent)
-+static int mqueue_fill_super(struct super_block *sb, struct fs_context *fc)
- {
- 	struct inode *inode;
- 	struct ipc_namespace *ns = sb->s_fs_info;
-@@ -326,18 +333,29 @@ static int mqueue_fill_super(struct super_block *sb, void *data, int silent)
- 	return 0;
- }
- 
--static struct dentry *mqueue_mount(struct file_system_type *fs_type,
--			 int flags, const char *dev_name,
--			 void *data)
-+static int mqueue_get_tree(struct fs_context *fc)
- {
--	struct ipc_namespace *ns;
--	if (flags & SB_KERNMOUNT) {
--		ns = data;
--		data = NULL;
--	} else {
--		ns = current->nsproxy->ipc_ns;
--	}
--	return mount_ns(fs_type, flags, data, ns, ns->user_ns, mqueue_fill_super);
-+	struct mqueue_fs_context *ctx = container_of(fc, struct mqueue_fs_context, fc);
-+
-+	ctx->fc.s_fs_info = ctx->ipc_ns;
-+	return vfs_get_super(fc, vfs_get_keyed_super, mqueue_fill_super);
-+}
-+
-+static void mqueue_fs_context_free(struct fs_context *fc)
-+{
-+	struct mqueue_fs_context *ctx = container_of(fc, struct mqueue_fs_context, fc);
-+
-+	if (ctx->ipc_ns)
-+		put_ipc_ns(ctx->ipc_ns);
-+}
-+
-+static int mqueue_init_fs_context(struct fs_context *fc, struct super_block *src_sb)
-+{
-+	struct mqueue_fs_context *ctx = container_of(fc, struct mqueue_fs_context, fc);
-+
-+	ctx->ipc_ns = get_ipc_ns(current->nsproxy->ipc_ns);
-+	ctx->fc.ops = &mqueue_fs_context_ops;
-+	return 0;
- }
- 
- static void init_once(void *foo)
-@@ -1574,15 +1592,26 @@ static const struct super_operations mqueue_super_ops = {
- 	.statfs = simple_statfs,
- };
- 
-+static const struct fs_context_operations mqueue_fs_context_ops = {
-+	.free		= mqueue_fs_context_free,
-+	.get_tree	= mqueue_get_tree,
-+};
-+
- static struct file_system_type mqueue_fs_type = {
--	.name = "mqueue",
--	.mount = mqueue_mount,
--	.kill_sb = kill_litter_super,
--	.fs_flags = FS_USERNS_MOUNT,
-+	.name			= "mqueue",
-+	.fs_context_size	= sizeof(struct mqueue_fs_context),
-+	.init_fs_context	= mqueue_init_fs_context,
-+	.kill_sb		= kill_litter_super,
-+	.fs_flags		= FS_USERNS_MOUNT,
- };
- 
- int mq_init_ns(struct ipc_namespace *ns)
- {
-+	struct mqueue_fs_context *ctx;
-+	struct fs_context *fc;
-+	struct vfsmount *mnt;
-+	int ret;
-+
- 	ns->mq_queues_count  = 0;
- 	ns->mq_queues_max    = DFLT_QUEUESMAX;
- 	ns->mq_msg_max       = DFLT_MSGMAX;
-@@ -1590,13 +1619,30 @@ int mq_init_ns(struct ipc_namespace *ns)
- 	ns->mq_msg_default   = DFLT_MSG;
- 	ns->mq_msgsize_default  = DFLT_MSGSIZE;
- 
--	ns->mq_mnt = kern_mount_data(&mqueue_fs_type, ns);
--	if (IS_ERR(ns->mq_mnt)) {
--		int err = PTR_ERR(ns->mq_mnt);
--		ns->mq_mnt = NULL;
--		return err;
-+	fc = vfs_new_fs_context(&mqueue_fs_type, NULL, 0,
-+				FS_CONTEXT_FOR_KERNEL_MOUNT);
-+	if (IS_ERR(fc))
-+		return PTR_ERR(fc);
-+
-+	ctx = container_of(fc, struct mqueue_fs_context, fc);
-+	put_ipc_ns(ctx->ipc_ns);
-+	ctx->ipc_ns = get_ipc_ns(ns);
-+
-+	ret = vfs_get_tree(fc);
-+	if (ret < 0)
-+		goto out_fc;
-+
-+	mnt = vfs_create_mount(fc);
-+	if (IS_ERR(mnt)) {
-+		ret = PTR_ERR(mnt);
-+		goto out_fc;
- 	}
--	return 0;
-+
-+	ns->mq_mnt = mnt;
-+	ret = 0;
-+out_fc:
-+	put_fs_context(fc);
-+	return ret;
- }
- 
- void mq_clear_sbinfo(struct ipc_namespace *ns)
+-struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
+-{
+-	return vfs_kern_mount(type, SB_KERNMOUNT, type->name, data);
+-}
+-EXPORT_SYMBOL_GPL(kern_mount_data);
+-
+ /*
+  * Mount a new, prepared superblock (specified by fs_fd) on the location
+  * specified by dfd and dir_name.  dfd can be AT_FDCWD, a dir fd or a container
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index f391263c62a1..b1433076b8e2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -2168,7 +2168,6 @@ mount_pseudo(struct file_system_type *fs_type, char *name,
+ extern int register_filesystem(struct file_system_type *);
+ extern int unregister_filesystem(struct file_system_type *);
+ extern struct vfsmount *kern_mount(struct file_system_type *);
+-extern struct vfsmount *kern_mount_data(struct file_system_type *, void *);
+ extern void kern_unmount(struct vfsmount *mnt);
+ extern int may_umount_tree(struct vfsmount *);
+ extern int may_umount(struct vfsmount *);
 
