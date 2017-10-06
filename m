@@ -1,431 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:58087 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752765AbdJFUhp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Oct 2017 16:37:45 -0400
-Subject: Re: [PATCH 02/14] VFS: Add LSM hooks for filesystem context [ver #6]
-To: David Howells <dhowells@redhat.com>, viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jlayton@redhat.com, linux-security-module@vger.kernel.org
-References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
- <150730496198.6182.922475266367301404.stgit@warthog.procyon.org.uk>
-From: Randy Dunlap <rdunlap@infradead.org>
-Message-ID: <34d21987-4939-5fd0-32f0-f4e7886987fc@infradead.org>
-Date: Fri, 6 Oct 2017 13:37:43 -0700
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47155 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752428AbdJFUvd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Oct 2017 16:51:33 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "mbpatil.linux@gmail.com" <mbpatil.linux@gmail.com>,
+        "dwysocha@redhat.com" <dwysocha@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
+Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS
+ server
+Date: Fri, 6 Oct 2017 20:51:29 +0000
+Message-ID: <1507323087.10354.11.camel@primarydata.com>
+References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
+         <1506013553.7873.13.camel@redhat.com>
+         <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
+         <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com>
+In-Reply-To: <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <150730496198.6182.922475266367301404.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-add cc: linux-security-module@vger.kernel.org
+T24gRnJpLCAyMDE3LTEwLTA2IGF0IDEyOjEzIC0wNzAwLCBNYW5qdW5hdGggUGF0aWwgd3JvdGU6
+DQo+IEhpIERhdmlkLA0KPiANCj4gT24gRnJpLCBTZXAgMjIsIDIwMTcgYXQgMTI6MjEgUE0sIE1h
+bmp1bmF0aCBQYXRpbA0KPiA8bWJwYXRpbC5saW51eEBnbWFpbC5jb20+IHdyb3RlOg0KPiA+IEhp
+IERhdmlkLA0KPiA+IA0KPiA+IE9uIFRodSwgU2VwIDIxLCAyMDE3IGF0IDEwOjA1IEFNLCBEYXZp
+ZCBXeXNvY2hhbnNraSA8ZHd5c29jaGFAcmVkaGENCj4gPiB0LmNvbT4gd3JvdGU6DQo+ID4gPiBP
+biBXZWQsIDIwMTctMDktMjAgYXQgMTU6MTcgLTA3MDAsIE1hbmp1bmF0aCBQYXRpbCB3cm90ZToN
+Cj4gPiA+ID4gSGksDQo+ID4gPiA+IA0KPiA+ID4gPiBXaXRoIGF1dG9jbG9zZSB0cnlpbmcgdG8g
+Y2xvc2UgdGhlIGNvbm5lY3Rpb24sIGFmdGVyIHRoZSBpZGxlDQo+ID4gPiA+IHRpbWVvdXQNCj4g
+PiA+ID4gaW4gTkZTdjMgbW91bnRzLA0KPiA+ID4gPiBhIGJhZCBORlMgc2VydmVyIG1heSBub3Qg
+c2VuZCB0aGUgZmluYWwgRklOLCBsZWFkaW5nIHRoZSBjbGllbnQNCj4gPiA+ID4gc3RheQ0KPiA+
+ID4gPiBpbiBGSU5fV0FJVF8yIHN0YXRlIGZvcmV2ZXIuDQo+ID4gPiA+IFRoaXMgaXMgZWFzaWx5
+IHJlcHJvZHVjaWJsZSBieSBzaW11bGF0aW5nIHRoZSBiYWQgc2VydmVyDQo+ID4gPiA+IGJlaGF2
+aW9yLiBJDQo+ID4gPiA+IHVzZWQgJ25ldHN0YXQgLWFuIHwgZ3JlcCAyMDQ5JyB0byBvYnNlcnZl
+ciBzb2NrZXQgc3RhdGUuDQo+ID4gPiA+IA0KPiA+ID4gDQo+ID4gPiBIb3cgbG9uZyBkaWQgeW91
+IHdhaXQgYW5kIGhvdyBkaWQgeW91IHNpbXVsYXRlIHRoZSBmYWlsdXJlPyAgSSBhbQ0KPiA+ID4g
+dmVyeQ0KPiA+ID4gaW50ZXJlc3RlZCBpbiB5b3VyIHRlc3QgY2FzZS4NCj4gPiANCj4gPiBJIG9i
+c2VydmVyIHRoaXMgaW4gY3QgZW52aXJvbm1lbnQuIEluIHRoaXMgY2FzZSB0aGUgZmluX3dhaXRf
+Mg0KPiA+IHN0YXllZCBmb3JldmVyLg0KPiA+IGN0IGhhZCB0byByZXN0YXJ0IHRoZSBub2RlIHRv
+IGdldCBvdXQuDQo+ID4gDQo+ID4gV2UgdHJpZWQgdG8gc2ltdWxhdGUgdGhpcyBiZWhhdmlvciBp
+biBMaW51eCBuZnMgc2VydmVyIGJ5IHN0b3BwaW5nDQo+ID4gdGhlDQo+ID4gaW5jb21pbmcgRklO
+DQo+ID4gZm9yIDIwNDkgcG9ydCBpbnNpZGUga2VybmVsLiBUaGlzIHByZXZlbnRlZCB0aGUgc2Vy
+dmVyIGZyb20gc2VuZGluZw0KPiA+IHRoZSBmaW5hbCBGSU4gZm9yIHNvbWUgdGltZS4NCj4gPiAN
+Cj4gPiBUaGUgbGludXggc2VydmVyIGV2ZW50dWFsbHkgc2VudCBhIEZJTiBhZnRlciBzb21lIGRl
+bGF5LiBUaG91Z2ggSQ0KPiA+IGFtDQo+ID4gbm90IHN1cmUsIEkgdGhpbmsgdGhpcyBpcyBkdWUg
+dG8NCj4gPiANCj4gPiAvKiBhcHBhcmVudGx5IHRoZSAic3RhbmRhcmQiIGlzIHRoYXQgY2xpZW50
+cyBjbG9zZQ0KPiA+ICAqIGlkbGUgY29ubmVjdGlvbnMgYWZ0ZXIgNSBtaW51dGVzLCBzZXJ2ZXJz
+IGFmdGVyDQo+ID4gICogNiBtaW51dGVzDQo+ID4gICogICBodHRwOi8vd3d3LmNvbm5lY3RhdGhv
+bi5vcmcvdGFsa3M5Ni9uZnN0Y3AucGRmDQo+ID4gICovDQo+ID4gc3RhdGljIGludCBzdmNfY29u
+bl9hZ2VfcGVyaW9kID0gNio2MDsNCj4gDQo+IEkgdHJpZWQgdG8gaW5jcmVhc2UgdGhpcyB2YWx1
+ZS4NCj4gQWZ0ZXIgc2V0dGluZyB0aGlzIHZhbHVlIHRvIGEgaGlnaCB2YWx1ZSBbNjAqNjBdLCBJ
+IGNvdWxkIHNlZSB0aGUNCj4gY2xpZW50IHN0YXlpbmcgaW4gRklOX1dBSVRfMiBzdGF0ZSBmb3Jl
+dmVyLg0KPiANCj4gVG8gcmVwZWF0LCBteSB0ZXN0IGNhc2UgaXMsDQo+IDEuIFRha2UgYSBuZnMg
+c2VydmVyIGFuZCBtYWtlIGl0IG5vdCBzZW5kIHRoZSBGSU4gb24gMjA0OSBwb3J0DQo+IDIuIFVz
+ZSBhbnkgdXBzdHJlYW0ga2VybmVsIFtJIHVzZWQgNC4xNC1yYzFdIGFzIG5mcyBjbGllbnQNCj4g
+My4gTGV0IHRoZSBtb3VudCBiZSBpZGxlIGZvciA1IG1pbnMgc28gdGhhdCBhdXRvY2xvc2UgZ2V0
+cyB0cmlnZ2VyZWQuDQo+IDQuIGFmdGVyIHRoaXMsIGNsaWVudCBzdGF5cyBpbiBGSU5fV0FJVF8y
+IHN0YXRlW3dlIGNhbiBvYnNlcnZlciBpdA0KPiB3aXRoIG5ldHN0YXQgLWFuIHwgZ3JlcCAyMDQ5
+XS4NCj4gNS4gQXQgdGhpcyBwb2ludCBubyBuZXcgTkZTIGNvbm5lY3Rpb24gaXMgYWxsb3dlZCBv
+biB0aGlzIHBvcnQuIFNvDQo+IG1vdW50IGlzIGh1bmcgZm9yIGFwcGxpY2F0aW9uLg0KDQpXaGF0
+IGRvIHlvdSBtZWFuIHdoZW4geW91IHNheSAibWFrZSBpdCBub3Qgc2VuZCBGSU4iPyBBcmUgeW91
+IGp1c3QNCmZpbHRlcmluZyBhbGwgcGFja2V0cyB3aXRoIGEgRklOIGZsYWcgc2V0PyBOb3JtYWxs
+eSwgYSBGSU4gaXMgZXhwZWN0ZWQNCnRvIGJlIEFDS2VkIGJ5IHRoZSByZWNpcGllbnQgc28gdGhh
+dCBpdCBjYW4gYmUgcmV0cmFuc21pdHRlZCBpZiBsb3N0Lg0KDQoNCkhvd2V2ZXIsIGV2ZW4gaWYg
+aXQgZG9lcyBub3QgcmVjZWl2ZSB0aGUgRklOIGZyb20gdGhlIHNlcnZlciwgdGhlbiB0aGUNCkZJ
+Tl9XQUlUMiBzdGF0ZSBzaG91bGQgYXV0b21hdGljYWxseSB0aW1lIG91dCBhZnRlcg0KL3Byb2Mv
+c3lzL25ldC9pcHY0L3RjcF9maW5fdGltZW91dCBzZWNvbmRzIChzZWUgdGhlIGRlc2NyaXB0aW9u
+IGluIHRoZQ0KU09fTElOR0VSMiBzb2NrZXQgb3B0aW9uKS4gSXNuJ3QgdGhpcyB3b3JraW5nPw0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
+YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-On 10/06/17 08:49, David Howells wrote:
-> Add LSM hooks for use by the filesystem context code.  This includes:
-> 
->  (1) Hooks to handle allocation, duplication and freeing of the security
->      record attached to a filesystem context.
-> 
->  (2) A hook to snoop a mount options in key[=val] form.  If the LSM decides
->      it wants to handle it, it can suppress the option being passed to the
->      filesystem.  Note that 'val' may include commas and binary data with
->      the fsopen patch.
-> 
->  (3) A hook to transfer the security from the context to a newly created
->      superblock.
-> 
->  (4) A hook to rule on whether a path point can be used as a mountpoint.
-> 
-> These are intended to replace:
-> 
-> 	security_sb_copy_data
-> 	security_sb_kern_mount
-> 	security_sb_mount
-> 	security_sb_set_mnt_opts
-> 	security_sb_clone_mnt_opts
-> 	security_sb_parse_opts_str
-> 
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> cc: linux-security-module@vger.kernel.org
-> ---
-> 
->  include/linux/lsm_hooks.h |   45 ++++++++++++
->  include/linux/security.h  |   33 +++++++++
->  security/security.c       |   30 ++++++++
->  security/selinux/hooks.c  |  174 +++++++++++++++++++++++++++++++++++++++++++++
->  4 files changed, 282 insertions(+)
-> 
-> diff --git a/include/linux/lsm_hooks.h b/include/linux/lsm_hooks.h
-> index c9258124e417..85398ba0b533 100644
-> --- a/include/linux/lsm_hooks.h
-> +++ b/include/linux/lsm_hooks.h
-> @@ -76,6 +76,38 @@
->   *	changes on the process such as clearing out non-inheritable signal
->   *	state.  This is called immediately after commit_creds().
->   *
-> + * Security hooks for mount using fd context.
-> + *
-> + * @fs_context_alloc:
-> + *	Allocate and attach a security structure to sc->security.  This pointer
-> + *	is initialised to NULL by the caller.
-> + *	@fc indicates the new filesystem context.
-> + *	@src_sb indicates the source superblock of a submount.
-> + * @fs_context_dup:
-> + *	Allocate and attach a security structure to sc->security.  This pointer
-> + *	is initialised to NULL by the caller.
-> + *	@fc indicates the new filesystem context.
-> + *	@src_fc indicates the original filesystem context.
-> + * @fs_context_free:
-> + *	Clean up a filesystem context.
-> + *	@fc indicates the filesystem context.
-> + * @fs_context_parse_one:
-> + *	Userspace provided an option to configure a superblock.  The LSM may
-> + *	reject it with an error and may use it for itself, in which case it
-> + *	should return 1; otherwise it should return 0 to pass it on to the
-> + *	filesystem.
-> + *	@fc indicates the filesystem context.
-> + *	@p indicates the option in "key[=val]" form.
-> + * @sb_get_tree:
-> + *	Assign the security to a newly created superblock.
-> + *	@fc indicates the filesystem context.
-> + *	@fc->root indicates the root that will be mounted.
-> + *	@fc->root->d_sb points to the superblock.
-> + * @sb_mountpoint:
-> + *	Equivalent of sb_mount, but with an fs_context.
-> + *	@fc indicates the filesystem context.
-> + *	@mountpoint indicates the path on which the mount will take place.
-> + *
->   * Security hooks for filesystem operations.
->   *
->   * @sb_alloc_security:
-> @@ -1384,6 +1416,13 @@ union security_list_options {
->  	void (*bprm_committing_creds)(struct linux_binprm *bprm);
->  	void (*bprm_committed_creds)(struct linux_binprm *bprm);
->  
-> +	int (*fs_context_alloc)(struct fs_context *fc, struct super_block *src_sb);
-> +	int (*fs_context_dup)(struct fs_context *fc, struct fs_context *src_sc);
-> +	void (*fs_context_free)(struct fs_context *fc);
-> +	int (*fs_context_parse_one)(struct fs_context *fc, char *opt);
-> +	int (*sb_get_tree)(struct fs_context *fc);
-> +	int (*sb_mountpoint)(struct fs_context *fc, struct path *mountpoint);
-> +
->  	int (*sb_alloc_security)(struct super_block *sb);
->  	void (*sb_free_security)(struct super_block *sb);
->  	int (*sb_copy_data)(char *orig, char *copy);
-> @@ -1703,6 +1742,12 @@ struct security_hook_heads {
->  	struct list_head bprm_check_security;
->  	struct list_head bprm_committing_creds;
->  	struct list_head bprm_committed_creds;
-> +	struct list_head fs_context_alloc;
-> +	struct list_head fs_context_dup;
-> +	struct list_head fs_context_free;
-> +	struct list_head fs_context_parse_one;
-> +	struct list_head sb_get_tree;
-> +	struct list_head sb_mountpoint;
->  	struct list_head sb_alloc_security;
->  	struct list_head sb_free_security;
->  	struct list_head sb_copy_data;
-> diff --git a/include/linux/security.h b/include/linux/security.h
-> index ce6265960d6c..4a47c732d7b8 100644
-> --- a/include/linux/security.h
-> +++ b/include/linux/security.h
-> @@ -56,6 +56,7 @@ struct msg_queue;
->  struct xattr;
->  struct xfrm_sec_ctx;
->  struct mm_struct;
-> +struct fs_context;
->  
->  /* If capable should audit the security request */
->  #define SECURITY_CAP_NOAUDIT 0
-> @@ -233,6 +234,12 @@ int security_bprm_set_creds(struct linux_binprm *bprm);
->  int security_bprm_check(struct linux_binprm *bprm);
->  void security_bprm_committing_creds(struct linux_binprm *bprm);
->  void security_bprm_committed_creds(struct linux_binprm *bprm);
-> +int security_fs_context_alloc(struct fs_context *fc, struct super_block *sb);
-> +int security_fs_context_dup(struct fs_context *fc, struct fs_context *src_fc);
-> +void security_fs_context_free(struct fs_context *fc);
-> +int security_fs_context_parse_option(struct fs_context *fc, char *opt);
-> +int security_sb_get_tree(struct fs_context *fc);
-> +int security_sb_mountpoint(struct fs_context *fc, struct path *mountpoint);
->  int security_sb_alloc(struct super_block *sb);
->  void security_sb_free(struct super_block *sb);
->  int security_sb_copy_data(char *orig, char *copy);
-> @@ -540,6 +547,32 @@ static inline void security_bprm_committed_creds(struct linux_binprm *bprm)
->  {
->  }
->  
-> +static inline int security_fs_context_alloc(struct fs_context *fc,
-> +					    struct super_block *src_sb)
-> +{
-> +	return 0;
-> +}
-> +static inline int security_fs_context_dup(struct fs_context *fc,
-> +					  struct fs_context *src_fc)
-> +{
-> +	return 0;
-> +}
-> +static inline void security_fs_context_free(struct fs_context *fc)
-> +{
-> +}
-> +static inline int security_fs_context_parse_option(struct fs_context *fc, char *opt)
-> +{
-> +	return 0;
-> +}
-> +static inline int security_sb_get_tree(struct fs_context *fc)
-> +{
-> +	return 0;
-> +}
-> +static inline int security_sb_mountpoint(struct fs_context *fc, struct path *mountpoint)
-> +{
-> +	return 0;
-> +}
-> +
->  static inline int security_sb_alloc(struct super_block *sb)
->  {
->  	return 0;
-> diff --git a/security/security.c b/security/security.c
-> index 4bf0f571b4ef..55383a0e764d 100644
-> --- a/security/security.c
-> +++ b/security/security.c
-> @@ -351,6 +351,36 @@ void security_bprm_committed_creds(struct linux_binprm *bprm)
->  	call_void_hook(bprm_committed_creds, bprm);
->  }
->  
-> +int security_fs_context_alloc(struct fs_context *fc, struct super_block *src_sb)
-> +{
-> +	return call_int_hook(fs_context_alloc, 0, fc, src_sb);
-> +}
-> +
-> +int security_fs_context_dup(struct fs_context *fc, struct fs_context *src_fc)
-> +{
-> +	return call_int_hook(fs_context_dup, 0, fc, src_fc);
-> +}
-> +
-> +void security_fs_context_free(struct fs_context *fc)
-> +{
-> +	call_void_hook(fs_context_free, fc);
-> +}
-> +
-> +int security_fs_context_parse_one(struct fs_context *fc, char *opt)
-> +{
-> +	return call_int_hook(fs_context_parse_one, 0, fc, opt);
-> +}
-> +
-> +int security_sb_get_tree(struct fs_context *fc)
-> +{
-> +	return call_int_hook(sb_get_tree, 0, fc);
-> +}
-> +
-> +int security_sb_mountpoint(struct fs_context *fc, struct path *mountpoint)
-> +{
-> +	return call_int_hook(sb_mountpoint, 0, fc, mountpoint);
-> +}
-> +
->  int security_sb_alloc(struct super_block *sb)
->  {
->  	return call_int_hook(sb_alloc_security, 0, sb);
-> diff --git a/security/selinux/hooks.c b/security/selinux/hooks.c
-> index 6f37f7e5b9a8..0dda7350b5af 100644
-> --- a/security/selinux/hooks.c
-> +++ b/security/selinux/hooks.c
-> @@ -48,6 +48,7 @@
->  #include <linux/fdtable.h>
->  #include <linux/namei.h>
->  #include <linux/mount.h>
-> +#include <linux/fs_context.h>
->  #include <linux/netfilter_ipv4.h>
->  #include <linux/netfilter_ipv6.h>
->  #include <linux/tty.h>
-> @@ -2862,6 +2863,172 @@ static int selinux_umount(struct vfsmount *mnt, int flags)
->  				   FILESYSTEM__UNMOUNT, NULL);
->  }
->  
-> +/* fsopen mount context operations */
-> +
-> +static int selinux_fs_context_alloc(struct fs_context *fc,
-> +				    struct super_block *src_sb)
-> +{
-> +	struct security_mnt_opts *opts;
-> +
-> +	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
-> +	if (!opts)
-> +		return -ENOMEM;
-> +
-> +	fc->security = opts;
-> +	return 0;
-> +}
-> +
-> +static int selinux_fs_context_dup(struct fs_context *fc,
-> +				  struct fs_context *src_fc)
-> +{
-> +	const struct security_mnt_opts *src = src_fc->security;
-> +	struct security_mnt_opts *opts;
-> +	int i, n;
-> +
-> +	opts = kzalloc(sizeof(*opts), GFP_KERNEL);
-> +	if (!opts)
-> +		return -ENOMEM;
-> +	fc->security = opts;
-> +
-> +	if (!src || !src->num_mnt_opts)
-> +		return 0;
-> +	n = opts->num_mnt_opts = src->num_mnt_opts;
-> +
-> +	if (src->mnt_opts) {
-> +		opts->mnt_opts = kcalloc(n, sizeof(char *), GFP_KERNEL);
-> +		if (!opts->mnt_opts)
-> +			return -ENOMEM;
-> +
-> +		for (i = 0; i < n; i++) {
-> +			if (src->mnt_opts[i]) {
-> +				opts->mnt_opts[i] = kstrdup(src->mnt_opts[i],
-> +							    GFP_KERNEL);
-> +				if (!opts->mnt_opts[i])
-> +					return -ENOMEM;
-> +			}
-> +		}
-> +	}
-> +
-> +	if (src->mnt_opts_flags) {
-> +		opts->mnt_opts_flags = kmemdup(src->mnt_opts_flags,
-> +					       n * sizeof(int), GFP_KERNEL);
-> +		if (!opts->mnt_opts_flags)
-> +			return -ENOMEM;
-> +	}
-> +
-> +	return 0;
-> +}
-> +
-> +static void selinux_fs_context_free(struct fs_context *fc)
-> +{
-> +	struct security_mnt_opts *opts = fc->security;
-> +
-> +	security_free_mnt_opts(opts);
-> +	fc->security = NULL;
-> +}
-> +
-> +static int selinux_fs_context_parse_one(struct fs_context *fc, char *opt)
-> +{
-> +	struct security_mnt_opts *opts = fc->security;
-> +	substring_t args[MAX_OPT_ARGS];
-> +	unsigned int have;
-> +	char *c, **oo;
-> +	int token, ctx, i, *of;
-> +
-> +	token = match_token(opt, tokens, args);
-> +	if (token == Opt_error)
-> +		return 0; /* Doesn't belong to us. */
-> +
-> +	have = 0;
-> +	for (i = 0; i < opts->num_mnt_opts; i++)
-> +		have |= 1 << opts->mnt_opts_flags[i];
-> +	if (have & (1 << token))
-> +		return -EINVAL;
-> +
-> +	switch (token) {
-> +	case Opt_context:
-> +		if (have & (1 << Opt_defcontext))
-> +			goto incompatible;
-> +		ctx = CONTEXT_MNT;
-> +		goto copy_context_string;
-> +
-> +	case Opt_fscontext:
-> +		ctx = FSCONTEXT_MNT;
-> +		goto copy_context_string;
-> +
-> +	case Opt_rootcontext:
-> +		ctx = ROOTCONTEXT_MNT;
-> +		goto copy_context_string;
-> +
-> +	case Opt_defcontext:
-> +		if (have & (1 << Opt_context))
-> +			goto incompatible;
-> +		ctx = DEFCONTEXT_MNT;
-> +		goto copy_context_string;
-> +
-> +	case Opt_labelsupport:
-> +		return 1;
-> +
-> +	default:
-> +		return -EINVAL;
-> +	}
-> +
-> +copy_context_string:
-> +	if (opts->num_mnt_opts > 3)
-> +		return -EINVAL;
-> +
-> +	of = krealloc(opts->mnt_opts_flags,
-> +		      (opts->num_mnt_opts + 1) * sizeof(int), GFP_KERNEL);
-> +	if (!of)
-> +		return -ENOMEM;
-> +	of[opts->num_mnt_opts] = 0;
-> +	opts->mnt_opts_flags = of;
-> +
-> +	oo = krealloc(opts->mnt_opts,
-> +		      (opts->num_mnt_opts + 1) * sizeof(char *), GFP_KERNEL);
-> +	if (!oo)
-> +		return -ENOMEM;
-> +	oo[opts->num_mnt_opts] = NULL;
-> +	opts->mnt_opts = oo;
-> +
-> +	c = match_strdup(&args[0]);
-> +	if (!c)
-> +		return -ENOMEM;
-> +	opts->mnt_opts[opts->num_mnt_opts] = c;
-> +	opts->mnt_opts_flags[opts->num_mnt_opts] = ctx;
-> +	opts->num_mnt_opts++;
-> +	return 1;
-> +
-> +incompatible:
-> +	return -EINVAL;
-> +}
-> +
-> +static int selinux_sb_get_tree(struct fs_context *fc)
-> +{
-> +	const struct cred *cred = current_cred();
-> +	struct common_audit_data ad;
-> +	int rc;
-> +
-> +	rc = selinux_set_mnt_opts(fc->root->d_sb, fc->security, 0, NULL);
-> +	if (rc)
-> +		return rc;
-> +
-> +	/* Allow all mounts performed by the kernel */
-> +	if (fc->sb_flags & MS_KERNMOUNT)
-> +		return 0;
-> +
-> +	ad.type = LSM_AUDIT_DATA_DENTRY;
-> +	ad.u.dentry = fc->root;
-> +	return superblock_has_perm(cred, fc->root->d_sb, FILESYSTEM__MOUNT, &ad);
-> +}
-> +
-> +static int selinux_sb_mountpoint(struct fs_context *fc, struct path *mountpoint)
-> +{
-> +	const struct cred *cred = current_cred();
-> +
-> +	return path_has_perm(cred, mountpoint, FILE__MOUNTON);
-> +}
-> +
->  /* inode security operations */
->  
->  static int selinux_inode_alloc_security(struct inode *inode)
-> @@ -6275,6 +6442,13 @@ static struct security_hook_list selinux_hooks[] __lsm_ro_after_init = {
->  	LSM_HOOK_INIT(bprm_committing_creds, selinux_bprm_committing_creds),
->  	LSM_HOOK_INIT(bprm_committed_creds, selinux_bprm_committed_creds),
->  
-> +	LSM_HOOK_INIT(fs_context_alloc, selinux_fs_context_alloc),
-> +	LSM_HOOK_INIT(fs_context_dup, selinux_fs_context_dup),
-> +	LSM_HOOK_INIT(fs_context_free, selinux_fs_context_free),
-> +	LSM_HOOK_INIT(fs_context_parse_one, selinux_fs_context_parse_one),
-> +	LSM_HOOK_INIT(sb_get_tree, selinux_sb_get_tree),
-> +	LSM_HOOK_INIT(sb_mountpoint, selinux_sb_mountpoint),
-> +
->  	LSM_HOOK_INIT(sb_alloc_security, selinux_sb_alloc_security),
->  	LSM_HOOK_INIT(sb_free_security, selinux_sb_free_security),
->  	LSM_HOOK_INIT(sb_copy_data, selinux_sb_copy_data),
-> 
-
-
--- 
-~Randy
