@@ -1,74 +1,118 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:47155 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752428AbdJFUvd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Oct 2017 16:51:33 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "mbpatil.linux@gmail.com" <mbpatil.linux@gmail.com>,
-        "dwysocha@redhat.com" <dwysocha@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
-Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS
- server
-Date: Fri, 6 Oct 2017 20:51:29 +0000
-Message-ID: <1507323087.10354.11.camel@primarydata.com>
-References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
-         <1506013553.7873.13.camel@redhat.com>
-         <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
-         <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com>
-In-Reply-To: <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com>
+Received: from mail-qt0-f195.google.com ([209.85.216.195]:57328 "EHLO
+        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751474AbdJFWM5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Oct 2017 18:12:57 -0400
+Received: by mail-qt0-f195.google.com with SMTP id 34so16966305qtb.13
+        for <linux-nfs@vger.kernel.org>; Fri, 06 Oct 2017 15:12:57 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1507323087.10354.11.camel@primarydata.com>
+References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
+ <1506013553.7873.13.camel@redhat.com> <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
+ <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com> <1507323087.10354.11.camel@primarydata.com>
+From: Manjunath Patil <mbpatil.linux@gmail.com>
+Date: Fri, 6 Oct 2017 15:12:56 -0700
+Message-ID: <CANnNPBb--DVL1263G=BQSW-kK7QacWEE8sL+KNrtdYpCwq6HJA@mail.gmail.com>
+Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS server
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "dwysocha@redhat.com" <dwysocha@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTEwLTA2IGF0IDEyOjEzIC0wNzAwLCBNYW5qdW5hdGggUGF0aWwgd3JvdGU6
-DQo+IEhpIERhdmlkLA0KPiANCj4gT24gRnJpLCBTZXAgMjIsIDIwMTcgYXQgMTI6MjEgUE0sIE1h
-bmp1bmF0aCBQYXRpbA0KPiA8bWJwYXRpbC5saW51eEBnbWFpbC5jb20+IHdyb3RlOg0KPiA+IEhp
-IERhdmlkLA0KPiA+IA0KPiA+IE9uIFRodSwgU2VwIDIxLCAyMDE3IGF0IDEwOjA1IEFNLCBEYXZp
-ZCBXeXNvY2hhbnNraSA8ZHd5c29jaGFAcmVkaGENCj4gPiB0LmNvbT4gd3JvdGU6DQo+ID4gPiBP
-biBXZWQsIDIwMTctMDktMjAgYXQgMTU6MTcgLTA3MDAsIE1hbmp1bmF0aCBQYXRpbCB3cm90ZToN
-Cj4gPiA+ID4gSGksDQo+ID4gPiA+IA0KPiA+ID4gPiBXaXRoIGF1dG9jbG9zZSB0cnlpbmcgdG8g
-Y2xvc2UgdGhlIGNvbm5lY3Rpb24sIGFmdGVyIHRoZSBpZGxlDQo+ID4gPiA+IHRpbWVvdXQNCj4g
-PiA+ID4gaW4gTkZTdjMgbW91bnRzLA0KPiA+ID4gPiBhIGJhZCBORlMgc2VydmVyIG1heSBub3Qg
-c2VuZCB0aGUgZmluYWwgRklOLCBsZWFkaW5nIHRoZSBjbGllbnQNCj4gPiA+ID4gc3RheQ0KPiA+
-ID4gPiBpbiBGSU5fV0FJVF8yIHN0YXRlIGZvcmV2ZXIuDQo+ID4gPiA+IFRoaXMgaXMgZWFzaWx5
-IHJlcHJvZHVjaWJsZSBieSBzaW11bGF0aW5nIHRoZSBiYWQgc2VydmVyDQo+ID4gPiA+IGJlaGF2
-aW9yLiBJDQo+ID4gPiA+IHVzZWQgJ25ldHN0YXQgLWFuIHwgZ3JlcCAyMDQ5JyB0byBvYnNlcnZl
-ciBzb2NrZXQgc3RhdGUuDQo+ID4gPiA+IA0KPiA+ID4gDQo+ID4gPiBIb3cgbG9uZyBkaWQgeW91
-IHdhaXQgYW5kIGhvdyBkaWQgeW91IHNpbXVsYXRlIHRoZSBmYWlsdXJlPyAgSSBhbQ0KPiA+ID4g
-dmVyeQ0KPiA+ID4gaW50ZXJlc3RlZCBpbiB5b3VyIHRlc3QgY2FzZS4NCj4gPiANCj4gPiBJIG9i
-c2VydmVyIHRoaXMgaW4gY3QgZW52aXJvbm1lbnQuIEluIHRoaXMgY2FzZSB0aGUgZmluX3dhaXRf
-Mg0KPiA+IHN0YXllZCBmb3JldmVyLg0KPiA+IGN0IGhhZCB0byByZXN0YXJ0IHRoZSBub2RlIHRv
-IGdldCBvdXQuDQo+ID4gDQo+ID4gV2UgdHJpZWQgdG8gc2ltdWxhdGUgdGhpcyBiZWhhdmlvciBp
-biBMaW51eCBuZnMgc2VydmVyIGJ5IHN0b3BwaW5nDQo+ID4gdGhlDQo+ID4gaW5jb21pbmcgRklO
-DQo+ID4gZm9yIDIwNDkgcG9ydCBpbnNpZGUga2VybmVsLiBUaGlzIHByZXZlbnRlZCB0aGUgc2Vy
-dmVyIGZyb20gc2VuZGluZw0KPiA+IHRoZSBmaW5hbCBGSU4gZm9yIHNvbWUgdGltZS4NCj4gPiAN
-Cj4gPiBUaGUgbGludXggc2VydmVyIGV2ZW50dWFsbHkgc2VudCBhIEZJTiBhZnRlciBzb21lIGRl
-bGF5LiBUaG91Z2ggSQ0KPiA+IGFtDQo+ID4gbm90IHN1cmUsIEkgdGhpbmsgdGhpcyBpcyBkdWUg
-dG8NCj4gPiANCj4gPiAvKiBhcHBhcmVudGx5IHRoZSAic3RhbmRhcmQiIGlzIHRoYXQgY2xpZW50
-cyBjbG9zZQ0KPiA+ICAqIGlkbGUgY29ubmVjdGlvbnMgYWZ0ZXIgNSBtaW51dGVzLCBzZXJ2ZXJz
-IGFmdGVyDQo+ID4gICogNiBtaW51dGVzDQo+ID4gICogICBodHRwOi8vd3d3LmNvbm5lY3RhdGhv
-bi5vcmcvdGFsa3M5Ni9uZnN0Y3AucGRmDQo+ID4gICovDQo+ID4gc3RhdGljIGludCBzdmNfY29u
-bl9hZ2VfcGVyaW9kID0gNio2MDsNCj4gDQo+IEkgdHJpZWQgdG8gaW5jcmVhc2UgdGhpcyB2YWx1
-ZS4NCj4gQWZ0ZXIgc2V0dGluZyB0aGlzIHZhbHVlIHRvIGEgaGlnaCB2YWx1ZSBbNjAqNjBdLCBJ
-IGNvdWxkIHNlZSB0aGUNCj4gY2xpZW50IHN0YXlpbmcgaW4gRklOX1dBSVRfMiBzdGF0ZSBmb3Jl
-dmVyLg0KPiANCj4gVG8gcmVwZWF0LCBteSB0ZXN0IGNhc2UgaXMsDQo+IDEuIFRha2UgYSBuZnMg
-c2VydmVyIGFuZCBtYWtlIGl0IG5vdCBzZW5kIHRoZSBGSU4gb24gMjA0OSBwb3J0DQo+IDIuIFVz
-ZSBhbnkgdXBzdHJlYW0ga2VybmVsIFtJIHVzZWQgNC4xNC1yYzFdIGFzIG5mcyBjbGllbnQNCj4g
-My4gTGV0IHRoZSBtb3VudCBiZSBpZGxlIGZvciA1IG1pbnMgc28gdGhhdCBhdXRvY2xvc2UgZ2V0
-cyB0cmlnZ2VyZWQuDQo+IDQuIGFmdGVyIHRoaXMsIGNsaWVudCBzdGF5cyBpbiBGSU5fV0FJVF8y
-IHN0YXRlW3dlIGNhbiBvYnNlcnZlciBpdA0KPiB3aXRoIG5ldHN0YXQgLWFuIHwgZ3JlcCAyMDQ5
-XS4NCj4gNS4gQXQgdGhpcyBwb2ludCBubyBuZXcgTkZTIGNvbm5lY3Rpb24gaXMgYWxsb3dlZCBv
-biB0aGlzIHBvcnQuIFNvDQo+IG1vdW50IGlzIGh1bmcgZm9yIGFwcGxpY2F0aW9uLg0KDQpXaGF0
-IGRvIHlvdSBtZWFuIHdoZW4geW91IHNheSAibWFrZSBpdCBub3Qgc2VuZCBGSU4iPyBBcmUgeW91
-IGp1c3QNCmZpbHRlcmluZyBhbGwgcGFja2V0cyB3aXRoIGEgRklOIGZsYWcgc2V0PyBOb3JtYWxs
-eSwgYSBGSU4gaXMgZXhwZWN0ZWQNCnRvIGJlIEFDS2VkIGJ5IHRoZSByZWNpcGllbnQgc28gdGhh
-dCBpdCBjYW4gYmUgcmV0cmFuc21pdHRlZCBpZiBsb3N0Lg0KDQoNCkhvd2V2ZXIsIGV2ZW4gaWYg
-aXQgZG9lcyBub3QgcmVjZWl2ZSB0aGUgRklOIGZyb20gdGhlIHNlcnZlciwgdGhlbiB0aGUNCkZJ
-Tl9XQUlUMiBzdGF0ZSBzaG91bGQgYXV0b21hdGljYWxseSB0aW1lIG91dCBhZnRlcg0KL3Byb2Mv
-c3lzL25ldC9pcHY0L3RjcF9maW5fdGltZW91dCBzZWNvbmRzIChzZWUgdGhlIGRlc2NyaXB0aW9u
-IGluIHRoZQ0KU09fTElOR0VSMiBzb2NrZXQgb3B0aW9uKS4gSXNuJ3QgdGhpcyB3b3JraW5nPw0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
-YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Fri, Oct 6, 2017 at 1:51 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> On Fri, 2017-10-06 at 12:13 -0700, Manjunath Patil wrote:
+>> Hi David,
+>>
+>> On Fri, Sep 22, 2017 at 12:21 PM, Manjunath Patil
+>> <mbpatil.linux@gmail.com> wrote:
+>> > Hi David,
+>> >
+>> > On Thu, Sep 21, 2017 at 10:05 AM, David Wysochanski <dwysocha@redha
+>> > t.com> wrote:
+>> > > On Wed, 2017-09-20 at 15:17 -0700, Manjunath Patil wrote:
+>> > > > Hi,
+>> > > >
+>> > > > With autoclose trying to close the connection, after the idle
+>> > > > timeout
+>> > > > in NFSv3 mounts,
+>> > > > a bad NFS server may not send the final FIN, leading the client
+>> > > > stay
+>> > > > in FIN_WAIT_2 state forever.
+>> > > > This is easily reproducible by simulating the bad server
+>> > > > behavior. I
+>> > > > used 'netstat -an | grep 2049' to observer socket state.
+>> > > >
+>> > >
+>> > > How long did you wait and how did you simulate the failure?  I am
+>> > > very
+>> > > interested in your test case.
+>> >
+>> > I observer this in ct environment. In this case the fin_wait_2
+>> > stayed forever.
+>> > ct had to restart the node to get out.
+>> >
+>> > We tried to simulate this behavior in Linux nfs server by stopping
+>> > the
+>> > incoming FIN
+>> > for 2049 port inside kernel. This prevented the server from sending
+>> > the final FIN for some time.
+>> >
+>> > The linux server eventually sent a FIN after some delay. Though I
+>> > am
+>> > not sure, I think this is due to
+>> >
+>> > /* apparently the "standard" is that clients close
+>> >  * idle connections after 5 minutes, servers after
+>> >  * 6 minutes
+>> >  *   http://www.connectathon.org/talks96/nfstcp.pdf
+>> >  */
+>> > static int svc_conn_age_period = 6*60;
+>>
+>> I tried to increase this value.
+>> After setting this value to a high value [60*60], I could see the
+>> client staying in FIN_WAIT_2 state forever.
+>>
+>> To repeat, my test case is,
+>> 1. Take a nfs server and make it not send the FIN on 2049 port
+>> 2. Use any upstream kernel [I used 4.14-rc1] as nfs client
+>> 3. Let the mount be idle for 5 mins so that autoclose gets triggered.
+>> 4. after this, client stays in FIN_WAIT_2 state[we can observer it
+>> with netstat -an | grep 2049].
+>> 5. At this point no new NFS connection is allowed on this port. So
+>> mount is hung for application.
+>
+> What do you mean when you say "make it not send FIN"? Are you just
+> filtering all packets with a FIN flag set? Normally, a FIN is expected
+> to be ACKed by the recipient so that it can be retransmitted if lost.
+In my test-case I prevented TCP layer itself[by code change] from
+sending FIN packet on port 2049.
 
+The client sends FIN, gets a ACK
+then
+Client expects final FIN, server never sends it.
+>
+>
+> However, even if it does not receive the FIN from the server, then the
+> FIN_WAIT2 state should automatically time out after
+> /proc/sys/net/ipv4/tcp_fin_timeout seconds (see the description in the
+> SO_LINGER2 socket option). Isn't this working?
+>
+I think this behavior is true only for full close of socket. The
+present issue is happening only with autoclose()
+The autoclose behavior is changed from full close to half close with
+the following commit -
+caf4ccd SUNRPC: Make xs_tcp_close() do a socket shutdown rather than a
+sock_release
+
+The following commit might be related too -
+9cbc94f SUNRPC: Remove TCP socket linger code
+
+-Thanks,
+manjunath
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
