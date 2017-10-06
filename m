@@ -1,250 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:48225 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751663AbdJEUxS (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Oct 2017 16:53:18 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Draft RFC for ONC RPC over AF_VSOCK
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20171005200835.GA31525@stefanha-x1.localdomain>
-Date: Thu, 5 Oct 2017 16:53:07 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <steved@redhat.com>,
-        Matt Benjamin <mbenjami@redhat.com>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trondmy@primarydata.com>,
-        Daniel Berrange <berrange@redhat.com>
-Message-Id: <2BCB0D75-EF18-4463-BEB4-D09005DAE86B@oracle.com>
-References: <20171005200835.GA31525@stefanha-x1.localdomain>
-To: Stefan Hajnoczi <stefanha@redhat.com>
+Received: from mx2.suse.de ([195.135.220.15]:59264 "EHLO mx1.suse.de"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751418AbdJFCsL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Oct 2017 22:48:11 -0400
+From: NeilBrown <neilb@suse.com>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Fri, 06 Oct 2017 13:48:04 +1100
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [nfs-utils PATCH] Add RemainAfterExit to two services.
+Message-ID: <877ew90z6j.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Oct 5, 2017, at 4:08 PM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
-> 
-> I have previously submitted patches that implement NFS client and nfsd
-> support for the AF_VSOCK address family.  In order for this to be
-> acceptable for merge the AF_VSOCK transport needs to be defined in an
-> IETF RFC.  Below is a draft RFC that defines ONC RPC over AF_VSOCK.
-> 
-> My patches use netid "vsock" but "tcpv" has also been suggested.  This draft
-> RFC still uses "vsock" but I'll update it to "tcpv" if there is consensus.
-> 
-> The uaddr format proposed in this RFC is not implemented yet.  RPCBIND and the
-> NFSv4 callback were not supported in my previous patch submissions but it's
-> clear that a uaddr format is required for full ONC RPC support so I've
-> included it.
-> 
-> Discussion and pointers for getting this in shape for submission with
-> the IETF would be appreciated!  I will apply final RFC formatting before
-> submission and am mostly concerned about content at this stage.
-> 
-> Thanks,
-> Stefan
-> ---
-> 
-> Remote Procedure Call (RPC) Network Identifier and Universal Address Format
-> Definitions for the AF_VSOCK Transport
-> 
-> S. Hajnoczi
-> Red Hat, Inc.
-> October 2017
-> 
-> 1. Introduction and Motivation
-> 
-> The AF_VSOCK address family facilitates socket communication between a
-> hypervisor and virtual machines running on the hypervisor.  It was implemented
-> in Linux 3.9 with initial transport support for VMware.  Further transports
-> were added for KVM and Hyper-V hypervisors later.  AF_VSOCK services can
-> run on any supported hypervisor because the network address and semantics
-> remain the same across AF_VSOCK transports.
-> 
-> ONC RPC services are bound to transport addresses (RFC 1833 [1]).  Transport
-> addresses are described by netid and universal address strings.  This standard
-> representation of transport addresses allows address information to be
-> communicated between client programs and RPC services, including the RPCBIND
-> program.
-> 
-> It is necessary to define a network identifier and universal address
-> representation so that ONC RPC may be used over AF_VSOCK.  This document
-> describes string representations for the AF_VSOCK netid and universal
-> addresses.
-> 
-> 2. Requirements Language
-> 
-> The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
-> "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be
-> interpreted as described in RFC 2119 [2].
-> 
-> 3. Security Considerations
-> 
-> AF_VSOCK addresses are local to the hypervisor instance that the virtual
-> machine is running on.  Source address spoofing is not possible because the
-> hypervisor enforces the assigned address of the virtual machine.  RPC services
-> running on the hypervisor MAY use the source address for authorization if they
-> do not implement additional security features.
-> 
-> 4. Intended Use
-> 
-> The intended use of this new ONC RPC transport is Network File System (NFS)
-> v4.1 (RFC5661 [3]) to export file systems from the hypervisor into virtual
-> machines.  Other RPC services could also be used with the hypervisor offering
-> the service to the virtual machine or vice versa.
-> 
-> The need for an AF_VSOCK transport arises because management tools require the
-> ability to deploy RPC services for virtual machines in an automated fashion.
-> Existing TCP/IP network interface configuration, including firewall
-> configuration, is difficult to automate without risk of interfering with the
-> virtual machine owner's networking configuration.  AF_VSOCK provides a
-> zero-configuration communications channel with the dedicated purpose of
-> communicating between a hypervisor and virtual machines without these
-> configuration difficulties.
-> 
-> 5. Network addresses
-> 
-> AF_VSOCK addresses contain an unsigned 32-bit integer called the Context
-> Identifier (CID) that is the network address.  An unsigned 32-bit integer port
-> number acts as the transport selector so that multiple services can be offered
-> on a single network address.
-> 
-> CID values in the range [0, 2] are reserved.  Virtual machines are assigned
-> values outside this range.  The hypervisor exposes services on the well-known
-> CID value 2.
-> 
-> Ports in the range [0, 1023] are privileged and can only be bound by programs
-> that have sufficient privilege.
-> 
-> 6. Netid for AF_VSOCK
-> 
-> The netid for AF_VSOCK is given in Table 1.
-> 
->   +---------+----------+-------------------------------+------+------+
->   | Netid   | Constant | RFC(s) and Description (if    | PoC  | CR   |
->   |         | Name     | needed)                       |      |      |
->   +---------+----------+-------------------------------+------+------+
->   | "vsock" | NC_VSOCK | Netid for AF_VSOCK.           | IESG | TBD1 |
->   |         |          | Section 6 of RFC TBD1.        |      |      |
->   +---------+----------+----------------------------- -+------+------+
-> 
-> PoC: Point of Contact.
-> 
-> CR: Cross Reference to the Uaddr Format Registry.
-> 
-> Table 1: Netid for AF_VSOCK
-> 
-> 7. Uaddr Format for AF_VSOCK
-> 
-> The format of the uaddr for AF_VSOCK is the US-ASCII string:
-> 
->   cid.port
-> 
-> The "cid" prefix is the ASCII-decimal representation of the CID network
-> address.  The "port" suffix is the ASCII-decimal representation of the
-> port number transport selector.
-> 
->   +-------+------------------------------------+------+-------+
->   | Basis | Description and/or Reference       | PoC  | CR    |
->   +-------+------------------------------------+------+-------+
->   | STDS  | Uaddr format for AF_VSOCK.         | IESG | TBD1  |
->   |       | Section 7 of RFC TBD1.             |      |       |
->   +-------+------------------------------------+------+-------+
-> 
-> Table 2: Uaddr format for AF_VSOCK
-> 
-> 8. Record Marking
-> 
-> AF_VSOCK sockets of type SOCK_STREAM are used for connection-oriented,
-> in-order, guaranteed delivery semantics.  These bytestream semantics require
-> that RPC messages are delimited so message boundaries can be detected.
-> 
-> The Record Marking Standard, defined in RFC 1831 Section 10 [4], is used for
-> this purpose.
-> 
-> 9. References
-> 
->   [1]   Srinivasan, R., "Binding Protocols for ONC RPC Version 2",
->         RFC 1833, August 1995.
-> 
->   [2]   Bradner, S., "Key words for use in RFCs to Indicate Requirement
->         Levels", BCP 14, RFC 2119, March 1997.
-> 
->   [3]   Eisler, M., "IANA Considerations for Remote Procedure Call (RPC)
-> 	 Network Identifiers and Universal Address Formats", RFC 5665,
->         January 2010.
-> 
->   [4]   Srinivasan, R., "RPC: Remote Procedure Call Protocol Specification
->         Version 2", RFC 1831, August 1995.
-
-Hi Stefan-
-
-There's no need for a bulky Cc: list. Everyone (except perhaps
-Daniel) is already on linux-nfs@vger.kernel.org.
-
-Please use xml2rfc to ensure the document is properly formatted,
-and can be efficiently converted to HTML, PDF, and other forms.
-
-https://xml2rfc.tools.ietf.org
-
-There are XML versions of personal drafts that you can copy to
-get started, at the bottom of this page:
-
-https://datatracker.ietf.org/wg/nfsv4/documents/
-
-You need to state somewhere that the VSOCK/SOCK_STREAM transport
-guarantees reliable and ordered delivery of bytes. NFSv4 requires
-this (see RFC 5661, Section 2.9.1).
-
-AF_VSOCK is not a transport, it's an address family. A shorter
-and more precise title might be "Remote Procedure Call (RPC) on
-VSOCK Sockets". Ensure that the text (and any discussion of this
-I-D) uses the term AF_VSOCK appropriately. I prefer the term
-"VSOCK sockets" for this purpose.
-
-The Security Considerations section needs a description of your
-threat model, IMO, and it belongs at the end of the document,
-not at the front of it. What kind of attacks is VSOCK designed
-to prevent?
-
-You need to mention what AUTH flavors are supported on this
-transport, and which are not. Are there any changes expected to
-the credentials for these supported formats? If no GSS flavors
-are supported, please explain in the Security Considerations
-section how deployments can avoid attacks.
-
-An unchanging public reference to a specification of VSOCK is
-important to cite. If you can't find one, you'll have to explain
-why in the document. If the VSOCK specification is not an IETF
-document, it will have to be an Informative reference, and this
-I-D will also have to be Informative.
-
-Sections 5, 6, and 7 should be made subsections of a single
-section entitled "IANA Considerations", which should follow the
-Security Considerations section. Especially the current section
-5 needs to cite something that specifies the behavior and
-structure of AF_VSOCK addresses, IMO.
-
-You might want to make an explicit statement about whether RPC
-functions with the SOCK_DATAGRAM flavor of VSOCK, or if this
-mode of operation is explicitly not to be used. Or, you might
-want to ensure it can be supported in the future by reserving
-a netid for it in this document.
-
-You must have your company's permission to contribute this
-I-D to the IETF, and you must be clear about any existing
-Intellectual Property related to VSOCK that you or your
-company owns.
-
-http://trustee.ietf.org/trust-legal-provisions.html
-
-If you're not clear about what this means, consult your
-company's legal counsel.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
---
-Chuck Lever
+Both auth-rpcgss-module and rpc-statd-notify only
+ever need to be run once - the effect they have
+is permanent.
+We can give this information to systemd by setting
+RemainAfterExit=3Dyes
+This avoids the minor cost of running them a second time
+if something "Wants" either service after it was first run,
+(e.g. both client and server startup can Want these),
+and avoids systemd complaining that it restarts to fast
+if multiple Wants happen at nearly the same time.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ systemd/auth-rpcgss-module.service | 1 +
+ systemd/rpc-statd-notify.service   | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/systemd/auth-rpcgss-module.service b/systemd/auth-rpcgss-modul=
+e.service
+index 5241f7b5d58e..4548283377d0 100644
+=2D-- a/systemd/auth-rpcgss-module.service
++++ b/systemd/auth-rpcgss-module.service
+@@ -14,3 +14,4 @@ ConditionPathExists=3D/etc/krb5.keytab
+ [Service]
+ Type=3Doneshot
+ ExecStart=3D/sbin/modprobe -q auth_rpcgss
++RemainAfterExit=3Dyes
+diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.se=
+rvice
+index 687fe31140c0..aad4c0d29efe 100644
+=2D-- a/systemd/rpc-statd-notify.service
++++ b/systemd/rpc-statd-notify.service
+@@ -13,3 +13,4 @@ PartOf=3Dnfs-utils.service
+ [Service]
+ Type=3Dforking
+ ExecStart=3D-/usr/sbin/sm-notify
++RemainAfterExit=3Dyes
+=2D-=20
+2.14.0.rc0.dirty
 
 
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlnW7uQACgkQOeye3VZi
+gbmjYg//bWesKKhbf35Je4c/CZUvVqUWFKe0/JATnQzw+lrc8BU0gZxgtSd7Vp26
+985YBT6VJYxBKTggmGM+bDxN0lzJoRH4EpzJph2w0/tgOocrz5qtUP6fOi2x5WTK
+UF4s0g/AlCWeIw+KY/8MIoWoklqiBzxePZEBvunivC5N5IGEUAREGB4DUtavGXuH
+48DIRMCzg76Di/VgZuSrLOI83OfhNmXaeaUaqD768csDMgu2JaufbIq00sRpu9qJ
+kJtTtlqFjj0gddQgmpdRxFy3PZYCKNILTELjvX48CyLV2KV41KjDcUhVymJVnWIr
+9mMx9m7qD9XAOCACGs8/dE0jmpVinI+K40g9VF0Sn3z4QVC2Klur0QuuKPrwakQa
+4UR2nqxrlbcAFKeL3JepoWIRza7lIUsGEunxEa2NVqkYF0gEyS76JnZzVIH7yhdl
+M+tLKx7/nMkA9OjCfEo0BL6Rl8lqR6qfebyq9WnbpJgVMekPZDllGKavu982kpRi
+sjB1G5tvh7Q6MSCADxS4ntt85teAVxzMOPwLy/6tNH8QICBbYdzW13IdGXfqMSb3
+HUas6d+yFINk9buVIZGqxJs6iP7TPqQKzRGb3cvHxHNAE9S01CLzJ+NAjRNBBYGi
+/1gS2upDJbM4ybDW5a/lU9TG2U8APXEX7jXlvg9J9zFWNSNkfV4=
+=rI0s
+-----END PGP SIGNATURE-----
+--=-=-=--
