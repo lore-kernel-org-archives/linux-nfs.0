@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43684 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8184 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752268AbdJFPuQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Oct 2017 11:50:16 -0400
-Subject: [PATCH 08/14] procfs: Move proc_fill_super() to fs/proc/root.c [ver
- #6]
+        id S1752268AbdJFPuH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 6 Oct 2017 11:50:07 -0400
+Subject: [PATCH 07/14] VFS: Add a sample program for fsopen/fsmount [ver #6]
 From: David Howells <dhowells@redhat.com>
 To: viro@ZenIV.linux.org.uk
 Cc: linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         jlayton@redhat.com
-Date: Fri, 06 Oct 2017 16:50:12 +0100
-Message-ID: <150730501234.6182.13204063535610857906.stgit@warthog.procyon.org.uk>
+Date: Fri, 06 Oct 2017 16:50:00 +0100
+Message-ID: <150730500019.6182.15975727444128962384.stgit@warthog.procyon.org.uk>
 In-Reply-To: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
 References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -19,185 +18,113 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move proc_fill_super() to fs/proc/root.c as that's where the other
-superblock stuff is.
+Add a sample program for driving fsopen/fsmount.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/proc/inode.c    |   48 +-----------------------------------------------
- fs/proc/internal.h |    4 +---
- fs/proc/root.c     |   48 +++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 49 insertions(+), 51 deletions(-)
+ samples/fsmount/test-fsmount.c |   94 ++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 94 insertions(+)
+ create mode 100644 samples/fsmount/test-fsmount.c
 
-diff --git a/fs/proc/inode.c b/fs/proc/inode.c
-index 0163d71d5887..a4bf66af0ba9 100644
---- a/fs/proc/inode.c
-+++ b/fs/proc/inode.c
-@@ -22,7 +22,6 @@
- #include <linux/seq_file.h>
- #include <linux/slab.h>
- #include <linux/mount.h>
--#include <linux/magic.h>
- 
- #include <linux/uaccess.h>
- 
-@@ -113,7 +112,7 @@ static int proc_show_options(struct seq_file *seq, struct dentry *root)
- 	return 0;
- }
- 
--static const struct super_operations proc_sops = {
-+const struct super_operations proc_sops = {
- 	.alloc_inode	= proc_alloc_inode,
- 	.destroy_inode	= proc_destroy_inode,
- 	.drop_inode	= generic_delete_inode,
-@@ -470,48 +469,3 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
- 	       pde_put(de);
- 	return inode;
- }
--
--int proc_fill_super(struct super_block *s, void *data, int silent)
--{
--	struct pid_namespace *ns = get_pid_ns(s->s_fs_info);
--	struct inode *root_inode;
--	int ret;
--
--	if (!proc_parse_options(data, ns))
--		return -EINVAL;
--
--	/* User space would break if executables or devices appear on proc */
--	s->s_iflags |= SB_I_USERNS_VISIBLE | SB_I_NOEXEC | SB_I_NODEV;
--	s->s_flags |= SB_NODIRATIME | SB_NOSUID | SB_NOEXEC;
--	s->s_blocksize = 1024;
--	s->s_blocksize_bits = 10;
--	s->s_magic = PROC_SUPER_MAGIC;
--	s->s_op = &proc_sops;
--	s->s_time_gran = 1;
--
--	/*
--	 * procfs isn't actually a stacking filesystem; however, there is
--	 * too much magic going on inside it to permit stacking things on
--	 * top of it
--	 */
--	s->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
--	
--	pde_get(&proc_root);
--	root_inode = proc_get_inode(s, &proc_root);
--	if (!root_inode) {
--		pr_err("proc_fill_super: get root inode failed\n");
--		return -ENOMEM;
--	}
--
--	s->s_root = d_make_root(root_inode);
--	if (!s->s_root) {
--		pr_err("proc_fill_super: allocate dentry failed\n");
--		return -ENOMEM;
--	}
--
--	ret = proc_setup_self(s);
--	if (ret) {
--		return ret;
--	}
--	return proc_setup_thread_self(s);
--}
-diff --git a/fs/proc/internal.h b/fs/proc/internal.h
-index a34195e92b20..9cc6c2516803 100644
---- a/fs/proc/internal.h
-+++ b/fs/proc/internal.h
-@@ -197,13 +197,12 @@ struct pde_opener {
- 	struct completion *c;
- };
- extern const struct inode_operations proc_link_inode_operations;
--
- extern const struct inode_operations proc_pid_link_inode_operations;
-+extern const struct super_operations proc_sops;
- 
- extern void proc_init_inodecache(void);
- void set_proc_pid_nlink(void);
- extern struct inode *proc_get_inode(struct super_block *, struct proc_dir_entry *);
--extern int proc_fill_super(struct super_block *, void *data, int flags);
- extern void proc_entry_rundown(struct proc_dir_entry *);
- 
- /*
-@@ -261,7 +260,6 @@ static inline void proc_tty_init(void) {}
-  * root.c
-  */
- extern struct proc_dir_entry proc_root;
--extern int proc_parse_options(char *options, struct pid_namespace *pid);
- 
- extern void proc_self_init(void);
- extern int proc_remount(struct super_block *, int *, char *);
-diff --git a/fs/proc/root.c b/fs/proc/root.c
-index d2a1bb608820..0ef44f31d045 100644
---- a/fs/proc/root.c
-+++ b/fs/proc/root.c
-@@ -22,6 +22,7 @@
- #include <linux/pid_namespace.h>
- #include <linux/parser.h>
- #include <linux/cred.h>
-+#include <linux/magic.h>
- 
- #include "internal.h"
- 
-@@ -35,7 +36,7 @@ static const match_table_t tokens = {
- 	{Opt_err, NULL},
- };
- 
--int proc_parse_options(char *options, struct pid_namespace *pid)
-+static int proc_parse_options(char *options, struct pid_namespace *pid)
- {
- 	char *p;
- 	substring_t args[MAX_OPT_ARGS];
-@@ -77,6 +78,51 @@ int proc_parse_options(char *options, struct pid_namespace *pid)
- 	return 1;
- }
- 
-+static int proc_fill_super(struct super_block *s, void *data, int silent)
+diff --git a/samples/fsmount/test-fsmount.c b/samples/fsmount/test-fsmount.c
+new file mode 100644
+index 000000000000..75f91d272a19
+--- /dev/null
++++ b/samples/fsmount/test-fsmount.c
+@@ -0,0 +1,94 @@
++/* fd-based mount test.
++ *
++ * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
++ * Written by David Howells (dhowells@redhat.com)
++ *
++ * This program is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU General Public Licence
++ * as published by the Free Software Foundation; either version
++ * 2 of the Licence, or (at your option) any later version.
++ */
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <unistd.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <sys/prctl.h>
++#include <sys/wait.h>
++
++#define PR_ERRMSG_ENABLE		48
++#define PR_ERRMSG_READ			49
++
++#define E(x) do { if ((x) == -1) { perror(#x); exit(1); } } while(0)
++
++static __attribute__((noreturn))
++void mount_error(int fd, const char *s)
 +{
-+	struct pid_namespace *ns = get_pid_ns(s->s_fs_info);
-+	struct inode *root_inode;
-+	int ret;
++	char buf[4096];
++	int err, n, perr;
 +
-+	if (!proc_parse_options(data, ns))
-+		return -EINVAL;
-+
-+	/* User space would break if executables or devices appear on proc */
-+	s->s_iflags |= SB_I_USERNS_VISIBLE | SB_I_NOEXEC | SB_I_NODEV;
-+	s->s_flags |= SB_NODIRATIME | SB_NOSUID | SB_NOEXEC;
-+	s->s_blocksize = 1024;
-+	s->s_blocksize_bits = 10;
-+	s->s_magic = PROC_SUPER_MAGIC;
-+	s->s_op = &proc_sops;
-+	s->s_time_gran = 1;
-+
-+	/*
-+	 * procfs isn't actually a stacking filesystem; however, there is
-+	 * too much magic going on inside it to permit stacking things on
-+	 * top of it
-+	 */
-+	s->s_stack_depth = FILESYSTEM_MAX_STACK_DEPTH;
-+	
-+	pde_get(&proc_root);
-+	root_inode = proc_get_inode(s, &proc_root);
-+	if (!root_inode) {
-+		pr_err("proc_fill_super: get root inode failed\n");
-+		return -ENOMEM;
-+	}
-+
-+	s->s_root = d_make_root(root_inode);
-+	if (!s->s_root) {
-+		pr_err("proc_fill_super: allocate dentry failed\n");
-+		return -ENOMEM;
-+	}
-+
-+	ret = proc_setup_self(s);
-+	if (ret) {
-+		return ret;
-+	}
-+	return proc_setup_thread_self(s);
++	do {
++		err = errno;
++		errno = 0;
++		n = prctl(PR_ERRMSG_READ, buf, sizeof(buf));
++		perr = errno;
++		errno = err;
++		if (n > 0) {
++			fprintf(stderr, "Error: '%s': %*.*s: %m\n", s, n, n, buf);
++		} else {
++			fprintf(stderr, "%s: %m\n", s);
++		}
++	} while (perr == 0);
++	exit(1);
 +}
 +
- int proc_remount(struct super_block *sb, int *flags, char *data)
- {
- 	struct pid_namespace *pid = sb->s_fs_info;
++#define E_write(fd, s)							\
++	do {								\
++		if (write(fd, s, sizeof(s) - 1) == -1)			\
++			mount_error(fd, s);				\
++	} while (0)
++
++static inline int fsopen(const char *fs_name, int flags,
++			 void *reserved3, void *reserved4, void *reserved5);
++
++{
++	return syscall(333, fs_name, flags, reserved3, reserved4, reserved5);
++}
++
++static inline int fsmount(int fsfd, int dfd, const char *path,
++			  unsigned int at_flags, unsigned int flags)
++{
++	return syscall(334, fsfd, dfd, path, at_flags, flags);
++}
++
++int main()
++{
++	int mfd;
++
++	if (prctl(PR_ERRMSG_ENABLE, 1) < 0) {
++		perror("prctl/en");
++		exit(1);
++	}
++
++	/* Mount an NFS filesystem */
++	mfd = fsopen("nfs4", 0, NULL, NULL, NULL);
++	if (mfd == -1) {
++		perror("fsopen");
++		exit(1);
++	}
++
++	E_write(mfd, "s warthog:/data");
++	E_write(mfd, "o fsc");
++	E_write(mfd, "o sync");
++	E_write(mfd, "o intr");
++	E_write(mfd, "o vers=4.2");
++	E_write(mfd, "o addr=90.155.74.18");
++	E_write(mfd, "o clientaddr=90.155.74.21");
++	E_write(mfd, "x create");
++	if (fsmount(mfd, AT_FDCWD, "/mnt", 0, 0) < 0)
++		mount_error(mfd, "fsmount");
++	E(close(mfd));
++
++	exit(0);
++}
 
