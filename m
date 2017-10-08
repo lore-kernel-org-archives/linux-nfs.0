@@ -1,109 +1,101 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:56576 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751228AbdJHR6m (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Oct 2017 13:58:42 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "mbpatil.linux@gmail.com" <mbpatil.linux@gmail.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dwysocha@redhat.com" <dwysocha@redhat.com>,
-        "manjunath.b.patil@oracle.com" <manjunath.b.patil@oracle.com>
-Subject: Re: [Bug ?] Permanent FIN_WAIT_2 state on NFS client with bad NFS
- server
-Date: Sun, 8 Oct 2017 17:58:36 +0000
-Message-ID: <1507485514.4038.3.camel@primarydata.com>
-References: <CANnNPBYoZFcXZJopjcPWZ5jdRQoQV16VVHM+=A=Pm2=_GZ=Msw@mail.gmail.com>
-         <1506013553.7873.13.camel@redhat.com>
-         <CANnNPBZr-RDFoLrogkt7yMHR-+t1bvxj5WOu2OS4K3Dmp5MHCQ@mail.gmail.com>
-         <CANnNPBaSbrsggKA07T7TX8Lznj=NG_33P9XjxETh4FEVYO2q2Q@mail.gmail.com>
-         <1507323087.10354.11.camel@primarydata.com>
-         <CANnNPBb--DVL1263G=BQSW-kK7QacWEE8sL+KNrtdYpCwq6HJA@mail.gmail.com>
-In-Reply-To: <CANnNPBb--DVL1263G=BQSW-kK7QacWEE8sL+KNrtdYpCwq6HJA@mail.gmail.com>
+Return-Path: <chucklever@gmail.com>
+Sender: Chuck Lever <chucklever@gmail.com>
+Subject: [PATCH RFC] svcrdma: Preserve CB send buffer across retransmits
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bcodding@redhat.com, jlayton@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 08 Oct 2017 19:13:38 -0400
+Message-ID: <20171008225546.16538.99253.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset="utf-8"
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTEwLTA2IGF0IDE1OjEyIC0wNzAwLCBNYW5qdW5hdGggUGF0aWwgd3JvdGU6
-DQo+IE9uIEZyaSwgT2N0IDYsIDIwMTcgYXQgMTo1MSBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9u
-ZG15QHByaW1hcnlkYXRhLg0KPiBjb20+IHdyb3RlOg0KPiA+IE9uIEZyaSwgMjAxNy0xMC0wNiBh
-dCAxMjoxMyAtMDcwMCwgTWFuanVuYXRoIFBhdGlsIHdyb3RlOg0KPiA+ID4gSGkgRGF2aWQsDQo+
-ID4gPiANCj4gPiA+IE9uIEZyaSwgU2VwIDIyLCAyMDE3IGF0IDEyOjIxIFBNLCBNYW5qdW5hdGgg
-UGF0aWwNCj4gPiA+IDxtYnBhdGlsLmxpbnV4QGdtYWlsLmNvbT4gd3JvdGU6DQo+ID4gPiA+IEhp
-IERhdmlkLA0KPiA+ID4gPiANCj4gPiA+ID4gT24gVGh1LCBTZXAgMjEsIDIwMTcgYXQgMTA6MDUg
-QU0sIERhdmlkIFd5c29jaGFuc2tpIDxkd3lzb2NoYUByDQo+ID4gPiA+IGVkaGENCj4gPiA+ID4g
-dC5jb20+IHdyb3RlOg0KPiA+ID4gPiA+IE9uIFdlZCwgMjAxNy0wOS0yMCBhdCAxNToxNyAtMDcw
-MCwgTWFuanVuYXRoIFBhdGlsIHdyb3RlOg0KPiA+ID4gPiA+ID4gSGksDQo+ID4gPiA+ID4gPiAN
-Cj4gPiA+ID4gPiA+IFdpdGggYXV0b2Nsb3NlIHRyeWluZyB0byBjbG9zZSB0aGUgY29ubmVjdGlv
-biwgYWZ0ZXIgdGhlDQo+ID4gPiA+ID4gPiBpZGxlDQo+ID4gPiA+ID4gPiB0aW1lb3V0DQo+ID4g
-PiA+ID4gPiBpbiBORlN2MyBtb3VudHMsDQo+ID4gPiA+ID4gPiBhIGJhZCBORlMgc2VydmVyIG1h
-eSBub3Qgc2VuZCB0aGUgZmluYWwgRklOLCBsZWFkaW5nIHRoZQ0KPiA+ID4gPiA+ID4gY2xpZW50
-DQo+ID4gPiA+ID4gPiBzdGF5DQo+ID4gPiA+ID4gPiBpbiBGSU5fV0FJVF8yIHN0YXRlIGZvcmV2
-ZXIuDQo+ID4gPiA+ID4gPiBUaGlzIGlzIGVhc2lseSByZXByb2R1Y2libGUgYnkgc2ltdWxhdGlu
-ZyB0aGUgYmFkIHNlcnZlcg0KPiA+ID4gPiA+ID4gYmVoYXZpb3IuIEkNCj4gPiA+ID4gPiA+IHVz
-ZWQgJ25ldHN0YXQgLWFuIHwgZ3JlcCAyMDQ5JyB0byBvYnNlcnZlciBzb2NrZXQgc3RhdGUuDQo+
-ID4gPiA+ID4gPiANCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBIb3cgbG9uZyBkaWQgeW91IHdhaXQg
-YW5kIGhvdyBkaWQgeW91IHNpbXVsYXRlIHRoZQ0KPiA+ID4gPiA+IGZhaWx1cmU/ICBJIGFtDQo+
-ID4gPiA+ID4gdmVyeQ0KPiA+ID4gPiA+IGludGVyZXN0ZWQgaW4geW91ciB0ZXN0IGNhc2UuDQo+
-ID4gPiA+IA0KPiA+ID4gPiBJIG9ic2VydmVyIHRoaXMgaW4gY3QgZW52aXJvbm1lbnQuIEluIHRo
-aXMgY2FzZSB0aGUgZmluX3dhaXRfMg0KPiA+ID4gPiBzdGF5ZWQgZm9yZXZlci4NCj4gPiA+ID4g
-Y3QgaGFkIHRvIHJlc3RhcnQgdGhlIG5vZGUgdG8gZ2V0IG91dC4NCj4gPiA+ID4gDQo+ID4gPiA+
-IFdlIHRyaWVkIHRvIHNpbXVsYXRlIHRoaXMgYmVoYXZpb3IgaW4gTGludXggbmZzIHNlcnZlciBi
-eQ0KPiA+ID4gPiBzdG9wcGluZw0KPiA+ID4gPiB0aGUNCj4gPiA+ID4gaW5jb21pbmcgRklODQo+
-ID4gPiA+IGZvciAyMDQ5IHBvcnQgaW5zaWRlIGtlcm5lbC4gVGhpcyBwcmV2ZW50ZWQgdGhlIHNl
-cnZlciBmcm9tDQo+ID4gPiA+IHNlbmRpbmcNCj4gPiA+ID4gdGhlIGZpbmFsIEZJTiBmb3Igc29t
-ZSB0aW1lLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhlIGxpbnV4IHNlcnZlciBldmVudHVhbGx5IHNl
-bnQgYSBGSU4gYWZ0ZXIgc29tZSBkZWxheS4gVGhvdWdoDQo+ID4gPiA+IEkNCj4gPiA+ID4gYW0N
-Cj4gPiA+ID4gbm90IHN1cmUsIEkgdGhpbmsgdGhpcyBpcyBkdWUgdG8NCj4gPiA+ID4gDQo+ID4g
-PiA+IC8qIGFwcGFyZW50bHkgdGhlICJzdGFuZGFyZCIgaXMgdGhhdCBjbGllbnRzIGNsb3NlDQo+
-ID4gPiA+ICAqIGlkbGUgY29ubmVjdGlvbnMgYWZ0ZXIgNSBtaW51dGVzLCBzZXJ2ZXJzIGFmdGVy
-DQo+ID4gPiA+ICAqIDYgbWludXRlcw0KPiA+ID4gPiAgKiAgIGh0dHA6Ly93d3cuY29ubmVjdGF0
-aG9uLm9yZy90YWxrczk2L25mc3RjcC5wZGYNCj4gPiA+ID4gICovDQo+ID4gPiA+IHN0YXRpYyBp
-bnQgc3ZjX2Nvbm5fYWdlX3BlcmlvZCA9IDYqNjA7DQo+ID4gPiANCj4gPiA+IEkgdHJpZWQgdG8g
-aW5jcmVhc2UgdGhpcyB2YWx1ZS4NCj4gPiA+IEFmdGVyIHNldHRpbmcgdGhpcyB2YWx1ZSB0byBh
-IGhpZ2ggdmFsdWUgWzYwKjYwXSwgSSBjb3VsZCBzZWUgdGhlDQo+ID4gPiBjbGllbnQgc3RheWlu
-ZyBpbiBGSU5fV0FJVF8yIHN0YXRlIGZvcmV2ZXIuDQo+ID4gPiANCj4gPiA+IFRvIHJlcGVhdCwg
-bXkgdGVzdCBjYXNlIGlzLA0KPiA+ID4gMS4gVGFrZSBhIG5mcyBzZXJ2ZXIgYW5kIG1ha2UgaXQg
-bm90IHNlbmQgdGhlIEZJTiBvbiAyMDQ5IHBvcnQNCj4gPiA+IDIuIFVzZSBhbnkgdXBzdHJlYW0g
-a2VybmVsIFtJIHVzZWQgNC4xNC1yYzFdIGFzIG5mcyBjbGllbnQNCj4gPiA+IDMuIExldCB0aGUg
-bW91bnQgYmUgaWRsZSBmb3IgNSBtaW5zIHNvIHRoYXQgYXV0b2Nsb3NlIGdldHMNCj4gPiA+IHRy
-aWdnZXJlZC4NCj4gPiA+IDQuIGFmdGVyIHRoaXMsIGNsaWVudCBzdGF5cyBpbiBGSU5fV0FJVF8y
-IHN0YXRlW3dlIGNhbiBvYnNlcnZlcg0KPiA+ID4gaXQNCj4gPiA+IHdpdGggbmV0c3RhdCAtYW4g
-fCBncmVwIDIwNDldLg0KPiA+ID4gNS4gQXQgdGhpcyBwb2ludCBubyBuZXcgTkZTIGNvbm5lY3Rp
-b24gaXMgYWxsb3dlZCBvbiB0aGlzIHBvcnQuDQo+ID4gPiBTbw0KPiA+ID4gbW91bnQgaXMgaHVu
-ZyBmb3IgYXBwbGljYXRpb24uDQo+ID4gDQo+ID4gV2hhdCBkbyB5b3UgbWVhbiB3aGVuIHlvdSBz
-YXkgIm1ha2UgaXQgbm90IHNlbmQgRklOIj8gQXJlIHlvdSBqdXN0DQo+ID4gZmlsdGVyaW5nIGFs
-bCBwYWNrZXRzIHdpdGggYSBGSU4gZmxhZyBzZXQ/IE5vcm1hbGx5LCBhIEZJTiBpcw0KPiA+IGV4
-cGVjdGVkDQo+ID4gdG8gYmUgQUNLZWQgYnkgdGhlIHJlY2lwaWVudCBzbyB0aGF0IGl0IGNhbiBi
-ZSByZXRyYW5zbWl0dGVkIGlmDQo+ID4gbG9zdC4NCj4gDQo+IEluIG15IHRlc3QtY2FzZSBJIHBy
-ZXZlbnRlZCBUQ1AgbGF5ZXIgaXRzZWxmW2J5IGNvZGUgY2hhbmdlXSBmcm9tDQo+IHNlbmRpbmcg
-RklOIHBhY2tldCBvbiBwb3J0IDIwNDkuDQo+IA0KPiBUaGUgY2xpZW50IHNlbmRzIEZJTiwgZ2V0
-cyBhIEFDSw0KPiB0aGVuDQo+IENsaWVudCBleHBlY3RzIGZpbmFsIEZJTiwgc2VydmVyIG5ldmVy
-IHNlbmRzIGl0Lg0KPiA+IA0KPiA+IA0KPiA+IEhvd2V2ZXIsIGV2ZW4gaWYgaXQgZG9lcyBub3Qg
-cmVjZWl2ZSB0aGUgRklOIGZyb20gdGhlIHNlcnZlciwgdGhlbg0KPiA+IHRoZQ0KPiA+IEZJTl9X
-QUlUMiBzdGF0ZSBzaG91bGQgYXV0b21hdGljYWxseSB0aW1lIG91dCBhZnRlcg0KPiA+IC9wcm9j
-L3N5cy9uZXQvaXB2NC90Y3BfZmluX3RpbWVvdXQgc2Vjb25kcyAoc2VlIHRoZSBkZXNjcmlwdGlv
-biBpbg0KPiA+IHRoZQ0KPiA+IFNPX0xJTkdFUjIgc29ja2V0IG9wdGlvbikuIElzbid0IHRoaXMg
-d29ya2luZz8NCj4gPiANCj4gDQo+IEkgdGhpbmsgdGhpcyBiZWhhdmlvciBpcyB0cnVlIG9ubHkg
-Zm9yIGZ1bGwgY2xvc2Ugb2Ygc29ja2V0LiBUaGUNCj4gcHJlc2VudCBpc3N1ZSBpcyBoYXBwZW5p
-bmcgb25seSB3aXRoIGF1dG9jbG9zZSgpDQo+IFRoZSBhdXRvY2xvc2UgYmVoYXZpb3IgaXMgY2hh
-bmdlZCBmcm9tIGZ1bGwgY2xvc2UgdG8gaGFsZiBjbG9zZSB3aXRoDQo+IHRoZSBmb2xsb3dpbmcg
-Y29tbWl0IC0NCj4gY2FmNGNjZCBTVU5SUEM6IE1ha2UgeHNfdGNwX2Nsb3NlKCkgZG8gYSBzb2Nr
-ZXQgc2h1dGRvd24gcmF0aGVyIHRoYW4NCj4gYQ0KPiBzb2NrX3JlbGVhc2UNCg0KSSB0aG91Z2h0
-IHlvdSBzYWlkIGluIHlvdXIgdmVyeSBmaXJzdCBlbWFpbCwgdGhhdCB5b3Ugd2VyZSB0YWxraW5n
-DQphYm91dCA0LjE0LXJjMT8gRm9yIHRoYXQga2VybmVsLCBhdXRvY2xvc2UgY2FsbHM6DQoNCi8q
-Kg0KICogeHNfdGNwX3NodXRkb3duIC0gZ3JhY2VmdWxseSBzaHV0IGRvd24gYSBUQ1Agc29ja2V0
-DQogKiBAeHBydDogdHJhbnNwb3J0DQogKg0KICogSW5pdGlhdGVzIGEgZ3JhY2VmdWwgc2h1dGRv
-d24gb2YgdGhlIFRDUCBzb2NrZXQgYnkgY2FsbGluZyB0aGUNCiAqIGVxdWl2YWxlbnQgb2Ygc2h1
-dGRvd24oU0hVVF9SRFdSKTsNCiAqLw0Kc3RhdGljIHZvaWQgeHNfdGNwX3NodXRkb3duKHN0cnVj
-dCBycGNfeHBydCAqeHBydCkNCnsNCiAgICAgICAgc3RydWN0IHNvY2tfeHBydCAqdHJhbnNwb3J0
-ID0gY29udGFpbmVyX29mKHhwcnQsIHN0cnVjdCBzb2NrX3hwcnQsIHhwcnQpOw0KICAgICAgICBz
-dHJ1Y3Qgc29ja2V0ICpzb2NrID0gdHJhbnNwb3J0LT5zb2NrOw0KDQogICAgICAgIGlmIChzb2Nr
-ID09IE5VTEwpDQogICAgICAgICAgICAgICAgcmV0dXJuOw0KICAgICAgICBpZiAoeHBydF9jb25u
-ZWN0ZWQoeHBydCkpIHsNCiAgICAgICAgICAgICAgICBrZXJuZWxfc29ja19zaHV0ZG93bihzb2Nr
-LCBTSFVUX1JEV1IpOw0KICAgICAgICAgICAgICAgIHRyYWNlX3JwY19zb2NrZXRfc2h1dGRvd24o
-eHBydCwgc29jayk7DQogICAgICAgIH0gZWxzZQ0KICAgICAgICAgICAgICAgIHhzX3Jlc2V0X3Ry
-YW5zcG9ydCh0cmFuc3BvcnQpOw0KfQ0KDQp3aGljaCwgYXMgSSBzYWlkIGFib3ZlLCBkb2VzIGEg
-X2Z1bGwgY2xvc2VfLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
-YWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+During each NFSv4 callback Call, an RDMA Send completion frees the
+page that contains the RPC Call message. If the upper layer determines
+that a retransmit is necessary, this is too soon.
 
+One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
+callback request, the following BUG fires on the NFS server:
+
+kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
+kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          (null) index:0x0
+kernel: flags: 0x2fffff80000000()
+kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 fffffffeffffffff
+kernel: raw: dead000000000100 dead000000000200 0000000000000000 0000000000000000
+kernel: page dumped because: nonzero _refcount
+kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm
+ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad
+rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
+kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc iTCO_wdt
+iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr lpc_ich i2c_i801
+mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf ipmi_msghandler shpchp
+acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc ip_tables xfs
+libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast drm_kms_helper
+syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel libahci drm
+mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
+kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod dax
+kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted 4.14.0-rc3-00001-g577ce48 #811
+kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
+kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
+kernel: Call Trace:
+kernel: dump_stack+0x62/0x80
+kernel: bad_page+0xfe/0x11a
+kernel: free_pages_check_bad+0x76/0x78
+kernel: free_pcppages_bulk+0x364/0x441
+kernel: ? ttwu_do_activate.isra.61+0x71/0x78
+kernel: free_hot_cold_page+0x1c5/0x202
+kernel: __put_page+0x2c/0x36
+kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
+kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
+
+This issue exists all the way back to v4.5, but refactoring and code
+re-organization prevents this simple patch from applying to kernels
+older than v4.12. The fix is the same, however, if someone needs to
+backport it.
+
+Reported-by: Ben Coddington <bcodding@redhat.com>
+Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
+Cc: stable@vger.kernel.org # v4.12
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+Hi Ben, Jeff-
+
+I was able to reproduce the problem here with a rigged Linux client.
+This is my proposed fix. Fix also tested with a prototype Solaris
+client similar to the one that exposed the problem.
+
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index ec37ad8..1854db2 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 	if (ret)
+ 		goto out_err;
+ 
++	/* Bump page refcnt so Send completion doesn't release
++	 * the rq_buffer before all retransmits are complete.
++	 */
++	get_page(virt_to_page(rqst->rq_buffer));
+ 	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
+ 	if (ret)
+ 		goto out_unmap;
+@@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 		return -EINVAL;
+ 	}
+ 
+-	/* svc_rdma_sendto releases this page */
+ 	page = alloc_page(RPCRDMA_DEF_GFP);
+ 	if (!page)
+ 		return -ENOMEM;
+@@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ {
+ 	struct rpc_rqst *rqst = task->tk_rqstp;
+ 
++	put_page(virt_to_page(rqst->rq_buffer));
+ 	kfree(rqst->rq_rbuffer);
+ }
+ 
