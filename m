@@ -1,101 +1,67 @@
-Return-Path: <chucklever@gmail.com>
-Sender: Chuck Lever <chucklever@gmail.com>
-Subject: [PATCH RFC] svcrdma: Preserve CB send buffer across retransmits
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bcodding@redhat.com, jlayton@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 08 Oct 2017 19:13:38 -0400
-Message-ID: <20171008225546.16538.99253.stgit@klimt.1015granger.net>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:43462 "EHLO
+        shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754894AbdJINTL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 09:19:11 -0400
+Content-Type: text/plain; charset="UTF-8"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+From: Ben Hutchings <ben@decadent.org.uk>
+To: linux-kernel@vger.kernel.org, stable@vger.kernel.org
+CC: akpm@linux-foundation.org,
+        "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Anna Schumaker" <Anna.Schumaker@Netapp.com>,
+        "Anna Schumaker" <anna.schumaker@netapp.com>,
+        "Jeff Layton" <jlayton@poochiereds.net>,
+        "Jason A. Donenfeld" <Jason@zx2c4.com>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Date: Mon, 09 Oct 2017 13:44:24 +0100
+Message-ID: <lsq.1507553064.109173247@decadent.org.uk>
+Subject: [PATCH 3.16 113/192] sunrpc: use constant time memory comparison
+ for mac
+In-Reply-To: <lsq.1507553063.449494954@decadent.org.uk>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-During each NFSv4 callback Call, an RDMA Send completion frees the
-page that contains the RPC Call message. If the upper layer determines
-that a retransmit is necessary, this is too soon.
+3.16.49-rc1 review patch.  If anyone has any objections, please let me know.
 
-One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
-callback request, the following BUG fires on the NFS server:
+------------------
 
-kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
-kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          (null) index:0x0
-kernel: flags: 0x2fffff80000000()
-kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 fffffffeffffffff
-kernel: raw: dead000000000100 dead000000000200 0000000000000000 0000000000000000
-kernel: page dumped because: nonzero _refcount
-kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm
-ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad
-rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
-kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc iTCO_wdt
-iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr lpc_ich i2c_i801
-mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf ipmi_msghandler shpchp
-acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc ip_tables xfs
-libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast drm_kms_helper
-syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel libahci drm
-mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
-kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod dax
-kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted 4.14.0-rc3-00001-g577ce48 #811
-kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
-kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
-kernel: Call Trace:
-kernel: dump_stack+0x62/0x80
-kernel: bad_page+0xfe/0x11a
-kernel: free_pages_check_bad+0x76/0x78
-kernel: free_pcppages_bulk+0x364/0x441
-kernel: ? ttwu_do_activate.isra.61+0x71/0x78
-kernel: free_hot_cold_page+0x1c5/0x202
-kernel: __put_page+0x2c/0x36
-kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
-kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
+From: "Jason A. Donenfeld" <Jason@zx2c4.com>
 
-This issue exists all the way back to v4.5, but refactoring and code
-re-organization prevents this simple patch from applying to kernels
-older than v4.12. The fix is the same, however, if someone needs to
-backport it.
+commit 15a8b93fd5690de017ce665382ea45e5d61811a4 upstream.
 
-Reported-by: Ben Coddington <bcodding@redhat.com>
-Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
-Cc: stable@vger.kernel.org # v4.12
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Otherwise, we enable a MAC forgery via timing attack.
+
+Signed-off-by: Jason A. Donenfeld <Jason@zx2c4.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@poochiereds.net>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+[bwh: Backported to 3.16: adjust context]
+Signed-off-by: Ben Hutchings <ben@decadent.org.uk>
 ---
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ net/sunrpc/auth_gss/gss_krb5_crypto.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Hi Ben, Jeff-
-
-I was able to reproduce the problem here with a rigged Linux client.
-This is my proposed fix. Fix also tested with a prototype Solaris
-client similar to the one that exposed the problem.
-
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index ec37ad8..1854db2 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+--- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
++++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+@@ -34,6 +34,7 @@
+  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+  */
+ 
++#include <crypto/algapi.h>
+ #include <linux/err.h>
+ #include <linux/types.h>
+ #include <linux/mm.h>
+@@ -838,7 +839,7 @@ gss_krb5_aes_decrypt(struct krb5_ctx *kc
  	if (ret)
  		goto out_err;
  
-+	/* Bump page refcnt so Send completion doesn't release
-+	 * the rq_buffer before all retransmits are complete.
-+	 */
-+	get_page(virt_to_page(rqst->rq_buffer));
- 	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
- 	if (ret)
- 		goto out_unmap;
-@@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 		return -EINVAL;
+-	if (memcmp(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
++	if (crypto_memneq(pkt_hmac, our_hmac, kctx->gk5e->cksumlength) != 0) {
+ 		ret = GSS_S_BAD_SIG;
+ 		goto out_err;
  	}
- 
--	/* svc_rdma_sendto releases this page */
- 	page = alloc_page(RPCRDMA_DEF_GFP);
- 	if (!page)
- 		return -ENOMEM;
-@@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- {
- 	struct rpc_rqst *rqst = task->tk_rqstp;
- 
-+	put_page(virt_to_page(rqst->rq_buffer));
- 	kfree(rqst->rq_rbuffer);
- }
- 
+
