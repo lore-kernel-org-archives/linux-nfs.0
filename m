@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:37599 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754365AbdJIQDo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 12:03:44 -0400
-Subject: [PATCH v1 3/3] xprtrdma: Remove ro_unmap_safe
+Received: from mail-it0-f66.google.com ([209.85.214.66]:49817 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754365AbdJIQDh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 12:03:37 -0400
+Subject: [PATCH v1 2/3] xprtrdma: Use ro_unmap_sync in xprt_rdma_send_request
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 09 Oct 2017 12:03:42 -0400
-Message-ID: <20171009160342.18726.6012.stgit@manet.1015granger.net>
+Date: Mon, 09 Oct 2017 12:03:34 -0400
+Message-ID: <20171009160334.18726.33163.stgit@manet.1015granger.net>
 In-Reply-To: <20171009155524.18726.32086.stgit@manet.1015granger.net>
 References: <20171009155524.18726.32086.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,92 +16,34 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: There are no remaining callers of this method.
+The "safe" version of ro_unmap is used here to avoid waiting
+unnecessarily. However:
+
+ - It is safe to wait. After all, we have to wait anyway when using
+   FMR to register memory.
+
+ - This case is rare: it occurs only after a reconnect.
+
+By switching this call site to ro_unmap_sync, the final use of
+ro_unmap_safe is removed.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c   |   19 -------------------
- net/sunrpc/xprtrdma/frwr_ops.c  |   19 -------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 --
- 3 files changed, 40 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index 6c71513..30bf713 100644
---- a/net/sunrpc/xprtrdma/fmr_ops.c
-+++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -305,28 +305,9 @@ enum {
- 	}
- }
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 8cf5ccf..eb46d24 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -728,7 +728,8 @@
  
--/* Use a slow, safe mechanism to invalidate all memory regions
-- * that were registered for "req".
-- */
--static void
--fmr_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
--		  bool sync)
--{
--	struct rpcrdma_mw *mw;
--
--	while (!list_empty(&req->rl_registered)) {
--		mw = rpcrdma_pop_mw(&req->rl_registered);
--		if (sync)
--			fmr_op_recover_mr(mw);
--		else
--			rpcrdma_defer_mr_recovery(mw);
--	}
--}
--
- const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
- 	.ro_map				= fmr_op_map,
- 	.ro_unmap_sync			= fmr_op_unmap_sync,
--	.ro_unmap_safe			= fmr_op_unmap_safe,
- 	.ro_recover_mr			= fmr_op_recover_mr,
- 	.ro_open			= fmr_op_open,
- 	.ro_maxpages			= fmr_op_maxpages,
-diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index df062e0..3053fb0 100644
---- a/net/sunrpc/xprtrdma/frwr_ops.c
-+++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -558,28 +558,9 @@
- 	goto unmap;
- }
+ 	/* On retransmit, remove any previously registered chunks */
+ 	if (unlikely(!list_empty(&req->rl_registered)))
+-		r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
++		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt,
++						    &req->rl_registered);
  
--/* Use a slow, safe mechanism to invalidate all memory regions
-- * that were registered for "req".
-- */
--static void
--frwr_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
--		   bool sync)
--{
--	struct rpcrdma_mw *mw;
--
--	while (!list_empty(&req->rl_registered)) {
--		mw = rpcrdma_pop_mw(&req->rl_registered);
--		if (sync)
--			frwr_op_recover_mr(mw);
--		else
--			rpcrdma_defer_mr_recovery(mw);
--	}
--}
--
- const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
- 	.ro_map				= frwr_op_map,
- 	.ro_unmap_sync			= frwr_op_unmap_sync,
--	.ro_unmap_safe			= frwr_op_unmap_safe,
- 	.ro_recover_mr			= frwr_op_recover_mr,
- 	.ro_open			= frwr_op_open,
- 	.ro_maxpages			= frwr_op_maxpages,
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index e26a97d..74e0174 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -473,8 +473,6 @@ struct rpcrdma_memreg_ops {
- 				  struct rpcrdma_mw **);
- 	void		(*ro_unmap_sync)(struct rpcrdma_xprt *,
- 					 struct list_head *);
--	void		(*ro_unmap_safe)(struct rpcrdma_xprt *,
--					 struct rpcrdma_req *, bool);
- 	void		(*ro_recover_mr)(struct rpcrdma_mw *);
- 	int		(*ro_open)(struct rpcrdma_ia *,
- 				   struct rpcrdma_ep *,
+ 	rc = rpcrdma_marshal_req(r_xprt, rqst);
+ 	if (rc < 0)
 
