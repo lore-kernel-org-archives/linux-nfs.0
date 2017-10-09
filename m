@@ -1,103 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from foss.arm.com ([217.140.101.70]:33532 "EHLO foss.arm.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751635AbdJISRp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 9 Oct 2017 14:17:45 -0400
-Date: Mon, 9 Oct 2017 19:17:38 +0100
-From: Lorenzo Pieralisi <lorenzo.pieralisi@arm.com>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>
-Subject: net/sunrpc: v4.14-rc4 lockdep warning
-Message-ID: <20171009181738.GA30680@red-moon>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:35026 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753921AbdJIScS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 14:32:18 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "lorenzo.pieralisi@arm.com" <lorenzo.pieralisi@arm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jiangshanlai@gmail.com" <jiangshanlai@gmail.com>,
+        "tj@kernel.org" <tj@kernel.org>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>
+Subject: Re: net/sunrpc: v4.14-rc4 lockdep warning
+Date: Mon, 9 Oct 2017 18:32:13 +0000
+Message-ID: <1507573931.3516.3.camel@primarydata.com>
+References: <20171009181738.GA30680@red-moon>
+In-Reply-To: <20171009181738.GA30680@red-moon>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+T24gTW9uLCAyMDE3LTEwLTA5IGF0IDE5OjE3ICswMTAwLCBMb3JlbnpvIFBpZXJhbGlzaSB3cm90
+ZToNCj4gSGksDQo+IA0KPiBJIGhhdmUgcnVuIGludG8gdGhlIGxvY2tkZXAgd2FybmluZyBiZWxv
+dyB3aGlsZSBydW5uaW5nIHY0LjE0LXJjMy9yYzQNCj4gb24gYW4gQVJNNjQgZGVmY29uZmlnIEp1
+bm8gZGV2IGJvYXJkIC0gcmVwb3J0aW5nIGl0IHRvIGNoZWNrIHdoZXRoZXINCj4gaXQgaXMgYSBr
+bm93bi9nZW51aW5lIGlzc3VlLg0KPiANCj4gUGxlYXNlIGxldCBtZSBrbm93IGlmIHlvdSBuZWVk
+IGZ1cnRoZXIgZGVidWcgZGF0YSBvciBuZWVkIHNvbWUNCj4gc3BlY2lmaWMgdGVzdHMuDQo+IA0K
+PiBUaGFua3MsDQo+IExvcmVuem8NCj4gDQo+IFsgICAgNi4yMDkzODRdID09PT09PT09PT09PT09
+PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KPiBbICAgIDYuMjE1NTY5
+XSBXQVJOSU5HOiBwb3NzaWJsZSBjaXJjdWxhciBsb2NraW5nIGRlcGVuZGVuY3kgZGV0ZWN0ZWQN
+Cj4gWyAgICA2LjIyMTc1NV0gNC4xNC4wLXJjNCAjNTQgTm90IHRhaW50ZWQNCj4gWyAgICA2LjIy
+NTUwM10gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tDQo+IFsgICAgNi4yMzE2ODldIGt3b3JrZXIvNDowSC8zMiBpcyB0cnlpbmcgdG8gYWNxdWly
+ZSBsb2NrOg0KPiBbICAgIDYuMjM2ODMwXSAgKCgmdGFzay0+dS50a193b3JrKSl7Ky4rLn0sIGF0
+OiBbPGZmZmYwMDAwMDgwZTY0Y2M+XQ0KPiBwcm9jZXNzX29uZV93b3JrKzB4MWNjLzB4M2YwDQo+
+IFsgICAgNi4yNDU0NzJdIA0KPiAgICAgICAgICAgICAgICBidXQgdGFzayBpcyBhbHJlYWR5IGhv
+bGRpbmcgbG9jazoNCj4gWyAgICA2LjI1MTMwOV0gICgieHBydGlvZCIpeysuKy59LCBhdDogWzxm
+ZmZmMDAwMDA4MGU2NGNjPl0NCj4gcHJvY2Vzc19vbmVfd29yaysweDFjYy8weDNmMA0KPiBbICAg
+IDYuMjU5MTU4XSANCj4gICAgICAgICAgICAgICAgd2hpY2ggbG9jayBhbHJlYWR5IGRlcGVuZHMg
+b24gdGhlIG5ldyBsb2NrLg0KPiANCj4gWyAgICA2LjI2NzM0NV0gDQo+ICAgICAgICAgICAgICAg
+IHRoZSBleGlzdGluZyBkZXBlbmRlbmN5IGNoYWluIChpbiByZXZlcnNlIG9yZGVyKSBpczoNCj4g
+WyAgICA2LjI3NDgzNl0gDQo+ICAgICAgICAgICAgICAgIC0+ICMxICgieHBydGlvZCIpeysuKy59
+Og0KPiBbICAgIDYuMjc5OTAzXSAgICAgICAgbG9ja19hY3F1aXJlKzB4NmMvMHhiOA0KPiBbICAg
+IDYuMjgzOTE0XSAgICAgICAgZmx1c2hfd29yaysweDE4OC8weDI3MA0KPiBbICAgIDYuMjg3OTI2
+XSAgICAgICAgX19jYW5jZWxfd29ya190aW1lcisweDEyMC8weDE5OA0KPiBbICAgIDYuMjkyNzIw
+XSAgICAgICAgY2FuY2VsX3dvcmtfc3luYysweDEwLzB4MTgNCj4gWyAgICA2LjI5NzA4MV0gICAg
+ICAgIHhzX2Rlc3Ryb3krMHgzNC8weDU4DQo+IFsgICAgNi4zMDA5MTddICAgICAgICB4cHJ0X2Rl
+c3Ryb3krMHg4NC8weDkwDQo+IFsgICAgNi4zMDQ5MjddICAgICAgICB4cHJ0X3B1dCsweDM0LzB4
+NDANCj4gWyAgICA2LjMwODU4OV0gICAgICAgIHJwY190YXNrX3JlbGVhc2VfY2xpZW50KzB4NmMv
+MHg4MA0KPiBbICAgIDYuMzEzNTU3XSAgICAgICAgcnBjX3JlbGVhc2VfcmVzb3VyY2VzX3Rhc2sr
+MHgyYy8weDM4DQo+IFsgICAgNi4zMTg3ODZdICAgICAgICBfX3JwY19leGVjdXRlKzB4OWMvMHgy
+MTANCj4gWyAgICA2LjMyMjk3MV0gICAgICAgIHJwY19hc3luY19zY2hlZHVsZSsweDEwLzB4MTgN
+Cj4gWyAgICA2LjMyNzUwNF0gICAgICAgIHByb2Nlc3Nfb25lX3dvcmsrMHgyNDAvMHgzZjANCj4g
+WyAgICA2LjMzMjAzNl0gICAgICAgIHdvcmtlcl90aHJlYWQrMHg0OC8weDQyMA0KPiBbICAgIDYu
+MzM2MjIyXSAgICAgICAga3RocmVhZCsweDEyYy8weDE1OA0KPiBbICAgIDYuMzM5OTcyXSAgICAg
+ICAgcmV0X2Zyb21fZm9yaysweDEwLzB4MTgNCj4gWyAgICA2LjM0NDA2OF0gDQo+ICAgICAgICAg
+ICAgICAgIC0+ICMwICgoJnRhc2stPnUudGtfd29yaykpeysuKy59Og0KPiBbICAgIDYuMzQ5OTIw
+XSAgICAgICAgX19sb2NrX2FjcXVpcmUrMHgxMmVjLzB4MTRhOA0KPiBbICAgIDYuMzU0NDUxXSAg
+ICAgICAgbG9ja19hY3F1aXJlKzB4NmMvMHhiOA0KPiBbICAgIDYuMzU4NDYyXSAgICAgICAgcHJv
+Y2Vzc19vbmVfd29yaysweDIyYy8weDNmMA0KPiBbICAgIDYuMzYyOTk0XSAgICAgICAgd29ya2Vy
+X3RocmVhZCsweDQ4LzB4NDIwDQo+IFsgICAgNi4zNjcxODBdICAgICAgICBrdGhyZWFkKzB4MTJj
+LzB4MTU4DQo+IFsgICAgNi4zNzA5MjldICAgICAgICByZXRfZnJvbV9mb3JrKzB4MTAvMHgxOA0K
+PiBbICAgIDYuMzc1MDI1XSANCj4gICAgICAgICAgICAgICAgb3RoZXIgaW5mbyB0aGF0IG1pZ2h0
+IGhlbHAgdXMgZGVidWcgdGhpczoNCj4gDQo+IFsgICAgNi4zODMwMzhdICBQb3NzaWJsZSB1bnNh
+ZmUgbG9ja2luZyBzY2VuYXJpbzoNCj4gDQo+IFsgICAgNi4zODg5NjJdICAgICAgICBDUFUwICAg
+ICAgICAgICAgICAgICAgICBDUFUxDQo+IFsgICAgNi4zOTM0OTNdICAgICAgICAtLS0tICAgICAg
+ICAgICAgICAgICAgICAtLS0tDQo+IFsgICAgNi4zOTgwMjNdICAgbG9jaygieHBydGlvZCIpOw0K
+PiBbICAgIDYuNDAxMDgwXSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbG9jaygoJnRh
+c2stDQo+ID51LnRrX3dvcmspKTsNCj4gWyAgICA2LjQwNzQ0NF0gICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgIGxvY2soInhwcnRpb2QiKTsNCj4gWyAgICA2LjQxMzAyNF0gICBsb2NrKCgm
+dGFzay0+dS50a193b3JrKSk7DQo+IFsgICAgNi40MTY4NjNdIA0KPiAgICAgICAgICAgICAgICAg
+KioqIERFQURMT0NLICoqKg0KPiANCj4gWyAgICA2LjQyMjc4OV0gMSBsb2NrIGhlbGQgYnkga3dv
+cmtlci80OjBILzMyOg0KPiBbICAgIDYuNDI2OTcyXSAgIzA6ICAoInhwcnRpb2QiKXsrLisufSwg
+YXQ6IFs8ZmZmZjAwMDAwODBlNjRjYz5dDQo+IHByb2Nlc3Nfb25lX3dvcmsrMHgxY2MvMHgzZjAN
+Cj4gWyAgICA2LjQzNTI1OF0gDQo+ICAgICAgICAgICAgICAgIHN0YWNrIGJhY2t0cmFjZToNCj4g
+WyAgICA2LjQzOTYxOF0gQ1BVOiA0IFBJRDogMzIgQ29tbToga3dvcmtlci80OjBIIE5vdCB0YWlu
+dGVkIDQuMTQuMC0NCj4gcmM0ICM1NA0KPiBbICAgIDYuNDQ2MzI1XSBIYXJkd2FyZSBuYW1lOiBB
+Uk0gSnVubyBkZXZlbG9wbWVudCBib2FyZCAocjIpIChEVCkNCj4gWyAgICA2LjQ1MjI1Ml0gV29y
+a3F1ZXVlOiB4cHJ0aW9kIHJwY19hc3luY19zY2hlZHVsZQ0KPiBbICAgIDYuNDU2OTU5XSBDYWxs
+IHRyYWNlOg0KPiBbICAgIDYuNDU5NDA2XSBbPGZmZmYwMDAwMDgwODk0MzA+XSBkdW1wX2JhY2t0
+cmFjZSsweDAvMHgzYzgNCj4gWyAgICA2LjQ2NDgxMF0gWzxmZmZmMDAwMDA4MDg5ODBjPl0gc2hv
+d19zdGFjaysweDE0LzB4MjANCj4gWyAgICA2LjQ2OTg2Nl0gWzxmZmZmMDAwMDA4YTAxYTMwPl0g
+ZHVtcF9zdGFjaysweGI4LzB4ZjANCj4gWyAgICA2LjQ3NDkyMl0gWzxmZmZmMDAwMDA4MTE5NGFj
+Pl0gcHJpbnRfY2lyY3VsYXJfYnVnKzB4MjI0LzB4M2EwDQo+IFsgICAgNi40ODA4NDldIFs8ZmZm
+ZjAwMDAwODExYTMwND5dIGNoZWNrX3ByZXZfYWRkKzB4MzA0LzB4ODYwDQo+IFsgICAgNi40ODY0
+MjZdIFs8ZmZmZjAwMDAwODExYzhjND5dIF9fbG9ja19hY3F1aXJlKzB4MTJlYy8weDE0YTgNCj4g
+WyAgICA2LjQ5MjE3N10gWzxmZmZmMDAwMDA4MTFkMTQ0Pl0gbG9ja19hY3F1aXJlKzB4NmMvMHhi
+OA0KPiBbICAgIDYuNDk3NDA2XSBbPGZmZmYwMDAwMDgwZTY1MmM+XSBwcm9jZXNzX29uZV93b3Jr
+KzB4MjJjLzB4M2YwDQo+IFsgICAgNi41MDMxNTZdIFs8ZmZmZjAwMDAwODBlNjczOD5dIHdvcmtl
+cl90aHJlYWQrMHg0OC8weDQyMA0KPiBbICAgIDYuNTA4NTYwXSBbPGZmZmYwMDAwMDgwZWQ1YmM+
+XSBrdGhyZWFkKzB4MTJjLzB4MTU4DQo+IFsgICAgNi41MTM1MjhdIFs8ZmZmZjAwMDAwODA4NGQ0
+OD5dIHJldF9mcm9tX2ZvcmsrMHgxMC8weDE4DQo+IA0KDQpBZGRpbmcgVGVqdW4gYW5kIExhaSwg
+c2luY2UgdGhpcyBsb29rcyBsaWtlIGEgd29ya3F1ZXVlIGxvY2tpbmcgaXNzdWUuDQoNCkNoZWVy
+cw0KICBUcm9uZA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-I have run into the lockdep warning below while running v4.14-rc3/rc4
-on an ARM64 defconfig Juno dev board - reporting it to check whether
-it is a known/genuine issue.
-
-Please let me know if you need further debug data or need some
-specific tests.
-
-Thanks,
-Lorenzo
-
-[    6.209384] ======================================================
-[    6.215569] WARNING: possible circular locking dependency detected
-[    6.221755] 4.14.0-rc4 #54 Not tainted
-[    6.225503] ------------------------------------------------------
-[    6.231689] kworker/4:0H/32 is trying to acquire lock:
-[    6.236830]  ((&task->u.tk_work)){+.+.}, at: [<ffff0000080e64cc>] process_one_work+0x1cc/0x3f0
-[    6.245472] 
-               but task is already holding lock:
-[    6.251309]  ("xprtiod"){+.+.}, at: [<ffff0000080e64cc>] process_one_work+0x1cc/0x3f0
-[    6.259158] 
-               which lock already depends on the new lock.
-
-[    6.267345] 
-               the existing dependency chain (in reverse order) is:
-[    6.274836] 
-               -> #1 ("xprtiod"){+.+.}:
-[    6.279903]        lock_acquire+0x6c/0xb8
-[    6.283914]        flush_work+0x188/0x270
-[    6.287926]        __cancel_work_timer+0x120/0x198
-[    6.292720]        cancel_work_sync+0x10/0x18
-[    6.297081]        xs_destroy+0x34/0x58
-[    6.300917]        xprt_destroy+0x84/0x90
-[    6.304927]        xprt_put+0x34/0x40
-[    6.308589]        rpc_task_release_client+0x6c/0x80
-[    6.313557]        rpc_release_resources_task+0x2c/0x38
-[    6.318786]        __rpc_execute+0x9c/0x210
-[    6.322971]        rpc_async_schedule+0x10/0x18
-[    6.327504]        process_one_work+0x240/0x3f0
-[    6.332036]        worker_thread+0x48/0x420
-[    6.336222]        kthread+0x12c/0x158
-[    6.339972]        ret_from_fork+0x10/0x18
-[    6.344068] 
-               -> #0 ((&task->u.tk_work)){+.+.}:
-[    6.349920]        __lock_acquire+0x12ec/0x14a8
-[    6.354451]        lock_acquire+0x6c/0xb8
-[    6.358462]        process_one_work+0x22c/0x3f0
-[    6.362994]        worker_thread+0x48/0x420
-[    6.367180]        kthread+0x12c/0x158
-[    6.370929]        ret_from_fork+0x10/0x18
-[    6.375025] 
-               other info that might help us debug this:
-
-[    6.383038]  Possible unsafe locking scenario:
-
-[    6.388962]        CPU0                    CPU1
-[    6.393493]        ----                    ----
-[    6.398023]   lock("xprtiod");
-[    6.401080]                                lock((&task->u.tk_work));
-[    6.407444]                                lock("xprtiod");
-[    6.413024]   lock((&task->u.tk_work));
-[    6.416863] 
-                *** DEADLOCK ***
-
-[    6.422789] 1 lock held by kworker/4:0H/32:
-[    6.426972]  #0:  ("xprtiod"){+.+.}, at: [<ffff0000080e64cc>] process_one_work+0x1cc/0x3f0
-[    6.435258] 
-               stack backtrace:
-[    6.439618] CPU: 4 PID: 32 Comm: kworker/4:0H Not tainted 4.14.0-rc4 #54
-[    6.446325] Hardware name: ARM Juno development board (r2) (DT)
-[    6.452252] Workqueue: xprtiod rpc_async_schedule
-[    6.456959] Call trace:
-[    6.459406] [<ffff000008089430>] dump_backtrace+0x0/0x3c8
-[    6.464810] [<ffff00000808980c>] show_stack+0x14/0x20
-[    6.469866] [<ffff000008a01a30>] dump_stack+0xb8/0xf0
-[    6.474922] [<ffff0000081194ac>] print_circular_bug+0x224/0x3a0
-[    6.480849] [<ffff00000811a304>] check_prev_add+0x304/0x860
-[    6.486426] [<ffff00000811c8c4>] __lock_acquire+0x12ec/0x14a8
-[    6.492177] [<ffff00000811d144>] lock_acquire+0x6c/0xb8
-[    6.497406] [<ffff0000080e652c>] process_one_work+0x22c/0x3f0
-[    6.503156] [<ffff0000080e6738>] worker_thread+0x48/0x420
-[    6.508560] [<ffff0000080ed5bc>] kthread+0x12c/0x158
-[    6.513528] [<ffff000008084d48>] ret_from_fork+0x10/0x18
