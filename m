@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:37483 "EHLO
+Received: from mail-io0-f194.google.com ([209.85.223.194]:37599 "EHLO
         mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754365AbdJIQD2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 12:03:28 -0400
-Subject: [PATCH v1 1/3] xprtrdma: Don't defer fencing an async RPC's chunks
+        with ESMTP id S1754365AbdJIQDo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 12:03:44 -0400
+Subject: [PATCH v1 3/3] xprtrdma: Remove ro_unmap_safe
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 09 Oct 2017 12:03:26 -0400
-Message-ID: <20171009160326.18726.9300.stgit@manet.1015granger.net>
+Date: Mon, 09 Oct 2017 12:03:42 -0400
+Message-ID: <20171009160342.18726.6012.stgit@manet.1015granger.net>
 In-Reply-To: <20171009155524.18726.32086.stgit@manet.1015granger.net>
 References: <20171009155524.18726.32086.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,40 +16,92 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In current kernels, waiting in xprt_release appears to be safe to
-do. I had erroneously believed that for ASYNC RPCs, waiting of any
-kind in xprt_release->xprt_rdma_free would result in deadlock. I've
-done injection testing and consulted with Trond to confirm that
-waiting in the RPC release path is safe.
-
-For the very few times where RPC resources haven't yet been released
-earlier by the reply handler, it is safe to wait synchronously in
-xprt_rdma_free for invalidation rather than defering it to MR
-recovery.
-
-Note: When the QP is error state, posting a LocalInvalidate should
-flush and mark the MR as bad. There is no way the remote HCA can
-access that MR via a QP in error state, so it is effectively already
-inaccessible and thus safe for the Upper Layer to access. The next
-time the MR is used it should be recognized and cleaned up properly
-by frwr_op_map.
+Clean up: There are no remaining callers of this method.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/xprtrdma/fmr_ops.c   |   19 -------------------
+ net/sunrpc/xprtrdma/frwr_ops.c  |   19 -------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 --
+ 3 files changed, 40 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index c84e2b6..8cf5ccf 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -686,7 +686,7 @@
- 	dprintk("RPC:       %s: called on 0x%p\n", __func__, req->rl_reply);
- 
- 	if (!list_empty(&req->rl_registered))
--		ia->ri_ops->ro_unmap_safe(r_xprt, req, !RPC_IS_ASYNC(task));
-+		ia->ri_ops->ro_unmap_sync(r_xprt, &req->rl_registered);
- 	rpcrdma_unmap_sges(ia, req);
- 	rpcrdma_buffer_put(req);
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 6c71513..30bf713 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -305,28 +305,9 @@ enum {
+ 	}
  }
+ 
+-/* Use a slow, safe mechanism to invalidate all memory regions
+- * that were registered for "req".
+- */
+-static void
+-fmr_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+-		  bool sync)
+-{
+-	struct rpcrdma_mw *mw;
+-
+-	while (!list_empty(&req->rl_registered)) {
+-		mw = rpcrdma_pop_mw(&req->rl_registered);
+-		if (sync)
+-			fmr_op_recover_mr(mw);
+-		else
+-			rpcrdma_defer_mr_recovery(mw);
+-	}
+-}
+-
+ const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
+ 	.ro_map				= fmr_op_map,
+ 	.ro_unmap_sync			= fmr_op_unmap_sync,
+-	.ro_unmap_safe			= fmr_op_unmap_safe,
+ 	.ro_recover_mr			= fmr_op_recover_mr,
+ 	.ro_open			= fmr_op_open,
+ 	.ro_maxpages			= fmr_op_maxpages,
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index df062e0..3053fb0 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -558,28 +558,9 @@
+ 	goto unmap;
+ }
+ 
+-/* Use a slow, safe mechanism to invalidate all memory regions
+- * that were registered for "req".
+- */
+-static void
+-frwr_op_unmap_safe(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+-		   bool sync)
+-{
+-	struct rpcrdma_mw *mw;
+-
+-	while (!list_empty(&req->rl_registered)) {
+-		mw = rpcrdma_pop_mw(&req->rl_registered);
+-		if (sync)
+-			frwr_op_recover_mr(mw);
+-		else
+-			rpcrdma_defer_mr_recovery(mw);
+-	}
+-}
+-
+ const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
+ 	.ro_map				= frwr_op_map,
+ 	.ro_unmap_sync			= frwr_op_unmap_sync,
+-	.ro_unmap_safe			= frwr_op_unmap_safe,
+ 	.ro_recover_mr			= frwr_op_recover_mr,
+ 	.ro_open			= frwr_op_open,
+ 	.ro_maxpages			= frwr_op_maxpages,
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index e26a97d..74e0174 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -473,8 +473,6 @@ struct rpcrdma_memreg_ops {
+ 				  struct rpcrdma_mw **);
+ 	void		(*ro_unmap_sync)(struct rpcrdma_xprt *,
+ 					 struct list_head *);
+-	void		(*ro_unmap_safe)(struct rpcrdma_xprt *,
+-					 struct rpcrdma_req *, bool);
+ 	void		(*ro_recover_mr)(struct rpcrdma_mw *);
+ 	int		(*ro_open)(struct rpcrdma_ia *,
+ 				   struct rpcrdma_ep *,
 
