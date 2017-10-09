@@ -1,49 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:49817 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754365AbdJIQDh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 12:03:37 -0400
-Subject: [PATCH v1 2/3] xprtrdma: Use ro_unmap_sync in xprt_rdma_send_request
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 09 Oct 2017 12:03:34 -0400
-Message-ID: <20171009160334.18726.33163.stgit@manet.1015granger.net>
-In-Reply-To: <20171009155524.18726.32086.stgit@manet.1015granger.net>
-References: <20171009155524.18726.32086.stgit@manet.1015granger.net>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:20168 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754784AbdJIRfl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Oct 2017 13:35:41 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client changes
+Date: Mon, 9 Oct 2017 17:35:36 +0000
+Message-ID: <1507570534.25956.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The "safe" version of ro_unmap is used here to avoid waiting
-unnecessarily. However:
-
- - It is safe to wait. After all, we have to wait anyway when using
-   FMR to register memory.
-
- - This case is rare: it occurs only after a reconnect.
-
-By switching this call site to ro_unmap_sync, the final use of
-ro_unmap_safe is removed.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/transport.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 8cf5ccf..eb46d24 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -728,7 +728,8 @@
- 
- 	/* On retransmit, remove any previously registered chunks */
- 	if (unlikely(!list_empty(&req->rl_registered)))
--		r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
-+		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt,
-+						    &req->rl_registered);
- 
- 	rc = rpcrdma_marshal_req(r_xprt, rqst);
- 	if (rc < 0)
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgOWU2NjMxN2Qz
+YzkyZGRhYWIzMzBjMTI1ZGZlOWQwNmVlZTI2OGFmZjoNCg0KICBMaW51eCA0LjE0LXJjMyAoMjAx
+Ny0xMC0wMSAxNDo1NDo1NCAtMDcwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgZ2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE0LTMNCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
+Z2VzIHVwIHRvIGU4ZmEzM2E2ZjZjNzY4ODU5MTU0MmRiOTU1Nzk0YjY5YjhjZWNjNTU6DQoNCiAg
+TkZTdjQvcG5mczogRml4IGFuIGluZmluaXRlIGxheW91dGdldCBsb29wICgyMDE3LTEwLTA0IDE0
+OjA2OjU0IC0wNDAwKQ0KDQotLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpORlMgY2xpZW50IGJ1Z2ZpeGVzIGZvciBMaW51eCA0
+LjE0DQoNCkhpZ2h0bGlnaHRzIGluY2x1ZGU6DQoNCnN0YWJsZSBmaXhlczoNCi0gbmZzL2ZpbGVs
+YXlvdXQ6IGZpeCBvb3BzIHdoZW4gZnJlZWluZyBmaWxlbGF5b3V0IHNlZ21lbnQNCi0gTkZTOiBG
+aXggdW5pbml0aWFsaXplZCBycGNfd2FpdF9xdWV1ZQ0KDQpidWdmaXhlczoNCi0gTkZTdjQvcG5m
+czogRml4IGFuIGluZmluaXRlIGxheW91dGdldCBsb29wDQotIG5mczogUlBDX01BWF9BVVRIX1NJ
+WkUgaXMgaW4gYnl0ZXMNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KQmVuamFtaW4gQ29kZGluZ3RvbiAoMSk6DQogICAg
+ICBORlM6IEZpeCB1bmluaXRpYWxpemVkIHJwY193YWl0X3F1ZXVlDQoNCkNvbGluIElhbiBLaW5n
+ICgxKToNCiAgICAgIHN1bnJwYzogcmVtb3ZlIHJlZHVuZGFudCBpbml0aWFsaXphdGlvbiBvZiBz
+b2NrDQoNCkRhbiBDYXJwZW50ZXIgKDEpOg0KICAgICAgTkZTOiBDbGVhbnVwIGVycm9yIGhhbmRs
+aW5nIGluIG5mc19pZG1hcF9yZXF1ZXN0X2tleSgpDQoNCkouIEJydWNlIEZpZWxkcyAoMSk6DQog
+ICAgICBuZnM6IFJQQ19NQVhfQVVUSF9TSVpFIGlzIGluIGJ5dGVzDQoNClNjb3R0IE1heWhldyAo
+MSk6DQogICAgICBuZnMvZmlsZWxheW91dDogZml4IG9vcHMgd2hlbiBmcmVlaW5nIGZpbGVsYXlv
+dXQgc2VnbWVudA0KDQpUcm9uZCBNeWtsZWJ1c3QgKDEpOg0KICAgICAgTkZTdjQvcG5mczogRml4
+IGFuIGluZmluaXRlIGxheW91dGdldCBsb29wDQoNCiBmcy9uZnMvY2xpZW50LmMgICAgICAgICAg
+ICAgICAgfCAyICstDQogZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jIHwgMyArKy0NCiBm
+cy9uZnMvbmZzNGlkbWFwLmMgICAgICAgICAgICAgfCAyICstDQogZnMvbmZzL25mczRwcm9jLmMg
+ICAgICAgICAgICAgIHwgMyArLS0NCiBmcy9uZnMvbmZzNHhkci5jICAgICAgICAgICAgICAgfCA0
+ICsrLS0NCiBuZXQvc3VucnBjL3hwcnRzb2NrLmMgICAgICAgICAgfCAyICstDQogNiBmaWxlcyBj
+aGFuZ2VkLCA4IGluc2VydGlvbnMoKyksIDggZGVsZXRpb25zKC0pDQotLSANClRyb25kIE15a2xl
+YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
+bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
