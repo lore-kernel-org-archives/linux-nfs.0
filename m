@@ -1,214 +1,317 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f48.google.com ([209.85.213.48]:55417 "EHLO
-        mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932437AbdJJVOb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 17:14:31 -0400
-Received: by mail-vk0-f48.google.com with SMTP id b5so2971878vkf.12
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Oct 2017 14:14:31 -0700 (PDT)
+Received: from mail-io0-f180.google.com ([209.85.223.180]:50351 "EHLO
+        mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755515AbdJJVwj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 17:52:39 -0400
+Received: by mail-io0-f180.google.com with SMTP id 97so311854iok.7
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Oct 2017 14:52:39 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4.1: Fix up replays of interrupted requests
+Date: Tue, 10 Oct 2017 17:52:34 -0400
+Message-Id: <20171010215234.5634-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <20171009155804.GA1586@parsley.fieldses.org>
-References: <20170928172945.50780-1-kolga@netapp.com> <20170928172945.50780-9-kolga@netapp.com>
- <20170928183846.GG10182@parsley.fieldses.org> <CAN-5tyFfTZ=CFsyM8CWWXkGt8jvLBV+qH60Yd-X4p5ohK5pK=g@mail.gmail.com>
- <20171009155804.GA1586@parsley.fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 10 Oct 2017 17:14:29 -0400
-Message-ID: <CAN-5tyGO384JprQoSmwc_6LaLLHhGbYEJm8heZqSe6ChrK3BKw@mail.gmail.com>
-Subject: Re: [PATCH v4 08/10] NFSD handle OFFLOAD_CANCEL op
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 9, 2017 at 11:58 AM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Mon, Oct 09, 2017 at 10:53:13AM -0400, Olga Kornievskaia wrote:
->> On Thu, Sep 28, 2017 at 2:38 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> > On Thu, Sep 28, 2017 at 01:29:43PM -0400, Olga Kornievskaia wrote:
->> >> Upon receiving OFFLOAD_CANCEL search the list of copy stateids,
->> >> if found mark it cancelled. If copy has more interations to
->> >> call vfs_copy_file_range, it'll stop it. Server won't be sending
->> >> CB_OFFLOAD to the client since it received a cancel.
->> >>
->> >> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> >> ---
->> >>  fs/nfsd/nfs4proc.c  | 26 ++++++++++++++++++++++++--
->> >>  fs/nfsd/nfs4state.c | 16 ++++++++++++++++
->> >>  fs/nfsd/state.h     |  4 ++++
->> >>  3 files changed, 44 insertions(+), 2 deletions(-)
->> >>
->> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> >> index 3cddebb..f4f3d93 100644
->> >> --- a/fs/nfsd/nfs4proc.c
->> >> +++ b/fs/nfsd/nfs4proc.c
->> >> @@ -1139,6 +1139,7 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
->> >>       size_t bytes_to_copy;
->> >>       u64 src_pos = copy->cp_src_pos;
->> >>       u64 dst_pos = copy->cp_dst_pos;
->> >> +     bool cancelled = false;
->> >>
->> >>       do {
->> >>               bytes_to_copy = min_t(u64, bytes_total, MAX_RW_COUNT);
->> >> @@ -1150,7 +1151,12 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
->> >>               copy->cp_res.wr_bytes_written += bytes_copied;
->> >>               src_pos += bytes_copied;
->> >>               dst_pos += bytes_copied;
->> >> -     } while (bytes_total > 0 && !copy->cp_synchronous);
->> >> +             if (!copy->cp_synchronous) {
->> >> +                     spin_lock(&copy->cps->cp_lock);
->> >> +                     cancelled = copy->cps->cp_cancelled;
->> >> +                     spin_unlock(&copy->cps->cp_lock);
->> >> +             }
->> >> +     } while (bytes_total > 0 && !copy->cp_synchronous && !cancelled);
->> >>       return bytes_copied;
->> >
->> > I'd rather we sent a signal, and then we won't need this
->> > logic--vfs_copy_range() will just return EINTR or something.
->>
->> Hi Bruce,
->>
->> Now that I've implemented using the kthread instead of the workqueue,
->> I don't see that it can provide any better  guarantee than the work
->> queue. vfs_copy_range() is not interrupted in the middle and returning
->> the EINTR. The function that runs the kthread, it has to at some point
->> call signalled()/kthread_should_stop() function to see if it was
->> signaled and use it to 'stop working instead of continuing on'.
->>
->> If I were to remove the loop and check (if signaled() ||
->> kthread_should_stop()) before and after calling the
->> vfs_copy_file_range(), the copy will either not start if the
->> OFFLOAD_CANCEL was received before copy started or the whole copy
->> would happen.
->>
->> Even with the loop, I'd be checking after every call for
->> vfs_copy_file_range() just like it was in the current version with the
->> workqueue.
->>
->> Please advise if you still want the kthread-based implementation or
->> keep the workqueue.
->
-> That's interesting.
->
-> To me that sounds like a bug somewhere under vfs_copy_file_range().
-> splice_direct_to_actor() can do long-running copies, so it should be
-> interruptible, shouldn't it?
+If the previous request on a slot was interrupted before it was
+processed by the server, then our slot sequence number may be out of whack,
+and so we try the next operation using the old sequence number.
 
-So I found it. Yes do_splice_direct() will react to somebody sending a
-ctrl-c and will stop. It calls signal_pendning(). However, in our
-case, I'm calling kthread_stop() and that sets a different flag and
-one needs to also check for kthread_should_stop() as a stopping
-condition. splice.c lacks that.
+The problem with this, is that not all servers check to see that the
+client is replaying the same operations as previously when they decide
+to go to the replay cache, and so instead of the expected error of
+NFS4ERR_SEQ_FALSE_RETRY, we get a replay of the old reply, which could
+(if the operations match up) be mistaken by the client for a new reply.
 
-I hope they can agree that it's a bug. I don't have any luck with VFS...
+To fix this, we attempt to send a COMPOUND containing only the SEQUENCE op
+in order to resync our slot sequence number.
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4_fs.h  |   2 +-
+ fs/nfs/nfs4proc.c | 138 ++++++++++++++++++++++++++++++++++++------------------
+ 2 files changed, 93 insertions(+), 47 deletions(-)
 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index ac4f10b7f6c1..b547d935aaf0 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -464,7 +464,7 @@ extern void nfs_increment_open_seqid(int status, struct nfs_seqid *seqid);
+ extern void nfs_increment_lock_seqid(int status, struct nfs_seqid *seqid);
+ extern void nfs_release_seqid(struct nfs_seqid *seqid);
+ extern void nfs_free_seqid(struct nfs_seqid *seqid);
+-extern int nfs4_setup_sequence(const struct nfs_client *client,
++extern int nfs4_setup_sequence(struct nfs_client *client,
+ 				struct nfs4_sequence_args *args,
+ 				struct nfs4_sequence_res *res,
+ 				struct rpc_task *task);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f90090e8c959..f5069381d8ae 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -96,6 +96,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_open_context *ctx, struct nfs4_label *ilabel,
+ 			    struct nfs4_label *olabel);
+ #ifdef CONFIG_NFS_V4_1
++static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
++		struct rpc_cred *cred,
++		struct nfs4_slot *slot,
++		bool is_privileged);
+ static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
+ 		struct rpc_cred *);
+ static int nfs41_free_stateid(struct nfs_server *, const nfs4_stateid *,
+@@ -644,13 +648,14 @@ static int nfs40_sequence_done(struct rpc_task *task,
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
+-static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
++static void nfs41_release_slot(struct nfs4_slot *slot)
+ {
+ 	struct nfs4_session *session;
+ 	struct nfs4_slot_table *tbl;
+-	struct nfs4_slot *slot = res->sr_slot;
+ 	bool send_new_highest_used_slotid = false;
+ 
++	if (!slot)
++		return;
+ 	tbl = slot->table;
+ 	session = tbl->session;
+ 
+@@ -676,13 +681,18 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 		send_new_highest_used_slotid = false;
+ out_unlock:
+ 	spin_unlock(&tbl->slot_tbl_lock);
+-	res->sr_slot = NULL;
+ 	if (send_new_highest_used_slotid)
+ 		nfs41_notify_server(session->clp);
+ 	if (waitqueue_active(&tbl->slot_waitq))
+ 		wake_up_all(&tbl->slot_waitq);
+ }
+ 
++static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
++{
++	nfs41_release_slot(res->sr_slot);
++	res->sr_slot = NULL;
++}
++
+ static int nfs41_sequence_process(struct rpc_task *task,
+ 		struct nfs4_sequence_res *res)
+ {
+@@ -710,13 +720,6 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 	/* Check the SEQUENCE operation status */
+ 	switch (res->sr_status) {
+ 	case 0:
+-		/* If previous op on slot was interrupted and we reused
+-		 * the seq# and got a reply from the cache, then retry
+-		 */
+-		if (task->tk_status == -EREMOTEIO && interrupted) {
+-			++slot->seq_nr;
+-			goto retry_nowait;
+-		}
+ 		/* Update the slot's sequence and clientid lease timer */
+ 		slot->seq_done = 1;
+ 		clp = session->clp;
+@@ -750,16 +753,16 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 		 * The slot id we used was probably retired. Try again
+ 		 * using a different slot id.
+ 		 */
++		if (slot->seq_nr < slot->table->target_highest_slotid)
++			goto session_recover;
+ 		goto retry_nowait;
+ 	case -NFS4ERR_SEQ_MISORDERED:
+ 		/*
+ 		 * Was the last operation on this sequence interrupted?
+ 		 * If so, retry after bumping the sequence number.
+ 		 */
+-		if (interrupted) {
+-			++slot->seq_nr;
+-			goto retry_nowait;
+-		}
++		if (interrupted)
++			goto retry_new_seq;
+ 		/*
+ 		 * Could this slot have been previously retired?
+ 		 * If so, then the server may be expecting seq_nr = 1!
+@@ -768,10 +771,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 			slot->seq_nr = 1;
+ 			goto retry_nowait;
+ 		}
+-		break;
++		goto session_recover;
+ 	case -NFS4ERR_SEQ_FALSE_RETRY:
+-		++slot->seq_nr;
+-		goto retry_nowait;
++		if (interrupted)
++			goto retry_new_seq;
++		goto session_recover;
+ 	default:
+ 		/* Just update the slot sequence no. */
+ 		slot->seq_done = 1;
+@@ -781,6 +785,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
+ out_noaction:
+ 	return ret;
++session_recover:
++	nfs4_schedule_session_recovery(session, res->sr_status);
++	goto retry_nowait;
++retry_new_seq:
++	++slot->seq_nr;
+ retry_nowait:
+ 	if (rpc_restart_call_prepare(task)) {
+ 		nfs41_sequence_free_slot(res);
+@@ -879,7 +888,33 @@ EXPORT_SYMBOL_GPL(nfs4_sequence_done);
+ 
+ #endif	/* !CONFIG_NFS_V4_1 */
+ 
+-int nfs4_setup_sequence(const struct nfs_client *client,
++static void
++nfs41_sequence_process_interrupted(struct nfs_client *client,
++		struct nfs4_slot *slot, struct rpc_cred *cred)
++{
++	struct rpc_task *task;
++
++	task = _nfs41_proc_sequence(client, cred, slot, true);
++	if (!IS_ERR(task))
++		rpc_put_task_async(task);
++}
++
++static
++void nfs4_sequence_attach_slot(struct nfs4_sequence_args *args,
++		struct nfs4_sequence_res *res,
++		struct nfs4_slot *slot)
++{
++	slot->privileged = args->sa_privileged ? 1 : 0;
++	args->sa_slot = slot;
++
++	res->sr_slot = slot;
++	res->sr_timestamp = jiffies;
++	res->sr_status_flags = 0;
++	res->sr_status = 1;
++
++}
++
++int nfs4_setup_sequence(struct nfs_client *client,
+ 			struct nfs4_sequence_args *args,
+ 			struct nfs4_sequence_res *res,
+ 			struct rpc_task *task)
+@@ -897,29 +932,28 @@ int nfs4_setup_sequence(const struct nfs_client *client,
+ 		task->tk_timeout = 0;
+ 	}
+ 
+-	spin_lock(&tbl->slot_tbl_lock);
+-	/* The state manager will wait until the slot table is empty */
+-	if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
+-		goto out_sleep;
++	for (;;) {
++		spin_lock(&tbl->slot_tbl_lock);
++		/* The state manager will wait until the slot table is empty */
++		if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
++			goto out_sleep;
++
++		slot = nfs4_alloc_slot(tbl);
++		if (IS_ERR(slot)) {
++			/* Try again in 1/4 second */
++			if (slot == ERR_PTR(-ENOMEM))
++				task->tk_timeout = HZ >> 2;
++			goto out_sleep;
++		}
++		spin_unlock(&tbl->slot_tbl_lock);
+ 
+-	slot = nfs4_alloc_slot(tbl);
+-	if (IS_ERR(slot)) {
+-		/* Try again in 1/4 second */
+-		if (slot == ERR_PTR(-ENOMEM))
+-			task->tk_timeout = HZ >> 2;
+-		goto out_sleep;
++		if (likely(!slot->interrupted))
++			break;
++		nfs41_sequence_process_interrupted(client,
++				slot, task->tk_msg.rpc_cred);
+ 	}
+-	spin_unlock(&tbl->slot_tbl_lock);
+ 
+-	slot->privileged = args->sa_privileged ? 1 : 0;
+-	args->sa_slot = slot;
+-
+-	res->sr_slot = slot;
+-	if (session) {
+-		res->sr_timestamp = jiffies;
+-		res->sr_status_flags = 0;
+-		res->sr_status = 1;
+-	}
++	nfs4_sequence_attach_slot(args, res, slot);
+ 
+ 	trace_nfs4_setup_sequence(session, args);
+ out_start:
+@@ -8135,6 +8169,7 @@ static const struct rpc_call_ops nfs41_sequence_ops = {
+ 
+ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+ 		struct rpc_cred *cred,
++		struct nfs4_slot *slot,
+ 		bool is_privileged)
+ {
+ 	struct nfs4_sequence_data *calldata;
+@@ -8148,15 +8183,18 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+ 		.callback_ops = &nfs41_sequence_ops,
+ 		.flags = RPC_TASK_ASYNC | RPC_TASK_TIMEOUT,
+ 	};
++	struct rpc_task *ret;
+ 
++	ret = ERR_PTR(-EIO);
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+-		return ERR_PTR(-EIO);
++		goto out_err;
++
++	ret = ERR_PTR(-ENOMEM);
+ 	calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
+-	if (calldata == NULL) {
+-		nfs_put_client(clp);
+-		return ERR_PTR(-ENOMEM);
+-	}
++	if (calldata == NULL)
++		goto out_put_clp;
+ 	nfs4_init_sequence(&calldata->args, &calldata->res, 0);
++	nfs4_sequence_attach_slot(&calldata->args, &calldata->res, slot);
+ 	if (is_privileged)
+ 		nfs4_set_sequence_privileged(&calldata->args);
+ 	msg.rpc_argp = &calldata->args;
+@@ -8164,7 +8202,15 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+ 	calldata->clp = clp;
+ 	task_setup_data.callback_data = calldata;
+ 
+-	return rpc_run_task(&task_setup_data);
++	ret = rpc_run_task(&task_setup_data);
++	if (IS_ERR(ret))
++		goto out_err;
++	return ret;
++out_put_clp:
++	nfs_put_client(clp);
++out_err:
++	nfs41_release_slot(slot);
++	return ret;
+ }
+ 
+ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cred, unsigned renew_flags)
+@@ -8174,7 +8220,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
+ 
+ 	if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
+ 		return -EAGAIN;
+-	task = _nfs41_proc_sequence(clp, cred, false);
++	task = _nfs41_proc_sequence(clp, cred, NULL, false);
+ 	if (IS_ERR(task))
+ 		ret = PTR_ERR(task);
+ 	else
+@@ -8188,7 +8234,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+ 	struct rpc_task *task;
+ 	int ret;
+ 
+-	task = _nfs41_proc_sequence(clp, cred, true);
++	task = _nfs41_proc_sequence(clp, cred, NULL, true);
+ 	if (IS_ERR(task)) {
+ 		ret = PTR_ERR(task);
+ 		goto out;
+-- 
+2.13.6
 
->
-> --b.
->
->>
->> > That will help us get rid of the 4MB-at-a-time loop.  And will mean we
->> > don't need to wait for the next 4MB copy to finish before stopping the
->> > loop.  Normally I wouldn't expect that to take too long, but it might.
->> > And a situation where a cancel is sent is a situation where we're
->> > probably more likely to have some problem slowing down the copy.
->> >
->> > Also: don't we want OFFLOAD_CANCEL to wait until the cancel has actually
->> > taken effect before returning?
->> >
->> > I can't see any language in the spec to that affect, but it would seem
->> > surprising to me if I got back a succesful response to OFFLOAD_CANCEL
->> > and then noticed that the target file was still changing.
->> >
->> > --b.
->> >
->> >>  }
->> >>
->> >> @@ -1198,6 +1204,10 @@ static void nfsd4_do_async_copy(struct work_struct *work)
->> >>       struct nfsd4_copy *cb_copy;
->> >>
->> >>       copy->nfserr = nfsd4_do_copy(copy, 0);
->> >> +
->> >> +     if (copy->cps->cp_cancelled)
->> >> +             goto out;
->> >> +
->> >>       cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
->> >>       if (!cb_copy)
->> >>               goto out;
->> >> @@ -1269,7 +1279,19 @@ static void nfsd4_do_async_copy(struct work_struct *work)
->> >>                    struct nfsd4_compound_state *cstate,
->> >>                    union nfsd4_op_u *u)
->> >>  {
->> >> -     return 0;
->> >> +     struct nfsd4_offload_status *os = &u->offload_status;
->> >> +     struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
->> >> +     __be32 status;
->> >> +     struct nfs4_cp_state *state = NULL;
->> >> +
->> >> +     status = find_cp_state(nn, &os->stateid, &state);
->> >> +     if (state) {
->> >> +             spin_lock(&state->cp_lock);
->> >> +             state->cp_cancelled = true;
->> >> +             spin_unlock(&state->cp_lock);
->> >> +     }
->> >> +
->> >> +     return status;
->> >>  }
->> >>
->> >>  static __be32
->> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> >> index be59baf..97ab3f8 100644
->> >> --- a/fs/nfsd/nfs4state.c
->> >> +++ b/fs/nfsd/nfs4state.c
->> >> @@ -752,6 +752,22 @@ static void nfs4_free_deleg(struct nfs4_stid *stid)
->> >>       atomic_long_dec(&num_delegations);
->> >>  }
->> >>
->> >> +__be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
->> >> +                         struct nfs4_cp_state **cps)
->> >> +{
->> >> +     struct nfs4_cp_state *state = NULL;
->> >> +
->> >> +     if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
->> >> +             return nfserr_bad_stateid;
->> >> +     spin_lock(&nn->s2s_cp_lock);
->> >> +     state = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
->> >> +     spin_unlock(&nn->s2s_cp_lock);
->> >> +     if (!state)
->> >> +             return nfserr_bad_stateid;
->> >> +     *cps = state;
->> >> +     return 0;
->> >> +}
->> >> +
->> >>  /*
->> >>   * When we recall a delegation, we should be careful not to hand it
->> >>   * out again straight away.
->> >> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> >> index 8724955..7a070d5 100644
->> >> --- a/fs/nfsd/state.h
->> >> +++ b/fs/nfsd/state.h
->> >> @@ -111,6 +111,8 @@ struct nfs4_cp_state {
->> >>       stateid_t               cp_stateid;
->> >>       struct list_head        cp_list;        /* per parent nfs4_stid */
->> >>       struct nfs4_stid        *cp_p_stid;     /* pointer to parent */
->> >> +     bool                    cp_cancelled;   /* copy cancelled */
->> >> +     spinlock_t              cp_lock;
->> >>  };
->> >>
->> >>  /*
->> >> @@ -647,6 +649,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
->> >>  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
->> >>  extern int nfsd4_create_copy_queue(void);
->> >>  extern void nfsd4_destroy_copy_queue(void);
->> >> +extern __be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
->> >> +                     struct nfs4_cp_state **cps);
->> >>
->> >>  struct nfs4_file *find_file(struct knfsd_fh *fh);
->> >>  void put_nfs4_file(struct nfs4_file *fi);
->> >> --
->> >> 1.8.3.1
->> >>
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
