@@ -1,80 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f177.google.com ([209.85.216.177]:50224 "EHLO
-        mail-qt0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932075AbdJJNiX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 09:38:23 -0400
-Received: by mail-qt0-f177.google.com with SMTP id f15so51231359qtf.7
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Oct 2017 06:38:22 -0700 (PDT)
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:33230 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932089AbdJJODn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 10:03:43 -0400
+Date: Tue, 10 Oct 2017 07:03:36 -0700
+From: "tj@kernel.org" <tj@kernel.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "lorenzo.pieralisi@arm.com" <lorenzo.pieralisi@arm.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jiangshanlai@gmail.com" <jiangshanlai@gmail.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>
+Subject: Re: net/sunrpc: v4.14-rc4 lockdep warning
+Message-ID: <20171010140336.GI3301751@devbig577.frc2.facebook.com>
+References: <20171009181738.GA30680@red-moon>
+ <1507573931.3516.3.camel@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <20171010095107.5lzkjibyrxbwfpvp@ws.net.home>
-References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
- <150730499269.6182.8121149524716523148.stgit@warthog.procyon.org.uk>
- <CAOssrKcAJTJv-VjaY+Dcn_zEJBoMVSPStK5H6inWyq2uiv0f-A@mail.gmail.com> <20171010095107.5lzkjibyrxbwfpvp@ws.net.home>
-From: Miklos Szeredi <mszeredi@redhat.com>
-Date: Tue, 10 Oct 2017 15:38:21 +0200
-Message-ID: <CAOssrKeGsgEqW+XCf_UAkH5XamWqo5a549wFHyHSC1OUzVvJag@mail.gmail.com>
-Subject: Re: [PATCH 06/14] VFS: Implement fsmount() to effect a pre-configured
- mount [ver #6]
-To: Karel Zak <kzak@redhat.com>
-Cc: David Howells <dhowells@redhat.com>,
-        viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1507573931.3516.3.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 10, 2017 at 11:51 AM, Karel Zak <kzak@redhat.com> wrote:
-> On Tue, Oct 10, 2017 at 10:00:01AM +0200, Miklos Szeredi wrote:
->> > +
->> > +       if (flags & MS_RDONLY)
->> > +               mnt_flags |= MNT_READONLY;
->> > +       if (flags & MS_NOSUID)
->> > +               mnt_flags |= MNT_NOSUID;
->> > +       if (flags & MS_NODEV)
->> > +               mnt_flags |= MNT_NODEV;
->> > +       if (flags & MS_NOEXEC)
->> > +               mnt_flags |= MNT_NOEXEC;
->> > +       if (flags & MS_NODIRATIME)
->> > +               mnt_flags |= MNT_NODIRATIME;
->> > +
->> > +       if (flags & MS_STRICTATIME) {
->> > +               if (flags & MS_NOATIME)
->> > +                       return -EINVAL;
->> > +       } else if (flags & MS_NOATIME) {
->> > +               mnt_flags |= MNT_NOATIME;
->> > +       } else {
->> > +               mnt_flags |= MNT_RELATIME;
->> > +       }
->>
->> I'm not sure reusing the MS_FLAGS is the right choice.  Why not export
->> MNT_* to userspace?  That would get us a clean namespace without
->> confusion with sb flags and no need to convert back and forth.
->
-> Well, if you think about it as about two separated things -- VFS-flags
-> and FS-flags (and for example /proc/#/mountinfo already uses two
-> columns for the flags) than the question is why the API uses one
-> variable?
->
-> Would be better to use two variables everywhere? (mostly for the
-> syscall).
->
-> It would be nice to keep for example propagation flags only in
-> vfs_flags, or use MS_RDONLY according to context (for FS or for VFS)
-> without extra MS_BIND, etc.
+Hello, Trond.
 
-MS_BIND will be gone in the new API.   The two separate columns in
-/proc/#/mountinfo are going to be two separate things on the new
-interface (one is writes to the fsfd provided by fsopen(2), the other
-in flags for fsmount(2)).  The question is how to call the mount flags
-(what you call vfs flags), "MS_RDONLY" or "MNT_RDONLY" on the uAPI.
-Either is probably fine, but I feel that "MNT_FOO" is better, because
-it's a relatively clean namespace concerned with mount flags and not
-polluted with all the scum that mount(2) collected.
+On Mon, Oct 09, 2017 at 06:32:13PM +0000, Trond Myklebust wrote:
+> On Mon, 2017-10-09 at 19:17 +0100, Lorenzo Pieralisi wrote:
+> > I have run into the lockdep warning below while running v4.14-rc3/rc4
+> > on an ARM64 defconfig Juno dev board - reporting it to check whether
+> > it is a known/genuine issue.
+> > 
+> > Please let me know if you need further debug data or need some
+> > specific tests.
+> > 
+> > [    6.209384] ======================================================
+> > [    6.215569] WARNING: possible circular locking dependency detected
+> > [    6.221755] 4.14.0-rc4 #54 Not tainted
+> > [    6.225503] ------------------------------------------------------
+> > [    6.231689] kworker/4:0H/32 is trying to acquire lock:
+> > [    6.236830]  ((&task->u.tk_work)){+.+.}, at: [<ffff0000080e64cc>]
+> > process_one_work+0x1cc/0x3f0
+> > [    6.245472] 
+> >                but task is already holding lock:
+> > [    6.251309]  ("xprtiod"){+.+.}, at: [<ffff0000080e64cc>]
+> > process_one_work+0x1cc/0x3f0
+> > [    6.259158] 
+> >                which lock already depends on the new lock.
+> > 
+> > [    6.267345] 
+> >                the existing dependency chain (in reverse order) is:
+..
+> Adding Tejun and Lai, since this looks like a workqueue locking issue.
 
-BTW, I think <linux-api@vger.kernel.org> should be CC-d on all patches
-that concern the userspace API.
+It looks a bit cryptic but it's warning against the following case.
 
-Thanks,
-Miklos
+1. Memory pressure is high and rescuer kicks in for the xprtiod
+   workqueue.  There are no other kworkers serving the workqueue.
+
+2. The rescuer runs the xptr_destroy path and ends up calling
+   cancel_work_sync() on a work item which is queued on xprtiod.
+
+3. The work item is pending on the same workqueue and assuming that
+   memory pressure doesn't let off (let's say reclaim is trying to
+   kick off nfs pages), the only way it can get executed is by the
+   rescuer which is waiting for the work item - an A-B-A deadlock.
+
+Thanks.
+
+-- 
+tejun
