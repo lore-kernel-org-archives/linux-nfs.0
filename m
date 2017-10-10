@@ -1,30 +1,214 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:52797 "EHLO
-        mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934519AbdJJUCn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 16:02:43 -0400
+Received: from mail-vk0-f48.google.com ([209.85.213.48]:55417 "EHLO
+        mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932437AbdJJVOb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 17:14:31 -0400
+Received: by mail-vk0-f48.google.com with SMTP id b5so2971878vkf.12
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Oct 2017 14:14:31 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20171010192706.GA18513@fieldses.org>
-References: <20171010182425.GA19163@fieldses.org> <CA+55aFz5vGYnwzZ5mMQz5PXXRaMd3RaDF_fe11WKRDzWJCahJQ@mail.gmail.com>
- <20171010192706.GA18513@fieldses.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 10 Oct 2017 13:02:41 -0700
-Message-ID: <CA+55aFzveh=26KxyPfnHiQc6w_Z6bSUfBwYgC7GYotgDsTrzgg@mail.gmail.com>
-Subject: Re: [GIT PULL] nfsd changes for 4.14-rc
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
+In-Reply-To: <20171009155804.GA1586@parsley.fieldses.org>
+References: <20170928172945.50780-1-kolga@netapp.com> <20170928172945.50780-9-kolga@netapp.com>
+ <20170928183846.GG10182@parsley.fieldses.org> <CAN-5tyFfTZ=CFsyM8CWWXkGt8jvLBV+qH60Yd-X4p5ohK5pK=g@mail.gmail.com>
+ <20171009155804.GA1586@parsley.fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 10 Oct 2017 17:14:29 -0400
+Message-ID: <CAN-5tyGO384JprQoSmwc_6LaLLHhGbYEJm8heZqSe6ChrK3BKw@mail.gmail.com>
+Subject: Re: [PATCH v4 08/10] NFSD handle OFFLOAD_CANCEL op
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 10, 2017 at 12:27 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+On Mon, Oct 9, 2017 at 11:58 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> On Mon, Oct 09, 2017 at 10:53:13AM -0400, Olga Kornievskaia wrote:
+>> On Thu, Sep 28, 2017 at 2:38 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>> > On Thu, Sep 28, 2017 at 01:29:43PM -0400, Olga Kornievskaia wrote:
+>> >> Upon receiving OFFLOAD_CANCEL search the list of copy stateids,
+>> >> if found mark it cancelled. If copy has more interations to
+>> >> call vfs_copy_file_range, it'll stop it. Server won't be sending
+>> >> CB_OFFLOAD to the client since it received a cancel.
+>> >>
+>> >> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> >> ---
+>> >>  fs/nfsd/nfs4proc.c  | 26 ++++++++++++++++++++++++--
+>> >>  fs/nfsd/nfs4state.c | 16 ++++++++++++++++
+>> >>  fs/nfsd/state.h     |  4 ++++
+>> >>  3 files changed, 44 insertions(+), 2 deletions(-)
+>> >>
+>> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> >> index 3cddebb..f4f3d93 100644
+>> >> --- a/fs/nfsd/nfs4proc.c
+>> >> +++ b/fs/nfsd/nfs4proc.c
+>> >> @@ -1139,6 +1139,7 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
+>> >>       size_t bytes_to_copy;
+>> >>       u64 src_pos = copy->cp_src_pos;
+>> >>       u64 dst_pos = copy->cp_dst_pos;
+>> >> +     bool cancelled = false;
+>> >>
+>> >>       do {
+>> >>               bytes_to_copy = min_t(u64, bytes_total, MAX_RW_COUNT);
+>> >> @@ -1150,7 +1151,12 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
+>> >>               copy->cp_res.wr_bytes_written += bytes_copied;
+>> >>               src_pos += bytes_copied;
+>> >>               dst_pos += bytes_copied;
+>> >> -     } while (bytes_total > 0 && !copy->cp_synchronous);
+>> >> +             if (!copy->cp_synchronous) {
+>> >> +                     spin_lock(&copy->cps->cp_lock);
+>> >> +                     cancelled = copy->cps->cp_cancelled;
+>> >> +                     spin_unlock(&copy->cps->cp_lock);
+>> >> +             }
+>> >> +     } while (bytes_total > 0 && !copy->cp_synchronous && !cancelled);
+>> >>       return bytes_copied;
+>> >
+>> > I'd rather we sent a signal, and then we won't need this
+>> > logic--vfs_copy_range() will just return EINTR or something.
+>>
+>> Hi Bruce,
+>>
+>> Now that I've implemented using the kthread instead of the workqueue,
+>> I don't see that it can provide any better  guarantee than the work
+>> queue. vfs_copy_range() is not interrupted in the middle and returning
+>> the EINTR. The function that runs the kthread, it has to at some point
+>> call signalled()/kthread_should_stop() function to see if it was
+>> signaled and use it to 'stop working instead of continuing on'.
+>>
+>> If I were to remove the loop and check (if signaled() ||
+>> kthread_should_stop()) before and after calling the
+>> vfs_copy_file_range(), the copy will either not start if the
+>> OFFLOAD_CANCEL was received before copy started or the whole copy
+>> would happen.
+>>
+>> Even with the loop, I'd be checking after every call for
+>> vfs_copy_file_range() just like it was in the current version with the
+>> workqueue.
+>>
+>> Please advise if you still want the kthread-based implementation or
+>> keep the workqueue.
 >
-> I just deleted redid the tag with the same name.  (Does it cause a
-> problem that the old object is still sitting around somewhere with the
-> same name but nothing pointing at it?  I'm assuming not.)
+> That's interesting.
+>
+> To me that sounds like a bug somewhere under vfs_copy_file_range().
+> splice_direct_to_actor() can do long-running copies, so it should be
+> interruptible, shouldn't it?
 
-Thanks, that worked fine.
+So I found it. Yes do_splice_direct() will react to somebody sending a
+ctrl-c and will stop. It calls signal_pendning(). However, in our
+case, I'm calling kthread_stop() and that sets a different flag and
+one needs to also check for kthread_should_stop() as a stopping
+condition. splice.c lacks that.
 
-                   Linus
+I hope they can agree that it's a bug. I don't have any luck with VFS...
+
+
+
+>
+> --b.
+>
+>>
+>> > That will help us get rid of the 4MB-at-a-time loop.  And will mean we
+>> > don't need to wait for the next 4MB copy to finish before stopping the
+>> > loop.  Normally I wouldn't expect that to take too long, but it might.
+>> > And a situation where a cancel is sent is a situation where we're
+>> > probably more likely to have some problem slowing down the copy.
+>> >
+>> > Also: don't we want OFFLOAD_CANCEL to wait until the cancel has actually
+>> > taken effect before returning?
+>> >
+>> > I can't see any language in the spec to that affect, but it would seem
+>> > surprising to me if I got back a succesful response to OFFLOAD_CANCEL
+>> > and then noticed that the target file was still changing.
+>> >
+>> > --b.
+>> >
+>> >>  }
+>> >>
+>> >> @@ -1198,6 +1204,10 @@ static void nfsd4_do_async_copy(struct work_struct *work)
+>> >>       struct nfsd4_copy *cb_copy;
+>> >>
+>> >>       copy->nfserr = nfsd4_do_copy(copy, 0);
+>> >> +
+>> >> +     if (copy->cps->cp_cancelled)
+>> >> +             goto out;
+>> >> +
+>> >>       cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+>> >>       if (!cb_copy)
+>> >>               goto out;
+>> >> @@ -1269,7 +1279,19 @@ static void nfsd4_do_async_copy(struct work_struct *work)
+>> >>                    struct nfsd4_compound_state *cstate,
+>> >>                    union nfsd4_op_u *u)
+>> >>  {
+>> >> -     return 0;
+>> >> +     struct nfsd4_offload_status *os = &u->offload_status;
+>> >> +     struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+>> >> +     __be32 status;
+>> >> +     struct nfs4_cp_state *state = NULL;
+>> >> +
+>> >> +     status = find_cp_state(nn, &os->stateid, &state);
+>> >> +     if (state) {
+>> >> +             spin_lock(&state->cp_lock);
+>> >> +             state->cp_cancelled = true;
+>> >> +             spin_unlock(&state->cp_lock);
+>> >> +     }
+>> >> +
+>> >> +     return status;
+>> >>  }
+>> >>
+>> >>  static __be32
+>> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> >> index be59baf..97ab3f8 100644
+>> >> --- a/fs/nfsd/nfs4state.c
+>> >> +++ b/fs/nfsd/nfs4state.c
+>> >> @@ -752,6 +752,22 @@ static void nfs4_free_deleg(struct nfs4_stid *stid)
+>> >>       atomic_long_dec(&num_delegations);
+>> >>  }
+>> >>
+>> >> +__be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
+>> >> +                         struct nfs4_cp_state **cps)
+>> >> +{
+>> >> +     struct nfs4_cp_state *state = NULL;
+>> >> +
+>> >> +     if (st->si_opaque.so_clid.cl_id != nn->s2s_cp_cl_id)
+>> >> +             return nfserr_bad_stateid;
+>> >> +     spin_lock(&nn->s2s_cp_lock);
+>> >> +     state = idr_find(&nn->s2s_cp_stateids, st->si_opaque.so_id);
+>> >> +     spin_unlock(&nn->s2s_cp_lock);
+>> >> +     if (!state)
+>> >> +             return nfserr_bad_stateid;
+>> >> +     *cps = state;
+>> >> +     return 0;
+>> >> +}
+>> >> +
+>> >>  /*
+>> >>   * When we recall a delegation, we should be careful not to hand it
+>> >>   * out again straight away.
+>> >> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> >> index 8724955..7a070d5 100644
+>> >> --- a/fs/nfsd/state.h
+>> >> +++ b/fs/nfsd/state.h
+>> >> @@ -111,6 +111,8 @@ struct nfs4_cp_state {
+>> >>       stateid_t               cp_stateid;
+>> >>       struct list_head        cp_list;        /* per parent nfs4_stid */
+>> >>       struct nfs4_stid        *cp_p_stid;     /* pointer to parent */
+>> >> +     bool                    cp_cancelled;   /* copy cancelled */
+>> >> +     spinlock_t              cp_lock;
+>> >>  };
+>> >>
+>> >>  /*
+>> >> @@ -647,6 +649,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+>> >>  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+>> >>  extern int nfsd4_create_copy_queue(void);
+>> >>  extern void nfsd4_destroy_copy_queue(void);
+>> >> +extern __be32 find_cp_state(struct nfsd_net *nn, stateid_t *st,
+>> >> +                     struct nfs4_cp_state **cps);
+>> >>
+>> >>  struct nfs4_file *find_file(struct knfsd_fh *fh);
+>> >>  void put_nfs4_file(struct nfs4_file *fi);
+>> >> --
+>> >> 1.8.3.1
+>> >>
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
