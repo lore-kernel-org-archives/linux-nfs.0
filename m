@@ -1,11 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:58506 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932298AbdJJQtE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 12:49:04 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "tj@kernel.org" <tj@kernel.org>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+Received: from mail-qt0-f174.google.com ([209.85.216.174]:45083 "EHLO
+        mail-qt0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751415AbdJJRTX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 13:19:23 -0400
+Date: Tue, 10 Oct 2017 10:19:19 -0700
+From: "tj@kernel.org" <tj@kernel.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "lorenzo.pieralisi@arm.com" <lorenzo.pieralisi@arm.com>,
         "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
@@ -13,62 +14,33 @@ CC: "bfields@fieldses.org" <bfields@fieldses.org>,
         "jiangshanlai@gmail.com" <jiangshanlai@gmail.com>,
         "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
 Subject: Re: net/sunrpc: v4.14-rc4 lockdep warning
-Date: Tue, 10 Oct 2017 16:48:57 +0000
-Message-ID: <1507654135.4442.4.camel@primarydata.com>
+Message-ID: <20171010171919.GO3301751@devbig577.frc2.facebook.com>
 References: <20171009181738.GA30680@red-moon>
-         <1507573931.3516.3.camel@primarydata.com>
-         <20171010140336.GI3301751@devbig577.frc2.facebook.com>
-In-Reply-To: <20171010140336.GI3301751@devbig577.frc2.facebook.com>
+ <1507573931.3516.3.camel@primarydata.com>
+ <20171010140336.GI3301751@devbig577.frc2.facebook.com>
+ <1507654135.4442.4.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1507654135.4442.4.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTEwLTEwIGF0IDA3OjAzIC0wNzAwLCB0akBrZXJuZWwub3JnIHdyb3RlOg0K
-PiBIZWxsbywgVHJvbmQuDQo+IA0KPiBPbiBNb24sIE9jdCAwOSwgMjAxNyBhdCAwNjozMjoxM1BN
-ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gT24gTW9uLCAyMDE3LTEwLTA5IGF0
-IDE5OjE3ICswMTAwLCBMb3JlbnpvIFBpZXJhbGlzaSB3cm90ZToNCj4gPiA+IEkgaGF2ZSBydW4g
-aW50byB0aGUgbG9ja2RlcCB3YXJuaW5nIGJlbG93IHdoaWxlIHJ1bm5pbmcgdjQuMTQtDQo+ID4g
-PiByYzMvcmM0DQo+ID4gPiBvbiBhbiBBUk02NCBkZWZjb25maWcgSnVubyBkZXYgYm9hcmQgLSBy
-ZXBvcnRpbmcgaXQgdG8gY2hlY2sNCj4gPiA+IHdoZXRoZXINCj4gPiA+IGl0IGlzIGEga25vd24v
-Z2VudWluZSBpc3N1ZS4NCj4gPiA+IA0KPiA+ID4gUGxlYXNlIGxldCBtZSBrbm93IGlmIHlvdSBu
-ZWVkIGZ1cnRoZXIgZGVidWcgZGF0YSBvciBuZWVkIHNvbWUNCj4gPiA+IHNwZWNpZmljIHRlc3Rz
-Lg0KPiA+ID4gDQo+ID4gPiBbICAgIDYuMjA5Mzg0XQ0KPiA+ID4gPT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09DQo+ID4gPiBbICAgIDYuMjE1NTY5
-XSBXQVJOSU5HOiBwb3NzaWJsZSBjaXJjdWxhciBsb2NraW5nIGRlcGVuZGVuY3kNCj4gPiA+IGRl
-dGVjdGVkDQo+ID4gPiBbICAgIDYuMjIxNzU1XSA0LjE0LjAtcmM0ICM1NCBOb3QgdGFpbnRlZA0K
-PiA+ID4gWyAgICA2LjIyNTUwM10gLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0NCj4gPiA+IC0tLS0NCj4gPiA+IFsgICAgNi4yMzE2ODldIGt3b3JrZXIv
-NDowSC8zMiBpcyB0cnlpbmcgdG8gYWNxdWlyZSBsb2NrOg0KPiA+ID4gWyAgICA2LjIzNjgzMF0g
-ICgoJnRhc2stPnUudGtfd29yaykpeysuKy59LCBhdDoNCj4gPiA+IFs8ZmZmZjAwMDAwODBlNjRj
-Yz5dDQo+ID4gPiBwcm9jZXNzX29uZV93b3JrKzB4MWNjLzB4M2YwDQo+ID4gPiBbICAgIDYuMjQ1
-NDcyXSANCj4gPiA+ICAgICAgICAgICAgICAgIGJ1dCB0YXNrIGlzIGFscmVhZHkgaG9sZGluZyBs
-b2NrOg0KPiA+ID4gWyAgICA2LjI1MTMwOV0gICgieHBydGlvZCIpeysuKy59LCBhdDogWzxmZmZm
-MDAwMDA4MGU2NGNjPl0NCj4gPiA+IHByb2Nlc3Nfb25lX3dvcmsrMHgxY2MvMHgzZjANCj4gPiA+
-IFsgICAgNi4yNTkxNThdIA0KPiA+ID4gICAgICAgICAgICAgICAgd2hpY2ggbG9jayBhbHJlYWR5
-IGRlcGVuZHMgb24gdGhlIG5ldyBsb2NrLg0KPiA+ID4gDQo+ID4gPiBbICAgIDYuMjY3MzQ1XSAN
-Cj4gPiA+ICAgICAgICAgICAgICAgIHRoZSBleGlzdGluZyBkZXBlbmRlbmN5IGNoYWluIChpbiBy
-ZXZlcnNlIG9yZGVyKQ0KPiA+ID4gaXM6DQo+IA0KPiAuLg0KPiA+IEFkZGluZyBUZWp1biBhbmQg
-TGFpLCBzaW5jZSB0aGlzIGxvb2tzIGxpa2UgYSB3b3JrcXVldWUgbG9ja2luZw0KPiA+IGlzc3Vl
-Lg0KPiANCj4gSXQgbG9va3MgYSBiaXQgY3J5cHRpYyBidXQgaXQncyB3YXJuaW5nIGFnYWluc3Qg
-dGhlIGZvbGxvd2luZyBjYXNlLg0KPiANCj4gMS4gTWVtb3J5IHByZXNzdXJlIGlzIGhpZ2ggYW5k
-IHJlc2N1ZXIga2lja3MgaW4gZm9yIHRoZSB4cHJ0aW9kDQo+ICAgIHdvcmtxdWV1ZS4gIFRoZXJl
-IGFyZSBubyBvdGhlciBrd29ya2VycyBzZXJ2aW5nIHRoZSB3b3JrcXVldWUuDQo+IA0KPiAyLiBU
-aGUgcmVzY3VlciBydW5zIHRoZSB4cHRyX2Rlc3Ryb3kgcGF0aCBhbmQgZW5kcyB1cCBjYWxsaW5n
-DQo+ICAgIGNhbmNlbF93b3JrX3N5bmMoKSBvbiBhIHdvcmsgaXRlbSB3aGljaCBpcyBxdWV1ZWQg
-b24geHBydGlvZC4NCj4gDQo+IDMuIFRoZSB3b3JrIGl0ZW0gaXMgcGVuZGluZyBvbiB0aGUgc2Ft
-ZSB3b3JrcXVldWUgYW5kIGFzc3VtaW5nIHRoYXQNCj4gICAgbWVtb3J5IHByZXNzdXJlIGRvZXNu
-J3QgbGV0IG9mZiAobGV0J3Mgc2F5IHJlY2xhaW0gaXMgdHJ5aW5nIHRvDQo+ICAgIGtpY2sgb2Zm
-IG5mcyBwYWdlcyksIHRoZSBvbmx5IHdheSBpdCBjYW4gZ2V0IGV4ZWN1dGVkIGlzIGJ5IHRoZQ0K
-PiAgICByZXNjdWVyIHdoaWNoIGlzIHdhaXRpbmcgZm9yIHRoZSB3b3JrIGl0ZW0gLSBhbiBBLUIt
-QSBkZWFkbG9jay4NCj4gDQoNCkhpIFRlanVuLA0KDQpUaGFua3MgZm9yIHRoZSBleHBsYW5hdGlv
-bi4gV2hhdCBJJ20gbm90IHJlYWxseSB1bmRlcnN0YW5kaW5nIGhlcmUNCnRob3VnaCwgaXMgaG93
-IHRoZSB3b3JrIGl0ZW0gY291bGQgYmUgcXVldWVkIGF0IGFsbC4gV2UgaGF2ZSBhDQp3YWl0X29u
-X2JpdF9sb2NrKCkgaW4geHBydF9kZXN0cm95KCkgdGhhdCBzaG91bGQgbWVhbiB0aGUgeHBydC0N
-Cj50YXNrX2NsZWFudXAgd29yayBpdGVtIGhhcyBjb21wbGV0ZWQgcnVubmluZywgYW5kIHRoYXQg
-aXQgY2Fubm90IGJlDQpyZXF1ZXVlZC4NCg0KSXMgdGhlcmUgYSBwb3NzaWJpbGl0eSB0aGF0IHRo
-ZSBmbHVzaF9xdWV1ZSgpIG1pZ2h0IGJlIHRyaWdnZXJlZA0KZGVzcGl0ZSB0aGUgd29yayBpdGVt
-IG5vdCBiZWluZyBxdWV1ZWQ/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xp
-ZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEu
-Y29tDQo=
+Hello,
 
+On Tue, Oct 10, 2017 at 04:48:57PM +0000, Trond Myklebust wrote:
+> Thanks for the explanation. What I'm not really understanding here
+> though, is how the work item could be queued at all. We have a
+> wait_on_bit_lock() in xprt_destroy() that should mean the xprt-
+> >task_cleanup work item has completed running, and that it cannot be
+> requeued.
+> 
+> Is there a possibility that the flush_queue() might be triggered
+> despite the work item not being queued?
+
+Yeah, for sure.  The lockdep annotations don't distinguish those
+cases and assume the worst case.
+
+Thanks.
+
+-- 
+tejun
