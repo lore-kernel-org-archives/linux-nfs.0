@@ -1,45 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:37015 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752525AbdJKRuH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Oct 2017 13:50:07 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "tj@kernel.org" <tj@kernel.org>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "lorenzo.pieralisi@arm.com" <lorenzo.pieralisi@arm.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jiangshanlai@gmail.com" <jiangshanlai@gmail.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
-Subject: Re: net/sunrpc: v4.14-rc4 lockdep warning
-Date: Wed, 11 Oct 2017 17:49:59 +0000
-Message-ID: <1507744197.50316.3.camel@primarydata.com>
-References: <20171009181738.GA30680@red-moon>
-         <1507573931.3516.3.camel@primarydata.com>
-         <20171010140336.GI3301751@devbig577.frc2.facebook.com>
-         <1507654135.4442.4.camel@primarydata.com>
-         <20171010171919.GO3301751@devbig577.frc2.facebook.com>
-In-Reply-To: <20171010171919.GO3301751@devbig577.frc2.facebook.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:43301 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1757764AbdJKSBi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Oct 2017 14:01:38 -0400
+Received: by mail-it0-f65.google.com with SMTP id k70so11181230itk.0
+        for <linux-nfs@vger.kernel.org>; Wed, 11 Oct 2017 11:01:37 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <anna.schumaker@netapp.com>
+Cc: Lorenzo Pieralisi <lorenzo.pieralisi@arm.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Remove redundant call to cancel_work_sync() in xprt_destroy()
+Date: Wed, 11 Oct 2017 14:01:34 -0400
+Message-Id: <20171011180134.52476-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTEwLTEwIGF0IDEwOjE5IC0wNzAwLCB0akBrZXJuZWwub3JnIHdyb3RlOg0K
-PiBIZWxsbywNCj4gDQo+IE9uIFR1ZSwgT2N0IDEwLCAyMDE3IGF0IDA0OjQ4OjU3UE0gKzAwMDAs
-IFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gPiBUaGFua3MgZm9yIHRoZSBleHBsYW5hdGlvbi4g
-V2hhdCBJJ20gbm90IHJlYWxseSB1bmRlcnN0YW5kaW5nIGhlcmUNCj4gPiB0aG91Z2gsIGlzIGhv
-dyB0aGUgd29yayBpdGVtIGNvdWxkIGJlIHF1ZXVlZCBhdCBhbGwuIFdlIGhhdmUgYQ0KPiA+IHdh
-aXRfb25fYml0X2xvY2soKSBpbiB4cHJ0X2Rlc3Ryb3koKSB0aGF0IHNob3VsZCBtZWFuIHRoZSB4
-cHJ0LQ0KPiA+ID4gdGFza19jbGVhbnVwIHdvcmsgaXRlbSBoYXMgY29tcGxldGVkIHJ1bm5pbmcs
-IGFuZCB0aGF0IGl0IGNhbm5vdA0KPiA+ID4gYmUNCj4gPiANCj4gPiByZXF1ZXVlZC4NCj4gPiAN
-Cj4gPiBJcyB0aGVyZSBhIHBvc3NpYmlsaXR5IHRoYXQgdGhlIGZsdXNoX3F1ZXVlKCkgbWlnaHQg
-YmUgdHJpZ2dlcmVkDQo+ID4gZGVzcGl0ZSB0aGUgd29yayBpdGVtIG5vdCBiZWluZyBxdWV1ZWQ/
-DQo+IA0KPiBZZWFoLCBmb3Igc3VyZS4gIFRoZSBsb2NrZGVwIGFubm90YXRpb25zIGRvbid0IGRp
-c3Rpbmd1aXNoIHRob3NlDQo+IGNhc2VzIGFuZCBhc3N1bWUgdGhlIHdvcnN0IGNhc2UuDQo+IA0K
-DQpPSy4gTGV0J3MganVzdCByZW1vdmUgdGhhdCBjYWxsIHRvIGNhbmNlbF93b3JrX3N5bmMoKSB0
-aGVuLiBBcyBJIHNhaWQsDQppdCBzaG91bGQgYmUgcmVkdW5kYW50IGR1ZSB0byB0aGUgd2FpdF9v
-bl9iaXRfbG9jaygpLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
-YWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+We know that the socket autoclose cannot be queued after we've set
+the XPRT_LOCKED bit, so the call to cancel_work_sync() is redundant.
+In addition, it is causing lockdep to complain about a false ABA
+lock dependency.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/xprt.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index e741ec2b4d8e..5f12fe145f02 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1464,7 +1464,6 @@ static void xprt_destroy(struct rpc_xprt *xprt)
+ 	rpc_destroy_wait_queue(&xprt->pending);
+ 	rpc_destroy_wait_queue(&xprt->sending);
+ 	rpc_destroy_wait_queue(&xprt->backlog);
+-	cancel_work_sync(&xprt->task_cleanup);
+ 	kfree(xprt->servername);
+ 	/*
+ 	 * Tear down transport state and free the rpc_xprt
+-- 
+2.13.6
 
