@@ -1,92 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33530 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:41548 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756707AbdJKIyT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Oct 2017 04:54:19 -0400
-Date: Wed, 11 Oct 2017 10:54:13 +0200
-From: Karel Zak <kzak@redhat.com>
-To: Miklos Szeredi <mszeredi@redhat.com>
-Cc: David Howells <dhowells@redhat.com>,
-        viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@redhat.com>
-Subject: Re: [PATCH 06/14] VFS: Implement fsmount() to effect a
- pre-configured mount [ver #6]
-Message-ID: <20171011085413.gexlklmojlve5imd@ws.net.home>
-References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
- <150730499269.6182.8121149524716523148.stgit@warthog.procyon.org.uk>
- <CAOssrKcAJTJv-VjaY+Dcn_zEJBoMVSPStK5H6inWyq2uiv0f-A@mail.gmail.com>
- <20171010095107.5lzkjibyrxbwfpvp@ws.net.home>
- <CAOssrKeGsgEqW+XCf_UAkH5XamWqo5a549wFHyHSC1OUzVvJag@mail.gmail.com>
+        id S1751644AbdJKOHk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Oct 2017 10:07:40 -0400
+Date: Wed, 11 Oct 2017 10:07:40 -0400
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 08/10] NFSD handle OFFLOAD_CANCEL op
+Message-ID: <20171011140740.GD25913@fieldses.org>
+References: <20170928172945.50780-1-kolga@netapp.com>
+ <20170928172945.50780-9-kolga@netapp.com>
+ <20170928183846.GG10182@parsley.fieldses.org>
+ <CAN-5tyFfTZ=CFsyM8CWWXkGt8jvLBV+qH60Yd-X4p5ohK5pK=g@mail.gmail.com>
+ <20171009155804.GA1586@parsley.fieldses.org>
+ <CAN-5tyGO384JprQoSmwc_6LaLLHhGbYEJm8heZqSe6ChrK3BKw@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAOssrKeGsgEqW+XCf_UAkH5XamWqo5a549wFHyHSC1OUzVvJag@mail.gmail.com>
+In-Reply-To: <CAN-5tyGO384JprQoSmwc_6LaLLHhGbYEJm8heZqSe6ChrK3BKw@mail.gmail.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 10, 2017 at 03:38:21PM +0200, Miklos Szeredi wrote:
-> On Tue, Oct 10, 2017 at 11:51 AM, Karel Zak <kzak@redhat.com> wrote:
-> > On Tue, Oct 10, 2017 at 10:00:01AM +0200, Miklos Szeredi wrote:
-> >> > +
-> >> > +       if (flags & MS_RDONLY)
-> >> > +               mnt_flags |= MNT_READONLY;
-> >> > +       if (flags & MS_NOSUID)
-> >> > +               mnt_flags |= MNT_NOSUID;
-> >> > +       if (flags & MS_NODEV)
-> >> > +               mnt_flags |= MNT_NODEV;
-> >> > +       if (flags & MS_NOEXEC)
-> >> > +               mnt_flags |= MNT_NOEXEC;
-> >> > +       if (flags & MS_NODIRATIME)
-> >> > +               mnt_flags |= MNT_NODIRATIME;
-> >> > +
-> >> > +       if (flags & MS_STRICTATIME) {
-> >> > +               if (flags & MS_NOATIME)
-> >> > +                       return -EINVAL;
-> >> > +       } else if (flags & MS_NOATIME) {
-> >> > +               mnt_flags |= MNT_NOATIME;
-> >> > +       } else {
-> >> > +               mnt_flags |= MNT_RELATIME;
-> >> > +       }
+On Tue, Oct 10, 2017 at 05:14:29PM -0400, Olga Kornievskaia wrote:
+> On Mon, Oct 9, 2017 at 11:58 AM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > On Mon, Oct 09, 2017 at 10:53:13AM -0400, Olga Kornievskaia wrote:
+> >> On Thu, Sep 28, 2017 at 2:38 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> >> > On Thu, Sep 28, 2017 at 01:29:43PM -0400, Olga Kornievskaia wrote:
+> >> >> Upon receiving OFFLOAD_CANCEL search the list of copy stateids,
+> >> >> if found mark it cancelled. If copy has more interations to
+> >> >> call vfs_copy_file_range, it'll stop it. Server won't be sending
+> >> >> CB_OFFLOAD to the client since it received a cancel.
+> >> >>
+> >> >> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> >> >> ---
+> >> >>  fs/nfsd/nfs4proc.c  | 26 ++++++++++++++++++++++++--
+> >> >>  fs/nfsd/nfs4state.c | 16 ++++++++++++++++
+> >> >>  fs/nfsd/state.h     |  4 ++++
+> >> >>  3 files changed, 44 insertions(+), 2 deletions(-)
+> >> >>
+> >> >> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >> >> index 3cddebb..f4f3d93 100644
+> >> >> --- a/fs/nfsd/nfs4proc.c
+> >> >> +++ b/fs/nfsd/nfs4proc.c
+> >> >> @@ -1139,6 +1139,7 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
+> >> >>       size_t bytes_to_copy;
+> >> >>       u64 src_pos = copy->cp_src_pos;
+> >> >>       u64 dst_pos = copy->cp_dst_pos;
+> >> >> +     bool cancelled = false;
+> >> >>
+> >> >>       do {
+> >> >>               bytes_to_copy = min_t(u64, bytes_total, MAX_RW_COUNT);
+> >> >> @@ -1150,7 +1151,12 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
+> >> >>               copy->cp_res.wr_bytes_written += bytes_copied;
+> >> >>               src_pos += bytes_copied;
+> >> >>               dst_pos += bytes_copied;
+> >> >> -     } while (bytes_total > 0 && !copy->cp_synchronous);
+> >> >> +             if (!copy->cp_synchronous) {
+> >> >> +                     spin_lock(&copy->cps->cp_lock);
+> >> >> +                     cancelled = copy->cps->cp_cancelled;
+> >> >> +                     spin_unlock(&copy->cps->cp_lock);
+> >> >> +             }
+> >> >> +     } while (bytes_total > 0 && !copy->cp_synchronous && !cancelled);
+> >> >>       return bytes_copied;
+> >> >
+> >> > I'd rather we sent a signal, and then we won't need this
+> >> > logic--vfs_copy_range() will just return EINTR or something.
 > >>
-> >> I'm not sure reusing the MS_FLAGS is the right choice.  Why not export
-> >> MNT_* to userspace?  That would get us a clean namespace without
-> >> confusion with sb flags and no need to convert back and forth.
+> >> Hi Bruce,
+> >>
+> >> Now that I've implemented using the kthread instead of the workqueue,
+> >> I don't see that it can provide any better  guarantee than the work
+> >> queue. vfs_copy_range() is not interrupted in the middle and returning
+> >> the EINTR. The function that runs the kthread, it has to at some point
+> >> call signalled()/kthread_should_stop() function to see if it was
+> >> signaled and use it to 'stop working instead of continuing on'.
+> >>
+> >> If I were to remove the loop and check (if signaled() ||
+> >> kthread_should_stop()) before and after calling the
+> >> vfs_copy_file_range(), the copy will either not start if the
+> >> OFFLOAD_CANCEL was received before copy started or the whole copy
+> >> would happen.
+> >>
+> >> Even with the loop, I'd be checking after every call for
+> >> vfs_copy_file_range() just like it was in the current version with the
+> >> workqueue.
+> >>
+> >> Please advise if you still want the kthread-based implementation or
+> >> keep the workqueue.
 > >
-> > Well, if you think about it as about two separated things -- VFS-flags
-> > and FS-flags (and for example /proc/#/mountinfo already uses two
-> > columns for the flags) than the question is why the API uses one
-> > variable?
+> > That's interesting.
 > >
-> > Would be better to use two variables everywhere? (mostly for the
-> > syscall).
-> >
-> > It would be nice to keep for example propagation flags only in
-> > vfs_flags, or use MS_RDONLY according to context (for FS or for VFS)
-> > without extra MS_BIND, etc.
+> > To me that sounds like a bug somewhere under vfs_copy_file_range().
+> > splice_direct_to_actor() can do long-running copies, so it should be
+> > interruptible, shouldn't it?
 > 
-> MS_BIND will be gone in the new API.   The two separate columns in
-> /proc/#/mountinfo are going to be two separate things on the new
-> interface (one is writes to the fsfd provided by fsopen(2), the other
-> in flags for fsmount(2)).
+> So I found it. Yes do_splice_direct() will react to somebody sending a
+> ctrl-c and will stop. It calls signal_pendning(). However, in our
+> case, I'm calling kthread_stop() and that sets a different flag and
+> one needs to also check for kthread_should_stop() as a stopping
+> condition. splice.c lacks that.
+> 
+> I hope they can agree that it's a bug. I don't have any luck with VFS...
 
-Ah, nice. 
+Argh.  No, it's probably not their bug, I guess kthreads just ignore
+signals.  OK, I can't immediately see what the right thing to do is
+here....
 
-> The question is how to call the mount flags
-> (what you call vfs flags), "MS_RDONLY" or "MNT_RDONLY" on the uAPI.
-> Either is probably fine, but I feel that "MNT_FOO" is better, because
-> it's a relatively clean namespace concerned with mount flags and not
-> polluted with all the scum that mount(2) collected.
+I do think we need to do something as we want to be able to interrupt
+and clean up copy threads when we can.
 
-Hmm.. for example libmount already uses MNT_ namespace in header
-files for all macros. So, I wont be happy with MNT_ in userspace ;-(
-
-I like clone, epoll, etc flags ... there is no any abbreviation and
-the prefix follows syscall or API name (CLONE_xxx, EPOLLxxx), what
-about MOUNT_FOO ?
-
-    Karel
-
--- 
- Karel Zak  <kzak@redhat.com>
- http://karelzak.blogspot.com
+--b.
