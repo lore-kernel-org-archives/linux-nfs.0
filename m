@@ -1,317 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f180.google.com ([209.85.223.180]:50351 "EHLO
-        mail-io0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755515AbdJJVwj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Oct 2017 17:52:39 -0400
-Received: by mail-io0-f180.google.com with SMTP id 97so311854iok.7
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Oct 2017 14:52:39 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4.1: Fix up replays of interrupted requests
-Date: Tue, 10 Oct 2017 17:52:34 -0400
-Message-Id: <20171010215234.5634-1-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:33530 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756707AbdJKIyT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 11 Oct 2017 04:54:19 -0400
+Date: Wed, 11 Oct 2017 10:54:13 +0200
+From: Karel Zak <kzak@redhat.com>
+To: Miklos Szeredi <mszeredi@redhat.com>
+Cc: David Howells <dhowells@redhat.com>,
+        viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, lkml <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>
+Subject: Re: [PATCH 06/14] VFS: Implement fsmount() to effect a
+ pre-configured mount [ver #6]
+Message-ID: <20171011085413.gexlklmojlve5imd@ws.net.home>
+References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
+ <150730499269.6182.8121149524716523148.stgit@warthog.procyon.org.uk>
+ <CAOssrKcAJTJv-VjaY+Dcn_zEJBoMVSPStK5H6inWyq2uiv0f-A@mail.gmail.com>
+ <20171010095107.5lzkjibyrxbwfpvp@ws.net.home>
+ <CAOssrKeGsgEqW+XCf_UAkH5XamWqo5a549wFHyHSC1OUzVvJag@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAOssrKeGsgEqW+XCf_UAkH5XamWqo5a549wFHyHSC1OUzVvJag@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the previous request on a slot was interrupted before it was
-processed by the server, then our slot sequence number may be out of whack,
-and so we try the next operation using the old sequence number.
+On Tue, Oct 10, 2017 at 03:38:21PM +0200, Miklos Szeredi wrote:
+> On Tue, Oct 10, 2017 at 11:51 AM, Karel Zak <kzak@redhat.com> wrote:
+> > On Tue, Oct 10, 2017 at 10:00:01AM +0200, Miklos Szeredi wrote:
+> >> > +
+> >> > +       if (flags & MS_RDONLY)
+> >> > +               mnt_flags |= MNT_READONLY;
+> >> > +       if (flags & MS_NOSUID)
+> >> > +               mnt_flags |= MNT_NOSUID;
+> >> > +       if (flags & MS_NODEV)
+> >> > +               mnt_flags |= MNT_NODEV;
+> >> > +       if (flags & MS_NOEXEC)
+> >> > +               mnt_flags |= MNT_NOEXEC;
+> >> > +       if (flags & MS_NODIRATIME)
+> >> > +               mnt_flags |= MNT_NODIRATIME;
+> >> > +
+> >> > +       if (flags & MS_STRICTATIME) {
+> >> > +               if (flags & MS_NOATIME)
+> >> > +                       return -EINVAL;
+> >> > +       } else if (flags & MS_NOATIME) {
+> >> > +               mnt_flags |= MNT_NOATIME;
+> >> > +       } else {
+> >> > +               mnt_flags |= MNT_RELATIME;
+> >> > +       }
+> >>
+> >> I'm not sure reusing the MS_FLAGS is the right choice.  Why not export
+> >> MNT_* to userspace?  That would get us a clean namespace without
+> >> confusion with sb flags and no need to convert back and forth.
+> >
+> > Well, if you think about it as about two separated things -- VFS-flags
+> > and FS-flags (and for example /proc/#/mountinfo already uses two
+> > columns for the flags) than the question is why the API uses one
+> > variable?
+> >
+> > Would be better to use two variables everywhere? (mostly for the
+> > syscall).
+> >
+> > It would be nice to keep for example propagation flags only in
+> > vfs_flags, or use MS_RDONLY according to context (for FS or for VFS)
+> > without extra MS_BIND, etc.
+> 
+> MS_BIND will be gone in the new API.   The two separate columns in
+> /proc/#/mountinfo are going to be two separate things on the new
+> interface (one is writes to the fsfd provided by fsopen(2), the other
+> in flags for fsmount(2)).
 
-The problem with this, is that not all servers check to see that the
-client is replaying the same operations as previously when they decide
-to go to the replay cache, and so instead of the expected error of
-NFS4ERR_SEQ_FALSE_RETRY, we get a replay of the old reply, which could
-(if the operations match up) be mistaken by the client for a new reply.
+Ah, nice. 
 
-To fix this, we attempt to send a COMPOUND containing only the SEQUENCE op
-in order to resync our slot sequence number.
+> The question is how to call the mount flags
+> (what you call vfs flags), "MS_RDONLY" or "MNT_RDONLY" on the uAPI.
+> Either is probably fine, but I feel that "MNT_FOO" is better, because
+> it's a relatively clean namespace concerned with mount flags and not
+> polluted with all the scum that mount(2) collected.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4_fs.h  |   2 +-
- fs/nfs/nfs4proc.c | 138 ++++++++++++++++++++++++++++++++++++------------------
- 2 files changed, 93 insertions(+), 47 deletions(-)
+Hmm.. for example libmount already uses MNT_ namespace in header
+files for all macros. So, I wont be happy with MNT_ in userspace ;-(
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ac4f10b7f6c1..b547d935aaf0 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -464,7 +464,7 @@ extern void nfs_increment_open_seqid(int status, struct nfs_seqid *seqid);
- extern void nfs_increment_lock_seqid(int status, struct nfs_seqid *seqid);
- extern void nfs_release_seqid(struct nfs_seqid *seqid);
- extern void nfs_free_seqid(struct nfs_seqid *seqid);
--extern int nfs4_setup_sequence(const struct nfs_client *client,
-+extern int nfs4_setup_sequence(struct nfs_client *client,
- 				struct nfs4_sequence_args *args,
- 				struct nfs4_sequence_res *res,
- 				struct rpc_task *task);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f90090e8c959..f5069381d8ae 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -96,6 +96,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 			    struct nfs_open_context *ctx, struct nfs4_label *ilabel,
- 			    struct nfs4_label *olabel);
- #ifdef CONFIG_NFS_V4_1
-+static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
-+		struct rpc_cred *cred,
-+		struct nfs4_slot *slot,
-+		bool is_privileged);
- static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
- 		struct rpc_cred *);
- static int nfs41_free_stateid(struct nfs_server *, const nfs4_stateid *,
-@@ -644,13 +648,14 @@ static int nfs40_sequence_done(struct rpc_task *task,
- 
- #if defined(CONFIG_NFS_V4_1)
- 
--static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
-+static void nfs41_release_slot(struct nfs4_slot *slot)
- {
- 	struct nfs4_session *session;
- 	struct nfs4_slot_table *tbl;
--	struct nfs4_slot *slot = res->sr_slot;
- 	bool send_new_highest_used_slotid = false;
- 
-+	if (!slot)
-+		return;
- 	tbl = slot->table;
- 	session = tbl->session;
- 
-@@ -676,13 +681,18 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 		send_new_highest_used_slotid = false;
- out_unlock:
- 	spin_unlock(&tbl->slot_tbl_lock);
--	res->sr_slot = NULL;
- 	if (send_new_highest_used_slotid)
- 		nfs41_notify_server(session->clp);
- 	if (waitqueue_active(&tbl->slot_waitq))
- 		wake_up_all(&tbl->slot_waitq);
- }
- 
-+static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
-+{
-+	nfs41_release_slot(res->sr_slot);
-+	res->sr_slot = NULL;
-+}
-+
- static int nfs41_sequence_process(struct rpc_task *task,
- 		struct nfs4_sequence_res *res)
- {
-@@ -710,13 +720,6 @@ static int nfs41_sequence_process(struct rpc_task *task,
- 	/* Check the SEQUENCE operation status */
- 	switch (res->sr_status) {
- 	case 0:
--		/* If previous op on slot was interrupted and we reused
--		 * the seq# and got a reply from the cache, then retry
--		 */
--		if (task->tk_status == -EREMOTEIO && interrupted) {
--			++slot->seq_nr;
--			goto retry_nowait;
--		}
- 		/* Update the slot's sequence and clientid lease timer */
- 		slot->seq_done = 1;
- 		clp = session->clp;
-@@ -750,16 +753,16 @@ static int nfs41_sequence_process(struct rpc_task *task,
- 		 * The slot id we used was probably retired. Try again
- 		 * using a different slot id.
- 		 */
-+		if (slot->seq_nr < slot->table->target_highest_slotid)
-+			goto session_recover;
- 		goto retry_nowait;
- 	case -NFS4ERR_SEQ_MISORDERED:
- 		/*
- 		 * Was the last operation on this sequence interrupted?
- 		 * If so, retry after bumping the sequence number.
- 		 */
--		if (interrupted) {
--			++slot->seq_nr;
--			goto retry_nowait;
--		}
-+		if (interrupted)
-+			goto retry_new_seq;
- 		/*
- 		 * Could this slot have been previously retired?
- 		 * If so, then the server may be expecting seq_nr = 1!
-@@ -768,10 +771,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
- 			slot->seq_nr = 1;
- 			goto retry_nowait;
- 		}
--		break;
-+		goto session_recover;
- 	case -NFS4ERR_SEQ_FALSE_RETRY:
--		++slot->seq_nr;
--		goto retry_nowait;
-+		if (interrupted)
-+			goto retry_new_seq;
-+		goto session_recover;
- 	default:
- 		/* Just update the slot sequence no. */
- 		slot->seq_done = 1;
-@@ -781,6 +785,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
- 	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
- out_noaction:
- 	return ret;
-+session_recover:
-+	nfs4_schedule_session_recovery(session, res->sr_status);
-+	goto retry_nowait;
-+retry_new_seq:
-+	++slot->seq_nr;
- retry_nowait:
- 	if (rpc_restart_call_prepare(task)) {
- 		nfs41_sequence_free_slot(res);
-@@ -879,7 +888,33 @@ EXPORT_SYMBOL_GPL(nfs4_sequence_done);
- 
- #endif	/* !CONFIG_NFS_V4_1 */
- 
--int nfs4_setup_sequence(const struct nfs_client *client,
-+static void
-+nfs41_sequence_process_interrupted(struct nfs_client *client,
-+		struct nfs4_slot *slot, struct rpc_cred *cred)
-+{
-+	struct rpc_task *task;
-+
-+	task = _nfs41_proc_sequence(client, cred, slot, true);
-+	if (!IS_ERR(task))
-+		rpc_put_task_async(task);
-+}
-+
-+static
-+void nfs4_sequence_attach_slot(struct nfs4_sequence_args *args,
-+		struct nfs4_sequence_res *res,
-+		struct nfs4_slot *slot)
-+{
-+	slot->privileged = args->sa_privileged ? 1 : 0;
-+	args->sa_slot = slot;
-+
-+	res->sr_slot = slot;
-+	res->sr_timestamp = jiffies;
-+	res->sr_status_flags = 0;
-+	res->sr_status = 1;
-+
-+}
-+
-+int nfs4_setup_sequence(struct nfs_client *client,
- 			struct nfs4_sequence_args *args,
- 			struct nfs4_sequence_res *res,
- 			struct rpc_task *task)
-@@ -897,29 +932,28 @@ int nfs4_setup_sequence(const struct nfs_client *client,
- 		task->tk_timeout = 0;
- 	}
- 
--	spin_lock(&tbl->slot_tbl_lock);
--	/* The state manager will wait until the slot table is empty */
--	if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
--		goto out_sleep;
-+	for (;;) {
-+		spin_lock(&tbl->slot_tbl_lock);
-+		/* The state manager will wait until the slot table is empty */
-+		if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
-+			goto out_sleep;
-+
-+		slot = nfs4_alloc_slot(tbl);
-+		if (IS_ERR(slot)) {
-+			/* Try again in 1/4 second */
-+			if (slot == ERR_PTR(-ENOMEM))
-+				task->tk_timeout = HZ >> 2;
-+			goto out_sleep;
-+		}
-+		spin_unlock(&tbl->slot_tbl_lock);
- 
--	slot = nfs4_alloc_slot(tbl);
--	if (IS_ERR(slot)) {
--		/* Try again in 1/4 second */
--		if (slot == ERR_PTR(-ENOMEM))
--			task->tk_timeout = HZ >> 2;
--		goto out_sleep;
-+		if (likely(!slot->interrupted))
-+			break;
-+		nfs41_sequence_process_interrupted(client,
-+				slot, task->tk_msg.rpc_cred);
- 	}
--	spin_unlock(&tbl->slot_tbl_lock);
- 
--	slot->privileged = args->sa_privileged ? 1 : 0;
--	args->sa_slot = slot;
--
--	res->sr_slot = slot;
--	if (session) {
--		res->sr_timestamp = jiffies;
--		res->sr_status_flags = 0;
--		res->sr_status = 1;
--	}
-+	nfs4_sequence_attach_slot(args, res, slot);
- 
- 	trace_nfs4_setup_sequence(session, args);
- out_start:
-@@ -8135,6 +8169,7 @@ static const struct rpc_call_ops nfs41_sequence_ops = {
- 
- static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
- 		struct rpc_cred *cred,
-+		struct nfs4_slot *slot,
- 		bool is_privileged)
- {
- 	struct nfs4_sequence_data *calldata;
-@@ -8148,15 +8183,18 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
- 		.callback_ops = &nfs41_sequence_ops,
- 		.flags = RPC_TASK_ASYNC | RPC_TASK_TIMEOUT,
- 	};
-+	struct rpc_task *ret;
- 
-+	ret = ERR_PTR(-EIO);
- 	if (!atomic_inc_not_zero(&clp->cl_count))
--		return ERR_PTR(-EIO);
-+		goto out_err;
-+
-+	ret = ERR_PTR(-ENOMEM);
- 	calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
--	if (calldata == NULL) {
--		nfs_put_client(clp);
--		return ERR_PTR(-ENOMEM);
--	}
-+	if (calldata == NULL)
-+		goto out_put_clp;
- 	nfs4_init_sequence(&calldata->args, &calldata->res, 0);
-+	nfs4_sequence_attach_slot(&calldata->args, &calldata->res, slot);
- 	if (is_privileged)
- 		nfs4_set_sequence_privileged(&calldata->args);
- 	msg.rpc_argp = &calldata->args;
-@@ -8164,7 +8202,15 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
- 	calldata->clp = clp;
- 	task_setup_data.callback_data = calldata;
- 
--	return rpc_run_task(&task_setup_data);
-+	ret = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(ret))
-+		goto out_err;
-+	return ret;
-+out_put_clp:
-+	nfs_put_client(clp);
-+out_err:
-+	nfs41_release_slot(slot);
-+	return ret;
- }
- 
- static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cred, unsigned renew_flags)
-@@ -8174,7 +8220,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
- 
- 	if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
- 		return -EAGAIN;
--	task = _nfs41_proc_sequence(clp, cred, false);
-+	task = _nfs41_proc_sequence(clp, cred, NULL, false);
- 	if (IS_ERR(task))
- 		ret = PTR_ERR(task);
- 	else
-@@ -8188,7 +8234,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
- 	struct rpc_task *task;
- 	int ret;
- 
--	task = _nfs41_proc_sequence(clp, cred, true);
-+	task = _nfs41_proc_sequence(clp, cred, NULL, true);
- 	if (IS_ERR(task)) {
- 		ret = PTR_ERR(task);
- 		goto out;
+I like clone, epoll, etc flags ... there is no any abbreviation and
+the prefix follows syscall or API name (CLONE_xxx, EPOLLxxx), what
+about MOUNT_FOO ?
+
+    Karel
+
 -- 
-2.13.6
-
+ Karel Zak  <kzak@redhat.com>
+ http://karelzak.blogspot.com
