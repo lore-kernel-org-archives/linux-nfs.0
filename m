@@ -1,104 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:49713 "EHLO
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:54254 "EHLO
         us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751682AbdJLScP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Oct 2017 14:32:15 -0400
-From: Thomas Haynes <loghyr@primarydata.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        by vger.kernel.org with ESMTP id S1751900AbdJLTbD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Oct 2017 15:31:03 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        Thomas Haynes <loghyr@primarydata.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: pynfs replay cache test SEQ9f
-Date: Thu, 12 Oct 2017 18:32:09 +0000
-Message-ID: <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
+Subject: Re: pynfs replay cache test SEQ9f
+Date: Thu, 12 Oct 2017 19:30:57 +0000
+Message-ID: <1507836655.7532.11.camel@primarydata.com>
 References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
-In-Reply-To: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
+         <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
+In-Reply-To: <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=WINDOWS-1252
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
-
-In this test:
-
-def testReplayCache006(t, env):
-   """Send two solo sequence compounds with same seqid
-
-   FLAGS: sequence all
-   CODE: SEQ9f
-   """
-   c =3D env.c1.new_client(env.testname(t))
-   sess =3D c.create_session()
-   res1 =3D sess.compound([])
-   check(res1)
-   res2 =3D sess.compound([], cache_this=3DTrue, seq_delta=3D0)
-   check(res2)
-   res1.tag =3D res2.tag =3D ""
-   if not nfs4lib.test_equal(res1, res2):
-       fail("Replay results not equal")
-
-I don't see why the result should be NFS4_OK.
-
-The first compound does not set sa_cachethis and the second
-does set it. According to RFC5661, the server is not required
-to cache the first request if the client does not request it.
-
-And if the server does not cache the response, when it gets
-a request to replay it, it can return NFS4ERR_RETRY_UNCACHED_REP:
-
-2.10.6.1.3.  Optional Reply Caching
-
-  On a per-request basis, the requester can choose to direct the
-  replier to cache the reply to all operations after the first
-  operation (SEQUENCE or CB_SEQUENCE) via the sa_cachethis or
-  csa_cachethis fields of the arguments to SEQUENCE or CB_SEQUENCE.
-  The reason it would not direct the replier to cache the entire reply
-  is that the request is composed of all idempotent operations [34].
-  Caching the reply may offer little benefit.  If the reply is too
-  large (see Section 2.10.6.4), it may not be cacheable anyway.  Even
-  if the reply to idempotent request is small enough to cache,
-  unnecessarily caching the reply slows down the server and increases
-  RPC latency.
-
-  Whether or not the requester requests the reply to be cached has no
-  effect on the slot processing.  If the results of SEQUENCE or
-  CB_SEQUENCE are NFS4_OK, then the slot's sequence ID MUST be
-  incremented by one.  If a requester does not direct the replier to
-  cache the reply, the replier MUST do one of following:
-
-  o  The replier can cache the entire original reply.  Even though
-     sa_cachethis or csa_cachethis is FALSE, the replier is always free
-     to cache.  It may choose this approach in order to simplify
-     implementation.
-
-  o  The replier enters into its reply cache a reply consisting of the
-     original results to the SEQUENCE or CB_SEQUENCE operation, and
-     with the next operation in COMPOUND or CB_COMPOUND having the
-     error NFS4ERR_RETRY_UNCACHED_REP.  Thus, if the requester later
-     retries the request, it will get NFS4ERR_RETRY_UNCACHED_REP.  If a
-     replier receives a retried Sequence operation where the reply to
-     the COMPOUND or CB_COMPOUND was not cached, then the replier,
-
-Further, since the parameters to SEQUENCE are different it is a false
-retry according to this:
-
-2.10.6.1.3.1.  False Retry
-
-If a requester sent a Sequence operation with a slot ID and sequence
-ID that are in the reply cache but the replier detected that the
-retried request is not the same as the original request, including a
-retry that has different operations or different arguments in the
-operations from the original and a retry that uses a different
- principal in the RPC request's credential field that translates to a
-different user, then this is a false retry.  When the replier detects
-a false retry, it is permitted (but not always obligated) to return
-NFS4ERR_SEQ_FALSE_RETRY in response to the Sequence operation when it
-detects a false retry.
-
-I'm not sure if the test should be fixed to either
-
-1) allow either NFS4_OK or NFS4ERR_RETRY_UNCACHED_REP
-2) just remove the test.
-
-Thoughts?
+T24gVGh1LCAyMDE3LTEwLTEyIGF0IDE4OjMyICswMDAwLCBUaG9tYXMgSGF5bmVzIHdyb3RlOg0K
+PiBIaSBCcnVjZSwNCj4gDQo+IEluIHRoaXMgdGVzdDoNCj4gDQo+IGRlZiB0ZXN0UmVwbGF5Q2Fj
+aGUwMDYodCwgZW52KToNCj4gICAgIiIiU2VuZCB0d28gc29sbyBzZXF1ZW5jZSBjb21wb3VuZHMg
+d2l0aCBzYW1lIHNlcWlkDQo+IA0KPiAgICBGTEFHUzogc2VxdWVuY2UgYWxsDQo+ICAgIENPREU6
+IFNFUTlmDQo+ICAgICIiIg0KPiAgICBjID0gZW52LmMxLm5ld19jbGllbnQoZW52LnRlc3RuYW1l
+KHQpKQ0KPiAgICBzZXNzID0gYy5jcmVhdGVfc2Vzc2lvbigpDQo+ICAgIHJlczEgPSBzZXNzLmNv
+bXBvdW5kKFtdKQ0KPiAgICBjaGVjayhyZXMxKQ0KPiAgICByZXMyID0gc2Vzcy5jb21wb3VuZChb
+XSwgY2FjaGVfdGhpcz1UcnVlLCBzZXFfZGVsdGE9MCkNCj4gICAgY2hlY2socmVzMikNCj4gICAg
+cmVzMS50YWcgPSByZXMyLnRhZyA9ICIiDQo+ICAgIGlmIG5vdCBuZnM0bGliLnRlc3RfZXF1YWwo
+cmVzMSwgcmVzMik6DQo+ICAgICAgICBmYWlsKCJSZXBsYXkgcmVzdWx0cyBub3QgZXF1YWwiKQ0K
+PiANCj4gSSBkb24ndCBzZWUgd2h5IHRoZSByZXN1bHQgc2hvdWxkIGJlIE5GUzRfT0suDQo+IA0K
+PiBUaGUgZmlyc3QgY29tcG91bmQgZG9lcyBub3Qgc2V0IHNhX2NhY2hldGhpcyBhbmQgdGhlIHNl
+Y29uZA0KPiBkb2VzIHNldCBpdC4gQWNjb3JkaW5nIHRvIFJGQzU2NjEsIHRoZSBzZXJ2ZXIgaXMg
+bm90IHJlcXVpcmVkDQo+IHRvIGNhY2hlIHRoZSBmaXJzdCByZXF1ZXN0IGlmIHRoZSBjbGllbnQg
+ZG9lcyBub3QgcmVxdWVzdCBpdC4NCj4gDQo+IEFuZCBpZiB0aGUgc2VydmVyIGRvZXMgbm90IGNh
+Y2hlIHRoZSByZXNwb25zZSwgd2hlbiBpdCBnZXRzDQo+IGEgcmVxdWVzdCB0byByZXBsYXkgaXQs
+IGl0IGNhbiByZXR1cm4gTkZTNEVSUl9SRVRSWV9VTkNBQ0hFRF9SRVA6DQo+IA0KPiAyLjEwLjYu
+MS4zLiAgT3B0aW9uYWwgUmVwbHkgQ2FjaGluZw0KPiANCj4gICBPbiBhIHBlci1yZXF1ZXN0IGJh
+c2lzLCB0aGUgcmVxdWVzdGVyIGNhbiBjaG9vc2UgdG8gZGlyZWN0IHRoZQ0KPiAgIHJlcGxpZXIg
+dG8gY2FjaGUgdGhlIHJlcGx5IHRvIGFsbCBvcGVyYXRpb25zIGFmdGVyIHRoZSBmaXJzdA0KPiAg
+IG9wZXJhdGlvbiAoU0VRVUVOQ0Ugb3IgQ0JfU0VRVUVOQ0UpIHZpYSB0aGUgc2FfY2FjaGV0aGlz
+IG9yDQo+ICAgY3NhX2NhY2hldGhpcyBmaWVsZHMgb2YgdGhlIGFyZ3VtZW50cyB0byBTRVFVRU5D
+RSBvciBDQl9TRVFVRU5DRS4NCj4gICBUaGUgcmVhc29uIGl0IHdvdWxkIG5vdCBkaXJlY3QgdGhl
+IHJlcGxpZXIgdG8gY2FjaGUgdGhlIGVudGlyZQ0KPiByZXBseQ0KPiAgIGlzIHRoYXQgdGhlIHJl
+cXVlc3QgaXMgY29tcG9zZWQgb2YgYWxsIGlkZW1wb3RlbnQgb3BlcmF0aW9ucyBbMzRdLg0KPiAg
+IENhY2hpbmcgdGhlIHJlcGx5IG1heSBvZmZlciBsaXR0bGUgYmVuZWZpdC4gIElmIHRoZSByZXBs
+eSBpcyB0b28NCj4gICBsYXJnZSAoc2VlIFNlY3Rpb24gMi4xMC42LjQpLCBpdCBtYXkgbm90IGJl
+IGNhY2hlYWJsZSBhbnl3YXkuICBFdmVuDQo+ICAgaWYgdGhlIHJlcGx5IHRvIGlkZW1wb3RlbnQg
+cmVxdWVzdCBpcyBzbWFsbCBlbm91Z2ggdG8gY2FjaGUsDQo+ICAgdW5uZWNlc3NhcmlseSBjYWNo
+aW5nIHRoZSByZXBseSBzbG93cyBkb3duIHRoZSBzZXJ2ZXIgYW5kIGluY3JlYXNlcw0KPiAgIFJQ
+QyBsYXRlbmN5Lg0KPiANCj4gICBXaGV0aGVyIG9yIG5vdCB0aGUgcmVxdWVzdGVyIHJlcXVlc3Rz
+IHRoZSByZXBseSB0byBiZSBjYWNoZWQgaGFzIG5vDQo+ICAgZWZmZWN0IG9uIHRoZSBzbG90IHBy
+b2Nlc3NpbmcuICBJZiB0aGUgcmVzdWx0cyBvZiBTRVFVRU5DRSBvcg0KPiAgIENCX1NFUVVFTkNF
+IGFyZSBORlM0X09LLCB0aGVuIHRoZSBzbG90J3Mgc2VxdWVuY2UgSUQgTVVTVCBiZQ0KPiAgIGlu
+Y3JlbWVudGVkIGJ5IG9uZS4gIElmIGEgcmVxdWVzdGVyIGRvZXMgbm90IGRpcmVjdCB0aGUgcmVw
+bGllciB0bw0KPiAgIGNhY2hlIHRoZSByZXBseSwgdGhlIHJlcGxpZXIgTVVTVCBkbyBvbmUgb2Yg
+Zm9sbG93aW5nOg0KPiANCj4gICBvICBUaGUgcmVwbGllciBjYW4gY2FjaGUgdGhlIGVudGlyZSBv
+cmlnaW5hbCByZXBseS4gIEV2ZW4gdGhvdWdoDQo+ICAgICAgc2FfY2FjaGV0aGlzIG9yIGNzYV9j
+YWNoZXRoaXMgaXMgRkFMU0UsIHRoZSByZXBsaWVyIGlzIGFsd2F5cw0KPiBmcmVlDQo+ICAgICAg
+dG8gY2FjaGUuICBJdCBtYXkgY2hvb3NlIHRoaXMgYXBwcm9hY2ggaW4gb3JkZXIgdG8gc2ltcGxp
+ZnkNCj4gICAgICBpbXBsZW1lbnRhdGlvbi4NCj4gDQo+ICAgbyAgVGhlIHJlcGxpZXIgZW50ZXJz
+IGludG8gaXRzIHJlcGx5IGNhY2hlIGEgcmVwbHkgY29uc2lzdGluZyBvZg0KPiB0aGUNCj4gICAg
+ICBvcmlnaW5hbCByZXN1bHRzIHRvIHRoZSBTRVFVRU5DRSBvciBDQl9TRVFVRU5DRSBvcGVyYXRp
+b24sIGFuZA0KPiAgICAgIHdpdGggdGhlIG5leHQgb3BlcmF0aW9uIGluIENPTVBPVU5EIG9yIENC
+X0NPTVBPVU5EIGhhdmluZyB0aGUNCj4gICAgICBlcnJvciBORlM0RVJSX1JFVFJZX1VOQ0FDSEVE
+X1JFUC4gIFRodXMsIGlmIHRoZSByZXF1ZXN0ZXIgbGF0ZXINCj4gICAgICByZXRyaWVzIHRoZSBy
+ZXF1ZXN0LCBpdCB3aWxsIGdldCBORlM0RVJSX1JFVFJZX1VOQ0FDSEVEX1JFUC4gIElmDQo+IGEN
+Cj4gICAgICByZXBsaWVyIHJlY2VpdmVzIGEgcmV0cmllZCBTZXF1ZW5jZSBvcGVyYXRpb24gd2hl
+cmUgdGhlIHJlcGx5IHRvDQo+ICAgICAgdGhlIENPTVBPVU5EIG9yIENCX0NPTVBPVU5EIHdhcyBu
+b3QgY2FjaGVkLCB0aGVuIHRoZSByZXBsaWVyLA0KPiANCj4gRnVydGhlciwgc2luY2UgdGhlIHBh
+cmFtZXRlcnMgdG8gU0VRVUVOQ0UgYXJlIGRpZmZlcmVudCBpdCBpcyBhIGZhbHNlDQo+IHJldHJ5
+IGFjY29yZGluZyB0byB0aGlzOg0KPiANCj4gMi4xMC42LjEuMy4xLiAgRmFsc2UgUmV0cnkNCj4g
+DQo+IElmIGEgcmVxdWVzdGVyIHNlbnQgYSBTZXF1ZW5jZSBvcGVyYXRpb24gd2l0aCBhIHNsb3Qg
+SUQgYW5kIHNlcXVlbmNlDQo+IElEIHRoYXQgYXJlIGluIHRoZSByZXBseSBjYWNoZSBidXQgdGhl
+IHJlcGxpZXIgZGV0ZWN0ZWQgdGhhdCB0aGUNCj4gcmV0cmllZCByZXF1ZXN0IGlzIG5vdCB0aGUg
+c2FtZSBhcyB0aGUgb3JpZ2luYWwgcmVxdWVzdCwgaW5jbHVkaW5nIGENCj4gcmV0cnkgdGhhdCBo
+YXMgZGlmZmVyZW50IG9wZXJhdGlvbnMgb3IgZGlmZmVyZW50IGFyZ3VtZW50cyBpbiB0aGUNCj4g
+b3BlcmF0aW9ucyBmcm9tIHRoZSBvcmlnaW5hbCBhbmQgYSByZXRyeSB0aGF0IHVzZXMgYSBkaWZm
+ZXJlbnQNCj4gIHByaW5jaXBhbCBpbiB0aGUgUlBDIHJlcXVlc3QncyBjcmVkZW50aWFsIGZpZWxk
+IHRoYXQgdHJhbnNsYXRlcyB0byBhDQo+IGRpZmZlcmVudCB1c2VyLCB0aGVuIHRoaXMgaXMgYSBm
+YWxzZSByZXRyeS4gIFdoZW4gdGhlIHJlcGxpZXIgZGV0ZWN0cw0KPiBhIGZhbHNlIHJldHJ5LCBp
+dCBpcyBwZXJtaXR0ZWQgKGJ1dCBub3QgYWx3YXlzIG9ibGlnYXRlZCkgdG8gcmV0dXJuDQo+IE5G
+UzRFUlJfU0VRX0ZBTFNFX1JFVFJZIGluIHJlc3BvbnNlIHRvIHRoZSBTZXF1ZW5jZSBvcGVyYXRp
+b24gd2hlbiBpdA0KPiBkZXRlY3RzIGEgZmFsc2UgcmV0cnkuDQo+IA0KPiBJJ20gbm90IHN1cmUg
+aWYgdGhlIHRlc3Qgc2hvdWxkIGJlIGZpeGVkIHRvIGVpdGhlcg0KPiANCj4gMSkgYWxsb3cgZWl0
+aGVyIE5GUzRfT0sgb3IgTkZTNEVSUl9SRVRSWV9VTkNBQ0hFRF9SRVANCj4gMikganVzdCByZW1v
+dmUgdGhlIHRlc3QuDQo+IA0KPiBUaG91Z2h0cz8NCg0KSG1tbS4uLi4NCg0KMi4xMC42LjEuMw0K
+Li4uDQoNCiAgICAgICogIE1VU1QgTk9UIHJldHVybiBORlM0RVJSX1JFVFJZX1VOQ0FDSEVEX1JF
+UCBpbiByZXBseSB0byBhDQogICAgICAgICBTZXF1ZW5jZSBvcGVyYXRpb24gaWYgdGhlIFNlcXVl
+bmNlIG9wZXJhdGlvbiBpcyB0aGUgZmlyc3QNCiAgICAgICAgIG9wZXJhdGlvbi4NCi4uLi4NCg0K
+Li4uc28gaXQgbG9va3MgYXMgaWYgdGhlIGZpcnN0IHNlcXVlbmNlIGluIGEgY29tcG91bmQgYWx3
+YXlzIGhhcyB0bw0KcmV0dXJuIGVpdGhlciBORlNfT0ssIG9yIHBvc3NpYmx5IE5GUzRFUlJfU0VR
+X0ZBTFNFX1JFVFJZLiBUaGUgbGF0dGVyDQpzaG91bGQgcHJlc3VtYWJseSBiZSBhbGxvd2VkLCBz
+aW5jZSB0aGVyZSBpcyBubyBleGNlcHRpb24gY2FydmVkIG91dCBpbg0KMi4xMC42LjEuMy4xIGZv
+ciB0aGUgc2VxdWVuY2Ugb3Agdy5yLnQuIGJlaGF2aW91ciB3aXRoIGRpZmZlcmVudA0Kb3BlcmF0
+aW9uIGFyZ3VtZW50cy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
+bWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20N
+Cg==
 
