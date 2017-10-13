@@ -1,78 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx141.netapp.com ([216.240.21.12]:20636 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751258AbdJMUyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Oct 2017 16:54:15 -0400
+        id S1751451AbdJMUyR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Oct 2017 16:54:17 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 00/10] NFSD support for asynchronous COPY
-Date: Fri, 13 Oct 2017 16:54:02 -0400
-Message-ID: <20171013205412.65532-1-kolga@netapp.com>
+Subject: [PATCH v5 04/10] NFSD xdr callback stateid in async COPY reply
+Date: Fri, 13 Oct 2017 16:54:06 -0400
+Message-ID: <20171013205412.65532-5-kolga@netapp.com>
+In-Reply-To: <20171013205412.65532-1-kolga@netapp.com>
+References: <20171013205412.65532-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-To do asynchronous copies, NFSD creates a new kthread to handle the request.
-Upon receiving the COPY, it generates a unique copy stateid (stored in a
-global list for keeping track of state for OFFLOAD_STATUS to be queried by),
-starts the thread, and replies back to the client. nfsd4_copy arguments that
-are allocated on the stack are copies for the kthread.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfsd/nfs4xdr.c | 21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
 
-In the async copy handler, it calls into VFS copy_file_range() (for synch
-we keep the 4MB chunk and requested size for the async copy). If error is
-encountered it's saved but also we save the amount of data copied so far.
-Once done, the results are queued for the callback workqueue and sent via
-CB_OFFLOAD.
-
-When the server received an OFFLOAD_CANCEL, it will find the kthread running
-the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
-the ongoing do_splice() and once vfs returns we are choosing not to send
-the CB_OFFLOAD back to the client.
-
-When the server receives an OFFLOAD_STATUS, it will find the kthread running
-the copy and will query the i_size_read() of the associated filehandle of
-the destination file and return the result.
-
-v5:
-1. reimplementing asynchronous copy to use kthreads instead of the workqueue
-2. store asynchronous copies in the list of the nfs4_client structure
-3. when copying nfsd4_copy datastructure for the async copy refcount the
-nfs4_client structure as well as struct file src/dst structure
-4. add refcount to the nfsd4_copy structure to coordinate with offload_status
-and offload_cancel
-5. offload_cancel/copy_shutdown sets the SIGPENDING in the copy's thread to
-interrupt do_splice and calls kthread_stop to wait for the copy to stop
-6. offload_cancel adds MODIFIES_SOMETHING to flags
-7. offload_status reports the size of the destination file form i_size_read()
-instead of before 4MB loop updated chunk size.
-8. for async copy call vfs_copy_file_range() with the whole copy size. still
-keep the loop to do more the MAX_RW_COUNT that do_splice can do.
-
-Olga Kornievskaia (10):
-  NFSD CB_OFFLOAD xdr
-  NFSD OFFLOAD_STATUS xdr
-  NFSD OFFLOAD_CANCEL xdr
-  NFSD xdr callback stateid in async COPY reply
-  NFSD first draft of async copy
-  NFSD return nfs4_stid in nfs4_preprocess_stateid_op
-  NFSD create new stateid for async copy
-  NFSD handle OFFLOAD_CANCEL op
-  NFSD support OFFLOAD_STATUS
-  NFSD stop queued async copies on client shutdown
-
- fs/nfsd/netns.h        |   8 ++
- fs/nfsd/nfs4callback.c |  97 +++++++++++++++
- fs/nfsd/nfs4proc.c     | 321 ++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/nfs4state.c    |  77 +++++++++++-
- fs/nfsd/nfs4xdr.c      |  50 ++++++--
- fs/nfsd/nfsctl.c       |   1 +
- fs/nfsd/state.h        |  21 +++-
- fs/nfsd/xdr4.h         |  28 +++++
- fs/nfsd/xdr4cb.h       |  10 ++
- 9 files changed, 576 insertions(+), 37 deletions(-)
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 55db3c4..27c4509 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4190,15 +4190,27 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ #endif /* CONFIG_NFSD_PNFS */
+ 
+ static __be32
+-nfsd42_encode_write_res(struct nfsd4_compoundres *resp, struct nfsd42_write_res *write)
++nfsd42_encode_write_res(struct nfsd4_compoundres *resp,
++		struct nfsd42_write_res *write, bool sync)
+ {
+ 	__be32 *p;
++	p = xdr_reserve_space(&resp->xdr, 4);
++	if (!p)
++		return nfserr_resource;
+ 
+-	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 4 + NFS4_VERIFIER_SIZE);
++	if (sync)
++		*p++ = cpu_to_be32(0);
++	else {
++		__be32 nfserr;
++		*p++ = cpu_to_be32(1);
++		nfserr = nfsd4_encode_stateid(&resp->xdr, &write->cb_stateid);
++		if (nfserr)
++			return nfserr;
++	}
++	p = xdr_reserve_space(&resp->xdr, 8 + 4 + NFS4_VERIFIER_SIZE);
+ 	if (!p)
+ 		return nfserr_resource;
+ 
+-	*p++ = cpu_to_be32(0);
+ 	p = xdr_encode_hyper(p, write->wr_bytes_written);
+ 	*p++ = cpu_to_be32(write->wr_stable_how);
+ 	p = xdr_encode_opaque_fixed(p, write->wr_verifier.data,
+@@ -4212,7 +4224,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ {
+ 	__be32 *p;
+ 
+-	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res);
++	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res,
++			copy->cp_synchronous);
+ 	if (nfserr)
+ 		return nfserr;
+ 
 -- 
 1.8.3.1
 
