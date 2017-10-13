@@ -1,82 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:50867 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753380AbdJMNef (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 09:34:35 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "loghyr@excfb.com" <loghyr@excfb.com>
-CC: Thomas Haynes <loghyr@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: pynfs replay cache test SEQ9f
-Date: Fri, 13 Oct 2017 13:34:28 +0000
-Message-ID: <1507901666.4550.2.camel@primarydata.com>
-References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
-         <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
-         <20171012194946.GC5233@fieldses.org>
-         <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com>
-         <20171012214454.GA19598@fieldses.org>
-         <20171012220051.GB29204@psyklo.internal.excfb.com>
-         <20171013015223.GA21284@fieldses.org>
-In-Reply-To: <20171013015223.GA21284@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from userp1040.oracle.com ([156.151.31.81]:20337 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753415AbdJMONW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 10:13:22 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: Draft RFC for ONC RPC over AF_VSOCK
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20171012121706.GC5957@stefanha-x1.localdomain>
+Date: Fri, 13 Oct 2017 10:13:18 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <00E6726C-D32F-4C34-B809-F3F3CCCF22D5@oracle.com>
+References: <20171005200835.GA31525@stefanha-x1.localdomain> <2BCB0D75-EF18-4463-BEB4-D09005DAE86B@oracle.com> <20171012121706.GC5957@stefanha-x1.localdomain>
+To: Stefan Hajnoczi <stefanha@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTEwLTEyIGF0IDIxOjUyIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFRodSwgT2N0IDEyLCAyMDE3IGF0IDAzOjAwOjUxUE0gLTA3MDAsIFRvbSBIYXluZXMg
-d3JvdGU6DQo+ID4gT24gVGh1LCBPY3QgMTIsIDIwMTcgYXQgMDU6NDQ6NTRQTSAtMDQwMCwgSi4g
-QnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gWW91ciBtYWlsZXIncyBub3QgcXVvdGluZyByaWdo
-dCwgaXQncyBhIGxpdHRsZSBoYXJkIGZvciBtZSB0bw0KPiA+ID4gZmluZCB5b3VyDQo+ID4gPiBy
-ZXBsaWVzLiAgV2FkaW5nIGluOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIE9jdCAxMiwgMjAxNyBh
-dCAwOTozOTowNFBNICswMDAwLCBUaG9tYXMgSGF5bmVzIHdyb3RlOg0KPiA+ID4gPiBPbiBPY3Qg
-MTIsIDIwMTcsIGF0IDEyOjQ5IFBNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAZmllbGRzZXMN
-Cj4gPiA+ID4gLm9yZzxtYWlsdG86YmZpZWxkc0BmaWVsZHNlcy5vcmc+PiB3cm90ZToNCj4gPiA+
-ID4gPiBTbyBJICp0aGluayogdGhlIG9ubHkgY29ycmVjdCBvcHRpb25zIE9LIG9yIEZBTFNFX1JF
-VFJZPw0KPiA+ID4gPiANCj4gPiA+ID4gSXQgY2Fu4oCZdCBiZSBPSyBpZiB0aGUgcGFyYW1ldGVy
-cyB0byBTRVFVRU5DRSBkaWZmZXIuDQo+ID4gPiANCj4gPiA+IEknbSBnZXR0aW5nIHRoYXQgZnJv
-bTogIldoZW4gdGhlIHJlcGxpZXIgZGV0ZWN0cyBhIGZhbHNlIHJldHJ5LA0KPiA+ID4gaXQgaXMN
-Cj4gPiA+IHBlcm1pdHRlZCAoYnV0IG5vdCBhbHdheXMgb2JsaWdhdGVkKSB0byByZXR1cm4NCj4g
-PiA+IE5GUzRFUlJfRkFMU0VfUkVUUlkgaW4NCj4gPiA+IHJlc3BvbnNlIHRvIHRoZSBTZXF1ZW5j
-ZSBvcGVyYXRpb24gd2hlbiBpdCBkZXRlY3RzIGEgZmFsc2UNCj4gPiA+IHJldHJ5LiINCj4gPiAN
-Cj4gPiBJIHRoaW5rIHlvdSBhcmUgYWdyZWVpbmcgd2l0aCBtZSB0aGF0IE9LIGlzIG5vdCBhcHBy
-b3ByaWF0ZSBoZXJlPw0KPiANCj4gTm8sIEkgdGhpbmsgT0sgaXMgT0s6DQo+IA0KPiA+ID4gSWYg
-aSB1bmRlcnN0YW5kIHRoZSBmb2xsb3dpbmcgbGFuZ3VhZ2UsIHdlJ3JlIHJlcXVpcmVkIHRvIHJl
-dHVybg0KPiA+ID4gRkFMU0VfUkVUUlkgaW4gdGhlIGNhc2UgdGhlIHJwYyBjcmVkZW50aWFscyBv
-ZiB0aGUgY2FsbGVyIG1hcCB0bw0KPiA+ID4gZGlmZmVyZW50IHByaW5jaXBhbHMsIGJ1dCBub3Qg
-b3RoZXJ3aXNlLg0KPiA+IA0KPiA+IFRoaXMgb25lIGRyb3ZlIG1lIGNyYXp5Og0KPiA+IA0KPiA+
-ICAgIElmIGEgcmVxdWVzdGVyIHNlbnQgYSBTZXF1ZW5jZSBvcGVyYXRpb24gd2l0aCBhIHNsb3Qg
-SUQgYW5kDQo+ID4gc2VxdWVuY2UNCj4gPiAgICBJRCB0aGF0IGFyZSBpbiB0aGUgcmVwbHkgY2Fj
-aGUgYnV0IHRoZSByZXBsaWVyIGRldGVjdGVkIHRoYXQgdGhlDQo+ID4gICAgcmV0cmllZCByZXF1
-ZXN0IGlzIG5vdCB0aGUgc2FtZSBhcyB0aGUgb3JpZ2luYWwgcmVxdWVzdCwNCj4gPiBpbmNsdWRp
-bmcgYQ0KPiA+ICAgIHJldHJ5IHRoYXQgaGFzIGRpZmZlcmVudCBvcGVyYXRpb25zIG9yIGRpZmZl
-cmVudCBhcmd1bWVudHMgaW4NCj4gPiB0aGUNCj4gPiAgICBvcGVyYXRpb25zIGZyb20gdGhlIG9y
-aWdpbmFsDQo+ID4gDQo+ID4gU0VRVUVOQ0UgaXMgbm90IHNwZWNpYWwgLSBib3RoIHRoZSBjb21w
-b3VuZHMgaW4gdGhpcyBleGFtcGxlDQo+ID4gb25seSBoYXZlIHRoZSBTRVFVRU5DRSBvcCBhbmQg
-dGhleSBkaWZmZXIgb25seSBpbiB0aGF0IGluIHRoZQ0KPiA+IGZpcnN0IHNhX2NhY2hldGhpcyBp
-cyBGYWxzZSBhbmQgaW4gdGhlIHNlY29uZCBpdCBpcyBUcnVlLg0KPiA+IA0KPiA+IFNvIHdlIGhh
-dmUgdG8gcmV0dXJuIEZBTFNFX1NFUV9SRVRSWSBoZXJlLi4uDQo+IA0KPiBJdCBzYXlzICJpZiB0
-aGUgcmVwbGllciBkZXRlY3RlZCIgYSBkaWZmZXJlbmNlLCBub3QgImlmIHRoZXJlIGlzIiBhDQo+
-IGRpZmZlcmVuY2UuICBTbyB0aGUgcmVwbGllciBpcyBub3QgcmVxdWlyZWQgdG8gZG8gc3VjaA0K
-PiBkZXRlY3Rpb24uICBUaGlzDQo+IGFncmVlcyB3aXRoIHRoZSAibm90IGFsd2F5cyBvYmxpZ2F0
-ZWQiIGFib3ZlLg0KPiANCj4gU28gSSB0aGluayBpdCdzIGFsbG93ZWQgZm9yIHRoZSBzZXJ2ZXIg
-dG8ganVzdCByZXR1cm4gYW4gb2xkIGNhY2hlZA0KPiByZXNwb25zZSBoZXJlICh3aXRoIHRoZSBj
-YWNoZWQgT0spLiAgQW5kIEkgY2FuJ3Qgc2VlIGFueSBwcmFjdGljYWwNCj4gcHJvYmxlbSB0aGF0
-IHdvdWxkIGNyZWF0ZS0tYSBjbGllbnQgc2hvdWxkbid0IGJlIHNlbmRpbmcgYSBkaWZmZXJlbnQN
-Cj4gcmVxdWVzdCB3aXRoIHRoZSBzYW1lIChzbG90LCBzZXF1ZW5jZSkgYW55d2F5LiAgVGhlIG9u
-bHkgcG90ZW50aWFsDQo+IHJpc2sNCj4gaXMgdGhlIG1hbGljaW91cyBjbGllbnQgdHJ5aW5nIHRv
-IHNub29wIHNvbWVib2R5IGVsc2UncyByZXBseSBjYWNoZSwNCj4gaGVuY2UgdGhlIHJlcXVpcmVt
-ZW50IGluIHRoZSBjYXNlIHByaW5jaXBhbHMgZGlmZmVyLg0KDQpDbGllbnRzIG1heSBpbmRlZWQg
-c2VuZCBhIGRpZmZlcmVudCByZXF1ZXN0IHdpdGggdGhlIHNhbWUgc2xvdCBhbmQNCnNlcXVlbmNl
-IGlmIHRoZXkgZG9uJ3Qga25vdyB0aGF0IHRoZSBzZXJ2ZXIgcmVjZWl2ZWQgdGhlIGxhc3QgcmVx
-dWVzdC4NClRoaXMgaXMgdGJlICJ1c2VyIHByZXNzZWQgXkMiIHNjZW5hcmlvLi4uDQoNClNlcnZl
-cnMgTUFZIGlnbm9yZSB0aGF0IGZhY3QsIGJ1dCB0aGV5J2QgYmUgcmVhbGx5IHN0dXBpZCB0byBk
-byBzby4uLg0KDQo+IA0KPiAtLWIuDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBs
-aXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+IGluDQo+IHRoZSBi
-b2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFq
-b3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRt
-bA0KPiANCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
-IFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+
+> On Oct 12, 2017, at 8:17 AM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
+> 
+> On Thu, Oct 05, 2017 at 04:53:07PM -0400, Chuck Lever wrote:
+>>> On Oct 5, 2017, at 4:08 PM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
+> 
+>> An unchanging public reference to a specification of VSOCK is
+>> important to cite. If you can't find one, you'll have to explain
+>> why in the document. If the VSOCK specification is not an IETF
+>> document, it will have to be an Informative reference, and this
+>> I-D will also have to be Informative.
+> 
+> There is no formal specification.  VMware has published developer
+> documentation that explains the use of VSOCK in the context of VMware
+> products.
+
+If there is nothing else, this is the most appropriate reference
+to cite. It provides a description of the technology made by the
+agent who invented and ultimately controls it (we believe: it
+may be that someone else did, and VMware is just taking credit;
+I think we need to know that too).
+
+You should contact VMware to see if they have anything more, and
+to ask if they already have NFS on VSOCK. Let them know you are
+submitting standards in this area.
+
+
+> I will submit a vsock(7) man page to the Linux man-pages project
+> (similar to ip(7), tcp(7), etc).  It will document the semantics of the
+> AF_VSOCK address family.  Maybe this can serve as a reference?
+
+The IESG will ultimately decide, but IMO citing a man page that
+you wrote would not be adequate unless you yourself invented the
+VSOCK technology.
+
+
+--
+Chuck Lever
+
+
 
