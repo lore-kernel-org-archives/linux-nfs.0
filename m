@@ -1,60 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41296 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751480AbdJMKKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Oct 2017 06:10:34 -0400
-Date: Fri, 13 Oct 2017 11:10:31 +0100
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: Chuck Lever <chucklever@gmail.com>
-Cc: Matt Benjamin <mbenjami@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        NFSv4 <nfsv4@ietf.org>
-Subject: Re: Draft RFC for ONC RPC over AF_VSOCK
-Message-ID: <20171013101031.GE27308@stefanha-x1.localdomain>
-References: <20171005200835.GA31525@stefanha-x1.localdomain>
- <CAKOnarmreQp6c8qM7x=ohGf1sAoj53qbE0bNvKxzyWLiS=2zKw@mail.gmail.com>
- <20171012120814.GB5957@stefanha-x1.localdomain>
- <D5A0AD89-0FA0-4057-849D-57BA54433710@gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:50867 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753380AbdJMNef (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 09:34:35 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "loghyr@excfb.com" <loghyr@excfb.com>
+CC: Thomas Haynes <loghyr@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: pynfs replay cache test SEQ9f
+Date: Fri, 13 Oct 2017 13:34:28 +0000
+Message-ID: <1507901666.4550.2.camel@primarydata.com>
+References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
+         <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
+         <20171012194946.GC5233@fieldses.org>
+         <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com>
+         <20171012214454.GA19598@fieldses.org>
+         <20171012220051.GB29204@psyklo.internal.excfb.com>
+         <20171013015223.GA21284@fieldses.org>
+In-Reply-To: <20171013015223.GA21284@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <D5A0AD89-0FA0-4057-849D-57BA54433710@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 12, 2017 at 12:40:20PM -0400, Chuck Lever wrote:
-> 
-> 
-> > On Oct 12, 2017, at 8:08 AM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
-> > 
-> >> On Thu, Oct 05, 2017 at 04:50:55PM -0400, Matt Benjamin wrote:
-> >>> On Thu, Oct 5, 2017 at 4:08 PM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
-> >>> I have previously submitted patches that implement NFS client and nfsd
-> >>> support for the AF_VSOCK address family.  In order for this to be
-> >>> acceptable for merge the AF_VSOCK transport needs to be defined in an
-> >>> IETF RFC.  Below is a draft RFC that defines ONC RPC over AF_VSOCK.
-> >>> 
-> >>> My patches use netid "vsock" but "tcpv" has also been suggested.  This draft
-> >>> RFC still uses "vsock" but I'll update it to "tcpv" if there is consensus.
-> >>> 
-> >> 
-> >> I think "vsock" is the appropriate netid, not "tcpv."  Stream
-> >> orientation, if anything, is the general category containing TCP and
-> >> VSOCK, not the reverse.  But really I think it's just more clear.
-> >> 
-> >> I think this draft needs to be sent to the IETF NFSv4 working group
-> >> alias, nfsv4@ietf.org.
-> > 
-> > Thanks.  Will send the next revision properly formatted to the NFSv4
-> > working group.
-> 
-> Don’t do that. Please submit a personal draft via:
-> 
-> https://datatracker.ietf.org/submit/
-> 
-> once you have appropriate permission from RH legal
-> counsel to contribute to the IETF. Then approach the
-> working group to introduce your submitted document.
+T24gVGh1LCAyMDE3LTEwLTEyIGF0IDIxOjUyIC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFRodSwgT2N0IDEyLCAyMDE3IGF0IDAzOjAwOjUxUE0gLTA3MDAsIFRvbSBIYXluZXMg
+d3JvdGU6DQo+ID4gT24gVGh1LCBPY3QgMTIsIDIwMTcgYXQgMDU6NDQ6NTRQTSAtMDQwMCwgSi4g
+QnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gWW91ciBtYWlsZXIncyBub3QgcXVvdGluZyByaWdo
+dCwgaXQncyBhIGxpdHRsZSBoYXJkIGZvciBtZSB0bw0KPiA+ID4gZmluZCB5b3VyDQo+ID4gPiBy
+ZXBsaWVzLiAgV2FkaW5nIGluOg0KPiA+ID4gDQo+ID4gPiBPbiBUaHUsIE9jdCAxMiwgMjAxNyBh
+dCAwOTozOTowNFBNICswMDAwLCBUaG9tYXMgSGF5bmVzIHdyb3RlOg0KPiA+ID4gPiBPbiBPY3Qg
+MTIsIDIwMTcsIGF0IDEyOjQ5IFBNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAZmllbGRzZXMN
+Cj4gPiA+ID4gLm9yZzxtYWlsdG86YmZpZWxkc0BmaWVsZHNlcy5vcmc+PiB3cm90ZToNCj4gPiA+
+ID4gPiBTbyBJICp0aGluayogdGhlIG9ubHkgY29ycmVjdCBvcHRpb25zIE9LIG9yIEZBTFNFX1JF
+VFJZPw0KPiA+ID4gPiANCj4gPiA+ID4gSXQgY2Fu4oCZdCBiZSBPSyBpZiB0aGUgcGFyYW1ldGVy
+cyB0byBTRVFVRU5DRSBkaWZmZXIuDQo+ID4gPiANCj4gPiA+IEknbSBnZXR0aW5nIHRoYXQgZnJv
+bTogIldoZW4gdGhlIHJlcGxpZXIgZGV0ZWN0cyBhIGZhbHNlIHJldHJ5LA0KPiA+ID4gaXQgaXMN
+Cj4gPiA+IHBlcm1pdHRlZCAoYnV0IG5vdCBhbHdheXMgb2JsaWdhdGVkKSB0byByZXR1cm4NCj4g
+PiA+IE5GUzRFUlJfRkFMU0VfUkVUUlkgaW4NCj4gPiA+IHJlc3BvbnNlIHRvIHRoZSBTZXF1ZW5j
+ZSBvcGVyYXRpb24gd2hlbiBpdCBkZXRlY3RzIGEgZmFsc2UNCj4gPiA+IHJldHJ5LiINCj4gPiAN
+Cj4gPiBJIHRoaW5rIHlvdSBhcmUgYWdyZWVpbmcgd2l0aCBtZSB0aGF0IE9LIGlzIG5vdCBhcHBy
+b3ByaWF0ZSBoZXJlPw0KPiANCj4gTm8sIEkgdGhpbmsgT0sgaXMgT0s6DQo+IA0KPiA+ID4gSWYg
+aSB1bmRlcnN0YW5kIHRoZSBmb2xsb3dpbmcgbGFuZ3VhZ2UsIHdlJ3JlIHJlcXVpcmVkIHRvIHJl
+dHVybg0KPiA+ID4gRkFMU0VfUkVUUlkgaW4gdGhlIGNhc2UgdGhlIHJwYyBjcmVkZW50aWFscyBv
+ZiB0aGUgY2FsbGVyIG1hcCB0bw0KPiA+ID4gZGlmZmVyZW50IHByaW5jaXBhbHMsIGJ1dCBub3Qg
+b3RoZXJ3aXNlLg0KPiA+IA0KPiA+IFRoaXMgb25lIGRyb3ZlIG1lIGNyYXp5Og0KPiA+IA0KPiA+
+ICAgIElmIGEgcmVxdWVzdGVyIHNlbnQgYSBTZXF1ZW5jZSBvcGVyYXRpb24gd2l0aCBhIHNsb3Qg
+SUQgYW5kDQo+ID4gc2VxdWVuY2UNCj4gPiAgICBJRCB0aGF0IGFyZSBpbiB0aGUgcmVwbHkgY2Fj
+aGUgYnV0IHRoZSByZXBsaWVyIGRldGVjdGVkIHRoYXQgdGhlDQo+ID4gICAgcmV0cmllZCByZXF1
+ZXN0IGlzIG5vdCB0aGUgc2FtZSBhcyB0aGUgb3JpZ2luYWwgcmVxdWVzdCwNCj4gPiBpbmNsdWRp
+bmcgYQ0KPiA+ICAgIHJldHJ5IHRoYXQgaGFzIGRpZmZlcmVudCBvcGVyYXRpb25zIG9yIGRpZmZl
+cmVudCBhcmd1bWVudHMgaW4NCj4gPiB0aGUNCj4gPiAgICBvcGVyYXRpb25zIGZyb20gdGhlIG9y
+aWdpbmFsDQo+ID4gDQo+ID4gU0VRVUVOQ0UgaXMgbm90IHNwZWNpYWwgLSBib3RoIHRoZSBjb21w
+b3VuZHMgaW4gdGhpcyBleGFtcGxlDQo+ID4gb25seSBoYXZlIHRoZSBTRVFVRU5DRSBvcCBhbmQg
+dGhleSBkaWZmZXIgb25seSBpbiB0aGF0IGluIHRoZQ0KPiA+IGZpcnN0IHNhX2NhY2hldGhpcyBp
+cyBGYWxzZSBhbmQgaW4gdGhlIHNlY29uZCBpdCBpcyBUcnVlLg0KPiA+IA0KPiA+IFNvIHdlIGhh
+dmUgdG8gcmV0dXJuIEZBTFNFX1NFUV9SRVRSWSBoZXJlLi4uDQo+IA0KPiBJdCBzYXlzICJpZiB0
+aGUgcmVwbGllciBkZXRlY3RlZCIgYSBkaWZmZXJlbmNlLCBub3QgImlmIHRoZXJlIGlzIiBhDQo+
+IGRpZmZlcmVuY2UuICBTbyB0aGUgcmVwbGllciBpcyBub3QgcmVxdWlyZWQgdG8gZG8gc3VjaA0K
+PiBkZXRlY3Rpb24uICBUaGlzDQo+IGFncmVlcyB3aXRoIHRoZSAibm90IGFsd2F5cyBvYmxpZ2F0
+ZWQiIGFib3ZlLg0KPiANCj4gU28gSSB0aGluayBpdCdzIGFsbG93ZWQgZm9yIHRoZSBzZXJ2ZXIg
+dG8ganVzdCByZXR1cm4gYW4gb2xkIGNhY2hlZA0KPiByZXNwb25zZSBoZXJlICh3aXRoIHRoZSBj
+YWNoZWQgT0spLiAgQW5kIEkgY2FuJ3Qgc2VlIGFueSBwcmFjdGljYWwNCj4gcHJvYmxlbSB0aGF0
+IHdvdWxkIGNyZWF0ZS0tYSBjbGllbnQgc2hvdWxkbid0IGJlIHNlbmRpbmcgYSBkaWZmZXJlbnQN
+Cj4gcmVxdWVzdCB3aXRoIHRoZSBzYW1lIChzbG90LCBzZXF1ZW5jZSkgYW55d2F5LiAgVGhlIG9u
+bHkgcG90ZW50aWFsDQo+IHJpc2sNCj4gaXMgdGhlIG1hbGljaW91cyBjbGllbnQgdHJ5aW5nIHRv
+IHNub29wIHNvbWVib2R5IGVsc2UncyByZXBseSBjYWNoZSwNCj4gaGVuY2UgdGhlIHJlcXVpcmVt
+ZW50IGluIHRoZSBjYXNlIHByaW5jaXBhbHMgZGlmZmVyLg0KDQpDbGllbnRzIG1heSBpbmRlZWQg
+c2VuZCBhIGRpZmZlcmVudCByZXF1ZXN0IHdpdGggdGhlIHNhbWUgc2xvdCBhbmQNCnNlcXVlbmNl
+IGlmIHRoZXkgZG9uJ3Qga25vdyB0aGF0IHRoZSBzZXJ2ZXIgcmVjZWl2ZWQgdGhlIGxhc3QgcmVx
+dWVzdC4NClRoaXMgaXMgdGJlICJ1c2VyIHByZXNzZWQgXkMiIHNjZW5hcmlvLi4uDQoNClNlcnZl
+cnMgTUFZIGlnbm9yZSB0aGF0IGZhY3QsIGJ1dCB0aGV5J2QgYmUgcmVhbGx5IHN0dXBpZCB0byBk
+byBzby4uLg0KDQo+IA0KPiAtLWIuDQo+IC0tDQo+IFRvIHVuc3Vic2NyaWJlIGZyb20gdGhpcyBs
+aXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1uZnMiDQo+IGluDQo+IHRoZSBi
+b2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQo+IE1vcmUgbWFq
+b3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRt
+bA0KPiANCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
+IFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-Okay, thanks!
-
-Stefan
