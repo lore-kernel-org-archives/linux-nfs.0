@@ -1,56 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:37064 "EHLO mx142.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:13539 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751348AbdJMUz5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Oct 2017 16:55:57 -0400
+        id S1751348AbdJMUzv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Oct 2017 16:55:51 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v5 09/23] NFS export nfs4_async_handle_error
-Date: Fri, 13 Oct 2017 16:55:47 -0400
-Message-ID: <20171013205550.65573-10-kolga@netapp.com>
-In-Reply-To: <20171013205550.65573-1-kolga@netapp.com>
-References: <20171013205550.65573-1-kolga@netapp.com>
+Subject: [PATCH v5 00/23] NFS support for async intra COPY
+Date: Fri, 13 Oct 2017 16:55:38 -0400
+Message-ID: <20171013205550.65573-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make this function available to nfs42proc.c
+Change the client side to always request an asynchronous copy.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs4_fs.h  | 3 +++
- fs/nfs/nfs4proc.c | 2 +-
- 2 files changed, 4 insertions(+), 1 deletion(-)
+If server replies to the COPY with the copy stateid, client will go
+wait on the CB_OFFLOAD. To fend off the race between CB_OFFLOAD and
+COPY reply, we check the list of pending callbacks before going to
+wait. Client adds the copy to the global list of copy stateids for the
+callback to look thru and signal the waiting copy.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ac4f10b..c7225bb 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -244,6 +244,9 @@ int nfs4_replace_transport(struct nfs_server *server,
+When the client receives reply from the CB_OFFLOAD with some bytes and
+committed how is UNSTABLE, then COMMIT is sent to the server. The results
+arep propagated to the VFS and application. Assuming that application
+will deal with a partial result and continue from the new offset if needed.
+
+If server errs with ERR_OFFLOAD_NOREQS the copy will be re-sent as a
+synchronous COPY. If application cancels an in-flight COPY,
+OFFLOAD_CANCEL is sent to the server (sending it as an async RPC in the
+context of the nfsid_workqueue).
+
+v5:
+1. fixed status wasn't initialized GCC complained.
+2. fixed comment typo and moved initialization of status from one patch
+to another
+3. moved the handling of the commit after copy into its own function
+and when verifier verification fails, returning EAGAIN so the whole
+copy is retried again.
  
- /* nfs4proc.c */
- extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
-+extern int nfs4_async_handle_error(struct rpc_task *task,
-+				   struct nfs_server *server,
-+				   struct nfs4_state *state, long *timeout);
- extern int nfs4_call_sync(struct rpc_clnt *, struct nfs_server *,
- 			  struct rpc_message *, struct nfs4_sequence_args *,
- 			  struct nfs4_sequence_res *, int);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 3926f11..f1bf19e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -551,7 +551,7 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
- 	return ret;
- }
- 
--static int
-+int
- nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
- 			struct nfs4_state *state, long *timeout)
- {
+Anna Schumaker (1):
+  fs: Don't copy beyond the end of the file
+
+Olga Kornievskaia (11):
+  NFS CB_OFFLOAD xdr
+  NFS OFFLOAD_STATUS xdr
+  NFS OFFLOAD_STATUS op
+  NFS OFFLOAD_CANCEL xdr
+  NFS COPY xdr handle async reply
+  NFS add support for asynchronous COPY
+  NFS handle COPY reply CB_OFFLOAD call race
+  NFS export nfs4_async_handle_error
+  NFS send OFFLOAD_CANCEL when COPY killed
+  NFS handle COPY ERR_OFFLOAD_NO_REQS
+  NFS add a simple sync nfs4_proc_commit after async COPY
+
+ Documentation/filesystems/vfs.txt |   6 +
+ fs/nfs/callback.h                 |  12 ++
+ fs/nfs/callback_proc.c            |  54 ++++++
+ fs/nfs/callback_xdr.c             |  81 +++++++-
+ fs/nfs/client.c                   |   1 +
+ fs/nfs/nfs42.h                    |  17 +-
+ fs/nfs/nfs42proc.c                | 378 +++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs42xdr.c                 | 380 ++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs4_fs.h                  |  18 +-
+ fs/nfs/nfs4client.c               |  15 ++
+ fs/nfs/nfs4file.c                 | 135 +++++++++++++-
+ fs/nfs/nfs4proc.c                 |  44 ++++-
+ fs/nfs/nfs4state.c                |  31 +++-
+ fs/nfs/nfs4xdr.c                  |   3 +
+ fs/read_write.c                   |  16 +-
+ include/linux/nfs4.h              |  27 +++
+ include/linux/nfs_fs.h            |  11 ++
+ include/linux/nfs_fs_sb.h         |   5 +
+ include/linux/nfs_xdr.h           |  31 ++++
+ 19 files changed, 1219 insertions(+), 46 deletions(-)
+
 -- 
 1.8.3.1
 
