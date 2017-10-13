@@ -1,104 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39284 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1758036AbdJMPAW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Oct 2017 11:00:22 -0400
-Date: Fri, 13 Oct 2017 11:00:21 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "loghyr@excfb.com" <loghyr@excfb.com>,
-        Thomas Haynes <loghyr@primarydata.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:31575 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1758402AbdJMP06 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 11:26:58 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: Thomas Haynes <loghyr@primarydata.com>,
+        "loghyr@excfb.com" <loghyr@excfb.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "nfsv4@ietf.org" <nfsv4@ietf.org>
 Subject: Re: pynfs replay cache test SEQ9f
-Message-ID: <20171013150021.GG5233@fieldses.org>
+Date: Fri, 13 Oct 2017 15:26:51 +0000
+Message-ID: <1507908409.9498.14.camel@primarydata.com>
 References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
- <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
- <20171012194946.GC5233@fieldses.org>
- <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com>
- <20171012214454.GA19598@fieldses.org>
- <20171012220051.GB29204@psyklo.internal.excfb.com>
- <20171013015223.GA21284@fieldses.org>
- <1507901666.4550.2.camel@primarydata.com>
+         <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
+         <20171012194946.GC5233@fieldses.org>
+         <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com>
+         <20171012214454.GA19598@fieldses.org>
+         <20171012220051.GB29204@psyklo.internal.excfb.com>
+         <20171013015223.GA21284@fieldses.org>
+         <1507901666.4550.2.camel@primarydata.com>
+         <20171013150021.GG5233@fieldses.org>
+In-Reply-To: <20171013150021.GG5233@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1507901666.4550.2.camel@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 13, 2017 at 01:34:28PM +0000, Trond Myklebust wrote:
-> On Thu, 2017-10-12 at 21:52 -0400, J. Bruce Fields wrote:
-> > On Thu, Oct 12, 2017 at 03:00:51PM -0700, Tom Haynes wrote:
-> > > On Thu, Oct 12, 2017 at 05:44:54PM -0400, J. Bruce Fields wrote:
-> > > > Your mailer's not quoting right, it's a little hard for me to
-> > > > find your
-> > > > replies.  Wading in:
-> > > > 
-> > > > On Thu, Oct 12, 2017 at 09:39:04PM +0000, Thomas Haynes wrote:
-> > > > > On Oct 12, 2017, at 12:49 PM, J. Bruce Fields <bfields@fieldses
-> > > > > .org<mailto:bfields@fieldses.org>> wrote:
-> > > > > > So I *think* the only correct options OK or FALSE_RETRY?
-> > > > > 
-> > > > > It can’t be OK if the parameters to SEQUENCE differ.
-> > > > 
-> > > > I'm getting that from: "When the replier detects a false retry,
-> > > > it is
-> > > > permitted (but not always obligated) to return
-> > > > NFS4ERR_FALSE_RETRY in
-> > > > response to the Sequence operation when it detects a false
-> > > > retry."
-> > > 
-> > > I think you are agreeing with me that OK is not appropriate here?
-> > 
-> > No, I think OK is OK:
-> > 
-> > > > If i understand the following language, we're required to return
-> > > > FALSE_RETRY in the case the rpc credentials of the caller map to
-> > > > different principals, but not otherwise.
-> > > 
-> > > This one drove me crazy:
-> > > 
-> > >    If a requester sent a Sequence operation with a slot ID and
-> > > sequence
-> > >    ID that are in the reply cache but the replier detected that the
-> > >    retried request is not the same as the original request,
-> > > including a
-> > >    retry that has different operations or different arguments in
-> > > the
-> > >    operations from the original
-> > > 
-> > > SEQUENCE is not special - both the compounds in this example
-> > > only have the SEQUENCE op and they differ only in that in the
-> > > first sa_cachethis is False and in the second it is True.
-> > > 
-> > > So we have to return FALSE_SEQ_RETRY here...
-> > 
-> > It says "if the replier detected" a difference, not "if there is" a
-> > difference.  So the replier is not required to do such
-> > detection.  This
-> > agrees with the "not always obligated" above.
-> > 
-> > So I think it's allowed for the server to just return an old cached
-> > response here (with the cached OK).  And I can't see any practical
-> > problem that would create--a client shouldn't be sending a different
-> > request with the same (slot, sequence) anyway.  The only potential
-> > risk
-> > is the malicious client trying to snoop somebody else's reply cache,
-> > hence the requirement in the case principals differ.
-> 
-> Clients may indeed send a different request with the same slot and
-> sequence if they don't know that the server received the last request.
-> This is tbe "user pressed ^C" scenario...
-> 
-> Servers MAY ignore that fact, but they'd be really stupid to do so...
+T24gRnJpLCAyMDE3LTEwLTEzIGF0IDExOjAwIC0wNDAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
+cm90ZToNCj4gT24gRnJpLCBPY3QgMTMsIDIwMTcgYXQgMDE6MzQ6MjhQTSArMDAwMCwgVHJvbmQg
+TXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxNy0xMC0xMiBhdCAyMTo1MiAtMDQwMCwg
+Si4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBPY3QgMTIsIDIwMTcgYXQgMDM6
+MDA6NTFQTSAtMDcwMCwgVG9tIEhheW5lcyB3cm90ZToNCj4gPiA+ID4gT24gVGh1LCBPY3QgMTIs
+IDIwMTcgYXQgMDU6NDQ6NTRQTSAtMDQwMCwgSi4gQnJ1Y2UgRmllbGRzDQo+ID4gPiA+IHdyb3Rl
+Og0KPiA+ID4gPiA+IFlvdXIgbWFpbGVyJ3Mgbm90IHF1b3RpbmcgcmlnaHQsIGl0J3MgYSBsaXR0
+bGUgaGFyZCBmb3IgbWUgdG8NCj4gPiA+ID4gPiBmaW5kIHlvdXINCj4gPiA+ID4gPiByZXBsaWVz
+LiAgV2FkaW5nIGluOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IE9uIFRodSwgT2N0IDEyLCAyMDE3
+IGF0IDA5OjM5OjA0UE0gKzAwMDAsIFRob21hcyBIYXluZXMNCj4gPiA+ID4gPiB3cm90ZToNCj4g
+PiA+ID4gPiA+IE9uIE9jdCAxMiwgMjAxNywgYXQgMTI6NDkgUE0sIEouIEJydWNlIEZpZWxkcyA8
+YmZpZWxkc0BmaWVsDQo+ID4gPiA+ID4gPiBkc2VzDQo+ID4gPiA+ID4gPiAub3JnPG1haWx0bzpi
+ZmllbGRzQGZpZWxkc2VzLm9yZz4+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiBTbyBJICp0aGluayog
+dGhlIG9ubHkgY29ycmVjdCBvcHRpb25zIE9LIG9yIEZBTFNFX1JFVFJZPw0KPiA+ID4gPiA+ID4g
+DQo+ID4gPiA+ID4gPiBJdCBjYW7igJl0IGJlIE9LIGlmIHRoZSBwYXJhbWV0ZXJzIHRvIFNFUVVF
+TkNFIGRpZmZlci4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBJJ20gZ2V0dGluZyB0aGF0IGZyb206
+ICJXaGVuIHRoZSByZXBsaWVyIGRldGVjdHMgYSBmYWxzZQ0KPiA+ID4gPiA+IHJldHJ5LA0KPiA+
+ID4gPiA+IGl0IGlzDQo+ID4gPiA+ID4gcGVybWl0dGVkIChidXQgbm90IGFsd2F5cyBvYmxpZ2F0
+ZWQpIHRvIHJldHVybg0KPiA+ID4gPiA+IE5GUzRFUlJfRkFMU0VfUkVUUlkgaW4NCj4gPiA+ID4g
+PiByZXNwb25zZSB0byB0aGUgU2VxdWVuY2Ugb3BlcmF0aW9uIHdoZW4gaXQgZGV0ZWN0cyBhIGZh
+bHNlDQo+ID4gPiA+ID4gcmV0cnkuIg0KPiA+ID4gPiANCj4gPiA+ID4gSSB0aGluayB5b3UgYXJl
+IGFncmVlaW5nIHdpdGggbWUgdGhhdCBPSyBpcyBub3QgYXBwcm9wcmlhdGUNCj4gPiA+ID4gaGVy
+ZT8NCj4gPiA+IA0KPiA+ID4gTm8sIEkgdGhpbmsgT0sgaXMgT0s6DQo+ID4gPiANCj4gPiA+ID4g
+PiBJZiBpIHVuZGVyc3RhbmQgdGhlIGZvbGxvd2luZyBsYW5ndWFnZSwgd2UncmUgcmVxdWlyZWQg
+dG8NCj4gPiA+ID4gPiByZXR1cm4NCj4gPiA+ID4gPiBGQUxTRV9SRVRSWSBpbiB0aGUgY2FzZSB0
+aGUgcnBjIGNyZWRlbnRpYWxzIG9mIHRoZSBjYWxsZXIgbWFwDQo+ID4gPiA+ID4gdG8NCj4gPiA+
+ID4gPiBkaWZmZXJlbnQgcHJpbmNpcGFscywgYnV0IG5vdCBvdGhlcndpc2UuDQo+ID4gPiA+IA0K
+PiA+ID4gPiBUaGlzIG9uZSBkcm92ZSBtZSBjcmF6eToNCj4gPiA+ID4gDQo+ID4gPiA+ICAgIElm
+IGEgcmVxdWVzdGVyIHNlbnQgYSBTZXF1ZW5jZSBvcGVyYXRpb24gd2l0aCBhIHNsb3QgSUQgYW5k
+DQo+ID4gPiA+IHNlcXVlbmNlDQo+ID4gPiA+ICAgIElEIHRoYXQgYXJlIGluIHRoZSByZXBseSBj
+YWNoZSBidXQgdGhlIHJlcGxpZXIgZGV0ZWN0ZWQgdGhhdA0KPiA+ID4gPiB0aGUNCj4gPiA+ID4g
+ICAgcmV0cmllZCByZXF1ZXN0IGlzIG5vdCB0aGUgc2FtZSBhcyB0aGUgb3JpZ2luYWwgcmVxdWVz
+dCwNCj4gPiA+ID4gaW5jbHVkaW5nIGENCj4gPiA+ID4gICAgcmV0cnkgdGhhdCBoYXMgZGlmZmVy
+ZW50IG9wZXJhdGlvbnMgb3IgZGlmZmVyZW50IGFyZ3VtZW50cw0KPiA+ID4gPiBpbg0KPiA+ID4g
+PiB0aGUNCj4gPiA+ID4gICAgb3BlcmF0aW9ucyBmcm9tIHRoZSBvcmlnaW5hbA0KPiA+ID4gPiAN
+Cj4gPiA+ID4gU0VRVUVOQ0UgaXMgbm90IHNwZWNpYWwgLSBib3RoIHRoZSBjb21wb3VuZHMgaW4g
+dGhpcyBleGFtcGxlDQo+ID4gPiA+IG9ubHkgaGF2ZSB0aGUgU0VRVUVOQ0Ugb3AgYW5kIHRoZXkg
+ZGlmZmVyIG9ubHkgaW4gdGhhdCBpbiB0aGUNCj4gPiA+ID4gZmlyc3Qgc2FfY2FjaGV0aGlzIGlz
+IEZhbHNlIGFuZCBpbiB0aGUgc2Vjb25kIGl0IGlzIFRydWUuDQo+ID4gPiA+IA0KPiA+ID4gPiBT
+byB3ZSBoYXZlIHRvIHJldHVybiBGQUxTRV9TRVFfUkVUUlkgaGVyZS4uLg0KPiA+ID4gDQo+ID4g
+PiBJdCBzYXlzICJpZiB0aGUgcmVwbGllciBkZXRlY3RlZCIgYSBkaWZmZXJlbmNlLCBub3QgImlm
+IHRoZXJlIGlzIg0KPiA+ID4gYQ0KPiA+ID4gZGlmZmVyZW5jZS4gIFNvIHRoZSByZXBsaWVyIGlz
+IG5vdCByZXF1aXJlZCB0byBkbyBzdWNoDQo+ID4gPiBkZXRlY3Rpb24uICBUaGlzDQo+ID4gPiBh
+Z3JlZXMgd2l0aCB0aGUgIm5vdCBhbHdheXMgb2JsaWdhdGVkIiBhYm92ZS4NCj4gPiA+IA0KPiA+
+ID4gU28gSSB0aGluayBpdCdzIGFsbG93ZWQgZm9yIHRoZSBzZXJ2ZXIgdG8ganVzdCByZXR1cm4g
+YW4gb2xkDQo+ID4gPiBjYWNoZWQNCj4gPiA+IHJlc3BvbnNlIGhlcmUgKHdpdGggdGhlIGNhY2hl
+ZCBPSykuICBBbmQgSSBjYW4ndCBzZWUgYW55DQo+ID4gPiBwcmFjdGljYWwNCj4gPiA+IHByb2Js
+ZW0gdGhhdCB3b3VsZCBjcmVhdGUtLWEgY2xpZW50IHNob3VsZG4ndCBiZSBzZW5kaW5nIGENCj4g
+PiA+IGRpZmZlcmVudA0KPiA+ID4gcmVxdWVzdCB3aXRoIHRoZSBzYW1lIChzbG90LCBzZXF1ZW5j
+ZSkgYW55d2F5LiAgVGhlIG9ubHkNCj4gPiA+IHBvdGVudGlhbA0KPiA+ID4gcmlzaw0KPiA+ID4g
+aXMgdGhlIG1hbGljaW91cyBjbGllbnQgdHJ5aW5nIHRvIHNub29wIHNvbWVib2R5IGVsc2UncyBy
+ZXBseQ0KPiA+ID4gY2FjaGUsDQo+ID4gPiBoZW5jZSB0aGUgcmVxdWlyZW1lbnQgaW4gdGhlIGNh
+c2UgcHJpbmNpcGFscyBkaWZmZXIuDQo+ID4gDQo+ID4gQ2xpZW50cyBtYXkgaW5kZWVkIHNlbmQg
+YSBkaWZmZXJlbnQgcmVxdWVzdCB3aXRoIHRoZSBzYW1lIHNsb3QgYW5kDQo+ID4gc2VxdWVuY2Ug
+aWYgdGhleSBkb24ndCBrbm93IHRoYXQgdGhlIHNlcnZlciByZWNlaXZlZCB0aGUgbGFzdA0KPiA+
+IHJlcXVlc3QuDQo+ID4gVGhpcyBpcyB0YmUgInVzZXIgcHJlc3NlZCBeQyIgc2NlbmFyaW8uLi4N
+Cj4gPiANCj4gPiBTZXJ2ZXJzIE1BWSBpZ25vcmUgdGhhdCBmYWN0LCBidXQgdGhleSdkIGJlIHJl
+YWxseSBzdHVwaWQgdG8gZG8NCj4gPiBzby4uLg0KPiANCj4gT0ssIE9LLCBJJ2xsIGxvb2sgaW50
+byBmaXhpbmcgdGhlIHNlcnZlciAoSSdtIHByZXR0eSBzdXJlIHdlIGdldCB0aGlzDQo+IHdyb25n
+KS4NCj4gDQo+IFlvdSd2ZSBleHBsYWluZWQgdGhlIGN0cmwtQyBjYXNlIGJlZm9yZSBhbmQgSSBk
+b24ndCB0aGluayBJDQo+IHVuZGVyc3Rvb2QNCj4gaXQuICBJIGd1ZXNzIG90aGVyd2lzZSB0aGUg
+b25seSB3YXkgZm9yIHRoZSBjbGllbnQgdG8gc29ydCBvdXQgdGhlDQo+IHNpdHVhdGlvbiB3b3Vs
+ZCBiZSB0byByZXRyeSB0aGUgb3JpZ2luYWwgcmVxdWVzdC4gIEFuZCB0aGF0IHJlcXVpcmVzDQo+
+IGtlZXBpbmcgdGhlIGFyZ3VtZW50cyBhbmQgY3JlZGVudGlhbHMgYXJvdW5kIHRvIGhhbmRsZSBw
+b3RlbnRpYWwNCj4gcmV0cmllcy4gIEFuZCB0aGF0J3MgaW1wcmFjdGljYWwgaWYgdGhlIHByb2Nl
+c3MgaXMgZ29pbmcgYXdheT8gIE9LLg0KPiANCg0KUmlnaHQsIHdlJ3JlIG5vdCBnb2luZyB0byBk
+byB0aGF0IGp1c3QgZm9yIGRhdGEgdGhhdCBpcyBqdXN0IGdvaW5nIHRvDQpiZSB0b3NzZWQgYXdh
+eSBhbnl3YXkuIFdlIGFscmVhZHkgZ3VhcmFudGVlIHRoYXQgbm9uLWlkZW1wb3RlbnQNCm9wZXJh
+dGlvbnMgKHRoZSBvbmVzIHRoYXQgd2UgYWN0dWFsbHkgZG8gYXNrIHRoZSBzZXJ2ZXIgdG8gY2Fj
+aGUpIGFyZQ0KZ3VhcmFudGVlZCB0byBjb21wbGV0ZSB3aGV0aGVyIG9yIG5vdCB0aGUgdXNlciBw
+cmVzc2VzIF5DLCBzbyB0aGlzIGlzDQptYWlubHkgYWJvdXQgd2hhdCBoYXBwZW5zIHdoZW4gc29t
+ZWJvZHkgaW50ZXJydXB0cyBhbiBvcGVyYXRpb24gdGhhdCB3ZQ0KZGlkIG5vdCB3YW50IHRoZSBz
+ZXJ2ZXIgdG8gY2FjaGUuDQoNCkkgaGF2ZSBhIHBhdGNoIG91dCB0aGVyZSB0aGF0IGp1c3QgcmVw
+bGF5cyBhIFNFUVVFTkNFIG9wIGlmIHdlIGRldGVjdA0KdGhhdCBhbiBSUEMgY2FsbCB3YXMgaW50
+ZXJydXB0ZWQuIFRoYXQgc2hvdWxkIGJlIHN1ZmZpY2llbnQgdG8gZGVhbA0Kd2l0aCBzZXJ2ZXJz
+IHRoYXQgY2FjaGUgZXZlcnl0aGluZyAod2hldGhlciBvciBub3QgdGhlIGNsaWVudCBzZXRzDQpz
+YV9jYWNoZXRoaXMpLCBidXQgZG9uJ3Qgd2FudCB0byBkbyBORlM0RVJSX1NFUV9GQUxTRV9SRVRS
+WS4gVGhhdA0KcGFydGljdWxhciBjb21iaW5hdGlvbiBoYXMgYmVlbiBzZWVuIHRvIGJlIGV4dHJl
+bWVseSB0b3hpYyB0byB0aGUNCmN1cnJlbnQgY2xpZW50LCBiZWNhdXNlIGl0IGNhbiBnZXQgcmVw
+bGF5ZWQgTE9PS1VQIG9yIEdFVEFUVFIgcmVxdWVzdHMNCmFmdGVyIHNvbWVvbmUgcHJlc3NlcyBe
+Qy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwg
+UHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-OK, OK, I'll look into fixing the server (I'm pretty sure we get this
-wrong).
-
-You've explained the ctrl-C case before and I don't think I understood
-it.  I guess otherwise the only way for the client to sort out the
-situation would be to retry the original request.  And that requires
-keeping the arguments and credentials around to handle potential
-retries.  And that's impractical if the process is going away?  OK.
-
---b.
