@@ -1,161 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f194.google.com ([209.85.217.194]:52692 "EHLO
-        mail-ua0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751378AbdJMU5o (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 16:57:44 -0400
-Received: by mail-ua0-f194.google.com with SMTP id i35so6148377uah.9
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2017 13:57:43 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20171013205550.65573-5-kolga@netapp.com>
-References: <20171013205550.65573-1-kolga@netapp.com> <20171013205550.65573-5-kolga@netapp.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 13 Oct 2017 16:57:42 -0400
-Message-ID: <CAN-5tyG_sP=Bp9U8O8YUm6FuWqmyoPYGfE+YABohd60aBf0+xQ@mail.gmail.com>
-Subject: Re: [PATCH v5 04/23] NFS OFFLOAD_STATUS op
+Received: from mx1.redhat.com ([209.132.183.28]:57698 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751081AbdJMV02 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Oct 2017 17:26:28 -0400
+Date: Fri, 13 Oct 2017 17:26:26 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: Olga Kornievskaia <kolga@netapp.com>
-Cc: Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v5 00/10] NFSD support for asynchronous COPY
+Message-ID: <20171013212626.GB28854@parsley.fieldses.org>
+References: <20171013205412.65532-1-kolga@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171013205412.65532-1-kolga@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 13, 2017 at 4:55 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfs/nfs42.h     |  5 ++++-
->  fs/nfs/nfs42proc.c | 43 +++++++++++++++++++++++++++++++++++++++++++
->  2 files changed, 47 insertions(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/nfs42.h b/fs/nfs/nfs42.h
-> index b6cd153..6b9decf 100644
-> --- a/fs/nfs/nfs42.h
-> +++ b/fs/nfs/nfs42.h
-> @@ -11,6 +11,7 @@
->   */
->  #define PNFS_LAYOUTSTATS_MAXDEV (4)
->
-> +#if defined(CONFIG_NFS_V4_2)
->  /* nfs4.2proc.c */
->  int nfs42_proc_allocate(struct file *, loff_t, loff_t);
->  ssize_t nfs42_proc_copy(struct file *, loff_t, struct file *, loff_t, size_t);
-> @@ -19,5 +20,7 @@
->  int nfs42_proc_layoutstats_generic(struct nfs_server *,
->                                    struct nfs42_layoutstat_data *);
->  int nfs42_proc_clone(struct file *, struct file *, loff_t, loff_t, loff_t);
-> -
-> +int nfs42_proc_offload_status(struct file *, nfs4_stateid *,
-> +                             struct nfs42_offload_status_res *);
-> +#endif /* CONFIG_NFS_V4_2) */
->  #endif /* __LINUX_FS_NFS_NFS4_2_H */
-> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> index 6c2db51..65fb014 100644
-> --- a/fs/nfs/nfs42proc.c
-> +++ b/fs/nfs/nfs42proc.c
-> @@ -263,6 +263,49 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
->         return err;
->  }
->
-> +int _nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
-> +                               struct nfs42_offload_status_res *res)
-> +{
-> +       struct nfs42_offload_status_args args = {
-> +               .osa_src_fh = NFS_FH(file_inode(dst)),
-> +       };
-> +       struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
-> +       struct rpc_message msg = {
-> +               .rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OFFLOAD_STATUS],
-> +               .rpc_resp = res,
-> +               .rpc_argp = &args,
-> +       };
-> +       int status;
-> +
-> +       memcpy(&args.osa_stateid, stateid, sizeof(args.osa_stateid));
-> +       status = nfs4_call_sync(dst_server->client, dst_server, &msg,
-> +                               &args.osa_seq_args, &res->osr_seq_res, 0);
-> +       if (status == -ENOTSUPP)
-> +               dst_server->caps &= ~NFS_CAP_OFFLOAD_STATUS;
-> +
-> +       return status;
-> +}
-> +
-> +int nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
-> +                               struct nfs42_offload_status_res *res)
-> +{
-> +       struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
-> +       struct nfs4_exception exception = { };
-> +       int status;
-> +
-> +       if (!(dst_server->caps & NFS_CAP_OFFLOAD_STATUS))
-> +               return -EOPNOTSUPP;
-> +
-> +       do {
-> +               status = _nfs42_proc_offload_status(dst, stateid, res);
-> +               if (status == -ENOTSUPP)
-> +                       return -EOPNOTSUPP;
-> +               status = nfs4_handle_exception(dst_server, status, &exception);
-> +       } while (exception.retry);
-> +
-> +       return status;
-> +}
-> +
->  static loff_t _nfs42_proc_llseek(struct file *filep,
->                 struct nfs_lock_context *lock, loff_t offset, int whence)
->  {
-> --
+On Fri, Oct 13, 2017 at 04:54:02PM -0400, Olga Kornievskaia wrote:
+> To do asynchronous copies, NFSD creates a new kthread to handle the request.
+> Upon receiving the COPY, it generates a unique copy stateid (stored in a
+> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+> starts the thread, and replies back to the client. nfsd4_copy arguments that
+> are allocated on the stack are copies for the kthread.
+> 
+> In the async copy handler, it calls into VFS copy_file_range() (for synch
+> we keep the 4MB chunk and requested size for the async copy). If error is
+> encountered it's saved but also we save the amount of data copied so far.
+> Once done, the results are queued for the callback workqueue and sent via
+> CB_OFFLOAD.
+> 
+> When the server received an OFFLOAD_CANCEL, it will find the kthread running
+> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+> the ongoing do_splice() and once vfs returns we are choosing not to send
+> the CB_OFFLOAD back to the client.
+> 
+> When the server receives an OFFLOAD_STATUS, it will find the kthread running
+> the copy and will query the i_size_read() of the associated filehandle of
+> the destination file and return the result.
 
-To test this and the server code I used the following patch:
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index 317eab9..97d3937 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -156,7 +156,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
-      struct file *src,
-      struct file *dst,
-      nfs4_stateid *src_stateid,
--     uint64_t *ret_count)
-+     uint64_t *ret_count, uint64_t count)
- {
-  struct nfs4_copy_state *copy;
-  int status = NFS4_OK;
-@@ -190,6 +190,24 @@ static int handle_async_copy(struct nfs42_copy_res *res,
-  list_add_tail(&copy->copies, &server->ss_copies);
-  spin_unlock(&server->nfs_client->cl_lock);
+That assumes we're copying into a previously empty file?
 
-+ for (;;) {
-+ struct nfs42_offload_status_res res = {
-+ .osr_status = 0,
-+ };
-+
-+ status = nfs42_proc_offload_status(dst, &copy->stateid, &res);
-+ if (status || res.osr_status) {
-+ printk("AGLO: status=%d osr_status=%d\n", status, res.osr_status);
-+ break;
-+ }
-+ if (res.osr_count == count) {
-+ printk("AGLO: received all the bytes=%lld\n", count);
-+ break;
-+ } else {
-+ printk("AGLO: bytes=%lld going to sleep for 100ms\n", res.osr_count);
-+ msleep(100);
-+ }
-+ }
-  status = wait_for_completion_interruptible(&copy->completion);
-  spin_lock(&server->nfs_client->cl_lock);
-  list_del_init(&copy->copies);
-@@ -310,7 +328,7 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+--b.
 
-  if (!res->synchronous) {
-  status = handle_async_copy(res, server, src, dst,
-- &args->src_stateid, &res->write_res.count);
-+ &args->src_stateid, &res->write_res.count, args->count);
-  if (status)
-  return status;
-  }
-
+> 
+> v5:
+> 1. reimplementing asynchronous copy to use kthreads instead of the workqueue
+> 2. store asynchronous copies in the list of the nfs4_client structure
+> 3. when copying nfsd4_copy datastructure for the async copy refcount the
+> nfs4_client structure as well as struct file src/dst structure
+> 4. add refcount to the nfsd4_copy structure to coordinate with offload_status
+> and offload_cancel
+> 5. offload_cancel/copy_shutdown sets the SIGPENDING in the copy's thread to
+> interrupt do_splice and calls kthread_stop to wait for the copy to stop
+> 6. offload_cancel adds MODIFIES_SOMETHING to flags
+> 7. offload_status reports the size of the destination file form i_size_read()
+> instead of before 4MB loop updated chunk size.
+> 8. for async copy call vfs_copy_file_range() with the whole copy size. still
+> keep the loop to do more the MAX_RW_COUNT that do_splice can do.
+> 
+> Olga Kornievskaia (10):
+>   NFSD CB_OFFLOAD xdr
+>   NFSD OFFLOAD_STATUS xdr
+>   NFSD OFFLOAD_CANCEL xdr
+>   NFSD xdr callback stateid in async COPY reply
+>   NFSD first draft of async copy
+>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+>   NFSD create new stateid for async copy
+>   NFSD handle OFFLOAD_CANCEL op
+>   NFSD support OFFLOAD_STATUS
+>   NFSD stop queued async copies on client shutdown
+> 
+>  fs/nfsd/netns.h        |   8 ++
+>  fs/nfsd/nfs4callback.c |  97 +++++++++++++++
+>  fs/nfsd/nfs4proc.c     | 321 ++++++++++++++++++++++++++++++++++++++++++++-----
+>  fs/nfsd/nfs4state.c    |  77 +++++++++++-
+>  fs/nfsd/nfs4xdr.c      |  50 ++++++--
+>  fs/nfsd/nfsctl.c       |   1 +
+>  fs/nfsd/state.h        |  21 +++-
+>  fs/nfsd/xdr4.h         |  28 +++++
+>  fs/nfsd/xdr4cb.h       |  10 ++
+>  9 files changed, 576 insertions(+), 37 deletions(-)
+> 
+> -- 
 > 1.8.3.1
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
