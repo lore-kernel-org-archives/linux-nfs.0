@@ -1,45 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39920 "EHLO fieldses.org"
+Received: from mx141.netapp.com ([216.240.21.12]:20636 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751105AbdJMUTX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Oct 2017 16:19:23 -0400
-Date: Fri, 13 Oct 2017 16:19:23 -0400
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: Thomas Haynes <loghyr@primarydata.com>,
-        "loghyr@excfb.com" <loghyr@excfb.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: pynfs replay cache test SEQ9f
-Message-ID: <20171013201923.GA16149@fieldses.org>
-References: <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
- <20171012194946.GC5233@fieldses.org>
- <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com>
- <20171012214454.GA19598@fieldses.org>
- <20171012220051.GB29204@psyklo.internal.excfb.com>
- <20171013015223.GA21284@fieldses.org>
- <1507901666.4550.2.camel@primarydata.com>
- <20171013150021.GG5233@fieldses.org>
- <1507908409.9498.14.camel@primarydata.com>
- <20171013185015.GA15087@fieldses.org>
+        id S1751258AbdJMUyP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Oct 2017 16:54:15 -0400
+From: Olga Kornievskaia <kolga@netapp.com>
+To: <bfields@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH v5 00/10] NFSD support for asynchronous COPY
+Date: Fri, 13 Oct 2017 16:54:02 -0400
+Message-ID: <20171013205412.65532-1-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171013185015.GA15087@fieldses.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 13, 2017 at 02:50:15PM -0400, bfields@fieldses.org wrote:
-> Those all involve uncached compounds with more than one op.  My reading
-> of knfsd code is that it will return RETRY_UNCACHED_REP in this case,
-> and I think (I might be misunderstanding) that the client will bump the
-> slot seqid and retry in that case.  So I *think* you shouldn't be seeing
-> that problem with knfsd?
+To do asynchronous copies, NFSD creates a new kthread to handle the request.
+Upon receiving the COPY, it generates a unique copy stateid (stored in a
+global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+starts the thread, and replies back to the client. nfsd4_copy arguments that
+are allocated on the stack are copies for the kthread.
 
-So to bring it back to the original question, I'm still not sure it's
-actually a problem if a server returns NFS_OK when cache_this is set
-differently betwen two compound calls each containing just a single
-SEQUENCE.
+In the async copy handler, it calls into VFS copy_file_range() (for synch
+we keep the 4MB chunk and requested size for the async copy). If error is
+encountered it's saved but also we save the amount of data copied so far.
+Once done, the results are queued for the callback workqueue and sent via
+CB_OFFLOAD.
 
-But, maybe it's worth at least warning about.
+When the server received an OFFLOAD_CANCEL, it will find the kthread running
+the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+the ongoing do_splice() and once vfs returns we are choosing not to send
+the CB_OFFLOAD back to the client.
 
---b.
+When the server receives an OFFLOAD_STATUS, it will find the kthread running
+the copy and will query the i_size_read() of the associated filehandle of
+the destination file and return the result.
+
+v5:
+1. reimplementing asynchronous copy to use kthreads instead of the workqueue
+2. store asynchronous copies in the list of the nfs4_client structure
+3. when copying nfsd4_copy datastructure for the async copy refcount the
+nfs4_client structure as well as struct file src/dst structure
+4. add refcount to the nfsd4_copy structure to coordinate with offload_status
+and offload_cancel
+5. offload_cancel/copy_shutdown sets the SIGPENDING in the copy's thread to
+interrupt do_splice and calls kthread_stop to wait for the copy to stop
+6. offload_cancel adds MODIFIES_SOMETHING to flags
+7. offload_status reports the size of the destination file form i_size_read()
+instead of before 4MB loop updated chunk size.
+8. for async copy call vfs_copy_file_range() with the whole copy size. still
+keep the loop to do more the MAX_RW_COUNT that do_splice can do.
+
+Olga Kornievskaia (10):
+  NFSD CB_OFFLOAD xdr
+  NFSD OFFLOAD_STATUS xdr
+  NFSD OFFLOAD_CANCEL xdr
+  NFSD xdr callback stateid in async COPY reply
+  NFSD first draft of async copy
+  NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+  NFSD create new stateid for async copy
+  NFSD handle OFFLOAD_CANCEL op
+  NFSD support OFFLOAD_STATUS
+  NFSD stop queued async copies on client shutdown
+
+ fs/nfsd/netns.h        |   8 ++
+ fs/nfsd/nfs4callback.c |  97 +++++++++++++++
+ fs/nfsd/nfs4proc.c     | 321 ++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4state.c    |  77 +++++++++++-
+ fs/nfsd/nfs4xdr.c      |  50 ++++++--
+ fs/nfsd/nfsctl.c       |   1 +
+ fs/nfsd/state.h        |  21 +++-
+ fs/nfsd/xdr4.h         |  28 +++++
+ fs/nfsd/xdr4cb.h       |  10 ++
+ 9 files changed, 576 insertions(+), 37 deletions(-)
+
+-- 
+1.8.3.1
+
