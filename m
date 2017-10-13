@@ -1,112 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:31575 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1758402AbdJMP06 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 11:26:58 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Thomas Haynes <loghyr@primarydata.com>,
-        "loghyr@excfb.com" <loghyr@excfb.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Subject: Re: pynfs replay cache test SEQ9f
-Date: Fri, 13 Oct 2017 15:26:51 +0000
-Message-ID: <1507908409.9498.14.camel@primarydata.com>
-References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
-         <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
-         <20171012194946.GC5233@fieldses.org>
-         <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com>
-         <20171012214454.GA19598@fieldses.org>
-         <20171012220051.GB29204@psyklo.internal.excfb.com>
-         <20171013015223.GA21284@fieldses.org>
-         <1507901666.4550.2.camel@primarydata.com>
-         <20171013150021.GG5233@fieldses.org>
-In-Reply-To: <20171013150021.GG5233@fieldses.org>
+Received: from mx142.netapp.com ([216.240.21.19]:38910 "EHLO mx142.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753338AbdJMRni (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Oct 2017 13:43:38 -0400
+Subject: Re: [PATCH v1 2/3] xprtrdma: Use ro_unmap_sync in
+ xprt_rdma_send_request
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
+References: <20171009155524.18726.32086.stgit@manet.1015granger.net>
+ <20171009160334.18726.33163.stgit@manet.1015granger.net>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <ce6f5ccc-cddb-b793-abe4-2e3dcf11c15f@Netapp.com>
+Date: Fri, 13 Oct 2017 13:43:29 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20171009160334.18726.33163.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTEwLTEzIGF0IDExOjAwIC0wNDAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
-cm90ZToNCj4gT24gRnJpLCBPY3QgMTMsIDIwMTcgYXQgMDE6MzQ6MjhQTSArMDAwMCwgVHJvbmQg
-TXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIFRodSwgMjAxNy0xMC0xMiBhdCAyMTo1MiAtMDQwMCwg
-Si4gQnJ1Y2UgRmllbGRzIHdyb3RlOg0KPiA+ID4gT24gVGh1LCBPY3QgMTIsIDIwMTcgYXQgMDM6
-MDA6NTFQTSAtMDcwMCwgVG9tIEhheW5lcyB3cm90ZToNCj4gPiA+ID4gT24gVGh1LCBPY3QgMTIs
-IDIwMTcgYXQgMDU6NDQ6NTRQTSAtMDQwMCwgSi4gQnJ1Y2UgRmllbGRzDQo+ID4gPiA+IHdyb3Rl
-Og0KPiA+ID4gPiA+IFlvdXIgbWFpbGVyJ3Mgbm90IHF1b3RpbmcgcmlnaHQsIGl0J3MgYSBsaXR0
-bGUgaGFyZCBmb3IgbWUgdG8NCj4gPiA+ID4gPiBmaW5kIHlvdXINCj4gPiA+ID4gPiByZXBsaWVz
-LiAgV2FkaW5nIGluOg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IE9uIFRodSwgT2N0IDEyLCAyMDE3
-IGF0IDA5OjM5OjA0UE0gKzAwMDAsIFRob21hcyBIYXluZXMNCj4gPiA+ID4gPiB3cm90ZToNCj4g
-PiA+ID4gPiA+IE9uIE9jdCAxMiwgMjAxNywgYXQgMTI6NDkgUE0sIEouIEJydWNlIEZpZWxkcyA8
-YmZpZWxkc0BmaWVsDQo+ID4gPiA+ID4gPiBkc2VzDQo+ID4gPiA+ID4gPiAub3JnPG1haWx0bzpi
-ZmllbGRzQGZpZWxkc2VzLm9yZz4+IHdyb3RlOg0KPiA+ID4gPiA+ID4gPiBTbyBJICp0aGluayog
-dGhlIG9ubHkgY29ycmVjdCBvcHRpb25zIE9LIG9yIEZBTFNFX1JFVFJZPw0KPiA+ID4gPiA+ID4g
-DQo+ID4gPiA+ID4gPiBJdCBjYW7igJl0IGJlIE9LIGlmIHRoZSBwYXJhbWV0ZXJzIHRvIFNFUVVF
-TkNFIGRpZmZlci4NCj4gPiA+ID4gPiANCj4gPiA+ID4gPiBJJ20gZ2V0dGluZyB0aGF0IGZyb206
-ICJXaGVuIHRoZSByZXBsaWVyIGRldGVjdHMgYSBmYWxzZQ0KPiA+ID4gPiA+IHJldHJ5LA0KPiA+
-ID4gPiA+IGl0IGlzDQo+ID4gPiA+ID4gcGVybWl0dGVkIChidXQgbm90IGFsd2F5cyBvYmxpZ2F0
-ZWQpIHRvIHJldHVybg0KPiA+ID4gPiA+IE5GUzRFUlJfRkFMU0VfUkVUUlkgaW4NCj4gPiA+ID4g
-PiByZXNwb25zZSB0byB0aGUgU2VxdWVuY2Ugb3BlcmF0aW9uIHdoZW4gaXQgZGV0ZWN0cyBhIGZh
-bHNlDQo+ID4gPiA+ID4gcmV0cnkuIg0KPiA+ID4gPiANCj4gPiA+ID4gSSB0aGluayB5b3UgYXJl
-IGFncmVlaW5nIHdpdGggbWUgdGhhdCBPSyBpcyBub3QgYXBwcm9wcmlhdGUNCj4gPiA+ID4gaGVy
-ZT8NCj4gPiA+IA0KPiA+ID4gTm8sIEkgdGhpbmsgT0sgaXMgT0s6DQo+ID4gPiANCj4gPiA+ID4g
-PiBJZiBpIHVuZGVyc3RhbmQgdGhlIGZvbGxvd2luZyBsYW5ndWFnZSwgd2UncmUgcmVxdWlyZWQg
-dG8NCj4gPiA+ID4gPiByZXR1cm4NCj4gPiA+ID4gPiBGQUxTRV9SRVRSWSBpbiB0aGUgY2FzZSB0
-aGUgcnBjIGNyZWRlbnRpYWxzIG9mIHRoZSBjYWxsZXIgbWFwDQo+ID4gPiA+ID4gdG8NCj4gPiA+
-ID4gPiBkaWZmZXJlbnQgcHJpbmNpcGFscywgYnV0IG5vdCBvdGhlcndpc2UuDQo+ID4gPiA+IA0K
-PiA+ID4gPiBUaGlzIG9uZSBkcm92ZSBtZSBjcmF6eToNCj4gPiA+ID4gDQo+ID4gPiA+ICAgIElm
-IGEgcmVxdWVzdGVyIHNlbnQgYSBTZXF1ZW5jZSBvcGVyYXRpb24gd2l0aCBhIHNsb3QgSUQgYW5k
-DQo+ID4gPiA+IHNlcXVlbmNlDQo+ID4gPiA+ICAgIElEIHRoYXQgYXJlIGluIHRoZSByZXBseSBj
-YWNoZSBidXQgdGhlIHJlcGxpZXIgZGV0ZWN0ZWQgdGhhdA0KPiA+ID4gPiB0aGUNCj4gPiA+ID4g
-ICAgcmV0cmllZCByZXF1ZXN0IGlzIG5vdCB0aGUgc2FtZSBhcyB0aGUgb3JpZ2luYWwgcmVxdWVz
-dCwNCj4gPiA+ID4gaW5jbHVkaW5nIGENCj4gPiA+ID4gICAgcmV0cnkgdGhhdCBoYXMgZGlmZmVy
-ZW50IG9wZXJhdGlvbnMgb3IgZGlmZmVyZW50IGFyZ3VtZW50cw0KPiA+ID4gPiBpbg0KPiA+ID4g
-PiB0aGUNCj4gPiA+ID4gICAgb3BlcmF0aW9ucyBmcm9tIHRoZSBvcmlnaW5hbA0KPiA+ID4gPiAN
-Cj4gPiA+ID4gU0VRVUVOQ0UgaXMgbm90IHNwZWNpYWwgLSBib3RoIHRoZSBjb21wb3VuZHMgaW4g
-dGhpcyBleGFtcGxlDQo+ID4gPiA+IG9ubHkgaGF2ZSB0aGUgU0VRVUVOQ0Ugb3AgYW5kIHRoZXkg
-ZGlmZmVyIG9ubHkgaW4gdGhhdCBpbiB0aGUNCj4gPiA+ID4gZmlyc3Qgc2FfY2FjaGV0aGlzIGlz
-IEZhbHNlIGFuZCBpbiB0aGUgc2Vjb25kIGl0IGlzIFRydWUuDQo+ID4gPiA+IA0KPiA+ID4gPiBT
-byB3ZSBoYXZlIHRvIHJldHVybiBGQUxTRV9TRVFfUkVUUlkgaGVyZS4uLg0KPiA+ID4gDQo+ID4g
-PiBJdCBzYXlzICJpZiB0aGUgcmVwbGllciBkZXRlY3RlZCIgYSBkaWZmZXJlbmNlLCBub3QgImlm
-IHRoZXJlIGlzIg0KPiA+ID4gYQ0KPiA+ID4gZGlmZmVyZW5jZS4gIFNvIHRoZSByZXBsaWVyIGlz
-IG5vdCByZXF1aXJlZCB0byBkbyBzdWNoDQo+ID4gPiBkZXRlY3Rpb24uICBUaGlzDQo+ID4gPiBh
-Z3JlZXMgd2l0aCB0aGUgIm5vdCBhbHdheXMgb2JsaWdhdGVkIiBhYm92ZS4NCj4gPiA+IA0KPiA+
-ID4gU28gSSB0aGluayBpdCdzIGFsbG93ZWQgZm9yIHRoZSBzZXJ2ZXIgdG8ganVzdCByZXR1cm4g
-YW4gb2xkDQo+ID4gPiBjYWNoZWQNCj4gPiA+IHJlc3BvbnNlIGhlcmUgKHdpdGggdGhlIGNhY2hl
-ZCBPSykuICBBbmQgSSBjYW4ndCBzZWUgYW55DQo+ID4gPiBwcmFjdGljYWwNCj4gPiA+IHByb2Js
-ZW0gdGhhdCB3b3VsZCBjcmVhdGUtLWEgY2xpZW50IHNob3VsZG4ndCBiZSBzZW5kaW5nIGENCj4g
-PiA+IGRpZmZlcmVudA0KPiA+ID4gcmVxdWVzdCB3aXRoIHRoZSBzYW1lIChzbG90LCBzZXF1ZW5j
-ZSkgYW55d2F5LiAgVGhlIG9ubHkNCj4gPiA+IHBvdGVudGlhbA0KPiA+ID4gcmlzaw0KPiA+ID4g
-aXMgdGhlIG1hbGljaW91cyBjbGllbnQgdHJ5aW5nIHRvIHNub29wIHNvbWVib2R5IGVsc2UncyBy
-ZXBseQ0KPiA+ID4gY2FjaGUsDQo+ID4gPiBoZW5jZSB0aGUgcmVxdWlyZW1lbnQgaW4gdGhlIGNh
-c2UgcHJpbmNpcGFscyBkaWZmZXIuDQo+ID4gDQo+ID4gQ2xpZW50cyBtYXkgaW5kZWVkIHNlbmQg
-YSBkaWZmZXJlbnQgcmVxdWVzdCB3aXRoIHRoZSBzYW1lIHNsb3QgYW5kDQo+ID4gc2VxdWVuY2Ug
-aWYgdGhleSBkb24ndCBrbm93IHRoYXQgdGhlIHNlcnZlciByZWNlaXZlZCB0aGUgbGFzdA0KPiA+
-IHJlcXVlc3QuDQo+ID4gVGhpcyBpcyB0YmUgInVzZXIgcHJlc3NlZCBeQyIgc2NlbmFyaW8uLi4N
-Cj4gPiANCj4gPiBTZXJ2ZXJzIE1BWSBpZ25vcmUgdGhhdCBmYWN0LCBidXQgdGhleSdkIGJlIHJl
-YWxseSBzdHVwaWQgdG8gZG8NCj4gPiBzby4uLg0KPiANCj4gT0ssIE9LLCBJJ2xsIGxvb2sgaW50
-byBmaXhpbmcgdGhlIHNlcnZlciAoSSdtIHByZXR0eSBzdXJlIHdlIGdldCB0aGlzDQo+IHdyb25n
-KS4NCj4gDQo+IFlvdSd2ZSBleHBsYWluZWQgdGhlIGN0cmwtQyBjYXNlIGJlZm9yZSBhbmQgSSBk
-b24ndCB0aGluayBJDQo+IHVuZGVyc3Rvb2QNCj4gaXQuICBJIGd1ZXNzIG90aGVyd2lzZSB0aGUg
-b25seSB3YXkgZm9yIHRoZSBjbGllbnQgdG8gc29ydCBvdXQgdGhlDQo+IHNpdHVhdGlvbiB3b3Vs
-ZCBiZSB0byByZXRyeSB0aGUgb3JpZ2luYWwgcmVxdWVzdC4gIEFuZCB0aGF0IHJlcXVpcmVzDQo+
-IGtlZXBpbmcgdGhlIGFyZ3VtZW50cyBhbmQgY3JlZGVudGlhbHMgYXJvdW5kIHRvIGhhbmRsZSBw
-b3RlbnRpYWwNCj4gcmV0cmllcy4gIEFuZCB0aGF0J3MgaW1wcmFjdGljYWwgaWYgdGhlIHByb2Nl
-c3MgaXMgZ29pbmcgYXdheT8gIE9LLg0KPiANCg0KUmlnaHQsIHdlJ3JlIG5vdCBnb2luZyB0byBk
-byB0aGF0IGp1c3QgZm9yIGRhdGEgdGhhdCBpcyBqdXN0IGdvaW5nIHRvDQpiZSB0b3NzZWQgYXdh
-eSBhbnl3YXkuIFdlIGFscmVhZHkgZ3VhcmFudGVlIHRoYXQgbm9uLWlkZW1wb3RlbnQNCm9wZXJh
-dGlvbnMgKHRoZSBvbmVzIHRoYXQgd2UgYWN0dWFsbHkgZG8gYXNrIHRoZSBzZXJ2ZXIgdG8gY2Fj
-aGUpIGFyZQ0KZ3VhcmFudGVlZCB0byBjb21wbGV0ZSB3aGV0aGVyIG9yIG5vdCB0aGUgdXNlciBw
-cmVzc2VzIF5DLCBzbyB0aGlzIGlzDQptYWlubHkgYWJvdXQgd2hhdCBoYXBwZW5zIHdoZW4gc29t
-ZWJvZHkgaW50ZXJydXB0cyBhbiBvcGVyYXRpb24gdGhhdCB3ZQ0KZGlkIG5vdCB3YW50IHRoZSBz
-ZXJ2ZXIgdG8gY2FjaGUuDQoNCkkgaGF2ZSBhIHBhdGNoIG91dCB0aGVyZSB0aGF0IGp1c3QgcmVw
-bGF5cyBhIFNFUVVFTkNFIG9wIGlmIHdlIGRldGVjdA0KdGhhdCBhbiBSUEMgY2FsbCB3YXMgaW50
-ZXJydXB0ZWQuIFRoYXQgc2hvdWxkIGJlIHN1ZmZpY2llbnQgdG8gZGVhbA0Kd2l0aCBzZXJ2ZXJz
-IHRoYXQgY2FjaGUgZXZlcnl0aGluZyAod2hldGhlciBvciBub3QgdGhlIGNsaWVudCBzZXRzDQpz
-YV9jYWNoZXRoaXMpLCBidXQgZG9uJ3Qgd2FudCB0byBkbyBORlM0RVJSX1NFUV9GQUxTRV9SRVRS
-WS4gVGhhdA0KcGFydGljdWxhciBjb21iaW5hdGlvbiBoYXMgYmVlbiBzZWVuIHRvIGJlIGV4dHJl
-bWVseSB0b3hpYyB0byB0aGUNCmN1cnJlbnQgY2xpZW50LCBiZWNhdXNlIGl0IGNhbiBnZXQgcmVw
-bGF5ZWQgTE9PS1VQIG9yIEdFVEFUVFIgcmVxdWVzdHMNCmFmdGVyIHNvbWVvbmUgcHJlc3NlcyBe
-Qy4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwg
-UHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+Hi Chuck,
 
+On 10/09/2017 12:03 PM, Chuck Lever wrote:
+> The "safe" version of ro_unmap is used here to avoid waiting
+> unnecessarily. However:
+> 
+>  - It is safe to wait. After all, we have to wait anyway when using
+>    FMR to register memory.
+> 
+>  - This case is rare: it occurs only after a reconnect.
+
+I'm just double checking that this really is safe?  I'm seeing the hung task killer running more often after applying this patch:
+
+[  245.376879] INFO: task kworker/0:5:193 blocked for more than 120 seconds.
+[  245.379909]       Not tainted 4.14.0-rc4-ANNA+ #10934
+[  245.382001] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[  245.385926] kworker/0:5     D    0   193      2 0x80000080
+[  245.388148] Workqueue: rpciod rpc_async_schedule [sunrpc]
+[  245.389386] Call Trace:
+[  245.390070]  __schedule+0x23d/0x850
+[  245.390673]  schedule+0x46/0xa0
+[  245.391219]  schedule_timeout+0x230/0x480
+[  245.391817]  ? ib_send_mad+0x32d/0x430
+[  245.392387]  ? __slab_alloc.isra.24+0x3e/0x60
+[  245.392988]  wait_for_common+0xc9/0x190
+[  245.393574]  ? wait_for_common+0xc9/0x190
+[  245.395290]  ? wake_up_q+0x90/0x90
+[  245.396239]  wait_for_completion+0x30/0x40
+[  245.397279]  frwr_op_unmap_sync+0x139/0x2a0 [rpcrdma]
+[  245.398401]  ? call_decode+0x830/0x830 [sunrpc]
+[  245.399435]  xprt_rdma_send_request+0xdc/0xf0 [rpcrdma]
+[  245.400558]  xprt_transmit+0x7f/0x370 [sunrpc]
+[  245.401500]  ? call_decode+0x830/0x830 [sunrpc]
+[  245.402079]  call_transmit+0x1c4/0x2a0 [sunrpc]
+[  245.402652]  ? call_decode+0x830/0x830 [sunrpc]
+[  245.403194]  __rpc_execute+0x92/0x430 [sunrpc]
+[  245.403737]  ? rpc_wake_up+0x7e/0x90 [sunrpc]
+[  245.404264]  rpc_async_schedule+0x25/0x30 [sunrpc]
+[  245.404796]  process_one_work+0x1ed/0x430
+[  245.405276]  worker_thread+0x45/0x3f0
+[  245.405730]  kthread+0x134/0x150
+[  245.406144]  ? process_one_work+0x430/0x430
+[  245.406627]  ? kthread_create_on_node+0x80/0x80
+[  245.407114]  ret_from_fork+0x25/0x30
+
+I see this when running cthon tests over NFS v3 with kvm / softroce configured on my client and server.  I'm willing to accept that the problem might be on my end, but I still want to check with you first :)
+
+Thanks,
+Anna
+
+> 
+> By switching this call site to ro_unmap_sync, the final use of
+> ro_unmap_safe is removed.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/transport.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+> index 8cf5ccf..eb46d24 100644
+> --- a/net/sunrpc/xprtrdma/transport.c
+> +++ b/net/sunrpc/xprtrdma/transport.c
+> @@ -728,7 +728,8 @@
+>  
+>  	/* On retransmit, remove any previously registered chunks */
+>  	if (unlikely(!list_empty(&req->rl_registered)))
+> -		r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
+> +		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt,
+> +						    &req->rl_registered);
+>  
+>  	rc = rpcrdma_marshal_req(r_xprt, rqst);
+>  	if (rc < 0)
+> 
