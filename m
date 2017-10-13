@@ -1,86 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:57698 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751081AbdJMV02 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Oct 2017 17:26:28 -0400
-Date: Fri, 13 Oct 2017 17:26:26 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v5 00/10] NFSD support for asynchronous COPY
-Message-ID: <20171013212626.GB28854@parsley.fieldses.org>
-References: <20171013205412.65532-1-kolga@netapp.com>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:55046 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751617AbdJMVsB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 17:48:01 -0400
+Subject: [PATCH] xprtrdma: Use generic asynchronous MR disposal in
+ send_request
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Fri, 13 Oct 2017 17:47:58 -0400
+Message-ID: <20171013214509.14446.81979.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171013205412.65532-1-kolga@netapp.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 13, 2017 at 04:54:02PM -0400, Olga Kornievskaia wrote:
-> To do asynchronous copies, NFSD creates a new kthread to handle the request.
-> Upon receiving the COPY, it generates a unique copy stateid (stored in a
-> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
-> starts the thread, and replies back to the client. nfsd4_copy arguments that
-> are allocated on the stack are copies for the kthread.
-> 
-> In the async copy handler, it calls into VFS copy_file_range() (for synch
-> we keep the 4MB chunk and requested size for the async copy). If error is
-> encountered it's saved but also we save the amount of data copied so far.
-> Once done, the results are queued for the callback workqueue and sent via
-> CB_OFFLOAD.
-> 
-> When the server received an OFFLOAD_CANCEL, it will find the kthread running
-> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
-> the ongoing do_splice() and once vfs returns we are choosing not to send
-> the CB_OFFLOAD back to the client.
-> 
-> When the server receives an OFFLOAD_STATUS, it will find the kthread running
-> the copy and will query the i_size_read() of the associated filehandle of
-> the destination file and return the result.
+Clean up: The asynchronous path of ro_unmap_safe is the same for all
+registration modes, so just move it into the only function that
+calls it.
 
-That assumes we're copying into a previously empty file?
+"Safe" disposal is done because attempting to invalidate an MR with
+a memory key from the previous connection epoch can result in a
+memory management operation error for some registration modes, and
+that will kill the current connection.
 
---b.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/transport.c |    8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
 
-> 
-> v5:
-> 1. reimplementing asynchronous copy to use kthreads instead of the workqueue
-> 2. store asynchronous copies in the list of the nfs4_client structure
-> 3. when copying nfsd4_copy datastructure for the async copy refcount the
-> nfs4_client structure as well as struct file src/dst structure
-> 4. add refcount to the nfsd4_copy structure to coordinate with offload_status
-> and offload_cancel
-> 5. offload_cancel/copy_shutdown sets the SIGPENDING in the copy's thread to
-> interrupt do_splice and calls kthread_stop to wait for the copy to stop
-> 6. offload_cancel adds MODIFIES_SOMETHING to flags
-> 7. offload_status reports the size of the destination file form i_size_read()
-> instead of before 4MB loop updated chunk size.
-> 8. for async copy call vfs_copy_file_range() with the whole copy size. still
-> keep the loop to do more the MAX_RW_COUNT that do_splice can do.
-> 
-> Olga Kornievskaia (10):
->   NFSD CB_OFFLOAD xdr
->   NFSD OFFLOAD_STATUS xdr
->   NFSD OFFLOAD_CANCEL xdr
->   NFSD xdr callback stateid in async COPY reply
->   NFSD first draft of async copy
->   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
->   NFSD create new stateid for async copy
->   NFSD handle OFFLOAD_CANCEL op
->   NFSD support OFFLOAD_STATUS
->   NFSD stop queued async copies on client shutdown
-> 
->  fs/nfsd/netns.h        |   8 ++
->  fs/nfsd/nfs4callback.c |  97 +++++++++++++++
->  fs/nfsd/nfs4proc.c     | 321 ++++++++++++++++++++++++++++++++++++++++++++-----
->  fs/nfsd/nfs4state.c    |  77 +++++++++++-
->  fs/nfsd/nfs4xdr.c      |  50 ++++++--
->  fs/nfsd/nfsctl.c       |   1 +
->  fs/nfsd/state.h        |  21 +++-
->  fs/nfsd/xdr4.h         |  28 +++++
->  fs/nfsd/xdr4cb.h       |  10 ++
->  9 files changed, 576 insertions(+), 37 deletions(-)
-> 
-> -- 
-> 1.8.3.1
-> 
+Hi Anna-
+
+This patch replaces 2/3 in the for-4.15 series I sent a few days
+ago.
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 8cf5ccf..aa5cab2 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -727,8 +727,12 @@
+ 		goto drop_connection;
+ 
+ 	/* On retransmit, remove any previously registered chunks */
+-	if (unlikely(!list_empty(&req->rl_registered)))
+-		r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
++	while (unlikely(!list_empty(&req->rl_registered))) {
++		struct rpcrdma_mw *mw;
++
++		mw = rpcrdma_pop_mw(&req->rl_registered);
++		rpcrdma_defer_mr_recovery(mw);
++	}
+ 
+ 	rc = rpcrdma_marshal_req(r_xprt, rqst);
+ 	if (rc < 0)
+
