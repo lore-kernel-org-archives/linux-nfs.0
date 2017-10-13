@@ -1,56 +1,142 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:55046 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751617AbdJMVsB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 17:48:01 -0400
-Subject: [PATCH] xprtrdma: Use generic asynchronous MR disposal in
- send_request
+Return-Path: <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH RFC] svcrdma: Preserve CB send buffer across retransmits
 From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 13 Oct 2017 17:47:58 -0400
-Message-ID: <20171013214509.14446.81979.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <20171008225546.16538.99253.stgit@klimt.1015granger.net>
+Date: Fri, 13 Oct 2017 17:49:26 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <9D7FAAFB-CC5E-4B32-A2FE-4B4203D0959B@oracle.com>
+References: <20171008225546.16538.99253.stgit@klimt.1015granger.net>
+To: Benjamin Coddington <bcodding@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: The asynchronous path of ro_unmap_safe is the same for all
-registration modes, so just move it into the only function that
-calls it.
 
-"Safe" disposal is done because attempting to invalidate an MR with
-a memory key from the previous connection epoch can result in a
-memory management operation error for some registration modes, and
-that will kill the current connection.
+> On Oct 8, 2017, at 7:13 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>=20
+> During each NFSv4 callback Call, an RDMA Send completion frees the
+> page that contains the RPC Call message. If the upper layer determines
+> that a retransmit is necessary, this is too soon.
+>=20
+> One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
+> callback request, the following BUG fires on the NFS server:
+>=20
+> kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
+> kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          =
+(null) index:0x0
+> kernel: flags: 0x2fffff80000000()
+> kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 =
+fffffffeffffffff
+> kernel: raw: dead000000000100 dead000000000200 0000000000000000 =
+0000000000000000
+> kernel: page dumped because: nonzero _refcount
+> kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs =
+ocfs2_stack_o2cb ocfs2_dlm
+> ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm =
+ib_uverbs ib_umad
+> rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp =
+kvm_intel
+> kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc =
+iTCO_wdt
+> iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr =
+lpc_ich i2c_i801
+> mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf =
+ipmi_msghandler shpchp
+> acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc =
+ip_tables xfs
+> libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast =
+drm_kms_helper
+> syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel =
+libahci drm
+> mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
+> kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod =
+dax
+> kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted =
+4.14.0-rc3-00001-g577ce48 #811
+> kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c =
+09/09/2015
+> kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
+> kernel: Call Trace:
+> kernel: dump_stack+0x62/0x80
+> kernel: bad_page+0xfe/0x11a
+> kernel: free_pages_check_bad+0x76/0x78
+> kernel: free_pcppages_bulk+0x364/0x441
+> kernel: ? ttwu_do_activate.isra.61+0x71/0x78
+> kernel: free_hot_cold_page+0x1c5/0x202
+> kernel: __put_page+0x2c/0x36
+> kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
+> kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
+>=20
+> This issue exists all the way back to v4.5, but refactoring and code
+> re-organization prevents this simple patch from applying to kernels
+> older than v4.12. The fix is the same, however, if someone needs to
+> backport it.
+>=20
+> Reported-by: Ben Coddington <bcodding@redhat.com>
+> Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
+> Cc: stable@vger.kernel.org # v4.12
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/transport.c |    8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
+Ping.
 
-Hi Anna-
+Reviewed-by gratefully accepted! It would be good if this patch
+can get into 4.14.
 
-This patch replaces 2/3 in the for-4.15 series I sent a few days
-ago.
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 8cf5ccf..aa5cab2 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -727,8 +727,12 @@
- 		goto drop_connection;
- 
- 	/* On retransmit, remove any previously registered chunks */
--	if (unlikely(!list_empty(&req->rl_registered)))
--		r_xprt->rx_ia.ri_ops->ro_unmap_safe(r_xprt, req, false);
-+	while (unlikely(!list_empty(&req->rl_registered))) {
-+		struct rpcrdma_mw *mw;
-+
-+		mw = rpcrdma_pop_mw(&req->rl_registered);
-+		rpcrdma_defer_mr_recovery(mw);
-+	}
- 
- 	rc = rpcrdma_marshal_req(r_xprt, rqst);
- 	if (rc < 0)
+> ---
+> net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
+> 1 file changed, 5 insertions(+), 1 deletion(-)
+>=20
+> Hi Ben, Jeff-
+>=20
+> I was able to reproduce the problem here with a rigged Linux client.
+> This is my proposed fix. Fix also tested with a prototype Solaris
+> client similar to the one that exposed the problem.
+>=20
+>=20
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c =
+b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+> index ec37ad8..1854db2 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+> @@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma =
+*rdma,
+> 	if (ret)
+> 		goto out_err;
+>=20
+> +	/* Bump page refcnt so Send completion doesn't release
+> +	 * the rq_buffer before all retransmits are complete.
+> +	 */
+> +	get_page(virt_to_page(rqst->rq_buffer));
+> 	ret =3D svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
+> 	if (ret)
+> 		goto out_unmap;
+> @@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma =
+*rdma,
+> 		return -EINVAL;
+> 	}
+>=20
+> -	/* svc_rdma_sendto releases this page */
+> 	page =3D alloc_page(RPCRDMA_DEF_GFP);
+> 	if (!page)
+> 		return -ENOMEM;
+> @@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma =
+*rdma,
+> {
+> 	struct rpc_rqst *rqst =3D task->tk_rqstp;
+>=20
+> +	put_page(virt_to_page(rqst->rq_buffer));
+> 	kfree(rqst->rq_rbuffer);
+> }
+>=20
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+--
+Chuck Lever
