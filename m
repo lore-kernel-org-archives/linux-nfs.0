@@ -1,142 +1,98 @@
-Return-Path: <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH RFC] svcrdma: Preserve CB send buffer across retransmits
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20171008225546.16538.99253.stgit@klimt.1015granger.net>
-Date: Fri, 13 Oct 2017 17:49:26 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <9D7FAAFB-CC5E-4B32-A2FE-4B4203D0959B@oracle.com>
-References: <20171008225546.16538.99253.stgit@klimt.1015granger.net>
-To: Benjamin Coddington <bcodding@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-vk0-f66.google.com ([209.85.213.66]:36670 "EHLO
+        mail-vk0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751617AbdJNAJm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Oct 2017 20:09:42 -0400
+Received: by mail-vk0-f66.google.com with SMTP id t203so2550449vke.3
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Oct 2017 17:09:41 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20171013212626.GB28854@parsley.fieldses.org>
+References: <20171013205412.65532-1-kolga@netapp.com> <20171013212626.GB28854@parsley.fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 13 Oct 2017 20:09:40 -0400
+Message-ID: <CAN-5tyETeVgOWKeFSBxQBJi6wwXTcgQqaxxLn0BFXCTCv09h0g@mail.gmail.com>
+Subject: Re: [PATCH v5 00/10] NFSD support for asynchronous COPY
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Oct 13, 2017 at 5:26 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> On Fri, Oct 13, 2017 at 04:54:02PM -0400, Olga Kornievskaia wrote:
+>> To do asynchronous copies, NFSD creates a new kthread to handle the request.
+>> Upon receiving the COPY, it generates a unique copy stateid (stored in a
+>> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+>> starts the thread, and replies back to the client. nfsd4_copy arguments that
+>> are allocated on the stack are copies for the kthread.
+>>
+>> In the async copy handler, it calls into VFS copy_file_range() (for synch
+>> we keep the 4MB chunk and requested size for the async copy). If error is
+>> encountered it's saved but also we save the amount of data copied so far.
+>> Once done, the results are queued for the callback workqueue and sent via
+>> CB_OFFLOAD.
+>>
+>> When the server received an OFFLOAD_CANCEL, it will find the kthread running
+>> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+>> the ongoing do_splice() and once vfs returns we are choosing not to send
+>> the CB_OFFLOAD back to the client.
+>>
+>> When the server receives an OFFLOAD_STATUS, it will find the kthread running
+>> the copy and will query the i_size_read() of the associated filehandle of
+>> the destination file and return the result.
+>
+> That assumes we're copying into a previously empty file?
 
-> On Oct 8, 2017, at 7:13 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->=20
-> During each NFSv4 callback Call, an RDMA Send completion frees the
-> page that contains the RPC Call message. If the upper layer determines
-> that a retransmit is necessary, this is too soon.
->=20
-> One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
-> callback request, the following BUG fires on the NFS server:
->=20
-> kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
-> kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          =
-(null) index:0x0
-> kernel: flags: 0x2fffff80000000()
-> kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 =
-fffffffeffffffff
-> kernel: raw: dead000000000100 dead000000000200 0000000000000000 =
-0000000000000000
-> kernel: page dumped because: nonzero _refcount
-> kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs =
-ocfs2_stack_o2cb ocfs2_dlm
-> ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm =
-ib_uverbs ib_umad
-> rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp =
-kvm_intel
-> kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc =
-iTCO_wdt
-> iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr =
-lpc_ich i2c_i801
-> mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf =
-ipmi_msghandler shpchp
-> acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc =
-ip_tables xfs
-> libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast =
-drm_kms_helper
-> syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel =
-libahci drm
-> mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
-> kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod =
-dax
-> kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted =
-4.14.0-rc3-00001-g577ce48 #811
-> kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c =
-09/09/2015
-> kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
-> kernel: Call Trace:
-> kernel: dump_stack+0x62/0x80
-> kernel: bad_page+0xfe/0x11a
-> kernel: free_pages_check_bad+0x76/0x78
-> kernel: free_pcppages_bulk+0x364/0x441
-> kernel: ? ttwu_do_activate.isra.61+0x71/0x78
-> kernel: free_hot_cold_page+0x1c5/0x202
-> kernel: __put_page+0x2c/0x36
-> kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
-> kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
->=20
-> This issue exists all the way back to v4.5, but refactoring and code
-> re-organization prevents this simple patch from applying to kernels
-> older than v4.12. The fix is the same, however, if someone needs to
-> backport it.
->=20
-> Reported-by: Ben Coddington <bcodding@redhat.com>
-> Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
-> Cc: stable@vger.kernel.org # v4.12
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Sigh. Alright, then it's back to my original solution where I broke
+everything into 4MB calls and kept track of bytes copies so far.
 
-Ping.
-
-Reviewed-by gratefully accepted! It would be good if this patch
-can get into 4.14.
-
-
-> ---
-> net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
-> 1 file changed, 5 insertions(+), 1 deletion(-)
->=20
-> Hi Ben, Jeff-
->=20
-> I was able to reproduce the problem here with a rigged Linux client.
-> This is my proposed fix. Fix also tested with a prototype Solaris
-> client similar to the one that exposed the problem.
->=20
->=20
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c =
-b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> index ec37ad8..1854db2 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> @@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma =
-*rdma,
-> 	if (ret)
-> 		goto out_err;
->=20
-> +	/* Bump page refcnt so Send completion doesn't release
-> +	 * the rq_buffer before all retransmits are complete.
-> +	 */
-> +	get_page(virt_to_page(rqst->rq_buffer));
-> 	ret =3D svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
-> 	if (ret)
-> 		goto out_unmap;
-> @@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma =
-*rdma,
-> 		return -EINVAL;
-> 	}
->=20
-> -	/* svc_rdma_sendto releases this page */
-> 	page =3D alloc_page(RPCRDMA_DEF_GFP);
-> 	if (!page)
-> 		return -ENOMEM;
-> @@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma =
-*rdma,
-> {
-> 	struct rpc_rqst *rqst =3D task->tk_rqstp;
->=20
-> +	put_page(virt_to_page(rqst->rq_buffer));
-> 	kfree(rqst->rq_rbuffer);
-> }
->=20
->=20
+>
+> --b.
+>
+>>
+>> v5:
+>> 1. reimplementing asynchronous copy to use kthreads instead of the workqueue
+>> 2. store asynchronous copies in the list of the nfs4_client structure
+>> 3. when copying nfsd4_copy datastructure for the async copy refcount the
+>> nfs4_client structure as well as struct file src/dst structure
+>> 4. add refcount to the nfsd4_copy structure to coordinate with offload_status
+>> and offload_cancel
+>> 5. offload_cancel/copy_shutdown sets the SIGPENDING in the copy's thread to
+>> interrupt do_splice and calls kthread_stop to wait for the copy to stop
+>> 6. offload_cancel adds MODIFIES_SOMETHING to flags
+>> 7. offload_status reports the size of the destination file form i_size_read()
+>> instead of before 4MB loop updated chunk size.
+>> 8. for async copy call vfs_copy_file_range() with the whole copy size. still
+>> keep the loop to do more the MAX_RW_COUNT that do_splice can do.
+>>
+>> Olga Kornievskaia (10):
+>>   NFSD CB_OFFLOAD xdr
+>>   NFSD OFFLOAD_STATUS xdr
+>>   NFSD OFFLOAD_CANCEL xdr
+>>   NFSD xdr callback stateid in async COPY reply
+>>   NFSD first draft of async copy
+>>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+>>   NFSD create new stateid for async copy
+>>   NFSD handle OFFLOAD_CANCEL op
+>>   NFSD support OFFLOAD_STATUS
+>>   NFSD stop queued async copies on client shutdown
+>>
+>>  fs/nfsd/netns.h        |   8 ++
+>>  fs/nfsd/nfs4callback.c |  97 +++++++++++++++
+>>  fs/nfsd/nfs4proc.c     | 321 ++++++++++++++++++++++++++++++++++++++++++++-----
+>>  fs/nfsd/nfs4state.c    |  77 +++++++++++-
+>>  fs/nfsd/nfs4xdr.c      |  50 ++++++--
+>>  fs/nfsd/nfsctl.c       |   1 +
+>>  fs/nfsd/state.h        |  21 +++-
+>>  fs/nfsd/xdr4.h         |  28 +++++
+>>  fs/nfsd/xdr4cb.h       |  10 ++
+>>  9 files changed, 576 insertions(+), 37 deletions(-)
+>>
+>> --
+>> 1.8.3.1
+>>
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
