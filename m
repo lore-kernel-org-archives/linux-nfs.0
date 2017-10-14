@@ -1,141 +1,311 @@
-Return-Path: <jlayton@redhat.com>
-Message-ID: <1507988146.4831.18.camel@redhat.com>
-Subject: Re: [PATCH RFC] svcrdma: Preserve CB send buffer across retransmits
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Benjamin Coddington <bcodding@redhat.com>, Linux NFS Mailing List
-	 <linux-nfs@vger.kernel.org>
-Date: Sat, 14 Oct 2017 09:35:46 -0400
-In-Reply-To: <643B26A1-BB5F-440E-A7B5-5F0716AAE2F1@oracle.com>
-References: <20171008225546.16538.99253.stgit@klimt.1015granger.net>
-	 <1507977492.4831.2.camel@redhat.com>
-	 <643B26A1-BB5F-440E-A7B5-5F0716AAE2F1@oracle.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-vk0-f66.google.com ([209.85.213.66]:35848 "EHLO
+        mail-vk0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751715AbdJNNpE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Oct 2017 09:45:04 -0400
+Received: by mail-vk0-f66.google.com with SMTP id t203so2845035vke.3
+        for <linux-nfs@vger.kernel.org>; Sat, 14 Oct 2017 06:45:03 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20171013205412.65532-6-kolga@netapp.com>
+References: <20171013205412.65532-1-kolga@netapp.com> <20171013205412.65532-6-kolga@netapp.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Sat, 14 Oct 2017 09:45:02 -0400
+Message-ID: <CAN-5tyHny-MDhJoo=xqEzsZAZf301p8Z0AAYnE6+yYr6R4xjJQ@mail.gmail.com>
+Subject: Re: [PATCH v5 05/10] NFSD first draft of async copy
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2017-10-14 at 09:29 -0400, Chuck Lever wrote:
-> > On Oct 14, 2017, at 6:38 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > On Sun, 2017-10-08 at 19:13 -0400, Chuck Lever wrote:
-> > > During each NFSv4 callback Call, an RDMA Send completion frees the
-> > > page that contains the RPC Call message. If the upper layer determines
-> > > that a retransmit is necessary, this is too soon.
-> > > 
-> > > One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
-> > > callback request, the following BUG fires on the NFS server:
-> > > 
-> > > kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
-> > > kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          (null) index:0x0
-> > > kernel: flags: 0x2fffff80000000()
-> > > kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 fffffffeffffffff
-> > > kernel: raw: dead000000000100 dead000000000200 0000000000000000 0000000000000000
-> > > kernel: page dumped because: nonzero _refcount
-> > > kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm
-> > > ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad
-> > > rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
-> > > kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc iTCO_wdt
-> > > iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr lpc_ich i2c_i801
-> > > mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf ipmi_msghandler shpchp
-> > > acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc ip_tables xfs
-> > > libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast drm_kms_helper
-> > > syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel libahci drm
-> > > mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
-> > > kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod dax
-> > > kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted 4.14.0-rc3-00001-g577ce48 #811
-> > > kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
-> > > kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
-> > > kernel: Call Trace:
-> > > kernel: dump_stack+0x62/0x80
-> > > kernel: bad_page+0xfe/0x11a
-> > > kernel: free_pages_check_bad+0x76/0x78
-> > > kernel: free_pcppages_bulk+0x364/0x441
-> > > kernel: ? ttwu_do_activate.isra.61+0x71/0x78
-> > > kernel: free_hot_cold_page+0x1c5/0x202
-> > > kernel: __put_page+0x2c/0x36
-> > > kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
-> > > kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
-> > > 
-> > > This issue exists all the way back to v4.5, but refactoring and code
-> > > re-organization prevents this simple patch from applying to kernels
-> > > older than v4.12. The fix is the same, however, if someone needs to
-> > > backport it.
-> > > 
-> > > Reported-by: Ben Coddington <bcodding@redhat.com>
-> > > Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
-> > > Cc: stable@vger.kernel.org # v4.12
-> > > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > > ---
-> > > net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
-> > > 1 file changed, 5 insertions(+), 1 deletion(-)
-> > > 
-> > > Hi Ben, Jeff-
-> > > 
-> > > I was able to reproduce the problem here with a rigged Linux client.
-> > > This is my proposed fix. Fix also tested with a prototype Solaris
-> > > client similar to the one that exposed the problem.
-> > > 
-> > > 
-> > > diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> > > index ec37ad8..1854db2 100644
-> > > --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> > > +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> > > @@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
-> > > 	if (ret)
-> > > 		goto out_err;
-> > > 
-> > > +	/* Bump page refcnt so Send completion doesn't release
-> > > +	 * the rq_buffer before all retransmits are complete.
-> > > +	 */
-> > > +	get_page(virt_to_page(rqst->rq_buffer));
-> > 
-> > Looks fairly reasonable, but is this enough? Could rq_buffer be larger
-> > than a page?
-> 
-> Not in the current implementation. See xprt_rdma_bc_allocate.
-> 
-> Thanks for the review!
-> 
+On Fri, Oct 13, 2017 at 4:54 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
+> Upon receiving a request for async copy, create a new kthread.
+> If we get asynchronous request, make sure to copy the needed
+> arguments/state from the stack before starting the copy. Then
+> start the thread and reply back to the client indicating copy
+> is asynchronous.
+>
+> nfsd_copy_file_range() will copy in a loop over the total
+> number of bytes is needed to copy. In case a failure happens
+> in the middle, we can return an error as well as how much we
+> copied so far. Once done creating a workitem for the callback
+> workqueue and send CB_OFFLOAD with the results.
+>
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c  | 177 ++++++++++++++++++++++++++++++++++++++++++++++------
+>  fs/nfsd/nfs4state.c |   2 +
+>  fs/nfsd/state.h     |   2 +
+>  fs/nfsd/xdr4.h      |   9 +++
+>  4 files changed, 171 insertions(+), 19 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index ea698a4..2787c95 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -35,6 +35,7 @@
+>  #include <linux/file.h>
+>  #include <linux/falloc.h>
+>  #include <linux/slab.h>
+> +#include <linux/kthread.h>
+>
+>  #include "idmap.h"
+>  #include "cache.h"
+> @@ -1085,39 +1086,177 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>  out:
+>         return status;
+>  }
+> +static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
+> +{
+> +       struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
+> +
+> +       atomic_dec(&copy->cp_clp->cl_refcount);
+> +       kfree(copy);
+> +}
+> +
+> +static int nfsd4_cb_offload_done(struct nfsd4_callback *cb,
+> +                                struct rpc_task *task)
+> +{
+> +       return 1;
+> +}
+> +
+> +static const struct nfsd4_callback_ops nfsd4_cb_offload_ops = {
+> +       .release = nfsd4_cb_offload_release,
+> +       .done = nfsd4_cb_offload_done
+> +};
+> +
+> +static int nfsd4_init_copy_res(struct nfsd4_copy *copy, bool sync)
+> +{
+> +       memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+> +               sizeof(copy->cp_dst_stateid));
+> +       copy->cp_res.wr_stable_how = NFS_UNSTABLE;
+> +       copy->cp_consecutive = 1;
+> +       copy->cp_synchronous = sync;
+> +       gen_boot_verifier(&copy->cp_res.wr_verifier, copy->net);
+> +
+> +       return nfs_ok;
+> +}
+> +
+> +static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
+> +{
+> +       ssize_t bytes_copied = 0;
+> +       size_t bytes_total = copy->cp_count;
+> +       size_t bytes_to_copy;
+> +       u64 src_pos = copy->cp_src_pos;
+> +       u64 dst_pos = copy->cp_dst_pos;
+> +
+> +       do {
+> +               if (copy->cp_synchronous)
+> +                       bytes_to_copy = min_t(u64, bytes_total, MAX_RW_COUNT);
 
-No problem.
+urgh that should have been 4MB value from the vfs.c file not the
+do_splice max. I should also remove the nds_copy_file_range() from
+vfs.c as it's no longer called. To implement the offload_status, if
+you don't object, I'd rather go back for both sync and async to do 4MB
+calls into VFS to get some kind of copy progress to report.
 
-> 
-> > > 	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
-> > > 	if (ret)
-> > > 		goto out_unmap;
-> > > @@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
-> > > 		return -EINVAL;
-> > > 	}
-> > > 
-> > > -	/* svc_rdma_sendto releases this page */
-> > > 	page = alloc_page(RPCRDMA_DEF_GFP);
-> > > 	if (!page)
-> > > 		return -ENOMEM;
-> > > @@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
-> > > {
-> > > 	struct rpc_rqst *rqst = task->tk_rqstp;
-> > > 
-> > > +	put_page(virt_to_page(rqst->rq_buffer));
-> > > 	kfree(rqst->rq_rbuffer);
-> > > }
-> > > 
-> > > 
-> > 
-> > -- 
-> > Jeff Layton <jlayton@redhat.com>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+> +               else
+> +                       bytes_to_copy = bytes_total;
+> +               bytes_copied = vfs_copy_file_range(copy->fh_src, src_pos,
+> +                               copy->fh_dst, dst_pos, bytes_to_copy, 0);
+> +               if (bytes_copied <= 0)
+> +                       break;
+> +               bytes_total -= bytes_copied;
+> +               copy->cp_res.wr_bytes_written += bytes_copied;
+> +               src_pos += bytes_copied;
+> +               dst_pos += bytes_copied;
+> +       } while (bytes_total > 0 && !copy->cp_synchronous);
+> +       return bytes_copied;
+> +}
+> +
+> +static int nfsd4_do_copy(struct nfsd4_copy *copy, bool sync)
+> +{
+> +       __be32 status;
+> +       ssize_t bytes;
+> +
+> +       bytes = _nfsd_copy_file_range(copy);
+> +       if (bytes < 0)
+> +               status = nfserrno(bytes);
+> +       else
+> +               status = nfsd4_init_copy_res(copy, sync);
+> +
+> +       fput(copy->fh_src);
+> +       fput(copy->fh_dst);
+> +       return status;
+> +}
+> +
+> +static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
+> +{
+> +       memcpy(&dst->cp_src_stateid, &src->cp_src_stateid, sizeof(stateid_t));
+> +       memcpy(&dst->cp_dst_stateid, &src->cp_dst_stateid, sizeof(stateid_t));
+> +       dst->cp_src_pos = src->cp_src_pos;
+> +       dst->cp_dst_pos = src->cp_dst_pos;
+> +       dst->cp_count = src->cp_count;
+> +       dst->cp_consecutive = src->cp_consecutive;
+> +       dst->cp_synchronous = src->cp_synchronous;
+> +       memcpy(&dst->cp_res, &src->cp_res, sizeof(src->cp_res));
+> +       /* skipping nfsd4_callback */
+> +       memcpy(&dst->fh, &src->fh, sizeof(src->fh));
+> +       dst->net = src->net;
+> +       dst->cp_clp = src->cp_clp;
+> +       atomic_inc(&dst->cp_clp->cl_refcount);
+> +       dst->fh_dst = get_file(src->fh_dst);
+> +       dst->fh_src = get_file(src->fh_src);
+> +}
+> +
+> +static void cleanup_async_copy(struct nfsd4_copy *copy)
+> +{
+> +       fput(copy->fh_dst);
+> +       fput(copy->fh_src);
+> +       spin_lock(&copy->cp_clp->async_lock);
+> +       list_del(&copy->copies);
+> +       spin_unlock(&copy->cp_clp->async_lock);
+> +       atomic_dec(&copy->cp_clp->cl_refcount);
+> +       kfree(copy);
+> +}
+> +
+> +static int nfsd4_do_async_copy(void *data)
+> +{
+> +       struct nfsd4_copy *copy = (struct nfsd4_copy *)data;
+> +       struct nfsd4_copy *cb_copy;
+> +
+> +       copy->nfserr = nfsd4_do_copy(copy, 0);
+> +       cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+> +       if (!cb_copy)
+> +               goto out;
+> +       memcpy(&cb_copy->cp_res, &copy->cp_res, sizeof(copy->cp_res));
+> +       cb_copy->cp_clp = copy->cp_clp;
+> +       atomic_inc(&cb_copy->cp_clp->cl_refcount);
+> +       cb_copy->nfserr = copy->nfserr;
+> +       memcpy(&cb_copy->fh, &copy->fh, sizeof(copy->fh));
+> +       nfsd4_init_cb(&cb_copy->cp_cb, cb_copy->cp_clp,
+> +                       &nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
+> +       nfsd4_run_cb(&cb_copy->cp_cb);
+> +out:
+> +       cleanup_async_copy(copy);
+> +       return 0;
+> +}
+>
+>  static __be32
+>  nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>                 union nfsd4_op_u *u)
+>  {
+>         struct nfsd4_copy *copy = &u->copy;
+> -       struct file *src, *dst;
+>         __be32 status;
+> -       ssize_t bytes;
+> +       struct nfsd4_copy *async_copy = NULL;
+>
+> -       status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid, &src,
+> -                                  &copy->cp_dst_stateid, &dst);
+> +       status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid,
+> +                                  &copy->fh_src, &copy->cp_dst_stateid,
+> +                                  &copy->fh_dst);
+>         if (status)
+>                 goto out;
+>
+> -       bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
+> -                       dst, copy->cp_dst_pos, copy->cp_count);
+> -
+> -       if (bytes < 0)
+> -               status = nfserrno(bytes);
+> -       else {
+> -               copy->cp_res.wr_bytes_written = bytes;
+> -               copy->cp_res.wr_stable_how = NFS_UNSTABLE;
+> -               copy->cp_consecutive = 1;
+> -               copy->cp_synchronous = 1;
+> -               gen_boot_verifier(&copy->cp_res.wr_verifier, SVC_NET(rqstp));
+> -               status = nfs_ok;
+> +       copy->cp_clp = cstate->clp;
+> +       memcpy(&copy->fh, &cstate->current_fh.fh_handle,
+> +               sizeof(struct knfsd_fh));
+> +       copy->net = SVC_NET(rqstp);
+> +       if (!copy->cp_synchronous) {
+> +               status = nfsd4_init_copy_res(copy, 0);
+> +               async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+> +               if (!async_copy) {
+> +                       status = nfserrno(-ENOMEM);
+> +                       goto out;
+> +               }
+> +               dup_copy_fields(copy, async_copy);
+> +               memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+> +                       sizeof(copy->cp_dst_stateid));
+> +               spin_lock(&async_copy->cp_clp->async_lock);
+> +               list_add(&async_copy->copies,
+> +                               &async_copy->cp_clp->async_copies);
+> +               spin_unlock(&async_copy->cp_clp->async_lock);
+> +               async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
+> +                               async_copy, "%s", "copy thread");
+> +               if (IS_ERR(async_copy->copy_task)) {
+> +                       status = PTR_ERR(async_copy->copy_task);
+> +                       goto out_err_dec;
+> +               }
+> +               wake_up_process(async_copy->copy_task);
+> +       } else {
+> +               status = nfsd4_do_copy(copy, 1);
+>         }
+> -
+> -       fput(src);
+> -       fput(dst);
+>  out:
+>         return status;
+> +out_err_dec:
+> +       cleanup_async_copy(async_copy);
+> +       goto out;
+>  }
+>
+>  static __be32
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 0c04f81..d7767a1 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1774,6 +1774,8 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+>  #ifdef CONFIG_NFSD_PNFS
+>         INIT_LIST_HEAD(&clp->cl_lo_states);
+>  #endif
+> +       INIT_LIST_HEAD(&clp->async_copies);
+> +       spin_lock_init(&clp->async_lock);
+>         spin_lock_init(&clp->cl_lock);
+>         rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
+>         return clp;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index f8b0210..9189062 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -352,6 +352,8 @@ struct nfs4_client {
+>         struct rpc_wait_queue   cl_cb_waitq;    /* backchannel callers may */
+>                                                 /* wait here for slots */
+>         struct net              *net;
+> +       struct list_head        async_copies;   /* list of async copies */
+> +       spinlock_t              async_lock;     /* lock for async copies */
+>  };
+>
+>  /* struct nfs4_client_reset
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 9b0c099..0a19954 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -529,6 +529,15 @@ struct nfsd4_copy {
+>         struct nfsd4_callback   cp_cb;
+>         __be32                  nfserr;
+>         struct knfsd_fh         fh;
+> +
+> +       struct nfs4_client      *cp_clp;
+> +
+> +       struct file             *fh_src;
+> +       struct file             *fh_dst;
+> +       struct net              *net;
+> +
+> +       struct list_head        copies;
+> +       struct task_struct      *copy_task;
+>  };
+>
+>  struct nfsd4_seek {
 > --
-> Chuck Lever
-> 
-> 
-> 
-
-Might be worth making sure the thing isn't larger than a page with a
-WARN_ON, or at least a comment in there in case that ever changes.
-Otherwise, I think this is fine:
-
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> 1.8.3.1
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
