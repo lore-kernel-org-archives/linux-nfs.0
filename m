@@ -1,134 +1,417 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-masked.atl.sa.earthlink.net ([209.86.89.68]:45016 "EHLO
-        elasmtp-masked.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1755016AbdJPQP6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 12:15:58 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Trond Myklebust'" <trondmy@primarydata.com>,
-        <bfields@fieldses.org>
-Cc: <loghyr@excfb.com>, <linux-nfs@vger.kernel.org>, <nfsv4@ietf.org>,
-        "'Thomas Haynes'" <loghyr@primarydata.com>
-References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com> <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com> <20171012194946.GC5233@fieldses.org> <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com> <20171012214454.GA19598@fieldses.org> <20171012220051.GB29204@psyklo.internal.excfb.com> <20171013015223.GA21284@fieldses.org> <1507901666.4550.2.camel@primarydata.com> <20171013150021.GG5233@fieldses.org> <1507908409.9498.14.camel@primarydata.com>
-In-Reply-To: <1507908409.9498.14.camel@primarydata.com>
-Subject: RE: [nfsv4] pynfs replay cache test SEQ9f
-Date: Mon, 16 Oct 2017 09:15:45 -0700
-Message-ID: <000b01d3469a$0606e760$1214b620$@mindspring.com>
+Received: from mail-vk0-f66.google.com ([209.85.213.66]:45634 "EHLO
+        mail-vk0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754986AbdJPQhZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 12:37:25 -0400
+Received: by mail-vk0-f66.google.com with SMTP id q13so8067602vkb.2
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Oct 2017 09:37:24 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="UTF-8"
+In-Reply-To: <20171011170705.45533-1-trond.myklebust@primarydata.com>
+References: <20171011170705.45533-1-trond.myklebust@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 16 Oct 2017 12:37:23 -0400
+Message-ID: <CAN-5tyGL1N51N7stAqxBMWZBDMQQs+BnLGd2owA1sWfpdLLFRQ@mail.gmail.com>
+Subject: Re: [PATCH v2] NFSv4.1: Fix up replays of interrupted requests
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Fri, 2017-10-13 at 11:00 -0400, bfields@fieldses.org wrote:
-> > On Fri, Oct 13, 2017 at 01:34:28PM +0000, Trond Myklebust wrote:
-> > > On Thu, 2017-10-12 at 21:52 -0400, J. Bruce Fields wrote:
-> > > > On Thu, Oct 12, 2017 at 03:00:51PM -0700, Tom Haynes wrote:
-> > > > > On Thu, Oct 12, 2017 at 05:44:54PM -0400, J. Bruce Fields
-> > > > > wrote:
-> > > > > > Your mailer's not quoting right, it's a little hard for me to
-> > > > > > find your replies.  Wading in:
-> > > > > >
-> > > > > > On Thu, Oct 12, 2017 at 09:39:04PM +0000, Thomas Haynes
-> > > > > > wrote:
-> > > > > > > On Oct 12, 2017, at 12:49 PM, J. Bruce Fields <bfields@fiel
-> > > > > > > dses .org<mailto:bfields@fieldses.org>> wrote:
-> > > > > > > > So I *think* the only correct options OK or FALSE_RETRY?
-> > > > > > >
-> > > > > > > It can=E2=80=99t be OK if the parameters to SEQUENCE differ.
-> > > > > >
-> > > > > > I'm getting that from: "When the replier detects a false
-> > > > > > retry, it is permitted (but not always obligated) to return
-> > > > > > NFS4ERR_FALSE_RETRY in response to the Sequence operation
-> when
-> > > > > > it detects a false retry."
-> > > > >
-> > > > > I think you are agreeing with me that OK is not appropriate
-> > > > > here?
-> > > >
-> > > > No, I think OK is OK:
-> > > >
-> > > > > > If i understand the following language, we're required to
-> > > > > > return FALSE_RETRY in the case the rpc credentials of the
-> > > > > > caller map to different principals, but not otherwise.
-> > > > >
-> > > > > This one drove me crazy:
-> > > > >
-> > > > >    If a requester sent a Sequence operation with a slot ID and
-> > > > > sequence
-> > > > >    ID that are in the reply cache but the replier detected that
-> > > > > the
-> > > > >    retried request is not the same as the original request,
-> > > > > including a
-> > > > >    retry that has different operations or different arguments in
-> > > > > the
-> > > > >    operations from the original
-> > > > >
-> > > > > SEQUENCE is not special - both the compounds in this example
-> > > > > only have the SEQUENCE op and they differ only in that in the
-> > > > > first sa_cachethis is False and in the second it is True.
-> > > > >
-> > > > > So we have to return FALSE_SEQ_RETRY here...
-> > > >
-> > > > It says "if the replier detected" a difference, not "if there is"
-> > > > a
-> > > > difference.  So the replier is not required to do such detection.
-> > > > This agrees with the "not always obligated" above.
-> > > >
-> > > > So I think it's allowed for the server to just return an old
-> > > > cached response here (with the cached OK).  And I can't see any
-> > > > practical problem that would create--a client shouldn't be sending
-> > > > a different request with the same (slot, sequence) anyway.  The
-> > > > only potential risk is the malicious client trying to snoop
-> > > > somebody else's reply cache, hence the requirement in the case
-> > > > principals differ.
-> > >
-> > > Clients may indeed send a different request with the same slot and
-> > > sequence if they don't know that the server received the last
-> > > request.
-> > > This is tbe "user pressed ^C" scenario...
-> > >
-> > > Servers MAY ignore that fact, but they'd be really stupid to do
-> > > so...
-> >
-> > OK, OK, I'll look into fixing the server (I'm pretty sure we get this
-> > wrong).
-> >
-> > You've explained the ctrl-C case before and I don't think I understood
-> > it.  I guess otherwise the only way for the client to sort out the
-> > situation would be to retry the original request.  And that requires
-> > keeping the arguments and credentials around to handle potential
-> > retries.  And that's impractical if the process is going away?  OK.
-> >
-> 
-> Right, we're not going to do that just for data that is just going to be =
-tossed
-> away anyway. We already guarantee that non-idempotent operations (the
-> ones that we actually do ask the server to cache) are guaranteed to compl=
-ete
-> whether or not the user presses ^C, so this is mainly about what happens
-> when somebody interrupts an operation that we did not want the server to
-> cache.
-> 
-> I have a patch out there that just replays a SEQUENCE op if we detect tha=
-t an
-> RPC call was interrupted. That should be sufficient to deal with servers =
-that
-> cache everything (whether or not the client sets sa_cachethis), but don't=
+On Wed, Oct 11, 2017 at 1:07 PM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> If the previous request on a slot was interrupted before it was
+> processed by the server, then our slot sequence number may be out of whack,
+> and so we try the next operation using the old sequence number.
+>
+> The problem with this, is that not all servers check to see that the
+> client is replaying the same operations as previously when they decide
+> to go to the replay cache, and so instead of the expected error of
+> NFS4ERR_SEQ_FALSE_RETRY, we get a replay of the old reply, which could
+> (if the operations match up) be mistaken by the client for a new reply.
+>
+> To fix this, we attempt to send a COMPOUND containing only the SEQUENCE op
+> in order to resync our slot sequence number.
+>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4_fs.h  |   2 +-
+>  fs/nfs/nfs4proc.c | 146 +++++++++++++++++++++++++++++++++++++-----------------
+>  2 files changed, 101 insertions(+), 47 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index ac4f10b7f6c1..b547d935aaf0 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -464,7 +464,7 @@ extern void nfs_increment_open_seqid(int status, struct nfs_seqid *seqid);
+>  extern void nfs_increment_lock_seqid(int status, struct nfs_seqid *seqid);
+>  extern void nfs_release_seqid(struct nfs_seqid *seqid);
+>  extern void nfs_free_seqid(struct nfs_seqid *seqid);
+> -extern int nfs4_setup_sequence(const struct nfs_client *client,
+> +extern int nfs4_setup_sequence(struct nfs_client *client,
+>                                 struct nfs4_sequence_args *args,
+>                                 struct nfs4_sequence_res *res,
+>                                 struct rpc_task *task);
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f90090e8c959..caa72efe02c9 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -96,6 +96,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+>                             struct nfs_open_context *ctx, struct nfs4_label *ilabel,
+>                             struct nfs4_label *olabel);
+>  #ifdef CONFIG_NFS_V4_1
+> +static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+> +               struct rpc_cred *cred,
+> +               struct nfs4_slot *slot,
+> +               bool is_privileged);
+>  static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
+>                 struct rpc_cred *);
+>  static int nfs41_free_stateid(struct nfs_server *, const nfs4_stateid *,
+> @@ -644,13 +648,14 @@ static int nfs40_sequence_done(struct rpc_task *task,
+>
+>  #if defined(CONFIG_NFS_V4_1)
+>
+> -static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+> +static void nfs41_release_slot(struct nfs4_slot *slot)
+>  {
+>         struct nfs4_session *session;
+>         struct nfs4_slot_table *tbl;
+> -       struct nfs4_slot *slot = res->sr_slot;
+>         bool send_new_highest_used_slotid = false;
+>
+> +       if (!slot)
+> +               return;
+>         tbl = slot->table;
+>         session = tbl->session;
+>
+> @@ -676,13 +681,18 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+>                 send_new_highest_used_slotid = false;
+>  out_unlock:
+>         spin_unlock(&tbl->slot_tbl_lock);
+> -       res->sr_slot = NULL;
+>         if (send_new_highest_used_slotid)
+>                 nfs41_notify_server(session->clp);
+>         if (waitqueue_active(&tbl->slot_waitq))
+>                 wake_up_all(&tbl->slot_waitq);
+>  }
+>
+> +static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+> +{
+> +       nfs41_release_slot(res->sr_slot);
+> +       res->sr_slot = NULL;
+> +}
+> +
+>  static int nfs41_sequence_process(struct rpc_task *task,
+>                 struct nfs4_sequence_res *res)
+>  {
+> @@ -710,13 +720,6 @@ static int nfs41_sequence_process(struct rpc_task *task,
+>         /* Check the SEQUENCE operation status */
+>         switch (res->sr_status) {
+>         case 0:
+> -               /* If previous op on slot was interrupted and we reused
+> -                * the seq# and got a reply from the cache, then retry
+> -                */
+> -               if (task->tk_status == -EREMOTEIO && interrupted) {
+> -                       ++slot->seq_nr;
+> -                       goto retry_nowait;
+> -               }
+>                 /* Update the slot's sequence and clientid lease timer */
+>                 slot->seq_done = 1;
+>                 clp = session->clp;
+> @@ -750,16 +753,16 @@ static int nfs41_sequence_process(struct rpc_task *task,
+>                  * The slot id we used was probably retired. Try again
+>                  * using a different slot id.
+>                  */
+> +               if (slot->seq_nr < slot->table->target_highest_slotid)
+> +                       goto session_recover;
+>                 goto retry_nowait;
+>         case -NFS4ERR_SEQ_MISORDERED:
+>                 /*
+>                  * Was the last operation on this sequence interrupted?
+>                  * If so, retry after bumping the sequence number.
+>                  */
+> -               if (interrupted) {
+> -                       ++slot->seq_nr;
+> -                       goto retry_nowait;
+> -               }
+> +               if (interrupted)
+> +                       goto retry_new_seq;
+>                 /*
+>                  * Could this slot have been previously retired?
+>                  * If so, then the server may be expecting seq_nr = 1!
+> @@ -768,10 +771,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
+>                         slot->seq_nr = 1;
+>                         goto retry_nowait;
+>                 }
+> -               break;
+> +               goto session_recover;
+>         case -NFS4ERR_SEQ_FALSE_RETRY:
+> -               ++slot->seq_nr;
+> -               goto retry_nowait;
+> +               if (interrupted)
+> +                       goto retry_new_seq;
+> +               goto session_recover;
+>         default:
+>                 /* Just update the slot sequence no. */
+>                 slot->seq_done = 1;
+> @@ -781,6 +785,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
+>         dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
+>  out_noaction:
+>         return ret;
+> +session_recover:
+> +       nfs4_schedule_session_recovery(session, res->sr_status);
+> +       goto retry_nowait;
+> +retry_new_seq:
+> +       ++slot->seq_nr;
+>  retry_nowait:
+>         if (rpc_restart_call_prepare(task)) {
+>                 nfs41_sequence_free_slot(res);
+> @@ -857,6 +866,17 @@ static const struct rpc_call_ops nfs41_call_sync_ops = {
+>         .rpc_call_done = nfs41_call_sync_done,
+>  };
+>
+> +static void
+> +nfs4_sequence_process_interrupted(struct nfs_client *client,
+> +               struct nfs4_slot *slot, struct rpc_cred *cred)
+> +{
+> +       struct rpc_task *task;
+> +
+> +       task = _nfs41_proc_sequence(client, cred, slot, true);
+> +       if (!IS_ERR(task))
+> +               rpc_put_task_async(task);
+> +}
+> +
+>  #else  /* !CONFIG_NFS_V4_1 */
+>
+>  static int nfs4_sequence_process(struct rpc_task *task, struct nfs4_sequence_res *res)
+> @@ -877,9 +897,32 @@ int nfs4_sequence_done(struct rpc_task *task,
+>  }
+>  EXPORT_SYMBOL_GPL(nfs4_sequence_done);
+>
+> +static void
+> +nfs4_sequence_process_interrupted(struct nfs_client *client,
+> +               struct nfs4_slot *slot, struct rpc_cred *cred)
+> +{
+> +       WARN_ON_ONCE(1);
+> +       slot->interrupted = 0;
+> +}
+> +
+>  #endif /* !CONFIG_NFS_V4_1 */
+>
+> -int nfs4_setup_sequence(const struct nfs_client *client,
+> +static
+> +void nfs4_sequence_attach_slot(struct nfs4_sequence_args *args,
+> +               struct nfs4_sequence_res *res,
+> +               struct nfs4_slot *slot)
+> +{
+> +       slot->privileged = args->sa_privileged ? 1 : 0;
+> +       args->sa_slot = slot;
+> +
+> +       res->sr_slot = slot;
+> +       res->sr_timestamp = jiffies;
+> +       res->sr_status_flags = 0;
+> +       res->sr_status = 1;
+> +
+> +}
+> +
+> +int nfs4_setup_sequence(struct nfs_client *client,
+>                         struct nfs4_sequence_args *args,
+>                         struct nfs4_sequence_res *res,
+>                         struct rpc_task *task)
+> @@ -897,29 +940,28 @@ int nfs4_setup_sequence(const struct nfs_client *client,
+>                 task->tk_timeout = 0;
+>         }
+>
+> -       spin_lock(&tbl->slot_tbl_lock);
+> -       /* The state manager will wait until the slot table is empty */
+> -       if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
+> -               goto out_sleep;
+> +       for (;;) {
+> +               spin_lock(&tbl->slot_tbl_lock);
+> +               /* The state manager will wait until the slot table is empty */
+> +               if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
+> +                       goto out_sleep;
+> +
+> +               slot = nfs4_alloc_slot(tbl);
+> +               if (IS_ERR(slot)) {
+> +                       /* Try again in 1/4 second */
+> +                       if (slot == ERR_PTR(-ENOMEM))
+> +                               task->tk_timeout = HZ >> 2;
+> +                       goto out_sleep;
+> +               }
+> +               spin_unlock(&tbl->slot_tbl_lock);
+>
+> -       slot = nfs4_alloc_slot(tbl);
+> -       if (IS_ERR(slot)) {
+> -               /* Try again in 1/4 second */
+> -               if (slot == ERR_PTR(-ENOMEM))
+> -                       task->tk_timeout = HZ >> 2;
+> -               goto out_sleep;
+> +               if (likely(!slot->interrupted))
+> +                       break;
+> +               nfs4_sequence_process_interrupted(client,
+> +                               slot, task->tk_msg.rpc_cred);
+>         }
+> -       spin_unlock(&tbl->slot_tbl_lock);
+>
+> -       slot->privileged = args->sa_privileged ? 1 : 0;
+> -       args->sa_slot = slot;
+> -
+> -       res->sr_slot = slot;
+> -       if (session) {
+> -               res->sr_timestamp = jiffies;
+> -               res->sr_status_flags = 0;
+> -               res->sr_status = 1;
+> -       }
+> +       nfs4_sequence_attach_slot(args, res, slot);
+>
+>         trace_nfs4_setup_sequence(session, args);
+>  out_start:
+> @@ -8135,6 +8177,7 @@ static const struct rpc_call_ops nfs41_sequence_ops = {
+>
+>  static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+>                 struct rpc_cred *cred,
+> +               struct nfs4_slot *slot,
+>                 bool is_privileged)
+>  {
+>         struct nfs4_sequence_data *calldata;
+> @@ -8148,15 +8191,18 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+>                 .callback_ops = &nfs41_sequence_ops,
+>                 .flags = RPC_TASK_ASYNC | RPC_TASK_TIMEOUT,
+>         };
+> +       struct rpc_task *ret;
+>
+> +       ret = ERR_PTR(-EIO);
+>         if (!atomic_inc_not_zero(&clp->cl_count))
+> -               return ERR_PTR(-EIO);
+> +               goto out_err;
+> +
+> +       ret = ERR_PTR(-ENOMEM);
+>         calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
+> -       if (calldata == NULL) {
+> -               nfs_put_client(clp);
+> -               return ERR_PTR(-ENOMEM);
+> -       }
+> +       if (calldata == NULL)
+> +               goto out_put_clp;
+>         nfs4_init_sequence(&calldata->args, &calldata->res, 0);
+> +       nfs4_sequence_attach_slot(&calldata->args, &calldata->res, slot);
+>         if (is_privileged)
+>                 nfs4_set_sequence_privileged(&calldata->args);
+>         msg.rpc_argp = &calldata->args;
+> @@ -8164,7 +8210,15 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+>         calldata->clp = clp;
+>         task_setup_data.callback_data = calldata;
+>
+> -       return rpc_run_task(&task_setup_data);
+> +       ret = rpc_run_task(&task_setup_data);
+> +       if (IS_ERR(ret))
+> +               goto out_err;
+> +       return ret;
+> +out_put_clp:
+> +       nfs_put_client(clp);
+> +out_err:
+> +       nfs41_release_slot(slot);
+> +       return ret;
+>  }
+>
+>  static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cred, unsigned renew_flags)
+> @@ -8174,7 +8228,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
+>
+>         if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
+>                 return -EAGAIN;
+> -       task = _nfs41_proc_sequence(clp, cred, false);
+> +       task = _nfs41_proc_sequence(clp, cred, NULL, false);
+>         if (IS_ERR(task))
+>                 ret = PTR_ERR(task);
+>         else
+> @@ -8188,7 +8242,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+>         struct rpc_task *task;
+>         int ret;
+>
+> -       task = _nfs41_proc_sequence(clp, cred, true);
+> +       task = _nfs41_proc_sequence(clp, cred, NULL, true);
+>         if (IS_ERR(task)) {
+>                 ret = PTR_ERR(task);
+>                 goto out;
+> --
 
-> want to do NFS4ERR_SEQ_FALSE_RETRY. That particular combination has
-> been seen to be extremely toxic to the current client, because it can get=
+Hi Trond,
 
-> replayed LOOKUP or GETATTR requests after someone presses ^C.
+I get the following oops with this patch and triggering ctrl-c
 
-I'm wondering if Ganesha does this right...
+[  177.057878] BUG: unable to handle kernel NULL pointer dereference
+at 0000000000000020^M
+[  177.062500] IP: _nfs41_proc_sequence+0xdd/0x1a0 [nfsv4]^M
+[  177.064119] PGD 0 P4D 0 ^M
+[  177.064896] Oops: 0002 [#1] SMP^M
+[  177.065765] Modules linked in: nfsv4 dns_resolver nfs rfcomm fuse
+xt_CHECKSUM ipt_MASQUERADE nf_nat_masquerade_ipv4 tun ip6t_rpfilter
+ipt_REJECT nf_reject_ipv4 ip6t_REJECT nf_reject_ipv6 xt_conntrack
+ip_set nfnetlink ebtable_nat ebtable_broute bridge stp llc
+ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6
+ip6table_mangle ip6table_security ip6table_raw iptable_nat
+nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack
+libcrc32c iptable_mangle iptable_security iptable_raw ebtable_filter
+ebtables ip6table_filter ip6_tables iptable_filter
+vmw_vsock_vmci_transport vsock bnep dm_mirror dm_region_hash dm_log
+dm_mod snd_seq_midi snd_seq_midi_event coretemp crct10dif_pclmul
+crc32_pclmul ghash_clmulni_intel pcbc snd_ens1371 snd_ac97_codec
+aesni_intel ac97_bus crypto_simd snd_seq cryptd^M
+[  177.083060]  glue_helper snd_pcm uvcvideo ppdev videobuf2_vmalloc
+vmw_balloon videobuf2_memops videobuf2_v4l2 videobuf2_core btusb btrtl
+btbcm pcspkr btintel videodev bluetooth snd_rawmidi snd_timer
+snd_seq_device rfkill nfit sg snd ecdh_generic soundcore i2c_piix4
+libnvdimm shpchp vmw_vmci parport_pc parport nfsd auth_rpcgss nfs_acl
+lockd grace sunrpc ip_tables ext4 mbcache jbd2 sr_mod cdrom
+ata_generic sd_mod pata_acpi vmwgfx drm_kms_helper syscopyarea
+sysfillrect sysimgblt fb_sys_fops ttm ahci drm mptspi
+scsi_transport_spi mptscsih mptbase crc32c_intel libahci ata_piix
+libata serio_raw e1000 i2c_core^M
+[  177.094284] CPU: 3 PID: 57 Comm: kworker/3:1 Not tainted 4.14.0-rc2+ #40^M
+[  177.095712] Hardware name: VMware, Inc. VMware Virtual
+Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015^M
+[  177.097932] Workqueue: events nfs4_renew_state [nfsv4]^M
+[  177.099013] task: ffff8800718aae80 task.stack: ffffc90000aa8000^M
+[  177.100240] RIP: 0010:_nfs41_proc_sequence+0xdd/0x1a0 [nfsv4]^M
+[  177.101428] RSP: 0018:ffffc90000aabd68 EFLAGS: 00010246^M
+[  177.102577] RAX: ffff8800748e8340 RBX: ffff88003f5bd000 RCX:
+0000000000000000^M
+[  177.104042] RDX: 00000000fffdf000 RSI: 0000000000000000 RDI:
+ffff8800748e8380^M
+[  177.105496] RBP: ffffc90000aabdf8 R08: 000000000001ee00 R09:
+ffff8800748e8340^M
+[  177.106944] R10: ffff8800748e8340 R11: 00000000000002bd R12:
+ffffc90000aabd90^M
+[  177.108510] R13: 0000000000000000 R14: 0000000000000000 R15:
+ffffffffa086b4d0^M
+[  177.109938] FS:  0000000000000000(0000) GS:ffff88007b6c0000(0000)
+knlGS:0000000000000000^M
+[  177.111644] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033^M
+[  177.113498] CR2: 0000000000000020 CR3: 0000000072ba6001 CR4:
+00000000001606e0^M
+[  177.115938] Call Trace:^M
+[  177.116701]  nfs41_proc_async_sequence+0x1d/0x60 [nfsv4]^M
+[  177.118266]  nfs4_renew_state+0x10b/0x1a0 [nfsv4]^M
+[  177.119628]  process_one_work+0x149/0x360^M
+[  177.120684]  worker_thread+0x4d/0x3c0^M
+[  177.121651]  kthread+0x109/0x140^M
+[  177.122505]  ? rescuer_thread+0x380/0x380^M
+[  177.123461]  ? kthread_park+0x60/0x60^M
+[  177.124338]  ret_from_fork+0x25/0x30^M
+[  177.125173] Code: e0 48 85 c0 0f 84 8e 00 00 00 0f b6 50 10 48 c7
+40 08 00 00 00 00 48 c7 40 18 00 00 00 00 83 e2 fc 88 50 10 48 8b 15
+93 0c 3d e1 <41> 80 66 20 fd 45 84 ed 4c 89 70 08 4c 89 70 18 c7 40 2c
+00 00 ^M
+[  177.129700] RIP: _nfs41_proc_sequence+0xdd/0x1a0 [nfsv4] RSP:
+ffffc90000aabd68^M
+[  177.131830] CR2: 0000000000000020^M
+[  177.132779] ---[ end trace 221b5aa4b7a47014 ]---^M
 
-Bruce, if there's something not covered by the pynfs tests, can we make sur=
-e to add one?
-
-Frank
-
-
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
+> 2.13.6
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
