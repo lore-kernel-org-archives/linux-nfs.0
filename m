@@ -1,62 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f180.google.com ([209.85.220.180]:48364 "EHLO
-        mail-qk0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752175AbdJPNeV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 09:34:21 -0400
+Received: from mail-ua0-f194.google.com ([209.85.217.194]:54489 "EHLO
+        mail-ua0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752373AbdJPNhz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 09:37:55 -0400
+Received: by mail-ua0-f194.google.com with SMTP id n38so9674631uai.11
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Oct 2017 06:37:55 -0700 (PDT)
 MIME-Version: 1.0
-Reply-To: jglauber@cavium.com
-In-Reply-To: <1507744197.50316.3.camel@primarydata.com>
-References: <20171009181738.GA30680@red-moon> <1507573931.3516.3.camel@primarydata.com>
- <20171010140336.GI3301751@devbig577.frc2.facebook.com> <1507654135.4442.4.camel@primarydata.com>
- <20171010171919.GO3301751@devbig577.frc2.facebook.com> <1507744197.50316.3.camel@primarydata.com>
-From: Jan Glauber <jan.glauber@gmail.com>
-Date: Mon, 16 Oct 2017 15:34:20 +0200
-Message-ID: <CAEiAFz00xmDPSRi+EPpYwnJPkzd1E2mDc-afDnpqtiOgKFHscQ@mail.gmail.com>
-Subject: Re: net/sunrpc: v4.14-rc4 lockdep warning
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "tj@kernel.org" <tj@kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "lorenzo.pieralisi@arm.com" <lorenzo.pieralisi@arm.com>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jiangshanlai@gmail.com" <jiangshanlai@gmail.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
+In-Reply-To: <b4f0f30e-c19e-1b2f-7379-d859b4b5ff49@Netapp.com>
+References: <20171013205412.65532-1-kolga@netapp.com> <20171013212626.GB28854@parsley.fieldses.org>
+ <CAN-5tyETeVgOWKeFSBxQBJi6wwXTcgQqaxxLn0BFXCTCv09h0g@mail.gmail.com> <b4f0f30e-c19e-1b2f-7379-d859b4b5ff49@Netapp.com>
+From: Mauricio Tavares <raubvogel@gmail.com>
+Date: Mon, 16 Oct 2017 09:37:53 -0400
+Message-ID: <CAHEKYV4nD2sp8vQ7VTitQEi0s=NcqnekHZtk8HdHB7EU=uuVug@mail.gmail.com>
+Subject: Re: [PATCH v5 00/10] NFSD support for asynchronous COPY
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Olga Kornievskaia <aglo@umich.edu>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-
-is there a patch available for this issue? I'm running into with
-4.14-rc5 on my ARM64 board.
-
-thanks, Jan
-
-2017-10-11 19:49 GMT+02:00 Trond Myklebust <trondmy@primarydata.com>:
-> On Tue, 2017-10-10 at 10:19 -0700, tj@kernel.org wrote:
->> Hello,
->>
->> On Tue, Oct 10, 2017 at 04:48:57PM +0000, Trond Myklebust wrote:
->> > Thanks for the explanation. What I'm not really understanding here
->> > though, is how the work item could be queued at all. We have a
->> > wait_on_bit_lock() in xprt_destroy() that should mean the xprt-
->> > > task_cleanup work item has completed running, and that it cannot
->> > > be
->> >
->> > requeued.
->> >
->> > Is there a possibility that the flush_queue() might be triggered
->> > despite the work item not being queued?
->>
->> Yeah, for sure.  The lockdep annotations don't distinguish those
->> cases and assume the worst case.
->>
+On Mon, Oct 16, 2017 at 9:13 AM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
 >
-> OK. Let's just remove that call to cancel_work_sync() then. As I said,
-> it should be redundant due to the wait_on_bit_lock().
 >
+> On 10/13/2017 08:09 PM, Olga Kornievskaia wrote:
+>> On Fri, Oct 13, 2017 at 5:26 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>>> On Fri, Oct 13, 2017 at 04:54:02PM -0400, Olga Kornievskaia wrote:
+>>>> To do asynchronous copies, NFSD creates a new kthread to handle the request.
+>>>> Upon receiving the COPY, it generates a unique copy stateid (stored in a
+>>>> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+>>>> starts the thread, and replies back to the client. nfsd4_copy arguments that
+>>>> are allocated on the stack are copies for the kthread.
+>>>>
+>>>> In the async copy handler, it calls into VFS copy_file_range() (for synch
+>>>> we keep the 4MB chunk and requested size for the async copy). If error is
+>>>> encountered it's saved but also we save the amount of data copied so far.
+>>>> Once done, the results are queued for the callback workqueue and sent via
+>>>> CB_OFFLOAD.
+>>>>
+>>>> When the server received an OFFLOAD_CANCEL, it will find the kthread running
+>>>> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+>>>> the ongoing do_splice() and once vfs returns we are choosing not to send
+>>>> the CB_OFFLOAD back to the client.
+>>>>
+>>>> When the server receives an OFFLOAD_STATUS, it will find the kthread running
+>>>> the copy and will query the i_size_read() of the associated filehandle of
+>>>> the destination file and return the result.
+>>>
+>>> That assumes we're copying into a previously empty file?
+>>
+>> Sigh. Alright, then it's back to my original solution where I broke
+>> everything into 4MB calls and kept track of bytes copies so far.
+>
+> Do they have to be 4MB calls?  Assuming clients don't need a super-accurate results, you could probably use a larger copy size and still have decent copy performance.
+>
+      Could have that as a parameter defined in some config file perhaps?
+>>
+>>>
+>>> --b.
+>>>
+>>>>
+>>>> v5:
+>>>> 1. reimplementing asynchronous copy to use kthreads instead of the workqueue
+>>>> 2. store asynchronous copies in the list of the nfs4_client structure
+>>>> 3. when copying nfsd4_copy datastructure for the async copy refcount the
+>>>> nfs4_client structure as well as struct file src/dst structure
+>>>> 4. add refcount to the nfsd4_copy structure to coordinate with offload_status
+>>>> and offload_cancel
+>>>> 5. offload_cancel/copy_shutdown sets the SIGPENDING in the copy's thread to
+>>>> interrupt do_splice and calls kthread_stop to wait for the copy to stop
+>>>> 6. offload_cancel adds MODIFIES_SOMETHING to flags
+>>>> 7. offload_status reports the size of the destination file form i_size_read()
+>>>> instead of before 4MB loop updated chunk size.
+>>>> 8. for async copy call vfs_copy_file_range() with the whole copy size. still
+>>>> keep the loop to do more the MAX_RW_COUNT that do_splice can do.
+>>>>
+>>>> Olga Kornievskaia (10):
+>>>>   NFSD CB_OFFLOAD xdr
+>>>>   NFSD OFFLOAD_STATUS xdr
+>>>>   NFSD OFFLOAD_CANCEL xdr
+>>>>   NFSD xdr callback stateid in async COPY reply
+>>>>   NFSD first draft of async copy
+>>>>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+>>>>   NFSD create new stateid for async copy
+>>>>   NFSD handle OFFLOAD_CANCEL op
+>>>>   NFSD support OFFLOAD_STATUS
+>>>>   NFSD stop queued async copies on client shutdown
+>>>>
+>>>>  fs/nfsd/netns.h        |   8 ++
+>>>>  fs/nfsd/nfs4callback.c |  97 +++++++++++++++
+>>>>  fs/nfsd/nfs4proc.c     | 321 ++++++++++++++++++++++++++++++++++++++++++++-----
+>>>>  fs/nfsd/nfs4state.c    |  77 +++++++++++-
+>>>>  fs/nfsd/nfs4xdr.c      |  50 ++++++--
+>>>>  fs/nfsd/nfsctl.c       |   1 +
+>>>>  fs/nfsd/state.h        |  21 +++-
+>>>>  fs/nfsd/xdr4.h         |  28 +++++
+>>>>  fs/nfsd/xdr4cb.h       |  10 ++
+>>>>  9 files changed, 576 insertions(+), 37 deletions(-)
+>>>>
+>>>> --
+>>>> 1.8.3.1
+>>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
 > --
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
