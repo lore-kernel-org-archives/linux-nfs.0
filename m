@@ -1,135 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46242 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46260 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932109AbdJPSgY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 16 Oct 2017 14:36:24 -0400
-Date: Mon, 16 Oct 2017 14:36:23 -0400
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFSv4.1: Fix up replays of interrupted requests
-Message-ID: <20171016183623.GB12608@fieldses.org>
-References: <20171011170705.45533-1-trond.myklebust@primarydata.com>
- <CAN-5tyGL1N51N7stAqxBMWZBDMQQs+BnLGd2owA1sWfpdLLFRQ@mail.gmail.com>
- <CAN-5tyEXeesbAk02LsGDjwoBqZr6q8AzWUhMSV0-V2aUwm44dA@mail.gmail.com>
+        id S1754785AbdJPSrm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 16 Oct 2017 14:47:42 -0400
+Date: Mon, 16 Oct 2017 14:47:41 -0400
+To: Ziemowit Pierzycki <ziemowit@pierzycki.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS rejecting connections
+Message-ID: <20171016184741.GC12608@fieldses.org>
+References: <CAOiTGH=Hjmn_828yoNjuv2FnEg1NGMUicVZY3s74j0sXEs4szg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyEXeesbAk02LsGDjwoBqZr6q8AzWUhMSV0-V2aUwm44dA@mail.gmail.com>
+In-Reply-To: <CAOiTGH=Hjmn_828yoNjuv2FnEg1NGMUicVZY3s74j0sXEs4szg@mail.gmail.com>
 From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 16, 2017 at 01:07:57PM -0400, Olga Kornievskaia wrote:
-> Network trace reveals that server is not working properly (thus
-> getting Bruce's attention here).
+On Sat, Oct 14, 2017 at 09:59:49AM -0500, Ziemowit Pierzycki wrote:
+> Hi,
+> I have two NFS servers that appear to have the same issue.  They're
+> both Fedora 25 based and none of the clients can connect while
+> retrying to infinity.  If I restart the server it works for a little
+> before the same thing happening.
 > 
-> Skipping ahead, the server replies to a SEQUENCE call with a reply
-> that has a count=5 operations but only has a sequence in it.
+> Turning on debugging shows the following:
 > 
-> The flow of steps is the following.
+> [171565.851530] svc: socket ffff940c3a5ef000(inet ffff940d7db626c0), busy=1
+> [171566.026535] svc: socket ffff940d7ac0c000(inet ffff940d7db87440), busy=1
+> [171570.032880] svc: socket ffff940d9c253000(inet ffff940d999b9f00), busy=1
+> [171576.915841] svc: socket ffff94143ce1d000(inet ffff940d7db62e80), busy=1
+> [171578.360395] svc: socket ffff94128bba4000(inet ffff940d999b8f80), busy=1
+> [171578.828178] svc: socket ffff94143919b000(inet ffff940d7db83640), busy=1
+> [171578.828198] svc: socket ffff94143919b000(inet ffff940d7db83640), busy=1
+> [171579.930641] svc: socket ffff940d89e71000(inet ffff940d999b8000), busy=1
+> [171579.930662] svc: socket ffff940d89e71000(inet ffff940d999b8000), busy=1
+> [171579.930680] svc: socket ffff940d89e71000(inet ffff940d999b8000), busy=1
+> [171580.024655] svc: socket ffff940d9c253000(inet ffff940d999b9f00), busy=1
+> [171580.913639] svc: socket ffff940d3f539000(inet ffff940d7db65d00), busy=1
+> [171582.400198] NFSD: laundromat service - starting
+> [171582.400202] NFSD: laundromat_main - sleeping for 90 seconds
+> [171589.539121] svc: socket ffff940ac592d000(inet ffff940d97b55540), busy=1
+> [171589.539284] svc: socket ffff940ac592d000(inet ffff940d97b55540), busy=1
+> [171590.040366] svc: socket ffff940d9c253000(inet ffff940d999b9f00), busy=1
+> [171590.591191] svc: socket ffff94128bba1000(inet ffff940d7db607c0), busy=1
+> [171598.027702] svc: socket ffff94143919b000(inet ffff940d7db83640), busy=1
+> [171599.863801] svc: socket ffff94128bba4000(inet ffff940d999b8f80), busy=1
+> [171599.863836] svc: socket ffff94128bba4000(inet ffff940d999b8f80), busy=1
+> [171600.056109] svc: socket ffff940d9c253000(inet ffff940d999b9f00), busy=1
+> [171604.354706] svc: socket ffff940ac592d000(inet ffff940d97b55540), busy=1
+> [171608.585185] svc: socket ffff94057a6da000(inet ffff940d999bdd00), busy=1
+> [171609.498365] svc: socket ffff940c3a5ef000(inet ffff940d7db626c0), busy=1
+> [171609.790704] svc: socket ffff94128bba1000(inet ffff940d7db607c0), busy=1
+> [171610.071868] svc: socket ffff940d9c253000(inet ffff940d999b9f00), busy=1
+> [171616.141902] svc: socket ffff940d7ac08000(inet ffff940d7db81f00), busy=1
+> [171620.055620] svc: socket ffff940d9c253000(inet ffff940d999b9f00), busy=1
 > 
-> Client sends
-> call COPY seq=16 slot=0 highslot=1(application at this point receives
-> a ctrl-c so it'll go ahead and close 2files it has opened)
+> Then there is a single nfsd process that has a very high load:
+> 
+> # cat /proc/4192/stack
+> [<ffffffffffffffff>] 0xffffffffffffffff
 
-Is cachethis set on that the SEQUENCE op in that copy compound?
+Not sure what that means.
 
-> call CLOSE  seq=1 slot=1 highslot=1
-> call SEQUENCE seq=16 slot=0 highslot=1
-> reply CLOSE OK
-> reply SEQUENCE ERR_DELAY
-> another call CLOSE seq=2 slot=1 and successful reply
-> reply COPY ..
-> call SEQUENCE seq=16 slot=0 highslot=0
-> reply SEQUENCE opcount=5
+A sysrq-t dump might help.  (echo t>/proc/sysrq-trigger, then show us
+what's dumped to the logs.)
 
-And that's the whole reply?
-
-Do you have a binary capture that I could look at?
-
-> So I'm assuming server is replying from the reply cache for the COPY
-> seq=16 slot=0.. but it's only sending part of it back? Is that legit?
-
-No.--b.
+--b.
 
 > 
-> In any case, I think the client shouldn't be oops-ing.
+> # rpcinfo
+>    program version netid     address                service    owner
+>     100000    4    tcp6      ::.0.111               portmapper superuser
+>     100000    3    tcp6      ::.0.111               portmapper superuser
+>     100000    4    udp6      ::.0.111               portmapper superuser
+>     100000    3    udp6      ::.0.111               portmapper superuser
+>     100000    4    tcp       0.0.0.0.0.111          portmapper superuser
+>     100000    3    tcp       0.0.0.0.0.111          portmapper superuser
+>     100000    2    tcp       0.0.0.0.0.111          portmapper superuser
+>     100000    4    udp       0.0.0.0.0.111          portmapper superuser
+>     100000    3    udp       0.0.0.0.0.111          portmapper superuser
+>     100000    2    udp       0.0.0.0.0.111          portmapper superuser
+>     100000    4    local     /run/rpcbind.sock      portmapper superuser
+>     100000    3    local     /run/rpcbind.sock      portmapper superuser
+>     100024    1    udp       0.0.0.0.131.70         status     29
+>     100024    1    tcp       0.0.0.0.221.245        status     29
+>     100024    1    udp6      ::.170.79              status     29
+>     100024    1    tcp6      ::.143.15              status     29
+>     100005    1    udp       0.0.0.0.78.80          mountd     superuser
+>     100005    1    tcp       0.0.0.0.78.80          mountd     superuser
+>     100005    1    udp6      ::.78.80               mountd     superuser
+>     100005    1    tcp6      ::.78.80               mountd     superuser
+>     100005    2    udp       0.0.0.0.78.80          mountd     superuser
+>     100005    2    tcp       0.0.0.0.78.80          mountd     superuser
+>     100005    2    udp6      ::.78.80               mountd     superuser
+>     100005    2    tcp6      ::.78.80               mountd     superuser
+>     100005    3    udp       0.0.0.0.78.80          mountd     superuser
+>     100005    3    tcp       0.0.0.0.78.80          mountd     superuser
+>     100005    3    udp6      ::.78.80               mountd     superuser
+>     100005    3    tcp6      ::.78.80               mountd     superuser
+>     100003    3    tcp       0.0.0.0.8.1            nfs        superuser
+>     100003    4    tcp       0.0.0.0.8.1            nfs        superuser
+>     100227    3    tcp       0.0.0.0.8.1            nfs_acl    superuser
+>     100003    3    udp       0.0.0.0.8.1            nfs        superuser
+>     100227    3    udp       0.0.0.0.8.1            nfs_acl    superuser
+>     100003    3    tcp6      ::.8.1                 nfs        superuser
+>     100003    4    tcp6      ::.8.1                 nfs        superuser
+>     100227    3    tcp6      ::.8.1                 nfs_acl    superuser
+>     100003    3    udp6      ::.8.1                 nfs        superuser
+>     100227    3    udp6      ::.8.1                 nfs_acl    superuser
+>     100021    1    udp       0.0.0.0.231.220        nlockmgr   superuser
+>     100021    3    udp       0.0.0.0.231.220        nlockmgr   superuser
+>     100021    4    udp       0.0.0.0.231.220        nlockmgr   superuser
+>     100021    1    tcp       0.0.0.0.145.133        nlockmgr   superuser
+>     100021    3    tcp       0.0.0.0.145.133        nlockmgr   superuser
+>     100021    4    tcp       0.0.0.0.145.133        nlockmgr   superuser
+>     100021    1    udp6      ::.188.96              nlockmgr   superuser
+>     100021    3    udp6      ::.188.96              nlockmgr   superuser
+>     100021    4    udp6      ::.188.96              nlockmgr   superuser
+>     100021    1    tcp6      ::.173.23              nlockmgr   superuser
+>     100021    3    tcp6      ::.173.23              nlockmgr   superuser
+>     100021    4    tcp6      ::.173.23              nlockmgr   superuser
 > 
-> [  138.136387] BUG: unable to handle kernel NULL pointer dereference
-> at 0000000000000020^M
-> [  138.140134] IP: _nfs41_proc_sequence+0xdd/0x1a0 [nfsv4]^M
-> [  138.141687] PGD 0 P4D 0 ^M
-> [  138.142462] Oops: 0002 [#1] SMP^M
-> [  138.143413] Modules linked in: nfsv4 dns_resolver nfs rfcomm fuse
-> xt_CHECKSUM ipt_MASQUERADE nf_nat_masquerade_ipv4 tun ip6t_rpfilter
-> ipt_REJECT nf_reject_ipv4 ip6t_REJECT nf_reject_ipv6 xt_conntrack
-> ip_set nfnetlink ebtable_nat ebtable_broute bridge stp llc
-> ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6
-> ip6table_mangle ip6table_security ip6table_raw iptable_nat
-> nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack
-> libcrc32c iptable_mangle iptable_security iptable_raw ebtable_filter
-> ebtables ip6table_filter ip6_tables iptable_filter
-> vmw_vsock_vmci_transport vsock bnep dm_mirror dm_region_hash dm_log
-> dm_mod snd_seq_midi snd_seq_midi_event coretemp crct10dif_pclmul
-> crc32_pclmul ghash_clmulni_intel pcbc uvcvideo snd_ens1371
-> snd_ac97_codec ac97_bus snd_seq ppdev videobuf2_vmalloc^M
-> [  138.158839]  btusb videobuf2_memops videobuf2_v4l2 videobuf2_core
-> aesni_intel btrtl nfit btbcm crypto_simd cryptd videodev snd_pcm
-> btintel glue_helper vmw_balloon libnvdimm bluetooth snd_rawmidi
-> snd_timer pcspkr snd_seq_device snd shpchp rfkill vmw_vmci sg
-> ecdh_generic soundcore i2c_piix4 parport_pc parport nfsd auth_rpcgss
-> nfs_acl lockd grace sunrpc ip_tables ext4 mbcache jbd2 sr_mod cdrom
-> sd_mod ata_generic pata_acpi vmwgfx drm_kms_helper syscopyarea
-> sysfillrect sysimgblt fb_sys_fops ttm drm ahci libahci crc32c_intel
-> ata_piix mptspi scsi_transport_spi serio_raw libata mptscsih e1000
-> mptbase i2c_core^M
-> [  138.169453] CPU: 3 PID: 541 Comm: kworker/3:3 Not tainted 4.14.0-rc5+ #41^M
-> [  138.170829] Hardware name: VMware, Inc. VMware Virtual
-> Platform/440BX Desktop Reference Platform, BIOS 6.00 07/02/2015^M
-> [  138.172960] Workqueue: events nfs4_renew_state [nfsv4]^M
-> [  138.174020] task: ffff880033c80000 task.stack: ffffc90000d80000^M
-> [  138.175232] RIP: 0010:_nfs41_proc_sequence+0xdd/0x1a0 [nfsv4]^M
-> [  138.176392] RSP: 0018:ffffc90000d83d68 EFLAGS: 00010246^M
-> [  138.177444] RAX: ffff880073646200 RBX: ffff88002c944800 RCX:
-> 0000000000000000^M
-> [  138.178932] RDX: 00000000fffd7000 RSI: 0000000000000000 RDI:
-> ffff880073646240^M
-> [  138.180357] RBP: ffffc90000d83df8 R08: 000000000001ee40 R09:
-> ffff880073646200^M
-> [  138.181955] R10: ffff880073646200 R11: 0000000000000139 R12:
-> ffffc90000d83d90^M
-> [  138.184014] R13: 0000000000000000 R14: 0000000000000000 R15:
-> ffffffffa08784d0^M
-> [  138.185439] FS:  0000000000000000(0000) GS:ffff88007b6c0000(0000)
-> knlGS:0000000000000000^M
-> [  138.187144] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033^M
-> [  138.188469] CR2: 0000000000000020 CR3: 0000000001c09003 CR4:
-> 00000000001606e0^M
-> [  138.189952] Call Trace:^M
-> [  138.190478]  nfs41_proc_async_sequence+0x1d/0x60 [nfsv4]^M
-> [  138.191549]  nfs4_renew_state+0x10b/0x1a0 [nfsv4]^M
-> [  138.192555]  process_one_work+0x149/0x360^M
-> [  138.193367]  worker_thread+0x4d/0x3c0^M
-> [  138.194157]  kthread+0x109/0x140^M
-> [  138.194816]  ? rescuer_thread+0x380/0x380^M
-> [  138.195673]  ? kthread_park+0x60/0x60^M
-> [  138.196426]  ret_from_fork+0x25/0x30^M
-> [  138.197153] Code: e0 48 85 c0 0f 84 8e 00 00 00 0f b6 50 10 48 c7
-> 40 08 00 00 00 00 48 c7 40 18 00 00 00 00 83 e2 fc 88 50 10 48 8b 15
-> b3 0e 3c e1 <41> 80 66 20 fd 45 84 ed 4c 89 70 08 4c 89 70 18 c7 40 2c
-> 00 00 ^M
-> [  138.200991] RIP: _nfs41_proc_sequence+0xdd/0x1a0 [nfsv4] RSP:
-> ffffc90000d83d68^M
-> [  138.202431] CR2: 0000000000000020^M
-> [  138.203200] ---[ end trace b25c7be5ead1a406 ]---^M
+> And all the clients are trying to reconnect:
 > 
-> >>
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> nfs: server elkpinfnas03.corp.vibes.com OK
+> nfs: server elkpinfnas03.corp.vibes.com OK
+> nfs: server elkpinfnas03.corp.vibes.com not responding, still trying
+> 
+> Any help would be greatly appreciated.  Thank you.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
