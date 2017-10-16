@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:45847 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756862AbdJPTBI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 15:01:08 -0400
-Subject: [PATCH 1 1/5] xprtrdma: Throw away reply when version is
- unrecognized
+Received: from mail-it0-f66.google.com ([209.85.214.66]:43783 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753675AbdJPTBQ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 15:01:16 -0400
+Subject: [PATCH 1 2/5] xprtrdma: Move decoded header fields into rpcrdma_rep
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 16 Oct 2017 15:01:06 -0400
-Message-ID: <20171016190106.13594.2302.stgit@manet.1015granger.net>
+Date: Mon, 16 Oct 2017 15:01:14 -0400
+Message-ID: <20171016190114.13594.32859.stgit@manet.1015granger.net>
 In-Reply-To: <20171016185641.13594.5374.stgit@manet.1015granger.net>
 References: <20171016185641.13594.5374.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,60 +16,155 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A reply with an unrecognized value in the version field means the
-transport header is potentially garbled and therefore all the fields
-are untrustworthy.
+Clean up: Make it easier to pass the decoded XID, vers, credits, and
+proc fields around by moving these variables into struct rpcrdma_rep.
 
-Fixes: 59aa1f9a3cce3 ("xprtrdma: Properly handle RDMA_ERROR ... ")
+Note: the credits field will be handled in a subsequent patch.
+
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |   17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   36 +++++++++++++++++-------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
+ 2 files changed, 20 insertions(+), 19 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index f1889f4..20c9e4c 100644
+index 20c9e4c..e355cd3 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1248,6 +1248,9 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
- 	p++;	/* credits */
- 	proc = *p++;
+@@ -970,14 +970,13 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+  * straightforward to check the RPC header's direction field.
+  */
+ static bool
+-rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep,
+-		 __be32 xid, __be32 proc)
++rpcrdma_is_bcall(struct rpcrdma_xprt *r_xprt, struct rpcrdma_rep *rep)
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ {
+ 	struct xdr_stream *xdr = &rep->rr_stream;
+ 	__be32 *p;
  
-+	if (vers != rpcrdma_version)
-+		goto out_badversion;
-+
- 	if (rpcrdma_is_bcall(r_xprt, rep, xid, proc))
+-	if (proc != rdma_msg)
++	if (rep->rr_proc != rdma_msg)
+ 		return false;
+ 
+ 	/* Peek at stream contents without advancing. */
+@@ -992,7 +991,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		return false;
+ 
+ 	/* RPC header */
+-	if (*p++ != xid)
++	if (*p++ != rep->rr_xid)
+ 		return false;
+ 	if (*p != cpu_to_be32(RPC_CALL))
+ 		return false;
+@@ -1224,41 +1223,40 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
+ 			container_of(work, struct rpcrdma_rep, rr_work);
+ 	struct rpcrdma_xprt *r_xprt = rep->rr_rxprt;
+ 	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
+-	struct xdr_stream *xdr = &rep->rr_stream;
+ 	struct rpcrdma_req *req;
+ 	struct rpc_rqst *rqst;
+-	__be32 *p, xid, vers, proc;
+ 	unsigned long cwnd;
+ 	int status;
++	__be32 *p;
+ 
+ 	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
+ 
+ 	if (rep->rr_hdrbuf.head[0].iov_len == 0)
+ 		goto out_badstatus;
+ 
+-	xdr_init_decode(xdr, &rep->rr_hdrbuf,
++	xdr_init_decode(&rep->rr_stream, &rep->rr_hdrbuf,
+ 			rep->rr_hdrbuf.head[0].iov_base);
+ 
+ 	/* Fixed transport header fields */
+-	p = xdr_inline_decode(xdr, 4 * sizeof(*p));
++	p = xdr_inline_decode(&rep->rr_stream, 4 * sizeof(*p));
+ 	if (unlikely(!p))
+ 		goto out_shortreply;
+-	xid = *p++;
+-	vers = *p++;
++	rep->rr_xid = *p++;
++	rep->rr_vers = *p++;
+ 	p++;	/* credits */
+-	proc = *p++;
++	rep->rr_proc = *p++;
+ 
+-	if (vers != rpcrdma_version)
++	if (rep->rr_vers != rpcrdma_version)
+ 		goto out_badversion;
+ 
+-	if (rpcrdma_is_bcall(r_xprt, rep, xid, proc))
++	if (rpcrdma_is_bcall(r_xprt, rep))
  		return;
  
-@@ -1280,8 +1283,6 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
- 	}
+ 	/* Match incoming rpcrdma_rep to an rpcrdma_req to
+ 	 * get context for handling any incoming chunks.
+ 	 */
+ 	spin_lock(&xprt->recv_lock);
+-	rqst = xprt_lookup_rqst(xprt, xid);
++	rqst = xprt_lookup_rqst(xprt, rep->rr_xid);
+ 	if (!rqst)
+ 		goto out_norqst;
+ 	xprt_pin_rqst(rqst);
+@@ -1267,7 +1265,7 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
+ 	req->rl_reply = rep;
+ 
+ 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
+-		__func__, rep, req, be32_to_cpu(xid));
++		__func__, rep, req, be32_to_cpu(rep->rr_xid));
+ 
+ 	/* Invalidate and unmap the data payloads before waking the
+ 	 * waiting application. This guarantees the memory regions
+@@ -1284,7 +1282,7 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
  
  	xprt->reestablish_timeout = 0;
--	if (vers != rpcrdma_version)
--		goto out_badversion;
  
- 	switch (proc) {
+-	switch (proc) {
++	switch (rep->rr_proc) {
  	case rdma_msg:
-@@ -1321,17 +1322,15 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
- 	}
- 	return;
+ 		status = rpcrdma_decode_msg(r_xprt, rep, rqst);
+ 		break;
+@@ -1324,7 +1322,7 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
  
--/* If the incoming reply terminated a pending RPC, the next
-- * RPC call will post a replacement receive buffer as it is
-- * being marshaled.
-- */
  out_badversion:
  	dprintk("RPC:       %s: invalid version %d\n",
- 		__func__, be32_to_cpu(vers));
--	status = -EIO;
--	r_xprt->rx_stats.bad_reply_count++;
--	goto out;
-+	goto repost;
+-		__func__, be32_to_cpu(vers));
++		__func__, be32_to_cpu(rep->rr_vers));
+ 	goto repost;
  
-+/* If the incoming reply terminated a pending RPC, the next
-+ * RPC call will post a replacement receive buffer as it is
-+ * being marshaled.
-+ */
+ /* If the incoming reply terminated a pending RPC, the next
+@@ -1333,7 +1331,7 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
+  */
  out_badheader:
  	dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
- 		rqst->rq_task->tk_pid, __func__, be32_to_cpu(proc));
+-		rqst->rq_task->tk_pid, __func__, be32_to_cpu(proc));
++		rqst->rq_task->tk_pid, __func__, be32_to_cpu(rep->rr_proc));
+ 	r_xprt->rx_stats.bad_reply_count++;
+ 	status = -EIO;
+ 	goto out;
+@@ -1345,7 +1343,7 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
+ out_norqst:
+ 	spin_unlock(&xprt->recv_lock);
+ 	dprintk("RPC:       %s: no match for incoming xid 0x%08x\n",
+-		__func__, be32_to_cpu(xid));
++		__func__, be32_to_cpu(rep->rr_xid));
+ 	goto repost;
+ 
+ out_shortreply:
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 74e0174..858b4c5 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -218,6 +218,9 @@ enum {
+ 
+ struct rpcrdma_rep {
+ 	struct ib_cqe		rr_cqe;
++	__be32			rr_xid;
++	__be32			rr_vers;
++	__be32			rr_proc;
+ 	int			rr_wc_flags;
+ 	u32			rr_inv_rkey;
+ 	struct rpcrdma_regbuf	*rr_rdmabuf;
 
