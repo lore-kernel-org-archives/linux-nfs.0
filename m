@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:47722 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755697AbdJPTBZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 15:01:25 -0400
-Subject: [PATCH 1 3/5] xprtrdma: Refactor rpcrdma_reply_handler some more
+Received: from mail-it0-f66.google.com ([209.85.214.66]:56802 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752929AbdJPTBl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 15:01:41 -0400
+Subject: [PATCH 1 5/5] xprtrdma: Decode credits field in
+ rpcrdma_reply_handler
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 16 Oct 2017 15:01:22 -0400
-Message-ID: <20171016190122.13594.38633.stgit@manet.1015granger.net>
+Date: Mon, 16 Oct 2017 15:01:39 -0400
+Message-ID: <20171016190139.13594.63804.stgit@manet.1015granger.net>
 In-Reply-To: <20171016185641.13594.5374.stgit@manet.1015granger.net>
 References: <20171016185641.13594.5374.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,213 +17,139 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: I'd like to be able to invoke the tail of
-rpcrdma_reply_handler in two different places. Split the tail out
-into its own helper function.
+We need to decode and save the incoming rdma_credits field _after_
+we know that the direction of the message is "forward direction
+Reply". Otherwise, the credits value in reverse direction Calls is
+also used to update the forward direction credits.
+
+It is safe to decode the rdma_credits field in rpcrdma_reply_handler
+now that rpcrdma_reply_handler is single-threaded. Receives complete
+in the same order as they were sent on the NFS server.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c  |  105 ++++++++++++++++++++++-----------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   21 ++++----
- 2 files changed, 69 insertions(+), 57 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   14 ++++++++++++--
+ net/sunrpc/xprtrdma/verbs.c     |   25 +------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 14 insertions(+), 27 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e355cd3..418bcc6 100644
+index 430f8b5..b8818c09 100644
 --- a/net/sunrpc/xprtrdma/rpc_rdma.c
 +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1211,6 +1211,60 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
- 	return -EREMOTEIO;
- }
+@@ -1244,7 +1244,7 @@ void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
+ out:
+ 	spin_lock(&xprt->recv_lock);
+ 	cwnd = xprt->cwnd;
+-	xprt->cwnd = atomic_read(&r_xprt->rx_buf.rb_credits) << RPC_CWNDSHIFT;
++	xprt->cwnd = r_xprt->rx_buf.rb_credits << RPC_CWNDSHIFT;
+ 	if (xprt->cwnd > cwnd)
+ 		xprt_release_rqst_cong(rqst->rq_task);
  
-+/* Perform XID lookup, reconstruction of the RPC reply, and
-+ * RPC completion while holding the transport lock to ensure
-+ * the rep, rqst, and rq_task pointers remain stable.
-+ */
-+void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
-+{
-+	struct rpcrdma_xprt *r_xprt = rep->rr_rxprt;
-+	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
-+	struct rpc_rqst *rqst = rep->rr_rqst;
-+	unsigned long cwnd;
-+	int status;
-+
-+	xprt->reestablish_timeout = 0;
-+
-+	switch (rep->rr_proc) {
-+	case rdma_msg:
-+		status = rpcrdma_decode_msg(r_xprt, rep, rqst);
-+		break;
-+	case rdma_nomsg:
-+		status = rpcrdma_decode_nomsg(r_xprt, rep);
-+		break;
-+	case rdma_error:
-+		status = rpcrdma_decode_error(r_xprt, rep, rqst);
-+		break;
-+	default:
-+		status = -EIO;
-+	}
-+	if (status < 0)
-+		goto out_badheader;
-+
-+out:
-+	spin_lock(&xprt->recv_lock);
-+	cwnd = xprt->cwnd;
-+	xprt->cwnd = atomic_read(&r_xprt->rx_buf.rb_credits) << RPC_CWNDSHIFT;
-+	if (xprt->cwnd > cwnd)
-+		xprt_release_rqst_cong(rqst->rq_task);
-+
-+	xprt_complete_rqst(rqst->rq_task, status);
-+	xprt_unpin_rqst(rqst);
-+	spin_unlock(&xprt->recv_lock);
-+	return;
-+
-+/* If the incoming reply terminated a pending RPC, the next
-+ * RPC call will post a replacement receive buffer as it is
-+ * being marshaled.
-+ */
-+out_badheader:
-+	dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
-+		rqst->rq_task->tk_pid, __func__, be32_to_cpu(rep->rr_proc));
-+	r_xprt->rx_stats.bad_reply_count++;
-+	status = -EIO;
-+	goto out;
-+}
-+
- /* Process received RPC/RDMA messages.
-  *
-  * Errors must result in the RPC task either being awakened, or
-@@ -1225,8 +1279,6 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
+@@ -1297,8 +1297,10 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ {
+ 	struct rpcrdma_xprt *r_xprt = rep->rr_rxprt;
  	struct rpc_xprt *xprt = &r_xprt->rx_xprt;
++	struct rpcrdma_buffer *buf = &r_xprt->rx_buf;
  	struct rpcrdma_req *req;
  	struct rpc_rqst *rqst;
--	unsigned long cwnd;
--	int status;
++	u32 credits;
  	__be32 *p;
  
  	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
-@@ -1263,6 +1315,7 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
+@@ -1315,7 +1317,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 		goto out_shortreply;
+ 	rep->rr_xid = *p++;
+ 	rep->rr_vers = *p++;
+-	p++;	/* credits */
++	credits = be32_to_cpu(*p++);
+ 	rep->rr_proc = *p++;
+ 
+ 	if (rep->rr_vers != rpcrdma_version)
+@@ -1332,7 +1334,15 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	if (!rqst)
+ 		goto out_norqst;
+ 	xprt_pin_rqst(rqst);
++
++	if (credits == 0)
++		credits = 1;	/* don't deadlock */
++	else if (credits > buf->rb_max_requests)
++		credits = buf->rb_max_requests;
++	buf->rb_credits = credits;
++
  	spin_unlock(&xprt->recv_lock);
++
  	req = rpcr_to_rdmar(rqst);
  	req->rl_reply = rep;
-+	rep->rr_rqst = rqst;
+ 	rep->rr_rqst = rqst;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index d456954..247b00b 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -133,25 +133,6 @@
+ 		       wc->status, wc->vendor_err);
+ }
  
- 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
- 		__func__, rep, req, be32_to_cpu(rep->rr_xid));
-@@ -1280,36 +1333,7 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
- 						    &req->rl_registered);
- 	}
- 
--	xprt->reestablish_timeout = 0;
--
--	switch (rep->rr_proc) {
--	case rdma_msg:
--		status = rpcrdma_decode_msg(r_xprt, rep, rqst);
--		break;
--	case rdma_nomsg:
--		status = rpcrdma_decode_nomsg(r_xprt, rep);
--		break;
--	case rdma_error:
--		status = rpcrdma_decode_error(r_xprt, rep, rqst);
--		break;
--	default:
--		status = -EIO;
--	}
--	if (status < 0)
--		goto out_badheader;
--
--out:
--	spin_lock(&xprt->recv_lock);
--	cwnd = xprt->cwnd;
--	xprt->cwnd = atomic_read(&r_xprt->rx_buf.rb_credits) << RPC_CWNDSHIFT;
--	if (xprt->cwnd > cwnd)
--		xprt_release_rqst_cong(rqst->rq_task);
--
--	xprt_complete_rqst(rqst->rq_task, status);
--	xprt_unpin_rqst(rqst);
--	spin_unlock(&xprt->recv_lock);
--	dprintk("RPC:       %s: xprt_complete_rqst(0x%p, 0x%p, %d)\n",
--		__func__, xprt, rqst, status);
-+	rpcrdma_complete_rqst(rep);
- 	return;
- 
- out_badstatus:
-@@ -1325,20 +1349,8 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
- 		__func__, be32_to_cpu(rep->rr_vers));
- 	goto repost;
- 
--/* If the incoming reply terminated a pending RPC, the next
-- * RPC call will post a replacement receive buffer as it is
-- * being marshaled.
+-/* Perform basic sanity checking to avoid using garbage
+- * to update the credit grant value.
 - */
--out_badheader:
--	dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
--		rqst->rq_task->tk_pid, __func__, be32_to_cpu(rep->rr_proc));
--	r_xprt->rx_stats.bad_reply_count++;
--	status = -EIO;
--	goto out;
+-static void
+-rpcrdma_update_granted_credits(struct rpcrdma_rep *rep)
+-{
+-	struct rpcrdma_buffer *buffer = &rep->rr_rxprt->rx_buf;
+-	__be32 *p = rep->rr_rdmabuf->rg_base;
+-	u32 credits;
 -
--/* The req was still available, but by the time the recv_lock
-- * was acquired, the rqst and task had been released. Thus the RPC
-- * has already been terminated.
-+/* The RPC transaction has already been terminated, or the header
-+ * is corrupt.
-  */
- out_norqst:
- 	spin_unlock(&xprt->recv_lock);
-@@ -1348,7 +1360,6 @@ static int decode_reply_chunk(struct xdr_stream *xdr, u32 *length)
+-	credits = be32_to_cpup(p + 2);
+-	if (credits == 0)
+-		credits = 1;	/* don't deadlock */
+-	else if (credits > buffer->rb_max_requests)
+-		credits = buffer->rb_max_requests;
+-
+-	atomic_set(&buffer->rb_credits, credits);
+-}
+-
+ /**
+  * rpcrdma_wc_receive - Invoked by RDMA provider for each polled Receive WC
+  * @cq:	completion queue (ignored)
+@@ -181,9 +162,6 @@
+ 				   rdmab_addr(rep->rr_rdmabuf),
+ 				   wc->byte_len, DMA_FROM_DEVICE);
  
- out_shortreply:
- 	dprintk("RPC:       %s: short/invalid reply\n", __func__);
--	goto repost;
+-	if (wc->byte_len >= RPCRDMA_HDRLEN_ERR)
+-		rpcrdma_update_granted_credits(rep);
+-
+ out_schedule:
+ 	rpcrdma_reply_handler(rep);
+ 	return;
+@@ -295,7 +273,7 @@
+ 	case RDMA_CM_EVENT_DISCONNECTED:
+ 		connstate = -ECONNABORTED;
+ connected:
+-		atomic_set(&xprt->rx_buf.rb_credits, 1);
++		xprt->rx_buf.rb_credits = 1;
+ 		ep->rep_connected = connstate;
+ 		rpcrdma_conn_func(ep);
+ 		wake_up_all(&ep->rep_connect_wait);
+@@ -995,7 +973,6 @@ struct rpcrdma_rep *
  
- /* If no pending RPC transaction was matched, post a replacement
-  * receive buffer before returning.
+ 	buf->rb_max_requests = r_xprt->rx_data.max_requests;
+ 	buf->rb_bc_srv_max_requests = 0;
+-	atomic_set(&buf->rb_credits, 1);
+ 	spin_lock_init(&buf->rb_mwlock);
+ 	spin_lock_init(&buf->rb_lock);
+ 	spin_lock_init(&buf->rb_recovery_lock);
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 858b4c5..d68a1351 100644
+index a85bcd1..0e0ae61 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -202,18 +202,17 @@ enum {
- };
+@@ -407,7 +407,7 @@ struct rpcrdma_buffer {
+ 	struct list_head	rb_send_bufs;
+ 	struct list_head	rb_recv_bufs;
+ 	u32			rb_max_requests;
+-	atomic_t		rb_credits;	/* most recent credit grant */
++	u32			rb_credits;	/* most recent credit grant */
  
- /*
-- * struct rpcrdma_rep -- this structure encapsulates state required to recv
-- * and complete a reply, asychronously. It needs several pieces of
-- * state:
-- *   o recv buffer (posted to provider)
-- *   o ib_sge (also donated to provider)
-- *   o status of reply (length, success or not)
-- *   o bookkeeping state to get run by reply handler (list, etc)
-+ * struct rpcrdma_rep -- this structure encapsulates state required
-+ * to receive and complete an RPC Reply, asychronously. It needs
-+ * several pieces of state:
-  *
-- * These are allocated during initialization, per-transport instance.
-+ *   o receive buffer and ib_sge (donated to provider)
-+ *   o status of receive (success or not, length, inv rkey)
-+ *   o bookkeeping state to get run by reply handler (XDR stream)
-  *
-- * N of these are associated with a transport instance, and stored in
-- * struct rpcrdma_buffer. N is the max number of outstanding requests.
-+ * These structures are allocated during transport initialization.
-+ * N of these are associated with a transport instance, managed by
-+ * struct rpcrdma_buffer. N is the max number of outstanding RPCs.
-  */
- 
- struct rpcrdma_rep {
-@@ -228,6 +227,7 @@ struct rpcrdma_rep {
- 	struct work_struct	rr_work;
- 	struct xdr_buf		rr_hdrbuf;
- 	struct xdr_stream	rr_stream;
-+	struct rpc_rqst		*rr_rqst;
- 	struct list_head	rr_list;
- 	struct ib_recv_wr	rr_recv_wr;
- };
-@@ -616,6 +616,7 @@ bool rpcrdma_prepare_send_sges(struct rpcrdma_ia *, struct rpcrdma_req *,
- void rpcrdma_unmap_sges(struct rpcrdma_ia *, struct rpcrdma_req *);
- int rpcrdma_marshal_req(struct rpcrdma_xprt *r_xprt, struct rpc_rqst *rqst);
- void rpcrdma_set_max_header_sizes(struct rpcrdma_xprt *);
-+void rpcrdma_complete_rqst(struct rpcrdma_rep *rep);
- void rpcrdma_reply_handler(struct work_struct *work);
- 
- static inline void rpcrdma_set_xdrlen(struct xdr_buf *xdr, size_t len)
+ 	u32			rb_bc_srv_max_requests;
+ 	spinlock_t		rb_reqslock;	/* protect rb_allreqs */
 
