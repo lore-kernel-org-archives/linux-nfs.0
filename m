@@ -1,114 +1,134 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:54360 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752788AbdJPQOg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 12:14:36 -0400
-Received: by mail-io0-f195.google.com with SMTP id e89so8944393ioi.11
-        for <linux-nfs@vger.kernel.org>; Mon, 16 Oct 2017 09:14:36 -0700 (PDT)
-Subject: [PATCH] svcrdma: Preserve CB send buffer across retransmits
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 16 Oct 2017 12:14:33 -0400
-Message-ID: <20171016161133.29152.48259.stgit@klimt.1015granger.net>
+Received: from elasmtp-masked.atl.sa.earthlink.net ([209.86.89.68]:45016 "EHLO
+        elasmtp-masked.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1755016AbdJPQP6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 12:15:58 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Trond Myklebust'" <trondmy@primarydata.com>,
+        <bfields@fieldses.org>
+Cc: <loghyr@excfb.com>, <linux-nfs@vger.kernel.org>, <nfsv4@ietf.org>,
+        "'Thomas Haynes'" <loghyr@primarydata.com>
+References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com> <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com> <20171012194946.GC5233@fieldses.org> <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com> <20171012214454.GA19598@fieldses.org> <20171012220051.GB29204@psyklo.internal.excfb.com> <20171013015223.GA21284@fieldses.org> <1507901666.4550.2.camel@primarydata.com> <20171013150021.GG5233@fieldses.org> <1507908409.9498.14.camel@primarydata.com>
+In-Reply-To: <1507908409.9498.14.camel@primarydata.com>
+Subject: RE: [nfsv4] pynfs replay cache test SEQ9f
+Date: Mon, 16 Oct 2017 09:15:45 -0700
+Message-ID: <000b01d3469a$0606e760$1214b620$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain;
+        charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-During each NFSv4 callback Call, an RDMA Send completion frees the
-page that contains the RPC Call message. If the upper layer
-determines that a retransmit is necessary, this is too soon.
+> On Fri, 2017-10-13 at 11:00 -0400, bfields@fieldses.org wrote:
+> > On Fri, Oct 13, 2017 at 01:34:28PM +0000, Trond Myklebust wrote:
+> > > On Thu, 2017-10-12 at 21:52 -0400, J. Bruce Fields wrote:
+> > > > On Thu, Oct 12, 2017 at 03:00:51PM -0700, Tom Haynes wrote:
+> > > > > On Thu, Oct 12, 2017 at 05:44:54PM -0400, J. Bruce Fields
+> > > > > wrote:
+> > > > > > Your mailer's not quoting right, it's a little hard for me to
+> > > > > > find your replies.  Wading in:
+> > > > > >
+> > > > > > On Thu, Oct 12, 2017 at 09:39:04PM +0000, Thomas Haynes
+> > > > > > wrote:
+> > > > > > > On Oct 12, 2017, at 12:49 PM, J. Bruce Fields <bfields@fiel
+> > > > > > > dses .org<mailto:bfields@fieldses.org>> wrote:
+> > > > > > > > So I *think* the only correct options OK or FALSE_RETRY?
+> > > > > > >
+> > > > > > > It can=E2=80=99t be OK if the parameters to SEQUENCE differ.
+> > > > > >
+> > > > > > I'm getting that from: "When the replier detects a false
+> > > > > > retry, it is permitted (but not always obligated) to return
+> > > > > > NFS4ERR_FALSE_RETRY in response to the Sequence operation
+> when
+> > > > > > it detects a false retry."
+> > > > >
+> > > > > I think you are agreeing with me that OK is not appropriate
+> > > > > here?
+> > > >
+> > > > No, I think OK is OK:
+> > > >
+> > > > > > If i understand the following language, we're required to
+> > > > > > return FALSE_RETRY in the case the rpc credentials of the
+> > > > > > caller map to different principals, but not otherwise.
+> > > > >
+> > > > > This one drove me crazy:
+> > > > >
+> > > > >    If a requester sent a Sequence operation with a slot ID and
+> > > > > sequence
+> > > > >    ID that are in the reply cache but the replier detected that
+> > > > > the
+> > > > >    retried request is not the same as the original request,
+> > > > > including a
+> > > > >    retry that has different operations or different arguments in
+> > > > > the
+> > > > >    operations from the original
+> > > > >
+> > > > > SEQUENCE is not special - both the compounds in this example
+> > > > > only have the SEQUENCE op and they differ only in that in the
+> > > > > first sa_cachethis is False and in the second it is True.
+> > > > >
+> > > > > So we have to return FALSE_SEQ_RETRY here...
+> > > >
+> > > > It says "if the replier detected" a difference, not "if there is"
+> > > > a
+> > > > difference.  So the replier is not required to do such detection.
+> > > > This agrees with the "not always obligated" above.
+> > > >
+> > > > So I think it's allowed for the server to just return an old
+> > > > cached response here (with the cached OK).  And I can't see any
+> > > > practical problem that would create--a client shouldn't be sending
+> > > > a different request with the same (slot, sequence) anyway.  The
+> > > > only potential risk is the malicious client trying to snoop
+> > > > somebody else's reply cache, hence the requirement in the case
+> > > > principals differ.
+> > >
+> > > Clients may indeed send a different request with the same slot and
+> > > sequence if they don't know that the server received the last
+> > > request.
+> > > This is tbe "user pressed ^C" scenario...
+> > >
+> > > Servers MAY ignore that fact, but they'd be really stupid to do
+> > > so...
+> >
+> > OK, OK, I'll look into fixing the server (I'm pretty sure we get this
+> > wrong).
+> >
+> > You've explained the ctrl-C case before and I don't think I understood
+> > it.  I guess otherwise the only way for the client to sort out the
+> > situation would be to retry the original request.  And that requires
+> > keeping the arguments and credentials around to handle potential
+> > retries.  And that's impractical if the process is going away?  OK.
+> >
+> 
+> Right, we're not going to do that just for data that is just going to be =
+tossed
+> away anyway. We already guarantee that non-idempotent operations (the
+> ones that we actually do ask the server to cache) are guaranteed to compl=
+ete
+> whether or not the user presses ^C, so this is mainly about what happens
+> when somebody interrupts an operation that we did not want the server to
+> cache.
+> 
+> I have a patch out there that just replays a SEQUENCE op if we detect tha=
+t an
+> RPC call was interrupted. That should be sufficient to deal with servers =
+that
+> cache everything (whether or not the client sets sa_cachethis), but don't=
 
-One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
-callback request, the following BUG fires on the NFS server:
+> want to do NFS4ERR_SEQ_FALSE_RETRY. That particular combination has
+> been seen to be extremely toxic to the current client, because it can get=
 
-kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
-kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          (null) index:0x0
-kernel: flags: 0x2fffff80000000()
-kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 fffffffeffffffff
-kernel: raw: dead000000000100 dead000000000200 0000000000000000 0000000000000000
-kernel: page dumped because: nonzero _refcount
-kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm
-ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad
-rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
-kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc iTCO_wdt
-iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr lpc_ich i2c_i801
-mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf ipmi_msghandler shpchp
-acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc ip_tables xfs
-libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast drm_kms_helper
-syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel libahci drm
-mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
-kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod dax
-kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted 4.14.0-rc3-00001-g577ce48 #811
-kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
-kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
-kernel: Call Trace:
-kernel: dump_stack+0x62/0x80
-kernel: bad_page+0xfe/0x11a
-kernel: free_pages_check_bad+0x76/0x78
-kernel: free_pcppages_bulk+0x364/0x441
-kernel: ? ttwu_do_activate.isra.61+0x71/0x78
-kernel: free_hot_cold_page+0x1c5/0x202
-kernel: __put_page+0x2c/0x36
-kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
-kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
+> replayed LOOKUP or GETATTR requests after someone presses ^C.
 
-This issue exists all the way back to v4.5, but refactoring and code
-re-organization prevents this simple patch from applying to kernels
-older than v4.12. The fix is the same, however, if someone needs to
-backport it.
+I'm wondering if Ganesha does this right...
 
-Reported-by: Ben Coddington <bcodding@redhat.com>
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=314
-Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
-Cc: stable@vger.kernel.org # v4.12
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Bruce, if there's something not covered by the pynfs tests, can we make sur=
+e to add one?
+
+Frank
+
+
 ---
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-Hey Bruce-
-
-It would be great if this could go into v4.14-rc, but I can live
-with v4.15.
-
-Jeff's review suggested adding a comment documenting the requirement
-that rqst->rq_buffer is backed by a single page. However, all of the
-server-side transport mechanics are page-based, so I'm not sure this
-wouldn't be a redundant comment. Suggestions welcome.
-
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index ec37ad8..1854db2 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 	if (ret)
- 		goto out_err;
- 
-+	/* Bump page refcnt so Send completion doesn't release
-+	 * the rq_buffer before all retransmits are complete.
-+	 */
-+	get_page(virt_to_page(rqst->rq_buffer));
- 	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
- 	if (ret)
- 		goto out_unmap;
-@@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 		return -EINVAL;
- 	}
- 
--	/* svc_rdma_sendto releases this page */
- 	page = alloc_page(RPCRDMA_DEF_GFP);
- 	if (!page)
- 		return -ENOMEM;
-@@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- {
- 	struct rpc_rqst *rqst = task->tk_rqstp;
- 
-+	put_page(virt_to_page(rqst->rq_buffer));
- 	kfree(rqst->rq_rbuffer);
- }
- 
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
 
