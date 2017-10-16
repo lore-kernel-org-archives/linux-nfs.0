@@ -1,86 +1,114 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-eopbgr30130.outbound.protection.outlook.com ([40.107.3.130]:6883
-        "EHLO EUR03-AM5-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752200AbdJPPSm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 16 Oct 2017 11:18:42 -0400
-Reply-To: skinsbursky@virtuozzo.com
-Subject: Re: [RFC} NFS client issue with exclusive creation when server died
- in the middle
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Cc: "Sergey.Lysanov@acronis.com" <Sergey.Lysanov@acronis.com>
-References: <31f5b837-3e74-753b-2ebd-135c8aaef96f@virtuozzo.com>
- <1508165865.3096.10.camel@primarydata.com>
-From: Stanislav Kinsburskiy <skinsbursky@virtuozzo.com>
-Message-ID: <193aa760-eae0-94c2-f949-63be6a850b88@virtuozzo.com>
-Date: Mon, 16 Oct 2017 17:18:36 +0200
+Received: from mail-io0-f195.google.com ([209.85.223.195]:54360 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752788AbdJPQOg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 16 Oct 2017 12:14:36 -0400
+Received: by mail-io0-f195.google.com with SMTP id e89so8944393ioi.11
+        for <linux-nfs@vger.kernel.org>; Mon, 16 Oct 2017 09:14:36 -0700 (PDT)
+Subject: [PATCH] svcrdma: Preserve CB send buffer across retransmits
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Date: Mon, 16 Oct 2017 12:14:33 -0400
+Message-ID: <20171016161133.29152.48259.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <1508165865.3096.10.camel@primarydata.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+During each NFSv4 callback Call, an RDMA Send completion frees the
+page that contains the RPC Call message. If the upper layer
+determines that a retransmit is necessary, this is too soon.
+
+One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
+callback request, the following BUG fires on the NFS server:
+
+kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
+kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          (null) index:0x0
+kernel: flags: 0x2fffff80000000()
+kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 fffffffeffffffff
+kernel: raw: dead000000000100 dead000000000200 0000000000000000 0000000000000000
+kernel: page dumped because: nonzero _refcount
+kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm
+ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad
+rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
+kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc iTCO_wdt
+iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr lpc_ich i2c_i801
+mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf ipmi_msghandler shpchp
+acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc ip_tables xfs
+libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast drm_kms_helper
+syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel libahci drm
+mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
+kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod dax
+kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted 4.14.0-rc3-00001-g577ce48 #811
+kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
+kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
+kernel: Call Trace:
+kernel: dump_stack+0x62/0x80
+kernel: bad_page+0xfe/0x11a
+kernel: free_pages_check_bad+0x76/0x78
+kernel: free_pcppages_bulk+0x364/0x441
+kernel: ? ttwu_do_activate.isra.61+0x71/0x78
+kernel: free_hot_cold_page+0x1c5/0x202
+kernel: __put_page+0x2c/0x36
+kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
+kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
+
+This issue exists all the way back to v4.5, but refactoring and code
+re-organization prevents this simple patch from applying to kernels
+older than v4.12. The fix is the same, however, if someone needs to
+backport it.
+
+Reported-by: Ben Coddington <bcodding@redhat.com>
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=314
+Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
+Cc: stable@vger.kernel.org # v4.12
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+Hey Bruce-
+
+It would be great if this could go into v4.14-rc, but I can live
+with v4.15.
+
+Jeff's review suggested adding a comment documenting the requirement
+that rqst->rq_buffer is backed by a single page. However, all of the
+server-side transport mechanics are page-based, so I'm not sure this
+wouldn't be a redundant comment. Suggestions welcome.
 
 
-16.10.2017 16:57, Trond Myklebust пишет:
-> On Mon, 2017-10-16 at 10:49 +0200, Stanislav Kinsburskiy wrote:
->> Hi,
->>
->> We discovered an issue with NFSv4.0 mount.
->> Server has crashed (or killed by OOM; it was Ganesha) on exclusive
->> open-create operation after file was actually created, but no
->> response was send to the client.
->> Server was restarted (with grace period), and next clients attempt to
->> create a file after server is ready fails with EEXIST.
->> This is, probably, because for each open request client creates
->> opendata and puts new jiffies value as the verifier (in
->> nfs4_opendata_alloc) in the request.
->> Does it sound like a client issue?
->>
-> 
-> Hi Stanislav,
-> 
-> If it didn't receive a reply, the client should be reusing the same
-> opendata for the resend of the operation after state recover is
-> complete. Doesn't it?
-> 
-
-Hi Trond,
-
-Well, yes, it should. But looks like it doesn't, unfortunately. That's at least what we saw on the server side.
-It was git clone operation and server crashed somewhere in the middle.
-Then server was migrated (we have a shared storage), but migration uses grace logic, so it's equal to server restart.
-That what we saw during clone:
-
-nfs server 192.168.56.201:/0200000000000003: resource temporarily unavailable (jukebox)
-nfs server 192.168.56.201:/0200000000000003: resource temporarily unavailable (jukebox)
-nfs server 192.168.56.201:/0200000000000003: resource temporarily unavailable (jukebox)
-nfs server 192.168.56.201:/0200000000000003: resource temporarily unavailable (jukebox)
-nfs server 192.168.56.201:/0200000000000003: resource available again
-
-then git failed with the following:
-
-error: unable to create file src/test/cli/ceph-authtool/list-empty-bin.t (File exists) 
-
-because ganesha received OPEN operation with createmode4 = exclusive4 and with the verifier that initialized by NFS client:
-
-verf[0] = jiffies;
-verf[1] = current->pid;
-memcpy(p->o_arg.u.verifier.data, verf, sizeof(p->o_arg.u.verifier.data));
-
-And this verifier didn't match the one, which created file had already.
-So, our assumption, that verifier has changed, because otherwise Ganesha returns 0.
-
-Below is my understanding (hopefully correct):
-1) client started open/create request in nfs4_do_open (where there is a loop around _nfs4_do_open)
-2) it received a non-fatal error from server (NFS4ERR_BAD_STATEID or other)
-3) it repeats open/create operation, but with new verifier, which is allocated in:
-
-_nfs4_do_open
-  nfs4_opendata_alloc
-
-while is such a case client has to use old verifier. But I was released already upon failed open/create request.
-
-What do you think about it?
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+index ec37ad8..1854db2 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
+@@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 	if (ret)
+ 		goto out_err;
+ 
++	/* Bump page refcnt so Send completion doesn't release
++	 * the rq_buffer before all retransmits are complete.
++	 */
++	get_page(virt_to_page(rqst->rq_buffer));
+ 	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
+ 	if (ret)
+ 		goto out_unmap;
+@@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ 		return -EINVAL;
+ 	}
+ 
+-	/* svc_rdma_sendto releases this page */
+ 	page = alloc_page(RPCRDMA_DEF_GFP);
+ 	if (!page)
+ 		return -ENOMEM;
+@@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
+ {
+ 	struct rpc_rqst *rqst = task->tk_rqstp;
+ 
++	put_page(virt_to_page(rqst->rq_buffer));
+ 	kfree(rqst->rq_rbuffer);
+ }
+ 
 
