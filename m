@@ -1,97 +1,46 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:52412 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S936049AbdJQOqQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Oct 2017 10:46:16 -0400
-From: Benjamin Coddington <bcodding@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and CLOSE/DOWNGRADE race
-Date: Tue, 17 Oct 2017 10:46:15 -0400
-Message-Id: <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
-In-Reply-To: <cover.1508248965.git.bcodding@redhat.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
+	<anna.schumaker@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and
+ CLOSE/DOWNGRADE race
+Date: Tue, 17 Oct 2017 15:49:24 +0000
+Message-ID: <1508255361.3718.17.camel@primarydata.com>
 References: <cover.1508248965.git.bcodding@redhat.com>
-In-Reply-To: <cover.1508248965.git.bcodding@redhat.com>
-References: <cover.1508248965.git.bcodding@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+	 <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
+In-Reply-To: <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the client issues two simultaneous OPEN calls, and the response to the
-first OPEN call (sequence id 1) is delayed before updating the nfs4_state,
-then the client's nfs4_state can transition through a complete lifecycle of
-OPEN (state sequence id 2), and CLOSE (state sequence id 3).  When the
-first OPEN is finally processed, the nfs4_state is incorrectly transitioned
-back to NFS_OPEN_STATE for the first OPEN (sequence id 1).  Subsequent calls
-to LOCK or CLOSE will receive NFS4ERR_BAD_STATEID, and trigger state
-recovery.
-
-Fix this by passing back the result of need_update_open_stateid() to the
-open() path, with the result to try again if the OPEN's stateid should not
-be updated.
-
-Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
----
- fs/nfs/nfs4proc.c | 24 ++++++++++++++----------
- 1 file changed, 14 insertions(+), 10 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 40e431ea1bdc..632136bfd3b3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1352,9 +1352,9 @@ static void nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
- static bool nfs_need_update_open_stateid(struct nfs4_state *state,
- 		const nfs4_stateid *stateid, nfs4_stateid *freeme)
- {
--	if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0)
--		return true;
- 	if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) {
-+		if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0)
-+			return true;
- 		nfs4_stateid_copy(freeme, &state->open_stateid);
- 		nfs_test_and_clear_all_open_stateid(state);
- 		return true;
-@@ -1468,7 +1468,8 @@ static int update_open_stateid(struct nfs4_state *state,
- 		ret = 1;
- 	}
- 
--	if (open_stateid) {
-+	if (open_stateid &&
-+		nfs_need_update_open_stateid(state, open_stateid, &freeme)) {
- 		switch (fmode) {
- 			case FMODE_READ:
- 				set_bit(NFS_O_RDONLY_STATE, &state->flags);
-@@ -1479,11 +1480,10 @@ static int update_open_stateid(struct nfs4_state *state,
- 			case FMODE_READ|FMODE_WRITE:
- 				set_bit(NFS_O_RDWR_STATE, &state->flags);
- 		}
--		if (nfs_need_update_open_stateid(state, open_stateid, &freeme)) {
--			if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
--				nfs4_stateid_copy(&state->stateid, open_stateid);
--			nfs4_stateid_copy(&state->open_stateid, open_stateid);
--		}
-+
-+		if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
-+			nfs4_stateid_copy(&state->stateid, open_stateid);
-+		nfs4_stateid_copy(&state->open_stateid, open_stateid);
- 		ret = 1;
- 	}
- 
-@@ -1675,8 +1675,12 @@ _nfs4_opendata_to_nfs4_state(struct nfs4_opendata *data)
- 		goto err_put_inode;
- 	if (data->o_res.delegation_type != 0)
- 		nfs4_opendata_check_deleg(data, state);
--	update_open_stateid(state, &data->o_res.stateid, NULL,
--			data->o_arg.fmode);
-+	ret = -EAGAIN;
-+	if (!update_open_stateid(state, &data->o_res.stateid, NULL,
-+			data->o_arg.fmode)) {
-+		nfs4_put_open_state(state);
-+		goto err_put_inode;
-+	}
- 	iput(inode);
- out:
- 	nfs_release_seqid(data->o_arg.seqid);
--- 
-2.9.3
-
+T24gVHVlLCAyMDE3LTEwLTE3IGF0IDEwOjQ2IC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
+b3RlOg0KPiBJZiB0aGUgY2xpZW50IGlzc3VlcyB0d28gc2ltdWx0YW5lb3VzIE9QRU4gY2FsbHMs
+IGFuZCB0aGUgcmVzcG9uc2UgdG8NCj4gdGhlDQo+IGZpcnN0IE9QRU4gY2FsbCAoc2VxdWVuY2Ug
+aWQgMSkgaXMgZGVsYXllZCBiZWZvcmUgdXBkYXRpbmcgdGhlDQo+IG5mczRfc3RhdGUsDQo+IHRo
+ZW4gdGhlIGNsaWVudCdzIG5mczRfc3RhdGUgY2FuIHRyYW5zaXRpb24gdGhyb3VnaCBhIGNvbXBs
+ZXRlDQo+IGxpZmVjeWNsZSBvZg0KPiBPUEVOIChzdGF0ZSBzZXF1ZW5jZSBpZCAyKSwgYW5kIENM
+T1NFIChzdGF0ZSBzZXF1ZW5jZSBpZCAzKS4gIFdoZW4NCj4gdGhlDQo+IGZpcnN0IE9QRU4gaXMg
+ZmluYWxseSBwcm9jZXNzZWQsIHRoZSBuZnM0X3N0YXRlIGlzIGluY29ycmVjdGx5DQo+IHRyYW5z
+aXRpb25lZA0KPiBiYWNrIHRvIE5GU19PUEVOX1NUQVRFIGZvciB0aGUgZmlyc3QgT1BFTiAoc2Vx
+dWVuY2UgaWQNCj4gMSkuICBTdWJzZXF1ZW50IGNhbGxzDQo+IHRvIExPQ0sgb3IgQ0xPU0Ugd2ls
+bCByZWNlaXZlIE5GUzRFUlJfQkFEX1NUQVRFSUQsIGFuZCB0cmlnZ2VyIHN0YXRlDQo+IHJlY292
+ZXJ5Lg0KPiANCj4gRml4IHRoaXMgYnkgcGFzc2luZyBiYWNrIHRoZSByZXN1bHQgb2YgbmVlZF91
+cGRhdGVfb3Blbl9zdGF0ZWlkKCkgdG8NCj4gdGhlDQo+IG9wZW4oKSBwYXRoLCB3aXRoIHRoZSBy
+ZXN1bHQgdG8gdHJ5IGFnYWluIGlmIHRoZSBPUEVOJ3Mgc3RhdGVpZA0KPiBzaG91bGQgbm90DQo+
+IGJlIHVwZGF0ZWQuDQo+IA0KDQpXaHkgYXJlIHdlIHdvcnJpZWQgYWJvdXQgdGhlIHNwZWNpYWwg
+Y2FzZSB3aGVyZSB0aGUgY2xpZW50IGFjdHVhbGx5DQpmaW5kcyB0aGUgY2xvc2VkIHN0YXRlaWQg
+aW4gaXRzIGNhY2hlPw0KDQpJbiB0aGUgbW9yZSBnZW5lcmFsIGNhc2Ugb2YgeW91ciByYWNlLCB0
+aGUgc3RhdGVpZCBtaWdodCBub3QgYmUgZm91bmQNCmF0IGFsbCBiZWNhdXNlIHRoZSBDTE9TRSBj
+b21wbGV0ZXMgYW5kIGlzIHByb2Nlc3NlZCBvbiB0aGUgY2xpZW50DQpiZWZvcmUgaXQgY2FuIHBy
+b2Nlc3MgdGhlIHJlcGx5IGZyb20gdGhlIGRlbGF5ZWQgT1BFTi4gSWYgc28sIHdlIHJlYWxseQ0K
+aGF2ZSBubyB3YXkgdG8gZGV0ZWN0IHRoYXQgdGhlIGZpbGUgaGFzIGFjdHVhbGx5IGJlZW4gY2xv
+c2VkIGJ5IHRoZQ0Kc2VydmVyIHVudGlsIHdlIHNlZSB0aGUgTkZTNEVSUl9CQURfU1RBVEVJRC4N
+Cg0KTm90ZSBhbHNvIHRoYXQgc2VjdGlvbiAxOC4yLjQgc2F5cyB0aGF0ICJ0aGUgc2VydmVyIFNI
+T1VMRCByZXR1cm4gdGhlDQppbnZhbGlkIHNwZWNpYWwgc3RhdGVpZCAodGhlICJvdGhlciIgdmFs
+dWUgaXMgemVybyBhbmQgdGhlICJzZXFpZCINCmZpZWxkIGlzIE5GUzRfVUlOVDMyX01BWCwgc2Vl
+IFNlY3Rpb24gOC4yLjMpIiB3aGljaCBmdXJ0aGVyIGVuc3VyZXMNCnRoYXQgd2Ugc2hvdWxkIG5v
+dCBiZSBhYmxlIHRvIG1hdGNoIHRoZSBPUEVOIHN0YXRlaWQgb25jZSB0aGUgQ0xPU0UgaXMNCnBy
+b2Nlc3NlZCBvbiB0aGUgY2xpZW50Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
+IGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlk
+YXRhLmNvbQ0K
