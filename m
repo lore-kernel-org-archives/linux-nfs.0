@@ -1,132 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:13649 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:36014 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932791AbdJQQs2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Oct 2017 12:48:28 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [RFC PATCH 2/2] race of nfsd inetaddr notifiers with nn->nfsd_serv
- change
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-ID: <750592ab-8a99-884b-104f-7569c4762c1b@virtuozzo.com>
-Date: Tue, 17 Oct 2017 19:48:24 +0300
+        id S1763517AbdJQRd7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 17 Oct 2017 13:33:59 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and
+ CLOSE/DOWNGRADE race
+Date: Tue, 17 Oct 2017 13:33:57 -0400
+Message-ID: <8384C212-F32B-4F5A-B522-A8F08108DA58@redhat.com>
+In-Reply-To: <1508255361.3718.17.camel@primarydata.com>
+References: <cover.1508248965.git.bcodding@redhat.com>
+ <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
+ <1508255361.3718.17.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd_inet[6]addr_event use nn->nfsd_serv without taken nfsd_mutex,
-pointer can be changed during execution of notifiers and crash the host.
+On 17 Oct 2017, at 11:49, Trond Myklebust wrote:
 
-Moreover if notifiers was enabled in one net namespace it will be enabled 
-in all other net namespaces, from its creation until its destroy.
+> On Tue, 2017-10-17 at 10:46 -0400, Benjamin Coddington wrote:
+>> If the client issues two simultaneous OPEN calls, and the response to
+>> the
+>> first OPEN call (sequence id 1) is delayed before updating the
+>> nfs4_state,
+>> then the client's nfs4_state can transition through a complete
+>> lifecycle of
+>> OPEN (state sequence id 2), and CLOSE (state sequence id 3).  When
+>> the
+>> first OPEN is finally processed, the nfs4_state is incorrectly
+>> transitioned
+>> back to NFS_OPEN_STATE for the first OPEN (sequence id
+>> 1).  Subsequent calls
+>> to LOCK or CLOSE will receive NFS4ERR_BAD_STATEID, and trigger state
+>> recovery.
+>>
+>> Fix this by passing back the result of need_update_open_stateid() to
+>> the
+>> open() path, with the result to try again if the OPEN's stateid
+>> should not
+>> be updated.
+>>
+>
+> Why are we worried about the special case where the client actually
+> finds the closed stateid in its cache?
 
-Patch allows notifiers to access to nn->nfsd_serv only when the pointer was 
-correctly initialized and delays its cleanup until notifiers are in use.
+Because I am hitting that case very frequently in generic/089, and I hate
+how unnecessary state recovery slows everything down.  I'm also seeing a
+problem where generic/089 never completes, and I was trying to get this
+behavior out of the way.
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/nfsd/netns.h  |  3 +++
- fs/nfsd/nfsctl.c |  3 +++
- fs/nfsd/nfssvc.c | 14 +++++++++++---
- 3 files changed, 17 insertions(+), 3 deletions(-)
+> In the more general case of your race, the stateid might not be found
+> at all because the CLOSE completes and is processed on the client
+> before it can process the reply from the delayed OPEN. If so, we really
+> have no way to detect that the file has actually been closed by the
+> server until we see the NFS4ERR_BAD_STATEID.
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 3714231..82f7999 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -119,6 +119,9 @@ struct nfsd_net {
- 	u32 clverifier_counter;
- 
- 	struct svc_serv *nfsd_serv;
-+
-+	wait_queue_head_t ntf_wq;
-+	atomic_t ntf_refcnt;
- };
- 
- /* Simple check to find out if a given net was properly initialized */
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 6493df6..d107b44 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1241,6 +1241,9 @@ static __net_init int nfsd_init_net(struct net *net)
- 	nn->nfsd4_grace = 90;
- 	nn->clverifier_counter = prandom_u32();
- 	nn->clientid_counter = prandom_u32();
-+
-+	atomic_set(&nn->ntf_refcnt, 0);
-+	init_waitqueue_head(&nn->ntf_wq);
- 	return 0;
- 
- out_idmap_error:
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 7e3af3e..29a263b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -334,7 +334,8 @@ static int nfsd_inetaddr_event(struct notifier_block *this, unsigned long event,
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	struct sockaddr_in sin;
- 
--	if (event != NETDEV_DOWN)
-+	if ((event != NETDEV_DOWN) ||
-+	    !atomic_inc_not_zero(&nn->ntf_refcnt))
- 		goto out;
- 
- 	if (nn->nfsd_serv) {
-@@ -343,6 +344,8 @@ static int nfsd_inetaddr_event(struct notifier_block *this, unsigned long event,
- 		sin.sin_addr.s_addr = ifa->ifa_local;
- 		svc_age_temp_xprts_now(nn->nfsd_serv, (struct sockaddr *)&sin);
- 	}
-+	atomic_dec(&nn->ntf_refcnt);
-+	wake_up(&nn->ntf_wq);
- 
- out:
- 	return NOTIFY_DONE;
-@@ -362,7 +365,8 @@ static int nfsd_inet6addr_event(struct notifier_block *this,
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	struct sockaddr_in6 sin6;
- 
--	if (event != NETDEV_DOWN)
-+	if ((event != NETDEV_DOWN) ||
-+	    !atomic_inc_not_zero(&nn->ntf_refcnt))
- 		goto out;
- 
- 	if (nn->nfsd_serv) {
-@@ -373,7 +377,8 @@ static int nfsd_inet6addr_event(struct notifier_block *this,
- 			sin6.sin6_scope_id = ifa->idev->dev->ifindex;
- 		svc_age_temp_xprts_now(nn->nfsd_serv, (struct sockaddr *)&sin6);
- 	}
--
-+	atomic_dec(&nn->ntf_refcnt);
-+	wake_up(&nn->ntf_wq);
- out:
- 	return NOTIFY_DONE;
- }
-@@ -390,6 +395,7 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
-+	atomic_dec(&nn->ntf_refcnt);
- 	/* check if the notifier still has clients */
- 	if (atomic_dec_return(&nfsd_notifier_refcount) == 0) {
- 		unregister_inetaddr_notifier(&nfsd_inetaddr_notifier);
-@@ -397,6 +403,7 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- 		unregister_inet6addr_notifier(&nfsd_inet6addr_notifier);
- #endif
- 	}
-+	wait_event(nn->ntf_wq, atomic_read(&nn->ntf_refcnt) == 0);
- 
- 	/*
- 	 * write_ports can create the server without actually starting
-@@ -516,6 +523,7 @@ int nfsd_create_serv(struct net *net)
- 		register_inet6addr_notifier(&nfsd_inet6addr_notifier);
- #endif
- 	}
-+	atomic_inc(&nn->ntf_refcnt);
- 	do_gettimeofday(&nn->nfssvc_boot);		/* record boot time */
- 	return 0;
- }
--- 
-2.7.4
+I mentioned this case in the cover letter.  It's possible that the client
+could retain a record of a closed stateid in order to retry an OPEN in that
+case.  Another approach may be to detect 'holes' in the state id sequence
+and not call CLOSE until each id is processed.  I think there's an existing
+problem now where this race (without the CLOSE) can incorrectly update the
+state flags with the result of the delayed OPEN's mode.
 
+> Note also that section 18.2.4 says that "the server SHOULD return the
+> invalid special stateid (the "other" value is zero and the "seqid"
+> field is NFS4_UINT32_MAX, see Section 8.2.3)" which further ensures
+> that we should not be able to match the OPEN stateid once the CLOSE is
+> processed on the client.
+
+Ah, right, so need_update_open_stateid() should handle that case.  But that
+doesn't mean there's no way to match the OPEN statid after a CLOSE.  We
+could still keep a record of the closed state with a flag instead of an
+incremented sequence id.
+
+So perhaps keeping track of holes in the sequence would be a better
+approach, but then the OPEN response handling needs to call CLOSE in case
+the OPEN fails.. that seems more complicated.
+
+Ben
