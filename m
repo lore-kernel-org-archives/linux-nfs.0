@@ -1,83 +1,80 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:36014 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1763517AbdJQRd7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Oct 2017 13:33:59 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: bcodding redhat <bcodding@redhat.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and
  CLOSE/DOWNGRADE race
-Date: Tue, 17 Oct 2017 13:33:57 -0400
-Message-ID: <8384C212-F32B-4F5A-B522-A8F08108DA58@redhat.com>
-In-Reply-To: <1508255361.3718.17.camel@primarydata.com>
+Date: Tue, 17 Oct 2017 17:42:24 +0000
+Message-ID: <1508262139.6260.7.camel@primarydata.com>
 References: <cover.1508248965.git.bcodding@redhat.com>
- <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
- <1508255361.3718.17.camel@primarydata.com>
+	 <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
+	 <1508255361.3718.17.camel@primarydata.com>
+	 <8384C212-F32B-4F5A-B522-A8F08108DA58@redhat.com>
+In-Reply-To: <8384C212-F32B-4F5A-B522-A8F08108DA58@redhat.com>
 MIME-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 17 Oct 2017, at 11:49, Trond Myklebust wrote:
-
-> On Tue, 2017-10-17 at 10:46 -0400, Benjamin Coddington wrote:
->> If the client issues two simultaneous OPEN calls, and the response to
->> the
->> first OPEN call (sequence id 1) is delayed before updating the
->> nfs4_state,
->> then the client's nfs4_state can transition through a complete
->> lifecycle of
->> OPEN (state sequence id 2), and CLOSE (state sequence id 3).  When
->> the
->> first OPEN is finally processed, the nfs4_state is incorrectly
->> transitioned
->> back to NFS_OPEN_STATE for the first OPEN (sequence id
->> 1).  Subsequent calls
->> to LOCK or CLOSE will receive NFS4ERR_BAD_STATEID, and trigger state
->> recovery.
->>
->> Fix this by passing back the result of need_update_open_stateid() to
->> the
->> open() path, with the result to try again if the OPEN's stateid
->> should not
->> be updated.
->>
->
-> Why are we worried about the special case where the client actually
-> finds the closed stateid in its cache?
-
-Because I am hitting that case very frequently in generic/089, and I hate
-how unnecessary state recovery slows everything down.  I'm also seeing a
-problem where generic/089 never completes, and I was trying to get this
-behavior out of the way.
-
-> In the more general case of your race, the stateid might not be found
-> at all because the CLOSE completes and is processed on the client
-> before it can process the reply from the delayed OPEN. If so, we really
-> have no way to detect that the file has actually been closed by the
-> server until we see the NFS4ERR_BAD_STATEID.
-
-I mentioned this case in the cover letter.  It's possible that the client
-could retain a record of a closed stateid in order to retry an OPEN in that
-case.  Another approach may be to detect 'holes' in the state id sequence
-and not call CLOSE until each id is processed.  I think there's an existing
-problem now where this race (without the CLOSE) can incorrectly update the
-state flags with the result of the delayed OPEN's mode.
-
-> Note also that section 18.2.4 says that "the server SHOULD return the
-> invalid special stateid (the "other" value is zero and the "seqid"
-> field is NFS4_UINT32_MAX, see Section 8.2.3)" which further ensures
-> that we should not be able to match the OPEN stateid once the CLOSE is
-> processed on the client.
-
-Ah, right, so need_update_open_stateid() should handle that case.  But that
-doesn't mean there's no way to match the OPEN statid after a CLOSE.  We
-could still keep a record of the closed state with a flag instead of an
-incremented sequence id.
-
-So perhaps keeping track of holes in the sequence would be a better
-approach, but then the OPEN response handling needs to call CLOSE in case
-the OPEN fails.. that seems more complicated.
-
-Ben
+T24gVHVlLCAyMDE3LTEwLTE3IGF0IDEzOjMzIC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
+b3RlOg0KPiBPbiAxNyBPY3QgMjAxNywgYXQgMTE6NDksIFRyb25kIE15a2xlYnVzdCB3cm90ZToN
+Cj4gDQo+ID4gT24gVHVlLCAyMDE3LTEwLTE3IGF0IDEwOjQ2IC0wNDAwLCBCZW5qYW1pbiBDb2Rk
+aW5ndG9uIHdyb3RlOg0KPiA+ID4gSWYgdGhlIGNsaWVudCBpc3N1ZXMgdHdvIHNpbXVsdGFuZW91
+cyBPUEVOIGNhbGxzLCBhbmQgdGhlDQo+ID4gPiByZXNwb25zZSB0bw0KPiA+ID4gdGhlDQo+ID4g
+PiBmaXJzdCBPUEVOIGNhbGwgKHNlcXVlbmNlIGlkIDEpIGlzIGRlbGF5ZWQgYmVmb3JlIHVwZGF0
+aW5nIHRoZQ0KPiA+ID4gbmZzNF9zdGF0ZSwNCj4gPiA+IHRoZW4gdGhlIGNsaWVudCdzIG5mczRf
+c3RhdGUgY2FuIHRyYW5zaXRpb24gdGhyb3VnaCBhIGNvbXBsZXRlDQo+ID4gPiBsaWZlY3ljbGUg
+b2YNCj4gPiA+IE9QRU4gKHN0YXRlIHNlcXVlbmNlIGlkIDIpLCBhbmQgQ0xPU0UgKHN0YXRlIHNl
+cXVlbmNlIGlkDQo+ID4gPiAzKS4gIFdoZW4NCj4gPiA+IHRoZQ0KPiA+ID4gZmlyc3QgT1BFTiBp
+cyBmaW5hbGx5IHByb2Nlc3NlZCwgdGhlIG5mczRfc3RhdGUgaXMgaW5jb3JyZWN0bHkNCj4gPiA+
+IHRyYW5zaXRpb25lZA0KPiA+ID4gYmFjayB0byBORlNfT1BFTl9TVEFURSBmb3IgdGhlIGZpcnN0
+IE9QRU4gKHNlcXVlbmNlIGlkDQo+ID4gPiAxKS4gIFN1YnNlcXVlbnQgY2FsbHMNCj4gPiA+IHRv
+IExPQ0sgb3IgQ0xPU0Ugd2lsbCByZWNlaXZlIE5GUzRFUlJfQkFEX1NUQVRFSUQsIGFuZCB0cmln
+Z2VyDQo+ID4gPiBzdGF0ZQ0KPiA+ID4gcmVjb3ZlcnkuDQo+ID4gPiANCj4gPiA+IEZpeCB0aGlz
+IGJ5IHBhc3NpbmcgYmFjayB0aGUgcmVzdWx0IG9mIG5lZWRfdXBkYXRlX29wZW5fc3RhdGVpZCgp
+DQo+ID4gPiB0bw0KPiA+ID4gdGhlDQo+ID4gPiBvcGVuKCkgcGF0aCwgd2l0aCB0aGUgcmVzdWx0
+IHRvIHRyeSBhZ2FpbiBpZiB0aGUgT1BFTidzIHN0YXRlaWQNCj4gPiA+IHNob3VsZCBub3QNCj4g
+PiA+IGJlIHVwZGF0ZWQuDQo+ID4gPiANCj4gPiANCj4gPiBXaHkgYXJlIHdlIHdvcnJpZWQgYWJv
+dXQgdGhlIHNwZWNpYWwgY2FzZSB3aGVyZSB0aGUgY2xpZW50IGFjdHVhbGx5DQo+ID4gZmluZHMg
+dGhlIGNsb3NlZCBzdGF0ZWlkIGluIGl0cyBjYWNoZT8NCj4gDQo+IEJlY2F1c2UgSSBhbSBoaXR0
+aW5nIHRoYXQgY2FzZSB2ZXJ5IGZyZXF1ZW50bHkgaW4gZ2VuZXJpYy8wODksIGFuZCBJDQo+IGhh
+dGUNCj4gaG93IHVubmVjZXNzYXJ5IHN0YXRlIHJlY292ZXJ5IHNsb3dzIGV2ZXJ5dGhpbmcgZG93
+bi4gIEknbSBhbHNvIA0KDQpXaHkgaXMgaXQgYmVpbmcgaGl0LiBJcyB0aGUgY2xpZW50IHByb2Nl
+c3Npbmcgc3R1ZmYgb3V0IG9mIG9yZGVyPw0KDQo+IHNlZWluZyBhDQo+IHByb2JsZW0gd2hlcmUg
+Z2VuZXJpYy8wODkgbmV2ZXIgY29tcGxldGVzLCBhbmQgSSB3YXMgdHJ5aW5nIHRvIGdldA0KPiB0
+aGlzDQo+IGJlaGF2aW9yIG91dCBvZiB0aGUgd2F5Lg0KPiANCj4gPiBJbiB0aGUgbW9yZSBnZW5l
+cmFsIGNhc2Ugb2YgeW91ciByYWNlLCB0aGUgc3RhdGVpZCBtaWdodCBub3QgYmUNCj4gPiBmb3Vu
+ZA0KPiA+IGF0IGFsbCBiZWNhdXNlIHRoZSBDTE9TRSBjb21wbGV0ZXMgYW5kIGlzIHByb2Nlc3Nl
+ZCBvbiB0aGUgY2xpZW50DQo+ID4gYmVmb3JlIGl0IGNhbiBwcm9jZXNzIHRoZSByZXBseSBmcm9t
+IHRoZSBkZWxheWVkIE9QRU4uIElmIHNvLCB3ZQ0KPiA+IHJlYWxseQ0KPiA+IGhhdmUgbm8gd2F5
+IHRvIGRldGVjdCB0aGF0IHRoZSBmaWxlIGhhcyBhY3R1YWxseSBiZWVuIGNsb3NlZCBieSB0aGUN
+Cj4gPiBzZXJ2ZXIgdW50aWwgd2Ugc2VlIHRoZSBORlM0RVJSX0JBRF9TVEFURUlELg0KPiANCj4g
+SSBtZW50aW9uZWQgdGhpcyBjYXNlIGluIHRoZSBjb3ZlciBsZXR0ZXIuICBJdCdzIHBvc3NpYmxl
+IHRoYXQgdGhlDQo+IGNsaWVudA0KPiBjb3VsZCByZXRhaW4gYSByZWNvcmQgb2YgYSBjbG9zZWQg
+c3RhdGVpZCBpbiBvcmRlciB0byByZXRyeSBhbiBPUEVODQo+IGluIHRoYXQNCg0KVGhhdCB3b3Vs
+ZCByZXF1aXJlIHVzIHRvIHJldGFpbiBhbGwgc3RhdGVpZHMgdW50aWwgdGhlcmUgYXJlIG5vIG1v
+cmUNCnBlbmRpbmcgT1BFTiBjYWxscy4NCg0KPiBjYXNlLiAgQW5vdGhlciBhcHByb2FjaCBtYXkg
+YmUgdG8gZGV0ZWN0ICdob2xlcycgaW4gdGhlIHN0YXRlIGlkDQo+IHNlcXVlbmNlDQo+IGFuZCBu
+b3QgY2FsbCBDTE9TRSB1bnRpbCBlYWNoIGlkIGlzIHByb2Nlc3NlZC4gIEkgdGhpbmsgdGhlcmUn
+cyBhbg0KPiBleGlzdGluZw0KDQpXZSBjYW4ndCBrbm93IHdlIGhhdmUgYSBob2xlIHVudGlsIHdl
+IGtub3cgdGhlIHN0YXJ0aW5nIHZhbHVlIG9mIHRoZQ0Kc2VxaWQsIHdoaWNoIGlzIHVuZGVmaW5l
+ZCBhY2NvcmRpbmcgdG8gUkZDIDU2NjEgc2VjdGlvbiAzLjMuMTIuDQoNCj4gcHJvYmxlbSBub3cg
+d2hlcmUgdGhpcyByYWNlICh3aXRob3V0IHRoZSBDTE9TRSkgY2FuIGluY29ycmVjdGx5DQo+IHVw
+ZGF0ZSB0aGUNCj4gc3RhdGUgZmxhZ3Mgd2l0aCB0aGUgcmVzdWx0IG9mIHRoZSBkZWxheWVkIE9Q
+RU4ncyBtb2RlLg0KPiANCj4gPiBOb3RlIGFsc28gdGhhdCBzZWN0aW9uIDE4LjIuNCBzYXlzIHRo
+YXQgInRoZSBzZXJ2ZXIgU0hPVUxEIHJldHVybg0KPiA+IHRoZQ0KPiA+IGludmFsaWQgc3BlY2lh
+bCBzdGF0ZWlkICh0aGUgIm90aGVyIiB2YWx1ZSBpcyB6ZXJvIGFuZCB0aGUgInNlcWlkIg0KPiA+
+IGZpZWxkIGlzIE5GUzRfVUlOVDMyX01BWCwgc2VlIFNlY3Rpb24gOC4yLjMpIiB3aGljaCBmdXJ0
+aGVyIGVuc3VyZXMNCj4gPiB0aGF0IHdlIHNob3VsZCBub3QgYmUgYWJsZSB0byBtYXRjaCB0aGUg
+T1BFTiBzdGF0ZWlkIG9uY2UgdGhlIENMT1NFDQo+ID4gaXMNCj4gPiBwcm9jZXNzZWQgb24gdGhl
+IGNsaWVudC4NCj4gDQo+IEFoLCByaWdodCwgc28gbmVlZF91cGRhdGVfb3Blbl9zdGF0ZWlkKCkg
+c2hvdWxkIGhhbmRsZSB0aGF0DQo+IGNhc2UuICBCdXQgdGhhdA0KPiBkb2Vzbid0IG1lYW4gdGhl
+cmUncyBubyB3YXkgdG8gbWF0Y2ggdGhlIE9QRU4gc3RhdGlkIGFmdGVyIGENCj4gQ0xPU0UuICBX
+ZQ0KPiBjb3VsZCBzdGlsbCBrZWVwIGEgcmVjb3JkIG9mIHRoZSBjbG9zZWQgc3RhdGUgd2l0aCBh
+IGZsYWcgaW5zdGVhZCBvZg0KPiBhbg0KPiBpbmNyZW1lbnRlZCBzZXF1ZW5jZSBpZC4NCj4gDQo+
+IFNvIHBlcmhhcHMga2VlcGluZyB0cmFjayBvZiBob2xlcyBpbiB0aGUgc2VxdWVuY2Ugd291bGQg
+YmUgYSBiZXR0ZXINCj4gYXBwcm9hY2gsIGJ1dCB0aGVuIHRoZSBPUEVOIHJlc3BvbnNlIGhhbmRs
+aW5nIG5lZWRzIHRvIGNhbGwgQ0xPU0UgaW4NCj4gY2FzZQ0KPiB0aGUgT1BFTiBmYWlscy4uIHRo
+YXQgc2VlbXMgbW9yZSBjb21wbGljYXRlZC4NCj4gDQo+IEJlbg0KPiANCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5t
+eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
