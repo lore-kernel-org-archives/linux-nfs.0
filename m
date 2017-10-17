@@ -1,46 +1,76 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
-	<anna.schumaker@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and
- CLOSE/DOWNGRADE race
-Date: Tue, 17 Oct 2017 15:49:24 +0000
-Message-ID: <1508255361.3718.17.camel@primarydata.com>
-References: <cover.1508248965.git.bcodding@redhat.com>
-	 <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
-In-Reply-To: <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:47380 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1763292AbdJQQOl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Oct 2017 12:14:41 -0400
+From: Bhumika Goyal <bhumirks@gmail.com>
+To: julia.lawall@lip6.fr, trond.myklebust@primarydata.com,
+        anna.schumaker@netapp.com, bfields@fieldses.org,
+        jlayton@poochiereds.net, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        netdev@vger.kernel.org
+Cc: Bhumika Goyal <bhumirks@gmail.com>
+Subject: [PATCH 4/4] SUNRPC: make cache_detail structures const
+Date: Tue, 17 Oct 2017 18:14:26 +0200
+Message-Id: <1508256866-12798-5-git-send-email-bhumirks@gmail.com>
+In-Reply-To: <1508256866-12798-1-git-send-email-bhumirks@gmail.com>
+References: <1508256866-12798-1-git-send-email-bhumirks@gmail.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTEwLTE3IGF0IDEwOjQ2IC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBJZiB0aGUgY2xpZW50IGlzc3VlcyB0d28gc2ltdWx0YW5lb3VzIE9QRU4gY2FsbHMs
-IGFuZCB0aGUgcmVzcG9uc2UgdG8NCj4gdGhlDQo+IGZpcnN0IE9QRU4gY2FsbCAoc2VxdWVuY2Ug
-aWQgMSkgaXMgZGVsYXllZCBiZWZvcmUgdXBkYXRpbmcgdGhlDQo+IG5mczRfc3RhdGUsDQo+IHRo
-ZW4gdGhlIGNsaWVudCdzIG5mczRfc3RhdGUgY2FuIHRyYW5zaXRpb24gdGhyb3VnaCBhIGNvbXBs
-ZXRlDQo+IGxpZmVjeWNsZSBvZg0KPiBPUEVOIChzdGF0ZSBzZXF1ZW5jZSBpZCAyKSwgYW5kIENM
-T1NFIChzdGF0ZSBzZXF1ZW5jZSBpZCAzKS4gIFdoZW4NCj4gdGhlDQo+IGZpcnN0IE9QRU4gaXMg
-ZmluYWxseSBwcm9jZXNzZWQsIHRoZSBuZnM0X3N0YXRlIGlzIGluY29ycmVjdGx5DQo+IHRyYW5z
-aXRpb25lZA0KPiBiYWNrIHRvIE5GU19PUEVOX1NUQVRFIGZvciB0aGUgZmlyc3QgT1BFTiAoc2Vx
-dWVuY2UgaWQNCj4gMSkuICBTdWJzZXF1ZW50IGNhbGxzDQo+IHRvIExPQ0sgb3IgQ0xPU0Ugd2ls
-bCByZWNlaXZlIE5GUzRFUlJfQkFEX1NUQVRFSUQsIGFuZCB0cmlnZ2VyIHN0YXRlDQo+IHJlY292
-ZXJ5Lg0KPiANCj4gRml4IHRoaXMgYnkgcGFzc2luZyBiYWNrIHRoZSByZXN1bHQgb2YgbmVlZF91
-cGRhdGVfb3Blbl9zdGF0ZWlkKCkgdG8NCj4gdGhlDQo+IG9wZW4oKSBwYXRoLCB3aXRoIHRoZSBy
-ZXN1bHQgdG8gdHJ5IGFnYWluIGlmIHRoZSBPUEVOJ3Mgc3RhdGVpZA0KPiBzaG91bGQgbm90DQo+
-IGJlIHVwZGF0ZWQuDQo+IA0KDQpXaHkgYXJlIHdlIHdvcnJpZWQgYWJvdXQgdGhlIHNwZWNpYWwg
-Y2FzZSB3aGVyZSB0aGUgY2xpZW50IGFjdHVhbGx5DQpmaW5kcyB0aGUgY2xvc2VkIHN0YXRlaWQg
-aW4gaXRzIGNhY2hlPw0KDQpJbiB0aGUgbW9yZSBnZW5lcmFsIGNhc2Ugb2YgeW91ciByYWNlLCB0
-aGUgc3RhdGVpZCBtaWdodCBub3QgYmUgZm91bmQNCmF0IGFsbCBiZWNhdXNlIHRoZSBDTE9TRSBj
-b21wbGV0ZXMgYW5kIGlzIHByb2Nlc3NlZCBvbiB0aGUgY2xpZW50DQpiZWZvcmUgaXQgY2FuIHBy
-b2Nlc3MgdGhlIHJlcGx5IGZyb20gdGhlIGRlbGF5ZWQgT1BFTi4gSWYgc28sIHdlIHJlYWxseQ0K
-aGF2ZSBubyB3YXkgdG8gZGV0ZWN0IHRoYXQgdGhlIGZpbGUgaGFzIGFjdHVhbGx5IGJlZW4gY2xv
-c2VkIGJ5IHRoZQ0Kc2VydmVyIHVudGlsIHdlIHNlZSB0aGUgTkZTNEVSUl9CQURfU1RBVEVJRC4N
-Cg0KTm90ZSBhbHNvIHRoYXQgc2VjdGlvbiAxOC4yLjQgc2F5cyB0aGF0ICJ0aGUgc2VydmVyIFNI
-T1VMRCByZXR1cm4gdGhlDQppbnZhbGlkIHNwZWNpYWwgc3RhdGVpZCAodGhlICJvdGhlciIgdmFs
-dWUgaXMgemVybyBhbmQgdGhlICJzZXFpZCINCmZpZWxkIGlzIE5GUzRfVUlOVDMyX01BWCwgc2Vl
-IFNlY3Rpb24gOC4yLjMpIiB3aGljaCBmdXJ0aGVyIGVuc3VyZXMNCnRoYXQgd2Ugc2hvdWxkIG5v
-dCBiZSBhYmxlIHRvIG1hdGNoIHRoZSBPUEVOIHN0YXRlaWQgb25jZSB0aGUgQ0xPU0UgaXMNCnBy
-b2Nlc3NlZCBvbiB0aGUgY2xpZW50Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZT
-IGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlk
-YXRhLmNvbQ0K
+Make these const as they are only getting passed to the function
+cache_create_net having the argument as const.
+
+Signed-off-by: Bhumika Goyal <bhumirks@gmail.com>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
+ net/sunrpc/svcauth_unix.c         | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 7b1ee5a..e242cb4 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -264,7 +264,7 @@ static int rsi_parse(struct cache_detail *cd,
+ 	return status;
+ }
+ 
+-static struct cache_detail rsi_cache_template = {
++static const struct cache_detail rsi_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= RSI_HASHMAX,
+ 	.name           = "auth.rpcsec.init",
+@@ -524,7 +524,7 @@ static int rsc_parse(struct cache_detail *cd,
+ 	return status;
+ }
+ 
+-static struct cache_detail rsc_cache_template = {
++static const struct cache_detail rsc_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= RSC_HASHMAX,
+ 	.name		= "auth.rpcsec.context",
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index f81eaa8..740b67d 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -569,7 +569,7 @@ static int unix_gid_show(struct seq_file *m,
+ 	return 0;
+ }
+ 
+-static struct cache_detail unix_gid_cache_template = {
++static const struct cache_detail unix_gid_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= GID_HASHMAX,
+ 	.name		= "auth.unix.gid",
+@@ -862,7 +862,7 @@ struct auth_ops svcauth_unix = {
+ 	.set_client	= svcauth_unix_set_client,
+ };
+ 
+-static struct cache_detail ip_map_cache_template = {
++static const struct cache_detail ip_map_cache_template = {
+ 	.owner		= THIS_MODULE,
+ 	.hash_size	= IP_HASHMAX,
+ 	.name		= "auth.unix.ip",
+-- 
+1.9.1
+
