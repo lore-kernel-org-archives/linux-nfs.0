@@ -1,99 +1,84 @@
-Return-Path: <jlayton@redhat.com>
-Message-ID: <1508264368.4747.17.camel@redhat.com>
-Subject: Re: [PATCH] nfsd4: Prevent the reuse of a closed stateid
-From: Jeff Layton <jlayton@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Date: Tue, 17 Oct 2017 14:19:28 -0400
-In-Reply-To: <F5CCE778-0A1E-4818-8D9B-7F45FC3E7F4B@redhat.com>
-References: 
-	<2087b4cab6c695a7df01c1135f1773c9b762f0b0.1508248427.git.bcodding@redhat.com>
-	 <1508258356.4747.6.camel@redhat.com>
-	 <F5CCE778-0A1E-4818-8D9B-7F45FC3E7F4B@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: bcodding redhat <bcodding@redhat.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and
+ CLOSE/DOWNGRADE race
+Date: Tue, 17 Oct 2017 18:26:31 +0000
+Message-ID: <1508264788.11156.11.camel@primarydata.com>
+References: <cover.1508248965.git.bcodding@redhat.com>
+	 <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
+	 <1508255361.3718.17.camel@primarydata.com>
+	 <8384C212-F32B-4F5A-B522-A8F08108DA58@redhat.com>
+	 <1508262139.6260.7.camel@primarydata.com>
+	 <62F4199A-60AB-4CC1-990F-8BA1BCC39482@redhat.com>
+In-Reply-To: <62F4199A-60AB-4CC1-990F-8BA1BCC39482@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-10-17 at 13:46 -0400, Benjamin Coddington wrote:
-> On 17 Oct 2017, at 12:39, Jeff Layton wrote:
-> 
-> > On Tue, 2017-10-17 at 09:55 -0400, Benjamin Coddington wrote:
-> > > While running generic/089 on NFSv4.1, the following on-the-wire 
-> > > exchange
-> > > occurs:
-> > > 
-> > > Client                  Server
-> > > ----------              ----------
-> > > OPEN (owner A)  ->
-> > >                     <-  OPEN response: state A1
-> > > CLOSE (state A1)->
-> > > OPEN (owner A)  ->
-> > >                     <-  CLOSE response: state A2
-> > >                     <-  OPEN response: state A3
-> > > LOCK (state A3) ->
-> > >                     <-  LOCK response: NFS4_BAD_STATEID
-> > > 
-> > > The server should not be returning state A3 in response to the second 
-> > > OPEN
-> > > after processing the CLOSE and sending back state A2.  The problem is 
-> > > that
-> > > nfsd4_process_open2() is able to find an existing open state just 
-> > > after
-> > > nfsd4_close() has incremented the state's sequence number but before
-> > > calling unhash_ol_stateid().
-> > > 
-> > > Fix this by using the state's sc_type field to identify closed state, 
-> > > and
-> > > protect the update of that field with st_mutex.  
-> > > nfsd4_find_existing_open()
-> > > will return with the st_mutex held, so that the state will not 
-> > > transition
-> > > between being looked up and then updated in nfsd4_process_open2().
-> > > 
-> > > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> > > ---
-> > >  fs/nfsd/nfs4state.c | 29 +++++++++++++++++++----------
-> > >  1 file changed, 19 insertions(+), 10 deletions(-)
-> > > 
-> > 
-> > The problem is real, but I'm not thrilled with the fix. It seems more
-> > lock thrashy...
-> 
-> Really?  I don't think I increased any call counts to spinlocks or mutex
-> locks.  The locking overhead should be equivalent.
-> 
-
-init_open_stateid will now end up taking fi_lock twice. Also we now have
-to take the st_mutex in nfsd4_find_existing_open, just to check sc_type.
-Neither of those are probably unreasonable, it's just messier than I'd
-like.
-
-> > Could we instead fix this by just unhashing the stateid earlier, 
-> > before
-> > the nfs4_inc_and_copy_stateid call?
-> 
-> I think I tried this - and if I remember correctly, the problem is that 
-> you
-> can't hold st_mutux while taking the cl_lock (or maybe it was the 
-> fi_lock?).
-> I tried several simpler ways, and they resulted in deadlocks.
-> 
-> That was a couple of weeks ago, so I apologize if my memory is fuzzy.  I
-> should have sent this patch off to the list then.  If you need me to to
-> verify that, I can - but maybe someone more familiar with the locking 
-> here
-> can save me that time.
-> 
-> Ben
-
-
-There should be no problem taking the cl_lock while holding st_mutex.
-It's never safe to do the reverse though. I'd just do the unhash before 
-nfs4_inc_and_copy_stateid, and then save the rest of the stuff in
-nfsd4_close_open_stateid for after the st_mutex has been dropped.
-
-I think what I'm suggesting is possible. You may need to unroll
-nfsd4_close_open_stateid to make it work though.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+T24gVHVlLCAyMDE3LTEwLTE3IGF0IDEzOjUyIC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
+b3RlOg0KPiBPbiAxNyBPY3QgMjAxNywgYXQgMTM6NDIsIFRyb25kIE15a2xlYnVzdCB3cm90ZToN
+Cj4gDQo+ID4gT24gVHVlLCAyMDE3LTEwLTE3IGF0IDEzOjMzIC0wNDAwLCBCZW5qYW1pbiBDb2Rk
+aW5ndG9uIHdyb3RlOg0KPiA+ID4gT24gMTcgT2N0IDIwMTcsIGF0IDExOjQ5LCBUcm9uZCBNeWts
+ZWJ1c3Qgd3JvdGU6DQo+ID4gPiANCj4gPiA+ID4gT24gVHVlLCAyMDE3LTEwLTE3IGF0IDEwOjQ2
+IC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdyb3RlOg0KPiA+ID4gPiA+IElmIHRoZSBjbGll
+bnQgaXNzdWVzIHR3byBzaW11bHRhbmVvdXMgT1BFTiBjYWxscywgYW5kIHRoZQ0KPiA+ID4gPiA+
+IHJlc3BvbnNlIHRvDQo+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gZmlyc3QgT1BFTiBjYWxsIChz
+ZXF1ZW5jZSBpZCAxKSBpcyBkZWxheWVkIGJlZm9yZSB1cGRhdGluZw0KPiA+ID4gPiA+IHRoZQ0K
+PiA+ID4gPiA+IG5mczRfc3RhdGUsDQo+ID4gPiA+ID4gdGhlbiB0aGUgY2xpZW50J3MgbmZzNF9z
+dGF0ZSBjYW4gdHJhbnNpdGlvbiB0aHJvdWdoIGENCj4gPiA+ID4gPiBjb21wbGV0ZQ0KPiA+ID4g
+PiA+IGxpZmVjeWNsZSBvZg0KPiA+ID4gPiA+IE9QRU4gKHN0YXRlIHNlcXVlbmNlIGlkIDIpLCBh
+bmQgQ0xPU0UgKHN0YXRlIHNlcXVlbmNlIGlkDQo+ID4gPiA+ID4gMykuICBXaGVuDQo+ID4gPiA+
+ID4gdGhlDQo+ID4gPiA+ID4gZmlyc3QgT1BFTiBpcyBmaW5hbGx5IHByb2Nlc3NlZCwgdGhlIG5m
+czRfc3RhdGUgaXMNCj4gPiA+ID4gPiBpbmNvcnJlY3RseQ0KPiA+ID4gPiA+IHRyYW5zaXRpb25l
+ZA0KPiA+ID4gPiA+IGJhY2sgdG8gTkZTX09QRU5fU1RBVEUgZm9yIHRoZSBmaXJzdCBPUEVOIChz
+ZXF1ZW5jZSBpZA0KPiA+ID4gPiA+IDEpLiAgU3Vic2VxdWVudCBjYWxscw0KPiA+ID4gPiA+IHRv
+IExPQ0sgb3IgQ0xPU0Ugd2lsbCByZWNlaXZlIE5GUzRFUlJfQkFEX1NUQVRFSUQsIGFuZA0KPiA+
+ID4gPiA+IHRyaWdnZXINCj4gPiA+ID4gPiBzdGF0ZQ0KPiA+ID4gPiA+IHJlY292ZXJ5Lg0KPiA+
+ID4gPiA+IA0KPiA+ID4gPiA+IEZpeCB0aGlzIGJ5IHBhc3NpbmcgYmFjayB0aGUgcmVzdWx0IG9m
+DQo+ID4gPiA+ID4gbmVlZF91cGRhdGVfb3Blbl9zdGF0ZWlkKCkNCj4gPiA+ID4gPiB0bw0KPiA+
+ID4gPiA+IHRoZQ0KPiA+ID4gPiA+IG9wZW4oKSBwYXRoLCB3aXRoIHRoZSByZXN1bHQgdG8gdHJ5
+IGFnYWluIGlmIHRoZSBPUEVOJ3MNCj4gPiA+ID4gPiBzdGF0ZWlkDQo+ID4gPiA+ID4gc2hvdWxk
+IG5vdA0KPiA+ID4gPiA+IGJlIHVwZGF0ZWQuDQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4g
+PiBXaHkgYXJlIHdlIHdvcnJpZWQgYWJvdXQgdGhlIHNwZWNpYWwgY2FzZSB3aGVyZSB0aGUgY2xp
+ZW50DQo+ID4gPiA+IGFjdHVhbGx5DQo+ID4gPiA+IGZpbmRzIHRoZSBjbG9zZWQgc3RhdGVpZCBp
+biBpdHMgY2FjaGU/DQo+ID4gPiANCj4gPiA+IEJlY2F1c2UgSSBhbSBoaXR0aW5nIHRoYXQgY2Fz
+ZSB2ZXJ5IGZyZXF1ZW50bHkgaW4gZ2VuZXJpYy8wODksDQo+ID4gPiBhbmQgSQ0KPiA+ID4gaGF0
+ZQ0KPiA+ID4gaG93IHVubmVjZXNzYXJ5IHN0YXRlIHJlY292ZXJ5IHNsb3dzIGV2ZXJ5dGhpbmcg
+ZG93bi4gIEknbSBhbHNvDQo+ID4gDQo+ID4gV2h5IGlzIGl0IGJlaW5nIGhpdC4gSXMgdGhlIGNs
+aWVudCBwcm9jZXNzaW5nIHN0dWZmIG91dCBvZiBvcmRlcj8NCj4gDQo+IFllcy4NCj4gDQo+ID4g
+PiA+IEluIHRoZSBtb3JlIGdlbmVyYWwgY2FzZSBvZiB5b3VyIHJhY2UsIHRoZSBzdGF0ZWlkIG1p
+Z2h0IG5vdCBiZQ0KPiA+ID4gPiBmb3VuZA0KPiA+ID4gPiBhdCBhbGwgYmVjYXVzZSB0aGUgQ0xP
+U0UgY29tcGxldGVzIGFuZCBpcyBwcm9jZXNzZWQgb24gdGhlDQo+ID4gPiA+IGNsaWVudA0KPiA+
+ID4gPiBiZWZvcmUgaXQgY2FuIHByb2Nlc3MgdGhlIHJlcGx5IGZyb20gdGhlIGRlbGF5ZWQgT1BF
+Ti4gSWYgc28sDQo+ID4gPiA+IHdlDQo+ID4gPiA+IHJlYWxseQ0KPiA+ID4gPiBoYXZlIG5vIHdh
+eSB0byBkZXRlY3QgdGhhdCB0aGUgZmlsZSBoYXMgYWN0dWFsbHkgYmVlbiBjbG9zZWQgYnkNCj4g
+PiA+ID4gdGhlDQo+ID4gPiA+IHNlcnZlciB1bnRpbCB3ZSBzZWUgdGhlIE5GUzRFUlJfQkFEX1NU
+QVRFSUQuDQo+ID4gPiANCj4gPiA+IEkgbWVudGlvbmVkIHRoaXMgY2FzZSBpbiB0aGUgY292ZXIg
+bGV0dGVyLiAgSXQncyBwb3NzaWJsZSB0aGF0DQo+ID4gPiB0aGUNCj4gPiA+IGNsaWVudA0KPiA+
+ID4gY291bGQgcmV0YWluIGEgcmVjb3JkIG9mIGEgY2xvc2VkIHN0YXRlaWQgaW4gb3JkZXIgdG8g
+cmV0cnkgYW4NCj4gPiA+IE9QRU4NCj4gPiA+IGluIHRoYXQNCj4gPiANCj4gPiBUaGF0IHdvdWxk
+IHJlcXVpcmUgdXMgdG8gcmV0YWluIGFsbCBzdGF0ZWlkcyB1bnRpbCB0aGVyZSBhcmUgbm8NCj4g
+PiBtb3JlDQo+ID4gcGVuZGluZyBPUEVOIGNhbGxzLg0KPiA+IA0KPiA+ID4gY2FzZS4gIEFub3Ro
+ZXIgYXBwcm9hY2ggbWF5IGJlIHRvIGRldGVjdCAnaG9sZXMnIGluIHRoZSBzdGF0ZSBpZA0KPiA+
+ID4gc2VxdWVuY2UNCj4gPiA+IGFuZCBub3QgY2FsbCBDTE9TRSB1bnRpbCBlYWNoIGlkIGlzIHBy
+b2Nlc3NlZC4gIEkgdGhpbmsgdGhlcmUncw0KPiA+ID4gYW4NCj4gPiA+IGV4aXN0aW5nDQo+ID4g
+DQo+ID4gV2UgY2FuJ3Qga25vdyB3ZSBoYXZlIGEgaG9sZSB1bnRpbCB3ZSBrbm93IHRoZSBzdGFy
+dGluZyB2YWx1ZSBvZg0KPiA+IHRoZQ0KPiA+IHNlcWlkLCB3aGljaCBpcyB1bmRlZmluZWQgYWNj
+b3JkaW5nIHRvIFJGQyA1NjYxIHNlY3Rpb24gMy4zLjEyLg0KPiANCj4gQWgsIHl1Y2suICBJIHJl
+YWQgOC4yLjI6DQo+IA0KPiAgICBXaGVuIHN1Y2ggYSBzZXQgb2YgbG9ja3MgaXMgZmlyc3QgY3Jl
+YXRlZCwgdGhlIHNlcnZlciByZXR1cm5zIGENCj4gICAgc3RhdGVpZCB3aXRoIHNlcWlkIHZhbHVl
+IG9mIG9uZS4NCj4gDQo+IC4uIGFuZCB3ZW50IGZyb20gdGhlcmUuICBJcyB0aGlzIGEgY29uZmxp
+Y3QgaW4gdGhlIHNwZWM/DQo+IA0KDQpIbW0uLi4gSSBub3RlIHRoYXQgdGhlIGVxdWl2YWxlbnQg
+c2VjdGlvbiAyLjIuMTYgaW4gUkZDNzUzMCBoYXMgYmVlbg0KY2hhbmdlZCB0byByZW1vdmUgdGhl
+IGJpdCBhYm91dCB0aGUgc3RhcnRpbmcgdmFsdWUgb2Ygc2VxaWQgYmVpbmcNCnVuZGVmaW5lZC4N
+Cg0KU28sIGlmIHRoZSBzcGVjIGFsbG93cyB1cyB0byByZWx5IG9uIHRoZSBzZXFpZCBhbHdheXMg
+YmVpbmcgaW5pdGlhbGlzZWQNCnRvIDEsIHRoZW4gd2UgbWlnaHQgYXQgbGVhc3QgYmUgYWJsZSB0
+byBkZXRlY3QgdGhhdCB3ZSBoYXZlIHRvIHJlcGxheQ0KdGhlIG9wZW4uDQpPbmUgd2F5IHRvIGRv
+IHNvIG1pZ2h0IGJlIHRvIGtlZXAgYSBjb3VudCBvZiB0aGUgbnVtYmVyIG9mIG91dHN0YW5kaW5n
+DQpzZXFpZHMsIGFuZCB0aGVuIGZvcmNlIE9QRU5fRE9XTkdSQURFL0NMT1NFIHRvIHdhaXQgdW50
+aWwgdGhhdCBudW1iZXINCmhpdHMgMCAob3IgdW50aWwgYSBzdGF0ZSByZWNvdmVyeSBpcyBzdGFy
+dGVkKS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+ciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
