@@ -1,84 +1,245 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: bcodding redhat <bcodding@redhat.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and
- CLOSE/DOWNGRADE race
-Date: Tue, 17 Oct 2017 18:26:31 +0000
-Message-ID: <1508264788.11156.11.camel@primarydata.com>
-References: <cover.1508248965.git.bcodding@redhat.com>
-	 <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
-	 <1508255361.3718.17.camel@primarydata.com>
-	 <8384C212-F32B-4F5A-B522-A8F08108DA58@redhat.com>
-	 <1508262139.6260.7.camel@primarydata.com>
-	 <62F4199A-60AB-4CC1-990F-8BA1BCC39482@redhat.com>
-In-Reply-To: <62F4199A-60AB-4CC1-990F-8BA1BCC39482@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx143.netapp.com ([216.240.21.24]:3798 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755398AbdJQSjq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 17 Oct 2017 14:39:46 -0400
+Subject: Re: [PATCH v5 03/23] NFS OFFLOAD_STATUS xdr
+To: Olga Kornievskaia <kolga@netapp.com>,
+        <Trond.Myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+References: <20171013205550.65573-1-kolga@netapp.com>
+ <20171013205550.65573-4-kolga@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <674db087-052c-5c01-7e20-30fca3c9472d@Netapp.com>
+Date: Tue, 17 Oct 2017 14:39:37 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20171013205550.65573-4-kolga@netapp.com>
+Content-Type: text/plain; charset=utf-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTEwLTE3IGF0IDEzOjUyIC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBPbiAxNyBPY3QgMjAxNywgYXQgMTM6NDIsIFRyb25kIE15a2xlYnVzdCB3cm90ZToN
-Cj4gDQo+ID4gT24gVHVlLCAyMDE3LTEwLTE3IGF0IDEzOjMzIC0wNDAwLCBCZW5qYW1pbiBDb2Rk
-aW5ndG9uIHdyb3RlOg0KPiA+ID4gT24gMTcgT2N0IDIwMTcsIGF0IDExOjQ5LCBUcm9uZCBNeWts
-ZWJ1c3Qgd3JvdGU6DQo+ID4gPiANCj4gPiA+ID4gT24gVHVlLCAyMDE3LTEwLTE3IGF0IDEwOjQ2
-IC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdyb3RlOg0KPiA+ID4gPiA+IElmIHRoZSBjbGll
-bnQgaXNzdWVzIHR3byBzaW11bHRhbmVvdXMgT1BFTiBjYWxscywgYW5kIHRoZQ0KPiA+ID4gPiA+
-IHJlc3BvbnNlIHRvDQo+ID4gPiA+ID4gdGhlDQo+ID4gPiA+ID4gZmlyc3QgT1BFTiBjYWxsIChz
-ZXF1ZW5jZSBpZCAxKSBpcyBkZWxheWVkIGJlZm9yZSB1cGRhdGluZw0KPiA+ID4gPiA+IHRoZQ0K
-PiA+ID4gPiA+IG5mczRfc3RhdGUsDQo+ID4gPiA+ID4gdGhlbiB0aGUgY2xpZW50J3MgbmZzNF9z
-dGF0ZSBjYW4gdHJhbnNpdGlvbiB0aHJvdWdoIGENCj4gPiA+ID4gPiBjb21wbGV0ZQ0KPiA+ID4g
-PiA+IGxpZmVjeWNsZSBvZg0KPiA+ID4gPiA+IE9QRU4gKHN0YXRlIHNlcXVlbmNlIGlkIDIpLCBh
-bmQgQ0xPU0UgKHN0YXRlIHNlcXVlbmNlIGlkDQo+ID4gPiA+ID4gMykuICBXaGVuDQo+ID4gPiA+
-ID4gdGhlDQo+ID4gPiA+ID4gZmlyc3QgT1BFTiBpcyBmaW5hbGx5IHByb2Nlc3NlZCwgdGhlIG5m
-czRfc3RhdGUgaXMNCj4gPiA+ID4gPiBpbmNvcnJlY3RseQ0KPiA+ID4gPiA+IHRyYW5zaXRpb25l
-ZA0KPiA+ID4gPiA+IGJhY2sgdG8gTkZTX09QRU5fU1RBVEUgZm9yIHRoZSBmaXJzdCBPUEVOIChz
-ZXF1ZW5jZSBpZA0KPiA+ID4gPiA+IDEpLiAgU3Vic2VxdWVudCBjYWxscw0KPiA+ID4gPiA+IHRv
-IExPQ0sgb3IgQ0xPU0Ugd2lsbCByZWNlaXZlIE5GUzRFUlJfQkFEX1NUQVRFSUQsIGFuZA0KPiA+
-ID4gPiA+IHRyaWdnZXINCj4gPiA+ID4gPiBzdGF0ZQ0KPiA+ID4gPiA+IHJlY292ZXJ5Lg0KPiA+
-ID4gPiA+IA0KPiA+ID4gPiA+IEZpeCB0aGlzIGJ5IHBhc3NpbmcgYmFjayB0aGUgcmVzdWx0IG9m
-DQo+ID4gPiA+ID4gbmVlZF91cGRhdGVfb3Blbl9zdGF0ZWlkKCkNCj4gPiA+ID4gPiB0bw0KPiA+
-ID4gPiA+IHRoZQ0KPiA+ID4gPiA+IG9wZW4oKSBwYXRoLCB3aXRoIHRoZSByZXN1bHQgdG8gdHJ5
-IGFnYWluIGlmIHRoZSBPUEVOJ3MNCj4gPiA+ID4gPiBzdGF0ZWlkDQo+ID4gPiA+ID4gc2hvdWxk
-IG5vdA0KPiA+ID4gPiA+IGJlIHVwZGF0ZWQuDQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4g
-PiBXaHkgYXJlIHdlIHdvcnJpZWQgYWJvdXQgdGhlIHNwZWNpYWwgY2FzZSB3aGVyZSB0aGUgY2xp
-ZW50DQo+ID4gPiA+IGFjdHVhbGx5DQo+ID4gPiA+IGZpbmRzIHRoZSBjbG9zZWQgc3RhdGVpZCBp
-biBpdHMgY2FjaGU/DQo+ID4gPiANCj4gPiA+IEJlY2F1c2UgSSBhbSBoaXR0aW5nIHRoYXQgY2Fz
-ZSB2ZXJ5IGZyZXF1ZW50bHkgaW4gZ2VuZXJpYy8wODksDQo+ID4gPiBhbmQgSQ0KPiA+ID4gaGF0
-ZQ0KPiA+ID4gaG93IHVubmVjZXNzYXJ5IHN0YXRlIHJlY292ZXJ5IHNsb3dzIGV2ZXJ5dGhpbmcg
-ZG93bi4gIEknbSBhbHNvDQo+ID4gDQo+ID4gV2h5IGlzIGl0IGJlaW5nIGhpdC4gSXMgdGhlIGNs
-aWVudCBwcm9jZXNzaW5nIHN0dWZmIG91dCBvZiBvcmRlcj8NCj4gDQo+IFllcy4NCj4gDQo+ID4g
-PiA+IEluIHRoZSBtb3JlIGdlbmVyYWwgY2FzZSBvZiB5b3VyIHJhY2UsIHRoZSBzdGF0ZWlkIG1p
-Z2h0IG5vdCBiZQ0KPiA+ID4gPiBmb3VuZA0KPiA+ID4gPiBhdCBhbGwgYmVjYXVzZSB0aGUgQ0xP
-U0UgY29tcGxldGVzIGFuZCBpcyBwcm9jZXNzZWQgb24gdGhlDQo+ID4gPiA+IGNsaWVudA0KPiA+
-ID4gPiBiZWZvcmUgaXQgY2FuIHByb2Nlc3MgdGhlIHJlcGx5IGZyb20gdGhlIGRlbGF5ZWQgT1BF
-Ti4gSWYgc28sDQo+ID4gPiA+IHdlDQo+ID4gPiA+IHJlYWxseQ0KPiA+ID4gPiBoYXZlIG5vIHdh
-eSB0byBkZXRlY3QgdGhhdCB0aGUgZmlsZSBoYXMgYWN0dWFsbHkgYmVlbiBjbG9zZWQgYnkNCj4g
-PiA+ID4gdGhlDQo+ID4gPiA+IHNlcnZlciB1bnRpbCB3ZSBzZWUgdGhlIE5GUzRFUlJfQkFEX1NU
-QVRFSUQuDQo+ID4gPiANCj4gPiA+IEkgbWVudGlvbmVkIHRoaXMgY2FzZSBpbiB0aGUgY292ZXIg
-bGV0dGVyLiAgSXQncyBwb3NzaWJsZSB0aGF0DQo+ID4gPiB0aGUNCj4gPiA+IGNsaWVudA0KPiA+
-ID4gY291bGQgcmV0YWluIGEgcmVjb3JkIG9mIGEgY2xvc2VkIHN0YXRlaWQgaW4gb3JkZXIgdG8g
-cmV0cnkgYW4NCj4gPiA+IE9QRU4NCj4gPiA+IGluIHRoYXQNCj4gPiANCj4gPiBUaGF0IHdvdWxk
-IHJlcXVpcmUgdXMgdG8gcmV0YWluIGFsbCBzdGF0ZWlkcyB1bnRpbCB0aGVyZSBhcmUgbm8NCj4g
-PiBtb3JlDQo+ID4gcGVuZGluZyBPUEVOIGNhbGxzLg0KPiA+IA0KPiA+ID4gY2FzZS4gIEFub3Ro
-ZXIgYXBwcm9hY2ggbWF5IGJlIHRvIGRldGVjdCAnaG9sZXMnIGluIHRoZSBzdGF0ZSBpZA0KPiA+
-ID4gc2VxdWVuY2UNCj4gPiA+IGFuZCBub3QgY2FsbCBDTE9TRSB1bnRpbCBlYWNoIGlkIGlzIHBy
-b2Nlc3NlZC4gIEkgdGhpbmsgdGhlcmUncw0KPiA+ID4gYW4NCj4gPiA+IGV4aXN0aW5nDQo+ID4g
-DQo+ID4gV2UgY2FuJ3Qga25vdyB3ZSBoYXZlIGEgaG9sZSB1bnRpbCB3ZSBrbm93IHRoZSBzdGFy
-dGluZyB2YWx1ZSBvZg0KPiA+IHRoZQ0KPiA+IHNlcWlkLCB3aGljaCBpcyB1bmRlZmluZWQgYWNj
-b3JkaW5nIHRvIFJGQyA1NjYxIHNlY3Rpb24gMy4zLjEyLg0KPiANCj4gQWgsIHl1Y2suICBJIHJl
-YWQgOC4yLjI6DQo+IA0KPiAgICBXaGVuIHN1Y2ggYSBzZXQgb2YgbG9ja3MgaXMgZmlyc3QgY3Jl
-YXRlZCwgdGhlIHNlcnZlciByZXR1cm5zIGENCj4gICAgc3RhdGVpZCB3aXRoIHNlcWlkIHZhbHVl
-IG9mIG9uZS4NCj4gDQo+IC4uIGFuZCB3ZW50IGZyb20gdGhlcmUuICBJcyB0aGlzIGEgY29uZmxp
-Y3QgaW4gdGhlIHNwZWM/DQo+IA0KDQpIbW0uLi4gSSBub3RlIHRoYXQgdGhlIGVxdWl2YWxlbnQg
-c2VjdGlvbiAyLjIuMTYgaW4gUkZDNzUzMCBoYXMgYmVlbg0KY2hhbmdlZCB0byByZW1vdmUgdGhl
-IGJpdCBhYm91dCB0aGUgc3RhcnRpbmcgdmFsdWUgb2Ygc2VxaWQgYmVpbmcNCnVuZGVmaW5lZC4N
-Cg0KU28sIGlmIHRoZSBzcGVjIGFsbG93cyB1cyB0byByZWx5IG9uIHRoZSBzZXFpZCBhbHdheXMg
-YmVpbmcgaW5pdGlhbGlzZWQNCnRvIDEsIHRoZW4gd2UgbWlnaHQgYXQgbGVhc3QgYmUgYWJsZSB0
-byBkZXRlY3QgdGhhdCB3ZSBoYXZlIHRvIHJlcGxheQ0KdGhlIG9wZW4uDQpPbmUgd2F5IHRvIGRv
-IHNvIG1pZ2h0IGJlIHRvIGtlZXAgYSBjb3VudCBvZiB0aGUgbnVtYmVyIG9mIG91dHN0YW5kaW5n
-DQpzZXFpZHMsIGFuZCB0aGVuIGZvcmNlIE9QRU5fRE9XTkdSQURFL0NMT1NFIHRvIHdhaXQgdW50
-aWwgdGhhdCBudW1iZXINCmhpdHMgMCAob3IgdW50aWwgYSBzdGF0ZSByZWNvdmVyeSBpcyBzdGFy
-dGVkKS4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
-ciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+Hi Olga,
+
+On 10/13/2017 04:55 PM, Olga Kornievskaia wrote:
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> ---
+>  fs/nfs/nfs42xdr.c         | 89 +++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfs/nfs4proc.c         |  1 +
+>  fs/nfs/nfs4xdr.c          |  1 +
+>  include/linux/nfs4.h      |  1 +
+>  include/linux/nfs_fs_sb.h |  1 +
+>  include/linux/nfs_xdr.h   | 12 +++++++
+>  6 files changed, 105 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+> index 5ee1b0f..3ebbb41 100644
+> --- a/fs/nfs/nfs42xdr.c
+> +++ b/fs/nfs/nfs42xdr.c
+> @@ -25,6 +25,11 @@
+>  					 NFS42_WRITE_RES_SIZE + \
+>  					 1 /* cr_consecutive */ + \
+>  					 1 /* cr_synchronous */)
+> +#define encode_offload_status_maxsz	(op_encode_hdr_maxsz + \
+> +					 XDR_QUADLEN(NFS4_STATEID_SIZE))
+> +#define decode_offload_status_maxsz	(op_decode_hdr_maxsz + \
+> +					 2 /* osr_count */ + \
+> +					 1 + 1 /* osr_complete<1> */)
+>  #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
+>  					 encode_fallocate_maxsz)
+>  #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
+> @@ -74,6 +79,12 @@
+>  					 decode_putfh_maxsz + \
+>  					 decode_copy_maxsz + \
+>  					 decode_commit_maxsz)
+> +#define NFS4_enc_offload_status_sz	(compound_encode_hdr_maxsz + \
+> +					 encode_putfh_maxsz + \
+> +					 encode_offload_status_maxsz)
+> +#define NFS4_dec_offload_status_sz	(compound_decode_hdr_maxsz + \
+> +					 decode_putfh_maxsz + \
+> +					 decode_offload_status_maxsz)
+>  #define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
+>  					 encode_putfh_maxsz + \
+>  					 encode_deallocate_maxsz + \
+> @@ -144,6 +155,14 @@ static void encode_copy(struct xdr_stream *xdr,
+>  	encode_uint32(xdr, 0); /* src server list */
+>  }
+>  
+> +static void encode_offload_status(struct xdr_stream *xdr,
+> +				  const struct nfs42_offload_status_args *args,
+> +				  struct compound_hdr *hdr)
+> +{
+> +	encode_op_hdr(xdr, OP_OFFLOAD_STATUS, decode_offload_status_maxsz, hdr);
+> +	encode_nfs4_stateid(xdr, &args->osa_stateid);
+> +}
+> +
+>  static void encode_deallocate(struct xdr_stream *xdr,
+>  			      const struct nfs42_falloc_args *args,
+>  			      struct compound_hdr *hdr)
+> @@ -260,6 +279,25 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
+>  }
+>  
+>  /*
+> + * Encode OFFLOAD_STATUS request
+> + */
+> +static void nfs4_xdr_enc_offload_status(struct rpc_rqst *req,
+> +					struct xdr_stream *xdr,
+> +					const void *data)
+> +{
+> +	const struct nfs42_offload_status_args *args = data;
+> +	struct compound_hdr hdr = {
+> +		.minorversion = nfs4_xdr_minorversion(&args->osa_seq_args),
+> +	};
+> +
+> +	encode_compound_hdr(xdr, req, &hdr);
+> +	encode_sequence(xdr, &args->osa_seq_args, &hdr);
+> +	encode_putfh(xdr, args->osa_src_fh, &hdr);
+> +	encode_offload_status(xdr, args, &hdr);
+> +	encode_nops(&hdr);
+> +}
+> +
+> +/*
+>   * Encode DEALLOCATE request
+>   */
+>  static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
+> @@ -412,6 +450,31 @@ static int decode_copy(struct xdr_stream *xdr, struct nfs42_copy_res *res)
+>  	return decode_copy_requirements(xdr, res);
+>  }
+>  
+> +static int decode_offload_status(struct xdr_stream *xdr,
+> +				 struct nfs42_offload_status_res *res)
+> +{
+> +	__be32 *p;
+> +	uint32_t count;
+> +	int status;
+> +
+> +	status = decode_op_hdr(xdr, OP_OFFLOAD_STATUS);
+> +	if (status)
+> +		return status;
+> +	p = xdr_inline_decode(xdr, 8 + 4);
+> +	if (unlikely(!p))
+> +		goto out_overflow;
+> +	p = xdr_decode_hyper(p, &res->osr_count);
+> +	count = be32_to_cpup(p++);
+> +	if (count) {
+> +		p = xdr_inline_decode(xdr, 4);
+
+Shouldn't this have an out_overflow check too, just in case?
+
+Thanks,
+Anna
+
+> +		res->osr_status = nfs4_stat_to_errno(be32_to_cpup(p));
+> +	}
+> +	return 0;
+> +out_overflow:
+> +	print_overflow_msg(__func__, xdr);
+> +	return -EIO;
+> +}
+> +
+>  static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *res)
+>  {
+>  	return decode_op_hdr(xdr, OP_DEALLOCATE);
+> @@ -512,6 +575,32 @@ static int nfs4_xdr_dec_copy(struct rpc_rqst *rqstp,
+>  }
+>  
+>  /*
+> + * Decode OFFLOAD_STATUS response
+> + */
+> +static int nfs4_xdr_dec_offload_status(struct rpc_rqst *rqstp,
+> +				       struct xdr_stream *xdr,
+> +				       void *data)
+> +{
+> +	struct nfs42_offload_status_res *res = data;
+> +	struct compound_hdr hdr;
+> +	int status;
+> +
+> +	status = decode_compound_hdr(xdr, &hdr);
+> +	if (status)
+> +		goto out;
+> +	status = decode_sequence(xdr, &res->osr_seq_res, rqstp);
+> +	if (status)
+> +		goto out;
+> +	status = decode_putfh(xdr);
+> +	if (status)
+> +		goto out;
+> +	status = decode_offload_status(xdr, res);
+> +
+> +out:
+> +	return status;
+> +}
+> +
+> +/*
+>   * Decode DEALLOCATE request
+>   */
+>  static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 6c61e2b..7d59593 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -9295,6 +9295,7 @@ static bool nfs4_match_stateid(const nfs4_stateid *s1,
+>  		| NFS_CAP_ATOMIC_OPEN_V1
+>  		| NFS_CAP_ALLOCATE
+>  		| NFS_CAP_COPY
+> +		| NFS_CAP_OFFLOAD_STATUS
+>  		| NFS_CAP_DEALLOCATE
+>  		| NFS_CAP_SEEK
+>  		| NFS_CAP_LAYOUTSTATS
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 37c8af0..5406f1d 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -7733,6 +7733,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+>  	PROC(LAYOUTSTATS,	enc_layoutstats,	dec_layoutstats),
+>  	PROC(CLONE,		enc_clone,		dec_clone),
+>  	PROC(COPY,		enc_copy,		dec_copy),
+> +	PROC(OFFLOAD_STATUS,	enc_offload_status,	dec_offload_status),
+>  #endif /* CONFIG_NFS_V4_2 */
+>  };
+>  
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 47239c3..0f37785 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -524,6 +524,7 @@ enum {
+>  	NFSPROC4_CLNT_LAYOUTSTATS,
+>  	NFSPROC4_CLNT_CLONE,
+>  	NFSPROC4_CLNT_COPY,
+> +	NFSPROC4_CLNT_OFFLOAD_STATUS,
+>  };
+>  
+>  /* nfs41 types */
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index 74c4466..fb4e2b8 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -252,5 +252,6 @@ struct nfs_server {
+>  #define NFS_CAP_LAYOUTSTATS	(1U << 22)
+>  #define NFS_CAP_CLONE		(1U << 23)
+>  #define NFS_CAP_COPY		(1U << 24)
+> +#define NFS_CAP_OFFLOAD_STATUS	(1U << 25)
+>  
+>  #endif
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 164d535..5ffd745 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1399,6 +1399,18 @@ struct nfs42_copy_res {
+>  	struct nfs_commitres		commit_res;
+>  };
+>  
+> +struct nfs42_offload_status_args {
+> +	struct nfs4_sequence_args	osa_seq_args;
+> +	struct nfs_fh			*osa_src_fh;
+> +	nfs4_stateid			osa_stateid;
+> +};
+> +
+> +struct nfs42_offload_status_res {
+> +	struct nfs4_sequence_res	osr_seq_res;
+> +	uint64_t			osr_count;
+> +	int				osr_status;
+> +};
+> +
+>  struct nfs42_seek_args {
+>  	struct nfs4_sequence_args	seq_args;
+>  
+> 
