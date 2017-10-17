@@ -1,98 +1,99 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41092 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S937178AbdJQRwC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Oct 2017 13:52:02 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Trond Myklebust" <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/3] NFSv4.1: Detect and retry after OPEN and
- CLOSE/DOWNGRADE race
-Date: Tue, 17 Oct 2017 13:52:01 -0400
-Message-ID: <62F4199A-60AB-4CC1-990F-8BA1BCC39482@redhat.com>
-In-Reply-To: <1508262139.6260.7.camel@primarydata.com>
-References: <cover.1508248965.git.bcodding@redhat.com>
- <fb76d86caca02c277eea7cb1d469c209b59d06ab.1508248965.git.bcodding@redhat.com>
- <1508255361.3718.17.camel@primarydata.com>
- <8384C212-F32B-4F5A-B522-A8F08108DA58@redhat.com>
- <1508262139.6260.7.camel@primarydata.com>
-MIME-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@redhat.com>
+Message-ID: <1508264368.4747.17.camel@redhat.com>
+Subject: Re: [PATCH] nfsd4: Prevent the reuse of a closed stateid
+From: Jeff Layton <jlayton@redhat.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Date: Tue, 17 Oct 2017 14:19:28 -0400
+In-Reply-To: <F5CCE778-0A1E-4818-8D9B-7F45FC3E7F4B@redhat.com>
+References: 
+	<2087b4cab6c695a7df01c1135f1773c9b762f0b0.1508248427.git.bcodding@redhat.com>
+	 <1508258356.4747.6.camel@redhat.com>
+	 <F5CCE778-0A1E-4818-8D9B-7F45FC3E7F4B@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 17 Oct 2017, at 13:42, Trond Myklebust wrote:
+On Tue, 2017-10-17 at 13:46 -0400, Benjamin Coddington wrote:
+> On 17 Oct 2017, at 12:39, Jeff Layton wrote:
+> 
+> > On Tue, 2017-10-17 at 09:55 -0400, Benjamin Coddington wrote:
+> > > While running generic/089 on NFSv4.1, the following on-the-wire 
+> > > exchange
+> > > occurs:
+> > > 
+> > > Client                  Server
+> > > ----------              ----------
+> > > OPEN (owner A)  ->
+> > >                     <-  OPEN response: state A1
+> > > CLOSE (state A1)->
+> > > OPEN (owner A)  ->
+> > >                     <-  CLOSE response: state A2
+> > >                     <-  OPEN response: state A3
+> > > LOCK (state A3) ->
+> > >                     <-  LOCK response: NFS4_BAD_STATEID
+> > > 
+> > > The server should not be returning state A3 in response to the second 
+> > > OPEN
+> > > after processing the CLOSE and sending back state A2.  The problem is 
+> > > that
+> > > nfsd4_process_open2() is able to find an existing open state just 
+> > > after
+> > > nfsd4_close() has incremented the state's sequence number but before
+> > > calling unhash_ol_stateid().
+> > > 
+> > > Fix this by using the state's sc_type field to identify closed state, 
+> > > and
+> > > protect the update of that field with st_mutex.  
+> > > nfsd4_find_existing_open()
+> > > will return with the st_mutex held, so that the state will not 
+> > > transition
+> > > between being looked up and then updated in nfsd4_process_open2().
+> > > 
+> > > Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> > > ---
+> > >  fs/nfsd/nfs4state.c | 29 +++++++++++++++++++----------
+> > >  1 file changed, 19 insertions(+), 10 deletions(-)
+> > > 
+> > 
+> > The problem is real, but I'm not thrilled with the fix. It seems more
+> > lock thrashy...
+> 
+> Really?  I don't think I increased any call counts to spinlocks or mutex
+> locks.  The locking overhead should be equivalent.
+> 
 
-> On Tue, 2017-10-17 at 13:33 -0400, Benjamin Coddington wrote:
->> On 17 Oct 2017, at 11:49, Trond Myklebust wrote:
->>
->>> On Tue, 2017-10-17 at 10:46 -0400, Benjamin Coddington wrote:
->>>> If the client issues two simultaneous OPEN calls, and the
->>>> response to
->>>> the
->>>> first OPEN call (sequence id 1) is delayed before updating the
->>>> nfs4_state,
->>>> then the client's nfs4_state can transition through a complete
->>>> lifecycle of
->>>> OPEN (state sequence id 2), and CLOSE (state sequence id
->>>> 3).  When
->>>> the
->>>> first OPEN is finally processed, the nfs4_state is incorrectly
->>>> transitioned
->>>> back to NFS_OPEN_STATE for the first OPEN (sequence id
->>>> 1).  Subsequent calls
->>>> to LOCK or CLOSE will receive NFS4ERR_BAD_STATEID, and trigger
->>>> state
->>>> recovery.
->>>>
->>>> Fix this by passing back the result of need_update_open_stateid()
->>>> to
->>>> the
->>>> open() path, with the result to try again if the OPEN's stateid
->>>> should not
->>>> be updated.
->>>>
->>>
->>> Why are we worried about the special case where the client actually
->>> finds the closed stateid in its cache?
->>
->> Because I am hitting that case very frequently in generic/089, and I
->> hate
->> how unnecessary state recovery slows everything down.  I'm also
->
-> Why is it being hit. Is the client processing stuff out of order?
+init_open_stateid will now end up taking fi_lock twice. Also we now have
+to take the st_mutex in nfsd4_find_existing_open, just to check sc_type.
+Neither of those are probably unreasonable, it's just messier than I'd
+like.
 
-Yes.
+> > Could we instead fix this by just unhashing the stateid earlier, 
+> > before
+> > the nfs4_inc_and_copy_stateid call?
+> 
+> I think I tried this - and if I remember correctly, the problem is that 
+> you
+> can't hold st_mutux while taking the cl_lock (or maybe it was the 
+> fi_lock?).
+> I tried several simpler ways, and they resulted in deadlocks.
+> 
+> That was a couple of weeks ago, so I apologize if my memory is fuzzy.  I
+> should have sent this patch off to the list then.  If you need me to to
+> verify that, I can - but maybe someone more familiar with the locking 
+> here
+> can save me that time.
+> 
+> Ben
 
->>> In the more general case of your race, the stateid might not be
->>> found
->>> at all because the CLOSE completes and is processed on the client
->>> before it can process the reply from the delayed OPEN. If so, we
->>> really
->>> have no way to detect that the file has actually been closed by the
->>> server until we see the NFS4ERR_BAD_STATEID.
->>
->> I mentioned this case in the cover letter.  It's possible that the
->> client
->> could retain a record of a closed stateid in order to retry an OPEN
->> in that
->
-> That would require us to retain all stateids until there are no more
-> pending OPEN calls.
->
->> case.  Another approach may be to detect 'holes' in the state id
->> sequence
->> and not call CLOSE until each id is processed.  I think there's an
->> existing
->
-> We can't know we have a hole until we know the starting value of the
-> seqid, which is undefined according to RFC 5661 section 3.3.12.
 
-Ah, yuck.  I read 8.2.2:
+There should be no problem taking the cl_lock while holding st_mutex.
+It's never safe to do the reverse though. I'd just do the unhash before 
+nfs4_inc_and_copy_stateid, and then save the rest of the stuff in
+nfsd4_close_open_stateid for after the st_mutex has been dropped.
 
-   When such a set of locks is first created, the server returns a
-   stateid with seqid value of one.
+I think what I'm suggesting is possible. You may need to unroll
+nfsd4_close_open_stateid to make it work though.
 
-.. and went from there.  Is this a conflict in the spec?
-
-Ben
+-- 
+Jeff Layton <jlayton@redhat.com>
