@@ -1,52 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:1483 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932503AbdJQQkw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Oct 2017 12:40:52 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [RFC PATCH 0/2] race of lockd/nfsd inetaddr notifiers with pointers
- change
-To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-Message-ID: <24d4e50e-80f7-1874-6745-511f9e7b5739@virtuozzo.com>
-Date: Tue, 17 Oct 2017 19:40:48 +0300
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qt0-f169.google.com ([209.85.216.169]:51605 "EHLO
+        mail-qt0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S935888AbdJQQk3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Oct 2017 12:40:29 -0400
+Received: by mail-qt0-f169.google.com with SMTP id h4so4862955qtk.8
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Oct 2017 09:40:29 -0700 (PDT)
+Message-ID: <1508258427.4747.7.camel@redhat.com>
+Subject: Re: [PATCH 0/4] make function arg and structures as const
+From: Jeff Layton <jlayton@redhat.com>
+To: Bhumika Goyal <bhumirks@gmail.com>, julia.lawall@lip6.fr,
+        trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        bfields@fieldses.org, davem@davemloft.net,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        netdev@vger.kernel.org
+Date: Tue, 17 Oct 2017 12:40:27 -0400
+In-Reply-To: <1508256866-12798-1-git-send-email-bhumirks@gmail.com>
+References: <1508256866-12798-1-git-send-email-bhumirks@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lockd and nfsd inet[6]addr notifiers use pointer that can be changed during execution.
+On Tue, 2017-10-17 at 18:14 +0200, Bhumika Goyal wrote:
+> Make the function argument as const. After thing change, make
+> the cache_detail structures as const.
+> 
+> Bhumika Goyal (4):
+>   sunrpc: make the function arg as const
+>   NFS: make cache_detail structures const
+>   NFSD: make cache_detail structures const
+>   SUNRPC: make cache_detail structures const
+> 
+>  fs/nfs/dns_resolve.c              | 2 +-
+>  fs/nfsd/export.c                  | 4 ++--
+>  fs/nfsd/nfs4idmap.c               | 4 ++--
+>  include/linux/sunrpc/cache.h      | 2 +-
+>  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
+>  net/sunrpc/cache.c                | 2 +-
+>  net/sunrpc/svcauth_unix.c         | 4 ++--
+>  7 files changed, 11 insertions(+), 11 deletions(-)
+> 
 
-lockd_inet[6]addr_event use nlmsvc_rqst without taken nlmsvc_mutex,
-nfsd notifier have similar trouble.
+Looks pretty straightforward. You can add this to the set:
 
-We got few crashes from OpenVz customers on RHEL6-based kernel,
-and I have reproduced the problem locally on this kernel.
-
-I was unable to reproduce the problem on new kernels,
-however seems they are affected.
-
-We cannot add mutexes into notifiers because inet6addr notifiers should be atomic.
-
-To fix the problem I use atomic counter and waitqueue:
-counter allows notifier to access the pointer,
-waitqueue allows to delay stop of service until notifier is in use.
-
-Patches was not tested because I was unable to reproduce the problem on new kernels. 
-
-Please review it carefully and let me know if this can be fixed in a better way.
-
-Vasily Averin (2):
-  race of lockd inetaddr notifiers with nlmsvc_rqst change
-  race of nfsd inetaddr notifiers with nn->nfsd_serv change
-
- fs/lockd/svc.c   | 16 ++++++++++++++--
- fs/nfsd/netns.h  |  3 +++
- fs/nfsd/nfsctl.c |  3 +++
- fs/nfsd/nfssvc.c | 14 +++++++++++---
- 4 files changed, 31 insertions(+), 5 deletions(-)
-
--- 
-2.7.4
-
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
