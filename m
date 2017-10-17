@@ -1,140 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38816 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:48664 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754553AbdJQUo3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Oct 2017 16:44:29 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Jeff Layton" <jlayton@redhat.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: Prevent the reuse of a closed stateid
-Date: Tue, 17 Oct 2017 16:44:27 -0400
-Message-ID: <D1F7A030-765C-41BF-B516-44E72961A3AE@redhat.com>
-In-Reply-To: <1508267486.4747.27.camel@redhat.com>
-References: <2087b4cab6c695a7df01c1135f1773c9b762f0b0.1508248427.git.bcodding@redhat.com>
- <1508267486.4747.27.camel@redhat.com>
+        id S934833AbdJQVbV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 17 Oct 2017 17:31:21 -0400
+Date: Tue, 17 Oct 2017 17:31:20 -0400
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: Thomas Haynes <loghyr@primarydata.com>,
+        "loghyr@excfb.com" <loghyr@excfb.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Subject: Re: pynfs replay cache test SEQ9f
+Message-ID: <20171017213120.GD28711@fieldses.org>
+References: <E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com>
+ <20171012194946.GC5233@fieldses.org>
+ <6F78E570-F9B0-41A9-B224-3F2313AA8D4F@primarydata.com>
+ <20171012214454.GA19598@fieldses.org>
+ <20171012220051.GB29204@psyklo.internal.excfb.com>
+ <20171013015223.GA21284@fieldses.org>
+ <1507901666.4550.2.camel@primarydata.com>
+ <20171013150021.GG5233@fieldses.org>
+ <1507908409.9498.14.camel@primarydata.com>
+ <20171013185015.GA15087@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171013185015.GA15087@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Oct 13, 2017 at 02:50:15PM -0400, bfields@fieldses.org wrote:
+> On Fri, Oct 13, 2017 at 03:26:51PM +0000, Trond Myklebust wrote:
+> > On Fri, 2017-10-13 at 11:00 -0400, bfields@fieldses.org wrote:
+> > > OK, OK, I'll look into fixing the server (I'm pretty sure we get this
+> > > wrong).
+> > > 
+> > > You've explained the ctrl-C case before and I don't think I
+> > > understood
+> > > it.  I guess otherwise the only way for the client to sort out the
+> > > situation would be to retry the original request.  And that requires
+> > > keeping the arguments and credentials around to handle potential
+> > > retries.  And that's impractical if the process is going away?  OK.
+> > > 
+> > 
+> > Right, we're not going to do that just for data that is just going to
+> > be tossed away anyway. We already guarantee that non-idempotent
+> > operations (the ones that we actually do ask the server to cache) are
+> > guaranteed to complete whether or not the user presses ^C, so this is
+> > mainly about what happens when somebody interrupts an operation that we
+> > did not want the server to cache.
+> > 
+> > I have a patch out there that just replays a SEQUENCE op if we detect
+> > that an RPC call was interrupted. That should be sufficient to deal
+> > with servers that cache everything (whether or not the client sets
+> > sa_cachethis), but don't want to do NFS4ERR_SEQ_FALSE_RETRY. That
+> > particular combination has been seen to be extremely toxic to the
+> > current client, because it can get replayed LOOKUP or GETATTR requests
+> > after someone presses ^C.
+> 
+> Those all involve uncached compounds with more than one op.  My reading
+> of knfsd code is that it will return RETRY_UNCACHED_REP in this case,
+> and I think (I might be misunderstanding) that the client will bump the
+> slot seqid and retry in that case.  So I *think* you shouldn't be seeing
+> that problem with knfsd?
 
+Argh, no, you're sending a bare SEQUENCE so of course there's just one
+op.
 
-On 17 Oct 2017, at 15:11, Jeff Layton wrote:
+And looking at Olga's COPY example and the code....  The server gets
+confused in this case and returns a reply to the SEQUENCE, nothing else,
+but sets the reply's opcnt to the count taken from the original call,
+for some reason.
 
-> On Tue, 2017-10-17 at 09:55 -0400, Benjamin Coddington wrote:
->> While running generic/089 on NFSv4.1, the following on-the-wire 
->> exchange
->> occurs:
->>
->> Client                  Server
->> ----------              ----------
->> OPEN (owner A)  ->
->>                     <-  OPEN response: state A1
->> CLOSE (state A1)->
->> OPEN (owner A)  ->
->>                     <-  CLOSE response: state A2
->>                     <-  OPEN response: state A3
->> LOCK (state A3) ->
->>                     <-  LOCK response: NFS4_BAD_STATEID
->>
->> The server should not be returning state A3 in response to the second 
->> OPEN
->> after processing the CLOSE and sending back state A2.  The problem is 
->> that
->> nfsd4_process_open2() is able to find an existing open state just 
->> after
->> nfsd4_close() has incremented the state's sequence number but before
->> calling unhash_ol_stateid().
->>
->> Fix this by using the state's sc_type field to identify closed state, 
->> and
->> protect the update of that field with st_mutex.  
->> nfsd4_find_existing_open()
->> will return with the st_mutex held, so that the state will not 
->> transition
->> between being looked up and then updated in nfsd4_process_open2().
->>
->> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
->> ---
->>  fs/nfsd/nfs4state.c | 29 +++++++++++++++++++----------
->>  1 file changed, 19 insertions(+), 10 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 0c04f81aa63b..17473a092d01 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -3503,11 +3503,12 @@ static const struct 
->> nfs4_stateowner_operations openowner_ops = {
->>  static struct nfs4_ol_stateid *
->>  nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open 
->> *open)
->>  {
->> -	struct nfs4_ol_stateid *local, *ret = NULL;
->> +	struct nfs4_ol_stateid *local, *ret;
->>  	struct nfs4_openowner *oo = open->op_openowner;
->>
->> -	lockdep_assert_held(&fp->fi_lock);
->> -
->> +retry:
->> +	ret = NULL;
->> +	spin_lock(&fp->fi_lock);
->>  	list_for_each_entry(local, &fp->fi_stateids, st_perfile) {
->>  		/* ignore lock owners */
->>  		if (local->st_stateowner->so_is_open_owner == 0)
->> @@ -3518,6 +3519,18 @@ nfsd4_find_existing_open(struct nfs4_file *fp, 
->> struct nfsd4_open *open)
->>  			break;
->>  		}
->>  	}
->> +	spin_unlock(&fp->fi_lock);
->> +
->> +	/* Did we race with CLOSE? */
->> +	if (ret) {
->> +		mutex_lock(&ret->st_mutex);
->> +		if (ret->st_stid.sc_type != NFS4_OPEN_STID) {
->> +			mutex_unlock(&ret->st_mutex);
->> +			nfs4_put_stid(&ret->st_stid);
->> +			goto retry;
->> +		}
->> +	}
->> +
->>  	return ret;
->>  }
->>
->> @@ -3566,7 +3579,6 @@ init_open_stateid(struct nfs4_file *fp, struct 
->> nfsd4_open *open)
->>  	mutex_lock(&stp->st_mutex);
->>
->>  	spin_lock(&oo->oo_owner.so_client->cl_lock);
->> -	spin_lock(&fp->fi_lock);
->>
->>  	retstp = nfsd4_find_existing_open(fp, open);
->>  	if (retstp)
->> @@ -3583,13 +3595,13 @@ init_open_stateid(struct nfs4_file *fp, 
->> struct nfsd4_open *open)
->>  	stp->st_deny_bmap = 0;
->>  	stp->st_openstp = NULL;
->>  	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
->> +	spin_lock(&fp->fi_lock);
->>  	list_add(&stp->st_perfile, &fp->fi_stateids);
->> +	spin_unlock(&fp->fi_lock);
->>
->
-> Another potential problem above. I don't think it's be possible with
-> v4.0, but I think it could happen with v4.1+:
->
-> Could we end up with racing opens, such that two different nfsds 
-> search
-> for an existing open and not find one? Then, they both end up here and
-> insert two different stateids for the same openowner+file.
->
-> That's prevented now because we do it all under the same fi_lock, but
-> that won't be the case here.
+So, the server's returning a corrupt reply.  It needs to return a reply
+that's actually legal xdr and SEQUENCE results that match the call.
+Beyond that it probably doesn't matter exactly what it returns--either
+it handles it as a replay and doesn't bump the seqid, or a new call and
+does, but either way the seqid ends up in the same place, which is the
+goal here.  OK.
 
-Yes, that's definitely a problem, and its reminded me why I kept 
-dropping
-fi_lock - you can't take the st_mutex while holding it..  This is a 
-tangly
-bit of locking in here..  I'll see what I can come up with.
-
-Ben
+--b.
