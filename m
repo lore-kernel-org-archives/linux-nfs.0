@@ -1,227 +1,339 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:17181 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751772AbdJSTiZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2017 15:38:25 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 2/2] SUNRPC: Improve ordering of transport processing
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20171010173143.106492-2-trond.myklebust@primarydata.com>
-Date: Thu, 19 Oct 2017 15:38:17 -0400
-Cc: Bruce Fields <bfields@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <9D9E2C92-F1FF-4451-800D-54F74D815F7E@oracle.com>
-References: <20171010173143.106492-1-trond.myklebust@primarydata.com> <20171010173143.106492-2-trond.myklebust@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mail-it0-f49.google.com ([209.85.214.49]:53589 "EHLO
+        mail-it0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752746AbdJSTqu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2017 15:46:50 -0400
+Received: by mail-it0-f49.google.com with SMTP id n195so11089968itg.2
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Oct 2017 12:46:50 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: Olga Kornievskaia <olga.kornievskaia@gmail.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v3] NFSv4.1: Fix up replays of interrupted requests
+Date: Thu, 19 Oct 2017 15:46:45 -0400
+Message-Id: <20171019194645.76041-1-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If the previous request on a slot was interrupted before it was
+processed by the server, then our slot sequence number may be out of whack,
+and so we try the next operation using the old sequence number.
 
-> On Oct 10, 2017, at 1:31 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> Since it can take a while before a specific thread gets scheduled, it
-> is better to just implement a first come first served queue mechanism.
-> That way, if a thread is already scheduled and is idle, it can pick up
-> the work to do from the queue.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+The problem with this, is that not all servers check to see that the
+client is replaying the same operations as previously when they decide
+to go to the replay cache, and so instead of the expected error of
+NFS4ERR_SEQ_FALSE_RETRY, we get a replay of the old reply, which could
+(if the operations match up) be mistaken by the client for a new reply.
 
-Tested-by: Chuck Lever <chuck.lever@oracle.com>
+To fix this, we attempt to send a COMPOUND containing only the SEQUENCE op
+in order to resync our slot sequence number.
 
-Light performance testing, and a git software build / regression
-suite run on NFSv4.1. All on NFS/RDMA.
+Cc: Olga Kornievskaia <olga.kornievskaia@gmail.com>
+[olga.kornievskaia@gmail.com: fix an Oops]
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4_fs.h  |   2 +-
+ fs/nfs/nfs4proc.c | 148 +++++++++++++++++++++++++++++++++++++-----------------
+ 2 files changed, 103 insertions(+), 47 deletions(-)
 
-
-> ---
-> include/linux/sunrpc/svc.h |   1 +
-> net/sunrpc/svc_xprt.c      | 100 ++++++++++++++-------------------------------
-> 2 files changed, 31 insertions(+), 70 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 38f561b2dda3..23c4d6496aac 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -46,6 +46,7 @@ struct svc_pool {
-> 	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
-> #define	SP_TASK_PENDING		(0)		/* still work to do even if no
-> 						 * xprt is queued. */
-> +#define SP_CONGESTED		(1)
-> 	unsigned long		sp_flags;
-> } ____cacheline_aligned_in_smp;
-> 
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index d16a8b423c20..9b29c53281a8 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -380,7 +380,6 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
-> 	struct svc_pool *pool;
-> 	struct svc_rqst	*rqstp = NULL;
-> 	int cpu;
-> -	bool queued = false;
-> 
-> 	if (!svc_xprt_has_something_to_do(xprt))
-> 		goto out;
-> @@ -401,58 +400,25 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
-> 
-> 	atomic_long_inc(&pool->sp_stats.packets);
-> 
-> -redo_search:
-> +	dprintk("svc: transport %p put into queue\n", xprt);
-> +	spin_lock_bh(&pool->sp_lock);
-> +	list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
-> +	pool->sp_stats.sockets_queued++;
-> +	spin_unlock_bh(&pool->sp_lock);
-> +
-> 	/* find a thread for this xprt */
-> 	rcu_read_lock();
-> 	list_for_each_entry_rcu(rqstp, &pool->sp_all_threads, rq_all) {
-> -		/* Do a lockless check first */
-> -		if (test_bit(RQ_BUSY, &rqstp->rq_flags))
-> +		if (test_and_set_bit(RQ_BUSY, &rqstp->rq_flags))
-> 			continue;
-> -
-> -		/*
-> -		 * Once the xprt has been queued, it can only be dequeued by
-> -		 * the task that intends to service it. All we can do at that
-> -		 * point is to try to wake this thread back up so that it can
-> -		 * do so.
-> -		 */
-> -		if (!queued) {
-> -			spin_lock_bh(&rqstp->rq_lock);
-> -			if (test_and_set_bit(RQ_BUSY, &rqstp->rq_flags)) {
-> -				/* already busy, move on... */
-> -				spin_unlock_bh(&rqstp->rq_lock);
-> -				continue;
-> -			}
-> -
-> -			/* this one will do */
-> -			rqstp->rq_xprt = xprt;
-> -			svc_xprt_get(xprt);
-> -			spin_unlock_bh(&rqstp->rq_lock);
-> -		}
-> -		rcu_read_unlock();
-> -
-> 		atomic_long_inc(&pool->sp_stats.threads_woken);
-> 		wake_up_process(rqstp->rq_task);
-> -		put_cpu();
-> -		goto out;
-> -	}
-> -	rcu_read_unlock();
-> -
-> -	/*
-> -	 * We didn't find an idle thread to use, so we need to queue the xprt.
-> -	 * Do so and then search again. If we find one, we can't hook this one
-> -	 * up to it directly but we can wake the thread up in the hopes that it
-> -	 * will pick it up once it searches for a xprt to service.
-> -	 */
-> -	if (!queued) {
-> -		queued = true;
-> -		dprintk("svc: transport %p put into queue\n", xprt);
-> -		spin_lock_bh(&pool->sp_lock);
-> -		list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
-> -		pool->sp_stats.sockets_queued++;
-> -		spin_unlock_bh(&pool->sp_lock);
-> -		goto redo_search;
-> +		goto out_unlock;
-> 	}
-> +	set_bit(SP_CONGESTED, &pool->sp_flags);
-> 	rqstp = NULL;
-> +out_unlock:
-> +	rcu_read_unlock();
-> 	put_cpu();
-> out:
-> 	trace_svc_xprt_do_enqueue(xprt, rqstp);
-> @@ -721,38 +687,25 @@ rqst_should_sleep(struct svc_rqst *rqstp)
-> 
-> static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
-> {
-> -	struct svc_xprt *xprt;
-> 	struct svc_pool		*pool = rqstp->rq_pool;
-> 	long			time_left = 0;
-> 
-> 	/* rq_xprt should be clear on entry */
-> 	WARN_ON_ONCE(rqstp->rq_xprt);
-> 
-> -	/* Normally we will wait up to 5 seconds for any required
-> -	 * cache information to be provided.
-> -	 */
-> -	rqstp->rq_chandle.thread_wait = 5*HZ;
-> -
-> -	xprt = svc_xprt_dequeue(pool);
-> -	if (xprt) {
-> -		rqstp->rq_xprt = xprt;
-> -
-> -		/* As there is a shortage of threads and this request
-> -		 * had to be queued, don't allow the thread to wait so
-> -		 * long for cache updates.
-> -		 */
-> -		rqstp->rq_chandle.thread_wait = 1*HZ;
-> -		clear_bit(SP_TASK_PENDING, &pool->sp_flags);
-> -		return xprt;
-> -	}
-> +	rqstp->rq_xprt = svc_xprt_dequeue(pool);
-> +	if (rqstp->rq_xprt)
-> +		goto out_found;
-> 
-> 	/*
-> 	 * We have to be able to interrupt this wait
-> 	 * to bring down the daemons ...
-> 	 */
-> 	set_current_state(TASK_INTERRUPTIBLE);
-> +	smp_mb__before_atomic();
-> +	clear_bit(SP_CONGESTED, &pool->sp_flags);
-> 	clear_bit(RQ_BUSY, &rqstp->rq_flags);
-> -	smp_mb();
-> +	smp_mb__after_atomic();
-> 
-> 	if (likely(rqst_should_sleep(rqstp)))
-> 		time_left = schedule_timeout(timeout);
-> @@ -761,13 +714,11 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
-> 
-> 	try_to_freeze();
-> 
-> -	spin_lock_bh(&rqstp->rq_lock);
-> 	set_bit(RQ_BUSY, &rqstp->rq_flags);
-> -	spin_unlock_bh(&rqstp->rq_lock);
-> -
-> -	xprt = rqstp->rq_xprt;
-> -	if (xprt != NULL)
-> -		return xprt;
-> +	smp_mb__after_atomic();
-> +	rqstp->rq_xprt = svc_xprt_dequeue(pool);
-> +	if (rqstp->rq_xprt)
-> +		goto out_found;
-> 
-> 	if (!time_left)
-> 		atomic_long_inc(&pool->sp_stats.threads_timedout);
-> @@ -775,6 +726,15 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
-> 	if (signalled() || kthread_should_stop())
-> 		return ERR_PTR(-EINTR);
-> 	return ERR_PTR(-EAGAIN);
-> +out_found:
-> +	/* Normally we will wait up to 5 seconds for any required
-> +	 * cache information to be provided.
-> +	 */
-> +	if (!test_bit(SP_CONGESTED, &pool->sp_flags))
-> +		rqstp->rq_chandle.thread_wait = 5*HZ;
-> +	else
-> +		rqstp->rq_chandle.thread_wait = 1*HZ;
-> +	return rqstp->rq_xprt;
-> }
-> 
-> static void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
-> -- 
-> 2.13.6
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index ac4f10b7f6c1..b547d935aaf0 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -464,7 +464,7 @@ extern void nfs_increment_open_seqid(int status, struct nfs_seqid *seqid);
+ extern void nfs_increment_lock_seqid(int status, struct nfs_seqid *seqid);
+ extern void nfs_release_seqid(struct nfs_seqid *seqid);
+ extern void nfs_free_seqid(struct nfs_seqid *seqid);
+-extern int nfs4_setup_sequence(const struct nfs_client *client,
++extern int nfs4_setup_sequence(struct nfs_client *client,
+ 				struct nfs4_sequence_args *args,
+ 				struct nfs4_sequence_res *res,
+ 				struct rpc_task *task);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f90090e8c959..96b2077e691d 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -96,6 +96,10 @@ static int nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 			    struct nfs_open_context *ctx, struct nfs4_label *ilabel,
+ 			    struct nfs4_label *olabel);
+ #ifdef CONFIG_NFS_V4_1
++static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
++		struct rpc_cred *cred,
++		struct nfs4_slot *slot,
++		bool is_privileged);
+ static int nfs41_test_stateid(struct nfs_server *, nfs4_stateid *,
+ 		struct rpc_cred *);
+ static int nfs41_free_stateid(struct nfs_server *, const nfs4_stateid *,
+@@ -644,13 +648,14 @@ static int nfs40_sequence_done(struct rpc_task *task,
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ 
+-static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
++static void nfs41_release_slot(struct nfs4_slot *slot)
+ {
+ 	struct nfs4_session *session;
+ 	struct nfs4_slot_table *tbl;
+-	struct nfs4_slot *slot = res->sr_slot;
+ 	bool send_new_highest_used_slotid = false;
+ 
++	if (!slot)
++		return;
+ 	tbl = slot->table;
+ 	session = tbl->session;
+ 
+@@ -676,13 +681,18 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
+ 		send_new_highest_used_slotid = false;
+ out_unlock:
+ 	spin_unlock(&tbl->slot_tbl_lock);
+-	res->sr_slot = NULL;
+ 	if (send_new_highest_used_slotid)
+ 		nfs41_notify_server(session->clp);
+ 	if (waitqueue_active(&tbl->slot_waitq))
+ 		wake_up_all(&tbl->slot_waitq);
+ }
+ 
++static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
++{
++	nfs41_release_slot(res->sr_slot);
++	res->sr_slot = NULL;
++}
++
+ static int nfs41_sequence_process(struct rpc_task *task,
+ 		struct nfs4_sequence_res *res)
+ {
+@@ -710,13 +720,6 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 	/* Check the SEQUENCE operation status */
+ 	switch (res->sr_status) {
+ 	case 0:
+-		/* If previous op on slot was interrupted and we reused
+-		 * the seq# and got a reply from the cache, then retry
+-		 */
+-		if (task->tk_status == -EREMOTEIO && interrupted) {
+-			++slot->seq_nr;
+-			goto retry_nowait;
+-		}
+ 		/* Update the slot's sequence and clientid lease timer */
+ 		slot->seq_done = 1;
+ 		clp = session->clp;
+@@ -750,16 +753,16 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 		 * The slot id we used was probably retired. Try again
+ 		 * using a different slot id.
+ 		 */
++		if (slot->seq_nr < slot->table->target_highest_slotid)
++			goto session_recover;
+ 		goto retry_nowait;
+ 	case -NFS4ERR_SEQ_MISORDERED:
+ 		/*
+ 		 * Was the last operation on this sequence interrupted?
+ 		 * If so, retry after bumping the sequence number.
+ 		 */
+-		if (interrupted) {
+-			++slot->seq_nr;
+-			goto retry_nowait;
+-		}
++		if (interrupted)
++			goto retry_new_seq;
+ 		/*
+ 		 * Could this slot have been previously retired?
+ 		 * If so, then the server may be expecting seq_nr = 1!
+@@ -768,10 +771,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 			slot->seq_nr = 1;
+ 			goto retry_nowait;
+ 		}
+-		break;
++		goto session_recover;
+ 	case -NFS4ERR_SEQ_FALSE_RETRY:
+-		++slot->seq_nr;
+-		goto retry_nowait;
++		if (interrupted)
++			goto retry_new_seq;
++		goto session_recover;
+ 	default:
+ 		/* Just update the slot sequence no. */
+ 		slot->seq_done = 1;
+@@ -781,6 +785,11 @@ static int nfs41_sequence_process(struct rpc_task *task,
+ 	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
+ out_noaction:
+ 	return ret;
++session_recover:
++	nfs4_schedule_session_recovery(session, res->sr_status);
++	goto retry_nowait;
++retry_new_seq:
++	++slot->seq_nr;
+ retry_nowait:
+ 	if (rpc_restart_call_prepare(task)) {
+ 		nfs41_sequence_free_slot(res);
+@@ -857,6 +866,17 @@ static const struct rpc_call_ops nfs41_call_sync_ops = {
+ 	.rpc_call_done = nfs41_call_sync_done,
+ };
+ 
++static void
++nfs4_sequence_process_interrupted(struct nfs_client *client,
++		struct nfs4_slot *slot, struct rpc_cred *cred)
++{
++	struct rpc_task *task;
++
++	task = _nfs41_proc_sequence(client, cred, slot, true);
++	if (!IS_ERR(task))
++		rpc_put_task_async(task);
++}
++
+ #else	/* !CONFIG_NFS_V4_1 */
+ 
+ static int nfs4_sequence_process(struct rpc_task *task, struct nfs4_sequence_res *res)
+@@ -877,9 +897,34 @@ int nfs4_sequence_done(struct rpc_task *task,
+ }
+ EXPORT_SYMBOL_GPL(nfs4_sequence_done);
+ 
++static void
++nfs4_sequence_process_interrupted(struct nfs_client *client,
++		struct nfs4_slot *slot, struct rpc_cred *cred)
++{
++	WARN_ON_ONCE(1);
++	slot->interrupted = 0;
++}
++
+ #endif	/* !CONFIG_NFS_V4_1 */
+ 
+-int nfs4_setup_sequence(const struct nfs_client *client,
++static
++void nfs4_sequence_attach_slot(struct nfs4_sequence_args *args,
++		struct nfs4_sequence_res *res,
++		struct nfs4_slot *slot)
++{
++	if (!slot)
++		return;
++	slot->privileged = args->sa_privileged ? 1 : 0;
++	args->sa_slot = slot;
++
++	res->sr_slot = slot;
++	res->sr_timestamp = jiffies;
++	res->sr_status_flags = 0;
++	res->sr_status = 1;
++
++}
++
++int nfs4_setup_sequence(struct nfs_client *client,
+ 			struct nfs4_sequence_args *args,
+ 			struct nfs4_sequence_res *res,
+ 			struct rpc_task *task)
+@@ -897,29 +942,28 @@ int nfs4_setup_sequence(const struct nfs_client *client,
+ 		task->tk_timeout = 0;
+ 	}
+ 
+-	spin_lock(&tbl->slot_tbl_lock);
+-	/* The state manager will wait until the slot table is empty */
+-	if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
+-		goto out_sleep;
++	for (;;) {
++		spin_lock(&tbl->slot_tbl_lock);
++		/* The state manager will wait until the slot table is empty */
++		if (nfs4_slot_tbl_draining(tbl) && !args->sa_privileged)
++			goto out_sleep;
++
++		slot = nfs4_alloc_slot(tbl);
++		if (IS_ERR(slot)) {
++			/* Try again in 1/4 second */
++			if (slot == ERR_PTR(-ENOMEM))
++				task->tk_timeout = HZ >> 2;
++			goto out_sleep;
++		}
++		spin_unlock(&tbl->slot_tbl_lock);
+ 
+-	slot = nfs4_alloc_slot(tbl);
+-	if (IS_ERR(slot)) {
+-		/* Try again in 1/4 second */
+-		if (slot == ERR_PTR(-ENOMEM))
+-			task->tk_timeout = HZ >> 2;
+-		goto out_sleep;
++		if (likely(!slot->interrupted))
++			break;
++		nfs4_sequence_process_interrupted(client,
++				slot, task->tk_msg.rpc_cred);
+ 	}
+-	spin_unlock(&tbl->slot_tbl_lock);
+-
+-	slot->privileged = args->sa_privileged ? 1 : 0;
+-	args->sa_slot = slot;
+ 
+-	res->sr_slot = slot;
+-	if (session) {
+-		res->sr_timestamp = jiffies;
+-		res->sr_status_flags = 0;
+-		res->sr_status = 1;
+-	}
++	nfs4_sequence_attach_slot(args, res, slot);
+ 
+ 	trace_nfs4_setup_sequence(session, args);
+ out_start:
+@@ -8135,6 +8179,7 @@ static const struct rpc_call_ops nfs41_sequence_ops = {
+ 
+ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+ 		struct rpc_cred *cred,
++		struct nfs4_slot *slot,
+ 		bool is_privileged)
+ {
+ 	struct nfs4_sequence_data *calldata;
+@@ -8148,15 +8193,18 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+ 		.callback_ops = &nfs41_sequence_ops,
+ 		.flags = RPC_TASK_ASYNC | RPC_TASK_TIMEOUT,
+ 	};
++	struct rpc_task *ret;
+ 
++	ret = ERR_PTR(-EIO);
+ 	if (!atomic_inc_not_zero(&clp->cl_count))
+-		return ERR_PTR(-EIO);
++		goto out_err;
++
++	ret = ERR_PTR(-ENOMEM);
+ 	calldata = kzalloc(sizeof(*calldata), GFP_NOFS);
+-	if (calldata == NULL) {
+-		nfs_put_client(clp);
+-		return ERR_PTR(-ENOMEM);
+-	}
++	if (calldata == NULL)
++		goto out_put_clp;
+ 	nfs4_init_sequence(&calldata->args, &calldata->res, 0);
++	nfs4_sequence_attach_slot(&calldata->args, &calldata->res, slot);
+ 	if (is_privileged)
+ 		nfs4_set_sequence_privileged(&calldata->args);
+ 	msg.rpc_argp = &calldata->args;
+@@ -8164,7 +8212,15 @@ static struct rpc_task *_nfs41_proc_sequence(struct nfs_client *clp,
+ 	calldata->clp = clp;
+ 	task_setup_data.callback_data = calldata;
+ 
+-	return rpc_run_task(&task_setup_data);
++	ret = rpc_run_task(&task_setup_data);
++	if (IS_ERR(ret))
++		goto out_err;
++	return ret;
++out_put_clp:
++	nfs_put_client(clp);
++out_err:
++	nfs41_release_slot(slot);
++	return ret;
+ }
+ 
+ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cred, unsigned renew_flags)
+@@ -8174,7 +8230,7 @@ static int nfs41_proc_async_sequence(struct nfs_client *clp, struct rpc_cred *cr
+ 
+ 	if ((renew_flags & NFS4_RENEW_TIMEOUT) == 0)
+ 		return -EAGAIN;
+-	task = _nfs41_proc_sequence(clp, cred, false);
++	task = _nfs41_proc_sequence(clp, cred, NULL, false);
+ 	if (IS_ERR(task))
+ 		ret = PTR_ERR(task);
+ 	else
+@@ -8188,7 +8244,7 @@ static int nfs4_proc_sequence(struct nfs_client *clp, struct rpc_cred *cred)
+ 	struct rpc_task *task;
+ 	int ret;
+ 
+-	task = _nfs41_proc_sequence(clp, cred, true);
++	task = _nfs41_proc_sequence(clp, cred, NULL, true);
+ 	if (IS_ERR(task)) {
+ 		ret = PTR_ERR(task);
+ 		goto out;
+-- 
+2.13.6
 
