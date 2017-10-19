@@ -1,134 +1,72 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51096 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751048AbdJRVZV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 18 Oct 2017 17:25:21 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 2/2] nfsd4: catch some false session retries
-Date: Wed, 18 Oct 2017 17:25:19 -0400
-Message-Id: <1508361919-30495-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1508361919-30495-1-git-send-email-bfields@redhat.com>
-References: <CAN-5tyEXeesbAk02LsGDjwoBqZr6q8AzWUhMSV0-V2aUwm44dA@mail.gmail.com>
- <1508361919-30495-1-git-send-email-bfields@redhat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <aweits@rit.edu>
+From: Andrew W Elble <aweits@rit.edu>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd4: Prevent the reuse of a closed stateid
+References: <2087b4cab6c695a7df01c1135f1773c9b762f0b0.1508248427.git.bcodding@redhat.com>
+	<1508258356.4747.6.camel@redhat.com>
+	<F5CCE778-0A1E-4818-8D9B-7F45FC3E7F4B@redhat.com>
+	<1508264368.4747.17.camel@redhat.com>
+	<D68224FD-D466-4DF1-9CBF-EAF03976B9AF@redhat.com>
+Date: Wed, 18 Oct 2017 20:48:36 -0400
+In-Reply-To: <D68224FD-D466-4DF1-9CBF-EAF03976B9AF@redhat.com> (Benjamin
+	Coddington's message of "Tue, 17 Oct 2017 16:40:05 -0400")
+Message-ID: <m2o9p4vu6z.fsf@discipline.rit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-The spec allows us to return NFS4ERR_SEQ_FALSE_RETRY if we notice that
-the client is making a call that matches a previous (slot, seqid) pair
-but that *isn't* actually a replay, because some detail of the call
-doesn't actually match the previous one.
+Benjamin Coddington <bcodding@redhat.com> writes:
 
-Catching every such case is difficult, but we may as well catch a few
-easy ones.  This also handles the case described in the previous patch,
-in a different way.
+> On 17 Oct 2017, at 14:19, Jeff Layton wrote:
+>
+>> Also we now have to take the st_mutex in nfsd4_find_existing_open, just to
+>> check sc_type.  Neither of those are probably unreasonable, it's just
+>> messier than I'd like.
+>
+> It is indeed messy.. no argument.  I'll spin up your suggestion to unhash
+> the stateid before updating and take it for a ride and let you know the
+> results.  Thanks for looking at this.
 
-The spec does however require us to catch the case where the difference
-is in the rpc credentials.  This prevents somebody from snooping another
-user's replies by fabricating retries.
-
-(But the practical value of the attack is limited by the fact that the
-replies with the most sensitive data are READ replies, which are not
-normally cached.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4state.c | 37 ++++++++++++++++++++++++++++++++++++-
- fs/nfsd/state.h     |  1 +
- 2 files changed, 37 insertions(+), 1 deletion(-)
+I threw this against a quick lockdep run and didn't see anything that
+surprised me. I think we developed a harmless warning in
+nfsd4_process_open2() a ways back?
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7bd3ad88b85c..a9efdfe5e62f 100644
+index 94ef63a10146..87535f2688be 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -1439,8 +1439,10 @@ free_session_slots(struct nfsd4_session *ses)
- {
- 	int i;
+@@ -64,6 +64,9 @@
+ static const stateid_t currentstateid = {
+ 	.si_generation = 1,
+ };
++static const stateid_t invalidstateid = {
++        .si_generation = U32_MAX,
++};
  
--	for (i = 0; i < ses->se_fchannel.maxreqs; i++)
-+	for (i = 0; i < ses->se_fchannel.maxreqs; i++) {
-+		free_svc_cred(&ses->se_slots[i]->sl_cred);
- 		kfree(ses->se_slots[i]);
-+	}
- }
+ static u64 current_sessionid = 1;
  
- /*
-@@ -2293,11 +2295,13 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 	dprintk("--> %s slot %p\n", __func__, slot);
+@@ -5362,11 +5365,11 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 	nfsd4_bump_seqid(cstate, status);
+ 	if (status)
+ 		goto out; 
+-	nfs4_inc_and_copy_stateid(&close->cl_stateid, &stp->st_stid);
+-	mutex_unlock(&stp->st_mutex);
++	memcpy(&close->cl_stateid, &invalidstateid, sizeof(stateid_t));
  
- 	slot->sl_flags |= NFSD4_SLOT_INITIALIZED;
-+	free_svc_cred(&slot->sl_cred);
- 	if (!nfsd4_cache_this(resp)) {
- 		slot->sl_flags &= !NFSD4_SLOT_CACHED;
- 		return;
- 	}
- 	slot->sl_flags |= NFSD4_SLOT_CACHED;
-+	copy_cred(&slot->sl_cred, &resp->rqstp->rq_cred);
- 	slot->sl_opcnt = resp->opcnt;
- 	slot->sl_status = resp->cstate.status;
+ 	nfsd4_close_open_stateid(stp);
  
-@@ -3000,6 +3004,34 @@ static bool nfsd4_request_too_big(struct svc_rqst *rqstp,
- 	return xb->len > session->se_fchannel.maxreq_sz;
- }
- 
-+static bool replay_matches_cache(struct svc_rqst *rqstp,
-+		 struct nfsd4_sequence *seq, struct nfsd4_slot *slot)
-+{
-+	struct nfsd4_compoundargs *argp = rqstp->rq_argp;
-+
-+	if ((bool)(slot->sl_flags & NFSD4_SLOT_CACHETHIS) !=
-+	    (bool)seq->cachethis)
-+		return false;
-+	/*
-+	 * If there's an error than the reply can have fewer ops than
-+	 * the call.  But if we cached a reply with *more* ops than the
-+	 * call you're sending us now, then this new call is clearly not
-+	 * really a replay of the old one:
-+	 */
-+	if (slot->sl_opcnt < argp->opcnt)
-+		return false;
-+	/* This is the only check explicitly called by spec: */
-+	if (!same_creds(&rqstp->rq_cred, &slot->sl_cred))
-+		return false;
-+	/*
-+	 * There may be more comparisons we could actually do, but the
-+	 * spec doesn't require us to catch every case where the calls
-+	 * don't match (that would require caching the call as well as
-+	 * the reply), so we don't bother.
-+	 */
-+	return true;
-+}
-+
- __be32
- nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		union nfsd4_op_u *u)
-@@ -3059,6 +3091,9 @@ nfsd4_sequence(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		status = nfserr_seq_misordered;
- 		if (!(slot->sl_flags & NFSD4_SLOT_INITIALIZED))
- 			goto out_put_session;
-+		status = nfserr_seq_false_retry;
-+		if (!replay_matches_cache(rqstp, seq, slot))
-+			goto out_put_session;
- 		cstate->slot = slot;
- 		cstate->session = session;
- 		cstate->clp = clp;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 2488b7df1b35..86aa92d200e1 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -169,6 +169,7 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
- struct nfsd4_slot {
- 	u32	sl_seqid;
- 	__be32	sl_status;
-+	struct svc_cred sl_cred;
- 	u32	sl_datalen;
- 	u16	sl_opcnt;
- #define NFSD4_SLOT_INUSE	(1 << 0)
++	mutex_unlock(&stp->st_mutex);
+ 	/* put reference from nfs4_preprocess_seqid_op */
+ 	nfs4_put_stid(&stp->st_stid);
+ out:
 -- 
-2.13.5
+1.8.3.1
 
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
