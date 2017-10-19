@@ -1,165 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f195.google.com ([209.85.217.195]:46183 "EHLO
-        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754339AbdJSSeW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2017 14:34:22 -0400
-Received: by mail-ua0-f195.google.com with SMTP id w45so6675295uac.3
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Oct 2017 11:34:21 -0700 (PDT)
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39522 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751466AbdJSStX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2017 14:49:23 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "lorenzo.pieralisi@arm.com" <lorenzo.pieralisi@arm.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Remove redundant call to cancel_work_sync() in
+ xprt_destroy()
+Date: Thu, 19 Oct 2017 18:49:18 +0000
+Message-ID: <1508438956.72950.1.camel@primarydata.com>
+References: <20171011180134.52476-1-trond.myklebust@primarydata.com>
+         <20171012134730.GA4803@red-moon>
+In-Reply-To: <20171012134730.GA4803@red-moon>
 MIME-Version: 1.0
-In-Reply-To: <20171019181718.GF16942@parsley.fieldses.org>
-References: <CAN-5tyEXeesbAk02LsGDjwoBqZr6q8AzWUhMSV0-V2aUwm44dA@mail.gmail.com>
- <1508361919-30495-1-git-send-email-bfields@redhat.com> <CAN-5tyHBv9iFfTEPTgCfNyBo9veiqWiD_2xzVwhHjQ_tNdMFZw@mail.gmail.com>
- <20171019181718.GF16942@parsley.fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 19 Oct 2017 14:34:20 -0400
-Message-ID: <CAN-5tyFCBrfLnw91R5awik6+miCO7vGfB-K40D1yQw-+nJ6eiQ@mail.gmail.com>
-Subject: Re: [PATCH 1/2] nfsd4: fix cached replies to solo SEQUENCE compounds
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 19, 2017 at 2:17 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Thu, Oct 19, 2017 at 01:21:46PM -0400, Olga Kornievskaia wrote:
->> On Wed, Oct 18, 2017 at 5:25 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> > From: "J. Bruce Fields" <bfields@redhat.com>
->> >
->> > Currently our handling of 4.1+ requests without "cachethis" set is
->> > confusing and not quite correct.
->> >
->> > Suppose a client sends a compound consisting of only a single SEQUENCE
->> > op, and it matches the seqid in a session slot (so it's a retry), but
->> > the previous request with that seqid did not have "cachethis" set.
->> >
->> > The obvious thing to do might be to return NFS4ERR_RETRY_UNCACHED_REP,
->> > but the protocol only allows that to be returned on the op following the
->> > SEQUENCE, and there is no such op in this case.
->> >
->> > The protocol permits us to cache replies even if the client didn't ask
->> > us to.  And it's easy to do so in the case of solo SEQUENCE compounds.
->> >
->> > So, when we get a solo SEQUENCE, we can either return the previously
->> > cached reply or NFSERR_SEQ_FALSE_RETRY if we notice it differs in some
->> > way from the original call.
->>
->> I'm confused in my testing the error was SEQ_MISORDERED and not
->> SEQ_FALSE_RETRY error?
->
-> Yes, I must have a typo somewhere, but I haven't spotted it yet.  That
-> was with both patches applied?
+T24gVGh1LCAyMDE3LTEwLTEyIGF0IDE0OjQ3ICswMTAwLCBMb3JlbnpvIFBpZXJhbGlzaSB3cm90
+ZToNCj4gSGkgVHJvbmQsDQo+IA0KPiBPbiBXZWQsIE9jdCAxMSwgMjAxNyBhdCAwMjowMTozNFBN
+IC0wNDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gV2Uga25vdyB0aGF0IHRoZSBzb2Nr
+ZXQgYXV0b2Nsb3NlIGNhbm5vdCBiZSBxdWV1ZWQgYWZ0ZXIgd2UndmUgc2V0DQo+ID4gdGhlIFhQ
+UlRfTE9DS0VEIGJpdCwgc28gdGhlIGNhbGwgdG8gY2FuY2VsX3dvcmtfc3luYygpIGlzDQo+ID4g
+cmVkdW5kYW50Lg0KPiA+IEluIGFkZGl0aW9uLCBpdCBpcyBjYXVzaW5nIGxvY2tkZXAgdG8gY29t
+cGxhaW4gYWJvdXQgYSBmYWxzZSBBQkENCj4gPiBsb2NrIGRlcGVuZGVuY3kuDQo+ID4gDQo+ID4g
+U2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
+dGEuY29tPg0KPiA+IC0tLQ0KPiA+ICBuZXQvc3VucnBjL3hwcnQuYyB8IDEgLQ0KPiA+ICAxIGZp
+bGUgY2hhbmdlZCwgMSBkZWxldGlvbigtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9uZXQvc3Vu
+cnBjL3hwcnQuYyBiL25ldC9zdW5ycGMveHBydC5jDQo+ID4gaW5kZXggZTc0MWVjMmI0ZDhlLi41
+ZjEyZmUxNDVmMDIgMTAwNjQ0DQo+ID4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0LmMNCj4gPiArKysg
+Yi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+IEBAIC0xNDY0LDcgKzE0NjQsNiBAQCBzdGF0aWMgdm9p
+ZCB4cHJ0X2Rlc3Ryb3koc3RydWN0IHJwY194cHJ0DQo+ID4gKnhwcnQpDQo+ID4gIAlycGNfZGVz
+dHJveV93YWl0X3F1ZXVlKCZ4cHJ0LT5wZW5kaW5nKTsNCj4gPiAgCXJwY19kZXN0cm95X3dhaXRf
+cXVldWUoJnhwcnQtPnNlbmRpbmcpOw0KPiA+ICAJcnBjX2Rlc3Ryb3lfd2FpdF9xdWV1ZSgmeHBy
+dC0+YmFja2xvZyk7DQo+ID4gLQljYW5jZWxfd29ya19zeW5jKCZ4cHJ0LT50YXNrX2NsZWFudXAp
+Ow0KPiANCj4gVGhpcyBkb2VzIG5vdCBtYWtlIHRoZSBsb2NrZGVwIHdhcm5pbmcgZ28gYXdheSwg
+YWN0dWFsbHkgdGhlIGxvY2tkZXANCj4gaXMgdHJpZ2dlcmVkIGJ5IHRoZSB4c19kZXN0cm95KCkg
+Y2FuY2VsX3dvcmtfc3luYygpIGNhbGwgYnV0IEkgZG8gbm90DQo+IGtub3cgdGhpcyBjb2RlIHBh
+dGggc28gSSBjYW4ndCByZWFsbHkgY29tbWVudCBvbiBpdCwgbGV0IG1lIGtub3cgaWYNCj4gdGhl
+cmUgaXMgYW55IHNwZWNpZmljIHRlc3QgSSBjYW4gY2Fycnkgb3V0Lg0KPiANCj4gVGhhbmtzIGZv
+ciBsb29raW5nIGludG8gdGhpcywNCj4gTG9yZW56bw0KDQpTb3JyeSBmb3IgdGhlIGRlbGF5LiBE
+b2VzIHRoaXMgb25lIGhlbHA/DQoNCjg8LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LQ0KRnJvbSA1MjhmZDM1NDdiYWQwYmRkMzFjOGY5ODdlNWJkMDBjODNkZjhhZjM5IE1vbiBTZXAg
+MTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RA
+cHJpbWFyeWRhdGEuY29tPg0KRGF0ZTogVGh1LCAxOSBPY3QgMjAxNyAxMjoxMzoxMCAtMDQwMA0K
+U3ViamVjdDogW1BBVENIXSBTVU5SUEM6IERlc3Ryb3kgdHJhbnNwb3J0IGZyb20gdGhlIHN5c3Rl
+bSB3b3JrcXVldWUNCg0KVGhlIHRyYW5zcG9ydCBtYXkgbmVlZCB0byBmbHVzaCB0cmFuc3BvcnQg
+Y29ubmVjdCBhbmQgcmVjZWl2ZSB0YXNrcw0KdGhhdCBhcmUgcnVubmluZyBvbiBycGNpb2QuIElu
+IG9yZGVyIHRvIGRvIHNvIHNhZmVseSwgd2UgbmVlZCB0bw0KZW5zdXJlIHRoYXQgdGhlIGNhbGxl
+ciBvZiBjYW5jZWxfd29ya19zeW5jKCkgZXRjIGlzIG5vdCBpdHNlbGYNCnJ1bm5pbmcgb24gcnBj
+aW9kLg0KRG8gc28gYnkgcnVubmluZyB0aGUgZGVzdHJveSB0YXNrIGZyb20gdGhlIHN5c3RlbSB3
+b3JrcXVldWUuDQoNClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVi
+dXN0QHByaW1hcnlkYXRhLmNvbT4NCi0tLQ0KIG5ldC9zdW5ycGMveHBydC5jIHwgMzQgKysrKysr
+KysrKysrKysrKysrKysrKysrLS0tLS0tLS0tLQ0KIDEgZmlsZSBjaGFuZ2VkLCAyNCBpbnNlcnRp
+b25zKCspLCAxMCBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydC5j
+IGIvbmV0L3N1bnJwYy94cHJ0LmMNCmluZGV4IDFhMzlhZDE0YzQyZi4uODk4NDg1ZTNlY2U0IDEw
+MDY0NA0KLS0tIGEvbmV0L3N1bnJwYy94cHJ0LmMNCisrKyBiL25ldC9zdW5ycGMveHBydC5jDQpA
+QCAtMTQ0NSw2ICsxNDQ1LDIzIEBAIHN0cnVjdCBycGNfeHBydCAqeHBydF9jcmVhdGVfdHJhbnNw
+b3J0KHN0cnVjdCB4cHJ0X2NyZWF0ZSAqYXJncykNCiAJcmV0dXJuIHhwcnQ7DQogfQ0KIA0KK3N0
+YXRpYyB2b2lkIHhwcnRfZGVzdHJveV9jYihzdHJ1Y3Qgd29ya19zdHJ1Y3QgKndvcmspDQorew0K
+KwlzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQgPQ0KKwkJY29udGFpbmVyX29mKHdvcmssIHN0cnVjdCBy
+cGNfeHBydCwgdGFza19jbGVhbnVwKTsNCisNCisJcnBjX3hwcnRfZGVidWdmc191bnJlZ2lzdGVy
+KHhwcnQpOw0KKwlycGNfZGVzdHJveV93YWl0X3F1ZXVlKCZ4cHJ0LT5iaW5kaW5nKTsNCisJcnBj
+X2Rlc3Ryb3lfd2FpdF9xdWV1ZSgmeHBydC0+cGVuZGluZyk7DQorCXJwY19kZXN0cm95X3dhaXRf
+cXVldWUoJnhwcnQtPnNlbmRpbmcpOw0KKwlycGNfZGVzdHJveV93YWl0X3F1ZXVlKCZ4cHJ0LT5i
+YWNrbG9nKTsNCisJa2ZyZWUoeHBydC0+c2VydmVybmFtZSk7DQorCS8qDQorCSAqIFRlYXIgZG93
+biB0cmFuc3BvcnQgc3RhdGUgYW5kIGZyZWUgdGhlIHJwY194cHJ0DQorCSAqLw0KKwl4cHJ0LT5v
+cHMtPmRlc3Ryb3koeHBydCk7DQorfQ0KKw0KIC8qKg0KICAqIHhwcnRfZGVzdHJveSAtIGRlc3Ry
+b3kgYW4gUlBDIHRyYW5zcG9ydCwga2lsbGluZyBvZmYgYWxsIHJlcXVlc3RzLg0KICAqIEB4cHJ0
+OiB0cmFuc3BvcnQgdG8gZGVzdHJveQ0KQEAgLTE0NTQsMjIgKzE0NzEsMTkgQEAgc3RhdGljIHZv
+aWQgeHBydF9kZXN0cm95KHN0cnVjdCBycGNfeHBydCAqeHBydCkNCiB7DQogCWRwcmludGsoIlJQ
+QzogICAgICAgZGVzdHJveWluZyB0cmFuc3BvcnQgJXBcbiIsIHhwcnQpOw0KIA0KLQkvKiBFeGNs
+dWRlIHRyYW5zcG9ydCBjb25uZWN0L2Rpc2Nvbm5lY3QgaGFuZGxlcnMgKi8NCisJLyoNCisJICog
+RXhjbHVkZSB0cmFuc3BvcnQgY29ubmVjdC9kaXNjb25uZWN0IGhhbmRsZXJzIGFuZCBhdXRvY2xv
+c2UNCisJICovDQogCXdhaXRfb25fYml0X2xvY2soJnhwcnQtPnN0YXRlLCBYUFJUX0xPQ0tFRCwg
+VEFTS19VTklOVEVSUlVQVElCTEUpOw0KIA0KIAlkZWxfdGltZXJfc3luYygmeHBydC0+dGltZXIp
+Ow0KIA0KLQlycGNfeHBydF9kZWJ1Z2ZzX3VucmVnaXN0ZXIoeHBydCk7DQotCXJwY19kZXN0cm95
+X3dhaXRfcXVldWUoJnhwcnQtPmJpbmRpbmcpOw0KLQlycGNfZGVzdHJveV93YWl0X3F1ZXVlKCZ4
+cHJ0LT5wZW5kaW5nKTsNCi0JcnBjX2Rlc3Ryb3lfd2FpdF9xdWV1ZSgmeHBydC0+c2VuZGluZyk7
+DQotCXJwY19kZXN0cm95X3dhaXRfcXVldWUoJnhwcnQtPmJhY2tsb2cpOw0KLQljYW5jZWxfd29y
+a19zeW5jKCZ4cHJ0LT50YXNrX2NsZWFudXApOw0KLQlrZnJlZSh4cHJ0LT5zZXJ2ZXJuYW1lKTsN
+CiAJLyoNCi0JICogVGVhciBkb3duIHRyYW5zcG9ydCBzdGF0ZSBhbmQgZnJlZSB0aGUgcnBjX3hw
+cnQNCisJICogRGVzdHJveSBzb2NrZXRzIGV0YyBmcm9tIHRoZSBzeXN0ZW0gd29ya3F1ZXVlIHNv
+IHRoZXkgY2FuDQorCSAqIHNhZmVseSBmbHVzaCByZWNlaXZlIHdvcmsgcnVubmluZyBvbiBycGNp
+b2QuDQogCSAqLw0KLQl4cHJ0LT5vcHMtPmRlc3Ryb3koeHBydCk7DQorCUlOSVRfV09SSygmeHBy
+dC0+dGFza19jbGVhbnVwLCB4cHJ0X2Rlc3Ryb3lfY2IpOw0KKwlzY2hlZHVsZV93b3JrKCZ4cHJ0
+LT50YXNrX2NsZWFudXApOw0KIH0NCiANCiBzdGF0aWMgdm9pZCB4cHJ0X2Rlc3Ryb3lfa3JlZihz
+dHJ1Y3Qga3JlZiAqa3JlZikNCi0tIA0KMi4xMy42DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpM
+aW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RA
+cHJpbWFyeWRhdGEuY29tDQo=
 
-Yes both patches.
-
-> --b.
->
->>
->> > Currently, we're returning a corrupt reply in the case a solo SEQUENCE
->> > matches a previous compound with more ops.  This actually matters
->> > because the Linux client recently started doing this as a way to recover
->> > from lost replies to idempotent operations in the case the process doing
->> > the original reply was killed: in that case it's difficult to keep the
->> > original arguments around to do a real retry, and the client no longer
->> > cares what the result is anyway, but it would like to make sure that the
->> > slot's sequence id has been incremented, and the solo SEQUENCE assures
->> > that: if the server never got the original reply, it will increment the
->> > sequence id.  If it did get the original reply, it won't increment, and
->> > nothing else that about the reply really matters much.  But we can at
->> > least attempt to return valid xdr!
->> >
->> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->> > ---
->> >  fs/nfsd/nfs4state.c | 23 ++++++++++++++++-------
->> >  fs/nfsd/state.h     |  1 +
->> >  fs/nfsd/xdr4.h      | 13 +++++++++++--
->> >  3 files changed, 28 insertions(+), 9 deletions(-)
->> >
->> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> > index 9db8a19cceaa..7bd3ad88b85c 100644
->> > --- a/fs/nfsd/nfs4state.c
->> > +++ b/fs/nfsd/nfs4state.c
->> > @@ -2292,14 +2292,15 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
->> >
->> >         dprintk("--> %s slot %p\n", __func__, slot);
->> >
->> > -       slot->sl_opcnt = resp->opcnt;
->> > -       slot->sl_status = resp->cstate.status;
->> > -
->> >         slot->sl_flags |= NFSD4_SLOT_INITIALIZED;
->> > -       if (nfsd4_not_cached(resp)) {
->> > -               slot->sl_datalen = 0;
->> > +       if (!nfsd4_cache_this(resp)) {
->> > +               slot->sl_flags &= !NFSD4_SLOT_CACHED;
->> >                 return;
->> >         }
->> > +       slot->sl_flags |= NFSD4_SLOT_CACHED;
->> > +       slot->sl_opcnt = resp->opcnt;
->> > +       slot->sl_status = resp->cstate.status;
->> > +
->> >         base = resp->cstate.data_offset;
->> >         slot->sl_datalen = buf->len - base;
->> >         if (read_bytes_from_xdr_buf(buf, base, slot->sl_data, slot->sl_datalen))
->> > @@ -2326,8 +2327,16 @@ nfsd4_enc_sequence_replay(struct nfsd4_compoundargs *args,
->> >         op = &args->ops[resp->opcnt - 1];
->> >         nfsd4_encode_operation(resp, op);
->> >
->> > -       /* Return nfserr_retry_uncached_rep in next operation. */
->> > -       if (args->opcnt > 1 && !(slot->sl_flags & NFSD4_SLOT_CACHETHIS)) {
->> > +       if (slot->sl_flags & NFSD4_SLOT_CACHED)
->> > +               return op->status;
->> > +       if (args->opcnt == 1) {
->> > +               /*
->> > +                * The original operation wasn't a solo sequence--we
->> > +                * always cache those--so this retry must not match the
->> > +                * original:
->> > +                */
->> > +               op->status = nfserr_seq_false_retry;
->> > +       } else {
->> >                 op = &args->ops[resp->opcnt++];
->> >                 op->status = nfserr_retry_uncached_rep;
->> >                 nfsd4_encode_operation(resp, op);
->> > diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> > index 005c911b34ac..2488b7df1b35 100644
->> > --- a/fs/nfsd/state.h
->> > +++ b/fs/nfsd/state.h
->> > @@ -174,6 +174,7 @@ struct nfsd4_slot {
->> >  #define NFSD4_SLOT_INUSE       (1 << 0)
->> >  #define NFSD4_SLOT_CACHETHIS   (1 << 1)
->> >  #define NFSD4_SLOT_INITIALIZED (1 << 2)
->> > +#define NFSD4_SLOT_CACHED      (1 << 3)
->> >         u8      sl_flags;
->> >         char    sl_data[];
->> >  };
->> > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->> > index 1e4edbf70052..bc29511b6405 100644
->> > --- a/fs/nfsd/xdr4.h
->> > +++ b/fs/nfsd/xdr4.h
->> > @@ -649,9 +649,18 @@ static inline bool nfsd4_is_solo_sequence(struct nfsd4_compoundres *resp)
->> >         return resp->opcnt == 1 && args->ops[0].opnum == OP_SEQUENCE;
->> >  }
->> >
->> > -static inline bool nfsd4_not_cached(struct nfsd4_compoundres *resp)
->> > +/*
->> > + * The session reply cache only needs to cache replies that the client
->> > + * actually asked us to.  But it's almost free for us to cache compounds
->> > + * consisting of only a SEQUENCE op, so we may as well cache those too.
->> > + * Also, the protocol doesn't give us a convenient response in the case
->> > + * of a replay of a solo SEQUENCE op that wasn't cached
->> > + * (RETRY_UNCACHED_REP can only be returned in the second op of a
->> > + * compound).
->> > + */
->> > +static inline bool nfsd4_cache_this(struct nfsd4_compoundres *resp)
->> >  {
->> > -       return !(resp->cstate.slot->sl_flags & NFSD4_SLOT_CACHETHIS)
->> > +       return (resp->cstate.slot->sl_flags & NFSD4_SLOT_CACHETHIS)
->> >                 || nfsd4_is_solo_sequence(resp);
->> >  }
->> >
->> > --
->> > 2.13.5
->> >
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
