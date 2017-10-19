@@ -1,72 +1,113 @@
-Return-Path: <aweits@rit.edu>
-From: Andrew W Elble <aweits@rit.edu>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd4: Prevent the reuse of a closed stateid
-References: <2087b4cab6c695a7df01c1135f1773c9b762f0b0.1508248427.git.bcodding@redhat.com>
-	<1508258356.4747.6.camel@redhat.com>
-	<F5CCE778-0A1E-4818-8D9B-7F45FC3E7F4B@redhat.com>
-	<1508264368.4747.17.camel@redhat.com>
-	<D68224FD-D466-4DF1-9CBF-EAF03976B9AF@redhat.com>
-Date: Wed, 18 Oct 2017 20:48:36 -0400
-In-Reply-To: <D68224FD-D466-4DF1-9CBF-EAF03976B9AF@redhat.com> (Benjamin
-	Coddington's message of "Tue, 17 Oct 2017 16:40:05 -0400")
-Message-ID: <m2o9p4vu6z.fsf@discipline.rit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mout.kundenserver.de ([212.227.126.133]:60147 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751142AbdJSKEp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2017 06:04:45 -0400
+From: Arnd Bergmann <arnd@arndb.de>
+To: y2038@lists.linaro.org, "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>
+Cc: Deepa Dinamani <deepa.kernel@gmail.com>,
+        linux-fsdevel@vger.kernel.org, Arnd Bergmann <arnd@arndb.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        NeilBrown <neilb@suse.com>, Kinglong Mee <kinglongmee@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] nfds: avoid gettimeofday for nfssvc_boot time
+Date: Thu, 19 Oct 2017 12:04:11 +0200
+Message-Id: <20171019100435.1170955-1-arnd@arndb.de>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+do_gettimeofday() is deprecated and we should generally use time64_t
+based functions instead.
 
-Benjamin Coddington <bcodding@redhat.com> writes:
+In case of nfsd, all three users of nfssvc_boot only use the initial
+time as a unique token, and are not affected by it overflowing, so they
+are not affected by the y2038 overflow.
 
-> On 17 Oct 2017, at 14:19, Jeff Layton wrote:
->
->> Also we now have to take the st_mutex in nfsd4_find_existing_open, just to
->> check sc_type.  Neither of those are probably unreasonable, it's just
->> messier than I'd like.
->
-> It is indeed messy.. no argument.  I'll spin up your suggestion to unhash
-> the stateid before updating and take it for a ride and let you know the
-> results.  Thanks for looking at this.
+This converts the structure to timespec64 anyway and adds comments
+to all uses, to document that we have thought about it and avoid
+having to look at it again.
 
-I threw this against a quick lockdep run and didn't see anything that
-surprised me. I think we developed a harmless warning in
-nfsd4_process_open2() a ways back?
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/nfsd/netns.h    |  2 +-
+ fs/nfsd/nfs3xdr.c  | 10 ++++++----
+ fs/nfsd/nfs4proc.c |  5 +++--
+ fs/nfsd/nfssvc.c   |  2 +-
+ 4 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 94ef63a10146..87535f2688be 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -64,6 +64,9 @@
- static const stateid_t currentstateid = {
- 	.si_generation = 1,
- };
-+static const stateid_t invalidstateid = {
-+        .si_generation = U32_MAX,
-+};
+diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+index 3714231a9d0f..1c91391f4805 100644
+--- a/fs/nfsd/netns.h
++++ b/fs/nfsd/netns.h
+@@ -107,7 +107,7 @@ struct nfsd_net {
+ 	bool lockd_up;
  
- static u64 current_sessionid = 1;
+ 	/* Time of server startup */
+-	struct timeval nfssvc_boot;
++	struct timespec64 nfssvc_boot;
  
-@@ -5362,11 +5365,11 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
--	nfs4_inc_and_copy_stateid(&close->cl_stateid, &stp->st_stid);
--	mutex_unlock(&stp->st_mutex);
-+	memcpy(&close->cl_stateid, &invalidstateid, sizeof(stateid_t));
+ 	/*
+ 	 * Max number of connections this nfsd container will allow. Defaults
+diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+index bf444b664011..3579e0ae1131 100644
+--- a/fs/nfsd/nfs3xdr.c
++++ b/fs/nfsd/nfs3xdr.c
+@@ -747,8 +747,9 @@ nfs3svc_encode_writeres(struct svc_rqst *rqstp, __be32 *p)
+ 	if (resp->status == 0) {
+ 		*p++ = htonl(resp->count);
+ 		*p++ = htonl(resp->committed);
+-		*p++ = htonl(nn->nfssvc_boot.tv_sec);
+-		*p++ = htonl(nn->nfssvc_boot.tv_usec);
++		/* unique identifier, y2038 overflow can be ignored */
++		*p++ = htonl((u32)nn->nfssvc_boot.tv_sec);
++		*p++ = htonl(nn->nfssvc_boot.tv_nsec);
+ 	}
+ 	return xdr_ressize_check(rqstp, p);
+ }
+@@ -1118,8 +1119,9 @@ nfs3svc_encode_commitres(struct svc_rqst *rqstp, __be32 *p)
+ 	p = encode_wcc_data(rqstp, p, &resp->fh);
+ 	/* Write verifier */
+ 	if (resp->status == 0) {
+-		*p++ = htonl(nn->nfssvc_boot.tv_sec);
+-		*p++ = htonl(nn->nfssvc_boot.tv_usec);
++		/* unique identifier, y2038 overflow can be ignored */
++		*p++ = htonl((u32)nn->nfssvc_boot.tv_sec);
++		*p++ = htonl(nn->nfssvc_boot.tv_nsec);
+ 	}
+ 	return xdr_ressize_check(rqstp, p);
+ }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 7896f841482e..008ea0b627d0 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -564,10 +564,11 @@ static void gen_boot_verifier(nfs4_verifier *verifier, struct net *net)
  
- 	nfsd4_close_open_stateid(stp);
+ 	/*
+ 	 * This is opaque to client, so no need to byte-swap. Use
+-	 * __force to keep sparse happy
++	 * __force to keep sparse happy. y2038 time_t overflow is
++	 * irrelevant in this usage.
+ 	 */
+ 	verf[0] = (__force __be32)nn->nfssvc_boot.tv_sec;
+-	verf[1] = (__force __be32)nn->nfssvc_boot.tv_usec;
++	verf[1] = (__force __be32)nn->nfssvc_boot.tv_nsec;
+ 	memcpy(verifier->data, verf, sizeof(verifier->data));
+ }
  
-+	mutex_unlock(&stp->st_mutex);
- 	/* put reference from nfs4_preprocess_seqid_op */
- 	nfs4_put_stid(&stp->st_stid);
- out:
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 6bbc717f40f2..28ff3e078af6 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -516,7 +516,7 @@ int nfsd_create_serv(struct net *net)
+ 		register_inet6addr_notifier(&nfsd_inet6addr_notifier);
+ #endif
+ 	}
+-	do_gettimeofday(&nn->nfssvc_boot);		/* record boot time */
++	ktime_get_real_ts64(&nn->nfssvc_boot); /* record boot time */
+ 	return 0;
+ }
+ 
 -- 
-1.8.3.1
+2.9.0
 
--- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
