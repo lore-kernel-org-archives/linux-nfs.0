@@ -1,184 +1,227 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:43517 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752092AbdJSSwK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2017 14:52:10 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFSv4.1: Fix up replays of interrupted requests
-Date: Thu, 19 Oct 2017 18:52:05 +0000
-Message-ID: <1508439123.72950.3.camel@primarydata.com>
-References: <20171011170705.45533-1-trond.myklebust@primarydata.com>
-         <CAN-5tyE-XY7FYLRDU0GLKpsd_NPMy6UPv=128HwP-_VD8bdVWg@mail.gmail.com>
-In-Reply-To: <CAN-5tyE-XY7FYLRDU0GLKpsd_NPMy6UPv=128HwP-_VD8bdVWg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:17181 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751772AbdJSTiZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Oct 2017 15:38:25 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH 2/2] SUNRPC: Improve ordering of transport processing
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20171010173143.106492-2-trond.myklebust@primarydata.com>
+Date: Thu, 19 Oct 2017 15:38:17 -0400
+Cc: Bruce Fields <bfields@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <9D9E2C92-F1FF-4451-800D-54F74D815F7E@oracle.com>
+References: <20171010173143.106492-1-trond.myklebust@primarydata.com> <20171010173143.106492-2-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTEwLTE5IGF0IDE0OjMzIC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gV2VkLCBPY3QgMTEsIDIwMTcgYXQgMTowNyBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiBJZiB0aGUgcHJl
-dmlvdXMgcmVxdWVzdCBvbiBhIHNsb3Qgd2FzIGludGVycnVwdGVkIGJlZm9yZSBpdCB3YXMNCj4g
-PiBwcm9jZXNzZWQgYnkgdGhlIHNlcnZlciwgdGhlbiBvdXIgc2xvdCBzZXF1ZW5jZSBudW1iZXIg
-bWF5IGJlIG91dA0KPiA+IG9mIHdoYWNrLA0KPiA+IGFuZCBzbyB3ZSB0cnkgdGhlIG5leHQgb3Bl
-cmF0aW9uIHVzaW5nIHRoZSBvbGQgc2VxdWVuY2UgbnVtYmVyLg0KPiA+IA0KPiA+IFRoZSBwcm9i
-bGVtIHdpdGggdGhpcywgaXMgdGhhdCBub3QgYWxsIHNlcnZlcnMgY2hlY2sgdG8gc2VlIHRoYXQN
-Cj4gPiB0aGUNCj4gPiBjbGllbnQgaXMgcmVwbGF5aW5nIHRoZSBzYW1lIG9wZXJhdGlvbnMgYXMg
-cHJldmlvdXNseSB3aGVuIHRoZXkNCj4gPiBkZWNpZGUNCj4gPiB0byBnbyB0byB0aGUgcmVwbGF5
-IGNhY2hlLCBhbmQgc28gaW5zdGVhZCBvZiB0aGUgZXhwZWN0ZWQgZXJyb3Igb2YNCj4gPiBORlM0
-RVJSX1NFUV9GQUxTRV9SRVRSWSwgd2UgZ2V0IGEgcmVwbGF5IG9mIHRoZSBvbGQgcmVwbHksIHdo
-aWNoDQo+ID4gY291bGQNCj4gPiAoaWYgdGhlIG9wZXJhdGlvbnMgbWF0Y2ggdXApIGJlIG1pc3Rh
-a2VuIGJ5IHRoZSBjbGllbnQgZm9yIGEgbmV3DQo+ID4gcmVwbHkuDQo+ID4gDQo+ID4gVG8gZml4
-IHRoaXMsIHdlIGF0dGVtcHQgdG8gc2VuZCBhIENPTVBPVU5EIGNvbnRhaW5pbmcgb25seSB0aGUN
-Cj4gPiBTRVFVRU5DRSBvcA0KPiA+IGluIG9yZGVyIHRvIHJlc3luYyBvdXIgc2xvdCBzZXF1ZW5j
-ZSBudW1iZXIuDQo+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9u
-ZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KPiA+IC0tLQ0KPiA+ICBmcy9uZnMvbmZzNF9m
-cy5oICB8ICAgMiArLQ0KPiA+ICBmcy9uZnMvbmZzNHByb2MuYyB8IDE0NiArKysrKysrKysrKysr
-KysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0NCj4gPiAtLS0tLS0tLS0tLS0NCj4gPiAgMiBm
-aWxlcyBjaGFuZ2VkLCAxMDEgaW5zZXJ0aW9ucygrKSwgNDcgZGVsZXRpb25zKC0pDQo+ID4gDQo+
-ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2ZzLmggYi9mcy9uZnMvbmZzNF9mcy5oDQo+ID4g
-aW5kZXggYWM0ZjEwYjdmNmMxLi5iNTQ3ZDkzNWFhZjAgMTAwNjQ0DQo+ID4gLS0tIGEvZnMvbmZz
-L25mczRfZnMuaA0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0X2ZzLmgNCj4gPiBAQCAtNDY0LDcgKzQ2
-NCw3IEBAIGV4dGVybiB2b2lkIG5mc19pbmNyZW1lbnRfb3Blbl9zZXFpZChpbnQNCj4gPiBzdGF0
-dXMsIHN0cnVjdCBuZnNfc2VxaWQgKnNlcWlkKTsNCj4gPiAgZXh0ZXJuIHZvaWQgbmZzX2luY3Jl
-bWVudF9sb2NrX3NlcWlkKGludCBzdGF0dXMsIHN0cnVjdCBuZnNfc2VxaWQNCj4gPiAqc2VxaWQp
-Ow0KPiA+ICBleHRlcm4gdm9pZCBuZnNfcmVsZWFzZV9zZXFpZChzdHJ1Y3QgbmZzX3NlcWlkICpz
-ZXFpZCk7DQo+ID4gIGV4dGVybiB2b2lkIG5mc19mcmVlX3NlcWlkKHN0cnVjdCBuZnNfc2VxaWQg
-KnNlcWlkKTsNCj4gPiAtZXh0ZXJuIGludCBuZnM0X3NldHVwX3NlcXVlbmNlKGNvbnN0IHN0cnVj
-dCBuZnNfY2xpZW50ICpjbGllbnQsDQo+ID4gK2V4dGVybiBpbnQgbmZzNF9zZXR1cF9zZXF1ZW5j
-ZShzdHJ1Y3QgbmZzX2NsaWVudCAqY2xpZW50LA0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgc3RydWN0IG5mczRfc2VxdWVuY2VfYXJncyAqYXJncywNCj4gPiAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgIHN0cnVjdCBuZnM0X3NlcXVlbmNlX3JlcyAqcmVzLA0KPiA+
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc3RydWN0IHJwY190YXNrICp0YXNrKTsN
-Cj4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0K
-PiA+IGluZGV4IGY5MDA5MGU4Yzk1OS4uY2FhNzJlZmUwMmM5IDEwMDY0NA0KPiA+IC0tLSBhL2Zz
-L25mcy9uZnM0cHJvYy5jDQo+ID4gKysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtOTYs
-NiArOTYsMTAgQEAgc3RhdGljIGludCBuZnM0X2RvX3NldGF0dHIoc3RydWN0IGlub2RlICppbm9k
-ZSwNCj4gPiBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQsDQo+ID4gICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgIHN0cnVjdCBuZnNfb3Blbl9jb250ZXh0ICpjdHgsIHN0cnVjdA0KPiA+IG5mczRfbGFi
-ZWwgKmlsYWJlbCwNCj4gPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc3RydWN0IG5mczRf
-bGFiZWwgKm9sYWJlbCk7DQo+ID4gICNpZmRlZiBDT05GSUdfTkZTX1Y0XzENCj4gPiArc3RhdGlj
-IHN0cnVjdCBycGNfdGFzayAqX25mczQxX3Byb2Nfc2VxdWVuY2Uoc3RydWN0IG5mc19jbGllbnQN
-Cj4gPiAqY2xwLA0KPiA+ICsgICAgICAgICAgICAgICBzdHJ1Y3QgcnBjX2NyZWQgKmNyZWQsDQo+
-ID4gKyAgICAgICAgICAgICAgIHN0cnVjdCBuZnM0X3Nsb3QgKnNsb3QsDQo+ID4gKyAgICAgICAg
-ICAgICAgIGJvb2wgaXNfcHJpdmlsZWdlZCk7DQo+ID4gIHN0YXRpYyBpbnQgbmZzNDFfdGVzdF9z
-dGF0ZWlkKHN0cnVjdCBuZnNfc2VydmVyICosIG5mczRfc3RhdGVpZCAqLA0KPiA+ICAgICAgICAg
-ICAgICAgICBzdHJ1Y3QgcnBjX2NyZWQgKik7DQo+ID4gIHN0YXRpYyBpbnQgbmZzNDFfZnJlZV9z
-dGF0ZWlkKHN0cnVjdCBuZnNfc2VydmVyICosIGNvbnN0DQo+ID4gbmZzNF9zdGF0ZWlkICosDQo+
-ID4gQEAgLTY0NCwxMyArNjQ4LDE0IEBAIHN0YXRpYyBpbnQgbmZzNDBfc2VxdWVuY2VfZG9uZShz
-dHJ1Y3QNCj4gPiBycGNfdGFzayAqdGFzaywNCj4gPiANCj4gPiAgI2lmIGRlZmluZWQoQ09ORklH
-X05GU19WNF8xKQ0KPiA+IA0KPiA+IC1zdGF0aWMgdm9pZCBuZnM0MV9zZXF1ZW5jZV9mcmVlX3Ns
-b3Qoc3RydWN0IG5mczRfc2VxdWVuY2VfcmVzDQo+ID4gKnJlcykNCj4gPiArc3RhdGljIHZvaWQg
-bmZzNDFfcmVsZWFzZV9zbG90KHN0cnVjdCBuZnM0X3Nsb3QgKnNsb3QpDQo+ID4gIHsNCj4gPiAg
-ICAgICAgIHN0cnVjdCBuZnM0X3Nlc3Npb24gKnNlc3Npb247DQo+ID4gICAgICAgICBzdHJ1Y3Qg
-bmZzNF9zbG90X3RhYmxlICp0Ymw7DQo+ID4gLSAgICAgICBzdHJ1Y3QgbmZzNF9zbG90ICpzbG90
-ID0gcmVzLT5zcl9zbG90Ow0KPiA+ICAgICAgICAgYm9vbCBzZW5kX25ld19oaWdoZXN0X3VzZWRf
-c2xvdGlkID0gZmFsc2U7DQo+ID4gDQo+ID4gKyAgICAgICBpZiAoIXNsb3QpDQo+ID4gKyAgICAg
-ICAgICAgICAgIHJldHVybjsNCj4gPiAgICAgICAgIHRibCA9IHNsb3QtPnRhYmxlOw0KPiA+ICAg
-ICAgICAgc2Vzc2lvbiA9IHRibC0+c2Vzc2lvbjsNCj4gPiANCj4gPiBAQCAtNjc2LDEzICs2ODEs
-MTggQEAgc3RhdGljIHZvaWQgbmZzNDFfc2VxdWVuY2VfZnJlZV9zbG90KHN0cnVjdA0KPiA+IG5m
-czRfc2VxdWVuY2VfcmVzICpyZXMpDQo+ID4gICAgICAgICAgICAgICAgIHNlbmRfbmV3X2hpZ2hl
-c3RfdXNlZF9zbG90aWQgPSBmYWxzZTsNCj4gPiAgb3V0X3VubG9jazoNCj4gPiAgICAgICAgIHNw
-aW5fdW5sb2NrKCZ0YmwtPnNsb3RfdGJsX2xvY2spOw0KPiA+IC0gICAgICAgcmVzLT5zcl9zbG90
-ID0gTlVMTDsNCj4gPiAgICAgICAgIGlmIChzZW5kX25ld19oaWdoZXN0X3VzZWRfc2xvdGlkKQ0K
-PiA+ICAgICAgICAgICAgICAgICBuZnM0MV9ub3RpZnlfc2VydmVyKHNlc3Npb24tPmNscCk7DQo+
-ID4gICAgICAgICBpZiAod2FpdHF1ZXVlX2FjdGl2ZSgmdGJsLT5zbG90X3dhaXRxKSkNCj4gPiAg
-ICAgICAgICAgICAgICAgd2FrZV91cF9hbGwoJnRibC0+c2xvdF93YWl0cSk7DQo+ID4gIH0NCj4g
-PiANCj4gPiArc3RhdGljIHZvaWQgbmZzNDFfc2VxdWVuY2VfZnJlZV9zbG90KHN0cnVjdCBuZnM0
-X3NlcXVlbmNlX3Jlcw0KPiA+ICpyZXMpDQo+ID4gK3sNCj4gPiArICAgICAgIG5mczQxX3JlbGVh
-c2Vfc2xvdChyZXMtPnNyX3Nsb3QpOw0KPiA+ICsgICAgICAgcmVzLT5zcl9zbG90ID0gTlVMTDsN
-Cj4gPiArfQ0KPiA+ICsNCj4gPiAgc3RhdGljIGludCBuZnM0MV9zZXF1ZW5jZV9wcm9jZXNzKHN0
-cnVjdCBycGNfdGFzayAqdGFzaywNCj4gPiAgICAgICAgICAgICAgICAgc3RydWN0IG5mczRfc2Vx
-dWVuY2VfcmVzICpyZXMpDQo+ID4gIHsNCj4gPiBAQCAtNzEwLDEzICs3MjAsNiBAQCBzdGF0aWMg
-aW50IG5mczQxX3NlcXVlbmNlX3Byb2Nlc3Moc3RydWN0DQo+ID4gcnBjX3Rhc2sgKnRhc2ssDQo+
-ID4gICAgICAgICAvKiBDaGVjayB0aGUgU0VRVUVOQ0Ugb3BlcmF0aW9uIHN0YXR1cyAqLw0KPiA+
-ICAgICAgICAgc3dpdGNoIChyZXMtPnNyX3N0YXR1cykgew0KPiA+ICAgICAgICAgY2FzZSAwOg0K
-PiA+IC0gICAgICAgICAgICAgICAvKiBJZiBwcmV2aW91cyBvcCBvbiBzbG90IHdhcyBpbnRlcnJ1
-cHRlZCBhbmQgd2UNCj4gPiByZXVzZWQNCj4gPiAtICAgICAgICAgICAgICAgICogdGhlIHNlcSMg
-YW5kIGdvdCBhIHJlcGx5IGZyb20gdGhlIGNhY2hlLCB0aGVuDQo+ID4gcmV0cnkNCj4gPiAtICAg
-ICAgICAgICAgICAgICovDQo+ID4gLSAgICAgICAgICAgICAgIGlmICh0YXNrLT50a19zdGF0dXMg
-PT0gLUVSRU1PVEVJTyAmJiBpbnRlcnJ1cHRlZCkgew0KPiA+IC0gICAgICAgICAgICAgICAgICAg
-ICAgICsrc2xvdC0+c2VxX25yOw0KPiA+IC0gICAgICAgICAgICAgICAgICAgICAgIGdvdG8gcmV0
-cnlfbm93YWl0Ow0KPiA+IC0gICAgICAgICAgICAgICB9DQo+ID4gICAgICAgICAgICAgICAgIC8q
-IFVwZGF0ZSB0aGUgc2xvdCdzIHNlcXVlbmNlIGFuZCBjbGllbnRpZCBsZWFzZQ0KPiA+IHRpbWVy
-ICovDQo+ID4gICAgICAgICAgICAgICAgIHNsb3QtPnNlcV9kb25lID0gMTsNCj4gPiAgICAgICAg
-ICAgICAgICAgY2xwID0gc2Vzc2lvbi0+Y2xwOw0KPiA+IEBAIC03NTAsMTYgKzc1MywxNiBAQCBz
-dGF0aWMgaW50IG5mczQxX3NlcXVlbmNlX3Byb2Nlc3Moc3RydWN0DQo+ID4gcnBjX3Rhc2sgKnRh
-c2ssDQo+ID4gICAgICAgICAgICAgICAgICAqIFRoZSBzbG90IGlkIHdlIHVzZWQgd2FzIHByb2Jh
-Ymx5IHJldGlyZWQuIFRyeQ0KPiA+IGFnYWluDQo+ID4gICAgICAgICAgICAgICAgICAqIHVzaW5n
-IGEgZGlmZmVyZW50IHNsb3QgaWQuDQo+ID4gICAgICAgICAgICAgICAgICAqLw0KPiA+ICsgICAg
-ICAgICAgICAgICBpZiAoc2xvdC0+c2VxX25yIDwgc2xvdC0+dGFibGUtDQo+ID4gPnRhcmdldF9o
-aWdoZXN0X3Nsb3RpZCkNCj4gPiArICAgICAgICAgICAgICAgICAgICAgICBnb3RvIHNlc3Npb25f
-cmVjb3ZlcjsNCj4gPiAgICAgICAgICAgICAgICAgZ290byByZXRyeV9ub3dhaXQ7DQo+ID4gICAg
-ICAgICBjYXNlIC1ORlM0RVJSX1NFUV9NSVNPUkRFUkVEOg0KPiA+ICAgICAgICAgICAgICAgICAv
-Kg0KPiA+ICAgICAgICAgICAgICAgICAgKiBXYXMgdGhlIGxhc3Qgb3BlcmF0aW9uIG9uIHRoaXMg
-c2VxdWVuY2UNCj4gPiBpbnRlcnJ1cHRlZD8NCj4gPiAgICAgICAgICAgICAgICAgICogSWYgc28s
-IHJldHJ5IGFmdGVyIGJ1bXBpbmcgdGhlIHNlcXVlbmNlIG51bWJlci4NCj4gPiAgICAgICAgICAg
-ICAgICAgICovDQo+ID4gLSAgICAgICAgICAgICAgIGlmIChpbnRlcnJ1cHRlZCkgew0KPiA+IC0g
-ICAgICAgICAgICAgICAgICAgICAgICsrc2xvdC0+c2VxX25yOw0KPiA+IC0gICAgICAgICAgICAg
-ICAgICAgICAgIGdvdG8gcmV0cnlfbm93YWl0Ow0KPiA+IC0gICAgICAgICAgICAgICB9DQo+ID4g
-KyAgICAgICAgICAgICAgIGlmIChpbnRlcnJ1cHRlZCkNCj4gPiArICAgICAgICAgICAgICAgICAg
-ICAgICBnb3RvIHJldHJ5X25ld19zZXE7DQo+ID4gICAgICAgICAgICAgICAgIC8qDQo+ID4gICAg
-ICAgICAgICAgICAgICAqIENvdWxkIHRoaXMgc2xvdCBoYXZlIGJlZW4gcHJldmlvdXNseSByZXRp
-cmVkPw0KPiA+ICAgICAgICAgICAgICAgICAgKiBJZiBzbywgdGhlbiB0aGUgc2VydmVyIG1heSBi
-ZSBleHBlY3Rpbmcgc2VxX25yID0NCj4gPiAxIQ0KPiA+IEBAIC03NjgsMTAgKzc3MSwxMSBAQCBz
-dGF0aWMgaW50IG5mczQxX3NlcXVlbmNlX3Byb2Nlc3Moc3RydWN0DQo+ID4gcnBjX3Rhc2sgKnRh
-c2ssDQo+ID4gICAgICAgICAgICAgICAgICAgICAgICAgc2xvdC0+c2VxX25yID0gMTsNCj4gPiAg
-ICAgICAgICAgICAgICAgICAgICAgICBnb3RvIHJldHJ5X25vd2FpdDsNCj4gPiAgICAgICAgICAg
-ICAgICAgfQ0KPiA+IC0gICAgICAgICAgICAgICBicmVhazsNCj4gPiArICAgICAgICAgICAgICAg
-Z290byBzZXNzaW9uX3JlY292ZXI7DQo+ID4gICAgICAgICBjYXNlIC1ORlM0RVJSX1NFUV9GQUxT
-RV9SRVRSWToNCj4gPiAtICAgICAgICAgICAgICAgKytzbG90LT5zZXFfbnI7DQo+ID4gLSAgICAg
-ICAgICAgICAgIGdvdG8gcmV0cnlfbm93YWl0Ow0KPiA+ICsgICAgICAgICAgICAgICBpZiAoaW50
-ZXJydXB0ZWQpDQo+ID4gKyAgICAgICAgICAgICAgICAgICAgICAgZ290byByZXRyeV9uZXdfc2Vx
-Ow0KPiA+ICsgICAgICAgICAgICAgICBnb3RvIHNlc3Npb25fcmVjb3ZlcjsNCj4gPiAgICAgICAg
-IGRlZmF1bHQ6DQo+ID4gICAgICAgICAgICAgICAgIC8qIEp1c3QgdXBkYXRlIHRoZSBzbG90IHNl
-cXVlbmNlIG5vLiAqLw0KPiA+ICAgICAgICAgICAgICAgICBzbG90LT5zZXFfZG9uZSA9IDE7DQo+
-ID4gQEAgLTc4MSw2ICs3ODUsMTEgQEAgc3RhdGljIGludCBuZnM0MV9zZXF1ZW5jZV9wcm9jZXNz
-KHN0cnVjdA0KPiA+IHJwY190YXNrICp0YXNrLA0KPiA+ICAgICAgICAgZHByaW50aygiJXM6IEVy
-cm9yICVkIGZyZWUgdGhlIHNsb3QgXG4iLCBfX2Z1bmNfXywgcmVzLQ0KPiA+ID5zcl9zdGF0dXMp
-Ow0KPiA+ICBvdXRfbm9hY3Rpb246DQo+ID4gICAgICAgICByZXR1cm4gcmV0Ow0KPiA+ICtzZXNz
-aW9uX3JlY292ZXI6DQo+ID4gKyAgICAgICBuZnM0X3NjaGVkdWxlX3Nlc3Npb25fcmVjb3Zlcnko
-c2Vzc2lvbiwgcmVzLT5zcl9zdGF0dXMpOw0KPiA+ICsgICAgICAgZ290byByZXRyeV9ub3dhaXQ7
-DQo+ID4gK3JldHJ5X25ld19zZXE6DQo+ID4gKyAgICAgICArK3Nsb3QtPnNlcV9ucjsNCj4gPiAg
-cmV0cnlfbm93YWl0Og0KPiA+ICAgICAgICAgaWYgKHJwY19yZXN0YXJ0X2NhbGxfcHJlcGFyZSh0
-YXNrKSkgew0KPiA+ICAgICAgICAgICAgICAgICBuZnM0MV9zZXF1ZW5jZV9mcmVlX3Nsb3QocmVz
-KTsNCj4gPiBAQCAtODU3LDYgKzg2NiwxNyBAQCBzdGF0aWMgY29uc3Qgc3RydWN0IHJwY19jYWxs
-X29wcw0KPiA+IG5mczQxX2NhbGxfc3luY19vcHMgPSB7DQo+ID4gICAgICAgICAucnBjX2NhbGxf
-ZG9uZSA9IG5mczQxX2NhbGxfc3luY19kb25lLA0KPiA+ICB9Ow0KPiA+IA0KPiA+ICtzdGF0aWMg
-dm9pZA0KPiA+ICtuZnM0X3NlcXVlbmNlX3Byb2Nlc3NfaW50ZXJydXB0ZWQoc3RydWN0IG5mc19j
-bGllbnQgKmNsaWVudCwNCj4gPiArICAgICAgICAgICAgICAgc3RydWN0IG5mczRfc2xvdCAqc2xv
-dCwgc3RydWN0IHJwY19jcmVkICpjcmVkKQ0KPiA+ICt7DQo+ID4gKyAgICAgICBzdHJ1Y3QgcnBj
-X3Rhc2sgKnRhc2s7DQo+ID4gKw0KPiA+ICsgICAgICAgdGFzayA9IF9uZnM0MV9wcm9jX3NlcXVl
-bmNlKGNsaWVudCwgY3JlZCwgc2xvdCwgdHJ1ZSk7DQo+ID4gKyAgICAgICBpZiAoIUlTX0VSUih0
-YXNrKSkNCj4gPiArICAgICAgICAgICAgICAgcnBjX3B1dF90YXNrX2FzeW5jKHRhc2spOw0KPiA+
-ICt9DQo+ID4gKw0KPiA+ICAjZWxzZSAgLyogIUNPTkZJR19ORlNfVjRfMSAqLw0KPiA+IA0KPiA+
-ICBzdGF0aWMgaW50IG5mczRfc2VxdWVuY2VfcHJvY2VzcyhzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ss
-IHN0cnVjdA0KPiA+IG5mczRfc2VxdWVuY2VfcmVzICpyZXMpDQo+ID4gQEAgLTg3Nyw5ICs4OTcs
-MzIgQEAgaW50IG5mczRfc2VxdWVuY2VfZG9uZShzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2ssDQo+ID4g
-IH0NCj4gPiAgRVhQT1JUX1NZTUJPTF9HUEwobmZzNF9zZXF1ZW5jZV9kb25lKTsNCj4gPiANCj4g
-PiArc3RhdGljIHZvaWQNCj4gPiArbmZzNF9zZXF1ZW5jZV9wcm9jZXNzX2ludGVycnVwdGVkKHN0
-cnVjdCBuZnNfY2xpZW50ICpjbGllbnQsDQo+ID4gKyAgICAgICAgICAgICAgIHN0cnVjdCBuZnM0
-X3Nsb3QgKnNsb3QsIHN0cnVjdCBycGNfY3JlZCAqY3JlZCkNCj4gPiArew0KPiA+ICsgICAgICAg
-V0FSTl9PTl9PTkNFKDEpOw0KPiA+ICsgICAgICAgc2xvdC0+aW50ZXJydXB0ZWQgPSAwOw0KPiA+
-ICt9DQo+ID4gKw0KPiA+ICAjZW5kaWYgLyogIUNPTkZJR19ORlNfVjRfMSAqLw0KPiA+IA0KPiA+
-IC1pbnQgbmZzNF9zZXR1cF9zZXF1ZW5jZShjb25zdCBzdHJ1Y3QgbmZzX2NsaWVudCAqY2xpZW50
-LA0KPiA+ICtzdGF0aWMNCj4gPiArdm9pZCBuZnM0X3NlcXVlbmNlX2F0dGFjaF9zbG90KHN0cnVj
-dCBuZnM0X3NlcXVlbmNlX2FyZ3MgKmFyZ3MsDQo+ID4gKyAgICAgICAgICAgICAgIHN0cnVjdCBu
-ZnM0X3NlcXVlbmNlX3JlcyAqcmVzLA0KPiA+ICsgICAgICAgICAgICAgICBzdHJ1Y3QgbmZzNF9z
-bG90ICpzbG90KQ0KPiA+ICt7DQo+ID4gKyAgICAgICBzbG90LT5wcml2aWxlZ2VkID0gYXJncy0+
-c2FfcHJpdmlsZWdlZCA/IDEgOiAwOw0KPiANCj4gVGhlIG9vcHMgaXMgYmVjYXVzZSBpbiB0aGUg
-YXN5bmMgc2VxdWVuY2UsIGl0IHBhc3NlcyBOVUxMIGFzIHRoZSBzbG90DQo+IHdoaWNoIGVuZHMg
-dXAgY2FsbGluZyB0aGlzIGFuZCB0cnlpbmcgdG8gZGVyZWZlcmVuY2UgInNsb3QiLg0KPiANCj4g
-QnR3LCBubyBvcGVyYXRpb25zIGFyZSBuZWVkZWQgdG8gYWN0dWFsbHkgdHJpZ2dlciB0aGlzLiBK
-dXN0IGRvIHRoZQ0KPiBtb3VudCBhbmQgd2FpdCBmb3IgdGhlIGZpcnN0IHJlbmV3Lg0KPiANCj4g
-RG9uJ3Qga25vdyBpZiBwZXJoYXBzIHRoZSBmaXggaXMgdG8gY2hlY2sgdGhhdA0KPiBpZiAoc2xv
-dCkNCg0KRG9oISBZZXMsIHRoYXQgd2FzIGEgbGFzdCBtaW51dGUgY2xlYW51cC4gSSB0aG91Z2h0
-IEkgZGlkIHRoZSBzYW1lIGZvcg0KYm90aCBuZnM0X3NlcXVlbmNlX2F0dGFjaF9zbG90KCkgYW5k
-IG5mczQxX3JlbGVhc2Vfc2xvdCgpLCBidXQgaXQgbG9va3MNCmFzIGlmIEkgb25seSBmaXhlZCB1
-cCB0aGUgbGF0dGVyLg0KDQpUaGFua3MhDQogIFRyb25kDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
-QHByaW1hcnlkYXRhLmNvbQ0K
+
+> On Oct 10, 2017, at 1:31 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> Since it can take a while before a specific thread gets scheduled, it
+> is better to just implement a first come first served queue mechanism.
+> That way, if a thread is already scheduled and is idle, it can pick up
+> the work to do from the queue.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+Tested-by: Chuck Lever <chuck.lever@oracle.com>
+
+Light performance testing, and a git software build / regression
+suite run on NFSv4.1. All on NFS/RDMA.
+
+
+> ---
+> include/linux/sunrpc/svc.h |   1 +
+> net/sunrpc/svc_xprt.c      | 100 ++++++++++++++-------------------------------
+> 2 files changed, 31 insertions(+), 70 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 38f561b2dda3..23c4d6496aac 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -46,6 +46,7 @@ struct svc_pool {
+> 	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
+> #define	SP_TASK_PENDING		(0)		/* still work to do even if no
+> 						 * xprt is queued. */
+> +#define SP_CONGESTED		(1)
+> 	unsigned long		sp_flags;
+> } ____cacheline_aligned_in_smp;
+> 
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index d16a8b423c20..9b29c53281a8 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -380,7 +380,6 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+> 	struct svc_pool *pool;
+> 	struct svc_rqst	*rqstp = NULL;
+> 	int cpu;
+> -	bool queued = false;
+> 
+> 	if (!svc_xprt_has_something_to_do(xprt))
+> 		goto out;
+> @@ -401,58 +400,25 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+> 
+> 	atomic_long_inc(&pool->sp_stats.packets);
+> 
+> -redo_search:
+> +	dprintk("svc: transport %p put into queue\n", xprt);
+> +	spin_lock_bh(&pool->sp_lock);
+> +	list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
+> +	pool->sp_stats.sockets_queued++;
+> +	spin_unlock_bh(&pool->sp_lock);
+> +
+> 	/* find a thread for this xprt */
+> 	rcu_read_lock();
+> 	list_for_each_entry_rcu(rqstp, &pool->sp_all_threads, rq_all) {
+> -		/* Do a lockless check first */
+> -		if (test_bit(RQ_BUSY, &rqstp->rq_flags))
+> +		if (test_and_set_bit(RQ_BUSY, &rqstp->rq_flags))
+> 			continue;
+> -
+> -		/*
+> -		 * Once the xprt has been queued, it can only be dequeued by
+> -		 * the task that intends to service it. All we can do at that
+> -		 * point is to try to wake this thread back up so that it can
+> -		 * do so.
+> -		 */
+> -		if (!queued) {
+> -			spin_lock_bh(&rqstp->rq_lock);
+> -			if (test_and_set_bit(RQ_BUSY, &rqstp->rq_flags)) {
+> -				/* already busy, move on... */
+> -				spin_unlock_bh(&rqstp->rq_lock);
+> -				continue;
+> -			}
+> -
+> -			/* this one will do */
+> -			rqstp->rq_xprt = xprt;
+> -			svc_xprt_get(xprt);
+> -			spin_unlock_bh(&rqstp->rq_lock);
+> -		}
+> -		rcu_read_unlock();
+> -
+> 		atomic_long_inc(&pool->sp_stats.threads_woken);
+> 		wake_up_process(rqstp->rq_task);
+> -		put_cpu();
+> -		goto out;
+> -	}
+> -	rcu_read_unlock();
+> -
+> -	/*
+> -	 * We didn't find an idle thread to use, so we need to queue the xprt.
+> -	 * Do so and then search again. If we find one, we can't hook this one
+> -	 * up to it directly but we can wake the thread up in the hopes that it
+> -	 * will pick it up once it searches for a xprt to service.
+> -	 */
+> -	if (!queued) {
+> -		queued = true;
+> -		dprintk("svc: transport %p put into queue\n", xprt);
+> -		spin_lock_bh(&pool->sp_lock);
+> -		list_add_tail(&xprt->xpt_ready, &pool->sp_sockets);
+> -		pool->sp_stats.sockets_queued++;
+> -		spin_unlock_bh(&pool->sp_lock);
+> -		goto redo_search;
+> +		goto out_unlock;
+> 	}
+> +	set_bit(SP_CONGESTED, &pool->sp_flags);
+> 	rqstp = NULL;
+> +out_unlock:
+> +	rcu_read_unlock();
+> 	put_cpu();
+> out:
+> 	trace_svc_xprt_do_enqueue(xprt, rqstp);
+> @@ -721,38 +687,25 @@ rqst_should_sleep(struct svc_rqst *rqstp)
+> 
+> static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+> {
+> -	struct svc_xprt *xprt;
+> 	struct svc_pool		*pool = rqstp->rq_pool;
+> 	long			time_left = 0;
+> 
+> 	/* rq_xprt should be clear on entry */
+> 	WARN_ON_ONCE(rqstp->rq_xprt);
+> 
+> -	/* Normally we will wait up to 5 seconds for any required
+> -	 * cache information to be provided.
+> -	 */
+> -	rqstp->rq_chandle.thread_wait = 5*HZ;
+> -
+> -	xprt = svc_xprt_dequeue(pool);
+> -	if (xprt) {
+> -		rqstp->rq_xprt = xprt;
+> -
+> -		/* As there is a shortage of threads and this request
+> -		 * had to be queued, don't allow the thread to wait so
+> -		 * long for cache updates.
+> -		 */
+> -		rqstp->rq_chandle.thread_wait = 1*HZ;
+> -		clear_bit(SP_TASK_PENDING, &pool->sp_flags);
+> -		return xprt;
+> -	}
+> +	rqstp->rq_xprt = svc_xprt_dequeue(pool);
+> +	if (rqstp->rq_xprt)
+> +		goto out_found;
+> 
+> 	/*
+> 	 * We have to be able to interrupt this wait
+> 	 * to bring down the daemons ...
+> 	 */
+> 	set_current_state(TASK_INTERRUPTIBLE);
+> +	smp_mb__before_atomic();
+> +	clear_bit(SP_CONGESTED, &pool->sp_flags);
+> 	clear_bit(RQ_BUSY, &rqstp->rq_flags);
+> -	smp_mb();
+> +	smp_mb__after_atomic();
+> 
+> 	if (likely(rqst_should_sleep(rqstp)))
+> 		time_left = schedule_timeout(timeout);
+> @@ -761,13 +714,11 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+> 
+> 	try_to_freeze();
+> 
+> -	spin_lock_bh(&rqstp->rq_lock);
+> 	set_bit(RQ_BUSY, &rqstp->rq_flags);
+> -	spin_unlock_bh(&rqstp->rq_lock);
+> -
+> -	xprt = rqstp->rq_xprt;
+> -	if (xprt != NULL)
+> -		return xprt;
+> +	smp_mb__after_atomic();
+> +	rqstp->rq_xprt = svc_xprt_dequeue(pool);
+> +	if (rqstp->rq_xprt)
+> +		goto out_found;
+> 
+> 	if (!time_left)
+> 		atomic_long_inc(&pool->sp_stats.threads_timedout);
+> @@ -775,6 +726,15 @@ static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+> 	if (signalled() || kthread_should_stop())
+> 		return ERR_PTR(-EINTR);
+> 	return ERR_PTR(-EAGAIN);
+> +out_found:
+> +	/* Normally we will wait up to 5 seconds for any required
+> +	 * cache information to be provided.
+> +	 */
+> +	if (!test_bit(SP_CONGESTED, &pool->sp_flags))
+> +		rqstp->rq_chandle.thread_wait = 5*HZ;
+> +	else
+> +		rqstp->rq_chandle.thread_wait = 1*HZ;
+> +	return rqstp->rq_xprt;
+> }
+> 
+> static void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
+> -- 
+> 2.13.6
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
 
