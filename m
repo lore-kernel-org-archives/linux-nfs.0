@@ -1,117 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mga02.intel.com ([134.134.136.20]:13939 "EHLO mga02.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752787AbdJTJzx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Oct 2017 05:55:53 -0400
+        id S1752791AbdJTJz6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Oct 2017 05:55:58 -0400
 From: Elena Reshetova <elena.reshetova@intel.com>
 To: trond.myklebust@primarydata.com
 Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
         anna.schumaker@netapp.com, bfields@fieldses.org,
         jlayton@poochiereds.net, peterz@infradead.org,
-        keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>,
-        Hans Liljestrand <ishkamiel@gmail.com>,
-        David Windsor <dwindsor@gmail.com>
-Subject: [PATCH 05/11] fs, nfs: convert pnfs_layout_segment.pls_refcount from atomic_t to refcount_t
-Date: Fri, 20 Oct 2017 12:53:32 +0300
-Message-Id: <1508493218-27760-6-git-send-email-elena.reshetova@intel.com>
+        keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>
+Subject: [PATCH 07/11] fs, nfs: convert nfs4_ff_layout_mirror.ref from atomic_t to refcount_t
+Date: Fri, 20 Oct 2017 12:53:34 +0300
+Message-Id: <1508493218-27760-8-git-send-email-elena.reshetova@intel.com>
 In-Reply-To: <1508493218-27760-1-git-send-email-elena.reshetova@intel.com>
 References: <1508493218-27760-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-refcount_t type and corresponding API should be
-used instead of atomic_t when the variable is used as
-a reference counter. This allows to avoid accidental
-refcounter overflows that might lead to use-after-free
-situations.
+atomic_t variables are currently used to implement reference
+counters with the following properties:
+ - counter is initialized to 1 using atomic_set()
+ - a resource is freed upon counter reaching zero
+ - once counter reaches zero, its further
+   increments aren't allowed
+ - counter schema uses basic atomic operations
+   (set, inc, inc_not_zero, dec_and_test, etc.)
 
+Such atomic variables should be converted to a newly provided
+refcount_t type and API that prevents accidental counter overflows
+and underflows. This is important since overflows and underflows
+can lead to use-after-free situation and be exploitable.
+
+The variable nfs4_ff_layout_mirror.ref is used as pure reference counter.
+Convert it to refcount_t and fix up the operations.
+
+Suggested-by: Kees Cook <keescook@chromium.org>
+Reviewed-by: David Windsor <dwindsor@gmail.com>
+Reviewed-by: Hans Liljestrand <ishkamiel@gmail.com>
 Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-Signed-off-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Kees Cook <keescook@chromium.org>
-Signed-off-by: David Windsor <dwindsor@gmail.com>
 ---
- fs/nfs/pnfs.c | 12 ++++++------
- fs/nfs/pnfs.h |  4 ++--
- 2 files changed, 8 insertions(+), 8 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c | 8 ++++----
+ fs/nfs/flexfilelayout/flexfilelayout.h | 3 ++-
+ 2 files changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 3bcd669..499bb71 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -450,7 +450,7 @@ pnfs_init_lseg(struct pnfs_layout_hdr *lo, struct pnfs_layout_segment *lseg,
- {
- 	INIT_LIST_HEAD(&lseg->pls_list);
- 	INIT_LIST_HEAD(&lseg->pls_lc_list);
--	atomic_set(&lseg->pls_refcount, 1);
-+	refcount_set(&lseg->pls_refcount, 1);
- 	set_bit(NFS_LSEG_VALID, &lseg->pls_flags);
- 	lseg->pls_layout = lo;
- 	lseg->pls_range = *range;
-@@ -507,13 +507,13 @@ pnfs_put_lseg(struct pnfs_layout_segment *lseg)
- 		return;
- 
- 	dprintk("%s: lseg %p ref %d valid %d\n", __func__, lseg,
--		atomic_read(&lseg->pls_refcount),
-+		refcount_read(&lseg->pls_refcount),
- 		test_bit(NFS_LSEG_VALID, &lseg->pls_flags));
- 
- 	lo = lseg->pls_layout;
- 	inode = lo->plh_inode;
- 
--	if (atomic_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
-+	if (refcount_dec_and_lock(&lseg->pls_refcount, &inode->i_lock)) {
- 		if (test_bit(NFS_LSEG_VALID, &lseg->pls_flags)) {
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index b0fa83a..ff55a0a 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -187,7 +187,7 @@ ff_layout_add_mirror(struct pnfs_layout_hdr *lo,
+ 			continue;
+ 		if (!ff_mirror_match_fh(mirror, pos))
+ 			continue;
+-		if (atomic_inc_not_zero(&pos->ref)) {
++		if (refcount_inc_not_zero(&pos->ref)) {
  			spin_unlock(&inode->i_lock);
- 			return;
-@@ -551,7 +551,7 @@ pnfs_lseg_range_contained(const struct pnfs_layout_range *l1,
- static bool pnfs_lseg_dec_and_remove_zero(struct pnfs_layout_segment *lseg,
- 		struct list_head *tmp_list)
- {
--	if (!atomic_dec_and_test(&lseg->pls_refcount))
-+	if (!refcount_dec_and_test(&lseg->pls_refcount))
- 		return false;
- 	pnfs_layout_remove_lseg(lseg->pls_layout, lseg);
- 	list_add(&lseg->pls_list, tmp_list);
-@@ -570,7 +570,7 @@ static int mark_lseg_invalid(struct pnfs_layout_segment *lseg,
- 		 * outstanding io is finished.
- 		 */
- 		dprintk("%s: lseg %p ref %d\n", __func__, lseg,
--			atomic_read(&lseg->pls_refcount));
-+			refcount_read(&lseg->pls_refcount));
- 		if (pnfs_lseg_dec_and_remove_zero(lseg, tmp_list))
- 			rv = 1;
+ 			return pos;
+ 		}
+@@ -218,7 +218,7 @@ static struct nfs4_ff_layout_mirror *ff_layout_alloc_mirror(gfp_t gfp_flags)
+ 	mirror = kzalloc(sizeof(*mirror), gfp_flags);
+ 	if (mirror != NULL) {
+ 		spin_lock_init(&mirror->lock);
+-		atomic_set(&mirror->ref, 1);
++		refcount_set(&mirror->ref, 1);
+ 		INIT_LIST_HEAD(&mirror->mirrors);
  	}
-@@ -1546,7 +1546,7 @@ pnfs_find_lseg(struct pnfs_layout_hdr *lo,
- 	}
+ 	return mirror;
+@@ -242,7 +242,7 @@ static void ff_layout_free_mirror(struct nfs4_ff_layout_mirror *mirror)
  
- 	dprintk("%s:Return lseg %p ref %d\n",
--		__func__, ret, ret ? atomic_read(&ret->pls_refcount) : 0);
-+		__func__, ret, ret ? refcount_read(&ret->pls_refcount) : 0);
- 	return ret;
+ static void ff_layout_put_mirror(struct nfs4_ff_layout_mirror *mirror)
+ {
+-	if (mirror != NULL && atomic_dec_and_test(&mirror->ref))
++	if (mirror != NULL && refcount_dec_and_test(&mirror->ref))
+ 		ff_layout_free_mirror(mirror);
  }
  
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index cefa7da..f0e98e1 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -64,7 +64,7 @@ struct pnfs_layout_segment {
- 	struct list_head pls_list;
- 	struct list_head pls_lc_list;
- 	struct pnfs_layout_range pls_range;
--	atomic_t pls_refcount;
-+	refcount_t pls_refcount;
- 	u32 pls_seq;
- 	unsigned long pls_flags;
- 	struct pnfs_layout_hdr *pls_layout;
-@@ -394,7 +394,7 @@ static inline struct pnfs_layout_segment *
- pnfs_get_lseg(struct pnfs_layout_segment *lseg)
- {
- 	if (lseg) {
--		atomic_inc(&lseg->pls_refcount);
-+		refcount_inc(&lseg->pls_refcount);
- 		smp_mb__after_atomic();
- 	}
- 	return lseg;
+@@ -2286,7 +2286,7 @@ ff_layout_mirror_prepare_stats(struct pnfs_layout_hdr *lo,
+ 		if (!test_and_clear_bit(NFS4_FF_MIRROR_STAT_AVAIL, &mirror->flags))
+ 			continue;
+ 		/* mirror refcount put in cleanup_layoutstats */
+-		if (!atomic_inc_not_zero(&mirror->ref))
++		if (!refcount_inc_not_zero(&mirror->ref))
+ 			continue;
+ 		dev = &mirror->mirror_ds->id_node; 
+ 		memcpy(&devinfo->dev_id, &dev->deviceid, NFS4_DEVICEID4_SIZE);
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.h b/fs/nfs/flexfilelayout/flexfilelayout.h
+index 98b34c9..ca35426 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.h
++++ b/fs/nfs/flexfilelayout/flexfilelayout.h
+@@ -13,6 +13,7 @@
+ #define FF_FLAGS_NO_IO_THRU_MDS  2
+ #define FF_FLAGS_NO_READ_IO      4
+ 
++#include <linux/refcount.h>
+ #include "../pnfs.h"
+ 
+ /* XXX: Let's filter out insanely large mirror count for now to avoid oom
+@@ -81,7 +82,7 @@ struct nfs4_ff_layout_mirror {
+ 	nfs4_stateid			stateid;
+ 	struct rpc_cred	__rcu		*ro_cred;
+ 	struct rpc_cred	__rcu		*rw_cred;
+-	atomic_t			ref;
++	refcount_t			ref;
+ 	spinlock_t			lock;
+ 	unsigned long			flags;
+ 	struct nfs4_ff_layoutstat	read_stat;
 -- 
 2.7.4
 
