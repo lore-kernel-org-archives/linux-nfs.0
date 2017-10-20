@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:52440 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751468AbdJTOsW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Oct 2017 10:48:22 -0400
-Subject: [PATCH 6/9] xprtrdma: Add a field of bit flags to struct rpcrdma_req
+Received: from mail-it0-f65.google.com ([209.85.214.65]:51688 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751869AbdJTOsi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Oct 2017 10:48:38 -0400
+Subject: [PATCH 8/9] xprtrdma: RPC completion should wait for Send completion
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 20 Oct 2017 10:48:20 -0400
-Message-ID: <20171020144820.14869.25259.stgit@manet.1015granger.net>
+Date: Fri, 20 Oct 2017 10:48:36 -0400
+Message-ID: <20171020144836.14869.58073.stgit@manet.1015granger.net>
 In-Reply-To: <20171020143635.14869.15714.stgit@manet.1015granger.net>
 References: <20171020143635.14869.15714.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,76 +16,167 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have one boolean flag in rpcrdma_req today. I'd like to add more
-flags, so convert that boolean to a bit flag.
+When an RPC Call includes a file data payload, that payload can come
+from pages in the page cache, or a user buffer (for direct I/O).
+
+If the payload can fit inline, xprtrdma includes it in the Send
+using a scatter-gather technique. xprtrdma mustn't allow the RPC
+consumer to re-use the memory where that payload resides before the
+Send completes. Otherwise, the new contents of that memory would be
+exposed by an HCA retransmit of the Send operation.
+
+So, block RPC completion on Send completion, but only in the case
+where a separate file data payload is part of the Send. This
+prevents the reuse of that memory while it is still part of a Send
+operation without an undue cost to other cases.
+
+Waiting is avoided in the common case because typically the Send
+will have completed long before the RPC Reply arrives.
+
+These days, an RPC timeout will trigger a disconnect, which tears
+down the QP. The disconnect flushes all waiting Sends. This bounds
+the amount of time the reply handler has to wait for a Send
+completion.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/backchannel.c |    2 +-
- net/sunrpc/xprtrdma/transport.c   |    2 +-
- net/sunrpc/xprtrdma/verbs.c       |    1 -
- net/sunrpc/xprtrdma/xprt_rdma.h   |    7 ++++++-
- 4 files changed, 8 insertions(+), 4 deletions(-)
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   26 +++++++++++++++++++++++++-
+ net/sunrpc/xprtrdma/transport.c |    5 +++--
+ net/sunrpc/xprtrdma/verbs.c     |    3 ++-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    4 ++++
+ 4 files changed, 34 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index f0d5998..088c9cc 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -42,7 +42,7 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
- 	req = rpcrdma_create_req(r_xprt);
- 	if (IS_ERR(req))
- 		return PTR_ERR(req);
--	req->rl_backchannel = true;
-+	__set_bit(RPCRDMA_REQ_F_BACKCHANNEL, &req->rl_flags);
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 853dede..4fdeaac 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -534,6 +534,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 	for (count = sc->sc_unmap_count; count; ++sge, --count)
+ 		ib_dma_unmap_page(ia->ri_device,
+ 				  sge->addr, sge->length, DMA_TO_DEVICE);
++
++	if (test_and_clear_bit(RPCRDMA_REQ_F_TX_RESOURCES, &sc->sc_req->rl_flags)) {
++		smp_mb__after_atomic();
++		wake_up_bit(&sc->sc_req->rl_flags, RPCRDMA_REQ_F_TX_RESOURCES);
++	}
+ }
  
- 	rb = rpcrdma_alloc_regbuf(RPCRDMA_HDRBUF_SIZE,
- 				  DMA_TO_DEVICE, GFP_KERNEL);
+ /* Prepare an SGE for the RPC-over-RDMA transport header.
+@@ -667,6 +672,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 
+ out:
+ 	sc->sc_wr.num_sge += sge_no;
++	if (sc->sc_unmap_count)
++		__set_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags);
+ 	return true;
+ 
+ out_regbuf:
+@@ -704,6 +711,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
+ 		return -ENOBUFS;
+ 	req->rl_sendctx->sc_wr.num_sge = 0;
+ 	req->rl_sendctx->sc_unmap_count = 0;
++	req->rl_sendctx->sc_req = req;
++	__clear_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags);
+ 
+ 	if (!rpcrdma_prepare_hdr_sge(&r_xprt->rx_ia, req, hdrlen))
+ 		return -EIO;
+@@ -1305,6 +1314,20 @@ void rpcrdma_release_rqst(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req)
+ 	if (!list_empty(&req->rl_registered))
+ 		r_xprt->rx_ia.ri_ops->ro_unmap_sync(r_xprt,
+ 						    &req->rl_registered);
++
++	/* Ensure that any DMA mapped pages associated with
++	 * the Send of the RPC Call have been unmapped before
++	 * allowing the RPC to complete. This protects argument
++	 * memory not controlled by the RPC client from being
++	 * re-used before we're done with it.
++	 */
++	if (test_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags)) {
++		r_xprt->rx_stats.reply_waits_for_send++;
++		out_of_line_wait_on_bit(&req->rl_flags,
++					RPCRDMA_REQ_F_TX_RESOURCES,
++					bit_wait,
++					TASK_UNINTERRUPTIBLE);
++	}
+ }
+ 
+ /* Reply handling runs in the poll worker thread. Anything that
+@@ -1384,7 +1407,8 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
+ 		__func__, rep, req, be32_to_cpu(rep->rr_xid));
+ 
+-	if (list_empty(&req->rl_registered))
++	if (list_empty(&req->rl_registered) &&
++	    !test_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags))
+ 		rpcrdma_complete_rqst(rep);
+ 	else
+ 		queue_work(rpcrdma_receive_wq, &rep->rr_work);
 diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index cb764fb..74f3cef 100644
+index 0c73439..dcc2df0 100644
 --- a/net/sunrpc/xprtrdma/transport.c
 +++ b/net/sunrpc/xprtrdma/transport.c
-@@ -680,7 +680,7 @@
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+@@ -792,12 +792,13 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ 		   r_xprt->rx_stats.failed_marshal_count,
+ 		   r_xprt->rx_stats.bad_reply_count,
+ 		   r_xprt->rx_stats.nomsg_call_count);
+-	seq_printf(seq, "%lu %lu %lu %lu %lu\n",
++	seq_printf(seq, "%lu %lu %lu %lu %lu %lu\n",
+ 		   r_xprt->rx_stats.mrs_recovered,
+ 		   r_xprt->rx_stats.mrs_orphaned,
+ 		   r_xprt->rx_stats.mrs_allocated,
+ 		   r_xprt->rx_stats.local_inv_needed,
+-		   r_xprt->rx_stats.empty_sendctx_q);
++		   r_xprt->rx_stats.empty_sendctx_q,
++		   r_xprt->rx_stats.reply_waits_for_send);
+ }
  
--	if (req->rl_backchannel)
-+	if (test_bit(RPCRDMA_REQ_F_BACKCHANNEL, &req->rl_flags))
- 		return;
- 
- 	dprintk("RPC:       %s: called on 0x%p\n", __func__, req->rl_reply);
+ static int
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 1bf7b1e..bab63ad 100644
+index bab63ad..9a824fe 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1167,7 +1167,6 @@ struct rpcrdma_rep *
- 			rc = PTR_ERR(req);
- 			goto out;
- 		}
--		req->rl_backchannel = false;
- 		list_add(&req->rl_list, &buf->rb_send_bufs);
- 	}
+@@ -1526,7 +1526,8 @@ struct rpcrdma_regbuf *
+ 	dprintk("RPC:       %s: posting %d s/g entries\n",
+ 		__func__, send_wr->num_sge);
  
+-	if (!ep->rep_send_count) {
++	if (!ep->rep_send_count ||
++	    test_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags)) {
+ 		send_wr->send_flags |= IB_SEND_SIGNALED;
+ 		ep->rep_send_count = ep->rep_send_batch;
+ 	} else {
 diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 537cfab..4175320 100644
+index c260475..bccd5d8 100644
 --- a/net/sunrpc/xprtrdma/xprt_rdma.h
 +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -377,12 +377,17 @@ struct rpcrdma_req {
- 	struct rpcrdma_regbuf	*rl_recvbuf;	/* rq_rcv_buf */
+@@ -236,11 +236,13 @@ struct rpcrdma_rep {
  
- 	struct list_head	rl_all;
--	bool			rl_backchannel;
-+	unsigned long		rl_flags;
- 
- 	struct list_head	rl_registered;	/* registered segments */
- 	struct rpcrdma_mr_seg	rl_segments[RPCRDMA_MAX_SEGS];
+ /* struct rpcrdma_sendctx - DMA mapped SGEs to unmap after Send completes
+  */
++struct rpcrdma_req;
+ struct rpcrdma_xprt;
+ struct rpcrdma_sendctx {
+ 	struct ib_send_wr	sc_wr;
+ 	struct ib_cqe		sc_cqe;
+ 	struct rpcrdma_xprt	*sc_xprt;
++	struct rpcrdma_req	*sc_req;
+ 	unsigned int		sc_unmap_count;
+ 	struct ib_sge		sc_sges[];
+ };
+@@ -387,6 +389,7 @@ struct rpcrdma_req {
+ enum {
+ 	RPCRDMA_REQ_F_BACKCHANNEL = 0,
+ 	RPCRDMA_REQ_F_PENDING,
++	RPCRDMA_REQ_F_TX_RESOURCES,
  };
  
-+/* rl_flags */
-+enum {
-+	RPCRDMA_REQ_F_BACKCHANNEL = 0,
-+};
-+
  static inline void
- rpcrdma_set_xprtdata(struct rpc_rqst *rqst, struct rpcrdma_req *req)
- {
+@@ -492,6 +495,7 @@ struct rpcrdma_stats {
+ 	/* accessed when receiving a reply */
+ 	unsigned long long	total_rdma_reply;
+ 	unsigned long long	fixup_copy_count;
++	unsigned long		reply_waits_for_send;
+ 	unsigned long		local_inv_needed;
+ 	unsigned long		nomsg_call_count;
+ 	unsigned long		bcall_count;
 
