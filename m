@@ -1,92 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:31574 "EHLO mga02.intel.com"
+Received: from mailhub.sw.ru ([195.214.232.25]:4739 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752657AbdJTJzp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Oct 2017 05:55:45 -0400
-From: Elena Reshetova <elena.reshetova@intel.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        anna.schumaker@netapp.com, bfields@fieldses.org,
-        jlayton@poochiereds.net, peterz@infradead.org,
-        keescook@chromium.org, Elena Reshetova <elena.reshetova@intel.com>
-Subject: [PATCH 02/11] fs, nfsd: convert nfs4_cntl_odstate.co_odcount from atomic_t to refcount_t
-Date: Fri, 20 Oct 2017 12:53:29 +0300
-Message-Id: <1508493218-27760-3-git-send-email-elena.reshetova@intel.com>
-In-Reply-To: <1508493218-27760-1-git-send-email-elena.reshetova@intel.com>
-References: <1508493218-27760-1-git-send-email-elena.reshetova@intel.com>
+        id S1752893AbdJTOdV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Oct 2017 10:33:21 -0400
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v2] lockd: double unregister of inetaddr notifiers
+To: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Scott Mayhew <smayhew@redhat.com>, stable@vger.kernel.org
+Message-ID: <a0d2108f-9886-3e3e-8d39-536caa72d81d@virtuozzo.com>
+Date: Fri, 20 Oct 2017 17:33:18 +0300
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-atomic_t variables are currently used to implement reference
-counters with the following properties:
- - counter is initialized to 1 using atomic_set()
- - a resource is freed upon counter reaching zero
- - once counter reaches zero, its further
-   increments aren't allowed
- - counter schema uses basic atomic operations
-   (set, inc, inc_not_zero, dec_and_test, etc.)
+v2: reported to stable@ because it fixes backported patch.
 
-Such atomic variables should be converted to a newly provided
-refcount_t type and API that prevents accidental counter overflows
-and underflows. This is important since overflows and underflows
-can lead to use-after-free situation and be exploitable.
+lockd_up() can call lockd_unregister_notifiers twice:
+inside lockd_start_svc() when it calls lockd_svc_exit_thread()
+and then in error path of lockd_up()
 
-The variable nfs4_cntl_odstate.co_odcount is used as pure reference counter.
-Convert it to refcount_t and fix up the operations.
+Patch forces lockd_start_svc() to unregister notifiers in all error cases
+and removes extra unregister in error path of lockd_up().
 
-Suggested-by: Kees Cook <keescook@chromium.org>
-Reviewed-by: David Windsor <dwindsor@gmail.com>
-Reviewed-by: Hans Liljestrand <ishkamiel@gmail.com>
-Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+Fixes: cb7d224f82e4 "lockd: unregister notifier blocks if the service ..."
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- fs/nfsd/nfs4state.c | 6 +++---
- fs/nfsd/state.h     | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+ fs/lockd/svc.c | 20 +++++++++-----------
+ 1 file changed, 9 insertions(+), 11 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d356b87..fb61d79 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -568,7 +568,7 @@ alloc_clnt_odstate(struct nfs4_client *clp)
- 	co = kmem_cache_zalloc(odstate_slab, GFP_KERNEL);
- 	if (co) {
- 		co->co_client = clp;
--		atomic_set(&co->co_odcount, 1);
-+		refcount_set(&co->co_odcount, 1);
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index b995bdc..f04ecfc 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -369,6 +369,7 @@ static int lockd_start_svc(struct svc_serv *serv)
+ 		printk(KERN_WARNING
+ 			"lockd_up: svc_rqst allocation failed, error=%d\n",
+ 			error);
++		lockd_unregister_notifiers();
+ 		goto out_rqst;
  	}
- 	return co;
+ 
+@@ -459,13 +460,16 @@ int lockd_up(struct net *net)
+ 	}
+ 
+ 	error = lockd_up_net(serv, net);
+-	if (error < 0)
+-		goto err_net;
++	if (error < 0) {
++		lockd_unregister_notifiers();
++		goto err_put;
++	}
+ 
+ 	error = lockd_start_svc(serv);
+-	if (error < 0)
+-		goto err_start;
+-
++	if (error < 0) {
++		lockd_down_net(serv, net);
++		goto err_put;
++	}
+ 	nlmsvc_users++;
+ 	/*
+ 	 * Note: svc_serv structures have an initial use count of 1,
+@@ -476,12 +480,6 @@ int lockd_up(struct net *net)
+ err_create:
+ 	mutex_unlock(&nlmsvc_mutex);
+ 	return error;
+-
+-err_start:
+-	lockd_down_net(serv, net);
+-err_net:
+-	lockd_unregister_notifiers();
+-	goto err_put;
  }
-@@ -586,7 +586,7 @@ static inline void
- get_clnt_odstate(struct nfs4_clnt_odstate *co)
- {
- 	if (co)
--		atomic_inc(&co->co_odcount);
-+		refcount_inc(&co->co_odcount);
- }
+ EXPORT_SYMBOL_GPL(lockd_up);
  
- static void
-@@ -598,7 +598,7 @@ put_clnt_odstate(struct nfs4_clnt_odstate *co)
- 		return;
- 
- 	fp = co->co_file;
--	if (atomic_dec_and_lock(&co->co_odcount, &fp->fi_lock)) {
-+	if (refcount_dec_and_lock(&co->co_odcount, &fp->fi_lock)) {
- 		list_del(&co->co_perfile);
- 		spin_unlock(&fp->fi_lock);
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index f927aa4..58eb5f4 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -466,7 +466,7 @@ struct nfs4_clnt_odstate {
- 	struct nfs4_client	*co_client;
- 	struct nfs4_file	*co_file;
- 	struct list_head	co_perfile;
--	atomic_t		co_odcount;
-+	refcount_t		co_odcount;
- };
- 
- /*
 -- 
 2.7.4
-
