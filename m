@@ -1,84 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:4739 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752893AbdJTOdV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Oct 2017 10:33:21 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2] lockd: double unregister of inetaddr notifiers
-To: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Scott Mayhew <smayhew@redhat.com>, stable@vger.kernel.org
-Message-ID: <a0d2108f-9886-3e3e-8d39-536caa72d81d@virtuozzo.com>
-Date: Fri, 20 Oct 2017 17:33:18 +0300
+Received: from mail-io0-f193.google.com ([209.85.223.193]:47683 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753149AbdJTOfU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Oct 2017 10:35:20 -0400
+Received: by mail-io0-f193.google.com with SMTP id h70so13426408ioi.4
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Oct 2017 07:35:20 -0700 (PDT)
+Subject: [PATCH] SUNRPC: Fix parsing failure in trace points with XIDs
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 20 Oct 2017 10:35:18 -0400
+Message-ID: <20171020143435.14781.37778.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2: reported to stable@ because it fixes backported patch.
+mount.nf-11159   8....   905.248380: xprt_transmit:        [FAILED TO PARSE] xid=351291440 status=0 addr=192.168.2.5 port=20049
+mount.nf-11159   8....   905.248381: rpc_task_sleep:       task:6210@1 flags=0e80 state=0005 status=0 timeout=60000 queue=xprt_pending
+kworker/-1591    1....   905.248419: xprt_lookup_rqst:     [FAILED TO PARSE] xid=351291440 status=0 addr=192.168.2.5 port=20049
+kworker/-1591    1....   905.248423: xprt_complete_rqst:   [FAILED TO PARSE] xid=351291440 status=24 addr=192.168.2.5 port=20049
 
-lockd_up() can call lockd_unregister_notifiers twice:
-inside lockd_start_svc() when it calls lockd_svc_exit_thread()
-and then in error path of lockd_up()
+Byte swapping is not available during trace-cmd report.
 
-Patch forces lockd_start_svc() to unregister notifiers in all error cases
-and removes extra unregister in error path of lockd_up().
-
-Fixes: cb7d224f82e4 "lockd: unregister notifier blocks if the service ..."
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/lockd/svc.c | 20 +++++++++-----------
- 1 file changed, 9 insertions(+), 11 deletions(-)
+ include/trace/events/sunrpc.h |   49 +++++++++++++++++++++--------------------
+ 1 file changed, 25 insertions(+), 24 deletions(-)
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index b995bdc..f04ecfc 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -369,6 +369,7 @@ static int lockd_start_svc(struct svc_serv *serv)
- 		printk(KERN_WARNING
- 			"lockd_up: svc_rqst allocation failed, error=%d\n",
- 			error);
-+		lockd_unregister_notifiers();
- 		goto out_rqst;
- 	}
+Hi Anna-
+
+This is the "XID patch" I referred to yesterday. Please consider it
+for v4.15.
+
+
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index 8a707f8..82e5057 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -341,21 +341,21 @@
+ 	TP_ARGS(xprt, xid, status),
  
-@@ -459,13 +460,16 @@ int lockd_up(struct net *net)
- 	}
+ 	TP_STRUCT__entry(
+-		__field(__be32, xid)
++		__field(u32, xid)
+ 		__field(int, status)
+ 		__string(addr, xprt->address_strings[RPC_DISPLAY_ADDR])
+ 		__string(port, xprt->address_strings[RPC_DISPLAY_PORT])
+ 	),
  
- 	error = lockd_up_net(serv, net);
--	if (error < 0)
--		goto err_net;
-+	if (error < 0) {
-+		lockd_unregister_notifiers();
-+		goto err_put;
-+	}
+ 	TP_fast_assign(
+-		__entry->xid = xid;
++		__entry->xid = be32_to_cpu(xid);
+ 		__entry->status = status;
+ 		__assign_str(addr, xprt->address_strings[RPC_DISPLAY_ADDR]);
+ 		__assign_str(port, xprt->address_strings[RPC_DISPLAY_PORT]);
+ 	),
  
- 	error = lockd_start_svc(serv);
--	if (error < 0)
--		goto err_start;
--
-+	if (error < 0) {
-+		lockd_down_net(serv, net);
-+		goto err_put;
-+	}
- 	nlmsvc_users++;
- 	/*
- 	 * Note: svc_serv structures have an initial use count of 1,
-@@ -476,12 +480,6 @@ int lockd_up(struct net *net)
- err_create:
- 	mutex_unlock(&nlmsvc_mutex);
- 	return error;
--
--err_start:
--	lockd_down_net(serv, net);
--err_net:
--	lockd_unregister_notifiers();
--	goto err_put;
- }
- EXPORT_SYMBOL_GPL(lockd_up);
+-	TP_printk("peer=[%s]:%s xid=0x%x status=%d", __get_str(addr),
+-			__get_str(port), be32_to_cpu(__entry->xid),
++	TP_printk("peer=[%s]:%s xid=0x%08x status=%d", __get_str(addr),
++			__get_str(port), __entry->xid,
+ 			__entry->status)
+ );
  
--- 
-2.7.4
+@@ -416,7 +416,7 @@
+ 	TP_STRUCT__entry(
+ 		__string(addr, xs->xprt.address_strings[RPC_DISPLAY_ADDR])
+ 		__string(port, xs->xprt.address_strings[RPC_DISPLAY_PORT])
+-		__field(__be32, xid)
++		__field(u32, xid)
+ 		__field(unsigned long, flags)
+ 		__field(unsigned long, copied)
+ 		__field(unsigned int, reclen)
+@@ -426,15 +426,15 @@
+ 	TP_fast_assign(
+ 		__assign_str(addr, xs->xprt.address_strings[RPC_DISPLAY_ADDR]);
+ 		__assign_str(port, xs->xprt.address_strings[RPC_DISPLAY_PORT]);
+-		__entry->xid = xs->tcp_xid;
++		__entry->xid = be32_to_cpu(xs->tcp_xid);
+ 		__entry->flags = xs->tcp_flags;
+ 		__entry->copied = xs->tcp_copied;
+ 		__entry->reclen = xs->tcp_reclen;
+ 		__entry->offset = xs->tcp_offset;
+ 	),
+ 
+-	TP_printk("peer=[%s]:%s xid=0x%x flags=%s copied=%lu reclen=%u offset=%lu",
+-			__get_str(addr), __get_str(port), be32_to_cpu(__entry->xid),
++	TP_printk("peer=[%s]:%s xid=0x%08x flags=%s copied=%lu reclen=%u offset=%lu",
++			__get_str(addr), __get_str(port), __entry->xid,
+ 			rpc_show_sock_xprt_flags(__entry->flags),
+ 			__entry->copied, __entry->reclen, __entry->offset)
+ );
+@@ -456,20 +456,20 @@
+ 
+ 	TP_STRUCT__entry(
+ 		__field(struct sockaddr *, addr)
+-		__field(__be32, xid)
++		__field(u32, xid)
+ 		__field(int, status)
+ 		__field(unsigned long, flags)
+ 	),
+ 
+ 	TP_fast_assign(
+ 		__entry->addr = (struct sockaddr *)&rqst->rq_addr;
+-		__entry->xid = status > 0 ? rqst->rq_xid : 0;
++		__entry->xid = status > 0 ? be32_to_cpu(rqst->rq_xid) : 0;
+ 		__entry->status = status;
+ 		__entry->flags = rqst->rq_flags;
+ 	),
+ 
+-	TP_printk("addr=%pIScp xid=0x%x status=%d flags=%s", __entry->addr,
+-			be32_to_cpu(__entry->xid), __entry->status,
++	TP_printk("addr=%pIScp xid=0x%08x status=%d flags=%s", __entry->addr,
++			__entry->xid, __entry->status,
+ 			show_rqstp_flags(__entry->flags))
+ );
+ 
+@@ -480,21 +480,21 @@
+ 	TP_ARGS(rqst),
+ 
+ 	TP_STRUCT__entry(
+-		__field(__be32, xid)
++		__field(u32, xid)
+ 		__field(unsigned long, flags)
+ 		__dynamic_array(unsigned char, addr, rqst->rq_addrlen)
+ 	),
+ 
+ 	TP_fast_assign(
+-		__entry->xid = rqst->rq_xid;
++		__entry->xid = be32_to_cpu(rqst->rq_xid);
+ 		__entry->flags = rqst->rq_flags;
+ 		memcpy(__get_dynamic_array(addr),
+ 			&rqst->rq_addr, rqst->rq_addrlen);
+ 	),
+ 
+-	TP_printk("addr=%pIScp rq_xid=0x%x flags=%s",
++	TP_printk("addr=%pIScp rq_xid=0x%08x flags=%s",
+ 		(struct sockaddr *)__get_dynamic_array(addr),
+-		be32_to_cpu(__entry->xid),
++		__entry->xid,
+ 		show_rqstp_flags(__entry->flags))
+ );
+ 
+@@ -514,7 +514,7 @@
+ 
+ 	TP_STRUCT__entry(
+ 		__field(struct sockaddr *, addr)
+-		__field(__be32, xid)
++		__field(u32, xid)
+ 		__field(int, dropme)
+ 		__field(int, status)
+ 		__field(unsigned long, flags)
+@@ -522,13 +522,13 @@
+ 
+ 	TP_fast_assign(
+ 		__entry->addr = (struct sockaddr *)&rqst->rq_addr;
+-		__entry->xid = rqst->rq_xid;
++		__entry->xid = be32_to_cpu(rqst->rq_xid);
+ 		__entry->status = status;
+ 		__entry->flags = rqst->rq_flags;
+ 	),
+ 
+-	TP_printk("addr=%pIScp rq_xid=0x%x status=%d flags=%s",
+-		__entry->addr, be32_to_cpu(__entry->xid),
++	TP_printk("addr=%pIScp rq_xid=0x%08x status=%d flags=%s",
++		__entry->addr, __entry->xid,
+ 		__entry->status, show_rqstp_flags(__entry->flags))
+ );
+ 
+@@ -677,18 +677,19 @@
+ 	TP_ARGS(dr),
+ 
+ 	TP_STRUCT__entry(
+-		__field(__be32, xid)
++		__field(u32, xid)
+ 		__dynamic_array(unsigned char, addr, dr->addrlen)
+ 	),
+ 
+ 	TP_fast_assign(
+-		__entry->xid = *(__be32 *)(dr->args + (dr->xprt_hlen>>2));
++		__entry->xid = be32_to_cpu(*(__be32 *)(dr->args +
++						       (dr->xprt_hlen>>2)));
+ 		memcpy(__get_dynamic_array(addr), &dr->addr, dr->addrlen);
+ 	),
+ 
+-	TP_printk("addr=%pIScp xid=0x%x",
++	TP_printk("addr=%pIScp xid=0x%08x",
+ 		(struct sockaddr *)__get_dynamic_array(addr),
+-		be32_to_cpu(__entry->xid))
++		__entry->xid)
+ );
+ 
+ DEFINE_EVENT(svc_deferred_event, svc_drop_deferred,
+
