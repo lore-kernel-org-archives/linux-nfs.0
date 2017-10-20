@@ -1,45 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54632 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:54732 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752498AbdJTS71 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Oct 2017 14:59:27 -0400
-Date: Fri, 20 Oct 2017 14:59:27 -0400
+        id S1752963AbdJTTTf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 20 Oct 2017 15:19:35 -0400
+Date: Fri, 20 Oct 2017 15:19:35 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Elena Reshetova <elena.reshetova@intel.com>
-Cc: trond.myklebust@primarydata.com, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, anna.schumaker@netapp.com,
-        jlayton@poochiereds.net, peterz@infradead.org,
-        keescook@chromium.org
-Subject: Re: [PATCH 00/11] nfs refcount conversions
-Message-ID: <20171020185927.GD15211@fieldses.org>
-References: <1508493218-27760-1-git-send-email-elena.reshetova@intel.com>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        y2038 Mailman List <y2038@lists.linaro.org>,
+        Deepa Dinamani <deepa.kernel@gmail.com>,
+        Linux FS-devel Mailing List <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        NeilBrown <neilb@suse.com>, Kinglong Mee <kinglongmee@gmail.com>,
+        linux-nfs@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] nfds: avoid gettimeofday for nfssvc_boot time
+Message-ID: <20171020191935.GE15211@fieldses.org>
+References: <20171019100435.1170955-1-arnd@arndb.de>
+ <1508410486.4912.11.camel@redhat.com>
+ <CAK8P3a0K0FcepYtxw-6sct0b5ZTx4b+TW9bF9uqL5HV_M03H-w@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1508493218-27760-1-git-send-email-elena.reshetova@intel.com>
+In-Reply-To: <CAK8P3a0K0FcepYtxw-6sct0b5ZTx4b+TW9bF9uqL5HV_M03H-w@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 20, 2017 at 12:53:27PM +0300, Elena Reshetova wrote:
-> This series, for nfs components, replaces atomic_t reference
-> counters with the new refcount_t type and API (see include/linux/refcount.h).
-> By doing this we prevent intentional or accidental
-> underflows or overflows that can led to use-after-free vulnerabilities.
-> 
-> The patches are fully independent and can be cherry-picked separately.
-> If there are no objections to the patches, please merge them via respective trees.
-> 
-> Rebased on top of linux-next.
-> 
-> Elena Reshetova (11):
->   fs, nfsd: convert nfs4_stid.sc_count from atomic_t to refcount_t
->   fs, nfsd: convert nfs4_cntl_odstate.co_odcount from atomic_t to
->     refcount_t
->   fs, nfsd: convert nfs4_file.fi_ref from atomic_t to refcount_t
+On Thu, Oct 19, 2017 at 01:04:35PM +0200, Arnd Bergmann wrote:
+> On Thu, Oct 19, 2017 at 12:54 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> >
+> > I wonder if we'd be better off just using nfssvc_boot.tv_sec as the
+> > verifier? I don't see us ever calling that ktime_get_real_ts64 more than
+> > once per second for this purpose, and that would eliminate wraparound.
+> > That said, wraparound is not a huge concern here anyway, so this is
+> > certainly fine for now:
 
-Thanks, applying for 4.15.
+It might reduce the chances of a collision if someone is doing extreme
+boot-time optimization, or if time goes backwards for some reason?
 
-I haven't followed recent discussion on the refcount api, but I assume
-the consensus is to do this, and these particular conversions certainly
-look trivial enough.
+> I now have the feeling that we had previously had the same discussion
+> when someone else submitted a similar patch that ended up never getting
+> merged. I might also be confusing this with a different subsystem that
+> had the same requirement.
+> 
+> If we want this to be as unique as possible and also never (within
+> a few hundred years) wrap, we could call ktime_get_real_ns(), which
+> returns a 64-bit nanoseconds number.
 
---b.
+Anyway, no objection to doing this differently if someone wants, but
+I'll just take this patch for now.
+
+Thanks.--b.
+
+> 
+> > Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> 
+> Thanks.
+> 
+>      Arnd
