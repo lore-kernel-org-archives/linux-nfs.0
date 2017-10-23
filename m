@@ -1,72 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51304 "EHLO mx1.redhat.com"
+Received: from mga04.intel.com ([192.55.52.120]:55250 "EHLO mga04.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752565AbdJTUof (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 20 Oct 2017 16:44:35 -0400
-Date: Fri, 20 Oct 2017 16:44:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] nfsd4: fix cached replies to solo SEQUENCE compounds
-Message-ID: <20171020204432.GA9302@parsley.fieldses.org>
-References: <CAN-5tyEXeesbAk02LsGDjwoBqZr6q8AzWUhMSV0-V2aUwm44dA@mail.gmail.com>
- <1508361919-30495-1-git-send-email-bfields@redhat.com>
- <CAN-5tyHBv9iFfTEPTgCfNyBo9veiqWiD_2xzVwhHjQ_tNdMFZw@mail.gmail.com>
- <20171019181718.GF16942@parsley.fieldses.org>
- <CAN-5tyFCBrfLnw91R5awik6+miCO7vGfB-K40D1yQw-+nJ6eiQ@mail.gmail.com>
- <20171019202015.GG16942@parsley.fieldses.org>
- <CAN-5tyHQUB0x1YhdMosM1pg12kuK9gEeqW2ruufxfFsPLHL_Ew@mail.gmail.com>
- <CAN-5tyGb9EuYH90LLdDDNZJHWs3RPxK6FvjneKFsM4Yao=Vk0g@mail.gmail.com>
- <20171020174747.GC31637@parsley.fieldses.org>
- <CAN-5tyGCeVJDQs8mKm46FvH5kBCM=bS1c4s-JQnxvirHDt_zOA@mail.gmail.com>
+        id S1750885AbdJWHal (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Oct 2017 03:30:41 -0400
+From: "Reshetova, Elena" <elena.reshetova@intel.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
+        "peterz@infradead.org" <peterz@infradead.org>,
+        "keescook@chromium.org" <keescook@chromium.org>
+Subject: RE: [PATCH 00/11] nfs refcount conversions
+Date: Mon, 23 Oct 2017 07:30:34 +0000
+Message-ID: <2236FBA76BA1254E88B949DDB74E612B802B4278@IRSMSX102.ger.corp.intel.com>
+References: <1508493218-27760-1-git-send-email-elena.reshetova@intel.com>
+ <20171020185927.GD15211@fieldses.org>
+In-Reply-To: <20171020185927.GD15211@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyGCeVJDQs8mKm46FvH5kBCM=bS1c4s-JQnxvirHDt_zOA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 20, 2017 at 02:55:00PM -0400, Olga Kornievskaia wrote:
-> On Fri, Oct 20, 2017 at 1:47 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > On Thu, Oct 19, 2017 at 05:19:40PM -0400, Olga Kornievskaia wrote:
-> >> On Thu, Oct 19, 2017 at 5:04 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> >> > I got this crash upon receiving the SEQUENCE that reused the slot that
-> >> > was used by the ctrl-c-ed COPY.
-> >
-> > Yeah, I was being inconsistent about what "NFSD4_SLOT_CACHED" meant--in
-> > replay_matches_cache I'm assuming opcnt and cred are still stored, but I
-> > wasn't storing them in nfsd4_store_cache_entry.  Not sure why that
-> > didn't triger in my tests.
-> >
-> > Does this help?
-> 
-> Yes. No oops and reply is SEQ_FALSE_RETRY.
 
-Thanks!--b.
+> On Fri, Oct 20, 2017 at 12:53:27PM +0300, Elena Reshetova wrote:
+> > This series, for nfs components, replaces atomic_t reference
+> > counters with the new refcount_t type and API (see include/linux/refcount.h).
+> > By doing this we prevent intentional or accidental
+> > underflows or overflows that can led to use-after-free vulnerabilities.
+> >
+> > The patches are fully independent and can be cherry-picked separately.
+> > If there are no objections to the patches, please merge them via respective trees.
+> >
+> > Rebased on top of linux-next.
+> >
+> > Elena Reshetova (11):
+> >   fs, nfsd: convert nfs4_stid.sc_count from atomic_t to refcount_t
+> >   fs, nfsd: convert nfs4_cntl_odstate.co_odcount from atomic_t to
+> >     refcount_t
+> >   fs, nfsd: convert nfs4_file.fi_ref from atomic_t to refcount_t
+> 
+> Thanks, applying for 4.15.
+
+Thank you very much!
 
 > 
-> > --b.
-> >
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index ace89bf45a0b..4b2107d11d5e 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -2296,14 +2296,15 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
-> >
-> >         slot->sl_flags |= NFSD4_SLOT_INITIALIZED;
-> >         free_svc_cred(&slot->sl_cred);
-> > +       copy_cred(&slot->sl_cred, &resp->rqstp->rq_cred);
-> > +       slot->sl_opcnt = resp->opcnt;
-> > +       slot->sl_status = resp->cstate.status;
-> > +
-> >         if (!nfsd4_cache_this(resp)) {
-> >                 slot->sl_flags &= ~NFSD4_SLOT_CACHED;
-> >                 return;
-> >         }
-> >         slot->sl_flags |= NFSD4_SLOT_CACHED;
-> > -       copy_cred(&slot->sl_cred, &resp->rqstp->rq_cred);
-> > -       slot->sl_opcnt = resp->opcnt;
-> > -       slot->sl_status = resp->cstate.status;
-> >
-> >         base = resp->cstate.data_offset;
-> >         slot->sl_datalen = buf->len - base;
+> I haven't followed recent discussion on the refcount api, but I assume
+> the consensus is to do this, and these particular conversions certainly
+> look trivial enough.
+
+refcount_api will continue for evolve for some time I think, we recently got
+x86 specific FAST implementation done, some other archs might follow.
+There is an ongoing discussion about the memory ordering, which we have to
+decide which way we want things to be, but these are all independent things
+from the actual conversions. So for conversions that are basic and rather trivial, 
+nothing should prevent doing them now.
+
+Best Regards,
+Elena.
+
+
+> 
+> --b.
