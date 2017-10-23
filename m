@@ -1,78 +1,227 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48768 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751635AbdJWUlf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 23 Oct 2017 16:41:35 -0400
-Date: Mon, 23 Oct 2017 16:41:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: Preserve CB send buffer across retransmits
-Message-ID: <20171023204134.GB21106@fieldses.org>
-References: <20171016161133.29152.48259.stgit@klimt.1015granger.net>
+Received: from mail-vk0-f65.google.com ([209.85.213.65]:45606 "EHLO
+        mail-vk0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751405AbdJWVsW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Oct 2017 17:48:22 -0400
+Received: by mail-vk0-f65.google.com with SMTP id q13so12117621vkb.2
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Oct 2017 14:48:22 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171016161133.29152.48259.stgit@klimt.1015granger.net>
+In-Reply-To: <CAN-5tyG74LpQytszp0k_+gCZN-1D_fCUeS=KHD9ggcCOrKfCxQ@mail.gmail.com>
+References: <20171013205412.65532-1-kolga@netapp.com> <20171013212626.GB28854@parsley.fieldses.org>
+ <CAN-5tyETeVgOWKeFSBxQBJi6wwXTcgQqaxxLn0BFXCTCv09h0g@mail.gmail.com>
+ <b4f0f30e-c19e-1b2f-7379-d859b4b5ff49@Netapp.com> <20171016164935.GD19720@parsley.fieldses.org>
+ <CAN-5tyG74LpQytszp0k_+gCZN-1D_fCUeS=KHD9ggcCOrKfCxQ@mail.gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 23 Oct 2017 17:48:20 -0400
+Message-ID: <CAN-5tyEtGgk=_iR60Zr6objNA--9FNQjKYkqRTDydRcAwsxOQw@mail.gmail.com>
+Subject: Re: [PATCH v5 00/10] NFSD support for asynchronous COPY
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for the ping, apologies for the delay.
+Hi Bruce,
 
-On Mon, Oct 16, 2017 at 12:14:33PM -0400, Chuck Lever wrote:
-> During each NFSv4 callback Call, an RDMA Send completion frees the
-> page that contains the RPC Call message. If the upper layer
-> determines that a retransmit is necessary, this is too soon.
-> 
-> One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
-> callback request, the following BUG fires on the NFS server:
-...
-> It would be great if this could go into v4.14-rc, but I can live
-> with v4.15.
+You were asking for performance numbers for asynchronous vs
+synchronous intra copy. Here's what Jorge reports:
 
-OK, I'll be slightly lazy and queue this up for 4.15....
+This is using RHEL 7.4 on both the client and server with COMMIT on
+the same compound as the COPY for the synchronous case.
+In this case, improvement is achieved for copies larger than 16MB.
 
-> Jeff's review suggested adding a comment documenting the requirement
-> that rqst->rq_buffer is backed by a single page. However, all of the
-> server-side transport mechanics are page-based, so I'm not sure this
-> wouldn't be a redundant comment. Suggestions welcome.
 
-If it's always a page then I guess the way to make it ridiculously
-obvious would be to keep a pointer to the page instead and use
-page_address() as necessary, but.... I'm guessing that's inconvenient
-for other users.
 
-So, no suggestions.
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+1KB file: 0.218760585785 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+1KB file: 0.636984395981 seconds
+                                                         65.66%
+performance degradation by async
 
---b.
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+2KB file: 0.22707760334 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+2KB file: 0.583548688889 seconds
+                                                         61.09%
+performance degradation by async
 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> index ec37ad8..1854db2 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> @@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
->  	if (ret)
->  		goto out_err;
->  
-> +	/* Bump page refcnt so Send completion doesn't release
-> +	 * the rq_buffer before all retransmits are complete.
-> +	 */
-> +	get_page(virt_to_page(rqst->rq_buffer));
->  	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
->  	if (ret)
->  		goto out_unmap;
-> @@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
->  		return -EINVAL;
->  	}
->  
-> -	/* svc_rdma_sendto releases this page */
->  	page = alloc_page(RPCRDMA_DEF_GFP);
->  	if (!page)
->  		return -ENOMEM;
-> @@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
->  {
->  	struct rpc_rqst *rqst = task->tk_rqstp;
->  
-> +	put_page(virt_to_page(rqst->rq_buffer));
->  	kfree(rqst->rq_rbuffer);
->  }
->  
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+4KB file: 0.234200882912 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+4KB file: 0.782712388039 seconds
+                                                         70.08%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+8KB file: 0.214556503296 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+8KB file: 0.692702102661 seconds
+                                                         69.03%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+16KB file: 0.215230226517 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+16KB file: 0.56289691925 seconds
+                                                         61.76%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+32KB file: 0.186200523376 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+32KB file: 0.65691485405 seconds
+                                                         71.66%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+64KB file: 0.233846497536 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+64KB file: 0.525265741348 seconds
+                                                         55.48%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+128KB file: 0.198684954643 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+128KB file: 0.69602959156 seconds
+                                                         71.45%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+256KB file: 0.211255192757 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+256KB file: 0.556627941132 seconds
+                                                         62.05%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+512KB file: 0.218777489662 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+512KB file: 0.496951031685 seconds
+                                                         55.98%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+1MB file: 0.179558849335 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+1MB file: 0.50447602272 seconds
+                                                         64.41%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+2MB file: 0.252070856094 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+2MB file: 0.570275163651 seconds
+                                                         55.80%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+4MB file: 0.289573478699 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+4MB file: 0.656079149246 seconds
+                                                         55.86%
+performance degradation by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+8MB file: 0.50943710804 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+8MB file: 0.696055078506 seconds
+                                                         26.81%
+performance degradation by async
+
+Performance Improvement:
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+16MB file: 0.920844507217 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+16MB file: 0.817601919174 seconds
+                                                         11.21%
+performance improvement by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+32MB file: 1.46817543507 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+32MB file: 1.24578406811 seconds
+                                                         15.15%
+performance improvement by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+64MB file: 2.42379112244 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+64MB file: 1.58639280796 seconds
+                                                         34.55%
+performance improvement by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+128MB file: 4.16012530327 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+128MB file: 2.58433949947 seconds
+                                                         37.88%
+performance improvement by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+256MB file: 7.56400749683 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+256MB file: 4.43859291077 seconds
+                                                         41.32%
+performance improvement by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+512MB file: 14.5191983461 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+512MB file: 8.18448216915 seconds
+                                                         43.63%
+performance improvement by async
+
+/home/mora/logs/nfstest_ssc_20171022201303.log:    PASS: SSC copy of
+1GB file: 28.7398069143 seconds
+/home/mora/logs/nfstest_ssc_20171015171323.log:    PASS: SSC copy of
+1GB file: 16.1399238825 seconds
+                                                         43.84%
+performance improvement by async
+
+On Mon, Oct 16, 2017 at 3:25 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+> On Mon, Oct 16, 2017 at 12:49 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>> On Mon, Oct 16, 2017 at 09:13:20AM -0400, Anna Schumaker wrote:
+>>>
+>>>
+>>> On 10/13/2017 08:09 PM, Olga Kornievskaia wrote:
+>>> > On Fri, Oct 13, 2017 at 5:26 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>>> >> On Fri, Oct 13, 2017 at 04:54:02PM -0400, Olga Kornievskaia wrote:
+>>> >>> To do asynchronous copies, NFSD creates a new kthread to handle the request.
+>>> >>> Upon receiving the COPY, it generates a unique copy stateid (stored in a
+>>> >>> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+>>> >>> starts the thread, and replies back to the client. nfsd4_copy arguments that
+>>> >>> are allocated on the stack are copies for the kthread.
+>>> >>>
+>>> >>> In the async copy handler, it calls into VFS copy_file_range() (for synch
+>>> >>> we keep the 4MB chunk and requested size for the async copy). If error is
+>>> >>> encountered it's saved but also we save the amount of data copied so far.
+>>> >>> Once done, the results are queued for the callback workqueue and sent via
+>>> >>> CB_OFFLOAD.
+>>> >>>
+>>> >>> When the server received an OFFLOAD_CANCEL, it will find the kthread running
+>>> >>> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+>>> >>> the ongoing do_splice() and once vfs returns we are choosing not to send
+>>> >>> the CB_OFFLOAD back to the client.
+>>> >>>
+>>> >>> When the server receives an OFFLOAD_STATUS, it will find the kthread running
+>>> >>> the copy and will query the i_size_read() of the associated filehandle of
+>>> >>> the destination file and return the result.
+>>> >>
+>>> >> That assumes we're copying into a previously empty file?
+>>> >
+>>> > Sigh. Alright, then it's back to my original solution where I broke
+>>> > everything into 4MB calls and kept track of bytes copies so far.
+>>>
+>>> Do they have to be 4MB calls?  Assuming clients don't need a super-accurate results, you could probably use a larger copy size and still have decent copy performance.
+>>
+>> Sure, we could.  Do we have reason to believe there's an advantage to
+>> larger sizes?
+>
+> I wouldn't think there'd be a large enough performance advantage with
+> a larger size and there'd be worse OFFLOAD_STATUS information. I'm
+> sure there is a setup cost for calling into do_splice() and the cost
+> of doing a function call but I'd like they would be small.
