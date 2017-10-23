@@ -1,130 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:35338 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751335AbdJWSMO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Oct 2017 14:12:14 -0400
+Received: from gateway31.websitewelcome.com ([192.185.143.35]:37313 "EHLO
+        gateway31.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751559AbdJWSju (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Oct 2017 14:39:50 -0400
+Received: from cm14.websitewelcome.com (cm14.websitewelcome.com [100.42.49.7])
+        by gateway31.websitewelcome.com (Postfix) with ESMTP id 8183C7A09D9
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Oct 2017 13:16:36 -0500 (CDT)
+Date: Mon, 23 Oct 2017 13:16:35 -0500
+From: "Gustavo A. R. Silva" <garsilva@embeddedor.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        "Gustavo A. R. Silva" <garsilva@embeddedor.com>
+Subject: [PATCH] net: sunrpc: svcauth_gss: use BUG_ON instead of if condition
+ followed by BUG
+Message-ID: <20171023181635.GA25334@embeddedor.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] svcrdma: Preserve CB send buffer across retransmits
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20171016161133.29152.48259.stgit@klimt.1015granger.net>
-Date: Mon, 23 Oct 2017 14:12:10 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A7FE0C61-66DA-4FDA-8568-20BB956D067F@oracle.com>
-References: <20171016161133.29152.48259.stgit@klimt.1015granger.net>
-To: Bruce Fields <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Use BUG_ON instead of if condition followed by BUG.
 
-> On Oct 16, 2017, at 12:14 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
-> During each NFSv4 callback Call, an RDMA Send completion frees the
-> page that contains the RPC Call message. If the upper layer
-> determines that a retransmit is necessary, this is too soon.
-> 
-> One possible symptom: after a GARBAGE_ARGS response an NFSv4.1
-> callback request, the following BUG fires on the NFS server:
-> 
-> kernel: BUG: Bad page state in process kworker/0:2H  pfn:7d3ce2
-> kernel: page:ffffea001f4f3880 count:-2 mapcount:0 mapping:          (null) index:0x0
-> kernel: flags: 0x2fffff80000000()
-> kernel: raw: 002fffff80000000 0000000000000000 0000000000000000 fffffffeffffffff
-> kernel: raw: dead000000000100 dead000000000200 0000000000000000 0000000000000000
-> kernel: page dumped because: nonzero _refcount
-> kernel: Modules linked in: cts rpcsec_gss_krb5 ocfs2_dlmfs ocfs2_stack_o2cb ocfs2_dlm
-> ocfs2_nodemanager ocfs2_stackglue rpcrdm a ib_ipoib rdma_ucm ib_ucm ib_uverbs ib_umad
-> rdma_cm ib_cm iw_cm x86_pkg_temp_thermal intel_powerclamp coretemp kvm_intel
-> kvm irqbypass crct10dif_pc lmul crc32_pclmul ghash_clmulni_intel pcbc iTCO_wdt
-> iTCO_vendor_support aesni_intel crypto_simd glue_helper cryptd pcspkr lpc_ich i2c_i801
-> mei_me mf d_core mei raid0 sg wmi ioatdma ipmi_si ipmi_devintf ipmi_msghandler shpchp
-> acpi_power_meter acpi_pad nfsd nfs_acl lockd auth_rpcgss grace sunrpc ip_tables xfs
-> libcrc32c mlx4_en mlx4_ib mlx5_ib ib_core sd_mod sr_mod cdrom ast drm_kms_helper
-> syscopyarea sysfillrect sysimgblt fb_sys_fops ttm ahci crc32c_intel libahci drm
-> mlx5_core igb libata mlx4_core dca i2c_algo_bit i2c_core nvme
-> kernel: ptp nvme_core pps_core dm_mirror dm_region_hash dm_log dm_mod dax
-> kernel: CPU: 0 PID: 11495 Comm: kworker/0:2H Not tainted 4.14.0-rc3-00001-g577ce48 #811
-> kernel: Hardware name: Supermicro Super Server/X10SRL-F, BIOS 1.0c 09/09/2015
-> kernel: Workqueue: ib-comp-wq ib_cq_poll_work [ib_core]
-> kernel: Call Trace:
-> kernel: dump_stack+0x62/0x80
-> kernel: bad_page+0xfe/0x11a
-> kernel: free_pages_check_bad+0x76/0x78
-> kernel: free_pcppages_bulk+0x364/0x441
-> kernel: ? ttwu_do_activate.isra.61+0x71/0x78
-> kernel: free_hot_cold_page+0x1c5/0x202
-> kernel: __put_page+0x2c/0x36
-> kernel: svc_rdma_put_context+0xd9/0xe4 [rpcrdma]
-> kernel: svc_rdma_wc_send+0x50/0x98 [rpcrdma]
-> 
-> This issue exists all the way back to v4.5, but refactoring and code
-> re-organization prevents this simple patch from applying to kernels
-> older than v4.12. The fix is the same, however, if someone needs to
-> backport it.
-> 
-> Reported-by: Ben Coddington <bcodding@redhat.com>
-> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=314
-> Fixes: 5d252f90a800 ('svcrdma: Add class for RDMA backwards ... ')
-> Cc: stable@vger.kernel.org # v4.12
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    6 +++++-
-> 1 file changed, 5 insertions(+), 1 deletion(-)
-> 
-> Hey Bruce-
-> 
-> It would be great if this could go into v4.14-rc, but I can live
-> with v4.15.
+This issue was detected with the help of Coccinelle.
 
-Ping!
+Signed-off-by: Gustavo A. R. Silva <garsilva@embeddedor.com>
+---
+ net/sunrpc/auth_gss/svcauth_gss.c | 9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-
-> Jeff's review suggested adding a comment documenting the requirement
-> that rqst->rq_buffer is backed by a single page. However, all of the
-> server-side transport mechanics are page-based, so I'm not sure this
-> wouldn't be a redundant comment. Suggestions welcome.
-> 
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> index ec37ad8..1854db2 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-> @@ -132,6 +132,10 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
-> 	if (ret)
-> 		goto out_err;
-> 
-> +	/* Bump page refcnt so Send completion doesn't release
-> +	 * the rq_buffer before all retransmits are complete.
-> +	 */
-> +	get_page(virt_to_page(rqst->rq_buffer));
-> 	ret = svc_rdma_post_send_wr(rdma, ctxt, 1, 0);
-> 	if (ret)
-> 		goto out_unmap;
-> @@ -164,7 +168,6 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
-> 		return -EINVAL;
-> 	}
-> 
-> -	/* svc_rdma_sendto releases this page */
-> 	page = alloc_page(RPCRDMA_DEF_GFP);
-> 	if (!page)
-> 		return -ENOMEM;
-> @@ -183,6 +186,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
-> {
-> 	struct rpc_rqst *rqst = task->tk_rqstp;
-> 
-> +	put_page(virt_to_page(rqst->rq_buffer));
-> 	kfree(rqst->rq_rbuffer);
-> }
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 7b1ee5a..a10ce43 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -855,11 +855,9 @@ unwrap_integ_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct g
+ 		return stat;
+ 	if (integ_len > buf->len)
+ 		return stat;
+-	if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len))
+-		BUG();
++	BUG_ON(xdr_buf_subsegment(buf, &integ_buf, 0, integ_len));
+ 	/* copy out mic... */
+-	if (read_u32_from_xdr_buf(buf, integ_len, &mic.len))
+-		BUG();
++	BUG_ON(read_u32_from_xdr_buf(buf, integ_len, &mic.len));
+ 	if (mic.len > RPC_MAX_AUTH_SIZE)
+ 		return stat;
+ 	mic.data = kmalloc(mic.len, GFP_KERNEL);
+@@ -1611,8 +1609,7 @@ svcauth_gss_wrap_resp_integ(struct svc_rqst *rqstp)
+ 	BUG_ON(integ_len % 4);
+ 	*p++ = htonl(integ_len);
+ 	*p++ = htonl(gc->gc_seq);
+-	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len))
+-		BUG();
++	BUG_ON(xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len));
+ 	if (resbuf->tail[0].iov_base == NULL) {
+ 		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+ 			goto out_err;
+-- 
+2.7.4
 
