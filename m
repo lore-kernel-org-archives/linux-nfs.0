@@ -1,38 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42612 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751277AbdJXNfO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Oct 2017 09:35:14 -0400
-Date: Tue, 24 Oct 2017 09:35:13 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v5 00/10] NFSD support for asynchronous COPY
-Message-ID: <20171024133512.GA30872@parsley.fieldses.org>
-References: <20171013205412.65532-1-kolga@netapp.com>
- <20171013212626.GB28854@parsley.fieldses.org>
- <CAN-5tyETeVgOWKeFSBxQBJi6wwXTcgQqaxxLn0BFXCTCv09h0g@mail.gmail.com>
- <b4f0f30e-c19e-1b2f-7379-d859b4b5ff49@Netapp.com>
- <20171016164935.GD19720@parsley.fieldses.org>
- <CAN-5tyG74LpQytszp0k_+gCZN-1D_fCUeS=KHD9ggcCOrKfCxQ@mail.gmail.com>
- <CAN-5tyEtGgk=_iR60Zr6objNA--9FNQjKYkqRTDydRcAwsxOQw@mail.gmail.com>
- <CAN-5tyGsO-i3nNwwUArFB2D+howw+CJonGGjjCyW_yigGes0xA@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyGsO-i3nNwwUArFB2D+howw+CJonGGjjCyW_yigGes0xA@mail.gmail.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:56567 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751398AbdJXR0w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Oct 2017 13:26:52 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.0 \(3445.1.7\))
+Subject: Re: [PATCH] net: sunrpc: svcauth_gss: use BUG_ON instead of if
+ condition followed by BUG
+From: Weston Andros Adamson <dros@monkey.org>
+In-Reply-To: <20171023203135.GA21106@fieldses.org>
+Date: Tue, 24 Oct 2017 13:26:49 -0400
+Cc: "Gustavo A. R. Silva" <garsilva@embeddedor.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Message-Id: <496D700A-E9D1-4745-B5DE-24BB9231A449@monkey.org>
+References: <20171023181635.GA25334@embeddedor.com>
+ <20171023203135.GA21106@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 23, 2017 at 06:39:54PM -0400, Olga Kornievskaia wrote:
-> Do you have any more comments on the current async patches or should I
-> post a new version? I plan to do the original OFFLOAD_STATUS looping
-> and I'm planning to change server to not send the EINVAL error to the
-> client and instead send a partial copy and 0 when reading past the end
-> of the file.
+Is there a reason to BUG() in these places? Couldn't we WARN_ON_ONCE and =
+return an error?
 
-That sounds good, I'm afraid I don't have any pending comments, so
-resending is fine.
+-dros
 
---b.
+> On Oct 23, 2017, at 4:31 PM, J. Bruce Fields <bfields@fieldses.org> =
+wrote:
+>=20
+> In the past we've avoided BUG_ON(X) where X might have side effects, =
+on
+> the theory that it should actually be OK just to compile out =
+BUG_ON()s.
+> Has that changed?
+>=20
+> In any case, I don't find that this improves readability; dropping.
+>=20
+> --b.
+>=20
+> On Mon, Oct 23, 2017 at 01:16:35PM -0500, Gustavo A. R. Silva wrote:
+>> Use BUG_ON instead of if condition followed by BUG.
+>>=20
+>> This issue was detected with the help of Coccinelle.
+>>=20
+>> Signed-off-by: Gustavo A. R. Silva <garsilva@embeddedor.com>
+>> ---
+>> net/sunrpc/auth_gss/svcauth_gss.c | 9 +++------
+>> 1 file changed, 3 insertions(+), 6 deletions(-)
+>>=20
+>> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c =
+b/net/sunrpc/auth_gss/svcauth_gss.c
+>> index 7b1ee5a..a10ce43 100644
+>> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+>> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+>> @@ -855,11 +855,9 @@ unwrap_integ_data(struct svc_rqst *rqstp, struct =
+xdr_buf *buf, u32 seq, struct g
+>> 		return stat;
+>> 	if (integ_len > buf->len)
+>> 		return stat;
+>> -	if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len))
+>> -		BUG();
+>> +	BUG_ON(xdr_buf_subsegment(buf, &integ_buf, 0, integ_len));
+>> 	/* copy out mic... */
+>> -	if (read_u32_from_xdr_buf(buf, integ_len, &mic.len))
+>> -		BUG();
+>> +	BUG_ON(read_u32_from_xdr_buf(buf, integ_len, &mic.len));
+>> 	if (mic.len > RPC_MAX_AUTH_SIZE)
+>> 		return stat;
+>> 	mic.data =3D kmalloc(mic.len, GFP_KERNEL);
+>> @@ -1611,8 +1609,7 @@ svcauth_gss_wrap_resp_integ(struct svc_rqst =
+*rqstp)
+>> 	BUG_ON(integ_len % 4);
+>> 	*p++ =3D htonl(integ_len);
+>> 	*p++ =3D htonl(gc->gc_seq);
+>> -	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, =
+integ_len))
+>> -		BUG();
+>> +	BUG_ON(xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, =
+integ_len));
+>> 	if (resbuf->tail[0].iov_base =3D=3D NULL) {
+>> 		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > =
+PAGE_SIZE)
+>> 			goto out_err;
+>> --=20
+>> 2.7.4
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
