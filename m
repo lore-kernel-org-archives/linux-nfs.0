@@ -1,141 +1,175 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:5499 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:5792 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751875AbdJXRsA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Oct 2017 13:48:00 -0400
+        id S1751427AbdJXRre (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Oct 2017 13:47:34 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <bfields@redhat.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 06/10] NFSD return nfs4_stid in nfs4_preprocess_stateid_op
-Date: Tue, 24 Oct 2017 13:47:48 -0400
-Message-ID: <20171024174752.74910-7-kolga@netapp.com>
-In-Reply-To: <20171024174752.74910-1-kolga@netapp.com>
-References: <20171024174752.74910-1-kolga@netapp.com>
+Subject: [PATCH v6 08/12] NFS handle COPY reply CB_OFFLOAD call race
+Date: Tue, 24 Oct 2017 13:47:21 -0400
+Message-ID: <20171024174725.74870-9-kolga@netapp.com>
+In-Reply-To: <20171024174725.74870-1-kolga@netapp.com>
+References: <20171024174725.74870-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Needed for copy to add nfs4_cp_state to the nfs4_stid.
+It's possible that server replies back with CB_OFFLOAD call and
+COPY reply at the same time such that client will process
+CB_OFFLOAD before reply to COPY. For that keep a list of pending
+callback stateids received and then before waiting on completion
+check the pending list.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
+Cleanup any pending copies on the client shutdown.
+
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c  | 17 ++++++++++-------
- fs/nfsd/nfs4state.c |  8 ++++++--
- fs/nfsd/state.h     |  3 ++-
- 3 files changed, 18 insertions(+), 10 deletions(-)
+ fs/nfs/callback_proc.c    | 17 ++++++++++++++---
+ fs/nfs/nfs42proc.c        | 22 ++++++++++++++++++++--
+ fs/nfs/nfs4client.c       | 15 +++++++++++++++
+ include/linux/nfs_fs_sb.h |  1 +
+ 4 files changed, 50 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index bdccfa9..a020533 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -773,7 +773,8 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
- 	/* check stateid */
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					&read->rd_stateid, RD_STATE,
--					&read->rd_filp, &read->rd_tmp_file);
-+					&read->rd_filp, &read->rd_tmp_file,
-+					NULL);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
- 		goto out;
-@@ -946,7 +947,7 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
- 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
- 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
- 				&cstate->current_fh, &setattr->sa_stateid,
--				WR_STATE, NULL, NULL);
-+				WR_STATE, NULL, NULL, NULL);
- 		if (status) {
- 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			return status;
-@@ -1012,7 +1013,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 		return nfserr_inval;
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index d3e7b61..d546c9f 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -676,11 +676,12 @@ __be32 nfs4_callback_offload(void *data, void *dummy,
+ 	struct cb_offloadargs *args = data;
+ 	struct nfs_server *server;
+ 	struct nfs4_copy_state *copy;
++	bool found = false;
  
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
--						stateid, WR_STATE, &filp, NULL);
-+					stateid, WR_STATE, &filp, NULL, NULL);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
- 		return status;
-@@ -1043,14 +1044,16 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 	__be32 status;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->save_fh,
--					    src_stateid, RD_STATE, src, NULL);
-+					    src_stateid, RD_STATE, src, NULL,
-+					    NULL);
- 	if (status) {
- 		dprintk("NFSD: %s: couldn't process src stateid!\n", __func__);
- 		goto out;
++	spin_lock(&cps->clp->cl_lock);
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(server, &cps->clp->cl_superblocks,
+ 				client_link) {
+-		spin_lock(&server->nfs_client->cl_lock);
+ 		list_for_each_entry(copy, &server->ss_copies, copies) {
+ 			if (memcmp(args->coa_stateid.other,
+ 					copy->stateid.other,
+@@ -688,13 +689,23 @@ __be32 nfs4_callback_offload(void *data, void *dummy,
+ 				continue;
+ 			nfs4_copy_cb_args(copy, args);
+ 			complete(&copy->completion);
+-			spin_unlock(&server->nfs_client->cl_lock);
++			found = true;
+ 			goto out;
+ 		}
+-		spin_unlock(&server->nfs_client->cl_lock);
  	}
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
--					    dst_stateid, WR_STATE, dst, NULL);
-+					    dst_stateid, WR_STATE, dst, NULL,
-+					    NULL);
- 	if (status) {
- 		dprintk("NFSD: %s: couldn't process dst stateid!\n", __func__);
- 		goto out_put_src;
-@@ -1278,7 +1281,7 @@ static int nfsd4_do_async_copy(void *data)
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					    &fallocate->falloc_stateid,
--					    WR_STATE, &file, NULL);
-+					    WR_STATE, &file, NULL, NULL);
- 	if (status != nfs_ok) {
- 		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
- 		return status;
-@@ -1325,7 +1328,7 @@ static int nfsd4_do_async_copy(void *data)
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					    &seek->seek_stateid,
--					    RD_STATE, &file, NULL);
-+					    RD_STATE, &file, NULL, NULL);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
- 		return status;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d7767a1..af40762 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4947,7 +4947,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- __be32
- nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
--		stateid_t *stateid, int flags, struct file **filpp, bool *tmp_file)
-+		stateid_t *stateid, int flags, struct file **filpp,
-+		bool *tmp_file, struct nfs4_stid **cstid)
- {
- 	struct inode *ino = d_inode(fhp->fh_dentry);
- 	struct net *net = SVC_NET(rqstp);
-@@ -4998,8 +4999,11 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	if (!status && filpp)
- 		status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
  out:
--	if (s)
-+	if (s) {
-+		if (!status && cstid)
-+			*cstid = s;
- 		nfs4_put_stid(s);
+ 	rcu_read_unlock();
++	if (!found) {
++		copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
++		if (!copy) {
++			spin_unlock(&cps->clp->cl_lock);
++			return -ENOMEM;
++		}
++		memcpy(&copy->stateid, &args->coa_stateid, NFS4_STATEID_SIZE);
++		nfs4_copy_cb_args(copy, args);
++		list_add_tail(&copy->copies, &cps->clp->pending_cb_stateids);
 +	}
- 	return status;
++	spin_unlock(&cps->clp->cl_lock);
+ 
+ 	return 0;
+ }
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index f2d22f1..ed46578 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -138,14 +138,31 @@ static int handle_async_copy(struct nfs42_copy_res *res,
+ {
+ 	struct nfs4_copy_state *copy;
+ 	int status = NFS4_OK;
++	bool found_pending = false;
++
++	spin_lock(&server->nfs_client->cl_lock);
++	list_for_each_entry(copy, &server->nfs_client->pending_cb_stateids,
++				copies) {
++		if (memcmp(&res->write_res.stateid, &copy->stateid,
++				NFS4_STATEID_SIZE))
++			continue;
++		found_pending = true;
++		list_del(&copy->copies);
++		break;
++	}
++	if (found_pending) {
++		spin_unlock(&server->nfs_client->cl_lock);
++		goto out;
++	}
+ 
+ 	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
+-	if (!copy)
++	if (!copy) {
++		spin_unlock(&server->nfs_client->cl_lock);
+ 		return -ENOMEM;
++	}
+ 	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
+ 	init_completion(&copy->completion);
+ 
+-	spin_lock(&server->nfs_client->cl_lock);
+ 	list_add_tail(&copy->copies, &server->ss_copies);
+ 	spin_unlock(&server->nfs_client->cl_lock);
+ 
+@@ -153,6 +170,7 @@ static int handle_async_copy(struct nfs42_copy_res *res,
+ 	spin_lock(&server->nfs_client->cl_lock);
+ 	list_del_init(&copy->copies);
+ 	spin_unlock(&server->nfs_client->cl_lock);
++out:
+ 	*ret_count = copy->count;
+ 	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
+ 	status = -copy->error;
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index e9bea90..46d4649 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -156,9 +156,23 @@ struct rpc_clnt *
+ 	}
  }
  
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 9189062..d58507b 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -602,7 +602,8 @@ struct nfsd4_blocked_lock {
++static void
++nfs4_cleanup_callback(struct nfs_client *clp)
++{
++	struct nfs4_copy_state *cp_state;
++
++	while (!list_empty(&clp->pending_cb_stateids)) {
++		cp_state = list_entry(clp->pending_cb_stateids.next,
++					struct nfs4_copy_state, copies);
++		list_del(&cp_state->copies);
++		kfree(cp_state);
++	}
++}
++
+ void nfs41_shutdown_client(struct nfs_client *clp)
+ {
+ 	if (nfs4_has_session(clp)) {
++		nfs4_cleanup_callback(clp);
+ 		nfs4_shutdown_ds_clients(clp);
+ 		nfs4_destroy_session(clp->cl_session);
+ 		nfs4_destroy_clientid(clp);
+@@ -202,6 +216,7 @@ struct nfs_client *nfs4_alloc_client(const struct nfs_client_initdata *cl_init)
+ #if IS_ENABLED(CONFIG_NFS_V4_1)
+ 	init_waitqueue_head(&clp->cl_lock_waitq);
+ #endif
++	INIT_LIST_HEAD(&clp->pending_cb_stateids);
+ 	return clp;
  
- extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
--		stateid_t *stateid, int flags, struct file **filp, bool *tmp_file);
-+		stateid_t *stateid, int flags, struct file **filp,
-+		bool *tmp_file, struct nfs4_stid **cstid);
- __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn);
+ error:
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 511eefb..72f159e 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -119,6 +119,7 @@ struct nfs_client {
+ #endif
+ 
+ 	struct net		*cl_net;
++	struct list_head	pending_cb_stateids;
+ };
+ 
+ /*
 -- 
 1.8.3.1
 
