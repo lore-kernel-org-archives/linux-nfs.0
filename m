@@ -1,72 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:13843 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:24195 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751749AbdJXRsA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Oct 2017 13:48:00 -0400
+        id S1751399AbdJXRry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Oct 2017 13:47:54 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 03/10] NFSD OFFLOAD_CANCEL xdr
-Date: Tue, 24 Oct 2017 13:47:45 -0400
-Message-ID: <20171024174752.74910-4-kolga@netapp.com>
-In-Reply-To: <20171024174752.74910-1-kolga@netapp.com>
-References: <20171024174752.74910-1-kolga@netapp.com>
+Subject: [PATCH v6 00/10] NFSD support for asynchronous COPY
+Date: Tue, 24 Oct 2017 13:47:42 -0400
+Message-ID: <20171024174752.74910-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfsd/nfs4proc.c | 14 ++++++++++++++
- fs/nfsd/nfs4xdr.c  |  2 +-
- 2 files changed, 15 insertions(+), 1 deletion(-)
+To do asynchronous copies, NFSD creates a new kthread to handle the request.
+Upon receiving the COPY, it generates a unique copy stateid (stored in a
+global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+starts the thread, and replies back to the client. nfsd4_copy arguments that
+are allocated on the stack are copies for the kthread.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 928f971..cb6e3ea 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1128,6 +1128,14 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- }
- 
- static __be32
-+nfsd4_offload_cancel(struct svc_rqst *rqstp,
-+		     struct nfsd4_compound_state *cstate,
-+		     union nfsd4_op_u *u)
-+{
-+	return 0;
-+}
-+
-+static __be32
- nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
- {
-@@ -2479,6 +2487,12 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
- 		.op_name = "OP_OFFLOAD_STATUS",
- 		.op_rsize_bop = nfsd4_offload_status_rsize,
- 	},
-+	[OP_OFFLOAD_CANCEL] = {
-+		.op_func = nfsd4_offload_cancel,
-+		.op_flags = OP_MODIFIES_SOMETHING,
-+		.op_name = "OP_OFFLOAD_CANCEL",
-+		.op_rsize_bop = nfsd4_only_status_rsize,
-+	},
- };
- 
- /**
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f8111bb..55db3c4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1880,7 +1880,7 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_offload_status,
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
- 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+For the async copy handler, copy is done in the loop for the requested
+number of bytes. If an error is encountered and partial copy has happened,
+a successful partial copy is returned in the CB_OFFLOAD. vfs_copy_file_range
+is called with 4MB chunks for both async and sync, allowing for 4MB
+granularity of OFFLOAD_STATUS queiry. Once copy is done, the results are
+queued for the callback workqueue and sent via CB_OFFLOAD.
+
+When the server received an OFFLOAD_CANCEL, it will find the kthread running
+the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+the ongoing do_splice() and once vfs returns we are choosing not to send
+the CB_OFFLOAD back to the client.
+
+When the server receives an OFFLOAD_STATUS, it will find the kthread running
+the copy and will locate within the copy state the current number of bytes
+copied so far.
+
+v6:
+1. if an error occured and partial bytes were copied, don't return the error
+and instead return the successful partial copy.
+2. OFFLOAD_STATUS locates the on-going copy and looks up the number of bytes
+copied so far.
+
+Olga Kornievskaia (10):
+  NFSD CB_OFFLOAD xdr
+  NFSD OFFLOAD_STATUS xdr
+  NFSD OFFLOAD_CANCEL xdr
+  NFSD xdr callback stateid in async COPY reply
+  NFSD first draft of async copy
+  NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+  NFSD create new stateid for async copy
+  NFSD handle OFFLOAD_CANCEL op
+  NFSD support OFFLOAD_STATUS
+  NFSD stop queued async copies on client shutdown
+
+ fs/nfsd/netns.h        |   8 ++
+ fs/nfsd/nfs4callback.c |  97 +++++++++++++++
+ fs/nfsd/nfs4proc.c     | 316 ++++++++++++++++++++++++++++++++++++++++++++-----
+ fs/nfsd/nfs4state.c    |  77 +++++++++++-
+ fs/nfsd/nfs4xdr.c      |  50 ++++++--
+ fs/nfsd/nfsctl.c       |   1 +
+ fs/nfsd/state.h        |  21 +++-
+ fs/nfsd/xdr4.h         |  28 +++++
+ fs/nfsd/xdr4cb.h       |  10 ++
+ 9 files changed, 571 insertions(+), 37 deletions(-)
+
 -- 
 1.8.3.1
 
