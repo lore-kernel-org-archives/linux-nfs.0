@@ -1,238 +1,289 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:10624 "EHLO mx141.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:13843 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751427AbdJXRrb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Oct 2017 13:47:31 -0400
+        id S1751864AbdJXRsA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Oct 2017 13:48:00 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 03/12] NFS OFFLOAD_STATUS xdr
-Date: Tue, 24 Oct 2017 13:47:16 -0400
-Message-ID: <20171024174725.74870-4-kolga@netapp.com>
-In-Reply-To: <20171024174725.74870-1-kolga@netapp.com>
-References: <20171024174725.74870-1-kolga@netapp.com>
+Subject: [PATCH v6 05/10] NFSD first draft of async copy
+Date: Tue, 24 Oct 2017 13:47:47 -0400
+Message-ID: <20171024174752.74910-6-kolga@netapp.com>
+In-Reply-To: <20171024174752.74910-1-kolga@netapp.com>
+References: <20171024174752.74910-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/nfs42xdr.c         | 91 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c         |  1 +
- fs/nfs/nfs4xdr.c          |  1 +
- include/linux/nfs4.h      |  1 +
- include/linux/nfs_fs_sb.h |  1 +
- include/linux/nfs_xdr.h   | 12 +++++++
- 6 files changed, 107 insertions(+)
+Upon receiving a request for async copy, create a new kthread.
+If we get asynchronous request, make sure to copy the needed
+arguments/state from the stack before starting the copy. Then
+start the thread and reply back to the client indicating copy
+is asynchronous.
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 5ee1b0f..847a0ef 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -25,6 +25,11 @@
- 					 NFS42_WRITE_RES_SIZE + \
- 					 1 /* cr_consecutive */ + \
- 					 1 /* cr_synchronous */)
-+#define encode_offload_status_maxsz	(op_encode_hdr_maxsz + \
-+					 XDR_QUADLEN(NFS4_STATEID_SIZE))
-+#define decode_offload_status_maxsz	(op_decode_hdr_maxsz + \
-+					 2 /* osr_count */ + \
-+					 1 + 1 /* osr_complete<1> */)
- #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
- 					 encode_fallocate_maxsz)
- #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
-@@ -74,6 +79,12 @@
- 					 decode_putfh_maxsz + \
- 					 decode_copy_maxsz + \
- 					 decode_commit_maxsz)
-+#define NFS4_enc_offload_status_sz	(compound_encode_hdr_maxsz + \
-+					 encode_putfh_maxsz + \
-+					 encode_offload_status_maxsz)
-+#define NFS4_dec_offload_status_sz	(compound_decode_hdr_maxsz + \
-+					 decode_putfh_maxsz + \
-+					 decode_offload_status_maxsz)
- #define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
- 					 encode_putfh_maxsz + \
- 					 encode_deallocate_maxsz + \
-@@ -144,6 +155,14 @@ static void encode_copy(struct xdr_stream *xdr,
- 	encode_uint32(xdr, 0); /* src server list */
- }
+nfsd_copy_file_range() will copy in a loop over the total
+number of bytes is needed to copy. In case a failure happens
+in the middle, we ignore the error and return how much we
+copied so far. Once done creating a workitem for the callback
+workqueue and send CB_OFFLOAD with the results.
+---
+ fs/nfsd/nfs4proc.c  | 172 ++++++++++++++++++++++++++++++++++++++++++++++------
+ fs/nfsd/nfs4state.c |   2 +
+ fs/nfsd/state.h     |   2 +
+ fs/nfsd/xdr4.h      |   9 +++
+ 4 files changed, 166 insertions(+), 19 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index cb6e3ea..bdccfa9 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -35,6 +35,7 @@
+ #include <linux/file.h>
+ #include <linux/falloc.h>
+ #include <linux/slab.h>
++#include <linux/kthread.h>
  
-+static void encode_offload_status(struct xdr_stream *xdr,
-+				  const struct nfs42_offload_status_args *args,
-+				  struct compound_hdr *hdr)
+ #include "idmap.h"
+ #include "cache.h"
+@@ -1092,39 +1093,172 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+ out:
+ 	return status;
+ }
++static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
 +{
-+	encode_op_hdr(xdr, OP_OFFLOAD_STATUS, decode_offload_status_maxsz, hdr);
-+	encode_nfs4_stateid(xdr, &args->osa_stateid);
++	struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
++
++	atomic_dec(&copy->cp_clp->cl_refcount);
++	kfree(copy);
 +}
 +
- static void encode_deallocate(struct xdr_stream *xdr,
- 			      const struct nfs42_falloc_args *args,
- 			      struct compound_hdr *hdr)
-@@ -260,6 +279,25 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
- }
- 
- /*
-+ * Encode OFFLOAD_STATUS request
-+ */
-+static void nfs4_xdr_enc_offload_status(struct rpc_rqst *req,
-+					struct xdr_stream *xdr,
-+					const void *data)
++static int nfsd4_cb_offload_done(struct nfsd4_callback *cb,
++				 struct rpc_task *task)
 +{
-+	const struct nfs42_offload_status_args *args = data;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->osa_seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->osa_seq_args, &hdr);
-+	encode_putfh(xdr, args->osa_src_fh, &hdr);
-+	encode_offload_status(xdr, args, &hdr);
-+	encode_nops(&hdr);
++	return 1;
 +}
 +
-+/*
-  * Encode DEALLOCATE request
-  */
- static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
-@@ -412,6 +450,33 @@ static int decode_copy(struct xdr_stream *xdr, struct nfs42_copy_res *res)
- 	return decode_copy_requirements(xdr, res);
- }
- 
-+static int decode_offload_status(struct xdr_stream *xdr,
-+				 struct nfs42_offload_status_res *res)
-+{
-+	__be32 *p;
-+	uint32_t count;
-+	int status;
++static const struct nfsd4_callback_ops nfsd4_cb_offload_ops = {
++	.release = nfsd4_cb_offload_release,
++	.done = nfsd4_cb_offload_done
++};
 +
-+	status = decode_op_hdr(xdr, OP_OFFLOAD_STATUS);
-+	if (status)
-+		return status;
-+	p = xdr_inline_decode(xdr, 8 + 4);
-+	if (unlikely(!p))
-+		goto out_overflow;
-+	p = xdr_decode_hyper(p, &res->osr_count);
-+	count = be32_to_cpup(p++);
-+	if (count) {
-+		p = xdr_inline_decode(xdr, 4);
-+		if (unlikely(!p))
-+			goto out_overflow;
-+		res->osr_status = nfs4_stat_to_errno(be32_to_cpup(p));
-+	}
-+	return 0;
-+out_overflow:
-+	print_overflow_msg(__func__, xdr);
-+	return -EIO;
++static int nfsd4_init_copy_res(struct nfsd4_copy *copy, bool sync)
++{
++	memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
++		sizeof(copy->cp_dst_stateid));
++	copy->cp_res.wr_stable_how = NFS_UNSTABLE;
++	copy->cp_consecutive = 1;
++	copy->cp_synchronous = sync;
++	gen_boot_verifier(&copy->cp_res.wr_verifier, copy->net);
++
++	return nfs_ok;
 +}
 +
- static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *res)
- {
- 	return decode_op_hdr(xdr, OP_DEALLOCATE);
-@@ -512,6 +577,32 @@ static int nfs4_xdr_dec_copy(struct rpc_rqst *rqstp,
- }
- 
- /*
-+ * Decode OFFLOAD_STATUS response
-+ */
-+static int nfs4_xdr_dec_offload_status(struct rpc_rqst *rqstp,
-+				       struct xdr_stream *xdr,
-+				       void *data)
++static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
 +{
-+	struct nfs42_offload_status_res *res = data;
-+	struct compound_hdr hdr;
-+	int status;
++	ssize_t bytes_copied = 0;
++	size_t bytes_total = copy->cp_count;
++	u64 src_pos = copy->cp_src_pos;
++	u64 dst_pos = copy->cp_dst_pos;
 +
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->osr_seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_offload_status(xdr, res);
++	do {
++		bytes_copied = nfsd_copy_file_range(copy->fh_src, src_pos,
++				copy->fh_dst, dst_pos, bytes_total);
++		if (bytes_copied <= 0)
++			break;
++		bytes_total -= bytes_copied;
++		copy->cp_res.wr_bytes_written += bytes_copied;
++		src_pos += bytes_copied;
++		dst_pos += bytes_copied;
++	} while (bytes_total > 0 && !copy->cp_synchronous);
++	return bytes_copied;
++}
 +
-+out:
++static int nfsd4_do_copy(struct nfsd4_copy *copy, bool sync)
++{
++	__be32 status;
++	ssize_t bytes;
++
++	bytes = _nfsd_copy_file_range(copy);
++	if (bytes < 0 && !copy->cp_res.wr_bytes_written)
++		status = nfserrno(bytes);
++	else
++		status = nfsd4_init_copy_res(copy, sync);
++
++	fput(copy->fh_src);
++	fput(copy->fh_dst);
 +	return status;
 +}
 +
-+/*
-  * Decode DEALLOCATE request
-  */
- static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index f90090e..0751af6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -9294,6 +9294,7 @@ static bool nfs4_match_stateid(const nfs4_stateid *s1,
- 		| NFS_CAP_ATOMIC_OPEN_V1
- 		| NFS_CAP_ALLOCATE
- 		| NFS_CAP_COPY
-+		| NFS_CAP_OFFLOAD_STATUS
- 		| NFS_CAP_DEALLOCATE
- 		| NFS_CAP_SEEK
- 		| NFS_CAP_LAYOUTSTATS
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 14ed979..5978bb4 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -7733,6 +7733,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 	PROC(LAYOUTSTATS,	enc_layoutstats,	dec_layoutstats),
- 	PROC(CLONE,		enc_clone,		dec_clone),
- 	PROC(COPY,		enc_copy,		dec_copy),
-+	PROC(OFFLOAD_STATUS,	enc_offload_status,	dec_offload_status),
- #endif /* CONFIG_NFS_V4_2 */
- };
++static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
++{
++	memcpy(&dst->cp_src_stateid, &src->cp_src_stateid, sizeof(stateid_t));
++	memcpy(&dst->cp_dst_stateid, &src->cp_dst_stateid, sizeof(stateid_t));
++	dst->cp_src_pos = src->cp_src_pos;
++	dst->cp_dst_pos = src->cp_dst_pos;
++	dst->cp_count = src->cp_count;
++	dst->cp_consecutive = src->cp_consecutive;
++	dst->cp_synchronous = src->cp_synchronous;
++	memcpy(&dst->cp_res, &src->cp_res, sizeof(src->cp_res));
++	/* skipping nfsd4_callback */
++	memcpy(&dst->fh, &src->fh, sizeof(src->fh));
++	dst->net = src->net;
++	dst->cp_clp = src->cp_clp;
++	atomic_inc(&dst->cp_clp->cl_refcount);
++	dst->fh_dst = get_file(src->fh_dst);
++	dst->fh_src = get_file(src->fh_src);
++}
++
++static void cleanup_async_copy(struct nfsd4_copy *copy)
++{
++	fput(copy->fh_dst);
++	fput(copy->fh_src);
++	spin_lock(&copy->cp_clp->async_lock);
++	list_del(&copy->copies);
++	spin_unlock(&copy->cp_clp->async_lock);
++	atomic_dec(&copy->cp_clp->cl_refcount);
++	kfree(copy);
++}
++
++static int nfsd4_do_async_copy(void *data)
++{
++	struct nfsd4_copy *copy = (struct nfsd4_copy *)data;
++	struct nfsd4_copy *cb_copy;
++
++	copy->nfserr = nfsd4_do_copy(copy, 0);
++	cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
++	if (!cb_copy)
++		goto out;
++	memcpy(&cb_copy->cp_res, &copy->cp_res, sizeof(copy->cp_res));
++	cb_copy->cp_clp = copy->cp_clp;
++	atomic_inc(&cb_copy->cp_clp->cl_refcount);
++	cb_copy->nfserr = copy->nfserr;
++	memcpy(&cb_copy->fh, &copy->fh, sizeof(copy->fh));
++	nfsd4_init_cb(&cb_copy->cp_cb, cb_copy->cp_clp,
++			&nfsd4_cb_offload_ops, NFSPROC4_CLNT_CB_OFFLOAD);
++	nfsd4_run_cb(&cb_copy->cp_cb);
++out:
++	cleanup_async_copy(copy);
++	return 0;
++}
  
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 47239c3..0f37785 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -524,6 +524,7 @@ enum {
- 	NFSPROC4_CLNT_LAYOUTSTATS,
- 	NFSPROC4_CLNT_CLONE,
- 	NFSPROC4_CLNT_COPY,
-+	NFSPROC4_CLNT_OFFLOAD_STATUS,
- };
+ static __be32
+ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		union nfsd4_op_u *u)
+ {
+ 	struct nfsd4_copy *copy = &u->copy;
+-	struct file *src, *dst;
+ 	__be32 status;
+-	ssize_t bytes;
++	struct nfsd4_copy *async_copy = NULL;
  
- /* nfs41 types */
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 74c4466..fb4e2b8 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -252,5 +252,6 @@ struct nfs_server {
- #define NFS_CAP_LAYOUTSTATS	(1U << 22)
- #define NFS_CAP_CLONE		(1U << 23)
- #define NFS_CAP_COPY		(1U << 24)
-+#define NFS_CAP_OFFLOAD_STATUS	(1U << 25)
+-	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid, &src,
+-				   &copy->cp_dst_stateid, &dst);
++	status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid,
++				   &copy->fh_src, &copy->cp_dst_stateid,
++				   &copy->fh_dst);
+ 	if (status)
+ 		goto out;
  
+-	bytes = nfsd_copy_file_range(src, copy->cp_src_pos,
+-			dst, copy->cp_dst_pos, copy->cp_count);
+-
+-	if (bytes < 0)
+-		status = nfserrno(bytes);
+-	else {
+-		copy->cp_res.wr_bytes_written = bytes;
+-		copy->cp_res.wr_stable_how = NFS_UNSTABLE;
+-		copy->cp_consecutive = 1;
+-		copy->cp_synchronous = 1;
+-		gen_boot_verifier(&copy->cp_res.wr_verifier, SVC_NET(rqstp));
+-		status = nfs_ok;
++	copy->cp_clp = cstate->clp;
++	memcpy(&copy->fh, &cstate->current_fh.fh_handle,
++		sizeof(struct knfsd_fh));
++	copy->net = SVC_NET(rqstp);
++	if (!copy->cp_synchronous) {
++		status = nfsd4_init_copy_res(copy, 0);
++		async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
++		if (!async_copy) {
++			status = nfserrno(-ENOMEM);
++			goto out;
++		}
++		dup_copy_fields(copy, async_copy);
++		memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
++			sizeof(copy->cp_dst_stateid));
++		spin_lock(&async_copy->cp_clp->async_lock);
++		list_add(&async_copy->copies,
++				&async_copy->cp_clp->async_copies);
++		spin_unlock(&async_copy->cp_clp->async_lock);
++		async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
++				async_copy, "%s", "copy thread");
++		if (IS_ERR(async_copy->copy_task)) {
++			status = PTR_ERR(async_copy->copy_task);
++			goto out_err_dec;
++		}
++		wake_up_process(async_copy->copy_task);
++	} else {
++		status = nfsd4_do_copy(copy, 1);
+ 	}
+-
+-	fput(src);
+-	fput(dst);
+ out:
+ 	return status;
++out_err_dec:
++	cleanup_async_copy(async_copy);
++	goto out;
+ }
+ 
+ static __be32
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0c04f81..d7767a1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1774,6 +1774,8 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ #ifdef CONFIG_NFSD_PNFS
+ 	INIT_LIST_HEAD(&clp->cl_lo_states);
  #endif
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 164d535..5ffd745 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1399,6 +1399,18 @@ struct nfs42_copy_res {
- 	struct nfs_commitres		commit_res;
++	INIT_LIST_HEAD(&clp->async_copies);
++	spin_lock_init(&clp->async_lock);
+ 	spin_lock_init(&clp->cl_lock);
+ 	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
+ 	return clp;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index f8b0210..9189062 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -352,6 +352,8 @@ struct nfs4_client {
+ 	struct rpc_wait_queue	cl_cb_waitq;	/* backchannel callers may */
+ 						/* wait here for slots */
+ 	struct net		*net;
++	struct list_head	async_copies;	/* list of async copies */
++	spinlock_t		async_lock;	/* lock for async copies */
  };
  
-+struct nfs42_offload_status_args {
-+	struct nfs4_sequence_args	osa_seq_args;
-+	struct nfs_fh			*osa_src_fh;
-+	nfs4_stateid			osa_stateid;
-+};
+ /* struct nfs4_client_reset
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 9b0c099..0a19954 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -529,6 +529,15 @@ struct nfsd4_copy {
+ 	struct nfsd4_callback	cp_cb;
+ 	__be32			nfserr;
+ 	struct knfsd_fh		fh;
 +
-+struct nfs42_offload_status_res {
-+	struct nfs4_sequence_res	osr_seq_res;
-+	uint64_t			osr_count;
-+	int				osr_status;
-+};
++	struct nfs4_client      *cp_clp;
 +
- struct nfs42_seek_args {
- 	struct nfs4_sequence_args	seq_args;
++	struct file             *fh_src;
++	struct file             *fh_dst;
++	struct net              *net;
++
++	struct list_head	copies;
++	struct task_struct	*copy_task;
+ };
  
+ struct nfsd4_seek {
 -- 
 1.8.3.1
 
