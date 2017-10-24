@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:10989 "EHLO mx144.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:9199 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751506AbdJXRre (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Oct 2017 13:47:34 -0400
+        id S1751505AbdJXRrr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Oct 2017 13:47:47 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 09/12] NFS export nfs4_async_handle_error
-Date: Tue, 24 Oct 2017 13:47:22 -0400
-Message-ID: <20171024174725.74870-10-kolga@netapp.com>
+Subject: [PATCH v6 11/12] NFS handle COPY ERR_OFFLOAD_NO_REQS
+Date: Tue, 24 Oct 2017 13:47:24 -0400
+Message-ID: <20171024174725.74870-12-kolga@netapp.com>
 In-Reply-To: <20171024174725.74870-1-kolga@netapp.com>
 References: <20171024174725.74870-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,41 +16,31 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Make this function available to nfs42proc.c
+If client sent async COPY and server replied with
+ERR_OFFLOAD_NO_REQS, client should retry with a synchronous copy.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs4_fs.h  | 3 +++
- fs/nfs/nfs4proc.c | 2 +-
- 2 files changed, 4 insertions(+), 1 deletion(-)
+ fs/nfs/nfs42proc.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index ac4f10b..c7225bb 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -244,6 +244,9 @@ int nfs4_replace_transport(struct nfs_server *server,
- 
- /* nfs4proc.c */
- extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
-+extern int nfs4_async_handle_error(struct rpc_task *task,
-+				   struct nfs_server *server,
-+				   struct nfs4_state *state, long *timeout);
- extern int nfs4_call_sync(struct rpc_clnt *, struct nfs_server *,
- 			  struct rpc_message *, struct nfs4_sequence_args *,
- 			  struct nfs4_sequence_res *, int);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 02cfa51..c328423 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -551,7 +551,7 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
- 	return ret;
- }
- 
--static int
-+int
- nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
- 			struct nfs4_state *state, long *timeout)
- {
+diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+index 3e9d033..8f2ead3 100644
+--- a/fs/nfs/nfs42proc.c
++++ b/fs/nfs/nfs42proc.c
+@@ -316,7 +316,11 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+ 		if (err == -ENOTSUPP) {
+ 			err = -EOPNOTSUPP;
+ 			break;
+-		} if (err == -EAGAIN) {
++		} else if (err == -EAGAIN) {
++			dst_exception.retry = 1;
++			continue;
++		} else if (err == -NFS4ERR_OFFLOAD_NO_REQS && !args.sync) {
++			args.sync = true;
+ 			dst_exception.retry = 1;
+ 			continue;
+ 		}
 -- 
 1.8.3.1
 
