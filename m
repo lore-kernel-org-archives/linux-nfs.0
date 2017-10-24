@@ -1,180 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:20902 "EHLO mx142.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:50222 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751477AbdJXRra (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Oct 2017 13:47:30 -0400
-From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 02/12] NFS CB_OFFLOAD xdr
-Date: Tue, 24 Oct 2017 13:47:15 -0400
-Message-ID: <20171024174725.74870-3-kolga@netapp.com>
-In-Reply-To: <20171024174725.74870-1-kolga@netapp.com>
-References: <20171024174725.74870-1-kolga@netapp.com>
+        id S1751294AbdJXRxm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Oct 2017 13:53:42 -0400
+Date: Tue, 24 Oct 2017 13:53:42 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weston Andros Adamson <dros@monkey.org>
+Cc: "Gustavo A. R. Silva" <garsilva@embeddedor.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "David S. Miller" <davem@davemloft.net>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] net: sunrpc: svcauth_gss: use BUG_ON instead of if
+ condition followed by BUG
+Message-ID: <20171024175342.GA27853@fieldses.org>
+References: <20171023181635.GA25334@embeddedor.com>
+ <20171023203135.GA21106@fieldses.org>
+ <496D700A-E9D1-4745-B5DE-24BB9231A449@monkey.org>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <496D700A-E9D1-4745-B5DE-24BB9231A449@monkey.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfs/callback.h      | 12 ++++++++
- fs/nfs/callback_proc.c |  7 +++++
- fs/nfs/callback_xdr.c  | 81 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 3 files changed, 99 insertions(+), 1 deletion(-)
+On Tue, Oct 24, 2017 at 01:26:49PM -0400, Weston Andros Adamson wrote:
+> Is there a reason to BUG() in these places? Couldn't we WARN_ON_ONCE and return an error?
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 3dc54d7..cbc5c4c 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -183,6 +183,18 @@ struct cb_notify_lock_args {
- extern __be32 nfs4_callback_notify_lock(void *argp, void *resp,
- 					 struct cb_process_state *cps);
- #endif /* CONFIG_NFS_V4_1 */
-+#ifdef CONFIG_NFS_V4_2
-+struct cb_offloadargs {
-+	struct nfs_fh		coa_fh;
-+	nfs4_stateid		coa_stateid;
-+	uint32_t		error;
-+	uint64_t		wr_count;
-+	struct nfs_writeverf	wr_writeverf;
-+};
-+
-+extern __be32 nfs4_callback_offload(void *args, void *dummy,
-+				    struct cb_process_state *cps);
-+#endif /* CONFIG_NFS_V4_2 */
- extern int check_gss_callback_principal(struct nfs_client *, struct svc_rqst *);
- extern __be32 nfs4_callback_getattr(void *argp, void *resp,
- 				    struct cb_process_state *cps);
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 14358de..eef2728 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -656,3 +656,10 @@ __be32 nfs4_callback_notify_lock(void *argp, void *resp,
- 	return htonl(NFS4_OK);
- }
- #endif /* CONFIG_NFS_V4_1 */
-+#ifdef CONFIG_NFS_V4_2
-+__be32 nfs4_callback_offload(void *args, void *dummy,
-+			     struct cb_process_state *cps)
-+{
-+	return 0;
-+}
-+#endif /* CONFIG_NFS_V4_2 */
-diff --git a/fs/nfs/callback_xdr.c b/fs/nfs/callback_xdr.c
-index 681dd64..ef34639 100644
---- a/fs/nfs/callback_xdr.c
-+++ b/fs/nfs/callback_xdr.c
-@@ -37,6 +37,9 @@
- #define CB_OP_RECALLSLOT_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- #define CB_OP_NOTIFY_LOCK_RES_MAXSZ	(CB_OP_HDR_RES_MAXSZ)
- #endif /* CONFIG_NFS_V4_1 */
-+#ifdef CONFIG_NFS_V4_2
-+#define CB_OP_OFFLOAD_RES_MAXSZ		(CB_OP_HDR_RES_MAXSZ)
-+#endif /* CONFIG_NFS_V4_2 */
- 
- #define NFSDBG_FACILITY NFSDBG_CALLBACK
- 
-@@ -526,7 +529,73 @@ static __be32 decode_notify_lock_args(struct svc_rqst *rqstp,
- }
- 
- #endif /* CONFIG_NFS_V4_1 */
-+#ifdef CONFIG_NFS_V4_2
-+static __be32 decode_write_response(struct xdr_stream *xdr,
-+					struct cb_offloadargs *args)
-+{
-+	__be32 *p;
-+	__be32 dummy;
-+
-+	/* skip the always zero field */
-+	p = read_buf(xdr, 4);
-+	if (unlikely(!p))
-+		goto out;
-+	dummy = ntohl(*p++);
-+
-+	/* decode count, stable_how, verifier */
-+	p = xdr_inline_decode(xdr, 8 + 4);
-+	if (unlikely(!p))
-+		goto out;
-+	p = xdr_decode_hyper(p, &args->wr_count);
-+	args->wr_writeverf.committed = be32_to_cpup(p);
-+	p = xdr_inline_decode(xdr, NFS4_VERIFIER_SIZE);
-+	if (likely(p)) {
-+		memcpy(&args->wr_writeverf.verifier.data[0], p,
-+			NFS4_VERIFIER_SIZE);
-+		return 0;
-+	}
-+out:
-+	return htonl(NFS4ERR_RESOURCE);
-+}
-+
-+static __be32 decode_offload_args(struct svc_rqst *rqstp,
-+					struct xdr_stream *xdr,
-+					void *data)
-+{
-+	struct cb_offloadargs *args = data;
-+	__be32 *p;
-+	__be32 status;
-+
-+	/* decode fh */
-+	status = decode_fh(xdr, &args->coa_fh);
-+	if (unlikely(status != 0))
-+		return status;
-+
-+	/* decode stateid */
-+	status = decode_stateid(xdr, &args->coa_stateid);
-+	if (unlikely(status != 0))
-+		return status;
- 
-+	/* decode status */
-+	p = read_buf(xdr, 4);
-+	if (unlikely(!p))
-+		goto out;
-+	args->error = ntohl(*p++);
-+	if (!args->error) {
-+		status = decode_write_response(xdr, args);
-+		if (unlikely(status != 0))
-+			return status;
-+	} else {
-+		p = xdr_inline_decode(xdr, 8);
-+		if (unlikely(!p))
-+			goto out;
-+		p = xdr_decode_hyper(p, &args->wr_count);
-+	}
-+	return 0;
-+out:
-+	return htonl(NFS4ERR_RESOURCE);
-+}
-+#endif /* CONFIG_NFS_V4_2 */
- static __be32 encode_string(struct xdr_stream *xdr, unsigned int len, const char *str)
- {
- 	if (unlikely(xdr_stream_encode_opaque(xdr, str, len) < 0))
-@@ -793,7 +862,10 @@ static void nfs4_cb_free_slot(struct cb_process_state *cps)
- 	if (status != htonl(NFS4ERR_OP_ILLEGAL))
- 		return status;
- 
--	if (op_nr == OP_CB_OFFLOAD)
-+	if (op_nr == OP_CB_OFFLOAD) {
-+		*op = &callback_ops[op_nr];
-+		return htonl(NFS_OK);
-+	} else
- 		return htonl(NFS4ERR_NOTSUPP);
- 	return htonl(NFS4ERR_OP_ILLEGAL);
- }
-@@ -989,6 +1061,13 @@ static __be32 nfs4_callback_compound(struct svc_rqst *rqstp)
- 		.res_maxsize = CB_OP_NOTIFY_LOCK_RES_MAXSZ,
- 	},
- #endif /* CONFIG_NFS_V4_1 */
-+#ifdef CONFIG_NFS_V4_2
-+	[OP_CB_OFFLOAD] = {
-+		.process_op = nfs4_callback_offload,
-+		.decode_args = decode_offload_args,
-+		.res_maxsize = CB_OP_OFFLOAD_RES_MAXSZ,
-+	},
-+#endif /* CONFIG_NFS_V4_2 */
- };
- 
- /*
--- 
-1.8.3.1
+I think the BUG() will just kill an nfsd thread that isn't holding any
+interesting locks.
 
+The failures look unlikely.  (Except for that read_u32... return, I
+wonder if we're missing a check there.)
+
+--b.
+
+> 
+> -dros
+> 
+> > On Oct 23, 2017, at 4:31 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > 
+> > In the past we've avoided BUG_ON(X) where X might have side effects, on
+> > the theory that it should actually be OK just to compile out BUG_ON()s.
+> > Has that changed?
+> > 
+> > In any case, I don't find that this improves readability; dropping.
+> > 
+> > --b.
+> > 
+> > On Mon, Oct 23, 2017 at 01:16:35PM -0500, Gustavo A. R. Silva wrote:
+> >> Use BUG_ON instead of if condition followed by BUG.
+> >> 
+> >> This issue was detected with the help of Coccinelle.
+> >> 
+> >> Signed-off-by: Gustavo A. R. Silva <garsilva@embeddedor.com>
+> >> ---
+> >> net/sunrpc/auth_gss/svcauth_gss.c | 9 +++------
+> >> 1 file changed, 3 insertions(+), 6 deletions(-)
+> >> 
+> >> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> >> index 7b1ee5a..a10ce43 100644
+> >> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> >> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> >> @@ -855,11 +855,9 @@ unwrap_integ_data(struct svc_rqst *rqstp, struct xdr_buf *buf, u32 seq, struct g
+> >> 		return stat;
+> >> 	if (integ_len > buf->len)
+> >> 		return stat;
+> >> -	if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len))
+> >> -		BUG();
+> >> +	BUG_ON(xdr_buf_subsegment(buf, &integ_buf, 0, integ_len));
+> >> 	/* copy out mic... */
+> >> -	if (read_u32_from_xdr_buf(buf, integ_len, &mic.len))
+> >> -		BUG();
+> >> +	BUG_ON(read_u32_from_xdr_buf(buf, integ_len, &mic.len));
+> >> 	if (mic.len > RPC_MAX_AUTH_SIZE)
+> >> 		return stat;
+> >> 	mic.data = kmalloc(mic.len, GFP_KERNEL);
+> >> @@ -1611,8 +1609,7 @@ svcauth_gss_wrap_resp_integ(struct svc_rqst *rqstp)
+> >> 	BUG_ON(integ_len % 4);
+> >> 	*p++ = htonl(integ_len);
+> >> 	*p++ = htonl(gc->gc_seq);
+> >> -	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len))
+> >> -		BUG();
+> >> +	BUG_ON(xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len));
+> >> 	if (resbuf->tail[0].iov_base == NULL) {
+> >> 		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+> >> 			goto out_err;
+> >> -- 
+> >> 2.7.4
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
