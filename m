@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:5792 "EHLO mx143.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:9199 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751854AbdJXRrf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Oct 2017 13:47:35 -0400
+        id S1751399AbdJXRrq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Oct 2017 13:47:46 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v6 10/12] NFS send OFFLOAD_CANCEL when COPY killed
-Date: Tue, 24 Oct 2017 13:47:23 -0400
-Message-ID: <20171024174725.74870-11-kolga@netapp.com>
+Subject: [PATCH v6 06/12] NFS COPY xdr handle async reply
+Date: Tue, 24 Oct 2017 13:47:19 -0400
+Message-ID: <20171024174725.74870-7-kolga@netapp.com>
 In-Reply-To: <20171024174725.74870-1-kolga@netapp.com>
 References: <20171024174725.74870-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,132 +16,65 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When COPY is killed by the user send OFFLOAD_CANCEL to server
-processing the copy.
+If server returns async reply, it must include a callback stateid,
+wr_callback_id in the write_response4.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42proc.c | 90 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 89 insertions(+), 1 deletion(-)
+ fs/nfs/nfs42xdr.c       | 22 ++++++++++++----------
+ include/linux/nfs_xdr.h |  1 +
+ 2 files changed, 13 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index ed46578..3e9d033 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -16,6 +16,7 @@
- #include "internal.h"
- 
- #define NFSDBG_FACILITY NFSDBG_PROC
-+static int nfs42_do_offload_cancel_async(struct file *dst, nfs4_stateid *std);
- 
- static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
- 		struct nfs_lock_context *lock, loff_t offset, loff_t len)
-@@ -166,10 +167,15 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	list_add_tail(&copy->copies, &server->ss_copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
- 
--	wait_for_completion_interruptible(&copy->completion);
-+	status = wait_for_completion_interruptible(&copy->completion);
- 	spin_lock(&server->nfs_client->cl_lock);
- 	list_del_init(&copy->copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
-+	if (status == -ERESTARTSYS) {
-+		nfs42_do_offload_cancel_async(dst, &copy->stateid);
-+		kfree(copy);
-+		return status;
-+	}
- out:
- 	*ret_count = copy->count;
- 	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
-@@ -327,6 +333,88 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	return err;
- }
- 
-+struct nfs42_offloadcancel_data {
-+	struct nfs_server *seq_server;
-+	struct nfs42_offload_status_args args;
-+	struct nfs42_offload_status_res res;
-+};
-+
-+static void nfs42_offload_cancel_prepare(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs42_offloadcancel_data *data = calldata;
-+
-+	nfs4_setup_sequence(data->seq_server->nfs_client,
-+				&data->args.osa_seq_args,
-+				&data->res.osr_seq_res, task);
-+}
-+
-+static void nfs42_offload_cancel_done(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs42_offloadcancel_data *data = calldata;
-+
-+	nfs41_sequence_done(task, &data->res.osr_seq_res);
-+	if (task->tk_status &&
-+		nfs4_async_handle_error(task, data->seq_server, NULL,
-+			NULL) == -EAGAIN)
-+		rpc_restart_call_prepare(task);
-+}
-+
-+static void nfs42_free_offloadcancel_data(void *data)
-+{
-+	kfree(data);
-+}
-+
-+static const struct rpc_call_ops nfs42_offload_cancel_ops = {
-+	.rpc_call_prepare = nfs42_offload_cancel_prepare,
-+	.rpc_call_done = nfs42_offload_cancel_done,
-+	.rpc_release = nfs42_free_offloadcancel_data,
-+};
-+
-+static int nfs42_do_offload_cancel_async(struct file *dst,
-+				nfs4_stateid *stateid)
-+{
-+	struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
-+	struct nfs42_offloadcancel_data *data = NULL;
-+	struct nfs_open_context *ctx = nfs_file_open_context(dst);
-+	struct rpc_task *task;
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OFFLOAD_CANCEL],
-+		.rpc_cred = ctx->cred,
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = dst_server->client,
-+		.rpc_message = &msg,
-+		.callback_ops = &nfs42_offload_cancel_ops,
-+		.workqueue = nfsiod_workqueue,
-+		.flags = RPC_TASK_ASYNC,
-+	};
-+	int status;
-+
-+	if (!(dst_server->caps & NFS_CAP_OFFLOAD_CANCEL))
-+		return -EOPNOTSUPP;
-+
-+	data = kzalloc(sizeof(struct nfs42_offloadcancel_data), GFP_NOFS);
-+	if (data == NULL)
-+		return -ENOMEM;
-+
-+	data->seq_server = dst_server;
-+	data->args.osa_src_fh = NFS_FH(file_inode(dst));
-+	memcpy(&data->args.osa_stateid, stateid,
-+		sizeof(data->args.osa_stateid));
-+	msg.rpc_argp = &data->args;
-+	msg.rpc_resp = &data->res;
-+	task_setup_data.callback_data = data;
-+	nfs4_init_sequence(&data->args.osa_seq_args, &data->res.osr_seq_res, 1);
-+	task = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+	status = rpc_wait_for_completion_task(task);
-+	if (status == -ENOTSUPP)
-+		dst_server->caps &= ~NFS_CAP_OFFLOAD_CANCEL;
-+	rpc_put_task(task);
-+	return status;
-+}
-+
- int _nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
- 				struct nfs42_offload_status_res *res)
+diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+index e66dd1c..cb62c0c 100644
+--- a/fs/nfs/nfs42xdr.c
++++ b/fs/nfs/nfs42xdr.c
+@@ -426,21 +426,23 @@ static int decode_write_response(struct xdr_stream *xdr,
+ 				 struct nfs42_write_res *res)
  {
+ 	__be32 *p;
++	int status, count;
+ 
+-	p = xdr_inline_decode(xdr, 4 + 8 + 4);
++	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-
+-	/*
+-	 * We never use asynchronous mode, so warn if a server returns
+-	 * a stateid.
+-	 */
+-	if (unlikely(*p != 0)) {
+-		pr_err_once("%s: server has set unrequested "
+-				"asynchronous mode\n", __func__);
++	count = be32_to_cpup(p);
++	if (count > 1)
+ 		return -EREMOTEIO;
++	else if (count == 1) {
++		status = decode_opaque_fixed(xdr, &res->stateid,
++				NFS4_STATEID_SIZE);
++		if (unlikely(status))
++			goto out_overflow;
+ 	}
+-	p++;
++	p = xdr_inline_decode(xdr, 8 + 4);
++	if (unlikely(!p))
++		goto out_overflow;
+ 	p = xdr_decode_hyper(p, &res->count);
+ 	res->verifier.committed = be32_to_cpup(p);
+ 	return decode_verifier(xdr, &res->verifier.verifier);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5ffd745..784ec8d 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1387,6 +1387,7 @@ struct nfs42_copy_args {
+ };
+ 
+ struct nfs42_write_res {
++	nfs4_stateid		stateid;
+ 	u64			count;
+ 	struct nfs_writeverf	verifier;
+ };
 -- 
 1.8.3.1
 
