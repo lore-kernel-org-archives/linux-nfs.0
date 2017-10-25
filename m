@@ -1,50 +1,82 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:19907 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751833AbdJYUDP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2017 16:03:15 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain; charset=us-ascii
-Subject: how to use XPT_CLOSE
-Date: Wed, 25 Oct 2017 16:03:07 -0400
-Message-Id: <4CCAF89B-8843-45C2-8E8A-89CF42FD25FF@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Bruce Fields <bfields@redhat.com>
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "aglo@umich.edu" <aglo@umich.edu>
+CC: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
+	<anna.schumaker@netapp.com>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Fix OPEN / CLOSE race
+Date: Wed, 25 Oct 2017 20:35:15 +0000
+Message-ID: <1508963713.34108.8.camel@primarydata.com>
+References: <20171025173713.24467-1-trond.myklebust@primarydata.com>
+	 <CAN-5tyG2FD5ETWe3tTaH2BqikT=eA-oU8_--W-Jk=6tS8ZageA@mail.gmail.com>
+In-Reply-To: <CAN-5tyG2FD5ETWe3tTaH2BqikT=eA-oU8_--W-Jk=6tS8ZageA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce-
-
-svc_rdma_transport.c :: svc_rdma_wc_send has this snippet:
-
- 355         ctxt = container_of(cqe, struct svc_rdma_op_ctxt, cqe);
- 356         svc_rdma_unmap_dma(ctxt);
- 357         svc_rdma_put_context(ctxt, 1);
- 358 
- 359         if (unlikely(wc->status != IB_WC_SUCCESS)) {
- 360                 set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
- 361                 if (wc->status != IB_WC_WR_FLUSH_ERR)
- 362                         pr_err("svcrdma: Send: %s (%u/0x%x)\n",
- 363                                ib_wc_status_msg(wc->status),
- 364                                wc->status, wc->vendor_err);
- 365         }
-
-This releases resources that were used to send a Reply. It's
-the last thing that is done for each RPC.
-
-I'm wondering about the set_bit(XPT_CLOSE). In order to
-guarantee that the svc layer will see this bit, should this
-code also call svc_enqueue_xprt?
-
-There are several other places in the svc_rdma code that set
-XPT_CLOSE but do not also enqueue the xprt.
-
-Thoughts?
-
-
---
-Chuck Lever
-
-
-
+T24gV2VkLCAyMDE3LTEwLTI1IGF0IDE1OjM3IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gV2VkLCBPY3QgMjUsIDIwMTcgYXQgMTozNyBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
+IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiBCZW4gQ29kZGlu
+Z3RvbiBoYXMgbm90ZWQgdGhlIGZvbGxvd2luZyByYWNlIGJldHdlZW4gT1BFTiBhbmQgQ0xPU0UN
+Cj4gPiBvbiBhIHNpbmdsZSBjbGllbnQuDQo+ID4gDQo+ID4gUHJvY2VzcyAxICAgICAgICAgICAg
+ICAgUHJvY2VzcyAyICAgICAgICAgICAgICAgU2VydmVyDQo+ID4gPT09PT09PT09ICAgICAgICAg
+ICAgICAgPT09PT09PT09ICAgICAgICAgICAgICAgPT09PT09DQo+ID4gDQo+ID4gMSkgIE9QRU4g
+ZmlsZQ0KPiA+IDIpICAgICAgICAgICAgICAgICAgICAgIE9QRU4gZmlsZQ0KPiA+IDMpICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFByb2Nlc3MgT1BFTiAoMSkN
+Cj4gPiBzZXFpZD0xDQo+ID4gNCkgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgUHJvY2VzcyBPUEVOICgyKQ0KPiA+IHNlcWlkPTINCj4gPiA1KSAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBSZXBseSBPUEVOICgyKQ0KPiA+IDYp
+ICAgICAgICAgICAgICAgICAgICAgIFJlY2VpdmUgcmVwbHkgKDIpDQo+ID4gNykgICAgICAgICAg
+ICAgICAgICAgICAgbmV3IHN0YXRlaWQsIHNlcWlkPTINCj4gPiANCj4gPiA4KSAgICAgICAgICAg
+ICAgICAgICAgICBDTE9TRSBmaWxlLCB1c2luZw0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAg
+IHN0YXRlaWQgdy8gc2VxaWQ9Mg0KPiA+IDkpICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIFJlcGx5IE9QRU4gKDEpDQo+ID4gMTAoICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgUHJvY2VzcyBDTE9TRSAoOCkNCj4gPiAxMSkgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBSZXBseSBDTE9TRSAoOCkN
+Cj4gPiAxMikgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBGb3Jn
+ZXQgc3RhdGVpZA0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgIGZpbGUgY2xvc2VkDQo+ID4gDQo+ID4gMTMpICAgICAgICAgICAgICAgICAgICAgUmVj
+ZWl2ZSByZXBseSAoNykNCj4gPiAxNCkgICAgICAgICAgICAgICAgICAgICBGb3JnZXQgc3RhdGVp
+ZA0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgIGZpbGUgY2xvc2VkLg0KPiA+IA0KPiA+IDE1
+KSBSZWNlaXZlIHJlcGx5ICgxKS4NCj4gPiAxNikgTmV3IHN0YXRlaWQgc2VxaWQ9MQ0KPiA+ICAg
+ICBpcyByZWFsbHkgdGhlIHNhbWUNCj4gPiAgICAgc3RhdGVpZCB0aGF0IHdhcw0KPiA+ICAgICBj
+bG9zZWQuDQo+ID4gDQo+ID4gSU9XOiB0aGUgcmVwbHkgdG8gdGhlIGZpcnN0IE9QRU4gaXMgZGVs
+YXllZC4gU2luY2UgIlByb2Nlc3MgMiIgZG9lcw0KPiA+IG5vdCB3YWl0IGJlZm9yZSBjbG9zaW5n
+IHRoZSBmaWxlLCBhbmQgaXQgZG9lcyBub3QgY2FjaGUgdGhlIGNsb3NlZA0KPiA+IHN0YXRlaWQs
+IHRoZW4gd2hlbiB0aGUgZGVsYXllZCByZXBseSBpcyBmaW5hbGx5IHJlY2VpdmVkLCBpdCBpcw0K
+PiA+IHRyZWF0ZWQNCj4gPiBhcyBzZXR0aW5nIHVwIGEgbmV3IHN0YXRlaWQgYnkgdGhlIGNsaWVu
+dC4NCj4gPiANCj4gPiBUaGUgZml4IGlzIHRvIGVuc3VyZSB0aGF0IHRoZSBjbGllbnQgcHJvY2Vz
+c2VzIHRoZSBPUEVOIGFuZCBDTE9TRQ0KPiA+IGNhbGxzDQo+ID4gaW4gdGhlIHNhbWUgb3JkZXIg
+aW4gd2hpY2ggdGhlIHNlcnZlciBwcm9jZXNzZWQgdGhlbS4NCj4gPiANCj4gPiBUaGlzIGNvbW1p
+dCBlbnN1cmVzIHRoYXQgd2UgZXhhbWluZSB0aGUgc2VxaWQgb2YgdGhlIHN0YXRlaWQNCj4gPiBy
+ZXR1cm5lZCBieSBPUEVOLiBJZiBpdCBpcyBhIG5ldyBzdGF0ZWlkLCB3ZSBhc3N1bWUgdGhlIHNl
+cWlkDQo+ID4gbXVzdCBiZSBlcXVhbCB0byB0aGUgdmFsdWUgMSwgYW5kIHRoYXQgZWFjaCBzdGF0
+ZSB0cmFuc2l0aW9uDQo+ID4gaW5jcmVtZW50cyB0aGUgc2VxaWQgdmFsdWUgYnkgMSAoU2VlIFJG
+Qzc1MzAsIFNlY3Rpb24gOS4xLjQuMiwNCj4gPiBhbmQgUkZDNTY2MSwgU2VjdGlvbiA4LjIuMiku
+DQo+ID4gDQo+ID4gSWYgdGhlIHRyYWNrZXIgc2VlcyB0aGF0IGFuIE9QRU4gcmV0dXJucyB3aXRo
+IGEgc2VxaWQgdGhhdCBpcw0KPiA+IGdyZWF0ZXINCj4gPiB0aGFuIHRoZSBjYWNoZWQgc2VxaWQg
+KyAxLCB0aGVuIGl0IGJ1bXBzIGEgZmxhZyB0byBlbnN1cmUgdGhhdCB0aGUNCj4gPiBjYWxsZXIg
+d2FpdHMgZm9yIHRoZSBSUENzIGNhcnJ5aW5nIHRoZSBtaXNzaW5nIHNlcWlkcyB0byBjb21wbGV0
+ZS4NCj4gDQo+IFBsZWFzZSBoZWxwIG1lIHdpdGggbXkgY29uZnVzaW9uOg0KPiBJIGJlbGlldmUg
+dGhlIGNvZGUgdXNlZCB0byBzZXJpYWxpemUgT1BFTnMgb24gdGhlIG9wZW4gb3duZXIuIFRoZW4g
+d2UNCj4gYWxsb3dlZCBwYXJhbGxlbCBvcGVucy4gV2l0aG91dCBwYXJhbGxlbCBvcGVucyB0aGlz
+IHdvdWxkbid0IGhhdmUNCj4gaGFwcGVuZWQsIGlzIHRoYXQgY29ycmVjdD8gQWxzbyBpcyB5b3Vy
+IHNvbHV0aW9uIGFnYWluIHNlcmlhbGl6aW5nDQo+IHRoZQ0KPiBvcGVucyBzaW5jZSBpdCBzYXlz
+IHRoZSBjYWxsZXIgd2FpdHMgZm9yIHRoZSBtaXNzaW5nIHNlcWlkIHRvDQo+IGNvbXBsZXRlLiBJ
+IHJlYWQgdGhpcyBhcyB0aGUgMm5kIG9wZW4gd2FpdHMgb2YgdGhlIDFzdCBvcGVuIHRvDQo+IGNv
+bXBsZXRlIGJlZm9yZSBwcm9jZWVkaW5nIG9yIGlzIHRoYXQgd3Jvbmc/DQoNClRoZXJlIGFyZSBh
+IGNvdXBsZSBvZiBkaWZmZXJlbmNlcy4NCg0KICAgMS4gVGhlIE5GU3Y0LjAgY29kZSBzZXJpYWxp
+c2VzIG9uIHRoZSBvcGVuIG93bmVyIHNlcXVlbmNlIGlkLCBtZWFuaW5nDQogICAgICB5b3UgY2Fu
+IG9ubHkgaGF2ZSAxIE9QRU4gb3IgQ0xPU0UgY2FsbCBvbiB0aGUgd2lyZSBhdCBhbnkgdGltZSBm
+b3IgYQ0KICAgICAgZ2l2ZW4gdXNlci4gSW4gb3RoZXIgd29yZHMgbXVsdGlwbGUgcHJvY2Vzc2Vz
+IG9wZW5pbmcgZGlmZmVyZW50DQogICAgICBmaWxlcyB3b3VsZCBmaW5kIHRoZW1zZWx2ZXMgdG8g
+YmUgc2VyaWFsaXNlZC4gVGhlIE5GU3Y0LjEgY29kZSAoZXZlbg0KICAgICAgd2l0aCB0aGlzIHBh
+dGNoKSBhbGxvd3MgdGhvc2UgcHJvY2Vzc2VzIHRvIG9wZXJhdGUgaW4gZnVsbHkgcGFyYWxsZWwN
+CiAgICAgIG1vZGUuDQogICAyLiBXZSBvbmx5IHdhaXQgaWYgd2UgcmVjZWl2ZSByZXBsaWVzIHRv
+IE9QRU4gY2FsbHMgZm9yIHRoZSBzYW1lIGZpbGUNCiAgICAgIGluIGEgZGlmZmVyZW50IG9yZGVy
+IHRoYW4gdGhlIHNlcnZlciBwcm9jZXNzZWQgdGhlbS4NCg0KSU9XOiB0aGlzIHNob3VsZCBub3Qg
+YmUgYSBodWdlIGJ1cmRlbiB1bmxlc3MgeW91IGhhdmUgbG90cyBvZiBwcm9jZXNzZXMNCm93bmVk
+IGJ5IHRoZSBzYW1lIHVzZXIsIGFuZCBhbGwgdHJ5aW5nIHRvIG9wZW4gYW5kIGNsb3NlIHRoZSBz
+YW1lIGZpbGUNCnJhbmRvbWx5Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
+LmNvbQ0K
