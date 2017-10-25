@@ -1,82 +1,282 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aglo@umich.edu" <aglo@umich.edu>
-CC: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
-	<anna.schumaker@netapp.com>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:48182 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751775AbdJYUjk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 25 Oct 2017 16:39:40 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trond.myklebust@primarydata.com>
+Cc: "Anna Schumaker" <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org
 Subject: Re: [PATCH] NFSv4: Fix OPEN / CLOSE race
-Date: Wed, 25 Oct 2017 20:35:15 +0000
-Message-ID: <1508963713.34108.8.camel@primarydata.com>
+Date: Wed, 25 Oct 2017 16:39:38 -0400
+Message-ID: <9044BEDF-1903-4842-866E-62B1890710E5@redhat.com>
+In-Reply-To: <20171025173713.24467-1-trond.myklebust@primarydata.com>
 References: <20171025173713.24467-1-trond.myklebust@primarydata.com>
-	 <CAN-5tyG2FD5ETWe3tTaH2BqikT=eA-oU8_--W-Jk=6tS8ZageA@mail.gmail.com>
-In-Reply-To: <CAN-5tyG2FD5ETWe3tTaH2BqikT=eA-oU8_--W-Jk=6tS8ZageA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTEwLTI1IGF0IDE1OjM3IC0wNDAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gV2VkLCBPY3QgMjUsIDIwMTcgYXQgMTozNyBQTSwgVHJvbmQgTXlrbGVidXN0DQo+
-IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiBCZW4gQ29kZGlu
-Z3RvbiBoYXMgbm90ZWQgdGhlIGZvbGxvd2luZyByYWNlIGJldHdlZW4gT1BFTiBhbmQgQ0xPU0UN
-Cj4gPiBvbiBhIHNpbmdsZSBjbGllbnQuDQo+ID4gDQo+ID4gUHJvY2VzcyAxICAgICAgICAgICAg
-ICAgUHJvY2VzcyAyICAgICAgICAgICAgICAgU2VydmVyDQo+ID4gPT09PT09PT09ICAgICAgICAg
-ICAgICAgPT09PT09PT09ICAgICAgICAgICAgICAgPT09PT09DQo+ID4gDQo+ID4gMSkgIE9QRU4g
-ZmlsZQ0KPiA+IDIpICAgICAgICAgICAgICAgICAgICAgIE9QRU4gZmlsZQ0KPiA+IDMpICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFByb2Nlc3MgT1BFTiAoMSkN
-Cj4gPiBzZXFpZD0xDQo+ID4gNCkgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgUHJvY2VzcyBPUEVOICgyKQ0KPiA+IHNlcWlkPTINCj4gPiA1KSAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBSZXBseSBPUEVOICgyKQ0KPiA+IDYp
-ICAgICAgICAgICAgICAgICAgICAgIFJlY2VpdmUgcmVwbHkgKDIpDQo+ID4gNykgICAgICAgICAg
-ICAgICAgICAgICAgbmV3IHN0YXRlaWQsIHNlcWlkPTINCj4gPiANCj4gPiA4KSAgICAgICAgICAg
-ICAgICAgICAgICBDTE9TRSBmaWxlLCB1c2luZw0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAg
-IHN0YXRlaWQgdy8gc2VxaWQ9Mg0KPiA+IDkpICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgIFJlcGx5IE9QRU4gKDEpDQo+ID4gMTAoICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgUHJvY2VzcyBDTE9TRSAoOCkNCj4gPiAxMSkgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBSZXBseSBDTE9TRSAoOCkN
-Cj4gPiAxMikgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBGb3Jn
-ZXQgc3RhdGVpZA0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgIGZpbGUgY2xvc2VkDQo+ID4gDQo+ID4gMTMpICAgICAgICAgICAgICAgICAgICAgUmVj
-ZWl2ZSByZXBseSAoNykNCj4gPiAxNCkgICAgICAgICAgICAgICAgICAgICBGb3JnZXQgc3RhdGVp
-ZA0KPiA+ICAgICAgICAgICAgICAgICAgICAgICAgIGZpbGUgY2xvc2VkLg0KPiA+IA0KPiA+IDE1
-KSBSZWNlaXZlIHJlcGx5ICgxKS4NCj4gPiAxNikgTmV3IHN0YXRlaWQgc2VxaWQ9MQ0KPiA+ICAg
-ICBpcyByZWFsbHkgdGhlIHNhbWUNCj4gPiAgICAgc3RhdGVpZCB0aGF0IHdhcw0KPiA+ICAgICBj
-bG9zZWQuDQo+ID4gDQo+ID4gSU9XOiB0aGUgcmVwbHkgdG8gdGhlIGZpcnN0IE9QRU4gaXMgZGVs
-YXllZC4gU2luY2UgIlByb2Nlc3MgMiIgZG9lcw0KPiA+IG5vdCB3YWl0IGJlZm9yZSBjbG9zaW5n
-IHRoZSBmaWxlLCBhbmQgaXQgZG9lcyBub3QgY2FjaGUgdGhlIGNsb3NlZA0KPiA+IHN0YXRlaWQs
-IHRoZW4gd2hlbiB0aGUgZGVsYXllZCByZXBseSBpcyBmaW5hbGx5IHJlY2VpdmVkLCBpdCBpcw0K
-PiA+IHRyZWF0ZWQNCj4gPiBhcyBzZXR0aW5nIHVwIGEgbmV3IHN0YXRlaWQgYnkgdGhlIGNsaWVu
-dC4NCj4gPiANCj4gPiBUaGUgZml4IGlzIHRvIGVuc3VyZSB0aGF0IHRoZSBjbGllbnQgcHJvY2Vz
-c2VzIHRoZSBPUEVOIGFuZCBDTE9TRQ0KPiA+IGNhbGxzDQo+ID4gaW4gdGhlIHNhbWUgb3JkZXIg
-aW4gd2hpY2ggdGhlIHNlcnZlciBwcm9jZXNzZWQgdGhlbS4NCj4gPiANCj4gPiBUaGlzIGNvbW1p
-dCBlbnN1cmVzIHRoYXQgd2UgZXhhbWluZSB0aGUgc2VxaWQgb2YgdGhlIHN0YXRlaWQNCj4gPiBy
-ZXR1cm5lZCBieSBPUEVOLiBJZiBpdCBpcyBhIG5ldyBzdGF0ZWlkLCB3ZSBhc3N1bWUgdGhlIHNl
-cWlkDQo+ID4gbXVzdCBiZSBlcXVhbCB0byB0aGUgdmFsdWUgMSwgYW5kIHRoYXQgZWFjaCBzdGF0
-ZSB0cmFuc2l0aW9uDQo+ID4gaW5jcmVtZW50cyB0aGUgc2VxaWQgdmFsdWUgYnkgMSAoU2VlIFJG
-Qzc1MzAsIFNlY3Rpb24gOS4xLjQuMiwNCj4gPiBhbmQgUkZDNTY2MSwgU2VjdGlvbiA4LjIuMiku
-DQo+ID4gDQo+ID4gSWYgdGhlIHRyYWNrZXIgc2VlcyB0aGF0IGFuIE9QRU4gcmV0dXJucyB3aXRo
-IGEgc2VxaWQgdGhhdCBpcw0KPiA+IGdyZWF0ZXINCj4gPiB0aGFuIHRoZSBjYWNoZWQgc2VxaWQg
-KyAxLCB0aGVuIGl0IGJ1bXBzIGEgZmxhZyB0byBlbnN1cmUgdGhhdCB0aGUNCj4gPiBjYWxsZXIg
-d2FpdHMgZm9yIHRoZSBSUENzIGNhcnJ5aW5nIHRoZSBtaXNzaW5nIHNlcWlkcyB0byBjb21wbGV0
-ZS4NCj4gDQo+IFBsZWFzZSBoZWxwIG1lIHdpdGggbXkgY29uZnVzaW9uOg0KPiBJIGJlbGlldmUg
-dGhlIGNvZGUgdXNlZCB0byBzZXJpYWxpemUgT1BFTnMgb24gdGhlIG9wZW4gb3duZXIuIFRoZW4g
-d2UNCj4gYWxsb3dlZCBwYXJhbGxlbCBvcGVucy4gV2l0aG91dCBwYXJhbGxlbCBvcGVucyB0aGlz
-IHdvdWxkbid0IGhhdmUNCj4gaGFwcGVuZWQsIGlzIHRoYXQgY29ycmVjdD8gQWxzbyBpcyB5b3Vy
-IHNvbHV0aW9uIGFnYWluIHNlcmlhbGl6aW5nDQo+IHRoZQ0KPiBvcGVucyBzaW5jZSBpdCBzYXlz
-IHRoZSBjYWxsZXIgd2FpdHMgZm9yIHRoZSBtaXNzaW5nIHNlcWlkIHRvDQo+IGNvbXBsZXRlLiBJ
-IHJlYWQgdGhpcyBhcyB0aGUgMm5kIG9wZW4gd2FpdHMgb2YgdGhlIDFzdCBvcGVuIHRvDQo+IGNv
-bXBsZXRlIGJlZm9yZSBwcm9jZWVkaW5nIG9yIGlzIHRoYXQgd3Jvbmc/DQoNClRoZXJlIGFyZSBh
-IGNvdXBsZSBvZiBkaWZmZXJlbmNlcy4NCg0KICAgMS4gVGhlIE5GU3Y0LjAgY29kZSBzZXJpYWxp
-c2VzIG9uIHRoZSBvcGVuIG93bmVyIHNlcXVlbmNlIGlkLCBtZWFuaW5nDQogICAgICB5b3UgY2Fu
-IG9ubHkgaGF2ZSAxIE9QRU4gb3IgQ0xPU0UgY2FsbCBvbiB0aGUgd2lyZSBhdCBhbnkgdGltZSBm
-b3IgYQ0KICAgICAgZ2l2ZW4gdXNlci4gSW4gb3RoZXIgd29yZHMgbXVsdGlwbGUgcHJvY2Vzc2Vz
-IG9wZW5pbmcgZGlmZmVyZW50DQogICAgICBmaWxlcyB3b3VsZCBmaW5kIHRoZW1zZWx2ZXMgdG8g
-YmUgc2VyaWFsaXNlZC4gVGhlIE5GU3Y0LjEgY29kZSAoZXZlbg0KICAgICAgd2l0aCB0aGlzIHBh
-dGNoKSBhbGxvd3MgdGhvc2UgcHJvY2Vzc2VzIHRvIG9wZXJhdGUgaW4gZnVsbHkgcGFyYWxsZWwN
-CiAgICAgIG1vZGUuDQogICAyLiBXZSBvbmx5IHdhaXQgaWYgd2UgcmVjZWl2ZSByZXBsaWVzIHRv
-IE9QRU4gY2FsbHMgZm9yIHRoZSBzYW1lIGZpbGUNCiAgICAgIGluIGEgZGlmZmVyZW50IG9yZGVy
-IHRoYW4gdGhlIHNlcnZlciBwcm9jZXNzZWQgdGhlbS4NCg0KSU9XOiB0aGlzIHNob3VsZCBub3Qg
-YmUgYSBodWdlIGJ1cmRlbiB1bmxlc3MgeW91IGhhdmUgbG90cyBvZiBwcm9jZXNzZXMNCm93bmVk
-IGJ5IHRoZSBzYW1lIHVzZXIsIGFuZCBhbGwgdHJ5aW5nIHRvIG9wZW4gYW5kIGNsb3NlIHRoZSBz
-YW1lIGZpbGUNCnJhbmRvbWx5Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
-LmNvbQ0K
+Hi Trond, thanks!
+
+This looks good, but I'm not sure it's fixed things up for me.  It has
+definitely made my test slower to complete.  My test is a bit of bash:
+
+set +o errexit
+i=0
+while true
+do
+         i=$(($i+1))
+         echo run $i $(date)
+         xfstests/src/t_mtab 50 &
+         xfstests/src/t_mtab 50 &
+         xfstests/src/t_mtab 50 &
+         wait
+done
+
+If I stick a printk before and after the wait_on_bit, I can see that 
+most of
+the waits are using the full 5 second timeout rather than being awakened 
+by
+a stateid update, which is probably the source of the slowdown.
+
+At some times, all three processes are sleeping in wait_on_bit..  I need 
+to
+dig into why that's happening.
+
+Ben
+
+On 25 Oct 2017, at 13:37, Trond Myklebust wrote:
+
+> Ben Coddington has noted the following race between OPEN and CLOSE
+> on a single client.
+>
+> Process 1		Process 2		Server
+> =========		=========		======
+>
+> 1)  OPEN file
+> 2)			OPEN file
+> 3)						Process OPEN (1) seqid=1
+> 4)						Process OPEN (2) seqid=2
+> 5)						Reply OPEN (2)
+> 6)			Receive reply (2)
+> 7)			new stateid, seqid=2
+>
+> 8)			CLOSE file, using
+> 			stateid w/ seqid=2
+> 9)						Reply OPEN (1)
+> 10(						Process CLOSE (8)
+> 11)						Reply CLOSE (8)
+> 12)						Forget stateid
+> 						file closed
+>
+> 13)			Receive reply (7)
+> 14)			Forget stateid
+> 			file closed.
+>
+> 15) Receive reply (1).
+> 16) New stateid seqid=1
+>     is really the same
+>     stateid that was
+>     closed.
+>
+> IOW: the reply to the first OPEN is delayed. Since "Process 2" does
+> not wait before closing the file, and it does not cache the closed
+> stateid, then when the delayed reply is finally received, it is 
+> treated
+> as setting up a new stateid by the client.
+>
+> The fix is to ensure that the client processes the OPEN and CLOSE 
+> calls
+> in the same order in which the server processed them.
+>
+> This commit ensures that we examine the seqid of the stateid
+> returned by OPEN. If it is a new stateid, we assume the seqid
+> must be equal to the value 1, and that each state transition
+> increments the seqid value by 1 (See RFC7530, Section 9.1.4.2,
+> and RFC5661, Section 8.2.2).
+>
+> If the tracker sees that an OPEN returns with a seqid that is greater
+> than the cached seqid + 1, then it bumps a flag to ensure that the
+> caller waits for the RPCs carrying the missing seqids to complete.
+>
+> Note that there can still be pathologies where the server crashes 
+> before
+> it can even send us the missing seqids. Since the OPEN call is still
+> holding a slot when it waits here, that could cause the recovery to
+> stall forever. To avoid that, we time out after a 5 second wait.
+>
+> Reported-by: Benjamin Coddington <bcodding@redhat.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4_fs.h  |  1 +
+>  fs/nfs/nfs4proc.c | 87 
+> +++++++++++++++++++++++++++++++++++++++++++++++--------
+>  2 files changed, 76 insertions(+), 12 deletions(-)
+>
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index b547d935aaf0..46aeaa2ee700 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -161,6 +161,7 @@ enum {
+>  	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
+>  	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
+>  	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
+> +	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding 
+> */
+>  };
+>
+>  struct nfs4_state {
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 96b2077e691d..b426606ef2c4 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1378,6 +1378,28 @@ static bool 
+> nfs_open_stateid_recover_openmode(struct nfs4_state *state)
+>  }
+>  #endif /* CONFIG_NFS_V4_1 */
+>
+> +static void nfs_state_log_update_open_stateid(struct nfs4_state 
+> *state)
+> +{
+> +	if (test_and_clear_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
+> +		wake_up_bit(&state->flags, NFS_STATE_CHANGE_WAIT);
+> +}
+> +
+> +static void nfs_state_reset_open_stateid(struct nfs4_state *state)
+> +{
+> +	state->open_stateid.seqid = 0;
+> +	nfs_state_log_update_open_stateid(state);
+> +}
+> +
+> +static void nfs_state_log_out_of_order_open_stateid(struct nfs4_state 
+> *state,
+> +		const nfs4_stateid *stateid)
+> +{
+> +	u32 state_seqid = be32_to_cpu(state->open_stateid.seqid);
+> +	u32 stateid_seqid = be32_to_cpu(stateid->seqid);
+> +
+> +	if (stateid_seqid != state_seqid + 1U)
+> +		set_bit(NFS_STATE_CHANGE_WAIT, &state->flags);
+> +}
+> +
+>  static void nfs_test_and_clear_all_open_stateid(struct nfs4_state 
+> *state)
+>  {
+>  	struct nfs_client *clp = state->owner->so_server->nfs_client;
+> @@ -1393,18 +1415,34 @@ static void 
+> nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
+>  		nfs4_state_mark_reclaim_nograce(clp, state);
+>  }
+>
+> +/*
+> + * Check for whether or not the caller may update the open stateid
+> + * to the value passed in by stateid.
+> + *
+> + * Note: This function relies heavily on the server implementing
+> + * RFC7530 Section 9.1.4.2, and RFC5661 Section 8.2.2
+> + * correctly.
+> + * i.e. The stateid seqids have to be initialised to 1, and
+> + * are then incremented on every state transition.
+> + */
+>  static bool nfs_need_update_open_stateid(struct nfs4_state *state,
+>  		const nfs4_stateid *stateid, nfs4_stateid *freeme)
+>  {
+> -	if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0)
+> -		return true;
+> -	if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) {
+> -		nfs4_stateid_copy(freeme, &state->open_stateid);
+> -		nfs_test_and_clear_all_open_stateid(state);
+> +	if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0) {
+> +		nfs_state_reset_open_stateid(state);
+> +	} else if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) 
+> {
+> +		if (stateid->seqid == cpu_to_be32(1)) {
+> +			nfs4_stateid_copy(freeme, &state->open_stateid);
+> +			nfs_test_and_clear_all_open_stateid(state);
+> +			nfs_state_reset_open_stateid(state);
+> +		} else
+> +			set_bit(NFS_STATE_CHANGE_WAIT, &state->flags);
+>  		return true;
+>  	}
+> -	if (nfs4_stateid_is_newer(stateid, &state->open_stateid))
+> +	if (nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
+> +		nfs_state_log_out_of_order_open_stateid(state, stateid);
+>  		return true;
+> +	}
+>  	return false;
+>  }
+>
+> @@ -1439,15 +1477,19 @@ static void 
+> nfs_clear_open_stateid_locked(struct nfs4_state *state,
+>  	}
+>  	if (stateid == NULL)
+>  		return;
+> +	/* Handle reboot/state expire races */
+> +	if (!nfs4_stateid_match_other(stateid, &state->open_stateid))
+> +		return;
+>  	/* Handle OPEN+OPEN_DOWNGRADE races */
+> -	if (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
+> -	    !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
+> +	if (!nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
+>  		nfs_resync_open_stateid_locked(state);
+> -		return;
+> +		goto out;
+>  	}
+>  	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+>  		nfs4_stateid_copy(&state->stateid, stateid);
+>  	nfs4_stateid_copy(&state->open_stateid, stateid);
+> +out:
+> +	nfs_state_log_update_open_stateid(state);
+>  }
+>
+>  static void nfs_clear_open_stateid(struct nfs4_state *state,
+> @@ -1467,7 +1509,10 @@ static void nfs_set_open_stateid_locked(struct 
+> nfs4_state *state,
+>  		const nfs4_stateid *stateid, fmode_t fmode,
+>  		nfs4_stateid *freeme)
+>  {
+> -	switch (fmode) {
+> +	int status = 0;
+> +	for (;;) {
+> +
+> +		switch (fmode) {
+>  		case FMODE_READ:
+>  			set_bit(NFS_O_RDONLY_STATE, &state->flags);
+>  			break;
+> @@ -1476,12 +1521,30 @@ static void nfs_set_open_stateid_locked(struct 
+> nfs4_state *state,
+>  			break;
+>  		case FMODE_READ|FMODE_WRITE:
+>  			set_bit(NFS_O_RDWR_STATE, &state->flags);
+> +		}
+> +		if (!nfs_need_update_open_stateid(state, stateid, freeme))
+> +			return;
+> +		if (!test_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
+> +			break;
+> +		if (status)
+> +			break;
+> +		/*
+> +		 * Ensure we process the state changes in the same order
+> +		 * in which the server processed them by delaying the
+> +		 * update of the stateid until we are in sequence.
+> +		 */
+> +		write_sequnlock(&state->seqlock);
+> +		spin_unlock(&state->owner->so_lock);
+> +		status = wait_on_bit_timeout(&state->flags,
+> +				NFS_STATE_CHANGE_WAIT,
+> +				TASK_KILLABLE, 5*HZ);
+> +		spin_lock(&state->owner->so_lock);
+> +		write_seqlock(&state->seqlock);
+>  	}
+> -	if (!nfs_need_update_open_stateid(state, stateid, freeme))
+> -		return;
+>  	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+>  		nfs4_stateid_copy(&state->stateid, stateid);
+>  	nfs4_stateid_copy(&state->open_stateid, stateid);
+> +	nfs_state_log_update_open_stateid(state);
+>  }
+>
+>  static void __update_open_stateid(struct nfs4_state *state,
+> -- 
+> 2.13.6
