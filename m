@@ -1,37 +1,110 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: bcodding redhat <bcodding@redhat.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Fix OPEN / CLOSE race
-Date: Wed, 25 Oct 2017 20:48:20 +0000
-Message-ID: <1508964498.34108.15.camel@primarydata.com>
-References: <20171025173713.24467-1-trond.myklebust@primarydata.com>
-	 <9044BEDF-1903-4842-866E-62B1890710E5@redhat.com>
-In-Reply-To: <9044BEDF-1903-4842-866E-62B1890710E5@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:43899 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751792AbdJYVTd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 25 Oct 2017 17:19:33 -0400
+From: NeilBrown <neilb@suse.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Date: Thu, 26 Oct 2017 08:19:20 +1100
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] sunrpc: use supplimental groups in auth hash.
+In-Reply-To: <CF1E0D4B-4EB3-4951-B152-39646ECF19DA@oracle.com>
+References: <87h8upe6bp.fsf@notabene.neil.brown.name> <CF1E0D4B-4EB3-4951-B152-39646ECF19DA@oracle.com>
+Message-ID: <877evjdixz.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE3LTEwLTI1IGF0IDE2OjM5IC0wNDAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiBIaSBUcm9uZCwgdGhhbmtzIQ0KPiANCj4gVGhpcyBsb29rcyBnb29kLCBidXQgSSdt
-IG5vdCBzdXJlIGl0J3MgZml4ZWQgdGhpbmdzIHVwIGZvciBtZS4gIEl0DQo+IGhhcw0KPiBkZWZp
-bml0ZWx5IG1hZGUgbXkgdGVzdCBzbG93ZXIgdG8gY29tcGxldGUuICBNeSB0ZXN0IGlzIGEgYml0
-IG9mDQo+IGJhc2g6DQo+IA0KPiBzZXQgK28gZXJyZXhpdA0KPiBpPTANCj4gd2hpbGUgdHJ1ZQ0K
-PiBkbw0KPiAgICAgICAgICBpPSQoKCRpKzEpKQ0KPiAgICAgICAgICBlY2hvIHJ1biAkaSAkKGRh
-dGUpDQo+ICAgICAgICAgIHhmc3Rlc3RzL3NyYy90X210YWIgNTAgJg0KPiAgICAgICAgICB4ZnN0
-ZXN0cy9zcmMvdF9tdGFiIDUwICYNCj4gICAgICAgICAgeGZzdGVzdHMvc3JjL3RfbXRhYiA1MCAm
-DQo+ICAgICAgICAgIHdhaXQNCj4gZG9uZQ0KPiANCj4gSWYgSSBzdGljayBhIHByaW50ayBiZWZv
-cmUgYW5kIGFmdGVyIHRoZSB3YWl0X29uX2JpdCwgSSBjYW4gc2VlIHRoYXQgDQo+IG1vc3Qgb2YN
-Cj4gdGhlIHdhaXRzIGFyZSB1c2luZyB0aGUgZnVsbCA1IHNlY29uZCB0aW1lb3V0IHJhdGhlciB0
-aGFuIGJlaW5nDQo+IGF3YWtlbmVkIA0KPiBieQ0KPiBhIHN0YXRlaWQgdXBkYXRlLCB3aGljaCBp
-cyBwcm9iYWJseSB0aGUgc291cmNlIG9mIHRoZSBzbG93ZG93bi4NCg0KV2h5IHdvdWxkIHRoZSBz
-ZXJ2ZXIgYmUgdGFraW5nIG1vcmUgdGhhbiA1IHNlY29uZHMgdG8gc2VuZCBhIHJlcGx5IChvcg0K
-d2h5IHdvdWxkIHRoZSBjbGllbnQgdGFrZSBtb3JlIHRoYW4gNSBzZWNvbmRzIHRvIHByb2Nlc3Mg
-aXQpPw0KDQo+IEF0IHNvbWUgdGltZXMsIGFsbCB0aHJlZSBwcm9jZXNzZXMgYXJlIHNsZWVwaW5n
-IGluIHdhaXRfb25fYml0Li4gIEkNCj4gbmVlZCANCj4gdG8NCj4gZGlnIGludG8gd2h5IHRoYXQn
-cyBoYXBwZW5pbmcuDQoNClllcywgdGhhdCBtYWtlcyBubyBzZW5zZS4gQXJlIHlvdSBzdXJlIHRo
-YXQgeW91ciBzZXJ2ZXIgaXMgZm9sbG93aW5nDQp0aGUgUkZDcyB0byB0aGUgbGV0dGVyIG9uIHRo
-YXQgJ3N0YXRlaWQgc2VxaWRzIG11c3QgYmUgaW5pdGlhbGlzZWQgdG8NCjEnIHJ1bGU/DQoNCi0t
-IA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlE
-YXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+On Wed, Oct 25 2017, Chuck Lever wrote:
+
+>> On Oct 23, 2017, at 8:29 PM, NeilBrown <neilb@suse.com> wrote:
+>>=20
+>>=20
+>> Some sites vary some supplimental groups a lot.
+>> To avoid unduely long hash chains, include all of these
+>> in the hash calculation.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>=20
+>> Hi,
+>> I have a customer who had thousands of auth entries with the same
+>> uid and gid, so the hashtable was unbalanced and some lookups were
+>> noticeably slow.  This fix helped.
+>>=20
+>> Relatedly, I wonder if we should set a default auth_max_cred_cachesize,
+>> and nfs_access_max_cachesize - smaller than ULONG_MAX.
+>>=20
+>> For auth_max_cred_cachesize, a default of e.g. 256*(1<<auth_hashbits)
+>> is appropriate I think.  If there are more auth entries than that,
+>> you'll start to notice lookups taking a long time.
+>>=20
+>> For nfs_access_max_cachesize we want a similar limit as each access
+>> entry pins an auth entry and so keeps a hash chain long.
+>>=20
+>> Or maybe we could change the auth lookup to use an rbtree (or
+>> hash-table of rbtrees?) so that time scales with log of size.
+>>=20
+>> One option is to restore the 'jiffies' field to the access cache, and
+>> discard entries older than (say) 10 minutes.
+>>=20
+>> Thoughts?
+>
+> Seems like we are always revisiting the hash function, and
+> there are always workloads where long chains occur. Since
+> the lookup-to-insertion ratio is very high, maybe it's time
+> to consider a data structure that self-balances on insertion,
+> like an rb-tree.
+
+I'm certainly open to that possibility.
+
+>
+> Would it make sense to protect the cache with a rwlock
+> instead of spin lock to allow concurrent readers?
+
+I doubt if rwlocks are ever really useful.  If there is noticeable
+contention between readers, then a lockless/RCU based approach should be
+preferred.
+
+>
+> Is there any sane way to make the cred cache into a set of
+> per CPU caches instead, to reduce the need for locking?
+
+Encouraged by your outside-the-box thinking, I have another question.
+Do we need the auth cache at all?  What is it actually caching?
+For gss, I can easily imagine there is something worth storing in a
+cache, but what value do the 'generic' and 'auth_unix' caches provide?
+
+Does anyone know?
+
+Thanks,
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlnw/9oACgkQOeye3VZi
+gbnzXQ//ZIhMuuhJCtpR96fwxWp29NzwSq9Da37ypqk06Kj5yI2oV3NHXcx7fFHC
+sqai7Ebwsac0EW7NePMj+HW6ix4p1YMpG3MVTXu5disAK0SC5SF+frvxf1Zvnr8G
+tBB/tcd+Ys68zOPdP23SGv39xHpyc1kubqMPemq8rknyZzN852o8qVp7u5N+htyk
+4BCSPFGcAoqeRtO22SpMbyRTkip3t2/bPd9dVEhiNvfHfIBDapQahMr+q9aH1LQR
+gOVxkuewzqTxcx99udmYkArVx4KAX9j2pv4jfN20fmVUAwnR5C2LCBW0O7cPpvAY
+VBBkwAcCsqQJqJxIJ9zPTT2HKau+qoiG1n0P1TLPzKWwt3pU/Nm1bMeZdSZf+GuD
+5OQuYzzdDTi12sDgEl3B+c5vH5BJp7hWeq/Ktv1HiPSQZ+nP/yETzV4wVSpCip7C
+9fajA6jkaPEyjqiNGtAfNphINlE9+j2g3xkuDntQmWwWEo0LxcVJoYMWTKBFXvZo
+NzWoKQYdL9Xfy3nSPR7VuNcHc//fvhx+/8YwvJDJL4XD+hH5utv8iAOqOEItKYkB
+GdoiC0jeMBqn+lo9BNATvdehsr6HntzMenJcoCu/SqB/PGSuLQDzCw/l3Layj4rc
+9TReX5da5jA9rSDZ49zpxi4hrtcE1MfAgyD59njviyITAvssG6A=
+=8pKM
+-----END PGP SIGNATURE-----
+--=-=-=--
