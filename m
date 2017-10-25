@@ -1,130 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from scorn.kernelslacker.org ([45.56.101.199]:34500 "EHLO
-        scorn.kernelslacker.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751766AbdJYCXG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Oct 2017 22:23:06 -0400
-Date: Tue, 24 Oct 2017 22:23:03 -0400
-From: Dave Jones <davej@codemonkey.org.uk>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: [4.14rc6] suspicious nfs rcu dereference
-Message-ID: <20171025022303.qfyafixsfacvfruh@codemonkey.org.uk>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:26951 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751719AbdJYQN6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2017 12:13:58 -0400
 Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] sunrpc: use supplimental groups in auth hash.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <87h8upe6bp.fsf@notabene.neil.brown.name>
+Date: Wed, 25 Oct 2017 12:13:19 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <CF1E0D4B-4EB3-4951-B152-39646ECF19DA@oracle.com>
+References: <87h8upe6bp.fsf@notabene.neil.brown.name>
+To: NeilBrown <neilb@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-WARNING: suspicious RCU usage
-4.14.0-rc6-think+ #2 Not tainted
------------------------------
-net/sunrpc/clnt.c:1206 suspicious rcu_dereference_check() usage!
 
-other info that might help us debug this:
+> On Oct 23, 2017, at 8:29 PM, NeilBrown <neilb@suse.com> wrote:
+> 
+> 
+> Some sites vary some supplimental groups a lot.
+> To avoid unduely long hash chains, include all of these
+> in the hash calculation.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+> 
+> Hi,
+> I have a customer who had thousands of auth entries with the same
+> uid and gid, so the hashtable was unbalanced and some lookups were
+> noticeably slow.  This fix helped.
+> 
+> Relatedly, I wonder if we should set a default auth_max_cred_cachesize,
+> and nfs_access_max_cachesize - smaller than ULONG_MAX.
+> 
+> For auth_max_cred_cachesize, a default of e.g. 256*(1<<auth_hashbits)
+> is appropriate I think.  If there are more auth entries than that,
+> you'll start to notice lookups taking a long time.
+> 
+> For nfs_access_max_cachesize we want a similar limit as each access
+> entry pins an auth entry and so keeps a hash chain long.
+> 
+> Or maybe we could change the auth lookup to use an rbtree (or
+> hash-table of rbtrees?) so that time scales with log of size.
+> 
+> One option is to restore the 'jiffies' field to the access cache, and
+> discard entries older than (say) 10 minutes.
+> 
+> Thoughts?
+
+Seems like we are always revisiting the hash function, and
+there are always workloads where long chains occur. Since
+the lookup-to-insertion ratio is very high, maybe it's time
+to consider a data structure that self-balances on insertion,
+like an rb-tree.
+
+Would it make sense to protect the cache with a rwlock
+instead of spin lock to allow concurrent readers?
+
+Is there any sane way to make the cred cache into a set of
+per CPU caches instead, to reduce the need for locking?
 
 
-rcu_scheduler_active = 2, debug_locks = 1
-2 locks held by kworker/2:0/9104:
- #0: 
- (
-"rpciod"
-){+.+.}
-, at: [<ffffffff8110102e>] process_one_work+0x66e/0xea0
- #1: 
- (
-(&task->u.tk_work)
-){+.+.}
-, at: [<ffffffff8110102e>] process_one_work+0x66e/0xea0
+> Thanks,
+> NeilBrown
+> 
+> 
+> net/sunrpc/auth_generic.c | 15 ++++++++++++---
+> net/sunrpc/auth_unix.c    | 12 +++++++++---
+> 2 files changed, 21 insertions(+), 6 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+> index f1df9837f1ac..035f7c5f184f 100644
+> --- a/net/sunrpc/auth_generic.c
+> +++ b/net/sunrpc/auth_generic.c
+> @@ -81,9 +81,18 @@ static struct rpc_cred *generic_bind_cred(struct rpc_task *task,
+> static int
+> generic_hash_cred(struct auth_cred *acred, unsigned int hashbits)
+> {
+> -	return hash_64(from_kgid(&init_user_ns, acred->gid) |
+> -		((u64)from_kuid(&init_user_ns, acred->uid) <<
+> -			(sizeof(gid_t) * 8)), hashbits);
+> +	int ret = hash_32(from_kuid(&init_user_ns, acred->uid), 32);
+> +
+> +	if (acred->group_info) {
+> +		int g;
+> +
+> +		for (g = 0; g < acred->group_info->ngroups; g++)
+> +			ret = hash_32(ret ^
+> +				      from_kgid(&init_user_ns,
+> +						acred->group_info->gid[g]),
+> +				      32);
+> +	}
+> +	return hash_32(ret ^ from_kgid(&init_user_ns, acred->gid), hashbits);
+> }
+> 
+> /*
+> diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+> index 82337e1ec9cd..20cd4ab3b339 100644
+> --- a/net/sunrpc/auth_unix.c
+> +++ b/net/sunrpc/auth_unix.c
+> @@ -47,9 +47,15 @@ unx_destroy(struct rpc_auth *auth)
+> static int
+> unx_hash_cred(struct auth_cred *acred, unsigned int hashbits)
+> {
+> -	return hash_64(from_kgid(&init_user_ns, acred->gid) |
+> -		((u64)from_kuid(&init_user_ns, acred->uid) <<
+> -			(sizeof(gid_t) * 8)), hashbits);
+> +	int ret = hash_32(from_kuid(&init_user_ns, acred->uid), 32);
+> +	if (acred->group_info) {
+> +		int g;
+> +
+> +		for (g = 0; g < acred->group_info->ngroups && g < UNX_NGROUPS; g++)
+> +			ret = hash_32(ret ^ from_kgid(&init_user_ns,
+> +						      acred->group_info->gid[g]), 32);
+> +	}
+> +	return hash_32(ret ^ from_kgid(&init_user_ns, acred->gid), hashbits);
+> }
+> 
+> /*
+> -- 
+> 2.14.0.rc0.dirty
+> 
 
-stack backtrace:
-CPU: 2 PID: 9104 Comm: kworker/2:0 Not tainted 4.14.0-rc6-think+ #2 
-Workqueue: rpciod rpc_async_schedule [sunrpc]
-Call Trace:
- dump_stack+0xbc/0x145
- ? dma_virt_map_sg+0xfb/0xfb
- ? lockdep_rcu_suspicious+0xda/0x100
- rpc_peeraddr2str+0x11a/0x130 [sunrpc]
- ? call_start+0x1e0/0x1e0 [sunrpc]
- perf_trace_nfs4_clientid_event+0xde/0x420 [nfsv4]
- ? do_raw_spin_unlock+0x147/0x220
- ? save_trace+0x1c0/0x1c0
- ? perf_trace_nfs4_open_event+0x5f0/0x5f0 [nfsv4]
- ? nfs41_sequence_process+0xba/0x5a0 [nfsv4]
- ? _raw_spin_unlock+0x24/0x30
- ? nfs41_sequence_free_slot.isra.47+0x143/0x230 [nfsv4]
- ? __lock_is_held+0x51/0xd0
- nfs41_sequence_call_done+0x29a/0x430 [nfsv4]
- ? perf_trace_nfs4_open_event+0x5f0/0x5f0 [nfsv4]
- ? nfs4_proc_unlink_done+0xb0/0xb0 [nfsv4]
- ? __internal_add_timer+0x11b/0x170
- ? call_connect_status+0x490/0x490 [sunrpc]
- ? __lock_is_held+0x51/0xd0
- ? call_decode+0x33f/0xdd0 [sunrpc]
- ? nfs4_proc_unlink_done+0xb0/0xb0 [nfsv4]
- ? rpc_make_runnable+0x180/0x180 [sunrpc]
- rpc_exit_task+0x61/0x100 [sunrpc]
- ? rpc_make_runnable+0x180/0x180 [sunrpc]
- __rpc_execute+0x1c8/0x9e0 [sunrpc]
- ? rpc_wake_up_queued_task+0x40/0x40 [sunrpc]
- ? lock_downgrade+0x310/0x310
- ? match_held_lock+0xa6/0x410
- ? sched_clock_cpu+0x14/0xf0
- ? sched_clock_cpu+0x14/0xf0
- ? save_trace+0x1c0/0x1c0
- ? lock_acquire+0x12e/0x350
- ? lock_acquire+0x12e/0x350
- ? process_one_work+0x66e/0xea0
- ? lock_release+0x890/0x890
- ? do_raw_spin_trylock+0x100/0x100
- ? __lock_is_held+0x51/0xd0
- process_one_work+0x766/0xea0
- ? pwq_dec_nr_in_flight+0x1e0/0x1e0
- ? preempt_notifier_dec+0x20/0x20
- ? __schedule+0x5cc/0x1310
- ? __sched_text_start+0x8/0x8
- ? match_held_lock+0x93/0x410
- ? save_trace+0x1c0/0x1c0
- ? native_sched_clock+0xf9/0x1a0
- ? cyc2ns_read_end+0x10/0x10
- ? cyc2ns_read_end+0x10/0x10
- ? find_held_lock+0x74/0xd0
- ? lock_contended+0x790/0x790
- ? lock_release+0x890/0x890
- ? do_raw_spin_unlock+0x147/0x220
- ? do_raw_spin_trylock+0x100/0x100
- ? retint_kernel+0x10/0x10
- ? do_raw_spin_trylock+0xb3/0x100
- ? do_raw_spin_lock+0x110/0x110
- ? mark_held_locks+0x1b/0xa0
- worker_thread+0x1cf/0xcf0
- ? do_raw_spin_unlock+0x147/0x220
- ? do_raw_spin_trylock+0x100/0x100
- ? process_one_work+0xea0/0xea0
- ? get_vtime_delta+0x13/0x80
- ? mark_held_locks+0x1b/0xa0
- ? trace_hardirqs_on_caller+0x17a/0x250
- ? _raw_spin_unlock_irq+0x29/0x40
- ? finish_task_switch+0x183/0x470
- ? finish_task_switch+0x101/0x470
- ? preempt_notifier_dec+0x20/0x20
- ? __schedule+0x5cc/0x1310
- ? try_to_wake_up+0xe7/0xbb0
- ? save_stack+0x32/0xb0
- ? kasan_kmalloc+0xa0/0xd0
- ? native_sched_clock+0xf9/0x1a0
- ? ret_from_fork+0x27/0x40
- ? sched_clock_cpu+0x14/0xf0
- ? sched_clock_cpu+0x14/0xf0
- ? lock_downgrade+0x310/0x310
- ? __schedule+0x1310/0x1310
- ? do_raw_spin_unlock+0x147/0x220
- ? do_raw_spin_trylock+0x100/0x100
- ? do_raw_spin_lock+0x110/0x110
- ? __init_waitqueue_head+0xbe/0xf0
- ? mark_held_locks+0x1b/0xa0
- ? _raw_spin_unlock_irqrestore+0x32/0x50
- ? process_one_work+0xea0/0xea0
- kthread+0x1c9/0x1f0
- ? kthread_create_on_node+0xc0/0xc0
- ret_from_fork+0x27/0x40
+--
+Chuck Lever
+
+
+
