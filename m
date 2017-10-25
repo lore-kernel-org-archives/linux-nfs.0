@@ -1,60 +1,230 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f41.google.com ([209.85.214.41]:45867 "EHLO
-        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751855AbdJYRLs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2017 13:11:48 -0400
-Received: by mail-it0-f41.google.com with SMTP id n195so1964547itg.0
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Oct 2017 10:11:48 -0700 (PDT)
-Received: from ola-842mrw1.ad.garmin.com ([204.77.163.55])
-        by smtp.googlemail.com with ESMTPSA id 191sm1524721itb.21.2017.10.25.10.11.47
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 25 Oct 2017 10:11:47 -0700 (PDT)
-From: Joshua Watt <jpewhacker@gmail.com>
-Message-ID: <1508951506.2542.51.camel@gmail.com>
-Subject: NFS Force Unmounting
-To: linux-nfs@vger.kernel.org
-Date: Wed, 25 Oct 2017 12:11:46 -0500
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <trondmy@gmail.com>
+Sender: Trond Myklebust <trondmy@gmail.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>,
+	Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix OPEN / CLOSE race
+Date: Wed, 25 Oct 2017 13:37:13 -0400
+Message-Id: <20171025173713.24467-1-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+Ben Coddington has noted the following race between OPEN and CLOSE
+on a single client.
 
-I'm working on a networking embedded system where NFS servers can come
-and go from the network, and I've discovered that the Kernel NFS server
-make it difficult to cleanup applications in a timely manner when the
-server disappears (and yes, I am mounting with "soft" and relatively
-short timeouts). I currently have a user space mechanism that can
-quickly detect when the server disappears, and does a umount() with the
-MNT_FORCE and MNT_DETACH flags. Using MNT_DETACH prevents new accesses
-to files on the defunct remote server, and I have traced through the
-code to see that MNT_FORCE does indeed cancel any current RPC tasks
-with -EIO. However, this isn't sufficient for my use case because if a
-user space application isn't currently waiting on an RCP task that gets
-canceled, it will have to timeout again before it detects the
-disconnect. For example, if a simple client is copying a file from the
-NFS server, and happens to not be waiting on the RPC task in the read()
-call when umount() occurs, it will be none the wiser and loop around to
-call read() again, which must then try the whole NFS timeout + recovery
-before the failure is detected. If a client is more complex and has a
-lot of open file descriptor, it will typical have to wait for each one
-to timeout, leading to very long delays.
+Process 1		Process 2		Server
+=========		=========		======
 
-The (naive?) solution seems to be to add some flag in either the NFS
-client or the RPC client that gets set in nfs_umount_begin(). This
-would cause all subsequent operations to fail with an error code
-instead of having to be queued as an RPC task and the and then timing
-out. In our example client, the application would then get the -EIO
-immediately on the next (and all subsequent) read() calls.
+1)  OPEN file
+2)			OPEN file
+3)						Process OPEN (1) seqid=1
+4)						Process OPEN (2) seqid=2
+5)						Reply OPEN (2)
+6)			Receive reply (2)
+7)			new stateid, seqid=2
 
-There does seem to be some precedence for doing this (especially with
-network file systems), as both cifs (CifsExiting) and ceph
-(CEPH_MOUNT_SHUTDOWN) appear to implement this behavior (at least from
-looking at the code. I haven't verified runtime behavior).
+8)			CLOSE file, using
+			stateid w/ seqid=2
+9)						Reply OPEN (1)
+10(						Process CLOSE (8)
+11)						Reply CLOSE (8)
+12)						Forget stateid
+						file closed
 
-Are there any pitfalls I'm oversimplifying?
+13)			Receive reply (7)
+14)			Forget stateid
+			file closed.
 
-Thanks,
-Joshua Watt
+15) Receive reply (1).
+16) New stateid seqid=1
+    is really the same
+    stateid that was
+    closed.
+
+IOW: the reply to the first OPEN is delayed. Since "Process 2" does
+not wait before closing the file, and it does not cache the closed
+stateid, then when the delayed reply is finally received, it is treated
+as setting up a new stateid by the client.
+
+The fix is to ensure that the client processes the OPEN and CLOSE calls
+in the same order in which the server processed them.
+
+This commit ensures that we examine the seqid of the stateid
+returned by OPEN. If it is a new stateid, we assume the seqid
+must be equal to the value 1, and that each state transition
+increments the seqid value by 1 (See RFC7530, Section 9.1.4.2,
+and RFC5661, Section 8.2.2).
+
+If the tracker sees that an OPEN returns with a seqid that is greater
+than the cached seqid + 1, then it bumps a flag to ensure that the
+caller waits for the RPCs carrying the missing seqids to complete.
+
+Note that there can still be pathologies where the server crashes before
+it can even send us the missing seqids. Since the OPEN call is still
+holding a slot when it waits here, that could cause the recovery to
+stall forever. To avoid that, we time out after a 5 second wait.
+
+Reported-by: Benjamin Coddington <bcodding@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4_fs.h  |  1 +
+ fs/nfs/nfs4proc.c | 87 +++++++++++++++++++++++++++++++++++++++++++++++--------
+ 2 files changed, 76 insertions(+), 12 deletions(-)
+
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b547d935aaf0..46aeaa2ee700 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -161,6 +161,7 @@ enum {
+ 	NFS_STATE_POSIX_LOCKS,		/* Posix locks are supported */
+ 	NFS_STATE_RECOVERY_FAILED,	/* OPEN stateid state recovery failed */
+ 	NFS_STATE_MAY_NOTIFY_LOCK,	/* server may CB_NOTIFY_LOCK */
++	NFS_STATE_CHANGE_WAIT,		/* A state changing operation is outstanding */
+ };
+ 
+ struct nfs4_state {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 96b2077e691d..b426606ef2c4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1378,6 +1378,28 @@ static bool nfs_open_stateid_recover_openmode(struct nfs4_state *state)
+ }
+ #endif /* CONFIG_NFS_V4_1 */
+ 
++static void nfs_state_log_update_open_stateid(struct nfs4_state *state)
++{
++	if (test_and_clear_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
++		wake_up_bit(&state->flags, NFS_STATE_CHANGE_WAIT);
++}
++
++static void nfs_state_reset_open_stateid(struct nfs4_state *state)
++{
++	state->open_stateid.seqid = 0;
++	nfs_state_log_update_open_stateid(state);
++}
++
++static void nfs_state_log_out_of_order_open_stateid(struct nfs4_state *state,
++		const nfs4_stateid *stateid)
++{
++	u32 state_seqid = be32_to_cpu(state->open_stateid.seqid);
++	u32 stateid_seqid = be32_to_cpu(stateid->seqid);
++
++	if (stateid_seqid != state_seqid + 1U)
++		set_bit(NFS_STATE_CHANGE_WAIT, &state->flags);
++}
++
+ static void nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
+ {
+ 	struct nfs_client *clp = state->owner->so_server->nfs_client;
+@@ -1393,18 +1415,34 @@ static void nfs_test_and_clear_all_open_stateid(struct nfs4_state *state)
+ 		nfs4_state_mark_reclaim_nograce(clp, state);
+ }
+ 
++/*
++ * Check for whether or not the caller may update the open stateid
++ * to the value passed in by stateid.
++ *
++ * Note: This function relies heavily on the server implementing
++ * RFC7530 Section 9.1.4.2, and RFC5661 Section 8.2.2
++ * correctly.
++ * i.e. The stateid seqids have to be initialised to 1, and
++ * are then incremented on every state transition.
++ */
+ static bool nfs_need_update_open_stateid(struct nfs4_state *state,
+ 		const nfs4_stateid *stateid, nfs4_stateid *freeme)
+ {
+-	if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0)
+-		return true;
+-	if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) {
+-		nfs4_stateid_copy(freeme, &state->open_stateid);
+-		nfs_test_and_clear_all_open_stateid(state);
++	if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0) {
++		nfs_state_reset_open_stateid(state);
++	} else if (!nfs4_stateid_match_other(stateid, &state->open_stateid)) {
++		if (stateid->seqid == cpu_to_be32(1)) {
++			nfs4_stateid_copy(freeme, &state->open_stateid);
++			nfs_test_and_clear_all_open_stateid(state);
++			nfs_state_reset_open_stateid(state);
++		} else
++			set_bit(NFS_STATE_CHANGE_WAIT, &state->flags);
+ 		return true;
+ 	}
+-	if (nfs4_stateid_is_newer(stateid, &state->open_stateid))
++	if (nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
++		nfs_state_log_out_of_order_open_stateid(state, stateid);
+ 		return true;
++	}
+ 	return false;
+ }
+ 
+@@ -1439,15 +1477,19 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+ 	}
+ 	if (stateid == NULL)
+ 		return;
++	/* Handle reboot/state expire races */
++	if (!nfs4_stateid_match_other(stateid, &state->open_stateid))
++		return;
+ 	/* Handle OPEN+OPEN_DOWNGRADE races */
+-	if (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
+-	    !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
++	if (!nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
+ 		nfs_resync_open_stateid_locked(state);
+-		return;
++		goto out;
+ 	}
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+ 		nfs4_stateid_copy(&state->stateid, stateid);
+ 	nfs4_stateid_copy(&state->open_stateid, stateid);
++out:
++	nfs_state_log_update_open_stateid(state);
+ }
+ 
+ static void nfs_clear_open_stateid(struct nfs4_state *state,
+@@ -1467,7 +1509,10 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
+ 		const nfs4_stateid *stateid, fmode_t fmode,
+ 		nfs4_stateid *freeme)
+ {
+-	switch (fmode) {
++	int status = 0;
++	for (;;) {
++
++		switch (fmode) {
+ 		case FMODE_READ:
+ 			set_bit(NFS_O_RDONLY_STATE, &state->flags);
+ 			break;
+@@ -1476,12 +1521,30 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
+ 			break;
+ 		case FMODE_READ|FMODE_WRITE:
+ 			set_bit(NFS_O_RDWR_STATE, &state->flags);
++		}
++		if (!nfs_need_update_open_stateid(state, stateid, freeme))
++			return;
++		if (!test_bit(NFS_STATE_CHANGE_WAIT, &state->flags))
++			break;
++		if (status)
++			break;
++		/*
++		 * Ensure we process the state changes in the same order
++		 * in which the server processed them by delaying the
++		 * update of the stateid until we are in sequence.
++		 */
++		write_sequnlock(&state->seqlock);
++		spin_unlock(&state->owner->so_lock);
++		status = wait_on_bit_timeout(&state->flags,
++				NFS_STATE_CHANGE_WAIT,
++				TASK_KILLABLE, 5*HZ);
++		spin_lock(&state->owner->so_lock);
++		write_seqlock(&state->seqlock);
+ 	}
+-	if (!nfs_need_update_open_stateid(state, stateid, freeme))
+-		return;
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+ 		nfs4_stateid_copy(&state->stateid, stateid);
+ 	nfs4_stateid_copy(&state->open_stateid, stateid);
++	nfs_state_log_update_open_stateid(state);
+ }
+ 
+ static void __update_open_stateid(struct nfs4_state *state,
+-- 
+2.13.6
