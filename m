@@ -1,133 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:26951 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751719AbdJYQN6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2017 12:13:58 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] sunrpc: use supplimental groups in auth hash.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <87h8upe6bp.fsf@notabene.neil.brown.name>
-Date: Wed, 25 Oct 2017 12:13:19 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+Received: from mail-yw0-f195.google.com ([209.85.161.195]:55472 "EHLO
+        mail-yw0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751803AbdJYREw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Oct 2017 13:04:52 -0400
+Received: by mail-yw0-f195.google.com with SMTP id t11so580931ywg.12
+        for <linux-nfs@vger.kernel.org>; Wed, 25 Oct 2017 10:04:52 -0700 (PDT)
+Message-ID: <1508951090.4655.7.camel@redhat.com>
+Subject: Re: [PATCH] net: sunrpc: svcauth_gss: use BUG_ON instead of if
+ condition followed by BUG
+From: Jeff Layton <jlayton@redhat.com>
+To: "Gustavo A. R. Silva" <garsilva@embeddedor.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Weston Andros Adamson <dros@monkey.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <CF1E0D4B-4EB3-4951-B152-39646ECF19DA@oracle.com>
-References: <87h8upe6bp.fsf@notabene.neil.brown.name>
-To: NeilBrown <neilb@suse.com>
+        "David S. Miller" <davem@davemloft.net>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Wed, 25 Oct 2017 13:04:50 -0400
+In-Reply-To: <20171024151242.Horde.9xuLnnVxPJHwTDEYl2gMQ60@gator4166.hostgator.com>
+References: <20171023181635.GA25334@embeddedor.com>
+         <20171023203135.GA21106@fieldses.org>
+         <496D700A-E9D1-4745-B5DE-24BB9231A449@monkey.org>
+         <20171024175342.GA27853@fieldses.org> <1508869132.4780.14.camel@redhat.com>
+         <20171024190723.GD27853@fieldses.org>
+         <20171024151242.Horde.9xuLnnVxPJHwTDEYl2gMQ60@gator4166.hostgator.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Oct 23, 2017, at 8:29 PM, NeilBrown <neilb@suse.com> wrote:
+On Tue, 2017-10-24 at 15:12 -0500, Gustavo A. R. Silva wrote:
+> Quoting "J. Bruce Fields" <bfields@fieldses.org>:
 > 
+> > On Tue, Oct 24, 2017 at 02:18:52PM -0400, Jeff Layton wrote:
+> > > On Tue, 2017-10-24 at 13:53 -0400, J. Bruce Fields wrote:
+> > > > On Tue, Oct 24, 2017 at 01:26:49PM -0400, Weston Andros Adamson wrote:
+> > > > > Is there a reason to BUG() in these places? Couldn't we  
+> > > 
+> > > WARN_ON_ONCE and return an error?
+> > > > 
+> > > > I think the BUG() will just kill an nfsd thread that isn't holding any
+> > > > interesting locks.
+> > > > 
+> > > 
+> > > Not necessarily. If panic_on_oops is set (and it usually is in
+> > > "production" setups), it'll crash the box there.
+> > 
+> > Maybe they're getting what they asked for?
+> > 
+> > > > The failures look unlikely.  (Except for that read_u32... return, I
+> > > > wonder if we're missing a check there.)
+> > > 
+> > > Agreed, looks like you only hit an error if the read attempts to go out
+> > > of bounds. In principle that shouldn't ever happen (and I haven't seen
+> > > any reports of it).
+> > > 
+> > > Still...I agree with Dros that it's better to handle this without
+> > > oopsing if we can. We can return an error from either of those
+> > > functions. A sane error and a WARN_ONCE would be better here.
+> > 
+> > OK, OK, OK.
+> > 
+> > There are also some more BUGs that could use looking into if anyone
+> > wants to.
+> > 
+> > --b.
+> > 
+> > commit eb754930662f
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Tue Oct 24 14:58:11 2017 -0400
+> > 
+> >     rpc: remove some BUG()s
+> > 
+> >     It would be kinder to WARN() and recover in several spots here instead
+> >     of BUG()ing.
+> > 
+> >     Also, it looks like the read_u32_from_xdr_buf() call could actually
+> >     fail, though it might require a broken (or malicious) client, so convert
+> >     that to just an error return.
+> > 
+> >     Reported-by: Weston Andros Adamson <dros@monkey.org>
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c  
+> > b/net/sunrpc/auth_gss/svcauth_gss.c
+> > index 7b1ee5a0b03c..73165e9ca5bf 100644
+> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> > @@ -855,11 +855,13 @@ unwrap_integ_data(struct svc_rqst *rqstp,  
+> > struct xdr_buf *buf, u32 seq, struct g
+> >  		return stat;
+> >  	if (integ_len > buf->len)
+> >  		return stat;
+> > -	if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len))
+> > -		BUG();
+> > +	if (xdr_buf_subsegment(buf, &integ_buf, 0, integ_len)) {
+> > +		WARN_ON_ONCE(1);
+> > +		return stat;
+> > +	}
+> >  	/* copy out mic... */
+> >  	if (read_u32_from_xdr_buf(buf, integ_len, &mic.len))
+> > -		BUG();
+> > +		return stat;
+> >  	if (mic.len > RPC_MAX_AUTH_SIZE)
+> >  		return stat;
+> >  	mic.data = kmalloc(mic.len, GFP_KERNEL);
+> > @@ -1611,8 +1613,10 @@ svcauth_gss_wrap_resp_integ(struct svc_rqst *rqstp)
+> >  	BUG_ON(integ_len % 4);
+> >  	*p++ = htonl(integ_len);
+> >  	*p++ = htonl(gc->gc_seq);
+> > -	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len))
+> > -		BUG();
+> > +	if (xdr_buf_subsegment(resbuf, &integ_buf, integ_offset, integ_len)) {
+> > +		WARN_ON_ONCE(1);
+> > +		goto out_err;
+> > +	}
+> >  	if (resbuf->tail[0].iov_base == NULL) {
+> >  		if (resbuf->head[0].iov_len + RPC_MAX_AUTH_SIZE > PAGE_SIZE)
+> >  			goto out_err;
 > 
-> Some sites vary some supplimental groups a lot.
-> To avoid unduely long hash chains, include all of these
-> in the hash calculation.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
-> 
-> Hi,
-> I have a customer who had thousands of auth entries with the same
-> uid and gid, so the hashtable was unbalanced and some lookups were
-> noticeably slow.  This fix helped.
-> 
-> Relatedly, I wonder if we should set a default auth_max_cred_cachesize,
-> and nfs_access_max_cachesize - smaller than ULONG_MAX.
-> 
-> For auth_max_cred_cachesize, a default of e.g. 256*(1<<auth_hashbits)
-> is appropriate I think.  If there are more auth entries than that,
-> you'll start to notice lookups taking a long time.
-> 
-> For nfs_access_max_cachesize we want a similar limit as each access
-> entry pins an auth entry and so keeps a hash chain long.
-> 
-> Or maybe we could change the auth lookup to use an rbtree (or
-> hash-table of rbtrees?) so that time scales with log of size.
-> 
-> One option is to restore the 'jiffies' field to the access cache, and
-> discard entries older than (say) 10 minutes.
-> 
-> Thoughts?
-
-Seems like we are always revisiting the hash function, and
-there are always workloads where long chains occur. Since
-the lookup-to-insertion ratio is very high, maybe it's time
-to consider a data structure that self-balances on insertion,
-like an rb-tree.
-
-Would it make sense to protect the cache with a rwlock
-instead of spin lock to allow concurrent readers?
-
-Is there any sane way to make the cred cache into a set of
-per CPU caches instead, to reduce the need for locking?
-
-
-> Thanks,
-> NeilBrown
-> 
-> 
-> net/sunrpc/auth_generic.c | 15 ++++++++++++---
-> net/sunrpc/auth_unix.c    | 12 +++++++++---
-> 2 files changed, 21 insertions(+), 6 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-> index f1df9837f1ac..035f7c5f184f 100644
-> --- a/net/sunrpc/auth_generic.c
-> +++ b/net/sunrpc/auth_generic.c
-> @@ -81,9 +81,18 @@ static struct rpc_cred *generic_bind_cred(struct rpc_task *task,
-> static int
-> generic_hash_cred(struct auth_cred *acred, unsigned int hashbits)
-> {
-> -	return hash_64(from_kgid(&init_user_ns, acred->gid) |
-> -		((u64)from_kuid(&init_user_ns, acred->uid) <<
-> -			(sizeof(gid_t) * 8)), hashbits);
-> +	int ret = hash_32(from_kuid(&init_user_ns, acred->uid), 32);
-> +
-> +	if (acred->group_info) {
-> +		int g;
-> +
-> +		for (g = 0; g < acred->group_info->ngroups; g++)
-> +			ret = hash_32(ret ^
-> +				      from_kgid(&init_user_ns,
-> +						acred->group_info->gid[g]),
-> +				      32);
-> +	}
-> +	return hash_32(ret ^ from_kgid(&init_user_ns, acred->gid), hashbits);
-> }
-> 
-> /*
-> diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
-> index 82337e1ec9cd..20cd4ab3b339 100644
-> --- a/net/sunrpc/auth_unix.c
-> +++ b/net/sunrpc/auth_unix.c
-> @@ -47,9 +47,15 @@ unx_destroy(struct rpc_auth *auth)
-> static int
-> unx_hash_cred(struct auth_cred *acred, unsigned int hashbits)
-> {
-> -	return hash_64(from_kgid(&init_user_ns, acred->gid) |
-> -		((u64)from_kuid(&init_user_ns, acred->uid) <<
-> -			(sizeof(gid_t) * 8)), hashbits);
-> +	int ret = hash_32(from_kuid(&init_user_ns, acred->uid), 32);
-> +	if (acred->group_info) {
-> +		int g;
-> +
-> +		for (g = 0; g < acred->group_info->ngroups && g < UNX_NGROUPS; g++)
-> +			ret = hash_32(ret ^ from_kgid(&init_user_ns,
-> +						      acred->group_info->gid[g]), 32);
-> +	}
-> +	return hash_32(ret ^ from_kgid(&init_user_ns, acred->gid), hashbits);
-> }
+> What about the following BUG() at net/sunrpc/svc_xprt.c:1058:
 > 
 > /*
-> -- 
-> 2.14.0.rc0.dirty
+>   * Remove a dead transport
+>   */
+> static void svc_delete_xprt(struct svc_xprt *xprt)
+> {
+>          struct svc_serv *serv = xprt->xpt_server;
+>          struct svc_deferred_req *dr;
+> 
+>          /* Only do this once */
+>          if (test_and_set_bit(XPT_DEAD, &xprt->xpt_flags))
+>                  BUG();
+> 
+>          dprintk("svc: svc_delete_xprt(%p)\n", xprt);
+>          xprt->xpt_ops->xpo_detach(xprt);
+> 
+>          spin_lock_bh(&serv->sv_lock);
+>          list_del_init(&xprt->xpt_list);
+>          WARN_ON_ONCE(!list_empty(&xprt->xpt_ready));
+>          if (test_bit(XPT_TEMP, &xprt->xpt_flags))
+>                  serv->sv_tmpcnt--;
+>          spin_unlock_bh(&serv->sv_lock);
+> 
+>          while ((dr = svc_deferred_dequeue(xprt)) != NULL)
+>                  kfree(dr);
+> 
+>          call_xpt_users(xprt);
+>          svc_xprt_put(xprt);
+> }
+> 
+> I'm suspicious about that comment above the _if_ condition: /* Only do  
+> this once */
+> 
+> Would it help to replace that BUG with a WARN_ON_ONCE?
 > 
 
---
-Chuck Lever
+Maybe. How safe is it to run all of that more than once after XPT_DEAD
+is set? You'd probably just end up crashing at some later point down the
+line anyway...
 
-
-
+I suppose you could do a WARN() there and then return without actually
+doing anything. That might let you limp along if you did hit this.
+-- 
+Jeff Layton <jlayton@redhat.com>
