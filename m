@@ -1,149 +1,288 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yw0-f194.google.com ([209.85.161.194]:49173 "EHLO
-        mail-yw0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932326AbdJZRV4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Oct 2017 13:21:56 -0400
-Received: by mail-yw0-f194.google.com with SMTP id z195so3545655ywz.6
-        for <linux-nfs@vger.kernel.org>; Thu, 26 Oct 2017 10:21:55 -0700 (PDT)
-Message-ID: <1509038513.29077.31.camel@redhat.com>
-Subject: Re: [PATCH 07/14] VFS: Add a sample program for fsopen/fsmount [ver
- #6]
-From: Jeff Layton <jlayton@redhat.com>
-To: David Howells <dhowells@redhat.com>, viro@ZenIV.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Thu, 26 Oct 2017 13:21:53 -0400
-In-Reply-To: <150730500019.6182.15975727444128962384.stgit@warthog.procyon.org.uk>
-References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
-         <150730500019.6182.15975727444128962384.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx141.netapp.com ([216.240.21.12]:11602 "EHLO mx141.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932291AbdJZRx1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 26 Oct 2017 13:53:27 -0400
+Subject: Re: [PATCH v6 07/12] NFS add support for asynchronous COPY
+To: Olga Kornievskaia <kolga@netapp.com>,
+        <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+References: <20171024174725.74870-1-kolga@netapp.com>
+ <20171024174725.74870-8-kolga@netapp.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <2e0f5a2a-ac6f-7d78-0931-f439eb2643f7@Netapp.com>
+Date: Thu, 26 Oct 2017 13:53:20 -0400
+MIME-Version: 1.0
+In-Reply-To: <20171024174725.74870-8-kolga@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-10-06 at 16:50 +0100, David Howells wrote:
-> Add a sample program for driving fsopen/fsmount.
+Hi Olga,
+
+On 10/24/2017 01:47 PM, Olga Kornievskaia wrote:
+> Change xdr to always send COPY asynchronously.
 > 
-> Signed-off-by: David Howells <dhowells@redhat.com>
+> Keep the list copies send in a list under a server structure.
+> Once copy is sent, it waits on a completion structure that will
+> be signalled by the callback thread that receives CB_OFFLOAD.
+> 
+> If CB_OFFLOAD returned an error and even if it returned partial
+> bytes, ignore them (as we can't commit without a verifier to
+> match) and return an error.
+> 
+> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 > ---
+>  fs/nfs/callback_proc.c    | 38 +++++++++++++++++++++++++++++++-
+>  fs/nfs/client.c           |  1 +
+>  fs/nfs/nfs42proc.c        | 56 ++++++++++++++++++++++++++++++++++++++++++-----
+>  fs/nfs/nfs42xdr.c         |  8 ++++---
+>  include/linux/nfs_fs.h    |  9 ++++++++
+>  include/linux/nfs_fs_sb.h |  1 +
+>  include/linux/nfs_xdr.h   |  1 +
+>  7 files changed, 105 insertions(+), 9 deletions(-)
 > 
->  samples/fsmount/test-fsmount.c |   94 ++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 94 insertions(+)
->  create mode 100644 samples/fsmount/test-fsmount.c
-> 
-> diff --git a/samples/fsmount/test-fsmount.c b/samples/fsmount/test-fsmount.c
-> new file mode 100644
-> index 000000000000..75f91d272a19
-> --- /dev/null
-> +++ b/samples/fsmount/test-fsmount.c
-> @@ -0,0 +1,94 @@
-> +/* fd-based mount test.
-> + *
-> + * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
-> + * Written by David Howells (dhowells@redhat.com)
-> + *
-> + * This program is free software; you can redistribute it and/or
-> + * modify it under the terms of the GNU General Public Licence
-> + * as published by the Free Software Foundation; either version
-> + * 2 of the Licence, or (at your option) any later version.
-> + */
-> +
-> +#include <stdio.h>
-> +#include <stdlib.h>
-> +#include <unistd.h>
-> +#include <errno.h>
-> +#include <fcntl.h>
-> +#include <sys/prctl.h>
-> +#include <sys/wait.h>
-> +
-> +#define PR_ERRMSG_ENABLE		48
-> +#define PR_ERRMSG_READ			49
-> +
-> +#define E(x) do { if ((x) == -1) { perror(#x); exit(1); } } while(0)
-> +
-> +static __attribute__((noreturn))
-> +void mount_error(int fd, const char *s)
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index eef2728..d3e7b61 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -657,9 +657,45 @@ __be32 nfs4_callback_notify_lock(void *argp, void *resp,
+>  }
+>  #endif /* CONFIG_NFS_V4_1 */
+>  #ifdef CONFIG_NFS_V4_2
+> -__be32 nfs4_callback_offload(void *args, void *dummy,
+> +static void nfs4_copy_cb_args(struct nfs4_copy_state *cp_state,
+> +				struct cb_offloadargs *args)
 > +{
-> +	char buf[4096];
-> +	int err, n, perr;
+> +	cp_state->count = args->wr_count;
+> +	cp_state->error = args->error;
+> +	if (!args->error) {
+> +		cp_state->verf.committed = args->wr_writeverf.committed;
+> +		memcpy(&cp_state->verf.verifier.data[0],
+> +			&args->wr_writeverf.verifier.data[0],
+> +			NFS4_VERIFIER_SIZE);
+> +	}
+> +}
 > +
-> +	do {
-> +		err = errno;
-> +		errno = 0;
-> +		n = prctl(PR_ERRMSG_READ, buf, sizeof(buf));
-> +		perr = errno;
-> +		errno = err;
-> +		if (n > 0) {
-> +			fprintf(stderr, "Error: '%s': %*.*s: %m\n", s, n, n, buf);
-> +		} else {
-> +			fprintf(stderr, "%s: %m\n", s);
+> +__be32 nfs4_callback_offload(void *data, void *dummy,
+>  			     struct cb_process_state *cps)
+>  {
+> +	struct cb_offloadargs *args = data;
+> +	struct nfs_server *server;
+> +	struct nfs4_copy_state *copy;
+> +
+> +	rcu_read_lock();
+> +	list_for_each_entry_rcu(server, &cps->clp->cl_superblocks,
+> +				client_link) {
+> +		spin_lock(&server->nfs_client->cl_lock);
+> +		list_for_each_entry(copy, &server->ss_copies, copies) {
+> +			if (memcmp(args->coa_stateid.other,
+> +					copy->stateid.other,
+> +					sizeof(args->coa_stateid.other)))
+> +				continue;
+> +			nfs4_copy_cb_args(copy, args);
+> +			complete(&copy->completion);
+> +			spin_unlock(&server->nfs_client->cl_lock);
+> +			goto out;
 > +		}
-> +	} while (perr == 0);
-> +	exit(1);
+> +		spin_unlock(&server->nfs_client->cl_lock);
+> +	}
+> +out:
+> +	rcu_read_unlock();
+> +
+>  	return 0;
+>  }
+>  #endif /* CONFIG_NFS_V4_2 */
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 22880ef..fb700461 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -875,6 +875,7 @@ struct nfs_server *nfs_alloc_server(void)
+>  	INIT_LIST_HEAD(&server->delegations);
+>  	INIT_LIST_HEAD(&server->layouts);
+>  	INIT_LIST_HEAD(&server->state_owners_lru);
+> +	INIT_LIST_HEAD(&server->ss_copies);
+>  
+>  	atomic_set(&server->active, 0);
+>  
+> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
+> index 65fb014..f2d22f1 100644
+> --- a/fs/nfs/nfs42proc.c
+> +++ b/fs/nfs/nfs42proc.c
+> @@ -129,6 +129,38 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
+>  	return err;
+>  }
+>  
+> +static int handle_async_copy(struct nfs42_copy_res *res,
+> +			     struct nfs_server *server,
+> +			     struct file *src,
+> +			     struct file *dst,
+> +			     nfs4_stateid *src_stateid,
+> +			     uint64_t *ret_count)
+> +{
+> +	struct nfs4_copy_state *copy;
+> +	int status = NFS4_OK;
+> +
+> +	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
+> +	if (!copy)
+> +		return -ENOMEM;
+> +	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
+> +	init_completion(&copy->completion);
+> +
+> +	spin_lock(&server->nfs_client->cl_lock);
+> +	list_add_tail(&copy->copies, &server->ss_copies);
+> +	spin_unlock(&server->nfs_client->cl_lock);
+> +
+> +	wait_for_completion_interruptible(&copy->completion);
+> +	spin_lock(&server->nfs_client->cl_lock);
+> +	list_del_init(&copy->copies);
+> +	spin_unlock(&server->nfs_client->cl_lock);
+> +	*ret_count = copy->count;
+> +	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
+> +	status = -copy->error;
+> +
+> +	kfree(copy);
+> +	return status;
 > +}
 > +
-> +#define E_write(fd, s)							\
-> +	do {								\
-> +		if (write(fd, s, sizeof(s) - 1) == -1)			\
-> +			mount_error(fd, s);				\
-> +	} while (0)
-> +
-> +static inline int fsopen(const char *fs_name, int flags,
-> +			 void *reserved3, void *reserved4, void *reserved5);
-> +
-> +{
-> +	return syscall(333, fs_name, flags, reserved3, reserved4, reserved5);
-> +}
-> +
-> +static inline int fsmount(int fsfd, int dfd, const char *path,
-> +			  unsigned int at_flags, unsigned int flags)
-> +{
-> +	return syscall(334, fsfd, dfd, path, at_flags, flags);
-> +}
-> +
-> +int main()
-> +{
-> +	int mfd;
-> +
-> +	if (prctl(PR_ERRMSG_ENABLE, 1) < 0) {
-> +		perror("prctl/en");
-> +		exit(1);
+>  static ssize_t _nfs42_proc_copy(struct file *src,
+>  				struct nfs_lock_context *src_lock,
+>  				struct file *dst,
+> @@ -167,9 +199,13 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+>  	if (status)
+>  		return status;
+>  
+> -	res->commit_res.verf = kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
+> -	if (!res->commit_res.verf)
+> -		return -ENOMEM;
+> +	res->commit_res.verf = NULL;
+> +	if (args->sync) {
+> +		res->commit_res.verf =
+> +			kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
+> +		if (!res->commit_res.verf)
+> +			return -ENOMEM;
+> +	}
+>  	status = nfs4_call_sync(server->client, server, &msg,
+>  				&args->seq_args, &res->seq_res, 0);
+>  	if (status == -ENOTSUPP)
+> @@ -177,18 +213,27 @@ static ssize_t _nfs42_proc_copy(struct file *src,
+>  	if (status)
+>  		goto out;
+>  
+> -	if (nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
+> +	if (args->sync &&
+> +		nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
+>  				    &res->commit_res.verf->verifier)) {
+>  		status = -EAGAIN;
+>  		goto out;
+>  	}
+>  
+> +	if (!res->synchronous) {
+> +		status = handle_async_copy(res, server, src, dst,
+> +				&args->src_stateid, &res->write_res.count);
+                                                    ^^^^^^^^^^^^^^^^^^^^^
+What was the reasoning for passing res->write_res.count as a pointer again?  You're already passing res to this function, so can't you just get the variable from there?
+
+Anna
+
+> +		if (status)
+> +			return status;
 > +	}
 > +
-> +	/* Mount an NFS filesystem */
-> +	mfd = fsopen("nfs4", 0, NULL, NULL, NULL);
-> +	if (mfd == -1) {
-> +		perror("fsopen");
-> +		exit(1);
-> +	}
+>  	truncate_pagecache_range(dst_inode, pos_dst,
+>  				 pos_dst + res->write_res.count);
+>  
+>  	status = res->write_res.count;
+>  out:
+> -	kfree(res->commit_res.verf);
+> +	if (args->sync)
+> +		kfree(res->commit_res.verf);
+>  	return status;
+>  }
+>  
+> @@ -205,6 +250,7 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
+>  		.dst_fh		= NFS_FH(file_inode(dst)),
+>  		.dst_pos	= pos_dst,
+>  		.count		= count,
+> +		.sync		= false,
+>  	};
+>  	struct nfs42_copy_res res;
+>  	struct nfs4_exception src_exception = {
+> diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
+> index cb62c0c..f46b3f1 100644
+> --- a/fs/nfs/nfs42xdr.c
+> +++ b/fs/nfs/nfs42xdr.c
+> @@ -160,7 +160,7 @@ static void encode_copy(struct xdr_stream *xdr,
+>  	encode_uint64(xdr, args->count);
+>  
+>  	encode_uint32(xdr, 1); /* consecutive = true */
+> -	encode_uint32(xdr, 1); /* synchronous = true */
+> +	encode_uint32(xdr, args->sync);
+>  	encode_uint32(xdr, 0); /* src server list */
+>  }
+>  
+> @@ -291,7 +291,8 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
+>  	encode_savefh(xdr, &hdr);
+>  	encode_putfh(xdr, args->dst_fh, &hdr);
+>  	encode_copy(xdr, args, &hdr);
+> -	encode_copy_commit(xdr, args, &hdr);
+> +	if (args->sync)
+> +		encode_copy_commit(xdr, args, &hdr);
+>  	encode_nops(&hdr);
+>  }
+>  
+> @@ -615,7 +616,8 @@ static int nfs4_xdr_dec_copy(struct rpc_rqst *rqstp,
+>  	status = decode_copy(xdr, res);
+>  	if (status)
+>  		goto out;
+> -	status = decode_commit(xdr, &res->commit_res);
+> +	if (res->commit_res.verf)
+> +		status = decode_commit(xdr, &res->commit_res);
+>  out:
+>  	return status;
+>  }
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index a0282ce..580a8d9 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -183,6 +183,15 @@ struct nfs_inode {
+>  	struct inode		vfs_inode;
+>  };
+>  
+> +struct nfs4_copy_state {
+> +	struct list_head	copies;
+> +	nfs4_stateid		stateid;
+> +	struct completion	completion;
+> +	uint64_t		count;
+> +	struct nfs_writeverf	verf;
+> +	int			error;
+> +};
 > +
-> +	E_write(mfd, "s warthog:/data");
-> +	E_write(mfd, "o fsc");
-> +	E_write(mfd, "o sync");
-> +	E_write(mfd, "o intr");
-> +	E_write(mfd, "o vers=4.2");
-> +	E_write(mfd, "o addr=90.155.74.18");
-> +	E_write(mfd, "o clientaddr=90.155.74.21");
-> +	E_write(mfd, "x create");
-> +	if (fsmount(mfd, AT_FDCWD, "/mnt", 0, 0) < 0)
-> +		mount_error(mfd, "fsmount");
-> +	E(close(mfd));
-> +
-> +	exit(0);
-> +}
+>  /*
+>   * Cache validity bit flags
+>   */
+> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+> index de1eafe..511eefb 100644
+> --- a/include/linux/nfs_fs_sb.h
+> +++ b/include/linux/nfs_fs_sb.h
+> @@ -206,6 +206,7 @@ struct nfs_server {
+>  	struct list_head	state_owners_lru;
+>  	struct list_head	layouts;
+>  	struct list_head	delegations;
+> +	struct list_head	ss_copies;
+>  
+>  	unsigned long		mig_gen;
+>  	unsigned long		mig_status;
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 784ec8d..020d958 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1384,6 +1384,7 @@ struct nfs42_copy_args {
+>  	u64				dst_pos;
+>  
+>  	u64				count;
+> +	bool				sync;
+>  };
+>  
+>  struct nfs42_write_res {
 > 
-
-So to make sure I understand....
-
-Suppose I want to do a bind mount with the new API. Would I do something
-like this?
-
-    mfd = fsopen("???");
-    write(mfd, "s /path/to/old/mount");
-    write(mfd, "o bind");
-    fsmount(mfd, ...);
-
-That seems a bit klunkier than before as I now need to pay attention to
-the fstype. I guess I'd have to scrape /proc/mounts for that info?
--- 
-Jeff Layton <jlayton@redhat.com>
