@@ -1,288 +1,474 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:11602 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932291AbdJZRx1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 26 Oct 2017 13:53:27 -0400
-Subject: Re: [PATCH v6 07/12] NFS add support for asynchronous COPY
-To: Olga Kornievskaia <kolga@netapp.com>,
-        <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-References: <20171024174725.74870-1-kolga@netapp.com>
- <20171024174725.74870-8-kolga@netapp.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <2e0f5a2a-ac6f-7d78-0931-f439eb2643f7@Netapp.com>
-Date: Thu, 26 Oct 2017 13:53:20 -0400
-MIME-Version: 1.0
-In-Reply-To: <20171024174725.74870-8-kolga@netapp.com>
-Content-Type: text/plain; charset=utf-8
+Received: from mail-yw0-f180.google.com ([209.85.161.180]:53615 "EHLO
+        mail-yw0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932275AbdJZTB7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 26 Oct 2017 15:01:59 -0400
+Received: by mail-yw0-f180.google.com with SMTP id q126so3791998ywq.10
+        for <linux-nfs@vger.kernel.org>; Thu, 26 Oct 2017 12:01:59 -0700 (PDT)
+Message-ID: <1509044517.29077.46.camel@redhat.com>
+Subject: Re: [PATCH 05/14] VFS: Implement fsopen() to prepare for a mount
+ [ver #6]
+From: Jeff Layton <jlayton@redhat.com>
+To: David Howells <dhowells@redhat.com>, viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, mszeredi@redhat.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Thu, 26 Oct 2017 15:01:57 -0400
+In-Reply-To: <150730498506.6182.15541103642473385197.stgit@warthog.procyon.org.uk>
+References: <150730494491.6182.5139368907374172391.stgit@warthog.procyon.org.uk>
+         <150730498506.6182.15541103642473385197.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Olga,
+On Fri, 2017-10-06 at 16:49 +0100, David Howells wrote:
+> Provide an fsopen() system call that starts the process of preparing to
+> mount, using an fd as a context handle.  fsopen() is given the name of the
+> filesystem that will be used:
+> 
+> 	int mfd = fsopen(const char *fsname, int open_flags,
 
-On 10/24/2017 01:47 PM, Olga Kornievskaia wrote:
-> Change xdr to always send COPY asynchronously.
+Can we make open_flags unsigned?
+
+> 			 void *reserved3, void *reserved4,
+> 			 void *reserved5);
 > 
-> Keep the list copies send in a list under a server structure.
-> Once copy is sent, it waits on a completion structure that will
-> be signalled by the callback thread that receives CB_OFFLOAD.
+> where open_flags can be 0 or O_CLOEXEC and reserved* should all be NULL for
+> the moment.
 > 
-> If CB_OFFLOAD returned an error and even if it returned partial
-> bytes, ignore them (as we can't commit without a verifier to
-> match) and return an error.
+> For example:
 > 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+> 	mfd = fsopen("ext4", O_CLOEXEC, NULL, NULL, NULL);
+
+While I understand the appeal of reusing O_CLOEXEC, I think we'd be
+better off with a completely new set of flags here. It's not a "real"
+open.
+
+You can define FSO_CLOEXEC and then you have another 31 bits to play
+with later should you need to do so.
+
+> 	write(mfd, "s /dev/sdb1"); // note I'm ignoring write's length arg
+> 	write(mfd, "o noatime");
+> 	write(mfd, "o acl");
+> 	write(mfd, "o user_attr");
+> 	write(mfd, "o iversion");
+> 	write(mfd, "o ");
+> 	write(mfd, "r /my/container"); // root inside the fs
+> 	write(mfd, "x create"); // create the superblock
+> 	fsmount(mfd, container_fd, "/mnt", AT_NO_FOLLOW);
+> 
+> 	mfd = fsopen("afs", -1);
+> 	write(mfd, "s %grand.central.org:root.cell");
+> 	write(mfd, "o cell=grand.central.org");
+> 	write(mfd, "r /");
+> 	write(mfd, "x create");
+> 	fsmount(mfd, AT_FDCWD, "/mnt", 0);
+> 
+
+We chatted a bit about this on IRC, but I'll reply here too for public
+consumption:
+
+I think you may need some other stuff to fully emulate what we call bind
+mounting today:
+
+1) a way to attach a new fs_context to an existing superblock Maybe a
+mntopen() syscall? Or maybe we can use a new FSO_* flag in conjunction
+with a string in one of the reserved fields?
+
+2) a way to walk down to a particular dentry inside the superblock and
+mount it instead of the actual root. For the interface you could just
+define a new "d /path/inside/superblock" command. Then, do a pathwalk
+from the existing root dentry and replace the fscontext root dentry with
+it.
+
+> If an error is reported at any step, an error message may be available to be
+> read() back (ENODATA will be reported if there isn't an error available) in
+> the form:
+> 
+> 	"e <subsys>:<problem>"
+> 	"e SELinux:Mount on mountpoint not permitted"
+> 
+> Once fsmount() has been called, further write() calls will incur EBUSY,
+> even if the fsmount() fails.  read() is still possible to retrieve error
+> information.
+> 
+> The fsopen() syscall creates a mount context and hangs it of the fd that it
+> returns.
+> 
+> Netlink is not used because it is optional.
+> 
+> Signed-off-by: David Howells <dhowells@redhat.com>
 > ---
->  fs/nfs/callback_proc.c    | 38 +++++++++++++++++++++++++++++++-
->  fs/nfs/client.c           |  1 +
->  fs/nfs/nfs42proc.c        | 56 ++++++++++++++++++++++++++++++++++++++++++-----
->  fs/nfs/nfs42xdr.c         |  8 ++++---
->  include/linux/nfs_fs.h    |  9 ++++++++
->  include/linux/nfs_fs_sb.h |  1 +
->  include/linux/nfs_xdr.h   |  1 +
->  7 files changed, 105 insertions(+), 9 deletions(-)
 > 
-> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-> index eef2728..d3e7b61 100644
-> --- a/fs/nfs/callback_proc.c
-> +++ b/fs/nfs/callback_proc.c
-> @@ -657,9 +657,45 @@ __be32 nfs4_callback_notify_lock(void *argp, void *resp,
->  }
->  #endif /* CONFIG_NFS_V4_1 */
->  #ifdef CONFIG_NFS_V4_2
-> -__be32 nfs4_callback_offload(void *args, void *dummy,
-> +static void nfs4_copy_cb_args(struct nfs4_copy_state *cp_state,
-> +				struct cb_offloadargs *args)
+>  arch/x86/entry/syscalls/syscall_32.tbl |    1 
+>  arch/x86/entry/syscalls/syscall_64.tbl |    1 
+>  fs/Makefile                            |    2 
+>  fs/fsopen.c                            |  273 ++++++++++++++++++++++++++++++++
+>  include/linux/fs_context.h             |    1 
+>  include/linux/syscalls.h               |    2 
+>  include/uapi/linux/magic.h             |    1 
+>  kernel/sys_ni.c                        |    3 
+>  8 files changed, 283 insertions(+), 1 deletion(-)
+>  create mode 100644 fs/fsopen.c
+> 
+> diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+> index 448ac2161112..9bf8d4c62f85 100644
+> --- a/arch/x86/entry/syscalls/syscall_32.tbl
+> +++ b/arch/x86/entry/syscalls/syscall_32.tbl
+> @@ -391,3 +391,4 @@
+>  382	i386	pkey_free		sys_pkey_free
+>  383	i386	statx			sys_statx
+>  384	i386	arch_prctl		sys_arch_prctl			compat_sys_arch_prctl
+> +385	i386	fsopen			sys_fsopen
+> diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+> index 5aef183e2f85..9b198c5fc412 100644
+> --- a/arch/x86/entry/syscalls/syscall_64.tbl
+> +++ b/arch/x86/entry/syscalls/syscall_64.tbl
+> @@ -339,6 +339,7 @@
+>  330	common	pkey_alloc		sys_pkey_alloc
+>  331	common	pkey_free		sys_pkey_free
+>  332	common	statx			sys_statx
+> +333	common	fsopen			sys_fsopen
+>  
+>  #
+>  # x32-specific system call numbers start at 512 to avoid cache impact
+> diff --git a/fs/Makefile b/fs/Makefile
+> index ffe728cc15e1..c42d1d9351a6 100644
+> --- a/fs/Makefile
+> +++ b/fs/Makefile
+> @@ -12,7 +12,7 @@ obj-y :=	open.o read_write.o file_table.o super.o \
+>  		seq_file.o xattr.o libfs.o fs-writeback.o \
+>  		pnode.o splice.o sync.o utimes.o \
+>  		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o \
+> -		fs_context.o
+> +		fs_context.o fsopen.o
+>  
+>  ifeq ($(CONFIG_BLOCK),y)
+>  obj-y +=	buffer.o block_dev.o direct-io.o mpage.o
+> diff --git a/fs/fsopen.c b/fs/fsopen.c
+> new file mode 100644
+> index 000000000000..6ca7e1979273
+> --- /dev/null
+> +++ b/fs/fsopen.c
+> @@ -0,0 +1,273 @@
+> +/* Filesystem access-by-fd.
+> + *
+> + * Copyright (C) 2017 Red Hat, Inc. All Rights Reserved.
+> + * Written by David Howells (dhowells@redhat.com)
+> + *
+> + * This program is free software; you can redistribute it and/or
+> + * modify it under the terms of the GNU General Public Licence
+> + * as published by the Free Software Foundation; either version
+> + * 2 of the Licence, or (at your option) any later version.
+> + */
+> +
+> +#include <linux/fs_context.h>
+> +#include <linux/mount.h>
+> +#include <linux/slab.h>
+> +#include <linux/uaccess.h>
+> +#include <linux/file.h>
+> +#include <linux/magic.h>
+> +#include <linux/syscalls.h>
+> +
+> +static struct vfsmount *fs_fs_mnt __read_mostly;
+> +
+> +static int fs_fs_release(struct inode *inode, struct file *file)
 > +{
-> +	cp_state->count = args->wr_count;
-> +	cp_state->error = args->error;
-> +	if (!args->error) {
-> +		cp_state->verf.committed = args->wr_writeverf.committed;
-> +		memcpy(&cp_state->verf.verifier.data[0],
-> +			&args->wr_writeverf.verifier.data[0],
-> +			NFS4_VERIFIER_SIZE);
-> +	}
+> +	struct fs_context *fc = file->private_data;
+> +
+> +	file->private_data = NULL;
+> +
+> +	put_fs_context(fc);
+> +	return 0;
 > +}
 > +
-> +__be32 nfs4_callback_offload(void *data, void *dummy,
->  			     struct cb_process_state *cps)
->  {
-> +	struct cb_offloadargs *args = data;
-> +	struct nfs_server *server;
-> +	struct nfs4_copy_state *copy;
+> +/*
+> + * Userspace writes configuration data and commands to the fd and we parse it
+> + * here.  For the moment, we assume a single option or command per write.  Each
+> + * line written is of the form
+> + *
+> + *	<option_type><space><stuff...>
+> + *
+> + *	d /dev/sda1				-- Device name
+> + *	o noatime				-- Option without value
+> + *	o cell=grand.central.org		-- Option with value
+> + *	r /					-- Dir within device to mount
+> + *	x create				-- Create a superblock
+> + */
+> +static ssize_t fs_fs_write(struct file *file,
+> +			   const char __user *_buf, size_t len, loff_t *pos)
+> +{
+> +	struct fs_context *fc = file->private_data;
+> +	struct inode *inode = file_inode(file);
+> +	char opt[2], *data;
+> +	ssize_t ret;
 > +
-> +	rcu_read_lock();
-> +	list_for_each_entry_rcu(server, &cps->clp->cl_superblocks,
-> +				client_link) {
-> +		spin_lock(&server->nfs_client->cl_lock);
-> +		list_for_each_entry(copy, &server->ss_copies, copies) {
-> +			if (memcmp(args->coa_stateid.other,
-> +					copy->stateid.other,
-> +					sizeof(args->coa_stateid.other)))
-> +				continue;
-> +			nfs4_copy_cb_args(copy, args);
-> +			complete(&copy->completion);
-> +			spin_unlock(&server->nfs_client->cl_lock);
-> +			goto out;
+> +	if (len < 3 || len > 4095)
+> +		return -EINVAL;
+> +
+> +	if (copy_from_user(opt, _buf, 2) != 0)
+> +		return -EFAULT;
+> +	switch (opt[0]) {
+> +	case 's':
+> +	case 'o':
+> +	case 'x':
+> +		break;
+> +	default:
+> +		goto err_bad_cmd;
+> +	}
+> +	if (opt[1] != ' ')
+> +		goto err_bad_cmd;
+> +
+> +	data = memdup_user_nul(_buf + 2, len - 2);
+> +	if (IS_ERR(data))
+> +		return PTR_ERR(data);
+> +
+> +	/* From this point onwards we need to lock the fd against someone
+> +	 * trying to mount it.
+> +	 */
+> +	ret = inode_lock_killable(inode);
+> +	if (ret < 0)
+> +		goto err_free;
+> +
+> +	ret = -EINVAL;
+> +	switch (opt[0]) {
+> +	case 's':
+> +		ret = vfs_set_fs_source(fc, data, len - 2);
+> +		if (ret < 0)
+> +			goto err_unlock;
+> +		data = NULL;
+> +		break;
+> +
+> +	case 'o':
+> +		ret = vfs_parse_mount_option(fc, data);
+> +		if (ret < 0)
+> +			goto err_unlock;
+> +		break;
+> +
+> +	case 'x':
+> +		if (strcmp(data, "create") == 0) {
+> +			ret = vfs_get_tree(fc);
+> +		} else {
+> +			ret = -EOPNOTSUPP;
 > +		}
-> +		spin_unlock(&server->nfs_client->cl_lock);
+> +		if (ret < 0)
+> +			goto err_unlock;
+> +		break;
+> +
+> +	default:
+> +		goto err_unlock;
 > +	}
-> +out:
-> +	rcu_read_unlock();
 > +
->  	return 0;
->  }
->  #endif /* CONFIG_NFS_V4_2 */
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 22880ef..fb700461 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -875,6 +875,7 @@ struct nfs_server *nfs_alloc_server(void)
->  	INIT_LIST_HEAD(&server->delegations);
->  	INIT_LIST_HEAD(&server->layouts);
->  	INIT_LIST_HEAD(&server->state_owners_lru);
-> +	INIT_LIST_HEAD(&server->ss_copies);
->  
->  	atomic_set(&server->active, 0);
->  
-> diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-> index 65fb014..f2d22f1 100644
-> --- a/fs/nfs/nfs42proc.c
-> +++ b/fs/nfs/nfs42proc.c
-> @@ -129,6 +129,38 @@ int nfs42_proc_deallocate(struct file *filep, loff_t offset, loff_t len)
->  	return err;
->  }
->  
-> +static int handle_async_copy(struct nfs42_copy_res *res,
-> +			     struct nfs_server *server,
-> +			     struct file *src,
-> +			     struct file *dst,
-> +			     nfs4_stateid *src_stateid,
-> +			     uint64_t *ret_count)
-> +{
-> +	struct nfs4_copy_state *copy;
-> +	int status = NFS4_OK;
-> +
-> +	copy = kzalloc(sizeof(struct nfs4_copy_state), GFP_NOFS);
-> +	if (!copy)
-> +		return -ENOMEM;
-> +	memcpy(&copy->stateid, &res->write_res.stateid, NFS4_STATEID_SIZE);
-> +	init_completion(&copy->completion);
-> +
-> +	spin_lock(&server->nfs_client->cl_lock);
-> +	list_add_tail(&copy->copies, &server->ss_copies);
-> +	spin_unlock(&server->nfs_client->cl_lock);
-> +
-> +	wait_for_completion_interruptible(&copy->completion);
-> +	spin_lock(&server->nfs_client->cl_lock);
-> +	list_del_init(&copy->copies);
-> +	spin_unlock(&server->nfs_client->cl_lock);
-> +	*ret_count = copy->count;
-> +	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
-> +	status = -copy->error;
-> +
-> +	kfree(copy);
-> +	return status;
+> +	ret = len;
+> +err_unlock:
+> +	inode_unlock(inode);
+> +err_free:
+> +	kfree(data);
+> +	return ret;
+> +err_bad_cmd:
+> +	return -EINVAL;
 > +}
 > +
->  static ssize_t _nfs42_proc_copy(struct file *src,
->  				struct nfs_lock_context *src_lock,
->  				struct file *dst,
-> @@ -167,9 +199,13 @@ static ssize_t _nfs42_proc_copy(struct file *src,
->  	if (status)
->  		return status;
->  
-> -	res->commit_res.verf = kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
-> -	if (!res->commit_res.verf)
-> -		return -ENOMEM;
-> +	res->commit_res.verf = NULL;
-> +	if (args->sync) {
-> +		res->commit_res.verf =
-> +			kzalloc(sizeof(struct nfs_writeverf), GFP_NOFS);
-> +		if (!res->commit_res.verf)
-> +			return -ENOMEM;
-> +	}
->  	status = nfs4_call_sync(server->client, server, &msg,
->  				&args->seq_args, &res->seq_res, 0);
->  	if (status == -ENOTSUPP)
-> @@ -177,18 +213,27 @@ static ssize_t _nfs42_proc_copy(struct file *src,
->  	if (status)
->  		goto out;
->  
-> -	if (nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
-> +	if (args->sync &&
-> +		nfs_write_verifier_cmp(&res->write_res.verifier.verifier,
->  				    &res->commit_res.verf->verifier)) {
->  		status = -EAGAIN;
->  		goto out;
->  	}
->  
-> +	if (!res->synchronous) {
-> +		status = handle_async_copy(res, server, src, dst,
-> +				&args->src_stateid, &res->write_res.count);
-                                                    ^^^^^^^^^^^^^^^^^^^^^
-What was the reasoning for passing res->write_res.count as a pointer again?  You're already passing res to this function, so can't you just get the variable from there?
-
-Anna
-
-> +		if (status)
-> +			return status;
-> +	}
-> +
->  	truncate_pagecache_range(dst_inode, pos_dst,
->  				 pos_dst + res->write_res.count);
->  
->  	status = res->write_res.count;
->  out:
-> -	kfree(res->commit_res.verf);
-> +	if (args->sync)
-> +		kfree(res->commit_res.verf);
->  	return status;
->  }
->  
-> @@ -205,6 +250,7 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
->  		.dst_fh		= NFS_FH(file_inode(dst)),
->  		.dst_pos	= pos_dst,
->  		.count		= count,
-> +		.sync		= false,
->  	};
->  	struct nfs42_copy_res res;
->  	struct nfs4_exception src_exception = {
-> diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-> index cb62c0c..f46b3f1 100644
-> --- a/fs/nfs/nfs42xdr.c
-> +++ b/fs/nfs/nfs42xdr.c
-> @@ -160,7 +160,7 @@ static void encode_copy(struct xdr_stream *xdr,
->  	encode_uint64(xdr, args->count);
->  
->  	encode_uint32(xdr, 1); /* consecutive = true */
-> -	encode_uint32(xdr, 1); /* synchronous = true */
-> +	encode_uint32(xdr, args->sync);
->  	encode_uint32(xdr, 0); /* src server list */
->  }
->  
-> @@ -291,7 +291,8 @@ static void nfs4_xdr_enc_copy(struct rpc_rqst *req,
->  	encode_savefh(xdr, &hdr);
->  	encode_putfh(xdr, args->dst_fh, &hdr);
->  	encode_copy(xdr, args, &hdr);
-> -	encode_copy_commit(xdr, args, &hdr);
-> +	if (args->sync)
-> +		encode_copy_commit(xdr, args, &hdr);
->  	encode_nops(&hdr);
->  }
->  
-> @@ -615,7 +616,8 @@ static int nfs4_xdr_dec_copy(struct rpc_rqst *rqstp,
->  	status = decode_copy(xdr, res);
->  	if (status)
->  		goto out;
-> -	status = decode_commit(xdr, &res->commit_res);
-> +	if (res->commit_res.verf)
-> +		status = decode_commit(xdr, &res->commit_res);
->  out:
->  	return status;
->  }
-> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-> index a0282ce..580a8d9 100644
-> --- a/include/linux/nfs_fs.h
-> +++ b/include/linux/nfs_fs.h
-> @@ -183,6 +183,15 @@ struct nfs_inode {
->  	struct inode		vfs_inode;
->  };
->  
-> +struct nfs4_copy_state {
-> +	struct list_head	copies;
-> +	nfs4_stateid		stateid;
-> +	struct completion	completion;
-> +	uint64_t		count;
-> +	struct nfs_writeverf	verf;
-> +	int			error;
+> +const struct file_operations fs_fs_fops = {
+> +	.write		= fs_fs_write,
+> +	.release	= fs_fs_release,
+> +	.llseek		= no_llseek,
 > +};
 > +
->  /*
->   * Cache validity bit flags
->   */
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index de1eafe..511eefb 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -206,6 +206,7 @@ struct nfs_server {
->  	struct list_head	state_owners_lru;
->  	struct list_head	layouts;
->  	struct list_head	delegations;
-> +	struct list_head	ss_copies;
+> +/*
+> + * Indicate the name we want to display the filesystem file as.
+> + */
+> +static char *fs_fs_dname(struct dentry *dentry, char *buffer, int buflen)
+> +{
+> +	return dynamic_dname(dentry, buffer, buflen, "fs:[%lu]",
+> +			     d_inode(dentry)->i_ino);
+> +}
+> +
+> +static const struct dentry_operations fs_fs_dentry_operations = {
+> +	.d_dname	= fs_fs_dname,
+> +};
+> +
+> +/*
+> + * Create a file that can be used to configure a new mount.
+> + */
+> +static struct file *create_fs_file(struct fs_context *fc)
+> +{
+> +	struct inode *inode;
+> +	struct file *f;
+> +	struct path path;
+> +	int ret;
+> +
+> +	inode = alloc_anon_inode(fs_fs_mnt->mnt_sb);
+> +	if (!inode)
+> +		return ERR_PTR(-ENFILE);
+> +	inode->i_fop = &fs_fs_fops;
+> +
+> +	ret = -ENOMEM;
+> +	path.dentry = d_alloc_pseudo(fs_fs_mnt->mnt_sb, &empty_name);
+> +	if (!path.dentry)
+> +		goto err_inode;
+> +	path.mnt = mntget(fs_fs_mnt);
+> +
+> +	d_instantiate(path.dentry, inode);
+> +
+> +	f = alloc_file(&path, FMODE_READ | FMODE_WRITE, &fs_fs_fops);
+> +	if (IS_ERR(f)) {
+> +		ret = PTR_ERR(f);
+> +		goto err_file;
+> +	}
+> +
+> +	f->private_data = fc;
+> +	return f;
+> +
+> +err_file:
+> +	path_put(&path);
+> +	return ERR_PTR(ret);
+> +
+> +err_inode:
+> +	iput(inode);
+> +	return ERR_PTR(ret);
+> +}
+> +
+> + const struct super_operations fs_fs_ops = {
+> +	.drop_inode	= generic_delete_inode,
+> +	.destroy_inode	= free_inode_nonrcu,
+> +	.statfs		= simple_statfs,
+> +};
+> +
+> +static struct dentry *fs_fs_mount(struct file_system_type *fs_type,
+> +				  int flags, const char *dev_name,
+> +				  void *data)
+> +{
+> +	return mount_pseudo(fs_type, "fs_fs:", &fs_fs_ops,
+> +			    &fs_fs_dentry_operations, FS_FS_MAGIC);
+> +}
+> +
+> +static struct file_system_type fs_fs_type = {
+> +	.name		= "fs_fs",
+> +	.mount		= fs_fs_mount,
+> +	.kill_sb	= kill_anon_super,
+> +};
+> +
+> +static int __init init_fs_fs(void)
+> +{
+> +	int ret;
+> +
+> +	ret = register_filesystem(&fs_fs_type);
+> +	if (ret < 0)
+> +		panic("Cannot register fs_fs\n");
+> +
+> +	fs_fs_mnt = kern_mount(&fs_fs_type);
+> +	if (IS_ERR(fs_fs_mnt))
+> +		panic("Cannot mount fs_fs: %ld\n", PTR_ERR(fs_fs_mnt));
+> +	return 0;
+> +}
+> +
+> +fs_initcall(init_fs_fs);
+> +
+> +/*
+> + * Open a filesystem by name so that it can be configured for mounting.
+> + *
+> + * We are allowed to specify a container in which the filesystem will be
+> + * opened, thereby indicating which namespaces will be used (notably, which
+> + * network namespace will be used for network filesystems).
+> + */
+> +SYSCALL_DEFINE5(fsopen, const char __user *, _fs_name, unsigned int, flags,
+> +		void *, reserved3, void *, reserved4, void *, reserved5)
+> +{
+> +	struct file_system_type *fs_type;
+> +	struct fs_context *fc;
+> +	struct file *file;
+> +	const char *fs_name;
+> +	int fd, ret;
+> +
+> +	if (flags & ~O_CLOEXEC || reserved3 || reserved4 || reserved5)
+> +		return -EINVAL;
+> +
+> +	fs_name = strndup_user(_fs_name, PAGE_SIZE);
+> +	if (IS_ERR(fs_name))
+> +		return PTR_ERR(fs_name);
+> +
+> +	fs_type = get_fs_type(fs_name);
+> +	kfree(fs_name);
+> +	if (!fs_type)
+> +		return -ENODEV;
+> +
+> +	fc = vfs_new_fs_context(fs_type, NULL, 0, FS_CONTEXT_FOR_USER_MOUNT);
+> +	put_filesystem(fs_type);
+> +	if (IS_ERR(fc))
+> +		return PTR_ERR(fc);
+> +
+> +	ret = -ENOTSUPP;
+> +	if (!fc->ops)
+> +		goto err_fc;
+> +
+> +	file = create_fs_file(fc);
+> +	if (IS_ERR(file)) {
+> +		ret = PTR_ERR(file);
+> +		goto err_fc;
+> +	}
+> +
+> +	ret = get_unused_fd_flags(flags & O_CLOEXEC);
+> +	if (ret < 0)
+> +		goto err_file;
+> +
+> +	fd = ret;
+> +	fd_install(fd, file);
+> +	return fd;
+> +
+> +err_file:
+> +	fput(file);
+> +	return ret;
+> +
+> +err_fc:
+> +	put_fs_context(fc);
+> +	return ret;
+> +}
+> diff --git a/include/linux/fs_context.h b/include/linux/fs_context.h
+> index 8af6ff0e869e..3244b231ede0 100644
+> --- a/include/linux/fs_context.h
+> +++ b/include/linux/fs_context.h
+> @@ -101,4 +101,5 @@ extern int vfs_get_super(struct fs_context *fc,
+>  			 int (*fill_super)(struct super_block *sb,
+>  					   struct fs_context *fc));
 >  
->  	unsigned long		mig_gen;
->  	unsigned long		mig_status;
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 784ec8d..020d958 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1384,6 +1384,7 @@ struct nfs42_copy_args {
->  	u64				dst_pos;
+> +extern const struct file_operations fs_fs_fops;
+>  #endif /* _LINUX_FS_CONTEXT_H */
+> diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+> index a78186d826d7..7cd1b65a4152 100644
+> --- a/include/linux/syscalls.h
+> +++ b/include/linux/syscalls.h
+> @@ -940,5 +940,7 @@ asmlinkage long sys_pkey_alloc(unsigned long flags, unsigned long init_val);
+>  asmlinkage long sys_pkey_free(int pkey);
+>  asmlinkage long sys_statx(int dfd, const char __user *path, unsigned flags,
+>  			  unsigned mask, struct statx __user *buffer);
+> +asmlinkage long sys_fsopen(const char *fs_name, unsigned int flags,
+> +			   void *reserved3, void *reserved4, void *reserved5);
 >  
->  	u64				count;
-> +	bool				sync;
->  };
+>  #endif
+> diff --git a/include/uapi/linux/magic.h b/include/uapi/linux/magic.h
+> index e439565df838..722bf42f9564 100644
+> --- a/include/uapi/linux/magic.h
+> +++ b/include/uapi/linux/magic.h
+> @@ -87,5 +87,6 @@
+>  #define UDF_SUPER_MAGIC		0x15013346
+>  #define BALLOON_KVM_MAGIC	0x13661366
+>  #define ZSMALLOC_MAGIC		0x58295829
+> +#define FS_FS_MAGIC		0x66736673
 >  
->  struct nfs42_write_res {
+>  #endif /* __LINUX_MAGIC_H__ */
+> diff --git a/kernel/sys_ni.c b/kernel/sys_ni.c
+> index 8acef8576ce9..de1dc63e7e47 100644
+> --- a/kernel/sys_ni.c
+> +++ b/kernel/sys_ni.c
+> @@ -258,3 +258,6 @@ cond_syscall(sys_membarrier);
+>  cond_syscall(sys_pkey_mprotect);
+>  cond_syscall(sys_pkey_alloc);
+>  cond_syscall(sys_pkey_free);
+> +
+> +/* fd-based mount */
+> +cond_syscall(sys_fsopen);
 > 
+
+-- 
+Jeff Layton <jlayton@redhat.com>
