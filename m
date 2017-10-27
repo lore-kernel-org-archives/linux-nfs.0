@@ -1,51 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:43159 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751736AbdJ0Qnr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Oct 2017 12:43:47 -0400
-Subject: [PATCH 0/4] Last NFS/RDMA client patches for v4.15
+Received: from mail-io0-f193.google.com ([209.85.223.193]:45432 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751736AbdJ0Qnz (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Oct 2017 12:43:55 -0400
+Subject: [PATCH 1/4] xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 27 Oct 2017 12:43:45 -0400
-Message-ID: <20171027164014.10826.10151.stgit@manet.1015granger.net>
+Date: Fri, 27 Oct 2017 12:43:54 -0400
+Message-ID: <20171027164354.10826.314.stgit@manet.1015granger.net>
+In-Reply-To: <20171027164014.10826.10151.stgit@manet.1015granger.net>
+References: <20171027164014.10826.10151.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna-
+Lift the Send and LocalInv completion handlers out of soft IRQ mode
+to make room for other work. Also, move the Send CQ to a different
+CPU than the CPU where the Receive CQ is running, for improved
+scalability.
 
-Here's my final set of NFS/RDMA client patches for v4.15.
-
-Three of these are clean up patches. The first patch is an important
-change, however.
-
-In the earlier set of patches, I changed the Receive CQ to run in
-workqueue context. Here, I change the Send CQ to also run in
-workqueue context.
-
-In addition, I move it to a different compvec than the Receive CQ.
-My performance measurements show that the two completion handlers
-interfere with each other if they run in the same workqueue thread.
-
-Please consider this set for v4.15.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/verbs.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Chuck Lever (4):
-      xprtrdma: Put Send CQ in IB_POLL_WORKQUEUE mode
-      rpcrdma: Remove C structure definitions of XDR data items
-      xprtrdma: Remove include for linux/prefetch.h
-      xprtrdma: Update copyright notices
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 22128a8..4cfa893 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -558,7 +558,7 @@
+ 
+ 	sendcq = ib_alloc_cq(ia->ri_device, NULL,
+ 			     ep->rep_attr.cap.max_send_wr + 1,
+-			     0, IB_POLL_SOFTIRQ);
++			     1, IB_POLL_WORKQUEUE);
+ 	if (IS_ERR(sendcq)) {
+ 		rc = PTR_ERR(sendcq);
+ 		dprintk("RPC:       %s: failed to create send CQ: %i\n",
 
-
- include/linux/sunrpc/rpc_rdma.h |   60 +--------------------------------------
- net/sunrpc/xprtrdma/rpc_rdma.c  |    7 +++--
- net/sunrpc/xprtrdma/transport.c |    1 +
- net/sunrpc/xprtrdma/verbs.c     |    4 +--
- net/sunrpc/xprtrdma/xprt_rdma.h |    7 +----
- 5 files changed, 9 insertions(+), 70 deletions(-)
-
---
-Chuck Lever
