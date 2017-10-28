@@ -1,155 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f68.google.com ([74.125.82.68]:45111 "EHLO
+Received: from mail-wm0-f68.google.com ([74.125.82.68]:51627 "EHLO
         mail-wm0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750788AbdJ1Hjk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Oct 2017 03:39:40 -0400
-Received: by mail-wm0-f68.google.com with SMTP id y80so37137wmd.0
-        for <linux-nfs@vger.kernel.org>; Sat, 28 Oct 2017 00:39:40 -0700 (PDT)
+        with ESMTP id S1751167AbdJ1Hnq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 28 Oct 2017 03:43:46 -0400
+Received: by mail-wm0-f68.google.com with SMTP id b9so7333807wmh.0
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Oct 2017 00:43:45 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20171027164402.10826.42984.stgit@manet.1015granger.net>
-References: <20171027164014.10826.10151.stgit@manet.1015granger.net> <20171027164402.10826.42984.stgit@manet.1015granger.net>
+In-Reply-To: <20171027144743.15444.3407.stgit@klimt.1015granger.net>
+References: <20171027144743.15444.3407.stgit@klimt.1015granger.net>
 From: Devesh Sharma <devesh.sharma@broadcom.com>
-Date: Sat, 28 Oct 2017 13:08:58 +0530
-Message-ID: <CANjDDBjUzfCJjaGb9aq9YC7ZKrvYoVuXThV3RV1fu-fo=Sjfew@mail.gmail.com>
-Subject: Re: [PATCH 2/4] rpcrdma: Remove C structure definitions of XDR data items
+Date: Sat, 28 Oct 2017 13:13:04 +0530
+Message-ID: <CANjDDBi15wrUqnnpgBabwQLg1iz92PJkbt6vN9OBFK9E2Ng5SQ@mail.gmail.com>
+Subject: Re: [PATCH] svcrdma: Enqueue after setting XPT_CLOSE in completion handlers
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+Cc: Bruce Fields <bfields@fieldses.org>,
         linux-rdma <linux-rdma@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+looks good
 
-Could add a pointer to the patch which replaced things with the new
-data-structure in the commit message
+Reveiwed-By: Devesh Sharma <devesh.sharma@broadcom.com>
 
-On Fri, Oct 27, 2017 at 10:14 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> Clean up: XDR structures have been replaced in all client and server
-> transport code.
+On Fri, Oct 27, 2017 at 8:19 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> I noticed the server was sometimes not closing the connection after
+> a flushed Send. For example, if the client responds with an RNR NAK
+> to a Reply from the server, that client might be deadlocked, and
+> thus wouldn't send any more traffic. Thus the server wouldn't have
+> any opportunity to notice the XPT_CLOSE bit has been set.
+>
+> Enqueue the transport so that svcxprt notices the bit even if there
+> is no more transport activity after a flushed completion, QP access
+> error, or device removal event.
 >
 > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  include/linux/sunrpc/rpc_rdma.h |   59 ---------------------------------------
->  net/sunrpc/xprtrdma/rpc_rdma.c  |    6 ++--
->  net/sunrpc/xprtrdma/xprt_rdma.h |    6 ----
->  3 files changed, 3 insertions(+), 68 deletions(-)
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 ++++++++---
+>  1 file changed, 8 insertions(+), 3 deletions(-)
 >
-> diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
-> index b7e85b3..840afac 100644
-> --- a/include/linux/sunrpc/rpc_rdma.h
-> +++ b/include/linux/sunrpc/rpc_rdma.h
-> @@ -50,65 +50,6 @@ enum {
->         RPCRDMA_V1_DEF_INLINE_SIZE      = 1024,
->  };
+> Hi Bruce-
 >
-> -struct rpcrdma_segment {
-> -       __be32 rs_handle;       /* Registered memory handle */
-> -       __be32 rs_length;       /* Length of the chunk in bytes */
-> -       __be64 rs_offset;       /* Chunk virtual address or offset */
-> -};
-> -
-> -/*
-> - * read chunk(s), encoded as a linked list.
-> - */
-> -struct rpcrdma_read_chunk {
-> -       __be32 rc_discrim;      /* 1 indicates presence */
-> -       __be32 rc_position;     /* Position in XDR stream */
-> -       struct rpcrdma_segment rc_target;
-> -};
-> -
-> -/*
-> - * write chunk, and reply chunk.
-> - */
-> -struct rpcrdma_write_chunk {
-> -       struct rpcrdma_segment wc_target;
-> -};
-> -
-> -/*
-> - * write chunk(s), encoded as a counted array.
-> - */
-> -struct rpcrdma_write_array {
-> -       __be32 wc_discrim;      /* 1 indicates presence */
-> -       __be32 wc_nchunks;      /* Array count */
-> -       struct rpcrdma_write_chunk wc_array[0];
-> -};
-> -
-> -struct rpcrdma_msg {
-> -       __be32 rm_xid;  /* Mirrors the RPC header xid */
-> -       __be32 rm_vers; /* Version of this protocol */
-> -       __be32 rm_credit;       /* Buffers requested/granted */
-> -       __be32 rm_type; /* Type of message (enum rpcrdma_proc) */
-> -       union {
-> -
-> -               struct {                        /* no chunks */
-> -                       __be32 rm_empty[3];     /* 3 empty chunk lists */
-> -               } rm_nochunks;
-> -
-> -               struct {                        /* no chunks and padded */
-> -                       __be32 rm_align;        /* Padding alignment */
-> -                       __be32 rm_thresh;       /* Padding threshold */
-> -                       __be32 rm_pempty[3];    /* 3 empty chunk lists */
-> -               } rm_padded;
-> -
-> -               struct {
-> -                       __be32 rm_err;
-> -                       __be32 rm_vers_low;
-> -                       __be32 rm_vers_high;
-> -               } rm_error;
-> -
-> -               __be32 rm_chunks[0];    /* read, write and reply chunks */
-> -
-> -       } rm_body;
-> -};
-> -
->  /*
->   * XDR sizes, in quads
->   */
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index 4fdeaac..45cb549 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -75,11 +75,11 @@ static unsigned int rpcrdma_max_call_header_size(unsigned int maxsegs)
+> Please consider this patch for v4.15. Thanks!
 >
->         /* Maximum Read list size */
->         maxsegs += 2;   /* segment for head and tail buffers */
-> -       size = maxsegs * sizeof(struct rpcrdma_read_chunk);
-> +       size = maxsegs * rpcrdma_readchunk_maxsz * sizeof(__be32);
 >
->         /* Minimal Read chunk size */
->         size += sizeof(__be32); /* segment count */
-> -       size += sizeof(struct rpcrdma_segment);
-> +       size += rpcrdma_segment_maxsz * sizeof(__be32);
->         size += sizeof(__be32); /* list discriminator */
->
->         dprintk("RPC:       %s: max call header size = %u\n",
-> @@ -102,7 +102,7 @@ static unsigned int rpcrdma_max_reply_header_size(unsigned int maxsegs)
->         /* Maximum Write list size */
->         maxsegs += 2;   /* segment for head and tail buffers */
->         size = sizeof(__be32);          /* segment count */
-> -       size += maxsegs * sizeof(struct rpcrdma_segment);
-> +       size += maxsegs * rpcrdma_segment_maxsz * sizeof(__be32);
->         size += sizeof(__be32); /* list discriminator */
->
->         dprintk("RPC:       %s: max reply header size = %u\n",
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index 6e64c82..8b9954c 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -145,12 +145,6 @@ struct rpcrdma_regbuf {
->         return rb->rg_iov.lkey;
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 5caf8e7..46ec069 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -290,6 +290,7 @@ static void qp_event_handler(struct ib_event *event, void *context)
+>                         ib_event_msg(event->event), event->event,
+>                         event->element.qp);
+>                 set_bit(XPT_CLOSE, &xprt->xpt_flags);
+> +               svc_xprt_enqueue(xprt);
+>                 break;
+>         }
 >  }
+> @@ -322,8 +323,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+>         set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
+>         if (test_bit(RDMAXPRT_CONN_PENDING, &xprt->sc_flags))
+>                 goto out;
+> -       svc_xprt_enqueue(&xprt->sc_xprt);
+> -       goto out;
+> +       goto out_enqueue;
 >
-> -static inline struct rpcrdma_msg *
-> -rdmab_to_msg(struct rpcrdma_regbuf *rb)
-> -{
-> -       return (struct rpcrdma_msg *)rb->rg_base;
-> -}
-> -
->  static inline struct ib_device *
->  rdmab_device(struct rpcrdma_regbuf *rb)
->  {
+>  flushed:
+>         if (wc->status != IB_WC_WR_FLUSH_ERR)
+> @@ -333,6 +333,8 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+>         set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+>         svc_rdma_put_context(ctxt, 1);
+>
+> +out_enqueue:
+> +       svc_xprt_enqueue(&xprt->sc_xprt);
+>  out:
+>         svc_xprt_put(&xprt->sc_xprt);
+>  }
+> @@ -358,6 +360,7 @@ void svc_rdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
+>
+>         if (unlikely(wc->status != IB_WC_SUCCESS)) {
+>                 set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+> +               svc_xprt_enqueue(&xprt->sc_xprt);
+>                 if (wc->status != IB_WC_WR_FLUSH_ERR)
+>                         pr_err("svcrdma: Send: %s (%u/0x%x)\n",
+>                                ib_wc_status_msg(wc->status),
+> @@ -569,8 +572,10 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
+>         case RDMA_CM_EVENT_DEVICE_REMOVAL:
+>                 dprintk("svcrdma: Device removal xprt=%p, cm_id=%p\n",
+>                         xprt, cma_id);
+> -               if (xprt)
+> +               if (xprt) {
+>                         set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+> +                       svc_xprt_enqueue(&xprt->sc_xprt);
+> +               }
+>                 break;
+>
+>         default:
 >
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
