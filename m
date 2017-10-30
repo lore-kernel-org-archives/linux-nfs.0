@@ -1,49 +1,37 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34718 "EHLO mx1.redhat.com"
+Received: from mail.kernel.org ([198.145.29.99]:34890 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932648AbdJ3Rwl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Oct 2017 13:52:41 -0400
-From: Steve Dickson <SteveD@RedHat.com>
-Subject: ANNOUNCE: nfs-utils-2.2.1 released.
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Message-ID: <ae92162b-6999-249d-2f70-95a3c6a1174d@RedHat.com>
-Date: Mon, 30 Oct 2017 13:52:40 -0400
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+        id S1751688AbdJ3SWh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Oct 2017 14:22:37 -0400
+From: Jeff Layton <jlayton@kernel.org>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] grace: make __state_in_grace static
+Date: Mon, 30 Oct 2017 14:22:34 -0400
+Message-Id: <20171030182234.1183-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+From: Jeff Layton <jlayton@redhat.com>
 
-nfs-utils-2.2.1 has just been released.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs_common/grace.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Along with usual bug fixes and improvements, the libnfsidmap 
-code has been rolled into the nfs-utils git tree and is now
-being built as part of nfs-utils. 
-
-The upstream git tree for libnfsidmap no longer exists so 
-all patches for the libnfsidmap code must be relative 
-to the code under support/nfsidmap in the nfs-utils 
-git tree.
-
-I would like to thank Justin Mitchell for doing most
-of this work... 
-
-The tarballs can be found in
-  https://www.kernel.org/pub/linux/utils/nfs-utils/2.2.1/
-or
-  http://sourceforge.net/projects/nfs/files/nfs-utils/2.2.1
-
-The change log is in
-   https://www.kernel.org/pub/linux/utils/nfs-utils/2.2.1/2.2.1-Changelog
-or
-   http://sourceforge.net/projects/nfs/files/nfs-utils/2.2.1/
-
-The git tree is at:
-   git://linux-nfs.org/~steved/nfs-utils
-
-Please send comments/bugs to linux-nfs@vger.kernel.org
-
-steved.
+diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
+index 874ff25e12ac..db06a708d79f 100644
+--- a/fs/nfs_common/grace.c
++++ b/fs/nfs_common/grace.c
+@@ -63,7 +63,7 @@ EXPORT_SYMBOL_GPL(locks_end_grace);
+  * to answer ordinary lock requests, and when they should accept only
+  * lock reclaims.
+  */
+-int
++static int
+ __state_in_grace(struct net *net, bool open)
+ {
+ 	struct list_head *grace_list = net_generic(net, grace_net_id);
+-- 
+2.13.6
 
