@@ -1,51 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:29516 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:40818 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752505AbdJ3PUt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Oct 2017 11:20:49 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: init_net in restart_grace()
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        linux-nfs@vger.kernel.org
-Message-ID: <4221b3fe-39ec-0108-3db5-aaa410c1f63c@virtuozzo.com>
-Date: Mon, 30 Oct 2017 18:20:45 +0300
+        id S1752166AbdJ3P3q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Oct 2017 11:29:46 -0400
+Subject: Re: [PATCH] nfs-utils: display NFS RPC queue time for mountstats and
+ nfs-iostat
+To: Ryan Doyle <rdoyle@aconex.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <MEXPR01MB0711C64DC23E94EE366C5455A2590@MEXPR01MB0711.ausprd01.prod.outlook.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <60e01567-070d-c7db-b26f-b290df0d3cc0@RedHat.com>
+Date: Mon, 30 Oct 2017 11:29:45 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <MEXPR01MB0711C64DC23E94EE366C5455A2590@MEXPR01MB0711.ausprd01.prod.outlook.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-restart_grace() still use hardcoded init_net.
-It can cause to "list_add double add" in following scenario:
 
-1) nfsd and lockd was started in several net namespaces
-2) nfsd in init_net was stopped (lockd was not stopped because
- it have users from another net namespaces)
-3) lockd got signal, called restart_grace() -> set_grace_period() 
- and enabled lock_manager in hardcoded init_net.
-4) nfsd in init_net is started again,
-its lockd_up() calls set_grace_period() and tries to add lock_manager
-into init_net 2nd time.
 
-I do not understand how to fix this problem correctly.
+On 10/29/2017 11:30 PM, Ryan Doyle wrote:
+> Hi there
+> 
+> I've got a patch to display the NFS queue statistics for mountstats and nfsiostat exported in /proc/self/mountstats. The RTT and total execution time is currently displayed but I think it's also useful displaying how long the task was queued for too. If others agree, please feel free to apply it.
 
-We can:
-1) remove per-netns calls in restart_grace().
-However it was worked for init-net-only case for ages,
-and I afraid users of this functionality will object.
+In the future please use the proper format for posting
+a patch that is described in 
+    https://www.kernel.org/doc/html/v4.12/process/submitting-patches.html
 
-2) we can somehow provide reference to net namespace of process submitted handled signal
-and handle pointed net namespace only. 
-However this time it isn't clear for me how to do it.
+Basically, inline the patch, have a subject and description
+section and a proper Signed-off-by: line. But since I 
+found another bug while testing your patch and I'm about
+to make a release I'll go ahead and add the Signed-off-by: line
 
-3) we can call per-netns operations for all existing net namespaces
-However I'm not sure is it expected behaviour.
-Also I afraid it can be racy with creation/destroy of net namespaces.
+Patch committed! 
 
-4) we can make lockd kernel thraad per net_ns, like nfsd.
-However this solution looks too heavy for this problem.
-
-Could you please advise some other solution?
-
-Thank you,
-	Vasily Averin
+steved.
