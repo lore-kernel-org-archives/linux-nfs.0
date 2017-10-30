@@ -1,38 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40818 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752166AbdJ3P3q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Oct 2017 11:29:46 -0400
-Subject: Re: [PATCH] nfs-utils: display NFS RPC queue time for mountstats and
- nfs-iostat
-To: Ryan Doyle <rdoyle@aconex.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <MEXPR01MB0711C64DC23E94EE366C5455A2590@MEXPR01MB0711.ausprd01.prod.outlook.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <60e01567-070d-c7db-b26f-b290df0d3cc0@RedHat.com>
-Date: Mon, 30 Oct 2017 11:29:45 -0400
-MIME-Version: 1.0
-In-Reply-To: <MEXPR01MB0711C64DC23E94EE366C5455A2590@MEXPR01MB0711.ausprd01.prod.outlook.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qk0-f194.google.com ([209.85.220.194]:48782 "EHLO
+        mail-qk0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932273AbdJ3PtC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Oct 2017 11:49:02 -0400
+Received: by mail-qk0-f194.google.com with SMTP id d67so16689666qkg.5
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Oct 2017 08:49:02 -0700 (PDT)
+Message-ID: <1509378540.5412.31.camel@redhat.com>
+Subject: Re: [PATCH] nlm_shutdown_hosts_net() cleanup
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Vasily Averin <vvs@virtuozzo.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 30 Oct 2017 11:49:00 -0400
+In-Reply-To: <20171030144943.GG14098@fieldses.org>
+References: <1d1a25d8-a34b-5175-bb6a-9549041c11f4@virtuozzo.com>
+         <20171030144943.GG14098@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 10/29/2017 11:30 PM, Ryan Doyle wrote:
-> Hi there
+On Mon, 2017-10-30 at 10:49 -0400, J. Bruce Fields wrote:
+> On Mon, Oct 30, 2017 at 04:47:58PM +0300, Vasily Averin wrote:
+> > nlm_complain_hosts() walk through nlm_server_hosts hlist that should be
+> > protected by nlm_host_mutex.
 > 
-> I've got a patch to display the NFS queue statistics for mountstats and nfsiostat exported in /proc/self/mountstats. The RTT and total execution time is currently displayed but I think it's also useful displaying how long the task was queued for too. If others agree, please feel free to apply it.
+> I haven't looked at the NLM locking in ages.  Do we know who else might
+> actually be accessing this list concurrently?
+> 
+> --b.
+> 
 
-In the future please use the proper format for posting
-a patch that is described in 
-    https://www.kernel.org/doc/html/v4.12/process/submitting-patches.html
+Since this is a per-net-ns shutdown, I suppose you could have concurrent
+ rpc.nfsd's shutting down different namespaces. Holding the mutex for
+longer looks like a reasonable fix.
 
-Basically, inline the patch, have a subject and description
-section and a proper Signed-off-by: line. But since I 
-found another bug while testing your patch and I'm about
-to make a release I'll go ahead and add the Signed-off-by: line
+That said...I don't think lockd was ever properly namespace-ified. YMMV
+here.
 
-Patch committed! 
+> > 
+> > Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> > ---
+> >  fs/lockd/host.c | 3 +--
+> >  1 file changed, 1 insertion(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> > index d716c99..089c1d7 100644
+> > --- a/fs/lockd/host.c
+> > +++ b/fs/lockd/host.c
+> > @@ -617,9 +617,8 @@ nlm_shutdown_hosts_net(struct net *net)
+> >  
+> >  	/* Then, perform a garbage collection pass */
+> >  	nlm_gc_hosts(net);
+> > -	mutex_unlock(&nlm_host_mutex);
+> > -
+> >  	nlm_complain_hosts(net);
+> > +	mutex_unlock(&nlm_host_mutex);
+> >  }
+> >  
+> >  /*
+> > -- 
+> > 2.7.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-steved.
+You can add:
+
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
