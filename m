@@ -1,170 +1,198 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:40131 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:33855 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751894AbdJ3Oy4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Oct 2017 10:54:56 -0400
+        id S1752264AbdJ3OzY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Oct 2017 10:55:24 -0400
 From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH] lockd: fix lockd shutdown race with signal
+Subject: Re: [RFC PATCH 0/2] race of lockd/nfsd inetaddr notifiers with
+ pointers change
 To: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        David Jeffery <djeffery@redhat.com>
-Message-ID: <f26c81c0-68c0-375d-10b7-dc3e9fd64863@virtuozzo.com>
-Date: Mon, 30 Oct 2017 17:54:46 +0300
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        Scott Mayhew <smayhew@redhat.com>
+References: <24d4e50e-80f7-1874-6745-511f9e7b5739@virtuozzo.com>
+ <8b62ad69-5f12-1bff-5388-151367a1075e@virtuozzo.com>
+Message-ID: <b18dff43-ebf4-f53c-1aab-9b85cb4b8354@virtuozzo.com>
+Date: Mon, 30 Oct 2017 17:55:16 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <8b62ad69-5f12-1bff-5388-151367a1075e@virtuozzo.com>
+Content-Type: multipart/mixed;
+ boundary="------------0331A3ACDF6E8266A7236424"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit efda760fe95ea ("lockd: fix lockd shutdown race") is incorrect,
-it removes grace 
- a) for init_net only
- b) only on stop of lockd kernel thread
+This is a multi-part message in MIME format.
+--------------0331A3ACDF6E8266A7236424
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
 
-If we start nfsd from another net namespace lockd_up_net() calls 
-set_grace_period() that adds lockd_manager into per-netns list.
-Then we stop nfsd server.
-If lockd have another users it will not be destroyed and lock_manager
-will not be removed from list.
-If lockd had no other users then lockd kernel thread will be stopped,
-but "remove" lock_manager strongly from init_net.
+I've reproduced the problem both on RHEL7 and then on last mainline kernel:
 
-When nfsd in net namespace will started again we get "list_add double add" error.
+1) start nfsd on host 
+# service nfs start
 
-Reproducer:
-- do not start nfsd on host
-- create new net namespace
-  # unshare -n -m ; mount -t nfsd nfsd /proc/fs/nfsd
-- start nfsd from newly created net namespace
-  # echo 1 > /proc/fs/nfsd/threads
-- stop and restart it again 
-  # echo 0 > /proc/fs/nfsd/thread
-  # echo 1 > /proc/fs/nfsd/thread
+2) create separate net and mount namespaces:
+# unshare -m -n  ; mount -t nfsd nfsd /proc/fs/nfsd
 
-Result: "list_add double add" in set_grace_period()
+3) execute screen (we need 2 consoles with newly created namespaces)
+4) on first console:
+# ifconfig lo up
+# while : ; do ip a a  1.2.3.4/32 dev lo ; do ip a d 1.2.3.4/32 dev lo ; done
 
-[  414.644407] NFSD: attempt to initialize umh client tracking in a container ignored.
-[  414.644533] NFSD: attempt to initialize legacy client tracking in a container ignored.
-[  414.644562] NFSD: Unable to initialize client recovery tracking! (-22)
-[  414.644585] NFSD: starting 90-second grace period (net ffff8df8f0243140)  <<< 1st start
-[  423.788079] nfsd: last server has exited, flushing export cache           <<< stop
-[  426.735772] list_add double add: new=ffff8df8f1db1310, prev=ffff8df93cac9348, next=ffff8df8f1db1310.
-[  426.735833] ------------[ cut here ]------------ <<< 2nd start
-[  426.735855] kernel BUG at lib/list_debug.c:31!
-[  426.735876] invalid opcode: 0000 [#1] SMP
-[  426.736011] CPU: 5 PID: 1423 Comm: bash Not tainted 4.14.0-rc6+ #2
-[  426.736011] Hardware name: Virtuozzo KVM, BIOS 1.9.1-5.3.2.vz7.7 04/01/2014
-[  426.736011] task: ffff8df8f2278040 task.stack: ffffa70b40ce4000
-[  426.736011] RIP: 0010:__list_add_valid+0x66/0x70
-[  426.736011] RSP: 0018:ffffa70b40ce7ce8 EFLAGS: 00010282
-[  426.736011] RAX: 0000000000000058 RBX: ffff8df8f1db1310 RCX: 0000000000000000
-[  426.736011] RDX: 0000000000000000 RSI: ffff8df93fd4e138 RDI: ffff8df93fd4e138
-[  426.736011] RBP: ffffa70b40ce7ce8 R08: 00000000000002ba R09: 0000000000000000
-[  426.736011] R10: 0000000000000010 R11: 00000000ffffffff R12: ffff8df93cac9348
-[  426.736011] R13: ffff8df8f1db1310 R14: ffff8df8f0243140 R15: 0000000000000000
-[  426.736011] FS:  00007f8c9389db40(0000) GS:ffff8df93fd40000(0000) knlGS:0000000000000000
-[  426.736011] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  426.736011] CR2: 00007f8c936848d0 CR3: 000000007ca88003 CR4: 00000000001606e0
-[  426.736011] Call Trace:
-[  426.736011]  locks_start_grace+0x40/0x70 [grace]
-[  426.736011]  set_grace_period+0x44/0x90 [lockd]
-[  426.736011]  lockd_up+0x2b2/0x350 [lockd]
-[  426.736011]  nfsd_svc+0x256/0x2b0 [nfsd]
-[  426.736011]  ? write_pool_threads+0x2b0/0x2b0 [nfsd]
-[  426.736011]  write_threads+0x80/0xe0 [nfsd]
-[  426.736011]  ? simple_transaction_get+0xb5/0xd0
-[  426.736011]  nfsctl_transaction_write+0x48/0x80 [nfsd]
-[  426.736011]  __vfs_write+0x37/0x170
-[  426.736011]  ? selinux_file_permission+0x105/0x120
-[  426.736011]  ? security_file_permission+0x3b/0xc0
-[  426.736011]  vfs_write+0xb1/0x1a0
-[  426.736011]  SyS_write+0x55/0xc0
+5) on second console:
+# while : ; do echo 1 > /proc/fs/nfsd/threads ; sleep 1 ; echo 0 > /proc/fs/nfsd/threads ; sleep 1 ; done
 
-Before commit efda760fe95ea "lockd: fix lockd shutdown race" lock_manager
-was removed from correct net namespace.
+Result: crash inside nfsd_inteddr_event(), see attached log.
 
-This patch reverts efda760fe95ea "lockd: fix lockd shutdown race"
-and introduces stop_grace() function that is called in all rollback
-cases and correctly removes lock_manager.
+Submitted patches have resolved the problem, patched kernel was not crashed after day of testing.
 
-The patch still resolves the problem fixed by reverted patch:
-now final final locks_end_grace() is called not before
-but after stop of lockd kernel thread.
+NB: during my experiments I've found "list_add double add" in set_grace_period()
+and fixed it by recently submitted "[PATCH] lockd: fix lockd shutdown race with signal"
 
-Fixes commit efda760fe95e ("lockd: fix lockd shutdown race")
+Thank you,
+	Vasily Averin
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/lockd/svc.c | 20 +++++++++++++++-----
- 1 file changed, 15 insertions(+), 5 deletions(-)
+On 2017-10-19 18:42, Vasily Averin wrote:
+> cc: Scott Mayhew
+> 
+> Dear Scott,
+> could you please take look at patches?
+> 
+> Let me describe the problem once again:
+> 
+> lockd_inetaddr_event()
+> ...
+>         if (nlmsvc_rqst) {  
+> 		... 
+>                 svc_age_temp_xprts_now(nlmsvc_rqst->rq_server, (struct sockaddr *)&sin);
+>         }
+> 
+> Usually access to  nlmsvc_rqst is protected by nlmsvc_mutex 
+> However lockd_inet[6]addr_event does not take the mutex,
+> therefore nlmsvc_rqst can be changed during execution.
+> 
+> as result "if (nlmsvc_rqst)" can be passed,
+> then another thread frees the memory or zeroes this pointer,
+> and then svc_age_temp_xprts_now crash the host on access to already freed memory.
+> 
+> Moreover on initialization nlmsvc_rqst can be temporally set to ERR_PTR.
+> 
+> NFSD have similar issue.
+> 
+> On 2017-10-17 19:40, Vasily Averin wrote:
+>> lockd and nfsd inet[6]addr notifiers use pointer that can be changed during execution.
+>>
+>> lockd_inet[6]addr_event use nlmsvc_rqst without taken nlmsvc_mutex,
+>> nfsd notifier have similar trouble.
+>>
+>> We got few crashes from OpenVz customers on RHEL6-based kernel,
+>> and I have reproduced the problem locally on this kernel.
+>>
+>> I was unable to reproduce the problem on new kernels,
+>> however seems they are affected.
+>>
+>> We cannot add mutexes into notifiers because inet6addr notifiers should be atomic.
+>>
+>> To fix the problem I use atomic counter and waitqueue:
+>> counter allows notifier to access the pointer,
+>> waitqueue allows to delay stop of service until notifier is in use.
+>>
+>> Patches was not tested because I was unable to reproduce the problem on new kernels. 
+>>
+>> Please review it carefully and let me know if this can be fixed in a better way.
+>>
+>> Vasily Averin (2):
+>>   race of lockd inetaddr notifiers with nlmsvc_rqst change
+>>   race of nfsd inetaddr notifiers with nn->nfsd_serv change
+>>
+>>  fs/lockd/svc.c   | 16 ++++++++++++++--
+>>  fs/nfsd/netns.h  |  3 +++
+>>  fs/nfsd/nfsctl.c |  3 +++
+>>  fs/nfsd/nfssvc.c | 14 +++++++++++---
+>>  4 files changed, 31 insertions(+), 5 deletions(-)
+>>
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index c1573860..d14e0f9 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -127,6 +127,16 @@ static void restart_grace(void)
- 	}
- }
- 
-+static void stop_grace(struct net *net)
-+{
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+	if (ln->nlmsvc_users == 0) {
-+		cancel_delayed_work_sync(&ln->grace_period_end);
-+		locks_end_grace(&ln->lockd_manager);
-+	}
-+}
-+
- /*
-  * This is the lockd kernel thread
-  */
-@@ -135,8 +145,6 @@ lockd(void *vrqstp)
- {
- 	int		err = 0;
- 	struct svc_rqst *rqstp = vrqstp;
--	struct net *net = &init_net;
--	struct lockd_net *ln = net_generic(net, lockd_net_id);
- 
- 	/* try_to_freeze() is called from svc_recv() */
- 	set_freezable();
-@@ -181,8 +189,6 @@ lockd(void *vrqstp)
- 	if (nlmsvc_ops)
- 		nlmsvc_invalidate_all();
- 	nlm_shutdown_hosts();
--	cancel_delayed_work_sync(&ln->grace_period_end);
--	locks_end_grace(&ln->lockd_manager);
- 	return 0;
- }
- 
-@@ -480,6 +486,7 @@ int lockd_up(struct net *net)
- 	error = lockd_start_svc(serv);
- 	if (error < 0) {
- 		lockd_down_net(serv, net);
-+		stop_grace(net);
- 		goto err_put;
- 	}
- 	nlmsvc_users++;
-@@ -504,8 +511,10 @@ lockd_down(struct net *net)
- 	mutex_lock(&nlmsvc_mutex);
- 	lockd_down_net(nlmsvc_rqst->rq_server, net);
- 	if (nlmsvc_users) {
--		if (--nlmsvc_users)
-+		if (--nlmsvc_users) {
-+			stop_grace(net);
- 			goto out;
-+		}
- 	} else {
- 		printk(KERN_ERR "lockd_down: no users! task=%p\n",
- 			nlmsvc_task);
-@@ -517,6 +526,7 @@ lockd_down(struct net *net)
- 		BUG();
- 	}
- 	kthread_stop(nlmsvc_task);
-+	stop_grace(net);
- 	dprintk("lockd_down: service stopped\n");
- 	lockd_svc_exit_thread();
- 	dprintk("lockd_down: service destroyed\n");
--- 
-2.7.4
 
+--------------0331A3ACDF6E8266A7236424
+Content-Type: text/plain; charset=UTF-8;
+ name="ml2.txt"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment;
+ filename="ml2.txt"
+
+WyAgNjA0LjI5NDA1NV0gbmZzZF9pbmV0YWRkcl9ldmVudDogcmVtb3ZlZCAxLjIuMy40Clsg
+IDYwNC4yOTQwNjBdIG5mc2Q6IGxhc3Qgc2VydmVyIGhhcyBleGl0ZWQsIGZsdXNoaW5nIGV4
+cG9ydCBjYWNoZQpbICA2MDQuMjk1OTIyXSBCVUc6IHVuYWJsZSB0byBoYW5kbGUga2VybmVs
+IE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCAwMDAwMDAwMDAwMDAwMDEwClsgIDYwNC4y
+OTYxODldIElQOiBfcmF3X3NwaW5fbG9ja19iaCsweDFiLzB4MzAKWyAgNjA0LjI5NjE4OV0g
+UEdEIDVhNTk2MDY3IFA0RCA1YTU5NjA2NyBQVUQgMzA1MmUwNjcgUE1EIDAgClsgIDYwNC4y
+OTYxODldIE9vcHM6IDAwMDIgWyMxXSBTTVAKWyAgNjA0LjI5ODg0NF0gTW9kdWxlcyBsaW5r
+ZWQgaW46IGJpbmZtdF9taXNjIG5mc2QgYXV0aF9ycGNnc3MgbmZzX2FjbCBsb2NrZChFKSBn
+cmFjZSBpcDZ0X3JwZmlsdGVyIGlwNnRfUkVKRUNUIG5mX3JlamVjdF9pcHY2IHh0X2Nvbm50
+cmFjayBpcF9zZXQgbmZuZXRsaW5rIGVidGFibGVfbmF0IGVidGFibGVfYnJvdXRlIGJyaWRn
+ZSBzdHAgbGxjIGlwNnRhYmxlX25hdCBuZl9jb25udHJhY2tfaXB2NiBuZl9kZWZyYWdfaXB2
+NiBuZl9uYXRfaXB2NiBpcDZ0YWJsZV9tYW5nbGUgaXA2dGFibGVfcmF3IGlwNnRhYmxlX3Nl
+Y3VyaXR5IGlwdGFibGVfbmF0IG5mX2Nvbm50cmFja19pcHY0IG5mX2RlZnJhZ19pcHY0IG5m
+X25hdF9pcHY0IG5mX25hdCBuZl9jb25udHJhY2sgaXB0YWJsZV9tYW5nbGUgaXB0YWJsZV9y
+YXcgaXB0YWJsZV9zZWN1cml0eSBlYnRhYmxlX2ZpbHRlciBlYnRhYmxlcyBpcDZ0YWJsZV9m
+aWx0ZXIgaXA2X3RhYmxlcyBzdW5ycGMgam95ZGV2IHBwZGV2IHZpcnRpb19iYWxsb29uIGNy
+Y3QxMGRpZl9wY2xtdWwgY3JjMzJfcGNsbXVsIGdoYXNoX2NsbXVsbmlfaW50ZWwgcHZwYW5p
+YyBwYXJwb3J0X3BjIHBjc3BrciBwYXJwb3J0IGkyY19waWl4NCB4ZnMgbGliY3JjMzJjIHZp
+cnRpb19jb25zb2xlIHZpcnRpb19uZXQgdmlydGlvX3Njc2kgYm9jaHNfZHJtIGRybV9rbXNf
+aGVscGVyIGNyYzMyY19pbnRlbCB0dG0gZHJtIHNlcmlvX3JhdyB2aXJ0aW9fcGNpIHZpcnRp
+b19yaW5nIHZpcnRpbyBhdGFfZ2VuZXJpYyBwYXRhX2FjcGkgZmxvcHB5ClsgIDYwNC4zMDIx
+ODhdIENQVTogNiBQSUQ6IDQzMTAgQ29tbTogaXAgVGFpbnRlZDogRyAgICAgICAgICAgIEUg
+ICA0LjE0LjAtcmM2KyAjMgpbICA2MDQuMzAyMTg4XSBIYXJkd2FyZSBuYW1lOiBWaXJ0dW96
+em8gS1ZNLCBCSU9TIDEuOS4xLTUuMy4yLnZ6Ny43IDA0LzAxLzIwMTQKWyAgNjA0LjMwNTEx
+N10gdGFzazogZmZmZjhlOWVkYTUxMjg0MCB0YXNrLnN0YWNrOiBmZmZmYjEwNzRmMjg4MDAw
+ClsgIDYwNC4zMDUxNjZdIFJJUDogMDAxMDpfcmF3X3NwaW5fbG9ja19iaCsweDFiLzB4MzAK
+WyAgNjA0LjMwNjAzNF0gUlNQOiAwMDE4OmZmZmZiMTA3NGYyOGI5NTAgRUZMQUdTOiAwMDAx
+MDI0NgpbICA2MDQuMzA2MDM0XSBSQVg6IDAwMDAwMDAwMDAwMDAwMDAgUkJYOiAwMDAwMDAw
+MDAwMDAwMDM4IFJDWDogMDAwMDAwMDAwMDAwMDAwMApbICA2MDQuMzA3MDM0XSBSRFg6IDAw
+MDAwMDAwMDAwMDAwMDEgUlNJOiBmZmZmYjEwNzRmMjhiOWQwIFJESTogMDAwMDAwMDAwMDAw
+MDAxMApbICA2MDQuMzA3MDM0XSBSQlA6IGZmZmZiMTA3NGYyOGI5NTAgUjA4OiAwMDAwMDAw
+MDAwMDE5MGJkIFIwOTogMDAwMDAwMDAwMDAwMDAwMApbICA2MDQuMzA3MDM0XSBSMTA6IDAw
+MDAwMDAwZmYwMDAwMDAgUjExOiAwMDAwMDAwMGZmZmZmZmZmIFIxMjogZmZmZmIxMDc0ZjI4
+Yjk3OApbICA2MDQuMzA3MDM0XSBSMTM6IGZmZmZiMTA3NGYyOGI5ZDAgUjE0OiBmZmZmOGU5
+ZWVmY2Q4YWU4IFIxNTogMDAwMDAwMDAwMDAwMDAwMApbICA2MDQuMzA3MDM0XSBGUzogIDAw
+MDA3ZjE2ZjVlNzIwYzAoMDAwMCkgR1M6ZmZmZjhlOWVmZmQ4MDAwMCgwMDAwKSBrbmxHUzow
+MDAwMDAwMDAwMDAwMDAwClsgIDYwNC4zMTMyMzZdIENTOiAgMDAxMCBEUzogMDAwMCBFUzog
+MDAwMCBDUjA6IDAwMDAwMDAwODAwNTAwMzMKWyAgNjA0LjMxMzIzNl0gQ1IyOiAwMDAwMDAw
+MDAwMDAwMDEwIENSMzogMDAwMDAwMDA1YTY5NTAwNSBDUjQ6IDAwMDAwMDAwMDAxNjA2ZTAK
+WyAgNjA0LjMxMzIzNl0gQ2FsbCBUcmFjZToKWyAgNjA0LjMxMzIzNl0gIHN2Y19hZ2VfdGVt
+cF94cHJ0c19ub3crMHg0Yi8weDIwMCBbc3VucnBjXQpbICA2MDQuMzE1MTczXSAgbmZzZF9p
+bmV0YWRkcl9ldmVudCsweDg3LzB4YjAgW25mc2RdClsgIDYwNC4zMTUxNzNdICBub3RpZmll
+cl9jYWxsX2NoYWluKzB4NGEvMHg3MApbICA2MDQuMzE1MTczXSAgYmxvY2tpbmdfbm90aWZp
+ZXJfY2FsbF9jaGFpbisweDQzLzB4NjAKWyAgNjA0LjMxNTE3M10gIF9faW5ldF9kZWxfaWZh
+KzB4MTZiLzB4MmMwClsgIDYwNC4zMTUxNzNdICBpbmV0X3J0bV9kZWxhZGRyKzB4MTI5LzB4
+MWMwClsgIDYwNC4zMTUxNzNdICBydG5ldGxpbmtfcmN2X21zZysweDFmOS8weDI4MApbICA2
+MDQuMzE1MTczXSAgPyBydG5sX2NhbGNpdC5pc3JhLjI0KzB4MTEwLzB4MTEwClsgIDYwNC4z
+MTUxNzNdICBuZXRsaW5rX3Jjdl9za2IrMHg5MS8weDEzMApbICA2MDQuMzIyODUwXSAgcnRu
+ZXRsaW5rX3JjdisweDE1LzB4MjAKWyAgNjA0LjMyMjg1MF0gIG5ldGxpbmtfdW5pY2FzdCsw
+eDE4ZS8weDIyMApbICA2MDQuMzIyODUwXSAgbmV0bGlua19zZW5kbXNnKzB4MmM1LzB4M2Mw
+ClsgIDYwNC4zMjUxMTRdICBzb2NrX3NlbmRtc2crMHgzOC8weDUwClsgIDYwNC4zMjUxNTBd
+ICBfX19zeXNfc2VuZG1zZysweDI5YS8weDJmMApbICA2MDQuMzI1MTUwXSAgPyBscnVfY2Fj
+aGVfYWRkKzB4M2EvMHg4MApbICA2MDQuMzI1MTUwXSAgPyBscnVfY2FjaGVfYWRkX2FjdGl2
+ZV9vcl91bmV2aWN0YWJsZSsweDRjLzB4ZjAKWyAgNjA0LjMyNTE1MF0gID8gX19oYW5kbGVf
+bW1fZmF1bHQrMHg5YmUvMHgxMWEwClsgIDYwNC4zMjUxNTBdICA/IGhhbmRsZV9tbV9mYXVs
+dCsweGIxLzB4MjAwClsgIDYwNC4zMjUxNTBdICBfX3N5c19zZW5kbXNnKzB4NTQvMHg5MApb
+ICA2MDQuMzI1MTUwXSAgPyBfX3N5c19zZW5kbXNnKzB4NTQvMHg5MApbICA2MDQuMzI1MTUw
+XSAgU3lTX3NlbmRtc2crMHgxMi8weDIwClsgIDYwNC4zMjUxNTBdICBlbnRyeV9TWVNDQUxM
+XzY0X2Zhc3RwYXRoKzB4MWEvMHhhNQpbICA2MDQuMzI1MTUwXSBSSVA6IDAwMzM6MHg3ZjE2
+ZjU1NzllNTcKWyAgNjA0LjMzMTY2NV0gUlNQOiAwMDJiOjAwMDA3ZmZmYTM4YjQ2MjggRUZM
+QUdTOiAwMDAwMDI0NiBPUklHX1JBWDogMDAwMDAwMDAwMDAwMDAyZQpbICA2MDQuMzMyMzY2
+XSBSQVg6IGZmZmZmZmZmZmZmZmZmZGEgUkJYOiAwMDAwMDAwMDAwNjcxNGMwIFJDWDogMDAw
+MDdmMTZmNTU3OWU1NwpbICA2MDQuMzMyOTIwXSBSRFg6IDAwMDAwMDAwMDAwMDAwMDAgUlNJ
+OiAwMDAwN2ZmZmEzOGI0NjcwIFJESTogMDAwMDAwMDAwMDAwMDAwMwpbICA2MDQuMzMzMTkx
+XSBSQlA6IDAwMDA3ZmZmYTM4YmNhZjAgUjA4OiAwMDAwMDAwMDAwMDAwMDAxIFIwOTogZmVm
+ZWZlZmY3NzY4NmQ3NApbICA2MDQuMzMzMTkxXSBSMTA6IDAwMDAwMDAwMDAwMDAwMDYgUjEx
+OiAwMDAwMDAwMDAwMDAwMjQ2IFIxMjogMDAwMDdmZmZhMzhiYzgwMApbICA2MDQuMzMzMTkx
+XSBSMTM6IDAwMDAwMDAwMDAwMDAwMDAgUjE0OiAwMDAwN2ZmZmEzOGJjN2EwIFIxNTogMDAw
+MDdmZmZhMzhiYzdhOApbICA2MDQuMzMzMTkxXSBDb2RlOiAwMCA1ZCBjMyAzMSBjMCA1ZCBj
+MyA2NiAwZiAxZiA4NCAwMCAwMCAwMCAwMCAwMCAwZiAxZiA0NCAwMCAwMCA1NSA2NSA4MSAw
+NSBhZiA0NyA3NiA2NCAwMCAwMiAwMCAwMCA0OCA4OSBlNSAzMSBjMCBiYSAwMSAwMCAwMCAw
+MCA8ZjA+IDBmIGIxIDE3IDg1IGMwIDc1IDAyIDVkIGMzIDg5IGM2IGU4IGQ0IGFjIDg0IGZm
+IDVkIGMzIDY2IDkwIApbICA2MDQuMzM1MTAyXSBSSVA6IF9yYXdfc3Bpbl9sb2NrX2JoKzB4
+MWIvMHgzMCBSU1A6IGZmZmZiMTA3NGYyOGI5NTAKWyAgNjA0LjMzNTEwMl0gQ1IyOiAwMDAw
+MDAwMDAwMDAwMDEwCg==
+--------------0331A3ACDF6E8266A7236424--
