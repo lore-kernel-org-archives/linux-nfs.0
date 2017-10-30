@@ -1,51 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60350 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:62574 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752410AbdJ3Otn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Oct 2017 10:49:43 -0400
-Date: Mon, 30 Oct 2017 10:49:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        Jeff Layton <jlayton@poochiereds.net>
-Subject: Re: [PATCH] nlm_shutdown_hosts_net() cleanup
-Message-ID: <20171030144943.GG14098@fieldses.org>
-References: <1d1a25d8-a34b-5175-bb6a-9549041c11f4@virtuozzo.com>
+        id S1751945AbdJ3OuE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Oct 2017 10:50:04 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.phx2.redhat.com [10.5.11.15])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id DF0256A7DD
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Oct 2017 14:50:03 +0000 (UTC)
+Subject: Re: [PATCH 0/7] nfs-utils: Merge libnfsidmap tree with nfs-utils
+ UPDATED
+To: Justin Mitchell <jumitche@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+References: <1505397745.3665.4.camel@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <22e33e39-b0a1-00b7-5ac9-83d8cf0afca7@RedHat.com>
+Date: Mon, 30 Oct 2017 10:49:59 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1d1a25d8-a34b-5175-bb6a-9549041c11f4@virtuozzo.com>
+In-Reply-To: <1505397745.3665.4.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 30, 2017 at 04:47:58PM +0300, Vasily Averin wrote:
-> nlm_complain_hosts() walk through nlm_server_hosts hlist that should be
-> protected by nlm_host_mutex.
 
-I haven't looked at the NLM locking in ages.  Do we know who else might
-actually be accessing this list concurrently?
 
---b.
+On 09/14/2017 10:02 AM, Justin Mitchell wrote:
+> It was suggested that merging the trees is more desirable than splitting
+> the common code out into a shared library, so this patch set attempts to
+> merge the libnfsidmap code into nfs-utils.
+> 
+> The main body of the code, copyright notices, and readme are copied
+> across, omitting the shared conffile code, and trimming unused files
+> like strlcpy.c and queue.h. The build files of both are adjusted to the
+> new structure, and the dependent nfs-utils now link to the included
+> shared library instead of an external one.
+> 
+> The source libnfsidmap tree did include some packaging files for
+> debian/dkpg which have been omitted, there are no packaging materials in
+> nfs-utils to merge them with, and i welcome advice on what should be
+> done here.
+> 
+> Change: libnfsidmap imported as support/nfsidmap/ 
+Committed... 
+
+steved.
 
 > 
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-> ---
->  fs/lockd/host.c | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
+> Justin Mitchell (7):
+>   nfs-utils: const-ify the config handling functions
+>   nfs-utils: Merge conf_get_str and conf_get_section
+>   nfs-utils: Add get_str with default value
+>   nfs-utils: split conffile to a separate convenience lib
+>   nfs-utils: Import libnfsidmap codebase
+>   integrate libnfsidmap code with rest of nfs-utils
+>   nfs-utils: cleanup warnings from merged libnfsidmap code
 > 
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index d716c99..089c1d7 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -617,9 +617,8 @@ nlm_shutdown_hosts_net(struct net *net)
->  
->  	/* Then, perform a garbage collection pass */
->  	nlm_gc_hosts(net);
-> -	mutex_unlock(&nlm_host_mutex);
-> -
->  	nlm_complain_hosts(net);
-> +	mutex_unlock(&nlm_host_mutex);
->  }
->  
->  /*
-> -- 
-> 2.7.4
+>  configure.ac                         |   50 +-
+>  support/Makefile.am                  |    8 +-
+>  support/include/conffile.h           |   23 +-
+>  support/nfs/Makefile.am              |   13 +-
+>  support/nfs/conffile.c               |   85 +--
+>  support/nfs/xlog.c                   |    2 +
+>  support/nfsidmap/AUTHORS             |    1 +
+>  support/nfsidmap/COPYING             |   30 +
+>  support/nfsidmap/Makefile.am         |   61 ++
+>  support/nfsidmap/README              |  126 ++++
+>  support/nfsidmap/gums.c              |  788 ++++++++++++++++++++
+>  support/nfsidmap/idmapd.conf         |  137 ++++
+>  support/nfsidmap/idmapd.conf.5       |  308 ++++++++
+>  support/nfsidmap/libnfsidmap.c       |  712 +++++++++++++++++++
+>  support/nfsidmap/libnfsidmap.pc.in   |   11 +
+>  support/nfsidmap/libtest.c           |  160 +++++
+>  support/nfsidmap/nfs4_uid_to_name.3  |  174 +++++
+>  support/nfsidmap/nfsidmap.h          |   67 ++
+>  support/nfsidmap/nfsidmap_internal.h |   79 +++
+>  support/nfsidmap/nss.c               |  468 ++++++++++++
+>  support/nfsidmap/static.c            |  413 +++++++++++
+>  support/nfsidmap/umich_ldap.c        | 1303 ++++++++++++++++++++++++++++++++++
+>  utils/Makefile.am                    |    2 -
+>  utils/blkmapd/Makefile.am            |    2 +-
+>  utils/exportfs/Makefile.am           |    2 +-
+>  utils/gssd/Makefile.am               |    7 +-
+>  utils/idmapd/Makefile.am             |    4 +-
+>  utils/mount/Makefile.am              |    2 +-
+>  utils/mountd/Makefile.am             |    2 +-
+>  utils/nfsd/Makefile.am               |    2 +-
+>  utils/nfsdcltrack/Makefile.am        |    2 +-
+>  utils/nfsidmap/Makefile.am           |    4 +-
+>  utils/statd/Makefile.am              |    4 +-
+>  33 files changed, 4973 insertions(+), 79 deletions(-)
+>  create mode 100644 support/nfsidmap/AUTHORS
+>  create mode 100644 support/nfsidmap/COPYING
+>  create mode 100644 support/nfsidmap/Makefile.am
+>  create mode 100644 support/nfsidmap/README
+>  create mode 100644 support/nfsidmap/gums.c
+>  create mode 100644 support/nfsidmap/idmapd.conf
+>  create mode 100644 support/nfsidmap/idmapd.conf.5
+>  create mode 100644 support/nfsidmap/libnfsidmap.c
+>  create mode 100644 support/nfsidmap/libnfsidmap.pc.in
+>  create mode 100644 support/nfsidmap/libtest.c
+>  create mode 100644 support/nfsidmap/nfs4_uid_to_name.3
+>  create mode 100644 support/nfsidmap/nfsidmap.h
+>  create mode 100644 support/nfsidmap/nfsidmap_internal.h
+>  create mode 100644 support/nfsidmap/nss.c
+>  create mode 100644 support/nfsidmap/static.c
+>  create mode 100644 support/nfsidmap/umich_ldap.c
+> 
