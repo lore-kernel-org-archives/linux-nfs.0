@@ -1,178 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27283 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751609AbdJ2R2z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Oct 2017 13:28:55 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH 2/4] rpcrdma: Remove C structure definitions of XDR data items
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CANjDDBjUzfCJjaGb9aq9YC7ZKrvYoVuXThV3RV1fu-fo=Sjfew@mail.gmail.com>
-Date: Sun, 29 Oct 2017 13:28:47 -0400
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <63736984-243A-4F17-A146-57A0CA8E5061@oracle.com>
-References: <20171027164014.10826.10151.stgit@manet.1015granger.net> <20171027164402.10826.42984.stgit@manet.1015granger.net> <CANjDDBjUzfCJjaGb9aq9YC7ZKrvYoVuXThV3RV1fu-fo=Sjfew@mail.gmail.com>
-To: Devesh Sharma <devesh.sharma@broadcom.com>
+Received: from mail-sy3aus01on0103.outbound.protection.outlook.com ([104.47.117.103]:52201
+        "EHLO AUS01-SY3-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751857AbdJ3DaJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 29 Oct 2017 23:30:09 -0400
+From: Ryan Doyle <rdoyle@aconex.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs-utils: display NFS RPC queue time for mountstats and
+ nfs-iostat  
+Date: Mon, 30 Oct 2017 03:30:06 +0000
+Message-ID: <MEXPR01MB0711C64DC23E94EE366C5455A2590@MEXPR01MB0711.ausprd01.prod.outlook.com>
+Content-Type: multipart/mixed;
+        boundary="_002_MEXPR01MB0711C64DC23E94EE366C5455A2590MEXPR01MB0711ausp_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--_002_MEXPR01MB0711C64DC23E94EE366C5455A2590MEXPR01MB0711ausp_
+Content-Type: text/plain; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
 
-> On Oct 28, 2017, at 3:38 AM, Devesh Sharma <devesh.sharma@broadcom.com> wrote:
-> 
-> Hi Chuck,
+Hi there
 
-Hi Devesh, thanks for the review!
+I've got a patch to display the NFS queue statistics for mountstats and nfs=
+iostat exported in /proc/self/mountstats. The RTT and total execution time =
+is currently displayed but I think it's also useful displaying how long the=
+ task was queued for too. If others agree, please feel free to apply it.
 
+Cheers,
+Ryan=
 
-> Could add a pointer to the patch which replaced things with the new
-> data-structure in the commit message
+--_002_MEXPR01MB0711C64DC23E94EE366C5455A2590MEXPR01MB0711ausp_
+Content-Type: text/x-patch; name="report_nfs_queue_stats_v1.patch"
+Content-Description: report_nfs_queue_stats_v1.patch
+Content-Disposition: attachment; filename="report_nfs_queue_stats_v1.patch";
+	size=4475; creation-date="Mon, 30 Oct 2017 03:21:41 GMT";
+	modification-date="Mon, 30 Oct 2017 03:21:41 GMT"
+Content-Transfer-Encoding: base64
 
-How about this:
+ZGlmZiAtLWdpdCBhL3Rvb2xzL21vdW50c3RhdHMvbW91bnRzdGF0cy5weSBiL3Rvb2xzL21vdW50
+c3RhdHMvbW91bnRzdGF0cy5weQppbmRleCBhNjhkNzAyLi4yOWI1ZjVhIDEwMDY0NAotLS0gYS90
+b29scy9tb3VudHN0YXRzL21vdW50c3RhdHMucHkKKysrIGIvdG9vbHMvbW91bnRzdGF0cy9tb3Vu
+dHN0YXRzLnB5CkBAIC01ODcsNiArNTg3LDcgQEAgY2xhc3MgRGV2aWNlRGF0YToKICAgICAgICAg
+b3BzID0gZmxvYXQocnBjX3N0YXRzWzBdKQogICAgICAgICByZXRyYW5zID0gZmxvYXQocnBjX3N0
+YXRzWzFdIC0gcnBjX3N0YXRzWzBdKQogICAgICAgICBraWxvYnl0ZXMgPSBmbG9hdChycGNfc3Rh
+dHNbM10gKyBycGNfc3RhdHNbNF0pIC8gMTAyNAorICAgICAgICBxdWV1ZWRfZm9yID0gZmxvYXQo
+cnBjX3N0YXRzWzVdKQogICAgICAgICBydHQgPSBmbG9hdChycGNfc3RhdHNbNl0pCiAgICAgICAg
+IGV4ZSA9IGZsb2F0KHJwY19zdGF0c1s3XSkKIApAQCAtNTk2LDExICs1OTcsMTMgQEAgY2xhc3Mg
+RGV2aWNlRGF0YToKICAgICAgICAgICAgIHJldHJhbnNfcGVyY2VudCA9IChyZXRyYW5zICogMTAw
+KSAvIG9wcwogICAgICAgICAgICAgcnR0X3Blcl9vcCA9IHJ0dCAvIG9wcwogICAgICAgICAgICAg
+ZXhlX3Blcl9vcCA9IGV4ZSAvIG9wcworICAgICAgICAgICAgcXVldWVkX2Zvcl9wZXJfb3AgPSBx
+dWV1ZWRfZm9yIC8gb3BzCiAgICAgICAgIGVsc2U6CiAgICAgICAgICAgICBrYl9wZXJfb3AgPSAw
+LjAKICAgICAgICAgICAgIHJldHJhbnNfcGVyY2VudCA9IDAuMAogICAgICAgICAgICAgcnR0X3Bl
+cl9vcCA9IDAuMAogICAgICAgICAgICAgZXhlX3Blcl9vcCA9IDAuMAorICAgICAgICAgICAgcXVl
+dWVkX2Zvcl9wZXJfb3AgPSAwLjAKIAogICAgICAgICBvcCArPSAnOicKICAgICAgICAgcHJpbnQo
+Zm9ybWF0KG9wLmxvd2VyKCksICc8MTZzJyksIGVuZD0nJykKQEAgLTYwOSw3ICs2MTIsOCBAQCBj
+bGFzcyBEZXZpY2VEYXRhOgogICAgICAgICBwcmludChmb3JtYXQoJ2tCL29wJywgJz4xNnMnKSwg
+ZW5kPScnKQogICAgICAgICBwcmludChmb3JtYXQoJ3JldHJhbnMnLCAnPjE2cycpLCBlbmQ9Jycp
+CiAgICAgICAgIHByaW50KGZvcm1hdCgnYXZnIFJUVCAobXMpJywgJz4xNnMnKSwgZW5kPScnKQot
+ICAgICAgICBwcmludChmb3JtYXQoJ2F2ZyBleGUgKG1zKScsICc+MTZzJykpCisgICAgICAgIHBy
+aW50KGZvcm1hdCgnYXZnIGV4ZSAobXMpJywgJz4xNnMnKSwgZW5kPScnKQorICAgICAgICBwcmlu
+dChmb3JtYXQoJ2F2ZyBxdWV1ZSAobXMpJywgJz4xNnMnKSkKIAogICAgICAgICBwcmludChmb3Jt
+YXQoKG9wcyAvIHNhbXBsZV90aW1lKSwgJz4yNC4zZicpLCBlbmQ9JycpCiAgICAgICAgIHByaW50
+KGZvcm1hdCgoa2lsb2J5dGVzIC8gc2FtcGxlX3RpbWUpLCAnPjE2LjNmJyksIGVuZD0nJykKQEAg
+LTYxNyw3ICs2MjEsOCBAQCBjbGFzcyBEZXZpY2VEYXRhOgogICAgICAgICByZXRyYW5zbWl0cyA9
+ICd7MDo+MTAuMGZ9ICh7MTo+My4xZn0lKScuZm9ybWF0KHJldHJhbnMsIHJldHJhbnNfcGVyY2Vu
+dCkuc3RyaXAoKQogICAgICAgICBwcmludChmb3JtYXQocmV0cmFuc21pdHMsICc+MTYnKSwgZW5k
+PScnKQogICAgICAgICBwcmludChmb3JtYXQocnR0X3Blcl9vcCwgJz4xNi4zZicpLCBlbmQ9Jycp
+Ci0gICAgICAgIHByaW50KGZvcm1hdChleGVfcGVyX29wLCAnPjE2LjNmJykpCisgICAgICAgIHBy
+aW50KGZvcm1hdChleGVfcGVyX29wLCAnPjE2LjNmJyksIGVuZD0nJykKKyAgICAgICAgcHJpbnQo
+Zm9ybWF0KHF1ZXVlZF9mb3JfcGVyX29wLCAnPjE2LjNmJykpCiAKICAgICBkZWYgZGlzcGxheV9p
+b3N0YXRzKHNlbGYsIHNhbXBsZV90aW1lKToKICAgICAgICAgIiIiRGlzcGxheSBORlMgYW5kIFJQ
+QyBzdGF0cyBpbiBhbiBpb3N0YXQtbGlrZSB3YXkKZGlmZiAtLWdpdCBhL3Rvb2xzL25mcy1pb3N0
+YXQvbmZzLWlvc3RhdC5weSBiL3Rvb2xzL25mcy1pb3N0YXQvbmZzLWlvc3RhdC5weQppbmRleCA1
+NzdhMjNkLi4wZDhiMjE2IDEwMDY0NAotLS0gYS90b29scy9uZnMtaW9zdGF0L25mcy1pb3N0YXQu
+cHkKKysrIGIvdG9vbHMvbmZzLWlvc3RhdC9uZnMtaW9zdGF0LnB5CkBAIC0zMjYsNiArMzI2LDcg
+QEAgY2xhc3MgRGV2aWNlRGF0YToKICAgICAgICAgb3BzID0gZmxvYXQocnBjX3N0YXRzWzBdKQog
+ICAgICAgICByZXRyYW5zID0gZmxvYXQocnBjX3N0YXRzWzFdIC0gcnBjX3N0YXRzWzBdKQogICAg
+ICAgICBraWxvYnl0ZXMgPSBmbG9hdChycGNfc3RhdHNbM10gKyBycGNfc3RhdHNbNF0pIC8gMTAy
+NAorICAgICAgICBxdWV1ZWRfZm9yID0gZmxvYXQocnBjX3N0YXRzWzVdKQogICAgICAgICBydHQg
+PSBmbG9hdChycGNfc3RhdHNbNl0pCiAgICAgICAgIGV4ZSA9IGZsb2F0KHJwY19zdGF0c1s3XSkK
+IApAQCAtMzM1LDExICszMzYsMTMgQEAgY2xhc3MgRGV2aWNlRGF0YToKICAgICAgICAgICAgIHJl
+dHJhbnNfcGVyY2VudCA9IChyZXRyYW5zICogMTAwKSAvIG9wcwogICAgICAgICAgICAgcnR0X3Bl
+cl9vcCA9IHJ0dCAvIG9wcwogICAgICAgICAgICAgZXhlX3Blcl9vcCA9IGV4ZSAvIG9wcworICAg
+ICAgICAgICAgcXVldWVkX2Zvcl9wZXJfb3AgPSBxdWV1ZWRfZm9yIC8gb3BzCiAgICAgICAgIGVs
+c2U6CiAgICAgICAgICAgICBrYl9wZXJfb3AgPSAwLjAKICAgICAgICAgICAgIHJldHJhbnNfcGVy
+Y2VudCA9IDAuMAogICAgICAgICAgICAgcnR0X3Blcl9vcCA9IDAuMAogICAgICAgICAgICAgZXhl
+X3Blcl9vcCA9IDAuMAorICAgICAgICAgICAgcXVldWVkX2Zvcl9wZXJfb3AgPSAwLjAKIAogICAg
+ICAgICBvcCArPSAnOicKICAgICAgICAgcHJpbnQoZm9ybWF0KG9wLmxvd2VyKCksICc8MTZzJyks
+IGVuZD0nJykKQEAgLTM0OCw3ICszNTEsOCBAQCBjbGFzcyBEZXZpY2VEYXRhOgogICAgICAgICBw
+cmludChmb3JtYXQoJ2tCL29wJywgJz4xNnMnKSwgZW5kPScnKQogICAgICAgICBwcmludChmb3Jt
+YXQoJ3JldHJhbnMnLCAnPjE2cycpLCBlbmQ9JycpCiAgICAgICAgIHByaW50KGZvcm1hdCgnYXZn
+IFJUVCAobXMpJywgJz4xNnMnKSwgZW5kPScnKQotICAgICAgICBwcmludChmb3JtYXQoJ2F2ZyBl
+eGUgKG1zKScsICc+MTZzJykpCisgICAgICAgIHByaW50KGZvcm1hdCgnYXZnIGV4ZSAobXMpJywg
+Jz4xNnMnKSwgZW5kPScnKQorICAgICAgICBwcmludChmb3JtYXQoJ2F2ZyBxdWV1ZSAobXMpJywg
+Jz4xNnMnKSkKIAogICAgICAgICBwcmludChmb3JtYXQoKG9wcyAvIHNhbXBsZV90aW1lKSwgJz4y
+NC4zZicpLCBlbmQ9JycpCiAgICAgICAgIHByaW50KGZvcm1hdCgoa2lsb2J5dGVzIC8gc2FtcGxl
+X3RpbWUpLCAnPjE2LjNmJyksIGVuZD0nJykKQEAgLTM1Niw3ICszNjAsOCBAQCBjbGFzcyBEZXZp
+Y2VEYXRhOgogICAgICAgICByZXRyYW5zbWl0cyA9ICd7MDo+MTAuMGZ9ICh7MTo+My4xZn0lKScu
+Zm9ybWF0KHJldHJhbnMsIHJldHJhbnNfcGVyY2VudCkuc3RyaXAoKQogICAgICAgICBwcmludChm
+b3JtYXQocmV0cmFuc21pdHMsICc+MTYnKSwgZW5kPScnKQogICAgICAgICBwcmludChmb3JtYXQo
+cnR0X3Blcl9vcCwgJz4xNi4zZicpLCBlbmQ9JycpCi0gICAgICAgIHByaW50KGZvcm1hdChleGVf
+cGVyX29wLCAnPjE2LjNmJykpCisgICAgICAgIHByaW50KGZvcm1hdChleGVfcGVyX29wLCAnPjE2
+LjNmJyksIGVuZD0nJykKKyAgICAgICAgcHJpbnQoZm9ybWF0KHF1ZXVlZF9mb3JfcGVyX29wLCAn
+PjE2LjNmJykpCiAKICAgICBkZWYgb3BzKHNlbGYsIHNhbXBsZV90aW1lKToKICAgICAgICAgc2Vu
+ZHMgPSBmbG9hdChzZWxmLl9fcnBjX2RhdGFbJ3JwY3NlbmRzJ10pCmRpZmYgLS1naXQgYS90b29s
+cy9uZnMtaW9zdGF0L25mc2lvc3RhdC5tYW4gYi90b29scy9uZnMtaW9zdGF0L25mc2lvc3RhdC5t
+YW4KaW5kZXggYjQ3N2E5YS4uOWFlOTRjNSAxMDA2NDQKLS0tIGEvdG9vbHMvbmZzLWlvc3RhdC9u
+ZnNpb3N0YXQubWFuCisrKyBiL3Rvb2xzL25mcy1pb3N0YXQvbmZzaW9zdGF0Lm1hbgpAQCAtOTAs
+NiArOTAsMTMgQEAgVGhpcyBpcyB0aGUgZHVyYXRpb24gZnJvbSB0aGUgdGltZSB0aGF0IE5GUyBj
+bGllbnQgZG9lcyB0aGUgUlBDIHJlcXVlc3QgdG8gaXRzIGsKIC5SRQogLlJFCiAuUkUKKy5SUyA4
+CistIFxmQmF2ZyBxdWV1ZSAobXMpXGZSCisuUlMKK1RoaXMgaXMgdGhlIGR1cmF0aW9uIGZyb20g
+dGhlIHRpbWUgdGhlIE5GUyBjbGllbnQgY3JlYXRlZCB0aGUgUlBDIHJlcXVlc3QgdGFzayB0byB0
+aGUgdGltZSB0aGUgcmVxdWVzdCBpcyB0cmFuc21pdHRlZC4KKy5SRQorLlJFCisuUkUKIC5UUAog
+Tm90ZSB0aGF0IGlmIGFuIGludGVydmFsIGlzIHVzZWQgYXMgYXJndW1lbnQgdG8gXGZCbmZzaW9z
+dGF0XGZSLCB0aGVuIHRoZSBkaWZmcmVuY2UgZnJvbSBwcmV2aW91cyBpbnRlcnZhbCB3aWxsIGJl
+IGRpc3BsYXllZCwgb3RoZXJ3aXNlIHRoZSByZXN1bHRzIHdpbGwgYmUgZnJvbSB0aGUgdGltZSB0
+aGF0IHRoZSBzaGFyZSB3YXMgbW91bnRlZC4KIAo=
 
-"Clean up: C-structure style XDR encoding and decoding logic has
-been replaced over the past several merge windows on both the
-client and server. These data structures are no longer used."
-
-
-> On Fri, Oct 27, 2017 at 10:14 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> Clean up: XDR structures have been replaced in all client and server
->> transport code.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> include/linux/sunrpc/rpc_rdma.h |   59 ---------------------------------------
->> net/sunrpc/xprtrdma/rpc_rdma.c  |    6 ++--
->> net/sunrpc/xprtrdma/xprt_rdma.h |    6 ----
->> 3 files changed, 3 insertions(+), 68 deletions(-)
->> 
->> diff --git a/include/linux/sunrpc/rpc_rdma.h b/include/linux/sunrpc/rpc_rdma.h
->> index b7e85b3..840afac 100644
->> --- a/include/linux/sunrpc/rpc_rdma.h
->> +++ b/include/linux/sunrpc/rpc_rdma.h
->> @@ -50,65 +50,6 @@ enum {
->>        RPCRDMA_V1_DEF_INLINE_SIZE      = 1024,
->> };
->> 
->> -struct rpcrdma_segment {
->> -       __be32 rs_handle;       /* Registered memory handle */
->> -       __be32 rs_length;       /* Length of the chunk in bytes */
->> -       __be64 rs_offset;       /* Chunk virtual address or offset */
->> -};
->> -
->> -/*
->> - * read chunk(s), encoded as a linked list.
->> - */
->> -struct rpcrdma_read_chunk {
->> -       __be32 rc_discrim;      /* 1 indicates presence */
->> -       __be32 rc_position;     /* Position in XDR stream */
->> -       struct rpcrdma_segment rc_target;
->> -};
->> -
->> -/*
->> - * write chunk, and reply chunk.
->> - */
->> -struct rpcrdma_write_chunk {
->> -       struct rpcrdma_segment wc_target;
->> -};
->> -
->> -/*
->> - * write chunk(s), encoded as a counted array.
->> - */
->> -struct rpcrdma_write_array {
->> -       __be32 wc_discrim;      /* 1 indicates presence */
->> -       __be32 wc_nchunks;      /* Array count */
->> -       struct rpcrdma_write_chunk wc_array[0];
->> -};
->> -
->> -struct rpcrdma_msg {
->> -       __be32 rm_xid;  /* Mirrors the RPC header xid */
->> -       __be32 rm_vers; /* Version of this protocol */
->> -       __be32 rm_credit;       /* Buffers requested/granted */
->> -       __be32 rm_type; /* Type of message (enum rpcrdma_proc) */
->> -       union {
->> -
->> -               struct {                        /* no chunks */
->> -                       __be32 rm_empty[3];     /* 3 empty chunk lists */
->> -               } rm_nochunks;
->> -
->> -               struct {                        /* no chunks and padded */
->> -                       __be32 rm_align;        /* Padding alignment */
->> -                       __be32 rm_thresh;       /* Padding threshold */
->> -                       __be32 rm_pempty[3];    /* 3 empty chunk lists */
->> -               } rm_padded;
->> -
->> -               struct {
->> -                       __be32 rm_err;
->> -                       __be32 rm_vers_low;
->> -                       __be32 rm_vers_high;
->> -               } rm_error;
->> -
->> -               __be32 rm_chunks[0];    /* read, write and reply chunks */
->> -
->> -       } rm_body;
->> -};
->> -
->> /*
->>  * XDR sizes, in quads
->>  */
->> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
->> index 4fdeaac..45cb549 100644
->> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
->> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
->> @@ -75,11 +75,11 @@ static unsigned int rpcrdma_max_call_header_size(unsigned int maxsegs)
->> 
->>        /* Maximum Read list size */
->>        maxsegs += 2;   /* segment for head and tail buffers */
->> -       size = maxsegs * sizeof(struct rpcrdma_read_chunk);
->> +       size = maxsegs * rpcrdma_readchunk_maxsz * sizeof(__be32);
->> 
->>        /* Minimal Read chunk size */
->>        size += sizeof(__be32); /* segment count */
->> -       size += sizeof(struct rpcrdma_segment);
->> +       size += rpcrdma_segment_maxsz * sizeof(__be32);
->>        size += sizeof(__be32); /* list discriminator */
->> 
->>        dprintk("RPC:       %s: max call header size = %u\n",
->> @@ -102,7 +102,7 @@ static unsigned int rpcrdma_max_reply_header_size(unsigned int maxsegs)
->>        /* Maximum Write list size */
->>        maxsegs += 2;   /* segment for head and tail buffers */
->>        size = sizeof(__be32);          /* segment count */
->> -       size += maxsegs * sizeof(struct rpcrdma_segment);
->> +       size += maxsegs * rpcrdma_segment_maxsz * sizeof(__be32);
->>        size += sizeof(__be32); /* list discriminator */
->> 
->>        dprintk("RPC:       %s: max reply header size = %u\n",
->> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
->> index 6e64c82..8b9954c 100644
->> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
->> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
->> @@ -145,12 +145,6 @@ struct rpcrdma_regbuf {
->>        return rb->rg_iov.lkey;
->> }
->> 
->> -static inline struct rpcrdma_msg *
->> -rdmab_to_msg(struct rpcrdma_regbuf *rb)
->> -{
->> -       return (struct rpcrdma_msg *)rb->rg_base;
->> -}
->> -
->> static inline struct ib_device *
->> rdmab_device(struct rpcrdma_regbuf *rb)
->> {
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+--_002_MEXPR01MB0711C64DC23E94EE366C5455A2590MEXPR01MB0711ausp_--
