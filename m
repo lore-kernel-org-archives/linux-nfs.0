@@ -1,101 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:49293 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753286AbdJaAJ7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Oct 2017 20:09:59 -0400
-Received: by mail-io0-f193.google.com with SMTP id n137so31270416iod.6
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Oct 2017 17:09:59 -0700 (PDT)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:49141 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753286AbdJaAKC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Oct 2017 20:10:02 -0400
+Received: by mail-io0-f195.google.com with SMTP id j17so31213124iod.5
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Oct 2017 17:10:02 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/5] nfsd: Ensure we don't recognise lock stateids after freeing them
-Date: Mon, 30 Oct 2017 20:09:49 -0400
-Message-Id: <20171031000951.18294-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20171031000951.18294-3-trond.myklebust@primarydata.com>
+Subject: [PATCH 4/5] nfsd: Ensure we check stateid validity in the seqid operation checks
+Date: Mon, 30 Oct 2017 20:09:50 -0400
+Message-Id: <20171031000951.18294-5-trond.myklebust@primarydata.com>
+In-Reply-To: <20171031000951.18294-4-trond.myklebust@primarydata.com>
 References: <20171031000951.18294-1-trond.myklebust@primarydata.com>
  <20171031000951.18294-2-trond.myklebust@primarydata.com>
  <20171031000951.18294-3-trond.myklebust@primarydata.com>
+ <20171031000951.18294-4-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to deal with lookup races, nfsd4_free_lock_stateid() needs
-to be able to signal to other stateful functions that the lock stateid
-is no longer valid. Right now, nfsd_lock() will check whether or not an
-existing stateid is still hashed, but only in the "new lock" path.
-
-To ensure the stateid invalidation is also recognised by the "existing lock"
-path, and also by a second call to nfsd4_free_lock_stateid() itself, we can
-change the type to NFS4_CLOSED_STID under the stp->st_mutex.
+After taking the stateid st_mutex, we want to know that the stateid
+still represents valid state before performing any non-idempotent
+actions.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+ fs/nfsd/nfs4state.c | 12 +++---------
+ 1 file changed, 3 insertions(+), 9 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0fa42c704b9a..cc8fff93146d 100644
+index cc8fff93146d..ab56d265ef68 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5078,7 +5078,9 @@ nfsd4_free_lock_stateid(stateid_t *stateid, struct nfs4_stid *s)
- 	struct nfs4_ol_stateid *stp = openlockstateid(s);
- 	__be32 ret;
- 
+@@ -5163,15 +5163,9 @@ static __be32 nfs4_seqid_op_checks(struct nfsd4_compound_state *cstate, stateid_
+ 	status = nfsd4_check_seqid(cstate, sop, seqid);
+ 	if (status)
+ 		return status;
+-	if (stp->st_stid.sc_type == NFS4_CLOSED_STID
+-		|| stp->st_stid.sc_type == NFS4_REVOKED_DELEG_STID)
+-		/*
+-		 * "Closed" stateid's exist *only* to return
+-		 * nfserr_replay_me from the previous step, and
+-		 * revoked delegations are kept only for free_stateid.
+-		 */
+-		return nfserr_bad_stateid;
 -	mutex_lock(&stp->st_mutex);
-+	ret = nfsd4_lock_ol_stateid(stp);
-+	if (ret)
-+		goto out_put_stid;
- 
- 	ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 	if (ret)
-@@ -5089,11 +5091,13 @@ nfsd4_free_lock_stateid(stateid_t *stateid, struct nfs4_stid *s)
- 			    lockowner(stp->st_stateowner)))
- 		goto out;
- 
-+	stp->st_stid.sc_type = NFS4_CLOSED_STID;
- 	release_lock_stateid(stp);
- 	ret = nfs_ok;
- 
- out:
- 	mutex_unlock(&stp->st_mutex);
-+out_put_stid:
- 	nfs4_put_stid(s);
- 	return ret;
- }
-@@ -5662,6 +5666,8 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
- 	lockdep_assert_held(&clp->cl_lock);
- 
- 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
-+		if (lst->st_stid.sc_type != NFS4_LOCK_STID)
-+			continue;
- 		if (lst->st_stid.sc_file == fp) {
- 			atomic_inc(&lst->st_stid.sc_count);
- 			return lst;
-@@ -5736,7 +5742,6 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 	struct nfs4_lockowner *lo;
- 	struct nfs4_ol_stateid *lst;
- 	unsigned int strhashval;
--	bool hashed;
- 
- 	lo = find_lockowner_str(cl, &lock->lk_new_owner);
- 	if (!lo) {
-@@ -5759,15 +5764,7 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 		goto out;
- 	}
- 
--	mutex_lock(&lst->st_mutex);
--
--	/* See if it's still hashed to avoid race with FREE_STATEID */
--	spin_lock(&cl->cl_lock);
--	hashed = !list_empty(&lst->st_perfile);
--	spin_unlock(&cl->cl_lock);
--
--	if (!hashed) {
--		mutex_unlock(&lst->st_mutex);
-+	if (nfsd4_lock_ol_stateid(lst) != nfs_ok) {
- 		nfs4_put_stid(&lst->st_stid);
- 		goto retry;
- 	}
++	status = nfsd4_lock_ol_stateid(stp);
++	if (status != nfs_ok)
++		return status;
+ 	status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid, nfsd4_has_session(cstate));
+ 	if (status == nfs_ok)
+ 		status = nfs4_check_fh(current_fh, &stp->st_stid);
 -- 
 2.13.6
 
