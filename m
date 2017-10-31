@@ -1,66 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:43004 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55646 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752335AbdJaRcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 31 Oct 2017 13:32:45 -0400
-Reply-To: ffilz@redhat.com
-Subject: Re: [PATCH 2/5] nfsd: CLOSE SHOULD return the invalid special stateid
- for NFSv4.x (x>0)
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-References: <20171031000951.18294-1-trond.myklebust@primarydata.com>
- <20171031000951.18294-2-trond.myklebust@primarydata.com>
- <20171031000951.18294-3-trond.myklebust@primarydata.com>
-From: Frank Filz <ffilz@redhat.com>
-Message-ID: <a18842ca-ee82-647a-f275-fd29be31e3f5@redhat.com>
-Date: Tue, 31 Oct 2017 10:32:44 -0700
+        id S1753703AbdJaRjr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 31 Oct 2017 13:39:47 -0400
+Date: Tue, 31 Oct 2017 13:39:45 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: Kernel bug triggered with xfstest generic/113
+Message-ID: <20171031173945.rgsvdtulqmsa5hkz@tonberry.usersys.redhat.com>
+References: <1422255296.3062600.1509006087862.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-In-Reply-To: <20171031000951.18294-3-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: multipart/mixed; boundary="aesy2c3pem53cbnr"
+In-Reply-To: <1422255296.3062600.1509006087862.JavaMail.zimbra@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/30/2017 05:09 PM, Trond Myklebust wrote:
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 8 ++++++++
->  1 file changed, 8 insertions(+)
->
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index b246aaa20863..0fa42c704b9a 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -63,6 +63,9 @@ static const stateid_t zero_stateid = {
->  static const stateid_t currentstateid = {
->  	.si_generation = 1,
->  };
-> +static const stateid_t close_stateid = {
-> +	.si_generation = 0xffffffffU,
-> +};
->  
->  static u64 current_sessionid = 1;
->  
-> @@ -5390,6 +5393,11 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	nfsd4_close_open_stateid(stp);
->  	mutex_unlock(&stp->st_mutex);
->  
-> +	/* See RFC5661 sectionm 18.2.4 */
-> +	if (stp->st_stid.sc_client->cl_minorversion)
-> +		memcpy(&close->cl_stateid, &close_stateid,
-> +				sizeof(close->cl_stateid));
-> +
->  	/* put reference from nfs4_preprocess_seqid_op */
->  	nfs4_put_stid(&stp->st_stid);
->  out:
 
-Ooh, I'd never noticed that... Ganesha needs to do that also.
+--aesy2c3pem53cbnr
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+On Thu, 26 Oct 2017, Mkrtchyan, Tigran wrote:
+
+> 
+> 
+> Against dCache nfs server:
+> 
+> [ 3987.717284] ------------[ cut here ]------------                                                                                                                                           
+> [ 3987.717286] kernel BUG at fs/inode.c:567!                                                                                                                                                  
+> [ 3987.717292] invalid opcode: 0000 [#1] SMP                                                                                                                                                  
+> [ 3987.717293] Modules linked in: loop nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs lockd grace fscache binfmt_misc af_packet nf_conntrack_netbios_ns nf_conntrack_broadcast xt_tcpudp xt
+> _CT ip6t_REJECT nf_reject_ipv6 nf_conntrack_ipv6 nf_defrag_ipv6 ipt_REJECT nf_reject_ipv4 nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack nf_conntrack libcrc32c nfnetlink ip6table_mangle ip6ta
+> ble_raw ip6table_security iptable_mangle iptable_raw iptable_security ip6table_filter ip6_tables iptable_filter btrfs xor zstd_decompress zstd_compress xxhash lzo_compress zlib_deflate raid6
+> _pq snd_hda_codec_idt snd_hda_codec_generic snd_hda_intel snd_hda_codec snd_hda_core snd_hwdep snd_seq iTCO_wdt iTCO_vendor_support snd_seq_device snd_timer lpc_ich mfd_core tpm_tis snd_pcm 
+> tpm_tis_core i2c_i801 snd tpm auth_rpcgss oid_registry                                                                                                                                        
+> [ 3987.717340]  sunrpc ip_tables x_tables serio_raw e1000e ptp pps_core autofs4                                                                                                               
+> [ 3987.717349] CPU: 1 PID: 31883 Comm: rm Not tainted 4.14.0-rc6-01076-gbb176f67090c #120                                                                                                     [ 3987.717350] Hardware name: Comptronic pczW1007/DX38BT, BIOS BTX3810J.86A.1893.2008.1009.1712 10/09/2008                                                                                    
+> [ 3987.717353] task: ffff880107f7c480 task.stack: ffff88012a830000                             
+> [ 3987.717358] RIP: 0010:evict+0x161/0x180                                                     
+> [ 3987.717360] RSP: 0018:ffff88012a833e80 EFLAGS: 00010202                                     
+> [ 3987.717362] RAX: ffffffff81806110 RBX: ffff880100037800 RCX: ffff8801000378a0               
+> [ 3987.717364] RDX: ffffffff81806110 RSI: ffff8801000378a0 RDI: ffffffff81806108               
+> [ 3987.717366] RBP: ffff88012a833e98 R08: 0000000000000000 R09: ffff88012a03d6e8               
+> [ 3987.717368] R10: ffff88012a03d6f8 R11: ffff88012a03d6f8 R12: ffff880100037910               
+> [ 3987.717370] R13: ffffffffa0404540 R14: 00000000ffffff9c R15: 0000000000000000               
+> [ 3987.717372] FS:  00007faddfd6e700(0000) GS:ffff88012fc80000(0000) knlGS:0000000000000000    
+> [ 3987.717375] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033                               
+> [ 3987.717377] CR2: 00005653ab778470 CR3: 000000012840c000 CR4: 00000000000406e0               
+> [ 3987.717378] Call Trace:                                                                     
+> [ 3987.717382]  iput+0xf9/0x1c0                                                                
+> [ 3987.717385]  do_unlinkat+0x18d/0x2f0                                                        
+> [ 3987.717388]  SyS_unlinkat+0x16/0x30                                                         
+> [ 3987.717392]  entry_SYSCALL_64_fastpath+0x13/0x94                                            
+> [ 3987.717394] RIP: 0033:0x7faddf8a0c17                                                        
+> [ 3987.717396] RSP: 002b:00007ffc44a11468 EFLAGS: 00000246 ORIG_RAX: 0000000000000107          
+> [ 3987.717399] RAX: ffffffffffffffda RBX: 000055ccd0723428 RCX: 00007faddf8a0c17
+> [ 3987.717401] RDX: 0000000000000000 RSI: 000055ccd07220f0 RDI: 00000000ffffff9c
+> [ 3987.717403] RBP: 000055ccd0723320 R08: 0000000000000003 R09: 0000000000000000
+> [ 3987.717404] R10: 0000000000000100 R11: 0000000000000246 R12: 000055ccd0722060
+> [ 3987.717406] R13: 00007ffc44a115a0 R14: 00007faddfb6a1e4 R15: 0000000000000000
+> [ 3987.717408] Code: 89 df e8 23 7d fe ff eb 8f 48 83 bb 20 02 00 00 00 74 85 48 89 df e8 7f ad 01 00 0f b7 03 66 25 00 f0 e9 6b ff ff ff 0f 0b 0f 0b <0f> 0b 48 8d bb 68 01 00 00 e8 a1 9e fa
+>  ff 48 89 df e8 a9 f1 ff 
+> [ 3987.717443] RIP: evict+0x161/0x180 RSP: ffff88012a833e80
+> [ 3987.717445] ---[ end trace ca9a0f6be0e72301 ]---
+
+I've been seeing a similar panic.  Does the attached patch help?
+
+-Scott
+
+> 
+> Looks like it happens in post-test clean-up step (rm), though  some processes are still there:
+> 
+> root     18489 18329  0 Oct25 pts/1    00:00:00 /data/git/xfstests-dev/ltp/aio-stress -t 20 -s 10  -O -I 1000 /mnt/test/aiostress.18329.3 /mnt/test/aiostress.18329.3.20 /mnt/test/aiostress.18329.3.19 /mnt/test/aiostress.18329.3.18 /mnt/test/aiostress.18329.3.17 /mnt/test/aiostress.18329.3.16 /mnt/test/aiostress.18329.3.15 /mnt/test/aiostress.18329.3.14 /mnt/test/aiostress.18329.3.13 /mnt/test/aiostress.18329.3.12 /mnt/test/aiostress.18329.3.11 /mnt/test/aiostress.18329.3.10 /mnt/test/aiostress.18329.3.9 /mnt/test/aiostress.18329.3.8 /mnt/test/aiostress.18329.3.7 /mnt/test/aiostress.18329.3.6 /mnt/test/aiostress.18329.3.5 /mnt/test/aiostress.18329.3.4 /mnt/test/aiostress.18329.3.3 /mnt/test/aiostress.18329.3.2
+> 
+> 
+> I can always re-produce it.
+> 
+>   Tigran.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--aesy2c3pem53cbnr
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="0001-nfs-make-pnfs_destroy_layout-wait-on-commit-when-ino.patch"
 
 
-Bruce, can we get a pynfs test case to verify this?
-
-
-Thanks
-
-Frank
-
+--aesy2c3pem53cbnr--
