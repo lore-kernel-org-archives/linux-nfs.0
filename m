@@ -1,253 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:44509 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932583AbdJaTqq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 15:46:46 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: NFS Force Unmounting
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1509469458.6057.65.camel@gmail.com>
-Date: Tue, 31 Oct 2017 15:46:37 -0400
-Cc: Jeff Layton <jlayton@kernel.org>, NeilBrown <neilb@suse.com>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0EA60ADF-96A7-4BF6-9293-8D6CC7BB9BE4@oracle.com>
-References: <1508951506.2542.51.camel@gmail.com> <20171030202045.GA6168@fieldses.org> <87h8ugwdev.fsf@notabene.neil.brown.name> <1509460909.4553.37.camel@kernel.org> <D98F43F0-6757-481D-B8C9-588A8EA8FF56@oracle.com> <1509469458.6057.65.camel@gmail.com>
-To: Joshua Watt <jpewhacker@gmail.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:52927 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752023AbdJaUHZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 16:07:25 -0400
+Received: by mail-io0-f196.google.com with SMTP id f20so1463023ioj.9
+        for <linux-nfs@vger.kernel.org>; Tue, 31 Oct 2017 13:07:25 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix open create exclusive when the server reboots
+Date: Tue, 31 Oct 2017 16:07:20 -0400
+Message-Id: <20171031200720.45000-1-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If the server that does not implement NFSv4.1 persistent session
+semantics reboots while we are performing an exclusive create,
+then the return value of NFS4ERR_DELAY when we replay the open
+during the grace period causes us to lose the verifier.
+When the grace period expires, and we present a new verifier,
+the server will then correctly reply NFS4ERR_EXIST.
 
-> On Oct 31, 2017, at 1:04 PM, Joshua Watt <jpewhacker@gmail.com> wrote:
-> 
-> On Tue, 2017-10-31 at 10:55 -0400, Chuck Lever wrote:
->>> On Oct 31, 2017, at 10:41 AM, Jeff Layton <jlayton@kernel.org>
->>> wrote:
->>> 
->>> On Tue, 2017-10-31 at 08:09 +1100, NeilBrown wrote:
->>>> On Mon, Oct 30 2017, J. Bruce Fields wrote:
->>>> 
->>>>> On Wed, Oct 25, 2017 at 12:11:46PM -0500, Joshua Watt wrote:
->>>>>> I'm working on a networking embedded system where NFS servers
->>>>>> can come
->>>>>> and go from the network, and I've discovered that the Kernel
->>>>>> NFS server
->>>>> 
->>>>> For "Kernel NFS server", I think you mean "Kernel NFS client".
->>>>> 
->>>>>> make it difficult to cleanup applications in a timely manner
->>>>>> when the
->>>>>> server disappears (and yes, I am mounting with "soft" and
->>>>>> relatively
->>>>>> short timeouts). I currently have a user space mechanism that
->>>>>> can
->>>>>> quickly detect when the server disappears, and does a
->>>>>> umount() with the
->>>>>> MNT_FORCE and MNT_DETACH flags. Using MNT_DETACH prevents new
->>>>>> accesses
->>>>>> to files on the defunct remote server, and I have traced
->>>>>> through the
->>>>>> code to see that MNT_FORCE does indeed cancel any current RPC
->>>>>> tasks
->>>>>> with -EIO. However, this isn't sufficient for my use case
->>>>>> because if a
->>>>>> user space application isn't currently waiting on an RCP task
->>>>>> that gets
->>>>>> canceled, it will have to timeout again before it detects the
->>>>>> disconnect. For example, if a simple client is copying a file
->>>>>> from the
->>>>>> NFS server, and happens to not be waiting on the RPC task in
->>>>>> the read()
->>>>>> call when umount() occurs, it will be none the wiser and loop
->>>>>> around to
->>>>>> call read() again, which must then try the whole NFS timeout
->>>>>> + recovery
->>>>>> before the failure is detected. If a client is more complex
->>>>>> and has a
->>>>>> lot of open file descriptor, it will typical have to wait for
->>>>>> each one
->>>>>> to timeout, leading to very long delays.
->>>>>> 
->>>>>> The (naive?) solution seems to be to add some flag in either
->>>>>> the NFS
->>>>>> client or the RPC client that gets set in nfs_umount_begin().
->>>>>> This
->>>>>> would cause all subsequent operations to fail with an error
->>>>>> code
->>>>>> instead of having to be queued as an RPC task and the and
->>>>>> then timing
->>>>>> out. In our example client, the application would then get
->>>>>> the -EIO
->>>>>> immediately on the next (and all subsequent) read() calls.
->>>>>> 
->>>>>> There does seem to be some precedence for doing this
->>>>>> (especially with
->>>>>> network file systems), as both cifs (CifsExiting) and ceph
->>>>>> (CEPH_MOUNT_SHUTDOWN) appear to implement this behavior (at
->>>>>> least from
->>>>>> looking at the code. I haven't verified runtime behavior).
->>>>>> 
->>>>>> Are there any pitfalls I'm oversimplifying?
->>>>> 
->>>>> I don't know.
->>>>> 
->>>>> In the hard case I don't think you'd want to do something like
->>>>> this--applications expect mounts to be stay pinned while
->>>>> they're using
->>>>> them, not to get -EIO.  In the soft case maybe an exception
->>>>> like this
->>>>> makes sense.
->>>> 
->>>> Applications also expect to get responses to read() requests, and
->>>> expect
->>>> fsync() to complete, but if the servers has melted down, that
->>>> isn't
->>>> going to happen.  Sometimes unexpected errors are better than
->>>> unexpected
->>>> infinite delays.
->>>> 
->>>> I think we need a reliable way to unmount an NFS filesystem
->>>> mounted from
->>>> a non-responsive server.  Maybe that just means fixing all the
->>>> places
->>>> where use we use TASK_UNINTERRUTIBLE when waiting for the
->>>> server.  That
->>>> would allow processes accessing the filesystem to be killed.  I
->>>> don't
->>>> know if that would meet Joshua's needs.
-> 
-> No, it doesn't. I unfortunately cannot just kill off my processes that
-> are accessing NFS when it dies :)
-> 
->>>> 
->>>> Last time this came up, Trond didn't want to make MNT_FORCE too
->>>> strong as
->>>> it only makes sense to be forceful on the final unmount, and we
->>>> cannot
->>>> know if this is the "final" unmount (no other bind-mounts around)
->>>> until
->>>> much later than ->umount_prepare.  Maybe umount is the wrong
->>>> interface.
->>>> Maybe we should expose "struct nfs_client" (or maybe "struct
->>>> nfs_server") objects via sysfs so they can be marked "dead" (or
->>>> similar)
->>>> meaning that all IO should fail.
->>>> 
->>> 
->>> I like this idea.
->>> 
->>> Note that we already have some per-rpc_xprt / per-rpc_clnt info in
->>> debugfs sunrpc dir. We could make some writable files in there, to
->>> allow
->>> you to kill off individual RPCs or maybe mark a whole clnt and/or
->>> xprt
->>> dead in some fashion.
->> 
->> Listing individual RPCs seems like overkill. It would be
->> straightforward
->> to identify these transports by the IP addresses of the remotes, and
->> just
->> mark the specific transports for a dead server. Maybe the --force
->> option
->> of umount could do this.
-> 
-> If we simply want --force to do it, the patch is pretty simple (I will
-> push it up as an RFC), and there is no need for any debugfs support,
-> although that leads back what --force should be doing. IMHO, --force is
-> a little strange in its current implementation because while it aborts
-> all the current pending RPC calls, you could *just* miss an RPC call
-> that comes in later, which could then block for long periods of time
-> (and prevent unmounting). Perhaps some light on the actual intended use
-> of --force would be useful? It seems to me like its more of an
-> indication that the user wants to abort any pending operations than an
-> indication that they *really* want to unmount the file system (but
-> again, I've noted this seems to vary between the different filesystems
-> than handle --force).
-> 
-> If we are going to debugfs support, it seems like the simplest thing is
-> for --force to continue to do whatever it does today unchanged, and the
-> new debugfs API is the sole mechanism for killing off a server.
-> 
-> Were you trying to say that there should be some sequence of --force
-> and debugfs operations to kill off a dead server? If so, I'm not quite
-> sure I follow (sorry).
+This commit ensures that we always present the same verifier when
+replaying the OPEN.
 
-I was following Jeff's suggestion of building a debugfs API
-to find and mark RPCs we'd like to terminate. Then "umount
---force" could use this API to get rid of stuck RPCs so that
-umount can complete cleanly.
+Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 41 ++++++++++++++++++++++++++---------------
+ 1 file changed, 26 insertions(+), 15 deletions(-)
 
-We have a fine needle to thread here. We want to allow umount
-to work, but do not want to endanger RPCs that are waiting
-legitimately for long-running work to complete. Perhaps we
-should keep these administrative steps separated.
-
-
->> The RPC client can then walk through the dead transport's list of RPC
->> tasks and terminate all of them.
->> 
->> That makes it easy to find these things. But it doesn't take care of
->> killing processes that are not interruptible, though.
-> 
-> IIUC, if a process is waiting on an RPC, and that RPC gets rpc_exit(-
-> EIO) called on it, the call will return with -EIO regardless of the
-> interruptable status of the process? Am I misreading the code? Maybe
-> better put is the question: Is it acceptable for a non-interruptable
-> task to get -EIO from a syscall? I *think* the answer is yes (but I
-> haven't been doing this very long).
-
-I don't think rpc_exit_task(task, -EIO) will be sufficient.
-READ and WRITE are done by a background process. So -EIO
-awakens the waiting user space process but the background
-process is still waiting for an RPC reply, and will continue
-to pin the transport and the mount.
-
-In addition there could be some NFS-level waiters that might
-not be visible to the RPC layer.
-
-I wondered if there might be a way of feeding a faux reply
-into the transport for each of the waiting dead RPCs (and any
-newly submitted ones). I bet often these will be waiting for
-a transport connection event; set a "kill me" bit in each
-sleeping doomed RPC, pretend to reconnect, and xprt_transmit
-could recognize the bit during retransmit and cause the RPCs
-to terminate.
-
-It might also be helpful to decorate the RPC procs with some
-indication of whether an RPC is safe to kill. Any RPC that
-might alter cached data/metadata is not, but others would be
-safe. Maybe this is already the case, but I thought generally
-SYNC RPCs are killable and ASYNC ones are not.
-
-</random crazy ideas>
-
-
->>> I don't really have a good feel for what this interface should look
->>> like
->>> yet. debugfs is attractive here, as it's supposedly not part of the
->>> kernel ABI guarantee. That allows us to do some experimentation in
->>> this
->>> area, without making too big an initial commitment.
->>> -- 
->>> Jeff Layton <jlayton@kernel.org>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-
->>> nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> --
->> Chuck Lever
->> 
->> 
->> 
-> 
-> Thanks,
-> Joshua Watt
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 1b42e051eaec..1ca9349513f3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1086,6 +1086,12 @@ struct nfs4_opendata {
+ 	int rpc_status;
+ };
+ 
++struct nfs4_open_createattrs {
++	struct nfs4_label *label;
++	struct iattr *sattr;
++	const __u32 verf[2];
++};
++
+ static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
+ 		int err, struct nfs4_exception *exception)
+ {
+@@ -1155,8 +1161,7 @@ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
+ 
+ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 		struct nfs4_state_owner *sp, fmode_t fmode, int flags,
+-		const struct iattr *attrs,
+-		struct nfs4_label *label,
++		const struct nfs4_open_createattrs *c,
+ 		enum open_claim_type4 claim,
+ 		gfp_t gfp_mask)
+ {
+@@ -1164,6 +1169,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	struct inode *dir = d_inode(parent);
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs_seqid *(*alloc_seqid)(struct nfs_seqid_counter *, gfp_t);
++	struct nfs4_label *label = (c != NULL) ? c->label : NULL;
+ 	struct nfs4_opendata *p;
+ 
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+@@ -1229,15 +1235,11 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+ 		p->o_arg.fh = NFS_FH(d_inode(dentry));
+ 	}
+-	if (attrs != NULL && attrs->ia_valid != 0) {
+-		__u32 verf[2];
+-
++	if (c != NULL && c->sattr != NULL && c->sattr->ia_valid != 0) {
+ 		p->o_arg.u.attrs = &p->attrs;
+-		memcpy(&p->attrs, attrs, sizeof(p->attrs));
++		memcpy(&p->attrs, c->sattr, sizeof(p->attrs));
+ 
+-		verf[0] = jiffies;
+-		verf[1] = current->pid;
+-		memcpy(p->o_arg.u.verifier.data, verf,
++		memcpy(p->o_arg.u.verifier.data, c->verf,
+ 				sizeof(p->o_arg.u.verifier.data));
+ 	}
+ 	p->c_arg.fh = &p->o_res.fh;
+@@ -1882,7 +1884,7 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
+ 	struct nfs4_opendata *opendata;
+ 
+ 	opendata = nfs4_opendata_alloc(ctx->dentry, state->owner, 0, 0,
+-			NULL, NULL, claim, GFP_NOFS);
++			NULL, claim, GFP_NOFS);
+ 	if (opendata == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 	opendata->state = state;
+@@ -2813,8 +2815,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ static int _nfs4_do_open(struct inode *dir,
+ 			struct nfs_open_context *ctx,
+ 			int flags,
+-			struct iattr *sattr,
+-			struct nfs4_label *label,
++			const struct nfs4_open_createattrs *c,
+ 			int *opened)
+ {
+ 	struct nfs4_state_owner  *sp;
+@@ -2826,6 +2827,8 @@ static int _nfs4_do_open(struct inode *dir,
+ 	struct nfs4_threshold **ctx_th = &ctx->mdsthreshold;
+ 	fmode_t fmode = ctx->mode & (FMODE_READ|FMODE_WRITE|FMODE_EXEC);
+ 	enum open_claim_type4 claim = NFS4_OPEN_CLAIM_NULL;
++	struct iattr *sattr = c->sattr;
++	struct nfs4_label *label = c->label;
+ 	struct nfs4_label *olabel = NULL;
+ 	int status;
+ 
+@@ -2844,8 +2847,8 @@ static int _nfs4_do_open(struct inode *dir,
+ 	status = -ENOMEM;
+ 	if (d_really_is_positive(dentry))
+ 		claim = NFS4_OPEN_CLAIM_FH;
+-	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags, sattr,
+-			label, claim, GFP_KERNEL);
++	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags,
++			c, claim, GFP_KERNEL);
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
+@@ -2926,10 +2929,18 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs4_exception exception = { };
+ 	struct nfs4_state *res;
++	struct nfs4_open_createattrs c = {
++		.label = label,
++		.sattr = sattr,
++		.verf = {
++			[0] = (__u32)jiffies,
++			[1] = (__u32)current->pid,
++		},
++	};
+ 	int status;
+ 
+ 	do {
+-		status = _nfs4_do_open(dir, ctx, flags, sattr, label, opened);
++		status = _nfs4_do_open(dir, ctx, flags, &c, opened);
+ 		res = ctx->state;
+ 		trace_nfs4_open_file(ctx, flags, status);
+ 		if (status == 0)
+-- 
+2.13.6
 
