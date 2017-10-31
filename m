@@ -1,150 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:52927 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752023AbdJaUHZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 16:07:25 -0400
-Received: by mail-io0-f196.google.com with SMTP id f20so1463023ioj.9
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Oct 2017 13:07:25 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Fix open create exclusive when the server reboots
-Date: Tue, 31 Oct 2017 16:07:20 -0400
-Message-Id: <20171031200720.45000-1-trond.myklebust@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:39820 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753934AbdJaUMM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 16:12:12 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "aweits@rit.edu" <aweits@rit.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfsd: deal with revoked delegations appropriately
+Date: Tue, 31 Oct 2017 20:12:06 +0000
+Message-ID: <1509480724.45082.0.camel@primarydata.com>
+References: <20171031192238.6906-1-aweits@rit.edu>
+In-Reply-To: <20171031192238.6906-1-aweits@rit.edu>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server that does not implement NFSv4.1 persistent session
-semantics reboots while we are performing an exclusive create,
-then the return value of NFS4ERR_DELAY when we replay the open
-during the grace period causes us to lose the verifier.
-When the grace period expires, and we present a new verifier,
-the server will then correctly reply NFS4ERR_EXIST.
-
-This commit ensures that we always present the same verifier when
-replaying the OPEN.
-
-Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 41 ++++++++++++++++++++++++++---------------
- 1 file changed, 26 insertions(+), 15 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1b42e051eaec..1ca9349513f3 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1086,6 +1086,12 @@ struct nfs4_opendata {
- 	int rpc_status;
- };
- 
-+struct nfs4_open_createattrs {
-+	struct nfs4_label *label;
-+	struct iattr *sattr;
-+	const __u32 verf[2];
-+};
-+
- static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
- 		int err, struct nfs4_exception *exception)
- {
-@@ -1155,8 +1161,7 @@ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
- 
- static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 		struct nfs4_state_owner *sp, fmode_t fmode, int flags,
--		const struct iattr *attrs,
--		struct nfs4_label *label,
-+		const struct nfs4_open_createattrs *c,
- 		enum open_claim_type4 claim,
- 		gfp_t gfp_mask)
- {
-@@ -1164,6 +1169,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	struct inode *dir = d_inode(parent);
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	struct nfs_seqid *(*alloc_seqid)(struct nfs_seqid_counter *, gfp_t);
-+	struct nfs4_label *label = (c != NULL) ? c->label : NULL;
- 	struct nfs4_opendata *p;
- 
- 	p = kzalloc(sizeof(*p), gfp_mask);
-@@ -1229,15 +1235,11 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
- 		p->o_arg.fh = NFS_FH(d_inode(dentry));
- 	}
--	if (attrs != NULL && attrs->ia_valid != 0) {
--		__u32 verf[2];
--
-+	if (c != NULL && c->sattr != NULL && c->sattr->ia_valid != 0) {
- 		p->o_arg.u.attrs = &p->attrs;
--		memcpy(&p->attrs, attrs, sizeof(p->attrs));
-+		memcpy(&p->attrs, c->sattr, sizeof(p->attrs));
- 
--		verf[0] = jiffies;
--		verf[1] = current->pid;
--		memcpy(p->o_arg.u.verifier.data, verf,
-+		memcpy(p->o_arg.u.verifier.data, c->verf,
- 				sizeof(p->o_arg.u.verifier.data));
- 	}
- 	p->c_arg.fh = &p->o_res.fh;
-@@ -1882,7 +1884,7 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
- 	struct nfs4_opendata *opendata;
- 
- 	opendata = nfs4_opendata_alloc(ctx->dentry, state->owner, 0, 0,
--			NULL, NULL, claim, GFP_NOFS);
-+			NULL, claim, GFP_NOFS);
- 	if (opendata == NULL)
- 		return ERR_PTR(-ENOMEM);
- 	opendata->state = state;
-@@ -2813,8 +2815,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- static int _nfs4_do_open(struct inode *dir,
- 			struct nfs_open_context *ctx,
- 			int flags,
--			struct iattr *sattr,
--			struct nfs4_label *label,
-+			const struct nfs4_open_createattrs *c,
- 			int *opened)
- {
- 	struct nfs4_state_owner  *sp;
-@@ -2826,6 +2827,8 @@ static int _nfs4_do_open(struct inode *dir,
- 	struct nfs4_threshold **ctx_th = &ctx->mdsthreshold;
- 	fmode_t fmode = ctx->mode & (FMODE_READ|FMODE_WRITE|FMODE_EXEC);
- 	enum open_claim_type4 claim = NFS4_OPEN_CLAIM_NULL;
-+	struct iattr *sattr = c->sattr;
-+	struct nfs4_label *label = c->label;
- 	struct nfs4_label *olabel = NULL;
- 	int status;
- 
-@@ -2844,8 +2847,8 @@ static int _nfs4_do_open(struct inode *dir,
- 	status = -ENOMEM;
- 	if (d_really_is_positive(dentry))
- 		claim = NFS4_OPEN_CLAIM_FH;
--	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags, sattr,
--			label, claim, GFP_KERNEL);
-+	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags,
-+			c, claim, GFP_KERNEL);
- 	if (opendata == NULL)
- 		goto err_put_state_owner;
- 
-@@ -2926,10 +2929,18 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	struct nfs4_exception exception = { };
- 	struct nfs4_state *res;
-+	struct nfs4_open_createattrs c = {
-+		.label = label,
-+		.sattr = sattr,
-+		.verf = {
-+			[0] = (__u32)jiffies,
-+			[1] = (__u32)current->pid,
-+		},
-+	};
- 	int status;
- 
- 	do {
--		status = _nfs4_do_open(dir, ctx, flags, sattr, label, opened);
-+		status = _nfs4_do_open(dir, ctx, flags, &c, opened);
- 		res = ctx->state;
- 		trace_nfs4_open_file(ctx, flags, status);
- 		if (status == 0)
--- 
-2.13.6
+T24gVHVlLCAyMDE3LTEwLTMxIGF0IDE1OjIyIC0wNDAwLCBBbmRyZXcgRWxibGUgd3JvdGU6DQo+
+IElmIGEgZGVsZWdhdGlvbiBoYXMgYmVlbiByZXZva2VkIGJ5IHRoZSBzZXJ2ZXIsIG9wZXJhdGlv
+bnMgdXNpbmcgdGhhdA0KPiBkZWxlZ2F0aW9uIHNob3VsZCBlcnJvciBvdXQgd2l0aCBORlM0RVJS
+X0RFTEVHX1JFVk9LRUQgaW4gdGhlID40LjENCj4gY2FzZSwgYW5kIE5GUzRFUlJfQkFEX1NUQVRF
+SUQgb3RoZXJ3aXNlLiBERUxFR1JFVFVSTiBoYXMgYWxzbyBiZWVuDQo+IG9wdGltaXplZCB0byBy
+ZXR1cm4gTkZTNF9PSyB3aGVuIGNhbGxlZCB3aXRoIGEgcmV2b2tlZCBkZWxlZ2F0aW9uLg0KPiAN
+Cj4gVGhyZWFkIG9uIERFTEVHUkVUVVJOIG9wdGltaXphdGlvbiBpcyBoZXJlOg0KPiBodHRwczov
+L3d3dy5zcGluaWNzLm5ldC9saXN0cy9saW51eC1uZnMvbXNnNTUyMTYuaHRtbA0KPiANCj4gU2ln
+bmVkLW9mZi1ieTogQW5kcmV3IEVsYmxlIDxhd2VpdHNAcml0LmVkdT4NCj4gDQpQbGVhc2Ugc2Vl
+IHRoZSBwYXRjaCBzZXJpZXMgZm9yIGtuZnNkIHRoYXQgSSBwb3N0ZWQgeWVzdGVyZGF5LiBEb2Vz
+DQp0aGF0IGZpeCB5b3VyIGlzc3VlPw0KDQpDaGVlcnMNCiAgVHJvbmQNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5t
+eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
