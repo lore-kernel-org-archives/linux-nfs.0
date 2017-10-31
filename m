@@ -1,13 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:50489 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753367AbdJaNzg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 09:55:36 -0400
-Received: by mail-qk0-f195.google.com with SMTP id o187so20521831qke.7
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Oct 2017 06:55:36 -0700 (PDT)
-Message-ID: <1509458134.4553.16.camel@redhat.com>
-Subject: Re: [PATCH v3 07/14] SUNRPC: drop unnecessary svc_bc_tcp_create()
- helper
+Received: from mail-qt0-f195.google.com ([209.85.216.195]:56590 "EHLO
+        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932230AbdJaOKl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 10:10:41 -0400
+Received: by mail-qt0-f195.google.com with SMTP id z28so20812078qtz.13
+        for <linux-nfs@vger.kernel.org>; Tue, 31 Oct 2017 07:10:41 -0700 (PDT)
+Message-ID: <1509459038.4553.26.camel@redhat.com>
+Subject: Re: [PATCH v3 08/14] SUNRPC: add AF_VSOCK support to svc_xprt.c
 From: Jeff Layton <jlayton@redhat.com>
 To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
 Cc: Abbas Naderi <abiusx@google.com>,
@@ -15,97 +14,141 @@ Cc: Abbas Naderi <abiusx@google.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
-Date: Tue, 31 Oct 2017 09:55:34 -0400
-In-Reply-To: <20170630132352.32133-8-stefanha@redhat.com>
+Date: Tue, 31 Oct 2017 10:10:38 -0400
+In-Reply-To: <20170630132352.32133-9-stefanha@redhat.com>
 References: <20170630132352.32133-1-stefanha@redhat.com>
-         <20170630132352.32133-8-stefanha@redhat.com>
+         <20170630132352.32133-9-stefanha@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Fri, 2017-06-30 at 14:23 +0100, Stefan Hajnoczi wrote:
-> svc_bc_tcp_create() is a helper function that simply calls
-> svc_bc_create_socket() with an added IPPROTO_TCP argument.
-> 
-> svc_bc_create_socket() then checks that the protocol argument is indeed
-> IPPROTO_TCP.
-> 
-> This isn't necessary since svc_bc_tcp_create() is the only
-> svc_bc_create_socket() caller.  The next patch adds a second caller for
-> AF_VSOCK where IPPROTO_TCP will not be used.
-> 
-> Scrap this scheme and just call svc_bc_create_socket() directly.
+> Allow creation of AF_VSOCK service xprts.  This is needed for the
+> "vsock-bc" backchannel.
 > 
 > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 > ---
->  net/sunrpc/svcsock.c | 21 +++------------------
->  1 file changed, 3 insertions(+), 18 deletions(-)
+>  include/linux/sunrpc/svc_xprt.h | 12 ++++++++++++
+>  net/sunrpc/svc_xprt.c           | 18 ++++++++++++++++++
+>  2 files changed, 30 insertions(+)
 > 
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 2b720fa..394e7a2 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -71,7 +71,7 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
->  					  struct net *, struct sockaddr *,
->  					  int, int);
->  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
-> -static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
->  					     struct net *, struct sockaddr *,
->  					     int, int);
->  static void svc_bc_sock_free(struct svc_xprt *xprt);
-> @@ -1212,25 +1212,17 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
->  }
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index ddb7f94..938f9ee 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -8,6 +8,7 @@
+>  #define SUNRPC_SVC_XPRT_H
 >  
->  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
-> -static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
-> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
->  					     struct net *, struct sockaddr *,
->  					     int, int);
->  static void svc_bc_sock_free(struct svc_xprt *xprt);
+>  #include <linux/sunrpc/svc.h>
+> +#include <linux/vm_sockets.h>
 >  
-> -static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
-> -				       struct net *net,
-> -				       struct sockaddr *sa, int salen,
-> -				       int flags)
-> -{
-> -	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
-> -}
-> -
->  static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
+>  struct module;
+>  
+> @@ -156,12 +157,15 @@ static inline unsigned short svc_addr_port(const struct sockaddr *sa)
 >  {
+>  	const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
+>  	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)sa;
+> +	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)sa;
+>  
+>  	switch (sa->sa_family) {
+>  	case AF_INET:
+>  		return ntohs(sin->sin_port);
+>  	case AF_INET6:
+>  		return ntohs(sin6->sin6_port);
+> +	case AF_VSOCK:
+> +		return svm->svm_port;
+>  	}
+>  
+>  	return 0;
+> @@ -174,6 +178,8 @@ static inline size_t svc_addr_len(const struct sockaddr *sa)
+>  		return sizeof(struct sockaddr_in);
+>  	case AF_INET6:
+>  		return sizeof(struct sockaddr_in6);
+> +	case AF_VSOCK:
+> +		return sizeof(struct sockaddr_vm);
+>  	}
+>  	BUG();
 >  }
+> @@ -193,6 +199,7 @@ static inline char *__svc_print_addr(const struct sockaddr *addr,
+>  {
+>  	const struct sockaddr_in *sin = (const struct sockaddr_in *)addr;
+>  	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *)addr;
+> +	const struct sockaddr_vm *svm = (const struct sockaddr_vm *)addr;
 >  
->  static struct svc_xprt_ops svc_tcp_bc_ops = {
-> -	.xpo_create = svc_bc_tcp_create,
-> +	.xpo_create = svc_bc_create_socket,
->  	.xpo_detach = svc_bc_tcp_sock_detach,
->  	.xpo_free = svc_bc_sock_free,
->  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-> @@ -1615,7 +1607,6 @@ static void svc_sock_free(struct svc_xprt *xprt)
->   * Create a back channel svc_xprt which shares the fore channel socket.
->   */
->  static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
-> -					     int protocol,
->  					     struct net *net,
->  					     struct sockaddr *sin, int len,
->  					     int flags)
-> @@ -1623,12 +1614,6 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
->  	struct svc_sock *svsk;
->  	struct svc_xprt *xprt;
+>  	switch (addr->sa_family) {
+>  	case AF_INET:
+> @@ -206,6 +213,11 @@ static inline char *__svc_print_addr(const struct sockaddr *addr,
+>  			ntohs(sin6->sin6_port));
+>  		break;
 >  
-> -	if (protocol != IPPROTO_TCP) {
-> -		printk(KERN_WARNING "svc: only TCP sockets"
-> -			" supported on shared back channel\n");
-> -		return ERR_PTR(-EINVAL);
-> -	}
-> -
->  	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
->  	if (!svsk)
->  		return ERR_PTR(-ENOMEM);
+> +	case AF_VSOCK:
+> +		snprintf(buf, len, "%u, port=%u",
+> +			 svm->svm_cid, svm->svm_port);
+> +		break;
+> +
+>  	default:
+>  		snprintf(buf, len, "unknown address type: %d", addr->sa_family);
+>  		break;
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 7bfe1fb..2a8ccc1 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -10,6 +10,7 @@
+>  #include <linux/kthread.h>
+>  #include <linux/slab.h>
+>  #include <net/sock.h>
+> +#include <net/af_vsock.h>
+>  #include <linux/sunrpc/addr.h>
+>  #include <linux/sunrpc/stats.h>
+>  #include <linux/sunrpc/svc_xprt.h>
+> @@ -195,6 +196,13 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+>  		.sin6_port		= htons(port),
+>  	};
+>  #endif
+> +#ifdef CONFIG_SUNRPC_XPRT_VSOCK
+> +	struct sockaddr_vm svm = {
+> +		.svm_family		= AF_VSOCK,
+> +		.svm_cid		= VMADDR_CID_ANY,
+> +		.svm_port		= port,
+> +	};
+> +#endif
+>  	struct sockaddr *sap;
+>  	size_t len;
+>  
+> @@ -209,6 +217,12 @@ static struct svc_xprt *__svc_xpo_create(struct svc_xprt_class *xcl,
+>  		len = sizeof(sin6);
+>  		break;
+>  #endif
+> +#ifdef CONFIG_SUNRPC_XPRT_VSOCK
+> +	case AF_VSOCK:
+> +		sap = (struct sockaddr *)&svm;
+> +		len = sizeof(svm);
+> +		break;
+> +#endif
+>  	default:
+>  		return ERR_PTR(-EAFNOSUPPORT);
+>  	}
+> @@ -595,6 +609,10 @@ int svc_port_is_privileged(struct sockaddr *sin)
+>  	case AF_INET6:
+>  		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port)
+>  			< PROT_SOCK;
+> +	case AF_VSOCK:
+> +		return ((struct sockaddr_vm *)sin)->svm_port <=
+> +			LAST_RESERVED_PORT;
+> +
+>  	default:
+>  		return 0;
+>  	}
 
-This one can go in ahead of the rest, I think. Trond or Bruce, do either
-of you want to pick this up for the next merge window?
+Does vsock even have the concept of a privileged port? I would imagine
+that root in a guest VM would carry no particular significance from an
+export security standpoint
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Since you're defining a new transport here, it might be nice write the
+RFCs to avoid that distinction, if possible.
+
+Note that RDMA just has svc_port_is_privileged always return 1.
+
+-- 
+Jeff Layton <jlayton@redhat.com>
