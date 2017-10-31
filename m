@@ -1,166 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:54435 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753186AbdJaAJ5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Oct 2017 20:09:57 -0400
-Received: by mail-io0-f194.google.com with SMTP id e89so31184830ioi.11
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Oct 2017 17:09:57 -0700 (PDT)
+Received: from mail-io0-f193.google.com ([209.85.223.193]:43664 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753286AbdJaAKF (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Oct 2017 20:10:05 -0400
+Received: by mail-io0-f193.google.com with SMTP id 134so31223210ioo.0
+        for <linux-nfs@vger.kernel.org>; Mon, 30 Oct 2017 17:10:04 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] nfsd: Fix stateid races between OPEN and CLOSE
-Date: Mon, 30 Oct 2017 20:09:47 -0400
-Message-Id: <20171031000951.18294-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20171031000951.18294-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 5/5] nfsd: Fix races with check_stateid_generation()
+Date: Mon, 30 Oct 2017 20:09:51 -0400
+Message-Id: <20171031000951.18294-6-trond.myklebust@primarydata.com>
+In-Reply-To: <20171031000951.18294-5-trond.myklebust@primarydata.com>
 References: <20171031000951.18294-1-trond.myklebust@primarydata.com>
+ <20171031000951.18294-2-trond.myklebust@primarydata.com>
+ <20171031000951.18294-3-trond.myklebust@primarydata.com>
+ <20171031000951.18294-4-trond.myklebust@primarydata.com>
+ <20171031000951.18294-5-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Open file stateids can linger on the nfs4_file list of stateids even
-after they have been closed. In order to avoid reusing such a
-stateid, and confusing the client, we need to recheck the
-nfs4_stid's type after taking the mutex.
-Otherwise, we risk reusing an old stateid that was already closed,
-which will confuse clients that expect new stateids to conform to
-RFC7530 Sections 9.1.4.2 and 16.2.5 or RFC5661 Sections 8.2.2 and 18.2.4.
+The various functions that call check_stateid_generation() in order
+to compare a client-supplied stateid with the nfs4_stid state, usually
+need to atomically check for closed state. Those that perform the
+check after locking the st_mutex using nfsd4_lock_ol_stateid()
+should now be OK, but we do want to fix up the others.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: stable@vger.kernel.org
 ---
- fs/nfsd/nfs4state.c | 67 ++++++++++++++++++++++++++++++++++++++++++++++-------
- 1 file changed, 59 insertions(+), 8 deletions(-)
+ fs/nfsd/nfs4state.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0c04f81aa63b..b246aaa20863 100644
+index ab56d265ef68..0603937c674f 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -3512,7 +3512,9 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
- 		/* ignore lock owners */
- 		if (local->st_stateowner->so_is_open_owner == 0)
- 			continue;
--		if (local->st_stateowner == &oo->oo_owner) {
-+		if (local->st_stateowner != &oo->oo_owner)
-+			continue;
-+		if (local->st_stid.sc_type == NFS4_OPEN_STID) {
- 			ret = local;
- 			atomic_inc(&ret->st_stid.sc_count);
- 			break;
-@@ -3521,6 +3523,52 @@ nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
- 	return ret;
+@@ -4851,6 +4851,18 @@ static __be32 check_stateid_generation(stateid_t *in, stateid_t *ref, bool has_s
+ 	return nfserr_old_stateid;
  }
  
-+static __be32
-+nfsd4_verify_open_stid(struct nfs4_stid *s)
-+{
-+	__be32 ret = nfs_ok;
-+
-+	switch (s->sc_type) {
-+	default:
-+		break;
-+	case NFS4_CLOSED_STID:
-+	case NFS4_CLOSED_DELEG_STID:
-+		ret = nfserr_bad_stateid;
-+		break;
-+	case NFS4_REVOKED_DELEG_STID:
-+		ret = nfserr_deleg_revoked;
-+	}
-+	return ret;
-+}
-+
-+/* Lock the stateid st_mutex, and deal with races with CLOSE */
-+static __be32
-+nfsd4_lock_ol_stateid(struct nfs4_ol_stateid *stp)
++static __be32 nfsd4_stid_check_stateid_generation(stateid_t *in, struct nfs4_stid *s, bool has_session)
 +{
 +	__be32 ret;
 +
-+	mutex_lock(&stp->st_mutex);
-+	ret = nfsd4_verify_open_stid(&stp->st_stid);
-+	if (ret != nfs_ok)
-+		mutex_unlock(&stp->st_mutex);
++	spin_lock(&s->sc_lock);
++	ret = nfsd4_verify_open_stid(s);
++	if (ret == nfs_ok)
++		ret = check_stateid_generation(in, &s->sc_stateid, has_session);
++	spin_unlock(&s->sc_lock);
 +	return ret;
 +}
 +
-+static struct nfs4_ol_stateid *
-+nfsd4_find_and_lock_existing_open(struct nfs4_file *fp, struct nfsd4_open *open)
-+{
-+	struct nfs4_ol_stateid *stp;
-+	for (;;) {
-+		spin_lock(&fp->fi_lock);
-+		stp = nfsd4_find_existing_open(fp, open);
-+		spin_unlock(&fp->fi_lock);
-+		if (!stp || nfsd4_lock_ol_stateid(stp) == nfs_ok)
-+			break;
-+		nfs4_put_stid(&stp->st_stid);
-+	}
-+	return stp;
-+}
-+
- static struct nfs4_openowner *
- alloc_init_open_stateowner(unsigned int strhashval, struct nfsd4_open *open,
- 			   struct nfsd4_compound_state *cstate)
-@@ -3565,6 +3613,7 @@ init_open_stateid(struct nfs4_file *fp, struct nfsd4_open *open)
- 	mutex_init(&stp->st_mutex);
- 	mutex_lock(&stp->st_mutex);
- 
-+retry:
- 	spin_lock(&oo->oo_owner.so_client->cl_lock);
- 	spin_lock(&fp->fi_lock);
- 
-@@ -3589,7 +3638,11 @@ init_open_stateid(struct nfs4_file *fp, struct nfsd4_open *open)
- 	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&oo->oo_owner.so_client->cl_lock);
- 	if (retstp) {
--		mutex_lock(&retstp->st_mutex);
-+		/* Handle races with CLOSE */
-+		if (nfsd4_lock_ol_stateid(retstp) != nfs_ok) {
-+			nfs4_put_stid(&retstp->st_stid);
-+			goto retry;
-+		}
- 		/* To keep mutex tracking happy */
- 		mutex_unlock(&stp->st_mutex);
- 		stp = retstp;
-@@ -4403,9 +4456,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 		status = nfs4_check_deleg(cl, open, &dp);
- 		if (status)
- 			goto out;
--		spin_lock(&fp->fi_lock);
--		stp = nfsd4_find_existing_open(fp, open);
--		spin_unlock(&fp->fi_lock);
-+		stp = nfsd4_find_and_lock_existing_open(fp, open);
- 	} else {
- 		open->op_file = NULL;
- 		status = nfserr_bad_stateid;
-@@ -4419,7 +4470,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
- 	 */
- 	if (stp) {
- 		/* Stateid was found, this is an OPEN upgrade */
--		mutex_lock(&stp->st_mutex);
- 		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
- 		if (status) {
- 			mutex_unlock(&stp->st_mutex);
-@@ -5294,7 +5344,6 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
- 	bool unhashed;
- 	LIST_HEAD(reaplist);
- 
--	s->st_stid.sc_type = NFS4_CLOSED_STID;
- 	spin_lock(&clp->cl_lock);
- 	unhashed = unhash_open_stateid(s, &reaplist);
- 
-@@ -5334,10 +5383,12 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
+ static __be32 nfsd4_check_openowner_confirmed(struct nfs4_ol_stateid *ols)
+ {
+ 	if (ols->st_stateowner->so_is_open_owner &&
+@@ -4879,7 +4891,7 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	s = find_stateid_locked(cl, stateid);
+ 	if (!s)
+ 		goto out_unlock;
+-	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
++	status = nfsd4_stid_check_stateid_generation(stateid, s, 1);
  	if (status)
- 		goto out; 
-+
-+	stp->st_stid.sc_type = NFS4_CLOSED_STID;
- 	nfs4_inc_and_copy_stateid(&close->cl_stateid, &stp->st_stid);
--	mutex_unlock(&stp->st_mutex);
+ 		goto out_unlock;
+ 	switch (s->sc_type) {
+@@ -5024,7 +5036,7 @@ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+ 				&s, nn);
+ 	if (status)
+ 		return status;
+-	status = check_stateid_generation(stateid, &s->sc_stateid,
++	status = nfsd4_stid_check_stateid_generation(stateid, s,
+ 			nfsd4_has_session(cstate));
+ 	if (status)
+ 		goto out;
+@@ -5117,6 +5129,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	s = find_stateid_locked(cl, stateid);
+ 	if (!s)
+ 		goto out_unlock;
++	spin_lock(&s->sc_lock);
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+ 		ret = nfserr_locks_held;
+@@ -5128,11 +5141,13 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		ret = nfserr_locks_held;
+ 		break;
+ 	case NFS4_LOCK_STID:
++		spin_unlock(&s->sc_lock);
+ 		atomic_inc(&s->sc_count);
+ 		spin_unlock(&cl->cl_lock);
+ 		ret = nfsd4_free_lock_stateid(stateid, s);
+ 		goto out;
+ 	case NFS4_REVOKED_DELEG_STID:
++		spin_unlock(&s->sc_lock);
+ 		dp = delegstateid(s);
+ 		list_del_init(&dp->dl_recall_lru);
+ 		spin_unlock(&cl->cl_lock);
+@@ -5141,6 +5156,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out;
+ 	/* Default falls through and returns nfserr_bad_stateid */
+ 	}
++	spin_unlock(&s->sc_lock);
+ out_unlock:
+ 	spin_unlock(&cl->cl_lock);
+ out:
+@@ -5420,7 +5436,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto out;
+ 	dp = delegstateid(s);
+-	status = check_stateid_generation(stateid, &dp->dl_stid.sc_stateid, nfsd4_has_session(cstate));
++	status = nfsd4_stid_check_stateid_generation(stateid, &dp->dl_stid, nfsd4_has_session(cstate));
+ 	if (status)
+ 		goto put_stateid;
  
- 	nfsd4_close_open_stateid(stp);
-+	mutex_unlock(&stp->st_mutex);
- 
- 	/* put reference from nfs4_preprocess_seqid_op */
- 	nfs4_put_stid(&stp->st_stid);
 -- 
 2.13.6
 
