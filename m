@@ -1,91 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:55646 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753703AbdJaRjr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 31 Oct 2017 13:39:47 -0400
-Date: Tue, 31 Oct 2017 13:39:45 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: Kernel bug triggered with xfstest generic/113
-Message-ID: <20171031173945.rgsvdtulqmsa5hkz@tonberry.usersys.redhat.com>
-References: <1422255296.3062600.1509006087862.JavaMail.zimbra@desy.de>
-MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="aesy2c3pem53cbnr"
-In-Reply-To: <1422255296.3062600.1509006087862.JavaMail.zimbra@desy.de>
+Received: from discipline.rit.edu ([129.21.6.207]:60524 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1751324AbdJaT3p (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 15:29:45 -0400
+From: Andrew Elble <aweits@rit.edu>
+To: linux-nfs@vger.kernel.org
+Cc: Andrew Elble <aweits@rit.edu>
+Subject: [PATCH] nfsd: deal with revoked delegations appropriately
+Date: Tue, 31 Oct 2017 15:22:38 -0400
+Message-Id: <20171031192238.6906-1-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If a delegation has been revoked by the server, operations using that
+delegation should error out with NFS4ERR_DELEG_REVOKED in the >4.1
+case, and NFS4ERR_BAD_STATEID otherwise. DELEGRETURN has also been
+optimized to return NFS4_OK when called with a revoked delegation.
 
---aesy2c3pem53cbnr
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Thread on DELEGRETURN optimization is here:
+https://www.spinics.net/lists/linux-nfs/msg55216.html
 
-On Thu, 26 Oct 2017, Mkrtchyan, Tigran wrote:
+Signed-off-by: Andrew Elble <aweits@rit.edu>
+---
+ fs/nfsd/nfs4state.c | 53 +++++++++++++++++++++++++++++++++++++++++++----------
+ 1 file changed, 43 insertions(+), 10 deletions(-)
 
-> 
-> 
-> Against dCache nfs server:
-> 
-> [ 3987.717284] ------------[ cut here ]------------                                                                                                                                           
-> [ 3987.717286] kernel BUG at fs/inode.c:567!                                                                                                                                                  
-> [ 3987.717292] invalid opcode: 0000 [#1] SMP                                                                                                                                                  
-> [ 3987.717293] Modules linked in: loop nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs lockd grace fscache binfmt_misc af_packet nf_conntrack_netbios_ns nf_conntrack_broadcast xt_tcpudp xt
-> _CT ip6t_REJECT nf_reject_ipv6 nf_conntrack_ipv6 nf_defrag_ipv6 ipt_REJECT nf_reject_ipv4 nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack nf_conntrack libcrc32c nfnetlink ip6table_mangle ip6ta
-> ble_raw ip6table_security iptable_mangle iptable_raw iptable_security ip6table_filter ip6_tables iptable_filter btrfs xor zstd_decompress zstd_compress xxhash lzo_compress zlib_deflate raid6
-> _pq snd_hda_codec_idt snd_hda_codec_generic snd_hda_intel snd_hda_codec snd_hda_core snd_hwdep snd_seq iTCO_wdt iTCO_vendor_support snd_seq_device snd_timer lpc_ich mfd_core tpm_tis snd_pcm 
-> tpm_tis_core i2c_i801 snd tpm auth_rpcgss oid_registry                                                                                                                                        
-> [ 3987.717340]  sunrpc ip_tables x_tables serio_raw e1000e ptp pps_core autofs4                                                                                                               
-> [ 3987.717349] CPU: 1 PID: 31883 Comm: rm Not tainted 4.14.0-rc6-01076-gbb176f67090c #120                                                                                                     [ 3987.717350] Hardware name: Comptronic pczW1007/DX38BT, BIOS BTX3810J.86A.1893.2008.1009.1712 10/09/2008                                                                                    
-> [ 3987.717353] task: ffff880107f7c480 task.stack: ffff88012a830000                             
-> [ 3987.717358] RIP: 0010:evict+0x161/0x180                                                     
-> [ 3987.717360] RSP: 0018:ffff88012a833e80 EFLAGS: 00010202                                     
-> [ 3987.717362] RAX: ffffffff81806110 RBX: ffff880100037800 RCX: ffff8801000378a0               
-> [ 3987.717364] RDX: ffffffff81806110 RSI: ffff8801000378a0 RDI: ffffffff81806108               
-> [ 3987.717366] RBP: ffff88012a833e98 R08: 0000000000000000 R09: ffff88012a03d6e8               
-> [ 3987.717368] R10: ffff88012a03d6f8 R11: ffff88012a03d6f8 R12: ffff880100037910               
-> [ 3987.717370] R13: ffffffffa0404540 R14: 00000000ffffff9c R15: 0000000000000000               
-> [ 3987.717372] FS:  00007faddfd6e700(0000) GS:ffff88012fc80000(0000) knlGS:0000000000000000    
-> [ 3987.717375] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033                               
-> [ 3987.717377] CR2: 00005653ab778470 CR3: 000000012840c000 CR4: 00000000000406e0               
-> [ 3987.717378] Call Trace:                                                                     
-> [ 3987.717382]  iput+0xf9/0x1c0                                                                
-> [ 3987.717385]  do_unlinkat+0x18d/0x2f0                                                        
-> [ 3987.717388]  SyS_unlinkat+0x16/0x30                                                         
-> [ 3987.717392]  entry_SYSCALL_64_fastpath+0x13/0x94                                            
-> [ 3987.717394] RIP: 0033:0x7faddf8a0c17                                                        
-> [ 3987.717396] RSP: 002b:00007ffc44a11468 EFLAGS: 00000246 ORIG_RAX: 0000000000000107          
-> [ 3987.717399] RAX: ffffffffffffffda RBX: 000055ccd0723428 RCX: 00007faddf8a0c17
-> [ 3987.717401] RDX: 0000000000000000 RSI: 000055ccd07220f0 RDI: 00000000ffffff9c
-> [ 3987.717403] RBP: 000055ccd0723320 R08: 0000000000000003 R09: 0000000000000000
-> [ 3987.717404] R10: 0000000000000100 R11: 0000000000000246 R12: 000055ccd0722060
-> [ 3987.717406] R13: 00007ffc44a115a0 R14: 00007faddfb6a1e4 R15: 0000000000000000
-> [ 3987.717408] Code: 89 df e8 23 7d fe ff eb 8f 48 83 bb 20 02 00 00 00 74 85 48 89 df e8 7f ad 01 00 0f b7 03 66 25 00 f0 e9 6b ff ff ff 0f 0b 0f 0b <0f> 0b 48 8d bb 68 01 00 00 e8 a1 9e fa
->  ff 48 89 df e8 a9 f1 ff 
-> [ 3987.717443] RIP: evict+0x161/0x180 RSP: ffff88012a833e80
-> [ 3987.717445] ---[ end trace ca9a0f6be0e72301 ]---
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0c04f81aa63b..2545ca69a6b5 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3966,7 +3966,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
+ {
+ 	struct nfs4_stid *ret;
+ 
+-	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
++	ret = find_stateid_by_type(cl, s,
++				NFS4_DELEG_STID|NFS4_REVOKED_DELEG_STID);
+ 	if (!ret)
+ 		return NULL;
+ 	return delegstateid(ret);
+@@ -3989,6 +3990,12 @@ nfs4_check_deleg(struct nfs4_client *cl, struct nfsd4_open *open,
+ 	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
+ 	if (deleg == NULL)
+ 		goto out;
++	if (deleg->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID) {
++		nfs4_put_stid(&deleg->dl_stid);
++		if (cl->cl_minorversion)
++			status = nfserr_deleg_revoked;
++		goto out;
++	}
+ 	flags = share_access_to_flags(open->op_share_access);
+ 	status = nfs4_check_delegmode(deleg, flags);
+ 	if (status) {
+@@ -4858,6 +4865,16 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 		     struct nfs4_stid **s, struct nfsd_net *nn)
+ {
+ 	__be32 status;
++	bool return_revoked = false;
++
++	/*
++	 *  only return revoked delegations if explicitly asked.
++	 *  otherwise we report revoked or bad_stateid status.
++	 */
++	if (typemask & NFS4_REVOKED_DELEG_STID)
++		return_revoked = true;
++	else if (typemask & NFS4_DELEG_STID)
++		typemask |= NFS4_REVOKED_DELEG_STID;
+ 
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+ 		return nfserr_bad_stateid;
+@@ -4872,6 +4889,12 @@ nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
+ 	if (!*s)
+ 		return nfserr_bad_stateid;
++	if (((*s)->sc_type == NFS4_REVOKED_DELEG_STID) && !return_revoked) {
++		nfs4_put_stid(*s);
++		if (cstate->minorversion)
++			return nfserr_deleg_revoked;
++		return nfserr_bad_stateid;
++	}
+ 	return nfs_ok;
+ }
+ 
+@@ -5106,13 +5129,11 @@ static __be32 nfs4_seqid_op_checks(struct nfsd4_compound_state *cstate, stateid_
+ 	status = nfsd4_check_seqid(cstate, sop, seqid);
+ 	if (status)
+ 		return status;
+-	if (stp->st_stid.sc_type == NFS4_CLOSED_STID
+-		|| stp->st_stid.sc_type == NFS4_REVOKED_DELEG_STID)
+-		/*
+-		 * "Closed" stateid's exist *only* to return
+-		 * nfserr_replay_me from the previous step, and
+-		 * revoked delegations are kept only for free_stateid.
+-		 */
++	/*
++	 * "Closed" stateid's exist *only* to return
++	 * nfserr_replay_me from the previous step
++	 */
++	if (stp->st_stid.sc_type == NFS4_CLOSED_STID)
+ 		return nfserr_bad_stateid;
+ 	mutex_lock(&stp->st_mutex);
+ 	status = check_stateid_generation(stateid, &stp->st_stid.sc_stateid, nfsd4_has_session(cstate));
+@@ -5359,7 +5380,9 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
+ 		return status;
+ 
+-	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
++	status = nfsd4_lookup_stateid(cstate, stateid,
++				NFS4_DELEG_STID|NFS4_REVOKED_DELEG_STID,
++				&s, nn);
+ 	if (status)
+ 		goto out;
+ 	dp = delegstateid(s);
+@@ -5367,7 +5390,17 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (status)
+ 		goto put_stateid;
+ 
+-	destroy_delegation(dp);
++	if (dp->dl_stid.sc_type == NFS4_DELEG_STID)
++		destroy_delegation(dp);
++	if (dp->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID) {
++		/*
++		 * optimization: don't return error if client is
++		 * returning a revoked delegation
++		 */
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_stid(s);
++	}
++
+ put_stateid:
+ 	nfs4_put_stid(&dp->dl_stid);
+ out:
+-- 
+2.10.1
 
-I've been seeing a similar panic.  Does the attached patch help?
-
--Scott
-
-> 
-> Looks like it happens in post-test clean-up step (rm), though  some processes are still there:
-> 
-> root     18489 18329  0 Oct25 pts/1    00:00:00 /data/git/xfstests-dev/ltp/aio-stress -t 20 -s 10  -O -I 1000 /mnt/test/aiostress.18329.3 /mnt/test/aiostress.18329.3.20 /mnt/test/aiostress.18329.3.19 /mnt/test/aiostress.18329.3.18 /mnt/test/aiostress.18329.3.17 /mnt/test/aiostress.18329.3.16 /mnt/test/aiostress.18329.3.15 /mnt/test/aiostress.18329.3.14 /mnt/test/aiostress.18329.3.13 /mnt/test/aiostress.18329.3.12 /mnt/test/aiostress.18329.3.11 /mnt/test/aiostress.18329.3.10 /mnt/test/aiostress.18329.3.9 /mnt/test/aiostress.18329.3.8 /mnt/test/aiostress.18329.3.7 /mnt/test/aiostress.18329.3.6 /mnt/test/aiostress.18329.3.5 /mnt/test/aiostress.18329.3.4 /mnt/test/aiostress.18329.3.3 /mnt/test/aiostress.18329.3.2
-> 
-> 
-> I can always re-produce it.
-> 
->   Tigran.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---aesy2c3pem53cbnr
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="0001-nfs-make-pnfs_destroy_layout-wait-on-commit-when-ino.patch"
-
-
---aesy2c3pem53cbnr--
