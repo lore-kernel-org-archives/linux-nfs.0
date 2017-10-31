@@ -1,13 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f193.google.com ([209.85.216.193]:48630 "EHLO
-        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751539AbdJaNfQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 09:35:16 -0400
-Received: by mail-qt0-f193.google.com with SMTP id f8so20701388qta.5
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Oct 2017 06:35:16 -0700 (PDT)
-Message-ID: <1509456912.4553.12.camel@redhat.com>
-Subject: Re: [PATCH v3 05/14] VSOCK: add tcp_read_sock()-like
- vsock_read_sock() function
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:50489 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753367AbdJaNzg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Oct 2017 09:55:36 -0400
+Received: by mail-qk0-f195.google.com with SMTP id o187so20521831qke.7
+        for <linux-nfs@vger.kernel.org>; Tue, 31 Oct 2017 06:55:36 -0700 (PDT)
+Message-ID: <1509458134.4553.16.camel@redhat.com>
+Subject: Re: [PATCH v3 07/14] SUNRPC: drop unnecessary svc_bc_tcp_create()
+ helper
 From: Jeff Layton <jlayton@redhat.com>
 To: Stefan Hajnoczi <stefanha@redhat.com>, linux-nfs@vger.kernel.org
 Cc: Abbas Naderi <abiusx@google.com>,
@@ -15,248 +15,97 @@ Cc: Abbas Naderi <abiusx@google.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
-Date: Tue, 31 Oct 2017 09:35:12 -0400
-In-Reply-To: <20170630132352.32133-6-stefanha@redhat.com>
+Date: Tue, 31 Oct 2017 09:55:34 -0400
+In-Reply-To: <20170630132352.32133-8-stefanha@redhat.com>
 References: <20170630132352.32133-1-stefanha@redhat.com>
-         <20170630132352.32133-6-stefanha@redhat.com>
+         <20170630132352.32133-8-stefanha@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On Fri, 2017-06-30 at 14:23 +0100, Stefan Hajnoczi wrote:
-> The tcp_read_sock() interface dequeues skbs and gives them to the
-> caller's callback function for processing.  This interface can avoid
-> data copies since the caller accesses the skb instead of using its own
-> receive buffer.
+> svc_bc_tcp_create() is a helper function that simply calls
+> svc_bc_create_socket() with an added IPPROTO_TCP argument.
 > 
-> This patch implements vsock_read_sock() for AF_VSOCK SOCK_STREAM
-> sockets.  The implementation is only for virtio-vsock at this time, not
-> for the VMware VMCI transport.  It is not zero-copy yet because the
-> virtio-vsock receive queue does not consist of skbs.
+> svc_bc_create_socket() then checks that the protocol argument is indeed
+> IPPROTO_TCP.
 > 
-> The tcp_read_sock()-like interface is needed for AF_VSOCK sunrpc
-> support.
+> This isn't necessary since svc_bc_tcp_create() is the only
+> svc_bc_create_socket() caller.  The next patch adds a second caller for
+> AF_VSOCK where IPPROTO_TCP will not be used.
+> 
+> Scrap this scheme and just call svc_bc_create_socket() directly.
 > 
 > Signed-off-by: Stefan Hajnoczi <stefanha@redhat.com>
 > ---
->  include/linux/virtio_vsock.h            |  4 ++
->  include/net/af_vsock.h                  |  5 +++
->  drivers/vhost/vsock.c                   |  1 +
->  net/vmw_vsock/af_vsock.c                | 16 ++++++++
->  net/vmw_vsock/virtio_transport.c        |  1 +
->  net/vmw_vsock/virtio_transport_common.c | 66 +++++++++++++++++++++++++++++++++
->  net/vmw_vsock/vmci_transport.c          |  8 ++++
->  7 files changed, 101 insertions(+)
+>  net/sunrpc/svcsock.c | 21 +++------------------
+>  1 file changed, 3 insertions(+), 18 deletions(-)
 > 
-> diff --git a/include/linux/virtio_vsock.h b/include/linux/virtio_vsock.h
-> index ab13f07..d6cf428 100644
-> --- a/include/linux/virtio_vsock.h
-> +++ b/include/linux/virtio_vsock.h
-> @@ -5,6 +5,7 @@
->  #include <linux/socket.h>
->  #include <net/sock.h>
->  #include <net/af_vsock.h>
-> +#include <net/tcp.h> /* for sk_read_actor_t */
->  
->  #define VIRTIO_VSOCK_DEFAULT_MIN_BUF_SIZE	128
->  #define VIRTIO_VSOCK_DEFAULT_BUF_SIZE		(1024 * 256)
-> @@ -126,6 +127,9 @@ int virtio_transport_notify_send_post_enqueue(struct vsock_sock *vsk,
->  u64 virtio_transport_stream_rcvhiwat(struct vsock_sock *vsk);
->  bool virtio_transport_stream_is_active(struct vsock_sock *vsk);
->  bool virtio_transport_stream_allow(u32 cid, u32 port);
-> +int virtio_transport_stream_read_sock(struct vsock_sock *vsk,
-> +				      read_descriptor_t *desc,
-> +				      sk_read_actor_t recv_actor);
->  int virtio_transport_dgram_bind(struct vsock_sock *vsk,
->  				struct sockaddr_vm *addr);
->  bool virtio_transport_dgram_allow(u32 cid, u32 port);
-> diff --git a/include/net/af_vsock.h b/include/net/af_vsock.h
-> index f9fb566..85fa345 100644
-> --- a/include/net/af_vsock.h
-> +++ b/include/net/af_vsock.h
-> @@ -19,6 +19,7 @@
->  #include <linux/kernel.h>
->  #include <linux/workqueue.h>
->  #include <linux/vm_sockets.h>
-> +#include <net/tcp.h> /* for sk_read_actor_t */
->  
->  #include "vsock_addr.h"
->  
-> @@ -73,6 +74,8 @@ struct vsock_sock {
->  	void *trans;
->  };
->  
-> +int vsock_read_sock(struct sock *sk, read_descriptor_t *desc,
-> +		    sk_read_actor_t recv_actor);
->  s64 vsock_stream_has_data(struct vsock_sock *vsk);
->  s64 vsock_stream_has_space(struct vsock_sock *vsk);
->  void vsock_pending_work(struct work_struct *work);
-> @@ -125,6 +128,8 @@ struct vsock_transport {
->  	u64 (*stream_rcvhiwat)(struct vsock_sock *);
->  	bool (*stream_is_active)(struct vsock_sock *);
->  	bool (*stream_allow)(u32 cid, u32 port);
-> +	int (*stream_read_sock)(struct vsock_sock *, read_descriptor_t *desc,
-> +				sk_read_actor_t recv_actor);
->  
->  	/* Notification. */
->  	int (*notify_poll_in)(struct vsock_sock *, size_t, bool *);
-> diff --git a/drivers/vhost/vsock.c b/drivers/vhost/vsock.c
-> index 3acef3c..5128e41 100644
-> --- a/drivers/vhost/vsock.c
-> +++ b/drivers/vhost/vsock.c
-> @@ -734,6 +734,7 @@ static struct virtio_transport vhost_transport = {
->  		.stream_rcvhiwat          = virtio_transport_stream_rcvhiwat,
->  		.stream_is_active         = virtio_transport_stream_is_active,
->  		.stream_allow             = virtio_transport_stream_allow,
-> +		.stream_read_sock         = virtio_transport_stream_read_sock,
->  
->  		.notify_poll_in           = virtio_transport_notify_poll_in,
->  		.notify_poll_out          = virtio_transport_notify_poll_out,
-> diff --git a/net/vmw_vsock/af_vsock.c b/net/vmw_vsock/af_vsock.c
-> index dfc8c51e..2ae94b5a 100644
-> --- a/net/vmw_vsock/af_vsock.c
-> +++ b/net/vmw_vsock/af_vsock.c
-> @@ -706,6 +706,22 @@ static void vsock_sk_destruct(struct sock *sk)
->  	put_cred(vsk->owner);
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 2b720fa..394e7a2 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -71,7 +71,7 @@ static struct svc_xprt *svc_create_socket(struct svc_serv *, int,
+>  					  struct net *, struct sockaddr *,
+>  					  int, int);
+>  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+> -static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
+> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
+>  					     struct net *, struct sockaddr *,
+>  					     int, int);
+>  static void svc_bc_sock_free(struct svc_xprt *xprt);
+> @@ -1212,25 +1212,17 @@ static struct svc_xprt *svc_tcp_create(struct svc_serv *serv,
 >  }
 >  
-> +/* See documentation for tcp_read_sock() */
-> +int vsock_read_sock(struct sock *sk, read_descriptor_t *desc,
-> +		    sk_read_actor_t recv_actor)
-> +{
-> +	struct vsock_sock *vsp = vsock_sk(sk);
-> +
-> +	if (sk->sk_type != SOCK_STREAM)
-> +		return -EOPNOTSUPP;
-> +
-> +	if (sk->sk_state != SS_CONNECTED && sk->sk_state != SS_DISCONNECTING)
-> +		return -ENOTCONN;
-> +
-> +	return transport->stream_read_sock(vsp, desc, recv_actor);
-> +}
-> +EXPORT_SYMBOL(vsock_read_sock);
-> +
->  static int vsock_queue_rcv_skb(struct sock *sk, struct sk_buff *skb)
+>  #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+> -static struct svc_xprt *svc_bc_create_socket(struct svc_serv *, int,
+> +static struct svc_xprt *svc_bc_create_socket(struct svc_serv *,
+>  					     struct net *, struct sockaddr *,
+>  					     int, int);
+>  static void svc_bc_sock_free(struct svc_xprt *xprt);
+>  
+> -static struct svc_xprt *svc_bc_tcp_create(struct svc_serv *serv,
+> -				       struct net *net,
+> -				       struct sockaddr *sa, int salen,
+> -				       int flags)
+> -{
+> -	return svc_bc_create_socket(serv, IPPROTO_TCP, net, sa, salen, flags);
+> -}
+> -
+>  static void svc_bc_tcp_sock_detach(struct svc_xprt *xprt)
 >  {
->  	int err;
-> diff --git a/net/vmw_vsock/virtio_transport.c b/net/vmw_vsock/virtio_transport.c
-> index 403d86e80..8264307 100644
-> --- a/net/vmw_vsock/virtio_transport.c
-> +++ b/net/vmw_vsock/virtio_transport.c
-> @@ -520,6 +520,7 @@ static struct virtio_transport virtio_transport = {
->  		.stream_rcvhiwat          = virtio_transport_stream_rcvhiwat,
->  		.stream_is_active         = virtio_transport_stream_is_active,
->  		.stream_allow             = virtio_transport_stream_allow,
-> +		.stream_read_sock         = virtio_transport_stream_read_sock,
->  
->  		.notify_poll_in           = virtio_transport_notify_poll_in,
->  		.notify_poll_out          = virtio_transport_notify_poll_out,
-> diff --git a/net/vmw_vsock/virtio_transport_common.c b/net/vmw_vsock/virtio_transport_common.c
-> index 18e2479..510d9e1 100644
-> --- a/net/vmw_vsock/virtio_transport_common.c
-> +++ b/net/vmw_vsock/virtio_transport_common.c
-> @@ -316,6 +316,72 @@ virtio_transport_stream_dequeue(struct vsock_sock *vsk,
->  EXPORT_SYMBOL_GPL(virtio_transport_stream_dequeue);
->  
->  int
-> +virtio_transport_stream_read_sock(struct vsock_sock *vsk,
-> +				  read_descriptor_t *desc,
-> +				  sk_read_actor_t recv_actor)
-> +{
-> +	struct virtio_vsock_sock *vvs;
-> +	int ret = 0;
-> +
-> +	vvs = vsk->trans;
-> +
-> +	spin_lock_bh(&vvs->rx_lock);
-> +	while (!list_empty(&vvs->rx_queue)) {
-> +		struct virtio_vsock_pkt *pkt;
-> +		struct sk_buff *skb;
-> +		size_t len;
-> +		int used;
-> +
-> +		pkt = list_first_entry(&vvs->rx_queue,
-> +				       struct virtio_vsock_pkt, list);
-> +
-> +		/* sk_lock is held by caller so no one else can dequeue.
-> +		 * Unlock rx_lock so recv_actor() can sleep.
-> +		 */
-> +		spin_unlock_bh(&vvs->rx_lock);
-> +
-> +		len = pkt->len - pkt->off;
-> +		skb = alloc_skb(len, GFP_KERNEL);
-> +		if (!skb) {
-> +			ret = -ENOMEM;
-> +			goto out_nolock;
-> +		}
-> +
-> +		memcpy(skb_put(skb, len),
-> +		       pkt->buf + pkt->off,
-> +		       len);
-> +
-> +		used = recv_actor(desc, skb, 0, len);
-> +
-> +		kfree_skb(skb);
-> +
-> +		spin_lock_bh(&vvs->rx_lock);
-> +
-> +		if (used > 0) {
-> +			ret += used;
-> +			pkt->off += used;
-> +			if (pkt->off == pkt->len) {
-> +				virtio_transport_dec_rx_pkt(vvs, pkt);
-> +				list_del(&pkt->list);
-> +				virtio_transport_free_pkt(pkt);
-> +			}
-> +		}
-> +
-> +		if (used <= 0 || !desc->count)
-> +			break;
-> +	}
-> +	spin_unlock_bh(&vvs->rx_lock);
-> +
-> +out_nolock:
-> +	if (ret > 0)
-> +		virtio_transport_send_credit_update(vsk,
-> +				VIRTIO_VSOCK_TYPE_STREAM, NULL);
-> +
-> +	return ret;
-> +}
-> +EXPORT_SYMBOL_GPL(virtio_transport_stream_read_sock);
-> +
-> +int
->  virtio_transport_dgram_dequeue(struct vsock_sock *vsk,
->  			       struct msghdr *msg,
->  			       size_t len, int flags)
-> diff --git a/net/vmw_vsock/vmci_transport.c b/net/vmw_vsock/vmci_transport.c
-> index 10ae782..dfbdb4c 100644
-> --- a/net/vmw_vsock/vmci_transport.c
-> +++ b/net/vmw_vsock/vmci_transport.c
-> @@ -646,6 +646,13 @@ static bool vmci_transport_stream_allow(u32 cid, u32 port)
->  	return true;
 >  }
 >  
-> +static int vmci_transport_stream_read_sock(struct vsock_sock *vsk,
-> +					   read_descriptor_t *desc,
-> +					   sk_read_actor_t recv_actor)
-> +{
-> +	return -EOPNOTSUPP; /* not yet implemented */
-> +}
-> +
->  /* This is invoked as part of a tasklet that's scheduled when the VMCI
->   * interrupt fires.  This is run in bottom-half context but it defers most of
->   * its work to the packet handling work queue.
-> @@ -2061,6 +2068,7 @@ static const struct vsock_transport vmci_transport = {
->  	.stream_rcvhiwat = vmci_transport_stream_rcvhiwat,
->  	.stream_is_active = vmci_transport_stream_is_active,
->  	.stream_allow = vmci_transport_stream_allow,
-> +	.stream_read_sock = vmci_transport_stream_read_sock,
->  	.notify_poll_in = vmci_transport_notify_poll_in,
->  	.notify_poll_out = vmci_transport_notify_poll_out,
->  	.notify_recv_init = vmci_transport_notify_recv_init,
+>  static struct svc_xprt_ops svc_tcp_bc_ops = {
+> -	.xpo_create = svc_bc_tcp_create,
+> +	.xpo_create = svc_bc_create_socket,
+>  	.xpo_detach = svc_bc_tcp_sock_detach,
+>  	.xpo_free = svc_bc_sock_free,
+>  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+> @@ -1615,7 +1607,6 @@ static void svc_sock_free(struct svc_xprt *xprt)
+>   * Create a back channel svc_xprt which shares the fore channel socket.
+>   */
+>  static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+> -					     int protocol,
+>  					     struct net *net,
+>  					     struct sockaddr *sin, int len,
+>  					     int flags)
+> @@ -1623,12 +1614,6 @@ static struct svc_xprt *svc_bc_create_socket(struct svc_serv *serv,
+>  	struct svc_sock *svsk;
+>  	struct svc_xprt *xprt;
+>  
+> -	if (protocol != IPPROTO_TCP) {
+> -		printk(KERN_WARNING "svc: only TCP sockets"
+> -			" supported on shared back channel\n");
+> -		return ERR_PTR(-EINVAL);
+> -	}
+> -
+>  	svsk = kzalloc(sizeof(*svsk), GFP_KERNEL);
+>  	if (!svsk)
+>  		return ERR_PTR(-ENOMEM);
 
-Do we need this for the hyperv driver as well?
+This one can go in ahead of the rest, I think. Trond or Bruce, do either
+of you want to pick this up for the next merge window?
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Reviewed-by: Jeff Layton <jlayton@redhat.com>
