@@ -1,341 +1,417 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f174.google.com ([209.85.223.174]:47645 "EHLO
-        mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754522AbdKAOid (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Nov 2017 10:38:33 -0400
-Received: by mail-io0-f174.google.com with SMTP id h70so6501413ioi.4
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Nov 2017 07:38:32 -0700 (PDT)
-From: Joshua Watt <jpewhacker@gmail.com>
-Message-ID: <1509547111.2592.27.camel@gmail.com>
-Subject: Re: NFS Force Unmounting
-To: Chuck Lever <chuck.lever@oracle.com>, NeilBrown <neilb@suse.com>
-Cc: Jeff Layton <jlayton@kernel.org>,
-        Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Wed, 01 Nov 2017 09:38:31 -0500
-In-Reply-To: <8EB53737-9126-4D26-A22F-D09639BE5130@oracle.com>
-References: <1508951506.2542.51.camel@gmail.com>
-         <20171030202045.GA6168@fieldses.org>
-         <87h8ugwdev.fsf@notabene.neil.brown.name>
-         <1509460909.4553.37.camel@kernel.org>
-         <8760aux1j5.fsf@notabene.neil.brown.name>
-         <8EB53737-9126-4D26-A22F-D09639BE5130@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-vk0-f48.google.com ([209.85.213.48]:47162 "EHLO
+        mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753080AbdKAOyO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Nov 2017 10:54:14 -0400
+Received: by mail-vk0-f48.google.com with SMTP id j2so1567682vki.4
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Nov 2017 07:54:13 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <CAD8zhTDK-x+UmHnqvKm+5hnoYmob+rOGW1XxFt37-JsDm-Px2w@mail.gmail.com>
+References: <CAD8zhTBggSc34-jFPO9TM8w9DOGiKOZLJVo6-mTYXhU00dxuBg@mail.gmail.com>
+ <001f01d351b3$21b51df0$651f59d0$@mindspring.com> <CAD8zhTDTVemPqJy7-msciEe0Vc475w3h91G8qA1CJsZkDSysNQ@mail.gmail.com>
+ <003501d351cd$d99013c0$8cb03b40$@mindspring.com> <CAD8zhTARmq4PWm4-MvSPnW33g7d7To6EQys-Ewpg5uUjSAQUiA@mail.gmail.com>
+ <CAD8zhTDK-x+UmHnqvKm+5hnoYmob+rOGW1XxFt37-JsDm-Px2w@mail.gmail.com>
+From: Pradeep <pradeepthomas@gmail.com>
+Date: Wed, 1 Nov 2017 07:53:52 -0700
+Message-ID: <CAD8zhTAAvTKhp6k0vYRMnhZW5pxjstpBiDKLgoXocfpAXNjKTg@mail.gmail.com>
+Subject: Re: [Nfs-ganesha-devel] NFSv4 referrals not working with ganesha.
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>,
+        ssaurabh.wisc@gmail.com, linux-nfs@vger.kernel.org
+Content-Type: multipart/mixed; boundary="001a11437e047858f6055ced0bf1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2017-10-31 at 22:22 -0400, Chuck Lever wrote:
-> > On Oct 31, 2017, at 8:53 PM, NeilBrown <neilb@suse.com> wrote:
-> > 
-> > On Tue, Oct 31 2017, Jeff Layton wrote:
-> > 
-> > > On Tue, 2017-10-31 at 08:09 +1100, NeilBrown wrote:
-> > > > On Mon, Oct 30 2017, J. Bruce Fields wrote:
-> > > > 
-> > > > > On Wed, Oct 25, 2017 at 12:11:46PM -0500, Joshua Watt wrote:
-> > > > > > I'm working on a networking embedded system where NFS
-> > > > > > servers can come
-> > > > > > and go from the network, and I've discovered that the
-> > > > > > Kernel NFS server
-> > > > > 
-> > > > > For "Kernel NFS server", I think you mean "Kernel NFS
-> > > > > client".
-> > > > > 
-> > > > > > make it difficult to cleanup applications in a timely
-> > > > > > manner when the
-> > > > > > server disappears (and yes, I am mounting with "soft" and
-> > > > > > relatively
-> > > > > > short timeouts). I currently have a user space mechanism
-> > > > > > that can
-> > > > > > quickly detect when the server disappears, and does a
-> > > > > > umount() with the
-> > > > > > MNT_FORCE and MNT_DETACH flags. Using MNT_DETACH prevents
-> > > > > > new accesses
-> > > > > > to files on the defunct remote server, and I have traced
-> > > > > > through the
-> > > > > > code to see that MNT_FORCE does indeed cancel any current
-> > > > > > RPC tasks
-> > > > > > with -EIO. However, this isn't sufficient for my use case
-> > > > > > because if a
-> > > > > > user space application isn't currently waiting on an RCP
-> > > > > > task that gets
-> > > > > > canceled, it will have to timeout again before it detects
-> > > > > > the
-> > > > > > disconnect. For example, if a simple client is copying a
-> > > > > > file from the
-> > > > > > NFS server, and happens to not be waiting on the RPC task
-> > > > > > in the read()
-> > > > > > call when umount() occurs, it will be none the wiser and
-> > > > > > loop around to
-> > > > > > call read() again, which must then try the whole NFS
-> > > > > > timeout + recovery
-> > > > > > before the failure is detected. If a client is more complex
-> > > > > > and has a
-> > > > > > lot of open file descriptor, it will typical have to wait
-> > > > > > for each one
-> > > > > > to timeout, leading to very long delays.
-> > > > > > 
-> > > > > > The (naive?) solution seems to be to add some flag in
-> > > > > > either the NFS
-> > > > > > client or the RPC client that gets set in
-> > > > > > nfs_umount_begin(). This
-> > > > > > would cause all subsequent operations to fail with an error
-> > > > > > code
-> > > > > > instead of having to be queued as an RPC task and the and
-> > > > > > then timing
-> > > > > > out. In our example client, the application would then get
-> > > > > > the -EIO
-> > > > > > immediately on the next (and all subsequent) read() calls.
-> > > > > > 
-> > > > > > There does seem to be some precedence for doing this
-> > > > > > (especially with
-> > > > > > network file systems), as both cifs (CifsExiting) and ceph
-> > > > > > (CEPH_MOUNT_SHUTDOWN) appear to implement this behavior (at
-> > > > > > least from
-> > > > > > looking at the code. I haven't verified runtime behavior).
-> > > > > > 
-> > > > > > Are there any pitfalls I'm oversimplifying?
-> > > > > 
-> > > > > I don't know.
-> > > > > 
-> > > > > In the hard case I don't think you'd want to do something
-> > > > > like
-> > > > > this--applications expect mounts to be stay pinned while
-> > > > > they're using
-> > > > > them, not to get -EIO.  In the soft case maybe an exception
-> > > > > like this
-> > > > > makes sense.
-> > > > 
-> > > > Applications also expect to get responses to read() requests,
-> > > > and expect
-> > > > fsync() to complete, but if the servers has melted down, that
-> > > > isn't
-> > > > going to happen.  Sometimes unexpected errors are better than
-> > > > unexpected
-> > > > infinite delays.
-> > > > 
-> > > > I think we need a reliable way to unmount an NFS filesystem
-> > > > mounted from
-> > > > a non-responsive server.  Maybe that just means fixing all the
-> > > > places
-> > > > where use we use TASK_UNINTERRUTIBLE when waiting for the
-> > > > server.  That
-> > > > would allow processes accessing the filesystem to be killed.  I
-> > > > don't
-> > > > know if that would meet Joshua's needs.
-> > > > 
-> > > > Last time this came up, Trond didn't want to make MNT_FORCE too
-> > > > strong as
-> > > > it only makes sense to be forceful on the final unmount, and we
-> > > > cannot
-> > > > know if this is the "final" unmount (no other bind-mounts
-> > > > around) until
-> > > > much later than ->umount_prepare.  Maybe umount is the wrong
-> > > > interface.
-> > > > Maybe we should expose "struct nfs_client" (or maybe "struct
-> > > > nfs_server") objects via sysfs so they can be marked "dead" (or
-> > > > similar)
-> > > > meaning that all IO should fail.
-> > > > 
-> > > 
-> > > I like this idea.
-> > > 
-> > > Note that we already have some per-rpc_xprt / per-rpc_clnt info
-> > > in
-> > > debugfs sunrpc dir. We could make some writable files in there,
-> > > to allow
-> > > you to kill off individual RPCs or maybe mark a whole clnt and/or
-> > > xprt
-> > > dead in some fashion.
-> > > 
-> > > I don't really have a good feel for what this interface should
-> > > look like
-> > > yet. debugfs is attractive here, as it's supposedly not part of
-> > > the
-> > > kernel ABI guarantee. That allows us to do some experimentation
-> > > in this
-> > > area, without making too big an initial commitment.
-> > 
-> > debugfs might be attractive to kernel developers: "all care but not
-> > responsibility", but not so much to application developers (though
-> > I do
-> > realize that your approch was "something to experiment with" so
-> > maybe
-> > that doesn't matter).
-> 
-> I read Jeff's suggestion as "start in debugfs and move to /sys
-> with the other long-term administrative interfaces". <shrug>
-> 
-> 
-> > My particular focus is to make systemd shutdown completely
-> > reliable.
-> 
-> In particular: umount.nfs has to be reliable, and/or stuck NFS
-> mounts have to avoid impacting other aspects of system
-> operation (like syncing other filesystems).
-> 
-> 
-> > It should not block indefinitely on any condition, including
-> > inaccessible
-> > servers and broken networks.
-> 
-> There are occasions where a "hard" semantic is appropriate,
-> and killing everything unconditionally can result in unexpected
-> and unwanted consequences. I would strongly object to any
-> approach that includes automatically discarding data without
-> user/administrator choice in the matter. One size does not fit
-> all here.
-> 
-> At least let's stop and think about consequences. I'm sure I
-> don't understand all of them yet.
-> 
-> 
-> > In stark contrast to Chuck's suggestion that
-> > 
-> > 
-> >   Any RPC that might alter cached data/metadata is not, but others
-> >   would be safe.
-> > 
-> > ("safe" here meaning "safe to kill the RPC"), I think that
-> > everything
-> > can and should be killed.  Maybe the first step is to purge any
-> > dirty
-> > pages from the cache.
-> > - the server is up, we write the data
-> > - if we are happy to wait, we wait
-> > - otherwise (the case I'm interested in), we just destroy anything
-> >  that gets in the way of unmounting the filesystem.
-> 
-> (The technical issue still to be resolved is how to kill
-> processes that are sleeping uninterruptibly, but for the
-> moment let's assume we can do that, and think about the
-> policy questions).
-> 
-> How do you decide the server is "up" without possibly hanging
-> or human intervention? Certainly there is a point where we
-> want to scorch the earth, but I think the user and administrator
-> get to decide where that is. systemd is not the place for that
-> decision.
-> 
-> Actually, I think that dividing the RPC world into "safe to
-> kill" and "need to ask first" is roughly the same as the
-> steps you outline above: at some point we both eventually get
-> to kill_all. The question is how to get there allowing as much
-> automation as possible and without compromising data integrity.
-> 
-> There are RPCs that are always safe to kill, eg NFS READ and
-> GETATTR. If those are the only waiters, then they can always be
-> terminated on umount. That is already a good start at making
-> NFSv3 umount more reliable, since often the only thing it is
-> waiting for is a single GETATTR.
-> 
-> Question marks arise when we are dealing with WRITE, SETATTR,
-> and so on, when we know the server is still there somewhere,
-> and even when we're not sure whether the server is still
-> available. It is here where we assess our satisfaction for
-> waiting out a network partition or server restart.
-> 
-> There's no way to automate that safely, unless you state in
-> advance that "your data is not protected during an umount."
-> There are some environments where that is OK, and some where
-> it is absolute disaster. Again, the user and administrator get
-> to make that choice, IMO. Maybe a new mount option?
-> 
-> Data integrity is critical up until some point where it isn't.
-> A container is no longer needed, all the data it cared about
-> can be discarded. I think that line needs to be drawn while
-> the system is still operational. It's not akin to umount at
-> all, since it involves possible destruction of data. It's more
-> like TRIM.
+--001a11437e047858f6055ced0bf1
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-For my specific use case, I have some independent userspace monitoring,
-so I *know* the server is gone so we can "burn the forest down" so to
-speak, and our applications with just have to deal with it (they
-historically have done pretty well). I think my strategy will be to
-start with a debugfs entry that sets a flag that, when enabled, causes
-umount --force to do the hard abort actions. Without the flag being
-set, the umount --force behavior will be unchanged. We can promote this
-flag to a mount option or a sysfs entry in the future.
+Adding linux-nfs (did not work last couple of times because of email format=
+).
 
-I am personally slightly leaning toward a mount option. I think it
-could either be a new mount type (e.g. "hard", "soft", "killable"), or
-just an option that combines with either (e.g. "killable" or
-"nokillable"), although "killable" and "hard" may not really make not
-really make a lot of sense together.
+ Is this supposed to work with Linux NFS clients (see the problem
+description at the end of this email)?
 
-I think a mount option might be better than a sysfs entry because it
-will play with the sharestate mount option (that is, the superblock
-won't be shared between killable and non-killable mounts). It *does*
-mean you have to know before you mount what behavior you want, unless
-remounting can be tricky, not to invoke any RPC procedures, and clone
-the superblock if the options change... I haven't looked at how remount
-works on NFS. It is also slightly easier for my specific use case to
-simply flag the mount when it is mounted, instead of having to cross
-reference it with a sysfs entry (but I realize my use case isn't
-necessarily the best one to model on).
+The NFSv4 referrals with Linux clients does not work with 'stat', 'ls'
+etc., But linux client follows referrals after a 'cd'. Is this the
+expected behavior?
 
-> 
-> 
-> > I'd also like to make the interface completely generic.  I'd rather
-> > systemd didn't need to know any specific details about nfs (it
-> > already
-> > does to some extend - it knows it is a "remote" filesystem) but
-> > I'd rather not require more.
-> > Maybe I could just sweep the problem under the carpet and use lazy
-> > unmounts.  That hides some of the problem, but doesn't stop sync(2)
-> > from
-> > blocking indefinitely.  And once you have done the lazy unmount,
-> > there
-> > is no longer any opportunity to use MNT_FORCE.
-> 
-> IMO a partial answer could be data caching in local files. If
-> the client can't flush, then it can preserve the files until
-> after the umount and reboot (using, say, fscache). Multi-client
-> sharing is still hazardous, but that isn't a very frequent use
-> case.
-> 
-> 
-> > Another way to think about this is to consider the bdi rather than
-> > the
-> > mount point.  If the NFS server is never coming back, then the
-> > "backing
-> > device" is broken.  If /sys/class/bdi/* contained suitable
-> > information
-> > to identify the right backing device, and had some way to
-> > "terminate
-> > with extreme prejudice", then and admin process (like systemd or
-> > anything else) could choose to terminate a bdi that was not working
-> > properly.
-> > 
-> > We would need quite a bit of integration so that this "terminate"
-> > command would take effect, cause various syscalls to return EIO,
-> > purge
-> > dirty memory, avoid stalling sync().  But it hopefully it would be
-> > a well defined interface and a good starting point.
-> 
-> Unhooking the NFS filesystem's "sync" method might be helpful,
-> though, to let the system preserve other filesystems before
-> shutdown. The current situation can indeed result in local
-> data corruption, and should be considered a bug IMO.
-> 
-> 
-> > If the bdi provided more information and more control, it would be
-> > a lot
-> > safer to use lazy unmounts, as we could then work with the
-> > filesystem
-> > even after it had been unmounted.
-> > 
-> > Maybe I'll trying playing with bdis in my spare time (if I ever
-> > find out
-> > what "spare time" is).
-> > 
-> > Thanks,
-> > NeilBrown
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
+tcpdump is attached.
 
+
+>>
+>> On Mon, Oct 30, 2017 at 3:24 PM, Frank Filz <ffilzlnx@mindspring.com>
+>> wrote:
+>>>
+>>> Oh, I had forgotten about that patch=E2=80=A6
+>>>
+>>>
+>>>
+>>> Can you try any other clients? This may be a client issue (I did see so=
+me
+>>> suspicious code in the client).
+>>>
+>>>
+>>>
+>>> It may also be that you need a fully qualified path (starting with a /)=
+.
+>>>
+>>>
+>>>
+>>> It looks like Ganesha is doing the right thing though.
+>>>
+>>>
+>>>
+>>> Frank
+>>>
+>>>
+>>>
+>>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
+>>> Sent: Monday, October 30, 2017 2:21 PM
+>>> To: Frank Filz <ffilzlnx@mindspring.com>
+>>> Cc: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>;
+>>> ssaurabh.wisc@gmail.com
+>>> Subject: Re: [Nfs-ganesha-devel] NFSv4 referrals not working with
+>>> ganesha.
+>>>
+>>>
+>>>
+>>> Hi Frank,
+>>>
+>>>
+>>>
+>>> This is with latest version of Ganesha. The referral support is already
+>>> in VFS: https://review.gerrithub.io/c/353684
+>>>
+>>>
+>>>
+>>> tcpdump is attached. From the tcpdump, we can see that the stat sent a
+>>> LOOKUP for the remote export and received a moved error. It also sent b=
+ack
+>>> the fs_locations. But the client (CentOS 7.3) never followed that with =
+a
+>>> LOOKUP to the remote server.
+>>>
+>>>
+>>>
+>>> You can see that packet #41 has the correct FS locations. But client do=
+es
+>>> not do another lookup to get the correct attributes.
+>>>
+>>>
+>>>
+>>> $ stat /mnt/nfs_d1
+>>>
+>>>   File: =E2=80=98/mnt/nfs_d1=E2=80=99
+>>>
+>>>   Size: 0               Blocks: 0          IO Block: 1048576 directory
+>>>
+>>> Device: 28h/40d Inode: 1           Links: 2
+>>>
+>>> Access: (0555/dr-xr-xr-x)  Uid: (4294967294/ UNKNOWN)   Gid: (429496729=
+4/
+>>> UNKNOWN)
+>>>
+>>> Context: system_u:object_r:nfs_t:s0
+>>>
+>>> Access: 1969-12-31 16:00:00.000000000 -0800
+>>>
+>>> Modify: 1969-12-31 16:00:00.000000000 -0800
+>>>
+>>> Change: 1969-12-31 16:00:00.000000000 -0800
+>>>
+>>>  Birth: -
+>>>
+>>>
+>>>
+>>>
+>>>
+>>> On Mon, Oct 30, 2017 at 12:13 PM, Frank Filz <ffilzlnx@mindspring.com>
+>>> wrote:
+>>>
+>>> What version of Ganesha? I assume by =E2=80=9Cnative=E2=80=9D FSAL, you=
+ mean FSAL_VFS?
+>>> Did you add the fs locations XATTR support? FSAL_GPFS currently has the=
+ only
+>>> in-tree referral support and I=E2=80=99m not sure it necessarily works,=
+ but I=E2=80=99m
+>>> unable to test it.
+>>>
+>>>
+>>>
+>>> If you have code for FSAL_VFS to add the fs locations attribute, go ahe=
+ad
+>>> and post it and I could poke at it.
+>>>
+>>>
+>>>
+>>> Also, tcpdump traces might help understand what is going wrong.
+>>>
+>>>
+>>>
+>>> Frank
+>>>
+>>>
+>>>
+>>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
+>>> Sent: Monday, October 30, 2017 11:45 AM
+>>> To: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
+>>> Cc: ssaurabh.wisc@gmail.com
+>>> Subject: [Nfs-ganesha-devel] NFSv4 referrals not working with ganesha.
+>>>
+>>>
+>>>
+>>> Hi all,
+>>>
+>>>
+>>>
+>>> We are testing NFSv4 referral for Linux CentOS 7 with nfs-ganesha and a=
+re
+>>> running
+>>>
+>>> into some serious issues.
+>>>
+>>>
+>>>
+>>> Although, we were able to set up NFSv4 referral using the native Ganesh=
+a
+>>> FSAL,
+>>>
+>>> we could not get it fully functional for all Linux client system calls.
+>>>
+>>> Basically, the NFSv4 spec suggests to return a NFS4ERR_MOVED on a
+>>>
+>>> LOOKUP done for a remote export. However, this breaks the `stat` system
+>>> call on
+>>>
+>>> Linux CentOS 7 (stat=E2=80=99 results in a LOOKUP,GETFH,GETATTR compoun=
+d). An
+>>> easy way to
+>>>
+>>> reproduce the broken behavior is:
+>>>
+>>> 1) mount the root of the pseudo file system and
+>>>
+>>> 2) issue a `stat` command on the remote export.
+>>>
+>>> The stat returned are corrupt.
+>>>
+>>>
+>>>
+>>> After digging into the CentOS 7 client code, we realized that the stat
+>>> operation
+>>>
+>>> is never expected to follow the referral. However, switching to returni=
+ng
+>>> NFS4_OK
+>>>
+>>> for stat, then breaks `cd` or a `ls -l` command, because now we don't
+>>> know when
+>>>
+>>> to follow the referral.
+>>>
+>>>
+>>>
+>>> Does anyone have a successful experience in setting up the NFSv4
+>>> referrals that
+>>>
+>>> they could share? Or, if some suggestions on what we might be doing
+>>> wrong?
+>>>
+>>>
+>>>
+>>> Thanks
+>>>
+>>>
+>>>
+>>> Virus-free. www.avast.com
+>>>
+>>>
+>>
+>>
+>
+
+--001a11437e047858f6055ced0bf1
+Content-Type: application/octet-stream; name="nfs_remote_export1.pcap"
+Content-Disposition: attachment; filename="nfs_remote_export1.pcap"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_j9h60ts61
+
+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
+QAaPOgoFki0KBZIjAyAIAVDoVQCK2nL1gBgBHzmZAAABAQgKADU8JwBvdSWAAAEUGIxB6AAAAAAA
+AAACAAGGowAAAAQAAAABAAAAAQAAACAAQZbYAAAACGNlbnRvczczAAAAAAAAAAAAAAABAAAAAAAA
+AAAAAAAAAAAAAAAAAAEAAAADAAAANQIAAABwlvdZAgAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAAA
+FgAAAIBDAAAAe8w5RiZkyfrDAQAvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkAAAADyAAEAEAIAAAAAAACqZb3WZAdBgDqAAAA6gAAAFBr
+jQ2831BrjXbeiwgARQAA3BnhQABABufgCgWSIwoFki0IAQMgitpy9VDoVhiAGABMf50AAAEBCAoA
+b3UlADU8J4AAAKQYjEHoAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAA1AAAAAAIA
+AABwlvdZAgAAAAAAAAAAAAAHAAAAAAAAAAIAAAACAAAAAAAAABYAAAAAAAAACQAAAAAAAAADyAAE
+AEAIAAAAAAACAAAAMAAAADz//////////wAAAAAEAAAAAAAAAAQAAAAAAAAAAAAAAQAAAAAAAAAA
+AAAAAKmW91m9HQYAUgEAAFIBAABQa4123otQa40NvN8IAEUAAURyGEAAQAaPQQoFki0KBZIjAyAI
+AVDoVhiK2nOdgBgBKDmRAAABAQgKADU8KABvdSWAAAEMGYxB6AAAAAAAAAACAAGGowAAAAQAAAAB
+AAAAAQAAACAAQZbYAAAACGNlbnRvczczAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEA
+AAADAAAANQIAAABwlvdZAgAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAFgAAAIBDAAAAe8w5RiZk
+yfrDAQAvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+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
+gBABUTiBAAABAQgKADVIiwBvgWE=
+--001a11437e047858f6055ced0bf1--
