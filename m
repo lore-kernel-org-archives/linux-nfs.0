@@ -1,240 +1,122 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:31226 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754701AbdKAPtf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Nov 2017 11:49:35 -0400
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [Nfs-ganesha-devel] NFSv4 referrals not working with ganesha.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAD8zhTAAvTKhp6k0vYRMnhZW5pxjstpBiDKLgoXocfpAXNjKTg@mail.gmail.com>
-Date: Wed, 1 Nov 2017 11:49:11 -0400
-Cc: Frank Filz <ffilzlnx@mindspring.com>,
-        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>,
-        ssaurabh.wisc@gmail.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <5CF06ED5-8A8B-44C1-9D4F-4AEED462FC45@oracle.com>
-References: <CAD8zhTBggSc34-jFPO9TM8w9DOGiKOZLJVo6-mTYXhU00dxuBg@mail.gmail.com> <001f01d351b3$21b51df0$651f59d0$@mindspring.com> <CAD8zhTDTVemPqJy7-msciEe0Vc475w3h91G8qA1CJsZkDSysNQ@mail.gmail.com> <003501d351cd$d99013c0$8cb03b40$@mindspring.com> <CAD8zhTARmq4PWm4-MvSPnW33g7d7To6EQys-Ewpg5uUjSAQUiA@mail.gmail.com> <CAD8zhTDK-x+UmHnqvKm+5hnoYmob+rOGW1XxFt37-JsDm-Px2w@mail.gmail.com> <CAD8zhTAAvTKhp6k0vYRMnhZW5pxjstpBiDKLgoXocfpAXNjKTg@mail.gmail.com>
-To: Pradeep <pradeepthomas@gmail.com>
+Received: from mail-qt0-f171.google.com ([209.85.216.171]:47289 "EHLO
+        mail-qt0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754973AbdKARYX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Nov 2017 13:24:23 -0400
+Received: by mail-qt0-f171.google.com with SMTP id z50so3571290qtj.4
+        for <linux-nfs@vger.kernel.org>; Wed, 01 Nov 2017 10:24:23 -0700 (PDT)
+Message-ID: <1509557061.4755.27.camel@redhat.com>
+Subject: Re: NFS Force Unmounting
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Joshua Watt <jpewhacker@gmail.com>
+Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
+Date: Wed, 01 Nov 2017 13:24:21 -0400
+In-Reply-To: <87h8ugwdev.fsf@notabene.neil.brown.name>
+References: <1508951506.2542.51.camel@gmail.com>
+         <20171030202045.GA6168@fieldses.org>
+         <87h8ugwdev.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Nov 1, 2017, at 10:53 AM, Pradeep <pradeepthomas@gmail.com> wrote:
+On Tue, 2017-10-31 at 08:09 +1100, NeilBrown wrote:
+> On Mon, Oct 30 2017, J. Bruce Fields wrote:
 > 
-> Adding linux-nfs (did not work last couple of times because of email format).
+> > On Wed, Oct 25, 2017 at 12:11:46PM -0500, Joshua Watt wrote:
+> > > I'm working on a networking embedded system where NFS servers can come
+> > > and go from the network, and I've discovered that the Kernel NFS server
+> > 
+> > For "Kernel NFS server", I think you mean "Kernel NFS client".
+> > 
+> > > make it difficult to cleanup applications in a timely manner when the
+> > > server disappears (and yes, I am mounting with "soft" and relatively
+> > > short timeouts). I currently have a user space mechanism that can
+> > > quickly detect when the server disappears, and does a umount() with the
+> > > MNT_FORCE and MNT_DETACH flags. Using MNT_DETACH prevents new accesses
+> > > to files on the defunct remote server, and I have traced through the
+> > > code to see that MNT_FORCE does indeed cancel any current RPC tasks
+> > > with -EIO. However, this isn't sufficient for my use case because if a
+> > > user space application isn't currently waiting on an RCP task that gets
+> > > canceled, it will have to timeout again before it detects the
+> > > disconnect. For example, if a simple client is copying a file from the
+> > > NFS server, and happens to not be waiting on the RPC task in the read()
+> > > call when umount() occurs, it will be none the wiser and loop around to
+> > > call read() again, which must then try the whole NFS timeout + recovery
+> > > before the failure is detected. If a client is more complex and has a
+> > > lot of open file descriptor, it will typical have to wait for each one
+> > > to timeout, leading to very long delays.
+> > > 
+> > > The (naive?) solution seems to be to add some flag in either the NFS
+> > > client or the RPC client that gets set in nfs_umount_begin(). This
+> > > would cause all subsequent operations to fail with an error code
+> > > instead of having to be queued as an RPC task and the and then timing
+> > > out. In our example client, the application would then get the -EIO
+> > > immediately on the next (and all subsequent) read() calls.
+> > > 
+> > > There does seem to be some precedence for doing this (especially with
+> > > network file systems), as both cifs (CifsExiting) and ceph
+> > > (CEPH_MOUNT_SHUTDOWN) appear to implement this behavior (at least from
+> > > looking at the code. I haven't verified runtime behavior).
+> > > 
+> > > Are there any pitfalls I'm oversimplifying?
+> > 
+> > I don't know.
+> > 
+> > In the hard case I don't think you'd want to do something like
+> > this--applications expect mounts to be stay pinned while they're using
+> > them, not to get -EIO.  In the soft case maybe an exception like this
+> > makes sense.
 > 
-> Is this supposed to work with Linux NFS clients (see the problem
-> description at the end of this email)?
+> Applications also expect to get responses to read() requests, and expect
+> fsync() to complete, but if the servers has melted down, that isn't
+> going to happen.  Sometimes unexpected errors are better than unexpected
+> infinite delays.
+> 
+> I think we need a reliable way to unmount an NFS filesystem mounted from
+> a non-responsive server.  Maybe that just means fixing all the places
+> where use we use TASK_UNINTERRUTIBLE when waiting for the server.  That
+> would allow processes accessing the filesystem to be killed.  I don't
+> know if that would meet Joshua's needs.
+> 
 
-Yes. I've used referrals successfully with upstream kernels in the
-past week (against non-Linux servers, even).
+I don't quite grok why rpc_kill on all of the RPCs doesn't do the right
+thing here. Are we ending up stuck because dirty pages remain after
+that has gone through?
 
-Looks like this is a RHEL issue, though. Should you report the
-issue to Red Hat?
+> Last time this came up, Trond didn't want to make MNT_FORCE too strong as
+> it only makes sense to be forceful on the final unmount, and we cannot
+> know if this is the "final" unmount (no other bind-mounts around) until
+> much later than ->umount_prepare. 
 
+We can't know for sure that one won't race in while we're tearing things
+down, but do we really care so much? If the mount is stuck enough to
+require MNT_FORCE then it's likely that you'll end up stuck before you
+can do anything on that new bind mount anyway.
 
-> The NFSv4 referrals with Linux clients does not work with 'stat', 'ls'
-> etc., But linux client follows referrals after a 'cd'. Is this the
-> expected behavior?
+Just to dream here for a minute...
 
-I think so. "ls -l" in the parent directory isn't going to trigger
-a mount, but "cd" will. After the mount, the mounted on directory
-on the client will appear as expected with "ls -l".
+We could do a check for bind-mountedness during umount_begin. If it
+looks like there is one, we do a MNT_DETACH instead. If not, we flag the
+sb in such a way to block (or deny) any new bind mounts until we've had
+a chance to tear down the RPCs.
 
+I do realize that the mnt table locking is pretty hairy (we'll probably
+need Al Viro's help and support there), but it seems like that's where
+we should be aiming.
 
-> tcpdump is attached.
+>  Maybe umount is the wrong interface.
+> Maybe we should expose "struct nfs_client" (or maybe "struct
+> nfs_server") objects via sysfs so they can be marked "dead" (or similar)
+> meaning that all IO should fail.
+> 
 
-Traffic to the destination server might be going over a different
-network interface. Check your tcpdump command line.
-
-You could also enable NFS and/or RPC debugging (before reproducing)
-to see the steps taken by the client displayed in /var/log/messages.
-
- # rpcdebug -m nfs -s
- # rpcdebug -m rpc -s
-
-
->>> On Mon, Oct 30, 2017 at 3:24 PM, Frank Filz <ffilzlnx@mindspring.com>
->>> wrote:
->>>> 
->>>> Oh, I had forgotten about that patch…
->>>> 
->>>> 
->>>> 
->>>> Can you try any other clients? This may be a client issue (I did see some
->>>> suspicious code in the client).
->>>> 
->>>> 
->>>> 
->>>> It may also be that you need a fully qualified path (starting with a /).
->>>> 
->>>> 
->>>> 
->>>> It looks like Ganesha is doing the right thing though.
->>>> 
->>>> 
->>>> 
->>>> Frank
->>>> 
->>>> 
->>>> 
->>>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
->>>> Sent: Monday, October 30, 2017 2:21 PM
->>>> To: Frank Filz <ffilzlnx@mindspring.com>
->>>> Cc: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>;
->>>> ssaurabh.wisc@gmail.com
->>>> Subject: Re: [Nfs-ganesha-devel] NFSv4 referrals not working with
->>>> ganesha.
->>>> 
->>>> 
->>>> 
->>>> Hi Frank,
->>>> 
->>>> 
->>>> 
->>>> This is with latest version of Ganesha. The referral support is already
->>>> in VFS: https://review.gerrithub.io/c/353684
->>>> 
->>>> 
->>>> 
->>>> tcpdump is attached. From the tcpdump, we can see that the stat sent a
->>>> LOOKUP for the remote export and received a moved error. It also sent back
->>>> the fs_locations. But the client (CentOS 7.3) never followed that with a
->>>> LOOKUP to the remote server.
->>>> 
->>>> 
->>>> 
->>>> You can see that packet #41 has the correct FS locations. But client does
->>>> not do another lookup to get the correct attributes.
->>>> 
->>>> 
->>>> 
->>>> $ stat /mnt/nfs_d1
->>>> 
->>>>  File: ‘/mnt/nfs_d1’
->>>> 
->>>>  Size: 0               Blocks: 0          IO Block: 1048576 directory
->>>> 
->>>> Device: 28h/40d Inode: 1           Links: 2
->>>> 
->>>> Access: (0555/dr-xr-xr-x)  Uid: (4294967294/ UNKNOWN)   Gid: (4294967294/
->>>> UNKNOWN)
->>>> 
->>>> Context: system_u:object_r:nfs_t:s0
->>>> 
->>>> Access: 1969-12-31 16:00:00.000000000 -0800
->>>> 
->>>> Modify: 1969-12-31 16:00:00.000000000 -0800
->>>> 
->>>> Change: 1969-12-31 16:00:00.000000000 -0800
->>>> 
->>>> Birth: -
->>>> 
->>>> 
->>>> 
->>>> 
->>>> 
->>>> On Mon, Oct 30, 2017 at 12:13 PM, Frank Filz <ffilzlnx@mindspring.com>
->>>> wrote:
->>>> 
->>>> What version of Ganesha? I assume by “native” FSAL, you mean FSAL_VFS?
->>>> Did you add the fs locations XATTR support? FSAL_GPFS currently has the only
->>>> in-tree referral support and I’m not sure it necessarily works, but I’m
->>>> unable to test it.
->>>> 
->>>> 
->>>> 
->>>> If you have code for FSAL_VFS to add the fs locations attribute, go ahead
->>>> and post it and I could poke at it.
->>>> 
->>>> 
->>>> 
->>>> Also, tcpdump traces might help understand what is going wrong.
->>>> 
->>>> 
->>>> 
->>>> Frank
->>>> 
->>>> 
->>>> 
->>>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
->>>> Sent: Monday, October 30, 2017 11:45 AM
->>>> To: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
->>>> Cc: ssaurabh.wisc@gmail.com
->>>> Subject: [Nfs-ganesha-devel] NFSv4 referrals not working with ganesha.
->>>> 
->>>> 
->>>> 
->>>> Hi all,
->>>> 
->>>> 
->>>> 
->>>> We are testing NFSv4 referral for Linux CentOS 7 with nfs-ganesha and are
->>>> running
->>>> 
->>>> into some serious issues.
->>>> 
->>>> 
->>>> 
->>>> Although, we were able to set up NFSv4 referral using the native Ganesha
->>>> FSAL,
->>>> 
->>>> we could not get it fully functional for all Linux client system calls.
->>>> 
->>>> Basically, the NFSv4 spec suggests to return a NFS4ERR_MOVED on a
->>>> 
->>>> LOOKUP done for a remote export. However, this breaks the `stat` system
->>>> call on
->>>> 
->>>> Linux CentOS 7 (stat’ results in a LOOKUP,GETFH,GETATTR compound). An
->>>> easy way to
->>>> 
->>>> reproduce the broken behavior is:
->>>> 
->>>> 1) mount the root of the pseudo file system and
->>>> 
->>>> 2) issue a `stat` command on the remote export.
->>>> 
->>>> The stat returned are corrupt.
->>>> 
->>>> 
->>>> 
->>>> After digging into the CentOS 7 client code, we realized that the stat
->>>> operation
->>>> 
->>>> is never expected to follow the referral. However, switching to returning
->>>> NFS4_OK
->>>> 
->>>> for stat, then breaks `cd` or a `ls -l` command, because now we don't
->>>> know when
->>>> 
->>>> to follow the referral.
->>>> 
->>>> 
->>>> 
->>>> Does anyone have a successful experience in setting up the NFSv4
->>>> referrals that
->>>> 
->>>> they could share? Or, if some suggestions on what we might be doing
->>>> wrong?
->>>> 
->>>> 
->>>> 
->>>> Thanks
->>>> 
->>>> 
->>>> 
->>>> Virus-free. www.avast.com
->>>> 
->>>> 
->>> 
->>> 
->> 
-> <nfs_remote_export1.pcap>
-
---
-Chuck Lever
-
-
-
+Now that I've thought about it more, I rather like using umount with
+MNT_FORCE for this, really. It seems like that's what its intended use
+was, and the fact that it doesn't quite work that way has always been a
+point of confusion for users. It'd be nice if that magically started
+working more like they expect.
+-- 
+Jeff Layton <jlayton@redhat.com>
