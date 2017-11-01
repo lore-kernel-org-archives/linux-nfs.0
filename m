@@ -1,417 +1,240 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f48.google.com ([209.85.213.48]:47162 "EHLO
-        mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753080AbdKAOyO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Nov 2017 10:54:14 -0400
-Received: by mail-vk0-f48.google.com with SMTP id j2so1567682vki.4
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Nov 2017 07:54:13 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <CAD8zhTDK-x+UmHnqvKm+5hnoYmob+rOGW1XxFt37-JsDm-Px2w@mail.gmail.com>
-References: <CAD8zhTBggSc34-jFPO9TM8w9DOGiKOZLJVo6-mTYXhU00dxuBg@mail.gmail.com>
- <001f01d351b3$21b51df0$651f59d0$@mindspring.com> <CAD8zhTDTVemPqJy7-msciEe0Vc475w3h91G8qA1CJsZkDSysNQ@mail.gmail.com>
- <003501d351cd$d99013c0$8cb03b40$@mindspring.com> <CAD8zhTARmq4PWm4-MvSPnW33g7d7To6EQys-Ewpg5uUjSAQUiA@mail.gmail.com>
- <CAD8zhTDK-x+UmHnqvKm+5hnoYmob+rOGW1XxFt37-JsDm-Px2w@mail.gmail.com>
-From: Pradeep <pradeepthomas@gmail.com>
-Date: Wed, 1 Nov 2017 07:53:52 -0700
-Message-ID: <CAD8zhTAAvTKhp6k0vYRMnhZW5pxjstpBiDKLgoXocfpAXNjKTg@mail.gmail.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:31226 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754701AbdKAPtf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Nov 2017 11:49:35 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Subject: Re: [Nfs-ganesha-devel] NFSv4 referrals not working with ganesha.
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>,
-        ssaurabh.wisc@gmail.com, linux-nfs@vger.kernel.org
-Content-Type: multipart/mixed; boundary="001a11437e047858f6055ced0bf1"
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAD8zhTAAvTKhp6k0vYRMnhZW5pxjstpBiDKLgoXocfpAXNjKTg@mail.gmail.com>
+Date: Wed, 1 Nov 2017 11:49:11 -0400
+Cc: Frank Filz <ffilzlnx@mindspring.com>,
+        nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>,
+        ssaurabh.wisc@gmail.com,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5CF06ED5-8A8B-44C1-9D4F-4AEED462FC45@oracle.com>
+References: <CAD8zhTBggSc34-jFPO9TM8w9DOGiKOZLJVo6-mTYXhU00dxuBg@mail.gmail.com> <001f01d351b3$21b51df0$651f59d0$@mindspring.com> <CAD8zhTDTVemPqJy7-msciEe0Vc475w3h91G8qA1CJsZkDSysNQ@mail.gmail.com> <003501d351cd$d99013c0$8cb03b40$@mindspring.com> <CAD8zhTARmq4PWm4-MvSPnW33g7d7To6EQys-Ewpg5uUjSAQUiA@mail.gmail.com> <CAD8zhTDK-x+UmHnqvKm+5hnoYmob+rOGW1XxFt37-JsDm-Px2w@mail.gmail.com> <CAD8zhTAAvTKhp6k0vYRMnhZW5pxjstpBiDKLgoXocfpAXNjKTg@mail.gmail.com>
+To: Pradeep <pradeepthomas@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---001a11437e047858f6055ced0bf1
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-Adding linux-nfs (did not work last couple of times because of email format=
-).
+> On Nov 1, 2017, at 10:53 AM, Pradeep <pradeepthomas@gmail.com> wrote:
+> 
+> Adding linux-nfs (did not work last couple of times because of email format).
+> 
+> Is this supposed to work with Linux NFS clients (see the problem
+> description at the end of this email)?
 
- Is this supposed to work with Linux NFS clients (see the problem
-description at the end of this email)?
+Yes. I've used referrals successfully with upstream kernels in the
+past week (against non-Linux servers, even).
 
-The NFSv4 referrals with Linux clients does not work with 'stat', 'ls'
-etc., But linux client follows referrals after a 'cd'. Is this the
-expected behavior?
-
-tcpdump is attached.
+Looks like this is a RHEL issue, though. Should you report the
+issue to Red Hat?
 
 
->>
->> On Mon, Oct 30, 2017 at 3:24 PM, Frank Filz <ffilzlnx@mindspring.com>
->> wrote:
->>>
->>> Oh, I had forgotten about that patch=E2=80=A6
->>>
->>>
->>>
->>> Can you try any other clients? This may be a client issue (I did see so=
-me
->>> suspicious code in the client).
->>>
->>>
->>>
->>> It may also be that you need a fully qualified path (starting with a /)=
-.
->>>
->>>
->>>
->>> It looks like Ganesha is doing the right thing though.
->>>
->>>
->>>
->>> Frank
->>>
->>>
->>>
->>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
->>> Sent: Monday, October 30, 2017 2:21 PM
->>> To: Frank Filz <ffilzlnx@mindspring.com>
->>> Cc: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>;
->>> ssaurabh.wisc@gmail.com
->>> Subject: Re: [Nfs-ganesha-devel] NFSv4 referrals not working with
->>> ganesha.
->>>
->>>
->>>
->>> Hi Frank,
->>>
->>>
->>>
->>> This is with latest version of Ganesha. The referral support is already
->>> in VFS: https://review.gerrithub.io/c/353684
->>>
->>>
->>>
->>> tcpdump is attached. From the tcpdump, we can see that the stat sent a
->>> LOOKUP for the remote export and received a moved error. It also sent b=
-ack
->>> the fs_locations. But the client (CentOS 7.3) never followed that with =
-a
->>> LOOKUP to the remote server.
->>>
->>>
->>>
->>> You can see that packet #41 has the correct FS locations. But client do=
-es
->>> not do another lookup to get the correct attributes.
->>>
->>>
->>>
->>> $ stat /mnt/nfs_d1
->>>
->>>   File: =E2=80=98/mnt/nfs_d1=E2=80=99
->>>
->>>   Size: 0               Blocks: 0          IO Block: 1048576 directory
->>>
->>> Device: 28h/40d Inode: 1           Links: 2
->>>
->>> Access: (0555/dr-xr-xr-x)  Uid: (4294967294/ UNKNOWN)   Gid: (429496729=
-4/
->>> UNKNOWN)
->>>
->>> Context: system_u:object_r:nfs_t:s0
->>>
->>> Access: 1969-12-31 16:00:00.000000000 -0800
->>>
->>> Modify: 1969-12-31 16:00:00.000000000 -0800
->>>
->>> Change: 1969-12-31 16:00:00.000000000 -0800
->>>
->>>  Birth: -
->>>
->>>
->>>
->>>
->>>
->>> On Mon, Oct 30, 2017 at 12:13 PM, Frank Filz <ffilzlnx@mindspring.com>
+> The NFSv4 referrals with Linux clients does not work with 'stat', 'ls'
+> etc., But linux client follows referrals after a 'cd'. Is this the
+> expected behavior?
+
+I think so. "ls -l" in the parent directory isn't going to trigger
+a mount, but "cd" will. After the mount, the mounted on directory
+on the client will appear as expected with "ls -l".
+
+
+> tcpdump is attached.
+
+Traffic to the destination server might be going over a different
+network interface. Check your tcpdump command line.
+
+You could also enable NFS and/or RPC debugging (before reproducing)
+to see the steps taken by the client displayed in /var/log/messages.
+
+ # rpcdebug -m nfs -s
+ # rpcdebug -m rpc -s
+
+
+>>> On Mon, Oct 30, 2017 at 3:24 PM, Frank Filz <ffilzlnx@mindspring.com>
 >>> wrote:
->>>
->>> What version of Ganesha? I assume by =E2=80=9Cnative=E2=80=9D FSAL, you=
- mean FSAL_VFS?
->>> Did you add the fs locations XATTR support? FSAL_GPFS currently has the=
- only
->>> in-tree referral support and I=E2=80=99m not sure it necessarily works,=
- but I=E2=80=99m
->>> unable to test it.
->>>
->>>
->>>
->>> If you have code for FSAL_VFS to add the fs locations attribute, go ahe=
-ad
->>> and post it and I could poke at it.
->>>
->>>
->>>
->>> Also, tcpdump traces might help understand what is going wrong.
->>>
->>>
->>>
->>> Frank
->>>
->>>
->>>
->>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
->>> Sent: Monday, October 30, 2017 11:45 AM
->>> To: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
->>> Cc: ssaurabh.wisc@gmail.com
->>> Subject: [Nfs-ganesha-devel] NFSv4 referrals not working with ganesha.
->>>
->>>
->>>
->>> Hi all,
->>>
->>>
->>>
->>> We are testing NFSv4 referral for Linux CentOS 7 with nfs-ganesha and a=
-re
->>> running
->>>
->>> into some serious issues.
->>>
->>>
->>>
->>> Although, we were able to set up NFSv4 referral using the native Ganesh=
-a
->>> FSAL,
->>>
->>> we could not get it fully functional for all Linux client system calls.
->>>
->>> Basically, the NFSv4 spec suggests to return a NFS4ERR_MOVED on a
->>>
->>> LOOKUP done for a remote export. However, this breaks the `stat` system
->>> call on
->>>
->>> Linux CentOS 7 (stat=E2=80=99 results in a LOOKUP,GETFH,GETATTR compoun=
-d). An
->>> easy way to
->>>
->>> reproduce the broken behavior is:
->>>
->>> 1) mount the root of the pseudo file system and
->>>
->>> 2) issue a `stat` command on the remote export.
->>>
->>> The stat returned are corrupt.
->>>
->>>
->>>
->>> After digging into the CentOS 7 client code, we realized that the stat
->>> operation
->>>
->>> is never expected to follow the referral. However, switching to returni=
-ng
->>> NFS4_OK
->>>
->>> for stat, then breaks `cd` or a `ls -l` command, because now we don't
->>> know when
->>>
->>> to follow the referral.
->>>
->>>
->>>
->>> Does anyone have a successful experience in setting up the NFSv4
->>> referrals that
->>>
->>> they could share? Or, if some suggestions on what we might be doing
->>> wrong?
->>>
->>>
->>>
->>> Thanks
->>>
->>>
->>>
->>> Virus-free. www.avast.com
->>>
->>>
->>
->>
->
+>>>> 
+>>>> Oh, I had forgotten about that patch…
+>>>> 
+>>>> 
+>>>> 
+>>>> Can you try any other clients? This may be a client issue (I did see some
+>>>> suspicious code in the client).
+>>>> 
+>>>> 
+>>>> 
+>>>> It may also be that you need a fully qualified path (starting with a /).
+>>>> 
+>>>> 
+>>>> 
+>>>> It looks like Ganesha is doing the right thing though.
+>>>> 
+>>>> 
+>>>> 
+>>>> Frank
+>>>> 
+>>>> 
+>>>> 
+>>>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
+>>>> Sent: Monday, October 30, 2017 2:21 PM
+>>>> To: Frank Filz <ffilzlnx@mindspring.com>
+>>>> Cc: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>;
+>>>> ssaurabh.wisc@gmail.com
+>>>> Subject: Re: [Nfs-ganesha-devel] NFSv4 referrals not working with
+>>>> ganesha.
+>>>> 
+>>>> 
+>>>> 
+>>>> Hi Frank,
+>>>> 
+>>>> 
+>>>> 
+>>>> This is with latest version of Ganesha. The referral support is already
+>>>> in VFS: https://review.gerrithub.io/c/353684
+>>>> 
+>>>> 
+>>>> 
+>>>> tcpdump is attached. From the tcpdump, we can see that the stat sent a
+>>>> LOOKUP for the remote export and received a moved error. It also sent back
+>>>> the fs_locations. But the client (CentOS 7.3) never followed that with a
+>>>> LOOKUP to the remote server.
+>>>> 
+>>>> 
+>>>> 
+>>>> You can see that packet #41 has the correct FS locations. But client does
+>>>> not do another lookup to get the correct attributes.
+>>>> 
+>>>> 
+>>>> 
+>>>> $ stat /mnt/nfs_d1
+>>>> 
+>>>>  File: ‘/mnt/nfs_d1’
+>>>> 
+>>>>  Size: 0               Blocks: 0          IO Block: 1048576 directory
+>>>> 
+>>>> Device: 28h/40d Inode: 1           Links: 2
+>>>> 
+>>>> Access: (0555/dr-xr-xr-x)  Uid: (4294967294/ UNKNOWN)   Gid: (4294967294/
+>>>> UNKNOWN)
+>>>> 
+>>>> Context: system_u:object_r:nfs_t:s0
+>>>> 
+>>>> Access: 1969-12-31 16:00:00.000000000 -0800
+>>>> 
+>>>> Modify: 1969-12-31 16:00:00.000000000 -0800
+>>>> 
+>>>> Change: 1969-12-31 16:00:00.000000000 -0800
+>>>> 
+>>>> Birth: -
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>> 
+>>>> On Mon, Oct 30, 2017 at 12:13 PM, Frank Filz <ffilzlnx@mindspring.com>
+>>>> wrote:
+>>>> 
+>>>> What version of Ganesha? I assume by “native” FSAL, you mean FSAL_VFS?
+>>>> Did you add the fs locations XATTR support? FSAL_GPFS currently has the only
+>>>> in-tree referral support and I’m not sure it necessarily works, but I’m
+>>>> unable to test it.
+>>>> 
+>>>> 
+>>>> 
+>>>> If you have code for FSAL_VFS to add the fs locations attribute, go ahead
+>>>> and post it and I could poke at it.
+>>>> 
+>>>> 
+>>>> 
+>>>> Also, tcpdump traces might help understand what is going wrong.
+>>>> 
+>>>> 
+>>>> 
+>>>> Frank
+>>>> 
+>>>> 
+>>>> 
+>>>> From: Pradeep [mailto:pradeep.thomas@gmail.com]
+>>>> Sent: Monday, October 30, 2017 11:45 AM
+>>>> To: nfs-ganesha-devel <nfs-ganesha-devel@lists.sourceforge.net>
+>>>> Cc: ssaurabh.wisc@gmail.com
+>>>> Subject: [Nfs-ganesha-devel] NFSv4 referrals not working with ganesha.
+>>>> 
+>>>> 
+>>>> 
+>>>> Hi all,
+>>>> 
+>>>> 
+>>>> 
+>>>> We are testing NFSv4 referral for Linux CentOS 7 with nfs-ganesha and are
+>>>> running
+>>>> 
+>>>> into some serious issues.
+>>>> 
+>>>> 
+>>>> 
+>>>> Although, we were able to set up NFSv4 referral using the native Ganesha
+>>>> FSAL,
+>>>> 
+>>>> we could not get it fully functional for all Linux client system calls.
+>>>> 
+>>>> Basically, the NFSv4 spec suggests to return a NFS4ERR_MOVED on a
+>>>> 
+>>>> LOOKUP done for a remote export. However, this breaks the `stat` system
+>>>> call on
+>>>> 
+>>>> Linux CentOS 7 (stat’ results in a LOOKUP,GETFH,GETATTR compound). An
+>>>> easy way to
+>>>> 
+>>>> reproduce the broken behavior is:
+>>>> 
+>>>> 1) mount the root of the pseudo file system and
+>>>> 
+>>>> 2) issue a `stat` command on the remote export.
+>>>> 
+>>>> The stat returned are corrupt.
+>>>> 
+>>>> 
+>>>> 
+>>>> After digging into the CentOS 7 client code, we realized that the stat
+>>>> operation
+>>>> 
+>>>> is never expected to follow the referral. However, switching to returning
+>>>> NFS4_OK
+>>>> 
+>>>> for stat, then breaks `cd` or a `ls -l` command, because now we don't
+>>>> know when
+>>>> 
+>>>> to follow the referral.
+>>>> 
+>>>> 
+>>>> 
+>>>> Does anyone have a successful experience in setting up the NFSv4
+>>>> referrals that
+>>>> 
+>>>> they could share? Or, if some suggestions on what we might be doing
+>>>> wrong?
+>>>> 
+>>>> 
+>>>> 
+>>>> Thanks
+>>>> 
+>>>> 
+>>>> 
+>>>> Virus-free. www.avast.com
+>>>> 
+>>>> 
+>>> 
+>>> 
+>> 
+> <nfs_remote_export1.pcap>
 
---001a11437e047858f6055ced0bf1
-Content-Type: application/octet-stream; name="nfs_remote_export1.pcap"
-Content-Disposition: attachment; filename="nfs_remote_export1.pcap"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_j9h60ts61
+--
+Chuck Lever
 
-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
-QAaPOgoFki0KBZIjAyAIAVDoVQCK2nL1gBgBHzmZAAABAQgKADU8JwBvdSWAAAEUGIxB6AAAAAAA
-AAACAAGGowAAAAQAAAABAAAAAQAAACAAQZbYAAAACGNlbnRvczczAAAAAAAAAAAAAAABAAAAAAAA
-AAAAAAAAAAAAAAAAAAEAAAADAAAANQIAAABwlvdZAgAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAAA
-FgAAAIBDAAAAe8w5RiZkyfrDAQAvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAkAAAADyAAEAEAIAAAAAAACqZb3WZAdBgDqAAAA6gAAAFBr
-jQ2831BrjXbeiwgARQAA3BnhQABABufgCgWSIwoFki0IAQMgitpy9VDoVhiAGABMf50AAAEBCAoA
-b3UlADU8J4AAAKQYjEHoAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAAAA1AAAAAAIA
-AABwlvdZAgAAAAAAAAAAAAAHAAAAAAAAAAIAAAACAAAAAAAAABYAAAAAAAAACQAAAAAAAAADyAAE
-AEAIAAAAAAACAAAAMAAAADz//////////wAAAAAEAAAAAAAAAAQAAAAAAAAAAAAAAQAAAAAAAAAA
-AAAAAKmW91m9HQYAUgEAAFIBAABQa4123otQa40NvN8IAEUAAURyGEAAQAaPQQoFki0KBZIjAyAI
-AVDoVhiK2nOdgBgBKDmRAAABAQgKADU8KABvdSWAAAEMGYxB6AAAAAAAAAACAAGGowAAAAQAAAAB
-AAAAAQAAACAAQZbYAAAACGNlbnRvczczAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAEA
-AAADAAAANQIAAABwlvdZAgAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAFgAAAIBDAAAAe8w5RiZk
-yfrDAQAvAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-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
-gBABUTiBAAABAQgKADVIiwBvgWE=
---001a11437e047858f6055ced0bf1--
+
+
