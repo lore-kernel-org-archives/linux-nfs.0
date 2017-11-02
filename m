@@ -1,63 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:46693 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934065AbdKBSmX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Nov 2017 14:42:23 -0400
-Received: by mail-io0-f193.google.com with SMTP id 101so1144242ioj.3
-        for <linux-nfs@vger.kernel.org>; Thu, 02 Nov 2017 11:42:23 -0700 (PDT)
-Subject: [PATCH RFC] nfs: Fix ugly referral attributes
+Received: from aserp1040.oracle.com ([141.146.126.69]:22683 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934300AbdKBTqZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 2 Nov 2017 15:46:25 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: NFS Force Unmounting
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Cc: pradeepthomas@gmail.com
-Date: Thu, 02 Nov 2017 14:42:21 -0400
-Message-ID: <20171102184221.10817.55582.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <87bmklv8ls.fsf@notabene.neil.brown.name>
+Date: Thu, 2 Nov 2017 15:46:18 -0400
+Cc: Jeff Layton <jlayton@kernel.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        Joshua Watt <jpewhacker@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <D32FC586-C351-4810-A4A0-1B2208307A55@oracle.com>
+References: <1508951506.2542.51.camel@gmail.com> <20171030202045.GA6168@fieldses.org> <87h8ugwdev.fsf@notabene.neil.brown.name> <1509460909.4553.37.camel@kernel.org> <8760aux1j5.fsf@notabene.neil.brown.name> <8EB53737-9126-4D26-A22F-D09639BE5130@oracle.com> <87bmklv8ls.fsf@notabene.neil.brown.name>
+To: NeilBrown <neilb@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before traversing a referral and performing a mount, the mounted-on
-directory looks strange:
 
-dr-xr-xr-x. 2 4294967294 4294967294 0 Dec 31  1969 dir.0
+> On Nov 1, 2017, at 8:15 PM, NeilBrown <neilb@suse.com> wrote:
+> 
+> On Tue, Oct 31 2017, Chuck Lever wrote:
+> 
+>>> On Oct 31, 2017, at 8:53 PM, NeilBrown <neilb@suse.com> wrote:
+>> 
+>>> Maybe I could just sweep the problem under the carpet and use lazy
+>>> unmounts.  That hides some of the problem, but doesn't stop sync(2) from
+>>> blocking indefinitely.  And once you have done the lazy unmount, there
+>>> is no longer any opportunity to use MNT_FORCE.
+>> 
+>> IMO a partial answer could be data caching in local files. If
+>> the client can't flush, then it can preserve the files until
+>> after the umount and reboot (using, say, fscache). Multi-client
+>> sharing is still hazardous, but that isn't a very frequent use
+>> case.
+> 
+> What data is it, exactly, that we are worried about here?
+> Data that an application has written, but that it hasn't called fsync()
+> on?  Do it isn't really all that important.  It might just be scratch
+> data.  It might be event logs.  It certainly isn't committed database
+> data, or an incoming email message, or data saved by an editor, or
+> really anything else important.
+> It is data that would be lost if you kicked the powerplug out by
+> mistake.
+> It is data that we would rather save if we could, but data that is not
+> worth bending over backwards to keep a copy of in a non-standard
+> location just in case someone really cares.
+> 
+> That's how I see it anyway.
 
-nfs4_get_referral is wiping out any cached attributes with what was
-returned via GETATTR(fs_locations), but the bit mask for that
-operation does not include any of the normal operations.
+The assumption here is that any data loss or corruption when a
+mount is forcibly removed is strictly the responsibility of
+inadequate application design. Fair enough.
 
-Set the bits to retrieve the object's attributes so that the memcpy
-in nfs4_get_referral can fill them in properly.
+One of my concerns (and I suspect Jeff is also worried about this
+use case) is what to do when tearing down containers that have
+stuck NFS mounts. Here, the host system is not being shut down,
+but the guests need to be shutdown cleanly so they can be destroyed.
 
-Suggested-by: Pradeep Thomas <pradeepthomas@gmail.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+These containers may be sharing page cache data or a transport
+with other users on the host. In this case, we are trying to
+avoid a host shutdown to recover the stuck resources, and we
+do have the (possibly unnecessary) luxury of having a human
+being present to ask what to do to complete the recovery.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6c61e2b..ec3c525 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -6763,9 +6763,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 				   struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
--	u32 bitmask[3] = {
--		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
--	};
-+	u32 bitmask[3];
- 	struct nfs4_fs_locations_arg args = {
- 		.dir_fh = NFS_FH(dir),
- 		.name = name,
-@@ -6784,6 +6782,10 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 
- 	dprintk("%s: start\n", __func__);
- 
-+	bitmask[0] = nfs4_fattr_bitmap[0] | FATTR4_WORD0_FS_LOCATIONS;
-+	bitmask[1] = nfs4_fattr_bitmap[1];
-+	bitmask[2] = nfs4_fattr_bitmap[2] & ~FATTR4_WORD2_SECURITY_LABEL;
-+
- 	/* Ask for the fileid of the absent filesystem if mounted_on_fileid
- 	 * is not supported */
- 	if (NFS_SERVER(dir)->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
+
+--
+Chuck Lever
+
+
 
