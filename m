@@ -1,25 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:52352 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:28847 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750777AbdKIPp0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Nov 2017 10:45:26 -0500
-Date: Thu, 9 Nov 2017 10:45:25 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Vasily Averin <vvs@virtuozzo.com>
-Cc: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>
+        id S1752780AbdKBK2G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 2 Nov 2017 06:28:06 -0400
 Subject: Re: [PATCH] lockd: lost rollback of set_grace_period() in
  lockd_down_net()
-Message-ID: <20171109154525.GH8773@fieldses.org>
+To: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
 References: <fb8ccaec-e163-0b47-6fa0-e85de7abd6a8@virtuozzo.com>
+From: Vasily Averin <vvs@virtuozzo.com>
+Message-ID: <89d314b1-0fe2-0785-1be5-58865fb5a2f5@virtuozzo.com>
+Date: Thu, 2 Nov 2017 13:27:58 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
 In-Reply-To: <fb8ccaec-e163-0b47-6fa0-e85de7abd6a8@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applied for 4.15 and stable, thanks.--b.
+Dear Bruce,
+please use it instead of  my previously submitted "[PATCH] lockd: fix lockd shutdown race with signal".
 
-On Thu, Nov 02, 2017 at 01:03:42PM +0300, Vasily Averin wrote:
+restart_grace() still can add grace for non started nfsd in init_net,
+however seems it does not lead to troubles:
+- second list_add will be prevented by patch from Jeff.
+- unexpectedly queued delayed work will be disarmed on stop of lockd kernel thread
+- cancel_delayed_work_sync() and locks_end_grace() can be called twice 
+(in lockd_down_net and on stop of lockd), however seems it is safe.
+
+On 2017-11-02 13:03, Vasily Averin wrote:
 > Commit efda760fe95ea ("lockd: fix lockd shutdown race") is incorrect,
 > it removes lockd_manager and disarm grace_period_end for init_net only. 
 > 
@@ -51,5 +59,4 @@ On Thu, Nov 02, 2017 at 01:03:42PM +0300, Vasily Averin wrote:
 >  			svc_shutdown_net(serv, net);
 >  			dprintk("lockd_down_net: per-net data destroyed; net=%p\n", net);
 >  		}
-> -- 
-> 2.7.4
+> 
