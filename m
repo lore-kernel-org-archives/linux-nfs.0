@@ -1,100 +1,54 @@
-Return-Path: <trondmy@gmail.com>
-Sender: Trond Myklebust <trondmy@gmail.com>
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Benjamin Coddington <bcodding@redhat.com>,
-	Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v6 10/10] NFSv4: Clean up nfs4_delegreturn_done
-Date: Fri,  3 Nov 2017 12:53:54 -0400
-Message-Id: <20171103165354.15997-11-trond.myklebust@primarydata.com>
-In-Reply-To: <20171103165354.15997-10-trond.myklebust@primarydata.com>
-References: <20171103165354.15997-1-trond.myklebust@primarydata.com>
- <20171103165354.15997-2-trond.myklebust@primarydata.com>
- <20171103165354.15997-3-trond.myklebust@primarydata.com>
- <20171103165354.15997-4-trond.myklebust@primarydata.com>
- <20171103165354.15997-5-trond.myklebust@primarydata.com>
- <20171103165354.15997-6-trond.myklebust@primarydata.com>
- <20171103165354.15997-7-trond.myklebust@primarydata.com>
- <20171103165354.15997-8-trond.myklebust@primarydata.com>
- <20171103165354.15997-9-trond.myklebust@primarydata.com>
- <20171103165354.15997-10-trond.myklebust@primarydata.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>, bcodding redhat
+	<bcodding@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v5 07/10] pNFS: Retry NFS4ERR_OLD_STATEID errors in
+ layoutreturn-on-close
+Date: Fri, 3 Nov 2017 16:54:59 +0000
+Message-ID: <1509728098.11482.8.camel@primarydata.com>
+References: <20171103113539.5551-1-trond.myklebust@primarydata.com>
+	 <20171103113539.5551-2-trond.myklebust@primarydata.com>
+	 <20171103113539.5551-3-trond.myklebust@primarydata.com>
+	 <20171103113539.5551-4-trond.myklebust@primarydata.com>
+	 <20171103113539.5551-5-trond.myklebust@primarydata.com>
+	 <20171103113539.5551-6-trond.myklebust@primarydata.com>
+	 <20171103113539.5551-7-trond.myklebust@primarydata.com>
+	 <20171103113539.5551-8-trond.myklebust@primarydata.com>
+	 <4b527a3d-0f2c-b602-794d-56577cae8a95@Netapp.com>
+In-Reply-To: <4b527a3d-0f2c-b602-794d-56577cae8a95@Netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 32 ++++++++++++++------------------
- 1 file changed, 14 insertions(+), 18 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 291fe9ca531e..a6b47feee552 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5792,11 +5792,8 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 			break;
- 		case -NFS4ERR_OLD_STATEID:
- 			if (nfs4_refresh_layout_stateid(&data->args.lr_args->stateid,
--						data->inode)) {
--				data->res.lr_ret = 0;
--				rpc_restart_call_prepare(task);
--				return;
--			}
-+						data->inode))
-+				goto lr_restart;
- 			/* Fallthrough */
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_DELEG_REVOKED:
-@@ -5806,9 +5803,7 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 		case -NFS4ERR_WRONG_CRED:
- 			data->args.lr_args = NULL;
- 			data->res.lr_res = NULL;
--			data->res.lr_ret = 0;
--			rpc_restart_call_prepare(task);
--			return;
-+			goto lr_restart;
- 		}
- 	}
- 
-@@ -5828,29 +5823,30 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 		task->tk_status = 0;
- 		break;
- 	case -NFS4ERR_OLD_STATEID:
--		if (nfs4_refresh_delegation_stateid(&data->stateid, data->inode)) {
--			task->tk_status = 0;
--			rpc_restart_call_prepare(task);
--			return;
--		}
-+		if (nfs4_refresh_delegation_stateid(&data->stateid, data->inode))
-+			goto out_restart;
- 		task->tk_status = 0;
- 		break;
- 	case -NFS4ERR_ACCESS:
- 		if (data->args.bitmask) {
- 			data->args.bitmask = NULL;
- 			data->res.fattr = NULL;
--			task->tk_status = 0;
--			rpc_restart_call_prepare(task);
--			return;
-+			goto out_restart;
- 		}
-+		/* Fallthrough */
- 	default:
- 		if (nfs4_async_handle_error(task, data->res.server,
- 					    NULL, NULL) == -EAGAIN) {
--			rpc_restart_call_prepare(task);
--			return;
-+			goto out_restart;
- 		}
- 	}
- 	data->rpc_status = task->tk_status;
-+	return;
-+lr_restart:
-+	data->res.lr_ret = 0;
-+out_restart:
-+	task->tk_status = 0;
-+	rpc_restart_call_prepare(task);
- }
- 
- static void nfs4_delegreturn_release(void *calldata)
--- 
-2.13.6
+T24gRnJpLCAyMDE3LTExLTAzIGF0IDEyOjQ2IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
+Cj4gSGkgVHJvbmQsDQo+IA0KPiBPbiAxMS8wMy8yMDE3IDA3OjM1IEFNLCBUcm9uZCBNeWtsZWJ1
+c3Qgd3JvdGU6DQo+ID4gSWYgb3VyIGxheW91dHJldHVybiBvbiBjbG9zZSBvcGVyYXRpb24gcmV0
+dXJucyBhbg0KPiA+IE5GUzRFUlJfT0xEX1NUQVRFSUQsDQo+ID4gdGhlbiB0cnkgdG8gdXBkYXRl
+IHRoZSBzdGF0ZWlkIGFuZCByZXRyeS4gV2Uga25vdyB0aGF0IHRoZXJlIHNob3VsZA0KPiA+IGJl
+IG5vIGZ1cnRoZXIgTEFZT1VUR0VUIHJlcXVlc3RzIGJlaW5nIGxhdW5jaGVkLg0KPiA+IA0KPiA+
+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlk
+YXRhLmNvbT4NCj4gPiAtLS0NCj4gPiAgZnMvbmZzL25mczRwcm9jLmMgfCAxOCArKysrKysrKysr
+KysrKysrLS0NCj4gPiAgZnMvbmZzL3BuZnMuYyAgICAgfCAxOCArKysrKysrKysrKysrKysrKysN
+Cj4gPiAgZnMvbmZzL3BuZnMuaCAgICAgfCAgMSArDQo+ID4gIDMgZmlsZXMgY2hhbmdlZCwgMzUg
+aW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvZnMv
+bmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IGluZGV4IGZlNGE4NTVkYzk2
+NS4uMWJiMGU0MDVhYTU3IDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4g
+KysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtMzE2NSwxMSArMzE2NSwxOCBAQCBzdGF0
+aWMgdm9pZCBuZnM0X2Nsb3NlX2RvbmUoc3RydWN0IHJwY190YXNrDQo+ID4gKnRhc2ssIHZvaWQg
+KmRhdGEpDQo+ID4gIAkJCWNhbGxkYXRhLT5hcmcubHJfYXJncyA9IE5VTEw7DQo+ID4gIAkJCWNh
+bGxkYXRhLT5yZXMubHJfcmVzID0gTlVMTDsNCj4gPiAgCQkJYnJlYWs7DQo+ID4gKwkJY2FzZSAt
+TkZTNEVSUl9PTERfU1RBVEVJRDoNCj4gPiArCQkJaWYgKG5mczRfcmVmcmVzaF9sYXlvdXRfc3Rh
+dGVpZCgmY2FsbGRhdGEtDQo+ID4gPmFyZy5scl9hcmdzLT5zdGF0ZWlkLA0KPiA+ICsJCQkJCQlj
+YWxsZGF0YS0+aW5vZGUpKQ0KPiA+IHsNCj4gDQo+IFRoaXMgZG9lc24ndCBjb21waWxlIHdpdGgg
+Q09ORklHX05GU19WNF8xPW4uICBJIGdldDoNCj4gDQo+ICAgQ0MgW01dICBmcy9uZnMvbmZzNHBy
+b2Mubw0KPiBmcy9uZnMvbmZzNHByb2MuYzogSW4gZnVuY3Rpb24gJ25mczRfY2xvc2VfZG9uZSc6
+DQo+IGZzL25mcy9uZnM0cHJvYy5jOjMxNjk6ODogZXJyb3I6IGltcGxpY2l0IGRlY2xhcmF0aW9u
+IG9mIGZ1bmN0aW9uDQo+ICduZnM0X3JlZnJlc2hfbGF5b3V0X3N0YXRlaWQnOyBkaWQgeW91IG1l
+YW4NCj4gJ25mczRfcmVmcmVzaF9vcGVuX3N0YXRlaWQnPyBbLVdlcnJvcj1pbXBsaWNpdC1mdW5j
+dGlvbi1kZWNsYXJhdGlvbl0NCj4gICAgIGlmIChuZnM0X3JlZnJlc2hfbGF5b3V0X3N0YXRlaWQo
+JmNhbGxkYXRhLT5hcmcubHJfYXJncy0+c3RhdGVpZCwNCj4gICAgICAgICBefn5+fn5+fn5+fn5+
+fn5+fn5+fn5+fn5+fn4NCj4gICAgICAgICBuZnM0X3JlZnJlc2hfb3Blbl9zdGF0ZWlkDQoNCkRv
+aCEgRml4ZWQgaW4gdjYuLi4NCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
+DQo=
