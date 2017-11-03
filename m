@@ -1,135 +1,56 @@
-Return-Path: <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH v5 07/10] pNFS: Retry NFS4ERR_OLD_STATEID errors in
- layoutreturn-on-close
-To: Trond Myklebust <trond.myklebust@primarydata.com>, Benjamin Coddington
-	<bcodding@redhat.com>, Anna Schumaker <anna.schumaker@netapp.com>
-CC: <linux-nfs@vger.kernel.org>
-References: <20171103113539.5551-1-trond.myklebust@primarydata.com>
- <20171103113539.5551-2-trond.myklebust@primarydata.com>
- <20171103113539.5551-3-trond.myklebust@primarydata.com>
- <20171103113539.5551-4-trond.myklebust@primarydata.com>
- <20171103113539.5551-5-trond.myklebust@primarydata.com>
- <20171103113539.5551-6-trond.myklebust@primarydata.com>
- <20171103113539.5551-7-trond.myklebust@primarydata.com>
- <20171103113539.5551-8-trond.myklebust@primarydata.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <4b527a3d-0f2c-b602-794d-56577cae8a95@Netapp.com>
-Date: Fri, 3 Nov 2017 12:46:01 -0400
+Return-Path: <trondmy@gmail.com>
+Sender: Trond Myklebust <trondmy@gmail.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>,
+	Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v6 00/10] Fix OPEN/CLOSE races
+Date: Fri,  3 Nov 2017 12:53:44 -0400
+Message-Id: <20171103165354.15997-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <20171103113539.5551-8-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=utf-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+v2:
+- Fix a sleep-while-atomic issue
+- Clean up.    
+- Add a tracepoint to help document wait incidents.
+v3:
+- Fix a state update issue
+v4:
+- Fix a race due to setting the state->flags before waiting on another
+  compound (can cause issues if the other compound has an OPEN_DOWNGRADE).
+- Fix stateid seqid wraparound.
+v5:
+- Fix race with wakeup after clearing NFS_STATE_CHANGE_WAIT
+- Fix CLOSE, DELEGRETURN and LAYOUTRETURN issues with
+  NFS4ERR_OLD_STATEID, which were causing stateid leakage
+- cleanups
+- Fix a typo in nfs_rename...
+v6:
+- Fix a compile issue when CONFIG_NFS_V4_1=n
 
-On 11/03/2017 07:35 AM, Trond Myklebust wrote:
-> If our layoutreturn on close operation returns an NFS4ERR_OLD_STATEID,
-> then try to update the stateid and retry. We know that there should
-> be no further LAYOUTGET requests being launched.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4proc.c | 18 ++++++++++++++++--
->  fs/nfs/pnfs.c     | 18 ++++++++++++++++++
->  fs/nfs/pnfs.h     |  1 +
->  3 files changed, 35 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index fe4a855dc965..1bb0e405aa57 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -3165,11 +3165,18 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
->  			calldata->arg.lr_args = NULL;
->  			calldata->res.lr_res = NULL;
->  			break;
-> +		case -NFS4ERR_OLD_STATEID:
-> +			if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
-> +						calldata->inode)) {
+Trond Myklebust (10):
+  NFSv4: Fix OPEN / CLOSE race
+  NFSv4: Add a tracepoint to document open stateid updates
+  NFSv4: Fix open create exclusive when the server reboots
+  NFS: Fix a typo in nfs_rename()
+  NFSv4: Retry CLOSE and DELEGRETURN on NFS4ERR_OLD_STATEID.
+  NFSv4: Don't try to CLOSE if the stateid 'other' field has changed
+  pNFS: Retry NFS4ERR_OLD_STATEID errors in layoutreturn-on-close
+  NFSv4: Retry NFS4ERR_OLD_STATEID errors in layoutreturn
+  NFSv4: cleanup nfs4_close_done
+  NFSv4: Clean up nfs4_delegreturn_done
 
-This doesn't compile with CONFIG_NFS_V4_1=n.  I get:
+ fs/nfs/delegation.c |  27 +++++
+ fs/nfs/delegation.h |   1 +
+ fs/nfs/dir.c        |   2 +-
+ fs/nfs/nfs4_fs.h    |   7 ++
+ fs/nfs/nfs4proc.c   | 287 +++++++++++++++++++++++++++++++++++++---------------
+ fs/nfs/nfs4state.c  |  26 ++++-
+ fs/nfs/nfs4trace.h  |   2 +
+ fs/nfs/pnfs.c       |  18 ++++
+ fs/nfs/pnfs.h       |   5 +
+ 9 files changed, 291 insertions(+), 84 deletions(-)
 
-  CC [M]  fs/nfs/nfs4proc.o
-fs/nfs/nfs4proc.c: In function 'nfs4_close_done':
-fs/nfs/nfs4proc.c:3169:8: error: implicit declaration of function 'nfs4_refresh_layout_stateid'; did you mean 'nfs4_refresh_open_stateid'? [-Werror=implicit-function-declaration]
-    if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
-        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-        nfs4_refresh_open_stateid
-
-Thanks,
-Anna
-
-> +				calldata->res.lr_ret = 0;
-> +				rpc_restart_call_prepare(task);
-> +				return;
-> +			}
-> +			/* Fallthrough */
->  		case -NFS4ERR_ADMIN_REVOKED:
->  		case -NFS4ERR_DELEG_REVOKED:
->  		case -NFS4ERR_EXPIRED:
->  		case -NFS4ERR_BAD_STATEID:
-> -		case -NFS4ERR_OLD_STATEID:
->  		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
->  		case -NFS4ERR_WRONG_CRED:
->  			calldata->arg.lr_args = NULL;
-> @@ -5787,11 +5794,18 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
->  			data->args.lr_args = NULL;
->  			data->res.lr_res = NULL;
->  			break;
-> +		case -NFS4ERR_OLD_STATEID:
-> +			if (nfs4_refresh_layout_stateid(&data->args.lr_args->stateid,
-> +						data->inode)) {
-> +				data->res.lr_ret = 0;
-> +				rpc_restart_call_prepare(task);
-> +				return;
-> +			}
-> +			/* Fallthrough */
->  		case -NFS4ERR_ADMIN_REVOKED:
->  		case -NFS4ERR_DELEG_REVOKED:
->  		case -NFS4ERR_EXPIRED:
->  		case -NFS4ERR_BAD_STATEID:
-> -		case -NFS4ERR_OLD_STATEID:
->  		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
->  		case -NFS4ERR_WRONG_CRED:
->  			data->args.lr_args = NULL;
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 3bcd669a3152..5e4cd6a7af66 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -355,6 +355,24 @@ pnfs_clear_lseg_state(struct pnfs_layout_segment *lseg,
->  }
->  
->  /*
-> + * Update the seqid of a layout stateid
-> + */
-> +bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode)
-> +{
-> +	struct pnfs_layout_hdr *lo;
-> +	bool ret = false;
-> +
-> +	spin_lock(&inode->i_lock);
-> +	lo = NFS_I(inode)->layout;
-> +	if (lo && nfs4_stateid_match_other(dst, &lo->plh_stateid)) {
-> +		dst->seqid = lo->plh_stateid.seqid;
-> +		ret = true;
-> +	}
-> +	spin_unlock(&inode->i_lock);
-> +	return ret;
-> +}
-> +
-> +/*
->   * Mark a pnfs_layout_hdr and all associated layout segments as invalid
->   *
->   * In order to continue using the pnfs_layout_hdr, a full recovery
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 87f144f14d1e..3a8e2fbf038a 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -251,6 +251,7 @@ int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
->  		bool is_recall);
->  int pnfs_destroy_layouts_byclid(struct nfs_client *clp,
->  		bool is_recall);
-> +bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode);
->  void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
->  void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
->  			     const nfs4_stateid *new,
-> 
+-- 
+2.13.6
