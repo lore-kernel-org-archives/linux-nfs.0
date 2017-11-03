@@ -1,109 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:49129 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755876AbdKCTIq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 15:08:46 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH] nfs: Fix ugly referral attributes
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <BC03FA23-5D6A-4DFC-B18B-849642070918@oracle.com>
-Date: Fri, 3 Nov 2017 15:08:40 -0400
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <AAFA7C12-110A-471B-8E4D-0A95AC9FA6F3@oracle.com>
-References: <20171103174658.31159.24496.stgit@manet.1015granger.net> <1509733043.21477.9.camel@primarydata.com> <1509733948.21477.15.camel@primarydata.com> <BC03FA23-5D6A-4DFC-B18B-849642070918@oracle.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from mail-ua0-f172.google.com ([209.85.217.172]:49184 "EHLO
+        mail-ua0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752170AbdKCT5i (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 15:57:38 -0400
+Received: by mail-ua0-f172.google.com with SMTP id h34so2715118uaa.6
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Nov 2017 12:57:38 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20171024174752.74910-1-kolga@netapp.com>
+References: <20171024174752.74910-1-kolga@netapp.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 3 Nov 2017 15:57:37 -0400
+Message-ID: <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
+Subject: Re: [PATCH v6 00/10] NFSD support for asynchronous COPY
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Oct 24, 2017 at 1:47 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
+> To do asynchronous copies, NFSD creates a new kthread to handle the request.
+> Upon receiving the COPY, it generates a unique copy stateid (stored in a
+> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
+> starts the thread, and replies back to the client. nfsd4_copy arguments that
+> are allocated on the stack are copies for the kthread.
+>
+> For the async copy handler, copy is done in the loop for the requested
+> number of bytes. If an error is encountered and partial copy has happened,
+> a successful partial copy is returned in the CB_OFFLOAD. vfs_copy_file_range
+> is called with 4MB chunks for both async and sync, allowing for 4MB
+> granularity of OFFLOAD_STATUS queiry. Once copy is done, the results are
+> queued for the callback workqueue and sent via CB_OFFLOAD.
+>
+> When the server received an OFFLOAD_CANCEL, it will find the kthread running
+> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
+> the ongoing do_splice() and once vfs returns we are choosing not to send
+> the CB_OFFLOAD back to the client.
+>
+> When the server receives an OFFLOAD_STATUS, it will find the kthread running
+> the copy and will locate within the copy state the current number of bytes
+> copied so far.
+>
+> v6:
+> 1. if an error occured and partial bytes were copied, don't return the error
+> and instead return the successful partial copy.
+> 2. OFFLOAD_STATUS locates the on-going copy and looks up the number of bytes
+> copied so far.
+>
+> Olga Kornievskaia (10):
+>   NFSD CB_OFFLOAD xdr
+>   NFSD OFFLOAD_STATUS xdr
+>   NFSD OFFLOAD_CANCEL xdr
+>   NFSD xdr callback stateid in async COPY reply
+>   NFSD first draft of async copy
+>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+>   NFSD create new stateid for async copy
+>   NFSD handle OFFLOAD_CANCEL op
+>   NFSD support OFFLOAD_STATUS
+>   NFSD stop queued async copies on client shutdown
+>
+>  fs/nfsd/netns.h        |   8 ++
+>  fs/nfsd/nfs4callback.c |  97 +++++++++++++++
+>  fs/nfsd/nfs4proc.c     | 316 ++++++++++++++++++++++++++++++++++++++++++++-----
+>  fs/nfsd/nfs4state.c    |  77 +++++++++++-
+>  fs/nfsd/nfs4xdr.c      |  50 ++++++--
+>  fs/nfsd/nfsctl.c       |   1 +
+>  fs/nfsd/state.h        |  21 +++-
+>  fs/nfsd/xdr4.h         |  28 +++++
+>  fs/nfsd/xdr4cb.h       |  10 ++
+>  9 files changed, 571 insertions(+), 37 deletions(-)
 
-> On Nov 3, 2017, at 2:48 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> 
->> On Nov 3, 2017, at 2:32 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->> 
->> On Fri, 2017-11-03 at 18:17 +0000, Trond Myklebust wrote:
->>> On Fri, 2017-11-03 at 13:46 -0400, Chuck Lever wrote:
->>>> Before traversing a referral and performing a mount, the mounted-on
->>>> directory looks strange:
->>>> 
->>>> dr-xr-xr-x. 2 4294967294 4294967294 0 Dec 31  1969 dir.0
->>>> 
->>>> nfs4_get_referral is wiping out any cached attributes with what was
->>>> returned via GETATTR(fs_locations), but the bit mask for that
->>>> operation does not request any file attributes.
->>>> 
->>>> Set the default bits in the GETATTR bitmask to retrieve the usual
->>>> set of object attributes so that the memcpy in nfs4_get_referral
->>>> can
->>>> fill the attributes in properly.
->>>> 
->>> 
->>> Hmm... So I believe the reason why we didn't do this in the original
->>> implementation is because of RFC7530, Section 8.3.1, which says:
->>> 
->>>  Other attributes SHOULD NOT be made available for absent file
->>>  systems, even when it is possible to provide them. The server
->>> should
->>>  not assume that more information is always better and should avoid
->>>  gratuitously providing additional information.
->>> 
->>> Where "other attributes" means anything other than fs_locations, fsid
->>> and mounted-on-fileid.
->>> 
->>> IOW: the protocol spec has normative language stating that we should
->>> not expect to be able to retrieve other attributes, and that the
->>> server
->>> should not return them.
->> 
->> Sorry. In case it wasn't clear, the above was not intended as a
->> rejection of the patch. The same section also says:
->> 
->>  When a GETATTR operation includes a bitmask for the attribute
->>  fs_locations, but where the bitmask includes attributes that are not
->>  supported, GETATTR will not return an error but will return the mask
->>  of the actual attributes supported with the results
->> 
->> So the normative language is putting the onus on the server to be
->> conservative in what it returns, and does not require the client to be
->> conservative in what it asks for...
-> 
-> Following up, the display of the referral object's attributes is
-> best effort, IMO, which seems to agree with both sections of text.
-> 
-> And, I don't think the client requests more from the target server
-> than it has on hand. I could be mistaken about that, and it would
-> be simple to trim out some of the bits in the GETATTR bitmask if
-> the client is making an unreasonable request.
-> 
-> The concern seems to apply mostly to the MOUNTED_ON_FSID bit. I
-> noticed the original code always asserted that bit, even though
-> a later patch added the conditional use of MOUNTED_ON_FSID, but
-> the FSID bit was not cleared in that case.
-
-Editing mistake. The original code always asserted FSID, and
-the later patch made the use of MOUNTED_ON_FSID conditional
-but does not clear FSID when MOUNTED_ON_FSID is used.
-
-
-> The new patch will
-> send either of those bits, but not both at once. If that's
-> incorrect, I can send an updated patch.
-> 
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+Bruce, any comments on this version?
