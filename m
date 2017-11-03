@@ -1,54 +1,34 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>, bcodding redhat
-	<bcodding@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v5 07/10] pNFS: Retry NFS4ERR_OLD_STATEID errors in
- layoutreturn-on-close
-Date: Fri, 3 Nov 2017 16:54:59 +0000
-Message-ID: <1509728098.11482.8.camel@primarydata.com>
-References: <20171103113539.5551-1-trond.myklebust@primarydata.com>
-	 <20171103113539.5551-2-trond.myklebust@primarydata.com>
-	 <20171103113539.5551-3-trond.myklebust@primarydata.com>
-	 <20171103113539.5551-4-trond.myklebust@primarydata.com>
-	 <20171103113539.5551-5-trond.myklebust@primarydata.com>
-	 <20171103113539.5551-6-trond.myklebust@primarydata.com>
-	 <20171103113539.5551-7-trond.myklebust@primarydata.com>
-	 <20171103113539.5551-8-trond.myklebust@primarydata.com>
-	 <4b527a3d-0f2c-b602-794d-56577cae8a95@Netapp.com>
-In-Reply-To: <4b527a3d-0f2c-b602-794d-56577cae8a95@Netapp.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:53465 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933455AbdKCRqA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 13:46:00 -0400
+Received: by mail-io0-f196.google.com with SMTP id 189so7916044iow.10
+        for <linux-nfs@vger.kernel.org>; Fri, 03 Nov 2017 10:46:00 -0700 (PDT)
+Subject: [PATCH 0/2] Two fixes for RPC static trace points
+From: Chuck Lever <chuck.lever@oracle.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Fri, 03 Nov 2017 13:45:58 -0400
+Message-ID: <20171103174509.31080.80937.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTExLTAzIGF0IDEyOjQ2IC0wNDAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gSGkgVHJvbmQsDQo+IA0KPiBPbiAxMS8wMy8yMDE3IDA3OjM1IEFNLCBUcm9uZCBNeWtsZWJ1
-c3Qgd3JvdGU6DQo+ID4gSWYgb3VyIGxheW91dHJldHVybiBvbiBjbG9zZSBvcGVyYXRpb24gcmV0
-dXJucyBhbg0KPiA+IE5GUzRFUlJfT0xEX1NUQVRFSUQsDQo+ID4gdGhlbiB0cnkgdG8gdXBkYXRl
-IHRoZSBzdGF0ZWlkIGFuZCByZXRyeS4gV2Uga25vdyB0aGF0IHRoZXJlIHNob3VsZA0KPiA+IGJl
-IG5vIGZ1cnRoZXIgTEFZT1VUR0VUIHJlcXVlc3RzIGJlaW5nIGxhdW5jaGVkLg0KPiA+IA0KPiA+
-IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlk
-YXRhLmNvbT4NCj4gPiAtLS0NCj4gPiAgZnMvbmZzL25mczRwcm9jLmMgfCAxOCArKysrKysrKysr
-KysrKysrLS0NCj4gPiAgZnMvbmZzL3BuZnMuYyAgICAgfCAxOCArKysrKysrKysrKysrKysrKysN
-Cj4gPiAgZnMvbmZzL3BuZnMuaCAgICAgfCAgMSArDQo+ID4gIDMgZmlsZXMgY2hhbmdlZCwgMzUg
-aW5zZXJ0aW9ucygrKSwgMiBkZWxldGlvbnMoLSkNCj4gPiANCj4gPiBkaWZmIC0tZ2l0IGEvZnMv
-bmZzL25mczRwcm9jLmMgYi9mcy9uZnMvbmZzNHByb2MuYw0KPiA+IGluZGV4IGZlNGE4NTVkYzk2
-NS4uMWJiMGU0MDVhYTU3IDEwMDY0NA0KPiA+IC0tLSBhL2ZzL25mcy9uZnM0cHJvYy5jDQo+ID4g
-KysrIGIvZnMvbmZzL25mczRwcm9jLmMNCj4gPiBAQCAtMzE2NSwxMSArMzE2NSwxOCBAQCBzdGF0
-aWMgdm9pZCBuZnM0X2Nsb3NlX2RvbmUoc3RydWN0IHJwY190YXNrDQo+ID4gKnRhc2ssIHZvaWQg
-KmRhdGEpDQo+ID4gIAkJCWNhbGxkYXRhLT5hcmcubHJfYXJncyA9IE5VTEw7DQo+ID4gIAkJCWNh
-bGxkYXRhLT5yZXMubHJfcmVzID0gTlVMTDsNCj4gPiAgCQkJYnJlYWs7DQo+ID4gKwkJY2FzZSAt
-TkZTNEVSUl9PTERfU1RBVEVJRDoNCj4gPiArCQkJaWYgKG5mczRfcmVmcmVzaF9sYXlvdXRfc3Rh
-dGVpZCgmY2FsbGRhdGEtDQo+ID4gPmFyZy5scl9hcmdzLT5zdGF0ZWlkLA0KPiA+ICsJCQkJCQlj
-YWxsZGF0YS0+aW5vZGUpKQ0KPiA+IHsNCj4gDQo+IFRoaXMgZG9lc24ndCBjb21waWxlIHdpdGgg
-Q09ORklHX05GU19WNF8xPW4uICBJIGdldDoNCj4gDQo+ICAgQ0MgW01dICBmcy9uZnMvbmZzNHBy
-b2Mubw0KPiBmcy9uZnMvbmZzNHByb2MuYzogSW4gZnVuY3Rpb24gJ25mczRfY2xvc2VfZG9uZSc6
-DQo+IGZzL25mcy9uZnM0cHJvYy5jOjMxNjk6ODogZXJyb3I6IGltcGxpY2l0IGRlY2xhcmF0aW9u
-IG9mIGZ1bmN0aW9uDQo+ICduZnM0X3JlZnJlc2hfbGF5b3V0X3N0YXRlaWQnOyBkaWQgeW91IG1l
-YW4NCj4gJ25mczRfcmVmcmVzaF9vcGVuX3N0YXRlaWQnPyBbLVdlcnJvcj1pbXBsaWNpdC1mdW5j
-dGlvbi1kZWNsYXJhdGlvbl0NCj4gICAgIGlmIChuZnM0X3JlZnJlc2hfbGF5b3V0X3N0YXRlaWQo
-JmNhbGxkYXRhLT5hcmcubHJfYXJncy0+c3RhdGVpZCwNCj4gICAgICAgICBefn5+fn5+fn5+fn5+
-fn5+fn5+fn5+fn5+fn4NCj4gICAgICAgICBuZnM0X3JlZnJlc2hfb3Blbl9zdGF0ZWlkDQoNCkRv
-aCEgRml4ZWQgaW4gdjYuLi4NCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
-IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
-DQo=
+Please consider this series for v4.15. Thanks!
+
+---
+
+Chuck Lever (2):
+      sunrpc: Fix rpc_task_begin trace point
+      sunrpc: Add rpc_request static trace point
+
+
+ include/trace/events/sunrpc.h |   30 ++++++++++++++++++++++++++++++
+ net/sunrpc/clnt.c             |    3 +--
+ net/sunrpc/sched.c            |    3 +--
+ 3 files changed, 32 insertions(+), 4 deletions(-)
+
+--
+Chuck Lever
