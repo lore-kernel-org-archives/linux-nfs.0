@@ -4,37 +4,144 @@ From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>,
 	Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v6 04/10] NFS: Fix a typo in nfs_rename()
-Date: Fri,  3 Nov 2017 12:53:48 -0400
-Message-Id: <20171103165354.15997-5-trond.myklebust@primarydata.com>
-In-Reply-To: <20171103165354.15997-4-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 03/10] NFSv4: Fix open create exclusive when the server reboots
+Date: Fri,  3 Nov 2017 12:53:47 -0400
+Message-Id: <20171103165354.15997-4-trond.myklebust@primarydata.com>
+In-Reply-To: <20171103165354.15997-3-trond.myklebust@primarydata.com>
 References: <20171103165354.15997-1-trond.myklebust@primarydata.com>
  <20171103165354.15997-2-trond.myklebust@primarydata.com>
  <20171103165354.15997-3-trond.myklebust@primarydata.com>
- <20171103165354.15997-4-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-On successful rename, the "old_dentry" is retained and is attached to
-the "new_dir", so we need to call nfs_set_verifier() accordingly.
+If the server that does not implement NFSv4.1 persistent session
+semantics reboots while we are performing an exclusive create,
+then the return value of NFS4ERR_DELAY when we replay the open
+during the grace period causes us to lose the verifier.
+When the grace period expires, and we present a new verifier,
+the server will then correctly reply NFS4ERR_EXIST.
 
+This commit ensures that we always present the same verifier when
+replaying the OPEN.
+
+Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 41 ++++++++++++++++++++++++++---------------
+ 1 file changed, 26 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 5ceaeb1f6fb6..9dda2e0ef85e 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2064,7 +2064,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		 * should mark the directories for revalidation.
- 		 */
- 		d_move(old_dentry, new_dentry);
--		nfs_set_verifier(new_dentry,
-+		nfs_set_verifier(old_dentry,
- 					nfs_save_change_attribute(new_dir));
- 	} else if (error == -ENOENT)
- 		nfs_dentry_handle_enoent(old_dentry);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d720b076a34d..a0bdd1e1e2c1 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1088,6 +1088,12 @@ struct nfs4_opendata {
+ 	int rpc_status;
+ };
+ 
++struct nfs4_open_createattrs {
++	struct nfs4_label *label;
++	struct iattr *sattr;
++	const __u32 verf[2];
++};
++
+ static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
+ 		int err, struct nfs4_exception *exception)
+ {
+@@ -1157,8 +1163,7 @@ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
+ 
+ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 		struct nfs4_state_owner *sp, fmode_t fmode, int flags,
+-		const struct iattr *attrs,
+-		struct nfs4_label *label,
++		const struct nfs4_open_createattrs *c,
+ 		enum open_claim_type4 claim,
+ 		gfp_t gfp_mask)
+ {
+@@ -1166,6 +1171,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	struct inode *dir = d_inode(parent);
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs_seqid *(*alloc_seqid)(struct nfs_seqid_counter *, gfp_t);
++	struct nfs4_label *label = (c != NULL) ? c->label : NULL;
+ 	struct nfs4_opendata *p;
+ 
+ 	p = kzalloc(sizeof(*p), gfp_mask);
+@@ -1231,15 +1237,11 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+ 		p->o_arg.fh = NFS_FH(d_inode(dentry));
+ 	}
+-	if (attrs != NULL && attrs->ia_valid != 0) {
+-		__u32 verf[2];
+-
++	if (c != NULL && c->sattr != NULL && c->sattr->ia_valid != 0) {
+ 		p->o_arg.u.attrs = &p->attrs;
+-		memcpy(&p->attrs, attrs, sizeof(p->attrs));
++		memcpy(&p->attrs, c->sattr, sizeof(p->attrs));
+ 
+-		verf[0] = jiffies;
+-		verf[1] = current->pid;
+-		memcpy(p->o_arg.u.verifier.data, verf,
++		memcpy(p->o_arg.u.verifier.data, c->verf,
+ 				sizeof(p->o_arg.u.verifier.data));
+ 	}
+ 	p->c_arg.fh = &p->o_res.fh;
+@@ -1891,7 +1893,7 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
+ 	struct nfs4_opendata *opendata;
+ 
+ 	opendata = nfs4_opendata_alloc(ctx->dentry, state->owner, 0, 0,
+-			NULL, NULL, claim, GFP_NOFS);
++			NULL, claim, GFP_NOFS);
+ 	if (opendata == NULL)
+ 		return ERR_PTR(-ENOMEM);
+ 	opendata->state = state;
+@@ -2822,8 +2824,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
+ static int _nfs4_do_open(struct inode *dir,
+ 			struct nfs_open_context *ctx,
+ 			int flags,
+-			struct iattr *sattr,
+-			struct nfs4_label *label,
++			const struct nfs4_open_createattrs *c,
+ 			int *opened)
+ {
+ 	struct nfs4_state_owner  *sp;
+@@ -2835,6 +2836,8 @@ static int _nfs4_do_open(struct inode *dir,
+ 	struct nfs4_threshold **ctx_th = &ctx->mdsthreshold;
+ 	fmode_t fmode = ctx->mode & (FMODE_READ|FMODE_WRITE|FMODE_EXEC);
+ 	enum open_claim_type4 claim = NFS4_OPEN_CLAIM_NULL;
++	struct iattr *sattr = c->sattr;
++	struct nfs4_label *label = c->label;
+ 	struct nfs4_label *olabel = NULL;
+ 	int status;
+ 
+@@ -2853,8 +2856,8 @@ static int _nfs4_do_open(struct inode *dir,
+ 	status = -ENOMEM;
+ 	if (d_really_is_positive(dentry))
+ 		claim = NFS4_OPEN_CLAIM_FH;
+-	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags, sattr,
+-			label, claim, GFP_KERNEL);
++	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags,
++			c, claim, GFP_KERNEL);
+ 	if (opendata == NULL)
+ 		goto err_put_state_owner;
+ 
+@@ -2935,10 +2938,18 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
+ 	struct nfs_server *server = NFS_SERVER(dir);
+ 	struct nfs4_exception exception = { };
+ 	struct nfs4_state *res;
++	struct nfs4_open_createattrs c = {
++		.label = label,
++		.sattr = sattr,
++		.verf = {
++			[0] = (__u32)jiffies,
++			[1] = (__u32)current->pid,
++		},
++	};
+ 	int status;
+ 
+ 	do {
+-		status = _nfs4_do_open(dir, ctx, flags, sattr, label, opened);
++		status = _nfs4_do_open(dir, ctx, flags, &c, opened);
+ 		res = ctx->state;
+ 		trace_nfs4_open_file(ctx, flags, status);
+ 		if (status == 0)
 -- 
 2.13.6
