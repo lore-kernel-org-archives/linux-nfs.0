@@ -1,53 +1,135 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:10288 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751381AbdKCQca (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 3 Nov 2017 12:32:30 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH] lockd: added cleanup checks in exit_net hook
-To: linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@poochiereds.net>
-Message-ID: <cbc8333b-95a5-0bb2-9ef8-645ba3bb6185@virtuozzo.com>
-Date: Fri, 3 Nov 2017 19:32:23 +0300
+Return-Path: <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v5 07/10] pNFS: Retry NFS4ERR_OLD_STATEID errors in
+ layoutreturn-on-close
+To: Trond Myklebust <trond.myklebust@primarydata.com>, Benjamin Coddington
+	<bcodding@redhat.com>, Anna Schumaker <anna.schumaker@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+References: <20171103113539.5551-1-trond.myklebust@primarydata.com>
+ <20171103113539.5551-2-trond.myklebust@primarydata.com>
+ <20171103113539.5551-3-trond.myklebust@primarydata.com>
+ <20171103113539.5551-4-trond.myklebust@primarydata.com>
+ <20171103113539.5551-5-trond.myklebust@primarydata.com>
+ <20171103113539.5551-6-trond.myklebust@primarydata.com>
+ <20171103113539.5551-7-trond.myklebust@primarydata.com>
+ <20171103113539.5551-8-trond.myklebust@primarydata.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <4b527a3d-0f2c-b602-794d-56577cae8a95@Netapp.com>
+Date: Fri, 3 Nov 2017 12:46:01 -0400
 MIME-Version: 1.0
+In-Reply-To: <20171103113539.5551-8-trond.myklebust@primarydata.com>
 Content-Type: text/plain; charset=utf-8
-Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Patch generates warnings if exit_net hook detects that 
-structures initialized in init_net hook are still in use. 
+Hi Trond,
 
-[ 2355.129218] per-netns lockd_manager.list is not empty
-[ 2355.130483] WARNING: CPU: 7 PID: 97 at fs/lockd/svc.c:682 lockd_exit_net+0x52/0x80 [lockd]
-...
-[ 2355.148073] per-netns grace_period_end dealyed work was not cancelled
-[ 2355.149205] WARNING: CPU: 7 PID: 97 at fs/lockd/svc.c:686 lockd_exit_net+0x78/0x80 [lockd]
+On 11/03/2017 07:35 AM, Trond Myklebust wrote:
+> If our layoutreturn on close operation returns an NFS4ERR_OLD_STATEID,
+> then try to update the stateid and retry. We know that there should
+> be no further LAYOUTGET requests being launched.
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4proc.c | 18 ++++++++++++++++--
+>  fs/nfs/pnfs.c     | 18 ++++++++++++++++++
+>  fs/nfs/pnfs.h     |  1 +
+>  3 files changed, 35 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index fe4a855dc965..1bb0e405aa57 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3165,11 +3165,18 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+>  			calldata->arg.lr_args = NULL;
+>  			calldata->res.lr_res = NULL;
+>  			break;
+> +		case -NFS4ERR_OLD_STATEID:
+> +			if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
+> +						calldata->inode)) {
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/lockd/svc.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+This doesn't compile with CONFIG_NFS_V4_1=n.  I get:
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 809cbcc..119af0a 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -690,6 +690,14 @@ static int lockd_init_net(struct net *net)
- 
- static void lockd_exit_net(struct net *net)
- {
-+	struct lockd_net *ln = net_generic(net, lockd_net_id);
-+
-+	WARN(!list_empty(&ln->lockd_manager.list),
-+		"per-netns lockd_manager.list is not empty\n");
-+	WARN(!list_empty(&ln->nsm_handles),
-+		"per-netns nsm_handles list is not empty\n");
-+	WARN(delayed_work_pending(&ln->grace_period_end),
-+		"per-netns grace_period_end dealyed work was not cancelled\n");
- }
- 
- static struct pernet_operations lockd_net_ops = {
--- 
-2.7.4
+  CC [M]  fs/nfs/nfs4proc.o
+fs/nfs/nfs4proc.c: In function 'nfs4_close_done':
+fs/nfs/nfs4proc.c:3169:8: error: implicit declaration of function 'nfs4_refresh_layout_stateid'; did you mean 'nfs4_refresh_open_stateid'? [-Werror=implicit-function-declaration]
+    if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
+        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+        nfs4_refresh_open_stateid
 
+Thanks,
+Anna
+
+> +				calldata->res.lr_ret = 0;
+> +				rpc_restart_call_prepare(task);
+> +				return;
+> +			}
+> +			/* Fallthrough */
+>  		case -NFS4ERR_ADMIN_REVOKED:
+>  		case -NFS4ERR_DELEG_REVOKED:
+>  		case -NFS4ERR_EXPIRED:
+>  		case -NFS4ERR_BAD_STATEID:
+> -		case -NFS4ERR_OLD_STATEID:
+>  		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
+>  		case -NFS4ERR_WRONG_CRED:
+>  			calldata->arg.lr_args = NULL;
+> @@ -5787,11 +5794,18 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+>  			data->args.lr_args = NULL;
+>  			data->res.lr_res = NULL;
+>  			break;
+> +		case -NFS4ERR_OLD_STATEID:
+> +			if (nfs4_refresh_layout_stateid(&data->args.lr_args->stateid,
+> +						data->inode)) {
+> +				data->res.lr_ret = 0;
+> +				rpc_restart_call_prepare(task);
+> +				return;
+> +			}
+> +			/* Fallthrough */
+>  		case -NFS4ERR_ADMIN_REVOKED:
+>  		case -NFS4ERR_DELEG_REVOKED:
+>  		case -NFS4ERR_EXPIRED:
+>  		case -NFS4ERR_BAD_STATEID:
+> -		case -NFS4ERR_OLD_STATEID:
+>  		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
+>  		case -NFS4ERR_WRONG_CRED:
+>  			data->args.lr_args = NULL;
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 3bcd669a3152..5e4cd6a7af66 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -355,6 +355,24 @@ pnfs_clear_lseg_state(struct pnfs_layout_segment *lseg,
+>  }
+>  
+>  /*
+> + * Update the seqid of a layout stateid
+> + */
+> +bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode)
+> +{
+> +	struct pnfs_layout_hdr *lo;
+> +	bool ret = false;
+> +
+> +	spin_lock(&inode->i_lock);
+> +	lo = NFS_I(inode)->layout;
+> +	if (lo && nfs4_stateid_match_other(dst, &lo->plh_stateid)) {
+> +		dst->seqid = lo->plh_stateid.seqid;
+> +		ret = true;
+> +	}
+> +	spin_unlock(&inode->i_lock);
+> +	return ret;
+> +}
+> +
+> +/*
+>   * Mark a pnfs_layout_hdr and all associated layout segments as invalid
+>   *
+>   * In order to continue using the pnfs_layout_hdr, a full recovery
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 87f144f14d1e..3a8e2fbf038a 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -251,6 +251,7 @@ int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
+>  		bool is_recall);
+>  int pnfs_destroy_layouts_byclid(struct nfs_client *clp,
+>  		bool is_recall);
+> +bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode);
+>  void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
+>  void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>  			     const nfs4_stateid *new,
+> 
