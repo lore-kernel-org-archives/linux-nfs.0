@@ -1,74 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f172.google.com ([209.85.217.172]:49184 "EHLO
-        mail-ua0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752170AbdKCT5i (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 15:57:38 -0400
-Received: by mail-ua0-f172.google.com with SMTP id h34so2715118uaa.6
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Nov 2017 12:57:38 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20171024174752.74910-1-kolga@netapp.com>
-References: <20171024174752.74910-1-kolga@netapp.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 3 Nov 2017 15:57:37 -0400
-Message-ID: <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
-Subject: Re: [PATCH v6 00/10] NFSD support for asynchronous COPY
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from userp1040.oracle.com ([156.151.31.81]:28327 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751805AbdKCVTh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 17:19:37 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] svcrdma: Enqueue after setting XPT_CLOSE in completion handlers
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CANjDDBi15wrUqnnpgBabwQLg1iz92PJkbt6vN9OBFK9E2Ng5SQ@mail.gmail.com>
+Date: Fri, 3 Nov 2017 17:19:30 -0400
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devesh Sharma <devesh.sharma@broadcom.com>
+Message-Id: <28EB7B95-5EF6-41D0-8910-6BC7784CE28E@oracle.com>
+References: <20171027144743.15444.3407.stgit@klimt.1015granger.net> <CANjDDBi15wrUqnnpgBabwQLg1iz92PJkbt6vN9OBFK9E2Ng5SQ@mail.gmail.com>
+To: Bruce Fields <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 24, 2017 at 1:47 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
-> To do asynchronous copies, NFSD creates a new kthread to handle the request.
-> Upon receiving the COPY, it generates a unique copy stateid (stored in a
-> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
-> starts the thread, and replies back to the client. nfsd4_copy arguments that
-> are allocated on the stack are copies for the kthread.
->
-> For the async copy handler, copy is done in the loop for the requested
-> number of bytes. If an error is encountered and partial copy has happened,
-> a successful partial copy is returned in the CB_OFFLOAD. vfs_copy_file_range
-> is called with 4MB chunks for both async and sync, allowing for 4MB
-> granularity of OFFLOAD_STATUS queiry. Once copy is done, the results are
-> queued for the callback workqueue and sent via CB_OFFLOAD.
->
-> When the server received an OFFLOAD_CANCEL, it will find the kthread running
-> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
-> the ongoing do_splice() and once vfs returns we are choosing not to send
-> the CB_OFFLOAD back to the client.
->
-> When the server receives an OFFLOAD_STATUS, it will find the kthread running
-> the copy and will locate within the copy state the current number of bytes
-> copied so far.
->
-> v6:
-> 1. if an error occured and partial bytes were copied, don't return the error
-> and instead return the successful partial copy.
-> 2. OFFLOAD_STATUS locates the on-going copy and looks up the number of bytes
-> copied so far.
->
-> Olga Kornievskaia (10):
->   NFSD CB_OFFLOAD xdr
->   NFSD OFFLOAD_STATUS xdr
->   NFSD OFFLOAD_CANCEL xdr
->   NFSD xdr callback stateid in async COPY reply
->   NFSD first draft of async copy
->   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
->   NFSD create new stateid for async copy
->   NFSD handle OFFLOAD_CANCEL op
->   NFSD support OFFLOAD_STATUS
->   NFSD stop queued async copies on client shutdown
->
->  fs/nfsd/netns.h        |   8 ++
->  fs/nfsd/nfs4callback.c |  97 +++++++++++++++
->  fs/nfsd/nfs4proc.c     | 316 ++++++++++++++++++++++++++++++++++++++++++++-----
->  fs/nfsd/nfs4state.c    |  77 +++++++++++-
->  fs/nfsd/nfs4xdr.c      |  50 ++++++--
->  fs/nfsd/nfsctl.c       |   1 +
->  fs/nfsd/state.h        |  21 +++-
->  fs/nfsd/xdr4.h         |  28 +++++
->  fs/nfsd/xdr4cb.h       |  10 ++
->  9 files changed, 571 insertions(+), 37 deletions(-)
+Hi Bruce-
 
-Bruce, any comments on this version?
+> On Oct 28, 2017, at 3:43 AM, Devesh Sharma <devesh.sharma@broadcom.com> wrote:
+> 
+> looks good
+> 
+> Reveiwed-By: Devesh Sharma <devesh.sharma@broadcom.com>
+> 
+> On Fri, Oct 27, 2017 at 8:19 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> I noticed the server was sometimes not closing the connection after
+>> a flushed Send. For example, if the client responds with an RNR NAK
+>> to a Reply from the server, that client might be deadlocked, and
+>> thus wouldn't send any more traffic. Thus the server wouldn't have
+>> any opportunity to notice the XPT_CLOSE bit has been set.
+>> 
+>> Enqueue the transport so that svcxprt notices the bit even if there
+>> is no more transport activity after a flushed completion, QP access
+>> error, or device removal event.
+>> 
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 ++++++++---
+>> 1 file changed, 8 insertions(+), 3 deletions(-)
+>> 
+>> Hi Bruce-
+>> 
+>> Please consider this patch for v4.15. Thanks!
+
+I notice nfsd-next does not have this patch. Is there anything
+else I need to do? Should I resend with Devesh's Reviewed-by
+tag?
+
+
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> index 5caf8e7..46ec069 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+>> @@ -290,6 +290,7 @@ static void qp_event_handler(struct ib_event *event, void *context)
+>>                        ib_event_msg(event->event), event->event,
+>>                        event->element.qp);
+>>                set_bit(XPT_CLOSE, &xprt->xpt_flags);
+>> +               svc_xprt_enqueue(xprt);
+>>                break;
+>>        }
+>> }
+>> @@ -322,8 +323,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+>>        set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
+>>        if (test_bit(RDMAXPRT_CONN_PENDING, &xprt->sc_flags))
+>>                goto out;
+>> -       svc_xprt_enqueue(&xprt->sc_xprt);
+>> -       goto out;
+>> +       goto out_enqueue;
+>> 
+>> flushed:
+>>        if (wc->status != IB_WC_WR_FLUSH_ERR)
+>> @@ -333,6 +333,8 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
+>>        set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+>>        svc_rdma_put_context(ctxt, 1);
+>> 
+>> +out_enqueue:
+>> +       svc_xprt_enqueue(&xprt->sc_xprt);
+>> out:
+>>        svc_xprt_put(&xprt->sc_xprt);
+>> }
+>> @@ -358,6 +360,7 @@ void svc_rdma_wc_send(struct ib_cq *cq, struct ib_wc *wc)
+>> 
+>>        if (unlikely(wc->status != IB_WC_SUCCESS)) {
+>>                set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+>> +               svc_xprt_enqueue(&xprt->sc_xprt);
+>>                if (wc->status != IB_WC_WR_FLUSH_ERR)
+>>                        pr_err("svcrdma: Send: %s (%u/0x%x)\n",
+>>                               ib_wc_status_msg(wc->status),
+>> @@ -569,8 +572,10 @@ static int rdma_listen_handler(struct rdma_cm_id *cma_id,
+>>        case RDMA_CM_EVENT_DEVICE_REMOVAL:
+>>                dprintk("svcrdma: Device removal xprt=%p, cm_id=%p\n",
+>>                        xprt, cma_id);
+>> -               if (xprt)
+>> +               if (xprt) {
+>>                        set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+>> +                       svc_xprt_enqueue(&xprt->sc_xprt);
+>> +               }
+>>                break;
+>> 
+>>        default:
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
