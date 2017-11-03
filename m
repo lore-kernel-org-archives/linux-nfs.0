@@ -1,71 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:42071 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932624AbdKCSg6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 14:36:58 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "aweits@rit.edu" <aweits@rit.edu>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3] nfsd: deal with revoked delegations appropriately
-Date: Fri, 3 Nov 2017 18:36:55 +0000
-Message-ID: <1509734212.21477.16.camel@primarydata.com>
-References: <20171103180631.76071-1-aweits@rit.edu>
-In-Reply-To: <20171103180631.76071-1-aweits@rit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:24787 "EHLO
+        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756087AbdKCSs5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 14:48:57 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH] nfs: Fix ugly referral attributes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1509733948.21477.15.camel@primarydata.com>
+Date: Fri, 3 Nov 2017 14:48:51 -0400
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <BC03FA23-5D6A-4DFC-B18B-849642070918@oracle.com>
+References: <20171103174658.31159.24496.stgit@manet.1015granger.net> <1509733043.21477.9.camel@primarydata.com> <1509733948.21477.15.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhhbmtzIGZvciB0aGUgcXVpY2sgdHVybmFyb3VuZCENCg0KT24gRnJpLCAyMDE3LTExLTAzIGF0
-IDE0OjA2IC0wNDAwLCBBbmRyZXcgRWxibGUgd3JvdGU6DQo+IElmIGEgZGVsZWdhdGlvbiBoYXMg
-YmVlbiByZXZva2VkIGJ5IHRoZSBzZXJ2ZXIsIG9wZXJhdGlvbnMgdXNpbmcgdGhhdA0KPiBkZWxl
-Z2F0aW9uIHNob3VsZCBlcnJvciBvdXQgd2l0aCBORlM0RVJSX0RFTEVHX1JFVk9LRUQgaW4gdGhl
-ID40LjENCj4gY2FzZSwgYW5kIE5GUzRFUlJfQkFEX1NUQVRFSUQgb3RoZXJ3aXNlLg0KPiANCj4g
-U2lnbmVkLW9mZi1ieTogQW5kcmV3IEVsYmxlIDxhd2VpdHNAcml0LmVkdT4NCg0KUmV2aWV3ZWQt
-Ynk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCg0K
-PiAtLS0NCj4gIHYyOiBkZWNvbmZsaWN0aW5nIHdpdGggVHJvbmQncyBPUEVOL0NMT1NFIGxvY2tp
-bmcgd29yaw0KPiAgdjM6IGRvbid0IHJldHVybiBORlM0X09LIG9uIERFTEVHUkVUVVJOIHdpdGgg
-cmV2b2tlZCBkZWxlZ2F0aW9uDQo+ICANCj4gIGZzL25mc2QvbmZzNHN0YXRlLmMgfCAyNSArKysr
-KysrKysrKysrKysrKysrKysrKystDQo+ICAxIGZpbGUgY2hhbmdlZCwgMjQgaW5zZXJ0aW9ucygr
-KSwgMSBkZWxldGlvbigtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mc2QvbmZzNHN0YXRlLmMg
-Yi9mcy9uZnNkL25mczRzdGF0ZS5jDQo+IGluZGV4IDBjMDRmODFhYTYzYi4uZDM4NmQ1NjllZGJj
-IDEwMDY0NA0KPiAtLS0gYS9mcy9uZnNkL25mczRzdGF0ZS5jDQo+ICsrKyBiL2ZzL25mc2QvbmZz
-NHN0YXRlLmMNCj4gQEAgLTM5NjYsNyArMzk2Niw4IEBAIHN0YXRpYyBzdHJ1Y3QgbmZzNF9kZWxl
-Z2F0aW9uDQo+ICpmaW5kX2RlbGVnX3N0YXRlaWQoc3RydWN0IG5mczRfY2xpZW50ICpjbCwgc3Rh
-dGVpDQo+ICB7DQo+ICAJc3RydWN0IG5mczRfc3RpZCAqcmV0Ow0KPiAgDQo+IC0JcmV0ID0gZmlu
-ZF9zdGF0ZWlkX2J5X3R5cGUoY2wsIHMsIE5GUzRfREVMRUdfU1RJRCk7DQo+ICsJcmV0ID0gZmlu
-ZF9zdGF0ZWlkX2J5X3R5cGUoY2wsIHMsDQo+ICsJCQkJTkZTNF9ERUxFR19TVElEfE5GUzRfUkVW
-T0tFRF9ERUxFR19TDQo+IFRJRCk7DQo+ICAJaWYgKCFyZXQpDQo+ICAJCXJldHVybiBOVUxMOw0K
-PiAgCXJldHVybiBkZWxlZ3N0YXRlaWQocmV0KTsNCj4gQEAgLTM5ODksNiArMzk5MCwxMiBAQCBz
-dGF0aWMgYm9vbCBuZnNkNF9pc19kZWxlZ19jdXIoc3RydWN0DQo+IG5mc2Q0X29wZW4gKm9wZW4p
-DQo+ICAJZGVsZWcgPSBmaW5kX2RlbGVnX3N0YXRlaWQoY2wsICZvcGVuLT5vcF9kZWxlZ2F0ZV9z
-dGF0ZWlkKTsNCj4gIAlpZiAoZGVsZWcgPT0gTlVMTCkNCj4gIAkJZ290byBvdXQ7DQo+ICsJaWYg
-KGRlbGVnLT5kbF9zdGlkLnNjX3R5cGUgPT0gTkZTNF9SRVZPS0VEX0RFTEVHX1NUSUQpIHsNCj4g
-KwkJbmZzNF9wdXRfc3RpZCgmZGVsZWctPmRsX3N0aWQpOw0KPiArCQlpZiAoY2wtPmNsX21pbm9y
-dmVyc2lvbikNCj4gKwkJCXN0YXR1cyA9IG5mc2Vycl9kZWxlZ19yZXZva2VkOw0KPiArCQlnb3Rv
-IG91dDsNCj4gKwl9DQo+ICAJZmxhZ3MgPSBzaGFyZV9hY2Nlc3NfdG9fZmxhZ3Mob3Blbi0+b3Bf
-c2hhcmVfYWNjZXNzKTsNCj4gIAlzdGF0dXMgPSBuZnM0X2NoZWNrX2RlbGVnbW9kZShkZWxlZywg
-ZmxhZ3MpOw0KPiAgCWlmIChzdGF0dXMpIHsNCj4gQEAgLTQ4NTgsNiArNDg2NSwxNiBAQCBzdGF0
-aWMgX19iZTMyIG5mc2Q0X3ZhbGlkYXRlX3N0YXRlaWQoc3RydWN0DQo+IG5mczRfY2xpZW50ICpj
-bCwgc3RhdGVpZF90ICpzdGF0ZWlkKQ0KPiAgCQkgICAgIHN0cnVjdCBuZnM0X3N0aWQgKipzLCBz
-dHJ1Y3QgbmZzZF9uZXQgKm5uKQ0KPiAgew0KPiAgCV9fYmUzMiBzdGF0dXM7DQo+ICsJYm9vbCBy
-ZXR1cm5fcmV2b2tlZCA9IGZhbHNlOw0KPiArDQo+ICsJLyoNCj4gKwkgKiAgb25seSByZXR1cm4g
-cmV2b2tlZCBkZWxlZ2F0aW9ucyBpZiBleHBsaWNpdGx5IGFza2VkLg0KPiArCSAqICBvdGhlcndp
-c2Ugd2UgcmVwb3J0IHJldm9rZWQgb3IgYmFkX3N0YXRlaWQgc3RhdHVzLg0KPiArCSAqLw0KPiAr
-CWlmICh0eXBlbWFzayAmIE5GUzRfUkVWT0tFRF9ERUxFR19TVElEKQ0KPiArCQlyZXR1cm5fcmV2
-b2tlZCA9IHRydWU7DQo+ICsJZWxzZSBpZiAodHlwZW1hc2sgJiBORlM0X0RFTEVHX1NUSUQpDQo+
-ICsJCXR5cGVtYXNrIHw9IE5GUzRfUkVWT0tFRF9ERUxFR19TVElEOw0KPiAgDQo+ICAJaWYgKFpF
-Uk9fU1RBVEVJRChzdGF0ZWlkKSB8fCBPTkVfU1RBVEVJRChzdGF0ZWlkKSkNCj4gIAkJcmV0dXJu
-IG5mc2Vycl9iYWRfc3RhdGVpZDsNCj4gQEAgLTQ4NzIsNiArNDg4OSwxMiBAQCBzdGF0aWMgX19i
-ZTMyIG5mc2Q0X3ZhbGlkYXRlX3N0YXRlaWQoc3RydWN0DQo+IG5mczRfY2xpZW50ICpjbCwgc3Rh
-dGVpZF90ICpzdGF0ZWlkKQ0KPiAgCSpzID0gZmluZF9zdGF0ZWlkX2J5X3R5cGUoY3N0YXRlLT5j
-bHAsIHN0YXRlaWQsIHR5cGVtYXNrKTsNCj4gIAlpZiAoISpzKQ0KPiAgCQlyZXR1cm4gbmZzZXJy
-X2JhZF9zdGF0ZWlkOw0KPiArCWlmICgoKCpzKS0+c2NfdHlwZSA9PSBORlM0X1JFVk9LRURfREVM
-RUdfU1RJRCkgJiYNCj4gIXJldHVybl9yZXZva2VkKSB7DQo+ICsJCW5mczRfcHV0X3N0aWQoKnMp
-Ow0KPiArCQlpZiAoY3N0YXRlLT5taW5vcnZlcnNpb24pDQo+ICsJCQlyZXR1cm4gbmZzZXJyX2Rl
-bGVnX3Jldm9rZWQ7DQo+ICsJCXJldHVybiBuZnNlcnJfYmFkX3N0YXRlaWQ7DQo+ICsJfQ0KPiAg
-CXJldHVybiBuZnNfb2s7DQo+ICB9DQo+ICANCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBO
-RlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFy
-eWRhdGEuY29tDQo=
+
+> On Nov 3, 2017, at 2:32 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> 
+> On Fri, 2017-11-03 at 18:17 +0000, Trond Myklebust wrote:
+>> On Fri, 2017-11-03 at 13:46 -0400, Chuck Lever wrote:
+>>> Before traversing a referral and performing a mount, the mounted-on
+>>> directory looks strange:
+>>> 
+>>> dr-xr-xr-x. 2 4294967294 4294967294 0 Dec 31  1969 dir.0
+>>> 
+>>> nfs4_get_referral is wiping out any cached attributes with what was
+>>> returned via GETATTR(fs_locations), but the bit mask for that
+>>> operation does not request any file attributes.
+>>> 
+>>> Set the default bits in the GETATTR bitmask to retrieve the usual
+>>> set of object attributes so that the memcpy in nfs4_get_referral
+>>> can
+>>> fill the attributes in properly.
+>>> 
+>> 
+>> Hmm... So I believe the reason why we didn't do this in the original
+>> implementation is because of RFC7530, Section 8.3.1, which says:
+>> 
+>>   Other attributes SHOULD NOT be made available for absent file
+>>   systems, even when it is possible to provide them. The server
+>> should
+>>   not assume that more information is always better and should avoid
+>>   gratuitously providing additional information.
+>> 
+>> Where "other attributes" means anything other than fs_locations, fsid
+>> and mounted-on-fileid.
+>> 
+>> IOW: the protocol spec has normative language stating that we should
+>> not expect to be able to retrieve other attributes, and that the
+>> server
+>> should not return them.
+> 
+> Sorry. In case it wasn't clear, the above was not intended as a
+> rejection of the patch. The same section also says:
+> 
+>   When a GETATTR operation includes a bitmask for the attribute
+>   fs_locations, but where the bitmask includes attributes that are not
+>   supported, GETATTR will not return an error but will return the mask
+>   of the actual attributes supported with the results
+> 
+> So the normative language is putting the onus on the server to be
+> conservative in what it returns, and does not require the client to be
+> conservative in what it asks for...
+
+Following up, the display of the referral object's attributes is
+best effort, IMO, which seems to agree with both sections of text.
+
+And, I don't think the client requests more from the target server
+than it has on hand. I could be mistaken about that, and it would
+be simple to trim out some of the bits in the GETATTR bitmask if
+the client is making an unreasonable request.
+
+The concern seems to apply mostly to the MOUNTED_ON_FSID bit. I
+noticed the original code always asserted that bit, even though
+a later patch added the conditional use of MOUNTED_ON_FSID, but
+the FSID bit was not cleared in that case. The new patch will
+send either of those bits, but not both at once. If that's
+incorrect, I can send an updated patch.
+
+
+--
+Chuck Lever
+
+
 
