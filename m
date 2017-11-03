@@ -1,87 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:36644 "HELO
-        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1755992AbdKCSGf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 14:06:35 -0400
-From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org,
-        trond.myklebust@primarydata.com
-Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH v3] nfsd: deal with revoked delegations appropriately
-Date: Fri,  3 Nov 2017 14:06:31 -0400
-Message-Id: <20171103180631.76071-1-aweits@rit.edu>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:20058 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752107AbdKCSR3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 14:17:29 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: Fix ugly referral attributes
+Date: Fri, 3 Nov 2017 18:17:24 +0000
+Message-ID: <1509733043.21477.9.camel@primarydata.com>
+References: <20171103174658.31159.24496.stgit@manet.1015granger.net>
+In-Reply-To: <20171103174658.31159.24496.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a delegation has been revoked by the server, operations using that
-delegation should error out with NFS4ERR_DELEG_REVOKED in the >4.1
-case, and NFS4ERR_BAD_STATEID otherwise.
-
-Signed-off-by: Andrew Elble <aweits@rit.edu>
----
- v2: deconflicting with Trond's OPEN/CLOSE locking work
- v3: don't return NFS4_OK on DELEGRETURN with revoked delegation
- 
- fs/nfsd/nfs4state.c | 25 ++++++++++++++++++++++++-
- 1 file changed, 24 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0c04f81aa63b..d386d569edbc 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3966,7 +3966,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
- {
- 	struct nfs4_stid *ret;
- 
--	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
-+	ret = find_stateid_by_type(cl, s,
-+				NFS4_DELEG_STID|NFS4_REVOKED_DELEG_STID);
- 	if (!ret)
- 		return NULL;
- 	return delegstateid(ret);
-@@ -3989,6 +3990,12 @@ static bool nfsd4_is_deleg_cur(struct nfsd4_open *open)
- 	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
- 	if (deleg == NULL)
- 		goto out;
-+	if (deleg->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID) {
-+		nfs4_put_stid(&deleg->dl_stid);
-+		if (cl->cl_minorversion)
-+			status = nfserr_deleg_revoked;
-+		goto out;
-+	}
- 	flags = share_access_to_flags(open->op_share_access);
- 	status = nfs4_check_delegmode(deleg, flags);
- 	if (status) {
-@@ -4858,6 +4865,16 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 		     struct nfs4_stid **s, struct nfsd_net *nn)
- {
- 	__be32 status;
-+	bool return_revoked = false;
-+
-+	/*
-+	 *  only return revoked delegations if explicitly asked.
-+	 *  otherwise we report revoked or bad_stateid status.
-+	 */
-+	if (typemask & NFS4_REVOKED_DELEG_STID)
-+		return_revoked = true;
-+	else if (typemask & NFS4_DELEG_STID)
-+		typemask |= NFS4_REVOKED_DELEG_STID;
- 
- 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
- 		return nfserr_bad_stateid;
-@@ -4872,6 +4889,12 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
- 	if (!*s)
- 		return nfserr_bad_stateid;
-+	if (((*s)->sc_type == NFS4_REVOKED_DELEG_STID) && !return_revoked) {
-+		nfs4_put_stid(*s);
-+		if (cstate->minorversion)
-+			return nfserr_deleg_revoked;
-+		return nfserr_bad_stateid;
-+	}
- 	return nfs_ok;
- }
- 
--- 
-1.8.3.1
+T24gRnJpLCAyMDE3LTExLTAzIGF0IDEzOjQ2IC0wNDAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+QmVmb3JlIHRyYXZlcnNpbmcgYSByZWZlcnJhbCBhbmQgcGVyZm9ybWluZyBhIG1vdW50LCB0aGUg
+bW91bnRlZC1vbg0KPiBkaXJlY3RvcnkgbG9va3Mgc3RyYW5nZToNCj4gDQo+IGRyLXhyLXhyLXgu
+IDIgNDI5NDk2NzI5NCA0Mjk0OTY3Mjk0IDAgRGVjIDMxICAxOTY5IGRpci4wDQo+IA0KPiBuZnM0
+X2dldF9yZWZlcnJhbCBpcyB3aXBpbmcgb3V0IGFueSBjYWNoZWQgYXR0cmlidXRlcyB3aXRoIHdo
+YXQgd2FzDQo+IHJldHVybmVkIHZpYSBHRVRBVFRSKGZzX2xvY2F0aW9ucyksIGJ1dCB0aGUgYml0
+IG1hc2sgZm9yIHRoYXQNCj4gb3BlcmF0aW9uIGRvZXMgbm90IHJlcXVlc3QgYW55IGZpbGUgYXR0
+cmlidXRlcy4NCj4gDQo+IFNldCB0aGUgZGVmYXVsdCBiaXRzIGluIHRoZSBHRVRBVFRSIGJpdG1h
+c2sgdG8gcmV0cmlldmUgdGhlIHVzdWFsDQo+IHNldCBvZiBvYmplY3QgYXR0cmlidXRlcyBzbyB0
+aGF0IHRoZSBtZW1jcHkgaW4gbmZzNF9nZXRfcmVmZXJyYWwgY2FuDQo+IGZpbGwgdGhlIGF0dHJp
+YnV0ZXMgaW4gcHJvcGVybHkuDQo+IA0KDQpIbW0uLi4gU28gSSBiZWxpZXZlIHRoZSByZWFzb24g
+d2h5IHdlIGRpZG4ndCBkbyB0aGlzIGluIHRoZSBvcmlnaW5hbA0KaW1wbGVtZW50YXRpb24gaXMg
+YmVjYXVzZSBvZiBSRkM3NTMwLCBTZWN0aW9uIDguMy4xLCB3aGljaCBzYXlzOg0KDQogICBPdGhl
+ciBhdHRyaWJ1dGVzIFNIT1VMRCBOT1QgYmUgbWFkZSBhdmFpbGFibGUgZm9yIGFic2VudCBmaWxl
+DQogICBzeXN0ZW1zLCBldmVuIHdoZW4gaXQgaXMgcG9zc2libGUgdG8gcHJvdmlkZSB0aGVtLiBU
+aGUgc2VydmVyIHNob3VsZA0KICAgbm90IGFzc3VtZSB0aGF0IG1vcmUgaW5mb3JtYXRpb24gaXMg
+YWx3YXlzIGJldHRlciBhbmQgc2hvdWxkIGF2b2lkDQogICBncmF0dWl0b3VzbHkgcHJvdmlkaW5n
+IGFkZGl0aW9uYWwgaW5mb3JtYXRpb24uDQoNCldoZXJlICJvdGhlciBhdHRyaWJ1dGVzIiBtZWFu
+cyBhbnl0aGluZyBvdGhlciB0aGFuIGZzX2xvY2F0aW9ucywgZnNpZA0KYW5kIG1vdW50ZWQtb24t
+ZmlsZWlkLg0KDQpJT1c6IHRoZSBwcm90b2NvbCBzcGVjIGhhcyBub3JtYXRpdmUgbGFuZ3VhZ2Ug
+c3RhdGluZyB0aGF0IHdlIHNob3VsZA0Kbm90IGV4cGVjdCB0byBiZSBhYmxlIHRvIHJldHJpZXZl
+IG90aGVyIGF0dHJpYnV0ZXMsIGFuZCB0aGF0IHRoZSBzZXJ2ZXINCnNob3VsZCBub3QgcmV0dXJu
+IHRoZW0uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
