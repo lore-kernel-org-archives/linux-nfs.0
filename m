@@ -4,10 +4,10 @@ From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>,
 	Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v6 08/10] NFSv4: Retry NFS4ERR_OLD_STATEID errors in layoutreturn
-Date: Fri,  3 Nov 2017 12:53:52 -0400
-Message-Id: <20171103165354.15997-9-trond.myklebust@primarydata.com>
-In-Reply-To: <20171103165354.15997-8-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 09/10] NFSv4: cleanup nfs4_close_done
+Date: Fri,  3 Nov 2017 12:53:53 -0400
+Message-Id: <20171103165354.15997-10-trond.myklebust@primarydata.com>
+In-Reply-To: <20171103165354.15997-9-trond.myklebust@primarydata.com>
 References: <20171103165354.15997-1-trond.myklebust@primarydata.com>
  <20171103165354.15997-2-trond.myklebust@primarydata.com>
  <20171103165354.15997-3-trond.myklebust@primarydata.com>
@@ -16,47 +16,93 @@ References: <20171103165354.15997-1-trond.myklebust@primarydata.com>
  <20171103165354.15997-6-trond.myklebust@primarydata.com>
  <20171103165354.15997-7-trond.myklebust@primarydata.com>
  <20171103165354.15997-8-trond.myklebust@primarydata.com>
+ <20171103165354.15997-9-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-If our layoutreturn returns an NFS4ERR_OLD_STATEID, then try to
-update the stateid and retry.
-
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ fs/nfs/nfs4proc.c | 34 +++++++++++++++-------------------
+ 1 file changed, 15 insertions(+), 19 deletions(-)
 
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 1bb0e405aa57..79306a903453 100644
+index 79306a903453..291fe9ca531e 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -8766,8 +8766,15 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 
- 	server = NFS_SERVER(lrp->args.inode);
- 	switch (task->tk_status) {
-+	case -NFS4ERR_OLD_STATEID:
-+		if (nfs4_refresh_layout_stateid(&lrp->args.stateid,
-+					lrp->args.inode)) {
-+			goto out_restart;
-+		}
-+		/* Fallthrough */
- 	default:
- 		task->tk_status = 0;
-+		/* Fallthrough */
- 	case 0:
- 		break;
- 	case -NFS4ERR_DELAY:
-@@ -8778,6 +8785,10 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
- 		return;
+@@ -3167,11 +3167,8 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			break;
+ 		case -NFS4ERR_OLD_STATEID:
+ 			if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
+-						calldata->inode)) {
+-				calldata->res.lr_ret = 0;
+-				rpc_restart_call_prepare(task);
+-				return;
+-			}
++						calldata->inode))
++				goto lr_restart;
+ 			/* Fallthrough */
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_DELEG_REVOKED:
+@@ -3181,9 +3178,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 		case -NFS4ERR_WRONG_CRED:
+ 			calldata->arg.lr_args = NULL;
+ 			calldata->res.lr_res = NULL;
+-			calldata->res.lr_ret = 0;
+-			rpc_restart_call_prepare(task);
+-			return;
++			goto lr_restart;
+ 		}
  	}
- 	dprintk("<-- %s\n", __func__);
+ 
+@@ -3199,19 +3194,15 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			if (calldata->arg.bitmask != NULL) {
+ 				calldata->arg.bitmask = NULL;
+ 				calldata->res.fattr = NULL;
+-				task->tk_status = 0;
+-				rpc_restart_call_prepare(task);
+-				goto out_release;
++				goto out_restart;
+ 
+ 			}
+ 			break;
+ 		case -NFS4ERR_OLD_STATEID:
+ 			/* Did we race with OPEN? */
+ 			if (nfs4_refresh_open_stateid(&calldata->arg.stateid,
+-						state)) {
+-				task->tk_status = 0;
+-				rpc_restart_call_prepare(task);
+-			}
++						state))
++				goto out_restart;
+ 			goto out_release;
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_STALE_STATEID:
+@@ -3223,10 +3214,8 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 		case -NFS4ERR_BAD_STATEID:
+ 			break;
+ 		default:
+-			if (nfs4_async_handle_error(task, server, state, NULL) == -EAGAIN) {
+-				rpc_restart_call_prepare(task);
+-				goto out_release;
+-			}
++			if (nfs4_async_handle_error(task, server, state, NULL) == -EAGAIN)
++				goto out_restart;
+ 	}
+ 	nfs_clear_open_stateid(state, &calldata->arg.stateid,
+ 			res_stateid, calldata->arg.fmode);
+@@ -3234,6 +3223,13 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 	nfs_release_seqid(calldata->arg.seqid);
+ 	nfs_refresh_inode(calldata->inode, &calldata->fattr);
+ 	dprintk("%s: done, ret = %d!\n", __func__, task->tk_status);
 +	return;
++lr_restart:
++	calldata->res.lr_ret = 0;
 +out_restart:
-+	nfs4_sequence_free_slot(&lrp->res.seq_res);
++	task->tk_status = 0;
 +	rpc_restart_call_prepare(task);
++	goto out_release;
  }
  
- static void nfs4_layoutreturn_release(void *calldata)
+ static void nfs4_close_prepare(struct rpc_task *task, void *data)
 -- 
 2.13.6
