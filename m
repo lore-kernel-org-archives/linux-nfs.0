@@ -1,102 +1,120 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:52635 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756151AbdKCMA2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 08:00:28 -0400
-Received: by mail-io0-f195.google.com with SMTP id f20so5677950ioj.9
-        for <linux-nfs@vger.kernel.org>; Fri, 03 Nov 2017 05:00:27 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 4/7] nfsd: Ensure we don't recognise lock stateids after freeing them
-Date: Fri,  3 Nov 2017 08:00:13 -0400
-Message-Id: <20171103120016.6200-5-trond.myklebust@primarydata.com>
-In-Reply-To: <20171103120016.6200-4-trond.myklebust@primarydata.com>
-References: <20171103120016.6200-1-trond.myklebust@primarydata.com>
- <20171103120016.6200-2-trond.myklebust@primarydata.com>
- <20171103120016.6200-3-trond.myklebust@primarydata.com>
- <20171103120016.6200-4-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
+Received: from discipline.rit.edu ([129.21.6.207]:47619 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1755972AbdKCOF2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 3 Nov 2017 10:05:28 -0400
+From: Andrew Elble <aweits@rit.edu>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org,
+        trond.myklebust@primarydata.com
+Cc: Andrew Elble <aweits@rit.edu>
+Subject: [PATCH v2] nfsd: deal with revoked delegations appropriately
+Date: Fri,  3 Nov 2017 10:05:21 -0400
+Message-Id: <20171103140521.12173-1-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In order to deal with lookup races, nfsd4_free_lock_stateid() needs
-to be able to signal to other stateful functions that the lock stateid
-is no longer valid. Right now, nfsd_lock() will check whether or not an
-existing stateid is still hashed, but only in the "new lock" path.
+If a delegation has been revoked by the server, operations using that
+delegation should error out with NFS4ERR_DELEG_REVOKED in the >4.1
+case, and NFS4ERR_BAD_STATEID otherwise. DELEGRETURN has also been
+optimized to return NFS4_OK when called with a revoked delegation.
 
-To ensure the stateid invalidation is also recognised by the "existing lock"
-path, and also by a second call to nfsd4_free_lock_stateid() itself, we can
-change the type to NFS4_CLOSED_STID under the stp->st_mutex.
+Thread on DELEGRETURN optimization is here:
+https://www.spinics.net/lists/linux-nfs/msg55216.html
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Andrew Elble <aweits@rit.edu>
 ---
- fs/nfsd/nfs4state.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+ v2: deconflicting with Trond's OPEN/CLOSE locking work
+
+ fs/nfsd/nfs4state.c | 41 ++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 38 insertions(+), 3 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5ae6baff09e0..f93ca0682aaa 100644
+index 0c04f81aa63b..a0249f3a2d22 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -5076,7 +5076,9 @@ nfsd4_free_lock_stateid(stateid_t *stateid, struct nfs4_stid *s)
- 	struct nfs4_ol_stateid *stp = openlockstateid(s);
- 	__be32 ret;
+@@ -3966,7 +3966,8 @@ static struct nfs4_delegation *find_deleg_stateid(struct nfs4_client *cl, statei
+ {
+ 	struct nfs4_stid *ret;
  
--	mutex_lock(&stp->st_mutex);
-+	ret = nfsd4_lock_ol_stateid(stp);
-+	if (ret)
-+		goto out_put_stid;
- 
- 	ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
- 	if (ret)
-@@ -5087,11 +5089,13 @@ nfsd4_free_lock_stateid(stateid_t *stateid, struct nfs4_stid *s)
- 			    lockowner(stp->st_stateowner)))
+-	ret = find_stateid_by_type(cl, s, NFS4_DELEG_STID);
++	ret = find_stateid_by_type(cl, s,
++				NFS4_DELEG_STID|NFS4_REVOKED_DELEG_STID);
+ 	if (!ret)
+ 		return NULL;
+ 	return delegstateid(ret);
+@@ -3989,6 +3990,12 @@ static bool nfsd4_is_deleg_cur(struct nfsd4_open *open)
+ 	deleg = find_deleg_stateid(cl, &open->op_delegate_stateid);
+ 	if (deleg == NULL)
  		goto out;
++	if (deleg->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID) {
++		nfs4_put_stid(&deleg->dl_stid);
++		if (cl->cl_minorversion)
++			status = nfserr_deleg_revoked;
++		goto out;
++	}
+ 	flags = share_access_to_flags(open->op_share_access);
+ 	status = nfs4_check_delegmode(deleg, flags);
+ 	if (status) {
+@@ -4858,6 +4865,16 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 		     struct nfs4_stid **s, struct nfsd_net *nn)
+ {
+ 	__be32 status;
++	bool return_revoked = false;
++
++	/*
++	 *  only return revoked delegations if explicitly asked.
++	 *  otherwise we report revoked or bad_stateid status.
++	 */
++	if (typemask & NFS4_REVOKED_DELEG_STID)
++		return_revoked = true;
++	else if (typemask & NFS4_DELEG_STID)
++		typemask |= NFS4_REVOKED_DELEG_STID;
  
-+	stp->st_stid.sc_type = NFS4_CLOSED_STID;
- 	release_lock_stateid(stp);
- 	ret = nfs_ok;
- 
- out:
- 	mutex_unlock(&stp->st_mutex);
-+out_put_stid:
- 	nfs4_put_stid(s);
- 	return ret;
+ 	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+ 		return nfserr_bad_stateid;
+@@ -4872,6 +4889,12 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	*s = find_stateid_by_type(cstate->clp, stateid, typemask);
+ 	if (!*s)
+ 		return nfserr_bad_stateid;
++	if (((*s)->sc_type == NFS4_REVOKED_DELEG_STID) && !return_revoked) {
++		nfs4_put_stid(*s);
++		if (cstate->minorversion)
++			return nfserr_deleg_revoked;
++		return nfserr_bad_stateid;
++	}
+ 	return nfs_ok;
  }
-@@ -5660,6 +5664,8 @@ find_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp)
- 	lockdep_assert_held(&clp->cl_lock);
  
- 	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
-+		if (lst->st_stid.sc_type != NFS4_LOCK_STID)
-+			continue;
- 		if (lst->st_stid.sc_file == fp) {
- 			atomic_inc(&lst->st_stid.sc_count);
- 			return lst;
-@@ -5734,7 +5740,6 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
- 	struct nfs4_lockowner *lo;
- 	struct nfs4_ol_stateid *lst;
- 	unsigned int strhashval;
--	bool hashed;
+@@ -5359,7 +5382,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 	if ((status = fh_verify(rqstp, &cstate->current_fh, S_IFREG, 0)))
+ 		return status;
  
- 	lo = find_lockowner_str(cl, &lock->lk_new_owner);
- 	if (!lo) {
-@@ -5757,15 +5762,7 @@ lookup_or_create_lock_state(struct nfsd4_compound_state *cstate,
+-	status = nfsd4_lookup_stateid(cstate, stateid, NFS4_DELEG_STID, &s, nn);
++	status = nfsd4_lookup_stateid(cstate, stateid,
++				NFS4_DELEG_STID|NFS4_REVOKED_DELEG_STID,
++				&s, nn);
+ 	if (status)
  		goto out;
- 	}
+ 	dp = delegstateid(s);
+@@ -5367,7 +5392,17 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+ 	if (status)
+ 		goto put_stateid;
  
--	mutex_lock(&lst->st_mutex);
--
--	/* See if it's still hashed to avoid race with FREE_STATEID */
--	spin_lock(&cl->cl_lock);
--	hashed = !list_empty(&lst->st_perfile);
--	spin_unlock(&cl->cl_lock);
--
--	if (!hashed) {
--		mutex_unlock(&lst->st_mutex);
-+	if (nfsd4_lock_ol_stateid(lst) != nfs_ok) {
- 		nfs4_put_stid(&lst->st_stid);
- 		goto retry;
- 	}
+-	destroy_delegation(dp);
++	if (dp->dl_stid.sc_type == NFS4_DELEG_STID)
++		destroy_delegation(dp);
++	if (dp->dl_stid.sc_type == NFS4_REVOKED_DELEG_STID) {
++		/*
++		 * optimization: don't return error if client is
++		 * returning a revoked delegation
++		 */
++		list_del_init(&dp->dl_recall_lru);
++		nfs4_put_stid(s);
++	}
++
+ put_stateid:
+ 	nfs4_put_stid(&dp->dl_stid);
+ out:
 -- 
-2.13.6
+1.8.3.1
 
