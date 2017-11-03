@@ -4,144 +4,175 @@ From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>,
 	Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v6 03/10] NFSv4: Fix open create exclusive when the server reboots
-Date: Fri,  3 Nov 2017 12:53:47 -0400
-Message-Id: <20171103165354.15997-4-trond.myklebust@primarydata.com>
-In-Reply-To: <20171103165354.15997-3-trond.myklebust@primarydata.com>
+Subject: [PATCH v6 05/10] NFSv4: Retry CLOSE and DELEGRETURN on NFS4ERR_OLD_STATEID.
+Date: Fri,  3 Nov 2017 12:53:49 -0400
+Message-Id: <20171103165354.15997-6-trond.myklebust@primarydata.com>
+In-Reply-To: <20171103165354.15997-5-trond.myklebust@primarydata.com>
 References: <20171103165354.15997-1-trond.myklebust@primarydata.com>
  <20171103165354.15997-2-trond.myklebust@primarydata.com>
  <20171103165354.15997-3-trond.myklebust@primarydata.com>
+ <20171103165354.15997-4-trond.myklebust@primarydata.com>
+ <20171103165354.15997-5-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server that does not implement NFSv4.1 persistent session
-semantics reboots while we are performing an exclusive create,
-then the return value of NFS4ERR_DELAY when we replay the open
-during the grace period causes us to lose the verifier.
-When the grace period expires, and we present a new verifier,
-the server will then correctly reply NFS4ERR_EXIST.
+If we're racing with an OPEN, then retry the operation instead of
+declaring it a success.
 
-This commit ensures that we always present the same verifier when
-replaying the OPEN.
-
-Reported-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4proc.c | 41 ++++++++++++++++++++++++++---------------
- 1 file changed, 26 insertions(+), 15 deletions(-)
+ fs/nfs/delegation.c | 27 +++++++++++++++++++++++++++
+ fs/nfs/delegation.h |  1 +
+ fs/nfs/nfs4_fs.h    |  2 ++
+ fs/nfs/nfs4proc.c   | 21 +++++++++++++++++++--
+ fs/nfs/nfs4state.c  | 16 ++++++++++++++++
+ 5 files changed, 65 insertions(+), 2 deletions(-)
 
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 606dd3871f66..ade44ca0c66c 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -1041,6 +1041,33 @@ int nfs_delegations_present(struct nfs_client *clp)
+ }
+ 
+ /**
++ * nfs4_refresh_delegation_stateid - Update delegation stateid seqid
++ * @dst: stateid to refresh
++ * @inode: inode to check
++ *
++ * Returns "true" and updates "dst->seqid" * if inode had a delegation
++ * that matches our delegation stateid. Otherwise "false" is returned.
++ */
++bool nfs4_refresh_delegation_stateid(nfs4_stateid *dst, struct inode *inode)
++{
++	struct nfs_delegation *delegation;
++	bool ret = false;
++	if (!inode)
++		goto out;
++
++	rcu_read_lock();
++	delegation = rcu_dereference(NFS_I(inode)->delegation);
++	if (delegation != NULL &&
++	    nfs4_stateid_match_other(dst, &delegation->stateid)) {
++		dst->seqid = delegation->stateid.seqid;
++		return ret;
++	}
++	rcu_read_unlock();
++out:
++	return ret;
++}
++
++/**
+  * nfs4_copy_delegation_stateid - Copy inode's state ID information
+  * @inode: inode to check
+  * @flags: delegation type requirement
+diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
+index ddaf2644cf13..185a09f37a89 100644
+--- a/fs/nfs/delegation.h
++++ b/fs/nfs/delegation.h
+@@ -62,6 +62,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
+ int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid, fmode_t type);
+ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state, const nfs4_stateid *stateid);
+ bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags, nfs4_stateid *dst, struct rpc_cred **cred);
++bool nfs4_refresh_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
+ 
+ void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
+ int nfs4_have_delegation(struct inode *inode, fmode_t flags);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b07124ae5be1..84c3adc6bf96 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -461,6 +461,8 @@ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
+ extern int nfs4_select_rw_stateid(struct nfs4_state *, fmode_t,
+ 		const struct nfs_lock_context *, nfs4_stateid *,
+ 		struct rpc_cred **);
++extern bool nfs4_refresh_open_stateid(nfs4_stateid *dst,
++		struct nfs4_state *state);
+ 
+ extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
+ extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d720b076a34d..a0bdd1e1e2c1 100644
+index a0bdd1e1e2c1..153e34c5b6e9 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -1088,6 +1088,12 @@ struct nfs4_opendata {
- 	int rpc_status;
- };
+@@ -3198,13 +3198,21 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
  
-+struct nfs4_open_createattrs {
-+	struct nfs4_label *label;
-+	struct iattr *sattr;
-+	const __u32 verf[2];
-+};
+ 			}
+ 			break;
++		case -NFS4ERR_OLD_STATEID:
++			/* Did we race with OPEN? */
++			if (nfs4_refresh_open_stateid(&calldata->arg.stateid,
++						state)) {
++				task->tk_status = 0;
++				rpc_restart_call_prepare(task);
++			}
++			goto out_release;
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_STALE_STATEID:
+ 		case -NFS4ERR_EXPIRED:
+ 			nfs4_free_revoked_stateid(server,
+ 					&calldata->arg.stateid,
+ 					task->tk_msg.rpc_cred);
+-		case -NFS4ERR_OLD_STATEID:
++			/* Fallthrough */
+ 		case -NFS4ERR_BAD_STATEID:
+ 			if (!nfs4_stateid_match(&calldata->arg.stateid,
+ 						&state->open_stateid)) {
+@@ -3213,6 +3221,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			}
+ 			if (calldata->arg.fmode == 0)
+ 				break;
++			/* Fallthrough */
+ 		default:
+ 			if (nfs4_async_handle_error(task, server, state, NULL) == -EAGAIN) {
+ 				rpc_restart_call_prepare(task);
+@@ -5809,11 +5818,19 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ 		nfs4_free_revoked_stateid(data->res.server,
+ 				data->args.stateid,
+ 				task->tk_msg.rpc_cred);
++		/* Fallthrough */
+ 	case -NFS4ERR_BAD_STATEID:
+-	case -NFS4ERR_OLD_STATEID:
+ 	case -NFS4ERR_STALE_STATEID:
+ 		task->tk_status = 0;
+ 		break;
++	case -NFS4ERR_OLD_STATEID:
++		if (nfs4_refresh_delegation_stateid(&data->stateid, data->inode)) {
++			task->tk_status = 0;
++			rpc_restart_call_prepare(task);
++			return;
++		}
++		task->tk_status = 0;
++		break;
+ 	case -NFS4ERR_ACCESS:
+ 		if (data->args.bitmask) {
+ 			data->args.bitmask = NULL;
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index d615b7cdfa8f..752b18e88266 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -986,6 +986,22 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+ 	return ret;
+ }
+ 
++bool nfs4_refresh_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
++{
++	bool ret;
++	int seq;
 +
- static bool nfs4_clear_cap_atomic_open_v1(struct nfs_server *server,
- 		int err, struct nfs4_exception *exception)
++	do {
++		ret = false;
++		seq = read_seqbegin(&state->seqlock);
++		if (nfs4_state_match_open_stateid_other(state, dst)) {
++			dst->seqid = state->stateid.seqid;
++			ret = true;
++		}
++	} while (read_seqretry(&state->seqlock, seq));
++	return ret;
++}
++
+ static void nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
  {
-@@ -1157,8 +1163,7 @@ static void nfs4_init_opendata_res(struct nfs4_opendata *p)
- 
- static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 		struct nfs4_state_owner *sp, fmode_t fmode, int flags,
--		const struct iattr *attrs,
--		struct nfs4_label *label,
-+		const struct nfs4_open_createattrs *c,
- 		enum open_claim_type4 claim,
- 		gfp_t gfp_mask)
- {
-@@ -1166,6 +1171,7 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	struct inode *dir = d_inode(parent);
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	struct nfs_seqid *(*alloc_seqid)(struct nfs_seqid_counter *, gfp_t);
-+	struct nfs4_label *label = (c != NULL) ? c->label : NULL;
- 	struct nfs4_opendata *p;
- 
- 	p = kzalloc(sizeof(*p), gfp_mask);
-@@ -1231,15 +1237,11 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
- 		p->o_arg.fh = NFS_FH(d_inode(dentry));
- 	}
--	if (attrs != NULL && attrs->ia_valid != 0) {
--		__u32 verf[2];
--
-+	if (c != NULL && c->sattr != NULL && c->sattr->ia_valid != 0) {
- 		p->o_arg.u.attrs = &p->attrs;
--		memcpy(&p->attrs, attrs, sizeof(p->attrs));
-+		memcpy(&p->attrs, c->sattr, sizeof(p->attrs));
- 
--		verf[0] = jiffies;
--		verf[1] = current->pid;
--		memcpy(p->o_arg.u.verifier.data, verf,
-+		memcpy(p->o_arg.u.verifier.data, c->verf,
- 				sizeof(p->o_arg.u.verifier.data));
- 	}
- 	p->c_arg.fh = &p->o_res.fh;
-@@ -1891,7 +1893,7 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
- 	struct nfs4_opendata *opendata;
- 
- 	opendata = nfs4_opendata_alloc(ctx->dentry, state->owner, 0, 0,
--			NULL, NULL, claim, GFP_NOFS);
-+			NULL, claim, GFP_NOFS);
- 	if (opendata == NULL)
- 		return ERR_PTR(-ENOMEM);
- 	opendata->state = state;
-@@ -2822,8 +2824,7 @@ static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
- static int _nfs4_do_open(struct inode *dir,
- 			struct nfs_open_context *ctx,
- 			int flags,
--			struct iattr *sattr,
--			struct nfs4_label *label,
-+			const struct nfs4_open_createattrs *c,
- 			int *opened)
- {
- 	struct nfs4_state_owner  *sp;
-@@ -2835,6 +2836,8 @@ static int _nfs4_do_open(struct inode *dir,
- 	struct nfs4_threshold **ctx_th = &ctx->mdsthreshold;
- 	fmode_t fmode = ctx->mode & (FMODE_READ|FMODE_WRITE|FMODE_EXEC);
- 	enum open_claim_type4 claim = NFS4_OPEN_CLAIM_NULL;
-+	struct iattr *sattr = c->sattr;
-+	struct nfs4_label *label = c->label;
- 	struct nfs4_label *olabel = NULL;
- 	int status;
- 
-@@ -2853,8 +2856,8 @@ static int _nfs4_do_open(struct inode *dir,
- 	status = -ENOMEM;
- 	if (d_really_is_positive(dentry))
- 		claim = NFS4_OPEN_CLAIM_FH;
--	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags, sattr,
--			label, claim, GFP_KERNEL);
-+	opendata = nfs4_opendata_alloc(dentry, sp, fmode, flags,
-+			c, claim, GFP_KERNEL);
- 	if (opendata == NULL)
- 		goto err_put_state_owner;
- 
-@@ -2935,10 +2938,18 @@ static struct nfs4_state *nfs4_do_open(struct inode *dir,
- 	struct nfs_server *server = NFS_SERVER(dir);
- 	struct nfs4_exception exception = { };
- 	struct nfs4_state *res;
-+	struct nfs4_open_createattrs c = {
-+		.label = label,
-+		.sattr = sattr,
-+		.verf = {
-+			[0] = (__u32)jiffies,
-+			[1] = (__u32)current->pid,
-+		},
-+	};
- 	int status;
- 
- 	do {
--		status = _nfs4_do_open(dir, ctx, flags, sattr, label, opened);
-+		status = _nfs4_do_open(dir, ctx, flags, &c, opened);
- 		res = ctx->state;
- 		trace_nfs4_open_file(ctx, flags, status);
- 		if (status == 0)
+ 	const nfs4_stateid *src;
 -- 
 2.13.6
