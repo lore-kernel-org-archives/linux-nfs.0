@@ -1,49 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:39486 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:47446 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751743AbdKCSup (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 3 Nov 2017 14:50:45 -0400
+        id S1751290AbdKCSzn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 3 Nov 2017 14:55:43 -0400
 From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2] grace: replace BUG_ON by WARN in exit_net hook
+Subject: [PATCH v2] lockd: added cleanup checks in exit_net hook
 To: linux-nfs@vger.kernel.org,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Jeff Layton <jlayton@poochiereds.net>
-Message-ID: <903128e5-12e8-090f-ed8c-fd76777f8047@virtuozzo.com>
-Date: Fri, 3 Nov 2017 21:50:39 +0300
+Message-ID: <05af9114-e36b-996e-1822-9d7da06e0140@virtuozzo.com>
+Date: Fri, 3 Nov 2017 21:55:40 +0300
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-let's generate warning instead of kernel crash
+Patch generates warnings if exit_net hook detects that 
+structures initialized in init_net hook are still in use. 
 
 [ 9313.047796] NFSD: starting 90-second grace period (net ffff880e307fe240)
 [ 9317.257203] nfsd: last server has exited, flushing export cache
+[ 9320.059256] net ffff880e307fe240 exit: lockd_manager.list is not empty
+[ 9320.060434] WARNING: CPU: 5 PID: 1556 at fs/lockd/svc.c:682 lockd_exit_net+0x5c/0x90 [lockd]
 ...
-[ 9320.097513] net ffff880e307fe240 exit: grace_list is not empty
-[ 9320.098570] WARNING: CPU: 5 PID: 1556 at fs/nfs_common/grace.c:112 grace_exit_net+0x33/0x40 [grace]
+[ 9320.077346] net ffff880e307fe240 exit: grace_period_end was not canceled
+[ 9320.078494] WARNING: CPU: 5 PID: 1556 at fs/lockd/svc.c:686 lockd_exit_net+0x88/0x90 [lockd]
 
-v2: net pointer added to warning message
-
+v2: net pointer was added to output
 Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- fs/nfs_common/grace.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/lockd/svc.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
-index 420d3a0..3c602df 100644
---- a/fs/nfs_common/grace.c
-+++ b/fs/nfs_common/grace.c
-@@ -104,7 +104,8 @@ grace_exit_net(struct net *net)
- {
- 	struct list_head *grace_list = net_generic(net, grace_net_id);
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 809cbcc..2f28850 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -690,6 +690,14 @@ static int lockd_init_net(struct net *net)
  
--	BUG_ON(!list_empty(grace_list));
-+	WARN(!list_empty(grace_list),
-+	     "net %p exit: grace_list is not empty\n", net);
+ static void lockd_exit_net(struct net *net)
+ {
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++	WARN(!list_empty(&ln->lockd_manager.list),
++	     "net %p exit: lockd_manager.list is not empty\n", net);
++	WARN(!list_empty(&ln->nsm_handles),
++	     "net %p exit: nsm_handles list is not empty\n", net);
++	WARN(delayed_work_pending(&ln->grace_period_end),
++	     "net %p exit: grace_period_end was not canceled\n", net);
  }
  
- static struct pernet_operations grace_net_ops = {
+ static struct pernet_operations lockd_net_ops = {
 -- 
 2.7.4
 
