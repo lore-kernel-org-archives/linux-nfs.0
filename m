@@ -1,61 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:32016 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1750907AbdKESzr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Nov 2017 13:55:47 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "vvs@virtuozzo.com" <vvs@virtuozzo.com>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 06/21] nfs client: exit_net cleanup check added
-Date: Sun, 5 Nov 2017 18:55:42 +0000
-Message-ID: <1509908140.12548.8.camel@primarydata.com>
-References: <5cbecaf0-dbb6-4140-43ed-ae94fc161941@virtuozzo.com>
-         <1509897719.5851.2.camel@primarydata.com>
-         <297fee4f-3cef-9bd4-d683-a14559939b65@virtuozzo.com>
-In-Reply-To: <297fee4f-3cef-9bd4-d683-a14559939b65@virtuozzo.com>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:43247 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750750AbdKEUpY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Nov 2017 15:45:24 -0500
+Received: by mail-io0-f193.google.com with SMTP id 134so13718380ioo.0
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Nov 2017 12:45:24 -0800 (PST)
+Subject: [PATCH v2] nfs: Fix ugly referral attributes
+From: Chuck Lever <chuck.lever@oracle.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Sun, 05 Nov 2017 15:45:22 -0500
+Message-ID: <20171105204404.10847.33767.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE3LTExLTA1IGF0IDE5OjQ4ICswMzAwLCBWYXNpbHkgQXZlcmluIHdyb3RlOg0K
-PiBPbiAyMDE3LTExLTA1IDE5OjAyLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gT24gU3Vu
-LCAyMDE3LTExLTA1IGF0IDEzOjAwICswMzAwLCBWYXNpbHkgQXZlcmluIHdyb3RlOg0KPiA+ID4g
-QmUgc3VyZSB0aGF0IG5mc19jbGllbnRfbGlzdCBhbmQgbmZzX3ZvbHVtZV9saXN0IGxpc3RzDQo+
-ID4gPiBpbml0aWFsaXplZA0KPiA+ID4gaW4gbmV0X2luaXQgaG9vayB3ZXJlIHJldHVybiB0byBp
-bml0aWFsIHN0YXRlIGluIG5ldF9leGl0IGhvb2suDQo+ID4gPiANCj4gPiA+IFNpZ25lZC1vZmYt
-Ynk6IFZhc2lseSBBdmVyaW4gPHZ2c0B2aXJ0dW96em8uY29tPg0KPiA+ID4gLS0tDQo+ID4gPiAg
-ZnMvbmZzL2NsaWVudC5jIHwgNCArKysrDQo+ID4gPiAgMSBmaWxlIGNoYW5nZWQsIDQgaW5zZXJ0
-aW9ucygrKQ0KPiA+ID4gDQo+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2NsaWVudC5jIGIvZnMv
-bmZzL2NsaWVudC5jDQo+ID4gPiBpbmRleCAyMjg4MGVmLi43YzA2OTFjIDEwMDY0NA0KPiA+ID4g
-LS0tIGEvZnMvbmZzL2NsaWVudC5jDQo+ID4gPiArKysgYi9mcy9uZnMvY2xpZW50LmMNCj4gPiA+
-IEBAIC0yMDQsNiArMjA0LDEwIEBAIHZvaWQgbmZzX2NsZWFudXBfY2JfaWRlbnRfaWRyKHN0cnVj
-dCBuZXQNCj4gPiA+ICpuZXQpDQo+ID4gPiAgCXN0cnVjdCBuZnNfbmV0ICpubiA9IG5ldF9nZW5l
-cmljKG5ldCwgbmZzX25ldF9pZCk7DQo+ID4gPiAgDQo+ID4gPiAgCWlkcl9kZXN0cm95KCZubi0+
-Y2JfaWRlbnRfaWRyKTsNCj4gPiA+ICsJV0FSTighbGlzdF9lbXB0eSgmbm4tPm5mc19jbGllbnRf
-bGlzdCksDQo+ID4gPiArCSAgICAgIm5ldCAlcCBleGl0OiBuZnNfY2xpZW50X2xpc3QgaXMgbm90
-IGVtcHR5XG4iLA0KPiA+ID4gbmV0KTsNCj4gPiA+ICsJV0FSTighbGlzdF9lbXB0eSgmbm4tPm5m
-c192b2x1bWVfbGlzdCksDQo+ID4gPiArCSAgICAgIm5ldCAlcCBleGl0OiBuZnNfdm9sdW1lX2xp
-c3QgaXMgbm90IGVtcHR5XG4iLA0KPiA+ID4gbmV0KTsNCj4gPiA+ICB9DQo+ID4gPiAgDQo+ID4g
-DQo+ID4gV2h5IGRvIHdlIG5lZWQgdGhlc2U/IElzIHRoZXJlIGEgc3BlY2lmaWMgYnVnIHRoYXQg
-eW91IGFyZSB0cnlpbmcNCj4gPiB0bw0KPiA+IHRyYWNrIGRvd24/DQo+IA0KPiBJIGhvcGUgc3Vj
-aCBjaGVja3MgYWxsb3dzIHRvIGRldGVjdCBsZWFrZWQgcGVyLW5ldG5zIG9iamVjdHMuDQo+IEFs
-c28gSSBob3BlIHRoYXQgYWxsIG5ldyBwZXJuZXRfb3BlcmF0aW9ucyB3aWxsIGluaGVyaXQgc3Vj
-aCBjaGVja3MNCj4gdG9vLg0KPiANCj4gSSBhc3N1bWUgdGhhdCBlbGVtZW50cyBhZGRlZCBpbnRv
-IHBlci1uZXQgbGlzdHMgc2hvdWxkIG5vdCBsaXZlDQo+IGxvbmdlciB0aGFuIG5ldCBuYW1lc3Bh
-Y2UsDQo+IGFuZCBzaG91bGQgYmUgZGVsZXRlZCBmcm9tIHRoZSBsaXN0LiBJIHRoaW5rIGV4aXRf
-bmV0IGhvb2sgaXMgZ29vZA0KPiBwbGFjZSBmb3Igc3VjaCBjaGVjay4NCj4gDQo+IFJlY2VudGx5
-IEkndmUgZm91bmQgbG9zdCBsaXN0X2VudHJ5IGFuZCBlbmFibGVkIHRpbWVyIG9uIHN0b3Agb2Yg
-bmV0DQo+IG5hbWVzcGFjZS4NCj4gVGhlbiBJJ3ZlIHJldmlld2VkIGFsbCBleGlzdGluZyBwZXJu
-ZXRfb3BlcmF0aW9ucyBhbmQgZm91bmQgdGhhdCBtYW55DQo+IGRyaXZlcnMNCj4gaGF2ZSBzdWNo
-IGNoZWNrcyBhbHJlYWR5LiBTbyBJIGRlY2lkZWQgdG8gY29tcGxldGUgdGhpcyB0YXNrIGFuZCBh
-ZGQNCj4gc3VjaCBjaGVja3MNCj4gaW50byBhbGwgYWZmZWN0ZWQgc3Vic3lzdGVtcy4NCj4gDQoN
-ClVubGVzcyB0aGVyZSBpcyBhIGtub3duIHByb2JsZW0gdGhhdCBoYXMgc3BlY2lmaWMgZGVidWdn
-aW5nIG5lZWRzLCB0aGlzDQpraW5kIG9mIGFzc2VydCBzaG91bGQgdGFrZSB0aGUgZm9ybSBvZiBh
-IFdBUk5fT05DRSgpIHNvIHRoYXQgaXQgZG9lc24ndA0KZmlsbCB1c2VyIHN5c2xvZ3Mgd2l0aCBy
-ZWR1bmRhbnQgd2FybmluZ3MgaWYgdHJpZ2dlcmVkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
-QHByaW1hcnlkYXRhLmNvbQ0K
+Before traversing a referral and performing a mount, the mounted-on
+directory looks strange:
+
+dr-xr-xr-x. 2 4294967294 4294967294 0 Dec 31  1969 dir.0
+
+nfs4_get_referral is wiping out any cached attributes with what was
+returned via GETATTR(fs_locations), but the bit mask for that
+operation does not request any file attributes.
+
+Retrieve owner and timestamp information so that the memcpy in
+nfs4_get_referral fills in more attributes.
+
+Changes since v1:
+- Don't request attributes that the client unconditionally replaces
+- Request only MOUNTED_ON_FILEID or FILEID attribute, not both
+- encode_fs_locations() doesn't use the third bitmask word
+
+Fixes: 6b97fd3da1ea ("NFSv4: Follow a referral")
+Suggested-by: Pradeep Thomas <pradeepthomas@gmail.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@vger.kernel.org
+---
+ fs/nfs/nfs4proc.c |   18 ++++++++----------
+ 1 file changed, 8 insertions(+), 10 deletions(-)
+
+I could send this as an incremental, but that just seems to piss
+off distributors, who will just squash them all together anyway.
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6c61e2b..2662879 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -254,15 +254,12 @@ static int nfs4_map_errors(int err)
+ };
+ 
+ const u32 nfs4_fs_locations_bitmap[3] = {
+-	FATTR4_WORD0_TYPE
+-	| FATTR4_WORD0_CHANGE
++	FATTR4_WORD0_CHANGE
+ 	| FATTR4_WORD0_SIZE
+ 	| FATTR4_WORD0_FSID
+ 	| FATTR4_WORD0_FILEID
+ 	| FATTR4_WORD0_FS_LOCATIONS,
+-	FATTR4_WORD1_MODE
+-	| FATTR4_WORD1_NUMLINKS
+-	| FATTR4_WORD1_OWNER
++	FATTR4_WORD1_OWNER
+ 	| FATTR4_WORD1_OWNER_GROUP
+ 	| FATTR4_WORD1_RAWDEV
+ 	| FATTR4_WORD1_SPACE_USED
+@@ -6763,9 +6760,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 				   struct page *page)
+ {
+ 	struct nfs_server *server = NFS_SERVER(dir);
+-	u32 bitmask[3] = {
+-		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
+-	};
++	u32 bitmask[3];
+ 	struct nfs4_fs_locations_arg args = {
+ 		.dir_fh = NFS_FH(dir),
+ 		.name = name,
+@@ -6784,12 +6779,15 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
+ 
+ 	dprintk("%s: start\n", __func__);
+ 
++	bitmask[0] = nfs4_fattr_bitmap[0] | FATTR4_WORD0_FS_LOCATIONS;
++	bitmask[1] = nfs4_fattr_bitmap[1];
++
+ 	/* Ask for the fileid of the absent filesystem if mounted_on_fileid
+ 	 * is not supported */
+ 	if (NFS_SERVER(dir)->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
+-		bitmask[1] |= FATTR4_WORD1_MOUNTED_ON_FILEID;
++		bitmask[0] &= ~FATTR4_WORD0_FILEID;
+ 	else
+-		bitmask[0] |= FATTR4_WORD0_FILEID;
++		bitmask[1] &= ~FATTR4_WORD1_MOUNTED_ON_FILEID;
+ 
+ 	nfs_fattr_init(&fs_locations->fattr);
+ 	fs_locations->server = server;
 
