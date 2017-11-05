@@ -1,46 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:42234 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:7002 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750817AbdKEQuK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 5 Nov 2017 11:50:10 -0500
+        id S1750731AbdKEQwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 5 Nov 2017 11:52:18 -0500
 From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 06/21] nfs client: exit_net cleanup check added
+Subject: [PATCH v2 21/21] sunrpc: exit_net cleanup check added
 To: netdev@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>
 References: <bafb347d-e36e-8b2b-7646-afc458a7a32a@virtuozzo.com>
-Message-ID: <80d93023-9c22-4c28-fe42-6cb71fc585f3@virtuozzo.com>
-Date: Sun, 5 Nov 2017 19:50:00 +0300
+Message-ID: <ccbaed5b-39dd-7889-8428-57a227b4a2a7@virtuozzo.com>
+Date: Sun, 5 Nov 2017 19:52:05 +0300
 MIME-Version: 1.0
 In-Reply-To: <bafb347d-e36e-8b2b-7646-afc458a7a32a@virtuozzo.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Be sure that nfs_client_list and nfs_volume_list lists initialized
-in net_init hook were return to initial state in net_exit hook.
+Be sure that all_clients list initialized in net_init hook was return
+to initial state.
 
 Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- fs/nfs/client.c | 4 ++++
+ net/sunrpc/sunrpc_syms.c | 4 ++++
  1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 22880ef..e099a01 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -204,6 +204,10 @@ void nfs_cleanup_cb_ident_idr(struct net *net)
- 	struct nfs_net *nn = net_generic(net, nfs_net_id);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index c73de18..4a25658 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -65,10 +65,14 @@ static __net_init int sunrpc_init_net(struct net *net)
  
- 	idr_destroy(&nn->cb_ident_idr);
-+	WARN(!list_empty(&nn->nfs_client_list),
-+	     "nfs net_exit: nfs_client_list is not empty\n");
-+	WARN(!list_empty(&nn->nfs_volume_list),
-+	     "nfs net_exit: nfs_volume_list is not empty\n");
+ static __net_exit void sunrpc_exit_net(struct net *net)
+ {
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
+ 	rpc_pipefs_exit_net(net);
+ 	unix_gid_cache_destroy(net);
+ 	ip_map_cache_destroy(net);
+ 	rpc_proc_exit(net);
++	WARN(!list_empty(&sn->all_clients),
++	     "%s: all_clients list is not empty\n", __func__);
  }
  
- /* nfs_client_lock held */
+ static struct pernet_operations sunrpc_net_ops = {
 -- 
 2.7.4
 
