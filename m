@@ -1,52 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:7002 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750731AbdKEQwS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 5 Nov 2017 11:52:18 -0500
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v2 21/21] sunrpc: exit_net cleanup check added
-To: netdev@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-References: <bafb347d-e36e-8b2b-7646-afc458a7a32a@virtuozzo.com>
-Message-ID: <ccbaed5b-39dd-7889-8428-57a227b4a2a7@virtuozzo.com>
-Date: Sun, 5 Nov 2017 19:52:05 +0300
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:32016 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750907AbdKESzr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Nov 2017 13:55:47 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "vvs@virtuozzo.com" <vvs@virtuozzo.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 06/21] nfs client: exit_net cleanup check added
+Date: Sun, 5 Nov 2017 18:55:42 +0000
+Message-ID: <1509908140.12548.8.camel@primarydata.com>
+References: <5cbecaf0-dbb6-4140-43ed-ae94fc161941@virtuozzo.com>
+         <1509897719.5851.2.camel@primarydata.com>
+         <297fee4f-3cef-9bd4-d683-a14559939b65@virtuozzo.com>
+In-Reply-To: <297fee4f-3cef-9bd4-d683-a14559939b65@virtuozzo.com>
 MIME-Version: 1.0
-In-Reply-To: <bafb347d-e36e-8b2b-7646-afc458a7a32a@virtuozzo.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Be sure that all_clients list initialized in net_init hook was return
-to initial state.
-
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- net/sunrpc/sunrpc_syms.c | 4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index c73de18..4a25658 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -65,10 +65,14 @@ static __net_init int sunrpc_init_net(struct net *net)
- 
- static __net_exit void sunrpc_exit_net(struct net *net)
- {
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
- 	rpc_pipefs_exit_net(net);
- 	unix_gid_cache_destroy(net);
- 	ip_map_cache_destroy(net);
- 	rpc_proc_exit(net);
-+	WARN(!list_empty(&sn->all_clients),
-+	     "%s: all_clients list is not empty\n", __func__);
- }
- 
- static struct pernet_operations sunrpc_net_ops = {
--- 
-2.7.4
+T24gU3VuLCAyMDE3LTExLTA1IGF0IDE5OjQ4ICswMzAwLCBWYXNpbHkgQXZlcmluIHdyb3RlOg0K
+PiBPbiAyMDE3LTExLTA1IDE5OjAyLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+ID4gT24gU3Vu
+LCAyMDE3LTExLTA1IGF0IDEzOjAwICswMzAwLCBWYXNpbHkgQXZlcmluIHdyb3RlOg0KPiA+ID4g
+QmUgc3VyZSB0aGF0IG5mc19jbGllbnRfbGlzdCBhbmQgbmZzX3ZvbHVtZV9saXN0IGxpc3RzDQo+
+ID4gPiBpbml0aWFsaXplZA0KPiA+ID4gaW4gbmV0X2luaXQgaG9vayB3ZXJlIHJldHVybiB0byBp
+bml0aWFsIHN0YXRlIGluIG5ldF9leGl0IGhvb2suDQo+ID4gPiANCj4gPiA+IFNpZ25lZC1vZmYt
+Ynk6IFZhc2lseSBBdmVyaW4gPHZ2c0B2aXJ0dW96em8uY29tPg0KPiA+ID4gLS0tDQo+ID4gPiAg
+ZnMvbmZzL2NsaWVudC5jIHwgNCArKysrDQo+ID4gPiAgMSBmaWxlIGNoYW5nZWQsIDQgaW5zZXJ0
+aW9ucygrKQ0KPiA+ID4gDQo+ID4gPiBkaWZmIC0tZ2l0IGEvZnMvbmZzL2NsaWVudC5jIGIvZnMv
+bmZzL2NsaWVudC5jDQo+ID4gPiBpbmRleCAyMjg4MGVmLi43YzA2OTFjIDEwMDY0NA0KPiA+ID4g
+LS0tIGEvZnMvbmZzL2NsaWVudC5jDQo+ID4gPiArKysgYi9mcy9uZnMvY2xpZW50LmMNCj4gPiA+
+IEBAIC0yMDQsNiArMjA0LDEwIEBAIHZvaWQgbmZzX2NsZWFudXBfY2JfaWRlbnRfaWRyKHN0cnVj
+dCBuZXQNCj4gPiA+ICpuZXQpDQo+ID4gPiAgCXN0cnVjdCBuZnNfbmV0ICpubiA9IG5ldF9nZW5l
+cmljKG5ldCwgbmZzX25ldF9pZCk7DQo+ID4gPiAgDQo+ID4gPiAgCWlkcl9kZXN0cm95KCZubi0+
+Y2JfaWRlbnRfaWRyKTsNCj4gPiA+ICsJV0FSTighbGlzdF9lbXB0eSgmbm4tPm5mc19jbGllbnRf
+bGlzdCksDQo+ID4gPiArCSAgICAgIm5ldCAlcCBleGl0OiBuZnNfY2xpZW50X2xpc3QgaXMgbm90
+IGVtcHR5XG4iLA0KPiA+ID4gbmV0KTsNCj4gPiA+ICsJV0FSTighbGlzdF9lbXB0eSgmbm4tPm5m
+c192b2x1bWVfbGlzdCksDQo+ID4gPiArCSAgICAgIm5ldCAlcCBleGl0OiBuZnNfdm9sdW1lX2xp
+c3QgaXMgbm90IGVtcHR5XG4iLA0KPiA+ID4gbmV0KTsNCj4gPiA+ICB9DQo+ID4gPiAgDQo+ID4g
+DQo+ID4gV2h5IGRvIHdlIG5lZWQgdGhlc2U/IElzIHRoZXJlIGEgc3BlY2lmaWMgYnVnIHRoYXQg
+eW91IGFyZSB0cnlpbmcNCj4gPiB0bw0KPiA+IHRyYWNrIGRvd24/DQo+IA0KPiBJIGhvcGUgc3Vj
+aCBjaGVja3MgYWxsb3dzIHRvIGRldGVjdCBsZWFrZWQgcGVyLW5ldG5zIG9iamVjdHMuDQo+IEFs
+c28gSSBob3BlIHRoYXQgYWxsIG5ldyBwZXJuZXRfb3BlcmF0aW9ucyB3aWxsIGluaGVyaXQgc3Vj
+aCBjaGVja3MNCj4gdG9vLg0KPiANCj4gSSBhc3N1bWUgdGhhdCBlbGVtZW50cyBhZGRlZCBpbnRv
+IHBlci1uZXQgbGlzdHMgc2hvdWxkIG5vdCBsaXZlDQo+IGxvbmdlciB0aGFuIG5ldCBuYW1lc3Bh
+Y2UsDQo+IGFuZCBzaG91bGQgYmUgZGVsZXRlZCBmcm9tIHRoZSBsaXN0LiBJIHRoaW5rIGV4aXRf
+bmV0IGhvb2sgaXMgZ29vZA0KPiBwbGFjZSBmb3Igc3VjaCBjaGVjay4NCj4gDQo+IFJlY2VudGx5
+IEkndmUgZm91bmQgbG9zdCBsaXN0X2VudHJ5IGFuZCBlbmFibGVkIHRpbWVyIG9uIHN0b3Agb2Yg
+bmV0DQo+IG5hbWVzcGFjZS4NCj4gVGhlbiBJJ3ZlIHJldmlld2VkIGFsbCBleGlzdGluZyBwZXJu
+ZXRfb3BlcmF0aW9ucyBhbmQgZm91bmQgdGhhdCBtYW55DQo+IGRyaXZlcnMNCj4gaGF2ZSBzdWNo
+IGNoZWNrcyBhbHJlYWR5LiBTbyBJIGRlY2lkZWQgdG8gY29tcGxldGUgdGhpcyB0YXNrIGFuZCBh
+ZGQNCj4gc3VjaCBjaGVja3MNCj4gaW50byBhbGwgYWZmZWN0ZWQgc3Vic3lzdGVtcy4NCj4gDQoN
+ClVubGVzcyB0aGVyZSBpcyBhIGtub3duIHByb2JsZW0gdGhhdCBoYXMgc3BlY2lmaWMgZGVidWdn
+aW5nIG5lZWRzLCB0aGlzDQpraW5kIG9mIGFzc2VydCBzaG91bGQgdGFrZSB0aGUgZm9ybSBvZiBh
+IFdBUk5fT05DRSgpIHNvIHRoYXQgaXQgZG9lc24ndA0KZmlsbCB1c2VyIHN5c2xvZ3Mgd2l0aCBy
+ZWR1bmRhbnQgd2FybmluZ3MgaWYgdHJpZ2dlcmVkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
+QHByaW1hcnlkYXRhLmNvbQ0K
 
