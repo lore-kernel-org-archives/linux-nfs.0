@@ -1,136 +1,139 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from elasmtp-curtail.atl.sa.earthlink.net ([209.86.89.64]:46414 "EHLO
-        elasmtp-curtail.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753513AbdKFRen (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Nov 2017 12:34:43 -0500
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Chuck Lever'" <chuck.lever@oracle.com>,
-        <trond.myklebust@primarydata.com>, <anna.schumaker@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>, "'Pradeep'" <pradeepthomas@gmail.com>,
-        <nfs-ganesha-devel@lists.sourceforge.net>
-References: <20171105204404.10847.33767.stgit@manet.1015granger.net>
-In-Reply-To: <20171105204404.10847.33767.stgit@manet.1015granger.net>
-Subject: RE: [PATCH v2] nfs: Fix ugly referral attributes
-Date: Mon, 6 Nov 2017 09:34:34 -0800
-Message-ID: <011b01d35725$83da88e0$8b8f9aa0$@mindspring.com>
+Return-Path: <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH v7 07/10] pNFS: Retry NFS4ERR_OLD_STATEID errors in
+ layoutreturn-on-close
+To: Trond Myklebust <trond.myklebust@primarydata.com>, Benjamin Coddington
+	<bcodding@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+References: <20171106152726.13755-1-trond.myklebust@primarydata.com>
+ <20171106152726.13755-2-trond.myklebust@primarydata.com>
+ <20171106152726.13755-3-trond.myklebust@primarydata.com>
+ <20171106152726.13755-4-trond.myklebust@primarydata.com>
+ <20171106152726.13755-5-trond.myklebust@primarydata.com>
+ <20171106152726.13755-6-trond.myklebust@primarydata.com>
+ <20171106152726.13755-7-trond.myklebust@primarydata.com>
+ <20171106152726.13755-8-trond.myklebust@primarydata.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <056582c3-b9ef-eadf-b433-db86779b1c56@Netapp.com>
+Date: Mon, 6 Nov 2017 14:27:50 -0500
 MIME-Version: 1.0
-Content-Type: text/plain;
-        charset="UTF-8"
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <20171106152726.13755-8-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Pradeep,
+Hi Trond,
 
-Could you verify this patch with nfs-ganesha? Looking at the code, it looks=
- like we will supply the attributes requested.
-
-Thanks
-
-Frank
-
-> -----Original Message-----
-> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
-> owner@vger.kernel.org] On Behalf Of Chuck Lever
-> Sent: Sunday, November 5, 2017 12:45 PM
-> To: trond.myklebust@primarydata.com; anna.schumaker@netapp.com
-> Cc: linux-nfs@vger.kernel.org
-> Subject: [PATCH v2] nfs: Fix ugly referral attributes
+On 11/06/2017 10:27 AM, Trond Myklebust wrote:
+> If our layoutreturn on close operation returns an NFS4ERR_OLD_STATEID,
+> then try to update the stateid and retry. We know that there should
+> be no further LAYOUTGET requests being launched.
 > 
-> Before traversing a referral and performing a mount, the mounted-on
-> directory looks strange:
-> 
-> dr-xr-xr-x. 2 4294967294 4294967294 0 Dec 31  1969 dir.0
-> 
-> nfs4_get_referral is wiping out any cached attributes with what was retur=
-ned
-> via GETATTR(fs_locations), but the bit mask for that operation does not
-> request any file attributes.
-> 
-> Retrieve owner and timestamp information so that the memcpy in
-> nfs4_get_referral fills in more attributes.
-> 
-> Changes since v1:
-> - Don't request attributes that the client unconditionally replaces
-> - Request only MOUNTED_ON_FILEID or FILEID attribute, not both
-> - encode_fs_locations() doesn't use the third bitmask word
-> 
-> Fixes: 6b97fd3da1ea ("NFSv4: Follow a referral")
-> Suggested-by: Pradeep Thomas <pradeepthomas@gmail.com>
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Cc: stable@vger.kernel.org
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 > ---
->  fs/nfs/nfs4proc.c |   18 ++++++++----------
->  1 file changed, 8 insertions(+), 10 deletions(-)
+>  fs/nfs/nfs4proc.c | 18 ++++++++++++++++--
+>  fs/nfs/pnfs.c     | 18 ++++++++++++++++++
+>  fs/nfs/pnfs.h     |  5 +++++
+>  3 files changed, 39 insertions(+), 2 deletions(-)
 > 
-> I could send this as an incremental, but that just seems to piss off
-> distributors, who will just squash them all together anyway.
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c index 6c61e2b..2662879=
-
-> 100644
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index fe4a855dc965..1bb0e405aa57 100644
 > --- a/fs/nfs/nfs4proc.c
 > +++ b/fs/nfs/nfs4proc.c
-> @@ -254,15 +254,12 @@ static int nfs4_map_errors(int err)  };
-> 
->  const u32 nfs4_fs_locations_bitmap[3] =3D {
-> -	FATTR4_WORD0_TYPE
-> -	| FATTR4_WORD0_CHANGE
-> +	FATTR4_WORD0_CHANGE
->  	| FATTR4_WORD0_SIZE
->  	| FATTR4_WORD0_FSID
->  	| FATTR4_WORD0_FILEID
->  	| FATTR4_WORD0_FS_LOCATIONS,
-> -	FATTR4_WORD1_MODE
-> -	| FATTR4_WORD1_NUMLINKS
-> -	| FATTR4_WORD1_OWNER
-> +	FATTR4_WORD1_OWNER
->  	| FATTR4_WORD1_OWNER_GROUP
->  	| FATTR4_WORD1_RAWDEV
->  	| FATTR4_WORD1_SPACE_USED
-> @@ -6763,9 +6760,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt
-> *client, struct inode *dir,
->  				   struct page *page)
->  {
->  	struct nfs_server *server =3D NFS_SERVER(dir);
-> -	u32 bitmask[3] =3D {
-> -		[0] =3D FATTR4_WORD0_FSID |
-> FATTR4_WORD0_FS_LOCATIONS,
-> -	};
-> +	u32 bitmask[3];
->  	struct nfs4_fs_locations_arg args =3D {
->  		.dir_fh =3D NFS_FH(dir),
->  		.name =3D name,
-> @@ -6784,12 +6779,15 @@ static int _nfs4_proc_fs_locations(struct rpc_cln=
-t
-> *client, struct inode *dir,
-> 
->  	dprintk("%s: start\n", __func__);
-> 
-> +	bitmask[0] =3D nfs4_fattr_bitmap[0] |
-> FATTR4_WORD0_FS_LOCATIONS;
-> +	bitmask[1] =3D nfs4_fattr_bitmap[1];
+> @@ -3165,11 +3165,18 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+>  			calldata->arg.lr_args = NULL;
+>  			calldata->res.lr_res = NULL;
+>  			break;
+> +		case -NFS4ERR_OLD_STATEID:
+> +			if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
+> +						calldata->inode)) {
+> +				calldata->res.lr_ret = 0;
+> +				rpc_restart_call_prepare(task);
+> +				return;
+> +			}
+> +			/* Fallthrough */
+>  		case -NFS4ERR_ADMIN_REVOKED:
+>  		case -NFS4ERR_DELEG_REVOKED:
+>  		case -NFS4ERR_EXPIRED:
+>  		case -NFS4ERR_BAD_STATEID:
+> -		case -NFS4ERR_OLD_STATEID:
+>  		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
+>  		case -NFS4ERR_WRONG_CRED:
+>  			calldata->arg.lr_args = NULL;
+> @@ -5787,11 +5794,18 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+>  			data->args.lr_args = NULL;
+>  			data->res.lr_res = NULL;
+>  			break;
+> +		case -NFS4ERR_OLD_STATEID:
+> +			if (nfs4_refresh_layout_stateid(&data->args.lr_args->stateid,
+> +						data->inode)) {
+> +				data->res.lr_ret = 0;
+> +				rpc_restart_call_prepare(task);
+> +				return;
+> +			}
+> +			/* Fallthrough */
+>  		case -NFS4ERR_ADMIN_REVOKED:
+>  		case -NFS4ERR_DELEG_REVOKED:
+>  		case -NFS4ERR_EXPIRED:
+>  		case -NFS4ERR_BAD_STATEID:
+> -		case -NFS4ERR_OLD_STATEID:
+>  		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
+>  		case -NFS4ERR_WRONG_CRED:
+>  			data->args.lr_args = NULL;
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 3bcd669a3152..5e4cd6a7af66 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -355,6 +355,24 @@ pnfs_clear_lseg_state(struct pnfs_layout_segment *lseg,
+>  }
+>  
+>  /*
+> + * Update the seqid of a layout stateid
+> + */
+> +bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode)
+> +{
+> +	struct pnfs_layout_hdr *lo;
+> +	bool ret = false;
 > +
->  	/* Ask for the fileid of the absent filesystem if mounted_on_fileid
->  	 * is not supported */
->  	if (NFS_SERVER(dir)->attr_bitmask[1] &
-> FATTR4_WORD1_MOUNTED_ON_FILEID)
-> -		bitmask[1] |=3D FATTR4_WORD1_MOUNTED_ON_FILEID;
-> +		bitmask[0] &=3D ~FATTR4_WORD0_FILEID;
->  	else
-> -		bitmask[0] |=3D FATTR4_WORD0_FILEID;
-> +		bitmask[1] &=3D ~FATTR4_WORD1_MOUNTED_ON_FILEID;
+> +	spin_lock(&inode->i_lock);
+> +	lo = NFS_I(inode)->layout;
+> +	if (lo && nfs4_stateid_match_other(dst, &lo->plh_stateid)) {
+> +		dst->seqid = lo->plh_stateid.seqid;
+> +		ret = true;
+> +	}
+> +	spin_unlock(&inode->i_lock);
+> +	return ret;
+> +}
+> +
+> +/*
+>   * Mark a pnfs_layout_hdr and all associated layout segments as invalid
+>   *
+>   * In order to continue using the pnfs_layout_hdr, a full recovery
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index 87f144f14d1e..40159cb572c7 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -251,6 +251,7 @@ int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
+>  		bool is_recall);
+>  int pnfs_destroy_layouts_byclid(struct nfs_client *clp,
+>  		bool is_recall);
+> +bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode);
+>  void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
+>  void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+>  			     const nfs4_stateid *new,
+> @@ -764,6 +765,10 @@ static inline void nfs4_pnfs_v3_ds_connect_unload(void)
+>  {
+>  }
+>  
+> +bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode)
+> +{
+> +	return false;
+> +}
+
+Shouldn't this be static & inline?  I'm seeing a bunch of "multiple definitions" errors with v4.1 disabled.
+
+Thanks
+Anna
+
+>  #endif /* CONFIG_NFS_V4_1 */
+>  
+>  #if IS_ENABLED(CONFIG_NFS_V4_2)
 > 
->  	nfs_fattr_init(&fs_locations->fattr);
->  	fs_locations->server =3D server;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in t=
-he
-> body of a message to majordomo@vger.kernel.org More majordomo info at
-> http://vger.kernel.org/majordomo-info.html
-
-
----
-This email has been checked for viruses by Avast antivirus software.
-https://www.avast.com/antivirus
-
