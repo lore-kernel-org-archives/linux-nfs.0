@@ -1,88 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([173.255.197.46]:52356 "EHLO fieldses.org"
+Received: from mailhub.sw.ru ([195.214.232.25]:30900 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751311AbdKIQH3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Nov 2017 11:07:29 -0500
-Date: Thu, 9 Nov 2017 11:07:28 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Naofumi Honda <honda@math.sci.hokudai.ac.jp>
-Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com
-Subject: Re: [Bug 197817] "Panic: unable to handle kernel page request"  in
- posix_unblock_lock() called from nfs4_laundromat()
-Message-ID: <20171109160728.GI8773@fieldses.org>
-References: <bug-197817-198953@https.bugzilla.kernel.org/>
- <bug-197817-198953-0whWrJRFSz@https.bugzilla.kernel.org/>
- <1911104.BiqBl0Bicc@nausicaa>
+        id S1753163AbdKFNWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 6 Nov 2017 08:22:53 -0500
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v3 01/21] grace: replace BUG_ON by WARN_ONCE in exit_net hook
+To: netdev@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <4fdc4264-e338-6ee8-a662-7d98b45733a1@virtuozzo.com>
+Message-ID: <a059abdd-e727-adcb-7b43-976be1d0a08e@virtuozzo.com>
+Date: Mon, 6 Nov 2017 16:22:48 +0300
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1911104.BiqBl0Bicc@nausicaa>
+In-Reply-To: <4fdc4264-e338-6ee8-a662-7d98b45733a1@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 09, 2017 at 10:08:28AM +0900, Naofumi Honda wrote:
-> Dear Developers:
-> 
-> > https://bugzilla.kernel.org/show_bug.cgi?id=197817
-> > 
-> > --- Comment #1 from bfields@fieldses.org ---
-> > Yes, I think you're right.
-> > 
-> > Would it be possible for you to submit a patch to fix that typo in those two
-> > places?  (Just mail it to me at bfields@fieldses.org, cc: to
-> > linux-nfs@vger.kernel.org).
-> > 
-> 
-> OK,  I have attached the patch.
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+---
+ fs/nfs_common/grace.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-Thanks for the investigation and the fix!
-
-For future reference, we prefer patches to be inline with the email
-message (not attached), and prefer them in "unified" format.
-
-But for a one-off patch I can fix it up myself; applied as follows.
-
---b.
-
-commit c26806a20fa3
-Author: Naofumi Honda <honda@math.sci.hokudai.ac.jp>
-Date:   Thu Nov 9 10:57:16 2017 -0500
-
-    nfsd: fix panic in posix_unblock_lock called from nfs4_laundromat
-    
-    From kernel 4.9, my two nfsv4 servers sometimes suffer from
-        "panic: unable to handle kernel page request"
-    in posix_unblock_lock() called from nfs4_laundromat().
-    
-    These panics diseappear if we revert the commit "nfsd: add a LRU list
-    for blocked locks".
-    
-    The cause appears to be a typo in nfs4_laundromat(), which is also
-    present in nfs4_state_shutdown_net().
-    
-    Cc: stable@vger.kernel.org
-    Fixes: 7919d0a27f1e "nfsd: add a LRU list for blocked locks"
-    Cc: jlayton@redhat.com
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 923243369bbc..b99830ab63aa 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4791,7 +4791,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 	spin_unlock(&nn->blocked_locks_lock);
+diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
+index 420d3a0..1bd6599 100644
+--- a/fs/nfs_common/grace.c
++++ b/fs/nfs_common/grace.c
+@@ -104,7 +104,9 @@ grace_exit_net(struct net *net)
+ {
+ 	struct list_head *grace_list = net_generic(net, grace_net_id);
  
- 	while (!list_empty(&reaplist)) {
--		nbl = list_first_entry(&nn->blocked_locks_lru,
-+		nbl = list_first_entry(&reaplist,
- 					struct nfsd4_blocked_lock, nbl_lru);
- 		list_del_init(&nbl->nbl_lru);
- 		posix_unblock_lock(&nbl->nbl_lock);
-@@ -7260,7 +7260,7 @@ nfs4_state_shutdown_net(struct net *net)
- 	spin_unlock(&nn->blocked_locks_lock);
+-	BUG_ON(!list_empty(grace_list));
++	WARN_ONCE(!list_empty(grace_list),
++		  "net %x %s: grace_list is not empty\n",
++		  net->ns.inum, __func__);
+ }
  
- 	while (!list_empty(&reaplist)) {
--		nbl = list_first_entry(&nn->blocked_locks_lru,
-+		nbl = list_first_entry(&reaplist,
- 					struct nfsd4_blocked_lock, nbl_lru);
- 		list_del_init(&nbl->nbl_lru);
- 		posix_unblock_lock(&nbl->nbl_lock);
+ static struct pernet_operations grace_net_ops = {
+-- 
+2.7.4
+
