@@ -1,67 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:43934 "EHLO
-        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753738AbdKFPh0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Nov 2017 10:37:26 -0500
-Received: by mail-wm0-f66.google.com with SMTP id r68so9745732wmr.0
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Nov 2017 07:37:25 -0800 (PST)
+Received: from discipline.rit.edu ([129.21.6.207]:51039 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1751831AbdKFRaY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Nov 2017 12:30:24 -0500
+From: Andrew W Elble <aweits@rit.edu>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v3] nfsd: deal with revoked delegations appropriately
+References: <20171103180631.76071-1-aweits@rit.edu>
+        <1509734212.21477.16.camel@primarydata.com>
+        <20171106151531.GB599@fieldses.org>
+Date: Mon, 06 Nov 2017 12:30:23 -0500
+In-Reply-To: <20171106151531.GB599@fieldses.org> (bfields@fieldses.org's
+        message of "Mon, 6 Nov 2017 10:15:31 -0500")
+Message-ID: <m2fu9rqpqo.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-In-Reply-To: <20171106151944.GC599@fieldses.org>
-References: <20171027144743.15444.3407.stgit@klimt.1015granger.net>
- <CANjDDBi15wrUqnnpgBabwQLg1iz92PJkbt6vN9OBFK9E2Ng5SQ@mail.gmail.com>
- <28EB7B95-5EF6-41D0-8910-6BC7784CE28E@oracle.com> <20171106151944.GC599@fieldses.org>
-From: Devesh Sharma <devesh.sharma@broadcom.com>
-Date: Mon, 6 Nov 2017 21:06:44 +0530
-Message-ID: <CANjDDBjMN5FphTg+--amuoT-9ARHY4XL2s11P=tnGn9HKszctQ@mail.gmail.com>
-Subject: Re: [PATCH] svcrdma: Enqueue after setting XPT_CLOSE in completion handlers
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks Bruce
 
-On Mon, Nov 6, 2017 at 8:49 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Nov 03, 2017 at 05:19:30PM -0400, Chuck Lever wrote:
->> Hi Bruce-
->>
->> > On Oct 28, 2017, at 3:43 AM, Devesh Sharma <devesh.sharma@broadcom.com> wrote:
->> >
->> > looks good
->> >
->> > Reveiwed-By: Devesh Sharma <devesh.sharma@broadcom.com>
->> >
->> > On Fri, Oct 27, 2017 at 8:19 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> >> I noticed the server was sometimes not closing the connection after
->> >> a flushed Send. For example, if the client responds with an RNR NAK
->> >> to a Reply from the server, that client might be deadlocked, and
->> >> thus wouldn't send any more traffic. Thus the server wouldn't have
->> >> any opportunity to notice the XPT_CLOSE bit has been set.
->> >>
->> >> Enqueue the transport so that svcxprt notices the bit even if there
->> >> is no more transport activity after a flushed completion, QP access
->> >> error, or device removal event.
->> >>
->> >> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> >> ---
->> >> net/sunrpc/xprtrdma/svc_rdma_transport.c |   11 ++++++++---
->> >> 1 file changed, 8 insertions(+), 3 deletions(-)
->> >>
->> >> Hi Bruce-
->> >>
->> >> Please consider this patch for v4.15. Thanks!
->>
->> I notice nfsd-next does not have this patch. Is there anything
->> else I need to do? Should I resend with Devesh's Reviewed-by
->> tag?
+"bfields@fieldses.org" <bfields@fieldses.org> writes:
+
+> On Fri, Nov 03, 2017 at 06:36:55PM +0000, Trond Myklebust wrote:
+>> Thanks for the quick turnaround!
+>> 
+>> On Fri, 2017-11-03 at 14:06 -0400, Andrew Elble wrote:
+>> > If a delegation has been revoked by the server, operations using that
+>> > delegation should error out with NFS4ERR_DELEG_REVOKED in the >4.1
+>> > case, and NFS4ERR_BAD_STATEID otherwise.
+>> > 
+>> > Signed-off-by: Andrew Elble <aweits@rit.edu>
+>> 
+>> Reviewed-by: Trond Myklebust <trond.myklebust@primarydata.com>
 >
-> Thanks for the reminder; applied for 4.15 with Devesh's Reviewed-by.
+> I wonder if there's a way to simplify the resulting logic in
+> nfsd4_lookup_stateid--I guess I don't see anything.
 >
-> --b.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Could we get some context here in the changelog, though?  What actual
+> problem was this causing?
+
+Prior thread (roughly) here: http://www.spinics.net/lists/linux-nfs/msg55260.html
+
+This is the one patch I'm still carrying from the lost delegation work a
+while back. Testing showed that there is a path still open to lost
+delegations via delegreturn.
+
+running with:
+echo "error != 0" | sudo tee /sys/kernel/debug/tracing/events/nfs4/nfs4_delegreturn_exit/filter
+
+gave us this at one point with an interim version of this patch:
+
+kworker/0:0H-3990  [000] .... 5899655.609266: nfs4_delegreturn_exit: 
+               error=-10087 (DELEG_REVOKED) dev=00:30 fhandle=0xe43d9d3a
+kworker/0:2H-12665 [000] .... 5900011.719468: nfs4_delegreturn_exit: 
+               error=-10087 (DELEG_REVOKED) dev=00:30 fhandle=0x16e37c0a
+
+The Linux client prior to 26d36301bd653df6481fd38f3e1435a1f15e56d1 would
+just drop delegations that suffered from a nfserr_bad_stateid during
+delegreturn. Now it will do test/free if the return error is
+nfserr_deleg_revoked.
+
+If the client drops a delegation while the server has it on the revoked
+list, we stay stuck in endless state manager looping for that client.
+
+It might be a good idea for a stable backport of aforementioned commit,
+or some kind of other workaround? Possibly interpreting
+nfserr_bad_stateid an analogue of nfserr_deleg_revoked clientside
+when dealing with a >4.0 mount? (also seems like an error on the putfh
+might need to be caught as well?)
+
+Thanks,
+
+Andy
+
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
