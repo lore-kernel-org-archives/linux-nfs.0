@@ -4,62 +4,61 @@ From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>,
 	Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v8 00/11] Fix OPEN/CLOSE races
-Date: Mon,  6 Nov 2017 15:28:00 -0500
-Message-Id: <20171106202811.70202-1-trond.myklebust@primarydata.com>
+Subject: [PATCH v8 02/11] NFSv4: Add a tracepoint to document open stateid updates
+Date: Mon,  6 Nov 2017 15:28:02 -0500
+Message-Id: <20171106202811.70202-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20171106202811.70202-2-trond.myklebust@primarydata.com>
+References: <20171106202811.70202-1-trond.myklebust@primarydata.com>
+ <20171106202811.70202-2-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-- Fix a sleep-while-atomic issue
-- Clean up.    
-- Add a tracepoint to help document wait incidents.
-v3:
-- Fix a state update issue
-v4:
-- Fix a race due to setting the state->flags before waiting on another
-  compound (can cause issues if the other compound has an OPEN_DOWNGRADE).
-- Fix stateid seqid wraparound.
-v5:
-- Fix race with wakeup after clearing NFS_STATE_CHANGE_WAIT
-- Fix CLOSE, DELEGRETURN and LAYOUTRETURN issues with
-  NFS4ERR_OLD_STATEID, which were causing stateid leakage
-- cleanups
-- Fix a typo in nfs_rename...
-v6:
-- Fix a compile issue when CONFIG_NFS_V4_1=n
-v7:
-- Fix a typo in nfs4_refresh_open_stateid (thanks Andrew Elble)
-- Minor cleanups in nfs4_close_done, nfs4_delegreturn_done,
-  nfs4_layoutreturn_done.
-v8:
-- Really fix compile issue when CONFIG_NFS_V4_1=n
-- nfs_inode_find_state_and_recover() should also try to match the
-  open_stateid.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c  | 3 +++
+ fs/nfs/nfs4trace.h | 2 ++
+ 2 files changed, 5 insertions(+)
 
-Trond Myklebust (11):
-  NFSv4: Fix OPEN / CLOSE race
-  NFSv4: Add a tracepoint to document open stateid updates
-  NFSv4: Fix open create exclusive when the server reboots
-  NFS: Fix a typo in nfs_rename()
-  NFSv4: Retry CLOSE and DELEGRETURN on NFS4ERR_OLD_STATEID.
-  NFSv4: Don't try to CLOSE if the stateid 'other' field has changed
-  pNFS: Retry NFS4ERR_OLD_STATEID errors in layoutreturn-on-close
-  NFSv4: Retry NFS4ERR_OLD_STATEID errors in layoutreturn
-  NFSv4: cleanup nfs4_close_done
-  NFSv4: Clean up nfs4_delegreturn_done
-  NFSv4: Check the open stateid when searching for expired state
-
- fs/nfs/delegation.c |  27 +++++
- fs/nfs/delegation.h |   1 +
- fs/nfs/dir.c        |   2 +-
- fs/nfs/nfs4_fs.h    |   7 ++
- fs/nfs/nfs4proc.c   | 293 +++++++++++++++++++++++++++++++++++++---------------
- fs/nfs/nfs4state.c  |  31 +++++-
- fs/nfs/nfs4trace.h  |   2 +
- fs/nfs/pnfs.c       |  18 ++++
- fs/nfs/pnfs.h       |   6 ++
- 9 files changed, 300 insertions(+), 87 deletions(-)
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c0d6b48f9e45..f44eef8c92fe 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1481,6 +1481,7 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+ 		nfs4_stateid_copy(&state->stateid, stateid);
+ 	nfs4_stateid_copy(&state->open_stateid, stateid);
++	trace_nfs4_open_stateid_update(state->inode, stateid, 0);
+ out:
+ 	nfs_state_log_update_open_stateid(state);
+ }
+@@ -1524,6 +1525,7 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
+ 		write_sequnlock(&state->seqlock);
+ 		spin_unlock(&state->owner->so_lock);
+ 		rcu_read_unlock();
++		trace_nfs4_open_stateid_update_wait(state->inode, stateid, 0);
+ 		if (!signal_pending(current)) {
+ 			if (schedule_timeout(5*HZ) == 0)
+ 				status = -EAGAIN;
+@@ -1545,6 +1547,7 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state,
+ 	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+ 		nfs4_stateid_copy(&state->stateid, stateid);
+ 	nfs4_stateid_copy(&state->open_stateid, stateid);
++	trace_nfs4_open_stateid_update(state->inode, stateid, status);
+ 	nfs_state_log_update_open_stateid(state);
+ }
+ 
+diff --git a/fs/nfs/nfs4trace.h b/fs/nfs/nfs4trace.h
+index e7c6275519b0..bf92cfd627fe 100644
+--- a/fs/nfs/nfs4trace.h
++++ b/fs/nfs/nfs4trace.h
+@@ -1066,6 +1066,8 @@ DECLARE_EVENT_CLASS(nfs4_inode_stateid_event,
+ 
+ DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_setattr);
+ DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_delegreturn);
++DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_open_stateid_update);
++DEFINE_NFS4_INODE_STATEID_EVENT(nfs4_open_stateid_update_wait);
+ 
+ DECLARE_EVENT_CLASS(nfs4_getattr_event,
+ 		TP_PROTO(
 -- 
 2.13.6
