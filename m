@@ -1,59 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from discipline.rit.edu ([129.21.6.207]:48271 "HELO
-        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1752790AbdKISlQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Nov 2017 13:41:16 -0500
-From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org
-Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH v2] nfsd: check for use of the closed special stateid
-Date: Thu,  9 Nov 2017 13:41:10 -0500
-Message-Id: <20171109184110.12695-1-aweits@rit.edu>
+Received: from mailhub.sw.ru ([195.214.232.25]:17921 "EHLO relay.sw.ru"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752591AbdKFNX2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 6 Nov 2017 08:23:28 -0500
+From: Vasily Averin <vvs@virtuozzo.com>
+Subject: [PATCH v3 02/21] lockd: added cleanup checks in exit_net hook
+To: netdev@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <4fdc4264-e338-6ee8-a662-7d98b45733a1@virtuozzo.com>
+Message-ID: <a43dae6a-2f3f-cd72-3384-f22b28494eb0@virtuozzo.com>
+Date: Mon, 6 Nov 2017 16:23:24 +0300
+MIME-Version: 1.0
+In-Reply-To: <4fdc4264-e338-6ee8-a662-7d98b45733a1@virtuozzo.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Prevent the use of the closed (invalid) special stateid by clients.
-
-Signed-off-by: Andrew Elble <aweits@rit.edu>
+Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- v2: don't print warning on use of closed special stateid
- 
- fs/nfsd/nfs4state.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+ fs/lockd/svc.c | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5740ad8075c3..9ae75c949290 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -73,6 +73,7 @@
- #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
- #define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
- #define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
-+#define CLOSE_STATEID(stateid)  (!memcmp((stateid), &close_stateid, sizeof(stateid_t)))
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 809cbcc..2a48558 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -690,6 +690,17 @@ static int lockd_init_net(struct net *net)
  
- /* forward declarations */
- static bool check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner);
-@@ -4885,7 +4886,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	struct nfs4_stid *s;
- 	__be32 status = nfserr_bad_stateid;
+ static void lockd_exit_net(struct net *net)
+ {
++	struct lockd_net *ln = net_generic(net, lockd_net_id);
++
++	WARN_ONCE(!list_empty(&ln->lockd_manager.list),
++		  "net %x %s: lockd_manager.list is not empty\n",
++		  net->ns.inum, __func__);
++	WARN_ONCE(!list_empty(&ln->nsm_handles),
++		  "net %x %s: nsm_handles list is not empty\n",
++		  net->ns.inum, __func__);
++	WARN_ONCE(delayed_work_pending(&ln->grace_period_end),
++		  "net %x %s: grace_period_end was not cancelled\n",
++		  net->ns.inum, __func__);
+ }
  
--	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
-+	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid) ||
-+		CLOSE_STATEID(stateid))
- 		return status;
- 	/* Client debugging aid. */
- 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
-@@ -4943,7 +4945,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	else if (typemask & NFS4_DELEG_STID)
- 		typemask |= NFS4_REVOKED_DELEG_STID;
- 
--	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
-+	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid) ||
-+		CLOSE_STATEID(stateid))
- 		return nfserr_bad_stateid;
- 	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
- 	if (status == nfserr_stale_clientid) {
+ static struct pernet_operations lockd_net_ops = {
 -- 
-1.8.3.1
+2.7.4
 
