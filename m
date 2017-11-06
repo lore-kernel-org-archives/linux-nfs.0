@@ -4,176 +4,126 @@ From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Benjamin Coddington <bcodding@redhat.com>,
 	Anna Schumaker <anna.schumaker@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v7 05/10] NFSv4: Retry CLOSE and DELEGRETURN on NFS4ERR_OLD_STATEID.
-Date: Mon,  6 Nov 2017 10:27:21 -0500
-Message-Id: <20171106152726.13755-6-trond.myklebust@primarydata.com>
-In-Reply-To: <20171106152726.13755-5-trond.myklebust@primarydata.com>
+Subject: [PATCH v7 07/10] pNFS: Retry NFS4ERR_OLD_STATEID errors in layoutreturn-on-close
+Date: Mon,  6 Nov 2017 10:27:23 -0500
+Message-Id: <20171106152726.13755-8-trond.myklebust@primarydata.com>
+In-Reply-To: <20171106152726.13755-7-trond.myklebust@primarydata.com>
 References: <20171106152726.13755-1-trond.myklebust@primarydata.com>
  <20171106152726.13755-2-trond.myklebust@primarydata.com>
  <20171106152726.13755-3-trond.myklebust@primarydata.com>
  <20171106152726.13755-4-trond.myklebust@primarydata.com>
  <20171106152726.13755-5-trond.myklebust@primarydata.com>
+ <20171106152726.13755-6-trond.myklebust@primarydata.com>
+ <20171106152726.13755-7-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we're racing with an OPEN, then retry the operation instead of
-declaring it a success.
+If our layoutreturn on close operation returns an NFS4ERR_OLD_STATEID,
+then try to update the stateid and retry. We know that there should
+be no further LAYOUTGET requests being launched.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-[Andrew W Elble: Fix a typo in nfs4_refresh_open_stateid]
 ---
- fs/nfs/delegation.c | 27 +++++++++++++++++++++++++++
- fs/nfs/delegation.h |  1 +
- fs/nfs/nfs4_fs.h    |  2 ++
- fs/nfs/nfs4proc.c   | 21 +++++++++++++++++++--
- fs/nfs/nfs4state.c  | 16 ++++++++++++++++
- 5 files changed, 65 insertions(+), 2 deletions(-)
+ fs/nfs/nfs4proc.c | 18 ++++++++++++++++--
+ fs/nfs/pnfs.c     | 18 ++++++++++++++++++
+ fs/nfs/pnfs.h     |  5 +++++
+ 3 files changed, 39 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 606dd3871f66..ade44ca0c66c 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -1041,6 +1041,33 @@ int nfs_delegations_present(struct nfs_client *clp)
- }
- 
- /**
-+ * nfs4_refresh_delegation_stateid - Update delegation stateid seqid
-+ * @dst: stateid to refresh
-+ * @inode: inode to check
-+ *
-+ * Returns "true" and updates "dst->seqid" * if inode had a delegation
-+ * that matches our delegation stateid. Otherwise "false" is returned.
-+ */
-+bool nfs4_refresh_delegation_stateid(nfs4_stateid *dst, struct inode *inode)
-+{
-+	struct nfs_delegation *delegation;
-+	bool ret = false;
-+	if (!inode)
-+		goto out;
-+
-+	rcu_read_lock();
-+	delegation = rcu_dereference(NFS_I(inode)->delegation);
-+	if (delegation != NULL &&
-+	    nfs4_stateid_match_other(dst, &delegation->stateid)) {
-+		dst->seqid = delegation->stateid.seqid;
-+		return ret;
-+	}
-+	rcu_read_unlock();
-+out:
-+	return ret;
-+}
-+
-+/**
-  * nfs4_copy_delegation_stateid - Copy inode's state ID information
-  * @inode: inode to check
-  * @flags: delegation type requirement
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index ddaf2644cf13..185a09f37a89 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -62,6 +62,7 @@ int nfs4_proc_delegreturn(struct inode *inode, struct rpc_cred *cred, const nfs4
- int nfs4_open_delegation_recall(struct nfs_open_context *ctx, struct nfs4_state *state, const nfs4_stateid *stateid, fmode_t type);
- int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state, const nfs4_stateid *stateid);
- bool nfs4_copy_delegation_stateid(struct inode *inode, fmode_t flags, nfs4_stateid *dst, struct rpc_cred **cred);
-+bool nfs4_refresh_delegation_stateid(nfs4_stateid *dst, struct inode *inode);
- 
- void nfs_mark_delegation_referenced(struct nfs_delegation *delegation);
- int nfs4_have_delegation(struct inode *inode, fmode_t flags);
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index b07124ae5be1..84c3adc6bf96 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -461,6 +461,8 @@ extern int nfs4_set_lock_state(struct nfs4_state *state, struct file_lock *fl);
- extern int nfs4_select_rw_stateid(struct nfs4_state *, fmode_t,
- 		const struct nfs_lock_context *, nfs4_stateid *,
- 		struct rpc_cred **);
-+extern bool nfs4_refresh_open_stateid(nfs4_stateid *dst,
-+		struct nfs4_state *state);
- 
- extern struct nfs_seqid *nfs_alloc_seqid(struct nfs_seqid_counter *counter, gfp_t gfp_mask);
- extern int nfs_wait_on_sequence(struct nfs_seqid *seqid, struct rpc_task *task);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a0bdd1e1e2c1..153e34c5b6e9 100644
+index fe4a855dc965..1bb0e405aa57 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3198,13 +3198,21 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 
- 			}
+@@ -3165,11 +3165,18 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			calldata->arg.lr_args = NULL;
+ 			calldata->res.lr_res = NULL;
  			break;
 +		case -NFS4ERR_OLD_STATEID:
-+			/* Did we race with OPEN? */
-+			if (nfs4_refresh_open_stateid(&calldata->arg.stateid,
-+						state)) {
-+				task->tk_status = 0;
++			if (nfs4_refresh_layout_stateid(&calldata->arg.lr_args->stateid,
++						calldata->inode)) {
++				calldata->res.lr_ret = 0;
 +				rpc_restart_call_prepare(task);
++				return;
 +			}
-+			goto out_release;
++			/* Fallthrough */
  		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_STALE_STATEID:
+ 		case -NFS4ERR_DELEG_REVOKED:
  		case -NFS4ERR_EXPIRED:
- 			nfs4_free_revoked_stateid(server,
- 					&calldata->arg.stateid,
- 					task->tk_msg.rpc_cred);
--		case -NFS4ERR_OLD_STATEID:
-+			/* Fallthrough */
  		case -NFS4ERR_BAD_STATEID:
- 			if (!nfs4_stateid_match(&calldata->arg.stateid,
- 						&state->open_stateid)) {
-@@ -3213,6 +3221,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 			}
- 			if (calldata->arg.fmode == 0)
- 				break;
+-		case -NFS4ERR_OLD_STATEID:
+ 		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
+ 		case -NFS4ERR_WRONG_CRED:
+ 			calldata->arg.lr_args = NULL;
+@@ -5787,11 +5794,18 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
+ 			data->args.lr_args = NULL;
+ 			data->res.lr_res = NULL;
+ 			break;
++		case -NFS4ERR_OLD_STATEID:
++			if (nfs4_refresh_layout_stateid(&data->args.lr_args->stateid,
++						data->inode)) {
++				data->res.lr_ret = 0;
++				rpc_restart_call_prepare(task);
++				return;
++			}
 +			/* Fallthrough */
- 		default:
- 			if (nfs4_async_handle_error(task, server, state, NULL) == -EAGAIN) {
- 				rpc_restart_call_prepare(task);
-@@ -5809,11 +5818,19 @@ static void nfs4_delegreturn_done(struct rpc_task *task, void *calldata)
- 		nfs4_free_revoked_stateid(data->res.server,
- 				data->args.stateid,
- 				task->tk_msg.rpc_cred);
-+		/* Fallthrough */
- 	case -NFS4ERR_BAD_STATEID:
--	case -NFS4ERR_OLD_STATEID:
- 	case -NFS4ERR_STALE_STATEID:
- 		task->tk_status = 0;
- 		break;
-+	case -NFS4ERR_OLD_STATEID:
-+		if (nfs4_refresh_delegation_stateid(&data->stateid, data->inode)) {
-+			task->tk_status = 0;
-+			rpc_restart_call_prepare(task);
-+			return;
-+		}
-+		task->tk_status = 0;
-+		break;
- 	case -NFS4ERR_ACCESS:
- 		if (data->args.bitmask) {
- 			data->args.bitmask = NULL;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index d615b7cdfa8f..ccf3b4e03997 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -986,6 +986,22 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
- 	return ret;
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_DELEG_REVOKED:
+ 		case -NFS4ERR_EXPIRED:
+ 		case -NFS4ERR_BAD_STATEID:
+-		case -NFS4ERR_OLD_STATEID:
+ 		case -NFS4ERR_UNKNOWN_LAYOUTTYPE:
+ 		case -NFS4ERR_WRONG_CRED:
+ 			data->args.lr_args = NULL;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 3bcd669a3152..5e4cd6a7af66 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -355,6 +355,24 @@ pnfs_clear_lseg_state(struct pnfs_layout_segment *lseg,
  }
  
-+bool nfs4_refresh_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+ /*
++ * Update the seqid of a layout stateid
++ */
++bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode)
 +{
-+	bool ret;
-+	int seq;
++	struct pnfs_layout_hdr *lo;
++	bool ret = false;
 +
-+	do {
-+		ret = false;
-+		seq = read_seqbegin(&state->seqlock);
-+		if (nfs4_state_match_open_stateid_other(state, dst)) {
-+			dst->seqid = state->open_stateid.seqid;
-+			ret = true;
-+		}
-+	} while (read_seqretry(&state->seqlock, seq));
++	spin_lock(&inode->i_lock);
++	lo = NFS_I(inode)->layout;
++	if (lo && nfs4_stateid_match_other(dst, &lo->plh_stateid)) {
++		dst->seqid = lo->plh_stateid.seqid;
++		ret = true;
++	}
++	spin_unlock(&inode->i_lock);
 +	return ret;
 +}
 +
- static void nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
++/*
+  * Mark a pnfs_layout_hdr and all associated layout segments as invalid
+  *
+  * In order to continue using the pnfs_layout_hdr, a full recovery
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 87f144f14d1e..40159cb572c7 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -251,6 +251,7 @@ int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
+ 		bool is_recall);
+ int pnfs_destroy_layouts_byclid(struct nfs_client *clp,
+ 		bool is_recall);
++bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode);
+ void pnfs_put_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo,
+ 			     const nfs4_stateid *new,
+@@ -764,6 +765,10 @@ static inline void nfs4_pnfs_v3_ds_connect_unload(void)
  {
- 	const nfs4_stateid *src;
+ }
+ 
++bool nfs4_refresh_layout_stateid(nfs4_stateid *dst, struct inode *inode)
++{
++	return false;
++}
+ #endif /* CONFIG_NFS_V4_1 */
+ 
+ #if IS_ENABLED(CONFIG_NFS_V4_2)
 -- 
 2.13.6
