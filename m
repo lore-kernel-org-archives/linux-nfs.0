@@ -1,64 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:46308 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:46324 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932473AbdKFTf2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 6 Nov 2017 14:35:28 -0500
-Date: Mon, 6 Nov 2017 14:35:28 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3] nfsd: deal with revoked delegations appropriately
-Message-ID: <20171106193528.GA13456@fieldses.org>
-References: <20171103180631.76071-1-aweits@rit.edu>
- <1509734212.21477.16.camel@primarydata.com>
- <20171106151531.GB599@fieldses.org>
- <m2fu9rqpqo.fsf@discipline.rit.edu>
+        id S1753762AbdKFUEu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 6 Nov 2017 15:04:50 -0500
+Date: Mon, 6 Nov 2017 15:04:49 -0500
+To: John Ratliff <john@bluemarble.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS v3 file lock testing
+Message-ID: <20171106200449.GC13456@fieldses.org>
+References: <a34f4eb6-564d-e752-0909-5cb5f9efc796@bluemarble.net>
+ <3a62e72f-d654-59bf-7aea-16928535bdcb@bluemarble.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <m2fu9rqpqo.fsf@discipline.rit.edu>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <3a62e72f-d654-59bf-7aea-16928535bdcb@bluemarble.net>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 06, 2017 at 12:30:23PM -0500, Andrew W Elble wrote:
-> Prior thread (roughly) here: http://www.spinics.net/lists/linux-nfs/msg55260.html
+On Sat, Nov 04, 2017 at 09:50:58PM -0400, John Ratliff wrote:
+> On 11/4/2017 8:22 PM, John Ratliff wrote:
+> >We recently migrated our email storage to a server sharing the
+> >files with NFSv4 rather than NFS v3. We ran into a strange
+> >problem, so we wanted to find out if it was related to the NFS
+> >version or not.
+> >
+> >When I tried to mount the NFS share as an NFSv3 share, I was
+> >unable to do any file locking. I was unable to diagnose the
+> >problem, so I moved the disk back to the old NFS v3 server until I
+> >could do further testing.
+> >
+> >Is there a reason I might not be able to do a file lock on an NFS
+> >client with a server that does NFSv4 and NFSv3?
+> >
+> >The server and client are on the same subnet. There is no firewall
+> >between the two systems. hosts.allow was set to ALL: ALL on both
+> >client and server just to make sure that wasn't the problem.
+> >
+> >Reverting to the old NFSv3 server worked fine. Building another
+> >NFSv3 server didn't exhibit the problem either. So I'm not sure
+> >how to find out what the problem is.
+> >
+> >I used this program to test whether a file could be locked.
+> >
+> >---------------------
+> >#! /usr/bin/perl
+> >
+> >use strict;
+> >use warnings;
+> >
+> >use Fcntl ':flock';
+> >
+> >my $file = '/mnt/nfs3/test-file.lock';
+> >open (my $fh, '>>', $file) or die;
+> >flock($fh, LOCK_EX) or die 'could not lock file';
+> >close($fh);
+> >--------------------
+> >
+> >Normally, it returns immediately. But on the new NFSv4 server, it
+> >times out and dies with 'could not lock file'. I don't know if
+> >that's the proper way to do file locking on NFSv3, but I know my
+> >mail server daemons can't do locking when that program fails, so
+> >it looks like a reasonable test.
+> >
+> >Any advice for how I can diagnose this problem?
+> >
+> >NFSv3 client machine:
+> >   Ubuntu 14.04
+> >   Kernel 3.13.0 64-bit
+> >   nfs-common version 1.2.8
+> >
+> >/etc/fstab:
+> >   192.168.1.103:/mnt/nfs3 /mnt/nfs3 nfs tcp,soft,intr,nfsvers=3 0 0
+> >
+> >NFSv3 server machine (the broken one):
+> >   Debian 9
+> >   Kernel 4.9.0
+> >   nfs-common version 1.3.4
+> >
+> >/etc/exports:
+> >   /srv/nfs4 192.168.1.0/24(rw,sync,fsid=root,crossmnt,no_subtree_check)
+> >   /srv/nfs4/nfs3 192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+> >
+> >NFSv3 server machine (the old functional one):
+> >   Debian 8
+> >   Kernel 3.16.0
+> >   nfs-common 1.2.8
+> >
+> >/etc/exports:
+> >   /mnt/nfs3 192.168.1.0/24(rw,sync,no_subtree_check,no_root_sqaush)
+> >
 > 
-> This is the one patch I'm still carrying from the lost delegation work a
-> while back. Testing showed that there is a path still open to lost
-> delegations via delegreturn.
 > 
-> running with:
-> echo "error != 0" | sudo tee /sys/kernel/debug/tracing/events/nfs4/nfs4_delegreturn_exit/filter
-> 
-> gave us this at one point with an interim version of this patch:
-> 
-> kworker/0:0H-3990  [000] .... 5899655.609266: nfs4_delegreturn_exit: 
->                error=-10087 (DELEG_REVOKED) dev=00:30 fhandle=0xe43d9d3a
-> kworker/0:2H-12665 [000] .... 5900011.719468: nfs4_delegreturn_exit: 
->                error=-10087 (DELEG_REVOKED) dev=00:30 fhandle=0x16e37c0a
-> 
-> The Linux client prior to 26d36301bd653df6481fd38f3e1435a1f15e56d1 would
-> just drop delegations that suffered from a nfserr_bad_stateid during
-> delegreturn. Now it will do test/free if the return error is
-> nfserr_deleg_revoked.
-> 
-> If the client drops a delegation while the server has it on the revoked
-> list, we stay stuck in endless state manager looping for that client.
-> 
-> It might be a good idea for a stable backport of aforementioned commit,
-> or some kind of other workaround? Possibly interpreting
-> nfserr_bad_stateid an analogue of nfserr_deleg_revoked clientside
-> when dealing with a >4.0 mount? (also seems like an error on the putfh
-> might need to be caught as well?)
+> After checking the rpcinfo -p outputs on both servers, I noticed the
+> status process wasn't running on the debian 9 server. It was not
+> enabled. After starting that process, the lock returns successfully.
 
-I'm just looking for a concise explanation of why your patch is
-important.  And I probably haven't dug enough, but I'm still not quite
-following.
-
-If I understand right, the only visible change from your patch will be
-returning DELEG_REVOKED instead of BAD_STATEID to 4.1 clients in some
-cases.  I'm not clear what the result was (for old or new clients)--a
-client left believing it held a delegation when it didn't, or a client
-entering an infinite state manager loop?
-
---b.
+That would do it.  Thanks for the followup.--b.
