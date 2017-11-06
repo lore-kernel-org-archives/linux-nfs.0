@@ -1,98 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:43247 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750750AbdKEUpY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Nov 2017 15:45:24 -0500
-Received: by mail-io0-f193.google.com with SMTP id 134so13718380ioo.0
-        for <linux-nfs@vger.kernel.org>; Sun, 05 Nov 2017 12:45:24 -0800 (PST)
-Subject: [PATCH v2] nfs: Fix ugly referral attributes
-From: Chuck Lever <chuck.lever@oracle.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Date: Sun, 05 Nov 2017 15:45:22 -0500
-Message-ID: <20171105204404.10847.33767.stgit@manet.1015granger.net>
+Received: from discipline.rit.edu ([129.21.6.207]:17451 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1751074AbdKFCqD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Nov 2017 21:46:03 -0500
+From: Andrew W Elble <aweits@rit.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v6 05/10] NFSv4: Retry CLOSE and DELEGRETURN on NFS4ERR_OLD_STATEID.
+References: <20171103165354.15997-1-trond.myklebust@primarydata.com>
+        <20171103165354.15997-2-trond.myklebust@primarydata.com>
+        <20171103165354.15997-3-trond.myklebust@primarydata.com>
+        <20171103165354.15997-4-trond.myklebust@primarydata.com>
+        <20171103165354.15997-5-trond.myklebust@primarydata.com>
+        <20171103165354.15997-6-trond.myklebust@primarydata.com>
+Date: Sun, 05 Nov 2017 21:46:02 -0500
+In-Reply-To: <20171103165354.15997-6-trond.myklebust@primarydata.com> (Trond
+        Myklebust's message of "Fri, 3 Nov 2017 12:53:49 -0400")
+Message-ID: <m2k1z4qg45.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Before traversing a referral and performing a mount, the mounted-on
-directory looks strange:
 
-dr-xr-xr-x. 2 4294967294 4294967294 0 Dec 31  1969 dir.0
+I've been testing these a bit, I think this was causing an issue...
 
-nfs4_get_referral is wiping out any cached attributes with what was
-returned via GETATTR(fs_locations), but the bit mask for that
-operation does not request any file attributes.
+Trond Myklebust <trond.myklebust@primarydata.com> writes:
 
-Retrieve owner and timestamp information so that the memcpy in
-nfs4_get_referral fills in more attributes.
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index d615b7cdfa8f..752b18e88266 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -986,6 +986,22 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+>  	return ret;
+>  }
+>  
+> +bool nfs4_refresh_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+> +{
+> +	bool ret;
+> +	int seq;
+> +
+> +	do {
+> +		ret = false;
+> +		seq = read_seqbegin(&state->seqlock);
+> +		if (nfs4_state_match_open_stateid_other(state, dst)) {
+> +			dst->seqid = state->stateid.seqid;
 
-Changes since v1:
-- Don't request attributes that the client unconditionally replaces
-- Request only MOUNTED_ON_FILEID or FILEID attribute, not both
-- encode_fs_locations() doesn't use the third bitmask word
+You mean:
 
-Fixes: 6b97fd3da1ea ("NFSv4: Follow a referral")
-Suggested-by: Pradeep Thomas <pradeepthomas@gmail.com>
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: stable@vger.kernel.org
----
- fs/nfs/nfs4proc.c |   18 ++++++++----------
- 1 file changed, 8 insertions(+), 10 deletions(-)
+                        dst->seqid = state->open_stateid.seqid;
 
-I could send this as an incremental, but that just seems to piss
-off distributors, who will just squash them all together anyway.
+?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6c61e2b..2662879 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -254,15 +254,12 @@ static int nfs4_map_errors(int err)
- };
- 
- const u32 nfs4_fs_locations_bitmap[3] = {
--	FATTR4_WORD0_TYPE
--	| FATTR4_WORD0_CHANGE
-+	FATTR4_WORD0_CHANGE
- 	| FATTR4_WORD0_SIZE
- 	| FATTR4_WORD0_FSID
- 	| FATTR4_WORD0_FILEID
- 	| FATTR4_WORD0_FS_LOCATIONS,
--	FATTR4_WORD1_MODE
--	| FATTR4_WORD1_NUMLINKS
--	| FATTR4_WORD1_OWNER
-+	FATTR4_WORD1_OWNER
- 	| FATTR4_WORD1_OWNER_GROUP
- 	| FATTR4_WORD1_RAWDEV
- 	| FATTR4_WORD1_SPACE_USED
-@@ -6763,9 +6760,7 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 				   struct page *page)
- {
- 	struct nfs_server *server = NFS_SERVER(dir);
--	u32 bitmask[3] = {
--		[0] = FATTR4_WORD0_FSID | FATTR4_WORD0_FS_LOCATIONS,
--	};
-+	u32 bitmask[3];
- 	struct nfs4_fs_locations_arg args = {
- 		.dir_fh = NFS_FH(dir),
- 		.name = name,
-@@ -6784,12 +6779,15 @@ static int _nfs4_proc_fs_locations(struct rpc_clnt *client, struct inode *dir,
- 
- 	dprintk("%s: start\n", __func__);
- 
-+	bitmask[0] = nfs4_fattr_bitmap[0] | FATTR4_WORD0_FS_LOCATIONS;
-+	bitmask[1] = nfs4_fattr_bitmap[1];
-+
- 	/* Ask for the fileid of the absent filesystem if mounted_on_fileid
- 	 * is not supported */
- 	if (NFS_SERVER(dir)->attr_bitmask[1] & FATTR4_WORD1_MOUNTED_ON_FILEID)
--		bitmask[1] |= FATTR4_WORD1_MOUNTED_ON_FILEID;
-+		bitmask[0] &= ~FATTR4_WORD0_FILEID;
- 	else
--		bitmask[0] |= FATTR4_WORD0_FILEID;
-+		bitmask[1] &= ~FATTR4_WORD1_MOUNTED_ON_FILEID;
- 
- 	nfs_fattr_init(&fs_locations->fattr);
- 	fs_locations->server = server;
+> +			ret = true;
+> +		}
+> +	} while (read_seqretry(&state->seqlock, seq));
+> +	return ret;
+> +}
+> +
+>  static void nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+>  {
+>  	const nfs4_stateid *src;
 
+Thanks,
+
+Andy
+
+-- 
+Andrew W. Elble
+aweits@discipline.rit.edu
+Infrastructure Engineer, Communications Technical Lead
+Rochester Institute of Technology
+PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
