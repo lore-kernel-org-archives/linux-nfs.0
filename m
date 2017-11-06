@@ -1,33 +1,65 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>, bcodding redhat
-	<bcodding@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 07/10] pNFS: Retry NFS4ERR_OLD_STATEID errors in
- layoutreturn-on-close
-Date: Mon, 6 Nov 2017 20:26:09 +0000
-Message-ID: <1509999967.53077.1.camel@primarydata.com>
-References: <20171106152726.13755-1-trond.myklebust@primarydata.com>
-	 <20171106152726.13755-2-trond.myklebust@primarydata.com>
-	 <20171106152726.13755-3-trond.myklebust@primarydata.com>
-	 <20171106152726.13755-4-trond.myklebust@primarydata.com>
-	 <20171106152726.13755-5-trond.myklebust@primarydata.com>
-	 <20171106152726.13755-6-trond.myklebust@primarydata.com>
-	 <20171106152726.13755-7-trond.myklebust@primarydata.com>
-	 <20171106152726.13755-8-trond.myklebust@primarydata.com>
-	 <056582c3-b9ef-eadf-b433-db86779b1c56@Netapp.com>
-In-Reply-To: <056582c3-b9ef-eadf-b433-db86779b1c56@Netapp.com>
+Return-Path: <trondmy@gmail.com>
+Sender: Trond Myklebust <trondmy@gmail.com>
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Benjamin Coddington <bcodding@redhat.com>,
+	Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v8 00/11] Fix OPEN/CLOSE races
+Date: Mon,  6 Nov 2017 15:28:00 -0500
+Message-Id: <20171106202811.70202-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTExLTA2IGF0IDE0OjI3IC0wNTAwLCBBbm5hIFNjaHVtYWtlciB3cm90ZToN
-Cj4gSGkgVHJvbmQsDQo+IA0KPiBPbiAxMS8wNi8yMDE3IDEwOjI3IEFNLCBUcm9uZCBNeWtsZWJ1
-c3Qgd3JvdGU6DQo+ID4gK2Jvb2wgbmZzNF9yZWZyZXNoX2xheW91dF9zdGF0ZWlkKG5mczRfc3Rh
-dGVpZCAqZHN0LCBzdHJ1Y3QgaW5vZGUNCj4gPiAqaW5vZGUpDQo+ID4gK3sNCj4gPiArCXJldHVy
-biBmYWxzZTsNCj4gPiArfQ0KPiANCj4gU2hvdWxkbid0IHRoaXMgYmUgc3RhdGljICYgaW5saW5l
-PyAgSSdtIHNlZWluZyBhIGJ1bmNoIG9mICJtdWx0aXBsZQ0KPiBkZWZpbml0aW9ucyIgZXJyb3Jz
-IHdpdGggdjQuMSBkaXNhYmxlZC4NCj4gDQoNCkkgY2xlYXJseSBuZWVkIGEgdmFjYXRpb24uLi4g
-4pi6DQpGaW5hbCByZXNlbmQsIEkgaG9wZS4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGlu
-dXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHBy
-aW1hcnlkYXRhLmNvbQ0K
+v2:
+- Fix a sleep-while-atomic issue
+- Clean up.    
+- Add a tracepoint to help document wait incidents.
+v3:
+- Fix a state update issue
+v4:
+- Fix a race due to setting the state->flags before waiting on another
+  compound (can cause issues if the other compound has an OPEN_DOWNGRADE).
+- Fix stateid seqid wraparound.
+v5:
+- Fix race with wakeup after clearing NFS_STATE_CHANGE_WAIT
+- Fix CLOSE, DELEGRETURN and LAYOUTRETURN issues with
+  NFS4ERR_OLD_STATEID, which were causing stateid leakage
+- cleanups
+- Fix a typo in nfs_rename...
+v6:
+- Fix a compile issue when CONFIG_NFS_V4_1=n
+v7:
+- Fix a typo in nfs4_refresh_open_stateid (thanks Andrew Elble)
+- Minor cleanups in nfs4_close_done, nfs4_delegreturn_done,
+  nfs4_layoutreturn_done.
+v8:
+- Really fix compile issue when CONFIG_NFS_V4_1=n
+- nfs_inode_find_state_and_recover() should also try to match the
+  open_stateid.
+
+Trond Myklebust (11):
+  NFSv4: Fix OPEN / CLOSE race
+  NFSv4: Add a tracepoint to document open stateid updates
+  NFSv4: Fix open create exclusive when the server reboots
+  NFS: Fix a typo in nfs_rename()
+  NFSv4: Retry CLOSE and DELEGRETURN on NFS4ERR_OLD_STATEID.
+  NFSv4: Don't try to CLOSE if the stateid 'other' field has changed
+  pNFS: Retry NFS4ERR_OLD_STATEID errors in layoutreturn-on-close
+  NFSv4: Retry NFS4ERR_OLD_STATEID errors in layoutreturn
+  NFSv4: cleanup nfs4_close_done
+  NFSv4: Clean up nfs4_delegreturn_done
+  NFSv4: Check the open stateid when searching for expired state
+
+ fs/nfs/delegation.c |  27 +++++
+ fs/nfs/delegation.h |   1 +
+ fs/nfs/dir.c        |   2 +-
+ fs/nfs/nfs4_fs.h    |   7 ++
+ fs/nfs/nfs4proc.c   | 293 +++++++++++++++++++++++++++++++++++++---------------
+ fs/nfs/nfs4state.c  |  31 +++++-
+ fs/nfs/nfs4trace.h  |   2 +
+ fs/nfs/pnfs.c       |  18 ++++
+ fs/nfs/pnfs.h       |   6 ++
+ 9 files changed, 300 insertions(+), 87 deletions(-)
+
+-- 
+2.13.6
