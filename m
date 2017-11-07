@@ -1,77 +1,51 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aweits@rit.edu" <aweits@rit.edu>
-CC: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
-	<anna.schumaker@netapp.com>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v8 00/11] Fix OPEN/CLOSE races
-Date: Tue, 7 Nov 2017 19:00:49 +0000
-Message-ID: <1510081247.7834.9.camel@primarydata.com>
-References: <20171106202811.70202-1-trond.myklebust@primarydata.com>
-	 <m2vainowk1.fsf@discipline.rit.edu>
-	 <1510008607.3861.1.camel@primarydata.com>
-	 <m2y3ninhxs.fsf@discipline.rit.edu>
-	 <1510079753.7834.7.camel@primarydata.com>
-In-Reply-To: <1510079753.7834.7.camel@primarydata.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:48626 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932761AbdKGUGQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Nov 2017 15:06:16 -0500
+Date: Tue, 7 Nov 2017 15:06:16 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/7] Tighten up locking around stateids in knfsd
+Message-ID: <20171107200616.GE24262@fieldses.org>
+References: <20171103120016.6200-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171103120016.6200-1-trond.myklebust@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTExLTA3IGF0IDE4OjM1ICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IA0KPiBBaCwgSSBzZWUuIENhbiB3ZSBpbiB0aGF0IGNhc2UgcGxlYXNlIHJhdGhlciBkbyB0
-aGUgZm9sbG93aW5nPw0KPiANCj4gDQoNCi4uLmFuZCB0aGVuIGZvbGxvdyB1cCB3aXRoOg0KDQo4
-PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tDQpGcm9tIDU0NWUyZmRkYjcyMjY4ZjVjNTlhMzk4NjE2OWFmOTZhNDBhNmFhYjAgTW9u
-IFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xl
-YnVzdEBwcmltYXJ5ZGF0YS5jb20+DQpEYXRlOiBUdWUsIDcgTm92IDIwMTcgMTI6Mzk6NDQgLTA1
-MDANClN1YmplY3Q6IFtQQVRDSCAyLzJdIE5GU3Y0OiBSZXBsYWNlIGNsb3NlZCBzdGF0ZWlkcyB3
-aXRoIHRoZSAiaW52YWxpZCBzcGVjaWFsDQogc3RhdGVpZCINCg0KV2hlbiBkZWNvZGluZyBhIENM
-T1NFLCByZXBsYWNlIHRoZSBzdGF0ZWlkIHJldHVybmVkIGJ5IHRoZSBzZXJ2ZXINCndpdGggdGhl
-ICJpbnZhbGlkIHNwZWNpYWwgc3RhdGVpZCIgZGVzY3JpYmVkIGluIFJGQzU2NjEsIFNlY3Rpb24g
-OC4yLjMuDQoNCkluIG5mc19zZXRfb3Blbl9zdGF0ZWlkX2xvY2tlZCwgaWdub3JlIHN0YXRlaWRz
-IGZyb20gY2xvc2VkIHN0YXRlLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRy
-b25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQotLS0NCiBmcy9uZnMvbmZzNF9mcy5oICAg
-fCAgMSArDQogZnMvbmZzL25mczRzdGF0ZS5jIHwgIDggKysrKysrKysNCiBmcy9uZnMvbmZzNHhk
-ci5jICAgfCAxMiArKysrKysrKysrKy0NCiAzIGZpbGVzIGNoYW5nZWQsIDIwIGluc2VydGlvbnMo
-KyksIDEgZGVsZXRpb24oLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0X2ZzLmggYi9mcy9u
-ZnMvbmZzNF9mcy5oDQppbmRleCBjZGFiNmU4ZGJhY2MuLjNlZGY4MGQ2ZDYzZSAxMDA2NDQNCi0t
-LSBhL2ZzL25mcy9uZnM0X2ZzLmgNCisrKyBiL2ZzL25mcy9uZnM0X2ZzLmgNCkBAIC00ODIsNiAr
-NDgyLDcgQEAgZXh0ZXJuIGludCBuZnM0X3NlcXVlbmNlX2RvbmUoc3RydWN0IHJwY190YXNrICp0
-YXNrLA0KIGV4dGVybiB2b2lkIG5mczRfZnJlZV9sb2NrX3N0YXRlKHN0cnVjdCBuZnNfc2VydmVy
-ICpzZXJ2ZXIsIHN0cnVjdCBuZnM0X2xvY2tfc3RhdGUgKmxzcCk7DQogDQogZXh0ZXJuIGNvbnN0
-IG5mczRfc3RhdGVpZCB6ZXJvX3N0YXRlaWQ7DQorZXh0ZXJuIGNvbnN0IG5mczRfc3RhdGVpZCBp
-bnZhbGlkX3N0YXRlaWQ7DQogDQogLyogbmZzNHN1cGVyLmMgKi8NCiBzdHJ1Y3QgbmZzX21vdW50
-X2luZm87DQpkaWZmIC0tZ2l0IGEvZnMvbmZzL25mczRzdGF0ZS5jIGIvZnMvbmZzL25mczRzdGF0
-ZS5jDQppbmRleCA0NDE1ZWRhMmVkMzUuLjk4MDQ2MmQ1NzdjYSAxMDA2NDQNCi0tLSBhL2ZzL25m
-cy9uZnM0c3RhdGUuYw0KKysrIGIvZnMvbmZzL25mczRzdGF0ZS5jDQpAQCAtNjksNiArNjksMTQg
-QEAgY29uc3QgbmZzNF9zdGF0ZWlkIHplcm9fc3RhdGVpZCA9IHsNCiAJeyAuZGF0YSA9IHsgMCB9
-IH0sDQogCS50eXBlID0gTkZTNF9TUEVDSUFMX1NUQVRFSURfVFlQRSwNCiB9Ow0KK2NvbnN0IG5m
-czRfc3RhdGVpZCBpbnZhbGlkX3N0YXRlaWQgPSB7DQorCXsNCisJCS5zZXFpZCA9IGNwdV90b19i
-ZTMyKDB4ZmZmZmZmZmZVKSwNCisJCS5vdGhlciA9IHsgMCB9LA0KKwl9LA0KKwkudHlwZSA9IE5G
-UzRfSU5WQUxJRF9TVEFURUlEX1RZUEUsDQorfTsNCisNCiBzdGF0aWMgREVGSU5FX01VVEVYKG5m
-c19jbGlkX2luaXRfbXV0ZXgpOw0KIA0KIGludCBuZnM0X2luaXRfY2xpZW50aWQoc3RydWN0IG5m
-c19jbGllbnQgKmNscCwgc3RydWN0IHJwY19jcmVkICpjcmVkKQ0KZGlmZiAtLWdpdCBhL2ZzL25m
-cy9uZnM0eGRyLmMgYi9mcy9uZnMvbmZzNHhkci5jDQppbmRleCAxNGVkOTc5MWVjOWMuLjc3YzY3
-MjllNTdmMCAxMDA2NDQNCi0tLSBhL2ZzL25mcy9uZnM0eGRyLmMNCisrKyBiL2ZzL25mcy9uZnM0
-eGRyLmMNCkBAIC00Mzg1LDYgKzQzODUsMTQgQEAgc3RhdGljIGludCBkZWNvZGVfZGVsZWdhdGlv
-bl9zdGF0ZWlkKHN0cnVjdCB4ZHJfc3RyZWFtICp4ZHIsIG5mczRfc3RhdGVpZCAqc3RhdGUNCiAJ
-cmV0dXJuIGRlY29kZV9zdGF0ZWlkKHhkciwgc3RhdGVpZCk7DQogfQ0KIA0KK3N0YXRpYyBpbnQg
-ZGVjb2RlX2ludmFsaWRfc3RhdGVpZChzdHJ1Y3QgeGRyX3N0cmVhbSAqeGRyLCBuZnM0X3N0YXRl
-aWQgKnN0YXRlaWQpDQorew0KKwluZnM0X3N0YXRlaWQgZHVtbXk7DQorDQorCW5mczRfc3RhdGVp
-ZF9jb3B5KHN0YXRlaWQsICZpbnZhbGlkX3N0YXRlaWQpOw0KKwlyZXR1cm4gZGVjb2RlX3N0YXRl
-aWQoeGRyLCAmZHVtbXkpOw0KK30NCisNCiBzdGF0aWMgaW50IGRlY29kZV9jbG9zZShzdHJ1Y3Qg
-eGRyX3N0cmVhbSAqeGRyLCBzdHJ1Y3QgbmZzX2Nsb3NlcmVzICpyZXMpDQogew0KIAlpbnQgc3Rh
-dHVzOw0KQEAgLTQzOTMsNyArNDQwMSw3IEBAIHN0YXRpYyBpbnQgZGVjb2RlX2Nsb3NlKHN0cnVj
-dCB4ZHJfc3RyZWFtICp4ZHIsIHN0cnVjdCBuZnNfY2xvc2VyZXMgKnJlcykNCiAJaWYgKHN0YXR1
-cyAhPSAtRUlPKQ0KIAkJbmZzX2luY3JlbWVudF9vcGVuX3NlcWlkKHN0YXR1cywgcmVzLT5zZXFp
-ZCk7DQogCWlmICghc3RhdHVzKQ0KLQkJc3RhdHVzID0gZGVjb2RlX29wZW5fc3RhdGVpZCh4ZHIs
-ICZyZXMtPnN0YXRlaWQpOw0KKwkJc3RhdHVzID0gZGVjb2RlX2ludmFsaWRfc3RhdGVpZCh4ZHIs
-ICZyZXMtPnN0YXRlaWQpOw0KIAlyZXR1cm4gc3RhdHVzOw0KIH0NCiANCkBAIC02MTA4LDYgKzYx
-MTYsOCBAQCBzdGF0aWMgaW50IGRlY29kZV9sYXlvdXRyZXR1cm4oc3RydWN0IHhkcl9zdHJlYW0g
-KnhkciwNCiAJcmVzLT5scnNfcHJlc2VudCA9IGJlMzJfdG9fY3B1cChwKTsNCiAJaWYgKHJlcy0+
-bHJzX3ByZXNlbnQpDQogCQlzdGF0dXMgPSBkZWNvZGVfbGF5b3V0X3N0YXRlaWQoeGRyLCAmcmVz
-LT5zdGF0ZWlkKTsNCisJZWxzZQ0KKwkJbmZzNF9zdGF0ZWlkX2NvcHkoJnJlcy0+c3RhdGVpZCwg
-JmludmFsaWRfc3RhdGVpZCk7DQogCXJldHVybiBzdGF0dXM7DQogb3V0X292ZXJmbG93Og0KIAlw
-cmludF9vdmVyZmxvd19tc2coX19mdW5jX18sIHhkcik7DQotLSANCjIuMTMuNg0KDQotLSANClRy
-b25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0K
-dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+What tree are these patches against?
+
+--b.
+
+On Fri, Nov 03, 2017 at 08:00:09AM -0400, Trond Myklebust wrote:
+> This patchset aims to tighten up the locking rules around stateids to
+> ensure that knfsd does not reuse stateids that have already been closed
+> or invalidated. The aim is to ensure we enforce the RFC5661 and RFC7530
+> rules concerning stateid initialisation and updates.
+> 
+> v2:
+> - Add a fix for when nfs4_get_vfs_file() fails in nfsd4_process_open2()
+> - Add a fix for byte range lock creation
+> 
+> Note that byte range locks are not completely fixed. The remaining task
+> of ensuring that locks don't conflict with CLOSE has been left as an
+> exercise for the reviewer.
+> 
+> Trond Myklebust (7):
+>   nfsd: Fix stateid races between OPEN and CLOSE
+>   nfsd: Fix another OPEN stateid race
+>   nfsd: CLOSE SHOULD return the invalid special stateid for NFSv4.x
+>     (x>0)
+>   nfsd: Ensure we don't recognise lock stateids after freeing them
+>   nfsd: Fix race in lock stateid creation
+>   nfsd: Ensure we check stateid validity in the seqid operation checks
+>   nfsd: Fix races with check_stateid_generation()
+> 
+>  fs/nfsd/nfs4state.c | 254 ++++++++++++++++++++++++++++++++++------------------
+>  1 file changed, 166 insertions(+), 88 deletions(-)
+> 
+> -- 
+> 2.13.6
