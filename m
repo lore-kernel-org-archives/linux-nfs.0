@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:54186 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56320 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934244AbdKGNbV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Nov 2017 08:31:21 -0500
-Date: Tue, 7 Nov 2017 13:31:11 +0000
+        id S934244AbdKGNcf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Nov 2017 08:32:35 -0500
+Date: Tue, 7 Nov 2017 13:32:27 +0000
 From: Stefan Hajnoczi <stefanha@redhat.com>
 To: Jeff Layton <jlayton@redhat.com>
 Cc: linux-nfs@vger.kernel.org, Abbas Naderi <abiusx@google.com>,
@@ -11,63 +11,55 @@ Cc: linux-nfs@vger.kernel.org, Abbas Naderi <abiusx@google.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v3 08/14] SUNRPC: add AF_VSOCK support to svc_xprt.c
-Message-ID: <20171107133111.GK6809@stefanha-x1.localdomain>
+Subject: Re: [PATCH v3 05/14] VSOCK: add tcp_read_sock()-like
+ vsock_read_sock() function
+Message-ID: <20171107133227.GL6809@stefanha-x1.localdomain>
 References: <20170630132352.32133-1-stefanha@redhat.com>
- <20170630132352.32133-9-stefanha@redhat.com>
- <1509459038.4553.26.camel@redhat.com>
+ <20170630132352.32133-6-stefanha@redhat.com>
+ <1509456912.4553.12.camel@redhat.com>
 MIME-Version: 1.0
 Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="vbzKE9fGfpHIBC6T"
-In-Reply-To: <1509459038.4553.26.camel@redhat.com>
+        protocol="application/pgp-signature"; boundary="c8JyeaiReRNoiMDS"
+In-Reply-To: <1509456912.4553.12.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
---vbzKE9fGfpHIBC6T
+--c8JyeaiReRNoiMDS
 Content-Type: text/plain; charset=us-ascii
 Content-Disposition: inline
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, Oct 31, 2017 at 10:10:38AM -0400, Jeff Layton wrote:
+On Tue, Oct 31, 2017 at 09:35:12AM -0400, Jeff Layton wrote:
 > On Fri, 2017-06-30 at 14:23 +0100, Stefan Hajnoczi wrote:
-> > @@ -595,6 +609,10 @@ int svc_port_is_privileged(struct sockaddr *sin)
-> >  	case AF_INET6:
-> >  		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port)
-> >  			< PROT_SOCK;
-> > +	case AF_VSOCK:
-> > +		return ((struct sockaddr_vm *)sin)->svm_port <=3D
-> > +			LAST_RESERVED_PORT;
-> > +
-> >  	default:
-> >  		return 0;
-> >  	}
+> > @@ -2061,6 +2068,7 @@ static const struct vsock_transport vmci_transpor=
+t =3D {
+> >  	.stream_rcvhiwat =3D vmci_transport_stream_rcvhiwat,
+> >  	.stream_is_active =3D vmci_transport_stream_is_active,
+> >  	.stream_allow =3D vmci_transport_stream_allow,
+> > +	.stream_read_sock =3D vmci_transport_stream_read_sock,
+> >  	.notify_poll_in =3D vmci_transport_notify_poll_in,
+> >  	.notify_poll_out =3D vmci_transport_notify_poll_out,
+> >  	.notify_recv_init =3D vmci_transport_notify_recv_init,
 >=20
-> Does vsock even have the concept of a privileged port? I would imagine
-> that root in a guest VM would carry no particular significance from an
-> export security standpoint
->=20
-> Since you're defining a new transport here, it might be nice write the
-> RFCs to avoid that distinction, if possible.
->=20
-> Note that RDMA just has svc_port_is_privileged always return 1.
+> Do we need this for the hyperv driver as well?
 
-AF_VSOCK has the same 0-1023 privileged port range as TCP.
+Yes, thank you for pointing it out.  Will add in the next revision.
 
 Stefan
 
---vbzKE9fGfpHIBC6T
+--c8JyeaiReRNoiMDS
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQEcBAEBAgAGBQJaAbWfAAoJEJykq7OBq3PI5dEH/0j3+GmPc4MgCdDHNMCpzdO1
-lVTPAL39xHcXScZ4hLyu+y2NkmurVnkp1hy2EzjDYxYD3BM0hd97YjaGsTM1AO8d
-GWmLrhLSBX2q/VxVwodTLPinG7n11eOFrQ83BwpeaJA3i+4OlVE+KkHhGZcHHSXW
-WLBQJ0EZN8LW5bgfF6e8eYEWjOh0P+5/962ykXRucmcQ3zrUFM/mHXdcWaktIbtY
-N/IlLc3eCfRtzuNc5Ij+uvauOFi9MVJogCmRKMXvMI251vUeJXoiWFBsObh7qKoR
-aUgMzXNJOfVNwikhkOmCsjkhgDrtSW2VHFavtKucpBARj6gZcgR1TzYhakL/BXc=
-=38/A
+iQEcBAEBAgAGBQJaAbXrAAoJEJykq7OBq3PIAZkH/3dDM+NHu4VWlzCoDdD+FRDw
+436vprGH7SmbhDYGeQl0S3sTeuunkq2ytyDl7RpDRYDr1lvFWqOVjW2l4dYzXMaD
+V+ILwDtN/NnPxyTL04Q0MoEESbwZ4Xp6AaDYhveMGgHO0WI0RJz77DT4YBnkY37i
+86S/ZUY/1sKepijzsIAXy4eyJxiQij9Ui5dIV5jFav8bat2oJLQb0WKrh9ho+LH6
+8R71ijgR7Ox/rN0GS5HA8Q14+F/YB9O4zttjOIFtKUoInYozr7I1F378tfGbWUnI
+fFxHIX4482au6UoZf0YYd+RsjRfyX9PpnWouf3OFB45kTDOAJ8zPyscmYsI/1d0=
+=yWT4
 -----END PGP SIGNATURE-----
 
---vbzKE9fGfpHIBC6T--
+--c8JyeaiReRNoiMDS--
