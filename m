@@ -1,67 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:27889 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751405AbdKGPaU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2017 10:30:20 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: fix a deadlock in nfs v4.1 client initialization
-Date: Tue, 7 Nov 2017 15:30:15 +0000
-Message-ID: <1510068613.3576.0.camel@primarydata.com>
-References: <20171107142927.9468-1-smayhew@redhat.com>
-In-Reply-To: <20171107142927.9468-1-smayhew@redhat.com>
+Received: from mout.web.de ([212.227.15.14]:54877 "EHLO mout.web.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751580AbdKGQxT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Nov 2017 11:53:19 -0500
+To: linux-nfs@vger.kernel.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: LKML <linux-kernel@vger.kernel.org>,
+        kernel-janitors@vger.kernel.org
+From: SF Markus Elfring <elfring@users.sourceforge.net>
+Subject: [PATCH RFC v1] nfs/write: Use common error handling code in
+ nfs_lock_and_join_requests()
+Message-ID: <7f072f78-eef4-6d87-d233-cee71dac5a32@users.sourceforge.net>
+Date: Tue, 7 Nov 2017 17:53:10 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTExLTA3IGF0IDA5OjI5IC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IFRoZSBmb2xsb3dpbmcgZGVhZGxvY2sgY2FuIG9jY3VyIGJldHdlZW4gYSBwcm9jZXNzIHdhaXRp
-bmcgZm9yIGENCj4gY2xpZW50DQo+IHRvIGluaXRpYWxpemUgaW4gd2hpbGUgd2Fsa2luZyB0aGUg
-Y2xpZW50IGxpc3QgYW5kIGFub3RoZXIgcHJvY2Vzcw0KPiB3YWl0aW5nIGZvciB0aGUgbmZzX2Ns
-aWRfaW5pdF9tdXRleCBzbyBpdCBjYW4gaW5pdGlhbGl6ZSB0aGF0IGNsaWVudDoNCj4gDQo+IFBy
-b2Nlc3MgMSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQcm9jZXNzIDINCj4gLS0tLS0t
-LS0tICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0tLS0tLS0tLQ0KPiBzcGluX2xvY2so
-Jm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiBsaXN0X2FkZF90YWlsKCZDTElFTlRBLT5jbF9zaGFy
-ZV9saW5rLA0KPiAgICAgICAgICZubi0+bmZzX2NsaWVudF9saXN0KTsNCj4gc3Bpbl91bmxvY2so
-Jm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgc3Bpbl9sb2NrKCZubi0NCj4gPm5mc19jbGllbnRfbG9jayk7DQo+ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBsaXN0X2FkZF90YWlsKCZDTElFTlRCLQ0K
-PiA+Y2xfc2hhcmVfbGluaywNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgJm5uLQ0KPiA+bmZzX2NsaWVudF9saXN0KTsNCj4gICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIHNwaW5fdW5sb2NrKCZubi0NCj4gPm5mc19jbGllbnRf
-bG9jayk7DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtdXRleF9s
-b2NrKCZuZnNfY2xpZF9pbml0X211dA0KPiBleCk7DQo+ICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICBuZnM0MV93YWxrX2NsaWVudF9saXN0KGNscCwNCj4gcmVzdWx0LCBj
-cmVkKTsNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mc193YWl0
-X2NsaWVudF9pbml0X2NvbXBsZXRlDQo+IChDTElFTlRBKTsNCj4gKHdhaXRpbmcgZm9yIG5mc19j
-bGlkX2luaXRfbXV0ZXgpDQo+IA0KPiBNYWtlIHN1cmUgbmZzX21hdGNoX2NsaWVudCgpIG9ubHkg
-ZXZhbHVhdGVzIGNsaWVudHMgdGhhdCBoYXZlDQo+IGNvbXBsZXRlZA0KPiBpbml0aWFsaXphdGlv
-biBpbiBvcmRlciB0byBwcmV2ZW50IHRoYXQgZGVhZGxvY2suDQo+IA0KPiBTaWduZWQtb2ZmLWJ5
-OiBTY290dCBNYXloZXcgPHNtYXloZXdAcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvY2xp
-ZW50LmMgfCA5ICsrKysrKysrKw0KPiAgMSBmaWxlIGNoYW5nZWQsIDkgaW5zZXJ0aW9ucygrKQ0K
-PiANCj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KPiBp
-bmRleCAyMjg4MGVmLi44YjA5Mzk5NCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2NsaWVudC5jDQo+
-ICsrKyBiL2ZzL25mcy9jbGllbnQuYw0KPiBAQCAtMjkxLDEyICsyOTEsMjEgQEAgc3RhdGljIHN0
-cnVjdCBuZnNfY2xpZW50DQo+ICpuZnNfbWF0Y2hfY2xpZW50KGNvbnN0IHN0cnVjdCBuZnNfY2xp
-ZW50X2luaXRkYXRhICpkYXQNCj4gIAljb25zdCBzdHJ1Y3Qgc29ja2FkZHIgKnNhcCA9IGRhdGEt
-PmFkZHI7DQo+ICAJc3RydWN0IG5mc19uZXQgKm5uID0gbmV0X2dlbmVyaWMoZGF0YS0+bmV0LCBu
-ZnNfbmV0X2lkKTsNCj4gIA0KPiArYWdhaW46DQo+ICAJbGlzdF9mb3JfZWFjaF9lbnRyeShjbHAs
-ICZubi0+bmZzX2NsaWVudF9saXN0LA0KPiBjbF9zaGFyZV9saW5rKSB7DQo+ICAJICAgICAgICBj
-b25zdCBzdHJ1Y3Qgc29ja2FkZHIgKmNsYXAgPSAoc3RydWN0IHNvY2thZGRyDQo+ICopJmNscC0+
-Y2xfYWRkcjsNCj4gIAkJLyogRG9uJ3QgbWF0Y2ggY2xpZW50cyB0aGF0IGZhaWxlZCB0byBpbml0
-aWFsaXNlDQo+IHByb3Blcmx5ICovDQo+ICAJCWlmIChjbHAtPmNsX2NvbnNfc3RhdGUgPCAwKQ0K
-PiAgCQkJY29udGludWU7DQo+ICANCj4gKwkJaWYgKGNscC0+Y2xfbWlub3J2ZXJzaW9uID4gMCAm
-Jg0KPiArCQkJCWNscC0+Y2xfY29uc19zdGF0ZSA+IE5GU19DU19SRUFEWSkgew0KPiArCQkJc3Bp
-bl91bmxvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiArCQkJbmZzX3dhaXRfY2xpZW50X2lu
-aXRfY29tcGxldGUoY2xwKTsNCj4gKwkJCXNwaW5fbG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7
-DQo+ICsJCQlnb3RvIGFnYWluOw0KPiArCQl9DQo+ICsNCj4gIAkJLyogRGlmZmVyZW50IE5GUyB2
-ZXJzaW9ucyBjYW5ub3Qgc2hhcmUgdGhlIHNhbWUNCj4gbmZzX2NsaWVudCAqLw0KPiAgCQlpZiAo
-Y2xwLT5ycGNfb3BzICE9IGRhdGEtPm5mc19tb2QtPnJwY19vcHMpDQo+ICAJCQljb250aW51ZTsN
-Cg0KV2h5IHRoZSB0ZXN0IGZvciBjbHAtPmNsX21pbm9ydmVyc2lvbj8gV2hhdCdzIHNvIG1pbm9y
-IHZlcnNpb24gc3BlY2lmaWMNCmFib3V0IGFueSBvZiB0aGlzPw0KDQotLSANClRyb25kIE15a2xl
-YnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlr
-bGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+From: Markus Elfring <elfring@users.sourceforge.net>
+Date: Tue, 7 Nov 2017 08:51:00 +0100
+
+Add a jump target so that a bit of exception handling can be better reused
+at the end of this function.
+
+This issue was detected by using the Coccinelle software.
+
+Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+---
+
+v1 - Request for comments:
+I can offer another bit of information for a software development discussion. 💭
+
+The affected source file can be compiled for the processor architecture “x86_64”
+by a tool like “GCC 6.4.1+r251631-1.3” from the software distribution
+“openSUSE Tumbleweed” with the following command example.
+
+my_cc=/usr/bin/gcc-6 \
+&& my_module=fs/nfs/write.o \
+&& for XYZ in 0 s 3; do echo "   _____ $XYZ _____" \
+&& my_extra="-O$XYZ" \
+&& git checkout next-20171102 \
+&& make -j4 CC="${my_cc}" HOSTCC="${my_cc}" EXTRA_CFLAGS="${my_extra}" allmodconfig "${my_module}" \
+&& size "${my_module}" \
+&& git checkout ':/^nfs/write: Use common error handling code in nfs_lock_and_join_requests' \
+&& make -j4 CC="${my_cc}" HOSTCC="${my_cc}" EXTRA_CFLAGS="${my_extra}" allmodconfig "${my_module}" \
+&& size "${my_module}"; done
+
+
+🔮 Do you find the following differences worth for further clarification?
+
+╔═════════╤══════╗
+║ setting │ text ║
+╠═════════╪══════╣
+║   O0    │ ???  ║   Compilation failure?
+║   Os    │ -17  ║
+║   O3    │ -16  ║
+╚═════════╧══════╝
+
+
+ fs/nfs/write.c | 17 +++++++++--------
+ 1 file changed, 9 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index babebbccae2a..5b5f464f6f2a 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -487,10 +487,8 @@ nfs_lock_and_join_requests(struct page *page)
+ 	}
+ 
+ 	ret = nfs_page_group_lock(head);
+-	if (ret < 0) {
+-		nfs_unlock_and_release_request(head);
+-		return ERR_PTR(ret);
+-	}
++	if (ret < 0)
++		goto release_request;
+ 
+ 	/* lock each request in the page group */
+ 	total_bytes = head->wb_bytes;
+@@ -515,8 +513,7 @@ nfs_lock_and_join_requests(struct page *page)
+ 			if (ret < 0) {
+ 				nfs_unroll_locks(inode, head, subreq);
+ 				nfs_release_request(subreq);
+-				nfs_unlock_and_release_request(head);
+-				return ERR_PTR(ret);
++				goto release_request;
+ 			}
+ 		}
+ 		/*
+@@ -532,8 +529,8 @@ nfs_lock_and_join_requests(struct page *page)
+ 			nfs_page_group_unlock(head);
+ 			nfs_unroll_locks(inode, head, subreq);
+ 			nfs_unlock_and_release_request(subreq);
+-			nfs_unlock_and_release_request(head);
+-			return ERR_PTR(-EIO);
++			ret = -EIO;
++			goto release_request;
+ 		}
+ 	}
+ 
+@@ -576,6 +573,10 @@ nfs_lock_and_join_requests(struct page *page)
+ 	/* still holds ref on head from nfs_page_find_head_request
+ 	 * and still has lock on head from lock loop */
+ 	return head;
++
++release_request:
++	nfs_unlock_and_release_request(head);
++	return ERR_PTR(ret);
+ }
+ 
+ static void nfs_write_error_remove_page(struct nfs_page *req)
+-- 
+2.15.0
 
