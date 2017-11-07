@@ -1,162 +1,125 @@
-Return-Path: <aweits@rit.edu>
-From: Andrew W Elble <aweits@rit.edu>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:53338 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755951AbdKGS00 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 7 Nov 2017 13:26:26 -0500
+Date: Tue, 7 Nov 2017 13:26:25 -0500
+From: Scott Mayhew <smayhew@redhat.com>
 To: Trond Myklebust <trondmy@primarydata.com>
-Cc: bcodding redhat <bcodding@redhat.com>,
-  "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-  "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v8 00/11] Fix OPEN/CLOSE races
-References: <20171106202811.70202-1-trond.myklebust@primarydata.com>
-	<m2vainowk1.fsf@discipline.rit.edu>
-	<1510008607.3861.1.camel@primarydata.com>
-Date: Tue, 07 Nov 2017 11:59:27 -0500
-In-Reply-To: <1510008607.3861.1.camel@primarydata.com> (Trond Myklebust's
-	message of "Mon, 6 Nov 2017 22:50:09 +0000")
-Message-ID: <m2y3ninhxs.fsf@discipline.rit.edu>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: fix a deadlock in nfs v4.1 client initialization
+Message-ID: <20171107182625.xe7o7xvtn3lk4mor@tonberry.usersys.redhat.com>
+References: <20171107142927.9468-1-smayhew@redhat.com>
+ <1510068613.3576.0.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1510068613.3576.0.camel@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <trondmy@primarydata.com> writes:
+On Tue, 07 Nov 2017, Trond Myklebust wrote:
 
-> On Mon, 2017-11-06 at 17:46 -0500, Andrew W Elble wrote:
->> Trond Myklebust <trond.myklebust@primarydata.com> writes:
->> 
->> > v8:
->> > - Really fix compile issue when CONFIG_NFS_V4_1=n
->> > - nfs_inode_find_state_and_recover() should also try to match the
->> >   open_stateid.
->> 
->> Seeing a lot of TEST_STATEID's for the invalid stateid go over the
->> wire - this also makes the server hit this quite a bit:
->> 
->> pr_warn_ratelimited("NFSD: client %s testing state ID "
->>                         "with incorrect client ID\n", addr_str);
->> 
->
-> I'm not seeing that at all. Can you please elaborate on which server
-> errors are triggering this? I'd not expect to ever see TEST_STATEID on
-> a normal run.
+> On Tue, 2017-11-07 at 09:29 -0500, Scott Mayhew wrote:
+> > The following deadlock can occur between a process waiting for a
+> > client
+> > to initialize in while walking the client list and another process
+> > waiting for the nfs_clid_init_mutex so it can initialize that client:
+> > 
+> > Process 1                               Process 2
+> > ---------                               ---------
+> > spin_lock(&nn->nfs_client_lock);
+> > list_add_tail(&CLIENTA->cl_share_link,
+> >         &nn->nfs_client_list);
+> > spin_unlock(&nn->nfs_client_lock);
+> >                                         spin_lock(&nn-
+> > >nfs_client_lock);
+> >                                         list_add_tail(&CLIENTB-
+> > >cl_share_link,
+> >                                                 &nn-
+> > >nfs_client_list);
+> >                                         spin_unlock(&nn-
+> > >nfs_client_lock);
+> >                                         mutex_lock(&nfs_clid_init_mut
+> > ex);
+> >                                         nfs41_walk_client_list(clp,
+> > result, cred);
+> >                                         nfs_wait_client_init_complete
+> > (CLIENTA);
+> > (waiting for nfs_clid_init_mutex)
+> > 
+> > Make sure nfs_match_client() only evaluates clients that have
+> > completed
+> > initialization in order to prevent that deadlock.
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> >  fs/nfs/client.c | 9 +++++++++
+> >  1 file changed, 9 insertions(+)
+> > 
+> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > index 22880ef..8b093994 100644
+> > --- a/fs/nfs/client.c
+> > +++ b/fs/nfs/client.c
+> > @@ -291,12 +291,21 @@ static struct nfs_client
+> > *nfs_match_client(const struct nfs_client_initdata *dat
+> >  	const struct sockaddr *sap = data->addr;
+> >  	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
+> >  
+> > +again:
+> >  	list_for_each_entry(clp, &nn->nfs_client_list,
+> > cl_share_link) {
+> >  	        const struct sockaddr *clap = (struct sockaddr
+> > *)&clp->cl_addr;
+> >  		/* Don't match clients that failed to initialise
+> > properly */
+> >  		if (clp->cl_cons_state < 0)
+> >  			continue;
+> >  
+> > +		if (clp->cl_minorversion > 0 &&
+> > +				clp->cl_cons_state > NFS_CS_READY) {
+> > +			spin_unlock(&nn->nfs_client_lock);
+> > +			nfs_wait_client_init_complete(clp);
+> > +			spin_lock(&nn->nfs_client_lock);
+> > +			goto again;
+> > +		}
+> > +
+> >  		/* Different NFS versions cannot share the same
+> > nfs_client */
+> >  		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
+> >  			continue;
+> 
+> Why the test for clp->cl_minorversion? What's so minor version specific
+> about any of this?
 
-Hopefully this helps.
+The deadlock doesn't occur with v4.0 clients because those are being
+marked NFS_CS_READY in nfs4_client_client(), before the trunking
+detection
 
-Not completely sure this is correct, but this makes the client no longer
-test the _invalid_ stateid:
+        if (!nfs4_has_session(clp))
+                nfs_mark_client_ready(clp, NFS_CS_READY);
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6eccbd1b98cc..7dc914a6356f 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1436,6 +1436,8 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
-                nfs_resync_open_stateid_locked(state);
-                goto out;
-        }
-+       if (test_bit(NFS_OPEN_STATE, &state->flags) == 0)
-+               stateid->type = NFS4_INVALID_STATEID_TYPE;
-        if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
-                nfs4_stateid_copy(&state->stateid, stateid);
-        nfs4_stateid_copy(&state->open_stateid, stateid);
+        error = nfs4_discover_server_trunking(clp, &old);
 
+Now that I think about it, that seems wrong because nfs4_match_client()
+could be comparing cl_clientid and cl_owner_id values that haven't been
+established yet... in fact when I run my reproducer against two ip
+addresses on the same server I wind up with multiple clients with the
+same cl_clientid and cl_owner_id  
 
-The TEST_STATEID's are being issued from the "freeme" path of
-update_open_stateid() via nfs4_opendata_to_nfs4_state(). I put a tracepoint
-there:
+crash> list -H 0xffff9fc2b6327118 -o nfs_client.cl_share_link -s nfs_client.cl_clientid,cl_owner_id
+ffff9fc2b352c800
+  cl_clientid = 0xb81ff359309120bb
+  cl_owner_id = 0xffff9fc2ae9644c0 "Linux NFSv4.0 fedora26.smayhew.test"
+ffff9fc2aded7400
+  cl_clientid = 0xb81ff359309120bb
+  cl_owner_id = 0xffff9fc2b0584f80 "Linux NFSv4.0 fedora26.smayhew.test"
 
-@@ -1597,10 +1599,11 @@ static int update_open_stateid(struct nfs4_state *state,
- 
- 	if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags))
- 		nfs4_schedule_state_manager(clp);
--	if (freeme.type != 0)
-+	if (freeme.type != 0) {
- 		nfs4_test_and_free_stateid(server, &freeme,
- 				state->owner->so_cred);
--
-+		trace_nfs4_test_and_free_stateid(state->inode, &freeme, 0);
-+	}
- 	return ret;
- }
+I'll poke around a bit more.
 
-
-Even with the topmost patch in place, TEST_STATEID's still do occur with non-invalid stateids.
-Here is some trace data of a stateid that had such an event:
-
-       blogbench-2271  [001] ....    24.776203: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=1:0x65b62c64
-       blogbench-2271  [001] ....    24.776233: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=1:0x65b62c64 openstateid=1:0x65b62c64
-       blogbench-2198  [002] .N..    24.777914: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=2:0x65b62c64
-       blogbench-2198  [002] ....    24.778016: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=2:0x65b62c64 openstateid=2:0x65b62c64
-     kworker/0:3-587   [000] ....    24.778132: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=1:0x65b62c64
-     kworker/1:2-113   [001] ....    24.779489: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-     kworker/2:2-330   [002] ....    24.779516: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-     kworker/0:3-587   [000] ....    24.779730: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-     kworker/3:2-165   [003] ....    24.779763: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-     kworker/2:2-330   [002] ....    24.779862: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-     kworker/1:2-113   [001] ....    24.779991: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-     kworker/0:3-587   [000] ....    24.780049: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-       blogbench-2254  [003] ....    24.780421: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=3:0x65b62c64
-       blogbench-2254  [003] ....    24.780425: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=3:0x65b62c64 openstateid=3:0x65b62c64
-       blogbench-2195  [003] ....    24.780473: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=4:0x65b62c64
-       blogbench-2195  [003] ....    24.780478: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=4:0x65b62c64 openstateid=4:0x65b62c64
-       blogbench-2219  [003] ....    24.780576: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=5:0x65b62c64
-       blogbench-2219  [003] ....    24.780581: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=5:0x65b62c64 openstateid=5:0x65b62c64
-       blogbench-2223  [003] ....    24.780608: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=6:0x65b62c64
-       blogbench-2223  [003] ....    24.780612: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=6:0x65b62c64 openstateid=6:0x65b62c64
-       blogbench-2256  [003] ....    24.780637: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=7:0x65b62c64
-       blogbench-2256  [003] ....    24.780642: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=7:0x65b62c64 openstateid=7:0x65b62c64
-       blogbench-2206  [003] ....    24.780676: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=8:0x65b62c64
-       blogbench-2206  [003] ....    24.780680: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=8:0x65b62c64 openstateid=8:0x65b62c64
-     kworker/0:3-587   [000] ....    24.780698: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-       blogbench-2211  [003] ....    24.780716: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=9:0x65b62c64
-       blogbench-2211  [003] ....    24.780721: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=9:0x65b62c64 openstateid=9:0x65b62c64
-       blogbench-2242  [003] ....    24.780753: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=10:0x65b62c64
-       blogbench-2242  [003] ....    24.780758: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=10:0x65b62c64 openstateid=10:0x65b62c64
-       blogbench-2253  [003] ....    24.780789: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=11:0x65b62c64
-       blogbench-2253  [003] ....    24.780794: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=11:0x65b62c64 openstateid=11:0x65b62c64
-       blogbench-2262  [003] ....    24.780857: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=12:0x65b62c64
-       blogbench-2262  [003] ....    24.780862: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=12:0x65b62c64 openstateid=12:0x65b62c64
-       blogbench-2281  [003] ....    24.780894: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=13:0x65b62c64
-       blogbench-2281  [003] ....    24.780899: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=13:0x65b62c64 openstateid=13:0x65b62c64
-       blogbench-2287  [003] ....    24.780930: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=14:0x65b62c64
-       blogbench-2287  [003] ....    24.780935: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=14:0x65b62c64 openstateid=14:0x65b62c64
-     kworker/1:2-113   [001] ....    24.780944: nfs4_close: error=-10024 (OLD_STATEID) fmode=READ fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=4:0x65b62c64
-       blogbench-2291  [003] ....    24.780975: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=15:0x65b62c64
-       blogbench-2291  [003] ....    24.780979: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:73739313 fhandle=0x8bf9d249 name=00:2e:70677670/article-6.xml stateid=15:0x65b62c64 openstateid=15:0x65b62c64
-     kworker/0:3-587   [000] ....    24.780989: nfs4_close: error=-10024 (OLD_STATEID) fmode=READ fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=2:0x65b62c64
-     kworker/0:3-587   [000] ....    24.781122: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=3:0x65b62c64
-     kworker/2:2-330   [002] ....    24.781250: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=5:0x65b62c64
-     kworker/2:2-330   [002] ....    24.781261: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=6:0x65b62c64
-     kworker/2:2-330   [002] ....    24.781269: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=7:0x65b62c64
-     kworker/3:2-165   [003] ....    24.781409: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=8:0x65b62c64
-     kworker/3:2-165   [003] ....    24.781423: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=8:0x65b62c64
-     kworker/1:2-113   [001] ....    24.781514: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=10:0x65b62c64
-     kworker/1:2-113   [001] ....    24.781625: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=9:0x65b62c64
-     kworker/1:2-113   [001] ....    24.781639: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=12:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782038: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=11:0x65b62c64
-     kworker/1:2-113   [001] ....    24.782054: nfs4_close: error=-10025 (BAD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782054: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=13:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782069: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=14:0x65b62c64
-     kworker/1:2-113   [001] ....    24.782071: nfs4_close: error=-10025 (BAD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782082: nfs4_close: error=-10024 (OLD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=14:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782114: nfs4_close: error=0 (OK) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782128: nfs4_close: error=-10025 (BAD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/2:2-330   [002] ....    24.782144: nfs4_close: error=-10025 (BAD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782152: nfs4_close: error=-10025 (BAD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782167: nfs4_close: error=-10025 (BAD_STATEID) fmode=closed fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/2:2-330   [002] ....    24.782423: nfs4_close: error=-10025 (BAD_STATEID) fmode=READ fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782469: nfs4_close: error=-10025 (BAD_STATEID) fmode=READ fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782484: nfs4_close: error=-10025 (BAD_STATEID) fmode=READ fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/3:2-165   [003] ....    24.782498: nfs4_close: error=-10025 (BAD_STATEID) fmode=READ fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-     kworker/1:2-113   [001] ....    24.782548: nfs4_close: error=-10025 (BAD_STATEID) fmode=READ fileid=00:2e:73739313 fhandle=0x8bf9d249 openstateid=15:0x65b62c64
-       blogbench-2238  [001] ....    24.782669: nfs4_test_and_free_stateid: error=0 (OK) fileid=00:2e:73739313 fhandle=0x8bf9d249 stateid=15:0x65b62c64
-       blogbench-2232  [002] ....    38.135974: nfs4_open_stateid_update: error=0 (OK) fileid=00:2e:210215186 fhandle=0x33c12cc7 stateid=1:0x765b624f
-       blogbench-2232  [002] ....    38.135983: nfs4_open_file: error=0 (OK) flags=32768 (0x8000) fmode=READ|0x801c fileid=00:2e:210215186 fhandle=0x33c12cc7 name=00:2e:210169499/picture-37.jpg stateid=1:0x765b624f openstateid=1:0x765b624f
-     kworker/1:2-113   [001] ....    38.138993: nfs4_close: error=0 (OK) fmode=closed fileid=00:2e:210215186 fhandle=0x33c12cc7 openstateid=1:0x765b624f
-
-Thanks,
-
-Andy
-
--- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+-Scott
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
