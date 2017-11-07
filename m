@@ -1,88 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:36156 "HELO
+Received: from discipline.rit.edu ([129.21.6.207]:62029 "HELO
         discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1751658AbdKGXBf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2017 18:01:35 -0500
+        with SMTP id S1751658AbdKGXCL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2017 18:02:11 -0500
 From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        bfields@fieldses.org
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
 Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH] nfsd: check for use of the closed special stateid
-Date: Tue,  7 Nov 2017 18:01:23 -0500
-Message-Id: <20171107230123.62054-1-aweits@rit.edu>
+Subject: [PATCH] nfsd: fix locking validator warning on nfs4_ol_stateid->st_mutex class
+Date: Tue,  7 Nov 2017 18:02:06 -0500
+Message-Id: <20171107230206.63222-1-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Report on and prevent the use of the closed (invalid)
-special stateid by clients.
+The use of the st_mutex has been confusing the validator. Use the
+proper nested notation so as to not produce warnings.
 
 Signed-off-by: Andrew Elble <aweits@rit.edu>
 ---
- fs/nfsd/nfs4state.c | 32 ++++++++++++++++++++++++++++----
- 1 file changed, 28 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 755b33284979..2b637137fecd 100644
+index 0d98d73bd84e..755b33284979 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -73,6 +73,7 @@
- #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
- #define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
- #define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
-+#define CLOSE_STATEID(stateid)  (!memcmp((stateid), &close_stateid, sizeof(stateid_t)))
- 
- /* forward declarations */
- static bool check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner);
-@@ -4875,13 +4876,35 @@ static __be32 nfsd4_check_openowner_confirmed(struct nfs4_ol_stateid *ols)
- 	return nfs_ok;
- }
- 
-+static inline __be32
-+bad_special_stateid_check(struct nfs4_client *cl, stateid_t *stateid)
-+{
-+	if (CLOSE_STATEID(stateid)) {
-+		char addr_str[INET6_ADDRSTRLEN];
-+
-+		rpc_ntop((struct sockaddr *)&cl->cl_addr, addr_str,
-+			sizeof(addr_str));
-+		pr_warn_ratelimited("NFSD: client %s using "
-+				"invalid/closed stateid\n",
-+				addr_str);
-+		return nfserr_bad_stateid;
-+	}
-+
-+	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
-+		return nfserr_bad_stateid;
-+
-+	return nfs_ok;
-+}
-+
- static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+@@ -3548,7 +3548,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
  {
- 	struct nfs4_stid *s;
--	__be32 status = nfserr_bad_stateid;
-+	__be32 status;
+ 	__be32 ret;
  
--	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
-+	status = bad_special_stateid_check(cl, stateid);
-+	if (status)
- 		return status;
-+	status = nfserr_bad_stateid;
- 	/* Client debugging aid. */
- 	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
- 		char addr_str[INET6_ADDRSTRLEN];
-@@ -4938,8 +4961,9 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	else if (typemask & NFS4_DELEG_STID)
- 		typemask |= NFS4_REVOKED_DELEG_STID;
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, 1);
+ 	ret = nfsd4_verify_open_stid(&stp->st_stid);
+ 	if (ret != nfs_ok)
+ 		mutex_unlock(&stp->st_mutex);
+@@ -3612,7 +3612,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+ 	stp = open->op_stp;
+ 	/* We are moving these outside of the spinlocks to avoid the warnings */
+ 	mutex_init(&stp->st_mutex);
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, 0);
  
--	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
--		return nfserr_bad_stateid;
-+	status = bad_special_stateid_check(cstate->clp, stateid);
-+	if (status)
-+		return status;
- 	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
- 	if (status == nfserr_stale_clientid) {
- 		if (cstate->session)
+ retry:
+ 	spin_lock(&oo->oo_owner.so_client->cl_lock);
 -- 
 1.8.3.1
 
