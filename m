@@ -1,125 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53338 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755951AbdKGS00 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 7 Nov 2017 13:26:26 -0500
-Date: Tue, 7 Nov 2017 13:26:25 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:26102 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1756143AbdKGSaP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2017 13:30:15 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH] nfs: fix a deadlock in nfs v4.1 client initialization
-Message-ID: <20171107182625.xe7o7xvtn3lk4mor@tonberry.usersys.redhat.com>
+Date: Tue, 7 Nov 2017 18:30:09 +0000
+Message-ID: <1510079407.7834.4.camel@primarydata.com>
 References: <20171107142927.9468-1-smayhew@redhat.com>
- <1510068613.3576.0.camel@primarydata.com>
+         <1510068613.3576.0.camel@primarydata.com>
+         <20171107182625.xe7o7xvtn3lk4mor@tonberry.usersys.redhat.com>
+In-Reply-To: <20171107182625.xe7o7xvtn3lk4mor@tonberry.usersys.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1510068613.3576.0.camel@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 07 Nov 2017, Trond Myklebust wrote:
+T24gVHVlLCAyMDE3LTExLTA3IGF0IDEzOjI2IC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IE9uIFR1ZSwgMDcgTm92IDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gT24g
+VHVlLCAyMDE3LTExLTA3IGF0IDA5OjI5IC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+ID4g
+PiBUaGUgZm9sbG93aW5nIGRlYWRsb2NrIGNhbiBvY2N1ciBiZXR3ZWVuIGEgcHJvY2VzcyB3YWl0
+aW5nIGZvciBhDQo+ID4gPiBjbGllbnQNCj4gPiA+IHRvIGluaXRpYWxpemUgaW4gd2hpbGUgd2Fs
+a2luZyB0aGUgY2xpZW50IGxpc3QgYW5kIGFub3RoZXINCj4gPiA+IHByb2Nlc3MNCj4gPiA+IHdh
+aXRpbmcgZm9yIHRoZSBuZnNfY2xpZF9pbml0X211dGV4IHNvIGl0IGNhbiBpbml0aWFsaXplIHRo
+YXQNCj4gPiA+IGNsaWVudDoNCj4gPiA+IA0KPiA+ID4gUHJvY2VzcyAxICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIFByb2Nlc3MgMg0KPiA+ID4gLS0tLS0tLS0tICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIC0tLS0tLS0tLQ0KPiA+ID4gc3Bpbl9sb2NrKCZubi0+bmZzX2NsaWVu
+dF9sb2NrKTsNCj4gPiA+IGxpc3RfYWRkX3RhaWwoJkNMSUVOVEEtPmNsX3NoYXJlX2xpbmssDQo+
+ID4gPiAgICAgICAgICZubi0+bmZzX2NsaWVudF9saXN0KTsNCj4gPiA+IHNwaW5fdW5sb2NrKCZu
+bi0+bmZzX2NsaWVudF9sb2NrKTsNCj4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICBzcGluX2xvY2soJm5uLQ0KPiA+ID4gPiBuZnNfY2xpZW50X2xvY2spOw0KPiA+
+ID4gDQo+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbGlzdF9h
+ZGRfdGFpbCgmQ0xJRU5UQi0NCj4gPiA+ID4gY2xfc2hhcmVfbGluaywNCj4gPiA+IA0KPiA+ID4g
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgJm5uLQ0KPiA+
+ID4gPiBuZnNfY2xpZW50X2xpc3QpOw0KPiA+ID4gDQo+ID4gPiAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgc3Bpbl91bmxvY2soJm5uLQ0KPiA+ID4gPiBuZnNfY2xpZW50
+X2xvY2spOw0KPiA+ID4gDQo+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgbXV0ZXhfbG9jaygmbmZzX2NsaWRfaW5pdA0KPiA+ID4gX211dA0KPiA+ID4gZXgpOw0K
+PiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mczQxX3dhbGtf
+Y2xpZW50X2xpc3QoY2wNCj4gPiA+IHAsDQo+ID4gPiByZXN1bHQsIGNyZWQpOw0KPiA+ID4gICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mc193YWl0X2NsaWVudF9pbml0
+X2NvbXANCj4gPiA+IGxldGUNCj4gPiA+IChDTElFTlRBKTsNCj4gPiA+ICh3YWl0aW5nIGZvciBu
+ZnNfY2xpZF9pbml0X211dGV4KQ0KPiA+ID4gDQo+ID4gPiBNYWtlIHN1cmUgbmZzX21hdGNoX2Ns
+aWVudCgpIG9ubHkgZXZhbHVhdGVzIGNsaWVudHMgdGhhdCBoYXZlDQo+ID4gPiBjb21wbGV0ZWQN
+Cj4gPiA+IGluaXRpYWxpemF0aW9uIGluIG9yZGVyIHRvIHByZXZlbnQgdGhhdCBkZWFkbG9jay4N
+Cj4gPiA+IA0KPiA+ID4gU2lnbmVkLW9mZi1ieTogU2NvdHQgTWF5aGV3IDxzbWF5aGV3QHJlZGhh
+dC5jb20+DQo+ID4gPiAtLS0NCj4gPiA+ICBmcy9uZnMvY2xpZW50LmMgfCA5ICsrKysrKysrKw0K
+PiA+ID4gIDEgZmlsZSBjaGFuZ2VkLCA5IGluc2VydGlvbnMoKykNCj4gPiA+IA0KPiA+ID4gZGlm
+ZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KPiA+ID4gaW5kZXgg
+MjI4ODBlZi4uOGIwOTM5OTQgMTAwNjQ0DQo+ID4gPiAtLS0gYS9mcy9uZnMvY2xpZW50LmMNCj4g
+PiA+ICsrKyBiL2ZzL25mcy9jbGllbnQuYw0KPiA+ID4gQEAgLTI5MSwxMiArMjkxLDIxIEBAIHN0
+YXRpYyBzdHJ1Y3QgbmZzX2NsaWVudA0KPiA+ID4gKm5mc19tYXRjaF9jbGllbnQoY29uc3Qgc3Ry
+dWN0IG5mc19jbGllbnRfaW5pdGRhdGEgKmRhdA0KPiA+ID4gIAljb25zdCBzdHJ1Y3Qgc29ja2Fk
+ZHIgKnNhcCA9IGRhdGEtPmFkZHI7DQo+ID4gPiAgCXN0cnVjdCBuZnNfbmV0ICpubiA9IG5ldF9n
+ZW5lcmljKGRhdGEtPm5ldCwgbmZzX25ldF9pZCk7DQo+ID4gPiAgDQo+ID4gPiArYWdhaW46DQo+
+ID4gPiAgCWxpc3RfZm9yX2VhY2hfZW50cnkoY2xwLCAmbm4tPm5mc19jbGllbnRfbGlzdCwNCj4g
+PiA+IGNsX3NoYXJlX2xpbmspIHsNCj4gPiA+ICAJICAgICAgICBjb25zdCBzdHJ1Y3Qgc29ja2Fk
+ZHIgKmNsYXAgPSAoc3RydWN0IHNvY2thZGRyDQo+ID4gPiAqKSZjbHAtPmNsX2FkZHI7DQo+ID4g
+PiAgCQkvKiBEb24ndCBtYXRjaCBjbGllbnRzIHRoYXQgZmFpbGVkIHRvIGluaXRpYWxpc2UNCj4g
+PiA+IHByb3Blcmx5ICovDQo+ID4gPiAgCQlpZiAoY2xwLT5jbF9jb25zX3N0YXRlIDwgMCkNCj4g
+PiA+ICAJCQljb250aW51ZTsNCj4gPiA+ICANCj4gPiA+ICsJCWlmIChjbHAtPmNsX21pbm9ydmVy
+c2lvbiA+IDAgJiYNCj4gPiA+ICsJCQkJY2xwLT5jbF9jb25zX3N0YXRlID4NCj4gPiA+IE5GU19D
+U19SRUFEWSkgew0KPiA+ID4gKwkJCXNwaW5fdW5sb2NrKCZubi0+bmZzX2NsaWVudF9sb2NrKTsN
+Cj4gPiA+ICsJCQluZnNfd2FpdF9jbGllbnRfaW5pdF9jb21wbGV0ZShjbHApOw0KPiA+ID4gKwkJ
+CXNwaW5fbG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7DQo+ID4gPiArCQkJZ290byBhZ2FpbjsN
+Cj4gPiA+ICsJCX0NCj4gPiA+ICsNCj4gPiA+ICAJCS8qIERpZmZlcmVudCBORlMgdmVyc2lvbnMg
+Y2Fubm90IHNoYXJlIHRoZSBzYW1lDQo+ID4gPiBuZnNfY2xpZW50ICovDQo+ID4gPiAgCQlpZiAo
+Y2xwLT5ycGNfb3BzICE9IGRhdGEtPm5mc19tb2QtPnJwY19vcHMpDQo+ID4gPiAgCQkJY29udGlu
+dWU7DQo+ID4gDQo+ID4gV2h5IHRoZSB0ZXN0IGZvciBjbHAtPmNsX21pbm9ydmVyc2lvbj8gV2hh
+dCdzIHNvIG1pbm9yIHZlcnNpb24NCj4gPiBzcGVjaWZpYw0KPiA+IGFib3V0IGFueSBvZiB0aGlz
+Pw0KPiANCj4gVGhlIGRlYWRsb2NrIGRvZXNuJ3Qgb2NjdXIgd2l0aCB2NC4wIGNsaWVudHMgYmVj
+YXVzZSB0aG9zZSBhcmUgYmVpbmcNCj4gbWFya2VkIE5GU19DU19SRUFEWSBpbiBuZnM0X2NsaWVu
+dF9jbGllbnQoKSwgYmVmb3JlIHRoZSB0cnVua2luZw0KPiBkZXRlY3Rpb24NCg0KU3VyZSwgYnV0
+IHRoZSByb290IGNhdXNlIHlvdSBhcmUgYXNzZXJ0aW5nIGlzIHRoYXQgdGhlIG5mc19jbGllbnQg
+aGFzDQpub3QgZmluaXNoZWQgaW5pdGlhbGlzaW5nLiBXaGF0IGlzIG1pbm9ydmVyc2lvbi1zcGVj
+aWZpYyAob3IgZXZlbg0KTkZTdjQtc3BlY2lmaWMpIGFib3V0IHRoYXQ/DQoNCi0tIA0KVHJvbmQg
+TXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9u
+ZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-> On Tue, 2017-11-07 at 09:29 -0500, Scott Mayhew wrote:
-> > The following deadlock can occur between a process waiting for a
-> > client
-> > to initialize in while walking the client list and another process
-> > waiting for the nfs_clid_init_mutex so it can initialize that client:
-> > 
-> > Process 1                               Process 2
-> > ---------                               ---------
-> > spin_lock(&nn->nfs_client_lock);
-> > list_add_tail(&CLIENTA->cl_share_link,
-> >         &nn->nfs_client_list);
-> > spin_unlock(&nn->nfs_client_lock);
-> >                                         spin_lock(&nn-
-> > >nfs_client_lock);
-> >                                         list_add_tail(&CLIENTB-
-> > >cl_share_link,
-> >                                                 &nn-
-> > >nfs_client_list);
-> >                                         spin_unlock(&nn-
-> > >nfs_client_lock);
-> >                                         mutex_lock(&nfs_clid_init_mut
-> > ex);
-> >                                         nfs41_walk_client_list(clp,
-> > result, cred);
-> >                                         nfs_wait_client_init_complete
-> > (CLIENTA);
-> > (waiting for nfs_clid_init_mutex)
-> > 
-> > Make sure nfs_match_client() only evaluates clients that have
-> > completed
-> > initialization in order to prevent that deadlock.
-> > 
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > ---
-> >  fs/nfs/client.c | 9 +++++++++
-> >  1 file changed, 9 insertions(+)
-> > 
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 22880ef..8b093994 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -291,12 +291,21 @@ static struct nfs_client
-> > *nfs_match_client(const struct nfs_client_initdata *dat
-> >  	const struct sockaddr *sap = data->addr;
-> >  	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
-> >  
-> > +again:
-> >  	list_for_each_entry(clp, &nn->nfs_client_list,
-> > cl_share_link) {
-> >  	        const struct sockaddr *clap = (struct sockaddr
-> > *)&clp->cl_addr;
-> >  		/* Don't match clients that failed to initialise
-> > properly */
-> >  		if (clp->cl_cons_state < 0)
-> >  			continue;
-> >  
-> > +		if (clp->cl_minorversion > 0 &&
-> > +				clp->cl_cons_state > NFS_CS_READY) {
-> > +			spin_unlock(&nn->nfs_client_lock);
-> > +			nfs_wait_client_init_complete(clp);
-> > +			spin_lock(&nn->nfs_client_lock);
-> > +			goto again;
-> > +		}
-> > +
-> >  		/* Different NFS versions cannot share the same
-> > nfs_client */
-> >  		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
-> >  			continue;
-> 
-> Why the test for clp->cl_minorversion? What's so minor version specific
-> about any of this?
-
-The deadlock doesn't occur with v4.0 clients because those are being
-marked NFS_CS_READY in nfs4_client_client(), before the trunking
-detection
-
-        if (!nfs4_has_session(clp))
-                nfs_mark_client_ready(clp, NFS_CS_READY);
-
-        error = nfs4_discover_server_trunking(clp, &old);
-
-Now that I think about it, that seems wrong because nfs4_match_client()
-could be comparing cl_clientid and cl_owner_id values that haven't been
-established yet... in fact when I run my reproducer against two ip
-addresses on the same server I wind up with multiple clients with the
-same cl_clientid and cl_owner_id  
-
-crash> list -H 0xffff9fc2b6327118 -o nfs_client.cl_share_link -s nfs_client.cl_clientid,cl_owner_id
-ffff9fc2b352c800
-  cl_clientid = 0xb81ff359309120bb
-  cl_owner_id = 0xffff9fc2ae9644c0 "Linux NFSv4.0 fedora26.smayhew.test"
-ffff9fc2aded7400
-  cl_clientid = 0xb81ff359309120bb
-  cl_owner_id = 0xffff9fc2b0584f80 "Linux NFSv4.0 fedora26.smayhew.test"
-
-I'll poke around a bit more.
-
--Scott
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
