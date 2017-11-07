@@ -1,53 +1,42 @@
-Return-Path: <aweits@rit.edu>
-From: Andrew W Elble <aweits@rit.edu>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: bcodding redhat <bcodding@redhat.com>,
-  "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-  "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "aweits@rit.edu" <aweits@rit.edu>
+CC: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
+	<anna.schumaker@netapp.com>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v8 00/11] Fix OPEN/CLOSE races
+Date: Tue, 7 Nov 2017 23:44:48 +0000
+Message-ID: <1510098286.109352.0.camel@primarydata.com>
 References: <20171106202811.70202-1-trond.myklebust@primarydata.com>
-	<m2vainowk1.fsf@discipline.rit.edu>
-	<1510008607.3861.1.camel@primarydata.com>
-	<m2y3ninhxs.fsf@discipline.rit.edu>
-	<1510079753.7834.7.camel@primarydata.com>
-	<1510081247.7834.9.camel@primarydata.com>
-Date: Tue, 07 Nov 2017 18:03:27 -0500
-In-Reply-To: <1510081247.7834.9.camel@primarydata.com> (Trond Myklebust's
-	message of "Tue, 7 Nov 2017 19:00:49 +0000")
-Message-ID: <m2inelofnk.fsf@discipline.rit.edu>
+	 <m2vainowk1.fsf@discipline.rit.edu>
+	 <1510008607.3861.1.camel@primarydata.com>
+	 <m2y3ninhxs.fsf@discipline.rit.edu>
+	 <1510079753.7834.7.camel@primarydata.com>
+	 <1510081247.7834.9.camel@primarydata.com>
+	 <m2inelofnk.fsf@discipline.rit.edu>
+In-Reply-To: <m2inelofnk.fsf@discipline.rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond Myklebust <trondmy@primarydata.com> writes:
-
-> On Tue, 2017-11-07 at 18:35 +0000, Trond Myklebust wrote:
->> 
->> Ah, I see. Can we in that case please rather do the following?
->> 
->> 
->
-> ...and then follow up with:
->
-> 8<--------------------------------------------------------------
-> From 545e2fddb72268f5c59a3986169af96a40a6aab0 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Tue, 7 Nov 2017 12:39:44 -0500
-> Subject: [PATCH 2/2] NFSv4: Replace closed stateids with the "invalid special
->  stateid"
->
-> When decoding a CLOSE, replace the stateid returned by the server
-> with the "invalid special stateid" described in RFC5661, Section 8.2.3.
->
-> In nfs_set_open_stateid_locked, ignore stateids from closed state.
->
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Looks good! Thanks!
-
--- 
-Andrew W. Elble
-aweits@discipline.rit.edu
-Infrastructure Engineer, Communications Technical Lead
-Rochester Institute of Technology
-PGP: BFAD 8461 4CCF DC95 DA2C B0EB 965B 082E 863E C912
+T24gVHVlLCAyMDE3LTExLTA3IGF0IDE4OjAzIC0wNTAwLCBBbmRyZXcgVyBFbGJsZSB3cm90ZToN
+Cj4gVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JpdGVzOg0KPiAN
+Cj4gPiBPbiBUdWUsIDIwMTctMTEtMDcgYXQgMTg6MzUgKzAwMDAsIFRyb25kIE15a2xlYnVzdCB3
+cm90ZToNCj4gPiA+IA0KPiA+ID4gQWgsIEkgc2VlLiBDYW4gd2UgaW4gdGhhdCBjYXNlIHBsZWFz
+ZSByYXRoZXIgZG8gdGhlIGZvbGxvd2luZz8NCj4gPiA+IA0KPiA+ID4gDQo+ID4gDQo+ID4gLi4u
+YW5kIHRoZW4gZm9sbG93IHVwIHdpdGg6DQo+ID4gDQo+ID4gODwtLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiA+IEZyb20gNTQ1
+ZTJmZGRiNzIyNjhmNWM1OWEzOTg2MTY5YWY5NmE0MGE2YWFiMCBNb24gU2VwIDE3IDAwOjAwOjAw
+DQo+ID4gMjAwMQ0KPiA+IEZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHBy
+aW1hcnlkYXRhLmNvbT4NCj4gPiBEYXRlOiBUdWUsIDcgTm92IDIwMTcgMTI6Mzk6NDQgLTA1MDAN
+Cj4gPiBTdWJqZWN0OiBbUEFUQ0ggMi8yXSBORlN2NDogUmVwbGFjZSBjbG9zZWQgc3RhdGVpZHMg
+d2l0aCB0aGUNCj4gPiAiaW52YWxpZCBzcGVjaWFsDQo+ID4gIHN0YXRlaWQiDQo+ID4gDQo+ID4g
+V2hlbiBkZWNvZGluZyBhIENMT1NFLCByZXBsYWNlIHRoZSBzdGF0ZWlkIHJldHVybmVkIGJ5IHRo
+ZSBzZXJ2ZXINCj4gPiB3aXRoIHRoZSAiaW52YWxpZCBzcGVjaWFsIHN0YXRlaWQiIGRlc2NyaWJl
+ZCBpbiBSRkM1NjYxLCBTZWN0aW9uDQo+ID4gOC4yLjMuDQo+ID4gDQo+ID4gSW4gbmZzX3NldF9v
+cGVuX3N0YXRlaWRfbG9ja2VkLCBpZ25vcmUgc3RhdGVpZHMgZnJvbSBjbG9zZWQgc3RhdGUuDQo+
+ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RA
+cHJpbWFyeWRhdGEuY29tPg0KPiANCj4gTG9va3MgZ29vZCEgVGhhbmtzIQ0KDQpUaGFuayB5b3Ug
+Zm9yIHRlc3RpbmchIEl0IGhhcyBiZWVuIHZlcnkgaGVscGZ1bC4uLg0KDQotLSANClRyb25kIE15
+a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQu
+bXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
