@@ -1,161 +1,145 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:27709 "EHLO relay.sw.ru"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750922AbdKHF4F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Nov 2017 00:56:05 -0500
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH 2/4] lockd: remove net pointer from messages
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Message-ID: <4095144d-bdb0-23ed-a126-06ebb6796023@virtuozzo.com>
-Date: Wed, 8 Nov 2017 08:55:55 +0300
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qk0-f178.google.com ([209.85.220.178]:53424 "EHLO
+        mail-qk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752158AbdKHMI2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Nov 2017 07:08:28 -0500
+Received: by mail-qk0-f178.google.com with SMTP id y23so2949686qkb.10
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Nov 2017 04:08:27 -0800 (PST)
+Message-ID: <1510142905.8401.6.camel@redhat.com>
+Subject: Re: NFS Force Unmounting
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.com>, Joshua Watt <jpewhacker@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        David Howells <dhowells@redhat.com>
+Date: Wed, 08 Nov 2017 07:08:25 -0500
+In-Reply-To: <87fu9ph2g7.fsf@notabene.neil.brown.name>
+References: <1508951506.2542.51.camel@gmail.com>
+         <20171030202045.GA6168@fieldses.org>
+         <87h8ugwdev.fsf@notabene.neil.brown.name>
+         <1509557061.4755.27.camel@redhat.com>
+         <87efphvbhy.fsf@notabene.neil.brown.name>
+         <1509624549.4569.28.camel@redhat.com>
+         <CAJdd5GZ-EMj8f3RaV_WUdeZs6aWbEAeC6xX8BadMD-aOFL3_jA@mail.gmail.com>
+         <87fu9ph2g7.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Publishing of net pointer is not safe,
-use net->ns.inum as net ID in debug messages
+On Wed, 2017-11-08 at 14:30 +1100, NeilBrown wrote:
+> What to people think of the following as an approach
+> to Joshua's need?
+> 
+> It isn't complete by itself: it needs a couple of changes to
+> nfs-utils so that it doesn't stat the mountpoint on remount,
+> and it might need another kernel change so that the "mount" system
+> call performs the same sort of careful lookup for remount as  the umount
+> system call does, but those are relatively small details.
+> 
 
-[  171.757678] lockd_up_net: per-net data created; net=f00001e7
-[  171.767188] NFSD: starting 90-second grace period (net f00001e7)
-[  300.653313] lockd: nuking all hosts in net f00001e7...
-[  300.653641] lockd: host garbage collection for net f00001e7
-[  300.653968] lockd: nlmsvc_mark_resources for net f00001e7
-[  300.711483] lockd_down_net: per-net data destroyed; net=f00001e7
-[  300.711847] lockd: nuking all hosts in net 0...
-[  300.711847] lockd: host garbage collection for net 0
-[  300.711848] lockd: nlmsvc_mark_resources for net 0
+Yeah, that'd be good.
 
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/lockd/host.c    | 21 +++++++++++++--------
- fs/lockd/mon.c     |  3 ++-
- fs/lockd/svc.c     |  9 +++++----
- fs/lockd/svcsubs.c |  2 +-
- 4 files changed, 21 insertions(+), 14 deletions(-)
+> This is the patch that you will either love of hate.
+> 
+> With this patch, Joshua (or any other sysadmin) could:
+> 
+>   mount -o remount,retrans=0,timeo=1 /path
+> 
+> and then new requests on any mountpoint from that server will timeout
+> quickly.
+> Then
+>   umount -f /path
+>   umount -f /path
+> 
+> should kill off any existing requests that use the old timeout. (I just
+> tested and I did need this twice to kill of an "ls -l".
+> The first was an 'open' systemcall, then next as 'newfstat'. I wonder
+> why the getattr for fstat didn't use the new timeout...)
+> 
+> Thoughts?
+> NeilBrown
+> 
+> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+> index c9d24bae3025..ced12fcec349 100644
+> --- a/fs/nfs/super.c
+> +++ b/fs/nfs/super.c
+> @@ -2210,27 +2210,39 @@ static int nfs_validate_text_mount_data(void *options,
+>  		~(NFS_MOUNT_UNSHARED | NFS_MOUNT_NORESVPORT))
+>  
+>  static int
+> -nfs_compare_remount_data(struct nfs_server *nfss,
+> -			 struct nfs_parsed_mount_data *data)
+> +nfs_compare_and_set_remount_data(struct nfs_server *nfss,
+> +				 struct nfs_parsed_mount_data *data)
+>  {
+>  	if ((data->flags ^ nfss->flags) & NFS_REMOUNT_CMP_FLAGMASK ||
+>  	    data->rsize != nfss->rsize ||
+>  	    data->wsize != nfss->wsize ||
+>  	    data->version != nfss->nfs_client->rpc_ops->version ||
+>  	    data->minorversion != nfss->nfs_client->cl_minorversion ||
+> -	    data->retrans != nfss->client->cl_timeout->to_retries ||
+>  	    !nfs_auth_info_match(&data->auth_info, nfss->client->cl_auth->au_flavor) ||
+>  	    data->acregmin != nfss->acregmin / HZ ||
+>  	    data->acregmax != nfss->acregmax / HZ ||
+>  	    data->acdirmin != nfss->acdirmin / HZ ||
+>  	    data->acdirmax != nfss->acdirmax / HZ ||
+> -	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ) ||
+>  	    data->nfs_server.port != nfss->port ||
+>  	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
+>  	    !rpc_cmp_addr((struct sockaddr *)&data->nfs_server.address,
+>  			  (struct sockaddr *)&nfss->nfs_client->cl_addr))
+>  		return -EINVAL;
+>  
+> +	if (data->retrans != nfss->client->cl_timeout->to_retries ||
+> +	    data->timeo != (10U * nfss->client->cl_timeout->to_initval / HZ)) {
+> +		/* Note that this will affect all mounts from the same server,
+> +		 * that use the same protocol.  The timeouts are always forced
+> +		 * to be the same.
+> +		 */
+> +		struct rpc_clnt *cl = nfss->client;
+> +		if (cl->cl_timeout != &cl->cl_timeout_default)
+> +			memcpy(&cl->cl_timeout_default, cl->cl_timeout,
+> +			       sizeof(struct rpc_timeout));
+> +		cl->cl_timeout_default.to_retries = data->retrans;
+> +		cl->cl_timeout_default.to_initval = data->timeo * HZ / 10U;
+> +	}
+> +
 
-diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-index 0d4e590..f90f6d5 100644
---- a/fs/lockd/host.c
-+++ b/fs/lockd/host.c
-@@ -578,8 +578,10 @@ static void nlm_complain_hosts(struct net *net)
- 
- 		if (ln->nrhosts == 0)
- 			return;
--		printk(KERN_WARNING "lockd: couldn't shutdown host module for net %p!\n", net);
--		dprintk("lockd: %lu hosts left in net %p:\n", ln->nrhosts, net);
-+		pr_warn("lockd: couldn't shutdown host module for net %x!\n",
-+			net->ns.inum);
-+		dprintk("lockd: %lu hosts left in net %x:\n", ln->nrhosts,
-+			net->ns.inum);
- 	} else {
- 		if (nrhosts == 0)
- 			return;
-@@ -590,9 +592,9 @@ static void nlm_complain_hosts(struct net *net)
- 	for_each_host(host, chain, nlm_server_hosts) {
- 		if (net && host->net != net)
- 			continue;
--		dprintk("       %s (cnt %d use %d exp %ld net %p)\n",
-+		dprintk("       %s (cnt %d use %d exp %ld net %x)\n",
- 			host->h_name, atomic_read(&host->h_count),
--			host->h_inuse, host->h_expires, host->net);
-+			host->h_inuse, host->h_expires, host->net->ns.inum);
- 	}
- }
- 
-@@ -605,7 +607,8 @@ nlm_shutdown_hosts_net(struct net *net)
- 	mutex_lock(&nlm_host_mutex);
- 
- 	/* First, make all hosts eligible for gc */
--	dprintk("lockd: nuking all hosts in net %p...\n", net);
-+	dprintk("lockd: nuking all hosts in net %x...\n",
-+		net ? net->ns.inum : 0);
- 	for_each_host(host, chain, nlm_server_hosts) {
- 		if (net && host->net != net)
- 			continue;
-@@ -646,7 +649,8 @@ nlm_gc_hosts(struct net *net)
- 	struct hlist_node *next;
- 	struct nlm_host	*host;
- 
--	dprintk("lockd: host garbage collection for net %p\n", net);
-+	dprintk("lockd: host garbage collection for net %x\n",
-+		net ? net->ns.inum : 0);
- 	for_each_host(host, chain, nlm_server_hosts) {
- 		if (net && host->net != net)
- 			continue;
-@@ -662,9 +666,10 @@ nlm_gc_hosts(struct net *net)
- 		if (atomic_read(&host->h_count) || host->h_inuse
- 		 || time_before(jiffies, host->h_expires)) {
- 			dprintk("nlm_gc_hosts skipping %s "
--				"(cnt %d use %d exp %ld net %p)\n",
-+				"(cnt %d use %d exp %ld net %x)\n",
- 				host->h_name, atomic_read(&host->h_count),
--				host->h_inuse, host->h_expires, host->net);
-+				host->h_inuse, host->h_expires,
-+				host->net->ns.inum);
- 			continue;
- 		}
- 		nlm_destroy_host_locked(host);
-diff --git a/fs/lockd/mon.c b/fs/lockd/mon.c
-index 9fbbd11..96cfb29 100644
---- a/fs/lockd/mon.c
-+++ b/fs/lockd/mon.c
-@@ -110,7 +110,8 @@ static int nsm_mon_unmon(struct nsm_handle *nsm, u32 proc, struct nsm_res *res,
- 	clnt = nsm_create(host->net, host->nodename);
- 	if (IS_ERR(clnt)) {
- 		dprintk("lockd: failed to create NSM upcall transport, "
--			"status=%ld, net=%p\n", PTR_ERR(clnt), host->net);
-+			"status=%ld, net=%x\n", PTR_ERR(clnt),
-+			host->net->ns.inum);
- 		return PTR_ERR(clnt);
- 	}
- 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index b995bdc..5a1d8dc 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -259,7 +259,7 @@ static int lockd_up_net(struct svc_serv *serv, struct net *net)
- 	if (error < 0)
- 		goto err_bind;
- 	set_grace_period(net);
--	dprintk("lockd_up_net: per-net data created; net=%p\n", net);
-+	dprintk("%s: per-net data created; net=%x\n", __func__, net->ns.inum);
- 	return 0;
- 
- err_bind:
-@@ -275,11 +275,12 @@ static void lockd_down_net(struct svc_serv *serv, struct net *net)
- 		if (--ln->nlmsvc_users == 0) {
- 			nlm_shutdown_hosts_net(net);
- 			svc_shutdown_net(serv, net);
--			dprintk("lockd_down_net: per-net data destroyed; net=%p\n", net);
-+			dprintk("%s: per-net data destroyed; net=%x\n",
-+				__func__, net->ns.inum);
- 		}
- 	} else {
--		printk(KERN_ERR "lockd_down_net: no users! task=%p, net=%p\n",
--				nlmsvc_task, net);
-+		pr_err("%s: no users! task=%p, net=%x\n",
-+			__func__, nlmsvc_task, net->ns.inum);
- 		BUG();
- 	}
- }
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index a563ddb..4ec3d6e 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -370,7 +370,7 @@ nlmsvc_mark_resources(struct net *net)
- {
- 	struct nlm_host hint;
- 
--	dprintk("lockd: nlmsvc_mark_resources for net %p\n", net);
-+	dprintk("lockd: %s for net %x\n", __func__, net ? net->ns.inum : 0);
- 	hint.net = net;
- 	nlm_traverse_files(&hint, nlmsvc_mark_host, NULL);
- }
+No objection to allowing more mount options to be changed on remount, we
+really ought to allow a lot more options to be changed on remount if we
+can reasonably pull it off.
+
+>  	return 0;
+>  }
+>  
+> @@ -2244,7 +2256,8 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+>  	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
+>  	u32 nfsvers = nfss->nfs_client->rpc_ops->version;
+>  
+> -	sync_filesystem(sb);
+> +	if (sb->s_readonly_remount)
+> +		sync_filesystem(sb);
+>  
+>  	/*
+>  	 * Userspace mount programs that send binary options generally send
+> @@ -2295,7 +2308,7 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+>  		*flags |= MS_SYNCHRONOUS;
+>  
+>  	/* compare new mount options with old ones */
+> -	error = nfs_compare_remount_data(nfss, data);
+> +	error = nfs_compare_and_set_remount_data(nfss, data);
+>  out:
+>  	kfree(data);
+>  	return error;
+
+Looks like a reasonable approach overall to preventing new RPCs from
+being dispatched once the "force" umount runs.
+
+I do wonder if this ought to be more automatic when you specify -f on
+the umount. Having to manually do a remount first doesn't seem very
+admin-friendly.
 -- 
-2.7.4
-
+Jeff Layton <jlayton@redhat.com>
