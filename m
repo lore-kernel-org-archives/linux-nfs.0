@@ -1,60 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50972 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751245AbdKHW31 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Nov 2017 17:29:27 -0500
-Date: Wed, 8 Nov 2017 17:29:26 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Bruce Fields <bfields@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] SUNRPC: Improve ordering of transport processing
-Message-ID: <20171108222926.GR24262@fieldses.org>
-References: <20171010173143.106492-1-trond.myklebust@primarydata.com>
- <20171010173143.106492-2-trond.myklebust@primarydata.com>
- <9D9E2C92-F1FF-4451-800D-54F74D815F7E@oracle.com>
- <20171019203347.GB6186@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171019203347.GB6186@fieldses.org>
+Received: from discipline.rit.edu ([129.21.6.207]:32993 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1751245AbdKHWac (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Nov 2017 17:30:32 -0500
+From: Andrew Elble <aweits@rit.edu>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Andrew Elble <aweits@rit.edu>
+Subject: [PATCH v3] nfsd: fix locking validator warning on nfs4_ol_stateid->st_mutex class
+Date: Wed,  8 Nov 2017 17:29:51 -0500
+Message-Id: <20171108222951.37763-1-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 19, 2017 at 04:33:47PM -0400, bfields wrote:
-> On Thu, Oct 19, 2017 at 03:38:17PM -0400, Chuck Lever wrote:
-> > 
-> > > On Oct 10, 2017, at 1:31 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > > 
-> > > Since it can take a while before a specific thread gets scheduled, it
-> > > is better to just implement a first come first served queue mechanism.
-> > > That way, if a thread is already scheduled and is idle, it can pick up
-> > > the work to do from the queue.
-> > > 
-> > > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > Tested-by: Chuck Lever <chuck.lever@oracle.com>
-> > 
-> > Light performance testing, and a git software build / regression
-> > suite run on NFSv4.1. All on NFS/RDMA.
-> 
-> Thanks!  And sorry for the slow response to this patch, the basic idea
-> sounds fine I just haven't found the time to understand the code change
-> yet!
+The use of the st_mutex has been confusing the validator. Use the
+proper nested notation so as to not produce warnings.
 
-Sorry, I'm slow.  Took me a little staring to realize that this:
+Signed-off-by: Andrew Elble <aweits@rit.edu>
+---
+ v2: added mutex_lock_nested to init_lock_stateid() for consistency
+ v3: add constants
+ 
+ fs/nfsd/nfs4state.c | 11 ++++++++---
+ 1 file changed, 8 insertions(+), 3 deletions(-)
 
-> > > @@ -380,7 +380,6 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
-...
-> > > -			/* this one will do */
-> > > -			rqstp->rq_xprt = xprt;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0d98d73bd84e..5740ad8075c3 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -87,6 +87,11 @@
+  */
+ static DEFINE_SPINLOCK(state_lock);
+ 
++enum nfsd4_st_mutex_lock_subclass {
++	OPEN_STATEID_MUTEX = 0,
++	LOCK_STATEID_MUTEX = 1,
++};
++
+ /*
+  * A waitqueue for all in-progress 4.0 CLOSE operations that are waiting for
+  * the refcount on the open stateid to drop.
+@@ -3548,7 +3553,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+ {
+ 	__be32 ret;
+ 
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, LOCK_STATEID_MUTEX);
+ 	ret = nfsd4_verify_open_stid(&stp->st_stid);
+ 	if (ret != nfs_ok)
+ 		mutex_unlock(&stp->st_mutex);
+@@ -3612,7 +3617,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+ 	stp = open->op_stp;
+ 	/* We are moving these outside of the spinlocks to avoid the warnings */
+ 	mutex_init(&stp->st_mutex);
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, OPEN_STATEID_MUTEX);
+ 
+ retry:
+ 	spin_lock(&oo->oo_owner.so_client->cl_lock);
+@@ -5692,7 +5697,7 @@ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+ 	struct nfs4_ol_stateid *retstp;
+ 
+ 	mutex_init(&stp->st_mutex);
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, OPEN_STATEID_MUTEX);
+ retry:
+ 	spin_lock(&clp->cl_lock);
+ 	spin_lock(&fp->fi_lock);
+-- 
+1.8.3.1
 
-is the main change.  We'll let any thread running in svc_recv() pick up
-an xprt from the queue rather than assigning an xprt to a specific
-thread here in enqueue and then waiting for that specific thread to get
-to it.
-
-Makes sense, thanks, applied!
-
---b.
