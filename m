@@ -1,42 +1,58 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "aweits@rit.edu" <aweits@rit.edu>
-CC: bcodding redhat <bcodding@redhat.com>, "anna.schumaker@netapp.com"
-	<anna.schumaker@netapp.com>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v8 00/11] Fix OPEN/CLOSE races
-Date: Tue, 7 Nov 2017 23:44:48 +0000
-Message-ID: <1510098286.109352.0.camel@primarydata.com>
-References: <20171106202811.70202-1-trond.myklebust@primarydata.com>
-	 <m2vainowk1.fsf@discipline.rit.edu>
-	 <1510008607.3861.1.camel@primarydata.com>
-	 <m2y3ninhxs.fsf@discipline.rit.edu>
-	 <1510079753.7834.7.camel@primarydata.com>
-	 <1510081247.7834.9.camel@primarydata.com>
-	 <m2inelofnk.fsf@discipline.rit.edu>
-In-Reply-To: <m2inelofnk.fsf@discipline.rit.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from discipline.rit.edu ([129.21.6.207]:60705 "HELO
+        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with SMTP id S1752384AbdKHA5b (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2017 19:57:31 -0500
+From: Andrew Elble <aweits@rit.edu>
+To: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Cc: Andrew Elble <aweits@rit.edu>
+Subject: [PATCH v2] nfsd: fix locking validator warning on nfs4_ol_stateid->st_mutex class
+Date: Tue,  7 Nov 2017 19:57:26 -0500
+Message-Id: <20171108005726.35092-1-aweits@rit.edu>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTExLTA3IGF0IDE4OjAzIC0wNTAwLCBBbmRyZXcgVyBFbGJsZSB3cm90ZToN
-Cj4gVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYXRhLmNvbT4gd3JpdGVzOg0KPiAN
-Cj4gPiBPbiBUdWUsIDIwMTctMTEtMDcgYXQgMTg6MzUgKzAwMDAsIFRyb25kIE15a2xlYnVzdCB3
-cm90ZToNCj4gPiA+IA0KPiA+ID4gQWgsIEkgc2VlLiBDYW4gd2UgaW4gdGhhdCBjYXNlIHBsZWFz
-ZSByYXRoZXIgZG8gdGhlIGZvbGxvd2luZz8NCj4gPiA+IA0KPiA+ID4gDQo+ID4gDQo+ID4gLi4u
-YW5kIHRoZW4gZm9sbG93IHVwIHdpdGg6DQo+ID4gDQo+ID4gODwtLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KPiA+IEZyb20gNTQ1
-ZTJmZGRiNzIyNjhmNWM1OWEzOTg2MTY5YWY5NmE0MGE2YWFiMCBNb24gU2VwIDE3IDAwOjAwOjAw
-DQo+ID4gMjAwMQ0KPiA+IEZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHBy
-aW1hcnlkYXRhLmNvbT4NCj4gPiBEYXRlOiBUdWUsIDcgTm92IDIwMTcgMTI6Mzk6NDQgLTA1MDAN
-Cj4gPiBTdWJqZWN0OiBbUEFUQ0ggMi8yXSBORlN2NDogUmVwbGFjZSBjbG9zZWQgc3RhdGVpZHMg
-d2l0aCB0aGUNCj4gPiAiaW52YWxpZCBzcGVjaWFsDQo+ID4gIHN0YXRlaWQiDQo+ID4gDQo+ID4g
-V2hlbiBkZWNvZGluZyBhIENMT1NFLCByZXBsYWNlIHRoZSBzdGF0ZWlkIHJldHVybmVkIGJ5IHRo
-ZSBzZXJ2ZXINCj4gPiB3aXRoIHRoZSAiaW52YWxpZCBzcGVjaWFsIHN0YXRlaWQiIGRlc2NyaWJl
-ZCBpbiBSRkM1NjYxLCBTZWN0aW9uDQo+ID4gOC4yLjMuDQo+ID4gDQo+ID4gSW4gbmZzX3NldF9v
-cGVuX3N0YXRlaWRfbG9ja2VkLCBpZ25vcmUgc3RhdGVpZHMgZnJvbSBjbG9zZWQgc3RhdGUuDQo+
-ID4gDQo+ID4gU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RA
-cHJpbWFyeWRhdGEuY29tPg0KPiANCj4gTG9va3MgZ29vZCEgVGhhbmtzIQ0KDQpUaGFuayB5b3Ug
-Zm9yIHRlc3RpbmchIEl0IGhhcyBiZWVuIHZlcnkgaGVscGZ1bC4uLg0KDQotLSANClRyb25kIE15
-a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQu
-bXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+The use of the st_mutex has been confusing the validator. Use the
+proper nested notation so as to not produce warnings.
+
+Signed-off-by: Andrew Elble <aweits@rit.edu>
+---
+ v2: added mutex_lock_nested to init_lock_stateid() for consistency
+ 
+ fs/nfsd/nfs4state.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0d98d73bd84e..62909f3947b2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3548,7 +3548,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+ {
+ 	__be32 ret;
+ 
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, 1);
+ 	ret = nfsd4_verify_open_stid(&stp->st_stid);
+ 	if (ret != nfs_ok)
+ 		mutex_unlock(&stp->st_mutex);
+@@ -3612,7 +3612,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
+ 	stp = open->op_stp;
+ 	/* We are moving these outside of the spinlocks to avoid the warnings */
+ 	mutex_init(&stp->st_mutex);
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, 0);
+ 
+ retry:
+ 	spin_lock(&oo->oo_owner.so_client->cl_lock);
+@@ -5692,7 +5692,7 @@ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
+ 	struct nfs4_ol_stateid *retstp;
+ 
+ 	mutex_init(&stp->st_mutex);
+-	mutex_lock(&stp->st_mutex);
++	mutex_lock_nested(&stp->st_mutex, 0);
+ retry:
+ 	spin_lock(&clp->cl_lock);
+ 	spin_lock(&fp->fi_lock);
+-- 
+1.8.3.1
+
