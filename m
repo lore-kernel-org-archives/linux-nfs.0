@@ -1,61 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from host1.domainmonger.com ([96.30.18.234]:45275 "EHLO
-        host1.domainmonger.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751763AbdKHQ0Z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Nov 2017 11:26:25 -0500
-Received: from c-24-62-100-84.hsd1.ma.comcast.net ([24.62.100.84]:49038 helo=nerd-marrow.com)
-        by host1.domainmonger.com with esmtpsa (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256)
-        (Exim 4.89)
-        (envelope-from <hack@nerd-marrow.com>)
-        id 1eCSsx-0008Iv-E9
-        for linux-nfs@vger.kernel.org; Wed, 08 Nov 2017 10:07:27 -0600
-Date: Wed, 8 Nov 2017 11:07:25 -0500
-From: Jay Fenlason <hack@nerd-marrow.com>
-To: linux-nfs@vger.kernel.org
-Subject: comments on fs/nfsd/nfscache.c
-Message-ID: <20171108160725.GA4812@nerd-marrow.com>
+Received: from fieldses.org ([173.255.197.46]:50806 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752354AbdKHUTW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 8 Nov 2017 15:19:22 -0500
+Date: Wed, 8 Nov 2017 15:19:22 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Vasily Averin <vvs@virtuozzo.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@poochiereds.net>
+Subject: Re: [PATCH 1/4] nfsd: remove net pointer from debug messages
+Message-ID: <20171108201922.GN24262@fieldses.org>
+References: <4c16eedb-7122-da42-a5fb-0ae2defdfffc@virtuozzo.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4c16eedb-7122-da42-a5fb-0ae2defdfffc@virtuozzo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I was looking through nfscache.c and noticed a few details that might
-be worth fixing:
+Thanks, applying for 4.15.--b.
 
-1: a comment says:
-/*                
- * Stats and other tracking of on the duplicate reply cache. All of these and
- * the "rc" fields in nfsdstats are protected by the cache_lock
- */
-
-   This is misleading.  There is a separate cache_lock for each bucket
-   in the hash table, so a thread holding the lock on bucket#0 can
-   race unimpeded with a thread holding the lock on bucket#1, leading
-   to corruption of these data.  Fortunately, these data are
-   statistics whose corruption will not affect the operation of the
-   sytem.
-
-2: the prune_bucket(b) function removes expired entries from the
-   specified bucket, and additionally removes unexpired entries
-   (possibly all of them in the bucket) when num_drc_entries >
-   max_drc_entries.  This means that when prune_cache_entries() is
-   called, it will delete all entries in low-numbered hash buckets
-   before removing expired entries in other buckets.
-
-   A more correct implementation would remove all expired entries from
-   all buckets before removing any unexpired entries if
-   num_drc_entries is still > max_drc_entries. It would also not
-   target a single range of the hash table for unexpired entry
-   removal. However this additional code complexity is probably
-   excessive for an unlikely edge case.
-
-3: in nfs_cache_lookup we calculate age = jiffies - rp->c_timestamp;
-   If jiffies has wrapped such that rp->c_timestamp is a very large
-   value, but jiffies is now a small value, age will approach ~0,
-   causing the entry to expire long before its time.  This is a
-   more-theoretical-than-practical flaw that might prevent the cache
-   from detecting a rexmit.
-
-Does anyone feel strongly that these are woth patching?
-
-   -- JF
+On Wed, Nov 08, 2017 at 08:55:22AM +0300, Vasily Averin wrote:
+> Publishing of net pointer is not safe,
+> replace it in debug meesages by net->ns.inum
+> 
+> [  119.989161] nfsd: initializing export module (net: f00001e7).
+> [  171.767188] NFSD: starting 90-second grace period (net f00001e7)
+> [  322.185240] nfsd: shutting down export module (net: f00001e7).
+> [  322.186062] nfsd: export shutdown complete (net: f00001e7).
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> ---
+>  fs/nfsd/export.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 46b48db..f9e7dd5 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -1230,7 +1230,7 @@ nfsd_export_init(struct net *net)
+>  	int rv;
+>  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+>  
+> -	dprintk("nfsd: initializing export module (net: %p).\n", net);
+> +	dprintk("nfsd: initializing export module (net: %x).\n", net->ns.inum);
+>  
+>  	nn->svc_export_cache = cache_create_net(&svc_export_cache_template, net);
+>  	if (IS_ERR(nn->svc_export_cache))
+> @@ -1278,7 +1278,7 @@ nfsd_export_shutdown(struct net *net)
+>  {
+>  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+>  
+> -	dprintk("nfsd: shutting down export module (net: %p).\n", net);
+> +	dprintk("nfsd: shutting down export module (net: %x).\n", net->ns.inum);
+>  
+>  	cache_unregister_net(nn->svc_expkey_cache, net);
+>  	cache_unregister_net(nn->svc_export_cache, net);
+> @@ -1286,5 +1286,5 @@ nfsd_export_shutdown(struct net *net)
+>  	cache_destroy_net(nn->svc_export_cache, net);
+>  	svcauth_unix_purge(net);
+>  
+> -	dprintk("nfsd: export shutdown complete (net: %p).\n", net);
+> +	dprintk("nfsd: export shutdown complete (net: %x).\n", net->ns.inum);
+>  }
+> -- 
+> 2.7.4
