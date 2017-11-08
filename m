@@ -1,47 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50866 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:50972 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752503AbdKHVnp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Nov 2017 16:43:45 -0500
-Date: Wed, 8 Nov 2017 16:43:44 -0500
+        id S1751245AbdKHW31 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 8 Nov 2017 17:29:27 -0500
+Date: Wed, 8 Nov 2017 17:29:26 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andrew W Elble <aweits@rit.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: fix locking validator warning on
- nfs4_ol_stateid->st_mutex class
-Message-ID: <20171108214344.GQ24262@fieldses.org>
-References: <20171108005726.35092-1-aweits@rit.edu>
- <20171108205812.GP24262@fieldses.org>
- <m21sl8o3bd.fsf@discipline.rit.edu>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Bruce Fields <bfields@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] SUNRPC: Improve ordering of transport processing
+Message-ID: <20171108222926.GR24262@fieldses.org>
+References: <20171010173143.106492-1-trond.myklebust@primarydata.com>
+ <20171010173143.106492-2-trond.myklebust@primarydata.com>
+ <9D9E2C92-F1FF-4451-800D-54F74D815F7E@oracle.com>
+ <20171019203347.GB6186@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <m21sl8o3bd.fsf@discipline.rit.edu>
+In-Reply-To: <20171019203347.GB6186@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 08, 2017 at 04:42:14PM -0500, Andrew W Elble wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> writes:
+On Thu, Oct 19, 2017 at 04:33:47PM -0400, bfields wrote:
+> On Thu, Oct 19, 2017 at 03:38:17PM -0400, Chuck Lever wrote:
+> > 
+> > > On Oct 10, 2017, at 1:31 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > > 
+> > > Since it can take a while before a specific thread gets scheduled, it
+> > > is better to just implement a first come first served queue mechanism.
+> > > That way, if a thread is already scheduled and is idle, it can pick up
+> > > the work to do from the queue.
+> > > 
+> > > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> > 
+> > Tested-by: Chuck Lever <chuck.lever@oracle.com>
+> > 
+> > Light performance testing, and a git software build / regression
+> > suite run on NFSv4.1. All on NFS/RDMA.
 > 
-> > On Tue, Nov 07, 2017 at 07:57:26PM -0500, Andrew Elble wrote:
-> >> The use of the st_mutex has been confusing the validator. Use the
-> >> proper nested notation so as to not produce warnings.
-> >
-> > Looking around, the usual pattern for simple nesting seems to be to use
-> > just mutex_lock() for the outer lock (equivalent to
-> > mutex_lock_nested(0)), and mutex_lock_nested(., SINGLE_DEPTH_NESTING)
-> > for the inner lock.
-> >
-> > Or we could define a new LOCK_STATEID_MUTEX, assuming the rule here is
-> > "lock stateid's are locked after open stateid's".  Just a question of
-> > might be simpler to understand.
-> 
-> I'm okay with whatever you think is best here - my thought was that the
-> mutex_lock_nested(0) called more attention to how it was working given
-> that acquiring that lock class the second time is now a little bit more
-> hidden in nfsd4_lock_ol_stateid().
+> Thanks!  And sorry for the slow response to this patch, the basic idea
+> sounds fine I just haven't found the time to understand the code change
+> yet!
 
-I think I'd go for constants like OPEN_STATEID_MUTEX and
-LOCK_STATEID_MUTEX in that case.  Maybe mild overkill, but it should
-explain what's going on?
+Sorry, I'm slow.  Took me a little staring to realize that this:
+
+> > > @@ -380,7 +380,6 @@ void svc_xprt_do_enqueue(struct svc_xprt *xprt)
+...
+> > > -			/* this one will do */
+> > > -			rqstp->rq_xprt = xprt;
+
+is the main change.  We'll let any thread running in svc_recv() pick up
+an xprt from the queue rather than assigning an xprt to a specific
+thread here in enqueue and then waiting for that specific thread to get
+to it.
+
+Makes sense, thanks, applied!
 
 --b.
