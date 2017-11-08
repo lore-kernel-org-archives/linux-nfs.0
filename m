@@ -1,58 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from discipline.rit.edu ([129.21.6.207]:60705 "HELO
-        discipline.rit.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with SMTP id S1752384AbdKHA5b (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2017 19:57:31 -0500
-From: Andrew Elble <aweits@rit.edu>
-To: linux-nfs@vger.kernel.org, bfields@fieldses.org
-Cc: Andrew Elble <aweits@rit.edu>
-Subject: [PATCH v2] nfsd: fix locking validator warning on nfs4_ol_stateid->st_mutex class
-Date: Tue,  7 Nov 2017 19:57:26 -0500
-Message-Id: <20171108005726.35092-1-aweits@rit.edu>
+Received: from mail-pg0-f65.google.com ([74.125.83.65]:45170 "EHLO
+        mail-pg0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754756AbdKHBWt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Nov 2017 20:22:49 -0500
+Received: by mail-pg0-f65.google.com with SMTP id b192so827586pga.2
+        for <linux-nfs@vger.kernel.org>; Tue, 07 Nov 2017 17:22:49 -0800 (PST)
+Date: Wed, 8 Nov 2017 10:22:05 +0900
+From: Stephen Hemminger <stephen@networkplumber.org>
+To: Vasily Averin <vvs@virtuozzo.com>
+Cc: netdev@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jeff Layton <jlayton@poochiereds.net>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH 21/21] sunrpc: exit_net cleanup check added
+Message-ID: <20171108102205.55aa82eb@shemminger-XPS-13-9360>
+In-Reply-To: <c450ca1b-67dd-8cef-5cb5-a2dfeaaa793e@virtuozzo.com>
+References: <c450ca1b-67dd-8cef-5cb5-a2dfeaaa793e@virtuozzo.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The use of the st_mutex has been confusing the validator. Use the
-proper nested notation so as to not produce warnings.
+On Sun, 5 Nov 2017 13:02:44 +0300
+Vasily Averin <vvs@virtuozzo.com> wrote:
 
-Signed-off-by: Andrew Elble <aweits@rit.edu>
----
- v2: added mutex_lock_nested to init_lock_stateid() for consistency
- 
- fs/nfsd/nfs4state.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+> Be sure that all_clients list initialized in net_init hook was return
+> to initial state.
+> 
+> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
+> ---
+>  net/sunrpc/sunrpc_syms.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+> index c73de18..0c5a90f 100644
+> --- a/net/sunrpc/sunrpc_syms.c
+> +++ b/net/sunrpc/sunrpc_syms.c
+> @@ -65,10 +65,14 @@ static __net_init int sunrpc_init_net(struct net *net)
+>  
+>  static __net_exit void sunrpc_exit_net(struct net *net)
+>  {
+> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+> +
+>  	rpc_pipefs_exit_net(net);
+>  	unix_gid_cache_destroy(net);
+>  	ip_map_cache_destroy(net);
+>  	rpc_proc_exit(net);
+> +	WARN(!list_empty(&sn->all_clients),
+> +	     "net %p exit: sunrpc all_clients list is not empty\n", net);
+>  }
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0d98d73bd84e..62909f3947b2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3548,7 +3548,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
- {
- 	__be32 ret;
- 
--	mutex_lock(&stp->st_mutex);
-+	mutex_lock_nested(&stp->st_mutex, 1);
- 	ret = nfsd4_verify_open_stid(&stp->st_stid);
- 	if (ret != nfs_ok)
- 		mutex_unlock(&stp->st_mutex);
-@@ -3612,7 +3612,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
- 	stp = open->op_stp;
- 	/* We are moving these outside of the spinlocks to avoid the warnings */
- 	mutex_init(&stp->st_mutex);
--	mutex_lock(&stp->st_mutex);
-+	mutex_lock_nested(&stp->st_mutex, 0);
- 
- retry:
- 	spin_lock(&oo->oo_owner.so_client->cl_lock);
-@@ -5692,7 +5692,7 @@ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
- 	struct nfs4_ol_stateid *retstp;
- 
- 	mutex_init(&stp->st_mutex);
--	mutex_lock(&stp->st_mutex);
-+	mutex_lock_nested(&stp->st_mutex, 0);
- retry:
- 	spin_lock(&clp->cl_lock);
- 	spin_lock(&fp->fi_lock);
--- 
-1.8.3.1
-
+Don't print a kernel pointer, this is a security leak.
