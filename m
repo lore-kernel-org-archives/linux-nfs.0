@@ -1,138 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:59115 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751245AbdKHWfL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Nov 2017 17:35:11 -0500
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@redhat.com>
-Date: Thu, 09 Nov 2017 09:34:59 +1100
-Cc: Joshua Watt <jpewhacker@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        David Howells <dhowells@redhat.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:52086 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753113AbdKHXw7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Nov 2017 18:52:59 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>,
+        "neilb@suse.com" <neilb@suse.com>
+CC: "jpewhacker@gmail.com" <jpewhacker@gmail.com>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
 Subject: Re: NFS Force Unmounting
-In-Reply-To: <20171108155203.GK24262@fieldses.org>
-References: <1508951506.2542.51.camel@gmail.com> <20171030202045.GA6168@fieldses.org> <87h8ugwdev.fsf@notabene.neil.brown.name> <1509557061.4755.27.camel@redhat.com> <87efphvbhy.fsf@notabene.neil.brown.name> <1509624549.4569.28.camel@redhat.com> <CAJdd5GZ-EMj8f3RaV_WUdeZs6aWbEAeC6xX8BadMD-aOFL3_jA@mail.gmail.com> <87fu9ph2g7.fsf@notabene.neil.brown.name> <1510142905.8401.6.camel@redhat.com> <20171108155203.GK24262@fieldses.org>
-Message-ID: <87wp30flgs.fsf@notabene.neil.brown.name>
+Date: Wed, 8 Nov 2017 23:52:54 +0000
+Message-ID: <1510185172.9891.18.camel@primarydata.com>
+References: <1508951506.2542.51.camel@gmail.com>
+         <20171030202045.GA6168@fieldses.org>
+         <87h8ugwdev.fsf@notabene.neil.brown.name>
+         <1509557061.4755.27.camel@redhat.com>
+         <87efphvbhy.fsf@notabene.neil.brown.name>
+         <1509624549.4569.28.camel@redhat.com>
+         <CAJdd5GZ-EMj8f3RaV_WUdeZs6aWbEAeC6xX8BadMD-aOFL3_jA@mail.gmail.com>
+         <87fu9ph2g7.fsf@notabene.neil.brown.name>
+         <1510142905.8401.6.camel@redhat.com> <20171108155203.GK24262@fieldses.org>
+         <87wp30flgs.fsf@notabene.neil.brown.name>
+In-Reply-To: <87wp30flgs.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+T24gVGh1LCAyMDE3LTExLTA5IGF0IDA5OjM0ICsxMTAwLCBOZWlsQnJvd24gd3JvdGU6DQo+IE9u
+IFdlZCwgTm92IDA4IDIwMTcsIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gDQo+ID4gT24gV2Vk
+LCBOb3YgMDgsIDIwMTcgYXQgMDc6MDg6MjVBTSAtMDUwMCwgSmVmZiBMYXl0b24gd3JvdGU6DQo+
+ID4gPiBPbiBXZWQsIDIwMTctMTEtMDggYXQgMTQ6MzAgKzExMDAsIE5laWxCcm93biB3cm90ZToN
+Cj4gPiA+ID4gV2hhdCB0byBwZW9wbGUgdGhpbmsgb2YgdGhlIGZvbGxvd2luZyBhcyBhbiBhcHBy
+b2FjaA0KPiA+ID4gPiB0byBKb3NodWEncyBuZWVkPw0KPiA+ID4gPiANCj4gPiA+ID4gSXQgaXNu
+J3QgY29tcGxldGUgYnkgaXRzZWxmOiBpdCBuZWVkcyBhIGNvdXBsZSBvZiBjaGFuZ2VzIHRvDQo+
+ID4gPiA+IG5mcy11dGlscyBzbyB0aGF0IGl0IGRvZXNuJ3Qgc3RhdCB0aGUgbW91bnRwb2ludCBv
+biByZW1vdW50LA0KPiA+ID4gPiBhbmQgaXQgbWlnaHQgbmVlZCBhbm90aGVyIGtlcm5lbCBjaGFu
+Z2Ugc28gdGhhdCB0aGUgIm1vdW50Ig0KPiA+ID4gPiBzeXN0ZW0NCj4gPiA+ID4gY2FsbCBwZXJm
+b3JtcyB0aGUgc2FtZSBzb3J0IG9mIGNhcmVmdWwgbG9va3VwIGZvciByZW1vdW50DQo+ID4gPiA+
+IGFzICB0aGUgdW1vdW50DQo+ID4gPiA+IHN5c3RlbSBjYWxsIGRvZXMsIGJ1dCB0aG9zZSBhcmUg
+cmVsYXRpdmVseSBzbWFsbCBkZXRhaWxzLg0KPiA+ID4gPiANCj4gPiA+IA0KPiA+ID4gWWVhaCwg
+dGhhdCdkIGJlIGdvb2QuDQo+ID4gPiANCj4gPiA+ID4gVGhpcyBpcyB0aGUgcGF0Y2ggdGhhdCB5
+b3Ugd2lsbCBlaXRoZXIgbG92ZSBvZiBoYXRlLg0KPiA+ID4gPiANCj4gPiA+ID4gV2l0aCB0aGlz
+IHBhdGNoLCBKb3NodWEgKG9yIGFueSBvdGhlciBzeXNhZG1pbikgY291bGQ6DQo+ID4gPiA+IA0K
+PiA+ID4gPiAgIG1vdW50IC1vIHJlbW91bnQscmV0cmFucz0wLHRpbWVvPTEgL3BhdGgNCj4gPiA+
+ID4gDQo+ID4gPiA+IGFuZCB0aGVuIG5ldyByZXF1ZXN0cyBvbiBhbnkgbW91bnRwb2ludCBmcm9t
+IHRoYXQgc2VydmVyIHdpbGwNCj4gPiA+ID4gdGltZW91dA0KPiA+ID4gPiBxdWlja2x5Lg0KPiA+
+ID4gPiBUaGVuDQo+ID4gPiA+ICAgdW1vdW50IC1mIC9wYXRoDQo+ID4gPiA+ICAgdW1vdW50IC1m
+IC9wYXRoDQo+ID4gDQo+ID4gLi4uDQo+ID4gPiBMb29rcyBsaWtlIGEgcmVhc29uYWJsZSBhcHBy
+b2FjaCBvdmVyYWxsIHRvIHByZXZlbnRpbmcgbmV3IFJQQ3MNCj4gPiA+IGZyb20NCj4gPiA+IGJl
+aW5nIGRpc3BhdGNoZWQgb25jZSB0aGUgImZvcmNlIiB1bW91bnQgcnVucy4NCj4gPiANCj4gPiBJ
+J3ZlIGxvc3QgdHJhY2sgb2YgdGhlIGRpc2N1c3Npb24tLWFmdGVyIHRoaXMgcGF0Y2gsIGhvdyBj
+bG9zZSBhcmUNCj4gPiB3ZSB0bw0KPiA+IGEgZ3VhcmFudGVlZCBmb3JjZSB1bm1vdW50PyAgSSBh
+c3N1bWUgdGhlcmUgYXJlIHN0aWxsIGEgZmV3DQo+ID4gb2JzdGFjbGVzLg0KPiANCj4gVGhpcyBp
+c24ndCByZWFsbHkgYWJvdXQgZm9yY2VkIHVubW91bnQuDQo+IFRoZSB3YXkgZm9yd2FyZCB0byBm
+b3JjZWQgdW5tb3VudCBpdDoNCj4gIC0gbWFrZSBhbGwgd2FpdHMgb24gTkZTIGJlIFRBU0tfS0lM
+TEFCTEUNCj4gIC0gZmlndXJlIG91dCB3aGF0IGhhcHBlbnMgdG8gZGlydHkgZGF0YSB3aGVuIGFs
+bCBwcm9jZXNzZXMgaGF2ZQ0KPiAgICBiZWVuIGtpbGxlZC4NCj4gDQo+IFRoaXMgaXMgYWJvdXQg
+YWxsb3dpbmcgcHJvY2Vzc2VzIHRvIGJlIHRvbGQgdGhhdCB0aGUgZmlsZXN5c3RlbSBpcw0KPiBk
+ZWFkDQo+IHNvIHRoYXQgY2FuIHJlc3BvbmQgKHdpdGhvdXQgYmxvY2tpbmcgaW5kZWZpbml0ZWx5
+KSB3aXRob3V0DQo+IG5lY2Vzc2FyaWx5IGJlaW5nIGtpbGxlZC4NCj4gV2l0aCBhIGxvY2FsIGZp
+bGVzeXN0ZW0geW91IGNhbiAoaW4gc29tZSBjYXNlcykga2lsbCB0aGUgdW5kZXJseWluZw0KPiBk
+ZXZpY2UgYW5kIGFsbCBwcm9jZXNzZXMgd2lsbCBzdGFydCBnZXR0aW5nIEVJTy4gIFRoaXMgaXMg
+cHJvdmlkaW5nDQo+IHNpbWlsYXIgZnVuY3Rpb25hbGl0eSBmb3IgTkZTLg0KPiANCj4gPiANCj4g
+PiA+IEkgZG8gd29uZGVyIGlmIHRoaXMgb3VnaHQgdG8gYmUgbW9yZSBhdXRvbWF0aWMgd2hlbiB5
+b3Ugc3BlY2lmeQ0KPiA+ID4gLWYgb24NCj4gPiA+IHRoZSB1bW91bnQuIEhhdmluZyB0byBtYW51
+YWxseSBkbyBhIHJlbW91bnQgZmlyc3QgZG9lc24ndCBzZWVtDQo+ID4gPiB2ZXJ5DQo+ID4gPiBh
+ZG1pbi1mcmllbmRseS4NCj4gPiANCj4gPiBJdCdzIGFuIG9kZCBpbnRlcmZhY2UuICBNYXliZSB3
+ZSBjb3VsZCB3cmFwIGl0IGluIHNvbWV0aGluZyBtb3JlDQo+ID4gaW50dWl0aXZlLg0KPiA+IA0K
+PiA+IEknZCBiZSBuZXJ2b3VzIGFib3V0IG1ha2luZyAidW1vdW50IC1mIiBkbyBpdC4gIEkgdGhp
+bmsNCj4gPiBhZG1pbmlzdHJhdG9ycw0KPiA+IGNvdWxkIGJlIHVucGxlYXNhbnRseSBzdXJwcmlz
+ZWQgaW4gc29tZSBjYXNlcyBpZiBhbiAidW1vdW50IC1mIg0KPiA+IGFmZmVjdHMNCj4gPiBvdGhl
+ciBtb3VudHMgb2YgdGhlIHNhbWUgc2VydmVyLg0KPiANCj4gSSB3YXMgYWxsIHNldCB0byB0ZWxs
+IHlvdSB0aGF0IGl0IGFscmVhZHkgZG9lcywgYnV0IHRoZW4gdGVzdGVkIGFuZA0KPiBmb3VuZCBp
+dCBkb2Vzbid0IGFuZCAuLi4uDQo+IA0KPiBzdHJ1Y3QgbmZzX3NlcnZlciAod2hpY2ggc2ItPnNf
+ZnNfaW5mbyBwb2ludHMgdG8pIGNvbnRhaW5zDQo+IA0KPiAJc3RydWN0IG5mc19jbGllbnQgKglu
+ZnNfY2xpZW50OwkvKiBzaGFyZWQgY2xpZW50DQo+IGFuZCBORlM0IHN0YXRlICovDQo+IA0KPiB3
+aGljaCBpcyBzaGFyZWQgYmV0d2VlbiBkaWZmZXJlbnQgbW91bnRzIGZyb20gdGhlIHNhbWUgc2Vy
+dmVyLCBhbmQNCj4gDQo+IAlzdHJ1Y3QgcnBjX2NsbnQgKgljbGllbnQ7CQkvKiBSUEMgY2xpZW50
+DQo+IGhhbmRsZSAqLw0KPiANCj4gd2hpY2ggaXNuJ3Qgc2hhcmVkLg0KPiBzdHJ1Y3QgbmZzX2Ns
+aWVudCBjb250YWlucw0KPiAJc3RydWN0IHJwY19jbG50ICoJY2xfcnBjY2xpZW50Ow0KPiANCj4g
+d2hpY2ggc2VydmVyLT5jbGllbnQgaXMgY2xvbmVzIGZyb20uDQo+IA0KPiBUaGUgdGltZW91dHMg
+dGhhdCBhcHBseSB0byBhIG1vdW50IGFyZSB0aGUgb25lcyBmcm9tIHNlcnZlci0+Y2xpZW50LA0K
+PiBhbmQgc28gYXBwbHkgb25seSB0byB0aGF0IG1vdW50IChJIHRob3VnaHQgdGhleSB3ZXJlIHNo
+YXJlZCwgYnV0IHRoYXQNCj4gaXMNCj4gYSB0aG91Z2h0IGZyb20geWVhcnMgYWdvLCBhbmQgbWF5
+YmUgaXQgd2FzIHdyb25nIGF0IHRoZSB0aW1lKS4NCj4gdW1vdW50X2JlZ2luIGFib3J0cyBhbGwg
+cnBjcyBhc3NvY2lhdGVkIHdpdGggc2VydmVyLT5jbGllbnQuDQo+IA0KPiBTbyB0aGUgJ3JlbW91
+bnQscmV0cmFucz0wLHRpbWVvPTEnIHRoYXQgSSBwcm9wb3NlIHdvdWxkIG9ubHkgYWZmZWN0DQo+
+IHRoZQ0KPiBvbmUgc3VwZXJibG9jayAoYWxsIGJpbmQtbW91bnRzIG9mIGNvdXJzZSwgaW5jbHVk
+ZWQgc2hhcmVjYWNoZQ0KPiBtb3VudHMpLg0KPiANCj4gVGhlIGNvbW1lbnQgaW4gbXkgY29kZSB3
+YXMgd3JvbmcuDQo+IA0KDQpJIGJ5IGZhciBwcmVmZXIgYW4gb3BlcmF0aW9uIHRoYXQgY2hhbmdl
+cyB0aGUgc3VwZXJibG9jayBzdGF0ZSB0byBiZQ0KZG9uZSB1c2luZyAnbW91bnQgLW8gcmVtb3Vu
+dCcuIFRoZSBpZGVhIG9mIGEgJ3Vtb3VudCAtZicgdGhhdCBtYWtlcyB0aGUNCnN1cGVyYmxvY2sg
+aXJyZXZlcnNpYmx5IGNoYW5nZSBzdGF0ZSBpcyBjbGVhcmx5IG5vdCBkZXNpcmFibGUgaW4gYW4N
+CmVudmlyb25tZW50IHdoZXJlIHRoZSBzYW1lIHN1cGVyYmxvY2sgY291bGQgYmUgYmluZCBtb3Vu
+dGVkIGFuZC9vcg0KbW91bnRlZCBpbiBtdWx0aXBsZSBwcml2YXRlIG5hbWVzcGFjZXMuDQoNCklP
+VzogJ3JlbW91bnQscmV0cmFucz0wLHRpbWVvPTEnIHdvdWxkIGJlIHNsaWdodGx5IHByZWZlcmFi
+bGUgdG8NCmhhY2tpbmcgdXAgInVtb3VudCAtZiIgYmVjYXVzZSBpdCBpcyByZXZlcnNpYmxlLg0K
+DQpUaGF0IHNhaWQsIHRoZXJlIGlzIG5vIHJlYXNvbiB3aHkgd2UgY291bGRuJ3QgaW1wbGVtZW50
+IGEgc2luZ2xlIG1vdW50DQpvcHRpb24gdGhhdCBpbXBsZW1lbnRzIHNvbWV0aGluZyBha2luIHRv
+IHRoaXMgInVtb3VudCAtZiIgYmVoYXZpb3VyDQooYW5kIHRoYXQgY2FuIGJlIHJldmVyc2VkIGJ5
+IHJlc2V0dGluZyBpdCB0aHJvdWdoIGEgc2Vjb25kICdyZW1vdW50JykuDQpJdCBzZWVtcyB0byBt
+ZSB0aGF0IHRoZSByZXF1ZXN0ZWQgYmVoYXZpb3VyIGlzIGFscmVhZHkgcHJldHR5IGNsb3NlIHRv
+DQp3aGF0IHdlIGFscmVhZHkgaW1wbGVtZW50IHdpdGggdGhlIFJQQ19UQVNLX1NPRlRDT05OIG9w
+dGlvbi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5l
+ciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-On Wed, Nov 08 2017, J. Bruce Fields wrote:
-
-> On Wed, Nov 08, 2017 at 07:08:25AM -0500, Jeff Layton wrote:
->> On Wed, 2017-11-08 at 14:30 +1100, NeilBrown wrote:
->> > What to people think of the following as an approach
->> > to Joshua's need?
->> >=20
->> > It isn't complete by itself: it needs a couple of changes to
->> > nfs-utils so that it doesn't stat the mountpoint on remount,
->> > and it might need another kernel change so that the "mount" system
->> > call performs the same sort of careful lookup for remount as  the umou=
-nt
->> > system call does, but those are relatively small details.
->> >=20
->>=20
->> Yeah, that'd be good.
->>=20
->> > This is the patch that you will either love of hate.
->> >=20
->> > With this patch, Joshua (or any other sysadmin) could:
->> >=20
->> >   mount -o remount,retrans=3D0,timeo=3D1 /path
->> >=20
->> > and then new requests on any mountpoint from that server will timeout
->> > quickly.
->> > Then
->> >   umount -f /path
->> >   umount -f /path
-> ...
->> Looks like a reasonable approach overall to preventing new RPCs from
->> being dispatched once the "force" umount runs.
->
-> I've lost track of the discussion--after this patch, how close are we to
-> a guaranteed force unmount?  I assume there are still a few obstacles.
-
-This isn't really about forced unmount.
-The way forward to forced unmount it:
- - make all waits on NFS be TASK_KILLABLE
- - figure out what happens to dirty data when all processes have
-   been killed.
-
-This is about allowing processes to be told that the filesystem is dead
-so that can respond (without blocking indefinitely) without
-necessarily being killed.
-With a local filesystem you can (in some cases) kill the underlying
-device and all processes will start getting EIO.  This is providing
-similar functionality for NFS.
-
->
->> I do wonder if this ought to be more automatic when you specify -f on
->> the umount. Having to manually do a remount first doesn't seem very
->> admin-friendly.
->
-> It's an odd interface.  Maybe we could wrap it in something more
-> intuitive.
->
-> I'd be nervous about making "umount -f" do it.  I think administrators
-> could be unpleasantly surprised in some cases if an "umount -f" affects
-> other mounts of the same server.
-
-I was all set to tell you that it already does, but then tested and
-found it doesn't and ....
-
-struct nfs_server (which sb->s_fs_info points to) contains
-
-	struct nfs_client *	nfs_client;	/* shared client and NFS4 state */
-
-which is shared between different mounts from the same server, and
-
-	struct rpc_clnt *	client;		/* RPC client handle */
-
-which isn't shared.
-struct nfs_client contains
-	struct rpc_clnt *	cl_rpcclient;
-
-which server->client is clones from.
-
-The timeouts that apply to a mount are the ones from server->client,
-and so apply only to that mount (I thought they were shared, but that is
-a thought from years ago, and maybe it was wrong at the time).
-umount_begin aborts all rpcs associated with server->client.
-
-So the 'remount,retrans=3D0,timeo=3D1' that I propose would only affect the
-one superblock (all bind-mounts of course, included sharecache mounts).
-
-The comment in my code was wrong.
-
-Thanks,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloDhpUACgkQOeye3VZi
-gblnkA/9Eu9kGnBzUxJrH0Nbfk1x0T39jS/AL/XPHy/KA8jw2On7eh0AKk3pMq2s
-tsGnpKgjh8eceVdZpeR37apdZFsCKHDHhKfa37434HqiywPaGjrpyVf1Fx3zPBtb
-0nyKGPaFfqP+WWl15qIiNtKuMZU7y/J6a5vy5NgZbtQeCg0YcNKwKMlwiTC7oYWL
-MUy+WuY65NsvsAojuhfXWip39pGqVXRfcYh7aZNlSXiHuOw+tEAi7HZKCUtg3S9G
-5u7v2Lntdz57v+Wb2kQPKF0fWKvYZQbF52JjKWz0d/SxbRSdl2tOA5gUfBkpM5jW
-o9dE7zqYPQ2uhq/sJ30hCJHpVnah6VHXR3/dN7zJrzcyB4rf7t7tiuu/4alKA79t
-b+T8cFDXPqKm2HcJNO+I5JOnweu6ASlu9QIVYuahtTFCQ9m26l2KN6GGeAXTKfmJ
-6Jp0WQH/OIaS3zl3UcorxWM6SMMUdpvMFMUoz5Q5c+L53lStCiHA6GUZ0FYFoj+e
-pgswocBhMYob4kuX+GdKjjvHjc6TKzvb0tCFOv410zqfPgXsaJw0hNJYZqy5lYbI
-ghkOlU1DhuQMrlSVMFF5zpKXc3scXOkgGTLITTvVcMh+zuTJe00hILZxtZ9P+ury
-cn7XzQNBLzbhFz1sc5Q4PBCRD4HXoiOkGjRQLdMpAHu8T6pUWwg=
-=XuLk
------END PGP SIGNATURE-----
---=-=-=--
