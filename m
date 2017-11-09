@@ -1,90 +1,88 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:60514 "EHLO fieldses.org"
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from fieldses.org ([173.255.197.46]:52356 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753567AbdK3RED (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Nov 2017 12:04:03 -0500
-Date: Thu, 30 Nov 2017 12:04:03 -0500
-To: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
-Cc: "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pynfs nfs4.0 server st_write: fix the amount of data
- sent in the testLargeData
-Message-ID: <20171130170403.GD3923@fieldses.org>
-References: <2af20316-5ce4-354e-8768-4462398dc36f@cn.fujitsu.com>
+        id S1751311AbdKIQH3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Nov 2017 11:07:29 -0500
+Date: Thu, 9 Nov 2017 11:07:28 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Naofumi Honda <honda@math.sci.hokudai.ac.jp>
+Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com
+Subject: Re: [Bug 197817] "Panic: unable to handle kernel page request"  in
+ posix_unblock_lock() called from nfs4_laundromat()
+Message-ID: <20171109160728.GI8773@fieldses.org>
+References: <bug-197817-198953@https.bugzilla.kernel.org/>
+ <bug-197817-198953-0whWrJRFSz@https.bugzilla.kernel.org/>
+ <1911104.BiqBl0Bicc@nausicaa>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2af20316-5ce4-354e-8768-4462398dc36f@cn.fujitsu.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <1911104.BiqBl0Bicc@nausicaa>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Yes, this test is weird, I'm not sure what to do with it.
+On Thu, Nov 09, 2017 at 10:08:28AM +0900, Naofumi Honda wrote:
+> Dear Developers:
+> 
+> > https://bugzilla.kernel.org/show_bug.cgi?id=197817
+> > 
+> > --- Comment #1 from bfields@fieldses.org ---
+> > Yes, I think you're right.
+> > 
+> > Would it be possible for you to submit a patch to fix that typo in those two
+> > places?  (Just mail it to me at bfields@fieldses.org, cc: to
+> > linux-nfs@vger.kernel.org).
+> > 
+> 
+> OK,  I have attached the patch.
 
-If we want the writet to succeed then pynfs should first query the
-server for the maximum write size and use that--not every server will
-have 1M as the maximum.
+Thanks for the investigation and the fix!
 
-Maybe the intent was just to see if the server handles a too-large value
-gracefullly.  But in that case it should probably use a much larger
-write (to ensure that it will be too much for any server), and be
-modified to expect the server to fail.
+For future reference, we prefer patches to be inline with the email
+message (not attached), and prefer them in "unified" format.
+
+But for a one-off patch I can fix it up myself; applied as follows.
 
 --b.
 
-On Thu, Nov 30, 2017 at 08:13:14AM +0000, Lu, Xinyu wrote:
->  nfs4.0 server st_write: fix the amount of data sent in the testLargeData
->     
->     The maximum amount of data could be writen is NFSSVC_MAXBLKSIZE. The value of NFSSVC_MAXB
-> LKSIZE defined in the kernel is RPCSVC_MAXPLAYLOAD. If the value written exceeds NFSSVC_MAXBL
-> KSIZE, the value is fixed as the value of NFSSVC_MAXBLKSIZE. The value of RPCSVC_MAXPAYLOAD i
-> s 1*1024*1024u and "abcdefghijklmnopq"*0x10000 exceeds it. So the previous test is bound to f
-> ail and is meaningless.
-> 
->     Signed-off-by: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-> 
-> diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
-> index 710452e..a7dae03 100644
-> --- a/nfs4.0/servertests/st_write.py
-> +++ b/nfs4.0/servertests/st_write.py
-> @@ -130,7 +130,7 @@ def testLargeData(t, env):
->      c = env.c1
->      c.init_connection()
->      fh, stateid = c.create_confirm(t.code)
-> -    data = "abcdefghijklmnopq" * 0x10000
-> +    data = "a" * 1024 * 1024
->      # Write the data
->      pos = 0
->      while pos < len(data):
-> 
-> 
+commit c26806a20fa3
+Author: Naofumi Honda <honda@math.sci.hokudai.ac.jp>
+Date:   Thu Nov 9 10:57:16 2017 -0500
 
-> From 6adc3da0ab17eb7e52b47805e6999d65b043fa7f Mon Sep 17 00:00:00 2001
-> From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-> Date: Thu, 30 Nov 2017 13:24:15 +0800
-> Subject: [PATCH] nfs4.0 server st_write: fix the amount of data sent in the
->  testLargeData
-> 
-> The maximum amount of data could be writen is NFSSVC_MAXBLKSIZE. The value of NFSSVC_MAXBLKSIZE defined in the kernel is RPCSVC_MAXPLAYLOAD. If the value written exceeds NFSSVC_MAXBLKSIZE, the value is fixed as the value of NFSSVC_MAXBLKSIZE. The value of RPCSVC_MAXPAYLOAD is 1*1024*1024u and "abcdefghijklmnopq"*0x10000 exceeds it. So the previous test is bound to fail and is meaningless.
-> 
-> Signed-off-by: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-> ---
->  nfs4.0/servertests/st_write.py | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
-> index 710452e..a7dae03 100644
-> --- a/nfs4.0/servertests/st_write.py
-> +++ b/nfs4.0/servertests/st_write.py
-> @@ -130,7 +130,7 @@ def testLargeData(t, env):
->      c = env.c1
->      c.init_connection()
->      fh, stateid = c.create_confirm(t.code)
-> -    data = "abcdefghijklmnopq" * 0x10000
-> +    data = "a" * 1024 * 1024
->      # Write the data
->      pos = 0
->      while pos < len(data):
-> -- 
-> 2.13.3
-> 
+    nfsd: fix panic in posix_unblock_lock called from nfs4_laundromat
+    
+    From kernel 4.9, my two nfsv4 servers sometimes suffer from
+        "panic: unable to handle kernel page request"
+    in posix_unblock_lock() called from nfs4_laundromat().
+    
+    These panics diseappear if we revert the commit "nfsd: add a LRU list
+    for blocked locks".
+    
+    The cause appears to be a typo in nfs4_laundromat(), which is also
+    present in nfs4_state_shutdown_net().
+    
+    Cc: stable@vger.kernel.org
+    Fixes: 7919d0a27f1e "nfsd: add a LRU list for blocked locks"
+    Cc: jlayton@redhat.com
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 923243369bbc..b99830ab63aa 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4791,7 +4791,7 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 	spin_unlock(&nn->blocked_locks_lock);
+ 
+ 	while (!list_empty(&reaplist)) {
+-		nbl = list_first_entry(&nn->blocked_locks_lru,
++		nbl = list_first_entry(&reaplist,
+ 					struct nfsd4_blocked_lock, nbl_lru);
+ 		list_del_init(&nbl->nbl_lru);
+ 		posix_unblock_lock(&nbl->nbl_lock);
+@@ -7260,7 +7260,7 @@ nfs4_state_shutdown_net(struct net *net)
+ 	spin_unlock(&nn->blocked_locks_lock);
+ 
+ 	while (!list_empty(&reaplist)) {
+-		nbl = list_first_entry(&nn->blocked_locks_lru,
++		nbl = list_first_entry(&reaplist,
+ 					struct nfsd4_blocked_lock, nbl_lru);
+ 		list_del_init(&nbl->nbl_lru);
+ 		posix_unblock_lock(&nbl->nbl_lock);
