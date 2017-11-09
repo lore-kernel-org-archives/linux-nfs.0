@@ -1,69 +1,117 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35352 "EHLO mx1.redhat.com"
+Received: from mx2.suse.de ([195.135.220.15]:49202 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751133AbdKIUsA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 9 Nov 2017 15:48:00 -0500
-Date: Thu, 9 Nov 2017 15:47:58 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Patrick McLean <chutzpah@gentoo.org>,
+        id S1754406AbdKIVGY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Nov 2017 16:06:24 -0500
+From: NeilBrown <neilb@suse.com>
+To: Jeff Layton <jlayton@redhat.com>, Ian Kent <ikent@redhat.com>,
+        Latchesar Ionkov <lucho@ionkov.net>,
+        Eric Van Hensbergen <ericvh@gmail.com>,
         Al Viro <viro@zeniv.linux.org.uk>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        stable <stable@vger.kernel.org>,
-        Thorsten Leemhuis <regressions@leemhuis.info>
-Subject: Re: [nfsd4] potentially hardware breaking regression in 4.14-rc and
- 4.13.11
-Message-ID: <20171109204757.GB11619@parsley.fieldses.org>
-References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
- <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
+        Ron Minnich <rminnich@sandia.gov>,
+        Trond Myklebust <trondmy@primarydata.com>
+Date: Fri, 10 Nov 2017 08:06:09 +1100
+Cc: linux-nfs@vger.kernel.org, autofs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        v9fs-developer@lists.sourceforge.net,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [PATCH 0/3] VFS: name lookup improvements.
+In-Reply-To: <1510230754.29194.6.camel@redhat.com>
+References: <151021179901.22743.15252956909042161062.stgit@noble> <1510230754.29194.6.camel@redhat.com>
+Message-ID: <87a7zvf9ha.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 08, 2017 at 06:40:22PM -0800, Linus Torvalds wrote:
-> Anyway, that cmovne noise makes it a bit hard to see the actual part
-> that matters (and that traps) but I'm almost certain that it's the
-> "mnt->mnt_sb->s_flags" loading that is part of calculate_f_flags()
-> when it then does
-> 
->      flags_by_sb(mnt->mnt_sb->s_flags);
-> 
-> and I think mnt->mnt_sb is NULL. We know it's not 'mnt' itself that is
-> NULL, because we wouldn't have gotten this far if it was.
-> 
-> Now, afaik, mnt->mnt_sb should never be NULL in the first place for a
-> proper path. And the vfs_statfs() code itself hasn't changed in a
-> while.
-> 
-> Which does seem to implicate nfsd as having passed in a bad path to
-> vfs_statfs(). But I'm not seeing any changes in nfsd either.
-> 
-> In particular, there are *no* nfsd changes in that 4.13.8..4.13.11
-> range. There is a bunch of xfs changes, though. What's the underlying
-> filesystem that you are exporting?
-> 
-> But bringing in Al Viro and Bruce Fields explicitly in case they see
-> something. And Darrick, just in case it might be xfs.
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Looking at https://lkml.org/lkml/2017/11/8/1086 for the actual oops...
+On Thu, Nov 09 2017, Jeff Layton wrote:
 
-It doesn't remind me of any known issue.
+> On Thu, 2017-11-09 at 18:20 +1100, NeilBrown wrote:
+>> These three patches address two issues: d_weak_revalidate and
+>> path_mountpoint lookups.
+>>=20
+>> The former is poorly defined and doesn't actually do the one thing
+>> that it would be useful for it to do.  So the nfs implemention
+>> is improved, the 9p one discarded, and the documentation clarified.
+>>=20
+>> Given this change and recent change to follow_automount() the
+>> mountpoint path lookup functions are no longer needed.  The regular
+>> path look functions are quite sufficient.
+>> The second two patches remove this with detailed explanation of why
+>> it is OK.
+>>=20
+>> Thanks,
+>> NeilBrown
+>>=20
+>>=20
+>> ---
+>>=20
+>> NeilBrown (3):
+>>       VFS/nfs/9p: revise meaning of d_weak_invalidate.
+>>       VFS: remove user_path_mountpoint_at()
+>>       VFS / autofs4: remove kern_path_mountpoint()
+>>=20
+>>=20
+>>  Documentation/filesystems/porting |    5 +
+>>  Documentation/filesystems/vfs.txt |   11 +--
+>>  fs/9p/vfs_dentry.c                |    1=20
+>>  fs/autofs4/dev-ioctl.c            |    5 -
+>>  fs/internal.h                     |    1=20
+>>  fs/namei.c                        |  150 ------------------------------=
+-------
+>>  fs/namespace.c                    |    2=20
+>>  fs/nfs/dir.c                      |   60 ++-------------
+>>  include/linux/namei.h             |    1=20
+>>  9 files changed, 24 insertions(+), 212 deletions(-)
+>>=20
+>> --
+>> Signature
+>>=20
+>
+> I love that diffstat and I think the patches and the logic behind them
+> look reasonable. I'm the one that added d_weak_revalidate and while it
+> did fix a problem at the time, it has always seemed a bit of an odd
+> d_op.
+>
+> Your patch does make me wonder if we should consider merging
+> d_weak_revalidate and d_revalidate back together, and simply require all
+> the d_revalidate ops vet the flags more thoroughly.
 
-And I don't see how we can call vfs_statfs() with a bad path:
-nfsd4_encode_getattr would have to have been called with nfserr 0 and
-ga_fhp->fh_export bad.
+This boils down to adding
 
-Looking at nfsd4_proc_compound, I can't see how we could get there in
-the op->status == 0 case without the fh_verify() in nfsd4_getattr having
-succeeded and assigned the result to ga_fhp.
+ if (flags & LOOKUP_JUMPED)
+ 	return 1;
 
-So either I'm overlooking something or the bug's elsewhere.
+to the front of almost every d_revalidate function.
+I'm probably in favour of that, but it isn't an obvious win.
+I can certainly offer it as a follow-on patch so we can see
+exactly the impact.
 
-It sounds like you're varying *only* the server version, so there's not
-much chance that this could be triggered by changes in client behavior?
+Thanks,
+NeilBrown
 
---b.
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloEw0MACgkQOeye3VZi
+gbmyGg/+OcpR/hHDyiO5Mtlpf07nrrERcoK6jXdQI83xawiL73Ewu71kWPvzuL2o
+5jvumq+W3eK1qJKjYB7IcfrNIaRTv+LHVkUk50Yjs1YyzsXmsyIKc7jYdLPAlEEQ
+AHAWdsGnuOIrEzRxAkdh9Rvef1vnmJdNicnAV9G7fKcpws5y0T/KKmEZH5emBaU4
+JEWA2M7EcSM6KUa/cWgUNFRRtqh0GamF/OmKQE8+cDvO3T/sl+pmDc+yoUBKd6w4
+8BNq46KoeYLTI7Q+sjoVuYAVSbVO0yoDxnUzVwrJHyoaHoyStZvtuuSzHhUqzyIg
+LOQdwNbryuY8sn/NNntSdu79ypL+mkVyo8GwJlnLWjmOMAwQOXyoW73h2s9bwdBm
+JVqPPjroei/HAZ7Uafh9c9dLYCB1mIqWZDmXAKtyQQv/tG1WHdU6W0KBRzmzxKht
+msgHPmsYTEK0MEXX/OIZ0X+Xf5xojzSZ1dK60nAntB0GcwSFUFcV/aePu9s7RRcd
+FoigaDWbyilqlh7LadY6Mxbc1oJFCwRJSaCQsYYwaFH0TBee27Nx3LFiLxnCVI/U
+qcN6nV7gRvyVcJ0qs4FPIDQovaZgpRN9SKGhVMKYcS4TxOAHjFJ5FoQ016caIZPN
+mX+rz6aQNajnwaC+aAhhitLchZUvG0AmjOX3y7GuRDpuqUZTvpE=
+=eOBf
+-----END PGP SIGNATURE-----
+--=-=-=--
