@@ -1,51 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailhub.sw.ru ([195.214.232.25]:36888 "EHLO relay.sw.ru"
+Received: from fieldses.org ([173.255.197.46]:52658 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753015AbdKBKDw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 2 Nov 2017 06:03:52 -0400
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH] lockd: lost rollback of set_grace_period() in
- lockd_down_net()
-To: linux-nfs@vger.kernel.org, Jeff Layton <jlayton@kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Message-ID: <fb8ccaec-e163-0b47-6fa0-e85de7abd6a8@virtuozzo.com>
-Date: Thu, 2 Nov 2017 13:03:42 +0300
+        id S1753891AbdKISxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Nov 2017 13:53:00 -0500
+Date: Thu, 9 Nov 2017 13:52:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andrew Elble <aweits@rit.edu>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com
+Subject: Re: [PATCH v2] nfsd: check for use of the closed special stateid
+Message-ID: <20171109185259.GK8773@fieldses.org>
+References: <20171109184110.12695-1-aweits@rit.edu>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171109184110.12695-1-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit efda760fe95ea ("lockd: fix lockd shutdown race") is incorrect,
-it removes lockd_manager and disarm grace_period_end for init_net only. 
+Thanks!  Applied.--b.
 
-If nfsd was started from another net namespace lockd_up_net() calls 
-set_grace_period() that adds lockd_manager into per-netns list
-and queues grace_period_end delayed work.
-
-These action should be reverted in lockd_down_net().
-Otherwise it can lead to double list_add on after restart nfsd in netns,
-and to use-after-free if non-disarmed delayed work will be executed after netns destroy.  
-
-Fixes commit efda760fe95e ("lockd: fix lockd shutdown race")
-
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
----
- fs/lockd/svc.c | 2 ++
- 1 file changed, 2 insertions(+)
-
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index c1573860..809cbcc 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -277,6 +277,8 @@ static void lockd_down_net(struct svc_serv *serv, struct net *net)
- 	if (ln->nlmsvc_users) {
- 		if (--ln->nlmsvc_users == 0) {
- 			nlm_shutdown_hosts_net(net);
-+			cancel_delayed_work_sync(&ln->grace_period_end);
-+			locks_end_grace(&ln->lockd_manager);
- 			svc_shutdown_net(serv, net);
- 			dprintk("lockd_down_net: per-net data destroyed; net=%p\n", net);
- 		}
--- 
-2.7.4
-
+On Thu, Nov 09, 2017 at 01:41:10PM -0500, Andrew Elble wrote:
+> Prevent the use of the closed (invalid) special stateid by clients.
+> 
+> Signed-off-by: Andrew Elble <aweits@rit.edu>
+> ---
+>  v2: don't print warning on use of closed special stateid
+>  
+>  fs/nfsd/nfs4state.c | 7 +++++--
+>  1 file changed, 5 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 5740ad8075c3..9ae75c949290 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -73,6 +73,7 @@
+>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
+>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
+>  #define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+> +#define CLOSE_STATEID(stateid)  (!memcmp((stateid), &close_stateid, sizeof(stateid_t)))
+>  
+>  /* forward declarations */
+>  static bool check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner);
+> @@ -4885,7 +4886,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+>  	struct nfs4_stid *s;
+>  	__be32 status = nfserr_bad_stateid;
+>  
+> -	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> +	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid) ||
+> +		CLOSE_STATEID(stateid))
+>  		return status;
+>  	/* Client debugging aid. */
+>  	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
+> @@ -4943,7 +4945,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+>  	else if (typemask & NFS4_DELEG_STID)
+>  		typemask |= NFS4_REVOKED_DELEG_STID;
+>  
+> -	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> +	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid) ||
+> +		CLOSE_STATEID(stateid))
+>  		return nfserr_bad_stateid;
+>  	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
+>  	if (status == nfserr_stale_clientid) {
+> -- 
+> 1.8.3.1
