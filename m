@@ -1,125 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f43.google.com ([209.85.214.43]:34627 "EHLO
-        mail-it0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751448AbdKICkX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Nov 2017 21:40:23 -0500
+Received: from gateway34.websitewelcome.com ([192.185.149.72]:36388 "EHLO
+        gateway34.websitewelcome.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751448AbdKIDNo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Nov 2017 22:13:44 -0500
+Received: from cm15.websitewelcome.com (cm15.websitewelcome.com [100.42.49.9])
+        by gateway34.websitewelcome.com (Postfix) with ESMTP id 818FA12379C1
+        for <linux-nfs@vger.kernel.org>; Wed,  8 Nov 2017 20:49:22 -0600 (CST)
+Date: Wed, 8 Nov 2017 20:49:19 -0600
+From: "Gustavo A. R. Silva" <garsilva@embeddedor.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        "Gustavo A. R. Silva" <garsilva@embeddedor.com>
+Subject: [PATCH] NFS: super: mark expected switch fall-throughs
+Message-ID: <20171109024919.GA11083@embeddedor.com>
 MIME-Version: 1.0
-In-Reply-To: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
-References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 8 Nov 2017 18:40:22 -0800
-Message-ID: <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
-Subject: Re: [nfsd4] potentially hardware breaking regression in 4.14-rc and 4.13.11
-To: Patrick McLean <chutzpah@gentoo.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Bruce Fields <bfields@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        stable <stable@vger.kernel.org>,
-        Thorsten Leemhuis <regressions@leemhuis.info>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 8, 2017 at 4:43 PM, Patrick McLean <chutzpah@gentoo.org> wrote:
-> As of 4.13.11 (and also with 4.14-rc) we have an issue where when
-> serving nfs4 sometimes we get the following BUG. When this bug happens,
-> it usually also causes the motherboard to no longer POST until we
-> externally re-flash the BIOS (using the BMC web interface). If a
-> motherboard does not have an external way to flash the BIOS, this would
-> brick the hardware.
+In preparation to enabling -Wimplicit-fallthrough, mark switch cases
+where we are expecting to fall through.
 
-That sounds like your BIOS is just broken.
+Addresses-Coverity-ID: 703509
+Addresses-Coverity-ID: 703510
+Addresses-Coverity-ID: 703511
+Addresses-Coverity-ID: 703512
+Addresses-Coverity-ID: 703513
+Signed-off-by: Gustavo A. R. Silva <garsilva@embeddedor.com>
+---
+ fs/nfs/super.c | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
-The kernel oops is probably just a trigger for that - possibly because
-you reboot with a particular state that breaks the BIOS.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index c9d24ba..da19c72 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1456,18 +1456,21 @@ static int nfs_parse_mount_options(char *raw,
+ 			switch (token) {
+ 			case Opt_xprt_udp6:
+ 				protofamily = AF_INET6;
++				/* fall through */
+ 			case Opt_xprt_udp:
+ 				mnt->flags &= ~NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+ 				break;
+ 			case Opt_xprt_tcp6:
+ 				protofamily = AF_INET6;
++				/* fall through */
+ 			case Opt_xprt_tcp:
+ 				mnt->flags |= NFS_MOUNT_TCP;
+ 				mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 				break;
+ 			case Opt_xprt_rdma6:
+ 				protofamily = AF_INET6;
++				/* fall through */
+ 			case Opt_xprt_rdma:
+ 				/* vector side protocols to TCP */
+ 				mnt->flags |= NFS_MOUNT_TCP;
+@@ -1494,11 +1497,13 @@ static int nfs_parse_mount_options(char *raw,
+ 			switch (token) {
+ 			case Opt_xprt_udp6:
+ 				mountfamily = AF_INET6;
++				/* fall through */
+ 			case Opt_xprt_udp:
+ 				mnt->mount_server.protocol = XPRT_TRANSPORT_UDP;
+ 				break;
+ 			case Opt_xprt_tcp6:
+ 				mountfamily = AF_INET6;
++				/* fall through */
+ 			case Opt_xprt_tcp:
+ 				mnt->mount_server.protocol = XPRT_TRANSPORT_TCP;
+ 				break;
+@@ -1988,9 +1993,9 @@ static int nfs23_validate_mount_data(void *options,
+ 	args->version = NFS_DEFAULT_VERSION;
+ 	switch (data->version) {
+ 	case 1:
+-		data->namlen = 0;
++		data->namlen = 0; /* fall through */
+ 	case 2:
+-		data->bsize = 0;
++		data->bsize = 0; /* fall through */
+ 	case 3:
+ 		if (data->flags & NFS_MOUNT_VER3)
+ 			goto out_no_v3;
+@@ -1998,11 +2003,14 @@ static int nfs23_validate_mount_data(void *options,
+ 		memcpy(data->root.data, data->old_root.data, NFS2_FHSIZE);
+ 		/* Turn off security negotiation */
+ 		extra_flags |= NFS_MOUNT_SECFLAVOUR;
++		/* fall through */
+ 	case 4:
+ 		if (data->flags & NFS_MOUNT_SECFLAVOUR)
+ 			goto out_no_sec;
++		/* fall through */
+ 	case 5:
+ 		memset(data->context, 0, sizeof(data->context));
++		/* fall through */
+ 	case 6:
+ 		if (data->flags & NFS_MOUNT_VER3) {
+ 			if (data->root.size > NFS3_FHSIZE || data->root.size == 0)
+-- 
+2.7.4
 
-Also, are you sure you really need to reflash the BIOS? It's actually
-fairly hard to overwrite the BIOS itself, but crashing with bad
-hardware state (where "bad" can just mean "unexpected by the BIOS")
-can cause the BIOS to not properly re-initialize things, and hang at
-boot.
-
-So not booting cleanly from a warm reset is a reasonably common BIOS failure.
-
-And yes, reflashing tends to force a full initialization and thus
-"fixes" things, but it may be a big hammer when a cold boot or just a
-"reset BIOS to safe defaults" might be sufficient.
-
-In pretty much all cases this is a sign of a nasty BIOS problem,
-though, and you may want to look into a firmware update from the
-vendor for that.
-
-But on to the kernel side:
-
-> Here is the BUG we are getting:
->> [   58.962528] BUG: unable to handle kernel NULL pointer dereference at 0000000000000230
->> [   58.963918] IP: vfs_statfs+0x73/0xb0
-
-The code disassembles to
-
-   0: 83 c9 08              or     $0x8,%ecx
-   3: 40 f6 c6 04          test   $0x4,%sil
-   7: 0f 45 d1              cmovne %ecx,%edx
-   a: 89 d1                mov    %edx,%ecx
-   c: 80 cd 04              or     $0x4,%ch
-   f: 40 f6 c6 08          test   $0x8,%sil
-  13: 0f 45 d1              cmovne %ecx,%edx
-  16: 89 d1                mov    %edx,%ecx
-  18: 80 cd 08              or     $0x8,%ch
-  1b: 40 f6 c6 10          test   $0x10,%sil
-  1f: 0f 45 d1              cmovne %ecx,%edx
-  22: 89 d1                mov    %edx,%ecx
-  24: 80 cd 10              or     $0x10,%ch
-  27: 83 e6 20              and    $0x20,%esi
-  2a:* 48 8b b7 30 02 00 00 mov    0x230(%rdi),%rsi <-- trapping instruction
-  31: 0f 45 d1              cmovne %ecx,%edx
-  34: 83 ca 20              or     $0x20,%edx
-  37: 89 f1                mov    %esi,%ecx
-  39: 83 e1 10              and    $0x10,%ecx
-  3c: 89 cf                mov    %ecx,%edi
-
-and all those odd cmovne and bit-ops are just the bit selection code
-in flags_by_mnt(), which is inlined through calculate_f_flags (which
-is _also_ inlined) into vfs_statfs().
-
-Sadly, gcc makes a mess of it and actually generates code that looks
-like the original C. I would have hoped that gcc could have turned
-
-   if (x & BIT)
-        y |= OTHER_BIT;
-
-into
-
-    y |= (x & BIT) shifted-by-the-bit-difference-between BIT/OTHER_BIT;
-
-but that doesn't happen. We actually do it by hand in some other more
-critical places, but it's painful to do by hand (because the shift
-direction/amount is not trivial to do in C).
-
-Anyway, that cmovne noise makes it a bit hard to see the actual part
-that matters (and that traps) but I'm almost certain that it's the
-"mnt->mnt_sb->s_flags" loading that is part of calculate_f_flags()
-when it then does
-
-     flags_by_sb(mnt->mnt_sb->s_flags);
-
-and I think mnt->mnt_sb is NULL. We know it's not 'mnt' itself that is
-NULL, because we wouldn't have gotten this far if it was.
-
-Now, afaik, mnt->mnt_sb should never be NULL in the first place for a
-proper path. And the vfs_statfs() code itself hasn't changed in a
-while.
-
-Which does seem to implicate nfsd as having passed in a bad path to
-vfs_statfs(). But I'm not seeing any changes in nfsd either.
-
-In particular, there are *no* nfsd changes in that 4.13.8..4.13.11
-range. There is a bunch of xfs changes, though. What's the underlying
-filesystem that you are exporting?
-
-But bringing in Al Viro and Bruce Fields explicitly in case they see
-something. And Darrick, just in case it might be xfs.
-
-         Linus
