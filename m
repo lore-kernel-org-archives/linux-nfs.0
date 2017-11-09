@@ -1,80 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f195.google.com ([209.85.216.195]:51825 "EHLO
-        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754349AbdKIMch (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Nov 2017 07:32:37 -0500
-Received: by mail-qt0-f195.google.com with SMTP id e19so2545124qte.8
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Nov 2017 04:32:36 -0800 (PST)
-Message-ID: <1510230754.29194.6.camel@redhat.com>
-Subject: Re: [PATCH 0/3] VFS: name lookup improvements.
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>, Ian Kent <ikent@redhat.com>,
-        Latchesar Ionkov <lucho@ionkov.net>,
-        Eric Van Hensbergen <ericvh@gmail.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Ron Minnich <rminnich@sandia.gov>,
-        Trond Myklebust <trondmy@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, autofs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        v9fs-developer@lists.sourceforge.net,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Date: Thu, 09 Nov 2017 07:32:34 -0500
-In-Reply-To: <151021179901.22743.15252956909042161062.stgit@noble>
-References: <151021179901.22743.15252956909042161062.stgit@noble>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([173.255.197.46]:52160 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751128AbdKIOBi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 9 Nov 2017 09:01:38 -0500
+Date: Thu, 9 Nov 2017 09:01:37 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Andrew Elble <aweits@rit.edu>
+Cc: linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com
+Subject: Re: [PATCH] nfsd: check for use of the closed special stateid
+Message-ID: <20171109140137.GA8543@fieldses.org>
+References: <20171107230123.62054-1-aweits@rit.edu>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171107230123.62054-1-aweits@rit.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-11-09 at 18:20 +1100, NeilBrown wrote:
-> These three patches address two issues: d_weak_revalidate and
-> path_mountpoint lookups.
+On Tue, Nov 07, 2017 at 06:01:23PM -0500, Andrew Elble wrote:
+> Report on and prevent the use of the closed (invalid)
+> special stateid by clients.
 > 
-> The former is poorly defined and doesn't actually do the one thing
-> that it would be useful for it to do.  So the nfs implemention
-> is improved, the 9p one discarded, and the documentation clarified.
-> 
-> Given this change and recent change to follow_automount() the
-> mountpoint path lookup functions are no longer needed.  The regular
-> path look functions are quite sufficient.
-> The second two patches remove this with detailed explanation of why
-> it is OK.
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
+> Signed-off-by: Andrew Elble <aweits@rit.edu>
 > ---
+>  fs/nfsd/nfs4state.c | 32 ++++++++++++++++++++++++++++----
+>  1 file changed, 28 insertions(+), 4 deletions(-)
 > 
-> NeilBrown (3):
->       VFS/nfs/9p: revise meaning of d_weak_invalidate.
->       VFS: remove user_path_mountpoint_at()
->       VFS / autofs4: remove kern_path_mountpoint()
-> 
-> 
->  Documentation/filesystems/porting |    5 +
->  Documentation/filesystems/vfs.txt |   11 +--
->  fs/9p/vfs_dentry.c                |    1 
->  fs/autofs4/dev-ioctl.c            |    5 -
->  fs/internal.h                     |    1 
->  fs/namei.c                        |  150 -------------------------------------
->  fs/namespace.c                    |    2 
->  fs/nfs/dir.c                      |   60 ++-------------
->  include/linux/namei.h             |    1 
->  9 files changed, 24 insertions(+), 212 deletions(-)
-> 
-> --
-> Signature
-> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 755b33284979..2b637137fecd 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -73,6 +73,7 @@
+>  #define ZERO_STATEID(stateid) (!memcmp((stateid), &zero_stateid, sizeof(stateid_t)))
+>  #define ONE_STATEID(stateid)  (!memcmp((stateid), &one_stateid, sizeof(stateid_t)))
+>  #define CURRENT_STATEID(stateid) (!memcmp((stateid), &currentstateid, sizeof(stateid_t)))
+> +#define CLOSE_STATEID(stateid)  (!memcmp((stateid), &close_stateid, sizeof(stateid_t)))
+>  
+>  /* forward declarations */
+>  static bool check_for_locks(struct nfs4_file *fp, struct nfs4_lockowner *lowner);
+> @@ -4875,13 +4876,35 @@ static __be32 nfsd4_check_openowner_confirmed(struct nfs4_ol_stateid *ols)
+>  	return nfs_ok;
+>  }
+>  
+> +static inline __be32
+> +bad_special_stateid_check(struct nfs4_client *cl, stateid_t *stateid)
+> +{
+> +	if (CLOSE_STATEID(stateid)) {
+> +		char addr_str[INET6_ADDRSTRLEN];
+> +
+> +		rpc_ntop((struct sockaddr *)&cl->cl_addr, addr_str,
+> +			sizeof(addr_str));
+> +		pr_warn_ratelimited("NFSD: client %s using "
+> +				"invalid/closed stateid\n",
+> +				addr_str);
 
-I love that diffstat and I think the patches and the logic behind them
-look reasonable. I'm the one that added d_weak_revalidate and while it
-did fix a problem at the time, it has always seemed a bit of an odd
-d_op.
+How useful is this?  If we need it I'd rather it be a dprintk.  (I'm
+sort of reluctant to add new ways a badly behaved client could spam the
+logs (the ratelimiting helps a little but not much).)
 
-Your patch does make me wonder if we should consider merging
-d_weak_revalidate and d_revalidate back together, and simply require all
-the d_revalidate ops vet the flags more thoroughly.
+Seems fine otherwise.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
+
+> +		return nfserr_bad_stateid;
+> +	}
+> +
+> +	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> +		return nfserr_bad_stateid;
+> +
+> +	return nfs_ok;
+> +}
+> +
+>  static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+>  {
+>  	struct nfs4_stid *s;
+> -	__be32 status = nfserr_bad_stateid;
+> +	__be32 status;
+>  
+> -	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> +	status = bad_special_stateid_check(cl, stateid);
+> +	if (status)
+>  		return status;
+> +	status = nfserr_bad_stateid;
+>  	/* Client debugging aid. */
+>  	if (!same_clid(&stateid->si_opaque.so_clid, &cl->cl_clientid)) {
+>  		char addr_str[INET6_ADDRSTRLEN];
+> @@ -4938,8 +4961,9 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+>  	else if (typemask & NFS4_DELEG_STID)
+>  		typemask |= NFS4_REVOKED_DELEG_STID;
+>  
+> -	if (ZERO_STATEID(stateid) || ONE_STATEID(stateid))
+> -		return nfserr_bad_stateid;
+> +	status = bad_special_stateid_check(cstate->clp, stateid);
+> +	if (status)
+> +		return status;
+>  	status = lookup_clientid(&stateid->si_opaque.so_clid, cstate, nn);
+>  	if (status == nfserr_stale_clientid) {
+>  		if (cstate->session)
+> -- 
+> 1.8.3.1
