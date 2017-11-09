@@ -1,78 +1,125 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51274 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751241AbdKICah (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 8 Nov 2017 21:30:37 -0500
-Date: Wed, 8 Nov 2017 21:30:37 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Andrew Elble <aweits@rit.edu>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3] nfsd: fix locking validator warning on
- nfs4_ol_stateid->st_mutex class
-Message-ID: <20171109023037.GS24262@fieldses.org>
-References: <20171108222951.37763-1-aweits@rit.edu>
+Received: from mail-it0-f43.google.com ([209.85.214.43]:34627 "EHLO
+        mail-it0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751448AbdKICkX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Nov 2017 21:40:23 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171108222951.37763-1-aweits@rit.edu>
+In-Reply-To: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
+References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 8 Nov 2017 18:40:22 -0800
+Message-ID: <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
+Subject: Re: [nfsd4] potentially hardware breaking regression in 4.14-rc and 4.13.11
+To: Patrick McLean <chutzpah@gentoo.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Bruce Fields <bfields@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        stable <stable@vger.kernel.org>,
+        Thorsten Leemhuis <regressions@leemhuis.info>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks!  Applied.--b.
+On Wed, Nov 8, 2017 at 4:43 PM, Patrick McLean <chutzpah@gentoo.org> wrote:
+> As of 4.13.11 (and also with 4.14-rc) we have an issue where when
+> serving nfs4 sometimes we get the following BUG. When this bug happens,
+> it usually also causes the motherboard to no longer POST until we
+> externally re-flash the BIOS (using the BMC web interface). If a
+> motherboard does not have an external way to flash the BIOS, this would
+> brick the hardware.
 
-On Wed, Nov 08, 2017 at 05:29:51PM -0500, Andrew Elble wrote:
-> The use of the st_mutex has been confusing the validator. Use the
-> proper nested notation so as to not produce warnings.
-> 
-> Signed-off-by: Andrew Elble <aweits@rit.edu>
-> ---
->  v2: added mutex_lock_nested to init_lock_stateid() for consistency
->  v3: add constants
->  
->  fs/nfsd/nfs4state.c | 11 ++++++++---
->  1 file changed, 8 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 0d98d73bd84e..5740ad8075c3 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -87,6 +87,11 @@
->   */
->  static DEFINE_SPINLOCK(state_lock);
->  
-> +enum nfsd4_st_mutex_lock_subclass {
-> +	OPEN_STATEID_MUTEX = 0,
-> +	LOCK_STATEID_MUTEX = 1,
-> +};
-> +
->  /*
->   * A waitqueue for all in-progress 4.0 CLOSE operations that are waiting for
->   * the refcount on the open stateid to drop.
-> @@ -3548,7 +3553,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
->  {
->  	__be32 ret;
->  
-> -	mutex_lock(&stp->st_mutex);
-> +	mutex_lock_nested(&stp->st_mutex, LOCK_STATEID_MUTEX);
->  	ret = nfsd4_verify_open_stid(&stp->st_stid);
->  	if (ret != nfs_ok)
->  		mutex_unlock(&stp->st_mutex);
-> @@ -3612,7 +3617,7 @@ static void nfs4_free_openowner(struct nfs4_stateowner *so)
->  	stp = open->op_stp;
->  	/* We are moving these outside of the spinlocks to avoid the warnings */
->  	mutex_init(&stp->st_mutex);
-> -	mutex_lock(&stp->st_mutex);
-> +	mutex_lock_nested(&stp->st_mutex, OPEN_STATEID_MUTEX);
->  
->  retry:
->  	spin_lock(&oo->oo_owner.so_client->cl_lock);
-> @@ -5692,7 +5697,7 @@ static void nfs4_free_lockowner(struct nfs4_stateowner *sop)
->  	struct nfs4_ol_stateid *retstp;
->  
->  	mutex_init(&stp->st_mutex);
-> -	mutex_lock(&stp->st_mutex);
-> +	mutex_lock_nested(&stp->st_mutex, OPEN_STATEID_MUTEX);
->  retry:
->  	spin_lock(&clp->cl_lock);
->  	spin_lock(&fp->fi_lock);
-> -- 
-> 1.8.3.1
+That sounds like your BIOS is just broken.
+
+The kernel oops is probably just a trigger for that - possibly because
+you reboot with a particular state that breaks the BIOS.
+
+Also, are you sure you really need to reflash the BIOS? It's actually
+fairly hard to overwrite the BIOS itself, but crashing with bad
+hardware state (where "bad" can just mean "unexpected by the BIOS")
+can cause the BIOS to not properly re-initialize things, and hang at
+boot.
+
+So not booting cleanly from a warm reset is a reasonably common BIOS failure.
+
+And yes, reflashing tends to force a full initialization and thus
+"fixes" things, but it may be a big hammer when a cold boot or just a
+"reset BIOS to safe defaults" might be sufficient.
+
+In pretty much all cases this is a sign of a nasty BIOS problem,
+though, and you may want to look into a firmware update from the
+vendor for that.
+
+But on to the kernel side:
+
+> Here is the BUG we are getting:
+>> [   58.962528] BUG: unable to handle kernel NULL pointer dereference at 0000000000000230
+>> [   58.963918] IP: vfs_statfs+0x73/0xb0
+
+The code disassembles to
+
+   0: 83 c9 08              or     $0x8,%ecx
+   3: 40 f6 c6 04          test   $0x4,%sil
+   7: 0f 45 d1              cmovne %ecx,%edx
+   a: 89 d1                mov    %edx,%ecx
+   c: 80 cd 04              or     $0x4,%ch
+   f: 40 f6 c6 08          test   $0x8,%sil
+  13: 0f 45 d1              cmovne %ecx,%edx
+  16: 89 d1                mov    %edx,%ecx
+  18: 80 cd 08              or     $0x8,%ch
+  1b: 40 f6 c6 10          test   $0x10,%sil
+  1f: 0f 45 d1              cmovne %ecx,%edx
+  22: 89 d1                mov    %edx,%ecx
+  24: 80 cd 10              or     $0x10,%ch
+  27: 83 e6 20              and    $0x20,%esi
+  2a:* 48 8b b7 30 02 00 00 mov    0x230(%rdi),%rsi <-- trapping instruction
+  31: 0f 45 d1              cmovne %ecx,%edx
+  34: 83 ca 20              or     $0x20,%edx
+  37: 89 f1                mov    %esi,%ecx
+  39: 83 e1 10              and    $0x10,%ecx
+  3c: 89 cf                mov    %ecx,%edi
+
+and all those odd cmovne and bit-ops are just the bit selection code
+in flags_by_mnt(), which is inlined through calculate_f_flags (which
+is _also_ inlined) into vfs_statfs().
+
+Sadly, gcc makes a mess of it and actually generates code that looks
+like the original C. I would have hoped that gcc could have turned
+
+   if (x & BIT)
+        y |= OTHER_BIT;
+
+into
+
+    y |= (x & BIT) shifted-by-the-bit-difference-between BIT/OTHER_BIT;
+
+but that doesn't happen. We actually do it by hand in some other more
+critical places, but it's painful to do by hand (because the shift
+direction/amount is not trivial to do in C).
+
+Anyway, that cmovne noise makes it a bit hard to see the actual part
+that matters (and that traps) but I'm almost certain that it's the
+"mnt->mnt_sb->s_flags" loading that is part of calculate_f_flags()
+when it then does
+
+     flags_by_sb(mnt->mnt_sb->s_flags);
+
+and I think mnt->mnt_sb is NULL. We know it's not 'mnt' itself that is
+NULL, because we wouldn't have gotten this far if it was.
+
+Now, afaik, mnt->mnt_sb should never be NULL in the first place for a
+proper path. And the vfs_statfs() code itself hasn't changed in a
+while.
+
+Which does seem to implicate nfsd as having passed in a bad path to
+vfs_statfs(). But I'm not seeing any changes in nfsd either.
+
+In particular, there are *no* nfsd changes in that 4.13.8..4.13.11
+range. There is a bunch of xfs changes, though. What's the underlying
+filesystem that you are exporting?
+
+But bringing in Al Viro and Bruce Fields explicitly in case they see
+something. And Darrick, just in case it might be xfs.
+
+         Linus
