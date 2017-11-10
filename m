@@ -1,96 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from metis.ext.4.pengutronix.de ([92.198.50.35]:32859 "EHLO
-        metis.ext.4.pengutronix.de" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752831AbdKJPED (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 10:04:03 -0500
-From: Lucas Stach <l.stach@pengutronix.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel@pengutronix.de, patchwork-lst@pengutronix.de
-Subject: [PATCH] NFS: fix access bit translation in _nfs4_proc_access()
-Date: Fri, 10 Nov 2017 16:03:56 +0100
-Message-Id: <20171110150356.31050-1-l.stach@pengutronix.de>
+Received: from mx141.netapp.com ([216.240.21.12]:51455 "EHLO mx141.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751455AbdKJPKf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 10 Nov 2017 10:10:35 -0500
+Subject: Re: [PATCH 0/4] make function arg and structures as const
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@redhat.com>
+CC: Bhumika Goyal <bhumirks@gmail.com>, <julia.lawall@lip6.fr>,
+        <trond.myklebust@primarydata.com>, <davem@davemloft.net>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <netdev@vger.kernel.org>
+References: <1508256866-12798-1-git-send-email-bhumirks@gmail.com>
+ <1508258427.4747.7.camel@redhat.com> <20171110022125.GA13874@fieldses.org>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <7c61a3c8-4042-7b05-1298-e3abbef916c2@Netapp.com>
+Date: Fri, 10 Nov 2017 10:09:46 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20171110022125.GA13874@fieldses.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since bd8b2441742b (NFS: Store the raw NFS access mask in the inode's
-access cache) the mask already contains the NFS access bits, so it is
-wrong to try to map them from the MAY_* bits to the NFS_MAY_* bits
-in _nfs4_proc_access(). This leads to bogus access permissions being
-returned from the server.
 
-Fix this by using the mask directly, but be careful to not ask for
-to broad permissions from the calling nfs_do_access().
 
-CC: stable@vger.kernel.org #4.13+
-Signed-off-by: Lucas Stach <l.stach@pengutronix.de>
-Tested-by: Björn Lässig <b.laessig@pengutronix.de>
----
- fs/nfs/dir.c      |  8 ++++++--
- fs/nfs/nfs4proc.c | 19 +------------------
- 2 files changed, 7 insertions(+), 20 deletions(-)
+On 11/09/2017 09:21 PM, J. Bruce Fields wrote:
+> On Tue, Oct 17, 2017 at 12:40:27PM -0400, Jeff Layton wrote:
+>> On Tue, 2017-10-17 at 18:14 +0200, Bhumika Goyal wrote:
+>>> Make the function argument as const. After thing change, make
+>>> the cache_detail structures as const.
+>>>
+>>> Bhumika Goyal (4):
+>>>   sunrpc: make the function arg as const
+>>>   NFS: make cache_detail structures const
+>>>   NFSD: make cache_detail structures const
+>>>   SUNRPC: make cache_detail structures const
+>>>
+>>>  fs/nfs/dns_resolve.c              | 2 +-
+>>>  fs/nfsd/export.c                  | 4 ++--
+>>>  fs/nfsd/nfs4idmap.c               | 4 ++--
+>>>  include/linux/sunrpc/cache.h      | 2 +-
+>>>  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
+>>>  net/sunrpc/cache.c                | 2 +-
+>>>  net/sunrpc/svcauth_unix.c         | 4 ++--
+>>>  7 files changed, 11 insertions(+), 11 deletions(-)
+>>>
+>>
+>> Looks pretty straightforward. You can add this to the set:
+>>
+>> Reviewed-by: Jeff Layton <jlayton@redhat.com>
+> 
+> Thanks, I've applied 1, 3, and 4 and could take #2 as well if it's OK
+> with Trond/Anna.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 5ceaeb1f6fb6..dd3a06353bdc 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -2426,8 +2426,12 @@ static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
- 		goto out;
- 
- 	/* Be clever: ask server to check for all possible rights */
--	cache.mask = NFS_MAY_LOOKUP | NFS_MAY_EXECUTE
--		     | NFS_MAY_WRITE | NFS_MAY_READ;
-+	cache.mask = NFS_MAY_READ;
-+	if (S_ISDIR(inode->i_mode))
-+		cache.mask |= NFS_DIR_MAY_WRITE | NFS_MAY_LOOKUP;
-+	else
-+		cache.mask |= NFS_FILE_MAY_WRITE | NFS_MAY_EXECUTE;
-+
- 	cache.cred = cred;
- 	status = NFS_PROTO(inode)->access(inode, &cache);
- 	if (status != 0) {
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 6c61e2b99635..cb7b5aafaef6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -3889,6 +3889,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	struct nfs4_accessargs args = {
- 		.fh = NFS_FH(inode),
- 		.bitmask = server->cache_consistency_bitmask,
-+		.access = entry->mask,
- 	};
- 	struct nfs4_accessres res = {
- 		.server = server,
-@@ -3899,26 +3900,8 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 		.rpc_resp = &res,
- 		.rpc_cred = entry->cred,
- 	};
--	int mode = entry->mask;
- 	int status = 0;
- 
--	/*
--	 * Determine which access bits we want to ask for...
--	 */
--	if (mode & MAY_READ)
--		args.access |= NFS4_ACCESS_READ;
--	if (S_ISDIR(inode->i_mode)) {
--		if (mode & MAY_WRITE)
--			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND | NFS4_ACCESS_DELETE;
--		if (mode & MAY_EXEC)
--			args.access |= NFS4_ACCESS_LOOKUP;
--	} else {
--		if (mode & MAY_WRITE)
--			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND;
--		if (mode & MAY_EXEC)
--			args.access |= NFS4_ACCESS_EXECUTE;
--	}
--
- 	res.fattr = nfs_alloc_fattr();
- 	if (res.fattr == NULL)
- 		return -ENOMEM;
--- 
-2.11.0
+I don't mind taking #2, it's already in my branch :)
 
+Anna
+
+> 
+> --b.
+> 
