@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:53593 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754725AbdKJWhi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 17:37:38 -0500
-Received: by mail-it0-f66.google.com with SMTP id m191so3393145itg.2
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2017 14:37:37 -0800 (PST)
+Received: from mail-it0-f68.google.com ([209.85.214.68]:36643 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754604AbdKJWhg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 17:37:36 -0500
+Received: by mail-it0-f68.google.com with SMTP id f187so3406966itb.1
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2017 14:37:36 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>
@@ -12,107 +12,149 @@ Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         "J . Bruce Fields" <bfields@fieldses.org>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v2 6/7] NFS: Propagate NFS_MOUNT_UNSHARED to clients
-Date: Fri, 10 Nov 2017 16:37:06 -0600
-Message-Id: <20171110223707.17098-7-JPEWhacker@gmail.com>
+Subject: [RFC v2 4/7] NFS: Add mount flags mask
+Date: Fri, 10 Nov 2017 16:37:04 -0600
+Message-Id: <20171110223707.17098-5-JPEWhacker@gmail.com>
 In-Reply-To: <20171110223707.17098-1-JPEWhacker@gmail.com>
 References: <20171110223707.17098-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Propagating the flag allows operations to be performed on the client
-without affecting other mounts to the same client, much like operations
-on the superblock will not affect other superblocks.
+Track which mount options were specified so that only the flags that
+actually changed will be updated when remounting.
 
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- fs/nfs/client.c           | 9 +++++++--
- fs/nfs/nfs3client.c       | 2 ++
- fs/nfs/nfs4client.c       | 4 ++++
- include/linux/nfs_fs_sb.h | 1 +
- 4 files changed, 14 insertions(+), 2 deletions(-)
+ fs/nfs/internal.h |  1 +
+ fs/nfs/super.c    | 58 ++++++++++++++++++++++++++-----------------------------
+ 2 files changed, 28 insertions(+), 31 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 22880ef6d8dd..c5872286f322 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -297,6 +297,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 		if (clp->cl_cons_state < 0)
- 			continue;
- 
-+		/* Don't match clients that don't want to be shared */
-+		if (test_bit(NFS_CS_UNSHARED, &clp->cl_flags))
-+			continue;
-+
- 		/* Different NFS versions cannot share the same nfs_client */
- 		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
- 			continue;
-@@ -386,7 +390,7 @@ nfs_found_client(const struct nfs_client_initdata *cl_init,
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f9a4a5524bd5..f4308b730c1c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -90,6 +90,7 @@ struct nfs_client_initdata {
   */
- struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
- {
--	struct nfs_client *clp, *new = NULL;
-+	struct nfs_client *clp = NULL, *new = NULL;
- 	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
- 	const struct nfs_rpc_ops *rpc_ops = cl_init->nfs_mod->rpc_ops;
+ struct nfs_parsed_mount_data {
+ 	int			flags;
++	int			flags_mask;
+ 	unsigned int		rsize, wsize;
+ 	unsigned int		timeo, retrans;
+ 	unsigned int		acregmin, acregmax,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index cf6de998294d..777a0cc22704 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1197,6 +1197,16 @@ static int nfs_get_option_ul_bound(substring_t args[], unsigned long *option,
+ 	return 0;
+ }
  
-@@ -399,7 +403,8 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
- 	do {
- 		spin_lock(&nn->nfs_client_lock);
- 
--		clp = nfs_match_client(cl_init);
-+		if (!test_bit(NFS_CS_UNSHARED, &cl_init->init_flags))
-+			clp = nfs_match_client(cl_init);
- 		if (clp) {
- 			spin_unlock(&nn->nfs_client_lock);
- 			if (new)
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 7879f2a0fcfd..b62bed41053f 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -102,6 +102,8 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 
- 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
- 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
-+	if (mds_srv->flags & NFS_MOUNT_UNSHARED)
-+		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
- 
- 	/* Use the MDS nfs_client cl_ipaddr. */
- 	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index e9bea90dc017..e51467f5b3bc 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -852,6 +852,8 @@ static int nfs4_set_client(struct nfs_server *server,
- 		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
- 	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
- 		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
-+	if (server->flags & NFS_MOUNT_UNSHARED)
-+		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
- 
- 	/* Allocate or find a client reference we can use */
- 	clp = nfs_get_client(&cl_init);
-@@ -910,6 +912,8 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
- 
- 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
- 		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
-+	if (mds_srv->flags & NFS_MOUNT_UNSHARED)
-+		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
- 
- 	/*
- 	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 286b71c418b4..8761f729921a 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -44,6 +44,7 @@ struct nfs_client {
- #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
- #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
- #define NFS_CS_TSM_POSSIBLE	5		/* - Maybe state migration */
-+#define NFS_CS_UNSHARED		6		/* - Client state is not shared */
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
++static void
++set_flag(struct nfs_parsed_mount_data *mnt, int flag, bool set)
++{
++	mnt->flags_mask |= flag;
++	if (set)
++		mnt->flags |= flag;
++	else
++		mnt->flags &= ~flag;
++}
++
+ /*
+  * Error-check and convert a string of mount options from user space into
+  * a data structure.  The whole mount string is processed; bad options are
+@@ -1248,75 +1258,61 @@ static int nfs_parse_mount_options(char *raw,
+ 		 * boolean options:  foo/nofoo
+ 		 */
+ 		case Opt_soft:
+-			mnt->flags |= NFS_MOUNT_SOFT;
+-			break;
+ 		case Opt_hard:
+-			mnt->flags &= ~NFS_MOUNT_SOFT;
++			set_flag(mnt, NFS_MOUNT_SOFT, token == Opt_soft);
+ 			break;
+ 		case Opt_posix:
+-			mnt->flags |= NFS_MOUNT_POSIX;
+-			break;
+ 		case Opt_noposix:
+-			mnt->flags &= ~NFS_MOUNT_POSIX;
++			set_flag(mnt, NFS_MOUNT_POSIX, token == Opt_posix);
+ 			break;
+ 		case Opt_cto:
+-			mnt->flags &= ~NFS_MOUNT_NOCTO;
+-			break;
+ 		case Opt_nocto:
+-			mnt->flags |= NFS_MOUNT_NOCTO;
++			set_flag(mnt, NFS_MOUNT_NOCTO, token == Opt_nocto);
+ 			break;
+ 		case Opt_ac:
+-			mnt->flags &= ~NFS_MOUNT_NOAC;
+-			break;
+ 		case Opt_noac:
+-			mnt->flags |= NFS_MOUNT_NOAC;
++			set_flag(mnt, NFS_MOUNT_NOAC, token == Opt_noac);
+ 			break;
+ 		case Opt_lock:
+-			mnt->flags &= ~NFS_MOUNT_NONLM;
+-			mnt->flags &= ~(NFS_MOUNT_LOCAL_FLOCK |
+-					NFS_MOUNT_LOCAL_FCNTL);
+-			break;
+ 		case Opt_nolock:
+-			mnt->flags |= NFS_MOUNT_NONLM;
+-			mnt->flags |= (NFS_MOUNT_LOCAL_FLOCK |
+-				       NFS_MOUNT_LOCAL_FCNTL);
++			set_flag(mnt, NFS_MOUNT_NONLM | NFS_MOUNT_LOCAL_FLOCK |
++				 NFS_MOUNT_LOCAL_FCNTL,
++				 token == Opt_nolock);
+ 			break;
+ 		case Opt_udp:
+ 			mnt->flags &= ~NFS_MOUNT_TCP;
++			mnt->flags_mask |= NFS_MOUNT_TCP;
+ 			mnt->nfs_server.protocol = XPRT_TRANSPORT_UDP;
+ 			break;
+ 		case Opt_tcp:
+ 			mnt->flags |= NFS_MOUNT_TCP;
++			mnt->flags_mask |= NFS_MOUNT_TCP;
+ 			mnt->nfs_server.protocol = XPRT_TRANSPORT_TCP;
+ 			break;
+ 		case Opt_rdma:
+ 			mnt->flags |= NFS_MOUNT_TCP; /* for side protocols */
++			mnt->flags_mask |= NFS_MOUNT_TCP;
+ 			mnt->nfs_server.protocol = XPRT_TRANSPORT_RDMA;
+ 			xprt_load_transport(p);
+ 			break;
+ 		case Opt_acl:
+-			mnt->flags &= ~NFS_MOUNT_NOACL;
+-			break;
+ 		case Opt_noacl:
+-			mnt->flags |= NFS_MOUNT_NOACL;
++			set_flag(mnt, NFS_MOUNT_NOACL, token == Opt_noacl);
+ 			break;
+ 		case Opt_rdirplus:
+-			mnt->flags &= ~NFS_MOUNT_NORDIRPLUS;
+-			break;
+ 		case Opt_nordirplus:
+-			mnt->flags |= NFS_MOUNT_NORDIRPLUS;
++			set_flag(mnt, NFS_MOUNT_NORDIRPLUS,
++				 token == Opt_nordirplus);
+ 			break;
+ 		case Opt_sharecache:
+-			mnt->flags &= ~NFS_MOUNT_UNSHARED;
+-			break;
+ 		case Opt_nosharecache:
+-			mnt->flags |= NFS_MOUNT_UNSHARED;
++			set_flag(mnt, NFS_MOUNT_UNSHARED,
++				 token == Opt_nosharecache);
+ 			break;
+ 		case Opt_resvport:
+-			mnt->flags &= ~NFS_MOUNT_NORESVPORT;
+-			break;
+ 		case Opt_noresvport:
+-			mnt->flags |= NFS_MOUNT_NORESVPORT;
++			set_flag(mnt, NFS_MOUNT_NORESVPORT,
++				 token == Opt_noresvport);
+ 			break;
+ 		case Opt_fscache:
+ 			mnt->options |= NFS_OPTION_FSCACHE;
 -- 
 2.13.6
 
