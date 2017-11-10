@@ -1,77 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f171.google.com ([209.85.217.171]:52121 "EHLO
-        mail-ua0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751455AbdKJPBE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 10:01:04 -0500
-Received: by mail-ua0-f171.google.com with SMTP id 65so6996356uaq.8
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2017 07:01:04 -0800 (PST)
+Received: from metis.ext.4.pengutronix.de ([92.198.50.35]:32859 "EHLO
+        metis.ext.4.pengutronix.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752831AbdKJPED (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 10:04:03 -0500
+From: Lucas Stach <l.stach@pengutronix.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        kernel@pengutronix.de, patchwork-lst@pengutronix.de
+Subject: [PATCH] NFS: fix access bit translation in _nfs4_proc_access()
+Date: Fri, 10 Nov 2017 16:03:56 +0100
+Message-Id: <20171110150356.31050-1-l.stach@pengutronix.de>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
-References: <20171024174752.74910-1-kolga@netapp.com> <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 10 Nov 2017 10:01:02 -0500
-Message-ID: <CAN-5tyHumx9s7nkweA1B4CniPD_NzeGyd9d9FNL5ZxzX6KQ+zw@mail.gmail.com>
-Subject: Re: [PATCH v6 00/10] NFSD support for asynchronous COPY
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 3, 2017 at 3:57 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
-> On Tue, Oct 24, 2017 at 1:47 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
->> To do asynchronous copies, NFSD creates a new kthread to handle the request.
->> Upon receiving the COPY, it generates a unique copy stateid (stored in a
->> global list for keeping track of state for OFFLOAD_STATUS to be queried by),
->> starts the thread, and replies back to the client. nfsd4_copy arguments that
->> are allocated on the stack are copies for the kthread.
->>
->> For the async copy handler, copy is done in the loop for the requested
->> number of bytes. If an error is encountered and partial copy has happened,
->> a successful partial copy is returned in the CB_OFFLOAD. vfs_copy_file_range
->> is called with 4MB chunks for both async and sync, allowing for 4MB
->> granularity of OFFLOAD_STATUS queiry. Once copy is done, the results are
->> queued for the callback workqueue and sent via CB_OFFLOAD.
->>
->> When the server received an OFFLOAD_CANCEL, it will find the kthread running
->> the copy and will send a SIGPENDING and kthread_stop() and it will interrupt
->> the ongoing do_splice() and once vfs returns we are choosing not to send
->> the CB_OFFLOAD back to the client.
->>
->> When the server receives an OFFLOAD_STATUS, it will find the kthread running
->> the copy and will locate within the copy state the current number of bytes
->> copied so far.
->>
->> v6:
->> 1. if an error occured and partial bytes were copied, don't return the error
->> and instead return the successful partial copy.
->> 2. OFFLOAD_STATUS locates the on-going copy and looks up the number of bytes
->> copied so far.
->>
->> Olga Kornievskaia (10):
->>   NFSD CB_OFFLOAD xdr
->>   NFSD OFFLOAD_STATUS xdr
->>   NFSD OFFLOAD_CANCEL xdr
->>   NFSD xdr callback stateid in async COPY reply
->>   NFSD first draft of async copy
->>   NFSD return nfs4_stid in nfs4_preprocess_stateid_op
->>   NFSD create new stateid for async copy
->>   NFSD handle OFFLOAD_CANCEL op
->>   NFSD support OFFLOAD_STATUS
->>   NFSD stop queued async copies on client shutdown
->>
->>  fs/nfsd/netns.h        |   8 ++
->>  fs/nfsd/nfs4callback.c |  97 +++++++++++++++
->>  fs/nfsd/nfs4proc.c     | 316 ++++++++++++++++++++++++++++++++++++++++++++-----
->>  fs/nfsd/nfs4state.c    |  77 +++++++++++-
->>  fs/nfsd/nfs4xdr.c      |  50 ++++++--
->>  fs/nfsd/nfsctl.c       |   1 +
->>  fs/nfsd/state.h        |  21 +++-
->>  fs/nfsd/xdr4.h         |  28 +++++
->>  fs/nfsd/xdr4cb.h       |  10 ++
->>  9 files changed, 571 insertions(+), 37 deletions(-)
->
-> Bruce, any comments on this version?
+Since bd8b2441742b (NFS: Store the raw NFS access mask in the inode's
+access cache) the mask already contains the NFS access bits, so it is
+wrong to try to map them from the MAY_* bits to the NFS_MAY_* bits
+in _nfs4_proc_access(). This leads to bogus access permissions being
+returned from the server.
 
-Bruce, do you have any comments on this version?
+Fix this by using the mask directly, but be careful to not ask for
+to broad permissions from the calling nfs_do_access().
+
+CC: stable@vger.kernel.org #4.13+
+Signed-off-by: Lucas Stach <l.stach@pengutronix.de>
+Tested-by: Björn Lässig <b.laessig@pengutronix.de>
+---
+ fs/nfs/dir.c      |  8 ++++++--
+ fs/nfs/nfs4proc.c | 19 +------------------
+ 2 files changed, 7 insertions(+), 20 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 5ceaeb1f6fb6..dd3a06353bdc 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2426,8 +2426,12 @@ static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
+ 		goto out;
+ 
+ 	/* Be clever: ask server to check for all possible rights */
+-	cache.mask = NFS_MAY_LOOKUP | NFS_MAY_EXECUTE
+-		     | NFS_MAY_WRITE | NFS_MAY_READ;
++	cache.mask = NFS_MAY_READ;
++	if (S_ISDIR(inode->i_mode))
++		cache.mask |= NFS_DIR_MAY_WRITE | NFS_MAY_LOOKUP;
++	else
++		cache.mask |= NFS_FILE_MAY_WRITE | NFS_MAY_EXECUTE;
++
+ 	cache.cred = cred;
+ 	status = NFS_PROTO(inode)->access(inode, &cache);
+ 	if (status != 0) {
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 6c61e2b99635..cb7b5aafaef6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -3889,6 +3889,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	struct nfs4_accessargs args = {
+ 		.fh = NFS_FH(inode),
+ 		.bitmask = server->cache_consistency_bitmask,
++		.access = entry->mask,
+ 	};
+ 	struct nfs4_accessres res = {
+ 		.server = server,
+@@ -3899,26 +3900,8 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 		.rpc_resp = &res,
+ 		.rpc_cred = entry->cred,
+ 	};
+-	int mode = entry->mask;
+ 	int status = 0;
+ 
+-	/*
+-	 * Determine which access bits we want to ask for...
+-	 */
+-	if (mode & MAY_READ)
+-		args.access |= NFS4_ACCESS_READ;
+-	if (S_ISDIR(inode->i_mode)) {
+-		if (mode & MAY_WRITE)
+-			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND | NFS4_ACCESS_DELETE;
+-		if (mode & MAY_EXEC)
+-			args.access |= NFS4_ACCESS_LOOKUP;
+-	} else {
+-		if (mode & MAY_WRITE)
+-			args.access |= NFS4_ACCESS_MODIFY | NFS4_ACCESS_EXTEND;
+-		if (mode & MAY_EXEC)
+-			args.access |= NFS4_ACCESS_EXECUTE;
+-	}
+-
+ 	res.fattr = nfs_alloc_fattr();
+ 	if (res.fattr == NULL)
+ 		return -ENOMEM;
+-- 
+2.11.0
+
