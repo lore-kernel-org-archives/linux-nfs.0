@@ -1,135 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:6017 "EHLO relay.sw.ru"
+Received: from mx1.redhat.com ([209.132.183.28]:48841 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751033AbdKJHTn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 10 Nov 2017 02:19:43 -0500
-From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH 2/2] race of nfsd inetaddr notifiers vs nn->nfsd_serv change
-To: linux-nfs@vger.kernel.org
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Scott Mayhew <smayhew@redhat.com>
-References: <20171031172926.aryzmxz6nvsqlg56@tonberry.usersys.redhat.com>
-Message-ID: <b827b89f-b914-506a-e9a4-039864b4120d@virtuozzo.com>
-Date: Fri, 10 Nov 2017 10:19:35 +0300
-MIME-Version: 1.0
-In-Reply-To: <20171031172926.aryzmxz6nvsqlg56@tonberry.usersys.redhat.com>
-Content-Type: text/plain; charset=utf-8
+        id S1750835AbdKJL1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 10 Nov 2017 06:27:50 -0500
+From: Benjamin Coddington <bcodding@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Revert "NFS: Move the flock open mode check into nfs_flock()"
+Date: Fri, 10 Nov 2017 06:27:49 -0500
+Message-Id: <83ce85f94c31a311075f45540ca157ac43a3e91c.1510313041.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd_inet[6]addr_event use nn->nfsd_serv without taken nfsd_mutex,
-pointer can be changed during execution of notifiers and crash the host.
+Commit e12937279c8b "NFS: Move the flock open mode check into nfs_flock()"
+changed NFSv3 behavior for flock() such that the open mode must match the
+lock type, however that requirement shouldn't be enforced for flock().
 
-Moreover if notifiers was enabled in one net namespace it will be enabled 
-in all other net namespaces, from its creation until its destroy.
-
-Patch allows notifiers to access to nn->nfsd_serv only when the pointer was 
-correctly initialized and delays its cleanup until notifiers are in use.
-
-Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-Tested-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 ---
- fs/nfsd/netns.h  |  3 +++
- fs/nfsd/nfsctl.c |  3 +++
- fs/nfsd/nfssvc.c | 14 +++++++++++---
- 3 files changed, 17 insertions(+), 3 deletions(-)
+ fs/nfs/file.c     | 18 ++----------------
+ fs/nfs/nfs4proc.c | 14 ++++++++++++++
+ 2 files changed, 16 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 3714231..82f7999 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -119,6 +119,9 @@ struct nfsd_net {
- 	u32 clverifier_counter;
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index af330c31f627..1ef3a1307aad 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -822,23 +822,9 @@ int nfs_flock(struct file *filp, int cmd, struct file_lock *fl)
+ 	if (NFS_SERVER(inode)->flags & NFS_MOUNT_LOCAL_FLOCK)
+ 		is_local = 1;
  
- 	struct svc_serv *nfsd_serv;
-+
-+	wait_queue_head_t ntf_wq;
-+	atomic_t ntf_refcnt;
- };
- 
- /* Simple check to find out if a given net was properly initialized */
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 6493df6..d107b44 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1241,6 +1241,9 @@ static __net_init int nfsd_init_net(struct net *net)
- 	nn->nfsd4_grace = 90;
- 	nn->clverifier_counter = prandom_u32();
- 	nn->clientid_counter = prandom_u32();
-+
-+	atomic_set(&nn->ntf_refcnt, 0);
-+	init_waitqueue_head(&nn->ntf_wq);
- 	return 0;
- 
- out_idmap_error:
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 7e3af3e..29a263b 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -334,7 +334,8 @@ static int nfsd_inetaddr_event(struct notifier_block *this, unsigned long event,
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	struct sockaddr_in sin;
- 
--	if (event != NETDEV_DOWN)
-+	if ((event != NETDEV_DOWN) ||
-+	    !atomic_inc_not_zero(&nn->ntf_refcnt))
- 		goto out;
- 
- 	if (nn->nfsd_serv) {
-@@ -343,6 +344,8 @@ static int nfsd_inetaddr_event(struct notifier_block *this, unsigned long event,
- 		sin.sin_addr.s_addr = ifa->ifa_local;
- 		svc_age_temp_xprts_now(nn->nfsd_serv, (struct sockaddr *)&sin);
- 	}
-+	atomic_dec(&nn->ntf_refcnt);
-+	wake_up(&nn->ntf_wq);
- 
- out:
- 	return NOTIFY_DONE;
-@@ -362,7 +365,8 @@ static int nfsd_inet6addr_event(struct notifier_block *this,
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 	struct sockaddr_in6 sin6;
- 
--	if (event != NETDEV_DOWN)
-+	if ((event != NETDEV_DOWN) ||
-+	    !atomic_inc_not_zero(&nn->ntf_refcnt))
- 		goto out;
- 
- 	if (nn->nfsd_serv) {
-@@ -373,7 +377,8 @@ static int nfsd_inet6addr_event(struct notifier_block *this,
- 			sin6.sin6_scope_id = ifa->idev->dev->ifindex;
- 		svc_age_temp_xprts_now(nn->nfsd_serv, (struct sockaddr *)&sin6);
- 	}
+-	/*
+-	 * VFS doesn't require the open mode to match a flock() lock's type.
+-	 * NFS, however, may simulate flock() locking with posix locking which
+-	 * requires the open mode to match the lock type.
+-	 */
+-	switch (fl->fl_type) {
+-	case F_UNLCK:
++	/* We're simulating flock() locks using posix locks on the server */
++	if (fl->fl_type == F_UNLCK)
+ 		return do_unlk(filp, cmd, fl, is_local);
+-	case F_RDLCK:
+-		if (!(filp->f_mode & FMODE_READ))
+-			return -EBADF;
+-		break;
+-	case F_WRLCK:
+-		if (!(filp->f_mode & FMODE_WRITE))
+-			return -EBADF;
+-	}
 -
-+	atomic_dec(&nn->ntf_refcnt);
-+	wake_up(&nn->ntf_wq);
- out:
- 	return NOTIFY_DONE;
+ 	return do_setlk(filp, cmd, fl, is_local);
  }
-@@ -390,6 +395,7 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+ EXPORT_SYMBOL_GPL(nfs_flock);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d90132642340..f40c32b14ef5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -6542,6 +6542,20 @@ nfs4_proc_lock(struct file *filp, int cmd, struct file_lock *request)
+ 	    !test_bit(NFS_STATE_POSIX_LOCKS, &state->flags))
+ 		return -ENOLCK;
  
-+	atomic_dec(&nn->ntf_refcnt);
- 	/* check if the notifier still has clients */
- 	if (atomic_dec_return(&nfsd_notifier_refcount) == 0) {
- 		unregister_inetaddr_notifier(&nfsd_inetaddr_notifier);
-@@ -397,6 +403,7 @@ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- 		unregister_inet6addr_notifier(&nfsd_inet6addr_notifier);
- #endif
- 	}
-+	wait_event(nn->ntf_wq, atomic_read(&nn->ntf_refcnt) == 0);
- 
- 	/*
- 	 * write_ports can create the server without actually starting
-@@ -516,6 +523,7 @@ int nfsd_create_serv(struct net *net)
- 		register_inet6addr_notifier(&nfsd_inet6addr_notifier);
- #endif
- 	}
-+	atomic_inc(&nn->ntf_refcnt);
- 	do_gettimeofday(&nn->nfssvc_boot);		/* record boot time */
- 	return 0;
- }
++	/*
++	 * Don't rely on the VFS having checked the file open mode,
++	 * since it won't do this for flock() locks.
++	 */
++	switch (request->fl_type) {
++	case F_RDLCK:
++		if (!(filp->f_mode & FMODE_READ))
++			return -EBADF;
++		break;
++	case F_WRLCK:
++		if (!(filp->f_mode & FMODE_WRITE))
++			return -EBADF;
++	}
++
+ 	status = nfs4_set_lock_state(state, request);
+ 	if (status != 0)
+ 		return status;
 -- 
-2.7.4
+2.9.3
 
