@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:53376 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754707AbdKJWhd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 17:37:33 -0500
-Received: by mail-io0-f195.google.com with SMTP id 189so15099883iow.10
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2017 14:37:33 -0800 (PST)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:44803 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754604AbdKJWhf (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 17:37:35 -0500
+Received: by mail-io0-f196.google.com with SMTP id m16so15143971iod.1
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2017 14:37:34 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>
@@ -12,66 +12,34 @@ Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         "J . Bruce Fields" <bfields@fieldses.org>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v2 1/7] SUNRPC: Add flag to kill new tasks
-Date: Fri, 10 Nov 2017 16:37:01 -0600
-Message-Id: <20171110223707.17098-2-JPEWhacker@gmail.com>
+Subject: [RFC v2 2/7] SUNRPC: Expose kill_new_tasks in debugfs
+Date: Fri, 10 Nov 2017 16:37:02 -0600
+Message-Id: <20171110223707.17098-3-JPEWhacker@gmail.com>
 In-Reply-To: <20171110223707.17098-1-JPEWhacker@gmail.com>
 References: <20171110223707.17098-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The flag causes any new tasks that are queued to exit immediately with
--EIO instead of executing. This will allow clients (particularly NFS) to
-prevents these task from delaying shutdown of the RPC session longer
-than necessary.
-
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- include/linux/sunrpc/clnt.h | 1 +
- net/sunrpc/clnt.c           | 3 ---
- net/sunrpc/sched.c          | 3 +++
- 3 files changed, 4 insertions(+), 3 deletions(-)
+ net/sunrpc/debugfs.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 71c237e8240e..94f4e464de1b 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -54,6 +54,7 @@ struct rpc_clnt {
- 				cl_noretranstimeo: 1,/* No retransmit timeouts */
- 				cl_autobind : 1,/* use getport() */
- 				cl_chatty   : 1;/* be verbose */
-+	bool			cl_kill_new_tasks;	/* Kill all new tasks */
+diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
+index e980d2a493de..2ca67b681c1e 100644
+--- a/net/sunrpc/debugfs.c
++++ b/net/sunrpc/debugfs.c
+@@ -160,6 +160,10 @@ rpc_clnt_debugfs_register(struct rpc_clnt *clnt)
+ 	if (!debugfs_create_symlink("xprt", clnt->cl_debugfs, name))
+ 		goto out_err;
  
- 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
- 	const struct rpc_timeout *cl_timeout;	/* Timeout strategy */
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index df4ecb042ebe..aa64cd667696 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -818,9 +818,6 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
- {
- 	struct rpc_task	*rovr;
- 
--
--	if (list_empty(&clnt->cl_tasks))
--		return;
- 	dprintk("RPC:       killing all tasks for client %p\n", clnt);
- 	/*
- 	 * Spin lock all_tasks to prevent changes...
-diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
-index 0cc83839c13c..2c9fe5c0319b 100644
---- a/net/sunrpc/sched.c
-+++ b/net/sunrpc/sched.c
-@@ -748,6 +748,9 @@ static void __rpc_execute(struct rpc_task *task)
- 	dprintk("RPC: %5u __rpc_execute flags=0x%x\n",
- 			task->tk_pid, task->tk_flags);
- 
-+	if (task->tk_client->cl_kill_new_tasks)
-+		rpc_exit(task, -EIO);
++	if (!debugfs_create_bool("kill_new_tasks", S_IRUSR | S_IWUSR,
++				 clnt->cl_debugfs, &clnt->cl_kill_new_tasks))
++		goto out_err;
 +
- 	WARN_ON_ONCE(RPC_IS_QUEUED(task));
- 	if (RPC_IS_QUEUED(task))
- 		return;
+ 	return;
+ out_err:
+ 	debugfs_remove_recursive(clnt->cl_debugfs);
 -- 
 2.13.6
 
