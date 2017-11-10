@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:44803 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754604AbdKJWhf (ORCPT
+Received: from mail-it0-f67.google.com ([209.85.214.67]:33520 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754707AbdKJWhf (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 17:37:35 -0500
-Received: by mail-io0-f196.google.com with SMTP id m16so15143971iod.1
-        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2017 14:37:34 -0800 (PST)
+Received: by mail-it0-f67.google.com with SMTP id n134so4921769itg.0
+        for <linux-nfs@vger.kernel.org>; Fri, 10 Nov 2017 14:37:35 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>
@@ -12,34 +12,41 @@ Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         "J . Bruce Fields" <bfields@fieldses.org>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v2 2/7] SUNRPC: Expose kill_new_tasks in debugfs
-Date: Fri, 10 Nov 2017 16:37:02 -0600
-Message-Id: <20171110223707.17098-3-JPEWhacker@gmail.com>
+Subject: [RFC v2 3/7] SUNRPC: Simplify client shutdown
+Date: Fri, 10 Nov 2017 16:37:03 -0600
+Message-Id: <20171110223707.17098-4-JPEWhacker@gmail.com>
 In-Reply-To: <20171110223707.17098-1-JPEWhacker@gmail.com>
 References: <20171110223707.17098-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Use the flag to kill all new tasks when shutting down instead of
+repeatedly killing all the pending tasks.
+
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- net/sunrpc/debugfs.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ net/sunrpc/clnt.c | 8 +++-----
+ 1 file changed, 3 insertions(+), 5 deletions(-)
 
-diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
-index e980d2a493de..2ca67b681c1e 100644
---- a/net/sunrpc/debugfs.c
-+++ b/net/sunrpc/debugfs.c
-@@ -160,6 +160,10 @@ rpc_clnt_debugfs_register(struct rpc_clnt *clnt)
- 	if (!debugfs_create_symlink("xprt", clnt->cl_debugfs, name))
- 		goto out_err;
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index aa64cd667696..b00793c30518 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -850,11 +850,9 @@ void rpc_shutdown_client(struct rpc_clnt *clnt)
+ 			clnt->cl_program->name,
+ 			rcu_dereference(clnt->cl_xprt)->servername);
  
-+	if (!debugfs_create_bool("kill_new_tasks", S_IRUSR | S_IWUSR,
-+				 clnt->cl_debugfs, &clnt->cl_kill_new_tasks))
-+		goto out_err;
-+
- 	return;
- out_err:
- 	debugfs_remove_recursive(clnt->cl_debugfs);
+-	while (!list_empty(&clnt->cl_tasks)) {
+-		rpc_killall_tasks(clnt);
+-		wait_event_timeout(destroy_wait,
+-			list_empty(&clnt->cl_tasks), 1*HZ);
+-	}
++	clnt->cl_kill_new_tasks = true;
++	rpc_killall_tasks(clnt);
++	wait_event(destroy_wait, list_empty(&clnt->cl_tasks));
+ 
+ 	rpc_release_client(clnt);
+ }
 -- 
 2.13.6
 
