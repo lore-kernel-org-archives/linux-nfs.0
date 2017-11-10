@@ -1,60 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54490 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753190AbdKJP3K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 10 Nov 2017 10:29:10 -0500
-Date: Fri, 10 Nov 2017 10:29:09 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Bhumika Goyal <bhumirks@gmail.com>, julia.lawall@lip6.fr,
-        trond.myklebust@primarydata.com, davem@davemloft.net,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        netdev@vger.kernel.org
-Subject: Re: [PATCH 0/4] make function arg and structures as const
-Message-ID: <20171110152909.GO8773@fieldses.org>
-References: <1508256866-12798-1-git-send-email-bhumirks@gmail.com>
- <1508258427.4747.7.camel@redhat.com>
- <20171110022125.GA13874@fieldses.org>
- <7c61a3c8-4042-7b05-1298-e3abbef916c2@Netapp.com>
+Received: from mail-io0-f174.google.com ([209.85.223.174]:47131 "EHLO
+        mail-io0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753490AbdKJSmv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 10 Nov 2017 13:42:51 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <7c61a3c8-4042-7b05-1298-e3abbef916c2@Netapp.com>
+In-Reply-To: <23f7da04-95f7-24e7-ee70-ce40c5b8fee3@gentoo.org>
+References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
+ <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
+ <20171109193715.GB21978@ZenIV.linux.org.uk> <40ad7c6e-f0d7-959a-bf29-d3e3843f5d31@gentoo.org>
+ <CA+55aFwqUbd5xVno7tH+yYD=yeu4nBdY=mpZQ+3fA0OEPS_WtQ@mail.gmail.com> <23f7da04-95f7-24e7-ee70-ce40c5b8fee3@gentoo.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Fri, 10 Nov 2017 10:42:49 -0800
+Message-ID: <CA+55aFx63wq=qN0+P+S-aahq7HzvYLi1tSxhPT9x78E8BrMNGQ@mail.gmail.com>
+Subject: Re: [nfsd4] potentially hardware breaking regression in 4.14-rc and 4.13.11
+To: Patrick McLean <chutzpah@gentoo.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
+        Bruce Fields <bfields@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        stable <stable@vger.kernel.org>,
+        Thorsten Leemhuis <regressions@leemhuis.info>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 10, 2017 at 10:09:46AM -0500, Anna Schumaker wrote:
-> 
-> 
-> On 11/09/2017 09:21 PM, J. Bruce Fields wrote:
-> > On Tue, Oct 17, 2017 at 12:40:27PM -0400, Jeff Layton wrote:
-> >> On Tue, 2017-10-17 at 18:14 +0200, Bhumika Goyal wrote:
-> >>> Make the function argument as const. After thing change, make
-> >>> the cache_detail structures as const.
-> >>>
-> >>> Bhumika Goyal (4):
-> >>>   sunrpc: make the function arg as const
-> >>>   NFS: make cache_detail structures const
-> >>>   NFSD: make cache_detail structures const
-> >>>   SUNRPC: make cache_detail structures const
-> >>>
-> >>>  fs/nfs/dns_resolve.c              | 2 +-
-> >>>  fs/nfsd/export.c                  | 4 ++--
-> >>>  fs/nfsd/nfs4idmap.c               | 4 ++--
-> >>>  include/linux/sunrpc/cache.h      | 2 +-
-> >>>  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
-> >>>  net/sunrpc/cache.c                | 2 +-
-> >>>  net/sunrpc/svcauth_unix.c         | 4 ++--
-> >>>  7 files changed, 11 insertions(+), 11 deletions(-)
-> >>>
-> >>
-> >> Looks pretty straightforward. You can add this to the set:
-> >>
-> >> Reviewed-by: Jeff Layton <jlayton@redhat.com>
-> > 
-> > Thanks, I've applied 1, 3, and 4 and could take #2 as well if it's OK
-> > with Trond/Anna.
-> 
-> I don't mind taking #2, it's already in my branch :)
+On Thu, Nov 9, 2017 at 5:58 PM, Patrick McLean <chutzpah@gentoo.org> wrote:
+>
+> Something must have changed since 4.13.8 to trigger this though.
 
-OK, thanks.--b.
+Well, yes and no.
+
+Obviously something changed, but it doesn't necessarily have to be
+anything particular.
+
+Almost every time we've seen compiler bugs, it's been an innocuous
+change that just happened to trigger a latent issue. Pretty much by
+definition compiler bugs tend to be about rare situations, so it's
+some odd special case that triggers.
+
+Since it's apparently fairly repeatable for you, a bisection between
+4.13.8 and 4.13.11 would be very interesting, and shouldn't take all
+that long. There's only 142 commits in that range, so even just a
+partial bisection of say four of five rounds should narrow it down to
+just a couple of commits. And even a full bisection should only take
+something like 8 build/test cycles.
+
+Arnd pointed to some commits that might be relevant for the cp210x
+module, but those are all already in 4.13.8, so if 4.13.8 really is
+rock solid for you, I don't think that's it.
+
+I really don't see anything that looks even half-way suspicious in
+that 4.13.8..11 range. But as mentioned, compiler interactions can be
+_really_ subtle.
+
+And hey, it can be a real kernel bug too, that just happens to be
+exposed by RANDSTRUCT, so a bisect really would be very nice.
+
+Because in the end, compiler bugs are very rare. They are particularly
+annoying when they do happen, though, so they loom big in the mind of
+people who have had to chase them down.
+
+                 Linus
