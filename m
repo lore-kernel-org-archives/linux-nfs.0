@@ -1,48 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:38167 "EHLO relay.sw.ru"
+Received: from mailhub.sw.ru ([195.214.232.25]:13709 "EHLO relay.sw.ru"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753052AbdKLIsZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 12 Nov 2017 03:48:25 -0500
+        id S1753052AbdKLIsw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 12 Nov 2017 03:48:52 -0500
 From: Vasily Averin <vvs@virtuozzo.com>
-Subject: [PATCH v4 14/18] nfs client: exit_net cleanup check added
+Subject: [PATCH v4 15/18] sunrpc: exit_net cleanup check added
 To: netdev@vger.kernel.org
 Cc: linux-nfs@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 References: <9dfa013e-9098-e155-9c47-a73753338288@virtuozzo.com>
-Message-ID: <6b79f4c2-95de-9df2-7403-060b12ff2c03@virtuozzo.com>
-Date: Sun, 12 Nov 2017 11:48:16 +0300
+Message-ID: <62a56880-3a6d-481e-7aec-5cf7cd2968e0@virtuozzo.com>
+Date: Sun, 12 Nov 2017 11:48:43 +0300
 MIME-Version: 1.0
 In-Reply-To: <9dfa013e-9098-e155-9c47-a73753338288@virtuozzo.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Be sure that nfs_client_list and nfs_volume_list lists initialized
-in net_init hook were return to initial state in net_exit hook.
+Be sure that all_clients list initialized in net_init hook was return
+to initial state.
 
 Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
 ---
- fs/nfs/inode.c | 4 ++++
- 1 file changed, 4 insertions(+)
+ net/sunrpc/sunrpc_syms.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 134d9f5..4ef515f 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -2084,8 +2084,12 @@ static int nfs_net_init(struct net *net)
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index c73de18..56f9eff 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -65,10 +65,13 @@ static __net_init int sunrpc_init_net(struct net *net)
  
- static void nfs_net_exit(struct net *net)
+ static __net_exit void sunrpc_exit_net(struct net *net)
  {
-+	struct nfs_net *nn = net_generic(net, nfs_net_id);
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
 +
- 	nfs_fs_proc_net_exit(net);
- 	nfs_cleanup_cb_ident_idr(net);
-+	WARN_ON_ONCE(!list_empty(&nn->nfs_client_list));
-+	WARN_ON_ONCE(!list_empty(&nn->nfs_volume_list));
+ 	rpc_pipefs_exit_net(net);
+ 	unix_gid_cache_destroy(net);
+ 	ip_map_cache_destroy(net);
+ 	rpc_proc_exit(net);
++	WARN_ON_ONCE(!list_empty(&sn->all_clients));
  }
  
- static struct pernet_operations nfs_net_ops = {
+ static struct pernet_operations sunrpc_net_ops = {
 -- 
 2.7.4
 
