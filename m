@@ -1,15 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f53.google.com ([209.85.214.53]:38534 "EHLO
-        mail-it0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751073AbdKMXa0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Nov 2017 18:30:26 -0500
+Received: from mail-it0-f47.google.com ([209.85.214.47]:40753 "EHLO
+        mail-it0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751028AbdKMXyZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Nov 2017 18:54:25 -0500
 MIME-Version: 1.0
-In-Reply-To: <87efp1zsww.fsf_-_@rasmusvillemoes.dk>
+In-Reply-To: <CA+55aFz4qA2RhjW5KtD+=jnbW-9hoRGgDQ5N6DkQ5LCTkO5idA@mail.gmail.com>
 References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
- <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com> <87efp1zsww.fsf_-_@rasmusvillemoes.dk>
+ <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
+ <87efp1zsww.fsf_-_@rasmusvillemoes.dk> <CA+55aFz4qA2RhjW5KtD+=jnbW-9hoRGgDQ5N6DkQ5LCTkO5idA@mail.gmail.com>
 From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 13 Nov 2017 15:30:25 -0800
-Message-ID: <CA+55aFz4qA2RhjW5KtD+=jnbW-9hoRGgDQ5N6DkQ5LCTkO5idA@mail.gmail.com>
+Date: Mon, 13 Nov 2017 15:54:24 -0800
+Message-ID: <CA+55aFwWt-hRSRqJRP6Wc67COZFZwpcMy4o06bRNBGnwW8QBFw@mail.gmail.com>
 Subject: Re: bit tweaks [was: Re: [nfsd4] potentially hardware breaking
  regression in 4.14-rc and 4.13.11]
 To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
@@ -25,36 +26,22 @@ Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 13, 2017 at 2:59 PM, Rasmus Villemoes
-<linux@rasmusvillemoes.dk> wrote:
->> Sadly, gcc makes a mess of it and actually generates code that looks
->> like the original C.[...]
+On Mon, Nov 13, 2017 at 3:30 PM, Linus Torvalds
+<torvalds@linux-foundation.org> wrote:
 >
-> Actually, new enough gcc (7.1, I think) does contain a pattern that does
-> this, but unfortunately only if one spells it
->
->   y |= (x & BIT) ? OTHER_BIT : 0;
+> So let's just rewrite that mnt_flags conversion that way, justr to get
+> gcc to generate the obvious code.
 
-Ahh, I should have recognized that, I think that's what we ended up
-doing with the VM_READ -> PROT_READ translation in a few places,
-exactly because gcc would then recognize it and do the much better
-code generation.
+Oh wow. I tried to do the same thing in fs/namespace.c where it does
+the reverse bit translation, and gcc makes a _horrible_ mess of it and
+actually makes the code much worse because for some reason the pattern
+doesn't trigger.
 
-> which is half-way to doing it by hand, I suppose.
+So this gcc optimization is apparently pretty damn fragile in general.
+It triggers for the trivial cases, but then other code around it can
+confuse it badly.
 
-Yeah, but it is at least acceptable, and the code is still legible C.
-The alternatives of doing it _entirely_ by hand tend to be much worse
-(ie you end up using a macro from hell that checks which of the two
-bits are bigger and shifting in the right direction by using
-multiplication or division).
+So I don't think I'll touch this, it seems to not be really reliably
+something that makes gcc generate what should be the obvious code..
 
-So let's just rewrite that mnt_flags conversion that way, justr to get
-gcc to generate the obvious code.
-
-It's a bit sad how gcc didn't pick up on the original code, especially
-since it had already done the much more complicated translation of
-doing the if-conversion.
-
-Thanks for pointing out the gcc pattern.
-
-          Linus
+               Linus
