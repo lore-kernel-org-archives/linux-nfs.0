@@ -1,106 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:49694 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:55888 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752397AbdKMLtV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 13 Nov 2017 06:49:21 -0500
-Message-ID: <1510573758.4536.8.camel@kernel.org>
-Subject: Re: [PATCH] lockd: fix "list_add double add" caused by legacy
- signal interface
-From: Jeff Layton <jlayton@kernel.org>
-To: Vasily Averin <vvs@virtuozzo.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Date: Mon, 13 Nov 2017 06:49:18 -0500
-In-Reply-To: <75f4472c-b9e2-6353-3af0-c4939ecfca41@virtuozzo.com>
-References: <20171109154444.GG8773@fieldses.org>
-         <75f4472c-b9e2-6353-3af0-c4939ecfca41@virtuozzo.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        id S1751842AbdKMNWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 13 Nov 2017 08:22:53 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Jeff Layton" <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: Prevent the reuse of a closed stateid
+Date: Mon, 13 Nov 2017 08:22:51 -0500
+Message-ID: <706BD45D-0499-4DE4-B087-9940B8615B43@redhat.com>
+In-Reply-To: <20171110220318.GQ8773@fieldses.org>
+References: <2087b4cab6c695a7df01c1135f1773c9b762f0b0.1508248427.git.bcodding@redhat.com>
+ <20171110220318.GQ8773@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-11-13 at 07:25 +0300, Vasily Averin wrote:
-> restart_grace() uses hardcoded init_net.
-> It can cause to "list_add double add" in following scenario:
-> 
-> 1) nfsd and lockd was started in several net namespaces
-> 2) nfsd in init_net was stopped (lockd was not stopped because
->  it have users from another net namespaces)
-> 3) lockd got signal, called restart_grace() -> set_grace_period()
->  and enabled lock_manager in hardcoded init_net.
-> 4) nfsd in init_net is started again,
->  its lockd_up() calls set_grace_period() and tries to add
->  lock_manager into init_net 2nd time.
-> 
-> Jeff Layton suggest:
-> "Make it safe to call locks_start_grace multiple times on the same
-> lock_manager. If it's already on the global grace_list, then don't try
-> to add it again.
-> 
-> With this change, we also need to ensure that the nfsd4 lock manager
-> initializes the list before we call locks_start_grace. While we're at
-> it, move the rest of the nfsd_net initialization into
-> nfs4_state_create_net. I see no reason to have it spread over two
-> functions like it is today."
-> 
-> Suggested patch was updated to generate warning in described situation.
-> 
-> Suggested-by: Jeff Layton <jlayton@redhat.com>
-> Signed-off-by: Vasily Averin <vvs@virtuozzo.com>
-> ---
->  fs/nfs_common/grace.c | 6 +++++-
->  fs/nfsd/nfs4state.c   | 7 ++++---
->  2 files changed, 9 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs_common/grace.c b/fs/nfs_common/grace.c
-> index bd3e2d3..5be08f0 100644
-> --- a/fs/nfs_common/grace.c
-> +++ b/fs/nfs_common/grace.c
-> @@ -30,7 +30,11 @@ locks_start_grace(struct net *net, struct lock_manager *lm)
->  	struct list_head *grace_list = net_generic(net, grace_net_id);
->  
->  	spin_lock(&grace_lock);
-> -	list_add(&lm->list, grace_list);
-> +	if (list_empty(&lm->list))
-> +		list_add(&lm->list, grace_list);
-> +	else
-> +		WARN(1, "double list_add attempt detected in net %x %s\n",
-> +		     net->ns.inum, (net == &init_net) ? "(init_net)" : "");
->  	spin_unlock(&grace_lock);
->  }
+Yes, I believe it has, though I haven't tested it yet, unfortunately.
 
-I'm not sure that warning really means much.
+On 10 Nov 2017, at 17:03, J. Bruce Fields wrote:
 
-It's not _really_ a bug to request that a new grace period start while
-it's already in one. In general, it's ok to request a new grace period
-while it's currently enforcing one. That should just have the effect of
-extending the existing grace period.
-
->  EXPORT_SYMBOL_GPL(locks_start_grace);
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 7345143..b29b5a1 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -7103,6 +7103,10 @@ static int nfs4_state_create_net(struct net *net)
->  		INIT_LIST_HEAD(&nn->sessionid_hashtbl[i]);
->  	nn->conf_name_tree = RB_ROOT;
->  	nn->unconf_name_tree = RB_ROOT;
-> +	nn->boot_time = get_seconds();
-> +	nn->grace_ended = false;
-> +	nn->nfsd4_manager.block_opens = true;
-> +	INIT_LIST_HEAD(&nn->nfsd4_manager.list);
->  	INIT_LIST_HEAD(&nn->client_lru);
->  	INIT_LIST_HEAD(&nn->close_lru);
->  	INIT_LIST_HEAD(&nn->del_recall_lru);
-> @@ -7160,9 +7164,6 @@ nfs4_state_start_net(struct net *net)
->  	ret = nfs4_state_create_net(net);
->  	if (ret)
->  		return ret;
-> -	nn->boot_time = get_seconds();
-> -	nn->grace_ended = false;
-> -	nn->nfsd4_manager.block_opens = true;
->  	locks_start_grace(net, &nn->nfsd4_manager);
->  	nfsd4_client_tracking_init(net);
->  	printk(KERN_INFO "NFSD: starting %ld-second grace period (net %x)\n",
-
--- 
-Jeff Layton <jlayton@kernel.org>
+> I'm assuming this has been addressed by Trond's series (in linux-next
+> now); but I haven't checked carefully....
+>
+> --b.
+>
+> On Tue, Oct 17, 2017 at 09:55:05AM -0400, Benjamin Coddington wrote:
+>> While running generic/089 on NFSv4.1, the following on-the-wire 
+>> exchange
+>> occurs:
+>>
+>> Client                  Server
+>> ----------              ----------
+>> OPEN (owner A)  ->
+>>                     <-  OPEN response: state A1
+>> CLOSE (state A1)->
+>> OPEN (owner A)  ->
+>>                     <-  CLOSE response: state A2
+>>                     <-  OPEN response: state A3
+>> LOCK (state A3) ->
+>>                     <-  LOCK response: NFS4_BAD_STATEID
+>>
+>> The server should not be returning state A3 in response to the second 
+>> OPEN
+>> after processing the CLOSE and sending back state A2.  The problem is 
+>> that
+>> nfsd4_process_open2() is able to find an existing open state just 
+>> after
+>> nfsd4_close() has incremented the state's sequence number but before
+>> calling unhash_ol_stateid().
+>>
+>> Fix this by using the state's sc_type field to identify closed state, 
+>> and
+>> protect the update of that field with st_mutex.  
+>> nfsd4_find_existing_open()
+>> will return with the st_mutex held, so that the state will not 
+>> transition
+>> between being looked up and then updated in nfsd4_process_open2().
+>>
+>> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 29 +++++++++++++++++++----------
+>>  1 file changed, 19 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 0c04f81aa63b..17473a092d01 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -3503,11 +3503,12 @@ static const struct 
+>> nfs4_stateowner_operations openowner_ops = {
+>>  static struct nfs4_ol_stateid *
+>>  nfsd4_find_existing_open(struct nfs4_file *fp, struct nfsd4_open 
+>> *open)
+>>  {
+>> -	struct nfs4_ol_stateid *local, *ret = NULL;
+>> +	struct nfs4_ol_stateid *local, *ret;
+>>  	struct nfs4_openowner *oo = open->op_openowner;
+>>
+>> -	lockdep_assert_held(&fp->fi_lock);
+>> -
+>> +retry:
+>> +	ret = NULL;
+>> +	spin_lock(&fp->fi_lock);
+>>  	list_for_each_entry(local, &fp->fi_stateids, st_perfile) {
+>>  		/* ignore lock owners */
+>>  		if (local->st_stateowner->so_is_open_owner == 0)
+>> @@ -3518,6 +3519,18 @@ nfsd4_find_existing_open(struct nfs4_file *fp, 
+>> struct nfsd4_open *open)
+>>  			break;
+>>  		}
+>>  	}
+>> +	spin_unlock(&fp->fi_lock);
+>> +
+>> +	/* Did we race with CLOSE? */
+>> +	if (ret) {
+>> +		mutex_lock(&ret->st_mutex);
+>> +		if (ret->st_stid.sc_type != NFS4_OPEN_STID) {
+>> +			mutex_unlock(&ret->st_mutex);
+>> +			nfs4_put_stid(&ret->st_stid);
+>> +			goto retry;
+>> +		}
+>> +	}
+>> +
+>>  	return ret;
+>>  }
+>>
+>> @@ -3566,7 +3579,6 @@ init_open_stateid(struct nfs4_file *fp, struct 
+>> nfsd4_open *open)
+>>  	mutex_lock(&stp->st_mutex);
+>>
+>>  	spin_lock(&oo->oo_owner.so_client->cl_lock);
+>> -	spin_lock(&fp->fi_lock);
+>>
+>>  	retstp = nfsd4_find_existing_open(fp, open);
+>>  	if (retstp)
+>> @@ -3583,13 +3595,13 @@ init_open_stateid(struct nfs4_file *fp, 
+>> struct nfsd4_open *open)
+>>  	stp->st_deny_bmap = 0;
+>>  	stp->st_openstp = NULL;
+>>  	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+>> +	spin_lock(&fp->fi_lock);
+>>  	list_add(&stp->st_perfile, &fp->fi_stateids);
+>> +	spin_unlock(&fp->fi_lock);
+>>
+>>  out_unlock:
+>> -	spin_unlock(&fp->fi_lock);
+>>  	spin_unlock(&oo->oo_owner.so_client->cl_lock);
+>>  	if (retstp) {
+>> -		mutex_lock(&retstp->st_mutex);
+>>  		/* To keep mutex tracking happy */
+>>  		mutex_unlock(&stp->st_mutex);
+>>  		stp = retstp;
+>> @@ -4403,9 +4415,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, 
+>> struct svc_fh *current_fh, struct nf
+>>  		status = nfs4_check_deleg(cl, open, &dp);
+>>  		if (status)
+>>  			goto out;
+>> -		spin_lock(&fp->fi_lock);
+>>  		stp = nfsd4_find_existing_open(fp, open);
+>> -		spin_unlock(&fp->fi_lock);
+>>  	} else {
+>>  		open->op_file = NULL;
+>>  		status = nfserr_bad_stateid;
+>> @@ -4419,7 +4429,6 @@ nfsd4_process_open2(struct svc_rqst *rqstp, 
+>> struct svc_fh *current_fh, struct nf
+>>  	 */
+>>  	if (stp) {
+>>  		/* Stateid was found, this is an OPEN upgrade */
+>> -		mutex_lock(&stp->st_mutex);
+>>  		status = nfs4_upgrade_open(rqstp, fp, current_fh, stp, open);
+>>  		if (status) {
+>>  			mutex_unlock(&stp->st_mutex);
+>> @@ -5294,7 +5303,6 @@ static void nfsd4_close_open_stateid(struct 
+>> nfs4_ol_stateid *s)
+>>  	bool unhashed;
+>>  	LIST_HEAD(reaplist);
+>>
+>> -	s->st_stid.sc_type = NFS4_CLOSED_STID;
+>>  	spin_lock(&clp->cl_lock);
+>>  	unhashed = unhash_open_stateid(s, &reaplist);
+>>
+>> @@ -5335,6 +5343,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct 
+>> nfsd4_compound_state *cstate,
+>>  	if (status)
+>>  		goto out;
+>>  	nfs4_inc_and_copy_stateid(&close->cl_stateid, &stp->st_stid);
+>> +	stp->st_stid.sc_type = NFS4_CLOSED_STID;
+>>  	mutex_unlock(&stp->st_mutex);
+>>
+>>  	nfsd4_close_open_stateid(stp);
+>> -- 
+>> 2.9.3
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
