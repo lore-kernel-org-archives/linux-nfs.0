@@ -1,312 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:24799 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753988AbdKMRYm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Nov 2017 12:24:42 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [RFC v2 5/7] NFS: Add serverfailed mount option
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1510590579.2495.55.camel@gmail.com>
-Date: Mon, 13 Nov 2017 12:23:59 -0500
-Cc: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Bruce Fields <bfields@fieldses.org>,
-        David Howells <dhowells@redhat.com>
-Message-Id: <12EE28BC-E154-41B5-941F-C29ACBCC6777@oracle.com>
-References: <20171110223707.17098-1-JPEWhacker@gmail.com> <20171110223707.17098-6-JPEWhacker@gmail.com> <73D48532-9CCD-47D4-B016-C317E4F93B68@oracle.com> <1510590579.2495.55.camel@gmail.com>
-To: Joshua Watt <jpewhacker@gmail.com>
+Received: from mail.kernel.org ([198.145.29.99]:39008 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751754AbdKMUGT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 13 Nov 2017 15:06:19 -0500
+Message-ID: <1510603577.4887.4.camel@kernel.org>
+Subject: Re: [PATCH] lockd: fix "list_add double add" caused by legacy
+ signal interface
+From: Jeff Layton <jlayton@kernel.org>
+To: Vasily Averin <vvs@virtuozzo.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Date: Mon, 13 Nov 2017 15:06:17 -0500
+In-Reply-To: <48cdbeb3-b364-17c1-aaf9-948525e33f38@virtuozzo.com>
+References: <20171109154444.GG8773@fieldses.org>
+         <75f4472c-b9e2-6353-3af0-c4939ecfca41@virtuozzo.com>
+         <1510573758.4536.8.camel@kernel.org>
+         <48cdbeb3-b364-17c1-aaf9-948525e33f38@virtuozzo.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Nov 13, 2017, at 11:29 AM, Joshua Watt <jpewhacker@gmail.com> wrote:
+On Mon, 2017-11-13 at 17:57 +0300, Vasily Averin wrote:
+> On 2017-11-13 14:49, Jeff Layton wrote:
+> > On Mon, 2017-11-13 at 07:25 +0300, Vasily Averin wrote:
+> > > --- a/fs/nfs_common/grace.c
+> > > +++ b/fs/nfs_common/grace.c
+> > > @@ -30,7 +30,11 @@ locks_start_grace(struct net *net, struct lock_manager *lm)
+> > >  	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > >  
+> > >  	spin_lock(&grace_lock);
+> > > -	list_add(&lm->list, grace_list);
+> > > +	if (list_empty(&lm->list))
+> > > +		list_add(&lm->list, grace_list);
+> > > +	else
+> > > +		WARN(1, "double list_add attempt detected in net %x %s\n",
+> > > +		     net->ns.inum, (net == &init_net) ? "(init_net)" : "");
+> > >  	spin_unlock(&grace_lock);
+> > >  }
+> > 
+> > I'm not sure that warning really means much.
+> > 
+> > It's not _really_ a bug to request that a new grace period start while
+> > it's already in one. In general, it's ok to request a new grace period
+> > while it's currently enforcing one. That should just have the effect of
+> > extending the existing grace period.
 > 
-> On Fri, 2017-11-10 at 17:45 -0500, Chuck Lever wrote:
->>> On Nov 10, 2017, at 5:37 PM, Joshua Watt <jpewhacker@gmail.com>
->>> wrote:
->>> 
->>> Specifying the serverfailed mount option causes all subsequent RPC
->>> tasks
->>> that are queued to fail with -EIO instead of timing out. For
->>> example, if
->>> a server has disappeared, the sequence:
->>> 
->>> mount -o remount,serverfailed
->>> umount -f
->>> 
->>> will ensure that all pending I/O requests are cancelled, and any
->>> new
->>> requests will also fail. In the event that the server returns, the
->>> flag
->>> can be removed with a remount:
->>> 
->>> mount -o remount,noserverfailed
->>> 
->>> Although bringing the server back may result in a loss of data
->> 
->> Hi Joshua, interesting work!
->> 
->> A couple of things I'm wondering:
->> 
->> 1. Does this also change the serverfailed setting on submounts
->> (ie mounts that the kernel did when traversing an NFSv4 referral or
->> when going from the server's pseudofs into a real fs). These need
->> to be unmounted first before the parent mount can be unmounted,
->> and in the latter case they would all be backed by the same stuck
->> NFS server.
+> "double list_add" can happen in init_net when legacy signal in lockd was used.
+> It should not happen during usual extending of existing grace period,
+> because restart_grace() calls locks_end_grace() before set_grace_period()
+> but it can race with start of lockd_up_net() in init_net.
+> I'm agree: we do not have any bugs in this scenario, all should work correctly.
 > 
-> I don't honestly know, but I will find out. Our use case doens't deal
-> with either of those cases much.
+> However I would like to keep WARN to properly detect lost locks_end_grace()/
+> cancel_delayed_work().
 > 
->> 
->> 2. If there is a hanging sync(2), does the umount -f unstick it?
->> That seems relevant for Neil's "make shutdown reliable" use case.
->> I would like a stuck NFS mount not to result in local file system
->> corruption, if possible, during a hard shutdown.
->> 
+> If you worry about real false positive and do not worry about abstract
+> future troubles in init_net, I can move WARN under (net != &init_net) check.
 > 
-> Several previous posts have aluded to calling "umount -f" repeatedly to
-> get a "stuck" NFS mount to actually unmount. This patch set is
-> effectively a way of automating that process. More formally, the
-> sequence of commands:
+> However I would like to keep this warning here.
 > 
-> mount PATH -o remount,serverfailed
-> umount -f PATH
-> 
-> Is closely approximated by:
-> 
-> while(1)
->     umount2(PATH, MNT_FORCE);
-> 
-> from userspace.
-> 
-> In retrospect, I think that the "umount -f" shouldn't be required after
-> remount: If the serverfailed mount option is specified it should also
-> kill all pending RPCs. A umount -f is undesirable, because you may not
-> actually want to (potentially) unmount the file system just to cancel
-> the RPCs.
-> 
-> More directly to your question: I don't honestly know if this can
-> "unstick" a hanging sync(2). If repeatedly calling umount -f will
-> unstick it, then these patches will exhibit the same behavior. I will
-> continue to do some research on this, but if anyone knows the answer
-> they might be able to chime in.
-> 
-> Could you clarify on what you mean by a stuck NFS mount not resulting
-> in local filesystem corruption? I'm not sure I undertsand well enough
-> to follow that comment.
+> On the other hand if you disagree and still believe that WARN is not required here
+> I'm ready to agree with your original patch version.
 
-During my own development work, I often cause NFS mount failures
-that leave an NFS mount deadlocked or otherwise stuck. It behaves
-as if the server is not responding.
+Fair enough. I don't feel strongly about it. I just have been doing some
+investigation lately into clustered grace period management, so it's a
+little on my mind. [1]
 
-If I'm sloppy, I will sometimes be looking at kernel source code
-trying to debug the problem and may modify one or more local files
-before then rebooting the client to unstick the NFS mount.
+For now though, you're certainly correct that we'll never attempt to set
+the grace period while we're already in it. If we ever want to do more
+complex grace period handling in the kernel, we may need to drop that
+WARN, however.
 
-In these cases I use "echo b > /proc/sysrq-trigger". Sometimes
-I type "sync" first, and that will often hang, then I have to
-pop the "reset" button. In some rare instances, after the client
-restarts, there can be file system corruption on the client's
-local file systems (say, empty files that used to have content),
-or for example missing entries in /var/log/messages.
+[1]: https://jtlayton.wordpress.com/2017/11/07/active-active-nfs-over-cephfs/
 
-I could be wrong, but I attribute this to the sync(2) hanging on
-the stuck NFS mount before it can flush dirty data in the local
-file systems on the client.
-
-I suspect this is not uncommon during typical NFS usage scenarios,
-and it could be one cause of a stuck shutdown when an NFS mount
-is stuck.
-
-So what I'm wondering is if you remount "soft,timeo=1" and let
-the NFS mount unstick itself, is that enough to allow an already
-running sync(2) to complete? It probably is.
-
-
-> Thanks for the feedback
-> 
->> 
->>> Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
->>> ---
->>> fs/nfs/inode.c                 |  6 ++++++
->>> fs/nfs/super.c                 | 30 +++++++++++++++++++++++++-----
->>> include/uapi/linux/nfs_mount.h |  1 +
->>> 3 files changed, 32 insertions(+), 5 deletions(-)
->>> 
->>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>> index 134d9f560240..55b7cd40508d 100644
->>> --- a/fs/nfs/inode.c
->>> +++ b/fs/nfs/inode.c
->>> @@ -723,6 +723,12 @@ static void
->>> nfs_readdirplus_parent_cache_hit(struct dentry *dentry)
->>> 
->>> static bool nfs_need_revalidate_inode(struct inode *inode)
->>> {
->>> +	/* If the server has failed, it is not going to respond,
->>> so don't try
->>> +	 * and revalidated (otherwise, the serverfailed flag can't
->>> be cleared by
->>> +	 * a remount)
->>> +	 */
->>> +	if (NFS_SERVER(inode)->flags & NFS_MOUNT_SERVERFAILED)
->>> +		return false;
->>> 	if (NFS_I(inode)->cache_validity &
->>> 			(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL))
->>> 		return true;
->>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>> index 777a0cc22704..bca38e1cdd85 100644
->>> --- a/fs/nfs/super.c
->>> +++ b/fs/nfs/super.c
->>> @@ -90,6 +90,7 @@ enum {
->>> 	Opt_resvport, Opt_noresvport,
->>> 	Opt_fscache, Opt_nofscache,
->>> 	Opt_migration, Opt_nomigration,
->>> +	Opt_serverfailed, Opt_noserverfailed,
->>> 
->>> 	/* Mount options that take integer arguments */
->>> 	Opt_port,
->>> @@ -151,6 +152,8 @@ static const match_table_t
->>> nfs_mount_option_tokens = {
->>> 	{ Opt_nofscache, "nofsc" },
->>> 	{ Opt_migration, "migration" },
->>> 	{ Opt_nomigration, "nomigration" },
->>> +	{ Opt_serverfailed, "serverfailed" },
->>> +	{ Opt_noserverfailed, "noserverfailed" },
->>> 
->>> 	{ Opt_port, "port=%s" },
->>> 	{ Opt_rsize, "rsize=%s" },
->>> @@ -637,6 +640,7 @@ static void nfs_show_mount_options(struct
->>> seq_file *m, struct nfs_server *nfss,
->>> 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
->>> 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
->>> 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
->>> +		{ NFS_MOUNT_SERVERFAILED, ",serverfailed", "" },
->>> 		{ 0, NULL, NULL }
->>> 	};
->>> 	const struct proc_nfs_info *nfs_infop;
->>> @@ -1330,6 +1334,11 @@ static int nfs_parse_mount_options(char
->>> *raw,
->>> 		case Opt_nomigration:
->>> 			mnt->options &= ~NFS_OPTION_MIGRATION;
->>> 			break;
->>> +		case Opt_serverfailed:
->>> +		case Opt_noserverfailed:
->>> +			set_flag(mnt, NFS_MOUNT_SERVERFAILED,
->>> +				 token == Opt_serverfailed);
->>> +			break;
->>> 
->>> 		/*
->>> 		 * options that take numeric values
->>> @@ -2192,6 +2201,8 @@ static int nfs_validate_text_mount_data(void
->>> *options,
->>> 	return -EINVAL;
->>> }
->>> 
->>> +#define NFS_REMOUNT_CHANGE_FLAGS (NFS_MOUNT_SERVERFAILED)
->>> +
->>> #define NFS_REMOUNT_CMP_FLAGMASK ~(NFS_MOUNT_INTR \
->>> 		| NFS_MOUNT_SECURE \
->>> 		| NFS_MOUNT_TCP \
->>> @@ -2200,7 +2211,8 @@ static int nfs_validate_text_mount_data(void
->>> *options,
->>> 		| NFS_MOUNT_NONLM \
->>> 		| NFS_MOUNT_BROKEN_SUID \
->>> 		| NFS_MOUNT_STRICTLOCK \
->>> -		| NFS_MOUNT_LEGACY_INTERFACE)
->>> +		| NFS_MOUNT_LEGACY_INTERFACE \
->>> +		| NFS_REMOUNT_CHANGE_FLAGS)
->>> 
->>> #define NFS_MOUNT_CMP_FLAGMASK (NFS_REMOUNT_CMP_FLAGMASK & \
->>> 		~(NFS_MOUNT_UNSHARED | NFS_MOUNT_NORESVPORT))
->>> @@ -2209,12 +2221,15 @@ static int
->>> nfs_compare_and_set_remount_data(struct nfs_server *nfss,
->>> 				 struct nfs_parsed_mount_data *data)
->>> {
->>> +	int changed_flags_mask = data->flags_mask &
->>> NFS_REMOUNT_CHANGE_FLAGS;
->>> +	struct rpc_clnt *cl = nfss->client;
->>> +
->>> 	if ((data->flags ^ nfss->flags) & NFS_REMOUNT_CMP_FLAGMASK ||
->>> 	    data->rsize != nfss->rsize ||
->>> 	    data->wsize != nfss->wsize ||
->>> 	    data->version != nfss->nfs_client->rpc_ops->version ||
->>> 	    data->minorversion != nfss->nfs_client->cl_minorversion ||
->>> -	    !nfs_auth_info_match(&data->auth_info, nfss->client-
->>>> cl_auth->au_flavor) ||
->>> +	    !nfs_auth_info_match(&data->auth_info, cl->cl_auth-
->>>> au_flavor) ||
->>> 	    data->acregmin != nfss->acregmin / HZ ||
->>> 	    data->acregmax != nfss->acregmax / HZ ||
->>> 	    data->acdirmin != nfss->acdirmin / HZ ||
->>> @@ -2225,13 +2240,16 @@ nfs_compare_and_set_remount_data(struct
->>> nfs_server *nfss,
->>> 			  (struct sockaddr *)&nfss->nfs_client-
->>>> cl_addr))
->>> 		return -EINVAL;
->>> 
->>> -	if (data->retrans != nfss->client->cl_timeout->to_retries
->>> ||
->>> -	    data->timeo != (10U * nfss->client->cl_timeout-
->>>> to_initval / HZ)) {
->>> +	/* Update flags */
->>> +	nfss->flags = (nfss->flags & ~changed_flags_mask) |
->>> +		(data->flags & changed_flags_mask);
->>> +
->>> +	if (data->retrans != cl->cl_timeout->to_retries ||
->>> +	    data->timeo != (10U * cl->cl_timeout->to_initval /
->>> HZ)) {
->>> 		/* Note that this will affect all mounts from the same
->>> server,
->>> 		 * that use the same protocol.  The timeouts are always
->>> forced
->>> 		 * to be the same.
->>> 		 */
->>> -		struct rpc_clnt *cl = nfss->client;
->>> 		if (cl->cl_timeout != &cl->cl_timeout_default)
->>> 			memcpy(&cl->cl_timeout_default, cl->cl_timeout,
->>> 			       sizeof(struct rpc_timeout));
->>> @@ -2239,6 +2257,8 @@ nfs_compare_and_set_remount_data(struct
->>> nfs_server *nfss,
->>> 		cl->cl_timeout_default.to_initval = data->timeo * HZ /
->>> 10U;
->>> 	}
->>> 
->>> +	cl->cl_kill_new_tasks = !!(nfss->flags &
->>> NFS_MOUNT_SERVERFAILED);
->>> +
->>> 	return 0;
->>> }
->>> 
->>> diff --git a/include/uapi/linux/nfs_mount.h
->>> b/include/uapi/linux/nfs_mount.h
->>> index e44e00616ab5..8ad931cdca20 100644
->>> --- a/include/uapi/linux/nfs_mount.h
->>> +++ b/include/uapi/linux/nfs_mount.h
->>> @@ -74,5 +74,6 @@ struct nfs_mount_data {
->>> 
->>> #define NFS_MOUNT_LOCAL_FLOCK	0x100000
->>> #define NFS_MOUNT_LOCAL_FCNTL	0x200000
->>> +#define NFS_MOUNT_SERVERFAILED	0x400000
->>> 
->>> #endif
->>> -- 
->>> 2.13.6
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-
->>> nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> --
->> Chuck Lever
-
---
-Chuck Lever
-
-
-
+-- 
+Jeff Layton <jlayton@kernel.org>
