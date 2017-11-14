@@ -1,47 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f195.google.com ([209.85.217.195]:49512 "EHLO
-        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753018AbdKNSLj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Nov 2017 13:11:39 -0500
-Received: by mail-ua0-f195.google.com with SMTP id u13so13521915uaf.6
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Nov 2017 10:11:39 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <1E02EBE8-9BB2-4E60-BB4D-92843D5A0941@oracle.com>
-References: <CAOapt6ko9Ue+Vf0TQNNNP+pSdbk09my_b9PjSF21Vg0v0nzAVw@mail.gmail.com>
- <1E02EBE8-9BB2-4E60-BB4D-92843D5A0941@oracle.com>
-From: Anders Ossowicki <and@vmn.dk>
-Date: Tue, 14 Nov 2017 19:11:38 +0100
-Message-ID: <CAOapt6=TOF=Q0rCgQEm-EqML1XNDtWJgjcp7Z5_Qenp8RXMZpw@mail.gmail.com>
-Subject: Re: nfsd returns NFSERR_STALE when the inode of the rootdir of the
- nfs mount is > 2^32
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-io0-f195.google.com ([209.85.223.195]:43388 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753449AbdKNXGh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Nov 2017 18:06:37 -0500
+Received: by mail-io0-f195.google.com with SMTP id 134so26208328ioo.0
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Nov 2017 15:06:36 -0800 (PST)
+From: Joshua Watt <jpewhacker@gmail.com>
+To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        David Howells <dhowells@redhat.com>,
+        Joshua Watt <JPEWhacker@gmail.com>
+Subject: [RFC v3 1/7] SUNRPC: Add flag to kill new tasks
+Date: Tue, 14 Nov 2017 17:06:25 -0600
+Message-Id: <20171114230631.14682-2-JPEWhacker@gmail.com>
+In-Reply-To: <20171114230631.14682-1-JPEWhacker@gmail.com>
+References: <20171114230631.14682-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 14 November 2017 at 18:12, Chuck Lever <chuck.lever@oracle.com> wrote:
-> A fresh XFS file system can be mounted with the "inode32"
-> mount option (on the server) to prevent the creation of
-> inodes with numbers that cannot be represented in 32 bits.
->
-> But since you already have such inodes, NFS clients will
-> have to convert the numbers on the fly. You can use a boot
-> parameter on your clients:
->
->   nfs.enable_ino64=0
->
-> According to comments in fs/nfs/inode.c .
+The flag causes any new tasks that are queued to exit immediately with
+-EIO instead of executing. This will allow clients (particularly NFS) to
+prevents these task from delaying shutdown of the RPC session longer
+than necessary.
 
-Thanks for the suggestion.
+Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
+---
+ include/linux/sunrpc/clnt.h | 1 +
+ net/sunrpc/clnt.c           | 4 +---
+ net/sunrpc/sched.c          | 3 +++
+ 3 files changed, 5 insertions(+), 3 deletions(-)
 
-I looked at nfs.enable_ino64 while tracking down this issue, but it
-looked like a client-side option to me, and the error happens in the
-nfsd code. I'll give a shot tomorrow.
-
-There's no problem accessing files or directories with inodes > 2^32 in
-our setup, we've been doing that for years. It's only when the root
-directory of the export has a high inode that we trigger this.
-
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 71c237e8240e..94f4e464de1b 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -54,6 +54,7 @@ struct rpc_clnt {
+ 				cl_noretranstimeo: 1,/* No retransmit timeouts */
+ 				cl_autobind : 1,/* use getport() */
+ 				cl_chatty   : 1;/* be verbose */
++	bool			cl_kill_new_tasks;	/* Kill all new tasks */
+ 
+ 	struct rpc_rtt *	cl_rtt;		/* RTO estimator data */
+ 	const struct rpc_timeout *cl_timeout;	/* Timeout strategy */
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index df4ecb042ebe..ab6b7c59a117 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -626,6 +626,7 @@ static struct rpc_clnt *__rpc_clone_client(struct rpc_create_args *args,
+ 	new->cl_noretranstimeo = clnt->cl_noretranstimeo;
+ 	new->cl_discrtry = clnt->cl_discrtry;
+ 	new->cl_chatty = clnt->cl_chatty;
++	new->cl_kill_new_tasks = clnt->cl_kill_new_tasks;
+ 	return new;
+ 
+ out_err:
+@@ -818,9 +819,6 @@ void rpc_killall_tasks(struct rpc_clnt *clnt)
+ {
+ 	struct rpc_task	*rovr;
+ 
+-
+-	if (list_empty(&clnt->cl_tasks))
+-		return;
+ 	dprintk("RPC:       killing all tasks for client %p\n", clnt);
+ 	/*
+ 	 * Spin lock all_tasks to prevent changes...
+diff --git a/net/sunrpc/sched.c b/net/sunrpc/sched.c
+index 0cc83839c13c..2c9fe5c0319b 100644
+--- a/net/sunrpc/sched.c
++++ b/net/sunrpc/sched.c
+@@ -748,6 +748,9 @@ static void __rpc_execute(struct rpc_task *task)
+ 	dprintk("RPC: %5u __rpc_execute flags=0x%x\n",
+ 			task->tk_pid, task->tk_flags);
+ 
++	if (task->tk_client->cl_kill_new_tasks)
++		rpc_exit(task, -EIO);
++
+ 	WARN_ON_ONCE(RPC_IS_QUEUED(task));
+ 	if (RPC_IS_QUEUED(task))
+ 		return;
 -- 
-Anders Ossowicki
+2.13.6
+
