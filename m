@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:57031 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756463AbdKNXGi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Nov 2017 18:06:38 -0500
-Received: by mail-it0-f65.google.com with SMTP id r127so15586266itb.5
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Nov 2017 15:06:38 -0800 (PST)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:51591 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756487AbdKNXGm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Nov 2017 18:06:42 -0500
+Received: by mail-io0-f195.google.com with SMTP id g73so10612912ioj.8
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Nov 2017 15:06:41 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -12,41 +12,107 @@ To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
 Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v3 3/7] SUNRPC: Simplify client shutdown
-Date: Tue, 14 Nov 2017 17:06:27 -0600
-Message-Id: <20171114230631.14682-4-JPEWhacker@gmail.com>
+Subject: [RFC v3 5/7] NFS: Propagate NFS_MOUNT_UNSHARED to clients
+Date: Tue, 14 Nov 2017 17:06:29 -0600
+Message-Id: <20171114230631.14682-6-JPEWhacker@gmail.com>
 In-Reply-To: <20171114230631.14682-1-JPEWhacker@gmail.com>
 References: <20171114230631.14682-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the flag to kill all new tasks when shutting down instead of
-repeatedly killing all the pending tasks.
+Propagating the flag allows operations to be performed on the client
+without affecting other mounts to the same client, much like operations
+on the superblock will not affect other superblocks.
 
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- net/sunrpc/clnt.c | 8 +++-----
- 1 file changed, 3 insertions(+), 5 deletions(-)
+ fs/nfs/client.c           | 9 +++++++--
+ fs/nfs/nfs3client.c       | 2 ++
+ fs/nfs/nfs4client.c       | 4 ++++
+ include/linux/nfs_fs_sb.h | 1 +
+ 4 files changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index ab6b7c59a117..239a7b5ab135 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -851,11 +851,9 @@ void rpc_shutdown_client(struct rpc_clnt *clnt)
- 			clnt->cl_program->name,
- 			rcu_dereference(clnt->cl_xprt)->servername);
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 7bab47d0dd07..9d88dea4bc59 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -328,6 +328,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
  
--	while (!list_empty(&clnt->cl_tasks)) {
--		rpc_killall_tasks(clnt);
--		wait_event_timeout(destroy_wait,
--			list_empty(&clnt->cl_tasks), 1*HZ);
--	}
-+	clnt->cl_kill_new_tasks = true;
-+	rpc_killall_tasks(clnt);
-+	wait_event(destroy_wait, list_empty(&clnt->cl_tasks));
++		/* Don't match clients that don't want to be shared */
++		if (test_bit(NFS_CS_UNSHARED, &clp->cl_flags))
++			continue;
++
+ 		/* Different NFS versions cannot share the same nfs_client */
+ 		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
+ 			continue;
+@@ -428,7 +432,7 @@ init_client(struct nfs_client *new, const struct nfs_client_initdata *cl_init)
+  */
+ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
+ {
+-	struct nfs_client *clp, *new = NULL;
++	struct nfs_client *clp = NULL, *new = NULL;
+ 	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
+ 	const struct nfs_rpc_ops *rpc_ops = cl_init->nfs_mod->rpc_ops;
  
- 	rpc_release_client(clnt);
- }
+@@ -441,7 +445,8 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
+ 	do {
+ 		spin_lock(&nn->nfs_client_lock);
+ 
+-		clp = nfs_match_client(cl_init);
++		if (!test_bit(NFS_CS_UNSHARED, &cl_init->init_flags))
++			clp = nfs_match_client(cl_init);
+ 		if (clp) {
+ 			spin_unlock(&nn->nfs_client_lock);
+ 			if (new)
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index 7879f2a0fcfd..b62bed41053f 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -102,6 +102,8 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
+ 
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+ 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
++	if (mds_srv->flags & NFS_MOUNT_UNSHARED)
++		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
+ 
+ 	/* Use the MDS nfs_client cl_ipaddr. */
+ 	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index ef725106e45c..d4051dda29f0 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -852,6 +852,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
+ 	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
+ 		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
++	if (server->flags & NFS_MOUNT_UNSHARED)
++		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
+ 
+ 	/* Allocate or find a client reference we can use */
+ 	clp = nfs_get_client(&cl_init);
+@@ -910,6 +912,8 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+ 		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
++	if (mds_srv->flags & NFS_MOUNT_UNSHARED)
++		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
+ 
+ 	/*
+ 	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 5dac856355f0..0eb7093faea7 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -45,6 +45,7 @@ struct nfs_client {
+ #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
+ #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
+ #define NFS_CS_TSM_POSSIBLE	5		/* - Maybe state migration */
++#define NFS_CS_UNSHARED		6		/* - Client state not shared */
+ 	struct sockaddr_storage	cl_addr;	/* server identifier */
+ 	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
 -- 
 2.13.6
 
