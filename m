@@ -1,47 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f47.google.com ([209.85.214.47]:40753 "EHLO
-        mail-it0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751028AbdKMXyZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Nov 2017 18:54:25 -0500
+Received: from fieldses.org ([173.255.197.46]:60988 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752456AbdKNAqg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 13 Nov 2017 19:46:36 -0500
+Date: Mon, 13 Nov 2017 19:46:36 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Vasily Averin <vvs@virtuozzo.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] lockd: fix "list_add double add" caused by legacy signal
+ interface
+Message-ID: <20171114004636.GC18192@fieldses.org>
+References: <20171109154444.GG8773@fieldses.org>
+ <75f4472c-b9e2-6353-3af0-c4939ecfca41@virtuozzo.com>
+ <1510573758.4536.8.camel@kernel.org>
+ <48cdbeb3-b364-17c1-aaf9-948525e33f38@virtuozzo.com>
+ <1510603577.4887.4.camel@kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <CA+55aFz4qA2RhjW5KtD+=jnbW-9hoRGgDQ5N6DkQ5LCTkO5idA@mail.gmail.com>
-References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
- <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
- <87efp1zsww.fsf_-_@rasmusvillemoes.dk> <CA+55aFz4qA2RhjW5KtD+=jnbW-9hoRGgDQ5N6DkQ5LCTkO5idA@mail.gmail.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 13 Nov 2017 15:54:24 -0800
-Message-ID: <CA+55aFwWt-hRSRqJRP6Wc67COZFZwpcMy4o06bRNBGnwW8QBFw@mail.gmail.com>
-Subject: Re: bit tweaks [was: Re: [nfsd4] potentially hardware breaking
- regression in 4.14-rc and 4.13.11]
-To: Rasmus Villemoes <linux@rasmusvillemoes.dk>
-Cc: Patrick McLean <chutzpah@gentoo.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Bruce Fields <bfields@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        stable <stable@vger.kernel.org>,
-        Thorsten Leemhuis <regressions@leemhuis.info>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1510603577.4887.4.camel@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 13, 2017 at 3:30 PM, Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> So let's just rewrite that mnt_flags conversion that way, justr to get
-> gcc to generate the obvious code.
+On Mon, Nov 13, 2017 at 03:06:17PM -0500, Jeff Layton wrote:
+> On Mon, 2017-11-13 at 17:57 +0300, Vasily Averin wrote:
+> > On 2017-11-13 14:49, Jeff Layton wrote:
+> > > On Mon, 2017-11-13 at 07:25 +0300, Vasily Averin wrote:
+> > > > --- a/fs/nfs_common/grace.c
+> > > > +++ b/fs/nfs_common/grace.c
+> > > > @@ -30,7 +30,11 @@ locks_start_grace(struct net *net, struct lock_manager *lm)
+> > > >  	struct list_head *grace_list = net_generic(net, grace_net_id);
+> > > >  
+> > > >  	spin_lock(&grace_lock);
+> > > > -	list_add(&lm->list, grace_list);
+> > > > +	if (list_empty(&lm->list))
+> > > > +		list_add(&lm->list, grace_list);
+> > > > +	else
+> > > > +		WARN(1, "double list_add attempt detected in net %x %s\n",
+> > > > +		     net->ns.inum, (net == &init_net) ? "(init_net)" : "");
+> > > >  	spin_unlock(&grace_lock);
+> > > >  }
+> > > 
+> > > I'm not sure that warning really means much.
+> > > 
+> > > It's not _really_ a bug to request that a new grace period start while
+> > > it's already in one. In general, it's ok to request a new grace period
+> > > while it's currently enforcing one. That should just have the effect of
+> > > extending the existing grace period.
+> > 
+> > "double list_add" can happen in init_net when legacy signal in lockd was used.
+> > It should not happen during usual extending of existing grace period,
+> > because restart_grace() calls locks_end_grace() before set_grace_period()
+> > but it can race with start of lockd_up_net() in init_net.
+> > I'm agree: we do not have any bugs in this scenario, all should work correctly.
+> > 
+> > However I would like to keep WARN to properly detect lost locks_end_grace()/
+> > cancel_delayed_work().
+> > 
+> > If you worry about real false positive and do not worry about abstract
+> > future troubles in init_net, I can move WARN under (net != &init_net) check.
+> > 
+> > However I would like to keep this warning here.
+> > 
+> > On the other hand if you disagree and still believe that WARN is not required here
+> > I'm ready to agree with your original patch version.
+> 
+> Fair enough. I don't feel strongly about it. I just have been doing some
+> investigation lately into clustered grace period management, so it's a
+> little on my mind. [1]
+> 
+> For now though, you're certainly correct that we'll never attempt to set
+> the grace period while we're already in it. If we ever want to do more
+> complex grace period handling in the kernel, we may need to drop that
+> WARN, however.
 
-Oh wow. I tried to do the same thing in fs/namespace.c where it does
-the reverse bit translation, and gcc makes a _horrible_ mess of it and
-actually makes the code much worse because for some reason the pattern
-doesn't trigger.
+OK, applied with a minor changelog update.
 
-So this gcc optimization is apparently pretty damn fragile in general.
-It triggers for the trivial cases, but then other code around it can
-confuse it badly.
+Vasily, if you see anything missing from nfsd-next at this point, let me
+know:
 
-So I don't think I'll touch this, it seems to not be really reliably
-something that makes gcc generate what should be the obvious code..
+	git://linux-nfs.org/~bfields/linux.git nfsd-next
 
-               Linus
+--b.
