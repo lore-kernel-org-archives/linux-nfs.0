@@ -1,9 +1,9 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:51591 "EHLO
+Received: from mail-io0-f195.google.com ([209.85.223.195]:54443 "EHLO
         mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756487AbdKNXGm (ORCPT
+        with ESMTP id S1756490AbdKNXGm (ORCPT
         <rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Nov 2017 18:06:42 -0500
-Received: by mail-io0-f195.google.com with SMTP id g73so10612912ioj.8
+Received: by mail-io0-f195.google.com with SMTP id w127so8804280iow.11
         for <linux-nfs@vger.kernel.org>; Tue, 14 Nov 2017 15:06:41 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
@@ -12,107 +12,99 @@ To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
 Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v3 5/7] NFS: Propagate NFS_MOUNT_UNSHARED to clients
-Date: Tue, 14 Nov 2017 17:06:29 -0600
-Message-Id: <20171114230631.14682-6-JPEWhacker@gmail.com>
+Subject: [RFC v3 7/7] NFS: Control failed clients through debugfs
+Date: Tue, 14 Nov 2017 17:06:31 -0600
+Message-Id: <20171114230631.14682-8-JPEWhacker@gmail.com>
 In-Reply-To: <20171114230631.14682-1-JPEWhacker@gmail.com>
 References: <20171114230631.14682-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Propagating the flag allows operations to be performed on the client
-without affecting other mounts to the same client, much like operations
-on the superblock will not affect other superblocks.
+The "failed" debugfs entry can be used to get or set the failed status
+of a nfs_client.
 
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- fs/nfs/client.c           | 9 +++++++--
- fs/nfs/nfs3client.c       | 2 ++
- fs/nfs/nfs4client.c       | 4 ++++
- include/linux/nfs_fs_sb.h | 1 +
- 4 files changed, 14 insertions(+), 2 deletions(-)
+ fs/nfs/debugfs.c | 59 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 59 insertions(+)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 7bab47d0dd07..9d88dea4bc59 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -328,6 +328,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 		if (clp->cl_cons_state < 0)
- 			continue;
+diff --git a/fs/nfs/debugfs.c b/fs/nfs/debugfs.c
+index 0195431427c2..7ccf04847660 100644
+--- a/fs/nfs/debugfs.c
++++ b/fs/nfs/debugfs.c
+@@ -80,6 +80,56 @@ nfs_server_debugfs_unregister(struct nfs_server *server)
+ 	server->debugfs = NULL;
+ }
  
-+		/* Don't match clients that don't want to be shared */
-+		if (test_bit(NFS_CS_UNSHARED, &clp->cl_flags))
-+			continue;
++static int
++client_failed_show(struct seq_file *f, void *private)
++{
++	struct nfs_client *client = f->private;
 +
- 		/* Different NFS versions cannot share the same nfs_client */
- 		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
- 			continue;
-@@ -428,7 +432,7 @@ init_client(struct nfs_client *new, const struct nfs_client_initdata *cl_init)
-  */
- struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
++	seq_printf(f, "%c", client->cl_failed ? 'Y' : 'N');
++	return 0;
++}
++
++static ssize_t
++client_failed_write(struct file *file, const char __user *user_buf,
++		    size_t count, loff_t *ppos)
++{
++	struct seq_file *seq = file->private_data;
++	struct nfs_client *client = seq->private;
++	char buf[32];
++	size_t buf_size;
++	bool failed;
++	int err;
++
++	buf_size = min(count, sizeof(buf) - 1);
++	if (copy_from_user(buf, user_buf, buf_size))
++		return -EFAULT;
++
++	buf[buf_size] = '\0';
++
++	err = strtobool(buf, &failed);
++	if (err)
++		return err;
++
++	nfs_client_failed(client, failed);
++
++	return count;
++}
++
++static int
++client_failed_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, client_failed_show, inode->i_private);
++}
++
++static const struct file_operations client_failed_fops = {
++	.owner = THIS_MODULE,
++	.open = client_failed_open,
++	.read = seq_read,
++	.write = client_failed_write,
++	.llseek = seq_lseek,
++	.release = single_release
++};
++
+ void
+ nfs_client_debugfs_register(struct nfs_client *client)
  {
--	struct nfs_client *clp, *new = NULL;
-+	struct nfs_client *clp = NULL, *new = NULL;
- 	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
- 	const struct nfs_rpc_ops *rpc_ops = cl_init->nfs_mod->rpc_ops;
+@@ -99,6 +149,15 @@ nfs_client_debugfs_register(struct nfs_client *client)
  
-@@ -441,7 +445,8 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
- 	do {
- 		spin_lock(&nn->nfs_client_lock);
+ 	link_rpc_client("rpc_client", client->cl_rpcclient,
+ 			client->cl_debugfs);
++
++	if (!debugfs_create_file("failed", 0600, client->cl_debugfs, client,
++				 &client_failed_fops))
++		goto out_error;
++
++	return;
++out_error:
++	debugfs_remove_recursive(client->cl_debugfs);
++	client->cl_debugfs = NULL;
+ }
  
--		clp = nfs_match_client(cl_init);
-+		if (!test_bit(NFS_CS_UNSHARED, &cl_init->init_flags))
-+			clp = nfs_match_client(cl_init);
- 		if (clp) {
- 			spin_unlock(&nn->nfs_client_lock);
- 			if (new)
-diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
-index 7879f2a0fcfd..b62bed41053f 100644
---- a/fs/nfs/nfs3client.c
-+++ b/fs/nfs/nfs3client.c
-@@ -102,6 +102,8 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
- 
- 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
- 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
-+	if (mds_srv->flags & NFS_MOUNT_UNSHARED)
-+		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
- 
- 	/* Use the MDS nfs_client cl_ipaddr. */
- 	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index ef725106e45c..d4051dda29f0 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -852,6 +852,8 @@ static int nfs4_set_client(struct nfs_server *server,
- 		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
- 	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
- 		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
-+	if (server->flags & NFS_MOUNT_UNSHARED)
-+		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
- 
- 	/* Allocate or find a client reference we can use */
- 	clp = nfs_get_client(&cl_init);
-@@ -910,6 +912,8 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
- 
- 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
- 		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
-+	if (mds_srv->flags & NFS_MOUNT_UNSHARED)
-+		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
- 
- 	/*
- 	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 5dac856355f0..0eb7093faea7 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -45,6 +45,7 @@ struct nfs_client {
- #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
- #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
- #define NFS_CS_TSM_POSSIBLE	5		/* - Maybe state migration */
-+#define NFS_CS_UNSHARED		6		/* - Client state not shared */
- 	struct sockaddr_storage	cl_addr;	/* server identifier */
- 	size_t			cl_addrlen;
- 	char *			cl_hostname;	/* hostname of server */
+ void
 -- 
 2.13.6
 
