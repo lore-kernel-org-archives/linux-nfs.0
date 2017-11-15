@@ -1,55 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26018 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932169AbdKONkL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2017 08:40:11 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "jpewhacker@gmail.com" <jpewhacker@gmail.com>,
-        "jlayton@redhat.com" <jlayton@redhat.com>,
-        "neilb@suse.com" <neilb@suse.com>
-CC: "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dhowells@redhat.com" <dhowells@redhat.com>
-Subject: Re: [RFC v3 0/7] NFS Force Unmounting
-Date: Wed, 15 Nov 2017 13:40:05 +0000
-Message-ID: <1510753204.9878.52.camel@primarydata.com>
-References: <20171114230631.14682-1-JPEWhacker@gmail.com>
-In-Reply-To: <20171114230631.14682-1-JPEWhacker@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from userp1040.oracle.com ([156.151.31.81]:47708 "EHLO
+        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S932501AbdKOP1x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2017 10:27:53 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: nfsd returns NFSERR_STALE when the inode of the rootdir of the nfs mount is > 2^32
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAOapt6=wOfUBgTCvMBxs6B=xDQ_wp3VmKqUCuPmcJshiz-CkGA@mail.gmail.com>
+Date: Wed, 15 Nov 2017 10:27:49 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <69343BD5-7121-4FE3-A72F-B7BF4150DAD2@oracle.com>
+References: <CAOapt6ko9Ue+Vf0TQNNNP+pSdbk09my_b9PjSF21Vg0v0nzAVw@mail.gmail.com> <1E02EBE8-9BB2-4E60-BB4D-92843D5A0941@oracle.com> <CAOapt6=TOF=Q0rCgQEm-EqML1XNDtWJgjcp7Z5_Qenp8RXMZpw@mail.gmail.com> <CAOapt6=wOfUBgTCvMBxs6B=xDQ_wp3VmKqUCuPmcJshiz-CkGA@mail.gmail.com>
+To: Anders Ossowicki <and@vmn.dk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTExLTE0IGF0IDE3OjA2IC0wNjAwLCBKb3NodWEgV2F0dCB3cm90ZToNCj4g
-QWZ0ZXIgc29tZSBhZGRpdGlvbmFsIHRlc3Rpbmcgb24gdmVyc2lvbiAyLCBJIHJlYWxpemVkIHRo
-YXQgMSkgbXkNCj4gdGVzdA0KPiBzZXR1cCB3YXMgYmFkIChEb2ghKSBhbmQgMikgdXNpbmcgcmVt
-b3VudCBpc24ndCByZWFsbHkgYW4gaWRlYWwNCj4gbWV0aG9kDQo+IGZvciBzZXR0aW5nIHRoZSAi
-c2VydmVyZmFpbGVkIiBtb3VudCBmbGFnLiBUaGUgcmVhc29uIGJlaW5nIHRoYXQgYW55DQo+IHVz
-ZXJzcGFjZSByZW1vdW50IGlzIGdvaW5nIHRvIHRvdWNoIHRoZSBmaWxlIHN5c3RlbSBhbmQgcHJv
-YmFibHkNCj4gaW52b2tlDQo+IHNvbWUgUlBDcyBmb3IgaW5vZGUgdmFsaWRhdGlvbiBhcyBzdWNo
-LiBJZiB0aGUgc2VydmVyIGlzIHRydWx5IGRlYWQsDQo+IHRoZXNlIFJQQ3Mgd2lsbCBoYXZlIHRv
-IHRpbWUgb3V0IGJlZm9yZSB0aGUgZmxhZyBjb3VsZCBhY3R1YWxseSBiZQ0KPiBzZXQuDQo+IFRo
-aXMgbm90IG9ubHkgdGFrZXMgYSBsb25nIHRpbWUsIGJ1dCB3aWxsIHByb2JhYmx5IGFsc28gZmFp
-bCwgY2F1c2luZw0KPiB0aGUgcmVtb3VudCB0byBmYWlsIGFuZCBub3Qgc2V0IHRoZSBmbGFnLCBk
-ZWZlYXRpbmcgdGhlIHB1cnBvc2UuDQoNCldoeT8gVGhlcmUgc2hvdWxkIGJlIG5vIHJlYXNvbiB0
-byBoYXZlIHRvIHJldmFsaWRhdGUgdGhlIHBhdGggaW4gb3JkZXINCnRvIGNoYW5nZSBtb3VudCBv
-cHRpb25zIG9uIGEgbW91bnQgcG9pbnQuDQoNCj4gVGhpcyBwYXRjaCBzZXQgd29ya3MgYXJvdW5k
-IHRoaXMgYnkgZXhwb3NpbmcgdGhlIGZhaWxlZCBzZXJ2ZXIgZmxhZw0KPiBpbg0KPiBkZWJ1Z2Zz
-LiBJbiBhZGRpdGlvbiwgdGhlIGZsYWcgbm93IGFwcGxpZXMgYXQgdGhlIG5mc19jbGllbnQgbGV2
-ZWwNCj4gKGluc3RlYWQgb2YgdGhlIG5mc19zZXJ2ZXIpLiBTZXR0aW5nIHRoZSBmbGFnIHdpbGwg
-Y2FuY2VsIGFsbCBSUENzIGluDQo+IHRoZSBjbGllbnQsIGFzIHdlbGwgYXMgYWxsIG5mc19zZXJ2
-ZXJzIGF0dGFjaGVkIHRvIGl0LiBUaGlzIGVuc3VyZXMNCj4gdGhhdA0KPiB5b3UgZ2V0IGFsbCB0
-aGUgbW91bnRzLCBldmVuIHdoZW4gZGVhbGluZyB3aXRoIHN1Ym1vdW50cyB0aGF0IGNyb3NzDQo+
-IHJlbW90ZSBkZXZpY2UgYm91bmRhcmllcy4gVGhpcyBpcyBhbHNvIHdoZXJlIHRoZSBub3NoYXJl
-Y2FjaGUgb3B0aW9uDQo+IGFwcGx5aW5nIHRvIG5mc19jbGllbnRzIGJlY29tZXMgdXNlZnVsLi4u
-IGl0IHdpbGwgcHJldmVudCBzaGFyaW5nDQo+IGJldHdlZW4gb3RoZXIgZXhwbGljaXQgbW91bnQg
-Y2FsbHMsIGJ1dCBzdWJtb3VudHMgd2lsbCBhbGwgc3RpbGwNCj4gc2hhcmUgYQ0KPiBuZnNfY2xp
-ZW50IChhbmQgZmFpbCB0b2dldGhlcikuDQo+IA0KPiBPYnZpb3VzbHksIGRlYnVnZnMgaXMgbm90
-IGEgcGVybWFuZW50IHNvbHV0aW9uIGZvciB0aGlzLCBzbyBzb21lDQo+IGRpc2N1c3Npb24gbmVl
-ZHMgdG8gYmUgaGFkIG9uIGhvdyB0aGlzIHdpbGwgYmUgYWRtaW5pc3RlcmVkICJpbiB0aGUNCj4g
-cmVhbA0KPiB3b3JsZCIgKEkgdGhpbmsgInJlbW91bnQiIGlzIG9mZiB0aGUgdGFibGUpLg0KPiAN
-Cg0KV2UncmUgbm90IGFkZGluZyBhbnkgQVBJcyB0byBkZWJ1Z2ZzLiBUaGF0J3MgYSBkZWFsIGJy
-ZWFrZXIuLi4NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
-aW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+
+> On Nov 15, 2017, at 3:14 AM, Anders Ossowicki <and@vmn.dk> wrote:
+> 
+> On 14 November 2017 at 19:11, Anders Ossowicki <and@vmn.dk> wrote:
+>> On 14 November 2017 at 18:12, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> But since you already have such inodes, NFS clients will
+>>> have to convert the numbers on the fly. You can use a boot
+>>> parameter on your clients:
+>>> 
+>>>  nfs.enable_ino64=0
+>>> 
+>>> According to comments in fs/nfs/inode.c .
+>> 
+>> Thanks for the suggestion.
+>> 
+>> I looked at nfs.enable_ino64 while tracking down this issue, but it
+>> looked like a client-side option to me, and the error happens in the
+>> nfsd code. I'll give a shot tomorrow.
+> 
+> No dice, unfortunately:
+> 
+> aowi@otto ~ $ dmesg|grep 'Kernel command line'
+> [    0.000000] Kernel command line:
+> BOOT_IMAGE=/boot/vmlinuz-3.19.0-77-generic
+> root=UUID=601cb526-8e11-4565-a5ed-0be619db7a5e ro quiet splash
+> nfs.enable_ino64=0 vt.handoff=7
+> aowi@otto ~ $ sudo mount -t nfs svin:/z/svin/aowitest/foo /mnt
+> aowi@otto ~ $ ls /mnt
+> ls: cannot open directory /mnt: Stale file handle
+
+Does this happen with a recent kernel on the client?
+
+And, it would help if you can capture and post a raw tcpdump
+of this interaction so we can see all the details of the
+conversation. Start the tcpdump before "sudo mount", and
+save the raw bytes with "-w /tmp/sniffer.pcap". gzip and
+post it here.
+
+What happens if you mount svin:/ and walk down the server's
+namespace into /z/svin/aowitest/foo ?
+
+
+--
+Chuck Lever
+
+
 
