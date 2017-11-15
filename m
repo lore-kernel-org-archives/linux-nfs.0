@@ -1,65 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp1040.oracle.com ([156.151.31.81]:47708 "EHLO
-        userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932501AbdKOP1x (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2017 10:27:53 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: nfsd returns NFSERR_STALE when the inode of the rootdir of the nfs mount is > 2^32
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAOapt6=wOfUBgTCvMBxs6B=xDQ_wp3VmKqUCuPmcJshiz-CkGA@mail.gmail.com>
-Date: Wed, 15 Nov 2017 10:27:49 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <69343BD5-7121-4FE3-A72F-B7BF4150DAD2@oracle.com>
-References: <CAOapt6ko9Ue+Vf0TQNNNP+pSdbk09my_b9PjSF21Vg0v0nzAVw@mail.gmail.com> <1E02EBE8-9BB2-4E60-BB4D-92843D5A0941@oracle.com> <CAOapt6=TOF=Q0rCgQEm-EqML1XNDtWJgjcp7Z5_Qenp8RXMZpw@mail.gmail.com> <CAOapt6=wOfUBgTCvMBxs6B=xDQ_wp3VmKqUCuPmcJshiz-CkGA@mail.gmail.com>
-To: Anders Ossowicki <and@vmn.dk>
+Received: from mail-io0-f176.google.com ([209.85.223.176]:42018 "EHLO
+        mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754099AbdKOQKw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2017 11:10:52 -0500
+Received: by mail-io0-f176.google.com with SMTP id u42so2077292ioi.9
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2017 08:10:51 -0800 (PST)
+From: Joshua Watt <jpewhacker@gmail.com>
+Message-ID: <1510762249.2569.19.camel@gmail.com>
+Subject: Re: [RFC v3 0/7] NFS Force Unmounting
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>,
+        "jlayton@redhat.com" <jlayton@redhat.com>,
+        "neilb@suse.com" <neilb@suse.com>
+Cc: "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "dhowells@redhat.com" <dhowells@redhat.com>
+Date: Wed, 15 Nov 2017 10:10:49 -0600
+In-Reply-To: <1510753204.9878.52.camel@primarydata.com>
+References: <20171114230631.14682-1-JPEWhacker@gmail.com>
+         <1510753204.9878.52.camel@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Nov 15, 2017, at 3:14 AM, Anders Ossowicki <and@vmn.dk> wrote:
+On Wed, 2017-11-15 at 13:40 +0000, Trond Myklebust wrote:
+> On Tue, 2017-11-14 at 17:06 -0600, Joshua Watt wrote:
+> > After some additional testing on version 2, I realized that 1) my
+> > test
+> > setup was bad (Doh!) and 2) using remount isn't really an ideal
+> > method
+> > for setting the "serverfailed" mount flag. The reason being that
+> > any
+> > userspace remount is going to touch the file system and probably
+> > invoke
+> > some RPCs for inode validation as such. If the server is truly
+> > dead,
+> > these RPCs will have to time out before the flag could actually be
+> > set.
+> > This not only takes a long time, but will probably also fail,
+> > causing
+> > the remount to fail and not set the flag, defeating the purpose.
 > 
-> On 14 November 2017 at 19:11, Anders Ossowicki <and@vmn.dk> wrote:
->> On 14 November 2017 at 18:12, Chuck Lever <chuck.lever@oracle.com> wrote:
->>> But since you already have such inodes, NFS clients will
->>> have to convert the numbers on the fly. You can use a boot
->>> parameter on your clients:
->>> 
->>>  nfs.enable_ino64=0
->>> 
->>> According to comments in fs/nfs/inode.c .
->> 
->> Thanks for the suggestion.
->> 
->> I looked at nfs.enable_ino64 while tracking down this issue, but it
->> looked like a client-side option to me, and the error happens in the
->> nfsd code. I'll give a shot tomorrow.
+> Why? There should be no reason to have to revalidate the path in
+> order
+> to change mount options on a mount point.
+
+I figured this out... the revalidation is not required for the mount(2)
+syscall when remounting. However, libmount tries to do a few file
+system checks that do required validation. You can convince it to skip
+these checks like so:
+
+ mount -c 172.16.9.0:/ /tmp/nfsmount -o remount,serverfailed
+
+The "-c" prevents canonicalizing the mount path (meaning you must
+provide the canonical path on the command line), and you have to
+specify the "block device" (e.g. "172.16.9.0:/") to prevent it doing
+some fstatat() checks on the mount path while parsing through mtab.
+
+It's annoying you can't do the easier:
+
+ mount /tmp/nfsmount -o remount,serverfailed
+
+but that's not the kernels fault.
+
 > 
-> No dice, unfortunately:
+> > This patch set works around this by exposing the failed server flag
+> > in
+> > debugfs. In addition, the flag now applies at the nfs_client level
+> > (instead of the nfs_server). Setting the flag will cancel all RPCs
+> > in
+> > the client, as well as all nfs_servers attached to it. This ensures
+> > that
+> > you get all the mounts, even when dealing with submounts that cross
+> > remote device boundaries. This is also where the nosharecache
+> > option
+> > applying to nfs_clients becomes useful... it will prevent sharing
+> > between other explicit mount calls, but submounts will all still
+> > share a
+> > nfs_client (and fail together).
+> > 
+> > Obviously, debugfs is not a permanent solution for this, so some
+> > discussion needs to be had on how this will be administered "in the
+> > real
+> > world" (I think "remount" is off the table).
+> > 
 > 
-> aowi@otto ~ $ dmesg|grep 'Kernel command line'
-> [    0.000000] Kernel command line:
-> BOOT_IMAGE=/boot/vmlinuz-3.19.0-77-generic
-> root=UUID=601cb526-8e11-4565-a5ed-0be619db7a5e ro quiet splash
-> nfs.enable_ino64=0 vt.handoff=7
-> aowi@otto ~ $ sudo mount -t nfs svin:/z/svin/aowitest/foo /mnt
-> aowi@otto ~ $ ls /mnt
-> ls: cannot open directory /mnt: Stale file handle
+> We're not adding any APIs to debugfs. That's a deal breaker...
 
-Does this happen with a recent kernel on the client?
+Sure. Is the mount option still the best way forward then, or are there
+other options to be explored?
 
-And, it would help if you can capture and post a raw tcpdump
-of this interaction so we can see all the details of the
-conversation. Start the tcpdump before "sudo mount", and
-save the raw bytes with "-w /tmp/sniffer.pcap". gzip and
-post it here.
-
-What happens if you mount svin:/ and walk down the server's
-namespace into /z/svin/aowitest/foo ?
-
-
---
-Chuck Lever
-
-
-
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
