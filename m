@@ -1,98 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f176.google.com ([209.85.223.176]:42018 "EHLO
-        mail-io0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754099AbdKOQKw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Nov 2017 11:10:52 -0500
-Received: by mail-io0-f176.google.com with SMTP id u42so2077292ioi.9
-        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2017 08:10:51 -0800 (PST)
-From: Joshua Watt <jpewhacker@gmail.com>
-Message-ID: <1510762249.2569.19.camel@gmail.com>
-Subject: Re: [RFC v3 0/7] NFS Force Unmounting
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "jlayton@redhat.com" <jlayton@redhat.com>,
-        "neilb@suse.com" <neilb@suse.com>
-Cc: "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "dhowells@redhat.com" <dhowells@redhat.com>
-Date: Wed, 15 Nov 2017 10:10:49 -0600
-In-Reply-To: <1510753204.9878.52.camel@primarydata.com>
-References: <20171114230631.14682-1-JPEWhacker@gmail.com>
-         <1510753204.9878.52.camel@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from smtp-o-3.desy.de ([131.169.56.156]:36615 "EHLO smtp-o-3.desy.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S932380AbdKORJb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 15 Nov 2017 12:09:31 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id ADE5D2802C5
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Nov 2017 18:09:29 +0100 (CET)
+Date: Wed, 15 Nov 2017 18:09:29 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <1515120232.1032581.1510765769325.JavaMail.zimbra@desy.de>
+In-Reply-To: <499996148.5462375.1509546572382.JavaMail.zimbra@desy.de>
+References: <1422255296.3062600.1509006087862.JavaMail.zimbra@desy.de> <20171031173945.rgsvdtulqmsa5hkz@tonberry.usersys.redhat.com> <499996148.5462375.1509546572382.JavaMail.zimbra@desy.de>
+Subject: Re: Kernel bug triggered with xfstest generic/113
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-11-15 at 13:40 +0000, Trond Myklebust wrote:
-> On Tue, 2017-11-14 at 17:06 -0600, Joshua Watt wrote:
-> > After some additional testing on version 2, I realized that 1) my
-> > test
-> > setup was bad (Doh!) and 2) using remount isn't really an ideal
-> > method
-> > for setting the "serverfailed" mount flag. The reason being that
-> > any
-> > userspace remount is going to touch the file system and probably
-> > invoke
-> > some RPCs for inode validation as such. If the server is truly
-> > dead,
-> > these RPCs will have to time out before the flag could actually be
-> > set.
-> > This not only takes a long time, but will probably also fail,
-> > causing
-> > the remount to fail and not set the flag, defeating the purpose.
+Hi Scott,
+
+you change in did have fixed the issue. The hanging client was related to our server bug.
+
+Tested-by:  Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+
+Should this go into stable as well?
+
+Thanks,
+  Tigran
+
+----- Original Message -----
+> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> To: "Scott Mayhew" <smayhew@redhat.com>
+> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
+> Sent: Wednesday, November 1, 2017 3:29:32 PM
+> Subject: Re: Kernel bug triggered with xfstest generic/113
+
+> Hi Scott,
 > 
-> Why? There should be no reason to have to revalidate the path in
-> order
-> to change mount options on a mount point.
-
-I figured this out... the revalidation is not required for the mount(2)
-syscall when remounting. However, libmount tries to do a few file
-system checks that do required validation. You can convince it to skip
-these checks like so:
-
- mount -c 172.16.9.0:/ /tmp/nfsmount -o remount,serverfailed
-
-The "-c" prevents canonicalizing the mount path (meaning you must
-provide the canonical path on the command line), and you have to
-specify the "block device" (e.g. "172.16.9.0:/") to prevent it doing
-some fstatat() checks on the mount path while parsing through mtab.
-
-It's annoying you can't do the easier:
-
- mount /tmp/nfsmount -o remount,serverfailed
-
-but that's not the kernels fault.
-
+> looks like I can't reproduce the BUG, but now it hangs. I will investigate and
+> let you know.
 > 
-> > This patch set works around this by exposing the failed server flag
-> > in
-> > debugfs. In addition, the flag now applies at the nfs_client level
-> > (instead of the nfs_server). Setting the flag will cancel all RPCs
-> > in
-> > the client, as well as all nfs_servers attached to it. This ensures
-> > that
-> > you get all the mounts, even when dealing with submounts that cross
-> > remote device boundaries. This is also where the nosharecache
-> > option
-> > applying to nfs_clients becomes useful... it will prevent sharing
-> > between other explicit mount calls, but submounts will all still
-> > share a
-> > nfs_client (and fail together).
-> > 
-> > Obviously, debugfs is not a permanent solution for this, so some
-> > discussion needs to be had on how this will be administered "in the
-> > real
-> > world" (I think "remount" is off the table).
-> > 
+> Tigran.
 > 
-> We're not adding any APIs to debugfs. That's a deal breaker...
-
-Sure. Is the mount option still the best way forward then, or are there
-other options to be explored?
-
+> ----- Original Message -----
+>> From: "Scott Mayhew" <smayhew@redhat.com>
+>> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+>> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
+>> Sent: Tuesday, October 31, 2017 6:39:45 PM
+>> Subject: Re: Kernel bug triggered with xfstest generic/113
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+>> On Thu, 26 Oct 2017, Mkrtchyan, Tigran wrote:
+>> 
+>>> 
+>>> 
+>>> Against dCache nfs server:
+>>> 
+>>> [ 3987.717284] ------------[ cut here ]------------
+>>> [ 3987.717286] kernel BUG at fs/inode.c:567!
+>>> [ 3987.717292] invalid opcode: 0000 [#1] SMP
+>>> [ 3987.717293] Modules linked in: loop nfs_layout_nfsv41_files rpcsec_gss_krb5
+>>> nfsv4 nfs lockd grace fscache binfmt_misc af_packet nf_conntrack_netbios_ns
+>>> nf_conntrack_broadcast xt_tcpudp xt
+>>> _CT ip6t_REJECT nf_reject_ipv6 nf_conntrack_ipv6 nf_defrag_ipv6 ipt_REJECT
+>>> nf_reject_ipv4 nf_conntrack_ipv4 nf_defrag_ipv4 xt_conntrack nf_conntrack
+>>> libcrc32c nfnetlink ip6table_mangle ip6ta
+>>> ble_raw ip6table_security iptable_mangle iptable_raw iptable_security
+>>> ip6table_filter ip6_tables iptable_filter btrfs xor zstd_decompress
+>>> zstd_compress xxhash lzo_compress zlib_deflate raid6
+>>> _pq snd_hda_codec_idt snd_hda_codec_generic snd_hda_intel snd_hda_codec
+>>> snd_hda_core snd_hwdep snd_seq iTCO_wdt iTCO_vendor_support snd_seq_device
+>>> snd_timer lpc_ich mfd_core tpm_tis snd_pcm
+>>> tpm_tis_core i2c_i801 snd tpm auth_rpcgss oid_registry
+>>> [ 3987.717340]  sunrpc ip_tables x_tables serio_raw e1000e ptp pps_core autofs4
+>>> [ 3987.717349] CPU: 1 PID: 31883 Comm: rm Not tainted
+>>> 4.14.0-rc6-01076-gbb176f67090c #120
+>>> [
+>>> 3987.717350] Hardware name: Comptronic pczW1007/DX38BT, BIOS
+>>> BTX3810J.86A.1893.2008.1009.1712 10/09/2008
+>>> [ 3987.717353] task: ffff880107f7c480 task.stack: ffff88012a830000
+>>> [ 3987.717358] RIP: 0010:evict+0x161/0x180
+>>> [ 3987.717360] RSP: 0018:ffff88012a833e80 EFLAGS: 00010202
+>>> [ 3987.717362] RAX: ffffffff81806110 RBX: ffff880100037800 RCX: ffff8801000378a0
+>>> [ 3987.717364] RDX: ffffffff81806110 RSI: ffff8801000378a0 RDI: ffffffff81806108
+>>> [ 3987.717366] RBP: ffff88012a833e98 R08: 0000000000000000 R09: ffff88012a03d6e8
+>>> [ 3987.717368] R10: ffff88012a03d6f8 R11: ffff88012a03d6f8 R12: ffff880100037910
+>>> [ 3987.717370] R13: ffffffffa0404540 R14: 00000000ffffff9c R15: 0000000000000000
+>>> [ 3987.717372] FS:  00007faddfd6e700(0000) GS:ffff88012fc80000(0000)
+>>> knlGS:0000000000000000
+>>> [ 3987.717375] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>>> [ 3987.717377] CR2: 00005653ab778470 CR3: 000000012840c000 CR4: 00000000000406e0
+>>> [ 3987.717378] Call Trace:
+>>> [ 3987.717382]  iput+0xf9/0x1c0
+>>> [ 3987.717385]  do_unlinkat+0x18d/0x2f0
+>>> [ 3987.717388]  SyS_unlinkat+0x16/0x30
+>>> [ 3987.717392]  entry_SYSCALL_64_fastpath+0x13/0x94
+>>> [ 3987.717394] RIP: 0033:0x7faddf8a0c17
+>>> [ 3987.717396] RSP: 002b:00007ffc44a11468 EFLAGS: 00000246 ORIG_RAX:
+>>> 0000000000000107
+>>> [ 3987.717399] RAX: ffffffffffffffda RBX: 000055ccd0723428 RCX: 00007faddf8a0c17
+>>> [ 3987.717401] RDX: 0000000000000000 RSI: 000055ccd07220f0 RDI: 00000000ffffff9c
+>>> [ 3987.717403] RBP: 000055ccd0723320 R08: 0000000000000003 R09: 0000000000000000
+>>> [ 3987.717404] R10: 0000000000000100 R11: 0000000000000246 R12: 000055ccd0722060
+>>> [ 3987.717406] R13: 00007ffc44a115a0 R14: 00007faddfb6a1e4 R15: 0000000000000000
+>>> [ 3987.717408] Code: 89 df e8 23 7d fe ff eb 8f 48 83 bb 20 02 00 00 00 74 85 48
+>>> 89 df e8 7f ad 01 00 0f b7 03 66 25 00 f0 e9 6b ff ff ff 0f 0b 0f 0b <0f> 0b 48
+>>> 8d bb 68 01 00 00 e8 a1 9e fa
+>>>  ff 48 89 df e8 a9 f1 ff
+>>> [ 3987.717443] RIP: evict+0x161/0x180 RSP: ffff88012a833e80
+>>> [ 3987.717445] ---[ end trace ca9a0f6be0e72301 ]---
+>> 
+>> I've been seeing a similar panic.  Does the attached patch help?
+>> 
+>> -Scott
+>> 
+>>> 
+>>> Looks like it happens in post-test clean-up step (rm), though  some processes
+>>> are still there:
+>>> 
+>>> root     18489 18329  0 Oct25 pts/1    00:00:00
+>>> /data/git/xfstests-dev/ltp/aio-stress -t 20 -s 10  -O -I 1000
+>>> /mnt/test/aiostress.18329.3 /mnt/test/aiostress.18329.3.20
+>>> /mnt/test/aiostress.18329.3.19 /mnt/test/aiostress.18329.3.18
+>>> /mnt/test/aiostress.18329.3.17 /mnt/test/aiostress.18329.3.16
+>>> /mnt/test/aiostress.18329.3.15 /mnt/test/aiostress.18329.3.14
+>>> /mnt/test/aiostress.18329.3.13 /mnt/test/aiostress.18329.3.12
+>>> /mnt/test/aiostress.18329.3.11 /mnt/test/aiostress.18329.3.10
+>>> /mnt/test/aiostress.18329.3.9 /mnt/test/aiostress.18329.3.8
+>>> /mnt/test/aiostress.18329.3.7 /mnt/test/aiostress.18329.3.6
+>>> /mnt/test/aiostress.18329.3.5 /mnt/test/aiostress.18329.3.4
+>>> /mnt/test/aiostress.18329.3.3 /mnt/test/aiostress.18329.3.2
+>>> 
+>>> 
+>>> I can always re-produce it.
+>>> 
+>>>   Tigran.
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
