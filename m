@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:36916 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1030313AbdKQRqN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:13 -0500
-Received: by mail-it0-f68.google.com with SMTP id m191so4973268itg.2
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:13 -0800 (PST)
+Received: from mail-io0-f193.google.com ([209.85.223.193]:42581 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1161130AbdKQRqR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:17 -0500
+Received: by mail-io0-f193.google.com with SMTP id u42so9529756ioi.9
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:17 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -12,116 +12,92 @@ To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
 Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v4 5/9] NFS: Kill RPCs for the duration of umount
-Date: Fri, 17 Nov 2017 11:45:48 -0600
-Message-Id: <20171117174552.18722-6-JPEWhacker@gmail.com>
+Subject: [RFC v4 9/9] NFS: Kill all client RPCs if transient
+Date: Fri, 17 Nov 2017 11:45:52 -0600
+Message-Id: <20171117174552.18722-10-JPEWhacker@gmail.com>
 In-Reply-To: <20171117174552.18722-1-JPEWhacker@gmail.com>
 References: <20171117174552.18722-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RPCs are now killed for the duration of the umount operation when
-MNT_FORCE is specified. Specifically, if the umount flags are MNT_FORCE
-| MNT_DETACH, all future RPCs will be killed.
+When unmounting with the MNT_FORCE flag, all client RPCs will be killed
+in all mount points if the mount is transient
 
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- fs/nfs/internal.h  |  1 +
- fs/nfs/nfs4super.c |  1 +
- fs/nfs/super.c     | 36 +++++++++++++++++++++++++++++-------
- 3 files changed, 31 insertions(+), 7 deletions(-)
+ fs/nfs/super.c | 40 ++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 36 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index f9a4a5524bd5..3ec165368a08 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -461,6 +461,7 @@ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
- /* super.c */
- void nfs_umount_begin(struct super_block *);
-+void nfs_umount_end(struct super_block *sb);
- int  nfs_statfs(struct dentry *, struct kstatfs *);
- int  nfs_show_options(struct seq_file *, struct dentry *);
- int  nfs_show_devname(struct seq_file *, struct dentry *);
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index 6fb7cb6b3f4b..e9788f9c3394 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -56,6 +56,7 @@ static const struct super_operations nfs4_sops = {
- 	.statfs		= nfs_statfs,
- 	.evict_inode	= nfs4_evict_inode,
- 	.umount_begin	= nfs_umount_begin,
-+	.umount_end	= nfs_umount_end,
- 	.show_options	= nfs_show_options,
- 	.show_devname	= nfs_show_devname,
- 	.show_path	= nfs_show_path,
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 216f67d628b3..71361ca6d6b4 100644
+index 09c413c098ef..f97cec1a1dec 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -315,6 +315,7 @@ const struct super_operations nfs_sops = {
- 	.statfs		= nfs_statfs,
- 	.evict_inode	= nfs_evict_inode,
- 	.umount_begin	= nfs_umount_begin,
-+	.umount_end	= nfs_umount_end,
- 	.show_options	= nfs_show_options,
- 	.show_devname	= nfs_show_devname,
- 	.show_path	= nfs_show_path,
-@@ -890,6 +891,15 @@ int nfs_show_stats(struct seq_file *m, struct dentry *root)
+@@ -904,6 +904,18 @@ kill_rpc(struct rpc_clnt *rpc)
+ 	}
  }
- EXPORT_SYMBOL_GPL(nfs_show_stats);
  
 +static void
-+kill_rpc(struct rpc_clnt *rpc)
++kill_client_rpc(struct nfs_client *client)
 +{
-+	if (!IS_ERR(rpc)) {
-+		atomic_inc(&rpc->cl_kill_new_tasks);
-+		rpc_killall_tasks(rpc);
++	struct nfs_server *server;
++
++	kill_rpc(client->cl_rpcclient);
++	list_for_each_entry_rcu(server, &client->cl_superblocks, client_link) {
++		kill_rpc(server->client_acl);
++		kill_rpc(server->client);
 +	}
 +}
 +
  /*
   * Begin unmount by attempting to remove all automounted mountpoints we added
   * in response to xdev traversals and referrals
-@@ -897,19 +907,31 @@ EXPORT_SYMBOL_GPL(nfs_show_stats);
- void nfs_umount_begin(struct super_block *sb)
- {
- 	struct nfs_server *server;
--	struct rpc_clnt *rpc;
+@@ -914,8 +926,12 @@ void nfs_umount_begin(struct super_block *sb)
  
  	server = NFS_SB(sb);
  	/* -EIO all pending I/O */
--	rpc = server->client_acl;
--	if (!IS_ERR(rpc))
--		rpc_killall_tasks(rpc);
--	rpc = server->client;
--	if (!IS_ERR(rpc))
--		rpc_killall_tasks(rpc);
-+	kill_rpc(server->client_acl);
-+	kill_rpc(server->client);
+-	kill_rpc(server->client_acl);
+-	kill_rpc(server->client);
++	if (server->flags & NFS_MOUNT_TRANSIENT) {
++		kill_client_rpc(server->nfs_client);
++	} else {
++		kill_rpc(server->client_acl);
++		kill_rpc(server->client);
++	}
  }
  EXPORT_SYMBOL_GPL(nfs_umount_begin);
  
+@@ -926,13 +942,29 @@ restore_rpc(struct rpc_clnt *rpc)
+ 		__atomic_add_unless(&rpc->cl_kill_new_tasks, -1, 0);
+ }
+ 
 +static void
-+restore_rpc(struct rpc_clnt *rpc)
++restore_client_rpc(struct nfs_client *client)
 +{
-+	if (!IS_ERR(rpc))
-+		__atomic_add_unless(&rpc->cl_kill_new_tasks, -1, 0);
++	struct nfs_server *server;
++
++	restore_rpc(client->cl_rpcclient);
++	list_for_each_entry_rcu(server, &client->cl_superblocks, client_link) {
++		restore_rpc(server->client_acl);
++		restore_rpc(server->client);
++	}
 +}
 +
-+void
-+nfs_umount_end(struct super_block *sb)
-+{
-+	struct nfs_server *server = NFS_SB(sb);
-+
-+	restore_rpc(server->client_acl);
-+	restore_rpc(server->client);
-+}
-+EXPORT_SYMBOL_GPL(nfs_umount_end);
-+
- static struct nfs_parsed_mount_data *nfs_alloc_parsed_mount_data(void)
+ void
+ nfs_umount_end(struct super_block *sb)
  {
- 	struct nfs_parsed_mount_data *data;
+ 	struct nfs_server *server = NFS_SB(sb);
+ 
+-	restore_rpc(server->client_acl);
+-	restore_rpc(server->client);
++	if (server->flags & NFS_MOUNT_TRANSIENT) {
++		restore_client_rpc(server->nfs_client);
++	} else {
++		restore_rpc(server->client_acl);
++		restore_rpc(server->client);
++	}
+ }
+ EXPORT_SYMBOL_GPL(nfs_umount_end);
+ 
 -- 
 2.13.6
 
