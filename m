@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:36905 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1161128AbdKQRqK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:10 -0500
-Received: by mail-it0-f66.google.com with SMTP id m191so4973093itg.2
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:10 -0800 (PST)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36477 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1030310AbdKQRqM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:12 -0500
+Received: by mail-it0-f67.google.com with SMTP id 187so2789210iti.1
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:12 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -12,35 +12,86 @@ To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
 Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v4 2/9] SUNRPC: Expose kill_new_tasks in debugfs
-Date: Fri, 17 Nov 2017 11:45:45 -0600
-Message-Id: <20171117174552.18722-3-JPEWhacker@gmail.com>
+Subject: [RFC v4 4/9] namespace: Add umount_end superblock operation
+Date: Fri, 17 Nov 2017 11:45:47 -0600
+Message-Id: <20171117174552.18722-5-JPEWhacker@gmail.com>
 In-Reply-To: <20171117174552.18722-1-JPEWhacker@gmail.com>
 References: <20171117174552.18722-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The umount_end operation allows cleaning of state set by umount_begin in
+the event the filesystem doesn't actually get unmounted.
+
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- net/sunrpc/debugfs.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ fs/namespace.c     | 22 ++++++++++++++++++++--
+ include/linux/fs.h |  1 +
+ 2 files changed, 21 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/debugfs.c b/net/sunrpc/debugfs.c
-index e980d2a493de..72d9d074abd2 100644
---- a/net/sunrpc/debugfs.c
-+++ b/net/sunrpc/debugfs.c
-@@ -160,6 +160,11 @@ rpc_clnt_debugfs_register(struct rpc_clnt *clnt)
- 	if (!debugfs_create_symlink("xprt", clnt->cl_debugfs, name))
- 		goto out_err;
+diff --git a/fs/namespace.c b/fs/namespace.c
+index d18deb4c410b..d2587be4d08b 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -1524,6 +1524,12 @@ static void umount_tree(struct mount *mnt, enum umount_tree_flags how)
+ 	}
+ }
  
-+	if (!debugfs_create_atomic_t("kill_new_tasks", S_IRUSR | S_IWUSR,
-+				     clnt->cl_debugfs,
-+				     &clnt->cl_kill_new_tasks))
-+		goto out_err;
++static void umount_end(struct super_block *sb, int flags)
++{
++	if (flags & MNT_FORCE && sb->s_op->umount_end)
++		sb->s_op->umount_end(sb);
++}
 +
- 	return;
- out_err:
- 	debugfs_remove_recursive(clnt->cl_debugfs);
+ static void shrink_submounts(struct mount *mnt);
+ 
+ static int do_umount(struct mount *mnt, int flags)
+@@ -1589,12 +1595,16 @@ static int do_umount(struct mount *mnt, int flags)
+ 		 * Special case for "unmounting" root ...
+ 		 * we just try to remount it readonly.
+ 		 */
+-		if (!capable(CAP_SYS_ADMIN))
+-			return -EPERM;
++		if (!capable(CAP_SYS_ADMIN)) {
++			retval = -EPERM;
++			goto out_umount_end;
++		}
+ 		down_write(&sb->s_umount);
+ 		if (!sb_rdonly(sb))
+ 			retval = do_remount_sb(sb, SB_RDONLY, NULL, 0);
+ 		up_write(&sb->s_umount);
++		/* Still mounted. Always invoke the cleanup */
++		umount_end(sb, flags);
+ 		return retval;
+ 	}
+ 
+@@ -1617,6 +1627,14 @@ static int do_umount(struct mount *mnt, int flags)
+ 	}
+ 	unlock_mount_hash();
+ 	namespace_unlock();
++
++out_umount_end:
++	/* If the umount failed and the file system is still mounted, allow the
++	 * driver to cleanup any state it may have setup in umount_begin(). Note
++	 * that this is purposely *not* called when MNT_DETACH is specified.
++	 */
++	if (retval)
++		umount_end(sb, flags);
+ 	return retval;
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 885266aae2d7..5443c22da18f 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1816,6 +1816,7 @@ struct super_operations {
+ 	int (*statfs) (struct dentry *, struct kstatfs *);
+ 	int (*remount_fs) (struct super_block *, int *, char *);
+ 	void (*umount_begin) (struct super_block *);
++	void (*umount_end)(struct super_block *);
+ 
+ 	int (*show_options)(struct seq_file *, struct dentry *);
+ 	int (*show_devname)(struct seq_file *, struct dentry *);
 -- 
 2.13.6
 
