@@ -1,116 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27152 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933004AbdKPUxQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Nov 2017 15:53:16 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v3 08/14] SUNRPC: add AF_VSOCK support to svc_xprt.c
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20171116152502.GG29106@stefanha-x1.localdomain>
-Date: Thu, 16 Nov 2017 15:53:04 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Abbas Naderi <abiusx@google.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Bruce Fields <bfields@fieldses.org>
-Message-Id: <A8EC5B49-872F-4D60-835C-5D1C2C04E362@oracle.com>
-References: <20170630132352.32133-1-stefanha@redhat.com> <20170630132352.32133-9-stefanha@redhat.com> <1509459038.4553.26.camel@redhat.com> <20171107133111.GK6809@stefanha-x1.localdomain> <1510063286.4518.34.camel@redhat.com> <20171116152502.GG29106@stefanha-x1.localdomain>
-To: Stefan Hajnoczi <stefanha@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>
+Received: from mail-io0-f170.google.com ([209.85.223.170]:35067 "EHLO
+        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754070AbdKQAyN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Nov 2017 19:54:13 -0500
+Received: by mail-io0-f170.google.com with SMTP id i38so7179596iod.2
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Nov 2017 16:54:13 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <3d948180-6bd7-c4e9-5ac8-5baef9cc15a7@gentoo.org>
+References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
+ <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
+ <20171109193715.GB21978@ZenIV.linux.org.uk> <40ad7c6e-f0d7-959a-bf29-d3e3843f5d31@gentoo.org>
+ <CA+55aFwqUbd5xVno7tH+yYD=yeu4nBdY=mpZQ+3fA0OEPS_WtQ@mail.gmail.com>
+ <23f7da04-95f7-24e7-ee70-ce40c5b8fee3@gentoo.org> <CA+55aFx63wq=qN0+P+S-aahq7HzvYLi1tSxhPT9x78E8BrMNGQ@mail.gmail.com>
+ <67939ef3-29c6-762c-7afe-46cc69630d95@gentoo.org> <ab1a286f-73dc-01aa-d797-0fef82534911@gentoo.org>
+ <CA+55aFxw-ycca8+9ywckyXxH4dTggLJi5hXGdJtCQocjM86f5g@mail.gmail.com>
+ <CAGXu5jL83V7hSpVLT69UTfgh3XkOsJw-S7Wc9_PQP7zGc8__rg@mail.gmail.com>
+ <CA+55aFytWtipkgGtkZgzRTQqLPxG+QzJ2K9+oFdo9NVNXxB69g@mail.gmail.com> <3d948180-6bd7-c4e9-5ac8-5baef9cc15a7@gentoo.org>
+From: Kees Cook <keescook@chromium.org>
+Date: Thu, 16 Nov 2017 16:54:10 -0800
+Message-ID: <CAGXu5jJBnJEPoUMQJTxxHXtHEUhpvq75xqzVdXsY5cKuHoe5Mg@mail.gmail.com>
+Subject: Re: [nfsd4] potentially hardware breaking regression in 4.14-rc and 4.13.11
+To: Patrick McLean <chutzpah@gentoo.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Emese Revfy <re.emese@gmail.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Bruce Fields <bfields@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        stable <stable@vger.kernel.org>,
+        Thorsten Leemhuis <regressions@leemhuis.info>,
+        "kernel-hardening@lists.openwall.com"
+        <kernel-hardening@lists.openwall.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Nov 13, 2017 at 2:48 PM, Patrick McLean <chutzpah@gentoo.org> wrote:
+> On 2017-11-11 09:31 AM, Linus Torvalds wrote:
+>> Boris Lukashev points out that Patrick should probably check a newer
+>> version of gcc.
+>>
+>> I looked around, and in one of the emails, Patrick said:
+>>
+>>   "No changes, both the working and broken kernels were built with
+>>    distro-provided gcc 5.4.0 and binutils 2.28.1"
+>>
+>> and gcc-5.4.0 is certainly not very recent. It's not _ancient_, but
+>> it's a bug-fix release to a pretty old branch that is not exactly new.
+>>
+>> It would probably be good to check if the problems persist with gcc
+>> 6.x or 7.x.. I have no idea which gcc version the randstruct people
+>> tend to use themselves.
+>
+> I just tested it with gcc 7.2, and was able to reproduce the NULL
+> pointer dereference, the backtrace looks slightly different this time.
+>
+> I will also test with binutils 2.29, though I doubt that will make any
+> difference.
+>
+>> [   56.165181] BUG: unable to handle kernel NULL pointer dereference at 0000000000000560
+>> [   56.166563] IP: vfs_statfs+0x7c/0xc0
+>> [   56.167249] PGD 0 P4D 0
+>> [   56.167860] Oops: 0000 [#1] SMP
+>> [   56.176478] Modules linked in: ipt_MASQUERADE nf_nat_masquerade_ipv4 xt_multiport xt_addrtype iptable_mangle iptable>
+>> [   56.180227] CPU: 0 PID: 3985 Comm: nfsd Tainted: G           O    4.14.0-git-kratos-1 #1
+>> [   56.181728] Hardware name: TYAN S5510/S5510, BIOS V2.02 03/12/2013
+>> [   56.182729] task: ffff88040c412a00 task.stack: ffffc90002c18000
+>> [   56.183629] RIP: 0010:vfs_statfs+0x7c/0xc0
+>> [   56.184341] RSP: 0018:ffffc90002c1bb28 EFLAGS: 00010202
+>> [   56.185143] RAX: 0000000000000000 RBX: ffffc90002c1bbf0 RCX: 0000000000000020
+>> [   56.186085] RDX: 0000000000001801 RSI: 0000000000001801 RDI: 0000000000000000
+>> [   56.187066] RBP: ffffc90002c1bbc0 R08: ffffffffffffff00 R09: 00000000000000ff
+>> [   56.188268] R10: 000000000038be3a R11: ffff880408b18258 R12: 0000000000000000
+>> [   56.189336] R13: ffff88040c23ad00 R14: ffff88040b874000 R15: ffffc90002c1bbf0
+>> [   56.190444] FS:  0000000000000000(0000) GS:ffff88041fc00000(0000) knlGS:0000000000000000
+>> [   56.191876] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> [   56.192843] CR2: 0000000000000560 CR3: 0000000001e0a002 CR4: 00000000001606f0
+>> [   56.193898] Call Trace:
+>> [   56.194510]  nfsd4_encode_fattr+0x201/0x1f90
+>> [   56.195267]  ? generic_permission+0x12c/0x1a0
+>> [   56.196025]  nfsd4_encode_getattr+0x25/0x30
+>> [   56.196753]  nfsd4_encode_operation+0x98/0x1b0
+>> [   56.197526]  nfsd4_proc_compound+0x2a0/0x5e0
+>> [   56.198268]  nfsd_dispatch+0xe8/0x220
+>> [   56.198968]  svc_process_common+0x475/0x640
+>> [   56.199696]  ? nfsd_destroy+0x60/0x60
+>> [   56.200404]  svc_process+0xf2/0x1a0
+>> [   56.201079]  nfsd+0xe3/0x150
+>> [   56.201706]  kthread+0x117/0x130
+>> [   56.202354]  ? kthread_create_on_node+0x40/0x40
+>> [   56.203100]  ret_from_fork+0x25/0x30
+>> [   56.203774] Code: d6 89 d6 81 ce 00 04 00 00 f6 c1 08 0f 45 d6 89 d6 81 ce 00 08 00 00 f6 c1 10 0f 45 d6 89 d6 81 ce>
+>> [   56.206289] RIP: vfs_statfs+0x7c/0xc0 RSP: ffffc90002c1bb28
+>> [   56.207110] CR2: 0000000000000560
+>> [   56.207763] ---[ end trace d452986a80f64aaa ]---
+>
+>> On Sat, Nov 11, 2017 at 8:13 AM, Kees Cook <keescook@chromium.org> wrote:
+>>>
+>>> I'll take a closer look at this and see if I can provide something to
+>>> narrow it down.
 
-> On Nov 16, 2017, at 10:25 AM, Stefan Hajnoczi <stefanha@redhat.com> wrote:
-> 
-> On Tue, Nov 07, 2017 at 09:01:26AM -0500, Jeff Layton wrote:
->> On Tue, 2017-11-07 at 13:31 +0000, Stefan Hajnoczi wrote:
->>> On Tue, Oct 31, 2017 at 10:10:38AM -0400, Jeff Layton wrote:
->>>> On Fri, 2017-06-30 at 14:23 +0100, Stefan Hajnoczi wrote:
->>>>> @@ -595,6 +609,10 @@ int svc_port_is_privileged(struct sockaddr *sin)
->>>>> 	case AF_INET6:
->>>>> 		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port)
->>>>> 			< PROT_SOCK;
->>>>> +	case AF_VSOCK:
->>>>> +		return ((struct sockaddr_vm *)sin)->svm_port <=
->>>>> +			LAST_RESERVED_PORT;
->>>>> +
->>>>> 	default:
->>>>> 		return 0;
->>>>> 	}
->>>> 
->>>> Does vsock even have the concept of a privileged port? I would imagine
->>>> that root in a guest VM would carry no particular significance from an
->>>> export security standpoint
->>>> 
->>>> Since you're defining a new transport here, it might be nice write the
->>>> RFCs to avoid that distinction, if possible.
->>>> 
->>>> Note that RDMA just has svc_port_is_privileged always return 1.
->>> 
->>> AF_VSOCK has the same 0-1023 privileged port range as TCP.
->>> 
->> 
->> But why? And, given that you have 32-bits for a port with AF_VSOCK vs
->> the 16 bits on an AF_INET/AF_INET6, why is the range so pitifully small?
->> 
->> Reserved ports are a bit of a dinosaur holdover from when being root on
->> a machine on the Internet meant something. With v4.1 it's much less of
->> an issue, but in the "olden days", reserved port exhaustion could be a
->> real problem.
->> 
->> Mandating low ports can also be a problem in other way. Some well known
->> services use ports in the ephemeral range, and if your service starts
->> late and someone else has taken the port for an ephemeral one, you're
->> out of luck.
->> 
->> I think we have to ask ourselves:
->> 
->> Should the ability to open a low port inside of a VM carry any
->> significance at all to an RPC server? I'd suggest not, and I think it'd
->> be good to word the RFC to make that explicitly clear.
-> 
-> AF_VSOCK has had the reserved port range since it was first merged in
-> 2013.  That's before my time but I do see some use for identifying
-> connections coming from privileged processes.
-> 
-> Given that TCP has the same privileged port range, is there any reason
-> why AF_VSOCK would be any worse off than TCP for having it?
+How reliable is this crash? The best idea I have to isolate it would
+be to bisect the additions of the __randomize_layout markings on
+various structures. I would start with the ones Al is most upset to
+see randomized. ;)
 
-I agree with Jeff that we need to think carefully about this.
+All that said, I'd like to better understand the BIOS side of this a
+little better. In the first email in this thread, you showed two BUGs
+separated by a little time, which implies to me that the NULL deref
+and the BIOS no longer POSTing are separate (though seemingly related)
+issues. Have you had machines survive the BUG without blowing up the
+BIOS?
 
-I don't especially care for the privileged port check, but:
+I'm still trying to wrap my head around how the BIOS could be blowing
+up. I assume there's some magic memory address that is getting poked
+as a result of some struct randomization bug, so tracking that down
+should be possible assuming you can stand reflashing your BIOS across
+the bisects.
 
-In this case, you are inventing an RPC transport that makes
-it impossible to use strong security (ie, RPCSEC_GSS). We
-should be careful about removing the check because only
-AUTH_NULL and AUTH_UNIX security can be used in this kind
-of deployment.
+For the first step, I'd try a revert of
+9225331b310821760f39ba55b00b8973602adbb5, which enables a large
+portion of struct randomization. If that doesn't change things, I can
+provide a series that reverts 3859a271a003aba01e45b85c9d8b355eb7bf25f9
+and then re-applies __randomize_layout one structure per patch, and
+you could bisect that?
 
-Privileged ports are easy to spoof if there is an opportunity
-for a MitM attack to alter the port number of RPCs in transit.
-With VSOCK there may be no such opportunity, thus privileged
-ports might provide an adequate level of security here. I
-make that claim with no deep experience of VSOCK environments.
+-Kees
 
-When writing the VSOCK-related RFCs, you will need to provide
-a very clear and concise rationale to the IESG for purposely
-not supporting the use of RPCSEC_GSS. It will start with "well,
-these RPCs do not flow on open networks and are thus not
-subject to MitM attacks"; then proceed to careful discussion of
-how the server will guard against rogue users on guests, and
-assumptions about the trust relationship between the guests
-and the host. You will have to make AUTH_UNIX into a defensible
-deployment choice, and port privilege might be a part of that.
-
-Note also that the NFSv4 standards require that implementations
-can support RPCSEC_GSS. NFSv4 on VSOCK cannot. Something will
-have to be done about that.
-
-
---
-Chuck Lever
-
-
-
+-- 
+Kees Cook
+Pixel Security
