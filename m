@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:36477 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1030310AbdKQRqM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:12 -0500
-Received: by mail-it0-f67.google.com with SMTP id 187so2789210iti.1
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:12 -0800 (PST)
+Received: from mail-io0-f195.google.com ([209.85.223.195]:36478 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1161128AbdKQRqR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:17 -0500
+Received: by mail-io0-f195.google.com with SMTP id 79so1960318ioi.3
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:16 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -12,86 +12,106 @@ To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
 Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v4 4/9] namespace: Add umount_end superblock operation
-Date: Fri, 17 Nov 2017 11:45:47 -0600
-Message-Id: <20171117174552.18722-5-JPEWhacker@gmail.com>
+Subject: [RFC v4 8/9] NFS: Don't shared transient clients
+Date: Fri, 17 Nov 2017 11:45:51 -0600
+Message-Id: <20171117174552.18722-9-JPEWhacker@gmail.com>
 In-Reply-To: <20171117174552.18722-1-JPEWhacker@gmail.com>
 References: <20171117174552.18722-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The umount_end operation allows cleaning of state set by umount_begin in
-the event the filesystem doesn't actually get unmounted.
+If the transient mount option is set the client should not be shared so
+that operations done to it will not affect other mounts.
 
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- fs/namespace.c     | 22 ++++++++++++++++++++--
- include/linux/fs.h |  1 +
- 2 files changed, 21 insertions(+), 2 deletions(-)
+ fs/nfs/client.c           | 9 +++++++--
+ fs/nfs/nfs3client.c       | 2 ++
+ fs/nfs/nfs4client.c       | 4 ++++
+ include/linux/nfs_fs_sb.h | 1 +
+ 4 files changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index d18deb4c410b..d2587be4d08b 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -1524,6 +1524,12 @@ static void umount_tree(struct mount *mnt, enum umount_tree_flags how)
- 	}
- }
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 7bab47d0dd07..9d88dea4bc59 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -328,6 +328,10 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
  
-+static void umount_end(struct super_block *sb, int flags)
-+{
-+	if (flags & MNT_FORCE && sb->s_op->umount_end)
-+		sb->s_op->umount_end(sb);
-+}
++		/* Don't match clients that don't want to be shared */
++		if (test_bit(NFS_CS_UNSHARED, &clp->cl_flags))
++			continue;
 +
- static void shrink_submounts(struct mount *mnt);
+ 		/* Different NFS versions cannot share the same nfs_client */
+ 		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
+ 			continue;
+@@ -428,7 +432,7 @@ init_client(struct nfs_client *new, const struct nfs_client_initdata *cl_init)
+  */
+ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
+ {
+-	struct nfs_client *clp, *new = NULL;
++	struct nfs_client *clp = NULL, *new = NULL;
+ 	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
+ 	const struct nfs_rpc_ops *rpc_ops = cl_init->nfs_mod->rpc_ops;
  
- static int do_umount(struct mount *mnt, int flags)
-@@ -1589,12 +1595,16 @@ static int do_umount(struct mount *mnt, int flags)
- 		 * Special case for "unmounting" root ...
- 		 * we just try to remount it readonly.
- 		 */
--		if (!capable(CAP_SYS_ADMIN))
--			return -EPERM;
-+		if (!capable(CAP_SYS_ADMIN)) {
-+			retval = -EPERM;
-+			goto out_umount_end;
-+		}
- 		down_write(&sb->s_umount);
- 		if (!sb_rdonly(sb))
- 			retval = do_remount_sb(sb, SB_RDONLY, NULL, 0);
- 		up_write(&sb->s_umount);
-+		/* Still mounted. Always invoke the cleanup */
-+		umount_end(sb, flags);
- 		return retval;
- 	}
+@@ -441,7 +445,8 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
+ 	do {
+ 		spin_lock(&nn->nfs_client_lock);
  
-@@ -1617,6 +1627,14 @@ static int do_umount(struct mount *mnt, int flags)
- 	}
- 	unlock_mount_hash();
- 	namespace_unlock();
-+
-+out_umount_end:
-+	/* If the umount failed and the file system is still mounted, allow the
-+	 * driver to cleanup any state it may have setup in umount_begin(). Note
-+	 * that this is purposely *not* called when MNT_DETACH is specified.
-+	 */
-+	if (retval)
-+		umount_end(sb, flags);
- 	return retval;
- }
+-		clp = nfs_match_client(cl_init);
++		if (!test_bit(NFS_CS_UNSHARED, &cl_init->init_flags))
++			clp = nfs_match_client(cl_init);
+ 		if (clp) {
+ 			spin_unlock(&nn->nfs_client_lock);
+ 			if (new)
+diff --git a/fs/nfs/nfs3client.c b/fs/nfs/nfs3client.c
+index 7879f2a0fcfd..a627a925f210 100644
+--- a/fs/nfs/nfs3client.c
++++ b/fs/nfs/nfs3client.c
+@@ -102,6 +102,8 @@ struct nfs_client *nfs3_set_ds_client(struct nfs_server *mds_srv,
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 885266aae2d7..5443c22da18f 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1816,6 +1816,7 @@ struct super_operations {
- 	int (*statfs) (struct dentry *, struct kstatfs *);
- 	int (*remount_fs) (struct super_block *, int *, char *);
- 	void (*umount_begin) (struct super_block *);
-+	void (*umount_end)(struct super_block *);
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+ 		set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
++	if (mds_srv->flags & NFS_MOUNT_TRANSIENT)
++		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
  
- 	int (*show_options)(struct seq_file *, struct dentry *);
- 	int (*show_devname)(struct seq_file *, struct dentry *);
+ 	/* Use the MDS nfs_client cl_ipaddr. */
+ 	nfs_init_timeout_values(&ds_timeout, ds_proto, ds_timeo, ds_retrans);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index ef725106e45c..ffbc1143a4ab 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -852,6 +852,8 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
+ 	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
+ 		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
++	if (server->flags & NFS_MOUNT_TRANSIENT)
++		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
+ 
+ 	/* Allocate or find a client reference we can use */
+ 	clp = nfs_get_client(&cl_init);
+@@ -910,6 +912,8 @@ struct nfs_client *nfs4_set_ds_client(struct nfs_server *mds_srv,
+ 
+ 	if (mds_srv->flags & NFS_MOUNT_NORESVPORT)
+ 		__set_bit(NFS_CS_NORESVPORT, &cl_init.init_flags);
++	if (mds_srv->flags & NFS_MOUNT_TRANSIENT)
++		__set_bit(NFS_CS_UNSHARED, &cl_init.init_flags);
+ 
+ 	/*
+ 	 * Set an authflavor equual to the MDS value. Use the MDS nfs_client
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index 5dac856355f0..0eb7093faea7 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -45,6 +45,7 @@ struct nfs_client {
+ #define NFS_CS_INFINITE_SLOTS	3		/* - don't limit TCP slots */
+ #define NFS_CS_NO_RETRANS_TIMEOUT	4	/* - Disable retransmit timeouts */
+ #define NFS_CS_TSM_POSSIBLE	5		/* - Maybe state migration */
++#define NFS_CS_UNSHARED		6		/* - Client state not shared */
+ 	struct sockaddr_storage	cl_addr;	/* server identifier */
+ 	size_t			cl_addrlen;
+ 	char *			cl_hostname;	/* hostname of server */
 -- 
 2.13.6
 
