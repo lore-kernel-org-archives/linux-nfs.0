@@ -1,10 +1,10 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:42581 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1161130AbdKQRqR (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:17 -0500
-Received: by mail-io0-f193.google.com with SMTP id u42so9529756ioi.9
-        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:17 -0800 (PST)
+Received: from mail-io0-f194.google.com ([209.85.223.194]:42578 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1161118AbdKQRqP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 12:46:15 -0500
+Received: by mail-io0-f194.google.com with SMTP id u42so9529632ioi.9
+        for <linux-nfs@vger.kernel.org>; Fri, 17 Nov 2017 09:46:15 -0800 (PST)
 From: Joshua Watt <jpewhacker@gmail.com>
 To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
@@ -12,92 +12,87 @@ To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
 Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
         David Howells <dhowells@redhat.com>,
         Joshua Watt <JPEWhacker@gmail.com>
-Subject: [RFC v4 9/9] NFS: Kill all client RPCs if transient
-Date: Fri, 17 Nov 2017 11:45:52 -0600
-Message-Id: <20171117174552.18722-10-JPEWhacker@gmail.com>
+Subject: [RFC v4 7/9] NFS: Add transient mount option
+Date: Fri, 17 Nov 2017 11:45:50 -0600
+Message-Id: <20171117174552.18722-8-JPEWhacker@gmail.com>
 In-Reply-To: <20171117174552.18722-1-JPEWhacker@gmail.com>
 References: <20171117174552.18722-1-JPEWhacker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When unmounting with the MNT_FORCE flag, all client RPCs will be killed
-in all mount points if the mount is transient
+The "transient" option is used to indicate that the server might
+disappear unexpectedly, and a more aggressive behavior should be use to
+force unmount it. It implies "nosharecache"
 
 Signed-off-by: Joshua Watt <JPEWhacker@gmail.com>
 ---
- fs/nfs/super.c | 40 ++++++++++++++++++++++++++++++++++++----
- 1 file changed, 36 insertions(+), 4 deletions(-)
+ fs/nfs/super.c                 | 13 ++++++++++++-
+ include/uapi/linux/nfs_mount.h |  1 +
+ 2 files changed, 13 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 09c413c098ef..f97cec1a1dec 100644
+index 71361ca6d6b4..09c413c098ef 100644
 --- a/fs/nfs/super.c
 +++ b/fs/nfs/super.c
-@@ -904,6 +904,18 @@ kill_rpc(struct rpc_clnt *rpc)
- 	}
- }
+@@ -90,6 +90,7 @@ enum {
+ 	Opt_resvport, Opt_noresvport,
+ 	Opt_fscache, Opt_nofscache,
+ 	Opt_migration, Opt_nomigration,
++	Opt_transient, Opt_notransient,
  
-+static void
-+kill_client_rpc(struct nfs_client *client)
-+{
-+	struct nfs_server *server;
-+
-+	kill_rpc(client->cl_rpcclient);
-+	list_for_each_entry_rcu(server, &client->cl_superblocks, client_link) {
-+		kill_rpc(server->client_acl);
-+		kill_rpc(server->client);
-+	}
-+}
-+
- /*
-  * Begin unmount by attempting to remove all automounted mountpoints we added
-  * in response to xdev traversals and referrals
-@@ -914,8 +926,12 @@ void nfs_umount_begin(struct super_block *sb)
+ 	/* Mount options that take integer arguments */
+ 	Opt_port,
+@@ -151,6 +152,8 @@ static const match_table_t nfs_mount_option_tokens = {
+ 	{ Opt_nofscache, "nofsc" },
+ 	{ Opt_migration, "migration" },
+ 	{ Opt_nomigration, "nomigration" },
++	{ Opt_transient, "transient" },
++	{ Opt_notransient, "notransient" },
  
- 	server = NFS_SB(sb);
- 	/* -EIO all pending I/O */
--	kill_rpc(server->client_acl);
--	kill_rpc(server->client);
-+	if (server->flags & NFS_MOUNT_TRANSIENT) {
-+		kill_client_rpc(server->nfs_client);
-+	} else {
-+		kill_rpc(server->client_acl);
-+		kill_rpc(server->client);
-+	}
- }
- EXPORT_SYMBOL_GPL(nfs_umount_begin);
+ 	{ Opt_port, "port=%s" },
+ 	{ Opt_rsize, "rsize=%s" },
+@@ -638,6 +641,7 @@ static void nfs_show_mount_options(struct seq_file *m, struct nfs_server *nfss,
+ 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
+ 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
+ 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
++		{ NFS_MOUNT_TRANSIENT, ",transient", "" },
+ 		{ 0, NULL, NULL }
+ 	};
+ 	const struct proc_nfs_info *nfs_infop;
+@@ -1329,7 +1333,8 @@ static int nfs_parse_mount_options(char *raw,
+ 			mnt->flags |= NFS_MOUNT_NORDIRPLUS;
+ 			break;
+ 		case Opt_sharecache:
+-			mnt->flags &= ~NFS_MOUNT_UNSHARED;
++			mnt->flags &= ~(NFS_MOUNT_UNSHARED |
++					NFS_MOUNT_TRANSIENT);
+ 			break;
+ 		case Opt_nosharecache:
+ 			mnt->flags |= NFS_MOUNT_UNSHARED;
+@@ -1356,6 +1361,12 @@ static int nfs_parse_mount_options(char *raw,
+ 		case Opt_nomigration:
+ 			mnt->options &= ~NFS_OPTION_MIGRATION;
+ 			break;
++		case Opt_transient:
++			mnt->flags |= NFS_MOUNT_TRANSIENT | NFS_MOUNT_UNSHARED;
++			break;
++		case Opt_notransient:
++			mnt->flags &= ~NFS_MOUNT_TRANSIENT;
++			break;
  
-@@ -926,13 +942,29 @@ restore_rpc(struct rpc_clnt *rpc)
- 		__atomic_add_unless(&rpc->cl_kill_new_tasks, -1, 0);
- }
+ 		/*
+ 		 * options that take numeric values
+diff --git a/include/uapi/linux/nfs_mount.h b/include/uapi/linux/nfs_mount.h
+index e44e00616ab5..6067a9449d9f 100644
+--- a/include/uapi/linux/nfs_mount.h
++++ b/include/uapi/linux/nfs_mount.h
+@@ -74,5 +74,6 @@ struct nfs_mount_data {
  
-+static void
-+restore_client_rpc(struct nfs_client *client)
-+{
-+	struct nfs_server *server;
-+
-+	restore_rpc(client->cl_rpcclient);
-+	list_for_each_entry_rcu(server, &client->cl_superblocks, client_link) {
-+		restore_rpc(server->client_acl);
-+		restore_rpc(server->client);
-+	}
-+}
-+
- void
- nfs_umount_end(struct super_block *sb)
- {
- 	struct nfs_server *server = NFS_SB(sb);
+ #define NFS_MOUNT_LOCAL_FLOCK	0x100000
+ #define NFS_MOUNT_LOCAL_FCNTL	0x200000
++#define NFS_MOUNT_TRANSIENT	0x400000
  
--	restore_rpc(server->client_acl);
--	restore_rpc(server->client);
-+	if (server->flags & NFS_MOUNT_TRANSIENT) {
-+		restore_client_rpc(server->nfs_client);
-+	} else {
-+		restore_rpc(server->client_acl);
-+		restore_rpc(server->client);
-+	}
- }
- EXPORT_SYMBOL_GPL(nfs_umount_end);
- 
+ #endif
 -- 
 2.13.6
 
