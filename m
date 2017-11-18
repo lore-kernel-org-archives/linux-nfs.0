@@ -1,12 +1,28 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:57342 "EHLO smtp.gentoo.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1162242AbdKRA1p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 17 Nov 2017 19:27:45 -0500
-Subject: Re: [nfsd4] potentially hardware breaking regression in 4.14-rc and
- 4.13.11
-To: Kees Cook <keescook@chromium.org>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+Received: from mail-io0-f179.google.com ([209.85.223.179]:35960 "EHLO
+        mail-io0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1161070AbdKRAzj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Nov 2017 19:55:39 -0500
+MIME-Version: 1.0
+In-Reply-To: <b2b323ae-447c-c44f-32a7-d9c1381545bf@gentoo.org>
+References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
+ <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
+ <20171109193715.GB21978@ZenIV.linux.org.uk> <40ad7c6e-f0d7-959a-bf29-d3e3843f5d31@gentoo.org>
+ <CA+55aFwqUbd5xVno7tH+yYD=yeu4nBdY=mpZQ+3fA0OEPS_WtQ@mail.gmail.com>
+ <23f7da04-95f7-24e7-ee70-ce40c5b8fee3@gentoo.org> <CA+55aFx63wq=qN0+P+S-aahq7HzvYLi1tSxhPT9x78E8BrMNGQ@mail.gmail.com>
+ <67939ef3-29c6-762c-7afe-46cc69630d95@gentoo.org> <ab1a286f-73dc-01aa-d797-0fef82534911@gentoo.org>
+ <CA+55aFxw-ycca8+9ywckyXxH4dTggLJi5hXGdJtCQocjM86f5g@mail.gmail.com>
+ <CAGXu5jL83V7hSpVLT69UTfgh3XkOsJw-S7Wc9_PQP7zGc8__rg@mail.gmail.com>
+ <CA+55aFytWtipkgGtkZgzRTQqLPxG+QzJ2K9+oFdo9NVNXxB69g@mail.gmail.com>
+ <3d948180-6bd7-c4e9-5ac8-5baef9cc15a7@gentoo.org> <CAGXu5jJBnJEPoUMQJTxxHXtHEUhpvq75xqzVdXsY5cKuHoe5Mg@mail.gmail.com>
+ <09f2480f-e8e8-645b-6d94-b6ae4ca47806@gentoo.org> <CAGXu5jK=_BAKAAyhNms0MddJWPsLV2f78UWdnkxcSErmruhtNw@mail.gmail.com>
+ <b2b323ae-447c-c44f-32a7-d9c1381545bf@gentoo.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Fri, 17 Nov 2017 16:55:37 -0800
+Message-ID: <CA+55aFwSfaqGN1R=N0c8fyFe-oengamdkTtnyomcCwG7f3HU5Q@mail.gmail.com>
+Subject: Re: [nfsd4] potentially hardware breaking regression in 4.14-rc and 4.13.11
+To: Patrick McLean <chutzpah@gentoo.org>
+Cc: Kees Cook <keescook@chromium.org>,
         Emese Revfy <re.emese@gmail.com>,
         Al Viro <viro@zeniv.linux.org.uk>,
         Bruce Fields <bfields@redhat.com>,
@@ -17,175 +33,23 @@ Cc: Linus Torvalds <torvalds@linux-foundation.org>,
         Thorsten Leemhuis <regressions@leemhuis.info>,
         "kernel-hardening@lists.openwall.com"
         <kernel-hardening@lists.openwall.com>
-References: <a17842c3-aae7-da98-424e-4441dd727e6d@gentoo.org>
- <CA+55aFzGDyeJctD5Y3paBnysWXbA0cMF1_7mvvzG3n2OAnNhHw@mail.gmail.com>
- <20171109193715.GB21978@ZenIV.linux.org.uk>
- <40ad7c6e-f0d7-959a-bf29-d3e3843f5d31@gentoo.org>
- <CA+55aFwqUbd5xVno7tH+yYD=yeu4nBdY=mpZQ+3fA0OEPS_WtQ@mail.gmail.com>
- <23f7da04-95f7-24e7-ee70-ce40c5b8fee3@gentoo.org>
- <CA+55aFx63wq=qN0+P+S-aahq7HzvYLi1tSxhPT9x78E8BrMNGQ@mail.gmail.com>
- <67939ef3-29c6-762c-7afe-46cc69630d95@gentoo.org>
- <ab1a286f-73dc-01aa-d797-0fef82534911@gentoo.org>
- <CA+55aFxw-ycca8+9ywckyXxH4dTggLJi5hXGdJtCQocjM86f5g@mail.gmail.com>
- <CAGXu5jL83V7hSpVLT69UTfgh3XkOsJw-S7Wc9_PQP7zGc8__rg@mail.gmail.com>
- <CA+55aFytWtipkgGtkZgzRTQqLPxG+QzJ2K9+oFdo9NVNXxB69g@mail.gmail.com>
- <3d948180-6bd7-c4e9-5ac8-5baef9cc15a7@gentoo.org>
- <CAGXu5jJBnJEPoUMQJTxxHXtHEUhpvq75xqzVdXsY5cKuHoe5Mg@mail.gmail.com>
- <09f2480f-e8e8-645b-6d94-b6ae4ca47806@gentoo.org>
- <CAGXu5jK=_BAKAAyhNms0MddJWPsLV2f78UWdnkxcSErmruhtNw@mail.gmail.com>
-From: Patrick McLean <chutzpah@gentoo.org>
-Message-ID: <b2b323ae-447c-c44f-32a7-d9c1381545bf@gentoo.org>
-Date: Fri, 17 Nov 2017 16:27:42 -0800
-MIME-Version: 1.0
-In-Reply-To: <CAGXu5jK=_BAKAAyhNms0MddJWPsLV2f78UWdnkxcSErmruhtNw@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2017-11-17 01:26 PM, Kees Cook wrote:
-> On Fri, Nov 17, 2017 at 11:03 AM, Patrick McLean <chutzpah@gentoo.org> wrote:
->> On 2017-11-16 04:54 PM, Kees Cook wrote:
->>> On Mon, Nov 13, 2017 at 2:48 PM, Patrick McLean <chutzpah@gentoo.org> wrote:
->>>> On 2017-11-11 09:31 AM, Linus Torvalds wrote:
->>>>> Boris Lukashev points out that Patrick should probably check a newer
->>>>> version of gcc.
->>>>>
->>>>> I looked around, and in one of the emails, Patrick said:
->>>>>
->>>>>   "No changes, both the working and broken kernels were built with
->>>>>    distro-provided gcc 5.4.0 and binutils 2.28.1"
->>>>>
->>>>> and gcc-5.4.0 is certainly not very recent. It's not _ancient_, but
->>>>> it's a bug-fix release to a pretty old branch that is not exactly new.
->>>>>
->>>>> It would probably be good to check if the problems persist with gcc
->>>>> 6.x or 7.x.. I have no idea which gcc version the randstruct people
->>>>> tend to use themselves.
->>>>
->>>> I just tested it with gcc 7.2, and was able to reproduce the NULL
->>>> pointer dereference, the backtrace looks slightly different this time.
->>>>
->>>> I will also test with binutils 2.29, though I doubt that will make any
->>>> difference.
->>>>
->>>>> [   56.165181] BUG: unable to handle kernel NULL pointer dereference at 0000000000000560
->>>>> [   56.166563] IP: vfs_statfs+0x7c/0xc0
->>>>> [   56.167249] PGD 0 P4D 0
->>>>> [   56.167860] Oops: 0000 [#1] SMP
->>>>> [   56.176478] Modules linked in: ipt_MASQUERADE nf_nat_masquerade_ipv4 xt_multiport xt_addrtype iptable_mangle iptable>
->>>>> [   56.180227] CPU: 0 PID: 3985 Comm: nfsd Tainted: G           O    4.14.0-git-kratos-1 #1
->>>>> [   56.181728] Hardware name: TYAN S5510/S5510, BIOS V2.02 03/12/2013
->>>>> [   56.182729] task: ffff88040c412a00 task.stack: ffffc90002c18000
->>>>> [   56.183629] RIP: 0010:vfs_statfs+0x7c/0xc0
->>>>> [   56.184341] RSP: 0018:ffffc90002c1bb28 EFLAGS: 00010202
->>>>> [   56.185143] RAX: 0000000000000000 RBX: ffffc90002c1bbf0 RCX: 0000000000000020
->>>>> [   56.186085] RDX: 0000000000001801 RSI: 0000000000001801 RDI: 0000000000000000
->>>>> [   56.187066] RBP: ffffc90002c1bbc0 R08: ffffffffffffff00 R09: 00000000000000ff
->>>>> [   56.188268] R10: 000000000038be3a R11: ffff880408b18258 R12: 0000000000000000
->>>>> [   56.189336] R13: ffff88040c23ad00 R14: ffff88040b874000 R15: ffffc90002c1bbf0
->>>>> [   56.190444] FS:  0000000000000000(0000) GS:ffff88041fc00000(0000) knlGS:0000000000000000
->>>>> [   56.191876] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->>>>> [   56.192843] CR2: 0000000000000560 CR3: 0000000001e0a002 CR4: 00000000001606f0
->>>>> [   56.193898] Call Trace:
->>>>> [   56.194510]  nfsd4_encode_fattr+0x201/0x1f90
->>>>> [   56.195267]  ? generic_permission+0x12c/0x1a0
->>>>> [   56.196025]  nfsd4_encode_getattr+0x25/0x30
->>>>> [   56.196753]  nfsd4_encode_operation+0x98/0x1b0
->>>>> [   56.197526]  nfsd4_proc_compound+0x2a0/0x5e0
->>>>> [   56.198268]  nfsd_dispatch+0xe8/0x220
->>>>> [   56.198968]  svc_process_common+0x475/0x640
->>>>> [   56.199696]  ? nfsd_destroy+0x60/0x60
->>>>> [   56.200404]  svc_process+0xf2/0x1a0
->>>>> [   56.201079]  nfsd+0xe3/0x150
->>>>> [   56.201706]  kthread+0x117/0x130
->>>>> [   56.202354]  ? kthread_create_on_node+0x40/0x40
->>>>> [   56.203100]  ret_from_fork+0x25/0x30
->>>>> [   56.203774] Code: d6 89 d6 81 ce 00 04 00 00 f6 c1 08 0f 45 d6 89 d6 81 ce 00 08 00 00 f6 c1 10 0f 45 d6 89 d6 81 ce>
->>>>> [   56.206289] RIP: vfs_statfs+0x7c/0xc0 RSP: ffffc90002c1bb28
->>>>> [   56.207110] CR2: 0000000000000560
->>>>> [   56.207763] ---[ end trace d452986a80f64aaa ]---
->>>>
->>>>> On Sat, Nov 11, 2017 at 8:13 AM, Kees Cook <keescook@chromium.org> wrote:
->>>>>>
->>>>>> I'll take a closer look at this and see if I can provide something to
->>>>>> narrow it down.
->>>
->>> How reliable is this crash? The best idea I have to isolate it would
->>> be to bisect the additions of the __randomize_layout markings on
->>> various structures. I would start with the ones Al is most upset to
->>> see randomized. ;)
->>
->> It's pretty reliable, once I get a bad seed I can reproduce the crash
->> pretty quickly.
->>
->>> For the first step, I'd try a revert of
->>> 9225331b310821760f39ba55b00b8973602adbb5, which enables a large
->>> portion of struct randomization. If that doesn't change things, I can
->>> provide a series that reverts 3859a271a003aba01e45b85c9d8b355eb7bf25f9
->>> and then re-applies __randomize_layout one structure per patch, and
->>> you could bisect that?
->>
->> Sure, I can bisect that.
-> 
-> Okay, that should at least let us know if this is a specific struct
-> that is not expecting to get randomized, or if there is some deeper
-> flaw. Here's the tree, based on 4.14:
-> https://git.kernel.org/pub/scm/linux/kernel/git/kees/linux.git/log/?h=kspp/randstruct/bisection
-> 
-> With commit d9e12200852d, all randomization selections are reverted. I
-> would expect this to be a "good" kernel for the bisect.
+On Fri, Nov 17, 2017 at 4:27 PM, Patrick McLean <chutzpah@gentoo.org> wrote:
+>
+> I am still getting the crash at d9e12200852d, I figured I would
+> double-check the "good" and "bad" kernels before starting a full bisect.
 
-I am still getting the crash at d9e12200852d, I figured I would
-double-check the "good" and "bad" kernels before starting a full bisect.
+.. but without GCC_PLUGIN_RANDSTRUCT it's solid?
 
-I guess it must be something somewhere else? I am happy to test or
-bisect more patches.
+Kees removed even the baseline "randomize pure function pointer
+structures", so at that commit, nothing should be randomized.
 
-Here is the BUG message for reference:
-> [   56.495987] BUG: unable to handle kernel NULL pointer dereference at 0000000000000560
-> [   56.497404] IP: vfs_statfs+0x7c/0xc0
-> [   56.498092] PGD 0 P4D 0 
-> [   56.498716] Oops: 0000 [#1] SMP
-> [   56.499366] Modules linked in: ipt_MASQUERADE nf_nat_masquerade_ipv4 xt_multiport xt_addrtype iptable_mangle iptable_raw iptable_nat nf_nat_ipv4 nf_nat gkuart(O) usbserial x86_pkg_temp_thermal tpm_tis ipmi_ssif tpm_tis_core ie31200_edac ext4 mbcache jbd2 e1000e crc32c_intel
-> [   56.502653] CPU: 0 PID: 3975 Comm: nfsd Tainted: G           O    4.14.0-git-kratos-1-00061-gd893c17b3146 #3
-> [   56.504071] Hardware name: TYAN S5510/S5510, BIOS V2.02 03/12/2013
-> [   56.504957] task: ffff88040cba7000 task.stack: ffffc90002c08000
-> [   56.505843] RIP: 0010:vfs_statfs+0x7c/0xc0
-> [   56.506571] RSP: 0018:ffffc90002c0bb28 EFLAGS: 00010202
-> [   56.507383] RAX: 0000000000000000 RBX: ffffc90002c0bbf0 RCX: 0000000000000020
-> [   56.508354] RDX: 0000000000001000 RSI: 0000000000001000 RDI: 0000000000000000
-> [   56.509545] RBP: ffffc90002c0bbc0 R08: ffffffffffffff00 R09: 00000000000000ff
-> [   56.510622] R10: 000000000038be3a R11: ffff8804087563e8 R12: 0000000000000000
-> [   56.511693] R13: ffff88040c68d000 R14: ffff88040c4df000 R15: ffffc90002c0bbf0
-> [   56.512764] FS:  0000000000000000(0000) GS:ffff88041fc00000(0000) knlGS:0000000000000000
-> [   56.514216] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> [   56.515199] CR2: 0000000000000560 CR3: 0000000001e0a005 CR4: 00000000001606f0
-> [   56.516268] Call Trace:
-> [   56.516903]  nfsd4_encode_fattr+0x201/0x1f90
-> [   56.517686]  ? generic_permission+0x12c/0x1a0
-> [   56.518467]  nfsd4_encode_getattr+0x25/0x30
-> [   56.519220]  nfsd4_encode_operation+0x98/0x1b0
-> [   56.519991]  nfsd4_proc_compound+0x2a0/0x5e0
-> [   56.520758]  nfsd_dispatch+0xe8/0x220
-> [   56.521476]  svc_process_common+0x475/0x640
-> [   56.522221]  ? nfsd_destroy+0x60/0x60
-> [   56.522923]  svc_process+0xf2/0x1a0
-> [   56.523611]  nfsd+0xe3/0x150
-> [   56.524241]  kthread+0x117/0x130
-> [   56.524896]  ? kthread_create_on_node+0x40/0x40
-> [   56.525630]  ret_from_fork+0x25/0x30
-> [   56.526306] Code: d6 89 d6 81 ce 00 04 00 00 f6 c1 08 0f 45 d6 89 d6 81 ce 00 08 00 00 f6 c1 10 0f 45 d6 89 d6 81 ce 00 10 00 00 83 e1 20 0f 45 d6 <48> 8b b7 60 05 00 00 bf 10 00 00 00 83 ca 20 89 f1 83 e1 10 0f
-> [   56.528885] RIP: vfs_statfs+0x7c/0xc0 RSP: ffffc90002c0bb28
-> [   56.529772] CR2: 0000000000000560
-> [   56.530464] ---[ end trace e6cf48f1f8c0ee4e ]---
+But maybe the plugin code itself ends up confusing gcc somehow?
 
+Even when it doesn't actually do that "relayout_struct()" on the
+structure, it always does those TYPE_ATTRIBUTES() games.
 
-> 
-> The very end of the series (commit d893c17b3146), everything is back
-> to being randomized. I would expect this to be a "bad" kernel.
-> 
-> Each step between those two commits adds randomization to a single
-> struct (with the filesystem stuff near the front).
-> 
-> Here's hoping it'll be something obvious. :) Thanks for taking the
-> time to debug this!
+               Linus
