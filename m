@@ -1,124 +1,96 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp1040.oracle.com ([141.146.126.69]:27009 "EHLO
-        aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1423099AbdKRSHy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Nov 2017 13:07:54 -0500
-Subject: Re: Commit fcd8843c40 breaks old compilers
-To: Trond Myklebust <trondmy@primarydata.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:31854 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S967432AbdKRSMh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 18 Nov 2017 13:12:37 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "boris.ostrovsky@oracle.com" <boris.ostrovsky@oracle.com>,
         "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Commit fcd8843c40 breaks old compilers
+Date: Sat, 18 Nov 2017 18:12:32 +0000
+Message-ID: <1511028750.14386.1.camel@primarydata.com>
 References: <09a3d9ca-d191-5899-613d-8d0dbe0b68ea@oracle.com>
- <1511026783.10238.2.camel@primarydata.com>
-From: Boris Ostrovsky <boris.ostrovsky@oracle.com>
-Message-ID: <49fec52f-229a-4657-a80d-d1a40a9d38e4@oracle.com>
-Date: Sat, 18 Nov 2017 13:07:38 -0500
+         <1511026783.10238.2.camel@primarydata.com>
+         <49fec52f-229a-4657-a80d-d1a40a9d38e4@oracle.com>
+In-Reply-To: <49fec52f-229a-4657-a80d-d1a40a9d38e4@oracle.com>
 MIME-Version: 1.0
-In-Reply-To: <1511026783.10238.2.camel@primarydata.com>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+T24gU2F0LCAyMDE3LTExLTE4IGF0IDEzOjA3IC0wNTAwLCBCb3JpcyBPc3Ryb3Zza3kgd3JvdGU6
+DQo+IA0KPiBPbiAxMS8xOC8yMDE3IDEyOjM5IFBNLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6DQo+
+ID4gT24gU2F0LCAyMDE3LTExLTE4IGF0IDEyOjE5IC0wNTAwLCBCb3JpcyBPc3Ryb3Zza3kgd3Jv
+dGU6DQo+ID4gPiBDb21taXQgZmNkODg0M2M0MDZiNDY0MzM4NTdhZTQ1ZTVlOWQ4NGIwMWE3ZDIw
+YiBicmVha3Mgb24gb2xkZXINCj4gPiA+IGNvbXBpbGVycyB3aGljaCBjYW5ub3QgcHJvY2VzcyBp
+bml0aWFsaXplcnMgZm9yIGFub255bW91cw0KPiA+ID4gc3RydWN0dXJlczoNCj4gPiA+IA0KPiA+
+ID4gK2NvbnN0IG5mczRfc3RhdGVpZCBpbnZhbGlkX3N0YXRlaWQgPSB7DQo+ID4gPiArICAgICAg
+IHsNCj4gPiA+ICsgICAgICAgICAgICAgICAuc2VxaWQgPSBjcHVfdG9fYmUzMigweGZmZmZmZmZm
+VSksDQo+ID4gPiArICAgICAgICAgICAgICAgLm90aGVyID0geyAwIH0sDQo+ID4gPiArICAgICAg
+IH0sDQo+ID4gPiArICAgICAgIC50eXBlID0gTkZTNF9JTlZBTElEX1NUQVRFSURfVFlQRSwNCj4g
+PiA+ICt9Ow0KPiA+ID4gDQo+ID4gPiANCj4gPiA+IC9ob21lL2J1aWxkL2xpbnV4LWxpbnVzL2Zz
+L25mcy9uZnM0c3RhdGUuYzo3NDogZXJyb3I6IHVua25vd24NCj4gPiA+IGZpZWxkDQo+ID4gPiDi
+gJhzZXFpZOKAmSBzcGVjaWZpZWQgaW4gaW5pdGlhbGl6ZXINCj4gPiA+IC9ob21lL2J1aWxkL2xp
+bnV4LWxpbnVzL2ZzL25mcy9uZnM0c3RhdGUuYzo3NDogd2FybmluZzogbWlzc2luZw0KPiA+ID4g
+YnJhY2VzDQo+ID4gPiBhcm91bmQgaW5pdGlhbGl6ZXINCj4gPiA+IC9ob21lL2J1aWxkL2xpbnV4
+LWxpbnVzL2ZzL25mcy9uZnM0c3RhdGUuYzo3NDogd2FybmluZzogKG5lYXINCj4gPiA+IGluaXRp
+YWxpemF0aW9uIGZvciDigJhpbnZhbGlkX3N0YXRlaWQuPGFub255bW91cz4uZGF0YeKAmSkNCj4g
+PiA+IC9ob21lL2J1aWxkL2xpbnV4LWxpbnVzL2ZzL25mcy9uZnM0c3RhdGUuYzo3NDogd2Fybmlu
+Zzogb3ZlcmZsb3cNCj4gPiA+IGluDQo+ID4gPiBpbXBsaWNpdCBjb25zdGFudCBjb252ZXJzaW9u
+DQo+ID4gPiAvaG9tZS9idWlsZC9saW51eC1saW51cy9mcy9uZnMvbmZzNHN0YXRlLmM6NzU6IGVy
+cm9yOiB1bmtub3duDQo+ID4gPiBmaWVsZA0KPiA+ID4g4oCYb3RoZXLigJkgc3BlY2lmaWVkIGlu
+IGluaXRpYWxpemVyDQo+ID4gPiAvaG9tZS9idWlsZC9saW51eC1saW51cy9mcy9uZnMvbmZzNHN0
+YXRlLmM6NzU6IGVycm9yOiBleHRyYSBicmFjZQ0KPiA+ID4gZ3JvdXANCj4gPiA+IGF0IGVuZCBv
+ZiBpbml0aWFsaXplcg0KPiA+ID4gL2hvbWUvYnVpbGQvbGludXgtbGludXMvZnMvbmZzL25mczRz
+dGF0ZS5jOjc1OiBlcnJvcjogKG5lYXINCj4gPiA+IGluaXRpYWxpemF0aW9uIGZvciDigJhpbnZh
+bGlkX3N0YXRlaWQuPGFub255bW91cz7igJkpDQo+ID4gPiAvaG9tZS9idWlsZC9saW51eC1saW51
+cy9mcy9uZnMvbmZzNHN0YXRlLmM6NzU6IHdhcm5pbmc6IGV4Y2Vzcw0KPiA+ID4gZWxlbWVudHMN
+Cj4gPiA+IGluIHVuaW9uIGluaXRpYWxpemVyDQo+ID4gPiAvaG9tZS9idWlsZC9saW51eC1saW51
+cy9mcy9uZnMvbmZzNHN0YXRlLmM6NzU6IHdhcm5pbmc6IChuZWFyDQo+ID4gPiBpbml0aWFsaXph
+dGlvbiBmb3Ig4oCYaW52YWxpZF9zdGF0ZWlkLjxhbm9ueW1vdXM+4oCZKQ0KPiA+ID4gbWFrZVs0
+XTogKioqIFtmcy9uZnMvbmZzNHN0YXRlLm9dIEVycm9yIDENCj4gPiA+IG1ha2VbM106ICoqKiBb
+ZnMvbmZzXSBFcnJvciAyDQo+ID4gPiANCj4gPiA+IA0KPiA+ID4gRkMtNjQgPGJ1aWxkQGJ1aWxk
+LW1rMjp+PiBnY2MgLS12ZXJzaW9uDQo+ID4gPiBnY2MgKEdDQykgNC40LjQgMjAxMDA1MDMgKFJl
+ZCBIYXQgNC40LjQtMikNCj4gPiA+IA0KPiA+ID4gDQo+ID4gPiBBIHNpbWlsYXIgYnVnIHdhcyBm
+aXhlZCBieQ0KPiA+ID4gZTA3MTRlYzRmOWVmZTdiODY4MjhiMGRjYzA3N2ZkOGY1ZDhlNWU5MQ0K
+PiA+ID4gYnV0DQo+ID4gPiBJIGRvbid0IHRoaW5rIHRoZSBzYW1lIGFwcHJvYWNoIGNhbiB3b3Jr
+IGhlcmUuDQo+ID4gDQo+ID4gDQo+ID4gSSBkb24ndCBoYXZlIGFueSBzZXR1cHMgd2l0aCBnY2Mg
+NC40LjQuIFdoYXQgaXMgaXQgZXhwZWN0aW5nIGhlcmU/DQo+ID4gSXMNCj4gPiBpdCBleHBlY3Rp
+bmcgYW4gZXh0cmEgc2V0IG9mIGJyYWNlcyBkdWUgdG8gdGhlIGFub255bW91cyAic3RydWN0Ij8N
+Cj4gPiANCj4gDQo+IE5vLCB0aGF0IHdvbid0IHdvcmsgKGF0IGxlYXN0IEkgY291bGRuJ3QgZ2V0
+IGl0IHRvIHdvcmspIGJlY2F1c2UgdGhlIA0KPiBzb2x1dGlvbiBmcm9tIGUwNzE0ZWM0ZjllIGFz
+c3VtZXMgdGhhdCB0aGUgYW5vbnltb3VzIHN0cnVjdCBpcyB0aGUNCj4gZmlyc3QgDQo+IG9uZSBp
+biB0aGUgZW52ZWxvcGluZyBzdHJ1Y3QuDQo+IA0KPiBJdCB3b3JrZWQgb25seSBpZiBJICh0aGlz
+IGlzIGEgc21hbGwgQyBwcm9ncmFtIHdpdGggZXF1aXZhbGVudA0KPiBzdHJ1Y3RzKToNCj4gDQo+
+IHN0cnVjdCBuZnM0X3N0YXRlaWRfc3RydWN0IHsNCj4gICAgICAgICAgdW5pb24gew0KPiAgICAg
+ICAgICAgICAgICAgIC8vY2hhciBkYXRhWzRdOw0KPiAgICAgICAgICAgICAgICAgIHN0cnVjdCB7
+DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICB1bnNpZ25lZCBzZXFpZDsNCj4gICAgICAgICAg
+ICAgICAgICAgICAgICAgIGNoYXIgb3RoZXJbNl07DQo+ICAgICAgICAgICAgICAgICAgfSBfX2F0
+dHJpYnV0ZV9fICgocGFja2VkKSk7DQo+IAkJY2hhciBkYXRhWzRdOw0KPiAgICAgICAgICB9Ow0K
+PiBhbmQgdGhlbg0KPiANCj4gY29uc3QgbmZzNF9zdGF0ZWlkIGludmFsaWRfc3RhdGVpZCA9IHsN
+Cj4gICAgICAgICAgew0KPiAgICAgICAgICAgICAgICAgICAgey5zZXFpZCA9IDB4ZmZmZmZmZmZV
+LA0KPiAgICAgICAgICAgICAgICAgICAgLm90aGVyID0geyAwIH0gfSwNCj4gICAgICAgICAgfSwN
+Cj4gICAgICAgICAgLnR5cGUgPSBORlM0X0lOVkFMSURfU1RBVEVJRF9UWVBFLA0KPiB9Ow0KPiAN
+Cj4gSWYgSSBrZWVwIGRhdGFbNF0gd2hlcmUgaXQgaXMgbm93IEkgZ2V0IGNvbXBpbGVyIGVycm9y
+DQo+IA0KPiBhbi5jOjM1OjIwOiBlcnJvcjogZmllbGQgbmFtZSBub3QgaW4gcmVjb3JkIG9yIHVu
+aW9uIGluaXRpYWxpemVyDQo+ICAgICAgICAgICAgICAgICAgICAgey5zZXFpZCA9IDB4ZmZmZmZm
+ZmZVLA0KPiAgICAgICAgICAgICAgICAgICAgICBeDQo+IGFuLmM6MzU6MjA6IG5vdGU6IChuZWFy
+IGluaXRpYWxpemF0aW9uIGZvciANCj4gJ2ludmFsaWRfc3RhdGVpZC48YW5vbnltb3VzPi5kYXRh
+JykNCj4gYW4uYzozNToyOTogd2FybmluZzogb3ZlcmZsb3cgaW4gaW1wbGljaXQgY29uc3RhbnQg
+Y29udmVyc2lvbiBbLQ0KPiBXb3ZlcmZsb3ddDQo+ICAgICAgICAgICAgICAgICAgICAgey5zZXFp
+ZCA9IDB4ZmZmZmZmZmZVLA0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBefn5+fn5+
+fn5+fg0KPiBhbi5jOjM2OjE5OiBlcnJvcjogZmllbGQgbmFtZSBub3QgaW4gcmVjb3JkIG9yIHVu
+aW9uIGluaXRpYWxpemVyDQo+ICAgICAgICAgICAgICAgICAgICAgLm90aGVyID0geyAwIH0gfSwN
+Cj4gICAgICAgICAgICAgICAgICAgICBeDQo+IGFuLmM6MzY6MTk6IG5vdGU6IChuZWFyIGluaXRp
+YWxpemF0aW9uIGZvciANCj4gJ2ludmFsaWRfc3RhdGVpZC48YW5vbnltb3VzPi5kYXRhJykNCj4g
+YW4uYzozNjoxOTogd2FybmluZzogYnJhY2VzIGFyb3VuZCBzY2FsYXIgaW5pdGlhbGl6ZXINCj4g
+YW4uYzozNjoxOTogbm90ZTogKG5lYXIgaW5pdGlhbGl6YXRpb24gZm9yIA0KPiAnaW52YWxpZF9z
+dGF0ZWlkLjxhbm9ueW1vdXM+LmRhdGFbMV0nKQ0KPiANCj4gSSBkb24ndCBrbm93IGlmIHlvdSB3
+YW50IHRvIGNoYW5nZSBwdWJsaWMgaGVhZGVyIGZpbGUganVzdCB0byBnZXQNCj4gYXJvdW5kIA0K
+PiB0aGlzIHByb2JsZW0uDQoNClNpZ2guLi4uIE9LLCBob3cgYWJvdXQgc29tZXRoaW5nIGxpa2Ug
+dGhlIGZvbGxvd2luZyB0aGVuOg0KDQp7IC5kYXRhID0geyAweGZmLCAweGZmLCAweGZmLCAweGZm
+LCAwIH0sIH0NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRh
+aW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-
-On 11/18/2017 12:39 PM, Trond Myklebust wrote:
-> On Sat, 2017-11-18 at 12:19 -0500, Boris Ostrovsky wrote:
->> Commit fcd8843c406b46433857ae45e5e9d84b01a7d20b breaks on older
->> compilers which cannot process initializers for anonymous structures:
->>
->> +const nfs4_stateid invalid_stateid = {
->> +       {
->> +               .seqid = cpu_to_be32(0xffffffffU),
->> +               .other = { 0 },
->> +       },
->> +       .type = NFS4_INVALID_STATEID_TYPE,
->> +};
->>
->>
->> /home/build/linux-linus/fs/nfs/nfs4state.c:74: error: unknown field
->> ‘seqid’ specified in initializer
->> /home/build/linux-linus/fs/nfs/nfs4state.c:74: warning: missing
->> braces
->> around initializer
->> /home/build/linux-linus/fs/nfs/nfs4state.c:74: warning: (near
->> initialization for ‘invalid_stateid.<anonymous>.data’)
->> /home/build/linux-linus/fs/nfs/nfs4state.c:74: warning: overflow in
->> implicit constant conversion
->> /home/build/linux-linus/fs/nfs/nfs4state.c:75: error: unknown field
->> ‘other’ specified in initializer
->> /home/build/linux-linus/fs/nfs/nfs4state.c:75: error: extra brace
->> group
->> at end of initializer
->> /home/build/linux-linus/fs/nfs/nfs4state.c:75: error: (near
->> initialization for ‘invalid_stateid.<anonymous>’)
->> /home/build/linux-linus/fs/nfs/nfs4state.c:75: warning: excess
->> elements
->> in union initializer
->> /home/build/linux-linus/fs/nfs/nfs4state.c:75: warning: (near
->> initialization for ‘invalid_stateid.<anonymous>’)
->> make[4]: *** [fs/nfs/nfs4state.o] Error 1
->> make[3]: *** [fs/nfs] Error 2
->>
->>
->> FC-64 <build@build-mk2:~> gcc --version
->> gcc (GCC) 4.4.4 20100503 (Red Hat 4.4.4-2)
->>
->>
->> A similar bug was fixed by e0714ec4f9efe7b86828b0dcc077fd8f5d8e5e91
->> but
->> I don't think the same approach can work here.
-> 
-> 
-> I don't have any setups with gcc 4.4.4. What is it expecting here? Is
-> it expecting an extra set of braces due to the anonymous "struct"?
-> 
-
-No, that won't work (at least I couldn't get it to work) because the 
-solution from e0714ec4f9e assumes that the anonymous struct is the first 
-one in the enveloping struct.
-
-It worked only if I (this is a small C program with equivalent structs):
-
-struct nfs4_stateid_struct {
-         union {
-                 //char data[4];
-                 struct {
-                         unsigned seqid;
-                         char other[6];
-                 } __attribute__ ((packed));
-		char data[4];
-         };
-and then
-
-const nfs4_stateid invalid_stateid = {
-         {
-                   {.seqid = 0xffffffffU,
-                   .other = { 0 } },
-         },
-         .type = NFS4_INVALID_STATEID_TYPE,
-};
-
-If I keep data[4] where it is now I get compiler error
-
-an.c:35:20: error: field name not in record or union initializer
-                    {.seqid = 0xffffffffU,
-                     ^
-an.c:35:20: note: (near initialization for 
-'invalid_stateid.<anonymous>.data')
-an.c:35:29: warning: overflow in implicit constant conversion [-Woverflow]
-                    {.seqid = 0xffffffffU,
-                              ^~~~~~~~~~~
-an.c:36:19: error: field name not in record or union initializer
-                    .other = { 0 } },
-                    ^
-an.c:36:19: note: (near initialization for 
-'invalid_stateid.<anonymous>.data')
-an.c:36:19: warning: braces around scalar initializer
-an.c:36:19: note: (near initialization for 
-'invalid_stateid.<anonymous>.data[1]')
-
-I don't know if you want to change public header file just to get around 
-this problem.
-
-
--boris
