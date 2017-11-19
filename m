@@ -1,43 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f196.google.com ([209.85.220.196]:35540 "EHLO
-        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750806AbdKSK65 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Nov 2017 05:58:57 -0500
+Received: from ozlabs.org ([103.22.144.67]:39871 "EHLO ozlabs.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750807AbdKSMUl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 19 Nov 2017 07:20:41 -0500
+Date: Sun, 19 Nov 2017 23:20:37 +1100
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: [PULL REQUEST] nfsd changes for 4.15
+Message-ID: <20171119232037.6a719dec@canb.auug.org.au>
+In-Reply-To: <CA+55aFwPHpD0Ehq8_VawfLCTXgMkbWE3fvdNc__ELmirh1rPVQ@mail.gmail.com>
+References: <20171118184020.GA22603@fieldses.org>
+        <CA+55aFwPHpD0Ehq8_VawfLCTXgMkbWE3fvdNc__ELmirh1rPVQ@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20171118185011.4729-1-trond.myklebust@primarydata.com>
-References: <cce6f1be-0481-4ecc-85e2-a626cf381ce3@oracle.com> <20171118185011.4729-1-trond.myklebust@primarydata.com>
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Date: Sun, 19 Nov 2017 11:58:56 +0100
-Message-ID: <CAMuHMdXF=n0Wy1PZi5smz-MS4JUbUBfnfeVO9NtJwj2sxUttSQ@mail.gmail.com>
-Subject: Re: [PATCH] NFSv4: Ensure gcc 4.4.4 can compile initialiser for "invalid_stateid"
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        Boris Ostrovsky <boris.ostrovsky@oracle.com>,
-        "linux-nfs @ vger . kernel . org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel @ vger . kernel . org" <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 18, 2017 at 7:50 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> gcc 4.4.4 is too old to have full C11 anonymous union support, so
-> the current initialiser fails to compile.
+Hi Linus,
 
-Thanks! Works fine with gcc-4.1.2, too.
+On Sat, 18 Nov 2017 11:40:44 -0800 Linus Torvalds <torvalds@linux-foundation.org> wrote:
+>
+> On Sat, Nov 18, 2017 at 10:40 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > Please pull nfsd changes for 4.15 from:  
+> 
+> Hmm. This had a tracepoint conflict with the nfs client pull.
+> 
+> The resolution seems obvious and I did it, but I'd like people to
+> review the end result but particularly also their workflows, because I
+> don't think that conflict was reported anywhere and doesn't seem to
+> exist in next-20171115.
+> 
+> It certainly wasn't mentioned to me in either pull request.
+> 
+> Were the nfs client changes not in next?
 
-> Reported-by: Boris Ostrovsky <boris.ostrovsky@oracle.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-
-Reviewed-by: Geert Uytterhoeven <geert@linux-m68k.org>
-
-Gr{oetje,eeting}s,
-
-                        Geert
-
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
-
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+They were not :-(
+-- 
+Cheers,
+Stephen Rothwell
