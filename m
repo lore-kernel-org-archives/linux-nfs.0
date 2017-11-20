@@ -1,171 +1,149 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from doppler.thel33t.co.uk ([185.153.207.61]:49316 "EHLO
-        doppler.thel33t.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751189AbdKTOen (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Nov 2017 09:34:43 -0500
-Received: from doppler.thel33t.co.uk (localhost [127.0.0.1])
-        by doppler.thel33t.co.uk (Postfix) with ESMTP id 40E5A21803
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Nov 2017 14:27:49 +0000 (GMT)
+Received: from mx1.redhat.com ([209.132.183.28]:39964 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751506AbdKTQbf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 20 Nov 2017 11:31:35 -0500
+Date: Mon, 20 Nov 2017 16:31:33 +0000
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Abbas Naderi <abiusx@google.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Bruce Fields <bfields@fieldses.org>
+Subject: Re: [PATCH v3 08/14] SUNRPC: add AF_VSOCK support to svc_xprt.c
+Message-ID: <20171120163133.GL4516@stefanha-x1.localdomain>
+References: <20170630132352.32133-1-stefanha@redhat.com>
+ <20170630132352.32133-9-stefanha@redhat.com>
+ <1509459038.4553.26.camel@redhat.com>
+ <20171107133111.GK6809@stefanha-x1.localdomain>
+ <1510063286.4518.34.camel@redhat.com>
+ <20171116152502.GG29106@stefanha-x1.localdomain>
+ <A8EC5B49-872F-4D60-835C-5D1C2C04E362@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Date: Mon, 20 Nov 2017 14:27:49 +0000
-From: Leigh Brown <leigh@solinno.co.uk>
-To: linux-nfs@vger.kernel.org
-Subject: [RFC PATCH] rpc.svcgssd: add ability to override hostname
-Message-ID: <93e03b4df2fecbc505547d80935d5be7@doppler.thel33t.co.uk>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="Z1OTrj3C7qypP14j"
+In-Reply-To: <A8EC5B49-872F-4D60-835C-5D1C2C04E362@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add the -h option to rpc.svcgssd to allow the hostname to be overridden.
-This is useful in clustered configurations using NVSv4 and Kerberos to
-ensure the hostname is set to the service name of the cluster.
 
-Signed-off-by: Leigh Brown <leigh@solinno.co.uk>
----
-  systemd/nfs.conf.man   |  4 +++-
-  utils/gssd/gss_util.c  | 21 +++++++++++++++++++++
-  utils/gssd/krb5_util.c |  2 +-
-  utils/gssd/svcgssd.c   | 14 ++++++++++++--
-  utils/gssd/svcgssd.man | 10 +++++++++-
-  5 files changed, 46 insertions(+), 5 deletions(-)
+--Z1OTrj3C7qypP14j
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
-index 189b052..08ca8c2 100644
---- a/systemd/nfs.conf.man
-+++ b/systemd/nfs.conf.man
-@@ -228,7 +228,9 @@ for details.
-  .TP
-  .B svcgssd
-  Recognized values:
--.BR principal .
-+.BR principal
-+and
-+.BR hostname .
+On Thu, Nov 16, 2017 at 03:53:04PM -0500, Chuck Lever wrote:
+>=20
+> > On Nov 16, 2017, at 10:25 AM, Stefan Hajnoczi <stefanha@redhat.com> wro=
+te:
+> >=20
+> > On Tue, Nov 07, 2017 at 09:01:26AM -0500, Jeff Layton wrote:
+> >> On Tue, 2017-11-07 at 13:31 +0000, Stefan Hajnoczi wrote:
+> >>> On Tue, Oct 31, 2017 at 10:10:38AM -0400, Jeff Layton wrote:
+> >>>> On Fri, 2017-06-30 at 14:23 +0100, Stefan Hajnoczi wrote:
+> >>>>> @@ -595,6 +609,10 @@ int svc_port_is_privileged(struct sockaddr *si=
+n)
+> >>>>> 	case AF_INET6:
+> >>>>> 		return ntohs(((struct sockaddr_in6 *)sin)->sin6_port)
+> >>>>> 			< PROT_SOCK;
+> >>>>> +	case AF_VSOCK:
+> >>>>> +		return ((struct sockaddr_vm *)sin)->svm_port <=3D
+> >>>>> +			LAST_RESERVED_PORT;
+> >>>>> +
+> >>>>> 	default:
+> >>>>> 		return 0;
+> >>>>> 	}
+> >>>>=20
+> >>>> Does vsock even have the concept of a privileged port? I would imagi=
+ne
+> >>>> that root in a guest VM would carry no particular significance from =
+an
+> >>>> export security standpoint
+> >>>>=20
+> >>>> Since you're defining a new transport here, it might be nice write t=
+he
+> >>>> RFCs to avoid that distinction, if possible.
+> >>>>=20
+> >>>> Note that RDMA just has svc_port_is_privileged always return 1.
+> >>>=20
+> >>> AF_VSOCK has the same 0-1023 privileged port range as TCP.
+> >>>=20
+> >>=20
+> >> But why? And, given that you have 32-bits for a port with AF_VSOCK vs
+> >> the 16 bits on an AF_INET/AF_INET6, why is the range so pitifully smal=
+l?
+> >>=20
+> >> Reserved ports are a bit of a dinosaur holdover from when being root on
+> >> a machine on the Internet meant something. With v4.1 it's much less of
+> >> an issue, but in the "olden days", reserved port exhaustion could be a
+> >> real problem.
+> >>=20
+> >> Mandating low ports can also be a problem in other way. Some well known
+> >> services use ports in the ephemeral range, and if your service starts
+> >> late and someone else has taken the port for an ephemeral one, you're
+> >> out of luck.
+> >>=20
+> >> I think we have to ask ourselves:
+> >>=20
+> >> Should the ability to open a low port inside of a VM carry any
+> >> significance at all to an RPC server? I'd suggest not, and I think it'd
+> >> be good to word the RFC to make that explicitly clear.
+> >=20
+> > AF_VSOCK has had the reserved port range since it was first merged in
+> > 2013.  That's before my time but I do see some use for identifying
+> > connections coming from privileged processes.
+> >=20
+> > Given that TCP has the same privileged port range, is there any reason
+> > why AF_VSOCK would be any worse off than TCP for having it?
+>=20
+> I agree with Jeff that we need to think carefully about this.
+>=20
+> I don't especially care for the privileged port check, but:
+>=20
+> In this case, you are inventing an RPC transport that makes
+> it impossible to use strong security (ie, RPCSEC_GSS). We
+> should be careful about removing the check because only
+> AUTH_NULL and AUTH_UNIX security can be used in this kind
+> of deployment.
+>=20
+> Privileged ports are easy to spoof if there is an opportunity
+> for a MitM attack to alter the port number of RPCs in transit.
+> With VSOCK there may be no such opportunity, thus privileged
+> ports might provide an adequate level of security here. I
+> make that claim with no deep experience of VSOCK environments.
+>=20
+> When writing the VSOCK-related RFCs, you will need to provide
+> a very clear and concise rationale to the IESG for purposely
+> not supporting the use of RPCSEC_GSS. It will start with "well,
+> these RPCs do not flow on open networks and are thus not
+> subject to MitM attacks"; then proceed to careful discussion of
+> how the server will guard against rogue users on guests, and
+> assumptions about the trust relationship between the guests
+> and the host. You will have to make AUTH_UNIX into a defensible
+> deployment choice, and port privilege might be a part of that.
+>=20
+> Note also that the NFSv4 standards require that implementations
+> can support RPCSEC_GSS. NFSv4 on VSOCK cannot. Something will
+> have to be done about that.
 
-  See
-  .BR rpc.svcgssd (8)
-diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
-index 2e6d40f..9966a06 100644
---- a/utils/gssd/gss_util.c
-+++ b/utils/gssd/gss_util.c
-@@ -339,3 +339,24 @@ out:
-  	return retval;
-  }
+Thanks!  I will cover it in the draft RFC.
 
-+static char *gssd_hostname = NULL;
-+
-+int gssd_gethostname(char *name, size_t len)
-+{
-+	if (gssd_hostname) {
-+		strncpy(name, gssd_hostname, len);
-+		return 0;
-+	}
-+	else
-+		return gethostname(name, len);
-+}
-+
-+/* NB: Different semantics to sethostname(2) */
-+int gssd_sethostname(const char *name)
-+{
-+	if (gssd_hostname)
-+		free(gssd_hostname);
-+
-+	gssd_hostname = strdup(name);
-+	return gssd_hostname ? 0 : ENOMEM;
-+}
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index b64818a..a9b84ee 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -785,7 +785,7 @@ find_keytab_entry(krb5_context context, krb5_keytab 
-kt, const char *tgtname,
-  		goto out;
+Stefan
 
-  	/* Get full local hostname */
--	if (gethostname(myhostname, sizeof(myhostname)) == -1) {
-+	if (gssd_gethostname(myhostname, sizeof(myhostname)) == -1) {
-  		retval = errno;
-  		k5err = gssd_k5_err_msg(context, retval);
-  		printerr(1, "%s while getting local hostname\n", k5err);
-diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
-index 3514ae1..62f8973 100644
---- a/utils/gssd/svcgssd.c
-+++ b/utils/gssd/svcgssd.c
-@@ -82,7 +82,8 @@ sig_hup(int signal)
-  static void
-  usage(char *progname)
-  {
--	fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-p principal]\n",
-+	fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-h hostname] "
-+							   "[-p principal]\n",
-  		progname);
-  	exit(1);
-  }
-@@ -111,7 +112,13 @@ main(int argc, char *argv[])
-  	else
-  		principal = s;
+--Z1OTrj3C7qypP14j
+Content-Type: application/pgp-signature; name="signature.asc"
 
--	while ((opt = getopt(argc, argv, "fivrnp:")) != -1) {
-+	s = conf_get_str("svcgssd", "hostname");
-+	if (!s)
-+		;
-+	else
-+		gssd_sethostname(s);
-+
-+	while ((opt = getopt(argc, argv, "fivrnp:h:")) != -1) {
-  		switch (opt) {
-  			case 'f':
-  				fg = 1;
-@@ -131,6 +138,9 @@ main(int argc, char *argv[])
-  			case 'p':
-  				principal = optarg;
-  				break;
-+			case 'h':
-+				gssd_sethostname(optarg);
-+				break;
-  			default:
-  				usage(argv[0]);
-  				break;
-diff --git a/utils/gssd/svcgssd.man b/utils/gssd/svcgssd.man
-index 15ef4c9..744cab7 100644
---- a/utils/gssd/svcgssd.man
-+++ b/utils/gssd/svcgssd.man
-@@ -6,7 +6,7 @@
-  .SH NAME
-  rpc.svcgssd \- server-side rpcsec_gss daemon
-  .SH SYNOPSIS
--.B "rpc.svcgssd [-n] [-v] [-r] [-i] [-f] [-p principal]"
-+.B "rpc.svcgssd [-n] [-v] [-r] [-i] [-f] [-h hostname] [-p principal]"
-  .SH DESCRIPTION
-  The rpcsec_gss protocol gives a means of using the gss-api generic 
-security
-  api to provide security for protocols using rpc (in particular, nfs).  
-Before
-@@ -36,6 +36,9 @@ increases the verbosity of the output (can be 
-specified multiple times).
-  If the nfsidmap library supports setting debug level,
-  increases the verbosity of the output (can be specified multiple 
-times).
-  .TP
-+.B -h
-+Use \fIhostname\fR instead of the default hostname.
-+.TP
-  .B -p
-  Use \fIprincipal\fR instead of the default
-  .RI nfs/ FQDN @ REALM .
-@@ -61,6 +64,11 @@ this is equivalent to the
-  option.  If set to any other value, that is used like the
-  .B -p
-  option.
-+.TP
-+.B hostname
-+This is equivalent to the
-+.B -h
-+option.
+-----BEGIN PGP SIGNATURE-----
 
-  .SH SEE ALSO
-  .BR rpc.gssd(8),
--- 
-2.11.0
+iQEcBAEBAgAGBQJaEwNlAAoJEJykq7OBq3PI94AH/0vX96nKQpJ2EUYoQP1VC5Zc
+uoAihIlbhJYXxRIDIJ83FGUczrnV7GNnCjIF+D6T3RtjahDx5/akLoPDCdOvr7tM
+lHShcT6MurcGvHNO/RiGI03sxDry5933+jvhplYJWrR4ZkpPXE6vt4p1AjXQk8Pw
+JYHJxs/Pe7cFRA4i5YKscAiOXmQOZ20VUAXQ6b8mfJ83bnrMT4KMv2BugMzojhsd
+Jd9LFTbvSbhMVYbx8HsrLXmlpqQh1QopjcIm9MKhszdfQqoAi8uzSJT2zRiMVpaR
+bDsNyEWt1xz1y2QTeuJr3vUNKUnUKoYWWB6Mb+iwkW/tWfpxCxt+IilgHCU9NGA=
+=oeEO
+-----END PGP SIGNATURE-----
 
+--Z1OTrj3C7qypP14j--
