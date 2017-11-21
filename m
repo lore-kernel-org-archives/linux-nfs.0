@@ -1,145 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bn3nam01on0112.outbound.protection.outlook.com ([104.47.33.112]:32075
-        "EHLO NAM01-BN3-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750794AbdKUSab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Nov 2017 13:30:31 -0500
-From: Alexander Hermes <Alexander.Hermes@metaswitch.com>
-To: Scott Mayhew <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [Req for Help] Issues with SELinux (labelled) NFS after upgrading
- kernel 3.10.0-327 =>3.10.0-693
-Date: Tue, 21 Nov 2017 18:30:28 +0000
-Message-ID: <BN1PR0201MB0673393B908EB62C6691CEE4FC230@BN1PR0201MB0673.namprd02.prod.outlook.com>
-References: <BN1PR0201MB067346CD800DDFDFF31CD2FFFC230@BN1PR0201MB0673.namprd02.prod.outlook.com>
- <20171121161725.ltsh6jk6dtetl7ui@tonberry.usersys.redhat.com>
-In-Reply-To: <20171121161725.ltsh6jk6dtetl7ui@tonberry.usersys.redhat.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx2.suse.de ([195.135.220.15]:33540 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751229AbdKUVPX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 21 Nov 2017 16:15:23 -0500
+From: NeilBrown <neilb@suse.com>
+To: "Michael Kerrisk \(man-pages\)" <mtk.manpages@gmail.com>
+Date: Wed, 22 Nov 2017 08:15:13 +1100
+Cc: linux-man@vger.kernel.org,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Cc: Lennart Poettering <lennart@poettering.net>
+Cc: Peng Tao <tao.peng@primarydata.com>
+Subject: [manpages PATCH] open_by_handle_at: clarifications needed due to NFS reexport
+Message-ID: <87wp2j1ggu.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Folks,
->=20
-> I'm looking for some guidance on how to troubleshoot/debug an issue with =
-(SELinux) labels over NFS that we've been having as a result of a kernel up=
-grade - description below.
-> I looked around on http://linux-nfs.org but was not able to find how to d=
-ebug this kind of issue with labels - everything I found relates to more fu=
-ndamental issues like mounts plain not working.=20
->=20
-> With apologies for sending this to the devel mailing list, could you plea=
-se help me get to the bottom of this? Or redirect me to somewhere / someone=
- that can?
->=20
-> Thank you very much,
->=20
-> Alexander Hermes
->=20
-> ----
->=20
-> ## Summary
->=20
-> In upgrading our servers from CentOS 7.3 to 7.4 we upgraded the kernel fr=
-om 3.10.0-327.36.2.el7.x86_64 to 3.10.0-693.2.2.el7.x86_64. As a result, NF=
-S v4.2 mounts mounted via /etc/fstab at boot do not have proper SElinux lab=
-el support - attempting to change labels on a mounted file leads to "Operat=
-ion Not Supported". `ls -lZ` shows the incorrect labels. Upon rebooting to =
-the earlier kernel version the issue goes away.
->=20
-> ## Background
->=20
-> As part of our gitlab HA deployment we use NFS to host data on a back end=
- server that is then mounted by application servers (cf. https://docs.gitla=
-b.com/ce/administration/high_availability/nfs.html). To do this we have a f=
-airly typical setup where the server (in this example "enfigitback2-devel")=
- exports a bunch of mounts via /etc/exports which are then mounted on a cou=
-ple of application servers ("enfigitfront1-devel" / "enfigitfront2-devel").
->=20
-> ## The issue
->=20
-> On the new kernel I am not able to change or view the SELinux labels of f=
-iles / directories mounted on the client:
->=20
-> ```
-> [root@enfigitfront2-devel ~]# chcon --recursive --type ssh_home_t=20
-> /var/opt/gitlab/.ssh/authorized_keys
-> chcon: failed to change context of=20
-> '/var/opt/gitlab/.ssh/authorized_keys' to=20
-> 'system_u:object_r:ssh_home_t:s0': Operation not supported=20
-> [root@enfigitfront2-devel ~]# uname -r
-> 3.10.0-693.2.2.el7.x86_64
-> ```
-> On the old kernel I am:
->=20
-> ```
-> [root@enfigitfront1-devel ~]# chcon --recursive --type ssh_home_t=20
-> /var/opt/gitlab/.ssh/authorized_keys
-> [root@enfigitfront1-devel ~]# uname -r
-> 3.10.0-327.36.2.el7.x86_64
-> ```
->=20
-> We can't keep using the old kernel forever so I'd like to get to the bott=
-om of this - what could this be due to? How can I debug this further to und=
-erstand where the "Operation not supported" is coming from?
->=20
-> ## Server details
-> Distro: CentOS 7.3 / 7.4
-> Kernel (`uname -r`):=20
->  * 3.10.0-514.10.2.el7.x86_64 (server)
-> * 3.10.0-693.2.2.el7.x86_64 (client - new)
-> * 3.10.0-327.36.2.el7.x86_64 (client - old)
-> nfs-utils: RPM package version 1.3.0
->=20
-> =20
-> Server mount option example:
-> /export/.ssh 172.18.10.148(rw,sync,no_root_squash)=20
-> 172.18.10.151(rw,sync,no_root_squash)
-
-Add "security_label" to the export options above.  If you don't see "securi=
-ty_label" listed in the exports(5) man page then you need to upgrade your n=
-fs-utils package.
-
--Scott
-
->=20
-> Client mount options (/etc/fstab):
-> enfigitback2-devel.datcon.co.uk:/export/.ssh    /var/opt/gitlab/.ssh    n=
-fs     defaults,soft,v4.2,rsize=3D1048576,wsize=3D1048576,noatime,_netdev,l=
-ookupcache=3Dnone 0       0
->=20
-> ## Debugging I've done
->=20
-> ### Mounting by hand
-> I tried to mount one of the exported mounts "by hand" using `mount` and f=
-ound the following:
-> * mounting the same export on a different mount point using the same=20
-> options as in /etc/fstab yields a mount that has the same issue
-> * mounting with `nosharecache` results in a mount that *does not* have th=
-e issue.
->=20
->=20
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
 
-Hi Scott,
+The recent addition of NFS re-export and the possibility of
+using name_to_handle_at() on an NFS filesystem raises issues
+with name_to_handle_at() which have not been properly documented.
 
-Thank you for pointing out "security_label". I have applied the option...
+Getting the filehandle for an untriggered automount point is
+arguably meaningless and in certainly not supported by NFS.
+name_to_handle_at() will return -EOVERFLOW even though the
+requested "handle_bytes" is large enough.  This is an unfortunate
+overloading of the error code, but is manageable.
 
-	/export/.ssh 172.18.10.148(rw,sync,no_root_squash,security_label) 172.18.1=
-0.151(rw,sync,no_root_squash,security_label)
+So clarify this and also note that the mount_id is returned
+when EOVERFLOW is reported.
 
-and rebooted both server and client (in that order), but I still see the sa=
-me behaviour as before on the server with the uplevel kernel:
+Thought: it would be nice if mount_id were returned in the
+EOPNOTSUPP case too.  I guess it is too late to fix that (?).
 
-	[root@enfigitfront2-devel ~]# chcon --recursive --type ssh_home_t /var/opt=
-/gitlab/.ssh/authorized_keys
-	chcon: failed to change context of '/var/opt/gitlab/.ssh/authorized_keys' =
-to 'system_u:object_r:ssh_home_t:s0': Operation not supported
+Link: https://github.com/systemd/systemd/issues/7082
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ man2/open_by_handle_at.2 | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
-I notice that the exports(5) man page mentions " This will only work if all=
- clients use a consistent security policy." under security_label. I'm not s=
-ure what a "consistent security policy" means - what does this mean in term=
-s of options/configuration?=20
+diff --git a/man2/open_by_handle_at.2 b/man2/open_by_handle_at.2
+index 91300e80fe24..9a30dd2ed476 100644
+=2D-- a/man2/open_by_handle_at.2
++++ b/man2/open_by_handle_at.2
+@@ -109,6 +109,12 @@ and
+ is set to indicate the required size;
+ the caller can then use this information to allocate a structure
+ of the correct size (see EXAMPLE below).
++Some care is needed here as
++.BR EOVERFLOW
++can also indicate that no filehandle is available for this particular
++name in a filesystem which does normally support filehandle lookup.
++This case can be detected when EOVERFLOW is returned without
++handle_bytes being increased.
+ .PP
+ Other than the use of the
+ .IR handle_bytes
+@@ -193,6 +199,10 @@ Opening the pathname in the fifth field of that record=
+ yields a file
+ descriptor for the mount point;
+ that file descriptor can be used in a subsequent call to
+ .BR open_by_handle_at ().
++.I mount_id
++is returned both for a successful call and for a call that results
++in the error
++.BR EOVERFLOW .
+ .PP
+ By default,
+ .BR name_to_handle_at ()
+@@ -206,6 +216,21 @@ is specified in
+ .I pathname
+ is dereferenced if it is a symbolic link
+ (so that the call returns a handle for the file referred to by the link).
++.PP
++.BR name_to_handle_at )
++does not trigger a mount when the final component of the path is an
++automount point.  When a filesystem supports both filehandles and
++automount points, a
++.BR name_to_handle_at ()
++call on an automount point will return with error
++.BR EOVERFLOW
++without having increased
++.IR handle_bytes .
++This can happen since Linux 4.13 with NFS when accessing a directory
++which is on a separate filesystem on the server.
++.\" commit 20fa19027286983ab2734b5910c4a687436e0c31
++In this case the automount can be triggered by adding a "/" to the end
++of the path.
+ .SS open_by_handle_at()
+ The
+ .BR open_by_handle_at ()
+=2D-=20
+2.14.0.rc0.dirty
 
-Thanks for the help,
-Alex
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloUl2EACgkQOeye3VZi
+gblHgxAAlvVOzYnDRfnkFI2ZBmfSwaRdUUWaG3X1TivB5CE2np48Xx2IdJ3eRaQE
+dLaWh1P7SoDCH1ueIG5h6kMFhudLvj6EHUz6H0HjASDd9IfuXn/X6WEfB1TTD7Zf
+U2hUYUCUe0bEa3VqcA2HHlc5351f336630MgB97LF09NIP9DcfdMYhL8RR08tLnV
+4GzhNAW7yYrfVS3QWOvQ7O7RyD8iXSLSltN8+6zZak+TrruG6eFQK1pUq031fhd3
+eT0taXug5ckkX63gaQyirVqoj5/nwvsg2dIG944dJF8ZRgMLaGYKVOoTsSqaFEXo
+NFaUl49MIyF3pdUe/uyM32qPG7hGIRa1qxtLAPF1Ds74w/nH+VC3puRv44az/v1g
+Gm1Zw4jsXbjvsjBYVLtEe56ToPQXVwZGWKPzdLs0PHWZ0iz67eaxyrSasT3AjZbO
+4IwBpdJApIJ9E7BpUMp1FTdukT5S1j79bXsbyU6JyPdv92crLkObWOHSmALL0nRC
+dqiHpolLgeBYwiShZWBhBPaI5jMPW7ECeJePkEn9TUp/wE2q4N30kk3Aw6nLyQrC
+4J4Yief9qmG0fX0LT/D4600SYc3mjc/mtJZ6EP/jkoDrZUUvPqWA5u1rHJ9fYOnj
+7M/L2rP/gTKb9e/GgoNmVkOhMWJvIg1zbkkl5/MV56NQ06KRAhY=
+=6VSA
+-----END PGP SIGNATURE-----
+--=-=-=--
