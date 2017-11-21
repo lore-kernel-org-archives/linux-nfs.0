@@ -1,97 +1,185 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:47100 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47873 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751228AbdKUQR0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 21 Nov 2017 11:17:26 -0500
-Date: Tue, 21 Nov 2017 11:17:25 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Alexander Hermes <Alexander.Hermes@metaswitch.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [Req for Help] Issues with SELinux (labelled) NFS after
- upgrading kernel 3.10.0-327 =>3.10.0-693
-Message-ID: <20171121161725.ltsh6jk6dtetl7ui@tonberry.usersys.redhat.com>
-References: <BN1PR0201MB067346CD800DDFDFF31CD2FFFC230@BN1PR0201MB0673.namprd02.prod.outlook.com>
+        id S1751187AbdKURDZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 21 Nov 2017 12:03:25 -0500
+Subject: Re: [RFC PATCH] rpc.svcgssd: add ability to override hostname
+To: Leigh Brown <leigh@solinno.co.uk>, linux-nfs@vger.kernel.org
+References: <93e03b4df2fecbc505547d80935d5be7@doppler.thel33t.co.uk>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <d3c18083-685f-9cee-73b3-7cad2fbe27c2@RedHat.com>
+Date: Tue, 21 Nov 2017 12:03:22 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BN1PR0201MB067346CD800DDFDFF31CD2FFFC230@BN1PR0201MB0673.namprd02.prod.outlook.com>
+In-Reply-To: <93e03b4df2fecbc505547d80935d5be7@doppler.thel33t.co.uk>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 21 Nov 2017, Alexander Hermes wrote:
+Hello,
 
-> Folks,
-> 
-> I'm looking for some guidance on how to troubleshoot/debug an issue with (SELinux) labels over NFS that we've been having as a result of a kernel upgrade - description below.
-> I looked around on http://linux-nfs.org but was not able to find how to debug this kind of issue with labels - everything I found relates to more fundamental issues like mounts plain not working. 
-> 
-> With apologies for sending this to the devel mailing list, could you please help me get to the bottom of this? Or redirect me to somewhere / someone that can?
-> 
-> Thank you very much,
-> 
-> Alexander Hermes
-> 
-> ----
-> 
-> ## Summary
-> 
-> In upgrading our servers from CentOS 7.3 to 7.4 we upgraded the kernel from 3.10.0-327.36.2.el7.x86_64 to 3.10.0-693.2.2.el7.x86_64. As a result, NFS v4.2 mounts mounted via /etc/fstab at boot do not have proper SElinux label support - attempting to change labels on a mounted file leads to "Operation Not Supported". `ls -lZ` shows the incorrect labels. Upon rebooting to the earlier kernel version the issue goes away.
-> 
-> ## Background
-> 
-> As part of our gitlab HA deployment we use NFS to host data on a back end server that is then mounted by application servers (cf. https://docs.gitlab.com/ce/administration/high_availability/nfs.html). To do this we have a fairly typical setup where the server (in this example "enfigitback2-devel") exports a bunch of mounts via /etc/exports which are then mounted on a couple of application servers ("enfigitfront1-devel" / "enfigitfront2-devel").
-> 
-> ## The issue
-> 
-> On the new kernel I am not able to change or view the SELinux labels of files / directories mounted on the client:
-> 
-> ```
-> [root@enfigitfront2-devel ~]# chcon --recursive --type ssh_home_t /var/opt/gitlab/.ssh/authorized_keys
-> chcon: failed to change context of '/var/opt/gitlab/.ssh/authorized_keys' to 'system_u:object_r:ssh_home_t:s0': Operation not supported
-> [root@enfigitfront2-devel ~]# uname -r
-> 3.10.0-693.2.2.el7.x86_64
-> ```
-> On the old kernel I am:
-> 
-> ```
-> [root@enfigitfront1-devel ~]# chcon --recursive --type ssh_home_t /var/opt/gitlab/.ssh/authorized_keys
-> [root@enfigitfront1-devel ~]# uname -r
-> 3.10.0-327.36.2.el7.x86_64
-> ```
-> 
-> We can't keep using the old kernel forever so I'd like to get to the bottom of this - what could this be due to? How can I debug this further to understand where the "Operation not supported" is coming from?
-> 
-> ## Server details
-> Distro: CentOS 7.3 / 7.4
-> Kernel (`uname -r`): 
->  * 3.10.0-514.10.2.el7.x86_64 (server)
-> * 3.10.0-693.2.2.el7.x86_64 (client - new)
-> * 3.10.0-327.36.2.el7.x86_64 (client - old)
-> nfs-utils: RPM package version 1.3.0
-> 
->  
-> Server mount option example:
-> /export/.ssh 172.18.10.148(rw,sync,no_root_squash) 172.18.10.151(rw,sync,no_root_squash)
+On 11/20/2017 09:27 AM, Leigh Brown wrote:
+> Add the -h option to rpc.svcgssd to allow the hostname to be overridden.
+> This is useful in clustered configurations using NVSv4 and Kerberos to
+> ensure the hostname is set to the service name of the cluster.
+A couple things... 
 
-Add "security_label" to the export options above.  If you don't see
-"security_label" listed in the exports(5) man page then you need to
-upgrade your nfs-utils package.
+1) The patch did not apply for krb5_util.c or svcgssd.c. Not
+    clear why.. but they didn't
+2) The patch cause a "implicit declaration of function" 
+   warning because the new routines were not added to gss_util.h
+3) Since the return value of gssd_sethostname() is never checked
+   why not make it void and log an warning when something
+   goes wrong.
 
--Scott
+Finally, adding a command line argument is always a touchy thing,
+supporting unnecessary flags is the last thing we want to do. So..
+Please give me an example how this will be used, I know you say in
+a cluster configuration, but what does that mean... A little
+context please. Also is there any around not adding this flag
+and achieving the same results.
 
+I'm not totally against adding this flag I just want to
+investigate all avenues..
+
+steved.  
 > 
-> Client mount options (/etc/fstab):
-> enfigitback2-devel.datcon.co.uk:/export/.ssh    /var/opt/gitlab/.ssh    nfs     defaults,soft,v4.2,rsize=1048576,wsize=1048576,noatime,_netdev,lookupcache=none 0       0
+> Signed-off-by: Leigh Brown <leigh@solinno.co.uk>
+> ---
+>  systemd/nfs.conf.man   |  4 +++-
+>  utils/gssd/gss_util.c  | 21 +++++++++++++++++++++
+>  utils/gssd/krb5_util.c |  2 +-
+>  utils/gssd/svcgssd.c   | 14 ++++++++++++--
+>  utils/gssd/svcgssd.man | 10 +++++++++-
+>  5 files changed, 46 insertions(+), 5 deletions(-)
 > 
-> ## Debugging I've done
+> diff --git a/systemd/nfs.conf.man b/systemd/nfs.conf.man
+> index 189b052..08ca8c2 100644
+> --- a/systemd/nfs.conf.man
+> +++ b/systemd/nfs.conf.man
+> @@ -228,7 +228,9 @@ for details.
+>  .TP
+>  .B svcgssd
+>  Recognized values:
+> -.BR principal .
+> +.BR principal
+> +and
+> +.BR hostname .
 > 
-> ### Mounting by hand
-> I tried to mount one of the exported mounts "by hand" using `mount` and found the following:
-> * mounting the same export on a different mount point using the same options as in /etc/fstab yields a mount that has the same issue
-> * mounting with `nosharecache` results in a mount that *does not* have the issue.
+>  See
+>  .BR rpc.svcgssd (8)
+> diff --git a/utils/gssd/gss_util.c b/utils/gssd/gss_util.c
+> index 2e6d40f..9966a06 100644
+> --- a/utils/gssd/gss_util.c
+> +++ b/utils/gssd/gss_util.c
+> @@ -339,3 +339,24 @@ out:
+>      return retval;
+>  }
 > 
+> +static char *gssd_hostname = NULL;
+> +
+> +int gssd_gethostname(char *name, size_t len)
+> +{
+> +    if (gssd_hostname) {
+> +        strncpy(name, gssd_hostname, len);
+> +        return 0;
+> +    }
+> +    else
+> +        return gethostname(name, len);
+> +}
+> +
+> +/* NB: Different semantics to sethostname(2) */
+> +int gssd_sethostname(const char *name)
+> +{
+> +    if (gssd_hostname)
+> +        free(gssd_hostname);
+> +
+> +    gssd_hostname = strdup(name);
+> +    return gssd_hostname ? 0 : ENOMEM;
+> +}
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index b64818a..a9b84ee 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -785,7 +785,7 @@ find_keytab_entry(krb5_context context, krb5_keytab kt, const char *tgtname,
+>          goto out;
 > 
+>      /* Get full local hostname */
+> -    if (gethostname(myhostname, sizeof(myhostname)) == -1) {
+> +    if (gssd_gethostname(myhostname, sizeof(myhostname)) == -1) {
+>          retval = errno;
+>          k5err = gssd_k5_err_msg(context, retval);
+>          printerr(1, "%s while getting local hostname\n", k5err);
+> diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+> index 3514ae1..62f8973 100644
+> --- a/utils/gssd/svcgssd.c
+> +++ b/utils/gssd/svcgssd.c
+> @@ -82,7 +82,8 @@ sig_hup(int signal)
+>  static void
+>  usage(char *progname)
+>  {
+> -    fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-p principal]\n",
+> +    fprintf(stderr, "usage: %s [-n] [-f] [-v] [-r] [-i] [-h hostname] "
+> +                               "[-p principal]\n",
+>          progname);
+>      exit(1);
+>  }
+> @@ -111,7 +112,13 @@ main(int argc, char *argv[])
+>      else
+>          principal = s;
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> -    while ((opt = getopt(argc, argv, "fivrnp:")) != -1) {
+> +    s = conf_get_str("svcgssd", "hostname");
+> +    if (!s)
+> +        ;
+> +    else
+> +        gssd_sethostname(s);
+> +
+> +    while ((opt = getopt(argc, argv, "fivrnp:h:")) != -1) {
+>          switch (opt) {
+>              case 'f':
+>                  fg = 1;
+> @@ -131,6 +138,9 @@ main(int argc, char *argv[])
+>              case 'p':
+>                  principal = optarg;
+>                  break;
+> +            case 'h':
+> +                gssd_sethostname(optarg);
+> +                break;
+>              default:
+>                  usage(argv[0]);
+>                  break;
+> diff --git a/utils/gssd/svcgssd.man b/utils/gssd/svcgssd.man
+> index 15ef4c9..744cab7 100644
+> --- a/utils/gssd/svcgssd.man
+> +++ b/utils/gssd/svcgssd.man
+> @@ -6,7 +6,7 @@
+>  .SH NAME
+>  rpc.svcgssd \- server-side rpcsec_gss daemon
+>  .SH SYNOPSIS
+> -.B "rpc.svcgssd [-n] [-v] [-r] [-i] [-f] [-p principal]"
+> +.B "rpc.svcgssd [-n] [-v] [-r] [-i] [-f] [-h hostname] [-p principal]"
+>  .SH DESCRIPTION
+>  The rpcsec_gss protocol gives a means of using the gss-api generic security
+>  api to provide security for protocols using rpc (in particular, nfs).  Before
+> @@ -36,6 +36,9 @@ increases the verbosity of the output (can be specified multiple times).
+>  If the nfsidmap library supports setting debug level,
+>  increases the verbosity of the output (can be specified multiple times).
+>  .TP
+> +.B -h
+> +Use \fIhostname\fR instead of the default hostname.
+> +.TP
+>  .B -p
+>  Use \fIprincipal\fR instead of the default
+>  .RI nfs/ FQDN @ REALM .
+> @@ -61,6 +64,11 @@ this is equivalent to the
+>  option.  If set to any other value, that is used like the
+>  .B -p
+>  option.
+> +.TP
+> +.B hostname
+> +This is equivalent to the
+> +.B -h
+> +option.
+> 
+>  .SH SEE ALSO
+>  .BR rpc.gssd(8),
