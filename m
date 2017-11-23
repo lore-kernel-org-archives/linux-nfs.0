@@ -1,63 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail1.g1.pair.com ([66.39.3.162]:59410 "EHLO mail1.g1.pair.com"
+Received: from mx2.suse.de ([195.135.220.15]:40709 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751497AbdKWMWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Nov 2017 07:22:36 -0500
-Date: Thu, 23 Nov 2017 13:13:27 +0100
-From: Emmanuel Florac <eflorac@intellique.com>
-To: =?UTF-8?B?w5Z6a2FuIEfDtmtzdQ==?= <ozkan.goksu@usishi.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: How to get NFS user list
-Message-ID: <20171123131327.1aa66e49@harpe.intellique.com>
-In-Reply-To: <296856FF-A18F-47EB-96AF-5C0E6C9BB5E1@usishi.com>
-References: <296856FF-A18F-47EB-96AF-5C0E6C9BB5E1@usishi.com>
+        id S1753353AbdKWXxs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Nov 2017 18:53:48 -0500
+From: NeilBrown <neilb@suse.com>
+To: "Michael Kerrisk \(man-pages\)" <mtk.manpages@gmail.com>
+Date: Fri, 24 Nov 2017 10:53:36 +1100
+Cc: mtk.manpages@gmail.com, linux-man@vger.kernel.org,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Lennart Poettering <lennart@poettering.net>
+Subject: [manpages PATCH] open_by_handle_at.2: clarify MAX_HANDLE_SZ
+In-Reply-To: <52c5800b-150a-7ec9-133b-6c32e97249f4@gmail.com>
+References: <87wp2j1ggu.fsf@notabene.neil.brown.name> <52c5800b-150a-7ec9-133b-6c32e97249f4@gmail.com>
+Message-ID: <873754zh4v.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- boundary="Sig_//nzx/udQb1PoSgKWgeafSQK"; protocol="application/pgp-signature"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_//nzx/udQb1PoSgKWgeafSQK
-Content-Type: text/plain; charset=UTF-8
+--=-=-=
+Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-Le Wed, 22 Nov 2017 16:31:43 +0200
-=C3=96zkan G=C3=B6ksu <ozkan.goksu@usishi.com> =C3=A9crivait:
 
-> I want to get NFS user list (client list) like "smbstatus"
-> I want to see which user & ip is using which share and when connected.
-> I want to kill a nfs user.
-> I want to log what an user is doing like "Create, modify, delete".
->=20
-> In the end; I want to manage nfs users. There is not enough
-> information and tools about this problem.
->=20
-> How you manage your nfs server?
+As hinted in the kernel source, MAX_HANDLE_SZ is a hint
+rather than a promise:
 
-Traditional tools for NFS monitoring are showmount, nfsstat and
-nfswatch. Common other tools are nfsiostats and mountstats (on the
-client). Unfortunately, AFAIK there is no single tools providing all
-needed information, and nothing that compares to "smbstatus", i.e.
-connected clients and opened files.
+    /* limit the handle size to NFSv4 handle size now */
+    #define MAX_HANDLE_SZ 128
 
---=20
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+Note the "now" (probably should be "for now").
+So change the description to make this clear.
 
---Sig_//nzx/udQb1PoSgKWgeafSQK
-Content-Type: application/pgp-signature
-Content-Description: Signature digitale OpenPGP
+Reported-by: Lennart Poettering <lennart@poettering.net>
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ man2/open_by_handle_at.2 | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/man2/open_by_handle_at.2 b/man2/open_by_handle_at.2
+index 79987308bf3e..f3473d24fa50 100644
+=2D-- a/man2/open_by_handle_at.2
++++ b/man2/open_by_handle_at.2
+@@ -91,7 +91,8 @@ field should be initialized to contain the allocated size=
+ for
+ .BR MAX_HANDLE_SZ ,
+ defined in
+ .IR <fcntl.h> ,
+=2Dspecifies the maximum possible size for a file handle.)
++specifies the maximum expected size for a file handle. It is not a
++guaranteed upper limit as future filesystems may require more space.)
+ Upon successful return, the
+ .IR handle_bytes
+ field is updated to contain the number of bytes actually written to
+=2D-=20
+2.14.0.rc0.dirty
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v2
 
-iEYEARECAAYFAloWu2gACgkQX3jQXNUicVbX0gCgpsBYLPOn046jucTdvLLz/GE6
-w/gAoJ17J8H2sniwdZppIEQf89Y+XCWI
-=KUAU
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloXX4EACgkQOeye3VZi
+gblV4g/8CACmiSHDeuI94g21paKs7WOMe+ww1TxBwPhQHrHnwkvQdPl7YXkGrN2n
+FynRWU4mpk3pz5RoYvkzW/fbQmL/fCnejy8E8+J/8PjpR12s/mWW3LmbMZCWndc9
+8xjG2AlcP/gzGwPBqx3aelFEVwS8TXjm7opTLixjUdu+YFITOsJ9frG8uIfCm/1w
+e/58RX7mjY25CwAg2rj3bPLx+l4WbxUnxvkPjJYmhgyEfPi6UrKbmTjll9GeZGpV
+MiAQnHAjGgUMTgbZLiL44P+KpSv4eXBCsBzzwN1oCzs3k0aEuYo/RJQhHcckg7oy
+/ygugljwiEksz/Vj1Sbnfh/atUKXOt5xUvkFLy6aCXWSyocsHZKOpS9c4CfAvLVk
+tDMbNbI0UGsRXXjhe0nUULdo9wlaPjdCbCiOWfeo1Sbc0rlJ3vN/1QsvE/fYqI40
+BzlcQz/fohVSaGYypcZ4mHh5xy5XpDKveOjMQiDKsM3qIw3xIXFTYuQsJKkZPc2B
+xXyJmxXFHD3cy2CZPqXegRna7P/pDdK4PFYLODB6jccVCe6EGv1l5Bnb8hksOt/x
+xR8UwvSnpw2dV8bz5XFmXz9xzwTIqgGDOTNQrmIZn+HVOueIGng+0Pu4c62V1yiA
+nqtedz5ps3V4nFY/5Ii64Uy08AKTsPYGXhECUnd8IMsVI51qGgo=
+=CLuE
 -----END PGP SIGNATURE-----
-
---Sig_//nzx/udQb1PoSgKWgeafSQK--
+--=-=-=--
