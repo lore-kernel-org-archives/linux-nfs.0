@@ -1,73 +1,59 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wm0-f66.google.com ([74.125.82.66]:34276 "EHLO
-        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752116AbdKXIfN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Nov 2017 03:35:13 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:51358 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753185AbdKXK7a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 24 Nov 2017 05:59:30 -0500
+Date: Fri, 24 Nov 2017 10:59:28 +0000
+From: Stefan Hajnoczi <stefanha@redhat.com>
+To: nfsv4@ietf.org
+Cc: linux-nfs@vger.kernel.org, Jorgen Hansen <jhansen@vmware.com>,
+        Dexuan Cui <decui@microsoft.com>
+Subject: Remote Procedure Call (RPC) over AF_VSOCK draft 00
+Message-ID: <20171124105928.GA11868@stefanha-x1.localdomain>
 MIME-Version: 1.0
-Reply-To: mtk.manpages@gmail.com
-In-Reply-To: <873754zh4v.fsf@notabene.neil.brown.name>
-References: <87wp2j1ggu.fsf@notabene.neil.brown.name> <52c5800b-150a-7ec9-133b-6c32e97249f4@gmail.com>
- <873754zh4v.fsf@notabene.neil.brown.name>
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Date: Fri, 24 Nov 2017 09:34:51 +0100
-Message-ID: <CAKgNAkh+oDszm=_P5qFsU3azE6qRczc6o6jjCHzaQSwPvsXkYg@mail.gmail.com>
-Subject: Re: [manpages PATCH] open_by_handle_at.2: clarify MAX_HANDLE_SZ
-To: NeilBrown <neilb@suse.com>
-Cc: linux-man <linux-man@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        Lennart Poettering <lennart@poettering.net>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; micalg=pgp-sha1;
+        protocol="application/pgp-signature"; boundary="d6Gm4EdcadzBjdND"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello Neil,
 
-On 24 November 2017 at 00:53, NeilBrown <neilb@suse.com> wrote:
->
-> As hinted in the kernel source, MAX_HANDLE_SZ is a hint
-> rather than a promise:
->
->     /* limit the handle size to NFSv4 handle size now */
->     #define MAX_HANDLE_SZ 128
->
-> Note the "now" (probably should be "for now").
-> So change the description to make this clear.
+--d6Gm4EdcadzBjdND
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-Thanks! Applied.
+The first draft of Remote Procedure Call (RPC) over AF_VSOCK is now
+available for review:
 
-Cheers,
+  https://datatracker.ietf.org/doc/draft-stefanha-nfsv4-rpc-over-vsock/
 
-Michael
+I have tried to incorporate feedback from the discussions we had on
+the linux-nfs mailing list.
 
+Jorgen: I've summarized the current AF_VSOCK standardization status
+(i.e. there is no specification and implementors generally try to follow
+VMCI semantics for compatibility).  VMware vSockets is a superset of
+Linux AF_VSOCK because it has additional header files and APIs.  Is
+there an authoritative reference for plain AF_VSOCK that I'm not aware
+of?
 
-> Reported-by: Lennart Poettering <lennart@poettering.net>
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->  man2/open_by_handle_at.2 | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
->
-> diff --git a/man2/open_by_handle_at.2 b/man2/open_by_handle_at.2
-> index 79987308bf3e..f3473d24fa50 100644
-> --- a/man2/open_by_handle_at.2
-> +++ b/man2/open_by_handle_at.2
-> @@ -91,7 +91,8 @@ field should be initialized to contain the allocated size for
->  .BR MAX_HANDLE_SZ ,
->  defined in
->  .IR <fcntl.h> ,
-> -specifies the maximum possible size for a file handle.)
-> +specifies the maximum expected size for a file handle. It is not a
-> +guaranteed upper limit as future filesystems may require more space.)
->  Upon successful return, the
->  .IR handle_bytes
->  field is updated to contain the number of bytes actually written to
-> --
-> 2.14.0.rc0.dirty
->
+Dexuan: I know you're busy but just keeping you in the loop in case
+there is any interest from the Hyper-V side.
 
+Thanks,
+Stefan
 
+--d6Gm4EdcadzBjdND
+Content-Type: application/pgp-signature; name="signature.asc"
 
--- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+-----BEGIN PGP SIGNATURE-----
+
+iQEcBAEBAgAGBQJaF/uQAAoJEJykq7OBq3PIsIQH/0WPgqKVnzM2u2Nfd/jPgNCD
+I0i/gm4x9OqvgR1qvEolvb1y4fo2B4AMm0LPnRvEs703y101NkNJJPf5hrQh92DO
+UR2wx8sl/fNC14Zd9FEjE/OwonfblMFlkpBXNNQWeQC6uRDzYcq6ty8V2vE+AOmL
+vDXnyRk5djczkRYO4nvYsSg43KMlexojKPhXGpsWmXfV3Zlmh7bc/nMKl2KAtL+Q
+mbEb/FHBtav14ukqD9pXd79cUbOBsNrB2Dd5DyW7pi5fOl3b+envyaYFzzb8cZH6
+FEiM/P5LYHVc8Xu0YRJ2oi5rPEsqzNEJII6aUyu3P1b6DECN5AdVrUo4pSizRvc=
+=wY2M
+-----END PGP SIGNATURE-----
+
+--d6Gm4EdcadzBjdND--
