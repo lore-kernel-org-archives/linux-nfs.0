@@ -1,59 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51358 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753185AbdKXK7a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 24 Nov 2017 05:59:30 -0500
-Date: Fri, 24 Nov 2017 10:59:28 +0000
-From: Stefan Hajnoczi <stefanha@redhat.com>
-To: nfsv4@ietf.org
-Cc: linux-nfs@vger.kernel.org, Jorgen Hansen <jhansen@vmware.com>,
-        Dexuan Cui <decui@microsoft.com>
-Subject: Remote Procedure Call (RPC) over AF_VSOCK draft 00
-Message-ID: <20171124105928.GA11868@stefanha-x1.localdomain>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-        protocol="application/pgp-signature"; boundary="d6Gm4EdcadzBjdND"
+Received: from mail-wm0-f48.google.com ([74.125.82.48]:43397 "EHLO
+        mail-wm0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753426AbdKXL5Z (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Nov 2017 06:57:25 -0500
+Received: by mail-wm0-f48.google.com with SMTP id x63so21956220wmf.2
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Nov 2017 03:57:25 -0800 (PST)
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 8.2 \(2104\))
+Subject: Re: How to get NFS user list
+From: =?utf-8?Q?=C3=96zkan_G=C3=B6ksu?= <ozkan.goksu@usishi.com>
+In-Reply-To: <20171123131327.1aa66e49@harpe.intellique.com>
+Date: Fri, 24 Nov 2017 14:58:23 +0200
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <4C72B57D-F4C3-499B-8852-3C677F6C1DDA@usishi.com>
+References: <296856FF-A18F-47EB-96AF-5C0E6C9BB5E1@usishi.com> <20171123131327.1aa66e49@harpe.intellique.com>
+To: Emmanuel Florac <eflorac@intellique.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello Emmanuel.
 
---d6Gm4EdcadzBjdND
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Thank you for reply.
+In the end I need information about NFS to show on my Gui.
+But NFS gives me nothing.
+At least we need to see who and where is connected, how much io the nfs =
+server is using realtime.
 
-The first draft of Remote Procedure Call (RPC) over AF_VSOCK is now
-available for review:
+I can see who is connected with "netstat -an | grep host:.2049"
+I can get which ip using which share with showmount But showmount =
+command shows me something else maybe =E2=80=9Csamba usage" because i =
+can't see "10.1.60.219" in there.
 
-  https://datatracker.ietf.org/doc/draft-stefanha-nfsv4-rpc-over-vsock/
+Fo example:=20
+netstat -an | grep 10.1.60.4:2049
+tcp        0      0 10.1.60.4:2049          10.1.60.219:776         =
+ESTABLISHED
+tcp        0      0 10.1.60.4:2049          192.168.10.31:764       =
+ESTABLISHED
 
-I have tried to incorporate feedback from the discussions we had on
-the linux-nfs mailing list.
+cat /var/lib/nfs/rmtab
+10.1.60.73:/clspool/winnfs:0x00000001
+10.1.60.70:/clspool/winnfs2:0x00000001
+10.1.60.70:/clspool/winnfs:0x00000003
+192.168.10.7:/clspool/nfstest:0x00000004
+10.2.60.128:/clspool/nfstest:0x00000001
 
-Jorgen: I've summarized the current AF_VSOCK standardization status
-(i.e. there is no specification and implementors generally try to follow
-VMCI semantics for compatibility).  VMware vSockets is a superset of
-Linux AF_VSOCK because it has additional header files and APIs.  Is
-there an authoritative reference for plain AF_VSOCK that I'm not aware
-of?
 
-Dexuan: I know you're busy but just keeping you in the loop in case
-there is any interest from the Hyper-V side.
+> 23 Kas 2017 tarihinde 14:13 saatinde, Emmanuel Florac =
+<eflorac@intellique.com> =C5=9Funlar=C4=B1 yazd=C4=B1:
+>=20
+> Le Wed, 22 Nov 2017 16:31:43 +0200
+> =C3=96zkan G=C3=B6ksu <ozkan.goksu@usishi.com> =C3=A9crivait:
+>=20
+>> I want to get NFS user list (client list) like "smbstatus"
+>> I want to see which user & ip is using which share and when =
+connected.
+>> I want to kill a nfs user.
+>> I want to log what an user is doing like "Create, modify, delete".
+>>=20
+>> In the end; I want to manage nfs users. There is not enough
+>> information and tools about this problem.
+>>=20
+>> How you manage your nfs server?
+>=20
+> Traditional tools for NFS monitoring are showmount, nfsstat and
+> nfswatch. Common other tools are nfsiostats and mountstats (on the
+> client). Unfortunately, AFAIK there is no single tools providing all
+> needed information, and nothing that compares to "smbstatus", i.e.
+> connected clients and opened files.
+>=20
+> --=20
+> =
+------------------------------------------------------------------------
+> Emmanuel Florac     |   Direction technique
+>                    |   Intellique
+>                    |	<eflorac@intellique.com>
+>                    |   +33 1 78 94 84 02
+> =
+------------------------------------------------------------------------
 
-Thanks,
-Stefan
-
---d6Gm4EdcadzBjdND
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQEcBAEBAgAGBQJaF/uQAAoJEJykq7OBq3PIsIQH/0WPgqKVnzM2u2Nfd/jPgNCD
-I0i/gm4x9OqvgR1qvEolvb1y4fo2B4AMm0LPnRvEs703y101NkNJJPf5hrQh92DO
-UR2wx8sl/fNC14Zd9FEjE/OwonfblMFlkpBXNNQWeQC6uRDzYcq6ty8V2vE+AOmL
-vDXnyRk5djczkRYO4nvYsSg43KMlexojKPhXGpsWmXfV3Zlmh7bc/nMKl2KAtL+Q
-mbEb/FHBtav14ukqD9pXd79cUbOBsNrB2Dd5DyW7pi5fOl3b+envyaYFzzb8cZH6
-FEiM/P5LYHVc8Xu0YRJ2oi5rPEsqzNEJII6aUyu3P1b6DECN5AdVrUo4pSizRvc=
-=wY2M
------END PGP SIGNATURE-----
-
---d6Gm4EdcadzBjdND--
