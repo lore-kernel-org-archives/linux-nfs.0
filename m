@@ -1,19 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40709 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:34808 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753353AbdKWXxs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Nov 2017 18:53:48 -0500
+        id S1752318AbdKXEaQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 23 Nov 2017 23:30:16 -0500
 From: NeilBrown <neilb@suse.com>
-To: "Michael Kerrisk \(man-pages\)" <mtk.manpages@gmail.com>
-Date: Fri, 24 Nov 2017 10:53:36 +1100
-Cc: mtk.manpages@gmail.com, linux-man@vger.kernel.org,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel\@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+To: Steve Dickson <SteveD@redhat.com>
+Date: Fri, 24 Nov 2017 15:30:07 +1100
+Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         Lennart Poettering <lennart@poettering.net>
-Subject: [manpages PATCH] open_by_handle_at.2: clarify MAX_HANDLE_SZ
-In-Reply-To: <52c5800b-150a-7ec9-133b-6c32e97249f4@gmail.com>
-References: <87wp2j1ggu.fsf@notabene.neil.brown.name> <52c5800b-150a-7ec9-133b-6c32e97249f4@gmail.com>
-Message-ID: <873754zh4v.fsf@notabene.neil.brown.name>
+Subject: [nfs-utils PATCH] mount.nfs: don't parse "device" name for -o remount
+Message-ID: <87zi7cxprk.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -25,36 +21,37 @@ Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
 
-As hinted in the kernel source, MAX_HANDLE_SZ is a hint
-rather than a promise:
+When "-o remount" is used, the device/special name
+is ignored.  So don't parse it and risk generating a
+useless error.
 
-    /* limit the handle size to NFSv4 handle size now */
-    #define MAX_HANDLE_SZ 128
+This is particularly important when nfs-root is used
+as the "device name" is listed as "/dev/nfs".
+Because mount.nfs doesn't think that is valid,
+  mount -o remount,rw /
+will fail.
 
-Note the "now" (probably should be "for now").
-So change the description to make this clear.
-
-Reported-by: Lennart Poettering <lennart@poettering.net>
+Link: https://github.com/systemd/systemd/issues/3590
 Signed-off-by: NeilBrown <neilb@suse.com>
 =2D--
- man2/open_by_handle_at.2 | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ utils/mount/stropts.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/man2/open_by_handle_at.2 b/man2/open_by_handle_at.2
-index 79987308bf3e..f3473d24fa50 100644
-=2D-- a/man2/open_by_handle_at.2
-+++ b/man2/open_by_handle_at.2
-@@ -91,7 +91,8 @@ field should be initialized to contain the allocated size=
- for
- .BR MAX_HANDLE_SZ ,
- defined in
- .IR <fcntl.h> ,
-=2Dspecifies the maximum possible size for a file handle.)
-+specifies the maximum expected size for a file handle. It is not a
-+guaranteed upper limit as future filesystems may require more space.)
- Upon successful return, the
- .IR handle_bytes
- field is updated to contain the number of bytes actually written to
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index 440131482e2b..12178235f068 100644
+=2D-- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -384,7 +384,9 @@ static int nfs_set_version(struct nfsmount_info *mi)
+  */
+ static int nfs_validate_options(struct nfsmount_info *mi)
+ {
+=2D	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
++	/* For remount, ignore mi->spec: the kernel will. */
++	if (!(mi->flags & MS_REMOUNT) &&
++	    !nfs_parse_devname(mi->spec, &mi->hostname, NULL))
+ 		return 0;
+=20
+ 	if (!nfs_nfs_proto_family(mi->options, &mi->family))
 =2D-=20
 2.14.0.rc0.dirty
 
@@ -64,18 +61,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloXX4EACgkQOeye3VZi
-gblV4g/8CACmiSHDeuI94g21paKs7WOMe+ww1TxBwPhQHrHnwkvQdPl7YXkGrN2n
-FynRWU4mpk3pz5RoYvkzW/fbQmL/fCnejy8E8+J/8PjpR12s/mWW3LmbMZCWndc9
-8xjG2AlcP/gzGwPBqx3aelFEVwS8TXjm7opTLixjUdu+YFITOsJ9frG8uIfCm/1w
-e/58RX7mjY25CwAg2rj3bPLx+l4WbxUnxvkPjJYmhgyEfPi6UrKbmTjll9GeZGpV
-MiAQnHAjGgUMTgbZLiL44P+KpSv4eXBCsBzzwN1oCzs3k0aEuYo/RJQhHcckg7oy
-/ygugljwiEksz/Vj1Sbnfh/atUKXOt5xUvkFLy6aCXWSyocsHZKOpS9c4CfAvLVk
-tDMbNbI0UGsRXXjhe0nUULdo9wlaPjdCbCiOWfeo1Sbc0rlJ3vN/1QsvE/fYqI40
-BzlcQz/fohVSaGYypcZ4mHh5xy5XpDKveOjMQiDKsM3qIw3xIXFTYuQsJKkZPc2B
-xXyJmxXFHD3cy2CZPqXegRna7P/pDdK4PFYLODB6jccVCe6EGv1l5Bnb8hksOt/x
-xR8UwvSnpw2dV8bz5XFmXz9xzwTIqgGDOTNQrmIZn+HVOueIGng+0Pu4c62V1yiA
-nqtedz5ps3V4nFY/5Ii64Uy08AKTsPYGXhECUnd8IMsVI51qGgo=
-=CLuE
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloXoFAACgkQOeye3VZi
+gbl0Fg/+PPiQVixci5x+lHCKrRctSJxmcZ0PjKwS7whvGIA3YAAhUkDADb7DPIbR
+j1HhwEMMODl7oqN8s7U5jnIrwWNylBrjLnLQ+O2ughdt3ycUi4vnshBWWXII6s1C
+9FMm9Lo9osMnuOVOX5hWDmI2IrlvqGAKuyZIBi6w20LcNptxdYV+3U7bkfw8DGqw
+tGMAykScyVayrU4alxGKVkhybPGvMBwQ0QEAz5y89VogDxJD8qzYV9iPmmOQVaWM
+VfdGyQiBMPqngXcwSt9FhzfKvRtq4dJAlaBlHXkNol+OaQkIr+R7UWegKE6Tbv9j
+U8QCeyrPdxokh+q+upX0r7TKeIHF/vTjHVwtD3SNqvzcLOaGoZPq9XMe537s2oI0
+CzFM1x+UuILoNGMuknG+zZGAn8YvIjglFJJUFEjf/q+hDcvJSncFXOaA8tlyVlBj
+U9QIgnNM+5mt+HNm81+WNA1o4x49HJPIAzXrHg1IV7QcpU32LAIKiZTXYJ/egFUh
+XgzHJqjVoN7tiPA1jWi13eIf+VrphkjaV9dvHNonnhPmF3OPHP2Run6hoy1vWVy8
+f1SPXrRzkNpT3YosQ2sgBf8xrPKVsdm9XzRkHPu/ZyTCQjqaulaw0TtzPCBKSndI
+kA8iEEU/o0UaJYu6U6xRSln4lpR4HFBboALi0QoikGR2wCw75J4=
+=42Jz
 -----END PGP SIGNATURE-----
 --=-=-=--
