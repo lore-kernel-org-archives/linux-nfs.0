@@ -1,78 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34808 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752318AbdKXEaQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 23 Nov 2017 23:30:16 -0500
-From: NeilBrown <neilb@suse.com>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Fri, 24 Nov 2017 15:30:07 +1100
-Cc: "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Lennart Poettering <lennart@poettering.net>
-Subject: [nfs-utils PATCH] mount.nfs: don't parse "device" name for -o remount
-Message-ID: <87zi7cxprk.fsf@notabene.neil.brown.name>
+Received: from mail-wm0-f66.google.com ([74.125.82.66]:34276 "EHLO
+        mail-wm0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752116AbdKXIfN (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Nov 2017 03:35:13 -0500
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Reply-To: mtk.manpages@gmail.com
+In-Reply-To: <873754zh4v.fsf@notabene.neil.brown.name>
+References: <87wp2j1ggu.fsf@notabene.neil.brown.name> <52c5800b-150a-7ec9-133b-6c32e97249f4@gmail.com>
+ <873754zh4v.fsf@notabene.neil.brown.name>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Date: Fri, 24 Nov 2017 09:34:51 +0100
+Message-ID: <CAKgNAkh+oDszm=_P5qFsU3azE6qRczc6o6jjCHzaQSwPvsXkYg@mail.gmail.com>
+Subject: Re: [manpages PATCH] open_by_handle_at.2: clarify MAX_HANDLE_SZ
+To: NeilBrown <neilb@suse.com>
+Cc: linux-man <linux-man@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        Lennart Poettering <lennart@poettering.net>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+Hello Neil,
+
+On 24 November 2017 at 00:53, NeilBrown <neilb@suse.com> wrote:
+>
+> As hinted in the kernel source, MAX_HANDLE_SZ is a hint
+> rather than a promise:
+>
+>     /* limit the handle size to NFSv4 handle size now */
+>     #define MAX_HANDLE_SZ 128
+>
+> Note the "now" (probably should be "for now").
+> So change the description to make this clear.
+
+Thanks! Applied.
+
+Cheers,
+
+Michael
 
 
-When "-o remount" is used, the device/special name
-is ignored.  So don't parse it and risk generating a
-useless error.
-
-This is particularly important when nfs-root is used
-as the "device name" is listed as "/dev/nfs".
-Because mount.nfs doesn't think that is valid,
-  mount -o remount,rw /
-will fail.
-
-Link: https://github.com/systemd/systemd/issues/3590
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- utils/mount/stropts.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-index 440131482e2b..12178235f068 100644
-=2D-- a/utils/mount/stropts.c
-+++ b/utils/mount/stropts.c
-@@ -384,7 +384,9 @@ static int nfs_set_version(struct nfsmount_info *mi)
-  */
- static int nfs_validate_options(struct nfsmount_info *mi)
- {
-=2D	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
-+	/* For remount, ignore mi->spec: the kernel will. */
-+	if (!(mi->flags & MS_REMOUNT) &&
-+	    !nfs_parse_devname(mi->spec, &mi->hostname, NULL))
- 		return 0;
-=20
- 	if (!nfs_nfs_proto_family(mi->options, &mi->family))
-=2D-=20
-2.14.0.rc0.dirty
+> Reported-by: Lennart Poettering <lennart@poettering.net>
+> Signed-off-by: NeilBrown <neilb@suse.com>
+> ---
+>  man2/open_by_handle_at.2 | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>
+> diff --git a/man2/open_by_handle_at.2 b/man2/open_by_handle_at.2
+> index 79987308bf3e..f3473d24fa50 100644
+> --- a/man2/open_by_handle_at.2
+> +++ b/man2/open_by_handle_at.2
+> @@ -91,7 +91,8 @@ field should be initialized to contain the allocated size for
+>  .BR MAX_HANDLE_SZ ,
+>  defined in
+>  .IR <fcntl.h> ,
+> -specifies the maximum possible size for a file handle.)
+> +specifies the maximum expected size for a file handle. It is not a
+> +guaranteed upper limit as future filesystems may require more space.)
+>  Upon successful return, the
+>  .IR handle_bytes
+>  field is updated to contain the number of bytes actually written to
+> --
+> 2.14.0.rc0.dirty
+>
 
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
 
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloXoFAACgkQOeye3VZi
-gbl0Fg/+PPiQVixci5x+lHCKrRctSJxmcZ0PjKwS7whvGIA3YAAhUkDADb7DPIbR
-j1HhwEMMODl7oqN8s7U5jnIrwWNylBrjLnLQ+O2ughdt3ycUi4vnshBWWXII6s1C
-9FMm9Lo9osMnuOVOX5hWDmI2IrlvqGAKuyZIBi6w20LcNptxdYV+3U7bkfw8DGqw
-tGMAykScyVayrU4alxGKVkhybPGvMBwQ0QEAz5y89VogDxJD8qzYV9iPmmOQVaWM
-VfdGyQiBMPqngXcwSt9FhzfKvRtq4dJAlaBlHXkNol+OaQkIr+R7UWegKE6Tbv9j
-U8QCeyrPdxokh+q+upX0r7TKeIHF/vTjHVwtD3SNqvzcLOaGoZPq9XMe537s2oI0
-CzFM1x+UuILoNGMuknG+zZGAn8YvIjglFJJUFEjf/q+hDcvJSncFXOaA8tlyVlBj
-U9QIgnNM+5mt+HNm81+WNA1o4x49HJPIAzXrHg1IV7QcpU32LAIKiZTXYJ/egFUh
-XgzHJqjVoN7tiPA1jWi13eIf+VrphkjaV9dvHNonnhPmF3OPHP2Run6hoy1vWVy8
-f1SPXrRzkNpT3YosQ2sgBf8xrPKVsdm9XzRkHPu/ZyTCQjqaulaw0TtzPCBKSndI
-kA8iEEU/o0UaJYu6U6xRSln4lpR4HFBboALi0QoikGR2wCw75J4=
-=42Jz
------END PGP SIGNATURE-----
---=-=-=--
+-- 
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
