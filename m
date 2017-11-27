@@ -1,111 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56776 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:56972 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751953AbdK0UKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 27 Nov 2017 15:10:03 -0500
-Date: Mon, 27 Nov 2017 15:10:03 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Thiago Rafael Becker <thiago.becker@gmail.com>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: sort groups on unix_gid_parse
-Message-ID: <20171127201003.GA25662@fieldses.org>
-References: <20171127192508.12751-1-thiago.becker@gmail.com>
+        id S1751869AbdK0WMu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 27 Nov 2017 17:12:50 -0500
+Date: Mon, 27 Nov 2017 17:12:50 -0500
+From: Bruce Fields <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: [PULL REQUEST] nfsd changes for 4.15
+Message-ID: <20171127221250.GA28092@fieldses.org>
+References: <20171118184020.GA22603@fieldses.org>
+ <CA+55aFwPHpD0Ehq8_VawfLCTXgMkbWE3fvdNc__ELmirh1rPVQ@mail.gmail.com>
+ <F9DD33F8-7362-4867-9073-356737866073@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171127192508.12751-1-thiago.becker@gmail.com>
+In-Reply-To: <F9DD33F8-7362-4867-9073-356737866073@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks for the patch:
+On Sun, Nov 19, 2017 at 12:03:45PM -0500, Chuck Lever wrote:
+> 
+> > On Nov 18, 2017, at 2:40 PM, Linus Torvalds <torvalds@linux-foundation.org> wrote:
+> > 
+> > On Sat, Nov 18, 2017 at 10:40 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> Please pull nfsd changes for 4.15 from:
+> > 
+> > Hmm. This had a tracepoint conflict with the nfs client pull.
+> 
+> Guessing you mean:
+> 
+> commit a30ccf1a9eb8c01f37675758f6359a968193d96e
+> Author:     Chuck Lever <chuck.lever@oracle.com>
+> AuthorDate: Fri Oct 20 10:35:18 2017 -0400
+> Commit:     Anna Schumaker <Anna.Schumaker@Netapp.com>
+> CommitDate: Fri Nov 17 16:43:44 2017 -0500
+> 
+>     SUNRPC: Fix parsing failure in trace points with XIDs
+>     
+>     mount.nf-11159   8....   905.248380: xprt_transmit:        [FAILED TO PARSE] xid=351291440 status=0 addr=192.168.2.5 port=20049
+>     mount.nf-11159   8....   905.248381: rpc_task_sleep:       task:6210@1 flags=0e80 state=0005 status=0 timeout=60000 queue=xprt_pending
+>     kworker/-1591    1....   905.248419: xprt_lookup_rqst:     [FAILED TO PARSE] xid=351291440 status=0 addr=192.168.2.5 port=20049
+>     kworker/-1591    1....   905.248423: xprt_complete_rqst:   [FAILED TO PARSE] xid=351291440 status=24 addr=192.168.2.5 port=20049
+>     
+>     Byte swapping is not available during trace-cmd report.
+>     
+>     Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>     Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+> 
+> conflicted with
+> 
+> commit e9d4bf219c83d09579bc62512fea2ca10f025d93
+> Author:     Trond Myklebust <trond.myklebust@primarydata.com>
+> AuthorDate: Tue Oct 10 17:31:42 2017 -0400
+> Commit:     J. Bruce Fields <bfields@redhat.com>
+> CommitDate: Wed Oct 11 17:08:52 2017 -0400
+> 
+>     SUNRPC: Fix tracepoint storage issues with svc_recv and svc_rqst_status
+>     
+>     There is no guarantee that either the request or the svc_xprt exist
+>     by the time we get round to printing the trace message.
+>     
+>     Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>     Cc: stable@vger.kernel.org
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> and that you adjusted a30ccf1a9eb8c01f37675758f6359a968193d96e
+> to eliminate the merge conflict.
+> 
+> At a glance I don't see a problem with the finished result.
+> 
+> I could have separated a30ccf1a9eb8c01f37675758f6359a968193d96e
+> into a server-side and client-side change.
 
-On Mon, Nov 27, 2017 at 05:25:08PM -0200, Thiago Rafael Becker wrote:
-> In cases were mountd is managing the group membership for nfsd,
-> if a user has several groups, multiple nfsd threads may call
-> sort_groups for the same freshly created unix_gid_cache entry
-> simultaneously, causing entries to be overwritten and the cache
-> entry to get corrupted.
+Thanks, Chuck!
 
-The groups_sort call is in set_groups, called from
-fs/nfsd/auth.c:nfsd_setuser():
+I just noticed I made a separate mistake this time around.  For some
+reason my pull request only included about the first half of the commits
+I had queued up in linux-next.
 
-	set_groups(new, gi);
+I have some lame excuse having to do with holiday travel.
 
-where "gi" is usually (in the absence of id squashing) a pointer to
-rqstp->rq_cred.cr_group_info, which can be in use by other threads.
-
-To me it's pretty unintuitive that set_groups() would modify the group
-info passed in the second argument.  While we're here, I wonder if we
-should make that the caller's responsibility?  There are basically only
-three callers outside this one.
-
-But I'm OK with this patch.  I probably need an OK from a vfs person to
-take it through the nfsd tree?
+Anyway the remainder was just another 20-some bug fixes of various
+levels of importance, so I think I'll just send another request for -rc2
+tomorrow....
 
 --b.
-
-> This eventually leads to the server
-> replying to the client with a bogus EPERM error if the group
-> overwritten is the group that would allow access.
-> 
-> This is a very hard bug to analyze, as a very slight change in
-> timing leads to proper sorting behavior. It was first noticed
-> and reproduced in kernel 3.10.0, which uses shell sort to sort
-> groups. Nothing indicates that heapsort, which is used
-> upstream, is thread safe.
-> 
-> This patch solves this issue by sorting the cache entry before
-> inserting it into the cache, and thus next entries will not
-> have to sort it again, avoiding the issue altogether.
-> 
-> Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
-> ---
->  kernel/groups.c           | 4 +++-
->  net/sunrpc/svcauth_unix.c | 7 +++++++
->  2 files changed, 10 insertions(+), 1 deletion(-)
-> 
-> diff --git a/kernel/groups.c b/kernel/groups.c
-> index e357bc8..4c9c9ed 100644
-> --- a/kernel/groups.c
-> +++ b/kernel/groups.c
-> @@ -86,11 +86,13 @@ static int gid_cmp(const void *_a, const void *_b)
->  	return gid_gt(a, b) - gid_lt(a, b);
->  }
->  
-> -static void groups_sort(struct group_info *group_info)
-> +void groups_sort(struct group_info *group_info)
->  {
->  	sort(group_info->gid, group_info->ngroups, sizeof(*group_info->gid),
->  	     gid_cmp, NULL);
->  }
-> +EXPORT_SYMBOL(groups_sort);
-> +
->  
->  /* a simple bsearch */
->  int groups_search(const struct group_info *group_info, kgid_t grp)
-> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-> index f81eaa8..91e3d34 100644
-> --- a/net/sunrpc/svcauth_unix.c
-> +++ b/net/sunrpc/svcauth_unix.c
-> @@ -20,6 +20,7 @@
->  
->  
->  #include "netns.h"
-> +void groups_sort(struct group_info *group_info);
->  
->  /*
->   * AUTHUNIX and AUTHNULL credentials are both handled here.
-> @@ -520,6 +521,12 @@ static int unix_gid_parse(struct cache_detail *cd,
->  		ug.gi->gid[i] = kgid;
->  	}
->  
-> +	/* Sort the groups before inserting this entry
-> +	 * into the cache to avoid future corrutpions
-> +	 * by multiple simultaneous attempts to sort this
-> +	 * entry.
-> +	 */
-> +	groups_sort(ug.gi);
->  	ugp = unix_gid_lookup(cd, uid);
->  	if (ugp) {
->  		struct cache_head *ch;
-> -- 
-> 2.9.5
