@@ -1,102 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:51384 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752236AbdK2UvE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Nov 2017 15:51:04 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: fix a deadlock in nfs client initialization
-Date: Wed, 29 Nov 2017 20:50:58 +0000
-Message-ID: <1511988656.20638.13.camel@primarydata.com>
-References: <20171120212819.3yxutvgmigxc7at5@tonberry.usersys.redhat.com>
-         <20171120214118.4240-1-smayhew@redhat.com>
-In-Reply-To: <20171120214118.4240-1-smayhew@redhat.com>
+Received: from fieldses.org ([173.255.197.46]:58994 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751850AbdK2WXm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 Nov 2017 17:23:42 -0500
+Date: Wed, 29 Nov 2017 17:23:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Elena Reshetova <elena.reshetova@intel.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        jlayton@kernel.org, trond.myklebust@primarydata.com,
+        anna.schumaker@netapp.com, peterz@infradead.org,
+        keescook@chromium.org
+Subject: Re: [PATCH 0/4] lockd refcount conversions
+Message-ID: <20171129222341.GB3923@fieldses.org>
+References: <1511954146-11793-1-git-send-email-elena.reshetova@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1511954146-11793-1-git-send-email-elena.reshetova@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTExLTIwIGF0IDE2OjQxIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IFRoZSBmb2xsb3dpbmcgZGVhZGxvY2sgY2FuIG9jY3VyIGJldHdlZW4gYSBwcm9jZXNzIHdhaXRp
-bmcgZm9yIGENCj4gY2xpZW50DQo+IHRvIGluaXRpYWxpemUgaW4gd2hpbGUgd2Fsa2luZyB0aGUg
-Y2xpZW50IGxpc3QgYW5kIGFub3RoZXIgcHJvY2Vzcw0KPiB3YWl0aW5nIGZvciB0aGUgbmZzX2Ns
-aWRfaW5pdF9tdXRleCBzbyBpdCBjYW4gaW5pdGlhbGl6ZSB0aGF0IGNsaWVudDoNCj4gDQo+IFBy
-b2Nlc3MgMSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQcm9jZXNzIDINCj4gLS0tLS0t
-LS0tICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC0tLS0tLS0tLQ0KPiBzcGluX2xvY2so
-Jm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiBsaXN0X2FkZF90YWlsKCZDTElFTlRBLT5jbF9zaGFy
-ZV9saW5rLA0KPiAgICAgICAgICZubi0+bmZzX2NsaWVudF9saXN0KTsNCj4gc3Bpbl91bmxvY2so
-Jm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgc3Bpbl9sb2NrKCZubi0NCj4gPm5mc19jbGllbnRfbG9jayk7DQo+ICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBsaXN0X2FkZF90YWlsKCZDTElFTlRCLQ0K
-PiA+Y2xfc2hhcmVfbGluaywNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgJm5uLQ0KPiA+bmZzX2NsaWVudF9saXN0KTsNCj4gICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIHNwaW5fdW5sb2NrKCZubi0NCj4gPm5mc19jbGllbnRf
-bG9jayk7DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtdXRleF9s
-b2NrKCZuZnNfY2xpZF9pbml0X211dA0KPiBleCk7DQo+ICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICBuZnM0MV93YWxrX2NsaWVudF9saXN0KGNscCwNCj4gcmVzdWx0LCBj
-cmVkKTsNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mc193YWl0
-X2NsaWVudF9pbml0X2NvbXBsZXRlDQo+IChDTElFTlRBKTsNCj4gKHdhaXRpbmcgZm9yIG5mc19j
-bGlkX2luaXRfbXV0ZXgpDQo+IA0KPiBBZGQgYW5kIGluaXRpbGl6ZSB0aGUgY2xpZW50IHdpdGgg
-dGhlIG5mc19jbGlkX2luaXRfbXV0ZXggaGVsZCBpbg0KPiBvcmRlciB0byBwcmV2ZW50IHRoYXQg
-ZGVhZGxvY2suDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTY290dCBNYXloZXcgPHNtYXloZXdAcmVk
-aGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvY2xpZW50LmMgICAgfCAyMSArKysrKysrKysrKysr
-KysrKysrLS0NCj4gIGZzL25mcy9uZnM0c3RhdGUuYyB8ICA0IC0tLS0NCj4gIDIgZmlsZXMgY2hh
-bmdlZCwgMTkgaW5zZXJ0aW9ucygrKSwgNiBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQg
-YS9mcy9uZnMvY2xpZW50LmMgYi9mcy9uZnMvY2xpZW50LmMNCj4gaW5kZXggMGFjMmZiMS4uZGIz
-OGM0NyAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2NsaWVudC5jDQo+ICsrKyBiL2ZzL25mcy9jbGll
-bnQuYw0KPiBAQCAtNjAsNiArNjAsNyBAQCBzdGF0aWMNCj4gREVDTEFSRV9XQUlUX1FVRVVFX0hF
-QUQobmZzX2NsaWVudF9hY3RpdmVfd3EpOw0KPiAgc3RhdGljIERFRklORV9TUElOTE9DSyhuZnNf
-dmVyc2lvbl9sb2NrKTsNCj4gIHN0YXRpYyBERUZJTkVfTVVURVgobmZzX3ZlcnNpb25fbXV0ZXgp
-Ow0KPiAgc3RhdGljIExJU1RfSEVBRChuZnNfdmVyc2lvbnMpOw0KPiArc3RhdGljIERFRklORV9N
-VVRFWChuZnNfY2xpZF9pbml0X211dGV4KTsNCj4gIA0KPiAgLyoNCj4gICAqIFJQQyBjcnVmdCBm
-b3IgTkZTDQo+IEBAIC0zODYsNyArMzg3LDcgQEAgbmZzX2ZvdW5kX2NsaWVudChjb25zdCBzdHJ1
-Y3QgbmZzX2NsaWVudF9pbml0ZGF0YQ0KPiAqY2xfaW5pdCwNCj4gICAqLw0KPiAgc3RydWN0IG5m
-c19jbGllbnQgKm5mc19nZXRfY2xpZW50KGNvbnN0IHN0cnVjdCBuZnNfY2xpZW50X2luaXRkYXRh
-DQo+ICpjbF9pbml0KQ0KPiAgew0KPiAtCXN0cnVjdCBuZnNfY2xpZW50ICpjbHAsICpuZXcgPSBO
-VUxMOw0KPiArCXN0cnVjdCBuZnNfY2xpZW50ICpjbHAsICpuZXcgPSBOVUxMLCAqcmVzdWx0ID0g
-TlVMTDsNCj4gIAlzdHJ1Y3QgbmZzX25ldCAqbm4gPSBuZXRfZ2VuZXJpYyhjbF9pbml0LT5uZXQs
-IG5mc19uZXRfaWQpOw0KPiAgCWNvbnN0IHN0cnVjdCBuZnNfcnBjX29wcyAqcnBjX29wcyA9IGNs
-X2luaXQtPm5mc19tb2QtDQo+ID5ycGNfb3BzOw0KPiAgDQo+IEBAIC00MDcsMTEgKzQwOCwyNyBA
-QCBzdHJ1Y3QgbmZzX2NsaWVudCAqbmZzX2dldF9jbGllbnQoY29uc3Qgc3RydWN0DQo+IG5mc19j
-bGllbnRfaW5pdGRhdGEgKmNsX2luaXQpDQo+ICAJCQlyZXR1cm4gbmZzX2ZvdW5kX2NsaWVudChj
-bF9pbml0LCBjbHApOw0KPiAgCQl9DQo+ICAJCWlmIChuZXcpIHsNCj4gKwkJCS8qIGFkZCBhbmQg
-aW5pdGlhbGl6ZSB0aGUgY2xpZW50IHdpdGggdGhlDQo+ICsJCQkgKiBuZnNfY2xpZF9pbml0X211
-dGV4IGhlbGQgdG8gcHJldmVudCBhDQo+IGRlYWRsb2NrDQo+ICsJCQkgKiB3aXRoIHRoZSBzZXJ2
-ZXIgdHJ1bmtpbmcgZGV0ZWN0aW9uDQo+ICsJCQkgKi8NCj4gKwkJCXNwaW5fdW5sb2NrKCZubi0+
-bmZzX2NsaWVudF9sb2NrKTsNCj4gKwkJCW11dGV4X2xvY2soJm5mc19jbGlkX2luaXRfbXV0ZXgp
-Ow0KPiArCQkJc3Bpbl9sb2NrKCZubi0+bmZzX2NsaWVudF9sb2NrKTsNCj4gKwkJCWNscCA9IG5m
-c19tYXRjaF9jbGllbnQoY2xfaW5pdCk7DQo+ICsJCQlpZiAoY2xwKSB7DQo+ICsJCQkJc3Bpbl91
-bmxvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiArCQkJCW11dGV4X3VubG9jaygmbmZzX2Ns
-aWRfaW5pdF9tdXRleCk7DQo+ICsJCQkJbmV3LT5ycGNfb3BzLT5mcmVlX2NsaWVudChuZXcpOw0K
-PiArCQkJCXJldHVybiBuZnNfZm91bmRfY2xpZW50KGNsX2luaXQsDQo+IGNscCk7DQo+ICsJCQl9
-DQo+ICAJCQlsaXN0X2FkZF90YWlsKCZuZXctPmNsX3NoYXJlX2xpbmssDQo+ICAJCQkJCSZubi0+
-bmZzX2NsaWVudF9saXN0KTsNCj4gIAkJCXNwaW5fdW5sb2NrKCZubi0+bmZzX2NsaWVudF9sb2Nr
-KTsNCj4gIAkJCW5ldy0+Y2xfZmxhZ3MgPSBjbF9pbml0LT5pbml0X2ZsYWdzOw0KPiAtCQkJcmV0
-dXJuIHJwY19vcHMtPmluaXRfY2xpZW50KG5ldywgY2xfaW5pdCk7DQo+ICsJCQlyZXN1bHQgPSBy
-cGNfb3BzLT5pbml0X2NsaWVudChuZXcsIGNsX2luaXQpOw0KPiArCQkJbXV0ZXhfdW5sb2NrKCZu
-ZnNfY2xpZF9pbml0X211dGV4KTsNCj4gKwkJCXJldHVybiByZXN1bHQ7DQo+ICAJCX0NCj4gIA0K
-PiAgCQlzcGluX3VubG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7DQo+IGRpZmYgLS1naXQgYS9m
-cy9uZnMvbmZzNHN0YXRlLmMgYi9mcy9uZnMvbmZzNHN0YXRlLmMNCj4gaW5kZXggNTRmZDU2ZC4u
-NjY4MTY0ZSAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRzdGF0ZS5jDQo+ICsrKyBiL2ZzL25m
-cy9uZnM0c3RhdGUuYw0KPiBAQCAtNzcsOCArNzcsNiBAQCBjb25zdCBuZnM0X3N0YXRlaWQgaW52
-YWxpZF9zdGF0ZWlkID0gew0KPiAgCS50eXBlID0gTkZTNF9JTlZBTElEX1NUQVRFSURfVFlQRSwN
-Cj4gIH07DQo+ICANCj4gLXN0YXRpYyBERUZJTkVfTVVURVgobmZzX2NsaWRfaW5pdF9tdXRleCk7
-DQo+IC0NCj4gIGludCBuZnM0X2luaXRfY2xpZW50aWQoc3RydWN0IG5mc19jbGllbnQgKmNscCwg
-c3RydWN0IHJwY19jcmVkDQo+ICpjcmVkKQ0KPiAgew0KPiAgCXN0cnVjdCBuZnM0X3NldGNsaWVu
-dGlkX3JlcyBjbGlkID0gew0KPiBAQCAtMjE2NCw3ICsyMTYyLDYgQEAgaW50IG5mczRfZGlzY292
-ZXJfc2VydmVyX3RydW5raW5nKHN0cnVjdA0KPiBuZnNfY2xpZW50ICpjbHAsDQo+ICAJY2xudCA9
-IGNscC0+Y2xfcnBjY2xpZW50Ow0KPiAgCWkgPSAwOw0KPiAgDQo+IC0JbXV0ZXhfbG9jaygmbmZz
-X2NsaWRfaW5pdF9tdXRleCk7DQo+ICBhZ2FpbjoNCj4gIAlzdGF0dXMgID0gLUVOT0VOVDsNCj4g
-IAljcmVkID0gbmZzNF9nZXRfY2xpZF9jcmVkKGNscCk7DQo+IEBAIC0yMjMyLDcgKzIyMjksNiBA
-QCBpbnQgbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoc3RydWN0DQo+IG5mc19jbGllbnQg
-KmNscCwNCj4gIAl9DQo+ICANCj4gIG91dF91bmxvY2s6DQo+IC0JbXV0ZXhfdW5sb2NrKCZuZnNf
-Y2xpZF9pbml0X211dGV4KTsNCj4gIAlkcHJpbnRrKCJORlM6ICVzOiBzdGF0dXMgPSAlZFxuIiwg
-X19mdW5jX18sIHN0YXR1cyk7DQo+ICAJcmV0dXJuIHN0YXR1czsNCj4gIH0NCg0KWW91ciBpbml0
-aWFsIGZpeCB3YXMgZmluZS4gSXQganVzdCBuZWVkZWQgMiBjaGFuZ2VzOg0KDQoxKSBSZW1vdmUg
-dGhlIHRlc3QgZm9yICdjbHAtPmNsX21pbm9ydmVyc2lvbiA+IDAnLg0KMikgUmVmY291bnQgdGhl
-IHN0cnVjdCBuZnNfY2xpZW50IHdoaWxlIHlvdSBhcmUgd2FpdGluZyBmb3IgaXQgdG8gYmUNCmlu
-aXRpYWxpc2VkLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Thanks, applying all four for 4.16.--b.
 
+On Wed, Nov 29, 2017 at 01:15:42PM +0200, Elena Reshetova wrote:
+> This series, for lockd component, replaces atomic_t reference
+> counters with the new refcount_t type and API (see include/linux/refcount.h).
+> By doing this we prevent intentional or accidental
+> underflows or overflows that can led to use-after-free vulnerabilities.
+> 
+> The patches are fully independent and can be cherry-picked separately.
+> If there are no objections to the patches, please merge them via respective tree.
+> 
+> Elena Reshetova (4):
+>   lockd: convert nlm_host.h_count from atomic_t to refcount_t
+>   lockd: convert nsm_handle.sm_count from atomic_t to refcount_t
+>   lockd: convert nlm_lockowner.count from atomic_t to refcount_t
+>   lockd: convert nlm_rqst.a_count from atomic_t to refcount_t
+> 
+>  fs/lockd/clntproc.c         | 14 +++++++-------
+>  fs/lockd/host.c             | 16 ++++++++--------
+>  fs/lockd/mon.c              | 14 +++++++-------
+>  fs/lockd/svcproc.c          |  2 +-
+>  include/linux/lockd/lockd.h |  9 +++++----
+>  5 files changed, 28 insertions(+), 27 deletions(-)
+> 
+> -- 
+> 2.7.4
