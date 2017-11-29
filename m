@@ -1,73 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:41843 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751711AbdK2Uc2 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Nov 2017 15:32:28 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: make pnfs_destroy_layout() wait on commit when inode
- is being evicted
-Date: Wed, 29 Nov 2017 20:32:22 +0000
-Message-ID: <1511987540.20638.10.camel@primarydata.com>
-References: <20171120214312.5263-1-smayhew@redhat.com>
-In-Reply-To: <20171120214312.5263-1-smayhew@redhat.com>
+Received: from fieldses.org ([173.255.197.46]:58840 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751960AbdK2UrX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 Nov 2017 15:47:23 -0500
+Date: Wed, 29 Nov 2017 15:47:23 -0500
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [GIT PULL] nfsd fixes for 4.15
+Message-ID: <20171129204723.GA7003@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTExLTIwIGF0IDE2OjQzIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IE90aGVyd2lzZSBuZnNfY29tbWl0X2lub2RlKCkgY2FuIHNldCBJX0RJUlRZX0RBVEFTWU5DIGlu
-IHRoZSBpbm9kZSdzDQo+IGlfc3RhdGUsIGFsbG93aW5nIHRoZSBmb2xsb3dpbmcgQlVHX09OIGlu
-IGV2aWN0KCkgdG8gYmUgdHJpZ2dlcmVkOg0KPiANCj4gICAgICAgICBCVUdfT04oaW5vZGUtPmlf
-c3RhdGUgIT0gKElfRlJFRUlORyB8IElfQ0xFQVIpKTsNCj4gDQo+IEZpeGVzOiAxZjE4YjgyYzM0
-MzcgKCJwTkZTOiBFbnN1cmUgd2UgY29tbWl0IHRoZSBsYXlvdXQgaWYgaXQgaGFzDQo+IGJlZW4u
-Li4iKQ0KPiBTaWduZWQtb2ZmLWJ5OiBTY290dCBNYXloZXcgPHNtYXloZXdAcmVkaGF0LmNvbT4N
-Cj4gVGVzdGVkLWJ5OiBUaWdyYW4gTWtydGNoeWFuIDx0aWdyYW4ubWtydGNoeWFuQGRlc3kuZGU+
-DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jICAgICAgICAgfCAyICst
-DQo+ICBmcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuYyB8IDIgKy0NCj4gIGZz
-L25mcy9uZnM0c3VwZXIuYyAgICAgICAgICAgICAgICAgICAgIHwgMiArLQ0KPiAgZnMvbmZzL3Bu
-ZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgfCA2ICsrKy0tLQ0KPiAgZnMvbmZzL3BuZnMu
-aCAgICAgICAgICAgICAgICAgICAgICAgICAgfCAyICstDQo+ICA1IGZpbGVzIGNoYW5nZWQsIDcg
-aW5zZXJ0aW9ucygrKSwgNyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMv
-ZmlsZWxheW91dC9maWxlbGF5b3V0LmMNCj4gYi9mcy9uZnMvZmlsZWxheW91dC9maWxlbGF5b3V0
-LmMNCj4gaW5kZXggNGU1NGQ4Yi4uMjhiNzIyOCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2ZpbGVs
-YXlvdXQvZmlsZWxheW91dC5jDQo+ICsrKyBiL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXQu
-Yw0KPiBAQCAtMTY5LDcgKzE2OSw3IEBAIHN0YXRpYyBpbnQgZmlsZWxheW91dF9hc3luY19oYW5k
-bGVfZXJyb3Ioc3RydWN0DQo+IHJwY190YXNrICp0YXNrLA0KPiAgCQkgKiBpL28gYW5kIGFsbCBp
-L28gd2FpdGluZyBvbiB0aGUgc2xvdCB0YWJsZSB0byB0aGUNCj4gTURTIHVudGlsDQo+ICAJCSAq
-IGxheW91dCBpcyBkZXN0cm95ZWQgYW5kIGEgbmV3IHZhbGlkIGxheW91dCBpcw0KPiBvYnRhaW5l
-ZC4NCj4gIAkJICovDQo+IC0JCXBuZnNfZGVzdHJveV9sYXlvdXQoTkZTX0koaW5vZGUpKTsNCj4g
-KwkJcG5mc19kZXN0cm95X2xheW91dChORlNfSShpbm9kZSksIDApOw0KPiAgCQlycGNfd2FrZV91
-cCgmdGJsLT5zbG90X3RibF93YWl0cSk7DQo+ICAJCWdvdG8gcmVzZXQ7DQo+ICAJLyogUlBDIGNv
-bm5lY3Rpb24gZXJyb3JzICovDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZmxleGZpbGVsYXlvdXQv
-ZmxleGZpbGVsYXlvdXQuYw0KPiBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91
-dC5jDQo+IGluZGV4IGM3NWFkOTguLmFiMGExZTUgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9mbGV4
-ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5jDQo+ICsrKyBiL2ZzL25mcy9mbGV4ZmlsZWxheW91
-dC9mbGV4ZmlsZWxheW91dC5jDQo+IEBAIC0xMDg4LDcgKzEwODgsNyBAQCBzdGF0aWMgaW50DQo+
-IGZmX2xheW91dF9hc3luY19oYW5kbGVfZXJyb3JfdjQoc3RydWN0IHJwY190YXNrICp0YXNrLA0K
-PiAgCQkgKiBpL28gYW5kIGFsbCBpL28gd2FpdGluZyBvbiB0aGUgc2xvdCB0YWJsZSB0byB0aGUN
-Cj4gTURTIHVudGlsDQo+ICAJCSAqIGxheW91dCBpcyBkZXN0cm95ZWQgYW5kIGEgbmV3IHZhbGlk
-IGxheW91dCBpcw0KPiBvYnRhaW5lZC4NCj4gIAkJICovDQo+IC0JCXBuZnNfZGVzdHJveV9sYXlv
-dXQoTkZTX0koaW5vZGUpKTsNCj4gKwkJcG5mc19kZXN0cm95X2xheW91dChORlNfSShpbm9kZSks
-IDApOw0KPiAgCQlycGNfd2FrZV91cCgmdGJsLT5zbG90X3RibF93YWl0cSk7DQo+ICAJCWdvdG8g
-cmVzZXQ7DQo+ICAJLyogUlBDIGNvbm5lY3Rpb24gZXJyb3JzICovDQo+IGRpZmYgLS1naXQgYS9m
-cy9uZnMvbmZzNHN1cGVyLmMgYi9mcy9uZnMvbmZzNHN1cGVyLmMNCj4gaW5kZXggNmZiN2NiNi4u
-M2I0YTA2MyAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRzdXBlci5jDQo+ICsrKyBiL2ZzL25m
-cy9uZnM0c3VwZXIuYw0KPiBAQCAtOTUsNyArOTUsNyBAQCBzdGF0aWMgdm9pZCBuZnM0X2V2aWN0
-X2lub2RlKHN0cnVjdCBpbm9kZSAqaW5vZGUpDQo+ICAJbmZzX2lub2RlX3JldHVybl9kZWxlZ2F0
-aW9uX25vcmVjbGFpbShpbm9kZSk7DQo+ICAJLyogTm90ZSB0aGF0IGFib3ZlIGRlbGVncmV0dXJu
-IHdvdWxkIHRyaWdnZXIgcG5mcyByZXR1cm4tb24tDQo+IGNsb3NlICovDQo+ICAJcG5mc19yZXR1
-cm5fbGF5b3V0KGlub2RlKTsNCj4gLQlwbmZzX2Rlc3Ryb3lfbGF5b3V0KE5GU19JKGlub2RlKSk7
-DQo+ICsJcG5mc19kZXN0cm95X2xheW91dChORlNfSShpbm9kZSksIEZMVVNIX1NZTkMpOw0KPiAg
-CS8qIEZpcnN0IGNhbGwgc3RhbmRhcmQgTkZTIGNsZWFyX2lub2RlKCkgY29kZSAqLw0KPiAgCW5m
-c19jbGVhcl9pbm9kZShpbm9kZSk7DQo+ICB9DQo+IA0KDQpOQUNLLiBJZiB5b3Ugc3RpbGwgaGF2
-ZSBkaXJ0eSBwYWdlcyB3aGVuIHlvdSBnZXQgdG8gbmZzNF9ldmljdF9pbm9kZSgpLA0KdGhlbiB5
-b3UgYXJlIHNjcmV3ZWQgbm8gbWF0dGVyIHdoYXQuDQoNClRoaXMgcHJvYmxlbSBzaG91bGQgYmUg
-Zml4YWJsZSBpbiBuZnNfY29tbWl0X2lub2RlKCkgYnkgc2ltcGx5IGV4aXRpbmcNCmFmdGVyIHRo
-ZSBjYWxsIHRvIG5mc19jb21taXRfZW5kKCkgaWYgcmVzID09IDAuDQoNCi0tIA0KVHJvbmQgTXlr
-bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5t
-eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+Please pull nfsd fixes for 4.15 from:
 
+  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.15-1
+
+I screwed up my merge window pull request; I only sent half of what I
+meant to.
+
+There were no new features, just bugfixes of various importance and some
+very minor cleanup, so I think it's all still appropriate for -rc2.
+
+--b.
+
+----------------------------------------------------------------
+Highlights:
+
+	- Fixes from Trond for some races in the NFSv4 state code.
+	- Fix from Naofumi Honda for a typo in the blocked lock
+	  notificiation code.
+	- Fixes from Vasily Averin for some problems starting and
+	  stopping lockd especially in network namespaces.
+
+----------------------------------------------------------------
+Andrew Elble (2):
+      nfsd: fix locking validator warning on nfs4_ol_stateid->st_mutex class
+      nfsd: check for use of the closed special stateid
+
+Bhumika Goyal (3):
+      sunrpc: make the function arg as const
+      NFSD: make cache_detail structures const
+      SUNRPC: make cache_detail structures const
+
+Naofumi Honda (1):
+      nfsd: fix panic in posix_unblock_lock called from nfs4_laundromat
+
+Trond Myklebust (8):
+      nfsd: Fix stateid races between OPEN and CLOSE
+      nfsd: Fix another OPEN stateid race
+      nfsd: CLOSE SHOULD return the invalid special stateid for NFSv4.x (x>0)
+      nfsd: Ensure we don't recognise lock stateids after freeing them
+      nfsd4: move find_lock_stateid
+      nfsd: Fix race in lock stateid creation
+      nfsd: Ensure we check stateid validity in the seqid operation checks
+      nfsd: Fix races with check_stateid_generation()
+
+Vasily Averin (9):
+      nfsd: remove net pointer from debug messages
+      lockd: remove net pointer from messages
+      grace: replace BUG_ON by WARN_ONCE in exit_net hook
+      lockd: added cleanup checks in exit_net hook
+      lockd: lost rollback of set_grace_period() in lockd_down_net()
+      race of lockd inetaddr notifiers vs nlmsvc_rqst change
+      race of nfsd inetaddr notifiers vs nn->nfsd_serv change
+      nlm_shutdown_hosts_net() cleanup
+      lockd: fix "list_add double add" caused by legacy signal interface
+
+ fs/lockd/host.c                   |  24 ++--
+ fs/lockd/mon.c                    |   3 +-
+ fs/lockd/svc.c                    |  38 +++++-
+ fs/lockd/svcsubs.c                |   2 +-
+ fs/nfs_common/grace.c             |  10 +-
+ fs/nfsd/export.c                  |  10 +-
+ fs/nfsd/netns.h                   |   3 +
+ fs/nfsd/nfs4idmap.c               |   4 +-
+ fs/nfsd/nfs4state.c               | 279 +++++++++++++++++++++++++-------------
+ fs/nfsd/nfsctl.c                  |   3 +
+ fs/nfsd/nfssvc.c                  |  14 +-
+ include/linux/sunrpc/cache.h      |   2 +-
+ net/sunrpc/auth_gss/svcauth_gss.c |   4 +-
+ net/sunrpc/cache.c                |   2 +-
+ net/sunrpc/svcauth_unix.c         |   4 +-
+ 15 files changed, 270 insertions(+), 132 deletions(-)
