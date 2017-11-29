@@ -1,138 +1,138 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:17118 "EHLO mx144.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:62540 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751254AbdK2Tkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 Nov 2017 14:40:31 -0500
-Subject: Re: [PATCH] nfs: make pnfs_destroy_layout() wait on commit when inode
- is being evicted
+        id S1751960AbdK2UQs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 29 Nov 2017 15:16:48 -0500
+Subject: Re: [PATCH] nfs: fix a deadlock in nfs client initialization
 To: Scott Mayhew <smayhew@redhat.com>,
         <trond.myklebust@primarydata.com>
 CC: <linux-nfs@vger.kernel.org>
-References: <20171120214312.5263-1-smayhew@redhat.com>
+References: <20171120212819.3yxutvgmigxc7at5@tonberry.usersys.redhat.com>
+ <20171120214118.4240-1-smayhew@redhat.com>
 From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <685ffa52-4800-c111-eaac-81442bf4ac79@Netapp.com>
-Date: Wed, 29 Nov 2017 14:40:24 -0500
+Message-ID: <62264a3c-db93-285f-a019-340bd0107b46@Netapp.com>
+Date: Wed, 29 Nov 2017 15:16:41 -0500
 MIME-Version: 1.0
-In-Reply-To: <20171120214312.5263-1-smayhew@redhat.com>
+In-Reply-To: <20171120214118.4240-1-smayhew@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 Hi Scott,
 
-On 11/20/2017 04:43 PM, Scott Mayhew wrote:
-> Otherwise nfs_commit_inode() can set I_DIRTY_DATASYNC in the inode's
-> i_state, allowing the following BUG_ON in evict() to be triggered:
+On 11/20/2017 04:41 PM, Scott Mayhew wrote:
+> The following deadlock can occur between a process waiting for a client
+> to initialize in while walking the client list and another process
+> waiting for the nfs_clid_init_mutex so it can initialize that client:
 > 
->         BUG_ON(inode->i_state != (I_FREEING | I_CLEAR));
+> Process 1                               Process 2
+> ---------                               ---------
+> spin_lock(&nn->nfs_client_lock);
+> list_add_tail(&CLIENTA->cl_share_link,
+>         &nn->nfs_client_list);
+> spin_unlock(&nn->nfs_client_lock);
+>                                         spin_lock(&nn->nfs_client_lock);
+>                                         list_add_tail(&CLIENTB->cl_share_link,
+>                                                 &nn->nfs_client_list);
+>                                         spin_unlock(&nn->nfs_client_lock);
+>                                         mutex_lock(&nfs_clid_init_mutex);
+>                                         nfs41_walk_client_list(clp, result, cred);
+>                                         nfs_wait_client_init_complete(CLIENTA);
+> (waiting for nfs_clid_init_mutex)
 > 
-> Fixes: 1f18b82c3437 ("pNFS: Ensure we commit the layout if it has been...")
+> Add and initilize the client with the nfs_clid_init_mutex held in
+> order to prevent that deadlock.
+> 
 > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> Tested-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
 > ---
->  fs/nfs/filelayout/filelayout.c         | 2 +-
->  fs/nfs/flexfilelayout/flexfilelayout.c | 2 +-
->  fs/nfs/nfs4super.c                     | 2 +-
->  fs/nfs/pnfs.c                          | 6 +++---
->  fs/nfs/pnfs.h                          | 2 +-
->  5 files changed, 7 insertions(+), 7 deletions(-)
+>  fs/nfs/client.c    | 21 +++++++++++++++++++--
+>  fs/nfs/nfs4state.c |  4 ----
+>  2 files changed, 19 insertions(+), 6 deletions(-)
 > 
-> diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-> index 4e54d8b..28b7228 100644
-> --- a/fs/nfs/filelayout/filelayout.c
-> +++ b/fs/nfs/filelayout/filelayout.c
-> @@ -169,7 +169,7 @@ static int filelayout_async_handle_error(struct rpc_task *task,
->  		 * i/o and all i/o waiting on the slot table to the MDS until
->  		 * layout is destroyed and a new valid layout is obtained.
->  		 */
-> -		pnfs_destroy_layout(NFS_I(inode));
-> +		pnfs_destroy_layout(NFS_I(inode), 0);
->  		rpc_wake_up(&tbl->slot_tbl_waitq);
->  		goto reset;
->  	/* RPC connection errors */
-> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
-> index c75ad98..ab0a1e5 100644
-> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
-> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
-> @@ -1088,7 +1088,7 @@ static int ff_layout_async_handle_error_v4(struct rpc_task *task,
->  		 * i/o and all i/o waiting on the slot table to the MDS until
->  		 * layout is destroyed and a new valid layout is obtained.
->  		 */
-> -		pnfs_destroy_layout(NFS_I(inode));
-> +		pnfs_destroy_layout(NFS_I(inode), 0);
->  		rpc_wake_up(&tbl->slot_tbl_waitq);
->  		goto reset;
->  	/* RPC connection errors */
-> diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-> index 6fb7cb6..3b4a063 100644
-> --- a/fs/nfs/nfs4super.c
-> +++ b/fs/nfs/nfs4super.c
-> @@ -95,7 +95,7 @@ static void nfs4_evict_inode(struct inode *inode)
->  	nfs_inode_return_delegation_noreclaim(inode);
->  	/* Note that above delegreturn would trigger pnfs return-on-close */
->  	pnfs_return_layout(inode);
-> -	pnfs_destroy_layout(NFS_I(inode));
-> +	pnfs_destroy_layout(NFS_I(inode), FLUSH_SYNC);
->  	/* First call standard NFS clear_inode() code */
->  	nfs_clear_inode(inode);
->  }
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index d602fe9..09e66a8 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -696,7 +696,7 @@ pnfs_free_lseg_list(struct list_head *free_me)
->  }
+> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> index 0ac2fb1..db38c47 100644
+> --- a/fs/nfs/client.c
+> +++ b/fs/nfs/client.c
+> @@ -60,6 +60,7 @@ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
+>  static DEFINE_SPINLOCK(nfs_version_lock);
+>  static DEFINE_MUTEX(nfs_version_mutex);
+>  static LIST_HEAD(nfs_versions);
+> +static DEFINE_MUTEX(nfs_clid_init_mutex);
 >  
->  void
-> -pnfs_destroy_layout(struct nfs_inode *nfsi)
-> +pnfs_destroy_layout(struct nfs_inode *nfsi, int how)
+>  /*
+>   * RPC cruft for NFS
+> @@ -386,7 +387,7 @@ nfs_found_client(const struct nfs_client_initdata *cl_init,
+>   */
+>  struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
 >  {
->  	struct pnfs_layout_hdr *lo;
->  	LIST_HEAD(tmp_list);
-> @@ -710,7 +710,7 @@ pnfs_destroy_layout(struct nfs_inode *nfsi)
->  		pnfs_layout_clear_fail_bit(lo, NFS_LAYOUT_RW_FAILED);
->  		spin_unlock(&nfsi->vfs_inode.i_lock);
->  		pnfs_free_lseg_list(&tmp_list);
-> -		nfs_commit_inode(&nfsi->vfs_inode, 0);
-> +		nfs_commit_inode(&nfsi->vfs_inode, how);
->  		pnfs_put_layout_hdr(lo);
->  	} else
->  		spin_unlock(&nfsi->vfs_inode.i_lock);
-> @@ -1849,7 +1849,7 @@ pnfs_update_layout(struct inode *ino,
->  			}
->  			/* Destroy the existing layout and start over */
->  			if (time_after(jiffies, giveup))
-> -				pnfs_destroy_layout(NFS_I(ino));
-> +				pnfs_destroy_layout(NFS_I(ino), 0);
->  			/* Fallthrough */
->  		case -EAGAIN:
->  			break;
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index 8d507c3..3fe2160 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -245,7 +245,7 @@ size_t pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio,
->  void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
->  struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
->  void pnfs_free_lseg_list(struct list_head *tmp_list);
-> -void pnfs_destroy_layout(struct nfs_inode *);
-> +void pnfs_destroy_layout(struct nfs_inode *, int how);
+> -	struct nfs_client *clp, *new = NULL;
+> +	struct nfs_client *clp, *new = NULL, *result = NULL;
+>  	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
+>  	const struct nfs_rpc_ops *rpc_ops = cl_init->nfs_mod->rpc_ops;
+>  
+> @@ -407,11 +408,27 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
+>  			return nfs_found_client(cl_init, clp);
+>  		}
+>  		if (new) {
+> +			/* add and initialize the client with the
+> +			 * nfs_clid_init_mutex held to prevent a deadlock
+> +			 * with the server trunking detection
+> +			 */
+> +			spin_unlock(&nn->nfs_client_lock);
+> +			mutex_lock(&nfs_clid_init_mutex);
+> +			spin_lock(&nn->nfs_client_lock);
+> +			clp = nfs_match_client(cl_init);
+> +			if (clp) {
+> +				spin_unlock(&nn->nfs_client_lock);
+> +				mutex_unlock(&nfs_clid_init_mutex);
+> +				new->rpc_ops->free_client(new);
+> +				return nfs_found_client(cl_init, clp);
+> +			}
 
-Can you also update the fallback pnfs_destroy_layout() for when CONFIG_NFS_V4_1=n?
-
-fs/nfs/nfs4super.c: In function 'nfs4_evict_inode':
-fs/nfs/nfs4super.c:98:2: error: too many arguments to function 'pnfs_destroy_layout'
-  pnfs_destroy_layout(NFS_I(inode), FLUSH_SYNC);
-  ^~~~~~~~~~~~~~~~~~~
-In file included from fs/nfs/nfs4super.c:13:0:
-fs/nfs/pnfs.h:627:20: note: declared here
- static inline void pnfs_destroy_layout(struct nfs_inode *nfsi)
-                    ^~~~~~~~~~~~~~~~~~~
+Is there any reason you can't just grab the nfs_clid_init_mutex at the very beginning of the do/while loop, right before getting the nn->nfs_client_lock?  Then you wouldn't need to repeat the nfs_match_client() check, which might help clean the code up a bit.
 
 Thanks,
 Anna
 
->  void pnfs_destroy_all_layouts(struct nfs_client *);
->  int pnfs_destroy_layouts_byfsid(struct nfs_client *clp,
->  		struct nfs_fsid *fsid,
+
+>  			list_add_tail(&new->cl_share_link,
+>  					&nn->nfs_client_list);
+>  			spin_unlock(&nn->nfs_client_lock);
+>  			new->cl_flags = cl_init->init_flags;
+> -			return rpc_ops->init_client(new, cl_init);
+> +			result = rpc_ops->init_client(new, cl_init);
+> +			mutex_unlock(&nfs_clid_init_mutex);
+> +			return result;
+>  		}
+>  
+>  		spin_unlock(&nn->nfs_client_lock);
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index 54fd56d..668164e 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -77,8 +77,6 @@ const nfs4_stateid invalid_stateid = {
+>  	.type = NFS4_INVALID_STATEID_TYPE,
+>  };
+>  
+> -static DEFINE_MUTEX(nfs_clid_init_mutex);
+> -
+>  int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
+>  {
+>  	struct nfs4_setclientid_res clid = {
+> @@ -2164,7 +2162,6 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
+>  	clnt = clp->cl_rpcclient;
+>  	i = 0;
+>  
+> -	mutex_lock(&nfs_clid_init_mutex);
+>  again:
+>  	status  = -ENOENT;
+>  	cred = nfs4_get_clid_cred(clp);
+> @@ -2232,7 +2229,6 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
+>  	}
+>  
+>  out_unlock:
+> -	mutex_unlock(&nfs_clid_init_mutex);
+>  	dprintk("NFS: %s: status = %d\n", __func__, status);
+>  	return status;
+>  }
 > 
