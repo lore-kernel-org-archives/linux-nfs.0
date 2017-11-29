@@ -1,138 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:62540 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751960AbdK2UQs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 29 Nov 2017 15:16:48 -0500
-Subject: Re: [PATCH] nfs: fix a deadlock in nfs client initialization
-To: Scott Mayhew <smayhew@redhat.com>,
-        <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-References: <20171120212819.3yxutvgmigxc7at5@tonberry.usersys.redhat.com>
- <20171120214118.4240-1-smayhew@redhat.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <62264a3c-db93-285f-a019-340bd0107b46@Netapp.com>
-Date: Wed, 29 Nov 2017 15:16:41 -0500
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:41843 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751711AbdK2Uc2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Nov 2017 15:32:28 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: make pnfs_destroy_layout() wait on commit when inode
+ is being evicted
+Date: Wed, 29 Nov 2017 20:32:22 +0000
+Message-ID: <1511987540.20638.10.camel@primarydata.com>
+References: <20171120214312.5263-1-smayhew@redhat.com>
+In-Reply-To: <20171120214312.5263-1-smayhew@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20171120214118.4240-1-smayhew@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Scott,
+T24gTW9uLCAyMDE3LTExLTIwIGF0IDE2OjQzIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IE90aGVyd2lzZSBuZnNfY29tbWl0X2lub2RlKCkgY2FuIHNldCBJX0RJUlRZX0RBVEFTWU5DIGlu
+IHRoZSBpbm9kZSdzDQo+IGlfc3RhdGUsIGFsbG93aW5nIHRoZSBmb2xsb3dpbmcgQlVHX09OIGlu
+IGV2aWN0KCkgdG8gYmUgdHJpZ2dlcmVkOg0KPiANCj4gICAgICAgICBCVUdfT04oaW5vZGUtPmlf
+c3RhdGUgIT0gKElfRlJFRUlORyB8IElfQ0xFQVIpKTsNCj4gDQo+IEZpeGVzOiAxZjE4YjgyYzM0
+MzcgKCJwTkZTOiBFbnN1cmUgd2UgY29tbWl0IHRoZSBsYXlvdXQgaWYgaXQgaGFzDQo+IGJlZW4u
+Li4iKQ0KPiBTaWduZWQtb2ZmLWJ5OiBTY290dCBNYXloZXcgPHNtYXloZXdAcmVkaGF0LmNvbT4N
+Cj4gVGVzdGVkLWJ5OiBUaWdyYW4gTWtydGNoeWFuIDx0aWdyYW4ubWtydGNoeWFuQGRlc3kuZGU+
+DQo+IC0tLQ0KPiAgZnMvbmZzL2ZpbGVsYXlvdXQvZmlsZWxheW91dC5jICAgICAgICAgfCAyICst
+DQo+ICBmcy9uZnMvZmxleGZpbGVsYXlvdXQvZmxleGZpbGVsYXlvdXQuYyB8IDIgKy0NCj4gIGZz
+L25mcy9uZnM0c3VwZXIuYyAgICAgICAgICAgICAgICAgICAgIHwgMiArLQ0KPiAgZnMvbmZzL3Bu
+ZnMuYyAgICAgICAgICAgICAgICAgICAgICAgICAgfCA2ICsrKy0tLQ0KPiAgZnMvbmZzL3BuZnMu
+aCAgICAgICAgICAgICAgICAgICAgICAgICAgfCAyICstDQo+ICA1IGZpbGVzIGNoYW5nZWQsIDcg
+aW5zZXJ0aW9ucygrKSwgNyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMv
+ZmlsZWxheW91dC9maWxlbGF5b3V0LmMNCj4gYi9mcy9uZnMvZmlsZWxheW91dC9maWxlbGF5b3V0
+LmMNCj4gaW5kZXggNGU1NGQ4Yi4uMjhiNzIyOCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL2ZpbGVs
+YXlvdXQvZmlsZWxheW91dC5jDQo+ICsrKyBiL2ZzL25mcy9maWxlbGF5b3V0L2ZpbGVsYXlvdXQu
+Yw0KPiBAQCAtMTY5LDcgKzE2OSw3IEBAIHN0YXRpYyBpbnQgZmlsZWxheW91dF9hc3luY19oYW5k
+bGVfZXJyb3Ioc3RydWN0DQo+IHJwY190YXNrICp0YXNrLA0KPiAgCQkgKiBpL28gYW5kIGFsbCBp
+L28gd2FpdGluZyBvbiB0aGUgc2xvdCB0YWJsZSB0byB0aGUNCj4gTURTIHVudGlsDQo+ICAJCSAq
+IGxheW91dCBpcyBkZXN0cm95ZWQgYW5kIGEgbmV3IHZhbGlkIGxheW91dCBpcw0KPiBvYnRhaW5l
+ZC4NCj4gIAkJICovDQo+IC0JCXBuZnNfZGVzdHJveV9sYXlvdXQoTkZTX0koaW5vZGUpKTsNCj4g
+KwkJcG5mc19kZXN0cm95X2xheW91dChORlNfSShpbm9kZSksIDApOw0KPiAgCQlycGNfd2FrZV91
+cCgmdGJsLT5zbG90X3RibF93YWl0cSk7DQo+ICAJCWdvdG8gcmVzZXQ7DQo+ICAJLyogUlBDIGNv
+bm5lY3Rpb24gZXJyb3JzICovDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvZmxleGZpbGVsYXlvdXQv
+ZmxleGZpbGVsYXlvdXQuYw0KPiBiL2ZzL25mcy9mbGV4ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91
+dC5jDQo+IGluZGV4IGM3NWFkOTguLmFiMGExZTUgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9mbGV4
+ZmlsZWxheW91dC9mbGV4ZmlsZWxheW91dC5jDQo+ICsrKyBiL2ZzL25mcy9mbGV4ZmlsZWxheW91
+dC9mbGV4ZmlsZWxheW91dC5jDQo+IEBAIC0xMDg4LDcgKzEwODgsNyBAQCBzdGF0aWMgaW50DQo+
+IGZmX2xheW91dF9hc3luY19oYW5kbGVfZXJyb3JfdjQoc3RydWN0IHJwY190YXNrICp0YXNrLA0K
+PiAgCQkgKiBpL28gYW5kIGFsbCBpL28gd2FpdGluZyBvbiB0aGUgc2xvdCB0YWJsZSB0byB0aGUN
+Cj4gTURTIHVudGlsDQo+ICAJCSAqIGxheW91dCBpcyBkZXN0cm95ZWQgYW5kIGEgbmV3IHZhbGlk
+IGxheW91dCBpcw0KPiBvYnRhaW5lZC4NCj4gIAkJICovDQo+IC0JCXBuZnNfZGVzdHJveV9sYXlv
+dXQoTkZTX0koaW5vZGUpKTsNCj4gKwkJcG5mc19kZXN0cm95X2xheW91dChORlNfSShpbm9kZSks
+IDApOw0KPiAgCQlycGNfd2FrZV91cCgmdGJsLT5zbG90X3RibF93YWl0cSk7DQo+ICAJCWdvdG8g
+cmVzZXQ7DQo+ICAJLyogUlBDIGNvbm5lY3Rpb24gZXJyb3JzICovDQo+IGRpZmYgLS1naXQgYS9m
+cy9uZnMvbmZzNHN1cGVyLmMgYi9mcy9uZnMvbmZzNHN1cGVyLmMNCj4gaW5kZXggNmZiN2NiNi4u
+M2I0YTA2MyAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRzdXBlci5jDQo+ICsrKyBiL2ZzL25m
+cy9uZnM0c3VwZXIuYw0KPiBAQCAtOTUsNyArOTUsNyBAQCBzdGF0aWMgdm9pZCBuZnM0X2V2aWN0
+X2lub2RlKHN0cnVjdCBpbm9kZSAqaW5vZGUpDQo+ICAJbmZzX2lub2RlX3JldHVybl9kZWxlZ2F0
+aW9uX25vcmVjbGFpbShpbm9kZSk7DQo+ICAJLyogTm90ZSB0aGF0IGFib3ZlIGRlbGVncmV0dXJu
+IHdvdWxkIHRyaWdnZXIgcG5mcyByZXR1cm4tb24tDQo+IGNsb3NlICovDQo+ICAJcG5mc19yZXR1
+cm5fbGF5b3V0KGlub2RlKTsNCj4gLQlwbmZzX2Rlc3Ryb3lfbGF5b3V0KE5GU19JKGlub2RlKSk7
+DQo+ICsJcG5mc19kZXN0cm95X2xheW91dChORlNfSShpbm9kZSksIEZMVVNIX1NZTkMpOw0KPiAg
+CS8qIEZpcnN0IGNhbGwgc3RhbmRhcmQgTkZTIGNsZWFyX2lub2RlKCkgY29kZSAqLw0KPiAgCW5m
+c19jbGVhcl9pbm9kZShpbm9kZSk7DQo+ICB9DQo+IA0KDQpOQUNLLiBJZiB5b3Ugc3RpbGwgaGF2
+ZSBkaXJ0eSBwYWdlcyB3aGVuIHlvdSBnZXQgdG8gbmZzNF9ldmljdF9pbm9kZSgpLA0KdGhlbiB5
+b3UgYXJlIHNjcmV3ZWQgbm8gbWF0dGVyIHdoYXQuDQoNClRoaXMgcHJvYmxlbSBzaG91bGQgYmUg
+Zml4YWJsZSBpbiBuZnNfY29tbWl0X2lub2RlKCkgYnkgc2ltcGx5IGV4aXRpbmcNCmFmdGVyIHRo
+ZSBjYWxsIHRvIG5mc19jb21taXRfZW5kKCkgaWYgcmVzID09IDAuDQoNCi0tIA0KVHJvbmQgTXlr
+bGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5t
+eWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-On 11/20/2017 04:41 PM, Scott Mayhew wrote:
-> The following deadlock can occur between a process waiting for a client
-> to initialize in while walking the client list and another process
-> waiting for the nfs_clid_init_mutex so it can initialize that client:
-> 
-> Process 1                               Process 2
-> ---------                               ---------
-> spin_lock(&nn->nfs_client_lock);
-> list_add_tail(&CLIENTA->cl_share_link,
->         &nn->nfs_client_list);
-> spin_unlock(&nn->nfs_client_lock);
->                                         spin_lock(&nn->nfs_client_lock);
->                                         list_add_tail(&CLIENTB->cl_share_link,
->                                                 &nn->nfs_client_list);
->                                         spin_unlock(&nn->nfs_client_lock);
->                                         mutex_lock(&nfs_clid_init_mutex);
->                                         nfs41_walk_client_list(clp, result, cred);
->                                         nfs_wait_client_init_complete(CLIENTA);
-> (waiting for nfs_clid_init_mutex)
-> 
-> Add and initilize the client with the nfs_clid_init_mutex held in
-> order to prevent that deadlock.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/client.c    | 21 +++++++++++++++++++--
->  fs/nfs/nfs4state.c |  4 ----
->  2 files changed, 19 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 0ac2fb1..db38c47 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -60,6 +60,7 @@ static DECLARE_WAIT_QUEUE_HEAD(nfs_client_active_wq);
->  static DEFINE_SPINLOCK(nfs_version_lock);
->  static DEFINE_MUTEX(nfs_version_mutex);
->  static LIST_HEAD(nfs_versions);
-> +static DEFINE_MUTEX(nfs_clid_init_mutex);
->  
->  /*
->   * RPC cruft for NFS
-> @@ -386,7 +387,7 @@ nfs_found_client(const struct nfs_client_initdata *cl_init,
->   */
->  struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
->  {
-> -	struct nfs_client *clp, *new = NULL;
-> +	struct nfs_client *clp, *new = NULL, *result = NULL;
->  	struct nfs_net *nn = net_generic(cl_init->net, nfs_net_id);
->  	const struct nfs_rpc_ops *rpc_ops = cl_init->nfs_mod->rpc_ops;
->  
-> @@ -407,11 +408,27 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *cl_init)
->  			return nfs_found_client(cl_init, clp);
->  		}
->  		if (new) {
-> +			/* add and initialize the client with the
-> +			 * nfs_clid_init_mutex held to prevent a deadlock
-> +			 * with the server trunking detection
-> +			 */
-> +			spin_unlock(&nn->nfs_client_lock);
-> +			mutex_lock(&nfs_clid_init_mutex);
-> +			spin_lock(&nn->nfs_client_lock);
-> +			clp = nfs_match_client(cl_init);
-> +			if (clp) {
-> +				spin_unlock(&nn->nfs_client_lock);
-> +				mutex_unlock(&nfs_clid_init_mutex);
-> +				new->rpc_ops->free_client(new);
-> +				return nfs_found_client(cl_init, clp);
-> +			}
-
-Is there any reason you can't just grab the nfs_clid_init_mutex at the very beginning of the do/while loop, right before getting the nn->nfs_client_lock?  Then you wouldn't need to repeat the nfs_match_client() check, which might help clean the code up a bit.
-
-Thanks,
-Anna
-
-
->  			list_add_tail(&new->cl_share_link,
->  					&nn->nfs_client_list);
->  			spin_unlock(&nn->nfs_client_lock);
->  			new->cl_flags = cl_init->init_flags;
-> -			return rpc_ops->init_client(new, cl_init);
-> +			result = rpc_ops->init_client(new, cl_init);
-> +			mutex_unlock(&nfs_clid_init_mutex);
-> +			return result;
->  		}
->  
->  		spin_unlock(&nn->nfs_client_lock);
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index 54fd56d..668164e 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -77,8 +77,6 @@ const nfs4_stateid invalid_stateid = {
->  	.type = NFS4_INVALID_STATEID_TYPE,
->  };
->  
-> -static DEFINE_MUTEX(nfs_clid_init_mutex);
-> -
->  int nfs4_init_clientid(struct nfs_client *clp, struct rpc_cred *cred)
->  {
->  	struct nfs4_setclientid_res clid = {
-> @@ -2164,7 +2162,6 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
->  	clnt = clp->cl_rpcclient;
->  	i = 0;
->  
-> -	mutex_lock(&nfs_clid_init_mutex);
->  again:
->  	status  = -ENOENT;
->  	cred = nfs4_get_clid_cred(clp);
-> @@ -2232,7 +2229,6 @@ int nfs4_discover_server_trunking(struct nfs_client *clp,
->  	}
->  
->  out_unlock:
-> -	mutex_unlock(&nfs_clid_init_mutex);
->  	dprintk("NFS: %s: status = %d\n", __func__, status);
->  	return status;
->  }
-> 
