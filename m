@@ -1,58 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mga05.intel.com ([192.55.52.43]:40526 "EHLO mga05.intel.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750810AbdK3Hs5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Nov 2017 02:48:57 -0500
-From: "Reshetova, Elena" <elena.reshetova@intel.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "peterz@infradead.org" <peterz@infradead.org>,
-        "keescook@chromium.org" <keescook@chromium.org>
-Subject: RE: [PATCH 0/4] lockd refcount conversions
-Date: Thu, 30 Nov 2017 07:48:52 +0000
-Message-ID: <2236FBA76BA1254E88B949DDB74E612B802C4FE5@IRSMSX102.ger.corp.intel.com>
-References: <1511954146-11793-1-git-send-email-elena.reshetova@intel.com>
- <20171129222341.GB3923@fieldses.org>
-In-Reply-To: <20171129222341.GB3923@fieldses.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:64706 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1750783AbdK3IKs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 03:10:48 -0500
+From: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
+To: "bfields@redhat.com" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH]
+Date: Thu, 30 Nov 2017 08:10:45 +0000
+Message-ID: <838ce3da-5905-a22d-2353-d621e2d5ad95@cn.fujitsu.com>
+Content-Type: multipart/mixed;
+        boundary="_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Thanks, applying all four for 4.16.--b.
+--_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_
+Content-Type: text/plain; charset="utf-8"
+Content-ID: <8A8E09C730416042885560CB21EAF160@fujitsu.local>
+Content-Transfer-Encoding: base64
 
-Thank you very much!
+IG5mczQuMCBzZXJ2ZXIgc3Rfd3JpdGU6IGZpeCB0aGUgYW1vdW50IG9mIGRh
+dGEgc2VudCBpbiB0aGUgdGVzdExhcmdlRGF0YQ0KICAgIA0KICAgIFRoZSBt
+YXhpbXVtIGFtb3VudCBvZiBkYXRhIGNvdWxkIGJlIHdyaXRlbiBpcyBORlNT
+VkNfTUFYQkxLU0laRS4gVGhlIHZhbHVlIG9mIE5GU1NWQ19NQVhCDQpMS1NJ
+WkUgZGVmaW5lZCBpbiB0aGUga2VybmVsIGlzIFJQQ1NWQ19NQVhQTEFZTE9B
+RC4gSWYgdGhlIHZhbHVlIHdyaXR0ZW4gZXhjZWVkcyBORlNTVkNfTUFYQkwN
+CktTSVpFLCB0aGUgdmFsdWUgaXMgZml4ZWQgYXMgdGhlIHZhbHVlIG9mIE5G
+U1NWQ19NQVhCTEtTSVpFLiBUaGUgdmFsdWUgb2YgUlBDU1ZDX01BWFBBWUxP
+QUQgaQ0KcyAxKjEwMjQqMTAyNHUgYW5kICJhYmNkZWZnaGlqa2xtbm9wcSIq
+MHgxMDAwMCBleGNlZWRzIGl0LiBTbyB0aGUgcHJldmlvdXMgdGVzdCBpcyBi
+b3VuZCB0byBmDQphaWwgYW5kIGlzIG1lYW5pbmdsZXNzLg0KDQogICAgU2ln
+bmVkLW9mZi1ieTogTHUgWGlueXUgPGx1eHkuZm5zdEBjbi5mdWppdHN1LmNv
+bT4NCg0KZGlmZiAtLWdpdCBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF93cml0
+ZS5weSBiL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF93cml0ZS5weQ0KaW5kZXgg
+NzEwNDUyZS4uYTdkYWUwMyAxMDA2NDQNCi0tLSBhL25mczQuMC9zZXJ2ZXJ0
+ZXN0cy9zdF93cml0ZS5weQ0KKysrIGIvbmZzNC4wL3NlcnZlcnRlc3RzL3N0
+X3dyaXRlLnB5DQpAQCAtMTMwLDcgKzEzMCw3IEBAIGRlZiB0ZXN0TGFyZ2VE
+YXRhKHQsIGVudik6DQogICAgIGMgPSBlbnYuYzENCiAgICAgYy5pbml0X2Nv
+bm5lY3Rpb24oKQ0KICAgICBmaCwgc3RhdGVpZCA9IGMuY3JlYXRlX2NvbmZp
+cm0odC5jb2RlKQ0KLSAgICBkYXRhID0gImFiY2RlZmdoaWprbG1ub3BxIiAq
+IDB4MTAwMDANCisgICAgZGF0YSA9ICJhIiAqIDEwMjQgKiAxMDI0DQogICAg
+ICMgV3JpdGUgdGhlIGRhdGENCiAgICAgcG9zID0gMA0KICAgICB3aGlsZSBw
+b3MgPCBsZW4oZGF0YSk6DQoNCg0KCgo=
 
-Best Regards,
-Elena.
+--_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_
+Content-Type: text/x-patch;
+	name="0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch"
+Content-Description: 0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch
+Content-Disposition: attachment;
+	filename="0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch";
+	size=1270; creation-date="Thu, 30 Nov 2017 08:10:45 GMT";
+	modification-date="Thu, 30 Nov 2017 08:10:45 GMT"
+Content-ID: <AEB25B1BF73C9148AAFC4EF3189C9B61@fujitsu.local>
+Content-Transfer-Encoding: base64
 
-> 
-> On Wed, Nov 29, 2017 at 01:15:42PM +0200, Elena Reshetova wrote:
-> > This series, for lockd component, replaces atomic_t reference
-> > counters with the new refcount_t type and API (see include/linux/refcount.h).
-> > By doing this we prevent intentional or accidental
-> > underflows or overflows that can led to use-after-free vulnerabilities.
-> >
-> > The patches are fully independent and can be cherry-picked separately.
-> > If there are no objections to the patches, please merge them via respective
-> tree.
-> >
-> > Elena Reshetova (4):
-> >   lockd: convert nlm_host.h_count from atomic_t to refcount_t
-> >   lockd: convert nsm_handle.sm_count from atomic_t to refcount_t
-> >   lockd: convert nlm_lockowner.count from atomic_t to refcount_t
-> >   lockd: convert nlm_rqst.a_count from atomic_t to refcount_t
-> >
-> >  fs/lockd/clntproc.c         | 14 +++++++-------
-> >  fs/lockd/host.c             | 16 ++++++++--------
-> >  fs/lockd/mon.c              | 14 +++++++-------
-> >  fs/lockd/svcproc.c          |  2 +-
-> >  include/linux/lockd/lockd.h |  9 +++++----
-> >  5 files changed, 28 insertions(+), 27 deletions(-)
-> >
-> > --
-> > 2.7.4
+PkZyb20gNmFkYzNkYTBhYjE3ZWI3ZTUyYjQ3ODA1ZTY5OTlkNjViMDQzZmE3
+ZiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IEx1IFhpbnl1IDxs
+dXh5LmZuc3RAY24uZnVqaXRzdS5jb20+DQpEYXRlOiBUaHUsIDMwIE5vdiAy
+MDE3IDEzOjI0OjE1ICswODAwDQpTdWJqZWN0OiBbUEFUQ0hdIG5mczQuMCBz
+ZXJ2ZXIgc3Rfd3JpdGU6IGZpeCB0aGUgYW1vdW50IG9mIGRhdGEgc2VudCBp
+biB0aGUNCiB0ZXN0TGFyZ2VEYXRhDQoNClRoZSBtYXhpbXVtIGFtb3VudCBv
+ZiBkYXRhIGNvdWxkIGJlIHdyaXRlbiBpcyBORlNTVkNfTUFYQkxLU0laRS4g
+VGhlIHZhbHVlIG9mIE5GU1NWQ19NQVhCTEtTSVpFIGRlZmluZWQgaW4gdGhl
+IGtlcm5lbCBpcyBSUENTVkNfTUFYUExBWUxPQUQuIElmIHRoZSB2YWx1ZSB3
+cml0dGVuIGV4Y2VlZHMgTkZTU1ZDX01BWEJMS1NJWkUsIHRoZSB2YWx1ZSBp
+cyBmaXhlZCBhcyB0aGUgdmFsdWUgb2YgTkZTU1ZDX01BWEJMS1NJWkUuIFRo
+ZSB2YWx1ZSBvZiBSUENTVkNfTUFYUEFZTE9BRCBpcyAxKjEwMjQqMTAyNHUg
+YW5kICJhYmNkZWZnaGlqa2xtbm9wcSIqMHgxMDAwMCBleGNlZWRzIGl0LiBT
+byB0aGUgcHJldmlvdXMgdGVzdCBpcyBib3VuZCB0byBmYWlsIGFuZCBpcyBt
+ZWFuaW5nbGVzcy4NCg0KU2lnbmVkLW9mZi1ieTogTHUgWGlueXUgPGx1eHku
+Zm5zdEBjbi5mdWppdHN1LmNvbT4NCi0tLQ0KIG5mczQuMC9zZXJ2ZXJ0ZXN0
+cy9zdF93cml0ZS5weSB8IDIgKy0NCiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNl
+cnRpb24oKyksIDEgZGVsZXRpb24oLSkNCg0KZGlmZiAtLWdpdCBhL25mczQu
+MC9zZXJ2ZXJ0ZXN0cy9zdF93cml0ZS5weSBiL25mczQuMC9zZXJ2ZXJ0ZXN0
+cy9zdF93cml0ZS5weQ0KaW5kZXggNzEwNDUyZS4uYTdkYWUwMyAxMDA2NDQN
+Ci0tLSBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF93cml0ZS5weQ0KKysrIGIv
+bmZzNC4wL3NlcnZlcnRlc3RzL3N0X3dyaXRlLnB5DQpAQCAtMTMwLDcgKzEz
+MCw3IEBAIGRlZiB0ZXN0TGFyZ2VEYXRhKHQsIGVudik6DQogICAgIGMgPSBl
+bnYuYzENCiAgICAgYy5pbml0X2Nvbm5lY3Rpb24oKQ0KICAgICBmaCwgc3Rh
+dGVpZCA9IGMuY3JlYXRlX2NvbmZpcm0odC5jb2RlKQ0KLSAgICBkYXRhID0g
+ImFiY2RlZmdoaWprbG1ub3BxIiAqIDB4MTAwMDANCisgICAgZGF0YSA9ICJh
+IiAqIDEwMjQgKiAxMDI0DQogICAgICMgV3JpdGUgdGhlIGRhdGENCiAgICAg
+cG9zID0gMA0KICAgICB3aGlsZSBwb3MgPCBsZW4oZGF0YSk6DQotLSANCjIu
+MTMuMw0KDQoNCg==
+
+--_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_--
