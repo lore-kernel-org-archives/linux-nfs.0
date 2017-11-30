@@ -1,82 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:46586 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751443AbdK3MVi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 07:21:38 -0500
-Received: by mail-it0-f67.google.com with SMTP id t1so8041428ite.5
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Nov 2017 04:21:38 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Handle ENETDOWN errors
-Date: Thu, 30 Nov 2017 07:21:33 -0500
-Message-Id: <20171130122133.39471-1-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
+Received: from mail-qk0-f196.google.com ([209.85.220.196]:35883 "EHLO
+        mail-qk0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751929AbdK3NGp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 08:06:45 -0500
+From: Thiago Rafael Becker <thiago.becker@gmail.com>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Thiago Rafael Becker <thiago.becker@gmail.com>
+Subject: [PATCH 1/3, V2] kernel: make groups_sort globally visible
+Date: Thu, 30 Nov 2017 11:04:55 -0200
+Message-Id: <20171130130457.11429-2-thiago.becker@gmail.com>
+In-Reply-To: <20171130130457.11429-1-thiago.becker@gmail.com>
+References: <20171130130457.11429-1-thiago.becker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/clnt.c     | 5 +++++
- net/sunrpc/xprtsock.c | 1 +
- 2 files changed, 6 insertions(+)
+In preparation to move group_info sorting to the caller,
+make group_sort globally visible.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index a801da812f86..e2a4184f3c5d 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1841,6 +1841,7 @@ call_bind_status(struct rpc_task *task)
- 	case -ECONNABORTED:
- 	case -ENOTCONN:
- 	case -EHOSTDOWN:
-+	case -ENETDOWN:
- 	case -EHOSTUNREACH:
- 	case -ENETUNREACH:
- 	case -ENOBUFS:
-@@ -1917,6 +1918,7 @@ call_connect_status(struct rpc_task *task)
- 		/* fall through */
- 	case -ECONNRESET:
- 	case -ECONNABORTED:
-+	case -ENETDOWN:
- 	case -ENETUNREACH:
- 	case -EHOSTUNREACH:
- 	case -EADDRINUSE:
-@@ -2022,6 +2024,7 @@ call_transmit_status(struct rpc_task *task)
- 		 */
- 	case -ECONNREFUSED:
- 	case -EHOSTDOWN:
-+	case -ENETDOWN:
- 	case -EHOSTUNREACH:
- 	case -ENETUNREACH:
- 	case -EPERM:
-@@ -2071,6 +2074,7 @@ call_bc_transmit(struct rpc_task *task)
- 	switch (task->tk_status) {
- 	case 0:
- 		/* Success */
-+	case -ENETDOWN:
- 	case -EHOSTDOWN:
- 	case -EHOSTUNREACH:
- 	case -ENETUNREACH:
-@@ -2139,6 +2143,7 @@ call_status(struct rpc_task *task)
- 	task->tk_status = 0;
- 	switch(status) {
- 	case -EHOSTDOWN:
-+	case -ENETDOWN:
- 	case -EHOSTUNREACH:
- 	case -ENETUNREACH:
- 	case -EPERM:
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index fdf42cfa9121..6d0cc3b8f932 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2440,6 +2440,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
- 		 */
- 	case -ECONNREFUSED:
- 	case -ECONNRESET:
-+	case -ENETDOWN:
- 	case -ENETUNREACH:
- 	case -EHOSTUNREACH:
- 	case -EADDRINUSE:
+Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
+---
+ include/linux/cred.h | 1 +
+ kernel/groups.c      | 4 +++-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/cred.h b/include/linux/cred.h
+index 099058e..6312865 100644
+--- a/include/linux/cred.h
++++ b/include/linux/cred.h
+@@ -83,6 +83,7 @@ extern int set_current_groups(struct group_info *);
+ extern void set_groups(struct cred *, struct group_info *);
+ extern int groups_search(const struct group_info *, kgid_t);
+ extern bool may_setgroups(void);
++extern void groups_sort(struct group_info *group_info);
+ 
+ /*
+  * The security context of a task
+diff --git a/kernel/groups.c b/kernel/groups.c
+index e357bc8..4c9c9ed 100644
+--- a/kernel/groups.c
++++ b/kernel/groups.c
+@@ -86,11 +86,13 @@ static int gid_cmp(const void *_a, const void *_b)
+ 	return gid_gt(a, b) - gid_lt(a, b);
+ }
+ 
+-static void groups_sort(struct group_info *group_info)
++void groups_sort(struct group_info *group_info)
+ {
+ 	sort(group_info->gid, group_info->ngroups, sizeof(*group_info->gid),
+ 	     gid_cmp, NULL);
+ }
++EXPORT_SYMBOL(groups_sort);
++
+ 
+ /* a simple bsearch */
+ int groups_search(const struct group_info *group_info, kgid_t grp)
 -- 
-2.14.3
+2.9.5
 
