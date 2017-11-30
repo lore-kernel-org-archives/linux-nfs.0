@@ -1,89 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:39183 "EHLO
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:48090 "EHLO
         heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1750978AbdK3INT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 03:13:19 -0500
+        with ESMTP id S1750849AbdK3Iog (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 03:44:36 -0500
 From: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
 To: "bfields@redhat.com" <bfields@redhat.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] pynfs nfs4.0 server st_write: fix the amount of data sent
- in the testLargeData
-Date: Thu, 30 Nov 2017 08:13:14 +0000
-Message-ID: <2af20316-5ce4-354e-8768-4462398dc36f@cn.fujitsu.com>
-Content-Type: multipart/mixed;
-        boundary="_002_2af203165ce4354e87684462398dc36fcnfujitsucom_"
+Subject: pyNFS: testLongCompound
+Date: Thu, 30 Nov 2017 08:44:33 +0000
+Message-ID: <0a272282-92cd-ce68-1892-591d952b1578@cn.fujitsu.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_2af203165ce4354e87684462398dc36fcnfujitsucom_
-Content-Type: text/plain; charset="utf-8"
-Content-ID: <79A7841D53D39849988673C950971D5F@fujitsu.local>
-Content-Transfer-Encoding: base64
-
-IG5mczQuMCBzZXJ2ZXIgc3Rfd3JpdGU6IGZpeCB0aGUgYW1vdW50IG9mIGRh
-dGEgc2VudCBpbiB0aGUgdGVzdExhcmdlRGF0YQ0KICAgIA0KICAgIFRoZSBt
-YXhpbXVtIGFtb3VudCBvZiBkYXRhIGNvdWxkIGJlIHdyaXRlbiBpcyBORlNT
-VkNfTUFYQkxLU0laRS4gVGhlIHZhbHVlIG9mIE5GU1NWQ19NQVhCDQpMS1NJ
-WkUgZGVmaW5lZCBpbiB0aGUga2VybmVsIGlzIFJQQ1NWQ19NQVhQTEFZTE9B
-RC4gSWYgdGhlIHZhbHVlIHdyaXR0ZW4gZXhjZWVkcyBORlNTVkNfTUFYQkwN
-CktTSVpFLCB0aGUgdmFsdWUgaXMgZml4ZWQgYXMgdGhlIHZhbHVlIG9mIE5G
-U1NWQ19NQVhCTEtTSVpFLiBUaGUgdmFsdWUgb2YgUlBDU1ZDX01BWFBBWUxP
-QUQgaQ0KcyAxKjEwMjQqMTAyNHUgYW5kICJhYmNkZWZnaGlqa2xtbm9wcSIq
-MHgxMDAwMCBleGNlZWRzIGl0LiBTbyB0aGUgcHJldmlvdXMgdGVzdCBpcyBi
-b3VuZCB0byBmDQphaWwgYW5kIGlzIG1lYW5pbmdsZXNzLg0KDQogICAgU2ln
-bmVkLW9mZi1ieTogTHUgWGlueXUgPGx1eHkuZm5zdEBjbi5mdWppdHN1LmNv
-bT4NCg0KZGlmZiAtLWdpdCBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF93cml0
-ZS5weSBiL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF93cml0ZS5weQ0KaW5kZXgg
-NzEwNDUyZS4uYTdkYWUwMyAxMDA2NDQNCi0tLSBhL25mczQuMC9zZXJ2ZXJ0
-ZXN0cy9zdF93cml0ZS5weQ0KKysrIGIvbmZzNC4wL3NlcnZlcnRlc3RzL3N0
-X3dyaXRlLnB5DQpAQCAtMTMwLDcgKzEzMCw3IEBAIGRlZiB0ZXN0TGFyZ2VE
-YXRhKHQsIGVudik6DQogICAgIGMgPSBlbnYuYzENCiAgICAgYy5pbml0X2Nv
-bm5lY3Rpb24oKQ0KICAgICBmaCwgc3RhdGVpZCA9IGMuY3JlYXRlX2NvbmZp
-cm0odC5jb2RlKQ0KLSAgICBkYXRhID0gImFiY2RlZmdoaWprbG1ub3BxIiAq
-IDB4MTAwMDANCisgICAgZGF0YSA9ICJhIiAqIDEwMjQgKiAxMDI0DQogICAg
-ICMgV3JpdGUgdGhlIGRhdGENCiAgICAgcG9zID0gMA0KICAgICB3aGlsZSBw
-b3MgPCBsZW4oZGF0YSk6DQoKCg==
-
---_002_2af203165ce4354e87684462398dc36fcnfujitsucom_
-Content-Type: text/x-patch;
-	name="0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch"
-Content-Description: 0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch
-Content-Disposition: attachment;
-	filename="0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch";
-	size=1267; creation-date="Thu, 30 Nov 2017 08:13:14 GMT";
-	modification-date="Thu, 30 Nov 2017 08:13:14 GMT"
-Content-ID: <ADB1D71326C7FC4C8130920F5E737BB7@fujitsu.local>
-Content-Transfer-Encoding: base64
-
-RnJvbSA2YWRjM2RhMGFiMTdlYjdlNTJiNDc4MDVlNjk5OWQ2NWIwNDNmYTdm
-IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogTHUgWGlueXUgPGx1
-eHkuZm5zdEBjbi5mdWppdHN1LmNvbT4NCkRhdGU6IFRodSwgMzAgTm92IDIw
-MTcgMTM6MjQ6MTUgKzA4MDANClN1YmplY3Q6IFtQQVRDSF0gbmZzNC4wIHNl
-cnZlciBzdF93cml0ZTogZml4IHRoZSBhbW91bnQgb2YgZGF0YSBzZW50IGlu
-IHRoZQ0KIHRlc3RMYXJnZURhdGENCg0KVGhlIG1heGltdW0gYW1vdW50IG9m
-IGRhdGEgY291bGQgYmUgd3JpdGVuIGlzIE5GU1NWQ19NQVhCTEtTSVpFLiBU
-aGUgdmFsdWUgb2YgTkZTU1ZDX01BWEJMS1NJWkUgZGVmaW5lZCBpbiB0aGUg
-a2VybmVsIGlzIFJQQ1NWQ19NQVhQTEFZTE9BRC4gSWYgdGhlIHZhbHVlIHdy
-aXR0ZW4gZXhjZWVkcyBORlNTVkNfTUFYQkxLU0laRSwgdGhlIHZhbHVlIGlz
-IGZpeGVkIGFzIHRoZSB2YWx1ZSBvZiBORlNTVkNfTUFYQkxLU0laRS4gVGhl
-IHZhbHVlIG9mIFJQQ1NWQ19NQVhQQVlMT0FEIGlzIDEqMTAyNCoxMDI0dSBh
-bmQgImFiY2RlZmdoaWprbG1ub3BxIioweDEwMDAwIGV4Y2VlZHMgaXQuIFNv
-IHRoZSBwcmV2aW91cyB0ZXN0IGlzIGJvdW5kIHRvIGZhaWwgYW5kIGlzIG1l
-YW5pbmdsZXNzLg0KDQpTaWduZWQtb2ZmLWJ5OiBMdSBYaW55dSA8bHV4eS5m
-bnN0QGNuLmZ1aml0c3UuY29tPg0KLS0tDQogbmZzNC4wL3NlcnZlcnRlc3Rz
-L3N0X3dyaXRlLnB5IHwgMiArLQ0KIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2Vy
-dGlvbigrKSwgMSBkZWxldGlvbigtKQ0KDQpkaWZmIC0tZ2l0IGEvbmZzNC4w
-L3NlcnZlcnRlc3RzL3N0X3dyaXRlLnB5IGIvbmZzNC4wL3NlcnZlcnRlc3Rz
-L3N0X3dyaXRlLnB5DQppbmRleCA3MTA0NTJlLi5hN2RhZTAzIDEwMDY0NA0K
-LS0tIGEvbmZzNC4wL3NlcnZlcnRlc3RzL3N0X3dyaXRlLnB5DQorKysgYi9u
-ZnM0LjAvc2VydmVydGVzdHMvc3Rfd3JpdGUucHkNCkBAIC0xMzAsNyArMTMw
-LDcgQEAgZGVmIHRlc3RMYXJnZURhdGEodCwgZW52KToNCiAgICAgYyA9IGVu
-di5jMQ0KICAgICBjLmluaXRfY29ubmVjdGlvbigpDQogICAgIGZoLCBzdGF0
-ZWlkID0gYy5jcmVhdGVfY29uZmlybSh0LmNvZGUpDQotICAgIGRhdGEgPSAi
-YWJjZGVmZ2hpamtsbW5vcHEiICogMHgxMDAwMA0KKyAgICBkYXRhID0gImEi
-ICogMTAyNCAqIDEwMjQNCiAgICAgIyBXcml0ZSB0aGUgZGF0YQ0KICAgICBw
-b3MgPSAwDQogICAgIHdoaWxlIHBvcyA8IGxlbihkYXRhKToNCi0tIA0KMi4x
-My4zDQoNCg==
-
---_002_2af203165ce4354e87684462398dc36fcnfujitsucom_--
+SGkgQnJ1Y2UsDQoNCkknbSBwdXp6bGVkIGFib3V0IHRoZSByZXN1bHQgb2Yg
+bmZzNC4wL3NlcnZlcnRlc3RzL3N0X2NvbXBvdW5kL3Rlc3RMb25nQ29tcG91
+bmQgaW4gcHlORlMuDQoNClRoZSB0ZXN0IGluY3JlYXNlcyB0aGUgbnVtYmVy
+IG9mIHJlcXVlc3RzIGluIHRoZSBjb21wb3VuZCwgYW5kIGV4cGVjdHMgdGhl
+IHNlcnZlciB0byByZXR1cm4gTkZTIDQgRVJSIFJFU09VUkNFIHdoZW4gdGhl
+IG51bWJlciBvZiByZXF1ZXN0cyByZWFjaGVzIHRoZSB1cHBlciBsaW1pdCBv
+biB0aGUgc2VydmVyIHNpZGUuDQoNCkluIHRoZSBSSEVMIDcuNEdBIHNvdXJj
+ZSBjb2RlLCBhZnRlciBORlM0RVJSX0JBRFhEUiBpcyByZXR1cm5lZCBhZnRl
+ciB0aGUgbnVtYmVyIG9mIHJlcXVlc3RzIHJlYWNoZXMgdGhlIHNlcnZlciBs
+aW1pdCwgUlBDX0dBUkJBR0VfQVJHUyBpcyByZXR1cm5lZCBpbiB0aGUgZGlz
+cGF0Y2ggZnVuY3Rpb24uDQoNCkFjY29yZGluZyB0byBSRkMgNzUzMCwgd2hl
+biB0aGUgc2VydmVyIHBhcnNlcyBDT01QT1VORCwgaXQgcmV0dXJucyBORlMg
+NCBFUlIgUkVTT1VSQ0UgaWYgdGhlIHJlc291cmNlIGlzIGluc3VmZmljaWVu
+dC4gSWYgYW4gZXJyb3Igb2NjdXJzIHdoZW4gcGFyc2luZyBYRFIsIE5GUzRF
+UlJfQkFEWERSIGlzIHJldHVybmVkLg0KUmVxdWVzdHMgaW4gQ29tcG91bmQg
+YXJlIHBhcnNlZCBpbiBYRFIuIFRoZXJlZm9yZSwgSSBkZWNpZGUgaGVyZSB0
+aGF0IE5GUzRFUlJfQkFEWERSIHNob3VsZCBiZSByZXR1cm5lZC4gVGhlIHRl
+c3RjYXNlIHNob3VsZCBiZSBwYXNzZWQgaGVyZS4gSG93ZXZlcix0aGUgcmVz
+dWx0IGlzIGZhaWx1cmUuDQoNClRoYW5rcywNCkx1IFhpbnl1Cgo=
