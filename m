@@ -1,23 +1,24 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:64706 "EHLO
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:39183 "EHLO
         heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1750783AbdK3IKs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 03:10:48 -0500
+        with ESMTP id S1750978AbdK3INT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 03:13:19 -0500
 From: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
 To: "bfields@redhat.com" <bfields@redhat.com>
 CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH]
-Date: Thu, 30 Nov 2017 08:10:45 +0000
-Message-ID: <838ce3da-5905-a22d-2353-d621e2d5ad95@cn.fujitsu.com>
+Subject: [PATCH] pynfs nfs4.0 server st_write: fix the amount of data sent
+ in the testLargeData
+Date: Thu, 30 Nov 2017 08:13:14 +0000
+Message-ID: <2af20316-5ce4-354e-8768-4462398dc36f@cn.fujitsu.com>
 Content-Type: multipart/mixed;
-        boundary="_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_"
+        boundary="_002_2af203165ce4354e87684462398dc36fcnfujitsucom_"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_
+--_002_2af203165ce4354e87684462398dc36fcnfujitsucom_
 Content-Type: text/plain; charset="utf-8"
-Content-ID: <8A8E09C730416042885560CB21EAF160@fujitsu.local>
+Content-ID: <79A7841D53D39849988673C950971D5F@fujitsu.local>
 Content-Transfer-Encoding: base64
 
 IG5mczQuMCBzZXJ2ZXIgc3Rfd3JpdGU6IGZpeCB0aGUgYW1vdW50IG9mIGRh
@@ -42,47 +43,47 @@ bm5lY3Rpb24oKQ0KICAgICBmaCwgc3RhdGVpZCA9IGMuY3JlYXRlX2NvbmZp
 cm0odC5jb2RlKQ0KLSAgICBkYXRhID0gImFiY2RlZmdoaWprbG1ub3BxIiAq
 IDB4MTAwMDANCisgICAgZGF0YSA9ICJhIiAqIDEwMjQgKiAxMDI0DQogICAg
 ICMgV3JpdGUgdGhlIGRhdGENCiAgICAgcG9zID0gMA0KICAgICB3aGlsZSBw
-b3MgPCBsZW4oZGF0YSk6DQoNCg0KCgo=
+b3MgPCBsZW4oZGF0YSk6DQoKCg==
 
---_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_
+--_002_2af203165ce4354e87684462398dc36fcnfujitsucom_
 Content-Type: text/x-patch;
 	name="0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch"
 Content-Description: 0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch
 Content-Disposition: attachment;
 	filename="0001-nfs4.0-server-st_write-fix-the-amount-of-data-sent-i.patch";
-	size=1270; creation-date="Thu, 30 Nov 2017 08:10:45 GMT";
-	modification-date="Thu, 30 Nov 2017 08:10:45 GMT"
-Content-ID: <AEB25B1BF73C9148AAFC4EF3189C9B61@fujitsu.local>
+	size=1267; creation-date="Thu, 30 Nov 2017 08:13:14 GMT";
+	modification-date="Thu, 30 Nov 2017 08:13:14 GMT"
+Content-ID: <ADB1D71326C7FC4C8130920F5E737BB7@fujitsu.local>
 Content-Transfer-Encoding: base64
 
-PkZyb20gNmFkYzNkYTBhYjE3ZWI3ZTUyYjQ3ODA1ZTY5OTlkNjViMDQzZmE3
-ZiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IEx1IFhpbnl1IDxs
-dXh5LmZuc3RAY24uZnVqaXRzdS5jb20+DQpEYXRlOiBUaHUsIDMwIE5vdiAy
-MDE3IDEzOjI0OjE1ICswODAwDQpTdWJqZWN0OiBbUEFUQ0hdIG5mczQuMCBz
-ZXJ2ZXIgc3Rfd3JpdGU6IGZpeCB0aGUgYW1vdW50IG9mIGRhdGEgc2VudCBp
-biB0aGUNCiB0ZXN0TGFyZ2VEYXRhDQoNClRoZSBtYXhpbXVtIGFtb3VudCBv
-ZiBkYXRhIGNvdWxkIGJlIHdyaXRlbiBpcyBORlNTVkNfTUFYQkxLU0laRS4g
-VGhlIHZhbHVlIG9mIE5GU1NWQ19NQVhCTEtTSVpFIGRlZmluZWQgaW4gdGhl
-IGtlcm5lbCBpcyBSUENTVkNfTUFYUExBWUxPQUQuIElmIHRoZSB2YWx1ZSB3
-cml0dGVuIGV4Y2VlZHMgTkZTU1ZDX01BWEJMS1NJWkUsIHRoZSB2YWx1ZSBp
-cyBmaXhlZCBhcyB0aGUgdmFsdWUgb2YgTkZTU1ZDX01BWEJMS1NJWkUuIFRo
-ZSB2YWx1ZSBvZiBSUENTVkNfTUFYUEFZTE9BRCBpcyAxKjEwMjQqMTAyNHUg
-YW5kICJhYmNkZWZnaGlqa2xtbm9wcSIqMHgxMDAwMCBleGNlZWRzIGl0LiBT
-byB0aGUgcHJldmlvdXMgdGVzdCBpcyBib3VuZCB0byBmYWlsIGFuZCBpcyBt
-ZWFuaW5nbGVzcy4NCg0KU2lnbmVkLW9mZi1ieTogTHUgWGlueXUgPGx1eHku
-Zm5zdEBjbi5mdWppdHN1LmNvbT4NCi0tLQ0KIG5mczQuMC9zZXJ2ZXJ0ZXN0
-cy9zdF93cml0ZS5weSB8IDIgKy0NCiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNl
-cnRpb24oKyksIDEgZGVsZXRpb24oLSkNCg0KZGlmZiAtLWdpdCBhL25mczQu
-MC9zZXJ2ZXJ0ZXN0cy9zdF93cml0ZS5weSBiL25mczQuMC9zZXJ2ZXJ0ZXN0
-cy9zdF93cml0ZS5weQ0KaW5kZXggNzEwNDUyZS4uYTdkYWUwMyAxMDA2NDQN
-Ci0tLSBhL25mczQuMC9zZXJ2ZXJ0ZXN0cy9zdF93cml0ZS5weQ0KKysrIGIv
-bmZzNC4wL3NlcnZlcnRlc3RzL3N0X3dyaXRlLnB5DQpAQCAtMTMwLDcgKzEz
-MCw3IEBAIGRlZiB0ZXN0TGFyZ2VEYXRhKHQsIGVudik6DQogICAgIGMgPSBl
-bnYuYzENCiAgICAgYy5pbml0X2Nvbm5lY3Rpb24oKQ0KICAgICBmaCwgc3Rh
-dGVpZCA9IGMuY3JlYXRlX2NvbmZpcm0odC5jb2RlKQ0KLSAgICBkYXRhID0g
-ImFiY2RlZmdoaWprbG1ub3BxIiAqIDB4MTAwMDANCisgICAgZGF0YSA9ICJh
-IiAqIDEwMjQgKiAxMDI0DQogICAgICMgV3JpdGUgdGhlIGRhdGENCiAgICAg
-cG9zID0gMA0KICAgICB3aGlsZSBwb3MgPCBsZW4oZGF0YSk6DQotLSANCjIu
-MTMuMw0KDQoNCg==
+RnJvbSA2YWRjM2RhMGFiMTdlYjdlNTJiNDc4MDVlNjk5OWQ2NWIwNDNmYTdm
+IE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogTHUgWGlueXUgPGx1
+eHkuZm5zdEBjbi5mdWppdHN1LmNvbT4NCkRhdGU6IFRodSwgMzAgTm92IDIw
+MTcgMTM6MjQ6MTUgKzA4MDANClN1YmplY3Q6IFtQQVRDSF0gbmZzNC4wIHNl
+cnZlciBzdF93cml0ZTogZml4IHRoZSBhbW91bnQgb2YgZGF0YSBzZW50IGlu
+IHRoZQ0KIHRlc3RMYXJnZURhdGENCg0KVGhlIG1heGltdW0gYW1vdW50IG9m
+IGRhdGEgY291bGQgYmUgd3JpdGVuIGlzIE5GU1NWQ19NQVhCTEtTSVpFLiBU
+aGUgdmFsdWUgb2YgTkZTU1ZDX01BWEJMS1NJWkUgZGVmaW5lZCBpbiB0aGUg
+a2VybmVsIGlzIFJQQ1NWQ19NQVhQTEFZTE9BRC4gSWYgdGhlIHZhbHVlIHdy
+aXR0ZW4gZXhjZWVkcyBORlNTVkNfTUFYQkxLU0laRSwgdGhlIHZhbHVlIGlz
+IGZpeGVkIGFzIHRoZSB2YWx1ZSBvZiBORlNTVkNfTUFYQkxLU0laRS4gVGhl
+IHZhbHVlIG9mIFJQQ1NWQ19NQVhQQVlMT0FEIGlzIDEqMTAyNCoxMDI0dSBh
+bmQgImFiY2RlZmdoaWprbG1ub3BxIioweDEwMDAwIGV4Y2VlZHMgaXQuIFNv
+IHRoZSBwcmV2aW91cyB0ZXN0IGlzIGJvdW5kIHRvIGZhaWwgYW5kIGlzIG1l
+YW5pbmdsZXNzLg0KDQpTaWduZWQtb2ZmLWJ5OiBMdSBYaW55dSA8bHV4eS5m
+bnN0QGNuLmZ1aml0c3UuY29tPg0KLS0tDQogbmZzNC4wL3NlcnZlcnRlc3Rz
+L3N0X3dyaXRlLnB5IHwgMiArLQ0KIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2Vy
+dGlvbigrKSwgMSBkZWxldGlvbigtKQ0KDQpkaWZmIC0tZ2l0IGEvbmZzNC4w
+L3NlcnZlcnRlc3RzL3N0X3dyaXRlLnB5IGIvbmZzNC4wL3NlcnZlcnRlc3Rz
+L3N0X3dyaXRlLnB5DQppbmRleCA3MTA0NTJlLi5hN2RhZTAzIDEwMDY0NA0K
+LS0tIGEvbmZzNC4wL3NlcnZlcnRlc3RzL3N0X3dyaXRlLnB5DQorKysgYi9u
+ZnM0LjAvc2VydmVydGVzdHMvc3Rfd3JpdGUucHkNCkBAIC0xMzAsNyArMTMw
+LDcgQEAgZGVmIHRlc3RMYXJnZURhdGEodCwgZW52KToNCiAgICAgYyA9IGVu
+di5jMQ0KICAgICBjLmluaXRfY29ubmVjdGlvbigpDQogICAgIGZoLCBzdGF0
+ZWlkID0gYy5jcmVhdGVfY29uZmlybSh0LmNvZGUpDQotICAgIGRhdGEgPSAi
+YWJjZGVmZ2hpamtsbW5vcHEiICogMHgxMDAwMA0KKyAgICBkYXRhID0gImEi
+ICogMTAyNCAqIDEwMjQNCiAgICAgIyBXcml0ZSB0aGUgZGF0YQ0KICAgICBw
+b3MgPSAwDQogICAgIHdoaWxlIHBvcyA8IGxlbihkYXRhKToNCi0tIA0KMi4x
+My4zDQoNCg==
 
---_002_838ce3da5905a22d2353d621e2d5ad95cnfujitsucom_--
+--_002_2af203165ce4354e87684462398dc36fcnfujitsucom_--
