@@ -1,80 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:44863 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752804AbdK3NGy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 08:06:54 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH 2/3, V2] kernel: Move groups_sort to the caller of set_groups.
-Date: Thu, 30 Nov 2017 11:04:56 -0200
-Message-Id: <20171130130457.11429-3-thiago.becker@gmail.com>
-In-Reply-To: <20171130130457.11429-1-thiago.becker@gmail.com>
-References: <20171130130457.11429-1-thiago.becker@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:53798 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751443AbdK3Oho (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 30 Nov 2017 09:37:44 -0500
+Date: Thu, 30 Nov 2017 09:37:44 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: make pnfs_destroy_layout() wait on commit when
+ inode is being evicted
+Message-ID: <20171130143744.odap43pjwh63xhrc@tonberry.usersys.redhat.com>
+References: <20171120214312.5263-1-smayhew@redhat.com>
+ <1511987540.20638.10.camel@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1511987540.20638.10.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The responsibility for calling groups_sort is now on the caller
-of set_groups.
+On Wed, 29 Nov 2017, Trond Myklebust wrote:
 
-Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
----
- kernel/groups.c           | 1 +
- kernel/uid16.c            | 1 +
- net/sunrpc/svcauth_unix.c | 7 +++++++
- 3 files changed, 9 insertions(+)
+> On Mon, 2017-11-20 at 16:43 -0500, Scott Mayhew wrote:
+> > Otherwise nfs_commit_inode() can set I_DIRTY_DATASYNC in the inode's
+> > i_state, allowing the following BUG_ON in evict() to be triggered:
+> > 
+> >         BUG_ON(inode->i_state != (I_FREEING | I_CLEAR));
+> > 
+> > Fixes: 1f18b82c3437 ("pNFS: Ensure we commit the layout if it has
+> > been...")
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > Tested-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> > ---
+> >  fs/nfs/filelayout/filelayout.c         | 2 +-
+> >  fs/nfs/flexfilelayout/flexfilelayout.c | 2 +-
+> >  fs/nfs/nfs4super.c                     | 2 +-
+> >  fs/nfs/pnfs.c                          | 6 +++---
+> >  fs/nfs/pnfs.h                          | 2 +-
+> >  5 files changed, 7 insertions(+), 7 deletions(-)
+> > 
+> > diff --git a/fs/nfs/filelayout/filelayout.c
+> > b/fs/nfs/filelayout/filelayout.c
+> > index 4e54d8b..28b7228 100644
+> > --- a/fs/nfs/filelayout/filelayout.c
+> > +++ b/fs/nfs/filelayout/filelayout.c
+> > @@ -169,7 +169,7 @@ static int filelayout_async_handle_error(struct
+> > rpc_task *task,
+> >  		 * i/o and all i/o waiting on the slot table to the
+> > MDS until
+> >  		 * layout is destroyed and a new valid layout is
+> > obtained.
+> >  		 */
+> > -		pnfs_destroy_layout(NFS_I(inode));
+> > +		pnfs_destroy_layout(NFS_I(inode), 0);
+> >  		rpc_wake_up(&tbl->slot_tbl_waitq);
+> >  		goto reset;
+> >  	/* RPC connection errors */
+> > diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c
+> > b/fs/nfs/flexfilelayout/flexfilelayout.c
+> > index c75ad98..ab0a1e5 100644
+> > --- a/fs/nfs/flexfilelayout/flexfilelayout.c
+> > +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+> > @@ -1088,7 +1088,7 @@ static int
+> > ff_layout_async_handle_error_v4(struct rpc_task *task,
+> >  		 * i/o and all i/o waiting on the slot table to the
+> > MDS until
+> >  		 * layout is destroyed and a new valid layout is
+> > obtained.
+> >  		 */
+> > -		pnfs_destroy_layout(NFS_I(inode));
+> > +		pnfs_destroy_layout(NFS_I(inode), 0);
+> >  		rpc_wake_up(&tbl->slot_tbl_waitq);
+> >  		goto reset;
+> >  	/* RPC connection errors */
+> > diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+> > index 6fb7cb6..3b4a063 100644
+> > --- a/fs/nfs/nfs4super.c
+> > +++ b/fs/nfs/nfs4super.c
+> > @@ -95,7 +95,7 @@ static void nfs4_evict_inode(struct inode *inode)
+> >  	nfs_inode_return_delegation_noreclaim(inode);
+> >  	/* Note that above delegreturn would trigger pnfs return-on-
+> > close */
+> >  	pnfs_return_layout(inode);
+> > -	pnfs_destroy_layout(NFS_I(inode));
+> > +	pnfs_destroy_layout(NFS_I(inode), FLUSH_SYNC);
+> >  	/* First call standard NFS clear_inode() code */
+> >  	nfs_clear_inode(inode);
+> >  }
+> > 
+> 
+> NACK. If you still have dirty pages when you get to nfs4_evict_inode(),
+> then you are screwed no matter what.
+> 
+> This problem should be fixable in nfs_commit_inode() by simply exiting
+> after the call to nfs_commit_end() if res == 0.
 
-diff --git a/kernel/groups.c b/kernel/groups.c
-index 4c9c9ed..17073a9 100644
---- a/kernel/groups.c
-+++ b/kernel/groups.c
-@@ -208,6 +208,7 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
- 		return retval;
- 	}
- 
-+	groups_sort(group_info);
- 	retval = set_current_groups(group_info);
- 	put_group_info(group_info);
- 
-diff --git a/kernel/uid16.c b/kernel/uid16.c
-index ce74a49..ef1da2a 100644
---- a/kernel/uid16.c
-+++ b/kernel/uid16.c
-@@ -192,6 +192,7 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
- 		return retval;
- 	}
- 
-+	groups_sort(group_info);
- 	retval = set_current_groups(group_info);
- 	put_group_info(group_info);
- 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index f81eaa8..91e3d34 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -20,6 +20,7 @@
- 
- 
- #include "netns.h"
-+void groups_sort(struct group_info *group_info);
- 
- /*
-  * AUTHUNIX and AUTHNULL credentials are both handled here.
-@@ -520,6 +521,12 @@ static int unix_gid_parse(struct cache_detail *cd,
- 		ug.gi->gid[i] = kgid;
- 	}
- 
-+	/* Sort the groups before inserting this entry
-+	 * into the cache to avoid future corrutpions
-+	 * by multiple simultaneous attempts to sort this
-+	 * entry.
-+	 */
-+	groups_sort(ug.gi);
- 	ugp = unix_gid_lookup(cd, uid);
- 	if (ugp) {
- 		struct cache_head *ch;
--- 
-2.9.5
+Okay, I'll try that out.  Thanks for looking!
+-Scott
 
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
