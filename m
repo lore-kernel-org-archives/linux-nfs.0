@@ -1,100 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:38390 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751943AbdK3Qd6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 30 Nov 2017 11:33:58 -0500
-Date: Thu, 30 Nov 2017 11:33:57 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: pyNFS: testLongCompound
-Message-ID: <20171130163357.GF11610@parsley.fieldses.org>
-References: <0a272282-92cd-ce68-1892-591d952b1578@cn.fujitsu.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:32579 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751929AbdK3Q4F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 11:56:05 -0500
+From: Thomas Haynes <loghyr@primarydata.com>
+To: Bruce Fields <bfields@redhat.com>
+CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: pyNFS and RNM14
+Date: Thu, 30 Nov 2017 16:55:57 +0000
+Message-ID: <60ACE74F-1A3B-4449-8E90-A4CEB22E0C4E@primarydata.com>
+References: <2333C1BF-E7CE-446E-84A4-5D73A39EA406@primarydata.com>
+ <20171130162545.GC11610@parsley.fieldses.org>
+In-Reply-To: <20171130162545.GC11610@parsley.fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <0a272282-92cd-ce68-1892-591d952b1578@cn.fujitsu.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 30, 2017 at 08:44:33AM +0000, Lu, Xinyu wrote:
-> I'm puzzled about the result of nfs4.0/servertests/st_compound/testLongCompound in pyNFS.
-> 
-> The test increases the number of requests in the compound, and expects the server to return NFS 4 ERR RESOURCE when the number of requests reaches the upper limit on the server side.
-> 
-> In the RHEL 7.4GA source code, after NFS4ERR_BADXDR is returned after the number of requests reaches the server limit, RPC_GARBAGE_ARGS is returned in the dispatch function.
-> 
-> According to RFC 7530, when the server parses COMPOUND, it returns NFS 4 ERR RESOURCE if the resource is insufficient. If an error occurs when parsing XDR, NFS4ERR_BADXDR is returned.
-> Requests in Compound are parsed in XDR. Therefore, I decide here that NFS4ERR_BADXDR should be returned. The testcase should be passed here. However,the result is failure.
+DQoNCj4gT24gTm92IDMwLCAyMDE3LCBhdCA4OjI1IEFNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVs
+ZHNAcmVkaGF0LmNvbT4gd3JvdGU6DQo+IA0KPiBPbiBUaHUsIE5vdiAzMCwgMjAxNyBhdCAwMTox
+MzozMEFNICswMDAwLCBUaG9tYXMgSGF5bmVzIHdyb3RlOg0KPj4gQnJ1Y2UsDQo+PiANCj4+IFty
+b290QGNsaWVudDEtY2ktMjkxMTE3MjAzODAzOTMwIG5mczQuMV0jIC4vdGVzdHNlcnZlci5weSAx
+NzIuMjkuNTMuMTQ1Oi8gLS12ZXJib3NlIC0tb3V0ZmlsZT0vdG1wL3B5bmZzNC4xLm91dCAtLW1p
+bm9ydmVyc2lvbj0yICAtLW1ha2V0cmVlIFJOTTE0DQo+PiBDb3VsZCBub3QgZmluZCBnc3NhcGkg
+bW9kdWxlLCBwcm9jZWVkaW5nIHdpdGhvdXQNCj4+IElORk8gICA6cnBjLnBvbGw6Z290IGNvbm5l
+Y3Rpb24gZnJvbSAoJzEyNy4wLjAuMScsIDU1MzkwKSwgYXNzaWduZWQgdG8gZmQ9NQ0KPj4gSU5G
+TyAgIDpycGMudGhyZWFkOkNhbGxlZCBjb25uZWN0KCgnMTcyLjI5LjUzLjE0NScsIDIwNDkpKQ0K
+Pj4gSU5GTyAgIDpycGMucG9sbDpBZGRpbmcgNiBnZW5lcmF0ZWQgYnkgYW5vdGhlciB0aHJlYWQN
+Cj4+IElORk8gICA6dGVzdC5lbnY6Q3JlYXRlZCBjbGllbnQgdG8gMTcyLjI5LjUzLjE0NSwgMjA0
+OQ0KPj4gSU5GTyAgIDp0ZXN0LmVudjpDYWxsZWQgZG9fcmVhZGRpcigpDQo+PiBJTkZPICAgOnRl
+c3QuZW52OmRvX3JlYWRkaXIoKSA9IFtdDQo+PiBSTk0xNCAgICBzdF9yZW5hbWUudGVzdEZpbGVU
+b0RpciAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6IFJVTk5JTkcNCj4+IFJOTTE0
+ICAgIHN0X3JlbmFtZS50ZXN0RmlsZVRvRGlyICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgIDogRkFJTFVSRQ0KPj4gICAgICAgICAgIFJFTkFNRSBmaWxlIGludG8gZXhpc3RpbmcgZGly
+IHNob3VsZCByZXR1cm4NCj4+ICAgICAgICAgICBORlM0RVJSX0VYSVNUIG9yIE5GUzRFUlJfSVNE
+SVIsIGluc3RlYWQgZ290DQo+PiAgICAgICAgICAgTkZTNEVSUl9TRVJWRVJGQVVMVA0KPj4gSU5G
+TyAgIDp0ZXN0LmVudjpDYWxsZWQgZG9fcmVhZGRpcigpDQo+PiBJTkZPICAgOnRlc3QuZW52OmRv
+X3JlYWRkaXIoKSA9IFtlbnRyeTQoY29va2llPTQxOEwsIG5hbWU9J1JOTTE0XzE1MTIwMDMwOTMn
+LCBhdHRycz17fSldDQo+PiBJTkZPICAgOnRlc3QuZW52OkNhbGxlZCBkb19yZWFkZGlyKCkNCj4+
+IElORk8gICA6dGVzdC5lbnY6ZG9fcmVhZGRpcigpID0gW2VudHJ5NChjb29raWU9NDE5TCwgbmFt
+ZT0nZGlyJywgYXR0cnM9e30pLCBlbnRyeTQoY29va2llPTQyMEwsIG5hbWU9J2ZpbGUnLCBhdHRy
+cz17fSldDQo+PiAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
+KioqKg0KPj4gUk5NMTQgICAgc3RfcmVuYW1lLnRlc3RGaWxlVG9EaXIgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgOiBGQUlMVVJFDQo+PiAgICAgICAgICAgUkVOQU1FIGZpbGUgaW50
+byBleGlzdGluZyBkaXIgc2hvdWxkIHJldHVybg0KPj4gICAgICAgICAgIE5GUzRFUlJfRVhJU1Qg
+b3IgTkZTNEVSUl9JU0RJUiwgaW5zdGVhZCBnb3QNCj4+ICAgICAgICAgICBORlM0RVJSX1NFUlZF
+UkZBVUxUDQo+PiAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
+KioqKg0KPj4gQ29tbWFuZCBsaW5lIGFza2VkIGZvciAxIG9mIDI4MCB0ZXN0cw0KPj4gT2YgdGhv
+c2U6IDAgU2tpcHBlZCwgMSBGYWlsZWQsIDAgV2FybmVkLCAwIFBhc3NlZA0KPj4gDQo+PiBZZXQg
+YWNjb3JkaW5nIHRvIFJGQyA1NjYxLCBTZWN0aW9uIDE1LjIgKHRhYmxlIDYpLCBORlM0RVJSX0lT
+RElSDQo+PiBpcyBub3QgYW4gYWxsb3dlZCBlcnJvciBjb2RlIGZvciBSRU5BTUUuDQo+PiANCj4+
+IEFjY29yZGluZyB0byBQT1NJWCByZW5hbWUoKSBpdCBpcyBhbiBhbGxvd2VkIGVycm9yIGNvZGUu
+IEkgYmVsaWV2ZQ0KPj4gdGhlIGFzc3VtcHRpb24gaXMgdGhhdCB0aGUgY2xpZW50IHNob3VsZCBj
+YXRjaCB0aGlzIGNhc2UgZmlyc3Q/DQo+PiANCj4+IEFueXdheSwgZG9lcyB0aGUga25mc2QgcmV0
+dXJuIE5GUzRFUlJfSVNESVIgaW4gdGhpcyB0ZXN0IGNhc2U/DQo+IA0KPiBJIGp1c3QgY2hlY2tl
+ZC0teWVzLiAgTG9va2luZyBhdCBnaXQgaGlzdG9yeSwgSSBmaW5kIGNvbW1pdA0KPiAyYTZjZjk0
+NGMyZjgsIHdoaWNoIHNheXMNCj4gDQo+IA0KPiAgICBuZnNkNDogZG9uJ3QgcmVtYXAgRUlTRElS
+IGVycm9ycyBpbiByZW5hbWUNCj4gDQo+ICAgIFdlJ3JlIGdvaW5nIG91dCBvZiBvdXIgd2F5IGhl
+cmUgdG8gcmVtYXAgYW4gZXJyb3IgdG8gbWFrZSByZmMgMzUzMA0KPiAgICBoYXBweS0tYnV0IHRo
+ZSByZmMgaXRzZWxmIChub3IgcmZjIDE4MTMsIHdoaWNoIGhhcyBzaW1pbGFyIGxhbmd1YWdlKQ0K
+PiAgICBnaXZlcyBubyBqdXN0aWZpY2F0aW9uLiAgQW5kIGRpc2FncmVlcyB3aXRoIGxvY2FsIGZp
+bGVzeXN0ZW0gYmVoYXZpb3IsDQo+ICAgIHdpdGggTGludXggYW5kIHBvc2l4IG1hbiBwYWdlcywg
+YW5kIGtuZnNkJ3MgaW1wbGVtZW50ZWQgYmVoYXZpb3IgZm9yIHYyDQo+ICAgIGFuZCB2My4NCj4g
+DQo+ICAgIEFuZCB0aGUgZG9jdW1lbnRlZCBiZWhhdmlvciBzZWVtcyBiZXR0ZXIsIGluIHRoYXQg
+aXQgZ2l2ZXMgYSBsaXR0bGUgbW9yZQ0KPiAgICBpbmZvcm1hdGlvbi0teW91IGNvdWxkIGltcGxl
+bWVudCB0aGUgMzUzMCBiZWhhdmlvciB1c2luZyB0aGUgcG9zaXgNCj4gICAgYmVoYXZpb3IsIGJ1
+dCBub3QgdGhlIG90aGVyIHdheSBhcm91bmQuDQo+IA0KPiAgICBBbHNvLCB0aGUgTGludXggY2xp
+ZW50IG1ha2VzIG5vIGF0dGVtcHQgdG8gcmVtYXAgdGhpcyBlcnJvciBpbiB0aGUgdjQNCj4gICAg
+Y2FzZSwgc28gaXQgY2FuIGVuZCB1cCBqdXN0IHJldHVybmluZyBFRVhJU1QgdG8gdGhlIGFwcGxp
+Y2F0aW9uIGluIGENCj4gICAgY2FzZSB3aGVyZSBpdCBzaG91bGQgcmV0dXJuIEVJU0RJUi4NCj4g
+DQo+ICAgIFNvIGhvbmVzdGx5IEkgdGhpbmsgdGhlIHJmYydzIGFyZSBqdXN0IGJ1Z2d5IGhlcmUt
+LW9yIGluIGFueSBjYXNlIGl0DQo+ICAgIGRvZXNuJ3Qgc2VlIHdvcnRoIHRoZSB0cm91YmxlIHRv
+IHJlbWFwIHRoaXMgZXJyb3IuDQo+IA0KPiAtLWIuDQoNClJpZ2h0LCBidXQgbXkgaXNzdWUgaXMg
+dGhhdCBJIG5lZWQgdG8gaGF2ZSBteSBzZXJ2ZXIgbGV0IEVJU0RJUiB0aHJvdWdoIGluIHRoaXMN
+CmNhc2UuDQoNCknigJltIGluY2xpbmVkIHRvIGZpbGUgYW4gZXJyYXRhLCBJ4oCZbGwganVzdCBo
+YXZlIHRvIGdldCB0byBpdC4gOi0pDQoNCg==
 
-I agree it's a bug, though not likely to cause problems for clients in
-practice.
-
-I wrote the following patch, but I think it's not quite correct--I need
-to take another look.
-
-(By the way this was written in response to another report from you, I
-think--the name was the same but the email address was different.  Which
-name and address would you like me to use to credit you?)
-
---b.
-
-commit fd9a5e1c4952
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Nov 15 12:30:27 2017 -0500
-
-    nfsd: return RESOURCE not GARBAGE_ARGS on too many ops
-    
-    A client that sends more than a hundred ops in a single compound
-    currently gets an rpc-level GARBAGE_ARGS error.
-    
-    It would be more helpful to return NFS4ERR_RESOURCE, since that gives
-    the client a better idea how to recover (for example by splitting up the
-    compound into smaller compounds).
-    
-    This is all a bit academic since we've never actually seen a reason for
-    clients to send such long compounds, but we may as well fix it.
-    
-    While we're there, just use NFSD4_MAX_OPS_PER_COMPOUND == 16, the
-    constant we already use in the 4.1 case, instead of hard-coding 100.
-    Chances anyone actually uses even 16 ops per compound are small enough
-    that I think there's a neglible risk or any regression.
-    
-    This fixes pynfs test COMP6.
-    
-    Reported-by: sunlianwen <sunlw.fnst@cn.fujitsu.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 008ea0b627d0..c9669d75c157 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1703,6 +1703,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
- 	status = nfserr_minor_vers_mismatch;
- 	if (nfsd_minorversion(args->minorversion, NFSD_TEST) <= 0)
- 		goto out;
-+	status = nfserr_resource;
-+	if (resp->opcnt > NFSD_MAX_OPS_PER_COMPOUND)
-+		goto out;
- 
- 	status = nfs41_check_op_ordering(args);
- 	if (status) {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 2c61c6b8ae09..5dcd7cb45b2d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1918,8 +1918,13 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 
- 	if (argp->taglen > NFSD4_MAX_TAGLEN)
- 		goto xdr_error;
--	if (argp->opcnt > 100)
--		goto xdr_error;
-+	/*
-+	 * NFS4ERR_RESOURCE is a more helpful error than GARBAGE_ARGS
-+	 * here, so we return success at the xdr level so that
-+	 * nfsd4_proc can handle this is an NFS-level error.
-+	 */
-+	if (argp->opcnt > NFSD_MAX_OPS_PER_COMPOUND)
-+		return 0;
- 
- 	if (argp->opcnt > ARRAY_SIZE(argp->iops)) {
- 		argp->ops = kzalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
