@@ -1,52 +1,82 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f179.google.com ([209.85.216.179]:41122 "EHLO
-        mail-qt0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751032AbdK3MEM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 07:04:12 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-Date: Thu, 30 Nov 2017 10:03:42 -0200 (-02)
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: Thiago Rafael Becker <thiago.becker@gmail.com>,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] sunrpc: sort groups on unix_gid_parse
-In-Reply-To: <20171127201003.GA25662@fieldses.org>
-Message-ID: <alpine.LFD.2.21.1711300958380.10495@tbecker-rhat>
-References: <20171127192508.12751-1-thiago.becker@gmail.com> <20171127201003.GA25662@fieldses.org>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:46586 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751443AbdK3MVi (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 07:21:38 -0500
+Received: by mail-it0-f67.google.com with SMTP id t1so8041428ite.5
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Nov 2017 04:21:38 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Handle ENETDOWN errors
+Date: Thu, 30 Nov 2017 07:21:33 -0500
+Message-Id: <20171130122133.39471-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/clnt.c     | 5 +++++
+ net/sunrpc/xprtsock.c | 1 +
+ 2 files changed, 6 insertions(+)
 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index a801da812f86..e2a4184f3c5d 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1841,6 +1841,7 @@ call_bind_status(struct rpc_task *task)
+ 	case -ECONNABORTED:
+ 	case -ENOTCONN:
+ 	case -EHOSTDOWN:
++	case -ENETDOWN:
+ 	case -EHOSTUNREACH:
+ 	case -ENETUNREACH:
+ 	case -ENOBUFS:
+@@ -1917,6 +1918,7 @@ call_connect_status(struct rpc_task *task)
+ 		/* fall through */
+ 	case -ECONNRESET:
+ 	case -ECONNABORTED:
++	case -ENETDOWN:
+ 	case -ENETUNREACH:
+ 	case -EHOSTUNREACH:
+ 	case -EADDRINUSE:
+@@ -2022,6 +2024,7 @@ call_transmit_status(struct rpc_task *task)
+ 		 */
+ 	case -ECONNREFUSED:
+ 	case -EHOSTDOWN:
++	case -ENETDOWN:
+ 	case -EHOSTUNREACH:
+ 	case -ENETUNREACH:
+ 	case -EPERM:
+@@ -2071,6 +2074,7 @@ call_bc_transmit(struct rpc_task *task)
+ 	switch (task->tk_status) {
+ 	case 0:
+ 		/* Success */
++	case -ENETDOWN:
+ 	case -EHOSTDOWN:
+ 	case -EHOSTUNREACH:
+ 	case -ENETUNREACH:
+@@ -2139,6 +2143,7 @@ call_status(struct rpc_task *task)
+ 	task->tk_status = 0;
+ 	switch(status) {
+ 	case -EHOSTDOWN:
++	case -ENETDOWN:
+ 	case -EHOSTUNREACH:
+ 	case -ENETUNREACH:
+ 	case -EPERM:
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index fdf42cfa9121..6d0cc3b8f932 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2440,6 +2440,7 @@ static void xs_tcp_setup_socket(struct work_struct *work)
+ 		 */
+ 	case -ECONNREFUSED:
+ 	case -ECONNRESET:
++	case -ENETDOWN:
+ 	case -ENETUNREACH:
+ 	case -EHOSTUNREACH:
+ 	case -EADDRINUSE:
+-- 
+2.14.3
 
-On Mon, 27 Nov 2017, J. Bruce Fields wrote:
-
-> Thanks for the patch:
->
-> On Mon, Nov 27, 2017 at 05:25:08PM -0200, Thiago Rafael Becker wrote:
->> In cases were mountd is managing the group membership for nfsd,
->> if a user has several groups, multiple nfsd threads may call
->> sort_groups for the same freshly created unix_gid_cache entry
->> simultaneously, causing entries to be overwritten and the cache
->> entry to get corrupted.
->
-> The groups_sort call is in set_groups, called from
-> fs/nfsd/auth.c:nfsd_setuser():
->
-> 	set_groups(new, gi);
->
-> where "gi" is usually (in the absence of id squashing) a pointer to
-> rqstp->rq_cred.cr_group_info, which can be in use by other threads.
->
-> To me it's pretty unintuitive that set_groups() would modify the group
-> info passed in the second argument.  While we're here, I wonder if we
-> should make that the caller's responsibility?  There are basically only
-> three callers outside this one.
->
-> But I'm OK with this patch.  I probably need an OK from a vfs person to
-> take it through the nfsd tree?
->
-> --b.
-
-I tend to agree. I have an updated version of the patches that I'll be 
-sending to a broader audience to see if they have any inputs.
