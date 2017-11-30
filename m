@@ -1,78 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:32579 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751929AbdK3Q4F (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 11:56:05 -0500
-From: Thomas Haynes <loghyr@primarydata.com>
-To: Bruce Fields <bfields@redhat.com>
-CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: pyNFS and RNM14
-Date: Thu, 30 Nov 2017 16:55:57 +0000
-Message-ID: <60ACE74F-1A3B-4449-8E90-A4CEB22E0C4E@primarydata.com>
-References: <2333C1BF-E7CE-446E-84A4-5D73A39EA406@primarydata.com>
- <20171130162545.GC11610@parsley.fieldses.org>
-In-Reply-To: <20171130162545.GC11610@parsley.fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:60514 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753567AbdK3RED (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 30 Nov 2017 12:04:03 -0500
+Date: Thu, 30 Nov 2017 12:04:03 -0500
+To: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
+Cc: "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pynfs nfs4.0 server st_write: fix the amount of data
+ sent in the testLargeData
+Message-ID: <20171130170403.GD3923@fieldses.org>
+References: <2af20316-5ce4-354e-8768-4462398dc36f@cn.fujitsu.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2af20316-5ce4-354e-8768-4462398dc36f@cn.fujitsu.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQoNCj4gT24gTm92IDMwLCAyMDE3LCBhdCA4OjI1IEFNLCBKLiBCcnVjZSBGaWVsZHMgPGJmaWVs
-ZHNAcmVkaGF0LmNvbT4gd3JvdGU6DQo+IA0KPiBPbiBUaHUsIE5vdiAzMCwgMjAxNyBhdCAwMTox
-MzozMEFNICswMDAwLCBUaG9tYXMgSGF5bmVzIHdyb3RlOg0KPj4gQnJ1Y2UsDQo+PiANCj4+IFty
-b290QGNsaWVudDEtY2ktMjkxMTE3MjAzODAzOTMwIG5mczQuMV0jIC4vdGVzdHNlcnZlci5weSAx
-NzIuMjkuNTMuMTQ1Oi8gLS12ZXJib3NlIC0tb3V0ZmlsZT0vdG1wL3B5bmZzNC4xLm91dCAtLW1p
-bm9ydmVyc2lvbj0yICAtLW1ha2V0cmVlIFJOTTE0DQo+PiBDb3VsZCBub3QgZmluZCBnc3NhcGkg
-bW9kdWxlLCBwcm9jZWVkaW5nIHdpdGhvdXQNCj4+IElORk8gICA6cnBjLnBvbGw6Z290IGNvbm5l
-Y3Rpb24gZnJvbSAoJzEyNy4wLjAuMScsIDU1MzkwKSwgYXNzaWduZWQgdG8gZmQ9NQ0KPj4gSU5G
-TyAgIDpycGMudGhyZWFkOkNhbGxlZCBjb25uZWN0KCgnMTcyLjI5LjUzLjE0NScsIDIwNDkpKQ0K
-Pj4gSU5GTyAgIDpycGMucG9sbDpBZGRpbmcgNiBnZW5lcmF0ZWQgYnkgYW5vdGhlciB0aHJlYWQN
-Cj4+IElORk8gICA6dGVzdC5lbnY6Q3JlYXRlZCBjbGllbnQgdG8gMTcyLjI5LjUzLjE0NSwgMjA0
-OQ0KPj4gSU5GTyAgIDp0ZXN0LmVudjpDYWxsZWQgZG9fcmVhZGRpcigpDQo+PiBJTkZPICAgOnRl
-c3QuZW52OmRvX3JlYWRkaXIoKSA9IFtdDQo+PiBSTk0xNCAgICBzdF9yZW5hbWUudGVzdEZpbGVU
-b0RpciAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6IFJVTk5JTkcNCj4+IFJOTTE0
-ICAgIHN0X3JlbmFtZS50ZXN0RmlsZVRvRGlyICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgIDogRkFJTFVSRQ0KPj4gICAgICAgICAgIFJFTkFNRSBmaWxlIGludG8gZXhpc3RpbmcgZGly
-IHNob3VsZCByZXR1cm4NCj4+ICAgICAgICAgICBORlM0RVJSX0VYSVNUIG9yIE5GUzRFUlJfSVNE
-SVIsIGluc3RlYWQgZ290DQo+PiAgICAgICAgICAgTkZTNEVSUl9TRVJWRVJGQVVMVA0KPj4gSU5G
-TyAgIDp0ZXN0LmVudjpDYWxsZWQgZG9fcmVhZGRpcigpDQo+PiBJTkZPICAgOnRlc3QuZW52OmRv
-X3JlYWRkaXIoKSA9IFtlbnRyeTQoY29va2llPTQxOEwsIG5hbWU9J1JOTTE0XzE1MTIwMDMwOTMn
-LCBhdHRycz17fSldDQo+PiBJTkZPICAgOnRlc3QuZW52OkNhbGxlZCBkb19yZWFkZGlyKCkNCj4+
-IElORk8gICA6dGVzdC5lbnY6ZG9fcmVhZGRpcigpID0gW2VudHJ5NChjb29raWU9NDE5TCwgbmFt
-ZT0nZGlyJywgYXR0cnM9e30pLCBlbnRyeTQoY29va2llPTQyMEwsIG5hbWU9J2ZpbGUnLCBhdHRy
-cz17fSldDQo+PiAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKg0KPj4gUk5NMTQgICAgc3RfcmVuYW1lLnRlc3RGaWxlVG9EaXIgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgOiBGQUlMVVJFDQo+PiAgICAgICAgICAgUkVOQU1FIGZpbGUgaW50
-byBleGlzdGluZyBkaXIgc2hvdWxkIHJldHVybg0KPj4gICAgICAgICAgIE5GUzRFUlJfRVhJU1Qg
-b3IgTkZTNEVSUl9JU0RJUiwgaW5zdGVhZCBnb3QNCj4+ICAgICAgICAgICBORlM0RVJSX1NFUlZF
-UkZBVUxUDQo+PiAqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKg0KPj4gQ29tbWFuZCBsaW5lIGFza2VkIGZvciAxIG9mIDI4MCB0ZXN0cw0KPj4gT2YgdGhv
-c2U6IDAgU2tpcHBlZCwgMSBGYWlsZWQsIDAgV2FybmVkLCAwIFBhc3NlZA0KPj4gDQo+PiBZZXQg
-YWNjb3JkaW5nIHRvIFJGQyA1NjYxLCBTZWN0aW9uIDE1LjIgKHRhYmxlIDYpLCBORlM0RVJSX0lT
-RElSDQo+PiBpcyBub3QgYW4gYWxsb3dlZCBlcnJvciBjb2RlIGZvciBSRU5BTUUuDQo+PiANCj4+
-IEFjY29yZGluZyB0byBQT1NJWCByZW5hbWUoKSBpdCBpcyBhbiBhbGxvd2VkIGVycm9yIGNvZGUu
-IEkgYmVsaWV2ZQ0KPj4gdGhlIGFzc3VtcHRpb24gaXMgdGhhdCB0aGUgY2xpZW50IHNob3VsZCBj
-YXRjaCB0aGlzIGNhc2UgZmlyc3Q/DQo+PiANCj4+IEFueXdheSwgZG9lcyB0aGUga25mc2QgcmV0
-dXJuIE5GUzRFUlJfSVNESVIgaW4gdGhpcyB0ZXN0IGNhc2U/DQo+IA0KPiBJIGp1c3QgY2hlY2tl
-ZC0teWVzLiAgTG9va2luZyBhdCBnaXQgaGlzdG9yeSwgSSBmaW5kIGNvbW1pdA0KPiAyYTZjZjk0
-NGMyZjgsIHdoaWNoIHNheXMNCj4gDQo+IA0KPiAgICBuZnNkNDogZG9uJ3QgcmVtYXAgRUlTRElS
-IGVycm9ycyBpbiByZW5hbWUNCj4gDQo+ICAgIFdlJ3JlIGdvaW5nIG91dCBvZiBvdXIgd2F5IGhl
-cmUgdG8gcmVtYXAgYW4gZXJyb3IgdG8gbWFrZSByZmMgMzUzMA0KPiAgICBoYXBweS0tYnV0IHRo
-ZSByZmMgaXRzZWxmIChub3IgcmZjIDE4MTMsIHdoaWNoIGhhcyBzaW1pbGFyIGxhbmd1YWdlKQ0K
-PiAgICBnaXZlcyBubyBqdXN0aWZpY2F0aW9uLiAgQW5kIGRpc2FncmVlcyB3aXRoIGxvY2FsIGZp
-bGVzeXN0ZW0gYmVoYXZpb3IsDQo+ICAgIHdpdGggTGludXggYW5kIHBvc2l4IG1hbiBwYWdlcywg
-YW5kIGtuZnNkJ3MgaW1wbGVtZW50ZWQgYmVoYXZpb3IgZm9yIHYyDQo+ICAgIGFuZCB2My4NCj4g
-DQo+ICAgIEFuZCB0aGUgZG9jdW1lbnRlZCBiZWhhdmlvciBzZWVtcyBiZXR0ZXIsIGluIHRoYXQg
-aXQgZ2l2ZXMgYSBsaXR0bGUgbW9yZQ0KPiAgICBpbmZvcm1hdGlvbi0teW91IGNvdWxkIGltcGxl
-bWVudCB0aGUgMzUzMCBiZWhhdmlvciB1c2luZyB0aGUgcG9zaXgNCj4gICAgYmVoYXZpb3IsIGJ1
-dCBub3QgdGhlIG90aGVyIHdheSBhcm91bmQuDQo+IA0KPiAgICBBbHNvLCB0aGUgTGludXggY2xp
-ZW50IG1ha2VzIG5vIGF0dGVtcHQgdG8gcmVtYXAgdGhpcyBlcnJvciBpbiB0aGUgdjQNCj4gICAg
-Y2FzZSwgc28gaXQgY2FuIGVuZCB1cCBqdXN0IHJldHVybmluZyBFRVhJU1QgdG8gdGhlIGFwcGxp
-Y2F0aW9uIGluIGENCj4gICAgY2FzZSB3aGVyZSBpdCBzaG91bGQgcmV0dXJuIEVJU0RJUi4NCj4g
-DQo+ICAgIFNvIGhvbmVzdGx5IEkgdGhpbmsgdGhlIHJmYydzIGFyZSBqdXN0IGJ1Z2d5IGhlcmUt
-LW9yIGluIGFueSBjYXNlIGl0DQo+ICAgIGRvZXNuJ3Qgc2VlIHdvcnRoIHRoZSB0cm91YmxlIHRv
-IHJlbWFwIHRoaXMgZXJyb3IuDQo+IA0KPiAtLWIuDQoNClJpZ2h0LCBidXQgbXkgaXNzdWUgaXMg
-dGhhdCBJIG5lZWQgdG8gaGF2ZSBteSBzZXJ2ZXIgbGV0IEVJU0RJUiB0aHJvdWdoIGluIHRoaXMN
-CmNhc2UuDQoNCknigJltIGluY2xpbmVkIHRvIGZpbGUgYW4gZXJyYXRhLCBJ4oCZbGwganVzdCBo
-YXZlIHRvIGdldCB0byBpdC4gOi0pDQoNCg==
+Yes, this test is weird, I'm not sure what to do with it.
+
+If we want the writet to succeed then pynfs should first query the
+server for the maximum write size and use that--not every server will
+have 1M as the maximum.
+
+Maybe the intent was just to see if the server handles a too-large value
+gracefullly.  But in that case it should probably use a much larger
+write (to ensure that it will be too much for any server), and be
+modified to expect the server to fail.
+
+--b.
+
+On Thu, Nov 30, 2017 at 08:13:14AM +0000, Lu, Xinyu wrote:
+>  nfs4.0 server st_write: fix the amount of data sent in the testLargeData
+>     
+>     The maximum amount of data could be writen is NFSSVC_MAXBLKSIZE. The value of NFSSVC_MAXB
+> LKSIZE defined in the kernel is RPCSVC_MAXPLAYLOAD. If the value written exceeds NFSSVC_MAXBL
+> KSIZE, the value is fixed as the value of NFSSVC_MAXBLKSIZE. The value of RPCSVC_MAXPAYLOAD i
+> s 1*1024*1024u and "abcdefghijklmnopq"*0x10000 exceeds it. So the previous test is bound to f
+> ail and is meaningless.
+> 
+>     Signed-off-by: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+> 
+> diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
+> index 710452e..a7dae03 100644
+> --- a/nfs4.0/servertests/st_write.py
+> +++ b/nfs4.0/servertests/st_write.py
+> @@ -130,7 +130,7 @@ def testLargeData(t, env):
+>      c = env.c1
+>      c.init_connection()
+>      fh, stateid = c.create_confirm(t.code)
+> -    data = "abcdefghijklmnopq" * 0x10000
+> +    data = "a" * 1024 * 1024
+>      # Write the data
+>      pos = 0
+>      while pos < len(data):
+> 
+> 
+
+> From 6adc3da0ab17eb7e52b47805e6999d65b043fa7f Mon Sep 17 00:00:00 2001
+> From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+> Date: Thu, 30 Nov 2017 13:24:15 +0800
+> Subject: [PATCH] nfs4.0 server st_write: fix the amount of data sent in the
+>  testLargeData
+> 
+> The maximum amount of data could be writen is NFSSVC_MAXBLKSIZE. The value of NFSSVC_MAXBLKSIZE defined in the kernel is RPCSVC_MAXPLAYLOAD. If the value written exceeds NFSSVC_MAXBLKSIZE, the value is fixed as the value of NFSSVC_MAXBLKSIZE. The value of RPCSVC_MAXPAYLOAD is 1*1024*1024u and "abcdefghijklmnopq"*0x10000 exceeds it. So the previous test is bound to fail and is meaningless.
+> 
+> Signed-off-by: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+> ---
+>  nfs4.0/servertests/st_write.py | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
+> index 710452e..a7dae03 100644
+> --- a/nfs4.0/servertests/st_write.py
+> +++ b/nfs4.0/servertests/st_write.py
+> @@ -130,7 +130,7 @@ def testLargeData(t, env):
+>      c = env.c1
+>      c.init_connection()
+>      fh, stateid = c.create_confirm(t.code)
+> -    data = "abcdefghijklmnopq" * 0x10000
+> +    data = "a" * 1024 * 1024
+>      # Write the data
+>      pos = 0
+>      while pos < len(data):
+> -- 
+> 2.13.3
+> 
 
