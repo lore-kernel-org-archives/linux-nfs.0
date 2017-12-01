@@ -1,86 +1,146 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:50043 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751303AbdLACgU (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 21:36:20 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from mx1.redhat.com ([209.132.183.28]:44647 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751874AbdLANKw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 1 Dec 2017 08:10:52 -0500
+Date: Fri, 1 Dec 2017 08:10:51 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v2] nfs: fix a deadlock in nfs client initialization
-Date: Fri, 1 Dec 2017 02:36:15 +0000
-Message-ID: <1512095773.27780.3.camel@primarydata.com>
+Message-ID: <20171201131051.o2k56cej2iw7zih7@tonberry.usersys.redhat.com>
 References: <20171130144647.gwuchptqyiomcojl@tonberry.usersys.redhat.com>
-         <20171130222135.3752-1-smayhew@redhat.com>
-In-Reply-To: <20171130222135.3752-1-smayhew@redhat.com>
+ <20171130222135.3752-1-smayhew@redhat.com>
+ <1512095773.27780.3.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1512095773.27780.3.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTExLTMwIGF0IDE3OjIxIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IFRoZSBmb2xsb3dpbmcgZGVhZGxvY2sgY2FuIG9jY3VyIGJldHdlZW4gYSBwcm9jZXNzIHdhaXRp
-bmcgZm9yIGENCj4gY2xpZW50DQo+IHRvIGluaXRpYWxpemUgaW4gd2hpbGUgd2Fsa2luZyB0aGUg
-Y2xpZW50IGxpc3QgZHVyaW5nIG5mc3Y0IHNlcnZlcg0KPiB0cnVua2luZw0KPiBkZXRlY3Rpb24g
-YW5kIGFub3RoZXIgcHJvY2VzcyB3YWl0aW5nIGZvciB0aGUgbmZzX2NsaWRfaW5pdF9tdXRleCBz
-bw0KPiBpdA0KPiBjYW4gaW5pdGlhbGl6ZSB0aGF0IGNsaWVudDoNCj4gDQo+IFByb2Nlc3MgMSAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQcm9jZXNzIDINCj4gLS0tLS0tLS0tICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIC0tLS0tLS0tLQ0KPiBzcGluX2xvY2soJm5uLT5uZnNf
-Y2xpZW50X2xvY2spOw0KPiBsaXN0X2FkZF90YWlsKCZDTElFTlRBLT5jbF9zaGFyZV9saW5rLA0K
-PiAgICAgICAgICZubi0+bmZzX2NsaWVudF9saXN0KTsNCj4gc3Bpbl91bmxvY2soJm5uLT5uZnNf
-Y2xpZW50X2xvY2spOw0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-c3Bpbl9sb2NrKCZubi0NCj4gPm5mc19jbGllbnRfbG9jayk7DQo+ICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICBsaXN0X2FkZF90YWlsKCZDTElFTlRCLQ0KPiA+Y2xfc2hh
-cmVfbGluaywNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgJm5uLQ0KPiA+bmZzX2NsaWVudF9saXN0KTsNCj4gICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgIHNwaW5fdW5sb2NrKCZubi0NCj4gPm5mc19jbGllbnRfbG9jayk7DQo+
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtdXRleF9sb2NrKCZuZnNf
-Y2xpZF9pbml0X211dA0KPiBleCk7DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICBuZnM0MV93YWxrX2NsaWVudF9saXN0KGNscCwNCj4gcmVzdWx0LCBjcmVkKTsNCj4g
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mc193YWl0X2NsaWVudF9p
-bml0X2NvbXBsZXRlDQo+IChDTElFTlRBKTsNCj4gKHdhaXRpbmcgZm9yIG5mc19jbGlkX2luaXRf
-bXV0ZXgpDQo+IA0KPiBNYWtlIHN1cmUgbmZzX21hdGNoX2NsaWVudCgpIG9ubHkgZXZhbHVhdGVz
-IGNsaWVudHMgdGhhdCBoYXZlDQo+IGNvbXBsZXRlZA0KPiBpbml0aWFsaXphdGlvbiBpbiBvcmRl
-ciB0byBwcmV2ZW50IHRoYXQgZGVhZGxvY2suDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTY290dCBN
-YXloZXcgPHNtYXloZXdAcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvY2xpZW50LmMgICAg
-IHwgMTEgKysrKysrKysrKysNCj4gIGZzL25mcy9uZnM0Y2xpZW50LmMgfCAgOSArKysrKysrKy0N
-Cj4gIDIgZmlsZXMgY2hhbmdlZCwgMTkgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KPiAN
-Cj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KPiBpbmRl
-eCAwYWMyZmIxLi43ZTQyMzgwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvY2xpZW50LmMNCj4gKysr
-IGIvZnMvbmZzL2NsaWVudC5jDQo+IEBAIC0yOTEsMTIgKzI5MSwyMyBAQCBzdGF0aWMgc3RydWN0
-IG5mc19jbGllbnQNCj4gKm5mc19tYXRjaF9jbGllbnQoY29uc3Qgc3RydWN0IG5mc19jbGllbnRf
-aW5pdGRhdGEgKmRhdA0KPiAgCWNvbnN0IHN0cnVjdCBzb2NrYWRkciAqc2FwID0gZGF0YS0+YWRk
-cjsNCj4gIAlzdHJ1Y3QgbmZzX25ldCAqbm4gPSBuZXRfZ2VuZXJpYyhkYXRhLT5uZXQsIG5mc19u
-ZXRfaWQpOw0KPiAgDQo+ICthZ2FpbjoNCj4gIAlsaXN0X2Zvcl9lYWNoX2VudHJ5KGNscCwgJm5u
-LT5uZnNfY2xpZW50X2xpc3QsDQo+IGNsX3NoYXJlX2xpbmspIHsNCj4gIAkgICAgICAgIGNvbnN0
-IHN0cnVjdCBzb2NrYWRkciAqY2xhcCA9IChzdHJ1Y3Qgc29ja2FkZHINCj4gKikmY2xwLT5jbF9h
-ZGRyOw0KPiAgCQkvKiBEb24ndCBtYXRjaCBjbGllbnRzIHRoYXQgZmFpbGVkIHRvIGluaXRpYWxp
-c2UNCj4gcHJvcGVybHkgKi8NCj4gIAkJaWYgKGNscC0+Y2xfY29uc19zdGF0ZSA8IDApDQo+ICAJ
-CQljb250aW51ZTsNCj4gIA0KPiArCQkvKiBJZiBhIGNsaWVudCBpcyBzdGlsbCBpbml0aWFsaXpp
-bmcgdGhlbiB3ZSBuZWVkIHRvDQo+IHdhaXQgKi8NCj4gKwkJaWYgKGNscC0+Y2xfY29uc19zdGF0
-ZSA+IE5GU19DU19SRUFEWSkgew0KPiArCQkJc3Bpbl91bmxvY2soJm5uLT5uZnNfY2xpZW50X2xv
-Y2spOw0KPiArCQkJcmVmY291bnRfaW5jKCZjbHAtPmNsX2NvdW50KTsNCg0KVGhlIHJlZmNvdW50
-IG5lZWRzIHRvIGJlIGJ1bXBlZCBiZWZvcmUgZHJvcHBpbmcgdGhlIHNwaW5sb2NrIGFib3ZlLg0K
-DQo+ICsJCQluZnNfd2FpdF9jbGllbnRfaW5pdF9jb21wbGV0ZShjbHApOw0KPiArCQkJbmZzX3B1
-dF9jbGllbnQoY2xwKTsNCj4gKwkJCXNwaW5fbG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7DQo+
-ICsJCQlnb3RvIGFnYWluOw0KPiArCQl9DQo+ICsNCj4gIAkJLyogRGlmZmVyZW50IE5GUyB2ZXJz
-aW9ucyBjYW5ub3Qgc2hhcmUgdGhlIHNhbWUNCj4gbmZzX2NsaWVudCAqLw0KPiAgCQlpZiAoY2xw
-LT5ycGNfb3BzICE9IGRhdGEtPm5mc19tb2QtPnJwY19vcHMpDQo+ICAJCQljb250aW51ZTsNCj4g
-ZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0Y2xpZW50LmMgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQo+
-IGluZGV4IDEyYmJhYjAuLjM5ZGQzOWMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0Y2xpZW50
-LmMNCj4gKysrIGIvZnMvbmZzL25mczRjbGllbnQuYw0KPiBAQCAtNDExLDggKzQxMSwxNSBAQCBz
-dHJ1Y3QgbmZzX2NsaWVudCAqbmZzNF9pbml0X2NsaWVudChzdHJ1Y3QNCj4gbmZzX2NsaWVudCAq
-Y2xwLA0KPiAgCWlmIChlcnJvciA8IDApDQo+ICAJCWdvdG8gZXJyb3I7DQo+ICANCj4gLQlpZiAo
-Y2xwICE9IG9sZCkNCj4gKwlpZiAoY2xwICE9IG9sZCkgew0KPiAgCQljbHAtPmNsX3ByZXNlcnZl
-X2NsaWQgPSB0cnVlOw0KPiArCQkvKg0KPiArCQkgKiBNYXJrIHRoZSBjbGllbnQgYXMgaGF2aW5n
-IGZhaWxlZCBpbml0aWFsaXphdGlvbg0KPiBzbyBvdGhlcg0KPiArCQkgKiBwcm9jZXNzZXMgd2Fs
-a2luZyB0aGUgbmZzX2NsaWVudF9saXN0IGluDQo+IG5mc19tYXRjaF9jbGllbnQoKQ0KPiArCQkg
-KiB3b24ndCB0cnkgdG8gdXNlIGl0Lg0KPiArCQkgKi8NCj4gKwkJbmZzX21hcmtfY2xpZW50X3Jl
-YWR5KGNscCwgLUVQRVJNKTsNCg0KWW91IGNhbid0IGRvIHRoaXMgaWYgdGhlIGNsaWVudCB3YXMg
-YWxyZWFkeSBtYXJrZWQgYXMgTkZTX0NTX1JFQURZLCBzbw0KeW91IG5lZWQgYXQgbGVhc3QgdG8g
-bW92ZSB0aGUgIW5mczRfaGFzX3Nlc3Npb24oKSBjb25kaXRpb24gNCBsaW5lcw0KYWJvdmUgdGhp
-cy4NCg0KPiArCX0NCj4gIAluZnNfcHV0X2NsaWVudChjbHApOw0KPiAgCWNsZWFyX2JpdChORlNf
-Q1NfVFNNX1BPU1NJQkxFLCAmY2xwLT5jbF9mbGFncyk7DQo+ICAJcmV0dXJuIG9sZDsNCi0tIA0K
-VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRh
-DQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+On Fri, 01 Dec 2017, Trond Myklebust wrote:
 
+> On Thu, 2017-11-30 at 17:21 -0500, Scott Mayhew wrote:
+> > The following deadlock can occur between a process waiting for a
+> > client
+> > to initialize in while walking the client list during nfsv4 server
+> > trunking
+> > detection and another process waiting for the nfs_clid_init_mutex so
+> > it
+> > can initialize that client:
+> > 
+> > Process 1                               Process 2
+> > ---------                               ---------
+> > spin_lock(&nn->nfs_client_lock);
+> > list_add_tail(&CLIENTA->cl_share_link,
+> >         &nn->nfs_client_list);
+> > spin_unlock(&nn->nfs_client_lock);
+> >                                         spin_lock(&nn-
+> > >nfs_client_lock);
+> >                                         list_add_tail(&CLIENTB-
+> > >cl_share_link,
+> >                                                 &nn-
+> > >nfs_client_list);
+> >                                         spin_unlock(&nn-
+> > >nfs_client_lock);
+> >                                         mutex_lock(&nfs_clid_init_mut
+> > ex);
+> >                                         nfs41_walk_client_list(clp,
+> > result, cred);
+> >                                         nfs_wait_client_init_complete
+> > (CLIENTA);
+> > (waiting for nfs_clid_init_mutex)
+> > 
+> > Make sure nfs_match_client() only evaluates clients that have
+> > completed
+> > initialization in order to prevent that deadlock.
+> > 
+> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> > ---
+> >  fs/nfs/client.c     | 11 +++++++++++
+> >  fs/nfs/nfs4client.c |  9 ++++++++-
+> >  2 files changed, 19 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+> > index 0ac2fb1..7e42380 100644
+> > --- a/fs/nfs/client.c
+> > +++ b/fs/nfs/client.c
+> > @@ -291,12 +291,23 @@ static struct nfs_client
+> > *nfs_match_client(const struct nfs_client_initdata *dat
+> >  	const struct sockaddr *sap = data->addr;
+> >  	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
+> >  
+> > +again:
+> >  	list_for_each_entry(clp, &nn->nfs_client_list,
+> > cl_share_link) {
+> >  	        const struct sockaddr *clap = (struct sockaddr
+> > *)&clp->cl_addr;
+> >  		/* Don't match clients that failed to initialise
+> > properly */
+> >  		if (clp->cl_cons_state < 0)
+> >  			continue;
+> >  
+> > +		/* If a client is still initializing then we need to
+> > wait */
+> > +		if (clp->cl_cons_state > NFS_CS_READY) {
+> > +			spin_unlock(&nn->nfs_client_lock);
+> > +			refcount_inc(&clp->cl_count);
+> 
+> The refcount needs to be bumped before dropping the spinlock above.
+
+Okay.
+> 
+> > +			nfs_wait_client_init_complete(clp);
+> > +			nfs_put_client(clp);
+> > +			spin_lock(&nn->nfs_client_lock);
+> > +			goto again;
+> > +		}
+> > +
+> >  		/* Different NFS versions cannot share the same
+> > nfs_client */
+> >  		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
+> >  			continue;
+> > diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> > index 12bbab0..39dd39c 100644
+> > --- a/fs/nfs/nfs4client.c
+> > +++ b/fs/nfs/nfs4client.c
+> > @@ -411,8 +411,15 @@ struct nfs_client *nfs4_init_client(struct
+> > nfs_client *clp,
+> >  	if (error < 0)
+> >  		goto error;
+> >  
+> > -	if (clp != old)
+> > +	if (clp != old) {
+> >  		clp->cl_preserve_clid = true;
+> > +		/*
+> > +		 * Mark the client as having failed initialization
+> > so other
+> > +		 * processes walking the nfs_client_list in
+> > nfs_match_client()
+> > +		 * won't try to use it.
+> > +		 */
+> > +		nfs_mark_client_ready(clp, -EPERM);
+> 
+> You can't do this if the client was already marked as NFS_CS_READY, so
+> you need at least to move the !nfs4_has_session() condition 4 lines
+> above this.
+
+How about if I change it to this:
+
+                if (!nfs_client_init_is_complete(clp))
+                        nfs_mark_client_ready(clp, -EPERM);
+
+In my earlier testing I had problems whenever I tried moving that
+!nfs4_has_session() condition.  
+
+-Scott
+> 
+> > +	}
+> >  	nfs_put_client(clp);
+> >  	clear_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags);
+> >  	return old;
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
