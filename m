@@ -1,86 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f176.google.com ([209.85.217.176]:35072 "EHLO
-        mail-ua0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750898AbdK3XDJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 18:03:09 -0500
-Received: by mail-ua0-f176.google.com with SMTP id l2so6876506uak.2
-        for <linux-nfs@vger.kernel.org>; Thu, 30 Nov 2017 15:03:09 -0800 (PST)
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:50043 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751303AbdLACgU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Nov 2017 21:36:20 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] nfs: fix a deadlock in nfs client initialization
+Date: Fri, 1 Dec 2017 02:36:15 +0000
+Message-ID: <1512095773.27780.3.camel@primarydata.com>
+References: <20171130144647.gwuchptqyiomcojl@tonberry.usersys.redhat.com>
+         <20171130222135.3752-1-smayhew@redhat.com>
+In-Reply-To: <20171130222135.3752-1-smayhew@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <20171130201823.GE3923@fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com> <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
- <CAN-5tyHumx9s7nkweA1B4CniPD_NzeGyd9d9FNL5ZxzX6KQ+zw@mail.gmail.com>
- <20171114004804.GB14185@parsley.fieldses.org> <CAN-5tyH2tEFsbVxhSdQqu8DW_7Zs4eHse4HWEN=vNAgKLiNSDQ@mail.gmail.com>
- <20171130201823.GE3923@fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 30 Nov 2017 18:03:08 -0500
-Message-ID: <CAN-5tyFY_VzFjG7D3gAjfr32AzxoT+OCZ-DWmT6zODkwFXWntw@mail.gmail.com>
-Subject: Re: [PATCH v6 00/10] NFSD support for asynchronous COPY
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 30, 2017 at 3:18 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> On Tue, Nov 28, 2017 at 03:28:46PM -0500, Olga Kornievskaia wrote:
->> On Mon, Nov 13, 2017 at 7:48 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> > On Fri, Nov 10, 2017 at 10:01:02AM -0500, Olga Kornievskaia wrote:
->> >> On Fri, Nov 3, 2017 at 3:57 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->> >> > Bruce, any comments on this version?
->> >>
->> >> Bruce, do you have any comments on this version?
->> >
->> > I don't yet, apologies.  It is on my list to look at.
->> >
->>
->> Any ideas as to when that would be?
->
-> Sorry for the silence.  I'll try to get it reviewed in time for 4.16.
+T24gVGh1LCAyMDE3LTExLTMwIGF0IDE3OjIxIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IFRoZSBmb2xsb3dpbmcgZGVhZGxvY2sgY2FuIG9jY3VyIGJldHdlZW4gYSBwcm9jZXNzIHdhaXRp
+bmcgZm9yIGENCj4gY2xpZW50DQo+IHRvIGluaXRpYWxpemUgaW4gd2hpbGUgd2Fsa2luZyB0aGUg
+Y2xpZW50IGxpc3QgZHVyaW5nIG5mc3Y0IHNlcnZlcg0KPiB0cnVua2luZw0KPiBkZXRlY3Rpb24g
+YW5kIGFub3RoZXIgcHJvY2VzcyB3YWl0aW5nIGZvciB0aGUgbmZzX2NsaWRfaW5pdF9tdXRleCBz
+bw0KPiBpdA0KPiBjYW4gaW5pdGlhbGl6ZSB0aGF0IGNsaWVudDoNCj4gDQo+IFByb2Nlc3MgMSAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICBQcm9jZXNzIDINCj4gLS0tLS0tLS0tICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgIC0tLS0tLS0tLQ0KPiBzcGluX2xvY2soJm5uLT5uZnNf
+Y2xpZW50X2xvY2spOw0KPiBsaXN0X2FkZF90YWlsKCZDTElFTlRBLT5jbF9zaGFyZV9saW5rLA0K
+PiAgICAgICAgICZubi0+bmZzX2NsaWVudF9saXN0KTsNCj4gc3Bpbl91bmxvY2soJm5uLT5uZnNf
+Y2xpZW50X2xvY2spOw0KPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+c3Bpbl9sb2NrKCZubi0NCj4gPm5mc19jbGllbnRfbG9jayk7DQo+ICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICBsaXN0X2FkZF90YWlsKCZDTElFTlRCLQ0KPiA+Y2xfc2hh
+cmVfbGluaywNCj4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgJm5uLQ0KPiA+bmZzX2NsaWVudF9saXN0KTsNCj4gICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgIHNwaW5fdW5sb2NrKCZubi0NCj4gPm5mc19jbGllbnRfbG9jayk7DQo+
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBtdXRleF9sb2NrKCZuZnNf
+Y2xpZF9pbml0X211dA0KPiBleCk7DQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICBuZnM0MV93YWxrX2NsaWVudF9saXN0KGNscCwNCj4gcmVzdWx0LCBjcmVkKTsNCj4g
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mc193YWl0X2NsaWVudF9p
+bml0X2NvbXBsZXRlDQo+IChDTElFTlRBKTsNCj4gKHdhaXRpbmcgZm9yIG5mc19jbGlkX2luaXRf
+bXV0ZXgpDQo+IA0KPiBNYWtlIHN1cmUgbmZzX21hdGNoX2NsaWVudCgpIG9ubHkgZXZhbHVhdGVz
+IGNsaWVudHMgdGhhdCBoYXZlDQo+IGNvbXBsZXRlZA0KPiBpbml0aWFsaXphdGlvbiBpbiBvcmRl
+ciB0byBwcmV2ZW50IHRoYXQgZGVhZGxvY2suDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTY290dCBN
+YXloZXcgPHNtYXloZXdAcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvY2xpZW50LmMgICAg
+IHwgMTEgKysrKysrKysrKysNCj4gIGZzL25mcy9uZnM0Y2xpZW50LmMgfCAgOSArKysrKysrKy0N
+Cj4gIDIgZmlsZXMgY2hhbmdlZCwgMTkgaW5zZXJ0aW9ucygrKSwgMSBkZWxldGlvbigtKQ0KPiAN
+Cj4gZGlmZiAtLWdpdCBhL2ZzL25mcy9jbGllbnQuYyBiL2ZzL25mcy9jbGllbnQuYw0KPiBpbmRl
+eCAwYWMyZmIxLi43ZTQyMzgwIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvY2xpZW50LmMNCj4gKysr
+IGIvZnMvbmZzL2NsaWVudC5jDQo+IEBAIC0yOTEsMTIgKzI5MSwyMyBAQCBzdGF0aWMgc3RydWN0
+IG5mc19jbGllbnQNCj4gKm5mc19tYXRjaF9jbGllbnQoY29uc3Qgc3RydWN0IG5mc19jbGllbnRf
+aW5pdGRhdGEgKmRhdA0KPiAgCWNvbnN0IHN0cnVjdCBzb2NrYWRkciAqc2FwID0gZGF0YS0+YWRk
+cjsNCj4gIAlzdHJ1Y3QgbmZzX25ldCAqbm4gPSBuZXRfZ2VuZXJpYyhkYXRhLT5uZXQsIG5mc19u
+ZXRfaWQpOw0KPiAgDQo+ICthZ2FpbjoNCj4gIAlsaXN0X2Zvcl9lYWNoX2VudHJ5KGNscCwgJm5u
+LT5uZnNfY2xpZW50X2xpc3QsDQo+IGNsX3NoYXJlX2xpbmspIHsNCj4gIAkgICAgICAgIGNvbnN0
+IHN0cnVjdCBzb2NrYWRkciAqY2xhcCA9IChzdHJ1Y3Qgc29ja2FkZHINCj4gKikmY2xwLT5jbF9h
+ZGRyOw0KPiAgCQkvKiBEb24ndCBtYXRjaCBjbGllbnRzIHRoYXQgZmFpbGVkIHRvIGluaXRpYWxp
+c2UNCj4gcHJvcGVybHkgKi8NCj4gIAkJaWYgKGNscC0+Y2xfY29uc19zdGF0ZSA8IDApDQo+ICAJ
+CQljb250aW51ZTsNCj4gIA0KPiArCQkvKiBJZiBhIGNsaWVudCBpcyBzdGlsbCBpbml0aWFsaXpp
+bmcgdGhlbiB3ZSBuZWVkIHRvDQo+IHdhaXQgKi8NCj4gKwkJaWYgKGNscC0+Y2xfY29uc19zdGF0
+ZSA+IE5GU19DU19SRUFEWSkgew0KPiArCQkJc3Bpbl91bmxvY2soJm5uLT5uZnNfY2xpZW50X2xv
+Y2spOw0KPiArCQkJcmVmY291bnRfaW5jKCZjbHAtPmNsX2NvdW50KTsNCg0KVGhlIHJlZmNvdW50
+IG5lZWRzIHRvIGJlIGJ1bXBlZCBiZWZvcmUgZHJvcHBpbmcgdGhlIHNwaW5sb2NrIGFib3ZlLg0K
+DQo+ICsJCQluZnNfd2FpdF9jbGllbnRfaW5pdF9jb21wbGV0ZShjbHApOw0KPiArCQkJbmZzX3B1
+dF9jbGllbnQoY2xwKTsNCj4gKwkJCXNwaW5fbG9jaygmbm4tPm5mc19jbGllbnRfbG9jayk7DQo+
+ICsJCQlnb3RvIGFnYWluOw0KPiArCQl9DQo+ICsNCj4gIAkJLyogRGlmZmVyZW50IE5GUyB2ZXJz
+aW9ucyBjYW5ub3Qgc2hhcmUgdGhlIHNhbWUNCj4gbmZzX2NsaWVudCAqLw0KPiAgCQlpZiAoY2xw
+LT5ycGNfb3BzICE9IGRhdGEtPm5mc19tb2QtPnJwY19vcHMpDQo+ICAJCQljb250aW51ZTsNCj4g
+ZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0Y2xpZW50LmMgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQo+
+IGluZGV4IDEyYmJhYjAuLjM5ZGQzOWMgMTAwNjQ0DQo+IC0tLSBhL2ZzL25mcy9uZnM0Y2xpZW50
+LmMNCj4gKysrIGIvZnMvbmZzL25mczRjbGllbnQuYw0KPiBAQCAtNDExLDggKzQxMSwxNSBAQCBz
+dHJ1Y3QgbmZzX2NsaWVudCAqbmZzNF9pbml0X2NsaWVudChzdHJ1Y3QNCj4gbmZzX2NsaWVudCAq
+Y2xwLA0KPiAgCWlmIChlcnJvciA8IDApDQo+ICAJCWdvdG8gZXJyb3I7DQo+ICANCj4gLQlpZiAo
+Y2xwICE9IG9sZCkNCj4gKwlpZiAoY2xwICE9IG9sZCkgew0KPiAgCQljbHAtPmNsX3ByZXNlcnZl
+X2NsaWQgPSB0cnVlOw0KPiArCQkvKg0KPiArCQkgKiBNYXJrIHRoZSBjbGllbnQgYXMgaGF2aW5n
+IGZhaWxlZCBpbml0aWFsaXphdGlvbg0KPiBzbyBvdGhlcg0KPiArCQkgKiBwcm9jZXNzZXMgd2Fs
+a2luZyB0aGUgbmZzX2NsaWVudF9saXN0IGluDQo+IG5mc19tYXRjaF9jbGllbnQoKQ0KPiArCQkg
+KiB3b24ndCB0cnkgdG8gdXNlIGl0Lg0KPiArCQkgKi8NCj4gKwkJbmZzX21hcmtfY2xpZW50X3Jl
+YWR5KGNscCwgLUVQRVJNKTsNCg0KWW91IGNhbid0IGRvIHRoaXMgaWYgdGhlIGNsaWVudCB3YXMg
+YWxyZWFkeSBtYXJrZWQgYXMgTkZTX0NTX1JFQURZLCBzbw0KeW91IG5lZWQgYXQgbGVhc3QgdG8g
+bW92ZSB0aGUgIW5mczRfaGFzX3Nlc3Npb24oKSBjb25kaXRpb24gNCBsaW5lcw0KYWJvdmUgdGhp
+cy4NCg0KPiArCX0NCj4gIAluZnNfcHV0X2NsaWVudChjbHApOw0KPiAgCWNsZWFyX2JpdChORlNf
+Q1NfVFNNX1BPU1NJQkxFLCAmY2xwLT5jbF9mbGFncyk7DQo+ICAJcmV0dXJuIG9sZDsNCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRh
+DQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-I hope I won't forget too much in 3months for this ;)
-
-> But I'm worrying about async behavior.  Just the usual complaint:
->
->         - A large copy could take anywhere from milliseconds to hours.
-
-With the sync copy your worry was with tying up the nfsd thread. Here
-each copy gets its own thread and doesn't interfere with other
-operations. So why worry?
-
->         - The only way the protocol gives to measure progress is
->           OFFLOAD_STATUS, but I'm pessimistic that we'll get a
->           corresponding copy_progress syscall interface that
->           applications will get patched to use.
-
-Doing a cp, never had a status info so what's different now.
-Interested folks can do as before ls -l dst_file to monitor progress.
-
-> So, currently the server's trying to avoid the problem by returning
-> short COPY results and hoping applications will handle that gracefully
-> (and that readahead and write behind will save performance).
-
-We have demonstrated that doing async copy performs significantly
-better (given large enough file size which was different between intra
-and inter copy but something like 16MB). Really there is no point in
-introducing an asynchronous copy unless you are doing all of it.
-
-> But I guess that won't work in the server-to-server case.  Or would it?
-> I *think* you can just send one NOTIFY
-
-NOTIFY is only for "inter" server-to-server copy and we are currently
-reviewing "asynchronous intra" copy?
-
-> and then reuse the same stateid
-> in multiple COPYs, so maybe it's not any worse than in the single-server
-> case.
-
-No you can not reuse the same stateid in multiple COPY's (spec doesn't
-allow it). It has to uniquely identity the copy. Otherwise, when
-client receives a reply from the async COPY it doesn't know which out
-of those multiple copies to match it to.
-
-> That would be a lot simpler if it worked.
->
-> --b.
