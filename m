@@ -1,146 +1,105 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44647 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751874AbdLANKw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 1 Dec 2017 08:10:52 -0500
-Date: Fri, 1 Dec 2017 08:10:51 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:28949 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752739AbdLAOmh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Dec 2017 09:42:37 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v2] nfs: fix a deadlock in nfs client initialization
-Message-ID: <20171201131051.o2k56cej2iw7zih7@tonberry.usersys.redhat.com>
+Date: Fri, 1 Dec 2017 14:42:31 +0000
+Message-ID: <1512139349.27358.2.camel@primarydata.com>
 References: <20171130144647.gwuchptqyiomcojl@tonberry.usersys.redhat.com>
- <20171130222135.3752-1-smayhew@redhat.com>
- <1512095773.27780.3.camel@primarydata.com>
+         <20171130222135.3752-1-smayhew@redhat.com>
+         <1512095773.27780.3.camel@primarydata.com>
+         <20171201131051.o2k56cej2iw7zih7@tonberry.usersys.redhat.com>
+In-Reply-To: <20171201131051.o2k56cej2iw7zih7@tonberry.usersys.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1512095773.27780.3.camel@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 01 Dec 2017, Trond Myklebust wrote:
+T24gRnJpLCAyMDE3LTEyLTAxIGF0IDA4OjEwIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IE9uIEZyaSwgMDEgRGVjIDIwMTcsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gT24g
+VGh1LCAyMDE3LTExLTMwIGF0IDE3OjIxIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+ID4g
+PiBUaGUgZm9sbG93aW5nIGRlYWRsb2NrIGNhbiBvY2N1ciBiZXR3ZWVuIGEgcHJvY2VzcyB3YWl0
+aW5nIGZvciBhDQo+ID4gPiBjbGllbnQNCj4gPiA+IHRvIGluaXRpYWxpemUgaW4gd2hpbGUgd2Fs
+a2luZyB0aGUgY2xpZW50IGxpc3QgZHVyaW5nIG5mc3Y0DQo+ID4gPiBzZXJ2ZXINCj4gPiA+IHRy
+dW5raW5nDQo+ID4gPiBkZXRlY3Rpb24gYW5kIGFub3RoZXIgcHJvY2VzcyB3YWl0aW5nIGZvciB0
+aGUgbmZzX2NsaWRfaW5pdF9tdXRleA0KPiA+ID4gc28NCj4gPiA+IGl0DQo+ID4gPiBjYW4gaW5p
+dGlhbGl6ZSB0aGF0IGNsaWVudDoNCj4gPiA+IA0KPiA+ID4gUHJvY2VzcyAxICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgIFByb2Nlc3MgMg0KPiA+ID4gLS0tLS0tLS0tICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgIC0tLS0tLS0tLQ0KPiA+ID4gc3Bpbl9sb2NrKCZubi0+bmZzX2Ns
+aWVudF9sb2NrKTsNCj4gPiA+IGxpc3RfYWRkX3RhaWwoJkNMSUVOVEEtPmNsX3NoYXJlX2xpbmss
+DQo+ID4gPiAgICAgICAgICZubi0+bmZzX2NsaWVudF9saXN0KTsNCj4gPiA+IHNwaW5fdW5sb2Nr
+KCZubi0+bmZzX2NsaWVudF9sb2NrKTsNCj4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICBzcGluX2xvY2soJm5uLQ0KPiA+ID4gPiBuZnNfY2xpZW50X2xvY2spOw0K
+PiA+ID4gDQo+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgbGlz
+dF9hZGRfdGFpbCgmQ0xJRU5UQi0NCj4gPiA+ID4gY2xfc2hhcmVfbGluaywNCj4gPiA+IA0KPiA+
+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgJm5uLQ0K
+PiA+ID4gPiBuZnNfY2xpZW50X2xpc3QpOw0KPiA+ID4gDQo+ID4gPiAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgc3Bpbl91bmxvY2soJm5uLQ0KPiA+ID4gPiBuZnNfY2xp
+ZW50X2xvY2spOw0KPiA+ID4gDQo+ID4gPiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgbXV0ZXhfbG9jaygmbmZzX2NsaWRfaW5pdA0KPiA+ID4gX211dA0KPiA+ID4gZXgp
+Ow0KPiA+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mczQxX3dh
+bGtfY2xpZW50X2xpc3QoY2wNCj4gPiA+IHAsDQo+ID4gPiByZXN1bHQsIGNyZWQpOw0KPiA+ID4g
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIG5mc193YWl0X2NsaWVudF9p
+bml0X2NvbXANCj4gPiA+IGxldGUNCj4gPiA+IChDTElFTlRBKTsNCj4gPiA+ICh3YWl0aW5nIGZv
+ciBuZnNfY2xpZF9pbml0X211dGV4KQ0KPiA+ID4gDQo+ID4gPiBNYWtlIHN1cmUgbmZzX21hdGNo
+X2NsaWVudCgpIG9ubHkgZXZhbHVhdGVzIGNsaWVudHMgdGhhdCBoYXZlDQo+ID4gPiBjb21wbGV0
+ZWQNCj4gPiA+IGluaXRpYWxpemF0aW9uIGluIG9yZGVyIHRvIHByZXZlbnQgdGhhdCBkZWFkbG9j
+ay4NCj4gPiA+IA0KPiA+ID4gU2lnbmVkLW9mZi1ieTogU2NvdHQgTWF5aGV3IDxzbWF5aGV3QHJl
+ZGhhdC5jb20+DQo+ID4gPiAtLS0NCj4gPiA+ICBmcy9uZnMvY2xpZW50LmMgICAgIHwgMTEgKysr
+KysrKysrKysNCj4gPiA+ICBmcy9uZnMvbmZzNGNsaWVudC5jIHwgIDkgKysrKysrKystDQo+ID4g
+PiAgMiBmaWxlcyBjaGFuZ2VkLCAxOSBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0pDQo+ID4g
+PiANCj4gPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvY2xpZW50LmMgYi9mcy9uZnMvY2xpZW50LmMN
+Cj4gPiA+IGluZGV4IDBhYzJmYjEuLjdlNDIzODAgMTAwNjQ0DQo+ID4gPiAtLS0gYS9mcy9uZnMv
+Y2xpZW50LmMNCj4gPiA+ICsrKyBiL2ZzL25mcy9jbGllbnQuYw0KPiA+ID4gQEAgLTI5MSwxMiAr
+MjkxLDIzIEBAIHN0YXRpYyBzdHJ1Y3QgbmZzX2NsaWVudA0KPiA+ID4gKm5mc19tYXRjaF9jbGll
+bnQoY29uc3Qgc3RydWN0IG5mc19jbGllbnRfaW5pdGRhdGEgKmRhdA0KPiA+ID4gIAljb25zdCBz
+dHJ1Y3Qgc29ja2FkZHIgKnNhcCA9IGRhdGEtPmFkZHI7DQo+ID4gPiAgCXN0cnVjdCBuZnNfbmV0
+ICpubiA9IG5ldF9nZW5lcmljKGRhdGEtPm5ldCwgbmZzX25ldF9pZCk7DQo+ID4gPiAgDQo+ID4g
+PiArYWdhaW46DQo+ID4gPiAgCWxpc3RfZm9yX2VhY2hfZW50cnkoY2xwLCAmbm4tPm5mc19jbGll
+bnRfbGlzdCwNCj4gPiA+IGNsX3NoYXJlX2xpbmspIHsNCj4gPiA+ICAJICAgICAgICBjb25zdCBz
+dHJ1Y3Qgc29ja2FkZHIgKmNsYXAgPSAoc3RydWN0IHNvY2thZGRyDQo+ID4gPiAqKSZjbHAtPmNs
+X2FkZHI7DQo+ID4gPiAgCQkvKiBEb24ndCBtYXRjaCBjbGllbnRzIHRoYXQgZmFpbGVkIHRvIGlu
+aXRpYWxpc2UNCj4gPiA+IHByb3Blcmx5ICovDQo+ID4gPiAgCQlpZiAoY2xwLT5jbF9jb25zX3N0
+YXRlIDwgMCkNCj4gPiA+ICAJCQljb250aW51ZTsNCj4gPiA+ICANCj4gPiA+ICsJCS8qIElmIGEg
+Y2xpZW50IGlzIHN0aWxsIGluaXRpYWxpemluZyB0aGVuIHdlDQo+ID4gPiBuZWVkIHRvDQo+ID4g
+PiB3YWl0ICovDQo+ID4gPiArCQlpZiAoY2xwLT5jbF9jb25zX3N0YXRlID4gTkZTX0NTX1JFQURZ
+KSB7DQo+ID4gPiArCQkJc3Bpbl91bmxvY2soJm5uLT5uZnNfY2xpZW50X2xvY2spOw0KPiA+ID4g
+KwkJCXJlZmNvdW50X2luYygmY2xwLT5jbF9jb3VudCk7DQo+ID4gDQo+ID4gVGhlIHJlZmNvdW50
+IG5lZWRzIHRvIGJlIGJ1bXBlZCBiZWZvcmUgZHJvcHBpbmcgdGhlIHNwaW5sb2NrIGFib3ZlLg0K
+PiANCj4gT2theS4NCj4gPiANCj4gPiA+ICsJCQluZnNfd2FpdF9jbGllbnRfaW5pdF9jb21wbGV0
+ZShjbHApOw0KPiA+ID4gKwkJCW5mc19wdXRfY2xpZW50KGNscCk7DQo+ID4gPiArCQkJc3Bpbl9s
+b2NrKCZubi0+bmZzX2NsaWVudF9sb2NrKTsNCj4gPiA+ICsJCQlnb3RvIGFnYWluOw0KPiA+ID4g
+KwkJfQ0KPiA+ID4gKw0KPiA+ID4gIAkJLyogRGlmZmVyZW50IE5GUyB2ZXJzaW9ucyBjYW5ub3Qg
+c2hhcmUgdGhlIHNhbWUNCj4gPiA+IG5mc19jbGllbnQgKi8NCj4gPiA+ICAJCWlmIChjbHAtPnJw
+Y19vcHMgIT0gZGF0YS0+bmZzX21vZC0+cnBjX29wcykNCj4gPiA+ICAJCQljb250aW51ZTsNCj4g
+PiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNGNsaWVudC5jIGIvZnMvbmZzL25mczRjbGllbnQu
+Yw0KPiA+ID4gaW5kZXggMTJiYmFiMC4uMzlkZDM5YyAxMDA2NDQNCj4gPiA+IC0tLSBhL2ZzL25m
+cy9uZnM0Y2xpZW50LmMNCj4gPiA+ICsrKyBiL2ZzL25mcy9uZnM0Y2xpZW50LmMNCj4gPiA+IEBA
+IC00MTEsOCArNDExLDE1IEBAIHN0cnVjdCBuZnNfY2xpZW50ICpuZnM0X2luaXRfY2xpZW50KHN0
+cnVjdA0KPiA+ID4gbmZzX2NsaWVudCAqY2xwLA0KPiA+ID4gIAlpZiAoZXJyb3IgPCAwKQ0KPiA+
+ID4gIAkJZ290byBlcnJvcjsNCj4gPiA+ICANCj4gPiA+IC0JaWYgKGNscCAhPSBvbGQpDQo+ID4g
+PiArCWlmIChjbHAgIT0gb2xkKSB7DQo+ID4gPiAgCQljbHAtPmNsX3ByZXNlcnZlX2NsaWQgPSB0
+cnVlOw0KPiA+ID4gKwkJLyoNCj4gPiA+ICsJCSAqIE1hcmsgdGhlIGNsaWVudCBhcyBoYXZpbmcg
+ZmFpbGVkDQo+ID4gPiBpbml0aWFsaXphdGlvbg0KPiA+ID4gc28gb3RoZXINCj4gPiA+ICsJCSAq
+IHByb2Nlc3NlcyB3YWxraW5nIHRoZSBuZnNfY2xpZW50X2xpc3QgaW4NCj4gPiA+IG5mc19tYXRj
+aF9jbGllbnQoKQ0KPiA+ID4gKwkJICogd29uJ3QgdHJ5IHRvIHVzZSBpdC4NCj4gPiA+ICsJCSAq
+Lw0KPiA+ID4gKwkJbmZzX21hcmtfY2xpZW50X3JlYWR5KGNscCwgLUVQRVJNKTsNCj4gPiANCj4g
+PiBZb3UgY2FuJ3QgZG8gdGhpcyBpZiB0aGUgY2xpZW50IHdhcyBhbHJlYWR5IG1hcmtlZCBhcyBO
+RlNfQ1NfUkVBRFksDQo+ID4gc28NCj4gPiB5b3UgbmVlZCBhdCBsZWFzdCB0byBtb3ZlIHRoZSAh
+bmZzNF9oYXNfc2Vzc2lvbigpIGNvbmRpdGlvbiA0IGxpbmVzDQo+ID4gYWJvdmUgdGhpcy4NCj4g
+DQo+IEhvdyBhYm91dCBpZiBJIGNoYW5nZSBpdCB0byB0aGlzOg0KPiANCj4gICAgICAgICAgICAg
+ICAgIGlmICghbmZzX2NsaWVudF9pbml0X2lzX2NvbXBsZXRlKGNscCkpDQo+ICAgICAgICAgICAg
+ICAgICAgICAgICAgIG5mc19tYXJrX2NsaWVudF9yZWFkeShjbHAsIC1FUEVSTSk7DQo+IA0KPiBJ
+biBteSBlYXJsaWVyIHRlc3RpbmcgSSBoYWQgcHJvYmxlbXMgd2hlbmV2ZXIgSSB0cmllZCBtb3Zp
+bmcgdGhhdA0KPiAhbmZzNF9oYXNfc2Vzc2lvbigpIGNvbmRpdGlvbi4gIA0KPiANCg0KV291bGRu
+J3QgdGhhdCBtZWFuIHlvdSB3b3VsZCBlbmQgdXAgd2l0aCBkaWZmZXJlbnQgYmVoYXZpb3VyIGZv
+ciBORlN2NA0KYW5kIE5GU3Y0LjEgdy5yLnQuIHRydW5raW5nLCB3aXRoIHRoZSBmb3JtZXIgb2Jz
+ZXJ2aW5nIHRoZSBjdXJyZW50DQpiZWhhdmlvdXIsIGFuZCBvbmx5IHRoZSBsYXR0ZXIgd29ya2lu
+ZyBjb3JyZWN0bHk/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1h
+aW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-> On Thu, 2017-11-30 at 17:21 -0500, Scott Mayhew wrote:
-> > The following deadlock can occur between a process waiting for a
-> > client
-> > to initialize in while walking the client list during nfsv4 server
-> > trunking
-> > detection and another process waiting for the nfs_clid_init_mutex so
-> > it
-> > can initialize that client:
-> > 
-> > Process 1                               Process 2
-> > ---------                               ---------
-> > spin_lock(&nn->nfs_client_lock);
-> > list_add_tail(&CLIENTA->cl_share_link,
-> >         &nn->nfs_client_list);
-> > spin_unlock(&nn->nfs_client_lock);
-> >                                         spin_lock(&nn-
-> > >nfs_client_lock);
-> >                                         list_add_tail(&CLIENTB-
-> > >cl_share_link,
-> >                                                 &nn-
-> > >nfs_client_list);
-> >                                         spin_unlock(&nn-
-> > >nfs_client_lock);
-> >                                         mutex_lock(&nfs_clid_init_mut
-> > ex);
-> >                                         nfs41_walk_client_list(clp,
-> > result, cred);
-> >                                         nfs_wait_client_init_complete
-> > (CLIENTA);
-> > (waiting for nfs_clid_init_mutex)
-> > 
-> > Make sure nfs_match_client() only evaluates clients that have
-> > completed
-> > initialization in order to prevent that deadlock.
-> > 
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > ---
-> >  fs/nfs/client.c     | 11 +++++++++++
-> >  fs/nfs/nfs4client.c |  9 ++++++++-
-> >  2 files changed, 19 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 0ac2fb1..7e42380 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -291,12 +291,23 @@ static struct nfs_client
-> > *nfs_match_client(const struct nfs_client_initdata *dat
-> >  	const struct sockaddr *sap = data->addr;
-> >  	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
-> >  
-> > +again:
-> >  	list_for_each_entry(clp, &nn->nfs_client_list,
-> > cl_share_link) {
-> >  	        const struct sockaddr *clap = (struct sockaddr
-> > *)&clp->cl_addr;
-> >  		/* Don't match clients that failed to initialise
-> > properly */
-> >  		if (clp->cl_cons_state < 0)
-> >  			continue;
-> >  
-> > +		/* If a client is still initializing then we need to
-> > wait */
-> > +		if (clp->cl_cons_state > NFS_CS_READY) {
-> > +			spin_unlock(&nn->nfs_client_lock);
-> > +			refcount_inc(&clp->cl_count);
-> 
-> The refcount needs to be bumped before dropping the spinlock above.
-
-Okay.
-> 
-> > +			nfs_wait_client_init_complete(clp);
-> > +			nfs_put_client(clp);
-> > +			spin_lock(&nn->nfs_client_lock);
-> > +			goto again;
-> > +		}
-> > +
-> >  		/* Different NFS versions cannot share the same
-> > nfs_client */
-> >  		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
-> >  			continue;
-> > diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-> > index 12bbab0..39dd39c 100644
-> > --- a/fs/nfs/nfs4client.c
-> > +++ b/fs/nfs/nfs4client.c
-> > @@ -411,8 +411,15 @@ struct nfs_client *nfs4_init_client(struct
-> > nfs_client *clp,
-> >  	if (error < 0)
-> >  		goto error;
-> >  
-> > -	if (clp != old)
-> > +	if (clp != old) {
-> >  		clp->cl_preserve_clid = true;
-> > +		/*
-> > +		 * Mark the client as having failed initialization
-> > so other
-> > +		 * processes walking the nfs_client_list in
-> > nfs_match_client()
-> > +		 * won't try to use it.
-> > +		 */
-> > +		nfs_mark_client_ready(clp, -EPERM);
-> 
-> You can't do this if the client was already marked as NFS_CS_READY, so
-> you need at least to move the !nfs4_has_session() condition 4 lines
-> above this.
-
-How about if I change it to this:
-
-                if (!nfs_client_init_is_complete(clp))
-                        nfs_mark_client_ready(clp, -EPERM);
-
-In my earlier testing I had problems whenever I tried moving that
-!nfs4_has_session() condition.  
-
--Scott
-> 
-> > +	}
-> >  	nfs_put_client(clp);
-> >  	clear_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags);
-> >  	return old;
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
