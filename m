@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f48.google.com ([209.85.214.48]:38567 "EHLO
-        mail-it0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751182AbdLAWu7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Dec 2017 17:50:59 -0500
-Received: by mail-it0-f48.google.com with SMTP id r6so4150378itr.3
-        for <linux-nfs@vger.kernel.org>; Fri, 01 Dec 2017 14:50:59 -0800 (PST)
+Received: from mail-io0-f170.google.com ([209.85.223.170]:43939 "EHLO
+        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751747AbdLBP3x (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Dec 2017 10:29:53 -0500
+Received: by mail-io0-f170.google.com with SMTP id s37so14282953ioe.10
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Dec 2017 07:29:53 -0800 (PST)
 Received: from manet.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id i76sm1056159ita.21.2017.12.01.14.50.58
+        by smtp.gmail.com with ESMTPSA id k188sm1737690itd.15.2017.12.02.07.29.51
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Fri, 01 Dec 2017 14:50:58 -0800 (PST)
-Subject: [PATCH RFC-v2] mountstats: Add option to pretty-print xprt
+        Sat, 02 Dec 2017 07:29:51 -0800 (PST)
+Subject: [PATCH RFC-v3] mountstats: Add option to pretty-print xprt
  statistics
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Date: Fri, 01 Dec 2017 17:50:57 -0500
-Message-ID: <20171201224924.11138.75911.stgit@manet.1015granger.net>
+Date: Sat, 02 Dec 2017 10:29:51 -0500
+Message-ID: <20171202152743.29881.1900.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
@@ -25,16 +25,19 @@ Add "-x" option to display the statistics reported on the "xprt:"
 line in mountstats. This is not terribly interesting for UDP and
 TCP, but it can be for RDMA transports.
 
+Changes since v2:
+- Display mount point whose statistics are being printed
+
 Changes since v1:
 - Use %d when displaying numeric values
-- The number of items in words[] can be less than the number of keys
-  in XprtRdmaCounters on older kernels, need to tolerate that
+- On older kernels, the number of items in words[] can be less than
+  the number of keys in XprtRdmaCounters, need to tolerate that
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
  tools/mountstats/mountstats.man |    5 ++
- tools/mountstats/mountstats.py  |   98 ++++++++++++++++++++++++++++++++++++---
- 2 files changed, 95 insertions(+), 8 deletions(-)
+ tools/mountstats/mountstats.py  |  105 +++++++++++++++++++++++++++++++++++----
+ 2 files changed, 99 insertions(+), 11 deletions(-)
  mode change 100644 => 100755 tools/mountstats/mountstats.py
 
 diff --git a/tools/mountstats/mountstats.man b/tools/mountstats/mountstats.man
@@ -63,7 +66,7 @@ index a55130b..ff2f8ba 100644
 diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
 old mode 100644
 new mode 100755
-index 29b5f5a..04c9024
+index 29b5f5a..2adae7b
 --- a/tools/mountstats/mountstats.py
 +++ b/tools/mountstats/mountstats.py
 @@ -112,6 +112,7 @@ XprtRdmaCounters = [
@@ -114,7 +117,29 @@ index 29b5f5a..04c9024
                      i += 1
          elif words[0] == 'per-op':
              self.__rpc_data['per-op'] = words
-@@ -655,6 +666,73 @@ class DeviceData:
+@@ -361,12 +372,11 @@ class DeviceData:
+     def display_stats_header(self):
+         print('Stats for %s mounted on %s:' % \
+             (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
++        print()
+ 
+     def display_nfs_options(self):
+         """Pretty-print the NFS options
+         """
+-        self.display_stats_header()
+-
+         print('  NFS mount options: %s' % ','.join(self.__nfs_data['mountoptions']))
+         print('  NFS server capabilities: %s' % ','.join(self.__nfs_data['servercapabilities']))
+         if 'nfsv4flags' in self.__nfs_data:
+@@ -432,7 +442,6 @@ class DeviceData:
+         """
+         sends = self.__rpc_data['rpcsends']
+ 
+-        print()
+         print('RPC statistics:')
+ 
+         print('  %d RPC requests sent, %d RPC replies received (%d XIDs not found)' % \
+@@ -655,6 +664,73 @@ class DeviceData:
          self.__print_rpc_op_stats('WRITE', sample_time)
          sys.stdout.flush()
  
@@ -122,7 +147,7 @@ index 29b5f5a..04c9024
 +        """Pretty-print the xprt statistics
 +        """
 +        if self.__rpc_data['protocol'] == 'udp':
-+            print('Transport protocol: udp')
++            print('\tTransport protocol: udp')
 +            print('\tSource port: %d' % self.__rpc_data['port'])
 +            print('\tBind count: %d' % self.__rpc_data['bind_count'])
 +            print('\tRPC requests: %d' % self.__rpc_data['rpcsends'])
@@ -132,7 +157,7 @@ index 29b5f5a..04c9024
 +                print('\tAvg backlog length: %d' % \
 +                    (float(self.__rpc_data['backlogutil']) / self.__rpc_data['rpcsends']))
 +        elif self.__rpc_data['protocol'] == 'tcp':
-+            print('Transport protocol: tcp')
++            print('\tTransport protocol: tcp')
 +            print('\tSource port: %d' % self.__rpc_data['port'])
 +            print('\tBind count: %d' % self.__rpc_data['bind_count'])
 +            print('\tConnect count: %d' % self.__rpc_data['connect_count'])
@@ -145,7 +170,7 @@ index 29b5f5a..04c9024
 +                print('\tAvg backlog length: %d' % \
 +                    (float(self.__rpc_data['backlogutil']) / self.__rpc_data['rpcsends']))
 +        elif self.__rpc_data['protocol'] == 'rdma':
-+            print('Transport protocol: rdma')
++            print('\tTransport protocol: rdma')
 +            print('\tConnect count: %d' % self.__rpc_data['connect_count'])
 +            print('\tConnect time: %d seconds' % self.__rpc_data['connect_time'])
 +            print('\tIdle time: %d seconds' % self.__rpc_data['idle_time'])
@@ -179,7 +204,7 @@ index 29b5f5a..04c9024
 +            if 'local_invalidates' in self.__rpc_data:
 +                print('\tLocal Invalidates needed: %d' % self.__rpc_data['local_invalidates'])
 +            if 'empty_sendctx_q' in self.__rpc_data:
-+                print('\tEmpy sendctx queue count: %d' % self.__rpc_data['empty_sendctx_q'])
++                print('\tEmpty sendctx queue count: %d' % self.__rpc_data['empty_sendctx_q'])
 +            if 'reply_waits_for_send' in self.__rpc_data:
 +                print('\tReplies that waited for Send completion: %d' % self.__rpc_data['reply_waits_for_send'])
 +        else:
@@ -188,25 +213,30 @@ index 29b5f5a..04c9024
  def parse_stats_file(f):
      """pop the contents of a mountstats file into a dictionary,
      keyed by mount point.  each value object is a list of the
-@@ -681,7 +759,7 @@ def parse_stats_file(f):
+@@ -681,8 +757,9 @@ def parse_stats_file(f):
  
      return ms_dict
  
 -def print_mountstats(stats, nfs_only, rpc_only, raw):
 +def print_mountstats(stats, nfs_only, rpc_only, raw, xprt_only):
      if nfs_only:
++       stats.display_stats_header()
         stats.display_nfs_options()
         stats.display_nfs_events()
-@@ -692,6 +770,8 @@ def print_mountstats(stats, nfs_only, rpc_only, raw):
+        stats.display_nfs_bytes()
+@@ -692,7 +769,11 @@ def print_mountstats(stats, nfs_only, rpc_only, raw):
         stats.display_rpc_op_stats()
      elif raw:
         stats.display_raw_stats()
 +    elif xprt_only:
++       stats.display_stats_header()
 +       stats.display_xprt_stats()
      else:
++       stats.display_stats_header()
         stats.display_nfs_options()
         stats.display_nfs_bytes()
-@@ -734,14 +814,14 @@ def mountstats_command(args):
+        stats.display_rpc_generic_stats()
+@@ -734,14 +815,14 @@ def mountstats_command(args):
          stats = DeviceData()
          stats.parse_stats(mountstats[mp])
          if not args.since:
@@ -224,7 +254,7 @@ index 29b5f5a..04c9024
  
      args.infile.close()
      if args.since:
-@@ -953,6 +1033,8 @@ def main():
+@@ -953,6 +1034,8 @@ def main():
          help='Display only the RPC statistics')
      group.add_argument('-R', '--raw', action='store_true',
          help='Display only the raw statistics')
