@@ -1,126 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:39381 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752308AbdLBVbm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Dec 2017 16:31:42 -0500
-Subject: [PATCH v1] xprtrdma: Spread reply processing over more CPUs
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 02 Dec 2017 16:31:39 -0500
-Message-ID: <20171202212840.11321.83261.stgit@manet.1015granger.net>
+Received: from mout.kundenserver.de ([212.227.126.135]:54050 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751786AbdLBX2S (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Dec 2017 18:28:18 -0500
+To: linux-nfs@vger.kernel.org
+Cc: sparclinux@vger.kernel.org
+From: James Ettle <james@ettle.org.uk>
+Subject: Unaligned access in gss_{get,verify}_mic_v2() on sparc64
+Message-ID: <55549068-2605-7f71-ccef-c102d6fd69ab@ettle.org.uk>
+Date: Sat, 2 Dec 2017 23:28:18 +0000
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d8f532d20ee4 ("xprtrdma: Invoke rpcrdma_reply_handler
-directly from RECV completion") introduced a performance regression
-for NFS I/O small enough to not need memory registration. In multi-
-threaded benchmarks that generate primarily small I/O requests,
-IOPS throughput is reduced by nearly a third. This patch restores
-the previous level of throughput.
+Hello,
 
-Because workqueues are typically BOUND (in particular ib_comp_wq,
-nfsiod_workqueue, and rpciod_workqueue), NFS/RDMA workloads tend
-to aggregate on the CPU that is handling Receive completions.
+I've been using nfs4 with krb5 on sparc64 with kernel 4.13 and 4.14 and
+seeing a lot of messages like:
 
-The usual approach to addressing this problem is to create a QP
-and CQ for each CPU, and then schedule transactions on the QP
-for the CPU where you want the transaction to complete. The
-transaction then does not require an extra context switch during
-completion to end up on the same CPU where the transaction was
-started.
+sparky kernel: [  105.262927] Kernel unaligned access at TPC[10afb234]
+gss_get_mic_kerberos+0xd4/0x360 [rpcsec_gss_krb5]
 
-This approach doesn't work for the Linux NFS/RDMA client because
-currently the Linux NFS client does not support multiple connections
-per client-server pair, and the RDMA core API does not make it
-straightforward for ULPs to determine which CPU is responsible for
-handling Receive completions for a CQ.
+I've traced this down to gss_get_mic_v2() in gss_krb5_seal.c. I think
+the suspicious line is:
 
-So for the moment, record the CPU number in the rpcrdma_req before
-the transport sends each RPC Call. Then during Receive completion,
-queue the RPC completion on that same CPU.
+	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
 
-Additionally, move all RPC completion processing to the deferred
-handler so that even RPCs with simple small replies complete on
-the CPU that sent the corresponding RPC Call.
+krb5_hdr is void*, but comes from a u16 so won't generally have __be64
+alignment. As an experiment I added local variable
 
-Fixes: d8f532d20ee4 ("xprtrdma: Invoke rpcrdma_reply_handler ...")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+	__be64 seq_send_be64;
 
-Hi Anna-
+and replaced the cpu_to_be64 line with:
 
-Could you pull this into v4.15-rc ?
+	seq_send_be64 = cpu_to_be64(seq_send);
+	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    7 +------
- net/sunrpc/xprtrdma/transport.c |    2 ++
- net/sunrpc/xprtrdma/verbs.c     |    2 +-
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 4 files changed, 5 insertions(+), 7 deletions(-)
+There's another one in gss_verify_mic_v2() in gss_krb5_unseal.c. Here
+there's a line
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e33591f..5e846f7 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -1367,12 +1367,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	clear_bit(RPCRDMA_REQ_F_PENDING, &req->rl_flags);
- 
- 	trace_xprtrdma_reply(rqst->rq_task, rep, req, credits);
--
--	if (list_empty(&req->rl_registered) &&
--	    !test_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags))
--		rpcrdma_complete_rqst(rep);
--	else
--		queue_work(rpcrdma_receive_wq, &rep->rr_work);
-+	queue_work_on(req->rl_cpu, rpcrdma_receive_wq, &rep->rr_work);
- 	return;
- 
- out_badstatus:
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 8f677ab..3543c13 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -52,6 +52,7 @@
- #include <linux/slab.h>
- #include <linux/seq_file.h>
- #include <linux/sunrpc/addr.h>
-+#include <linux/smp.h>
- 
- #include "xprt_rdma.h"
- 
-@@ -654,6 +655,7 @@
- 		task->tk_pid, __func__, rqst->rq_callsize,
- 		rqst->rq_rcvsize, req);
- 
-+	req->rl_cpu = smp_processor_id();
- 	req->rl_connect_cookie = 0;	/* our reserved value */
- 	rpcrdma_set_xprtdata(rqst, req);
- 	rqst->rq_buffer = req->rl_sendbuf->rg_base;
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 8c169f1..495b655 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -83,7 +83,7 @@
- 	struct workqueue_struct *recv_wq;
- 
- 	recv_wq = alloc_workqueue("xprtrdma_receive",
--				  WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_HIGHPRI,
-+				  WQ_MEM_RECLAIM | WQ_HIGHPRI,
- 				  0);
- 	if (!recv_wq)
- 		return -ENOMEM;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 430a6de..69883a9 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -334,6 +334,7 @@ enum {
- struct rpcrdma_buffer;
- struct rpcrdma_req {
- 	struct list_head	rl_list;
-+	int			rl_cpu;
- 	unsigned int		rl_connect_cookie;
- 	struct rpcrdma_buffer	*rl_buffer;
- 	struct rpcrdma_rep	*rl_reply;
+	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
 
+but ptr is a u8*. For this I added local variable
+
+	__be16 data_be16;
+
+and replaced the above if() with
+
+	memcpy((void *) &data_be16, (char *) ptr, 2);
+	if (be16_to_cpu(data_be16) != KG2_TOK_MIC)
+
+I've not seen any misalignment complaints yet with this.
+
+I apologise for not sending this in the form of a patch, but this is
+only a sketch solution. I'm not a kernel hacker and I'm sure someone
+else will make a proper job of it!
+
+Thanks,
+
+James.
