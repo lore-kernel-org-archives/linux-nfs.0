@@ -1,37 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:39233 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752088AbdLCVK6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Dec 2017 16:10:58 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1] xprtrdma: Spread reply processing over more CPUs
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20171203183523.GA29539@infradead.org>
-Date: Sun, 3 Dec 2017 13:52:28 -0500
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <52245049-E101-4148-8A35-10368379FF20@oracle.com>
-References: <20171202212840.11321.83261.stgit@manet.1015granger.net> <20171203183523.GA29539@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from smtprelay0070.hostedemail.com ([216.40.44.70]:50964 "EHLO
+        smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1751380AbdLCV2l (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Dec 2017 16:28:41 -0500
+Date: Sun, 3 Dec 2017 16:22:56 -0500
+From: Steven Rostedt <rostedt@goodmis.org>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-kselftest@vger.kernel.org" <linux-kselftest@vger.kernel.org>,
+        "elfring@users.sourceforge.net" <elfring@users.sourceforge.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "kernel-janitors@vger.kernel.org" <kernel-janitors@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "peterz@infradead.org" <peterz@infradead.org>
+Subject: Re: Difficulties for compilation without extra optimisation
+Message-ID: <20171203162256.4ea0750d@vmware.local.home>
+In-Reply-To: <1512314250.3673.6.camel@primarydata.com>
+References: <7f072f78-eef4-6d87-d233-cee71dac5a32@users.sourceforge.net>
+        <a2ac6d05-fdd6-82bb-075e-b7eb81b516fe@users.sourceforge.net>
+        <1512314250.3673.6.camel@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, 3 Dec 2017 15:17:32 +0000
+Trond Myklebust <trondmy@primarydata.com> wrote:
 
-> On Dec 3, 2017, at 1:35 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> Hmm.  I'd love to find a way to handle this in the core code, but until
-> that is done you should probably move sc_rq_cq to execture in softirq
-> code.
+> > I would like to check corresponding build results then without extra
+> > optimisation applied by the compiler.
+> > But I got surprised by error messages for a command like the
+> > following.
+> > 
+> > elfring@Sonne:~/Projekte/Linux/next-patched> my_cc=/usr/bin/gcc-7 &&
+> > LANG=C make -j4 CC="${my_cc}" HOSTCC="${my_cc}" EXTRA_CFLAGS='-O0'
+> > allmodconfig fs/nfs/write.o
 
-You mean revert a4699f5647f3 as well? I tried that in combination
-with this change, and it did not result in any difference in
-throughput results.
+Why would you compile the kernel without optimization? There's many
+places in the kernel that WILL NOT BUILD without optimization. In fact,
+we do a lot of tricks to make sure that things work the way we expect
+it to, because we add broken code that only gets compiled out when gcc
+optimizes the code the way we expect it to be, and the kernel build
+will break otherwise.
 
-
---
-Chuck Lever
-
-
-
+-- Steve
