@@ -1,36 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:48018 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751675AbdLCT2p (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Dec 2017 14:28:45 -0500
-Date: Sun, 3 Dec 2017 11:28:44 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v1] xprtrdma: Spread reply processing over more CPUs
-Message-ID: <20171203192844.GB311@infradead.org>
-References: <20171202212840.11321.83261.stgit@manet.1015granger.net>
- <20171203183523.GA29539@infradead.org>
- <52245049-E101-4148-8A35-10368379FF20@oracle.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:25969 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751432AbdLCUMw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Dec 2017 15:12:52 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chucklever@gmail.com" <chucklever@gmail.com>
+CC: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Fix a race in the receive code path
+Date: Sun, 3 Dec 2017 20:12:47 +0000
+Message-ID: <1512331965.24703.5.camel@primarydata.com>
+References: <20171203185012.24473-1-trond.myklebust@primarydata.com>
+         <9F7B84A7-B241-49D3-8F9D-36338669C827@gmail.com>
+In-Reply-To: <9F7B84A7-B241-49D3-8F9D-36338669C827@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52245049-E101-4148-8A35-10368379FF20@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 03, 2017 at 01:52:28PM -0500, Chuck Lever wrote:
-> 
-> > On Dec 3, 2017, at 1:35 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> > 
-> > Hmm.  I'd love to find a way to handle this in the core code, but until
-> > that is done you should probably move sc_rq_cq to execture in softirq
-> > code.
-> 
-> You mean revert a4699f5647f3 as well? I tried that in combination
-> with this change, and it did not result in any difference in
-> throughput results.
+T24gU3VuLCAyMDE3LTEyLTAzIGF0IDEzOjU0IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBEZWMgMywgMjAxNywgYXQgMTo1MCBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWts
+ZWJ1c3RAcHJpbWFyDQo+ID4geWRhdGEuY29tPiB3cm90ZToNCj4gPiANCj4gPiBXZSBtdXN0IGVu
+c3VyZSB0aGF0IHRoZSBjYWxsIHRvIHJwY19zbGVlcF9vbigpIGluIHhwcnRfdHJhbnNtaXQoKQ0K
+PiA+IGNhbm5vdA0KPiA+IHJhY2Ugd2l0aCB0aGUgY2FsbCB0byB4cHJ0X2NvbXBsZXRlX3Jxc3Qo
+KS4NCj4gDQo+IDotKCB0aGlzIHdpbGwga2lsbCBzY2FsYWJpbGl0eSwgd2UgbWlnaHQgYXMgd2Vs
+bCBqdXN0IGdvIGJhY2sNCj4gdG8gdGhlIG9sZCBsb2NraW5nIHNjaGVtZS4NCg0KSXQgc2hvdWxk
+bid0IG1ha2UgYSBodWdlIGRpZmZlcmVuY2UsIGJ1dCBJIGFncmVlIHRoYXQgd2UgZG8gd2FudCB0
+byBnZXQNCnJpZCBvZiB0aGF0IHRyYW5zcG9ydCBsb2NrLg0KDQpIb3cgYWJvdXQgdGhlIGZvbGxv
+d2luZywgdGhlbj8NCg0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gNmEwYzUwN2YxNjBkNTYyNGQ5MDQ5Mjgx
+Y2Q5ZGZlMjIyYTg2NmYwNiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZyb206IFRyb25kIE15
+a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRhdGU6IFN1biwgMyBE
+ZWMgMjAxNyAxMzozNzoyNyAtMDUwMA0KU3ViamVjdDogW1BBVENIIHYyXSBTVU5SUEM6IEZpeCBh
+IHJhY2UgaW4gdGhlIHJlY2VpdmUgY29kZSBwYXRoDQoNCldlIG11c3QgZW5zdXJlIHRoYXQgdGhl
+IGNhbGwgdG8gcnBjX3NsZWVwX29uKCkgaW4geHBydF90cmFuc21pdCgpIGNhbm5vdA0KcmFjZSB3
+aXRoIHRoZSBjYWxsIHRvIHhwcnRfY29tcGxldGVfcnFzdCgpLg0KDQpSZXBvcnRlZC1ieTogQ2h1
+Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+DQpMaW5rOiBodHRwczovL2J1Z3ppbGxh
+LmxpbnV4LW5mcy5vcmcvc2hvd19idWcuY2dpP2lkPTMxNw0KRml4ZXM6IGNlN2MyNTJhOGM3NCAo
+IlNVTlJQQzogQWRkIGEgc2VwYXJhdGUgc3BpbmxvY2sgdG8gcHJvdGVjdC4uIikNCkNjOiBzdGFi
+bGVAdmdlci5rZXJuZWwub3JnICMgNC4xNCsNClNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVz
+dCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCi0tLQ0KIG5ldC9zdW5ycGMveHBy
+dC5jIHwgMTggKysrKysrKysrKystLS0tLS0tDQogMSBmaWxlIGNoYW5nZWQsIDExIGluc2VydGlv
+bnMoKyksIDcgZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBi
+L25ldC9zdW5ycGMveHBydC5jDQppbmRleCAzMzNiOWQ2OTdhZTUuLjM0ZjYxMzM4NTMxOSAxMDA2
+NDQNCi0tLSBhL25ldC9zdW5ycGMveHBydC5jDQorKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KQEAg
+LTEwMjQsNiArMTAyNCw3IEBAIHZvaWQgeHBydF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sgKnRh
+c2spDQogCX0gZWxzZSBpZiAoIXJlcS0+cnFfYnl0ZXNfc2VudCkNCiAJCXJldHVybjsNCiANCisJ
+cmVxLT5ycV9jb25uZWN0X2Nvb2tpZSA9IHhwcnQtPmNvbm5lY3RfY29va2llOw0KIAlyZXEtPnJx
+X3h0aW1lID0ga3RpbWVfZ2V0KCk7DQogCXN0YXR1cyA9IHhwcnQtPm9wcy0+c2VuZF9yZXF1ZXN0
+KHRhc2spOw0KIAl0cmFjZV94cHJ0X3RyYW5zbWl0KHhwcnQsIHJlcS0+cnFfeGlkLCBzdGF0dXMp
+Ow0KQEAgLTEwNDgsMTkgKzEwNDksMjIgQEAgdm9pZCB4cHJ0X3RyYW5zbWl0KHN0cnVjdCBycGNf
+dGFzayAqdGFzaykNCiAJeHBydC0+c3RhdC5zZW5kaW5nX3UgKz0geHBydC0+c2VuZGluZy5xbGVu
+Ow0KIAl4cHJ0LT5zdGF0LnBlbmRpbmdfdSArPSB4cHJ0LT5wZW5kaW5nLnFsZW47DQogDQotCS8q
+IERvbid0IHJhY2Ugd2l0aCBkaXNjb25uZWN0ICovDQotCWlmICgheHBydF9jb25uZWN0ZWQoeHBy
+dCkpDQotCQl0YXNrLT50a19zdGF0dXMgPSAtRU5PVENPTk47DQotCWVsc2Ugew0KKwlzcGluX3Vu
+bG9ja19iaCgmeHBydC0+dHJhbnNwb3J0X2xvY2spOw0KKw0KKwlpZiAoIVJFQURfT05DRShyZXEt
+PnJxX3JlcGx5X2J5dGVzX3JlY3ZkKSAmJiBycGNfcmVwbHlfZXhwZWN0ZWQodGFzaykpIHsNCisJ
+CXNwaW5fbG9jaygmeHBydC0+cmVjdl9sb2NrKTsNCiAJCS8qDQogCQkgKiBTbGVlcCBvbiB0aGUg
+cGVuZGluZyBxdWV1ZSBzaW5jZQ0KIAkJICogd2UncmUgZXhwZWN0aW5nIGEgcmVwbHkuDQogCQkg
+Ki8NCi0JCWlmICghcmVxLT5ycV9yZXBseV9ieXRlc19yZWN2ZCAmJiBycGNfcmVwbHlfZXhwZWN0
+ZWQodGFzaykpDQorCQlpZiAoIXJlcS0+cnFfcmVwbHlfYnl0ZXNfcmVjdmQpIHsNCiAJCQlycGNf
+c2xlZXBfb24oJnhwcnQtPnBlbmRpbmcsIHRhc2ssIHhwcnRfdGltZXIpOw0KLQkJcmVxLT5ycV9j
+b25uZWN0X2Nvb2tpZSA9IHhwcnQtPmNvbm5lY3RfY29va2llOw0KKwkJCS8qIERlYWwgd2l0aCBk
+aXNjb25uZWN0IHJhY2VzICovDQorCQkJaWYgKCF4cHJ0X2Nvbm5lY3RlZCh4cHJ0KSkNCisJCQkJ
+eHBydF93YWtlX3BlbmRpbmdfdGFza3MoeHBydCwgLUVOT1RDT05OKTsNCisJCX0NCisJCXNwaW5f
+dW5sb2NrKCZ4cHJ0LT5yZWN2X2xvY2spOw0KIAl9DQotCXNwaW5fdW5sb2NrX2JoKCZ4cHJ0LT50
+cmFuc3BvcnRfbG9jayk7DQogfQ0KIA0KIHN0YXRpYyB2b2lkIHhwcnRfYWRkX2JhY2tsb2coc3Ry
+dWN0IHJwY194cHJ0ICp4cHJ0LCBzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQotLSANCjIuMTQuMw0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
+YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-Ok.  I guess we can leave things as-is for now then.
