@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:46713 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752524AbdLDTNk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:13:40 -0500
-Subject: [PATCH v1 2/4] nfs: Referrals should use the same proto setting as
- their parent
+Received: from mail-it0-f66.google.com ([209.85.214.66]:37372 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752524AbdLDTNs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:13:48 -0500
+Subject: [PATCH v1 3/4] nfs: Update server port after referral or migration
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 04 Dec 2017 14:13:38 -0500
-Message-ID: <20171204191338.18629.29071.stgit@manet.1015granger.net>
+Date: Mon, 04 Dec 2017 14:13:46 -0500
+Message-ID: <20171204191346.18629.677.stgit@manet.1015granger.net>
 In-Reply-To: <20171204190904.18629.70341.stgit@manet.1015granger.net>
 References: <20171204190904.18629.70341.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,88 +16,26 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Helen Chao <helen.chao@oracle.com> noticed that when a user
-traverses a referral on an NFS/RDMA mount, the resulting submount
-always uses TCP.
-
-This behavior does not match the vers= setting when traversing
-a referral (vers=4.1 is preserved). It also does not match the
-behavior of crossing from the pseudofs into a real filesystem
-(proto=rdma is preserved in that case).
-
-The Linux NFS client does not currently support the
-fs_locations_info attribute. The situation is similar for all
-NFSv4 servers I know of. Therefore until the community has broad
-support for fs_locations_info, when following a referral:
-
- - First try to connect with RPC-over-RDMA. This will fail quickly
-   if the client has no RDMA-capable interfaces.
-
- - If connecting with RPC-over-RDMA fails, or the RPC-over-RDMA
-   transport is not available, use TCP.
+After traversing a referral or recovering from a migration event,
+ensure that the server port reported in /proc/mounts is updated
+to the correct port setting for the new submount.
 
 Reported-by: Helen Chao <helen.chao@oracle.com>
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/nfs4client.c    |   23 ++++++++++++++++++++---
- fs/nfs/nfs4namespace.c |    2 --
- 2 files changed, 20 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4client.c |    1 +
+ 1 file changed, 1 insertion(+)
 
 diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 12bbab0..a3d5592 100644
+index a3d5592..5bc722e 100644
 --- a/fs/nfs/nfs4client.c
 +++ b/fs/nfs/nfs4client.c
-@@ -1114,19 +1114,36 @@ struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *data,
- 	/* Initialise the client representation from the parent server */
- 	nfs_server_copy_userdata(server, parent_server);
+@@ -852,6 +852,7 @@ static int nfs4_set_client(struct nfs_server *server,
+ 		set_bit(NFS_CS_MIGRATION, &cl_init.init_flags);
+ 	if (test_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status))
+ 		set_bit(NFS_CS_TSM_POSSIBLE, &cl_init.init_flags);
++	server->port = rpc_get_port(addr);
  
--	/* Get a client representation.
--	 * Note: NFSv4 always uses TCP, */
-+	/* Get a client representation */
-+#ifdef CONFIG_SUNRPC_XPRT_RDMA
-+	rpc_set_port(data->addr, NFS_RDMA_PORT);
- 	error = nfs4_set_client(server, data->hostname,
- 				data->addr,
- 				data->addrlen,
- 				parent_client->cl_ipaddr,
--				rpc_protocol(parent_server->client),
-+				XPRT_TRANSPORT_RDMA,
-+				parent_server->client->cl_timeout,
-+				parent_client->cl_mvops->minor_version,
-+				parent_client->cl_net);
-+	if (!error)
-+		goto init_server;
-+#endif	/* CONFIG_SUNRPC_XPRT_RDMA */
-+
-+	rpc_set_port(data->addr, NFS_PORT);
-+	error = nfs4_set_client(server, data->hostname,
-+				data->addr,
-+				data->addrlen,
-+				parent_client->cl_ipaddr,
-+				XPRT_TRANSPORT_TCP,
- 				parent_server->client->cl_timeout,
- 				parent_client->cl_mvops->minor_version,
- 				parent_client->cl_net);
- 	if (error < 0)
- 		goto error;
- 
-+#ifdef CONFIG_SUNRPC_XPRT_RDMA
-+init_server:
-+#endif
- 	error = nfs_init_server_rpcclient(server, parent_server->client->cl_timeout, data->authflavor);
- 	if (error < 0)
- 		goto error;
-diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
-index 8c3f327..24f06dc 100644
---- a/fs/nfs/nfs4namespace.c
-+++ b/fs/nfs/nfs4namespace.c
-@@ -270,8 +270,6 @@ static struct vfsmount *try_location(struct nfs_clone_mount *mountdata,
- 		if (mountdata->addrlen == 0)
- 			continue;
- 
--		rpc_set_port(mountdata->addr, NFS_PORT);
--
- 		memcpy(page2, buf->data, buf->len);
- 		page2[buf->len] = '\0';
- 		mountdata->hostname = page2;
+ 	/* Allocate or find a client reference we can use */
+ 	clp = nfs_get_client(&cl_init);
 
