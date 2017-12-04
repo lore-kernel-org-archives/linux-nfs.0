@@ -1,49 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f66.google.com ([209.85.213.66]:38800 "EHLO
-        mail-vk0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751546AbdLDTD4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:03:56 -0500
+Received: from mail-ua0-f195.google.com ([209.85.217.195]:36394 "EHLO
+        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751546AbdLDTEB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:04:01 -0500
 From: Thiago Rafael Becker <thiago.becker@gmail.com>
 To: bfields@fieldses.org, neilb@suse.com
 Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
         linux-kernel@vger.kernel.org,
         Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH 0/3, v3] Move groups_sort outisde of set_groups
-Date: Mon,  4 Dec 2017 17:03:21 -0200
-Message-Id: <20171204190324.6629-1-thiago.becker@gmail.com>
+Subject: [PATCH 2/3, v3] kernel: Move groups_sort to the caller of set_groups.
+Date: Mon,  4 Dec 2017 17:03:23 -0200
+Message-Id: <20171204190324.6629-3-thiago.becker@gmail.com>
+In-Reply-To: <20171204190324.6629-1-thiago.becker@gmail.com>
+References: <20171204190324.6629-1-thiago.becker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In cases where group_info is cached (e.g. sunrpc), multiplpe
-threads may call set_groups with a freshly created group_info
-cache (e.g. nfsd), and attempt to sort them simultaneously,
-which configures a race condition that can overwrite some
-groups in the cache and lead to errors. In the case of nfsd,
-the client was receiving EPERM if the group used to provide
-authorization was overwritten by this race condition.
+The responsibility for calling groups_sort is now on the caller
+of set_groups.
 
-In an email exchange with bfields, we agreed that it seems
-unintuitive that the groups are sorted on set_groups, and that
-it would be better to move the responsibility of sorting to
-the caller of set_groups.
-
-These patches:
- - Export groups_sort in include/linux/cred.h
- - Add a call to groups_sort after the groups are inserted in
-   group_info
- - Remove the call to sort_groups from set_groups
-
-Thiago Rafael Becker (3):
-  kernel: make groups_sort globally visible
-  kernel: Move groups_sort to the caller of set_groups.
-  kernel: set_groups doesn't call groups_sort anymore.
-
- include/linux/cred.h      | 1 +
- kernel/groups.c           | 6 ++++--
+Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
+---
+ kernel/groups.c           | 1 +
  kernel/uid16.c            | 1 +
  net/sunrpc/svcauth_unix.c | 7 +++++++
- 4 files changed, 13 insertions(+), 2 deletions(-)
+ 3 files changed, 9 insertions(+)
 
+diff --git a/kernel/groups.c b/kernel/groups.c
+index 4c9c9ed..17073a9 100644
+--- a/kernel/groups.c
++++ b/kernel/groups.c
+@@ -208,6 +208,7 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
+ 		return retval;
+ 	}
+ 
++	groups_sort(group_info);
+ 	retval = set_current_groups(group_info);
+ 	put_group_info(group_info);
+ 
+diff --git a/kernel/uid16.c b/kernel/uid16.c
+index ce74a49..ef1da2a 100644
+--- a/kernel/uid16.c
++++ b/kernel/uid16.c
+@@ -192,6 +192,7 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
+ 		return retval;
+ 	}
+ 
++	groups_sort(group_info);
+ 	retval = set_current_groups(group_info);
+ 	put_group_info(group_info);
+ 
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 740b67d..94e2ac0 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -20,6 +20,7 @@
+ 
+ 
+ #include "netns.h"
++void groups_sort(struct group_info *group_info);
+ 
+ /*
+  * AUTHUNIX and AUTHNULL credentials are both handled here.
+@@ -520,6 +521,12 @@ static int unix_gid_parse(struct cache_detail *cd,
+ 		ug.gi->gid[i] = kgid;
+ 	}
+ 
++	/* Sort the groups before inserting this entry
++	 * into the cache to avoid future corrutpions
++	 * by multiple simultaneous attempts to sort this
++	 * entry.
++	 */
++	groups_sort(ug.gi);
+ 	ugp = unix_gid_lookup(cd, uid);
+ 	if (ugp) {
+ 		struct cache_head *ch;
 -- 
 2.9.5
 
