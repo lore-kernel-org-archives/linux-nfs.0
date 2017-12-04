@@ -1,67 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:46780 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751941AbdLDTN5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:13:57 -0500
-Subject: [PATCH v1 4/4] SUNRPC: Remove rpc_protocol()
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 04 Dec 2017 14:13:55 -0500
-Message-ID: <20171204191354.18629.23260.stgit@manet.1015granger.net>
-In-Reply-To: <20171204190904.18629.70341.stgit@manet.1015granger.net>
-References: <20171204190904.18629.70341.stgit@manet.1015granger.net>
+Received: from mail-qt0-f195.google.com ([209.85.216.195]:46453 "EHLO
+        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752890AbdLDTOY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:14:24 -0500
+From: Thiago Rafael Becker <thiago.becker@gmail.com>
+Date: Mon, 4 Dec 2017 17:14:17 -0200 (-02)
+To: Thiago Rafael Becker <thiago.becker@gmail.com>
+cc: bfields@fieldses.org, neilb@suse.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/3, v3] kernel: Move groups_sort to the caller of
+ set_groups.
+In-Reply-To: <20171204190324.6629-3-thiago.becker@gmail.com>
+Message-ID: <alpine.LFD.2.21.1712041713310.13072@tbecker-rhat>
+References: <20171204190324.6629-1-thiago.becker@gmail.com> <20171204190324.6629-3-thiago.becker@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; format=flowed; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since nfs4_create_referral_server was the only call site of
-rpc_protocol, rpc_protocol can now be removed.
+Disregard this. git reset --hard without a git stash. Sorry about it.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/clnt.h |    1 -
- net/sunrpc/clnt.c           |   16 ----------------
- 2 files changed, 17 deletions(-)
+On Mon, 4 Dec 2017, Thiago Rafael Becker wrote:
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 71c237e..ed761f7 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -179,7 +179,6 @@ struct rpc_task *rpc_call_null(struct rpc_clnt *clnt, struct rpc_cred *cred,
- int		rpc_restart_call_prepare(struct rpc_task *);
- int		rpc_restart_call(struct rpc_task *);
- void		rpc_setbufsize(struct rpc_clnt *, unsigned int, unsigned int);
--int		rpc_protocol(struct rpc_clnt *);
- struct net *	rpc_net_ns(struct rpc_clnt *);
- size_t		rpc_max_payload(struct rpc_clnt *);
- size_t		rpc_max_bc_payload(struct rpc_clnt *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e2a4184..6e432ec 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1376,22 +1376,6 @@ int rpc_localaddr(struct rpc_clnt *clnt, struct sockaddr *buf, size_t buflen)
- EXPORT_SYMBOL_GPL(rpc_setbufsize);
- 
- /**
-- * rpc_protocol - Get transport protocol number for an RPC client
-- * @clnt: RPC client to query
-- *
-- */
--int rpc_protocol(struct rpc_clnt *clnt)
--{
--	int protocol;
--
--	rcu_read_lock();
--	protocol = rcu_dereference(clnt->cl_xprt)->prot;
--	rcu_read_unlock();
--	return protocol;
--}
--EXPORT_SYMBOL_GPL(rpc_protocol);
--
--/**
-  * rpc_net_ns - Get the network namespace for this RPC client
-  * @clnt: RPC client to query
-  *
-
+> The responsibility for calling groups_sort is now on the caller
+> of set_groups.
+>
+> Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
+> ---
+> kernel/groups.c           | 1 +
+> kernel/uid16.c            | 1 +
+> net/sunrpc/svcauth_unix.c | 7 +++++++
+> 3 files changed, 9 insertions(+)
+>
+> diff --git a/kernel/groups.c b/kernel/groups.c
+> index 4c9c9ed..17073a9 100644
+> --- a/kernel/groups.c
+> +++ b/kernel/groups.c
+> @@ -208,6 +208,7 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
+> 		return retval;
+> 	}
+>
+> +	groups_sort(group_info);
+> 	retval = set_current_groups(group_info);
+> 	put_group_info(group_info);
+>
+> diff --git a/kernel/uid16.c b/kernel/uid16.c
+> index ce74a49..ef1da2a 100644
+> --- a/kernel/uid16.c
+> +++ b/kernel/uid16.c
+> @@ -192,6 +192,7 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
+> 		return retval;
+> 	}
+>
+> +	groups_sort(group_info);
+> 	retval = set_current_groups(group_info);
+> 	put_group_info(group_info);
+>
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index 740b67d..94e2ac0 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -20,6 +20,7 @@
+>
+>
+> #include "netns.h"
+> +void groups_sort(struct group_info *group_info);
+>
+> /*
+>  * AUTHUNIX and AUTHNULL credentials are both handled here.
+> @@ -520,6 +521,12 @@ static int unix_gid_parse(struct cache_detail *cd,
+> 		ug.gi->gid[i] = kgid;
+> 	}
+>
+> +	/* Sort the groups before inserting this entry
+> +	 * into the cache to avoid future corrutpions
+> +	 * by multiple simultaneous attempts to sort this
+> +	 * entry.
+> +	 */
+> +	groups_sort(ug.gi);
+> 	ugp = unix_gid_lookup(cd, uid);
+> 	if (ugp) {
+> 		struct cache_head *ch;
+> -- 
+> 2.9.5
+>
+>
