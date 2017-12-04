@@ -1,48 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f195.google.com ([209.85.217.195]:40041 "EHLO
-        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751852AbdLDTEE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:04:04 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-To: bfields@fieldses.org, neilb@suse.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH 3/3, v3] kernel: set_groups doesn't call groups_sort anymore.
-Date: Mon,  4 Dec 2017 17:03:24 -0200
-Message-Id: <20171204190324.6629-4-thiago.becker@gmail.com>
-In-Reply-To: <20171204190324.6629-1-thiago.becker@gmail.com>
-References: <20171204190324.6629-1-thiago.becker@gmail.com>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:34983 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751269AbdLDTNY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:13:24 -0500
+Subject: [PATCH v1 0/4] Use same proto= after traversing a referral
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 04 Dec 2017 14:13:22 -0500
+Message-ID: <20171204190904.18629.70341.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the group_info is cached (e.g. sunrpc) there's the possibility
-that threads calling set_groups will attempt to do so simultaneously.
+Hi Anna-
 
-Moving the responsibility of sorting to the caller of set_groups, or
-in the case of nfsd, to the point where it is received from rpc.mountd
-avoids this issue.
+Today when the Linux client traverses an NFSv4 referral, it always
+chooses proto=tcp on the submount. This means following a referral
+on an NFS/RDMA mount will always make the submounts use TCP, which
+is not desirable. These patches make the client try NFS/RDMA first
+when traversing a referral so that submounts will continue to use
+NFS/RDMA.
 
-Moving it to the caller has the added benifit of a slight improvement on
-the nfsd performance.
+Please consider this series for v4.16.
 
-Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
 ---
- kernel/groups.c | 1 -
- 1 file changed, 1 deletion(-)
 
-diff --git a/kernel/groups.c b/kernel/groups.c
-index 17073a9..8620ad3 100644
---- a/kernel/groups.c
-+++ b/kernel/groups.c
-@@ -124,7 +124,6 @@ int groups_search(const struct group_info *group_info, kgid_t grp)
- void set_groups(struct cred *new, struct group_info *group_info)
- {
- 	put_group_info(new->group_info);
--	groups_sort(group_info);
- 	get_group_info(group_info);
- 	new->group_info = group_info;
- }
--- 
-2.9.5
+Chuck Lever (4):
+      nfs: Define NFS_RDMA_PORT
+      nfs: Referrals should use the same proto setting as their parent
+      nfs: Update server port after referral or migration
+      SUNRPC: Remove rpc_protocol()
 
+
+ fs/nfs/nfs4client.c         |   24 +++++++++++++++++++++---
+ fs/nfs/nfs4namespace.c      |    2 --
+ include/linux/sunrpc/clnt.h |    1 -
+ include/uapi/linux/nfs.h    |    1 +
+ net/sunrpc/clnt.c           |   16 ----------------
+ 5 files changed, 22 insertions(+), 22 deletions(-)
+
+--
+Chuck Lever
