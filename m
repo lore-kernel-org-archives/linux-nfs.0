@@ -1,80 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f195.google.com ([209.85.217.195]:36394 "EHLO
-        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751546AbdLDTEB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:04:01 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-To: bfields@fieldses.org, neilb@suse.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH 2/3, v3] kernel: Move groups_sort to the caller of set_groups.
-Date: Mon,  4 Dec 2017 17:03:23 -0200
-Message-Id: <20171204190324.6629-3-thiago.becker@gmail.com>
-In-Reply-To: <20171204190324.6629-1-thiago.becker@gmail.com>
-References: <20171204190324.6629-1-thiago.becker@gmail.com>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:42848 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752664AbdLDTEH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Dec 2017 14:04:07 -0500
+Subject: [PATCH v2] xprtrdma: Spread reply processing over more CPUs
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 04 Dec 2017 14:04:04 -0500
+Message-ID: <20171204190257.18106.4464.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The responsibility for calling groups_sort is now on the caller
-of set_groups.
+Commit d8f532d20ee4 ("xprtrdma: Invoke rpcrdma_reply_handler
+directly from RECV completion") introduced a performance regression
+for NFS I/O small enough to not need memory registration. In multi-
+threaded benchmarks that generate primarily small I/O requests,
+IOPS throughput is reduced by nearly a third. This patch restores
+the previous level of throughput.
 
-Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
+Because workqueues are typically BOUND (in particular ib_comp_wq,
+nfsiod_workqueue, and rpciod_workqueue), NFS/RDMA workloads tend
+to aggregate on the CPU that is handling Receive completions.
+
+The usual approach to addressing this problem is to create a QP
+and CQ for each CPU, and then schedule transactions on the QP
+for the CPU where you want the transaction to complete. The
+transaction then does not require an extra context switch during
+completion to end up on the same CPU where the transaction was
+started.
+
+This approach doesn't work for the Linux NFS/RDMA client because
+currently the Linux NFS client does not support multiple connections
+per client-server pair, and the RDMA core API does not make it
+straightforward for ULPs to determine which CPU is responsible for
+handling Receive completions for a CQ.
+
+So for the moment, record the CPU number in the rpcrdma_req before
+the transport sends each RPC Call. Then during Receive completion,
+queue the RPC completion on that same CPU.
+
+Additionally, move all RPC completion processing to the deferred
+handler so that even RPCs with simple small replies complete on
+the CPU that sent the corresponding RPC Call.
+
+Fixes: d8f532d20ee4 ("xprtrdma: Invoke rpcrdma_reply_handler ...")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- kernel/groups.c           | 1 +
- kernel/uid16.c            | 1 +
- net/sunrpc/svcauth_unix.c | 7 +++++++
- 3 files changed, 9 insertions(+)
 
-diff --git a/kernel/groups.c b/kernel/groups.c
-index 4c9c9ed..17073a9 100644
---- a/kernel/groups.c
-+++ b/kernel/groups.c
-@@ -208,6 +208,7 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
- 		return retval;
- 	}
+Hi Anna-
+
+This version actually applies to v4.15-rc2. The previous one applied
+to v4.15-rc1 plus my for-4.16 patches. Sorry for the noise!
+
+
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    6 +-----
+ net/sunrpc/xprtrdma/transport.c |    2 ++
+ net/sunrpc/xprtrdma/verbs.c     |    2 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 4 files changed, 5 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index ed34dc0..a3f2ab2 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1408,11 +1408,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
+ 		__func__, rep, req, be32_to_cpu(rep->rr_xid));
  
-+	groups_sort(group_info);
- 	retval = set_current_groups(group_info);
- 	put_group_info(group_info);
+-	if (list_empty(&req->rl_registered) &&
+-	    !test_bit(RPCRDMA_REQ_F_TX_RESOURCES, &req->rl_flags))
+-		rpcrdma_complete_rqst(rep);
+-	else
+-		queue_work(rpcrdma_receive_wq, &rep->rr_work);
++	queue_work_on(req->rl_cpu, rpcrdma_receive_wq, &rep->rr_work);
+ 	return;
  
-diff --git a/kernel/uid16.c b/kernel/uid16.c
-index ce74a49..ef1da2a 100644
---- a/kernel/uid16.c
-+++ b/kernel/uid16.c
-@@ -192,6 +192,7 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
- 		return retval;
- 	}
+ out_badstatus:
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 646c244..6ee1ad8 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -52,6 +52,7 @@
+ #include <linux/slab.h>
+ #include <linux/seq_file.h>
+ #include <linux/sunrpc/addr.h>
++#include <linux/smp.h>
  
-+	groups_sort(group_info);
- 	retval = set_current_groups(group_info);
- 	put_group_info(group_info);
+ #include "xprt_rdma.h"
  
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 740b67d..94e2ac0 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -20,6 +20,7 @@
+@@ -656,6 +657,7 @@
+ 		task->tk_pid, __func__, rqst->rq_callsize,
+ 		rqst->rq_rcvsize, req);
  
++	req->rl_cpu = smp_processor_id();
+ 	req->rl_connect_cookie = 0;	/* our reserved value */
+ 	rpcrdma_set_xprtdata(rqst, req);
+ 	rqst->rq_buffer = req->rl_sendbuf->rg_base;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 710b3f7..8607c02 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -83,7 +83,7 @@
+ 	struct workqueue_struct *recv_wq;
  
- #include "netns.h"
-+void groups_sort(struct group_info *group_info);
- 
- /*
-  * AUTHUNIX and AUTHNULL credentials are both handled here.
-@@ -520,6 +521,12 @@ static int unix_gid_parse(struct cache_detail *cd,
- 		ug.gi->gid[i] = kgid;
- 	}
- 
-+	/* Sort the groups before inserting this entry
-+	 * into the cache to avoid future corrutpions
-+	 * by multiple simultaneous attempts to sort this
-+	 * entry.
-+	 */
-+	groups_sort(ug.gi);
- 	ugp = unix_gid_lookup(cd, uid);
- 	if (ugp) {
- 		struct cache_head *ch;
--- 
-2.9.5
+ 	recv_wq = alloc_workqueue("xprtrdma_receive",
+-				  WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_HIGHPRI,
++				  WQ_MEM_RECLAIM | WQ_HIGHPRI,
+ 				  0);
+ 	if (!recv_wq)
+ 		return -ENOMEM;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 51686d9..1342f743 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -342,6 +342,7 @@ enum {
+ struct rpcrdma_buffer;
+ struct rpcrdma_req {
+ 	struct list_head	rl_list;
++	int			rl_cpu;
+ 	unsigned int		rl_connect_cookie;
+ 	struct rpcrdma_buffer	*rl_buffer;
+ 	struct rpcrdma_rep	*rl_reply;
 
