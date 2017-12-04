@@ -1,111 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:59408 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752488AbdLDAAL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Dec 2017 19:00:11 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Fix a race in the receive code path
-Date: Mon, 4 Dec 2017 00:00:04 +0000
-Message-ID: <1512345602.4335.5.camel@primarydata.com>
-References: <20171203185012.24473-1-trond.myklebust@primarydata.com>
-         <9F7B84A7-B241-49D3-8F9D-36338669C827@gmail.com>
-         <1512331965.24703.5.camel@primarydata.com>
-         <0CE894EE-2CB0-4716-BEFA-C946FBE3A27A@gmail.com>
-         <1512332690.28811.3.camel@primarydata.com>
-         <16F08CAD-84C9-44ED-B0CC-5116C59A2FDD@oracle.com>
-In-Reply-To: <16F08CAD-84C9-44ED-B0CC-5116C59A2FDD@oracle.com>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:38036 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752162AbdLDARc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Dec 2017 19:17:32 -0500
+Received: by mail-it0-f66.google.com with SMTP id r6so2647501itr.3
+        for <linux-nfs@vger.kernel.org>; Sun, 03 Dec 2017 16:17:32 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Chuck Lever <chuck.lever@oracl.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3] SUNRPC: Fix a race in the receive code path
+Date: Sun,  3 Dec 2017 19:17:26 -0500
+Message-Id: <20171204001726.5747-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE3LTEyLTAzIGF0IDE4OjMzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBEZWMgMywgMjAxNywgYXQgMzoyNCBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHBy
-aW1hcnlkYXRhLmNvDQo+ID4gbT4gd3JvdGU6DQo+ID4gDQo+ID4gT24gU3VuLCAyMDE3LTEyLTAz
-IGF0IDE1OjE5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4gPiA+ID4gT24gRGVjIDMsIDIw
-MTcsIGF0IDM6MTIgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBwcmltYXJ5ZGF0DQo+ID4g
-PiA+IGEuY28NCj4gPiA+ID4gbT4gd3JvdGU6DQo+ID4gPiA+IA0KPiA+ID4gPiBPbiBTdW4sIDIw
-MTctMTItMDMgYXQgMTM6NTQgLTA1MDAsIENodWNrIExldmVyIHdyb3RlOg0KPiA+ID4gPiA+ID4g
-T24gRGVjIDMsIDIwMTcsIGF0IDE6NTAgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVi
-dXMNCj4gPiA+ID4gPiA+IHRAcHINCj4gPiA+ID4gPiA+IGltYXINCj4gPiA+ID4gPiA+IHlkYXRh
-LmNvbT4gd3JvdGU6DQo+ID4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IFdlIG11c3QgZW5zdXJlIHRo
-YXQgdGhlIGNhbGwgdG8gcnBjX3NsZWVwX29uKCkgaW4NCj4gPiA+ID4gPiA+IHhwcnRfdHJhbnNt
-aXQoKQ0KPiA+ID4gPiA+ID4gY2Fubm90DQo+ID4gPiA+ID4gPiByYWNlIHdpdGggdGhlIGNhbGwg
-dG8geHBydF9jb21wbGV0ZV9ycXN0KCkuDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gOi0oIHRoaXMg
-d2lsbCBraWxsIHNjYWxhYmlsaXR5LCB3ZSBtaWdodCBhcyB3ZWxsIGp1c3QgZ28gYmFjaw0KPiA+
-ID4gPiA+IHRvIHRoZSBvbGQgbG9ja2luZyBzY2hlbWUuDQo+ID4gPiA+IA0KPiA+ID4gPiBJdCBz
-aG91bGRuJ3QgbWFrZSBhIGh1Z2UgZGlmZmVyZW5jZSwgYnV0IEkgYWdyZWUgdGhhdCB3ZSBkbw0K
-PiA+ID4gPiB3YW50IHRvDQo+ID4gPiA+IGdldA0KPiA+ID4gPiByaWQgb2YgdGhhdCB0cmFuc3Bv
-cnQgbG9jay4NCj4gPiA+ID4gDQo+ID4gPiA+IEhvdyBhYm91dCB0aGUgZm9sbG93aW5nLCB0aGVu
-Pw0KPiA+ID4gDQo+ID4gPiBUaGlzIGxvb2tzIGJldHRlciwgSSdsbCBnaXZlIGl0IGEgdHJ5IQ0K
-PiANCj4gQWZ0ZXIgdGVzdGluZyBmb3Igc2V2ZXJhbCBob3VycywgSSB3YXMgbm90IGFibGUgdG8g
-cmVwcm9kdWNlIHRoZQ0KPiBsb3N0IFJQQyBjb21wbGV0aW9uIHN5bXB0b20uDQo+IA0KPiBJJ3Zl
-IGJlZW4gY29uY2VybmVkIGFib3V0IHRoZSBwZXJmb3JtYW5jZSBpbXBhY3QuIDgtdGhyZWFkIGRi
-ZW5jaA0KPiB0aHJvdWdocHV0IHJlZ3Jlc3NlcyAyLTMlIG9uIG15IDU2R2IvcyBuZXR3b3JrLiBU
-aGVyZSB3aWxsIHByb2JhYmx5DQo+IG5vdCBiZSBhbnkgbm90aWNlYWJsZSBkZWdyYWRhdGlvbiBv
-biBhIHNsb3dlciBmYWJyaWMuDQo+IA0KPiBUZXN0ZWQtYnk6IENodWNrIExldmVyIDxjaHVjay5s
-ZXZlckBvcmFjbGUuY29tPg0KPiANCj4gDQo+ID4gPiANCj4gPiA+IEJ1dCB0b3VjaGluZyB0aGUg
-cmVjdl9sb2NrIGluIHRoZSB0cmFuc21pdCBwYXRoIGlzIHdoYXQgSSdkIGxpa2UNCj4gPiA+IHRv
-IGF2b2lkIGNvbXBsZXRlbHksIGlmIHBvc3NpYmxlLiBJJ20gbm90IGNsZWFyIG9uIHdoeSB0aGUN
-Cj4gPiA+IHBlbmRpbmcNCj4gPiA+IHdhaXRxdWV1ZSBpcyB1bnByb3RlY3RlZC4gRG9lc24ndCBp
-dCBoYXZlIGEgbG9jayBvZiBpdHMgb3duPw0KPiA+IA0KPiA+IFRoZSByZWN2X2xvY2sgZW5zdXJl
-cyB0aGF0IHRoZSBjaGVjayBvZiByZXEtPnJxX3JlcGx5X2J5dGVzX3JlY3ZkDQo+ID4gaXMNCj4g
-PiBhdG9taWMgd2l0aCB0aGUgY2FsbCB0byBycGNfc2xlZXBfb24oKS4NCj4gDQo+IEFoLCBtYWtl
-cyBzZW5zZS4gSSBhZ3JlZSBpdCBpcyBhbiBvdmVyc2lnaHQgaW4gY2U3YzI1MmE4Yzcgbm90IHRv
-DQo+IGhhdmUgbWFkZSB0aGlzIGNoYW5nZSBhdCB0aGUgc2FtZSB0aW1lLg0KPiANCj4gPiBGcm9t
-OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQo+ID4g
-RGF0ZTogU3VuLCAzIERlYyAyMDE3IDEzOjM3OjI3IC0wNTAwDQo+ID4gU3ViamVjdDogW1BBVENI
-IHYyXSBTVU5SUEM6IEZpeCBhIHJhY2UgaW4gdGhlIHJlY2VpdmUgY29kZSBwYXRoDQo+ID4gDQo+
-ID4gV2UgbXVzdCBlbnN1cmUgdGhhdCB0aGUgY2FsbCB0byBycGNfc2xlZXBfb24oKSBpbiB4cHJ0
-X3RyYW5zbWl0KCkNCj4gPiBjYW5ub3QNCj4gPiByYWNlIHdpdGggdGhlIGNhbGwgdG8geHBydF9j
-b21wbGV0ZV9ycXN0KCkuDQo+IA0KPiBJTUhPIHRoZSBwYXRjaCBkZXNjcmlwdGlvbiBjb3VsZCBt
-ZW50aW9uIHJxX3JlcGx5X2J5dGVzX3JlY3ZkLCB3aGljaA0KPiBpcyB0aGUgZGF0YSB0aGF0IGlz
-IHByb3RlY3RlZCBieSB0aGUgcmVjdl9sb2NrLiBNb3JlIGJyZWFkIGNydW1icw0KPiBmb3Igb3Vy
-IGZ1dHVyZSBzZWx2ZXMuLi4NCj4gDQpJJ2xsIHB1dCBhIGNvbW1lbnQgaW4gdGhlIGNvZGUgaXRz
-ZWxmLiBUaGF0IG1ha2VzIHRoZSBjb2RlIGVhc2llciB0bw0KcmV2aWV3Lg0KDQo+IA0KPiA+IEBA
-IC0xMDQ4LDE5ICsxMDQ5LDIyIEBAIHZvaWQgeHBydF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sg
-KnRhc2spDQo+ID4gCXhwcnQtPnN0YXQuc2VuZGluZ191ICs9IHhwcnQtPnNlbmRpbmcucWxlbjsN
-Cj4gPiAJeHBydC0+c3RhdC5wZW5kaW5nX3UgKz0geHBydC0+cGVuZGluZy5xbGVuOw0KPiA+IA0K
-PiA+IC0JLyogRG9uJ3QgcmFjZSB3aXRoIGRpc2Nvbm5lY3QgKi8NCj4gPiAtCWlmICgheHBydF9j
-b25uZWN0ZWQoeHBydCkpDQo+ID4gLQkJdGFzay0+dGtfc3RhdHVzID0gLUVOT1RDT05OOw0KPiA+
-IC0JZWxzZSB7DQo+ID4gKwlzcGluX3VubG9ja19iaCgmeHBydC0+dHJhbnNwb3J0X2xvY2spOw0K
-PiA+ICsNCj4gPiArCWlmICghUkVBRF9PTkNFKHJlcS0+cnFfcmVwbHlfYnl0ZXNfcmVjdmQpICYm
-DQo+ID4gcnBjX3JlcGx5X2V4cGVjdGVkKHRhc2spKSB7DQo+IA0KPiBJIHdhcyB3b25kZXJpbmcg
-YWJvdXQgdGhpcyBvcHRpbWl6YXRpb24uIEl0IHNlZW1zIHRvIHByb3ZpZGUgYWJvdXQgYQ0KPiAx
-JSBiZW5lZml0IGluIGRiZW5jaCB0aHJvdWdocHV0IHJlc3VsdHMgaW4gbXkgc2V0dXAsIHRob3Vn
-aCBpdCBpcw0KPiBjZXJ0YWlubHkgbm90IGEgY29tbW9uIGNhc2UgdGhhdCB0aGUgcmVwbHkgaGFz
-IGFycml2ZWQgYXQgdGhpcyBwb2ludC4NCg0KSXQncyBub3QgdG9vIGxpa2VseSBhbiBvY2N1cnJl
-bmNlIGZvciBtb3N0IHNldHVwcywgYnV0IGl0IGNvc3RzIGxpdHRsZQ0KdG8gZG8gdGhhdCBjaGVj
-aywgYW5kIGl0IGRvZXMgbWVhbiB0aGF0IHdlIGNhbiBvcHRpbWlzZSBhd2F5IHRoZSBjYXNlDQpv
-ZiBSUEMgY2FsbHMgdGhhdCBleHBlY3Qgbm8gcmVwbHkuDQoNCj4gPiArCQlzcGluX2xvY2soJnhw
-cnQtPnJlY3ZfbG9jayk7DQo+ID4gCQkvKg0KPiA+IAkJICogU2xlZXAgb24gdGhlIHBlbmRpbmcg
-cXVldWUgc2luY2UNCj4gPiAJCSAqIHdlJ3JlIGV4cGVjdGluZyBhIHJlcGx5Lg0KPiA+IAkJICov
-DQo+ID4gLQkJaWYgKCFyZXEtPnJxX3JlcGx5X2J5dGVzX3JlY3ZkICYmDQo+ID4gcnBjX3JlcGx5
-X2V4cGVjdGVkKHRhc2spKQ0KPiA+ICsJCWlmICghcmVxLT5ycV9yZXBseV9ieXRlc19yZWN2ZCkg
-ew0KPiA+IAkJCXJwY19zbGVlcF9vbigmeHBydC0+cGVuZGluZywgdGFzaywgeHBydF90aW1lcik7
-DQo+ID4gLQkJcmVxLT5ycV9jb25uZWN0X2Nvb2tpZSA9IHhwcnQtPmNvbm5lY3RfY29va2llOw0K
-PiA+ICsJCQkvKiBEZWFsIHdpdGggZGlzY29ubmVjdCByYWNlcyAqLw0KPiA+ICsJCQlpZiAoIXhw
-cnRfY29ubmVjdGVkKHhwcnQpKQ0KPiA+ICsJCQkJeHBydF93YWtlX3BlbmRpbmdfdGFza3MoeHBy
-dCwNCj4gPiAtRU5PVENPTk4pOw0KPiANCj4gSGVyZSwgdGhlICF4cHJ0X2Nvbm5lY3RlZCB0ZXN0
-IGlzIG5vIGxvbmdlciBkb25lIHVuY29uZGl0aW9uYWxseSwNCj4gYnV0IG9ubHkgd2hlbiB0aGUg
-dGFzayBoYXMgdG8gYmUgcHV0IHRvIHNsZWVwLiBJcyB0aGF0IGEgMTAwJSBzYWZlDQo+IGNoYW5n
-ZT8NCg0KWWVzLiBXZSBvbmx5IGNhcmUgYWJvdXQgdGhlIHJhY2UgY2FzZSBmb3IgdGhpcyBwYXJ0
-aWN1bGFyIFJQQyBjYWxsLiBBbnkNCm90aGVyIFJQQ3MgdGhhdCBhcmUgYWxyZWFkeSB3YWl0aW5n
-IG9uIHhwcnQtPnBlbmRpbmcgd2lsbCBiZSB3b2tlbiBieQ0KdGhlIHRyYW5zcG9ydCBsYXllciBp
-dHNlbGYuDQoNCj4gSSdtIGFsc28gd29uZGVyaW5nIGlmIHRoaXMgY2hlY2sgY2FuIGJlIG9taXR0
-ZWQuIFdvbid0IGRpc2Nvbm5lY3QNCj4gd2FpdCB1bnRpbCB4cHJ0X3JlbGVhc2VfeHBydCA/DQoN
-CklmIHRoZXJlIGFyZSBubyBvdGhlciBSUEMgY2FsbHMgcGVuZGluZyB0byBkcml2ZSBhIHJlY29u
-bmVjdCwgdGhlbiB3ZQ0KY2FuIGVuZCB1cCB3YWl0aW5nIGZvciB0aGlzIFJQQyBjYWxsIHRvIHRp
-bWUgb3V0IGlmIHdlIHJhY2UgaGVyZS4NCg0KPiANCj4gT3RoZXJ3aXNlIGlmIHRoaXMgY2hlY2sg
-aXMgc3RpbGwgbmVlZGVkLCB0aGUgbmV3IGNvbW1lbnQgY291bGQgYmUNCj4gYSBsaXR0bGUgbW9y
-ZSBleHBsYW5hdG9yeSA6LSkNCj4gDQo+IA0KPiA+ICsJCX0NCj4gPiArCQlzcGluX3VubG9jaygm
-eHBydC0+cmVjdl9sb2NrKTsNCj4gPiAJfQ0KPiA+IC0Jc3Bpbl91bmxvY2tfYmgoJnhwcnQtPnRy
-YW5zcG9ydF9sb2NrKTsNCj4gPiB9DQo+IA0KPiANCj4gUmV2aWV3ZWQtYnk6IENodWNrIExldmVy
-IDxjaHVjay5sZXZlckBvcmFjbGUuY29tPg0KPiANCj4gQW5kIHRoYW5rcyBmb3IgeW91ciBxdWlj
-ayByZXNwb25zZSENCj4gDQo+IA0KPiAtLQ0KPiBDaHVjayBMZXZlcg0KPiANCj4gDQo+IA0KLS0g
-DQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURh
-dGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+We must ensure that the call to rpc_sleep_on() in xprt_transmit() cannot
+race with the call to xprt_complete_rqst().
+
+Reported-by: Chuck Lever <chuck.lever@oracle.com>
+Link: https://bugzilla.linux-nfs.org/show_bug.cgi?id=317
+Fixes: ce7c252a8c74 ("SUNRPC: Add a separate spinlock to protect..")
+Cc: stable@vger.kernel.org # 4.14+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ net/sunrpc/xprt.c | 26 +++++++++++++++++---------
+ 1 file changed, 17 insertions(+), 9 deletions(-)
+
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 333b9d697ae5..5e4278e9ce37 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1024,6 +1024,7 @@ void xprt_transmit(struct rpc_task *task)
+ 	} else if (!req->rq_bytes_sent)
+ 		return;
+ 
++	req->rq_connect_cookie = xprt->connect_cookie;
+ 	req->rq_xtime = ktime_get();
+ 	status = xprt->ops->send_request(task);
+ 	trace_xprt_transmit(xprt, req->rq_xid, status);
+@@ -1047,20 +1048,27 @@ void xprt_transmit(struct rpc_task *task)
+ 	xprt->stat.bklog_u += xprt->backlog.qlen;
+ 	xprt->stat.sending_u += xprt->sending.qlen;
+ 	xprt->stat.pending_u += xprt->pending.qlen;
++	spin_unlock_bh(&xprt->transport_lock);
+ 
+-	/* Don't race with disconnect */
+-	if (!xprt_connected(xprt))
+-		task->tk_status = -ENOTCONN;
+-	else {
++	if (rpc_reply_expected(task) && !READ_ONCE(req->rq_reply_bytes_recvd)) {
+ 		/*
+-		 * Sleep on the pending queue since
+-		 * we're expecting a reply.
++		 * Sleep on the pending queue if we're expecting a reply.
++		 * The spinlock ensures atomicity between the test of
++		 * req->rq_reply_bytes_recvd, and the call to rpc_sleep_on().
+ 		 */
+-		if (!req->rq_reply_bytes_recvd && rpc_reply_expected(task))
++		spin_lock(&xprt->recv_lock);
++		if (!req->rq_reply_bytes_recvd) {
+ 			rpc_sleep_on(&xprt->pending, task, xprt_timer);
+-		req->rq_connect_cookie = xprt->connect_cookie;
++			/*
++			 * Send an extra queue wakeup call if the
++			 * connection was dropped in case the call to
++			 * rpc_sleep_on() raced.
++			 */
++			if (!xprt_connected(xprt))
++				xprt_wake_pending_tasks(xprt, -ENOTCONN);
++		}
++		spin_unlock(&xprt->recv_lock);
+ 	}
+-	spin_unlock_bh(&xprt->transport_lock);
+ }
+ 
+ static void xprt_add_backlog(struct rpc_xprt *xprt, struct rpc_task *task)
+-- 
+2.14.3
 
