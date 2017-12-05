@@ -1,133 +1,142 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:4465 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752410AbdLESzo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Dec 2017 13:55:44 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3] nfs: fix a deadlock in nfs client initialization
-Date: Tue,  5 Dec 2017 13:55:44 -0500
-Message-Id: <20171205185544.22870-1-smayhew@redhat.com>
-In-Reply-To: <1512139349.27358.2.camel@primarydata.com>
-References: <1512139349.27358.2.camel@primarydata.com>
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:37999 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752410AbdLESzv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Dec 2017 13:55:51 -0500
+From: Thiago Rafael Becker <thiago.becker@gmail.com>
+To: bfields@fieldses.org, neilb@suse.com
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Thiago Rafael Becker <thiago.becker@gmail.com>
+Subject: [PATCH 2/3] kernel: Move groups_sort to the caller of set_groups.
+Date: Tue,  5 Dec 2017 16:55:23 -0200
+Message-Id: <20171205185523.20600-1-thiago.becker@gmail.com>
+In-Reply-To: <20171205140512.13349-3-thiago.becker@gmail.com>
+References: <20171205140512.13349-3-thiago.becker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following deadlock can occur between a process waiting for a client
-to initialize in while walking the client list during nfsv4 server trunking
-detection and another process waiting for the nfs_clid_init_mutex so it
-can initialize that client:
+The responsibility for calling groups_sort is now on the caller
+of set_groups.
 
-Process 1                               Process 2
----------                               ---------
-spin_lock(&nn->nfs_client_lock);
-list_add_tail(&CLIENTA->cl_share_link,
-        &nn->nfs_client_list);
-spin_unlock(&nn->nfs_client_lock);
-                                        spin_lock(&nn->nfs_client_lock);
-                                        list_add_tail(&CLIENTB->cl_share_link,
-                                                &nn->nfs_client_list);
-                                        spin_unlock(&nn->nfs_client_lock);
-                                        mutex_lock(&nfs_clid_init_mutex);
-                                        nfs41_walk_client_list(clp, result, cred);
-                                        nfs_wait_client_init_complete(CLIENTA);
-(waiting for nfs_clid_init_mutex)
-
-Make sure nfs_match_client() only evaluates clients that have completed
-initialization in order to prevent that deadlock.
-
-This patch also fixes v4.0 trunking behavior by not marking the client
-NFS_CS_READY until the clientid has been confirmed.
-
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
 ---
- fs/nfs/client.c     | 11 +++++++++++
- fs/nfs/nfs4client.c | 17 +++++++++++++----
- 2 files changed, 24 insertions(+), 4 deletions(-)
+ arch/s390/kernel/compat_linux.c   | 1 +
+ fs/nfsd/auth.c                    | 3 +++
+ kernel/groups.c                   | 1 +
+ kernel/uid16.c                    | 1 +
+ net/sunrpc/auth_gss/gss_rpc_xdr.c | 1 +
+ net/sunrpc/auth_gss/svcauth_gss.c | 1 +
+ net/sunrpc/svcauth_unix.c         | 8 ++++++++
+ 7 files changed, 16 insertions(+)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0ac2fb1..b9129e2 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -291,12 +291,23 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
- 	const struct sockaddr *sap = data->addr;
- 	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
+diff --git a/arch/s390/kernel/compat_linux.c b/arch/s390/kernel/compat_linux.c
+index f04db37..59eea9c 100644
+--- a/arch/s390/kernel/compat_linux.c
++++ b/arch/s390/kernel/compat_linux.c
+@@ -263,6 +263,7 @@ COMPAT_SYSCALL_DEFINE2(s390_setgroups16, int, gidsetsize, u16 __user *, grouplis
+ 		return retval;
+ 	}
  
-+again:
- 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
- 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
- 		/* Don't match clients that failed to initialise properly */
- 		if (clp->cl_cons_state < 0)
- 			continue;
++	groups_sort(group_info);
+ 	retval = set_current_groups(group_info);
+ 	put_group_info(group_info);
  
-+		/* If a client is still initializing then we need to wait */
-+		if (clp->cl_cons_state > NFS_CS_READY) {
-+			refcount_inc(&clp->cl_count);
-+			spin_unlock(&nn->nfs_client_lock);
-+			nfs_wait_client_init_complete(clp);
-+			nfs_put_client(clp);
-+			spin_lock(&nn->nfs_client_lock);
-+			goto again;
-+		}
+diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
+index 697f8ae..7b5099b 100644
+--- a/fs/nfsd/auth.c
++++ b/fs/nfsd/auth.c
+@@ -60,6 +60,9 @@ int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
+ 				gi->gid[i] = exp->ex_anon_gid;
+ 			else
+ 				gi->gid[i] = rqgi->gid[i];
 +
- 		/* Different NFS versions cannot share the same nfs_client */
- 		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
- 			continue;
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 12bbab0..65a7e5d 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -404,15 +404,19 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	if (error < 0)
- 		goto error;
++			/* Should be race free as long as each thread allocates a new gi */
++			groups_sort(gi);
+ 		}
+ 	} else {
+ 		gi = get_group_info(rqgi);
+diff --git a/kernel/groups.c b/kernel/groups.c
+index 4c9c9ed..17073a9 100644
+--- a/kernel/groups.c
++++ b/kernel/groups.c
+@@ -208,6 +208,7 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
+ 		return retval;
+ 	}
  
--	if (!nfs4_has_session(clp))
--		nfs_mark_client_ready(clp, NFS_CS_READY);
--
- 	error = nfs4_discover_server_trunking(clp, &old);
- 	if (error < 0)
- 		goto error;
++	groups_sort(group_info);
+ 	retval = set_current_groups(group_info);
+ 	put_group_info(group_info);
  
--	if (clp != old)
-+	if (clp != old) {
- 		clp->cl_preserve_clid = true;
-+		/*
-+		 * Mark the client as having failed initialization so other
-+		 * processes walking the nfs_client_list in nfs_match_client()
-+		 * won't try to use it.
-+		 */
-+		nfs_mark_client_ready(clp, -EPERM);
-+	}
- 	nfs_put_client(clp);
- 	clear_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags);
- 	return old;
-@@ -539,6 +543,9 @@ int nfs40_walk_client_list(struct nfs_client *new,
- 	spin_lock(&nn->nfs_client_lock);
- 	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+diff --git a/kernel/uid16.c b/kernel/uid16.c
+index ce74a49..ef1da2a 100644
+--- a/kernel/uid16.c
++++ b/kernel/uid16.c
+@@ -192,6 +192,7 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
+ 		return retval;
+ 	}
  
-+		if (pos == new)
-+			goto found;
-+
- 		status = nfs4_match_client(pos, new, &prev, nn);
- 		if (status < 0)
- 			goto out_unlock;
-@@ -559,6 +566,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
- 		 * way that a SETCLIENTID_CONFIRM to pos can succeed is
- 		 * if new and pos point to the same server:
- 		 */
-+found:
- 		refcount_inc(&pos->cl_count);
- 		spin_unlock(&nn->nfs_client_lock);
++	groups_sort(group_info);
+ 	retval = set_current_groups(group_info);
+ 	put_group_info(group_info);
  
-@@ -572,6 +580,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
- 		case 0:
- 			nfs4_swap_callback_idents(pos, new);
- 			pos->cl_confirm = new->cl_confirm;
-+			nfs_mark_client_ready(pos, NFS_CS_READY);
+diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+index c4778ca..444380f 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
++++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+@@ -231,6 +231,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
+ 			goto out_free_groups;
+ 		creds->cr_group_info->gid[i] = kgid;
+ 	}
++	groups_sort(creds->cr_group_info);
  
- 			prev = NULL;
- 			*result = pos;
+ 	return 0;
+ out_free_groups:
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 5dd4e6c..2653119 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -481,6 +481,7 @@ static int rsc_parse(struct cache_detail *cd,
+ 				goto out;
+ 			rsci.cred.cr_group_info->gid[i] = kgid;
+ 		}
++		groups_sort(rsci.cred.cr_group_info);
+ 
+ 		/* mech name */
+ 		len = qword_get(&mesg, buf, mlen);
+diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+index 740b67d..99841e1 100644
+--- a/net/sunrpc/svcauth_unix.c
++++ b/net/sunrpc/svcauth_unix.c
+@@ -20,6 +20,7 @@
+ 
+ 
+ #include "netns.h"
++void groups_sort(struct group_info *group_info);
+ 
+ /*
+  * AUTHUNIX and AUTHNULL credentials are both handled here.
+@@ -520,6 +521,12 @@ static int unix_gid_parse(struct cache_detail *cd,
+ 		ug.gi->gid[i] = kgid;
+ 	}
+ 
++	/* Sort the groups before inserting this entry
++	 * into the cache to avoid future corrutpions
++	 * by multiple simultaneous attempts to sort this
++	 * entry.
++	 */
++	groups_sort(ug.gi);
+ 	ugp = unix_gid_lookup(cd, uid);
+ 	if (ugp) {
+ 		struct cache_head *ch;
+@@ -819,6 +826,7 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+ 		kgid_t kgid = make_kgid(&init_user_ns, svc_getnl(argv));
+ 		cred->cr_group_info->gid[i] = kgid;
+ 	}
++	groups_sort(cred->cr_group_info);
+ 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
+ 		*authp = rpc_autherr_badverf;
+ 		return SVC_DENIED;
 -- 
 2.9.5
 
