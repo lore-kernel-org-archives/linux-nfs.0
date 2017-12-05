@@ -1,62 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:41247 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752974AbdLEOFg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Dec 2017 09:05:36 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-To: bfields@fieldses.org, neilb@suse.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH 1/3 v3] kernel: make groups_sort globally visible
-Date: Tue,  5 Dec 2017 12:05:10 -0200
-Message-Id: <20171205140512.13349-2-thiago.becker@gmail.com>
-In-Reply-To: <20171205140512.13349-1-thiago.becker@gmail.com>
-References: <20171130130457.11429-1-thiago.becker@gmail.com>
- <20171205140512.13349-1-thiago.becker@gmail.com>
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:46827 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752662AbdLEPKg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Dec 2017 10:10:36 -0500
+Received: by mail-wm0-f65.google.com with SMTP id r78so1894013wme.5
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Dec 2017 07:10:36 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20171204191330.18629.77069.stgit@manet.1015granger.net>
+References: <20171204190904.18629.70341.stgit@manet.1015granger.net> <20171204191330.18629.77069.stgit@manet.1015granger.net>
+From: Devesh Sharma <devesh.sharma@broadcom.com>
+Date: Tue, 5 Dec 2017 20:39:54 +0530
+Message-ID: <CANjDDBg3qsn5oWzmTSi5e3eKJKkdEceh0GUTe+pFDAGCxkDqGg@mail.gmail.com>
+Subject: Re: [PATCH v1 1/4] nfs: Define NFS_RDMA_PORT
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In preparation to move group_info sorting to the caller,
-make group_sort globally visible.
+Hi Chuck,
 
-Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
----
- include/linux/cred.h | 1 +
- kernel/groups.c      | 4 +++-
- 2 files changed, 4 insertions(+), 1 deletion(-)
+Will this change avoid the "echo rdma 20049" on the nfs server during
+nfs server start?
 
-diff --git a/include/linux/cred.h b/include/linux/cred.h
-index 099058e..6312865 100644
---- a/include/linux/cred.h
-+++ b/include/linux/cred.h
-@@ -83,6 +83,7 @@ extern int set_current_groups(struct group_info *);
- extern void set_groups(struct cred *, struct group_info *);
- extern int groups_search(const struct group_info *, kgid_t);
- extern bool may_setgroups(void);
-+extern void groups_sort(struct group_info *);
- 
- /*
-  * The security context of a task
-diff --git a/kernel/groups.c b/kernel/groups.c
-index e357bc8..4c9c9ed 100644
---- a/kernel/groups.c
-+++ b/kernel/groups.c
-@@ -86,11 +86,13 @@ static int gid_cmp(const void *_a, const void *_b)
- 	return gid_gt(a, b) - gid_lt(a, b);
- }
- 
--static void groups_sort(struct group_info *group_info)
-+void groups_sort(struct group_info *group_info)
- {
- 	sort(group_info->gid, group_info->ngroups, sizeof(*group_info->gid),
- 	     gid_cmp, NULL);
- }
-+EXPORT_SYMBOL(groups_sort);
-+
- 
- /* a simple bsearch */
- int groups_search(const struct group_info *group_info, kgid_t grp)
--- 
-2.9.5
+-Regards
+Devesh
 
+On Tue, Dec 5, 2017 at 12:43 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> The NFS/RDMA port assignment is specified in Section 9 of RFC 8267.
+>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  include/uapi/linux/nfs.h |    1 +
+>  1 file changed, 1 insertion(+)
+>
+> diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
+> index 057d22a..946cb62 100644
+> --- a/include/uapi/linux/nfs.h
+> +++ b/include/uapi/linux/nfs.h
+> @@ -12,6 +12,7 @@
+>
+>  #define NFS_PROGRAM    100003
+>  #define NFS_PORT       2049
+> +#define NFS_RDMA_PORT  20049
+>  #define NFS_MAXDATA    8192
+>  #define NFS_MAXPATHLEN 1024
+>  #define NFS_MAXNAMLEN  255
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
