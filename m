@@ -1,62 +1,133 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:35868 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751416AbdLESuB (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Dec 2017 13:50:01 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1 1/4] nfs: Define NFS_RDMA_PORT
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CANjDDBg3qsn5oWzmTSi5e3eKJKkdEceh0GUTe+pFDAGCxkDqGg@mail.gmail.com>
-Date: Tue, 5 Dec 2017 13:49:56 -0500
-Cc: Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <06D33DF4-6BAC-411B-8A08-5098E52720C6@oracle.com>
-References: <20171204190904.18629.70341.stgit@manet.1015granger.net> <20171204191330.18629.77069.stgit@manet.1015granger.net> <CANjDDBg3qsn5oWzmTSi5e3eKJKkdEceh0GUTe+pFDAGCxkDqGg@mail.gmail.com>
-To: Devesh Sharma <devesh.sharma@broadcom.com>
+Received: from mx1.redhat.com ([209.132.183.28]:4465 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752410AbdLESzo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 5 Dec 2017 13:55:44 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3] nfs: fix a deadlock in nfs client initialization
+Date: Tue,  5 Dec 2017 13:55:44 -0500
+Message-Id: <20171205185544.22870-1-smayhew@redhat.com>
+In-Reply-To: <1512139349.27358.2.camel@primarydata.com>
+References: <1512139349.27358.2.camel@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The following deadlock can occur between a process waiting for a client
+to initialize in while walking the client list during nfsv4 server trunking
+detection and another process waiting for the nfs_clid_init_mutex so it
+can initialize that client:
 
-> On Dec 5, 2017, at 10:09 AM, Devesh Sharma =
-<devesh.sharma@broadcom.com> wrote:
->=20
-> Hi Chuck,
->=20
-> Will this change avoid the "echo rdma 20049" on the nfs server during
-> nfs server start?
+Process 1                               Process 2
+---------                               ---------
+spin_lock(&nn->nfs_client_lock);
+list_add_tail(&CLIENTA->cl_share_link,
+        &nn->nfs_client_list);
+spin_unlock(&nn->nfs_client_lock);
+                                        spin_lock(&nn->nfs_client_lock);
+                                        list_add_tail(&CLIENTB->cl_share_link,
+                                                &nn->nfs_client_list);
+                                        spin_unlock(&nn->nfs_client_lock);
+                                        mutex_lock(&nfs_clid_init_mutex);
+                                        nfs41_walk_client_list(clp, result, cred);
+                                        nfs_wait_client_init_complete(CLIENTA);
+(waiting for nfs_clid_init_mutex)
 
-I'm not familiar with this issue. Is there a bug report ?
+Make sure nfs_match_client() only evaluates clients that have completed
+initialization in order to prevent that deadlock.
 
+This patch also fixes v4.0 trunking behavior by not marking the client
+NFS_CS_READY until the clientid has been confirmed.
 
-> -Regards
-> Devesh
->=20
-> On Tue, Dec 5, 2017 at 12:43 AM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->> The NFS/RDMA port assignment is specified in Section 9 of RFC 8267.
->>=20
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> include/uapi/linux/nfs.h |    1 +
->> 1 file changed, 1 insertion(+)
->>=20
->> diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
->> index 057d22a..946cb62 100644
->> --- a/include/uapi/linux/nfs.h
->> +++ b/include/uapi/linux/nfs.h
->> @@ -12,6 +12,7 @@
->>=20
->> #define NFS_PROGRAM    100003
->> #define NFS_PORT       2049
->> +#define NFS_RDMA_PORT  20049
->> #define NFS_MAXDATA    8192
->> #define NFS_MAXPATHLEN 1024
->> #define NFS_MAXNAMLEN  255
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/client.c     | 11 +++++++++++
+ fs/nfs/nfs4client.c | 17 +++++++++++++----
+ 2 files changed, 24 insertions(+), 4 deletions(-)
 
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/client.c b/fs/nfs/client.c
+index 0ac2fb1..b9129e2 100644
+--- a/fs/nfs/client.c
++++ b/fs/nfs/client.c
+@@ -291,12 +291,23 @@ static struct nfs_client *nfs_match_client(const struct nfs_client_initdata *dat
+ 	const struct sockaddr *sap = data->addr;
+ 	struct nfs_net *nn = net_generic(data->net, nfs_net_id);
+ 
++again:
+ 	list_for_each_entry(clp, &nn->nfs_client_list, cl_share_link) {
+ 	        const struct sockaddr *clap = (struct sockaddr *)&clp->cl_addr;
+ 		/* Don't match clients that failed to initialise properly */
+ 		if (clp->cl_cons_state < 0)
+ 			continue;
+ 
++		/* If a client is still initializing then we need to wait */
++		if (clp->cl_cons_state > NFS_CS_READY) {
++			refcount_inc(&clp->cl_count);
++			spin_unlock(&nn->nfs_client_lock);
++			nfs_wait_client_init_complete(clp);
++			nfs_put_client(clp);
++			spin_lock(&nn->nfs_client_lock);
++			goto again;
++		}
++
+ 		/* Different NFS versions cannot share the same nfs_client */
+ 		if (clp->rpc_ops != data->nfs_mod->rpc_ops)
+ 			continue;
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 12bbab0..65a7e5d 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -404,15 +404,19 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 	if (error < 0)
+ 		goto error;
+ 
+-	if (!nfs4_has_session(clp))
+-		nfs_mark_client_ready(clp, NFS_CS_READY);
+-
+ 	error = nfs4_discover_server_trunking(clp, &old);
+ 	if (error < 0)
+ 		goto error;
+ 
+-	if (clp != old)
++	if (clp != old) {
+ 		clp->cl_preserve_clid = true;
++		/*
++		 * Mark the client as having failed initialization so other
++		 * processes walking the nfs_client_list in nfs_match_client()
++		 * won't try to use it.
++		 */
++		nfs_mark_client_ready(clp, -EPERM);
++	}
+ 	nfs_put_client(clp);
+ 	clear_bit(NFS_CS_TSM_POSSIBLE, &clp->cl_flags);
+ 	return old;
+@@ -539,6 +543,9 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 	spin_lock(&nn->nfs_client_lock);
+ 	list_for_each_entry(pos, &nn->nfs_client_list, cl_share_link) {
+ 
++		if (pos == new)
++			goto found;
++
+ 		status = nfs4_match_client(pos, new, &prev, nn);
+ 		if (status < 0)
+ 			goto out_unlock;
+@@ -559,6 +566,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 		 * way that a SETCLIENTID_CONFIRM to pos can succeed is
+ 		 * if new and pos point to the same server:
+ 		 */
++found:
+ 		refcount_inc(&pos->cl_count);
+ 		spin_unlock(&nn->nfs_client_lock);
+ 
+@@ -572,6 +580,7 @@ int nfs40_walk_client_list(struct nfs_client *new,
+ 		case 0:
+ 			nfs4_swap_callback_idents(pos, new);
+ 			pos->cl_confirm = new->cl_confirm;
++			nfs_mark_client_ready(pos, NFS_CS_READY);
+ 
+ 			prev = NULL;
+ 			*result = pos;
+-- 
+2.9.5
 
