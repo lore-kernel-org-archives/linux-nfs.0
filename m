@@ -1,72 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54826 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:54904 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751711AbdLFTJg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 6 Dec 2017 14:09:36 -0500
-Date: Wed, 6 Dec 2017 14:09:36 -0500
-To: James Ettle <james@ettle.org.uk>
-Cc: linux-nfs@vger.kernel.org, sparclinux@vger.kernel.org
-Subject: Re: Unaligned access in gss_{get,verify}_mic_v2() on sparc64
-Message-ID: <20171206190936.GB5875@fieldses.org>
-References: <55549068-2605-7f71-ccef-c102d6fd69ab@ettle.org.uk>
+        id S1751500AbdLFT1E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 6 Dec 2017 14:27:04 -0500
+Date: Wed, 6 Dec 2017 14:27:04 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Thiago Rafael Becker <thiago.becker@gmail.com>
+Cc: neilb@suse.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 0/3 v3] Move groups_sort outisde of set_groups
+Message-ID: <20171206192704.GA27019@fieldses.org>
+References: <20171130130457.11429-1-thiago.becker@gmail.com>
+ <20171205140512.13349-1-thiago.becker@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <55549068-2605-7f71-ccef-c102d6fd69ab@ettle.org.uk>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20171205140512.13349-1-thiago.becker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 02, 2017 at 11:28:18PM +0000, James Ettle wrote:
-> I've been using nfs4 with krb5 on sparc64 with kernel 4.13 and 4.14 and
-> seeing a lot of messages like:
-> 
-> sparky kernel: [  105.262927] Kernel unaligned access at TPC[10afb234]
-> gss_get_mic_kerberos+0xd4/0x360 [rpcsec_gss_krb5]
-> 
-> I've traced this down to gss_get_mic_v2() in gss_krb5_seal.c. I think
-> the suspicious line is:
-> 
-> 	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
-> 
-> krb5_hdr is void*, but comes from a u16 so won't generally have __be64
-> alignment. As an experiment I added local variable
-> 
-> 	__be64 seq_send_be64;
-> 
-> and replaced the cpu_to_be64 line with:
-> 
-> 	seq_send_be64 = cpu_to_be64(seq_send);
-> 	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
-> 
-> There's another one in gss_verify_mic_v2() in gss_krb5_unseal.c. Here
-> there's a line
-> 
-> 	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
-> 
-> but ptr is a u8*. For this I added local variable
-> 
-> 	__be16 data_be16;
-> 
-> and replaced the above if() with
-> 
-> 	memcpy((void *) &data_be16, (char *) ptr, 2);
-> 	if (be16_to_cpu(data_be16) != KG2_TOK_MIC)
-> 
-> I've not seen any misalignment complaints yet with this.
-> 
-> I apologise for not sending this in the form of a patch, but this is
-> only a sketch solution. I'm not a kernel hacker and I'm sure someone
-> else will make a proper job of it!
-
-Probably so.  But it might get done sooner if you do it.  There's the
-added benefit that you can test the exact patch that gets applied.  You
-can just:
-
-	git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
-	<make your changes>
-	git commit -a
-	<write a changelog>
-
-then send us the output of "git show".
+ACK to these patches from me.  I'm not sure who should pick them up....
 
 --b.
+
+On Tue, Dec 05, 2017 at 12:05:09PM -0200, Thiago Rafael Becker wrote:
+> In cases where group_info is cached (e.g. sunrpc), multiplpe
+> threads may call set_groups with a freshly created group_info
+> cache (e.g. nfsd), and attempt to sort them simultaneously,
+> which configures a race condition that can overwrite some
+> groups in the cache and lead to errors. In the case of nfsd,
+> the client was receiving EPERM if the group used to provide
+> authorization was overwritten by this race condition.
+> 
+> In an email exchange with bfields, we agreed that it seems
+> unintuitive that the groups are sorted on set_groups, and that
+> it would be better to move the responsibility of sorting to
+> the caller of set_groups.
+> 
+> These patches:
+>  - Export groups_sort in include/linux/cred.h
+>  - Add a call to groups_sort after the groups are inserted in
+>    group_info
+>  - Remove the call to sort_groups from set_groups
+> 
+> Thiago Rafael Becker (3):
+>   kernel: make groups_sort globally visible
+>   kernel: Move groups_sort to the caller of set_groups.
+>   kernel: set_groups doesn't call groups_sort anymore.
+> 
+>  include/linux/cred.h      | 1 +
+>  kernel/groups.c           | 6 ++++--
+>  kernel/uid16.c            | 1 +
+>  net/sunrpc/svcauth_unix.c | 7 +++++++
+>  4 files changed, 13 insertions(+), 2 deletions(-)
+> 
+> -- 
+> 2.9.5
