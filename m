@@ -1,136 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:40635 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751680AbdLFQK4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 11:10:56 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "geert@linux-m68k.org" <geert@linux-m68k.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+Received: from mail-qt0-f196.google.com ([209.85.216.196]:41953 "EHLO
+        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751604AbdLFQTE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 11:19:04 -0500
+MIME-Version: 1.0
+In-Reply-To: <1512576648.26816.3.camel@primarydata.com>
+References: <CAMuHMdWm8SGtekpdGVKsDi4L4sgvVZDFoC5wnSggVXFRt-irzA@mail.gmail.com>
+ <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com> <1512576648.26816.3.camel@primarydata.com>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Wed, 6 Dec 2017 17:19:02 +0100
+Message-ID: <CAMuHMdWopysALsAzR0x0=uBk_bZDNT4RzgjKwGzqANDfoTxn-A@mail.gmail.com>
+Subject: Re: NFS crash, hashed pointers in backtrace
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
         "linux-renesas-soc@vger.kernel.org"
         <linux-renesas-soc@vger.kernel.org>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "me@tobin.cc" <me@tobin.cc>
-Subject: Re: NFS crash, hashed pointers in backtrace
-Date: Wed, 6 Dec 2017 16:10:50 +0000
-Message-ID: <1512576648.26816.3.camel@primarydata.com>
-References: <CAMuHMdWm8SGtekpdGVKsDi4L4sgvVZDFoC5wnSggVXFRt-irzA@mail.gmail.com>
-         <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com>
-In-Reply-To: <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgR2VlcnQsDQoNCk9uIFdlZCwgMjAxNy0xMi0wNiBhdCAxNTozMSArMDEwMCwgR2VlcnQgVXl0
-dGVyaG9ldmVuIHdyb3RlOg0KPiBIaSBUcm9uZC4gQW5uYSwNCj4gDQo+IE9uIFR1ZSwgRGVjIDUs
-IDIwMTcgYXQgNTowMiBQTSwgR2VlcnQgVXl0dGVyaG9ldmVuIDxnZWVydEBsaW51eC1tNjhrLg0K
-PiBvcmc+IHdyb3RlOg0KPiA+IER1cmluZyBhIGZhaWxlZCB3cml0ZSB0byBhIHZpcnR1YWwgc3lz
-ZnMgZmlsZSAocm9vdCBmcyBpcyBORlMpLCBJDQo+ID4gZ290Og0KPiA+IA0KPiA+IFVuYWJsZSB0
-byBoYW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCB2aXJ0dWFsIGFkZHJl
-c3MNCj4gPiAwMDAwMDAyMA0KPiA+IHBnZCA9IGM0NDhiYjE1DQo+ID4gWzAwMDAwMDIwXSAqcGdk
-PTY5YzljMDAzLCAqcG1kPTY5ZDU1MDAzLCAqcHRlPTAwMDAwMDAwDQo+ID4gSW50ZXJuYWwgZXJy
-b3I6IE9vcHM6IDIwNyBbIzFdIFNNUCBBUk0NCj4gPiBNb2R1bGVzIGxpbmtlZCBpbjoNCj4gPiBD
-UFU6IDAgUElEOiAxMjMwIENvbW06IHJzOm1haW4gUTpSZWcgTm90IHRhaW50ZWQNCj4gPiA0LjE1
-LjAtcmMyLWtvZWxzY2gtMDExNjAtZ2QzODlhMTU0YzY0MGNhYWItZGlydHkgIzM3NTINCj4gPiBI
-YXJkd2FyZSBuYW1lOiBHZW5lcmljIFItQ2FyIEdlbjIgKEZsYXR0ZW5lZCBEZXZpY2UgVHJlZSkN
-Cj4gPiB0YXNrOiA0YTNiYjZkMiB0YXNrLnN0YWNrOiBmZDBjMDBiZA0KPiA+IFBDIGlzIGF0IG5m
-c19mbHVzaF9pbmNvbXBhdGlibGUrMHg1NC8weGY4DQo+IA0KPiBHb3QgYW5vdGhlciBuZnNyb290
-IGNyYXNoOg0KPiANCj4gVW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVm
-ZXJlbmNlIGF0IHZpcnR1YWwgYWRkcmVzcw0KPiAwMDAwMDAzMA0KPiBwZ2QgPSAzMjllOGY2ZQ0K
-PiBbMDAwMDAwMzBdICpwZ2Q9ODAwMDAwNDAwMDQwMDMsICpwbWQ9MDAwMDAwMDANCj4gSW50ZXJu
-YWwgZXJyb3I6IE9vcHM6IDIwNiBbIzFdIFNNUCBBUk0NCj4gTW9kdWxlcyBsaW5rZWQgaW46DQo+
-IENQVTogMCBQSUQ6IDEwMSBDb21tOiBrd29ya2VyL3U0OjEgTm90IHRhaW50ZWQNCj4gNC4xNS4w
-LXJjMi1rb2Vsc2NoLTAxMTY2LWcwNDdkN2QzMjQ4ZTA4ZmM3LWRpcnR5ICMzNzYyDQo+IEhhcmR3
-YXJlIG5hbWU6IEdlbmVyaWMgUi1DYXIgR2VuMiAoRmxhdHRlbmVkIERldmljZSBUcmVlKQ0KPiBX
-b3JrcXVldWU6IHdyaXRlYmFjayB3Yl93b3JrZm4gKGZsdXNoLTA6MTUpDQo+IHRhc2s6IDhhNWJm
-ODU4IHRhc2suc3RhY2s6IGU5M2M5MmJjDQo+IFBDIGlzIGF0IG5mc19wYWdlX2FzeW5jX2ZsdXNo
-KzB4MTEwLzB4MjQ0DQo+IExSIGlzIGF0IDB4MTANCj4gcGMgOiBbPGMwM2JjNjQ4Pl0gICAgbHIg
-OiBbPDAwMDAwMDEwPl0gICAgcHNyOiA0MDBmMDAxMw0KPiBzcCA6IGVhZmY5Yzk4ICBpcCA6IGMw
-YzUwOTJiICBmcCA6IDAwMDAwMDA1DQo+IHIxMDogMDAwMThlODQgIHI5IDogZWJlZjkyYzAgIHI4
-IDogZWFmZjlkNjQNCj4gcjcgOiBlYTQyMWEwMCAgcjYgOiBlYmVmOTJjMCAgcjUgOiBlYTk5OTA0
-MCAgcjQgOiBlYTliMWEwMA0KPiByMyA6IDAwMDAwMDAwICByMiA6IDAwMDAwMDA2ICByMSA6IDAw
-MDAwMDAwICByMCA6IDAwMDAwMDAwDQo+IEZsYWdzOiBuWmN2ICBJUlFzIG9uICBGSVFzIG9uICBN
-b2RlIFNWQ18zMiAgSVNBIEFSTSAgU2VnbWVudCB1c2VyDQo+IENvbnRyb2w6IDMwYzUzODdkICBU
-YWJsZTogNjlkNjU2ODAgIERBQzogZmZmZmZmZmQNCj4gUHJvY2VzcyBrd29ya2VyL3U0OjEgKHBp
-ZDogMTAxLCBzdGFjayBsaW1pdCA9IDB4ZWFmZjgyMTApDQo+IFN0YWNrOiAoMHhlYWZmOWM5OCB0
-byAweGVhZmZhMDAwKQ0KPiA5YzgwOiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICBlYmVmOTJjMA0KPiBlYWZmOWQ2NA0KPiA5Y2EwOiBlYWZmOWUy
-MCBlYTQyMWFmYyAwMDAwMDAwMCBjMDNiYzg1OCBlYWZmOWUyMCAwMDAwMDAwMCBmZmZmZmZmZg0K
-PiBjMDJiMTFlOA0KPiA5Y2MwOiAwMDAwMDAwMCBlYThmNDUwMCBlYjQyNzMyOCAwMDAxOGU4OSAw
-MDAwMDAwMCAwMDAwMDAwOSBlYWZmOWQwYw0KPiAwMDAwMDAwMA0KPiA5Y2UwOiBjMDNiYzgzMCBl
-YWZmOWQ2NCAwMDAwMDAwMCBmZmZmZmZmZiAwMDAwMDAwOSAwMDAwMDAwMCBlYmVmODQ0MA0KPiBl
-YmVmNDVjMA0KPiA5ZDAwOiBlYmYxYWJjMCBlYmVmODg2MCBlYmVmODQyMCBlYmVmOTJjMCBlYmVm
-NWNlMCBlYmVmN2U4MCBlYmVmM2NjMA0KPiBlYWZmOWQxYw0KPiA5ZDIwOiBlYWZmOWQxYyBlYjFk
-MmQ5OCBlYjFkMmQyOCBlYTQyMWEwMCBlYjQwMDcwMCBlYTQyMWEwMCBlYWI4OWJjMA0KPiBlYTQy
-MWFmYw0KPiA5ZDQwOiBlYWZmOWUyMCBlYTQyMWFmYyAwMDAwMDAwMiBlYTQyMWE1MCBlYWZmODAw
-MCBjMDNiYzk0YyBjMDgxNTkwYw0KPiBjMDI0ODNkOA0KPiA5ZDYwOiBlYWE2MjE0MCAwMDAwMDAw
-MSBlYTQyMWEwMCBjMDgxNTdjYyBjMDgxNThlMCAwMDAwMDAwMCAwMDAwMDAwMA0KPiBjMDgxNTdi
-Yw0KPiA5ZDgwOiBjMDgxNTkwYyAwMDAwMDAwMCBlYWI4OWJjMCAwMDAwMDAwMCAwMDAwMTAwMCAw
-MDAwMDAwMSBlYWZmOWQ5Yw0KPiBlYTk5OWZjMA0KPiA5ZGEwOiBlYTk5OWZjMCAwMDAwNDAwMCAw
-MDAwMTAwMCAwMDAwMTAwMCAwMDAwMDAwMCBjMDc0NTcwNCAwMDAwMDAwMA0KPiAwMDAwMDAwMA0K
-PiA5ZGMwOiBlYzA5ZTI1MCBlYWZmOWUyMCBlYTQyMWFmYyBlYWZmOWUyMCBlYTljNGMzOCBjMDJi
-MmQ0OCAwMDAwMDA4Ng0KPiBlYTQyMWEwMA0KPiA5ZGUwOiBlYTQyMWEwMCBjMDMxMDQzNCBlYTQy
-MWEwMCBlYWZmOWUyMCAwMDAwMDAwMCBlYTQyMWFiNCBlYTQyMWEwMA0KPiAwMDAwMTQwMA0KPiA5
-ZTAwOiBlYTljNGMzOCBlYWZmOWVmYyAwMDAwMDAwMiBjMDMxMDliOCBlYTljNGM2NCAwMDAwM2Zk
-MCBlYTk4YjgwMA0KPiAwMDAwMDAwMA0KPiA5ZTIwOiAwMDAwMTNmYiAwMDAwMDAwMCAwMDAwMDAw
-MCAwMDAwMDAwMCBmZmZmZmZmZiA3ZmZmZmZmZiAwMDAwMDAwMA0KPiAwMDAwMDAxMQ0KPiA5ZTQw
-OiAwMDAwMDAwMCBlYTljNGMzOCAwMDAwMDAwMCBjMGUwNDkwMCAwMDAwM2ZkYSBlYWZmOWVmYyBl
-YTljNGM0Yw0KPiBlYTk4YjgwMA0KPiA5ZTYwOiBlYjFmNzU4NCBjMDMxMGJlMCBlYTljNGM0YyBl
-YTljNGMzOCBlYWZmOWVmYyBjMGUwNDkwMCBlYTljNGM2NA0KPiAwMDAwMTc1Yw0KPiA5ZTgwOiBl
-YTljNGQ5MCBjMGUxMzAyMCAwMDAwMDAwYSBjMDMxMGQyYyAwMDAwM2ZkMCAwMDAwM2ZkMCBlYjQ2
-NTE5OA0KPiAwMDAwMzQxOA0KPiA5ZWEwOiBlYWZmOWVhMCBlYWZmOWVhMCBlYWZmOWVhOCBlYWZm
-OWVhOCBlYWZmOWViMCBlYWZmOWViMCAwMDAwMDAxYQ0KPiBlYTljNGQ5OA0KPiA5ZWMwOiBlYTlj
-NGMzOCAwMDAwMTc1YyBlYTljNGQ5MCBlYTljNGMzYyBlYTljNGQ4MCAwMDAwMDAwMCAwMDAwMDA4
-OA0KPiBjMDMxMTBhMA0KPiA5ZWUwOiAwMDAwMDAwMCBjMDIzYjkyNCBlYjlhMGQ4MCBlYWZkNzEw
-MCBlYjQ2NTEwMCBlYWJlODAwMCAwMDAwMDAwMA0KPiAwMDAwMTc1Yw0KPiA5ZjAwOiAwMDAwMDAw
-MCBlYWZmOWU5YyAwMDAwMDAwMCAwMDAwMDAwNiAwMDAwMDAwMyAwMDAwMDAwMCAwMDAwMDAwMA0K
-PiAwMDAwMDAwMA0KPiA5ZjIwOiBlYjdmNjIwMCBlYTljNGQ5OCBlYjQwNjYwMCAwMDAwMDAwMCBl
-YjQwN2YwMCAwMDAwMDAwMCBlYTljNGQ5Yw0KPiBjMDIzNWJkYw0KPiA5ZjQwOiBlYjdmNjIwMCBl
-YTljNGQ5OCBlYjdmNjIwMCBlYjQwNjYwMCBlYjQwNjYwMCBlYWZmODAwMCBlYjQwNjYyNA0KPiBj
-MGUwNDkwMA0KPiA5ZjYwOiBlYjdmNjIxOCBjMDIzNjM0YyBlYWZkNzEwMCBlYjdmNjM4MCBlYjdh
-N2ZjMCAwMDAwMDAwMCBlYjQ0M2VlNA0KPiBlYjdmNjNhOA0KPiA5ZjgwOiBlYjdmNjIwMCBjMDIz
-NjA4MCAwMDAwMDAwMCBjMDIzYTUyOCBlYjdhN2ZjMCBjMDIzYTQwYyAwMDAwMDAwMA0KPiAwMDAw
-MDAwMA0KPiA5ZmEwOiAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCBjMDIwNmYzOCAwMDAwMDAw
-MCAwMDAwMDAwMCAwMDAwMDAwMA0KPiAwMDAwMDAwMA0KPiA5ZmMwOiAwMDAwMDAwMCAwMDAwMDAw
-MCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMA0KPiAwMDAwMDAw
-MA0KPiA5ZmUwOiAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAxMyAw
-MDAwMDAwMCAwMDAwMDAwMA0KPiAwMDAwMDAwMA0KPiBbPGMwM2JjNjQ4Pl0gKG5mc19wYWdlX2Fz
-eW5jX2ZsdXNoKSBmcm9tIFs8YzAzYmM4NTg+XQ0KPiAobmZzX3dyaXRlcGFnZXNfY2FsbGJhY2sr
-MHgyOC8weDU0KQ0KPiBbPGMwM2JjODU4Pl0gKG5mc193cml0ZXBhZ2VzX2NhbGxiYWNrKSBmcm9t
-IFs8YzAyYjExZTg+XQ0KPiAod3JpdGVfY2FjaGVfcGFnZXMrMHgyNzgvMHgzNjQpDQo+IFs8YzAy
-YjExZTg+XSAod3JpdGVfY2FjaGVfcGFnZXMpIGZyb20gWzxjMDNiYzk0Yz5dDQo+IChuZnNfd3Jp
-dGVwYWdlcysweGE4LzB4ZTgpDQo+IFs8YzAzYmM5NGM+XSAobmZzX3dyaXRlcGFnZXMpIGZyb20g
-WzxjMDJiMmQ0OD5dDQo+IChkb193cml0ZXBhZ2VzKzB4MzQvMHg4MCkNCj4gWzxjMDJiMmQ0OD5d
-IChkb193cml0ZXBhZ2VzKSBmcm9tIFs8YzAzMTA0MzQ+XQ0KPiAoX193cml0ZWJhY2tfc2luZ2xl
-X2lub2RlKzB4MzQvMHgxOTQpDQo+IFs8YzAzMTA0MzQ+XSAoX193cml0ZWJhY2tfc2luZ2xlX2lu
-b2RlKSBmcm9tIFs8YzAzMTA5Yjg+XQ0KPiAod3JpdGViYWNrX3NiX2lub2RlcysweDFjYy8weDM5
-MCkNCj4gWzxjMDMxMDliOD5dICh3cml0ZWJhY2tfc2JfaW5vZGVzKSBmcm9tIFs8YzAzMTBiZTA+
-XQ0KPiAoX193cml0ZWJhY2tfaW5vZGVzX3diKzB4NjQvMHhhMCkNCj4gWzxjMDMxMGJlMD5dIChf
-X3dyaXRlYmFja19pbm9kZXNfd2IpIGZyb20gWzxjMDMxMGQyYz5dDQo+ICh3Yl93cml0ZWJhY2sr
-MHgxMTAvMHgxOGMpDQo+IFs8YzAzMTBkMmM+XSAod2Jfd3JpdGViYWNrKSBmcm9tIFs8YzAzMTEw
-YTA+XSAod2Jfd29ya2ZuKzB4MWI4LzB4MzA0KQ0KPiBbPGMwMzExMGEwPl0gKHdiX3dvcmtmbikg
-ZnJvbSBbPGMwMjM1YmRjPl0NCj4gKHByb2Nlc3Nfb25lX3dvcmsrMHgxY2MvMHgzMWMpDQo+IFs8
-YzAyMzViZGM+XSAocHJvY2Vzc19vbmVfd29yaykgZnJvbSBbPGMwMjM2MzRjPl0NCj4gKHdvcmtl
-cl90aHJlYWQrMHgyY2MvMHg0MDgpDQo+IFs8YzAyMzYzNGM+XSAod29ya2VyX3RocmVhZCkgZnJv
-bSBbPGMwMjNhNTI4Pl0gKGt0aHJlYWQrMHgxMWMvMHgxM2MpDQo+IFs8YzAyM2E1Mjg+XSAoa3Ro
-cmVhZCkgZnJvbSBbPGMwMjA2ZjM4Pl0gKHJldF9mcm9tX2ZvcmsrMHgxNC8weDNjKQ0KPiBDb2Rl
-OiBlM2EwMjAwMSBlNWMzMjAwNCBlYmY5OGU5NSBlNTk1MzAwYyAoZTU5MzAwMzApDQo+IC0tLVsg
-ZW5kIHRyYWNlIDI3NzFiNzA1MDZhODIzYTMgXS0tLQ0KPiANCj4gc3RhdGljIGludCBuZnNfcGFn
-ZV9hc3luY19mbHVzaChzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLA0KPiAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgIHN0cnVjdCBwYWdlICpwYWdlKQ0KPiB7DQo+ICAg
-ICAgICAgc3RydWN0IG5mc19wYWdlICpyZXE7DQo+ICAgICAgICAgaW50IHJldCA9IDA7DQo+IA0K
-PiAgICAgICAgIC4uLg0KPiANCj4gICAgICAgICAvKiBJZiB0aGVyZSBpcyBhIGZhdGFsIGVycm9y
-IHRoYXQgY292ZXJzIHRoaXMgd3JpdGUsIGp1c3QNCj4gZXhpdCAqLw0KPiAgICAgICAgIGlmIChu
-ZnNfZXJyb3JfaXNfZmF0YWxfb25fc2VydmVyKHJlcS0+d2JfY29udGV4dC0+ZXJyb3IpKQ0KPiAg
-ICAgICAgICAgICAgICAgZ290byBvdXRfbGF1bmRlcjsNCj4gDQo+IGMwM2JjNjQ0OiAgICAgICBl
-NTk1MzAwYyAgICAgICAgbGRyICAgICByMywgW3I1LCAjMTJdDQo+IGMwM2JjNjQ4OiAgICAgICBl
-NTkzMDAzMCAgICAgICAgbGRyICAgICByMCwgW3IzLCAjNDhdICAgOyAweDMwDQo+IGMwM2JjNjRj
-OiAgICAgICBlYmZmZmQxYiAgICAgICAgYmwgICAgICBjMDNiYmFjMA0KPiA8bmZzX2Vycm9yX2lz
-X2ZhdGFsX29uX3NlcnZlcj4NCj4gDQo+IHJlcS0+d2JfY29udGV4dCBtdXN0IGJlIE5VTEwuDQo+
-IA0KDQpJJ20gY29uZnVzZWQuIElmIHlvdXIgdGVzdCBpbnZvbHZlcyBvbmx5IHdyaXRpbmcgdG8g
-YSBzeXNmcyBmaWxlLCB0aGVuDQp3aHkgaXMgdGhlIE5GUyBjb2RlIGludm9sdmVkIGF0IGFsbD8g
-Q291bGQgdGhpcyBiZSBhIHVzZS1hZnRlci1mcmVlPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
-QHByaW1hcnlkYXRhLmNvbQ0K
+Hi Trond,
 
+On Wed, Dec 6, 2017 at 5:10 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+> On Wed, 2017-12-06 at 15:31 +0100, Geert Uytterhoeven wrote:
+>> On Tue, Dec 5, 2017 at 5:02 PM, Geert Uytterhoeven <geert@linux-m68k.
+>> org> wrote:
+>> Got another nfsroot crash:
+>>
+>> Unable to handle kernel NULL pointer dereference at virtual address
+>> 00000030
+>> pgd = 329e8f6e
+>> [00000030] *pgd=80000040004003, *pmd=00000000
+>> Internal error: Oops: 206 [#1] SMP ARM
+>> Modules linked in:
+>> CPU: 0 PID: 101 Comm: kworker/u4:1 Not tainted
+>> 4.15.0-rc2-koelsch-01166-g047d7d3248e08fc7-dirty #3762
+>> Hardware name: Generic R-Car Gen2 (Flattened Device Tree)
+>> Workqueue: writeback wb_workfn (flush-0:15)
+>> task: 8a5bf858 task.stack: e93c92bc
+>> PC is at nfs_page_async_flush+0x110/0x244
+
+>> static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+>>                                 struct page *page)
+>> {
+>>         struct nfs_page *req;
+>>         int ret = 0;
+>>
+>>         ...
+>>
+>>         /* If there is a fatal error that covers this write, just
+>> exit */
+>>         if (nfs_error_is_fatal_on_server(req->wb_context->error))
+>>                 goto out_launder;
+>>
+>> c03bc644:       e595300c        ldr     r3, [r5, #12]
+>> c03bc648:       e5930030        ldr     r0, [r3, #48]   ; 0x30
+>> c03bc64c:       ebfffd1b        bl      c03bbac0
+>> <nfs_error_is_fatal_on_server>
+>>
+>> req->wb_context must be NULL.
+>>
+>
+> I'm confused. If your test involves only writing to a sysfs file, then
+> why is the NFS code involved at all?
+
+I don't think the second was related to sysfs.
+
+> Could this be a use-after-free?
+
+Possibly. I'm seeing other crashes, too. Looking into them...
+
+Gr{oetje,eeting}s,
+
+                        Geert
+
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
