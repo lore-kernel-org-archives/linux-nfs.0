@@ -1,295 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:42914 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751748AbdLFQEj (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 11:04:39 -0500
-Received: by mail-io0-f193.google.com with SMTP id u42so3186218ioi.9
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Dec 2017 08:04:39 -0800 (PST)
-Subject: [PATCH v1] mountstats: Add option to pretty-print xprt statistics
-From: Chuck Lever <chuck.lever@oracle.com>
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 06 Dec 2017 11:04:36 -0500
-Message-ID: <20171206160236.16373.93332.stgit@manet.1015granger.net>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:40635 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751680AbdLFQK4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 11:10:56 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "geert@linux-m68k.org" <geert@linux-m68k.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-renesas-soc@vger.kernel.org"
+        <linux-renesas-soc@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "me@tobin.cc" <me@tobin.cc>
+Subject: Re: NFS crash, hashed pointers in backtrace
+Date: Wed, 6 Dec 2017 16:10:50 +0000
+Message-ID: <1512576648.26816.3.camel@primarydata.com>
+References: <CAMuHMdWm8SGtekpdGVKsDi4L4sgvVZDFoC5wnSggVXFRt-irzA@mail.gmail.com>
+         <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com>
+In-Reply-To: <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add "-x" option to display the statistics reported on the "xprt:"
-line in mountstats. This is not terribly interesting for UDP and
-TCP, but it can be for RDMA transports.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
-Changes since RFC-v3:
-- More testing
-- Add maxslots/sending/pending utilization statistics
-
-Hi Steve- Please consider this update for the mountstats command.
-
-
- tools/mountstats/mountstats.man |    5 ++
- tools/mountstats/mountstats.py  |  125 +++++++++++++++++++++++++++++++++++----
- 2 files changed, 117 insertions(+), 13 deletions(-)
- mode change 100644 => 100755 tools/mountstats/mountstats.py
-
-diff --git a/tools/mountstats/mountstats.man b/tools/mountstats/mountstats.man
-index a55130b..ff2f8ba 100644
---- a/tools/mountstats/mountstats.man
-+++ b/tools/mountstats/mountstats.man
-@@ -19,6 +19,8 @@ mountstats \- Displays various NFS client per-mount statistics
- .RB [ \-r | \-\-rpc ]
- |
- .RB  [ \-R | \-\-raw ]
-+|
-+.RB  [ \-x | \-\-xprt ]
- ]
- .RI [ mountpoint ] ...
- .P
-@@ -110,6 +112,9 @@ Display only the raw statistics.  This is intended for use with the
- and
- .BR \-S | \-\-since
- options.
-+.TP
-+.B \-x, \-\-xprt
-+Display only the transport statistics
- .SS Options specific to the iostat sub-command
- .IP "\fIinterval\fP"
- Specifies the amount of time in seconds between each report.  The first report contains statistics for the time since each file system was mounted.  Each subsequent report contains statistics collected during the interval since the previous report.  This may not be used with the
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-old mode 100644
-new mode 100755
-index 29b5f5a..440aa72
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -87,7 +87,10 @@ XprtUdpCounters = [
-     'rpcreceives',
-     'badxids',
-     'inflightsends',
--    'backlogutil'
-+    'backlogutil',
-+    'maxslots',
-+    'sendutil',
-+    'pendutil'
- ]
- 
- XprtTcpCounters = [
-@@ -100,7 +103,10 @@ XprtTcpCounters = [
-     'rpcreceives',
-     'badxids',
-     'inflightsends',
--    'backlogutil'
-+    'backlogutil',
-+    'maxslots',
-+    'sendutil',
-+    'pendutil'
- ]
- 
- XprtRdmaCounters = [
-@@ -112,6 +118,7 @@ XprtRdmaCounters = [
-     'rpcsends',
-     'rpcreceives',
-     'badxids',
-+    'inflightsends',
-     'backlogutil',
-     'read_chunks',
-     'write_chunks',
-@@ -122,7 +129,14 @@ XprtRdmaCounters = [
-     'fixup',
-     'hardway',
-     'failed_marshal',
--    'bad_reply'
-+    'bad_reply',
-+    'nomsg_calls',
-+    'recovered_mrs',
-+    'orphaned_mrs',
-+    'allocated_mrs',
-+    'local_invalidates',
-+    'empty_sendctx_q',
-+    'reply_waits_for_send',
- ]
- 
- Nfsv3ops = [
-@@ -273,17 +287,20 @@ class DeviceData:
-             if words[1] == 'udp':
-                 i = 2
-                 for key in XprtUdpCounters:
--                    self.__rpc_data[key] = int(words[i])
-+                    if i < len(words):
-+                        self.__rpc_data[key] = int(words[i])
-                     i += 1
-             elif words[1] == 'tcp':
-                 i = 2
-                 for key in XprtTcpCounters:
--                    self.__rpc_data[key] = int(words[i])
-+                    if i < len(words):
-+                        self.__rpc_data[key] = int(words[i])
-                     i += 1
-             elif words[1] == 'rdma':
-                 i = 2
-                 for key in XprtRdmaCounters:
--                    self.__rpc_data[key] = int(words[i])
-+                    if i < len(words):
-+                        self.__rpc_data[key] = int(words[i])
-                     i += 1
-         elif words[0] == 'per-op':
-             self.__rpc_data['per-op'] = words
-@@ -361,12 +378,11 @@ class DeviceData:
-     def display_stats_header(self):
-         print('Stats for %s mounted on %s:' % \
-             (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
-+        print()
- 
-     def display_nfs_options(self):
-         """Pretty-print the NFS options
-         """
--        self.display_stats_header()
--
-         print('  NFS mount options: %s' % ','.join(self.__nfs_data['mountoptions']))
-         print('  NFS server capabilities: %s' % ','.join(self.__nfs_data['servercapabilities']))
-         if 'nfsv4flags' in self.__nfs_data:
-@@ -432,7 +448,6 @@ class DeviceData:
-         """
-         sends = self.__rpc_data['rpcsends']
- 
--        print()
-         print('RPC statistics:')
- 
-         print('  %d RPC requests sent, %d RPC replies received (%d XIDs not found)' % \
-@@ -655,6 +670,83 @@ class DeviceData:
-         self.__print_rpc_op_stats('WRITE', sample_time)
-         sys.stdout.flush()
- 
-+    def display_xprt_stats(self):
-+        """Pretty-print the xprt statistics
-+        """
-+        if self.__rpc_data['protocol'] == 'udp':
-+            print('\tTransport protocol: udp')
-+            print('\tSource port: %d' % self.__rpc_data['port'])
-+            print('\tBind count: %d' % self.__rpc_data['bind_count'])
-+            print('\tRPC requests: %d' % self.__rpc_data['rpcsends'])
-+            print('\tRPC replies: %d' % self.__rpc_data['rpcreceives'])
-+            print('\tXIDs not found: %d' % self.__rpc_data['badxids'])
-+            print('\tMax slots: %d' % self.__rpc_data['maxslots'])
-+            if self.__rpc_data['rpcsends'] != 0:
-+                print('\tAvg backlog length: %d' % \
-+                    (float(self.__rpc_data['backlogutil']) / self.__rpc_data['rpcsends']))
-+                print('\tAvg send queue length: %d' % \
-+                    (float(self.__rpc_data['sendutil']) / self.__rpc_data['rpcsends']))
-+                print('\tAvg pending queue length: %d' % \
-+                    (float(self.__rpc_data['pendutil']) / self.__rpc_data['rpcsends']))
-+        elif self.__rpc_data['protocol'] == 'tcp':
-+            print('\tTransport protocol: tcp')
-+            print('\tSource port: %d' % self.__rpc_data['port'])
-+            print('\tBind count: %d' % self.__rpc_data['bind_count'])
-+            print('\tConnect count: %d' % self.__rpc_data['connect_count'])
-+            print('\tConnect time: %d seconds' % self.__rpc_data['connect_time'])
-+            print('\tIdle time: %d seconds' % self.__rpc_data['idle_time'])
-+            print('\tRPC requests: %d' % self.__rpc_data['rpcsends'])
-+            print('\tRPC replies: %d' % self.__rpc_data['rpcreceives'])
-+            print('\tXIDs not found: %d' % self.__rpc_data['badxids'])
-+            print('\tMax slots: %d' % self.__rpc_data['maxslots'])
-+            if self.__rpc_data['rpcsends'] != 0:
-+                print('\tAvg backlog length: %d' % \
-+                    (float(self.__rpc_data['backlogutil']) / self.__rpc_data['rpcsends']))
-+                print('\tAvg send queue length: %d' % \
-+                    (float(self.__rpc_data['sendutil']) / self.__rpc_data['rpcsends']))
-+                print('\tAvg pending queue length: %d' % \
-+                    (float(self.__rpc_data['pendutil']) / self.__rpc_data['rpcsends']))
-+        elif self.__rpc_data['protocol'] == 'rdma':
-+            print('\tTransport protocol: rdma')
-+            print('\tConnect count: %d' % self.__rpc_data['connect_count'])
-+            print('\tConnect time: %d seconds' % self.__rpc_data['connect_time'])
-+            print('\tIdle time: %d seconds' % self.__rpc_data['idle_time'])
-+            sends = self.__rpc_data['rpcsends']
-+            print('\tRPC requests: %d' % self.__rpc_data['rpcsends'])
-+            print('\tRPC replies: %d' % self.__rpc_data['rpcreceives'])
-+            print('\tXIDs not found: %d' % self.__rpc_data['badxids'])
-+            if self.__rpc_data['rpcsends'] != 0:
-+                print('\tAvg backlog length: %d' % \
-+                    (float(self.__rpc_data['backlogutil']) / self.__rpc_data['rpcsends']))
-+            print('\tRead chunks: %d' % self.__rpc_data['read_chunks'])
-+            print('\tWrite chunks: %d' % self.__rpc_data['write_chunks'])
-+            print('\tReply chunks: %d' % self.__rpc_data['reply_chunks'])
-+            print('\tRegistered: %d bytes' % self.__rpc_data['total_rdma_req'])
-+            print('\tRDMA received: %d bytes' % self.__rpc_data['total_rdma_rep'])
-+            print('\tTotal pull-up: %d bytes' % self.__rpc_data['pullup'])
-+            print('\tTotal fix-up: %d bytes' % self.__rpc_data['fixup'])
-+            print('\tHardway allocations: %d bytes' % self.__rpc_data['hardway'])
-+            print('\tFailed marshals: %d' % self.__rpc_data['failed_marshal'])
-+            print('\tBad replies: %d' % self.__rpc_data['bad_reply'])
-+
-+            """ Counters not present in all kernels """
-+            if 'nomsg_calls' in self.__rpc_data:
-+                print('\tRDMA_NOMSG calls: %d' % self.__rpc_data['nomsg_calls'])
-+            if 'allocated_mrs' in self.__rpc_data:
-+                print('\tAllocated MRs: %d' % self.__rpc_data['allocated_mrs'])
-+            if 'recovered_mrs' in self.__rpc_data:
-+                print('\tRecovered MRs: %d' % self.__rpc_data['recovered_mrs'])
-+            if 'orphaned_mrs' in self.__rpc_data:
-+                print('\tOrphaned MRs: %d' % self.__rpc_data['orphaned_mrs'])
-+            if 'local_invalidates' in self.__rpc_data:
-+                print('\tLocal Invalidates needed: %d' % self.__rpc_data['local_invalidates'])
-+            if 'empty_sendctx_q' in self.__rpc_data:
-+                print('\tEmpty sendctx queue count: %d' % self.__rpc_data['empty_sendctx_q'])
-+            if 'reply_waits_for_send' in self.__rpc_data:
-+                print('\tReplies that waited for Send completion: %d' % self.__rpc_data['reply_waits_for_send'])
-+        else:
-+            raise Exception('Unknown RPC transport protocol %s' % self.__rpc_data['protocol'])
-+
- def parse_stats_file(f):
-     """pop the contents of a mountstats file into a dictionary,
-     keyed by mount point.  each value object is a list of the
-@@ -681,8 +773,9 @@ def parse_stats_file(f):
- 
-     return ms_dict
- 
--def print_mountstats(stats, nfs_only, rpc_only, raw):
-+def print_mountstats(stats, nfs_only, rpc_only, raw, xprt_only):
-     if nfs_only:
-+       stats.display_stats_header()
-        stats.display_nfs_options()
-        stats.display_nfs_events()
-        stats.display_nfs_bytes()
-@@ -692,7 +785,11 @@ def print_mountstats(stats, nfs_only, rpc_only, raw):
-        stats.display_rpc_op_stats()
-     elif raw:
-        stats.display_raw_stats()
-+    elif xprt_only:
-+       stats.display_stats_header()
-+       stats.display_xprt_stats()
-     else:
-+       stats.display_stats_header()
-        stats.display_nfs_options()
-        stats.display_nfs_bytes()
-        stats.display_rpc_generic_stats()
-@@ -734,14 +831,14 @@ def mountstats_command(args):
-         stats = DeviceData()
-         stats.parse_stats(mountstats[mp])
-         if not args.since:
--            print_mountstats(stats, args.nfs_only, args.rpc_only, args.raw)
-+            print_mountstats(stats, args.nfs_only, args.rpc_only, args.raw, args.xprt_only)
-         elif args.since and mp not in old_mountstats:
--            print_mountstats(stats, args.nfs_only, args.rpc_only, args.raw)
-+            print_mountstats(stats, args.nfs_only, args.rpc_only, args.raw, args.xprt_only)
-         else:
-             old_stats = DeviceData()
-             old_stats.parse_stats(old_mountstats[mp])
-             diff_stats = stats.compare_iostats(old_stats)
--            print_mountstats(diff_stats, args.nfs_only, args.rpc_only, args.raw)
-+            print_mountstats(diff_stats, args.nfs_only, args.rpc_only, args.raw, args.xprt_only)
- 
-     args.infile.close()
-     if args.since:
-@@ -953,6 +1050,8 @@ def main():
-         help='Display only the RPC statistics')
-     group.add_argument('-R', '--raw', action='store_true',
-         help='Display only the raw statistics')
-+    group.add_argument('-x', '--xprt', action='store_true', dest='xprt_only',
-+        help='Display only the xprt statistics')
-     # The mountpoints argument cannot be moved into the common_parser because
-     # it will screw up the parsing of the iostat arguments (interval and count)
-     mountstats_parser.add_argument('mountpoints', nargs='*', metavar='mountpoint',
+SGkgR2VlcnQsDQoNCk9uIFdlZCwgMjAxNy0xMi0wNiBhdCAxNTozMSArMDEwMCwgR2VlcnQgVXl0
+dGVyaG9ldmVuIHdyb3RlOg0KPiBIaSBUcm9uZC4gQW5uYSwNCj4gDQo+IE9uIFR1ZSwgRGVjIDUs
+IDIwMTcgYXQgNTowMiBQTSwgR2VlcnQgVXl0dGVyaG9ldmVuIDxnZWVydEBsaW51eC1tNjhrLg0K
+PiBvcmc+IHdyb3RlOg0KPiA+IER1cmluZyBhIGZhaWxlZCB3cml0ZSB0byBhIHZpcnR1YWwgc3lz
+ZnMgZmlsZSAocm9vdCBmcyBpcyBORlMpLCBJDQo+ID4gZ290Og0KPiA+IA0KPiA+IFVuYWJsZSB0
+byBoYW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdCB2aXJ0dWFsIGFkZHJl
+c3MNCj4gPiAwMDAwMDAyMA0KPiA+IHBnZCA9IGM0NDhiYjE1DQo+ID4gWzAwMDAwMDIwXSAqcGdk
+PTY5YzljMDAzLCAqcG1kPTY5ZDU1MDAzLCAqcHRlPTAwMDAwMDAwDQo+ID4gSW50ZXJuYWwgZXJy
+b3I6IE9vcHM6IDIwNyBbIzFdIFNNUCBBUk0NCj4gPiBNb2R1bGVzIGxpbmtlZCBpbjoNCj4gPiBD
+UFU6IDAgUElEOiAxMjMwIENvbW06IHJzOm1haW4gUTpSZWcgTm90IHRhaW50ZWQNCj4gPiA0LjE1
+LjAtcmMyLWtvZWxzY2gtMDExNjAtZ2QzODlhMTU0YzY0MGNhYWItZGlydHkgIzM3NTINCj4gPiBI
+YXJkd2FyZSBuYW1lOiBHZW5lcmljIFItQ2FyIEdlbjIgKEZsYXR0ZW5lZCBEZXZpY2UgVHJlZSkN
+Cj4gPiB0YXNrOiA0YTNiYjZkMiB0YXNrLnN0YWNrOiBmZDBjMDBiZA0KPiA+IFBDIGlzIGF0IG5m
+c19mbHVzaF9pbmNvbXBhdGlibGUrMHg1NC8weGY4DQo+IA0KPiBHb3QgYW5vdGhlciBuZnNyb290
+IGNyYXNoOg0KPiANCj4gVW5hYmxlIHRvIGhhbmRsZSBrZXJuZWwgTlVMTCBwb2ludGVyIGRlcmVm
+ZXJlbmNlIGF0IHZpcnR1YWwgYWRkcmVzcw0KPiAwMDAwMDAzMA0KPiBwZ2QgPSAzMjllOGY2ZQ0K
+PiBbMDAwMDAwMzBdICpwZ2Q9ODAwMDAwNDAwMDQwMDMsICpwbWQ9MDAwMDAwMDANCj4gSW50ZXJu
+YWwgZXJyb3I6IE9vcHM6IDIwNiBbIzFdIFNNUCBBUk0NCj4gTW9kdWxlcyBsaW5rZWQgaW46DQo+
+IENQVTogMCBQSUQ6IDEwMSBDb21tOiBrd29ya2VyL3U0OjEgTm90IHRhaW50ZWQNCj4gNC4xNS4w
+LXJjMi1rb2Vsc2NoLTAxMTY2LWcwNDdkN2QzMjQ4ZTA4ZmM3LWRpcnR5ICMzNzYyDQo+IEhhcmR3
+YXJlIG5hbWU6IEdlbmVyaWMgUi1DYXIgR2VuMiAoRmxhdHRlbmVkIERldmljZSBUcmVlKQ0KPiBX
+b3JrcXVldWU6IHdyaXRlYmFjayB3Yl93b3JrZm4gKGZsdXNoLTA6MTUpDQo+IHRhc2s6IDhhNWJm
+ODU4IHRhc2suc3RhY2s6IGU5M2M5MmJjDQo+IFBDIGlzIGF0IG5mc19wYWdlX2FzeW5jX2ZsdXNo
+KzB4MTEwLzB4MjQ0DQo+IExSIGlzIGF0IDB4MTANCj4gcGMgOiBbPGMwM2JjNjQ4Pl0gICAgbHIg
+OiBbPDAwMDAwMDEwPl0gICAgcHNyOiA0MDBmMDAxMw0KPiBzcCA6IGVhZmY5Yzk4ICBpcCA6IGMw
+YzUwOTJiICBmcCA6IDAwMDAwMDA1DQo+IHIxMDogMDAwMThlODQgIHI5IDogZWJlZjkyYzAgIHI4
+IDogZWFmZjlkNjQNCj4gcjcgOiBlYTQyMWEwMCAgcjYgOiBlYmVmOTJjMCAgcjUgOiBlYTk5OTA0
+MCAgcjQgOiBlYTliMWEwMA0KPiByMyA6IDAwMDAwMDAwICByMiA6IDAwMDAwMDA2ICByMSA6IDAw
+MDAwMDAwICByMCA6IDAwMDAwMDAwDQo+IEZsYWdzOiBuWmN2ICBJUlFzIG9uICBGSVFzIG9uICBN
+b2RlIFNWQ18zMiAgSVNBIEFSTSAgU2VnbWVudCB1c2VyDQo+IENvbnRyb2w6IDMwYzUzODdkICBU
+YWJsZTogNjlkNjU2ODAgIERBQzogZmZmZmZmZmQNCj4gUHJvY2VzcyBrd29ya2VyL3U0OjEgKHBp
+ZDogMTAxLCBzdGFjayBsaW1pdCA9IDB4ZWFmZjgyMTApDQo+IFN0YWNrOiAoMHhlYWZmOWM5OCB0
+byAweGVhZmZhMDAwKQ0KPiA5YzgwOiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICBlYmVmOTJjMA0KPiBlYWZmOWQ2NA0KPiA5Y2EwOiBlYWZmOWUy
+MCBlYTQyMWFmYyAwMDAwMDAwMCBjMDNiYzg1OCBlYWZmOWUyMCAwMDAwMDAwMCBmZmZmZmZmZg0K
+PiBjMDJiMTFlOA0KPiA5Y2MwOiAwMDAwMDAwMCBlYThmNDUwMCBlYjQyNzMyOCAwMDAxOGU4OSAw
+MDAwMDAwMCAwMDAwMDAwOSBlYWZmOWQwYw0KPiAwMDAwMDAwMA0KPiA5Y2UwOiBjMDNiYzgzMCBl
+YWZmOWQ2NCAwMDAwMDAwMCBmZmZmZmZmZiAwMDAwMDAwOSAwMDAwMDAwMCBlYmVmODQ0MA0KPiBl
+YmVmNDVjMA0KPiA5ZDAwOiBlYmYxYWJjMCBlYmVmODg2MCBlYmVmODQyMCBlYmVmOTJjMCBlYmVm
+NWNlMCBlYmVmN2U4MCBlYmVmM2NjMA0KPiBlYWZmOWQxYw0KPiA5ZDIwOiBlYWZmOWQxYyBlYjFk
+MmQ5OCBlYjFkMmQyOCBlYTQyMWEwMCBlYjQwMDcwMCBlYTQyMWEwMCBlYWI4OWJjMA0KPiBlYTQy
+MWFmYw0KPiA5ZDQwOiBlYWZmOWUyMCBlYTQyMWFmYyAwMDAwMDAwMiBlYTQyMWE1MCBlYWZmODAw
+MCBjMDNiYzk0YyBjMDgxNTkwYw0KPiBjMDI0ODNkOA0KPiA5ZDYwOiBlYWE2MjE0MCAwMDAwMDAw
+MSBlYTQyMWEwMCBjMDgxNTdjYyBjMDgxNThlMCAwMDAwMDAwMCAwMDAwMDAwMA0KPiBjMDgxNTdi
+Yw0KPiA5ZDgwOiBjMDgxNTkwYyAwMDAwMDAwMCBlYWI4OWJjMCAwMDAwMDAwMCAwMDAwMTAwMCAw
+MDAwMDAwMSBlYWZmOWQ5Yw0KPiBlYTk5OWZjMA0KPiA5ZGEwOiBlYTk5OWZjMCAwMDAwNDAwMCAw
+MDAwMTAwMCAwMDAwMTAwMCAwMDAwMDAwMCBjMDc0NTcwNCAwMDAwMDAwMA0KPiAwMDAwMDAwMA0K
+PiA5ZGMwOiBlYzA5ZTI1MCBlYWZmOWUyMCBlYTQyMWFmYyBlYWZmOWUyMCBlYTljNGMzOCBjMDJi
+MmQ0OCAwMDAwMDA4Ng0KPiBlYTQyMWEwMA0KPiA5ZGUwOiBlYTQyMWEwMCBjMDMxMDQzNCBlYTQy
+MWEwMCBlYWZmOWUyMCAwMDAwMDAwMCBlYTQyMWFiNCBlYTQyMWEwMA0KPiAwMDAwMTQwMA0KPiA5
+ZTAwOiBlYTljNGMzOCBlYWZmOWVmYyAwMDAwMDAwMiBjMDMxMDliOCBlYTljNGM2NCAwMDAwM2Zk
+MCBlYTk4YjgwMA0KPiAwMDAwMDAwMA0KPiA5ZTIwOiAwMDAwMTNmYiAwMDAwMDAwMCAwMDAwMDAw
+MCAwMDAwMDAwMCBmZmZmZmZmZiA3ZmZmZmZmZiAwMDAwMDAwMA0KPiAwMDAwMDAxMQ0KPiA5ZTQw
+OiAwMDAwMDAwMCBlYTljNGMzOCAwMDAwMDAwMCBjMGUwNDkwMCAwMDAwM2ZkYSBlYWZmOWVmYyBl
+YTljNGM0Yw0KPiBlYTk4YjgwMA0KPiA5ZTYwOiBlYjFmNzU4NCBjMDMxMGJlMCBlYTljNGM0YyBl
+YTljNGMzOCBlYWZmOWVmYyBjMGUwNDkwMCBlYTljNGM2NA0KPiAwMDAwMTc1Yw0KPiA5ZTgwOiBl
+YTljNGQ5MCBjMGUxMzAyMCAwMDAwMDAwYSBjMDMxMGQyYyAwMDAwM2ZkMCAwMDAwM2ZkMCBlYjQ2
+NTE5OA0KPiAwMDAwMzQxOA0KPiA5ZWEwOiBlYWZmOWVhMCBlYWZmOWVhMCBlYWZmOWVhOCBlYWZm
+OWVhOCBlYWZmOWViMCBlYWZmOWViMCAwMDAwMDAxYQ0KPiBlYTljNGQ5OA0KPiA5ZWMwOiBlYTlj
+NGMzOCAwMDAwMTc1YyBlYTljNGQ5MCBlYTljNGMzYyBlYTljNGQ4MCAwMDAwMDAwMCAwMDAwMDA4
+OA0KPiBjMDMxMTBhMA0KPiA5ZWUwOiAwMDAwMDAwMCBjMDIzYjkyNCBlYjlhMGQ4MCBlYWZkNzEw
+MCBlYjQ2NTEwMCBlYWJlODAwMCAwMDAwMDAwMA0KPiAwMDAwMTc1Yw0KPiA5ZjAwOiAwMDAwMDAw
+MCBlYWZmOWU5YyAwMDAwMDAwMCAwMDAwMDAwNiAwMDAwMDAwMyAwMDAwMDAwMCAwMDAwMDAwMA0K
+PiAwMDAwMDAwMA0KPiA5ZjIwOiBlYjdmNjIwMCBlYTljNGQ5OCBlYjQwNjYwMCAwMDAwMDAwMCBl
+YjQwN2YwMCAwMDAwMDAwMCBlYTljNGQ5Yw0KPiBjMDIzNWJkYw0KPiA5ZjQwOiBlYjdmNjIwMCBl
+YTljNGQ5OCBlYjdmNjIwMCBlYjQwNjYwMCBlYjQwNjYwMCBlYWZmODAwMCBlYjQwNjYyNA0KPiBj
+MGUwNDkwMA0KPiA5ZjYwOiBlYjdmNjIxOCBjMDIzNjM0YyBlYWZkNzEwMCBlYjdmNjM4MCBlYjdh
+N2ZjMCAwMDAwMDAwMCBlYjQ0M2VlNA0KPiBlYjdmNjNhOA0KPiA5ZjgwOiBlYjdmNjIwMCBjMDIz
+NjA4MCAwMDAwMDAwMCBjMDIzYTUyOCBlYjdhN2ZjMCBjMDIzYTQwYyAwMDAwMDAwMA0KPiAwMDAw
+MDAwMA0KPiA5ZmEwOiAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCBjMDIwNmYzOCAwMDAwMDAw
+MCAwMDAwMDAwMCAwMDAwMDAwMA0KPiAwMDAwMDAwMA0KPiA5ZmMwOiAwMDAwMDAwMCAwMDAwMDAw
+MCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMA0KPiAwMDAwMDAw
+MA0KPiA5ZmUwOiAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAwMCAwMDAwMDAxMyAw
+MDAwMDAwMCAwMDAwMDAwMA0KPiAwMDAwMDAwMA0KPiBbPGMwM2JjNjQ4Pl0gKG5mc19wYWdlX2Fz
+eW5jX2ZsdXNoKSBmcm9tIFs8YzAzYmM4NTg+XQ0KPiAobmZzX3dyaXRlcGFnZXNfY2FsbGJhY2sr
+MHgyOC8weDU0KQ0KPiBbPGMwM2JjODU4Pl0gKG5mc193cml0ZXBhZ2VzX2NhbGxiYWNrKSBmcm9t
+IFs8YzAyYjExZTg+XQ0KPiAod3JpdGVfY2FjaGVfcGFnZXMrMHgyNzgvMHgzNjQpDQo+IFs8YzAy
+YjExZTg+XSAod3JpdGVfY2FjaGVfcGFnZXMpIGZyb20gWzxjMDNiYzk0Yz5dDQo+IChuZnNfd3Jp
+dGVwYWdlcysweGE4LzB4ZTgpDQo+IFs8YzAzYmM5NGM+XSAobmZzX3dyaXRlcGFnZXMpIGZyb20g
+WzxjMDJiMmQ0OD5dDQo+IChkb193cml0ZXBhZ2VzKzB4MzQvMHg4MCkNCj4gWzxjMDJiMmQ0OD5d
+IChkb193cml0ZXBhZ2VzKSBmcm9tIFs8YzAzMTA0MzQ+XQ0KPiAoX193cml0ZWJhY2tfc2luZ2xl
+X2lub2RlKzB4MzQvMHgxOTQpDQo+IFs8YzAzMTA0MzQ+XSAoX193cml0ZWJhY2tfc2luZ2xlX2lu
+b2RlKSBmcm9tIFs8YzAzMTA5Yjg+XQ0KPiAod3JpdGViYWNrX3NiX2lub2RlcysweDFjYy8weDM5
+MCkNCj4gWzxjMDMxMDliOD5dICh3cml0ZWJhY2tfc2JfaW5vZGVzKSBmcm9tIFs8YzAzMTBiZTA+
+XQ0KPiAoX193cml0ZWJhY2tfaW5vZGVzX3diKzB4NjQvMHhhMCkNCj4gWzxjMDMxMGJlMD5dIChf
+X3dyaXRlYmFja19pbm9kZXNfd2IpIGZyb20gWzxjMDMxMGQyYz5dDQo+ICh3Yl93cml0ZWJhY2sr
+MHgxMTAvMHgxOGMpDQo+IFs8YzAzMTBkMmM+XSAod2Jfd3JpdGViYWNrKSBmcm9tIFs8YzAzMTEw
+YTA+XSAod2Jfd29ya2ZuKzB4MWI4LzB4MzA0KQ0KPiBbPGMwMzExMGEwPl0gKHdiX3dvcmtmbikg
+ZnJvbSBbPGMwMjM1YmRjPl0NCj4gKHByb2Nlc3Nfb25lX3dvcmsrMHgxY2MvMHgzMWMpDQo+IFs8
+YzAyMzViZGM+XSAocHJvY2Vzc19vbmVfd29yaykgZnJvbSBbPGMwMjM2MzRjPl0NCj4gKHdvcmtl
+cl90aHJlYWQrMHgyY2MvMHg0MDgpDQo+IFs8YzAyMzYzNGM+XSAod29ya2VyX3RocmVhZCkgZnJv
+bSBbPGMwMjNhNTI4Pl0gKGt0aHJlYWQrMHgxMWMvMHgxM2MpDQo+IFs8YzAyM2E1Mjg+XSAoa3Ro
+cmVhZCkgZnJvbSBbPGMwMjA2ZjM4Pl0gKHJldF9mcm9tX2ZvcmsrMHgxNC8weDNjKQ0KPiBDb2Rl
+OiBlM2EwMjAwMSBlNWMzMjAwNCBlYmY5OGU5NSBlNTk1MzAwYyAoZTU5MzAwMzApDQo+IC0tLVsg
+ZW5kIHRyYWNlIDI3NzFiNzA1MDZhODIzYTMgXS0tLQ0KPiANCj4gc3RhdGljIGludCBuZnNfcGFn
+ZV9hc3luY19mbHVzaChzdHJ1Y3QgbmZzX3BhZ2Vpb19kZXNjcmlwdG9yICpwZ2lvLA0KPiAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgIHN0cnVjdCBwYWdlICpwYWdlKQ0KPiB7DQo+ICAg
+ICAgICAgc3RydWN0IG5mc19wYWdlICpyZXE7DQo+ICAgICAgICAgaW50IHJldCA9IDA7DQo+IA0K
+PiAgICAgICAgIC4uLg0KPiANCj4gICAgICAgICAvKiBJZiB0aGVyZSBpcyBhIGZhdGFsIGVycm9y
+IHRoYXQgY292ZXJzIHRoaXMgd3JpdGUsIGp1c3QNCj4gZXhpdCAqLw0KPiAgICAgICAgIGlmIChu
+ZnNfZXJyb3JfaXNfZmF0YWxfb25fc2VydmVyKHJlcS0+d2JfY29udGV4dC0+ZXJyb3IpKQ0KPiAg
+ICAgICAgICAgICAgICAgZ290byBvdXRfbGF1bmRlcjsNCj4gDQo+IGMwM2JjNjQ0OiAgICAgICBl
+NTk1MzAwYyAgICAgICAgbGRyICAgICByMywgW3I1LCAjMTJdDQo+IGMwM2JjNjQ4OiAgICAgICBl
+NTkzMDAzMCAgICAgICAgbGRyICAgICByMCwgW3IzLCAjNDhdICAgOyAweDMwDQo+IGMwM2JjNjRj
+OiAgICAgICBlYmZmZmQxYiAgICAgICAgYmwgICAgICBjMDNiYmFjMA0KPiA8bmZzX2Vycm9yX2lz
+X2ZhdGFsX29uX3NlcnZlcj4NCj4gDQo+IHJlcS0+d2JfY29udGV4dCBtdXN0IGJlIE5VTEwuDQo+
+IA0KDQpJJ20gY29uZnVzZWQuIElmIHlvdXIgdGVzdCBpbnZvbHZlcyBvbmx5IHdyaXRpbmcgdG8g
+YSBzeXNmcyBmaWxlLCB0aGVuDQp3aHkgaXMgdGhlIE5GUyBjb2RlIGludm9sdmVkIGF0IGFsbD8g
+Q291bGQgdGhpcyBiZSBhIHVzZS1hZnRlci1mcmVlPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0K
+TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
+QHByaW1hcnlkYXRhLmNvbQ0K
 
