@@ -1,108 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:48878 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1754592AbdLFDpE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Dec 2017 22:45:04 -0500
-From: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: pyNFS: testLongCompound
-Date: Wed, 6 Dec 2017 03:45:00 +0000
-Message-ID: <0f10da6c-6001-838d-b603-af31fff0d975@cn.fujitsu.com>
-References: <0a272282-92cd-ce68-1892-591d952b1578@cn.fujitsu.com>
- <20171130163357.GF11610@parsley.fieldses.org>
-In-Reply-To: <20171130163357.GF11610@parsley.fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-wr0-f170.google.com ([209.85.128.170]:35236 "EHLO
+        mail-wr0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752062AbdLFGFI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 01:05:08 -0500
+Received: by mail-wr0-f170.google.com with SMTP id g53so2633905wra.2
+        for <linux-nfs@vger.kernel.org>; Tue, 05 Dec 2017 22:05:07 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <06D33DF4-6BAC-411B-8A08-5098E52720C6@oracle.com>
+References: <20171204190904.18629.70341.stgit@manet.1015granger.net>
+ <20171204191330.18629.77069.stgit@manet.1015granger.net> <CANjDDBg3qsn5oWzmTSi5e3eKJKkdEceh0GUTe+pFDAGCxkDqGg@mail.gmail.com>
+ <06D33DF4-6BAC-411B-8A08-5098E52720C6@oracle.com>
+From: Devesh Sharma <devesh.sharma@broadcom.com>
+Date: Wed, 6 Dec 2017 11:34:26 +0530
+Message-ID: <CANjDDBiTSDfzvj6qLaeEf+-Jx=XA9W2rzA2wW_q45MfauwffPA@mail.gmail.com>
+Subject: Re: [PATCH v1 1/4] nfs: Define NFS_RDMA_PORT
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-VGhpcyBpcyBteSBjb3JyZWN0IGFkZHJlc3MuIFRoZSBmb3JtZXIgbWFpbCB3
-YXMgc2VudCBieSBteSBjb2xsZWFndWUgYmVjYXVzZSBJIGRpZCBub3QgaGF2
-ZSBhY2Nlc3MgdG8gc2VuZGluZyBlbWFpbHMgdG8gdGhlIGV4dGVybmFsIG5l
-dHdvcmsgYXQgdGhhdCB0aW1lLiBMT0wuDQoNCk9uIDEyLzAxLzIwMTcgMTI6
-MzMgQU0sIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gT24gVGh1LCBOb3Yg
-MzAsIDIwMTcgYXQgMDg6NDQ6MzNBTSArMDAwMCwgTHUsIFhpbnl1IHdyb3Rl
-Og0KPj4gSSdtIHB1enpsZWQgYWJvdXQgdGhlIHJlc3VsdCBvZiBuZnM0LjAv
-c2VydmVydGVzdHMvc3RfY29tcG91bmQvdGVzdExvbmdDb21wb3VuZCBpbiBw
-eU5GUy4NCj4+DQo+PiBUaGUgdGVzdCBpbmNyZWFzZXMgdGhlIG51bWJlciBv
-ZiByZXF1ZXN0cyBpbiB0aGUgY29tcG91bmQsIGFuZCBleHBlY3RzIHRoZSBz
-ZXJ2ZXIgdG8gcmV0dXJuIE5GUyA0IEVSUiBSRVNPVVJDRSB3aGVuIHRoZSBu
-dW1iZXIgb2YgcmVxdWVzdHMgcmVhY2hlcyB0aGUgdXBwZXIgbGltaXQgb24g
-dGhlIHNlcnZlciBzaWRlLg0KPj4NCj4+IEluIHRoZSBSSEVMIDcuNEdBIHNv
-dXJjZSBjb2RlLCBhZnRlciBORlM0RVJSX0JBRFhEUiBpcyByZXR1cm5lZCBh
-ZnRlciB0aGUgbnVtYmVyIG9mIHJlcXVlc3RzIHJlYWNoZXMgdGhlIHNlcnZl
-ciBsaW1pdCwgUlBDX0dBUkJBR0VfQVJHUyBpcyByZXR1cm5lZCBpbiB0aGUg
-ZGlzcGF0Y2ggZnVuY3Rpb24uDQo+Pg0KPj4gQWNjb3JkaW5nIHRvIFJGQyA3
-NTMwLCB3aGVuIHRoZSBzZXJ2ZXIgcGFyc2VzIENPTVBPVU5ELCBpdCByZXR1
-cm5zIE5GUyA0IEVSUiBSRVNPVVJDRSBpZiB0aGUgcmVzb3VyY2UgaXMgaW5z
-dWZmaWNpZW50LiBJZiBhbiBlcnJvciBvY2N1cnMgd2hlbiBwYXJzaW5nIFhE
-UiwgTkZTNEVSUl9CQURYRFIgaXMgcmV0dXJuZWQuDQo+PiBSZXF1ZXN0cyBp
-biBDb21wb3VuZCBhcmUgcGFyc2VkIGluIFhEUi4gVGhlcmVmb3JlLCBJIGRl
-Y2lkZSBoZXJlIHRoYXQgTkZTNEVSUl9CQURYRFIgc2hvdWxkIGJlIHJldHVy
-bmVkLiBUaGUgdGVzdGNhc2Ugc2hvdWxkIGJlIHBhc3NlZCBoZXJlLiBIb3dl
-dmVyLHRoZSByZXN1bHQgaXMgZmFpbHVyZS4NCj4gDQo+IEkgYWdyZWUgaXQn
-cyBhIGJ1ZywgdGhvdWdoIG5vdCBsaWtlbHkgdG8gY2F1c2UgcHJvYmxlbXMg
-Zm9yIGNsaWVudHMgaW4NCj4gcHJhY3RpY2UuDQo+IA0KPiBJIHdyb3RlIHRo
-ZSBmb2xsb3dpbmcgcGF0Y2gsIGJ1dCBJIHRoaW5rIGl0J3Mgbm90IHF1aXRl
-IGNvcnJlY3QtLUkgbmVlZA0KPiB0byB0YWtlIGFub3RoZXIgbG9vay4NCj4g
-DQo+IChCeSB0aGUgd2F5IHRoaXMgd2FzIHdyaXR0ZW4gaW4gcmVzcG9uc2Ug
-dG8gYW5vdGhlciByZXBvcnQgZnJvbSB5b3UsIEkNCj4gdGhpbmstLXRoZSBu
-YW1lIHdhcyB0aGUgc2FtZSBidXQgdGhlIGVtYWlsIGFkZHJlc3Mgd2FzIGRp
-ZmZlcmVudC4gIFdoaWNoDQo+IG5hbWUgYW5kIGFkZHJlc3Mgd291bGQgeW91
-IGxpa2UgbWUgdG8gdXNlIHRvIGNyZWRpdCB5b3U/KQ0KPiANCj4gLS1iLg0K
-PiANCj4gY29tbWl0IGZkOWE1ZTFjNDk1Mg0KPiBBdXRob3I6IEouIEJydWNl
-IEZpZWxkcyA8YmZpZWxkc0ByZWRoYXQuY29tPg0KPiBEYXRlOiAgIFdlZCBO
-b3YgMTUgMTI6MzA6MjcgMjAxNyAtMDUwMA0KPiANCj4gICAgIG5mc2Q6IHJl
-dHVybiBSRVNPVVJDRSBub3QgR0FSQkFHRV9BUkdTIG9uIHRvbyBtYW55IG9w
-cw0KPiAgICAgDQo+ICAgICBBIGNsaWVudCB0aGF0IHNlbmRzIG1vcmUgdGhh
-biBhIGh1bmRyZWQgb3BzIGluIGEgc2luZ2xlIGNvbXBvdW5kDQo+ICAgICBj
-dXJyZW50bHkgZ2V0cyBhbiBycGMtbGV2ZWwgR0FSQkFHRV9BUkdTIGVycm9y
-Lg0KPiAgICAgDQo+ICAgICBJdCB3b3VsZCBiZSBtb3JlIGhlbHBmdWwgdG8g
-cmV0dXJuIE5GUzRFUlJfUkVTT1VSQ0UsIHNpbmNlIHRoYXQgZ2l2ZXMNCj4g
-ICAgIHRoZSBjbGllbnQgYSBiZXR0ZXIgaWRlYSBob3cgdG8gcmVjb3ZlciAo
-Zm9yIGV4YW1wbGUgYnkgc3BsaXR0aW5nIHVwIHRoZQ0KPiAgICAgY29tcG91
-bmQgaW50byBzbWFsbGVyIGNvbXBvdW5kcykuDQo+ICAgICANCj4gICAgIFRo
-aXMgaXMgYWxsIGEgYml0IGFjYWRlbWljIHNpbmNlIHdlJ3ZlIG5ldmVyIGFj
-dHVhbGx5IHNlZW4gYSByZWFzb24gZm9yDQo+ICAgICBjbGllbnRzIHRvIHNl
-bmQgc3VjaCBsb25nIGNvbXBvdW5kcywgYnV0IHdlIG1heSBhcyB3ZWxsIGZp
-eCBpdC4NCj4gICAgIA0KPiAgICAgV2hpbGUgd2UncmUgdGhlcmUsIGp1c3Qg
-dXNlIE5GU0Q0X01BWF9PUFNfUEVSX0NPTVBPVU5EID09IDE2LCB0aGUNCj4g
-ICAgIGNvbnN0YW50IHdlIGFscmVhZHkgdXNlIGluIHRoZSA0LjEgY2FzZSwg
-aW5zdGVhZCBvZiBoYXJkLWNvZGluZyAxMDAuDQo+ICAgICBDaGFuY2VzIGFu
-eW9uZSBhY3R1YWxseSB1c2VzIGV2ZW4gMTYgb3BzIHBlciBjb21wb3VuZCBh
-cmUgc21hbGwgZW5vdWdoDQo+ICAgICB0aGF0IEkgdGhpbmsgdGhlcmUncyBh
-IG5lZ2xpYmxlIHJpc2sgb3IgYW55IHJlZ3Jlc3Npb24uDQo+ICAgICANCj4g
-ICAgIFRoaXMgZml4ZXMgcHluZnMgdGVzdCBDT01QNi4NCj4gICAgIA0KPiAg
-ICAgUmVwb3J0ZWQtYnk6IHN1bmxpYW53ZW4gPHN1bmx3LmZuc3RAY24uZnVq
-aXRzdS5jb20+DQo+ICAgICBTaWduZWQtb2ZmLWJ5OiBKLiBCcnVjZSBGaWVs
-ZHMgPGJmaWVsZHNAcmVkaGF0LmNvbT4NCj4gDQo+IGRpZmYgLS1naXQgYS9m
-cy9uZnNkL25mczRwcm9jLmMgYi9mcy9uZnNkL25mczRwcm9jLmMNCj4gaW5k
-ZXggMDA4ZWEwYjYyN2QwLi5jOTY2OWQ3NWMxNTcgMTAwNjQ0DQo+IC0tLSBh
-L2ZzL25mc2QvbmZzNHByb2MuYw0KPiArKysgYi9mcy9uZnNkL25mczRwcm9j
-LmMNCj4gQEAgLTE3MDMsNiArMTcwMyw5IEBAIG5mc2Q0X3Byb2NfY29tcG91
-bmQoc3RydWN0IHN2Y19ycXN0ICpycXN0cCkNCj4gIAlzdGF0dXMgPSBuZnNl
-cnJfbWlub3JfdmVyc19taXNtYXRjaDsNCj4gIAlpZiAobmZzZF9taW5vcnZl
-cnNpb24oYXJncy0+bWlub3J2ZXJzaW9uLCBORlNEX1RFU1QpIDw9IDApDQo+
-ICAJCWdvdG8gb3V0Ow0KPiArCXN0YXR1cyA9IG5mc2Vycl9yZXNvdXJjZTsN
-Cj4gKwlpZiAocmVzcC0+b3BjbnQgPiBORlNEX01BWF9PUFNfUEVSX0NPTVBP
-VU5EKQ0KPiArCQlnb3RvIG91dDsNCj4gIA0KPiAgCXN0YXR1cyA9IG5mczQx
-X2NoZWNrX29wX29yZGVyaW5nKGFyZ3MpOw0KPiAgCWlmIChzdGF0dXMpIHsN
-Cj4gZGlmZiAtLWdpdCBhL2ZzL25mc2QvbmZzNHhkci5jIGIvZnMvbmZzZC9u
-ZnM0eGRyLmMNCj4gaW5kZXggMmM2MWM2YjhhZTA5Li41ZGNkN2NiNDViMmQg
-MTAwNjQ0DQo+IC0tLSBhL2ZzL25mc2QvbmZzNHhkci5jDQo+ICsrKyBiL2Zz
-L25mc2QvbmZzNHhkci5jDQo+IEBAIC0xOTE4LDggKzE5MTgsMTMgQEAgbmZz
-ZDRfZGVjb2RlX2NvbXBvdW5kKHN0cnVjdCBuZnNkNF9jb21wb3VuZGFyZ3Mg
-KmFyZ3ApDQo+ICANCj4gIAlpZiAoYXJncC0+dGFnbGVuID4gTkZTRDRfTUFY
-X1RBR0xFTikNCj4gIAkJZ290byB4ZHJfZXJyb3I7DQo+IC0JaWYgKGFyZ3At
-Pm9wY250ID4gMTAwKQ0KPiAtCQlnb3RvIHhkcl9lcnJvcjsNCj4gKwkvKg0K
-PiArCSAqIE5GUzRFUlJfUkVTT1VSQ0UgaXMgYSBtb3JlIGhlbHBmdWwgZXJy
-b3IgdGhhbiBHQVJCQUdFX0FSR1MNCj4gKwkgKiBoZXJlLCBzbyB3ZSByZXR1
-cm4gc3VjY2VzcyBhdCB0aGUgeGRyIGxldmVsIHNvIHRoYXQNCj4gKwkgKiBu
-ZnNkNF9wcm9jIGNhbiBoYW5kbGUgdGhpcyBpcyBhbiBORlMtbGV2ZWwgZXJy
-b3IuDQo+ICsJICovDQo+ICsJaWYgKGFyZ3AtPm9wY250ID4gTkZTRF9NQVhf
-T1BTX1BFUl9DT01QT1VORCkNCj4gKwkJcmV0dXJuIDA7DQo+ICANCj4gIAlp
-ZiAoYXJncC0+b3BjbnQgPiBBUlJBWV9TSVpFKGFyZ3AtPmlvcHMpKSB7DQo+
-ICAJCWFyZ3AtPm9wcyA9IGt6YWxsb2MoYXJncC0+b3BjbnQgKiBzaXplb2Yo
-KmFyZ3AtPm9wcyksIEdGUF9LRVJORUwpOw0KPiANCj4gDQo+IC4NCj4gDQoN
-Ci0tIA0KTHUgWGlueXUNCi0tDQpCZXN0IFJlZ2FyZHMhDQoKCg==
+Oh! apologies if I was not clear what I wanted to say. I was thinking
+this change will avoid the step to write the nfsrdma port number into
+/proc/fs/nfsd/portlist file after starting the nfs server. This is
+step is a part of configuring nfs-rdma server. However, for tcp such
+entries are present by default in this file.
+
+-Regards
+Devesh
+
+On Wed, Dec 6, 2017 at 12:19 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>> On Dec 5, 2017, at 10:09 AM, Devesh Sharma <devesh.sharma@broadcom.com> wrote:
+>>
+>> Hi Chuck,
+>>
+>> Will this change avoid the "echo rdma 20049" on the nfs server during
+>> nfs server start?
+>
+> I'm not familiar with this issue. Is there a bug report ?
+>
+>
+>> -Regards
+>> Devesh
+>>
+>> On Tue, Dec 5, 2017 at 12:43 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> The NFS/RDMA port assignment is specified in Section 9 of RFC 8267.
+>>>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> include/uapi/linux/nfs.h |    1 +
+>>> 1 file changed, 1 insertion(+)
+>>>
+>>> diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
+>>> index 057d22a..946cb62 100644
+>>> --- a/include/uapi/linux/nfs.h
+>>> +++ b/include/uapi/linux/nfs.h
+>>> @@ -12,6 +12,7 @@
+>>>
+>>> #define NFS_PROGRAM    100003
+>>> #define NFS_PORT       2049
+>>> +#define NFS_RDMA_PORT  20049
+>>> #define NFS_MAXDATA    8192
+>>> #define NFS_MAXPATHLEN 1024
+>>> #define NFS_MAXNAMLEN  255
+>
+> --
+> Chuck Lever
+>
+>
+>
