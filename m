@@ -1,202 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46397 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753072AbdLEXef (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 5 Dec 2017 18:34:35 -0500
-From: NeilBrown <neilb@suse.com>
-To: Joshua Watt <jpewhacker@gmail.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>
-Date: Wed, 06 Dec 2017 10:34:25 +1100
-Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        David Howells <dhowells@redhat.com>
-Cc: linux-api@vger.kernel.org
-Subject: Re: [RFC v4 0/9] NFS Force Unmounting
-In-Reply-To: <1512398194.7031.56.camel@gmail.com>
-References: <20171117174552.18722-1-JPEWhacker@gmail.com> <1512398194.7031.56.camel@gmail.com>
-Message-ID: <87indksq9q.fsf@notabene.neil.brown.name>
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:48878 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1754592AbdLFDpE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Dec 2017 22:45:04 -0500
+From: "Lu, Xinyu" <luxy.fnst@cn.fujitsu.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: pyNFS: testLongCompound
+Date: Wed, 6 Dec 2017 03:45:00 +0000
+Message-ID: <0f10da6c-6001-838d-b603-af31fff0d975@cn.fujitsu.com>
+References: <0a272282-92cd-ce68-1892-591d952b1578@cn.fujitsu.com>
+ <20171130163357.GF11610@parsley.fieldses.org>
+In-Reply-To: <20171130163357.GF11610@parsley.fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Mon, Dec 04 2017, Joshua Watt wrote:
-
-> On Fri, 2017-11-17 at 11:45 -0600, Joshua Watt wrote:
->> Latest attempt at unifying the various constraints for force
->> umounting
->> NFS servers that have disappeared in a timely manner. Namely:
->>   * umount2(..., MNT_FORCE) should not be made stronger, unless we
->> know
->>     this is the final umount()
->>   * The "failed server" state should be reversible
->>   * The mechanism should be able to "unstick" a sync(2) that is stuck
->> on
->>     an unresponsive server
->>=20
->> I believe the proposal satisfies all of these concerns. There are a
->> few
->> major components to this proposal:
->>  1) The umount_begin superblock operation now has a corresponding
->>     umount_end operation. This is invoked by umount() when MNT_FORCE
->> is
->>     specified (like umount_begin()), but the actual unmount failed
->> (i.e.
->>     the mount is busy).
->>  2) Instead of killing all the RPC queued at a single point in time,
->> the
->>     NFS mount now kills all queue RPCs and all RPCs that get queued
->>     between nfs_umount_begin() and nfs_umount_end(). I believe this
->> is
->>     not a significant change in behavior because there were always
->> races
->>     between queuing RPCs and killing them in nfs_umount_begin().
->>  3) nfs_umount_end() is *not* called when MNT_DETACH is specified.
->> This
->>     is the indication that the user is done with this mount and all
->>     RPCs will be killed until the mount finally gets removed.
->>  4) The new "transient" mount option prevents sharing nfs_clients
->>     between multiple superblocks. The only exception to this is when
->> the
->>     kernel does an automatic mount to cross a device boundary ("xdev"
->>     NFS mount). In this case, the existing code always shares the
->>     existing nfs_client from parent superblock. The "transient" mount
->>     option implies "nosharecache", as it doesn't make sense to share
->>     superblocks if clients aren't shared.
->>  5) If the "transient" mount option is specified (and hence the
->>     nfs_client is not shared), MNT_FORCE kills all RPCs for the
->> entire
->>     nfs_client (and all its nfs_servers). This effectively enables
->> the
->>     "burn down the forest" option when combined with MNT_DETACH.
->>=20
->> The choice to use MNT_FORCE as the mechanism for triggering this
->> behavior stems from the desire to unstick sync(2) calls that might be
->> blocked on a non-responsive NFS server. While it was previously
->> discussed to remount with a new mount option to enable this behavior,
->> this cannot release the blocked sync(2) call because both
->> sync_fileystem() and do_remount() lock the struct superblock-
->> >s_umount
->> reader-writer lock. As such, a remount will block until the sync(2)
->> finishes, which is undesirable. umount2() doesn't have this
->> restriction
->> and can unblock the sync(2) call.
->>=20
->> For the most part, all existing behavior is unchanged if the
->> "transient"
->> option is not specified. umount -f continues to behave as is has, but
->> umount -fl (see note below) now does a more aggressive kill to get
->> everything out of there and allow unmounting in a more timely manner.
->> Note that there will probably be some communication with the server
->> still, as destruction of the NFS client ID and such will occur when
->> the
->> last reference is removed. If the server is truly gone, this can
->> result
->> in long blocks at that time.
->>=20
->> If it is known at mount time that the server might be disappearing,
->> it
->> should be mounted with "transient". Doing this will allow mount -fl
->> to
->> do a more complete cleanup and prevent all communication with the
->> server, which should allow a timely cleanup in all cases.
->>=20
->> Notes:
->>=20
->> Until recently, libmount did not allow a detached and lazy mount at
->> the
->> same time. This was recently fixed (see
->> https://marc.info/?l=3Dutil-linux-ng&m=3D151000714401929&w=3D2). If you
->> want
->> to test this, you may need to write a simple test program that
->> directly
->> calls umount2() with MNT_FORCE | MNT_DETACH.
->>=20
->> Thank you all again for your time and comments,
->> Joshua Watt
->>=20
->> Joshua Watt (9):
->>   SUNRPC: Add flag to kill new tasks
->>   SUNRPC: Expose kill_new_tasks in debugfs
->>   SUNRPC: Simplify client shutdown
->>   namespace: Add umount_end superblock operation
->>   NFS: Kill RPCs for the duration of umount
->>   NFS: Add debugfs for nfs_server and nfs_client
->>   NFS: Add transient mount option
->>   NFS: Don't shared transient clients
->>   NFS: Kill all client RPCs if transient
->>=20
->>  fs/namespace.c                 |  22 ++++++-
->>  fs/nfs/Makefile                |   2 +-
->>  fs/nfs/client.c                |  96 +++++++++++++++++++++++++--
->>  fs/nfs/debugfs.c               | 143
->> +++++++++++++++++++++++++++++++++++++++++
->>  fs/nfs/inode.c                 |   5 ++
->>  fs/nfs/internal.h              |  11 ++++
->>  fs/nfs/nfs3client.c            |   2 +
->>  fs/nfs/nfs4client.c            |   5 ++
->>  fs/nfs/nfs4super.c             |   1 +
->>  fs/nfs/super.c                 |  81 ++++++++++++++++++++---
->>  include/linux/fs.h             |   1 +
->>  include/linux/nfs_fs_sb.h      |   6 ++
->>  include/linux/sunrpc/clnt.h    |   1 +
->>  include/uapi/linux/nfs_mount.h |   1 +
->>  net/sunrpc/clnt.c              |  13 ++--
->>  net/sunrpc/debugfs.c           |   5 ++
->>  net/sunrpc/sched.c             |   3 +
->>  17 files changed, 372 insertions(+), 26 deletions(-)
->>  create mode 100644 fs/nfs/debugfs.c
->>=20
->
-> Anyone have any comments on this? Sorry fo the churn, it took a few
-> tries to get this to where it would work. I also realize I should have
-> put all my RFC patchsets in-reply-to each other instead of starting a
-> new thread for each one.
-
-The new semantic for MNT_DETACH|MNT_FORCE is interesting.
-As it was never possible before (from /bin/umount), it should be safe to
-add a new meaning.
-The meaning is effectively "detach the filesystem from the namespace and
-detach the transport from the filesystem", which sounds like it is
-useful.
-It is worth highlighting this, and maybe even cc:ing
-linux-api@vger.kernel.org ... done that.
-
-The new umount_end to match umount_begin seems to make sense.  It can
-replace a racy semantic with a more predictable one, and that is good.
-As you say, we cannot do anything really useful here with remount as
-sync can block it by holding ->s_umount.
-
-I'm not sure about the new "transient" option.  It is probably a good
-idea but I haven't yet wrapped my mind around exactly what it does so I
-don't want to commit just yet.
-
-Thanks,
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlonLQEACgkQOeye3VZi
-gbmLsw//Zd1FLFG0ypQ47KsEI7TUjoDtdc0663STXVCHfOzhVCBa1ai9YWH+B/3A
-O+brR1vYX1rWIvvoRN7UQZzStRjpraSS764NCiyNiI+H/tYAE4BFOwTZOdro6be4
-yOqCTQU4G4/mK/7vL5gjSrSQi75yTo3kJqBRCnnGzgsQWWTfuXkY5sJQjRdWf234
-wqJvw1eS6Uee2tXwy2q+uIi91oUJW3oALauOgVXRZEcj8D1AwGiLX0+U6/u5nRuU
-S4C8c3F1vDlYGYxckNMbgvVLuR0vle6hACpmtnOIdkJQzDjIG82F1K8MqK+HIL5x
-xHdMFKmJkz0RRrExZPXWK26hCB1CDA7iah+Hxbk1C40vMSz81GHS2cUkV+y1FIml
-CP53ZigVdTggXDss/iDMQL3BwS+aToVw+olqVbsI0gOE0qp8OiXnrhwYWHCinG6U
-8+7BM3xqIZ2YHhr5f61PRmzU9zaS5s92lzThD4sRhirRKzOEyFz+dBBrvi5W3FC/
-r05/5El0k19FPYP4xUwVasoNlw2ZQD8z6MkBCyMsGfnU7GLGWSBTffVa+evR3XsD
-CBXiVbS/t1NZ9dkcRxD6i2wzzO1tsHuZBiSAzWCOUTMi+bohlwHZFLDFPUADpmXT
-DvlYJ8muqktuKPYjEZROg6kxXKK7StPCtgVB0SzidKq9GVC1KpM=
-=B2LO
------END PGP SIGNATURE-----
---=-=-=--
+VGhpcyBpcyBteSBjb3JyZWN0IGFkZHJlc3MuIFRoZSBmb3JtZXIgbWFpbCB3
+YXMgc2VudCBieSBteSBjb2xsZWFndWUgYmVjYXVzZSBJIGRpZCBub3QgaGF2
+ZSBhY2Nlc3MgdG8gc2VuZGluZyBlbWFpbHMgdG8gdGhlIGV4dGVybmFsIG5l
+dHdvcmsgYXQgdGhhdCB0aW1lLiBMT0wuDQoNCk9uIDEyLzAxLzIwMTcgMTI6
+MzMgQU0sIEouIEJydWNlIEZpZWxkcyB3cm90ZToNCj4gT24gVGh1LCBOb3Yg
+MzAsIDIwMTcgYXQgMDg6NDQ6MzNBTSArMDAwMCwgTHUsIFhpbnl1IHdyb3Rl
+Og0KPj4gSSdtIHB1enpsZWQgYWJvdXQgdGhlIHJlc3VsdCBvZiBuZnM0LjAv
+c2VydmVydGVzdHMvc3RfY29tcG91bmQvdGVzdExvbmdDb21wb3VuZCBpbiBw
+eU5GUy4NCj4+DQo+PiBUaGUgdGVzdCBpbmNyZWFzZXMgdGhlIG51bWJlciBv
+ZiByZXF1ZXN0cyBpbiB0aGUgY29tcG91bmQsIGFuZCBleHBlY3RzIHRoZSBz
+ZXJ2ZXIgdG8gcmV0dXJuIE5GUyA0IEVSUiBSRVNPVVJDRSB3aGVuIHRoZSBu
+dW1iZXIgb2YgcmVxdWVzdHMgcmVhY2hlcyB0aGUgdXBwZXIgbGltaXQgb24g
+dGhlIHNlcnZlciBzaWRlLg0KPj4NCj4+IEluIHRoZSBSSEVMIDcuNEdBIHNv
+dXJjZSBjb2RlLCBhZnRlciBORlM0RVJSX0JBRFhEUiBpcyByZXR1cm5lZCBh
+ZnRlciB0aGUgbnVtYmVyIG9mIHJlcXVlc3RzIHJlYWNoZXMgdGhlIHNlcnZl
+ciBsaW1pdCwgUlBDX0dBUkJBR0VfQVJHUyBpcyByZXR1cm5lZCBpbiB0aGUg
+ZGlzcGF0Y2ggZnVuY3Rpb24uDQo+Pg0KPj4gQWNjb3JkaW5nIHRvIFJGQyA3
+NTMwLCB3aGVuIHRoZSBzZXJ2ZXIgcGFyc2VzIENPTVBPVU5ELCBpdCByZXR1
+cm5zIE5GUyA0IEVSUiBSRVNPVVJDRSBpZiB0aGUgcmVzb3VyY2UgaXMgaW5z
+dWZmaWNpZW50LiBJZiBhbiBlcnJvciBvY2N1cnMgd2hlbiBwYXJzaW5nIFhE
+UiwgTkZTNEVSUl9CQURYRFIgaXMgcmV0dXJuZWQuDQo+PiBSZXF1ZXN0cyBp
+biBDb21wb3VuZCBhcmUgcGFyc2VkIGluIFhEUi4gVGhlcmVmb3JlLCBJIGRl
+Y2lkZSBoZXJlIHRoYXQgTkZTNEVSUl9CQURYRFIgc2hvdWxkIGJlIHJldHVy
+bmVkLiBUaGUgdGVzdGNhc2Ugc2hvdWxkIGJlIHBhc3NlZCBoZXJlLiBIb3dl
+dmVyLHRoZSByZXN1bHQgaXMgZmFpbHVyZS4NCj4gDQo+IEkgYWdyZWUgaXQn
+cyBhIGJ1ZywgdGhvdWdoIG5vdCBsaWtlbHkgdG8gY2F1c2UgcHJvYmxlbXMg
+Zm9yIGNsaWVudHMgaW4NCj4gcHJhY3RpY2UuDQo+IA0KPiBJIHdyb3RlIHRo
+ZSBmb2xsb3dpbmcgcGF0Y2gsIGJ1dCBJIHRoaW5rIGl0J3Mgbm90IHF1aXRl
+IGNvcnJlY3QtLUkgbmVlZA0KPiB0byB0YWtlIGFub3RoZXIgbG9vay4NCj4g
+DQo+IChCeSB0aGUgd2F5IHRoaXMgd2FzIHdyaXR0ZW4gaW4gcmVzcG9uc2Ug
+dG8gYW5vdGhlciByZXBvcnQgZnJvbSB5b3UsIEkNCj4gdGhpbmstLXRoZSBu
+YW1lIHdhcyB0aGUgc2FtZSBidXQgdGhlIGVtYWlsIGFkZHJlc3Mgd2FzIGRp
+ZmZlcmVudC4gIFdoaWNoDQo+IG5hbWUgYW5kIGFkZHJlc3Mgd291bGQgeW91
+IGxpa2UgbWUgdG8gdXNlIHRvIGNyZWRpdCB5b3U/KQ0KPiANCj4gLS1iLg0K
+PiANCj4gY29tbWl0IGZkOWE1ZTFjNDk1Mg0KPiBBdXRob3I6IEouIEJydWNl
+IEZpZWxkcyA8YmZpZWxkc0ByZWRoYXQuY29tPg0KPiBEYXRlOiAgIFdlZCBO
+b3YgMTUgMTI6MzA6MjcgMjAxNyAtMDUwMA0KPiANCj4gICAgIG5mc2Q6IHJl
+dHVybiBSRVNPVVJDRSBub3QgR0FSQkFHRV9BUkdTIG9uIHRvbyBtYW55IG9w
+cw0KPiAgICAgDQo+ICAgICBBIGNsaWVudCB0aGF0IHNlbmRzIG1vcmUgdGhh
+biBhIGh1bmRyZWQgb3BzIGluIGEgc2luZ2xlIGNvbXBvdW5kDQo+ICAgICBj
+dXJyZW50bHkgZ2V0cyBhbiBycGMtbGV2ZWwgR0FSQkFHRV9BUkdTIGVycm9y
+Lg0KPiAgICAgDQo+ICAgICBJdCB3b3VsZCBiZSBtb3JlIGhlbHBmdWwgdG8g
+cmV0dXJuIE5GUzRFUlJfUkVTT1VSQ0UsIHNpbmNlIHRoYXQgZ2l2ZXMNCj4g
+ICAgIHRoZSBjbGllbnQgYSBiZXR0ZXIgaWRlYSBob3cgdG8gcmVjb3ZlciAo
+Zm9yIGV4YW1wbGUgYnkgc3BsaXR0aW5nIHVwIHRoZQ0KPiAgICAgY29tcG91
+bmQgaW50byBzbWFsbGVyIGNvbXBvdW5kcykuDQo+ICAgICANCj4gICAgIFRo
+aXMgaXMgYWxsIGEgYml0IGFjYWRlbWljIHNpbmNlIHdlJ3ZlIG5ldmVyIGFj
+dHVhbGx5IHNlZW4gYSByZWFzb24gZm9yDQo+ICAgICBjbGllbnRzIHRvIHNl
+bmQgc3VjaCBsb25nIGNvbXBvdW5kcywgYnV0IHdlIG1heSBhcyB3ZWxsIGZp
+eCBpdC4NCj4gICAgIA0KPiAgICAgV2hpbGUgd2UncmUgdGhlcmUsIGp1c3Qg
+dXNlIE5GU0Q0X01BWF9PUFNfUEVSX0NPTVBPVU5EID09IDE2LCB0aGUNCj4g
+ICAgIGNvbnN0YW50IHdlIGFscmVhZHkgdXNlIGluIHRoZSA0LjEgY2FzZSwg
+aW5zdGVhZCBvZiBoYXJkLWNvZGluZyAxMDAuDQo+ICAgICBDaGFuY2VzIGFu
+eW9uZSBhY3R1YWxseSB1c2VzIGV2ZW4gMTYgb3BzIHBlciBjb21wb3VuZCBh
+cmUgc21hbGwgZW5vdWdoDQo+ICAgICB0aGF0IEkgdGhpbmsgdGhlcmUncyBh
+IG5lZ2xpYmxlIHJpc2sgb3IgYW55IHJlZ3Jlc3Npb24uDQo+ICAgICANCj4g
+ICAgIFRoaXMgZml4ZXMgcHluZnMgdGVzdCBDT01QNi4NCj4gICAgIA0KPiAg
+ICAgUmVwb3J0ZWQtYnk6IHN1bmxpYW53ZW4gPHN1bmx3LmZuc3RAY24uZnVq
+aXRzdS5jb20+DQo+ICAgICBTaWduZWQtb2ZmLWJ5OiBKLiBCcnVjZSBGaWVs
+ZHMgPGJmaWVsZHNAcmVkaGF0LmNvbT4NCj4gDQo+IGRpZmYgLS1naXQgYS9m
+cy9uZnNkL25mczRwcm9jLmMgYi9mcy9uZnNkL25mczRwcm9jLmMNCj4gaW5k
+ZXggMDA4ZWEwYjYyN2QwLi5jOTY2OWQ3NWMxNTcgMTAwNjQ0DQo+IC0tLSBh
+L2ZzL25mc2QvbmZzNHByb2MuYw0KPiArKysgYi9mcy9uZnNkL25mczRwcm9j
+LmMNCj4gQEAgLTE3MDMsNiArMTcwMyw5IEBAIG5mc2Q0X3Byb2NfY29tcG91
+bmQoc3RydWN0IHN2Y19ycXN0ICpycXN0cCkNCj4gIAlzdGF0dXMgPSBuZnNl
+cnJfbWlub3JfdmVyc19taXNtYXRjaDsNCj4gIAlpZiAobmZzZF9taW5vcnZl
+cnNpb24oYXJncy0+bWlub3J2ZXJzaW9uLCBORlNEX1RFU1QpIDw9IDApDQo+
+ICAJCWdvdG8gb3V0Ow0KPiArCXN0YXR1cyA9IG5mc2Vycl9yZXNvdXJjZTsN
+Cj4gKwlpZiAocmVzcC0+b3BjbnQgPiBORlNEX01BWF9PUFNfUEVSX0NPTVBP
+VU5EKQ0KPiArCQlnb3RvIG91dDsNCj4gIA0KPiAgCXN0YXR1cyA9IG5mczQx
+X2NoZWNrX29wX29yZGVyaW5nKGFyZ3MpOw0KPiAgCWlmIChzdGF0dXMpIHsN
+Cj4gZGlmZiAtLWdpdCBhL2ZzL25mc2QvbmZzNHhkci5jIGIvZnMvbmZzZC9u
+ZnM0eGRyLmMNCj4gaW5kZXggMmM2MWM2YjhhZTA5Li41ZGNkN2NiNDViMmQg
+MTAwNjQ0DQo+IC0tLSBhL2ZzL25mc2QvbmZzNHhkci5jDQo+ICsrKyBiL2Zz
+L25mc2QvbmZzNHhkci5jDQo+IEBAIC0xOTE4LDggKzE5MTgsMTMgQEAgbmZz
+ZDRfZGVjb2RlX2NvbXBvdW5kKHN0cnVjdCBuZnNkNF9jb21wb3VuZGFyZ3Mg
+KmFyZ3ApDQo+ICANCj4gIAlpZiAoYXJncC0+dGFnbGVuID4gTkZTRDRfTUFY
+X1RBR0xFTikNCj4gIAkJZ290byB4ZHJfZXJyb3I7DQo+IC0JaWYgKGFyZ3At
+Pm9wY250ID4gMTAwKQ0KPiAtCQlnb3RvIHhkcl9lcnJvcjsNCj4gKwkvKg0K
+PiArCSAqIE5GUzRFUlJfUkVTT1VSQ0UgaXMgYSBtb3JlIGhlbHBmdWwgZXJy
+b3IgdGhhbiBHQVJCQUdFX0FSR1MNCj4gKwkgKiBoZXJlLCBzbyB3ZSByZXR1
+cm4gc3VjY2VzcyBhdCB0aGUgeGRyIGxldmVsIHNvIHRoYXQNCj4gKwkgKiBu
+ZnNkNF9wcm9jIGNhbiBoYW5kbGUgdGhpcyBpcyBhbiBORlMtbGV2ZWwgZXJy
+b3IuDQo+ICsJICovDQo+ICsJaWYgKGFyZ3AtPm9wY250ID4gTkZTRF9NQVhf
+T1BTX1BFUl9DT01QT1VORCkNCj4gKwkJcmV0dXJuIDA7DQo+ICANCj4gIAlp
+ZiAoYXJncC0+b3BjbnQgPiBBUlJBWV9TSVpFKGFyZ3AtPmlvcHMpKSB7DQo+
+ICAJCWFyZ3AtPm9wcyA9IGt6YWxsb2MoYXJncC0+b3BjbnQgKiBzaXplb2Yo
+KmFyZ3AtPm9wcyksIEdGUF9LRVJORUwpOw0KPiANCj4gDQo+IC4NCj4gDQoN
+Ci0tIA0KTHUgWGlueXUNCi0tDQpCZXN0IFJlZ2FyZHMhDQoKCg==
