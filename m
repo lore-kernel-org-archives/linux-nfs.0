@@ -1,204 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yb0-f193.google.com ([209.85.213.193]:45366 "EHLO
-        mail-yb0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751628AbdLFNDn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 08:03:43 -0500
-Received: by mail-yb0-f193.google.com with SMTP id 184so1496038ybw.12
-        for <linux-nfs@vger.kernel.org>; Wed, 06 Dec 2017 05:03:43 -0800 (PST)
-Message-ID: <1512565420.4048.21.camel@redhat.com>
-Subject: Re: [RFC v4 0/9] NFS Force Unmounting
-From: Jeff Layton <jlayton@redhat.com>
-To: NeilBrown <neilb@suse.com>, Joshua Watt <jpewhacker@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J . Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-        David Howells <dhowells@redhat.com>, linux-api@vger.kernel.org
-Date: Wed, 06 Dec 2017 08:03:40 -0500
-In-Reply-To: <87indksq9q.fsf@notabene.neil.brown.name>
-References: <20171117174552.18722-1-JPEWhacker@gmail.com>
-         <1512398194.7031.56.camel@gmail.com>
-         <87indksq9q.fsf@notabene.neil.brown.name>
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:36305 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751463AbdLFObr (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 09:31:47 -0500
+MIME-Version: 1.0
+In-Reply-To: <CAMuHMdWm8SGtekpdGVKsDi4L4sgvVZDFoC5wnSggVXFRt-irzA@mail.gmail.com>
+References: <CAMuHMdWm8SGtekpdGVKsDi4L4sgvVZDFoC5wnSggVXFRt-irzA@mail.gmail.com>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Wed, 6 Dec 2017 15:31:46 +0100
+Message-ID: <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com>
+Subject: Re: NFS crash, hashed pointers in backtrace
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: "Tobin C. Harding" <me@tobin.cc>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Linux-Renesas <linux-renesas-soc@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2017-12-06 at 10:34 +1100, NeilBrown wrote:
-> On Mon, Dec 04 2017, Joshua Watt wrote:
-> 
-> > On Fri, 2017-11-17 at 11:45 -0600, Joshua Watt wrote:
-> > > Latest attempt at unifying the various constraints for force
-> > > umounting
-> > > NFS servers that have disappeared in a timely manner. Namely:
-> > >   * umount2(..., MNT_FORCE) should not be made stronger, unless we
-> > > know
-> > >     this is the final umount()
-> > >   * The "failed server" state should be reversible
-> > >   * The mechanism should be able to "unstick" a sync(2) that is stuck
-> > > on
-> > >     an unresponsive server
-> > > 
-> > > I believe the proposal satisfies all of these concerns. There are a
-> > > few
-> > > major components to this proposal:
-> > >  1) The umount_begin superblock operation now has a corresponding
-> > >     umount_end operation. This is invoked by umount() when MNT_FORCE
-> > > is
-> > >     specified (like umount_begin()), but the actual unmount failed
-> > > (i.e.
-> > >     the mount is busy).
-> > >  2) Instead of killing all the RPC queued at a single point in time,
-> > > the
-> > >     NFS mount now kills all queue RPCs and all RPCs that get queued
-> > >     between nfs_umount_begin() and nfs_umount_end(). I believe this
-> > > is
-> > >     not a significant change in behavior because there were always
-> > > races
-> > >     between queuing RPCs and killing them in nfs_umount_begin().
-> > >  3) nfs_umount_end() is *not* called when MNT_DETACH is specified.
-> > > This
-> > >     is the indication that the user is done with this mount and all
-> > >     RPCs will be killed until the mount finally gets removed.
-> > >  4) The new "transient" mount option prevents sharing nfs_clients
-> > >     between multiple superblocks. The only exception to this is when
-> > > the
-> > >     kernel does an automatic mount to cross a device boundary ("xdev"
-> > >     NFS mount). In this case, the existing code always shares the
-> > >     existing nfs_client from parent superblock. The "transient" mount
-> > >     option implies "nosharecache", as it doesn't make sense to share
-> > >     superblocks if clients aren't shared.
-> > >  5) If the "transient" mount option is specified (and hence the
-> > >     nfs_client is not shared), MNT_FORCE kills all RPCs for the
-> > > entire
-> > >     nfs_client (and all its nfs_servers). This effectively enables
-> > > the
-> > >     "burn down the forest" option when combined with MNT_DETACH.
-> > > 
-> > > The choice to use MNT_FORCE as the mechanism for triggering this
-> > > behavior stems from the desire to unstick sync(2) calls that might be
-> > > blocked on a non-responsive NFS server. While it was previously
-> > > discussed to remount with a new mount option to enable this behavior,
-> > > this cannot release the blocked sync(2) call because both
-> > > sync_fileystem() and do_remount() lock the struct superblock-
-> > > > s_umount
-> > > 
-> > > reader-writer lock. As such, a remount will block until the sync(2)
-> > > finishes, which is undesirable. umount2() doesn't have this
-> > > restriction
-> > > and can unblock the sync(2) call.
-> > > 
-> > > For the most part, all existing behavior is unchanged if the
-> > > "transient"
-> > > option is not specified. umount -f continues to behave as is has, but
-> > > umount -fl (see note below) now does a more aggressive kill to get
-> > > everything out of there and allow unmounting in a more timely manner.
-> > > Note that there will probably be some communication with the server
-> > > still, as destruction of the NFS client ID and such will occur when
-> > > the
-> > > last reference is removed. If the server is truly gone, this can
-> > > result
-> > > in long blocks at that time.
-> > > 
-> > > If it is known at mount time that the server might be disappearing,
-> > > it
-> > > should be mounted with "transient". Doing this will allow mount -fl
-> > > to
-> > > do a more complete cleanup and prevent all communication with the
-> > > server, which should allow a timely cleanup in all cases.
-> > > 
-> > > Notes:
-> > > 
-> > > Until recently, libmount did not allow a detached and lazy mount at
-> > > the
-> > > same time. This was recently fixed (see
-> > > https://marc.info/?l=util-linux-ng&m=151000714401929&w=2). If you
-> > > want
-> > > to test this, you may need to write a simple test program that
-> > > directly
-> > > calls umount2() with MNT_FORCE | MNT_DETACH.
-> > > 
-> > > Thank you all again for your time and comments,
-> > > Joshua Watt
-> > > 
-> > > Joshua Watt (9):
-> > >   SUNRPC: Add flag to kill new tasks
-> > >   SUNRPC: Expose kill_new_tasks in debugfs
-> > >   SUNRPC: Simplify client shutdown
-> > >   namespace: Add umount_end superblock operation
-> > >   NFS: Kill RPCs for the duration of umount
-> > >   NFS: Add debugfs for nfs_server and nfs_client
-> > >   NFS: Add transient mount option
-> > >   NFS: Don't shared transient clients
-> > >   NFS: Kill all client RPCs if transient
-> > > 
-> > >  fs/namespace.c                 |  22 ++++++-
-> > >  fs/nfs/Makefile                |   2 +-
-> > >  fs/nfs/client.c                |  96 +++++++++++++++++++++++++--
-> > >  fs/nfs/debugfs.c               | 143
-> > > +++++++++++++++++++++++++++++++++++++++++
-> > >  fs/nfs/inode.c                 |   5 ++
-> > >  fs/nfs/internal.h              |  11 ++++
-> > >  fs/nfs/nfs3client.c            |   2 +
-> > >  fs/nfs/nfs4client.c            |   5 ++
-> > >  fs/nfs/nfs4super.c             |   1 +
-> > >  fs/nfs/super.c                 |  81 ++++++++++++++++++++---
-> > >  include/linux/fs.h             |   1 +
-> > >  include/linux/nfs_fs_sb.h      |   6 ++
-> > >  include/linux/sunrpc/clnt.h    |   1 +
-> > >  include/uapi/linux/nfs_mount.h |   1 +
-> > >  net/sunrpc/clnt.c              |  13 ++--
-> > >  net/sunrpc/debugfs.c           |   5 ++
-> > >  net/sunrpc/sched.c             |   3 +
-> > >  17 files changed, 372 insertions(+), 26 deletions(-)
-> > >  create mode 100644 fs/nfs/debugfs.c
-> > > 
-> > 
-> > Anyone have any comments on this? Sorry fo the churn, it took a few
-> > tries to get this to where it would work. I also realize I should have
-> > put all my RFC patchsets in-reply-to each other instead of starting a
-> > new thread for each one.
-> 
-> The new semantic for MNT_DETACH|MNT_FORCE is interesting.
-> As it was never possible before (from /bin/umount), it should be safe to
-> add a new meaning.
-> The meaning is effectively "detach the filesystem from the namespace and
-> detach the transport from the filesystem", which sounds like it is
-> useful.
-> It is worth highlighting this, and maybe even cc:ing
-> linux-api@vger.kernel.org ... done that.
-> 
+Hi Trond. Anna,
 
-I'm not thrilled with the new flag combo, personally. Given that we're
-introducing new behavior here, I think it wouldn't hurt to add a new
-UMOUNT_* flag for this (UMOUNT_NUKE_FROM_ORBIT?).
+On Tue, Dec 5, 2017 at 5:02 PM, Geert Uytterhoeven <geert@linux-m68k.org> wrote:
+> During a failed write to a virtual sysfs file (root fs is NFS), I got:
+>
+> Unable to handle kernel NULL pointer dereference at virtual address 00000020
+> pgd = c448bb15
+> [00000020] *pgd=69c9c003, *pmd=69d55003, *pte=00000000
+> Internal error: Oops: 207 [#1] SMP ARM
+> Modules linked in:
+> CPU: 0 PID: 1230 Comm: rs:main Q:Reg Not tainted
+> 4.15.0-rc2-koelsch-01160-gd389a154c640caab-dirty #3752
+> Hardware name: Generic R-Car Gen2 (Flattened Device Tree)
+> task: 4a3bb6d2 task.stack: fd0c00bd
+> PC is at nfs_flush_incompatible+0x54/0xf8
 
-That should still give you a -EINVAL when you try to use it on kernels
-that don't understand it, and cleanly separates this behavior from the
-old flags. Userland umount program would need changes of course, but
-that's not hard.
+Got another nfsroot crash:
 
-Fundamentally, I don't really agree with all the hand-wringing about
-torpedoing other mounts that are using a client that you're going to
-kill off. This is going to be a privileged operation, and I think we
-just need to ensure that it's well-documented and that the admin can
-figure out what mounts will be affected and how.
+Unable to handle kernel NULL pointer dereference at virtual address 00000030
+pgd = 329e8f6e
+[00000030] *pgd=80000040004003, *pmd=00000000
+Internal error: Oops: 206 [#1] SMP ARM
+Modules linked in:
+CPU: 0 PID: 101 Comm: kworker/u4:1 Not tainted
+4.15.0-rc2-koelsch-01166-g047d7d3248e08fc7-dirty #3762
+Hardware name: Generic R-Car Gen2 (Flattened Device Tree)
+Workqueue: writeback wb_workfn (flush-0:15)
+task: 8a5bf858 task.stack: e93c92bc
+PC is at nfs_page_async_flush+0x110/0x244
+LR is at 0x10
+pc : [<c03bc648>]    lr : [<00000010>]    psr: 400f0013
+sp : eaff9c98  ip : c0c5092b  fp : 00000005
+r10: 00018e84  r9 : ebef92c0  r8 : eaff9d64
+r7 : ea421a00  r6 : ebef92c0  r5 : ea999040  r4 : ea9b1a00
+r3 : 00000000  r2 : 00000006  r1 : 00000000  r0 : 00000000
+Flags: nZcv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
+Control: 30c5387d  Table: 69d65680  DAC: fffffffd
+Process kworker/u4:1 (pid: 101, stack limit = 0xeaff8210)
+Stack: (0xeaff9c98 to 0xeaffa000)
+9c80:                                                       ebef92c0 eaff9d64
+9ca0: eaff9e20 ea421afc 00000000 c03bc858 eaff9e20 00000000 ffffffff c02b11e8
+9cc0: 00000000 ea8f4500 eb427328 00018e89 00000000 00000009 eaff9d0c 00000000
+9ce0: c03bc830 eaff9d64 00000000 ffffffff 00000009 00000000 ebef8440 ebef45c0
+9d00: ebf1abc0 ebef8860 ebef8420 ebef92c0 ebef5ce0 ebef7e80 ebef3cc0 eaff9d1c
+9d20: eaff9d1c eb1d2d98 eb1d2d28 ea421a00 eb400700 ea421a00 eab89bc0 ea421afc
+9d40: eaff9e20 ea421afc 00000002 ea421a50 eaff8000 c03bc94c c081590c c02483d8
+9d60: eaa62140 00000001 ea421a00 c08157cc c08158e0 00000000 00000000 c08157bc
+9d80: c081590c 00000000 eab89bc0 00000000 00001000 00000001 eaff9d9c ea999fc0
+9da0: ea999fc0 00004000 00001000 00001000 00000000 c0745704 00000000 00000000
+9dc0: ec09e250 eaff9e20 ea421afc eaff9e20 ea9c4c38 c02b2d48 00000086 ea421a00
+9de0: ea421a00 c0310434 ea421a00 eaff9e20 00000000 ea421ab4 ea421a00 00001400
+9e00: ea9c4c38 eaff9efc 00000002 c03109b8 ea9c4c64 00003fd0 ea98b800 00000000
+9e20: 000013fb 00000000 00000000 00000000 ffffffff 7fffffff 00000000 00000011
+9e40: 00000000 ea9c4c38 00000000 c0e04900 00003fda eaff9efc ea9c4c4c ea98b800
+9e60: eb1f7584 c0310be0 ea9c4c4c ea9c4c38 eaff9efc c0e04900 ea9c4c64 0000175c
+9e80: ea9c4d90 c0e13020 0000000a c0310d2c 00003fd0 00003fd0 eb465198 00003418
+9ea0: eaff9ea0 eaff9ea0 eaff9ea8 eaff9ea8 eaff9eb0 eaff9eb0 0000001a ea9c4d98
+9ec0: ea9c4c38 0000175c ea9c4d90 ea9c4c3c ea9c4d80 00000000 00000088 c03110a0
+9ee0: 00000000 c023b924 eb9a0d80 eafd7100 eb465100 eabe8000 00000000 0000175c
+9f00: 00000000 eaff9e9c 00000000 00000006 00000003 00000000 00000000 00000000
+9f20: eb7f6200 ea9c4d98 eb406600 00000000 eb407f00 00000000 ea9c4d9c c0235bdc
+9f40: eb7f6200 ea9c4d98 eb7f6200 eb406600 eb406600 eaff8000 eb406624 c0e04900
+9f60: eb7f6218 c023634c eafd7100 eb7f6380 eb7a7fc0 00000000 eb443ee4 eb7f63a8
+9f80: eb7f6200 c0236080 00000000 c023a528 eb7a7fc0 c023a40c 00000000 00000000
+9fa0: 00000000 00000000 00000000 c0206f38 00000000 00000000 00000000 00000000
+9fc0: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+9fe0: 00000000 00000000 00000000 00000000 00000013 00000000 00000000 00000000
+[<c03bc648>] (nfs_page_async_flush) from [<c03bc858>]
+(nfs_writepages_callback+0x28/0x54)
+[<c03bc858>] (nfs_writepages_callback) from [<c02b11e8>]
+(write_cache_pages+0x278/0x364)
+[<c02b11e8>] (write_cache_pages) from [<c03bc94c>] (nfs_writepages+0xa8/0xe8)
+[<c03bc94c>] (nfs_writepages) from [<c02b2d48>] (do_writepages+0x34/0x80)
+[<c02b2d48>] (do_writepages) from [<c0310434>]
+(__writeback_single_inode+0x34/0x194)
+[<c0310434>] (__writeback_single_inode) from [<c03109b8>]
+(writeback_sb_inodes+0x1cc/0x390)
+[<c03109b8>] (writeback_sb_inodes) from [<c0310be0>]
+(__writeback_inodes_wb+0x64/0xa0)
+[<c0310be0>] (__writeback_inodes_wb) from [<c0310d2c>]
+(wb_writeback+0x110/0x18c)
+[<c0310d2c>] (wb_writeback) from [<c03110a0>] (wb_workfn+0x1b8/0x304)
+[<c03110a0>] (wb_workfn) from [<c0235bdc>] (process_one_work+0x1cc/0x31c)
+[<c0235bdc>] (process_one_work) from [<c023634c>] (worker_thread+0x2cc/0x408)
+[<c023634c>] (worker_thread) from [<c023a528>] (kthread+0x11c/0x13c)
+[<c023a528>] (kthread) from [<c0206f38>] (ret_from_fork+0x14/0x3c)
+Code: e3a02001 e5c32004 ebf98e95 e595300c (e5930030)
+---[ end trace 2771b70506a823a3 ]---
 
-> The new umount_end to match umount_begin seems to make sense.  It can
-> replace a racy semantic with a more predictable one, and that is good.
-> As you say, we cannot do anything really useful here with remount as
-> sync can block it by holding ->s_umount.
-> 
-> I'm not sure about the new "transient" option.  It is probably a good
-> idea but I haven't yet wrapped my mind around exactly what it does so I
-> don't want to commit just yet.
+static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+                                struct page *page)
+{
+        struct nfs_page *req;
+        int ret = 0;
 
-I think fixing this with new mount options is a losing strategy. By the
-time you realize you need it, it's too late to add it. NFS has a huge
-entrenched user-base and you'll never get them all to sprinkle this new
-mount option in there.
+        ...
 
-That said, it might work if you can make it take effect on a remount.
+        /* If there is a fatal error that covers this write, just exit */
+        if (nfs_error_is_fatal_on_server(req->wb_context->error))
+                goto out_launder;
 
-My two lumps of copper and nickel.
--- 
-Jeff Layton <jlayton@redhat.com>
+c03bc644:       e595300c        ldr     r3, [r5, #12]
+c03bc648:       e5930030        ldr     r0, [r3, #48]   ; 0x30
+c03bc64c:       ebfffd1b        bl      c03bbac0 <nfs_error_is_fatal_on_server>
+
+req->wb_context must be NULL.
+
+Gr{oetje,eeting}s,
+
+                        Geert
+
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
