@@ -1,88 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56972 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750947AbdLGVeT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Dec 2017 16:34:19 -0500
-Date: Thu, 7 Dec 2017 16:34:19 -0500
-To: Drew Leske <drew.leske@computecanada.ca>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Non-root chown, NFSv4 ACLs
-Message-ID: <20171207213419.GA6147@fieldses.org>
-References: <DEC3CF38-E451-4E22-B904-DCD35188F000@computecanada.ca>
-MIME-Version: 1.0
+Received: from mail-pf0-f181.google.com ([209.85.192.181]:46591 "EHLO
+        mail-pf0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750973AbdLGWy0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Dec 2017 17:54:26 -0500
+Received: by mail-pf0-f181.google.com with SMTP id c204so5781464pfc.13
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Dec 2017 14:54:26 -0800 (PST)
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <DEC3CF38-E451-4E22-B904-DCD35188F000@computecanada.ca>
-From: bfields@fieldses.org (J. Bruce Fields)
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: Non-root chown, NFSv4 ACLs
+From: Drew Leske <drew.leske@computecanada.ca>
+In-Reply-To: <20171207213419.GA6147@fieldses.org>
+Date: Thu, 7 Dec 2017 14:54:22 -0800
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <F6FBCAE9-DB8D-4965-B761-58ACDF245BC3@computecanada.ca>
+References: <DEC3CF38-E451-4E22-B904-DCD35188F000@computecanada.ca> <20171207213419.GA6147@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 07, 2017 at 11:43:28AM -0800, Drew Leske wrote:
-> I have replicated this on a test server mounting as either NFS v3 or
-> v4.  To test, I make a copy of `/bin/chown` and give it the
-> `CAP_CHOWN` capability.  On a local filesystem, I can then, as myself,
-> change the ownership of a file to some other user.  On the NFS-mounted
-> filesystem, I get `Operation not permitted`.
 
-Yeah, as others have said, the protocol just gives the client no way to
-say "this rpc call is being made by a process that has the CAP_CHOWN
-capability".  All the server gets is a uid and some gids (or a krb5
-principal).
+> Yeah, as others have said, the protocol just gives the client no way =
+to
+> say "this rpc call is being made by a process that has the CAP_CHOWN
+> capability".  All the server gets is a uid and some gids (or a krb5
+> principal).
 
-The relevant code for knfsd is in fs/nfsd/auth.c:nfsd_setuser().  It
-just temporarily changes the credentials that the current nfsd process
-runs with to credentials taken from what the client provided in the rpc
-call.
+That answers that, then.  Thank you (and Frank earlier) for clarifying =
+that for me.
 
-I guess in theory we could provide some way to tell the server that a
-certain user to get CAP_CHOWN.  Doesn't that it mean it could
-effectively access anything by chowning it to its own uid and the
-chowning it back?  Maybe we'd want some more restrictive capability.  Or
-maybe you'd be OK with just mapping the user to root.
+> I guess in theory we could provide some way to tell the server that a
+> certain user to get CAP_CHOWN.  Doesn't that it mean it could
+> effectively access anything by chowning it to its own uid and the
+> chowning it back?  Maybe we'd want some more restrictive capability.  =
+Or
+> maybe you'd be OK with just mapping the user to root.
 
-In theory I wonder if the structured privileges in rfc 7861 could be
-used to communicate capabilities?
+In this context, and I don=E2=80=99t see a lot of use cases for this, =
+the web service=E2=80=99s user can do whatever it wants, and basically =
+acts like root.  On my list of things to try for this case is to map the =
+user to root on the server, so that effectively that ID can do whatever =
+it wants.  I don=E2=80=99t know if this will work and I don=E2=80=99t =
+believe it=E2=80=99s a good solution for a couple of different reasons =
+(for example, it would apply to other filesystems exported by the =
+fileserver).
 
-> I have tried this on v3 and v4 to the same result.  (On v4.1 I receive
-> “Invalid argument” whether as an unprivileged user or as root—I have
-> not looked further into this as I suspect it’s irrelevant to my
-> current problem.)
+> Huh.  Chown as root on 4.1 works for me on latest upstream.  Hard to
+> think why 4.1 would make a difference.
 
-Huh.  Chown as root on 4.1 works for me on latest upstream.  Hard to
-think why 4.1 would make a difference.
+If I find anything interesting there I will let you know but I believe =
+it to be a red herring.  Actually, I just rebuilt the exported =
+filesystem and I=E2=80=99m now able to do this with 4.1, so perhaps it =
+has to do with the stuff I was playing around with for ACLs.
 
---b.
+>> In looking into ACLs to see if they may provide the answer, I came =
+across the NFSv4 ACE permission of `o` for ownership.  This seemed to me =
+to be exactly what I needed.  Unfortunately, while this permission =
+appears to be accepted, it is not applied and has no effect: subsequent =
+calls to `nfs4_getfacl` show no change, and ownership changes are still =
+disallowed.  I have tried enabling ACLs and user extended attributes on =
+the exported filesystem, but they appear to have no effect.
+>>=20
+>> I understand that NFSv4 ACLs are not fully supported in Linux due to =
+the inoperability with POSIX ACLs, however, a Linux-NFS wiki page on =
+ACLs (http://wiki.linux-nfs.org/wiki/index.php/ACLs) describing the =
+existing mapping of NFSv4 ACLs to POSIX ACLs states that while the =
+mapping is imperfect, =E2=80=9Cit accepts most NFSv4 ACLs=E2=80=9D and =
+states the only exceptions have to do with explicit denies.
 
-> In looking into ACLs to see if they may provide the answer, I came across the NFSv4 ACE permission of `o` for ownership.  This seemed to me to be exactly what I needed.  Unfortunately, while this permission appears to be accepted, it is not applied and has no effect: subsequent calls to `nfs4_getfacl` show no change, and ownership changes are still disallowed.  I have tried enabling ACLs and user extended attributes on the exported filesystem, but they appear to have no effect.
-> 
-> I understand that NFSv4 ACLs are not fully supported in Linux due to the inoperability with POSIX ACLs, however, a Linux-NFS wiki page on ACLs (http://wiki.linux-nfs.org/wiki/index.php/ACLs) describing the existing mapping of NFSv4 ACLs to POSIX ACLs states that while the mapping is imperfect, “it accepts most NFSv4 ACLs” and states the only exceptions have to do with explicit denies.
-> 
-> I have looked briefly at the `richacls` project, but that’s not provided by either of the OS distributions I may use (Ubuntu or CentOS), and I don’t know either of the following:
-> 
-> 1. Should it be possible for a user to be able to change the ownership of a file or directory over NFS, using Linux `CAP_CHOWN`?
-> 
-> 2. Should the NFSv4 ACL “ownership” permission be settable in my environment?
-> 
-> There are two fileservers.  On one, the exported filesystem is ZFS; on the other (where I am doing most of my testing), the exported filesystem is ext4.
-> 
-> At this stage I am open to using either NFS v3 or v4, and have tried both.  
-> 
-> A possible workaround is to have the software call an SUID copy of `chown` that is only available to the user ID of the web service, but this is less desirable.
-> 
-> Any tips, information or guidance on this would be greatly appreciated.
-> 
-> Thanks,
-> Drew.
-> 
-> ----
-> Drew Leske 
-> Senior Software Developer
-> Développeur de logiciel principal
-> drew.leske@computecanada.ca 
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The remaining question for me then is around the NFSv4 ACL and the =
+ownership change permission, and whether I should be able to get that to =
+work, especially on a stock system.  I know there are some issues with =
+mapping NFSv4 ACLs to so-called =E2=80=9CPOSIX=E2=80=9D ACLs, but I =
+didn=E2=80=99t see anything in the documentation to suggest it isn=E2=80=99=
+t implemented.  Should I expect this to work without installing the =
+richacls software?
+
+Here=E2=80=99s an example of me trying the NFSv4 ACLs for this:
+
+[testdir1] nfs4_getfacl drewsfile
+A::OWNER@:rwatTcCy
+A::GROUP@:rwatcy
+A::EVERYONE@:rtcy
+[testdir1] nfs4_setfacl -a A::OWNER@:o drewsfile
+[testdir1] nfs4_getfacl drewsfile
+A::OWNER@:rwatTcCy
+A::GROUP@:rwatcy
+A::EVERYONE@:rtcy
+
+So it is accepted, but fails to apply.  Here=E2=80=99s trying to assign =
+a garbage permission:
+
+[testdir1] nfs4_setfacl -a A::OWNER@:p drewsfile
+Bad Ace Mask:p
+Failed while inserting ACE(s) (at index 1).
+
+Is this because of the mapping to POSIX ACLs, which has no provision for =
+ownership management by non-root users?  Does this require the richacls =
+software?
+
+Thanks,
+Drew.
+
