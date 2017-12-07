@@ -1,45 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:35583 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750780AbdLGFeh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Dec 2017 00:34:37 -0500
-Date: Wed, 6 Dec 2017 21:34:29 -0800
-From: Matthew Wilcox <willy@infradead.org>
-To: NeilBrown <neilb@suse.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Lennart Poettering <lennart@poettering.net>
-Subject: Re: [PATCH] NFS: allow name_to_handle_at() to work for Amazon EFS.
-Message-ID: <20171207053429.GB2739@bombadil.infradead.org>
-References: <87po7zv62h.fsf@notabene.neil.brown.name>
- <CA+55aFxHmVi-PuAWWrZqQzrich1QS9NR35DbdGpMts=y9uMAVA@mail.gmail.com>
- <87r2s7ql5m.fsf@notabene.neil.brown.name>
+Received: from mx1.redhat.com ([209.132.183.28]:50426 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750779AbdLGPim (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 7 Dec 2017 10:38:42 -0500
+Subject: Re: [RFC PATCH] rpc.svcgssd: add ability to override hostname
+To: Leigh Brown <leigh@solinno.co.uk>
+Cc: linux-nfs@vger.kernel.org
+References: <93e03b4df2fecbc505547d80935d5be7@doppler.thel33t.co.uk>
+ <d3c18083-685f-9cee-73b3-7cad2fbe27c2@RedHat.com>
+ <e991cf6776fa27a8c2967c19c11b0454@doppler.thel33t.co.uk>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <7cf41533-124c-b1be-e527-79fd768383d0@RedHat.com>
+Date: Thu, 7 Dec 2017 10:38:40 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87r2s7ql5m.fsf@notabene.neil.brown.name>
+In-Reply-To: <e991cf6776fa27a8c2967c19c11b0454@doppler.thel33t.co.uk>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 07, 2017 at 02:20:05PM +1100, NeilBrown wrote:
-> We can allocate in fs/notify/fdinfo.c:show_fdinfo() which is
-> the earliest 'notify' specific code to run.  There is no
-> opportunity to return an error but GFP_KERNEL allocations under 1 page
-> never fail..
 
-"never"
 
- * The default allocator behavior depends on the request size. We have a concept
- * of so called costly allocations (with order > PAGE_ALLOC_COSTLY_ORDER).
- * !costly allocations are too essential to fail so they are implicitly
- * non-failing by default (with some exceptions like OOM victims might fail so
- * the caller still has to check for failures) while costly requests try to be
- * not disruptive and back off even without invoking the OOM killer.
- * The following three modifiers might be used to override some of these
- * implicit rules
+On 12/06/2017 04:25 PM, Leigh Brown wrote:
+> Hi Steve,
+> 
+> On 2017-11-21 17:03, Steve Dickson wrote:
+>> Hello,
+>>
+>> On 11/20/2017 09:27 AM, Leigh Brown wrote:
+>>> Add the -h option to rpc.svcgssd to allow the hostname to be overridden.
+>>> This is useful in clustered configurations using NVSv4 and Kerberos to
+>>> ensure the hostname is set to the service name of the cluster.
+>> A couple things...
+>>
+>> 1) The patch did not apply for krb5_util.c or svcgssd.c. Not
+>>     clear why.. but they didn't
+>> 2) The patch cause a "implicit declaration of function"
+>>    warning because the new routines were not added to gss_util.h
+>> 3) Since the return value of gssd_sethostname() is never checked
+>>    why not make it void and log an warning when something
+>>    goes wrong.
+>>
+>> Finally, adding a command line argument is always a touchy thing,
+>> supporting unnecessary flags is the last thing we want to do. So..
+>> Please give me an example how this will be used, I know you say in
+>> a cluster configuration, but what does that mean... A little
+>> context please. Also is there any around not adding this flag
+>> and achieving the same results.
+>>
+>> I'm not totally against adding this flag I just want to
+>> investigate all avenues..
+> 
+> TL;DR Sorry for wasting your time, please ignore the patch.
+> 
+> Apologies for the delay in getting back to you.  I have been using this patch
+> for the last three years on my server at home.  I have two N40L Microservers
+> running Xen.  I set up an NFS cluster using NVSv4 with Kerberos authentication,
+> DRBD and Pacemaker.  When I tested it back in 2015 or so, it would not fail over
+> cleanly when I mounted the NFS mount on the service NFS name.  After messing
+> around with setting the hostname in /etc/init.d/nfs-kernel-server  I eventually
+> came up with the patch to rpc.svcgssd and it fixed the issue.
+> 
+> Fast forward to 2017, and I thought I might be a good idea to send this patch
+> for other people to use.  Anyway, when I got your email I thought I had better
+> create a couple of test VMs, set them up like my working setup and show how
+> things don't work at first without the patch and then show how they work with
+> the patch......except it worked perfectly.
+> 
+> This is quite embarrassing, actually.  I spent a few days trying to find out
+> why it now worked without success, eventually I installed the stock package on
+> my normal server and it still worked (to be fair I've upgraded Debian on the VMs
+> once or twice in that time) .  I'm too lazy to have done all the work for no reason
+> so I'm hoping that back then there was a genuine reason why it wouldn't work
+> and that in the interim something has changed somewhere that fixes the issue.
+> 
+> Anyway, thanks very much for the feedback and sorry for wasting your time.
+> 
+Not a problem... Thank you for the explanation... 
+
+steved.
 
