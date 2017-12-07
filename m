@@ -1,95 +1,129 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from doppler.thel33t.co.uk ([185.153.207.61]:38136 "EHLO
-        doppler.thel33t.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751827AbdLFV0H (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 16:26:07 -0500
+Received: from mout.kundenserver.de ([212.227.126.131]:63024 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751718AbdLGBmB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Dec 2017 20:42:01 -0500
+Subject: Re: Unaligned access in gss_{get,verify}_mic_v2() on sparc64
+Cc: sparclinux@vger.kernel.org
+References: <55549068-2605-7f71-ccef-c102d6fd69ab@ettle.org.uk>
+ <20171206190936.GB5875@fieldses.org>
+To: linux-nfs@vger.kernel.org
+From: James Ettle <james@ettle.org.uk>
+Message-ID: <8d4f1809-5027-46e7-1d21-d55f93950693@ettle.org.uk>
+Date: Thu, 7 Dec 2017 01:42:03 +0000
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII;
- format=flowed
-Date: Wed, 06 Dec 2017 21:25:54 +0000
-From: Leigh Brown <leigh@solinno.co.uk>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [RFC PATCH] rpc.svcgssd: add ability to override hostname
-In-Reply-To: <d3c18083-685f-9cee-73b3-7cad2fbe27c2@RedHat.com>
-References: <93e03b4df2fecbc505547d80935d5be7@doppler.thel33t.co.uk>
- <d3c18083-685f-9cee-73b3-7cad2fbe27c2@RedHat.com>
-Message-ID: <e991cf6776fa27a8c2967c19c11b0454@doppler.thel33t.co.uk>
+In-Reply-To: <20171206190936.GB5875@fieldses.org>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve,
+Patch from git as instructed:
 
-On 2017-11-21 17:03, Steve Dickson wrote:
-> Hello,
+
+commit a90324ca784dea5a7259a2672c24626f5c03f576
+Author: James Ettle <james@ettle.org.uk>
+Date:   Thu Dec 7 00:50:28 2017 +0000
+
+    Fix unaligned access on sparc64.
+
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index 1d74d653e6c0..94a2b3f082a8 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -177,6 +177,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	u64 seq_send;
+ 	u8 *cksumkey;
+ 	unsigned int cksum_usage;
++	__be64 seq_send_be64;
+
+ 	dprintk("RPC:       %s\n", __func__);
+
+@@ -187,7 +188,9 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	spin_lock(&krb5_seq_lock);
+ 	seq_send = ctx->seq_send64++;
+ 	spin_unlock(&krb5_seq_lock);
+-	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
++
++	seq_send_be64 = cpu_to_be64(seq_send);
++	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
+
+ 	if (ctx->initiate) {
+ 		cksumkey = ctx->initiator_sign;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index dcf9515d9aef..8ea6e30d6f3f 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -155,10 +155,12 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
+ 	u8 flags;
+ 	int i;
+ 	unsigned int cksum_usage;
+-
++	__be16 be16_ptr;
++	
+ 	dprintk("RPC:       %s\n", __func__);
+
+-	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
++	memcpy(&be16_ptr, (char *) ptr, 2);
++	if (be16_to_cpu(be16_ptr) != KG2_TOK_MIC)
+ 		return GSS_S_DEFECTIVE_TOKEN;
+
+ 	flags = ptr[2];
+
+
+
+On 06/12/17 19:09, J. Bruce Fields wrote:
+> On Sat, Dec 02, 2017 at 11:28:18PM +0000, James Ettle wrote:
+>> I've been using nfs4 with krb5 on sparc64 with kernel 4.13 and 4.14 and
+>> seeing a lot of messages like:
+>>
+>> sparky kernel: [  105.262927] Kernel unaligned access at TPC[10afb234]
+>> gss_get_mic_kerberos+0xd4/0x360 [rpcsec_gss_krb5]
+>>
+>> I've traced this down to gss_get_mic_v2() in gss_krb5_seal.c. I think
+>> the suspicious line is:
+>>
+>> 	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
+>>
+>> krb5_hdr is void*, but comes from a u16 so won't generally have __be64
+>> alignment. As an experiment I added local variable
+>>
+>> 	__be64 seq_send_be64;
+>>
+>> and replaced the cpu_to_be64 line with:
+>>
+>> 	seq_send_be64 = cpu_to_be64(seq_send);
+>> 	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
+>>
+>> There's another one in gss_verify_mic_v2() in gss_krb5_unseal.c. Here
+>> there's a line
+>>
+>> 	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
+>>
+>> but ptr is a u8*. For this I added local variable
+>>
+>> 	__be16 data_be16;
+>>
+>> and replaced the above if() with
+>>
+>> 	memcpy((void *) &data_be16, (char *) ptr, 2);
+>> 	if (be16_to_cpu(data_be16) != KG2_TOK_MIC)
+>>
+>> I've not seen any misalignment complaints yet with this.
+>>
+>> I apologise for not sending this in the form of a patch, but this is
+>> only a sketch solution. I'm not a kernel hacker and I'm sure someone
+>> else will make a proper job of it!
 > 
-> On 11/20/2017 09:27 AM, Leigh Brown wrote:
->> Add the -h option to rpc.svcgssd to allow the hostname to be 
->> overridden.
->> This is useful in clustered configurations using NVSv4 and Kerberos to
->> ensure the hostname is set to the service name of the cluster.
-> A couple things...
+> Probably so.  But it might get done sooner if you do it.  There's the
+> added benefit that you can test the exact patch that gets applied.  You
+> can just:
 > 
-> 1) The patch did not apply for krb5_util.c or svcgssd.c. Not
->     clear why.. but they didn't
-> 2) The patch cause a "implicit declaration of function"
->    warning because the new routines were not added to gss_util.h
-> 3) Since the return value of gssd_sethostname() is never checked
->    why not make it void and log an warning when something
->    goes wrong.
+> 	git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+> 	<make your changes>
+> 	git commit -a
+> 	<write a changelog>
 > 
-> Finally, adding a command line argument is always a touchy thing,
-> supporting unnecessary flags is the last thing we want to do. So..
-> Please give me an example how this will be used, I know you say in
-> a cluster configuration, but what does that mean... A little
-> context please. Also is there any around not adding this flag
-> and achieving the same results.
+> then send us the output of "git show".
 > 
-> I'm not totally against adding this flag I just want to
-> investigate all avenues..
-
-TL;DR Sorry for wasting your time, please ignore the patch.
-
-Apologies for the delay in getting back to you.  I have been using this 
-patch
-for the last three years on my server at home.  I have two N40L 
-Microservers
-running Xen.  I set up an NFS cluster using NVSv4 with Kerberos 
-authentication,
-DRBD and Pacemaker.  When I tested it back in 2015 or so, it would not 
-fail over
-cleanly when I mounted the NFS mount on the service NFS name.  After 
-messing
-around with setting the hostname in /etc/init.d/nfs-kernel-server  I 
-eventually
-came up with the patch to rpc.svcgssd and it fixed the issue.
-
-Fast forward to 2017, and I thought I might be a good idea to send this 
-patch
-for other people to use.  Anyway, when I got your email I thought I had 
-better
-create a couple of test VMs, set them up like my working setup and show 
-how
-things don't work at first without the patch and then show how they work 
-with
-the patch......except it worked perfectly.
-
-This is quite embarrassing, actually.  I spent a few days trying to find 
-out
-why it now worked without success, eventually I installed the stock 
-package on
-my normal server and it still worked (to be fair I've upgraded Debian on 
-the VMs
-once or twice in that time) .  I'm too lazy to have done all the work 
-for no reason
-so I'm hoping that back then there was a genuine reason why it wouldn't 
-work
-and that in the interim something has changed somewhere that fixes the 
-issue.
-
-Anyway, thanks very much for the feedback and sorry for wasting your 
-time.
-
-Regards,
-
-Leigh.
+> --b.
+> 
