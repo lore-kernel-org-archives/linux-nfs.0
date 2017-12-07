@@ -1,60 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35838 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753306AbdLGPj2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 7 Dec 2017 10:39:28 -0500
-Subject: Re: [nfs-utils PATCH] mount.nfs: don't parse "device" name for -o
- remount
-To: NeilBrown <neilb@suse.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Lennart Poettering <lennart@poettering.net>
-References: <87zi7cxprk.fsf@notabene.neil.brown.name>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <0f2a5118-72b7-27cd-7857-48e5a20c57c7@RedHat.com>
-Date: Thu, 7 Dec 2017 10:39:27 -0500
+Received: from mail-vk0-f42.google.com ([209.85.213.42]:44371 "EHLO
+        mail-vk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751288AbdLGQKS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Dec 2017 11:10:18 -0500
+Received: by mail-vk0-f42.google.com with SMTP id s197so5173337vkh.11
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Dec 2017 08:10:18 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <87zi7cxprk.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=utf-8
+In-Reply-To: <CAABAsM57k0E32ywgW=qdhFbeHctcUivM9mkuuA1qbfB9F7Rvyg@mail.gmail.com>
+References: <CAN-5tyEe2gEgmSnZju7MjgrFR_YK1PrLx2NpxJn5Ks88PEz__g@mail.gmail.com>
+ <CAABAsM57k0E32ywgW=qdhFbeHctcUivM9mkuuA1qbfB9F7Rvyg@mail.gmail.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 7 Dec 2017 11:10:16 -0500
+Message-ID: <CAN-5tyEmwgo7ea1WJ-0nRE+Jz+b9rb97GkYEmFyq_C+8nr1kTw@mail.gmail.com>
+Subject: Re: [nfsv4] questing about NLM LOCK, CANCEL UNLOCK
+To: Trond Myklebust <trondmy@gmail.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Cc: "nfsv4@ietf.org" <nfsv4@ietf.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Ok. I thought that because RFC1813 covers NLM operations that it is.
 
+I will extend this question to the Linux NFS mailing list as the
+client implementation I'm interested is Linux.
 
-On 11/23/2017 11:30 PM, NeilBrown wrote:
-> 
-> When "-o remount" is used, the device/special name
-> is ignored.  So don't parse it and risk generating a
-> useless error.
-> 
-> This is particularly important when nfs-root is used
-> as the "device name" is listed as "/dev/nfs".
-> Because mount.nfs doesn't think that is valid,
->   mount -o remount,rw /
-> will fail.
-> 
-> Link: https://github.com/systemd/systemd/issues/3590
-> Signed-off-by: NeilBrown <neilb@suse.com>
-Committed.... 
-
-steved.
-
-> ---
->  utils/mount/stropts.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index 440131482e2b..12178235f068 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -384,7 +384,9 @@ static int nfs_set_version(struct nfsmount_info *mi)
->   */
->  static int nfs_validate_options(struct nfsmount_info *mi)
->  {
-> -	if (!nfs_parse_devname(mi->spec, &mi->hostname, NULL))
-> +	/* For remount, ignore mi->spec: the kernel will. */
-> +	if (!(mi->flags & MS_REMOUNT) &&
-> +	    !nfs_parse_devname(mi->spec, &mi->hostname, NULL))
->  		return 0;
->  
->  	if (!nfs_nfs_proto_family(mi->options, &mi->family))
-> 
+On Thu, Dec 7, 2017 at 10:59 AM, Trond Myklebust <trondmy@gmail.com> wrote:
+> Hi Olga,
+>
+> NLM isn't an IETF protocol.
+>
+> Cheers
+>   Trond
+>
+> On 7 December 2017 at 10:57, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>
+>> Hi folks,
+>>
+>> I'm looking for guidance for what are responsibilities of the client
+>> or server to solve the following situation.
+>>
+>> Client application is acquiring a blocking lock but shortly after that
+>> application is killed via ctrl-C. NFS client sent out NLM_LOCK but
+>> hasn't gotten a reply yet as ctrl-c arrived. To clean up, the client
+>> is sending CANCEL and UNLOCK to the server.
+>>
+>> Server ends up processing CANCEL and UNLOCK first (for whatever reason
+>> one legitimate one could be network re-ordered packets) and server has
+>> no state so it's just sending GRANTED replies back (which seems to be
+>> a legitimate thing to do). Then server processes LOCK and replies to
+>> the client.
+>>
+>> Now we are in the situation where lock was granted to a client that
+>> doesn't know it's holding one and it prevents other clients from
+>> grabbing this lock.
+>>
+>> Is there a solution or this is broken protocol?
+>>
+>> Should it be client's responsibility to notice that it received a LOCK
+>> reply for which it wasn't waiting and always follow up with an UNLOCK?
+>>
+>> Thank you.
+>>
+>> _______________________________________________
+>> nfsv4 mailing list
+>> nfsv4@ietf.org
+>> https://www.ietf.org/mailman/listinfo/nfsv4
+>
+>
