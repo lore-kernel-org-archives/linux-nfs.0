@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f47.google.com ([209.85.214.47]:35570 "EHLO
-        mail-it0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751015AbdLHHBN (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 02:01:13 -0500
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35921 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751021AbdLHHy0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 02:54:26 -0500
 MIME-Version: 1.0
-In-Reply-To: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
+In-Reply-To: <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
 References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
+ <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
 From: Matt Turner <mattst88@gmail.com>
-Date: Thu, 7 Dec 2017 23:00:52 -0800
-Message-ID: <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
+Date: Thu, 7 Dec 2017 23:54:05 -0800
+Message-ID: <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
 Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
  next debugging steps?
 To: "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
@@ -24,60 +25,64 @@ Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Mar 12, 2017 at 6:43 PM, Matt Turner <mattst88@gmail.com> wrote:
-> On a Broadcom BCM91250a MIPS system I can reliably trigger NFS
-> corruption on the first file read.
+On Thu, Dec 7, 2017 at 11:00 PM, Matt Turner <mattst88@gmail.com> wrote:
+> On Sun, Mar 12, 2017 at 6:43 PM, Matt Turner <mattst88@gmail.com> wrote:
+>> On a Broadcom BCM91250a MIPS system I can reliably trigger NFS
+>> corruption on the first file read.
+>>
+>> To demonstrate, I downloaded five identical copies of the gcc-5.4.0
+>> source tarball. On the NFS server, they hash to the same value:
+>>
+>> server distfiles # md5sum gcc-5.4.0.tar.bz2*
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
+>>
+>> On the MIPS system (the NFS client):
+>>
+>> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2.2
+>> 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
+>> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+>> 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
+>>
+>> The first file read will contain some corruption, and it is persistent until...
+>>
+>> bcm91250a-le distfiles # echo 1 > /proc/sys/vm/drop_caches
+>> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
+>>
+>> the caches are dropped, at which point it reads back properly.
+>>
+>> Note that the corruption is different across reboots, both in the size
+>> of the corruption and the location. I saw 1900~ and 1400~ byte
+>> sequences corrupted on separate occasions, which don't correspond to
+>> the system's 16kB page size.
+>>
+>> I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
+>> today). All exhibit this behavior with differing frequencies. Earlier
+>> kernels seem to reproduce the issue less often, while more recent
+>> kernels reliably exhibit the problem every boot.
+>>
+>> How can I further debug this?
 >
-> To demonstrate, I downloaded five identical copies of the gcc-5.4.0
-> source tarball. On the NFS server, they hash to the same value:
+> I think I was wrong about the statement about kernels v3.19 to
+> 4.11-rc1+. I found out I couldn't reproduce with 4.7-rc1 and then
+> bisected to 4cd13c21b207e80ddb1144c576500098f2d5f882 ("softirq: Let
+> ksoftirqd do its job"). Still reproduces with current tip of Linus'
+> tree.
 >
-> server distfiles # md5sum gcc-5.4.0.tar.bz2*
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
->
-> On the MIPS system (the NFS client):
->
-> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2.2
-> 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
-> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-> 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
->
-> The first file read will contain some corruption, and it is persistent until...
->
-> bcm91250a-le distfiles # echo 1 > /proc/sys/vm/drop_caches
-> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
->
-> the caches are dropped, at which point it reads back properly.
->
-> Note that the corruption is different across reboots, both in the size
-> of the corruption and the location. I saw 1900~ and 1400~ byte
-> sequences corrupted on separate occasions, which don't correspond to
-> the system's 16kB page size.
->
-> I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
-> today). All exhibit this behavior with differing frequencies. Earlier
-> kernels seem to reproduce the issue less often, while more recent
-> kernels reliably exhibit the problem every boot.
->
-> How can I further debug this?
+> Any ideas? The board's ethernet is an uncommon device supported by
+> CONFIG_SB1250_MAC. Something about the ethernet driver maybe?
 
-I think I was wrong about the statement about kernels v3.19 to
-4.11-rc1+. I found out I couldn't reproduce with 4.7-rc1 and then
-bisected to 4cd13c21b207e80ddb1144c576500098f2d5f882 ("softirq: Let
-ksoftirqd do its job"). Still reproduces with current tip of Linus'
-tree.
-
-Any ideas? The board's ethernet is an uncommon device supported by
-CONFIG_SB1250_MAC. Something about the ethernet driver maybe?
+With the patch reverted on master (reverts cleanly), NFS corruption no
+longer happens.
