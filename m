@@ -1,90 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f193.google.com ([209.85.216.193]:38869 "EHLO
-        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752883AbdLHNTI (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 08:19:08 -0500
+Received: from mail-wr0-f171.google.com ([209.85.128.171]:35178 "EHLO
+        mail-wr0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752990AbdLHNmt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 08:42:49 -0500
+Received: by mail-wr0-f171.google.com with SMTP id g53so10876307wra.2
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Dec 2017 05:42:48 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <CAMuHMdWopysALsAzR0x0=uBk_bZDNT4RzgjKwGzqANDfoTxn-A@mail.gmail.com>
-References: <CAMuHMdWm8SGtekpdGVKsDi4L4sgvVZDFoC5wnSggVXFRt-irzA@mail.gmail.com>
- <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com>
- <1512576648.26816.3.camel@primarydata.com> <CAMuHMdWopysALsAzR0x0=uBk_bZDNT4RzgjKwGzqANDfoTxn-A@mail.gmail.com>
-From: Geert Uytterhoeven <geert@linux-m68k.org>
-Date: Fri, 8 Dec 2017 14:19:07 +0100
-Message-ID: <CAMuHMdVOa9Bxph=QBeNUJBZ=_pwGrr+aZr7kZ5WvhUNRQZMRow@mail.gmail.com>
-Subject: Re: NFS crash, hashed pointers in backtrace
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-renesas-soc@vger.kernel.org"
-        <linux-renesas-soc@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "me@tobin.cc" <me@tobin.cc>
+In-Reply-To: <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
+References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
+ <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com> <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
+From: Eric Dumazet <edumazet@google.com>
+Date: Fri, 8 Dec 2017 05:42:46 -0800
+Message-ID: <CANn89iJKGRLVNAE99JWiyXcOXveytkjbQAiZ9XPiJc6fyEdFVA@mail.gmail.com>
+Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
+ next debugging steps?
+To: Matt Turner <mattst88@gmail.com>
+Cc: "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        linux-nfs@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Manuel Lauss <manuel.lauss@gmail.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 6, 2017 at 5:19 PM, Geert Uytterhoeven <geert@linux-m68k.org> wrote:
-> On Wed, Dec 6, 2017 at 5:10 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->> On Wed, 2017-12-06 at 15:31 +0100, Geert Uytterhoeven wrote:
->>> On Tue, Dec 5, 2017 at 5:02 PM, Geert Uytterhoeven <geert@linux-m68k.
->>> org> wrote:
->>> Got another nfsroot crash:
+On Thu, Dec 7, 2017 at 11:54 PM, Matt Turner <mattst88@gmail.com> wrote:
+> On Thu, Dec 7, 2017 at 11:00 PM, Matt Turner <mattst88@gmail.com> wrote:
+>> On Sun, Mar 12, 2017 at 6:43 PM, Matt Turner <mattst88@gmail.com> wrote:
+>>> On a Broadcom BCM91250a MIPS system I can reliably trigger NFS
+>>> corruption on the first file read.
 >>>
->>> Unable to handle kernel NULL pointer dereference at virtual address
->>> 00000030
->>> pgd = 329e8f6e
->>> [00000030] *pgd=80000040004003, *pmd=00000000
->>> Internal error: Oops: 206 [#1] SMP ARM
->>> Modules linked in:
->>> CPU: 0 PID: 101 Comm: kworker/u4:1 Not tainted
->>> 4.15.0-rc2-koelsch-01166-g047d7d3248e08fc7-dirty #3762
->>> Hardware name: Generic R-Car Gen2 (Flattened Device Tree)
->>> Workqueue: writeback wb_workfn (flush-0:15)
->>> task: 8a5bf858 task.stack: e93c92bc
->>> PC is at nfs_page_async_flush+0x110/0x244
->
->>> static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
->>>                                 struct page *page)
->>> {
->>>         struct nfs_page *req;
->>>         int ret = 0;
+>>> To demonstrate, I downloaded five identical copies of the gcc-5.4.0
+>>> source tarball. On the NFS server, they hash to the same value:
 >>>
->>>         ...
+>>> server distfiles # md5sum gcc-5.4.0.tar.bz2*
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
 >>>
->>>         /* If there is a fatal error that covers this write, just
->>> exit */
->>>         if (nfs_error_is_fatal_on_server(req->wb_context->error))
->>>                 goto out_launder;
+>>> On the MIPS system (the NFS client):
 >>>
->>> c03bc644:       e595300c        ldr     r3, [r5, #12]
->>> c03bc648:       e5930030        ldr     r0, [r3, #48]   ; 0x30
->>> c03bc64c:       ebfffd1b        bl      c03bbac0
->>> <nfs_error_is_fatal_on_server>
+>>> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2.2
+>>> 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
+>>> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+>>> 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
 >>>
->>> req->wb_context must be NULL.
+>>> The first file read will contain some corruption, and it is persistent until...
+>>>
+>>> bcm91250a-le distfiles # echo 1 > /proc/sys/vm/drop_caches
+>>> bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
+>>> 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
+>>>
+>>> the caches are dropped, at which point it reads back properly.
+>>>
+>>> Note that the corruption is different across reboots, both in the size
+>>> of the corruption and the location. I saw 1900~ and 1400~ byte
+>>> sequences corrupted on separate occasions, which don't correspond to
+>>> the system's 16kB page size.
+>>>
+>>> I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
+>>> today). All exhibit this behavior with differing frequencies. Earlier
+>>> kernels seem to reproduce the issue less often, while more recent
+>>> kernels reliably exhibit the problem every boot.
+>>>
+>>> How can I further debug this?
 >>
->> I'm confused. If your test involves only writing to a sysfs file, then
->> why is the NFS code involved at all?
+>> I think I was wrong about the statement about kernels v3.19 to
+>> 4.11-rc1+. I found out I couldn't reproduce with 4.7-rc1 and then
+>> bisected to 4cd13c21b207e80ddb1144c576500098f2d5f882 ("softirq: Let
+>> ksoftirqd do its job"). Still reproduces with current tip of Linus'
+>> tree.
+>>
+>> Any ideas? The board's ethernet is an uncommon device supported by
+>> CONFIG_SB1250_MAC. Something about the ethernet driver maybe?
 >
-> I don't think the second was related to sysfs.
->
->> Could this be a use-after-free?
->
-> Possibly. I'm seeing other crashes, too. Looking into them...
+> With the patch reverted on master (reverts cleanly), NFS corruption no
+> longer happens.
 
-Found it: https://lkml.org/lkml/2017/12/8/399
-That one caused corruption (zeroing) of the 4th 32-bit word of a memory block,
-which is consistent with the "ldr r3, [r5, #12]" loading NULL above.
+Hi Matt.
 
-So NFS is fine (as usual ;-), sorry for the fuzz...
+Thanks for bisecting.
 
-Gr{oetje,eeting}s,
+Patch simply exposes an existing bug more often by changing the way
+driver functions are scheduled.
 
-                        Geert
+Which is probably a good thing.
 
---
-Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+sbmac_intr() looks extremely suspicious to me.
 
-In personal conversations with technical people, I call myself a hacker. But
-when I'm talking to journalists I just say "programmer" or something like that.
-                                -- Linus Torvalds
+A NAPI driver hard interrupt should simply schedule NAPI.
+
+Apparently, if sbmac_intr() can not grab NAPIF_STATE_SCHED bit, it
+directly calls sbdma_rx_process() from
+hard interrupt context.
+
+Insane really.
