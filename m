@@ -1,135 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f171.google.com ([209.85.223.171]:44188 "EHLO
-        mail-io0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750951AbdLHU1H (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 15:27:07 -0500
-MIME-Version: 1.0
-In-Reply-To: <1512741164.25033.28.camel@gmail.com>
-References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
- <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
- <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
- <CANn89iJKGRLVNAE99JWiyXcOXveytkjbQAiZ9XPiJc6fyEdFVA@mail.gmail.com> <1512741164.25033.28.camel@gmail.com>
-From: Matt Turner <mattst88@gmail.com>
-Date: Fri, 8 Dec 2017 12:26:46 -0800
-Message-ID: <CAEdQ38HEduSTY38Noj4peaMN_G++5sLJfqzCMkd3M4pPNTpU_Q@mail.gmail.com>
-Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
- next debugging steps?
-To: Eric Dumazet <eric.dumazet@gmail.com>
-Cc: Eric Dumazet <edumazet@google.com>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        linux-nfs@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Manuel Lauss <manuel.lauss@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:45618 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752208AbdLHVAN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 8 Dec 2017 16:00:13 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: don't wait on commit in nfs_commit_inode() if there were no commit requests
+Date: Fri,  8 Dec 2017 16:00:12 -0500
+Message-Id: <20171208210012.9491-1-smayhew@redhat.com>
+In-Reply-To: <20171130143744.odap43pjwh63xhrc@tonberry.usersys.redhat.com>
+References: <20171130143744.odap43pjwh63xhrc@tonberry.usersys.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 8, 2017 at 5:52 AM, Eric Dumazet <eric.dumazet@gmail.com> wrote:
-> On Fri, 2017-12-08 at 05:42 -0800, Eric Dumazet wrote:
->> On Thu, Dec 7, 2017 at 11:54 PM, Matt Turner <mattst88@gmail.com>
->> wrote:
->> > On Thu, Dec 7, 2017 at 11:00 PM, Matt Turner <mattst88@gmail.com>
->> > wrote:
->> > > On Sun, Mar 12, 2017 at 6:43 PM, Matt Turner <mattst88@gmail.com>
->> > > wrote:
->> > > > On a Broadcom BCM91250a MIPS system I can reliably trigger NFS
->> > > > corruption on the first file read.
->> > > >
->> > > > To demonstrate, I downloaded five identical copies of the gcc-
->> > > > 5.4.0
->> > > > source tarball. On the NFS server, they hash to the same value:
->> > > >
->> > > > server distfiles # md5sum gcc-5.4.0.tar.bz2*
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
->> > > >
->> > > > On the MIPS system (the NFS client):
->> > > >
->> > > > bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2.2
->> > > > 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
->> > > > bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
->> > > > 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
->> > > >
->> > > > The first file read will contain some corruption, and it is
->> > > > persistent until...
->> > > >
->> > > > bcm91250a-le distfiles # echo 1 > /proc/sys/vm/drop_caches
->> > > > bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
->> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
->> > > >
->> > > > the caches are dropped, at which point it reads back properly.
->> > > >
->> > > > Note that the corruption is different across reboots, both in
->> > > > the size
->> > > > of the corruption and the location. I saw 1900~ and 1400~ byte
->> > > > sequences corrupted on separate occasions, which don't
->> > > > correspond to
->> > > > the system's 16kB page size.
->> > > >
->> > > > I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
->> > > > today). All exhibit this behavior with differing frequencies.
->> > > > Earlier
->> > > > kernels seem to reproduce the issue less often, while more
->> > > > recent
->> > > > kernels reliably exhibit the problem every boot.
->> > > >
->> > > > How can I further debug this?
->> > >
->> > > I think I was wrong about the statement about kernels v3.19 to
->> > > 4.11-rc1+. I found out I couldn't reproduce with 4.7-rc1 and then
->> > > bisected to 4cd13c21b207e80ddb1144c576500098f2d5f882 ("softirq:
->> > > Let
->> > > ksoftirqd do its job"). Still reproduces with current tip of
->> > > Linus'
->> > > tree.
->> > >
->> > > Any ideas? The board's ethernet is an uncommon device supported
->> > > by
->> > > CONFIG_SB1250_MAC. Something about the ethernet driver maybe?
->> >
->> > With the patch reverted on master (reverts cleanly), NFS corruption
->> > no
->> > longer happens.
->>
->> Hi Matt.
->>
->> Thanks for bisecting.
->>
->> Patch simply exposes an existing bug more often by changing the way
->> driver functions are scheduled.
->>
->> Which is probably a good thing.
->>
->> sbmac_intr() looks extremely suspicious to me.
->>
->> A NAPI driver hard interrupt should simply schedule NAPI.
->>
->> Apparently, if sbmac_intr() can not grab NAPIF_STATE_SCHED bit, it
->> directly calls sbdma_rx_process() from
->> hard interrupt context.
->>
->> Insane really.
->
-> Please try this fix (not compiled on my x86 laptop, and I had no coffee
-> yet, so it might have some trivial errors)
+If there were no commit requests, then nfs_commit_inode() should not
+wait on the commit or mark the inode dirty, otherwise the following
+BUG_ON can be triggered:
 
-Thanks for the quick reply!
+[ 1917.130762] kernel BUG at fs/inode.c:578!
+[ 1917.130766] Oops: Exception in kernel mode, sig: 5 [#1]
+[ 1917.130768] SMP NR_CPUS=2048 NUMA pSeries
+[ 1917.130772] Modules linked in: iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi blocklayoutdriver rpcsec_gss_krb5 auth_rpcgss nfsv4 dns_resolver nfs lockd grace fscache sunrpc sg nx_crypto pseries_rng ip_tables xfs libcrc32c sd_mod crc_t10dif crct10dif_generic crct10dif_common ibmvscsi scsi_transport_srp ibmveth scsi_tgt dm_mirror dm_region_hash dm_log dm_mod
+[ 1917.130805] CPU: 2 PID: 14923 Comm: umount.nfs4 Tainted: G               ------------ T 3.10.0-768.el7.ppc64 #1
+[ 1917.130810] task: c0000005ecd88040 ti: c00000004cea0000 task.ti: c00000004cea0000
+[ 1917.130813] NIP: c000000000354178 LR: c000000000354160 CTR: c00000000012db80
+[ 1917.130816] REGS: c00000004cea3720 TRAP: 0700   Tainted: G               ------------ T  (3.10.0-768.el7.ppc64)
+[ 1917.130820] MSR: 8000000100029032 <SF,EE,ME,IR,DR,RI>  CR: 22002822  XER: 20000000
+[ 1917.130828] CFAR: c00000000011f594 SOFTE: 1
+GPR00: c000000000354160 c00000004cea39a0 c0000000014c4700 c0000000018cc750
+GPR04: 000000000000c750 80c0000000000000 0600000000000000 04eeb76bea749a03
+GPR08: 0000000000000034 c0000000018cc758 0000000000000001 d000000005e619e8
+GPR12: c00000000012db80 c000000007b31200 0000000000000000 0000000000000000
+GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+GPR20: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+GPR24: 0000000000000000 c000000000dfc3ec 0000000000000000 c0000005eefc02c0
+GPR28: d0000000079dbd50 c0000005b94a02c0 c0000005b94a0250 c0000005b94a01c8
+[ 1917.130867] NIP [c000000000354178] .evict+0x1c8/0x350
+[ 1917.130871] LR [c000000000354160] .evict+0x1b0/0x350
+[ 1917.130873] Call Trace:
+[ 1917.130876] [c00000004cea39a0] [c000000000354160] .evict+0x1b0/0x350 (unreliable)
+[ 1917.130880] [c00000004cea3a30] [c0000000003558cc] .evict_inodes+0x13c/0x270
+[ 1917.130884] [c00000004cea3af0] [c000000000327d20] .kill_anon_super+0x70/0x1e0
+[ 1917.130896] [c00000004cea3b80] [d000000005e43e30] .nfs_kill_super+0x20/0x60 [nfs]
+[ 1917.130900] [c00000004cea3c00] [c000000000328a20] .deactivate_locked_super+0xa0/0x1b0
+[ 1917.130903] [c00000004cea3c80] [c00000000035ba54] .cleanup_mnt+0xd4/0x180
+[ 1917.130907] [c00000004cea3d10] [c000000000119034] .task_work_run+0x114/0x150
+[ 1917.130912] [c00000004cea3db0] [c00000000001ba6c] .do_notify_resume+0xcc/0x100
+[ 1917.130916] [c00000004cea3e30] [c00000000000a7b0] .ret_from_except_lite+0x5c/0x60
+[ 1917.130919] Instruction dump:
+[ 1917.130921] 7fc3f378 486734b5 60000000 387f00a0 38800003 4bdcb365 60000000 e95f00a0
+[ 1917.130927] 694a0060 7d4a0074 794ad182 694a0001 <0b0a0000> 892d02a4 2f890000 40de0134
 
-I tried the patch on top of master, but unfortunately the corruption
-still occurs.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/write.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 5b5f464..4a379d7 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1890,6 +1890,8 @@ int nfs_commit_inode(struct inode *inode, int how)
+ 	if (res)
+ 		error = nfs_generic_commit_list(inode, &head, how, &cinfo);
+ 	nfs_commit_end(cinfo.mds);
++	if (res == 0)
++		return res;
+ 	if (error < 0)
+ 		goto out_error;
+ 	if (!may_wait)
+-- 
+2.9.5
+
