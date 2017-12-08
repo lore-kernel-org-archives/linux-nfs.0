@@ -1,75 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45618 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752208AbdLHVAN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 8 Dec 2017 16:00:13 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: don't wait on commit in nfs_commit_inode() if there were no commit requests
-Date: Fri,  8 Dec 2017 16:00:12 -0500
-Message-Id: <20171208210012.9491-1-smayhew@redhat.com>
-In-Reply-To: <20171130143744.odap43pjwh63xhrc@tonberry.usersys.redhat.com>
-References: <20171130143744.odap43pjwh63xhrc@tonberry.usersys.redhat.com>
+Received: from mail-io0-f173.google.com ([209.85.223.173]:34805 "EHLO
+        mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753336AbdLHVQY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 16:16:24 -0500
+Message-ID: <1512767781.25033.30.camel@gmail.com>
+Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
+ next debugging steps?
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Matt Turner <mattst88@gmail.com>
+Cc: Eric Dumazet <edumazet@google.com>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        linux-nfs@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Manuel Lauss <manuel.lauss@gmail.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+Date: Fri, 08 Dec 2017 13:16:21 -0800
+In-Reply-To: <CAEdQ38HEduSTY38Noj4peaMN_G++5sLJfqzCMkd3M4pPNTpU_Q@mail.gmail.com>
+References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
+         <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
+         <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
+         <CANn89iJKGRLVNAE99JWiyXcOXveytkjbQAiZ9XPiJc6fyEdFVA@mail.gmail.com>
+         <1512741164.25033.28.camel@gmail.com>
+         <CAEdQ38HEduSTY38Noj4peaMN_G++5sLJfqzCMkd3M4pPNTpU_Q@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If there were no commit requests, then nfs_commit_inode() should not
-wait on the commit or mark the inode dirty, otherwise the following
-BUG_ON can be triggered:
+On Fri, 2017-12-08 at 12:26 -0800, Matt Turner wrote:
+> 
+> Thanks for the quick reply!
+> 
+> I tried the patch on top of master, but unfortunately the corruption
+> still occurs.
 
-[ 1917.130762] kernel BUG at fs/inode.c:578!
-[ 1917.130766] Oops: Exception in kernel mode, sig: 5 [#1]
-[ 1917.130768] SMP NR_CPUS=2048 NUMA pSeries
-[ 1917.130772] Modules linked in: iscsi_tcp libiscsi_tcp libiscsi scsi_transport_iscsi blocklayoutdriver rpcsec_gss_krb5 auth_rpcgss nfsv4 dns_resolver nfs lockd grace fscache sunrpc sg nx_crypto pseries_rng ip_tables xfs libcrc32c sd_mod crc_t10dif crct10dif_generic crct10dif_common ibmvscsi scsi_transport_srp ibmveth scsi_tgt dm_mirror dm_region_hash dm_log dm_mod
-[ 1917.130805] CPU: 2 PID: 14923 Comm: umount.nfs4 Tainted: G               ------------ T 3.10.0-768.el7.ppc64 #1
-[ 1917.130810] task: c0000005ecd88040 ti: c00000004cea0000 task.ti: c00000004cea0000
-[ 1917.130813] NIP: c000000000354178 LR: c000000000354160 CTR: c00000000012db80
-[ 1917.130816] REGS: c00000004cea3720 TRAP: 0700   Tainted: G               ------------ T  (3.10.0-768.el7.ppc64)
-[ 1917.130820] MSR: 8000000100029032 <SF,EE,ME,IR,DR,RI>  CR: 22002822  XER: 20000000
-[ 1917.130828] CFAR: c00000000011f594 SOFTE: 1
-GPR00: c000000000354160 c00000004cea39a0 c0000000014c4700 c0000000018cc750
-GPR04: 000000000000c750 80c0000000000000 0600000000000000 04eeb76bea749a03
-GPR08: 0000000000000034 c0000000018cc758 0000000000000001 d000000005e619e8
-GPR12: c00000000012db80 c000000007b31200 0000000000000000 0000000000000000
-GPR16: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
-GPR20: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
-GPR24: 0000000000000000 c000000000dfc3ec 0000000000000000 c0000005eefc02c0
-GPR28: d0000000079dbd50 c0000005b94a02c0 c0000005b94a0250 c0000005b94a01c8
-[ 1917.130867] NIP [c000000000354178] .evict+0x1c8/0x350
-[ 1917.130871] LR [c000000000354160] .evict+0x1b0/0x350
-[ 1917.130873] Call Trace:
-[ 1917.130876] [c00000004cea39a0] [c000000000354160] .evict+0x1b0/0x350 (unreliable)
-[ 1917.130880] [c00000004cea3a30] [c0000000003558cc] .evict_inodes+0x13c/0x270
-[ 1917.130884] [c00000004cea3af0] [c000000000327d20] .kill_anon_super+0x70/0x1e0
-[ 1917.130896] [c00000004cea3b80] [d000000005e43e30] .nfs_kill_super+0x20/0x60 [nfs]
-[ 1917.130900] [c00000004cea3c00] [c000000000328a20] .deactivate_locked_super+0xa0/0x1b0
-[ 1917.130903] [c00000004cea3c80] [c00000000035ba54] .cleanup_mnt+0xd4/0x180
-[ 1917.130907] [c00000004cea3d10] [c000000000119034] .task_work_run+0x114/0x150
-[ 1917.130912] [c00000004cea3db0] [c00000000001ba6c] .do_notify_resume+0xcc/0x100
-[ 1917.130916] [c00000004cea3e30] [c00000000000a7b0] .ret_from_except_lite+0x5c/0x60
-[ 1917.130919] Instruction dump:
-[ 1917.130921] 7fc3f378 486734b5 60000000 387f00a0 38800003 4bdcb365 60000000 e95f00a0
-[ 1917.130927] 694a0060 7d4a0074 794ad182 694a0001 <0b0a0000> 892d02a4 2f890000 40de0134
+You might try replacing in sbdma_add_rcvbuffer()
 
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfs/write.c | 2 ++
- 1 file changed, 2 insertions(+)
+sb_new = netdev_alloc_skb(dev, size);
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5b5f464..4a379d7 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1890,6 +1890,8 @@ int nfs_commit_inode(struct inode *inode, int how)
- 	if (res)
- 		error = nfs_generic_commit_list(inode, &head, how, &cinfo);
- 	nfs_commit_end(cinfo.mds);
-+	if (res == 0)
-+		return res;
- 	if (error < 0)
- 		goto out_error;
- 	if (!may_wait)
--- 
-2.9.5
+by 
+
+sb_new = alloc_skb(size, GFP_ATOMIC);
+
+Maybe the device does not like having a frame spanning 2 pages.
+
 
