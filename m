@@ -1,68 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f196.google.com ([209.85.216.196]:41211 "EHLO
-        mail-qt0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752530AbdLHMan (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 07:30:43 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-Date: Fri, 8 Dec 2017 10:30:24 -0200 (-02)
-To: linux-fsdevel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Martin Schwidefsky <schwidefsky@de.ibm.com>,
-        Heiko Carstens <heiko.carstens@de.ibm.com>
-cc: linux-nfs@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: [PATCH 0/3 v3] Move groups_sort outisde of set_groups (fwd)
-Message-ID: <alpine.LFD.2.21.1712081000360.13749@tbecker-rhat>
+Received: from mail-qt0-f193.google.com ([209.85.216.193]:38869 "EHLO
+        mail-qt0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752883AbdLHNTI (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 08:19:08 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=US-ASCII
+In-Reply-To: <CAMuHMdWopysALsAzR0x0=uBk_bZDNT4RzgjKwGzqANDfoTxn-A@mail.gmail.com>
+References: <CAMuHMdWm8SGtekpdGVKsDi4L4sgvVZDFoC5wnSggVXFRt-irzA@mail.gmail.com>
+ <CAMuHMdW00vUYmbvS=bvD+dAF4ge4yTLjE7gyso2Gk_tfqGrwXg@mail.gmail.com>
+ <1512576648.26816.3.camel@primarydata.com> <CAMuHMdWopysALsAzR0x0=uBk_bZDNT4RzgjKwGzqANDfoTxn-A@mail.gmail.com>
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+Date: Fri, 8 Dec 2017 14:19:07 +0100
+Message-ID: <CAMuHMdVOa9Bxph=QBeNUJBZ=_pwGrr+aZr7kZ5WvhUNRQZMRow@mail.gmail.com>
+Subject: Re: NFS crash, hashed pointers in backtrace
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-renesas-soc@vger.kernel.org"
+        <linux-renesas-soc@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "me@tobin.cc" <me@tobin.cc>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Wed, Dec 6, 2017 at 5:19 PM, Geert Uytterhoeven <geert@linux-m68k.org> wrote:
+> On Wed, Dec 6, 2017 at 5:10 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
+>> On Wed, 2017-12-06 at 15:31 +0100, Geert Uytterhoeven wrote:
+>>> On Tue, Dec 5, 2017 at 5:02 PM, Geert Uytterhoeven <geert@linux-m68k.
+>>> org> wrote:
+>>> Got another nfsroot crash:
+>>>
+>>> Unable to handle kernel NULL pointer dereference at virtual address
+>>> 00000030
+>>> pgd = 329e8f6e
+>>> [00000030] *pgd=80000040004003, *pmd=00000000
+>>> Internal error: Oops: 206 [#1] SMP ARM
+>>> Modules linked in:
+>>> CPU: 0 PID: 101 Comm: kworker/u4:1 Not tainted
+>>> 4.15.0-rc2-koelsch-01166-g047d7d3248e08fc7-dirty #3762
+>>> Hardware name: Generic R-Car Gen2 (Flattened Device Tree)
+>>> Workqueue: writeback wb_workfn (flush-0:15)
+>>> task: 8a5bf858 task.stack: e93c92bc
+>>> PC is at nfs_page_async_flush+0x110/0x244
+>
+>>> static int nfs_page_async_flush(struct nfs_pageio_descriptor *pgio,
+>>>                                 struct page *page)
+>>> {
+>>>         struct nfs_page *req;
+>>>         int ret = 0;
+>>>
+>>>         ...
+>>>
+>>>         /* If there is a fatal error that covers this write, just
+>>> exit */
+>>>         if (nfs_error_is_fatal_on_server(req->wb_context->error))
+>>>                 goto out_launder;
+>>>
+>>> c03bc644:       e595300c        ldr     r3, [r5, #12]
+>>> c03bc648:       e5930030        ldr     r0, [r3, #48]   ; 0x30
+>>> c03bc64c:       ebfffd1b        bl      c03bbac0
+>>> <nfs_error_is_fatal_on_server>
+>>>
+>>> req->wb_context must be NULL.
+>>
+>> I'm confused. If your test involves only writing to a sysfs file, then
+>> why is the NFS code involved at all?
+>
+> I don't think the second was related to sysfs.
+>
+>> Could this be a use-after-free?
+>
+> Possibly. I'm seeing other crashes, too. Looking into them...
 
-People in linux-nfs seem happy with this patch set. I'm looking for 
-comments from VFS and s390 maintainers.
+Found it: https://lkml.org/lkml/2017/12/8/399
+That one caused corruption (zeroing) of the 4th 32-bit word of a memory block,
+which is consistent with the "ldr r3, [r5, #12]" loading NULL above.
 
-Thanks,
-trbecker
+So NFS is fine (as usual ;-), sorry for the fuzz...
 
----------- Forwarded message ----------
-Date: Tue,  5 Dec 2017 12:05:09 -0200
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-To: bfields@fieldses.org, neilb@suse.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-     linux-kernel@vger.kernel.org, Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH 0/3 v3] Move groups_sort outisde of set_groups
+Gr{oetje,eeting}s,
 
-In cases where group_info is cached (e.g. sunrpc), multiplpe
-threads may call set_groups with a freshly created group_info
-cache (e.g. nfsd), and attempt to sort them simultaneously,
-which configures a race condition that can overwrite some
-groups in the cache and lead to errors. In the case of nfsd,
-the client was receiving EPERM if the group used to provide
-authorization was overwritten by this race condition.
+                        Geert
 
-In an email exchange with bfields, we agreed that it seems
-unintuitive that the groups are sorted on set_groups, and that
-it would be better to move the responsibility of sorting to
-the caller of set_groups.
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
 
-These patches:
-  - Export groups_sort in include/linux/cred.h
-  - Add a call to groups_sort after the groups are inserted in
-    group_info
-  - Remove the call to sort_groups from set_groups
-
-Thiago Rafael Becker (3):
-   kernel: make groups_sort globally visible
-   kernel: Move groups_sort to the caller of set_groups.
-   kernel: set_groups doesn't call groups_sort anymore.
-
-  include/linux/cred.h      | 1 +
-  kernel/groups.c           | 6 ++++--
-  kernel/uid16.c            | 1 +
-  net/sunrpc/svcauth_unix.c | 7 +++++++
-  4 files changed, 13 insertions(+), 2 deletions(-)
-
--- 
-2.9.5
-
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
