@@ -1,51 +1,92 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f173.google.com ([209.85.223.173]:34805 "EHLO
-        mail-io0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753336AbdLHVQY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 16:16:24 -0500
-Message-ID: <1512767781.25033.30.camel@gmail.com>
-Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
- next debugging steps?
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Matt Turner <mattst88@gmail.com>
-Cc: Eric Dumazet <edumazet@google.com>,
-        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        linux-nfs@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Manuel Lauss <manuel.lauss@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Date: Fri, 08 Dec 2017 13:16:21 -0800
-In-Reply-To: <CAEdQ38HEduSTY38Noj4peaMN_G++5sLJfqzCMkd3M4pPNTpU_Q@mail.gmail.com>
-References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
-         <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
-         <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
-         <CANn89iJKGRLVNAE99JWiyXcOXveytkjbQAiZ9XPiJc6fyEdFVA@mail.gmail.com>
-         <1512741164.25033.28.camel@gmail.com>
-         <CAEdQ38HEduSTY38Noj4peaMN_G++5sLJfqzCMkd3M4pPNTpU_Q@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:35673 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752562AbdLHVwW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 16:52:22 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: don't wait on commit in nfs_commit_inode() if there
+ were no commit requests
+Date: Fri, 8 Dec 2017 21:52:16 +0000
+Message-ID: <1512769934.42634.5.camel@primarydata.com>
+References: <20171130143744.odap43pjwh63xhrc@tonberry.usersys.redhat.com>
+         <20171208210012.9491-1-smayhew@redhat.com>
+In-Reply-To: <20171208210012.9491-1-smayhew@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-12-08 at 12:26 -0800, Matt Turner wrote:
-> 
-> Thanks for the quick reply!
-> 
-> I tried the patch on top of master, but unfortunately the corruption
-> still occurs.
-
-You might try replacing in sbdma_add_rcvbuffer()
-
-sb_new = netdev_alloc_skb(dev, size);
-
-by 
-
-sb_new = alloc_skb(size, GFP_ATOMIC);
-
-Maybe the device does not like having a frame spanning 2 pages.
-
+T24gRnJpLCAyMDE3LTEyLTA4IGF0IDE2OjAwIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IElmIHRoZXJlIHdlcmUgbm8gY29tbWl0IHJlcXVlc3RzLCB0aGVuIG5mc19jb21taXRfaW5vZGUo
+KSBzaG91bGQgbm90DQo+IHdhaXQgb24gdGhlIGNvbW1pdCBvciBtYXJrIHRoZSBpbm9kZSBkaXJ0
+eSwgb3RoZXJ3aXNlIHRoZSBmb2xsb3dpbmcNCj4gQlVHX09OIGNhbiBiZSB0cmlnZ2VyZWQ6DQo+
+IA0KPiBbIDE5MTcuMTMwNzYyXSBrZXJuZWwgQlVHIGF0IGZzL2lub2RlLmM6NTc4IQ0KPiBbIDE5
+MTcuMTMwNzY2XSBPb3BzOiBFeGNlcHRpb24gaW4ga2VybmVsIG1vZGUsIHNpZzogNSBbIzFdDQo+
+IFsgMTkxNy4xMzA3NjhdIFNNUCBOUl9DUFVTPTIwNDggTlVNQSBwU2VyaWVzDQo+IFsgMTkxNy4x
+MzA3NzJdIE1vZHVsZXMgbGlua2VkIGluOiBpc2NzaV90Y3AgbGliaXNjc2lfdGNwIGxpYmlzY3Np
+DQo+IHNjc2lfdHJhbnNwb3J0X2lzY3NpIGJsb2NrbGF5b3V0ZHJpdmVyIHJwY3NlY19nc3Nfa3Ji
+NSBhdXRoX3JwY2dzcw0KPiBuZnN2NCBkbnNfcmVzb2x2ZXIgbmZzIGxvY2tkIGdyYWNlIGZzY2Fj
+aGUgc3VucnBjIHNnIG54X2NyeXB0bw0KPiBwc2VyaWVzX3JuZyBpcF90YWJsZXMgeGZzIGxpYmNy
+YzMyYyBzZF9tb2QgY3JjX3QxMGRpZg0KPiBjcmN0MTBkaWZfZ2VuZXJpYyBjcmN0MTBkaWZfY29t
+bW9uIGlibXZzY3NpIHNjc2lfdHJhbnNwb3J0X3NycA0KPiBpYm12ZXRoIHNjc2lfdGd0IGRtX21p
+cnJvciBkbV9yZWdpb25faGFzaCBkbV9sb2cgZG1fbW9kDQo+IFsgMTkxNy4xMzA4MDVdIENQVTog
+MiBQSUQ6IDE0OTIzIENvbW06IHVtb3VudC5uZnM0IFRhaW50ZWQ6DQo+IEcgICAgICAgICAgICAg
+ICAtLS0tLS0tLS0tLS0gVCAzLjEwLjAtNzY4LmVsNy5wcGM2NCAjMQ0KPiBbIDE5MTcuMTMwODEw
+XSB0YXNrOiBjMDAwMDAwNWVjZDg4MDQwIHRpOiBjMDAwMDAwMDRjZWEwMDAwIHRhc2sudGk6DQo+
+IGMwMDAwMDAwNGNlYTAwMDANCj4gWyAxOTE3LjEzMDgxM10gTklQOiBjMDAwMDAwMDAwMzU0MTc4
+IExSOiBjMDAwMDAwMDAwMzU0MTYwIENUUjoNCj4gYzAwMDAwMDAwMDEyZGI4MA0KPiBbIDE5MTcu
+MTMwODE2XSBSRUdTOiBjMDAwMDAwMDRjZWEzNzIwIFRSQVA6IDA3MDAgICBUYWludGVkOg0KPiBH
+ICAgICAgICAgICAgICAgLS0tLS0tLS0tLS0tIFQgICgzLjEwLjAtNzY4LmVsNy5wcGM2NCkNCj4g
+WyAxOTE3LjEzMDgyMF0gTVNSOiA4MDAwMDAwMTAwMDI5MDMyIDxTRixFRSxNRSxJUixEUixSST4g
+IENSOg0KPiAyMjAwMjgyMiAgWEVSOiAyMDAwMDAwMA0KPiBbIDE5MTcuMTMwODI4XSBDRkFSOiBj
+MDAwMDAwMDAwMTFmNTk0IFNPRlRFOiAxDQo+IEdQUjAwOiBjMDAwMDAwMDAwMzU0MTYwIGMwMDAw
+MDAwNGNlYTM5YTAgYzAwMDAwMDAwMTRjNDcwMA0KPiBjMDAwMDAwMDAxOGNjNzUwDQo+IEdQUjA0
+OiAwMDAwMDAwMDAwMDBjNzUwIDgwYzAwMDAwMDAwMDAwMDAgMDYwMDAwMDAwMDAwMDAwMA0KPiAw
+NGVlYjc2YmVhNzQ5YTAzDQo+IEdQUjA4OiAwMDAwMDAwMDAwMDAwMDM0IGMwMDAwMDAwMDE4Y2M3
+NTggMDAwMDAwMDAwMDAwMDAwMQ0KPiBkMDAwMDAwMDA1ZTYxOWU4DQo+IEdQUjEyOiBjMDAwMDAw
+MDAwMTJkYjgwIGMwMDAwMDAwMDdiMzEyMDAgMDAwMDAwMDAwMDAwMDAwMA0KPiAwMDAwMDAwMDAw
+MDAwMDAwDQo+IEdQUjE2OiAwMDAwMDAwMDAwMDAwMDAwIDAwMDAwMDAwMDAwMDAwMDAgMDAwMDAw
+MDAwMDAwMDAwMA0KPiAwMDAwMDAwMDAwMDAwMDAwDQo+IEdQUjIwOiAwMDAwMDAwMDAwMDAwMDAw
+IDAwMDAwMDAwMDAwMDAwMDAgMDAwMDAwMDAwMDAwMDAwMA0KPiAwMDAwMDAwMDAwMDAwMDAwDQo+
+IEdQUjI0OiAwMDAwMDAwMDAwMDAwMDAwIGMwMDAwMDAwMDBkZmMzZWMgMDAwMDAwMDAwMDAwMDAw
+MA0KPiBjMDAwMDAwNWVlZmMwMmMwDQo+IEdQUjI4OiBkMDAwMDAwMDA3OWRiZDUwIGMwMDAwMDA1
+Yjk0YTAyYzAgYzAwMDAwMDViOTRhMDI1MA0KPiBjMDAwMDAwNWI5NGEwMWM4DQo+IFsgMTkxNy4x
+MzA4NjddIE5JUCBbYzAwMDAwMDAwMDM1NDE3OF0gLmV2aWN0KzB4MWM4LzB4MzUwDQo+IFsgMTkx
+Ny4xMzA4NzFdIExSIFtjMDAwMDAwMDAwMzU0MTYwXSAuZXZpY3QrMHgxYjAvMHgzNTANCj4gWyAx
+OTE3LjEzMDg3M10gQ2FsbCBUcmFjZToNCj4gWyAxOTE3LjEzMDg3Nl0gW2MwMDAwMDAwNGNlYTM5
+YTBdIFtjMDAwMDAwMDAwMzU0MTYwXQ0KPiAuZXZpY3QrMHgxYjAvMHgzNTAgKHVucmVsaWFibGUp
+DQo+IFsgMTkxNy4xMzA4ODBdIFtjMDAwMDAwMDRjZWEzYTMwXSBbYzAwMDAwMDAwMDM1NThjY10N
+Cj4gLmV2aWN0X2lub2RlcysweDEzYy8weDI3MA0KPiBbIDE5MTcuMTMwODg0XSBbYzAwMDAwMDA0
+Y2VhM2FmMF0gW2MwMDAwMDAwMDAzMjdkMjBdDQo+IC5raWxsX2Fub25fc3VwZXIrMHg3MC8weDFl
+MA0KPiBbIDE5MTcuMTMwODk2XSBbYzAwMDAwMDA0Y2VhM2I4MF0gW2QwMDAwMDAwMDVlNDNlMzBd
+DQo+IC5uZnNfa2lsbF9zdXBlcisweDIwLzB4NjAgW25mc10NCj4gWyAxOTE3LjEzMDkwMF0gW2Mw
+MDAwMDAwNGNlYTNjMDBdIFtjMDAwMDAwMDAwMzI4YTIwXQ0KPiAuZGVhY3RpdmF0ZV9sb2NrZWRf
+c3VwZXIrMHhhMC8weDFiMA0KPiBbIDE5MTcuMTMwOTAzXSBbYzAwMDAwMDA0Y2VhM2M4MF0gW2Mw
+MDAwMDAwMDAzNWJhNTRdDQo+IC5jbGVhbnVwX21udCsweGQ0LzB4MTgwDQo+IFsgMTkxNy4xMzA5
+MDddIFtjMDAwMDAwMDRjZWEzZDEwXSBbYzAwMDAwMDAwMDExOTAzNF0NCj4gLnRhc2tfd29ya19y
+dW4rMHgxMTQvMHgxNTANCj4gWyAxOTE3LjEzMDkxMl0gW2MwMDAwMDAwNGNlYTNkYjBdIFtjMDAw
+MDAwMDAwMDFiYTZjXQ0KPiAuZG9fbm90aWZ5X3Jlc3VtZSsweGNjLzB4MTAwDQo+IFsgMTkxNy4x
+MzA5MTZdIFtjMDAwMDAwMDRjZWEzZTMwXSBbYzAwMDAwMDAwMDAwYTdiMF0NCj4gLnJldF9mcm9t
+X2V4Y2VwdF9saXRlKzB4NWMvMHg2MA0KPiBbIDE5MTcuMTMwOTE5XSBJbnN0cnVjdGlvbiBkdW1w
+Og0KPiBbIDE5MTcuMTMwOTIxXSA3ZmMzZjM3OCA0ODY3MzRiNSA2MDAwMDAwMCAzODdmMDBhMCAz
+ODgwMDAwMyA0YmRjYjM2NQ0KPiA2MDAwMDAwMCBlOTVmMDBhMA0KPiBbIDE5MTcuMTMwOTI3XSA2
+OTRhMDA2MCA3ZDRhMDA3NCA3OTRhZDE4MiA2OTRhMDAwMSA8MGIwYTAwMDA+DQo+IDg5MmQwMmE0
+IDJmODkwMDAwIDQwZGUwMTM0DQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTY290dCBNYXloZXcgPHNt
+YXloZXdAcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvd3JpdGUuYyB8IDIgKysNCj4gIDEg
+ZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKykNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMv
+d3JpdGUuYyBiL2ZzL25mcy93cml0ZS5jDQo+IGluZGV4IDViNWY0NjQuLjRhMzc5ZDcgMTAwNjQ0
+DQo+IC0tLSBhL2ZzL25mcy93cml0ZS5jDQo+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+IEBAIC0x
+ODkwLDYgKzE4OTAsOCBAQCBpbnQgbmZzX2NvbW1pdF9pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2Rl
+LCBpbnQNCj4gaG93KQ0KPiAgCWlmIChyZXMpDQo+ICAJCWVycm9yID0gbmZzX2dlbmVyaWNfY29t
+bWl0X2xpc3QoaW5vZGUsICZoZWFkLCBob3csDQo+ICZjaW5mbyk7DQo+ICAJbmZzX2NvbW1pdF9l
+bmQoY2luZm8ubWRzKTsNCj4gKwlpZiAocmVzID09IDApDQo+ICsJCXJldHVybiByZXM7DQo+ICAJ
+aWYgKGVycm9yIDwgMCkNCj4gIAkJZ290byBvdXRfZXJyb3I7DQo+ICAJaWYgKCFtYXlfd2FpdCkN
+Cg0KTG9va3MgZ29vZCB0byBtZS4NCg0KUmV2aWV3ZWQtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJv
+bmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCg0KQW5uYSwgc2luY2UgdGhpcyBpcyBhbiBP
+b3BzYWJsZSBpc3N1ZSwgcGVyaGFwcyB3ZSBzaG91bGQgcHJvcGFnYXRlIGl0DQp0aHJvdWdoIHN0
+YWJsZUB2Z2VyPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
+dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
