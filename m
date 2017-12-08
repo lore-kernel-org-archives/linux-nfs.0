@@ -1,206 +1,163 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:41612 "EHLO
-        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753303AbdLHNws (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 08:52:48 -0500
-Message-ID: <1512741164.25033.28.camel@gmail.com>
-Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
- next debugging steps?
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Eric Dumazet <edumazet@google.com>,
-        Matt Turner <mattst88@gmail.com>
-Cc: "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
-        linux-nfs@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>,
-        Hannes Frederic Sowa <hannes@stressinduktion.org>,
-        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
-        Thomas Gleixner <tglx@linutronix.de>,
-        Ingo Molnar <mingo@kernel.org>,
-        Manuel Lauss <manuel.lauss@gmail.com>,
-        LKML <linux-kernel@vger.kernel.org>,
-        netdev <netdev@vger.kernel.org>
-Date: Fri, 08 Dec 2017 05:52:44 -0800
-In-Reply-To: <CANn89iJKGRLVNAE99JWiyXcOXveytkjbQAiZ9XPiJc6fyEdFVA@mail.gmail.com>
-References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
-         <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
-         <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
-         <CANn89iJKGRLVNAE99JWiyXcOXveytkjbQAiZ9XPiJc6fyEdFVA@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <tigran.mkrtchyan@desy.de>
+Date: Fri, 8 Dec 2017 16:27:04 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <615366644.8605857.1512746824600.JavaMail.zimbra@desy.de>
+In-Reply-To: <9AC6BDC1-BC60-4B39-867F-4049A70A8809@redhat.com>
+References: <1331153121.8329860.1512669776409.JavaMail.zimbra@desy.de> <9AC6BDC1-BC60-4B39-867F-4049A70A8809@redhat.com>
+Subject: Re: kernel BUG on umount
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2017-12-08 at 05:42 -0800, Eric Dumazet wrote:
-> On Thu, Dec 7, 2017 at 11:54 PM, Matt Turner <mattst88@gmail.com>
-> wrote:
-> > On Thu, Dec 7, 2017 at 11:00 PM, Matt Turner <mattst88@gmail.com>
-> > wrote:
-> > > On Sun, Mar 12, 2017 at 6:43 PM, Matt Turner <mattst88@gmail.com>
-> > > wrote:
-> > > > On a Broadcom BCM91250a MIPS system I can reliably trigger NFS
-> > > > corruption on the first file read.
-> > > > 
-> > > > To demonstrate, I downloaded five identical copies of the gcc-
-> > > > 5.4.0
-> > > > source tarball. On the NFS server, they hash to the same value:
-> > > > 
-> > > > server distfiles # md5sum gcc-5.4.0.tar.bz2*
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
-> > > > 
-> > > > On the MIPS system (the NFS client):
-> > > > 
-> > > > bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2.2
-> > > > 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
-> > > > bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-> > > > 35346975989954df8a8db2b034da610d  gcc-5.4.0.tar.bz2.2
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
-> > > > 
-> > > > The first file read will contain some corruption, and it is
-> > > > persistent until...
-> > > > 
-> > > > bcm91250a-le distfiles # echo 1 > /proc/sys/vm/drop_caches
-> > > > bcm91250a-le distfiles # md5sum gcc-5.4.0.tar.bz2*
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.1
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.2
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.3
-> > > > 4c626ac2a83ef30dfb9260e6f59c2b30  gcc-5.4.0.tar.bz2.4
-> > > > 
-> > > > the caches are dropped, at which point it reads back properly.
-> > > > 
-> > > > Note that the corruption is different across reboots, both in
-> > > > the size
-> > > > of the corruption and the location. I saw 1900~ and 1400~ byte
-> > > > sequences corrupted on separate occasions, which don't
-> > > > correspond to
-> > > > the system's 16kB page size.
-> > > > 
-> > > > I've tested kernels from v3.19 to 4.11-rc1+ (master branch from
-> > > > today). All exhibit this behavior with differing frequencies.
-> > > > Earlier
-> > > > kernels seem to reproduce the issue less often, while more
-> > > > recent
-> > > > kernels reliably exhibit the problem every boot.
-> > > > 
-> > > > How can I further debug this?
-> > > 
-> > > I think I was wrong about the statement about kernels v3.19 to
-> > > 4.11-rc1+. I found out I couldn't reproduce with 4.7-rc1 and then
-> > > bisected to 4cd13c21b207e80ddb1144c576500098f2d5f882 ("softirq:
-> > > Let
-> > > ksoftirqd do its job"). Still reproduces with current tip of
-> > > Linus'
-> > > tree.
-> > > 
-> > > Any ideas? The board's ethernet is an uncommon device supported
-> > > by
-> > > CONFIG_SB1250_MAC. Something about the ethernet driver maybe?
-> > 
-> > With the patch reverted on master (reverts cleanly), NFS corruption
-> > no
-> > longer happens.
-> 
-> Hi Matt.
-> 
-> Thanks for bisecting.
-> 
-> Patch simply exposes an existing bug more often by changing the way
-> driver functions are scheduled.
-> 
-> Which is probably a good thing.
-> 
-> sbmac_intr() looks extremely suspicious to me.
-> 
-> A NAPI driver hard interrupt should simply schedule NAPI.
-> 
-> Apparently, if sbmac_intr() can not grab NAPIF_STATE_SCHED bit, it
-> directly calls sbdma_rx_process() from
-> hard interrupt context.
-> 
-> Insane really.
 
-Please try this fix (not compiled on my x86 laptop, and I had no coffee
-yet, so it might have some trivial errors)
+Hi Ben,
 
-diff --git a/drivers/net/ethernet/broadcom/sb1250-mac.c b/drivers/net/ethernet/broadcom/sb1250-mac.c
-index ecdef42f0ae63641419a603f0b4eec2fc213c334..3ddd9ca469b280e70509b22fd7d3f449c81fbedc 100644
---- a/drivers/net/ethernet/broadcom/sb1250-mac.c
-+++ b/drivers/net/ethernet/broadcom/sb1250-mac.c
-@@ -287,8 +287,6 @@ static int sbdma_add_rcvbuffer(struct sbmac_softc *sc, struct sbmacdma *d,
- static int sbdma_add_txbuffer(struct sbmacdma *d, struct sk_buff *m);
- static void sbdma_emptyring(struct sbmacdma *d);
- static void sbdma_fillring(struct sbmac_softc *sc, struct sbmacdma *d);
--static int sbdma_rx_process(struct sbmac_softc *sc, struct sbmacdma *d,
--			    int work_to_do, int poll);
- static void sbdma_tx_process(struct sbmac_softc *sc, struct sbmacdma *d,
- 			     int poll);
- static int sbmac_initctx(struct sbmac_softc *s);
-@@ -1063,7 +1061,7 @@ static void sbmac_netpoll(struct net_device *netdev)
-  ********************************************************************* */
- 
- static int sbdma_rx_process(struct sbmac_softc *sc, struct sbmacdma *d,
--			    int work_to_do, int poll)
-+			    int work_to_do)
- {
- 	struct net_device *dev = sc->sbm_dev;
- 	int curidx;
-@@ -1076,7 +1074,6 @@ static int sbdma_rx_process(struct sbmac_softc *sc, struct sbmacdma *d,
- 
- 	prefetch(d);
- 
--again:
- 	/* Check if the HW dropped any frames */
- 	dev->stats.rx_fifo_errors
- 	    += __raw_readq(sc->sbm_rxdma.sbdma_oodpktlost) & 0xffff;
-@@ -1169,10 +1166,7 @@ static int sbdma_rx_process(struct sbmac_softc *sc, struct sbmacdma *d,
- 				}
- 				prefetch(sb->data);
- 				prefetch((const void *)(((char *)sb->data)+32));
--				if (poll)
--					dropped = netif_receive_skb(sb);
--				else
--					dropped = netif_rx(sb);
-+				dropped = netif_receive_skb(sb);
- 
- 				if (dropped == NET_RX_DROP) {
- 					dev->stats.rx_dropped++;
-@@ -1201,10 +1195,6 @@ static int sbdma_rx_process(struct sbmac_softc *sc, struct sbmacdma *d,
- 		d->sbdma_remptr = SBDMA_NEXTBUF(d,sbdma_remptr);
- 		work_done++;
- 	}
--	if (!poll) {
--		work_to_do = 32;
--		goto again; /* collect fifo drop statistics again */
--	}
- done:
- 	return work_done;
- }
-@@ -2006,11 +1996,6 @@ static irqreturn_t sbmac_intr(int irq,void *dev_instance)
- 			__napi_schedule(&sc->napi);
- 			/* Depend on the exit from poll to reenable intr */
- 		}
--		else {
--			/* may leave some packets behind */
--			sbdma_rx_process(sc,&(sc->sbm_rxdma),
--					 SBMAC_MAX_RXDESCR * 2, 0);
--		}
- 	}
- 	return IRQ_RETVAL(handled);
- }
-@@ -2529,7 +2514,7 @@ static int sbmac_poll(struct napi_struct *napi, int budget)
- 	struct sbmac_softc *sc = container_of(napi, struct sbmac_softc, napi);
- 	int work_done;
- 
--	work_done = sbdma_rx_process(sc, &(sc->sbm_rxdma), budget, 1);
-+	work_done = sbdma_rx_process(sc, &(sc->sbm_rxdma), budget);
- 	sbdma_tx_process(sc, &(sc->sbm_txdma), 1);
- 
- 	if (work_done < budget) {
+good to know, that issue is already addressed.
 
+Thanks,
+   Tigran.
 
+----- Original Message -----
+> From: "Benjamin Coddington" <bcodding@redhat.com>
+> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> Cc: "linux-nfs" <linux-nfs@vger.kernel.org>
+> Sent: Thursday, December 7, 2017 7:18:23 PM
+> Subject: Re: kernel BUG on umount
+
+> Hi Tigran,  I think Scott has a patch pending for this one, see the
+> thread "[PATCH] nfs: make pnfs_destroy_layout() wait on commit when
+> inode is being evicted"  I've been carrying this fix:
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index b1af5dee5e0a..b77bc3e92fda 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1906,6 +1906,10 @@ int nfs_commit_inode(struct inode *inode, int
+> how)
+>         if (res)
+>                 error = nfs_generic_commit_list(inode, &head, how,
+> &cinfo);
+>         nfs_commit_end(cinfo.mds);
+> +
+> +       if (res == 0)
+> +               return 0;
+> +
+>         if (error < 0)
+>                 goto out_error;
+>         if (!may_wait)
+> 
+> Ben
+> 
+> On 7 Dec 2017, at 13:02, Mkrtchyan, Tigran wrote:
+> 
+>> triggered on umount.
+>>
+>>
+>> [18593.320000] ------------[ cut here ]------------
+>> [18593.320003] kernel BUG at fs/inode.c:567!
+>> [18593.320010] invalid opcode: 0000 [#1] SMP
+>> [18593.320043] Modules linked in: nfs_layout_nfsv41_files
+>> rpcsec_gss_krb5 auth_rpcgss nfsv4 dns_resolver nfs lockd grace fscache
+>> xt_nat veth ipt_MASQUERADE nf_nat_masquerade_ipv4 xt_addrtype
+>> br_netfilter overlay xfs uas usb_storage nfnetlink_queue nfnetlink_log
+>> tun fuse ccm xt_multiport nf_conntrack_netbios_ns
+>> nf_conntrack_broadcast xt_CT ip6t_rpfilter ip6t_REJECT nf_reject_ipv6
+>> xt_conntrack ip_set nfnetlink ebtable_nat ebtable_broute bridge stp
+>> llc ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6
+>> ip6table_mangle ip6table_raw ip6table_security iptable_nat
+>> nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack
+>> libcrc32c iptable_mangle iptable_raw iptable_security ebtable_filter
+>> ebtables ip6table_filter ip6_tables bnep binfmt_misc sunrpc vfat fat
+>> arc4 snd_soc_skl snd_soc_skl_ipc snd_soc_sst_ipc
+>> [18593.320416]  snd_soc_sst_dsp snd_hda_ext_core uvcvideo intel_rapl
+>> snd_soc_sst_match snd_hda_codec_hdmi videobuf2_vmalloc
+>> x86_pkg_temp_thermal snd_soc_core intel_powerclamp videobuf2_memops
+>> iwlmvm videobuf2_v4l2 videobuf2_core coretemp dell_laptop dell_wmi
+>> iTCO_wdt iTCO_vendor_support mei_wdt kvm_intel videodev snd_compress
+>> btusb sparse_keymap kvm mac80211 snd_hda_codec_realtek wmi_bmof ppdev
+>> btrtl snd_hda_codec_generic dell_smbios dcdbas snd_pcm_dmaengine
+>> ac97_bus media irqbypass iwlwifi crct10dif_pclmul snd_hda_intel
+>> crc32_pclmul dell_smm_hwmon ghash_clmulni_intel intel_cstate
+>> snd_hda_codec intel_uncore snd_hda_core intel_rapl_perf snd_hwdep
+>> snd_seq cfg80211 rtsx_pci_ms snd_seq_device joydev snd_pcm memstick
+>> snd_timer snd hci_uart soundcore i2c_i801 mei_me tpm_tis btbcm btqca
+>> tpm_tis_core mei shpchp
+>> [18593.320671]  processor_thermal_device intel_pch_thermal
+>> intel_soc_dts_iosf btintel tpm bluetooth wmi parport_pc parport
+>> pinctrl_sunrisepoint intel_lpss_acpi pinctrl_intel ecdh_generic
+>> intel_lpss dell_rbtn acpi_als kfifo_buf int3403_thermal rfkill
+>> int340x_thermal_zone industrialio int3400_thermal acpi_thermal_rel
+>> acpi_pad i915 rtsx_pci_sdmmc mmc_core e1000e i2c_algo_bit
+>> drm_kms_helper ptp drm serio_raw rtsx_pci crc32c_intel pps_core video
+>> i2c_hid
+>> [18593.320818] CPU: 3 PID: 27568 Comm: umount.nfs4 Not tainted
+>> 4.13.16-300.fc27.x86_64 #1
+>> [18593.320848] Hardware name: Dell Inc. Latitude E7470/0T6HHJ, BIOS
+>> 1.6.3 06/15/2016
+>> [18593.320884] task: ffff8c8dbb6a0000 task.stack: ffffa512c6508000
+>> [18593.320921] RIP: 0010:evict+0x172/0x190
+>> [18593.320942] RSP: 0018:ffffa512c650bd70 EFLAGS: 00010202
+>> [18593.320973] RAX: 0000000000000000 RBX: ffff8c8b6bf06400 RCX:
+>> ffff8c8b6bf064a0
+>> [18593.321009] RDX: ffffffff96e063f8 RSI: ffff8c8b6bf064a0 RDI:
+>> ffffffff96e063f0
+>> [18593.321048] RBP: ffffa512c650bd88 R08: 0000000000000001 R09:
+>> 0000000180150012
+>> [18593.321084] R10: ffffa512c650bc68 R11: 0000000000000000 R12:
+>> ffff8c8b6bf06520
+>> [18593.321109] R13: ffffffffc11e94c0 R14: ffff8c8b54755c68 R15:
+>> ffff8c8b6bf00e08
+>> [18593.321135] FS:  00007f4a7deeb000(0000) GS:ffff8c8dcdd80000(0000)
+>> knlGS:0000000000000000
+>> [18593.321164] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>> [18593.321190] CR2: 00007f4a7d8b0930 CR3: 00000001ba15a000 CR4:
+>> 00000000003406e0
+>> [18593.321218] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+>> 0000000000000000
+>> [18593.321243] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
+>> 0000000000000400
+>> [18593.321276] Call Trace:
+>> [18593.321291]  dispose_list+0x4d/0x70
+>> [18593.321306]  evict_inodes+0x17a/0x1a0
+>> [18593.321323]  generic_shutdown_super+0x44/0x110
+>> [18593.321349]  nfs_kill_super+0x21/0x40 [nfs]
+>> [18593.321366]  deactivate_locked_super+0x43/0x70
+>> [18593.321384]  deactivate_super+0x3f/0x60
+>> [18593.321400]  cleanup_mnt+0x3f/0x80
+>> [18593.321415]  __cleanup_mnt+0x12/0x20
+>> [18593.321431]  task_work_run+0x76/0x90
+>> [18593.321447]  exit_to_usermode_loop+0xab/0xb0
+>> [18593.321464]  syscall_return_slowpath+0x8f/0xa0
+>> [18593.321483]  entry_SYSCALL_64_fastpath+0xa3/0xa5
+>> [18593.321502] RIP: 0033:0x7f4a7d385ea7
+>> [18593.321516] RSP: 002b:00007fff597454a8 EFLAGS: 00000246 ORIG_RAX:
+>> 00000000000000a6
+>> [18593.321543] RAX: 0000000000000000 RBX: 00005619e0a4d920 RCX:
+>> 00007f4a7d385ea7
+>> [18593.321574] RDX: 0000000000000001 RSI: 0000000000000000 RDI:
+>> 00005619e0a567d0
+>> [18593.321605] RBP: 00005619e0a567d0 R08: 00007fff59745410 R09:
+>> 00005619e0a5b85a
+>> [18593.321631] R10: 0000000000000013 R11: 0000000000000246 R12:
+>> 00007f4a7dabd184
+>> [18593.321656] R13: 0000000000000000 R14: 00005619e0a5b660 R15:
+>> 00007fff59746379
+>> [18593.321682] Code: 89 df e8 f2 5b fe ff eb 8f 48 83 bb 28 02 00 00
+>> 00 74 85 48 89 df e8 3e 24 02 00 0f b7 03 66 25 00 f0 e9 6b ff ff ff
+>> 0f 0b 0f 0b <0f> 0b 48 8d bb 78 01 00 00 e8 70 5c f5 ff 48 89 df e8 b8
+>> ef ff
+>> [18593.321774] RIP: evict+0x172/0x190 RSP: ffffa512c650bd70
+>> [18593.329038] ---[ end trace bd3e16565ae6e59c ]---
+>>
+>> Tigran.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
