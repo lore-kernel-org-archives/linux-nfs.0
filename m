@@ -1,92 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:35673 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752562AbdLHVwW (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 16:52:22 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: don't wait on commit in nfs_commit_inode() if there
- were no commit requests
-Date: Fri, 8 Dec 2017 21:52:16 +0000
-Message-ID: <1512769934.42634.5.camel@primarydata.com>
-References: <20171130143744.odap43pjwh63xhrc@tonberry.usersys.redhat.com>
-         <20171208210012.9491-1-smayhew@redhat.com>
-In-Reply-To: <20171208210012.9491-1-smayhew@redhat.com>
+Received: from fieldses.org ([173.255.197.46]:59304 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752350AbdLHWQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 8 Dec 2017 17:16:27 -0500
+Date: Fri, 8 Dec 2017 17:16:26 -0500
+To: linux-nfs@vger.kernel.org
+Cc: hch@infradead.org
+Subject: spurious sillyrename after O_DIRECT writes get ENOSPC
+Message-ID: <20171208221626.GB22508@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE3LTEyLTA4IGF0IDE2OjAwIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IElmIHRoZXJlIHdlcmUgbm8gY29tbWl0IHJlcXVlc3RzLCB0aGVuIG5mc19jb21taXRfaW5vZGUo
-KSBzaG91bGQgbm90DQo+IHdhaXQgb24gdGhlIGNvbW1pdCBvciBtYXJrIHRoZSBpbm9kZSBkaXJ0
-eSwgb3RoZXJ3aXNlIHRoZSBmb2xsb3dpbmcNCj4gQlVHX09OIGNhbiBiZSB0cmlnZ2VyZWQ6DQo+
-IA0KPiBbIDE5MTcuMTMwNzYyXSBrZXJuZWwgQlVHIGF0IGZzL2lub2RlLmM6NTc4IQ0KPiBbIDE5
-MTcuMTMwNzY2XSBPb3BzOiBFeGNlcHRpb24gaW4ga2VybmVsIG1vZGUsIHNpZzogNSBbIzFdDQo+
-IFsgMTkxNy4xMzA3NjhdIFNNUCBOUl9DUFVTPTIwNDggTlVNQSBwU2VyaWVzDQo+IFsgMTkxNy4x
-MzA3NzJdIE1vZHVsZXMgbGlua2VkIGluOiBpc2NzaV90Y3AgbGliaXNjc2lfdGNwIGxpYmlzY3Np
-DQo+IHNjc2lfdHJhbnNwb3J0X2lzY3NpIGJsb2NrbGF5b3V0ZHJpdmVyIHJwY3NlY19nc3Nfa3Ji
-NSBhdXRoX3JwY2dzcw0KPiBuZnN2NCBkbnNfcmVzb2x2ZXIgbmZzIGxvY2tkIGdyYWNlIGZzY2Fj
-aGUgc3VucnBjIHNnIG54X2NyeXB0bw0KPiBwc2VyaWVzX3JuZyBpcF90YWJsZXMgeGZzIGxpYmNy
-YzMyYyBzZF9tb2QgY3JjX3QxMGRpZg0KPiBjcmN0MTBkaWZfZ2VuZXJpYyBjcmN0MTBkaWZfY29t
-bW9uIGlibXZzY3NpIHNjc2lfdHJhbnNwb3J0X3NycA0KPiBpYm12ZXRoIHNjc2lfdGd0IGRtX21p
-cnJvciBkbV9yZWdpb25faGFzaCBkbV9sb2cgZG1fbW9kDQo+IFsgMTkxNy4xMzA4MDVdIENQVTog
-MiBQSUQ6IDE0OTIzIENvbW06IHVtb3VudC5uZnM0IFRhaW50ZWQ6DQo+IEcgICAgICAgICAgICAg
-ICAtLS0tLS0tLS0tLS0gVCAzLjEwLjAtNzY4LmVsNy5wcGM2NCAjMQ0KPiBbIDE5MTcuMTMwODEw
-XSB0YXNrOiBjMDAwMDAwNWVjZDg4MDQwIHRpOiBjMDAwMDAwMDRjZWEwMDAwIHRhc2sudGk6DQo+
-IGMwMDAwMDAwNGNlYTAwMDANCj4gWyAxOTE3LjEzMDgxM10gTklQOiBjMDAwMDAwMDAwMzU0MTc4
-IExSOiBjMDAwMDAwMDAwMzU0MTYwIENUUjoNCj4gYzAwMDAwMDAwMDEyZGI4MA0KPiBbIDE5MTcu
-MTMwODE2XSBSRUdTOiBjMDAwMDAwMDRjZWEzNzIwIFRSQVA6IDA3MDAgICBUYWludGVkOg0KPiBH
-ICAgICAgICAgICAgICAgLS0tLS0tLS0tLS0tIFQgICgzLjEwLjAtNzY4LmVsNy5wcGM2NCkNCj4g
-WyAxOTE3LjEzMDgyMF0gTVNSOiA4MDAwMDAwMTAwMDI5MDMyIDxTRixFRSxNRSxJUixEUixSST4g
-IENSOg0KPiAyMjAwMjgyMiAgWEVSOiAyMDAwMDAwMA0KPiBbIDE5MTcuMTMwODI4XSBDRkFSOiBj
-MDAwMDAwMDAwMTFmNTk0IFNPRlRFOiAxDQo+IEdQUjAwOiBjMDAwMDAwMDAwMzU0MTYwIGMwMDAw
-MDAwNGNlYTM5YTAgYzAwMDAwMDAwMTRjNDcwMA0KPiBjMDAwMDAwMDAxOGNjNzUwDQo+IEdQUjA0
-OiAwMDAwMDAwMDAwMDBjNzUwIDgwYzAwMDAwMDAwMDAwMDAgMDYwMDAwMDAwMDAwMDAwMA0KPiAw
-NGVlYjc2YmVhNzQ5YTAzDQo+IEdQUjA4OiAwMDAwMDAwMDAwMDAwMDM0IGMwMDAwMDAwMDE4Y2M3
-NTggMDAwMDAwMDAwMDAwMDAwMQ0KPiBkMDAwMDAwMDA1ZTYxOWU4DQo+IEdQUjEyOiBjMDAwMDAw
-MDAwMTJkYjgwIGMwMDAwMDAwMDdiMzEyMDAgMDAwMDAwMDAwMDAwMDAwMA0KPiAwMDAwMDAwMDAw
-MDAwMDAwDQo+IEdQUjE2OiAwMDAwMDAwMDAwMDAwMDAwIDAwMDAwMDAwMDAwMDAwMDAgMDAwMDAw
-MDAwMDAwMDAwMA0KPiAwMDAwMDAwMDAwMDAwMDAwDQo+IEdQUjIwOiAwMDAwMDAwMDAwMDAwMDAw
-IDAwMDAwMDAwMDAwMDAwMDAgMDAwMDAwMDAwMDAwMDAwMA0KPiAwMDAwMDAwMDAwMDAwMDAwDQo+
-IEdQUjI0OiAwMDAwMDAwMDAwMDAwMDAwIGMwMDAwMDAwMDBkZmMzZWMgMDAwMDAwMDAwMDAwMDAw
-MA0KPiBjMDAwMDAwNWVlZmMwMmMwDQo+IEdQUjI4OiBkMDAwMDAwMDA3OWRiZDUwIGMwMDAwMDA1
-Yjk0YTAyYzAgYzAwMDAwMDViOTRhMDI1MA0KPiBjMDAwMDAwNWI5NGEwMWM4DQo+IFsgMTkxNy4x
-MzA4NjddIE5JUCBbYzAwMDAwMDAwMDM1NDE3OF0gLmV2aWN0KzB4MWM4LzB4MzUwDQo+IFsgMTkx
-Ny4xMzA4NzFdIExSIFtjMDAwMDAwMDAwMzU0MTYwXSAuZXZpY3QrMHgxYjAvMHgzNTANCj4gWyAx
-OTE3LjEzMDg3M10gQ2FsbCBUcmFjZToNCj4gWyAxOTE3LjEzMDg3Nl0gW2MwMDAwMDAwNGNlYTM5
-YTBdIFtjMDAwMDAwMDAwMzU0MTYwXQ0KPiAuZXZpY3QrMHgxYjAvMHgzNTAgKHVucmVsaWFibGUp
-DQo+IFsgMTkxNy4xMzA4ODBdIFtjMDAwMDAwMDRjZWEzYTMwXSBbYzAwMDAwMDAwMDM1NThjY10N
-Cj4gLmV2aWN0X2lub2RlcysweDEzYy8weDI3MA0KPiBbIDE5MTcuMTMwODg0XSBbYzAwMDAwMDA0
-Y2VhM2FmMF0gW2MwMDAwMDAwMDAzMjdkMjBdDQo+IC5raWxsX2Fub25fc3VwZXIrMHg3MC8weDFl
-MA0KPiBbIDE5MTcuMTMwODk2XSBbYzAwMDAwMDA0Y2VhM2I4MF0gW2QwMDAwMDAwMDVlNDNlMzBd
-DQo+IC5uZnNfa2lsbF9zdXBlcisweDIwLzB4NjAgW25mc10NCj4gWyAxOTE3LjEzMDkwMF0gW2Mw
-MDAwMDAwNGNlYTNjMDBdIFtjMDAwMDAwMDAwMzI4YTIwXQ0KPiAuZGVhY3RpdmF0ZV9sb2NrZWRf
-c3VwZXIrMHhhMC8weDFiMA0KPiBbIDE5MTcuMTMwOTAzXSBbYzAwMDAwMDA0Y2VhM2M4MF0gW2Mw
-MDAwMDAwMDAzNWJhNTRdDQo+IC5jbGVhbnVwX21udCsweGQ0LzB4MTgwDQo+IFsgMTkxNy4xMzA5
-MDddIFtjMDAwMDAwMDRjZWEzZDEwXSBbYzAwMDAwMDAwMDExOTAzNF0NCj4gLnRhc2tfd29ya19y
-dW4rMHgxMTQvMHgxNTANCj4gWyAxOTE3LjEzMDkxMl0gW2MwMDAwMDAwNGNlYTNkYjBdIFtjMDAw
-MDAwMDAwMDFiYTZjXQ0KPiAuZG9fbm90aWZ5X3Jlc3VtZSsweGNjLzB4MTAwDQo+IFsgMTkxNy4x
-MzA5MTZdIFtjMDAwMDAwMDRjZWEzZTMwXSBbYzAwMDAwMDAwMDAwYTdiMF0NCj4gLnJldF9mcm9t
-X2V4Y2VwdF9saXRlKzB4NWMvMHg2MA0KPiBbIDE5MTcuMTMwOTE5XSBJbnN0cnVjdGlvbiBkdW1w
-Og0KPiBbIDE5MTcuMTMwOTIxXSA3ZmMzZjM3OCA0ODY3MzRiNSA2MDAwMDAwMCAzODdmMDBhMCAz
-ODgwMDAwMyA0YmRjYjM2NQ0KPiA2MDAwMDAwMCBlOTVmMDBhMA0KPiBbIDE5MTcuMTMwOTI3XSA2
-OTRhMDA2MCA3ZDRhMDA3NCA3OTRhZDE4MiA2OTRhMDAwMSA8MGIwYTAwMDA+DQo+IDg5MmQwMmE0
-IDJmODkwMDAwIDQwZGUwMTM0DQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTY290dCBNYXloZXcgPHNt
-YXloZXdAcmVkaGF0LmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvd3JpdGUuYyB8IDIgKysNCj4gIDEg
-ZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKykNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMv
-d3JpdGUuYyBiL2ZzL25mcy93cml0ZS5jDQo+IGluZGV4IDViNWY0NjQuLjRhMzc5ZDcgMTAwNjQ0
-DQo+IC0tLSBhL2ZzL25mcy93cml0ZS5jDQo+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+IEBAIC0x
-ODkwLDYgKzE4OTAsOCBAQCBpbnQgbmZzX2NvbW1pdF9pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2Rl
-LCBpbnQNCj4gaG93KQ0KPiAgCWlmIChyZXMpDQo+ICAJCWVycm9yID0gbmZzX2dlbmVyaWNfY29t
-bWl0X2xpc3QoaW5vZGUsICZoZWFkLCBob3csDQo+ICZjaW5mbyk7DQo+ICAJbmZzX2NvbW1pdF9l
-bmQoY2luZm8ubWRzKTsNCj4gKwlpZiAocmVzID09IDApDQo+ICsJCXJldHVybiByZXM7DQo+ICAJ
-aWYgKGVycm9yIDwgMCkNCj4gIAkJZ290byBvdXRfZXJyb3I7DQo+ICAJaWYgKCFtYXlfd2FpdCkN
-Cg0KTG9va3MgZ29vZCB0byBtZS4NCg0KUmV2aWV3ZWQtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJv
-bmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCg0KQW5uYSwgc2luY2UgdGhpcyBpcyBhbiBP
-b3BzYWJsZSBpc3N1ZSwgcGVyaGFwcyB3ZSBzaG91bGQgcHJvcGFnYXRlIGl0DQp0aHJvdWdoIHN0
-YWJsZUB2Z2VyPw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWlu
-dGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Last year Christoph noticed a bug that could result in a file being
+unnecessarily sillyrenamed after O_DIRECT writes get ENOSPC:
 
+	http://lkml.kernel.org/r/20160616150146.GA14015@infradead.org
+
+It's reproduceable on upstream, over v3 or v4.
+
+I looked into it some more, and it seems to reproduce whenever a write
+system call results in multiple WRITE calls, only some of which receive
+ENOSPC.  I think that's resulting in a leak of the wb_kref on some
+nfs_pages (possibly the ones corresponding to the ENOSPC failures?).
+Those nfs_pages in turn hold references on nfs_{lock,open}_contexts.  So
+a "rm" on the client (even after the file is closed) results in a
+sillyrename.
+
+I'll keep looking at this, but the relevant code is pretty opaque to me
+so far.  Any ideas welcomed.
+
+--b.
