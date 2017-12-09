@@ -1,138 +1,126 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:46822 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750937AbdLaSgG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 31 Dec 2017 13:36:06 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: NFSv4.1 regression with v4.15-rc
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <874F5218-43E6-423C-9F94-4DFC07FFDF8D@oracle.com>
-Date: Sun, 31 Dec 2017 13:35:57 -0500
-Cc: Bruce Fields <bfields@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
-References: <337F485E-4E53-4EBF-8186-009326C281EC@oracle.com> <20171230180526.GA4141@fieldses.org> <874F5218-43E6-423C-9F94-4DFC07FFDF8D@oracle.com>
-To: Bruce Fields <bfields@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: nfsv4-bounces@ietf.org
+In-Reply-To: <20171208162207.GA14788@stefanha-x1.localdomain>
+References: <20171124105928.GA11868@stefanha-x1.localdomain>
+ <20171208162207.GA14788@stefanha-x1.localdomain>
+From: David Noveck <davenoveck@gmail.com>
+Date: Sat, 9 Dec 2017 14:28:24 -0500
+Message-ID: <CADaq8jf7RJpMCf6N=ttTyHMck5Q3AABECBc=BDaNSZkRgYEN=g@mail.gmail.com>
+To: Stefan Hajnoczi <stefanha@redhat.com>
+Subject: Re: [nfsv4] Remote Procedure Call (RPC) over AF_VSOCK draft 00
+List-Unsubscribe: <https://www.ietf.org/mailman/options/nfsv4>,
+ <mailto:nfsv4-request@ietf.org?subject=unsubscribe>
+List-Archive: <https://mailarchive.ietf.org/arch/browse/nfsv4/>
+List-Post: <mailto:nfsv4@ietf.org>
+List-Help: <mailto:nfsv4-request@ietf.org?subject=help>
+List-Subscribe: <https://www.ietf.org/mailman/listinfo/nfsv4>,
+ <mailto:nfsv4-request@ietf.org?subject=subscribe>
+Cc: linux-nfs@vger.kernel.org, "nfsv4@ietf.org" <nfsv4@ietf.org>
+Content-Type: multipart/mixed; boundary="===============2539301219550144144=="
+Errors-To: nfsv4-bounces@ietf.org
+Sender: "nfsv4" <nfsv4-bounces@ietf.org>
+MIME-Version: 1.0
 List-ID: <linux-nfs.vger.kernel.org>
 
+--===============2539301219550144144==
+Content-Type: multipart/alternative; boundary="001a113ee458066610055fed4e75"
 
-> On Dec 30, 2017, at 1:14 PM, Chuck Lever <chuck.lever@oracle.com> =
+--001a113ee458066610055fed4e75
+Content-Type: text/plain; charset="UTF-8"
+
+> Is there anything I need to do in order to start the discussion/review
+> of the draft?
+
+No.  You've submitted the draft and told people it was available.  I don't
+see that there is much more you can do.
+
+I'm working on a review which should be out in a couple of weeks.  That
+might propmpt other comments but I'm not sure.  Things sometimes tend to
+get slow this time of year.
+
+
+
+On Fri, Dec 8, 2017 at 11:22 AM, Stefan Hajnoczi <stefanha@redhat.com>
 wrote:
->=20
->>=20
->> On Dec 30, 2017, at 1:05 PM, Bruce Fields <bfields@fieldses.org> =
-wrote:
->>=20
->> On Wed, Dec 27, 2017 at 03:40:58PM -0500, Chuck Lever wrote:
->>> Last week I updated my test server from v4.14 to v4.15-rc4, and =
-began to
->>> observe intermittent failures in the git regression suite on =
-NFSv4.1.
->>=20
->> I haven't run that before.  Should I just
->>=20
->> 	mount -overs=3D4.1 server:/fs /mnt/
->> 	cd /mnt/
->> 	git clone git://git.kernel.org/pub/scm/git/git.git
->> 	cd git
->> 	make test
->>=20
->> ?
->=20
-> You'll need to install SVN and CVS on your client as well.
-> The failures seem to occur only in the SVN/CVS related
-> tests.
->=20
->=20
->>> I
->>> was able to reproduce these failures with NFSv4.1 on both TCP and =
-RDMA,
->>> yet there has not been a reproduction with NFSv3 or NFSv4.0.
->>>=20
->>> The server hardware is a single-socket 4-core system with 32GB of =
-RAM.
->>> The export is a tmpfs. Networking is 56Gb InfiniBand (or IPoIB).
->>>=20
->>> The git regression suite reports individual test failures in the SVN
->>> and CVS tests. On occasion, the client mount point freezes, =
-requiring
->>> that the client be rebooted in order to unstick the mount.
->>>=20
->>> Just before Christmas, I bisected the problem to:
->>=20
->> Thanks for the report!  I'll make some time for this next week.  =
-What's
->> your client?
 
-Oops, I didn't answer this question. The client is v4.15-rc4.
+> On Fri, Nov 24, 2017 at 10:59:28AM +0000, Stefan Hajnoczi wrote:
+> > The first draft of Remote Procedure Call (RPC) over AF_VSOCK is now
+> > available for review:
+> >
+> >   https://datatracker.ietf.org/doc/draft-stefanha-nfsv4-rpc-over-vsock/
+>
+> Hi,
+> Is there anything I need to do in order to start the discussion/review
+> of the draft?
+>
+> (Sorry, I'm new to the process.)
+>
+> Thanks,
+> Stefan
+>
+> _______________________________________________
+> nfsv4 mailing list
+> nfsv4@ietf.org
+> https://www.ietf.org/mailman/listinfo/nfsv4
+>
+>
 
+--001a113ee458066610055fed4e75
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
->> I guess one start might be to see if the reproducer can be
->> simplified e.g. by running just one of the tests from the suite.
->=20
-> The failures are intermittent, and occur in a different test
-> each time. You have to wait for the 9000-series scripts, which
-> test SVN/CVS repo operations. To speed up time-to-failure, use
-> "make -jN test" where N is more than a few.
->=20
-> My client and server both have multiple real cores. I'm
-> thinking it's the server that matters here (possibly a race
-> condition is introduced by the below commit?).
->=20
->=20
->> --b.
->>=20
->>>=20
->>> commit 659aefb68eca28ba9aa482a9fc64de107332e256
->>> Author: Trond Myklebust <trond.myklebust@primarydata.com>
->>> Date:   Fri Nov 3 08:00:13 2017 -0400
->>>=20
->>>   nfsd: Ensure we don't recognise lock stateids after freeing them
->>>=20
->>>   In order to deal with lookup races, nfsd4_free_lock_stateid() =
-needs
->>>   to be able to signal to other stateful functions that the lock =
-stateid
->>>   is no longer valid. Right now, nfsd_lock() will check whether or =
-not an
->>>   existing stateid is still hashed, but only in the "new lock" path.
->>>=20
->>>   To ensure the stateid invalidation is also recognised by the =
-"existing lock"
->>>   path, and also by a second call to nfsd4_free_lock_stateid() =
-itself, we can
->>>   change the type to NFS4_CLOSED_STID under the stp->st_mutex.
->>>=20
->>>   Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>>   Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>>=20
->>>=20
->>> Since we're already at v4.15-rc5 I thought it would be best to break =
-the
->>> holiday moratorium instead of waiting another week to report this.
->>>=20
->>>=20
->>> --
->>> Chuck Lever
->>>=20
->>>=20
->=20
-> --
-> Chuck Lever
->=20
->=20
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+<meta http-equiv=3D"Content-Type" content=3D"text/html; charset=3Dutf-8"><d=
+iv dir=3D"ltr"><span style=3D"font-size:16px">&gt; Is there anything I need=
+ to do in order to start the discussion/review</span><br style=3D"font-size=
+:16px"><span style=3D"font-size:16px">&gt; of the draft?</span><div><span s=
+tyle=3D"font-size:16px"><br></span></div><div><span style=3D"font-size:16px=
+">No.&nbsp; You've submitted the draft and told people it was available.&nb=
+sp; I don't</span></div><div><span style=3D"font-size:16px">see that there =
+is much more you can do.</span></div><div><span style=3D"font-size:16px"><b=
+r></span></div><div><span style=3D"font-size:16px">I'm working on a review =
+which should be out in a couple of weeks.&nbsp; That</span></div><div><span=
+ style=3D"font-size:16px">might propmpt other comments but I'm not sure.&nb=
+sp; Things sometimes tend to</span></div><div><span style=3D"font-size:16px=
+">get slow this time of year.<br></span><div><span style=3D"font-size:16px"=
+><br></span></div><div><span style=3D"font-size:16px"><br></span></div></di=
+v></div><div class=3D"gmail_extra"><br><div class=3D"gmail_quote">On Fri, D=
+ec 8, 2017 at 11:22 AM, Stefan Hajnoczi <span dir=3D"ltr">&lt;<a href=3D"ma=
+ilto:stefanha@redhat.com" target=3D"_blank">stefanha@redhat.com</a>&gt;</sp=
+an> wrote:<br><blockquote class=3D"gmail_quote" style=3D"margin:0 0 0 .8ex;=
+border-left:1px #ccc solid;padding-left:1ex"><span class=3D"">On Fri, Nov 2=
+4, 2017 at 10:59:28AM &#43;0000, Stefan Hajnoczi wrote:<br>
+&gt; The first draft of Remote Procedure Call (RPC) over AF_VSOCK is now<br=
+>
+&gt; available for review:<br>
+&gt;<br>
+&gt;&nbsp; &nbsp;<a href=3D"https://datatracker.ietf.org/doc/draft-stefanha=
+-nfsv4-rpc-over-vsock/" rel=3D"noreferrer" target=3D"_blank">https://datatr=
+acker.ietf.org/<wbr>doc/draft-stefanha-nfsv4-rpc-<wbr>over-vsock/</a><br>
+<br>
+</span>Hi,<br>
+Is there anything I need to do in order to start the discussion/review<br>
+of the draft?<br>
+<br>
+(Sorry, I'm new to the process.)<br>
+<br>
+Thanks,<br>
+Stefan<br>
+<br>______________________________<wbr>_________________<br>
+nfsv4 mailing list<br>
+<a href=3D"mailto:nfsv4@ietf.org">nfsv4@ietf.org</a><br>
+<a href=3D"https://www.ietf.org/mailman/listinfo/nfsv4" rel=3D"noreferrer" =
+target=3D"_blank">https://www.ietf.org/mailman/<wbr>listinfo/nfsv4</a><br>
+<br></blockquote></div><br></div>
 
---
-Chuck Lever
+--001a113ee458066610055fed4e75--
 
+--===============2539301219550144144==
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
+_______________________________________________
+nfsv4 mailing list
+nfsv4@ietf.org
+https://www.ietf.org/mailman/listinfo/nfsv4
 
+--===============2539301219550144144==--
