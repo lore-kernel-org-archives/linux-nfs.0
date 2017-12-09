@@ -1,41 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pf0-f176.google.com ([209.85.192.176]:37543 "EHLO
-        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751086AbdLIAxM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 19:53:12 -0500
-Received: by mail-pf0-f176.google.com with SMTP id n6so8428504pfa.4
-        for <linux-nfs@vger.kernel.org>; Fri, 08 Dec 2017 16:53:12 -0800 (PST)
-Content-Type: text/plain; charset=utf-8
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: Non-root chown, NFSv4 ACLs
-From: Drew Leske <drew.leske@computecanada.ca>
-In-Reply-To: <20171207231506.GB7527@fieldses.org>
-Date: Fri, 8 Dec 2017 16:53:09 -0800
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <93573170-DAA6-4CC2-A017-44F4B10F3253@computecanada.ca>
-References: <DEC3CF38-E451-4E22-B904-DCD35188F000@computecanada.ca> <20171207213419.GA6147@fieldses.org> <F6FBCAE9-DB8D-4965-B761-58ACDF245BC3@computecanada.ca> <20171207231506.GB7527@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from bombadil.infradead.org ([65.50.211.133]:46408 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750954AbdLIRUJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Dec 2017 12:20:09 -0500
+Date: Sat, 9 Dec 2017 09:20:07 -0800
+From: Matthew Wilcox <willy@infradead.org>
+To: Thiago Rafael Becker <thiago.becker@gmail.com>
+Cc: linux-fsdevel@vger.kernel.org,
+        Alexander Viro <viro@zeniv.linux.org.uk>,
+        Martin Schwidefsky <schwidefsky@de.ibm.com>,
+        Heiko Carstens <heiko.carstens@de.ibm.com>,
+        linux-nfs@vger.kernel.org, linux-s390@vger.kernel.org
+Subject: Re: [PATCH 0/3 v3] Move groups_sort outisde of set_groups (fwd)
+Message-ID: <20171209172007.GA20973@bombadil.infradead.org>
+References: <alpine.LFD.2.21.1712081000360.13749@tbecker-rhat>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.LFD.2.21.1712081000360.13749@tbecker-rhat>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Dec 08, 2017 at 10:30:24AM -0200, Thiago Rafael Becker wrote:
+> Hello,
+> 
+> People in linux-nfs seem happy with this patch set. I'm looking for comments
+> from VFS and s390 maintainers.
 
-> (In theory knfsd could store the full v4 ACL in an extended attribute
-> and do its own enforcement on the side--I think Samba can do something
-> like this.  This seems complicated to me and I'd rather add richacl
-> support to the filesystems, but that effort has stalled.)
+Well ... you sent a response to your 2/3 saying "please ignore", and I don't see a replacement 2/3.
 
-
-I=E2=80=99m sorry to hear that, I looked at the Git repository =
-(https://github.com/andreas-gruenbacher/richacl) and it looked like =
-things were slowing down, and the richacl site linked to here and there =
-is 404.
-
-Thanks very much for sharing your expertise.
-
-Drew.
-
-----
-Drew Leske=20
-Senior Software Developer
-D=C3=A9veloppeur de logiciel principal
-
+Also, there's no need to split this up into three separate patches.
+It's small enough to all be done as one.
