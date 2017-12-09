@@ -1,35 +1,41 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59304 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752350AbdLHWQ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 8 Dec 2017 17:16:27 -0500
-Date: Fri, 8 Dec 2017 17:16:26 -0500
-To: linux-nfs@vger.kernel.org
-Cc: hch@infradead.org
-Subject: spurious sillyrename after O_DIRECT writes get ENOSPC
-Message-ID: <20171208221626.GB22508@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from mail-pf0-f176.google.com ([209.85.192.176]:37543 "EHLO
+        mail-pf0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751086AbdLIAxM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Dec 2017 19:53:12 -0500
+Received: by mail-pf0-f176.google.com with SMTP id n6so8428504pfa.4
+        for <linux-nfs@vger.kernel.org>; Fri, 08 Dec 2017 16:53:12 -0800 (PST)
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: Non-root chown, NFSv4 ACLs
+From: Drew Leske <drew.leske@computecanada.ca>
+In-Reply-To: <20171207231506.GB7527@fieldses.org>
+Date: Fri, 8 Dec 2017 16:53:09 -0800
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <93573170-DAA6-4CC2-A017-44F4B10F3253@computecanada.ca>
+References: <DEC3CF38-E451-4E22-B904-DCD35188F000@computecanada.ca> <20171207213419.GA6147@fieldses.org> <F6FBCAE9-DB8D-4965-B761-58ACDF245BC3@computecanada.ca> <20171207231506.GB7527@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Last year Christoph noticed a bug that could result in a file being
-unnecessarily sillyrenamed after O_DIRECT writes get ENOSPC:
 
-	http://lkml.kernel.org/r/20160616150146.GA14015@infradead.org
+> (In theory knfsd could store the full v4 ACL in an extended attribute
+> and do its own enforcement on the side--I think Samba can do something
+> like this.  This seems complicated to me and I'd rather add richacl
+> support to the filesystems, but that effort has stalled.)
 
-It's reproduceable on upstream, over v3 or v4.
 
-I looked into it some more, and it seems to reproduce whenever a write
-system call results in multiple WRITE calls, only some of which receive
-ENOSPC.  I think that's resulting in a leak of the wb_kref on some
-nfs_pages (possibly the ones corresponding to the ENOSPC failures?).
-Those nfs_pages in turn hold references on nfs_{lock,open}_contexts.  So
-a "rm" on the client (even after the file is closed) results in a
-sillyrename.
+I=E2=80=99m sorry to hear that, I looked at the Git repository =
+(https://github.com/andreas-gruenbacher/richacl) and it looked like =
+things were slowing down, and the richacl site linked to here and there =
+is 404.
 
-I'll keep looking at this, but the relevant code is pretty opaque to me
-so far.  Any ideas welcomed.
+Thanks very much for sharing your expertise.
 
---b.
+Drew.
+
+----
+Drew Leske=20
+Senior Software Developer
+D=C3=A9veloppeur de logiciel principal
+
