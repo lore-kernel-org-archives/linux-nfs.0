@@ -1,32 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([65.50.211.133]:46408 "EHLO
-        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750954AbdLIRUJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Dec 2017 12:20:09 -0500
-Date: Sat, 9 Dec 2017 09:20:07 -0800
-From: Matthew Wilcox <willy@infradead.org>
-To: Thiago Rafael Becker <thiago.becker@gmail.com>
-Cc: linux-fsdevel@vger.kernel.org,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Martin Schwidefsky <schwidefsky@de.ibm.com>,
-        Heiko Carstens <heiko.carstens@de.ibm.com>,
-        linux-nfs@vger.kernel.org, linux-s390@vger.kernel.org
-Subject: Re: [PATCH 0/3 v3] Move groups_sort outisde of set_groups (fwd)
-Message-ID: <20171209172007.GA20973@bombadil.infradead.org>
-References: <alpine.LFD.2.21.1712081000360.13749@tbecker-rhat>
+Received: from mail-it0-f42.google.com ([209.85.214.42]:40157 "EHLO
+        mail-it0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751243AbdLIVEE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 9 Dec 2017 16:04:04 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.LFD.2.21.1712081000360.13749@tbecker-rhat>
+In-Reply-To: <1512767781.25033.30.camel@gmail.com>
+References: <CAEdQ38HcOgAT6wJWWKY3P0hzYwkBGSQkRSQ2a=eaGmD6c6rwXA@mail.gmail.com>
+ <CAEdQ38G4VTXDGOarmmTac=hP92VJbQHRFxQTaSWQ3j4d63pogg@mail.gmail.com>
+ <CAEdQ38HcPswBk3pUHzQerFZ=4KjPc5nVYTqNnGQNMk7QbPXuOQ@mail.gmail.com>
+ <CANn89iJKGRLVNAE99JWiyXcOXveytkjbQAiZ9XPiJc6fyEdFVA@mail.gmail.com>
+ <1512741164.25033.28.camel@gmail.com> <CAEdQ38HEduSTY38Noj4peaMN_G++5sLJfqzCMkd3M4pPNTpU_Q@mail.gmail.com>
+ <1512767781.25033.30.camel@gmail.com>
+From: Matt Turner <mattst88@gmail.com>
+Date: Sat, 9 Dec 2017 13:03:42 -0800
+Message-ID: <CAEdQ38H+jUF3OXpe13Vfm=QZE3iHa=B7PpXkpbek1PnY2E1u5w@mail.gmail.com>
+Subject: Re: NFS corruption, fixed by echo 1 > /proc/sys/vm/drop_caches --
+ next debugging steps?
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: Eric Dumazet <edumazet@google.com>,
+        "linux-mips@linux-mips.org" <linux-mips@linux-mips.org>,
+        linux-nfs@vger.kernel.org, Paolo Abeni <pabeni@redhat.com>,
+        Hannes Frederic Sowa <hannes@stressinduktion.org>,
+        "Peter Zijlstra (Intel)" <peterz@infradead.org>,
+        Thomas Gleixner <tglx@linutronix.de>,
+        Ingo Molnar <mingo@kernel.org>,
+        Manuel Lauss <manuel.lauss@gmail.com>,
+        LKML <linux-kernel@vger.kernel.org>,
+        netdev <netdev@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 08, 2017 at 10:30:24AM -0200, Thiago Rafael Becker wrote:
-> Hello,
-> 
-> People in linux-nfs seem happy with this patch set. I'm looking for comments
-> from VFS and s390 maintainers.
+On Fri, Dec 8, 2017 at 1:16 PM, Eric Dumazet <eric.dumazet@gmail.com> wrote:
+> On Fri, 2017-12-08 at 12:26 -0800, Matt Turner wrote:
+>>
+>> Thanks for the quick reply!
+>>
+>> I tried the patch on top of master, but unfortunately the corruption
+>> still occurs.
+>
+> You might try replacing in sbdma_add_rcvbuffer()
+>
+> sb_new = netdev_alloc_skb(dev, size);
+>
+> by
+>
+> sb_new = alloc_skb(size, GFP_ATOMIC);
+>
+> Maybe the device does not like having a frame spanning 2 pages.
 
-Well ... you sent a response to your 2/3 saying "please ignore", and I don't see a replacement 2/3.
-
-Also, there's no need to split this up into three separate patches.
-It's small enough to all be done as one.
+No such luck. I also gave changing the page size from 16K to 4K a shot
+without success.
