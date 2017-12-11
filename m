@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40255 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:40235 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752234AbdLKElH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 10 Dec 2017 23:41:07 -0500
+        id S1752070AbdLKEk5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 10 Dec 2017 23:40:57 -0500
 Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 0AF0CAAB5
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Dec 2017 04:41:06 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id B757DAAB5
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Dec 2017 04:40:55 +0000 (UTC)
 From: NeilBrown <neilb@suse.com>
 To: linux-nfs@vger.kernel.org
 Date: Mon, 11 Dec 2017 15:40:17 +1100
-Subject: [PATCH 05/19] NFSv4: add cl_root_cred for use when machine cred is
- not available.
-Message-ID: <151296721761.24753.9727575742635844833.stgit@noble>
+Subject: [PATCH 03/19] SUNRPC: remove uid and gid from struct auth_cred
+Message-ID: <151296721752.24753.7576894929217265727.stgit@noble>
 In-Reply-To: <151296579813.24753.5905981862981613395.stgit@noble>
 References: <151296579813.24753.5905981862981613395.stgit@noble>
 MIME-Version: 1.0
@@ -19,93 +18,293 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4 state management tries a root credential when no machine
-credential is available, as can happen with kerberos.
-It does this by replacing the cl_machine_cred with a root credential.
-This means that any user of the machine credential needs to take
-a lock while getting a reference to the machine credential, which is
-a little cumbersome.
-
-So introduce an explicit cl_root_cred, and never free either
-credential until client shutdown.  This means that no locking
-is needed to reference these credentials.  Future patches
-will make use of this.
-
-This is only a temporary addition.  both cl_machine_cred and
-cl_root_cred will disappear later in the series.
+Use cred->fsuid and cred->fsgid instead.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/client.c           |    2 ++
- fs/nfs/nfs4state.c        |   20 ++++++++++++--------
- include/linux/nfs_fs_sb.h |    1 +
- 3 files changed, 15 insertions(+), 8 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c |   14 ++++++++------
+ fs/nfsd/nfs4callback.c                 |    6 ++----
+ include/linux/sunrpc/auth.h            |    3 ---
+ net/sunrpc/auth.c                      |    6 +-----
+ net/sunrpc/auth_generic.c              |   23 ++++++++---------------
+ net/sunrpc/auth_gss/auth_gss.c         |    7 +++----
+ net/sunrpc/auth_unix.c                 |   12 ++++++------
+ 7 files changed, 28 insertions(+), 43 deletions(-)
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 0ac2fb1c6b63..e82cdb98006a 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -248,6 +248,8 @@ void nfs_free_client(struct nfs_client *clp)
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index 40be5b102346..8ef4a9c50b10 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -414,6 +414,8 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		struct auth_cred acred = {};
+ 		struct rpc_cred	__rcu *cred;
+ 		struct cred *kcred;
++		kuid_t uid;
++		kgid_t gid;
+ 		u32 ds_count, fh_count, id;
+ 		int j;
  
- 	if (clp->cl_machine_cred != NULL)
- 		put_rpccred(clp->cl_machine_cred);
-+	if (clp->cl_root_cred != NULL)
-+		put_rpccred(clp->cl_root_cred);
+@@ -481,14 +483,14 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		if (rc)
+ 			goto out_err_free;
  
- 	put_net(clp->cl_net);
- 	put_nfs_version(clp->cl_nfs_mod);
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index e4f4a09ed9f4..9b9b5794e05d 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -158,24 +158,28 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
+-		acred.uid = make_kuid(&init_user_ns, id);
++		uid = make_kuid(&init_user_ns, id);
  
- struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
+ 		/* group */
+ 		rc = decode_name(&stream, &id);
+ 		if (rc)
+ 			goto out_err_free;
+ 
+-		acred.gid = make_kgid(&init_user_ns, id);
++		gid = make_kgid(&init_user_ns, id);
+ 
+ 		if (gfp_flags & __GFP_FS)
+ 			kcred = prepare_kernel_cred(NULL);
+@@ -500,8 +502,8 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		rc = -ENOMEM;
+ 		if (!kcred)
+ 			goto out_err_free;
+-		kcred->fsuid = acred.uid;
+-		kcred->fsgid = acred.gid;
++		kcred->fsuid = uid;
++		kcred->fsgid = gid;
+ 		acred.cred = kcred;
+ 
+ 		/* find the cred for it */
+@@ -533,8 +535,8 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 
+ 		dprintk("%s: iomode %s uid %u gid %u\n", __func__,
+ 			lgr->range.iomode == IOMODE_READ ? "READ" : "RW",
+-			from_kuid(&init_user_ns, acred.uid),
+-			from_kgid(&init_user_ns, acred.gid));
++			from_kuid(&init_user_ns, uid),
++			from_kgid(&init_user_ns, gid));
+ 	}
+ 
+ 	p = xdr_inline_decode(&stream, 4);
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index fc5b38ee6c70..ea289790fae4 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -780,10 +780,8 @@ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc
+ 		if (!acred.cred)
+ 			return NULL;
+ 
+-		acred.uid = ses->se_cb_sec.uid;
+-		acred.gid = ses->se_cb_sec.gid;
+-		kcred->uid = acred.uid;
+-		kcred->gid = acred.gid;
++		kcred->uid = ses->se_cb_sec.uid;
++		kcred->gid = ses->se_cb_sec.gid;
+ 		acred.cred = kcred;
+ 		ret = auth->au_ops->lookup_cred(client->cl_auth, &acred, 0);
+ 		put_cred(kcred);
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index c4782203791d..2b19e687dc29 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -44,11 +44,8 @@ enum {
+ 					key will expire soon */
+ };
+ 
+-/* Work around the lack of a VFS credential */
+ struct auth_cred {
+ 	const struct cred *cred;
+-	kuid_t	uid;
+-	kgid_t	gid;
+ 	const char *principal;
+ 	unsigned long ac_flags;
+ 	unsigned char machine_cred : 1;
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index d5d9165f9c81..1800782ca77e 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -631,8 +631,6 @@ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
+ 		auth->au_ops->au_name);
+ 
+ 	memset(&acred, 0, sizeof(acred));
+-	acred.uid = cred->fsuid;
+-	acred.gid = cred->fsgid;
+ 	acred.cred = cred;
+ 	ret = auth->au_ops->lookup_cred(auth, &acred, flags);
+ 	return ret;
+@@ -650,7 +648,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+ 	cred->cr_ops = ops;
+ 	cred->cr_expire = jiffies;
+ 	cred->cr_cred = get_cred(acred->cred);
+-	cred->cr_uid = acred->uid;
++	cred->cr_uid = acred->cred->fsuid;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_init_cred);
+ 
+@@ -668,8 +666,6 @@ rpcauth_bind_root_cred(struct rpc_task *task, int lookupflags)
  {
--	struct rpc_cred *cred = NULL;
-+	struct rpc_cred *cred = clp->cl_root_cred;
+ 	struct rpc_auth *auth = task->tk_client->cl_auth;
+ 	struct auth_cred acred = {
+-		.uid = GLOBAL_ROOT_UID,
+-		.gid = GLOBAL_ROOT_GID,
+ 		.cred = get_task_cred(&init_task),
+ 	};
+ 	struct rpc_cred *ret;
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+index b41587ccaa5b..7e2377f47922 100644
+--- a/net/sunrpc/auth_generic.c
++++ b/net/sunrpc/auth_generic.c
+@@ -18,9 +18,6 @@
+ # define RPCDBG_FACILITY	RPCDBG_AUTH
+ #endif
  
--	if (clp->cl_machine_cred != NULL)
--		cred = get_rpccred(clp->cl_machine_cred);
-+	if (!cred)
-+		cred = clp->cl_machine_cred;
-+	if (cred)
-+		return get_rpccred(cred);
- 	return cred;
+-#define RPC_MACHINE_CRED_USERID		GLOBAL_ROOT_UID
+-#define RPC_MACHINE_CRED_GROUPID	GLOBAL_ROOT_GID
+-
+ struct generic_cred {
+ 	struct rpc_cred gc_base;
+ 	struct auth_cred acred;
+@@ -57,8 +54,6 @@ EXPORT_SYMBOL_GPL(rpc_lookup_cred_nonblock);
+ struct rpc_cred *rpc_lookup_machine_cred(const char *service_name)
+ {
+ 	struct auth_cred acred = {
+-		.uid = RPC_MACHINE_CRED_USERID,
+-		.gid = RPC_MACHINE_CRED_GROUPID,
+ 		.principal = service_name,
+ 		.machine_cred = 1,
+ 		.cred = get_task_cred(&init_task),
+@@ -85,8 +80,8 @@ static struct rpc_cred *generic_bind_cred(struct rpc_task *task,
+ static int
+ generic_hash_cred(struct auth_cred *acred, unsigned int hashbits)
+ {
+-	return hash_64(from_kgid(&init_user_ns, acred->gid) |
+-		((u64)from_kuid(&init_user_ns, acred->uid) <<
++	return hash_64(from_kgid(&init_user_ns, acred->cred->fsgid) |
++		((u64)from_kuid(&init_user_ns, acred->cred->fsuid) <<
+ 			(sizeof(gid_t) * 8)), hashbits);
  }
  
- static void nfs4_root_machine_cred(struct nfs_client *clp)
- {
--	struct rpc_cred *cred, *new;
-+	struct rpc_cred *new;
+@@ -111,8 +106,6 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, g
+ 	rpcauth_init_cred(&gcred->gc_base, acred, &generic_auth, &generic_credops);
+ 	gcred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_UPTODATE;
  
- 	new = rpc_lookup_machine_cred(NULL);
- 	spin_lock(&clp->cl_lock);
--	cred = clp->cl_machine_cred;
--	clp->cl_machine_cred = new;
-+	if (clp->cl_root_cred == NULL) {
-+		clp->cl_root_cred = new;
-+		new = NULL;
-+	}
- 	spin_unlock(&clp->cl_lock);
--	if (cred != NULL)
--		put_rpccred(cred);
-+	if (new != NULL)
-+		put_rpccred(new);
+-	gcred->acred.uid = acred->uid;
+-	gcred->acred.gid = acred->gid;
+ 	gcred->acred.cred = gcred->gc_base.cr_cred;
+ 	gcred->acred.ac_flags = 0;
+ 	gcred->acred.machine_cred = acred->machine_cred;
+@@ -121,8 +114,8 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, g
+ 	dprintk("RPC:       allocated %s cred %p for uid %d gid %d\n",
+ 			gcred->acred.machine_cred ? "machine" : "generic",
+ 			gcred,
+-			from_kuid(&init_user_ns, acred->uid),
+-			from_kgid(&init_user_ns, acred->gid));
++			from_kuid(&init_user_ns, acred->cred->fsuid),
++			from_kgid(&init_user_ns, acred->cred->fsgid));
+ 	return &gcred->gc_base;
  }
  
- static struct rpc_cred *
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 4e735be53e70..ca3f14b0f738 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -59,6 +59,7 @@ struct nfs_client {
+@@ -153,8 +146,8 @@ machine_cred_match(struct auth_cred *acred, struct generic_cred *gcred, int flag
+ {
+ 	if (!gcred->acred.machine_cred ||
+ 	    gcred->acred.principal != acred->principal ||
+-	    !uid_eq(gcred->acred.uid, acred->uid) ||
+-	    !gid_eq(gcred->acred.gid, acred->gid))
++	    !uid_eq(gcred->acred.cred->fsuid, acred->cred->fsuid) ||
++	    !gid_eq(gcred->acred.cred->fsgid, acred->cred->fsgid))
+ 		return 0;
+ 	return 1;
+ }
+@@ -172,8 +165,8 @@ generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
+ 	if (acred->machine_cred)
+ 		return machine_cred_match(acred, gcred, flags);
  
- 	u32			cl_minorversion;/* NFSv4 minorversion */
- 	struct rpc_cred		*cl_machine_cred;
-+	struct rpc_cred		*cl_root_cred;	/* Use when machine_cred is ineffective */
+-	if (!uid_eq(gcred->acred.uid, acred->uid) ||
+-	    !gid_eq(gcred->acred.gid, acred->gid) ||
++	if (!uid_eq(gcred->acred.cred->fsuid, acred->cred->fsuid) ||
++	    !gid_eq(gcred->acred.cred->fsgid, acred->cred->fsgid) ||
+ 	    gcred->acred.machine_cred != 0)
+ 		goto out_nomatch;
  
- #if IS_ENABLED(CONFIG_NFS_V4)
- 	struct list_head	cl_ds_clients; /* auth flavor data servers */
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 82301105b4f6..777560a2a9d9 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1306,7 +1306,7 @@ gss_destroy_cred(struct rpc_cred *cred)
+ static int
+ gss_hash_cred(struct auth_cred *acred, unsigned int hashbits)
+ {
+-	return hash_64(from_kuid(&init_user_ns, acred->uid), hashbits);
++	return hash_64(from_kuid(&init_user_ns, acred->cred->fsuid), hashbits);
+ }
+ 
+ /*
+@@ -1326,7 +1326,7 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, gfp_t
+ 	int err = -ENOMEM;
+ 
+ 	dprintk("RPC:       %s for uid %d, flavor %d\n",
+-		__func__, from_kuid(&init_user_ns, acred->uid),
++		__func__, from_kuid(&init_user_ns, acred->cred->fsuid),
+ 		auth->au_flavor);
+ 
+ 	if (!(cred = kzalloc(sizeof(*cred), gfp)))
+@@ -1467,7 +1467,7 @@ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
+ 	}
+ 	if (gss_cred->gc_principal != NULL)
+ 		return 0;
+-	ret = uid_eq(rc->cr_uid, acred->uid);
++	ret = uid_eq(rc->cr_uid, acred->cred->fsuid);
+ 
+ check_expire:
+ 	if (ret == 0)
+@@ -1552,7 +1552,6 @@ static int gss_renew_cred(struct rpc_task *task)
+ 						 gc_base);
+ 	struct rpc_auth *auth = oldcred->cr_auth;
+ 	struct auth_cred acred = {
+-		.uid = oldcred->cr_uid,
+ 		.cred = oldcred->cr_cred,
+ 		.principal = gss_cred->gc_principal,
+ 		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index d2ee2c9afdfe..2cae37e7ec0d 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -48,8 +48,8 @@ unx_destroy(struct rpc_auth *auth)
+ static int
+ unx_hash_cred(struct auth_cred *acred, unsigned int hashbits)
+ {
+-	return hash_64(from_kgid(&init_user_ns, acred->gid) |
+-		((u64)from_kuid(&init_user_ns, acred->uid) <<
++	return hash_64(from_kgid(&init_user_ns, acred->cred->fsgid) |
++		((u64)from_kuid(&init_user_ns, acred->cred->fsuid) <<
+ 			(sizeof(gid_t) * 8)), hashbits);
+ }
+ 
+@@ -70,8 +70,8 @@ unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, gfp_t
+ 	unsigned int i;
+ 
+ 	dprintk("RPC:       allocating UNIX cred for uid %d gid %d\n",
+-			from_kuid(&init_user_ns, acred->uid),
+-			from_kgid(&init_user_ns, acred->gid));
++			from_kuid(&init_user_ns, acred->cred->fsuid),
++			from_kgid(&init_user_ns, acred->cred->fsgid));
+ 
+ 	if (!(cred = kmalloc(sizeof(*cred), gfp)))
+ 		return ERR_PTR(-ENOMEM);
+@@ -84,7 +84,7 @@ unx_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, gfp_t
+ 	if (groups > UNX_NGROUPS)
+ 		groups = UNX_NGROUPS;
+ 
+-	cred->uc_gid = acred->gid;
++	cred->uc_gid = acred->cred->fsgid;
+ 	for (i = 0; i < groups; i++)
+ 		cred->uc_gids[i] = acred->cred->group_info->gid[i];
+ 	if (i < UNX_NGROUPS)
+@@ -126,7 +126,7 @@ unx_match(struct auth_cred *acred, struct rpc_cred *rcred, int flags)
+ 	unsigned int i;
+ 
+ 
+-	if (!uid_eq(cred->uc_uid, acred->uid) || !gid_eq(cred->uc_gid, acred->gid))
++	if (!uid_eq(cred->uc_uid, acred->cred->fsuid) || !gid_eq(cred->uc_gid, acred->cred->fsgid))
+ 		return 0;
+ 
+ 	if (acred->cred && acred->cred->group_info != NULL)
 
 
