@@ -1,97 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:35806 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:35830 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751543AbdLKQIZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 11 Dec 2017 11:08:25 -0500
-Date: Mon, 11 Dec 2017 11:08:25 -0500
-To: NeilBrown <neilb@suse.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Amir Goldstein <amir73il@gmail.com>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Lennart Poettering <lennart@poettering.net>
-Subject: Re: [PATCH 4/4] fhandle: Improve error responses in
- name_to_handle_at()
-Message-ID: <20171211160825.GA27552@fieldses.org>
-References: <151297214390.7818.7216826079527521005.stgit@noble>
- <151297224523.7818.12267549679803980398.stgit@noble>
+        id S1750836AbdLKQSf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Dec 2017 11:18:35 -0500
+Date: Mon, 11 Dec 2017 11:18:35 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Thiago Rafael Becker <thiago.becker@gmail.com>
+Cc: viro@zeniv.linux.org.uk, schwidefsky@de.ibm.com,
+        willy@infradead.org, neilb@suse.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        akpm@linux-foundation.org
+Subject: Re: [PATCH v5] kernel: make groups_sort calling a responsibility
+ group_info allocators
+Message-ID: <20171211161835.GB27552@fieldses.org>
+References: <20171211142708.GA23284@bombadil.infradead.org>
+ <20171211151420.18655-1-thiago.becker@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <151297224523.7818.12267549679803980398.stgit@noble>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <20171211151420.18655-1-thiago.becker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 11, 2017 at 05:04:05PM +1100, NeilBrown wrote:
-> 1/ Always return the mnt_id, even if some other error occurs.
->    It can be useful without the file handle.
->    An application can initialise the memory to, e.g. -1
->    and if there is some other value after name_to_handle_at()
->    returns, then it is a valid mnt_id.
->    If the value is unchanged, then the kernel does not
->    have this patch.
+ACK.  (Assuming somebody else takes it--Andrew?  Al?  Or I can take it
+through the nfsd tree.  I'm not sure who owns the stuff under kernel/.)
 
-That's interesting--not the interface we might have chosen if we were
-starting from scratch, but I can't see why it wouldn't work.  OK!
-ACK.--b.
+--b.
 
+On Mon, Dec 11, 2017 at 01:14:20PM -0200, Thiago Rafael Becker wrote:
+> In testing, we found that nfsd threads may call set_groups in parallel for
+> the same entry cached in auth.unix.gid, racing in the call of groups_sort,
+> corrupting the groups for that entry and leading to permission denials for
+> the client.
 > 
-> 2/ Don't return -EINVAL if the requested handle_bytes is
->    larger than MAX_HANDLE_SZ.  There is no need for an
->    error and it causes unnecessary behavior change
->    in the kernel ever needs to increase MAX_HANDLE_SZ.
->    Simple limit handle_bytes to MAX_HANDLE_SZ silently.
+> This patch:
+>  - Make groups_sort globally visible.
+>  - Move the call to groups_sort to the modifiers of group_info
+>  - Remove the call to groups_sort from set_groups
 > 
-> Signed-off-by: NeilBrown <neilb@suse.com>
+> Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
 > ---
->  fs/fhandle.c |   16 ++++++++++------
->  1 file changed, 10 insertions(+), 6 deletions(-)
+>  arch/s390/kernel/compat_linux.c   | 1 +
+>  fs/nfsd/auth.c                    | 3 +++
+>  include/linux/cred.h              | 1 +
+>  kernel/groups.c                   | 5 +++--
+>  kernel/uid16.c                    | 1 +
+>  net/sunrpc/auth_gss/gss_rpc_xdr.c | 1 +
+>  net/sunrpc/auth_gss/svcauth_gss.c | 1 +
+>  net/sunrpc/svcauth_unix.c         | 2 ++
+>  8 files changed, 13 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/fhandle.c b/fs/fhandle.c
-> index 0ace128f5d23..04afffaeb742 100644
-> --- a/fs/fhandle.c
-> +++ b/fs/fhandle.c
-> @@ -23,9 +23,16 @@ static long do_sys_name_to_handle(struct path *path,
->  	int handle_dwords, handle_bytes;
->  	struct file_handle *handle = NULL;
+> diff --git a/arch/s390/kernel/compat_linux.c b/arch/s390/kernel/compat_linux.c
+> index f04db37..59eea9c 100644
+> --- a/arch/s390/kernel/compat_linux.c
+> +++ b/arch/s390/kernel/compat_linux.c
+> @@ -263,6 +263,7 @@ COMPAT_SYSCALL_DEFINE2(s390_setgroups16, int, gidsetsize, u16 __user *, grouplis
+>  		return retval;
+>  	}
 >  
-> +	/*
-> +	 * Always return the mnt_id, it might be useful even
-> +	 * without the file handle
-> +	 */
-> +	if (copy_to_user(mnt_id, &real_mount(path->mnt)->mnt_id,
-> +			 sizeof(*mnt_id)))
-> +		return -EFAULT;
->  	/*
->  	 * We need to make sure whether the file system
-> -	 * support decoding of the file handle
-> +	 * supports decoding of the file handle.
->  	 */
->  	if (!path->dentry->d_sb->s_export_op ||
->  	    !path->dentry->d_sb->s_export_op->fh_to_dentry)
-> @@ -35,7 +42,7 @@ static long do_sys_name_to_handle(struct path *path,
->  		return -EFAULT;
+> +	groups_sort(group_info);
+>  	retval = set_current_groups(group_info);
+>  	put_group_info(group_info);
 >  
->  	if (f_handle.handle_bytes > MAX_HANDLE_SZ)
-> -		return -EINVAL;
-> +		f_handle.handle_bytes = MAX_HANDLE_SZ;
+> diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
+> index 697f8ae..f650e47 100644
+> --- a/fs/nfsd/auth.c
+> +++ b/fs/nfsd/auth.c
+> @@ -60,6 +60,9 @@ int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
+>  				gi->gid[i] = exp->ex_anon_gid;
+>  			else
+>  				gi->gid[i] = rqgi->gid[i];
+> +
+> +			/* Each thread allocates its own gi, no race */
+> +			groups_sort(gi);
+>  		}
+>  	} else {
+>  		gi = get_group_info(rqgi);
+> diff --git a/include/linux/cred.h b/include/linux/cred.h
+> index 099058e..6312865 100644
+> --- a/include/linux/cred.h
+> +++ b/include/linux/cred.h
+> @@ -83,6 +83,7 @@ extern int set_current_groups(struct group_info *);
+>  extern void set_groups(struct cred *, struct group_info *);
+>  extern int groups_search(const struct group_info *, kgid_t);
+>  extern bool may_setgroups(void);
+> +extern void groups_sort(struct group_info *);
 >  
->  	handle = kmalloc(sizeof(struct file_handle) + f_handle.handle_bytes,
->  			 GFP_KERNEL);
-> @@ -68,10 +75,7 @@ static long do_sys_name_to_handle(struct path *path,
->  		retval = -EOVERFLOW;
->  	} else
->  		retval = 0;
-> -	/* copy the mount id */
-> -	if (copy_to_user(mnt_id, &real_mount(path->mnt)->mnt_id,
-> -			 sizeof(*mnt_id)) ||
-> -	    copy_to_user(ufh, handle,
-> +	if (copy_to_user(ufh, handle,
->  			 sizeof(struct file_handle) + handle_bytes))
->  		retval = -EFAULT;
->  	kfree(handle);
-> 
+>  /*
+>   * The security context of a task
+> diff --git a/kernel/groups.c b/kernel/groups.c
+> index e357bc8..daae2f2 100644
+> --- a/kernel/groups.c
+> +++ b/kernel/groups.c
+> @@ -86,11 +86,12 @@ static int gid_cmp(const void *_a, const void *_b)
+>  	return gid_gt(a, b) - gid_lt(a, b);
+>  }
+>  
+> -static void groups_sort(struct group_info *group_info)
+> +void groups_sort(struct group_info *group_info)
+>  {
+>  	sort(group_info->gid, group_info->ngroups, sizeof(*group_info->gid),
+>  	     gid_cmp, NULL);
+>  }
+> +EXPORT_SYMBOL(groups_sort);
+>  
+>  /* a simple bsearch */
+>  int groups_search(const struct group_info *group_info, kgid_t grp)
+> @@ -122,7 +123,6 @@ int groups_search(const struct group_info *group_info, kgid_t grp)
+>  void set_groups(struct cred *new, struct group_info *group_info)
+>  {
+>  	put_group_info(new->group_info);
+> -	groups_sort(group_info);
+>  	get_group_info(group_info);
+>  	new->group_info = group_info;
+>  }
+> @@ -206,6 +206,7 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
+>  		return retval;
+>  	}
+>  
+> +	groups_sort(group_info);
+>  	retval = set_current_groups(group_info);
+>  	put_group_info(group_info);
+>  
+> diff --git a/kernel/uid16.c b/kernel/uid16.c
+> index ce74a49..ef1da2a 100644
+> --- a/kernel/uid16.c
+> +++ b/kernel/uid16.c
+> @@ -192,6 +192,7 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
+>  		return retval;
+>  	}
+>  
+> +	groups_sort(group_info);
+>  	retval = set_current_groups(group_info);
+>  	put_group_info(group_info);
+>  
+> diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> index c4778ca..444380f 100644
+> --- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> +++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
+> @@ -231,6 +231,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
+>  			goto out_free_groups;
+>  		creds->cr_group_info->gid[i] = kgid;
+>  	}
+> +	groups_sort(creds->cr_group_info);
+>  
+>  	return 0;
+>  out_free_groups:
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 5dd4e6c..2653119 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -481,6 +481,7 @@ static int rsc_parse(struct cache_detail *cd,
+>  				goto out;
+>  			rsci.cred.cr_group_info->gid[i] = kgid;
+>  		}
+> +		groups_sort(rsci.cred.cr_group_info);
+>  
+>  		/* mech name */
+>  		len = qword_get(&mesg, buf, mlen);
+> diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
+> index 740b67d..af7f28f 100644
+> --- a/net/sunrpc/svcauth_unix.c
+> +++ b/net/sunrpc/svcauth_unix.c
+> @@ -520,6 +520,7 @@ static int unix_gid_parse(struct cache_detail *cd,
+>  		ug.gi->gid[i] = kgid;
+>  	}
+>  
+> +	groups_sort(ug.gi);
+>  	ugp = unix_gid_lookup(cd, uid);
+>  	if (ugp) {
+>  		struct cache_head *ch;
+> @@ -819,6 +820,7 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
+>  		kgid_t kgid = make_kgid(&init_user_ns, svc_getnl(argv));
+>  		cred->cr_group_info->gid[i] = kgid;
+>  	}
+> +	groups_sort(cred->cr_group_info);
+>  	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
+>  		*authp = rpc_autherr_badverf;
+>  		return SVC_DENIED;
+> -- 
+> 2.9.5
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
