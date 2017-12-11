@@ -1,178 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f195.google.com ([209.85.216.195]:38381 "EHLO
-        mail-qt0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752439AbdLKN23 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Dec 2017 08:28:29 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-To: viro@zeniv.linux.org.uk, schwidefsky@de.ibm.com,
-        willy@infradead.org, bfields@fieldses.org, neilb@suse.com
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH v4] kernel: make groups_sort calling a responsibility group_info allocators
-Date: Mon, 11 Dec 2017 11:28:06 -0200
-Message-Id: <20171211132806.16962-1-thiago.becker@gmail.com>
-In-Reply-To: <20171205140512.13349-1-thiago.becker@gmail.com>
-References: <20171205140512.13349-1-thiago.becker@gmail.com>
+Received: from [195.214.232.23] ([195.214.232.23]:38056 "EHLO
+        US-EXCH2.sw.swsoft.com" rhost-flags-FAIL-FAIL-OK-FAIL)
+        by vger.kernel.org with ESMTP id S1752470AbdLKOBu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Dec 2017 09:01:50 -0500
+Subject: Re: [PATCH 1/4] fs/notify: fdinfo can report unsupported file
+ handles.
+To: Amir Goldstein <amir73il@gmail.com>, NeilBrown <neilb@suse.com>
+CC: Linus Torvalds <torvalds@linux-foundation.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Lennart Poettering <lennart@poettering.net>
+References: <151297214390.7818.7216826079527521005.stgit@noble>
+ <151297224512.7818.18333908109878259066.stgit@noble>
+ <CAOQ4uxj9VhiCtPSt+Lyv8qyUz2hJ=VQzSYCKZ_6yqvs2q7y6Qw@mail.gmail.com>
+ <CAOQ4uxiko+gWH5gLs6kjWU6mMzyxfzo08AfAAmTvqaxHGn_Ddw@mail.gmail.com>
+From: Pavel Emelyanov <xemul@virtuozzo.com>
+Message-ID: <a9da3da5-dd19-df2c-1c0e-1f029535ef39@virtuozzo.com>
+Date: Mon, 11 Dec 2017 16:46:11 +0300
+MIME-Version: 1.0
+In-Reply-To: <CAOQ4uxiko+gWH5gLs6kjWU6mMzyxfzo08AfAAmTvqaxHGn_Ddw@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In testing, we found that nfsd threads may call set_groups in parallel for
-the same entry cached in auth.unix.gid, racing in the call of groups_sort,
-corrupting the groups for that entry and leading to permission denials for
-the client.
+On 12/11/2017 10:05 AM, Amir Goldstein wrote:
+> On Mon, Dec 11, 2017 at 8:41 AM, Amir Goldstein <amir73il@gmail.com> wrote:
+>> On Mon, Dec 11, 2017 at 8:04 AM, NeilBrown <neilb@suse.com> wrote:
+>>> If a filesystem does not set sb->s_export_op, then it
+>>> does not support filehandles and export_fs_encode_fh()
+>>> and exportfs_encode_inode_fh() should not be called.
+>>> They will use export_encode_fh() is which is a default
+>>> that uses inode number generation number, but in general
+>>> they may not be stable.
+>>>
+>>> So change exportfs_encode_inode_fh() to return FILEID_INVALID
+>>> if called on an unsupported Filesystem.  Currently only
+>>> notify/fdinfo can do that.
+>>>
+>>
+>> I wish you would leave this check to the caller, maybe add a helper
+>> exportfs_can_decode_fh() for callers to use.
+>>
+>> Although there are no current uses for it in-tree, there is value in
+>> being able to encode a unique file handle even when it cannot be
+>> decoded back to an open file.
+>>
+>> I am using this property in my fanotify super block watch patches,
+>> where the object identifier on the event is an encoded file handle
+>> of the object, which delegates tracking filesystem objects to
+>> userspace and prevents fanotify from keeping elevated refcounts
+>> on inodes and dentries.
+>>
+>> There are quite a few userspace tools out there that are checking
+>> that st_ino hasn't changed on a file between non atomic operations.
+>> Those tools (or others) could benefit from a unique file handle if
+>> we ever decide to provide a relaxed version of name_to_handle_at().
+>>
+> 
+> And this change need a clause about not breaking userspace.
+> 
+> Pavel,
+> 
+> Will this break any version of criu in the wild?
 
-This patch:
- - Make groups_sort globally visible.
- - Move the call to groups_sort to the modifiers of group_info
- - Remove the call to groups_sort from set_groups
+If there's no fliehandle in the output, it will make dump fail, but we're
+already prepared for the fact, that there's no handle at hands. In the
+worst case criu will exit with error.
 
-Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
----
- arch/s390/kernel/compat_linux.c   | 1 +
- fs/nfsd/auth.c                    | 3 +++
- include/linux/cred.h              | 1 +
- kernel/groups.c                   | 6 ++++--
- kernel/uid16.c                    | 1 +
- net/sunrpc/auth_gss/gss_rpc_xdr.c | 1 +
- net/sunrpc/auth_gss/svcauth_gss.c | 1 +
- net/sunrpc/svcauth_unix.c         | 7 +++++++
- 8 files changed, 19 insertions(+), 2 deletions(-)
+I also agree that it should only happen when current is OOM killed, and in
+case of CRIU this means killing criu process itself.
 
-diff --git a/arch/s390/kernel/compat_linux.c b/arch/s390/kernel/compat_linux.c
-index f04db37..59eea9c 100644
---- a/arch/s390/kernel/compat_linux.c
-+++ b/arch/s390/kernel/compat_linux.c
-@@ -263,6 +263,7 @@ COMPAT_SYSCALL_DEFINE2(s390_setgroups16, int, gidsetsize, u16 __user *, grouplis
- 		return retval;
- 	}
- 
-+	groups_sort(group_info);
- 	retval = set_current_groups(group_info);
- 	put_group_info(group_info);
- 
-diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
-index 697f8ae..7b5099b 100644
---- a/fs/nfsd/auth.c
-+++ b/fs/nfsd/auth.c
-@@ -60,6 +60,9 @@ int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
- 				gi->gid[i] = exp->ex_anon_gid;
- 			else
- 				gi->gid[i] = rqgi->gid[i];
-+
-+			/* Should be race free as long as each thread allocates a new gi */
-+			groups_sort(gi);
- 		}
- 	} else {
- 		gi = get_group_info(rqgi);
-diff --git a/include/linux/cred.h b/include/linux/cred.h
-index 099058e..6312865 100644
---- a/include/linux/cred.h
-+++ b/include/linux/cred.h
-@@ -83,6 +83,7 @@ extern int set_current_groups(struct group_info *);
- extern void set_groups(struct cred *, struct group_info *);
- extern int groups_search(const struct group_info *, kgid_t);
- extern bool may_setgroups(void);
-+extern void groups_sort(struct group_info *);
- 
- /*
-  * The security context of a task
-diff --git a/kernel/groups.c b/kernel/groups.c
-index e357bc8..8620ad3 100644
---- a/kernel/groups.c
-+++ b/kernel/groups.c
-@@ -86,11 +86,13 @@ static int gid_cmp(const void *_a, const void *_b)
- 	return gid_gt(a, b) - gid_lt(a, b);
- }
- 
--static void groups_sort(struct group_info *group_info)
-+void groups_sort(struct group_info *group_info)
- {
- 	sort(group_info->gid, group_info->ngroups, sizeof(*group_info->gid),
- 	     gid_cmp, NULL);
- }
-+EXPORT_SYMBOL(groups_sort);
-+
- 
- /* a simple bsearch */
- int groups_search(const struct group_info *group_info, kgid_t grp)
-@@ -122,7 +124,6 @@ int groups_search(const struct group_info *group_info, kgid_t grp)
- void set_groups(struct cred *new, struct group_info *group_info)
- {
- 	put_group_info(new->group_info);
--	groups_sort(group_info);
- 	get_group_info(group_info);
- 	new->group_info = group_info;
- }
-@@ -206,6 +207,7 @@ SYSCALL_DEFINE2(setgroups, int, gidsetsize, gid_t __user *, grouplist)
- 		return retval;
- 	}
- 
-+	groups_sort(group_info);
- 	retval = set_current_groups(group_info);
- 	put_group_info(group_info);
- 
-diff --git a/kernel/uid16.c b/kernel/uid16.c
-index ce74a49..ef1da2a 100644
---- a/kernel/uid16.c
-+++ b/kernel/uid16.c
-@@ -192,6 +192,7 @@ SYSCALL_DEFINE2(setgroups16, int, gidsetsize, old_gid_t __user *, grouplist)
- 		return retval;
- 	}
- 
-+	groups_sort(group_info);
- 	retval = set_current_groups(group_info);
- 	put_group_info(group_info);
- 
-diff --git a/net/sunrpc/auth_gss/gss_rpc_xdr.c b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-index c4778ca..444380f 100644
---- a/net/sunrpc/auth_gss/gss_rpc_xdr.c
-+++ b/net/sunrpc/auth_gss/gss_rpc_xdr.c
-@@ -231,6 +231,7 @@ static int gssx_dec_linux_creds(struct xdr_stream *xdr,
- 			goto out_free_groups;
- 		creds->cr_group_info->gid[i] = kgid;
- 	}
-+	groups_sort(creds->cr_group_info);
- 
- 	return 0;
- out_free_groups:
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 5dd4e6c..2653119 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -481,6 +481,7 @@ static int rsc_parse(struct cache_detail *cd,
- 				goto out;
- 			rsci.cred.cr_group_info->gid[i] = kgid;
- 		}
-+		groups_sort(rsci.cred.cr_group_info);
- 
- 		/* mech name */
- 		len = qword_get(&mesg, buf, mlen);
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index 740b67d..7154dab 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -520,6 +520,12 @@ static int unix_gid_parse(struct cache_detail *cd,
- 		ug.gi->gid[i] = kgid;
- 	}
- 
-+	/* Sort the groups before inserting this entry
-+	 * into the cache to avoid future corrutpions
-+	 * by multiple simultaneous attempts to sort this
-+	 * entry.
-+	 */
-+	groups_sort(ug.gi);
- 	ugp = unix_gid_lookup(cd, uid);
- 	if (ugp) {
- 		struct cache_head *ch;
-@@ -819,6 +825,7 @@ svcauth_unix_accept(struct svc_rqst *rqstp, __be32 *authp)
- 		kgid_t kgid = make_kgid(&init_user_ns, svc_getnl(argv));
- 		cred->cr_group_info->gid[i] = kgid;
- 	}
-+	groups_sort(cred->cr_group_info);
- 	if (svc_getu32(argv) != htonl(RPC_AUTH_NULL) || svc_getu32(argv) != 0) {
- 		*authp = rpc_autherr_badverf;
- 		return SVC_DENIED;
--- 
-2.9.5
-
+-- Pavel
