@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:46400 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:46372 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752346AbdLKGEr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 11 Dec 2017 01:04:47 -0500
+        id S1752386AbdLKGEk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Dec 2017 01:04:40 -0500
 From: NeilBrown <neilb@suse.com>
 To: Linus Torvalds <torvalds@linux-foundation.org>,
         Al Viro <viro@zeniv.linux.org.uk>
 Date: Mon, 11 Dec 2017 17:04:05 +1100
-Subject: [PATCH 4/4] fhandle: Improve error responses in name_to_handle_at()
+Subject: [PATCH 3/4] NFS: allow name_to_handle_at() to work for Amazon EFS.
 Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         Amir Goldstein <amir73il@gmail.com>,
         lkml <linux-kernel@vger.kernel.org>,
         Lennart Poettering <lennart@poettering.net>
-Message-ID: <151297224523.7818.12267549679803980398.stgit@noble>
+Message-ID: <151297224519.7818.13340308932067502368.stgit@noble>
 In-Reply-To: <151297214390.7818.7216826079527521005.stgit@noble>
 References: <151297214390.7818.7216826079527521005.stgit@noble>
 MIME-Version: 1.0
@@ -20,67 +20,56 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-1/ Always return the mnt_id, even if some other error occurs.
-   It can be useful without the file handle.
-   An application can initialise the memory to, e.g. -1
-   and if there is some other value after name_to_handle_at()
-   returns, then it is a valid mnt_id.
-   If the value is unchanged, then the kernel does not
-   have this patch.
+Amazon EFS provides an NFSv4.1 filesystem which appears to use
+(close to) full length (128 byte) file handles.
+This causes the handle reported by name_to_handle_at() to exceed
+MAX_HANDLE_SZ, resulting in
+  EOVERFLOW if 128 bytes were requested, or
+  EINVAL if the size reported by the previous call was requested.
 
-2/ Don't return -EINVAL if the requested handle_bytes is
-   larger than MAX_HANDLE_SZ.  There is no need for an
-   error and it causes unnecessary behavior change
-   in the kernel ever needs to increase MAX_HANDLE_SZ.
-   Simple limit handle_bytes to MAX_HANDLE_SZ silently.
+To fix this, increase MAX_HANDLE_SIZE a little, and add a BUILD_BUG
+so that this sort of inconsistent error reporting won't happen again.
 
+Link: https://github.com/systemd/systemd/issues/7082#issuecomment-347380436
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/fhandle.c |   16 ++++++++++------
- 1 file changed, 10 insertions(+), 6 deletions(-)
+ fs/nfs/export.c          |    2 ++
+ include/linux/exportfs.h |   10 ++++++++--
+ 2 files changed, 10 insertions(+), 2 deletions(-)
 
-diff --git a/fs/fhandle.c b/fs/fhandle.c
-index 0ace128f5d23..04afffaeb742 100644
---- a/fs/fhandle.c
-+++ b/fs/fhandle.c
-@@ -23,9 +23,16 @@ static long do_sys_name_to_handle(struct path *path,
- 	int handle_dwords, handle_bytes;
- 	struct file_handle *handle = NULL;
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index 83fd09fc8f77..23b2fc3ab2bb 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -39,6 +39,8 @@ nfs_encode_fh(struct inode *inode, __u32 *p, int *max_len, struct inode *parent)
+ 	size_t fh_size = offsetof(struct nfs_fh, data) + server_fh->size;
+ 	int len = EMBED_FH_OFF + XDR_QUADLEN(fh_size);
  
-+	/*
-+	 * Always return the mnt_id, it might be useful even
-+	 * without the file handle
-+	 */
-+	if (copy_to_user(mnt_id, &real_mount(path->mnt)->mnt_id,
-+			 sizeof(*mnt_id)))
-+		return -EFAULT;
- 	/*
- 	 * We need to make sure whether the file system
--	 * support decoding of the file handle
-+	 * supports decoding of the file handle.
- 	 */
- 	if (!path->dentry->d_sb->s_export_op ||
- 	    !path->dentry->d_sb->s_export_op->fh_to_dentry)
-@@ -35,7 +42,7 @@ static long do_sys_name_to_handle(struct path *path,
- 		return -EFAULT;
++	BUILD_BUG_ON_MSG(EMBED_FH_OFF + NFS_MAXFHSIZE > MAX_HANDLE_SZ,
++		"MAX_HANDLE_SZ is too small");
+ 	dprintk("%s: max fh len %d inode %p parent %p",
+ 		__func__, *max_len, inode, parent);
  
- 	if (f_handle.handle_bytes > MAX_HANDLE_SZ)
--		return -EINVAL;
-+		f_handle.handle_bytes = MAX_HANDLE_SZ;
+diff --git a/include/linux/exportfs.h b/include/linux/exportfs.h
+index 0d3037419bc7..71eb9c2cc2fb 100644
+--- a/include/linux/exportfs.h
++++ b/include/linux/exportfs.h
+@@ -11,8 +11,14 @@ struct iomap;
+ struct super_block;
+ struct vfsmount;
  
- 	handle = kmalloc(sizeof(struct file_handle) + f_handle.handle_bytes,
- 			 GFP_KERNEL);
-@@ -68,10 +75,7 @@ static long do_sys_name_to_handle(struct path *path,
- 		retval = -EOVERFLOW;
- 	} else
- 		retval = 0;
--	/* copy the mount id */
--	if (copy_to_user(mnt_id, &real_mount(path->mnt)->mnt_id,
--			 sizeof(*mnt_id)) ||
--	    copy_to_user(ufh, handle,
-+	if (copy_to_user(ufh, handle,
- 			 sizeof(struct file_handle) + handle_bytes))
- 		retval = -EFAULT;
- 	kfree(handle);
+-/* limit the handle size to NFSv4 handle size now */
+-#define MAX_HANDLE_SZ 128
++/* Must be larger than NFSv4 file handle.
++ * overlayfs doesn't want this too close to 255.
++ * NOTE: This value MUST NOT be exported to user-space.
++ * Applications must only ever see MAX_HANDLE_SZ == 128.
++ * If they try a larger number on older kernels, they
++ * will get -EINVAL which will be confusing.
++ */
++#define MAX_HANDLE_SZ 200
+ 
+ /*
+  * The fileid_type identifies how the file within the filesystem is encoded.
 
 
