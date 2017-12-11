@@ -1,21 +1,20 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51347 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:54230 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752048AbdLKVxK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 11 Dec 2017 16:53:10 -0500
+        id S1752273AbdLKWMn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 11 Dec 2017 17:12:43 -0500
 From: NeilBrown <neilb@suse.com>
-To: Amir Goldstein <amir73il@gmail.com>
-Date: Tue, 12 Dec 2017 08:52:59 +1100
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Date: Tue, 12 Dec 2017 09:12:32 +1100
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Amir Goldstein <amir73il@gmail.com>,
         lkml <linux-kernel@vger.kernel.org>,
         Lennart Poettering <lennart@poettering.net>
 Subject: Re: [PATCH 1/4] fs/notify: fdinfo can report unsupported file handles.
-In-Reply-To: <CAOQ4uxj9VhiCtPSt+Lyv8qyUz2hJ=VQzSYCKZ_6yqvs2q7y6Qw@mail.gmail.com>
-References: <151297214390.7818.7216826079527521005.stgit@noble> <151297224512.7818.18333908109878259066.stgit@noble> <CAOQ4uxj9VhiCtPSt+Lyv8qyUz2hJ=VQzSYCKZ_6yqvs2q7y6Qw@mail.gmail.com>
-Message-ID: <87609dort0.fsf@notabene.neil.brown.name>
+In-Reply-To: <20171211062946.GX21978@ZenIV.linux.org.uk>
+References: <151297214390.7818.7216826079527521005.stgit@noble> <151297224512.7818.18333908109878259066.stgit@noble> <20171211062946.GX21978@ZenIV.linux.org.uk>
+Message-ID: <87374gq5gv.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -24,72 +23,115 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 --=-=-=
 Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-On Mon, Dec 11 2017, Amir Goldstein wrote:
+On Mon, Dec 11 2017, Al Viro wrote:
 
-> On Mon, Dec 11, 2017 at 8:04 AM, NeilBrown <neilb@suse.com> wrote:
->> If a filesystem does not set sb->s_export_op, then it
->> does not support filehandles and export_fs_encode_fh()
->> and exportfs_encode_inode_fh() should not be called.
->> They will use export_encode_fh() is which is a default
->> that uses inode number generation number, but in general
->> they may not be stable.
->>
->> So change exportfs_encode_inode_fh() to return FILEID_INVALID
->> if called on an unsupported Filesystem.  Currently only
->> notify/fdinfo can do that.
->>
+> On Mon, Dec 11, 2017 at 05:04:05PM +1100, NeilBrown wrote:
+>> @@ -385,7 +385,9 @@ int exportfs_encode_inode_fh(struct inode *inode, st=
+ruct fid *fid,
+>>  {
+>>  	const struct export_operations *nop =3D inode->i_sb->s_export_op;
+>>=20=20
+>> -	if (nop && nop->encode_fh)
+>> +	if (nop)
+>> +		return FILEID_INVALID;
+>> +	if (nop->encode_fh)
+>>  		return nop->encode_fh(inode, fid->raw, max_len, parent);
 >
-> I wish you would leave this check to the caller, maybe add a helper
-> exportfs_can_decode_fh() for callers to use.
+> This might as well have been
 >
-> Although there are no current uses for it in-tree, there is value in
-> being able to encode a unique file handle even when it cannot be
-> decoded back to an open file.
+> 	if (nop)
+> 		return FILEID_INVALID;
+> 	BUG();
 >
-> I am using this property in my fanotify super block watch patches,
-> where the object identifier on the event is an encoded file handle
-> of the object, which delegates tracking filesystem objects to
-> userspace and prevents fanotify from keeping elevated refcounts
-> on inodes and dentries.
->
-> There are quite a few userspace tools out there that are checking
-> that st_ino hasn't changed on a file between non atomic operations.
-> Those tools (or others) could benefit from a unique file handle if
-> we ever decide to provide a relaxed version of name_to_handle_at().
+> Have you ever tested that?
 
-If the filesystem doesn't define ->s_export_op, then you really cannot
-trust anything beyond the inode number (and maybe not even that), and
-the inode number is already easily available.
-What actual value do you think you get from this pretend-file-handle
-on filesystems that don't support file handles?
+I have now - except for testing against Amazon EFS.
+Only problem is the one you found - thanks.
 
-If there is a demonstrated need for some sort of identifier that is
-stronger than an inode number, but not strong enough for
-open_by_handle_at(), then you should explain that need and propose a
-well defined interface.  You shouldn't use a back-door and hope no-one
-notices.
-
-Thanks,
 NeilBrown
+
+=2D----------8<------------>8----------------
+From: NeilBrown <neilb@suse.com>
+Date: Mon, 11 Dec 2017 16:41:01 +1100
+Subject: [PATCH] fs/notify: fdinfo can report unsupported file handles.
+
+If a filesystem does not set sb->s_export_op, then it
+does not support filehandles and export_fs_encode_fh()
+and exportfs_encode_inode_fh() should not be called.
+They will use export_encode_fh() is which is a default
+that uses inode number generation number, but in general
+they may not be stable.
+
+So change exportfs_encode_inode_fh() to return FILEID_INVALID
+if called on an unsupported Filesystem.  Currently only
+notify/fdinfo can do that.
+
+Also remove the WARNing from fdinfo when exportfs_encode_inode_fh()
+returns FILEID_INVALID, as that is no an erroneous condition.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ fs/exportfs/expfs.c | 4 +++-
+ fs/notify/fdinfo.c  | 4 +---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index 329a5d103846..2fff333b750c 100644
+=2D-- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -385,7 +385,9 @@ int exportfs_encode_inode_fh(struct inode *inode, struc=
+t fid *fid,
+ {
+ 	const struct export_operations *nop =3D inode->i_sb->s_export_op;
+=20
+=2D	if (nop && nop->encode_fh)
++	if (!nop)
++		return FILEID_INVALID;
++	if (nop->encode_fh)
+ 		return nop->encode_fh(inode, fid->raw, max_len, parent);
+=20
+ 	return export_encode_fh(inode, fid, max_len, parent);
+diff --git a/fs/notify/fdinfo.c b/fs/notify/fdinfo.c
+index d478629c728b..d1135ed61229 100644
+=2D-- a/fs/notify/fdinfo.c
++++ b/fs/notify/fdinfo.c
+@@ -50,10 +50,8 @@ static void show_mark_fhandle(struct seq_file *m, struct=
+ inode *inode)
+ 	size =3D f.handle.handle_bytes >> 2;
+=20
+ 	ret =3D exportfs_encode_inode_fh(inode, (struct fid *)f.handle.f_handle, =
+&size, 0);
+=2D	if ((ret =3D=3D FILEID_INVALID) || (ret < 0)) {
+=2D		WARN_ONCE(1, "Can't encode file handler for inotify: %d\n", ret);
++	if ((ret =3D=3D FILEID_INVALID) || (ret < 0))
+ 		return;
+=2D	}
+=20
+ 	f.handle.handle_type =3D ret;
+ 	f.handle.handle_bytes =3D size * sizeof(u32);
+=2D-=20
+2.14.0.rc0.dirty
+
 
 --=-=-=
 Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlou/jsACgkQOeye3VZi
-gbnJzw//U7QXFUacuuezreGL+MJcRP2IqY+SO07erS1/7Sw7ElSmkOxJA0qIOLRh
-FP2G1JHN8VXa7s+UsL0qtgqkdZ8rtMWbiJLKa5hv3S8dvO//2NpftkCYvDWnnxxn
-twiGmVbHPh+hH8Dm5XQGf1NJfoIS9vJZOUAadKReHit/8kDlEXllTyhwq0eBsA6O
-SsrwbUaixazx4JIiDOgtECiIwvXtIh038bEk1UepUnu+1flgdczJOgBYqDX3bhU7
-unaEQIx+wc73PQPY2fH6dQ7gCquOSRrrOEBNOyp7V9dV4sEwxc+a6giC8WsbQcpa
-yyKSqJ3cUGEC8/+ymXCCr/wtvQgk5NM/8bAt5ZrDCzA9xtQTAiWKkrHNKCaTiYII
-BeaifvEV3r1Jqg08PMZgOZMZz8VwrRFQXMGw2a8iiwxE7hc/nmjB1fPZRGbm96Cu
-S50u0wtb0QiJ8CUTDQ4Pyio5E29qtYGKHyZskaeUjfrWdQzws2U8m4ph32QpCTfh
-GosPQns42tSEknt2MScyNYKke+YMZD2B9ukUCCk88JkKcFq/gIHFlhh9tL+Itqfr
-lhMc+/9wTFw6V/GuC/lmH/eWI463zqhmGqdzO6hK7X38QJ57WfQ36+gvJ93VQI5T
-KKlYOTWKElspgN0ycIH446CI9X7nKxgkVkiXb/GfLQo2ZUCd/tI=
-=ygHO
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlovAtAACgkQOeye3VZi
+gbkTGA//fsu4DsN/JoByuFoRoIlkgK0j6GRcYMVlME8Qzf1zdtsNm5b1cNQufzIw
+WC6xFYWkD/Q3tQOy6Z3M7MgRzbfFJhfKEy3UqsM1AnQpDI5vsarzWWd2H+iKLEyH
+DqXeLHHithgiEF63xnhK3VCZJF+fi7qEnm+K6ftp7o3ZOQFa5kZAmHpHufc+uNMe
+dHRn/93uaWmfdluI4qjXFk5H+1IBp6mfDt26SiDs2D46Mwrh6LqW6wFbfxw0sQz8
+bCPnh9Qid+JGBQh6o9lm+28HSttyEKC2Z22yge55hvg0Ks6e+dpscR2Ouf/P3Ebz
+w+xs3lJUQunoDaEftwhC8si4wJUtYGIY2e2/47NRwohOX4A9d9qY6QW/A5xwbhk3
+zoUrk7T4/pZZHL2lqC4X0VQ1hrP1kr7D+W0bEHefX0XTup+cG26MBE4sZ1maQnPD
+8KS2YK1mDuPr4Dqs2WE/qijNz7eUq0Gos3DuZJSbWJoryexlE5rKiDVyv/Mk92hu
+n4QmP5RlsB3Fk0ejHMccJjeZ7SCMYCBHPaL+YoIK9tOYDyRZNWZfTIMz1tOtxgrY
+qhj5w7APXl3vTeKApfR4Mav6ehyxC2YyTmVyLUPYQ2Y7XkssLcSM0nKo9UJcBcws
+C64GccdQale3fKEHPzyNkFJpFUnTXx0fzHuFGLropScEIXL3qr4=
+=Tbdm
 -----END PGP SIGNATURE-----
 --=-=-=--
