@@ -1,42 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:60980 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750925AbdLKG3u (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Dec 2017 01:29:50 -0500
-Date: Mon, 11 Dec 2017 06:29:47 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
+Received: from mail-yb0-f171.google.com ([209.85.213.171]:42702 "EHLO
+        mail-yb0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750709AbdLKGlL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Dec 2017 01:41:11 -0500
+MIME-Version: 1.0
+In-Reply-To: <151297224512.7818.18333908109878259066.stgit@noble>
+References: <151297214390.7818.7216826079527521005.stgit@noble> <151297224512.7818.18333908109878259066.stgit@noble>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Mon, 11 Dec 2017 08:41:10 +0200
+Message-ID: <CAOQ4uxj9VhiCtPSt+Lyv8qyUz2hJ=VQzSYCKZ_6yqvs2q7y6Qw@mail.gmail.com>
+Subject: Re: [PATCH 1/4] fs/notify: fdinfo can report unsupported file handles.
 To: NeilBrown <neilb@suse.com>
 Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Amir Goldstein <amir73il@gmail.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
         lkml <linux-kernel@vger.kernel.org>,
         Lennart Poettering <lennart@poettering.net>
-Subject: Re: [PATCH 1/4] fs/notify: fdinfo can report unsupported file
- handles.
-Message-ID: <20171211062946.GX21978@ZenIV.linux.org.uk>
-References: <151297214390.7818.7216826079527521005.stgit@noble>
- <151297224512.7818.18333908109878259066.stgit@noble>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <151297224512.7818.18333908109878259066.stgit@noble>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 11, 2017 at 05:04:05PM +1100, NeilBrown wrote:
-> @@ -385,7 +385,9 @@ int exportfs_encode_inode_fh(struct inode *inode, struct fid *fid,
->  {
->  	const struct export_operations *nop = inode->i_sb->s_export_op;
->  
-> -	if (nop && nop->encode_fh)
-> +	if (nop)
-> +		return FILEID_INVALID;
-> +	if (nop->encode_fh)
->  		return nop->encode_fh(inode, fid->raw, max_len, parent);
+On Mon, Dec 11, 2017 at 8:04 AM, NeilBrown <neilb@suse.com> wrote:
+> If a filesystem does not set sb->s_export_op, then it
+> does not support filehandles and export_fs_encode_fh()
+> and exportfs_encode_inode_fh() should not be called.
+> They will use export_encode_fh() is which is a default
+> that uses inode number generation number, but in general
+> they may not be stable.
+>
+> So change exportfs_encode_inode_fh() to return FILEID_INVALID
+> if called on an unsupported Filesystem.  Currently only
+> notify/fdinfo can do that.
+>
 
-This might as well have been
+I wish you would leave this check to the caller, maybe add a helper
+exportfs_can_decode_fh() for callers to use.
 
-	if (nop)
-		return FILEID_INVALID;
-	BUG();
+Although there are no current uses for it in-tree, there is value in
+being able to encode a unique file handle even when it cannot be
+decoded back to an open file.
 
-Have you ever tested that?
+I am using this property in my fanotify super block watch patches,
+where the object identifier on the event is an encoded file handle
+of the object, which delegates tracking filesystem objects to
+userspace and prevents fanotify from keeping elevated refcounts
+on inodes and dentries.
+
+There are quite a few userspace tools out there that are checking
+that st_ino hasn't changed on a file between non atomic operations.
+Those tools (or others) could benefit from a unique file handle if
+we ever decide to provide a relaxed version of name_to_handle_at().
+
+Cheers,
+Amir.
