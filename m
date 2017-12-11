@@ -1,17 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40290 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:40302 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752312AbdLKEli (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 10 Dec 2017 23:41:38 -0500
+        id S1752321AbdLKElt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 10 Dec 2017 23:41:49 -0500
 Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 6194CAAB5
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Dec 2017 04:41:37 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id C764FAAB5
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Dec 2017 04:41:47 +0000 (UTC)
 From: NeilBrown <neilb@suse.com>
 To: linux-nfs@vger.kernel.org
 Date: Mon, 11 Dec 2017 15:40:17 +1100
-Subject: [PATCH 11/19] NFS: move credential expiry tracking out of SUNRPC
- into NFS.
-Message-ID: <151296721784.24753.11402894926405733181.stgit@noble>
+Subject: [PATCH 13/19] NFS: change access cache to use 'struct cred'.
+Message-ID: <151296721791.24753.11652614146334775881.stgit@noble>
 In-Reply-To: <151296579813.24753.5905981862981613395.stgit@noble>
 References: <151296579813.24753.5905981862981613395.stgit@noble>
 MIME-Version: 1.0
@@ -19,322 +18,237 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS needs to know when a credential is about to expire so that
-it can modify write-back behaviour to finish the write inside the
-expiry time.
-It currently uses functions in SUNRPC code which make use of a
-fairly complex callback scheme and flags in the generic credientials.
+Rather than keying the access cache with 'struct rpc_cred',
+use 'struct cred'.
+These are optimisitcally shared rather than guaranteed unique,
+so this could sometimes results in duplicates in the cache.
+I don't think this is a problem as the cache is just an optimization.
 
-As I am working to discard the generic credentials, this has to change.
-
-This patch moves the logic into NFS, in part by finding and caching
-the low-level credential in the open_context.  We then make direct
-cred-api calls on that.
-
-This makes the code much simpler and removes a dependency on generic
-rpc credentials.
+A benefit of this approach is that in the common case we avoid the
+rpc_lookup_cred_nonblock() call which can be slow when the cred cache is large.
+This also keeps many fewer items pinned in the rpc cred cache, so the
+cred cache is less likely to get large.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- fs/nfs/inode.c                 |    2 +
- fs/nfs/write.c                 |   24 +++++++++++--
- include/linux/nfs_fs.h         |    1 +
- include/linux/sunrpc/auth.h    |   12 ------
- net/sunrpc/auth.c              |   23 ------------
- net/sunrpc/auth_generic.c      |   75 ----------------------------------------
- net/sunrpc/auth_gss/auth_gss.c |   21 ++---------
- 7 files changed, 28 insertions(+), 130 deletions(-)
+ fs/nfs/dir.c           |   29 ++++++++++-------------------
+ fs/nfs/nfs3proc.c      |    9 ++++++++-
+ fs/nfs/nfs4proc.c      |   16 ++++++++++++----
+ include/linux/nfs_fs.h |    4 ++--
+ 4 files changed, 32 insertions(+), 26 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index b992d2382ffa..40fe5c0fd401 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -897,6 +897,7 @@ struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry,
- 	nfs_sb_active(dentry->d_sb);
- 	ctx->dentry = dget(dentry);
- 	ctx->cred = cred;
-+	ctx->ll_cred = NULL;
- 	ctx->state = NULL;
- 	ctx->mode = f_mode;
- 	ctx->flags = 0;
-@@ -936,6 +937,7 @@ static void __put_nfs_open_context(struct nfs_open_context *ctx, int is_sync)
- 		put_rpccred(ctx->cred);
- 	dput(ctx->dentry);
- 	nfs_sb_deactive(sb);
-+	put_rpccred(ctx->ll_cred);
- 	kfree(ctx->mdsthreshold);
- 	kfree(ctx);
- }
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 5b5f464f6f2a..40c8e12165ec 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1234,9 +1234,12 @@ int
- nfs_key_timeout_notify(struct file *filp, struct inode *inode)
- {
- 	struct nfs_open_context *ctx = nfs_file_open_context(filp);
--	struct rpc_auth *auth = NFS_SERVER(inode)->client->cl_auth;
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2f3f86726f5b..c4a79923c873 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2079,7 +2079,7 @@ MODULE_PARM_DESC(nfs_access_max_cachesize, "NFS access maximum total cache lengt
  
--	return rpcauth_key_timeout_notify(auth, ctx->cred);
-+	if (nfs_ctx_key_to_expire(ctx, inode) &&
-+	    !ctx->ll_cred)
-+		/* Already expired! */
-+		return -EACCES;
-+	return 0;
+ static void nfs_access_free_entry(struct nfs_access_entry *entry)
+ {
+-	put_rpccred(entry->cred);
++	put_cred(entry->cred);
+ 	kfree_rcu(entry, rcu_head);
+ 	smp_mb__before_atomic();
+ 	atomic_long_dec(&nfs_access_nr_entries);
+@@ -2205,7 +2205,7 @@ void nfs_access_zap_cache(struct inode *inode)
+ }
+ EXPORT_SYMBOL_GPL(nfs_access_zap_cache);
+ 
+-static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, struct rpc_cred *cred)
++static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, const struct cred *cred)
+ {
+ 	struct rb_node *n = NFS_I(inode)->access_cache.rb_node;
+ 	struct nfs_access_entry *entry;
+@@ -2223,7 +2223,7 @@ static struct nfs_access_entry *nfs_access_search_rbtree(struct inode *inode, st
+ 	return NULL;
  }
  
- /*
-@@ -1245,8 +1248,23 @@ nfs_key_timeout_notify(struct file *filp, struct inode *inode)
- bool nfs_ctx_key_to_expire(struct nfs_open_context *ctx, struct inode *inode)
+-static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res, bool may_block)
++static int nfs_access_get_cached(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res, bool may_block)
  {
- 	struct rpc_auth *auth = NFS_SERVER(inode)->client->cl_auth;
-+	struct rpc_cred *cred = ctx->ll_cred;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+ 	struct nfs_access_entry *cache;
+@@ -2266,7 +2266,7 @@ static int nfs_access_get_cached(struct inode *inode, struct rpc_cred *cred, str
+ 	return -ENOENT;
+ }
+ 
+-static int nfs_access_get_cached_rcu(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res)
++static int nfs_access_get_cached_rcu(struct inode *inode, const struct cred *cred, struct nfs_access_entry *res)
+ {
+ 	/* Only check the most recently returned cache entry,
+ 	 * but do it without locking.
+@@ -2335,7 +2335,7 @@ void nfs_access_add_cache(struct inode *inode, struct nfs_access_entry *set)
+ 	if (cache == NULL)
+ 		return;
+ 	RB_CLEAR_NODE(&cache->rb_node);
+-	cache->cred = get_rpccred(set->cred);
++	cache->cred = get_cred(set->cred);
+ 	cache->mask = set->mask;
+ 
+ 	/* The above field assignments must be visible
+@@ -2399,7 +2399,7 @@ void nfs_access_set_mask(struct nfs_access_entry *entry, u32 access_result)
+ }
+ EXPORT_SYMBOL_GPL(nfs_access_set_mask);
+ 
+-static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
++static int nfs_do_access(struct inode *inode, const struct cred *cred, int mask)
+ {
+ 	struct nfs_access_entry cache;
+ 	bool may_block = (mask & MAY_NOT_BLOCK) == 0;
+@@ -2463,7 +2463,7 @@ static int nfs_open_permission_mask(int openflags)
+ 	return mask;
+ }
+ 
+-int nfs_may_open(struct inode *inode, struct rpc_cred *cred, int openflags)
++int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags)
+ {
+ 	return nfs_do_access(inode, cred, nfs_open_permission_mask(openflags));
+ }
+@@ -2486,7 +2486,7 @@ static int nfs_execute_ok(struct inode *inode, int mask)
+ 
+ int nfs_permission(struct inode *inode, int mask)
+ {
+-	struct rpc_cred *cred;
++	const struct cred *cred = current_cred();
+ 	int res = 0;
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSACCESS);
+@@ -2520,20 +2520,11 @@ int nfs_permission(struct inode *inode, int mask)
+ 
+ 	/* Always try fast lookups first */
+ 	rcu_read_lock();
+-	cred = rpc_lookup_cred_nonblock();
+-	if (!IS_ERR(cred))
+-		res = nfs_do_access(inode, cred, mask|MAY_NOT_BLOCK);
+-	else
+-		res = PTR_ERR(cred);
++	res = nfs_do_access(inode, cred, mask|MAY_NOT_BLOCK);
+ 	rcu_read_unlock();
+ 	if (res == -ECHILD && !(mask & MAY_NOT_BLOCK)) {
+ 		/* Fast lookup failed, try the slow way */
+-		cred = rpc_lookup_cred();
+-		if (!IS_ERR(cred)) {
+-			res = nfs_do_access(inode, cred, mask);
+-			put_rpccred(cred);
+-		} else
+-			res = PTR_ERR(cred);
++		res = nfs_do_access(inode, cred, mask);
+ 	}
+ out:
+ 	if (!res && (mask & MAY_EXEC))
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 49f848fd1f04..682f22946975 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -191,15 +191,20 @@ static int nfs3_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ 		.access		= entry->mask,
+ 	};
+ 	struct nfs3_accessres	res;
 +	struct auth_cred acred = {
-+		.cred = ctx->cred->cr_cred,
++		.cred		= entry->cred,
 +	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc	= &nfs3_procedures[NFS3PROC_ACCESS],
+ 		.rpc_argp	= &arg,
+ 		.rpc_resp	= &res,
+-		.rpc_cred	= entry->cred,
++		.rpc_cred	= rpc_lookup_generic_cred(&acred, 0, GFP_NOFS),
+ 	};
+ 	int status = -ENOMEM;
  
--	return rpcauth_cred_key_to_expire(auth, ctx->cred);
-+	if (cred && !cred->cr_ops->crmatch(&acred, cred, 0)) {
-+		put_rpccred(cred);
-+		ctx->ll_cred = NULL;
-+		cred = NULL;
+ 	dprintk("NFS call  access\n");
++	if (!msg.rpc_cred)
++		goto out;
+ 	res.fattr = nfs_alloc_fattr();
+ 	if (res.fattr == NULL)
+ 		goto out;
+@@ -210,6 +215,8 @@ static int nfs3_proc_access(struct inode *inode, struct nfs_access_entry *entry)
+ 		nfs_access_set_mask(entry, res.access);
+ 	nfs_free_fattr(res.fattr);
+ out:
++	if (msg.rpc_cred)
++		put_rpccred(msg.rpc_cred);
+ 	dprintk("NFS reply access: %d\n", status);
+ 	return status;
+ }
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8ba285b7df35..2327e2e8c71f 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1708,7 +1708,7 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
+ 		rcu_read_unlock();
+ 		nfs_release_seqid(opendata->o_arg.seqid);
+ 		if (!opendata->is_recover) {
+-			ret = nfs_may_open(state->inode, state->owner->so_cred, open_mode);
++			ret = nfs_may_open(state->inode, state->owner->so_cred->cr_cred, open_mode);
+ 			if (ret != 0)
+ 				goto out;
+ 		}
+@@ -2415,7 +2415,7 @@ static int nfs4_opendata_access(struct rpc_cred *cred,
+ 	} else if ((fmode & FMODE_READ) && !opendata->file_created)
+ 		mask = NFS4_ACCESS_READ;
+ 
+-	cache.cred = cred;
++	cache.cred = cred->cr_cred;
+ 	nfs_access_set_mask(&cache, opendata->o_res.access_result);
+ 	nfs_access_add_cache(state->inode, &cache);
+ 
+@@ -4041,17 +4041,24 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	struct nfs4_accessres res = {
+ 		.server = server,
+ 	};
++	struct auth_cred acred = {
++		.cred = entry->cred,
++	};
+ 	struct rpc_message msg = {
+ 		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_ACCESS],
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+-		.rpc_cred = entry->cred,
++		.rpc_cred = rpc_lookup_generic_cred(&acred, 0, GFP_NOFS),
+ 	};
+ 	int status = 0;
+ 
++	if (!msg.rpc_cred)
++		return -ENOMEM;
+ 	res.fattr = nfs_alloc_fattr();
+-	if (res.fattr == NULL)
++	if (res.fattr == NULL) {
++		put_rpccred(msg.rpc_cred);
+ 		return -ENOMEM;
 +	}
-+	if (!cred)
-+		cred = auth->au_ops->lookup_cred(auth, &acred, 0);
-+	if (!cred || IS_ERR(cred))
-+		return true;
-+	ctx->ll_cred = cred;
-+	return !!(cred->cr_ops->crkey_timeout &&
-+		  cred->cr_ops->crkey_timeout(cred));
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+@@ -4059,6 +4066,7 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 		nfs_refresh_inode(inode, res.fattr);
+ 	}
+ 	nfs_free_fattr(res.fattr);
++	put_rpccred(msg.rpc_cred);
+ 	return status;
  }
  
- /*
 diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 38187c68063d..b5a3bea20ca3 100644
+index b5a3bea20ca3..0a7e66efe212 100644
 --- a/include/linux/nfs_fs.h
 +++ b/include/linux/nfs_fs.h
-@@ -70,6 +70,7 @@ struct nfs_open_context {
- 	fl_owner_t flock_owner;
- 	struct dentry *dentry;
- 	struct rpc_cred *cred;
-+	struct rpc_cred *ll_cred;	/* low-level cred - use to check for expiry */
- 	struct nfs4_state *state;
- 	fmode_t mode;
- 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 15027adb9e32..84614cb08ab1 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -37,17 +37,9 @@
- 
- struct rpcsec_gss_info;
- 
--/* auth_cred ac_flags bits */
--enum {
--	RPC_CRED_KEY_EXPIRE_SOON = 1, /* underlying cred key will expire soon */
--	RPC_CRED_NOTIFY_TIMEOUT = 2,   /* nofity generic cred when underlying
--					key will expire soon */
--};
--
- struct auth_cred {
- 	const struct cred *cred;
- 	const char *principal;	/* If present, this is a machine credential */
--	unsigned long ac_flags;
+@@ -51,7 +51,7 @@
+ struct nfs_access_entry {
+ 	struct rb_node		rb_node;
+ 	struct list_head	lru;
+-	struct rpc_cred *	cred;
++	const struct cred *	cred;
+ 	__u32			mask;
+ 	struct rcu_head		rcu_head;
  };
+@@ -467,7 +467,7 @@ extern const struct dentry_operations nfs_dentry_operations;
+ extern void nfs_force_lookup_revalidate(struct inode *dir);
+ extern int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fh,
+ 			struct nfs_fattr *fattr, struct nfs4_label *label);
+-extern int nfs_may_open(struct inode *inode, struct rpc_cred *cred, int openflags);
++extern int nfs_may_open(struct inode *inode, const struct cred *cred, int openflags);
+ extern void nfs_access_zap_cache(struct inode *inode);
  
  /*
-@@ -153,7 +145,6 @@ struct rpc_credops {
- 	int			(*crunwrap_resp)(struct rpc_task *, kxdrdproc_t,
- 						void *, __be32 *, void *);
- 	int			(*crkey_timeout)(struct rpc_cred *);
--	bool			(*crkey_to_expire)(struct rpc_cred *);
- 	char *			(*crstringify_acceptor)(struct rpc_cred *);
- };
- 
-@@ -195,9 +186,6 @@ int			rpcauth_uptodatecred(struct rpc_task *);
- int			rpcauth_init_credcache(struct rpc_auth *);
- void			rpcauth_destroy_credcache(struct rpc_auth *);
- void			rpcauth_clear_credcache(struct rpc_cred_cache *);
--int			rpcauth_key_timeout_notify(struct rpc_auth *,
--						struct rpc_cred *);
--bool			rpcauth_cred_key_to_expire(struct rpc_auth *, struct rpc_cred *);
- char *			rpcauth_stringify_acceptor(struct rpc_cred *);
- 
- static inline
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 7557085312ce..66559de0c6f1 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -359,29 +359,6 @@ rpcauth_init_credcache(struct rpc_auth *auth)
- }
- EXPORT_SYMBOL_GPL(rpcauth_init_credcache);
- 
--/*
-- * Setup a credential key lifetime timeout notification
-- */
--int
--rpcauth_key_timeout_notify(struct rpc_auth *auth, struct rpc_cred *cred)
--{
--	if (!cred->cr_auth->au_ops->key_timeout)
--		return 0;
--	return cred->cr_auth->au_ops->key_timeout(auth, cred);
--}
--EXPORT_SYMBOL_GPL(rpcauth_key_timeout_notify);
--
--bool
--rpcauth_cred_key_to_expire(struct rpc_auth *auth, struct rpc_cred *cred)
--{
--	if (auth->au_flags & RPCAUTH_AUTH_NO_CRKEY_TIMEOUT)
--		return false;
--	if (!cred->cr_ops->crkey_to_expire)
--		return false;
--	return cred->cr_ops->crkey_to_expire(cred);
--}
--EXPORT_SYMBOL_GPL(rpcauth_cred_key_to_expire);
--
- char *
- rpcauth_stringify_acceptor(struct rpc_cred *cred)
- {
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index af461f1803e2..0cf564139815 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -87,7 +87,6 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, g
- 	gcred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_UPTODATE;
- 
- 	gcred->acred.cred = gcred->gc_base.cr_cred;
--	gcred->acred.ac_flags = 0;
- 	gcred->acred.principal = acred->principal;
- 
- 	dprintk("RPC:       allocated %s cred %p for uid %d gid %d\n",
-@@ -178,72 +177,12 @@ void rpc_destroy_generic_auth(void)
- 	rpcauth_destroy_credcache(&generic_auth);
- }
- 
--/*
-- * Test the the current time (now) against the underlying credential key expiry
-- * minus a timeout and setup notification.
-- *
-- * The normal case:
-- * If 'now' is before the key expiry minus RPC_KEY_EXPIRE_TIMEO, set
-- * the RPC_CRED_NOTIFY_TIMEOUT flag to setup the underlying credential
-- * rpc_credops crmatch routine to notify this generic cred when it's key
-- * expiration is within RPC_KEY_EXPIRE_TIMEO, and return 0.
-- *
-- * The error case:
-- * If the underlying cred lookup fails, return -EACCES.
-- *
-- * The 'almost' error case:
-- * If 'now' is within key expiry minus RPC_KEY_EXPIRE_TIMEO, but not within
-- * key expiry minus RPC_KEY_EXPIRE_FAIL, set the RPC_CRED_EXPIRE_SOON bit
-- * on the acred ac_flags and return 0.
-- */
--static int
--generic_key_timeout(struct rpc_auth *auth, struct rpc_cred *cred)
--{
--	struct auth_cred *acred = &container_of(cred, struct generic_cred,
--						gc_base)->acred;
--	struct rpc_cred *tcred;
--	int ret = 0;
--
--
--	/* Fast track for non crkey_timeout (no key) underlying credentials */
--	if (auth->au_flags & RPCAUTH_AUTH_NO_CRKEY_TIMEOUT)
--		return 0;
--
--	/* Fast track for the normal case */
--	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags))
--		return 0;
--
--	/* lookup_cred either returns a valid referenced rpc_cred, or PTR_ERR */
--	tcred = auth->au_ops->lookup_cred(auth, acred, 0);
--	if (IS_ERR(tcred))
--		return -EACCES;
--
--	/* Test for the almost error case */
--	ret = tcred->cr_ops->crkey_timeout(tcred);
--	if (ret != 0) {
--		set_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
--		ret = 0;
--	} else {
--		/* In case underlying cred key has been reset */
--		if (test_and_clear_bit(RPC_CRED_KEY_EXPIRE_SOON,
--					&acred->ac_flags))
--			dprintk("RPC:        UID %d Credential key reset\n",
--				from_kuid(&init_user_ns, tcred->cr_uid));
--		/* set up fasttrack for the normal case */
--		set_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
--	}
--
--	put_rpccred(tcred);
--	return ret;
--}
--
- static const struct rpc_authops generic_auth_ops = {
- 	.owner = THIS_MODULE,
- 	.au_name = "Generic",
- 	.hash_cred = generic_hash_cred,
- 	.lookup_cred = generic_lookup_cred,
- 	.crcreate = generic_create_cred,
--	.key_timeout = generic_key_timeout,
- };
- 
- static struct rpc_auth generic_auth = {
-@@ -251,23 +190,9 @@ static struct rpc_auth generic_auth = {
- 	.au_count = ATOMIC_INIT(0),
- };
- 
--static bool generic_key_to_expire(struct rpc_cred *cred)
--{
--	struct auth_cred *acred = &container_of(cred, struct generic_cred,
--						gc_base)->acred;
--	bool ret;
--
--	get_rpccred(cred);
--	ret = test_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
--	put_rpccred(cred);
--
--	return ret;
--}
--
- static const struct rpc_credops generic_credops = {
- 	.cr_name = "Generic cred",
- 	.crdestroy = generic_destroy_cred,
- 	.crbind = generic_bind_cred,
- 	.crmatch = generic_match,
--	.crkey_to_expire = generic_key_to_expire,
- };
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 13c0321c9a49..e68693d6d53e 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1461,23 +1461,10 @@ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
- 		if (gss_cred->gc_principal == NULL)
- 			return 0;
- 		ret = strcmp(acred->principal, gss_cred->gc_principal) == 0;
--		goto check_expire;
--	}
--	if (gss_cred->gc_principal != NULL)
--		return 0;
--	ret = uid_eq(rc->cr_uid, acred->cred->fsuid);
--
--check_expire:
--	if (ret == 0)
--		return ret;
--
--	/* Notify acred users of GSS context expiration timeout */
--	if (test_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags) &&
--	    (gss_key_timeout(rc) != 0)) {
--		/* test will now be done from generic cred */
--		test_and_clear_bit(RPC_CRED_NOTIFY_TIMEOUT, &acred->ac_flags);
--		/* tell NFS layer that key will expire soon */
--		set_bit(RPC_CRED_KEY_EXPIRE_SOON, &acred->ac_flags);
-+	} else {
-+		if (gss_cred->gc_principal != NULL)
-+			return 0;
-+		ret = uid_eq(rc->cr_uid, acred->cred->fsuid);
- 	}
- 	return ret;
- }
 
 
