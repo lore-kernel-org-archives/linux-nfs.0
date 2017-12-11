@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:40239 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:40261 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752218AbdLKElC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 10 Dec 2017 23:41:02 -0500
+        id S1752255AbdLKElM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 10 Dec 2017 23:41:12 -0500
 Received: from relay2.suse.de (charybdis-ext.suse.de [195.135.220.254])
-        by mx2.suse.de (Postfix) with ESMTP id 03915AAB5
-        for <linux-nfs@vger.kernel.org>; Mon, 11 Dec 2017 04:41:01 +0000 (UTC)
+        by mx2.suse.de (Postfix) with ESMTP id 27010AAB5
+        for <linux-nfs@vger.kernel.org>; Mon, 11 Dec 2017 04:41:11 +0000 (UTC)
 From: NeilBrown <neilb@suse.com>
 To: linux-nfs@vger.kernel.org
 Date: Mon, 11 Dec 2017 15:40:17 +1100
-Subject: [PATCH 04/19] SUNRPC: remove machine_cred field from struct
- auth_cred
-Message-ID: <151296721757.24753.9735436091863090072.stgit@noble>
+Subject: [PATCH 06/19] NFSv4: don't require lock for get_renew_cred or
+ get_machine_cred
+Message-ID: <151296721765.24753.4086033033137304780.stgit@noble>
 In-Reply-To: <151296579813.24753.5905981862981613395.stgit@noble>
 References: <151296579813.24753.5905981862981613395.stgit@noble>
 MIME-Version: 1.0
@@ -19,117 +19,190 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The cred is a machine_cred iff ->principal is set, so there is no
-need for the extra flag.
+This lock is no longer necessary.
 
-There is one case which deserves some
-explanation. nfs4_root_machine_cred() calls rpc_lookup_machine_cred()
-with a NULL principal name which results in not getting a machine
-credential, but getting a root credential instead.
-This appears to be what is expected of the caller, and is
-clearly the result provided by both auth_unix and auth_gss
-which already ignore the flag. in the ->crmatch functions.
+If nfs4_get_renew_cred() needs to hunt through the open-state
+creds for a user cred, it still takes the lock to stablize
+the rbtree, but otherwise there are no races.
+
+Note that this completely removes the lock from nfs4_renew_state().
+It appears that the original need for the locking here was removed
+long ago, and there is no longer anything to protect.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- include/linux/sunrpc/auth.h    |    3 +--
- net/sunrpc/auth_generic.c      |   12 ++++++------
- net/sunrpc/auth_gss/auth_gss.c |    5 +----
- 3 files changed, 8 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4_fs.h    |    6 +++---
+ fs/nfs/nfs4proc.c   |    4 ++--
+ fs/nfs/nfs4renewd.c |    5 +----
+ fs/nfs/nfs4state.c  |   26 ++++++++++----------------
+ 4 files changed, 16 insertions(+), 25 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index 2b19e687dc29..85b9fc2f5dbb 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -46,9 +46,8 @@ enum {
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b374f680830c..115f5af6663c 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -219,7 +219,7 @@ struct nfs4_add_xprt_data {
  
- struct auth_cred {
- 	const struct cred *cred;
--	const char *principal;
-+	const char *principal;	/* If present, this is a machine credential */
- 	unsigned long ac_flags;
--	unsigned char machine_cred : 1;
+ struct nfs4_state_maintenance_ops {
+ 	int (*sched_state_renewal)(struct nfs_client *, struct rpc_cred *, unsigned);
+-	struct rpc_cred * (*get_state_renewal_cred_locked)(struct nfs_client *);
++	struct rpc_cred * (*get_state_renewal_cred)(struct nfs_client *);
+ 	int (*renew_lease)(struct nfs_client *, struct rpc_cred *);
  };
  
- /*
-diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
-index 7e2377f47922..cc37300e62d2 100644
---- a/net/sunrpc/auth_generic.c
-+++ b/net/sunrpc/auth_generic.c
-@@ -50,12 +50,13 @@ EXPORT_SYMBOL_GPL(rpc_lookup_cred_nonblock);
+@@ -417,8 +417,8 @@ extern void nfs4_set_lease_period(struct nfs_client *clp,
  
- /*
-  * Public call interface for looking up machine creds.
-+ * Note that if service_name is NULL, we actually look up
-+ * "root" credential.
+ /* nfs4state.c */
+ struct rpc_cred *nfs4_get_clid_cred(struct nfs_client *clp);
+-struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp);
+-struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp);
++struct rpc_cred *nfs4_get_machine_cred(struct nfs_client *clp);
++struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp);
+ int nfs4_discover_server_trunking(struct nfs_client *clp,
+ 			struct nfs_client **);
+ int nfs40_discover_server_trunking(struct nfs_client *clp,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 56fa5a16e097..8ba285b7df35 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -9388,14 +9388,14 @@ static const struct nfs4_state_recovery_ops nfs41_nograce_recovery_ops = {
+ 
+ static const struct nfs4_state_maintenance_ops nfs40_state_renewal_ops = {
+ 	.sched_state_renewal = nfs4_proc_async_renew,
+-	.get_state_renewal_cred_locked = nfs4_get_renew_cred_locked,
++	.get_state_renewal_cred = nfs4_get_renew_cred,
+ 	.renew_lease = nfs4_proc_renew,
+ };
+ 
+ #if defined(CONFIG_NFS_V4_1)
+ static const struct nfs4_state_maintenance_ops nfs41_state_renewal_ops = {
+ 	.sched_state_renewal = nfs41_proc_async_sequence,
+-	.get_state_renewal_cred_locked = nfs4_get_machine_cred_locked,
++	.get_state_renewal_cred = nfs4_get_machine_cred,
+ 	.renew_lease = nfs4_proc_sequence,
+ };
+ #endif
+diff --git a/fs/nfs/nfs4renewd.c b/fs/nfs/nfs4renewd.c
+index 1f8c2ae43a8d..8880cd958210 100644
+--- a/fs/nfs/nfs4renewd.c
++++ b/fs/nfs/nfs4renewd.c
+@@ -68,7 +68,6 @@ nfs4_renew_state(struct work_struct *work)
+ 	if (test_bit(NFS_CS_STOP_RENEW, &clp->cl_res_state))
+ 		goto out;
+ 
+-	spin_lock(&clp->cl_lock);
+ 	lease = clp->cl_lease_time;
+ 	last = clp->cl_last_renewal;
+ 	now = jiffies;
+@@ -79,8 +78,7 @@ nfs4_renew_state(struct work_struct *work)
+ 		renew_flags |= NFS4_RENEW_DELEGATION_CB;
+ 
+ 	if (renew_flags != 0) {
+-		cred = ops->get_state_renewal_cred_locked(clp);
+-		spin_unlock(&clp->cl_lock);
++		cred = ops->get_state_renewal_cred(clp);
+ 		if (cred == NULL) {
+ 			if (!(renew_flags & NFS4_RENEW_DELEGATION_CB)) {
+ 				set_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state);
+@@ -104,7 +102,6 @@ nfs4_renew_state(struct work_struct *work)
+ 	} else {
+ 		dprintk("%s: failed to call renewd. Reason: lease not expired \n",
+ 				__func__);
+-		spin_unlock(&clp->cl_lock);
+ 	}
+ 	nfs4_schedule_state_renewal(clp);
+ out_exp:
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index 9b9b5794e05d..4519b7d44c79 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -156,7 +156,7 @@ int nfs40_discover_server_trunking(struct nfs_client *clp,
+ 	return status;
+ }
+ 
+-struct rpc_cred *nfs4_get_machine_cred_locked(struct nfs_client *clp)
++struct rpc_cred *nfs4_get_machine_cred(struct nfs_client *clp)
+ {
+ 	struct rpc_cred *cred = clp->cl_root_cred;
+ 
+@@ -202,22 +202,23 @@ nfs4_get_renew_cred_server_locked(struct nfs_server *server)
+ }
+ 
+ /**
+- * nfs4_get_renew_cred_locked - Acquire credential for a renew operation
++ * nfs4_get_renew_cred - Acquire credential for a renew operation
+  * @clp: client state handle
+  *
+  * Returns an rpc_cred with reference count bumped, or NULL.
+  * Caller must hold clp->cl_lock.
   */
- struct rpc_cred *rpc_lookup_machine_cred(const char *service_name)
+-struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp)
++struct rpc_cred *nfs4_get_renew_cred(struct nfs_client *clp)
  {
- 	struct auth_cred acred = {
- 		.principal = service_name,
--		.machine_cred = 1,
- 		.cred = get_task_cred(&init_task),
- 	};
- 	struct rpc_cred *ret;
-@@ -108,11 +109,10 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, g
+ 	struct rpc_cred *cred = NULL;
+ 	struct nfs_server *server;
  
- 	gcred->acred.cred = gcred->gc_base.cr_cred;
- 	gcred->acred.ac_flags = 0;
--	gcred->acred.machine_cred = acred->machine_cred;
- 	gcred->acred.principal = acred->principal;
+ 	/* Use machine credentials if available */
+-	cred = nfs4_get_machine_cred_locked(clp);
++	cred = nfs4_get_machine_cred(clp);
+ 	if (cred != NULL)
+ 		goto out;
  
- 	dprintk("RPC:       allocated %s cred %p for uid %d gid %d\n",
--			gcred->acred.machine_cred ? "machine" : "generic",
-+			gcred->acred.principal ? "machine" : "generic",
- 			gcred,
- 			from_kuid(&init_user_ns, acred->cred->fsuid),
- 			from_kgid(&init_user_ns, acred->cred->fsgid));
-@@ -144,7 +144,7 @@ generic_destroy_cred(struct rpc_cred *cred)
- static int
- machine_cred_match(struct auth_cred *acred, struct generic_cred *gcred, int flags)
++	spin_lock(&clp->cl_lock);
+ 	rcu_read_lock();
+ 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+ 		cred = nfs4_get_renew_cred_server_locked(server);
+@@ -225,6 +226,7 @@ struct rpc_cred *nfs4_get_renew_cred_locked(struct nfs_client *clp)
+ 			break;
+ 	}
+ 	rcu_read_unlock();
++	spin_unlock(&clp->cl_lock);
+ 
+ out:
+ 	return cred;
+@@ -394,9 +396,7 @@ struct rpc_cred *nfs4_get_clid_cred(struct nfs_client *clp)
  {
--	if (!gcred->acred.machine_cred ||
-+	if (!gcred->acred.principal ||
- 	    gcred->acred.principal != acred->principal ||
- 	    !uid_eq(gcred->acred.cred->fsuid, acred->cred->fsuid) ||
- 	    !gid_eq(gcred->acred.cred->fsgid, acred->cred->fsgid))
-@@ -162,12 +162,12 @@ generic_match(struct auth_cred *acred, struct rpc_cred *cred, int flags)
- 	int i;
- 	struct group_info *a, *g;
+ 	struct rpc_cred *cred;
  
--	if (acred->machine_cred)
-+	if (acred->principal)
- 		return machine_cred_match(acred, gcred, flags);
+-	spin_lock(&clp->cl_lock);
+-	cred = nfs4_get_machine_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = nfs4_get_machine_cred(clp);
+ 	return cred;
+ }
  
- 	if (!uid_eq(gcred->acred.cred->fsuid, acred->cred->fsuid) ||
- 	    !gid_eq(gcred->acred.cred->fsgid, acred->cred->fsgid) ||
--	    gcred->acred.machine_cred != 0)
-+	    gcred->acred.principal != NULL)
- 		goto out_nomatch;
+@@ -1859,9 +1859,7 @@ static int nfs4_check_lease(struct nfs_client *clp)
+ 	/* Is the client already known to have an expired lease? */
+ 	if (test_bit(NFS4CLNT_LEASE_EXPIRED, &clp->cl_state))
+ 		return 0;
+-	spin_lock(&clp->cl_lock);
+-	cred = ops->get_state_renewal_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = ops->get_state_renewal_cred(clp);
+ 	if (cred == NULL) {
+ 		cred = nfs4_get_clid_cred(clp);
+ 		status = -ENOKEY;
+@@ -2059,9 +2057,7 @@ static int nfs4_handle_migration(struct nfs_client *clp)
+ 	dprintk("%s: migration reported on \"%s\"\n", __func__,
+ 			clp->cl_hostname);
  
- 	a = acred->cred->group_info;
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 777560a2a9d9..13c0321c9a49 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -1339,9 +1339,7 @@ gss_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, gfp_t
- 	 */
- 	cred->gc_base.cr_flags = 1UL << RPCAUTH_CRED_NEW;
- 	cred->gc_service = gss_auth->service;
--	cred->gc_principal = NULL;
--	if (acred->machine_cred)
--		cred->gc_principal = acred->principal;
-+	cred->gc_principal = acred->principal;
- 	kref_get(&gss_auth->kref);
- 	return &cred->gc_base;
+-	spin_lock(&clp->cl_lock);
+-	cred = ops->get_state_renewal_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = ops->get_state_renewal_cred(clp);
+ 	if (cred == NULL)
+ 		return -NFS4ERR_NOENT;
  
-@@ -1554,7 +1552,6 @@ static int gss_renew_cred(struct rpc_task *task)
- 	struct auth_cred acred = {
- 		.cred = oldcred->cr_cred,
- 		.principal = gss_cred->gc_principal,
--		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
- 	};
- 	struct rpc_cred *new;
+@@ -2107,9 +2103,7 @@ static int nfs4_handle_lease_moved(struct nfs_client *clp)
+ 	dprintk("%s: lease moved reported on \"%s\"\n", __func__,
+ 			clp->cl_hostname);
+ 
+-	spin_lock(&clp->cl_lock);
+-	cred = ops->get_state_renewal_cred_locked(clp);
+-	spin_unlock(&clp->cl_lock);
++	cred = ops->get_state_renewal_cred(clp);
+ 	if (cred == NULL)
+ 		return -NFS4ERR_NOENT;
  
 
 
