@@ -1,75 +1,108 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-yb0-f182.google.com ([209.85.213.182]:33115 "EHLO
-        mail-yb0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751503AbdLLGj6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Dec 2017 01:39:58 -0500
-MIME-Version: 1.0
-In-Reply-To: <87609dort0.fsf@notabene.neil.brown.name>
-References: <151297214390.7818.7216826079527521005.stgit@noble>
- <151297224512.7818.18333908109878259066.stgit@noble> <CAOQ4uxj9VhiCtPSt+Lyv8qyUz2hJ=VQzSYCKZ_6yqvs2q7y6Qw@mail.gmail.com>
- <87609dort0.fsf@notabene.neil.brown.name>
-From: Amir Goldstein <amir73il@gmail.com>
-Date: Tue, 12 Dec 2017 08:39:56 +0200
-Message-ID: <CAOQ4uxgYeqFtj=uVFDB84zUDu5-QrQLbH2DwgsJrXGtb2Fr9sA@mail.gmail.com>
-Subject: Re: [PATCH 1/4] fs/notify: fdinfo can report unsupported file handles.
-To: NeilBrown <neilb@suse.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Lennart Poettering <lennart@poettering.net>
+Received: from metis.ext.4.pengutronix.de ([92.198.50.35]:53555 "EHLO
+        metis.ext.4.pengutronix.de" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751234AbdLLIxw (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Dec 2017 03:53:52 -0500
+Message-ID: <1513068823.27299.0.camel@pengutronix.de>
+Subject: Re: [PATCH] NFS: fix access bit translation in _nfs4_proc_access()
+From: Lucas Stach <l.stach@pengutronix.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        kernel@pengutronix.de, patchwork-lst@pengutronix.de
+Date: Tue, 12 Dec 2017 09:53:43 +0100
+In-Reply-To: <20171110150356.31050-1-l.stach@pengutronix.de>
+References: <20171110150356.31050-1-l.stach@pengutronix.de>
 Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 11, 2017 at 11:52 PM, NeilBrown <neilb@suse.com> wrote:
-> On Mon, Dec 11 2017, Amir Goldstein wrote:
->
->> On Mon, Dec 11, 2017 at 8:04 AM, NeilBrown <neilb@suse.com> wrote:
->>> If a filesystem does not set sb->s_export_op, then it
->>> does not support filehandles and export_fs_encode_fh()
->>> and exportfs_encode_inode_fh() should not be called.
->>> They will use export_encode_fh() is which is a default
->>> that uses inode number generation number, but in general
->>> they may not be stable.
->>>
->>> So change exportfs_encode_inode_fh() to return FILEID_INVALID
->>> if called on an unsupported Filesystem.  Currently only
->>> notify/fdinfo can do that.
->>>
->>
->> I wish you would leave this check to the caller, maybe add a helper
->> exportfs_can_decode_fh() for callers to use.
->>
->> Although there are no current uses for it in-tree, there is value in
->> being able to encode a unique file handle even when it cannot be
->> decoded back to an open file.
->>
->> I am using this property in my fanotify super block watch patches,
->> where the object identifier on the event is an encoded file handle
->> of the object, which delegates tracking filesystem objects to
->> userspace and prevents fanotify from keeping elevated refcounts
->> on inodes and dentries.
->>
->> There are quite a few userspace tools out there that are checking
->> that st_ino hasn't changed on a file between non atomic operations.
->> Those tools (or others) could benefit from a unique file handle if
->> we ever decide to provide a relaxed version of name_to_handle_at().
->
-> If the filesystem doesn't define ->s_export_op, then you really cannot
-> trust anything beyond the inode number (and maybe not even that), and
-> the inode number is already easily available.
-> What actual value do you think you get from this pretend-file-handle
-> on filesystems that don't support file handles?
->
+Am Freitag, den 10.11.2017, 16:03 +0100 schrieb Lucas Stach:
+> Since bd8b2441742b (NFS: Store the raw NFS access mask in the inode's
+> access cache) the mask already contains the NFS access bits, so it is
+> wrong to try to map them from the MAY_* bits to the NFS_MAY_* bits
+> in _nfs4_proc_access(). This leads to bogus access permissions being
+> returned from the server.
+> 
+> Fix this by using the mask directly, but be careful to not ask for
+> to broad permissions from the calling nfs_do_access().
+> 
+> CC: stable@vger.kernel.org #4.13+
+> Signed-off-by: Lucas Stach <l.stach@pengutronix.de>
+> Tested-by: Björn Lässig <b.laessig@pengutronix.de>
 
-Sorry, I misread your patch. In my mind I thought you wanted to
-eliminate the default export_encode_fh if there was no fh_to_dentry
-operation like do_sys_name_to_handle() does. Just in my head...
+This patch is incomplete, as it misses the NFSv3 parts. Please ignore
+this patch.
 
-FWIW, according to Pavel, if fdinfo would not export file handle
-in case !fh_to_dentry op would probably be desirable, because
-criu has no need for file handles that cannot be decoded.
+Regards,
+Lucas
 
-Amir.
+> ---
+>  fs/nfs/dir.c      |  8 ++++++--
+>  fs/nfs/nfs4proc.c | 19 +------------------
+>  2 files changed, 7 insertions(+), 20 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 5ceaeb1f6fb6..dd3a06353bdc 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -2426,8 +2426,12 @@ static int nfs_do_access(struct inode *inode,
+> struct rpc_cred *cred, int mask)
+>  		goto out;
+>  
+>  	/* Be clever: ask server to check for all possible rights */
+> -	cache.mask = NFS_MAY_LOOKUP | NFS_MAY_EXECUTE
+> -		     | NFS_MAY_WRITE | NFS_MAY_READ;
+> +	cache.mask = NFS_MAY_READ;
+> +	if (S_ISDIR(inode->i_mode))
+> +		cache.mask |= NFS_DIR_MAY_WRITE | NFS_MAY_LOOKUP;
+> +	else
+> +		cache.mask |= NFS_FILE_MAY_WRITE | NFS_MAY_EXECUTE;
+> +
+>  	cache.cred = cred;
+>  	status = NFS_PROTO(inode)->access(inode, &cache);
+>  	if (status != 0) {
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 6c61e2b99635..cb7b5aafaef6 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -3889,6 +3889,7 @@ static int _nfs4_proc_access(struct inode
+> *inode, struct nfs_access_entry *entry
+>  	struct nfs4_accessargs args = {
+>  		.fh = NFS_FH(inode),
+>  		.bitmask = server->cache_consistency_bitmask,
+> +		.access = entry->mask,
+>  	};
+>  	struct nfs4_accessres res = {
+>  		.server = server,
+> @@ -3899,26 +3900,8 @@ static int _nfs4_proc_access(struct inode
+> *inode, struct nfs_access_entry *entry
+>  		.rpc_resp = &res,
+>  		.rpc_cred = entry->cred,
+>  	};
+> -	int mode = entry->mask;
+>  	int status = 0;
+>  
+> -	/*
+> -	 * Determine which access bits we want to ask for...
+> -	 */
+> -	if (mode & MAY_READ)
+> -		args.access |= NFS4_ACCESS_READ;
+> -	if (S_ISDIR(inode->i_mode)) {
+> -		if (mode & MAY_WRITE)
+> -			args.access |= NFS4_ACCESS_MODIFY |
+> NFS4_ACCESS_EXTEND | NFS4_ACCESS_DELETE;
+> -		if (mode & MAY_EXEC)
+> -			args.access |= NFS4_ACCESS_LOOKUP;
+> -	} else {
+> -		if (mode & MAY_WRITE)
+> -			args.access |= NFS4_ACCESS_MODIFY |
+> NFS4_ACCESS_EXTEND;
+> -		if (mode & MAY_EXEC)
+> -			args.access |= NFS4_ACCESS_EXECUTE;
+> -	}
+> -
+>  	res.fattr = nfs_alloc_fattr();
+>  	if (res.fattr == NULL)
+>  		return -ENOMEM;
