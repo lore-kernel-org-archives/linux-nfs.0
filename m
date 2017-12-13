@@ -1,106 +1,134 @@
-Return-Path: <smayhew@redhat.com>
-Date: Wed, 13 Dec 2017 13:22:20 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-	bcodding redhat <bcodding@redhat.com>,
-	"fsorenso@redhat.com" <fsorenso@redhat.com>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-	"dwysocha@redhat.com" <dwysocha@redhat.com>
-Subject: Re: [PATCH] nfs/pnfs: fix nfs_direct_req ref leak when i/o falls
- back to the mds
-Message-ID: <20171213182220.lrfbvkaj65fg6abk@tonberry.usersys.redhat.com>
-References: <20171213161555.27993-1-smayhew@redhat.com>
- <1513186535.10540.8.camel@primarydata.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail-ua0-f178.google.com ([209.85.217.178]:34827 "EHLO
+        mail-ua0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753151AbdLMSjX (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Dec 2017 13:39:23 -0500
+Received: by mail-ua0-f178.google.com with SMTP id l2so2251535uak.2
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Dec 2017 10:39:23 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1513186535.10540.8.camel@primarydata.com>
+In-Reply-To: <026e01d36f95$da192e90$8e4b8bb0$@mindspring.com>
+References: <CAN-5tyEe2gEgmSnZju7MjgrFR_YK1PrLx2NpxJn5Ks88PEz__g@mail.gmail.com>
+ <CAABAsM57k0E32ywgW=qdhFbeHctcUivM9mkuuA1qbfB9F7Rvyg@mail.gmail.com>
+ <CAN-5tyEmwgo7ea1WJ-0nRE+Jz+b9rb97GkYEmFyq_C+8nr1kTw@mail.gmail.com>
+ <20171207165838.GA4096@fieldses.org> <CAN-5tyGYL5jXSqWbMSBdD9oHTD5Bsj5moFyGBKnD3t1zBLZYZA@mail.gmail.com>
+ <019f01d36f8d$0ce06220$26a12660$@mindspring.com> <CAN-5tyGspK87j_uwzmzqZV0v3+u3KwgNObgNS+bqq-15ouskXw@mail.gmail.com>
+ <026e01d36f95$da192e90$8e4b8bb0$@mindspring.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 13 Dec 2017 13:39:21 -0500
+Message-ID: <CAN-5tyGek+PoSrvCc1DL2fZM-EZ-hu+RNG74_Z78SLgTQ6g+bw@mail.gmail.com>
+Subject: Re: [nfsv4] questing about NLM LOCK, CANCEL UNLOCK
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        "nfsv4@ietf.org" <nfsv4@ietf.org>
+Content-Type: text/plain; charset="UTF-8"
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 13 Dec 2017, Trond Myklebust wrote:
+On Thu, Dec 7, 2017 at 2:59 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
+>> On Thu, Dec 7, 2017 at 1:56 PM, Frank Filz <ffilzlnx@mindspring.com> wro=
+te:
+>> >> On Thu, Dec 7, 2017 at 11:58 AM, J. Bruce Fields
+>> >> <bfields@fieldses.org>
+>> >> wrote:
+>> >> > On Thu, Dec 07, 2017 at 11:10:16AM -0500, Olga Kornievskaia wrote:
+>> >> >> Ok. I thought that because RFC1813 covers NLM operations that it i=
+s.
+>> >> >
+>> >> > Yeah, I don't see a harm to the occasional NLM question on the v4
+>> >> > working group list.  It's a bit of an orphaned protocol, so there's
+>> >> > not really any other implementation-independent forum.
+>> >> >
+>> >> >> I will extend this question to the Linux NFS mailing list as the
+>> >> >> client implementation I'm interested is Linux.
+>> >> >
+>> >> > But that's fine too.
+>> >> >
+>> >> > I thought that LOCK/CANCEL race was one of the motivations for
+>> >> > NFSv4, so...
+>> >> >
+>> >> >> >> Is there a solution or this is broken protocol?
+>> >> >
+>> >> > ... I'd always assumed the protocol was impossible to implement
+>> >> > 100% correctly, though maybe there's some clever solution.
+>> >>
+>> >> Is such race still possible with the linux server implementation
+>> >> which is
+>> > single
+>> >> threaded and in my testing isn't processing LOCK/CANCEL out-of-order
+>> then?
+>> >>
+>> >> >> >> Should it be client's responsibility to notice that it received
+>> >> >> >> a LOCK reply for which it wasn't waiting and always follow up
+>> >> >> >> with an
+>> >> UNLOCK?
+>> >> >
+>> >> > That would be tricky and still not handle all cases, I think.
+>> >>
+>> >> Yes I'm not sure the client can do it. It will have no info about the
+>> >> lock
+>> > and not
+>> >> sure how to create an appropriate UNLOCK reply (unless we keep around
+>> >> lock info of all cancelled locks).
+>>
+>> > The NLM4_GRANTED call has a response where the client can respond
+>> > NLM4_DENIED to indicate it is not accepting the lock.
+>> >
+>> > The Ganesha NFS server could process out of order, however, if the
+>> > client responds to the grant with NLM4_DENIED, Ganesha will properly
+>> > release the lock.
+>>
+>> This is the case for when the server is doing a callback to the client a=
+nd
+>> granting the lock and client has ability to reply with denied. The situa=
+tion I'm
+>> curious about is just after the initial LOCK request is sent and server =
+hasn't
+>> processed it and it got&processed a CANCEL/UNLOCK.
+>
+> Oh, woops, yea... if the lock doesn't block, then the situation is differ=
+ent. When the client gets the LOCK response, it really should check and see=
+ if it was actually waiting for that response, or actually, the client shou=
+ld probably delay sending UNLOCK if it has not got a response to an outstan=
+ding lock request yet.
 
-> On Wed, 2017-12-13 at 11:15 -0500, Scott Mayhew wrote:
-> > Currently when falling back to doing I/O through the MDS (via
-> > pnfs_{read|write}_through_mds), the client frees the nfs_pgio_header
-> > without releasing the reference taken on the dreq
-> > via pnfs_generic_pg_{read|write}pages -> nfs_pgheader_init ->
-> > nfs_direct_pgio_init.  It then takes another reference on the dreq
-> > via
-> > nfs_generic_pg_pgios -> nfs_pgheader_init -> nfs_direct_pgio_init and
-> > as a result the requester will become stuck in inode_dio_wait.  Once
-> > that happens, other processes accessing the inode will become stuck
-> > as
-> > well.
-> > 
-> > Moving the init_hdr call down to nfs_initiate_pgio ensures we take
-> > the
-> > reference on the dreq only once.
-> > 
-> > This can be reproduced (sometimes) by performing "storage failover
-> > takeover" commands on NetApp filer while doing direct I/O from a
-> > client.
-> > 
-> > This can also be reproduced using SystemTap to simulate a failure
-> > while
-> > doing direct I/O from a client (from Dave Wysochanski
-> > <dwysocha@redhat.com>):
-> > 
-> > stap -v -g -e 'probe
-> > module("nfs_layout_nfsv41_files").function("nfs4_fl_prepare_ds").retu
-> > rn { $return=NULL; exit(); }'
-> > 
-> > Suggested-by: Benjamin Coddington <bcodding@redhat.com>
-> > Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> > ---
-> >  fs/nfs/pagelist.c | 6 +++---
-> >  1 file changed, 3 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> > index d0543e1..d478c19 100644
-> > --- a/fs/nfs/pagelist.c
-> > +++ b/fs/nfs/pagelist.c
-> > @@ -54,9 +54,6 @@ void nfs_pgheader_init(struct nfs_pageio_descriptor
-> > *desc,
-> >  	hdr->dreq = desc->pg_dreq;
-> >  	hdr->release = release;
-> >  	hdr->completion_ops = desc->pg_completion_ops;
-> > -	if (hdr->completion_ops->init_hdr)
-> > -		hdr->completion_ops->init_hdr(hdr);
-> > -
-> >  	hdr->pgio_mirror_idx = desc->pg_mirror_idx;
-> >  }
-> >  EXPORT_SYMBOL_GPL(nfs_pgheader_init);
-> > @@ -607,6 +604,9 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt,
-> > struct nfs_pgio_header *hdr,
-> >  	};
-> >  	int ret = 0;
-> >  
-> > +	if (hdr->completion_ops->init_hdr)
-> > +		hdr->completion_ops->init_hdr(hdr);
-> > +
-> >  	hdr->rw_ops->rw_initiate(hdr, &msg, rpc_ops,
-> > &task_setup_data, how);
-> >  
-> >  	dprintk("NFS: initiated pgio call "
-> 
-> Won't this break as soon as we hit a call to nfs_pgio_error()? Also,
-> what about block layout, which never calls nfs_initiate_pgio()?
+Current linux client does not do that.
 
-Yes, it appears it would break both of those.  Sorry I missed that.
+> CANCEL is only for cancelling a blocked lock, so shouldn't be sent unless=
+ the server has already responded to the LOCK with NLM4_BLOCKED, in which c=
+ase there is no ordering issue (Ganesha should handle ordering issue betwee=
+n NLM4_GRANT call  and NLM4_CANCEL).
 
-> 
-> I'd prefer that we fix this in pnfs_read_through_mds() and
-> pnfs_write_through_mds() by ensuring that those functions clean up
-> correctly. Should they be calling hdr->completion_ops->completion()
-> instead of calling hdr->release() directly?
+Current linux client will send a CANCEL even if it didn't receive the
+reply from the server.
 
-We were wondering if that might be the case too.  I'll get to testing on
-that right away.
+> If we want NLM4_CANCEL to be able to cancel an inflight LOCK request, the=
+n we would need to add semantics which would include the server either resp=
+onding to the cancel to let the client know it hasn't processed the LOCK re=
+quest yet, or it should somehow remember the cancel so it can ignore the LO=
+CK request when it processes it (which is probably too much for the server =
+to deal with).
 
-Thanks,
-Scott
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+Sounds like Ganesha server (and Netapp) will have orphan locks that
+would require manual lock break or server reboot.
+
+>> > The imperfectness of NLM is why I have seen requests for tools to free
+>> > wedged locks... We haven't managed to write such a tool for Ganesha
+>> > yet (so either we don't actually have that many NLM clients, or folks
+>> > are using other mechanisms to deal with the issue - restarting the
+>> > server and making all the clients reclaim the locks they want is one w=
+ay to
+>> do it...).
+>>
+>> Yes server-side lock breaking or rebooting is a way out this situation i=
+n
+>> practice.
+>> >
+>> > Frank
+>> >
+>> >
+>> > ---
+>> > This email has been checked for viruses by Avast antivirus software.
+>> > https://www.avast.com/antivirus
+>> >
+>
