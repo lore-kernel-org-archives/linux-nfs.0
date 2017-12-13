@@ -1,134 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f178.google.com ([209.85.217.178]:34827 "EHLO
-        mail-ua0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753151AbdLMSjX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Dec 2017 13:39:23 -0500
-Received: by mail-ua0-f178.google.com with SMTP id l2so2251535uak.2
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Dec 2017 10:39:23 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <026e01d36f95$da192e90$8e4b8bb0$@mindspring.com>
-References: <CAN-5tyEe2gEgmSnZju7MjgrFR_YK1PrLx2NpxJn5Ks88PEz__g@mail.gmail.com>
- <CAABAsM57k0E32ywgW=qdhFbeHctcUivM9mkuuA1qbfB9F7Rvyg@mail.gmail.com>
- <CAN-5tyEmwgo7ea1WJ-0nRE+Jz+b9rb97GkYEmFyq_C+8nr1kTw@mail.gmail.com>
- <20171207165838.GA4096@fieldses.org> <CAN-5tyGYL5jXSqWbMSBdD9oHTD5Bsj5moFyGBKnD3t1zBLZYZA@mail.gmail.com>
- <019f01d36f8d$0ce06220$26a12660$@mindspring.com> <CAN-5tyGspK87j_uwzmzqZV0v3+u3KwgNObgNS+bqq-15ouskXw@mail.gmail.com>
- <026e01d36f95$da192e90$8e4b8bb0$@mindspring.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 13 Dec 2017 13:39:21 -0500
-Message-ID: <CAN-5tyGek+PoSrvCc1DL2fZM-EZ-hu+RNG74_Z78SLgTQ6g+bw@mail.gmail.com>
-Subject: Re: [nfsv4] questing about NLM LOCK, CANCEL UNLOCK
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "nfsv4@ietf.org" <nfsv4@ietf.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-pf0-f181.google.com ([209.85.192.181]:46178 "EHLO
+        mail-pf0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752932AbdLMU2E (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Dec 2017 15:28:04 -0500
+Received: by mail-pf0-f181.google.com with SMTP id c204so1922141pfc.13
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Dec 2017 12:28:04 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: Non-root chown, NFSv4 ACLs
+From: Drew Leske <drew.leske@computecanada.ca>
+In-Reply-To: <20171207231506.GB7527@fieldses.org>
+Date: Wed, 13 Dec 2017 12:28:01 -0800
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <A140722D-FE81-4E44-9ED0-1279E857B636@computecanada.ca>
+References: <DEC3CF38-E451-4E22-B904-DCD35188F000@computecanada.ca> <20171207213419.GA6147@fieldses.org> <F6FBCAE9-DB8D-4965-B761-58ACDF245BC3@computecanada.ca> <20171207231506.GB7527@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 7, 2017 at 2:59 PM, Frank Filz <ffilzlnx@mindspring.com> wrote:
->> On Thu, Dec 7, 2017 at 1:56 PM, Frank Filz <ffilzlnx@mindspring.com> wro=
-te:
->> >> On Thu, Dec 7, 2017 at 11:58 AM, J. Bruce Fields
->> >> <bfields@fieldses.org>
->> >> wrote:
->> >> > On Thu, Dec 07, 2017 at 11:10:16AM -0500, Olga Kornievskaia wrote:
->> >> >> Ok. I thought that because RFC1813 covers NLM operations that it i=
-s.
->> >> >
->> >> > Yeah, I don't see a harm to the occasional NLM question on the v4
->> >> > working group list.  It's a bit of an orphaned protocol, so there's
->> >> > not really any other implementation-independent forum.
->> >> >
->> >> >> I will extend this question to the Linux NFS mailing list as the
->> >> >> client implementation I'm interested is Linux.
->> >> >
->> >> > But that's fine too.
->> >> >
->> >> > I thought that LOCK/CANCEL race was one of the motivations for
->> >> > NFSv4, so...
->> >> >
->> >> >> >> Is there a solution or this is broken protocol?
->> >> >
->> >> > ... I'd always assumed the protocol was impossible to implement
->> >> > 100% correctly, though maybe there's some clever solution.
->> >>
->> >> Is such race still possible with the linux server implementation
->> >> which is
->> > single
->> >> threaded and in my testing isn't processing LOCK/CANCEL out-of-order
->> then?
->> >>
->> >> >> >> Should it be client's responsibility to notice that it received
->> >> >> >> a LOCK reply for which it wasn't waiting and always follow up
->> >> >> >> with an
->> >> UNLOCK?
->> >> >
->> >> > That would be tricky and still not handle all cases, I think.
->> >>
->> >> Yes I'm not sure the client can do it. It will have no info about the
->> >> lock
->> > and not
->> >> sure how to create an appropriate UNLOCK reply (unless we keep around
->> >> lock info of all cancelled locks).
->>
->> > The NLM4_GRANTED call has a response where the client can respond
->> > NLM4_DENIED to indicate it is not accepting the lock.
->> >
->> > The Ganesha NFS server could process out of order, however, if the
->> > client responds to the grant with NLM4_DENIED, Ganesha will properly
->> > release the lock.
->>
->> This is the case for when the server is doing a callback to the client a=
-nd
->> granting the lock and client has ability to reply with denied. The situa=
-tion I'm
->> curious about is just after the initial LOCK request is sent and server =
-hasn't
->> processed it and it got&processed a CANCEL/UNLOCK.
->
-> Oh, woops, yea... if the lock doesn't block, then the situation is differ=
-ent. When the client gets the LOCK response, it really should check and see=
- if it was actually waiting for that response, or actually, the client shou=
-ld probably delay sending UNLOCK if it has not got a response to an outstan=
-ding lock request yet.
+>> The remaining question for me then is around the NFSv4 ACL and the
+>> ownership change permission, and whether I should be able to get that
+>> to work, especially on a stock system.
+>=20
+> No.  When you set an ACL, the server just translates that ACL to the
+> closet POSIX ACL it can find.  And the filesystem code just enforces
+> that POSIX ACL.  POSIX ACLs have no equivalent to WRITE_OWNER.  I =
+can't
+> remember what the code in fs/nfsd/nfs4acl.c does--the only choices =
+would
+> be to either ignore the bit or fail, I think it does the former.
 
-Current linux client does not do that.
+It does the former.  The POSIX ACL is stored in a short and the bit for =
+NFS4_ACE_WRITE_OWNER is 0x80000, so it just drops off.
 
-> CANCEL is only for cancelling a blocked lock, so shouldn't be sent unless=
- the server has already responded to the LOCK with NLM4_BLOCKED, in which c=
-ase there is no ordering issue (Ganesha should handle ordering issue betwee=
-n NLM4_GRANT call  and NLM4_CANCEL).
+> (In theory knfsd could store the full v4 ACL in an extended attribute
+> and do its own enforcement on the side--I think Samba can do something
+> like this.  This seems complicated to me and I'd rather add richacl
+> support to the filesystems, but that effort has stalled.)
 
-Current linux client will send a CANCEL even if it didn't receive the
-reply from the server.
+It seems complicated and would split the POSIX ACL code from the NFSv4 =
+ACL code, with little benefit for most people, with more risk due to the =
+extra code to be maintained.  Given that all the translation code is =
+already in place, I would be more inclined to leave it as is and maybe =
+store, in addition and optionally, the untranslated NFSv4 ACL =
+separately, so enforcement, which currently works, is left alone in the =
+implementation and representation, which is lacking due to the =
+retranslation back from POSIX ACL to NFSv4 ACL, can be switched on at =
+the server if desired and passed back to the clients.  But I digress...
 
-> If we want NLM4_CANCEL to be able to cancel an inflight LOCK request, the=
-n we would need to add semantics which would include the server either resp=
-onding to the cancel to let the client know it hasn't processed the LOCK re=
-quest yet, or it should somehow remember the cancel so it can ignore the LO=
-CK request when it processes it (which is probably too much for the server =
-to deal with).
+I've been looking at this over the last couple of days with the idea of =
+storing the WRITE_OWNER permission as additional  extended attribute on =
+the exported filesystem, initially as an array of UIDs/GIDs.  I think =
+this should be workable: POSIX ACLs are stored as extended attributes =
+and so this would be in addition to that.
 
-Sounds like Ganesha server (and Netapp) will have orphan locks that
-would require manual lock break or server reboot.
+Does this seem like a reasonable approach?
 
->> > The imperfectness of NLM is why I have seen requests for tools to free
->> > wedged locks... We haven't managed to write such a tool for Ganesha
->> > yet (so either we don't actually have that many NLM clients, or folks
->> > are using other mechanisms to deal with the issue - restarting the
->> > server and making all the clients reclaim the locks they want is one w=
-ay to
->> do it...).
->>
->> Yes server-side lock breaking or rebooting is a way out this situation i=
-n
->> practice.
->> >
->> > Frank
->> >
->> >
->> > ---
->> > This email has been checked for viruses by Avast antivirus software.
->> > https://www.avast.com/antivirus
->> >
->
+Would there be much interest in this, if implemented?
+
+Cheers,
+Drew.
+
+
+Drew Leske
+drew.leske@computecanada.ca
+
+
+
