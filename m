@@ -1,45 +1,66 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:39388 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752816AbdLMRSP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 13 Dec 2017 12:18:15 -0500
-Date: Wed, 13 Dec 2017 12:18:15 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: linux-nfs@vger.kernel.org
-Cc: hch@infradead.org
-Subject: Re: spurious sillyrename after O_DIRECT writes get ENOSPC
-Message-ID: <20171213171815.GB9205@fieldses.org>
-References: <20171208221626.GB22508@fieldses.org>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+	"smayhew@redhat.com" <smayhew@redhat.com>
+CC: bcodding redhat <bcodding@redhat.com>, "fsorenso@redhat.com"
+	<fsorenso@redhat.com>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>, "dwysocha@redhat.com" <dwysocha@redhat.com>
+Subject: Re: [PATCH] nfs/pnfs: fix nfs_direct_req ref leak when i/o falls back
+ to the mds
+Date: Wed, 13 Dec 2017 17:35:37 +0000
+Message-ID: <1513186535.10540.8.camel@primarydata.com>
+References: <20171213161555.27993-1-smayhew@redhat.com>
+In-Reply-To: <20171213161555.27993-1-smayhew@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171208221626.GB22508@fieldses.org>
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 08, 2017 at 05:16:26PM -0500, J. Bruce Fields wrote:
-> Last year Christoph noticed a bug that could result in a file being
-> unnecessarily sillyrenamed after O_DIRECT writes get ENOSPC:
-> 
-> 	http://lkml.kernel.org/r/20160616150146.GA14015@infradead.org
-> 
-> It's reproduceable on upstream, over v3 or v4.
-> 
-> I looked into it some more, and it seems to reproduce whenever a write
-> system call results in multiple WRITE calls, only some of which receive
-> ENOSPC.  I think that's resulting in a leak of the wb_kref on some
-> nfs_pages (possibly the ones corresponding to the ENOSPC failures?).
-> Those nfs_pages in turn hold references on nfs_{lock,open}_contexts.  So
-> a "rm" on the client (even after the file is closed) results in a
-> sillyrename.
-> 
-> I'll keep looking at this, but the relevant code is pretty opaque to me
-> so far.  Any ideas welcomed.
-
-Actually it looks like a leak of dreq->io_count?  That prevents commits
-from being sent (which I'm also seeing in network traces--the succesfull
-WRITEs are unstable but never get committed), which means
-nfs_direct_commit_complete() is never called, and the reference taken on
-wb_kref in the request_commit case of nfs_direct_write_completion is
-never put.
-
---b.
+T24gV2VkLCAyMDE3LTEyLTEzIGF0IDExOjE1IC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IEN1cnJlbnRseSB3aGVuIGZhbGxpbmcgYmFjayB0byBkb2luZyBJL08gdGhyb3VnaCB0aGUgTURT
+ICh2aWENCj4gcG5mc197cmVhZHx3cml0ZX1fdGhyb3VnaF9tZHMpLCB0aGUgY2xpZW50IGZyZWVz
+IHRoZSBuZnNfcGdpb19oZWFkZXINCj4gd2l0aG91dCByZWxlYXNpbmcgdGhlIHJlZmVyZW5jZSB0
+YWtlbiBvbiB0aGUgZHJlcQ0KPiB2aWEgcG5mc19nZW5lcmljX3BnX3tyZWFkfHdyaXRlfXBhZ2Vz
+IC0+IG5mc19wZ2hlYWRlcl9pbml0IC0+DQo+IG5mc19kaXJlY3RfcGdpb19pbml0LiAgSXQgdGhl
+biB0YWtlcyBhbm90aGVyIHJlZmVyZW5jZSBvbiB0aGUgZHJlcQ0KPiB2aWENCj4gbmZzX2dlbmVy
+aWNfcGdfcGdpb3MgLT4gbmZzX3BnaGVhZGVyX2luaXQgLT4gbmZzX2RpcmVjdF9wZ2lvX2luaXQg
+YW5kDQo+IGFzIGEgcmVzdWx0IHRoZSByZXF1ZXN0ZXIgd2lsbCBiZWNvbWUgc3R1Y2sgaW4gaW5v
+ZGVfZGlvX3dhaXQuICBPbmNlDQo+IHRoYXQgaGFwcGVucywgb3RoZXIgcHJvY2Vzc2VzIGFjY2Vz
+c2luZyB0aGUgaW5vZGUgd2lsbCBiZWNvbWUgc3R1Y2sNCj4gYXMNCj4gd2VsbC4NCj4gDQo+IE1v
+dmluZyB0aGUgaW5pdF9oZHIgY2FsbCBkb3duIHRvIG5mc19pbml0aWF0ZV9wZ2lvIGVuc3VyZXMg
+d2UgdGFrZQ0KPiB0aGUNCj4gcmVmZXJlbmNlIG9uIHRoZSBkcmVxIG9ubHkgb25jZS4NCj4gDQo+
+IFRoaXMgY2FuIGJlIHJlcHJvZHVjZWQgKHNvbWV0aW1lcykgYnkgcGVyZm9ybWluZyAic3RvcmFn
+ZSBmYWlsb3Zlcg0KPiB0YWtlb3ZlciIgY29tbWFuZHMgb24gTmV0QXBwIGZpbGVyIHdoaWxlIGRv
+aW5nIGRpcmVjdCBJL08gZnJvbSBhDQo+IGNsaWVudC4NCj4gDQo+IFRoaXMgY2FuIGFsc28gYmUg
+cmVwcm9kdWNlZCB1c2luZyBTeXN0ZW1UYXAgdG8gc2ltdWxhdGUgYSBmYWlsdXJlDQo+IHdoaWxl
+DQo+IGRvaW5nIGRpcmVjdCBJL08gZnJvbSBhIGNsaWVudCAoZnJvbSBEYXZlIFd5c29jaGFuc2tp
+DQo+IDxkd3lzb2NoYUByZWRoYXQuY29tPik6DQo+IA0KPiBzdGFwIC12IC1nIC1lICdwcm9iZQ0K
+PiBtb2R1bGUoIm5mc19sYXlvdXRfbmZzdjQxX2ZpbGVzIikuZnVuY3Rpb24oIm5mczRfZmxfcHJl
+cGFyZV9kcyIpLnJldHUNCj4gcm4geyAkcmV0dXJuPU5VTEw7IGV4aXQoKTsgfScNCj4gDQo+IFN1
+Z2dlc3RlZC1ieTogQmVuamFtaW4gQ29kZGluZ3RvbiA8YmNvZGRpbmdAcmVkaGF0LmNvbT4NCj4g
+U2lnbmVkLW9mZi1ieTogU2NvdHQgTWF5aGV3IDxzbWF5aGV3QHJlZGhhdC5jb20+DQo+IC0tLQ0K
+PiAgZnMvbmZzL3BhZ2VsaXN0LmMgfCA2ICsrKy0tLQ0KPiAgMSBmaWxlIGNoYW5nZWQsIDMgaW5z
+ZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9uZnMvcGFn
+ZWxpc3QuYyBiL2ZzL25mcy9wYWdlbGlzdC5jDQo+IGluZGV4IGQwNTQzZTEuLmQ0NzhjMTkgMTAw
+NjQ0DQo+IC0tLSBhL2ZzL25mcy9wYWdlbGlzdC5jDQo+ICsrKyBiL2ZzL25mcy9wYWdlbGlzdC5j
+DQo+IEBAIC01NCw5ICs1NCw2IEBAIHZvaWQgbmZzX3BnaGVhZGVyX2luaXQoc3RydWN0IG5mc19w
+YWdlaW9fZGVzY3JpcHRvcg0KPiAqZGVzYywNCj4gIAloZHItPmRyZXEgPSBkZXNjLT5wZ19kcmVx
+Ow0KPiAgCWhkci0+cmVsZWFzZSA9IHJlbGVhc2U7DQo+ICAJaGRyLT5jb21wbGV0aW9uX29wcyA9
+IGRlc2MtPnBnX2NvbXBsZXRpb25fb3BzOw0KPiAtCWlmIChoZHItPmNvbXBsZXRpb25fb3BzLT5p
+bml0X2hkcikNCj4gLQkJaGRyLT5jb21wbGV0aW9uX29wcy0+aW5pdF9oZHIoaGRyKTsNCj4gLQ0K
+PiAgCWhkci0+cGdpb19taXJyb3JfaWR4ID0gZGVzYy0+cGdfbWlycm9yX2lkeDsNCj4gIH0NCj4g
+IEVYUE9SVF9TWU1CT0xfR1BMKG5mc19wZ2hlYWRlcl9pbml0KTsNCj4gQEAgLTYwNyw2ICs2MDQs
+OSBAQCBpbnQgbmZzX2luaXRpYXRlX3BnaW8oc3RydWN0IHJwY19jbG50ICpjbG50LA0KPiBzdHJ1
+Y3QgbmZzX3BnaW9faGVhZGVyICpoZHIsDQo+ICAJfTsNCj4gIAlpbnQgcmV0ID0gMDsNCj4gIA0K
+PiArCWlmIChoZHItPmNvbXBsZXRpb25fb3BzLT5pbml0X2hkcikNCj4gKwkJaGRyLT5jb21wbGV0
+aW9uX29wcy0+aW5pdF9oZHIoaGRyKTsNCj4gKw0KPiAgCWhkci0+cndfb3BzLT5yd19pbml0aWF0
+ZShoZHIsICZtc2csIHJwY19vcHMsDQo+ICZ0YXNrX3NldHVwX2RhdGEsIGhvdyk7DQo+ICANCj4g
+IAlkcHJpbnRrKCJORlM6IGluaXRpYXRlZCBwZ2lvIGNhbGwgIg0KDQpXb24ndCB0aGlzIGJyZWFr
+IGFzIHNvb24gYXMgd2UgaGl0IGEgY2FsbCB0byBuZnNfcGdpb19lcnJvcigpPyBBbHNvLA0Kd2hh
+dCBhYm91dCBibG9jayBsYXlvdXQsIHdoaWNoIG5ldmVyIGNhbGxzIG5mc19pbml0aWF0ZV9wZ2lv
+KCk/DQoNCkknZCBwcmVmZXIgdGhhdCB3ZSBmaXggdGhpcyBpbiBwbmZzX3JlYWRfdGhyb3VnaF9t
+ZHMoKSBhbmQNCnBuZnNfd3JpdGVfdGhyb3VnaF9tZHMoKSBieSBlbnN1cmluZyB0aGF0IHRob3Nl
+IGZ1bmN0aW9ucyBjbGVhbiB1cA0KY29ycmVjdGx5LiBTaG91bGQgdGhleSBiZSBjYWxsaW5nIGhk
+ci0+Y29tcGxldGlvbl9vcHMtPmNvbXBsZXRpb24oKQ0KaW5zdGVhZCBvZiBjYWxsaW5nIGhkci0+
+cmVsZWFzZSgpIGRpcmVjdGx5Pw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
+aWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
+LmNvbQ0K
