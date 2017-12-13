@@ -1,132 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:37789 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750749AbdLMETY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 12 Dec 2017 23:19:24 -0500
-From: NeilBrown <neilb@suse.com>
-To: "Michael Kerrisk \(man-pages\)" <mtk.manpages@gmail.com>
-Date: Wed, 13 Dec 2017 15:19:14 +1100
-Cc: linux-man@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: [PATCH] fcntl.2, read.2, write.2: document "Lost locks" as cause for EIO.
-Message-ID: <87lgi7nttp.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from userp2120.oracle.com ([156.151.31.85]:42308 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751975AbdLMPPt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Dec 2017 10:15:49 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Subject: Re: [PATCH v1 2/4] nfs: Referrals should use the same proto setting as their parent
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CB2E9621-0F9B-49A0-9A2B-59FA2F898976@oracle.com>
+Date: Wed, 13 Dec 2017 10:15:44 -0500
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <D528C470-FE2F-4E1B-9B77-B828163A99FB@oracle.com>
+References: <20171204190904.18629.70341.stgit@manet.1015granger.net> <20171204191338.18629.29071.stgit@manet.1015granger.net> <396baae6-8372-e7bc-97e4-d5c27b341f8d@Netapp.com> <CB2E9621-0F9B-49A0-9A2B-59FA2F898976@oracle.com>
+To: Anna Schumaker <anna.schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+
+> On Dec 5, 2017, at 2:04 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>=20
+>=20
+>> On Dec 5, 2017, at 10:36 AM, Anna Schumaker =
+<anna.schumaker@netapp.com> wrote:
+>>=20
+>> Hi Chuck,
+>>=20
+>> On 12/04/2017 02:13 PM, Chuck Lever wrote:
+>>> Helen Chao <helen.chao@oracle.com> noticed that when a user
+>>> traverses a referral on an NFS/RDMA mount, the resulting submount
+>>> always uses TCP.
+>>>=20
+>>> This behavior does not match the vers=3D setting when traversing
+>>> a referral (vers=3D4.1 is preserved). It also does not match the
+>>> behavior of crossing from the pseudofs into a real filesystem
+>>> (proto=3Drdma is preserved in that case).
+>>>=20
+>>> The Linux NFS client does not currently support the
+>>> fs_locations_info attribute. The situation is similar for all
+>>> NFSv4 servers I know of. Therefore until the community has broad
+>>> support for fs_locations_info, when following a referral:
+>>>=20
+>>> - First try to connect with RPC-over-RDMA. This will fail quickly
+>>>  if the client has no RDMA-capable interfaces.
+>>>=20
+>>> - If connecting with RPC-over-RDMA fails, or the RPC-over-RDMA
+>>>  transport is not available, use TCP.
+>>=20
+>> Won't this have the opposite problem if the client and server have =
+RDMA interfaces, but are currently mounted over TCP instead?
+>=20
+> The new behavior will prefer NFS/RDMA, yes. However, typically
+> the referral will contain a hostname or IP address that either
+> supports both or only TCP. In the former case, the client will
+> now choose RDMA instead of TCP, and in the latter, it should
+> always use TCP.
+>=20
+> IOW the referral has to point to a server IP address that can
+> do either transport before the client can choose RDMA.
+
+Any further comment? Is this patch series acceptable?
 
 
-If an advisory lock is lost, then read/write requests on any
-affected file descriptor can return EIO - for NFSv4 at least.
+>> Anna
+>>=20
+>>>=20
+>>> Reported-by: Helen Chao <helen.chao@oracle.com>
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> fs/nfs/nfs4client.c    |   23 ++++++++++++++++++++---
+>>> fs/nfs/nfs4namespace.c |    2 --
+>>> 2 files changed, 20 insertions(+), 5 deletions(-)
+>>>=20
+>>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>>> index 12bbab0..a3d5592 100644
+>>> --- a/fs/nfs/nfs4client.c
+>>> +++ b/fs/nfs/nfs4client.c
+>>> @@ -1114,19 +1114,36 @@ struct nfs_server =
+*nfs4_create_referral_server(struct nfs_clone_mount *data,
+>>> 	/* Initialise the client representation from the parent server =
+*/
+>>> 	nfs_server_copy_userdata(server, parent_server);
+>>>=20
+>>> -	/* Get a client representation.
+>>> -	 * Note: NFSv4 always uses TCP, */
+>>> +	/* Get a client representation */
+>>> +#ifdef CONFIG_SUNRPC_XPRT_RDMA
+>>> +	rpc_set_port(data->addr, NFS_RDMA_PORT);
+>>> 	error =3D nfs4_set_client(server, data->hostname,
+>>> 				data->addr,
+>>> 				data->addrlen,
+>>> 				parent_client->cl_ipaddr,
+>>> -				rpc_protocol(parent_server->client),
+>>> +				XPRT_TRANSPORT_RDMA,
+>>> +				parent_server->client->cl_timeout,
+>>> +				parent_client->cl_mvops->minor_version,
+>>> +				parent_client->cl_net);
+>>> +	if (!error)
+>>> +		goto init_server;
+>>> +#endif	/* CONFIG_SUNRPC_XPRT_RDMA */
+>>> +
+>>> +	rpc_set_port(data->addr, NFS_PORT);
+>>> +	error =3D nfs4_set_client(server, data->hostname,
+>>> +				data->addr,
+>>> +				data->addrlen,
+>>> +				parent_client->cl_ipaddr,
+>>> +				XPRT_TRANSPORT_TCP,
+>>> 				parent_server->client->cl_timeout,
+>>> 				parent_client->cl_mvops->minor_version,
+>>> 				parent_client->cl_net);
+>>> 	if (error < 0)
+>>> 		goto error;
+>>>=20
+>>> +#ifdef CONFIG_SUNRPC_XPRT_RDMA
+>>> +init_server:
+>>> +#endif
+>>> 	error =3D nfs_init_server_rpcclient(server, =
+parent_server->client->cl_timeout, data->authflavor);
+>>> 	if (error < 0)
+>>> 		goto error;
+>>> diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+>>> index 8c3f327..24f06dc 100644
+>>> --- a/fs/nfs/nfs4namespace.c
+>>> +++ b/fs/nfs/nfs4namespace.c
+>>> @@ -270,8 +270,6 @@ static struct vfsmount *try_location(struct =
+nfs_clone_mount *mountdata,
+>>> 		if (mountdata->addrlen =3D=3D 0)
+>>> 			continue;
+>>>=20
+>>> -		rpc_set_port(mountdata->addr, NFS_PORT);
+>>> -
+>>> 		memcpy(page2, buf->data, buf->len);
+>>> 		page2[buf->len] =3D '\0';
+>>> 		mountdata->hostname =3D page2;
+>>>=20
 
-Signed-off-by: NeilBrown <neilb@suse.com>
-=2D--
- man2/fcntl.2 | 24 ++++++++++++++++++++++++
- man2/read.2  |  9 +++++++++
- man2/write.2 |  9 +++++++++
- 3 files changed, 42 insertions(+)
-
-diff --git a/man2/fcntl.2 b/man2/fcntl.2
-index 67642384154c..6e6e26f66aa0 100644
-=2D-- a/man2/fcntl.2
-+++ b/man2/fcntl.2
-@@ -669,6 +669,30 @@ and
- Mandatory locking is not specified by POSIX.
- Some other systems also support mandatory locking,
- although the details of how to enable it vary across systems.
-+.SS Lost locks
-+When an advisory lock is obtained on a networked filesystem such as
-+NFS it is possible that the lock might get lost.
-+This may happen due to administrative action on the server, or due to a
-+network partition which lasts long enough for the server to assume
-+that the client is no longer functioning.
-+.PP
-+When the filesystem determines that a lock has been lost, future
-+.BR read (2)
-+or
-+.BR write (2)
-+requests may fail with the error
-+.BR EIO .
-+This error will persist until the lock is removed or the file
-+descriptor is closed.
-+Since Linux 3.12,
-+.\" commit ef1820f9be27b6ad158f433ab38002ab8131db4d
-+this happens at least for NFSv4 including all minor versions.
-+.PP
-+Some versions of Unix send a signal
-+.RB ( SIGLOST )
-+in this circumstance.
-+Linux does not define this signal, and does not provide any
-+asynchronous notification of lost locks.
- .SS Managing signals
- .BR F_GETOWN ,
- .BR F_SETOWN ,
-diff --git a/man2/read.2 b/man2/read.2
-index f2e1379865df..0fea86e523a5 100644
-=2D-- a/man2/read.2
-+++ b/man2/read.2
-@@ -163,6 +163,15 @@ or its process group
- is orphaned.
- It may also occur when there is a low-level I/O error
- while reading from a disk or tape.
-+A further possible cause of
-+.B EIO
-+on networked filesystems is when an advisory lock had been taken
-+out on the file descriptor and this lock has been lost.
-+See the
-+.I "Lost locks"
-+section of
-+.BR fcntl (2)
-+for further details.
- .TP
- .B EISDIR
- .I fd
-diff --git a/man2/write.2 b/man2/write.2
-index 796cae8ba221..621a484dc3a2 100644
-=2D-- a/man2/write.2
-+++ b/man2/write.2
-@@ -197,6 +197,15 @@ be reported by a subsequent
- (whether or not they were also reported by
- .BR write (2)).
- .\" commit 088737f44bbf6378745f5b57b035e57ee3dc4750
-+An alternate cause of
-+.B EIO
-+on networked filesystems is when an advisory lock had been taken out
-+on the file descriptor and this lock has been lost.
-+See the
-+.I "Lost locks"
-+section of
-+.BR fcntl (2)
-+for further details.
- .TP
- .B ENOSPC
- The device containing the file referred to by
-=2D-=20
-2.14.0.rc0.dirty
+--
+Chuck Lever
 
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
 
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlowqkMACgkQOeye3VZi
-gbmpwA//RkYX2uZhbAEmr5+lmS0WihHY4CRVUwhMDWUL06xLiyC+ufheOG1hBdhO
-gx9P3kkpIkNikoFoAM//oTIhEhxulTcx+bSBpXnP3sfKKxJE/5VrveN71ZuQEckX
-Do8Jd6K74Xb4m9BWRxwB8Dr9F++7UipCosSQ9G9ygrLWHwxI0c2EE2qVEye7faU/
-o6DIYhzd0Gw2cUBCAruH2Lms+Lrxsfksn+2/9zBE/adrpfsVBdX49AyHpeP+S3kZ
-GOmx4sHMk5qSg3aQ3L0kvOis9hdqLAmHXIrDSa6XDqYuqbflXFXoTifa+dTMJdp5
-x/t6nawNZwcYHpjcVog2ym7VqmeynYw7rGzBvQZX1tRZsEhRkqsLAH4Al+h0sSAP
-GCqbBktNx4KB7AGCpLo0akUwLmT6MsHe1rUD8l/UAEC0y3tfvCTf3bLrZAIXDdMA
-gL5PQJumSD4uqilpUo8mHiQAYVox1pRHG1hbW+uyP+GeaJS616fvtkvMza8OdN3O
-ZAHWOO2L/StdLk8pJQyC13LXukTf/LMJFGLgDWOpMArp3iL93HUxZYBuvPuDaMlq
-AXq36q1KOQZ038Y4edd77XQMQB0DI75/mRNJ9Hb2T+ZBfobfDAb/M2/ruxZbaokn
-WnCLgYsDE8kGa6eRLej3daLfxRV8Z5HsLYbau8LJGdTTRUCf75I=
-=JsbZ
------END PGP SIGNATURE-----
---=-=-=--
