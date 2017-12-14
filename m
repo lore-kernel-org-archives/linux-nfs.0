@@ -1,66 +1,116 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:35212 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752718AbdLNUhb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 15:37:31 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from userp2130.oracle.com ([156.151.31.86]:48493 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752617AbdLNVAK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 16:00:10 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Subject: Re: [PATCH v3] SUNRPC: Fix a race in the receive code path
-Date: Thu, 14 Dec 2017 20:37:26 +0000
-Message-ID: <1513283844.11150.11.camel@primarydata.com>
-References: <20171204001726.5747-1-trond.myklebust@primarydata.com>
-         <17932F80-EF03-48BA-AD6C-90A441B286EF@oracle.com>
-         <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com>
-         <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com>
-         <1513253779.6553.7.camel@primarydata.com>
-         <42B23A9B-3566-4E0F-9E3D-53BB2C39C0E9@oracle.com>
-         <1513278198.5198.3.camel@primarydata.com>
-         <2E949D1D-AD89-448B-B263-B53FB66C9766@oracle.com>
-In-Reply-To: <2E949D1D-AD89-448B-B263-B53FB66C9766@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1513283844.11150.11.camel@primarydata.com>
+Date: Thu, 14 Dec 2017 15:59:04 -0500
+Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <4D12D608-0108-4CBA-AEF4-CD8CEC86B55F@oracle.com>
+References: <20171204001726.5747-1-trond.myklebust@primarydata.com> <17932F80-EF03-48BA-AD6C-90A441B286EF@oracle.com> <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com> <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com> <1513253779.6553.7.camel@primarydata.com> <42B23A9B-3566-4E0F-9E3D-53BB2C39C0E9@oracle.com> <1513278198.5198.3.camel@primarydata.com> <2E949D1D-AD89-448B-B263-B53FB66C9766@oracle.com> <1513283844.11150.11.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTEyLTE0IGF0IDE0OjIyIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBEZWMgMTQsIDIwMTcsIGF0IDI6MDMgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
-cmltYXJ5ZGF0YS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IERvZXMgdGhlIFJETUEgY29k
-ZSB1cGRhdGUgdGhlIGNvbm5lY3QgY29va2llIHdoZW4gdGhlIGNvbm5lY3Rpb24NCj4gPiBicmVh
-a3M/IEl0IGxvb2tzIHRvIG1lIGFzIGlmIGl0IG9ubHkgZG9lcyB0aGF0IHdoZW4gdGhlIGNvbm5l
-Y3Rpb24NCj4gPiBpcw0KPiA+IHJlLWVzdGFibGlzaGVkLiBXZSByZWFsbHkgd2FudCBib3RoLg0K
-PiA+IA0KPiA+ID4gSSBpbWFnaW5lIHRoaXMgaXNzdWUgY291bGQgYWxzbyBpbXBhY3Qgd3JpdGUg
-YnVmZmVyIGV4aGF1c3Rpb24NCj4gPiA+IG9uIFRDUC4NCj4gPiANCj4gPiBTZWUgbmV0L3N1bnJw
-Yy94cHJ0c29jay5jOnhzX3RjcF9zdGF0ZV9jaGFuZ2UoKQ0KPiANCj4geHBydHJkbWEgbWFuaXB1
-bGF0ZXMgdGhlIGNvbm5lY3RfY29va2llIGluIGl0cyBjb25uZWN0IHdvcmtlciwNCj4gc2VlIHJw
-Y3JkbWFfY29ubmVjdF93b3JrZXIuIFRoaXMgd2FzIGFkZGVkIGJ5Og0KPiANCj4gY29tbWl0IDU3
-NTQ0OGJkMzYyMDhmOTlmZTBkZDU1NGE0MzUxOGQ3OTg5NjY3NDANCj4gQXV0aG9yOiAgICAgVG9t
-IFRhbHBleSA8dGFscGV5QG5ldGFwcC5jb20+DQo+IEF1dGhvckRhdGU6IFRodSBPY3QgOSAxNTow
-MDo0MCAyMDA4IC0wNDAwDQo+IENvbW1pdDogICAgIFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlr
-bGVidXN0QG5ldGFwcC5jb20+DQo+IENvbW1pdERhdGU6IEZyaSBPY3QgMTAgMTU6MTA6MzYgMjAw
-OCAtMDQwMA0KPiANCj4gICAgIFJQQy9SRE1BOiBzdXBwcmVzcyByZXRyYW5zbWl0IG9uIFJQQy9S
-RE1BIGNsaWVudHMuDQo+IA0KPiBXb3VsZCBpdCBiZSBtb3JlIGNvcnJlY3QgdG8gYnVtcCB0aGUg
-Y29va2llIGluIHJwY3JkbWFfY29ubl91cGNhbGwsDQo+IHdoaWNoIGlzIHRoZSBlcXVpdmFsZW50
-IHRvIHhzX3RjcF9zdGF0ZV9jaGFuZ2U/IChpZiBzbywgd2h5LCBzbw0KPiBJIGNhbiBjb21wb3Nl
-IGEgcmVhc29uYWJsZSBwYXRjaCBkZXNjcmlwdGlvbikNCj4gDQo+IEl0IGNvdWxkIGJlIGJ1bXBl
-ZCBpbiB0aGUgUkRNQV9DTV9FVkVOVF9FU1RBQkxJU0hFRCBhbmQgdGhlDQo+IFJETUFfQ01fRVZF
-TlRfRElTQ09OTkVDVEVEIGNhc2VzLCBmb3IgZXhhbXBsZS4gSSdtIG5vdCBzdXJlDQo+IFJETUEg
-cHJvdmlkZXMgYSBkaXN0aW5jdGlvbiBiZXR3ZWVuICJzZXJ2ZXIgZGlzY29ubmVjdGVkIg0KPiBh
-bmQgImNsaWVudCBkaXNjb25uZWN0ZWQiIGFsdGhvdWdoIHRoYXQgcHJvYmFibHkgZG9lcyBub3QN
-Cj4gbWF0dGVyIGZvciB0aGlzIHB1cnBvc2UuDQo+IA0KPiBCdXQsIHdoeSB3b3VsZCB0aGUgYWRk
-aXRpb25hbCBjb29raWUgdXBkYXRlIGhlbHA/IFRoZSB0cmFuc3BvcnQNCj4gaXMgbm90IGRpc2Nv
-bm5lY3RpbmcgYmVmb3JlIHRoZSBkZWFkbG9jay4NCj4gDQoNClRoZSBjb25uZWN0aW9uIGNvb2tp
-ZSdzIHB1cnBvc2UgaXMgdHdvZm9sZDoNCg0KMSkgSXQgdHJhY2tzIHdoZXRoZXIgb3Igbm90IGEg
-cmVxdWVzdCBoYXMgYmVlbiB0cmFuc21pdHRlZCBvbiB0aGUNCmN1cnJlbnQgY29ubmVjdGlvbiBv
-ciBub3QuDQoNCjIpIEl0IGVuc3VyZXMgdGhhdCB3aGVuIHNldmVyYWwgcmVxdWVzdHMgd2l0aCB0
-aGUgc2FtZSBjb25uZWN0aW9uDQpjb29raWUgYWxsIGNhbGwgeHBydF9jb25kaXRpb25hbF9kaXNj
-b25uZWN0KCksIHRoZW4gdGhhdCByZXN1bHRzIGluIGENCnNpbmdsZSBkaXNjb25uZWN0aW9uIGV2
-ZW50LiBUbyBkbyBzbywgaXQgYXNzdW1lcyB0aGF0IHhwcnRfYXV0b2Nsb3NlKCkNCndpbGwgY2hh
-bmdlIHRoZSBjb29raWUgaWYgdGhlIGRpc2Nvbm5lY3Rpb24gYXR0ZW1wdCBpcyBzdWNjZXNzZnVs
-Lg0KDQpJbiBUQ1Agd2UgZG8gc28gaW4gdGhlIHhzX3RjcF9zdGF0ZV9jaGFuZ2UoKS4gSWYgdGhl
-IFJETUEgdHJhbnNwb3J0IGNhbg0KZ3VhcmFudGVlIHRoYXQgdGhlIGNhbGwgdG8geHBydC0+b3Bz
-LT5jbG9zZSh4cHJ0KSBpcyBhbHdheXMgc3VjY2Vzc2Z1bCwNCnRoZW4geW91IGNvdWxkIGRvIHNv
-IHRoZXJlLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+
+> On Dec 14, 2017, at 3:37 PM, Trond Myklebust <trondmy@primarydata.com> =
+wrote:
+>=20
+> On Thu, 2017-12-14 at 14:22 -0500, Chuck Lever wrote:
+>>> On Dec 14, 2017, at 2:03 PM, Trond Myklebust <trondmy@primarydata.c
+>>> om> wrote:
+>>>=20
+>>> Does the RDMA code update the connect cookie when the connection
+>>> breaks? It looks to me as if it only does that when the connection
+>>> is
+>>> re-established. We really want both.
+>>>=20
+>>>> I imagine this issue could also impact write buffer exhaustion
+>>>> on TCP.
+>>>=20
+>>> See net/sunrpc/xprtsock.c:xs_tcp_state_change()
+>>=20
+>> xprtrdma manipulates the connect_cookie in its connect worker,
+>> see rpcrdma_connect_worker. This was added by:
+>>=20
+>> commit 575448bd36208f99fe0dd554a43518d798966740
+>> Author:     Tom Talpey <talpey@netapp.com>
+>> AuthorDate: Thu Oct 9 15:00:40 2008 -0400
+>> Commit:     Trond Myklebust <Trond.Myklebust@netapp.com>
+>> CommitDate: Fri Oct 10 15:10:36 2008 -0400
+>>=20
+>>    RPC/RDMA: suppress retransmit on RPC/RDMA clients.
+>>=20
+>> Would it be more correct to bump the cookie in rpcrdma_conn_upcall,
+>> which is the equivalent to xs_tcp_state_change? (if so, why, so
+>> I can compose a reasonable patch description)
+>>=20
+>> It could be bumped in the RDMA_CM_EVENT_ESTABLISHED and the
+>> RDMA_CM_EVENT_DISCONNECTED cases, for example. I'm not sure
+>> RDMA provides a distinction between "server disconnected"
+>> and "client disconnected" although that probably does not
+>> matter for this purpose.
+>>=20
+>> But, why would the additional cookie update help? The transport
+>> is not disconnecting before the deadlock.
+>>=20
+>=20
+> The connection cookie's purpose is twofold:
+>=20
+> 1) It tracks whether or not a request has been transmitted on the
+> current connection or not.
+
+That's broken by setting the cookie unconditionally outside
+the transport_lock, isn't it?
+
+
+> 2) It ensures that when several requests with the same connection
+> cookie all call xprt_conditional_disconnect(), then that results in a
+> single disconnection event. To do so, it assumes that xprt_autoclose()
+> will change the cookie if the disconnection attempt is successful.
+>=20
+> In TCP we do so in the xs_tcp_state_change(). If the RDMA transport =
+can
+> guarantee that the call to xprt->ops->close(xprt) is always =
+successful,
+> then you could do so there.
+
+I don't mind moving the cookie bump to rpcrdma_conn_upcall,
+but I'm not sure I understand the locking requirements.
+
+Currently, xprt_transmit sets the connect_cookie while holding
+the transport_lock.
+
+xprt_conditional_disconnect compares the cookie while holding
+the transport_lock.
+
+For TCP, the transport_lock is held when bumping the cookie
+in the ESTABLISHED case, but _not_ in the two CLOSE cases?
+
+xprtrdma holds the transport_lock when bumping the cookie,
+which it does in its connect worker. It has to hold the lock
+because it skips the value 0. xprtrdma needs to guarantee
+that an RPC is never transmitted on the same connection
+twice (and maybe it could use rq_connect_cookie instead of
+its own cookie).
+
+xprt_reserve_init is holding the reserve_lock but not the
+transport_lock when it grabs the cookie. Maybe it should
+not be initializing the rqst's cookie there?
+
+Seems to me that xprt_transmit needs to update the rqst's
+cookie while holding the transport_lock, especially if
+xprtrdma needs to skip a cookie value? I'm sure I'm missing
+something.
+
+
+--
+Chuck Lever
+
+
 
