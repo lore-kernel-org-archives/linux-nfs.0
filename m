@@ -1,209 +1,172 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:37904 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750916AbdLNBNQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Dec 2017 20:13:16 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:54462 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751548AbdLNMQ0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 07:16:26 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v3] SUNRPC: Fix a race in the receive code path
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com>
-Date: Wed, 13 Dec 2017 20:13:09 -0500
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com>
-References: <20171204001726.5747-1-trond.myklebust@primarydata.com> <17932F80-EF03-48BA-AD6C-90A441B286EF@oracle.com> <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 14 Dec 2017 12:16:21 +0000
+Message-ID: <1513253779.6553.7.camel@primarydata.com>
+References: <20171204001726.5747-1-trond.myklebust@primarydata.com>
+         <17932F80-EF03-48BA-AD6C-90A441B286EF@oracle.com>
+         <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com>
+         <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com>
+In-Reply-To: <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Dec 13, 2017, at 6:42 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->=20
->>=20
->> On Dec 13, 2017, at 11:14 AM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>=20
->> Hi Trond-
->>=20
->>> On Dec 3, 2017, at 7:17 PM, Trond Myklebust =
-<trond.myklebust@primarydata.com> wrote:
->>>=20
->>> We must ensure that the call to rpc_sleep_on() in xprt_transmit() =
-cannot
->>> race with the call to xprt_complete_rqst().
->>>=20
->>> Reported-by: Chuck Lever <chuck.lever@oracle.com>
->>> Link: https://bugzilla.linux-nfs.org/show_bug.cgi?id=3D317
->>> Fixes: ce7c252a8c74 ("SUNRPC: Add a separate spinlock to protect..")
->>> Cc: stable@vger.kernel.org # 4.14+
->>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
->>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> ---
->>> net/sunrpc/xprt.c | 26 +++++++++++++++++---------
->>> 1 file changed, 17 insertions(+), 9 deletions(-)
->>>=20
->>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>> index 333b9d697ae5..5e4278e9ce37 100644
->>> --- a/net/sunrpc/xprt.c
->>> +++ b/net/sunrpc/xprt.c
->>> @@ -1024,6 +1024,7 @@ void xprt_transmit(struct rpc_task *task)
->>> 	} else if (!req->rq_bytes_sent)
->>> 		return;
->>>=20
->>> +	req->rq_connect_cookie =3D xprt->connect_cookie;
->>> 	req->rq_xtime =3D ktime_get();
->>> 	status =3D xprt->ops->send_request(task);
->>> 	trace_xprt_transmit(xprt, req->rq_xid, status);
->>> @@ -1047,20 +1048,27 @@ void xprt_transmit(struct rpc_task *task)
->>> 	xprt->stat.bklog_u +=3D xprt->backlog.qlen;
->>> 	xprt->stat.sending_u +=3D xprt->sending.qlen;
->>> 	xprt->stat.pending_u +=3D xprt->pending.qlen;
->>> +	spin_unlock_bh(&xprt->transport_lock);
->>>=20
->>> -	/* Don't race with disconnect */
->>> -	if (!xprt_connected(xprt))
->>> -		task->tk_status =3D -ENOTCONN;
->>> -	else {
->>> +	if (rpc_reply_expected(task) && =
-!READ_ONCE(req->rq_reply_bytes_recvd)) {
->>> 		/*
->>> -		 * Sleep on the pending queue since
->>> -		 * we're expecting a reply.
->>> +		 * Sleep on the pending queue if we're expecting a =
-reply.
->>> +		 * The spinlock ensures atomicity between the test of
->>> +		 * req->rq_reply_bytes_recvd, and the call to =
-rpc_sleep_on().
->>> 		 */
->>> -		if (!req->rq_reply_bytes_recvd && =
-rpc_reply_expected(task))
->>> +		spin_lock(&xprt->recv_lock);
->>> +		if (!req->rq_reply_bytes_recvd) {
->>> 			rpc_sleep_on(&xprt->pending, task, xprt_timer);
->>> -		req->rq_connect_cookie =3D xprt->connect_cookie;
->>> +			/*
->>> +			 * Send an extra queue wakeup call if the
->>> +			 * connection was dropped in case the call to
->>> +			 * rpc_sleep_on() raced.
->>> +			 */
->>> +			if (!xprt_connected(xprt))
->>> +				xprt_wake_pending_tasks(xprt, =
--ENOTCONN);
->>> +		}
->>> +		spin_unlock(&xprt->recv_lock);
->>> 	}
->>> -	spin_unlock_bh(&xprt->transport_lock);
->>> }
->>>=20
->>> static void xprt_add_backlog(struct rpc_xprt *xprt, struct rpc_task =
-*task)
->>> --=20
->>> 2.14.3
->>=20
->> I've run into a problem with this version of the patch (on =
-v4.15-rc3).
->>=20
->> With dbench on NFSv4.0 (on RDMA) I no longer see constant throughput
->> and a temporarily climbing latency followed by a recovery, but this
->> can happen on occasion:
->>=20
->> releasing clients
->> 16       584   322.55 MB/sec  warmup   1 sec  latency 807.121 ms
->> 16       584   161.28 MB/sec  warmup   2 sec  latency 1807.175 ms
->> 16       584   107.52 MB/sec  warmup   3 sec  latency 2807.198 ms
->> 16       584    80.64 MB/sec  warmup   4 sec  latency 3807.217 ms
->> 16       584    64.51 MB/sec  warmup   5 sec  latency 4807.235 ms
->> 16       584    53.76 MB/sec  warmup   6 sec  latency 5807.251 ms
->> 16       584    46.08 MB/sec  warmup   7 sec  latency 6807.269 ms
->> 16       584    40.32 MB/sec  warmup   8 sec  latency 7807.285 ms
->> 16       584    35.84 MB/sec  warmup   9 sec  latency 8807.303 ms
->> 16       584    32.26 MB/sec  warmup  10 sec  latency 9807.318 ms
->> 16       584    29.32 MB/sec  warmup  11 sec  latency 10807.334 ms
->> 16       584    26.88 MB/sec  warmup  12 sec  latency 11807.355 ms
->> 16       584    24.81 MB/sec  warmup  13 sec  latency 12807.372 ms
->> 16       584    23.04 MB/sec  warmup  14 sec  latency 13807.387 ms
->> 16       584    21.50 MB/sec  warmup  15 sec  latency 14807.406 ms
->> 16       584    20.16 MB/sec  warmup  16 sec  latency 15807.423 ms
->>=20
->> No recovery. The latency number keeps climbing, and throughput
->> drops.
->>=20
->> "kernel: nfs: server klimt-ib not responding, still trying"
->> appears in the client's /var/log/messages.
->>=20
->> Without this patch applied, the NFSv4.0 behavior is the same as I
->> reported with NFSv3: every once in a while, one RPC completion is
->> lost, but when the timer fires, the client notices the reply
->> actually did arrive and the RPC completes normally.
->>=20
->> I'm looking into it.
->=20
-> Root cause:
->=20
-> The transport is temporarily out of resources and returns -ENOBUFS
-> from ->send_request.
->=20
-> The FSM schedules a delay then calls call_transmit again, which
-> invokes xprt_prepare_transmit.
->=20
-> On NFSv3 mounts, xprt_prepare_transmit tries to acquire the
-> transport write lock.
->=20
-> On NFSv4 mounts, RPC_TASK_NO_RETRANS_TIMEOUT is set. This causes
-> xprt_prepare_transmit to see that the transport is connected and
-> rq_connect_cookie is the same as xprt->connect_cookie, so it
-> queues the task on ->pending and returns false.
->=20
-> The transport never sends the Call, but still waits for a Reply,
-> forever. This is not a bug in your patch, it is a pre-existing
-> issue.
-
-Sorry for one more reply...
-
-I think this last statement is incorrect. It is a bug in your
-patch after all.
-
-I forgot that your patch moves the line that sets
-
-    req->rq_connect_cookie =3D xprt->connect_cookie;
-
-to before the call to ->send_request. But rq_connect_cookie
-must be set iff ->send_request is successful. Moving this
-line seems to fix the issue:
-
-1027         req->rq_xtime =3D ktime_get();
-1028         status =3D xprt->ops->send_request(task);
-1029         trace_xprt_transmit(xprt, req->rq_xid, status);
-1030         if (status !=3D 0) {
-1031                 task->tk_status =3D status;
-1032                 return;
-1033         }
-1034         req->rq_connect_cookie =3D xprt->connect_cookie; <<<<
-1035         xprt_inject_disconnect(xprt);
-
-
-> There's a simple fix, which is to set
->=20
->   rq_connect_cookie =3D xprt->connect_cookie - 1;
->=20
-> if RPC-over-RDMA header marshaling fails. This is a one-line fix,
-> appropriate for -rc and backport to stable (to at least v4.8).
-
-This fix does exactly the same thing.
-
-
-> A more robust fix might be to have ->send_request return -EAGAIN
-> instead, and let xprtrdma call xprt_write_space when the resource
-> exhaustion is relieved. That might be more involved, and thus is
-> future-facing.
->=20
-> I'm investigating both fixes.
-
-
---
-Chuck Lever
-
-
+T24gV2VkLCAyMDE3LTEyLTEzIGF0IDIwOjEzIC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBEZWMgMTMsIDIwMTcsIGF0IDY6NDIgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
+cmFjbGUuY29tPg0KPiA+IHdyb3RlOg0KPiA+IA0KPiA+ID4gDQo+ID4gPiBPbiBEZWMgMTMsIDIw
+MTcsIGF0IDExOjE0IEFNLCBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbQ0KPiA+
+ID4gPiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gSGkgVHJvbmQtDQo+ID4gPiANCj4gPiA+ID4gT24g
+RGVjIDMsIDIwMTcsIGF0IDc6MTcgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0
+QHByDQo+ID4gPiA+IGltYXJ5ZGF0YS5jb20+IHdyb3RlOg0KPiA+ID4gPiANCj4gPiA+ID4gV2Ug
+bXVzdCBlbnN1cmUgdGhhdCB0aGUgY2FsbCB0byBycGNfc2xlZXBfb24oKSBpbg0KPiA+ID4gPiB4
+cHJ0X3RyYW5zbWl0KCkgY2Fubm90DQo+ID4gPiA+IHJhY2Ugd2l0aCB0aGUgY2FsbCB0byB4cHJ0
+X2NvbXBsZXRlX3Jxc3QoKS4NCj4gPiA+ID4gDQo+ID4gPiA+IFJlcG9ydGVkLWJ5OiBDaHVjayBM
+ZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gPiA+ID4gTGluazogaHR0cHM6Ly9idWd6
+aWxsYS5saW51eC1uZnMub3JnL3Nob3dfYnVnLmNnaT9pZD0zMTcNCj4gPiA+ID4gRml4ZXM6IGNl
+N2MyNTJhOGM3NCAoIlNVTlJQQzogQWRkIGEgc2VwYXJhdGUgc3BpbmxvY2sgdG8NCj4gPiA+ID4g
+cHJvdGVjdC4uIikNCj4gPiA+ID4gQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcgIyA0LjE0Kw0K
+PiA+ID4gPiBSZXZpZXdlZC1ieTogQ2h1Y2sgTGV2ZXIgPGNodWNrLmxldmVyQG9yYWNsZS5jb20+
+DQo+ID4gPiA+IFNpZ25lZC1vZmYtYnk6IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0
+QHByaW1hcnlkYXRhLmNvbQ0KPiA+ID4gPiA+DQo+ID4gPiA+IC0tLQ0KPiA+ID4gPiBuZXQvc3Vu
+cnBjL3hwcnQuYyB8IDI2ICsrKysrKysrKysrKysrKysrLS0tLS0tLS0tDQo+ID4gPiA+IDEgZmls
+ZSBjaGFuZ2VkLCAxNyBpbnNlcnRpb25zKCspLCA5IGRlbGV0aW9ucygtKQ0KPiA+ID4gPiANCj4g
+PiA+ID4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydC5jIGIvbmV0L3N1bnJwYy94cHJ0LmMN
+Cj4gPiA+ID4gaW5kZXggMzMzYjlkNjk3YWU1Li41ZTQyNzhlOWNlMzcgMTAwNjQ0DQo+ID4gPiA+
+IC0tLSBhL25ldC9zdW5ycGMveHBydC5jDQo+ID4gPiA+ICsrKyBiL25ldC9zdW5ycGMveHBydC5j
+DQo+ID4gPiA+IEBAIC0xMDI0LDYgKzEwMjQsNyBAQCB2b2lkIHhwcnRfdHJhbnNtaXQoc3RydWN0
+IHJwY190YXNrICp0YXNrKQ0KPiA+ID4gPiAJfSBlbHNlIGlmICghcmVxLT5ycV9ieXRlc19zZW50
+KQ0KPiA+ID4gPiAJCXJldHVybjsNCj4gPiA+ID4gDQo+ID4gPiA+ICsJcmVxLT5ycV9jb25uZWN0
+X2Nvb2tpZSA9IHhwcnQtPmNvbm5lY3RfY29va2llOw0KPiA+ID4gPiAJcmVxLT5ycV94dGltZSA9
+IGt0aW1lX2dldCgpOw0KPiA+ID4gPiAJc3RhdHVzID0geHBydC0+b3BzLT5zZW5kX3JlcXVlc3Qo
+dGFzayk7DQo+ID4gPiA+IAl0cmFjZV94cHJ0X3RyYW5zbWl0KHhwcnQsIHJlcS0+cnFfeGlkLCBz
+dGF0dXMpOw0KPiA+ID4gPiBAQCAtMTA0NywyMCArMTA0OCwyNyBAQCB2b2lkIHhwcnRfdHJhbnNt
+aXQoc3RydWN0IHJwY190YXNrDQo+ID4gPiA+ICp0YXNrKQ0KPiA+ID4gPiAJeHBydC0+c3RhdC5i
+a2xvZ191ICs9IHhwcnQtPmJhY2tsb2cucWxlbjsNCj4gPiA+ID4gCXhwcnQtPnN0YXQuc2VuZGlu
+Z191ICs9IHhwcnQtPnNlbmRpbmcucWxlbjsNCj4gPiA+ID4gCXhwcnQtPnN0YXQucGVuZGluZ191
+ICs9IHhwcnQtPnBlbmRpbmcucWxlbjsNCj4gPiA+ID4gKwlzcGluX3VubG9ja19iaCgmeHBydC0+
+dHJhbnNwb3J0X2xvY2spOw0KPiA+ID4gPiANCj4gPiA+ID4gLQkvKiBEb24ndCByYWNlIHdpdGgg
+ZGlzY29ubmVjdCAqLw0KPiA+ID4gPiAtCWlmICgheHBydF9jb25uZWN0ZWQoeHBydCkpDQo+ID4g
+PiA+IC0JCXRhc2stPnRrX3N0YXR1cyA9IC1FTk9UQ09OTjsNCj4gPiA+ID4gLQllbHNlIHsNCj4g
+PiA+ID4gKwlpZiAocnBjX3JlcGx5X2V4cGVjdGVkKHRhc2spICYmICFSRUFEX09OQ0UocmVxLQ0K
+PiA+ID4gPiA+cnFfcmVwbHlfYnl0ZXNfcmVjdmQpKSB7DQo+ID4gPiA+IAkJLyoNCj4gPiA+ID4g
+LQkJICogU2xlZXAgb24gdGhlIHBlbmRpbmcgcXVldWUgc2luY2UNCj4gPiA+ID4gLQkJICogd2Un
+cmUgZXhwZWN0aW5nIGEgcmVwbHkuDQo+ID4gPiA+ICsJCSAqIFNsZWVwIG9uIHRoZSBwZW5kaW5n
+IHF1ZXVlIGlmIHdlJ3JlDQo+ID4gPiA+IGV4cGVjdGluZyBhIHJlcGx5Lg0KPiA+ID4gPiArCQkg
+KiBUaGUgc3BpbmxvY2sgZW5zdXJlcyBhdG9taWNpdHkgYmV0d2VlbiB0aGUNCj4gPiA+ID4gdGVz
+dCBvZg0KPiA+ID4gPiArCQkgKiByZXEtPnJxX3JlcGx5X2J5dGVzX3JlY3ZkLCBhbmQgdGhlIGNh
+bGwgdG8NCj4gPiA+ID4gcnBjX3NsZWVwX29uKCkuDQo+ID4gPiA+IAkJICovDQo+ID4gPiA+IC0J
+CWlmICghcmVxLT5ycV9yZXBseV9ieXRlc19yZWN2ZCAmJg0KPiA+ID4gPiBycGNfcmVwbHlfZXhw
+ZWN0ZWQodGFzaykpDQo+ID4gPiA+ICsJCXNwaW5fbG9jaygmeHBydC0+cmVjdl9sb2NrKTsNCj4g
+PiA+ID4gKwkJaWYgKCFyZXEtPnJxX3JlcGx5X2J5dGVzX3JlY3ZkKSB7DQo+ID4gPiA+IAkJCXJw
+Y19zbGVlcF9vbigmeHBydC0+cGVuZGluZywgdGFzaywNCj4gPiA+ID4geHBydF90aW1lcik7DQo+
+ID4gPiA+IC0JCXJlcS0+cnFfY29ubmVjdF9jb29raWUgPSB4cHJ0LT5jb25uZWN0X2Nvb2tpZTsN
+Cj4gPiA+ID4gKwkJCS8qDQo+ID4gPiA+ICsJCQkgKiBTZW5kIGFuIGV4dHJhIHF1ZXVlIHdha2V1
+cCBjYWxsIGlmDQo+ID4gPiA+IHRoZQ0KPiA+ID4gPiArCQkJICogY29ubmVjdGlvbiB3YXMgZHJv
+cHBlZCBpbiBjYXNlIHRoZQ0KPiA+ID4gPiBjYWxsIHRvDQo+ID4gPiA+ICsJCQkgKiBycGNfc2xl
+ZXBfb24oKSByYWNlZC4NCj4gPiA+ID4gKwkJCSAqLw0KPiA+ID4gPiArCQkJaWYgKCF4cHJ0X2Nv
+bm5lY3RlZCh4cHJ0KSkNCj4gPiA+ID4gKwkJCQl4cHJ0X3dha2VfcGVuZGluZ190YXNrcyh4cHJ0
+LA0KPiA+ID4gPiAtRU5PVENPTk4pOw0KPiA+ID4gPiArCQl9DQo+ID4gPiA+ICsJCXNwaW5fdW5s
+b2NrKCZ4cHJ0LT5yZWN2X2xvY2spOw0KPiA+ID4gPiAJfQ0KPiA+ID4gPiAtCXNwaW5fdW5sb2Nr
+X2JoKCZ4cHJ0LT50cmFuc3BvcnRfbG9jayk7DQo+ID4gPiA+IH0NCj4gPiA+ID4gDQo+ID4gPiA+
+IHN0YXRpYyB2b2lkIHhwcnRfYWRkX2JhY2tsb2coc3RydWN0IHJwY194cHJ0ICp4cHJ0LCBzdHJ1
+Y3QNCj4gPiA+ID4gcnBjX3Rhc2sgKnRhc2spDQo+ID4gPiA+IC0tIA0KPiA+ID4gPiAyLjE0LjMN
+Cj4gPiA+IA0KPiA+ID4gSSd2ZSBydW4gaW50byBhIHByb2JsZW0gd2l0aCB0aGlzIHZlcnNpb24g
+b2YgdGhlIHBhdGNoIChvbiB2NC4xNS0NCj4gPiA+IHJjMykuDQo+ID4gPiANCj4gPiA+IFdpdGgg
+ZGJlbmNoIG9uIE5GU3Y0LjAgKG9uIFJETUEpIEkgbm8gbG9uZ2VyIHNlZSBjb25zdGFudA0KPiA+
+ID4gdGhyb3VnaHB1dA0KPiA+ID4gYW5kIGEgdGVtcG9yYXJpbHkgY2xpbWJpbmcgbGF0ZW5jeSBm
+b2xsb3dlZCBieSBhIHJlY292ZXJ5LCBidXQNCj4gPiA+IHRoaXMNCj4gPiA+IGNhbiBoYXBwZW4g
+b24gb2NjYXNpb246DQo+ID4gPiANCj4gPiA+IHJlbGVhc2luZyBjbGllbnRzDQo+ID4gPiAxNiAg
+ICAgICA1ODQgICAzMjIuNTUgTUIvc2VjICB3YXJtdXAgICAxIHNlYyAgbGF0ZW5jeSA4MDcuMTIx
+IG1zDQo+ID4gPiAxNiAgICAgICA1ODQgICAxNjEuMjggTUIvc2VjICB3YXJtdXAgICAyIHNlYyAg
+bGF0ZW5jeSAxODA3LjE3NSBtcw0KPiA+ID4gMTYgICAgICAgNTg0ICAgMTA3LjUyIE1CL3NlYyAg
+d2FybXVwICAgMyBzZWMgIGxhdGVuY3kgMjgwNy4xOTggbXMNCj4gPiA+IDE2ICAgICAgIDU4NCAg
+ICA4MC42NCBNQi9zZWMgIHdhcm11cCAgIDQgc2VjICBsYXRlbmN5IDM4MDcuMjE3IG1zDQo+ID4g
+PiAxNiAgICAgICA1ODQgICAgNjQuNTEgTUIvc2VjICB3YXJtdXAgICA1IHNlYyAgbGF0ZW5jeSA0
+ODA3LjIzNSBtcw0KPiA+ID4gMTYgICAgICAgNTg0ICAgIDUzLjc2IE1CL3NlYyAgd2FybXVwICAg
+NiBzZWMgIGxhdGVuY3kgNTgwNy4yNTEgbXMNCj4gPiA+IDE2ICAgICAgIDU4NCAgICA0Ni4wOCBN
+Qi9zZWMgIHdhcm11cCAgIDcgc2VjICBsYXRlbmN5IDY4MDcuMjY5IG1zDQo+ID4gPiAxNiAgICAg
+ICA1ODQgICAgNDAuMzIgTUIvc2VjICB3YXJtdXAgICA4IHNlYyAgbGF0ZW5jeSA3ODA3LjI4NSBt
+cw0KPiA+ID4gMTYgICAgICAgNTg0ICAgIDM1Ljg0IE1CL3NlYyAgd2FybXVwICAgOSBzZWMgIGxh
+dGVuY3kgODgwNy4zMDMgbXMNCj4gPiA+IDE2ICAgICAgIDU4NCAgICAzMi4yNiBNQi9zZWMgIHdh
+cm11cCAgMTAgc2VjICBsYXRlbmN5IDk4MDcuMzE4IG1zDQo+ID4gPiAxNiAgICAgICA1ODQgICAg
+MjkuMzIgTUIvc2VjICB3YXJtdXAgIDExIHNlYyAgbGF0ZW5jeSAxMDgwNy4zMzQNCj4gPiA+IG1z
+DQo+ID4gPiAxNiAgICAgICA1ODQgICAgMjYuODggTUIvc2VjICB3YXJtdXAgIDEyIHNlYyAgbGF0
+ZW5jeSAxMTgwNy4zNTUNCj4gPiA+IG1zDQo+ID4gPiAxNiAgICAgICA1ODQgICAgMjQuODEgTUIv
+c2VjICB3YXJtdXAgIDEzIHNlYyAgbGF0ZW5jeSAxMjgwNy4zNzINCj4gPiA+IG1zDQo+ID4gPiAx
+NiAgICAgICA1ODQgICAgMjMuMDQgTUIvc2VjICB3YXJtdXAgIDE0IHNlYyAgbGF0ZW5jeSAxMzgw
+Ny4zODcNCj4gPiA+IG1zDQo+ID4gPiAxNiAgICAgICA1ODQgICAgMjEuNTAgTUIvc2VjICB3YXJt
+dXAgIDE1IHNlYyAgbGF0ZW5jeSAxNDgwNy40MDYNCj4gPiA+IG1zDQo+ID4gPiAxNiAgICAgICA1
+ODQgICAgMjAuMTYgTUIvc2VjICB3YXJtdXAgIDE2IHNlYyAgbGF0ZW5jeSAxNTgwNy40MjMNCj4g
+PiA+IG1zDQo+ID4gPiANCj4gPiA+IE5vIHJlY292ZXJ5LiBUaGUgbGF0ZW5jeSBudW1iZXIga2Vl
+cHMgY2xpbWJpbmcsIGFuZCB0aHJvdWdocHV0DQo+ID4gPiBkcm9wcy4NCj4gPiA+IA0KPiA+ID4g
+Imtlcm5lbDogbmZzOiBzZXJ2ZXIga2xpbXQtaWIgbm90IHJlc3BvbmRpbmcsIHN0aWxsIHRyeWlu
+ZyINCj4gPiA+IGFwcGVhcnMgaW4gdGhlIGNsaWVudCdzIC92YXIvbG9nL21lc3NhZ2VzLg0KPiA+
+ID4gDQo+ID4gPiBXaXRob3V0IHRoaXMgcGF0Y2ggYXBwbGllZCwgdGhlIE5GU3Y0LjAgYmVoYXZp
+b3IgaXMgdGhlIHNhbWUgYXMgSQ0KPiA+ID4gcmVwb3J0ZWQgd2l0aCBORlN2MzogZXZlcnkgb25j
+ZSBpbiBhIHdoaWxlLCBvbmUgUlBDIGNvbXBsZXRpb24gaXMNCj4gPiA+IGxvc3QsIGJ1dCB3aGVu
+IHRoZSB0aW1lciBmaXJlcywgdGhlIGNsaWVudCBub3RpY2VzIHRoZSByZXBseQ0KPiA+ID4gYWN0
+dWFsbHkgZGlkIGFycml2ZSBhbmQgdGhlIFJQQyBjb21wbGV0ZXMgbm9ybWFsbHkuDQo+ID4gPiAN
+Cj4gPiA+IEknbSBsb29raW5nIGludG8gaXQuDQo+ID4gDQo+ID4gUm9vdCBjYXVzZToNCj4gPiAN
+Cj4gPiBUaGUgdHJhbnNwb3J0IGlzIHRlbXBvcmFyaWx5IG91dCBvZiByZXNvdXJjZXMgYW5kIHJl
+dHVybnMgLUVOT0JVRlMNCj4gPiBmcm9tIC0+c2VuZF9yZXF1ZXN0Lg0KPiA+IA0KPiA+IFRoZSBG
+U00gc2NoZWR1bGVzIGEgZGVsYXkgdGhlbiBjYWxscyBjYWxsX3RyYW5zbWl0IGFnYWluLCB3aGlj
+aA0KPiA+IGludm9rZXMgeHBydF9wcmVwYXJlX3RyYW5zbWl0Lg0KPiA+IA0KPiA+IE9uIE5GU3Yz
+IG1vdW50cywgeHBydF9wcmVwYXJlX3RyYW5zbWl0IHRyaWVzIHRvIGFjcXVpcmUgdGhlDQo+ID4g
+dHJhbnNwb3J0IHdyaXRlIGxvY2suDQo+ID4gDQo+ID4gT24gTkZTdjQgbW91bnRzLCBSUENfVEFT
+S19OT19SRVRSQU5TX1RJTUVPVVQgaXMgc2V0LiBUaGlzIGNhdXNlcw0KPiA+IHhwcnRfcHJlcGFy
+ZV90cmFuc21pdCB0byBzZWUgdGhhdCB0aGUgdHJhbnNwb3J0IGlzIGNvbm5lY3RlZCBhbmQNCj4g
+PiBycV9jb25uZWN0X2Nvb2tpZSBpcyB0aGUgc2FtZSBhcyB4cHJ0LT5jb25uZWN0X2Nvb2tpZSwg
+c28gaXQNCj4gPiBxdWV1ZXMgdGhlIHRhc2sgb24gLT5wZW5kaW5nIGFuZCByZXR1cm5zIGZhbHNl
+Lg0KPiA+IA0KPiA+IFRoZSB0cmFuc3BvcnQgbmV2ZXIgc2VuZHMgdGhlIENhbGwsIGJ1dCBzdGls
+bCB3YWl0cyBmb3IgYSBSZXBseSwNCj4gPiBmb3JldmVyLiBUaGlzIGlzIG5vdCBhIGJ1ZyBpbiB5
+b3VyIHBhdGNoLCBpdCBpcyBhIHByZS1leGlzdGluZw0KPiA+IGlzc3VlLg0KPiANCj4gU29ycnkg
+Zm9yIG9uZSBtb3JlIHJlcGx5Li4uDQo+IA0KPiBJIHRoaW5rIHRoaXMgbGFzdCBzdGF0ZW1lbnQg
+aXMgaW5jb3JyZWN0LiBJdCBpcyBhIGJ1ZyBpbiB5b3VyDQo+IHBhdGNoIGFmdGVyIGFsbC4NCj4g
+DQo+IEkgZm9yZ290IHRoYXQgeW91ciBwYXRjaCBtb3ZlcyB0aGUgbGluZSB0aGF0IHNldHMNCj4g
+DQo+ICAgICByZXEtPnJxX2Nvbm5lY3RfY29va2llID0geHBydC0+Y29ubmVjdF9jb29raWU7DQo+
+IA0KPiB0byBiZWZvcmUgdGhlIGNhbGwgdG8gLT5zZW5kX3JlcXVlc3QuIEJ1dCBycV9jb25uZWN0
+X2Nvb2tpZQ0KPiBtdXN0IGJlIHNldCBpZmYgLT5zZW5kX3JlcXVlc3QgaXMgc3VjY2Vzc2Z1bC4g
+TW92aW5nIHRoaXMNCj4gbGluZSBzZWVtcyB0byBmaXggdGhlIGlzc3VlOg0KPiANCj4gMTAyNyAg
+ICAgICAgIHJlcS0+cnFfeHRpbWUgPSBrdGltZV9nZXQoKTsNCj4gMTAyOCAgICAgICAgIHN0YXR1
+cyA9IHhwcnQtPm9wcy0+c2VuZF9yZXF1ZXN0KHRhc2spOw0KPiAxMDI5ICAgICAgICAgdHJhY2Vf
+eHBydF90cmFuc21pdCh4cHJ0LCByZXEtPnJxX3hpZCwgc3RhdHVzKTsNCj4gMTAzMCAgICAgICAg
+IGlmIChzdGF0dXMgIT0gMCkgew0KPiAxMDMxICAgICAgICAgICAgICAgICB0YXNrLT50a19zdGF0
+dXMgPSBzdGF0dXM7DQo+IDEwMzIgICAgICAgICAgICAgICAgIHJldHVybjsNCj4gMTAzMyAgICAg
+ICAgIH0NCj4gMTAzNCAgICAgICAgIHJlcS0+cnFfY29ubmVjdF9jb29raWUgPSB4cHJ0LT5jb25u
+ZWN0X2Nvb2tpZTsgPDw8PA0KPiAxMDM1ICAgICAgICAgeHBydF9pbmplY3RfZGlzY29ubmVjdCh4
+cHJ0KTsNCj4gDQoNCkxldCdzIHJhdGhlciBhcHBseSB0aGUgYXR0YWNoZWQgZml4IChpbmNyZW1l
+bnRhbCB0byB0aGUgb3JpZ2luYWwgcGF0Y2gNCmFuZCBpbnRlbmRlZCB0byBiZSBhcHBsaWVkIHVz
+aW5nICdnaXQgcmViYXNlIC0tYXV0b3NxdWFzaCcpLiBUaGUgcmVhc29uDQpmb3Igd2FudGluZyB0
+byBzZXQgdGhlIGNvbm5lY3QgY29va2llIGJlZm9yZSB3ZSBjYWxsIHNlbmRfcmVxdWVzdCgpIGlz
+DQp0byBhdm9pZCByYWNlcyB3aXRoIGRpc2Nvbm5lY3RzIHRoYXQgaGFwcGVuIGltbWVkaWF0ZWx5
+IGFmdGVyIHdlIHNlbnQNCnRoZSBkYXRhIChidXQgYmVmb3JlIHdlIGdldCByb3VuZCB0byBzZXR0
+aW5nIHRoZSBjb29raWUpLg0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9tIDMyNmMxMjcyN2IxNzlkNWMyZmQ0MmYzNzRhNGMw
+ZTJkNTZlZTkwYzUgTW9uIFNlcCAxNyAwMDowMDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1
+c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQpEYXRlOiBUaHUsIDE0IERlYyAy
+MDE3IDA3OjA1OjI3IC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIGZpeHVwISBTVU5SUEM6IEZpeCBh
+IHJhY2UgaW4gdGhlIHJlY2VpdmUgY29kZSBwYXRoDQoNCi0tLQ0KIG5ldC9zdW5ycGMveHBydC5j
+IHwgMyArKy0NCiAxIGZpbGUgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAxIGRlbGV0aW9uKC0p
+DQoNCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25ldC9zdW5ycGMveHBydC5jDQpp
+bmRleCA1ZTQyNzhlOWNlMzcuLjJjZjRjZjIxYTg3OCAxMDA2NDQNCi0tLSBhL25ldC9zdW5ycGMv
+eHBydC5jDQorKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KQEAgLTEwMjEsMTAgKzEwMjEsMTEgQEAg
+dm9pZCB4cHJ0X3RyYW5zbWl0KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCiAJCQkvKiBUdXJuIG9m
+ZiBhdXRvZGlzY29ubmVjdCAqLw0KIAkJCWRlbF9zaW5nbGVzaG90X3RpbWVyX3N5bmMoJnhwcnQt
+PnRpbWVyKTsNCiAJCX0NCisJCWlmICghcmVxLT5ycV9ieXRlc19zZW50KQ0KKwkJCXJlcS0+cnFf
+Y29ubmVjdF9jb29raWUgPSB4cHJ0LT5jb25uZWN0X2Nvb2tpZTsNCiAJfSBlbHNlIGlmICghcmVx
+LT5ycV9ieXRlc19zZW50KQ0KIAkJcmV0dXJuOw0KIA0KLQlyZXEtPnJxX2Nvbm5lY3RfY29va2ll
+ID0geHBydC0+Y29ubmVjdF9jb29raWU7DQogCXJlcS0+cnFfeHRpbWUgPSBrdGltZV9nZXQoKTsN
+CiAJc3RhdHVzID0geHBydC0+b3BzLT5zZW5kX3JlcXVlc3QodGFzayk7DQogCXRyYWNlX3hwcnRf
+dHJhbnNtaXQoeHBydCwgcmVxLT5ycV94aWQsIHN0YXR1cyk7DQotLSANCjIuMTQuMw0KDQotLSAN
+ClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0
+YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
