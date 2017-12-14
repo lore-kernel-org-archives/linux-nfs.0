@@ -1,80 +1,80 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mta-out1.inet.fi ([62.71.2.234]:57129 "EHLO johanna1.inet.fi"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753742AbdLNSrO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Dec 2017 13:47:14 -0500
-Message-ID: <1513277230.24220.58.camel@pp1.inet.fi>
-Subject: Re: [systemd-devel] [PATCH] rpcbind.service: Not pulling the
- rpcbind.target
-From: Uoti Urpala <uoti.urpala@pp1.inet.fi>
-To: Steve Dickson <SteveD@RedHat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Systemd Mailing List <systemd-devel@lists.freedesktop.org>
-Date: Thu, 14 Dec 2017 20:47:10 +0200
-In-Reply-To: <52fec8d7-6ba6-8f85-62e1-bc5fc5c3cf43@RedHat.com>
-References: <20171214170544.11793-1-steved@redhat.com>
-         <1513273692.24220.47.camel@pp1.inet.fi>
-         <52fec8d7-6ba6-8f85-62e1-bc5fc5c3cf43@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <bfields@fieldses.org>
+Date: Thu, 14 Dec 2017 13:55:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org
+Subject: Re: spurious sillyrename after O_DIRECT writes get ENOSPC
+Message-ID: <20171214185514.GE9205@fieldses.org>
+References: <20171208221626.GB22508@fieldses.org>
+ <20171213171815.GB9205@fieldses.org>
+ <9383ABA6-B994-4DB3-95F4-C0D6F59580F9@redhat.com>
+ <20171214163654.GD9205@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171214163654.GD9205@fieldses.org>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-12-14 at 13:24 -0500, Steve Dickson wrote:
-> 
-> On 12/14/2017 12:48 PM, Uoti Urpala wrote:
-> > On Thu, 2017-12-14 at 12:05 -0500, Steve Dickson wrote:
-> > > +Wants=rpcbind.socket rpcbind.target
-> > > +After=rpcbind.socket rpcbind.target
+On Thu, Dec 14, 2017 at 11:36:54AM -0500, J. Bruce Fields wrote:
+> On Thu, Dec 14, 2017 at 08:08:53AM -0500, Benjamin Coddington wrote:
 > > 
-> > Is this needed when the service has socket activation support? If the
-> > only interaction with it is through the socket, it shouldn't matter
-> > even if the service is not actually up yet - clients can already open
-> > connections to the socket regardless.
-> 
-> Well things are working as is... but this man page paragraph 
-> was pointed out to me so I though these Wants and After were needed.
-> 
-> So you saying this patch is not needed?
-
-I'm not familiar enough with rpcbind stuff to say with certainty that
-it wouldn't be needed, but at least it seems plausible to me that it
-would not be. The mechanism described on the man page is a way to
-implement ordering if needed, but if the early availability of the
-socket means ordering is never an issue, then it can be ignored.
-
-
-> > And regardless, that "After" for rpcbind.target seems backwards.
-> > Shouldn't it be "Before", so that the target being up signals that the
-> > service has already been started?
-> 
-> I think this makes sense... So if the patch is needed I'll add
-> Before=rpcbind.target and remove the target from the After=
-
-Yes.
-
-> > Not directly related, but if that comment is accurate and the socket
-> > should be used "no matter what", perhaps that should be "Requires"
-> > instead of "Wants" so that if the socket could not be opened for some
-> > reason, the service fails instead of starting without socket
-> > activation?
+> > On 13 Dec 2017, at 12:18, J. Bruce Fields wrote:
 > > 
+> > > On Fri, Dec 08, 2017 at 05:16:26PM -0500, J. Bruce Fields wrote:
+> > >> Last year Christoph noticed a bug that could result in a file being
+> > >> unnecessarily sillyrenamed after O_DIRECT writes get ENOSPC:
+> > >>
+> > >> 	http://lkml.kernel.org/r/20160616150146.GA14015@infradead.org
+> > >>
+> > >> It's reproduceable on upstream, over v3 or v4.
+> > >>
+> > >> I looked into it some more, and it seems to reproduce whenever a write
+> > >> system call results in multiple WRITE calls, only some of which receive
+> > >> ENOSPC.  I think that's resulting in a leak of the wb_kref on some
+> > >> nfs_pages (possibly the ones corresponding to the ENOSPC failures?).
+> > >> Those nfs_pages in turn hold references on nfs_{lock,open}_contexts.  So
+> > >> a "rm" on the client (even after the file is closed) results in a
+> > >> sillyrename.
+> > >>
+> > >> I'll keep looking at this, but the relevant code is pretty opaque to me
+> > >> so far.  Any ideas welcomed.
+> > >
+> > > Actually it looks like a leak of dreq->io_count?  That prevents commits
+> > > from being sent (which I'm also seeing in network traces--the succesfull
+> > > WRITEs are unstable but never get committed), which means
+> > > nfs_direct_commit_complete() is never called, and the reference taken on
+> > > wb_kref in the request_commit case of nfs_direct_write_completion is
+> > > never put.
+> > 
+> > This sounds to me like the problem Scott's working - he sent a patch
+> > yesterday "nfs/pnfs: fix nfs_direct_req ref leak when i/o falls back to the
+> > mds".
+> > 
+> > I think the the rule should be that once we call
+> > nfs_pgio_completion_ops->init_hdr, we have to finish with ->completion.
+> > However, there are some paths where that is not the case.
 > 
-> I was afraid of opening a can a worms here... :-) 
+> Yes, I wondered about that....
 > 
-> So you are saying Wants and After should be changed to 
-> 
-> Requires=rpcbind.socket
-> Before=rpcbind.target
+> Unfortunately after some more tests now I was think I was wrong, the
+> dreq_get()s and put()s are balanced and the bug is somewhere else--in
+> the case of my particular reproducer.  Argh.  But yes I can easily
+> believe there could be a leak there.
 
-Depends on the exact semantics you want. "Wants" means that systemd
-will try to start the socket if the service is started, but will
-continue with the service start even if the dependency fails.
-"Requires" guarantees that the service will never be started without
-the socket active - if opening the socket fails, then the service start
-will return failure too. If you know that the socket unit should always
-be used, or the service will either fail or do the wrong thing without
-it (such as open a socket with parameters different from what was
-configured for the socket unit, and which the admin didn't expect) then
- Requires may be more appropriate.
+So actually what happens is if you do a direct io write where some
+WRITEs succeed and the one fails, then this:
 
+	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+		dreq->flags = 0;
+		dreq->error = hdr->error;
+	}
+
+clears the NFS_ODIRECT_DO_COMMIT flag, so nfs_direct_write_complete
+never scheduels the commit calls.  It looks like that leaves a bunch of
+nfs_pages on some to-be-committed list, so we end up leaking a bunch of
+stuff, with the most visible symptom being an unnecessarily sillyrename
+on close.
+
+I can just remove that clear of dreq_flags and that fixes the problem,
+but I doubt that's correct.
+
+--b.
