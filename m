@@ -1,116 +1,130 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:48493 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752617AbdLNVAK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 16:00:10 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45872 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752154AbdLNVd5 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 16:33:57 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v3] SUNRPC: Fix a race in the receive code path
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1513283844.11150.11.camel@primarydata.com>
-Date: Thu, 14 Dec 2017 15:59:04 -0500
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4D12D608-0108-4CBA-AEF4-CD8CEC86B55F@oracle.com>
-References: <20171204001726.5747-1-trond.myklebust@primarydata.com> <17932F80-EF03-48BA-AD6C-90A441B286EF@oracle.com> <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com> <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com> <1513253779.6553.7.camel@primarydata.com> <42B23A9B-3566-4E0F-9E3D-53BB2C39C0E9@oracle.com> <1513278198.5198.3.camel@primarydata.com> <2E949D1D-AD89-448B-B263-B53FB66C9766@oracle.com> <1513283844.11150.11.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Date: Thu, 14 Dec 2017 21:33:51 +0000
+Message-ID: <1513287230.15001.15.camel@primarydata.com>
+References: <20171204001726.5747-1-trond.myklebust@primarydata.com>
+         <17932F80-EF03-48BA-AD6C-90A441B286EF@oracle.com>
+         <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com>
+         <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com>
+         <1513253779.6553.7.camel@primarydata.com>
+         <42B23A9B-3566-4E0F-9E3D-53BB2C39C0E9@oracle.com>
+         <1513278198.5198.3.camel@primarydata.com>
+         <2E949D1D-AD89-448B-B263-B53FB66C9766@oracle.com>
+         <1513283844.11150.11.camel@primarydata.com>
+         <4D12D608-0108-4CBA-AEF4-CD8CEC86B55F@oracle.com>
+In-Reply-To: <4D12D608-0108-4CBA-AEF4-CD8CEC86B55F@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-> On Dec 14, 2017, at 3:37 PM, Trond Myklebust <trondmy@primarydata.com> =
-wrote:
->=20
-> On Thu, 2017-12-14 at 14:22 -0500, Chuck Lever wrote:
->>> On Dec 14, 2017, at 2:03 PM, Trond Myklebust <trondmy@primarydata.c
->>> om> wrote:
->>>=20
->>> Does the RDMA code update the connect cookie when the connection
->>> breaks? It looks to me as if it only does that when the connection
->>> is
->>> re-established. We really want both.
->>>=20
->>>> I imagine this issue could also impact write buffer exhaustion
->>>> on TCP.
->>>=20
->>> See net/sunrpc/xprtsock.c:xs_tcp_state_change()
->>=20
->> xprtrdma manipulates the connect_cookie in its connect worker,
->> see rpcrdma_connect_worker. This was added by:
->>=20
->> commit 575448bd36208f99fe0dd554a43518d798966740
->> Author:     Tom Talpey <talpey@netapp.com>
->> AuthorDate: Thu Oct 9 15:00:40 2008 -0400
->> Commit:     Trond Myklebust <Trond.Myklebust@netapp.com>
->> CommitDate: Fri Oct 10 15:10:36 2008 -0400
->>=20
->>    RPC/RDMA: suppress retransmit on RPC/RDMA clients.
->>=20
->> Would it be more correct to bump the cookie in rpcrdma_conn_upcall,
->> which is the equivalent to xs_tcp_state_change? (if so, why, so
->> I can compose a reasonable patch description)
->>=20
->> It could be bumped in the RDMA_CM_EVENT_ESTABLISHED and the
->> RDMA_CM_EVENT_DISCONNECTED cases, for example. I'm not sure
->> RDMA provides a distinction between "server disconnected"
->> and "client disconnected" although that probably does not
->> matter for this purpose.
->>=20
->> But, why would the additional cookie update help? The transport
->> is not disconnecting before the deadlock.
->>=20
->=20
-> The connection cookie's purpose is twofold:
->=20
-> 1) It tracks whether or not a request has been transmitted on the
-> current connection or not.
-
-That's broken by setting the cookie unconditionally outside
-the transport_lock, isn't it?
-
-
-> 2) It ensures that when several requests with the same connection
-> cookie all call xprt_conditional_disconnect(), then that results in a
-> single disconnection event. To do so, it assumes that xprt_autoclose()
-> will change the cookie if the disconnection attempt is successful.
->=20
-> In TCP we do so in the xs_tcp_state_change(). If the RDMA transport =
-can
-> guarantee that the call to xprt->ops->close(xprt) is always =
-successful,
-> then you could do so there.
-
-I don't mind moving the cookie bump to rpcrdma_conn_upcall,
-but I'm not sure I understand the locking requirements.
-
-Currently, xprt_transmit sets the connect_cookie while holding
-the transport_lock.
-
-xprt_conditional_disconnect compares the cookie while holding
-the transport_lock.
-
-For TCP, the transport_lock is held when bumping the cookie
-in the ESTABLISHED case, but _not_ in the two CLOSE cases?
-
-xprtrdma holds the transport_lock when bumping the cookie,
-which it does in its connect worker. It has to hold the lock
-because it skips the value 0. xprtrdma needs to guarantee
-that an RPC is never transmitted on the same connection
-twice (and maybe it could use rq_connect_cookie instead of
-its own cookie).
-
-xprt_reserve_init is holding the reserve_lock but not the
-transport_lock when it grabs the cookie. Maybe it should
-not be initializing the rqst's cookie there?
-
-Seems to me that xprt_transmit needs to update the rqst's
-cookie while holding the transport_lock, especially if
-xprtrdma needs to skip a cookie value? I'm sure I'm missing
-something.
-
-
---
-Chuck Lever
-
-
+T24gVGh1LCAyMDE3LTEyLTE0IGF0IDE1OjU5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBEZWMgMTQsIDIwMTcsIGF0IDM6MzcgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
+cmltYXJ5ZGF0YS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFRodSwgMjAxNy0xMi0x
+NCBhdCAxNDoyMiAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIERlYyAxNCwg
+MjAxNywgYXQgMjowMyBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYQ0KPiA+
+ID4gPiB0YS5jDQo+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IERvZXMgdGhl
+IFJETUEgY29kZSB1cGRhdGUgdGhlIGNvbm5lY3QgY29va2llIHdoZW4gdGhlDQo+ID4gPiA+IGNv
+bm5lY3Rpb24NCj4gPiA+ID4gYnJlYWtzPyBJdCBsb29rcyB0byBtZSBhcyBpZiBpdCBvbmx5IGRv
+ZXMgdGhhdCB3aGVuIHRoZQ0KPiA+ID4gPiBjb25uZWN0aW9uDQo+ID4gPiA+IGlzDQo+ID4gPiA+
+IHJlLWVzdGFibGlzaGVkLiBXZSByZWFsbHkgd2FudCBib3RoLg0KPiA+ID4gPiANCj4gPiA+ID4g
+PiBJIGltYWdpbmUgdGhpcyBpc3N1ZSBjb3VsZCBhbHNvIGltcGFjdCB3cml0ZSBidWZmZXINCj4g
+PiA+ID4gPiBleGhhdXN0aW9uDQo+ID4gPiA+ID4gb24gVENQLg0KPiA+ID4gPiANCj4gPiA+ID4g
+U2VlIG5ldC9zdW5ycGMveHBydHNvY2suYzp4c190Y3Bfc3RhdGVfY2hhbmdlKCkNCj4gPiA+IA0K
+PiA+ID4geHBydHJkbWEgbWFuaXB1bGF0ZXMgdGhlIGNvbm5lY3RfY29va2llIGluIGl0cyBjb25u
+ZWN0IHdvcmtlciwNCj4gPiA+IHNlZSBycGNyZG1hX2Nvbm5lY3Rfd29ya2VyLiBUaGlzIHdhcyBh
+ZGRlZCBieToNCj4gPiA+IA0KPiA+ID4gY29tbWl0IDU3NTQ0OGJkMzYyMDhmOTlmZTBkZDU1NGE0
+MzUxOGQ3OTg5NjY3NDANCj4gPiA+IEF1dGhvcjogICAgIFRvbSBUYWxwZXkgPHRhbHBleUBuZXRh
+cHAuY29tPg0KPiA+ID4gQXV0aG9yRGF0ZTogVGh1IE9jdCA5IDE1OjAwOjQwIDIwMDggLTA0MDAN
+Cj4gPiA+IENvbW1pdDogICAgIFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
+cC5jb20+DQo+ID4gPiBDb21taXREYXRlOiBGcmkgT2N0IDEwIDE1OjEwOjM2IDIwMDggLTA0MDAN
+Cj4gPiA+IA0KPiA+ID4gICAgUlBDL1JETUE6IHN1cHByZXNzIHJldHJhbnNtaXQgb24gUlBDL1JE
+TUEgY2xpZW50cy4NCj4gPiA+IA0KPiA+ID4gV291bGQgaXQgYmUgbW9yZSBjb3JyZWN0IHRvIGJ1
+bXAgdGhlIGNvb2tpZSBpbg0KPiA+ID4gcnBjcmRtYV9jb25uX3VwY2FsbCwNCj4gPiA+IHdoaWNo
+IGlzIHRoZSBlcXVpdmFsZW50IHRvIHhzX3RjcF9zdGF0ZV9jaGFuZ2U/IChpZiBzbywgd2h5LCBz
+bw0KPiA+ID4gSSBjYW4gY29tcG9zZSBhIHJlYXNvbmFibGUgcGF0Y2ggZGVzY3JpcHRpb24pDQo+
+ID4gPiANCj4gPiA+IEl0IGNvdWxkIGJlIGJ1bXBlZCBpbiB0aGUgUkRNQV9DTV9FVkVOVF9FU1RB
+QkxJU0hFRCBhbmQgdGhlDQo+ID4gPiBSRE1BX0NNX0VWRU5UX0RJU0NPTk5FQ1RFRCBjYXNlcywg
+Zm9yIGV4YW1wbGUuIEknbSBub3Qgc3VyZQ0KPiA+ID4gUkRNQSBwcm92aWRlcyBhIGRpc3RpbmN0
+aW9uIGJldHdlZW4gInNlcnZlciBkaXNjb25uZWN0ZWQiDQo+ID4gPiBhbmQgImNsaWVudCBkaXNj
+b25uZWN0ZWQiIGFsdGhvdWdoIHRoYXQgcHJvYmFibHkgZG9lcyBub3QNCj4gPiA+IG1hdHRlciBm
+b3IgdGhpcyBwdXJwb3NlLg0KPiA+ID4gDQo+ID4gPiBCdXQsIHdoeSB3b3VsZCB0aGUgYWRkaXRp
+b25hbCBjb29raWUgdXBkYXRlIGhlbHA/IFRoZSB0cmFuc3BvcnQNCj4gPiA+IGlzIG5vdCBkaXNj
+b25uZWN0aW5nIGJlZm9yZSB0aGUgZGVhZGxvY2suDQo+ID4gPiANCj4gPiANCj4gPiBUaGUgY29u
+bmVjdGlvbiBjb29raWUncyBwdXJwb3NlIGlzIHR3b2ZvbGQ6DQo+ID4gDQo+ID4gMSkgSXQgdHJh
+Y2tzIHdoZXRoZXIgb3Igbm90IGEgcmVxdWVzdCBoYXMgYmVlbiB0cmFuc21pdHRlZCBvbiB0aGUN
+Cj4gPiBjdXJyZW50IGNvbm5lY3Rpb24gb3Igbm90Lg0KPiANCj4gVGhhdCdzIGJyb2tlbiBieSBz
+ZXR0aW5nIHRoZSBjb29raWUgdW5jb25kaXRpb25hbGx5IG91dHNpZGUNCj4gdGhlIHRyYW5zcG9y
+dF9sb2NrLCBpc24ndCBpdD8NCj4gDQo+IA0KPiA+IDIpIEl0IGVuc3VyZXMgdGhhdCB3aGVuIHNl
+dmVyYWwgcmVxdWVzdHMgd2l0aCB0aGUgc2FtZSBjb25uZWN0aW9uDQo+ID4gY29va2llIGFsbCBj
+YWxsIHhwcnRfY29uZGl0aW9uYWxfZGlzY29ubmVjdCgpLCB0aGVuIHRoYXQgcmVzdWx0cyBpbg0K
+PiA+IGENCj4gPiBzaW5nbGUgZGlzY29ubmVjdGlvbiBldmVudC4gVG8gZG8gc28sIGl0IGFzc3Vt
+ZXMgdGhhdA0KPiA+IHhwcnRfYXV0b2Nsb3NlKCkNCj4gPiB3aWxsIGNoYW5nZSB0aGUgY29va2ll
+IGlmIHRoZSBkaXNjb25uZWN0aW9uIGF0dGVtcHQgaXMgc3VjY2Vzc2Z1bC4NCj4gPiANCj4gPiBJ
+biBUQ1Agd2UgZG8gc28gaW4gdGhlIHhzX3RjcF9zdGF0ZV9jaGFuZ2UoKS4gSWYgdGhlIFJETUEg
+dHJhbnNwb3J0DQo+ID4gY2FuDQo+ID4gZ3VhcmFudGVlIHRoYXQgdGhlIGNhbGwgdG8geHBydC0+
+b3BzLT5jbG9zZSh4cHJ0KSBpcyBhbHdheXMNCj4gPiBzdWNjZXNzZnVsLA0KPiA+IHRoZW4geW91
+IGNvdWxkIGRvIHNvIHRoZXJlLg0KPiANCj4gSSBkb24ndCBtaW5kIG1vdmluZyB0aGUgY29va2ll
+IGJ1bXAgdG8gcnBjcmRtYV9jb25uX3VwY2FsbCwNCj4gYnV0IEknbSBub3Qgc3VyZSBJIHVuZGVy
+c3RhbmQgdGhlIGxvY2tpbmcgcmVxdWlyZW1lbnRzLg0KPiANCj4gQ3VycmVudGx5LCB4cHJ0X3Ry
+YW5zbWl0IHNldHMgdGhlIGNvbm5lY3RfY29va2llIHdoaWxlIGhvbGRpbmcNCj4gdGhlIHRyYW5z
+cG9ydF9sb2NrLg0KPiANCj4geHBydF9jb25kaXRpb25hbF9kaXNjb25uZWN0IGNvbXBhcmVzIHRo
+ZSBjb29raWUgd2hpbGUgaG9sZGluZw0KPiB0aGUgdHJhbnNwb3J0X2xvY2suDQo+IA0KPiBGb3Ig
+VENQLCB0aGUgdHJhbnNwb3J0X2xvY2sgaXMgaGVsZCB3aGVuIGJ1bXBpbmcgdGhlIGNvb2tpZQ0K
+PiBpbiB0aGUgRVNUQUJMSVNIRUQgY2FzZSwgYnV0IF9ub3RfIGluIHRoZSB0d28gQ0xPU0UgY2Fz
+ZXM/DQoNClRoYXQgc2hvdWxkIGJlIE9LLiBUaGUgbmV0d29ya2luZyBsYXllciBzaG91bGQgcHJv
+dmlkZSBzdWZmaWNpZW50DQpzZXJpYWxpc2F0aW9uIHRoYXQgd2UgZG9uJ3QgaGF2ZSB0byB3b3Jy
+eSBhYm91dCBjb2xsaXNpb25zLg0KDQo+IA0KPiB4cHJ0cmRtYSBob2xkcyB0aGUgdHJhbnNwb3J0
+X2xvY2sgd2hlbiBidW1waW5nIHRoZSBjb29raWUsDQo+IHdoaWNoIGl0IGRvZXMgaW4gaXRzIGNv
+bm5lY3Qgd29ya2VyLiBJdCBoYXMgdG8gaG9sZCB0aGUgbG9jaw0KPiBiZWNhdXNlIGl0IHNraXBz
+IHRoZSB2YWx1ZSAwLiB4cHJ0cmRtYSBuZWVkcyB0byBndWFyYW50ZWUNCj4gdGhhdCBhbiBSUEMg
+aXMgbmV2ZXIgdHJhbnNtaXR0ZWQgb24gdGhlIHNhbWUgY29ubmVjdGlvbg0KPiB0d2ljZSAoYW5k
+IG1heWJlIGl0IGNvdWxkIHVzZSBycV9jb25uZWN0X2Nvb2tpZSBpbnN0ZWFkIG9mDQo+IGl0cyBv
+d24gY29va2llKS4NCj4gDQo+IHhwcnRfcmVzZXJ2ZV9pbml0IGlzIGhvbGRpbmcgdGhlIHJlc2Vy
+dmVfbG9jayBidXQgbm90IHRoZQ0KPiB0cmFuc3BvcnRfbG9jayB3aGVuIGl0IGdyYWJzIHRoZSBj
+b29raWUuIE1heWJlIGl0IHNob3VsZA0KPiBub3QgYmUgaW5pdGlhbGl6aW5nIHRoZSBycXN0J3Mg
+Y29va2llIHRoZXJlPw0KPiANCj4gU2VlbXMgdG8gbWUgdGhhdCB4cHJ0X3RyYW5zbWl0IG5lZWRz
+IHRvIHVwZGF0ZSB0aGUgcnFzdCdzDQo+IGNvb2tpZSB3aGlsZSBob2xkaW5nIHRoZSB0cmFuc3Bv
+cnRfbG9jaywgZXNwZWNpYWxseSBpZg0KPiB4cHJ0cmRtYSBuZWVkcyB0byBza2lwIGEgY29va2ll
+IHZhbHVlPyBJJ20gc3VyZSBJJ20gbWlzc2luZw0KPiBzb21ldGhpbmcuDQo+IA0KDQpJdCBzaG91
+bGQgYmUgT0ssIGdpdmVuIHRoYXQgdGhlIGNvbm5lY3Rpb24gaXMgYSBzdGF0ZSBtYWNoaW5lLg0K
+SG93ZXZlciwgSSBtaXNzZWQgc29tZXRoaW5nIHRoYXQgeW91IHNhaWQgZWFybGllciBhYm91dA0K
+eHBydF9wcmVwYXJlX3RyYW5zbWl0KCkuDQoNCk9LLiBIb3cgYWJvdXQgdGhlIGZvbGxvd2luZyBm
+aXh1cCBwYXRjaCBpbnN0ZWFkIG9mIHRoZSBlYXJsaWVyIG9uZT8NCg0KODwtLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMjFjZGIyODAyZDlk
+OGI3MTU1Mzk5OGU2YmU1YWFmZWZmMDc0MjE0MiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZy
+b206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRh
+dGU6IFRodSwgMTQgRGVjIDIwMTcgMDc6MDU6MjcgLTA1MDANClN1YmplY3Q6IFtQQVRDSF0gZml4
+dXAhIFNVTlJQQzogRml4IGEgcmFjZSBpbiB0aGUgcmVjZWl2ZSBjb2RlIHBhdGgNCg0KLS0tDQog
+bmV0L3N1bnJwYy94cHJ0LmMgfCA0ICsrKy0NCiAxIGZpbGUgY2hhbmdlZCwgMyBpbnNlcnRpb25z
+KCspLCAxIGRlbGV0aW9uKC0pDQoNCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25l
+dC9zdW5ycGMveHBydC5jDQppbmRleCA1ZTQyNzhlOWNlMzcuLjMzYjc0ZmQ4NDA1MSAxMDA2NDQN
+Ci0tLSBhL25ldC9zdW5ycGMveHBydC5jDQorKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KQEAgLTEw
+MDEsNiArMTAwMSw3IEBAIHZvaWQgeHBydF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sp
+DQogew0KIAlzdHJ1Y3QgcnBjX3Jxc3QJKnJlcSA9IHRhc2stPnRrX3Jxc3RwOw0KIAlzdHJ1Y3Qg
+cnBjX3hwcnQJKnhwcnQgPSByZXEtPnJxX3hwcnQ7DQorCXVuc2lnbmVkIGludCBjb25uZWN0X2Nv
+b2tpZTsNCiAJaW50IHN0YXR1cywgbnVtcmVxczsNCiANCiAJZHByaW50aygiUlBDOiAlNXUgeHBy
+dF90cmFuc21pdCgldSlcbiIsIHRhc2stPnRrX3BpZCwgcmVxLT5ycV9zbGVuKTsNCkBAIC0xMDI0
+LDcgKzEwMjUsNyBAQCB2b2lkIHhwcnRfdHJhbnNtaXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0K
+IAl9IGVsc2UgaWYgKCFyZXEtPnJxX2J5dGVzX3NlbnQpDQogCQlyZXR1cm47DQogDQotCXJlcS0+
+cnFfY29ubmVjdF9jb29raWUgPSB4cHJ0LT5jb25uZWN0X2Nvb2tpZTsNCisJY29ubmVjdF9jb29r
+aWUgPSB4cHJ0LT5jb25uZWN0X2Nvb2tpZTsNCiAJcmVxLT5ycV94dGltZSA9IGt0aW1lX2dldCgp
+Ow0KIAlzdGF0dXMgPSB4cHJ0LT5vcHMtPnNlbmRfcmVxdWVzdCh0YXNrKTsNCiAJdHJhY2VfeHBy
+dF90cmFuc21pdCh4cHJ0LCByZXEtPnJxX3hpZCwgc3RhdHVzKTsNCkBAIC0xMDUwLDYgKzEwNTEs
+NyBAQCB2b2lkIHhwcnRfdHJhbnNtaXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KIAl4cHJ0LT5z
+dGF0LnBlbmRpbmdfdSArPSB4cHJ0LT5wZW5kaW5nLnFsZW47DQogCXNwaW5fdW5sb2NrX2JoKCZ4
+cHJ0LT50cmFuc3BvcnRfbG9jayk7DQogDQorCXJlcS0+cnFfY29ubmVjdF9jb29raWUgPSBjb25u
+ZWN0X2Nvb2tpZTsNCiAJaWYgKHJwY19yZXBseV9leHBlY3RlZCh0YXNrKSAmJiAhUkVBRF9PTkNF
+KHJlcS0+cnFfcmVwbHlfYnl0ZXNfcmVjdmQpKSB7DQogCQkvKg0KIAkJICogU2xlZXAgb24gdGhl
+IHBlbmRpbmcgcXVldWUgaWYgd2UncmUgZXhwZWN0aW5nIGEgcmVwbHkuDQotLSANCjIuMTQuMw0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
+YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
