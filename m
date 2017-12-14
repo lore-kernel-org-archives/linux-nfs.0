@@ -1,34 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mta-out1.inet.fi ([62.71.2.233]:42843 "EHLO johanna1.inet.fi"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753537AbdLNRzC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 14 Dec 2017 12:55:02 -0500
-Message-ID: <1513273692.24220.47.camel@pp1.inet.fi>
+Received: from gardel.0pointer.net ([85.214.157.71]:52448 "EHLO
+        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754006AbdLNSMK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 13:12:10 -0500
+Date: Thu, 14 Dec 2017 19:05:51 +0100
+From: Lennart Poettering <lennart@poettering.net>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        Systemd Mailing List <systemd-devel@lists.freedesktop.org>
 Subject: Re: [systemd-devel] [PATCH] rpcbind.service: Not pulling the
  rpcbind.target
-From: Uoti Urpala <uoti.urpala@pp1.inet.fi>
-To: Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Cc: Systemd Mailing List <systemd-devel@lists.freedesktop.org>
-Date: Thu, 14 Dec 2017 19:48:12 +0200
-In-Reply-To: <20171214170544.11793-1-steved@redhat.com>
+Message-ID: <20171214180551.GA15603@gardel-login>
 References: <20171214170544.11793-1-steved@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171214170544.11793-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2017-12-14 at 12:05 -0500, Steve Dickson wrote:
+On Do, 14.12.17 12:05, Steve Dickson (steved@redhat.com) wrote:
+
 > According to systemd.special(7) manpage:
 > 
 > rpcbind.target
->     The portmapper/rpcbind pulls in this target and orders itself
-> before it, to indicate its availability. systemd automatically adds
-> dependencies of type After= for this target unit to all SysV init
-> script service units with an LSB header referring to the "$portmap"
-> facility.
-
-
+>     The portmapper/rpcbind pulls in this target and
+>     orders itself before it, to indicate its availability. systemd
+>     automatically adds dependencies of type After= for this target
+>     unit to all SysV init script service units with an LSB header
+>     referring to the "$portmap" facility.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  systemd/rpcbind.service.in | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
 > diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
 > index f8cfa9f..2b49c24 100644
 > --- a/systemd/rpcbind.service.in
@@ -42,18 +47,12 @@ On Thu, 2017-12-14 at 12:05 -0500, Steve Dickson wrote:
 > +Wants=rpcbind.socket rpcbind.target
 > +After=rpcbind.socket rpcbind.target
 
-Is this needed when the service has socket activation support? If the
-only interaction with it is through the socket, it shouldn't matter
-even if the service is not actually up yet - clients can already open
-connections to the socket regardless.
+The last line should be:
 
-And regardless, that "After" for rpcbind.target seems backwards.
-Shouldn't it be "Before", so that the target being up signals that the
-service has already been started?
+After=rpcbind.socket
+Before=rpcbind.target
 
-Not directly related, but if that comment is accurate and the socket
-should be used "no matter what", perhaps that should be "Requires"
-instead of "Wants" so that if the socket could not be opened for some
-reason, the service fails instead of starting without socket
-activation?
+Lennart
 
+-- 
+Lennart Poettering, Red Hat
