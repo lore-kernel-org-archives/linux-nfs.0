@@ -1,130 +1,186 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45872 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752154AbdLNVd5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 16:33:57 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3] SUNRPC: Fix a race in the receive code path
-Date: Thu, 14 Dec 2017 21:33:51 +0000
-Message-ID: <1513287230.15001.15.camel@primarydata.com>
-References: <20171204001726.5747-1-trond.myklebust@primarydata.com>
-         <17932F80-EF03-48BA-AD6C-90A441B286EF@oracle.com>
-         <C5351D4D-2E01-4B6D-AF19-EE6BABD46CCF@oracle.com>
-         <BF7A22EC-55D9-4545-9F48-93A143A658DB@oracle.com>
-         <1513253779.6553.7.camel@primarydata.com>
-         <42B23A9B-3566-4E0F-9E3D-53BB2C39C0E9@oracle.com>
-         <1513278198.5198.3.camel@primarydata.com>
-         <2E949D1D-AD89-448B-B263-B53FB66C9766@oracle.com>
-         <1513283844.11150.11.camel@primarydata.com>
-         <4D12D608-0108-4CBA-AEF4-CD8CEC86B55F@oracle.com>
-In-Reply-To: <4D12D608-0108-4CBA-AEF4-CD8CEC86B55F@oracle.com>
+Received: from mx2.suse.de ([195.135.220.15]:54530 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753593AbdLNVwx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 14 Dec 2017 16:52:53 -0500
+From: NeilBrown <neilb@suse.com>
+To: Joshua Watt <jpewhacker@gmail.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>
+Date: Fri, 15 Dec 2017 08:52:39 +1100
+Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        David Howells <dhowells@redhat.com>, linux-api@vger.kernel.org
+Subject: Re: [RFC v4 0/9] NFS Force Unmounting
+In-Reply-To: <1513275773.3888.20.camel@gmail.com>
+References: <20171117174552.18722-1-JPEWhacker@gmail.com> <1512398194.7031.56.camel@gmail.com> <87indksq9q.fsf@notabene.neil.brown.name> <1512565420.4048.21.camel@redhat.com> <87bmjaq89r.fsf@notabene.neil.brown.name> <1513275773.3888.20.camel@gmail.com>
+Message-ID: <876099nfiw.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTEyLTE0IGF0IDE1OjU5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBEZWMgMTQsIDIwMTcsIGF0IDM6MzcgUE0sIFRyb25kIE15a2xlYnVzdCA8dHJvbmRteUBw
-cmltYXJ5ZGF0YS5jDQo+ID4gb20+IHdyb3RlOg0KPiA+IA0KPiA+IE9uIFRodSwgMjAxNy0xMi0x
-NCBhdCAxNDoyMiAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IE9uIERlYyAxNCwg
-MjAxNywgYXQgMjowMyBQTSwgVHJvbmQgTXlrbGVidXN0IDx0cm9uZG15QHByaW1hcnlkYQ0KPiA+
-ID4gPiB0YS5jDQo+ID4gPiA+IG9tPiB3cm90ZToNCj4gPiA+ID4gDQo+ID4gPiA+IERvZXMgdGhl
-IFJETUEgY29kZSB1cGRhdGUgdGhlIGNvbm5lY3QgY29va2llIHdoZW4gdGhlDQo+ID4gPiA+IGNv
-bm5lY3Rpb24NCj4gPiA+ID4gYnJlYWtzPyBJdCBsb29rcyB0byBtZSBhcyBpZiBpdCBvbmx5IGRv
-ZXMgdGhhdCB3aGVuIHRoZQ0KPiA+ID4gPiBjb25uZWN0aW9uDQo+ID4gPiA+IGlzDQo+ID4gPiA+
-IHJlLWVzdGFibGlzaGVkLiBXZSByZWFsbHkgd2FudCBib3RoLg0KPiA+ID4gPiANCj4gPiA+ID4g
-PiBJIGltYWdpbmUgdGhpcyBpc3N1ZSBjb3VsZCBhbHNvIGltcGFjdCB3cml0ZSBidWZmZXINCj4g
-PiA+ID4gPiBleGhhdXN0aW9uDQo+ID4gPiA+ID4gb24gVENQLg0KPiA+ID4gPiANCj4gPiA+ID4g
-U2VlIG5ldC9zdW5ycGMveHBydHNvY2suYzp4c190Y3Bfc3RhdGVfY2hhbmdlKCkNCj4gPiA+IA0K
-PiA+ID4geHBydHJkbWEgbWFuaXB1bGF0ZXMgdGhlIGNvbm5lY3RfY29va2llIGluIGl0cyBjb25u
-ZWN0IHdvcmtlciwNCj4gPiA+IHNlZSBycGNyZG1hX2Nvbm5lY3Rfd29ya2VyLiBUaGlzIHdhcyBh
-ZGRlZCBieToNCj4gPiA+IA0KPiA+ID4gY29tbWl0IDU3NTQ0OGJkMzYyMDhmOTlmZTBkZDU1NGE0
-MzUxOGQ3OTg5NjY3NDANCj4gPiA+IEF1dGhvcjogICAgIFRvbSBUYWxwZXkgPHRhbHBleUBuZXRh
-cHAuY29tPg0KPiA+ID4gQXV0aG9yRGF0ZTogVGh1IE9jdCA5IDE1OjAwOjQwIDIwMDggLTA0MDAN
-Cj4gPiA+IENvbW1pdDogICAgIFRyb25kIE15a2xlYnVzdCA8VHJvbmQuTXlrbGVidXN0QG5ldGFw
-cC5jb20+DQo+ID4gPiBDb21taXREYXRlOiBGcmkgT2N0IDEwIDE1OjEwOjM2IDIwMDggLTA0MDAN
-Cj4gPiA+IA0KPiA+ID4gICAgUlBDL1JETUE6IHN1cHByZXNzIHJldHJhbnNtaXQgb24gUlBDL1JE
-TUEgY2xpZW50cy4NCj4gPiA+IA0KPiA+ID4gV291bGQgaXQgYmUgbW9yZSBjb3JyZWN0IHRvIGJ1
-bXAgdGhlIGNvb2tpZSBpbg0KPiA+ID4gcnBjcmRtYV9jb25uX3VwY2FsbCwNCj4gPiA+IHdoaWNo
-IGlzIHRoZSBlcXVpdmFsZW50IHRvIHhzX3RjcF9zdGF0ZV9jaGFuZ2U/IChpZiBzbywgd2h5LCBz
-bw0KPiA+ID4gSSBjYW4gY29tcG9zZSBhIHJlYXNvbmFibGUgcGF0Y2ggZGVzY3JpcHRpb24pDQo+
-ID4gPiANCj4gPiA+IEl0IGNvdWxkIGJlIGJ1bXBlZCBpbiB0aGUgUkRNQV9DTV9FVkVOVF9FU1RB
-QkxJU0hFRCBhbmQgdGhlDQo+ID4gPiBSRE1BX0NNX0VWRU5UX0RJU0NPTk5FQ1RFRCBjYXNlcywg
-Zm9yIGV4YW1wbGUuIEknbSBub3Qgc3VyZQ0KPiA+ID4gUkRNQSBwcm92aWRlcyBhIGRpc3RpbmN0
-aW9uIGJldHdlZW4gInNlcnZlciBkaXNjb25uZWN0ZWQiDQo+ID4gPiBhbmQgImNsaWVudCBkaXNj
-b25uZWN0ZWQiIGFsdGhvdWdoIHRoYXQgcHJvYmFibHkgZG9lcyBub3QNCj4gPiA+IG1hdHRlciBm
-b3IgdGhpcyBwdXJwb3NlLg0KPiA+ID4gDQo+ID4gPiBCdXQsIHdoeSB3b3VsZCB0aGUgYWRkaXRp
-b25hbCBjb29raWUgdXBkYXRlIGhlbHA/IFRoZSB0cmFuc3BvcnQNCj4gPiA+IGlzIG5vdCBkaXNj
-b25uZWN0aW5nIGJlZm9yZSB0aGUgZGVhZGxvY2suDQo+ID4gPiANCj4gPiANCj4gPiBUaGUgY29u
-bmVjdGlvbiBjb29raWUncyBwdXJwb3NlIGlzIHR3b2ZvbGQ6DQo+ID4gDQo+ID4gMSkgSXQgdHJh
-Y2tzIHdoZXRoZXIgb3Igbm90IGEgcmVxdWVzdCBoYXMgYmVlbiB0cmFuc21pdHRlZCBvbiB0aGUN
-Cj4gPiBjdXJyZW50IGNvbm5lY3Rpb24gb3Igbm90Lg0KPiANCj4gVGhhdCdzIGJyb2tlbiBieSBz
-ZXR0aW5nIHRoZSBjb29raWUgdW5jb25kaXRpb25hbGx5IG91dHNpZGUNCj4gdGhlIHRyYW5zcG9y
-dF9sb2NrLCBpc24ndCBpdD8NCj4gDQo+IA0KPiA+IDIpIEl0IGVuc3VyZXMgdGhhdCB3aGVuIHNl
-dmVyYWwgcmVxdWVzdHMgd2l0aCB0aGUgc2FtZSBjb25uZWN0aW9uDQo+ID4gY29va2llIGFsbCBj
-YWxsIHhwcnRfY29uZGl0aW9uYWxfZGlzY29ubmVjdCgpLCB0aGVuIHRoYXQgcmVzdWx0cyBpbg0K
-PiA+IGENCj4gPiBzaW5nbGUgZGlzY29ubmVjdGlvbiBldmVudC4gVG8gZG8gc28sIGl0IGFzc3Vt
-ZXMgdGhhdA0KPiA+IHhwcnRfYXV0b2Nsb3NlKCkNCj4gPiB3aWxsIGNoYW5nZSB0aGUgY29va2ll
-IGlmIHRoZSBkaXNjb25uZWN0aW9uIGF0dGVtcHQgaXMgc3VjY2Vzc2Z1bC4NCj4gPiANCj4gPiBJ
-biBUQ1Agd2UgZG8gc28gaW4gdGhlIHhzX3RjcF9zdGF0ZV9jaGFuZ2UoKS4gSWYgdGhlIFJETUEg
-dHJhbnNwb3J0DQo+ID4gY2FuDQo+ID4gZ3VhcmFudGVlIHRoYXQgdGhlIGNhbGwgdG8geHBydC0+
-b3BzLT5jbG9zZSh4cHJ0KSBpcyBhbHdheXMNCj4gPiBzdWNjZXNzZnVsLA0KPiA+IHRoZW4geW91
-IGNvdWxkIGRvIHNvIHRoZXJlLg0KPiANCj4gSSBkb24ndCBtaW5kIG1vdmluZyB0aGUgY29va2ll
-IGJ1bXAgdG8gcnBjcmRtYV9jb25uX3VwY2FsbCwNCj4gYnV0IEknbSBub3Qgc3VyZSBJIHVuZGVy
-c3RhbmQgdGhlIGxvY2tpbmcgcmVxdWlyZW1lbnRzLg0KPiANCj4gQ3VycmVudGx5LCB4cHJ0X3Ry
-YW5zbWl0IHNldHMgdGhlIGNvbm5lY3RfY29va2llIHdoaWxlIGhvbGRpbmcNCj4gdGhlIHRyYW5z
-cG9ydF9sb2NrLg0KPiANCj4geHBydF9jb25kaXRpb25hbF9kaXNjb25uZWN0IGNvbXBhcmVzIHRo
-ZSBjb29raWUgd2hpbGUgaG9sZGluZw0KPiB0aGUgdHJhbnNwb3J0X2xvY2suDQo+IA0KPiBGb3Ig
-VENQLCB0aGUgdHJhbnNwb3J0X2xvY2sgaXMgaGVsZCB3aGVuIGJ1bXBpbmcgdGhlIGNvb2tpZQ0K
-PiBpbiB0aGUgRVNUQUJMSVNIRUQgY2FzZSwgYnV0IF9ub3RfIGluIHRoZSB0d28gQ0xPU0UgY2Fz
-ZXM/DQoNClRoYXQgc2hvdWxkIGJlIE9LLiBUaGUgbmV0d29ya2luZyBsYXllciBzaG91bGQgcHJv
-dmlkZSBzdWZmaWNpZW50DQpzZXJpYWxpc2F0aW9uIHRoYXQgd2UgZG9uJ3QgaGF2ZSB0byB3b3Jy
-eSBhYm91dCBjb2xsaXNpb25zLg0KDQo+IA0KPiB4cHJ0cmRtYSBob2xkcyB0aGUgdHJhbnNwb3J0
-X2xvY2sgd2hlbiBidW1waW5nIHRoZSBjb29raWUsDQo+IHdoaWNoIGl0IGRvZXMgaW4gaXRzIGNv
-bm5lY3Qgd29ya2VyLiBJdCBoYXMgdG8gaG9sZCB0aGUgbG9jaw0KPiBiZWNhdXNlIGl0IHNraXBz
-IHRoZSB2YWx1ZSAwLiB4cHJ0cmRtYSBuZWVkcyB0byBndWFyYW50ZWUNCj4gdGhhdCBhbiBSUEMg
-aXMgbmV2ZXIgdHJhbnNtaXR0ZWQgb24gdGhlIHNhbWUgY29ubmVjdGlvbg0KPiB0d2ljZSAoYW5k
-IG1heWJlIGl0IGNvdWxkIHVzZSBycV9jb25uZWN0X2Nvb2tpZSBpbnN0ZWFkIG9mDQo+IGl0cyBv
-d24gY29va2llKS4NCj4gDQo+IHhwcnRfcmVzZXJ2ZV9pbml0IGlzIGhvbGRpbmcgdGhlIHJlc2Vy
-dmVfbG9jayBidXQgbm90IHRoZQ0KPiB0cmFuc3BvcnRfbG9jayB3aGVuIGl0IGdyYWJzIHRoZSBj
-b29raWUuIE1heWJlIGl0IHNob3VsZA0KPiBub3QgYmUgaW5pdGlhbGl6aW5nIHRoZSBycXN0J3Mg
-Y29va2llIHRoZXJlPw0KPiANCj4gU2VlbXMgdG8gbWUgdGhhdCB4cHJ0X3RyYW5zbWl0IG5lZWRz
-IHRvIHVwZGF0ZSB0aGUgcnFzdCdzDQo+IGNvb2tpZSB3aGlsZSBob2xkaW5nIHRoZSB0cmFuc3Bv
-cnRfbG9jaywgZXNwZWNpYWxseSBpZg0KPiB4cHJ0cmRtYSBuZWVkcyB0byBza2lwIGEgY29va2ll
-IHZhbHVlPyBJJ20gc3VyZSBJJ20gbWlzc2luZw0KPiBzb21ldGhpbmcuDQo+IA0KDQpJdCBzaG91
-bGQgYmUgT0ssIGdpdmVuIHRoYXQgdGhlIGNvbm5lY3Rpb24gaXMgYSBzdGF0ZSBtYWNoaW5lLg0K
-SG93ZXZlciwgSSBtaXNzZWQgc29tZXRoaW5nIHRoYXQgeW91IHNhaWQgZWFybGllciBhYm91dA0K
-eHBydF9wcmVwYXJlX3RyYW5zbWl0KCkuDQoNCk9LLiBIb3cgYWJvdXQgdGhlIGZvbGxvd2luZyBm
-aXh1cCBwYXRjaCBpbnN0ZWFkIG9mIHRoZSBlYXJsaWVyIG9uZT8NCg0KODwtLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCkZyb20gMjFjZGIyODAyZDlk
-OGI3MTU1Mzk5OGU2YmU1YWFmZWZmMDc0MjE0MiBNb24gU2VwIDE3IDAwOjAwOjAwIDIwMDENCkZy
-b206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkRh
-dGU6IFRodSwgMTQgRGVjIDIwMTcgMDc6MDU6MjcgLTA1MDANClN1YmplY3Q6IFtQQVRDSF0gZml4
-dXAhIFNVTlJQQzogRml4IGEgcmFjZSBpbiB0aGUgcmVjZWl2ZSBjb2RlIHBhdGgNCg0KLS0tDQog
-bmV0L3N1bnJwYy94cHJ0LmMgfCA0ICsrKy0NCiAxIGZpbGUgY2hhbmdlZCwgMyBpbnNlcnRpb25z
-KCspLCAxIGRlbGV0aW9uKC0pDQoNCmRpZmYgLS1naXQgYS9uZXQvc3VucnBjL3hwcnQuYyBiL25l
-dC9zdW5ycGMveHBydC5jDQppbmRleCA1ZTQyNzhlOWNlMzcuLjMzYjc0ZmQ4NDA1MSAxMDA2NDQN
-Ci0tLSBhL25ldC9zdW5ycGMveHBydC5jDQorKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KQEAgLTEw
-MDEsNiArMTAwMSw3IEBAIHZvaWQgeHBydF90cmFuc21pdChzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2sp
-DQogew0KIAlzdHJ1Y3QgcnBjX3Jxc3QJKnJlcSA9IHRhc2stPnRrX3Jxc3RwOw0KIAlzdHJ1Y3Qg
-cnBjX3hwcnQJKnhwcnQgPSByZXEtPnJxX3hwcnQ7DQorCXVuc2lnbmVkIGludCBjb25uZWN0X2Nv
-b2tpZTsNCiAJaW50IHN0YXR1cywgbnVtcmVxczsNCiANCiAJZHByaW50aygiUlBDOiAlNXUgeHBy
-dF90cmFuc21pdCgldSlcbiIsIHRhc2stPnRrX3BpZCwgcmVxLT5ycV9zbGVuKTsNCkBAIC0xMDI0
-LDcgKzEwMjUsNyBAQCB2b2lkIHhwcnRfdHJhbnNtaXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0K
-IAl9IGVsc2UgaWYgKCFyZXEtPnJxX2J5dGVzX3NlbnQpDQogCQlyZXR1cm47DQogDQotCXJlcS0+
-cnFfY29ubmVjdF9jb29raWUgPSB4cHJ0LT5jb25uZWN0X2Nvb2tpZTsNCisJY29ubmVjdF9jb29r
-aWUgPSB4cHJ0LT5jb25uZWN0X2Nvb2tpZTsNCiAJcmVxLT5ycV94dGltZSA9IGt0aW1lX2dldCgp
-Ow0KIAlzdGF0dXMgPSB4cHJ0LT5vcHMtPnNlbmRfcmVxdWVzdCh0YXNrKTsNCiAJdHJhY2VfeHBy
-dF90cmFuc21pdCh4cHJ0LCByZXEtPnJxX3hpZCwgc3RhdHVzKTsNCkBAIC0xMDUwLDYgKzEwNTEs
-NyBAQCB2b2lkIHhwcnRfdHJhbnNtaXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KIAl4cHJ0LT5z
-dGF0LnBlbmRpbmdfdSArPSB4cHJ0LT5wZW5kaW5nLnFsZW47DQogCXNwaW5fdW5sb2NrX2JoKCZ4
-cHJ0LT50cmFuc3BvcnRfbG9jayk7DQogDQorCXJlcS0+cnFfY29ubmVjdF9jb29raWUgPSBjb25u
-ZWN0X2Nvb2tpZTsNCiAJaWYgKHJwY19yZXBseV9leHBlY3RlZCh0YXNrKSAmJiAhUkVBRF9PTkNF
-KHJlcS0+cnFfcmVwbHlfYnl0ZXNfcmVjdmQpKSB7DQogCQkvKg0KIAkJICogU2xlZXAgb24gdGhl
-IHBlbmRpbmcgcXVldWUgaWYgd2UncmUgZXhwZWN0aW5nIGEgcmVwbHkuDQotLSANCjIuMTQuMw0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
-YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+On Thu, Dec 14 2017, Joshua Watt wrote:
+
+> On Fri, 2017-12-08 at 13:10 +1100, NeilBrown wrote:
+>> On Wed, Dec 06 2017, Jeff Layton wrote:
+>>=20
+>> > On Wed, 2017-12-06 at 10:34 +1100, NeilBrown wrote:
+>> > >=20
+>> > > The new semantic for MNT_DETACH|MNT_FORCE is interesting.
+>> > > As it was never possible before (from /bin/umount), it should be
+>> > > safe to
+>> > > add a new meaning.
+>> > > The meaning is effectively "detach the filesystem from the
+>> > > namespace and
+>> > > detach the transport from the filesystem", which sounds like it
+>> > > is
+>> > > useful.
+>> > > It is worth highlighting this, and maybe even cc:ing
+>> > > linux-api@vger.kernel.org ... done that.
+>> > >=20
+>> >=20
+>> > I'm not thrilled with the new flag combo, personally. Given that
+>> > we're
+>> > introducing new behavior here, I think it wouldn't hurt to add a
+>> > new
+>> > UMOUNT_* flag for this (UMOUNT_NUKE_FROM_ORBIT?).
+>>=20
+>> Suppose we did... MNT_FORCE_PONIES. What would be the semantics of
+>> this
+>> flag?  Once we had it, would anyone ever want to use MNT_FORCE again?
+>>=20
+>> MNT_FORCE is already fairly heavy handled.  It abort an arbitrary
+>> collections of RPC requests being sent for the given filesystem, no
+>> matter where else that filesystem might be mounted.
+>> Is it ever safe to use this flag unless you have good reason to
+>> believe
+>> that the server is not available and there is no point pretending any
+>> more?
+>> And if that is the case, why not use the new MNT_FORCE_PONIES which
+>> is
+>> at least predictable and reliable.
+>>=20
+>> We've talking a lot about the one NFS filesystem being mounted in
+>> multiple containers.  MNT_FORCE is already a problem for such mounts
+>> as
+>> one contains can kill requests generated from another
+>> container.  Maybe
+>> MNT_FORCE needs to be restricted to "real" root.
+>> Once we restrict it, do we need to keep it from being too harsh?
+>>=20
+>> What would be really nice is a timeout for umount, and for sync.
+>> The timeout only starts when the filesystem stops making progress for
+>> writeback.  If it eventually does timeout, then the caller can fall
+>> back
+>> to MNT_DETACH if they are in a container, or MNT_FORCE if not.
+>> (Maybe MNT_FORCE should map to MNT_DETACH in a container??? or maybe
+>> not).
+>>=20
+>> There is a lot here that still isn't clear to me, but one this does
+>> seem
+>> to be becoming clear:  MNT_FORCE as it stands is nearly useless and
+>> it
+>> would serve is well to find a semantic that it actually useful, and
+>> impose that.
+>
+> Trying to keep the discussion going... does anyone else have thoughts
+> on this?
+
+It's a challenge, isn't it ... keeping people on-task to make forward
+progress.
+If only we could all meet in the canteen at 4pm every Friday and discuss
+these things over drinks.  I don't suppose any of the video conference
+tools support timeshifting, so we can each do 4pm in our own time
+zone....
+
+I would like to arrange that nothing can block indefinitely on
+=2D>s_umount.  This probably means that the various "flush data" calls
+made under this lock need a timeout, or to be interruptible.
+Then both umount and remount could be sure of getting ->s_umount
+without undue delay.
+Then I would like MNT_FORCE *not* to abort requests before trying to get
+the lock, but instead to be passed down to ->kill_sb().
+We probably cannot pass it explicitly, but could set a flag while
+=2D>s_umount is held.
+This flag might be handled by generic_shutdown_super(), causing
+it to purge any unwritten data, rather than call sync_filesystems().
+
+This way, if the filesystem is mounted elsewhere, then the MNT_FORCE has
+no effect.  If it is a final mount, then it cleans up properly.
+
+Your need to cause writes to start failing would be achieved by
+performing a remount, either just setting "soft,retrans=3D0,timeo=3D1", or
+by setting some special-purpose mount option.
+
+In order for s_umount not to be held indefinite, the generic things that
+need to be fixed include:
+ __writeback_inodes_wb() calls writeback_sb_inodes() under the lock.
+    This needs to be interruptible
+ Same for try_to_writeback_inodes_sb() -> __writeback_inodes_sb_nr()
+ sync_sync and do_sync_work call iterate_supers() with various handlers, an=
+d these need
+ to be interruptible.
+
+and do_remount_sb needs to not block.
+
+Finding a way to interrupt those writeback calls would be tricky,
+especially as we need to trigger the interrupt without holding s_umount.
+
+I really like the idea that an umount attempt would interrupt a sync().
+Currently sync() can block indefinitely, which is occasionally
+inconvenient.
+If "umount" (or "umount -f" at least) on a filesystem would abort the
+sync of that filesystem, take the lock and clean up more forcefully,
+that would make for fairly clean shutdown processing.
+1/ call sync() in a separate thread.
+2/ wait until Dirty in /proc/meminfo stops changing
+3/ umount -f every remaining filesystem.  Even if the
+   umount fails, the sync will abort.
+
+
+Part of this effort would require making sure that SIGKILL really kills
+processes blocked on filesystem IO.
+
+So:
+ 1/ make sure all filesystem IO waits are TASK_KILLABLE
+ 2/ find a way to interrupt any write-back wait when there is a pending
+    remount or umount.  Possibly the write-back thing would need to
+    retry after the umount/remount, I'm not sure.
+ 3/ Cause MNT_FORCE to set a superblock flag, and have
+    generic_shutdown_super() and/or ->kill_sb() interpret this flag to
+    be very forceful
+ 4/ Possibly introduce new NFS mount option which causes all requests
+    to fail
+ 5/ Teach NFS to support remount of this option, and of soft, retrans,
+    timeo.
+
+How does that sound?
+
+NeilBrown
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAloy8qkACgkQOeye3VZi
+gbldSg/+KTjub5/qvaOvMiaAUlprQtHGugaXVMZN5zzm5EUjjkz7a7b2k5EjU3uk
+HSIZAjBA8oHWkrUjcXuZvAZkGDHEVYq4UED71vYb/N2dzCvtBl69NAOMr2UkT56S
+AQFuQmAvxbARINTNBVujZryDHmBpoiUa8TEV5ETbG/AEYB9q7M9ZUbgHG/SaFs0+
+I86AxnbpXRDlr0RuW6gBtBuUgKx1CxEsE4apkEuU15wmzW1DYcpB5cUzfAEi99VM
+CDBtJV7Uz482LMPrn9HAfZQL+8pmDj8/OVzygRsHjuD0zC0IOgFsnXf6p0wKS3DK
+mnOTnrJ3c84U/DZHaFpKTw9dZppCXzXjbWhneHT3lx6sY2Tkbd0hcmgobeR+Da9g
+e8F7iREmn0Oce8f5Qfyy5+SbE+8JkzDXBee9Y7HYZMp5CtKkDSgo1wMGzsKir6Lf
+RsNlNEkug37v1/GfKRqh6L9lLfPuOR01ck463UJJFd5z+RM4f3gyB6/C09lzPcDM
+QMVH4xMlcqhJlq0og+dXG+VKsNibdG39tX0F/dyhCL7V7L8Htb2VfzysyKCm8kcs
+io4i0lRfrDEZRZ0Loan/t/MvzXK3sPmov5qXZWAB1UMZ+cmdKuVw1HD8uTn2ULt8
+cOnRrSDem0HLxjaVvNcltmBekRXn3oMyq4dgpHosuk9hyZKSUKU=
+=xIw8
+-----END PGP SIGNATURE-----
+--=-=-=--
