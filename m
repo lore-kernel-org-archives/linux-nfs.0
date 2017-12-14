@@ -1,58 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from gardel.0pointer.net ([85.214.157.71]:52448 "EHLO
-        gardel.0pointer.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754006AbdLNSMK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 13:12:10 -0500
-Date: Thu, 14 Dec 2017 19:05:51 +0100
-From: Lennart Poettering <lennart@poettering.net>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Systemd Mailing List <systemd-devel@lists.freedesktop.org>
-Subject: Re: [systemd-devel] [PATCH] rpcbind.service: Not pulling the
- rpcbind.target
-Message-ID: <20171214180551.GA15603@gardel-login>
-References: <20171214170544.11793-1-steved@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171214170544.11793-1-steved@redhat.com>
+Received: from mail-it0-f47.google.com ([209.85.214.47]:45489 "EHLO
+        mail-it0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754305AbdLNSX4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 13:23:56 -0500
+From: Joshua Watt <jpewhacker@gmail.com>
+Message-ID: <1513275773.3888.20.camel@gmail.com>
+Subject: Re: [RFC v4 0/9] NFS Force Unmounting
+To: NeilBrown <neilb@suse.com>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J . Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        David Howells <dhowells@redhat.com>, linux-api@vger.kernel.org
+In-Reply-To: <87bmjaq89r.fsf@notabene.neil.brown.name>
+References: <20171117174552.18722-1-JPEWhacker@gmail.com>
+         <1512398194.7031.56.camel@gmail.com>
+         <87indksq9q.fsf@notabene.neil.brown.name>
+         <1512565420.4048.21.camel@redhat.com>
+         <87bmjaq89r.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 14 Dec 2017 12:22:53 -0600
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Do, 14.12.17 12:05, Steve Dickson (steved@redhat.com) wrote:
-
-> According to systemd.special(7) manpage:
+On Fri, 2017-12-08 at 13:10 +1100, NeilBrown wrote:
+> On Wed, Dec 06 2017, Jeff Layton wrote:
 > 
-> rpcbind.target
->     The portmapper/rpcbind pulls in this target and
->     orders itself before it, to indicate its availability. systemd
->     automatically adds dependencies of type After= for this target
->     unit to all SysV init script service units with an LSB header
->     referring to the "$portmap" facility.
+> > On Wed, 2017-12-06 at 10:34 +1100, NeilBrown wrote:
+> > > 
+> > > The new semantic for MNT_DETACH|MNT_FORCE is interesting.
+> > > As it was never possible before (from /bin/umount), it should be
+> > > safe to
+> > > add a new meaning.
+> > > The meaning is effectively "detach the filesystem from the
+> > > namespace and
+> > > detach the transport from the filesystem", which sounds like it
+> > > is
+> > > useful.
+> > > It is worth highlighting this, and maybe even cc:ing
+> > > linux-api@vger.kernel.org ... done that.
+> > > 
+> > 
+> > I'm not thrilled with the new flag combo, personally. Given that
+> > we're
+> > introducing new behavior here, I think it wouldn't hurt to add a
+> > new
+> > UMOUNT_* flag for this (UMOUNT_NUKE_FROM_ORBIT?).
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  systemd/rpcbind.service.in | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+> Suppose we did... MNT_FORCE_PONIES. What would be the semantics of
+> this
+> flag?  Once we had it, would anyone ever want to use MNT_FORCE again?
 > 
-> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
-> index f8cfa9f..2b49c24 100644
-> --- a/systemd/rpcbind.service.in
-> +++ b/systemd/rpcbind.service.in
-> @@ -6,8 +6,8 @@ RequiresMountsFor=@statedir@
->  
->  # Make sure we use the IP addresses listed for
->  # rpcbind.socket, no matter how this unit is started.
-> -Wants=rpcbind.socket
-> -After=rpcbind.socket
-> +Wants=rpcbind.socket rpcbind.target
-> +After=rpcbind.socket rpcbind.target
+> MNT_FORCE is already fairly heavy handled.  It abort an arbitrary
+> collections of RPC requests being sent for the given filesystem, no
+> matter where else that filesystem might be mounted.
+> Is it ever safe to use this flag unless you have good reason to
+> believe
+> that the server is not available and there is no point pretending any
+> more?
+> And if that is the case, why not use the new MNT_FORCE_PONIES which
+> is
+> at least predictable and reliable.
+> 
+> We've talking a lot about the one NFS filesystem being mounted in
+> multiple containers.  MNT_FORCE is already a problem for such mounts
+> as
+> one contains can kill requests generated from another
+> container.  Maybe
+> MNT_FORCE needs to be restricted to "real" root.
+> Once we restrict it, do we need to keep it from being too harsh?
+> 
+> What would be really nice is a timeout for umount, and for sync.
+> The timeout only starts when the filesystem stops making progress for
+> writeback.  If it eventually does timeout, then the caller can fall
+> back
+> to MNT_DETACH if they are in a container, or MNT_FORCE if not.
+> (Maybe MNT_FORCE should map to MNT_DETACH in a container??? or maybe
+> not).
+> 
+> There is a lot here that still isn't clear to me, but one this does
+> seem
+> to be becoming clear:  MNT_FORCE as it stands is nearly useless and
+> it
+> would serve is well to find a semantic that it actually useful, and
+> impose that.
 
-The last line should be:
+Trying to keep the discussion going... does anyone else have thoughts
+on this?
 
-After=rpcbind.socket
-Before=rpcbind.target
-
-Lennart
-
--- 
-Lennart Poettering, Red Hat
+Thanks,
+Joshua Watt
+> 
+> Thanks,
+> NeilBrown
