@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:33895 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754661AbdLOB4D (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 20:56:03 -0500
-Subject: [PATCH v1 01/16] xprtrdma: Fix buffer leak after transport set up
- failure
+Received: from mail-it0-f68.google.com ([209.85.214.68]:39908 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754672AbdLOB4w (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 20:56:52 -0500
+Subject: [PATCH v1 07/16] xprtrdma: Initialize the xprt address string array
+ earlier
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 14 Dec 2017 20:56:01 -0500
-Message-ID: <20171215015601.13776.43834.stgit@manet.1015granger.net>
+Date: Thu, 14 Dec 2017 20:56:50 -0500
+Message-ID: <20171215015650.13776.97821.stgit@manet.1015granger.net>
 In-Reply-To: <20171215015403.13776.46706.stgit@manet.1015granger.net>
 References: <20171215015403.13776.46706.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,55 +17,140 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This leak has been around forever, and is exceptionally rare.
+This makes the address strings available for debugging messages in
+earlier stages of transport set up.
 
-EINVAL causes mount to fail with "an incorrect mount option was
-specified" although it's not likely that one of the mount
-options is incorrect. Instead, return ENODEV in this case, as this
-appears to be an issue with system or device configuration rather
-than a specific mount option.
-
-Some obsolete comments are also removed.
+The first benefit is to get rid of the single-use rep_remote_addr
+field, saving 128+ bytes in struct rpcrdma_ep.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/transport.c |   13 ++-----------
- 1 file changed, 2 insertions(+), 11 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |    5 ++---
+ net/sunrpc/xprtrdma/verbs.c     |   16 +++++++---------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   13 ++++++++++++-
+ 3 files changed, 21 insertions(+), 13 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 6ee1ad8..7f9b628 100644
+index dc9000d..f6d171e 100644
 --- a/net/sunrpc/xprtrdma/transport.c
 +++ b/net/sunrpc/xprtrdma/transport.c
-@@ -414,20 +414,10 @@
- 	if (rc)
- 		goto out2;
+@@ -373,6 +373,7 @@
  
--	/*
--	 * Allocate pre-registered send and receive buffers for headers and
--	 * any inline data. Also specify any padding which will be provided
--	 * from a preregistered zero buffer.
--	 */
- 	rc = rpcrdma_buffer_create(new_xprt);
- 	if (rc)
- 		goto out3;
+ 	if (rpc_get_port(sap))
+ 		xprt_set_bound(xprt);
++	xprt_rdma_format_addresses(xprt, sap);
  
--	/*
--	 * Register a callback for connection events. This is necessary because
--	 * connection loss notification is async. We also catch connection loss
--	 * when reaping receives.
--	 */
+ 	cdata.max_requests = xprt->max_reqs;
+ 
+@@ -405,7 +406,6 @@
+ 	 */
+ 	new_xprt->rx_data = cdata;
+ 	new_ep = &new_xprt->rx_ep;
+-	new_ep->rep_remote_addr = cdata.addr;
+ 
+ 	rc = rpcrdma_ep_create(&new_xprt->rx_ep,
+ 				&new_xprt->rx_ia, &new_xprt->rx_data);
+@@ -419,7 +419,6 @@
  	INIT_DELAYED_WORK(&new_xprt->rx_connect_worker,
  			  xprt_rdma_connect_worker);
  
-@@ -448,8 +438,9 @@
- 	return xprt;
+-	xprt_rdma_format_addresses(xprt, sap);
+ 	xprt->max_payload = new_xprt->rx_ia.ri_ops->ro_maxpages(new_xprt);
+ 	if (xprt->max_payload == 0)
+ 		goto out4;
+@@ -437,13 +436,13 @@
  
  out4:
-+	rpcrdma_buffer_destroy(&new_xprt->rx_buf);
- 	xprt_rdma_free_addresses(xprt);
--	rc = -EINVAL;
-+	rc = -ENODEV;
+ 	rpcrdma_buffer_destroy(&new_xprt->rx_buf);
+-	xprt_rdma_free_addresses(xprt);
+ 	rc = -ENODEV;
  out3:
  	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
  out2:
+ 	rpcrdma_ia_close(&new_xprt->rx_ia);
+ out1:
++	xprt_rdma_free_addresses(xprt);
+ 	xprt_free(xprt);
+ 	return ERR_PTR(rc);
+ }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 4a9b6f8..0b4d6a3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -219,9 +219,6 @@
+ 	struct rpcrdma_xprt *xprt = id->context;
+ 	struct rpcrdma_ia *ia = &xprt->rx_ia;
+ 	struct rpcrdma_ep *ep = &xprt->rx_ep;
+-#if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-	struct sockaddr *sap = (struct sockaddr *)&ep->rep_remote_addr;
+-#endif
+ 	int connstate = 0;
+ 
+ 	switch (event->event) {
+@@ -244,9 +241,9 @@
+ 		break;
+ 	case RDMA_CM_EVENT_DEVICE_REMOVAL:
+ #if IS_ENABLED(CONFIG_SUNRPC_DEBUG)
+-		pr_info("rpcrdma: removing device %s for %pIS:%u\n",
++		pr_info("rpcrdma: removing device %s for %s:%s\n",
+ 			ia->ri_device->name,
+-			sap, rpc_get_port(sap));
++			rpcrdma_addrstr(xprt), rpcrdma_portstr(xprt));
+ #endif
+ 		set_bit(RPCRDMA_IAF_REMOVING, &ia->ri_flags);
+ 		ep->rep_connected = -ENODEV;
+@@ -269,8 +266,8 @@
+ 		connstate = -ENETDOWN;
+ 		goto connected;
+ 	case RDMA_CM_EVENT_REJECTED:
+-		dprintk("rpcrdma: connection to %pIS:%u rejected: %s\n",
+-			sap, rpc_get_port(sap),
++		dprintk("rpcrdma: connection to %s:%s rejected: %s\n",
++			rpcrdma_addrstr(xprt), rpcrdma_portstr(xprt),
+ 			rdma_reject_msg(id, event->status));
+ 		connstate = -ECONNREFUSED;
+ 		if (event->status == IB_CM_REJ_STALE_CONN)
+@@ -285,8 +282,9 @@
+ 		wake_up_all(&ep->rep_connect_wait);
+ 		/*FALLTHROUGH*/
+ 	default:
+-		dprintk("RPC:       %s: %pIS:%u on %s/%s (ep 0x%p): %s\n",
+-			__func__, sap, rpc_get_port(sap),
++		dprintk("RPC:       %s: %s:%s on %s/%s (ep 0x%p): %s\n",
++			__func__,
++			rpcrdma_addrstr(xprt), rpcrdma_portstr(xprt),
+ 			ia->ri_device->name, ia->ri_ops->ro_displayname,
+ 			ep, rdma_event_msg(event->event));
+ 		break;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 375df3d..0b28026 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -100,7 +100,6 @@ struct rpcrdma_ep {
+ 	wait_queue_head_t 	rep_connect_wait;
+ 	struct rpcrdma_connect_private	rep_cm_private;
+ 	struct rdma_conn_param	rep_remote_cma;
+-	struct sockaddr_storage	rep_remote_addr;
+ 	struct delayed_work	rep_connect_worker;
+ };
+ 
+@@ -519,6 +518,18 @@ struct rpcrdma_xprt {
+ #define rpcx_to_rdmax(x) container_of(x, struct rpcrdma_xprt, rx_xprt)
+ #define rpcx_to_rdmad(x) (rpcx_to_rdmax(x)->rx_data)
+ 
++static inline const char *
++rpcrdma_addrstr(const struct rpcrdma_xprt *r_xprt)
++{
++	return r_xprt->rx_xprt.address_strings[RPC_DISPLAY_ADDR];
++}
++
++static inline const char *
++rpcrdma_portstr(const struct rpcrdma_xprt *r_xprt)
++{
++	return r_xprt->rx_xprt.address_strings[RPC_DISPLAY_PORT];
++}
++
+ /* Setting this to 0 ensures interoperability with early servers.
+  * Setting this to 1 enhances certain unaligned read/write performance.
+  * Default is 0, see sysctl entry and rpc_rdma.c rpcrdma_convert_iovs() */
 
