@@ -1,57 +1,74 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f50.google.com ([209.85.214.50]:41093 "EHLO
-        mail-it0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754596AbdLOBzz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 20:55:55 -0500
-Subject: [PATCH v1 00/16] NFS/RDMA clean-ups and fixes
+Received: from mail-it0-f67.google.com ([209.85.214.67]:38914 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754628AbdLOB5I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Dec 2017 20:57:08 -0500
+Subject: [PATCH v1 09/16] xprtrdma: Support IPv6 in xprt_rdma_set_port
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 14 Dec 2017 20:55:53 -0500
-Message-ID: <20171215015403.13776.46706.stgit@manet.1015granger.net>
+Date: Thu, 14 Dec 2017 20:57:06 -0500
+Message-ID: <20171215015706.13776.10025.stgit@manet.1015granger.net>
+In-Reply-To: <20171215015403.13776.46706.stgit@manet.1015granger.net>
+References: <20171215015403.13776.46706.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna-
+Clean up a harmless oversight. xprtrdma's ->set_port method has
+never properly supported IPv6.
 
-This is the second series of NFS/RDMA client patches for v4.16.
+This issue has never been a problem because NFS/RDMA mounts have
+always required "port=20049", thus so far, rpcbind is not invoked
+for these mounts.
 
-This is a bunch of minor fixes and clean-ups in preparation for
-adding static trace points to the RPC-over-RDMA transport
-implementation. Please consider these for v4.16.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ net/sunrpc/xprtrdma/transport.c |   28 ++++++++++++++++++++++++----
+ 1 file changed, 24 insertions(+), 4 deletions(-)
 
-Chuck Lever (16):
-      xprtrdma: Fix buffer leak after transport set up failure
-      xprtrdma: Fix backchannel allocation of extra rpcrdma_reps
-      xprtrdma: Eliminate unnecessary lock cycle in xprt_rdma_send_request
-      xprtrdma: Per-mode handling for Remote Invalidation
-      xprtrdma: Remove ri_reminv_expected
-      xprtrdma: Remove unused padding variables
-      xprtrdma: Initialize the xprt address string array earlier
-      xprtrdma: Remove another sockaddr_storage field (cdata::addr)
-      xprtrdma: Support IPv6 in xprt_rdma_set_port
-      xprtrdma: Move unmap-safe logic to rpcrdma_marshal_req
-      xprtrdma: buf_free not called for CB replies
-      xprtrdma: Split xprt_rdma_send_request
-      xprtrdma: Don't clear RPC_BC_PA_IN_USE on pre-allocated rpc_rqst's
-      xprtrdma: Replace all usage of "frmr" with "frwr"
-      xprtrdma: Remove usage of "mw"
-      xprtrdma: Introduce rpcrdma_mw_unmap_and_put
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 8ba0aa8..cebcd02 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -474,14 +474,34 @@
+ 	rpcrdma_ep_disconnect(ep, ia);
+ }
+ 
++/**
++ * xprt_rdma_set_port - update server port with rpcbind result
++ * @xprt: controlling RPC transport
++ * @port: new port value
++ *
++ * Transport connect status is unchanged.
++ */
+ static void
+ xprt_rdma_set_port(struct rpc_xprt *xprt, u16 port)
+ {
+-	struct sockaddr_in *sap;
++	struct sockaddr *sap = (struct sockaddr *)&xprt->addr;
++	char buf[8];
++
++	dprintk("RPC:       %s: setting port for xprt %p (%s:%s) to %u\n",
++		__func__, xprt,
++		xprt->address_strings[RPC_DISPLAY_ADDR],
++		xprt->address_strings[RPC_DISPLAY_PORT],
++		port);
++
++	rpc_set_port(sap, port);
+ 
+-	sap = (struct sockaddr_in *)&xprt->addr;
+-	sap->sin_port = htons(port);
+-	dprintk("RPC:       %s: %u\n", __func__, port);
++	kfree(xprt->address_strings[RPC_DISPLAY_PORT]);
++	snprintf(buf, sizeof(buf), "%u", port);
++	xprt->address_strings[RPC_DISPLAY_PORT] = kstrdup(buf, GFP_KERNEL);
++
++	kfree(xprt->address_strings[RPC_DISPLAY_HEX_PORT]);
++	snprintf(buf, sizeof(buf), "%4hx", port);
++	xprt->address_strings[RPC_DISPLAY_HEX_PORT] = kstrdup(buf, GFP_KERNEL);
+ }
+ 
+ /**
 
-
- include/linux/sunrpc/xprtrdma.h   |    2 
- net/sunrpc/xprtrdma/backchannel.c |   68 +++++---
- net/sunrpc/xprtrdma/fmr_ops.c     |  155 +++++++++---------
- net/sunrpc/xprtrdma/frwr_ops.c    |  317 +++++++++++++++++++------------------
- net/sunrpc/xprtrdma/rpc_rdma.c    |   98 +++++------
- net/sunrpc/xprtrdma/transport.c   |  102 +++++-------
- net/sunrpc/xprtrdma/verbs.c       |  212 ++++++++++++++-----------
- net/sunrpc/xprtrdma/xprt_rdma.h   |  112 +++++++------
- 8 files changed, 552 insertions(+), 514 deletions(-)
-
---
-Chuck Lever
