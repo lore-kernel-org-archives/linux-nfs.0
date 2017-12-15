@@ -1,64 +1,68 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56778 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755474AbdLOS00 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Dec 2017 13:26:26 -0500
-Subject: Re: [systemd-devel] [PATCH][V2] rpcbind.service: Not pulling the
- rpcbind.target
-To: Lennart Poettering <lennart@poettering.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        Systemd Mailing List <systemd-devel@lists.freedesktop.org>
-References: <20171215130047.8944-1-steved@redhat.com>
- <20171215145203.GA16686@gardel-login>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <424bca50-cba3-7744-c59b-07e191e1963f@RedHat.com>
-Date: Fri, 15 Dec 2017 13:26:25 -0500
-MIME-Version: 1.0
-In-Reply-To: <20171215145203.GA16686@gardel-login>
-Content-Type: text/plain; charset=utf-8
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <smayhew@redhat.com>
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com,
+	anna.schumaker@netapp.com
+Cc: bcodding@redhat.com,
+	dwysocha@redhat.com,
+	fsorenso@redhat.com,
+	linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfs/pnfs: fix nfs_direct_req ref leak when i/o falls back to the mds
+Date: Fri, 15 Dec 2017 16:12:32 -0500
+Message-Id: <20171215211232.18942-1-smayhew@redhat.com>
+In-Reply-To: <20171213182220.lrfbvkaj65fg6abk@tonberry.usersys.redhat.com>
+References: <20171213182220.lrfbvkaj65fg6abk@tonberry.usersys.redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
+Currently when falling back to doing I/O through the MDS (via
+pnfs_{read|write}_through_mds), the client frees the nfs_pgio_header
+without releasing the reference taken on the dreq
+via pnfs_generic_pg_{read|write}pages -> nfs_pgheader_init ->
+nfs_direct_pgio_init.  It then takes another reference on the dreq via
+nfs_generic_pg_pgios -> nfs_pgheader_init -> nfs_direct_pgio_init and
+as a result the requester will become stuck in inode_dio_wait.  Once
+that happens, other processes accessing the inode will become stuck as
+well.
 
+Ensure that pnfs_read_through_mds() and pnfs_write_through_mds() clean
+up correctly by calling hdr->completion_ops->completion() instead of
+calling hdr->release() directly.
 
-On 12/15/2017 09:52 AM, Lennart Poettering wrote:
-> On Fr, 15.12.17 08:00, Steve Dickson (steved@redhat.com) wrote:
-> 
->> According to systemd.special(7) manpage:
->>
->> rpcbind.target
->>     The portmapper/rpcbind pulls in this target and orders itself
->>     before it, to indicate its availability. systemd automatically
->>     adds dependencies of type After= for this target unit to
->>     all SysV init script service units with an LSB header
->>     referring to the "$portmap" facility.
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1431574
->> ---
->>  systemd/rpcbind.service.in | 4 ++--
->>  1 file changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/systemd/rpcbind.service.in b/systemd/rpcbind.service.in
->> index f8cfa9f..9dbc82c 100644
->> --- a/systemd/rpcbind.service.in
->> +++ b/systemd/rpcbind.service.in
->> @@ -6,8 +6,8 @@ RequiresMountsFor=@statedir@
->>  
->>  # Make sure we use the IP addresses listed for
->>  # rpcbind.socket, no matter how this unit is started.
->> -Wants=rpcbind.socket
->> -After=rpcbind.socket
->> +Requires=rpcbind.socket
->> +Before=rpcbind.target
-> 
-> You should still pull in rpcbind.target as the man page
-> says. i.e. "Wants=rpcbind.target" really should be there.
-Duly noted... and changed!
+This can be reproduced (sometimes) by performing "storage failover
+takeover" commands on NetApp filer while doing direct I/O from a client.
 
-thanks!
+This can also be reproduced using SystemTap to simulate a failure while
+doing direct I/O from a client (from Dave Wysochanski
+<dwysocha@redhat.com>):
 
-steved.
-> 
-> Lennart
-> 
+stap -v -g -e 'probe module("nfs_layout_nfsv41_files").function("nfs4_fl_prepare_ds").return { $return=NULL; exit(); }'
+
+Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/pnfs.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d602fe9..eb098cc 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -2255,7 +2255,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_write_mds(desc);
+ 		mirror->pg_recoalesce = 1;
+ 	}
+-	hdr->release(hdr);
++	hdr->completion_ops->completion(hdr);
+ }
+ 
+ static enum pnfs_try_status
+@@ -2378,7 +2378,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_read_mds(desc);
+ 		mirror->pg_recoalesce = 1;
+ 	}
+-	hdr->release(hdr);
++	hdr->completion_ops->completion(hdr);
+ }
+ 
+ /*
+-- 
+2.9.5
