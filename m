@@ -1,58 +1,78 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:30021 "EHLO mx142.netapp.com"
+Received: from mail.kernel.org ([198.145.29.99]:41916 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756143AbdLOVxe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 15 Dec 2017 16:53:34 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Subject: [GIT PULL] Please pull NFS client bugfixes for 4.15
-Message-ID: <a0189ebe-a038-99ec-a388-59572b1549cd@Netapp.com>
-Date: Fri, 15 Dec 2017 16:43:49 -0500
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+        id S1752724AbdLPNrM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 16 Dec 2017 08:47:12 -0500
+From: Jeff Layton <jlayton@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com
+Subject: [PATCH v2 05/19] afs: convert to new i_version API
+Date: Sat, 16 Dec 2017 08:46:42 -0500
+Message-Id: <20171216134656.15561-6-jlayton@kernel.org>
+In-Reply-To: <20171216134656.15561-1-jlayton@kernel.org>
+References: <20171216134656.15561-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+From: Jeff Layton <jlayton@redhat.com>
 
-The following changes since commit eb5b46faa693470681ec7c28cc2436edd1571198:
+For AFS, it's generally treated as an opaque value, so we use the
+*_raw variants of the API here.
 
-  SUNRPC: Handle ENETDOWN errors (2017-11-30 11:52:52 -0500)
+Note that AFS has quite a different definition for this counter. AFS
+only increments it on changes to the data, not for the metadata. We'll
+need to reconcile that somehow if we ever want to present this to
+userspace via statx.
 
-are available in the Git repository at:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/afs/fsclient.c | 2 +-
+ fs/afs/inode.c    | 4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-for-4.15-3
+diff --git a/fs/afs/fsclient.c b/fs/afs/fsclient.c
+index b90ef39ae914..67ed9bb5fe31 100644
+--- a/fs/afs/fsclient.c
++++ b/fs/afs/fsclient.c
+@@ -124,7 +124,7 @@ static void xdr_decode_AFSFetchStatus(const __be32 **_bp,
+ 		vnode->vfs_inode.i_ctime.tv_sec	= status->mtime_client;
+ 		vnode->vfs_inode.i_mtime	= vnode->vfs_inode.i_ctime;
+ 		vnode->vfs_inode.i_atime	= vnode->vfs_inode.i_ctime;
+-		vnode->vfs_inode.i_version	= data_version;
++		inode_set_iversion_raw(&vnode->vfs_inode, data_version);
+ 	}
+ 
+ 	expected_version = status->data_version;
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index 3415eb7484f6..af9577210a46 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -89,7 +89,7 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
+ 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
+ 	inode->i_blocks		= 0;
+ 	inode->i_generation	= vnode->fid.unique;
+-	inode->i_version	= vnode->status.data_version;
++	inode_set_iversion_raw(inode, vnode->status.data_version);
+ 	inode->i_mapping->a_ops	= &afs_fs_aops;
+ 
+ 	read_sequnlock_excl(&vnode->cb_lock);
+@@ -218,7 +218,7 @@ struct inode *afs_iget_autocell(struct inode *dir, const char *dev_name,
+ 	inode->i_ctime.tv_nsec	= 0;
+ 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
+ 	inode->i_blocks		= 0;
+-	inode->i_version	= 0;
++	inode_set_iversion_raw(inode, 0);
+ 	inode->i_generation	= 0;
+ 
+ 	set_bit(AFS_VNODE_PSEUDODIR, &vnode->flags);
+-- 
+2.14.3
 
-for you to fetch changes up to 90d91b0cd371193d9dbfa9beacab8ab9a4cb75e0:
-
-  SUNRPC: Fix a race in the receive code path (2017-12-15 14:31:56 -0500)
-
-----------------------------------------------------------------
-This pull request has two stable bugfixes, one to fix a BUG_ON() when nfs_commit_inode() is called with no outstanding commit requests and another to fix a race in the SUNRPC receive codepath.
-
-Additionally, there are also fixes for an NFS client deadlock and an xprtrdma performance regression.
-
-Cheers,
-Anna
-----------------------------------------------------------------
-Chuck Lever (1):
-      xprtrdma: Spread reply processing over more CPUs
-
-Scott Mayhew (2):
-      nfs: fix a deadlock in nfs client initialization
-      nfs: don't wait on commit in nfs_commit_inode() if there were no commit requests
-
-Trond Myklebust (1):
-      SUNRPC: Fix a race in the receive code path
-
- fs/nfs/client.c                 | 11 +++++++++++
- fs/nfs/nfs4client.c             | 17 +++++++++++++----
- fs/nfs/write.c                  |  2 ++
- net/sunrpc/xprt.c               | 28 +++++++++++++++++++---------
- net/sunrpc/xprtrdma/rpc_rdma.c  |  6 +-----
- net/sunrpc/xprtrdma/transport.c |  2 ++
- net/sunrpc/xprtrdma/verbs.c     |  2 +-
- net/sunrpc/xprtrdma/xprt_rdma.h |  1 +
- 8 files changed, 50 insertions(+), 19 deletions(-)
