@@ -1,107 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:55872 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756368AbdLPQkY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 16 Dec 2017 11:40:24 -0500
-Message-ID: <1513442419.3428.13.camel@kernel.org>
-Subject: Re: [PATCH v2 05/19] afs: convert to new i_version API
-From: Jeff Layton <jlayton@kernel.org>
-To: Jeffrey Altman <jaltman@auristor.com>,
-        linux-fsdevel@vger.kernel.org
-Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+Received: from ipmail07.adl2.internode.on.net ([150.101.137.131]:65139 "EHLO
+        ipmail07.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1756922AbdLPWhZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Dec 2017 17:37:25 -0500
+Date: Sun, 17 Dec 2017 09:37:20 +1100
+From: Dave Chinner <david@fromorbit.com>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
         adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        darrick.wong@oracle.com, linux-btrfs@vger.kernel.org, clm@fb.com,
+        jbacik@fb.com, dsterba@suse.com, linux-integrity@vger.kernel.org,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com
-Date: Sat, 16 Dec 2017 11:40:19 -0500
-In-Reply-To: <82157aa3-ec0b-25e6-517b-704a3f81ec61@auristor.com>
+Subject: Re: [PATCH v2 01/19] fs: new API for handling inode->i_version
+Message-ID: <20171216223720.GL5858@dastard>
 References: <20171216134656.15561-1-jlayton@kernel.org>
-         <20171216134656.15561-6-jlayton@kernel.org>
-         <1513432186.3428.6.camel@kernel.org>
-         <82157aa3-ec0b-25e6-517b-704a3f81ec61@auristor.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <20171216134656.15561-2-jlayton@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171216134656.15561-2-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2017-12-16 at 11:18 -0500, Jeffrey Altman wrote:
-> Hi Jeff,
+On Sat, Dec 16, 2017 at 08:46:38AM -0500, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
 > 
-> A few thoughts on AFS usage below which might impact a future revision
-> of the API.  I hope they are useful.
+> Add a documentation blob that explains what the i_version field is, how
+> it is expected to work, and how it is currently implemented by various
+> filesystems.
 > 
-> On 12/16/2017 8:49 AM, Jeff Layton wrote:
-> > On Sat, 2017-12-16 at 08:46 -0500, Jeff Layton wrote:
-> > > From: Jeff Layton <jlayton@redhat.com>
-> > > 
-> > > For AFS, it's generally treated as an opaque value, so we use the
-> > > *_raw variants of the API here.
-> > > 
-> > > Note that AFS has quite a different definition for this counter. AFS
-> > > only increments it on changes to the data, not for the metadata. We'll
-> > > need to reconcile that somehow if we ever want to present this to
-> > > userspace via statx.
-> > > 
+> We already have inode_inc_iversion. Add several other functions for
+> manipulating and accessing the i_version counter. For now, the
+> implementation is trivial and basically works the way that all of the
+> open-coded i_version accesses work today.
 > 
-> From the patch series notes:
+> Future patches will convert existing users of i_version to use the new
+> API, and then convert the backend implementation to do things more
+> efficiently.
 > 
-> "The inode->i_version field is supposed to be a value that changes
-> whenever there is any data or metadata change to the inode. Some
-> filesystems use it internally to detect directory changes during
-> readdir. knfsd will use it if the filesystem has MS_I_VERSION set. IMA
-> will also use it to optimize away some remeasurement if it's available.
-> NFS and AFS just use it to store an opaque change attribute from the
-> server.
-> 
-> "Only btrfs, ext4, and xfs increment it for data changes. Because of
-> this, these filesystems must log the inode to disk whenever the
-> i_version counter changes. That has a non-zero performance impact,
-> especially on write-heavy workloads, because we end up dirtying the
-> inode metadata on every write, not just when the times change. [1]"
-> 
-> 
-> The AFS/AuriStorFS data version is an unsigned 64-bit value that is
-> incremented by the file server as part of a data changing operation. For
-> files, a StoreData and for directories entry manipulations such as
-> create, rename, delete.  This data version is used to tag the version of
-> any subset of the data stream for caching and replication purposes.
-> 
-> As Jeff notes, the AFS data version is not incremented for metadata
-> changes.  Metadata cannot be trusted by clients without acquiring a
-> callback promise from a fileserver.  The callback promise will either be
-> satisfied by the issuing fileserver sending a CallBack notification that
-> the metadata is no longer valid OR the callback promise will expire.
-> 
-> Something else that is important to note that it is assumed that local
-> data changes that occur under a valid callback promise is newer than the
-> data on the fileserver.  It might be useful if the new i_version API
-> supported major and minor version numbers.  AFS implementations would
-> store the fileserver provided data version number as the major version
-> and would increment the minor version when local changes have been made
-> which have yet to be stored back to the fileserver.  This functionality
-> would be especially useful if disconnected operations were implemented
-> for the AFS implementation.
-> 
-> It might also be useful to separate metadata version and data version
-> although some filesystems would set the same value to both.  For AFS,
-> the metadata major version would the timestamp at which the callback was
-> issued.
-> 
-> Jeffrey Altman
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  include/linux/fs.h | 200 ++++++++++++++++++++++++++++++++++++++++++++++++++---
+>  1 file changed, 192 insertions(+), 8 deletions(-)
 
-Thanks. That seems like rather specialized use case.
+Just a random sunday morning coffee musing....
 
-If we did want to go that route, we'd probably need to give filesystems
-a way to overload how i_version is handled and queried (maybe some new
-inode ops?).
+I was just wondering if it would be better to split this stuff out
+into it's own header file now? include/linux/fs.h is aleady a
+massive header file (~3500 lines) and changes cause tree-wide
+rebuilds, so maybe it would be better to split relatively isolated
+functionality like this out while it's being reworked and you're
+already touching every file that uses it?
 
-Given that nothing ever looks at the the i_version in kAFS now, I don't
-have a lot of incentive to do anything along those lines in this set. I
-think this patchset will probably make it simpler to do something like
-that in the future, if you were motivated to do so though.
+Cheers,
+
+Dave.
 -- 
-Jeff Layton <jlayton@kernel.org>
+Dave Chinner
+david@fromorbit.com
