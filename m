@@ -1,10 +1,13 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:41724 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754229AbdLPNrA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 16 Dec 2017 08:47:00 -0500
-From: Jeff Layton <jlayton@kernel.org>
-To: linux-fsdevel@vger.kernel.org
+Received: from sequoia-grove.ad.secure-endpoints.com ([208.125.0.235]:57209
+        "EHLO smtp.secure-endpoints.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1756638AbdLPQdq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 16 Dec 2017 11:33:46 -0500
+Subject: Re: [PATCH v2 05/19] afs: convert to new i_version API
+To: Jeff Layton <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org
+References: <20171216134656.15561-1-jlayton@kernel.org>
+ <20171216134656.15561-6-jlayton@kernel.org>
+ <1513432186.3428.6.camel@kernel.org>
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
         jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
@@ -14,31 +17,49 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         dsterba@suse.com, linux-integrity@vger.kernel.org,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com
-Subject: [PATCH v2 00/19] fs: rework and optimize i_version handling in filesystems
-Date: Sat, 16 Dec 2017 08:46:37 -0500
-Message-Id: <20171216134656.15561-1-jlayton@kernel.org>
+From: Jeffrey Altman <jaltman@auristor.com>
+Message-ID: <82157aa3-ec0b-25e6-517b-704a3f81ec61@auristor.com>
+Date: Sat, 16 Dec 2017 11:18:41 -0500
+MIME-Version: 1.0
+In-Reply-To: <1513432186.3428.6.camel@kernel.org>
+Content-Type: multipart/signed; protocol="application/pkcs7-signature"; micalg=sha-256; boundary="------------ms030408000205080100010300"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
+This is a cryptographically signed message in MIME format.
 
-v2:
-- xfs should use inode_peek_iversion instead of inode_peek_iversion_raw
-- rework file_update_time patch
-- don't dirty inode when only S_ATIME is set and SB_LAZYTIME is enabled
-- better comments and documentation
+--------------ms030408000205080100010300
+Content-Type: multipart/mixed;
+ boundary="------------C920308AD3530271D6778AFC"
+Content-Language: en-US
 
-tl;dr: I think we can greatly reduce the cost of the inode->i_version
-counter, by exploiting the fact that we don't need to increment it if no
-one is looking at it. We can also clean up the code to prepare to
-eventually expose this value via statx().
+This is a multi-part message in MIME format.
+--------------C920308AD3530271D6778AFC
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-Note that this set relies on a few patches that are in other trees. The
-full stack that I've been testing with is here:
+Hi Jeff,
 
-    https://git.kernel.org/pub/scm/linux/kernel/git/jlayton/linux.git/log/?h=iversion
+A few thoughts on AFS usage below which might impact a future revision
+of the API.  I hope they are useful.
 
-The inode->i_version field is supposed to be a value that changes
+On 12/16/2017 8:49 AM, Jeff Layton wrote:
+> On Sat, 2017-12-16 at 08:46 -0500, Jeff Layton wrote:
+>> From: Jeff Layton <jlayton@redhat.com>
+>>
+>> For AFS, it's generally treated as an opaque value, so we use the
+>> *_raw variants of the API here.
+>>
+>> Note that AFS has quite a different definition for this counter. AFS
+>> only increments it on changes to the data, not for the metadata. We'll=
+
+>> need to reconcile that somehow if we ever want to present this to
+>> userspace via statx.
+>>
+
+=46rom the patch series notes:
+
+"The inode->i_version field is supposed to be a value that changes
 whenever there is any data or metadata change to the inode. Some
 filesystems use it internally to detect directory changes during
 readdir. knfsd will use it if the filesystem has MS_I_VERSION set. IMA
@@ -46,118 +67,150 @@ will also use it to optimize away some remeasurement if it's available.
 NFS and AFS just use it to store an opaque change attribute from the
 server.
 
-Only btrfs, ext4, and xfs increment it for data changes. Because of
+"Only btrfs, ext4, and xfs increment it for data changes. Because of
 this, these filesystems must log the inode to disk whenever the
 i_version counter changes. That has a non-zero performance impact,
 especially on write-heavy workloads, because we end up dirtying the
-inode metadata on every write, not just when the times change. [1]
+inode metadata on every write, not just when the times change. [1]"
 
-It turns out though that none of these users of i_version require that
-it change on every change to the file. The only real requirement is that
-it be different if something changed since the last time we queried for
-it.
 
-If we keep track of when something queries the value, we can avoid
-bumping the counter and an on-disk update when nothing else has changed
-if no one has queried it since it was last incremented.
+The AFS/AuriStorFS data version is an unsigned 64-bit value that is
+incremented by the file server as part of a data changing operation. For
+files, a StoreData and for directories entry manipulations such as
+create, rename, delete.  This data version is used to tag the version of
+any subset of the data stream for caching and replication purposes.
 
-This patchset changes the code to only bump the i_version counter when
-it's strictly necessary, or when we're updating the inode metadata
-anyway (e.g. when times change).
+As Jeff notes, the AFS data version is not incremented for metadata
+changes.  Metadata cannot be trusted by clients without acquiring a
+callback promise from a fileserver.  The callback promise will either be
+satisfied by the issuing fileserver sending a CallBack notification that
+the metadata is no longer valid OR the callback promise will expire.
 
-It takes the approach of converting the existing accessors of i_version
-to use a new API, while leaving the underlying implementation mostly the
-same.  The last patch then converts the existing implementation to keep
-track of whether the value has been queried since it was last
-incremented. It then uses that to avoid incrementing the counter when
-it can.
+Something else that is important to note that it is assumed that local
+data changes that occur under a valid callback promise is newer than the
+data on the fileserver.  It might be useful if the new i_version API
+supported major and minor version numbers.  AFS implementations would
+store the fileserver provided data version number as the major version
+and would increment the minor version when local changes have been made
+which have yet to be stored back to the fileserver.  This functionality
+would be especially useful if disconnected operations were implemented
+for the AFS implementation.
 
-With this, we reduce inode metadata updates across all 3 filesystems
-down to roughly the frequency of the timestamp granularity, particularly
-when it's not being queried (the vastly common case).
+It might also be useful to separate metadata version and data version
+although some filesystems would set the same value to both.  For AFS,
+the metadata major version would the timestamp at which the callback was
+issued.
 
-I can see measurable performance gains on xfs and ext4 with iversion
-enabled, when streaming small (4k) I/Os. 
+Jeffrey Altman
 
-btrfs shows some slight gain in testing, but not quite the magnitude
-that xfs and ext4 show. I'm not sure why yet and would appreciate some
-input from btrfs folks.
+--------------C920308AD3530271D6778AFC
+Content-Type: text/x-vcard; charset=utf-8;
+ name="jaltman.vcf"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: attachment;
+ filename="jaltman.vcf"
 
-My goal is to get this into -next fairly soon. If it shows no problems
-then we can look at merging it for 4.16, or 4.17 if all of the
-prequisite patches are not yet merged.
+begin:vcard
+fn:Jeffrey Altman
+n:Altman;Jeffrey
+org:AuriStor, Inc.
+adr:Suite 6B;;255 West 94Th Street;New York;New York;10025-6985;United St=
+ates
+email;internet:jaltman@auristor.com
+title:Founder and CEO
+tel;work:+1-212-769-9018
+note;quoted-printable:LinkedIn: https://www.linkedin.com/in/jeffreyaltman=
+=3D0D=3D0A=3D
+	Skype: jeffrey.e.altman=3D0D=3D0A=3D
+=09
+url:https://www.auristor.com/
+version:2.1
+end:vcard
 
-Jeff Layton (19):
-  fs: new API for handling inode->i_version
-  fs: don't take the i_lock in inode_inc_iversion
-  fat: convert to new i_version API
-  affs: convert to new i_version API
-  afs: convert to new i_version API
-  btrfs: convert to new i_version API
-  exofs: switch to new i_version API
-  ext2: convert to new i_version API
-  ext4: convert to new i_version API
-  nfs: convert to new i_version API
-  nfsd: convert to new i_version API
-  ocfs2: convert to new i_version API
-  ufs: use new i_version API
-  xfs: convert to new i_version API
-  IMA: switch IMA over to new i_version API
-  fs: only set S_VERSION when updating times if necessary
-  xfs: avoid setting XFS_ILOG_CORE if i_version doesn't need
-    incrementing
-  btrfs: only dirty the inode in btrfs_update_time if something was
-    changed
-  fs: handle inode->i_version more efficiently
 
- fs/affs/amigaffs.c                |   4 +-
- fs/affs/dir.c                     |   4 +-
- fs/affs/super.c                   |   2 +-
- fs/afs/fsclient.c                 |   2 +-
- fs/afs/inode.c                    |   4 +-
- fs/btrfs/delayed-inode.c          |   6 +-
- fs/btrfs/inode.c                  |  11 +-
- fs/btrfs/tree-log.c               |   3 +-
- fs/exofs/dir.c                    |   8 +-
- fs/exofs/super.c                  |   2 +-
- fs/ext2/dir.c                     |   8 +-
- fs/ext2/super.c                   |   4 +-
- fs/ext4/dir.c                     |   8 +-
- fs/ext4/inline.c                  |   6 +-
- fs/ext4/inode.c                   |  12 +-
- fs/ext4/ioctl.c                   |   2 +-
- fs/ext4/namei.c                   |   4 +-
- fs/ext4/super.c                   |   2 +-
- fs/ext4/xattr.c                   |   4 +-
- fs/fat/dir.c                      |   2 +-
- fs/fat/inode.c                    |   8 +-
- fs/fat/namei_msdos.c              |   6 +-
- fs/fat/namei_vfat.c               |  20 +--
- fs/inode.c                        |  19 ++-
- fs/nfs/delegation.c               |   2 +-
- fs/nfs/fscache-index.c            |   4 +-
- fs/nfs/inode.c                    |  16 +--
- fs/nfs/nfs4proc.c                 |   9 +-
- fs/nfs/nfstrace.h                 |   4 +-
- fs/nfs/write.c                    |   7 +-
- fs/nfsd/nfsfh.h                   |   2 +-
- fs/ocfs2/dir.c                    |  14 +-
- fs/ocfs2/inode.c                  |   2 +-
- fs/ocfs2/namei.c                  |   2 +-
- fs/ocfs2/quota_global.c           |   2 +-
- fs/ufs/dir.c                      |   8 +-
- fs/ufs/inode.c                    |   2 +-
- fs/ufs/super.c                    |   2 +-
- fs/xfs/libxfs/xfs_inode_buf.c     |   5 +-
- fs/xfs/xfs_icache.c               |   4 +-
- fs/xfs/xfs_inode.c                |   2 +-
- fs/xfs/xfs_inode_item.c           |   2 +-
- fs/xfs/xfs_trans_inode.c          |  14 +-
- include/linux/fs.h                | 275 ++++++++++++++++++++++++++++++++++++--
- security/integrity/ima/ima_api.c  |   2 +-
- security/integrity/ima/ima_main.c |   2 +-
- 46 files changed, 404 insertions(+), 129 deletions(-)
+--------------C920308AD3530271D6778AFC--
 
--- 
-2.14.3
+--------------ms030408000205080100010300
+Content-Type: application/pkcs7-signature; name="smime.p7s"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Description: S/MIME Cryptographic Signature
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgEFADCABgkqhkiG9w0BBwEAAKCC
+DIIwggXpMIIE0aADAgECAhBAAV7gPRitcrlGsJTzkwjvMA0GCSqGSIb3DQEBCwUAMDoxCzAJ
+BgNVBAYTAlVTMRIwEAYDVQQKEwlJZGVuVHJ1c3QxFzAVBgNVBAMTDlRydXN0SUQgQ0EgQTEy
+MB4XDTE3MTAwMzAzMTczM1oXDTE4MTEwMzAzMTczM1owgYUxLTArBgNVBAsMJFZlcmlmaWVk
+IEVtYWlsOiBqYWx0bWFuQGF1cmlzdG9yLmNvbTEjMCEGCSqGSIb3DQEJARYUamFsdG1hbkBh
+dXJpc3Rvci5jb20xLzAtBgoJkiaJk/IsZAEBEx9BMDE0MjdFMDAwMDAxNUVFMDNEMTg3QTAw
+MDA0QUE1MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqqJC89ZA1DSS7t/Ug8Dd
+BQv5nBDumInWtFvHwVCORitVCvlkX4SfqKpERATq0eHOSc0zEz1PUjhAT8lgbNj8Bs92pL9t
+DW/VHHpq11w06rCEmZJNxgErAIvMpRuAhGrzvBpQBLj8nDArHWw+5nRn/KnK7ZO81LEEj4TG
+w0PEKGSa0aFA+JdRTJ6BZSDP2o/8AHx+Bw4JgW8VppAe4IuY/F+JoYtyQDL+fm1YMnFMtf1A
+6IvlGXD7gMksPRbVIfD+QpHZbQvNXZAVVDaCWZuWQq46Vl4lSlkmW9yMlGddvFGl2zSMK7ny
+f0kbWJLw9lZxXDegY0/ciJPACPsyBwuyLwIDAQABo4ICnTCCApkwDgYDVR0PAQH/BAQDAgWg
+MIGEBggrBgEFBQcBAQR4MHYwMAYIKwYBBQUHMAGGJGh0dHA6Ly9jb21tZXJjaWFsLm9jc3Au
+aWRlbnRydXN0LmNvbTBCBggrBgEFBQcwAoY2aHR0cDovL3ZhbGlkYXRpb24uaWRlbnRydXN0
+LmNvbS9jZXJ0cy90cnVzdGlkY2FhMTIucDdjMB8GA1UdIwQYMBaAFKRz2u9pNYp1zKAZewgy
++GuJ5ELsMAkGA1UdEwQCMAAwggEsBgNVHSAEggEjMIIBHzCCARsGC2CGSAGG+S8ABgsBMIIB
+CjBKBggrBgEFBQcCARY+aHR0cHM6Ly9zZWN1cmUuaWRlbnRydXN0LmNvbS9jZXJ0aWZpY2F0
+ZXMvcG9saWN5L3RzL2luZGV4Lmh0bWwwgbsGCCsGAQUFBwICMIGuGoGrVGhpcyBUcnVzdElE
+IENlcnRpZmljYXRlIGhhcyBiZWVuIGlzc3VlZCBpbiBhY2NvcmRhbmNlIHdpdGggCklkZW5U
+cnVzdCdzIFRydXN0SUQgQ2VydGlmaWNhdGUgUG9saWN5IGZvdW5kIGF0IGh0dHBzOi8vc2Vj
+dXJlLmlkZW50cnVzdC5jb20vY2VydGlmaWNhdGVzL3BvbGljeS90cy9pbmRleC5odG1sMEUG
+A1UdHwQ+MDwwOqA4oDaGNGh0dHA6Ly92YWxpZGF0aW9uLmlkZW50cnVzdC5jb20vY3JsL3Ry
+dXN0aWRjYWExMi5jcmwwHwYDVR0RBBgwFoEUamFsdG1hbkBhdXJpc3Rvci5jb20wHQYDVR0O
+BBYEFNefZrPaqPUvaS6V6kAmHDwFhoDiMB0GA1UdJQQWMBQGCCsGAQUFBwMCBggrBgEFBQcD
+BDANBgkqhkiG9w0BAQsFAAOCAQEAKlssrfOJ5+WwHyhFSeSsioN0qpg2QDX/uvodF38JbquO
+1U0my0j3Cc/bwk48++bjzp0Fvk/Kkcmss5/6zzJMjr9rf12QCQfKkbO9nMm8Bg6IP3pYgk0W
+/F1h3ZQF3OgBn3zZoOd3f1a6dF6z12MqKA/2g5GKrQFxkdzTGrNw6ISE9uY8ysvc3i2N2kas
+HNi5Etk7StZ1jvFX5sQMIeNdlF+z+BU/AyT7NoBS4gCH+ggF+DG7fAYywvy42Lfu8p6kopKT
+5JZpYce1cNjnOaDhzhgeR+oXxoDbekF27JinXHQSKjBxhujcZu5leAkpctFpZxnIKZJZUBiu
+31Nm7xYaijCCBpEwggR5oAMCAQICEQD53lZ/yU0Md3D5YBtS2hU7MA0GCSqGSIb3DQEBCwUA
+MEoxCzAJBgNVBAYTAlVTMRIwEAYDVQQKEwlJZGVuVHJ1c3QxJzAlBgNVBAMTHklkZW5UcnVz
+dCBDb21tZXJjaWFsIFJvb3QgQ0EgMTAeFw0xNTAyMTgyMjI1MTlaFw0yMzAyMTgyMjI1MTla
+MDoxCzAJBgNVBAYTAlVTMRIwEAYDVQQKEwlJZGVuVHJ1c3QxFzAVBgNVBAMTDlRydXN0SUQg
+Q0EgQTEyMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0ZFNPM8KJzSSrkvpmtQl
+a3ksT+fq1s9c+Ea3YSC/umUkygSm9UkkOoaoNjKZoCx3wef1kwC4pQQV2XHk+AKR+7uMvnOC
+Iw2cAVUP0/Kuy4X6miqaXGGVDTqwVjaFuFCRVVDTQoI2BTMpwFQi+O/TjD5+E0+TAZbkzsB7
+krk4YUbA6hFyT0YboxRUq9M2QHDb+80w53b1UZVO1HS2Mfk9LnINeyzjxiXU/iENK07YvjBO
+xbY/ftAYPbv/9cY3wrpqZYHoXZc6B9/8+aVCNA45FP3k+YuTDC+ZrmePQBLQJWnyS/QrZEdX
+saieWUqkUMxPQKTExArCiP61YRYlOIMpKwIDAQABo4ICgDCCAnwwgYkGCCsGAQUFBwEBBH0w
+ezAwBggrBgEFBQcwAYYkaHR0cDovL2NvbW1lcmNpYWwub2NzcC5pZGVudHJ1c3QuY29tMEcG
+CCsGAQUFBzAChjtodHRwOi8vdmFsaWRhdGlvbi5pZGVudHJ1c3QuY29tL3Jvb3RzL2NvbW1l
+cmNpYWxyb290Y2ExLnA3YzAfBgNVHSMEGDAWgBTtRBnA0/AGi+6ke75C5yZUyI42djAPBgNV
+HRMBAf8EBTADAQH/MIIBIAYDVR0gBIIBFzCCARMwggEPBgRVHSAAMIIBBTCCAQEGCCsGAQUF
+BwICMIH0MEUWPmh0dHBzOi8vc2VjdXJlLmlkZW50cnVzdC5jb20vY2VydGlmaWNhdGVzL3Bv
+bGljeS90cy9pbmRleC5odG1sMAMCAQEagapUaGlzIFRydXN0SUQgQ2VydGlmaWNhdGUgaGFz
+IGJlZW4gaXNzdWVkIGluIGFjY29yZGFuY2Ugd2l0aCBJZGVuVHJ1c3QncyBUcnVzdElEIENl
+cnRpZmljYXRlIFBvbGljeSBmb3VuZCBhdCBodHRwczovL3NlY3VyZS5pZGVudHJ1c3QuY29t
+L2NlcnRpZmljYXRlcy9wb2xpY3kvdHMvaW5kZXguaHRtbDBKBgNVHR8EQzBBMD+gPaA7hjlo
+dHRwOi8vdmFsaWRhdGlvbi5pZGVudHJ1c3QuY29tL2NybC9jb21tZXJjaWFscm9vdGNhMS5j
+cmwwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMEMA4GA1UdDwEB/wQEAwIBhjAdBgNV
+HQ4EFgQUpHPa72k1inXMoBl7CDL4a4nkQuwwDQYJKoZIhvcNAQELBQADggIBAA3hgq7S+/Tr
+Yxl+D7ExI1Rdgq8fC9kiT7ofWlSaK/IMjgjoDfBbPGWvzdkmbSgYgXo8GxuAon9+HLIjNv68
+BgUmbIjwj/SYaVz6chA25XZdjxzKk+hUkqCmfOn/twQJeRfxHg3I+0Sfwp5xs10YF0Robhrs
+CRne6OUmh9mph0fE3b21k90OVnx9Hfr+YAV4ISrTA6045zQTKGzb370whliPLFo+hNL6XzEt
+y5hfdFaWKtHIfpE994CLmTJI4SEbWq40d7TpAjCmKCPIVPq/+9GqggGvtakM5K3VXNc9VtKP
+U9xYGCTDIYoeVBQ65JsdsdyM4PzDzAdINsv4vaF7yE03nh2jLV7XAkcqad9vS4EB4hKjFFsm
+cwxa+ACUfkVWtBaWBqN4f/o1thsFJHEAu4Q6oRB6mYkzqrPigPazF2rgYw3lp0B1gSzCRj+j
+RtErIVdMPeZ2p5Fdx7SNhBtabuhqmpJkFxwW9SBg6sHvy0HpzVvEiBpApFKG1ZHXMwzQl+pR
+8P27wWDsblJU7Qgb8ZzGRK9l5GOFhxtN+oXZ4CCmunLMtaZ2vSai7du/VKrg64GGZNAKerEB
+evjJVNFgeSnmUK9GB4kCZ7U5NWlU+2H87scntW4Q/0Y6vqQJcJeaMHg/dQnahTQ2p+hB1xJJ
+K32GWIAucTFMSOKLbQHadIOiMYIDFDCCAxACAQEwTjA6MQswCQYDVQQGEwJVUzESMBAGA1UE
+ChMJSWRlblRydXN0MRcwFQYDVQQDEw5UcnVzdElEIENBIEExMgIQQAFe4D0YrXK5RrCU85MI
+7zANBglghkgBZQMEAgEFAKCCAZcwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkqhkiG
+9w0BCQUxDxcNMTcxMjE2MTYxODQxWjAvBgkqhkiG9w0BCQQxIgQgvVGtquTGouNy9HwKKkKB
+t2x/iGviJYj/i1Nn76rNBUgwXQYJKwYBBAGCNxAEMVAwTjA6MQswCQYDVQQGEwJVUzESMBAG
+A1UEChMJSWRlblRydXN0MRcwFQYDVQQDEw5UcnVzdElEIENBIEExMgIQQAFe4D0YrXK5RrCU
+85MI7zBfBgsqhkiG9w0BCRACCzFQoE4wOjELMAkGA1UEBhMCVVMxEjAQBgNVBAoTCUlkZW5U
+cnVzdDEXMBUGA1UEAxMOVHJ1c3RJRCBDQSBBMTICEEABXuA9GK1yuUawlPOTCO8wbAYJKoZI
+hvcNAQkPMV8wXTALBglghkgBZQMEASowCwYJYIZIAWUDBAECMAoGCCqGSIb3DQMHMA4GCCqG
+SIb3DQMCAgIAgDANBggqhkiG9w0DAgIBQDAHBgUrDgMCBzANBggqhkiG9w0DAgIBKDANBgkq
+hkiG9w0BAQEFAASCAQCKNfbllIxdkvs7e30L/5yqAGXkpp/kIUy727/11gO+TGSgzD8D3obD
+ZxkgPnilK7H2DvhOH7p8R5sNcBhg9NN3+Jv6yfQ15Vz8BgZxbJ6kwLn3nLPb1NME7Icxq5hX
+lTFJ/d+F3eJ7htBo9HOBHIL+gixl2oBua24mce4FLCQyBJ0gKzKz5eOPA6EPk45Q3bZaD/Ga
+xsK2NRbFOCSG+SQ50mHCGG1ve2BrnCvYIjUH6CTWu6/FBNtdKNbveTaHoA8oQZw4+etqMNaS
+22+D2tICxUY+h42n2km7xvj2333My+NemYlc1K1onsGzPX9RMAh2j1vf4QU/6aGolYJxrhfN
+AAAAAAAA
+--------------ms030408000205080100010300--
 
