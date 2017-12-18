@@ -1,43 +1,88 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.17.21]:62488 "EHLO mout.gmx.net"
+Received: from fieldses.org ([173.255.197.46]:48718 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935925AbdLRR1O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Dec 2017 12:27:14 -0500
-Message-ID: <1513618019.7113.27.camel@gmx.de>
-Subject: Re: NFS: 82ms wakeup latency 4.14-rc4
-From: Mike Galbraith <efault@gmx.de>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-Date: Mon, 18 Dec 2017 18:26:59 +0100
-In-Reply-To: <1513617866.4581.6.camel@primarydata.com>
-References: <1513610231.7998.13.camel@gmx.de>
-         <1513611112.7113.1.camel@gmx.de> <20171218163559.GA11829@fieldses.org>
-         <1513616405.7113.18.camel@gmx.de> <1513617866.4581.6.camel@primarydata.com>
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+        id S934934AbdLRRgw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Dec 2017 12:36:52 -0500
+Date: Mon, 18 Dec 2017 12:36:51 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
+Message-ID: <20171218173651.GB12454@fieldses.org>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+ <20171218151156.14565-20-jlayton@kernel.org>
+ <20171218163418.GF30350@quack2.suse.cz>
+ <1513617740.3422.30.camel@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1513617740.3422.30.camel@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-12-18 at 17:24 +0000, Trond Myklebust wrote:
-> On Mon, 2017-12-18 at 18:00 +0100, Mike Galbraith wrote:
-> > On Mon, 2017-12-18 at 11:35 -0500, J. Bruce Fields wrote:
-> > > 
-> > > Like I say, I don't really understand the issues here, so it's more
-> > > a
-> > > question than an objection....  (I don't know any reason a
-> > > cond_resched() would be bad there.)
+On Mon, Dec 18, 2017 at 12:22:20PM -0500, Jeff Layton wrote:
+> On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
+> > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
+> > >  static inline bool
+> > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> > >  {
+> > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> > > +	u64 cur, old, new;
+> > >  
+> > > -	atomic64_inc(ivp);
+> > > +	cur = (u64)atomic64_read(&inode->i_version);
+> > > +	for (;;) {
+> > > +		/* If flag is clear then we needn't do anything */
+> > > +		if (!force && !(cur & I_VERSION_QUERIED))
+> > > +			return false;
 > > 
-> > Think of it this way: what all can be queued up behind that kworker
-> > that is hogging CPU for huge swaths of time?  It's not only userspace
-> > that suffers.
+> > The fast path here misses any memory barrier. Thus it seems this query
+> > could be in theory reordered before any store that happened to modify the
+> > inode? Or maybe we could race and miss the fact that in fact this i_version
+> > has already been queried? But maybe there's some higher level locking that
+> > makes sure this is all a non-issue... But in that case it would deserve
+> > some comment I guess.
 > > 
 > 
-> Any cond_sched() belongs in the loop in nfs_commit_release_pages()
-> (where it can be mitigated) rather than in a function whose purpose is
-> to free memory. There is no reason to call it from the writeback or
-> readpages code.
+> There's no higher-level locking. Getting locking out of this codepath is
+> a good thing IMO. The larger question here is whether we really care
+> about ordering this with anything else.
+> 
+> The i_version, as implemented today, is not ordered with actual changes
+> to the inode. We only take the i_lock today when modifying it, not when
+> querying it. It's possible today that you could see the results of a
+> change and then do a fetch of the i_version that doesn't show an
+> increment vs. a previous change.
+> 
+> It'd be nice if this were atomic with the actual changes that it
+> represents, but I think that would be prohibitively expensive. That may
+> be something we need to address. I'm not sure we really want to do it as
+> part of this patchset though.
 
-(this is why bandaid didn't come equipped with changelog etc:)
+I don't think we need full atomicity, but we *do* need the i_version
+increment to be seen as ordered after the inode change.  That should be
+relatively inexpensive, yes?
+
+Otherwise an inode change could be overlooked indefinitely, because a
+client could cache the old contents with the new i_version value and
+never see the i_version change again as long as the inode isn't touched
+again.
+
+(If the client instead caches new data with the old inode version, there
+may be an unnecessary cache invalidation next time the client queries
+the change attribute.  That's a performance bug, but not really a
+correctness problem, at least for clients depending only on
+close-to-open semantics: they'll only depend on seeing the new change
+attribute after the change has been flushed to disk.  The performance
+problem should be mitigated by the race being very rare.)
+
+--b.
