@@ -1,39 +1,119 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:29664 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S936605AbdLRRYe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Dec 2017 12:24:34 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "efault@gmx.de" <efault@gmx.de>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-Subject: Re: NFS: 82ms wakeup latency 4.14-rc4
-Date: Mon, 18 Dec 2017 17:24:29 +0000
-Message-ID: <1513617866.4581.6.camel@primarydata.com>
-References: <1513610231.7998.13.camel@gmx.de>
-         <1513611112.7113.1.camel@gmx.de> <20171218163559.GA11829@fieldses.org>
-         <1513616405.7113.18.camel@gmx.de>
-In-Reply-To: <1513616405.7113.18.camel@gmx.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.kernel.org ([198.145.29.99]:59042 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S935123AbdLRRZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Dec 2017 12:25:43 -0500
+Message-ID: <1513617938.3422.31.camel@kernel.org>
+Subject: Re: [PATCH v3 16/19] fs: only set S_VERSION when updating times if
+ necessary
+From: Jeff Layton <jlayton@kernel.org>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Date: Mon, 18 Dec 2017 12:25:38 -0500
+In-Reply-To: <20171218160736.GE30350@quack2.suse.cz>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+         <20171218151156.14565-17-jlayton@kernel.org>
+         <20171218160736.GE30350@quack2.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE3LTEyLTE4IGF0IDE4OjAwICswMTAwLCBNaWtlIEdhbGJyYWl0aCB3cm90ZToN
-Cj4gT24gTW9uLCAyMDE3LTEyLTE4IGF0IDExOjM1IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3Jv
-dGU6DQo+ID4gDQo+ID4gTGlrZSBJIHNheSwgSSBkb24ndCByZWFsbHkgdW5kZXJzdGFuZCB0aGUg
-aXNzdWVzIGhlcmUsIHNvIGl0J3MgbW9yZQ0KPiA+IGENCj4gPiBxdWVzdGlvbiB0aGFuIGFuIG9i
-amVjdGlvbi4uLi4gIChJIGRvbid0IGtub3cgYW55IHJlYXNvbiBhDQo+ID4gY29uZF9yZXNjaGVk
-KCkgd291bGQgYmUgYmFkIHRoZXJlLikNCj4gDQo+IFRoaW5rIG9mIGl0IHRoaXMgd2F5OiB3aGF0
-IGFsbCBjYW4gYmUgcXVldWVkIHVwIGJlaGluZCB0aGF0IGt3b3JrZXINCj4gdGhhdCBpcyBob2dn
-aW5nIENQVSBmb3IgaHVnZSBzd2F0aHMgb2YgdGltZT8gIEl0J3Mgbm90IG9ubHkgdXNlcnNwYWNl
-DQo+IHRoYXQgc3VmZmVycy4NCj4gDQoNCkFueSBjb25kX3NjaGVkKCkgYmVsb25ncyBpbiB0aGUg
-bG9vcCBpbiBuZnNfY29tbWl0X3JlbGVhc2VfcGFnZXMoKQ0KKHdoZXJlIGl0IGNhbiBiZSBtaXRp
-Z2F0ZWQpIHJhdGhlciB0aGFuIGluIGEgZnVuY3Rpb24gd2hvc2UgcHVycG9zZSBpcw0KdG8gZnJl
-ZSBtZW1vcnkuIFRoZXJlIGlzIG5vIHJlYXNvbiB0byBjYWxsIGl0IGZyb20gdGhlIHdyaXRlYmFj
-ayBvcg0KcmVhZHBhZ2VzIGNvZGUuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
-dGEuY29tDQo=
+On Mon, 2017-12-18 at 17:07 +0100, Jan Kara wrote:
+> On Mon 18-12-17 10:11:53, Jeff Layton wrote:
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > We only really need to update i_version if someone has queried for it
+> > since we last incremented it. By doing that, we can avoid having to
+> > update the inode if the times haven't changed.
+> > 
+> > If the times have changed, then we go ahead and forcibly increment the
+> > counter, under the assumption that we'll be going to the storage
+> > anyway, and the increment itself is relatively cheap.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  fs/inode.c | 20 ++++++++++++++------
+> >  1 file changed, 14 insertions(+), 6 deletions(-)
+> > 
+> > diff --git a/fs/inode.c b/fs/inode.c
+> > index 03102d6ef044..83f6cfc3cde7 100644
+> > --- a/fs/inode.c
+> > +++ b/fs/inode.c
+> > @@ -19,6 +19,7 @@
+> >  #include <linux/ratelimit.h>
+> >  #include <linux/list_lru.h>
+> >  #include <trace/events/writeback.h>
+> > +#include <linux/iversion.h>
+> >  #include "internal.h"
+> >  
+> >  /*
+> > @@ -1634,17 +1635,24 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
+> >  int generic_update_time(struct inode *inode, struct timespec *time, int flags)
+> >  {
+> >  	int iflags = I_DIRTY_TIME;
+> > +	bool dirty = false;
+> >  
+> > -	if (flags & S_ATIME)
+> > +	if (flags & S_ATIME) {
+> >  		inode->i_atime = *time;
+> > +		dirty |= !(inode->i_sb->s_flags & SB_LAZYTIME);
+> > +	}
+> >  	if (flags & S_VERSION)
+> > -		inode_inc_iversion(inode);
+> > -	if (flags & S_CTIME)
+> > +		dirty |= inode_maybe_inc_iversion(inode, dirty);
+> > +	if (flags & S_CTIME) {
+> >  		inode->i_ctime = *time;
+> > -	if (flags & S_MTIME)
+> > +		dirty = true;
+> > +	}
+> > +	if (flags & S_MTIME) {
+> >  		inode->i_mtime = *time;
+> > +		dirty = true;
+> > +	}
+> 
+> The SB_LAZYTIME handling is wrong here. That option is not only about atime
+> handling but rather about all inode time stamps. So you rather need
+> something like:
+> 
+> 	if (flags & (S_ATIME | S_CTIME | S_MTIME) &&
+> 	    !(inode->i_sb->s_flags & SB_LAZYTIME))
+> 		dirty = true;
+> 
+> 								Honza
+> 
 
+Thanks. I misunderstood that. Will fix.
+
+> >  
+> > -	if (!(inode->i_sb->s_flags & SB_LAZYTIME) || (flags & S_VERSION))
+> > +	if (dirty)
+> >  		iflags |= I_DIRTY_SYNC;
+> >  	__mark_inode_dirty(inode, iflags);
+> >  	return 0;
+> > @@ -1863,7 +1871,7 @@ int file_update_time(struct file *file)
+> >  	if (!timespec_equal(&inode->i_ctime, &now))
+> >  		sync_it |= S_CTIME;
+> >  
+> > -	if (IS_I_VERSION(inode))
+> > +	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
+> >  		sync_it |= S_VERSION;
+> >  
+> >  	if (!sync_it)
+> > -- 
+> > 2.14.3
+> > 
+
+-- 
+Jeff Layton <jlayton@kernel.org>
