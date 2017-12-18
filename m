@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:55040 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:54928 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1758723AbdLRPMN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Dec 2017 10:12:13 -0500
+        id S1758579AbdLRPML (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Dec 2017 10:12:11 -0500
 From: Jeff Layton <jlayton@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
@@ -15,9 +15,9 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com
-Subject: [PATCH v3 05/19] afs: convert to new i_version API
-Date: Mon, 18 Dec 2017 10:11:42 -0500
-Message-Id: <20171218151156.14565-6-jlayton@kernel.org>
+Subject: [PATCH v3 04/19] affs: convert to new i_version API
+Date: Mon, 18 Dec 2017 10:11:41 -0500
+Message-Id: <20171218151156.14565-5-jlayton@kernel.org>
 In-Reply-To: <20171218151156.14565-1-jlayton@kernel.org>
 References: <20171218151156.14565-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -25,71 +25,94 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@redhat.com>
 
-For AFS, it's generally treated as an opaque value, so we use the
-*_raw variants of the API here.
-
-Note that AFS has quite a different definition for this counter. AFS
-only increments it on changes to the data, not for the metadata. We'll
-need to reconcile that somehow if we ever want to present this to
-userspace via statx.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/afs/fsclient.c | 3 ++-
- fs/afs/inode.c    | 5 +++--
- 2 files changed, 5 insertions(+), 3 deletions(-)
+ fs/affs/amigaffs.c | 5 +++--
+ fs/affs/dir.c      | 5 +++--
+ fs/affs/super.c    | 3 ++-
+ 3 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/afs/fsclient.c b/fs/afs/fsclient.c
-index b90ef39ae914..88ec38c2d83c 100644
---- a/fs/afs/fsclient.c
-+++ b/fs/afs/fsclient.c
-@@ -13,6 +13,7 @@
- #include <linux/slab.h>
- #include <linux/sched.h>
- #include <linux/circ_buf.h>
-+#include <linux/iversion.h>
- #include "internal.h"
- #include "afs_fs.h"
+diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
+index 0f0e6925e97d..14a6c1b90c9f 100644
+--- a/fs/affs/amigaffs.c
++++ b/fs/affs/amigaffs.c
+@@ -10,6 +10,7 @@
+  */
  
-@@ -124,7 +125,7 @@ static void xdr_decode_AFSFetchStatus(const __be32 **_bp,
- 		vnode->vfs_inode.i_ctime.tv_sec	= status->mtime_client;
- 		vnode->vfs_inode.i_mtime	= vnode->vfs_inode.i_ctime;
- 		vnode->vfs_inode.i_atime	= vnode->vfs_inode.i_ctime;
--		vnode->vfs_inode.i_version	= data_version;
-+		inode_set_iversion_raw(&vnode->vfs_inode, data_version);
+ #include <linux/math64.h>
++#include <linux/iversion.h>
+ #include "affs.h"
+ 
+ /*
+@@ -60,7 +61,7 @@ affs_insert_hash(struct inode *dir, struct buffer_head *bh)
+ 	affs_brelse(dir_bh);
+ 
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+-	dir->i_version++;
++	inode_inc_iversion(dir);
+ 	mark_inode_dirty(dir);
+ 
+ 	return 0;
+@@ -114,7 +115,7 @@ affs_remove_hash(struct inode *dir, struct buffer_head *rem_bh)
+ 	affs_brelse(bh);
+ 
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+-	dir->i_version++;
++	inode_inc_iversion(dir);
+ 	mark_inode_dirty(dir);
+ 
+ 	return retval;
+diff --git a/fs/affs/dir.c b/fs/affs/dir.c
+index a105e77df2c1..d180b46453cf 100644
+--- a/fs/affs/dir.c
++++ b/fs/affs/dir.c
+@@ -14,6 +14,7 @@
+  *
+  */
+ 
++#include <linux/iversion.h>
+ #include "affs.h"
+ 
+ static int affs_readdir(struct file *, struct dir_context *);
+@@ -80,7 +81,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
+ 	 * we can jump directly to where we left off.
+ 	 */
+ 	ino = (u32)(long)file->private_data;
+-	if (ino && file->f_version == inode->i_version) {
++	if (ino && inode_cmp_iversion(inode, file->f_version) == 0) {
+ 		pr_debug("readdir() left off=%d\n", ino);
+ 		goto inside;
  	}
+@@ -130,7 +131,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
+ 		} while (ino);
+ 	}
+ done:
+-	file->f_version = inode->i_version;
++	file->f_version = inode_query_iversion(inode);
+ 	file->private_data = (void *)(long)ino;
+ 	affs_brelse(fh_bh);
  
- 	expected_version = status->data_version;
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 3415eb7484f6..dcd2e08d6cdb 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
+diff --git a/fs/affs/super.c b/fs/affs/super.c
+index 1117e36134cc..e602619aed9d 100644
+--- a/fs/affs/super.c
++++ b/fs/affs/super.c
 @@ -21,6 +21,7 @@
- #include <linux/sched.h>
- #include <linux/mount.h>
- #include <linux/namei.h>
+ #include <linux/writeback.h>
+ #include <linux/blkdev.h>
+ #include <linux/seq_file.h>
 +#include <linux/iversion.h>
- #include "internal.h"
+ #include "affs.h"
  
- static const struct inode_operations afs_symlink_inode_operations = {
-@@ -89,7 +90,7 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
- 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
- 	inode->i_blocks		= 0;
- 	inode->i_generation	= vnode->fid.unique;
--	inode->i_version	= vnode->status.data_version;
-+	inode_set_iversion_raw(inode, vnode->status.data_version);
- 	inode->i_mapping->a_ops	= &afs_fs_aops;
+ static int affs_statfs(struct dentry *dentry, struct kstatfs *buf);
+@@ -102,7 +103,7 @@ static struct inode *affs_alloc_inode(struct super_block *sb)
+ 	if (!i)
+ 		return NULL;
  
- 	read_sequnlock_excl(&vnode->cb_lock);
-@@ -218,7 +219,7 @@ struct inode *afs_iget_autocell(struct inode *dir, const char *dev_name,
- 	inode->i_ctime.tv_nsec	= 0;
- 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
- 	inode->i_blocks		= 0;
--	inode->i_version	= 0;
-+	inode_set_iversion_raw(inode, 0);
- 	inode->i_generation	= 0;
- 
- 	set_bit(AFS_VNODE_PSEUDODIR, &vnode->flags);
+-	i->vfs_inode.i_version = 1;
++	inode_set_iversion(&i->vfs_inode, 1);
+ 	i->i_lc = NULL;
+ 	i->i_ext_bh = NULL;
+ 	i->i_pa_cnt = 0;
 -- 
 2.14.3
 
