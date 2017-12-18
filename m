@@ -1,119 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:59042 "EHLO mail.kernel.org"
+Received: from fieldses.org ([173.255.197.46]:48708 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S935123AbdLRRZn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Dec 2017 12:25:43 -0500
-Message-ID: <1513617938.3422.31.camel@kernel.org>
-Subject: Re: [PATCH v3 16/19] fs: only set S_VERSION when updating times if
- necessary
-From: Jeff Layton <jlayton@kernel.org>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-Date: Mon, 18 Dec 2017 12:25:38 -0500
-In-Reply-To: <20171218160736.GE30350@quack2.suse.cz>
-References: <20171218151156.14565-1-jlayton@kernel.org>
-         <20171218151156.14565-17-jlayton@kernel.org>
-         <20171218160736.GE30350@quack2.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        id S935111AbdLRR1L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Dec 2017 12:27:11 -0500
+Date: Mon, 18 Dec 2017 12:27:11 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Mike Galbraith <efault@gmx.de>
+Cc: lkml <linux-kernel@vger.kernel.org>,
+        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: NFS: 82ms wakeup latency 4.14-rc4
+Message-ID: <20171218172711.GA12454@fieldses.org>
+References: <1513610231.7998.13.camel@gmx.de>
+ <1513611112.7113.1.camel@gmx.de>
+ <20171218163559.GA11829@fieldses.org>
+ <1513616405.7113.18.camel@gmx.de>
+ <1513617456.7113.25.camel@gmx.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1513617456.7113.25.camel@gmx.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-12-18 at 17:07 +0100, Jan Kara wrote:
-> On Mon 18-12-17 10:11:53, Jeff Layton wrote:
-> > From: Jeff Layton <jlayton@redhat.com>
+On Mon, Dec 18, 2017 at 06:17:36PM +0100, Mike Galbraith wrote:
+> On Mon, 2017-12-18 at 18:00 +0100, Mike Galbraith wrote:
+> > On Mon, 2017-12-18 at 11:35 -0500, J. Bruce Fields wrote:
+> > > 
+> > > Like I say, I don't really understand the issues here, so it's more a
+> > > question than an objection....  (I don't know any reason a
+> > > cond_resched() would be bad there.)
 > > 
-> > We only really need to update i_version if someone has queried for it
-> > since we last incremented it. By doing that, we can avoid having to
-> > update the inode if the times haven't changed.
-> > 
-> > If the times have changed, then we go ahead and forcibly increment the
-> > counter, under the assumption that we'll be going to the storage
-> > anyway, and the increment itself is relatively cheap.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/inode.c | 20 ++++++++++++++------
-> >  1 file changed, 14 insertions(+), 6 deletions(-)
-> > 
-> > diff --git a/fs/inode.c b/fs/inode.c
-> > index 03102d6ef044..83f6cfc3cde7 100644
-> > --- a/fs/inode.c
-> > +++ b/fs/inode.c
-> > @@ -19,6 +19,7 @@
-> >  #include <linux/ratelimit.h>
-> >  #include <linux/list_lru.h>
-> >  #include <trace/events/writeback.h>
-> > +#include <linux/iversion.h>
-> >  #include "internal.h"
-> >  
-> >  /*
-> > @@ -1634,17 +1635,24 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
-> >  int generic_update_time(struct inode *inode, struct timespec *time, int flags)
-> >  {
-> >  	int iflags = I_DIRTY_TIME;
-> > +	bool dirty = false;
-> >  
-> > -	if (flags & S_ATIME)
-> > +	if (flags & S_ATIME) {
-> >  		inode->i_atime = *time;
-> > +		dirty |= !(inode->i_sb->s_flags & SB_LAZYTIME);
-> > +	}
-> >  	if (flags & S_VERSION)
-> > -		inode_inc_iversion(inode);
-> > -	if (flags & S_CTIME)
-> > +		dirty |= inode_maybe_inc_iversion(inode, dirty);
-> > +	if (flags & S_CTIME) {
-> >  		inode->i_ctime = *time;
-> > -	if (flags & S_MTIME)
-> > +		dirty = true;
-> > +	}
-> > +	if (flags & S_MTIME) {
-> >  		inode->i_mtime = *time;
-> > +		dirty = true;
-> > +	}
+> > Think of it this way: what all can be queued up behind that kworker
+> > that is hogging CPU for huge swaths of time?  It's not only userspace
+> > that suffers.
 > 
-> The SB_LAZYTIME handling is wrong here. That option is not only about atime
-> handling but rather about all inode time stamps. So you rather need
-> something like:
-> 
-> 	if (flags & (S_ATIME | S_CTIME | S_MTIME) &&
-> 	    !(inode->i_sb->s_flags & SB_LAZYTIME))
-> 		dirty = true;
-> 
-> 								Honza
-> 
+> Bah, I'm gonna sound like a damn Baptist preacher, but I gotta say,
+> latency matters just as much to an enterprise NOPREEMPT kernel and its
+> users as it does to a desktop kernel and its users.  For max
+> throughput, you don't want to do work in _tiny_ quantum, because you
+> then lose throughput due to massive cache trashing and scheduling
+> overhead, but latency still does matter, and not just a little.
 
-Thanks. I misunderstood that. Will fix.
+Right, what I don't understand is why kernels are still built without
+preemption.  I'd naively assumed that was just a bandaid while we
+weren't sure how much old kernel code might still depend on it for
+correctness.  I'd forgotten about throughput/latency tradeoffs--but
+couldn't those in theory be managed by runtime configuration of the
+sceduler, or at least some smaller hammer than turning off preemption
+entirely?
 
-> >  
-> > -	if (!(inode->i_sb->s_flags & SB_LAZYTIME) || (flags & S_VERSION))
-> > +	if (dirty)
-> >  		iflags |= I_DIRTY_SYNC;
-> >  	__mark_inode_dirty(inode, iflags);
-> >  	return 0;
-> > @@ -1863,7 +1871,7 @@ int file_update_time(struct file *file)
-> >  	if (!timespec_equal(&inode->i_ctime, &now))
-> >  		sync_it |= S_CTIME;
-> >  
-> > -	if (IS_I_VERSION(inode))
-> > +	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
-> >  		sync_it |= S_VERSION;
-> >  
-> >  	if (!sync_it)
-> > -- 
-> > 2.14.3
-> > 
+(But, again, just idle curiosity on my part, thanks for the answers.)
 
--- 
-Jeff Layton <jlayton@kernel.org>
+--b.
