@@ -1,40 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.15.19]:60414 "EHLO mout.gmx.net"
+Received: from mail.kernel.org ([198.145.29.99]:58398 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1759917AbdLRRSD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Dec 2017 12:18:03 -0500
-Message-ID: <1513617456.7113.25.camel@gmx.de>
-Subject: Re: NFS: 82ms wakeup latency 4.14-rc4
-From: Mike Galbraith <efault@gmx.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: lkml <linux-kernel@vger.kernel.org>,
-        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Date: Mon, 18 Dec 2017 18:17:36 +0100
-In-Reply-To: <1513616405.7113.18.camel@gmx.de>
-References: <1513610231.7998.13.camel@gmx.de>
-         <1513611112.7113.1.camel@gmx.de> <20171218163559.GA11829@fieldses.org>
-         <1513616405.7113.18.camel@gmx.de>
-Content-Type: text/plain; charset="ISO-8859-15"
+        id S934234AbdLRRWY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Dec 2017 12:22:24 -0500
+Message-ID: <1513617740.3422.30.camel@kernel.org>
+Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
+From: Jeff Layton <jlayton@kernel.org>
+To: Jan Kara <jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Date: Mon, 18 Dec 2017 12:22:20 -0500
+In-Reply-To: <20171218163418.GF30350@quack2.suse.cz>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+         <20171218151156.14565-20-jlayton@kernel.org>
+         <20171218163418.GF30350@quack2.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2017-12-18 at 18:00 +0100, Mike Galbraith wrote:
-> On Mon, 2017-12-18 at 11:35 -0500, J. Bruce Fields wrote:
-> > 
-> > Like I say, I don't really understand the issues here, so it's more a
-> > question than an objection....  (I don't know any reason a
-> > cond_resched() would be bad there.)
+On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
+> On Mon 18-12-17 10:11:56, Jeff Layton wrote:
+> >  static inline bool
+> >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> >  {
+> > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> > +	u64 cur, old, new;
+> >  
+> > -	atomic64_inc(ivp);
+> > +	cur = (u64)atomic64_read(&inode->i_version);
+> > +	for (;;) {
+> > +		/* If flag is clear then we needn't do anything */
+> > +		if (!force && !(cur & I_VERSION_QUERIED))
+> > +			return false;
 > 
-> Think of it this way: what all can be queued up behind that kworker
-> that is hogging CPU for huge swaths of time?  It's not only userspace
-> that suffers.
+> The fast path here misses any memory barrier. Thus it seems this query
+> could be in theory reordered before any store that happened to modify the
+> inode? Or maybe we could race and miss the fact that in fact this i_version
+> has already been queried? But maybe there's some higher level locking that
+> makes sure this is all a non-issue... But in that case it would deserve
+> some comment I guess.
+> 
 
-Bah, I'm gonna sound like a damn Baptist preacher, but I gotta say,
-latency matters just as much to an enterprise NOPREEMPT kernel and its
-users as it does to a desktop kernel and its users.  For max
-throughput, you don't want to do work in _tiny_ quantum, because you
-then lose throughput due to massive cache trashing and scheduling
-overhead, but latency still does matter, and not just a little.
+There's no higher-level locking. Getting locking out of this codepath is
+a good thing IMO. The larger question here is whether we really care
+about ordering this with anything else.
 
-	-Mike
+The i_version, as implemented today, is not ordered with actual changes
+to the inode. We only take the i_lock today when modifying it, not when
+querying it. It's possible today that you could see the results of a
+change and then do a fetch of the i_version that doesn't show an
+increment vs. a previous change.
+
+It'd be nice if this were atomic with the actual changes that it
+represents, but I think that would be prohibitively expensive. That may
+be something we need to address. I'm not sure we really want to do it as
+part of this patchset though.
+
+> > +
+> > +		/* Since lowest bit is flag, add 2 to avoid it */
+> > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
+> > +
+> > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > +		if (likely(old == cur))
+> > +			break;
+> > +		cur = old;
+> > +	}
+> >  	return true;
+> >  }
+> >  
+> 
+> ...
+> 
+> >  static inline u64
+> >  inode_query_iversion(struct inode *inode)
+> >  {
+> > -	return inode_peek_iversion(inode);
+> > +	u64 cur, old, new;
+> > +
+> > +	cur = atomic64_read(&inode->i_version);
+> > +	for (;;) {
+> > +		/* If flag is already set, then no need to swap */
+> > +		if (cur & I_VERSION_QUERIED)
+> > +			break;
+> > +
+> > +		new = cur | I_VERSION_QUERIED;
+> > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > +		if (old == cur)
+> > +			break;
+> > +		cur = old;
+> > +	}
+> 
+> Why not just use atomic64_or() here?
+> 
+
+If the cmpxchg fails, then either:
+
+1) it was incremented
+2) someone flagged it QUERIED
+
+If an increment happened then we don't need to flag it as QUERIED if
+we're returning an older value. If we use atomic64_or, then we can't
+tell if an increment happened so we'd end up potentially flagging it
+more than necessary.
+
+In principle, either outcome is technically OK and we don't have to loop
+if the cmpxchg doesn't work. That said, if we think there might be a
+later i_version available, then I think we probably want to try to query
+it again so we can return as late a one as possible.
+-- 
+Jeff Layton <jlayton@kernel.org>
