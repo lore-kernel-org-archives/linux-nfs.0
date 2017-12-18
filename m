@@ -1,53 +1,98 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.gmx.net ([212.227.15.15]:63915 "EHLO mout.gmx.net"
+Received: from mail.kernel.org ([198.145.29.99]:55114 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1758386AbdLRPRU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 18 Dec 2017 10:17:20 -0500
-Message-ID: <1513610231.7998.13.camel@gmx.de>
-Subject: NFS: 82ms wakeup latency 4.14-rc4
-From: Mike Galbraith <efault@gmx.de>
-To: lkml <linux-kernel@vger.kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org
-Date: Mon, 18 Dec 2017 16:17:11 +0100
-Content-Type: text/plain; charset="ISO-8859-15"
-Mime-Version: 1.0
+        id S1752720AbdLRPMT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 18 Dec 2017 10:12:19 -0500
+From: Jeff Layton <jlayton@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Subject: [PATCH v3 07/19] exofs: switch to new i_version API
+Date: Mon, 18 Dec 2017 10:11:44 -0500
+Message-Id: <20171218151156.14565-8-jlayton@kernel.org>
+In-Reply-To: <20171218151156.14565-1-jlayton@kernel.org>
+References: <20171218151156.14565-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Greetings,
+From: Jeff Layton <jlayton@redhat.com>
 
-While doing some generic scheduler latency testing, I stumbled onto
-$subject.  To reproduce this, I simply nfs mount my box, cd to one of
-it's spinning rust buckets, and do bonnie -s <ramsize>.  With nothing
-else going on in the box, I've hit > 100ms wakeup latencies.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/exofs/dir.c   | 9 +++++----
+ fs/exofs/super.c | 3 ++-
+ 2 files changed, 7 insertions(+), 5 deletions(-)
 
-(nouveau apparently also thinks this is uncool, and whimpers) 
+diff --git a/fs/exofs/dir.c b/fs/exofs/dir.c
+index 98233a97b7b8..c5a53fcc43ea 100644
+--- a/fs/exofs/dir.c
++++ b/fs/exofs/dir.c
+@@ -31,6 +31,7 @@
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+  */
+ 
++#include <linux/iversion.h>
+ #include "exofs.h"
+ 
+ static inline unsigned exofs_chunk_size(struct inode *inode)
+@@ -60,7 +61,7 @@ static int exofs_commit_chunk(struct page *page, loff_t pos, unsigned len)
+ 	struct inode *dir = mapping->host;
+ 	int err = 0;
+ 
+-	dir->i_version++;
++	inode_inc_iversion(dir);
+ 
+ 	if (!PageUptodate(page))
+ 		SetPageUptodate(page);
+@@ -241,7 +242,7 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
+ 	unsigned long n = pos >> PAGE_SHIFT;
+ 	unsigned long npages = dir_pages(inode);
+ 	unsigned chunk_mask = ~(exofs_chunk_size(inode)-1);
+-	int need_revalidate = (file->f_version != inode->i_version);
++	bool need_revalidate = inode_cmp_iversion(inode, file->f_version);
+ 
+ 	if (pos > inode->i_size - EXOFS_DIR_REC_LEN(1))
+ 		return 0;
+@@ -264,8 +265,8 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
+ 								chunk_mask);
+ 				ctx->pos = (n<<PAGE_SHIFT) + offset;
+ 			}
+-			file->f_version = inode->i_version;
+-			need_revalidate = 0;
++			file->f_version = inode_query_iversion(inode);
++			need_revalidate = false;
+ 		}
+ 		de = (struct exofs_dir_entry *)(kaddr + offset);
+ 		limit = kaddr + exofs_last_byte(inode, n) -
+diff --git a/fs/exofs/super.c b/fs/exofs/super.c
+index 819624cfc8da..7e244093c0e5 100644
+--- a/fs/exofs/super.c
++++ b/fs/exofs/super.c
+@@ -38,6 +38,7 @@
+ #include <linux/module.h>
+ #include <linux/exportfs.h>
+ #include <linux/slab.h>
++#include <linux/iversion.h>
+ 
+ #include "exofs.h"
+ 
+@@ -159,7 +160,7 @@ static struct inode *exofs_alloc_inode(struct super_block *sb)
+ 	if (!oi)
+ 		return NULL;
+ 
+-	oi->vfs_inode.i_version = 1;
++	inode_set_iversion(&oi->vfs_inode, 1);
+ 	return &oi->vfs_inode;
+ }
+ 
+-- 
+2.14.3
 
-....
-kworker/-7421    0.N.. 82893us : nfs_release_request <-nfs_commit_release_pages
-kworker/-7421    0.N.. 82893us : nfs_unlock_and_release_request <-nfs_commit_release_pages
-kworker/-7421    0.N.. 82893us : nfs_unlock_request <-nfs_unlock_and_release_request
-kworker/-7421    0.N.. 82893us : nfs_page_group_destroy <-nfs_commit_release_pages
-kworker/-7421    0.N.. 82893us : nfs_page_group_sync_on_bit <-nfs_page_group_destroy
-kworker/-7421    0.N.. 82893us : nfs_page_group_lock <-nfs_page_group_sync_on_bit
-kworker/-7421    0.N.. 82893us : nfs_page_group_unlock <-nfs_page_group_sync_on_bit
-kworker/-7421    0.N.. 82893us : nfs_free_request <-nfs_page_group_destroy
-kworker/-7421    0.N.. 82893us : nfs_put_lock_context <-nfs_free_request
-kworker/-7421    0.N.. 82893us : put_nfs_open_context <-nfs_free_request
-kworker/-7421    0.N.. 82893us : __put_nfs_open_context <-nfs_free_request
-kworker/-7421    0.N.. 82894us : kmem_cache_free <-nfs_page_group_destroy
-kworker/-7421    0.N.. 82894us : __slab_free <-kmem_cache_free
-kworker/-7421    0.N.. 82894us : clear_wb_congested <-nfs_commit_release_pages
-kworker/-7421    0.N.. 82894us : nfs_init_cinfo <-nfs_commit_release_pages
-kworker/-7421    0.N.. 82894us : nfs_init_cinfo_from_inode <-nfs_commit_release_pages
-kworker/-7421    0.N.. 82894us : nfs_commit_end <-nfs_commit_release_pages
-kworker/-7421    0.N.. 82894us : nfs_commitdata_release <-rpc_free_task
-kworker/-7421    0.N.. 82894us : put_nfs_open_context <-nfs_commitdata_release
-kworker/-7421    0.N.. 82894us : __put_nfs_open_context <-nfs_commitdata_release
-kworker/-7421    0.N.. 82895us : mempool_free <-rpc_free_task
-kworker/-7421    0.N.. 82895us : mempool_free_slab <-rpc_free_task
-kworker/-7421    0.N.. 82895us : kmem_cache_free <-rpc_free_task
-kworker/-7421    0.N.. 82895us : ___might_sleep <-process_one_work
-kworker/-7421    0.N.. 82895us : _cond_resched <-process_one_work
-kworker/-7421    0dN.1 82895us : rcu_note_context_switch <-__schedule
