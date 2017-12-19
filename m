@@ -1,59 +1,46 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:35321 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751901AbdLSQff (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Dec 2017 11:35:35 -0500
-Received: by mail-io0-f194.google.com with SMTP id 14so7722338iou.2
-        for <linux-nfs@vger.kernel.org>; Tue, 19 Dec 2017 08:35:34 -0800 (PST)
-Subject: [PATCH] mountstats: Use correct RDMA terminology
-From: Chuck Lever <chuck.lever@oracle.com>
-To: SteveD@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 19 Dec 2017 11:35:32 -0500
-Message-ID: <20171219163529.10803.82407.stgit@manet.1015granger.net>
+Return-Path: <bfields@fieldses.org>
+Date: Tue, 19 Dec 2017 11:56:22 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+	Trond Myklebust <trond.myklebust@primarydata.com>,
+	Anna Schumaker <Anna.Schumaker@Netapp.com>
+Subject: Re: spurious sillyrename after O_DIRECT writes get ENOSPC
+Message-ID: <20171219165622.GC19967@fieldses.org>
+References: <20171208221626.GB22508@fieldses.org>
+ <20171213171815.GB9205@fieldses.org>
+ <9383ABA6-B994-4DB3-95F4-C0D6F59580F9@redhat.com>
+ <20171214163654.GD9205@fieldses.org>
+ <20171214185514.GE9205@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171214185514.GE9205@fieldses.org>
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel is counting RDMA segments, not chunks. Correct the units
-labels displayed by "mountstats -x", and fix up the internal names
-of the counters.
+On Thu, Dec 14, 2017 at 01:55:14PM -0500, J. Bruce Fields wrote:
+> So actually what happens is if you do a direct io write where some
+> WRITEs succeed and the one fails, then this:
+> 
+> 	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+> 		dreq->flags = 0;
+> 		dreq->error = hdr->error;
+> 	}
+> 
+> clears the NFS_ODIRECT_DO_COMMIT flag, so nfs_direct_write_complete
+> never scheduels the commit calls.  It looks like that leaves a bunch of
+> nfs_pages on some to-be-committed list, so we end up leaking a bunch of
+> stuff, with the most visible symptom being an unnecessarily sillyrename
+> on close.
+> 
+> I can just remove that clear of dreq_flags and that fixes the problem,
+> but I doubt that's correct.
 
-Fixes: 6742ba53ae79 ("mountstats: Add option to pretty-print ...")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- tools/mountstats/mountstats.py |   12 ++++++------
- 1 file changed, 6 insertions(+), 6 deletions(-)
+Or, maybe it is.  If *any* WRITE(s) involved in this write might need
+a commit or reschedule, then surely we should run
+nfs_direct_write_schedule_work and let it sort them out?  I'm having
+trouble seeing why clearing that field partway through could ever be
+correct.
 
-diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-index 440aa72..c7fb8bb 100755
---- a/tools/mountstats/mountstats.py
-+++ b/tools/mountstats/mountstats.py
-@@ -120,9 +120,9 @@ XprtRdmaCounters = [
-     'badxids',
-     'inflightsends',
-     'backlogutil',
--    'read_chunks',
--    'write_chunks',
--    'reply_chunks',
-+    'read_segments',
-+    'write_segments',
-+    'reply_segments',
-     'total_rdma_req',
-     'total_rdma_rep',
-     'pullup',
-@@ -718,9 +718,9 @@ class DeviceData:
-             if self.__rpc_data['rpcsends'] != 0:
-                 print('\tAvg backlog length: %d' % \
-                     (float(self.__rpc_data['backlogutil']) / self.__rpc_data['rpcsends']))
--            print('\tRead chunks: %d' % self.__rpc_data['read_chunks'])
--            print('\tWrite chunks: %d' % self.__rpc_data['write_chunks'])
--            print('\tReply chunks: %d' % self.__rpc_data['reply_chunks'])
-+            print('\tRead segments: %d' % self.__rpc_data['read_segments'])
-+            print('\tWrite segments: %d' % self.__rpc_data['write_segments'])
-+            print('\tReply segments: %d' % self.__rpc_data['reply_segments'])
-             print('\tRegistered: %d bytes' % self.__rpc_data['total_rdma_req'])
-             print('\tRDMA received: %d bytes' % self.__rpc_data['total_rdma_rep'])
-             print('\tTotal pull-up: %d bytes' % self.__rpc_data['pullup'])
+Trond, Anna, does the following look right?
 
+--b.
