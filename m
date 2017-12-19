@@ -1,40 +1,71 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>, bcodding redhat
-	<bcodding@redhat.com>
-CC: "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-	"linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd4: permit layoutget of executable-only files
-Date: Tue, 19 Dec 2017 16:00:59 +0000
-Message-ID: <1513699256.129904.3.camel@primarydata.com>
-References: <2f621da7f3633e5a127ac89d886738c35ea02880.1513693981.git.bcodding@redhat.com>
-	 <20171219154330.GA19967@fieldses.org>
-In-Reply-To: <20171219154330.GA19967@fieldses.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:49826 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750916AbdLSQaY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Dec 2017 11:30:24 -0500
+Date: Tue, 19 Dec 2017 11:30:23 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: Thiago Rafael Becker <thiago.becker@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 2/3, V2] kernel: Move groups_sort to the caller of
+ set_groups.
+Message-ID: <20171219163023.GB19967@fieldses.org>
+References: <20171130130457.11429-1-thiago.becker@gmail.com>
+ <20171130130457.11429-3-thiago.becker@gmail.com>
+ <87mv2ztgix.fsf@notabene.neil.brown.name>
+ <alpine.LFD.2.21.1712041049280.1738@tbecker-rhat>
+ <87efoatfsb.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87efoatfsb.fsf@notabene.neil.brown.name>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVHVlLCAyMDE3LTEyLTE5IGF0IDEwOjQzIC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFR1ZSwgRGVjIDE5LCAyMDE3IGF0IDA5OjM1OjI1QU0gLTA1MDAsIEJlbmphbWluIENv
-ZGRpbmd0b24gd3JvdGU6DQo+ID4gQ2xpZW50cyBtdXN0IGJlIGFibGUgdG8gcmVhZCBhIGZpbGUg
-aW4gb3JkZXIgdG8gZXhlY3V0ZSBpdCwgYW5kIGZvcg0KPiA+IHBORlMNCj4gPiB0aGF0IG1lYW5z
-IHRoZSBjbGllbnQgbmVlZHMgdG8gYmUgYWJsZSB0byBwZXJmb3JtIGEgTEFZT1VUR0VUIG9uDQo+
-ID4gdGhlIGZpbGUuDQo+ID4gDQo+ID4gVGhpcyBiZWhhdmlvciBmb3IgZXhlY3V0YWJsZS1vbmx5
-IGZpbGVzIHdhcyBhZGRlZCBmb3IgT1BFTiBpbg0KPiA+IGNvbW1pdA0KPiA+IGEwNDMyMjZiYzE0
-MCAibmZzZDQ6IHBlcm1pdCByZWFkIG9wZW5zIG9mIGV4ZWN1dGFibGUtb25seSBmaWxlcyIuDQo+
-ID4gDQo+ID4gVGhpcyBmaXhlcyB1cCB4ZnN0ZXN0cyBnZW5lcmljLzEyNiBvbiBibG9jay9zY3Np
-IGxheW91dHMuDQo+IA0KPiBUaGFua3MsIGFwcGxpZWQuICBTbyB0aGUgc2VydmVyIHdhcyByZXR1
-cm5pbmcgTkZTNEVSUl9BQ0NFU1MgYW5kIHRoZQ0KPiBjbGllbnQgd2FzIHJldHVybmluZyB0aGF0
-IHRvIHRoZSBhcHBsaWNhdGlvbj8gIEkgd2FzIHdvbmRlcmluZyBmb3IgYQ0KPiBtb21lbnQgd2hl
-dGhlciB0aGUgY2xpZW50IHNob3VsZCBpbnN0ZWFkIHRyeSBmYWxsaW5nIGJhY2sgdG8gTURTIElP
-LA0KPiBidXQuLi4uIEJ1dCBJIGRvbid0IHRoaW5rIHRoYXQgbWFrZXMgc2Vuc2UuICBUaGUgY2xp
-ZW50J3MgcHJvYmFibHkNCj4gY29ycmVjdCB0byBpbnRlcnByZXQgQUNDRVNTIGFzIGp1c3QgbWVh
-bmluZyB0aGF0IHVzZXIgY2FuJ3QgcmVhZCB0aGUNCj4gZmlsZS4gIFRoZSBzZXJ2ZXIgaGFzIHBs
-ZW50eSBvZiBvdGhlciBlcnJvcnMgdG8gY2hvb3NlIGZyb20gaWYgaXQNCj4ganVzdA0KPiB3YW50
-cyB0byBkZW55IHRoZSBsYXlvdXQgZm9yIHNvbWUgcmVhc29uLiAgT0suDQo+IA0KDQpUaGVyZSBh
-cmUgc2V2ZXJhbCBlcnJvcnMgd2hpY2ggY2FuIGJlIHJldHVybmVkIGJ5IExBWU9VVEdFVCwgYW5k
-IHdoaWNoDQp0aGUgY2xpZW50IHdpbGwgcGFzcyBiYWNrIHRvIHRoZSBhcHBsaWNhdGlvbi4gTkZT
-NEVSUl9BQ0NFU1MgaXMgb25lLg0KTkZTNEVSUl9EUVVPVCwgTkZTNEVSUl9JTywgTkZTNEVSUl9O
-T1NQQywgTkZTNEVSUl9TVEFMRSwgYXJlIG90aGVycw0KdGhhdCB5b3UgbWlnaHQgd2FudCB0byBi
-ZSBhd2FyZSBvZi4uLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBt
-YWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Tue, Dec 05, 2017 at 07:11:00AM +1100, NeilBrown wrote:
+> On Mon, Dec 04 2017, Thiago Rafael Becker wrote:
+> 
+> > On Mon, 4 Dec 2017, NeilBrown wrote:
+> >
+> >> I think you need to add groups_sort() in a few more places.
+> >> Almost anywhere that calls groups_alloc() should be considered.
+> >> net/sunrpc/svcauth_unix.c, net/sunrpc/auth_gss/svcauth_gss.c,
+> >> fs/nfsd/auth.c definitely need it.
+> >
+> > So are any other functions that modify group_info. OK, I think I'll 
+> > implement the type detection below as it helps detecting where these 
+> > situations are located.
+> >
+> > This may take some time to make sane. I wonder if we shouldn't 
+> > accept the first change suggested to fix the corruption detected in 
+> > auth.unix.gid while I work on a new set of patches. 
+> 
+> As we don't seem to be pursuing this possibility is probably isn't very
+> important, but I'd like to point out that the original fix isn't a true
+> fix.
+> It just sorts a shared group_info early.  This does not stop corruption.
+> Every time a thread calls set_groups() on that group_info it will be
+> sorted again.
+> The sort algorithm used is the heap sort, and a heap sort always moves
+> elements in the array around - it does not leave a sorted array
+> untouched (unlike e.g. the quick sort which doesn't move anything in a
+> sorted array).
+> So it is still possible for two calls to groups_sort() to race.
+> We *need* to move groups_sort() out of set_groups().
+
+By the way,
+
+	https://bugzilla.kernel.org/show_bug.cgi?id=197887
+
+looks like it might be this bug.  They report it started to happen on
+upgrade from a 4.10-ish kernel to a 4.13-ish kernel, which would include
+the commit (b7b2562f725) that converted groups_sort to a function that
+is no longer a no-op in the already-sorted case.
+
+Looks like rpc.mountd just uses getgrouplist(), and I don't think that
+guarantees any particular oder.  I wonder if it's the case that many
+common configurations always pass down an already-sorted list.  In that
+case this may show up as a 4.13 regression for some users.
+
+--b.
