@@ -1,81 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-wr0-f194.google.com ([209.85.128.194]:43657 "EHLO
-        mail-wr0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932965AbdLSFsx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Dec 2017 00:48:53 -0500
-Cc: mtk.manpages@gmail.com, linux-man@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] fcntl.2, read.2, write.2: document "Lost locks" as cause
- for EIO.
-To: NeilBrown <neilb@suse.com>
-References: <87lgi7nttp.fsf@notabene.neil.brown.name>
- <df9a18ce-c412-44aa-d475-77521a7252c5@gmail.com>
- <87shc7lnfs.fsf@notabene.neil.brown.name>
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Message-ID: <130530e8-83bc-35d3-b84c-9bee85ddee12@gmail.com>
-Date: Tue, 19 Dec 2017 06:48:50 +0100
+Received: from mx2.suse.de ([195.135.220.15]:44413 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750916AbdLSJ3w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 19 Dec 2017 04:29:52 -0500
+Date: Tue, 19 Dec 2017 10:29:47 +0100
+From: Jan Kara <jack@suse.cz>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: Jan Kara <jack@suse.cz>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
+Message-ID: <20171219092947.GC2277@quack2.suse.cz>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+ <20171218151156.14565-20-jlayton@kernel.org>
+ <20171218163418.GF30350@quack2.suse.cz>
+ <1513617740.3422.30.camel@kernel.org>
 MIME-Version: 1.0
-In-Reply-To: <87shc7lnfs.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1513617740.3422.30.camel@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/18/2017 10:45 PM, NeilBrown wrote:
-> On Mon, Dec 18 2017, Michael Kerrisk (man-pages) wrote:
+On Mon 18-12-17 12:22:20, Jeff Layton wrote:
+> On Mon, 2017-12-18 at 17:34 +0100, Jan Kara wrote:
+> > On Mon 18-12-17 10:11:56, Jeff Layton wrote:
+> > >  static inline bool
+> > >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> > >  {
+> > > -	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> > > +	u64 cur, old, new;
+> > >  
+> > > -	atomic64_inc(ivp);
+> > > +	cur = (u64)atomic64_read(&inode->i_version);
+> > > +	for (;;) {
+> > > +		/* If flag is clear then we needn't do anything */
+> > > +		if (!force && !(cur & I_VERSION_QUERIED))
+> > > +			return false;
+> > 
+> > The fast path here misses any memory barrier. Thus it seems this query
+> > could be in theory reordered before any store that happened to modify the
+> > inode? Or maybe we could race and miss the fact that in fact this i_version
+> > has already been queried? But maybe there's some higher level locking that
+> > makes sure this is all a non-issue... But in that case it would deserve
+> > some comment I guess.
+> > 
 > 
->> Hello Neil
->>
->> There's a piece of your patch I don't understand. Please see below.
->>
->> On 12/13/2017 05:19 AM, NeilBrown wrote:
->>>
->>> If an advisory lock is lost, then read/write requests on any
->>> affected file descriptor can return EIO - for NFSv4 at least.
->>>
->>> Signed-off-by: NeilBrown <neilb@suse.com>
->>> ---
->>>  man2/fcntl.2 | 24 ++++++++++++++++++++++++
->>>  man2/read.2  |  9 +++++++++
->>>  man2/write.2 |  9 +++++++++
->>>  3 files changed, 42 insertions(+)
->>>
->>> diff --git a/man2/fcntl.2 b/man2/fcntl.2
->>> index 67642384154c..6e6e26f66aa0 100644
->>> --- a/man2/fcntl.2
->>> +++ b/man2/fcntl.2
->>> @@ -669,6 +669,30 @@ and
->>>  Mandatory locking is not specified by POSIX.
->>>  Some other systems also support mandatory locking,
->>>  although the details of how to enable it vary across systems.
->>> +.SS Lost locks
->>> +When an advisory lock is obtained on a networked filesystem such as
->>> +NFS it is possible that the lock might get lost.
->>> +This may happen due to administrative action on the server, or due to a
->>> +network partition which lasts long enough for the server to assume
->>
->> What does "network partition which lasts long enough" mean?
->> I think this perhaps needs to be clarified a little. At least,
->> I don't understand it.
+> There's no higher-level locking. Getting locking out of this codepath is
+> a good thing IMO. The larger question here is whether we really care
+> about ordering this with anything else.
 > 
-> "network partition" is a term using the NFS RFCs for any situation that
-> that results in the server and client not being able to communicate
-> (that are partitioned, one from the other?  There is partition (wall)
-> between them?  They are in separate partitions?).
-> I can see how the meaning might not be obvious if you hadn't come across
-> it before.
+> The i_version, as implemented today, is not ordered with actual changes
+> to the inode. We only take the i_lock today when modifying it, not when
+> querying it. It's possible today that you could see the results of a
+> change and then do a fetch of the i_version that doesn't show an
+> increment vs. a previous change.
+
+Yeah, so I don't suggest that you should fix unrelated issues but original
+i_lock protection did actually provide memory barriers (although
+semi-permeable, but in practice they are very often enough) and your patch
+removing those could have changed a theoretical issue to a practical
+problem. So at least preserving that original acquire-release semantics
+of i_version handling would be IMHO good.
+
+> It'd be nice if this were atomic with the actual changes that it
+> represents, but I think that would be prohibitively expensive. That may
+> be something we need to address. I'm not sure we really want to do it as
+> part of this patchset though.
 > 
-> If we change "network partition" to "loss of connectivity", would that
-> make it clear.  Is "loss of network connectivity with the server" too
-> verbose?
+> > > +
+> > > +		/* Since lowest bit is flag, add 2 to avoid it */
+> > > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
+> > > +
+> > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > > +		if (likely(old == cur))
+> > > +			break;
+> > > +		cur = old;
+> > > +	}
+> > >  	return true;
+> > >  }
+> > >  
+> > 
+> > ...
+> > 
+> > >  static inline u64
+> > >  inode_query_iversion(struct inode *inode)
+> > >  {
+> > > -	return inode_peek_iversion(inode);
+> > > +	u64 cur, old, new;
+> > > +
+> > > +	cur = atomic64_read(&inode->i_version);
+> > > +	for (;;) {
+> > > +		/* If flag is already set, then no need to swap */
+> > > +		if (cur & I_VERSION_QUERIED)
+> > > +			break;
+> > > +
+> > > +		new = cur | I_VERSION_QUERIED;
+> > > +		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+> > > +		if (old == cur)
+> > > +			break;
+> > > +		cur = old;
+> > > +	}
+> > 
+> > Why not just use atomic64_or() here?
+> > 
+> 
+> If the cmpxchg fails, then either:
+> 
+> 1) it was incremented
+> 2) someone flagged it QUERIED
+> 
+> If an increment happened then we don't need to flag it as QUERIED if
+> we're returning an older value. If we use atomic64_or, then we can't
+> tell if an increment happened so we'd end up potentially flagging it
+> more than necessary.
+> 
+> In principle, either outcome is technically OK and we don't have to loop
+> if the cmpxchg doesn't work. That said, if we think there might be a
+> later i_version available, then I think we probably want to try to query
+> it again so we can return as late a one as possible.
 
-Thanks, Neil. I've applied your patch and added the words "loss of network
-connectivity with the server".
+OK, makes sense. I'm just a bit vary of cmpxchg loops as they tend to
+behave pretty badly in contended cases but I guess i_version won't be
+hammered *that* hard.
 
-Cheers,
-
-Michael
-
+								Honza
 -- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+Jan Kara <jack@suse.com>
+SUSE Labs, CR
