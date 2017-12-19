@@ -1,85 +1,62 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:45128 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750825AbdLSPjg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Dec 2017 10:39:36 -0500
+Return-Path: <bfields@fieldses.org>
+Date: Tue, 19 Dec 2017 10:43:30 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: Jeff Layton <jlayton@poochiereds.net>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: permit layoutget of executable-only files
+Message-ID: <20171219154330.GA19967@fieldses.org>
+References: <2f621da7f3633e5a127ac89d886738c35ea02880.1513693981.git.bcodding@redhat.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1 00/16] NFS/RDMA clean-ups and fixes
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <12801ec6-eb24-d9e1-f764-61f27bfd9ac6@Netapp.com>
-Date: Tue, 19 Dec 2017 10:34:29 -0500
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <56E5AF76-EA08-4BC7-AD25-A989E5AD3B15@oracle.com>
-References: <20171215015403.13776.46706.stgit@manet.1015granger.net> <12801ec6-eb24-d9e1-f764-61f27bfd9ac6@Netapp.com>
-To: Anna Schumaker <anna.schumaker@netapp.com>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <2f621da7f3633e5a127ac89d886738c35ea02880.1513693981.git.bcodding@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Dec 19, 2017 at 09:35:25AM -0500, Benjamin Coddington wrote:
+> Clients must be able to read a file in order to execute it, and for pNFS
+> that means the client needs to be able to perform a LAYOUTGET on the file.
+> 
+> This behavior for executable-only files was added for OPEN in commit
+> a043226bc140 "nfsd4: permit read opens of executable-only files".
+> 
+> This fixes up xfstests generic/126 on block/scsi layouts.
 
-> On Dec 19, 2017, at 10:28 AM, Anna Schumaker =
-<anna.schumaker@netapp.com> wrote:
->=20
-> Hi Chuck,
->=20
-> On 12/14/2017 08:55 PM, Chuck Lever wrote:
->> Hi Anna-
->>=20
->> This is the second series of NFS/RDMA client patches for v4.16.
->>=20
->> This is a bunch of minor fixes and clean-ups in preparation for
->> adding static trace points to the RPC-over-RDMA transport
->> implementation. Please consider these for v4.16.
->=20
-> These patches look okay to me.  Thanks!
+Thanks, applied.  So the server was returning NFS4ERR_ACCESS and the
+client was returning that to the application?  I was wondering for a
+moment whether the client should instead try falling back to MDS IO,
+but.... But I don't think that makes sense.  The client's probably
+correct to interpret ACCESS as just meaning that user can't read the
+file.  The server has plenty of other errors to choose from if it just
+wants to deny the layout for some reason.  OK.
 
-Excellent, I will prepare and send the next series very soon.
+--b.
 
-
-> Anna
->=20
->>=20
->> ---
->>=20
->> Chuck Lever (16):
->>      xprtrdma: Fix buffer leak after transport set up failure
->>      xprtrdma: Fix backchannel allocation of extra rpcrdma_reps
->>      xprtrdma: Eliminate unnecessary lock cycle in =
-xprt_rdma_send_request
->>      xprtrdma: Per-mode handling for Remote Invalidation
->>      xprtrdma: Remove ri_reminv_expected
->>      xprtrdma: Remove unused padding variables
->>      xprtrdma: Initialize the xprt address string array earlier
->>      xprtrdma: Remove another sockaddr_storage field (cdata::addr)
->>      xprtrdma: Support IPv6 in xprt_rdma_set_port
->>      xprtrdma: Move unmap-safe logic to rpcrdma_marshal_req
->>      xprtrdma: buf_free not called for CB replies
->>      xprtrdma: Split xprt_rdma_send_request
->>      xprtrdma: Don't clear RPC_BC_PA_IN_USE on pre-allocated =
-rpc_rqst's
->>      xprtrdma: Replace all usage of "frmr" with "frwr"
->>      xprtrdma: Remove usage of "mw"
->>      xprtrdma: Introduce rpcrdma_mw_unmap_and_put
->>=20
->>=20
->> include/linux/sunrpc/xprtrdma.h   |    2=20
->> net/sunrpc/xprtrdma/backchannel.c |   68 +++++---
->> net/sunrpc/xprtrdma/fmr_ops.c     |  155 +++++++++---------
->> net/sunrpc/xprtrdma/frwr_ops.c    |  317 =
-+++++++++++++++++++------------------
->> net/sunrpc/xprtrdma/rpc_rdma.c    |   98 +++++------
->> net/sunrpc/xprtrdma/transport.c   |  102 +++++-------
->> net/sunrpc/xprtrdma/verbs.c       |  212 ++++++++++++++-----------
->> net/sunrpc/xprtrdma/xprt_rdma.h   |  112 +++++++------
->> 8 files changed, 552 insertions(+), 514 deletions(-)
->>=20
->> --
->> Chuck Lever
->>=20
-
---
-Chuck Lever
-
-
-
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
+> ---
+>  fs/nfsd/nfs4proc.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 8487486ec496..8ce60986fb75 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1372,14 +1372,14 @@ nfsd4_layoutget(struct svc_rqst *rqstp,
+>  	const struct nfsd4_layout_ops *ops;
+>  	struct nfs4_layout_stateid *ls;
+>  	__be32 nfserr;
+> -	int accmode;
+> +	int accmode = NFSD_MAY_READ_IF_EXEC;
+>  
+>  	switch (lgp->lg_seg.iomode) {
+>  	case IOMODE_READ:
+> -		accmode = NFSD_MAY_READ;
+> +		accmode |= NFSD_MAY_READ;
+>  		break;
+>  	case IOMODE_RW:
+> -		accmode = NFSD_MAY_READ | NFSD_MAY_WRITE;
+> +		accmode |= NFSD_MAY_READ | NFSD_MAY_WRITE;
+>  		break;
+>  	default:
+>  		dprintk("%s: invalid iomode %d\n",
+> -- 
+> 2.9.3
