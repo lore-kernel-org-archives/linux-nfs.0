@@ -1,173 +1,191 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:51526 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.99]:36788 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751013AbdLSVPc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 19 Dec 2017 16:15:32 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>
-Date: Wed, 20 Dec 2017 08:15:25 +1100
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSv4: always set NFS_LOCK_LOST when a lock is lost.
-In-Reply-To: <87r2rzo8qi.fsf@notabene.neil.brown.name>
-References: <87r2rzo8qi.fsf@notabene.neil.brown.name>
-Message-ID: <87bmiul8r6.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+        id S1755227AbdLTODL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 20 Dec 2017 09:03:11 -0500
+Message-ID: <1513778586.4513.18.camel@kernel.org>
+Subject: Re: [PATCH v3 19/19] fs: handle inode->i_version more efficiently
+From: Jeff Layton <jlayton@kernel.org>
+To: Dave Chinner <david@fromorbit.com>, Jan Kara <jack@suse.cz>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, linux-btrfs@vger.kernel.org, clm@fb.com,
+        jbacik@fb.com, dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Date: Wed, 20 Dec 2017 09:03:06 -0500
+In-Reply-To: <20171218220759.GF4094@dastard>
+References: <20171218151156.14565-1-jlayton@kernel.org>
+         <20171218151156.14565-20-jlayton@kernel.org>
+         <20171218163418.GF30350@quack2.suse.cz>
+         <1513617740.3422.30.camel@kernel.org> <20171218173651.GB12454@fieldses.org>
+         <1513625720.3422.68.camel@kernel.org> <20171218220759.GF4094@dastard>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Tue, 2017-12-19 at 09:07 +1100, Dave Chinner wrote:
+> On Mon, Dec 18, 2017 at 02:35:20PM -0500, Jeff Layton wrote:
+> > [PATCH] SQUASH: add memory barriers around i_version accesses
+> 
+> Why explicit memory barriers rather than annotating the operations
+> with the required semantics and getting the barriers the arch
+> requires automatically?  I suspect this should be using
+> atomic_read_acquire() and atomic_cmpxchg_release(), because AFAICT
+> the atomic_cmpxchg needs to have release semantics to match the
+> acquire semantics needed for the load of the current value.
+> 
+> From include/linux/atomics.h:
+> 
+>  * For compound atomics performing both a load and a store, ACQUIRE
+>  * semantics apply only to the load and RELEASE semantics only to the
+>  * store portion of the operation. Note that a failed cmpxchg_acquire
+>  * does -not- imply any memory ordering constraints.
+> 
+> Memory barriers hurt my brain. :/
+> 
+> At minimum, shouldn't the atomic op specific barriers be used rather
+> than full memory barriers? i.e:
+> 
 
-On Wed, Dec 13 2017, NeilBrown wrote:
+They hurt my brain too. Yes, definitely atomic-specific barriers should
+be used here instead, since this is an atomic64_t now.
 
-> There are 2 comments in the NFSv4 code which suggest that
-> SIGLOST should possibly be sent to a process.  In these
-> cases a lock has been lost.
-> The current practice is to set NFS_LOCK_LOST so that
-> read/write returns EIO when a lock is lost.
-> So change these comments to code when sets NFS_LOCK_LOST.
->
-> One case is when lock recovery after apparent server restart
-> fails with NFS4ERR_DENIED, NFS4ERR_RECLAIM_BAD, or
-> NFS4ERRO_RECLAIM_CONFLICT.  The other case is when a lock
-> attempt as part of lease recovery fails with NFS4ERR_DENIED.
->
-> In an ideal world, these should not happen.  However I have
-> a packet trace showing an NFSv4.1 session getting
-> NFS4ERR_BADSESSION after an extended network parition.  The
-> NFSv4.1 client treats this like server reboot until/unless
-> it get NFS4ERR_NO_GRACE, in which case it switches over to
-> "nograce" recovery mode.  In this network trace, the client
-> attempts to recover a lock and the server (incorrectly)
-> reports NFS4ERR_DENIED rather than NFS4ERR_NO_GRACE.  This
-> leads to the ineffective comment and the client then
-> continues to write using the OPEN stateid.
->
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
->
-> Note that I have not tested this as I do not have direct access to a
-> faulty NFS server.  Once I get confirmation I will provide an update.
+After going over the docs again...my understanding has always been that
+you primarily need memory barriers to order accesses to different areas
+of memory.
 
-Hi,
- I have now received confirmation that this change does fix the locking
- behavior in this case where the server is returning the wrong error
- code.
+As Jan and I were discussing in the other thread, i_version is not
+synchronized with anything else. In this code, we're only dealing with a
+single 64-bit word. I don't think there are any races there wrt the API
+itself.
 
-Thanks,
-NeilBrown
+The "legacy" inode_inc_iversion() however _does_ have implied memory
+barriers from the i_lock. There could be some subtle de-facto ordering
+there, so I think we probably do want some barriers in here if only to
+preserve that. It's not likely to cost much, and may save us tracking
+down some fiddly bugs.
+
+What about this patch? Note that I've only added barriers to
+inode_maybe_inc_iversion. I don't see that we need it for the other
+functions, but please do tell me if I'm wrong there:
+
+--------------------8<---------------------------
+
+[PATCH] SQUASH: add memory barriers around i_version accesses
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/iversion.h | 53 +++++++++++++++++++++++++++++-------------------
+ 1 file changed, 32 insertions(+), 21 deletions(-)
+
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index a9fbf99709df..02187a3bec3b 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -89,6 +89,23 @@ inode_set_iversion_raw(struct inode *inode, const u64 val)
+ 	atomic64_set(&inode->i_version, val);
+ }
+ 
++/**
++ * inode_peek_iversion_raw - grab a "raw" iversion value
++ * @inode: inode from which i_version should be read
++ *
++ * Grab a "raw" inode->i_version value and return it. The i_version is not
++ * flagged or converted in any way. This is mostly used to access a self-managed
++ * i_version.
++ *
++ * With those filesystems, we want to treat the i_version as an entirely
++ * opaque value.
++ */
++static inline u64
++inode_peek_iversion_raw(const struct inode *inode)
++{
++	return atomic64_read(&inode->i_version);
++}
++
+ /**
+  * inode_set_iversion - set i_version to a particular value
+  * @inode: inode to set
+@@ -152,7 +169,16 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
+ {
+ 	u64 cur, old, new;
+ 
+-	cur = (u64)atomic64_read(&inode->i_version);
++	/*
++	 * The i_version field is not strictly ordered with any other inode
++	 * information, but the legacy inode_inc_iversion code used a spinlock
++	 * to serialize increments.
++	 *
++	 * This code adds full memory barriers to ensure that any de-facto
++	 * ordering with other info is preserved.
++	 */
++	smp_mb__before_atomic();
++	cur = inode_peek_iversion_raw(inode);
+ 	for (;;) {
+ 		/* If flag is clear then we needn't do anything */
+ 		if (!force && !(cur & I_VERSION_QUERIED))
+@@ -162,8 +188,10 @@ inode_maybe_inc_iversion(struct inode *inode, bool force)
+ 		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
+ 
+ 		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+-		if (likely(old == cur))
++		if (likely(old == cur)) {
++			smp_mb__after_atomic();
+ 			break;
++		}
+ 		cur = old;
+ 	}
+ 	return true;
+@@ -183,23 +211,6 @@ inode_inc_iversion(struct inode *inode)
+ 	inode_maybe_inc_iversion(inode, true);
+ }
+ 
+-/**
+- * inode_peek_iversion_raw - grab a "raw" iversion value
+- * @inode: inode from which i_version should be read
+- *
+- * Grab a "raw" inode->i_version value and return it. The i_version is not
+- * flagged or converted in any way. This is mostly used to access a self-managed
+- * i_version.
+- *
+- * With those filesystems, we want to treat the i_version as an entirely
+- * opaque value.
+- */
+-static inline u64
+-inode_peek_iversion_raw(const struct inode *inode)
+-{
+-	return atomic64_read(&inode->i_version);
+-}
+-
+ /**
+  * inode_iversion_need_inc - is the i_version in need of being incremented?
+  * @inode: inode to check
+@@ -248,7 +259,7 @@ inode_query_iversion(struct inode *inode)
+ {
+ 	u64 cur, old, new;
+ 
+-	cur = atomic64_read(&inode->i_version);
++	cur = inode_peek_iversion_raw(inode);
+ 	for (;;) {
+ 		/* If flag is already set, then no need to swap */
+ 		if (cur & I_VERSION_QUERIED)
+@@ -256,7 +267,7 @@ inode_query_iversion(struct inode *inode)
+ 
+ 		new = cur | I_VERSION_QUERIED;
+ 		old = atomic64_cmpxchg(&inode->i_version, cur, new);
+-		if (old == cur)
++		if (likely(old == cur))
+ 			break;
+ 		cur = old;
+ 	}
+-- 
+2.14.3
 
 
->
-> NeilBrown
->
->  fs/nfs/nfs4proc.c  | 12 ++++++++----
->  fs/nfs/nfs4state.c |  5 ++++-
->  2 files changed, 12 insertions(+), 5 deletions(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 56fa5a16e097..083802f7a1e9 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2019,7 +2019,7 @@ static int nfs4_open_reclaim(struct nfs4_state_owne=
-r *sp, struct nfs4_state *sta
->  	return ret;
->  }
->=20=20
-> -static int nfs4_handle_delegation_recall_error(struct nfs_server *server=
-, struct nfs4_state *state, const nfs4_stateid *stateid, int err)
-> +static int nfs4_handle_delegation_recall_error(struct nfs_server *server=
-, struct nfs4_state *state, const nfs4_stateid *stateid, struct file_lock *=
-fl, int err)
->  {
->  	switch (err) {
->  		default:
-> @@ -2066,7 +2066,11 @@ static int nfs4_handle_delegation_recall_error(str=
-uct nfs_server *server, struct
->  			return -EAGAIN;
->  		case -ENOMEM:
->  		case -NFS4ERR_DENIED:
-> -			/* kill_proc(fl->fl_pid, SIGLOST, 1); */
-> +			if (fl) {
-> +				struct nfs4_lock_state *lsp =3D fl->fl_u.nfs4_fl.owner;
-> +				if (lsp)
-> +					set_bit(NFS_LOCK_LOST, &lsp->ls_flags);
-> +			}
->  			return 0;
->  	}
->  	return err;
-> @@ -2102,7 +2106,7 @@ int nfs4_open_delegation_recall(struct nfs_open_con=
-text *ctx,
->  		err =3D nfs4_open_recover_helper(opendata, FMODE_READ);
->  	}
->  	nfs4_opendata_put(opendata);
-> -	return nfs4_handle_delegation_recall_error(server, state, stateid, err);
-> +	return nfs4_handle_delegation_recall_error(server, state, stateid, NULL=
-, err);
->  }
->=20=20
->  static void nfs4_open_confirm_prepare(struct rpc_task *task, void *calld=
-ata)
-> @@ -6739,7 +6743,7 @@ int nfs4_lock_delegation_recall(struct file_lock *f=
-l, struct nfs4_state *state,
->  	if (err !=3D 0)
->  		return err;
->  	err =3D _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
-> -	return nfs4_handle_delegation_recall_error(server, state, stateid, err);
-> +	return nfs4_handle_delegation_recall_error(server, state, stateid, fl, =
-err);
->  }
->=20=20
->  struct nfs_release_lockowner_data {
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index e4f4a09ed9f4..91a4d4eeb235 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -1482,6 +1482,7 @@ static int nfs4_reclaim_locks(struct nfs4_state *st=
-ate, const struct nfs4_state_
->  	struct inode *inode =3D state->inode;
->  	struct nfs_inode *nfsi =3D NFS_I(inode);
->  	struct file_lock *fl;
-> +	struct nfs4_lock_state *lsp;
->  	int status =3D 0;
->  	struct file_lock_context *flctx =3D inode->i_flctx;
->  	struct list_head *list;
-> @@ -1522,7 +1523,9 @@ static int nfs4_reclaim_locks(struct nfs4_state *st=
-ate, const struct nfs4_state_
->  		case -NFS4ERR_DENIED:
->  		case -NFS4ERR_RECLAIM_BAD:
->  		case -NFS4ERR_RECLAIM_CONFLICT:
-> -			/* kill_proc(fl->fl_pid, SIGLOST, 1); */
-> +			lsp =3D fl->fl_u.nfs4_fl.owner;
-> +			if (lsp)
-> +				set_bit(NFS_LOCK_LOST, &lsp->ls_flags);
->  			status =3D 0;
->  		}
->  		spin_lock(&flctx->flc_lock);
-> --=20
-> 2.14.0.rc0.dirty
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlo5gW0ACgkQOeye3VZi
-gbmDdw//flmnxJ41m/8cIadaQXiKzfGStzuiNZf+SxTMfEO6OP77gyz4bdR7s3Bi
-aQBo4EzAyUez0QtoLNk47YgqYhcB11GP/Gy5KLHdOL6xB1CKYQi/6Pc+Y+thMly5
-LglDoilz4YkWnMDAcTN7UaRbn8j8w1jxF05yHhbYr2qcq9Kw8ODAV62GyZwc8OgU
-tsK/RVw2vwxmpqqDCl4xfuYpDwC73XHT6Bvq59lei0LQfw/WYtaV2RL5oHIXTFEs
-YnnGNaemumHAy7IiwmV9PHJxfipgvo0q/jO15ZB07f3C+FbxEEToaXCoTGnrtvud
-LbSSwiTNx/ay1Yy5FChvmiwHHoLvNGtJzuuBS/+ys3flp4bkYcn603vrBO2QaWFl
-IRbzgZ1Y2PfkRbzgi4zoKfYuGFPFGjldWH8RKb1sf8q3KL+ds1/797Fe3G2o21aH
-Eni4srMCzL2xU60cQ9hFIJlr62j1GR5C8Y5RgvaGBJHJgs22fyBKFexvN3uuDU4G
-9DmqeT3CW4bg7P4DUDzNEK/RYy5yYH/AmjfKGuhCN9up5lxMt+0ily0noBvjVwNG
-UBwD8i20ObCpu5lRvJRZOMBhmP+SCfPEAnE5AHkEiFl1+DF3y5U9sKI8w9T02mYU
-hY0PfYZn0Kg7/13XC/wT77Org5LyJ43klF/O9qAKJrNPxz4qoUI=
-=qU8A
------END PGP SIGNATURE-----
---=-=-=--
