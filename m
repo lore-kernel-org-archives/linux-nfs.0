@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:43628 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755638AbdLTVaZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Dec 2017 16:30:25 -0500
-Subject: [PATCH v1 01/12] rdma/ib: Add trace point macros to display
- human-readable values
+Received: from mail-it0-f68.google.com ([209.85.214.68]:32877 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756004AbdLTVau (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Dec 2017 16:30:50 -0500
+Subject: [PATCH v1 04/12] xprtrdma: Add trace points in the RPC Reply
+ handler paths
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 20 Dec 2017 16:30:23 -0500
-Message-ID: <20171220213023.29321.97527.stgit@manet.1015granger.net>
+Date: Wed, 20 Dec 2017 16:30:48 -0500
+Message-ID: <20171220213048.29321.41633.stgit@manet.1015granger.net>
 In-Reply-To: <20171220210236.29321.59307.stgit@manet.1015granger.net>
 References: <20171220210236.29321.59307.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,152 +17,303 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These can be shared with all kernel ULPs, and more can easily be
-added as needed.
-
-Note: checkpatch.pl has some heartburn with the TRACE_DEFINE_ENUM
-macros and the LIST macros. These follow the same style as other
-header files under include/tracing/events , thus should be
-considered acceptable exceptions.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/rdma.h |  128 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 128 insertions(+)
- create mode 100644 include/trace/events/rdma.h
+ include/trace/events/rpcrdma.h |  162 ++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/rpc_rdma.c |   17 +---
+ net/sunrpc/xprtrdma/verbs.c    |   11 +--
+ 3 files changed, 171 insertions(+), 19 deletions(-)
 
-diff --git a/include/trace/events/rdma.h b/include/trace/events/rdma.h
-new file mode 100644
-index 0000000..9d02fbe
---- /dev/null
-+++ b/include/trace/events/rdma.h
-@@ -0,0 +1,128 @@
-+/*
-+ * Copyright (c) 2017 Oracle.  All rights reserved.
-+ */
+diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
+index 8efb2c9..e11bb32 100644
+--- a/include/trace/events/rpcrdma.h
++++ b/include/trace/events/rpcrdma.h
+@@ -11,6 +11,46 @@
+ #include <trace/events/rdma.h>
+ 
+ /**
++ ** Event classes
++ **/
 +
-+/*
-+ * enum ib_event_type, from include/rdma/ib_verbs.h
-+ */
++DECLARE_EVENT_CLASS(xprtrdma_reply_event,
++	TP_PROTO(
++		const struct rpcrdma_rep *rep
++	),
 +
-+#define IB_EVENT_LIST				\
-+	ib_event(CQ_ERR)			\
-+	ib_event(QP_FATAL)			\
-+	ib_event(QP_REQ_ERR)			\
-+	ib_event(QP_ACCESS_ERR)			\
-+	ib_event(COMM_EST)			\
-+	ib_event(SQ_DRAINED)			\
-+	ib_event(PATH_MIG)			\
-+	ib_event(PATH_MIG_ERR)			\
-+	ib_event(DEVICE_FATAL)			\
-+	ib_event(PORT_ACTIVE)			\
-+	ib_event(PORT_ERR)			\
-+	ib_event(LID_CHANGE)			\
-+	ib_event(PKEY_CHANGE)			\
-+	ib_event(SM_CHANGE)			\
-+	ib_event(SRQ_ERR)			\
-+	ib_event(SRQ_LIMIT_REACHED)		\
-+	ib_event(QP_LAST_WQE_REACHED)		\
-+	ib_event(CLIENT_REREGISTER)		\
-+	ib_event(GID_CHANGE)			\
-+	ib_event_end(WQ_FATAL)
++	TP_ARGS(rep),
 +
-+#undef ib_event
-+#undef ib_event_end
++	TP_STRUCT__entry(
++		__field(const void *, rep)
++		__field(const void *, r_xprt)
++		__field(u32, xid)
++		__field(u32, version)
++		__field(u32, proc)
++	),
 +
-+#define ib_event(x)		TRACE_DEFINE_ENUM(IB_EVENT_##x);
-+#define ib_event_end(x)		TRACE_DEFINE_ENUM(IB_EVENT_##x);
++	TP_fast_assign(
++		__entry->rep = rep;
++		__entry->r_xprt = rep->rr_rxprt;
++		__entry->xid = be32_to_cpu(rep->rr_xid);
++		__entry->version = be32_to_cpu(rep->rr_vers);
++		__entry->proc = be32_to_cpu(rep->rr_proc);
++	),
 +
-+IB_EVENT_LIST
++	TP_printk("rxprt %p xid=0x%08x rep=%p: version %u proc %u",
++		__entry->r_xprt, __entry->xid, __entry->rep,
++		__entry->version, __entry->proc
++	)
++);
 +
-+#undef ib_event
-+#undef ib_event_end
++#define DEFINE_REPLY_EVENT(name)					\
++		DEFINE_EVENT(xprtrdma_reply_event, name,		\
++				TP_PROTO(				\
++					const struct rpcrdma_rep *rep	\
++				),					\
++				TP_ARGS(rep))
 +
-+#define ib_event(x)		{ IB_EVENT_##x, #x },
-+#define ib_event_end(x)		{ IB_EVENT_##x, #x }
++/**
+  ** Call events
+  **/
+ 
+@@ -101,6 +141,29 @@
+ 	)
+ );
+ 
++TRACE_EVENT(xprtrdma_post_recv,
++	TP_PROTO(
++		const struct rpcrdma_rep *rep,
++		int status
++	),
 +
-+#define rdma_show_ib_event(x) \
-+		__print_symbolic(x, IB_EVENT_LIST)
++	TP_ARGS(rep, status),
 +
-+/*
-+ * enum ib_wc_status type, from include/rdma/ib_verbs.h
-+ */
-+#define IB_WC_STATUS_LIST			\
-+	ib_wc_status(SUCCESS)			\
-+	ib_wc_status(LOC_LEN_ERR)		\
-+	ib_wc_status(LOC_QP_OP_ERR)		\
-+	ib_wc_status(LOC_EEC_OP_ERR)		\
-+	ib_wc_status(LOC_PROT_ERR)		\
-+	ib_wc_status(WR_FLUSH_ERR)		\
-+	ib_wc_status(MW_BIND_ERR)		\
-+	ib_wc_status(BAD_RESP_ERR)		\
-+	ib_wc_status(LOC_ACCESS_ERR)		\
-+	ib_wc_status(REM_INV_REQ_ERR)		\
-+	ib_wc_status(REM_ACCESS_ERR)		\
-+	ib_wc_status(REM_OP_ERR)		\
-+	ib_wc_status(RETRY_EXC_ERR)		\
-+	ib_wc_status(RNR_RETRY_EXC_ERR)		\
-+	ib_wc_status(LOC_RDD_VIOL_ERR)		\
-+	ib_wc_status(REM_INV_RD_REQ_ERR)	\
-+	ib_wc_status(REM_ABORT_ERR)		\
-+	ib_wc_status(INV_EECN_ERR)		\
-+	ib_wc_status(INV_EEC_STATE_ERR)		\
-+	ib_wc_status(FATAL_ERR)			\
-+	ib_wc_status(RESP_TIMEOUT_ERR)		\
-+	ib_wc_status_end(GENERAL_ERR)
++	TP_STRUCT__entry(
++		__field(const void *, rep)
++		__field(int, status)
++	),
 +
-+#undef ib_wc_status
-+#undef ib_wc_status_end
++	TP_fast_assign(
++		__entry->rep = rep;
++		__entry->status = status;
++	),
 +
-+#define ib_wc_status(x)		TRACE_DEFINE_ENUM(IB_WC_##x);
-+#define ib_wc_status_end(x)	TRACE_DEFINE_ENUM(IB_WC_##x);
++	TP_printk("rep=%p status=%d",
++		__entry->rep, __entry->status
++	)
++);
 +
-+IB_WC_STATUS_LIST
+ /**
+  ** Completion events
+  **/
+@@ -134,6 +197,105 @@
+ 	)
+ );
+ 
++TRACE_EVENT(xprtrdma_wc_receive,
++	TP_PROTO(
++		const struct rpcrdma_rep *rep,
++		const struct ib_wc *wc
++	),
 +
-+#undef ib_wc_status
-+#undef ib_wc_status_end
++	TP_ARGS(rep, wc),
 +
-+#define ib_wc_status(x)		{ IB_WC_##x, #x },
-+#define ib_wc_status_end(x)	{ IB_WC_##x, #x }
++	TP_STRUCT__entry(
++		__field(const void *, rep)
++		__field(unsigned int, byte_len)
++		__field(unsigned int, status)
++		__field(unsigned int, vendor_err)
++	),
 +
-+#define rdma_show_wc_status(x) \
-+		__print_symbolic(x, IB_WC_STATUS_LIST)
++	TP_fast_assign(
++		__entry->rep = rep;
++		__entry->byte_len = wc->byte_len;
++		__entry->status = wc->status;
++		__entry->vendor_err = __entry->status ? wc->vendor_err : 0;
++	),
 +
-+/*
-+ * enum rdma_cm_event_type, from include/rdma/rdma_cm.h
-+ */
-+#define RDMA_CM_EVENT_LIST			\
-+	rdma_cm_event(ADDR_RESOLVED)		\
-+	rdma_cm_event(ADDR_ERROR)		\
-+	rdma_cm_event(ROUTE_RESOLVED)		\
-+	rdma_cm_event(ROUTE_ERROR)		\
-+	rdma_cm_event(CONNECT_REQUEST)		\
-+	rdma_cm_event(CONNECT_RESPONSE)		\
-+	rdma_cm_event(CONNECT_ERROR)		\
-+	rdma_cm_event(UNREACHABLE)		\
-+	rdma_cm_event(REJECTED)			\
-+	rdma_cm_event(ESTABLISHED)		\
-+	rdma_cm_event(DISCONNECTED)		\
-+	rdma_cm_event(DEVICE_REMOVAL)		\
-+	rdma_cm_event(MULTICAST_JOIN)		\
-+	rdma_cm_event(MULTICAST_ERROR)		\
-+	rdma_cm_event(ADDR_CHANGE)		\
-+	rdma_cm_event_end(TIMEWAIT_EXIT)
++	TP_printk("rep=%p, %u bytes: %s (%u/0x%x)",
++		__entry->rep, __entry->byte_len,
++		rdma_show_wc_status(__entry->status),
++		__entry->status, __entry->vendor_err
++	)
++);
 +
-+#undef rdma_cm_event
-+#undef rdma_cm_event_end
++/**
++ ** Reply events
++ **/
 +
-+#define rdma_cm_event(x)	TRACE_DEFINE_ENUM(RDMA_CM_EVENT_##x);
-+#define rdma_cm_event_end(x)	TRACE_DEFINE_ENUM(RDMA_CM_EVENT_##x);
++TRACE_EVENT(xprtrdma_reply,
++	TP_PROTO(
++		const struct rpc_task *task,
++		const struct rpcrdma_rep *rep,
++		const struct rpcrdma_req *req,
++		unsigned int credits
++	),
 +
-+RDMA_CM_EVENT_LIST
++	TP_ARGS(task, rep, req, credits),
 +
-+#undef rdma_cm_event
-+#undef rdma_cm_event_end
++	TP_STRUCT__entry(
++		__field(unsigned int, task_id)
++		__field(unsigned int, client_id)
++		__field(const void *, rep)
++		__field(const void *, req)
++		__field(u32, xid)
++		__field(unsigned int, credits)
++	),
 +
-+#define rdma_cm_event(x)	{ RDMA_CM_EVENT_##x, #x },
-+#define rdma_cm_event_end(x)	{ RDMA_CM_EVENT_##x, #x }
++	TP_fast_assign(
++		__entry->task_id = task->tk_pid;
++		__entry->client_id = task->tk_client->cl_clid;
++		__entry->rep = rep;
++		__entry->req = req;
++		__entry->xid = be32_to_cpu(rep->rr_xid);
++		__entry->credits = credits;
++	),
 +
-+#define rdma_show_cm_event(x) \
-+		__print_symbolic(x, RDMA_CM_EVENT_LIST)
++	TP_printk("task:%u@%u xid=0x%08x, %u credits, rep=%p -> req=%p",
++		__entry->task_id, __entry->client_id, __entry->xid,
++		__entry->credits, __entry->rep, __entry->req
++	)
++);
++
++TRACE_EVENT(xprtrdma_defer_cmp,
++	TP_PROTO(
++		const struct rpcrdma_rep *rep
++	),
++
++	TP_ARGS(rep),
++
++	TP_STRUCT__entry(
++		__field(unsigned int, task_id)
++		__field(unsigned int, client_id)
++		__field(const void *, rep)
++		__field(u32, xid)
++	),
++
++	TP_fast_assign(
++		__entry->task_id = rep->rr_rqst->rq_task->tk_pid;
++		__entry->client_id = rep->rr_rqst->rq_task->tk_client->cl_clid;
++		__entry->rep = rep;
++		__entry->xid = be32_to_cpu(rep->rr_xid);
++	),
++
++	TP_printk("task:%u@%u xid=0x%08x rep=%p",
++		__entry->task_id, __entry->client_id, __entry->xid,
++		__entry->rep
++	)
++);
++
++DEFINE_REPLY_EVENT(xprtrdma_reply_vers);
++DEFINE_REPLY_EVENT(xprtrdma_reply_rqst);
++DEFINE_REPLY_EVENT(xprtrdma_reply_short);
++DEFINE_REPLY_EVENT(xprtrdma_reply_hdr);
++
+ #endif /* _TRACE_RPCRDMA_H */
+ 
+ #include <trace/define_trace.h>
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 162c0fd..6f774f1e4 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -1278,8 +1278,7 @@ void rpcrdma_complete_rqst(struct rpcrdma_rep *rep)
+  * being marshaled.
+  */
+ out_badheader:
+-	dprintk("RPC: %5u %s: invalid rpcrdma reply (type %u)\n",
+-		rqst->rq_task->tk_pid, __func__, be32_to_cpu(rep->rr_proc));
++	trace_xprtrdma_reply_hdr(rep);
+ 	r_xprt->rx_stats.bad_reply_count++;
+ 	status = -EIO;
+ 	goto out;
+@@ -1323,6 +1322,7 @@ void rpcrdma_deferred_completion(struct work_struct *work)
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rep->rr_rqst);
+ 	struct rpcrdma_xprt *r_xprt = rep->rr_rxprt;
+ 
++	trace_xprtrdma_defer_cmp(rep);
+ 	if (rep->rr_wc_flags & IB_WC_WITH_INVALIDATE)
+ 		r_xprt->rx_ia.ri_ops->ro_reminv(rep, &req->rl_registered);
+ 	rpcrdma_release_rqst(r_xprt, req);
+@@ -1344,8 +1344,6 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	u32 credits;
+ 	__be32 *p;
+ 
+-	dprintk("RPC:       %s: incoming rep %p\n", __func__, rep);
+-
+ 	if (rep->rr_hdrbuf.head[0].iov_len == 0)
+ 		goto out_badstatus;
+ 
+@@ -1389,8 +1387,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	rep->rr_rqst = rqst;
+ 	clear_bit(RPCRDMA_REQ_F_PENDING, &req->rl_flags);
+ 
+-	dprintk("RPC:       %s: reply %p completes request %p (xid 0x%08x)\n",
+-		__func__, rep, req, be32_to_cpu(rep->rr_xid));
++	trace_xprtrdma_reply(rqst->rq_task, rep, req, credits);
+ 
+ 	queue_work_on(req->rl_cpu, rpcrdma_receive_wq, &rep->rr_work);
+ 	return;
+@@ -1404,8 +1401,7 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+ 	return;
+ 
+ out_badversion:
+-	dprintk("RPC:       %s: invalid version %d\n",
+-		__func__, be32_to_cpu(rep->rr_vers));
++	trace_xprtrdma_reply_vers(rep);
+ 	goto repost;
+ 
+ /* The RPC transaction has already been terminated, or the header
+@@ -1413,12 +1409,11 @@ void rpcrdma_reply_handler(struct rpcrdma_rep *rep)
+  */
+ out_norqst:
+ 	spin_unlock(&xprt->recv_lock);
+-	dprintk("RPC:       %s: no match for incoming xid 0x%08x\n",
+-		__func__, be32_to_cpu(rep->rr_xid));
++	trace_xprtrdma_reply_rqst(rep);
+ 	goto repost;
+ 
+ out_shortreply:
+-	dprintk("RPC:       %s: short/invalid reply\n", __func__);
++	trace_xprtrdma_reply_short(rep);
+ 
+ /* If no pending RPC transaction was matched, post a replacement
+  * receive buffer before returning.
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 06d86b8..cfa3c03 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -156,13 +156,11 @@
+ 					       rr_cqe);
+ 
+ 	/* WARNING: Only wr_id and status are reliable at this point */
++	trace_xprtrdma_wc_receive(rep, wc);
+ 	if (wc->status != IB_WC_SUCCESS)
+ 		goto out_fail;
+ 
+ 	/* status == SUCCESS means all fields in wc are trustworthy */
+-	dprintk("RPC:       %s: rep %p opcode 'recv', length %u: success\n",
+-		__func__, rep, wc->byte_len);
+-
+ 	rpcrdma_set_xdrlen(&rep->rr_hdrbuf, wc->byte_len);
+ 	rep->rr_wc_flags = wc->wc_flags;
+ 	rep->rr_inv_rkey = wc->ex.invalidate_rkey;
+@@ -1576,17 +1574,14 @@ struct rpcrdma_regbuf *
+ 	if (!rpcrdma_dma_map_regbuf(ia, rep->rr_rdmabuf))
+ 		goto out_map;
+ 	rc = ib_post_recv(ia->ri_id->qp, &rep->rr_recv_wr, &recv_wr_fail);
++	trace_xprtrdma_post_recv(rep, rc);
+ 	if (rc)
+-		goto out_postrecv;
++		return -ENOTCONN;
+ 	return 0;
+ 
+ out_map:
+ 	pr_err("rpcrdma: failed to DMA map the Receive buffer\n");
+ 	return -EIO;
+-
+-out_postrecv:
+-	pr_err("rpcrdma: ib_post_recv returned %i\n", rc);
+-	return -ENOTCONN;
+ }
+ 
+ /**
 
