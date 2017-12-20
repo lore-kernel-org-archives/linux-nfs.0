@@ -1,14 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:43688 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756004AbdLTVbG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Dec 2017 16:31:06 -0500
-Subject: [PATCH v1 06/12] xprtrdma: Add trace points in reply decoder path
+Received: from mail-it0-f67.google.com ([209.85.214.67]:44380 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756531AbdLTVbP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Dec 2017 16:31:15 -0500
+Subject: [PATCH v1 07/12] xprtrdma: Add trace points to instrument memory
+ invalidation
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 20 Dec 2017 16:31:04 -0500
-Message-ID: <20171220213104.29321.13167.stgit@manet.1015granger.net>
+Date: Wed, 20 Dec 2017 16:31:12 -0500
+Message-ID: <20171220213112.29321.68527.stgit@manet.1015granger.net>
 In-Reply-To: <20171220210236.29321.59307.stgit@manet.1015granger.net>
 References: <20171220210236.29321.59307.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,185 +17,200 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This includes decoding Write and Reply chunks, and fixing up inline
-payloads.
-
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/trace/events/rpcrdma.h |   93 ++++++++++++++++++++++++++++++++++++++++
- net/sunrpc/xprtrdma/rpc_rdma.c |   29 ++++--------
- 2 files changed, 102 insertions(+), 20 deletions(-)
+ include/trace/events/rpcrdma.h |   41 ++++++++++++++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/fmr_ops.c  |    4 ++--
+ net/sunrpc/xprtrdma/frwr_ops.c |   27 +++++++++++++-------------
+ net/sunrpc/xprtrdma/verbs.c    |    1 +
+ 4 files changed, 57 insertions(+), 16 deletions(-)
 
 diff --git a/include/trace/events/rpcrdma.h b/include/trace/events/rpcrdma.h
-index bc7f2db..8176215 100644
+index 8176215..057662b 100644
 --- a/include/trace/events/rpcrdma.h
 +++ b/include/trace/events/rpcrdma.h
-@@ -452,6 +452,99 @@
- DEFINE_REPLY_EVENT(xprtrdma_reply_short);
- DEFINE_REPLY_EVENT(xprtrdma_reply_hdr);
+@@ -200,6 +200,41 @@
+ 				),					\
+ 				TP_ARGS(wc, frwr))
  
-+TRACE_EVENT(xprtrdma_fixup,
++DECLARE_EVENT_CLASS(xprtrdma_mr,
 +	TP_PROTO(
-+		const struct rpc_rqst *rqst,
-+		int len,
-+		int hdrlen
++		const struct rpcrdma_mr *mr
 +	),
 +
-+	TP_ARGS(rqst, len, hdrlen),
++	TP_ARGS(mr),
 +
 +	TP_STRUCT__entry(
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
-+		__field(const void *, base)
-+		__field(int, len)
-+		__field(int, hdrlen)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task_id = rqst->rq_task->tk_pid;
-+		__entry->client_id = rqst->rq_task->tk_client->cl_clid;
-+		__entry->base = rqst->rq_rcv_buf.head[0].iov_base;
-+		__entry->len = len;
-+		__entry->hdrlen = hdrlen;
-+	),
-+
-+	TP_printk("task:%u@%u base=%p len=%d hdrlen=%d",
-+		__entry->task_id, __entry->client_id,
-+		__entry->base, __entry->len, __entry->hdrlen
-+	)
-+);
-+
-+TRACE_EVENT(xprtrdma_fixup_pg,
-+	TP_PROTO(
-+		const struct rpc_rqst *rqst,
-+		int pageno,
-+		const void *pos,
-+		int len,
-+		int curlen
-+	),
-+
-+	TP_ARGS(rqst, pageno, pos, len, curlen),
-+
-+	TP_STRUCT__entry(
-+		__field(unsigned int, task_id)
-+		__field(unsigned int, client_id)
-+		__field(const void *, pos)
-+		__field(int, pageno)
-+		__field(int, len)
-+		__field(int, curlen)
-+	),
-+
-+	TP_fast_assign(
-+		__entry->task_id = rqst->rq_task->tk_pid;
-+		__entry->client_id = rqst->rq_task->tk_client->cl_clid;
-+		__entry->pos = pos;
-+		__entry->pageno = pageno;
-+		__entry->len = len;
-+		__entry->curlen = curlen;
-+	),
-+
-+	TP_printk("task:%u@%u pageno=%d pos=%p len=%d curlen=%d",
-+		__entry->task_id, __entry->client_id,
-+		__entry->pageno, __entry->pos, __entry->len, __entry->curlen
-+	)
-+);
-+
-+TRACE_EVENT(xprtrdma_decode_seg,
-+	TP_PROTO(
-+		u32 handle,
-+		u32 length,
-+		u64 offset
-+	),
-+
-+	TP_ARGS(handle, length, offset),
-+
-+	TP_STRUCT__entry(
++		__field(const void *, mr)
 +		__field(u32, handle)
 +		__field(u32, length)
 +		__field(u64, offset)
 +	),
 +
 +	TP_fast_assign(
-+		__entry->handle = handle;
-+		__entry->length = length;
-+		__entry->offset = offset;
++		__entry->mr = mr;
++		__entry->handle = mr->mr_handle;
++		__entry->length = mr->mr_length;
++		__entry->offset = mr->mr_offset;
 +	),
 +
-+	TP_printk("%u@0x%016llx:0x%08x",
-+		__entry->length, (unsigned long long)__entry->offset,
++	TP_printk("mr=%p %u@0x%016llx:0x%08x",
++		__entry->mr, __entry->length,
++		(unsigned long long)__entry->offset,
 +		__entry->handle
 +	)
 +);
 +
- #endif /* _TRACE_RPCRDMA_H */
++#define DEFINE_MR_EVENT(name) \
++		DEFINE_EVENT(xprtrdma_mr, name, \
++				TP_PROTO( \
++					const struct rpcrdma_mr *mr \
++				), \
++				TP_ARGS(mr))
++
+ /**
+  ** Call events
+  **/
+@@ -381,6 +416,12 @@
+ );
  
- #include <trace/define_trace.h>
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 634496c..1ae9b41 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -914,8 +914,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	curlen = rqst->rq_rcv_buf.head[0].iov_len;
- 	if (curlen > copy_len)
- 		curlen = copy_len;
--	dprintk("RPC:       %s: srcp 0x%p len %d hdrlen %d\n",
--		__func__, srcp, copy_len, curlen);
-+	trace_xprtrdma_fixup(rqst, copy_len, curlen);
- 	srcp += curlen;
- 	copy_len -= curlen;
+ DEFINE_FRWR_DONE_EVENT(xprtrdma_wc_fastreg);
++DEFINE_FRWR_DONE_EVENT(xprtrdma_wc_li);
++DEFINE_FRWR_DONE_EVENT(xprtrdma_wc_li_wake);
++
++DEFINE_MR_EVENT(xprtrdma_localinv);
++DEFINE_MR_EVENT(xprtrdma_dma_unmap);
++DEFINE_MR_EVENT(xprtrdma_remoteinv);
  
-@@ -935,9 +934,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 			if (curlen > pagelist_len)
- 				curlen = pagelist_len;
+ /**
+  ** Reply events
+diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+index 7f2f2b7..d5f95bb 100644
+--- a/net/sunrpc/xprtrdma/fmr_ops.c
++++ b/net/sunrpc/xprtrdma/fmr_ops.c
+@@ -148,6 +148,7 @@ enum {
+ 	pr_err("rpcrdma: FMR reset failed (%d), %p released\n", rc, mr);
+ 	r_xprt->rx_stats.mrs_orphaned++;
  
--			dprintk("RPC:       %s: page %d"
--				" srcp 0x%p len %d curlen %d\n",
--				__func__, i, srcp, copy_len, curlen);
-+			trace_xprtrdma_fixup_pg(rqst, i, srcp,
-+						copy_len, curlen);
- 			destp = kmap_atomic(ppages[i]);
- 			memcpy(destp + page_base, srcp, curlen);
- 			flush_dcache_page(ppages[i]);
-@@ -1028,26 +1026,19 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
++	trace_xprtrdma_dma_unmap(mr);
+ 	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
+ 			mr->mr_sg, mr->mr_nents, mr->mr_dir);
  
- static int decode_rdma_segment(struct xdr_stream *xdr, u32 *length)
- {
-+	u32 handle;
-+	u64 offset;
- 	__be32 *p;
- 
- 	p = xdr_inline_decode(xdr, 4 * sizeof(*p));
- 	if (unlikely(!p))
- 		return -EIO;
- 
--	ifdebug(FACILITY) {
--		u64 offset;
--		u32 handle;
--
--		handle = be32_to_cpup(p++);
--		*length = be32_to_cpup(p++);
--		xdr_decode_hyper(p, &offset);
--		dprintk("RPC:       %s:   segment %u@0x%016llx:0x%08x\n",
--			__func__, *length, (unsigned long long)offset,
--			handle);
--	} else {
--		*length = be32_to_cpup(p + 1);
--	}
-+	handle = be32_to_cpup(p++);
-+	*length = be32_to_cpup(p++);
-+	xdr_decode_hyper(p, &offset);
- 
-+	trace_xprtrdma_decode_seg(handle, *length, offset);
- 	return 0;
- }
- 
-@@ -1068,8 +1059,6 @@ static int decode_write_chunk(struct xdr_stream *xdr, u32 *length)
- 		*length += seglength;
+@@ -273,6 +274,7 @@ enum {
+ 	list_for_each_entry(mr, mrs, mr_list) {
+ 		dprintk("RPC:       %s: unmapping fmr %p\n",
+ 			__func__, &mr->fmr);
++		trace_xprtrdma_localinv(mr);
+ 		list_add_tail(&mr->fmr.fm_mr->list, &unmap_list);
  	}
+ 	r_xprt->rx_stats.local_inv_needed++;
+@@ -285,8 +287,6 @@ enum {
+ 	 */
+ 	while (!list_empty(mrs)) {
+ 		mr = rpcrdma_mr_pop(mrs);
+-		dprintk("RPC:       %s: DMA unmapping fmr %p\n",
+-			__func__, &mr->fmr);
+ 		list_del(&mr->fmr.fm_mr->list);
+ 		rpcrdma_mr_unmap_and_put(mr);
+ 	}
+diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+index afbeb9b..90f688f 100644
+--- a/net/sunrpc/xprtrdma/frwr_ops.c
++++ b/net/sunrpc/xprtrdma/frwr_ops.c
+@@ -182,9 +182,11 @@
+ 	int rc;
  
--	dprintk("RPC:       %s: segcount=%u, %u bytes\n",
--		__func__, be32_to_cpup(p), *length);
- 	return 0;
+ 	rc = __frwr_mr_reset(ia, mr);
+-	if (state != FRWR_FLUSHED_LI)
++	if (state != FRWR_FLUSHED_LI) {
++		trace_xprtrdma_dma_unmap(mr);
+ 		ib_dma_unmap_sg(ia->ri_device,
+ 				mr->mr_sg, mr->mr_nents, mr->mr_dir);
++	}
+ 	if (rc)
+ 		goto out_release;
+ 
+@@ -307,16 +309,16 @@
+ static void
+ frwr_wc_localinv(struct ib_cq *cq, struct ib_wc *wc)
+ {
+-	struct rpcrdma_frwr *frwr;
+-	struct ib_cqe *cqe;
++	struct ib_cqe *cqe = wc->wr_cqe;
++	struct rpcrdma_frwr *frwr = container_of(cqe, struct rpcrdma_frwr,
++						 fr_cqe);
+ 
+ 	/* WARNING: Only wr_cqe and status are reliable at this point */
+ 	if (wc->status != IB_WC_SUCCESS) {
+-		cqe = wc->wr_cqe;
+-		frwr = container_of(cqe, struct rpcrdma_frwr, fr_cqe);
+ 		frwr->fr_state = FRWR_FLUSHED_LI;
+ 		__frwr_sendcompletion_flush(wc, "localinv");
+ 	}
++	trace_xprtrdma_wc_li(wc, frwr);
  }
  
+ /**
+@@ -329,17 +331,17 @@
+ static void
+ frwr_wc_localinv_wake(struct ib_cq *cq, struct ib_wc *wc)
+ {
+-	struct rpcrdma_frwr *frwr;
+-	struct ib_cqe *cqe;
++	struct ib_cqe *cqe = wc->wr_cqe;
++	struct rpcrdma_frwr *frwr = container_of(cqe, struct rpcrdma_frwr,
++						 fr_cqe);
+ 
+ 	/* WARNING: Only wr_cqe and status are reliable at this point */
+-	cqe = wc->wr_cqe;
+-	frwr = container_of(cqe, struct rpcrdma_frwr, fr_cqe);
+ 	if (wc->status != IB_WC_SUCCESS) {
+ 		frwr->fr_state = FRWR_FLUSHED_LI;
+ 		__frwr_sendcompletion_flush(wc, "localinv");
+ 	}
+ 	complete(&frwr->fr_linv_done);
++	trace_xprtrdma_wc_li_wake(wc, frwr);
+ }
+ 
+ /* Post a REG_MR Work Request to register a memory region
+@@ -457,6 +459,7 @@
+ 	list_for_each_entry(mr, mrs, mr_list)
+ 		if (mr->mr_handle == rep->rr_inv_rkey) {
+ 			list_del(&mr->mr_list);
++			trace_xprtrdma_remoteinv(mr);
+ 			mr->frwr.fr_state = FRWR_IS_INVALID;
+ 			rpcrdma_mr_unmap_and_put(mr);
+ 			break;	/* only one invalidated MR per RPC */
+@@ -492,9 +495,7 @@
+ 		mr->frwr.fr_state = FRWR_IS_INVALID;
+ 
+ 		frwr = &mr->frwr;
+-
+-		dprintk("RPC:       %s: invalidating frwr %p\n",
+-			__func__, frwr);
++		trace_xprtrdma_localinv(mr);
+ 
+ 		frwr->fr_cqe.done = frwr_wc_localinv;
+ 		last = &frwr->fr_invwr;
+@@ -536,8 +537,6 @@
+ unmap:
+ 	while (!list_empty(mrs)) {
+ 		mr = rpcrdma_mr_pop(mrs);
+-		dprintk("RPC:       %s: DMA unmapping frwr %p\n",
+-			__func__, &mr->frwr);
+ 		rpcrdma_mr_unmap_and_put(mr);
+ 	}
+ 	return;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index cfa3c03..0e89e55 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1349,6 +1349,7 @@ struct rpcrdma_mr *
+ {
+ 	struct rpcrdma_xprt *r_xprt = mr->mr_xprt;
+ 
++	trace_xprtrdma_dma_unmap(mr);
+ 	ib_dma_unmap_sg(r_xprt->rx_ia.ri_device,
+ 			mr->mr_sg, mr->mr_nents, mr->mr_dir);
+ 	__rpcrdma_mr_put(&r_xprt->rx_buf, mr);
 
