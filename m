@@ -1,87 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:31810 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752007AbdLUPzA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Dec 2017 10:55:00 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "neilb@suse.com" <neilb@suse.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH/RFC] NFS: add nostatflush mount option.
-Date: Thu, 21 Dec 2017 15:54:51 +0000
-Message-ID: <1513871689.11836.3.camel@primarydata.com>
-References: <87k1xgkct1.fsf@notabene.neil.brown.name>
-         <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com>
-In-Reply-To: <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:45222 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751865AbdLURmu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Dec 2017 12:42:50 -0500
+Subject: [PATCH v1 0/3] NFS/RDMA server changes for v4.16
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Thu, 21 Dec 2017 12:42:48 -0500
+Message-ID: <20171221174206.11802.16286.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gVGh1LCAyMDE3LTEyLTIxIGF0IDEwOjM5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-SGkgTmVpbC0NCj4gDQo+IA0KPiA+IE9uIERlYyAyMCwgMjAxNywgYXQgOTo1NyBQTSwgTmVpbEJy
-b3duIDxuZWlsYkBzdXNlLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gDQo+ID4gV2hlbiBhbiBpX29w
-LT5nZXRhdHRyKCkgY2FsbCBpcyBtYWRlIG9uIGFuIE5GUyBmaWxlDQo+ID4gKHR5cGljYWxseSBm
-cm9tIGEgJ3N0YXQnIGZhbWlseSBzeXN0ZW0gY2FsbCksIE5GUw0KPiA+IHdpbGwgZmlyc3QgZmx1
-c2ggYW55IGRpcnR5IGRhdGEgdG8gdGhlIHNlcnZlci4NCj4gPiANCj4gPiBUaGlzIGVuc3VyZXMg
-dGhhdCB0aGUgbXRpbWUgcmVwb3J0ZWQgaXMgY29ycmVjdCBhbmQgc3RhYmxlLA0KPiA+IGJ1dCBo
-YXMgYSBwZXJmb3JtYW5jZSBwZW5hbHR5LiAgJ3N0YXQnIGlzIG5vcm1hbGx5IHRob3VnaHQNCj4g
-PiB0byBiZSBhIHF1aWNrIG9wZXJhdGlvbiwgYW5kIGltcG9zaW5nIHRoaXMgY29zdCBjYW4gYmUN
-Cj4gPiBzdXJwcmlzaW5nLg0KPiANCj4gVG8gYmUgY2xlYXIsIHRoaXMgYmVoYXZpb3IgaXMgYSBQ
-T1NJWCByZXF1aXJlbWVudC4NCj4gDQo+IA0KPiA+IEkgaGF2ZSBzZWVuIHByb2JsZW1zIHdoZW4g
-b25lIHByb2Nlc3MgaXMgd3JpdGluZyBhIGxhcmdlDQo+ID4gZmlsZSBhbmQgYW5vdGhlciBwcm9j
-ZXNzIHBlcmZvcm1zICJscyAtbCIgb24gdGhlIGNvbnRhaW5pbmcNCj4gPiBkaXJlY3RvcnkgYW5k
-IGlzIGJsb2NrZWQgZm9yIGFzIGxvbmcgYXMgaXQgdGFrZSB0byBmbHVzaA0KPiA+IGFsbCB0aGUg
-ZGlydHkgZGF0YSB0byB0aGUgc2VydmVyLCB3aGljaCBjYW4gYmUgbWludXRlcy4NCj4gDQo+IFll
-cywgYSB3ZWxsLWtub3duIGFubm95YW5jZSB0aGF0IGNhbm5vdCBiZSBhZGRyZXNzZWQNCj4gZXZl
-biB3aXRoIGEgd3JpdGUgZGVsZWdhdGlvbi4NCj4gDQo+IA0KPiA+IEkgaGF2ZSBhbHNvIHNlZW4g
-YSBsZWdhY3kgYXBwbGljYXRpb24gd2hpY2ggZnJlcXVlbnRseSBjYWxscw0KPiA+ICJmc3RhdCIg
-b24gYSBmaWxlIHRoYXQgaXQgaXMgd3JpdGluZyB0by4gIE9uIGEgbG9jYWwNCj4gPiBmaWxlc3lz
-dGVtIChhbmQgaW4gdGhlIFNvbGFyaXMgaW1wbGVtZW50YXRpb24gb2YgTkZTKSB0aGlzDQo+ID4g
-ZnN0YXQgY2FsbCBpcyBjaGVhcC4gIE9uIExpbnV4L05GUywgdGhlIGNhdXNlcyBhIG5vdGljZWFi
-bGUNCj4gPiBkZWNyZWFzZSBpbiB0aHJvdWdocHV0Lg0KPiANCj4gSWYgdGhlIHByZWNlZGluZyB3
-cml0ZSBpcyBzbWFsbCwgTGludXggY291bGQgYmUgdXNpbmcNCj4gYSBGSUxFX1NZTkMgd3JpdGUs
-IGJ1dCBTb2xhcmlzIGNvdWxkIGJlIHVzaW5nIFVOU1RBQkxFLg0KPiANCj4gDQo+ID4gVGhlIG9u
-bHkgY2lyY3Vtc3RhbmNlcyB3aGVyZSBhbiBhcHBsaWNhdGlvbiBjYWxsaW5nICdzdGF0KCknDQo+
-ID4gbWlnaHQgZ2V0IGFuIG10aW1lIHdoaWNoIGlzIG5vdCBzdGFibGUgYXJlIHRpbWVzIHdoZW4g
-c29tZQ0KPiA+IG90aGVyIHByb2Nlc3MgaXMgd3JpdGluZyB0byB0aGUgZmlsZSBhbmQgdGhlIHR3
-byBwcm9jZXNzZXMNCj4gPiBhcmUgbm90IHVzaW5nIGxvY2tpbmcgdG8gZW5zdXJlIGNvbnNpc3Rl
-bmN5LCBvciB3aGVuIHRoZSBvbmUNCj4gPiBwcm9jZXNzIGlzIGJvdGggd3JpdGluZyBhbmQgc3Rh
-dGluZy4gIEluIG5laXRoZXIgb2YgdGhlc2UNCj4gPiBjYXNlcyBpcyBpdCByZWFzb25hYmxlIHRv
-IGV4cGVjdCB0aGUgbXRpbWUgdG8gYmUgc3RhYmxlLg0KPiANCj4gSSdtIG5vdCBjb252aW5jZWQg
-dGhpcyBpcyBhIHN0cm9uZyBlbm91Z2ggcmF0aW9uYWxlDQo+IGZvciBjbGFpbWluZyBpdCBpcyBz
-YWZlIHRvIGRpc2FibGUgdGhlIGV4aXN0aW5nDQo+IGJlaGF2aW9yLg0KPiANCj4gWW91J3ZlIGV4
-cGxhaW5lZCBjYXNlcyB3aGVyZSB0aGUgbmV3IGJlaGF2aW9yIGlzDQo+IHJlYXNvbmFibGUsIGJ1
-dCBkbyB5b3UgaGF2ZSBhbnkgZXhhbXBsZXMgd2hlcmUgdGhlDQo+IG5ldyBiZWhhdmlvciB3b3Vs
-ZCBiZSBhIHByb2JsZW0/IFRoZXJlIG11c3QgYmUgYQ0KPiByZWFzb24gd2h5IFBPU0lYIGV4cGxp
-Y2l0bHkgcmVxdWlyZXMgYW4gdXAtdG8tZGF0ZQ0KPiBtdGltZS4NCj4gDQo+IFdoYXQgZ3VpZGFu
-Y2Ugd291bGQgbmZzKDUpIGdpdmUgb24gd2hlbiBpdCBpcyBzYWZlDQo+IHRvIHNwZWNpZnkgdGhl
-IG5ldyBtb3VudCBvcHRpb24/DQo+IA0KPiANCj4gPiBJbiB0aGUgbW9zdCBjb21tb24gY2FzZXMg
-d2hlcmUgbXRpbWUgaXMgaW1wb3J0YW50DQo+ID4gKGUuZy4gbWFrZSksIG5vIG90aGVyIHByb2Nl
-c3MgaGFzIHRoZSBmaWxlIG9wZW4sIHNvIHRoZXJlDQo+ID4gd2lsbCBiZSBubyBkaXJ0eSBkYXRh
-IGFuZCB0aGUgbXRpbWUgd2lsbCBiZSBzdGFibGUuDQo+IA0KPiBJc24ndCBpdCBhbHNvIHRoZSBj
-YXNlIHRoYXQgbWFrZSBpcyBhIG11bHRpLXByb2Nlc3MNCj4gd29ya2xvYWQgd2hlcmUgb25lIHBy
-b2Nlc3MgbW9kaWZpZXMgYSBmaWxlLCB0aGVuDQo+IGNsb3NlcyBpdCAod2hpY2ggdHJpZ2dlcnMg
-YSBmbHVzaCksIGFuZCB0aGVuIGFub3RoZXINCj4gcHJvY2VzcyBzdGF0cyB0aGUgZmlsZT8gVGhl
-IG5ldyBtb3VudCBvcHRpb24gZG9lcw0KPiBub3QgY2hhbmdlIHRoZSBiZWhhdmlvciBvZiBjbG9z
-ZSgyKSwgZG9lcyBpdD8NCj4gDQo+IA0KPiA+IFJhdGhlciB0aGFuIHVuaWxhdGVyYWxseSBjaGFu
-Z2luZyB0aGlzIGJlaGF2aW9yIG9mICdzdGF0JywNCj4gPiB0aGlzIHBhdGNoIGFkZHMgYSAibm9z
-eW5jZmx1c2giIG1vdW50IG9wdGlvbiB0byBhbGxvdw0KPiA+IHN5c2FkbWlucyB0byBoYXZlIGFw
-cGxpY2F0aW9ucyB3aGljaCBhcmUgaHVydCBieSB0aGUgY3VycmVudA0KPiA+IGJlaGF2aW9yIHRv
-IGRpc2FibGUgaXQuDQo+IA0KPiBJTU8gYSBtb3VudCBvcHRpb24gaXMgYXQgdGhlIHdyb25nIGdy
-YW51bGFyaXR5LiBBDQo+IG1vdW50IHBvaW50IHdpbGwgYmUgc2hhcmVkIGJldHdlZW4gYXBwbGlj
-YXRpb25zIHRoYXQNCj4gY2FuIHRvbGVyYXRlIHRoZSBub24tUE9TSVggYmVoYXZpb3IgYW5kIHRo
-b3NlIHRoYXQNCj4gY2Fubm90LCBmb3IgaW5zdGFuY2UuDQoNCkFncmVlZC4gDQoNClRoZSBvdGhl
-ciB0aGluZyB0byBub3RlIGhlcmUgaXMgdGhhdCB3ZSBub3cgaGF2ZSBhbiBlbWJyeW9uaWMgc3Rh
-dHgoKQ0Kc3lzdGVtIGNhbGwsIHdoaWNoIGFsbG93cyB0aGUgYXBwbGljYXRpb24gaXRzZWxmIHRv
-IGRlY2lkZSB3aGV0aGVyIG9yDQpub3QgaXQgbmVlZHMgdXAgdG8gZGF0ZSB2YWx1ZXMgZm9yIHRo
-ZSBhdGltZS9jdGltZS9tdGltZS4gV2hpbGUgd2UNCmhhdmVuJ3QgeWV0IHBsdW1iZWQgaW4gdGhl
-IE5GUyBzaWRlLCB0aGUgaW50ZW50aW9uIHdhcyBhbHdheXMgdG8gdXNlDQp0aGF0IGluZm9ybWF0
-aW9uIHRvIHR1cm4gb2ZmIHRoZSB3cml0ZWJhY2sgZmx1c2hpbmcgd2hlbiBwb3NzaWJsZS4NCg0K
-Q2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
-IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
-DQo=
+Hi Bruce-
 
+Would you consider these patches for merging into v4.16?
+
+---
+
+Chuck Lever (3):
+      svcrdma: Post Receives in the Receive completion handler
+      NFSD: Clean up write argument XDR decoders
+      NFSD: Clean up symlink argument XDR decoders
+
+
+ fs/nfsd/nfs3proc.c                         |   18 ++++-
+ fs/nfsd/nfs3xdr.c                          |   67 ++++-------------
+ fs/nfsd/nfs4proc.c                         |   37 +++-------
+ fs/nfsd/nfs4xdr.c                          |   11 ++-
+ fs/nfsd/nfsproc.c                          |   23 ++++--
+ fs/nfsd/nfsxdr.c                           |   63 ++++++++--------
+ fs/nfsd/xdr.h                              |    3 +
+ fs/nfsd/xdr3.h                             |    3 +
+ fs/nfsd/xdr4.h                             |    3 +
+ include/linux/sunrpc/svc.h                 |    4 +
+ include/linux/sunrpc/svc_rdma.h            |    2 -
+ net/sunrpc/svc.c                           |  109 ++++++++++++++++++++++++++++
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    4 -
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |   15 +---
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c      |    6 --
+ net/sunrpc/xprtrdma/svc_rdma_transport.c   |   25 ++----
+ 16 files changed, 228 insertions(+), 165 deletions(-)
+
+--
+Chuck Lever
