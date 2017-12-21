@@ -1,220 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:33354 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752471AbdLUPuX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Dec 2017 10:50:23 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:31810 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752007AbdLUPzA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Dec 2017 10:55:00 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "neilb@suse.com" <neilb@suse.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: [PATCH/RFC] NFS: add nostatflush mount option.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <87k1xgkct1.fsf@notabene.neil.brown.name>
-Date: Thu, 21 Dec 2017 10:39:27 -0500
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org
-Message-Id: <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com>
+Date: Thu, 21 Dec 2017 15:54:51 +0000
+Message-ID: <1513871689.11836.3.camel@primarydata.com>
 References: <87k1xgkct1.fsf@notabene.neil.brown.name>
-To: NeilBrown <neilb@suse.com>
+         <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com>
+In-Reply-To: <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Neil-
-
-
-> On Dec 20, 2017, at 9:57 PM, NeilBrown <neilb@suse.com> wrote:
->=20
->=20
-> When an i_op->getattr() call is made on an NFS file
-> (typically from a 'stat' family system call), NFS
-> will first flush any dirty data to the server.
->=20
-> This ensures that the mtime reported is correct and stable,
-> but has a performance penalty.  'stat' is normally thought
-> to be a quick operation, and imposing this cost can be
-> surprising.
-
-To be clear, this behavior is a POSIX requirement.
-
-
-> I have seen problems when one process is writing a large
-> file and another process performs "ls -l" on the containing
-> directory and is blocked for as long as it take to flush
-> all the dirty data to the server, which can be minutes.
-
-Yes, a well-known annoyance that cannot be addressed
-even with a write delegation.
-
-
-> I have also seen a legacy application which frequently calls
-> "fstat" on a file that it is writing to.  On a local
-> filesystem (and in the Solaris implementation of NFS) this
-> fstat call is cheap.  On Linux/NFS, the causes a noticeable
-> decrease in throughput.
-
-If the preceding write is small, Linux could be using
-a FILE_SYNC write, but Solaris could be using UNSTABLE.
-
-
-> The only circumstances where an application calling 'stat()'
-> might get an mtime which is not stable are times when some
-> other process is writing to the file and the two processes
-> are not using locking to ensure consistency, or when the one
-> process is both writing and stating.  In neither of these
-> cases is it reasonable to expect the mtime to be stable.
-
-I'm not convinced this is a strong enough rationale
-for claiming it is safe to disable the existing
-behavior.
-
-You've explained cases where the new behavior is
-reasonable, but do you have any examples where the
-new behavior would be a problem? There must be a
-reason why POSIX explicitly requires an up-to-date
-mtime.
-
-What guidance would nfs(5) give on when it is safe
-to specify the new mount option?
-
-
-> In the most common cases where mtime is important
-> (e.g. make), no other process has the file open, so there
-> will be no dirty data and the mtime will be stable.
-
-Isn't it also the case that make is a multi-process
-workload where one process modifies a file, then
-closes it (which triggers a flush), and then another
-process stats the file? The new mount option does
-not change the behavior of close(2), does it?
-
-
-> Rather than unilaterally changing this behavior of 'stat',
-> this patch adds a "nosyncflush" mount option to allow
-> sysadmins to have applications which are hurt by the current
-> behavior to disable it.
-
-IMO a mount option is at the wrong granularity. A
-mount point will be shared between applications that
-can tolerate the non-POSIX behavior and those that
-cannot, for instance.
-
-I would rather see us address the underlying cause
-of the delay, which is that the GETATTR gets starved
-by an ongoing stream of WRITE requests. You could:
-
-- Make active writers wait for the GETATTR so the
-GETATTR is not starved
-
-- Start flushing dirty pages earlier so there is
-less to flush when a stat(2) is done
-
-- Ensure that GETATTR is not also waiting for a
-COMMIT
-
-Or maybe there's some other problem?
-
-I recall nfs_getattr used to grab i_mutex to hold
-up active writers. But i_mutex is gone now. Is
-there some other mechanism that can block writers
-while the client flushes the file and handles the
-GETATTR request?
-
-
-> Note that this option should probably *not* be used together
-> with "nocto".  In that case, mtime could be unstable even
-> when no process has the file open.
->=20
-> Signed-off-by: NeilBrown <neilb@suse.com>
-> ---
-> fs/nfs/inode.c                 |  3 ++-
-> fs/nfs/super.c                 | 10 ++++++++++
-> include/uapi/linux/nfs_mount.h |  6 ++++--
-> 3 files changed, 16 insertions(+), 3 deletions(-)
->=20
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index b992d2382ffa..16629a34dd62 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -740,7 +740,8 @@ int nfs_getattr(const struct path *path, struct =
-kstat *stat,
->=20
-> 	trace_nfs_getattr_enter(inode);
-> 	/* Flush out writes to the server in order to update c/mtime.  =
-*/
-> -	if (S_ISREG(inode->i_mode)) {
-> +	if (S_ISREG(inode->i_mode) &&
-> +	    !(NFS_SERVER(inode)->flags & NFS_MOUNT_NOSTATFLUSH)) {
-> 		err =3D filemap_write_and_wait(inode->i_mapping);
-> 		if (err)
-> 			goto out;
-> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> index 29bacdc56f6a..2351c0be98f5 100644
-> --- a/fs/nfs/super.c
-> +++ b/fs/nfs/super.c
-> @@ -90,6 +90,7 @@ enum {
-> 	Opt_resvport, Opt_noresvport,
-> 	Opt_fscache, Opt_nofscache,
-> 	Opt_migration, Opt_nomigration,
-> +	Opt_statflush, Opt_nostatflush,
->=20
-> 	/* Mount options that take integer arguments */
-> 	Opt_port,
-> @@ -151,6 +152,8 @@ static const match_table_t nfs_mount_option_tokens =
-=3D {
-> 	{ Opt_nofscache, "nofsc" },
-> 	{ Opt_migration, "migration" },
-> 	{ Opt_nomigration, "nomigration" },
-> +	{ Opt_statflush, "statflush" },
-> +	{ Opt_nostatflush, "nostatflush" },
->=20
-> 	{ Opt_port, "port=3D%s" },
-> 	{ Opt_rsize, "rsize=3D%s" },
-> @@ -637,6 +640,7 @@ static void nfs_show_mount_options(struct seq_file =
-*m, struct nfs_server *nfss,
-> 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
-> 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
-> 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
-> +		{ NFS_MOUNT_NOSTATFLUSH, ",nostatflush", "" },
-> 		{ 0, NULL, NULL }
-> 	};
-> 	const struct proc_nfs_info *nfs_infop;
-> @@ -1334,6 +1338,12 @@ static int nfs_parse_mount_options(char *raw,
-> 		case Opt_nomigration:
-> 			mnt->options &=3D ~NFS_OPTION_MIGRATION;
-> 			break;
-> +		case Opt_statflush:
-> +			mnt->flags &=3D ~NFS_MOUNT_NOSTATFLUSH;
-> +			break;
-> +		case Opt_nostatflush:
-> +			mnt->flags |=3D NFS_MOUNT_NOSTATFLUSH;
-> +			break;
->=20
-> 		/*
-> 		 * options that take numeric values
-> diff --git a/include/uapi/linux/nfs_mount.h =
-b/include/uapi/linux/nfs_mount.h
-> index e44e00616ab5..d7c6f809d25d 100644
-> --- a/include/uapi/linux/nfs_mount.h
-> +++ b/include/uapi/linux/nfs_mount.h
-> @@ -72,7 +72,9 @@ struct nfs_mount_data {
-> #define NFS_MOUNT_NORESVPORT		0x40000
-> #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
->=20
-> -#define NFS_MOUNT_LOCAL_FLOCK	0x100000
-> -#define NFS_MOUNT_LOCAL_FCNTL	0x200000
-> +#define NFS_MOUNT_LOCAL_FLOCK		0x100000
-> +#define NFS_MOUNT_LOCAL_FCNTL		0x200000
-> +
-> +#define NFS_MOUNT_NOSTATFLUSH		0x400000
->=20
-> #endif
-> --=20
-> 2.14.0.rc0.dirty
->=20
-
---
-Chuck Lever
-
-
+T24gVGh1LCAyMDE3LTEyLTIxIGF0IDEwOjM5IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+SGkgTmVpbC0NCj4gDQo+IA0KPiA+IE9uIERlYyAyMCwgMjAxNywgYXQgOTo1NyBQTSwgTmVpbEJy
+b3duIDxuZWlsYkBzdXNlLmNvbT4gd3JvdGU6DQo+ID4gDQo+ID4gDQo+ID4gV2hlbiBhbiBpX29w
+LT5nZXRhdHRyKCkgY2FsbCBpcyBtYWRlIG9uIGFuIE5GUyBmaWxlDQo+ID4gKHR5cGljYWxseSBm
+cm9tIGEgJ3N0YXQnIGZhbWlseSBzeXN0ZW0gY2FsbCksIE5GUw0KPiA+IHdpbGwgZmlyc3QgZmx1
+c2ggYW55IGRpcnR5IGRhdGEgdG8gdGhlIHNlcnZlci4NCj4gPiANCj4gPiBUaGlzIGVuc3VyZXMg
+dGhhdCB0aGUgbXRpbWUgcmVwb3J0ZWQgaXMgY29ycmVjdCBhbmQgc3RhYmxlLA0KPiA+IGJ1dCBo
+YXMgYSBwZXJmb3JtYW5jZSBwZW5hbHR5LiAgJ3N0YXQnIGlzIG5vcm1hbGx5IHRob3VnaHQNCj4g
+PiB0byBiZSBhIHF1aWNrIG9wZXJhdGlvbiwgYW5kIGltcG9zaW5nIHRoaXMgY29zdCBjYW4gYmUN
+Cj4gPiBzdXJwcmlzaW5nLg0KPiANCj4gVG8gYmUgY2xlYXIsIHRoaXMgYmVoYXZpb3IgaXMgYSBQ
+T1NJWCByZXF1aXJlbWVudC4NCj4gDQo+IA0KPiA+IEkgaGF2ZSBzZWVuIHByb2JsZW1zIHdoZW4g
+b25lIHByb2Nlc3MgaXMgd3JpdGluZyBhIGxhcmdlDQo+ID4gZmlsZSBhbmQgYW5vdGhlciBwcm9j
+ZXNzIHBlcmZvcm1zICJscyAtbCIgb24gdGhlIGNvbnRhaW5pbmcNCj4gPiBkaXJlY3RvcnkgYW5k
+IGlzIGJsb2NrZWQgZm9yIGFzIGxvbmcgYXMgaXQgdGFrZSB0byBmbHVzaA0KPiA+IGFsbCB0aGUg
+ZGlydHkgZGF0YSB0byB0aGUgc2VydmVyLCB3aGljaCBjYW4gYmUgbWludXRlcy4NCj4gDQo+IFll
+cywgYSB3ZWxsLWtub3duIGFubm95YW5jZSB0aGF0IGNhbm5vdCBiZSBhZGRyZXNzZWQNCj4gZXZl
+biB3aXRoIGEgd3JpdGUgZGVsZWdhdGlvbi4NCj4gDQo+IA0KPiA+IEkgaGF2ZSBhbHNvIHNlZW4g
+YSBsZWdhY3kgYXBwbGljYXRpb24gd2hpY2ggZnJlcXVlbnRseSBjYWxscw0KPiA+ICJmc3RhdCIg
+b24gYSBmaWxlIHRoYXQgaXQgaXMgd3JpdGluZyB0by4gIE9uIGEgbG9jYWwNCj4gPiBmaWxlc3lz
+dGVtIChhbmQgaW4gdGhlIFNvbGFyaXMgaW1wbGVtZW50YXRpb24gb2YgTkZTKSB0aGlzDQo+ID4g
+ZnN0YXQgY2FsbCBpcyBjaGVhcC4gIE9uIExpbnV4L05GUywgdGhlIGNhdXNlcyBhIG5vdGljZWFi
+bGUNCj4gPiBkZWNyZWFzZSBpbiB0aHJvdWdocHV0Lg0KPiANCj4gSWYgdGhlIHByZWNlZGluZyB3
+cml0ZSBpcyBzbWFsbCwgTGludXggY291bGQgYmUgdXNpbmcNCj4gYSBGSUxFX1NZTkMgd3JpdGUs
+IGJ1dCBTb2xhcmlzIGNvdWxkIGJlIHVzaW5nIFVOU1RBQkxFLg0KPiANCj4gDQo+ID4gVGhlIG9u
+bHkgY2lyY3Vtc3RhbmNlcyB3aGVyZSBhbiBhcHBsaWNhdGlvbiBjYWxsaW5nICdzdGF0KCknDQo+
+ID4gbWlnaHQgZ2V0IGFuIG10aW1lIHdoaWNoIGlzIG5vdCBzdGFibGUgYXJlIHRpbWVzIHdoZW4g
+c29tZQ0KPiA+IG90aGVyIHByb2Nlc3MgaXMgd3JpdGluZyB0byB0aGUgZmlsZSBhbmQgdGhlIHR3
+byBwcm9jZXNzZXMNCj4gPiBhcmUgbm90IHVzaW5nIGxvY2tpbmcgdG8gZW5zdXJlIGNvbnNpc3Rl
+bmN5LCBvciB3aGVuIHRoZSBvbmUNCj4gPiBwcm9jZXNzIGlzIGJvdGggd3JpdGluZyBhbmQgc3Rh
+dGluZy4gIEluIG5laXRoZXIgb2YgdGhlc2UNCj4gPiBjYXNlcyBpcyBpdCByZWFzb25hYmxlIHRv
+IGV4cGVjdCB0aGUgbXRpbWUgdG8gYmUgc3RhYmxlLg0KPiANCj4gSSdtIG5vdCBjb252aW5jZWQg
+dGhpcyBpcyBhIHN0cm9uZyBlbm91Z2ggcmF0aW9uYWxlDQo+IGZvciBjbGFpbWluZyBpdCBpcyBz
+YWZlIHRvIGRpc2FibGUgdGhlIGV4aXN0aW5nDQo+IGJlaGF2aW9yLg0KPiANCj4gWW91J3ZlIGV4
+cGxhaW5lZCBjYXNlcyB3aGVyZSB0aGUgbmV3IGJlaGF2aW9yIGlzDQo+IHJlYXNvbmFibGUsIGJ1
+dCBkbyB5b3UgaGF2ZSBhbnkgZXhhbXBsZXMgd2hlcmUgdGhlDQo+IG5ldyBiZWhhdmlvciB3b3Vs
+ZCBiZSBhIHByb2JsZW0/IFRoZXJlIG11c3QgYmUgYQ0KPiByZWFzb24gd2h5IFBPU0lYIGV4cGxp
+Y2l0bHkgcmVxdWlyZXMgYW4gdXAtdG8tZGF0ZQ0KPiBtdGltZS4NCj4gDQo+IFdoYXQgZ3VpZGFu
+Y2Ugd291bGQgbmZzKDUpIGdpdmUgb24gd2hlbiBpdCBpcyBzYWZlDQo+IHRvIHNwZWNpZnkgdGhl
+IG5ldyBtb3VudCBvcHRpb24/DQo+IA0KPiANCj4gPiBJbiB0aGUgbW9zdCBjb21tb24gY2FzZXMg
+d2hlcmUgbXRpbWUgaXMgaW1wb3J0YW50DQo+ID4gKGUuZy4gbWFrZSksIG5vIG90aGVyIHByb2Nl
+c3MgaGFzIHRoZSBmaWxlIG9wZW4sIHNvIHRoZXJlDQo+ID4gd2lsbCBiZSBubyBkaXJ0eSBkYXRh
+IGFuZCB0aGUgbXRpbWUgd2lsbCBiZSBzdGFibGUuDQo+IA0KPiBJc24ndCBpdCBhbHNvIHRoZSBj
+YXNlIHRoYXQgbWFrZSBpcyBhIG11bHRpLXByb2Nlc3MNCj4gd29ya2xvYWQgd2hlcmUgb25lIHBy
+b2Nlc3MgbW9kaWZpZXMgYSBmaWxlLCB0aGVuDQo+IGNsb3NlcyBpdCAod2hpY2ggdHJpZ2dlcnMg
+YSBmbHVzaCksIGFuZCB0aGVuIGFub3RoZXINCj4gcHJvY2VzcyBzdGF0cyB0aGUgZmlsZT8gVGhl
+IG5ldyBtb3VudCBvcHRpb24gZG9lcw0KPiBub3QgY2hhbmdlIHRoZSBiZWhhdmlvciBvZiBjbG9z
+ZSgyKSwgZG9lcyBpdD8NCj4gDQo+IA0KPiA+IFJhdGhlciB0aGFuIHVuaWxhdGVyYWxseSBjaGFu
+Z2luZyB0aGlzIGJlaGF2aW9yIG9mICdzdGF0JywNCj4gPiB0aGlzIHBhdGNoIGFkZHMgYSAibm9z
+eW5jZmx1c2giIG1vdW50IG9wdGlvbiB0byBhbGxvdw0KPiA+IHN5c2FkbWlucyB0byBoYXZlIGFw
+cGxpY2F0aW9ucyB3aGljaCBhcmUgaHVydCBieSB0aGUgY3VycmVudA0KPiA+IGJlaGF2aW9yIHRv
+IGRpc2FibGUgaXQuDQo+IA0KPiBJTU8gYSBtb3VudCBvcHRpb24gaXMgYXQgdGhlIHdyb25nIGdy
+YW51bGFyaXR5LiBBDQo+IG1vdW50IHBvaW50IHdpbGwgYmUgc2hhcmVkIGJldHdlZW4gYXBwbGlj
+YXRpb25zIHRoYXQNCj4gY2FuIHRvbGVyYXRlIHRoZSBub24tUE9TSVggYmVoYXZpb3IgYW5kIHRo
+b3NlIHRoYXQNCj4gY2Fubm90LCBmb3IgaW5zdGFuY2UuDQoNCkFncmVlZC4gDQoNClRoZSBvdGhl
+ciB0aGluZyB0byBub3RlIGhlcmUgaXMgdGhhdCB3ZSBub3cgaGF2ZSBhbiBlbWJyeW9uaWMgc3Rh
+dHgoKQ0Kc3lzdGVtIGNhbGwsIHdoaWNoIGFsbG93cyB0aGUgYXBwbGljYXRpb24gaXRzZWxmIHRv
+IGRlY2lkZSB3aGV0aGVyIG9yDQpub3QgaXQgbmVlZHMgdXAgdG8gZGF0ZSB2YWx1ZXMgZm9yIHRo
+ZSBhdGltZS9jdGltZS9tdGltZS4gV2hpbGUgd2UNCmhhdmVuJ3QgeWV0IHBsdW1iZWQgaW4gdGhl
+IE5GUyBzaWRlLCB0aGUgaW50ZW50aW9uIHdhcyBhbHdheXMgdG8gdXNlDQp0aGF0IGluZm9ybWF0
+aW9uIHRvIHR1cm4gb2ZmIHRoZSB3cml0ZWJhY2sgZmx1c2hpbmcgd2hlbiBwb3NzaWJsZS4NCg0K
+Q2hlZXJzDQogIFRyb25kDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
+DQo=
 
