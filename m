@@ -1,173 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53116 "EHLO fieldses.org"
+Received: from mx1.mailbox.org ([80.241.60.212]:36686 "EHLO mx1.mailbox.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753687AbdLUUXv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 21 Dec 2017 15:23:51 -0500
-Date: Thu, 21 Dec 2017 15:23:50 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Elena Reshetova <elena.reshetova@intel.com>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        jlayton@kernel.org, trond.myklebust@primarydata.com,
-        anna.schumaker@netapp.com, peterz@infradead.org,
-        keescook@chromium.org
-Subject: Re: [PATCH 1/4] lockd: convert nlm_host.h_count from atomic_t to
- refcount_t
-Message-ID: <20171221202350.GE31467@fieldses.org>
-References: <1511954146-11793-1-git-send-email-elena.reshetova@intel.com>
- <1511954146-11793-2-git-send-email-elena.reshetova@intel.com>
+        id S1752789AbdLUUZX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 21 Dec 2017 15:25:23 -0500
+Date: Thu, 21 Dec 2017 21:25:16 +0100
+From: Andreas Radke <andreas.radke@mailbox.org>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: ANNOUNCE: nfs-utils-2.3.1 released.
+Message-ID: <20171221212516.031618d8@laptop64.home>
+In-Reply-To: <1a56bb72-cc10-ba74-2b04-4df588804ef5@RedHat.com>
+References: <1a56bb72-cc10-ba74-2b04-4df588804ef5@RedHat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1511954146-11793-2-git-send-email-elena.reshetova@intel.com>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/H7XMR5Q7U7R2qX1RyboOYYT"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 29, 2017 at 01:15:43PM +0200, Elena Reshetova wrote:
-> atomic_t variables are currently used to implement reference
-> counters with the following properties:
->  - counter is initialized to 1 using atomic_set()
->  - a resource is freed upon counter reaching zero
->  - once counter reaches zero, its further
->    increments aren't allowed
->  - counter schema uses basic atomic operations
->    (set, inc, inc_not_zero, dec_and_test, etc.)
+--Sig_/H7XMR5Q7U7R2qX1RyboOYYT
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-Whoops, I forgot that this doesn't apply to h_count.
+This new version fails make check here now:
 
-Well, it's confusing, because h_count is actually used in two different
-ways: depending on whether a nlm_host represents a client or server, it
-may have the above properties or not.
+nsm_client.c:147:12: warning: this statement may fall through [-Wimplicit-f=
+allthrough=3D]
+    my_prog =3D atoi(optarg);
+    ~~~~~~~~^~~~~~~~~~~~~~
+nsm_client.c:148:3: note: here
+   case 'v':
+   ^~~~
+make[4]: *** No rule to make target '../../support/nfs/libnfs.a', needed by=
+ 'nsm_client'.
+make[4]: Target 'nsm_client' not remade because of errors.
+make[3]: *** [Makefile:565: check-am] Error 2
+make[2]: *** [Makefile:567: check] Error 2
+statdb_dump.c: In function =E2=80=98dump_host=E2=80=99:
+statdb_dump.c:38:17: warning: unused parameter =E2=80=98timestamp=E2=80=99 =
+[-Wunused-parameter]
+    const time_t timestamp)
+                 ^~~~~~~~~
+statdb_dump.c: In function =E2=80=98main=E2=80=99:
+statdb_dump.c:91:10: warning: unused parameter =E2=80=98argc=E2=80=99 [-Wun=
+used-parameter]
+ main(int argc, char **argv)
+          ^~~~
+make[3]: *** No rule to make target '../support/nfs/libnfs.a', needed by 's=
+tatdb_dump'.
+make[3]: Target 'statdb_dump' not remade because of errors.
+make[2]: *** [Makefile:1028: check-am] Error 2
+make[1]: *** [Makefile:717: check-recursive] Error 1
+make[1]: Target 'check' not remade because of errors.
 
-Inclined to drop this patch for now.
 
---b.
+Any idea?
 
-> 
-> Such atomic variables should be converted to a newly provided
-> refcount_t type and API that prevents accidental counter overflows
-> and underflows. This is important since overflows and underflows
-> can lead to use-after-free situation and be exploitable.
-> 
-> The variable nlm_host.h_count  is used as pure reference counter.
-> Convert it to refcount_t and fix up the operations.
-> 
-> **Important note for maintainers:
-> 
-> Some functions from refcount_t API defined in lib/refcount.c
-> have different memory ordering guarantees than their atomic
-> counterparts.
-> The full comparison can be seen in
-> https://lkml.org/lkml/2017/11/15/57 and it is hopefully soon
-> in state to be merged to the documentation tree.
-> Normally the differences should not matter since refcount_t provides
-> enough guarantees to satisfy the refcounting use cases, but in
-> some rare cases it might matter.
-> Please double check that you don't have some undocumented
-> memory guarantees for this variable usage.
-> 
-> For the nlm_host.h_count it might make a difference
-> in following places:
->  - nlmsvc_release_host(): decrement in refcount_dec()
->    provides RELEASE ordering, while original atomic_dec()
->    was fully unordered. Since the change is for better, it
->    should not matter.
->  - nlmclnt_release_host(): decrement in refcount_dec_and_test() only
->    provides RELEASE ordering and control dependency on success
->    vs. fully ordered atomic counterpart. It doesn't seem to
->    matter in this case since object freeing happens under mutex
->    lock anyway.
-> 
-> Suggested-by: Kees Cook <keescook@chromium.org>
-> Reviewed-by: David Windsor <dwindsor@gmail.com>
-> Reviewed-by: Hans Liljestrand <ishkamiel@gmail.com>
-> Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
-> ---
->  fs/lockd/host.c             | 14 +++++++-------
->  include/linux/lockd/lockd.h |  3 ++-
->  2 files changed, 9 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
-> index 826a891..11b6832 100644
-> --- a/fs/lockd/host.c
-> +++ b/fs/lockd/host.c
-> @@ -151,7 +151,7 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
->  	host->h_state      = 0;
->  	host->h_nsmstate   = 0;
->  	host->h_pidcount   = 0;
-> -	atomic_set(&host->h_count, 1);
-> +	refcount_set(&host->h_count, 1);
->  	mutex_init(&host->h_mutex);
->  	host->h_nextrebind = now + NLM_HOST_REBIND;
->  	host->h_expires    = now + NLM_HOST_EXPIRE;
-> @@ -290,7 +290,7 @@ void nlmclnt_release_host(struct nlm_host *host)
->  
->  	WARN_ON_ONCE(host->h_server);
->  
-> -	if (atomic_dec_and_test(&host->h_count)) {
-> +	if (refcount_dec_and_test(&host->h_count)) {
->  		WARN_ON_ONCE(!list_empty(&host->h_lockowners));
->  		WARN_ON_ONCE(!list_empty(&host->h_granted));
->  		WARN_ON_ONCE(!list_empty(&host->h_reclaim));
-> @@ -410,7 +410,7 @@ void nlmsvc_release_host(struct nlm_host *host)
->  	dprintk("lockd: release server host %s\n", host->h_name);
->  
->  	WARN_ON_ONCE(!host->h_server);
-> -	atomic_dec(&host->h_count);
-> +	refcount_dec(&host->h_count);
->  }
->  
->  /*
-> @@ -504,7 +504,7 @@ struct nlm_host * nlm_get_host(struct nlm_host *host)
->  {
->  	if (host) {
->  		dprintk("lockd: get host %s\n", host->h_name);
-> -		atomic_inc(&host->h_count);
-> +		refcount_inc(&host->h_count);
->  		host->h_expires = jiffies + NLM_HOST_EXPIRE;
->  	}
->  	return host;
-> @@ -593,7 +593,7 @@ static void nlm_complain_hosts(struct net *net)
->  		if (net && host->net != net)
->  			continue;
->  		dprintk("       %s (cnt %d use %d exp %ld net %x)\n",
-> -			host->h_name, atomic_read(&host->h_count),
-> +			host->h_name, refcount_read(&host->h_count),
->  			host->h_inuse, host->h_expires, host->net->ns.inum);
->  	}
->  }
-> @@ -662,11 +662,11 @@ nlm_gc_hosts(struct net *net)
->  	for_each_host_safe(host, next, chain, nlm_server_hosts) {
->  		if (net && host->net != net)
->  			continue;
-> -		if (atomic_read(&host->h_count) || host->h_inuse
-> +		if (refcount_read(&host->h_count) || host->h_inuse
->  		 || time_before(jiffies, host->h_expires)) {
->  			dprintk("nlm_gc_hosts skipping %s "
->  				"(cnt %d use %d exp %ld net %x)\n",
-> -				host->h_name, atomic_read(&host->h_count),
-> +				host->h_name, refcount_read(&host->h_count),
->  				host->h_inuse, host->h_expires,
->  				host->net->ns.inum);
->  			continue;
-> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-> index d7d313f..39dfeea 100644
-> --- a/include/linux/lockd/lockd.h
-> +++ b/include/linux/lockd/lockd.h
-> @@ -17,6 +17,7 @@
->  #include <net/ipv6.h>
->  #include <linux/fs.h>
->  #include <linux/kref.h>
-> +#include <linux/refcount.h>
->  #include <linux/utsname.h>
->  #include <linux/lockd/bind.h>
->  #include <linux/lockd/xdr.h>
-> @@ -58,7 +59,7 @@ struct nlm_host {
->  	u32			h_state;	/* pseudo-state counter */
->  	u32			h_nsmstate;	/* true remote NSM state */
->  	u32			h_pidcount;	/* Pseudopids */
-> -	atomic_t		h_count;	/* reference count */
-> +	refcount_t		h_count;	/* reference count */
->  	struct mutex		h_mutex;	/* mutex for pmap binding */
->  	unsigned long		h_nextrebind;	/* next portmap call */
->  	unsigned long		h_expires;	/* eligible for GC */
-> -- 
-> 2.7.4
+Andy
+Arch Linux
+
+--Sig_/H7XMR5Q7U7R2qX1RyboOYYT
+Content-Type: application/pgp-signature
+Content-Description: Digitale Signatur von OpenPGP
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCAAdFiEErcih/MFeAdRTEEGelGV6sg8qCSsFAlo8GK0ACgkQlGV6sg8q
+CSsMswf/T9Id+3fmqbY333JuRWiOWTeZiDj1kO7vG4hI0SDH/0+E7OCMWu7IFxSL
+zOPxIt9wNtTVAKFGUjvwW8z5+xt4O4628ac5Wq0erhFnBsmQPovJ1nl9ORVltSLu
+9JCSrM4lzr6zYlDTcO8H0ojJkNqKhZuHclwT4JzsZ/o6v0fL9y9y8GqO/wySbFNY
+p0GnBiurcttlxWs9jM2v1lQq7ymojRwhZaHlig4Hlm+PlsBFxNDwBBWWO7TVFm1A
+nJSTunIx5RtGTr9U8uPn/FL3RYpLrCPRLXGOCZAEEOdqNKk0Pjv+R7jagoEh9Pyo
+j2xAcfJhXzpdKcsesI0VWnmx6dElbw==
+=+mn5
+-----END PGP SIGNATURE-----
+
+--Sig_/H7XMR5Q7U7R2qX1RyboOYYT--
