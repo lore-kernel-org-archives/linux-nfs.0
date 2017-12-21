@@ -1,54 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:56044 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751955AbdLTXQz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Dec 2017 18:16:55 -0500
-Date: Wed, 20 Dec 2017 23:16:46 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
+Received: from mail-it0-f41.google.com ([209.85.214.41]:37004 "EHLO
+        mail-it0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755824AbdLUA5a (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Dec 2017 19:57:30 -0500
+MIME-Version: 1.0
+In-Reply-To: <87y3lxj9wr.fsf@notabene.neil.brown.name>
+References: <87y3lxj9wr.fsf@notabene.neil.brown.name>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Wed, 20 Dec 2017 16:57:28 -0800
+Message-ID: <CA+55aFw98_-SRszjy4dh97VhnZeOMpcVVzS8Mvew2b9juYDTmg@mail.gmail.com>
+Subject: Re: [PATCH/RFC] VFS: don't keep disconnected dentries on d_anon
 To: NeilBrown <neilb@suse.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+Cc: Al Viro <viro@zeniv.linux.org.uk>,
         "J. Bruce Fields" <bfields@fieldses.org>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <Anna.Schumaker@netapp.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC] VFS: don't keep disconnected dentries on d_anon
-Message-ID: <20171220231646.GW21978@ZenIV.linux.org.uk>
-References: <87y3lxj9wr.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <87y3lxj9wr.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 21, 2017 at 09:45:40AM +1100, NeilBrown wrote:
+On Wed, Dec 20, 2017 at 2:45 PM, NeilBrown <neilb@suse.com> wrote:
+>
+> We could just leave the code unchanged, but apart from that being
+> potentially confusing, the (unfair) bit-spin-lock which protects
+> s_anon can become a bottle neck when lots of disconnected dentries are
+> being created.
+>
+> So this patch renames s_anon to s_roots, and stops storing
+> disconnected dentries on the list.  Only dentries obtained with
+> d_obtain_root() are now stored on this list.  There are many fewer of
+> these (only NFS and NILFS2 use the call, and only during filesystem
+> mount) so contention on the bit-lock will not be a problem.
 
-> -c/ Helper routines to allocate anonymous dentries, and to help attach
-> +   prefix.  If the refcount on a dentry with this flag set
-> +   becomes zero, the dentry is immediately discarded, rather than being
-> +   kept in the dcache.  If a dentry that is not already in the dcache
-> +   is repeatedly accessed by filehandle (as NFSD might do), an new dentry
-> +   will be a allocated for each access, and discarded at the end of
-> +   the access.  As there is no parent, children, or name in the dentry
-					  ^^^^^^^^
-That part is where I have a problem with it.  Consider nfsd failing to
-reconnect a growing subtree with the root.  It has managed to get to
-some point, but then failed to get the parent for some reason (IO error, OOM,
-anything).  Now we have a non-trivial subtree; its root does have children,
-but it's not connected to anything.  It has been created by d_obtain_alias();
-in __d_obtain_alias() IS_ROOT() had been true, and so was 'disconnected'
-argument.
+Thanks, Neil. This is much nicer than the magical special case patch
+for s_anon bitlock.
 
-The question is not whether they carry any valuable information - it's
-whether we are guaranteed that they won't need pruning on umount.  And
-they will - the invariant we maintain is that all descendents will have
-DCACHE_DISCONNECTED set until the sucker is reconnected to root.  That's
-why they won't stick around - nothing in such subtree will be retained in
-dcache once the refcount hits 0.
+Al, I'm going to assume I'll get this through your vfs tree (with
+whatever edits from the comments people made).
 
-I believe that the actual changes are OK, but your explanation above is
-wrong and the logics there is convoluted enough, so this needs to be
-written accurately.
-
-BTW, I would like comments from Lustre folks - the situation with dcache
-in there is rather unusual.
+                Linus
