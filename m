@@ -1,477 +1,467 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:50528 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755826AbdLVRGe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Dec 2017 12:06:34 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH v1 3/3] NFSD: Clean up symlink argument XDR decoders
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20171221174313.11802.66323.stgit@klimt.1015granger.net>
-Date: Fri, 22 Dec 2017 12:01:29 -0500
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <DD241044-861E-46D0-80C1-4122378844B5@oracle.com>
-References: <20171221174206.11802.16286.stgit@klimt.1015granger.net> <20171221174313.11802.66323.stgit@klimt.1015granger.net>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from mx2.suse.de ([195.135.220.15]:38267 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756776AbdLVXOj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Dec 2017 18:14:39 -0500
+From: NeilBrown <neil@brown.name>
+To: Jeff Layton <jlayton@kernel.org>, linux-fsdevel@vger.kernel.org
+Date: Sat, 23 Dec 2017 10:14:18 +1100
+Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Subject: Re: [PATCH v4 01/19] fs: new API for handling inode->i_version
+In-Reply-To: <20171222120556.7435-2-jlayton@kernel.org>
+References: <20171222120556.7435-1-jlayton@kernel.org> <20171222120556.7435-2-jlayton@kernel.org>
+Message-ID: <87zi6a73ud.fsf@notabene.neil.brown.name>
+MIME-Version: 1.0
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> On Dec 21, 2017, at 12:43 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->=20
-> Move common code in NFSD's symlink arg decoders into a helper. The
-> immediate benefits include:
->=20
-> - one fewer data copies on transports that support DDP
-> - no memory allocation in the NFSv4 XDR decoder
-> - consistent error checking across all versions
-> - reduction of code duplication
-> - support for both legal forms of SYMLINK requests on RDMA
->   transports for all versions of NFS (in particular, NFSv2, for
->   completeness)
->=20
-> In the long term, this helper is an appropriate spot to perform a
-> per-transport call-out to fill the pathname argument using, say,
-> RDMA Reads.
->=20
-> Filling the pathname in the proc function also means that eventually
-> the incoming filehandle can be interpreted so that filesystem-
-> specific memory can be allocated as a sink for the pathname
-> argument, rather than using anonymous pages.
->=20
-> Wondering why the current code punts a zero-length SYMLINK. Is it
-> illegal to create a zero-length SYMLINK on Linux?
->=20
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+On Fri, Dec 22 2017, Jeff Layton wrote:
+
+> From: Jeff Layton <jlayton@redhat.com>
+>
+> Add a documentation blob that explains what the i_version field is, how
+> it is expected to work, and how it is currently implemented by various
+> filesystems.
+>
+> We already have inode_inc_iversion. Add several other functions for
+> manipulating and accessing the i_version counter. For now, the
+> implementation is trivial and basically works the way that all of the
+> open-coded i_version accesses work today.
+>
+> Future patches will convert existing users of i_version to use the new
+> API, and then convert the backend implementation to do things more
+> efficiently.
+>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
-> fs/nfsd/nfs3proc.c         |   10 +++++++
-> fs/nfsd/nfs3xdr.c          |   51 ++++++++-------------------------
-> fs/nfsd/nfs4proc.c         |    7 +++++
-> fs/nfsd/nfs4xdr.c          |   10 +++++--
-> fs/nfsd/nfsproc.c          |   14 +++++----
-> fs/nfsd/nfsxdr.c           |   49 +++++++++++++++++++-------------
-> fs/nfsd/xdr.h              |    1 +
-> fs/nfsd/xdr3.h             |    1 +
-> fs/nfsd/xdr4.h             |    2 +
-> include/linux/sunrpc/svc.h |    2 +
-> net/sunrpc/svc.c           |   67 =
-++++++++++++++++++++++++++++++++++++++++++++
-> 11 files changed, 146 insertions(+), 68 deletions(-)
->=20
-> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-> index 2dd95eb..38b0cf1 100644
-> --- a/fs/nfsd/nfs3proc.c
-> +++ b/fs/nfsd/nfs3proc.c
-> @@ -283,6 +283,16 @@
-> 	struct nfsd3_diropres *resp =3D rqstp->rq_resp;
-> 	__be32	nfserr;
->=20
-> +	if (argp->tlen =3D=3D 0)
-> +		RETURN_STATUS(nfserr_inval);
-> +	if (argp->tlen > NFS3_MAXPATHLEN)
-> +		RETURN_STATUS(nfserr_nametoolong);
-> +
-> +	argp->tname =3D svc_fill_symlink_pathname(rqstp, &argp->first,
-> +						argp->tlen);
-> +	if (IS_ERR(argp->tname))
-> +		RETURN_STATUS(PTR_ERR(argp->tname));
-
-The 0day robot has rightly pointed out a problem here.
-
-svc_fill_symlink_pathname() can return a negative errno
-hidden in a pointer, but the RETURN_STATUS macro expects
-a be32 integer NFS status. Not at all the same.
-
-I'll post a corrected version of this patch soon.
-
-
-> +
-> 	dprintk("nfsd: SYMLINK(3)  %s %.*s -> %.*s\n",
-> 				SVCFH_fmt(&argp->ffh),
-> 				argp->flen, argp->fname,
-> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-> index 240cdb0e..78b555b 100644
-> --- a/fs/nfsd/nfs3xdr.c
-> +++ b/fs/nfsd/nfs3xdr.c
-> @@ -452,51 +452,24 @@ void fill_post_wcc(struct svc_fh *fhp)
-> nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
-> {
-> 	struct nfsd3_symlinkargs *args =3D rqstp->rq_argp;
-> -	unsigned int len, avail;
-> -	char *old, *new;
-> -	struct kvec *vec;
-> +	char *base =3D (char *)p;
-> +	size_t dlen;
->=20
-> 	if (!(p =3D decode_fh(p, &args->ffh)) ||
-> -	    !(p =3D decode_filename(p, &args->fname, &args->flen))
-> -		)
-> +	    !(p =3D decode_filename(p, &args->fname, &args->flen)))
-> 		return 0;
-> 	p =3D decode_sattr3(p, &args->attrs);
->=20
-> -	/* now decode the pathname, which might be larger than the first =
-page.
-> -	 * As we have to check for nul's anyway, we copy it into a new =
-page
-> -	 * This page appears in the rq_res.pages list, but as pages_len =
-is always
-> -	 * 0, it won't get in the way
-> -	 */
-> -	len =3D ntohl(*p++);
-> -	if (len =3D=3D 0 || len > NFS3_MAXPATHLEN || len >=3D PAGE_SIZE)
-> -		return 0;
-> -	args->tname =3D new =3D page_address(*(rqstp->rq_next_page++));
-> -	args->tlen =3D len;
-> -	/* first copy and check from the first page */
-> -	old =3D (char*)p;
-> -	vec =3D &rqstp->rq_arg.head[0];
-> -	if ((void *)old > vec->iov_base + vec->iov_len)
-> -		return 0;
-> -	avail =3D vec->iov_len - (old - (char*)vec->iov_base);
-> -	while (len && avail && *old) {
-> -		*new++ =3D *old++;
-> -		len--;
-> -		avail--;
-> -	}
-> -	/* now copy next page if there is one */
-> -	if (len && !avail && rqstp->rq_arg.page_len) {
-> -		avail =3D min_t(unsigned int, rqstp->rq_arg.page_len, =
-PAGE_SIZE);
-> -		old =3D page_address(rqstp->rq_arg.pages[0]);
-> -	}
-> -	while (len && avail && *old) {
-> -		*new++ =3D *old++;
-> -		len--;
-> -		avail--;
-> -	}
-> -	*new =3D '\0';
-> -	if (len)
-> -		return 0;
-> +	args->tlen =3D ntohl(*p++);
->=20
-> +	args->first.iov_base =3D p;
-> +	args->first.iov_len =3D rqstp->rq_arg.head[0].iov_len;
-> +	args->first.iov_len -=3D (char *)p - base;
-> +
-> +	dlen =3D args->first.iov_len + rqstp->rq_arg.page_len +
-> +	       rqstp->rq_arg.tail[0].iov_len;
-> +	if (dlen < XDR_QUADLEN(args->tlen) << 2)
-> +		return 0;
-> 	return 1;
-> }
->=20
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 5029b96..36bd1f7 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -605,6 +605,13 @@ static void gen_boot_verifier(nfs4_verifier =
-*verifier, struct net *net)
->=20
-> 	switch (create->cr_type) {
-> 	case NF4LNK:
-> +		if (create->cr_datalen > NFS4_MAXPATHLEN)
-> +			return nfserr_nametoolong;
-> +		create->cr_data =3D
-> +			svc_fill_symlink_pathname(rqstp, =
-&create->cr_first,
-> +						  create->cr_datalen);
-> +		if (IS_ERR(create->cr_data))
-> +			return nfserrno(PTR_ERR(create->cr_data));
-> 		status =3D nfsd_symlink(rqstp, &cstate->current_fh,
-> 				      create->cr_name, =
-create->cr_namelen,
-> 				      create->cr_data, &resfh);
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index bd25230..d05384e 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -648,6 +648,7 @@ static __be32 =
-nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp,
-> static __be32
-> nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct =
-nfsd4_create *create)
-> {
-> +	struct kvec *head;
-> 	DECODE_HEAD;
->=20
-> 	READ_BUF(4);
-> @@ -656,10 +657,13 @@ static __be32 =
-nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp,
-> 	case NF4LNK:
-> 		READ_BUF(4);
-> 		create->cr_datalen =3D be32_to_cpup(p++);
-> +		if (create->cr_datalen =3D=3D 0)
-> +			return nfserr_inval;
-> +		head =3D argp->rqstp->rq_arg.head;
-> +		create->cr_first.iov_base =3D p;
-> +		create->cr_first.iov_len =3D head->iov_len;
-> +		create->cr_first.iov_len -=3D (char *)p - (char =
-*)head->iov_base;
-> 		READ_BUF(create->cr_datalen);
-> -		create->cr_data =3D svcxdr_dupstr(argp, p, =
-create->cr_datalen);
-> -		if (!create->cr_data)
-> -			return nfserr_jukebox;
-> 		break;
-> 	case NF4BLK:
-> 	case NF4CHR:
-> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-> index 1995ea6..f107f9f 100644
-> --- a/fs/nfsd/nfsproc.c
-> +++ b/fs/nfsd/nfsproc.c
-> @@ -449,17 +449,19 @@
-> 	struct svc_fh	newfh;
-> 	__be32		nfserr;
->=20
-> +	if (argp->tlen > NFS_MAXPATHLEN)
-> +		return nfserr_nametoolong;
-> +
-> +	argp->tname =3D svc_fill_symlink_pathname(rqstp, &argp->first,
-> +						argp->tlen);
-> +	if (IS_ERR(argp->tname))
-> +		return nfserrno(PTR_ERR(argp->tname));
-> +
-> 	dprintk("nfsd: SYMLINK  %s %.*s -> %.*s\n",
-> 		SVCFH_fmt(&argp->ffh), argp->flen, argp->fname,
-> 		argp->tlen, argp->tname);
->=20
-> 	fh_init(&newfh, NFS_FHSIZE);
-> -	/*
-> -	 * Crazy hack: the request fits in a page, and already-decoded
-> -	 * attributes follow argp->tname, so it's safe to just write a
-> -	 * null to ensure it's null-terminated:
-> -	 */
-> -	argp->tname[argp->tlen] =3D '\0';
-> 	nfserr =3D nfsd_symlink(rqstp, &argp->ffh, argp->fname, =
-argp->flen,
-> 						 argp->tname, &newfh);
->=20
-> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-> index 165e25e..8fcd047 100644
-> --- a/fs/nfsd/nfsxdr.c
-> +++ b/fs/nfsd/nfsxdr.c
-> @@ -71,22 +71,6 @@ __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh =
-*fhp)
-> }
->=20
-> static __be32 *
-> -decode_pathname(__be32 *p, char **namp, unsigned int *lenp)
+>  fs/btrfs/file.c          |   1 +
+>  fs/btrfs/inode.c         |   1 +
+>  fs/btrfs/ioctl.c         |   1 +
+>  fs/btrfs/xattr.c         |   1 +
+>  fs/ext4/inode.c          |   1 +
+>  fs/ext4/namei.c          |   1 +
+>  fs/inode.c               |   1 +
+>  include/linux/fs.h       |  15 ----
+>  include/linux/iversion.h | 205 +++++++++++++++++++++++++++++++++++++++++=
+++++++
+>  9 files changed, 212 insertions(+), 15 deletions(-)
+>  create mode 100644 include/linux/iversion.h
+>
+> diff --git a/fs/btrfs/file.c b/fs/btrfs/file.c
+> index eb1bac7c8553..c95d7b2efefb 100644
+> --- a/fs/btrfs/file.c
+> +++ b/fs/btrfs/file.c
+> @@ -31,6 +31,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/btrfs.h>
+>  #include <linux/uio.h>
+> +#include <linux/iversion.h>
+>  #include "ctree.h"
+>  #include "disk-io.h"
+>  #include "transaction.h"
+> diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+> index e1a7f3cb5be9..27f008b33fc1 100644
+> --- a/fs/btrfs/inode.c
+> +++ b/fs/btrfs/inode.c
+> @@ -43,6 +43,7 @@
+>  #include <linux/posix_acl_xattr.h>
+>  #include <linux/uio.h>
+>  #include <linux/magic.h>
+> +#include <linux/iversion.h>
+>  #include "ctree.h"
+>  #include "disk-io.h"
+>  #include "transaction.h"
+> diff --git a/fs/btrfs/ioctl.c b/fs/btrfs/ioctl.c
+> index 2ef8acaac688..aa452c9e2eff 100644
+> --- a/fs/btrfs/ioctl.c
+> +++ b/fs/btrfs/ioctl.c
+> @@ -43,6 +43,7 @@
+>  #include <linux/uuid.h>
+>  #include <linux/btrfs.h>
+>  #include <linux/uaccess.h>
+> +#include <linux/iversion.h>
+>  #include "ctree.h"
+>  #include "disk-io.h"
+>  #include "transaction.h"
+> diff --git a/fs/btrfs/xattr.c b/fs/btrfs/xattr.c
+> index 2c7e53f9ff1b..5258c1714830 100644
+> --- a/fs/btrfs/xattr.c
+> +++ b/fs/btrfs/xattr.c
+> @@ -23,6 +23,7 @@
+>  #include <linux/xattr.h>
+>  #include <linux/security.h>
+>  #include <linux/posix_acl_xattr.h>
+> +#include <linux/iversion.h>
+>  #include "ctree.h"
+>  #include "btrfs_inode.h"
+>  #include "transaction.h"
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 7df2c5644e59..fa5d8bc52d2d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -39,6 +39,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/bitops.h>
+>  #include <linux/iomap.h>
+> +#include <linux/iversion.h>
+>=20=20
+>  #include "ext4_jbd2.h"
+>  #include "xattr.h"
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 798b3ac680db..bcf0dff517be 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -34,6 +34,7 @@
+>  #include <linux/quotaops.h>
+>  #include <linux/buffer_head.h>
+>  #include <linux/bio.h>
+> +#include <linux/iversion.h>
+>  #include "ext4.h"
+>  #include "ext4_jbd2.h"
+>=20=20
+> diff --git a/fs/inode.c b/fs/inode.c
+> index 03102d6ef044..19e72f500f71 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -18,6 +18,7 @@
+>  #include <linux/buffer_head.h> /* for inode_has_buffers */
+>  #include <linux/ratelimit.h>
+>  #include <linux/list_lru.h>
+> +#include <linux/iversion.h>
+>  #include <trace/events/writeback.h>
+>  #include "internal.h"
+>=20=20
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 511fbaabf624..76382c24e9d0 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -2036,21 +2036,6 @@ static inline void inode_dec_link_count(struct ino=
+de *inode)
+>  	mark_inode_dirty(inode);
+>  }
+>=20=20
+> -/**
+> - * inode_inc_iversion - increments i_version
+> - * @inode: inode that need to be updated
+> - *
+> - * Every time the inode is modified, the i_version field will be increme=
+nted.
+> - * The filesystem has to be mounted with i_version flag
+> - */
+> -
+> -static inline void inode_inc_iversion(struct inode *inode)
 > -{
-> -	char		*name;
-> -	unsigned int	i;
-> -
-> -	if ((p =3D xdr_decode_string_inplace(p, namp, lenp, =
-NFS_MAXPATHLEN)) !=3D NULL) {
-> -		for (i =3D 0, name =3D *namp; i < *lenp; i++, name++) {
-> -			if (*name =3D=3D '\0')
-> -				return NULL;
-> -		}
-> -	}
-> -
-> -	return p;
+> -       spin_lock(&inode->i_lock);
+> -       inode->i_version++;
+> -       spin_unlock(&inode->i_lock);
 > -}
 > -
-> -static __be32 *
-> decode_sattr(__be32 *p, struct iattr *iap)
-> {
-> 	u32	tmp, tmp1;
-> @@ -383,14 +367,39 @@ __be32 *nfs2svc_encode_fattr(struct svc_rqst =
-*rqstp, __be32 *p, struct svc_fh *f
-> nfssvc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
-> {
-> 	struct nfsd_symlinkargs *args =3D rqstp->rq_argp;
-> +	char *base =3D (char *)p;
-> +	size_t xdrlen;
->=20
-> 	if (   !(p =3D decode_fh(p, &args->ffh))
-> -	    || !(p =3D decode_filename(p, &args->fname, &args->flen))
-> -	    || !(p =3D decode_pathname(p, &args->tname, &args->tlen)))
-> +	    || !(p =3D decode_filename(p, &args->fname, &args->flen)))
-> 		return 0;
-> -	p =3D decode_sattr(p, &args->attrs);
->=20
-> -	return xdr_argsize_check(rqstp, p);
-> +	args->tlen =3D ntohl(*p++);
-> +	if (args->tlen =3D=3D 0)
-> +		return 0;
+>  enum file_time_flags {
+>  	S_ATIME =3D 1,
+>  	S_MTIME =3D 2,
+> diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+> new file mode 100644
+> index 000000000000..bb50d27c71f9
+> --- /dev/null
+> +++ b/include/linux/iversion.h
+> @@ -0,0 +1,205 @@
+> +/* SPDX-License-Identifier: GPL-2.0 */
+> +#ifndef _LINUX_IVERSION_H
+> +#define _LINUX_IVERSION_H
 > +
-> +	args->first.iov_base =3D p;
-> +	args->first.iov_len =3D rqstp->rq_arg.head[0].iov_len;
-> +	args->first.iov_len -=3D (char *)p - base;
+> +#include <linux/fs.h>
 > +
-> +	/* This request is never larger than a page. Therefore,
-> +	 * transport will deliver either:
-> +	 * 1. pathname in the pagelist -> sattr is in the tail.
-> +	 * 2. everything in the head buffer -> sattr is in the head.
-> +	 */
-> +	if (rqstp->rq_arg.page_len) {
-> +		if (args->tlen !=3D rqstp->rq_arg.page_len)
-> +			return 0;
-> +		p =3D rqstp->rq_arg.tail[0].iov_base;
-> +	} else {
-> +		xdrlen =3D XDR_QUADLEN(args->tlen);
-> +		if (xdrlen > args->first.iov_len - (8 * sizeof(__be32)))
-> +			return 0;
-> +		p +=3D xdrlen;
-> +	}
-> +	decode_sattr(p, &args->attrs);
-> +
-> +	return 1;
-> }
->=20
-> int
-> diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-> index a765c41..ea7cca3 100644
-> --- a/fs/nfsd/xdr.h
-> +++ b/fs/nfsd/xdr.h
-> @@ -72,6 +72,7 @@ struct nfsd_symlinkargs {
-> 	char *			tname;
-> 	unsigned int		tlen;
-> 	struct iattr		attrs;
-> +	struct kvec		first;
-> };
->=20
-> struct nfsd_readdirargs {
-> diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-> index deccf7f..2cb29e9 100644
-> --- a/fs/nfsd/xdr3.h
-> +++ b/fs/nfsd/xdr3.h
-> @@ -90,6 +90,7 @@ struct nfsd3_symlinkargs {
-> 	char *			tname;
-> 	unsigned int		tlen;
-> 	struct iattr		attrs;
-> +	struct kvec		first;
-> };
->=20
-> struct nfsd3_readdirargs {
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index d56219d..b485cd1 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -110,6 +110,7 @@ struct nfsd4_create {
-> 		struct {
-> 			u32 datalen;
-> 			char *data;
-> +			struct kvec first;
-> 		} link;   /* NF4LNK */
-> 		struct {
-> 			u32 specdata1;
-> @@ -124,6 +125,7 @@ struct nfsd4_create {
-> };
-> #define cr_datalen	u.link.datalen
-> #define cr_data		u.link.data
-> +#define cr_first	u.link.first
-> #define cr_specdata1	u.dev.specdata1
-> #define cr_specdata2	u.dev.specdata2
->=20
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index 238b9ae..fd5846e 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -495,6 +495,8 @@ int		   svc_register(const struct =
-svc_serv *, struct net *, const int,
-> char *		   svc_print_addr(struct svc_rqst *, char *, =
-size_t);
-> unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
-> 					 struct kvec *first, size_t =
-total);
-> +char		  *svc_fill_symlink_pathname(struct svc_rqst *rqstp,
-> +					     struct kvec *first, size_t =
-total);
->=20
-> #define	RPC_MAX_ADDRBUFLEN	(63U)
->=20
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 759b668..fc93406 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -1578,3 +1578,70 @@ unsigned int svc_fill_write_vector(struct =
-svc_rqst *rqstp, struct kvec *first,
-> 	return i;
-> }
-> EXPORT_SYMBOL_GPL(svc_fill_write_vector);
+> +/*
+> + * The change attribute (i_version) is mandated by NFSv4 and is mostly f=
+or
+> + * knfsd, but is also used for other purposes (e.g. IMA). The i_version =
+must
+> + * appear different to observers if there was a change to the inode's da=
+ta or
+> + * metadata since it was last queried.
+> + *
+> + * It should be considered an opaque value by observers. If it remains t=
+he same
+                                 ^^^^^^^^^^^^
+
+You keep using that word ... I don't think it means what you think it
+means.
+Change that sentence to:
+
+    Observers see i_version as a 64 number which never decreases.
+
+and the rest still makes perfect sense.
+
+Thanks,
+NeilBrown
+
+
+> + * since it was last checked, then nothing has changed in the inode. If =
+it's
+> + * different then something has changed. Observers cannot infer anything=
+ about
+> + * the nature or magnitude of the changes from the value, only that the =
+inode
+> + * has changed in some fashion.
+> + *
+> + * Not all filesystems properly implement the i_version counter. Subsyst=
+ems that
+> + * want to use i_version field on an inode should first check whether the
+> + * filesystem sets the SB_I_VERSION flag (usually via the IS_I_VERSION m=
+acro).
+> + *
+> + * Those that set SB_I_VERSION will automatically have their i_version c=
+ounter
+> + * incremented on writes to normal files. If the SB_I_VERSION is not set=
+, then
+> + * the VFS will not touch it on writes, and the filesystem can use it ho=
+w it
+> + * wishes. Note that the filesystem is always responsible for updating t=
+he
+> + * i_version on namespace changes in directories (mkdir, rmdir, unlink, =
+etc.).
+> + * We consider these sorts of filesystems to have a kernel-managed i_ver=
+sion.
+> + *
+> + * Note that some filesystems (e.g. NFS and AFS) just use the field to s=
+tore
+> + * a server-provided value (for the most part). For that reason, those
+> + * filesystems do not set SB_I_VERSION. These filesystems are considered=
+ to
+> + * have a self-managed i_version.
+> + */
 > +
 > +/**
-> + * svc_fill_symlink_pathname - Construct pathname argument for VFS =
-symlink call
-> + * @rqstp: svc_rqst to operate on
-> + * @first: buffer containing first section of pathname
-> + * @total: total length of the pathname argument
+> + * inode_set_iversion_raw - set i_version to the specified raw value
+> + * @inode: inode to set
+> + * @new: new i_version value to set
 > + *
-> + * Returns pointer to a NUL-terminated string, or an ERR_PTR. The =
-buffer is
-> + * released automatically when @rqstp is recycled.
+> + * Set @inode's i_version field to @new. This function is for use by
+> + * filesystems that self-manage the i_version.
+> + *
+> + * For example, the NFS client stores its NFSv4 change attribute in this=
+ way,
+> + * and the AFS client stores the data_version from the server here.
 > + */
-> +char *svc_fill_symlink_pathname(struct svc_rqst *rqstp, struct kvec =
-*first,
-> +				size_t total)
+> +static inline void
+> +inode_set_iversion_raw(struct inode *inode, const u64 new)
 > +{
-> +	struct xdr_buf *arg =3D &rqstp->rq_arg;
-> +	struct page **pages;
-> +	char *result;
-> +
-> +	/* VFS API demands a NUL-terminated pathname. This function
-> +	 * uses a page from @rqstp as the pathname buffer, to enable
-> +	 * direct placement. Thus the total buffer size is PAGE_SIZE.
-> +	 * Space in this buffer for NUL-termination requires that we
-> +	 * cap the size of the returned symlink pathname just a
-> +	 * little early.
-> +	 */
-> +	if (total > PAGE_SIZE - 1)
-> +		return ERR_PTR(-ENAMETOOLONG);
-> +
-> +	/* Some types of transport can present the pathname entirely
-> +	 * in rq_arg.pages. If not, then copy the pathname into one
-> +	 * page.
-> +	 */
-> +	pages =3D arg->pages;
-> +	WARN_ON_ONCE(arg->page_base !=3D 0);
-> +	if (first->iov_base =3D=3D 0) {
-> +		result =3D page_address(*pages);
-> +		result[total] =3D '\0';
-> +	} else {
-> +		size_t len, remaining;
-> +		char *dst;
-> +
-> +		result =3D page_address(*(rqstp->rq_next_page++));
-> +		dst =3D result;
-> +		remaining =3D total;
-> +
-> +		len =3D min_t(size_t, total, first->iov_len);
-> +		memcpy(dst, first->iov_base, len);
-> +		dst +=3D len;
-> +		remaining -=3D len;
-> +
-> +		/* No more than one page left */
-> +		if (remaining) {
-> +			len =3D min_t(size_t, remaining, PAGE_SIZE);
-> +			memcpy(dst, page_address(*pages), len);
-> +			dst +=3D len;
-> +		}
-> +
-> +		*dst =3D '\0';
-> +	}
-> +
-> +	/* Sanity check: we don't allow the pathname argument to
-> +	 * contain a NUL byte.
-> +	 */
-> +	if (strlen(result) !=3D total)
-> +		return ERR_PTR(-EINVAL);
-> +	return result;
+> +	inode->i_version =3D new;
 > +}
-> +EXPORT_SYMBOL_GPL(svc_fill_symlink_pathname);
->=20
+> +
+> +/**
+> + * inode_set_iversion - set i_version to a particular value
+> + * @inode: inode to set
+> + * @new: new i_version value to set
+> + *
+> + * Set @inode's i_version field to @new. This function is for filesystem=
+s with
+> + * a kernel-managed i_version.
+> + *
+> + * For now, this just does the same thing as the _raw variant.
+> + */
+> +static inline void
+> +inode_set_iversion(struct inode *inode, const u64 new)
+> +{
+> +	inode_set_iversion_raw(inode, new);
+> +}
+> +
+> +/**
+> + * inode_set_iversion_queried - set i_version to a particular value and =
+set
+> + *                              flag to indicate that it has been viewed
+> + * @inode: inode to set
+> + * @new: new i_version value to set
+> + *
+> + * When loading in an i_version value from a backing store, we typically=
+ don't
+> + * know whether it was previously viewed before being stored or not. Thu=
+s, we
+> + * must assume that it was, to ensure that any changes will result in the
+> + * value changing.
+> + *
+> + * This function will set the inode's i_version, and possibly flag the v=
+alue
+> + * as if it has already been viewed at least once.
+> + *
+> + * For now, this just does what inode_set_iversion does.
+> + */
+> +static inline void
+> +inode_set_iversion_queried(struct inode *inode, const u64 new)
+> +{
+> +	inode_set_iversion(inode, new);
+> +}
+> +
+> +/**
+> + * inode_maybe_inc_iversion - increments i_version
+> + * @inode: inode with the i_version that should be updated
+> + * @force: increment the counter even if it's not necessary
+> + *
+> + * Every time the inode is modified, the i_version field must be seen to=
+ have
+> + * changed by any observer.
+> + *
+> + * In this implementation, we always increment it after taking the i_loc=
+k to
+> + * ensure that we don't race with other incrementors.
+> + *
+> + * Returns true if counter was bumped, and false if it wasn't.
+> + */
+> +static inline bool
+> +inode_maybe_inc_iversion(struct inode *inode, bool force)
+> +{
+> +	spin_lock(&inode->i_lock);
+> +	inode->i_version++;
+> +	spin_unlock(&inode->i_lock);
+> +	return true;
+> +}
+> +
+> +/**
+> + * inode_inc_iversion - forcibly increment i_version
+> + * @inode: inode that needs to be updated
+> + *
+> + * Forcbily increment the i_version field. This always results in a chan=
+ge to
+> + * the observable value.
+> + */
+> +static inline void
+> +inode_inc_iversion(struct inode *inode)
+> +{
+> +	inode_maybe_inc_iversion(inode, true);
+> +}
+> +
+> +/**
+> + * inode_iversion_need_inc - is the i_version in need of being increment=
+ed?
+> + * @inode: inode to check
+> + *
+> + * Returns whether the inode->i_version counter needs incrementing on th=
+e next
+> + * change.
+> + *
+> + * For now, we assume that it always does.
+> + */
+> +static inline bool
+> +inode_iversion_need_inc(struct inode *inode)
+> +{
+> +	return true;
+> +}
+> +
+> +/**
+> + * inode_peek_iversion_raw - grab a "raw" iversion value
+> + * @inode: inode from which i_version should be read
+> + *
+> + * Grab a "raw" inode->i_version value and return it. The i_version is n=
+ot
+> + * flagged or converted in any way. This is mostly used to access a self=
+-managed
+> + * i_version.
+> + *
+> + * With those filesystems, we want to treat the i_version as an entirely
+> + * opaque value.
+> + */
+> +static inline u64
+> +inode_peek_iversion_raw(const struct inode *inode)
+> +{
+> +	return inode->i_version;
+> +}
+> +
+> +/**
+> + * inode_peek_iversion - read i_version without flagging it to be increm=
+ented
+> + * @inode: inode from which i_version should be read
+> + *
+> + * Read the inode i_version counter for an inode without registering it =
+as a
+> + * query.
+> + *
+> + * This is typically used by local filesystems that need to store an i_v=
+ersion
+> + * on disk. In that situation, it's not necessary to flag it as having b=
+een
+> + * viewed, as the result won't be used to gauge changes from that point.
+> + */
+> +static inline u64
+> +inode_peek_iversion(const struct inode *inode)
+> +{
+> +	return inode_peek_iversion_raw(inode);
+> +}
+> +
+> +/**
+> + * inode_query_iversion - read i_version for later use
+> + * @inode: inode from which i_version should be read
+> + *
+> + * Read the inode i_version counter. This should be used by callers that=
+ wish
+> + * to store the returned i_version for later comparison. This will guara=
+ntee
+> + * that a later query of the i_version will result in a different value =
+if
+> + * anything has changed.
+> + *
+> + * This implementation just does a peek.
+> + */
+> +static inline u64
+> +inode_query_iversion(struct inode *inode)
+> +{
+> +	return inode_peek_iversion(inode);
+> +}
+> +
+> +/**
+> + * inode_cmp_iversion - check whether the i_version counter has changed
+> + * @inode: inode to check
+> + * @old: old value to check against its i_version
+> + *
+> + * Compare an i_version counter with a previous one. Returns 0 if they a=
+re
+> + * the same or non-zero if they are different.
+> + */
+> +static inline s64
+> +inode_cmp_iversion(const struct inode *inode, const u64 old)
+> +{
+> +	return (s64)inode_peek_iversion(inode) - (s64)old;
+> +}
+> +#endif
+> --=20
+> 2.14.3
+>
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" =
-in
+> To unsubscribe from this list: send the line "unsubscribe linux-btrfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
---
-Chuck Lever
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
+-----BEGIN PGP SIGNATURE-----
 
-
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlo9kcsACgkQOeye3VZi
+gbkteQ/9HWUFYQFS7GfJm491MWt9JgBJ2ISsVIvCnw91XkEfJwkh7LalCUp006aa
+6RjkNR/y1HKeDg76DK2l0BvcPgtG2mMPOeknM0bP0agQMduGNM7HR4KuT07w0Ykx
+aoykya7T2WhROoD0dD0GSMG8ZHMzXyta6pfQVY+LEkdthS/6jckR/ZBglt4unUET
+ffrFikuvKp1Kd6Iy3qDUcfL4bqV7UbqAUHMULA51XGmgLIz0CEOqX62rADkl7+Do
+g8GdcIOjef6wIWAZjBGwzoH5lnp3urgolB/BKlt8pZYZ2AMZrhmFzhJPX2XY4rZQ
++Fi84TWpyj5+kB1Q4Q6rLKAAbAQRMZ56uecIhz7neFJp97ZlUXXBzy7FyN3y6hEC
+wMTotmvnq6Fsh1EIMjIEvDJByALU6IIsvFCm2tG41Rm0nkZH+emhjDK4D7iTUuad
+q2OfT6L92TUs1YYhnPN0cefMFSRyRfvzSRRPOtia/C3IZ12IWAykY8heEMigpuw8
+Q1TC17H0Yl0U8u4IBb2hfS/FJi91pFfP5Pta00KWLr8XkQPqz2IS4eqYgC5/a+Sx
+J4UVucyAAr0AgRLM+rzMq2j/qEUwvDzwXhUxIANMUd8W9hWTE+1DQbT8hU/A2h//
+CNT7VtBfywPOFyb6HgXpQXRkjKw/CLTnvdj+4tRgI1tiXCSgnWQ=
+=UWMg
+-----END PGP SIGNATURE-----
+--=-=-=--
