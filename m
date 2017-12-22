@@ -1,466 +1,474 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:42039 "EHLO
+Received: from aserp2130.oracle.com ([141.146.126.79]:50528 "EHLO
         aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752227AbdLVQmz (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Dec 2017 11:42:55 -0500
+        with ESMTP id S1755826AbdLVRGe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Dec 2017 12:06:34 -0500
 Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
-Subject: Re: [PATCH/RFC] NFS: add nostatflush mount option.
+Subject: Re: [PATCH v1 3/3] NFSD: Clean up symlink argument XDR decoders
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <87h8sjkdo4.fsf@notabene.neil.brown.name>
-Date: Fri, 22 Dec 2017 11:38:43 -0500
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel@vger.kernel.org
-Message-Id: <44DD6748-B8A4-43DB-95A4-21E588F5E84B@oracle.com>
-References: <87k1xgkct1.fsf@notabene.neil.brown.name> <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com> <87h8sjkdo4.fsf@notabene.neil.brown.name>
-To: NeilBrown <neilb@suse.com>
+In-Reply-To: <20171221174313.11802.66323.stgit@klimt.1015granger.net>
+Date: Fri, 22 Dec 2017 12:01:29 -0500
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <DD241044-861E-46D0-80C1-4122378844B5@oracle.com>
+References: <20171221174206.11802.16286.stgit@klimt.1015granger.net> <20171221174313.11802.66323.stgit@klimt.1015granger.net>
+To: Bruce Fields <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-> On Dec 21, 2017, at 3:51 PM, NeilBrown <neilb@suse.com> wrote:
+> On Dec 21, 2017, at 12:43 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
 >=20
-> On Thu, Dec 21 2017, Chuck Lever wrote:
+> Move common code in NFSD's symlink arg decoders into a helper. The
+> immediate benefits include:
 >=20
->> Hi Neil-
->>=20
->>=20
->>> On Dec 20, 2017, at 9:57 PM, NeilBrown <neilb@suse.com> wrote:
->>>=20
->>>=20
->>> When an i_op->getattr() call is made on an NFS file
->>> (typically from a 'stat' family system call), NFS
->>> will first flush any dirty data to the server.
->>>=20
->>> This ensures that the mtime reported is correct and stable,
->>> but has a performance penalty.  'stat' is normally thought
->>> to be a quick operation, and imposing this cost can be
->>> surprising.
->>=20
->> To be clear, this behavior is a POSIX requirement.
+> - one fewer data copies on transports that support DDP
+> - no memory allocation in the NFSv4 XDR decoder
+> - consistent error checking across all versions
+> - reduction of code duplication
+> - support for both legal forms of SYMLINK requests on RDMA
+>   transports for all versions of NFS (in particular, NFSv2, for
+>   completeness)
 >=20
-> Ah, that would be:
+> In the long term, this helper is an appropriate spot to perform a
+> per-transport call-out to fill the pathname argument using, say,
+> RDMA Reads.
 >=20
-> =
-http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap04.html#ta=
-g_04_09
+> Filling the pathname in the proc function also means that eventually
+> the incoming filehandle can be interpreted so that filesystem-
+> specific memory can be allocated as a sink for the pathname
+> argument, rather than using anonymous pages.
 >=20
-> which says:
+> Wondering why the current code punts a zero-length SYMLINK. Is it
+> illegal to create a zero-length SYMLINK on Linux?
 >=20
->  All timestamps that are marked for update shall be updated when the
->  file ceases to be open by any process or before a fstat(), fstatat(),
->  fsync(), futimens(), lstat(), stat(), utime(), utimensat(), or
->  utimes() is successfully performed on the file.
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> fs/nfsd/nfs3proc.c         |   10 +++++++
+> fs/nfsd/nfs3xdr.c          |   51 ++++++++-------------------------
+> fs/nfsd/nfs4proc.c         |    7 +++++
+> fs/nfsd/nfs4xdr.c          |   10 +++++--
+> fs/nfsd/nfsproc.c          |   14 +++++----
+> fs/nfsd/nfsxdr.c           |   49 +++++++++++++++++++-------------
+> fs/nfsd/xdr.h              |    1 +
+> fs/nfsd/xdr3.h             |    1 +
+> fs/nfsd/xdr4.h             |    2 +
+> include/linux/sunrpc/svc.h |    2 +
+> net/sunrpc/svc.c           |   67 =
+++++++++++++++++++++++++++++++++++++++++++++
+> 11 files changed, 146 insertions(+), 68 deletions(-)
 >=20
-> Suppose that when handling a stat(), if we find there are dirty pages,
-> we send a SETATTR to the server to set the mtime to the current time,
-> and use the result for the mtime?  That would avoid the costly flush, =
-but still
-> give the appearance of the mtime being correctly updated.
+> diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
+> index 2dd95eb..38b0cf1 100644
+> --- a/fs/nfsd/nfs3proc.c
+> +++ b/fs/nfsd/nfs3proc.c
+> @@ -283,6 +283,16 @@
+> 	struct nfsd3_diropres *resp =3D rqstp->rq_resp;
+> 	__be32	nfserr;
 >=20
->>=20
->>=20
->>> I have seen problems when one process is writing a large
->>> file and another process performs "ls -l" on the containing
->>> directory and is blocked for as long as it take to flush
->>> all the dirty data to the server, which can be minutes.
->>=20
->> Yes, a well-known annoyance that cannot be addressed
->> even with a write delegation.
->>=20
->>=20
->>> I have also seen a legacy application which frequently calls
->>> "fstat" on a file that it is writing to.  On a local
->>> filesystem (and in the Solaris implementation of NFS) this
->>> fstat call is cheap.  On Linux/NFS, the causes a noticeable
->>> decrease in throughput.
->>=20
->> If the preceding write is small, Linux could be using
->> a FILE_SYNC write, but Solaris could be using UNSTABLE.
+> +	if (argp->tlen =3D=3D 0)
+> +		RETURN_STATUS(nfserr_inval);
+> +	if (argp->tlen > NFS3_MAXPATHLEN)
+> +		RETURN_STATUS(nfserr_nametoolong);
+> +
+> +	argp->tname =3D svc_fill_symlink_pathname(rqstp, &argp->first,
+> +						argp->tlen);
+> +	if (IS_ERR(argp->tname))
+> +		RETURN_STATUS(PTR_ERR(argp->tname));
+
+The 0day robot has rightly pointed out a problem here.
+
+svc_fill_symlink_pathname() can return a negative errno
+hidden in a pointer, but the RETURN_STATUS macro expects
+a be32 integer NFS status. Not at all the same.
+
+I'll post a corrected version of this patch soon.
+
+
+> +
+> 	dprintk("nfsd: SYMLINK(3)  %s %.*s -> %.*s\n",
+> 				SVCFH_fmt(&argp->ffh),
+> 				argp->flen, argp->fname,
+> diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
+> index 240cdb0e..78b555b 100644
+> --- a/fs/nfsd/nfs3xdr.c
+> +++ b/fs/nfsd/nfs3xdr.c
+> @@ -452,51 +452,24 @@ void fill_post_wcc(struct svc_fh *fhp)
+> nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
+> {
+> 	struct nfsd3_symlinkargs *args =3D rqstp->rq_argp;
+> -	unsigned int len, avail;
+> -	char *old, *new;
+> -	struct kvec *vec;
+> +	char *base =3D (char *)p;
+> +	size_t dlen;
 >=20
-> No, what is actually happening is that Linux is flushing out data and
-> Solaris isn't.  There are differences in stability and in write size,
-> but they aren't the main contributors to the performance difference.
+> 	if (!(p =3D decode_fh(p, &args->ffh)) ||
+> -	    !(p =3D decode_filename(p, &args->fname, &args->flen))
+> -		)
+> +	    !(p =3D decode_filename(p, &args->fname, &args->flen)))
+> 		return 0;
+> 	p =3D decode_sattr3(p, &args->attrs);
 >=20
->>=20
->>=20
->>> The only circumstances where an application calling 'stat()'
->>> might get an mtime which is not stable are times when some
->>> other process is writing to the file and the two processes
->>> are not using locking to ensure consistency, or when the one
->>> process is both writing and stating.  In neither of these
->>> cases is it reasonable to expect the mtime to be stable.
->>=20
->> I'm not convinced this is a strong enough rationale
->> for claiming it is safe to disable the existing
->> behavior.
->>=20
->> You've explained cases where the new behavior is
->> reasonable, but do you have any examples where the
->> new behavior would be a problem? There must be a
->> reason why POSIX explicitly requires an up-to-date
->> mtime.
+> -	/* now decode the pathname, which might be larger than the first =
+page.
+> -	 * As we have to check for nul's anyway, we copy it into a new =
+page
+> -	 * This page appears in the rq_res.pages list, but as pages_len =
+is always
+> -	 * 0, it won't get in the way
+> -	 */
+> -	len =3D ntohl(*p++);
+> -	if (len =3D=3D 0 || len > NFS3_MAXPATHLEN || len >=3D PAGE_SIZE)
+> -		return 0;
+> -	args->tname =3D new =3D page_address(*(rqstp->rq_next_page++));
+> -	args->tlen =3D len;
+> -	/* first copy and check from the first page */
+> -	old =3D (char*)p;
+> -	vec =3D &rqstp->rq_arg.head[0];
+> -	if ((void *)old > vec->iov_base + vec->iov_len)
+> -		return 0;
+> -	avail =3D vec->iov_len - (old - (char*)vec->iov_base);
+> -	while (len && avail && *old) {
+> -		*new++ =3D *old++;
+> -		len--;
+> -		avail--;
+> -	}
+> -	/* now copy next page if there is one */
+> -	if (len && !avail && rqstp->rq_arg.page_len) {
+> -		avail =3D min_t(unsigned int, rqstp->rq_arg.page_len, =
+PAGE_SIZE);
+> -		old =3D page_address(rqstp->rq_arg.pages[0]);
+> -	}
+> -	while (len && avail && *old) {
+> -		*new++ =3D *old++;
+> -		len--;
+> -		avail--;
+> -	}
+> -	*new =3D '\0';
+> -	if (len)
+> -		return 0;
+> +	args->tlen =3D ntohl(*p++);
 >=20
-> I honestly cannot think of any credible scenario where the current
-> behaviour would be required.
-
-I can't either, but:
-- We have years of this behavior in place
-- It is required by an aged standard
-
-I don't mind creative thinking, but perhaps we do
-need a higher bar than "can you remember why we do
-this? <shrug>" before mitigating this particular
-behavior. :-)
-
-
-> If I write to a file from one NFS client, and request a stat() from
-> another NFS client, the stat doesn't flush any data (though it could
-> with NFSv4 if write delegations were being given).  So depending on a
-> stat() returning precise timestamps when there is no other =
-co-ordination
-> between processes will already fail.  Why do we need to provide a
-> guarantee to processes running on the same client that we don't =
-provide
-> to processes running on different clients?
-
-When multiple clients are in play, as you pointed out
-earlier, we do require explicit locking for correct
-behavior. This usage scenario is clearly one that can
-be done only in the context of a distributed file
-system (ie., not on non-clustered local file systems).
-Thus explicit locking is a tolerable and expected
-requirement.
-
-
->> What guidance would nfs(5) give on when it is safe
->> to specify the new mount option?
+> +	args->first.iov_base =3D p;
+> +	args->first.iov_len =3D rqstp->rq_arg.head[0].iov_len;
+> +	args->first.iov_len -=3D (char *)p - base;
+> +
+> +	dlen =3D args->first.iov_len + rqstp->rq_arg.page_len +
+> +	       rqstp->rq_arg.tail[0].iov_len;
+> +	if (dlen < XDR_QUADLEN(args->tlen) << 2)
+> +		return 0;
+> 	return 1;
+> }
 >=20
-> That is an excellent question to which I don't have an excellent =
-answer.
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 5029b96..36bd1f7 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -605,6 +605,13 @@ static void gen_boot_verifier(nfs4_verifier =
+*verifier, struct net *net)
 >=20
-> nostatflush:  A strict reading of the Posix specification requires =
-that
->  any cached writes be flushed to the server before responding to
->  stat() and related operations, so that the timestamps are accurate
->  and stable. NFS does not guarantee this between applications on
->  different clients, but does when the writer and the caller of stat()
->  are on the same host.  This flush can sometimes negatively impact
->  performance.  Specifying the nostatflush option causes NFS to ignore
->  this requirement of Posix.  A stat call when there is dirty data may
->  report a different modify timestamp to the one that would be reported
->  after that data was subsequently flushed to the server.  There are no
->  known use cases where this inconsistency would cause a problem, but =
-as
->  avoiding it is a Posix requirement, the default behavior to force a
->  flush on every stat() call.
+> 	switch (create->cr_type) {
+> 	case NF4LNK:
+> +		if (create->cr_datalen > NFS4_MAXPATHLEN)
+> +			return nfserr_nametoolong;
+> +		create->cr_data =3D
+> +			svc_fill_symlink_pathname(rqstp, =
+&create->cr_first,
+> +						  create->cr_datalen);
+> +		if (IS_ERR(create->cr_data))
+> +			return nfserrno(PTR_ERR(create->cr_data));
+> 		status =3D nfsd_symlink(rqstp, &cstate->current_fh,
+> 				      create->cr_name, =
+create->cr_namelen,
+> 				      create->cr_data, &resfh);
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index bd25230..d05384e 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -648,6 +648,7 @@ static __be32 =
+nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp,
+> static __be32
+> nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct =
+nfsd4_create *create)
+> {
+> +	struct kvec *head;
+> 	DECODE_HEAD;
 >=20
-> ???
+> 	READ_BUF(4);
+> @@ -656,10 +657,13 @@ static __be32 =
+nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp,
+> 	case NF4LNK:
+> 		READ_BUF(4);
+> 		create->cr_datalen =3D be32_to_cpup(p++);
+> +		if (create->cr_datalen =3D=3D 0)
+> +			return nfserr_inval;
+> +		head =3D argp->rqstp->rq_arg.head;
+> +		create->cr_first.iov_base =3D p;
+> +		create->cr_first.iov_len =3D head->iov_len;
+> +		create->cr_first.iov_len -=3D (char *)p - (char =
+*)head->iov_base;
+> 		READ_BUF(create->cr_datalen);
+> -		create->cr_data =3D svcxdr_dupstr(argp, p, =
+create->cr_datalen);
+> -		if (!create->cr_data)
+> -			return nfserr_jukebox;
+> 		break;
+> 	case NF4BLK:
+> 	case NF4CHR:
+> diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+> index 1995ea6..f107f9f 100644
+> --- a/fs/nfsd/nfsproc.c
+> +++ b/fs/nfsd/nfsproc.c
+> @@ -449,17 +449,19 @@
+> 	struct svc_fh	newfh;
+> 	__be32		nfserr;
 >=20
+> +	if (argp->tlen > NFS_MAXPATHLEN)
+> +		return nfserr_nametoolong;
+> +
+> +	argp->tname =3D svc_fill_symlink_pathname(rqstp, &argp->first,
+> +						argp->tlen);
+> +	if (IS_ERR(argp->tname))
+> +		return nfserrno(PTR_ERR(argp->tname));
+> +
+> 	dprintk("nfsd: SYMLINK  %s %.*s -> %.*s\n",
+> 		SVCFH_fmt(&argp->ffh), argp->flen, argp->fname,
+> 		argp->tlen, argp->tname);
 >=20
+> 	fh_init(&newfh, NFS_FHSIZE);
+> -	/*
+> -	 * Crazy hack: the request fits in a page, and already-decoded
+> -	 * attributes follow argp->tname, so it's safe to just write a
+> -	 * null to ensure it's null-terminated:
+> -	 */
+> -	argp->tname[argp->tlen] =3D '\0';
+> 	nfserr =3D nfsd_symlink(rqstp, &argp->ffh, argp->fname, =
+argp->flen,
+> 						 argp->tname, &newfh);
 >=20
->>=20
->>=20
->>> In the most common cases where mtime is important
->>> (e.g. make), no other process has the file open, so there
->>> will be no dirty data and the mtime will be stable.
->>=20
->> Isn't it also the case that make is a multi-process
->> workload where one process modifies a file, then
->> closes it (which triggers a flush), and then another
->> process stats the file? The new mount option does
->> not change the behavior of close(2), does it?
+> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
+> index 165e25e..8fcd047 100644
+> --- a/fs/nfsd/nfsxdr.c
+> +++ b/fs/nfsd/nfsxdr.c
+> @@ -71,22 +71,6 @@ __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh =
+*fhp)
+> }
 >=20
-> No, the mount option doesn't change the behaviour of close(2).
-> A separate mount option (nocto) can do that.
+> static __be32 *
+> -decode_pathname(__be32 *p, char **namp, unsigned int *lenp)
+> -{
+> -	char		*name;
+> -	unsigned int	i;
+> -
+> -	if ((p =3D xdr_decode_string_inplace(p, namp, lenp, =
+NFS_MAXPATHLEN)) !=3D NULL) {
+> -		for (i =3D 0, name =3D *namp; i < *lenp; i++, name++) {
+> -			if (*name =3D=3D '\0')
+> -				return NULL;
+> -		}
+> -	}
+> -
+> -	return p;
+> -}
+> -
+> -static __be32 *
+> decode_sattr(__be32 *p, struct iattr *iap)
+> {
+> 	u32	tmp, tmp1;
+> @@ -383,14 +367,39 @@ __be32 *nfs2svc_encode_fattr(struct svc_rqst =
+*rqstp, __be32 *p, struct svc_fh *f
+> nfssvc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
+> {
+> 	struct nfsd_symlinkargs *args =3D rqstp->rq_argp;
+> +	char *base =3D (char *)p;
+> +	size_t xdrlen;
 >=20
-> I think your point is that close() can be delayed by flush in the same
-> way that stat() can.  I think that is true, but not very relevant.
-
-Agreed, it isn't relevant. So I'm wondering why we
-should consider "make" at all in this case.
-
-
-> stat() can be called more often that close() is likely to be, and
-> close() only imposes a delay on the process that did the writing, =
-after
-> it has finished writing.
-
-I don't believe that's true. The file's data cache is
-shared across all applications on a client, and a
-writeback on close is so that a subsequent GETATTR
-reflects information about the file can be used to
-verify the data cached the next time an application
-on this client opens this file (close-to-open).
-
-For NFSv4, of course, the client must flush dirty
-data before it relinquishes the valid state ID at
-CLOSE time.
-
-
-> stat() can impose a delay on arbitrary other
-> processes and at other times.
-
-Eliminating unexpected latency is a noble goal. However,
-write(2) can occasionally take a long time when the
-application has unintentionally exceeded a dirty limit
-for example.
-
-More frequent writeback is part of the "sharing tax"
-that network file systems have to pay. It can be
-reduced somewhat in NFSv4 with delegation, though a
-file's current mtime is still managed by the physical
-file system on the NFS server.
-
-
->>> Rather than unilaterally changing this behavior of 'stat',
->>> this patch adds a "nosyncflush" mount option to allow
->>> sysadmins to have applications which are hurt by the current
->>> behavior to disable it.
->>=20
->> IMO a mount option is at the wrong granularity. A
->> mount point will be shared between applications that
->> can tolerate the non-POSIX behavior and those that
->> cannot, for instance.
+> 	if (   !(p =3D decode_fh(p, &args->ffh))
+> -	    || !(p =3D decode_filename(p, &args->fname, &args->flen))
+> -	    || !(p =3D decode_pathname(p, &args->tname, &args->tlen)))
+> +	    || !(p =3D decode_filename(p, &args->fname, &args->flen)))
+> 		return 0;
+> -	p =3D decode_sattr(p, &args->attrs);
 >=20
-> It is a better granularity than a module parameter, which was my first
-> approach ;-)
+> -	return xdr_argsize_check(rqstp, p);
+> +	args->tlen =3D ntohl(*p++);
+> +	if (args->tlen =3D=3D 0)
+> +		return 0;
+> +
+> +	args->first.iov_base =3D p;
+> +	args->first.iov_len =3D rqstp->rq_arg.head[0].iov_len;
+> +	args->first.iov_len -=3D (char *)p - base;
+> +
+> +	/* This request is never larger than a page. Therefore,
+> +	 * transport will deliver either:
+> +	 * 1. pathname in the pagelist -> sattr is in the tail.
+> +	 * 2. everything in the head buffer -> sattr is in the head.
+> +	 */
+> +	if (rqstp->rq_arg.page_len) {
+> +		if (args->tlen !=3D rqstp->rq_arg.page_len)
+> +			return 0;
+> +		p =3D rqstp->rq_arg.tail[0].iov_base;
+> +	} else {
+> +		xdrlen =3D XDR_QUADLEN(args->tlen);
+> +		if (xdrlen > args->first.iov_len - (8 * sizeof(__be32)))
+> +			return 0;
+> +		p +=3D xdrlen;
+> +	}
+> +	decode_sattr(p, &args->attrs);
+> +
+> +	return 1;
+> }
 >=20
-> Yes, if we could create a control-group which avoided flush-on-stat, =
-and
-> ran the problematic programs in that control group, that might be =
-ideal
-> ... for some values of "ideal".
+> int
+> diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
+> index a765c41..ea7cca3 100644
+> --- a/fs/nfsd/xdr.h
+> +++ b/fs/nfsd/xdr.h
+> @@ -72,6 +72,7 @@ struct nfsd_symlinkargs {
+> 	char *			tname;
+> 	unsigned int		tlen;
+> 	struct iattr		attrs;
+> +	struct kvec		first;
+> };
 >=20
-> You *could* mount the same filesystem in two places with nosharecache
-> and with only one having nosyncflush.  But you probably wouldn't.
-
->> I would rather see us address the underlying cause
->> of the delay, which is that the GETATTR gets starved
->> by an ongoing stream of WRITE requests. You could:
+> struct nfsd_readdirargs {
+> diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
+> index deccf7f..2cb29e9 100644
+> --- a/fs/nfsd/xdr3.h
+> +++ b/fs/nfsd/xdr3.h
+> @@ -90,6 +90,7 @@ struct nfsd3_symlinkargs {
+> 	char *			tname;
+> 	unsigned int		tlen;
+> 	struct iattr		attrs;
+> +	struct kvec		first;
+> };
 >=20
-> I don't think starving is the issue.
-> Of the two specific cases that I have seen,
-> in one the issue was that the dirty_ratio multiplied by the amount of
-> memory, divided by the throughput to the server, resulted in many
-> minutes to flush out all the dirty data.  Having "ls -l" wait for that
-> flush was quite inconvenient. (We asked the customer to tune =
-dirty_ratio
-> way down).
-
-This is the classic remedy for this problem. The default
-dirty_ratio setting is antique for contemporary hardware.
-
-
-> In the other (more recent) case the file being written was some sort =
-of
-> data-base being restored from a dump (or something like that).  So =
-some
-> blocks (presumably indexing blocks) were being written multiple times.
-> When we disabled flush-on-sync
-
-flush-on-sync? That seems like a good thing! Do you mean
-flush-on-getattr?
-
-
-> the total number of bytes written went
-> down by about 20% (vague memory .. certainly a non-trivial amount)
-> because these index block were only written to the server once instead
-> of multiple times.  So that flush-on-stat slowed down throughput in =
-part
-> by pushing more data over the wire.
-
-That behavior is disappointing, but arguments that the
-application should be modified to address this issue (use
-statx or avoid stat(2)) are convincing to me.
-
-
->> - Make active writers wait for the GETATTR so the
->> GETATTR is not starved
->>=20
->> - Start flushing dirty pages earlier so there is
->> less to flush when a stat(2) is done
->>=20
->> - Ensure that GETATTR is not also waiting for a
->> COMMIT
->>=20
->> Or maybe there's some other problem?
->>=20
->> I recall nfs_getattr used to grab i_mutex to hold
->> up active writers. But i_mutex is gone now. Is
->> there some other mechanism that can block writers
->> while the client flushes the file and handles the
->> GETATTR request?
+> struct nfsd3_readdirargs {
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index d56219d..b485cd1 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -110,6 +110,7 @@ struct nfsd4_create {
+> 		struct {
+> 			u32 datalen;
+> 			char *data;
+> +			struct kvec first;
+> 		} link;   /* NF4LNK */
+> 		struct {
+> 			u32 specdata1;
+> @@ -124,6 +125,7 @@ struct nfsd4_create {
+> };
+> #define cr_datalen	u.link.datalen
+> #define cr_data		u.link.data
+> +#define cr_first	u.link.first
+> #define cr_specdata1	u.dev.specdata1
+> #define cr_specdata2	u.dev.specdata2
 >=20
-> I vaguely remember when i_mutex locking was added to nfs_getattr to
-> avoid the starvation :-)
-> Today nfs_getattr() calls filemap_write_and_wait() which first =
-triggers
-> writes on all dirty pages, then waits for all writeback pages.
-> The first stage should be fairly quick, and writes during the second
-> stage shouldn't slow it down.  If some process were calling fsync =
-often
-> (e.g. using O_SYNC) that might starve nfs_getattr(), but I don't think
-> normal usage would.
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 238b9ae..fd5846e 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -495,6 +495,8 @@ int		   svc_register(const struct =
+svc_serv *, struct net *, const int,
+> char *		   svc_print_addr(struct svc_rqst *, char *, =
+size_t);
+> unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
+> 					 struct kvec *first, size_t =
+total);
+> +char		  *svc_fill_symlink_pathname(struct svc_rqst *rqstp,
+> +					     struct kvec *first, size_t =
+total);
 >=20
-> I do agree that a "real" fix would be better than a mount option.
-> The only path to a "real" fix that I can think of is to provide some
-> alternate source of producing a credible mtime without flushing all =
-the
-> data.
-
-Perhaps, but flushing sooner will get us most of the way
-there IMO, and seems more straightforward then playing
-merry mtime games.
-
-Jens Axboe had some writeback improvements that might
-make it possible to start writeback sooner, depending on
-the aggregate writeback throughput limit of the backing
-storage. Not sure these were ever applied to the NFS
-client.
-
-The downside to starting writeback sooner is that an
-application that uses a file as temporary rather than
-persistent storage might be penalized (similar to the
-second scenario you mention above).
-
-
-> Might a SETATTR using SET_TO_SERVER_TIME be a workable way forward?
-
-I thought about this, but here we risk the following odd
-behavior:
-
-1. The application calls write(2), and the client caches
-the dirtied pages.
-
-2. The application calls stat(2), the client explicitly
-updates the mtime, then does a GETATTR returning mtime "A"
-to the application.
-
-3. The client later flushes the dirty data, and the
-server updates the mtime again to mtime "B"
-
-4. The application does another stat(2), the client
-emits another GETATTR, and sees mtime "B" even though
-there have been no additional write(2) calls on that
-file.
-
-That might be surprising to applications that, like the
-client itself, rely on the file's mtime to detect outside
-modification of the file. And it certainly violates POSIX.
-
-Perhaps we could add a mechanism to the NFS protocol that
-allows a client to send a WRITE that does not update the
-file's mtime while holding a write delegation. In other
-words, introduce a mode where the client rather than the
-server manages a file's mtime.
-
-Maybe pNFS block layout would allow this already?
-
-
-> Thank for your thoughts!
+> #define	RPC_MAX_ADDRBUFLEN	(63U)
 >=20
-> NeilBrown
+> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+> index 759b668..fc93406 100644
+> --- a/net/sunrpc/svc.c
+> +++ b/net/sunrpc/svc.c
+> @@ -1578,3 +1578,70 @@ unsigned int svc_fill_write_vector(struct =
+svc_rqst *rqstp, struct kvec *first,
+> 	return i;
+> }
+> EXPORT_SYMBOL_GPL(svc_fill_write_vector);
+> +
+> +/**
+> + * svc_fill_symlink_pathname - Construct pathname argument for VFS =
+symlink call
+> + * @rqstp: svc_rqst to operate on
+> + * @first: buffer containing first section of pathname
+> + * @total: total length of the pathname argument
+> + *
+> + * Returns pointer to a NUL-terminated string, or an ERR_PTR. The =
+buffer is
+> + * released automatically when @rqstp is recycled.
+> + */
+> +char *svc_fill_symlink_pathname(struct svc_rqst *rqstp, struct kvec =
+*first,
+> +				size_t total)
+> +{
+> +	struct xdr_buf *arg =3D &rqstp->rq_arg;
+> +	struct page **pages;
+> +	char *result;
+> +
+> +	/* VFS API demands a NUL-terminated pathname. This function
+> +	 * uses a page from @rqstp as the pathname buffer, to enable
+> +	 * direct placement. Thus the total buffer size is PAGE_SIZE.
+> +	 * Space in this buffer for NUL-termination requires that we
+> +	 * cap the size of the returned symlink pathname just a
+> +	 * little early.
+> +	 */
+> +	if (total > PAGE_SIZE - 1)
+> +		return ERR_PTR(-ENAMETOOLONG);
+> +
+> +	/* Some types of transport can present the pathname entirely
+> +	 * in rq_arg.pages. If not, then copy the pathname into one
+> +	 * page.
+> +	 */
+> +	pages =3D arg->pages;
+> +	WARN_ON_ONCE(arg->page_base !=3D 0);
+> +	if (first->iov_base =3D=3D 0) {
+> +		result =3D page_address(*pages);
+> +		result[total] =3D '\0';
+> +	} else {
+> +		size_t len, remaining;
+> +		char *dst;
+> +
+> +		result =3D page_address(*(rqstp->rq_next_page++));
+> +		dst =3D result;
+> +		remaining =3D total;
+> +
+> +		len =3D min_t(size_t, total, first->iov_len);
+> +		memcpy(dst, first->iov_base, len);
+> +		dst +=3D len;
+> +		remaining -=3D len;
+> +
+> +		/* No more than one page left */
+> +		if (remaining) {
+> +			len =3D min_t(size_t, remaining, PAGE_SIZE);
+> +			memcpy(dst, page_address(*pages), len);
+> +			dst +=3D len;
+> +		}
+> +
+> +		*dst =3D '\0';
+> +	}
+> +
+> +	/* Sanity check: we don't allow the pathname argument to
+> +	 * contain a NUL byte.
+> +	 */
+> +	if (strlen(result) !=3D total)
+> +		return ERR_PTR(-EINVAL);
+> +	return result;
+> +}
+> +EXPORT_SYMBOL_GPL(svc_fill_symlink_pathname);
 >=20
->>=20
->>=20
->>> Note that this option should probably *not* be used together
->>> with "nocto".  In that case, mtime could be unstable even
->>> when no process has the file open.
->>>=20
->>> Signed-off-by: NeilBrown <neilb@suse.com>
->>> ---
->>> fs/nfs/inode.c                 |  3 ++-
->>> fs/nfs/super.c                 | 10 ++++++++++
->>> include/uapi/linux/nfs_mount.h |  6 ++++--
->>> 3 files changed, 16 insertions(+), 3 deletions(-)
->>>=20
->>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->>> index b992d2382ffa..16629a34dd62 100644
->>> --- a/fs/nfs/inode.c
->>> +++ b/fs/nfs/inode.c
->>> @@ -740,7 +740,8 @@ int nfs_getattr(const struct path *path, struct =
-kstat *stat,
->>>=20
->>> 	trace_nfs_getattr_enter(inode);
->>> 	/* Flush out writes to the server in order to update c/mtime.  =
-*/
->>> -	if (S_ISREG(inode->i_mode)) {
->>> +	if (S_ISREG(inode->i_mode) &&
->>> +	    !(NFS_SERVER(inode)->flags & NFS_MOUNT_NOSTATFLUSH)) {
->>> 		err =3D filemap_write_and_wait(inode->i_mapping);
->>> 		if (err)
->>> 			goto out;
->>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>> index 29bacdc56f6a..2351c0be98f5 100644
->>> --- a/fs/nfs/super.c
->>> +++ b/fs/nfs/super.c
->>> @@ -90,6 +90,7 @@ enum {
->>> 	Opt_resvport, Opt_noresvport,
->>> 	Opt_fscache, Opt_nofscache,
->>> 	Opt_migration, Opt_nomigration,
->>> +	Opt_statflush, Opt_nostatflush,
->>>=20
->>> 	/* Mount options that take integer arguments */
->>> 	Opt_port,
->>> @@ -151,6 +152,8 @@ static const match_table_t =
-nfs_mount_option_tokens =3D {
->>> 	{ Opt_nofscache, "nofsc" },
->>> 	{ Opt_migration, "migration" },
->>> 	{ Opt_nomigration, "nomigration" },
->>> +	{ Opt_statflush, "statflush" },
->>> +	{ Opt_nostatflush, "nostatflush" },
->>>=20
->>> 	{ Opt_port, "port=3D%s" },
->>> 	{ Opt_rsize, "rsize=3D%s" },
->>> @@ -637,6 +640,7 @@ static void nfs_show_mount_options(struct =
-seq_file *m, struct nfs_server *nfss,
->>> 		{ NFS_MOUNT_NORDIRPLUS, ",nordirplus", "" },
->>> 		{ NFS_MOUNT_UNSHARED, ",nosharecache", "" },
->>> 		{ NFS_MOUNT_NORESVPORT, ",noresvport", "" },
->>> +		{ NFS_MOUNT_NOSTATFLUSH, ",nostatflush", "" },
->>> 		{ 0, NULL, NULL }
->>> 	};
->>> 	const struct proc_nfs_info *nfs_infop;
->>> @@ -1334,6 +1338,12 @@ static int nfs_parse_mount_options(char *raw,
->>> 		case Opt_nomigration:
->>> 			mnt->options &=3D ~NFS_OPTION_MIGRATION;
->>> 			break;
->>> +		case Opt_statflush:
->>> +			mnt->flags &=3D ~NFS_MOUNT_NOSTATFLUSH;
->>> +			break;
->>> +		case Opt_nostatflush:
->>> +			mnt->flags |=3D NFS_MOUNT_NOSTATFLUSH;
->>> +			break;
->>>=20
->>> 		/*
->>> 		 * options that take numeric values
->>> diff --git a/include/uapi/linux/nfs_mount.h =
-b/include/uapi/linux/nfs_mount.h
->>> index e44e00616ab5..d7c6f809d25d 100644
->>> --- a/include/uapi/linux/nfs_mount.h
->>> +++ b/include/uapi/linux/nfs_mount.h
->>> @@ -72,7 +72,9 @@ struct nfs_mount_data {
->>> #define NFS_MOUNT_NORESVPORT		0x40000
->>> #define NFS_MOUNT_LEGACY_INTERFACE	0x80000
->>>=20
->>> -#define NFS_MOUNT_LOCAL_FLOCK	0x100000
->>> -#define NFS_MOUNT_LOCAL_FCNTL	0x200000
->>> +#define NFS_MOUNT_LOCAL_FLOCK		0x100000
->>> +#define NFS_MOUNT_LOCAL_FCNTL		0x200000
->>> +
->>> +#define NFS_MOUNT_NOSTATFLUSH		0x400000
->>>=20
->>> #endif
->>> --=20
->>> 2.14.0.rc0.dirty
->>>=20
->>=20
->> --
->> Chuck Lever
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 --
 Chuck Lever
