@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:45418 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:45570 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756279AbdLVMGk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Dec 2017 07:06:40 -0500
+        id S1756254AbdLVMGi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Dec 2017 07:06:38 -0500
 From: Jeff Layton <jlayton@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
@@ -15,9 +15,9 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com
-Subject: [PATCH v4 16/19] fs: only set S_VERSION when updating times if necessary
-Date: Fri, 22 Dec 2017 07:05:53 -0500
-Message-Id: <20171222120556.7435-17-jlayton@kernel.org>
+Subject: [PATCH v4 15/19] IMA: switch IMA over to new i_version API
+Date: Fri, 22 Dec 2017 07:05:52 -0500
+Message-Id: <20171222120556.7435-16-jlayton@kernel.org>
 In-Reply-To: <20171222120556.7435-1-jlayton@kernel.org>
 References: <20171222120556.7435-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -25,56 +25,54 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@redhat.com>
 
-We only really need to update i_version if someone has queried for it
-since we last incremented it. By doing that, we can avoid having to
-update the inode if the times haven't changed.
-
-If the times have changed, then we go ahead and forcibly increment the
-counter, under the assumption that we'll be going to the storage
-anyway, and the increment itself is relatively cheap.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/inode.c | 10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
+ security/integrity/ima/ima_api.c  | 3 ++-
+ security/integrity/ima/ima_main.c | 3 ++-
+ 2 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 19e72f500f71..2fa920188759 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1635,17 +1635,21 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
- int generic_update_time(struct inode *inode, struct timespec *time, int flags)
- {
- 	int iflags = I_DIRTY_TIME;
-+	bool dirty = false;
+diff --git a/security/integrity/ima/ima_api.c b/security/integrity/ima/ima_api.c
+index c7e8db0ea4c0..c6ae42266270 100644
+--- a/security/integrity/ima/ima_api.c
++++ b/security/integrity/ima/ima_api.c
+@@ -18,6 +18,7 @@
+ #include <linux/fs.h>
+ #include <linux/xattr.h>
+ #include <linux/evm.h>
++#include <linux/iversion.h>
  
- 	if (flags & S_ATIME)
- 		inode->i_atime = *time;
- 	if (flags & S_VERSION)
--		inode_inc_iversion(inode);
-+		dirty |= inode_maybe_inc_iversion(inode, dirty);
- 	if (flags & S_CTIME)
- 		inode->i_ctime = *time;
- 	if (flags & S_MTIME)
- 		inode->i_mtime = *time;
-+	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
-+	    !(inode->i_sb->s_flags & SB_LAZYTIME))
-+		dirty = true;
+ #include "ima.h"
  
--	if (!(inode->i_sb->s_flags & SB_LAZYTIME) || (flags & S_VERSION))
-+	if (dirty)
- 		iflags |= I_DIRTY_SYNC;
- 	__mark_inode_dirty(inode, iflags);
- 	return 0;
-@@ -1864,7 +1868,7 @@ int file_update_time(struct file *file)
- 	if (!timespec_equal(&inode->i_ctime, &now))
- 		sync_it |= S_CTIME;
+@@ -215,7 +216,7 @@ int ima_collect_measurement(struct integrity_iint_cache *iint,
+ 	 * which do not support i_version, support is limited to an initial
+ 	 * measurement/appraisal/audit.
+ 	 */
+-	i_version = file_inode(file)->i_version;
++	i_version = inode_query_iversion(inode);
+ 	hash.hdr.algo = algo;
  
--	if (IS_I_VERSION(inode))
-+	if (IS_I_VERSION(inode) && inode_iversion_need_inc(inode))
- 		sync_it |= S_VERSION;
+ 	/* Initialize hash digest to 0's in case of failure */
+diff --git a/security/integrity/ima/ima_main.c b/security/integrity/ima/ima_main.c
+index 50b82599994d..06a70c5a2329 100644
+--- a/security/integrity/ima/ima_main.c
++++ b/security/integrity/ima/ima_main.c
+@@ -24,6 +24,7 @@
+ #include <linux/slab.h>
+ #include <linux/xattr.h>
+ #include <linux/ima.h>
++#include <linux/iversion.h>
  
- 	if (!sync_it)
+ #include "ima.h"
+ 
+@@ -128,7 +129,7 @@ static void ima_check_last_writer(struct integrity_iint_cache *iint,
+ 	inode_lock(inode);
+ 	if (atomic_read(&inode->i_writecount) == 1) {
+ 		if (!IS_I_VERSION(inode) ||
+-		    (iint->version != inode->i_version) ||
++		    inode_cmp_iversion(inode, iint->version) ||
+ 		    (iint->flags & IMA_NEW_FILE)) {
+ 			iint->flags &= ~(IMA_DONE_MASK | IMA_NEW_FILE);
+ 			iint->measured_pcrs = 0;
 -- 
 2.14.3
 
