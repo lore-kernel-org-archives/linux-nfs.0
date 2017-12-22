@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:45334 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:45126 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752227AbdLVMGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Dec 2017 07:06:22 -0500
+        id S1756017AbdLVMGL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Dec 2017 07:06:11 -0500
 From: Jeff Layton <jlayton@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
@@ -15,9 +15,9 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com
-Subject: [PATCH v4 08/19] ext2: convert to new i_version API
-Date: Fri, 22 Dec 2017 07:05:45 -0500
-Message-Id: <20171222120556.7435-9-jlayton@kernel.org>
+Subject: [PATCH v4 04/19] affs: convert to new i_version API
+Date: Fri, 22 Dec 2017 07:05:41 -0500
+Message-Id: <20171222120556.7435-5-jlayton@kernel.org>
 In-Reply-To: <20171222120556.7435-1-jlayton@kernel.org>
 References: <20171222120556.7435-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -26,83 +26,93 @@ List-ID: <linux-nfs.vger.kernel.org>
 From: Jeff Layton <jlayton@redhat.com>
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext2/dir.c   | 9 +++++----
- fs/ext2/super.c | 5 +++--
- 2 files changed, 8 insertions(+), 6 deletions(-)
+ fs/affs/amigaffs.c | 5 +++--
+ fs/affs/dir.c      | 5 +++--
+ fs/affs/super.c    | 3 ++-
+ 3 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 987647986f47..4111085a129f 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -26,6 +26,7 @@
- #include <linux/buffer_head.h>
- #include <linux/pagemap.h>
- #include <linux/swap.h>
+diff --git a/fs/affs/amigaffs.c b/fs/affs/amigaffs.c
+index 0f0e6925e97d..14a6c1b90c9f 100644
+--- a/fs/affs/amigaffs.c
++++ b/fs/affs/amigaffs.c
+@@ -10,6 +10,7 @@
+  */
+ 
+ #include <linux/math64.h>
 +#include <linux/iversion.h>
+ #include "affs.h"
  
- typedef struct ext2_dir_entry_2 ext2_dirent;
+ /*
+@@ -60,7 +61,7 @@ affs_insert_hash(struct inode *dir, struct buffer_head *bh)
+ 	affs_brelse(dir_bh);
  
-@@ -92,7 +93,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
- 	struct inode *dir = mapping->host;
- 	int err = 0;
- 
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
 -	dir->i_version++;
 +	inode_inc_iversion(dir);
- 	block_write_end(NULL, mapping, pos, len, len, page, NULL);
+ 	mark_inode_dirty(dir);
  
- 	if (pos+len > dir->i_size) {
-@@ -293,7 +294,7 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 	unsigned long npages = dir_pages(inode);
- 	unsigned chunk_mask = ~(ext2_chunk_size(inode)-1);
- 	unsigned char *types = NULL;
--	int need_revalidate = file->f_version != inode->i_version;
-+	bool need_revalidate = inode_cmp_iversion(inode, file->f_version);
+ 	return 0;
+@@ -114,7 +115,7 @@ affs_remove_hash(struct inode *dir, struct buffer_head *rem_bh)
+ 	affs_brelse(bh);
  
- 	if (pos > inode->i_size - EXT2_DIR_REC_LEN(1))
- 		return 0;
-@@ -319,8 +320,8 @@ ext2_readdir(struct file *file, struct dir_context *ctx)
- 				offset = ext2_validate_entry(kaddr, offset, chunk_mask);
- 				ctx->pos = (n<<PAGE_SHIFT) + offset;
- 			}
--			file->f_version = inode->i_version;
--			need_revalidate = 0;
-+			file->f_version = inode_query_iversion(inode);
-+			need_revalidate = false;
- 		}
- 		de = (ext2_dirent *)(kaddr+offset);
- 		limit = kaddr + ext2_last_byte(inode, n) - EXT2_DIR_REC_LEN(1);
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index 7646818ab266..554c98b8a93a 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -33,6 +33,7 @@
- #include <linux/quotaops.h>
- #include <linux/uaccess.h>
- #include <linux/dax.h>
+ 	dir->i_mtime = dir->i_ctime = current_time(dir);
+-	dir->i_version++;
++	inode_inc_iversion(dir);
+ 	mark_inode_dirty(dir);
+ 
+ 	return retval;
+diff --git a/fs/affs/dir.c b/fs/affs/dir.c
+index a105e77df2c1..d180b46453cf 100644
+--- a/fs/affs/dir.c
++++ b/fs/affs/dir.c
+@@ -14,6 +14,7 @@
+  *
+  */
+ 
 +#include <linux/iversion.h>
- #include "ext2.h"
- #include "xattr.h"
- #include "acl.h"
-@@ -184,7 +185,7 @@ static struct inode *ext2_alloc_inode(struct super_block *sb)
- 	if (!ei)
+ #include "affs.h"
+ 
+ static int affs_readdir(struct file *, struct dir_context *);
+@@ -80,7 +81,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
+ 	 * we can jump directly to where we left off.
+ 	 */
+ 	ino = (u32)(long)file->private_data;
+-	if (ino && file->f_version == inode->i_version) {
++	if (ino && inode_cmp_iversion(inode, file->f_version) == 0) {
+ 		pr_debug("readdir() left off=%d\n", ino);
+ 		goto inside;
+ 	}
+@@ -130,7 +131,7 @@ affs_readdir(struct file *file, struct dir_context *ctx)
+ 		} while (ino);
+ 	}
+ done:
+-	file->f_version = inode->i_version;
++	file->f_version = inode_query_iversion(inode);
+ 	file->private_data = (void *)(long)ino;
+ 	affs_brelse(fh_bh);
+ 
+diff --git a/fs/affs/super.c b/fs/affs/super.c
+index 1117e36134cc..e602619aed9d 100644
+--- a/fs/affs/super.c
++++ b/fs/affs/super.c
+@@ -21,6 +21,7 @@
+ #include <linux/writeback.h>
+ #include <linux/blkdev.h>
+ #include <linux/seq_file.h>
++#include <linux/iversion.h>
+ #include "affs.h"
+ 
+ static int affs_statfs(struct dentry *dentry, struct kstatfs *buf);
+@@ -102,7 +103,7 @@ static struct inode *affs_alloc_inode(struct super_block *sb)
+ 	if (!i)
  		return NULL;
- 	ei->i_block_alloc_info = NULL;
--	ei->vfs_inode.i_version = 1;
-+	inode_set_iversion(&ei->vfs_inode, 1);
- #ifdef CONFIG_QUOTA
- 	memset(&ei->i_dquot, 0, sizeof(ei->i_dquot));
- #endif
-@@ -1569,7 +1570,7 @@ static ssize_t ext2_quota_write(struct super_block *sb, int type,
- 		return err;
- 	if (inode->i_size < off+len-towrite)
- 		i_size_write(inode, off+len-towrite);
--	inode->i_version++;
-+	inode_inc_iversion(inode);
- 	inode->i_mtime = inode->i_ctime = current_time(inode);
- 	mark_inode_dirty(inode);
- 	return len - towrite;
+ 
+-	i->vfs_inode.i_version = 1;
++	inode_set_iversion(&i->vfs_inode, 1);
+ 	i->i_lc = NULL;
+ 	i->i_ext_bh = NULL;
+ 	i->i_pa_cnt = 0;
 -- 
 2.14.3
 
