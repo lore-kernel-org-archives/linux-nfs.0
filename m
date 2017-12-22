@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:45292 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:45022 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756085AbdLVMGU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 22 Dec 2017 07:06:20 -0500
+        id S1755982AbdLVMGK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Dec 2017 07:06:10 -0500
 From: Jeff Layton <jlayton@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
@@ -15,9 +15,9 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com
-Subject: [PATCH v4 07/19] exofs: switch to new i_version API
-Date: Fri, 22 Dec 2017 07:05:44 -0500
-Message-Id: <20171222120556.7435-8-jlayton@kernel.org>
+Subject: [PATCH v4 02/19] fs: don't take the i_lock in inode_inc_iversion
+Date: Fri, 22 Dec 2017 07:05:39 -0500
+Message-Id: <20171222120556.7435-3-jlayton@kernel.org>
 In-Reply-To: <20171222120556.7435-1-jlayton@kernel.org>
 References: <20171222120556.7435-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -25,74 +25,46 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@redhat.com>
 
+The rationale for taking the i_lock when incrementing this value is
+lost in antiquity. The readers of the field don't take it (at least
+not universally), so my assumption is that it was only done here to
+serialize incrementors.
+
+If that is indeed the case, then we can drop the i_lock from this
+codepath and treat it as a atomic64_t for the purposes of
+incrementing it. This allows us to use inode_inc_iversion without
+any danger of lock inversion.
+
+Note that the read side is not fetched atomically with this change.
+The assumption here is that that is not a critical issue since the
+i_version is not fully synchronized with anything else anyway.
+
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/exofs/dir.c   | 9 +++++----
- fs/exofs/super.c | 3 ++-
- 2 files changed, 7 insertions(+), 5 deletions(-)
+ include/linux/iversion.h | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/exofs/dir.c b/fs/exofs/dir.c
-index 98233a97b7b8..c5a53fcc43ea 100644
---- a/fs/exofs/dir.c
-+++ b/fs/exofs/dir.c
-@@ -31,6 +31,7 @@
-  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
-  */
- 
-+#include <linux/iversion.h>
- #include "exofs.h"
- 
- static inline unsigned exofs_chunk_size(struct inode *inode)
-@@ -60,7 +61,7 @@ static int exofs_commit_chunk(struct page *page, loff_t pos, unsigned len)
- 	struct inode *dir = mapping->host;
- 	int err = 0;
- 
--	dir->i_version++;
-+	inode_inc_iversion(dir);
- 
- 	if (!PageUptodate(page))
- 		SetPageUptodate(page);
-@@ -241,7 +242,7 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
- 	unsigned long n = pos >> PAGE_SHIFT;
- 	unsigned long npages = dir_pages(inode);
- 	unsigned chunk_mask = ~(exofs_chunk_size(inode)-1);
--	int need_revalidate = (file->f_version != inode->i_version);
-+	bool need_revalidate = inode_cmp_iversion(inode, file->f_version);
- 
- 	if (pos > inode->i_size - EXOFS_DIR_REC_LEN(1))
- 		return 0;
-@@ -264,8 +265,8 @@ exofs_readdir(struct file *file, struct dir_context *ctx)
- 								chunk_mask);
- 				ctx->pos = (n<<PAGE_SHIFT) + offset;
- 			}
--			file->f_version = inode->i_version;
--			need_revalidate = 0;
-+			file->f_version = inode_query_iversion(inode);
-+			need_revalidate = false;
- 		}
- 		de = (struct exofs_dir_entry *)(kaddr + offset);
- 		limit = kaddr + exofs_last_byte(inode, n) -
-diff --git a/fs/exofs/super.c b/fs/exofs/super.c
-index 819624cfc8da..7e244093c0e5 100644
---- a/fs/exofs/super.c
-+++ b/fs/exofs/super.c
-@@ -38,6 +38,7 @@
- #include <linux/module.h>
- #include <linux/exportfs.h>
- #include <linux/slab.h>
-+#include <linux/iversion.h>
- 
- #include "exofs.h"
- 
-@@ -159,7 +160,7 @@ static struct inode *exofs_alloc_inode(struct super_block *sb)
- 	if (!oi)
- 		return NULL;
- 
--	oi->vfs_inode.i_version = 1;
-+	inode_set_iversion(&oi->vfs_inode, 1);
- 	return &oi->vfs_inode;
+diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+index bb50d27c71f9..e08c634779df 100644
+--- a/include/linux/iversion.h
++++ b/include/linux/iversion.h
+@@ -104,12 +104,13 @@ inode_set_iversion_queried(struct inode *inode, const u64 new)
+ static inline bool
+ inode_maybe_inc_iversion(struct inode *inode, bool force)
+ {
+-	spin_lock(&inode->i_lock);
+-	inode->i_version++;
+-	spin_unlock(&inode->i_lock);
++	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
++
++	atomic64_inc(ivp);
+ 	return true;
  }
  
++
+ /**
+  * inode_inc_iversion - forcibly increment i_version
+  * @inode: inode that needs to be updated
 -- 
 2.14.3
 
