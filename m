@@ -1,214 +1,187 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:55307 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752705AbdLVDRo (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Dec 2017 22:17:44 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "neilb@suse.com" <neilb@suse.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+Received: from mga07.intel.com ([134.134.136.100]:54775 "EHLO mga07.intel.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756129AbdLVJ3W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 22 Dec 2017 04:29:22 -0500
+From: "Reshetova, Elena" <elena.reshetova@intel.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: Re: [PATCH/RFC] NFS: add nostatflush mount option.
-Date: Fri, 22 Dec 2017 03:17:39 +0000
-Message-ID: <1513912651.24909.5.camel@primarydata.com>
-References: <87k1xgkct1.fsf@notabene.neil.brown.name>
-         <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com>
-         <1513871689.11836.3.camel@primarydata.com>
-         <87efnnkda2.fsf@notabene.neil.brown.name>
-         <1513892346.20034.18.camel@primarydata.com>
-         <878tdvk8ud.fsf@notabene.neil.brown.name>
-In-Reply-To: <878tdvk8ud.fsf@notabene.neil.brown.name>
-Content-Type: multipart/signed; micalg=pgp-sha256;
-        protocol="application/pgp-signature"; boundary="=-+daW7vOwWHXZr8YKLLFw"
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "peterz@infradead.org" <peterz@infradead.org>,
+        "keescook@chromium.org" <keescook@chromium.org>
+Subject: RE: [PATCH 1/4] lockd: convert nlm_host.h_count from atomic_t to
+ refcount_t
+Date: Fri, 22 Dec 2017 09:29:15 +0000
+Message-ID: <2236FBA76BA1254E88B949DDB74E612B802CFB57@IRSMSX102.ger.corp.intel.com>
+References: <1511954146-11793-1-git-send-email-elena.reshetova@intel.com>
+ <1511954146-11793-2-git-send-email-elena.reshetova@intel.com>,<20171221202350.GE31467@fieldses.org>
+In-Reply-To: <20171221202350.GE31467@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-+daW7vOwWHXZr8YKLLFw
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
 
-On Fri, 2017-12-22 at 09:35 +1100, NeilBrown wrote:
-> On Thu, Dec 21 2017, Trond Myklebust wrote:
->=20
-> > On Fri, 2017-12-22 at 07:59 +1100, NeilBrown wrote:
-> > > On Thu, Dec 21 2017, Trond Myklebust wrote:
-> > >=20
-> > > > On Thu, 2017-12-21 at 10:39 -0500, Chuck Lever wrote:
-> > > > > Hi Neil-
-> > > > >=20
-> > > > >=20
-> > > > > > On Dec 20, 2017, at 9:57 PM, NeilBrown <neilb@suse.com>
-> > > > > > wrote:
-> > > > > >=20
-> > > > > >=20
-> > > > > > When an i_op->getattr() call is made on an NFS file
-> > > > > > (typically from a 'stat' family system call), NFS
-> > > > > > will first flush any dirty data to the server.
-> > > > > >=20
-> > > > > > This ensures that the mtime reported is correct and stable,
-> > > > > > but has a performance penalty.  'stat' is normally thought
-> > > > > > to be a quick operation, and imposing this cost can be
-> > > > > > surprising.
-> > > > >=20
-> > > > > To be clear, this behavior is a POSIX requirement.
-> > > > >=20
-> > > > >=20
-> > > > > > I have seen problems when one process is writing a large
-> > > > > > file and another process performs "ls -l" on the containing
-> > > > > > directory and is blocked for as long as it take to flush
-> > > > > > all the dirty data to the server, which can be minutes.
-> > > > >=20
-> > > > > Yes, a well-known annoyance that cannot be addressed
-> > > > > even with a write delegation.
-> > > > >=20
-> > > > >=20
-> > > > > > I have also seen a legacy application which frequently
-> > > > > > calls
-> > > > > > "fstat" on a file that it is writing to.  On a local
-> > > > > > filesystem (and in the Solaris implementation of NFS) this
-> > > > > > fstat call is cheap.  On Linux/NFS, the causes a noticeable
-> > > > > > decrease in throughput.
-> > > > >=20
-> > > > > If the preceding write is small, Linux could be using
-> > > > > a FILE_SYNC write, but Solaris could be using UNSTABLE.
-> > > > >=20
-> > > > >=20
-> > > > > > The only circumstances where an application calling
-> > > > > > 'stat()'
-> > > > > > might get an mtime which is not stable are times when some
-> > > > > > other process is writing to the file and the two processes
-> > > > > > are not using locking to ensure consistency, or when the
-> > > > > > one
-> > > > > > process is both writing and stating.  In neither of these
-> > > > > > cases is it reasonable to expect the mtime to be stable.
-> > > > >=20
-> > > > > I'm not convinced this is a strong enough rationale
-> > > > > for claiming it is safe to disable the existing
-> > > > > behavior.
-> > > > >=20
-> > > > > You've explained cases where the new behavior is
-> > > > > reasonable, but do you have any examples where the
-> > > > > new behavior would be a problem? There must be a
-> > > > > reason why POSIX explicitly requires an up-to-date
-> > > > > mtime.
-> > > > >=20
-> > > > > What guidance would nfs(5) give on when it is safe
-> > > > > to specify the new mount option?
-> > > > >=20
-> > > > >=20
-> > > > > > In the most common cases where mtime is important
-> > > > > > (e.g. make), no other process has the file open, so there
-> > > > > > will be no dirty data and the mtime will be stable.
-> > > > >=20
-> > > > > Isn't it also the case that make is a multi-process
-> > > > > workload where one process modifies a file, then
-> > > > > closes it (which triggers a flush), and then another
-> > > > > process stats the file? The new mount option does
-> > > > > not change the behavior of close(2), does it?
-> > > > >=20
-> > > > >=20
-> > > > > > Rather than unilaterally changing this behavior of 'stat',
-> > > > > > this patch adds a "nosyncflush" mount option to allow
-> > > > > > sysadmins to have applications which are hurt by the
-> > > > > > current
-> > > > > > behavior to disable it.
-> > > > >=20
-> > > > > IMO a mount option is at the wrong granularity. A
-> > > > > mount point will be shared between applications that
-> > > > > can tolerate the non-POSIX behavior and those that
-> > > > > cannot, for instance.
-> > > >=20
-> > > > Agreed.=20
-> > > >=20
-> > > > The other thing to note here is that we now have an embryonic
-> > > > statx()
-> > > > system call, which allows the application itself to decide
-> > > > whether
-> > > > or
-> > > > not it needs up to date values for the atime/ctime/mtime. While
-> > > > we
-> > > > haven't yet plumbed in the NFS side, the intention was always
-> > > > to
-> > > > use
-> > > > that information to turn off the writeback flushing when
-> > > > possible.
-> > >=20
-> > > Yes, if statx() were actually working, we could change the
-> > > application
-> > > to avoid the flush.  But then if changing the application were an
-> > > option, I suspect that - for my current customer issue - we could
-> > > just
-> > > remove the fstat() calls.  I doubt they are really necessary.
-> > > I think programmers often think of stat() (and particularly
-> > > fstat())
-> > > as
-> > > fairly cheap and so they use it whenever convenient.  Only NFS
-> > > violates
-> > > this expectation.
-> > >=20
-> > > Also statx() is only a real solution if/when it gets widely
-> > > used.  Will
-> > > "ls -l" default to AT_STATX_DONT_SYNC ??
-> > >=20
-> > > Apart from the Posix requirement (which only requires that the
-> > > timestamps be updated, not that the data be flushed), do you know
-> > > of
-> > > any
-> > > value gained from flushing data before stat()?
-> > >=20
-> >=20
-> > POSIX requires that timestamps change as part of the read() or
-> > write()
-> > system call.
->=20
-> Does it require that they don't change at other times?
+On Wed, Nov 29, 2017 at 01:15:43PM +0200, Elena Reshetova wrote:
+> atomic_t variables are currently used to implement reference
+> counters with the following properties:
+>  - counter is initialized to 1 using atomic_set()
+>  - a resource is freed upon counter reaching zero
+>  - once counter reaches zero, its further
+>    increments aren't allowed
+>  - counter schema uses basic atomic operations
+>    (set, inc, inc_not_zero, dec_and_test, etc.)
 
-Yes.
+>Whoops, I forgot that this doesn't apply to h_count.
 
-> I see the (arguable) deviation from POSIX that I propose to be
-> completely inline with the close-to-open consistency semantics that
-> NFS
-> already uses, which are weaker than what POSIX might suggest.
->=20
-> As you didn't exactly answer the question, would it be fair to say
-> that
-> you don't know of any reason to flush-before-stat except that POSIX
-> seems to require it?
-
-The reason is to emulate POSIX semantics. That is the only reason, and
-that is why when we added a statx() function, I asked that we allow the
-application to specify that it doesn't need these POSIX semantics.
+>Well, it's confusing, because h_count is actually used in two different
+>ways: depending on whether a nlm_host represents a client or server, it
+>may have the above properties or not.
 
 
---=20
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+So, what happens when it is not having the above properties? Is the object 
+being reused or? 
 
---=-+daW7vOwWHXZr8YKLLFw
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
+I am just trying to understand if there is a way to fix this patch to work for the case
+or is the drop is the only correct way to go. 
 
------BEGIN PGP SIGNATURE-----
+Best Regards,
+Elena.
 
-iQIzBAABCAAdFiEESQctxSBg8JpV8KqEZwvnipYKAPIFAlo8eUsACgkQZwvnipYK
-APLrLg//QIp4JDXLfXu3374Vyc0vzQvDNQVRXmtT5VkpDUzce3y7NBz697iWaODH
-M0Gl8K5sfIT5tg7PnuNt7tkVEEJjh2xP5uWsrsuHxCsy+eLW2PHzER49ErQP0oH9
-iN+RvlH1lvflCWtoWvJHA3Hdozzr6bGCmZVqh20XcuonNPnKnUAvvvkYbK24S3sL
-qfgQ+SazE/RIVF6ZxQbF6qUJQr1eMnFFKaQw+/0JlzF5FPW5R9Zguh21fyvHQ1iw
-zt7YEFxTxzhTrDAGo4txGOfLKTiDjp8zLybgwjDYiqMUNIUnDyyFcnYoQP7jantx
-aEP86W5VFsr4ffXm3ZBu+avTNhmM90MWkE/i4A6fDbdlXU+Csvi/2FEJYtpVvxcm
-r+vlayT5KioFn/A1Il4JJKg4utHHoAliTbKxuzbiKAljWLXxgWKId3x6dvQjhr9Z
-BETPSbqllWwatzHkzGg97sdpoJFcxCncmdW6R7PfkSPxYUUme9uN5kfLaNTdRoGV
-RYI3Uqb0eMvz/mDGSzKoVJh98bxWpj+5YIFg1v8mmSKxVa+GhF/nm2xwDTzvP4B0
-Q2vh0fI/ne8oKdXK23J8eTjgO3EON1SRP66c8tlO3MF9pIKwrbuFKnjNzSgjk88i
-kJN9rIMEXoGYGZERDABulk1MthiF72ExBWpx/Pj4fOf/uQp0O7w=
-=Kg/g
------END PGP SIGNATURE-----
+>Inclined to drop this patch for now.
 
---=-+daW7vOwWHXZr8YKLLFw--
+--b.
 
+>
+> Such atomic variables should be converted to a newly provided
+> refcount_t type and API that prevents accidental counter overflows
+> and underflows. This is important since overflows and underflows
+> can lead to use-after-free situation and be exploitable.
+>
+> The variable nlm_host.h_count  is used as pure reference counter.
+> Convert it to refcount_t and fix up the operations.
+>
+> **Important note for maintainers:
+>
+> Some functions from refcount_t API defined in lib/refcount.c
+> have different memory ordering guarantees than their atomic
+> counterparts.
+> The full comparison can be seen in
+> https://lkml.org/lkml/2017/11/15/57 and it is hopefully soon
+> in state to be merged to the documentation tree.
+> Normally the differences should not matter since refcount_t provides
+> enough guarantees to satisfy the refcounting use cases, but in
+> some rare cases it might matter.
+> Please double check that you don't have some undocumented
+> memory guarantees for this variable usage.
+>
+> For the nlm_host.h_count it might make a difference
+> in following places:
+>  - nlmsvc_release_host(): decrement in refcount_dec()
+>    provides RELEASE ordering, while original atomic_dec()
+>    was fully unordered. Since the change is for better, it
+>    should not matter.
+>  - nlmclnt_release_host(): decrement in refcount_dec_and_test() only
+>    provides RELEASE ordering and control dependency on success
+>    vs. fully ordered atomic counterpart. It doesn't seem to
+>    matter in this case since object freeing happens under mutex
+>    lock anyway.
+>
+> Suggested-by: Kees Cook <keescook@chromium.org>
+> Reviewed-by: David Windsor <dwindsor@gmail.com>
+> Reviewed-by: Hans Liljestrand <ishkamiel@gmail.com>
+> Signed-off-by: Elena Reshetova <elena.reshetova@intel.com>
+> ---
+>  fs/lockd/host.c             | 14 +++++++-------
+>  include/linux/lockd/lockd.h |  3 ++-
+>  2 files changed, 9 insertions(+), 8 deletions(-)
+>
+> diff --git a/fs/lockd/host.c b/fs/lockd/host.c
+> index 826a891..11b6832 100644
+> --- a/fs/lockd/host.c
+> +++ b/fs/lockd/host.c
+> @@ -151,7 +151,7 @@ static struct nlm_host *nlm_alloc_host(struct nlm_lookup_host_info *ni,
+>       host->h_state      = 0;
+>       host->h_nsmstate   = 0;
+>       host->h_pidcount   = 0;
+> -     atomic_set(&host->h_count, 1);
+> +     refcount_set(&host->h_count, 1);
+>       mutex_init(&host->h_mutex);
+>       host->h_nextrebind = now + NLM_HOST_REBIND;
+>       host->h_expires    = now + NLM_HOST_EXPIRE;
+> @@ -290,7 +290,7 @@ void nlmclnt_release_host(struct nlm_host *host)
+>
+>       WARN_ON_ONCE(host->h_server);
+>
+> -     if (atomic_dec_and_test(&host->h_count)) {
+> +     if (refcount_dec_and_test(&host->h_count)) {
+>               WARN_ON_ONCE(!list_empty(&host->h_lockowners));
+>               WARN_ON_ONCE(!list_empty(&host->h_granted));
+>               WARN_ON_ONCE(!list_empty(&host->h_reclaim));
+> @@ -410,7 +410,7 @@ void nlmsvc_release_host(struct nlm_host *host)
+>       dprintk("lockd: release server host %s\n", host->h_name);
+>
+>       WARN_ON_ONCE(!host->h_server);
+> -     atomic_dec(&host->h_count);
+> +     refcount_dec(&host->h_count);
+>  }
+>
+>  /*
+> @@ -504,7 +504,7 @@ struct nlm_host * nlm_get_host(struct nlm_host *host)
+>  {
+>       if (host) {
+>               dprintk("lockd: get host %s\n", host->h_name);
+> -             atomic_inc(&host->h_count);
+> +             refcount_inc(&host->h_count);
+>               host->h_expires = jiffies + NLM_HOST_EXPIRE;
+>       }
+>       return host;
+> @@ -593,7 +593,7 @@ static void nlm_complain_hosts(struct net *net)
+>               if (net && host->net != net)
+>                       continue;
+>               dprintk("       %s (cnt %d use %d exp %ld net %x)\n",
+> -                     host->h_name, atomic_read(&host->h_count),
+> +                     host->h_name, refcount_read(&host->h_count),
+>                       host->h_inuse, host->h_expires, host->net->ns.inum);
+>       }
+>  }
+> @@ -662,11 +662,11 @@ nlm_gc_hosts(struct net *net)
+>       for_each_host_safe(host, next, chain, nlm_server_hosts) {
+>               if (net && host->net != net)
+>                       continue;
+> -             if (atomic_read(&host->h_count) || host->h_inuse
+> +             if (refcount_read(&host->h_count) || host->h_inuse
+>                || time_before(jiffies, host->h_expires)) {
+>                       dprintk("nlm_gc_hosts skipping %s "
+>                               "(cnt %d use %d exp %ld net %x)\n",
+> -                             host->h_name, atomic_read(&host->h_count),
+> +                             host->h_name, refcount_read(&host->h_count),
+>                               host->h_inuse, host->h_expires,
+>                               host->net->ns.inum);
+>                       continue;
+> diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
+> index d7d313f..39dfeea 100644
+> --- a/include/linux/lockd/lockd.h
+> +++ b/include/linux/lockd/lockd.h
+> @@ -17,6 +17,7 @@
+>  #include <net/ipv6.h>
+>  #include <linux/fs.h>
+>  #include <linux/kref.h>
+> +#include <linux/refcount.h>
+>  #include <linux/utsname.h>
+>  #include <linux/lockd/bind.h>
+>  #include <linux/lockd/xdr.h>
+> @@ -58,7 +59,7 @@ struct nlm_host {
+>       u32                     h_state;        /* pseudo-state counter */
+>       u32                     h_nsmstate;     /* true remote NSM state */
+>       u32                     h_pidcount;     /* Pseudopids */
+> -     atomic_t                h_count;        /* reference count */
+> +     refcount_t              h_count;        /* reference count */
+>       struct mutex            h_mutex;        /* mutex for pmap binding */
+>       unsigned long           h_nextrebind;   /* next portmap call */
+>       unsigned long           h_expires;      /* eligible for GC */
+> --
+> 2.7.4
