@@ -1,182 +1,144 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:56432 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756209AbdLWAQt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Dec 2017 19:16:49 -0500
-Date: Fri, 22 Dec 2017 16:05:14 -0800
-From: "Darrick J. Wong" <darrick.wong@oracle.com>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        david@fromorbit.com, linux-btrfs@vger.kernel.org, clm@fb.com,
-        jbacik@fb.com, dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-Subject: Re: [PATCH v4 14/19] xfs: convert to new i_version API
-Message-ID: <20171223000514.GE12613@magnolia>
-References: <20171222120556.7435-1-jlayton@kernel.org>
- <20171222120556.7435-15-jlayton@kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171222120556.7435-15-jlayton@kernel.org>
+Received: from mail.kernel.org ([198.145.29.99]:41046 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750810AbdLWNQ5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 23 Dec 2017 08:16:57 -0500
+Message-ID: <1514035013.3425.8.camel@kernel.org>
+Subject: Re: [PATCH/RFC] NFS: add nostatflush mount option.
+From: Jeff Layton <jlayton@kernel.org>
+To: NeilBrown <neilb@suse.com>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+Cc: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Date: Sat, 23 Dec 2017 08:16:53 -0500
+In-Reply-To: <87efnnkda2.fsf@notabene.neil.brown.name>
+References: <87k1xgkct1.fsf@notabene.neil.brown.name>
+         <4B4DA4D4-8068-4C10-92BE-F03632522C75@oracle.com>
+         <1513871689.11836.3.camel@primarydata.com>
+         <87efnnkda2.fsf@notabene.neil.brown.name>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 22, 2017 at 07:05:51AM -0500, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@redhat.com>
+On Fri, 2017-12-22 at 07:59 +1100, NeilBrown wrote:
+> On Thu, Dec 21 2017, Trond Myklebust wrote:
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/xfs/libxfs/xfs_inode_buf.c | 7 +++++--
->  fs/xfs/xfs_icache.c           | 5 +++--
->  fs/xfs/xfs_inode.c            | 3 ++-
->  fs/xfs/xfs_inode_item.c       | 3 ++-
->  fs/xfs/xfs_trans_inode.c      | 4 +++-
->  5 files changed, 15 insertions(+), 7 deletions(-)
+> > On Thu, 2017-12-21 at 10:39 -0500, Chuck Lever wrote:
+> > > Hi Neil-
+> > > 
+> > > 
+> > > > On Dec 20, 2017, at 9:57 PM, NeilBrown <neilb@suse.com> wrote:
+> > > > 
+> > > > 
+> > > > When an i_op->getattr() call is made on an NFS file
+> > > > (typically from a 'stat' family system call), NFS
+> > > > will first flush any dirty data to the server.
+> > > > 
+> > > > This ensures that the mtime reported is correct and stable,
+> > > > but has a performance penalty.  'stat' is normally thought
+> > > > to be a quick operation, and imposing this cost can be
+> > > > surprising.
+> > > 
+> > > To be clear, this behavior is a POSIX requirement.
+> > > 
+> > > 
+> > > > I have seen problems when one process is writing a large
+> > > > file and another process performs "ls -l" on the containing
+> > > > directory and is blocked for as long as it take to flush
+> > > > all the dirty data to the server, which can be minutes.
+> > > 
+> > > Yes, a well-known annoyance that cannot be addressed
+> > > even with a write delegation.
+> > > 
+> > > 
+> > > > I have also seen a legacy application which frequently calls
+> > > > "fstat" on a file that it is writing to.  On a local
+> > > > filesystem (and in the Solaris implementation of NFS) this
+> > > > fstat call is cheap.  On Linux/NFS, the causes a noticeable
+> > > > decrease in throughput.
+> > > 
+> > > If the preceding write is small, Linux could be using
+> > > a FILE_SYNC write, but Solaris could be using UNSTABLE.
+> > > 
+> > > 
+> > > > The only circumstances where an application calling 'stat()'
+> > > > might get an mtime which is not stable are times when some
+> > > > other process is writing to the file and the two processes
+> > > > are not using locking to ensure consistency, or when the one
+> > > > process is both writing and stating.  In neither of these
+> > > > cases is it reasonable to expect the mtime to be stable.
+> > > 
+> > > I'm not convinced this is a strong enough rationale
+> > > for claiming it is safe to disable the existing
+> > > behavior.
+> > > 
+> > > You've explained cases where the new behavior is
+> > > reasonable, but do you have any examples where the
+> > > new behavior would be a problem? There must be a
+> > > reason why POSIX explicitly requires an up-to-date
+> > > mtime.
+> > > 
+> > > What guidance would nfs(5) give on when it is safe
+> > > to specify the new mount option?
+> > > 
+> > > 
+> > > > In the most common cases where mtime is important
+> > > > (e.g. make), no other process has the file open, so there
+> > > > will be no dirty data and the mtime will be stable.
+> > > 
+> > > Isn't it also the case that make is a multi-process
+> > > workload where one process modifies a file, then
+> > > closes it (which triggers a flush), and then another
+> > > process stats the file? The new mount option does
+> > > not change the behavior of close(2), does it?
+> > > 
+> > > 
+> > > > Rather than unilaterally changing this behavior of 'stat',
+> > > > this patch adds a "nosyncflush" mount option to allow
+> > > > sysadmins to have applications which are hurt by the current
+> > > > behavior to disable it.
+> > > 
+> > > IMO a mount option is at the wrong granularity. A
+> > > mount point will be shared between applications that
+> > > can tolerate the non-POSIX behavior and those that
+> > > cannot, for instance.
+> > 
+> > Agreed. 
+> > 
+> > The other thing to note here is that we now have an embryonic statx()
+> > system call, which allows the application itself to decide whether or
+> > not it needs up to date values for the atime/ctime/mtime. While we
+> > haven't yet plumbed in the NFS side, the intention was always to use
+> > that information to turn off the writeback flushing when possible.
 > 
-> diff --git a/fs/xfs/libxfs/xfs_inode_buf.c b/fs/xfs/libxfs/xfs_inode_buf.c
-> index 6b7989038d75..b9c0bf80669c 100644
-> --- a/fs/xfs/libxfs/xfs_inode_buf.c
-> +++ b/fs/xfs/libxfs/xfs_inode_buf.c
-> @@ -32,6 +32,8 @@
->  #include "xfs_ialloc.h"
->  #include "xfs_dir2.h"
->  
-> +#include <linux/iversion.h>
-
-/me wonders if these ought to be in fs/xfs/xfs_linux.h since this is
-libxfs, but seeing as I already let that horse escape I might as well
-clean it up separately.
-
-Looks ok,
-Acked-by: Darrick J. Wong <darrick.wong@oracle.com>
-
---D
-
-> +
->  /*
->   * Check that none of the inode's in the buffer have a next
->   * unlinked field of 0.
-> @@ -264,7 +266,8 @@ xfs_inode_from_disk(
->  	to->di_flags	= be16_to_cpu(from->di_flags);
->  
->  	if (to->di_version == 3) {
-> -		inode->i_version = be64_to_cpu(from->di_changecount);
-> +		inode_set_iversion_queried(inode,
-> +					   be64_to_cpu(from->di_changecount));
->  		to->di_crtime.t_sec = be32_to_cpu(from->di_crtime.t_sec);
->  		to->di_crtime.t_nsec = be32_to_cpu(from->di_crtime.t_nsec);
->  		to->di_flags2 = be64_to_cpu(from->di_flags2);
-> @@ -314,7 +317,7 @@ xfs_inode_to_disk(
->  	to->di_flags = cpu_to_be16(from->di_flags);
->  
->  	if (from->di_version == 3) {
-> -		to->di_changecount = cpu_to_be64(inode->i_version);
-> +		to->di_changecount = cpu_to_be64(inode_peek_iversion(inode));
->  		to->di_crtime.t_sec = cpu_to_be32(from->di_crtime.t_sec);
->  		to->di_crtime.t_nsec = cpu_to_be32(from->di_crtime.t_nsec);
->  		to->di_flags2 = cpu_to_be64(from->di_flags2);
-> diff --git a/fs/xfs/xfs_icache.c b/fs/xfs/xfs_icache.c
-> index 43005fbe8b1e..4c315adb05e6 100644
-> --- a/fs/xfs/xfs_icache.c
-> +++ b/fs/xfs/xfs_icache.c
-> @@ -37,6 +37,7 @@
->  
->  #include <linux/kthread.h>
->  #include <linux/freezer.h>
-> +#include <linux/iversion.h>
->  
->  /*
->   * Allocate and initialise an xfs_inode.
-> @@ -293,14 +294,14 @@ xfs_reinit_inode(
->  	int		error;
->  	uint32_t	nlink = inode->i_nlink;
->  	uint32_t	generation = inode->i_generation;
-> -	uint64_t	version = inode->i_version;
-> +	uint64_t	version = inode_peek_iversion(inode);
->  	umode_t		mode = inode->i_mode;
->  
->  	error = inode_init_always(mp->m_super, inode);
->  
->  	set_nlink(inode, nlink);
->  	inode->i_generation = generation;
-> -	inode->i_version = version;
-> +	inode_set_iversion_queried(inode, version);
->  	inode->i_mode = mode;
->  	return error;
->  }
-> diff --git a/fs/xfs/xfs_inode.c b/fs/xfs/xfs_inode.c
-> index 801274126648..dfc5e60d8af3 100644
-> --- a/fs/xfs/xfs_inode.c
-> +++ b/fs/xfs/xfs_inode.c
-> @@ -16,6 +16,7 @@
->   * Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
->   */
->  #include <linux/log2.h>
-> +#include <linux/iversion.h>
->  
->  #include "xfs.h"
->  #include "xfs_fs.h"
-> @@ -833,7 +834,7 @@ xfs_ialloc(
->  	ip->i_d.di_flags = 0;
->  
->  	if (ip->i_d.di_version == 3) {
-> -		inode->i_version = 1;
-> +		inode_set_iversion(inode, 1);
->  		ip->i_d.di_flags2 = 0;
->  		ip->i_d.di_cowextsize = 0;
->  		ip->i_d.di_crtime.t_sec = (int32_t)tv.tv_sec;
-> diff --git a/fs/xfs/xfs_inode_item.c b/fs/xfs/xfs_inode_item.c
-> index 6ee5c3bf19ad..7571abf5dfb3 100644
-> --- a/fs/xfs/xfs_inode_item.c
-> +++ b/fs/xfs/xfs_inode_item.c
-> @@ -30,6 +30,7 @@
->  #include "xfs_buf_item.h"
->  #include "xfs_log.h"
->  
-> +#include <linux/iversion.h>
->  
->  kmem_zone_t	*xfs_ili_zone;		/* inode log item zone */
->  
-> @@ -354,7 +355,7 @@ xfs_inode_to_log_dinode(
->  	to->di_next_unlinked = NULLAGINO;
->  
->  	if (from->di_version == 3) {
-> -		to->di_changecount = inode->i_version;
-> +		to->di_changecount = inode_peek_iversion(inode);
->  		to->di_crtime.t_sec = from->di_crtime.t_sec;
->  		to->di_crtime.t_nsec = from->di_crtime.t_nsec;
->  		to->di_flags2 = from->di_flags2;
-> diff --git a/fs/xfs/xfs_trans_inode.c b/fs/xfs/xfs_trans_inode.c
-> index daa7615497f9..225544327c4f 100644
-> --- a/fs/xfs/xfs_trans_inode.c
-> +++ b/fs/xfs/xfs_trans_inode.c
-> @@ -28,6 +28,8 @@
->  #include "xfs_inode_item.h"
->  #include "xfs_trace.h"
->  
-> +#include <linux/iversion.h>
-> +
->  /*
->   * Add a locked inode to the transaction.
->   *
-> @@ -117,7 +119,7 @@ xfs_trans_log_inode(
->  	 */
->  	if (!(ip->i_itemp->ili_item.li_desc->lid_flags & XFS_LID_DIRTY) &&
->  	    IS_I_VERSION(VFS_I(ip))) {
-> -		VFS_I(ip)->i_version++;
-> +		inode_inc_iversion(VFS_I(ip));
->  		flags |= XFS_ILOG_CORE;
->  	}
->  
-> -- 
-> 2.14.3
+> Yes, if statx() were actually working, we could change the application
+> to avoid the flush.  But then if changing the application were an
+> option, I suspect that - for my current customer issue - we could just
+> remove the fstat() calls.  I doubt they are really necessary.
+> I think programmers often think of stat() (and particularly fstat()) as
+> fairly cheap and so they use it whenever convenient.  Only NFS violates
+> this expectation.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-xfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Also statx() is only a real solution if/when it gets widely used.  Will
+> "ls -l" default to AT_STATX_DONT_SYNC ??
+> 
+
+Maybe. Eventually, I could see glibc converting normal stat/fstat/etc.
+to use a statx() syscall under the hood (similar to how stat syscalls on
+32-bit arches will use stat64 in most cases).
+
+With that, we could look at any number of ways to sneak a "don't flush"
+flag into the call. Maybe an environment variable that causes the stat
+syscall wrapper to add it? I think there are possibilities there that
+don't necessarily require recompiling applications.
+
+> Apart from the Posix requirement (which only requires that the
+> timestamps be updated, not that the data be flushed), do you know of any
+> value gained from flushing data before stat()?
+> 
+-- 
+Jeff Layton <jlayton@kernel.org>
