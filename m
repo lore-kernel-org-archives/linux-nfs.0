@@ -1,92 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:40046 "EHLO mail.kernel.org"
+Received: from mout.gmx.net ([212.227.17.22]:51116 "EHLO mout.gmx.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750913AbeABTDV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 2 Jan 2018 14:03:21 -0500
-Message-ID: <1514919796.3462.23.camel@kernel.org>
-Subject: Re: [PATCH v4 16/19] fs: only set S_VERSION when updating times if
- necessary
-From: Jeff Layton <jlayton@kernel.org>
-To: Jan Kara <jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-Date: Tue, 02 Jan 2018 14:03:16 -0500
-In-Reply-To: <20180102165034.GA4911@quack2.suse.cz>
-References: <20171222120556.7435-1-jlayton@kernel.org>
-         <20171222120556.7435-17-jlayton@kernel.org>
-         <20180102165034.GA4911@quack2.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
+        id S1750865AbeABUaN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 2 Jan 2018 15:30:13 -0500
+Message-ID: <1514924997.6612.6.camel@gmx.de>
+Subject: [patch] fs/nfs: Add a resched point to nfs_commit_release_pages()
+From: Mike Galbraith <efault@gmx.de>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "bfields@fieldses.org" <bfields@fieldses.org>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+Date: Tue, 02 Jan 2018 21:29:57 +0100
+In-Reply-To: <1513617866.4581.6.camel@primarydata.com>
+References: <1513610231.7998.13.camel@gmx.de>
+         <1513611112.7113.1.camel@gmx.de> <20171218163559.GA11829@fieldses.org>
+         <1513616405.7113.18.camel@gmx.de> <1513617866.4581.6.camel@primarydata.com>
+Content-Type: text/plain; charset="ISO-8859-15"
 Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2018-01-02 at 17:50 +0100, Jan Kara wrote:
-> On Fri 22-12-17 07:05:53, Jeff Layton wrote:
-> > From: Jeff Layton <jlayton@redhat.com>
+On Mon, 2017-12-18 at 17:24 +0000, Trond Myklebust wrote:
+> On Mon, 2017-12-18 at 18:00 +0100, Mike Galbraith wrote:
+> > On Mon, 2017-12-18 at 11:35 -0500, J. Bruce Fields wrote:
+> > > 
+> > > Like I say, I don't really understand the issues here, so it's more
+> > > a
+> > > question than an objection....  (I don't know any reason a
+> > > cond_resched() would be bad there.)
 > > 
-> > We only really need to update i_version if someone has queried for it
-> > since we last incremented it. By doing that, we can avoid having to
-> > update the inode if the times haven't changed.
+> > Think of it this way: what all can be queued up behind that kworker
+> > that is hogging CPU for huge swaths of time?  It's not only userspace
+> > that suffers.
 > > 
-> > If the times have changed, then we go ahead and forcibly increment the
-> > counter, under the assumption that we'll be going to the storage
-> > anyway, and the increment itself is relatively cheap.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/inode.c | 10 +++++++---
-> >  1 file changed, 7 insertions(+), 3 deletions(-)
-> > 
-> > diff --git a/fs/inode.c b/fs/inode.c
-> > index 19e72f500f71..2fa920188759 100644
-> > --- a/fs/inode.c
-> > +++ b/fs/inode.c
-> > @@ -1635,17 +1635,21 @@ static int relatime_need_update(const struct path *path, struct inode *inode,
-> >  int generic_update_time(struct inode *inode, struct timespec *time, int flags)
-> >  {
-> >  	int iflags = I_DIRTY_TIME;
-> > +	bool dirty = false;
-> >  
-> >  	if (flags & S_ATIME)
-> >  		inode->i_atime = *time;
-> >  	if (flags & S_VERSION)
-> > -		inode_inc_iversion(inode);
-> > +		dirty |= inode_maybe_inc_iversion(inode, dirty);
-> >  	if (flags & S_CTIME)
-> >  		inode->i_ctime = *time;
-> >  	if (flags & S_MTIME)
-> >  		inode->i_mtime = *time;
-> > +	if ((flags & (S_ATIME | S_CTIME | S_MTIME)) &&
-> > +	    !(inode->i_sb->s_flags & SB_LAZYTIME))
-> > +		dirty = true;
 > 
-> When you pass 'dirty' to inode_maybe_inc_iversion(), it is always false.
-> Maybe this condition should be at the beginning of the function? Once you
-> fix that the patch looks good so you can add:
-> 
-> Reviewed-by: Jan Kara <jack@suse.cz>
-> 
+> Any cond_sched() belongs in the loop in nfs_commit_release_pages()
+> (where it can be mitigated) rather than in a function whose purpose is
+> to free memory. There is no reason to call it from the writeback or
+> readpages code.
 
-Thanks for the review! I've fixed it in my tree. I'll not re-post the
-set unless I have to make another significant change or someone requests
-it.
+Just in case NFS folks are expecting a patchlet, trash otherwise.
 
-I did make one other change, and that was to drop the "const" qualifiers
-on the integer arguments in the new API. David Howells pointed out that
-they don't really help anything, and the prototypes look cleaner without
-them.
+fs/nfs: Add a resched point to nfs_commit_release_pages()
 
-This set is now in linux-next as well, so I'm going to try to get this
-merged into v4.16, assuming no problems between now and the merge
-window.
--- 
-Jeff Layton <jlayton@kernel.org>
+During heavy NFS write, kworkers can do very large amounts of work
+without scheduling (82ms traced).  Add a resched point.
+
+Signed-off-by: Mike Galbraith <efault@gmx.de>
+Suggested-by: Trond Myklebust <trondmy@primarydata.com>
+---
+ fs/nfs/write.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1837,6 +1837,7 @@ static void nfs_commit_release_pages(str
+ 		set_bit(NFS_CONTEXT_RESEND_WRITES, &req->wb_context->flags);
+ 	next:
+ 		nfs_unlock_and_release_request(req);
++		cond_resched();
+ 	}
+ 	nfss = NFS_SERVER(data->inode);
+ 	if (atomic_long_read(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
