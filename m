@@ -1,39 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:39954 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751307AbeACQ2S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 3 Jan 2018 11:28:18 -0500
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <1514919462.3462.18.camel@kernel.org>
-References: <1514919462.3462.18.camel@kernel.org> <20171222120556.7435-6-jlayton@kernel.org> <20171222120556.7435-1-jlayton@kernel.org> <5112.1514913610@warthog.procyon.org.uk>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, jaltman@auristor.com
-Subject: Re: [PATCH v4 05/19] afs: convert to new i_version API
+Received: from aserp2120.oracle.com ([141.146.126.78]:45606 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751121AbeACRZm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 3 Jan 2018 12:25:42 -0500
+From: Bill Baker <Bill.Baker@Oracle.com>
+Subject: NO Connectathon for 2018 ...
+To: nfsv4@ietf.org
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <c759a8f9-5ccd-5da6-c2cb-ecba83d18650@Oracle.com>
+Date: Wed, 3 Jan 2018 11:25:42 -0600
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Wed, 03 Jan 2018 16:28:12 +0000
-Message-ID: <14423.1514996892@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jeff Layton <jlayton@kernel.org> wrote:
 
-> Thanks! I updated that part of the the commit log to read:
-> 
->     Note that AFS has quite a different definition for this counter. AFS
->     only increments it on changes to the data to the data in regular files
->     and contents of the directories. Inode metadata changes do not result
->     in a version increment.
+Greetings,
 
-Sounds good.
+After 40 years (!), I am sad to say that connectathon is
+canceled for 2018.
 
-David
+Please watch these mailing lists for more information regarding
+the return of a second NFSv4 bake-a-thon in addition to the one
+hosted by RedHat towards the end of September in Westford, MA.
+
+I've updated the connectathon website to reflect the cancellation:
+
+http://www.connectathon.info
+
+Feel free to forward this to other interested parties.
+
+Long live NFS,
+-- 
+Bill Baker - Oracle Solaris NFS development
