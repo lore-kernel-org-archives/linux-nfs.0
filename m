@@ -1,118 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:60921 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.99]:43340 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750778AbeADFL2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 4 Jan 2018 00:11:28 -0500
-From: NeilBrown <neilb@suse.com>
-To: Andreas Radke <andreas.radke@mailbox.org>,
-        Steve Dickson <SteveD@RedHat.com>
-To: Jeff Layton <jlayton@kernel.org>
-Date: Thu, 04 Jan 2018 16:11:19 +1100
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: ANNOUNCE: nfs-utils-2.3.1 released.
-In-Reply-To: <20171221212516.031618d8@laptop64.home>
-References: <1a56bb72-cc10-ba74-2b04-4df588804ef5@RedHat.com> <20171221212516.031618d8@laptop64.home>
-Message-ID: <87a7xudx8o.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+        id S1752679AbeADNeh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 4 Jan 2018 08:34:37 -0500
+Message-ID: <1515072872.20282.19.camel@kernel.org>
+Subject: Re: [PATCH v4 12/19] ocfs2: convert to new i_version API
+From: Jeff Layton <jlayton@kernel.org>
+To: linux-fsdevel@vger.kernel.org
+Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
+        linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com
+Date: Thu, 04 Jan 2018 08:34:32 -0500
+In-Reply-To: <20171222120556.7435-13-jlayton@kernel.org>
+References: <20171222120556.7435-1-jlayton@kernel.org>
+         <20171222120556.7435-13-jlayton@kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
+On Fri, 2017-12-22 at 07:05 -0500, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Reviewed-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ocfs2/dir.c          | 15 ++++++++-------
+>  fs/ocfs2/inode.c        |  3 ++-
+>  fs/ocfs2/namei.c        |  3 ++-
+>  fs/ocfs2/quota_global.c |  3 ++-
+>  4 files changed, 14 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/ocfs2/dir.c b/fs/ocfs2/dir.c
+> index febe6312ceff..32f9c72dff17 100644
+> --- a/fs/ocfs2/dir.c
+> +++ b/fs/ocfs2/dir.c
+> @@ -42,6 +42,7 @@
+>  #include <linux/highmem.h>
+>  #include <linux/quotaops.h>
+>  #include <linux/sort.h>
+> +#include <linux/iversion.h>
+>  
+>  #include <cluster/masklog.h>
+>  
+> @@ -1174,7 +1175,7 @@ static int __ocfs2_delete_entry(handle_t *handle, struct inode *dir,
+>  				le16_add_cpu(&pde->rec_len,
+>  						le16_to_cpu(de->rec_len));
+>  			de->inode = 0;
+> -			dir->i_version++;
+> +			inode_inc_iversion(dir);
+>  			ocfs2_journal_dirty(handle, bh);
+>  			goto bail;
+>  		}
+> @@ -1729,7 +1730,7 @@ int __ocfs2_add_entry(handle_t *handle,
+>  			if (ocfs2_dir_indexed(dir))
+>  				ocfs2_recalc_free_list(dir, handle, lookup);
+>  
+> -			dir->i_version++;
+> +			inode_inc_iversion(dir);
+>  			ocfs2_journal_dirty(handle, insert_bh);
+>  			retval = 0;
+>  			goto bail;
+> @@ -1775,7 +1776,7 @@ static int ocfs2_dir_foreach_blk_id(struct inode *inode,
+>  		 * readdir(2), then we might be pointing to an invalid
+>  		 * dirent right now.  Scan from the start of the block
+>  		 * to make sure. */
+> -		if (*f_version != inode->i_version) {
+> +		if (inode_cmp_iversion(inode, *f_version)) {
+>  			for (i = 0; i < i_size_read(inode) && i < offset; ) {
+>  				de = (struct ocfs2_dir_entry *)
+>  					(data->id_data + i);
+> @@ -1791,7 +1792,7 @@ static int ocfs2_dir_foreach_blk_id(struct inode *inode,
+>  				i += le16_to_cpu(de->rec_len);
+>  			}
+>  			ctx->pos = offset = i;
+> -			*f_version = inode->i_version;
+> +			*f_version = inode_query_iversion(inode);
+>  		}
+>  
+>  		de = (struct ocfs2_dir_entry *) (data->id_data + ctx->pos);
+> @@ -1869,7 +1870,7 @@ static int ocfs2_dir_foreach_blk_el(struct inode *inode,
+>  		 * readdir(2), then we might be pointing to an invalid
+>  		 * dirent right now.  Scan from the start of the block
+>  		 * to make sure. */
+> -		if (*f_version != inode->i_version) {
+> +		if (inode_cmp_iversion(inode, *f_version)) {
+>  			for (i = 0; i < sb->s_blocksize && i < offset; ) {
+>  				de = (struct ocfs2_dir_entry *) (bh->b_data + i);
+>  				/* It's too expensive to do a full
+> @@ -1886,7 +1887,7 @@ static int ocfs2_dir_foreach_blk_el(struct inode *inode,
+>  			offset = i;
+>  			ctx->pos = (ctx->pos & ~(sb->s_blocksize - 1))
+>  				| offset;
+> -			*f_version = inode->i_version;
+> +			*f_version = inode_query_iversion(inode);
+>  		}
+>  
+>  		while (ctx->pos < i_size_read(inode)
+> @@ -1940,7 +1941,7 @@ static int ocfs2_dir_foreach_blk(struct inode *inode, u64 *f_version,
+>   */
+>  int ocfs2_dir_foreach(struct inode *inode, struct dir_context *ctx)
+>  {
+> -	u64 version = inode->i_version;
+> +	u64 version = inode_query_iversion(inode);
+>  	ocfs2_dir_foreach_blk(inode, &version, ctx, true);
+>  	return 0;
+>  }
+> diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c
+> index 1a1e0078ab38..d51b80edd972 100644
+> --- a/fs/ocfs2/inode.c
+> +++ b/fs/ocfs2/inode.c
+> @@ -28,6 +28,7 @@
+>  #include <linux/highmem.h>
+>  #include <linux/pagemap.h>
+>  #include <linux/quotaops.h>
+> +#include <linux/iversion.h>
+>  
+>  #include <asm/byteorder.h>
+>  
+> @@ -302,7 +303,7 @@ void ocfs2_populate_inode(struct inode *inode, struct ocfs2_dinode *fe,
+>  	OCFS2_I(inode)->ip_attr = le32_to_cpu(fe->i_attr);
+>  	OCFS2_I(inode)->ip_dyn_features = le16_to_cpu(fe->i_dyn_features);
+>  
+> -	inode->i_version = 1;
+> +	inode_set_iversion(inode, 1);
+>  	inode->i_generation = le32_to_cpu(fe->i_generation);
+>  	inode->i_rdev = huge_decode_dev(le64_to_cpu(fe->id1.dev1.i_rdev));
+>  	inode->i_mode = le16_to_cpu(fe->i_mode);
+> diff --git a/fs/ocfs2/namei.c b/fs/ocfs2/namei.c
+> index 3b0a10d9b36f..c801eddc4bf3 100644
+> --- a/fs/ocfs2/namei.c
+> +++ b/fs/ocfs2/namei.c
+> @@ -41,6 +41,7 @@
+>  #include <linux/slab.h>
+>  #include <linux/highmem.h>
+>  #include <linux/quotaops.h>
+> +#include <linux/iversion.h>
+>  
+>  #include <cluster/masklog.h>
+>  
+> @@ -1520,7 +1521,7 @@ static int ocfs2_rename(struct inode *old_dir,
+>  			mlog_errno(status);
+>  			goto bail;
+>  		}
+> -		new_dir->i_version++;
+> +		inode_inc_iversion(new_dir);
+>  
+>  		if (S_ISDIR(new_inode->i_mode))
+>  			ocfs2_set_links_count(newfe, 0);
+> diff --git a/fs/ocfs2/quota_global.c b/fs/ocfs2/quota_global.c
+> index b39d14cbfa34..d03411784aaf 100644
+> --- a/fs/ocfs2/quota_global.c
+> +++ b/fs/ocfs2/quota_global.c
+> @@ -12,6 +12,7 @@
+>  #include <linux/writeback.h>
+>  #include <linux/workqueue.h>
+>  #include <linux/llist.h>
+> +#include <linux/iversion.h>
+>  
+>  #include <cluster/masklog.h>
+>  
+> @@ -289,7 +290,7 @@ ssize_t ocfs2_quota_write(struct super_block *sb, int type,
+>  		mlog_errno(err);
+>  		return err;
+>  	}
+> -	gqinode->i_version++;
+> +	inode_query_iversion(gqinode);
 
-On Thu, Dec 21 2017, Andreas Radke wrote:
+Bug here: this should have been an inode_inc_iversion. Fixed in tree.
 
-> This new version fails make check here now:
->
-> nsm_client.c:147:12: warning: this statement may fall through [-Wimplicit=
--fallthrough=3D]
->     my_prog =3D atoi(optarg);
->     ~~~~~~~~^~~~~~~~~~~~~~
-> nsm_client.c:148:3: note: here
->    case 'v':
->    ^~~~
+>  	ocfs2_mark_inode_dirty(handle, gqinode, oinfo->dqi_gqi_bh);
+>  	return len;
+>  }
 
-What do you think Jeff, you introduced this code 8 years ago and this
-switch statement has always been broken.
-Does anyone use this code?  Should we fix it, it just remove it?
-
-
-
-> make[4]: *** No rule to make target '../../support/nfs/libnfs.a',
-> needed by 'nsm_client'.
-
-This looks like a bug in automake???  ../../support/nfs/libnfs.a is
-listed as _LDADD
-
-https://www.gnu.org/software/automake/manual/html_node/Program-and-Library-=
-Variables.html#index-maude_005fAR
-
-which should add it to the 'ld' command, but I don't see that it should
-be added as a dependency.
-
-> make[4]: Target 'nsm_client' not remade because of errors.
-> make[3]: *** [Makefile:565: check-am] Error 2
-> make[2]: *** [Makefile:567: check] Error 2
-> statdb_dump.c: In function =E2=80=98dump_host=E2=80=99:
-> statdb_dump.c:38:17: warning: unused parameter =E2=80=98timestamp=E2=80=
-=99 [-Wunused-parameter]
->     const time_t timestamp)
->                  ^~~~~~~~~
-
-This arg has to be there because it is part of an external API.
-As the function is passed as an arg to an extern function, gcc could
-deduce that the signature cannot be changed just because the arg isn't
-needed.
-
-
-> statdb_dump.c: In function =E2=80=98main=E2=80=99:
-> statdb_dump.c:91:10: warning: unused parameter =E2=80=98argc=E2=80=99 [-W=
-unused-parameter]
->  main(int argc, char **argv)
->           ^~~~
-
-This arg doesn't need to be used (obviously) but cannot be removed.
-So this is a dumb warning too.
-
-Maybe we should add __attribute__((unused)) ??
-
-> make[3]: *** No rule to make target '../support/nfs/libnfs.a', needed by =
-'statdb_dump'.
-> make[3]: Target 'statdb_dump' not remade because of errors.
-> make[2]: *** [Makefile:1028: check-am] Error 2
-> make[1]: *** [Makefile:717: check-recursive] Error 1
-> make[1]: Target 'check' not remade because of errors.
->
-
-I assume you get these errors by running "make check" without first
-running "make"??
-If you run "make" first, the errors go away, and you are left with the
-warnings.
-
-Maybe they are worth fixing .... let's see what Jeff thinks.
-
-NeilBrown
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlpNt3gACgkQOeye3VZi
-gbmYJRAAjp728fSfv12y8xqrNo69Luzb/LJTe8uZkhdp77SKzh9182lXCzAHOKW5
-o/RKNMU+QaIcgYUb4wgAYxpCP3o8ZbLVsCrC0YfFEShV6Efj7+deFLKdjn5YSpQz
-XIGUjQedKJDfukeOzCTUxLo0RUaxkDaxHqa8VAHINY6HY/swI2CkJLGvcDdGl4GJ
-jl947RpoCDm7F1QyNXcx0vN4iQxgBbhPseAGGDRgELMa1spVs9tfUUmE7dGWlDqr
-NJewAdNNnRIia5+sc2BKxpwbTCNLRKDbOA8ZfeOFyLUCv6y0fJuyKKDkb/GtQm62
-p0RjIxG00NQpDAj3HqdWWn67kY5iJSyfA67/lpBlL9P8RVEJ1myObHI9ngrrK3xH
-AW+w7JrwCB1NYOSW5Jme/V0gOEvkGNvu5YpbJbWcvLHoFIluQqkQhdPgFLwTMAPR
-YwH/izShf5rSosexeS9raOmnIj/wyl0GJg2EqKRiVyZ3++1ASJcqG7c8pGdEdeRE
-sOAabX1OYaWbHhyb+fxOBHCAGav0wP+XywvhtT5ScZeLisQxY1zu6IvBQXqb8D1L
-fomzTqRHbZBBjl7Fjw8+7wGrp6lexVoa3Z2V8do/Zy6HDTbPpzV0YZr5FYmetIz1
-XGobfhjks226n8HUvubp2Rs+ZhhmUqy7ffWRkHoQ7lpIzttuIBo=
-=umlF
------END PGP SIGNATURE-----
---=-=-=--
+-- 
+Jeff Layton <jlayton@kernel.org>
