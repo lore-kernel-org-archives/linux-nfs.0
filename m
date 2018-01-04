@@ -1,28 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from host116-16-237-212.serverdedicati.aruba.it ([212.237.16.116]:46242
-        "EHLO host.arubacloud.com" rhost-flags-OK-FAIL-OK-FAIL)
-        by vger.kernel.org with ESMTP id S1753403AbeADQUL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jan 2018 11:20:11 -0500
-Received: from slsourcinggroup.com (nadneaa2.miniserver.com [78.31.108.146])
-        by host.arubacloud.com (Postfix) with ESMTPA id D28B67569A
-        for <linux-nfs@vger.kernel.org>; Thu,  4 Jan 2018 17:13:30 +0100 (CET)
-MIME-Version: 1.0
-From: "Peter Deng" <peterddeng2000@securemailer.com>
-Reply-To: peterddeng2000@secsuremailer.com
-To: linux-nfs@vger.kernel.org
-Subject: Business Possibility
-Content-Type: text/plain
-Date: Thu, 4 Jan 2018 16:13:57 +0000
-Message-ID: <25324064617522747712300@nadneaa2>
+Received: from userp2130.oracle.com ([156.151.31.86]:34524 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753438AbeADQU3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 4 Jan 2018 11:20:29 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: odd TRACE_DEFINE_ENUM behavior
+Date: Thu, 4 Jan 2018 11:13:03 -0500
+Message-Id: <717BE572-2070-4C1E-9902-9F2E0FEDA4F8@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Steven Rostedt <rostedt@goodmis.org>
+Mime-Version: 1.0 (Mac OS X Mail 9.3 \(3124\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello there, My name is Peter Deng a South African citizen and a friend to Mrs Mugabe sister . I got your contact through Korean business online directory. I represent the interest of Mrs Mugabe who wishes to move a total amount of $19 million  into a safe account owns by a trusted business man who is capable of accommodating such volume of funds with absolute trust & confidentiality.
+Hi Steven-
 
-We are willing to give 5-10 percent of the total money for this efforts . A non disclosure non circumvent agreement will be signed before the eventual transfer of funds. It is important for to know that the fund owner is going through a period of political turmoil and she is in a precarious position, so this transaction has to be highly secretive & very confidential.
+In commit 8224b2734ab1 ("NFS: Add static NFS I/O tracepoints") I added
+nfs_show_stable to symbolically display the value of the NFS WRITE stable
+field. However, I couldn't get the thing to work with the already-defined
+enums in linux/nfs.h, and had to resort to coding numeric constants:
 
-Kindly respond back to me if this is what you can handle .
+799 /*
+800  * XXX: I tried using NFS_UNSTABLE and friends in this table, but they
+801  * all evaluate to 0 for some reason, even if I include linux/nfs.h.
+802  */
+803 #define nfs_show_stable(stable) \
+804         __print_symbolic(stable, \
+805                         { 0, " (UNSTABLE)" }, \
+806                         { 1, " (DATA_SYNC)" }, \
+807                         { 2, " (FILE_SYNC)" })
 
-Regards,
+If I code this macro the way the others are written, ie:
 
-Peter.
+TRACE_DEFINE_ENUM(NFS_UNSTABLE);
+TRACE_DEFINE_ENUM(NFS_DATA_SYNC);
+TRACE_DEFINE_ENUM(NFS_FILE_SYNC);
+
+#define nfs_show_stable(stable) \
+	__print_symbolic(stable, \
+			{ NFS_UNSTABLE, " (UNSTABLE)" }, \
+			{ NFS_DATA_SYNC, " (DATA_SYNC)" }, \
+			{ NFS_FILE_SYNC, " (FILE_SYNC)" })
+
+When the field contains 0 it displays "(UNSTABLE)", and when the field
+contains a non-zero value the displayed symbol is blank.
+
+More recently I observed a similar issue when adding static trace points
+in net/sunrpc/xprtrdma/ , and with existing __print_symbolic call sites
+in sunrpc.ko.
+
+There is no file /sys/kernel/debug/tracing/enum_map on my system.
+
+Am I missing something?
+
+
+--
+Chuck Lever
+
+
+
