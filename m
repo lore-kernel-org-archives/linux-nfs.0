@@ -1,112 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f169.google.com ([209.85.216.169]:36496 "EHLO
-        mail-qt0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751717AbeAEMLP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 5 Jan 2018 07:11:15 -0500
-Received: by mail-qt0-f169.google.com with SMTP id a16so5449783qtj.3
-        for <linux-nfs@vger.kernel.org>; Fri, 05 Jan 2018 04:11:15 -0800 (PST)
-Message-ID: <1515154273.4398.3.camel@redhat.com>
-Subject: Re: ANNOUNCE: nfs-utils-2.3.1 released.
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@RedHat.com>, NeilBrown <neilb@suse.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Fri, 05 Jan 2018 07:11:13 -0500
-In-Reply-To: <63e4e0d5-55ed-3ac2-2508-be12534947f4@RedHat.com>
-References: <1a56bb72-cc10-ba74-2b04-4df588804ef5@RedHat.com>
-         <20171221212516.031618d8@laptop64.home>
-         <87a7xudx8o.fsf@notabene.neil.brown.name>
-         <1515074361.20282.23.camel@kernel.org>
-         <63e4e0d5-55ed-3ac2-2508-be12534947f4@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:56086 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751254AbeAENQB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 5 Jan 2018 08:16:01 -0500
+Subject: Re: NO Connectathon for 2018 ...
+To: Bill Baker <Bill.Baker@Oracle.com>, nfsv4@ietf.org
+Cc: linux-nfs@vger.kernel.org
+References: <c759a8f9-5ccd-5da6-c2cb-ecba83d18650@Oracle.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <31b3f350-1fdb-d788-245f-e2a408a7601e@RedHat.com>
+Date: Fri, 5 Jan 2018 08:15:59 -0500
+MIME-Version: 1.0
+In-Reply-To: <c759a8f9-5ccd-5da6-c2cb-ecba83d18650@Oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2018-01-04 at 15:37 -0500, Steve Dickson wrote:
+Hello,
+
+On 01/03/2018 12:25 PM, Bill Baker wrote:
 > 
-> On 01/04/2018 08:59 AM, Jeff Layton wrote:
-> > On Thu, 2018-01-04 at 16:11 +1100, NeilBrown wrote:
-> > > On Thu, Dec 21 2017, Andreas Radke wrote:
-> > > 
-> > > > This new version fails make check here now:
-> > > > 
-> > > > nsm_client.c:147:12: warning: this statement may fall through [-Wimplicit-fallthrough=]
-> > > >     my_prog = atoi(optarg);
-> > > >     ~~~~~~~~^~~~~~~~~~~~~~
-> > > > nsm_client.c:148:3: note: here
-> > > >    case 'v':
-> > > >    ^~~~
-> > > 
-> > > What do you think Jeff, you introduced this code 8 years ago and this
-> > > switch statement has always been broken.
-> > 
-> > Ouch!
+> Greetings,
 > 
-> We don't hold it against you.. 8-)
-> > 
-> > > Does anyone use this code?  Should we fix it, it just remove it?
-> > > 
-> > > 
-> > > 
-> > > > make[4]: *** No rule to make target '../../support/nfs/libnfs.a',
-> > > > needed by 'nsm_client'.
-> > > 
-> > > This looks like a bug in automake???  ../../support/nfs/libnfs.a is
-> > > listed as _LDADD
-> > > 
-> > > https://www.gnu.org/software/automake/manual/html_node/Program-and-Library-Variables.html#index-maude_005fAR
-> > > 
-> > > which should add it to the 'ld' command, but I don't see that it should
-> > > be added as a dependency.
-> > > 
-> > > > make[4]: Target 'nsm_client' not remade because of errors.
-> > > > make[3]: *** [Makefile:565: check-am] Error 2
-> > > > make[2]: *** [Makefile:567: check] Error 2
-> > > > statdb_dump.c: In function ‘dump_host’:
-> > > > statdb_dump.c:38:17: warning: unused parameter ‘timestamp’ [-Wunused-parameter]
-> > > >     const time_t timestamp)
-> > > >                  ^~~~~~~~~
-> > > 
-> > > This arg has to be there because it is part of an external API.
-> > > As the function is passed as an arg to an extern function, gcc could
-> > > deduce that the signature cannot be changed just because the arg isn't
-> > > needed.
-> > > 
-> > > 
-> > > > statdb_dump.c: In function ‘main’:
-> > > > statdb_dump.c:91:10: warning: unused parameter ‘argc’ [-Wunused-parameter]
-> > > >  main(int argc, char **argv)
-> > > >           ^~~~
-> > > 
-> > > This arg doesn't need to be used (obviously) but cannot be removed.
-> > > So this is a dumb warning too.
-> > > 
-> > > Maybe we should add __attribute__((unused)) ??
-> > > 
-> > > > make[3]: *** No rule to make target '../support/nfs/libnfs.a', needed by 'statdb_dump'.
-> > > > make[3]: Target 'statdb_dump' not remade because of errors.
-> > > > make[2]: *** [Makefile:1028: check-am] Error 2
-> > > > make[1]: *** [Makefile:717: check-recursive] Error 1
-> > > > make[1]: Target 'check' not remade because of errors.
-> > > > 
-> > > 
-> > > I assume you get these errors by running "make check" without first
-> > > running "make"??
-> > > If you run "make" first, the errors go away, and you are left with the
-> > > warnings.
-> > > 
-> > > Maybe they are worth fixing .... let's see what Jeff thinks.
-> > > 
-> > > NeilBrown
-> > 
-> > I don't have any particular attachment to this code these days. statd is
-> > legacy code at this point. I'm fine with removing it.
-> > 
-> > If we do intend to keep it though, then we should definitely fix that
-> > switch statement.
+> After 40 years (!), I am sad to say that connectathon is
+> canceled for 2018.
 > 
-> I really think the question is if this is dead code... lets to
-> the appropriate thing... with all due respect... of course! :-) 
+> Please watch these mailing lists for more information regarding
+> the return of a second NFSv4 bake-a-thon in addition to the one
+> hosted by RedHat towards the end of September in Westford, MA.
 > 
--- 
-Jeff Layton <jlayton@redhat.com>
+> I've updated the connectathon website to reflect the cancellation:
+> 
+> http://www.connectathon.info
+> 
+> Feel free to forward this to other interested parties.
+> 
+> Long live NFS,
+This is very sad it hear... I did enjoy my yearly pilgrimage to the west coast.
+
+I remember my first cthon, I was working for Lachman Associates, sponsored
+by SCO, since we where selling them the both the NFS and TCP stacks back
+in the day... I think the only version of Linux at that point was Slackware.
+
+I remember my first cthon with Red Hat... A one person booth with at
+least 4 or 5 desktop stack on each other... before the days
+of vitalization... A bit tight... but I did "borrow" one of the
+nice chairs from the NOC. ;-) 
+
+Who can forget the  light bulb incident. A huge light from the ceiling,
+in the Sun campus, let loose and hit the chair I should have been 
+sitting in... So I can honestly say that cthon almost kill me! 8-) 
+
+Then of course those dinners... I remember Beepy being so
+thrilled that Red Hat would actually pick up a night cap!
+But of course that was after his very expensive dinner...
+Trond definitely took care a few of those as well... Plus
+a few of my Red Hat colleges did learn about alligator arms! 
+Nothing but good!!! :-)
+
+Definitely an end of a era... Sad.. 
+
+Red Hat will continue to host interoperability events, but
+we need to grow the server participation with the likes of
+Vmware, Microsoft, Dell/EMC as well as any other
+server vendors that are out there... Suggestions welcome!
+
+steved.
