@@ -1,68 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56086 "EHLO mx1.redhat.com"
+Received: from ms.lwn.net ([45.79.88.28]:33146 "EHLO ms.lwn.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751254AbeAENQB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 5 Jan 2018 08:16:01 -0500
-Subject: Re: NO Connectathon for 2018 ...
-To: Bill Baker <Bill.Baker@Oracle.com>, nfsv4@ietf.org
-Cc: linux-nfs@vger.kernel.org
-References: <c759a8f9-5ccd-5da6-c2cb-ecba83d18650@Oracle.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <31b3f350-1fdb-d788-245f-e2a408a7601e@RedHat.com>
-Date: Fri, 5 Jan 2018 08:15:59 -0500
+        id S1751082AbeAFSJf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 6 Jan 2018 13:09:35 -0500
+Date: Sat, 6 Jan 2018 11:09:08 -0700
+From: Jonathan Corbet <corbet@lwn.net>
+To: Matthew Wilcox <willy@infradead.org>
+Cc: NeilBrown <neilb@suse.com>, linux-doc@vger.kernel.org,
+        dhowells@redhat.com,
+        Thiago Rafael Becker <thiago.becker@gmail.com>,
+        viro@zeniv.linux.org.uk, schwidefsky@de.ibm.com,
+        bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Documentation: security/credentials.rst: explain need
+ to sort group_list
+Message-ID: <20180106110908.0adc1be2@lwn.net>
+In-Reply-To: <20180102210431.GA20405@bombadil.infradead.org>
+References: <878te9os81.fsf@notabene.neil.brown.name>
+        <20171211142708.GA23284@bombadil.infradead.org>
+        <20171211151420.18655-1-thiago.becker@gmail.com>
+        <20742.1514904840@warthog.procyon.org.uk>
+        <87wp10dlgk.fsf@notabene.neil.brown.name>
+        <20180102210431.GA20405@bombadil.infradead.org>
 MIME-Version: 1.0
-In-Reply-To: <c759a8f9-5ccd-5da6-c2cb-ecba83d18650@Oracle.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Tue, 2 Jan 2018 13:04:31 -0800
+Matthew Wilcox <willy@infradead.org> wrote:
 
-On 01/03/2018 12:25 PM, Bill Baker wrote:
+> > +When replacing the group list, the new list must be sorted before it
+> > +is added to the credential, as a binary search is used to test for
+> > +membership.  In practice, this means ``groups_sort()`` should be  
 > 
-> Greetings,
-> 
-> After 40 years (!), I am sad to say that connectathon is
-> canceled for 2018.
-> 
-> Please watch these mailing lists for more information regarding
-> the return of a second NFSv4 bake-a-thon in addition to the one
-> hosted by RedHat towards the end of September in Westford, MA.
-> 
-> I've updated the connectathon website to reflect the cancellation:
-> 
-> http://www.connectathon.info
-> 
-> Feel free to forward this to other interested parties.
-> 
-> Long live NFS,
-This is very sad it hear... I did enjoy my yearly pilgrimage to the west coast.
+> For a .rst file, shouldn't we be using :c:func:`groups_sort` instead of
+> ``groups_sort()``?
 
-I remember my first cthon, I was working for Lachman Associates, sponsored
-by SCO, since we where selling them the both the NFS and TCP stacks back
-in the day... I think the only version of Linux at that point was Slackware.
+There is value in using the c:func syntax, as it will generate
+cross-references to the kerneldoc comments for those functions.  In this
+case, it would appear that these comments exist, but nobody has pulled
+them into the docs yet.  I took the liberty of adding :c:func: references
+to this patch on its way into docs-next so that things will Just Work on
+that happy day when somebody adds the function documentation.
 
-I remember my first cthon with Red Hat... A one person booth with at
-least 4 or 5 desktop stack on each other... before the days
-of vitalization... A bit tight... but I did "borrow" one of the
-nice chairs from the NOC. ;-) 
+Thanks,
 
-Who can forget the  light bulb incident. A huge light from the ceiling,
-in the Sun campus, let loose and hit the chair I should have been 
-sitting in... So I can honestly say that cthon almost kill me! 8-) 
-
-Then of course those dinners... I remember Beepy being so
-thrilled that Red Hat would actually pick up a night cap!
-But of course that was after his very expensive dinner...
-Trond definitely took care a few of those as well... Plus
-a few of my Red Hat colleges did learn about alligator arms! 
-Nothing but good!!! :-)
-
-Definitely an end of a era... Sad.. 
-
-Red Hat will continue to host interoperability events, but
-we need to grow the server participation with the likes of
-Vmware, Microsoft, Dell/EMC as well as any other
-server vendors that are out there... Suggestions welcome!
-
-steved.
+jon
