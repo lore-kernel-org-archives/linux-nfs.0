@@ -1,209 +1,301 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:53046 "EHLO mail.kernel.org"
+Received: from mx2.suse.de ([195.135.220.15]:44774 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753847AbeAGMo4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sun, 7 Jan 2018 07:44:56 -0500
+        id S1754649AbeAGXj1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 7 Jan 2018 18:39:27 -0500
+From: NeilBrown <neilb@suse.com>
+To: Jonathan Corbet <corbet@lwn.net>,
+        Matthew Wilcox <willy@infradead.org>
+Date: Mon, 08 Jan 2018 10:39:14 +1100
+Cc: linux-doc@vger.kernel.org, dhowells@redhat.com,
+        Thiago Rafael Becker <thiago.becker@gmail.com>,
+        viro@zeniv.linux.org.uk, schwidefsky@de.ibm.com,
+        bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Documentation: security/credentials.rst: explain need to sort group_list
+In-Reply-To: <20180106110908.0adc1be2@lwn.net>
+References: <878te9os81.fsf@notabene.neil.brown.name> <20171211142708.GA23284@bombadil.infradead.org> <20171211151420.18655-1-thiago.becker@gmail.com> <20742.1514904840@warthog.procyon.org.uk> <87wp10dlgk.fsf@notabene.neil.brown.name> <20180102210431.GA20405@bombadil.infradead.org> <20180106110908.0adc1be2@lwn.net>
+Message-ID: <87608dck7x.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <20171222120556.7435-20-jlayton@kernel.org>
-References: <20171222120556.7435-1-jlayton@kernel.org> <20171222120556.7435-20-jlayton@kernel.org>
-From: Krzysztof Kozlowski <krzk@kernel.org>
-Date: Sun, 7 Jan 2018 13:44:52 +0100
-Message-ID: <CAJKOXPd8ojTjiGF3nKQKWtVrEsjWfjvg6rLL+RGnbu_SZMDu7g@mail.gmail.com>
-Subject: Re: [PATCH v4 19/19] fs: handle inode->i_version more efficiently
-To: Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com, linux-samsung-soc@vger.kernel.org,
-        Marek Szyprowski <m.szyprowski@samsung.com>,
-        =?UTF-8?B?QmFydMWCb21pZWogxbtvxYJuaWVya2lld2ljeg==?=
-        <b.zolnierkie@samsung.com>,
-        Sylwester Nawrocki <s.nawrocki@samsung.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 22, 2017 at 1:05 PM, Jeff Layton <jlayton@kernel.org> wrote:
-> From: Jeff Layton <jlayton@redhat.com>
->
-> Since i_version is mostly treated as an opaque value, we can exploit that
-> fact to avoid incrementing it when no one is watching. With that change,
-> we can avoid incrementing the counter on writes, unless someone has
-> queried for it since it was last incremented. If the a/c/mtime don't
-> change, and the i_version hasn't changed, then there's no need to dirty
-> the inode metadata on a write.
->
-> Convert the i_version counter to an atomic64_t, and use the lowest order
-> bit to hold a flag that will tell whether anyone has queried the value
-> since it was last incremented.
->
-> When we go to maybe increment it, we fetch the value and check the flag
-> bit.  If it's clear then we don't need to do anything if the update
-> isn't being forced.
->
-> If we do need to update, then we increment the counter by 2, and clear
-> the flag bit, and then use a CAS op to swap it into place. If that
-> works, we return true. If it doesn't then do it again with the value
-> that we fetch from the CAS operation.
->
-> On the query side, if the flag is already set, then we just shift the
-> value down by 1 bit and return it. Otherwise, we set the flag in our
-> on-stack value and again use cmpxchg to swap it into place if it hasn't
-> changed. If it has, then we use the value from the cmpxchg as the new
-> "old" value and try again.
->
-> This method allows us to avoid incrementing the counter on writes (and
-> dirtying the metadata) under typical workloads. We only need to increment
-> if it has been queried since it was last changed.
->
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  include/linux/fs.h       |   2 +-
->  include/linux/iversion.h | 208 ++++++++++++++++++++++++++++++++++-------------
->  2 files changed, 154 insertions(+), 56 deletions(-)
->
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Hi,
+On Sat, Jan 06 2018, Jonathan Corbet wrote:
 
-On recent linux-next my ARM/Exynos boards fail to boot over nfsroot.
-This commit popped up through bisect (log at the end). Systemd
-timeouts on some device-specific services, including mounting ext4
-/home:
+> There is value in using the c:func syntax, as it will generate
+> cross-references to the kerneldoc comments for those functions.  In this
+> case, it would appear that these comments exist, but nobody has pulled
+> them into the docs yet.  I took the liberty of adding :c:func: references
+> to this patch on its way into docs-next so that things will Just Work on
+> that happy day when somebody adds the function documentation.
 
-[ *** ] (1 of 4) A start job is running for…ress polling (1min 41s / no limit)
-[ TIME ] Timed out waiting for device dev-ttySAC2.device.
-Jan 07 13:29:38 [DEPEND] Dependency failed for Serial Getty on ttySAC2.
-Jan 07 13:29:38 [ TIME ] Timed out waiting for device
-dev-disk-by\x2dlabel-home.device.
-Jan 07 13:29:38 [DEPEND] Dependency failed for /home.
-Jan 07 13:29:38 [DEPEND] Dependency failed for Local File Systems.
-Jan 07 13:29:38 [DEPEND] Dependency failed for File System Check on
-/dev/disk/by-label/home.
-Jan 07 13:30:02 [ *** ] (1 of 2) A start job is running for…ress
-polling (1min 53s / no limit)
+Is this the sort of thing that might result in that happy day?
+I didn't spend tooo much time on it, in case including the
+kernel-doc in credentials.rst like this was the wrong direction.
 
-Kernel command line:
-console=tty1 console=ttySAC2,115200n8
-ip=192.168.1.11:192.168.1.10:192.168.1.1:255.255.255.0::eth0:none
-nfsrootdebug root=/dev/nfs
-nfsroot=192.168.1.10:/srv/nfs/odroidxu3,vers=4,nolock rootwait rw
-smsc95xx.macaddr=00:1e:06:61:7a:93 no_console_suspend
-
-/home is /dev/mmcblk1p2:
-kozik@odroidxu3:~$ tune2fs -l /dev/mmcblk1p2
-tune2fs 1.43.7 (16-Oct-2017)
-Filesystem volume name:   home
-Last mounted on:          /home
-Filesystem UUID:          3f9dbeba-2738-45d3-807e-c1b2e21128ed
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index
-filetype needs_recovery extent flex_bg sparse_super large_file
-uninit_bg dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash
-Default mount options:    user_xattr acl
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              1430800
-Block count:              5717760
-Reserved block count:     285888
-Free blocks:              5467576
-Free inodes:              1428301
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      1022
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         8176
-Inode blocks per group:   511
-Flex block group size:    16
-Filesystem created:       Thu May 21 12:17:05 2015
-Last mount time:          Thu Dec 21 13:31:26 2017
-Last write time:          Thu Dec 21 13:31:26 2017
-Mount count:              1
-Maximum mount count:      -1
-Last checked:             Thu Dec 21 13:31:25 2017
-Check interval:           0 (<none>)
-Lifetime writes:          126 GB
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:           256
-Required extra isize:     28
-Desired extra isize:      28
-Journal inode:            8
-Default directory hash:   half_md4
-Directory Hash Seed:      42e17e23-86b2-4356-ad63-78aa51651d03
-Journal backup:           inode blocks
+Thanks,
+NeilBrown
 
 
-Full dmesg log:
-http://www.krzk.eu/#/builders/1/builds/1258/steps/10/logs/serial0
+=2D-----------------------------8<-------------------------
+From: NeilBrown <neilb@suse.com>
+Subject: [PATCH] Documentation: include kernel-doc in credentials.rst
 
-The regular boot from rootfs on SD card also fails - but without any
-serial console logs (just "Starting kernel...") so the real cause is
-unknown.
+=2D kernel-doc from include/linux/cred.h, kernel/cred.c, and
+  kernel/group.c is included in credentials.rst.
+=2D Various function references in credentials.rst are changed
+  to link to this documentation.
+=2D Various minor improvements to the documentation.
 
-Any hints?
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ Documentation/security/credentials.rst | 55 ++++++++++++++++++------------=
+----
+ kernel/groups.c                        | 19 +++++++++++-
+ 2 files changed, 47 insertions(+), 27 deletions(-)
 
-Best regards,
-Krzysztof
+diff --git a/Documentation/security/credentials.rst b/Documentation/securit=
+y/credentials.rst
+index 66a2e24939d8..fd1b7d3b2a78 100644
+=2D-- a/Documentation/security/credentials.rst
++++ b/Documentation/security/credentials.rst
+@@ -296,7 +296,7 @@ for example), it must be considered immutable, barring =
+two exceptions:
+=20
+ To catch accidental credential alteration at compile time, struct task_str=
+uct
+ has _const_ pointers to its credential sets, as does struct file.  Further=
+more,
+=2Dcertain functions such as ``get_cred()`` and ``put_cred()`` operate on c=
+onst
++certain functions such as :c:func:`get_cred` and :c:func:`put_cred` operat=
+e on const
+ pointers, thus rendering casts unnecessary, but require to temporarily dit=
+ch
+ the const qualification to be able to alter the reference count.
+=20
+@@ -391,8 +391,8 @@ This does all the RCU magic inside of it.  The caller m=
+ust call put_cred() on
+ the credentials so obtained when they're finished with.
+=20
+ .. note::
+=2D   The result of ``__task_cred()`` should not be passed directly to
+=2D   ``get_cred()`` as this may race with ``commit_cred()``.
++   The result of :c:func:`__task_cred()` should not be passed directly to
++   :c:func:`get_cred` as this may race with :c:func:`commit_cred`.
+=20
+ There are a couple of convenience functions to access bits of another task=
+'s
+ credentials, hiding the RCU magic from the caller::
+@@ -406,7 +406,7 @@ If the caller is holding the RCU read lock at the time =
+anyway, then::
+ 	__task_cred(task)->euid
+=20
+ should be used instead.  Similarly, if multiple aspects of a task's creden=
+tials
+=2Dneed to be accessed, RCU read lock should be used, ``__task_cred()`` cal=
+led,
++need to be accessed, RCU read lock should be used, :c:func:`__task_cred` c=
+alled,
+ the result stored in a temporary pointer and then the credential aspects c=
+alled
+ from that before dropping the lock.  This prevents the potentially expensi=
+ve
+ RCU magic from being invoked multiple times.
+@@ -433,11 +433,8 @@ alter those of another task.  This means that it doesn=
+'t need to use any
+ locking to alter its own credentials.
+=20
+ To alter the current process's credentials, a function should first prepar=
+e a
+=2Dnew set of credentials by calling::
+=2D
+=2D	struct cred *prepare_creds(void);
+=2D
+=2Dthis locks current->cred_replace_mutex and then allocates and constructs=
+ a
++new set of credentials by calling :c:func:`prepare_creds`.
++This locks ``current->cred_replace_mutex`` and then allocates and construc=
+ts a
+ duplicate of the current process's credentials, returning with the mutex s=
+till
+ held if successful.  It returns NULL if not successful (out of memory).
+=20
+@@ -453,10 +450,7 @@ still at this point.
+=20
+=20
+ When the credential set is ready, it should be committed to the current pr=
+ocess
+=2Dby calling::
+=2D
+=2D	int commit_creds(struct cred *new);
+=2D
++by calling :c:func:`commit_creds`.
+ This will alter various aspects of the credentials and the process, giving=
+ the
+ LSM a chance to do likewise, then it will use ``rcu_assign_pointer()`` to
+ actually commit the new credentials to ``current->cred``, it will release
+@@ -467,20 +461,17 @@ This function is guaranteed to return 0, so that it c=
+an be tail-called at the
+ end of such functions as ``sys_setresuid()``.
+=20
+ Note that this function consumes the caller's reference to the new credent=
+ials.
+=2DThe caller should _not_ call ``put_cred()`` on the new credentials after=
+wards.
++The caller should _not_ call :c:func:`put_cred` on the new credentials aft=
+erwards.
+=20
+ Furthermore, once this function has been called on a new set of credential=
+s,
+ those credentials may _not_ be changed further.
+=20
+=20
+ Should the security checks fail or some other error occur after
+=2D``prepare_creds()`` has been called, then the following function should =
+be
+=2Dinvoked::
+=2D
+=2D	void abort_creds(struct cred *new);
+=2D
++:c:func:`prepare_creds` has been called, then the function
++:c:func:`abort_creds` should be invoked.
+ This releases the lock on ``current->cred_replace_mutex`` that
+=2D``prepare_creds()`` got and then releases the new credentials.
++:c:func:`prepare_creds` got and then releases the new credentials.
+=20
+=20
+ A typical credentials alteration function would look something like this::
+@@ -512,19 +503,20 @@ There are some functions to help manage credentials:
+=20
+  - ``void put_cred(const struct cred *cred);``
+=20
+=2D     This releases a reference to the given set of credentials.  If the
++     :c:func:`put_cred` releases a reference to the given set of credentia=
+ls.  If the
+      reference count reaches zero, the credentials will be scheduled for
+      destruction by the RCU system.
+=20
+  - ``const struct cred *get_cred(const struct cred *cred);``
+=20
+=2D     This gets a reference on a live set of credentials, returning a poi=
+nter to
+=2D     that set of credentials.
++     :c:func:`get_cred` gets a reference on a live set of credentials,
++     returning a pointer to that set of credentials.
+=20
+  - ``struct cred *get_new_cred(struct cred *cred);``
+=20
+=2D     This gets a reference on a set of credentials that is under constru=
+ction
+=2D     and is thus still mutable, returning a pointer to that set of crede=
+ntials.
++     :c:func:`get_new_cred` gets a reference on a set of credentials
++     that is under construction and is thus still mutable, returning a
++     pointer to that set of credentials.=20
+=20
+=20
+ Open File Credentials
+@@ -546,9 +538,20 @@ Overriding the VFS's Use of Credentials
+ =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+=20
+ Under some circumstances it is desirable to override the credentials used =
+by
+=2Dthe VFS, and that can be done by calling into such as ``vfs_mkdir()`` wi=
+th a
++the VFS, and that can be done by calling into such as :c:func:`vfs_mkdir` =
+with a
+ different set of credentials.  This is done in the following places:
+=20
+  * ``sys_faccessat()``.
+  * ``do_coredump()``.
+  * nfs4recover.c.
++
++List of functions for managing credentials
++=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
++
++.. kernel-doc:: include/linux/cred.h
++
++.. kernel-doc:: kernel/cred.c
++   :export:
++
++.. kernel-doc:: kernel/groups.c
++   :export:
+diff --git a/kernel/groups.c b/kernel/groups.c
+index daae2f2dc6d4..dddbb52f9035 100644
+=2D-- a/kernel/groups.c
++++ b/kernel/groups.c
+@@ -86,6 +86,19 @@ static int gid_cmp(const void *_a, const void *_b)
+ 	return gid_gt(a, b) - gid_lt(a, b);
+ }
+=20
++/**
++ * groups_sort - sort supplementary group list numerically
++ * @group_info: The group list
++ *
++ * groups_search() uses a binary search to see if a
++ * given gid is a member of a group list, so the list must be
++ * sorted.  This can be achieved by calling groups_sort().
++ * As a &struct group_info is often shared, and as this function
++ * can temporary permute elements even of a sorted list,
++ * groups_sort() must be called *before* a @struct group_info
++ * is added to a credential, typically using set_groups() or
++ * set_current_groups().
++ */
+ void groups_sort(struct group_info *group_info)
+ {
+ 	sort(group_info->gid, group_info->ngroups, sizeof(*group_info->gid),
+@@ -119,6 +132,10 @@ int groups_search(const struct group_info *group_info,=
+ kgid_t grp)
+  * set_groups - Change a group subscription in a set of credentials
+  * @new: The newly prepared set of credentials to alter
+  * @group_info: The group list to install
++ *
++ * The group list must already be sorted (by groups_sort())
++ * and the credential must not be in active use.  To change the
++ * groups list of an active credential, use set_current_groups().
+  */
+ void set_groups(struct cred *new, struct group_info *group_info)
+ {
+@@ -134,7 +151,7 @@ EXPORT_SYMBOL(set_groups);
+  * @group_info: The group list to impose
+  *
+  * Validate a group subscription and, if valid, impose it upon current's t=
+ask
+=2D * security record.
++ * security record.  The group list must already be sorted.
+  */
+ int set_current_groups(struct group_info *group_info)
+ {
+=2D-=20
+2.14.0.rc0.dirty
 
 
-bisect log:
-# bad: [73005e1a35fd67c644b0645c9e4c1efabd0fe62c] Add linux-next
-specific files for 20180103
-# good: [30a7acd573899fd8b8ac39236eff6468b195ac7d] Linux 4.15-rc6
-git bisect start 'next/master' 'next/stable'
-# bad: [c1d290f9ce8daa2b0a79d2fe48c1b7c3c5370f5a] Merge
-remote-tracking branch 'crypto/master'
-git bisect bad c1d290f9ce8daa2b0a79d2fe48c1b7c3c5370f5a
-# bad: [55695d94f0915121d106cd2d1ab94983a32f3e9a] Merge
-remote-tracking branch 'hid/for-next'
-git bisect bad 55695d94f0915121d106cd2d1ab94983a32f3e9a
-# good: [cffae1eead0dd91be1a3069a8348127bb00158f3] Merge
-remote-tracking branch 'realtek/for-next'
-git bisect good cffae1eead0dd91be1a3069a8348127bb00158f3
-# good: [5f889f1176dc99636c6bf8af7c286decc888c007] Merge
-remote-tracking branch 'btrfs/next'
-git bisect good 5f889f1176dc99636c6bf8af7c286decc888c007
-# good: [984c35877f36bee305e43a1c58176169854d85cf] Merge
-remote-tracking branch 'xfs/for-next'
-git bisect good 984c35877f36bee305e43a1c58176169854d85cf
-# bad: [f9fec502daea2a869232b6dff33ba3de79dd0d61] Merge
-remote-tracking branch 'printk/for-next'
-git bisect bad f9fec502daea2a869232b6dff33ba3de79dd0d61
-# good: [c71d227fc4133f949dae620ed5e3a250b43f2415] make kernel-side
-POLL... arch-independent
-git bisect good c71d227fc4133f949dae620ed5e3a250b43f2415
-# good: [416d20e8c31107f5dfd45d1d80d1e6c8e4871180] Merge branches
-'work.get_user_pages_fast', 'work.wmci', 'work.sock_recvmsg',
-'misc.netdrv', 'misc.poll', 'work.mqueue', 'work.whack-a-mole' and
-'work.misc' into for-next
-git bisect good 416d20e8c31107f5dfd45d1d80d1e6c8e4871180
-# good: [325a1de4a691512a48c1426b943a7b0b9f8d6744] xfs: convert to new
-i_version API
-git bisect good 325a1de4a691512a48c1426b943a7b0b9f8d6744
-# good: [a94fe10fb114c169e7ddaecd8251521886409121] checkpatch: add
-pF/pf deprecation warning
-git bisect good a94fe10fb114c169e7ddaecd8251521886409121
-# good: [6b3911dffd1184fdcd63299a5fee59ac000f2067] btrfs: only dirty
-the inode in btrfs_update_time if something was changed
-git bisect good 6b3911dffd1184fdcd63299a5fee59ac000f2067
-# bad: [448f8c749a7a0ae03505823910ec45a112678048] Merge
-remote-tracking branch 'iversion/iversion-next'
-git bisect bad 448f8c749a7a0ae03505823910ec45a112678048
-# bad: [8618bff776758ebff5b55211e7b5a60a0fc119a5] fs: handle
-inode->i_version more efficiently
-git bisect bad 8618bff776758ebff5b55211e7b5a60a0fc119a5
-# first bad commit: [8618bff776758ebff5b55211e7b5a60a0fc119a5] fs:
-handle inode->i_version more efficiently
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlpSr6IACgkQOeye3VZi
+gbmayxAAq7hvU6DHcsI1xqOFQtJNzasVzyqkHiyNsHOZ5z/9XT5hWB5mU4pmrKqU
+3hFDqkmlYpHUO7Hfi8lHAqlV93ygcNcoK62hfhUjlxAZun22Yq0kHMsUoVwosyzO
+VMy0HAHF9S911qb+xeVk196rzPBseoiYOFDUi+Vy+bUVGwhpeo1H2EVtJkQyVvUV
+NEw09S++bB7R/6PQxWM3juanlSEdSyGN9DJmPjGDbgy7wG6VbMw+B9EOT3LDhB1Q
+ad5srpijrrCA5DPURchrRkae1yp9HtGJR47dzJWsTD02K7ryb27WY462vZUuOkvp
+rsSS7iIuxgDjcb/DXgmM9ROZKRBBFnkrF3/VAdpojvZVfCF5U2gJ2qMQ0UH0okOr
+02Rrugco9sdmhXgWy+VXEGBs+sZhyOI4fbBZsRr80W9hOV4628juqpffoi4yxawS
+PvZE8p6Ive2HSQ6reUzwmsdScXYrrjJf4juh+1/pGE4U/NVq5zB45ptYvR+dr6h6
+FFOyO3SSCO/7T6rGsrdKV+tdHMWS6lLXdZQDfIhEhcv+1OqDC/A4xKMGGa266pld
+mul0Tdcu4hLhzlXSUFBIRqyRxzlWu1kY6Z/53Aph2y74NcfBMZuEKO2cU2oVLT8r
+gc6ATz3Nue3wizrlWi3U8Un4yIV82IQJd883wNydI1jzwHX3UKQ=
+=QoX2
+-----END PGP SIGNATURE-----
+--=-=-=--
