@@ -1,63 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from merlin.infradead.org ([205.233.59.134]:42040 "EHLO
-        merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751377AbeAFWg4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Jan 2018 17:36:56 -0500
-Subject: Re: [PATCH] Documentation: security/credentials.rst: explain need to
- sort group_list
-To: Matthew Wilcox <willy@infradead.org>,
-        Jonathan Corbet <corbet@lwn.net>
-Cc: NeilBrown <neilb@suse.com>, linux-doc@vger.kernel.org,
-        dhowells@redhat.com,
-        Thiago Rafael Becker <thiago.becker@gmail.com>,
-        viro@zeniv.linux.org.uk, schwidefsky@de.ibm.com,
-        bfields@fieldses.org, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-References: <878te9os81.fsf@notabene.neil.brown.name>
- <20171211142708.GA23284@bombadil.infradead.org>
- <20171211151420.18655-1-thiago.becker@gmail.com>
- <20742.1514904840@warthog.procyon.org.uk>
- <87wp10dlgk.fsf@notabene.neil.brown.name>
- <20180102210431.GA20405@bombadil.infradead.org>
- <20180106110908.0adc1be2@lwn.net>
- <20180106202013.GA6183@bombadil.infradead.org>
-From: Randy Dunlap <rdunlap@infradead.org>
-Message-ID: <f99813d4-0fb4-686d-aad8-b383d9ebcce7@infradead.org>
-Date: Sat, 6 Jan 2018 14:36:38 -0800
+Received: from mail-qk0-f181.google.com ([209.85.220.181]:34790 "EHLO
+        mail-qk0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751245AbeAGCPO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 6 Jan 2018 21:15:14 -0500
+Received: by mail-qk0-f181.google.com with SMTP id m193so2175188qke.1
+        for <linux-nfs@vger.kernel.org>; Sat, 06 Jan 2018 18:15:14 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20180106202013.GA6183@bombadil.infradead.org>
-Content-Type: text/plain; charset=utf-8
+From: User Linux <user.kernel@gmail.com>
+Date: Sat, 6 Jan 2018 18:15:13 -0800
+Message-ID: <CAFO3HzVbAq-x8xHNEjdxvYbeoSPf=Jk7Ep26++uHgD2UFNXmnw@mail.gmail.com>
+Subject: Need help with empty shares after Debian sid package upgrades.
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/06/18 12:20, Matthew Wilcox wrote:
-> 
-> I've been thinking about all the kernel-doc we have that's completely
-> unincorporated.  I've also been thinking about core-api/kernel-api.rst
-> which to my mind is completely unreadable in its current form -- look at
-> https://www.kernel.org/doc/html/latest/core-api/kernel-api.html and you
-> wouldn't really know there's anything in it beyond the List Management
-> Functions.
+Hey guys.. I had a working Debian sid (server & client) nfs setup
+until recent packages and kernel upgrades. After rebooting the boxes,
+the client no longer sees any dirs or files in the shares. I booted
+back into the previous kernel on both boxes but that didn't help. I
+don't have a list of packages that were upgraded so I thought maybe
+I'd just try to rebuild things from scratch but after tons of reading
+and trying various things, its gotten me absolutely nowhere. I'm
+hoping to find help getting even just a single share to work correctly
+at this point. Based on everything I've read, the following should
+work but doesn't. I'm not sure if the howtos and guides I followed
+are outdated now, or something from the package upgrade is causing the
+problem, or what.. Can someone knowledgable & experienced with nfs
+please tell me if I've done something wrong in the steps below?
 
-The index is on the left side, but would be better (duplicated?) at the beginning
-of the chapter.  The left side is still useful for navigation, but then it
-scrolls away too quickly when the right side text is scrolled.
+Any help is *greatly* appreciated!
+-Derek
 
-> I think the right path forward is to have kernel-api.rst be the dumping
-> ground for all the files with kernel-doc but nothing more.  That gives
-> us somewhere to link to.
+I have a harddrive in my server that contains a dir I want to share
+called "media". "media", all subdirs, and all files are owned by UID
+1000/GUID 1000. All dirs are chmod 0755. "media" looks something like
+this:
 
-FWFW, I have recently done firewire.rst, infiniband.rst, and some additions
-to scsi.rst.  But the new firewire.rst and infiniband.rst could use some
-introductory material before just jumping into the API.
+media/homevideos/vacation2017/*.mkv
+media/music/*.mp3
+media/musicvideos/*.mp4
 
+The mountpoint on my client is also owned by UID 1000/GUID 1000, chmod
+0755. Server and client are running Debian sid with nfs v3 & v4
+enabled in the kernel. I don't use/want auto-mounting. Both boxes have
+identical hosts.allow and hosts.deny files:
+--------------------
+hosts.allow:
+ALL: 192.168.1.*
 
-> Then we need little stories about how all the functions in a subsystem
-> fit together.  For example, we can create a list.rst which explains how
-> this is a doubly-linked list that you use by embedding a list_head into
-> your data structure, and has O(1) insertion/deletion, etc, etc.  Then we
-> would move all the list.h kernel-doc from kernel-api.rst into list.rst.
+hosts.deny:
+ALL: *.*.*.*
+ALL: PARANOID
+--------------------
 
+on the server I do:
 
--- 
-~Randy
+$ sudo mkdir -p /testhd/hd0
+$ sudo mkdir -p /testnfs/sharehd0
+$ sudo chown -R 1000.1000 /testhd
+$ sudo chown -R 1000.1000 /testnfs
+$ sudo mount /dev/sde1 /testhd/hd0
+$ sudo mount --bind /testhd/hd0/media /testnfs/sharehd0
+$ mount |grep "/test"
+/dev/sde1 on /testhd/hd0 type ext4 (rw,relatime,data=ordered)
+/dev/sde1 on /testnfs/sharehd0 type ext4 (rw,relatime,data=ordered)
+
+At this point I can `ls -la` and see that both /testhd/hd0/media/* and
+/testnfs/sharehd0/* have the same contents and still everything owned
+by UID 1000/GUID 1000. I then create /etc/export and start the server:
+
+$ echo "/testnfs
+*(ro,fsid=0,no_subtree_check,insecure,all_squash,anonuid=1000,anongid=1000)"
+|sudo tee /etc/exports
+$ echo "/testnfs/sharehd0
+192.168.1.0/24(ro,no_subtree_check,insecure,all_squash,anonuid=1000,anongid=1000)"
+|sudo tee -a /etc/exports
+$ sudo /etc/init.d/nfs-kernel-server start
+
+So far so good?:
+
+$ sudo rpcinfo -t 192.168.1.11 nfs
+program 100003 version 3 ready and waiting
+program 100003 version 4 ready and waiting
+
+$ sudo showmount -e 192.168.1.11
+Export list for 192.168.1.11:
+/testnfs          *
+/testnfs/sharehd0 192.168.1.0/24
+
+$ sudo rpcinfo -p
+   program vers proto   port  service
+    100000    4   tcp    111  portmapper
+    100000    3   tcp    111  portmapper
+    100000    2   tcp    111  portmapper
+    100000    4   udp    111  portmapper
+    100000    3   udp    111  portmapper
+    100000    2   udp    111  portmapper
+    100005    1   udp  35956  mountd
+    100005    1   tcp  44325  mountd
+    100005    2   udp  60782  mountd
+    100005    2   tcp  52503  mountd
+    100005    3   udp  43519  mountd
+    100005    3   tcp  51029  mountd
+    100003    3   tcp   2049  nfs
+    100003    4   tcp   2049  nfs
+    100003    3   udp   2049  nfs
+    100021    1   udp  41171  nlockmgr
+    100021    3   udp  41171  nlockmgr
+    100021    4   udp  41171  nlockmgr
+    100021    1   tcp  33425  nlockmgr
+    100021    3   tcp  33425  nlockmgr
+    100021    4   tcp  33425  nlockmgr
+
+Ok so now for the client-side:
+
+$ sudo mkdir -p /testshare/share0
+$ sudo chown -R 1000.1000 /testshare/share0
+$ sudo showmount -e 192.168.1.11
+Export list for 192.168.1.11:
+/testnfs          *
+/testnfs/sharehd0 192.168.1.0/24
+
+$ sudo mount 192.168.1.11:/testnfs/sharehd0 /testshare/share0
+$ mount |grep nfs
+192.168.1.11:/testnfs/sharehd0 on /testshare/share0 type nfs
+(rw,relatime,vers=3,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.1.11,mountvers=3,mountport=43519,mountproto=udp,local_lock=none,addr=192.168.1.11)
+$ ls -la /testshare/share0
+total 8
+drwxr-xr-x 2 mru mru 4096 Jan  6 12:16 .
+drwxr-xr-x 3 mru mru 4096 Jan  6 11:59 ..
