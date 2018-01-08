@@ -1,113 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33915 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752543AbeAHFco (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Jan 2018 00:32:44 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Date: Mon, 08 Jan 2018 16:26:19 +1100
-Subject: [PATCH 20/20] SUNRPC discard cr_uid from struct rpc_cred.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <151538917948.25812.4163487133024360074.stgit@noble>
-In-Reply-To: <151538903497.25812.13293229343061416612.stgit@noble>
-References: <151538903497.25812.13293229343061416612.stgit@noble>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from bombadil.infradead.org ([65.50.211.133]:44449 "EHLO
+        bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1756078AbeAHLVM (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jan 2018 06:21:12 -0500
+Received: from clnet-p099-196.ikbnet.co.at ([83.175.99.196] helo=localhost)
+        by bombadil.infradead.org with esmtpsa (Exim 4.89 #1 (Red Hat Linux))
+        id 1eYVUK-0002qY-8T
+        for linux-nfs@vger.kernel.org; Mon, 08 Jan 2018 11:21:08 +0000
+From: Christoph Hellwig <hch@lst.de>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc: remove dead code in svc_sock_setbufsize
+Date: Mon,  8 Jan 2018 12:21:04 +0100
+Message-Id: <20180108112104.3006-1-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just use ->cr_cred->fsuid directly.
+Setting values in struct sock directly is the usual method.  Remove
+the long dead code using set_fs() and the related comment.
 
-Signed-off-by: NeilBrown <neilb@suse.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- include/linux/sunrpc/auth.h    |    2 --
- net/sunrpc/auth.c              |    1 -
- net/sunrpc/auth_gss/auth_gss.c |   12 ++++++------
- 3 files changed, 6 insertions(+), 9 deletions(-)
+ net/sunrpc/svcsock.c | 14 --------------
+ 1 file changed, 14 deletions(-)
 
-diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
-index a98ce75b1994..815d21b8f284 100644
---- a/include/linux/sunrpc/auth.h
-+++ b/include/linux/sunrpc/auth.h
-@@ -58,8 +58,6 @@ struct rpc_cred {
- 	atomic_t		cr_count;	/* ref count */
- 	const struct cred	*cr_cred;
- 
--	kuid_t			cr_uid;
--
- 	/* per-flavor data */
- };
- #define RPCAUTH_CRED_NEW	0
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index a4d79e4f9b14..1b6f52d4d136 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -631,7 +631,6 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
- 	cred->cr_ops = ops;
- 	cred->cr_expire = jiffies;
- 	cred->cr_cred = get_cred(acred->cred);
--	cred->cr_uid = acred->cred->fsuid;
- }
- EXPORT_SYMBOL_GPL(rpcauth_init_cred);
- 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 24e40745810f..3c33b3ab74bb 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -534,7 +534,7 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
- 	struct gss_cred *gss_cred = container_of(cred,
- 			struct gss_cred, gc_base);
- 	struct gss_upcall_msg *gss_new, *gss_msg;
--	kuid_t uid = cred->cr_uid;
-+	kuid_t uid = cred->cr_cred->fsuid;
- 
- 	gss_new = gss_alloc_msg(gss_auth, uid, gss_cred->gc_principal);
- 	if (IS_ERR(gss_new))
-@@ -573,7 +573,7 @@ gss_refresh_upcall(struct rpc_task *task)
- 	int err = 0;
- 
- 	dprintk("RPC: %5u %s for uid %u\n",
--		task->tk_pid, __func__, from_kuid(&init_user_ns, cred->cr_uid));
-+		task->tk_pid, __func__, from_kuid(&init_user_ns, cred->cr_cred->fsuid));
- 	gss_msg = gss_setup_upcall(gss_auth, cred);
- 	if (PTR_ERR(gss_msg) == -EAGAIN) {
- 		/* XXX: warning on the first, under the assumption we
-@@ -606,7 +606,7 @@ gss_refresh_upcall(struct rpc_task *task)
- out:
- 	dprintk("RPC: %5u %s for uid %u result %d\n",
- 		task->tk_pid, __func__,
--		from_kuid(&init_user_ns, cred->cr_uid),	err);
-+		from_kuid(&init_user_ns, cred->cr_cred->fsuid),	err);
- 	return err;
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index ff8e06cd067e..5884583f93a4 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -384,25 +384,11 @@ static int svc_partial_recvfrom(struct svc_rqst *rqstp,
+ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
+ 				unsigned int rcv)
+ {
+-#if 0
+-	mm_segment_t	oldfs;
+-	oldfs = get_fs(); set_fs(KERNEL_DS);
+-	sock_setsockopt(sock, SOL_SOCKET, SO_SNDBUF,
+-			(char*)&snd, sizeof(snd));
+-	sock_setsockopt(sock, SOL_SOCKET, SO_RCVBUF,
+-			(char*)&rcv, sizeof(rcv));
+-#else
+-	/* sock_setsockopt limits use to sysctl_?mem_max,
+-	 * which isn't acceptable.  Until that is made conditional
+-	 * on not having CAP_SYS_RESOURCE or similar, we go direct...
+-	 * DaveM said I could!
+-	 */
+ 	lock_sock(sock->sk);
+ 	sock->sk->sk_sndbuf = snd * 2;
+ 	sock->sk->sk_rcvbuf = rcv * 2;
+ 	sock->sk->sk_write_space(sock->sk);
+ 	release_sock(sock->sk);
+-#endif
  }
  
-@@ -622,7 +622,7 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- 	int err;
- 
- 	dprintk("RPC:       %s for uid %u\n",
--		__func__, from_kuid(&init_user_ns, cred->cr_uid));
-+		__func__, from_kuid(&init_user_ns, cred->cr_cred->fsuid));
- retry:
- 	err = 0;
- 	/* if gssd is down, just skip upcalling altogether */
-@@ -670,7 +670,7 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- 	gss_release_msg(gss_msg);
- out:
- 	dprintk("RPC:       %s for uid %u result %d\n",
--		__func__, from_kuid(&init_user_ns, cred->cr_uid), err);
-+		__func__, from_kuid(&init_user_ns, cred->cr_cred->fsuid), err);
- 	return err;
- }
- 
-@@ -1464,7 +1464,7 @@ gss_match(struct auth_cred *acred, struct rpc_cred *rc, int flags)
- 	} else {
- 		if (gss_cred->gc_principal != NULL)
- 			return 0;
--		ret = uid_eq(rc->cr_uid, acred->cred->fsuid);
-+		ret = uid_eq(rc->cr_cred->fsuid, acred->cred->fsuid);
- 	}
- 	return ret;
- }
-
+ static int svc_sock_secure_port(struct svc_rqst *rqstp)
+-- 
+2.14.2
 
