@@ -1,12 +1,11 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:53144 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753874AbeAHUFG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Jan 2018 15:05:06 -0500
-Message-ID: <1515441901.3486.51.camel@kernel.org>
-Subject: Re: [PATCH v4 19/19] fs: handle inode->i_version more efficiently
-From: Jeff Layton <jlayton@kernel.org>
-To: Krzysztof Kozlowski <krzk@kernel.org>
+Received: from mail-wm0-f67.google.com ([74.125.82.67]:34607 "EHLO
+        mail-wm0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750983AbeAHURT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 8 Jan 2018 15:17:19 -0500
+Date: Mon, 8 Jan 2018 21:17:13 +0100
+From: Krzysztof Kozlowski <krzk@kernel.org>
+To: Jeff Layton <jlayton@kernel.org>
 Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
         bfields@fieldses.org, neilb@suse.de, jack@suse.de,
@@ -19,27 +18,28 @@ Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com, linux-samsung-soc@vger.kernel.org,
         Marek Szyprowski <m.szyprowski@samsung.com>,
-        =?UTF-8?Q?Bart=C5=82omiej_?= =?UTF-8?Q?=C5=BBo=C5=82nierkiewicz?=
+        =?utf-8?Q?Bart=C5=82omiej_=C5=BBo=C5=82nierkiewicz?=
         <b.zolnierkie@samsung.com>,
         Sylwester Nawrocki <s.nawrocki@samsung.com>
-Date: Mon, 08 Jan 2018 15:05:01 -0500
-In-Reply-To: <1515438929.3486.48.camel@kernel.org>
+Subject: Re: [PATCH v4 19/19] fs: handle inode->i_version more efficiently
+Message-ID: <20180108201713.rdfjn7j65cuqmwuo@kozik-lap>
 References: <20171222120556.7435-1-jlayton@kernel.org>
-         <20171222120556.7435-20-jlayton@kernel.org>
-         <CAJKOXPd8ojTjiGF3nKQKWtVrEsjWfjvg6rLL+RGnbu_SZMDu7g@mail.gmail.com>
-         <1515416208.3486.14.camel@kernel.org>
-         <CAJKOXPfv4eSERDiUuZuJ7KdpyGU0=Eqt_A+J6knp-FEW9BZoSw@mail.gmail.com>
-         <1515418164.3486.18.camel@kernel.org>
-         <20180108172928.aqndozcpljb73uj6@kozik-lap>
-         <1515434419.3486.41.camel@kernel.org>
-         <20180108183353.emiwsd4aic4gmytr@kozik-lap>
-         <1515438929.3486.48.camel@kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+ <20171222120556.7435-20-jlayton@kernel.org>
+ <CAJKOXPd8ojTjiGF3nKQKWtVrEsjWfjvg6rLL+RGnbu_SZMDu7g@mail.gmail.com>
+ <1515416208.3486.14.camel@kernel.org>
+ <CAJKOXPfv4eSERDiUuZuJ7KdpyGU0=Eqt_A+J6knp-FEW9BZoSw@mail.gmail.com>
+ <1515418164.3486.18.camel@kernel.org>
+ <20180108172928.aqndozcpljb73uj6@kozik-lap>
+ <1515434419.3486.41.camel@kernel.org>
+ <20180108183353.emiwsd4aic4gmytr@kozik-lap>
+ <1515438929.3486.48.camel@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1515438929.3486.48.camel@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2018-01-08 at 14:15 -0500, Jeff Layton wrote:
+On Mon, Jan 08, 2018 at 02:15:29PM -0500, Jeff Layton wrote:
 > On Mon, 2018-01-08 at 19:33 +0100, Krzysztof Kozlowski wrote:
 > > On Mon, Jan 08, 2018 at 01:00:19PM -0500, Jeff Layton wrote:
 > > > On Mon, 2018-01-08 at 18:29 +0100, Krzysztof Kozlowski wrote:
@@ -89,9 +89,24 @@ On Mon, 2018-01-08 at 14:15 -0500, Jeff Layton wrote:
 > Thanks. I don't really see anything obvious in that info,
 > unfortunately. What we really need to do is find the systemd task
 > performing the mount, and see what it's doing.
-> 
+
+It's systemd 236.0-2 coming from Arch Linux for ARM. All packages are
+updated.
+
 > We do have one questionable bug in the NFS changes though. Does this
 > patch help at all?
+
+Patches do not change anything (I tried "SQUASH: nfs: fix i_version
+increment when adding a request" and "SQUASH: ext4: use raw API for
+xattr inode refcounts").
+
+I tried again regular SDcard-root boot and it succeeded. Only nfsroot
+fails.
+
+Best regards,
+Krzysztof
+
+
 > 
 > -------------------------------8<---------------------------------
 > 
@@ -118,45 +133,6 @@ On Mon, 2018-01-08 at 14:15 -0500, Jeff Layton wrote:
 >  	if (likely(!PageSwapCache(req->wb_page))) {
 >  		set_bit(PG_MAPPED, &req->wb_flags);
 >  		SetPagePrivate(req->wb_page);
-
-Sorry for the slow dribble of patches. I found a bug in the ext4 code
-too. Might want to try this ext4 patch as well:
-
-----------------------8<-----------------
-
-SQUASH: ext4: use raw API for xattr inode refcounts
-
-This could distort the values otherwise.
-
-(Side Q: Why do we do this across the ctime and iversion like this?)
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/ext4/xattr.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index ba6fd5439aa4..63656dbafdc4 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -295,13 +295,13 @@ ext4_xattr_inode_hash(struct ext4_sb_info *sbi, const void *buffer, size_t size)
- static u64 ext4_xattr_inode_get_ref(struct inode *ea_inode)
- {
- 	return ((u64)ea_inode->i_ctime.tv_sec << 32) |
--		(u32) inode_peek_iversion(ea_inode);
-+		(u32) inode_peek_iversion_raw(ea_inode);
- }
- 
- static void ext4_xattr_inode_set_ref(struct inode *ea_inode, u64 ref_count)
- {
- 	ea_inode->i_ctime.tv_sec = (u32)(ref_count >> 32);
--	inode_set_iversion(ea_inode, ref_count & 0xffffffff);
-+	inode_set_iversion_raw(ea_inode, ref_count & 0xffffffff);
- }
- 
- static u32 ext4_xattr_inode_get_hash(struct inode *ea_inode)
--- 
-2.14.3
-
-
-
+> -- 
+> 2.14.3
+> 
