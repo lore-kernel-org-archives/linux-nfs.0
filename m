@@ -1,62 +1,80 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32774 "EHLO mx1.redhat.com"
+Received: from ms.lwn.net ([45.79.88.28]:41644 "EHLO ms.lwn.net"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756822AbeAHOPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Jan 2018 09:15:51 -0500
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id A26BD6B236
-        for <linux-nfs@vger.kernel.org>; Mon,  8 Jan 2018 14:15:51 +0000 (UTC)
-Subject: Re: [PATCH] nfs-utils: Update svcgssd so that it builds
-To: Justin Mitchell <jumitche@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <1514985934.3551.2.camel@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <9fc1f09a-75be-9513-9e78-d1ebb77d2309@RedHat.com>
-Date: Mon, 8 Jan 2018 09:15:50 -0500
+        id S933517AbeAHQgn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 8 Jan 2018 11:36:43 -0500
+Date: Mon, 8 Jan 2018 09:36:39 -0700
+From: Jonathan Corbet <corbet@lwn.net>
+To: Matthew Wilcox <willy@infradead.org>
+Cc: NeilBrown <neilb@suse.com>, linux-doc@vger.kernel.org,
+        dhowells@redhat.com,
+        Thiago Rafael Becker <thiago.becker@gmail.com>,
+        viro@zeniv.linux.org.uk, schwidefsky@de.ibm.com,
+        bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] Documentation: security/credentials.rst: explain need
+ to sort group_list
+Message-ID: <20180108093639.5d2c7e06@lwn.net>
+In-Reply-To: <20180106202013.GA6183@bombadil.infradead.org>
+References: <878te9os81.fsf@notabene.neil.brown.name>
+        <20171211142708.GA23284@bombadil.infradead.org>
+        <20171211151420.18655-1-thiago.becker@gmail.com>
+        <20742.1514904840@warthog.procyon.org.uk>
+        <87wp10dlgk.fsf@notabene.neil.brown.name>
+        <20180102210431.GA20405@bombadil.infradead.org>
+        <20180106110908.0adc1be2@lwn.net>
+        <20180106202013.GA6183@bombadil.infradead.org>
 MIME-Version: 1.0
-In-Reply-To: <1514985934.3551.2.camel@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sat, 6 Jan 2018 12:20:13 -0800
+Matthew Wilcox <willy@infradead.org> wrote:
 
+> I've been thinking about all the kernel-doc we have that's completely
+> unincorporated.  I've also been thinking about core-api/kernel-api.rst
+> which to my mind is completely unreadable in its current form -- look at
+> https://www.kernel.org/doc/html/latest/core-api/kernel-api.html and you
+> wouldn't really know there's anything in it beyond the List Management
+> Functions.
 
-On 01/03/2018 08:25 AM, Justin Mitchell wrote:
-> Since a15bd948 the --enable-svcgss option no longer builds
-> as svcgssd references functions which were changed at that time.
-> Fix those, and other function changes since then.
+Yes, it's a mess.
+
+> I think the right path forward is to have kernel-api.rst be the dumping
+> ground for all the files with kernel-doc but nothing more.  That gives
+> us somewhere to link to.
+
+That's kind of what it is now :)
+
+Note that we have a script now (scripts/find-unused-docs.sh) that can
+seek out kerneldoc comments that aren't yet pulled in to the RST document
+tree.  
+
+> Then we need little stories about how all the functions in a subsystem
+> fit together.  For example, we can create a list.rst which explains how
+> this is a doubly-linked list that you use by embedding a list_head into
+> your data structure, and has O(1) insertion/deletion, etc, etc.  Then we
+> would move all the list.h kernel-doc from kernel-api.rst into list.rst.
 > 
-> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
-Committed... 
+> Is this a reasonable strategy to follow?  Does anyone have a better
+> strategy? 
 
-steved.
+That more-or-less corresponds to what I've been aiming at.  All of
+Documentation/ currently is a bit of a dumping ground; I'd really like to
+knit it together into something coherent and useful.  Progress on that
+front has been slower than I would have liked - I've been distracted by a
+number of other things.  Funny, I've never heard of that happening before.
 
-> ---
->  utils/gssd/svcgssd.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
-> index 3514ae1..23f0c0b 100644
-> --- a/utils/gssd/svcgssd.c
-> +++ b/utils/gssd/svcgssd.c
-> @@ -63,6 +63,8 @@
->  #include "err_util.h"
->  #include "conffile.h"
->  
-> +struct state_paths etab;
-> +
->  void
->  sig_die(int signal)
->  {
-> @@ -101,7 +103,7 @@ main(int argc, char *argv[])
->  	char *principal = NULL;
->  	char *s;
->  
-> -	conf_init(NFS_CONFFILE); 
-> +	conf_init_file(NFS_CONFFILE);
->  
->  	s = conf_get_str("svcgssd", "principal");
->  	if (!s)
-> 
+The "little stories", incidentally, can also go into DOC: sections in the
+source itself.  There's a bit of tension, though, between doing that and
+putting the stories in the RST files.  The former approach puts the docs
+where they might be most useful and most likely to be updated, but it can
+also leave the RST files as a collection of kerneldoc directives that is
+rather unhelpful to read in unprocessed form.  Since the whole idea is to
+not require any sort of processing to make the docs useful, I don't
+entirely like that outcome.
+
+Thanks,
+
+jon
