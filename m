@@ -1,52 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:38668 "EHLO mail.kernel.org"
+Received: from mx1.redhat.com ([209.132.183.28]:32774 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932324AbeAHNq3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 8 Jan 2018 08:46:29 -0500
-Message-ID: <1515419184.3486.21.camel@kernel.org>
-Subject: Re: [PATCH v4 19/19] fs: handle inode->i_version more efficiently
-From: Jeff Layton <jlayton@kernel.org>
-To: Matthew Wilcox <willy@infradead.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com
-Date: Mon, 08 Jan 2018 08:46:24 -0500
-In-Reply-To: <20180108133025.GA31867@bombadil.infradead.org>
-References: <20171222120556.7435-1-jlayton@kernel.org>
-         <20171222120556.7435-20-jlayton@kernel.org>
-         <20180108133025.GA31867@bombadil.infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+        id S1756822AbeAHOPv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 8 Jan 2018 09:15:51 -0500
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.phx2.redhat.com [10.5.11.16])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id A26BD6B236
+        for <linux-nfs@vger.kernel.org>; Mon,  8 Jan 2018 14:15:51 +0000 (UTC)
+Subject: Re: [PATCH] nfs-utils: Update svcgssd so that it builds
+To: Justin Mitchell <jumitche@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <1514985934.3551.2.camel@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <9fc1f09a-75be-9513-9e78-d1ebb77d2309@RedHat.com>
+Date: Mon, 8 Jan 2018 09:15:50 -0500
+MIME-Version: 1.0
+In-Reply-To: <1514985934.3551.2.camel@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2018-01-08 at 05:30 -0800, Matthew Wilcox wrote:
-> On Fri, Dec 22, 2017 at 07:05:56AM -0500, Jeff Layton wrote:
-> > +	cur = inode_peek_iversion_raw(inode);
-> > +	for (;;) {
-> > +		/* If flag is clear then we needn't do anything */
-> > +		if (!force && !(cur & I_VERSION_QUERIED))
-> > +			return false;
-> > +		/* Since lowest bit is flag, add 2 to avoid it */
-> > +		new = (cur & ~I_VERSION_QUERIED) + I_VERSION_INCREMENT;
-> 
-> Isn't this an extraordinarily complicated way of spelling:
-> 
-> 		new = cur + 1;
-> 
-> We know 'cur' has I_VERSION_QUERIED set, so clearing that bit and adding
-> two is going to be the same as adding 1 ... right?
-> 
 
-It would be, but if "force" is true, then I_VERSION_QUERIED may not be
-set.
--- 
-Jeff Layton <jlayton@kernel.org>
+
+On 01/03/2018 08:25 AM, Justin Mitchell wrote:
+> Since a15bd948 the --enable-svcgss option no longer builds
+> as svcgssd references functions which were changed at that time.
+> Fix those, and other function changes since then.
+> 
+> Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+Committed... 
+
+steved.
+
+> ---
+>  utils/gssd/svcgssd.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
+> index 3514ae1..23f0c0b 100644
+> --- a/utils/gssd/svcgssd.c
+> +++ b/utils/gssd/svcgssd.c
+> @@ -63,6 +63,8 @@
+>  #include "err_util.h"
+>  #include "conffile.h"
+>  
+> +struct state_paths etab;
+> +
+>  void
+>  sig_die(int signal)
+>  {
+> @@ -101,7 +103,7 @@ main(int argc, char *argv[])
+>  	char *principal = NULL;
+>  	char *s;
+>  
+> -	conf_init(NFS_CONFFILE); 
+> +	conf_init_file(NFS_CONFFILE);
+>  
+>  	s = conf_get_str("svcgssd", "principal");
+>  	if (!s)
+> 
