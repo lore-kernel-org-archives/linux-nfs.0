@@ -1,133 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:39430 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756679AbeAITl5 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jan 2018 14:41:57 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: [PATCH RFC 0/3] Add server-side support for junctions to
- nfs-utils
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180109192100.GB18087@fieldses.org>
-Date: Tue, 9 Jan 2018 14:36:53 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <492B1883-83EE-40AF-AA8C-1B797D842E5E@oracle.com>
-References: <20180108213356.20133.54161.stgit@manet.1015granger.net>
- <20180109192100.GB18087@fieldses.org>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:43087 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752098AbeAIU1C (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jan 2018 15:27:02 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
+CC: "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: NFSv4.1 regression with v4.15-rc
+Date: Tue, 9 Jan 2018 20:26:57 +0000
+Message-ID: <1515529615.26283.2.camel@primarydata.com>
+References: <337F485E-4E53-4EBF-8186-009326C281EC@oracle.com>
+         <20171230180526.GA4141@fieldses.org>
+         <874F5218-43E6-423C-9F94-4DFC07FFDF8D@oracle.com>
+         <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
+In-Reply-To: <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-> On Jan 9, 2018, at 2:21 PM, bfields@fieldses.org wrote:
->=20
-> Thanks for doing this!  I may not get the chance to do a real review,
-> but I'm in favor of the basic idea.
-
-How do you feel about building support for junctions into mountd,
-and getting rid of the libnfsjunct DLL ?
-
-
-> --b.
->=20
-> On Mon, Jan 08, 2018 at 04:49:50PM -0500, Chuck Lever wrote:
->> THIS IS AN UNTESTED RFC SERIES. I'm posting this for review only.
->>=20
->> A while back I announced the deprecation of fedfs-utils. There were
->> a handful of components in fedfs-utils that we decided to keep. One
->> of those keepers was the "nfsref" command. (The other was autofs
->> support for /nfs4, which I hope Ian Kent is making progress on ;-)
->>=20
->> This is an RFC patch series to introduce "nfsref" to nfs-utils,
->> minus the overhead of the LDAP / FedFS machinery. It also adds a
->> version of libnfsjunct which mountd can dynamically load to handle
->> non-FedFS junctions, replacing the same part from fedfs-utils.
->>=20
->> I didn't apply a lot of brain cells to this port, so it's perhaps a
->> little larger than it needs to be. Still, it achieves a completely
->> LDAP-free implementation. I'm interested in comments about the
->> approach before I do more testing and refinement.
->>=20
->>  ./configure --enable-junction --enable-caps
->>=20
->> is needed before building.
->>=20
->> Perhaps one thing that can be done is simply getting rid of the DLL
->> and building junction support into mountd. I'm not sure if a
->> transition period is necessary where the DLL is retained for a bit
->> until fedfs-utils is entirely gone. Does anything but mountd use
->> libnfsjunct ?
->>=20
->>=20
->> ---
->>=20
->> Chuck Lever (3):
->>      Add LDAP-free version of libjunction to nfs-utils
->>      Add LDAP-free version of libnfsjunct to nfs-utils
->>      Add 'nfsref' command
->>=20
->>=20
->> aclocal/libxml2.m4                   |   15=20
->> configure.ac                         |   12=20
->> support/Makefile.am                  |    4=20
->> support/include/Makefile.am          |    3=20
->> support/include/fedfs_admin.h        |  342 +++++++
->> support/include/junction.h           |  124 +++
->> support/include/nfs-plugin.h         |  101 ++
->> support/junction/Makefile.am         |   40 +
->> support/junction/display.c           |  159 +++
->> support/junction/export-cache.c      |  118 +++
->> support/junction/junction-internal.h |  121 +++
->> support/junction/junction.c          |  494 +++++++++++
->> support/junction/locations.c         |  131 +++
->> support/junction/nfs-plugin.c        |  350 ++++++++
->> support/junction/nfs.c               | 1564 =
-++++++++++++++++++++++++++++++++++
->> support/junction/path.c              |  345 ++++++++
->> support/junction/xml.c               |  401 +++++++++
->> utils/Makefile.am                    |    4=20
->> utils/nfsref/Makefile.am             |   39 +
->> utils/nfsref/add.c                   |  271 ++++++
->> utils/nfsref/lookup.c                |  211 +++++
->> utils/nfsref/nfsref.c                |  188 ++++
->> utils/nfsref/nfsref.h                |   47 +
->> utils/nfsref/nfsref.man              |  180 ++++
->> utils/nfsref/remove.c                |  145 +++
->> 25 files changed, 5409 insertions(+)
->> create mode 100644 aclocal/libxml2.m4
->> create mode 100644 support/include/fedfs_admin.h
->> create mode 100644 support/include/junction.h
->> create mode 100644 support/include/nfs-plugin.h
->> create mode 100644 support/junction/Makefile.am
->> create mode 100644 support/junction/display.c
->> create mode 100644 support/junction/export-cache.c
->> create mode 100644 support/junction/junction-internal.h
->> create mode 100644 support/junction/junction.c
->> create mode 100644 support/junction/locations.c
->> create mode 100644 support/junction/nfs-plugin.c
->> create mode 100644 support/junction/nfs.c
->> create mode 100644 support/junction/path.c
->> create mode 100644 support/junction/xml.c
->> create mode 100644 utils/nfsref/Makefile.am
->> create mode 100644 utils/nfsref/add.c
->> create mode 100644 utils/nfsref/lookup.c
->> create mode 100644 utils/nfsref/nfsref.c
->> create mode 100644 utils/nfsref/nfsref.h
->> create mode 100644 utils/nfsref/nfsref.man
->> create mode 100644 utils/nfsref/remove.c
->>=20
->> --
->> Chuck Lever
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
+T24gU3VuLCAyMDE3LTEyLTMxIGF0IDEzOjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
+PiBPbiBEZWMgMzAsIDIwMTcsIGF0IDE6MTQgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
+cmFjbGUuY29tPg0KPiA+IHdyb3RlOg0KPiA+IA0KPiA+ID4gDQo+ID4gPiBPbiBEZWMgMzAsIDIw
+MTcsIGF0IDE6MDUgUE0sIEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+DQo+ID4g
+PiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gT24gV2VkLCBEZWMgMjcsIDIwMTcgYXQgMDM6NDA6NThQ
+TSAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IExhc3Qgd2VlayBJIHVwZGF0ZWQg
+bXkgdGVzdCBzZXJ2ZXIgZnJvbSB2NC4xNCB0byB2NC4xNS1yYzQsIGFuZA0KPiA+ID4gPiBiZWdh
+biB0bw0KPiA+ID4gPiBvYnNlcnZlIGludGVybWl0dGVudCBmYWlsdXJlcyBpbiB0aGUgZ2l0IHJl
+Z3Jlc3Npb24gc3VpdGUgb24NCj4gPiA+ID4gTkZTdjQuMS4NCj4gPiA+IA0KPiA+ID4gSSBoYXZl
+bid0IHJ1biB0aGF0IGJlZm9yZS4gIFNob3VsZCBJIGp1c3QNCj4gPiA+IA0KPiA+ID4gCW1vdW50
+IC1vdmVycz00LjEgc2VydmVyOi9mcyAvbW50Lw0KPiA+ID4gCWNkIC9tbnQvDQo+ID4gPiAJZ2l0
+IGNsb25lIGdpdDovL2dpdC5rZXJuZWwub3JnL3B1Yi9zY20vZ2l0L2dpdC5naXQNCj4gPiA+IAlj
+ZCBnaXQNCj4gPiA+IAltYWtlIHRlc3QNCj4gPiA+IA0KPiA+ID4gPw0KPiA+IA0KPiA+IFlvdSds
+bCBuZWVkIHRvIGluc3RhbGwgU1ZOIGFuZCBDVlMgb24geW91ciBjbGllbnQgYXMgd2VsbC4NCj4g
+PiBUaGUgZmFpbHVyZXMgc2VlbSB0byBvY2N1ciBvbmx5IGluIHRoZSBTVk4vQ1ZTIHJlbGF0ZWQN
+Cj4gPiB0ZXN0cy4NCj4gPiANCj4gPiANCj4gPiA+ID4gSQ0KPiA+ID4gPiB3YXMgYWJsZSB0byBy
+ZXByb2R1Y2UgdGhlc2UgZmFpbHVyZXMgd2l0aCBORlN2NC4xIG9uIGJvdGggVENQDQo+ID4gPiA+
+IGFuZCBSRE1BLA0KPiA+ID4gPiB5ZXQgdGhlcmUgaGFzIG5vdCBiZWVuIGEgcmVwcm9kdWN0aW9u
+IHdpdGggTkZTdjMgb3IgTkZTdjQuMC4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBzZXJ2ZXIgaGFy
+ZHdhcmUgaXMgYSBzaW5nbGUtc29ja2V0IDQtY29yZSBzeXN0ZW0gd2l0aCAzMkdCDQo+ID4gPiA+
+IG9mIFJBTS4NCj4gPiA+ID4gVGhlIGV4cG9ydCBpcyBhIHRtcGZzLiBOZXR3b3JraW5nIGlzIDU2
+R2IgSW5maW5pQmFuZCAob3INCj4gPiA+ID4gSVBvSUIpLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhl
+IGdpdCByZWdyZXNzaW9uIHN1aXRlIHJlcG9ydHMgaW5kaXZpZHVhbCB0ZXN0IGZhaWx1cmVzIGlu
+DQo+ID4gPiA+IHRoZSBTVk4NCj4gPiA+ID4gYW5kIENWUyB0ZXN0cy4gT24gb2NjYXNpb24sIHRo
+ZSBjbGllbnQgbW91bnQgcG9pbnQgZnJlZXplcywNCj4gPiA+ID4gcmVxdWlyaW5nDQo+ID4gPiA+
+IHRoYXQgdGhlIGNsaWVudCBiZSByZWJvb3RlZCBpbiBvcmRlciB0byB1bnN0aWNrIHRoZSBtb3Vu
+dC4NCj4gPiA+ID4gDQo+ID4gPiA+IEp1c3QgYmVmb3JlIENocmlzdG1hcywgSSBiaXNlY3RlZCB0
+aGUgcHJvYmxlbSB0bzoNCj4gPiA+IA0KPiA+ID4gVGhhbmtzIGZvciB0aGUgcmVwb3J0ISAgSSds
+bCBtYWtlIHNvbWUgdGltZSBmb3IgdGhpcyBuZXh0DQo+ID4gPiB3ZWVrLiAgV2hhdCdzDQo+ID4g
+PiB5b3VyIGNsaWVudD8NCj4gDQo+IE9vcHMsIEkgZGlkbid0IGFuc3dlciB0aGlzIHF1ZXN0aW9u
+LiBUaGUgY2xpZW50IGlzIHY0LjE1LXJjNC4NCj4gDQo+IA0KPiA+ID4gSSBndWVzcyBvbmUgc3Rh
+cnQgbWlnaHQgYmUgdG8gc2VlIGlmIHRoZSByZXByb2R1Y2VyIGNhbiBiZQ0KPiA+ID4gc2ltcGxp
+ZmllZCBlLmcuIGJ5IHJ1bm5pbmcganVzdCBvbmUgb2YgdGhlIHRlc3RzIGZyb20gdGhlIHN1aXRl
+Lg0KPiA+IA0KPiA+IFRoZSBmYWlsdXJlcyBhcmUgaW50ZXJtaXR0ZW50LCBhbmQgb2NjdXIgaW4g
+YSBkaWZmZXJlbnQgdGVzdA0KPiA+IGVhY2ggdGltZS4gWW91IGhhdmUgdG8gd2FpdCBmb3IgdGhl
+IDkwMDAtc2VyaWVzIHNjcmlwdHMsIHdoaWNoDQo+ID4gdGVzdCBTVk4vQ1ZTIHJlcG8gb3BlcmF0
+aW9ucy4gVG8gc3BlZWQgdXAgdGltZS10by1mYWlsdXJlLCB1c2UNCj4gPiAibWFrZSAtak4gdGVz
+dCIgd2hlcmUgTiBpcyBtb3JlIHRoYW4gYSBmZXcuDQo+ID4gDQo+ID4gTXkgY2xpZW50IGFuZCBz
+ZXJ2ZXIgYm90aCBoYXZlIG11bHRpcGxlIHJlYWwgY29yZXMuIEknbQ0KPiA+IHRoaW5raW5nIGl0
+J3MgdGhlIHNlcnZlciB0aGF0IG1hdHRlcnMgaGVyZSAocG9zc2libHkgYSByYWNlDQo+ID4gY29u
+ZGl0aW9uIGlzIGludHJvZHVjZWQgYnkgdGhlIGJlbG93IGNvbW1pdD8pLg0KPiA+IA0KPiA+IA0K
+PiA+ID4gLS1iLg0KPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBjb21taXQgNjU5YWVmYjY4ZWNh
+MjhiYTlhYTQ4MmE5ZmM2NGRlMTA3MzMyZTI1Ng0KPiA+ID4gPiBBdXRob3I6IFRyb25kIE15a2xl
+YnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCj4gPiA+ID4gRGF0ZTogICBG
+cmkgTm92IDMgMDg6MDA6MTMgMjAxNyAtMDQwMA0KPiA+ID4gPiANCj4gPiA+ID4gICBuZnNkOiBF
+bnN1cmUgd2UgZG9uJ3QgcmVjb2duaXNlIGxvY2sgc3RhdGVpZHMgYWZ0ZXIgZnJlZWluZw0KPiA+
+ID4gPiB0aGVtDQo+ID4gPiA+IA0KPiA+ID4gPiAgIEluIG9yZGVyIHRvIGRlYWwgd2l0aCBsb29r
+dXAgcmFjZXMsIG5mc2Q0X2ZyZWVfbG9ja19zdGF0ZWlkKCkNCj4gPiA+ID4gbmVlZHMNCj4gPiA+
+ID4gICB0byBiZSBhYmxlIHRvIHNpZ25hbCB0byBvdGhlciBzdGF0ZWZ1bCBmdW5jdGlvbnMgdGhh
+dCB0aGUNCj4gPiA+ID4gbG9jayBzdGF0ZWlkDQo+ID4gPiA+ICAgaXMgbm8gbG9uZ2VyIHZhbGlk
+LiBSaWdodCBub3csIG5mc2RfbG9jaygpIHdpbGwgY2hlY2sgd2hldGhlcg0KPiA+ID4gPiBvciBu
+b3QgYW4NCj4gPiA+ID4gICBleGlzdGluZyBzdGF0ZWlkIGlzIHN0aWxsIGhhc2hlZCwgYnV0IG9u
+bHkgaW4gdGhlICJuZXcgbG9jayINCj4gPiA+ID4gcGF0aC4NCj4gPiA+ID4gDQo+ID4gPiA+ICAg
+VG8gZW5zdXJlIHRoZSBzdGF0ZWlkIGludmFsaWRhdGlvbiBpcyBhbHNvIHJlY29nbmlzZWQgYnkg
+dGhlDQo+ID4gPiA+ICJleGlzdGluZyBsb2NrIg0KPiA+ID4gPiAgIHBhdGgsIGFuZCBhbHNvIGJ5
+IGEgc2Vjb25kIGNhbGwgdG8gbmZzZDRfZnJlZV9sb2NrX3N0YXRlaWQoKQ0KPiA+ID4gPiBpdHNl
+bGYsIHdlIGNhbg0KPiA+ID4gPiAgIGNoYW5nZSB0aGUgdHlwZSB0byBORlM0X0NMT1NFRF9TVElE
+IHVuZGVyIHRoZSBzdHAtPnN0X211dGV4Lg0KPiA+ID4gPiANCj4gPiA+ID4gICBTaWduZWQtb2Zm
+LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jDQo+ID4g
+PiA+IG9tPg0KPiA+ID4gPiAgIFNpZ25lZC1vZmYtYnk6IEouIEJydWNlIEZpZWxkcyA8YmZpZWxk
+c0ByZWRoYXQuY29tPg0KPiA+ID4gPiANCj4gPiA+ID4gDQoNClNvLCBJJ20gdGhpbmtpbmcgdGhh
+dCByZWxlYXNlX29wZW5fc3RhdGVpZF9sb2NrcygpIGFuZA0KbmZzZDRfcmVsZWFzZV9sb2Nrb3du
+ZXIoKSBzaG91bGQgcHJvYmFibHkgYmUgc2V0dGluZyBORlM0X0NMT1NFRF9TVElEDQp3aGVuIHRo
+ZXkgY2FsbCB1bmhhc2hfbG9ja19zdGF0ZWlkKCkgKHNvcnJ5IGZvciBtaXNzaW5nIHRoYXQpLg0K
+DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
+YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
