@@ -1,86 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:34871 "EHLO mx2.suse.de"
+Received: from fw.vincze.org ([71.184.222.21]:56277 "EHLO mailgw.vincze.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751239AbeAIPOb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 Jan 2018 10:14:31 -0500
-Date: Tue, 9 Jan 2018 16:14:28 +0100
-From: Jan Kara <jack@suse.cz>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com, krzk@kernel.org
-Subject: Re: [PATCH v5 02/19] fs: don't take the i_lock in inode_inc_iversion
-Message-ID: <20180109151428.yuhawmbgv7tywjcq@quack2.suse.cz>
-References: <20180109141059.25929-1-jlayton@kernel.org>
- <20180109141059.25929-3-jlayton@kernel.org>
+        id S933135AbeAIPlh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 Jan 2018 10:41:37 -0500
+Received: from mail.vincze.org (unknown [10.10.0.8])
+        (using TLSv1 with cipher ADH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mailgw.vincze.org (Postfix) with ESMTP id 1030B1012F
+        for <linux-nfs@vger.kernel.org>; Tue,  9 Jan 2018 10:11:07 -0500 (EST)
+Received: from ws.vincze.org (ws.vincze.org [10.10.0.7])
+        (using TLSv1 with cipher DHE-RSA-AES128-SHA (128/128 bits))
+        (No client certificate requested)
+        by mail.vincze.org (Postfix) with ESMTP id C54B277E4A
+        for <linux-nfs@vger.kernel.org>; Tue,  9 Jan 2018 10:11:06 -0500 (EST)
+To: linux-nfs@vger.kernel.org
+From: Tamas Vincze <tom@vincze.org>
+Subject: Varying ro/rw based on security flavor doesn't work
+Message-ID: <890d00b1-fb64-1011-4a44-2e47713de0f7@vincze.org>
+Date: Tue, 9 Jan 2018 10:11:05 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180109141059.25929-3-jlayton@kernel.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 09-01-18 09:10:42, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@redhat.com>
-> 
-> The rationale for taking the i_lock when incrementing this value is
-> lost in antiquity. The readers of the field don't take it (at least
-> not universally), so my assumption is that it was only done here to
-> serialize incrementors.
-> 
-> If that is indeed the case, then we can drop the i_lock from this
-> codepath and treat it as a atomic64_t for the purposes of
-> incrementing it. This allows us to use inode_inc_iversion without
-> any danger of lock inversion.
-> 
-> Note that the read side is not fetched atomically with this change.
-> The assumption here is that that is not a critical issue since the
-> i_version is not fully synchronized with anything else anyway.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Hi:
 
-This changes the memory barrier behavior but IMO it is good enough for an
-intermediate version. You can add:
+The exports man page says that one can vary ro/rw based on security 
+flavor by including multiple sec= options in /etc/exports, but it seems 
+to be broken in nfs-utils-1.3.0-0.48.el7_4.
 
-Reviewed-by: Jan Kara <jack@suse.cz>
+For example this /etc/exports:
 
-								Honza
+/export/pub 10.13.0.0/16(sec=sys,ro,sec=krb5i:krb5p,rw)
 
-> ---
->  include/linux/iversion.h | 7 ++++---
->  1 file changed, 4 insertions(+), 3 deletions(-)
-> 
-> diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-> index d09cc3a08740..5ad9eaa3a9b0 100644
-> --- a/include/linux/iversion.h
-> +++ b/include/linux/iversion.h
-> @@ -104,12 +104,13 @@ inode_set_iversion_queried(struct inode *inode, u64 new)
->  static inline bool
->  inode_maybe_inc_iversion(struct inode *inode, bool force)
->  {
-> -	spin_lock(&inode->i_lock);
-> -	inode->i_version++;
-> -	spin_unlock(&inode->i_lock);
-> +	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> +
-> +	atomic64_inc(ivp);
->  	return true;
->  }
->  
-> +
->  /**
->   * inode_inc_iversion - forcibly increment i_version
->   * @inode: inode that needs to be updated
-> -- 
-> 2.14.3
-> 
--- 
-Jan Kara <jack@suse.com>
-SUSE Labs, CR
+results in this /var/lib/nfs/etab:
+
+/export/pub 
+10.13.0.0/16(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,no_subtree_check,secure_locks,acl,no_pnfs,anonuid=65534,anongid=65534,sec=sys,secure,root_squash,no_all_squash,sec=krb5i:krb5p,secure,root_squash,no_all_squash)
+
+Only the rw option is present in etab, that applies to both sec=sys and 
+sec=krb5i:krb5p.
+
+Is this bug specific to redhat or also present upstream?
+
+Please include me in replies as I'm not subscribed to the list.
+
+Thanks,
+Tamas
+
