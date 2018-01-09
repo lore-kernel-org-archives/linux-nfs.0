@@ -1,8 +1,8 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:42130 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:42166 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1756477AbeAIOLS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 9 Jan 2018 09:11:18 -0500
+        id S1752596AbeAIOLV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 Jan 2018 09:11:21 -0500
 From: Jeff Layton <jlayton@kernel.org>
 To: linux-fsdevel@vger.kernel.org
 Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
@@ -15,9 +15,9 @@ Cc: linux-kernel@vger.kernel.org, viro@zeniv.linux.org.uk,
         zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
         linux-afs@lists.infradead.org, dhowells@redhat.com,
         jaltman@auristor.com, krzk@kernel.org
-Subject: [PATCH v5 05/19] afs: convert to new i_version API
-Date: Tue,  9 Jan 2018 09:10:45 -0500
-Message-Id: <20180109141059.25929-6-jlayton@kernel.org>
+Subject: [PATCH v5 06/19] btrfs: convert to new i_version API
+Date: Tue,  9 Jan 2018 09:10:46 -0500
+Message-Id: <20180109141059.25929-7-jlayton@kernel.org>
 In-Reply-To: <20180109141059.25929-1-jlayton@kernel.org>
 References: <20180109141059.25929-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -25,74 +25,92 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@redhat.com>
 
-For AFS, it's generally treated as an opaque value, so we use the
-*_raw variants of the API here.
-
-Note that AFS has quite a different definition for this counter. AFS
-only increments it on changes to the data to the data in regular files
-and contents of the directories. Inode metadata changes do not result
-in a version increment.
-
-We'll need to reconcile that somehow if we ever want to present this to
-userspace via statx.
-
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Acked-by: David Sterba <dsterba@suse.com>
 ---
- fs/afs/fsclient.c | 3 ++-
- fs/afs/inode.c    | 5 +++--
- 2 files changed, 5 insertions(+), 3 deletions(-)
+ fs/btrfs/delayed-inode.c | 7 +++++--
+ fs/btrfs/inode.c         | 6 ++++--
+ fs/btrfs/tree-log.c      | 4 +++-
+ 3 files changed, 12 insertions(+), 5 deletions(-)
 
-diff --git a/fs/afs/fsclient.c b/fs/afs/fsclient.c
-index b90ef39ae914..88ec38c2d83c 100644
---- a/fs/afs/fsclient.c
-+++ b/fs/afs/fsclient.c
-@@ -13,6 +13,7 @@
+diff --git a/fs/btrfs/delayed-inode.c b/fs/btrfs/delayed-inode.c
+index 5d73f79ded8b..6a246ae2bcb2 100644
+--- a/fs/btrfs/delayed-inode.c
++++ b/fs/btrfs/delayed-inode.c
+@@ -18,6 +18,7 @@
+  */
+ 
  #include <linux/slab.h>
- #include <linux/sched.h>
- #include <linux/circ_buf.h>
 +#include <linux/iversion.h>
- #include "internal.h"
- #include "afs_fs.h"
+ #include "delayed-inode.h"
+ #include "disk-io.h"
+ #include "transaction.h"
+@@ -1700,7 +1701,8 @@ static void fill_stack_inode_item(struct btrfs_trans_handle *trans,
+ 	btrfs_set_stack_inode_nbytes(inode_item, inode_get_bytes(inode));
+ 	btrfs_set_stack_inode_generation(inode_item,
+ 					 BTRFS_I(inode)->generation);
+-	btrfs_set_stack_inode_sequence(inode_item, inode->i_version);
++	btrfs_set_stack_inode_sequence(inode_item,
++				       inode_peek_iversion(inode));
+ 	btrfs_set_stack_inode_transid(inode_item, trans->transid);
+ 	btrfs_set_stack_inode_rdev(inode_item, inode->i_rdev);
+ 	btrfs_set_stack_inode_flags(inode_item, BTRFS_I(inode)->flags);
+@@ -1754,7 +1756,8 @@ int btrfs_fill_inode(struct inode *inode, u32 *rdev)
+ 	BTRFS_I(inode)->generation = btrfs_stack_inode_generation(inode_item);
+         BTRFS_I(inode)->last_trans = btrfs_stack_inode_transid(inode_item);
  
-@@ -124,7 +125,7 @@ static void xdr_decode_AFSFetchStatus(const __be32 **_bp,
- 		vnode->vfs_inode.i_ctime.tv_sec	= status->mtime_client;
- 		vnode->vfs_inode.i_mtime	= vnode->vfs_inode.i_ctime;
- 		vnode->vfs_inode.i_atime	= vnode->vfs_inode.i_ctime;
--		vnode->vfs_inode.i_version	= data_version;
-+		inode_set_iversion_raw(&vnode->vfs_inode, data_version);
- 	}
+-	inode->i_version = btrfs_stack_inode_sequence(inode_item);
++	inode_set_iversion_queried(inode,
++				   btrfs_stack_inode_sequence(inode_item));
+ 	inode->i_rdev = 0;
+ 	*rdev = btrfs_stack_inode_rdev(inode_item);
+ 	BTRFS_I(inode)->flags = btrfs_stack_inode_flags(inode_item);
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index 27f008b33fc1..ac8692849a81 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -3778,7 +3778,8 @@ static int btrfs_read_locked_inode(struct inode *inode)
+ 	BTRFS_I(inode)->generation = btrfs_inode_generation(leaf, inode_item);
+ 	BTRFS_I(inode)->last_trans = btrfs_inode_transid(leaf, inode_item);
  
- 	expected_version = status->data_version;
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index 3415eb7484f6..dcd2e08d6cdb 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -21,6 +21,7 @@
- #include <linux/sched.h>
- #include <linux/mount.h>
- #include <linux/namei.h>
+-	inode->i_version = btrfs_inode_sequence(leaf, inode_item);
++	inode_set_iversion_queried(inode,
++				   btrfs_inode_sequence(leaf, inode_item));
+ 	inode->i_generation = BTRFS_I(inode)->generation;
+ 	inode->i_rdev = 0;
+ 	rdev = btrfs_inode_rdev(leaf, inode_item);
+@@ -3946,7 +3947,8 @@ static void fill_inode_item(struct btrfs_trans_handle *trans,
+ 				     &token);
+ 	btrfs_set_token_inode_generation(leaf, item, BTRFS_I(inode)->generation,
+ 					 &token);
+-	btrfs_set_token_inode_sequence(leaf, item, inode->i_version, &token);
++	btrfs_set_token_inode_sequence(leaf, item, inode_peek_iversion(inode),
++				       &token);
+ 	btrfs_set_token_inode_transid(leaf, item, trans->transid, &token);
+ 	btrfs_set_token_inode_rdev(leaf, item, inode->i_rdev, &token);
+ 	btrfs_set_token_inode_flags(leaf, item, BTRFS_I(inode)->flags, &token);
+diff --git a/fs/btrfs/tree-log.c b/fs/btrfs/tree-log.c
+index 7bf9b31561db..1b7d92075c1f 100644
+--- a/fs/btrfs/tree-log.c
++++ b/fs/btrfs/tree-log.c
+@@ -20,6 +20,7 @@
+ #include <linux/slab.h>
+ #include <linux/blkdev.h>
+ #include <linux/list_sort.h>
 +#include <linux/iversion.h>
- #include "internal.h"
+ #include "tree-log.h"
+ #include "disk-io.h"
+ #include "locking.h"
+@@ -3609,7 +3610,8 @@ static void fill_inode_item(struct btrfs_trans_handle *trans,
+ 	btrfs_set_token_inode_nbytes(leaf, item, inode_get_bytes(inode),
+ 				     &token);
  
- static const struct inode_operations afs_symlink_inode_operations = {
-@@ -89,7 +90,7 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
- 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
- 	inode->i_blocks		= 0;
- 	inode->i_generation	= vnode->fid.unique;
--	inode->i_version	= vnode->status.data_version;
-+	inode_set_iversion_raw(inode, vnode->status.data_version);
- 	inode->i_mapping->a_ops	= &afs_fs_aops;
- 
- 	read_sequnlock_excl(&vnode->cb_lock);
-@@ -218,7 +219,7 @@ struct inode *afs_iget_autocell(struct inode *dir, const char *dev_name,
- 	inode->i_ctime.tv_nsec	= 0;
- 	inode->i_atime		= inode->i_mtime = inode->i_ctime;
- 	inode->i_blocks		= 0;
--	inode->i_version	= 0;
-+	inode_set_iversion_raw(inode, 0);
- 	inode->i_generation	= 0;
- 
- 	set_bit(AFS_VNODE_PSEUDODIR, &vnode->flags);
+-	btrfs_set_token_inode_sequence(leaf, item, inode->i_version, &token);
++	btrfs_set_token_inode_sequence(leaf, item,
++				       inode_peek_iversion(inode), &token);
+ 	btrfs_set_token_inode_transid(leaf, item, trans->transid, &token);
+ 	btrfs_set_token_inode_rdev(leaf, item, inode->i_rdev, &token);
+ 	btrfs_set_token_inode_flags(leaf, item, BTRFS_I(inode)->flags, &token);
 -- 
 2.14.3
 
