@@ -1,140 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:48388 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751935AbeAIU2g (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jan 2018 15:28:36 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: NFSv4.1 regression with v4.15-rc
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1515529615.26283.2.camel@primarydata.com>
-Date: Tue, 9 Jan 2018 15:28:23 -0500
-Cc: Bruce Fields <bfields@fieldses.org>,
-        Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <ACF7A175-BFE5-4D3D-9EA7-F76DAD004ECA@oracle.com>
-References: <337F485E-4E53-4EBF-8186-009326C281EC@oracle.com>
- <20171230180526.GA4141@fieldses.org>
- <874F5218-43E6-423C-9F94-4DFC07FFDF8D@oracle.com>
- <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
- <1515529615.26283.2.camel@primarydata.com>
-To: Trond Myklebust <trondmy@primarydata.com>
+Received: from fw.vincze.org ([71.184.222.21]:56975 "EHLO mailgw.vincze.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1756477AbeAIUrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 9 Jan 2018 15:47:52 -0500
+Subject: Re: Varying ro/rw based on security flavor doesn't work
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+References: <890d00b1-fb64-1011-4a44-2e47713de0f7@vincze.org>
+ <20180109192338.GC18087@fieldses.org>
+From: Tamas Vincze <tom@vincze.org>
+Message-ID: <83d5cd2e-d295-8d1c-85a0-bdc328307d6a@vincze.org>
+Date: Tue, 9 Jan 2018 15:47:50 -0500
+MIME-Version: 1.0
+In-Reply-To: <20180109192338.GC18087@fieldses.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 01/09/2018 02:23 PM, J. Bruce Fields wrote:
+> On Tue, Jan 09, 2018 at 10:11:05AM -0500, Tamas Vincze wrote:
+>> The exports man page says that one can vary ro/rw based on security
+>> flavor by including multiple sec= options in /etc/exports, but it
+>> seems to be broken in nfs-utils-1.3.0-0.48.el7_4.
+>>
+>> For example this /etc/exports:
+>>
+>> /export/pub 10.13.0.0/16(sec=sys,ro,sec=krb5i:krb5p,rw)
+>>
+>> results in this /var/lib/nfs/etab:
+>>
+>> /export/pub 10.13.0.0/16(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_all_squash,no_subtree_check,secure_locks,acl,no_pnfs,anonuid=65534,anongid=65534,sec=sys,secure,root_squash,no_all_squash,sec=krb5i:krb5p,secure,root_squash,no_all_squash)
+>>
+>> Only the rw option is present in etab, that applies to both sec=sys
+>> and sec=krb5i:krb5p.
+>>
+>> Is this bug specific to redhat or also present upstream?
+> I don't know off the top of my head....  Is there a redhat bug filed?
+I filed one today: https://bugzilla.redhat.com/show_bug.cgi?id=1532688
+It has no duplicates so far...
+> And is there some prevoius version that you know worked?
+I don't know, I haven't used this feature before.
+> Agreed that it looks like a bug.
+>
+> --b.
+And it can have some security implications if people have been relying 
+on it and it quietly broke (sec=sys is basically no security these 
+days). I see this feature has been around for more than a decade so 
+there's a good chance that it's in use.
 
-
-> On Jan 9, 2018, at 3:26 PM, Trond Myklebust <trondmy@primarydata.com> =
-wrote:
->=20
-> On Sun, 2017-12-31 at 13:35 -0500, Chuck Lever wrote:
->>> On Dec 30, 2017, at 1:14 PM, Chuck Lever <chuck.lever@oracle.com>
->>> wrote:
->>>=20
->>>>=20
->>>> On Dec 30, 2017, at 1:05 PM, Bruce Fields <bfields@fieldses.org>
->>>> wrote:
->>>>=20
->>>> On Wed, Dec 27, 2017 at 03:40:58PM -0500, Chuck Lever wrote:
->>>>> Last week I updated my test server from v4.14 to v4.15-rc4, and
->>>>> began to
->>>>> observe intermittent failures in the git regression suite on
->>>>> NFSv4.1.
->>>>=20
->>>> I haven't run that before.  Should I just
->>>>=20
->>>> 	mount -overs=3D4.1 server:/fs /mnt/
->>>> 	cd /mnt/
->>>> 	git clone git://git.kernel.org/pub/scm/git/git.git
->>>> 	cd git
->>>> 	make test
->>>>=20
->>>> ?
->>>=20
->>> You'll need to install SVN and CVS on your client as well.
->>> The failures seem to occur only in the SVN/CVS related
->>> tests.
->>>=20
->>>=20
->>>>> I
->>>>> was able to reproduce these failures with NFSv4.1 on both TCP
->>>>> and RDMA,
->>>>> yet there has not been a reproduction with NFSv3 or NFSv4.0.
->>>>>=20
->>>>> The server hardware is a single-socket 4-core system with 32GB
->>>>> of RAM.
->>>>> The export is a tmpfs. Networking is 56Gb InfiniBand (or
->>>>> IPoIB).
->>>>>=20
->>>>> The git regression suite reports individual test failures in
->>>>> the SVN
->>>>> and CVS tests. On occasion, the client mount point freezes,
->>>>> requiring
->>>>> that the client be rebooted in order to unstick the mount.
->>>>>=20
->>>>> Just before Christmas, I bisected the problem to:
->>>>=20
->>>> Thanks for the report!  I'll make some time for this next
->>>> week.  What's
->>>> your client?
->>=20
->> Oops, I didn't answer this question. The client is v4.15-rc4.
->>=20
->>=20
->>>> I guess one start might be to see if the reproducer can be
->>>> simplified e.g. by running just one of the tests from the suite.
->>>=20
->>> The failures are intermittent, and occur in a different test
->>> each time. You have to wait for the 9000-series scripts, which
->>> test SVN/CVS repo operations. To speed up time-to-failure, use
->>> "make -jN test" where N is more than a few.
->>>=20
->>> My client and server both have multiple real cores. I'm
->>> thinking it's the server that matters here (possibly a race
->>> condition is introduced by the below commit?).
->>>=20
->>>=20
->>>> --b.
->>>>=20
->>>>>=20
->>>>> commit 659aefb68eca28ba9aa482a9fc64de107332e256
->>>>> Author: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>> Date:   Fri Nov 3 08:00:13 2017 -0400
->>>>>=20
->>>>>  nfsd: Ensure we don't recognise lock stateids after freeing
->>>>> them
->>>>>=20
->>>>>  In order to deal with lookup races, nfsd4_free_lock_stateid()
->>>>> needs
->>>>>  to be able to signal to other stateful functions that the
->>>>> lock stateid
->>>>>  is no longer valid. Right now, nfsd_lock() will check whether
->>>>> or not an
->>>>>  existing stateid is still hashed, but only in the "new lock"
->>>>> path.
->>>>>=20
->>>>>  To ensure the stateid invalidation is also recognised by the
->>>>> "existing lock"
->>>>>  path, and also by a second call to nfsd4_free_lock_stateid()
->>>>> itself, we can
->>>>>  change the type to NFS4_CLOSED_STID under the stp->st_mutex.
->>>>>=20
->>>>>  Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.c
->>>>> om>
->>>>>  Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>>>>=20
->>>>>=20
->=20
-> So, I'm thinking that release_open_stateid_locks() and
-> nfsd4_release_lockowner() should probably be setting NFS4_CLOSED_STID
-> when they call unhash_lock_stateid() (sorry for missing that).
-
-Send me a patch and I can test it.
-
-
---
-Chuck Lever
-
-
-
+-Tamas
