@@ -1,90 +1,140 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:43087 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752098AbeAIU1C (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jan 2018 15:27:02 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "bfields@redhat.com" <bfields@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from userp2120.oracle.com ([156.151.31.85]:48388 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751935AbeAIU2g (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 9 Jan 2018 15:28:36 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
 Subject: Re: NFSv4.1 regression with v4.15-rc
-Date: Tue, 9 Jan 2018 20:26:57 +0000
-Message-ID: <1515529615.26283.2.camel@primarydata.com>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1515529615.26283.2.camel@primarydata.com>
+Date: Tue, 9 Jan 2018 15:28:23 -0500
+Cc: Bruce Fields <bfields@fieldses.org>,
+        Bruce Fields <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <ACF7A175-BFE5-4D3D-9EA7-F76DAD004ECA@oracle.com>
 References: <337F485E-4E53-4EBF-8186-009326C281EC@oracle.com>
-         <20171230180526.GA4141@fieldses.org>
-         <874F5218-43E6-423C-9F94-4DFC07FFDF8D@oracle.com>
-         <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
-In-Reply-To: <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+ <20171230180526.GA4141@fieldses.org>
+ <874F5218-43E6-423C-9F94-4DFC07FFDF8D@oracle.com>
+ <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
+ <1515529615.26283.2.camel@primarydata.com>
+To: Trond Myklebust <trondmy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE3LTEyLTMxIGF0IDEzOjM1IC0wNTAwLCBDaHVjayBMZXZlciB3cm90ZToNCj4g
-PiBPbiBEZWMgMzAsIDIwMTcsIGF0IDE6MTQgUE0sIENodWNrIExldmVyIDxjaHVjay5sZXZlckBv
-cmFjbGUuY29tPg0KPiA+IHdyb3RlOg0KPiA+IA0KPiA+ID4gDQo+ID4gPiBPbiBEZWMgMzAsIDIw
-MTcsIGF0IDE6MDUgUE0sIEJydWNlIEZpZWxkcyA8YmZpZWxkc0BmaWVsZHNlcy5vcmc+DQo+ID4g
-PiB3cm90ZToNCj4gPiA+IA0KPiA+ID4gT24gV2VkLCBEZWMgMjcsIDIwMTcgYXQgMDM6NDA6NThQ
-TSAtMDUwMCwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiA+IExhc3Qgd2VlayBJIHVwZGF0ZWQg
-bXkgdGVzdCBzZXJ2ZXIgZnJvbSB2NC4xNCB0byB2NC4xNS1yYzQsIGFuZA0KPiA+ID4gPiBiZWdh
-biB0bw0KPiA+ID4gPiBvYnNlcnZlIGludGVybWl0dGVudCBmYWlsdXJlcyBpbiB0aGUgZ2l0IHJl
-Z3Jlc3Npb24gc3VpdGUgb24NCj4gPiA+ID4gTkZTdjQuMS4NCj4gPiA+IA0KPiA+ID4gSSBoYXZl
-bid0IHJ1biB0aGF0IGJlZm9yZS4gIFNob3VsZCBJIGp1c3QNCj4gPiA+IA0KPiA+ID4gCW1vdW50
-IC1vdmVycz00LjEgc2VydmVyOi9mcyAvbW50Lw0KPiA+ID4gCWNkIC9tbnQvDQo+ID4gPiAJZ2l0
-IGNsb25lIGdpdDovL2dpdC5rZXJuZWwub3JnL3B1Yi9zY20vZ2l0L2dpdC5naXQNCj4gPiA+IAlj
-ZCBnaXQNCj4gPiA+IAltYWtlIHRlc3QNCj4gPiA+IA0KPiA+ID4gPw0KPiA+IA0KPiA+IFlvdSds
-bCBuZWVkIHRvIGluc3RhbGwgU1ZOIGFuZCBDVlMgb24geW91ciBjbGllbnQgYXMgd2VsbC4NCj4g
-PiBUaGUgZmFpbHVyZXMgc2VlbSB0byBvY2N1ciBvbmx5IGluIHRoZSBTVk4vQ1ZTIHJlbGF0ZWQN
-Cj4gPiB0ZXN0cy4NCj4gPiANCj4gPiANCj4gPiA+ID4gSQ0KPiA+ID4gPiB3YXMgYWJsZSB0byBy
-ZXByb2R1Y2UgdGhlc2UgZmFpbHVyZXMgd2l0aCBORlN2NC4xIG9uIGJvdGggVENQDQo+ID4gPiA+
-IGFuZCBSRE1BLA0KPiA+ID4gPiB5ZXQgdGhlcmUgaGFzIG5vdCBiZWVuIGEgcmVwcm9kdWN0aW9u
-IHdpdGggTkZTdjMgb3IgTkZTdjQuMC4NCj4gPiA+ID4gDQo+ID4gPiA+IFRoZSBzZXJ2ZXIgaGFy
-ZHdhcmUgaXMgYSBzaW5nbGUtc29ja2V0IDQtY29yZSBzeXN0ZW0gd2l0aCAzMkdCDQo+ID4gPiA+
-IG9mIFJBTS4NCj4gPiA+ID4gVGhlIGV4cG9ydCBpcyBhIHRtcGZzLiBOZXR3b3JraW5nIGlzIDU2
-R2IgSW5maW5pQmFuZCAob3INCj4gPiA+ID4gSVBvSUIpLg0KPiA+ID4gPiANCj4gPiA+ID4gVGhl
-IGdpdCByZWdyZXNzaW9uIHN1aXRlIHJlcG9ydHMgaW5kaXZpZHVhbCB0ZXN0IGZhaWx1cmVzIGlu
-DQo+ID4gPiA+IHRoZSBTVk4NCj4gPiA+ID4gYW5kIENWUyB0ZXN0cy4gT24gb2NjYXNpb24sIHRo
-ZSBjbGllbnQgbW91bnQgcG9pbnQgZnJlZXplcywNCj4gPiA+ID4gcmVxdWlyaW5nDQo+ID4gPiA+
-IHRoYXQgdGhlIGNsaWVudCBiZSByZWJvb3RlZCBpbiBvcmRlciB0byB1bnN0aWNrIHRoZSBtb3Vu
-dC4NCj4gPiA+ID4gDQo+ID4gPiA+IEp1c3QgYmVmb3JlIENocmlzdG1hcywgSSBiaXNlY3RlZCB0
-aGUgcHJvYmxlbSB0bzoNCj4gPiA+IA0KPiA+ID4gVGhhbmtzIGZvciB0aGUgcmVwb3J0ISAgSSds
-bCBtYWtlIHNvbWUgdGltZSBmb3IgdGhpcyBuZXh0DQo+ID4gPiB3ZWVrLiAgV2hhdCdzDQo+ID4g
-PiB5b3VyIGNsaWVudD8NCj4gDQo+IE9vcHMsIEkgZGlkbid0IGFuc3dlciB0aGlzIHF1ZXN0aW9u
-LiBUaGUgY2xpZW50IGlzIHY0LjE1LXJjNC4NCj4gDQo+IA0KPiA+ID4gSSBndWVzcyBvbmUgc3Rh
-cnQgbWlnaHQgYmUgdG8gc2VlIGlmIHRoZSByZXByb2R1Y2VyIGNhbiBiZQ0KPiA+ID4gc2ltcGxp
-ZmllZCBlLmcuIGJ5IHJ1bm5pbmcganVzdCBvbmUgb2YgdGhlIHRlc3RzIGZyb20gdGhlIHN1aXRl
-Lg0KPiA+IA0KPiA+IFRoZSBmYWlsdXJlcyBhcmUgaW50ZXJtaXR0ZW50LCBhbmQgb2NjdXIgaW4g
-YSBkaWZmZXJlbnQgdGVzdA0KPiA+IGVhY2ggdGltZS4gWW91IGhhdmUgdG8gd2FpdCBmb3IgdGhl
-IDkwMDAtc2VyaWVzIHNjcmlwdHMsIHdoaWNoDQo+ID4gdGVzdCBTVk4vQ1ZTIHJlcG8gb3BlcmF0
-aW9ucy4gVG8gc3BlZWQgdXAgdGltZS10by1mYWlsdXJlLCB1c2UNCj4gPiAibWFrZSAtak4gdGVz
-dCIgd2hlcmUgTiBpcyBtb3JlIHRoYW4gYSBmZXcuDQo+ID4gDQo+ID4gTXkgY2xpZW50IGFuZCBz
-ZXJ2ZXIgYm90aCBoYXZlIG11bHRpcGxlIHJlYWwgY29yZXMuIEknbQ0KPiA+IHRoaW5raW5nIGl0
-J3MgdGhlIHNlcnZlciB0aGF0IG1hdHRlcnMgaGVyZSAocG9zc2libHkgYSByYWNlDQo+ID4gY29u
-ZGl0aW9uIGlzIGludHJvZHVjZWQgYnkgdGhlIGJlbG93IGNvbW1pdD8pLg0KPiA+IA0KPiA+IA0K
-PiA+ID4gLS1iLg0KPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBjb21taXQgNjU5YWVmYjY4ZWNh
-MjhiYTlhYTQ4MmE5ZmM2NGRlMTA3MzMyZTI1Ng0KPiA+ID4gPiBBdXRob3I6IFRyb25kIE15a2xl
-YnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCj4gPiA+ID4gRGF0ZTogICBG
-cmkgTm92IDMgMDg6MDA6MTMgMjAxNyAtMDQwMA0KPiA+ID4gPiANCj4gPiA+ID4gICBuZnNkOiBF
-bnN1cmUgd2UgZG9uJ3QgcmVjb2duaXNlIGxvY2sgc3RhdGVpZHMgYWZ0ZXIgZnJlZWluZw0KPiA+
-ID4gPiB0aGVtDQo+ID4gPiA+IA0KPiA+ID4gPiAgIEluIG9yZGVyIHRvIGRlYWwgd2l0aCBsb29r
-dXAgcmFjZXMsIG5mc2Q0X2ZyZWVfbG9ja19zdGF0ZWlkKCkNCj4gPiA+ID4gbmVlZHMNCj4gPiA+
-ID4gICB0byBiZSBhYmxlIHRvIHNpZ25hbCB0byBvdGhlciBzdGF0ZWZ1bCBmdW5jdGlvbnMgdGhh
-dCB0aGUNCj4gPiA+ID4gbG9jayBzdGF0ZWlkDQo+ID4gPiA+ICAgaXMgbm8gbG9uZ2VyIHZhbGlk
-LiBSaWdodCBub3csIG5mc2RfbG9jaygpIHdpbGwgY2hlY2sgd2hldGhlcg0KPiA+ID4gPiBvciBu
-b3QgYW4NCj4gPiA+ID4gICBleGlzdGluZyBzdGF0ZWlkIGlzIHN0aWxsIGhhc2hlZCwgYnV0IG9u
-bHkgaW4gdGhlICJuZXcgbG9jayINCj4gPiA+ID4gcGF0aC4NCj4gPiA+ID4gDQo+ID4gPiA+ICAg
-VG8gZW5zdXJlIHRoZSBzdGF0ZWlkIGludmFsaWRhdGlvbiBpcyBhbHNvIHJlY29nbmlzZWQgYnkg
-dGhlDQo+ID4gPiA+ICJleGlzdGluZyBsb2NrIg0KPiA+ID4gPiAgIHBhdGgsIGFuZCBhbHNvIGJ5
-IGEgc2Vjb25kIGNhbGwgdG8gbmZzZDRfZnJlZV9sb2NrX3N0YXRlaWQoKQ0KPiA+ID4gPiBpdHNl
-bGYsIHdlIGNhbg0KPiA+ID4gPiAgIGNoYW5nZSB0aGUgdHlwZSB0byBORlM0X0NMT1NFRF9TVElE
-IHVuZGVyIHRoZSBzdHAtPnN0X211dGV4Lg0KPiA+ID4gPiANCj4gPiA+ID4gICBTaWduZWQtb2Zm
-LWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jDQo+ID4g
-PiA+IG9tPg0KPiA+ID4gPiAgIFNpZ25lZC1vZmYtYnk6IEouIEJydWNlIEZpZWxkcyA8YmZpZWxk
-c0ByZWRoYXQuY29tPg0KPiA+ID4gPiANCj4gPiA+ID4gDQoNClNvLCBJJ20gdGhpbmtpbmcgdGhh
-dCByZWxlYXNlX29wZW5fc3RhdGVpZF9sb2NrcygpIGFuZA0KbmZzZDRfcmVsZWFzZV9sb2Nrb3du
-ZXIoKSBzaG91bGQgcHJvYmFibHkgYmUgc2V0dGluZyBORlM0X0NMT1NFRF9TVElEDQp3aGVuIHRo
-ZXkgY2FsbCB1bmhhc2hfbG9ja19zdGF0ZWlkKCkgKHNvcnJ5IGZvciBtaXNzaW5nIHRoYXQpLg0K
-DQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmlt
-YXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+
+
+> On Jan 9, 2018, at 3:26 PM, Trond Myklebust <trondmy@primarydata.com> =
+wrote:
+>=20
+> On Sun, 2017-12-31 at 13:35 -0500, Chuck Lever wrote:
+>>> On Dec 30, 2017, at 1:14 PM, Chuck Lever <chuck.lever@oracle.com>
+>>> wrote:
+>>>=20
+>>>>=20
+>>>> On Dec 30, 2017, at 1:05 PM, Bruce Fields <bfields@fieldses.org>
+>>>> wrote:
+>>>>=20
+>>>> On Wed, Dec 27, 2017 at 03:40:58PM -0500, Chuck Lever wrote:
+>>>>> Last week I updated my test server from v4.14 to v4.15-rc4, and
+>>>>> began to
+>>>>> observe intermittent failures in the git regression suite on
+>>>>> NFSv4.1.
+>>>>=20
+>>>> I haven't run that before.  Should I just
+>>>>=20
+>>>> 	mount -overs=3D4.1 server:/fs /mnt/
+>>>> 	cd /mnt/
+>>>> 	git clone git://git.kernel.org/pub/scm/git/git.git
+>>>> 	cd git
+>>>> 	make test
+>>>>=20
+>>>> ?
+>>>=20
+>>> You'll need to install SVN and CVS on your client as well.
+>>> The failures seem to occur only in the SVN/CVS related
+>>> tests.
+>>>=20
+>>>=20
+>>>>> I
+>>>>> was able to reproduce these failures with NFSv4.1 on both TCP
+>>>>> and RDMA,
+>>>>> yet there has not been a reproduction with NFSv3 or NFSv4.0.
+>>>>>=20
+>>>>> The server hardware is a single-socket 4-core system with 32GB
+>>>>> of RAM.
+>>>>> The export is a tmpfs. Networking is 56Gb InfiniBand (or
+>>>>> IPoIB).
+>>>>>=20
+>>>>> The git regression suite reports individual test failures in
+>>>>> the SVN
+>>>>> and CVS tests. On occasion, the client mount point freezes,
+>>>>> requiring
+>>>>> that the client be rebooted in order to unstick the mount.
+>>>>>=20
+>>>>> Just before Christmas, I bisected the problem to:
+>>>>=20
+>>>> Thanks for the report!  I'll make some time for this next
+>>>> week.  What's
+>>>> your client?
+>>=20
+>> Oops, I didn't answer this question. The client is v4.15-rc4.
+>>=20
+>>=20
+>>>> I guess one start might be to see if the reproducer can be
+>>>> simplified e.g. by running just one of the tests from the suite.
+>>>=20
+>>> The failures are intermittent, and occur in a different test
+>>> each time. You have to wait for the 9000-series scripts, which
+>>> test SVN/CVS repo operations. To speed up time-to-failure, use
+>>> "make -jN test" where N is more than a few.
+>>>=20
+>>> My client and server both have multiple real cores. I'm
+>>> thinking it's the server that matters here (possibly a race
+>>> condition is introduced by the below commit?).
+>>>=20
+>>>=20
+>>>> --b.
+>>>>=20
+>>>>>=20
+>>>>> commit 659aefb68eca28ba9aa482a9fc64de107332e256
+>>>>> Author: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>> Date:   Fri Nov 3 08:00:13 2017 -0400
+>>>>>=20
+>>>>>  nfsd: Ensure we don't recognise lock stateids after freeing
+>>>>> them
+>>>>>=20
+>>>>>  In order to deal with lookup races, nfsd4_free_lock_stateid()
+>>>>> needs
+>>>>>  to be able to signal to other stateful functions that the
+>>>>> lock stateid
+>>>>>  is no longer valid. Right now, nfsd_lock() will check whether
+>>>>> or not an
+>>>>>  existing stateid is still hashed, but only in the "new lock"
+>>>>> path.
+>>>>>=20
+>>>>>  To ensure the stateid invalidation is also recognised by the
+>>>>> "existing lock"
+>>>>>  path, and also by a second call to nfsd4_free_lock_stateid()
+>>>>> itself, we can
+>>>>>  change the type to NFS4_CLOSED_STID under the stp->st_mutex.
+>>>>>=20
+>>>>>  Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.c
+>>>>> om>
+>>>>>  Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>>>>>=20
+>>>>>=20
+>=20
+> So, I'm thinking that release_open_stateid_locks() and
+> nfsd4_release_lockowner() should probably be setting NFS4_CLOSED_STID
+> when they call unhash_lock_stateid() (sorry for missing that).
+
+Send me a patch and I can test it.
+
+
+--
+Chuck Lever
+
+
 
