@@ -1,64 +1,39 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56742 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41002 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933240AbeAKRIn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 Jan 2018 12:08:43 -0500
-Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 5B4A712E501
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Jan 2018 17:08:43 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id DD84975557
-        for <linux-nfs@vger.kernel.org>; Thu, 11 Jan 2018 17:08:40 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] libio.h: Has been deprecated
-Date: Thu, 11 Jan 2018 12:08:38 -0500
-Message-Id: <20180111170838.3427-1-steved@redhat.com>
+        id S933098AbeAKSLS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 11 Jan 2018 13:11:18 -0500
+Message-ID: <1515694263.3664.10.camel@redhat.com>
+Subject: Re: Varying ro/rw based on security flavor doesn't work
+From: Justin Mitchell <jumitche@redhat.com>
+To: Tamas Vincze <tom@vincze.org>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 11 Jan 2018 18:11:03 +0000
+In-Reply-To: <4813ebaa-799e-6b6e-2ffb-ddf14de89b16@vincze.org>
+References: <890d00b1-fb64-1011-4a44-2e47713de0f7@vincze.org>
+         <20180109192338.GC18087@fieldses.org>
+         <4813ebaa-799e-6b6e-2ffb-ddf14de89b16@vincze.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the latest glib-headers libio.h has been deprecated
-This patch removes this warning:
+On Thu, 2018-01-11 at 10:36 -0500, Tamas Vincze wrote:
+> On 01/09/2018 02:23 PM, J. Bruce Fields wrote:
+> > On Tue, Jan 09, 2018 at 10:11:05AM -0500, Tamas Vincze wrote:
+> >> The exports man page says that one can vary ro/rw based on security
+> >> flavor by including multiple sec= options in /etc/exports, but it
+> >> seems to be broken in nfs-utils-1.3.0-0.48.el7_4.
+> > And is there some prevoius version that you know worked?
+> RedHat tested it further and it's still broken in 
+> nfs-utils-2.2.1-3.rc2.fc26.
+> It works correctly in nfs-utils-1.2.3-75.el6.
 
-/usr/include/libio.h:21:2: warning: #warning "<libio.h> is deprecated; use <stdio.h> instead." [-Wcpp]
- #warning "<libio.h> is deprecated; use <stdio.h> instead."
+Introduced by 37c07fa0 2016-11-22 Jianhong Yin
+exportfs: remove redundant exports options output
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- configure.ac               | 2 +-
- support/include/sockaddr.h | 4 +---
- 2 files changed, 2 insertions(+), 4 deletions(-)
+It appears to be an attempt to quash duplicated options, but it is too
+simplistic to handle this case correctly where otherwise opposing
+options of ro and rw can validly both appear.
 
-diff --git a/configure.ac b/configure.ac
-index 672dd40..2d328db 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -456,7 +456,7 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h libintl.h limits.h \
-                  stdlib.h string.h sys/file.h sys/ioctl.h sys/mount.h \
-                  sys/param.h sys/socket.h sys/time.h sys/vfs.h \
-                  syslog.h unistd.h com_err.h et/com_err.h \
--                 ifaddrs.h nfs-plugin.h libio.h])
-+                 ifaddrs.h nfs-plugin.h])
- 
- dnl *************************************************************
- dnl Checks for typedefs, structures, and compiler characteristics
-diff --git a/support/include/sockaddr.h b/support/include/sockaddr.h
-index 446b537..eeebcdf 100644
---- a/support/include/sockaddr.h
-+++ b/support/include/sockaddr.h
-@@ -24,9 +24,7 @@
- #include <config.h>
- #endif
- 
--#ifdef HAVE_LIBIO_H
--#include <libio.h>
--#endif
-+#include <stdio.h>
- #include <stdlib.h>
- #include <stdbool.h>
- #include <sys/socket.h>
--- 
-2.14.3
 
