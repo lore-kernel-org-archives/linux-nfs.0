@@ -1,137 +1,87 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:35180 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751350AbeAJTmV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 10 Jan 2018 14:42:21 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: [PATCH RFC 0/3] Add server-side support for junctions to
- nfs-utils
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <01acd06d-98d4-c6ff-5ef1-b6edbb447405@RedHat.com>
-Date: Wed, 10 Jan 2018 14:42:09 -0500
-Cc: Bruce Fields <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <6D1A900F-3F5C-4D70-9466-69ECC4985544@oracle.com>
-References: <20180108213356.20133.54161.stgit@manet.1015granger.net>
- <20180109192100.GB18087@fieldses.org>
- <492B1883-83EE-40AF-AA8C-1B797D842E5E@oracle.com>
- <01acd06d-98d4-c6ff-5ef1-b6edbb447405@RedHat.com>
-To: Steve Dickson <SteveD@RedHat.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <smayhew@redhat.com>
+Date: Thu, 11 Jan 2018 08:10:38 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: bcodding@redhat.com, dwysocha@redhat.com, fsorenso@redhat.com,
+	linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfs/pnfs: fix nfs_direct_req ref leak when i/o falls
+ back to the mds
+Message-ID: <20180111131038.vi25s2rvmjgqr3l6@tonberry.usersys.redhat.com>
+References: <20171213182220.lrfbvkaj65fg6abk@tonberry.usersys.redhat.com>
+ <20171215211232.18942-1-smayhew@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171215211232.18942-1-smayhew@redhat.com>
 List-ID: <linux-nfs.vger.kernel.org>
 
+Trond, Anna,
 
+Any concerns with this patch?
 
-> On Jan 10, 2018, at 12:13 PM, Steve Dickson <SteveD@RedHat.com> wrote:
+We left this run on multiple machines through the holidays... all doing
+direct I/O to a Netapp filer while doing storage failovers on an hourly
+basis on the filer.  No more issues with processes getting stuck in
+inode_dio_wait.
+
+-Scott
+
+On Fri, 15 Dec 2017, Scott Mayhew wrote:
+
+> Currently when falling back to doing I/O through the MDS (via
+> pnfs_{read|write}_through_mds), the client frees the nfs_pgio_header
+> without releasing the reference taken on the dreq
+> via pnfs_generic_pg_{read|write}pages -> nfs_pgheader_init ->
+> nfs_direct_pgio_init.  It then takes another reference on the dreq via
+> nfs_generic_pg_pgios -> nfs_pgheader_init -> nfs_direct_pgio_init and
+> as a result the requester will become stuck in inode_dio_wait.  Once
+> that happens, other processes accessing the inode will become stuck as
+> well.
 > 
+> Ensure that pnfs_read_through_mds() and pnfs_write_through_mds() clean
+> up correctly by calling hdr->completion_ops->completion() instead of
+> calling hdr->release() directly.
 > 
+> This can be reproduced (sometimes) by performing "storage failover
+> takeover" commands on NetApp filer while doing direct I/O from a client.
 > 
-> On 01/09/2018 02:36 PM, Chuck Lever wrote:
->> 
->> 
->>> On Jan 9, 2018, at 2:21 PM, bfields@fieldses.org wrote:
->>> 
->>> Thanks for doing this!  I may not get the chance to do a real review,
->>> but I'm in favor of the basic idea.
->> 
->> How do you feel about building support for junctions into mountd,
->> and getting rid of the libnfsjunct DLL ?
-> I would rather not put new functionality in daemons that needs rpcbind.
-> With the idea of, someday, having clean v4-only configuration
-> (aka no mountd, statd, or lockd).
-
-Hi Steve, junction support is not new functionality.
-
-Currently, mountd handles junction support by loading a DLL
-called libnfsjunct. We did this because you didn't want to add
-an LDAP dependency to nfs-utils in order to support FedFS.
-
-What I'm proposing is that because we no longer need LDAP support,
-we could build support for NFS basic junctions directly into mountd.
-This would be straightforward: just put nfs-plugin.c under
-utils/mountd and link it in at build time. Then dump the logic to
-load a plug-in (or we could even conditionally compile it in or out).
-
-The NFS basic junction code is already being ported into nfs-utils
-to support the nfsref command.
-
-The long-term implication is that this removes the pluggable API
-for supporting other types of junctions, like reparse points should
-Linux ever choose to implement them. Since Linux doesn't have these
-now, and it's not a standard API anyway, maybe this is moot and I
-should go ahead and rip out the plug-in logic.
-
-
->>> On Mon, Jan 08, 2018 at 04:49:50PM -0500, Chuck Lever wrote:
->>>> THIS IS AN UNTESTED RFC SERIES. I'm posting this for review only.
->>>> 
->>>> A while back I announced the deprecation of fedfs-utils. There were
->>>> a handful of components in fedfs-utils that we decided to keep. One
->>>> of those keepers was the "nfsref" command. (The other was autofs
->>>> support for /nfs4, which I hope Ian Kent is making progress on ;-)
->>>> 
->>>> This is an RFC patch series to introduce "nfsref" to nfs-utils,
->>>> minus the overhead of the LDAP / FedFS machinery. It also adds a
->>>> version of libnfsjunct which mountd can dynamically load to handle
->>>> non-FedFS junctions, replacing the same part from fedfs-utils.
->>>> 
->>>> I didn't apply a lot of brain cells to this port, so it's perhaps a
->>>> little larger than it needs to be. Still, it achieves a completely
->>>> LDAP-free implementation. I'm interested in comments about the
->>>> approach before I do more testing and refinement.
->>>> 
->>>> ./configure --enable-junction --enable-caps
->>>> 
->>>> is needed before building.
->>>> 
->>>> Perhaps one thing that can be done is simply getting rid of the DLL
->>>> and building junction support into mountd. I'm not sure if a
->>>> transition period is necessary where the DLL is retained for a bit
->>>> until fedfs-utils is entirely gone. Does anything but mountd use
->>>> libnfsjunct ?
-> So nfsref is to manage NFS referrals... got it... which I think
-> is a good thing to put into nfs-utils.. but again I wold like
-> to move a way from using mountd for exporting stuff.
+> This can also be reproduced using SystemTap to simulate a failure while
+> doing direct I/O from a client (from Dave Wysochanski
+> <dwysocha@redhat.com>):
 > 
-> I must admit my memory on how referrals work is a bet strained, 
-> but does it make any sense at all to move the referral code out 
-> of mountd and into a new command maybe called nfsexport. Then
-> have the kernel call up to that command (similar to how it
-> does with nfsidmap) to get the referrals info. That way
-> only nfsexport would link with libnfsjunct.
-
-Since FedFS support is no longer needed, junction support
-could also be built directly into nfsexport (no separate DLL
-is necessary).
-
-
-> Now I realize this has nothing to do with putting nfsref
-> into nfs-utils... I'm all for that... and I'm not asking you
-> to do the work... I'm thinking out loud... Does it 
-> make sense to use this opportunity to build new mechanisms 
-> to handle referrals and then possibly all exports??
-> Again, with the idea of eliminating need for legacy daemons.
-
-I don't have any quarrel with carving out the non-network-exposed
-functionality of mountd and putting it in an upcall similar to
-nfsidmap. Seems like an entirely separate project, though, and
-probably a significant chunk of work.
-
-Given the heightened security consciousness in today's world,
-sandboxing the network-exposed part is a sensible precaution
-for deployments that continue to need a MNT RPC service.
-
-In the long run, IMO the existing mountd upcall is going to have
-to be replaced. The current upcall mechanism is limited to moving
-just a page of data; fs_locations and fs_locations_info can
-comprise more than a page. And the upcall API might have to be
-revisited carefully to support fs_locations_info.
-
-
---
-Chuck Lever
-
-
-
+> stap -v -g -e 'probe module("nfs_layout_nfsv41_files").function("nfs4_fl_prepare_ds").return { $return=NULL; exit(); }'
+> 
+> Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  fs/nfs/pnfs.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index d602fe9..eb098cc 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -2255,7 +2255,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+>  		nfs_pageio_reset_write_mds(desc);
+>  		mirror->pg_recoalesce = 1;
+>  	}
+> -	hdr->release(hdr);
+> +	hdr->completion_ops->completion(hdr);
+>  }
+>  
+>  static enum pnfs_try_status
+> @@ -2378,7 +2378,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
+>  		nfs_pageio_reset_read_mds(desc);
+>  		mirror->pg_recoalesce = 1;
+>  	}
+> -	hdr->release(hdr);
+> +	hdr->completion_ops->completion(hdr);
+>  }
+>  
+>  /*
+> -- 
+> 2.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
