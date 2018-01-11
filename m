@@ -1,39 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:41002 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933098AbeAKSLS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 11 Jan 2018 13:11:18 -0500
-Message-ID: <1515694263.3664.10.camel@redhat.com>
-Subject: Re: Varying ro/rw based on security flavor doesn't work
-From: Justin Mitchell <jumitche@redhat.com>
-To: Tamas Vincze <tom@vincze.org>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 11 Jan 2018 18:11:03 +0000
-In-Reply-To: <4813ebaa-799e-6b6e-2ffb-ddf14de89b16@vincze.org>
-References: <890d00b1-fb64-1011-4a44-2e47713de0f7@vincze.org>
-         <20180109192338.GC18087@fieldses.org>
-         <4813ebaa-799e-6b6e-2ffb-ddf14de89b16@vincze.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from aserp2120.oracle.com ([141.146.126.78]:57614 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933811AbeAKThK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 11 Jan 2018 14:37:10 -0500
+Date: Thu, 11 Jan 2018 11:30:32 -0800
+From: Liu Bo <bo.li.liu@oracle.com>
+To: Jeff Layton <jlayton@kernel.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
+        bfields@fieldses.org, neilb@suse.de, jack@suse.de,
+        linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com, krzk@kernel.org
+Subject: Re: [PATCH v5 18/19] btrfs: only dirty the inode in
+ btrfs_update_time if something was changed
+Message-ID: <20180111193031.GA12421@dhcp-10-159-141-29.vpn.oracle.com>
+Reply-To: bo.li.liu@oracle.com
+References: <20180109141059.25929-1-jlayton@kernel.org>
+ <20180109141059.25929-19-jlayton@kernel.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180109141059.25929-19-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2018-01-11 at 10:36 -0500, Tamas Vincze wrote:
-> On 01/09/2018 02:23 PM, J. Bruce Fields wrote:
-> > On Tue, Jan 09, 2018 at 10:11:05AM -0500, Tamas Vincze wrote:
-> >> The exports man page says that one can vary ro/rw based on security
-> >> flavor by including multiple sec= options in /etc/exports, but it
-> >> seems to be broken in nfs-utils-1.3.0-0.48.el7_4.
-> > And is there some prevoius version that you know worked?
-> RedHat tested it further and it's still broken in 
-> nfs-utils-2.2.1-3.rc2.fc26.
-> It works correctly in nfs-utils-1.2.3-75.el6.
+Hi Jeff,
 
-Introduced by 37c07fa0 2016-11-22 Jianhong Yin
-exportfs: remove redundant exports options output
+On Tue, Jan 09, 2018 at 09:10:58AM -0500, Jeff Layton wrote:
+> From: Jeff Layton <jlayton@redhat.com>
+> 
+> At this point, we know that "now" and the file times may differ, and we
+> suspect that the i_version has been flagged to be bumped. Attempt to
+> bump the i_version, and only mark the inode dirty if that actually
+> occurred or if one of the times was updated.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Acked-by: David Sterba <dsterba@suse.com>
+> ---
+>  fs/btrfs/inode.c | 5 +++--
+>  1 file changed, 3 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+> index ac8692849a81..76245323a7c8 100644
+> --- a/fs/btrfs/inode.c
+> +++ b/fs/btrfs/inode.c
+> @@ -6107,19 +6107,20 @@ static int btrfs_update_time(struct inode *inode, struct timespec *now,
+>  			     int flags)
+>  {
+>  	struct btrfs_root *root = BTRFS_I(inode)->root;
+> +	bool dirty = flags & ~S_VERSION;
+>  
+>  	if (btrfs_root_readonly(root))
+>  		return -EROFS;
+>  
+>  	if (flags & S_VERSION)
+> -		inode_inc_iversion(inode);
+> +		dirty |= inode_maybe_inc_iversion(inode, dirty);
+>  	if (flags & S_CTIME)
+>  		inode->i_ctime = *now;
+>  	if (flags & S_MTIME)
+>  		inode->i_mtime = *now;
+>  	if (flags & S_ATIME)
+>  		inode->i_atime = *now;
+> -	return btrfs_dirty_inode(inode);
+> +	return dirty ? btrfs_dirty_inode(inode) : 0;
+>  }
+>  
 
-It appears to be an attempt to quash duplicated options, but it is too
-simplistic to handle this case correctly where otherwise opposing
-options of ro and rw can validly both appear.
+In order to have a easier error handling for ENOSPC, btrfs has split
+file_update_time() into 2-step work,
+- step 1 is to update time/iversion of in-memory inode in
+  update_time_for_write(),
+- step 2 is to update the time/iversion of on-disk inode in
+  btrfs_update_inode()->fill_inode_item().
 
+I think update_time_for_write() also needs to be updated to use the
+new iversion API.
 
+With that,
+
+Reviewed-by: Liu Bo <bo.li.liu@oracle.com>
+
+Thanks,
+
+-liubo
+>  /*
+> -- 
+> 2.14.3
+> 
