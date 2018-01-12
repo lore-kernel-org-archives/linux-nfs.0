@@ -1,139 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43406 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:34738 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965301AbeALWHt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 12 Jan 2018 17:07:49 -0500
-Date: Fri, 12 Jan 2018 17:07:49 -0500
-From: Bruce Fields <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSv4.1 regression with v4.15-rc
-Message-ID: <20180112220749.GA18468@fieldses.org>
-References: <337F485E-4E53-4EBF-8186-009326C281EC@oracle.com>
- <20171230180526.GA4141@fieldses.org>
- <874F5218-43E6-423C-9F94-4DFC07FFDF8D@oracle.com>
- <D8F54031-9F60-4DBA-8D22-FE3587227060@oracle.com>
- <1515529615.26283.2.camel@primarydata.com>
- <ACF7A175-BFE5-4D3D-9EA7-F76DAD004ECA@oracle.com>
+        id S965172AbeALWIz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 12 Jan 2018 17:08:55 -0500
+Subject: Re: [Libtirpc-devel] [PATCH] Do not bind to reserved ports registered
+ in /etc/services
+To: Thorsten Kukuk <kukuk@suse.de>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Guillem Jover <gjover@sipwise.com>
+References: <20180110004920.11100-1-gjover@sipwise.com>
+ <49E44F63-42CF-4BF8-91E0-F89945D7CFE6@oracle.com>
+ <20180112180528.GA9479@thunder.hadrons.org>
+ <BB34439C-4BC6-46AE-B2E8-45E5F7396F21@oracle.com>
+ <20180112211219.GA17573@suse.de>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <3c3e0578-12e9-cfde-7abc-8a27621319a4@RedHat.com>
+Date: Fri, 12 Jan 2018 17:08:53 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <ACF7A175-BFE5-4D3D-9EA7-F76DAD004ECA@oracle.com>
+In-Reply-To: <20180112211219.GA17573@suse.de>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 09, 2018 at 03:28:23PM -0500, Chuck Lever wrote:
-> 
-> 
-> > On Jan 9, 2018, at 3:26 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
-> > 
-> > On Sun, 2017-12-31 at 13:35 -0500, Chuck Lever wrote:
-> >>> On Dec 30, 2017, at 1:14 PM, Chuck Lever <chuck.lever@oracle.com>
-> >>> wrote:
-> >>> 
-> >>>> 
-> >>>> On Dec 30, 2017, at 1:05 PM, Bruce Fields <bfields@fieldses.org>
-> >>>> wrote:
-> >>>> 
-> >>>> On Wed, Dec 27, 2017 at 03:40:58PM -0500, Chuck Lever wrote:
-> >>>>> Last week I updated my test server from v4.14 to v4.15-rc4, and
-> >>>>> began to
-> >>>>> observe intermittent failures in the git regression suite on
-> >>>>> NFSv4.1.
-> >>>> 
-> >>>> I haven't run that before.  Should I just
-> >>>> 
-> >>>> 	mount -overs=4.1 server:/fs /mnt/
-> >>>> 	cd /mnt/
-> >>>> 	git clone git://git.kernel.org/pub/scm/git/git.git
-> >>>> 	cd git
-> >>>> 	make test
-> >>>> 
-> >>>> ?
-> >>> 
-> >>> You'll need to install SVN and CVS on your client as well.
-> >>> The failures seem to occur only in the SVN/CVS related
-> >>> tests.
-> >>> 
-> >>> 
-> >>>>> I
-> >>>>> was able to reproduce these failures with NFSv4.1 on both TCP
-> >>>>> and RDMA,
-> >>>>> yet there has not been a reproduction with NFSv3 or NFSv4.0.
-> >>>>> 
-> >>>>> The server hardware is a single-socket 4-core system with 32GB
-> >>>>> of RAM.
-> >>>>> The export is a tmpfs. Networking is 56Gb InfiniBand (or
-> >>>>> IPoIB).
-> >>>>> 
-> >>>>> The git regression suite reports individual test failures in
-> >>>>> the SVN
-> >>>>> and CVS tests. On occasion, the client mount point freezes,
-> >>>>> requiring
-> >>>>> that the client be rebooted in order to unstick the mount.
-> >>>>> 
-> >>>>> Just before Christmas, I bisected the problem to:
-> >>>> 
-> >>>> Thanks for the report!  I'll make some time for this next
-> >>>> week.  What's
-> >>>> your client?
-> >> 
-> >> Oops, I didn't answer this question. The client is v4.15-rc4.
-> >> 
-> >> 
-> >>>> I guess one start might be to see if the reproducer can be
-> >>>> simplified e.g. by running just one of the tests from the suite.
-> >>> 
-> >>> The failures are intermittent, and occur in a different test
-> >>> each time. You have to wait for the 9000-series scripts, which
-> >>> test SVN/CVS repo operations. To speed up time-to-failure, use
-> >>> "make -jN test" where N is more than a few.
-> >>> 
-> >>> My client and server both have multiple real cores. I'm
-> >>> thinking it's the server that matters here (possibly a race
-> >>> condition is introduced by the below commit?).
-> >>> 
-> >>> 
-> >>>> --b.
-> >>>> 
-> >>>>> 
-> >>>>> commit 659aefb68eca28ba9aa482a9fc64de107332e256
-> >>>>> Author: Trond Myklebust <trond.myklebust@primarydata.com>
-> >>>>> Date:   Fri Nov 3 08:00:13 2017 -0400
-> >>>>> 
-> >>>>>  nfsd: Ensure we don't recognise lock stateids after freeing
-> >>>>> them
-> >>>>> 
-> >>>>>  In order to deal with lookup races, nfsd4_free_lock_stateid()
-> >>>>> needs
-> >>>>>  to be able to signal to other stateful functions that the
-> >>>>> lock stateid
-> >>>>>  is no longer valid. Right now, nfsd_lock() will check whether
-> >>>>> or not an
-> >>>>>  existing stateid is still hashed, but only in the "new lock"
-> >>>>> path.
-> >>>>> 
-> >>>>>  To ensure the stateid invalidation is also recognised by the
-> >>>>> "existing lock"
-> >>>>>  path, and also by a second call to nfsd4_free_lock_stateid()
-> >>>>> itself, we can
-> >>>>>  change the type to NFS4_CLOSED_STID under the stp->st_mutex.
-> >>>>> 
-> >>>>>  Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.c
-> >>>>> om>
-> >>>>>  Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >>>>> 
-> >>>>> 
-> > 
-> > So, I'm thinking that release_open_stateid_locks() and
-> > nfsd4_release_lockowner() should probably be setting NFS4_CLOSED_STID
-> > when they call unhash_lock_stateid() (sorry for missing that).
-> 
-> Send me a patch and I can test it.
 
-I'm pretty confused by that patch.  Among other things, it's setting
-sc_type to NFS4_CLOSED_STID immediately before calling
-release_lock_stateid() which itself will set sc_type to 0.
 
---b.
+On 01/12/2018 04:12 PM, Thorsten Kukuk wrote:
+> On Fri, Jan 12, Chuck Lever wrote:
+> 
+>>> On Jan 12, 2018, at 1:05 PM, Guillem Jover <gjover@sipwise.com> wrote:
+> 
+>>> [F] <https://sources.debian.org/src/glibc/2.26-3/debian/patches/any/local-bindresvport_blacklist.diff/>
+>>>
+>>> On the above Debian bug report, it was proposed to make libtirpc switch
+>>> to use the libc bindresvport() implementation so that at least on those
+>>> distributions where it is locally patched it would honor the
+>>> /etc/bindresvport.blacklist file. The problem with this, is of course
+>>> that it does not help any upstream code on any other non-patched system.
+>>
+>> The community issue here is that there have evolved, over time,
+>> multiple RPC libraries with divergent capabilities. The only way
+>> to truly address this confusion is to eliminate all but one of
+>> them, which is far outside the scope of your bug fix. For now we
+>> have to live with it.
+> 
+> openSUSE is removing sunrpc from glibc, Fedora seems to be removing
+> sunrpc from glibc, so it's only a matter of time when libtirpc is the
+> only RPC implementation used on Linux.
+We are... 
+   https://bugzilla.redhat.com/show_bug.cgi?id=1531540
+
+We also adding a new package that will contain rpcgen
+    https://bugzilla.redhat.com/show_bug.cgi?id=1532364
+
+based off Thorsten's git tree
+    https://github.com/thkukuk/rpcsvc-proto
+
+steved.
