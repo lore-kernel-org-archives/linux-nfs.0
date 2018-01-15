@@ -1,51 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.web.de ([212.227.15.3]:50880 "EHLO mout.web.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750951AbeAMTkc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Sat, 13 Jan 2018 14:40:32 -0500
-To: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        "David S. Miller" <davem@davemloft.net>,
-        Jeff Layton <jlayton@kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: LKML <linux-kernel@vger.kernel.org>,
-        kernel-janitors@vger.kernel.org
-From: SF Markus Elfring <elfring@users.sourceforge.net>
-Subject: [PATCH] sunrpc: Use seq_putc() in unix_gid_show()
-Message-ID: <5b9ca3b8-b801-a658-ae76-2b6bc43826ea@users.sourceforge.net>
-Date: Sat, 13 Jan 2018 20:40:11 +0100
+Received: from mail-io0-f193.google.com ([209.85.223.193]:36038 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752490AbeAOEFP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 14 Jan 2018 23:05:15 -0500
+Received: by mail-io0-f193.google.com with SMTP id l17so1859189ioc.3
+        for <linux-nfs@vger.kernel.org>; Sun, 14 Jan 2018 20:05:14 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] SUNRPC: Add explicit rescheduling points in the receive path
+Date: Sun, 14 Jan 2018 23:05:08 -0500
+Message-Id: <20180115040508.100921-2-trond.myklebust@primarydata.com>
+In-Reply-To: <20180115040508.100921-1-trond.myklebust@primarydata.com>
+References: <20180115040508.100921-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Markus Elfring <elfring@users.sourceforge.net>
-Date: Sat, 13 Jan 2018 20:33:05 +0100
+When reading the reply from the server, insert an explicit
+cond_resched() to avoid starving higher priority tasks.
 
-A single character (line break) should be put into a sequence.
-Thus use the corresponding function "seq_putc".
-
-This issue was detected by using the Coccinelle software.
-
-Signed-off-by: Markus Elfring <elfring@users.sourceforge.net>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/svcauth_unix.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ net/sunrpc/xprtsock.c | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svcauth_unix.c b/net/sunrpc/svcauth_unix.c
-index af7f28fb8102..df1327c0dd1c 100644
---- a/net/sunrpc/svcauth_unix.c
-+++ b/net/sunrpc/svcauth_unix.c
-@@ -566,7 +566,7 @@ static int unix_gid_show(struct seq_file *m,
- 	seq_printf(m, "%u %d:", from_kuid_munged(user_ns, ug->uid), glen);
- 	for (i = 0; i < glen; i++)
- 		seq_printf(m, " %d", from_kgid_munged(user_ns, ug->gi->gid[i]));
--	seq_printf(m, "\n");
-+	seq_putc(m, '\n');
- 	return 0;
- }
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 620be573d78b..18803021f242 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1005,6 +1005,7 @@ static void xs_local_data_receive(struct sock_xprt *transport)
+ 	struct sock *sk;
+ 	int err;
  
++restart:
+ 	mutex_lock(&transport->recv_mutex);
+ 	sk = transport->inet;
+ 	if (sk == NULL)
+@@ -1018,6 +1019,11 @@ static void xs_local_data_receive(struct sock_xprt *transport)
+ 		}
+ 		if (!test_and_clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
+ 			break;
++		if (need_resched()) {
++			mutex_unlock(&transport->recv_mutex);
++			cond_resched();
++			goto restart;
++		}
+ 	}
+ out:
+ 	mutex_unlock(&transport->recv_mutex);
+@@ -1096,6 +1102,7 @@ static void xs_udp_data_receive(struct sock_xprt *transport)
+ 	struct sock *sk;
+ 	int err;
+ 
++restart:
+ 	mutex_lock(&transport->recv_mutex);
+ 	sk = transport->inet;
+ 	if (sk == NULL)
+@@ -1109,6 +1116,11 @@ static void xs_udp_data_receive(struct sock_xprt *transport)
+ 		}
+ 		if (!test_and_clear_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
+ 			break;
++		if (need_resched()) {
++			mutex_unlock(&transport->recv_mutex);
++			cond_resched();
++			goto restart;
++		}
+ 	}
+ out:
+ 	mutex_unlock(&transport->recv_mutex);
+@@ -1528,16 +1540,16 @@ static void xs_tcp_data_receive(struct sock_xprt *transport)
+ 		.arg.data = xprt,
+ 	};
+ 	unsigned long total = 0;
+-	int loop;
+ 	int read = 0;
+ 
++restart:
+ 	mutex_lock(&transport->recv_mutex);
+ 	sk = transport->inet;
+ 	if (sk == NULL)
+ 		goto out;
+ 
+ 	/* We use rd_desc to pass struct xprt to xs_tcp_data_recv */
+-	for (loop = 0; loop < 64; loop++) {
++	for (;;) {
+ 		rd_desc.count = RPC_TCP_READ_CHUNK_SZ;
+ 		lock_sock(sk);
+ 		read = tcp_read_sock(sk, &rd_desc, xs_tcp_data_recv);
+@@ -1548,6 +1560,11 @@ static void xs_tcp_data_receive(struct sock_xprt *transport)
+ 		}
+ 		release_sock(sk);
+ 		total += read;
++		if (need_resched()) {
++			mutex_unlock(&transport->recv_mutex);
++			cond_resched();
++			goto restart;
++		}
+ 	}
+ 	if (test_bit(XPRT_SOCK_DATA_READY, &transport->sock_state))
+ 		queue_work(xprtiod_workqueue, &transport->recv_worker);
 -- 
-2.15.1
+2.14.3
 
