@@ -1,43 +1,54 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([212.227.17.24]:55598 "EHLO
-        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750878AbeAPJds (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jan 2018 04:33:48 -0500
-From: Arnd Bergmann <arnd@arndb.de>
+Return-Path: <bfields@fieldses.org>
+Date: Tue, 16 Jan 2018 10:08:00 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Cc: Arnd Bergmann <arnd@arndb.de>, Peng Tao <tao.peng@primarydata.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH] nfs: remove unused label in nfs_encode_fh()
-Date: Tue, 16 Jan 2018 10:33:14 +0100
-Message-Id: <20180116093340.3163090-1-arnd@arndb.de>
-Sender: linux-nfs-owner@vger.kernel.org
+	Anna Schumaker <Anna.Schumaker@Netapp.com>
+Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
+	Benjamin Coddington <bcodding@redhat.com>
+Subject: [PATCH] NFS: commit direct writes even if they fail partially
+Message-ID: <20180116150800.GA21173@fieldses.org>
+References: <20171208221626.GB22508@fieldses.org>
+ <20171213171815.GB9205@fieldses.org>
+ <9383ABA6-B994-4DB3-95F4-C0D6F59580F9@redhat.com>
+ <20171214163654.GD9205@fieldses.org>
+ <20171214185514.GE9205@fieldses.org>
+ <20171219165622.GC19967@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20171219165622.GC19967@fieldses.org>
 List-ID: <linux-nfs.vger.kernel.org>
 
-The only reference to the label got removed, so we now get
-a harmless compiler warning:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-fs/nfs/export.c: In function 'nfs_encode_fh':
-fs/nfs/export.c:58:1: error: label 'out' defined but not used [-Werror=unused-label]
+If some of the WRITE calls making up an O_DIRECT write syscall fail,
+we neglect to commit, even if some of the WRITEs succeed.
 
-Fixes: aaa150089465 ("nfs: remove dead code from nfs_encode_fh()")
-Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+We also depend on the commit code to free the reference count on the
+nfs_page taken in the "if (request_commit)" case at the end of
+nfs_direct_write_completion().  The problem was originally noticed
+because ENOSPC's encountered partway through a write would result in a
+closed file being sillyrenamed when it should have been unlinked.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/export.c | 1 -
- 1 file changed, 1 deletion(-)
+ fs/nfs/direct.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
 
-diff --git a/fs/nfs/export.c b/fs/nfs/export.c
-index 2b80a6652818..ab5de3246c5c 100644
---- a/fs/nfs/export.c
-+++ b/fs/nfs/export.c
-@@ -55,7 +55,6 @@ nfs_encode_fh(struct inode *inode, __u32 *p, int *max_len, struct inode *parent)
- 	p[len - 1] = 0; /* Padding */
- 	nfs_copy_fh(clnt_fh, server_fh);
- 	*max_len = len;
--out:
- 	dprintk("%s: result fh fileid %llu mode %u size %d\n",
- 		__func__, NFS_FILEID(inode), inode->i_mode, *max_len);
- 	return *max_len;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index d2972d537469..8c10b0562e75 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -775,10 +775,8 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 
+ 	spin_lock(&dreq->lock);
+ 
+-	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+-		dreq->flags = 0;
++	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags))
+ 		dreq->error = hdr->error;
+-	}
+ 	if (dreq->error == 0) {
+ 		nfs_direct_good_bytes(dreq, hdr);
+ 		if (nfs_write_need_commit(hdr)) {
 -- 
-2.9.0
-
+2.14.3
