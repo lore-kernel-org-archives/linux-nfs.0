@@ -1,37 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from nibbler.cm4all.net ([82.165.145.151]:54172 "EHLO
-        nibbler.cm4all.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751258AbeAORnJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 15 Jan 2018 12:43:09 -0500
-Received: from localhost (localhost [127.0.0.1])
-        by nibbler.cm4all.net (Postfix) with ESMTP id 2BFD9C03DA
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Jan 2018 18:43:03 +0100 (CET)
-Received: from nibbler.cm4all.net ([127.0.0.1])
-        by localhost (nibbler.cm4all.net [127.0.0.1]) (amavisd-new, port 10024)
-        with LMTP id Luterl_brLZj for <linux-nfs@vger.kernel.org>;
-        Mon, 15 Jan 2018 18:43:03 +0100 (CET)
-Received: from zero.intern.cm-ag (zero.intern.cm-ag [172.30.16.10])
-        by nibbler.cm4all.net (Postfix) with SMTP id 07595C03CF
-        for <linux-nfs@vger.kernel.org>; Mon, 15 Jan 2018 18:43:03 +0100 (CET)
-Date: Mon, 15 Jan 2018 18:43:02 +0100
-From: Max Kellermann <mk@cm4all.com>
-To: Greg KH <gregkh@linuxfoundation.org>
-Cc: Max Kellermann <mk@cm4all.com>, linux-fsdevel@vger.kernel.org,
-        hch@infradead.org, linux-nfs@vger.kernel.org,
-        trond.myklebust@primarydata.com, max.kellermann@gmail.com,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 2/2] dFrom: Max Kellermann <mk@cm4all.com>
-Message-ID: <20180115174302.3yw5ot7maulsooam@rabbit.intern.cm-ag>
-References: <151603744662.29035.4910161264124875658.stgit@rabbit.intern.cm-ag>
- <151603745169.29035.6866708909114015882.stgit@rabbit.intern.cm-ag>
- <20180115174156.GB22809@kroah.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180115174156.GB22809@kroah.com>
+Received: from mout.kundenserver.de ([212.227.17.24]:55598 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750878AbeAPJds (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jan 2018 04:33:48 -0500
+From: Arnd Bergmann <arnd@arndb.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>
+Cc: Arnd Bergmann <arnd@arndb.de>, Peng Tao <tao.peng@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] nfs: remove unused label in nfs_encode_fh()
+Date: Tue, 16 Jan 2018 10:33:14 +0100
+Message-Id: <20180116093340.3163090-1-arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2018/01/15 18:41, Greg KH <gregkh@linuxfoundation.org> wrote:
-> Your subject line is a bit odd :(
+The only reference to the label got removed, so we now get
+a harmless compiler warning:
 
-True, I already repaired & resent it.  Sorry for the hiccup.
+fs/nfs/export.c: In function 'nfs_encode_fh':
+fs/nfs/export.c:58:1: error: label 'out' defined but not used [-Werror=unused-label]
+
+Fixes: aaa150089465 ("nfs: remove dead code from nfs_encode_fh()")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/nfs/export.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/fs/nfs/export.c b/fs/nfs/export.c
+index 2b80a6652818..ab5de3246c5c 100644
+--- a/fs/nfs/export.c
++++ b/fs/nfs/export.c
+@@ -55,7 +55,6 @@ nfs_encode_fh(struct inode *inode, __u32 *p, int *max_len, struct inode *parent)
+ 	p[len - 1] = 0; /* Padding */
+ 	nfs_copy_fh(clnt_fh, server_fh);
+ 	*max_len = len;
+-out:
+ 	dprintk("%s: result fh fileid %llu mode %u size %d\n",
+ 		__func__, NFS_FILEID(inode), inode->i_mode, *max_len);
+ 	return *max_len;
+-- 
+2.9.0
+
