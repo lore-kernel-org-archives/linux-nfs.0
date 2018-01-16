@@ -1,82 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51266 "EHLO fieldses.org"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:60653 "EHLO smtp-o-3.desy.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750790AbeAPVdo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Jan 2018 16:33:44 -0500
-Date: Tue, 16 Jan 2018 16:33:43 -0500
-From: Bruce Fields <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 0/3] NFS/RDMA server changes for v4.16
-Message-ID: <20180116213343.GD21173@fieldses.org>
-References: <20180103203849.7074.9609.stgit@klimt.1015granger.net>
- <BD4AB89D-D4A5-4576-A9EE-4D0A485F13E1@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BD4AB89D-D4A5-4576-A9EE-4D0A485F13E1@oracle.com>
+        id S1751090AbeAPVjZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 16 Jan 2018 16:39:25 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id B7FD0280885
+        for <linux-nfs@vger.kernel.org>; Tue, 16 Jan 2018 22:39:23 +0100 (CET)
+From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+To: linux-nfs@vger.kernel.org
+Cc: trond.myklebust@primarydata.com, Anna.Schumaker@Netapp.com,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PATCH] nfs41: do not return ENOMEM on LAYOUTUNAVAILABLE
+Date: Tue, 16 Jan 2018 22:38:50 +0100
+Message-Id: <20180116213850.10323-1-tigran.mkrtchyan@desy.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 16, 2018 at 04:31:07PM -0500, Chuck Lever wrote:
-> 
-> 
-> > On Jan 3, 2018, at 3:42 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > 
-> > Hi Bruce-
-> > 
-> > Would you consider these patches for merging into v4.16?
-> 
-> Hi Bruce, since you haven't responded, I assume these will
-> not appear in v4.16. Let's drop these for now, and I will
-> resubmit them for v4.17.
+A pNFS server may return LAYOUTUNAVAILABLE error on LAYOUTGET for files
+which don't have any layout. In this situation pnfs_update_layout
+currently returns NULL. As this NULL is converted into ENOMEM, IO
+requests fails instead of falling back to MDS.
 
-Sorry for the lack of response, I started reviewing but didn't finish,
-and still expect to get them in for 4.16.
+Do not return ENOMEM on LAYOUTUNAVAILABLE and let client retry through
+MDS.
 
---b.
+Fixes 8d40b0f14846f. I will suggest to backport this fix to affected
+stable branches.
 
-> 
-> 
-> > Changes since v1:
-> > - Rebased on v4.15-rc6
-> > - Address a 0day robot complaint in nfsd3_proc_symlink
-> > - Properly handle error return from svc_rdma_handle_bc_reply
-> > 
-> > ---
-> > 
-> > Chuck Lever (3):
-> >      svcrdma: Post Receives in the Receive completion handler
-> >      NFSD: Clean up write argument XDR decoders
-> >      NFSD: Clean up symlink argument XDR decoders
-> > 
-> > 
-> > fs/nfsd/nfs3proc.c                         |   18 ++++-
-> > fs/nfsd/nfs3xdr.c                          |   67 ++++-------------
-> > fs/nfsd/nfs4proc.c                         |   37 +++-------
-> > fs/nfsd/nfs4xdr.c                          |   11 ++-
-> > fs/nfsd/nfsproc.c                          |   23 ++++--
-> > fs/nfsd/nfsxdr.c                           |   63 ++++++++--------
-> > fs/nfsd/xdr.h                              |    3 +
-> > fs/nfsd/xdr3.h                             |    3 +
-> > fs/nfsd/xdr4.h                             |    3 +
-> > include/linux/sunrpc/svc.h                 |    4 +
-> > include/linux/sunrpc/svc_rdma.h            |    2 -
-> > net/sunrpc/svc.c                           |  109 ++++++++++++++++++++++++++++
-> > net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    5 -
-> > net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |    9 --
-> > net/sunrpc/xprtrdma/svc_rdma_sendto.c      |    6 --
-> > net/sunrpc/xprtrdma/svc_rdma_transport.c   |   25 ++----
-> > 16 files changed, 225 insertions(+), 163 deletions(-)
-> > 
-> > --
-> > Chuck Lever
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
+Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+---
+ fs/nfs/filelayout/filelayout.c | 4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
+index 28b72285711e..94f8fc02ea4e 100644
+--- a/fs/nfs/filelayout/filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -895,9 +895,7 @@ fl_pnfs_update_layout(struct inode *ino,
+ 
+ 	lseg = pnfs_update_layout(ino, ctx, pos, count, iomode, strict_iomode,
+ 				  gfp_flags);
+-	if (!lseg)
+-		lseg = ERR_PTR(-ENOMEM);
+-	if (IS_ERR(lseg))
++	if (!lseg || IS_ERR(lseg))
+ 		goto out;
+ 
+ 	lo = NFS_I(ino)->layout;
+-- 
+2.14.3
+
