@@ -1,54 +1,72 @@
-Return-Path: <bfields@fieldses.org>
-Date: Tue, 16 Jan 2018 10:08:00 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-	Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: linux-nfs@vger.kernel.org, hch@infradead.org,
-	Benjamin Coddington <bcodding@redhat.com>
-Subject: [PATCH] NFS: commit direct writes even if they fail partially
-Message-ID: <20180116150800.GA21173@fieldses.org>
-References: <20171208221626.GB22508@fieldses.org>
- <20171213171815.GB9205@fieldses.org>
- <9383ABA6-B994-4DB3-95F4-C0D6F59580F9@redhat.com>
- <20171214163654.GD9205@fieldses.org>
- <20171214185514.GE9205@fieldses.org>
- <20171219165622.GC19967@fieldses.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:22791 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1750990AbeAPPGv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jan 2018 10:06:51 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "hch@infradead.org" <hch@infradead.org>,
+        "mk@cm4all.com" <mk@cm4all.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "gregkh@linuxfoundation.org" <gregkh@linuxfoundation.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+CC: "max.kellermann@gmail.com" <max.kellermann@gmail.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 2/2] dFrom: Max Kellermann <mk@cm4all.com>
+Date: Tue, 16 Jan 2018 15:06:44 +0000
+Message-ID: <1516115201.5784.4.camel@primarydata.com>
+References: <151603744662.29035.4910161264124875658.stgit@rabbit.intern.cm-ag>
+         <151603745169.29035.6866708909114015882.stgit@rabbit.intern.cm-ag>
+In-Reply-To: <151603745169.29035.6866708909114015882.stgit@rabbit.intern.cm-ag>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171219165622.GC19967@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+T24gTW9uLCAyMDE4LTAxLTE1IGF0IDE4OjMwICswMTAwLCBNYXggS2VsbGVybWFubiB3cm90ZToN
+Cj4gbmZzL3N1cGVyOiBzZXQgTVNfUE9TSVhBQ0wgb25seSBpZiBBQ0wgc3VwcG9ydCBpcyBlbmFi
+bGVkDQo+IA0KPiBUaGUgY29kZSBjb21tZW50IHNheXMgIldlIHdpbGwgW2FwcGx5IHRoZSB1bWFz
+a10gb3Vyc2VsdmVzIiwgYnV0IHRoYXQNCj4gaGFwcGVucyBpbiBwb3NpeF9hY2xfY3JlYXRlKCkg
+b25seSBpZiB0aGUga2VybmVsIGhhcyBQT1NJWCBBQ0wNCj4gc3VwcG9ydC4gIFdpdGhvdXQgaXQs
+IHBvc2l4X2FjbF9jcmVhdGUoKSBpcyBhIGlzIGFuIGVtcHR5IGR1bW15DQo+IGZ1bmN0aW9uLg0K
+PiANCj4gU28gbGV0J3Mgbm90IHByZXRlbmQgd2Ugd2lsbCBhcHBseSB0aGUgdW1hc2sgaWYgd2Ug
+Y2FuIGFscmVhZHkga25vdw0KPiB0aGF0IHdlIHdpbGwgbmV2ZXIuDQo+IA0KPiBUaGlzIGZpeGVz
+IGEgcHJvYmxlbSB3aGVyZSB0aGUgdW1hc2sgaXMgYWx3YXlzIGlnbm9yZWQgaW4gdGhlIE5GUw0K
+PiBjbGllbnQgd2hlbiBjb21waWxlZCB3aXRob3V0IENPTkZJR19GU19QT1NJWF9BQ0wuICBUaGlz
+IGlzIGEgNCB5ZWFyDQo+IG9sZCByZWdyZXNzaW9uIGNhdXNlZCBieSBjb21taXQgMDEzY2RmMTA4
+OGQ3MjMgd2hpY2ggaXRzZWxmIHdhcyBub3QNCj4gY29tcGxldGVseSB3cm9uZywgYnV0IGZhaWxl
+ZCB0byBjb25zaWRlciBhbGwgdGhlIHNpZGUgZWZmZWN0cyBieQ0KPiBtaXNkZXNpZ25lZCBWRlMg
+Y29kZS4NCj4gDQo+IFRoZXJlIGFyZSB0d28gY29tcGlsZS10aW1lIGNoZWNrcyBhbmQgb25lIHJ1
+bnRpbWUgY2hlY2s6DQo+IA0KPiAtIElmIENPTkZJR19GU19QT1NJWF9BQ0w9biwgdGhlbiBNU19Q
+T1NJWEFDTCBpcyBuZXZlciBzZXQuDQo+IA0KPiAtIElmIENPTkZJR19GU19QT1NJWF9BQ0w9eSBh
+bmQgQ09ORklHX05GU19WM19BQ0w9biwgdGhlbiBvbmx5IE5GU3Y0DQo+ICAgaGFzIEFDTCBzdXBw
+b3J0IChhbmQgY2Fubm90IGJlIGRpc2FibGVkKSwgYW5kIHdlIG5lZWQgdG8gY2hlY2sgZm9yDQo+
+ICAgInZlcnNpb249PTQiLg0KPiANCj4gLSBJZiBDT05GSUdfRlNfUE9TSVhfQUNMPXkgYW5kIENP
+TkZJR19ORlNfVjNfQUNMPXksIE1TX1BPU0lYQUNMIGlzDQo+ICAgYWx3YXlzIHNldCwgYXMgYmVm
+b3JlLg0KPiANCj4gU2lnbmVkLW9mZi1ieTogTWF4IEtlbGxlcm1hbm4gPG1rQGNtNGFsbC5jb20+
+DQo+IC0tLQ0KPiAgZnMvbmZzL3N1cGVyLmMgfCAgIDE1ICsrKysrKysrKysrLS0tLQ0KPiAgMSBm
+aWxlIGNoYW5nZWQsIDExIGluc2VydGlvbnMoKyksIDQgZGVsZXRpb25zKC0pDQo+IA0KPiBkaWZm
+IC0tZ2l0IGEvZnMvbmZzL3N1cGVyLmMgYi9mcy9uZnMvc3VwZXIuYw0KPiBpbmRleCAyMTZmNjdk
+NjI4YjMuLmVjNGUxZjI3NzVlMCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL3N1cGVyLmMNCj4gKysr
+IGIvZnMvbmZzL3N1cGVyLmMNCj4gQEAgLTIzMzgsMTAgKzIzMzgsMTcgQEAgdm9pZCBuZnNfZmls
+bF9zdXBlcihzdHJ1Y3Qgc3VwZXJfYmxvY2sgKnNiLA0KPiBzdHJ1Y3QgbmZzX21vdW50X2luZm8g
+Km1vdW50X2luZm8pDQo+ICAJCXNiLT5zX2Jsb2Nrc2l6ZSA9IG5mc19ibG9ja19zaXplKGRhdGEt
+PmJzaXplLCAmc2ItDQo+ID5zX2Jsb2Nrc2l6ZV9iaXRzKTsNCj4gIA0KPiAgCWlmIChzZXJ2ZXIt
+Pm5mc19jbGllbnQtPnJwY19vcHMtPnZlcnNpb24gIT0gMikgew0KPiAtCQkvKiBUaGUgVkZTIHNo
+b3VsZG4ndCBhcHBseSB0aGUgdW1hc2sgdG8gbW9kZSBiaXRzLg0KPiBXZSB3aWxsIGRvDQo+IC0J
+CSAqIHNvIG91cnNlbHZlcyB3aGVuIG5lY2Vzc2FyeS4NCj4gLQkJICovDQo+IC0JCXNiLT5zX2Zs
+YWdzIHw9IE1TX1BPU0lYQUNMOw0KPiArI2lmZGVmIENPTkZJR19GU19QT1NJWF9BQ0wNCj4gKyNp
+Zm5kZWYgQ09ORklHX05GU19WM19BQ0wNCj4gKwkJaWYgKG5mc3MtPm5mc19jbGllbnQtPnJwY19v
+cHMtPnZlcnNpb24gPT0gNCkNCj4gKyNlbmRpZg0KPiArCQkJLyogVGhlIFZGUyBzaG91bGRuJ3Qg
+YXBwbHkgdGhlIHVtYXNrIHRvIG1vZGUNCj4gKwkJCSAqIGJpdHMuIFdlIHdpbGwgZG8gc28gb3Vy
+c2VsdmVzIHdoZW4NCj4gKwkJCSAqIG5lY2Vzc2FyeS4NCj4gKwkJCSAqLw0KPiArCQkJc2ItPnNf
+ZmxhZ3MgfD0gTVNfUE9TSVhBQ0w7DQo+ICsjZW5kaWYNCj4gKw0KPiAgCQlzYi0+c190aW1lX2dy
+YW4gPSAxOw0KPiAgCQlzYi0+c19leHBvcnRfb3AgPSAmbmZzX2V4cG9ydF9vcHM7DQo+ICAJfQ0K
+DQpUaGUgYWJvdmUgaWxsdXN0cmF0ZXMgZXhhY3RseSB3aHkgSSd2ZSBhc2tlZCBwZW9wbGUgX25l
+dmVyXyB0byBtYWtlDQphbnl0aGluZyBjb25kaXRpb25hbCBvbiBycGNfb3BzLT52ZXJzaW9uLiBQ
+bGVhc2UgdXNlIGEgTkZTIGNhcGFiaWxpdHkNCihpLmUuIE5GU19TQihzYiktPmNhcHMpIGZvciB0
+aGlzIGtpbmQgb2YgdGhpbmcuIFRoYXQgZXhwcmVzc2VzIHRoZQ0KY29uZGl0aW9uIGluIHRlcm1z
+IG9mIHRoZSBmdW5jdGlvbmFsaXR5IHdlIHdhbnQgaW5zdGVhZCBvZiBhIHdoaW1zaWNhbA0KcHJv
+dG9jb2wgdmVyc2lvbiBudW1iZXIuDQoNClRoYW5rcw0KICBUcm9uZA0KLS0gDQpUcm9uZCBNeWts
+ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15
+a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-If some of the WRITE calls making up an O_DIRECT write syscall fail,
-we neglect to commit, even if some of the WRITEs succeed.
-
-We also depend on the commit code to free the reference count on the
-nfs_page taken in the "if (request_commit)" case at the end of
-nfs_direct_write_completion().  The problem was originally noticed
-because ENOSPC's encountered partway through a write would result in a
-closed file being sillyrenamed when it should have been unlinked.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfs/direct.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
-
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index d2972d537469..8c10b0562e75 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -775,10 +775,8 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 
- 	spin_lock(&dreq->lock);
- 
--	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
--		dreq->flags = 0;
-+	if (test_bit(NFS_IOHDR_ERROR, &hdr->flags))
- 		dreq->error = hdr->error;
--	}
- 	if (dreq->error == 0) {
- 		nfs_direct_good_bytes(dreq, hdr);
- 		if (nfs_write_need_commit(hdr)) {
--- 
-2.14.3
