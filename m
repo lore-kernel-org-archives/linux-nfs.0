@@ -1,101 +1,262 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:52872 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754366AbeAQQhy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Jan 2018 11:37:54 -0500
-Date: Wed, 17 Jan 2018 11:37:54 -0500
-To: Max Kellermann <mk@cm4all.com>
-Cc: linux-fsdevel@vger.kernel.org, hch@infradead.org,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        gregkh@linuxfoundation.org, max.kellermann@gmail.com,
-        linux-kernel@vger.kernel.org, agreunba@redhat.com,
-        Al Viro <viro@zeniv.linux.org.uk>
-Subject: Re: [PATCH 1/2] linux/fs.h: fix umask on NFS with
- CONFIG_FS_POSIX_ACL=n
-Message-ID: <20180117163754.GA31785@fieldses.org>
-References: <151603744662.29035.4910161264124875658.stgit@rabbit.intern.cm-ag>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <151603744662.29035.4910161264124875658.stgit@rabbit.intern.cm-ag>
-From: bfields@fieldses.org (J. Bruce Fields)
+Received: from userp2130.oracle.com ([156.151.31.86]:40818 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753773AbeAQVSc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jan 2018 16:18:32 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: odd TRACE_DEFINE_ENUM behavior
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <81A1ACAC-45E5-4C46-B1C9-7686C85219DE@oracle.com>
+Date: Wed, 17 Jan 2018 16:13:27 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2B54C608-6435-4779-906F-DA0775A83D7F@oracle.com>
+References: <717BE572-2070-4C1E-9902-9F2E0FEDA4F8@oracle.com>
+ <20180104130811.552bf2bb@gandalf.local.home>
+ <F27A4342-42D6-49C7-94A9-E8F9B496E284@oracle.com>
+ <20180104143642.0b0ddea3@gandalf.local.home>
+ <81A1ACAC-45E5-4C46-B1C9-7686C85219DE@oracle.com>
+To: Steven Rostedt <rostedt@goodmis.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Looks right to me.
 
-Reviewed-by: J. Bruce Fields <bfields@redhat.com>
 
---b.
+> On Jan 9, 2018, at 5:35 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>=20
+>=20
+>=20
+>> On Jan 4, 2018, at 2:36 PM, Steven Rostedt <rostedt@goodmis.org> =
+wrote:
+>>=20
+>> On Thu, 4 Jan 2018 14:10:21 -0500
+>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>>=20
+>>>>> #define nfs_show_stable(stable) \
+>>>>> 	__print_symbolic(stable, \
+>>>>> 			{ NFS_UNSTABLE, " (UNSTABLE)" }, \
+>>>>> 			{ NFS_DATA_SYNC, " (DATA_SYNC)" }, \
+>>>>> 			{ NFS_FILE_SYNC, " (FILE_SYNC)" })
+>>>>>=20
+>>>>> When the field contains 0 it displays "(UNSTABLE)", and when the =
+field
+>>>>> contains a non-zero value the displayed symbol is blank. =20
+>>>> nfs_initiate_write,
+>>>> Can you show my what is in
+>>=20
+>> Are you sure that it isn't another number there?
+>>=20
+>>>>=20
+>>>> /sys/kernel/debug/tracing/events/nfs/nfs_initiate_write/format =20
+>>>=20
+>>> This is with current v4.15-rc6 code base:
+>>>=20
+>>> name: nfs_initiate_write
+>>> ID: 1818
+>>> format:
+>>> 	field:unsigned short common_type;	offset:0;	size:2;	=
+signed:0;
+>>> 	field:unsigned char common_flags;	offset:2;	size:1;	=
+signed:0;
+>>> 	field:unsigned char common_preempt_count;	offset:3;	=
+size:1;	signed:0;
+>>> 	field:int common_pid;	offset:4;	size:4;	signed:1;
+>>>=20
+>>> 	field:loff_t offset;	offset:8;	size:8;	signed:1;
+>>> 	field:unsigned long count;	offset:16;	size:8;	=
+signed:0;
+>>> 	field:enum nfs3_stable_how stable;	offset:24;	size:4;	=
+signed:1;
+>>> 	field:dev_t dev;	offset:28;	size:4;	signed:0;
+>>> 	field:u32 fhandle;	offset:32;	size:4;	signed:0;
+>>> 	field:u64 fileid;	offset:40;	size:8;	signed:0;
+>>>=20
+>>> print fmt: "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x offset=3D%lld =
+count=3D%lu stable=3D%d%s", ((unsigned int) ((REC->dev) >> 20)), =
+((unsigned int) ((REC->dev) & ((1U << 20) - 1))), (unsigned long =
+long)REC->fileid, REC->fhandle, REC->offset, REC->count, REC->stable, =
+__print_symbolic(REC->stable, { 0, " (UNSTABLE)" }, { 1, " (DATA_SYNC)" =
+}, { 2, " (FILE_SYNC)" })
+>>=20
+>> This looks like it should work fine.
+>>=20
+>> Can you try this:
+>>=20
+>> 	trace-cmd record -e nfs_initiate_write
+>>=20
+>> do stuff to trigger the event, then hit Ctrl^C
+>>=20
+>> See if "trace-cmd report" shows it. If not do:
+>>=20
+>> 	trace-cmd report -R
+>>=20
+>> Which will suppress the translation of the output and show you the =
+raw
+>> values. That way, you will see what is in the stable field.
+>=20
+> This is with:
+>=20
+> TRACE_DEFINE_ENUM(NFS_UNSTABLE);
+> TRACE_DEFINE_ENUM(NFS_DATA_SYNC);
+> TRACE_DEFINE_ENUM(NFS_FILE_SYNC);
+>=20
+> #define nfs_show_stable(stable) \
+>       __print_symbolic(stable, \
+>                        { NFS_UNSTABLE, "NFS_UNSTABLE" }, \
+>                        { NFS_DATA_SYNC, "NFS_DATA_SYNC" }, \
+>                        { NFS_FILE_SYNC, "NFS_FILE_SYNC" })
+>=20
+> Here's "cat =
+/sys/kernel/debug/events/tracing/nfs/nfs_initiate_write/format" :
+>=20
+> print_fmt: "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x offset=3D%lld =
+count=3D%lu stable=3D%d (%s)", ((unsigned int) ((REC->dev) >> 20)), =
+((unsigned int) ((REC->dev) & ((1U << 20) - 1))), (unsigned long =
+long)REC->fileid, REC->fhandle, REC->offset, REC->count, REC->stable, =
+__print_symbolic(REC->stable, { 0, "NFS_UNSTABLE" }, { 1, =
+"NFS_DATA_SYNC" }, { NFS_FILE_SYNC, "NFS_FILE_SYNC" })
+>=20
+> The last element in the __print_symbolic table is wrong. For =
+comparison,
+> here's an excerpt of "strings nfs.ko | grep NFS_FILE_SYNC" :
+>=20
+> "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x offset=3D%lld count=3D%lu =
+stable=3D%d (%s)", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) =
+((REC->dev) & ((1U << 20) - 1))), (unsigned long long)REC->fileid, =
+REC->fhandle, REC->offset, REC->count, REC->stable, =
+__print_symbolic(REC->stable, { NFS_UNSTABLE, "NFS_UNSTABLE" }, { =
+NFS_DATA_SYNC, "NFS_DATA_SYNC" }, { NFS_FILE_SYNC, "NFS_FILE_SYNC" })
+>=20
+> Note this copy of the table contains three symbolic names. I haven't =
+been
+> able to find the code that adjusts the print_fmt string to understand =
+the
+> difference with the output from "cat /sys/kernel ..." . But that code
+> doesn't seem to adjust the last element in the __print_symbolic table.
+>=20
+>=20
+> trace-cmd report
+>=20
+>           <...>-11353 [001]  6211.728494: nfs_initiate_write:   =
+fileid=3D00:2a:301409 fhandle=3D0x820b4b2e offset=3D0 count=3D601 =
+stable=3D2 ()
+>           <...>-11353 [004]  6211.728783: nfs_initiate_write:   =
+fileid=3D00:2a:301410 fhandle=3D0x0c844ccd offset=3D0 count=3D738 =
+stable=3D2 ()
+>           <...>-11353 [001]  6211.729023: nfs_initiate_write:   =
+fileid=3D00:2a:301411 fhandle=3D0xc02e4c53 offset=3D0 count=3D4015 =
+stable=3D2 ()
+>           <...>-11353 [005]  6211.729351: nfs_initiate_write:   =
+fileid=3D00:2a:301412 fhandle=3D0xcaeb454a offset=3D0 count=3D282 =
+stable=3D2 ()
+>           <...>-11353 [003]  6211.729651: nfs_initiate_write:   =
+fileid=3D00:2a:301413 fhandle=3D0x064145d4 offset=3D0 count=3D7688 =
+stable=3D2 ()
+>=20
+> trace-cmd report -R
+>=20
+>           <...>-11353 [001]  6211.728494: nfs_initiate_write:    =
+offset=3D0 count=3D0x259 stable=3D2 dev=3D42 fhandle=3D2181778222 =
+fileid=3D301409
+>           <...>-11353 [004]  6211.728783: nfs_initiate_write:    =
+offset=3D0 count=3D0x2e2 stable=3D2 dev=3D42 fhandle=3D209997005 =
+fileid=3D301410
+>           <...>-11353 [001]  6211.729023: nfs_initiate_write:    =
+offset=3D0 count=3D0xfaf stable=3D2 dev=3D42 fhandle=3D3224259667 =
+fileid=3D301411
+>           <...>-11353 [005]  6211.729351: nfs_initiate_write:    =
+offset=3D0 count=3D0x11a stable=3D2 dev=3D42 fhandle=3D3404416330 =
+fileid=3D301412
+>           <...>-11353 [003]  6211.729651: nfs_initiate_write:    =
+offset=3D0 count=3D0x1e08 stable=3D2 dev=3D42 fhandle=3D104941012 =
+fileid=3D301413
+>=20
+> Thanks for your advice!
 
-On Mon, Jan 15, 2018 at 06:30:46PM +0100, Max Kellermann wrote:
-> Make IS_POSIXACL() return false if POSIX ACL support is disabled and
-> ignore SB_POSIXACL/MS_POSIXACL.
-> 
-> Never skip applying the umask in namei.c and never bother to do any
-> ACL specific checks if the filesystem falsely indicates it has ACLs
-> enabled when the feature is completely disabled in the kernel.
-> 
-> This fixes a problem where the umask is always ignored in the NFS
-> client when compiled without CONFIG_FS_POSIX_ACL.  This is a 4 year
-> old regression caused by commit 013cdf1088d723 which itself was not
-> completely wrong, but failed to consider all the side effects by
-> misdesigned VFS code.
-> 
-> Prior to that commit, there were two places where the umask could be
-> applied, for example when creating a directory:
-> 
->  1. in the VFS layer in SYSCALL_DEFINE3(mkdirat), but only if
->     !IS_POSIXACL()
-> 
->  2. again (unconditionally) in nfs3_proc_mkdir()
-> 
-> The first one does not apply, because even without
-> CONFIG_FS_POSIX_ACL, the NFS client sets MS_POSIXACL in
-> nfs_fill_super().
-> 
-> After that commit, (2.) was replaced by:
-> 
->  2b. in posix_acl_create(), called by nfs3_proc_mkdir()
-> 
-> There's one branch in posix_acl_create() which applies the umask;
-> however, without CONFIG_FS_POSIX_ACL, posix_acl_create() is an empty
-> dummy function which does not apply the umask.
-> 
-> The approach chosen by this patch is to make IS_POSIXACL() always
-> return false when POSIX ACL support is disabled, so the umask always
-> gets applied by the VFS layer.  This is consistent with the (regular)
-> behavior of posix_acl_create(): that function returns early if
-> IS_POSIXACL() is false, before applying the umask.
-> 
-> Therefore, posix_acl_create() is responsible for applying the umask if
-> there is ACL support enabled in the file system (SB_POSIXACL), and the
-> VFS layer is responsible for all other cases (no SB_POSIXACL or no
-> CONFIG_FS_POSIX_ACL).
-> 
-> Signed-off-by: Max Kellermann <mk@cm4all.com>
-> ---
->  include/linux/fs.h |    5 +++++
->  1 file changed, 5 insertions(+)
-> 
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 440281f8564d..c3240c28e61b 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -1883,7 +1883,12 @@ static inline bool sb_rdonly(const struct super_block *sb) { return sb->s_flags
->  #define IS_NOQUOTA(inode)	((inode)->i_flags & S_NOQUOTA)
->  #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
->  #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
-> +
-> +#ifdef CONFIG_FS_POSIX_ACL
->  #define IS_POSIXACL(inode)	__IS_FLG(inode, SB_POSIXACL)
-> +#else
-> +#define IS_POSIXACL(inode)	0
-> +#endif
->  
->  #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
->  #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The problem is in this function (kernel/trace/trace_events.c):
+
+2212 void trace_event_eval_update(struct trace_eval_map **map, int len)
+2213 {
+2214         struct trace_event_call *call, *p;
+2215         const char *last_system =3D NULL;
+2216         int last_i;
+2217         int i;
+2218=20
+2219         down_write(&trace_event_sem);
+2220         list_for_each_entry_safe(call, p, &ftrace_events, list) {
+2221                 /* events are usually grouped together with systems =
+*/
+2222                 if (!last_system || call->class->system !=3D =
+last_system) {
+2223                         last_i =3D 0;
+2224                         last_system =3D call->class->system;
+2225                 }
+2226=20
+2227                 for (i =3D last_i; i < len; i++) {
+2228                         if (call->class->system =3D=3D =
+map[i]->system) {
+2229                                 /* Save the first system if need be =
+*/
+2230                                 if (!last_i)
+2231                                         last_i =3D i;
+2232                                 update_event_printk(call, map[i]);
+2233                         }
+2234                 }
+2235         }
+2236         up_write(&trace_event_sem);
+2237 }
+
+Loading the nfs.ko module adds an eval map consisting of three entries:
+
+entry 0 is NFS_FILE_SYNC with a value of 2
+entry 1 is NFS_DATA_SYNC with a value of 1
+entry 2 is NFS_UNSTABLE with a value of 0
+
+The nfs.ko trace point print_fmt strings are updated by
+trace_event_eval_update.
+
+For the first trace point in nfs.ko, the first iteration of the inner
+loop visits all three of these map entries, but it's print_fmt does
+not contain any of these enum symbols, so nothing changes.
+
+Now thanks to the "last_i" logic above, entry 0 (NFS_FILE_SYNC) is
+skipped over for other trace points in the module.
+
+Thus when the print_fmt strings for "nfs_initiate_write" and
+"nfs_writeback_done" are updated, they are only partially converted,
+hence:
+
+> "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x offset=3D%lld count=3D%lu =
+stable=3D%d (%s)", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) =
+((REC->dev) & ((1U << 20) - 1))), (unsigned long long)REC->fileid, =
+REC->fhandle, REC->offset, REC->count, REC->stable, =
+__print_symbolic(REC->stable, { 0, "NFS_UNSTABLE" }, { 1, =
+"NFS_DATA_SYNC" }, { NFS_FILE_SYNC, "NFS_FILE_SYNC" })
+
+
+The updated string contains integers for the first two items in the
+symbol table, and has an unconverted third item, which cannot be used
+by "trace-cmd report".
+
+Adding another TRACE_DEFINE_ENUM in fs/nfs/nfstrace.h works around
+this issue. I added
+
+TRACE_DEFINE_ENUM(NFS_INVALID_STABLE_HOW);
+
+_after_ the first three, and that became entry 0 in the nfs system
+eval_map. That entry is unusable due to this bug, but I didn't add
+it to any trace points. The updated print_fmt strings are now 100%
+correct. "trace-cmd report" works exactly as intended.
+
+My inclination is to remove the last_i logic from this function, but
+I don't understand what the last_system/last_i logic is attempting
+accomplish. Do you have any suggestions?
+
+
+--
+Chuck Lever
+
+
+
