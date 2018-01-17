@@ -1,71 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:59372 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58736 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753617AbeAQQLR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Jan 2018 11:11:17 -0500
-Subject: Re: [PATCH] exportfs: move ro/rw option back to
- secinfo_flag_displaymap table
-To: "Jianhong.Yin" <yin-jianhong@163.com>, linux-nfs@vger.kernel.org
-References: <20180112054757.23927-1-yin-jianhong@163.com>
+        id S1753614AbeAQQLf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 17 Jan 2018 11:11:35 -0500
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 228088B107
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Jan 2018 16:11:35 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-117-42.phx2.redhat.com [10.3.117.42])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C3710609B4
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Jan 2018 16:11:34 +0000 (UTC)
+Subject: Re: [PATCH] libio.h: Has been deprecated
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20180111170838.3427-1-steved@redhat.com>
 From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <7178cd83-e7bd-b429-6dcf-ad9d49d20bea@RedHat.com>
-Date: Wed, 17 Jan 2018 11:11:14 -0500
+Message-ID: <5c766fdf-fb1b-d281-addd-34164e52a186@RedHat.com>
+Date: Wed, 17 Jan 2018 11:11:34 -0500
 MIME-Version: 1.0
-In-Reply-To: <20180112054757.23927-1-yin-jianhong@163.com>
+In-Reply-To: <20180111170838.3427-1-steved@redhat.com>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 01/12/2018 12:47 AM, Jianhong.Yin wrote:
-> according https://bugzilla.redhat.com/show_bug.cgi?id=1532688#c3
-> ro/rw options should be in secinfo_flag_displaymap[]
+On 01/11/2018 12:08 PM, Steve Dickson wrote:
+> In the latest glib-headers libio.h has been deprecated
+> This patch removes this warning:
 > 
-> test pass:
-> '''
-> [yjh@test ~]$ cat /etc/exports
-> /export_test    127.0.0.1(rw,wdelay,no_root_squash,no_subtree_check,sec=sys,root_squash,all_squash,sec=krb5,ro,root_squash,no_all_squash,sec=krb5i,rw,root_squash,no_all_squash,sec=krb5p,no_root_squash,no_all_squash)
-> [yjh@test ~]$ sudo service nfs restart
-> Redirecting to /bin/systemctl restart nfs.service
-> [yjh@test ~]$ sudo exportfs -v
-> /export_test    127.0.0.1(sync,wdelay,hide,no_subtree_check,sec=sys,rw,secure,root_squash,all_squash,sec=krb5,ro,secure,root_squash,no_all_squash,sec=krb5i,rw,secure,root_squash,no_all_squash,sec=krb5p,rw,secure,no_root_squash,no_all_squash)
-> '''
+> /usr/include/libio.h:21:2: warning: #warning "<libio.h> is deprecated; use <stdio.h> instead." [-Wcpp]
+>  #warning "<libio.h> is deprecated; use <stdio.h> instead."
 > 
-> Signed-off-by: Jianhong Yin <yin-jianhong@163.com>
+> Signed-off-by: Steve Dickson <steved@redhat.com>
 Committed... 
 
 steved.
 > ---
->  support/nfs/exports.c     | 1 +
->  utils/exportfs/exportfs.c | 4 ----
->  2 files changed, 1 insertion(+), 4 deletions(-)
+>  configure.ac               | 2 +-
+>  support/include/sockaddr.h | 4 +---
+>  2 files changed, 2 insertions(+), 4 deletions(-)
 > 
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index 92bd6e6..b59d187 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -197,6 +197,7 @@ static const struct secinfo_flag_displaymap {
->  	const char *set;
->  	const char *unset;
->  } secinfo_flag_displaymap[] = {
-> +	{ NFSEXP_READONLY, "ro", "rw" },
->  	{ NFSEXP_INSECURE_PORT, "insecure", "secure" },
->  	{ NFSEXP_ROOTSQUASH, "root_squash", "no_root_squash" },
->  	{ NFSEXP_ALLSQUASH, "all_squash", "no_all_squash" },
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 448f195..cd3c979 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -695,10 +695,6 @@ dump(int verbose, int export_format)
->  				continue;
->  			}
->  			c = '(';
-> -			if (ep->e_flags & NFSEXP_READONLY)
-> -				c = dumpopt(c, "ro");
-> -			else
-> -				c = dumpopt(c, "rw");
->  			if (ep->e_flags & NFSEXP_ASYNC)
->  				c = dumpopt(c, "async");
->  			else
+> diff --git a/configure.ac b/configure.ac
+> index 672dd40..2d328db 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -456,7 +456,7 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h libintl.h limits.h \
+>                   stdlib.h string.h sys/file.h sys/ioctl.h sys/mount.h \
+>                   sys/param.h sys/socket.h sys/time.h sys/vfs.h \
+>                   syslog.h unistd.h com_err.h et/com_err.h \
+> -                 ifaddrs.h nfs-plugin.h libio.h])
+> +                 ifaddrs.h nfs-plugin.h])
+>  
+>  dnl *************************************************************
+>  dnl Checks for typedefs, structures, and compiler characteristics
+> diff --git a/support/include/sockaddr.h b/support/include/sockaddr.h
+> index 446b537..eeebcdf 100644
+> --- a/support/include/sockaddr.h
+> +++ b/support/include/sockaddr.h
+> @@ -24,9 +24,7 @@
+>  #include <config.h>
+>  #endif
+>  
+> -#ifdef HAVE_LIBIO_H
+> -#include <libio.h>
+> -#endif
+> +#include <stdio.h>
+>  #include <stdlib.h>
+>  #include <stdbool.h>
+>  #include <sys/socket.h>
 > 
