@@ -1,52 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:60653 "EHLO smtp-o-3.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751090AbeAPVjZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 16 Jan 2018 16:39:25 -0500
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id B7FD0280885
-        for <linux-nfs@vger.kernel.org>; Tue, 16 Jan 2018 22:39:23 +0100 (CET)
-From: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Cc: trond.myklebust@primarydata.com, Anna.Schumaker@Netapp.com,
-        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Subject: [PATCH] nfs41: do not return ENOMEM on LAYOUTUNAVAILABLE
-Date: Tue, 16 Jan 2018 22:38:50 +0100
-Message-Id: <20180116213850.10323-1-tigran.mkrtchyan@desy.de>
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:30631 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1750816AbeAQCz4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 16 Jan 2018 21:55:56 -0500
+From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+To: <bfields@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: nfsd: return RESOURCE not GARBAGE_ARGS on too many ops
+Message-ID: <717a096b-96d6-87d2-9b7f-54bdd182e220@cn.fujitsu.com>
+Date: Wed, 17 Jan 2018 10:55:52 +0800
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A pNFS server may return LAYOUTUNAVAILABLE error on LAYOUTGET for files
-which don't have any layout. In this situation pnfs_update_layout
-currently returns NULL. As this NULL is converted into ENOMEM, IO
-requests fails instead of falling back to MDS.
+Hi Bruce
 
-Do not return ENOMEM on LAYOUTUNAVAILABLE and let client retry through
-MDS.
+Would you consider the patch for merging ?
 
-Fixes 8d40b0f14846f. I will suggest to backport this fix to affected
-stable branches.
+> commit fd9a5e1c4952
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Wed Nov 15 12:30:27 2017 -0500
+> 
+>     nfsd: return RESOURCE not GARBAGE_ARGS on too many ops
+>     
+>     A client that sends more than a hundred ops in a single compound
+>     currently gets an rpc-level GARBAGE_ARGS error.
+>     
+>     It would be more helpful to return NFS4ERR_RESOURCE, since that gives
+>     the client a better idea how to recover (for example by splitting up the
+>     compound into smaller compounds).
+>     
+>     This is all a bit academic since we've never actually seen a reason for
+>     clients to send such long compounds, but we may as well fix it.
+>     
+>     While we're there, just use NFSD4_MAX_OPS_PER_COMPOUND == 16, the
+>     constant we already use in the 4.1 case, instead of hard-coding 100.
+>     Chances anyone actually uses even 16 ops per compound are small enough
+>     that I think there's a neglible risk or any regression.
+>     
+>     This fixes pynfs test COMP6.
+>     
+>     Reported-by: sunlianwen <sunlw.fnst@cn.fujitsu.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 008ea0b627d0..c9669d75c157 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1703,6 +1703,9 @@ nfsd4_proc_compound(struct svc_rqst *rqstp)
+>          status = nfserr_minor_vers_mismatch;
+>          if (nfsd_minorversion(args->minorversion, NFSD_TEST) <= 0)
+>                  goto out;
+> +       status = nfserr_resource;
+> +       if (resp->opcnt > NFSD_MAX_OPS_PER_COMPOUND)
+> +               goto out;
+>  
+>          status = nfs41_check_op_ordering(args);
+>          if (status) {
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 2c61c6b8ae09..5dcd7cb45b2d 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1918,8 +1918,13 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  
+>          if (argp->taglen > NFSD4_MAX_TAGLEN)
+>                  goto xdr_error;
+> -       if (argp->opcnt > 100)
+> -               goto xdr_error;
+> +       /*
+> +        * NFS4ERR_RESOURCE is a more helpful error than GARBAGE_ARGS
+> +        * here, so we return success at the xdr level so that
+> +        * nfsd4_proc can handle this is an NFS-level error.
+> +        */
+> +       if (argp->opcnt > NFSD_MAX_OPS_PER_COMPOUND)
+> +               return 0;
+>  
+>          if (argp->opcnt > ARRAY_SIZE(argp->iops)) {
+>                  argp->ops = kzalloc(argp->opcnt * sizeof(*argp->ops), GFP_KERNEL);
+> 
+> 
+> .
 
-Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
----
- fs/nfs/filelayout/filelayout.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+--
+Lu Xinyu
+--
 
-diff --git a/fs/nfs/filelayout/filelayout.c b/fs/nfs/filelayout/filelayout.c
-index 28b72285711e..94f8fc02ea4e 100644
---- a/fs/nfs/filelayout/filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -895,9 +895,7 @@ fl_pnfs_update_layout(struct inode *ino,
- 
- 	lseg = pnfs_update_layout(ino, ctx, pos, count, iomode, strict_iomode,
- 				  gfp_flags);
--	if (!lseg)
--		lseg = ERR_PTR(-ENOMEM);
--	if (IS_ERR(lseg))
-+	if (!lseg || IS_ERR(lseg))
- 		goto out;
- 
- 	lo = NFS_I(ino)->layout;
--- 
-2.14.3
 
