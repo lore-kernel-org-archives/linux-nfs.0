@@ -1,90 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53314 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753302AbeAQVa5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Jan 2018 16:30:57 -0500
-Date: Wed, 17 Jan 2018 16:30:57 -0500
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Detect unhashed stids in nfsd4_verify_open_stid()
-Message-ID: <20180117213057.GA1441@fieldses.org>
-References: <20180112224230.129322-1-trond.myklebust@primarydata.com>
- <3D728866-A30E-420D-9001-F4B212432C36@oracle.com>
+Received: from mail-io0-f193.google.com ([209.85.223.193]:36084 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753059AbeAQWLB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 17 Jan 2018 17:11:01 -0500
+Received: by mail-io0-f193.google.com with SMTP id l17so12706755ioc.3
+        for <linux-nfs@vger.kernel.org>; Wed, 17 Jan 2018 14:11:01 -0800 (PST)
+Subject: [PATCH] Remove unneeded reference to nfsidmap_internal.h
+From: Chuck Lever <chuck.lever@oracle.com>
+To: SteveD@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 17 Jan 2018 17:10:59 -0500
+Message-ID: <20180117221020.11056.59627.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <3D728866-A30E-420D-9001-F4B212432C36@oracle.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 12, 2018 at 09:15:46PM -0500, Chuck Lever wrote:
-> 
-> 
-> > On Jan 12, 2018, at 5:42 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > 
-> > The state of the stid is guaranteed by 2 locks:
-> > - The nfs4_client 'cl_lock' spinlock
-> > - The nfs4_ol_stateid 'st_mutex' mutex
-> > 
-> > so it is quite possible for the stid to be unhashed after lookup,
-> > but before calling nfsd4_lock_ol_stateid(). So we do need to check
-> > for a zero value for 'sc_type' in nfsd4_verify_open_stid().
-> > 
-> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> 
-> Three successful passes of the git regression suite on NFSv4.1
-> Three successful passes of xfstests on NFSv4.1
-> 
-> Tested-by: Chuck Lever <chuck.lever@oracle.com>
+This file is not part of "git clone" and is not #included from any
+C file.
 
-Thanks!  Applying.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ support/nfsidmap/Makefile.am |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Then I think this makes a couple of "sc_type = NFS4_CLOSED_STID"'s
-superfluous.
+Hey Steve-
 
---b.
+I don't see nfsidmap_internal.h anywhere.  Wondering if I missed
+something?
 
-commit 17693d95b3d3
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Jan 17 16:25:59 2018 -0500
-
-    nfsd4: don't set lock stateid's sc_type to CLOSED
-    
-    There's no point I can see to
-    
-            stp->st_stid.sc_type = NFS4_CLOSED_STID;
-    
-    given release_lock_stateid immediately sets sc_type to 0.
-    
-    That set of sc_type to 0 should be enough to prevent it being used where
-    we don't want it to be; NFS4_CLOSED_STID should only be needed for
-    actual open stateid's that are actually closed.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5a75135f5f53..150521c9671b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5183,7 +5183,6 @@ nfsd4_free_lock_stateid(stateid_t *stateid, struct nfs4_stid *s)
- 			    lockowner(stp->st_stateowner)))
- 		goto out;
+diff --git a/support/nfsidmap/Makefile.am b/support/nfsidmap/Makefile.am
+index 9466f92..8b5dfe4 100644
+--- a/support/nfsidmap/Makefile.am
++++ b/support/nfsidmap/Makefile.am
+@@ -25,7 +25,7 @@ pkgplugin_LTLIBRARIES = nsswitch.la static.la $(UMICH_LDAP_LIB) $(GUMS_MAPPING_L
+ #  <age> 	The number of previous additional interfaces supported
+ #  		by this library.
  
--	stp->st_stid.sc_type = NFS4_CLOSED_STID;
- 	release_lock_stateid(stp);
- 	ret = nfs_ok;
+-libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_internal.h nfsidmap_common.c
++libnfsidmap_la_SOURCES = libnfsidmap.c nfsidmap_common.c
+ libnfsidmap_la_LDFLAGS = -version-info 1:0:0
+ libnfsidmap_la_LIBADD = -ldl ../../support/nfs/libnfsconf.la
  
-@@ -6079,10 +6078,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		 * If this is a new, never-before-used stateid, and we are
- 		 * returning an error, then just go ahead and release it.
- 		 */
--		if (status && new) {
--			lock_stp->st_stid.sc_type = NFS4_CLOSED_STID;
-+		if (status && new)
- 			release_lock_stateid(lock_stp);
--		}
- 
- 		mutex_unlock(&lock_stp->st_mutex);
- 
+
