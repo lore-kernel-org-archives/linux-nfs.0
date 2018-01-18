@@ -1,300 +1,215 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:6403 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S932269AbeARTMD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Jan 2018 14:12:03 -0500
-Subject: Re: [PATCH 02/20] SUNRPC: add 'struct cred *' to auth_cred and
- rpc_cred
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        NeilBrown <neilb@suse.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-References: <151538903497.25812.13293229343061416612.stgit@noble>
- <151538917875.25812.10005878132438571890.stgit@noble>
- <ea9fad0d-a718-aba8-3dd1-042644577c81@Netapp.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <3cfc2eb8-68c9-6c26-d5eb-21f50ca921e5@Netapp.com>
-Date: Thu, 18 Jan 2018 14:11:55 -0500
-MIME-Version: 1.0
-In-Reply-To: <ea9fad0d-a718-aba8-3dd1-042644577c81@Netapp.com>
-Content-Type: text/plain; charset=utf-8
+Received: from userp2130.oracle.com ([156.151.31.86]:36982 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754170AbeART37 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jan 2018 14:29:59 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: odd TRACE_DEFINE_ENUM behavior
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20180117220108.3650f737@vmware.local.home>
+Date: Thu, 18 Jan 2018 14:29:54 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <77CFE919-09B7-4CCC-B2C5-458E9939E20A@oracle.com>
+References: <717BE572-2070-4C1E-9902-9F2E0FEDA4F8@oracle.com>
+ <20180104130811.552bf2bb@gandalf.local.home>
+ <F27A4342-42D6-49C7-94A9-E8F9B496E284@oracle.com>
+ <20180104143642.0b0ddea3@gandalf.local.home>
+ <81A1ACAC-45E5-4C46-B1C9-7686C85219DE@oracle.com>
+ <2B54C608-6435-4779-906F-DA0775A83D7F@oracle.com>
+ <20180117220108.3650f737@vmware.local.home>
+To: Steven Rostedt <rostedt@goodmis.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 01/18/2018 01:39 PM, Anna Schumaker wrote:
-> Hi Neil,
-> 
-> On 01/08/2018 12:26 AM, NeilBrown wrote:
->> The SUNRPC credential framework was put together before
->> Linux has 'struct cred'.  Now that we have it, it makes sense to
->> use it.
->> This first step just includes a suitable 'struct cred *' pointer
->> in every 'struct auth_cred' and almost every 'struct rpc_cred'.
->>
->> The rpc_cred used for auth_null has a NULL 'struct cred *' as nothing
->> else really makes sense.
->>
->> For rpc_cred, the pointer is reference counted.
->> For auth_cred it isn't.  struct auth_cred are either allocated on
->> the stack, in which case the thread owns a reference to the auth,
->> or are part of 'struct generic_cred' in which case gc_base owns the
->> reference and acred shares it.
+> On Jan 17, 2018, at 10:01 PM, Steven Rostedt <rostedt@goodmis.org> =
+wrote:
+>=20
+> On Wed, 17 Jan 2018 16:13:27 -0500
+> Chuck Lever <chuck.lever@oracle.com> wrote:
+>=20
+>>=20
+>> The problem is in this function (kernel/trace/trace_events.c):
+>>=20
+>> 2212 void trace_event_eval_update(struct trace_eval_map **map, int =
+len)
+>> 2213 {
+>> 2214         struct trace_event_call *call, *p;
+>> 2215         const char *last_system =3D NULL;
+>> 2216         int last_i;
+>> 2217         int i;
+>> 2218=20
+>> 2219         down_write(&trace_event_sem);
+>> 2220         list_for_each_entry_safe(call, p, &ftrace_events, list) =
+{
+>> 2221                 /* events are usually grouped together with =
+systems */
+>> 2222                 if (!last_system || call->class->system !=3D =
+last_system) {
+>> 2223                         last_i =3D 0;
+>> 2224                         last_system =3D call->class->system;
+>> 2225                 }
+>> 2226=20
+>> 2227                 for (i =3D last_i; i < len; i++) {
+>> 2228                         if (call->class->system =3D=3D =
+map[i]->system) {
+>> 2229                                 /* Save the first system if need =
+be */
+>> 2230                                 if (!last_i)
+>> 2231                                         last_i =3D i;
+>> 2232                                 update_event_printk(call, =
+map[i]);
+>> 2233                         }
+>> 2234                 }
+>> 2235         }
+>> 2236         up_write(&trace_event_sem);
+>> 2237 }
+>>=20
+>> Loading the nfs.ko module adds an eval map consisting of three =
+entries:
+>>=20
+>> entry 0 is NFS_FILE_SYNC with a value of 2
+>> entry 1 is NFS_DATA_SYNC with a value of 1
+>> entry 2 is NFS_UNSTABLE with a value of 0
+>>=20
+>> The nfs.ko trace point print_fmt strings are updated by
+>> trace_event_eval_update.
+>>=20
+>> For the first trace point in nfs.ko, the first iteration of the inner
+>> loop visits all three of these map entries, but it's print_fmt does
+>> not contain any of these enum symbols, so nothing changes.
+>>=20
+>> Now thanks to the "last_i" logic above, entry 0 (NFS_FILE_SYNC) is
+>> skipped over for other trace points in the module.
+>>=20
+>> Thus when the print_fmt strings for "nfs_initiate_write" and
+>> "nfs_writeback_done" are updated, they are only partially converted,
+>> hence:
+>>=20
+>>> "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x offset=3D%lld count=3D%lu =
+stable=3D%d (%s)", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) =
+((REC->dev) & ((1U << 20) - 1))), (unsigned long long)REC->fileid, =
+REC->fhandle, REC->offset, REC->count, REC->stable, =
+__print_symbolic(REC->stable, { 0, "NFS_UNSTABLE" }, { 1, =
+"NFS_DATA_SYNC" }, { NFS_FILE_SYNC, "NFS_FILE_SYNC" }) =20
+>>=20
+>>=20
+>> The updated string contains integers for the first two items in the
+>> symbol table, and has an unconverted third item, which cannot be used
+>> by "trace-cmd report".
+>>=20
+>> Adding another TRACE_DEFINE_ENUM in fs/nfs/nfstrace.h works around
+>> this issue. I added
+>>=20
+>> TRACE_DEFINE_ENUM(NFS_INVALID_STABLE_HOW);
+>>=20
+>> _after_ the first three, and that became entry 0 in the nfs system
+>> eval_map. That entry is unusable due to this bug, but I didn't add
+>> it to any trace points. The updated print_fmt strings are now 100%
+>> correct. "trace-cmd report" works exactly as intended.
+>>=20
+>> My inclination is to remove the last_i logic from this function, but
+>> I don't understand what the last_system/last_i logic is attempting
+>> accomplish. Do you have any suggestions?
+>=20
+> Nice detective work. I see the bug.
+>=20
+> The last_i is an optimization to not have to search the entire map
+> array for the first matching map[i].system every time. But the bug is,
+> if the match is on the first hit (i=3D=3D0) then we set last_i to 0, =
+and on
+> the next iteration we set it (incorrectly) to 1. That's the bug.
+>=20
+> Can you try this patch?
+>=20
+> I'll have to add comments to that function, as it took me too long to
+> figure out WTF I was thinking when I wrote it.
+>=20
+> -- Steve
+>=20
+> diff --git a/kernel/trace/trace_events.c b/kernel/trace/trace_events.c
+> index ec0f9aa4e151..9b5b8a362690 100644
+> --- a/kernel/trace/trace_events.c
+> +++ b/kernel/trace/trace_events.c
+> @@ -2213,6 +2213,7 @@ void trace_event_eval_update(struct =
+trace_eval_map **map, int len)
+> {
+> 	struct trace_event_call *call, *p;
+> 	const char *last_system =3D NULL;
+> +	bool first =3D false;
+> 	int last_i;
+> 	int i;
+>=20
+> @@ -2220,6 +2221,7 @@ void trace_event_eval_update(struct =
+trace_eval_map **map, int len)
+> 	list_for_each_entry_safe(call, p, &ftrace_events, list) {
+> 		/* events are usually grouped together with systems */
+> 		if (!last_system || call->class->system !=3D =
+last_system) {
+> +			first =3D true;
+> 			last_i =3D 0;
+> 			last_system =3D call->class->system;
+> 		}
+> @@ -2227,8 +2229,10 @@ void trace_event_eval_update(struct =
+trace_eval_map **map, int len)
+> 		for (i =3D last_i; i < len; i++) {
+> 			if (call->class->system =3D=3D map[i]->system) {
+> 				/* Save the first system if need be */
+> -				if (!last_i)
+> +				if (first) {
+> 					last_i =3D i;
+> +					first =3D false;
+> +				}
+> 				update_event_printk(call, map[i]);
+> 			}
+> 		}
 
-This patch is also causing a kernel panic for me if I mount using sec=krb5, run cthon tests, and then unmount.  Here is the log message I'm getting:
+Thanks for the patch! I removed the workaround:
 
-[   82.599174] Kernel panic - not syncing: CRED: put_cred_rcu() sees 00000000f5847a57 with usage -1
-[   82.599174]
-[   82.600227] CPU: 0 PID: 0 Comm: swapper/0 Not tainted 4.15.0-rc7-ANNA+ #14336
-[   82.600801] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[   82.601435] Call Trace:
-[   82.601639]  <IRQ>
-[   82.601830]  dump_stack+0x5c/0x7e
-[   82.602125]  panic+0xdf/0x228
-[   82.602383]  ? try_to_wake_up+0x24b/0x420
-[   82.602853]  put_cred_rcu+0x8a/0x90
-[   82.603183]  rcu_process_callbacks+0x1ab/0x4f0
-[   82.603577]  __do_softirq+0xcc/0x305
-[   82.603881]  irq_exit+0xa9/0xb0
-[   82.604159]  smp_apic_timer_interrupt+0x5b/0x140
-[   82.604528]  apic_timer_interrupt+0x98/0xa0
-[   82.604892]  </IRQ>
-[   82.605133] RIP: 0010:native_safe_halt+0x2/0x10
-[   82.605678] RSP: 0018:ffffffff82003ea8 EFLAGS: 00000246 ORIG_RAX: ffffffffffffff11
-[   82.606619] RAX: 0000000080000000 RBX: 0000000000000000 RCX: 0000000000000000
-[   82.607270] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 0000000000000000
-[   82.608077] RBP: 0000000000000000 R08: 0000000000000002 R09: 000000000001ea40
-[   82.609066] R10: 0000000000000001 R11: 0000000000000000 R12: 0000000000000000
-[   82.609951] R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
-[   82.610771]  default_idle+0x15/0x120
-[   82.611128]  do_idle+0x15c/0x1c0
-[   82.611371]  cpu_startup_entry+0x6a/0x70
-[   82.611762]  start_kernel+0x445/0x465
-[   82.612104]  secondary_startup_64+0xa5/0xb0
-[   82.612561] Kernel Offset: disabled
-[   82.612862] ---[ end Kernel panic - not syncing: CRED: put_cred_rcu() sees 00000000f5847a57 with usage -1
-[   82.612862]
+  TRACE_DEFINE_ENUM(NFS_INVALID_STABLE_HOW);
+
+and applied the above patch. I'd say the fix passes the test:
+
+[root@manet ~]# cat =
+/sys/kernel/debug/tracing/events/nfs/nfs_initiate_write/format
+name: nfs_initiate_write
+ID: 1819
+format:
+	field:unsigned short common_type;	offset:0;	size:2;	=
+signed:0;
+	field:unsigned char common_flags;	offset:2;	size:1;	=
+signed:0;
+	field:unsigned char common_preempt_count;	offset:3;	=
+size:1;	signed:0;
+	field:int common_pid;	offset:4;	size:4;	signed:1;
+
+	field:loff_t offset;	offset:8;	size:8;	signed:1;
+	field:unsigned long count;	offset:16;	size:8;	=
+signed:0;
+	field:enum nfs3_stable_how stable;	offset:24;	size:4;	=
+signed:1;
+	field:dev_t dev;	offset:28;	size:4;	signed:0;
+	field:u32 fhandle;	offset:32;	size:4;	signed:0;
+	field:u64 fileid;	offset:40;	size:8;	signed:0;
+
+print fmt: "fileid=3D%02x:%02x:%llu fhandle=3D0x%08x offset=3D%lld =
+count=3D%lu stable=3D%s", ((unsigned int) ((REC->dev) >> 20)), =
+((unsigned int) ((REC->dev) & ((1U << 20) - 1))), (unsigned long =
+long)REC->fileid, REC->fhandle, REC->offset, REC->count, =
+__print_symbolic(REC->stable, { 0, "UNSTABLE" }, { 1, "DATA_SYNC" }, { =
+2, "FILE_SYNC" })
+[root@manet ~]#=20
+
+And "trace-cmd report" output appears as expected.
+
+Tested-by: Chuck Lever <chuck.lever@oracle.com>
 
 
-Thanks,
-Anna
+--
+Chuck Lever
 
->>
->> Signed-off-by: NeilBrown <neilb@suse.com>
->> ---
->>  fs/nfs/flexfilelayout/flexfilelayout.c |   17 +++++++++++++++++
->>  fs/nfsd/nfs4callback.c                 |   13 ++++++++++++-
->>  include/linux/sunrpc/auth.h            |    2 ++
->>  net/sunrpc/auth.c                      |   15 +++++++++++++--
->>  net/sunrpc/auth_generic.c              |    7 ++++++-
->>  net/sunrpc/auth_gss/auth_gss.c         |    1 +
->>  6 files changed, 51 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
->> index c75ad982bcfc..b727579a1508 100644
->> --- a/fs/nfs/flexfilelayout/flexfilelayout.c
->> +++ b/fs/nfs/flexfilelayout/flexfilelayout.c
->> @@ -9,6 +9,7 @@
->>  #include <linux/nfs_fs.h>
->>  #include <linux/nfs_page.h>
->>  #include <linux/module.h>
->> +#include <linux/sched/mm.h>
->>  
->>  #include <linux/sunrpc/metrics.h>
->>  
->> @@ -415,6 +416,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
->>  		struct nfs4_ff_layout_mirror *mirror;
->>  		struct auth_cred acred = { .group_info = ff_zero_group };
->>  		struct rpc_cred	__rcu *cred;
->> +		struct cred *kcred;
->>  		u32 ds_count, fh_count, id;
->>  		int j;
->>  
->> @@ -491,8 +493,23 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
->>  
->>  		acred.gid = make_kgid(&init_user_ns, id);
->>  
->> +		if (gfp_flags & __GFP_FS)
->> +			kcred = prepare_kernel_cred(NULL);
->> +		else {
->> +			unsigned int nofs_flags = memalloc_nofs_save();
->> +			kcred = prepare_kernel_cred(NULL);
->> +			memalloc_nofs_restore(nofs_flags);
->> +		}
->> +		rc = -ENOMEM;
->> +		if (!kcred)
->> +			goto out_err_free;
->> +		kcred->fsuid = acred.uid;
->> +		kcred->fsgid = acred.gid;
->> +		acred.cred = kcred;
->> +
->>  		/* find the cred for it */
->>  		rcu_assign_pointer(cred, rpc_lookup_generic_cred(&acred, 0, gfp_flags));
->> +		put_cred(kcred);
->>  		if (IS_ERR(cred)) {
->>  			rc = PTR_ERR(cred);
->>  			goto out_err_free;
->> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->> index 49b0a9e7ff18..fc5b38ee6c70 100644
->> --- a/fs/nfsd/nfs4callback.c
->> +++ b/fs/nfsd/nfs4callback.c
->> @@ -773,10 +773,21 @@ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc
->>  	} else {
->>  		struct rpc_auth *auth = client->cl_auth;
->>  		struct auth_cred acred = {};
->> +		struct cred *kcred;
->> +		struct rpc_cred *ret;
->> +
->> +		kcred = prepare_kernel_cred(NULL);
->> +		if (!acred.cred)
->> +			return NULL;
->>  
->>  		acred.uid = ses->se_cb_sec.uid;
->>  		acred.gid = ses->se_cb_sec.gid;
->> -		return auth->au_ops->lookup_cred(client->cl_auth, &acred, 0);
->> +		kcred->uid = acred.uid;
->> +		kcred->gid = acred.gid;
->> +		acred.cred = kcred;
->> +		ret = auth->au_ops->lookup_cred(client->cl_auth, &acred, 0);
->> +		put_cred(kcred);
->> +		return ret;
->>  	}
->>  }
->>  
->> diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
->> index d9af474a857d..57633e241d4a 100644
->> --- a/include/linux/sunrpc/auth.h
->> +++ b/include/linux/sunrpc/auth.h
->> @@ -46,6 +46,7 @@ enum {
->>  
->>  /* Work around the lack of a VFS credential */
->>  struct auth_cred {
->> +	const struct cred *cred;
->>  	kuid_t	uid;
->>  	kgid_t	gid;
->>  	struct group_info *group_info;
->> @@ -68,6 +69,7 @@ struct rpc_cred {
->>  	unsigned long		cr_expire;	/* when to gc */
->>  	unsigned long		cr_flags;	/* various flags */
->>  	atomic_t		cr_count;	/* ref count */
->> +	const struct cred	*cr_cred;
->>  
->>  	kuid_t			cr_uid;
->>  
->> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
->> index d2623b9f23d6..fd9635dbc17f 100644
->> --- a/net/sunrpc/auth.c
->> +++ b/net/sunrpc/auth.c
->> @@ -634,6 +634,7 @@ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
->>  	acred.uid = cred->fsuid;
->>  	acred.gid = cred->fsgid;
->>  	acred.group_info = cred->group_info;
->> +	acred.cred = cred;
->>  	ret = auth->au_ops->lookup_cred(auth, &acred, flags);
->>  	return ret;
->>  }
->> @@ -649,6 +650,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
->>  	cred->cr_auth = auth;
->>  	cred->cr_ops = ops;
->>  	cred->cr_expire = jiffies;
->> +	cred->cr_cred = get_cred(acred->cred);
->>  	cred->cr_uid = acred->uid;
->>  }
->>  EXPORT_SYMBOL_GPL(rpcauth_init_cred);
->> @@ -669,11 +671,15 @@ rpcauth_bind_root_cred(struct rpc_task *task, int lookupflags)
->>  	struct auth_cred acred = {
->>  		.uid = GLOBAL_ROOT_UID,
->>  		.gid = GLOBAL_ROOT_GID,
->> +		.cred = get_task_cred(&init_task),
-> 
-> Is there a patch somewhere to add "EXPORT_SYMBOL_GPL(get_task_cred)" to kernel/cred.c?
-> I'm getting: 
->     ERROR: "get_task_cred" [net/sunrpc/sunrpc.ko] undefined!
-> when I compile.
-> 
-> Thanks,
-> Anna
-> 
->>  	};
->> +	struct rpc_cred *ret;
->>  
->>  	dprintk("RPC: %5u looking up %s cred\n",
->>  		task->tk_pid, task->tk_client->cl_auth->au_ops->au_name);
->> -	return auth->au_ops->lookup_cred(auth, &acred, lookupflags);
->> +	ret = auth->au_ops->lookup_cred(auth, &acred, lookupflags);
->> +	put_cred(acred.cred);
->> +	return ret;
->>  }
->>  
->>  static struct rpc_cred *
->> @@ -715,8 +721,11 @@ put_rpccred(struct rpc_cred *cred)
->>  		return;
->>  	/* Fast path for unhashed credentials */
->>  	if (test_bit(RPCAUTH_CRED_HASHED, &cred->cr_flags) == 0) {
->> -		if (atomic_dec_and_test(&cred->cr_count))
->> +		if (atomic_dec_and_test(&cred->cr_count)) {
->> +			if (cred->cr_cred)
->> +				put_cred(cred->cr_cred);
->>  			cred->cr_ops->crdestroy(cred);
->> +		}
->>  		return;
->>  	}
->>  
->> @@ -739,6 +748,8 @@ put_rpccred(struct rpc_cred *cred)
->>  		}
->>  	}
->>  	spin_unlock(&rpc_credcache_lock);
->> +	if (cred->cr_cred)
->> +		put_cred(cred->cr_cred);
->>  	cred->cr_ops->crdestroy(cred);
->>  	return;
->>  out_nodestroy:
->> diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
->> index f1df9837f1ac..08bc5fac1865 100644
->> --- a/net/sunrpc/auth_generic.c
->> +++ b/net/sunrpc/auth_generic.c
->> @@ -61,11 +61,15 @@ struct rpc_cred *rpc_lookup_machine_cred(const char *service_name)
->>  		.gid = RPC_MACHINE_CRED_GROUPID,
->>  		.principal = service_name,
->>  		.machine_cred = 1,
->> +		.cred = get_task_cred(&init_task),
->>  	};
->> +	struct rpc_cred *ret;
->>  
->>  	dprintk("RPC:       looking up machine cred for service %s\n",
->>  			service_name);
->> -	return generic_auth.au_ops->lookup_cred(&generic_auth, &acred, 0);
->> +	ret = generic_auth.au_ops->lookup_cred(&generic_auth, &acred, 0);
->> +	put_cred(acred.cred);
->> +	return ret;
->>  }
->>  EXPORT_SYMBOL_GPL(rpc_lookup_machine_cred);
->>  
->> @@ -110,6 +114,7 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, g
->>  	gcred->acred.uid = acred->uid;
->>  	gcred->acred.gid = acred->gid;
->>  	gcred->acred.group_info = acred->group_info;
->> +	gcred->acred.cred = gcred->gc_base.cr_cred;
->>  	gcred->acred.ac_flags = 0;
->>  	if (gcred->acred.group_info != NULL)
->>  		get_group_info(gcred->acred.group_info);
->> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
->> index 9463af4b32e8..82301105b4f6 100644
->> --- a/net/sunrpc/auth_gss/auth_gss.c
->> +++ b/net/sunrpc/auth_gss/auth_gss.c
->> @@ -1553,6 +1553,7 @@ static int gss_renew_cred(struct rpc_task *task)
->>  	struct rpc_auth *auth = oldcred->cr_auth;
->>  	struct auth_cred acred = {
->>  		.uid = oldcred->cr_uid,
->> +		.cred = oldcred->cr_cred,
->>  		.principal = gss_cred->gc_principal,
->>  		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
->>  	};
->>
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
+
