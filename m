@@ -1,85 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:49846 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750718AbeARVpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 18 Jan 2018 16:45:35 -0500
-Date: Thu, 18 Jan 2018 16:45:34 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com, krzk@kernel.org
-Subject: Re: [PATCH v5 02/19] fs: don't take the i_lock in inode_inc_iversion
-Message-ID: <20180118214534.GB5299@fieldses.org>
-References: <20180109141059.25929-1-jlayton@kernel.org>
- <20180109141059.25929-3-jlayton@kernel.org>
+Received: from mail-io0-f195.google.com ([209.85.223.195]:46931 "EHLO
+        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750784AbeARVrT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 18 Jan 2018 16:47:19 -0500
+Received: by mail-io0-f195.google.com with SMTP id f34so19833ioi.13
+        for <linux-nfs@vger.kernel.org>; Thu, 18 Jan 2018 13:47:19 -0800 (PST)
+Received: from manet.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id 17sm438735ioc.33.2018.01.18.13.47.17
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Thu, 18 Jan 2018 13:47:17 -0800 (PST)
+Subject: [PATCH v2 0/3] Series short description
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 18 Jan 2018 16:47:17 -0500
+Message-ID: <20180118214137.7230.28323.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180109141059.25929-3-jlayton@kernel.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 09, 2018 at 09:10:42AM -0500, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@redhat.com>
-> 
-> The rationale for taking the i_lock when incrementing this value is
-> lost in antiquity. The readers of the field don't take it (at least
-> not universally), so my assumption is that it was only done here to
-> serialize incrementors.
-> 
-> If that is indeed the case, then we can drop the i_lock from this
-> codepath and treat it as a atomic64_t for the purposes of
-> incrementing it. This allows us to use inode_inc_iversion without
-> any danger of lock inversion.
-> 
-> Note that the read side is not fetched atomically with this change.
-> The assumption here is that that is not a critical issue since the
-> i_version is not fully synchronized with anything else anyway.
+Still UNTESTED, but at least it builds.
 
-So I guess it's theoretically possible that e.g. if you read while it's
-incrementing from 2^32-1 to 2^32 you could read 0, 1, or 2^32+1?
+A while back I announced the deprecation of fedfs-utils. There were
+a handful of components in fedfs-utils that we decided to keep. One
+of those keepers was the "nfsref" command. (The other was autofs
+support for /nfs4, which I hope Ian Kent is making progress on ;-)
 
-If so then you could see an i_version value reused and incorrectly
-decide that a file hadn't changed.
+This series introduces "nfsref" to nfs-utils, minus the overhead of
+the LDAP / FedFS machinery, and it builds support for NFS basic
+junctions into mountd, replacing the need to install a plug-in DLL
+from fedfs-utils.
 
-But it's such a tiny case, and I think you convert this to atomic64_t
-later anyway, so, whatever.
+I didn't apply a lot of brain cells to this port, so it's perhaps a
+little larger than it needs to be. Still, it achieves a completely
+LDAP-free implementation that resides 100% in nfs-utils. I'm
+interested in comments about the approach before I do more testing
+and refinement.
 
---b.
+ ./configure --enable-junction --enable-caps
 
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  include/linux/iversion.h | 7 ++++---
->  1 file changed, 4 insertions(+), 3 deletions(-)
-> 
-> diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-> index d09cc3a08740..5ad9eaa3a9b0 100644
-> --- a/include/linux/iversion.h
-> +++ b/include/linux/iversion.h
-> @@ -104,12 +104,13 @@ inode_set_iversion_queried(struct inode *inode, u64 new)
->  static inline bool
->  inode_maybe_inc_iversion(struct inode *inode, bool force)
->  {
-> -	spin_lock(&inode->i_lock);
-> -	inode->i_version++;
-> -	spin_unlock(&inode->i_lock);
-> +	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
-> +
-> +	atomic64_inc(ivp);
->  	return true;
->  }
->  
-> +
->  /**
->   * inode_inc_iversion - forcibly increment i_version
->   * @inode: inode that needs to be updated
-> -- 
-> 2.14.3
+is needed before building.
+
+
+Changes since RFC (v1):
+Patch 2/3 in the original series added the libnfsjunct.so DLL to
+nfs-utils. Series v2 instead replaces 2/3 with a patch that puts
+support for junctions into mountd without the need for a DLL.
+
+---
+
+Chuck Lever (3):
+      Add LDAP-free version of libjunction to nfs-utils
+      mountd: Solder in support for NFS basic junctions
+      Add LDAP-free 'nfsref' command
+
+
+ aclocal/libxml2.m4                   |   15 
+ configure.ac                         |   17 
+ support/Makefile.am                  |    4 
+ support/include/Makefile.am          |    2 
+ support/include/fedfs_admin.h        |  342 +++++++
+ support/include/junction.h           |  124 +++
+ support/junction/Makefile.am         |   34 +
+ support/junction/display.c           |  159 +++
+ support/junction/export-cache.c      |  118 +++
+ support/junction/junction-internal.h |  121 +++
+ support/junction/junction.c          |  494 +++++++++++
+ support/junction/locations.c         |  131 +++
+ support/junction/nfs.c               | 1564 ++++++++++++++++++++++++++++++++++
+ support/junction/path.c              |  345 ++++++++
+ support/junction/xml.c               |  401 +++++++++
+ utils/Makefile.am                    |    4 
+ utils/mountd/Makefile.am             |    8 
+ utils/mountd/cache.c                 |  189 ++--
+ utils/nfsref/Makefile.am             |   39 +
+ utils/nfsref/add.c                   |  271 ++++++
+ utils/nfsref/lookup.c                |  211 +++++
+ utils/nfsref/nfsref.c                |  188 ++++
+ utils/nfsref/nfsref.h                |   47 +
+ utils/nfsref/nfsref.man              |  180 ++++
+ utils/nfsref/remove.c                |  145 +++
+ 25 files changed, 5049 insertions(+), 104 deletions(-)
+ create mode 100644 aclocal/libxml2.m4
+ create mode 100644 support/include/fedfs_admin.h
+ create mode 100644 support/include/junction.h
+ create mode 100644 support/junction/Makefile.am
+ create mode 100644 support/junction/display.c
+ create mode 100644 support/junction/export-cache.c
+ create mode 100644 support/junction/junction-internal.h
+ create mode 100644 support/junction/junction.c
+ create mode 100644 support/junction/locations.c
+ create mode 100644 support/junction/nfs.c
+ create mode 100644 support/junction/path.c
+ create mode 100644 support/junction/xml.c
+ create mode 100644 utils/nfsref/Makefile.am
+ create mode 100644 utils/nfsref/add.c
+ create mode 100644 utils/nfsref/lookup.c
+ create mode 100644 utils/nfsref/nfsref.c
+ create mode 100644 utils/nfsref/nfsref.h
+ create mode 100644 utils/nfsref/nfsref.man
+ create mode 100644 utils/nfsref/remove.c
+
+--
+Chuck Lever
