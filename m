@@ -1,103 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:53654 "EHLO fieldses.org"
+Received: from mail.kernel.org ([198.145.29.99]:58966 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750861AbeARB6v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 17 Jan 2018 20:58:51 -0500
-Date: Wed, 17 Jan 2018 20:58:51 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
+        id S1753879AbeARDBL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 17 Jan 2018 22:01:11 -0500
+Date: Wed, 17 Jan 2018 22:01:08 -0500
+From: Steven Rostedt <rostedt@goodmis.org>
 To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfsd: Detect unhashed stids in nfsd4_verify_open_stid()
-Message-ID: <20180118015851.GC2906@fieldses.org>
-References: <20180112224230.129322-1-trond.myklebust@primarydata.com>
- <3D728866-A30E-420D-9001-F4B212432C36@oracle.com>
- <20180117213057.GA1441@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: odd TRACE_DEFINE_ENUM behavior
+Message-ID: <20180117220108.3650f737@vmware.local.home>
+In-Reply-To: <2B54C608-6435-4779-906F-DA0775A83D7F@oracle.com>
+References: <717BE572-2070-4C1E-9902-9F2E0FEDA4F8@oracle.com>
+        <20180104130811.552bf2bb@gandalf.local.home>
+        <F27A4342-42D6-49C7-94A9-E8F9B496E284@oracle.com>
+        <20180104143642.0b0ddea3@gandalf.local.home>
+        <81A1ACAC-45E5-4C46-B1C9-7686C85219DE@oracle.com>
+        <2B54C608-6435-4779-906F-DA0775A83D7F@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180117213057.GA1441@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 17, 2018 at 04:30:57PM -0500, bfields wrote:
-> On Fri, Jan 12, 2018 at 09:15:46PM -0500, Chuck Lever wrote:
-> > 
-> > 
-> > > On Jan 12, 2018, at 5:42 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > > 
-> > > The state of the stid is guaranteed by 2 locks:
-> > > - The nfs4_client 'cl_lock' spinlock
-> > > - The nfs4_ol_stateid 'st_mutex' mutex
-> > > 
-> > > so it is quite possible for the stid to be unhashed after lookup,
-> > > but before calling nfsd4_lock_ol_stateid(). So we do need to check
-> > > for a zero value for 'sc_type' in nfsd4_verify_open_stid().
-> > > 
-> > > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > 
-> > Three successful passes of the git regression suite on NFSv4.1
-> > Three successful passes of xfstests on NFSv4.1
-> > 
-> > Tested-by: Chuck Lever <chuck.lever@oracle.com>
-> 
-> Thanks!  Applying.
-
-Though the changelog doesn't make sense to me.  What does it mean for
-the "state of the stid" to be "gauranteed by 2 locks"?
-
-The following paragraph suggests that once we acquire st_mutex, sc_type
-can no longer change, but that doesn't look right--e.g.
-nfsd4_release_lockowner calls unhash-lock_stateid->nfs4_unhash_stid with
-only the cl_lock held.
-
---b.
+On Wed, 17 Jan 2018 16:13:27 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
 > 
-> Then I think this makes a couple of "sc_type = NFS4_CLOSED_STID"'s
-> superfluous.
+> The problem is in this function (kernel/trace/trace_events.c):
 > 
-> --b.
+> 2212 void trace_event_eval_update(struct trace_eval_map **map, int len)
+> 2213 {
+> 2214         struct trace_event_call *call, *p;
+> 2215         const char *last_system = NULL;
+> 2216         int last_i;
+> 2217         int i;
+> 2218 
+> 2219         down_write(&trace_event_sem);
+> 2220         list_for_each_entry_safe(call, p, &ftrace_events, list) {
+> 2221                 /* events are usually grouped together with systems */
+> 2222                 if (!last_system || call->class->system != last_system) {
+> 2223                         last_i = 0;
+> 2224                         last_system = call->class->system;
+> 2225                 }
+> 2226 
+> 2227                 for (i = last_i; i < len; i++) {
+> 2228                         if (call->class->system == map[i]->system) {
+> 2229                                 /* Save the first system if need be */
+> 2230                                 if (!last_i)
+> 2231                                         last_i = i;
+> 2232                                 update_event_printk(call, map[i]);
+> 2233                         }
+> 2234                 }
+> 2235         }
+> 2236         up_write(&trace_event_sem);
+> 2237 }
 > 
-> commit 17693d95b3d3
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Wed Jan 17 16:25:59 2018 -0500
+> Loading the nfs.ko module adds an eval map consisting of three entries:
 > 
->     nfsd4: don't set lock stateid's sc_type to CLOSED
->     
->     There's no point I can see to
->     
->             stp->st_stid.sc_type = NFS4_CLOSED_STID;
->     
->     given release_lock_stateid immediately sets sc_type to 0.
->     
->     That set of sc_type to 0 should be enough to prevent it being used where
->     we don't want it to be; NFS4_CLOSED_STID should only be needed for
->     actual open stateid's that are actually closed.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> entry 0 is NFS_FILE_SYNC with a value of 2
+> entry 1 is NFS_DATA_SYNC with a value of 1
+> entry 2 is NFS_UNSTABLE with a value of 0
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 5a75135f5f53..150521c9671b 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -5183,7 +5183,6 @@ nfsd4_free_lock_stateid(stateid_t *stateid, struct nfs4_stid *s)
->  			    lockowner(stp->st_stateowner)))
->  		goto out;
->  
-> -	stp->st_stid.sc_type = NFS4_CLOSED_STID;
->  	release_lock_stateid(stp);
->  	ret = nfs_ok;
->  
-> @@ -6079,10 +6078,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		 * If this is a new, never-before-used stateid, and we are
->  		 * returning an error, then just go ahead and release it.
->  		 */
-> -		if (status && new) {
-> -			lock_stp->st_stid.sc_type = NFS4_CLOSED_STID;
-> +		if (status && new)
->  			release_lock_stateid(lock_stp);
-> -		}
->  
->  		mutex_unlock(&lock_stp->st_mutex);
->  
+> The nfs.ko trace point print_fmt strings are updated by
+> trace_event_eval_update.
+> 
+> For the first trace point in nfs.ko, the first iteration of the inner
+> loop visits all three of these map entries, but it's print_fmt does
+> not contain any of these enum symbols, so nothing changes.
+> 
+> Now thanks to the "last_i" logic above, entry 0 (NFS_FILE_SYNC) is
+> skipped over for other trace points in the module.
+> 
+> Thus when the print_fmt strings for "nfs_initiate_write" and
+> "nfs_writeback_done" are updated, they are only partially converted,
+> hence:
+> 
+> > "fileid=%02x:%02x:%llu fhandle=0x%08x offset=%lld count=%lu stable=%d (%s)", ((unsigned int) ((REC->dev) >> 20)), ((unsigned int) ((REC->dev) & ((1U << 20) - 1))), (unsigned long long)REC->fileid, REC->fhandle, REC->offset, REC->count, REC->stable, __print_symbolic(REC->stable, { 0, "NFS_UNSTABLE" }, { 1, "NFS_DATA_SYNC" }, { NFS_FILE_SYNC, "NFS_FILE_SYNC" })  
+> 
+> 
+> The updated string contains integers for the first two items in the
+> symbol table, and has an unconverted third item, which cannot be used
+> by "trace-cmd report".
+> 
+> Adding another TRACE_DEFINE_ENUM in fs/nfs/nfstrace.h works around
+> this issue. I added
+> 
+> TRACE_DEFINE_ENUM(NFS_INVALID_STABLE_HOW);
+> 
+> _after_ the first three, and that became entry 0 in the nfs system
+> eval_map. That entry is unusable due to this bug, but I didn't add
+> it to any trace points. The updated print_fmt strings are now 100%
+> correct. "trace-cmd report" works exactly as intended.
+> 
+> My inclination is to remove the last_i logic from this function, but
+> I don't understand what the last_system/last_i logic is attempting
+> accomplish. Do you have any suggestions?
+
+Nice detective work. I see the bug.
+
+The last_i is an optimization to not have to search the entire map
+array for the first matching map[i].system every time. But the bug is,
+if the match is on the first hit (i==0) then we set last_i to 0, and on
+the next iteration we set it (incorrectly) to 1. That's the bug.
+
+Can you try this patch?
+
+I'll have to add comments to that function, as it took me too long to
+figure out WTF I was thinking when I wrote it.
+
+-- Steve
+
+diff --git a/kernel/trace/trace_events.c b/kernel/trace/trace_events.c
+index ec0f9aa4e151..9b5b8a362690 100644
+--- a/kernel/trace/trace_events.c
++++ b/kernel/trace/trace_events.c
+@@ -2213,6 +2213,7 @@ void trace_event_eval_update(struct trace_eval_map **map, int len)
+ {
+ 	struct trace_event_call *call, *p;
+ 	const char *last_system = NULL;
++	bool first = false;
+ 	int last_i;
+ 	int i;
+ 
+@@ -2220,6 +2221,7 @@ void trace_event_eval_update(struct trace_eval_map **map, int len)
+ 	list_for_each_entry_safe(call, p, &ftrace_events, list) {
+ 		/* events are usually grouped together with systems */
+ 		if (!last_system || call->class->system != last_system) {
++			first = true;
+ 			last_i = 0;
+ 			last_system = call->class->system;
+ 		}
+@@ -2227,8 +2229,10 @@ void trace_event_eval_update(struct trace_eval_map **map, int len)
+ 		for (i = last_i; i < len; i++) {
+ 			if (call->class->system == map[i]->system) {
+ 				/* Save the first system if need be */
+-				if (!last_i)
++				if (first) {
+ 					last_i = i;
++					first = false;
++				}
+ 				update_event_printk(call, map[i]);
+ 			}
+ 		}
