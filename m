@@ -1,50 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:51322 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753332AbeASOnv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Jan 2018 09:43:51 -0500
-Date: Fri, 19 Jan 2018 09:43:51 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org, neilb@suse.de,
-        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
-        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
-        darrick.wong@oracle.com, david@fromorbit.com,
-        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
-        dsterba@suse.com, linux-integrity@vger.kernel.org,
-        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
-        linux-afs@lists.infradead.org, dhowells@redhat.com,
-        jaltman@auristor.com, krzk@kernel.org
-Subject: Re: [PATCH v5 02/19] fs: don't take the i_lock in inode_inc_iversion
-Message-ID: <20180119144351.GA11735@fieldses.org>
-References: <20180109141059.25929-1-jlayton@kernel.org>
- <20180109141059.25929-3-jlayton@kernel.org>
- <20180118214534.GB5299@fieldses.org>
- <1516372594.3588.11.camel@kernel.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1516372594.3588.11.camel@kernel.org>
+Received: from mout.kundenserver.de ([217.72.192.73]:60818 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755793AbeASOyY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 19 Jan 2018 09:54:24 -0500
+From: Arnd Bergmann <arnd@arndb.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>
+Cc: Arnd Bergmann <arnd@arndb.de>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Kinglong Mee <kinglongmee@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH] NFSD: hide unused svcxdr_dupstr()
+Date: Fri, 19 Jan 2018 15:54:03 +0100
+Message-Id: <20180119145410.1096453-1-arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 19, 2018 at 09:36:34AM -0500, Jeff Layton wrote:
-> Shrug...we have that problem with the spinlock in place too. The bottom
-> line is that reads of this value are not serialized with the increment
-> at all.
+There is now only one caller left for svcxdr_dupstr() and this is inside
+of an #ifdef, so we can get a warning when the option is disabled:
 
-OK, so this wouldn't even be a new bug.
+fs/nfsd/nfs4xdr.c:241:1: error: 'svcxdr_dupstr' defined but not used [-Werror=unused-function]
 
-> I'm not 100% thrilled with this patch, but I think it's probably better
-> not to add the i_lock all over the place, even as an interim step in
-> cleaning this stuff up.
+This adds another #ifdef around the definition.
 
-Makes sense to me.
+Fixes: e40d99e6183e ("NFSD: Clean up symlink argument XDR decoders")
+Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+---
+ fs/nfsd/nfs4xdr.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-I've got no comments on the rest of the series, except that I'm all for
-it.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f51c9cccaf78..374a62af6034 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -237,6 +237,7 @@ svcxdr_tmpalloc(struct nfsd4_compoundargs *argp, u32 len)
+  * Note null-terminating in place usually isn't safe since the
+  * buffer might end on a page boundary.
+  */
++#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+ static char *
+ svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
+ {
+@@ -248,6 +249,7 @@ svcxdr_dupstr(struct nfsd4_compoundargs *argp, void *buf, u32 len)
+ 	p[len] = '\0';
+ 	return p;
+ }
++#endif
+ 
+ /**
+  * savemem - duplicate a chunk of memory for later processing
+-- 
+2.9.0
 
-Thanks for persisting--it turned out to be more involved than I'd
-imagined!
-
---b.
