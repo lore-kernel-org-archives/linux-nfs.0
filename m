@@ -1,94 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:36666 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:49332 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755094AbeASLSL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 19 Jan 2018 06:18:11 -0500
-Date: Fri, 19 Jan 2018 13:18:07 +0200
-From: Leon Romanovsky <leon@kernel.org>
-To: Jason Gunthorpe <jgg@ziepe.ca>
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v1 01/12] rdma/ib: Add trace point macros to display
- human-readable values
-Message-ID: <20180119111807.GC1393@mtr-leonro.local>
-References: <20171220210236.29321.59307.stgit@manet.1015granger.net>
- <20171220213023.29321.97527.stgit@manet.1015granger.net>
- <1245d090-99ee-c517-5f8f-afdb7ffc0456@Netapp.com>
- <20180118223446.GB17294@ziepe.ca>
-MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-        protocol="application/pgp-signature"; boundary="z4+8/lEcDcG5Ke9S"
-In-Reply-To: <20180118223446.GB17294@ziepe.ca>
+        id S1754809AbeASOgj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 19 Jan 2018 09:36:39 -0500
+Message-ID: <1516372594.3588.11.camel@kernel.org>
+Subject: Re: [PATCH v5 02/19] fs: don't take the i_lock in inode_inc_iversion
+From: Jeff Layton <jlayton@kernel.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org, neilb@suse.de,
+        jack@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu,
+        adilger.kernel@dilger.ca, linux-xfs@vger.kernel.org,
+        darrick.wong@oracle.com, david@fromorbit.com,
+        linux-btrfs@vger.kernel.org, clm@fb.com, jbacik@fb.com,
+        dsterba@suse.com, linux-integrity@vger.kernel.org,
+        zohar@linux.vnet.ibm.com, dmitry.kasatkin@gmail.com,
+        linux-afs@lists.infradead.org, dhowells@redhat.com,
+        jaltman@auristor.com, krzk@kernel.org
+Date: Fri, 19 Jan 2018 09:36:34 -0500
+In-Reply-To: <20180118214534.GB5299@fieldses.org>
+References: <20180109141059.25929-1-jlayton@kernel.org>
+         <20180109141059.25929-3-jlayton@kernel.org>
+         <20180118214534.GB5299@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
---z4+8/lEcDcG5Ke9S
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Thu, Jan 18, 2018 at 03:34:46PM -0700, Jason Gunthorpe wrote:
-> On Thu, Jan 18, 2018 at 04:49:20PM -0500, Anna Schumaker wrote:
-> > Hi Folks,
-> >
-> > On 12/20/2017 04:30 PM, Chuck Lever wrote:
-> > > These can be shared with all kernel ULPs, and more can easily be
-> > > added as needed.
-> > >
-> > > Note: checkpatch.pl has some heartburn with the TRACE_DEFINE_ENUM
-> > > macros and the LIST macros. These follow the same style as other
-> > > header files under include/tracing/events , thus should be
-> > > considered acceptable exceptions.
-> > >
-> > > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > >  include/trace/events/rdma.h |  128 +++++++++++++++++++++++++++++++++++++++++++
-> > >  1 file changed, 128 insertions(+)
-> > >  create mode 100644 include/trace/events/rdma.h
-> >
-> > Just checking that it's okay to send this through the NFS tree,
-> > since it goes along with the rest of Chuck's patches?
+On Thu, 2018-01-18 at 16:45 -0500, J. Bruce Fields wrote:
+> On Tue, Jan 09, 2018 at 09:10:42AM -0500, Jeff Layton wrote:
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > The rationale for taking the i_lock when incrementing this value is
+> > lost in antiquity. The readers of the field don't take it (at least
+> > not universally), so my assumption is that it was only done here to
+> > serialize incrementors.
+> > 
+> > If that is indeed the case, then we can drop the i_lock from this
+> > codepath and treat it as a atomic64_t for the purposes of
+> > incrementing it. This allows us to use inode_inc_iversion without
+> > any danger of lock inversion.
+> > 
+> > Note that the read side is not fetched atomically with this change.
+> > The assumption here is that that is not a critical issue since the
+> > i_version is not fully synchronized with anything else anyway.
+> 
+> So I guess it's theoretically possible that e.g. if you read while it's
+> incrementing from 2^32-1 to 2^32 you could read 0, 1, or 2^32+1?
 >
-> New file, won't create any conflicts, so should be fine.
->
-> Is this API or anything that needs a really special look?
+> If so then you could see an i_version value reused and incorrectly
+> decide that a file hadn't changed.
+> 
+> But it's such a tiny case, and I think you convert this to atomic64_t
+> later anyway, so, whatever.
+> 
+> --b.
+> 
 
-It can be easily start to be API, for example "this battle" is not
-finished yet: https://lwn.net/Articles/442113/
+Shrug...we have that problem with the spinlock in place too. The bottom
+line is that reads of this value are not serialized with the increment
+at all.
 
->
-> > > +++ b/include/trace/events/rdma.h
-> > > @@ -0,0 +1,128 @@
-> > > +/*
-> > > + * Copyright (c) 2017 Oracle.  All rights reserved.
-> > > + */
->
-> This should have a SPDX header though, from what I understand.
->
-> Jason
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I'm not 100% thrilled with this patch, but I think it's probably better
+not to add the i_lock all over the place, even as an interim step in
+cleaning this stuff up.
 
---z4+8/lEcDcG5Ke9S
-Content-Type: application/pgp-signature; name="signature.asc"
+The good news here (as you mention) is that this nastiness gets cleaned
+up in the last patch when we convert the thing to an atomic64_t.
 
------BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEkhr/r4Op1/04yqaB5GN7iDZyWKcFAlph0+4ACgkQ5GN7iDZy
-WKcSiA/8D2E4oQX9qxFt2gbKJZJ/oqqJkPMspgJyCEEeLsjAos92QRcJCvDQiIGy
-mgIw5OimET+dquPJZX1c7YIAl8b9jO3Dwik4J5No3G9ld/U5QA4PHf1n5b1mPYTo
-CesSJNdB7sN24DthUOL5I20B0mDaH9uZKj3nsijk0n8snhTMPfXXs9FyykAaKl1R
-C/KN+/2E6jZHqRwhWfBqED9D0k8z2LqexUml65Aa5iXjpGGEgpFIQ0rJpdhC35pT
-QvfvXrJMGkErZmFXj+bf3Rrd//wuQJhU1Q1So5K5QPgQHlZEXvAfmel/3ZjFWr6M
-2bK/YVokPbq+Rr0rw6piEHvW3lhoUIJQzKPaLQ+oT4JHl2hZsoueu5Ythzw9m3Jd
-bUL3j4a+1WRJJpW/e9nfTHli6v8exvxZnpZn0MDPSAuK6Eml2UIncRtwxBxKoo4U
-x9AUURLAuSaFkdp8oNjVTBZwSR/QP4O8dJvu2LPD+t1tRGv8lxbjo+xLesYtMeWp
-mXriP80cG0TuEvTgPktYax0i2I5nmAQDtgiHmZlLe4nC0kZikV526bfpYLXBIsr6
-8qHf0hdLxWOxLPBJrQrM+UPHgVrLsfBT/9DsY1KNKJjdX58Z5/3vgKvDqrMMdEm1
-xWmPQxSidZx2sJk4iAkEIK2WU0bLUM/RozvR6LVoJcd65cab/RM=
-=jUCE
------END PGP SIGNATURE-----
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  include/linux/iversion.h | 7 ++++---
+> >  1 file changed, 4 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+> > index d09cc3a08740..5ad9eaa3a9b0 100644
+> > --- a/include/linux/iversion.h
+> > +++ b/include/linux/iversion.h
+> > @@ -104,12 +104,13 @@ inode_set_iversion_queried(struct inode *inode, u64 new)
+> >  static inline bool
+> >  inode_maybe_inc_iversion(struct inode *inode, bool force)
+> >  {
+> > -	spin_lock(&inode->i_lock);
+> > -	inode->i_version++;
+> > -	spin_unlock(&inode->i_lock);
+> > +	atomic64_t *ivp = (atomic64_t *)&inode->i_version;
+> > +
+> > +	atomic64_inc(ivp);
+> >  	return true;
+> >  }
+> >  
+> > +
+> >  /**
+> >   * inode_inc_iversion - forcibly increment i_version
+> >   * @inode: inode that needs to be updated
+> > -- 
+> > 2.14.3
 
---z4+8/lEcDcG5Ke9S--
+-- 
+Jeff Layton <jlayton@kernel.org>
