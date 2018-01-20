@@ -1,49 +1,170 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:37779 "EHLO
+Received: from mail-it0-f67.google.com ([209.85.214.67]:43885 "EHLO
         mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754653AbeATQQT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Jan 2018 11:16:19 -0500
-Subject: [PATCH v3 0/2] Re-send with SPDX headers
+        with ESMTP id S1755643AbeATQQ2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 20 Jan 2018 11:16:28 -0500
+Subject: [PATCH v3 1/2] rdma/ib: Add trace point macros to display
+ human-readable values
 From: Chuck Lever <chuck.lever@oracle.com>
 To: jgg@ziepe.ca, dledford@redhat.com, anna.schumaker@netapp.com,
         leon@kernel.org
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Sat, 20 Jan 2018 11:16:16 -0500
-Message-ID: <20180120161440.6488.4311.stgit@manet.1015granger.net>
+Date: Sat, 20 Jan 2018 11:16:25 -0500
+Message-ID: <20180120161625.6488.7416.stgit@manet.1015granger.net>
+In-Reply-To: <20180120161440.6488.4311.stgit@manet.1015granger.net>
+References: <20180120161440.6488.4311.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Anna and RDMA maintainers-
+These can be shared with all kernel ULPs, and more can easily be
+added as needed.
 
-Here are the two patches in my "xprtrdma trace points" series for
-v4.16 that introduce new files. These have been updated to include
-SPDX headers in the new files.
+Note: checkpatch.pl has some heartburn with the TRACE_DEFINE_ENUM
+macros and the LIST macros. These follow the same style as other
+header files under include/tracing/events , thus should be
+considered acceptable exceptions.
 
-RDMA maintainers, please ACK the first patch. Anna, can you replace
-the corresponding patches in your tree with these?
-
-Thanks!
-
-
-Changes since v2:
-- Commit the change to rpcrdma.h _before_ mailing
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-
-Chuck Lever (2):
-      rdma/ib: Add trace point macros to display human-readable values
-      rpcrdma: infrastructure for static trace points in rpcrdma.ko
-
-
- include/trace/events/rdma.h     |  129 +++++++++++++++++++++++++++++++++++++++
- include/trace/events/rpcrdma.h  |   16 +++++
- net/sunrpc/xprtrdma/module.c    |   12 ++--
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +
- 4 files changed, 154 insertions(+), 5 deletions(-)
+ include/trace/events/rdma.h |  129 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 129 insertions(+)
  create mode 100644 include/trace/events/rdma.h
- create mode 100644 include/trace/events/rpcrdma.h
 
---
-Chuck Lever
+diff --git a/include/trace/events/rdma.h b/include/trace/events/rdma.h
+new file mode 100644
+index 0000000..aa19afc
+--- /dev/null
++++ b/include/trace/events/rdma.h
+@@ -0,0 +1,129 @@
++/* SPDX-License-Identifier: GPL-2.0 */
++/*
++ * Copyright (c) 2017 Oracle.  All rights reserved.
++ */
++
++/*
++ * enum ib_event_type, from include/rdma/ib_verbs.h
++ */
++
++#define IB_EVENT_LIST				\
++	ib_event(CQ_ERR)			\
++	ib_event(QP_FATAL)			\
++	ib_event(QP_REQ_ERR)			\
++	ib_event(QP_ACCESS_ERR)			\
++	ib_event(COMM_EST)			\
++	ib_event(SQ_DRAINED)			\
++	ib_event(PATH_MIG)			\
++	ib_event(PATH_MIG_ERR)			\
++	ib_event(DEVICE_FATAL)			\
++	ib_event(PORT_ACTIVE)			\
++	ib_event(PORT_ERR)			\
++	ib_event(LID_CHANGE)			\
++	ib_event(PKEY_CHANGE)			\
++	ib_event(SM_CHANGE)			\
++	ib_event(SRQ_ERR)			\
++	ib_event(SRQ_LIMIT_REACHED)		\
++	ib_event(QP_LAST_WQE_REACHED)		\
++	ib_event(CLIENT_REREGISTER)		\
++	ib_event(GID_CHANGE)			\
++	ib_event_end(WQ_FATAL)
++
++#undef ib_event
++#undef ib_event_end
++
++#define ib_event(x)		TRACE_DEFINE_ENUM(IB_EVENT_##x);
++#define ib_event_end(x)		TRACE_DEFINE_ENUM(IB_EVENT_##x);
++
++IB_EVENT_LIST
++
++#undef ib_event
++#undef ib_event_end
++
++#define ib_event(x)		{ IB_EVENT_##x, #x },
++#define ib_event_end(x)		{ IB_EVENT_##x, #x }
++
++#define rdma_show_ib_event(x) \
++		__print_symbolic(x, IB_EVENT_LIST)
++
++/*
++ * enum ib_wc_status type, from include/rdma/ib_verbs.h
++ */
++#define IB_WC_STATUS_LIST			\
++	ib_wc_status(SUCCESS)			\
++	ib_wc_status(LOC_LEN_ERR)		\
++	ib_wc_status(LOC_QP_OP_ERR)		\
++	ib_wc_status(LOC_EEC_OP_ERR)		\
++	ib_wc_status(LOC_PROT_ERR)		\
++	ib_wc_status(WR_FLUSH_ERR)		\
++	ib_wc_status(MW_BIND_ERR)		\
++	ib_wc_status(BAD_RESP_ERR)		\
++	ib_wc_status(LOC_ACCESS_ERR)		\
++	ib_wc_status(REM_INV_REQ_ERR)		\
++	ib_wc_status(REM_ACCESS_ERR)		\
++	ib_wc_status(REM_OP_ERR)		\
++	ib_wc_status(RETRY_EXC_ERR)		\
++	ib_wc_status(RNR_RETRY_EXC_ERR)		\
++	ib_wc_status(LOC_RDD_VIOL_ERR)		\
++	ib_wc_status(REM_INV_RD_REQ_ERR)	\
++	ib_wc_status(REM_ABORT_ERR)		\
++	ib_wc_status(INV_EECN_ERR)		\
++	ib_wc_status(INV_EEC_STATE_ERR)		\
++	ib_wc_status(FATAL_ERR)			\
++	ib_wc_status(RESP_TIMEOUT_ERR)		\
++	ib_wc_status_end(GENERAL_ERR)
++
++#undef ib_wc_status
++#undef ib_wc_status_end
++
++#define ib_wc_status(x)		TRACE_DEFINE_ENUM(IB_WC_##x);
++#define ib_wc_status_end(x)	TRACE_DEFINE_ENUM(IB_WC_##x);
++
++IB_WC_STATUS_LIST
++
++#undef ib_wc_status
++#undef ib_wc_status_end
++
++#define ib_wc_status(x)		{ IB_WC_##x, #x },
++#define ib_wc_status_end(x)	{ IB_WC_##x, #x }
++
++#define rdma_show_wc_status(x) \
++		__print_symbolic(x, IB_WC_STATUS_LIST)
++
++/*
++ * enum rdma_cm_event_type, from include/rdma/rdma_cm.h
++ */
++#define RDMA_CM_EVENT_LIST			\
++	rdma_cm_event(ADDR_RESOLVED)		\
++	rdma_cm_event(ADDR_ERROR)		\
++	rdma_cm_event(ROUTE_RESOLVED)		\
++	rdma_cm_event(ROUTE_ERROR)		\
++	rdma_cm_event(CONNECT_REQUEST)		\
++	rdma_cm_event(CONNECT_RESPONSE)		\
++	rdma_cm_event(CONNECT_ERROR)		\
++	rdma_cm_event(UNREACHABLE)		\
++	rdma_cm_event(REJECTED)			\
++	rdma_cm_event(ESTABLISHED)		\
++	rdma_cm_event(DISCONNECTED)		\
++	rdma_cm_event(DEVICE_REMOVAL)		\
++	rdma_cm_event(MULTICAST_JOIN)		\
++	rdma_cm_event(MULTICAST_ERROR)		\
++	rdma_cm_event(ADDR_CHANGE)		\
++	rdma_cm_event_end(TIMEWAIT_EXIT)
++
++#undef rdma_cm_event
++#undef rdma_cm_event_end
++
++#define rdma_cm_event(x)	TRACE_DEFINE_ENUM(RDMA_CM_EVENT_##x);
++#define rdma_cm_event_end(x)	TRACE_DEFINE_ENUM(RDMA_CM_EVENT_##x);
++
++RDMA_CM_EVENT_LIST
++
++#undef rdma_cm_event
++#undef rdma_cm_event_end
++
++#define rdma_cm_event(x)	{ RDMA_CM_EVENT_##x, #x },
++#define rdma_cm_event_end(x)	{ RDMA_CM_EVENT_##x, #x }
++
++#define rdma_show_cm_event(x) \
++		__print_symbolic(x, RDMA_CM_EVENT_LIST)
+
