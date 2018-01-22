@@ -1,44 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:58478 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751028AbeAVR0U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 22 Jan 2018 12:26:20 -0500
-Date: Mon, 22 Jan 2018 12:26:20 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Rasmus Villemoes <rasmus.villemoes@prevas.dk>
-Cc: Arnd Bergmann <arnd@arndb.de>, Jeff Layton <jlayton@kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Kinglong Mee <kinglongmee@gmail.com>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] NFSD: hide unused svcxdr_dupstr()
-Message-ID: <20180122172620.GA15913@fieldses.org>
-References: <20180119145410.1096453-1-arnd@arndb.de>
- <428ce7f4-8e01-48ae-a406-262966c63180@prevas.dk>
+Received: from mail-wm0-f65.google.com ([74.125.82.65]:45338 "EHLO
+        mail-wm0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751147AbeAVRrO (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 22 Jan 2018 12:47:14 -0500
+Received: by mail-wm0-f65.google.com with SMTP id i186so17890547wmi.4
+        for <linux-nfs@vger.kernel.org>; Mon, 22 Jan 2018 09:47:13 -0800 (PST)
+Date: Mon, 22 Jan 2018 10:47:09 -0700
+From: Jason Gunthorpe <jgg@ziepe.ca>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: dledford@redhat.com, anna.schumaker@netapp.com, leon@kernel.org,
+        linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3 1/2] rdma/ib: Add trace point macros to display
+ human-readable values
+Message-ID: <20180122174709.GE14372@ziepe.ca>
+References: <20180120161440.6488.4311.stgit@manet.1015granger.net>
+ <20180120161625.6488.7416.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <428ce7f4-8e01-48ae-a406-262966c63180@prevas.dk>
+In-Reply-To: <20180120161625.6488.7416.stgit@manet.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 19, 2018 at 10:58:27PM +0100, Rasmus Villemoes wrote:
-> On 2018-01-19 15:54, Arnd Bergmann wrote:
-> > There is now only one caller left for svcxdr_dupstr() and this is inside
-> > of an #ifdef, so we can get a warning when the option is disabled:
-> > 
-> > fs/nfsd/nfs4xdr.c:241:1: error: 'svcxdr_dupstr' defined but not used [-Werror=unused-function]
-> > 
-> > This adds another #ifdef around the definition.
+On Sat, Jan 20, 2018 at 11:16:25AM -0500, Chuck Lever wrote:
+> These can be shared with all kernel ULPs, and more can easily be
+> added as needed.
 > 
-> Why not instead do
+> Note: checkpatch.pl has some heartburn with the TRACE_DEFINE_ENUM
+> macros and the LIST macros. These follow the same style as other
+> header files under include/tracing/events , thus should be
+> considered acceptable exceptions.
 > 
-> -#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
-> -       if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
-> +       if (IS_ENABLED(CONFIG_NFSD_V4_SECURITY_LABEL) && bmval[2] &
-> FATTR4_WORD2_SECURITY_LABEL)
-> 
-> (sorry for whitespace damage, not a real patch).
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>  include/trace/events/rdma.h |  129 +++++++++++++++++++++++++++++++++++++++++++
+>  1 file changed, 129 insertions(+)
+>  create mode 100644 include/trace/events/rdma.h
 
-That'd be OK with me too.
+Not knowing a lout about trace points, this does seem OK to me:
 
---b.
+Acked-by: Jason Gunthorpe <jgg@mellanox.com>
+
+To flow through Anna's tree
+
+Jason
