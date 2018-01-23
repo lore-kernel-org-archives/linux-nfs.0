@@ -1,91 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:42956 "EHLO mx141.netapp.com"
+Received: from fieldses.org ([173.255.197.46]:49316 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751941AbeAWT2g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 23 Jan 2018 14:28:36 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Subject: [GIT PULL] Please pull NFSoRDMA client side changes for 4.16
-Message-ID: <e1e6ae05-89a3-c247-519f-a720c5a41303@Netapp.com>
-Date: Tue, 23 Jan 2018 14:28:29 -0500
+        id S1752495AbeAWU3A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 23 Jan 2018 15:29:00 -0500
+Date: Tue, 23 Jan 2018 15:28:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Arnd Bergmann <arnd@arndb.de>
+Cc: Jeff Layton <jlayton@kernel.org>,
+        Rasmus Villemoes <rasmus.villemoes@prevas.dk>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Kinglong Mee <kinglongmee@gmail.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] [v2] NFSD: hide unused svcxdr_dupstr()
+Message-ID: <20180123202859.GA4484@fieldses.org>
+References: <20180122210919.1257261-1-arnd@arndb.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180122210919.1257261-1-arnd@arndb.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+Thanks, applied.--b.
 
-The following changes since commit 1291a0d5049dbc06baaaf66a9ff3f53db493b19b:
-
-  Linux 4.15-rc4 (2017-12-17 18:59:59 -0800)
-
-are available in the Git repository at:
-
-  git://git.linux-nfs.org/projects/anna/linux-nfs.git tags/nfs-rdma-for-4.16-1
-
-for you to fetch changes up to 21ead9ff3dc72604d89499a1da5a18cc193ec4ff:
-
-  SUNRPC: Micro-optimize __rpc_execute (2018-01-23 09:44:40 -0500)
-
-----------------------------------------------------------------
-These patches include a handful of bugfixes and cleanups in addition to adding
-tracepoints to xprtrdma.  There are also a few generic sunrpc tracepoint fixes
-tagged on at the end to keep the display format consistent.
-
-Thanks,
-Anna
-----------------------------------------------------------------
-Chuck Lever (34):
-      xprtrdma: Fix buffer leak after transport set up failure
-      xprtrdma: Fix backchannel allocation of extra rpcrdma_reps
-      xprtrdma: Eliminate unnecessary lock cycle in xprt_rdma_send_request
-      xprtrdma: Per-mode handling for Remote Invalidation
-      xprtrdma: Remove ri_reminv_expected
-      xprtrdma: Remove unused padding variables
-      xprtrdma: Initialize the xprt address string array earlier
-      xprtrdma: Remove another sockaddr_storage field (cdata::addr)
-      xprtrdma: Support IPv6 in xprt_rdma_set_port
-      xprtrdma: Move unmap-safe logic to rpcrdma_marshal_req
-      xprtrdma: buf_free not called for CB replies
-      xprtrdma: Split xprt_rdma_send_request
-      xprtrdma: Don't clear RPC_BC_PA_IN_USE on pre-allocated rpc_rqst's
-      xprtrdma: Replace all usage of "frmr" with "frwr"
-      xprtrdma: Remove usage of "mw"
-      xprtrdma: Introduce rpcrdma_mw_unmap_and_put
-      rdma/ib: Add trace point macros to display human-readable values
-      rpcrdma: infrastructure for static trace points in rpcrdma.ko
-      xprtrdma: Add trace points in RPC Call transmit paths
-      xprtrdma: Add trace points in the RPC Reply handler paths
-      xprtrdma: Add trace points to instrument memory registration
-      xprtrdma: Add trace points in reply decoder path
-      xprtrdma: Add trace points to instrument memory invalidation
-      xprtrdma: Add trace points to instrument MR allocation and recovery
-      xprtrdma: Add trace points for connect events
-      xprtrdma: Add trace points in the client-side backchannel code paths
-      xprtrdma: Add trace points to instrument QP and CQ access upcalls
-      xprtrdma: Instrument allocation/release of rpcrdma_req/rep objects
-      xprtrdma: Fix "bytes registered" accounting
-      xprtrdma: Correct some documenting comments
-      SUNRPC: Trace xprt_timer events
-      sunrpc: Format RPC events consistently for display
-      SUNRPC: task_run_action should display tk_callback
-      SUNRPC: Micro-optimize __rpc_execute
-
- include/linux/sunrpc/xprtrdma.h   |   2 +-
- include/trace/events/rdma.h       | 129 ++++++
- include/trace/events/rpcrdma.h    | 890 ++++++++++++++++++++++++++++++++++++++
- include/trace/events/sunrpc.h     |   8 +-
- net/sunrpc/sched.c                |  26 +-
- net/sunrpc/xprt.c                 |   2 +-
- net/sunrpc/xprtrdma/backchannel.c |  78 ++--
- net/sunrpc/xprtrdma/fmr_ops.c     | 157 ++++---
- net/sunrpc/xprtrdma/frwr_ops.c    | 329 +++++++-------
- net/sunrpc/xprtrdma/module.c      |  12 +-
- net/sunrpc/xprtrdma/rpc_rdma.c    | 162 +++----
- net/sunrpc/xprtrdma/transport.c   | 128 +++---
- net/sunrpc/xprtrdma/verbs.c       | 280 ++++++------
- net/sunrpc/xprtrdma/xprt_rdma.h   | 116 ++---
- 14 files changed, 1662 insertions(+), 657 deletions(-)
- create mode 100644 include/trace/events/rdma.h
- create mode 100644 include/trace/events/rpcrdma.h
+On Mon, Jan 22, 2018 at 10:09:12PM +0100, Arnd Bergmann wrote:
+> There is now only one caller left for svcxdr_dupstr() and this is inside
+> of an #ifdef, so we can get a warning when the option is disabled:
+> 
+> fs/nfsd/nfs4xdr.c:241:1: error: 'svcxdr_dupstr' defined but not used [-Werror=unused-function]
+> 
+> This changes the remaining caller to use a nicer IS_ENABLED() check,
+> which lets the compiler drop the unused code silently.
+> 
+> Fixes: e40d99e6183e ("NFSD: Clean up symlink argument XDR decoders")
+> Suggested-by: Rasmus Villemoes <rasmus.villemoes@prevas.dk>
+> Signed-off-by: Arnd Bergmann <arnd@arndb.de>
+> ---
+> v2: use IS_ENABLED() instead of an #ifdef
+> ---
+>  fs/nfsd/nfs4xdr.c | 5 ++---
+>  1 file changed, 2 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index f51c9cccaf78..86a1a2450376 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -455,8 +455,8 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+>  	}
+>  
+>  	label->len = 0;
+> -#ifdef CONFIG_NFSD_V4_SECURITY_LABEL
+> -	if (bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+> +	if (IS_ENABLED(CONFIG_NFSD_V4_SECURITY_LABEL) &&
+> +	    bmval[2] & FATTR4_WORD2_SECURITY_LABEL) {
+>  		READ_BUF(4);
+>  		len += 4;
+>  		dummy32 = be32_to_cpup(p++); /* lfs: we don't use it */
+> @@ -476,7 +476,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+>  		if (!label->data)
+>  			return nfserr_jukebox;
+>  	}
+> -#endif
+>  	if (bmval[2] & FATTR4_WORD2_MODE_UMASK) {
+>  		if (!umask)
+>  			goto xdr_error;
+> -- 
+> 2.9.0
