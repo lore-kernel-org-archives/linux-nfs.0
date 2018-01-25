@@ -1,57 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:54416 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:50460 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751268AbeAYW3D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Jan 2018 17:29:03 -0500
-Date: Thu, 25 Jan 2018 17:29:02 -0500
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v6 05/10] NFSD first draft of async copy
-Message-ID: <20180125222902.GC21492@fieldses.org>
+        id S1751227AbeAYWdH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 25 Jan 2018 17:33:07 -0500
+Date: Thu, 25 Jan 2018 17:33:05 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v6 00/10] NFSD support for asynchronous COPY
+Message-ID: <20180125223305.GG13420@parsley.fieldses.org>
 References: <20171024174752.74910-1-kolga@netapp.com>
- <20171024174752.74910-6-kolga@netapp.com>
+ <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
+ <CAN-5tyHumx9s7nkweA1B4CniPD_NzeGyd9d9FNL5ZxzX6KQ+zw@mail.gmail.com>
+ <20171114004804.GB14185@parsley.fieldses.org>
+ <CAN-5tyH2tEFsbVxhSdQqu8DW_7Zs4eHse4HWEN=vNAgKLiNSDQ@mail.gmail.com>
+ <20171130201823.GE3923@fieldses.org>
+ <CAN-5tyFY_VzFjG7D3gAjfr32AzxoT+OCZ-DWmT6zODkwFXWntw@mail.gmail.com>
+ <20171204213220.GB3511@parsley.fieldses.org>
+ <CAN-5tyEVSwBmPMtUBJYDdLi7FK2MNMGuDQrrsvp776zD3Jcw0w@mail.gmail.com>
+ <CAN-5tyEJ=pEbOagcN705KA6iUqP_CoMWEN45zHe_daABNiSGBg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20171024174752.74910-6-kolga@netapp.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+In-Reply-To: <CAN-5tyEJ=pEbOagcN705KA6iUqP_CoMWEN45zHe_daABNiSGBg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 24, 2017 at 01:47:47PM -0400, Olga Kornievskaia wrote:
-> +	copy->cp_clp = cstate->clp;
-> +	memcpy(&copy->fh, &cstate->current_fh.fh_handle,
-> +		sizeof(struct knfsd_fh));
-> +	copy->net = SVC_NET(rqstp);
-> +	if (!copy->cp_synchronous) {
+On Mon, Jan 22, 2018 at 11:51:08AM -0500, Olga Kornievskaia wrote:
+> Any update on the patch series review?
 
-I was thinking we might want to do a synchronous copy anyway in some
-cases: e.g. if the copy is relatively small or if the filesystem
-supports clone.
-
-But I guess that's a premature optimization; better to keep this as you
-have it for now.
+Sorry for the slow response.  I feel like I'm about half-way through
+reading the patches.  I'll try to wrap up tomorrow.
 
 --b.
-
-> +		status = nfsd4_init_copy_res(copy, 0);
-> +		async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
-> +		if (!async_copy) {
-> +			status = nfserrno(-ENOMEM);
-> +			goto out;
-> +		}
-> +		dup_copy_fields(copy, async_copy);
-> +		memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
-> +			sizeof(copy->cp_dst_stateid));
-> +		spin_lock(&async_copy->cp_clp->async_lock);
-> +		list_add(&async_copy->copies,
-> +				&async_copy->cp_clp->async_copies);
-> +		spin_unlock(&async_copy->cp_clp->async_lock);
-> +		async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
-> +				async_copy, "%s", "copy thread");
-> +		if (IS_ERR(async_copy->copy_task)) {
-> +			status = PTR_ERR(async_copy->copy_task);
-> +			goto out_err_dec;
-> +		}
-> +		wake_up_process(async_copy->copy_task);
-> +	} else {
-> +		status = nfsd4_do_copy(copy, 1);
