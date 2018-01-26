@@ -1,57 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f195.google.com ([209.85.217.195]:43159 "EHLO
-        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751377AbeAZRYd (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jan 2018 12:24:33 -0500
-Received: by mail-ua0-f195.google.com with SMTP id i5so749080uai.10
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Jan 2018 09:24:33 -0800 (PST)
-MIME-Version: 1.0
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 26 Jan 2018 12:24:31 -0500
-Message-ID: <CAN-5tyFX2aZPXy2NRiATwkbv8gDbyafB-4JsRUghuF84ih_WnQ@mail.gmail.com>
-Subject: problem on nfsd doing RDMA write
-To: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Received: from aserp2120.oracle.com ([141.146.126.78]:58080 "EHLO
+        aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751281AbeAZSXV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jan 2018 13:23:21 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: problem on nfsd doing RDMA write
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAN-5tyFX2aZPXy2NRiATwkbv8gDbyafB-4JsRUghuF84ih_WnQ@mail.gmail.com>
+Date: Fri, 26 Jan 2018 10:23:10 -0800
+Cc: Bruce Fields <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <0B3C835B-3E30-43F3-B53C-BFB4462543D3@oracle.com>
+References: <CAN-5tyFX2aZPXy2NRiATwkbv8gDbyafB-4JsRUghuF84ih_WnQ@mail.gmail.com>
+To: Olga Kornievskaia <aglo@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce/Chuck,
 
-There is a problem with nfsd doing a WRITE of size 4093,4094,4095. To
-reproduce, mount with RDMA and do a simple dd "dd if=/dev/zero
-of=/mnt/testfile bs=4093 count=1". What happens is that nfsd fails to
-parse GETATTR after the WRITE in the compound. It fails the operation
-with ERR_OP_ILLEGAL.
 
-The problem happens for the values where XDR round up ends up rounding
-up to the page size. I don't know if my fix is the appropriate way to
-fix this but with it I don't get the error:
+> On Jan 26, 2018, at 9:24 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>=20
+> Hi Bruce/Chuck,
+>=20
+> There is a problem with nfsd doing a WRITE of size 4093,4094,4095. To
+> reproduce, mount with RDMA and do a simple dd "dd if=3D/dev/zero
+> of=3D/mnt/testfile bs=3D4093 count=3D1". What happens is that nfsd =
+fails to
+> parse GETATTR after the WRITE in the compound. It fails the operation
+> with ERR_OP_ILLEGAL.
+>=20
+> The problem happens for the values where XDR round up ends up rounding
+> up to the page size. I don't know if my fix is the appropriate way to
+> fix this but with it I don't get the error:
+>=20
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 2c61c6b..a8489c3 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1289,11 +1289,12 @@ static __be32 nfsd4_decode_opaque(struct =
+nfsd4_compounda
+>=20
+>        len =3D XDR_QUADLEN(write->wr_buflen) << 2;
+>        if (len >=3D avail) {
+> -               int pages;
+> +               int pages =3D 0;
+>=20
+>                len -=3D avail;
+>=20
+> -               pages =3D len >> PAGE_SHIFT;
+> +               if (write->wr_buflen >=3D PAGE_SIZE)
+> +                       pages =3D len >> PAGE_SHIFT;
+>                argp->pagelist +=3D pages;
+>                argp->pagelen -=3D pages * PAGE_SIZE;
+>                len -=3D pages * PAGE_SIZE;
+>=20
+> So the problem is the using "len" instead of "write->wr_buflen" leads
+> for the values 4093,4094,4095 that are rounded up to 4096, it makes
+> pages=3D1 and the argp->pagelen ends up being a negative value leading
+> to problems of parsing the GETATTR.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 2c61c6b..a8489c3 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1289,11 +1289,12 @@ static __be32 nfsd4_decode_opaque(struct nfsd4_compounda
+Would this also be a problem near any page boundary, say, a
+write length of 8191 bytes?
 
-        len = XDR_QUADLEN(write->wr_buflen) << 2;
-        if (len >= avail) {
--               int pages;
-+               int pages = 0;
+Instead of using the rounded up "len", why not try this:
 
-                len -= avail;
+-		pages =3D len >> PAGE_SHIFT;
++		pages =3D write->wr_buflen >> PAGE_SHIFT;
 
--               pages = len >> PAGE_SHIFT;
-+               if (write->wr_buflen >= PAGE_SIZE)
-+                       pages = len >> PAGE_SHIFT;
-                argp->pagelist += pages;
-                argp->pagelen -= pages * PAGE_SIZE;
-                len -= pages * PAGE_SIZE;
+And be sure to test with TCP as well.
 
-So the problem is the using "len" instead of "write->wr_buflen" leads
-for the values 4093,4094,4095 that are rounded up to 4096, it makes
-pages=1 and the argp->pagelen ends up being a negative value leading
-to problems of parsing the GETATTR.
 
-If this looks OK, I can send a patch.
+> If this looks OK, I can send a patch.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
