@@ -1,130 +1,136 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:34912 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752652AbeAZT3Q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jan 2018 14:29:16 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: problem on nfsd doing RDMA write
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAN-5tyFu9YPVFzmrCcwwdcS5v8X61Az3hSW8xSDdTA3MWi09Sg@mail.gmail.com>
-Date: Fri, 26 Jan 2018 11:29:05 -0800
-Cc: Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C5643108-6C06-4043-A67A-F63A2234FC40@oracle.com>
-References: <CAN-5tyFX2aZPXy2NRiATwkbv8gDbyafB-4JsRUghuF84ih_WnQ@mail.gmail.com>
- <0B3C835B-3E30-43F3-B53C-BFB4462543D3@oracle.com>
- <CAN-5tyFu9YPVFzmrCcwwdcS5v8X61Az3hSW8xSDdTA3MWi09Sg@mail.gmail.com>
-To: Olga Kornievskaia <aglo@umich.edu>
+Received: from mx1.redhat.com ([209.132.183.28]:45724 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752992AbeAZT3Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 26 Jan 2018 14:29:25 -0500
+Subject: Re: [PATCH v2 0/3] Series short description
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20180118214137.7230.28323.stgit@manet.1015granger.net>
+ <1a9bd836-204d-ea45-89a5-dc3db5a63eae@RedHat.com>
+ <9537F613-92EA-45CB-9181-F934159BEA46@oracle.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <c9304084-1822-7ac1-2d66-ad9eea5cc0c6@RedHat.com>
+Date: Fri, 26 Jan 2018 14:29:24 -0500
+MIME-Version: 1.0
+In-Reply-To: <9537F613-92EA-45CB-9181-F934159BEA46@oracle.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-> On Jan 26, 2018, at 11:05 AM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->=20
-> On Fri, Jan 26, 2018 at 1:23 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>=20
->>=20
->>> On Jan 26, 2018, at 9:24 AM, Olga Kornievskaia <aglo@umich.edu> =
-wrote:
->>>=20
->>> Hi Bruce/Chuck,
->>>=20
->>> There is a problem with nfsd doing a WRITE of size 4093,4094,4095. =
-To
->>> reproduce, mount with RDMA and do a simple dd "dd if=3D/dev/zero
->>> of=3D/mnt/testfile bs=3D4093 count=3D1". What happens is that nfsd =
-fails to
->>> parse GETATTR after the WRITE in the compound. It fails the =
-operation
->>> with ERR_OP_ILLEGAL.
->>>=20
->>> The problem happens for the values where XDR round up ends up =
-rounding
->>> up to the page size. I don't know if my fix is the appropriate way =
-to
->>> fix this but with it I don't get the error:
->>>=20
->>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>> index 2c61c6b..a8489c3 100644
->>> --- a/fs/nfsd/nfs4xdr.c
->>> +++ b/fs/nfsd/nfs4xdr.c
->>> @@ -1289,11 +1289,12 @@ static __be32 nfsd4_decode_opaque(struct =
-nfsd4_compounda
->>>=20
->>>       len =3D XDR_QUADLEN(write->wr_buflen) << 2;
->>>       if (len >=3D avail) {
->>> -               int pages;
->>> +               int pages =3D 0;
->>>=20
->>>               len -=3D avail;
->>>=20
->>> -               pages =3D len >> PAGE_SHIFT;
->>> +               if (write->wr_buflen >=3D PAGE_SIZE)
->>> +                       pages =3D len >> PAGE_SHIFT;
->>>               argp->pagelist +=3D pages;
->>>               argp->pagelen -=3D pages * PAGE_SIZE;
->>>               len -=3D pages * PAGE_SIZE;
->>>=20
->>> So the problem is the using "len" instead of "write->wr_buflen" =
-leads
->>> for the values 4093,4094,4095 that are rounded up to 4096, it makes
->>> pages=3D1 and the argp->pagelen ends up being a negative value =
-leading
->>> to problems of parsing the GETATTR.
->>=20
->> Would this also be a problem near any page boundary, say, a
->> write length of 8191 bytes?
->>=20
->> Instead of using the rounded up "len", why not try this:
->>=20
->> -               pages =3D len >> PAGE_SHIFT;
->> +               pages =3D write->wr_buflen >> PAGE_SHIFT;
->=20
-> You are right. It needs to be that. Otherwise 8191 fails the same way.
->=20
->> And be sure to test with TCP as well.
->=20
-> Sigh. It breaks normal (non-RDMA) mounts. I'll figure out why.
+On 01/26/2018 02:28 PM, Chuck Lever wrote:
+> 
+> 
+>> On Jan 26, 2018, at 11:26 AM, Steve Dickson <SteveD@RedHat.com> wrote:
+>>
+>> Chuck,
+>>
+>> It seems I never received the first patch (1/3) of this series
+> 
+> It's the same as 1/3 of the previous version. I can post the
+> whole series again if you need me to.
+Would you mind... tia!
 
-OK.
-
-Remember that a Read chunk's length does not have to be
-rounded up. Maybe the transport needs to round up the
-length of the unmarshaled data content on behalf of the
-NFSv4 write decoder.=20
-
-
->=20
->>> If this looks OK, I can send a patch.
+steved.
+> 
+> 
+>> steved.  
+>>
+>> On 01/18/2018 04:47 PM, Chuck Lever wrote:
+>>> Still UNTESTED, but at least it builds.
+>>>
+>>> A while back I announced the deprecation of fedfs-utils. There were
+>>> a handful of components in fedfs-utils that we decided to keep. One
+>>> of those keepers was the "nfsref" command. (The other was autofs
+>>> support for /nfs4, which I hope Ian Kent is making progress on ;-)
+>>>
+>>> This series introduces "nfsref" to nfs-utils, minus the overhead of
+>>> the LDAP / FedFS machinery, and it builds support for NFS basic
+>>> junctions into mountd, replacing the need to install a plug-in DLL
+>>> from fedfs-utils.
+>>>
+>>> I didn't apply a lot of brain cells to this port, so it's perhaps a
+>>> little larger than it needs to be. Still, it achieves a completely
+>>> LDAP-free implementation that resides 100% in nfs-utils. I'm
+>>> interested in comments about the approach before I do more testing
+>>> and refinement.
+>>>
+>>> ./configure --enable-junction --enable-caps
+>>>
+>>> is needed before building.
+>>>
+>>>
+>>> Changes since RFC (v1):
+>>> Patch 2/3 in the original series added the libnfsjunct.so DLL to
+>>> nfs-utils. Series v2 instead replaces 2/3 with a patch that puts
+>>> support for junctions into mountd without the need for a DLL.
+>>>
+>>> ---
+>>>
+>>> Chuck Lever (3):
+>>>      Add LDAP-free version of libjunction to nfs-utils
+>>>      mountd: Solder in support for NFS basic junctions
+>>>      Add LDAP-free 'nfsref' command
+>>>
+>>>
+>>> aclocal/libxml2.m4                   |   15 
+>>> configure.ac                         |   17 
+>>> support/Makefile.am                  |    4 
+>>> support/include/Makefile.am          |    2 
+>>> support/include/fedfs_admin.h        |  342 +++++++
+>>> support/include/junction.h           |  124 +++
+>>> support/junction/Makefile.am         |   34 +
+>>> support/junction/display.c           |  159 +++
+>>> support/junction/export-cache.c      |  118 +++
+>>> support/junction/junction-internal.h |  121 +++
+>>> support/junction/junction.c          |  494 +++++++++++
+>>> support/junction/locations.c         |  131 +++
+>>> support/junction/nfs.c               | 1564 ++++++++++++++++++++++++++++++++++
+>>> support/junction/path.c              |  345 ++++++++
+>>> support/junction/xml.c               |  401 +++++++++
+>>> utils/Makefile.am                    |    4 
+>>> utils/mountd/Makefile.am             |    8 
+>>> utils/mountd/cache.c                 |  189 ++--
+>>> utils/nfsref/Makefile.am             |   39 +
+>>> utils/nfsref/add.c                   |  271 ++++++
+>>> utils/nfsref/lookup.c                |  211 +++++
+>>> utils/nfsref/nfsref.c                |  188 ++++
+>>> utils/nfsref/nfsref.h                |   47 +
+>>> utils/nfsref/nfsref.man              |  180 ++++
+>>> utils/nfsref/remove.c                |  145 +++
+>>> 25 files changed, 5049 insertions(+), 104 deletions(-)
+>>> create mode 100644 aclocal/libxml2.m4
+>>> create mode 100644 support/include/fedfs_admin.h
+>>> create mode 100644 support/include/junction.h
+>>> create mode 100644 support/junction/Makefile.am
+>>> create mode 100644 support/junction/display.c
+>>> create mode 100644 support/junction/export-cache.c
+>>> create mode 100644 support/junction/junction-internal.h
+>>> create mode 100644 support/junction/junction.c
+>>> create mode 100644 support/junction/locations.c
+>>> create mode 100644 support/junction/nfs.c
+>>> create mode 100644 support/junction/path.c
+>>> create mode 100644 support/junction/xml.c
+>>> create mode 100644 utils/nfsref/Makefile.am
+>>> create mode 100644 utils/nfsref/add.c
+>>> create mode 100644 utils/nfsref/lookup.c
+>>> create mode 100644 utils/nfsref/nfsref.c
+>>> create mode 100644 utils/nfsref/nfsref.h
+>>> create mode 100644 utils/nfsref/nfsref.man
+>>> create mode 100644 utils/nfsref/remove.c
+>>>
 >>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+>>> Chuck Lever
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 >>> the body of a message to majordomo@vger.kernel.org
 >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>=20
->> --
->> Chuck Lever
->>=20
->>=20
->>=20
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+> 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
+> Chuck Lever
+> 
+> 
+> 
