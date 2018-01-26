@@ -1,34 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f178.google.com ([209.85.217.178]:33927 "EHLO
-        mail-ua0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751422AbeAZPQn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jan 2018 10:16:43 -0500
-Received: by mail-ua0-f178.google.com with SMTP id d1so491636uak.1
-        for <linux-nfs@vger.kernel.org>; Fri, 26 Jan 2018 07:16:43 -0800 (PST)
+Received: from mail-ua0-f193.google.com ([209.85.217.193]:43279 "EHLO
+        mail-ua0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751532AbeAZPRW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jan 2018 10:17:22 -0500
+Received: by mail-ua0-f193.google.com with SMTP id i5so483454uai.10
+        for <linux-nfs@vger.kernel.org>; Fri, 26 Jan 2018 07:17:22 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <20180125223305.GG13420@parsley.fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com> <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
- <CAN-5tyHumx9s7nkweA1B4CniPD_NzeGyd9d9FNL5ZxzX6KQ+zw@mail.gmail.com>
- <20171114004804.GB14185@parsley.fieldses.org> <CAN-5tyH2tEFsbVxhSdQqu8DW_7Zs4eHse4HWEN=vNAgKLiNSDQ@mail.gmail.com>
- <20171130201823.GE3923@fieldses.org> <CAN-5tyFY_VzFjG7D3gAjfr32AzxoT+OCZ-DWmT6zODkwFXWntw@mail.gmail.com>
- <20171204213220.GB3511@parsley.fieldses.org> <CAN-5tyEVSwBmPMtUBJYDdLi7FK2MNMGuDQrrsvp776zD3Jcw0w@mail.gmail.com>
- <CAN-5tyEJ=pEbOagcN705KA6iUqP_CoMWEN45zHe_daABNiSGBg@mail.gmail.com> <20180125223305.GG13420@parsley.fieldses.org>
+In-Reply-To: <20180125222902.GC21492@fieldses.org>
+References: <20171024174752.74910-1-kolga@netapp.com> <20171024174752.74910-6-kolga@netapp.com>
+ <20180125222902.GC21492@fieldses.org>
 From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 26 Jan 2018 10:16:41 -0500
-Message-ID: <CAN-5tyEMwy9Q0CbS18bm-H5Bnay6RVYh6O+CPMkUxKUs30AcBQ@mail.gmail.com>
-Subject: Re: [PATCH v6 00/10] NFSD support for asynchronous COPY
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Date: Fri, 26 Jan 2018 10:17:20 -0500
+Message-ID: <CAN-5tyFP=kjLAyA+bAXHyk52=Ut5PO-DsBN=5ohRObUQekyN_Q@mail.gmail.com>
+Subject: Re: [PATCH v6 05/10] NFSD first draft of async copy
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 25, 2018 at 5:33 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Mon, Jan 22, 2018 at 11:51:08AM -0500, Olga Kornievskaia wrote:
->> Any update on the patch series review?
+On Thu, Jan 25, 2018 at 5:29 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Tue, Oct 24, 2017 at 01:47:47PM -0400, Olga Kornievskaia wrote:
+>> +     copy->cp_clp = cstate->clp;
+>> +     memcpy(&copy->fh, &cstate->current_fh.fh_handle,
+>> +             sizeof(struct knfsd_fh));
+>> +     copy->net = SVC_NET(rqstp);
+>> +     if (!copy->cp_synchronous) {
 >
-> Sorry for the slow response.  I feel like I'm about half-way through
-> reading the patches.  I'll try to wrap up tomorrow.
+> I was thinking we might want to do a synchronous copy anyway in some
+> cases: e.g. if the copy is relatively small or if the filesystem
+> supports clone.
+>
+> But I guess that's a premature optimization; better to keep this as you
+> have it for now.
 
-Thank you for the comments so far. I'm going thru them now and will
-fix all for the next version.
+Let's keep it as is for now and complicate it later :-)
+
+>
+> --b.
+>
+>> +             status = nfsd4_init_copy_res(copy, 0);
+>> +             async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+>> +             if (!async_copy) {
+>> +                     status = nfserrno(-ENOMEM);
+>> +                     goto out;
+>> +             }
+>> +             dup_copy_fields(copy, async_copy);
+>> +             memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+>> +                     sizeof(copy->cp_dst_stateid));
+>> +             spin_lock(&async_copy->cp_clp->async_lock);
+>> +             list_add(&async_copy->copies,
+>> +                             &async_copy->cp_clp->async_copies);
+>> +             spin_unlock(&async_copy->cp_clp->async_lock);
+>> +             async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
+>> +                             async_copy, "%s", "copy thread");
+>> +             if (IS_ERR(async_copy->copy_task)) {
+>> +                     status = PTR_ERR(async_copy->copy_task);
+>> +                     goto out_err_dec;
+>> +             }
+>> +             wake_up_process(async_copy->copy_task);
+>> +     } else {
+>> +             status = nfsd4_do_copy(copy, 1);
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
