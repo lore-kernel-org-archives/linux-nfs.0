@@ -1,34 +1,44 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50460 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751227AbeAYWdH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 25 Jan 2018 17:33:07 -0500
-Date: Thu, 25 Jan 2018 17:33:05 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v6 00/10] NFSD support for asynchronous COPY
-Message-ID: <20180125223305.GG13420@parsley.fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com>
- <CAN-5tyHmrfKTfC8ELHA7RpHmUaVzBRKBqQNTpOYnu3SM7OdCnQ@mail.gmail.com>
- <CAN-5tyHumx9s7nkweA1B4CniPD_NzeGyd9d9FNL5ZxzX6KQ+zw@mail.gmail.com>
- <20171114004804.GB14185@parsley.fieldses.org>
- <CAN-5tyH2tEFsbVxhSdQqu8DW_7Zs4eHse4HWEN=vNAgKLiNSDQ@mail.gmail.com>
- <20171130201823.GE3923@fieldses.org>
- <CAN-5tyFY_VzFjG7D3gAjfr32AzxoT+OCZ-DWmT6zODkwFXWntw@mail.gmail.com>
- <20171204213220.GB3511@parsley.fieldses.org>
- <CAN-5tyEVSwBmPMtUBJYDdLi7FK2MNMGuDQrrsvp776zD3Jcw0w@mail.gmail.com>
- <CAN-5tyEJ=pEbOagcN705KA6iUqP_CoMWEN45zHe_daABNiSGBg@mail.gmail.com>
+Received: from mail-ot0-f181.google.com ([74.125.82.181]:43662 "EHLO
+        mail-ot0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751641AbeAZHWv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 26 Jan 2018 02:22:51 -0500
+Received: by mail-ot0-f181.google.com with SMTP id p36so9373225otd.10
+        for <linux-nfs@vger.kernel.org>; Thu, 25 Jan 2018 23:22:50 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyEJ=pEbOagcN705KA6iUqP_CoMWEN45zHe_daABNiSGBg@mail.gmail.com>
+Reply-To: klaus.peterschuster@outlook.de
+From: Peter Schuster <femi.ageuh@gmail.com>
+Date: Fri, 26 Jan 2018 08:22:47 +0100
+Message-ID: <CACKcKZ-YTVoO8xO=VcRR-F_91T=fQ=MZa2wBTk_EaRT7GRz52Q@mail.gmail.com>
+Subject: =?UTF-8?Q?Darlehen_Geld_f=C3=BCr_Einzelpersonen_und_Fachleute_in_w?=
+        =?UTF-8?Q?eniger_als_72_Stunden?=
+To: undisclosed-recipients:;
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 22, 2018 at 11:51:08AM -0500, Olga Kornievskaia wrote:
-> Any update on the patch series review?
+Hallo,
 
-Sorry for the slow response.  I feel like I'm about half-way through
-reading the patches.  I'll try to wrap up tomorrow.
+Sind Sie in einer schwierigen Situation, f=C3=BCr die Sie sich f=C3=BCr ein
+Darlehen suchen? Ben=C3=B6tigen Sie eine Finanzierung, um eine Schuld zu
+begleichen oder eine Aktivit=C3=A4t zu finanzieren? Haben Sie einen
+Verbraucherkredit, eine Hypothek, einen pers=C3=B6nlichen Kredit, eine
+Hypothek, Investition Darlehen, Schuldenkonsolidierung Darlehen oder
+andere braucht?
 
---b.
+Ich bin ein einzelner Investor. I zur Verf=C3=BCgung stellen die Kredit
+kurz-, mittel- und langfristige. Ihr Finanzierungsbedingungen sind
+sehr einfach und meine Zinssatz betr=C3=A4gt 3% pro Jahr.
+
+F=C3=BCr alle Anfragen, bleibe ich zur Verf=C3=BCgung, um Ihre Fragen zu be=
+antworten.
+
+Danke, dass Sie mir per E-Mail an Sie von  :   klaus.peterschuster@outlook.=
+de
+
+Mit freundlichen Gr=C3=BC=C3=9Fen.
+
+Peter Schuster
+
+Financial Bank
+https://firstfinancialsa.com/de
