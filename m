@@ -1,53 +1,137 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ot0-f173.google.com ([74.125.82.173]:32910 "EHLO
-        mail-ot0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752358AbeA0Mum (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 27 Jan 2018 07:50:42 -0500
-Received: by mail-ot0-f173.google.com with SMTP id d7so2716801oti.0
-        for <linux-nfs@vger.kernel.org>; Sat, 27 Jan 2018 04:50:41 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:50706 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752789AbeA0PjI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 27 Jan 2018 10:39:08 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Jeff Layton" <jlayton@redhat.com>
+Cc: "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        "Tom Haynes" <thomas.haynes@primarydata.com>,
+        "Christoph Hellwig" <hch@lst.de>,
+        "Bruce Fields" <bfields@fieldses.org>
+Subject: Re: CB_LAYOUTRECALL "deadlock" with in-kernel flexfiles server and
+ XFS
+Date: Sat, 27 Jan 2018 10:39:06 -0500
+Message-ID: <F738DB31-B527-4048-94A7-DBF00533F8C1@redhat.com>
+In-Reply-To: <1470929036.30238.14.camel@redhat.com>
+References: <1470929036.30238.14.camel@redhat.com>
 MIME-Version: 1.0
-From: Naruto Nguyen <narutonguyen2018@gmail.com>
-Date: Sat, 27 Jan 2018 19:50:41 +0700
-Message-ID: <CANpxKHE=eKuFc2HBgT0aqDb+Q5EOFWOfCzf=tmmuH7zNyn878g@mail.gmail.com>
-Subject: Question about random UDP port on rpcbind 0.2.3
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I would like to ask you a question regarding the new random UDP port
-in rpcbind 0.2.3.
+On 11 Aug 2016, at 11:23, Jeff Layton wrote:
 
-In rpcbind 0.2.3, when I start rpcbind (version 0.2.3) through
-rpcbind.service, then I do netstat
+> I was playing around with the in-kernel flexfiles server today, and I
+> seem to be hitting a deadlock when using it on an XFS-exported
+> filesystem. Here's the stack trace of how the CB_LAYOUTRECALL occurs:
+>
+> [  928.736139] CPU: 0 PID: 846 Comm: nfsd Tainted: G           OE   
+> 4.8.0-rc1+ #3
+> [  928.737040] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), 
+> BIOS 1.9.1-1.fc24 04/01/2014
+> [  928.738009]  0000000000000286 000000006125f50e ffff91153845b878 
+> ffffffff8f463853
+> [  928.738906]  ffff91152ec194d0 ffff91152d31d9c0 ffff91153845b8a8 
+> ffffffffc045936f
+> [  928.739788]  ffff91152c051980 ffff91152d31d9c0 ffff91152c051540 
+> ffff9115361b8a58
+> [  928.740697] Call Trace:
+> [  928.740998]  [<ffffffff8f463853>] dump_stack+0x86/0xc3
+> [  928.741570]  [<ffffffffc045936f>] 
+> nfsd4_recall_file_layout+0x17f/0x190 [nfsd]
+> [  928.742380]  [<ffffffffc045939d>] nfsd4_layout_lm_break+0x1d/0x30 
+> [nfsd]
+> [  928.743115]  [<ffffffff8f3056d8>] __break_lease+0x118/0x6a0
+> [  928.743759]  [<ffffffffc02dea69>] xfs_break_layouts+0x79/0x120 
+> [xfs]
+> [  928.744462]  [<ffffffffc029ea04>] 
+> xfs_file_aio_write_checks+0x94/0x1f0 [xfs]
+> [  928.745251]  [<ffffffffc029f36b>] 
+> xfs_file_buffered_aio_write+0x7b/0x330 [xfs]
+> [  928.746063]  [<ffffffffc029f70c>] xfs_file_write_iter+0xec/0x140 
+> [xfs]
+> [  928.746803]  [<ffffffff8f2a0599>] do_iter_readv_writev+0xb9/0x140
+> [  928.747478]  [<ffffffff8f2a126b>] do_readv_writev+0x19b/0x240
+> [  928.748146]  [<ffffffffc029f620>] ? 
+> xfs_file_buffered_aio_write+0x330/0x330 [xfs]
+> [  928.748956]  [<ffffffff8f29e02b>] ? do_dentry_open+0x28b/0x310
+> [  928.749614]  [<ffffffffc029c800>] ? 
+> xfs_extent_busy_ag_cmp+0x20/0x20 [xfs]
+> [  928.750367]  [<ffffffff8f2a156f>] vfs_writev+0x3f/0x50
+> [  928.750934]  [<ffffffffc04276ca>] nfsd_vfs_write+0xca/0x3a0 [nfsd]
+> [  928.751608]  [<ffffffffc0429ec5>] nfsd_write+0x485/0x780 [nfsd]
+> [  928.752263]  [<ffffffffc043144c>] nfsd3_proc_write+0xbc/0x150 
+> [nfsd]
+> [  928.752973]  [<ffffffffc0421388>] nfsd_dispatch+0xb8/0x1f0 [nfsd]
+> [  928.753642]  [<ffffffffc036d78f>] svc_process_common+0x42f/0x690 
+> [sunrpc]
+> [  928.754395]  [<ffffffffc036e8e8>] svc_process+0x118/0x330 [sunrpc]
+> [  928.755080]  [<ffffffffc04208ac>] nfsd+0x19c/0x2b0 [nfsd]
+> [  928.755681]  [<ffffffffc0420715>] ? nfsd+0x5/0x2b0 [nfsd]
+> [  928.756274]  [<ffffffffc0420710>] ? nfsd_destroy+0x190/0x190 [nfsd]
+> [  928.756991]  [<ffffffff8f0d5891>] kthread+0x101/0x120
+> [  928.757563]  [<ffffffff8f10dcc5>] ? 
+> trace_hardirqs_on_caller+0xf5/0x1b0
+> [  928.758282]  [<ffffffff8f8f2fef>] ret_from_fork+0x1f/0x40
+> [  928.758875]  [<ffffffff8f0d5790>] ? 
+> kthread_create_on_node+0x250/0x250
+>
+>
+> So the client gets a flexfiles layout, and then tries to issue a v3
+> WRITE against the file. XFS then recalls the layout, but the client
+> can't return the layout until the v3 WRITE completes. Eventually this
+> should resolve itself after 2 lease periods, but that's quite a long
+> time.
+>
+> I guess XFS requires recalling block and SCSI layouts when the server
+> wants to issue a write (or someone writes to it locally), but that
+> seems like it shouldn't be happening when the layout is a flexfiles
+> layout.
+>
+> Any thoughts on what the right fix is here?
+>
+> On a related note, knfsd will spam the heck out of the client with
+> CB_LAYOUTRECALLs during this time. I think we ought to consider fixing
+> the server not to treat an NFS_OK return from the client like
+> NFS4ERR_DELAY there, but that would mean a different mechanism for
+> timing out a CB_LAYOUTRECALL.
 
-udp        0      0 0.0.0.0:111             0.0.0.0:*
-         10408/rpcbind
-udp        0      0 0.0.0.0:831             0.0.0.0:*
-         10408/rpcbind
-udp6       0      0 :::111                  :::*
-         10408/rpcbind
-udp6       0      0 :::831                  :::*
-         10408/rpcbind
+I'm getting into similar trouble with SCSI layouts when the client ends 
+up
+submitting a WRITE because the IO is not page aligned, but it already 
+holds
+a layout for that range.  It looks like the server sends a 
+CB_LAYOUTRECALL,
+but the client has to answer NFS4ERR_DELAY because it is still holding 
+the
+layout.
 
-The rpcbind does not only listen on port 111 but also on a random udp
-port "831" in this case, this port is changed every time the rpcbind
-service retstarts. And it listens on 0.0.0.0 so it opens a hole on
-security. Could you please let me know what this port is for and is
-there any way to avoid that like force it listen on a internal
-interface rather than on any interfaces like that? I do not see the
-random port on rpcbind 0.2.1, not sure why? As the rpcbind is started
-from systemd so "-h" option is invalid as the man page says:
+Probably, the client should return any layouts it holds for that range 
+before
+doing IO through the MDS.
 
+Alternatively, shouldn't the MDS accept IO from the same client that 
+holds a
+layout for that range, rather than recall that layout?  RFC 5661 Section
+20.3.4 talks about the client submitting WRITEs before responding to
+CB_LAYOUTRECALL: "As always, the client may write the data through the
+metadata server."
 
-   -h      Specify specific IP addresses to bind to for UDP requests.
-This option may be specified multiple times and can be used to
-restrict the interfaces rpcbind will respond to.  Note that when
-rpcbind is controlled via sys-
-             temd's socket activation, the -h option is ignored. In
-this case, you need to edit the ListenStream and ListenDgram
-definitions in /usr/lib/systemd/system/rpcbind.socket instead.
+I'm trying to find the discussion that resulted in this commit:
 
-Thanks a lot,
-Brs,
-Naruto
+commit 6b9b21073d3b250e17812cd562fffc9006962b39
+Author: Jeff Layton <jlayton@poochiereds.net>
+Date:   Tue Dec 8 07:23:48 2015 -0500
+
+     nfsd: give up on CB_LAYOUTRECALLs after two lease periods
+
+Why should we poll the client if the client answers with NFS4ERR_DELAY?  
+Can
+we instead just wait for the layout to be returned?
+
+Also, I think the 2*lease period timeout is currently broken because we 
+reset
+tk_start after every call.. but that's not really causing any trouble.
+
+Ben
