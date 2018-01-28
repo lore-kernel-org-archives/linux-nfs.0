@@ -1,138 +1,110 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mout.kundenserver.de ([217.72.192.73]:53472 "EHLO
-        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751843AbeA1QfA (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jan 2018 11:35:00 -0500
-Subject: Re: Unaligned access in gss_{get,verify}_mic_v2() on sparc64
-From: James Ettle <james@ettle.org.uk>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:52787 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752065AbeA1Sez (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jan 2018 13:34:55 -0500
+Received: by mail-it0-f67.google.com with SMTP id u62so5767914ita.2
+        for <linux-nfs@vger.kernel.org>; Sun, 28 Jan 2018 10:34:55 -0800 (PST)
+Received: from manet.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
+        by smtp.gmail.com with ESMTPSA id d11sm2994737iob.8.2018.01.28.10.34.54
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Sun, 28 Jan 2018 10:34:54 -0800 (PST)
+Subject: [PATCH v3 0/3] NFS basic junction support for nfs-utils
+From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Cc: sparclinux@vger.kernel.org
-References: <55549068-2605-7f71-ccef-c102d6fd69ab@ettle.org.uk>
- <20171206190936.GB5875@fieldses.org>
- <8d4f1809-5027-46e7-1d21-d55f93950693@ettle.org.uk>
-Message-ID: <2fad5cab-915c-a224-a1f1-b96a77a8546d@ettle.org.uk>
-Date: Sun, 28 Jan 2018 16:34:57 +0000
+Date: Sun, 28 Jan 2018 13:34:53 -0500
+Message-ID: <20180128183357.3092.38903.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <8d4f1809-5027-46e7-1d21-d55f93950693@ettle.org.uk>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Still UNTESTED.
 
-Just a polite prod in case it's fallen off the radar. The patch in this thread still applies cleanly to 4.14.15.
+A while back I announced the deprecation of fedfs-utils. There were
+a handful of components in fedfs-utils that we decided to keep. One
+of those keepers was the "nfsref" command. (The other was autofs
+support for /nfs4, which I hope Ian Kent is making progress on ;-)
 
-Thanks,
-James.
+This series introduces "nfsref" to nfs-utils, minus the overhead of
+the LDAP / FedFS machinery, and it builds support for NFS basic
+junctions into mountd, replacing the need to install a plug-in DLL
+from fedfs-utils.
 
-On 07/12/17 01:42, James Ettle wrote:
-> Patch from git as instructed:
-> 
-> 
-> commit a90324ca784dea5a7259a2672c24626f5c03f576
-> Author: James Ettle <james@ettle.org.uk>
-> Date:   Thu Dec 7 00:50:28 2017 +0000
-> 
->     Fix unaligned access on sparc64.
-> 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-> index 1d74d653e6c0..94a2b3f082a8 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-> @@ -177,6 +177,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
->  	u64 seq_send;
->  	u8 *cksumkey;
->  	unsigned int cksum_usage;
-> +	__be64 seq_send_be64;
-> 
->  	dprintk("RPC:       %s\n", __func__);
-> 
-> @@ -187,7 +188,9 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
->  	spin_lock(&krb5_seq_lock);
->  	seq_send = ctx->seq_send64++;
->  	spin_unlock(&krb5_seq_lock);
-> -	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
-> +
-> +	seq_send_be64 = cpu_to_be64(seq_send);
-> +	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
-> 
->  	if (ctx->initiate) {
->  		cksumkey = ctx->initiator_sign;
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-> index dcf9515d9aef..8ea6e30d6f3f 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-> @@ -155,10 +155,12 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
->  	u8 flags;
->  	int i;
->  	unsigned int cksum_usage;
-> -
-> +	__be16 be16_ptr;
-> +	
->  	dprintk("RPC:       %s\n", __func__);
-> 
-> -	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
-> +	memcpy(&be16_ptr, (char *) ptr, 2);
-> +	if (be16_to_cpu(be16_ptr) != KG2_TOK_MIC)
->  		return GSS_S_DEFECTIVE_TOKEN;
-> 
->  	flags = ptr[2];
-> 
-> 
-> 
-> On 06/12/17 19:09, J. Bruce Fields wrote:
->> On Sat, Dec 02, 2017 at 11:28:18PM +0000, James Ettle wrote:
->>> I've been using nfs4 with krb5 on sparc64 with kernel 4.13 and 4.14 and
->>> seeing a lot of messages like:
->>>
->>> sparky kernel: [  105.262927] Kernel unaligned access at TPC[10afb234]
->>> gss_get_mic_kerberos+0xd4/0x360 [rpcsec_gss_krb5]
->>>
->>> I've traced this down to gss_get_mic_v2() in gss_krb5_seal.c. I think
->>> the suspicious line is:
->>>
->>> 	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
->>>
->>> krb5_hdr is void*, but comes from a u16 so won't generally have __be64
->>> alignment. As an experiment I added local variable
->>>
->>> 	__be64 seq_send_be64;
->>>
->>> and replaced the cpu_to_be64 line with:
->>>
->>> 	seq_send_be64 = cpu_to_be64(seq_send);
->>> 	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
->>>
->>> There's another one in gss_verify_mic_v2() in gss_krb5_unseal.c. Here
->>> there's a line
->>>
->>> 	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
->>>
->>> but ptr is a u8*. For this I added local variable
->>>
->>> 	__be16 data_be16;
->>>
->>> and replaced the above if() with
->>>
->>> 	memcpy((void *) &data_be16, (char *) ptr, 2);
->>> 	if (be16_to_cpu(data_be16) != KG2_TOK_MIC)
->>>
->>> I've not seen any misalignment complaints yet with this.
->>>
->>> I apologise for not sending this in the form of a patch, but this is
->>> only a sketch solution. I'm not a kernel hacker and I'm sure someone
->>> else will make a proper job of it!
->>
->> Probably so.  But it might get done sooner if you do it.  There's the
->> added benefit that you can test the exact patch that gets applied.  You
->> can just:
->>
->> 	git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
->> 	<make your changes>
->> 	git commit -a
->> 	<write a changelog>
->>
->> then send us the output of "git show".
->>
->> --b.
->>
+I didn't apply a lot of brain cells to this port, so it's perhaps a
+little larger than it needs to be. Still, it achieves a completely
+LDAP-free implementation that resides 100% in nfs-utils. I'm
+interested in comments about the approach before I do more testing
+and refinement.
+
+./configure --enable-junction --enable-caps
+
+is needed before building.
+
+
+Changes since v2:
+None.
+
+
+Changes since RFC (v1):
+Patch 2/3 in the original series added the libnfsjunct.so DLL to
+nfs-utils. Series v2 instead replaces 2/3 with a patch that puts
+support for junctions into mountd without the need for a DLL.
+
+---
+
+Chuck Lever (3):
+      Add LDAP-free version of libjunction to nfs-utils
+      mountd: Solder in support for NFS basic junctions
+      Add LDAP-free 'nfsref' command
+
+
+ aclocal/libxml2.m4                   |   15 
+ configure.ac                         |   17 
+ support/Makefile.am                  |    4 
+ support/include/Makefile.am          |    2 
+ support/include/fedfs_admin.h        |  342 +++++++
+ support/include/junction.h           |  124 +++
+ support/junction/Makefile.am         |   34 +
+ support/junction/display.c           |  159 +++
+ support/junction/export-cache.c      |  118 +++
+ support/junction/junction-internal.h |  121 +++
+ support/junction/junction.c          |  494 +++++++++++
+ support/junction/locations.c         |  131 +++
+ support/junction/nfs.c               | 1564 ++++++++++++++++++++++++++++++++++
+ support/junction/path.c              |  345 ++++++++
+ support/junction/xml.c               |  401 +++++++++
+ utils/Makefile.am                    |    4 
+ utils/mountd/Makefile.am             |    8 
+ utils/mountd/cache.c                 |  189 ++--
+ utils/nfsref/Makefile.am             |   39 +
+ utils/nfsref/add.c                   |  271 ++++++
+ utils/nfsref/lookup.c                |  211 +++++
+ utils/nfsref/nfsref.c                |  188 ++++
+ utils/nfsref/nfsref.h                |   47 +
+ utils/nfsref/nfsref.man              |  180 ++++
+ utils/nfsref/remove.c                |  145 +++
+ 25 files changed, 5049 insertions(+), 104 deletions(-)
+ create mode 100644 aclocal/libxml2.m4
+ create mode 100644 support/include/fedfs_admin.h
+ create mode 100644 support/include/junction.h
+ create mode 100644 support/junction/Makefile.am
+ create mode 100644 support/junction/display.c
+ create mode 100644 support/junction/export-cache.c
+ create mode 100644 support/junction/junction-internal.h
+ create mode 100644 support/junction/junction.c
+ create mode 100644 support/junction/locations.c
+ create mode 100644 support/junction/nfs.c
+ create mode 100644 support/junction/path.c
+ create mode 100644 support/junction/xml.c
+ create mode 100644 utils/nfsref/Makefile.am
+ create mode 100644 utils/nfsref/add.c
+ create mode 100644 utils/nfsref/lookup.c
+ create mode 100644 utils/nfsref/nfsref.c
+ create mode 100644 utils/nfsref/nfsref.h
+ create mode 100644 utils/nfsref/nfsref.man
+ create mode 100644 utils/nfsref/remove.c
+
+--
+Chuck Lever
