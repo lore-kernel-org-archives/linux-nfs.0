@@ -1,31 +1,70 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from asavdk3.altibox.net ([109.247.116.14]:59244 "EHLO
-        asavdk3.altibox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752090AbeA1UOi (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jan 2018 15:14:38 -0500
-Date: Sun, 28 Jan 2018 21:08:30 +0100
-From: Sam Ravnborg <sam@ravnborg.org>
-To: James Ettle <james@ettle.org.uk>
-Cc: linux-nfs@vger.kernel.org, sparclinux@vger.kernel.org
-Subject: Re: Unaligned access in gss_{get,verify}_mic_v2() on sparc64
-Message-ID: <20180128200830.GA30041@ravnborg.org>
-References: <55549068-2605-7f71-ccef-c102d6fd69ab@ettle.org.uk>
- <20171206190936.GB5875@fieldses.org>
- <8d4f1809-5027-46e7-1d21-d55f93950693@ettle.org.uk>
- <2fad5cab-915c-a224-a1f1-b96a77a8546d@ettle.org.uk>
+Received: from mout.kundenserver.de ([212.227.126.135]:54551 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752496AbeA1UeS (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jan 2018 15:34:18 -0500
+Received: from kowalski.cb.ettle ([51.9.57.50]) by mrelayeu.kundenserver.de
+ (mreue007 [212.227.15.163]) with ESMTPSA (Nemesis) id
+ 0MMtUx-1egiL00Lmh-008dd0 for <linux-nfs@vger.kernel.org>; Sun, 28 Jan 2018
+ 21:34:17 +0100
+To: linux-nfs@vger.kernel.org
+From: James Ettle <james@ettle.org.uk>
+Subject: [PATCH] Fix unaligned access in gss_{get,verify}_mic_v2() on sparc64
+Message-ID: <5b06ae76-dae4-db81-8e1c-ea6ac035f5f1@ettle.org.uk>
+Date: Sun, 28 Jan 2018 20:34:16 +0000
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2fad5cab-915c-a224-a1f1-b96a77a8546d@ettle.org.uk>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Jan 28, 2018 at 04:34:57PM +0000, James Ettle wrote:
-> Hi,
-> 
-> Just a polite prod in case it's fallen off the radar. The patch in this thread still applies cleanly to 4.14.15.
-I would recommend you to send this as a new mail - with a proper [PATCH] in the title.
-Otherwise it may not be picked up.
+I submitted this patch around a month ago but did it mid-thread and it without the proper subject line. I think it fell off the belt so here it is again. Checked against 4.14.15.
 
-Posting a patch in the midle of a thread is no-go.
 
-	Sam
+commit a90324ca784dea5a7259a2672c24626f5c03f576
+Author: James Ettle <james@ettle.org.uk>
+Date:   Thu Dec 7 00:50:28 2017 +0000
+
+    Fix unaligned access on sparc64.
+
+diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+index 1d74d653e6c0..94a2b3f082a8 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_seal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+@@ -177,6 +177,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	u64 seq_send;
+ 	u8 *cksumkey;
+ 	unsigned int cksum_usage;
++	__be64 seq_send_be64;
+
+ 	dprintk("RPC:       %s\n", __func__);
+
+@@ -187,7 +188,9 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+ 	spin_lock(&krb5_seq_lock);
+ 	seq_send = ctx->seq_send64++;
+ 	spin_unlock(&krb5_seq_lock);
+-	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
++
++	seq_send_be64 = cpu_to_be64(seq_send);
++	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
+
+ 	if (ctx->initiate) {
+ 		cksumkey = ctx->initiator_sign;
+diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+index dcf9515d9aef..8ea6e30d6f3f 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
++++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+@@ -155,10 +155,12 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
+ 	u8 flags;
+ 	int i;
+ 	unsigned int cksum_usage;
+-
++	__be16 be16_ptr;
++	
+ 	dprintk("RPC:       %s\n", __func__);
+
+-	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
++	memcpy(&be16_ptr, (char *) ptr, 2);
++	if (be16_to_cpu(be16_ptr) != KG2_TOK_MIC)
+ 		return GSS_S_DEFECTIVE_TOKEN;
+
+ 	flags = ptr[2];
