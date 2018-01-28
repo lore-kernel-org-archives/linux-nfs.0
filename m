@@ -1,159 +1,138 @@
-Return-Path: <jlayton@redhat.com>
-Message-ID: <1517089301.3516.9.camel@redhat.com>
-Subject: Re: CB_LAYOUTRECALL "deadlock" with in-kernel flexfiles server and
- XFS
-From: Jeff Layton <jlayton@redhat.com>
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>, Tom Haynes
- <thomas.haynes@primarydata.com>, Christoph Hellwig <hch@lst.de>, Bruce
- Fields <bfields@fieldses.org>
-Date: Sat, 27 Jan 2018 16:41:41 -0500
-In-Reply-To: <F738DB31-B527-4048-94A7-DBF00533F8C1@redhat.com>
-References: <1470929036.30238.14.camel@redhat.com>
-	 <F738DB31-B527-4048-94A7-DBF00533F8C1@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mout.kundenserver.de ([217.72.192.73]:53472 "EHLO
+        mout.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751843AbeA1QfA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jan 2018 11:35:00 -0500
+Subject: Re: Unaligned access in gss_{get,verify}_mic_v2() on sparc64
+From: James Ettle <james@ettle.org.uk>
+To: linux-nfs@vger.kernel.org
+Cc: sparclinux@vger.kernel.org
+References: <55549068-2605-7f71-ccef-c102d6fd69ab@ettle.org.uk>
+ <20171206190936.GB5875@fieldses.org>
+ <8d4f1809-5027-46e7-1d21-d55f93950693@ettle.org.uk>
+Message-ID: <2fad5cab-915c-a224-a1f1-b96a77a8546d@ettle.org.uk>
+Date: Sun, 28 Jan 2018 16:34:57 +0000
+MIME-Version: 1.0
+In-Reply-To: <8d4f1809-5027-46e7-1d21-d55f93950693@ettle.org.uk>
+Content-Type: text/plain; charset=utf-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2018-01-27 at 10:39 -0500, Benjamin Coddington wrote:
-> On 11 Aug 2016, at 11:23, Jeff Layton wrote:
+Hi,
+
+Just a polite prod in case it's fallen off the radar. The patch in this thread still applies cleanly to 4.14.15.
+
+Thanks,
+James.
+
+On 07/12/17 01:42, James Ettle wrote:
+> Patch from git as instructed:
 > 
-> > I was playing around with the in-kernel flexfiles server today, and I
-> > seem to be hitting a deadlock when using it on an XFS-exported
-> > filesystem. Here's the stack trace of how the CB_LAYOUTRECALL occurs:
-> > 
-> > [  928.736139] CPU: 0 PID: 846 Comm: nfsd Tainted: G           OE   
-> > 4.8.0-rc1+ #3
-> > [  928.737040] Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), 
-> > BIOS 1.9.1-1.fc24 04/01/2014
-> > [  928.738009]  0000000000000286 000000006125f50e ffff91153845b878 
-> > ffffffff8f463853
-> > [  928.738906]  ffff91152ec194d0 ffff91152d31d9c0 ffff91153845b8a8 
-> > ffffffffc045936f
-> > [  928.739788]  ffff91152c051980 ffff91152d31d9c0 ffff91152c051540 
-> > ffff9115361b8a58
-> > [  928.740697] Call Trace:
-> > [  928.740998]  [<ffffffff8f463853>] dump_stack+0x86/0xc3
-> > [  928.741570]  [<ffffffffc045936f>] 
-> > nfsd4_recall_file_layout+0x17f/0x190 [nfsd]
-> > [  928.742380]  [<ffffffffc045939d>] nfsd4_layout_lm_break+0x1d/0x30 
-> > [nfsd]
-> > [  928.743115]  [<ffffffff8f3056d8>] __break_lease+0x118/0x6a0
-> > [  928.743759]  [<ffffffffc02dea69>] xfs_break_layouts+0x79/0x120 
-> > [xfs]
-> > [  928.744462]  [<ffffffffc029ea04>] 
-> > xfs_file_aio_write_checks+0x94/0x1f0 [xfs]
-> > [  928.745251]  [<ffffffffc029f36b>] 
-> > xfs_file_buffered_aio_write+0x7b/0x330 [xfs]
-> > [  928.746063]  [<ffffffffc029f70c>] xfs_file_write_iter+0xec/0x140 
-> > [xfs]
-> > [  928.746803]  [<ffffffff8f2a0599>] do_iter_readv_writev+0xb9/0x140
-> > [  928.747478]  [<ffffffff8f2a126b>] do_readv_writev+0x19b/0x240
-> > [  928.748146]  [<ffffffffc029f620>] ? 
-> > xfs_file_buffered_aio_write+0x330/0x330 [xfs]
-> > [  928.748956]  [<ffffffff8f29e02b>] ? do_dentry_open+0x28b/0x310
-> > [  928.749614]  [<ffffffffc029c800>] ? 
-> > xfs_extent_busy_ag_cmp+0x20/0x20 [xfs]
-> > [  928.750367]  [<ffffffff8f2a156f>] vfs_writev+0x3f/0x50
-> > [  928.750934]  [<ffffffffc04276ca>] nfsd_vfs_write+0xca/0x3a0 [nfsd]
-> > [  928.751608]  [<ffffffffc0429ec5>] nfsd_write+0x485/0x780 [nfsd]
-> > [  928.752263]  [<ffffffffc043144c>] nfsd3_proc_write+0xbc/0x150 
-> > [nfsd]
-> > [  928.752973]  [<ffffffffc0421388>] nfsd_dispatch+0xb8/0x1f0 [nfsd]
-> > [  928.753642]  [<ffffffffc036d78f>] svc_process_common+0x42f/0x690 
-> > [sunrpc]
-> > [  928.754395]  [<ffffffffc036e8e8>] svc_process+0x118/0x330 [sunrpc]
-> > [  928.755080]  [<ffffffffc04208ac>] nfsd+0x19c/0x2b0 [nfsd]
-> > [  928.755681]  [<ffffffffc0420715>] ? nfsd+0x5/0x2b0 [nfsd]
-> > [  928.756274]  [<ffffffffc0420710>] ? nfsd_destroy+0x190/0x190 [nfsd]
-> > [  928.756991]  [<ffffffff8f0d5891>] kthread+0x101/0x120
-> > [  928.757563]  [<ffffffff8f10dcc5>] ? 
-> > trace_hardirqs_on_caller+0xf5/0x1b0
-> > [  928.758282]  [<ffffffff8f8f2fef>] ret_from_fork+0x1f/0x40
-> > [  928.758875]  [<ffffffff8f0d5790>] ? 
-> > kthread_create_on_node+0x250/0x250
-> > 
-> > 
-> > So the client gets a flexfiles layout, and then tries to issue a v3
-> > WRITE against the file. XFS then recalls the layout, but the client
-> > can't return the layout until the v3 WRITE completes. Eventually this
-> > should resolve itself after 2 lease periods, but that's quite a long
-> > time.
-> > 
-> > I guess XFS requires recalling block and SCSI layouts when the server
-> > wants to issue a write (or someone writes to it locally), but that
-> > seems like it shouldn't be happening when the layout is a flexfiles
-> > layout.
-> > 
-> > Any thoughts on what the right fix is here?
-> > 
-> > On a related note, knfsd will spam the heck out of the client with
-> > CB_LAYOUTRECALLs during this time. I think we ought to consider fixing
-> > the server not to treat an NFS_OK return from the client like
-> > NFS4ERR_DELAY there, but that would mean a different mechanism for
-> > timing out a CB_LAYOUTRECALL.
 > 
-> I'm getting into similar trouble with SCSI layouts when the client ends 
-> up
-> submitting a WRITE because the IO is not page aligned, but it already 
-> holds
-> a layout for that range.  It looks like the server sends a 
-> CB_LAYOUTRECALL,
-> but the client has to answer NFS4ERR_DELAY because it is still holding 
-> the
-> layout.
+> commit a90324ca784dea5a7259a2672c24626f5c03f576
+> Author: James Ettle <james@ettle.org.uk>
+> Date:   Thu Dec 7 00:50:28 2017 +0000
 > 
-> Probably, the client should return any layouts it holds for that range 
-> before
-> doing IO through the MDS.
+>     Fix unaligned access on sparc64.
 > 
-
-Yes, that might be good. Could even prefix the WRITE compound with a
-LAYOUTRETURN if you want to get fancy. :)
-
-> Alternatively, shouldn't the MDS accept IO from the same client that 
-> holds a
-> layout for that range, rather than recall that layout?  RFC 5661 Section
-> 20.3.4 talks about the client submitting WRITEs before responding to
-> CB_LAYOUTRECALL: "As always, the client may write the data through the
-> metadata server."
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
+> index 1d74d653e6c0..94a2b3f082a8 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_seal.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
+> @@ -177,6 +177,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+>  	u64 seq_send;
+>  	u8 *cksumkey;
+>  	unsigned int cksum_usage;
+> +	__be64 seq_send_be64;
 > 
-
-Agreed. That seems reasonable too.
-
-
-> I'm trying to find the discussion that resulted in this commit:
+>  	dprintk("RPC:       %s\n", __func__);
 > 
-> commit 6b9b21073d3b250e17812cd562fffc9006962b39
-> Author: Jeff Layton <jlayton@poochiereds.net>
-> Date:   Tue Dec 8 07:23:48 2015 -0500
+> @@ -187,7 +188,9 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
+>  	spin_lock(&krb5_seq_lock);
+>  	seq_send = ctx->seq_send64++;
+>  	spin_unlock(&krb5_seq_lock);
+> -	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
+> +
+> +	seq_send_be64 = cpu_to_be64(seq_send);
+> +	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
 > 
->      nfsd: give up on CB_LAYOUTRECALLs after two lease periods
+>  	if (ctx->initiate) {
+>  		cksumkey = ctx->initiator_sign;
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+> index dcf9515d9aef..8ea6e30d6f3f 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
+> @@ -155,10 +155,12 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
+>  	u8 flags;
+>  	int i;
+>  	unsigned int cksum_usage;
+> -
+> +	__be16 be16_ptr;
+> +	
+>  	dprintk("RPC:       %s\n", __func__);
 > 
-> Why should we poll the client if the client answers with NFS4ERR_DELAY?  
-> Can
-> we instead just wait for the layout to be returned?
+> -	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
+> +	memcpy(&be16_ptr, (char *) ptr, 2);
+> +	if (be16_to_cpu(be16_ptr) != KG2_TOK_MIC)
+>  		return GSS_S_DEFECTIVE_TOKEN;
 > 
-
-No. NFS4ERR_DELAY just means "I'm too busy to answer right now, please
-call again later". You can't infer that the client has made any note of
-the CB_LAYOUTRECALL at all since it didn't succeed.
-
-Returning NFS4_OK on a CB_LAYOUTRECALL just means that you acknowledge
-that it has been recalled and will eventually send a LAYOUTRETURN. It
-doesn't mean that you are immediately returning it.
-
-Probably what the client should do in this situation is mark the layout
-as having been recalled and return NFS4_OK instead of NFS4ERR_DELAY. It
-seems like that ought to be possible, but I haven't looked at the code
-to see why that isn't occurring.
-
-> Also, I think the 2*lease period timeout is currently broken because we 
-> reset
-> tk_start after every call.. but that's not really causing any trouble.
+>  	flags = ptr[2];
 > 
-
-It'd be good to fix that too, since you're in there...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> 
+> On 06/12/17 19:09, J. Bruce Fields wrote:
+>> On Sat, Dec 02, 2017 at 11:28:18PM +0000, James Ettle wrote:
+>>> I've been using nfs4 with krb5 on sparc64 with kernel 4.13 and 4.14 and
+>>> seeing a lot of messages like:
+>>>
+>>> sparky kernel: [  105.262927] Kernel unaligned access at TPC[10afb234]
+>>> gss_get_mic_kerberos+0xd4/0x360 [rpcsec_gss_krb5]
+>>>
+>>> I've traced this down to gss_get_mic_v2() in gss_krb5_seal.c. I think
+>>> the suspicious line is:
+>>>
+>>> 	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
+>>>
+>>> krb5_hdr is void*, but comes from a u16 so won't generally have __be64
+>>> alignment. As an experiment I added local variable
+>>>
+>>> 	__be64 seq_send_be64;
+>>>
+>>> and replaced the cpu_to_be64 line with:
+>>>
+>>> 	seq_send_be64 = cpu_to_be64(seq_send);
+>>> 	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
+>>>
+>>> There's another one in gss_verify_mic_v2() in gss_krb5_unseal.c. Here
+>>> there's a line
+>>>
+>>> 	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
+>>>
+>>> but ptr is a u8*. For this I added local variable
+>>>
+>>> 	__be16 data_be16;
+>>>
+>>> and replaced the above if() with
+>>>
+>>> 	memcpy((void *) &data_be16, (char *) ptr, 2);
+>>> 	if (be16_to_cpu(data_be16) != KG2_TOK_MIC)
+>>>
+>>> I've not seen any misalignment complaints yet with this.
+>>>
+>>> I apologise for not sending this in the form of a patch, but this is
+>>> only a sketch solution. I'm not a kernel hacker and I'm sure someone
+>>> else will make a proper job of it!
+>>
+>> Probably so.  But it might get done sooner if you do it.  There's the
+>> added benefit that you can test the exact patch that gets applied.  You
+>> can just:
+>>
+>> 	git clone git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux-2.6.git
+>> 	<make your changes>
+>> 	git commit -a
+>> 	<write a changelog>
+>>
+>> then send us the output of "git show".
+>>
+>> --b.
+>>
