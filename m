@@ -1,117 +1,540 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:34794 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751482AbeA2X2t (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 18:28:49 -0500
-Received: by mail-it0-f65.google.com with SMTP id m11so804688iti.1
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Jan 2018 15:28:49 -0800 (PST)
+Received: from mail-it0-f68.google.com ([209.85.214.68]:50825 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751542AbeA2X25 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 18:28:57 -0500
+Received: by mail-it0-f68.google.com with SMTP id x128so10390513ite.0
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Jan 2018 15:28:57 -0800 (PST)
 Received: from manet.1015granger.net (c-68-61-232-219.hsd1.mi.comcast.net. [68.61.232.219])
-        by smtp.gmail.com with ESMTPSA id d1sm4843503iti.18.2018.01.29.15.28.46
+        by smtp.gmail.com with ESMTPSA id q25sm4669621ioh.21.2018.01.29.15.28.55
         for <linux-nfs@vger.kernel.org>
         (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Mon, 29 Jan 2018 15:28:47 -0800 (PST)
-Subject: [PATCH v4 0/5] NFS basic junction support for nfs-utils
+        Mon, 29 Jan 2018 15:28:56 -0800 (PST)
+Subject: [PATCH v4 1/5] Add headers to support libjunction
 From: Chuck Lever <chuck.lever@oracle.com>
 To: linux-nfs@vger.kernel.org
-Date: Mon, 29 Jan 2018 18:28:46 -0500
-Message-ID: <20180129232527.10141.69789.stgit@manet.1015granger.net>
+Date: Mon, 29 Jan 2018 18:28:55 -0500
+Message-ID: <20180129232855.10141.90168.stgit@manet.1015granger.net>
+In-Reply-To: <20180129232527.10141.69789.stgit@manet.1015granger.net>
+References: <20180129232527.10141.69789.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Still UNTESTED.
+libjunction contains support for reading or updating a junction
+that resides on an NFS server. It is used by mountd to read junction
+information from an exported filesystem, and by the nfsref command
+line tool. These will be introduced in subsequent patches.
 
-A while back I announced the deprecation of fedfs-utils. There were
-a handful of components in fedfs-utils that we decided to keep. One
-of those keepers was the "nfsref" command. (The other was autofs
-support for /nfs4, which I hope Ian Kent is making progress on ;-)
+The source code for libjunction used to be maintained in
+fedfs-utils, but fedfs-utils is being retired. Although interest in
+FedFS junctions has waned, NFS basic junctions are still appealing
+enough that we've decided we want to continue supporting them.
+Therefore this patch moves the non-LDAP parts of libjunction into
+nfs-utils, to enable nfs-utils to also support the user-visible
+pieces of NFS basic junctions.
 
-This series introduces "nfsref" to nfs-utils, minus the overhead of
-the LDAP / FedFS machinery, and it builds support for NFS basic
-junctions into mountd, replacing the need to install a plug-in DLL
-from fedfs-utils.
-
-I didn't apply a lot of brain cells to this port, so it's perhaps a
-little larger than it needs to be. Still, it achieves a completely
-LDAP-free implementation that resides 100% in nfs-utils. I'm
-interested in comments about the approach before I do more testing
-and refinement.
-
-./configure --enable-junction --enable-caps
-
-is needed before building.
-
-
-Changes since v3:
-Broke up the first patch because it was apparently too large to
-be reflected through vger.kernel.org.
-
-
-Changes since v2:
-None.
-
-
-Changes since RFC (v1):
-Patch 2/3 in the original series added the libnfsjunct.so DLL to
-nfs-utils. Series v2 instead replaces 2/3 with a patch that puts
-support for junctions into mountd without the need for a DLL.
-
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
-
-Chuck Lever (5):
-      Add headers to support libjunction
-      Add infrastructure for libjunction
-      Add LDAP-free version of libjunction to nfs-utils
-      mountd: Solder in support for NFS basic junctions
-      Add LDAP-free 'nfsref' command
-
-
- aclocal/libxml2.m4                   |   15 
- configure.ac                         |   17 
- support/Makefile.am                  |    4 
- support/include/Makefile.am          |    2 
- support/include/fedfs_admin.h        |  342 +++++++
- support/include/junction.h           |  125 +++
- support/junction/Makefile.am         |   34 +
- support/junction/display.c           |  159 +++
- support/junction/export-cache.c      |  118 +++
- support/junction/junction-internal.h |  121 +++
- support/junction/junction.c          |  494 +++++++++++
- support/junction/locations.c         |  131 +++
- support/junction/nfs.c               | 1564 ++++++++++++++++++++++++++++++++++
- support/junction/path.c              |  345 ++++++++
- support/junction/xml.c               |  401 +++++++++
- utils/Makefile.am                    |    4 
- utils/mountd/Makefile.am             |    8 
- utils/mountd/cache.c                 |  189 ++--
- utils/nfsref/Makefile.am             |   39 +
- utils/nfsref/add.c                   |  271 ++++++
- utils/nfsref/lookup.c                |  211 +++++
- utils/nfsref/nfsref.c                |  188 ++++
- utils/nfsref/nfsref.h                |   47 +
- utils/nfsref/nfsref.man              |  180 ++++
- utils/nfsref/remove.c                |  145 +++
- 25 files changed, 5050 insertions(+), 104 deletions(-)
- create mode 100644 aclocal/libxml2.m4
+ support/include/Makefile.am   |    2 
+ support/include/fedfs_admin.h |  342 +++++++++++++++++++++++++++++++++++++++++
+ support/include/junction.h    |  125 +++++++++++++++
+ 3 files changed, 469 insertions(+)
  create mode 100644 support/include/fedfs_admin.h
  create mode 100644 support/include/junction.h
- create mode 100644 support/junction/Makefile.am
- create mode 100644 support/junction/display.c
- create mode 100644 support/junction/export-cache.c
- create mode 100644 support/junction/junction-internal.h
- create mode 100644 support/junction/junction.c
- create mode 100644 support/junction/locations.c
- create mode 100644 support/junction/nfs.c
- create mode 100644 support/junction/path.c
- create mode 100644 support/junction/xml.c
- create mode 100644 utils/nfsref/Makefile.am
- create mode 100644 utils/nfsref/add.c
- create mode 100644 utils/nfsref/lookup.c
- create mode 100644 utils/nfsref/nfsref.c
- create mode 100644 utils/nfsref/nfsref.h
- create mode 100644 utils/nfsref/nfsref.man
- create mode 100644 utils/nfsref/remove.c
 
---
-Chuck Lever
+diff --git a/support/include/Makefile.am b/support/include/Makefile.am
+index 5c80c8b..11cb162 100644
+--- a/support/include/Makefile.am
++++ b/support/include/Makefile.am
+@@ -5,7 +5,9 @@ SUBDIRS = nfs rpcsvc sys
+ noinst_HEADERS = \
+ 	cld.h \
+ 	exportfs.h \
++	fedfs_admin.h \
+ 	ha-callout.h \
++	junction.h \
+ 	misc.h \
+ 	nfs_mntent.h \
+ 	nfs_paths.h \
+diff --git a/support/include/fedfs_admin.h b/support/include/fedfs_admin.h
+new file mode 100644
+index 0000000..d8b6715
+--- /dev/null
++++ b/support/include/fedfs_admin.h
+@@ -0,0 +1,342 @@
++/*
++ * Please do not edit this file.
++ * It was generated using rpcgen.
++ */
++
++#ifndef _FEDFS_ADMIN_H_RPCGEN
++#define _FEDFS_ADMIN_H_RPCGEN
++
++#include <rpc/rpc.h>
++
++
++#ifdef __cplusplus
++extern "C" {
++#endif
++
++
++enum FedFsStatus {
++	FEDFS_OK = 0,
++	FEDFS_ERR_ACCESS = 1,
++	FEDFS_ERR_BADCHAR = 2,
++	FEDFS_ERR_BADNAME = 3,
++	FEDFS_ERR_NAMETOOLONG = 4,
++	FEDFS_ERR_LOOP = 5,
++	FEDFS_ERR_BADXDR = 6,
++	FEDFS_ERR_EXIST = 7,
++	FEDFS_ERR_INVAL = 8,
++	FEDFS_ERR_IO = 9,
++	FEDFS_ERR_NOSPC = 10,
++	FEDFS_ERR_NOTJUNCT = 11,
++	FEDFS_ERR_NOTLOCAL = 12,
++	FEDFS_ERR_PERM = 13,
++	FEDFS_ERR_ROFS = 14,
++	FEDFS_ERR_SVRFAULT = 15,
++	FEDFS_ERR_NOTSUPP = 16,
++	FEDFS_ERR_NSDB_ROUTE = 17,
++	FEDFS_ERR_NSDB_DOWN = 18,
++	FEDFS_ERR_NSDB_CONN = 19,
++	FEDFS_ERR_NSDB_AUTH = 20,
++	FEDFS_ERR_NSDB_LDAP = 21,
++	FEDFS_ERR_NSDB_LDAP_VAL = 22,
++	FEDFS_ERR_NSDB_NONCE = 23,
++	FEDFS_ERR_NSDB_NOFSN = 24,
++	FEDFS_ERR_NSDB_NOFSL = 25,
++	FEDFS_ERR_NSDB_RESPONSE = 26,
++	FEDFS_ERR_NSDB_FAULT = 27,
++	FEDFS_ERR_NSDB_PARAMS = 28,
++	FEDFS_ERR_NSDB_LDAP_REFERRAL = 29,
++	FEDFS_ERR_NSDB_LDAP_REFERRAL_VAL = 30,
++	FEDFS_ERR_NSDB_LDAP_REFERRAL_NOTFOLLOWED = 31,
++	FEDFS_ERR_NSDB_PARAMS_LDAP_REFERRAL = 32,
++	FEDFS_ERR_PATH_TYPE_UNSUPP = 33,
++	FEDFS_ERR_DELAY = 34,
++	FEDFS_ERR_NO_CACHE = 35,
++	FEDFS_ERR_UNKNOWN_CACHE = 36,
++	FEDFS_ERR_NO_CACHE_UPDATE = 37,
++};
++typedef enum FedFsStatus FedFsStatus;
++
++typedef struct {
++	u_int utf8string_len;
++	char *utf8string_val;
++} utf8string;
++
++typedef utf8string ascii_REQUIRED4;
++
++typedef utf8string utf8val_REQUIRED4;
++
++typedef char FedFsUuid[16];
++
++struct FedFsNsdbName {
++	u_int port;
++	utf8val_REQUIRED4 hostname;
++};
++typedef struct FedFsNsdbName FedFsNsdbName;
++
++typedef ascii_REQUIRED4 FedFsPathComponent;
++
++typedef struct {
++	u_int FedFsPathName_len;
++	FedFsPathComponent *FedFsPathName_val;
++} FedFsPathName;
++
++struct FedFsFsn {
++	FedFsUuid fsnUuid;
++	FedFsNsdbName nsdbName;
++};
++typedef struct FedFsFsn FedFsFsn;
++
++enum FedFsFslType {
++	FEDFS_NFS_FSL = 0,
++};
++typedef enum FedFsFslType FedFsFslType;
++
++struct FedFsNfsFsl {
++	FedFsUuid fslUuid;
++	u_int port;
++	utf8val_REQUIRED4 hostname;
++	FedFsPathName path;
++};
++typedef struct FedFsNfsFsl FedFsNfsFsl;
++
++struct FedFsFsl {
++	FedFsFslType type;
++	union {
++		FedFsNfsFsl nfsFsl;
++	} FedFsFsl_u;
++};
++typedef struct FedFsFsl FedFsFsl;
++
++enum FedFsPathType {
++	FEDFS_PATH_SYS = 0,
++	FEDFS_PATH_NFS = 1,
++};
++typedef enum FedFsPathType FedFsPathType;
++
++struct FedFsPath {
++	FedFsPathType type;
++	union {
++		FedFsPathName adminPath;
++		FedFsPathName nfsPath;
++	} FedFsPath_u;
++};
++typedef struct FedFsPath FedFsPath;
++
++struct FedFsCreateArgs {
++	FedFsPath path;
++	FedFsFsn fsn;
++};
++typedef struct FedFsCreateArgs FedFsCreateArgs;
++
++enum FedFsResolveType {
++	FEDFS_RESOLVE_NONE = 0,
++	FEDFS_RESOLVE_CACHE = 1,
++	FEDFS_RESOLVE_NSDB = 2,
++};
++typedef enum FedFsResolveType FedFsResolveType;
++
++struct FedFsLookupArgs {
++	FedFsPath path;
++	FedFsResolveType resolve;
++};
++typedef struct FedFsLookupArgs FedFsLookupArgs;
++
++struct FedFsLookupResOk {
++	FedFsFsn fsn;
++	struct {
++		u_int fsl_len;
++		FedFsFsl *fsl_val;
++	} fsl;
++};
++typedef struct FedFsLookupResOk FedFsLookupResOk;
++
++struct FedFsLookupResReferralVal {
++	FedFsNsdbName targetNsdb;
++	u_int ldapResultCode;
++};
++typedef struct FedFsLookupResReferralVal FedFsLookupResReferralVal;
++
++struct FedFsLookupRes {
++	FedFsStatus status;
++	union {
++		FedFsLookupResOk resok;
++		u_int ldapResultCode;
++		FedFsNsdbName targetNsdb;
++		FedFsLookupResReferralVal resReferralVal;
++	} FedFsLookupRes_u;
++};
++typedef struct FedFsLookupRes FedFsLookupRes;
++
++enum FedFsConnectionSec {
++	FEDFS_SEC_NONE = 0,
++	FEDFS_SEC_TLS = 1,
++};
++typedef enum FedFsConnectionSec FedFsConnectionSec;
++
++struct FedFsNsdbParams {
++	FedFsConnectionSec secType;
++	union {
++		struct {
++			u_int secData_len;
++			char *secData_val;
++		} secData;
++	} FedFsNsdbParams_u;
++};
++typedef struct FedFsNsdbParams FedFsNsdbParams;
++
++struct FedFsSetNsdbParamsArgs {
++	FedFsNsdbName nsdbName;
++	FedFsNsdbParams params;
++};
++typedef struct FedFsSetNsdbParamsArgs FedFsSetNsdbParamsArgs;
++
++struct FedFsGetNsdbParamsRes {
++	FedFsStatus status;
++	union {
++		FedFsNsdbParams params;
++	} FedFsGetNsdbParamsRes_u;
++};
++typedef struct FedFsGetNsdbParamsRes FedFsGetNsdbParamsRes;
++
++struct FedFsGetLimitedNsdbParamsRes {
++	FedFsStatus status;
++	union {
++		FedFsConnectionSec secType;
++	} FedFsGetLimitedNsdbParamsRes_u;
++};
++typedef struct FedFsGetLimitedNsdbParamsRes FedFsGetLimitedNsdbParamsRes;
++#define FEDFS_ADMIN_X
++
++#define FEDFS_PROG 100418
++#define FEDFS_V1 1
++
++#if defined(__STDC__) || defined(__cplusplus)
++#define FEDFS_NULL 0
++extern  void * fedfs_null_1(void *, CLIENT *);
++extern  void * fedfs_null_1_svc(void *, struct svc_req *);
++#define FEDFS_CREATE_JUNCTION 1
++extern  FedFsStatus * fedfs_create_junction_1(FedFsCreateArgs *, CLIENT *);
++extern  FedFsStatus * fedfs_create_junction_1_svc(FedFsCreateArgs *, struct svc_req *);
++#define FEDFS_DELETE_JUNCTION 2
++extern  FedFsStatus * fedfs_delete_junction_1(FedFsPath *, CLIENT *);
++extern  FedFsStatus * fedfs_delete_junction_1_svc(FedFsPath *, struct svc_req *);
++#define FEDFS_LOOKUP_JUNCTION 3
++extern  FedFsLookupRes * fedfs_lookup_junction_1(FedFsLookupArgs *, CLIENT *);
++extern  FedFsLookupRes * fedfs_lookup_junction_1_svc(FedFsLookupArgs *, struct svc_req *);
++#define FEDFS_CREATE_REPLICATION 7
++extern  FedFsStatus * fedfs_create_replication_1(FedFsCreateArgs *, CLIENT *);
++extern  FedFsStatus * fedfs_create_replication_1_svc(FedFsCreateArgs *, struct svc_req *);
++#define FEDFS_DELETE_REPLICATION 8
++extern  FedFsStatus * fedfs_delete_replication_1(FedFsPath *, CLIENT *);
++extern  FedFsStatus * fedfs_delete_replication_1_svc(FedFsPath *, struct svc_req *);
++#define FEDFS_LOOKUP_REPLICATION 9
++extern  FedFsLookupRes * fedfs_lookup_replication_1(FedFsLookupArgs *, CLIENT *);
++extern  FedFsLookupRes * fedfs_lookup_replication_1_svc(FedFsLookupArgs *, struct svc_req *);
++#define FEDFS_SET_NSDB_PARAMS 4
++extern  FedFsStatus * fedfs_set_nsdb_params_1(FedFsSetNsdbParamsArgs *, CLIENT *);
++extern  FedFsStatus * fedfs_set_nsdb_params_1_svc(FedFsSetNsdbParamsArgs *, struct svc_req *);
++#define FEDFS_GET_NSDB_PARAMS 5
++extern  FedFsGetNsdbParamsRes * fedfs_get_nsdb_params_1(FedFsNsdbName *, CLIENT *);
++extern  FedFsGetNsdbParamsRes * fedfs_get_nsdb_params_1_svc(FedFsNsdbName *, struct svc_req *);
++#define FEDFS_GET_LIMITED_NSDB_PARAMS 6
++extern  FedFsGetLimitedNsdbParamsRes * fedfs_get_limited_nsdb_params_1(FedFsNsdbName *, CLIENT *);
++extern  FedFsGetLimitedNsdbParamsRes * fedfs_get_limited_nsdb_params_1_svc(FedFsNsdbName *, struct svc_req *);
++extern int fedfs_prog_1_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
++
++#else /* K&R C */
++#define FEDFS_NULL 0
++extern  void * fedfs_null_1();
++extern  void * fedfs_null_1_svc();
++#define FEDFS_CREATE_JUNCTION 1
++extern  FedFsStatus * fedfs_create_junction_1();
++extern  FedFsStatus * fedfs_create_junction_1_svc();
++#define FEDFS_DELETE_JUNCTION 2
++extern  FedFsStatus * fedfs_delete_junction_1();
++extern  FedFsStatus * fedfs_delete_junction_1_svc();
++#define FEDFS_LOOKUP_JUNCTION 3
++extern  FedFsLookupRes * fedfs_lookup_junction_1();
++extern  FedFsLookupRes * fedfs_lookup_junction_1_svc();
++#define FEDFS_CREATE_REPLICATION 7
++extern  FedFsStatus * fedfs_create_replication_1();
++extern  FedFsStatus * fedfs_create_replication_1_svc();
++#define FEDFS_DELETE_REPLICATION 8
++extern  FedFsStatus * fedfs_delete_replication_1();
++extern  FedFsStatus * fedfs_delete_replication_1_svc();
++#define FEDFS_LOOKUP_REPLICATION 9
++extern  FedFsLookupRes * fedfs_lookup_replication_1();
++extern  FedFsLookupRes * fedfs_lookup_replication_1_svc();
++#define FEDFS_SET_NSDB_PARAMS 4
++extern  FedFsStatus * fedfs_set_nsdb_params_1();
++extern  FedFsStatus * fedfs_set_nsdb_params_1_svc();
++#define FEDFS_GET_NSDB_PARAMS 5
++extern  FedFsGetNsdbParamsRes * fedfs_get_nsdb_params_1();
++extern  FedFsGetNsdbParamsRes * fedfs_get_nsdb_params_1_svc();
++#define FEDFS_GET_LIMITED_NSDB_PARAMS 6
++extern  FedFsGetLimitedNsdbParamsRes * fedfs_get_limited_nsdb_params_1();
++extern  FedFsGetLimitedNsdbParamsRes * fedfs_get_limited_nsdb_params_1_svc();
++extern int fedfs_prog_1_freeresult ();
++#endif /* K&R C */
++
++/* the xdr functions */
++
++#if defined(__STDC__) || defined(__cplusplus)
++extern  bool_t xdr_FedFsStatus (XDR *, FedFsStatus*);
++extern  bool_t xdr_utf8string (XDR *, utf8string*);
++extern  bool_t xdr_ascii_REQUIRED4 (XDR *, ascii_REQUIRED4*);
++extern  bool_t xdr_utf8val_REQUIRED4 (XDR *, utf8val_REQUIRED4*);
++extern  bool_t xdr_FedFsUuid (XDR *, FedFsUuid);
++extern  bool_t xdr_FedFsNsdbName (XDR *, FedFsNsdbName*);
++extern  bool_t xdr_FedFsPathComponent (XDR *, FedFsPathComponent*);
++extern  bool_t xdr_FedFsPathName (XDR *, FedFsPathName*);
++extern  bool_t xdr_FedFsFsn (XDR *, FedFsFsn*);
++extern  bool_t xdr_FedFsFslType (XDR *, FedFsFslType*);
++extern  bool_t xdr_FedFsNfsFsl (XDR *, FedFsNfsFsl*);
++extern  bool_t xdr_FedFsFsl (XDR *, FedFsFsl*);
++extern  bool_t xdr_FedFsPathType (XDR *, FedFsPathType*);
++extern  bool_t xdr_FedFsPath (XDR *, FedFsPath*);
++extern  bool_t xdr_FedFsCreateArgs (XDR *, FedFsCreateArgs*);
++extern  bool_t xdr_FedFsResolveType (XDR *, FedFsResolveType*);
++extern  bool_t xdr_FedFsLookupArgs (XDR *, FedFsLookupArgs*);
++extern  bool_t xdr_FedFsLookupResOk (XDR *, FedFsLookupResOk*);
++extern  bool_t xdr_FedFsLookupResReferralVal (XDR *, FedFsLookupResReferralVal*);
++extern  bool_t xdr_FedFsLookupRes (XDR *, FedFsLookupRes*);
++extern  bool_t xdr_FedFsConnectionSec (XDR *, FedFsConnectionSec*);
++extern  bool_t xdr_FedFsNsdbParams (XDR *, FedFsNsdbParams*);
++extern  bool_t xdr_FedFsSetNsdbParamsArgs (XDR *, FedFsSetNsdbParamsArgs*);
++extern  bool_t xdr_FedFsGetNsdbParamsRes (XDR *, FedFsGetNsdbParamsRes*);
++extern  bool_t xdr_FedFsGetLimitedNsdbParamsRes (XDR *, FedFsGetLimitedNsdbParamsRes*);
++
++#else /* K&R C */
++extern bool_t xdr_FedFsStatus ();
++extern bool_t xdr_utf8string ();
++extern bool_t xdr_ascii_REQUIRED4 ();
++extern bool_t xdr_utf8val_REQUIRED4 ();
++extern bool_t xdr_FedFsUuid ();
++extern bool_t xdr_FedFsNsdbName ();
++extern bool_t xdr_FedFsPathComponent ();
++extern bool_t xdr_FedFsPathName ();
++extern bool_t xdr_FedFsFsn ();
++extern bool_t xdr_FedFsFslType ();
++extern bool_t xdr_FedFsNfsFsl ();
++extern bool_t xdr_FedFsFsl ();
++extern bool_t xdr_FedFsPathType ();
++extern bool_t xdr_FedFsPath ();
++extern bool_t xdr_FedFsCreateArgs ();
++extern bool_t xdr_FedFsResolveType ();
++extern bool_t xdr_FedFsLookupArgs ();
++extern bool_t xdr_FedFsLookupResOk ();
++extern bool_t xdr_FedFsLookupResReferralVal ();
++extern bool_t xdr_FedFsLookupRes ();
++extern bool_t xdr_FedFsConnectionSec ();
++extern bool_t xdr_FedFsNsdbParams ();
++extern bool_t xdr_FedFsSetNsdbParamsArgs ();
++extern bool_t xdr_FedFsGetNsdbParamsRes ();
++extern bool_t xdr_FedFsGetLimitedNsdbParamsRes ();
++
++#endif /* K&R C */
++
++#ifdef __cplusplus
++}
++#endif
++
++#endif /* !_FEDFS_ADMIN_H_RPCGEN */
+diff --git a/support/include/junction.h b/support/include/junction.h
+new file mode 100644
+index 0000000..a5f3844
+--- /dev/null
++++ b/support/include/junction.h
+@@ -0,0 +1,125 @@
++/*
++ * @file support/include/junction.h
++ * @brief Declarations for libjunction.a
++ */
++
++/*
++ * Copyright 2010, 2018 Oracle.  All rights reserved.
++ *
++ * This file is part of nfs-utils.
++ *
++ * nfs-utils is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License version 2.0 as
++ * published by the Free Software Foundation.
++ *
++ * nfs-utils is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License version 2.0 for more details.
++ *
++ * You should have received a copy of the GNU General Public License
++ * version 2.0 along with nfs-utils.  If not, see:
++ *
++ *	http://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
++ */
++
++#ifndef _NFS_JUNCTION_H_
++#define _NFS_JUNCTION_H_
++
++#include <stdint.h>
++
++/* Machine-generated XDR definitions for FedFS Admin protocol */
++#include "fedfs_admin.h"
++
++/**
++ * Contains NFS fileset location information
++ *
++ * Each of these represents one server:/rootpath pair.  The NFS
++ * implementation can coalesce multiple pairs into a single
++ * fs_location4 result if jfl_rootpath is the same across
++ * multiple servers.
++ *
++ * The nfl_server field can contain either one presentation format
++ * IP address or one DNS hostname.
++ *
++ * See Section 11.9 and 11.10 of RFC 5661 or section 4.2.2.3 and
++ * 4.2.2.4 of the NSDB protocol draft for details.
++ */
++
++struct nfs_fsloc {
++	struct nfs_fsloc	 *nfl_next;
++
++	char			 *nfl_hostname;
++	uint16_t		  nfl_hostport;
++	char			**nfl_rootpath;
++
++	struct {
++		_Bool		  nfl_varsub;
++	} nfl_flags;
++	int32_t			  nfl_currency;
++	int32_t			  nfl_validfor;
++
++	struct {
++		_Bool		  nfl_writable, nfl_going, nfl_split;
++	} nfl_genflags;
++	struct {
++		_Bool		  nfl_rdma;
++	} nfl_transflags;
++	struct {
++		uint8_t		  nfl_simul, nfl_handle, nfl_fileid;
++		uint8_t		  nfl_writever, nfl_change, nfl_readdir;
++		uint8_t		  nfl_readrank, nfl_writerank;
++		uint8_t		  nfl_readorder, nfl_writeorder;
++	} nfl_info;
++};
++
++
++/**
++ ** NFS location data management functions
++ **/
++
++void		  nfs_free_location(struct nfs_fsloc *location);
++void		  nfs_free_locations(struct nfs_fsloc *locations);
++struct nfs_fsloc *nfs_new_location(void);
++
++__attribute_malloc__
++char		**nfs_dup_string_array(char **array);
++void		  nfs_free_string_array(char **array);
++
++
++/**
++ ** NFS junction management functions
++ **/
++
++FedFsStatus	 nfs_delete_junction(const char *pathname);
++FedFsStatus	 nfs_add_junction(const char *pathname,
++				struct nfs_fsloc *locations);
++FedFsStatus	 nfs_get_locations(const char *pathname,
++				struct nfs_fsloc **locations);
++FedFsStatus	 nfs_is_prejunction(const char *pathname);
++FedFsStatus	 nfs_is_junction(const char *pathname);
++
++
++/**
++ ** Flush kernel NFS server's export cache
++ **/
++FedFsStatus	 junction_flush_exports_cache(void);
++
++/**
++ ** Pathname conversion helpers
++ **/
++void		 nsdb_free_string_array(char **strings);
++FedFsStatus	 nsdb_path_array_to_posix(char * const *path_array,
++				char **pathname);
++FedFsStatus	 nsdb_posix_to_path_array(const char *pathname,
++				char ***path_array);
++
++/**
++ ** Readability helpers
++ **/
++
++const char      *nsdb_display_fedfsconnectionsec(const FedFsConnectionSec sectype);
++const char      *nsdb_display_fedfsstatus(const FedFsStatus status);
++void             nsdb_print_fedfsstatus(const FedFsStatus status);
++
++#endif	/* !_NFS_JUNCTION_H_ */
+
