@@ -1,37 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f170.google.com ([209.85.223.170]:41042 "EHLO
-        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751873AbeA2Vvh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 16:51:37 -0500
+Received: from userp2130.oracle.com ([156.151.31.86]:54894 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751398AbeA2WR7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 17:17:59 -0500
+From: Bill Baker <Bill.Baker@Oracle.com>
+Subject: Announcing Bake-a-thon for Spring 2018
+To: nfsv4@ietf.org, linux-nfs@vger.kernel.org
+Message-ID: <766df221-d10d-7f84-31d3-22e26b018863@Oracle.com>
+Date: Mon, 29 Jan 2018 16:17:57 -0600
 MIME-Version: 1.0
-In-Reply-To: <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
-References: <1517228795.5965.24.camel@redhat.com> <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 29 Jan 2018 13:51:35 -0800
-Message-ID: <CA+55aFzRMS15X7ujHJB2tmFVOteCEgLPB7ysyD+fkRF9dLFaHQ@mail.gmail.com>
-Subject: Re: [GIT PULL] inode->i_version rework for v4.16
-To: Jeff Layton <jlayton@redhat.com>
-Cc: open list <linux-kernel@vger.kernel.org>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        xfs <linux-xfs@vger.kernel.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 29, 2018 at 1:50 PM, Linus Torvalds
-<torvalds@linux-foundation.org> wrote:
->
-> Hmm. I have pulled this, but it is really really broken in one place,
-> to the degree that I always went "no, I won't pull this garbage".
 
-always=almost.
+Greetings,
 
-I'd blame auto-correct, but I'm not on the phone.
+I am pleased to announce the Spring 2018 Bake-a-thon, hosted
+at the Oracle offices in Ann Arbor, MI.  The event will run
+from the morning of March 26th to noon on Friday, March 30th.
 
-                Linus
+The technologies under test include NFSv4.0, 4.1, & 4.2, pNFS
+and NFSoRDMA over InfiniBand.
+
+I will be handling the registration process, so please send me
+your attendee list.  The event is free of charge, but only
+individuals and organizations with legitimate testing interests
+will be allowed to register.  Due to space limitations, we can
+only accept the first 25 registrants.
+
+The Oracle offices are located at:
+
+777 E. Eisenhower Pkwy, Ste. 950
+Ann Arbor, MI 48108
+
+There are several decent and reasonably priced hotels just
+east of Boardwalk and south of Eisenhower.  It looks to be an
+easy walk from these to the Oracle office, but the building also
+has plenty of free ground parking.  I'll post a parking map prior
+to the event.  Sorry, but we are not able to offer a room discount.
+
+We look forward to seeing you at Bake-a-thon!
+
+-- 
+Bill Baker - Oracle Linux NFS development
