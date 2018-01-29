@@ -1,159 +1,171 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f195.google.com ([209.85.220.195]:38244 "EHLO
-        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751858AbeA2M0j (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 07:26:39 -0500
-Received: by mail-qk0-f195.google.com with SMTP id t134so5217634qke.5
-        for <linux-nfs@vger.kernel.org>; Mon, 29 Jan 2018 04:26:38 -0800 (PST)
-Message-ID: <1517228795.5965.24.camel@redhat.com>
-Subject: [GIT PULL] inode->i_version rework for v4.16
-From: Jeff Layton <jlayton@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: open list <linux-kernel@vger.kernel.org>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        xfs <linux-xfs@vger.kernel.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Date: Mon, 29 Jan 2018 07:26:35 -0500
+Received: from mail-ua0-f179.google.com ([209.85.217.179]:46190 "EHLO
+        mail-ua0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751072AbeA2RTW (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 12:19:22 -0500
+Received: by mail-ua0-f179.google.com with SMTP id j23so5167051uak.13
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Jan 2018 09:19:21 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <16CE3E21-2BF9-4CC5-A3E7-FFBE706A9EF4@oracle.com>
+References: <CAN-5tyFX2aZPXy2NRiATwkbv8gDbyafB-4JsRUghuF84ih_WnQ@mail.gmail.com>
+ <0B3C835B-3E30-43F3-B53C-BFB4462543D3@oracle.com> <CAN-5tyFu9YPVFzmrCcwwdcS5v8X61Az3hSW8xSDdTA3MWi09Sg@mail.gmail.com>
+ <C5643108-6C06-4043-A67A-F63A2234FC40@oracle.com> <CAN-5tyHv+u=FsP+S7mG+7HHrrW=NKhC3vW_fVQh0OpjPJVJ2dw@mail.gmail.com>
+ <16CE3E21-2BF9-4CC5-A3E7-FFBE706A9EF4@oracle.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Mon, 29 Jan 2018 12:19:20 -0500
+Message-ID: <CAN-5tyHSW9DPHbp9BGEFaF0dSFBc_NBwdSd9L4ZNCgzLn2VEkQ@mail.gmail.com>
+Subject: Re: problem on nfsd doing RDMA write
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bruce Fields <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The following changes since commit 50c4c4e268a2d7a3e58ebb698ac74da0de40ae36:
+On Fri, Jan 26, 2018 at 4:08 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>
+>
+>> On Jan 26, 2018, at 12:13 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>
+>> On Fri, Jan 26, 2018 at 2:29 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>>
+>>>> On Jan 26, 2018, at 11:05 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>
+>>>> On Fri, Jan 26, 2018 at 1:23 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>
+>>>>>
+>>>>>> On Jan 26, 2018, at 9:24 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>
+>>>>>> Hi Bruce/Chuck,
+>>>>>>
+>>>>>> There is a problem with nfsd doing a WRITE of size 4093,4094,4095. To
+>>>>>> reproduce, mount with RDMA and do a simple dd "dd if=/dev/zero
+>>>>>> of=/mnt/testfile bs=4093 count=1". What happens is that nfsd fails to
+>>>>>> parse GETATTR after the WRITE in the compound. It fails the operation
+>>>>>> with ERR_OP_ILLEGAL.
+>>>>>>
+>>>>>> The problem happens for the values where XDR round up ends up rounding
+>>>>>> up to the page size. I don't know if my fix is the appropriate way to
+>>>>>> fix this but with it I don't get the error:
+>>>>>>
+>>>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>>>>>> index 2c61c6b..a8489c3 100644
+>>>>>> --- a/fs/nfsd/nfs4xdr.c
+>>>>>> +++ b/fs/nfsd/nfs4xdr.c
+>>>>>> @@ -1289,11 +1289,12 @@ static __be32 nfsd4_decode_opaque(struct nfsd4_compounda
+>>>>>>
+>>>>>>      len = XDR_QUADLEN(write->wr_buflen) << 2;
+>>>>>>      if (len >= avail) {
+>>>>>> -               int pages;
+>>>>>> +               int pages = 0;
+>>>>>>
+>>>>>>              len -= avail;
+>>>>>>
+>>>>>> -               pages = len >> PAGE_SHIFT;
+>>>>>> +               if (write->wr_buflen >= PAGE_SIZE)
+>>>>>> +                       pages = len >> PAGE_SHIFT;
+>>>>>>              argp->pagelist += pages;
+>>>>>>              argp->pagelen -= pages * PAGE_SIZE;
+>>>>>>              len -= pages * PAGE_SIZE;
+>>>>>>
+>>>>>> So the problem is the using "len" instead of "write->wr_buflen" leads
+>>>>>> for the values 4093,4094,4095 that are rounded up to 4096, it makes
+>>>>>> pages=1 and the argp->pagelen ends up being a negative value leading
+>>>>>> to problems of parsing the GETATTR.
+>>>>>
+>>>>> Would this also be a problem near any page boundary, say, a
+>>>>> write length of 8191 bytes?
+>>>>>
+>>>>> Instead of using the rounded up "len", why not try this:
+>>>>>
+>>>>> -               pages = len >> PAGE_SHIFT;
+>>>>> +               pages = write->wr_buflen >> PAGE_SHIFT;
+>>>>
+>>>> You are right. It needs to be that. Otherwise 8191 fails the same way.
+>>>>
+>>>>> And be sure to test with TCP as well.
+>>>>
+>>>> Sigh. It breaks normal (non-RDMA) mounts. I'll figure out why.
+>>>
+>>> OK.
+>>>
+>>> Remember that a Read chunk's length does not have to be
+>>> rounded up. Maybe the transport needs to round up the
+>>> length of the unmarshaled data content on behalf of the
+>>> NFSv4 write decoder.
+>>>
+>>
+>> The problem of simply taking write->wr_buflen was that len before that
+>> could have been adjusted by avail value in then non-RDAM mounts.
+>>
+>> Again, I'm not sure if this is the right fix. But this one works for
+>> both non-RDMA and RDMA mounts.
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index 2c61c6b..3178997 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -1293,7 +1293,10 @@ static __be32 nfsd4_decode_opaque(struct
+>> nfsd4_compoundargs *argp, struct xdr_ne
+>>
+>>                len -= avail;
+>>
+>> -               pages = len >> PAGE_SHIFT;
+>> +               if (!avail)
+>> +                       pages = write->wr_buflen >> PAGE_SHIFT;
+>> +               else
+>> +                       pages = len >> PAGE_SHIFT;
+>>                argp->pagelist += pages;
+>>                argp->pagelen -= pages * PAGE_SIZE;
+>>                len -= pages * PAGE_SIZE;
+>
+> This code has been around since 2012. Has it always been
+> broken for RDMA? I suspect the root problem is in the
+> transport, not here in the decoder. Can you bisect to
+> find out where the problem started to occur?
 
-  Linux 4.15-rc3 (2017-12-10 17:56:26 -0800)
+To see if I could go back to 2012, I first want to see if I could go
+back to before mlx5 driver was added which was in 3.11-rc1. But I'm
+having issues trying to boot into a kernel based on 3.10 or 3.9. I'm
+trying to verify if my CX-5 card would even work with mlx4 driver
+which I'm having doubts it would. These old kernels fail to boot in
+XFS saying that it's a wrong version. Some googling makes me think
+that since my XFS partition was created with a newer kernel it's not
+compatible with an older kernel...
 
-are available in the Git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/jlayton/linux.git tags/iversion-v4.16-1
-
-for you to fetch changes up to f02a9ad1f15daf4378afeda025a53455f72645dd:
-
-  fs: handle inode->i_version more efficiently (2018-01-29 06:42:21 -0500)
-
-----------------------------------------------------------------
-Hi Linus,
-
-This pile of patches is a rework of the inode->i_version field. We have
-traditionally incremented that field on every inode data or metadata
-change. Typically this increment needs to be logged on disk even when
-nothing else has changed, which is rather expensive.
-
-It turns out though that none of the consumers of that field actually
-require this behavior. The only real requirement for all of them is that
-it be different iff the inode has changed since the last time the field
-was checked.
-
-Given that, we can optimize away most of the i_version increments and
-avoid dirtying inode metadata when the only change is to the i_version 
-and no one is querying it. Queries of the i_version field are rather
-rare, so we can help write performance under many common workloads.
-
-This patch series converts existing accesses of the i_version field to a
-new API, and then converts all of the in-kernel filesystems to use it.
-The last patch in the series then converts the backend implementation to
-a scheme that optimizes away a large portion of the metadata updates
-when no one is looking at it.
-
-In my own testing this series significantly helps performance with small
-I/O sizes. I also got this email for Christmas this year from the kernel
-test robot (a 244% r/w bandwidth improvement with XFS over DAX, with 4k
-writes):
-
-    https://lkml.org/lkml/2017/12/25/8
-
-A few of the earlier patches in this pile are also flowing to you via
-other trees (mm, integrity, and nfsd trees in particular), so there may
-be some minor merge conflicts here. Hopefully they're trivial to
-resolve, but let me know if there are problems.
-
-Thanks!
-----------------------------------------------------------------
-Jeff Layton (21):
-      lustre: don't set f_version in ll_readdir
-      ntfs: remove i_version handling
-      fs: new API for handling inode->i_version
-      fs: don't take the i_lock in inode_inc_iversion
-      fat: convert to new i_version API
-      affs: convert to new i_version API
-      afs: convert to new i_version API
-      btrfs: convert to new i_version API
-      exofs: switch to new i_version API
-      ext2: convert to new i_version API
-      ext4: convert to new i_version API
-      nfs: convert to new i_version API
-      nfsd: convert to new i_version API
-      ocfs2: convert to new i_version API
-      ufs: use new i_version API
-      xfs: convert to new i_version API
-      IMA: switch IMA over to new i_version API
-      fs: only set S_VERSION when updating times if necessary
-      xfs: avoid setting XFS_ILOG_CORE if i_version doesn't need incrementing
-      btrfs: only dirty the inode in btrfs_update_time if something was changed
-      fs: handle inode->i_version more efficiently
-
-Sascha Hauer (1):
-      ima: Use i_version only when filesystem supports it
-
- drivers/staging/lustre/lustre/llite/dir.c |   3 -
- fs/affs/amigaffs.c                        |   5 +-
- fs/affs/dir.c                             |   5 +-
- fs/affs/super.c                           |   3 +-
- fs/afs/fsclient.c                         |   3 +-
- fs/afs/inode.c                            |   5 +-
- fs/btrfs/delayed-inode.c                  |   7 +-
- fs/btrfs/file.c                           |   1 +
- fs/btrfs/inode.c                          |  12 +-
- fs/btrfs/ioctl.c                          |   1 +
- fs/btrfs/tree-log.c                       |   4 +-
- fs/btrfs/xattr.c                          |   1 +
- fs/exofs/dir.c                            |   9 +-
- fs/exofs/super.c                          |   3 +-
- fs/ext2/dir.c                             |   9 +-
- fs/ext2/super.c                           |   5 +-
- fs/ext4/dir.c                             |   9 +-
- fs/ext4/inline.c                          |   7 +-
- fs/ext4/inode.c                           |  13 +-
- fs/ext4/ioctl.c                           |   3 +-
- fs/ext4/namei.c                           |   5 +-
- fs/ext4/super.c                           |   3 +-
- fs/ext4/xattr.c                           |   5 +-
- fs/fat/dir.c                              |   3 +-
- fs/fat/inode.c                            |   9 +-
- fs/fat/namei_msdos.c                      |   7 +-
- fs/fat/namei_vfat.c                       |  22 +-
- fs/inode.c                                |  11 +-
- fs/nfs/delegation.c                       |   3 +-
- fs/nfs/fscache-index.c                    |   5 +-
- fs/nfs/inode.c                            |  18 +-
- fs/nfs/nfs4proc.c                         |  10 +-
- fs/nfs/nfstrace.h                         |   5 +-
- fs/nfs/write.c                            |   8 +-
- fs/nfsd/nfsfh.h                           |   3 +-
- fs/ntfs/inode.c                           |   9 -
- fs/ntfs/mft.c                             |   6 -
- fs/ocfs2/dir.c                            |  15 +-
- fs/ocfs2/inode.c                          |   3 +-
- fs/ocfs2/namei.c                          |   3 +-
- fs/ocfs2/quota_global.c                   |   3 +-
- fs/ufs/dir.c                              |   9 +-
- fs/ufs/inode.c                            |   3 +-
- fs/ufs/super.c                            |   3 +-
- fs/xfs/libxfs/xfs_inode_buf.c             |   7 +-
- fs/xfs/xfs_icache.c                       |   5 +-
- fs/xfs/xfs_inode.c                        |   3 +-
- fs/xfs/xfs_inode_item.c                   |   3 +-
- fs/xfs/xfs_trans_inode.c                  |  16 +-
- include/linux/fs.h                        |  17 +-
- include/linux/iversion.h                  | 341 ++++++++++++++++++++++++++++++
- security/integrity/ima/ima_api.c          |   3 +-
- security/integrity/ima/ima_main.c         |   4 +-
- 53 files changed, 525 insertions(+), 153 deletions(-)
- create mode 100644 include/linux/iversion.h
--- 
-Jeff Layton <jlayton@redhat.com>
+>>>>>> If this looks OK, I can send a patch.
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>
+>>>>> --
+>>>>> Chuck Lever
+>>>>>
+>>>>>
+>>>>>
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> Chuck Lever
+>>>
+>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> Chuck Lever
+>
+>
+>
