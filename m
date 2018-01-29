@@ -1,49 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:55795 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751234AbeA2C62 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 28 Jan 2018 21:58:28 -0500
-Received: by mail-it0-f67.google.com with SMTP id c16so6542481itc.5
-        for <linux-nfs@vger.kernel.org>; Sun, 28 Jan 2018 18:58:28 -0800 (PST)
-Received: from localhost.localdomain (50-36-85-67.alma.mi.frontiernet.net. [50.36.85.67])
-        by smtp.gmail.com with ESMTPSA id w125sm5265667itb.31.2018.01.28.18.58.26
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Sun, 28 Jan 2018 18:58:26 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] NFS: Fix a race between mmap() and O_DIRECT
-Date: Sun, 28 Jan 2018 21:58:22 -0500
-Message-Id: <20180129025822.5116-2-trond.myklebust@primarydata.com>
-In-Reply-To: <20180129025822.5116-1-trond.myklebust@primarydata.com>
-References: <20180129025822.5116-1-trond.myklebust@primarydata.com>
+Received: from mail-ot0-f173.google.com ([74.125.82.173]:40739 "EHLO
+        mail-ot0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751032AbeA2Go0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 01:44:26 -0500
+Received: by mail-ot0-f173.google.com with SMTP id x4so5575519otg.7
+        for <linux-nfs@vger.kernel.org>; Sun, 28 Jan 2018 22:44:25 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <CANpxKHE=eKuFc2HBgT0aqDb+Q5EOFWOfCzf=tmmuH7zNyn878g@mail.gmail.com>
+References: <CANpxKHE=eKuFc2HBgT0aqDb+Q5EOFWOfCzf=tmmuH7zNyn878g@mail.gmail.com>
+From: Naruto Nguyen <narutonguyen2018@gmail.com>
+Date: Mon, 29 Jan 2018 13:44:25 +0700
+Message-ID: <CANpxKHH3zf_RRnxckHKfvEWL-RNCr_ZePxc0r98Ep0X_JX1BbA@mail.gmail.com>
+Subject: Re: Question about random UDP port on rpcbind 0.2.3
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When locking the file in order to do O_DIRECT on it, we must unmap
-any mmapped ranges on the pagecache so that we can flush out the
-dirty data.
+Hello,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: stable@vger.kernel.org # v4.8+
----
- fs/nfs/io.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Just would like to add for more information, when I start rpcbind
+normally, not via systemd, the random UDP is still opened
 
-diff --git a/fs/nfs/io.c b/fs/nfs/io.c
-index 20fef85d2bb1..9034b4926909 100644
---- a/fs/nfs/io.c
-+++ b/fs/nfs/io.c
-@@ -99,7 +99,7 @@ static void nfs_block_buffered(struct nfs_inode *nfsi, struct inode *inode)
- {
- 	if (!test_bit(NFS_INO_ODIRECT, &nfsi->flags)) {
- 		set_bit(NFS_INO_ODIRECT, &nfsi->flags);
--		nfs_wb_all(inode);
-+		nfs_sync_mapping(inode->i_mapping);
- 	}
- }
- 
--- 
-2.14.3
+Could you please share any ideas on this?
 
+Brs,
+Bao
+
+On 27 January 2018 at 19:50, Naruto Nguyen <narutonguyen2018@gmail.com> wrote:
+> I would like to ask you a question regarding the new random UDP port
+> in rpcbind 0.2.3.
+>
+> In rpcbind 0.2.3, when I start rpcbind (version 0.2.3) through
+> rpcbind.service, then I do netstat
+>
+> udp        0      0 0.0.0.0:111             0.0.0.0:*
+>          10408/rpcbind
+> udp        0      0 0.0.0.0:831             0.0.0.0:*
+>          10408/rpcbind
+> udp6       0      0 :::111                  :::*
+>          10408/rpcbind
+> udp6       0      0 :::831                  :::*
+>          10408/rpcbind
+>
+> The rpcbind does not only listen on port 111 but also on a random udp
+> port "831" in this case, this port is changed every time the rpcbind
+> service retstarts. And it listens on 0.0.0.0 so it opens a hole on
+> security. Could you please let me know what this port is for and is
+> there any way to avoid that like force it listen on a internal
+> interface rather than on any interfaces like that? I do not see the
+> random port on rpcbind 0.2.1, not sure why? As the rpcbind is started
+> from systemd so "-h" option is invalid as the man page says:
+>
+>
+>    -h      Specify specific IP addresses to bind to for UDP requests.
+> This option may be specified multiple times and can be used to
+> restrict the interfaces rpcbind will respond to.  Note that when
+> rpcbind is controlled via sys-
+>              temd's socket activation, the -h option is ignored. In
+> this case, you need to edit the ListenStream and ListenDgram
+> definitions in /usr/lib/systemd/system/rpcbind.socket instead.
+>
+> Thanks a lot,
+> Brs,
+> Naruto
