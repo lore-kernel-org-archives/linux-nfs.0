@@ -1,88 +1,159 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:54223 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751738AbeA2KYB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 29 Jan 2018 05:24:01 -0500
-From: NeilBrown <neilb@suse.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Mon, 29 Jan 2018 17:07:21 +1100
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 02/20] SUNRPC: add 'struct cred *' to auth_cred and rpc_cred
-In-Reply-To: <ea9fad0d-a718-aba8-3dd1-042644577c81@Netapp.com>
-References: <151538903497.25812.13293229343061416612.stgit@noble> <151538917875.25812.10005878132438571890.stgit@noble> <ea9fad0d-a718-aba8-3dd1-042644577c81@Netapp.com>
-Message-ID: <87zi4x5hba.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from mail-qk0-f195.google.com ([209.85.220.195]:38244 "EHLO
+        mail-qk0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751858AbeA2M0j (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 29 Jan 2018 07:26:39 -0500
+Received: by mail-qk0-f195.google.com with SMTP id t134so5217634qke.5
+        for <linux-nfs@vger.kernel.org>; Mon, 29 Jan 2018 04:26:38 -0800 (PST)
+Message-ID: <1517228795.5965.24.camel@redhat.com>
+Subject: [GIT PULL] inode->i_version rework for v4.16
+From: Jeff Layton <jlayton@redhat.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: open list <linux-kernel@vger.kernel.org>,
+        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        xfs <linux-xfs@vger.kernel.org>,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-integrity <linux-integrity@vger.kernel.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Date: Mon, 29 Jan 2018 07:26:35 -0500
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+The following changes since commit 50c4c4e268a2d7a3e58ebb698ac74da0de40ae36:
 
-On Thu, Jan 18 2018, Anna Schumaker wrote:
+  Linux 4.15-rc3 (2017-12-10 17:56:26 -0800)
 
-> Hi Neil,
->
-> On 01/08/2018 12:26 AM, NeilBrown wrote:
->> The SUNRPC credential framework was put together before
->> Linux has 'struct cred'.  Now that we have it, it makes sense to
->> use it.
->> This first step just includes a suitable 'struct cred *' pointer
->> in every 'struct auth_cred' and almost every 'struct rpc_cred'.
->>=20
->> The rpc_cred used for auth_null has a NULL 'struct cred *' as nothing
->> else really makes sense.
->>=20
->> For rpc_cred, the pointer is reference counted.
->> For auth_cred it isn't.  struct auth_cred are either allocated on
->> the stack, in which case the thread owns a reference to the auth,
->> or are part of 'struct generic_cred' in which case gc_base owns the
->> reference and acred shares it.
->>=20
->> Signed-off-by: NeilBrown <neilb@suse.com>
-...
+are available in the Git repository at:
 
->> @@ -669,11 +671,15 @@ rpcauth_bind_root_cred(struct rpc_task *task, int =
-lookupflags)
->>  	struct auth_cred acred =3D {
->>  		.uid =3D GLOBAL_ROOT_UID,
->>  		.gid =3D GLOBAL_ROOT_GID,
->> +		.cred =3D get_task_cred(&init_task),
->
-> Is there a patch somewhere to add "EXPORT_SYMBOL_GPL(get_task_cred)" to k=
-ernel/cred.c?
-> I'm getting:=20
->     ERROR: "get_task_cred" [net/sunrpc/sunrpc.ko] undefined!
-> when I compile.
->
+  git://git.kernel.org/pub/scm/linux/kernel/git/jlayton/linux.git tags/iversion-v4.16-1
 
-Thanks for finding that - I don't often compile things as modules :-)
-I'll separate out the core cred.[ch] patches, add this, and send those
-for an ACK to the relevant maintainer.
+for you to fetch changes up to f02a9ad1f15daf4378afeda025a53455f72645dd:
 
-thanks,
-NeilBrown
+  fs: handle inode->i_version more efficiently (2018-01-29 06:42:21 -0500)
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+----------------------------------------------------------------
+Hi Linus,
 
------BEGIN PGP SIGNATURE-----
+This pile of patches is a rework of the inode->i_version field. We have
+traditionally incremented that field on every inode data or metadata
+change. Typically this increment needs to be logged on disk even when
+nothing else has changed, which is rather expensive.
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlpuuhkACgkQOeye3VZi
-gbkg8RAAnoPigJWKthS10ezFtlobbj3+1IpabFIDIIwbffYkglNGBe/DAQKq5BoR
-R/jyQxzgHHqLEYbmqwe02hEKtZhGbQ1Qzf2Ejc+KQUEQU3gjUYdWhU2vPj08alue
-jTem9QS6x3qPYgUjA9VdQn5wSf8aiLMTjW8oUeoTN1MAz+mJn062zCR8i8jbAJNG
-LmRjrn/ASZqkkj2+S+hbFDj7Mh4JIIf89U5InTnkVOmCyp/DquX+ZNlprEjVxwmH
-1TdbqGrjzp0ADhccQwVh0+ONRx0aaXDuGvTV3sa9qpccQZSVvIrARdTnK+y9xX5v
-ZZMYJHSvFSKVIQkQ+1Muc7qKREV522qeFTjn4bjLyMv3L4xR9quK0nuul+69sk/C
-7Cr3IVMadCoTlLOd9QcVQmh14+V4/uWOlltEVmqVAR9DP/hLDnpjDk2AOD7GKuXJ
-3R0cQ3SCxqwRDg+qLKwEXQoXsAzhceSmvGdNzV/itsAJFnLRFj/fCcytqpzI7jaq
-NdJD5Td8EcBUI7Uuyq5DDLtyEqr49Ocej5sNPCDxc8Hm71fvpRRDFtPs7a2SjQoK
-zoxKAMUVIrDZxt+K2SoNeneq/Rb37y6mLZTfSg3pFnj/nFC9W0UpwKEzNJHQ6Rob
-0spael7gYpDnNYUeJbxtazrL5CZaxWrQaz/+i8MRfU0FUBcF4JY=
-=HxWl
------END PGP SIGNATURE-----
---=-=-=--
+It turns out though that none of the consumers of that field actually
+require this behavior. The only real requirement for all of them is that
+it be different iff the inode has changed since the last time the field
+was checked.
+
+Given that, we can optimize away most of the i_version increments and
+avoid dirtying inode metadata when the only change is to the i_version 
+and no one is querying it. Queries of the i_version field are rather
+rare, so we can help write performance under many common workloads.
+
+This patch series converts existing accesses of the i_version field to a
+new API, and then converts all of the in-kernel filesystems to use it.
+The last patch in the series then converts the backend implementation to
+a scheme that optimizes away a large portion of the metadata updates
+when no one is looking at it.
+
+In my own testing this series significantly helps performance with small
+I/O sizes. I also got this email for Christmas this year from the kernel
+test robot (a 244% r/w bandwidth improvement with XFS over DAX, with 4k
+writes):
+
+    https://lkml.org/lkml/2017/12/25/8
+
+A few of the earlier patches in this pile are also flowing to you via
+other trees (mm, integrity, and nfsd trees in particular), so there may
+be some minor merge conflicts here. Hopefully they're trivial to
+resolve, but let me know if there are problems.
+
+Thanks!
+----------------------------------------------------------------
+Jeff Layton (21):
+      lustre: don't set f_version in ll_readdir
+      ntfs: remove i_version handling
+      fs: new API for handling inode->i_version
+      fs: don't take the i_lock in inode_inc_iversion
+      fat: convert to new i_version API
+      affs: convert to new i_version API
+      afs: convert to new i_version API
+      btrfs: convert to new i_version API
+      exofs: switch to new i_version API
+      ext2: convert to new i_version API
+      ext4: convert to new i_version API
+      nfs: convert to new i_version API
+      nfsd: convert to new i_version API
+      ocfs2: convert to new i_version API
+      ufs: use new i_version API
+      xfs: convert to new i_version API
+      IMA: switch IMA over to new i_version API
+      fs: only set S_VERSION when updating times if necessary
+      xfs: avoid setting XFS_ILOG_CORE if i_version doesn't need incrementing
+      btrfs: only dirty the inode in btrfs_update_time if something was changed
+      fs: handle inode->i_version more efficiently
+
+Sascha Hauer (1):
+      ima: Use i_version only when filesystem supports it
+
+ drivers/staging/lustre/lustre/llite/dir.c |   3 -
+ fs/affs/amigaffs.c                        |   5 +-
+ fs/affs/dir.c                             |   5 +-
+ fs/affs/super.c                           |   3 +-
+ fs/afs/fsclient.c                         |   3 +-
+ fs/afs/inode.c                            |   5 +-
+ fs/btrfs/delayed-inode.c                  |   7 +-
+ fs/btrfs/file.c                           |   1 +
+ fs/btrfs/inode.c                          |  12 +-
+ fs/btrfs/ioctl.c                          |   1 +
+ fs/btrfs/tree-log.c                       |   4 +-
+ fs/btrfs/xattr.c                          |   1 +
+ fs/exofs/dir.c                            |   9 +-
+ fs/exofs/super.c                          |   3 +-
+ fs/ext2/dir.c                             |   9 +-
+ fs/ext2/super.c                           |   5 +-
+ fs/ext4/dir.c                             |   9 +-
+ fs/ext4/inline.c                          |   7 +-
+ fs/ext4/inode.c                           |  13 +-
+ fs/ext4/ioctl.c                           |   3 +-
+ fs/ext4/namei.c                           |   5 +-
+ fs/ext4/super.c                           |   3 +-
+ fs/ext4/xattr.c                           |   5 +-
+ fs/fat/dir.c                              |   3 +-
+ fs/fat/inode.c                            |   9 +-
+ fs/fat/namei_msdos.c                      |   7 +-
+ fs/fat/namei_vfat.c                       |  22 +-
+ fs/inode.c                                |  11 +-
+ fs/nfs/delegation.c                       |   3 +-
+ fs/nfs/fscache-index.c                    |   5 +-
+ fs/nfs/inode.c                            |  18 +-
+ fs/nfs/nfs4proc.c                         |  10 +-
+ fs/nfs/nfstrace.h                         |   5 +-
+ fs/nfs/write.c                            |   8 +-
+ fs/nfsd/nfsfh.h                           |   3 +-
+ fs/ntfs/inode.c                           |   9 -
+ fs/ntfs/mft.c                             |   6 -
+ fs/ocfs2/dir.c                            |  15 +-
+ fs/ocfs2/inode.c                          |   3 +-
+ fs/ocfs2/namei.c                          |   3 +-
+ fs/ocfs2/quota_global.c                   |   3 +-
+ fs/ufs/dir.c                              |   9 +-
+ fs/ufs/inode.c                            |   3 +-
+ fs/ufs/super.c                            |   3 +-
+ fs/xfs/libxfs/xfs_inode_buf.c             |   7 +-
+ fs/xfs/xfs_icache.c                       |   5 +-
+ fs/xfs/xfs_inode.c                        |   3 +-
+ fs/xfs/xfs_inode_item.c                   |   3 +-
+ fs/xfs/xfs_trans_inode.c                  |  16 +-
+ include/linux/fs.h                        |  17 +-
+ include/linux/iversion.h                  | 341 ++++++++++++++++++++++++++++++
+ security/integrity/ima/ima_api.c          |   3 +-
+ security/integrity/ima/ima_main.c         |   4 +-
+ 53 files changed, 525 insertions(+), 153 deletions(-)
+ create mode 100644 include/linux/iversion.h
+-- 
+Jeff Layton <jlayton@redhat.com>
