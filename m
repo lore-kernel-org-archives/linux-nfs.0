@@ -1,71 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lf0-f65.google.com ([209.85.215.65]:41752 "EHLO
-        mail-lf0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751410AbeA3TXG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 14:23:06 -0500
-Received: by mail-lf0-f65.google.com with SMTP id f136so17033117lff.8
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Jan 2018 11:23:05 -0800 (PST)
-MIME-Version: 1.0
-From: Kenneth Dsouza <kdsouza@redhat.com>
-Date: Wed, 31 Jan 2018 00:53:04 +0530
-Message-ID: <CAA_-hQKaiEBUmKZj_o9fv-MOSvTgffACP8TrPPXGwk6x=MwkCA@mail.gmail.com>
-Subject: [PATCH] nfs4_getfacl: Add support to accept more paths
-To: linux-nfs@vger.kernel.org
-Cc: bfields@fieldses.org
+Received: from mail.kernel.org ([198.145.29.99]:56506 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752321AbeA3Tm7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 30 Jan 2018 14:42:59 -0500
+Message-ID: <1517341375.3658.12.camel@kernel.org>
+Subject: Re: [PATCH] iversion: make inode_cmp_iversion{+raw} return bool
+ instead of s64
+From: Jeff Layton <jlayton@kernel.org>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+Cc: "linux-integrity@vger.kernel.org" <linux-integrity@vger.kernel.org>,
+        "linux-xfs@vger.kernel.org" <linux-xfs@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "tytso@mit.edu" <tytso@mit.edu>
+Date: Tue, 30 Jan 2018 14:42:55 -0500
+In-Reply-To: <1517334602.5412.3.camel@primarydata.com>
+References: <20180130173126.2806-1-jlayton@kernel.org>
+         <1517334602.5412.3.camel@primarydata.com>
 Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, nfs4_getfacl accepts only a single path at a time, which
-makes us run the command several times.
-This patch will help us to list (ACL) on multiple files at a  time.
- nfs4getfacl file ...
+On Tue, 2018-01-30 at 17:50 +0000, Trond Myklebust wrote:
+> On Tue, 2018-01-30 at 12:31 -0500, Jeff Layton wrote:
+> > From: Jeff Layton <jlayton@redhat.com>
+> > 
+> > As Linus points out:
+> > 
+> >     The inode_cmp_iversion{+raw}() functions are pure and utter crap.
+> > 
+> >     Why?
+> > 
+> >     You say that they return 0/negative/positive, but they do so in a
+> >     completely broken manner. They return that ternary value as the
+> >     sequence number difference in a 's64', which means that if you
+> >     actually care about that ternary value, and do the *sane* thing
+> > that
+> >     the kernel-doc of the function implies is the right thing, you
+> > would
+> >     do
+> > 
+> >         int cmp = inode_cmp_iversion(inode, old);
+> >         if (cmp < 0 ...
+> > 
+> >     and as a result you get code that looks sane, but that doesn't
+> >     actually *WORK* right.
+> > 
+> > Since none of the callers actually care about the ternary value here,
+> > convert the inode_cmp_iversion{+raw} functions to just return a
+> > boolean
+> > value (false for matching, true for non-matching).
+> > 
+> > This matches the existing use of these functions just fine, and makes
+> > it
+> > simple to convert them to return a ternary value in the future if we
+> > grow callers that need it.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  include/linux/iversion.h | 20 +++++++++-----------
+> >  1 file changed, 9 insertions(+), 11 deletions(-)
+> > 
+> > diff --git a/include/linux/iversion.h b/include/linux/iversion.h
+> > index 858463fca249..ace32775c5f0 100644
+> > --- a/include/linux/iversion.h
+> > +++ b/include/linux/iversion.h
+> > @@ -309,13 +309,13 @@ inode_query_iversion(struct inode *inode)
+> >   * @inode: inode to check
+> >   * @old: old value to check against its i_version
+> >   *
+> > - * Compare the current raw i_version counter with a previous one.
+> > Returns 0 if
+> > - * they are the same or non-zero if they are different.
+> > + * Compare the current raw i_version counter with a previous one.
+> > Returns false
+> > + * if they are the same or true if they are different.
+> >   */
+> > -static inline s64
+> > +static inline bool
+> >  inode_cmp_iversion_raw(const struct inode *inode, u64 old)
+> >  {
+> > -	return (s64)inode_peek_iversion_raw(inode) - (s64)old;
+> > +	return inode_peek_iversion_raw(inode) != old;
+> >  }
+> >  
+> >  /**
+> > @@ -323,19 +323,17 @@ inode_cmp_iversion_raw(const struct inode
+> > *inode, u64 old)
+> >   * @inode: inode to check
+> >   * @old: old value to check against its i_version
+> >   *
+> > - * Compare an i_version counter with a previous one. Returns 0 if
+> > they are
+> > - * the same, a positive value if the one in the inode appears newer
+> > than @old,
+> > - * and a negative value if @old appears to be newer than the one in
+> > the
+> > - * inode.
+> > + * Compare an i_version counter with a previous one. Returns false
+> > if they are
+> > + * the same, and true if they are different.
+> >   *
+> >   * Note that we don't need to set the QUERIED flag in this case, as
+> > the value
+> >   * in the inode is not being recorded for later use.
+> >   */
+> >  
+> > -static inline s64
+> > +static inline bool
+> >  inode_cmp_iversion(const struct inode *inode, u64 old)
+> >  {
+> > -	return (s64)(inode_peek_iversion_raw(inode) &
+> > ~I_VERSION_QUERIED) -
+> > -	       (s64)(old << I_VERSION_QUERIED_SHIFT);
+> > +	return (inode_peek_iversion_raw(inode) & ~I_VERSION_QUERIED)
+> > !=
+> > +			(old << I_VERSION_QUERIED_SHIFT);
+> >  }
+> 
+> Is there any reason why this couldn't just use inode_peek_iversion()
+> instead of having to both mask the output from
+> inode_peek_iversion_raw() and shift 'old'?
 
----
- nfs4_getfacl/nfs4_getfacl.c | 11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
-
-diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
-index 5363096..bbbbb62 100644
---- a/nfs4_getfacl/nfs4_getfacl.c
-+++ b/nfs4_getfacl/nfs4_getfacl.c
-@@ -48,17 +48,13 @@ int main(int argc, char **argv)
- {
-        struct nfs4_acl *acl;
-        int res = 1;
--
-+       int count = 1;
-        execname = basename(argv[0]);
-
-        if (argc < 2) {
-                fprintf(stderr, "%s: you must specify a path.\n", execname);
-                usage(0);
-                goto out;
--       } else if (argc > 2) {
--               fprintf(stderr, "%s: currently, you may only specify a
-single path.\n", execname);
--               usage(0);
--               goto out;
-        } else if (!strcmp(argv[1], "-?") || !strcmp(argv[1], "-h") ||
-!strcmp(argv[1], "--help")) {
-                usage(1);
-                res = 0;
-@@ -68,12 +64,15 @@ int main(int argc, char **argv)
-                res = 0;
-                goto out;
-        }
--       acl = nfs4_acl_for_path(argv[1]);
-+       for (counter = 1; counter < agrc; counter++)    {
-+       acl = nfs4_acl_for_path(argv[counter]);
-        if (acl != NULL) {
-+               printf("\n# file: %s\n", argv[counter]);
-                nfs4_print_acl(stdout, acl);
-                nfs4_free_acl(acl);
-                res = 0;
-        }
-+       }
- out:
-        return res;
- }
+None at all. I'll send a v2.
 -- 
-1.8.3.1
+Jeff Layton <jlayton@kernel.org>
