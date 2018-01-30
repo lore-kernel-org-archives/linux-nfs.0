@@ -1,107 +1,168 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qk0-f172.google.com ([209.85.220.172]:39605 "EHLO
-        mail-qk0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751464AbeA3MFv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 07:05:51 -0500
-Received: by mail-qk0-f172.google.com with SMTP id c69so9742727qkg.6
-        for <linux-nfs@vger.kernel.org>; Tue, 30 Jan 2018 04:05:51 -0800 (PST)
-Message-ID: <1517313948.3658.8.camel@redhat.com>
-Subject: Re: [GIT PULL] inode->i_version rework for v4.16
-From: Jeff Layton <jlayton@redhat.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: open list <linux-kernel@vger.kernel.org>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        xfs <linux-xfs@vger.kernel.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Date: Tue, 30 Jan 2018 07:05:48 -0500
-In-Reply-To: <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
-References: <1517228795.5965.24.camel@redhat.com>
-         <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:47255 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751660AbeA3Oj0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 09:39:26 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client changes
+Date: Tue, 30 Jan 2018 14:39:19 +0000
+Message-ID: <1517323157.5412.1.camel@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2018-01-29 at 13:50 -0800, Linus Torvalds wrote:
-> On Mon, Jan 29, 2018 at 4:26 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > This pile of patches is a rework of the inode->i_version field. We have
-> > traditionally incremented that field on every inode data or metadata
-> > change. Typically this increment needs to be logged on disk even when
-> > nothing else has changed, which is rather expensive.
-> 
-> Hmm. I have pulled this, but it is really really broken in one place,
-> to the degree that I always went "no, I won't pull this garbage".
-> 
-> But the breakage is potential, not actual, and can be fixed trivially,
-> so I'll let it slide - but I do require it to be fixed. And I require
-> people to *think* about it.
-> 
-> So what's to horribly horribly wrong?
-> 
-> The inode_cmp_iversion{+raw}() functions are pure and utter crap.
-> 
-> Why?
-> 
-> You say that they return 0/negative/positive, but they do so in a
-> completely broken manner. They return that ternary value as the
-> sequence number difference in a 's64', which means that if you
-> actually care about that ternary value, and do the *sane* thing that
-> the kernel-doc of the function implies is the right thing, you would
-> do
-> 
->     int cmp = inode_cmp_iversion(inode, old);
-> 
->     if (cmp < 0 ...
-> 
-> and as a result you get code that looks sane, but that doesn't
-> actually *WORK* right.
-> 
+SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgYTg3NTBkZGNh
+OTE4MDMyZDYzNDlhZGJmOWE0YjY1NTVlN2RiMjBkYToNCg0KICBMaW51eCA0LjE1LXJjOCAoMjAx
+OC0wMS0xNCAxNTozMjozMCAtMDgwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUgR2l0IHJlcG9z
+aXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMvdHJvbmRteS9s
+aW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE2LTENCg0KZm9yIHlvdSB0byBmZXRjaCBjaGFu
+Z2VzIHVwIHRvIGUyMzFjNjg3OWNmZDQ0ZTRmZmZkMzg0YmI2ZGQ3ZDMxMzI0OWE1MjM6DQoNCiAg
+TkZTOiBGaXggYSByYWNlIGJldHdlZW4gbW1hcCgpIGFuZCBPX0RJUkVDVCAoMjAxOC0wMS0yOCAy
+MjowMDoxNSAtMDUwMCkNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCB1cGRhdGVzIGZvciBMaW51eCA0
+LjE2DQoNCkhpZ2hsaWdodHMgaW5jbHVkZToNCg0KU3RhYmxlIGJ1Z2ZpeGVzOg0KLSBGaXggYnJl
+YWthZ2VzIGluIHRoZSBuZnNzdGF0IHV0aWxpdHkgZHVlIHRvIHRoZSBpbmNsdXNpb24gb2YgdGhl
+IE5GU3Y0DQogIExPT0tVUFAgb3BlcmF0aW9uLg0KLSBGaXggYSBOVUxMIHBvaW50ZXIgZGVyZWZl
+cmVuY2UgaW4gbmZzX2lkbWFwX3ByZXBhcmVfcGlwZV91cGNhbGwoKSBkdWUgdG8NCiAgbmZzX2lk
+bWFwX2xlZ2FjeV91cGNhbGwoKSBiZWluZyBjYWxsZWQgd2l0aG91dCBhbiAnYXV4JyBwYXJhbWV0
+ZXIuDQotIEZpeCBhIHJlZmNvdW50IGxlYWsgaW4gdGhlIHN0YW5kYXJkIE9fRElSRUNUIGVycm9y
+IHBhdGguDQotIEZpeCBhIHJlZmNvdW50IGxlYWsgaW4gdGhlIHBORlMgT19ESVJFQ1QgZmFsbGJh
+Y2sgdG8gTURTIHBhdGguDQotIEZpeCBDUFUgbGF0ZW5jeSBpc3N1ZXMgd2l0aCBuZnNfY29tbWl0
+X3JlbGVhc2VfcGFnZXMoKQ0KLSBGaXggdGhlIExBWU9VVFVOQVZBSUxBQkxFIGVycm9yIGNhc2Ug
+aW4gdGhlIGZpbGUgbGF5b3V0IHR5cGUuDQotIE5GUzogRml4IGEgcmFjZSBiZXR3ZWVuIG1tYXAo
+KSBhbmQgT19ESVJFQ1QNCg0KRmVhdHVyZXM6DQotIFN1cHBvcnQgdGhlIHN0YXR4KCkgbWFzayBh
+bmQgcXVlcnkgZmxhZ3MgdG8gZW5hYmxlIG9wdGltaXNhdGlvbnMgd2hlbg0KICB0aGUgdXNlciBp
+cyByZXF1ZXN0aW5nIG9ubHkgYXR0cmlidXRlcyB0aGF0IGFyZSBhbHJlYWR5IHVwIHRvIGRhdGUg
+aW4NCiAgdGhlIGlub2RlIGNhY2hlLCBvciBpcyBzcGVjaWZ5aW5nIHRoZSBBVF9TVEFUWF9ET05U
+X1NZTkMgZmxhZy4NCi0gQWRkIGEgbW9kdWxlIGFsaWFzIGZvciB0aGUgU0NTSSBwTkZTIGxheW91
+dCB0eXBlLg0KDQpCdWdmaXhlczoNCi0gQXV0b21vdW50aW5nIHdoZW4gcmVzb2x2aW5nIGEgTkZT
+djQgcmVmZXJyYWwgc2hvdWxkIHByZXNlcnZlIHRoZSBSRE1BDQogIHRyYW5zcG9ydCBwcm90b2Nv
+bCBzZXR0aW5ncy4NCi0gVmFyaW91cyBvdGhlciBSRE1BIGJ1Z2ZpeGVzIGZyb20gQ2h1Y2suDQot
+IHBORlMgYmxvY2sgbGF5b3V0IGZpeGVzLg0KLSBBbHdheXMgc2V0IE5GU19MT0NLX0xPU1Qgd2hl
+biBhIGxvY2sgaXMgbG9zdC4NCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KQXJuZCBCZXJnbWFubiAoMSk6DQogICAgICBu
+ZnM6IHJlbW92ZSB1bnVzZWQgbGFiZWwgaW4gbmZzX2VuY29kZV9maCgpDQoNCkJlbmphbWluIENv
+ZGRpbmd0b24gKDcpOg0KICAgICAgTkZTOiByZW1vdmUgdW51c2VkIG9mZnNldCBhcmcgaW4gbmZz
+X3BnaW9fcnBjc2V0dXANCiAgICAgIHBuZnMvYmxvY2tsYXlvdXQ6IEFkZCBtb2R1bGUgYWxpYXMg
+Zm9yIExBWU9VVDRfU0NTSQ0KICAgICAgcG5mcy9ibG9ja2xheW91dDogc2V0IFBORlNfTEFZT1VU
+UkVUVVJOX09OX0VSUk9SDQogICAgICBwbmZzL2Jsb2NrbGF5b3V0OiBoYW5kbGUgdHJhbnNpZW50
+IGRldmljZXMNCiAgICAgIFNVTlJQQzogRml4IG51bGwgcnBjX2NsbnQgZGVyZWZlcmVuY2UgaW4g
+cnBjX3Rhc2tfcXVldWVkIHRyYWNlcG9pbnQNCiAgICAgIHBuZnMvYmxvY2tsYXlvdXQ6IHBuZnNf
+YmxvY2tfZGV2X21hcCB1c2VzIGJ5dGVzLCBub3Qgc2VjdG9ycw0KICAgICAgcG5mcy9ibG9ja2xh
+eW91dDogRW5zdXJlIGRpc2sgYWRkcmVzcyBpbiBibG9jayBkZXZpY2UgbWFwDQoNCkNodWNrIExl
+dmVyICgzOSk6DQogICAgICBuZnM6IERlZmluZSBORlNfUkRNQV9QT1JUDQogICAgICBuZnM6IFJl
+ZmVycmFscyBzaG91bGQgdXNlIHRoZSBzYW1lIHByb3RvIHNldHRpbmcgYXMgdGhlaXIgcGFyZW50
+DQogICAgICBuZnM6IFVwZGF0ZSBzZXJ2ZXIgcG9ydCBhZnRlciByZWZlcnJhbCBvciBtaWdyYXRp
+b24NCiAgICAgIFNVTlJQQzogUmVtb3ZlIHJwY19wcm90b2NvbCgpDQogICAgICB4cHJ0cmRtYTog
+Rml4IGJ1ZmZlciBsZWFrIGFmdGVyIHRyYW5zcG9ydCBzZXQgdXAgZmFpbHVyZQ0KICAgICAgeHBy
+dHJkbWE6IEZpeCBiYWNrY2hhbm5lbCBhbGxvY2F0aW9uIG9mIGV4dHJhIHJwY3JkbWFfcmVwcw0K
+ICAgICAgeHBydHJkbWE6IEVsaW1pbmF0ZSB1bm5lY2Vzc2FyeSBsb2NrIGN5Y2xlIGluIHhwcnRf
+cmRtYV9zZW5kX3JlcXVlc3QNCiAgICAgIHhwcnRyZG1hOiBQZXItbW9kZSBoYW5kbGluZyBmb3Ig
+UmVtb3RlIEludmFsaWRhdGlvbg0KICAgICAgeHBydHJkbWE6IFJlbW92ZSByaV9yZW1pbnZfZXhw
+ZWN0ZWQNCiAgICAgIHhwcnRyZG1hOiBSZW1vdmUgdW51c2VkIHBhZGRpbmcgdmFyaWFibGVzDQog
+ICAgICB4cHJ0cmRtYTogSW5pdGlhbGl6ZSB0aGUgeHBydCBhZGRyZXNzIHN0cmluZyBhcnJheSBl
+YXJsaWVyDQogICAgICB4cHJ0cmRtYTogUmVtb3ZlIGFub3RoZXIgc29ja2FkZHJfc3RvcmFnZSBm
+aWVsZCAoY2RhdGE6OmFkZHIpDQogICAgICB4cHJ0cmRtYTogU3VwcG9ydCBJUHY2IGluIHhwcnRf
+cmRtYV9zZXRfcG9ydA0KICAgICAgeHBydHJkbWE6IE1vdmUgdW5tYXAtc2FmZSBsb2dpYyB0byBy
+cGNyZG1hX21hcnNoYWxfcmVxDQogICAgICB4cHJ0cmRtYTogYnVmX2ZyZWUgbm90IGNhbGxlZCBm
+b3IgQ0IgcmVwbGllcw0KICAgICAgeHBydHJkbWE6IFNwbGl0IHhwcnRfcmRtYV9zZW5kX3JlcXVl
+c3QNCiAgICAgIHhwcnRyZG1hOiBEb24ndCBjbGVhciBSUENfQkNfUEFfSU5fVVNFIG9uIHByZS1h
+bGxvY2F0ZWQgcnBjX3Jxc3Qncw0KICAgICAgeHBydHJkbWE6IFJlcGxhY2UgYWxsIHVzYWdlIG9m
+ICJmcm1yIiB3aXRoICJmcndyIg0KICAgICAgeHBydHJkbWE6IFJlbW92ZSB1c2FnZSBvZiAibXci
+DQogICAgICB4cHJ0cmRtYTogSW50cm9kdWNlIHJwY3JkbWFfbXdfdW5tYXBfYW5kX3B1dA0KICAg
+ICAgbmZzOiBVc2UgcHJvcGVyIGVudW0gZGVmaW5pdGlvbnMgZm9yIG5mc19zaG93X3N0YWJsZQ0K
+ICAgICAgcmRtYS9pYjogQWRkIHRyYWNlIHBvaW50IG1hY3JvcyB0byBkaXNwbGF5IGh1bWFuLXJl
+YWRhYmxlIHZhbHVlcw0KICAgICAgcnBjcmRtYTogaW5mcmFzdHJ1Y3R1cmUgZm9yIHN0YXRpYyB0
+cmFjZSBwb2ludHMgaW4gcnBjcmRtYS5rbw0KICAgICAgeHBydHJkbWE6IEFkZCB0cmFjZSBwb2lu
+dHMgaW4gUlBDIENhbGwgdHJhbnNtaXQgcGF0aHMNCiAgICAgIHhwcnRyZG1hOiBBZGQgdHJhY2Ug
+cG9pbnRzIGluIHRoZSBSUEMgUmVwbHkgaGFuZGxlciBwYXRocw0KICAgICAgeHBydHJkbWE6IEFk
+ZCB0cmFjZSBwb2ludHMgdG8gaW5zdHJ1bWVudCBtZW1vcnkgcmVnaXN0cmF0aW9uDQogICAgICB4
+cHJ0cmRtYTogQWRkIHRyYWNlIHBvaW50cyBpbiByZXBseSBkZWNvZGVyIHBhdGgNCiAgICAgIHhw
+cnRyZG1hOiBBZGQgdHJhY2UgcG9pbnRzIHRvIGluc3RydW1lbnQgbWVtb3J5IGludmFsaWRhdGlv
+bg0KICAgICAgeHBydHJkbWE6IEFkZCB0cmFjZSBwb2ludHMgdG8gaW5zdHJ1bWVudCBNUiBhbGxv
+Y2F0aW9uIGFuZCByZWNvdmVyeQ0KICAgICAgeHBydHJkbWE6IEFkZCB0cmFjZSBwb2ludHMgZm9y
+IGNvbm5lY3QgZXZlbnRzDQogICAgICB4cHJ0cmRtYTogQWRkIHRyYWNlIHBvaW50cyBpbiB0aGUg
+Y2xpZW50LXNpZGUgYmFja2NoYW5uZWwgY29kZSBwYXRocw0KICAgICAgeHBydHJkbWE6IEFkZCB0
+cmFjZSBwb2ludHMgdG8gaW5zdHJ1bWVudCBRUCBhbmQgQ1EgYWNjZXNzIHVwY2FsbHMNCiAgICAg
+IHhwcnRyZG1hOiBJbnN0cnVtZW50IGFsbG9jYXRpb24vcmVsZWFzZSBvZiBycGNyZG1hX3JlcS9y
+ZXAgb2JqZWN0cw0KICAgICAgeHBydHJkbWE6IEZpeCAiYnl0ZXMgcmVnaXN0ZXJlZCIgYWNjb3Vu
+dGluZw0KICAgICAgeHBydHJkbWE6IENvcnJlY3Qgc29tZSBkb2N1bWVudGluZyBjb21tZW50cw0K
+ICAgICAgU1VOUlBDOiBUcmFjZSB4cHJ0X3RpbWVyIGV2ZW50cw0KICAgICAgc3VucnBjOiBGb3Jt
+YXQgUlBDIGV2ZW50cyBjb25zaXN0ZW50bHkgZm9yIGRpc3BsYXkNCiAgICAgIFNVTlJQQzogdGFz
+a19ydW5fYWN0aW9uIHNob3VsZCBkaXNwbGF5IHRrX2NhbGxiYWNrDQogICAgICBTVU5SUEM6IE1p
+Y3JvLW9wdGltaXplIF9fcnBjX2V4ZWN1dGUNCg0KRWxlbmEgUmVzaGV0b3ZhICg0KToNCiAgICAg
+IGxvY2tkOiBjb252ZXJ0IG5sbV9ob3N0LmhfY291bnQgZnJvbSBhdG9taWNfdCB0byByZWZjb3Vu
+dF90DQogICAgICBsb2NrZDogY29udmVydCBuc21faGFuZGxlLnNtX2NvdW50IGZyb20gYXRvbWlj
+X3QgdG8gcmVmY291bnRfdA0KICAgICAgbG9ja2Q6IGNvbnZlcnQgbmxtX2xvY2tvd25lci5jb3Vu
+dCBmcm9tIGF0b21pY190IHRvIHJlZmNvdW50X3QNCiAgICAgIGxvY2tkOiBjb252ZXJ0IG5sbV9y
+cXN0LmFfY291bnQgZnJvbSBhdG9taWNfdCB0byByZWZjb3VudF90DQoNCkVyaWMgQmlnZ2VycyAo
+MSk6DQogICAgICBORlM6IHJlamVjdCByZXF1ZXN0IGZvciBpZF9sZWdhY3kga2V5IHdpdGhvdXQg
+YXV4ZGF0YQ0KDQpKLiBCcnVjZSBGaWVsZHMgKDEpOg0KICAgICAgTkZTOiBjb21taXQgZGlyZWN0
+IHdyaXRlcyBldmVuIGlmIHRoZXkgZmFpbCBwYXJ0aWFsbHkNCg0KSmFuIENob2Nob2wgKDEpOg0K
+ICAgICAgbmZzOiBEbyBub3QgY29udmVydCBuZnNfaWRtYXBfY2FjaGVfdGltZW91dCB0byBqaWZm
+aWVzDQoNCk5laWxCcm93biAoMik6DQogICAgICBuZnM6IHJlbW92ZSBkZWFkIGNvZGUgZnJvbSBu
+ZnNfZW5jb2RlX2ZoKCkNCiAgICAgIE5GU3Y0OiBhbHdheXMgc2V0IE5GU19MT0NLX0xPU1Qgd2hl
+biBhIGxvY2sgaXMgbG9zdC4NCg0KU2NvdHQgTWF5aGV3ICgxKToNCiAgICAgIG5mcy9wbmZzOiBm
+aXggbmZzX2RpcmVjdF9yZXEgcmVmIGxlYWsgd2hlbiBpL28gZmFsbHMgYmFjayB0byB0aGUgbWRz
+DQoNClRpZ3JhbiBNa3J0Y2h5YW4gKDEpOg0KICAgICAgbmZzNDE6IGRvIG5vdCByZXR1cm4gRU5P
+TUVNIG9uIExBWU9VVFVOQVZBSUxBQkxFDQoNClRyb25kIE15a2xlYnVzdCAoMTIpOg0KICAgICAg
+TkZTOiBBZGQgYSBjb25kX3Jlc2NoZWQoKSB0byBuZnNfY29tbWl0X3JlbGVhc2VfcGFnZXMoKQ0K
+ICAgICAgTkZTdjQ6IENvbnZlcnQgQ0xPU0UgdG8gdXNlIG5mczRfYXN5bmNfaGFuZGxlX2V4Y2Vw
+dGlvbigpDQogICAgICBORlN2NDogQ29udmVydCBERUxFR1JFVFVSTiB0byB1c2UgbmZzNF9oYW5k
+bGVfZXhjZXB0aW9uKCkNCiAgICAgIE5GU3Y0OiBDb252ZXJ0IExPQ0tVIHRvIHVzZSBuZnM0X2Fz
+eW5jX2hhbmRsZV9leGNlcHRpb24oKQ0KICAgICAgTkZTOiBGaXggbmZzc3RhdCBicmVha2FnZSBk
+dWUgdG8gTE9PS1VQUA0KICAgICAgU3VwcG9ydCBzdGF0eCgpIG1hc2sgYW5kIHF1ZXJ5IGZsYWdz
+IHBhcmFtZXRlcnMNCiAgICAgIFNVTlJQQzogQ2h1bmsgcmVhZGluZyBvZiByZXBsaWVzIGZyb20g
+dGhlIHNlcnZlcg0KICAgICAgU1VOUlBDOiBBZGQgZXhwbGljaXQgcmVzY2hlZHVsaW5nIHBvaW50
+cyBpbiB0aGUgcmVjZWl2ZSBwYXRoDQogICAgICBNZXJnZSB0YWcgJ25mcy1yZG1hLWZvci00LjE2
+LTEnIG9mIGdpdDovL2dpdC5saW51eC1uZnMub3JnL3Byb2plY3RzL2FubmEvbGludXgtbmZzDQog
+ICAgICBsb2NrZDogRml4IHNlcnZlciByZWZjb3VudGluZw0KICAgICAgTkZTOiBSZW1vdmUgYSBy
+ZWR1bmRhbnQgY2FsbCB0byB1bm1hcF9tYXBwaW5nX3JhbmdlKCkNCiAgICAgIE5GUzogRml4IGEg
+cmFjZSBiZXR3ZWVuIG1tYXAoKSBhbmQgT19ESVJFQ1QNCg0KIGZzL2xvY2tkL2NsbnRwcm9jLmMg
+ICAgICAgICAgICAgICB8ICAxNCArLQ0KIGZzL2xvY2tkL2hvc3QuYyAgICAgICAgICAgICAgICAg
+ICB8ICAyMiArLQ0KIGZzL2xvY2tkL21vbi5jICAgICAgICAgICAgICAgICAgICB8ICAxNCArLQ0K
+IGZzL2xvY2tkL3N2Y3Byb2MuYyAgICAgICAgICAgICAgICB8ICAgMiArLQ0KIGZzL25mcy9ibG9j
+a2xheW91dC9ibG9ja2xheW91dC5jICB8ICA5NCArKystDQogZnMvbmZzL2Jsb2NrbGF5b3V0L2Js
+b2NrbGF5b3V0LmggIHwgICA3ICstDQogZnMvbmZzL2Jsb2NrbGF5b3V0L2Rldi5jICAgICAgICAg
+IHwgICA3ICstDQogZnMvbmZzL2RpcmVjdC5jICAgICAgICAgICAgICAgICAgIHwgICA0ICstDQog
+ZnMvbmZzL2V4cG9ydC5jICAgICAgICAgICAgICAgICAgIHwgICA1IC0NCiBmcy9uZnMvZmlsZWxh
+eW91dC9maWxlbGF5b3V0LmMgICAgfCAgIDQgKy0NCiBmcy9uZnMvaW5vZGUuYyAgICAgICAgICAg
+ICAgICAgICAgfCAgNTMgKystDQogZnMvbmZzL2lvLmMgICAgICAgICAgICAgICAgICAgICAgIHwg
+ICAyICstDQogZnMvbmZzL25mczRjbGllbnQuYyAgICAgICAgICAgICAgIHwgIDI0ICstDQogZnMv
+bmZzL25mczRpZG1hcC5jICAgICAgICAgICAgICAgIHwgICA2ICstDQogZnMvbmZzL25mczRuYW1l
+c3BhY2UuYyAgICAgICAgICAgIHwgICAyIC0NCiBmcy9uZnMvbmZzNHByb2MuYyAgICAgICAgICAg
+ICAgICAgfCAgNDIgKy0NCiBmcy9uZnMvbmZzNHN0YXRlLmMgICAgICAgICAgICAgICAgfCAgIDUg
+Ky0NCiBmcy9uZnMvbmZzNHN5c2N0bC5jICAgICAgICAgICAgICAgfCAgIDIgKy0NCiBmcy9uZnMv
+bmZzNHhkci5jICAgICAgICAgICAgICAgICAgfCAgNjQgKy0tDQogZnMvbmZzL25mc3RyYWNlLmgg
+ICAgICAgICAgICAgICAgIHwgIDIyICstDQogZnMvbmZzL3BhZ2VsaXN0LmMgICAgICAgICAgICAg
+ICAgIHwgICA4ICstDQogZnMvbmZzL3BuZnMuYyAgICAgICAgICAgICAgICAgICAgIHwgICA2ICst
+DQogZnMvbmZzL3BuZnMuaCAgICAgICAgICAgICAgICAgICAgIHwgICA2ICstDQogZnMvbmZzL3Bu
+ZnNfZGV2LmMgICAgICAgICAgICAgICAgIHwgICAxIC0NCiBmcy9uZnMvd3JpdGUuYyAgICAgICAg
+ICAgICAgICAgICAgfCAgIDIgKw0KIGluY2x1ZGUvbGludXgvbG9ja2QvbG9ja2QuaCAgICAgICB8
+ICAgOSArLQ0KIGluY2x1ZGUvbGludXgvbmZzNC5oICAgICAgICAgICAgICB8ICAxMiArLQ0KIGlu
+Y2x1ZGUvbGludXgvc3VucnBjL2NsbnQuaCAgICAgICB8ICAgMSAtDQogaW5jbHVkZS9saW51eC9z
+dW5ycGMveHBydHJkbWEuaCAgIHwgICAyICstDQogaW5jbHVkZS90cmFjZS9ldmVudHMvcmRtYS5o
+ICAgICAgIHwgMTI5ICsrKysrKw0KIGluY2x1ZGUvdHJhY2UvZXZlbnRzL3JwY3JkbWEuaCAgICB8
+IDg5MCArKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrKw0KIGluY2x1ZGUvdHJh
+Y2UvZXZlbnRzL3N1bnJwYy5oICAgICB8ICAxMiArLQ0KIGluY2x1ZGUvdWFwaS9saW51eC9uZnMu
+aCAgICAgICAgICB8ICAgMSArDQogbmV0L3N1bnJwYy9jbG50LmMgICAgICAgICAgICAgICAgIHwg
+IDE2IC0NCiBuZXQvc3VucnBjL3NjaGVkLmMgICAgICAgICAgICAgICAgfCAgMjYgKy0NCiBuZXQv
+c3VucnBjL3hwcnQuYyAgICAgICAgICAgICAgICAgfCAgIDIgKy0NCiBuZXQvc3VucnBjL3hwcnRy
+ZG1hL2JhY2tjaGFubmVsLmMgfCAgNzggKystLQ0KIG5ldC9zdW5ycGMveHBydHJkbWEvZm1yX29w
+cy5jICAgICB8IDE1NyArKysrLS0tDQogbmV0L3N1bnJwYy94cHJ0cmRtYS9mcndyX29wcy5jICAg
+IHwgMzI5ICsrKysrKystLS0tLS0tDQogbmV0L3N1bnJwYy94cHJ0cmRtYS9tb2R1bGUuYyAgICAg
+IHwgIDEyICstDQogbmV0L3N1bnJwYy94cHJ0cmRtYS9ycGNfcmRtYS5jICAgIHwgMTYyICsrKy0t
+LS0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3RyYW5zcG9ydC5jICAgfCAxMjggKysrLS0tDQogbmV0
+L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5jICAgICAgIHwgMjgwICsrKysrKy0tLS0tLQ0KIG5ldC9z
+dW5ycGMveHBydHJkbWEveHBydF9yZG1hLmggICB8IDExNiArKy0tLQ0KIG5ldC9zdW5ycGMveHBy
+dHNvY2suYyAgICAgICAgICAgICB8ICAzNiArLQ0KIDQ1IGZpbGVzIGNoYW5nZWQsIDE5OTUgaW5z
+ZXJ0aW9ucygrKSwgODIxIGRlbGV0aW9ucygtKQ0KIGNyZWF0ZSBtb2RlIDEwMDY0NCBpbmNsdWRl
+L3RyYWNlL2V2ZW50cy9yZG1hLmgNCiBjcmVhdGUgbW9kZSAxMDA2NDQgaW5jbHVkZS90cmFjZS9l
+dmVudHMvcnBjcmRtYS5oDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50
+IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29t
+DQo=
 
-My intent here was to have this handle wraparound using the same sort of
-method that the time_before/time_after macros do. Obviously, I didn't
-document that well.
-
-I want to make sure I understand what's actually broken here thoug. Is
-it only broken when the two values are more than 2**63 apart, or is
-there something else more fundamentally wrong here?
-
-> To make it even worse, it will actually work in practice by accident
-> in 99.99999% of all cases, so now you have
-> 
->  (a) subtly buggy code
->  (b) that looks fine
->  (c) and that works in testing
-> 
-> which is just about the worst possible case for any code. The
-> interface is simply garbage that encourages bugs.
-> 
-> And the bug wouldn't be in the user, the bug would be in this code you
-> just sent me. The interface is simply wrong.
-> 
-> So this absolutely needs to be fixed. I see two fixes:
-> 
->  - just return a boolean. That's all that any current user actually
-> wants, so the ternary value seems pointless.
-> 
->  - make it return an 'int', and not just any int, but -1/0/1. That way
-> there is no worry about uses, and if somebody *really* cares about the
-> ternary value, they can now use a "switch" statement to get it
-> (alternatively, make it return an enum, but whatever).
-> 
-> That "ternary" function that has 18446744069414584320 incorrect return
-> values really is unacceptable.
-> 
-
-I think I'll just make it return a boolean value like you suggested
-first. I'll send a patch to fix it once I've done some basic testing
-with it.
-
-Many thanks,
---
-Jeff Layton <jlayton@redhat.com>
