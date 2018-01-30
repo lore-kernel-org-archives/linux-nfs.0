@@ -1,106 +1,35 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:60198 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753049AbeA3UcZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 30 Jan 2018 15:32:25 -0500
-From: Jeff Layton <jlayton@kernel.org>
-To: torvalds@linux-foundation.org
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, tytso@mit.edu,
-        linux-xfs@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-integrity@vger.kernel.org, trondmy@primarydata.com
-Subject: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool instead of s64
-Date: Tue, 30 Jan 2018 15:32:21 -0500
-Message-Id: <20180130203221.29310-1-jlayton@kernel.org>
-In-Reply-To: <20180130173126.2806-1-jlayton@kernel.org>
-References: <20180130173126.2806-1-jlayton@kernel.org>
+Received: from mail-it0-f48.google.com ([209.85.214.48]:56081 "EHLO
+        mail-it0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751741AbeA3Uxh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 15:53:37 -0500
+MIME-Version: 1.0
+In-Reply-To: <20180130203221.29310-1-jlayton@kernel.org>
+References: <20180130173126.2806-1-jlayton@kernel.org> <20180130203221.29310-1-jlayton@kernel.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Date: Tue, 30 Jan 2018 12:53:35 -0800
+Message-ID: <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
+Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
+ instead of s64
+To: Jeff Layton <jlayton@kernel.org>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-integrity <linux-integrity@vger.kernel.org>,
+        Trond Myklebust <trondmy@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
+Ack. Should I expect this in a future pull request, or take it directly?
 
-As Linus points out:
+There's no hurry about this, since none of the existing users of that
+function actually do anything but test the return value against zero,
+and nobody saves it into anything but a "bool" (which has magical
+casting properties and does not lose upper bits).
 
-    The inode_cmp_iversion{+raw}() functions are pure and utter crap.
-
-    Why?
-
-    You say that they return 0/negative/positive, but they do so in a
-    completely broken manner. They return that ternary value as the
-    sequence number difference in a 's64', which means that if you
-    actually care about that ternary value, and do the *sane* thing that
-    the kernel-doc of the function implies is the right thing, you would
-    do
-
-        int cmp = inode_cmp_iversion(inode, old);
-        if (cmp < 0 ...
-
-    and as a result you get code that looks sane, but that doesn't
-    actually *WORK* right.
-
-Since none of the callers actually care about the ternary value here,
-convert the inode_cmp_iversion{+raw} functions to just return a boolean
-value (false for matching, true for non-matching).
-
-This matches the existing use of these functions just fine, and makes it
-simple to convert them to return a ternary value in the future if we
-grow callers that need it.
-
-With this change we can also reimplement inode_cmp_iversion in a simpler
-way using inode_peek_iversion.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/iversion.h | 20 ++++++++------------
- 1 file changed, 8 insertions(+), 12 deletions(-)
-
-diff --git a/include/linux/iversion.h b/include/linux/iversion.h
-index 858463fca249..3d2fd06495ec 100644
---- a/include/linux/iversion.h
-+++ b/include/linux/iversion.h
-@@ -309,13 +309,13 @@ inode_query_iversion(struct inode *inode)
-  * @inode: inode to check
-  * @old: old value to check against its i_version
-  *
-- * Compare the current raw i_version counter with a previous one. Returns 0 if
-- * they are the same or non-zero if they are different.
-+ * Compare the current raw i_version counter with a previous one. Returns false
-+ * if they are the same or true if they are different.
-  */
--static inline s64
-+static inline bool
- inode_cmp_iversion_raw(const struct inode *inode, u64 old)
- {
--	return (s64)inode_peek_iversion_raw(inode) - (s64)old;
-+	return inode_peek_iversion_raw(inode) != old;
- }
- 
- /**
-@@ -323,19 +323,15 @@ inode_cmp_iversion_raw(const struct inode *inode, u64 old)
-  * @inode: inode to check
-  * @old: old value to check against its i_version
-  *
-- * Compare an i_version counter with a previous one. Returns 0 if they are
-- * the same, a positive value if the one in the inode appears newer than @old,
-- * and a negative value if @old appears to be newer than the one in the
-- * inode.
-+ * Compare an i_version counter with a previous one. Returns false if they are
-+ * the same, and true if they are different.
-  *
-  * Note that we don't need to set the QUERIED flag in this case, as the value
-  * in the inode is not being recorded for later use.
-  */
--
--static inline s64
-+static inline bool
- inode_cmp_iversion(const struct inode *inode, u64 old)
- {
--	return (s64)(inode_peek_iversion_raw(inode) & ~I_VERSION_QUERIED) -
--	       (s64)(old << I_VERSION_QUERIED_SHIFT);
-+	return inode_peek_iversion(inode) != old;
- }
- #endif
--- 
-2.14.3
-
+              Linus
