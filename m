@@ -1,35 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f48.google.com ([209.85.214.48]:56081 "EHLO
-        mail-it0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751741AbeA3Uxh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 15:53:37 -0500
+Received: from mail-io0-f196.google.com ([209.85.223.196]:38746 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753325AbeA3Uxq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 15:53:46 -0500
+Subject: [PATCH v1] xprtrdma: Fix calculation of ri_max_send_sges
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Michal.Kalderon@cavium.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 30 Jan 2018 15:53:44 -0500
+Message-ID: <20180130205344.13588.11646.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <20180130203221.29310-1-jlayton@kernel.org>
-References: <20180130173126.2806-1-jlayton@kernel.org> <20180130203221.29310-1-jlayton@kernel.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 30 Jan 2018 12:53:35 -0800
-Message-ID: <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
-Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
- instead of s64
-To: Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Trond Myklebust <trondmy@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ack. Should I expect this in a future pull request, or take it directly?
+Commit 16f906d66cd7 ("xprtrdma: Reduce required number of send
+SGEs") introduced the rpcrdma_ia::ri_max_send_sges field. This fixes
+a problem where xprtrdma would not work if the device's max_sge
+capability was small (low single digits).
 
-There's no hurry about this, since none of the existing users of that
-function actually do anything but test the return value against zero,
-and nobody saves it into anything but a "bool" (which has magical
-casting properties and does not lose upper bits).
+At least RPCRDMA_MIN_SEND_SGES are needed for the inline parts of
+each RPC. ri_max_send_sges is set to this value:
 
-              Linus
+  ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
+
+Then when marshaling each RPC, rpcrdma_args_inline uses that value
+to determine whether the device has enough Send SGEs to convey an
+NFS WRITE payload inline, or whether instead a Read chunk is
+required.
+
+More recently, commit ae72950abf99 ("xprtrdma: Add data structure to
+manage RDMA Send arguments") used the ri_max_send_sges value to
+calculate the size of an array, but that commit erroneously assumed
+ri_max_send_sges contains a value similar to the device's max_sge,
+and not one that was reduced by the minimum SGE count.
+
+This assumption results in the calculated size of the sendctx's
+Send SGE array to be too small. When the array is used to marshal
+an RPC, the code can write Send SGEs into the following sendctx
+element in that array, corrupting it. When the device's max_sge is
+large, this issue is entirely harmless; but it results in an oops
+in the provider's post_send method, if dev.attrs.max_sge is small.
+
+So let's straighten this out: ri_max_send_sges will now contain a
+value with the same meaning as dev.attrs.max_sge, which makes
+the code easier to understand, and enables rpcrdma_sendctx_create
+to calculate the size of the SGE array correctly.
+
+Reported-by: Michal Kalderon <Michal.Kalderon@cavium.com>
+Fixes: 16f906d66cd7 ("xprtrdma: Reduce required number of send SGEs")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ net/sunrpc/xprtrdma/rpc_rdma.c |    2 +-
+ net/sunrpc/xprtrdma/verbs.c    |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 162e5dd..f0855a9 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -143,7 +143,7 @@ static bool rpcrdma_args_inline(struct rpcrdma_xprt *r_xprt,
+ 	if (xdr->page_len) {
+ 		remaining = xdr->page_len;
+ 		offset = offset_in_page(xdr->page_base);
+-		count = 0;
++		count = RPCRDMA_MIN_SEND_SGES;
+ 		while (remaining) {
+ 			remaining -= min_t(unsigned int,
+ 					   PAGE_SIZE - offset, remaining);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index f4eb63e..bb56b9d 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -505,7 +505,7 @@
+ 		pr_warn("rpcrdma: HCA provides only %d send SGEs\n", max_sge);
+ 		return -ENOMEM;
+ 	}
+-	ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
++	ia->ri_max_send_sges = max_sge;
+ 
+ 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
+ 		dprintk("RPC:       %s: insufficient wqe's available\n",
+
