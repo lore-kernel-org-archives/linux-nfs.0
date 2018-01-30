@@ -1,80 +1,219 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f178.google.com ([209.85.223.178]:43670 "EHLO
-        mail-io0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753379AbeA3Qg6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 11:36:58 -0500
+Received: from mail-ua0-f194.google.com ([209.85.217.194]:37067 "EHLO
+        mail-ua0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753145AbeA3RCZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 12:02:25 -0500
+Received: by mail-ua0-f194.google.com with SMTP id q8so7532458uae.4
+        for <linux-nfs@vger.kernel.org>; Tue, 30 Jan 2018 09:02:24 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <1517313948.3658.8.camel@redhat.com>
-References: <1517228795.5965.24.camel@redhat.com> <CA+55aFxXg8JprOwfm0qCm4VkkM8cPM38YMvpkf3gBJq3bSJwPw@mail.gmail.com>
- <1517313948.3658.8.camel@redhat.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Tue, 30 Jan 2018 08:36:56 -0800
-Message-ID: <CA+55aFwD-=YNXQTOSNZE9SQwsin=ay56GOt4gekYe1U0qPeksQ@mail.gmail.com>
-Subject: Re: [GIT PULL] inode->i_version rework for v4.16
-To: Jeff Layton <jlayton@redhat.com>
-Cc: open list <linux-kernel@vger.kernel.org>,
-        "<linux-fsdevel@vger.kernel.org>" <linux-fsdevel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        xfs <linux-xfs@vger.kernel.org>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+In-Reply-To: <B644BF5F-F16F-4AC6-AACD-EBEE14C6FB91@oracle.com>
+References: <CAN-5tyFX2aZPXy2NRiATwkbv8gDbyafB-4JsRUghuF84ih_WnQ@mail.gmail.com>
+ <0B3C835B-3E30-43F3-B53C-BFB4462543D3@oracle.com> <CAN-5tyFu9YPVFzmrCcwwdcS5v8X61Az3hSW8xSDdTA3MWi09Sg@mail.gmail.com>
+ <C5643108-6C06-4043-A67A-F63A2234FC40@oracle.com> <CAN-5tyHv+u=FsP+S7mG+7HHrrW=NKhC3vW_fVQh0OpjPJVJ2dw@mail.gmail.com>
+ <16CE3E21-2BF9-4CC5-A3E7-FFBE706A9EF4@oracle.com> <CAN-5tyHSW9DPHbp9BGEFaF0dSFBc_NBwdSd9L4ZNCgzLn2VEkQ@mail.gmail.com>
+ <B644BF5F-F16F-4AC6-AACD-EBEE14C6FB91@oracle.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 30 Jan 2018 12:02:22 -0500
+Message-ID: <CAN-5tyH3NnN6ac-Q+39T5cUHubCbsBW200y03KE0YnSC4=0hAA@mail.gmail.com>
+Subject: Re: problem on nfsd doing RDMA write
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Bruce Fields <bfields@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 30, 2018 at 4:05 AM, Jeff Layton <jlayton@redhat.com> wrote:
+On Mon, Jan 29, 2018 at 12:24 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 >
-> My intent here was to have this handle wraparound using the same sort of
-> method that the time_before/time_after macros do. Obviously, I didn't
-> document that well.
+>
+>> On Jan 29, 2018, at 12:19 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>
+>> On Fri, Jan 26, 2018 at 4:08 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>
+>>>
+>>>> On Jan 26, 2018, at 12:13 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>
+>>>> On Fri, Jan 26, 2018 at 2:29 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>
+>>>>>
+>>>>>> On Jan 26, 2018, at 11:05 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>
+>>>>>> On Fri, Jan 26, 2018 at 1:23 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>>
+>>>>>>>
+>>>>>>>> On Jan 26, 2018, at 9:24 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>>>>>>>>
+>>>>>>>> Hi Bruce/Chuck,
+>>>>>>>>
+>>>>>>>> There is a problem with nfsd doing a WRITE of size 4093,4094,4095. To
+>>>>>>>> reproduce, mount with RDMA and do a simple dd "dd if=/dev/zero
+>>>>>>>> of=/mnt/testfile bs=4093 count=1". What happens is that nfsd fails to
+>>>>>>>> parse GETATTR after the WRITE in the compound. It fails the operation
+>>>>>>>> with ERR_OP_ILLEGAL.
+>>>>>>>>
+>>>>>>>> The problem happens for the values where XDR round up ends up rounding
+>>>>>>>> up to the page size. I don't know if my fix is the appropriate way to
+>>>>>>>> fix this but with it I don't get the error:
+>>>>>>>>
+>>>>>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>>>>>>>> index 2c61c6b..a8489c3 100644
+>>>>>>>> --- a/fs/nfsd/nfs4xdr.c
+>>>>>>>> +++ b/fs/nfsd/nfs4xdr.c
+>>>>>>>> @@ -1289,11 +1289,12 @@ static __be32 nfsd4_decode_opaque(struct nfsd4_compounda
+>>>>>>>>
+>>>>>>>>     len = XDR_QUADLEN(write->wr_buflen) << 2;
+>>>>>>>>     if (len >= avail) {
+>>>>>>>> -               int pages;
+>>>>>>>> +               int pages = 0;
+>>>>>>>>
+>>>>>>>>             len -= avail;
+>>>>>>>>
+>>>>>>>> -               pages = len >> PAGE_SHIFT;
+>>>>>>>> +               if (write->wr_buflen >= PAGE_SIZE)
+>>>>>>>> +                       pages = len >> PAGE_SHIFT;
+>>>>>>>>             argp->pagelist += pages;
+>>>>>>>>             argp->pagelen -= pages * PAGE_SIZE;
+>>>>>>>>             len -= pages * PAGE_SIZE;
+>>>>>>>>
+>>>>>>>> So the problem is the using "len" instead of "write->wr_buflen" leads
+>>>>>>>> for the values 4093,4094,4095 that are rounded up to 4096, it makes
+>>>>>>>> pages=1 and the argp->pagelen ends up being a negative value leading
+>>>>>>>> to problems of parsing the GETATTR.
+>>>>>>>
+>>>>>>> Would this also be a problem near any page boundary, say, a
+>>>>>>> write length of 8191 bytes?
+>>>>>>>
+>>>>>>> Instead of using the rounded up "len", why not try this:
+>>>>>>>
+>>>>>>> -               pages = len >> PAGE_SHIFT;
+>>>>>>> +               pages = write->wr_buflen >> PAGE_SHIFT;
+>>>>>>
+>>>>>> You are right. It needs to be that. Otherwise 8191 fails the same way.
+>>>>>>
+>>>>>>> And be sure to test with TCP as well.
+>>>>>>
+>>>>>> Sigh. It breaks normal (non-RDMA) mounts. I'll figure out why.
+>>>>>
+>>>>> OK.
+>>>>>
+>>>>> Remember that a Read chunk's length does not have to be
+>>>>> rounded up. Maybe the transport needs to round up the
+>>>>> length of the unmarshaled data content on behalf of the
+>>>>> NFSv4 write decoder.
+>>>>>
+>>>>
+>>>> The problem of simply taking write->wr_buflen was that len before that
+>>>> could have been adjusted by avail value in then non-RDAM mounts.
+>>>>
+>>>> Again, I'm not sure if this is the right fix. But this one works for
+>>>> both non-RDMA and RDMA mounts.
+>>>>
+>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>>>> index 2c61c6b..3178997 100644
+>>>> --- a/fs/nfsd/nfs4xdr.c
+>>>> +++ b/fs/nfsd/nfs4xdr.c
+>>>> @@ -1293,7 +1293,10 @@ static __be32 nfsd4_decode_opaque(struct
+>>>> nfsd4_compoundargs *argp, struct xdr_ne
+>>>>
+>>>>               len -= avail;
+>>>>
+>>>> -               pages = len >> PAGE_SHIFT;
+>>>> +               if (!avail)
+>>>> +                       pages = write->wr_buflen >> PAGE_SHIFT;
+>>>> +               else
+>>>> +                       pages = len >> PAGE_SHIFT;
+>>>>               argp->pagelist += pages;
+>>>>               argp->pagelen -= pages * PAGE_SIZE;
+>>>>               len -= pages * PAGE_SIZE;
+>>>
+>>> This code has been around since 2012. Has it always been
+>>> broken for RDMA? I suspect the root problem is in the
+>>> transport, not here in the decoder. Can you bisect to
+>>> find out where the problem started to occur?
+>>
+>> To see if I could go back to 2012, I first want to see if I could go
+>> back to before mlx5 driver was added which was in 3.11-rc1. But I'm
+>> having issues trying to boot into a kernel based on 3.10 or 3.9. I'm
+>> trying to verify if my CX-5 card would even work with mlx4 driver
+>> which I'm having doubts it would.
+>
+> The CX-5 works only with mlx5.
+>
+>
+>> These old kernels fail to boot in
+>> XFS saying that it's a wrong version. Some googling makes me think
+>> that since my XFS partition was created with a newer kernel it's not
+>> compatible with an older kernel...
+>
+> That's correct, the XFS filesystem has new features like
+> metadata checksum that don't work on older kernels.
+>
+> To start with, you could try some very late 3.x or early
+> 4.x kernels. My intuition is that you will find an svcrdma
+> change that is more recent than 2012 that is causing the
+> underlying issue.
 
-Oh, the intent was clear. The implementation was wrong.
+It works in 4.8 and does not work in 4.9. It's this commit that breaks it:
 
-Note that "time_before()" returns a _boolean_.
+commit cc9d83408b52265ddab2874cf19d1611da4ca7ee
 
-So yes, the time comparison functions do a 64-bit subtraction, exactly
-like yours do. BUT THEY DO NOT RETURN THAT DIFFERENCE. They test the
-sign in 64 bits and return that boolean single-bit value.
+svcrdma: Server-side support for rpcrdma_connect_private
 
-> I want to make sure I understand what's actually broken here thoug. Is
-> it only broken when the two values are more than 2**63 apart, or is
-> there something else more fundamentally wrong here?
+Prepare to receive an RDMA-CM private message when handling a new
+connection attempt, and send a similar message as part of connection
+acceptance.
 
-There's something fundamentally wrong. The _intent_ is to allow
-numbers up to 2**63 apart, but if somebody does that
+Both sides can communicate their various implementation limits.
+Implementations that don't support this sideband protocol ignore it.
 
-     int cmp = inode_cmp_iversion(inode, old);
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-     if (cmp < 0 ...
+So far I don't understand how can causes problems...
 
-then it actually only ever tests numbers 2**31 apart, because the high
-32 bits will have been thrown away when the 64-bit difference is cast
-to "int".
-
-And what used to be a sign bit (in 64 bits) no longer exists, and the
-above tests the *new* sign bit that is bit #31, not #63.
-
-So you are a factor of four billion off.
-
-And while 2**63 is a big number and perfectly ok for a filesystem
-event difference, a difference of 2**31 is a "this can actually
-happen".
-
-Yes, even 2**31 is still a big difference, and it will take a very
-unusual situation, and quite a long time to trigger: something that
-does a thousand filesystem ops per second will not see the problem for
-24 days. So you'll never see it in a test. But 24 days happens in real
-life..
-
-That's why you need to do the comparison against zero inside the
-actual helper functions like the time comparisons do. Because if you
-return the 64-bit difference, it will be trivially lost, and the code
-will _look_ right, but not work right.
-
-The fact that you didn't even seem to see the problem in my example
-calling sequence just proves that point.
-
-                   Linus
+>>>>>>>> If this looks OK, I can send a patch.
+>>>>>>>> --
+>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>>>
+>>>>>>> --
+>>>>>>> Chuck Lever
+>>>>>>>
+>>>>>>>
+>>>>>>>
+>>>>>>> --
+>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>> --
+>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>>
+>>>>> --
+>>>>> Chuck Lever
+>>>>>
+>>>>>
+>>>>>
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>
+>>> --
+>>> Chuck Lever
+>>>
+>>>
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> Chuck Lever
+>
+>
+>
