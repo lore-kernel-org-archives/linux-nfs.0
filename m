@@ -1,84 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:38746 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753325AbeA3Uxq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 30 Jan 2018 15:53:46 -0500
-Subject: [PATCH v1] xprtrdma: Fix calculation of ri_max_send_sges
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Michal.Kalderon@cavium.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Tue, 30 Jan 2018 15:53:44 -0500
-Message-ID: <20180130205344.13588.11646.stgit@manet.1015granger.net>
+Received: from mx2.suse.de ([195.135.220.15]:35021 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751728AbeAaFQ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Jan 2018 00:16:28 -0500
+From: NeilBrown <neilb@suse.com>
+To: David Howells <dhowells@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@kernel.org>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>
+Date: Wed, 31 Jan 2018 16:15:39 +1100
+Subject: [md PATCH 0/4] Minor 'cred' improvements prepare for NFS conversion
+Cc: NFS <linux-nfs@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>
+Message-ID: <151737571564.14845.2874586176125198504.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 16f906d66cd7 ("xprtrdma: Reduce required number of send
-SGEs") introduced the rpcrdma_ia::ri_max_send_sges field. This fixes
-a problem where xprtrdma would not work if the device's max_sge
-capability was small (low single digits).
+Hi,
+ NFS and SUNRPC have an internal "rpc_cred" which plays two distinct
+ roles, one of which is much the same as 'struct cred' (which didn't
+ exist when rpc_cred was created).
+ I want to replace that usage of rpc_cred with 'struct cred'.
+ Doing so requires some minor improvements to cred.c and cred.h as
+ follows.
 
-At least RPCRDMA_MIN_SEND_SGES are needed for the inline parts of
-each RPC. ri_max_send_sges is set to this value:
+ It isn't clear to me who "maintains" cred.c and cred.h, so I'm hoping
+ that Andrew Morton will take these (if no-one complains).
+ Alternately if I got one or two credible "Acked-by"s, they could go
+ upstream through the NFS tree when the rest of the patches are ready.
 
-  ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
+Thanks,
+NeilBrown
 
-Then when marshaling each RPC, rpcrdma_args_inline uses that value
-to determine whether the device has enough Send SGEs to convey an
-NFS WRITE payload inline, or whether instead a Read chunk is
-required.
 
-More recently, commit ae72950abf99 ("xprtrdma: Add data structure to
-manage RDMA Send arguments") used the ri_max_send_sges value to
-calculate the size of an array, but that commit erroneously assumed
-ri_max_send_sges contains a value similar to the device's max_sge,
-and not one that was reduced by the minimum SGE count.
-
-This assumption results in the calculated size of the sendctx's
-Send SGE array to be too small. When the array is used to marshal
-an RPC, the code can write Send SGEs into the following sendctx
-element in that array, corrupting it. When the device's max_sge is
-large, this issue is entirely harmless; but it results in an oops
-in the provider's post_send method, if dev.attrs.max_sge is small.
-
-So let's straighten this out: ri_max_send_sges will now contain a
-value with the same meaning as dev.attrs.max_sge, which makes
-the code easier to understand, and enables rpcrdma_sendctx_create
-to calculate the size of the SGE array correctly.
-
-Reported-by: Michal Kalderon <Michal.Kalderon@cavium.com>
-Fixes: 16f906d66cd7 ("xprtrdma: Reduce required number of send SGEs")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c    |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 162e5dd..f0855a9 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -143,7 +143,7 @@ static bool rpcrdma_args_inline(struct rpcrdma_xprt *r_xprt,
- 	if (xdr->page_len) {
- 		remaining = xdr->page_len;
- 		offset = offset_in_page(xdr->page_base);
--		count = 0;
-+		count = RPCRDMA_MIN_SEND_SGES;
- 		while (remaining) {
- 			remaining -= min_t(unsigned int,
- 					   PAGE_SIZE - offset, remaining);
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index f4eb63e..bb56b9d 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -505,7 +505,7 @@
- 		pr_warn("rpcrdma: HCA provides only %d send SGEs\n", max_sge);
- 		return -ENOMEM;
- 	}
--	ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
-+	ia->ri_max_send_sges = max_sge;
- 
- 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
- 		dprintk("RPC:       %s: insufficient wqe's available\n",
+NeilBrown (4):
+      cred: add cred_fscmp() for comparing creds.
+      cred: add get_cred_rcu()
+      cred: export get_task_cred().
+      cred: allow get_cred() and put_cred() to be given NULL.
+
+
+ include/linux/cred.h |   26 ++++++++++++++++++----
+ kernel/cred.c        |   58 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 2 files changed, 78 insertions(+), 6 deletions(-)
+
+--
+Signature
 
