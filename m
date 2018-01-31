@@ -1,45 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:41900 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751025AbeAaM31 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 Jan 2018 07:29:27 -0500
-Message-ID: <1517401762.3612.0.camel@kernel.org>
-Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
- instead of s64
-From: Jeff Layton <jlayton@kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Trond Myklebust <trondmy@primarydata.com>
-Date: Wed, 31 Jan 2018 07:29:22 -0500
-In-Reply-To: <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
-References: <20180130173126.2806-1-jlayton@kernel.org>
-         <20180130203221.29310-1-jlayton@kernel.org>
-         <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-bl2nam02on0057.outbound.protection.outlook.com ([104.47.38.57]:55744
+        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752830AbeAaOEM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Jan 2018 09:04:12 -0500
+From: "Kalderon, Michal" <Michal.Kalderon@cavium.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: [PATCH v1] xprtrdma: Fix calculation of ri_max_send_sges
+Date: Wed, 31 Jan 2018 14:04:05 +0000
+Message-ID: <CY1PR0701MB201216E6A13D1BC0E4A74FDB88FB0@CY1PR0701MB2012.namprd07.prod.outlook.com>
+References: <20180130205344.13588.11646.stgit@manet.1015granger.net>
+In-Reply-To: <20180130205344.13588.11646.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2018-01-30 at 12:53 -0800, Linus Torvalds wrote:
-> Ack. Should I expect this in a future pull request, or take it directly?
-> 
-> There's no hurry about this, since none of the existing users of that
-> function actually do anything but test the return value against zero,
-> and nobody saves it into anything but a "bool" (which has magical
-> casting properties and does not lose upper bits).
-> 
->               Linus
-
-Do you mind just taking it directly? I don't have anything else queued
-up for this cycle.
-
-Thanks,
--- 
-Jeff Layton <jlayton@kernel.org>
+PiBGcm9tOiBDaHVjayBMZXZlciBbbWFpbHRvOmNodWNrbGV2ZXJAZ21haWwuY29tXSBPbiBCZWhh
+bGYgT2YgQ2h1Y2sgTGV2ZXINCj4gU2VudDogVHVlc2RheSwgSmFudWFyeSAzMCwgMjAxOCAxMDo1
+NCBQTQ0KPiBUbzogS2FsZGVyb24sIE1pY2hhbCA8TWljaGFsLkthbGRlcm9uQGNhdml1bS5jb20+
+DQo+IENjOiBsaW51eC1yZG1hQHZnZXIua2VybmVsLm9yZzsgbGludXgtbmZzQHZnZXIua2VybmVs
+Lm9yZw0KPiBTdWJqZWN0OiBbUEFUQ0ggdjFdIHhwcnRyZG1hOiBGaXggY2FsY3VsYXRpb24gb2Yg
+cmlfbWF4X3NlbmRfc2dlcw0KPiANCj4gQ29tbWl0IDE2ZjkwNmQ2NmNkNyAoInhwcnRyZG1hOiBS
+ZWR1Y2UgcmVxdWlyZWQgbnVtYmVyIG9mIHNlbmQNCj4gU0dFcyIpIGludHJvZHVjZWQgdGhlIHJw
+Y3JkbWFfaWE6OnJpX21heF9zZW5kX3NnZXMgZmllbGQuIFRoaXMgZml4ZXMgYQ0KPiBwcm9ibGVt
+IHdoZXJlIHhwcnRyZG1hIHdvdWxkIG5vdCB3b3JrIGlmIHRoZSBkZXZpY2UncyBtYXhfc2dlIGNh
+cGFiaWxpdHkNCj4gd2FzIHNtYWxsIChsb3cgc2luZ2xlIGRpZ2l0cykuDQo+IA0KPiBBdCBsZWFz
+dCBSUENSRE1BX01JTl9TRU5EX1NHRVMgYXJlIG5lZWRlZCBmb3IgdGhlIGlubGluZSBwYXJ0cyBv
+ZiBlYWNoDQo+IFJQQy4gcmlfbWF4X3NlbmRfc2dlcyBpcyBzZXQgdG8gdGhpcyB2YWx1ZToNCj4g
+DQo+ICAgaWEtPnJpX21heF9zZW5kX3NnZXMgPSBtYXhfc2dlIC0gUlBDUkRNQV9NSU5fU0VORF9T
+R0VTOw0KPiANCj4gVGhlbiB3aGVuIG1hcnNoYWxpbmcgZWFjaCBSUEMsIHJwY3JkbWFfYXJnc19p
+bmxpbmUgdXNlcyB0aGF0IHZhbHVlIHRvDQo+IGRldGVybWluZSB3aGV0aGVyIHRoZSBkZXZpY2Ug
+aGFzIGVub3VnaCBTZW5kIFNHRXMgdG8gY29udmV5IGFuIE5GUw0KPiBXUklURSBwYXlsb2FkIGlu
+bGluZSwgb3Igd2hldGhlciBpbnN0ZWFkIGEgUmVhZCBjaHVuayBpcyByZXF1aXJlZC4NCj4gDQo+
+IE1vcmUgcmVjZW50bHksIGNvbW1pdCBhZTcyOTUwYWJmOTkgKCJ4cHJ0cmRtYTogQWRkIGRhdGEg
+c3RydWN0dXJlIHRvDQo+IG1hbmFnZSBSRE1BIFNlbmQgYXJndW1lbnRzIikgdXNlZCB0aGUgcmlf
+bWF4X3NlbmRfc2dlcyB2YWx1ZSB0bw0KPiBjYWxjdWxhdGUgdGhlIHNpemUgb2YgYW4gYXJyYXks
+IGJ1dCB0aGF0IGNvbW1pdCBlcnJvbmVvdXNseSBhc3N1bWVkDQo+IHJpX21heF9zZW5kX3NnZXMg
+Y29udGFpbnMgYSB2YWx1ZSBzaW1pbGFyIHRvIHRoZSBkZXZpY2UncyBtYXhfc2dlLCBhbmQgbm90
+DQo+IG9uZSB0aGF0IHdhcyByZWR1Y2VkIGJ5IHRoZSBtaW5pbXVtIFNHRSBjb3VudC4NCj4gDQo+
+IFRoaXMgYXNzdW1wdGlvbiByZXN1bHRzIGluIHRoZSBjYWxjdWxhdGVkIHNpemUgb2YgdGhlIHNl
+bmRjdHgncyBTZW5kIFNHRSBhcnJheQ0KPiB0byBiZSB0b28gc21hbGwuIFdoZW4gdGhlIGFycmF5
+IGlzIHVzZWQgdG8gbWFyc2hhbCBhbiBSUEMsIHRoZSBjb2RlIGNhbiB3cml0ZQ0KPiBTZW5kIFNH
+RXMgaW50byB0aGUgZm9sbG93aW5nIHNlbmRjdHggZWxlbWVudCBpbiB0aGF0IGFycmF5LCBjb3Jy
+dXB0aW5nIGl0Lg0KPiBXaGVuIHRoZSBkZXZpY2UncyBtYXhfc2dlIGlzIGxhcmdlLCB0aGlzIGlz
+c3VlIGlzIGVudGlyZWx5IGhhcm1sZXNzOyBidXQgaXQNCj4gcmVzdWx0cyBpbiBhbiBvb3BzIGlu
+IHRoZSBwcm92aWRlcidzIHBvc3Rfc2VuZCBtZXRob2QsIGlmIGRldi5hdHRycy5tYXhfc2dlDQo+
+IGlzIHNtYWxsLg0KPiANCj4gU28gbGV0J3Mgc3RyYWlnaHRlbiB0aGlzIG91dDogcmlfbWF4X3Nl
+bmRfc2dlcyB3aWxsIG5vdyBjb250YWluIGEgdmFsdWUgd2l0aA0KPiB0aGUgc2FtZSBtZWFuaW5n
+IGFzIGRldi5hdHRycy5tYXhfc2dlLCB3aGljaCBtYWtlcyB0aGUgY29kZSBlYXNpZXIgdG8NCj4g
+dW5kZXJzdGFuZCwgYW5kIGVuYWJsZXMgcnBjcmRtYV9zZW5kY3R4X2NyZWF0ZSB0byBjYWxjdWxh
+dGUgdGhlIHNpemUgb2YNCj4gdGhlIFNHRSBhcnJheSBjb3JyZWN0bHkuDQo+IA0KPiBSZXBvcnRl
+ZC1ieTogTWljaGFsIEthbGRlcm9uIDxNaWNoYWwuS2FsZGVyb25AY2F2aXVtLmNvbT4NCj4gRml4
+ZXM6IDE2ZjkwNmQ2NmNkNyAoInhwcnRyZG1hOiBSZWR1Y2UgcmVxdWlyZWQgbnVtYmVyIG9mIHNl
+bmQgU0dFcyIpDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZlckBvcmFj
+bGUuY29tPg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvcnBjX3JkbWEuYyB8ICAgIDIg
+Ky0NCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYyAgICB8ICAgIDIgKy0NCj4gIDIgZmls
+ZXMgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAt
+LWdpdCBhL25ldC9zdW5ycGMveHBydHJkbWEvcnBjX3JkbWEuYw0KPiBiL25ldC9zdW5ycGMveHBy
+dHJkbWEvcnBjX3JkbWEuYyBpbmRleCAxNjJlNWRkLi5mMDg1NWE5IDEwMDY0NA0KPiAtLS0gYS9u
+ZXQvc3VucnBjL3hwcnRyZG1hL3JwY19yZG1hLmMNCj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRt
+YS9ycGNfcmRtYS5jDQo+IEBAIC0xNDMsNyArMTQzLDcgQEAgc3RhdGljIGJvb2wgcnBjcmRtYV9h
+cmdzX2lubGluZShzdHJ1Y3QgcnBjcmRtYV94cHJ0DQo+ICpyX3hwcnQsDQo+ICAJaWYgKHhkci0+
+cGFnZV9sZW4pIHsNCj4gIAkJcmVtYWluaW5nID0geGRyLT5wYWdlX2xlbjsNCj4gIAkJb2Zmc2V0
+ID0gb2Zmc2V0X2luX3BhZ2UoeGRyLT5wYWdlX2Jhc2UpOw0KPiAtCQljb3VudCA9IDA7DQo+ICsJ
+CWNvdW50ID0gUlBDUkRNQV9NSU5fU0VORF9TR0VTOw0KPiAgCQl3aGlsZSAocmVtYWluaW5nKSB7
+DQo+ICAJCQlyZW1haW5pbmcgLT0gbWluX3QodW5zaWduZWQgaW50LA0KPiAgCQkJCQkgICBQQUdF
+X1NJWkUgLSBvZmZzZXQsIHJlbWFpbmluZyk7IGRpZmYNCj4gLS1naXQgYS9uZXQvc3VucnBjL3hw
+cnRyZG1hL3ZlcmJzLmMgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgaW5kZXgNCj4gZjRl
+YjYzZS4uYmI1NmI5ZCAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5j
+DQo+ICsrKyBiL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0KPiBAQCAtNTA1LDcgKzUwNSw3
+IEBADQo+ICAJCXByX3dhcm4oInJwY3JkbWE6IEhDQSBwcm92aWRlcyBvbmx5ICVkIHNlbmQgU0dF
+c1xuIiwNCj4gbWF4X3NnZSk7DQo+ICAJCXJldHVybiAtRU5PTUVNOw0KPiAgCX0NCj4gLQlpYS0+
+cmlfbWF4X3NlbmRfc2dlcyA9IG1heF9zZ2UgLSBSUENSRE1BX01JTl9TRU5EX1NHRVM7DQo+ICsJ
+aWEtPnJpX21heF9zZW5kX3NnZXMgPSBtYXhfc2dlOw0KPiANCj4gIAlpZiAoaWEtPnJpX2Rldmlj
+ZS0+YXR0cnMubWF4X3FwX3dyIDw9IFJQQ1JETUFfQkFDS1dBUkRfV1JTKQ0KPiB7DQo+ICAJCWRw
+cmludGsoIlJQQzogICAgICAgJXM6IGluc3VmZmljaWVudCB3cWUncyBhdmFpbGFibGVcbiIsDQoN
+CnRoYW5rcywgdGhpcyBmaXhlZCBvdXIgZmlyc3QgaXNzdWUgb2YgbW91bnQgZmFpbGluZy4gDQo=
