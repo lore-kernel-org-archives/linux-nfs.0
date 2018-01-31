@@ -1,81 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-bl2nam02on0057.outbound.protection.outlook.com ([104.47.38.57]:55744
-        "EHLO NAM02-BL2-obe.outbound.protection.outlook.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752830AbeAaOEM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 Jan 2018 09:04:12 -0500
-From: "Kalderon, Michal" <Michal.Kalderon@cavium.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: [PATCH v1] xprtrdma: Fix calculation of ri_max_send_sges
-Date: Wed, 31 Jan 2018 14:04:05 +0000
-Message-ID: <CY1PR0701MB201216E6A13D1BC0E4A74FDB88FB0@CY1PR0701MB2012.namprd07.prod.outlook.com>
+Received: from aserp2130.oracle.com ([141.146.126.79]:33784 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751581AbeAaPEu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jan 2018 10:04:50 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: [PATCH v1] xprtrdma: Fix calculation of ri_max_send_sges
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CY1PR0701MB201216E6A13D1BC0E4A74FDB88FB0@CY1PR0701MB2012.namprd07.prod.outlook.com>
+Date: Wed, 31 Jan 2018 10:04:22 -0500
+Cc: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <65A80728-B565-4E03-B50A-4F22FC1342DA@oracle.com>
 References: <20180130205344.13588.11646.stgit@manet.1015granger.net>
-In-Reply-To: <20180130205344.13588.11646.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset="utf-8"
-MIME-Version: 1.0
+ <CY1PR0701MB201216E6A13D1BC0E4A74FDB88FB0@CY1PR0701MB2012.namprd07.prod.outlook.com>
+To: "Kalderon, Michal" <Michal.Kalderon@cavium.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-PiBGcm9tOiBDaHVjayBMZXZlciBbbWFpbHRvOmNodWNrbGV2ZXJAZ21haWwuY29tXSBPbiBCZWhh
-bGYgT2YgQ2h1Y2sgTGV2ZXINCj4gU2VudDogVHVlc2RheSwgSmFudWFyeSAzMCwgMjAxOCAxMDo1
-NCBQTQ0KPiBUbzogS2FsZGVyb24sIE1pY2hhbCA8TWljaGFsLkthbGRlcm9uQGNhdml1bS5jb20+
-DQo+IENjOiBsaW51eC1yZG1hQHZnZXIua2VybmVsLm9yZzsgbGludXgtbmZzQHZnZXIua2VybmVs
-Lm9yZw0KPiBTdWJqZWN0OiBbUEFUQ0ggdjFdIHhwcnRyZG1hOiBGaXggY2FsY3VsYXRpb24gb2Yg
-cmlfbWF4X3NlbmRfc2dlcw0KPiANCj4gQ29tbWl0IDE2ZjkwNmQ2NmNkNyAoInhwcnRyZG1hOiBS
-ZWR1Y2UgcmVxdWlyZWQgbnVtYmVyIG9mIHNlbmQNCj4gU0dFcyIpIGludHJvZHVjZWQgdGhlIHJw
-Y3JkbWFfaWE6OnJpX21heF9zZW5kX3NnZXMgZmllbGQuIFRoaXMgZml4ZXMgYQ0KPiBwcm9ibGVt
-IHdoZXJlIHhwcnRyZG1hIHdvdWxkIG5vdCB3b3JrIGlmIHRoZSBkZXZpY2UncyBtYXhfc2dlIGNh
-cGFiaWxpdHkNCj4gd2FzIHNtYWxsIChsb3cgc2luZ2xlIGRpZ2l0cykuDQo+IA0KPiBBdCBsZWFz
-dCBSUENSRE1BX01JTl9TRU5EX1NHRVMgYXJlIG5lZWRlZCBmb3IgdGhlIGlubGluZSBwYXJ0cyBv
-ZiBlYWNoDQo+IFJQQy4gcmlfbWF4X3NlbmRfc2dlcyBpcyBzZXQgdG8gdGhpcyB2YWx1ZToNCj4g
-DQo+ICAgaWEtPnJpX21heF9zZW5kX3NnZXMgPSBtYXhfc2dlIC0gUlBDUkRNQV9NSU5fU0VORF9T
-R0VTOw0KPiANCj4gVGhlbiB3aGVuIG1hcnNoYWxpbmcgZWFjaCBSUEMsIHJwY3JkbWFfYXJnc19p
-bmxpbmUgdXNlcyB0aGF0IHZhbHVlIHRvDQo+IGRldGVybWluZSB3aGV0aGVyIHRoZSBkZXZpY2Ug
-aGFzIGVub3VnaCBTZW5kIFNHRXMgdG8gY29udmV5IGFuIE5GUw0KPiBXUklURSBwYXlsb2FkIGlu
-bGluZSwgb3Igd2hldGhlciBpbnN0ZWFkIGEgUmVhZCBjaHVuayBpcyByZXF1aXJlZC4NCj4gDQo+
-IE1vcmUgcmVjZW50bHksIGNvbW1pdCBhZTcyOTUwYWJmOTkgKCJ4cHJ0cmRtYTogQWRkIGRhdGEg
-c3RydWN0dXJlIHRvDQo+IG1hbmFnZSBSRE1BIFNlbmQgYXJndW1lbnRzIikgdXNlZCB0aGUgcmlf
-bWF4X3NlbmRfc2dlcyB2YWx1ZSB0bw0KPiBjYWxjdWxhdGUgdGhlIHNpemUgb2YgYW4gYXJyYXks
-IGJ1dCB0aGF0IGNvbW1pdCBlcnJvbmVvdXNseSBhc3N1bWVkDQo+IHJpX21heF9zZW5kX3NnZXMg
-Y29udGFpbnMgYSB2YWx1ZSBzaW1pbGFyIHRvIHRoZSBkZXZpY2UncyBtYXhfc2dlLCBhbmQgbm90
-DQo+IG9uZSB0aGF0IHdhcyByZWR1Y2VkIGJ5IHRoZSBtaW5pbXVtIFNHRSBjb3VudC4NCj4gDQo+
-IFRoaXMgYXNzdW1wdGlvbiByZXN1bHRzIGluIHRoZSBjYWxjdWxhdGVkIHNpemUgb2YgdGhlIHNl
-bmRjdHgncyBTZW5kIFNHRSBhcnJheQ0KPiB0byBiZSB0b28gc21hbGwuIFdoZW4gdGhlIGFycmF5
-IGlzIHVzZWQgdG8gbWFyc2hhbCBhbiBSUEMsIHRoZSBjb2RlIGNhbiB3cml0ZQ0KPiBTZW5kIFNH
-RXMgaW50byB0aGUgZm9sbG93aW5nIHNlbmRjdHggZWxlbWVudCBpbiB0aGF0IGFycmF5LCBjb3Jy
-dXB0aW5nIGl0Lg0KPiBXaGVuIHRoZSBkZXZpY2UncyBtYXhfc2dlIGlzIGxhcmdlLCB0aGlzIGlz
-c3VlIGlzIGVudGlyZWx5IGhhcm1sZXNzOyBidXQgaXQNCj4gcmVzdWx0cyBpbiBhbiBvb3BzIGlu
-IHRoZSBwcm92aWRlcidzIHBvc3Rfc2VuZCBtZXRob2QsIGlmIGRldi5hdHRycy5tYXhfc2dlDQo+
-IGlzIHNtYWxsLg0KPiANCj4gU28gbGV0J3Mgc3RyYWlnaHRlbiB0aGlzIG91dDogcmlfbWF4X3Nl
-bmRfc2dlcyB3aWxsIG5vdyBjb250YWluIGEgdmFsdWUgd2l0aA0KPiB0aGUgc2FtZSBtZWFuaW5n
-IGFzIGRldi5hdHRycy5tYXhfc2dlLCB3aGljaCBtYWtlcyB0aGUgY29kZSBlYXNpZXIgdG8NCj4g
-dW5kZXJzdGFuZCwgYW5kIGVuYWJsZXMgcnBjcmRtYV9zZW5kY3R4X2NyZWF0ZSB0byBjYWxjdWxh
-dGUgdGhlIHNpemUgb2YNCj4gdGhlIFNHRSBhcnJheSBjb3JyZWN0bHkuDQo+IA0KPiBSZXBvcnRl
-ZC1ieTogTWljaGFsIEthbGRlcm9uIDxNaWNoYWwuS2FsZGVyb25AY2F2aXVtLmNvbT4NCj4gRml4
-ZXM6IDE2ZjkwNmQ2NmNkNyAoInhwcnRyZG1hOiBSZWR1Y2UgcmVxdWlyZWQgbnVtYmVyIG9mIHNl
-bmQgU0dFcyIpDQo+IFNpZ25lZC1vZmYtYnk6IENodWNrIExldmVyIDxjaHVjay5sZXZlckBvcmFj
-bGUuY29tPg0KPiAtLS0NCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvcnBjX3JkbWEuYyB8ICAgIDIg
-Ky0NCj4gIG5ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYyAgICB8ICAgIDIgKy0NCj4gIDIgZmls
-ZXMgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAyIGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAt
-LWdpdCBhL25ldC9zdW5ycGMveHBydHJkbWEvcnBjX3JkbWEuYw0KPiBiL25ldC9zdW5ycGMveHBy
-dHJkbWEvcnBjX3JkbWEuYyBpbmRleCAxNjJlNWRkLi5mMDg1NWE5IDEwMDY0NA0KPiAtLS0gYS9u
-ZXQvc3VucnBjL3hwcnRyZG1hL3JwY19yZG1hLmMNCj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRt
-YS9ycGNfcmRtYS5jDQo+IEBAIC0xNDMsNyArMTQzLDcgQEAgc3RhdGljIGJvb2wgcnBjcmRtYV9h
-cmdzX2lubGluZShzdHJ1Y3QgcnBjcmRtYV94cHJ0DQo+ICpyX3hwcnQsDQo+ICAJaWYgKHhkci0+
-cGFnZV9sZW4pIHsNCj4gIAkJcmVtYWluaW5nID0geGRyLT5wYWdlX2xlbjsNCj4gIAkJb2Zmc2V0
-ID0gb2Zmc2V0X2luX3BhZ2UoeGRyLT5wYWdlX2Jhc2UpOw0KPiAtCQljb3VudCA9IDA7DQo+ICsJ
-CWNvdW50ID0gUlBDUkRNQV9NSU5fU0VORF9TR0VTOw0KPiAgCQl3aGlsZSAocmVtYWluaW5nKSB7
-DQo+ICAJCQlyZW1haW5pbmcgLT0gbWluX3QodW5zaWduZWQgaW50LA0KPiAgCQkJCQkgICBQQUdF
-X1NJWkUgLSBvZmZzZXQsIHJlbWFpbmluZyk7IGRpZmYNCj4gLS1naXQgYS9uZXQvc3VucnBjL3hw
-cnRyZG1hL3ZlcmJzLmMgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgaW5kZXgNCj4gZjRl
-YjYzZS4uYmI1NmI5ZCAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJwYy94cHJ0cmRtYS92ZXJicy5j
-DQo+ICsrKyBiL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0KPiBAQCAtNTA1LDcgKzUwNSw3
-IEBADQo+ICAJCXByX3dhcm4oInJwY3JkbWE6IEhDQSBwcm92aWRlcyBvbmx5ICVkIHNlbmQgU0dF
-c1xuIiwNCj4gbWF4X3NnZSk7DQo+ICAJCXJldHVybiAtRU5PTUVNOw0KPiAgCX0NCj4gLQlpYS0+
-cmlfbWF4X3NlbmRfc2dlcyA9IG1heF9zZ2UgLSBSUENSRE1BX01JTl9TRU5EX1NHRVM7DQo+ICsJ
-aWEtPnJpX21heF9zZW5kX3NnZXMgPSBtYXhfc2dlOw0KPiANCj4gIAlpZiAoaWEtPnJpX2Rldmlj
-ZS0+YXR0cnMubWF4X3FwX3dyIDw9IFJQQ1JETUFfQkFDS1dBUkRfV1JTKQ0KPiB7DQo+ICAJCWRw
-cmludGsoIlJQQzogICAgICAgJXM6IGluc3VmZmljaWVudCB3cWUncyBhdmFpbGFibGVcbiIsDQoN
-CnRoYW5rcywgdGhpcyBmaXhlZCBvdXIgZmlyc3QgaXNzdWUgb2YgbW91bnQgZmFpbGluZy4gDQo=
+
+
+> On Jan 31, 2018, at 9:04 AM, Kalderon, Michal =
+<Michal.Kalderon@cavium.com> wrote:
+>=20
+>> From: Chuck Lever [mailto:chucklever@gmail.com] On Behalf Of Chuck =
+Lever
+>> Sent: Tuesday, January 30, 2018 10:54 PM
+>> To: Kalderon, Michal <Michal.Kalderon@cavium.com>
+>> Cc: linux-rdma@vger.kernel.org; linux-nfs@vger.kernel.org
+>> Subject: [PATCH v1] xprtrdma: Fix calculation of ri_max_send_sges
+>>=20
+>> Commit 16f906d66cd7 ("xprtrdma: Reduce required number of send
+>> SGEs") introduced the rpcrdma_ia::ri_max_send_sges field. This fixes =
+a
+>> problem where xprtrdma would not work if the device's max_sge =
+capability
+>> was small (low single digits).
+>>=20
+>> At least RPCRDMA_MIN_SEND_SGES are needed for the inline parts of =
+each
+>> RPC. ri_max_send_sges is set to this value:
+>>=20
+>>  ia->ri_max_send_sges =3D max_sge - RPCRDMA_MIN_SEND_SGES;
+>>=20
+>> Then when marshaling each RPC, rpcrdma_args_inline uses that value to
+>> determine whether the device has enough Send SGEs to convey an NFS
+>> WRITE payload inline, or whether instead a Read chunk is required.
+>>=20
+>> More recently, commit ae72950abf99 ("xprtrdma: Add data structure to
+>> manage RDMA Send arguments") used the ri_max_send_sges value to
+>> calculate the size of an array, but that commit erroneously assumed
+>> ri_max_send_sges contains a value similar to the device's max_sge, =
+and not
+>> one that was reduced by the minimum SGE count.
+>>=20
+>> This assumption results in the calculated size of the sendctx's Send =
+SGE array
+>> to be too small. When the array is used to marshal an RPC, the code =
+can write
+>> Send SGEs into the following sendctx element in that array, =
+corrupting it.
+>> When the device's max_sge is large, this issue is entirely harmless; =
+but it
+>> results in an oops in the provider's post_send method, if =
+dev.attrs.max_sge
+>> is small.
+>>=20
+>> So let's straighten this out: ri_max_send_sges will now contain a =
+value with
+>> the same meaning as dev.attrs.max_sge, which makes the code easier to
+>> understand, and enables rpcrdma_sendctx_create to calculate the size =
+of
+>> the SGE array correctly.
+>>=20
+>> Reported-by: Michal Kalderon <Michal.Kalderon@cavium.com>
+>> Fixes: 16f906d66cd7 ("xprtrdma: Reduce required number of send SGEs")
+>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>> net/sunrpc/xprtrdma/rpc_rdma.c |    2 +-
+>> net/sunrpc/xprtrdma/verbs.c    |    2 +-
+>> 2 files changed, 2 insertions(+), 2 deletions(-)
+>>=20
+>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c
+>> b/net/sunrpc/xprtrdma/rpc_rdma.c index 162e5dd..f0855a9 100644
+>> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+>> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+>> @@ -143,7 +143,7 @@ static bool rpcrdma_args_inline(struct =
+rpcrdma_xprt
+>> *r_xprt,
+>> 	if (xdr->page_len) {
+>> 		remaining =3D xdr->page_len;
+>> 		offset =3D offset_in_page(xdr->page_base);
+>> -		count =3D 0;
+>> +		count =3D RPCRDMA_MIN_SEND_SGES;
+>> 		while (remaining) {
+>> 			remaining -=3D min_t(unsigned int,
+>> 					   PAGE_SIZE - offset, =
+remaining); diff
+>> --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c =
+index
+>> f4eb63e..bb56b9d 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -505,7 +505,7 @@
+>> 		pr_warn("rpcrdma: HCA provides only %d send SGEs\n",
+>> max_sge);
+>> 		return -ENOMEM;
+>> 	}
+>> -	ia->ri_max_send_sges =3D max_sge - RPCRDMA_MIN_SEND_SGES;
+>> +	ia->ri_max_send_sges =3D max_sge;
+>>=20
+>> 	if (ia->ri_device->attrs.max_qp_wr <=3D RPCRDMA_BACKWARD_WRS)
+>> {
+>> 		dprintk("RPC:       %s: insufficient wqe's available\n",
+>=20
+> thanks, this fixed our first issue of mount failing.
+
+May I add "Tested-by: Michal Kalderon <Michal.Kalderon@cavium.com>" ?
+
+--
+Chuck Lever
+
+
+
