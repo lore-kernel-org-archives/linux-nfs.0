@@ -1,73 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:52984 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753158AbeAaReP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jan 2018 12:34:15 -0500
-Subject: [PATCH 2/2] xprtrdma: Fix BUG after a device removal
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 31 Jan 2018 12:34:13 -0500
-Message-ID: <20180131173413.11367.40311.stgit@manet.1015granger.net>
-In-Reply-To: <20180131173308.11367.93367.stgit@manet.1015granger.net>
-References: <20180131173308.11367.93367.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail.kernel.org ([198.145.29.99]:37208 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752840AbeAaRza (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Jan 2018 12:55:30 -0500
+Message-ID: <1517421324.32569.15.camel@kernel.org>
+Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
+ instead of s64
+From: Jeff Layton <jlayton@kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-integrity <linux-integrity@vger.kernel.org>,
+        Trond Myklebust <trondmy@primarydata.com>,
+        GoffredoBaroncelli <kreijack@libero.it>
+Date: Wed, 31 Jan 2018 12:55:24 -0500
+In-Reply-To: <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
+References: <20180130173126.2806-1-jlayton@kernel.org>
+         <20180130203221.29310-1-jlayton@kernel.org>
+         <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
+         <1517401762.3612.0.camel@kernel.org>
+         <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Michal Kalderon reports a BUG that occurs just after device removal:
+On Wed, 2018-01-31 at 08:46 -0800, Linus Torvalds wrote:
+> On Wed, Jan 31, 2018 at 4:29 AM, Jeff Layton <jlayton@kernel.org> wrote:
+> > 
+> > Do you mind just taking it directly? I don't have anything else queued
+> > up for this cycle.
+> 
+> Done.
+> 
 
-[  169.112490] rpcrdma: removing device qedr0 for 192.168.110.146:20049
-[  169.143909] BUG: unable to handle kernel NULL pointer dereference at 0000000000000010
-[  169.181837] IP: rpcrdma_dma_unmap_regbuf+0xa/0x60 [rpcrdma]
+Thanks...and also many thanks for spotting the original issue. I agree
+that this makes it much harder for the callers to get things wrong (and
+is probably much more efficient on some arches, as Ted pointed out).
 
-The RPC/RDMA client transport attempts to allocate some resources
-on demand. Registered buffers are one such resource. These are
-allocated (or re-allocated) by xprt_rdma_allocate to hold RPC Call
-and Reply messages. A hardware resource is associated with each of
-these buffers, as they can be used for a Send or Receive Work
-Request.
+> I wonder if "false for same, true for different" calling convention
+> makes much sense, but it matches the old "0 for same" so obviously
+> makes for a smaller diff.
+> 
+> If it ever ends up confusing people, maybe the sense of that function
+> should be reversed, and the name changed to something like
+> "same_inode_version()" or something.
+> 
+> But at least for now the situation seems ok to me,
+> 
 
-If a device is removed from under an NFS/RDMA mount, the transport
-layer is responsible for releasing all hardware resources before
-the device can be finally unplugged. A BUG results when the NFS
-mount hasn't yet seen much activity: the transport tries to release
-resources that haven't yet been allocated.
+G. Baroncelli suggested changing the name too, so maybe we should just
+go ahead and do it. Let me think on what the best approach is and I may
+try to send another patch or PR before the end of the merge window.
 
-rpcrdma_free_regbuf() already checks for this case, so just move
-that check to cover the DEVICE_REMOVAL case as well.
-
-Reported-by: Michal Kalderon <Michal.Kalderon@cavium.com>
-Fixes: bebd031866ca ("xprtrdma: Support unplugging an HCA ...")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Michal Kalderon <Michal.Kalderon@cavium.com>
----
- net/sunrpc/xprtrdma/verbs.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index bb56b9d..e6f84a6 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1502,6 +1502,9 @@ struct rpcrdma_regbuf *
- static void
- rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb)
- {
-+	if (!rb)
-+		return;
-+
- 	if (!rpcrdma_regbuf_is_mapped(rb))
- 		return;
- 
-@@ -1517,9 +1520,6 @@ struct rpcrdma_regbuf *
- void
- rpcrdma_free_regbuf(struct rpcrdma_regbuf *rb)
- {
--	if (!rb)
--		return;
--
- 	rpcrdma_dma_unmap_regbuf(rb);
- 	kfree(rb);
- }
-
+Cheers,
+-- 
+Jeff Layton <jlayton@kernel.org>
