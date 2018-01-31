@@ -1,288 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f48.google.com ([209.85.213.48]:44753 "EHLO
-        mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751378AbeAaSwg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jan 2018 13:52:36 -0500
-Received: by mail-vk0-f48.google.com with SMTP id q62so9673059vkb.11
-        for <linux-nfs@vger.kernel.org>; Wed, 31 Jan 2018 10:52:35 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:55852 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751678AbeAaTby (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Jan 2018 14:31:54 -0500
+Subject: Re: Question about random UDP port on rpcbind 0.2.3
+To: Naruto Nguyen <narutonguyen2018@gmail.com>,
+        linux-nfs@vger.kernel.org
+References: <CANpxKHE=eKuFc2HBgT0aqDb+Q5EOFWOfCzf=tmmuH7zNyn878g@mail.gmail.com>
+ <CANpxKHH3zf_RRnxckHKfvEWL-RNCr_ZePxc0r98Ep0X_JX1BbA@mail.gmail.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <47c040cf-d0a8-eb42-a276-9bc2e264ff6e@RedHat.com>
+Date: Wed, 31 Jan 2018 14:31:53 -0500
 MIME-Version: 1.0
-In-Reply-To: <0F49479C-EB5B-4F86-B89B-7435FDD51E54@oracle.com>
-References: <CAN-5tyFX2aZPXy2NRiATwkbv8gDbyafB-4JsRUghuF84ih_WnQ@mail.gmail.com>
- <0B3C835B-3E30-43F3-B53C-BFB4462543D3@oracle.com> <CAN-5tyFu9YPVFzmrCcwwdcS5v8X61Az3hSW8xSDdTA3MWi09Sg@mail.gmail.com>
- <C5643108-6C06-4043-A67A-F63A2234FC40@oracle.com> <CAN-5tyHv+u=FsP+S7mG+7HHrrW=NKhC3vW_fVQh0OpjPJVJ2dw@mail.gmail.com>
- <16CE3E21-2BF9-4CC5-A3E7-FFBE706A9EF4@oracle.com> <CAN-5tyHSW9DPHbp9BGEFaF0dSFBc_NBwdSd9L4ZNCgzLn2VEkQ@mail.gmail.com>
- <B644BF5F-F16F-4AC6-AACD-EBEE14C6FB91@oracle.com> <CAN-5tyH3NnN6ac-Q+39T5cUHubCbsBW200y03KE0YnSC4=0hAA@mail.gmail.com>
- <0F49479C-EB5B-4F86-B89B-7435FDD51E54@oracle.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Wed, 31 Jan 2018 13:52:34 -0500
-Message-ID: <CAN-5tyFoa8DSyxBHYznASdUD1rLON0V6BvZ-2jSiRSXS-T2PqA@mail.gmail.com>
-Subject: Re: problem on nfsd doing RDMA write
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Bruce Fields <bfields@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+In-Reply-To: <CANpxKHH3zf_RRnxckHKfvEWL-RNCr_ZePxc0r98Ep0X_JX1BbA@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 31, 2018 at 1:29 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->
->
->> On Jan 30, 2018, at 12:02 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>
->> On Mon, Jan 29, 2018 at 12:24 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>>
->>>> On Jan 29, 2018, at 12:19 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>
->>>> On Fri, Jan 26, 2018 at 4:08 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>
->>>>>
->>>>>> On Jan 26, 2018, at 12:13 PM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>>
->>>>>> On Fri, Jan 26, 2018 at 2:29 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>
->>>>>>>
->>>>>>>> On Jan 26, 2018, at 11:05 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>>>>
->>>>>>>> On Fri, Jan 26, 2018 at 1:23 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>> On Jan 26, 2018, at 9:24 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
->>>>>>>>>>
->>>>>>>>>> Hi Bruce/Chuck,
->>>>>>>>>>
->>>>>>>>>> There is a problem with nfsd doing a WRITE of size 4093,4094,4095. To
->>>>>>>>>> reproduce, mount with RDMA and do a simple dd "dd if=/dev/zero
->>>>>>>>>> of=/mnt/testfile bs=4093 count=1". What happens is that nfsd fails to
->>>>>>>>>> parse GETATTR after the WRITE in the compound. It fails the operation
->>>>>>>>>> with ERR_OP_ILLEGAL.
->>>>>>>>>>
->>>>>>>>>> The problem happens for the values where XDR round up ends up rounding
->>>>>>>>>> up to the page size. I don't know if my fix is the appropriate way to
->>>>>>>>>> fix this but with it I don't get the error:
->>>>>>>>>>
->>>>>>>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>>>>>>>>> index 2c61c6b..a8489c3 100644
->>>>>>>>>> --- a/fs/nfsd/nfs4xdr.c
->>>>>>>>>> +++ b/fs/nfsd/nfs4xdr.c
->>>>>>>>>> @@ -1289,11 +1289,12 @@ static __be32 nfsd4_decode_opaque(struct nfsd4_compounda
->>>>>>>>>>
->>>>>>>>>>    len = XDR_QUADLEN(write->wr_buflen) << 2;
->>>>>>>>>>    if (len >= avail) {
->>>>>>>>>> -               int pages;
->>>>>>>>>> +               int pages = 0;
->>>>>>>>>>
->>>>>>>>>>            len -= avail;
->>>>>>>>>>
->>>>>>>>>> -               pages = len >> PAGE_SHIFT;
->>>>>>>>>> +               if (write->wr_buflen >= PAGE_SIZE)
->>>>>>>>>> +                       pages = len >> PAGE_SHIFT;
->>>>>>>>>>            argp->pagelist += pages;
->>>>>>>>>>            argp->pagelen -= pages * PAGE_SIZE;
->>>>>>>>>>            len -= pages * PAGE_SIZE;
->>>>>>>>>>
->>>>>>>>>> So the problem is the using "len" instead of "write->wr_buflen" leads
->>>>>>>>>> for the values 4093,4094,4095 that are rounded up to 4096, it makes
->>>>>>>>>> pages=1 and the argp->pagelen ends up being a negative value leading
->>>>>>>>>> to problems of parsing the GETATTR.
->>>>>>>>>
->>>>>>>>> Would this also be a problem near any page boundary, say, a
->>>>>>>>> write length of 8191 bytes?
->>>>>>>>>
->>>>>>>>> Instead of using the rounded up "len", why not try this:
->>>>>>>>>
->>>>>>>>> -               pages = len >> PAGE_SHIFT;
->>>>>>>>> +               pages = write->wr_buflen >> PAGE_SHIFT;
->>>>>>>>
->>>>>>>> You are right. It needs to be that. Otherwise 8191 fails the same way.
->>>>>>>>
->>>>>>>>> And be sure to test with TCP as well.
->>>>>>>>
->>>>>>>> Sigh. It breaks normal (non-RDMA) mounts. I'll figure out why.
->>>>>>>
->>>>>>> OK.
->>>>>>>
->>>>>>> Remember that a Read chunk's length does not have to be
->>>>>>> rounded up. Maybe the transport needs to round up the
->>>>>>> length of the unmarshaled data content on behalf of the
->>>>>>> NFSv4 write decoder.
->>>>>>>
->>>>>>
->>>>>> The problem of simply taking write->wr_buflen was that len before that
->>>>>> could have been adjusted by avail value in then non-RDAM mounts.
->>>>>>
->>>>>> Again, I'm not sure if this is the right fix. But this one works for
->>>>>> both non-RDMA and RDMA mounts.
->>>>>>
->>>>>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->>>>>> index 2c61c6b..3178997 100644
->>>>>> --- a/fs/nfsd/nfs4xdr.c
->>>>>> +++ b/fs/nfsd/nfs4xdr.c
->>>>>> @@ -1293,7 +1293,10 @@ static __be32 nfsd4_decode_opaque(struct
->>>>>> nfsd4_compoundargs *argp, struct xdr_ne
->>>>>>
->>>>>>              len -= avail;
->>>>>>
->>>>>> -               pages = len >> PAGE_SHIFT;
->>>>>> +               if (!avail)
->>>>>> +                       pages = write->wr_buflen >> PAGE_SHIFT;
->>>>>> +               else
->>>>>> +                       pages = len >> PAGE_SHIFT;
->>>>>>              argp->pagelist += pages;
->>>>>>              argp->pagelen -= pages * PAGE_SIZE;
->>>>>>              len -= pages * PAGE_SIZE;
->>>>>
->>>>> This code has been around since 2012. Has it always been
->>>>> broken for RDMA? I suspect the root problem is in the
->>>>> transport, not here in the decoder. Can you bisect to
->>>>> find out where the problem started to occur?
->>>>
->>>> To see if I could go back to 2012, I first want to see if I could go
->>>> back to before mlx5 driver was added which was in 3.11-rc1. But I'm
->>>> having issues trying to boot into a kernel based on 3.10 or 3.9. I'm
->>>> trying to verify if my CX-5 card would even work with mlx4 driver
->>>> which I'm having doubts it would.
->>>
->>> The CX-5 works only with mlx5.
->>>
->>>
->>>> These old kernels fail to boot in
->>>> XFS saying that it's a wrong version. Some googling makes me think
->>>> that since my XFS partition was created with a newer kernel it's not
->>>> compatible with an older kernel...
->>>
->>> That's correct, the XFS filesystem has new features like
->>> metadata checksum that don't work on older kernels.
->>>
->>> To start with, you could try some very late 3.x or early
->>> 4.x kernels. My intuition is that you will find an svcrdma
->>> change that is more recent than 2012 that is causing the
->>> underlying issue.
->>
->> It works in 4.8 and does not work in 4.9. It's this commit that breaks it:
->>
->> commit cc9d83408b52265ddab2874cf19d1611da4ca7ee
->>
->> svcrdma: Server-side support for rpcrdma_connect_private
->>
->> Prepare to receive an RDMA-CM private message when handling a new
->> connection attempt, and send a similar message as part of connection
->> acceptance.
->>
->> Both sides can communicate their various implementation limits.
->> Implementations that don't support this sideband protocol ignore it.
->>
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> Reviewed-by: Sagi Grimberg <sagi@grimberg.me>
->> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>
->> So far I don't understand how can causes problems...
->
-> More likely it's:
->
->
-> commit eae03e2ac80a3476f0652cb0ee451d7b06d30564
-> Author:     Chuck Lever <chuck.lever@oracle.com>
-> AuthorDate: Fri Aug 18 11:12:27 2017 -0400
-> Commit:     J. Bruce Fields <bfields@redhat.com>
-> CommitDate: Tue Sep 5 15:15:29 2017 -0400
->
->     nfsd: Incoming xdr_bufs may have content in tail buffer
->
->
->
-> This is a 3 op compound. The third op is GETATTR.
-> The reply shows that the WRITE op succeeds, which
-> is why no error is reported to the application.
-> The GETATTR fails with OP_ILLEGAL, and the client
-> I guess is trained to ignore that kind of failure.
->
-> After nfsd4_decode_write pushes into the "next" page
-> in the page list, the next time READ_BUF is called
-> (to handle the next op in the compound), it is
-> supposed to see that the XDR page list is now
-> exhausted, and switch to the XDR tail buf.
->
-> TCP doesn't use the tail buf; the GETATTR in that
-> case is at the end of the page list, following the
-> WRITE payload. That would explain why this issue
-> cannot be reproduced there.
->
-> RDMA does use the tail buf in this case. For some
-> reason the logic added in eae03e2ac8 is not working,
-> and the server is looking at uninitialized memory
-> to find that third op.
->
-> I run cthon04 all the time, so I wonder why I never
-> hit this case.
-
-While this commit seems like a better explanation,  I can 100% hit the
-issue running 4.8-rc6 based kernel (this is from your nfsd-for-4.9
-branch and rollback back to the cc9d83408b) . What matters is the
-assignment of the "private_data" in the conn_param. If I set it to
-NULL and 0 for the length. The problem goes away.
-
-Are you hitting the issue now? Are you 100% certain that you haven't
-hit it before. Do you always inspect the network traces? Without
-inspecting the network trace you wouldn't have found it. cthon never
-fails so from the user perspective nothing failed.
-
-I will check eae03e2ac80a3476f0652cb0ee451d7b06d30564 commit to see
-what different do I see in my testing.
 
 
->>>>>>>>>> If this looks OK, I can send a patch.
->>>>>>>>>> --
->>>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>>>
->>>>>>>>> --
->>>>>>>>> Chuck Lever
->>>>>>>>>
->>>>>>>>>
->>>>>>>>>
->>>>>>>>> --
->>>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>> --
->>>>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>>>
->>>>>>> --
->>>>>>> Chuck Lever
->>>>>>>
->>>>>>>
->>>>>>>
->>>>>> --
->>>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>>> the body of a message to majordomo@vger.kernel.org
->>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>>
->>>>> --
->>>>> Chuck Lever
->>>>>
->>>>>
->>>>>
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>> the body of a message to majordomo@vger.kernel.org
->>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>> --
->>> Chuck Lever
->>>
->>>
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+On 01/29/2018 01:44 AM, Naruto Nguyen wrote:
+> Hello,
+> 
+> Just would like to add for more information, when I start rpcbind
+> normally, not via systemd, the random UDP is still opened
+> 
+> Could you please share any ideas on this?
+The bound UDP socket is used for remote calls... Where rpcbind
+is asked to make a remote RPC for another caller... 
+
+Antiquated? yes.. but harmless.
+
+steved.
+
+> 
+> Brs,
+> Bao
+> 
+> On 27 January 2018 at 19:50, Naruto Nguyen <narutonguyen2018@gmail.com> wrote:
+>> I would like to ask you a question regarding the new random UDP port
+>> in rpcbind 0.2.3.
+>>
+>> In rpcbind 0.2.3, when I start rpcbind (version 0.2.3) through
+>> rpcbind.service, then I do netstat
+>>
+>> udp        0      0 0.0.0.0:111             0.0.0.0:*
+>>          10408/rpcbind
+>> udp        0      0 0.0.0.0:831             0.0.0.0:*
+>>          10408/rpcbind
+>> udp6       0      0 :::111                  :::*
+>>          10408/rpcbind
+>> udp6       0      0 :::831                  :::*
+>>          10408/rpcbind
+>>
+>> The rpcbind does not only listen on port 111 but also on a random udp
+>> port "831" in this case, this port is changed every time the rpcbind
+>> service retstarts. And it listens on 0.0.0.0 so it opens a hole on
+>> security. Could you please let me know what this port is for and is
+>> there any way to avoid that like force it listen on a internal
+>> interface rather than on any interfaces like that? I do not see the
+>> random port on rpcbind 0.2.1, not sure why? As the rpcbind is started
+>> from systemd so "-h" option is invalid as the man page says:
+>>
+>>
+>>    -h      Specify specific IP addresses to bind to for UDP requests.
+>> This option may be specified multiple times and can be used to
+>> restrict the interfaces rpcbind will respond to.  Note that when
+>> rpcbind is controlled via sys-
+>>              temd's socket activation, the -h option is ignored. In
+>> this case, you need to edit the ListenStream and ListenDgram
+>> definitions in /usr/lib/systemd/system/rpcbind.socket instead.
+>>
+>> Thanks a lot,
+>> Brs,
+>> Naruto
 > --
-> Chuck Lever
->
->
->
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
