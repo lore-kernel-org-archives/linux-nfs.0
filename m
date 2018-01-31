@@ -1,46 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:52957 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753270AbeAaQqm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jan 2018 11:46:42 -0500
+Received: from mail-io0-f194.google.com ([209.85.223.194]:39360 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752211AbeAaRd6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jan 2018 12:33:58 -0500
+Subject: [PATCH 0/2] Two short NFS/RDMA subjects
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Wed, 31 Jan 2018 12:33:56 -0500
+Message-ID: <20180131173308.11367.93367.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <1517401762.3612.0.camel@kernel.org>
-References: <20180130173126.2806-1-jlayton@kernel.org> <20180130203221.29310-1-jlayton@kernel.org>
- <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com> <1517401762.3612.0.camel@kernel.org>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Wed, 31 Jan 2018 08:46:41 -0800
-Message-ID: <CA+55aFxB6og=iRkRchiOrr8EW2=jgb_i4nUiPsvEa+8F64APxA@mail.gmail.com>
-Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
- instead of s64
-To: Jeff Layton <jlayton@kernel.org>
-Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-        linux-xfs <linux-xfs@vger.kernel.org>,
-        linux-btrfs <linux-btrfs@vger.kernel.org>,
-        linux-integrity <linux-integrity@vger.kernel.org>,
-        Trond Myklebust <trondmy@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 31, 2018 at 4:29 AM, Jeff Layton <jlayton@kernel.org> wrote:
->
-> Do you mind just taking it directly? I don't have anything else queued
-> up for this cycle.
+Hi Anna-
 
-Done.
+Cavium has reported two issues for which I have fixes. These
+should also go to stable.
 
-I wonder if "false for same, true for different" calling convention
-makes much sense, but it matches the old "0 for same" so obviously
-makes for a smaller diff.
+---
 
-If it ever ends up confusing people, maybe the sense of that function
-should be reversed, and the name changed to something like
-"same_inode_version()" or something.
+Chuck Lever (2):
+      xprtrdma: Fix calculation of ri_max_send_sges
+      xprtrdma: Fix BUG after a device removal
 
-But at least for now the situation seems ok to me,
 
-            Linus
+ net/sunrpc/xprtrdma/rpc_rdma.c |    2 +-
+ net/sunrpc/xprtrdma/verbs.c    |    8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
+
+--
+Chuck Lever
