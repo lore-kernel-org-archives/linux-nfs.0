@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f67.google.com ([209.85.214.67]:35477 "EHLO
-        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753052AbeAaReH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jan 2018 12:34:07 -0500
-Subject: [PATCH 1/2] xprtrdma: Fix calculation of ri_max_send_sges
+Received: from mail-it0-f66.google.com ([209.85.214.66]:52984 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753158AbeAaReP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 31 Jan 2018 12:34:15 -0500
+Subject: [PATCH 2/2] xprtrdma: Fix BUG after a device removal
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 31 Jan 2018 12:34:05 -0500
-Message-ID: <20180131173405.11367.42982.stgit@manet.1015granger.net>
+Date: Wed, 31 Jan 2018 12:34:13 -0500
+Message-ID: <20180131173413.11367.40311.stgit@manet.1015granger.net>
 In-Reply-To: <20180131173308.11367.93367.stgit@manet.1015granger.net>
 References: <20180131173308.11367.93367.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,72 +16,58 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 16f906d66cd7 ("xprtrdma: Reduce required number of send
-SGEs") introduced the rpcrdma_ia::ri_max_send_sges field. This fixes
-a problem where xprtrdma would not work if the device's max_sge
-capability was small (low single digits).
+Michal Kalderon reports a BUG that occurs just after device removal:
 
-At least RPCRDMA_MIN_SEND_SGES are needed for the inline parts of
-each RPC. ri_max_send_sges is set to this value:
+[  169.112490] rpcrdma: removing device qedr0 for 192.168.110.146:20049
+[  169.143909] BUG: unable to handle kernel NULL pointer dereference at 0000000000000010
+[  169.181837] IP: rpcrdma_dma_unmap_regbuf+0xa/0x60 [rpcrdma]
 
-  ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
+The RPC/RDMA client transport attempts to allocate some resources
+on demand. Registered buffers are one such resource. These are
+allocated (or re-allocated) by xprt_rdma_allocate to hold RPC Call
+and Reply messages. A hardware resource is associated with each of
+these buffers, as they can be used for a Send or Receive Work
+Request.
 
-Then when marshaling each RPC, rpcrdma_args_inline uses that value
-to determine whether the device has enough Send SGEs to convey an
-NFS WRITE payload inline, or whether instead a Read chunk is
-required.
+If a device is removed from under an NFS/RDMA mount, the transport
+layer is responsible for releasing all hardware resources before
+the device can be finally unplugged. A BUG results when the NFS
+mount hasn't yet seen much activity: the transport tries to release
+resources that haven't yet been allocated.
 
-More recently, commit ae72950abf99 ("xprtrdma: Add data structure to
-manage RDMA Send arguments") used the ri_max_send_sges value to
-calculate the size of an array, but that commit erroneously assumed
-ri_max_send_sges contains a value similar to the device's max_sge,
-and not one that was reduced by the minimum SGE count.
-
-This assumption results in the calculated size of the sendctx's
-Send SGE array to be too small. When the array is used to marshal
-an RPC, the code can write Send SGEs into the following sendctx
-element in that array, corrupting it. When the device's max_sge is
-large, this issue is entirely harmless; but it results in an oops
-in the provider's post_send method, if dev.attrs.max_sge is small.
-
-So let's straighten this out: ri_max_send_sges will now contain a
-value with the same meaning as dev.attrs.max_sge, which makes
-the code easier to understand, and enables rpcrdma_sendctx_create
-to calculate the size of the SGE array correctly.
+rpcrdma_free_regbuf() already checks for this case, so just move
+that check to cover the DEVICE_REMOVAL case as well.
 
 Reported-by: Michal Kalderon <Michal.Kalderon@cavium.com>
-Fixes: 16f906d66cd7 ("xprtrdma: Reduce required number of send SGEs")
+Fixes: bebd031866ca ("xprtrdma: Support unplugging an HCA ...")
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 Tested-by: Michal Kalderon <Michal.Kalderon@cavium.com>
 ---
- net/sunrpc/xprtrdma/rpc_rdma.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c    |    2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 162e5dd..f0855a9 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -143,7 +143,7 @@ static bool rpcrdma_args_inline(struct rpcrdma_xprt *r_xprt,
- 	if (xdr->page_len) {
- 		remaining = xdr->page_len;
- 		offset = offset_in_page(xdr->page_base);
--		count = 0;
-+		count = RPCRDMA_MIN_SEND_SGES;
- 		while (remaining) {
- 			remaining -= min_t(unsigned int,
- 					   PAGE_SIZE - offset, remaining);
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index f4eb63e..bb56b9d 100644
+index bb56b9d..e6f84a6 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -505,7 +505,7 @@
- 		pr_warn("rpcrdma: HCA provides only %d send SGEs\n", max_sge);
- 		return -ENOMEM;
- 	}
--	ia->ri_max_send_sges = max_sge - RPCRDMA_MIN_SEND_SGES;
-+	ia->ri_max_send_sges = max_sge;
+@@ -1502,6 +1502,9 @@ struct rpcrdma_regbuf *
+ static void
+ rpcrdma_dma_unmap_regbuf(struct rpcrdma_regbuf *rb)
+ {
++	if (!rb)
++		return;
++
+ 	if (!rpcrdma_regbuf_is_mapped(rb))
+ 		return;
  
- 	if (ia->ri_device->attrs.max_qp_wr <= RPCRDMA_BACKWARD_WRS) {
- 		dprintk("RPC:       %s: insufficient wqe's available\n",
+@@ -1517,9 +1520,6 @@ struct rpcrdma_regbuf *
+ void
+ rpcrdma_free_regbuf(struct rpcrdma_regbuf *rb)
+ {
+-	if (!rb)
+-		return;
+-
+ 	rpcrdma_dma_unmap_regbuf(rb);
+ 	kfree(rb);
+ }
 
