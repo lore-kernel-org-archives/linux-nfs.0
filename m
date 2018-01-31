@@ -1,124 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:35047 "EHLO mx2.suse.de"
+Received: from mail.kernel.org ([198.145.29.99]:41900 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751728AbeAaFQf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 Jan 2018 00:16:35 -0500
-From: NeilBrown <neilb@suse.com>
-To: David Howells <dhowells@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        Ingo Molnar <mingo@kernel.org>,
-        Anna Schumaker <Anna.Schumaker@Netapp.com>
-Date: Wed, 31 Jan 2018 16:15:39 +1100
-Subject: [PATCH 1/4] cred: add cred_fscmp() for comparing creds.
-Cc: NFS <linux-nfs@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>
-Message-ID: <151737573947.14845.5248732383783116263.stgit@noble>
-In-Reply-To: <151737571564.14845.2874586176125198504.stgit@noble>
-References: <151737571564.14845.2874586176125198504.stgit@noble>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+        id S1751025AbeAaM31 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 31 Jan 2018 07:29:27 -0500
+Message-ID: <1517401762.3612.0.camel@kernel.org>
+Subject: Re: [PATCH v2] iversion: make inode_cmp_iversion{+raw} return bool
+ instead of s64
+From: Jeff Layton <jlayton@kernel.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
+        linux-xfs <linux-xfs@vger.kernel.org>,
+        linux-btrfs <linux-btrfs@vger.kernel.org>,
+        linux-integrity <linux-integrity@vger.kernel.org>,
+        Trond Myklebust <trondmy@primarydata.com>
+Date: Wed, 31 Jan 2018 07:29:22 -0500
+In-Reply-To: <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
+References: <20180130173126.2806-1-jlayton@kernel.org>
+         <20180130203221.29310-1-jlayton@kernel.org>
+         <CA+55aFw5Xf4V-BF1JK+SpjXnmrgeMe-k0wLaFc_=6ojbhfWEtQ@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS needs to compare to credentials, to see if they can
-be treated the same w.r.t. filesystem access.  Sometimes
-an ordering is needed when credentials are used as a key
-to an rbtree.
-NFS current has its own private credential management from
-before 'struct cred' existed.  To move it over to more consistent
-use of 'struct cred' we need a comparison function.
-This patch adds that function.
+On Tue, 2018-01-30 at 12:53 -0800, Linus Torvalds wrote:
+> Ack. Should I expect this in a future pull request, or take it directly?
+> 
+> There's no hurry about this, since none of the existing users of that
+> function actually do anything but test the return value against zero,
+> and nobody saves it into anything but a "bool" (which has magical
+> casting properties and does not lose upper bits).
+> 
+>               Linus
 
-Signed-off-by: NeilBrown <neilb@suse.com>
----
- include/linux/cred.h |    1 +
- kernel/cred.c        |   55 ++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 56 insertions(+)
+Do you mind just taking it directly? I don't have anything else queued
+up for this cycle.
 
-diff --git a/include/linux/cred.h b/include/linux/cred.h
-index 631286535d0f..6dd51e503f23 100644
---- a/include/linux/cred.h
-+++ b/include/linux/cred.h
-@@ -164,6 +164,7 @@ extern int change_create_files_as(struct cred *, struct inode *);
- extern int set_security_override(struct cred *, u32);
- extern int set_security_override_from_ctx(struct cred *, const char *);
- extern int set_create_files_as(struct cred *, struct inode *);
-+extern int cred_fscmp(const struct cred *, const struct cred *);
- extern void __init cred_init(void);
- 
- /*
-diff --git a/kernel/cred.c b/kernel/cred.c
-index ecf03657e71c..4ce75c6fb752 100644
---- a/kernel/cred.c
-+++ b/kernel/cred.c
-@@ -19,6 +19,7 @@
- #include <linux/security.h>
- #include <linux/binfmts.h>
- #include <linux/cn_proc.h>
-+#include <linux/uidgid.h>
- 
- #if 0
- #define kdebug(FMT, ...)						\
-@@ -564,6 +565,60 @@ void revert_creds(const struct cred *old)
- }
- EXPORT_SYMBOL(revert_creds);
- 
-+/**
-+ * cred_fscmp - Compare to credentials with respect to filesystem access.
-+ * @a: The first credential
-+ * @b: The second credential
-+ *
-+ * cred_cmp() will return zero if both credentials have the same
-+ * fsuid, fsgid, and supplementary groups.  That is, if they will both
-+ * provide the same access to files based on mode/uid/gid.
-+ * If the credentials are different, then either -1 or 1 will
-+ * be returned depending on whether @a comes before or after @b
-+ * respectively in an arbitrary, but stable, ordering of credentials.
-+ *
-+ * Return: -1, 0, or 1 depending on comparison
-+ */
-+int cred_fscmp(const struct cred *a, const struct cred *b)
-+{
-+	struct group_info *ga, *gb;
-+	int g;
-+
-+	if (a == b)
-+		return 0;
-+	if (uid_lt(a->fsuid, b->fsuid))
-+		return -1;
-+	if (uid_gt(a->fsuid, b->fsuid))
-+		return 1;
-+
-+	if (gid_lt(a->fsgid, b->fsgid))
-+		return -1;
-+	if (gid_gt(a->fsgid, b->fsgid))
-+		return 1;
-+
-+	ga = a->group_info;
-+	gb = b->group_info;
-+	if (ga == gb)
-+		return 0;
-+	if (ga == NULL)
-+		return -1;
-+	if (gb == NULL)
-+		return 1;
-+	if (ga->ngroups < gb->ngroups)
-+		return -1;
-+	if (ga->ngroups > gb->ngroups)
-+		return 1;
-+
-+	for (g = 0; g < ga->ngroups; g++) {
-+		if (gid_lt(ga->gid[g], gb->gid[g]))
-+			return -1;
-+		if (gid_gt(ga->gid[g], gb->gid[g]))
-+			return 1;
-+	}
-+	return 0;
-+}
-+EXPORT_SYMBOL(cred_fscmp);
-+
- /*
-  * initialise the credentials stuff
-  */
-
-
+Thanks,
+-- 
+Jeff Layton <jlayton@kernel.org>
