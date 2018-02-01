@@ -1,93 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:33154 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751986AbeBAWKn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Feb 2018 17:10:43 -0500
-Subject: [PATCH v1] svcrdma: Fix Read chunk round-up
-From: Chuck Lever <chuck.lever@oracle.com>
-To: aglo@umich.edu
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Thu, 01 Feb 2018 17:10:41 -0500
-Message-ID: <20180201221041.12219.56314.stgit@klimt.1015granger.net>
+Received: from mx2.suse.de ([195.135.220.15]:41413 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751669AbeBBJci (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Feb 2018 04:32:38 -0500
+From: NeilBrown <neilb@suse.com>
+To: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 02 Feb 2018 09:04:21 +1100
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: always set NFS_LOCK_LOST when a lock is lost.
+In-Reply-To: <CAN-5tyHB50kKNfcXyTVgPO+6p6p1iZVCZpROMN-jxP7Be53_UQ@mail.gmail.com>
+References: <87r2rzo8qi.fsf@notabene.neil.brown.name> <87bmiul8r6.fsf@notabene.neil.brown.name> <CAN-5tyGf6d=K_9baA6YucbfcVduufVjcLm72jLe2_8XMyT-P2g@mail.gmail.com> <CAN-5tyHB50kKNfcXyTVgPO+6p6p1iZVCZpROMN-jxP7Be53_UQ@mail.gmail.com>
+Message-ID: <87tvv02wpm.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A single NFSv4 WRITE compound can often have three operations:
-PUTFH, WRITE, then GETATTR.
+--=-=-=
+Content-Type: text/plain
 
-When the WRITE payload is sent in a Read chunk, the client places
-the GETATTR in the inline part of the RPC/RDMA message, just after
-the WRITE operation (sans payload). The position value in the Read
-chunk enables the receiver to insert the Read chunk at the correct
-place in the received XDR stream; that is between the WRITE and
-GETATTR.
+On Thu, Feb 01 2018, Olga Kornievskaia wrote:
 
-According to RFC 8166, an NFS/RDMA client does not have to add XDR
-round-up to the Read chunk that carries the WRITE payload. The
-receiver adds that if it is absent and the receiver's XDR decoders
-require it to be present.
+> On Thu, Feb 1, 2018 at 11:23 AM, Olga Kornievskaia <aglo@umich.edu> wrote:
+>> On Tue, Dec 19, 2017 at 4:15 PM, NeilBrown <neilb@suse.com> wrote:
+>>> On Wed, Dec 13 2017, NeilBrown wrote:
+>>>
+>>>> There are 2 comments in the NFSv4 code which suggest that
+>>>> SIGLOST should possibly be sent to a process.  In these
+>>>> cases a lock has been lost.
+>>>> The current practice is to set NFS_LOCK_LOST so that
+>>>> read/write returns EIO when a lock is lost.
+>>>> So change these comments to code when sets NFS_LOCK_LOST.
+>>>>
+>>>> One case is when lock recovery after apparent server restart
+>>>> fails with NFS4ERR_DENIED, NFS4ERR_RECLAIM_BAD, or
+>>>> NFS4ERRO_RECLAIM_CONFLICT.  The other case is when a lock
+>>>> attempt as part of lease recovery fails with NFS4ERR_DENIED.
+>>>>
+>>>> In an ideal world, these should not happen.  However I have
+>>>> a packet trace showing an NFSv4.1 session getting
+>>>> NFS4ERR_BADSESSION after an extended network parition.  The
+>>>> NFSv4.1 client treats this like server reboot until/unless
+>>>> it get NFS4ERR_NO_GRACE, in which case it switches over to
+>>>> "nograce" recovery mode.  In this network trace, the client
+>>>> attempts to recover a lock and the server (incorrectly)
+>>>> reports NFS4ERR_DENIED rather than NFS4ERR_NO_GRACE.  This
+>>>> leads to the ineffective comment and the client then
+>>>> continues to write using the OPEN stateid.
+>>>>
+>>>> Signed-off-by: NeilBrown <neilb@suse.com>
+>>>> ---
+>>>>
+>>>> Note that I have not tested this as I do not have direct access to a
+>>>> faulty NFS server.  Once I get confirmation I will provide an update.
+>>>
+>>> Hi,
+>>>  I have now received confirmation that this change does fix the locking
+>>>  behavior in this case where the server is returning the wrong error
+>>>  code.
+>>>
+>>
+>> Hi Neil,
+>>
+>> I'm testing your patch and in my testing it does not address the
+>> issue. But I'd like to double check if my testing scenario is the
+>> problem the same as what the patch suppose to address.
+>>
+>> My testing,
+>> 1. client 1 opens a file, grabs a lock (goes to sleep so that I could
+>> trigger network partition).
+>> 2. wait sufficient amount of time for the client 1's state goes stale
+>> on the server.
+>> 3. client 2 opens the same file, and grabs the lock and starting doing
+>> IO (say writing).
+>> 4. plug network back into client 1. it recovers its client id and
+>> session and initiates state recovery. server didn't reboot so it
+>> doesn't reply with ERR_NO_GRACE to client's open and it succeeds. the
+>> client sends a LOCK and gets ERR_DENIED from the server (because
+>> client 2 is holding the lock now).
+>> 5. client 1's app now wakes up and does IO.
+>>
+>> What should happen is that IO should fail. What I see is client 1
+>> continues to do IO (say writing).
+>>
+>> Is my scenario same as yours?
+>
+> Sorry never mind. The OS doesn't fail any writes but internally the
+> kernel fails the NFS writes with EIO and nothing is sent on the wire.
+> If an fsync() is called explicitly after the write, then that fails.
+> So either mount needed "sync" and then writes fail. Or application
+> needs to call fsync() and then that would fail.
 
-Commit 193bcb7b3719 ("svcrdma: Populate tail iovec when receiving")
-attempted to add support for receiving such a compound so that just
-the WRITE payload appears in rq_arg's page list, and the trailing
-GETATTR is placed in rq_arg's tail iovec. (TCP just strings the
-whole compound into the head iovec and page list, without regard
-to the position of the WRITE payload).
+Yes, or O_DIRECT.  The important thing to test is: was client 1 able to
+change the file on the server?  You say your tests show that it wasn't,
+so no data corruption happened.  Excellent.
 
-The server transport logic also had to accommodate the optional XDR
-round-up of the Read chunk, which it did simply by lengthening the
-tail iovec when round-up was needed. This approach is adequate for
-the NFSv2 and NFSv3 WRITE decoders.
+Thanks for testing!!
 
-Unfortunately it is not sufficient for nfsd4_decode_write. When the
-Read chunk length is a couple of bytes less than PAGE_SIZE, the
-computation at the end of nfsd4_decode_write allows argp->pagelen to
-go negative, which breaks the logic in read_buf that looks for the
-tail iovec.
+NeilBrown
 
-The result is that a WRITE operation whose payload length is just
-less than a multiple of a page succeeds, but the subsequent GETATTR
-in the same compound fails with NFS4ERR_OP_ILLEGAL because the XDR
-decoder can't find it. Clients ignore the error, but they must
-update their attribute cache via a separate round trip.
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
 
-As nfsd4_decode_write appears to expect the payload itself to always
-have appropriate XDR round-up, have svc_rdma_build_normal_read_chunk
-add the Read chunk XDR round-up to the page_len rather than
-lengthening the tail iovec.
+-----BEGIN PGP SIGNATURE-----
 
-Reported-by: Olga Kornievskaia <kolga@netapp.com>
-Fixes: 193bcb7b3719 ("svcrdma: Populate tail iovec when receiving")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/svc_rdma_rw.c |   12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 9bd0454..12b9a7e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -727,12 +727,16 @@ static int svc_rdma_build_normal_read_chunk(struct svc_rqst *rqstp,
- 		head->arg.head[0].iov_len - info->ri_position;
- 	head->arg.head[0].iov_len = info->ri_position;
- 
--	/* Read chunk may need XDR roundup (see RFC 5666, s. 3.7).
-+	/* Read chunk may need XDR roundup (see RFC 8166, s. 3.4.5.2).
- 	 *
--	 * NFSv2/3 write decoders need the length of the tail to
--	 * contain the size of the roundup padding.
-+	 * If the client already rounded up the chunk length, the
-+	 * length does not change. Otherwise, the length of the page
-+	 * list is increased to include XDR round-up.
-+	 *
-+	 * Currently these chunks always start at page offset 0,
-+	 * thus the rounded-up length never crosses a page boundary.
- 	 */
--	head->arg.tail[0].iov_len += 4 - (info->ri_chunklen & 3);
-+	info->ri_chunklen = XDR_QUADLEN(info->ri_chunklen) << 2;
- 
- 	head->arg.page_len = info->ri_chunklen;
- 	head->arg.len += info->ri_chunklen;
-
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlpzjuUACgkQOeye3VZi
+gbn38RAAoOPQ2T6hYzto24pk8JU3gFl+AfFyGYOXPPZFV0ujKxbHqduxpkW+TH7C
+8GgVaVljm+TSxea5uBXpR1mRHwIY4cHUmvpBBlIkycBpmMd/p7k8Ly/WglYzwyUj
+UMd/kSGPaduAW0PvzBy3ELxUMghSg/73YfjdqGskiyjtqO07ErmPSGiCr0JBFAyP
+pLt+PxuTkfXZrHQh622ReZPw5Zoc202lfQQG9zYZZdKjZLnjJWgkfL8IfFa+HtCG
+2wHkV8Dmg3tggyMs4JxgLLdCq44aNyqLbqqrtCkmGkReUCFc55wEufnyabzJrr6T
+wlczTbNbPBzU236+4k8XaFlNMI+EnTdbh0XuiTvQ6FM+XzJH4DqSWyIHFNGONovW
+Bmj5HMtOlrTPVZGYLlfu4w1+S/5ANE4+RR93FfL52ETTHTbsS4hFxtNto6sBplbx
+f8l1AmxeeeJDkSOcKXv617fxloeYKajsWL7rWi9lqudzE0vhH8C2kv46EpB9JCMe
+FhIGFDGyBWsfZ27xo+i0k7q+taB2MCZ0nqivLTpjyKLF5jIZbkiaw2Ojw4zKphM7
+ocLrgjYU6d2xHOQd80vlvNEruUrlPAACsTRJRilvor7F0V7bOZF4MmNq2s8VNVdR
+tblATBElzsy3ArRVexVbZf2/f6nnIJMBQKZntBHWnsdSkU975R8=
+=sOWc
+-----END PGP SIGNATURE-----
+--=-=-=--
