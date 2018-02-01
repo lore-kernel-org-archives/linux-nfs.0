@@ -1,140 +1,179 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33890 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:34666 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754559AbeBABn7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 31 Jan 2018 20:43:59 -0500
-From: NeilBrown <neilb@suse.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Thu, 01 Feb 2018 12:43:49 +1100
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 02/20] SUNRPC: add 'struct cred *' to auth_cred and rpc_cred
-In-Reply-To: <87wp015h4c.fsf@notabene.neil.brown.name>
-References: <151538903497.25812.13293229343061416612.stgit@noble> <151538917875.25812.10005878132438571890.stgit@noble> <ea9fad0d-a718-aba8-3dd1-042644577c81@Netapp.com> <3cfc2eb8-68c9-6c26-d5eb-21f50ca921e5@Netapp.com> <87wp015h4c.fsf@notabene.neil.brown.name>
-Message-ID: <87607h4h7u.fsf@notabene.neil.brown.name>
+        id S1751738AbeBAP3U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 1 Feb 2018 10:29:20 -0500
+Date: Thu, 1 Feb 2018 10:29:18 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@RedHat.com>,
+        Naruto Nguyen <narutonguyen2018@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Question about random UDP port on rpcbind 0.2.3
+Message-ID: <20180201152918.am75vfq776vtj3i3@tonberry.usersys.redhat.com>
+References: <CANpxKHE=eKuFc2HBgT0aqDb+Q5EOFWOfCzf=tmmuH7zNyn878g@mail.gmail.com>
+ <CANpxKHH3zf_RRnxckHKfvEWL-RNCr_ZePxc0r98Ep0X_JX1BbA@mail.gmail.com>
+ <47c040cf-d0a8-eb42-a276-9bc2e264ff6e@RedHat.com>
+ <66B30606-7AFE-43C8-8A51-5D031F9D744B@oracle.com>
+ <27ec9304-5763-9885-b3c9-246c395e6986@RedHat.com>
+ <1165B44B-0D40-42FF-94EE-9B852AD4C8FA@oracle.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: multipart/mixed; boundary="irntks7ptu64vvsr"
+In-Reply-To: <1165B44B-0D40-42FF-94EE-9B852AD4C8FA@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, Jan 29 2018, NeilBrown wrote:
+--irntks7ptu64vvsr
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-> On Thu, Jan 18 2018, Anna Schumaker wrote:
->
->> On 01/18/2018 01:39 PM, Anna Schumaker wrote:
->>> Hi Neil,
->>>=20
->>> On 01/08/2018 12:26 AM, NeilBrown wrote:
->>>> The SUNRPC credential framework was put together before
->>>> Linux has 'struct cred'.  Now that we have it, it makes sense to
->>>> use it.
->>>> This first step just includes a suitable 'struct cred *' pointer
->>>> in every 'struct auth_cred' and almost every 'struct rpc_cred'.
->>>>
->>>> The rpc_cred used for auth_null has a NULL 'struct cred *' as nothing
->>>> else really makes sense.
->>>>
->>>> For rpc_cred, the pointer is reference counted.
->>>> For auth_cred it isn't.  struct auth_cred are either allocated on
->>>> the stack, in which case the thread owns a reference to the auth,
->>>> or are part of 'struct generic_cred' in which case gc_base owns the
->>>> reference and acred shares it.
->>
->> This patch is also causing a kernel panic for me if I mount using sec=3D=
-krb5, run cthon tests, and then unmount.  Here is the log message I'm getti=
-ng:
->>
->> [   82.599174] Kernel panic - not syncing: CRED: put_cred_rcu() sees 000=
-00000f5847a57 with usage -1
->> [   82.599174]
->> [   82.600227] CPU: 0 PID: 0 Comm: swapper/0 Not tainted 4.15.0-rc7-ANNA=
-+ #14336
->> [   82.600801] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->> [   82.601435] Call Trace:
->> [   82.601639]  <IRQ>
->> [   82.601830]  dump_stack+0x5c/0x7e
->> [   82.602125]  panic+0xdf/0x228
->> [   82.602383]  ? try_to_wake_up+0x24b/0x420
->> [   82.602853]  put_cred_rcu+0x8a/0x90
->> [   82.603183]  rcu_process_callbacks+0x1ab/0x4f0
->> [   82.603577]  __do_softirq+0xcc/0x305
->> [   82.603881]  irq_exit+0xa9/0xb0
->> [   82.604159]  smp_apic_timer_interrupt+0x5b/0x140
->> [   82.604528]  apic_timer_interrupt+0x98/0xa0
->> [   82.604892]  </IRQ>
->> [   82.605133] RIP: 0010:native_safe_halt+0x2/0x10
->> [   82.605678] RSP: 0018:ffffffff82003ea8 EFLAGS: 00000246 ORIG_RAX: fff=
-fffffffffff11
->> [   82.606619] RAX: 0000000080000000 RBX: 0000000000000000 RCX: 00000000=
-00000000
->> [   82.607270] RDX: 0000000000000000 RSI: 0000000000000000 RDI: 00000000=
-00000000
->> [   82.608077] RBP: 0000000000000000 R08: 0000000000000002 R09: 00000000=
-0001ea40
->> [   82.609066] R10: 0000000000000001 R11: 0000000000000000 R12: 00000000=
-00000000
->> [   82.609951] R13: 0000000000000000 R14: 0000000000000000 R15: 00000000=
-00000000
->> [   82.610771]  default_idle+0x15/0x120
->> [   82.611128]  do_idle+0x15c/0x1c0
->> [   82.611371]  cpu_startup_entry+0x6a/0x70
->> [   82.611762]  start_kernel+0x445/0x465
->> [   82.612104]  secondary_startup_64+0xa5/0xb0
->> [   82.612561] Kernel Offset: disabled
->> [   82.612862] ---[ end Kernel panic - not syncing: CRED: put_cred_rcu()=
- sees 00000000f5847a57 with usage -1
->> [   82.612862]
->>
->
-> That's not good.
->
-> I've just read through the patches again and didn't find anything that
-> could cause this, so I must have missed something.
->
-> You say "This patch is also causing", but I assume it is the whole patch
-> set rather than just this one patch -  is that correct?
->
-> Also, have you run tests without sec=3Dkrb5 and not had the error?
->
-> I'll try to set up some more thorough testing myself.
+On Wed, 31 Jan 2018, Chuck Lever wrote:
 
-I found the problem.
-The crdestroy for auth_gss takes a new reference on the auth,
-and then releases it again.
-As I was calling put_auth() on ->cr_auth before calling crdestrory,
-it got put twice.
-I've move the responsibility for calling put_auth() into the crdestroy
-function.
-It now passes connectathon with krb5 and krb5p and without, etc.
+> 
+> 
+> > On Jan 31, 2018, at 2:57 PM, Steve Dickson <SteveD@RedHat.com> wrote:
+> > 
+> > 
+> > 
+> > On 01/31/2018 02:43 PM, Chuck Lever wrote:
+> >> 
+> >> 
+> >>> On Jan 31, 2018, at 2:31 PM, Steve Dickson <SteveD@RedHat.com> wrote:
+> >>> 
+> >>> 
+> >>> 
+> >>> On 01/29/2018 01:44 AM, Naruto Nguyen wrote:
+> >>>> Hello,
+> >>>> 
+> >>>> Just would like to add for more information, when I start rpcbind
+> >>>> normally, not via systemd, the random UDP is still opened
+> >>>> 
+> >>>> Could you please share any ideas on this?
+> >>> The bound UDP socket is used for remote calls... Where rpcbind
+> >>> is asked to make a remote RPC for another caller... 
+> >>> 
+> >>> Antiquated? yes.. but harmless.
+> >> 
+> >> Not quite harmless. It can occupy a privileged port that belongs
+> >> to a real service.
+> > fair enough... 
+> > 
+> >> 
+> >> We should change rpcbind to retain CAP_NET_BIND_SERVICE, so that
+> >> it doesn't have to hold onto that port indefinitely. It should
+> >> be able to bind to an outgoing privileged port whenever it needs
+> >> one.
+> > Or we just avoid know ports like sm-notify does.
+> 
+> statd, you mean. It should also retain CAP_NET_BIND_SERVICE instead
+> of what it does now, IMO.
+> 
+> Note that in both of these cases, that long-lived port is never going
+> to be used, going forward: 
+> 
+> - no one uses the rpcbind port-forward service that I know of
+> 
+> - NLM is going out of style
+> 
+> If we can make these two cases on-demand instead, so much the better,
+> I say. As Mr. Talpey pointed out recently, the only long-lived
+> privileged ports we should see on Linux are well-known service
+> listeners, not outgoing ports.
 
-I'll resend the series sometime next week, hopefully after getting some
-sort of response to the cred-improvement patches I posted.
+This patch should take care of making rpcbind set up the remote call
+port on demand.  I don't have a whole lot of ways to test it though...
+just 'rpcinfo -b' and a handful of one-off programs I wrote a while back
+trying to mess with the CALLIT/INDIRECT/BCAST procedures.
 
-Thanks for your help,
-NeilBrown
+I'd still need to add the stuff to retain CAP_NET_BIND_SERVICE.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+I also like the idea of leaving this off by default and adding a
+command-line flag to enable it because I'm also not sure if anyone
+actually uses it... not to mention there's been at least one CVE in the
+past that exploited it (CVE-2015-7236, not sure if there are others).
 
------BEGIN PGP SIGNATURE-----
+-Scott
+> 
+> A fix for rpcbind might be to add a cmd-line flag to enable the
+> rpcbind forwarding service, and have the service default to disabled.
+> I'm not sure why rpcbind would list an outgoing port in it's portmap
+> menu. Are you sure that this is the forwarding reflector port?
+> 
+> 
+> > steved.
+> > 
+> >> 
+> >> 
+> >>> steved.
+> >>> 
+> >>>> 
+> >>>> Brs,
+> >>>> Bao
+> >>>> 
+> >>>> On 27 January 2018 at 19:50, Naruto Nguyen <narutonguyen2018@gmail.com> wrote:
+> >>>>> I would like to ask you a question regarding the new random UDP port
+> >>>>> in rpcbind 0.2.3.
+> >>>>> 
+> >>>>> In rpcbind 0.2.3, when I start rpcbind (version 0.2.3) through
+> >>>>> rpcbind.service, then I do netstat
+> >>>>> 
+> >>>>> udp        0      0 0.0.0.0:111             0.0.0.0:*
+> >>>>>        10408/rpcbind
+> >>>>> udp        0      0 0.0.0.0:831             0.0.0.0:*
+> >>>>>        10408/rpcbind
+> >>>>> udp6       0      0 :::111                  :::*
+> >>>>>        10408/rpcbind
+> >>>>> udp6       0      0 :::831                  :::*
+> >>>>>        10408/rpcbind
+> >>>>> 
+> >>>>> The rpcbind does not only listen on port 111 but also on a random udp
+> >>>>> port "831" in this case, this port is changed every time the rpcbind
+> >>>>> service retstarts. And it listens on 0.0.0.0 so it opens a hole on
+> >>>>> security. Could you please let me know what this port is for and is
+> >>>>> there any way to avoid that like force it listen on a internal
+> >>>>> interface rather than on any interfaces like that? I do not see the
+> >>>>> random port on rpcbind 0.2.1, not sure why? As the rpcbind is started
+> >>>>> from systemd so "-h" option is invalid as the man page says:
+> >>>>> 
+> >>>>> 
+> >>>>>  -h      Specify specific IP addresses to bind to for UDP requests.
+> >>>>> This option may be specified multiple times and can be used to
+> >>>>> restrict the interfaces rpcbind will respond to.  Note that when
+> >>>>> rpcbind is controlled via sys-
+> >>>>>            temd's socket activation, the -h option is ignored. In
+> >>>>> this case, you need to edit the ListenStream and ListenDgram
+> >>>>> definitions in /usr/lib/systemd/system/rpcbind.socket instead.
+> >>>>> 
+> >>>>> Thanks a lot,
+> >>>>> Brs,
+> >>>>> Naruto
+> >>>> --
+> >>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>>> the body of a message to majordomo@vger.kernel.org
+> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >>>> 
+> >>> --
+> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >>> the body of a message to majordomo@vger.kernel.org
+> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >> 
+> >> --
+> >> Chuck Lever
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlpycNYACgkQOeye3VZi
-gbm5ABAAwmFRddoVP+GXk0JyJjYkQJVnKDzvGkBpLx/BlD/5XXJxWXcSkXG+zy4G
-KqwqpxaQQd3ORktAuvqOFF4G17QLj3o249bNQfzWa4wmeHanNuIkanSqGRI7tj3B
-qFU9zGM9xzKXeo3EX0s3SCP5pjQCUq0MKccsRZVXg4os8QEpG5uEl6Ij/aIKiTPC
-aXePera0zE+MKe689qc4lJXJ46772ttRrb0gArn2LO81DMpGJA3S/WWtfs3J2D/e
-89T2eicGNqLbyL9+u+Jvbpf1JvKa9dA4VqCcdK1jkdkUcwrlugWiuFVKbdOlyKF/
-dE0KhtlKuJBDKYbk8tNFZ+PxvNVTm+WXAFQvIqPo8rTsdxe0/qOafVZTu3tOPnLG
-zZWT3sBeA9mCCZmVbylvCWn85CEni2TFB3+gY5vOh/9dhxIu3PKSAfkp5Y6kr0x1
-VjCPdhfHDP1Q/np2x0XruLjYq4J/FfkVhja+0/NjLf2KToIxU7nOY5VCLpS60nMu
-N04WgGB3eOWjzyd7Bb+F23e0mfHdBhhH5HG26gAc28kDaOiIi0Er8U5yYDSLJlaG
-vFPcO1O7cHwzNUOL1fkKfVeZ7En4cmgRe3ohwdV5KYTUvo3h8I+NYOmkPSiEbn7Z
-tZxOOG7wp+M8pyAoeAi4rwmsPiCpdBWv56X7q6vgUhmI5SHZkEA=
-=Onp4
------END PGP SIGNATURE-----
---=-=-=--
+--irntks7ptu64vvsr
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="0001-rpcbind-create-the-remote-call-plumbing-on-demand.patch"
+
+
+--irntks7ptu64vvsr--
