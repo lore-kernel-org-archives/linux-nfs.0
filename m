@@ -1,179 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34666 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751738AbeBAP3U (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 1 Feb 2018 10:29:20 -0500
-Date: Thu, 1 Feb 2018 10:29:18 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@RedHat.com>,
-        Naruto Nguyen <narutonguyen2018@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Question about random UDP port on rpcbind 0.2.3
-Message-ID: <20180201152918.am75vfq776vtj3i3@tonberry.usersys.redhat.com>
-References: <CANpxKHE=eKuFc2HBgT0aqDb+Q5EOFWOfCzf=tmmuH7zNyn878g@mail.gmail.com>
- <CANpxKHH3zf_RRnxckHKfvEWL-RNCr_ZePxc0r98Ep0X_JX1BbA@mail.gmail.com>
- <47c040cf-d0a8-eb42-a276-9bc2e264ff6e@RedHat.com>
- <66B30606-7AFE-43C8-8A51-5D031F9D744B@oracle.com>
- <27ec9304-5763-9885-b3c9-246c395e6986@RedHat.com>
- <1165B44B-0D40-42FF-94EE-9B852AD4C8FA@oracle.com>
+Received: from mail-ua0-f193.google.com ([209.85.217.193]:44096 "EHLO
+        mail-ua0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751602AbeBAQXe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 1 Feb 2018 11:23:34 -0500
+Received: by mail-ua0-f193.google.com with SMTP id x4so12197738uaj.11
+        for <linux-nfs@vger.kernel.org>; Thu, 01 Feb 2018 08:23:34 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: multipart/mixed; boundary="irntks7ptu64vvsr"
-In-Reply-To: <1165B44B-0D40-42FF-94EE-9B852AD4C8FA@oracle.com>
+In-Reply-To: <87bmiul8r6.fsf@notabene.neil.brown.name>
+References: <87r2rzo8qi.fsf@notabene.neil.brown.name> <87bmiul8r6.fsf@notabene.neil.brown.name>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 1 Feb 2018 11:23:33 -0500
+Message-ID: <CAN-5tyGf6d=K_9baA6YucbfcVduufVjcLm72jLe2_8XMyT-P2g@mail.gmail.com>
+Subject: Re: [PATCH] NFSv4: always set NFS_LOCK_LOST when a lock is lost.
+To: NeilBrown <neilb@suse.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Dec 19, 2017 at 4:15 PM, NeilBrown <neilb@suse.com> wrote:
+> On Wed, Dec 13 2017, NeilBrown wrote:
+>
+>> There are 2 comments in the NFSv4 code which suggest that
+>> SIGLOST should possibly be sent to a process.  In these
+>> cases a lock has been lost.
+>> The current practice is to set NFS_LOCK_LOST so that
+>> read/write returns EIO when a lock is lost.
+>> So change these comments to code when sets NFS_LOCK_LOST.
+>>
+>> One case is when lock recovery after apparent server restart
+>> fails with NFS4ERR_DENIED, NFS4ERR_RECLAIM_BAD, or
+>> NFS4ERRO_RECLAIM_CONFLICT.  The other case is when a lock
+>> attempt as part of lease recovery fails with NFS4ERR_DENIED.
+>>
+>> In an ideal world, these should not happen.  However I have
+>> a packet trace showing an NFSv4.1 session getting
+>> NFS4ERR_BADSESSION after an extended network parition.  The
+>> NFSv4.1 client treats this like server reboot until/unless
+>> it get NFS4ERR_NO_GRACE, in which case it switches over to
+>> "nograce" recovery mode.  In this network trace, the client
+>> attempts to recover a lock and the server (incorrectly)
+>> reports NFS4ERR_DENIED rather than NFS4ERR_NO_GRACE.  This
+>> leads to the ineffective comment and the client then
+>> continues to write using the OPEN stateid.
+>>
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>
+>> Note that I have not tested this as I do not have direct access to a
+>> faulty NFS server.  Once I get confirmation I will provide an update.
+>
+> Hi,
+>  I have now received confirmation that this change does fix the locking
+>  behavior in this case where the server is returning the wrong error
+>  code.
+>
 
---irntks7ptu64vvsr
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Hi Neil,
 
-On Wed, 31 Jan 2018, Chuck Lever wrote:
+I'm testing your patch and in my testing it does not address the
+issue. But I'd like to double check if my testing scenario is the
+problem the same as what the patch suppose to address.
 
-> 
-> 
-> > On Jan 31, 2018, at 2:57 PM, Steve Dickson <SteveD@RedHat.com> wrote:
-> > 
-> > 
-> > 
-> > On 01/31/2018 02:43 PM, Chuck Lever wrote:
-> >> 
-> >> 
-> >>> On Jan 31, 2018, at 2:31 PM, Steve Dickson <SteveD@RedHat.com> wrote:
-> >>> 
-> >>> 
-> >>> 
-> >>> On 01/29/2018 01:44 AM, Naruto Nguyen wrote:
-> >>>> Hello,
-> >>>> 
-> >>>> Just would like to add for more information, when I start rpcbind
-> >>>> normally, not via systemd, the random UDP is still opened
-> >>>> 
-> >>>> Could you please share any ideas on this?
-> >>> The bound UDP socket is used for remote calls... Where rpcbind
-> >>> is asked to make a remote RPC for another caller... 
-> >>> 
-> >>> Antiquated? yes.. but harmless.
-> >> 
-> >> Not quite harmless. It can occupy a privileged port that belongs
-> >> to a real service.
-> > fair enough... 
-> > 
-> >> 
-> >> We should change rpcbind to retain CAP_NET_BIND_SERVICE, so that
-> >> it doesn't have to hold onto that port indefinitely. It should
-> >> be able to bind to an outgoing privileged port whenever it needs
-> >> one.
-> > Or we just avoid know ports like sm-notify does.
-> 
-> statd, you mean. It should also retain CAP_NET_BIND_SERVICE instead
-> of what it does now, IMO.
-> 
-> Note that in both of these cases, that long-lived port is never going
-> to be used, going forward: 
-> 
-> - no one uses the rpcbind port-forward service that I know of
-> 
-> - NLM is going out of style
-> 
-> If we can make these two cases on-demand instead, so much the better,
-> I say. As Mr. Talpey pointed out recently, the only long-lived
-> privileged ports we should see on Linux are well-known service
-> listeners, not outgoing ports.
+My testing,
+1. client 1 opens a file, grabs a lock (goes to sleep so that I could
+trigger network partition).
+2. wait sufficient amount of time for the client 1's state goes stale
+on the server.
+3. client 2 opens the same file, and grabs the lock and starting doing
+IO (say writing).
+4. plug network back into client 1. it recovers its client id and
+session and initiates state recovery. server didn't reboot so it
+doesn't reply with ERR_NO_GRACE to client's open and it succeeds. the
+client sends a LOCK and gets ERR_DENIED from the server (because
+client 2 is holding the lock now).
+5. client 1's app now wakes up and does IO.
 
-This patch should take care of making rpcbind set up the remote call
-port on demand.  I don't have a whole lot of ways to test it though...
-just 'rpcinfo -b' and a handful of one-off programs I wrote a while back
-trying to mess with the CALLIT/INDIRECT/BCAST procedures.
+What should happen is that IO should fail. What I see is client 1
+continues to do IO (say writing).
 
-I'd still need to add the stuff to retain CAP_NET_BIND_SERVICE.
-
-I also like the idea of leaving this off by default and adding a
-command-line flag to enable it because I'm also not sure if anyone
-actually uses it... not to mention there's been at least one CVE in the
-past that exploited it (CVE-2015-7236, not sure if there are others).
-
--Scott
-> 
-> A fix for rpcbind might be to add a cmd-line flag to enable the
-> rpcbind forwarding service, and have the service default to disabled.
-> I'm not sure why rpcbind would list an outgoing port in it's portmap
-> menu. Are you sure that this is the forwarding reflector port?
-> 
-> 
-> > steved.
-> > 
-> >> 
-> >> 
-> >>> steved.
-> >>> 
-> >>>> 
-> >>>> Brs,
-> >>>> Bao
-> >>>> 
-> >>>> On 27 January 2018 at 19:50, Naruto Nguyen <narutonguyen2018@gmail.com> wrote:
-> >>>>> I would like to ask you a question regarding the new random UDP port
-> >>>>> in rpcbind 0.2.3.
-> >>>>> 
-> >>>>> In rpcbind 0.2.3, when I start rpcbind (version 0.2.3) through
-> >>>>> rpcbind.service, then I do netstat
-> >>>>> 
-> >>>>> udp        0      0 0.0.0.0:111             0.0.0.0:*
-> >>>>>        10408/rpcbind
-> >>>>> udp        0      0 0.0.0.0:831             0.0.0.0:*
-> >>>>>        10408/rpcbind
-> >>>>> udp6       0      0 :::111                  :::*
-> >>>>>        10408/rpcbind
-> >>>>> udp6       0      0 :::831                  :::*
-> >>>>>        10408/rpcbind
-> >>>>> 
-> >>>>> The rpcbind does not only listen on port 111 but also on a random udp
-> >>>>> port "831" in this case, this port is changed every time the rpcbind
-> >>>>> service retstarts. And it listens on 0.0.0.0 so it opens a hole on
-> >>>>> security. Could you please let me know what this port is for and is
-> >>>>> there any way to avoid that like force it listen on a internal
-> >>>>> interface rather than on any interfaces like that? I do not see the
-> >>>>> random port on rpcbind 0.2.1, not sure why? As the rpcbind is started
-> >>>>> from systemd so "-h" option is invalid as the man page says:
-> >>>>> 
-> >>>>> 
-> >>>>>  -h      Specify specific IP addresses to bind to for UDP requests.
-> >>>>> This option may be specified multiple times and can be used to
-> >>>>> restrict the interfaces rpcbind will respond to.  Note that when
-> >>>>> rpcbind is controlled via sys-
-> >>>>>            temd's socket activation, the -h option is ignored. In
-> >>>>> this case, you need to edit the ListenStream and ListenDgram
-> >>>>> definitions in /usr/lib/systemd/system/rpcbind.socket instead.
-> >>>>> 
-> >>>>> Thanks a lot,
-> >>>>> Brs,
-> >>>>> Naruto
-> >>>> --
-> >>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>>> the body of a message to majordomo@vger.kernel.org
-> >>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >>>> 
-> >>> --
-> >>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >>> the body of a message to majordomo@vger.kernel.org
-> >>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> >> 
-> >> --
-> >> Chuck Lever
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---irntks7ptu64vvsr
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: attachment; filename="0001-rpcbind-create-the-remote-call-plumbing-on-demand.patch"
+Is my scenario same as yours?
 
 
---irntks7ptu64vvsr--
+
+> Thanks,
+> NeilBrown
+>
+>
+>>
+>> NeilBrown
+>>
+>>  fs/nfs/nfs4proc.c  | 12 ++++++++----
+>>  fs/nfs/nfs4state.c |  5 ++++-
+>>  2 files changed, 12 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 56fa5a16e097..083802f7a1e9 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2019,7 +2019,7 @@ static int nfs4_open_reclaim(struct nfs4_state_owner *sp, struct nfs4_state *sta
+>>       return ret;
+>>  }
+>>
+>> -static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct nfs4_state *state, const nfs4_stateid *stateid, int err)
+>> +static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct nfs4_state *state, const nfs4_stateid *stateid, struct file_lock *fl, int err)
+>>  {
+>>       switch (err) {
+>>               default:
+>> @@ -2066,7 +2066,11 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
+>>                       return -EAGAIN;
+>>               case -ENOMEM:
+>>               case -NFS4ERR_DENIED:
+>> -                     /* kill_proc(fl->fl_pid, SIGLOST, 1); */
+>> +                     if (fl) {
+>> +                             struct nfs4_lock_state *lsp = fl->fl_u.nfs4_fl.owner;
+>> +                             if (lsp)
+>> +                                     set_bit(NFS_LOCK_LOST, &lsp->ls_flags);
+>> +                     }
+>>                       return 0;
+>>       }
+>>       return err;
+>> @@ -2102,7 +2106,7 @@ int nfs4_open_delegation_recall(struct nfs_open_context *ctx,
+>>               err = nfs4_open_recover_helper(opendata, FMODE_READ);
+>>       }
+>>       nfs4_opendata_put(opendata);
+>> -     return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>> +     return nfs4_handle_delegation_recall_error(server, state, stateid, NULL, err);
+>>  }
+>>
+>>  static void nfs4_open_confirm_prepare(struct rpc_task *task, void *calldata)
+>> @@ -6739,7 +6743,7 @@ int nfs4_lock_delegation_recall(struct file_lock *fl, struct nfs4_state *state,
+>>       if (err != 0)
+>>               return err;
+>>       err = _nfs4_do_setlk(state, F_SETLK, fl, NFS_LOCK_NEW);
+>> -     return nfs4_handle_delegation_recall_error(server, state, stateid, err);
+>> +     return nfs4_handle_delegation_recall_error(server, state, stateid, fl, err);
+>>  }
+>>
+>>  struct nfs_release_lockowner_data {
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index e4f4a09ed9f4..91a4d4eeb235 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -1482,6 +1482,7 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
+>>       struct inode *inode = state->inode;
+>>       struct nfs_inode *nfsi = NFS_I(inode);
+>>       struct file_lock *fl;
+>> +     struct nfs4_lock_state *lsp;
+>>       int status = 0;
+>>       struct file_lock_context *flctx = inode->i_flctx;
+>>       struct list_head *list;
+>> @@ -1522,7 +1523,9 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
+>>               case -NFS4ERR_DENIED:
+>>               case -NFS4ERR_RECLAIM_BAD:
+>>               case -NFS4ERR_RECLAIM_CONFLICT:
+>> -                     /* kill_proc(fl->fl_pid, SIGLOST, 1); */
+>> +                     lsp = fl->fl_u.nfs4_fl.owner;
+>> +                     if (lsp)
+>> +                             set_bit(NFS_LOCK_LOST, &lsp->ls_flags);
+>>                       status = 0;
+>>               }
+>>               spin_lock(&flctx->flc_lock);
+>> --
+>> 2.14.0.rc0.dirty
