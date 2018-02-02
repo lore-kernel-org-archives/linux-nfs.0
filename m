@@ -1,49 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:51318 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754330AbeBBTzv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 2 Feb 2018 14:55:51 -0500
-Date: Fri, 2 Feb 2018 14:55:50 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v6 05/10] NFSD first draft of async copy
-Message-ID: <20180202195550.GA7229@parsley.fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com>
- <20171024174752.74910-6-kolga@netapp.com>
- <20180126213405.GA7770@fieldses.org>
- <CAN-5tyE0j5xOyagWH+zgzFc9Hd00=k=3-J_Nuych_9OGG3-CyA@mail.gmail.com>
+Received: from mail-lf0-f66.google.com ([209.85.215.66]:41866 "EHLO
+        mail-lf0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752334AbeBBUde (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Feb 2018 15:33:34 -0500
+Received: by mail-lf0-f66.google.com with SMTP id f136so33284572lff.8
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Feb 2018 12:33:33 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyE0j5xOyagWH+zgzFc9Hd00=k=3-J_Nuych_9OGG3-CyA@mail.gmail.com>
+From: Kenneth Dsouza <kdsouza@redhat.com>
+Date: Sat, 3 Feb 2018 02:03:31 +0530
+Message-ID: <CAA_-hQKxopVaXHT+m3CpTfjNZjbMaYO-1D2DM1CFKZxJa4050Q@mail.gmail.com>
+Subject: [PATCH v2] nfs4_getfacl: Add support to accept more paths
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 02, 2018 at 02:50:01PM -0500, Olga Kornievskaia wrote:
-> On Fri, Jan 26, 2018 at 4:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > If I understand correctly (I may be wrong), once this patch is applied a
-> > COPY may fail that previously worked--because we're switching over to
-> > the asynchronous copy implementation before it's actually complete.
-> 
-> I will have to double check this with testing but I think after this
-> patch the asynchronous copy is functional but doesn't comply with the
-> spec (eg., doesn't generate the unique stateid).
-> 
-> > Of course, that's fixed by the end of this series.  But we try to avoid
-> > that situation, where functionality is temporarily broken in the middle
-> > of a patch series and then fixed later.
-> >
-> > Options might be to squash this patch together with some of the later
-> > patches.  Or go ahead and add this code but don't actually enable it
-> > till later.  (E.g. arrange that the "if (!copy->cp_synchronous)" case
-> > won't be taken till the last patch.  Maybe it already works that way, I
-> > can't tell.)  Or maybe there's some slicker way that I don't see right
-> > now.
-> 
-> I could do if (!copy->cp_synchronous && 0) and then add a patch that removes 0.
+Update man page with information for multiple file path support.
 
-OK.  I still don't see the "slick" solution, so let's go with that.
+Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
+---
+ man/man1/nfs4_getfacl.1     |  7 ++++++-
+ nfs4_getfacl/nfs4_getfacl.c | 18 +++++++++---------
+ 2 files changed, 15 insertions(+), 10 deletions(-)
 
---b.
+diff --git a/man/man1/nfs4_getfacl.1 b/man/man1/nfs4_getfacl.1
+index fc092be..b556e1a 100644
+--- a/man/man1/nfs4_getfacl.1
++++ b/man/man1/nfs4_getfacl.1
+@@ -9,7 +9,7 @@
+ nfs4_getfacl \- get NFSv4 file/directory access control lists
+ .SH SYNOPSIS
+ .B nfs4_getfacl [-H]
+-.I file
++file ...
+ .SH DESCRIPTION
+ .B nfs4_getfacl
+ will display the NFSv4 Access Control List (ACL) for
+@@ -28,6 +28,7 @@ The output format for an NFSv4 file ACL, e.g., is:
+ .RS
+ .nf
+
++# file: /somedir
+ A::OWNER@:rwatTnNcCy
+ A::alice@nfsdomain.org:rxtncy
+ A::bob@nfsdomain.org:rwadtTnNcCy
+@@ -42,6 +43,10 @@ In the example output above, the user
+`alice@nfsdomain.org' has the equivalent
+ of "read" and "execute" permissions, `bob@nfsdomain.org' has "read" and
+ "write", and both `GROUP@' and `EVERYONE@' have "read".
+
++.B nfs4_getfacl
++reads a list of files from standard input. The ACL listings of
++multiple files are separated by blank lines.
++
+ Refer to the
+ .BR nfs4_acl (5)
+ manpage for detailed information about NFSv4 ACL terminology and syntax.
+diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
+index 5363096..b5f72c7 100644
+--- a/nfs4_getfacl/nfs4_getfacl.c
++++ b/nfs4_getfacl/nfs4_getfacl.c
+@@ -48,6 +48,7 @@ int main(int argc, char **argv)
+ {
+        struct nfs4_acl *acl;
+        int res = 1;
++       int counter = 1;
+
+        execname = basename(argv[0]);
+
+@@ -55,10 +56,6 @@ int main(int argc, char **argv)
+                fprintf(stderr, "%s: you must specify a path.\n", execname);
+                usage(0);
+                goto out;
+-       } else if (argc > 2) {
+-               fprintf(stderr, "%s: currently, you may only specify a
+single path.\n", execname);
+-               usage(0);
+-               goto out;
+        } else if (!strcmp(argv[1], "-?") || !strcmp(argv[1], "-h") ||
+!strcmp(argv[1], "--help")) {
+                usage(1);
+                res = 0;
+@@ -68,11 +65,14 @@ int main(int argc, char **argv)
+                res = 0;
+                goto out;
+        }
+-       acl = nfs4_acl_for_path(argv[1]);
+-       if (acl != NULL) {
+-               nfs4_print_acl(stdout, acl);
+-               nfs4_free_acl(acl);
+-               res = 0;
++       for (counter = 1; counter < argc; counter++) {
++               acl = nfs4_acl_for_path(argv[counter]);
++               if (acl != NULL) {
++                       printf("\n# file: %s\n",argv[counter]);
++                       nfs4_print_acl(stdout, acl);
++                       nfs4_free_acl(acl);
++                       res = 0;
++               }
+        }
+ out:
+        return res;
+--
+2.9.5
