@@ -1,102 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f66.google.com ([209.85.214.66]:40343 "EHLO
-        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752634AbeBBT3B (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Feb 2018 14:29:01 -0500
-Subject: [PATCH v2] svcrdma: Fix Read chunk round-up
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Fri, 02 Feb 2018 14:28:59 -0500
-Message-ID: <20180202192631.12289.86122.stgit@klimt.1015granger.net>
+Received: from mail-vk0-f50.google.com ([209.85.213.50]:37043 "EHLO
+        mail-vk0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754076AbeBBTuE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Feb 2018 14:50:04 -0500
+Received: by mail-vk0-f50.google.com with SMTP id g83so14185788vki.4
+        for <linux-nfs@vger.kernel.org>; Fri, 02 Feb 2018 11:50:03 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20180126213405.GA7770@fieldses.org>
+References: <20171024174752.74910-1-kolga@netapp.com> <20171024174752.74910-6-kolga@netapp.com>
+ <20180126213405.GA7770@fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 2 Feb 2018 14:50:01 -0500
+Message-ID: <CAN-5tyE0j5xOyagWH+zgzFc9Hd00=k=3-J_Nuych_9OGG3-CyA@mail.gmail.com>
+Subject: Re: [PATCH v6 05/10] NFSD first draft of async copy
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A single NFSv4 WRITE compound can often have three operations:
-PUTFH, WRITE, then GETATTR.
+On Fri, Jan 26, 2018 at 4:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> If I understand correctly (I may be wrong), once this patch is applied a
+> COPY may fail that previously worked--because we're switching over to
+> the asynchronous copy implementation before it's actually complete.
 
-When the WRITE payload is sent in a Read chunk, the client places
-the GETATTR in the inline part of the RPC/RDMA message, just after
-the WRITE operation (sans payload). The position value in the Read
-chunk enables the receiver to insert the Read chunk at the correct
-place in the received XDR stream; that is between the WRITE and
-GETATTR.
+I will have to double check this with testing but I think after this
+patch the asynchronous copy is functional but doesn't comply with the
+spec (eg., doesn't generate the unique stateid).
 
-According to RFC 8166, an NFS/RDMA client does not have to add XDR
-round-up to the Read chunk that carries the WRITE payload. The
-receiver adds XDR round-up padding if it is absent and the
-receiver's XDR decoder requires it to be present.
+> Of course, that's fixed by the end of this series.  But we try to avoid
+> that situation, where functionality is temporarily broken in the middle
+> of a patch series and then fixed later.
+>
+> Options might be to squash this patch together with some of the later
+> patches.  Or go ahead and add this code but don't actually enable it
+> till later.  (E.g. arrange that the "if (!copy->cp_synchronous)" case
+> won't be taken till the last patch.  Maybe it already works that way, I
+> can't tell.)  Or maybe there's some slicker way that I don't see right
+> now.
 
-Commit 193bcb7b3719 ("svcrdma: Populate tail iovec when receiving")
-attempted to add support for receiving such a compound so that just
-the WRITE payload appears in rq_arg's page list, and the trailing
-GETATTR is placed in rq_arg's tail iovec. (TCP just strings the
-whole compound into the head iovec and page list, without regard
-to the alignment of the WRITE payload).
+I could do if (!copy->cp_synchronous && 0) and then add a patch that removes 0.
 
-The server transport logic also had to accommodate the optional XDR
-round-up of the Read chunk, which it did simply by lengthening the
-tail iovec when round-up was needed. This approach is adequate for
-the NFSv2 and NFSv3 WRITE decoders.
-
-Unfortunately it is not sufficient for nfsd4_decode_write. When the
-Read chunk length is a couple of bytes less than PAGE_SIZE, the
-computation at the end of nfsd4_decode_write allows argp->pagelen to
-go negative, which breaks the logic in read_buf that looks for the
-tail iovec.
-
-The result is that a WRITE operation whose payload length is just
-less than a multiple of a page succeeds, but the subsequent GETATTR
-in the same compound fails with NFS4ERR_OP_ILLEGAL because the XDR
-decoder can't find it. Clients ignore the error, but they must
-update their attribute cache via a separate round trip.
-
-As nfsd4_decode_write appears to expect the payload itself to always
-have appropriate XDR round-up, have svc_rdma_build_normal_read_chunk
-add the Read chunk XDR round-up to the page_len rather than
-lengthening the tail iovec.
-
-Reported-by: Olga Kornievskaia <kolga@netapp.com>
-Fixes: 193bcb7b3719 ("svcrdma: Populate tail iovec when receiving")
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Olga Kornievskaia <kolga@netapp.com>
----
- net/sunrpc/xprtrdma/svc_rdma_rw.c |   12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
-
-Hi Bruce-
-
-This is ready for you to take for v4.16 or later. Thanks!
-
-Changes since v1:
-- Minor edits of the patch description
-- Added Olga's Tested-by:
-
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_rw.c b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-index 9bd0454..12b9a7e 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_rw.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_rw.c
-@@ -727,12 +727,16 @@ static int svc_rdma_build_normal_read_chunk(struct svc_rqst *rqstp,
- 		head->arg.head[0].iov_len - info->ri_position;
- 	head->arg.head[0].iov_len = info->ri_position;
- 
--	/* Read chunk may need XDR roundup (see RFC 5666, s. 3.7).
-+	/* Read chunk may need XDR roundup (see RFC 8166, s. 3.4.5.2).
- 	 *
--	 * NFSv2/3 write decoders need the length of the tail to
--	 * contain the size of the roundup padding.
-+	 * If the client already rounded up the chunk length, the
-+	 * length does not change. Otherwise, the length of the page
-+	 * list is increased to include XDR round-up.
-+	 *
-+	 * Currently these chunks always start at page offset 0,
-+	 * thus the rounded-up length never crosses a page boundary.
- 	 */
--	head->arg.tail[0].iov_len += 4 - (info->ri_chunklen & 3);
-+	info->ri_chunklen = XDR_QUADLEN(info->ri_chunklen) << 2;
- 
- 	head->arg.page_len = info->ri_chunklen;
- 	head->arg.len += info->ri_chunklen;
-
+>
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
