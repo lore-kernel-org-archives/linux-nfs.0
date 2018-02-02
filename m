@@ -1,60 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:50182 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751544AbeBBVpr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 2 Feb 2018 16:45:47 -0500
-Date: Fri, 2 Feb 2018 16:45:45 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v6 07/10] NFSD create new stateid for async copy
-Message-ID: <20180202214545.GB7229@parsley.fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com>
- <20171024174752.74910-8-kolga@netapp.com>
- <20180126215942.GC7770@fieldses.org>
- <CAN-5tyGBBfh0i9QmyHTHp-SWa6ncMCz4ZQdZcAuyWKhxtQ9xLA@mail.gmail.com>
+Received: from srv06.itamservices.de ([78.46.48.226]:60723 "EHLO
+        srv06.itamservices.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751544AbeBBVqk (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Feb 2018 16:46:40 -0500
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Steven Rostedt <rostedt@goodmis.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        LKML <linux-kernel@vger.kernel.org>
+From: Daniel Reichelt <hacking@nachtgeist.net>
+Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
+ over from xs_bind() ))
+Message-ID: <57220e1f-f81e-b30b-a4ea-39ad74c7c0d6@nachtgeist.net>
+Date: Fri, 2 Feb 2018 22:31:26 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyGBBfh0i9QmyHTHp-SWa6ncMCz4ZQdZcAuyWKhxtQ9xLA@mail.gmail.com>
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ protocol="application/pgp-signature";
+ boundary="zvATQcned257m0yRLlQIpf4UvjFrgFcxd"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 02, 2018 at 03:45:28PM -0500, Olga Kornievskaia wrote:
-> On Fri, Jan 26, 2018 at 4:59 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > What is supposed to happen, by the way, if a close arrives for a stateid
-> > with a copy in progress?  Do we cancel the copy before returning from
-> > the close, or do we fail the close?  (Same question for unlock and
-> > delegation return, I guess.)
-> 
-> Good questions. I think a normal client shouldn't send CLOSE/UNLOCK
-> while there is an on-going copy. I could see how a DELEGRETURN could
-> be coming in the middle of the copy (because the client received a
-> CB_RECALL).
-> 
-> For an easy solution my proposal is to do the following. Upon
-> receiving close, unlock, delegreturn, if the copy list is non-empty,
-> then we send an ERR_DELAY back until the copy is done.
-> 
-> Another proposal is to kill the copy thread but that seems too drastic
-> (specially in the case of a delegreturn). Right now when the copy
-> thread is killed, it does not send a reply back to the client (as it
-> assumes the client sent the OFFLOAD_CANCEL and doesn't need a reply).
-> I could change that to send a reply back. In case the copy used a
-> delegation stateid, then the next copy would choose a different
-> stateid. This could be done for the delegation stateid and ERR_DELAY
-> for the close/unlock.
-> 
-> Is either one acceptable and if so which one sounds better to you?
+This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
+--zvATQcned257m0yRLlQIpf4UvjFrgFcxd
+Content-Type: multipart/mixed; boundary="1VV7miNeqSPmnhaBlJj86XeI56jV6Bky7";
+ protected-headers="v1"
+From: Daniel Reichelt <hacking@nachtgeist.net>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+ Steven Rostedt <rostedt@goodmis.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+ LKML <linux-kernel@vger.kernel.org>
+Message-ID: <57220e1f-f81e-b30b-a4ea-39ad74c7c0d6@nachtgeist.net>
+Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
+ over from xs_bind() ))
 
-If we're confident this is something that only a misbehaving client
-would do, then I'm OK with choosing whatever's simplest.  I guess we
-should double-check with the spec to make sure this case hasn't already
-been covered there.  Returning an error on the conflicting operation
-sounds good to me.
+--1VV7miNeqSPmnhaBlJj86XeI56jV6Bky7
+Content-Type: text/plain; charset=utf-8
+Content-Language: de-DE
+Content-Transfer-Encoding: quoted-printable
 
-Is it really OK to do a COPY with a delegation stateid?  That sounds
-messy if the delegation is revoked partway through the copy.
+Hi Trond, Steven,
 
---b.
+eversince I switched from Debian Jessie to Stretch last summer, I've
+been seeing the very same hidden ports on an NFS server as described in
+[1], which is a follow-up to [2].
+
+Your patch ([3], [4]) solved the issue back then. Later on, you changed
+that fix again in [5], which lead to the situation we're seeing today.
+
+Reverting 0b0ab51 fixes the issue for me.
+
+Let me know if you need more info.
+
+
+
+Thanks
+Daniel
+
+
+[1] https://lkml.org/lkml/2016/6/30/341
+[2] https://lkml.org/lkml/2015/6/11/803
+[3] https://lkml.org/lkml/2015/6/19/759
+[4] 4876cc779ff525b9c2376d8076edf47815e71f2c
+[5] 4b0ab51db32eba0f48b7618254742f143364a28d
+
+
+--1VV7miNeqSPmnhaBlJj86XeI56jV6Bky7--
+
+--zvATQcned257m0yRLlQIpf4UvjFrgFcxd
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: OpenPGP digital signature
+Content-Disposition: attachment; filename="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQJLBAEBCAA1FiEEg2wMpOXGvc4nunsZnjl+Rc/8gF8FAlp02K4XHGhhY2tpbmdA
+bmFjaHRnZWlzdC5uZXQACgkQnjl+Rc/8gF+HhQ//UCVSqA3wnJ6JZaafDOLPot1c
+CiaCsArQPgXzQo8HCulKjBc/TVdvh/LSNslwH2UXSsoUPz15OaJ0Sy915CMxQOl8
+zsCZoQdxZS8g2o4ProeU2UKlcGbrC5Zx/d68TaQjUy3dWlhNNULsXK3kmwO8FFWG
+5qd7cu6j5YwgL3g795r1g784BC0L9v/isZsTV/jLd+7ULIRBwfS13eiiEyRxPAve
+vICENfcj46iWrHuLRlQGnPLjs26gypxneduaSTtDBCWMPltzXuss/UuYTDeFeCFG
+bGSCZ/hoDPtqxVbHYs07KsYHU30al22Zt4RIZDGjz2aCOpgvVlMIZ+IrqjtFU9Vc
+x4CAti55FFGlinFsquIrdd5gfzyfKpUkK0q/utrybynMnm6cwN/nnwrp35ESIj55
+vnVWAR5ptXAUzpTa1uU4CIBAFwBIMEUwYNsRMTNmSPm7x49Hx2Kv4qVT49MyhJko
+P/fc2xlFKeq8D8KiLT/6lO/d9ymYk+VKEyLZhCW8eqR4zKKVLJG1QiiuRUQbmMXI
+m7BOrMBeHZepe3Pf8SbRVA/yaDSL3UnYhOmKG5z9dzKNpBnAxUqN3EWjsviDSVZ7
+Iu94Ueof+I9x/P5b8VXU58QyXB1a5EDr3opFDDBo3du1hMGnvY4ZnRfmh4FI6WGu
+X2sL7iKzL9mr1mFSyqU=
+=HUpz
+-----END PGP SIGNATURE-----
+
+--zvATQcned257m0yRLlQIpf4UvjFrgFcxd--
