@@ -1,91 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from srv06.itamservices.de ([78.46.48.226]:60723 "EHLO
-        srv06.itamservices.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751544AbeBBVqk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Feb 2018 16:46:40 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Steven Rostedt <rostedt@goodmis.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        LKML <linux-kernel@vger.kernel.org>
-From: Daniel Reichelt <hacking@nachtgeist.net>
-Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
- over from xs_bind() ))
-Message-ID: <57220e1f-f81e-b30b-a4ea-39ad74c7c0d6@nachtgeist.net>
-Date: Fri, 2 Feb 2018 22:31:26 +0100
+Received: from mail-lf0-f68.google.com ([209.85.215.68]:38120 "EHLO
+        mail-lf0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751869AbeBCPkn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Feb 2018 10:40:43 -0500
+Received: by mail-lf0-f68.google.com with SMTP id g72so35795954lfg.5
+        for <linux-nfs@vger.kernel.org>; Sat, 03 Feb 2018 07:40:42 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="zvATQcned257m0yRLlQIpf4UvjFrgFcxd"
+In-Reply-To: <20180202211903.GB6635@fieldses.org>
+References: <CAA_-hQKxopVaXHT+m3CpTfjNZjbMaYO-1D2DM1CFKZxJa4050Q@mail.gmail.com>
+ <20180202211903.GB6635@fieldses.org>
+From: Kenneth Dsouza <kdsouza@redhat.com>
+Date: Sat, 3 Feb 2018 21:10:41 +0530
+Message-ID: <CAA_-hQJMYG2y4a_6pEusdEy0obV3+dT_9uVe44C0FbdvkcUEPQ@mail.gmail.com>
+Subject: Re: [PATCH v2] nfs4_getfacl: Add support to accept more paths
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---zvATQcned257m0yRLlQIpf4UvjFrgFcxd
-Content-Type: multipart/mixed; boundary="1VV7miNeqSPmnhaBlJj86XeI56jV6Bky7";
- protected-headers="v1"
-From: Daniel Reichelt <hacking@nachtgeist.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
- Steven Rostedt <rostedt@goodmis.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
- LKML <linux-kernel@vger.kernel.org>
-Message-ID: <57220e1f-f81e-b30b-a4ea-39ad74c7c0d6@nachtgeist.net>
-Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
- over from xs_bind() ))
+On Sat, Feb 3, 2018 at 2:49 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> Thanks, one nit:
+>
+> On Sat, Feb 03, 2018 at 02:03:31AM +0530, Kenneth Dsouza wrote:
+>> Update man page with information for multiple file path support.
+>>
+>> Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
+>> ---
+>>  man/man1/nfs4_getfacl.1     |  7 ++++++-
+>>  nfs4_getfacl/nfs4_getfacl.c | 18 +++++++++---------
+>>  2 files changed, 15 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/man/man1/nfs4_getfacl.1 b/man/man1/nfs4_getfacl.1
+>> index fc092be..b556e1a 100644
+>> --- a/man/man1/nfs4_getfacl.1
+>> +++ b/man/man1/nfs4_getfacl.1
+>> @@ -9,7 +9,7 @@
+>>  nfs4_getfacl \- get NFSv4 file/directory access control lists
+>>  .SH SYNOPSIS
+>>  .B nfs4_getfacl [-H]
+>> -.I file
+>> +file ...
+>>  .SH DESCRIPTION
+>>  .B nfs4_getfacl
+>>  will display the NFSv4 Access Control List (ACL) for
+>> @@ -28,6 +28,7 @@ The output format for an NFSv4 file ACL, e.g., is:
+>>  .RS
+>>  .nf
+>>
+>> +# file: /somedir
+>>  A::OWNER@:rwatTnNcCy
+>>  A::alice@nfsdomain.org:rxtncy
+>>  A::bob@nfsdomain.org:rwadtTnNcCy
+>> @@ -42,6 +43,10 @@ In the example output above, the user
+>> `alice@nfsdomain.org' has the equivalent
+>>  of "read" and "execute" permissions, `bob@nfsdomain.org' has "read" and
+>>  "write", and both `GROUP@' and `EVERYONE@' have "read".
+>>
+>> +.B nfs4_getfacl
+>> +reads a list of files from standard input. The ACL listings of
+>> +multiple files are separated by blank lines.
+>> +
+>
+> The list of files comes from the command line arguments, not standard
+> input, right?
+   Yes
 
---1VV7miNeqSPmnhaBlJj86XeI56jV6Bky7
-Content-Type: text/plain; charset=utf-8
-Content-Language: de-DE
-Content-Transfer-Encoding: quoted-printable
+> I've modified the man page slightly but otherwise taken your patch
+> unchanged; result is pushed out to git now, let me know if it looks OK
+> to you.
+>
+> --b.
 
-Hi Trond, Steven,
-
-eversince I switched from Debian Jessie to Stretch last summer, I've
-been seeing the very same hidden ports on an NFS server as described in
-[1], which is a follow-up to [2].
-
-Your patch ([3], [4]) solved the issue back then. Later on, you changed
-that fix again in [5], which lead to the situation we're seeing today.
-
-Reverting 0b0ab51 fixes the issue for me.
-
-Let me know if you need more info.
-
-
-
-Thanks
-Daniel
-
-
-[1] https://lkml.org/lkml/2016/6/30/341
-[2] https://lkml.org/lkml/2015/6/11/803
-[3] https://lkml.org/lkml/2015/6/19/759
-[4] 4876cc779ff525b9c2376d8076edf47815e71f2c
-[5] 4b0ab51db32eba0f48b7618254742f143364a28d
-
-
---1VV7miNeqSPmnhaBlJj86XeI56jV6Bky7--
-
---zvATQcned257m0yRLlQIpf4UvjFrgFcxd
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQJLBAEBCAA1FiEEg2wMpOXGvc4nunsZnjl+Rc/8gF8FAlp02K4XHGhhY2tpbmdA
-bmFjaHRnZWlzdC5uZXQACgkQnjl+Rc/8gF+HhQ//UCVSqA3wnJ6JZaafDOLPot1c
-CiaCsArQPgXzQo8HCulKjBc/TVdvh/LSNslwH2UXSsoUPz15OaJ0Sy915CMxQOl8
-zsCZoQdxZS8g2o4ProeU2UKlcGbrC5Zx/d68TaQjUy3dWlhNNULsXK3kmwO8FFWG
-5qd7cu6j5YwgL3g795r1g784BC0L9v/isZsTV/jLd+7ULIRBwfS13eiiEyRxPAve
-vICENfcj46iWrHuLRlQGnPLjs26gypxneduaSTtDBCWMPltzXuss/UuYTDeFeCFG
-bGSCZ/hoDPtqxVbHYs07KsYHU30al22Zt4RIZDGjz2aCOpgvVlMIZ+IrqjtFU9Vc
-x4CAti55FFGlinFsquIrdd5gfzyfKpUkK0q/utrybynMnm6cwN/nnwrp35ESIj55
-vnVWAR5ptXAUzpTa1uU4CIBAFwBIMEUwYNsRMTNmSPm7x49Hx2Kv4qVT49MyhJko
-P/fc2xlFKeq8D8KiLT/6lO/d9ymYk+VKEyLZhCW8eqR4zKKVLJG1QiiuRUQbmMXI
-m7BOrMBeHZepe3Pf8SbRVA/yaDSL3UnYhOmKG5z9dzKNpBnAxUqN3EWjsviDSVZ7
-Iu94Ueof+I9x/P5b8VXU58QyXB1a5EDr3opFDDBo3du1hMGnvY4ZnRfmh4FI6WGu
-X2sL7iKzL9mr1mFSyqU=
-=HUpz
------END PGP SIGNATURE-----
-
---zvATQcned257m0yRLlQIpf4UvjFrgFcxd--
+ It looks good. Thank you for fixing it.
