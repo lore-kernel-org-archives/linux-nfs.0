@@ -1,75 +1,58 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-lf0-f68.google.com ([209.85.215.68]:38120 "EHLO
-        mail-lf0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751869AbeBCPkn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 3 Feb 2018 10:40:43 -0500
-Received: by mail-lf0-f68.google.com with SMTP id g72so35795954lfg.5
-        for <linux-nfs@vger.kernel.org>; Sat, 03 Feb 2018 07:40:42 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20180202211903.GB6635@fieldses.org>
-References: <CAA_-hQKxopVaXHT+m3CpTfjNZjbMaYO-1D2DM1CFKZxJa4050Q@mail.gmail.com>
- <20180202211903.GB6635@fieldses.org>
-From: Kenneth Dsouza <kdsouza@redhat.com>
-Date: Sat, 3 Feb 2018 21:10:41 +0530
-Message-ID: <CAA_-hQJMYG2y4a_6pEusdEy0obV3+dT_9uVe44C0FbdvkcUEPQ@mail.gmail.com>
-Subject: Re: [PATCH v2] nfs4_getfacl: Add support to accept more paths
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:38944 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752986AbeBEQgt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Feb 2018 11:36:49 -0500
+Received: from smtp.corp.redhat.com (int-mx04.intmail.prod.int.phx2.redhat.com [10.5.11.14])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 737904902F
+        for <linux-nfs@vger.kernel.org>; Mon,  5 Feb 2018 16:36:49 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-117-122.phx2.redhat.com [10.3.117.122])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 24E205D9CB
+        for <linux-nfs@vger.kernel.org>; Mon,  5 Feb 2018 16:36:49 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/1] Remote calls don't need to use privilege ports
+Date: Mon,  5 Feb 2018 11:36:46 -0500
+Message-Id: <20180205163647.15822-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Feb 3, 2018 at 2:49 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> Thanks, one nit:
->
-> On Sat, Feb 03, 2018 at 02:03:31AM +0530, Kenneth Dsouza wrote:
->> Update man page with information for multiple file path support.
->>
->> Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
->> ---
->>  man/man1/nfs4_getfacl.1     |  7 ++++++-
->>  nfs4_getfacl/nfs4_getfacl.c | 18 +++++++++---------
->>  2 files changed, 15 insertions(+), 10 deletions(-)
->>
->> diff --git a/man/man1/nfs4_getfacl.1 b/man/man1/nfs4_getfacl.1
->> index fc092be..b556e1a 100644
->> --- a/man/man1/nfs4_getfacl.1
->> +++ b/man/man1/nfs4_getfacl.1
->> @@ -9,7 +9,7 @@
->>  nfs4_getfacl \- get NFSv4 file/directory access control lists
->>  .SH SYNOPSIS
->>  .B nfs4_getfacl [-H]
->> -.I file
->> +file ...
->>  .SH DESCRIPTION
->>  .B nfs4_getfacl
->>  will display the NFSv4 Access Control List (ACL) for
->> @@ -28,6 +28,7 @@ The output format for an NFSv4 file ACL, e.g., is:
->>  .RS
->>  .nf
->>
->> +# file: /somedir
->>  A::OWNER@:rwatTnNcCy
->>  A::alice@nfsdomain.org:rxtncy
->>  A::bob@nfsdomain.org:rwadtTnNcCy
->> @@ -42,6 +43,10 @@ In the example output above, the user
->> `alice@nfsdomain.org' has the equivalent
->>  of "read" and "execute" permissions, `bob@nfsdomain.org' has "read" and
->>  "write", and both `GROUP@' and `EVERYONE@' have "read".
->>
->> +.B nfs4_getfacl
->> +reads a list of files from standard input. The ACL listings of
->> +multiple files are separated by blank lines.
->> +
->
-> The list of files comes from the command line arguments, not standard
-> input, right?
-   Yes
+Over the weekend I did some experimenting with
+the remote call code in rpcbind. The code does 
+functionally work but is very antiquated when
+it comes to the latest NFS versions. 
 
-> I've modified the man page slightly but otherwise taken your patch
-> unchanged; result is pushed out to git now, let me know if it looks OK
-> to you.
->
-> --b.
+Since only UDP sockets are used to do remote calls
+using the documented interfaces pmap_rmtcall() and callrpc()
+calls to NFS will fail (actual times out) since UDP is no 
+longer supported. 
 
- It looks good. Thank you for fixing it.
+The undocumented interface rpc_call() can be used to 
+call into NFS since the protocol can specified, which 
+also means the PMAPPROC_CALLIT protocol is not used.
+
+It turns out privilege port are not needed to make
+remote calls, at least with my testing. I'm thinking 
+the only reason privilege ports were being uses was 
+a side effect of create_rmtcall_fd() calling 
+svc_tli_create() with an unbound socket. 
+
+So the following patch simply binds the socket
+before calling svc_tli_create() which means a
+non-privilege port will be reserved for remote
+calls. 
+
+I'm thinking this is the simplest way to
+not pollute the privilege port space. 
+
+Steve Dickson (1):
+  rmtcalls: Don't use privileged ports for remote calls.
+
+ src/rpcb_svc_com.c | 19 ++++++++++++++++++-
+ 1 file changed, 18 insertions(+), 1 deletion(-)
+
+-- 
+2.14.3
+
