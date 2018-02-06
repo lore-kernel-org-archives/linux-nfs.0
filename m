@@ -1,174 +1,186 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from srv06.itamservices.de ([78.46.48.226]:63755 "EHLO
-        srv06.itamservices.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752213AbeBFJU1 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Feb 2018 04:20:27 -0500
-Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
- over from xs_bind() ))
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "rostedt@goodmis.org" <rostedt@goodmis.org>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <57220e1f-f81e-b30b-a4ea-39ad74c7c0d6@nachtgeist.net>
- <1517876654.79669.5.camel@primarydata.com>
-From: Daniel Reichelt <hacking@nachtgeist.net>
-Message-ID: <9518bb1f-ad0a-2c33-d3fc-78550be06a0c@nachtgeist.net>
-Date: Tue, 6 Feb 2018 10:20:22 +0100
+Received: from mx1.redhat.com ([209.132.183.28]:40000 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752536AbeBFQhI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Feb 2018 11:37:08 -0500
+Subject: Re: [PATCH 0/1] Remote calls don't need to use privilege ports
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20180205163647.15822-1-steved@redhat.com>
+ <16CF8126-7229-4963-B5D1-2AC16BFC000A@oracle.com>
+ <6bd33601-2c59-3d19-ece2-878b885c2940@RedHat.com>
+ <C44A49E5-FEA5-482F-B945-BD967841F2FF@oracle.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <0f9b020a-4c65-4b3b-42b2-81f8f9ee0941@RedHat.com>
+Date: Tue, 6 Feb 2018 11:37:07 -0500
 MIME-Version: 1.0
-In-Reply-To: <1517876654.79669.5.camel@primarydata.com>
-Content-Type: multipart/signed; micalg=pgp-sha256;
- protocol="application/pgp-signature";
- boundary="Mrvc8Do60m4Vi01BQn8EmDBswbL577mMf"
+In-Reply-To: <C44A49E5-FEA5-482F-B945-BD967841F2FF@oracle.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 4880 and 3156)
---Mrvc8Do60m4Vi01BQn8EmDBswbL577mMf
-Content-Type: multipart/mixed; boundary="N4fNFHhBhgM90y6CJjK99FoVR7XExZWZd";
- protected-headers="v1"
-From: Daniel Reichelt <hacking@nachtgeist.net>
-To: Trond Myklebust <trondmy@primarydata.com>,
- "rostedt@goodmis.org" <rostedt@goodmis.org>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
- "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-ID: <9518bb1f-ad0a-2c33-d3fc-78550be06a0c@nachtgeist.net>
-Subject: Re: It's back! (Re: [REGRESSION] NFS is creating a hidden port (left
- over from xs_bind() ))
-References: <57220e1f-f81e-b30b-a4ea-39ad74c7c0d6@nachtgeist.net>
- <1517876654.79669.5.camel@primarydata.com>
-In-Reply-To: <1517876654.79669.5.camel@primarydata.com>
-
---N4fNFHhBhgM90y6CJjK99FoVR7XExZWZd
-Content-Type: text/plain; charset=utf-8
-Content-Language: de-DE
-Content-Transfer-Encoding: quoted-printable
-
-On 02/06/2018 01:24 AM, Trond Myklebust wrote:
-> Does the following fix the issue?
->=20
-> 8<-----------------------------------------------
-> From 9b30889c548a4d45bfe6226e58de32504c1d682f Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Mon, 5 Feb 2018 10:20:06 -0500
-> Subject: [PATCH] SUNRPC: Ensure we always close the socket after a conn=
-ection
->  shuts down
->=20
-> Ensure that we release the TCP socket once it is in the TCP_CLOSE or
-> TCP_TIME_WAIT state (and only then) so that we don't confuse rkhunter
-> and its ilk.
->=20
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  net/sunrpc/xprtsock.c | 23 ++++++++++-------------
->  1 file changed, 10 insertions(+), 13 deletions(-)
->=20
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 18803021f242..5d0108172ed3 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -807,13 +807,6 @@ static void xs_sock_reset_connection_flags(struct =
-rpc_xprt *xprt)
->  	smp_mb__after_atomic();
->  }
-> =20
-> -static void xs_sock_mark_closed(struct rpc_xprt *xprt)
-> -{
-> -	xs_sock_reset_connection_flags(xprt);
-> -	/* Mark transport as closed and wake up all pending tasks */
-> -	xprt_disconnect_done(xprt);
-> -}
-> -
->  /**
->   * xs_error_report - callback to handle TCP socket state errors
->   * @sk: socket
-> @@ -833,9 +826,6 @@ static void xs_error_report(struct sock *sk)
->  	err =3D -sk->sk_err;
->  	if (err =3D=3D 0)
->  		goto out;
-> -	/* Is this a reset event? */
-> -	if (sk->sk_state =3D=3D TCP_CLOSE)
-> -		xs_sock_mark_closed(xprt);
->  	dprintk("RPC:       xs_error_report client %p, error=3D%d...\n",
->  			xprt, -err);
->  	trace_rpc_socket_error(xprt, sk->sk_socket, err);
-> @@ -1655,9 +1645,11 @@ static void xs_tcp_state_change(struct sock *sk)=
-
->  		if (test_and_clear_bit(XPRT_SOCK_CONNECTING,
->  					&transport->sock_state))
->  			xprt_clear_connecting(xprt);
-> +		clear_bit(XPRT_CLOSING, &xprt->state);
->  		if (sk->sk_err)
->  			xprt_wake_pending_tasks(xprt, -sk->sk_err);
-> -		xs_sock_mark_closed(xprt);
-> +		/* Trigger the socket release */
-> +		xs_tcp_force_close(xprt);
->  	}
->   out:
->  	read_unlock_bh(&sk->sk_callback_lock);
-> @@ -2265,14 +2257,19 @@ static void xs_tcp_shutdown(struct rpc_xprt *xp=
-rt)
->  {
->  	struct sock_xprt *transport =3D container_of(xprt, struct sock_xprt, =
-xprt);
->  	struct socket *sock =3D transport->sock;
-> +	int skst =3D transport->inet ? transport->inet->sk_state : TCP_CLOSE;=
-
-> =20
->  	if (sock =3D=3D NULL)
->  		return;
-> -	if (xprt_connected(xprt)) {
-> +	switch (skst) {
-> +	default:
->  		kernel_sock_shutdown(sock, SHUT_RDWR);
->  		trace_rpc_socket_shutdown(xprt, sock);
-> -	} else
-> +		break;
-> +	case TCP_CLOSE:
-> +	case TCP_TIME_WAIT:
->  		xs_reset_transport(transport);
-> +	}
->  }
-> =20
->  static void xs_tcp_set_socket_timeouts(struct rpc_xprt *xprt,
->=20
 
 
-Previously, I've seen hidden ports within 5-6 minutes after re-starting
-the nfsd and re-mounting nfs-exports on clients.
+On 02/05/2018 02:47 PM, Chuck Lever wrote:
+> Hi Steve-
+> 
+>> On Feb 5, 2018, at 2:21 PM, Steve Dickson <SteveD@RedHat.com> wrote:
+>>
+>>
+>>
+>> On 02/05/2018 12:02 PM, Chuck Lever wrote:
+>>> Heya Steve-
+>>>
+>>>> On Feb 5, 2018, at 11:36 AM, Steve Dickson <steved@redhat.com> wrote:
+>>>>
+>>>> Over the weekend I did some experimenting with
+>>>> the remote call code in rpcbind. The code does 
+>>>> functionally work but is very antiquated when
+>>>> it comes to the latest NFS versions. 
+>>>>
+>>>> Since only UDP sockets are used to do remote calls
+>>>> using the documented interfaces pmap_rmtcall() and callrpc()
+>>>> calls to NFS will fail (actual times out) since UDP is no 
+>>>> longer supported. 
+>>>>
+>>>> The undocumented interface rpc_call() can be used to 
+>>>> call into NFS since the protocol can specified, which 
+>>>> also means the PMAPPROC_CALLIT protocol is not used.
+>>>>
+>>>> It turns out privilege port are not needed to make
+>>>> remote calls, at least with my testing.
+>>>
+>>> It's not quite clear what you are claiming here, but
+>>> I'm guessing that what you demonstrated is that the
+>>> CALLIT _listener_ does not have to be privileged?
+>> Right... 
+>>>
+>>> I claim that is true for all RPC listeners.
+>> It could be true..
+> 
+> "privileged port" always means a source port, never a
+> listener. There is no extra privilege given to a listener
+> port that is below 1024.
+> 
+> svc_tli_create is simply wrong to use bindresvport.
+> 
+> 
+>>>> I'm thinking 
+>>>> the only reason privilege ports were being uses was 
+>>>> a side effect of create_rmtcall_fd() calling 
+>>>> svc_tli_create() with an unbound socket.
+>>>
+>>> Privileged listener ports are being created because
+>>> svc_tli_create is using bindresvport when the passed
+>>> in socket is not already bound.
+>> Right... So handing svc_tli_create a bound socket will
+>> cause the bindresvport not to happen.
+> 
+> True, and your patch corrects the behavior of rpcbind.
+> 
+> But I argue that is a workaround: svc_tli_create is
+> still doing the wrong thing for any other RPC server
+> that does not hand in a pre-bound socket. Fix it there
+> and all RPC servers that use libtirpc are fixed.
+> 
+> 
+>>> svc_tli_create should use bind instead, and it needs
+>>> to choose a port higher than 49151.Actual it does when a t_bind structure is passed in. 
+>> But more to the point, I thought about changing 
+>> svc_tli_create but that would effect all the callers
+>> of the routine which I didn't think was a good idea 
+>> for code that is basically not used.
+> 
+> I'm not sure what you mean by "code that is basically
+> not used."
+> 
+> svc_tli_create is the bottom of the RPC stack. It is the
+> libtirpc API that is used every time an RPC server starts
+> a listener. mountd and statd call svc_tli_create
+> directly for example, from support/nfs/svc_create.c.
+> 
+> Thus this is the right place to fix it for all RPC server
+> applications.
+Actually I believe those application get their ports from /etc/rpc 
+via the getrpcbyname() and then hands svc_tli_create a
+bound socket which the reason bindresvport is not done.
 
-With this patch applied, I don't see any hidden ports after 15mins. I
-guess it's a valid fix.
+Side Note: /etc/rpc will be staying in glibc since it is
+"backed by the NSS framework"
 
 
-Thank you!
+> 
+> 
+>> Also, now that libtirpc is the only Linux RPC implementation
+>> (the RPC code has been removed from glibc) I'm a bit
+>> sensitive to changing functionality unless its a 
+>> clear bug or security issue. 
+> 
+> This is a clear bug.
+Lets do this... Please open up a upstream bz that justifies
+why the bindresvport was removed from svc_tli_create().
 
-Daniel
+If we break some legacy app I would like something to
+point to explaining why the change was made 
+  
+> 
+> - The library should not be allowed to choose ports that
+> interfere with well-known services.
+> 
+> - The library should choose service ports based on well-
+> established standards, such as the IANA service names to
+> port numbers standard.
+> 
+> 
+>>> https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml
+>> Hmm... I have been conveniently ignoring Thorsten's blacklist patch.
+>> Maybe we should take another look at that.
+>>
+>>>
+>>>
+>>>> So the following patch simply binds the socket
+>>>> before calling svc_tli_create() which means a
+>>>> non-privilege port will be reserved for remote
+>>>> calls. 
+>>>>
+>>>> I'm thinking this is the simplest way to
+>>>> not pollute the privilege port space. 
+>>>
+>>> This is going in the right direction, but the problem
+>>> needs to be addressed in svc_tli_create, not in each
+>>> application that calls svc_tli_create.
+>>>
+>>> This is the same issue that Guillem Jover was trying to
+>>> address by making bindresvport skip well-known ports.
+>>>
+>>> In other words: this code in src/svc_generic.c is wrong:
+>> It could be... but the API allows for the bindresvport (or any bind) 
+>> to not happen... So changing how it is called I think is 
+>> appropriate... Plus its been working this way for a long to so 
+>> I'm very resistant to change functionality basically for no reason. 
+>>
+>> But I do think we should look into bindresvport using a black list
+>> since it is already established in SuSE
+> 
+> IMO a bindresvport blacklist is absolutely the wrong approach.
+> We have standards organizations that have explained exactly how
+> this needs to work, and we want it to work without installing
+> extra files or giving admins more knobs that they really don't
+> need.
+> 
+> This is exactly the problem with distros applying patches
+> without upstream review. SuSE fixed this and let their fix sit
+> for years without any public bug report or review. IMO SuSE
+> should be prepared to take this hit, it should not constrain
+> upstream to choose a non-optimal long-term solution. I don't
+> see any compelling reason in this particular case that we need
+> to be constrained.
+> 
+> Fixing svc_tli_create to use ports higher than 49151 should be
+> completely compatible with any reasonable blacklist, and it
+> MUST be compatible with /etc/services, which is based on the
+> IANA publication (no well-known fixed ports above 49151).
+> 
+Let me look into this... 
 
-
---N4fNFHhBhgM90y6CJjK99FoVR7XExZWZd--
-
---Mrvc8Do60m4Vi01BQn8EmDBswbL577mMf
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQJLBAEBCAA1FiEEg2wMpOXGvc4nunsZnjl+Rc/8gF8FAlp5c1cXHGhhY2tpbmdA
-bmFjaHRnZWlzdC5uZXQACgkQnjl+Rc/8gF9vlQ/9HIqRpAAEUie4ajh0Dc5AD6CL
-jochGqEyMEMIBFojkl63wOfEo36MSRjHaUxVNRwjtXcTIaQIxOxogYfzgJnjLGBu
-zbw2EFzeXdgyj5YwF6KS9tqWQf2K1w3FTY0bxTL8FImamDPFYhmAyj1oPIe/7olB
-ElLfp0OAbD0nTUUd7i/jw9r4IZfVMPQnd+04qcIFB5W5nTTvFbUAX0ssu/EUcnJu
-8yQ3xa9JLbqKu2C0M/d4BedXk7m/IAiS9R1IVoIws+Y/oFv2QzPwJe04iKIyV0lS
-+aqjXtv8oIY196EwONPSJe66KXJquqLqjwJ4CM0hOfZX7KoHmhGifd0SVLlkisTn
-nhVPneTWAysUZGeDd2SZsomS835MniK6soAs5zjhpWGdtbQyR7NxX/iJe7d9Ova0
-NMEoRups2zkjX8GBjG0XJwoEXjUbkOtpL5YcknS69XHXaZ04HoUB9XnSd4O4iSOX
-TC1I5GPt2ZbKyQLVLDAXD9kf6GX5YP6ppCpsjg0e5quL3xY9WIG6jfaUr82kOxEO
-8x/JNa4nj37DHUfpxCIVFMsHSxmpERJ1luIODRmwlY5lFsDXluH2p/F3b6ZQ9aX3
-lAD4kkE281DJIrnX5OweR2Yq3Q83ZL3a5KKdbRAyEHdOHPpPVAihCOziMRhY3kXh
-5bRFx16AKd4JBpQXWuU=
-=JYko
------END PGP SIGNATURE-----
-
---Mrvc8Do60m4Vi01BQn8EmDBswbL577mMf--
+steved.
