@@ -1,85 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp-o-3.desy.de ([131.169.56.156]:45223 "EHLO smtp-o-3.desy.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753329AbeBFWKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Feb 2018 17:10:21 -0500
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id B494528044C
-        for <linux-nfs@vger.kernel.org>; Tue,  6 Feb 2018 23:10:19 +0100 (CET)
-Date: Tue, 6 Feb 2018 23:10:19 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: linux-nfs <linux-nfs@vger.kernel.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Message-ID: <1253710805.3166627.1517955019275.JavaMail.zimbra@desy.de>
-Subject: wrong latency info for flexfiles on layout return
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:20887 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753572AbeBFW3y (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Feb 2018 17:29:54 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: wrong latency info for flexfiles on layout return
+Date: Tue, 6 Feb 2018 22:29:48 +0000
+Message-ID: <1517956185.39096.9.camel@primarydata.com>
+References: <1253710805.3166627.1517955019275.JavaMail.zimbra@desy.de>
+In-Reply-To: <1253710805.3166627.1517955019275.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+T24gVHVlLCAyMDE4LTAyLTA2IGF0IDIzOjEwICswMTAwLCBNa3J0Y2h5YW4sIFRpZ3JhbiB3cm90
+ZToNCj4gDQo+IEhpIFRyb25kIGV0IGFsLg0KPiANCj4gYnkgZXhwbG9yaW5nIGRhdGEgcHJvdmlk
+ZWQgb24gbGF5b3V0cmV0dXJuIEkgY2FuIHNlZSB0aGF0IHNvbWUNCj4gaW5mb3JtYXRpb24gaXMg
+d3JvbmcsIGluIHBhcnRpY3VsYXIgdGhlIElPIGxhdGVuY3kgY29tcGxldGl0aW9uDQo+IHRpbWUg
+Zm9yIHdyaXRlOg0KPiANCj4gew0KPiAgICAiaW9zdGF0cyI6Ww0KPiAgICAgICB7DQo+ICAgICAg
+ICAgICJkZXZpY2VBZGRyIjoidGNwOi8vMTkyLjE2OC4xNzguNDAuMTI4LjIiLA0KPiAgICAgICAg
+ICAiZHVyYXRpb24iOnsNCj4gICAgICAgICAgICAgInNlY29uZHMiOjUsDQo+ICAgICAgICAgICAg
+ICJuc2Vjb25kcyI6Mjg1OTI0NDYyDQo+ICAgICAgICAgIH0sDQo+ICAgICAgICAgICJyZWFkSW5m
+byI6ew0KPiAgICAgICAgICAgICAiYnl0ZXMiOjAsDQo+ICAgICAgICAgICAgICJsYXRlbmN5Ijp7
+DQo+ICAgICAgICAgICAgICAgICJjb21wbGV0aXRpb25UaW1lIjp7DQo+ICAgICAgICAgICAgICAg
+ICAgICJzZWNvbmRzIjowLA0KPiAgICAgICAgICAgICAgICAgICAibnNlY29uZHMiOjANCj4gICAg
+ICAgICAgICAgICAgfSwNCj4gICAgICAgICAgICAgICAgImJ5dGVzUmVxdWVzdGVkIjowLA0KPiAg
+ICAgICAgICAgICAgICAib3BzQ29tcGxldGVkIjowLA0KPiAgICAgICAgICAgICAgICAiYnVzeVRp
+bWUiOnsNCj4gICAgICAgICAgICAgICAgICAgInNlY29uZHMiOjAsDQo+ICAgICAgICAgICAgICAg
+ICAgICJuc2Vjb25kcyI6MA0KPiAgICAgICAgICAgICAgICB9LA0KPiAgICAgICAgICAgICAgICAi
+b3BzUmVxdWVzdGVkIjowLA0KPiAgICAgICAgICAgICAgICAiYnl0ZXNDb21wbGV0ZWQiOjAsDQo+
+ICAgICAgICAgICAgICAgICJieXRlc05vdERlbGl2ZXJlZCI6MA0KPiAgICAgICAgICAgICB9LA0K
+PiAgICAgICAgICAgICAiY291bnQiOjANCj4gICAgICAgICAgfSwNCj4gICAgICAgICAgImZoIjoi
+MDFjYWZmZWUwMDAwMDAwMGIxZjk2MzVlMDAwZDAwMDAwODAwMDAwMDAwMDAwMDAwMDUwMTMwDQo+
+ICIsDQo+ICAgICAgICAgICJ3cml0ZUluZm8iOnsNCj4gICAgICAgICAgICAgImJ5dGVzIjo2MjQx
+OTM1MzYsDQo+ICAgICAgICAgICAgICJsYXRlbmN5Ijp7DQo+ICAgICAgICAgICAgICAgICJjb21w
+bGV0aXRpb25UaW1lIjp7DQo+ICAgICAgICAgICAgICAgICAgICJzZWNvbmRzIjoyNTczNywNCj4g
+ICAgICAgICAgICAgICAgICAgIm5zZWNvbmRzIjo4MTYyMTc5MjENCj4gICAgICAgICAgICAgICAg
+fSwNCj4gICAgICAgICAgICAgICAgImJ5dGVzUmVxdWVzdGVkIjo2MjQxOTM1MzYsDQo+ICAgICAg
+ICAgICAgICAgICJvcHNDb21wbGV0ZWQiOjk1MjYsDQo+ICAgICAgICAgICAgICAgICJidXN5VGlt
+ZSI6ew0KPiAgICAgICAgICAgICAgICAgICAic2Vjb25kcyI6NSwNCj4gICAgICAgICAgICAgICAg
+ICAgIm5zZWNvbmRzIjoyMjQwMTc5MzcNCj4gICAgICAgICAgICAgICAgfSwNCj4gICAgICAgICAg
+ICAgICAgIm9wc1JlcXVlc3RlZCI6OTUyNiwNCj4gICAgICAgICAgICAgICAgImJ5dGVzQ29tcGxl
+dGVkIjo2MjQxOTM1MzYsDQo+ICAgICAgICAgICAgICAgICJieXRlc05vdERlbGl2ZXJlZCI6MA0K
+PiAgICAgICAgICAgICB9LA0KPiAgICAgICAgICAgICAiY291bnQiOjk1MjYNCj4gICAgICAgICAg
+fSwNCj4gICAgICAgICAgImRldmljZUlkIjoiMDAwMDAwMDEwMDAwMDAwMDAwMDAwMDAwMDAwMDAw
+MDAiLA0KPiAgICAgICAgICAib3Blbi1zdGF0ZWlkIjoiNWE3YTI1OWIwMDAwMDAwMTAwMDAwMDA0
+Ig0KPiAgICAgICB9DQo+ICAgIF0NCj4gfQ0KPiANCj4gDQo+IHlvdSBjYW4gc2VlIHRoaXMgd2l0
+aCB3aXJlc2hhcmsgYXMgd2VsbC4NCj4gDQoNCkNhbiB5b3UgZXhwbGFpbiB3aGF0IHlvdSB0aGlu
+ayBpcyB3cm9uZz8gV2l0aCB0aGUgYWJvdmUgYWdncmVnYXRlDQpjb21wbGV0aW9uIHRpbWUsIEkg
+Z2V0IGFuIGF2ZXJhZ2UgcGVyLW9wIHJvdW5kLXRyaXAgdGltZSBvZg0KMjU3MzcuODE2Lzk1MjYg
+PSAyLjdzLCB3aGljaCBsb29rcyBhIGxpdHRsZSBoaWdoIGdpdmVuIHRoYXQgdGhlDQpkdXJhdGlv
+biBpcyBvbmx5IDUgc2Vjb25kcywgYnV0IGl0J3Mgbm90IGhvcnJpYmx5IHVubGlrZWx5IGlmIHlv
+dXIgRFNlcw0KYXJlIHByb2Nlc3NpbmcgbW9zdCBvZiB0aGVzZSBvcGVyYXRpb25zIGluIHBhcmFs
+bGVsLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+LCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-
-Hi Trond et al.
-
-by exploring data provided on layoutreturn I can see that some
-information is wrong, in particular the IO latency completition
-time for write:
-
-{
-   "iostats":[
-      {
-         "deviceAddr":"tcp://192.168.178.40.128.2",
-         "duration":{
-            "seconds":5,
-            "nseconds":285924462
-         },
-         "readInfo":{
-            "bytes":0,
-            "latency":{
-               "completitionTime":{
-                  "seconds":0,
-                  "nseconds":0
-               },
-               "bytesRequested":0,
-               "opsCompleted":0,
-               "busyTime":{
-                  "seconds":0,
-                  "nseconds":0
-               },
-               "opsRequested":0,
-               "bytesCompleted":0,
-               "bytesNotDelivered":0
-            },
-            "count":0
-         },
-         "fh":"01caffee00000000b1f9635e000d00000800000000000000050130",
-         "writeInfo":{
-            "bytes":624193536,
-            "latency":{
-               "completitionTime":{
-                  "seconds":25737,
-                  "nseconds":816217921
-               },
-               "bytesRequested":624193536,
-               "opsCompleted":9526,
-               "busyTime":{
-                  "seconds":5,
-                  "nseconds":224017937
-               },
-               "opsRequested":9526,
-               "bytesCompleted":624193536,
-               "bytesNotDelivered":0
-            },
-            "count":9526
-         },
-         "deviceId":"00000001000000000000000000000000",
-         "open-stateid":"5a7a259b0000000100000004"
-      }
-   ]
-}
-
-
-you can see this with wireshark as well.
-
-Regards,
-   Tigran.
