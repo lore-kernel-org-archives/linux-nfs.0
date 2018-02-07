@@ -1,99 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:55833 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754281AbeBGVQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Feb 2018 16:16:42 -0500
-From: NeilBrown <neilb@suse.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Date: Thu, 08 Feb 2018 08:16:27 +1100
-Cc: Tom Talpey <tom@talpey.com>, Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/1] Remote calls don't need to use privilege ports
-In-Reply-To: <4F3A3FBC-FFA9-4CDA-A38A-73AD07A62A27@oracle.com>
-References: <20180205163647.15822-1-steved@redhat.com> <16CF8126-7229-4963-B5D1-2AC16BFC000A@oracle.com> <cc08d8f9-795d-d49c-6354-f5fdbeb85a44@talpey.com> <87eflxo1qp.fsf@notabene.neil.brown.name> <4F3A3FBC-FFA9-4CDA-A38A-73AD07A62A27@oracle.com>
-Message-ID: <87y3k4mrf8.fsf@notabene.neil.brown.name>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:48244 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932238AbeBGVUL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 16:20:11 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "Bill.Baker@Oracle.com" <Bill.Baker@Oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: system crashes after NFS4ERR_MOVED recovery
+Date: Wed, 7 Feb 2018 21:20:05 +0000
+Message-ID: <1518038401.56541.6.camel@primarydata.com>
+References: <307dc174-b2d0-461a-fc76-193711f150d2@Oracle.com>
+         <1518037638.56541.2.camel@primarydata.com>
+In-Reply-To: <1518037638.56541.2.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+T24gV2VkLCAyMDE4LTAyLTA3IGF0IDE2OjA3IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
+DQo+IEhpIEJpbGwsDQo+IA0KPiBPbiBXZWQsIDIwMTgtMDItMDcgYXQgMTQ6NTMgLTA2MDAsIEJp
+bGwgQmFrZXIgd3JvdGU6DQo+ID4gbmZzNF91cGRhdGVfc2VydmVyIHVuY29uZGl0aW9uYWxseSBy
+ZWxlYXNlcyB0aGUgbmZzX2NsaWVudCBmb3IgdGhlDQo+ID4gc291cmNlIHNlcnZlci4gSWYgbWln
+cmF0aW9uIGZhaWxzLCB0aGlzIGNhbiBjYXVzZSB0aGUgc291cmNlDQo+ID4gc2VydmVyJ3MNCj4g
+PiBuZnNfY2xpZW50IHN0cnVjdCB0byBiZSBsZWZ0IHdpdGggYSBsb3cgcmVmZXJlbmNlIGNvdW50
+LCByZXN1bHRpbmcNCj4gPiBpbg0KPiA+IHVzZS1hZnRlci1mcmVlLg0KPiA+IA0KPiA+IE5GUzog
+c3RhdGUgbWFuYWdlcjogbWlncmF0aW9uIGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgbmZzdm11MTAg
+d2l0aA0KPiA+IGVycm9yIDYNCj4gPiBXQVJOSU5HOiBDUFU6IDE2IFBJRDogMTc5NjAgYXQgZnMv
+bmZzL2NsaWVudC5jOjI4MSANCj4gPiBuZnNfcHV0X2NsaWVudCsweGZhLzB4MTEwIFtuZnNdKCkN
+Cj4gPiAgICAgICAgICBuZnNfcHV0X2NsaWVudCsweGZhLzB4MTEwIFtuZnNdDQo+ID4gICAgICAg
+ICAgbmZzNF9ydW5fc3RhdGVfbWFuYWdlcisweDMwLzB4NDAgW25mc3Y0XQ0KPiA+ICAgICAgICAg
+IGt0aHJlYWQrMHhkOC8weGYwDQo+ID4gDQo+ID4gQlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5l
+bCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UgYXQNCj4gPiAwMDAwMDAwMDAwMDAwMmE4DQo+ID4g
+ICAgICAgICAgbmZzNF94ZHJfZW5jX3dyaXRlKzB4NmIvMHgxNjAgW25mc3Y0XQ0KPiA+ICAgICAg
+ICAgIHJwY2F1dGhfd3JhcF9yZXErMHhhYy8weGYwIFtzdW5ycGNdDQo+ID4gICAgICAgICAgY2Fs
+bF90cmFuc21pdCsweDE4Yy8weDJjMCBbc3VucnBjXQ0KPiA+ICAgICAgICAgIF9fcnBjX2V4ZWN1
+dGUrMHhhNi8weDQ5MCBbc3VucnBjXQ0KPiA+ICAgICAgICAgIHJwY19hc3luY19zY2hlZHVsZSsw
+eDE1LzB4MjAgW3N1bnJwY10NCj4gPiAgICAgICAgICBwcm9jZXNzX29uZV93b3JrKzB4MTYwLzB4
+NDcwDQo+ID4gICAgICAgICAgd29ya2VyX3RocmVhZCsweDExMi8weDU0MA0KPiA+ICAgICAgICAg
+IGt0aHJlYWQrMHhkOC8weGYwDQo+ID4gDQo+ID4gUmVwb3J0ZWQtYnk6IEhlbGVuIENoYW8gPGhl
+bGVuLmNoYW9Ab3JhY2xlLmNvbT4NCj4gPiBGaXhlczogMzJlNjJiN2MzZWYwICgiTkZTOiBBZGQg
+bmZzNF91cGRhdGVfc2VydmVyIikNCj4gPiBTaWduZWQtb2ZmLWJ5OiBCaWxsIEJha2VyIDxiaWxs
+LmJha2VyQG9yYWNsZS5jb20+DQo+ID4gUmV2aWV3ZWQtYnk6IENodWNrIExldmVyIDxjaHVjay5s
+ZXZlckBvcmFjbGUuY29tPg0KPiA+IC0tLQ0KPiA+ICAgZnMvbmZzL25mczRjbGllbnQuYyB8IDIg
+Ky0NCj4gPiAgIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0K
+PiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNGNsaWVudC5jIGIvZnMvbmZzL25mczRj
+bGllbnQuYw0KPiA+IGluZGV4IDY1YTdlNWQuLmM4MThjZGQgMTAwNjQ0DQo+ID4gLS0tIGEvZnMv
+bmZzL25mczRjbGllbnQuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0Y2xpZW50LmMNCj4gPiBAQCAt
+MTIyNiwxMSArMTIyNiwxMSBAQCBpbnQgbmZzNF91cGRhdGVfc2VydmVyKHN0cnVjdCBuZnNfc2Vy
+dmVyIA0KPiA+ICpzZXJ2ZXIsIGNvbnN0IGNoYXIgKmhvc3RuYW1lLA0KPiA+ICAgICAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgIGNscC0+Y2xfcHJvdG8sIGNsbnQtPmNsX3RpbWVvdXQsDQo+
+ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2xwLT5jbF9taW5vcnZlcnNpb24s
+IG5ldCk7DQo+ID4gICAgICAgICAgY2xlYXJfYml0KE5GU19NSUdfVFNNX1BPU1NJQkxFLCAmc2Vy
+dmVyLT5taWdfc3RhdHVzKTsNCj4gPiAtICAgICAgIG5mc19wdXRfY2xpZW50KGNscCk7DQo+ID4g
+ICAgICAgICAgaWYgKGVycm9yICE9IDApIHsNCj4gPiAgICAgICAgICAgICAgICAgIG5mc19zZXJ2
+ZXJfaW5zZXJ0X2xpc3RzKHNlcnZlcik7DQo+ID4gICAgICAgICAgICAgICAgICByZXR1cm4gZXJy
+b3I7DQo+ID4gICAgICAgICAgfQ0KPiA+ICsgICAgICAgbmZzX3B1dF9jbGllbnQoY2xwKTsNCj4g
+PiANCj4gPiAgICAgICAgICBpZiAoc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ob3N0bmFtZSA9PSBO
+VUxMKQ0KPiA+ICAgICAgICAgICAgICAgICAgc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ob3N0bmFt
+ZSA9DQo+ID4ga3N0cmR1cChob3N0bmFtZSwgDQo+ID4gR0ZQX0tFUk5FTCk7DQo+ID4gDQo+IA0K
+PiBUaGF0IGxvb2tzIGFsbW9zdCByaWdodC4gSXNuJ3QgdGhlcmUgbm93IGEgcmVmZXJlbmNlIGxl
+YWsgaWYNCj4gbmZzNF9zZXRfY2xpZW50KCkgcmV0dXJucyAtRUxPT1A/IEkgdGhpbmsgdGhhdCBp
+cyByZWFsbHkgZG93biB0byBhbg0KPiBleGlzdGluZyBidWcgaW4gbmZzNF9zZXRfY2xpZW50KCkg
+cmF0aGVyIHRoYW4gaW4geW91ciBmaXgsIGhvd2V2ZXIgDQoNClNvcnJ5Li4uIEkgc2hvdWxkIHBy
+b2JhYmx5IGhhdmUgYmVlbiBtb3JlIGV4cGxpY2l0IGFib3V0IHdoZXJlIHRoZSBidWcNCmlzOiBu
+ZnM0X3NldF9jbGllbnQoKSBzaG91bGQgcHJvYmFibHkgYmUgY2FsbGluZyBuZnNfcHV0X2NsaWVu
+dCgpIG9uDQppdHMgY29weSBvZiAnY2xwJyBiZWZvcmUgcmV0dXJuaW5nIC1FTE9PUC4NCg0KPiB0
+aGUNCj4gZml4IGRvZXMgcmUtZXhwb3NlIHRoYXQgYnVnLg0KDQpCeSB3aGljaCBJIG1lYW4gdGhh
+dCB0aGUgdHdvIGJ1Z3MgY3VycmVudGx5IGNhbmNlbCBlYWNoIG90aGVyIG91dCBmb3INCnRoZSBj
+YXNlIG9mIEVMT09QLiBCeSBmaXhpbmcgb25lIGJ1ZywgYnV0IG5vdCB0aGUgb3RoZXIsIHdlJ3Jl
+IHVuZG9pbmcNCnRoZSBjYW5jZWxsYXRpb24uLi4g4pi6DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1
+c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-On Wed, Feb 07 2018, Chuck Lever wrote:
-
->> On Feb 6, 2018, at 11:35 PM, NeilBrown <neilb@suse.com> wrote:
->>=20
->> On Mon, Feb 05 2018, Tom Talpey wrote:
->>=20
->>> On 2/5/2018 12:02 PM, Chuck Lever wrote:
->>>> Heya Steve-
->>>>=20
->>>>> On Feb 5, 2018, at 11:36 AM, Steve Dickson <steved@redhat.com> wrote:
->>>>>=20
->>>>> Over the weekend I did some experimenting with
->>>>> the remote call code in rpcbind. The code does
->>>>> functionally work but is very antiquated when
->>>>> it comes to the latest NFS versions.
->>>>>=20
->>>>> Since only UDP sockets are used to do remote calls
->>>>> using the documented interfaces pmap_rmtcall() and callrpc()
->>>>> calls to NFS will fail (actual times out) since UDP is no
->>>>> longer supported.
->>>>>=20
->>>>> The undocumented interface rpc_call() can be used to
->>>>> call into NFS since the protocol can specified, which
->>>>> also means the PMAPPROC_CALLIT protocol is not used.
->>>>>=20
->>>>> It turns out privilege port are not needed to make
->>>>> remote calls, at least with my testing.
->>>>=20
->>>> It's not quite clear what you are claiming here, but
->>>> I'm guessing that what you demonstrated is that the
->>>> CALLIT _listener_ does not have to be privileged?
->>=20
->> rpcbind listens for CALLIT on port 111.
->
-> Right, my bad. CALLIT is an RPC procedure, not an RPC
-> program.
->
->
->> Listening on some other port wouldn't ever get the messges...
->
-> Then we still do not understand why rpcbind is opening
-> and registering a second listener port. I can't think of
-> any reason it should do this other than that there is a
-> bug.
-
-This is a port on which it forwards CALLIT messages and listens for
-replies, which it then sends back to the originator.  In order to be
-able to handle CALLIT asynchronously with other requests, it needs to
-register the port with the internal listening framework.
-For comparison, portmap handles CALLIT asynchronously by forking.
-
-Thanks,
-NeilBrown
-
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlp7bKsACgkQOeye3VZi
-gbnPRg/+Of/6Mg7BclHQNbtNEgLEAgnuoIk0fZdJFjuQjf9c37356BYGGwf5iIGu
-2Ozknmp12mxypvOUuyCTNh6B5IXffEryrL6b18kP+5cEQC7102KCCj0noX/lh301
-c+fTf+VifLrNIsfitF2TvgU5uZwx9+/lQNm+0ucpDnG/dvGA9Fruz7p2A/68LmTi
-AD22dXBy+Hr1WdoS3LqvaFscdRKnVqJIeTNVh1OaftBy9rR5k9+3USJqvPQGUCZ/
-cw9eKzfK1GHLl/VwzoGIO6s7fwFOp7QkjrtolphlAJpqvPUeuSi7skNsyDQG9Met
-Jl1EX1lrR6F36lOyNx5uLCB5G9qeNLRt2b5eGib5nEtHbbUp0s1wF+Gf4MuoX4ll
-V9p08qdPYZgD7Vgcx0cYpaqGcsxwQBlzZ6CvRM3WNoc8gsQ2enh5IoKojLoSy8E/
-1sEQ+XMo0srOeevf5g7zHBKv87srjobNLn31h1hIejxMHCX9p8Vwn2lLBPXqz1My
-/P5Tr3rhewyjODX/emxlC3AQm8SBbp7b2ekA/BnpgecsJMMRRo4t2shq9KVoJzxc
-q4GfkG4QH4cCgmsMOfVmfc8vuJIfLmJHm/Oa68QpCURQYdcXPQEaqH7J705jFGBd
-EaIJjLGsdNObLWakHNOBbq2xZVoTI49xHKg/KbSOGubu1hSbnQo=
-=C52Q
------END PGP SIGNATURE-----
---=-=-=--
