@@ -1,75 +1,102 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:48244 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932238AbeBGVUL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 16:20:11 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
-        "Bill.Baker@Oracle.com" <Bill.Baker@Oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: system crashes after NFS4ERR_MOVED recovery
-Date: Wed, 7 Feb 2018 21:20:05 +0000
-Message-ID: <1518038401.56541.6.camel@primarydata.com>
-References: <307dc174-b2d0-461a-fc76-193711f150d2@Oracle.com>
-         <1518037638.56541.2.camel@primarydata.com>
-In-Reply-To: <1518037638.56541.2.camel@primarydata.com>
+Received: from mx2.suse.de ([195.135.220.15]:56240 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1755146AbeBGVUw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Feb 2018 16:20:52 -0500
+From: NeilBrown <neilb@suse.com>
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Date: Thu, 08 Feb 2018 08:20:43 +1100
+Subject: Re: [PATCH 1/2] NFS: Remove a redundant call to unmap_mapping_range()
+In-Reply-To: <1518003998.3483.0.camel@primarydata.com>
+References: <20180129025822.5116-1-trond.myklebust@primarydata.com> <876079nvvc.fsf@notabene.neil.brown.name> <1518003998.3483.0.camel@primarydata.com>
+Message-ID: <87vaf8mr84.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTAyLTA3IGF0IDE2OjA3IC0wNTAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IEhpIEJpbGwsDQo+IA0KPiBPbiBXZWQsIDIwMTgtMDItMDcgYXQgMTQ6NTMgLTA2MDAsIEJp
-bGwgQmFrZXIgd3JvdGU6DQo+ID4gbmZzNF91cGRhdGVfc2VydmVyIHVuY29uZGl0aW9uYWxseSBy
-ZWxlYXNlcyB0aGUgbmZzX2NsaWVudCBmb3IgdGhlDQo+ID4gc291cmNlIHNlcnZlci4gSWYgbWln
-cmF0aW9uIGZhaWxzLCB0aGlzIGNhbiBjYXVzZSB0aGUgc291cmNlDQo+ID4gc2VydmVyJ3MNCj4g
-PiBuZnNfY2xpZW50IHN0cnVjdCB0byBiZSBsZWZ0IHdpdGggYSBsb3cgcmVmZXJlbmNlIGNvdW50
-LCByZXN1bHRpbmcNCj4gPiBpbg0KPiA+IHVzZS1hZnRlci1mcmVlLg0KPiA+IA0KPiA+IE5GUzog
-c3RhdGUgbWFuYWdlcjogbWlncmF0aW9uIGZhaWxlZCBvbiBORlN2NCBzZXJ2ZXIgbmZzdm11MTAg
-d2l0aA0KPiA+IGVycm9yIDYNCj4gPiBXQVJOSU5HOiBDUFU6IDE2IFBJRDogMTc5NjAgYXQgZnMv
-bmZzL2NsaWVudC5jOjI4MSANCj4gPiBuZnNfcHV0X2NsaWVudCsweGZhLzB4MTEwIFtuZnNdKCkN
-Cj4gPiAgICAgICAgICBuZnNfcHV0X2NsaWVudCsweGZhLzB4MTEwIFtuZnNdDQo+ID4gICAgICAg
-ICAgbmZzNF9ydW5fc3RhdGVfbWFuYWdlcisweDMwLzB4NDAgW25mc3Y0XQ0KPiA+ICAgICAgICAg
-IGt0aHJlYWQrMHhkOC8weGYwDQo+ID4gDQo+ID4gQlVHOiB1bmFibGUgdG8gaGFuZGxlIGtlcm5l
-bCBOVUxMIHBvaW50ZXIgZGVyZWZlcmVuY2UgYXQNCj4gPiAwMDAwMDAwMDAwMDAwMmE4DQo+ID4g
-ICAgICAgICAgbmZzNF94ZHJfZW5jX3dyaXRlKzB4NmIvMHgxNjAgW25mc3Y0XQ0KPiA+ICAgICAg
-ICAgIHJwY2F1dGhfd3JhcF9yZXErMHhhYy8weGYwIFtzdW5ycGNdDQo+ID4gICAgICAgICAgY2Fs
-bF90cmFuc21pdCsweDE4Yy8weDJjMCBbc3VucnBjXQ0KPiA+ICAgICAgICAgIF9fcnBjX2V4ZWN1
-dGUrMHhhNi8weDQ5MCBbc3VucnBjXQ0KPiA+ICAgICAgICAgIHJwY19hc3luY19zY2hlZHVsZSsw
-eDE1LzB4MjAgW3N1bnJwY10NCj4gPiAgICAgICAgICBwcm9jZXNzX29uZV93b3JrKzB4MTYwLzB4
-NDcwDQo+ID4gICAgICAgICAgd29ya2VyX3RocmVhZCsweDExMi8weDU0MA0KPiA+ICAgICAgICAg
-IGt0aHJlYWQrMHhkOC8weGYwDQo+ID4gDQo+ID4gUmVwb3J0ZWQtYnk6IEhlbGVuIENoYW8gPGhl
-bGVuLmNoYW9Ab3JhY2xlLmNvbT4NCj4gPiBGaXhlczogMzJlNjJiN2MzZWYwICgiTkZTOiBBZGQg
-bmZzNF91cGRhdGVfc2VydmVyIikNCj4gPiBTaWduZWQtb2ZmLWJ5OiBCaWxsIEJha2VyIDxiaWxs
-LmJha2VyQG9yYWNsZS5jb20+DQo+ID4gUmV2aWV3ZWQtYnk6IENodWNrIExldmVyIDxjaHVjay5s
-ZXZlckBvcmFjbGUuY29tPg0KPiA+IC0tLQ0KPiA+ICAgZnMvbmZzL25mczRjbGllbnQuYyB8IDIg
-Ky0NCj4gPiAgIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0K
-PiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNGNsaWVudC5jIGIvZnMvbmZzL25mczRj
-bGllbnQuYw0KPiA+IGluZGV4IDY1YTdlNWQuLmM4MThjZGQgMTAwNjQ0DQo+ID4gLS0tIGEvZnMv
-bmZzL25mczRjbGllbnQuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0Y2xpZW50LmMNCj4gPiBAQCAt
-MTIyNiwxMSArMTIyNiwxMSBAQCBpbnQgbmZzNF91cGRhdGVfc2VydmVyKHN0cnVjdCBuZnNfc2Vy
-dmVyIA0KPiA+ICpzZXJ2ZXIsIGNvbnN0IGNoYXIgKmhvc3RuYW1lLA0KPiA+ICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgIGNscC0+Y2xfcHJvdG8sIGNsbnQtPmNsX3RpbWVvdXQsDQo+
-ID4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY2xwLT5jbF9taW5vcnZlcnNpb24s
-IG5ldCk7DQo+ID4gICAgICAgICAgY2xlYXJfYml0KE5GU19NSUdfVFNNX1BPU1NJQkxFLCAmc2Vy
-dmVyLT5taWdfc3RhdHVzKTsNCj4gPiAtICAgICAgIG5mc19wdXRfY2xpZW50KGNscCk7DQo+ID4g
-ICAgICAgICAgaWYgKGVycm9yICE9IDApIHsNCj4gPiAgICAgICAgICAgICAgICAgIG5mc19zZXJ2
-ZXJfaW5zZXJ0X2xpc3RzKHNlcnZlcik7DQo+ID4gICAgICAgICAgICAgICAgICByZXR1cm4gZXJy
-b3I7DQo+ID4gICAgICAgICAgfQ0KPiA+ICsgICAgICAgbmZzX3B1dF9jbGllbnQoY2xwKTsNCj4g
-PiANCj4gPiAgICAgICAgICBpZiAoc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ob3N0bmFtZSA9PSBO
-VUxMKQ0KPiA+ICAgICAgICAgICAgICAgICAgc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ob3N0bmFt
-ZSA9DQo+ID4ga3N0cmR1cChob3N0bmFtZSwgDQo+ID4gR0ZQX0tFUk5FTCk7DQo+ID4gDQo+IA0K
-PiBUaGF0IGxvb2tzIGFsbW9zdCByaWdodC4gSXNuJ3QgdGhlcmUgbm93IGEgcmVmZXJlbmNlIGxl
-YWsgaWYNCj4gbmZzNF9zZXRfY2xpZW50KCkgcmV0dXJucyAtRUxPT1A/IEkgdGhpbmsgdGhhdCBp
-cyByZWFsbHkgZG93biB0byBhbg0KPiBleGlzdGluZyBidWcgaW4gbmZzNF9zZXRfY2xpZW50KCkg
-cmF0aGVyIHRoYW4gaW4geW91ciBmaXgsIGhvd2V2ZXIgDQoNClNvcnJ5Li4uIEkgc2hvdWxkIHBy
-b2JhYmx5IGhhdmUgYmVlbiBtb3JlIGV4cGxpY2l0IGFib3V0IHdoZXJlIHRoZSBidWcNCmlzOiBu
-ZnM0X3NldF9jbGllbnQoKSBzaG91bGQgcHJvYmFibHkgYmUgY2FsbGluZyBuZnNfcHV0X2NsaWVu
-dCgpIG9uDQppdHMgY29weSBvZiAnY2xwJyBiZWZvcmUgcmV0dXJuaW5nIC1FTE9PUC4NCg0KPiB0
-aGUNCj4gZml4IGRvZXMgcmUtZXhwb3NlIHRoYXQgYnVnLg0KDQpCeSB3aGljaCBJIG1lYW4gdGhh
-dCB0aGUgdHdvIGJ1Z3MgY3VycmVudGx5IGNhbmNlbCBlYWNoIG90aGVyIG91dCBmb3INCnRoZSBj
-YXNlIG9mIEVMT09QLiBCeSBmaXhpbmcgb25lIGJ1ZywgYnV0IG5vdCB0aGUgb3RoZXIsIHdlJ3Jl
-IHVuZG9pbmcNCnRoZSBjYW5jZWxsYXRpb24uLi4g4pi6DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
-DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1
-c3RAcHJpbWFyeWRhdGEuY29tDQo=
+--=-=-=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
+On Wed, Feb 07 2018, Trond Myklebust wrote:
+
+> On Wed, 2018-02-07 at 17:42 +1100, NeilBrown wrote:
+>> On Sun, Jan 28 2018, Trond Myklebust wrote:
+>>=20
+>> > We don't need to call unmap_mapping_range() prior to calling
+>> > nfs_sync_mapping().
+>>=20
+>> Don't we?
+>
+> See line 2 of nfs_sync_mapping(). =E2=98=BA
+
+Ahhh.  Makes perfect sense now - thanks
+
+NeilBrown
+
+
+>
+>> Doesn't that allow a process which mapped the page to dirty it
+>> immediately after nfs_sync_mapping(), without the page being
+>> reloaded from the server first?
+>> Doesn't seem right..
+>>=20
+>> Thanks,
+>> NeilBrown
+>>=20
+>>=20
+>> >=20
+>> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> > ---
+>> >  fs/nfs/inode.c | 1 -
+>> >  1 file changed, 1 deletion(-)
+>> >=20
+>> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> > index deeb7d1097d0..49fba9ea5872 100644
+>> > --- a/fs/nfs/inode.c
+>> > +++ b/fs/nfs/inode.c
+>> > @@ -1170,7 +1170,6 @@ static int nfs_invalidate_mapping(struct
+>> > inode *inode, struct address_space *map
+>> >=20=20
+>> >  	if (mapping->nrpages !=3D 0) {
+>> >  		if (S_ISREG(inode->i_mode)) {
+>> > -			unmap_mapping_range(mapping, 0, 0, 0);
+>> >  			ret =3D nfs_sync_mapping(mapping);
+>> >  			if (ret < 0)
+>> >  				return ret;
+>> > --=20
+>> > 2.14.3
+>> >=20
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-
+>> > nfs" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --=20
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlp7bawACgkQOeye3VZi
+gbmhMBAAsI9envk0UngT1E9LwSSvN94IgCxuK5qXJZRuLSKkAi7sq5cu4otAMf2J
+hiZvJ9YvZzW/y4IKagO6oqkuGBYjOGEt+1WRpPmcwIp8fVzzyeSQxt20O8s3w377
+XbfWFJOtw5zoqtVvYVH1P1PDoQ4eeN6GCV7Rq2k5Rzhdt5lfJ2l9cH6AC4EUhtOc
+TPyKJIhcEIlf5vj2iI7poNFUJmASSoeXnxdxneLKIF36Nu8QnJt5FDpLe5f3KV+q
+ymG8e0bUrvKscQhkEfXrxDtxvjNSi6eRdvNB10gYB0lNPMq7A5tr73gfGwds5Iza
+835VDU0dFx+XCgiDLNNnX+C5t5b1V4o+LlnrnIRT3AApbud1sMmF0sXg06lgMIbJ
+xH8eGCUotHh3Z8no16w4rkh74F+OoesKKJNh1wt926+LCfWXFisbw29PFFeGEyen
+T7oAV8Iw0MHR87RtTmk8dyTZfyux9NXPbqpt2b6y2H62m9HH5lE6j84hcQpoMsBh
+D826VEb0+vg80Fi7wj73qzwzA9/SeAJM4Cl/Ccdei8TbzeRp1p/qEpguCfQTd47P
+ynQJp6sPmE889laJStjnrwPqP4Tl4Jth5kynex+oAxnoPkktUFh/VjJymZMtEehl
+Q0WMXlf80FiUAnBQp2pdoof/wyFYGD2Wg4mz5Qa7jZvqZ439uoQ=
+=Vk6V
+-----END PGP SIGNATURE-----
+--=-=-=--
