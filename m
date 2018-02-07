@@ -1,64 +1,99 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:54864 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754303AbeBGVH0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 16:07:26 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
-        "Bill.Baker@Oracle.com" <Bill.Baker@Oracle.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: system crashes after NFS4ERR_MOVED recovery
-Date: Wed, 7 Feb 2018 21:07:20 +0000
-Message-ID: <1518037638.56541.2.camel@primarydata.com>
-References: <307dc174-b2d0-461a-fc76-193711f150d2@Oracle.com>
-In-Reply-To: <307dc174-b2d0-461a-fc76-193711f150d2@Oracle.com>
+Received: from mx2.suse.de ([195.135.220.15]:55833 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754281AbeBGVQm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Feb 2018 16:16:42 -0500
+From: NeilBrown <neilb@suse.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Date: Thu, 08 Feb 2018 08:16:27 +1100
+Cc: Tom Talpey <tom@talpey.com>, Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/1] Remote calls don't need to use privilege ports
+In-Reply-To: <4F3A3FBC-FFA9-4CDA-A38A-73AD07A62A27@oracle.com>
+References: <20180205163647.15822-1-steved@redhat.com> <16CF8126-7229-4963-B5D1-2AC16BFC000A@oracle.com> <cc08d8f9-795d-d49c-6354-f5fdbeb85a44@talpey.com> <87eflxo1qp.fsf@notabene.neil.brown.name> <4F3A3FBC-FFA9-4CDA-A38A-73AD07A62A27@oracle.com>
+Message-ID: <87y3k4mrf8.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgQmlsbCwNCg0KT24gV2VkLCAyMDE4LTAyLTA3IGF0IDE0OjUzIC0wNjAwLCBCaWxsIEJha2Vy
-IHdyb3RlOg0KPiBuZnM0X3VwZGF0ZV9zZXJ2ZXIgdW5jb25kaXRpb25hbGx5IHJlbGVhc2VzIHRo
-ZSBuZnNfY2xpZW50IGZvciB0aGUNCj4gc291cmNlIHNlcnZlci4gSWYgbWlncmF0aW9uIGZhaWxz
-LCB0aGlzIGNhbiBjYXVzZSB0aGUgc291cmNlIHNlcnZlcidzDQo+IG5mc19jbGllbnQgc3RydWN0
-IHRvIGJlIGxlZnQgd2l0aCBhIGxvdyByZWZlcmVuY2UgY291bnQsIHJlc3VsdGluZyBpbg0KPiB1
-c2UtYWZ0ZXItZnJlZS4NCj4gDQo+IE5GUzogc3RhdGUgbWFuYWdlcjogbWlncmF0aW9uIGZhaWxl
-ZCBvbiBORlN2NCBzZXJ2ZXIgbmZzdm11MTAgd2l0aA0KPiBlcnJvciA2DQo+IFdBUk5JTkc6IENQ
-VTogMTYgUElEOiAxNzk2MCBhdCBmcy9uZnMvY2xpZW50LmM6MjgxIA0KPiBuZnNfcHV0X2NsaWVu
-dCsweGZhLzB4MTEwIFtuZnNdKCkNCj4gICAgICAgICAgbmZzX3B1dF9jbGllbnQrMHhmYS8weDEx
-MCBbbmZzXQ0KPiAgICAgICAgICBuZnM0X3J1bl9zdGF0ZV9tYW5hZ2VyKzB4MzAvMHg0MCBbbmZz
-djRdDQo+ICAgICAgICAgIGt0aHJlYWQrMHhkOC8weGYwDQo+IA0KPiBCVUc6IHVuYWJsZSB0byBo
-YW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVyZW5jZSBhdA0KPiAwMDAwMDAwMDAwMDAw
-MmE4DQo+ICAgICAgICAgIG5mczRfeGRyX2VuY193cml0ZSsweDZiLzB4MTYwIFtuZnN2NF0NCj4g
-ICAgICAgICAgcnBjYXV0aF93cmFwX3JlcSsweGFjLzB4ZjAgW3N1bnJwY10NCj4gICAgICAgICAg
-Y2FsbF90cmFuc21pdCsweDE4Yy8weDJjMCBbc3VucnBjXQ0KPiAgICAgICAgICBfX3JwY19leGVj
-dXRlKzB4YTYvMHg0OTAgW3N1bnJwY10NCj4gICAgICAgICAgcnBjX2FzeW5jX3NjaGVkdWxlKzB4
-MTUvMHgyMCBbc3VucnBjXQ0KPiAgICAgICAgICBwcm9jZXNzX29uZV93b3JrKzB4MTYwLzB4NDcw
-DQo+ICAgICAgICAgIHdvcmtlcl90aHJlYWQrMHgxMTIvMHg1NDANCj4gICAgICAgICAga3RocmVh
-ZCsweGQ4LzB4ZjANCj4gDQo+IFJlcG9ydGVkLWJ5OiBIZWxlbiBDaGFvIDxoZWxlbi5jaGFvQG9y
-YWNsZS5jb20+DQo+IEZpeGVzOiAzMmU2MmI3YzNlZjAgKCJORlM6IEFkZCBuZnM0X3VwZGF0ZV9z
-ZXJ2ZXIiKQ0KPiBTaWduZWQtb2ZmLWJ5OiBCaWxsIEJha2VyIDxiaWxsLmJha2VyQG9yYWNsZS5j
-b20+DQo+IFJldmlld2VkLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4N
-Cj4gLS0tDQo+ICAgZnMvbmZzL25mczRjbGllbnQuYyB8IDIgKy0NCj4gICAxIGZpbGUgY2hhbmdl
-ZCwgMSBpbnNlcnRpb24oKyksIDEgZGVsZXRpb24oLSkNCj4gDQo+IGRpZmYgLS1naXQgYS9mcy9u
-ZnMvbmZzNGNsaWVudC5jIGIvZnMvbmZzL25mczRjbGllbnQuYw0KPiBpbmRleCA2NWE3ZTVkLi5j
-ODE4Y2RkIDEwMDY0NA0KPiAtLS0gYS9mcy9uZnMvbmZzNGNsaWVudC5jDQo+ICsrKyBiL2ZzL25m
-cy9uZnM0Y2xpZW50LmMNCj4gQEAgLTEyMjYsMTEgKzEyMjYsMTEgQEAgaW50IG5mczRfdXBkYXRl
-X3NlcnZlcihzdHJ1Y3QgbmZzX3NlcnZlciANCj4gKnNlcnZlciwgY29uc3QgY2hhciAqaG9zdG5h
-bWUsDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNscC0+Y2xfcHJvdG8sIGNs
-bnQtPmNsX3RpbWVvdXQsDQo+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNscC0+
-Y2xfbWlub3J2ZXJzaW9uLCBuZXQpOw0KPiAgICAgICAgICBjbGVhcl9iaXQoTkZTX01JR19UU01f
-UE9TU0lCTEUsICZzZXJ2ZXItPm1pZ19zdGF0dXMpOw0KPiAtICAgICAgIG5mc19wdXRfY2xpZW50
-KGNscCk7DQo+ICAgICAgICAgIGlmIChlcnJvciAhPSAwKSB7DQo+ICAgICAgICAgICAgICAgICAg
-bmZzX3NlcnZlcl9pbnNlcnRfbGlzdHMoc2VydmVyKTsNCj4gICAgICAgICAgICAgICAgICByZXR1
-cm4gZXJyb3I7DQo+ICAgICAgICAgIH0NCj4gKyAgICAgICBuZnNfcHV0X2NsaWVudChjbHApOw0K
-PiANCj4gICAgICAgICAgaWYgKHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfaG9zdG5hbWUgPT0gTlVM
-TCkNCj4gICAgICAgICAgICAgICAgICBzZXJ2ZXItPm5mc19jbGllbnQtPmNsX2hvc3RuYW1lID0g
-a3N0cmR1cChob3N0bmFtZSwgDQo+IEdGUF9LRVJORUwpOw0KPiANCg0KVGhhdCBsb29rcyBhbG1v
-c3QgcmlnaHQuIElzbid0IHRoZXJlIG5vdyBhIHJlZmVyZW5jZSBsZWFrIGlmDQpuZnM0X3NldF9j
-bGllbnQoKSByZXR1cm5zIC1FTE9PUD8gSSB0aGluayB0aGF0IGlzIHJlYWxseSBkb3duIHRvIGFu
-DQpleGlzdGluZyBidWcgaW4gbmZzNF9zZXRfY2xpZW50KCkgcmF0aGVyIHRoYW4gaW4geW91ciBm
-aXgsIGhvd2V2ZXIgdGhlDQpmaXggZG9lcyByZS1leHBvc2UgdGhhdCBidWcuDQoNCkNoZWVycw0K
-ICBUcm9uZA0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
+On Wed, Feb 07 2018, Chuck Lever wrote:
+
+>> On Feb 6, 2018, at 11:35 PM, NeilBrown <neilb@suse.com> wrote:
+>>=20
+>> On Mon, Feb 05 2018, Tom Talpey wrote:
+>>=20
+>>> On 2/5/2018 12:02 PM, Chuck Lever wrote:
+>>>> Heya Steve-
+>>>>=20
+>>>>> On Feb 5, 2018, at 11:36 AM, Steve Dickson <steved@redhat.com> wrote:
+>>>>>=20
+>>>>> Over the weekend I did some experimenting with
+>>>>> the remote call code in rpcbind. The code does
+>>>>> functionally work but is very antiquated when
+>>>>> it comes to the latest NFS versions.
+>>>>>=20
+>>>>> Since only UDP sockets are used to do remote calls
+>>>>> using the documented interfaces pmap_rmtcall() and callrpc()
+>>>>> calls to NFS will fail (actual times out) since UDP is no
+>>>>> longer supported.
+>>>>>=20
+>>>>> The undocumented interface rpc_call() can be used to
+>>>>> call into NFS since the protocol can specified, which
+>>>>> also means the PMAPPROC_CALLIT protocol is not used.
+>>>>>=20
+>>>>> It turns out privilege port are not needed to make
+>>>>> remote calls, at least with my testing.
+>>>>=20
+>>>> It's not quite clear what you are claiming here, but
+>>>> I'm guessing that what you demonstrated is that the
+>>>> CALLIT _listener_ does not have to be privileged?
+>>=20
+>> rpcbind listens for CALLIT on port 111.
+>
+> Right, my bad. CALLIT is an RPC procedure, not an RPC
+> program.
+>
+>
+>> Listening on some other port wouldn't ever get the messges...
+>
+> Then we still do not understand why rpcbind is opening
+> and registering a second listener port. I can't think of
+> any reason it should do this other than that there is a
+> bug.
+
+This is a port on which it forwards CALLIT messages and listens for
+replies, which it then sends back to the originator.  In order to be
+able to handle CALLIT asynchronously with other requests, it needs to
+register the port with the internal listening framework.
+For comparison, portmap handles CALLIT asynchronously by forking.
+
+Thanks,
+NeilBrown
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlp7bKsACgkQOeye3VZi
+gbnPRg/+Of/6Mg7BclHQNbtNEgLEAgnuoIk0fZdJFjuQjf9c37356BYGGwf5iIGu
+2Ozknmp12mxypvOUuyCTNh6B5IXffEryrL6b18kP+5cEQC7102KCCj0noX/lh301
+c+fTf+VifLrNIsfitF2TvgU5uZwx9+/lQNm+0ucpDnG/dvGA9Fruz7p2A/68LmTi
+AD22dXBy+Hr1WdoS3LqvaFscdRKnVqJIeTNVh1OaftBy9rR5k9+3USJqvPQGUCZ/
+cw9eKzfK1GHLl/VwzoGIO6s7fwFOp7QkjrtolphlAJpqvPUeuSi7skNsyDQG9Met
+Jl1EX1lrR6F36lOyNx5uLCB5G9qeNLRt2b5eGib5nEtHbbUp0s1wF+Gf4MuoX4ll
+V9p08qdPYZgD7Vgcx0cYpaqGcsxwQBlzZ6CvRM3WNoc8gsQ2enh5IoKojLoSy8E/
+1sEQ+XMo0srOeevf5g7zHBKv87srjobNLn31h1hIejxMHCX9p8Vwn2lLBPXqz1My
+/P5Tr3rhewyjODX/emxlC3AQm8SBbp7b2ekA/BnpgecsJMMRRo4t2shq9KVoJzxc
+q4GfkG4QH4cCgmsMOfVmfc8vuJIfLmJHm/Oa68QpCURQYdcXPQEaqH7J705jFGBd
+EaIJjLGsdNObLWakHNOBbq2xZVoTI49xHKg/KbSOGubu1hSbnQo=
+=C52Q
+-----END PGP SIGNATURE-----
+--=-=-=--
