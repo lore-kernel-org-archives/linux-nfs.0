@@ -1,85 +1,123 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:33470 "EHLO mx2.suse.de"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:37531 "EHLO smtp-o-3.desy.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753443AbeBGGmy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Feb 2018 01:42:54 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Date: Wed, 07 Feb 2018 17:42:47 +1100
-Subject: Re: [PATCH 1/2] NFS: Remove a redundant call to unmap_mapping_range()
-In-Reply-To: <20180129025822.5116-1-trond.myklebust@primarydata.com>
-References: <20180129025822.5116-1-trond.myklebust@primarydata.com>
-Message-ID: <876079nvvc.fsf@notabene.neil.brown.name>
+        id S1750815AbeBGIDi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Feb 2018 03:03:38 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+        by smtp-o-3.desy.de (DESY-O-3) with ESMTP id E536228039F
+        for <linux-nfs@vger.kernel.org>; Wed,  7 Feb 2018 09:03:36 +0100 (CET)
+Date: Wed, 7 Feb 2018 09:03:36 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <1619644276.3218766.1517990616235.JavaMail.zimbra@desy.de>
+In-Reply-To: <1517956185.39096.9.camel@primarydata.com>
+References: <1253710805.3166627.1517955019275.JavaMail.zimbra@desy.de> <1517956185.39096.9.camel@primarydata.com>
+Subject: Re: wrong latency info for flexfiles on layout return
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Sun, Jan 28 2018, Trond Myklebust wrote:
-
-> We don't need to call unmap_mapping_range() prior to calling
-> nfs_sync_mapping().
-
-Don't we?
-Doesn't that allow a process which mapped the page to dirty it
-immediately after nfs_sync_mapping(), without the page being
-reloaded from the server first?
-Doesn't seem right..
+If I understand you correctly, then completion time is the sum of all IO re=
+quests sent from a client to the server.
+Then with average per-op round-trip of 2.7s I should see at lease one reque=
+st which takes longer than average.
+However, the longest rpc request round-trip time I see with wireshark is  1=
+70ms.  Do I miss something?
 
 Thanks,
-NeilBrown
+   Tigran.
 
+----- Original Message -----
+> From: "Trond Myklebust" <trondmy@primarydata.com>
+> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>, "linux-nfs" <linux-nfs=
+@vger.kernel.org>
+> Sent: Tuesday, February 6, 2018 11:29:48 PM
+> Subject: Re: wrong latency info for flexfiles on layout return
 
->
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/inode.c | 1 -
->  1 file changed, 1 deletion(-)
->
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index deeb7d1097d0..49fba9ea5872 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -1170,7 +1170,6 @@ static int nfs_invalidate_mapping(struct inode *ino=
-de, struct address_space *map
->=20=20
->  	if (mapping->nrpages !=3D 0) {
->  		if (S_ISREG(inode->i_mode)) {
-> -			unmap_mapping_range(mapping, 0, 0, 0);
->  			ret =3D nfs_sync_mapping(mapping);
->  			if (ret < 0)
->  				return ret;
-> --=20
-> 2.14.3
->
+> On Tue, 2018-02-06 at 23:10 +0100, Mkrtchyan, Tigran wrote:
+>>=20
+>> Hi Trond et al.
+>>=20
+>> by exploring data provided on layoutreturn I can see that some
+>> information is wrong, in particular the IO latency completition
+>> time for write:
+>>=20
+>> {
+>>    "iostats":[
+>>       {
+>>          "deviceAddr":"tcp://192.168.178.40.128.2",
+>>          "duration":{
+>>             "seconds":5,
+>>             "nseconds":285924462
+>>          },
+>>          "readInfo":{
+>>             "bytes":0,
+>>             "latency":{
+>>                "completitionTime":{
+>>                   "seconds":0,
+>>                   "nseconds":0
+>>                },
+>>                "bytesRequested":0,
+>>                "opsCompleted":0,
+>>                "busyTime":{
+>>                   "seconds":0,
+>>                   "nseconds":0
+>>                },
+>>                "opsRequested":0,
+>>                "bytesCompleted":0,
+>>                "bytesNotDelivered":0
+>>             },
+>>             "count":0
+>>          },
+>>          "fh":"01caffee00000000b1f9635e000d00000800000000000000050130
+>> ",
+>>          "writeInfo":{
+>>             "bytes":624193536,
+>>             "latency":{
+>>                "completitionTime":{
+>>                   "seconds":25737,
+>>                   "nseconds":816217921
+>>                },
+>>                "bytesRequested":624193536,
+>>                "opsCompleted":9526,
+>>                "busyTime":{
+>>                   "seconds":5,
+>>                   "nseconds":224017937
+>>                },
+>>                "opsRequested":9526,
+>>                "bytesCompleted":624193536,
+>>                "bytesNotDelivered":0
+>>             },
+>>             "count":9526
+>>          },
+>>          "deviceId":"00000001000000000000000000000000",
+>>          "open-stateid":"5a7a259b0000000100000004"
+>>       }
+>>    ]
+>> }
+>>=20
+>>=20
+>> you can see this with wireshark as well.
+>>=20
+>=20
+> Can you explain what you think is wrong? With the above aggregate
+> completion time, I get an average per-op round-trip time of
+> 25737.816/9526 =3D 2.7s, which looks a little high given that the
+> duration is only 5 seconds, but it's not horribly unlikely if your DSes
+> are processing most of these operations in parallel.
+>=20
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlp6n+cACgkQOeye3VZi
-gbke/g//ZCOuOAzjrpAfwmgAWgdbXcq85k/uc4jxbkWs2hM/iUcefuroX4aNIgjB
-54DKG/Si7hlVd5kHV/b4VTYnpcVdF/RHhTzU/RDOwp2WSlTfZHYtlLuw46/mY5iF
-at07js8Oxh+gXZGpaIV586petE3xzSqTr4sPCCRNrGL/Hn+qeFygrn9E60e1LDwW
-Sr8pStHDiuB5kZWhvi1Q1jHac1/mBXfeFNy0bSEcKRz4ops6l9gOzF6gVFSCGHC9
-v2D2N+/02hwTJ1T0yGRUEWlPeElGFUXW0NgykXO1E/44KCP3AOMiO13DuSvfjhhl
-885x+a7nxzOBC6nJ0Rhhu5oG3NVlSEcfFyojknLUMBsuyGehYmVrN4zzLMQsLIC1
-bDBLu1HrTl1HjldBkASyi1lxOEq5qNbs08OfeAhoWyhwAH+HFHSE7utV04b4H3sl
-GDLHvJkym0mdjJp56P8j/rpjD59QnxCtn8oOdnLpQv5pFhIdujyu9wGPkU5cHbou
-IWmF98+z1MfPgLRfXMSPO0qzs8BU3CKUMW2jDfiu0FXXx81xgCJtlFKl29TAFEzJ
-l8v8hBFgYHx8e5qBJyHVVG2qhOfk2WVLh7u7LhJTXx/LxUN2GHlouWHPEN2Fxy+N
-1fYt8PbzpH0sRedCBE406sa7BFDiiWsTwjFlHkAStMvC1+Rgxrc=
-=KjmG
------END PGP SIGNATURE-----
---=-=-=--
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+> N=EF=BF=BD=EF=BF=BD=EF=BF=BD=EF=BF=BD=EF=BF=BDr=EF=BF=BD=EF=BF=BDy=EF=BF=
+=BD=EF=BF=BD=EF=BF=BDb=EF=BF=BDX=EF=BF=BD=EF=BF=BD=C7=A7v=EF=BF=BD^=EF=BF=
+=BD)=DE=BA{.n=EF=BF=BD+=EF=BF=BD=EF=BF=BD=EF=BF=BD=EF=BF=BD{=EF=BF=BD=EF=BF=
+=BD=EF=BF=BD"=EF=BF=BD=EF=BF=BD^n=EF=BF=BDr=EF=BF=BD=EF=BF=BD=EF=BF=BDz=EF=
+=BF=BD=EF=BF=BD=EF=BF=BDh=EF=BF=BD=EF=BF=BD=EF=BF=BD=EF=BF=BD&=EF=BF=BD=EF=
+=BF=BD=EF=BF=BDG=EF=BF=BD=EF=BF=BD=EF=BF=BDh=EF=BF=BD(=EF=BF=BD=E9=9A=8E=EF=
+=BF=BD=DD=A2j"=EF=BF=BD=EF=BF=BD=EF=BF=BDm=EF=BF=BD=EF=BF=BD=EF=BF=BD=EF=BF=
+=BD=EF=BF=BDz=EF=BF=BD=DE=96=EF=BF=BD=EF=BF=BD=EF=BF=BDf=EF=BF=BD=EF=BF=BD=
+=EF=BF=BDh=EF=BF=BD=EF=BF=BD=EF=BF=BD~=EF=BF=BDm=EF=BF=BD
