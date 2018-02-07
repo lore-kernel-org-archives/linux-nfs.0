@@ -1,99 +1,94 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:26091 "EHLO
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:34674 "EHLO
         us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753794AbeBGLqx (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 06:46:53 -0500
+        by vger.kernel.org with ESMTP id S1753478AbeBGLyc (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 06:54:32 -0500
 From: Trond Myklebust <trondmy@primarydata.com>
-To: "neilb@suse.com" <neilb@suse.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFS: Remove a redundant call to unmap_mapping_range()
-Date: Wed, 7 Feb 2018 11:46:48 +0000
-Message-ID: <1518003998.3483.0.camel@primarydata.com>
-References: <20180129025822.5116-1-trond.myklebust@primarydata.com>
-         <876079nvvc.fsf@notabene.neil.brown.name>
-In-Reply-To: <876079nvvc.fsf@notabene.neil.brown.name>
-Content-Type: multipart/signed; micalg=pgp-sha256;
-        protocol="application/pgp-signature"; boundary="=-PayWf9/Bnt18en77Ndm/"
+To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: wrong latency info for flexfiles on layout return
+Date: Wed, 7 Feb 2018 11:54:26 +0000
+Message-ID: <1518004464.3483.7.camel@primarydata.com>
+References: <1253710805.3166627.1517955019275.JavaMail.zimbra@desy.de>
+         <1517956185.39096.9.camel@primarydata.com>
+         <1619644276.3218766.1517990616235.JavaMail.zimbra@desy.de>
+In-Reply-To: <1619644276.3218766.1517990616235.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-PayWf9/Bnt18en77Ndm/
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
-
-On Wed, 2018-02-07 at 17:42 +1100, NeilBrown wrote:
-> On Sun, Jan 28 2018, Trond Myklebust wrote:
->=20
-> > We don't need to call unmap_mapping_range() prior to calling
-> > nfs_sync_mapping().
->=20
-> Don't we?
-
-See line 2 of nfs_sync_mapping(). =E2=98=BA
-
-> Doesn't that allow a process which mapped the page to dirty it
-> immediately after nfs_sync_mapping(), without the page being
-> reloaded from the server first?
-> Doesn't seem right..
->=20
-> Thanks,
-> NeilBrown
->=20
->=20
-> >=20
-> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> > ---
-> >  fs/nfs/inode.c | 1 -
-> >  1 file changed, 1 deletion(-)
-> >=20
-> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> > index deeb7d1097d0..49fba9ea5872 100644
-> > --- a/fs/nfs/inode.c
-> > +++ b/fs/nfs/inode.c
-> > @@ -1170,7 +1170,6 @@ static int nfs_invalidate_mapping(struct
-> > inode *inode, struct address_space *map
-> > =20
-> >  	if (mapping->nrpages !=3D 0) {
-> >  		if (S_ISREG(inode->i_mode)) {
-> > -			unmap_mapping_range(mapping, 0, 0, 0);
-> >  			ret =3D nfs_sync_mapping(mapping);
-> >  			if (ret < 0)
-> >  				return ret;
-> > --=20
-> > 2.14.3
-> >=20
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-
-> > nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
---=20
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
---=-PayWf9/Bnt18en77Ndm/
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAABCAAdFiEESQctxSBg8JpV8KqEZwvnipYKAPIFAlp65x4ACgkQZwvnipYK
-APIEUw//S/blao5d39QAw7Xh8+7AZNdiSfnyBG0uYKQVUQ+D59ywNTFsI67PM9iw
-BBGbyBJ2CYwaRcikV+Juj2h0tLHi032vsoamqPWdCh+WqAkzq4PiEM7yowx+zQt1
-ZbPocE8mD4+EQWKfMqQrYaAbSvDxsPLym1BY0oo+YIoceGgqDtZ+TYve/gsjU6rr
-/3mYNuLb0ouSoDH+byUeonfLC+k04sGhC7j8XWyhOcvLr5p6Cac5HdOiWiy1CBpp
-qovkojY0hosJ/Q01cBcqBI/jdaj9M0eqSgRL9yi46wrhaP5g//t2XH8qKsEOPFnt
-s3Ru6stQjDzdoL9szmbjnXfhdeK2/S2zSVeP0A6DD0xh3rgQ/3PvN0mt2b3eIPps
-wcIN5yd5tpniM6gF5D73F5D/IwOgbyq1QzglrfrGB+H98sAN9NxlSNLXr9ZdZSA/
-vJtzEw0tes6tZVsjN6IZBWo9e0KuOl1UBAzgQUDrG8YIPDsjyR5ApZ73F7P4PhZa
-NQidGxU/uL1tiWQQDMg68hrJAaS2JxXq18bBp69HBkWhxyoA3AvLB5byFmMK0CPb
-5TwIv+I0H5cXL/eXKXIU6CUbcmopFCNOvBqepZOYFJlE3neFyZOH8Y4/JwZffp8v
-unNzU0MN8Vo9bNgl91K9OC0/yWqSlU8+mKbMUU33VGVNrTDsC7c=
-=imXj
------END PGP SIGNATURE-----
-
---=-PayWf9/Bnt18en77Ndm/--
+T24gV2VkLCAyMDE4LTAyLTA3IGF0IDA5OjAzICswMTAwLCBNa3J0Y2h5YW4sIFRpZ3JhbiB3cm90
+ZToNCj4gSWYgSSB1bmRlcnN0YW5kIHlvdSBjb3JyZWN0bHksIHRoZW4gY29tcGxldGlvbiB0aW1l
+IGlzIHRoZSBzdW0gb2YgYWxsDQo+IElPIHJlcXVlc3RzIHNlbnQgZnJvbSBhIGNsaWVudCB0byB0
+aGUgc2VydmVyLg0KDQpZZXMuIFBsZWFzZSBzZWUgdGhlIGRyYWZ0IGZsZXhmaWxlcyBzcGVjLCB3
+aGljaCBkb2N1bWVudHMgdGhpcyAoYW5kDQpwbGVhc2UgbGV0IFRvbSBrbm93IGlmIHlvdSBmaW5k
+IGhpcyB0ZXh0IHRvIGJlIHVuY2xlYXIpLg0KDQo+IFRoZW4gd2l0aCBhdmVyYWdlIHBlci1vcCBy
+b3VuZC10cmlwIG9mIDIuN3MgSSBzaG91bGQgc2VlIGF0IGxlYXNlIG9uZQ0KPiByZXF1ZXN0IHdo
+aWNoIHRha2VzIGxvbmdlciB0aGFuIGF2ZXJhZ2UuDQo+IEhvd2V2ZXIsIHRoZSBsb25nZXN0IHJw
+YyByZXF1ZXN0IHJvdW5kLXRyaXAgdGltZSBJIHNlZSB3aXRoIHdpcmVzaGFyaw0KPiBpcyAgMTcw
+bXMuICBEbyBJIG1pc3Mgc29tZXRoaW5nPw0KDQpJbiB0aGF0IGNhc2UsIEkgc3VzcGVjdCBtb3N0
+IG9mIHRoZSAybXMgaXMgY29uZ2VzdGlvbiBpbiB5b3VyIFJQQw0KbGF5ZXIuIFRoZSBpbnRlbnRp
+b24gb2YgdGhlIGxheW91dHN0YXRzIGlzIHRvIGNvbnZleSB0aGUgX2FwcGxpY2F0aW9uXw0Kdmll
+dyBvZiBwZXJmb3JtYW5jZSwgc28gaXQgZG9lcyBpbmNsdWRlIHF1ZXVlIGxhdGVuY3kgd2hpbGUg
+d2FpdGluZyB0bw0Kd3JpdGUgdG8gdGhlIHNvY2tldC4NCg0KPiANCj4gVGhhbmtzLA0KPiAgICBU
+aWdyYW4uDQo+IA0KPiAtLS0tLSBPcmlnaW5hbCBNZXNzYWdlIC0tLS0tDQo+ID4gRnJvbTogIlRy
+b25kIE15a2xlYnVzdCIgPHRyb25kbXlAcHJpbWFyeWRhdGEuY29tPg0KPiA+IFRvOiAiVGlncmFu
+IE1rcnRjaHlhbiIgPHRpZ3Jhbi5ta3J0Y2h5YW5AZGVzeS5kZT4sICJsaW51eC1uZnMiIDxsaW4N
+Cj4gPiB1eC1uZnNAdmdlci5rZXJuZWwub3JnPg0KPiA+IFNlbnQ6IFR1ZXNkYXksIEZlYnJ1YXJ5
+IDYsIDIwMTggMTE6Mjk6NDggUE0NCj4gPiBTdWJqZWN0OiBSZTogd3JvbmcgbGF0ZW5jeSBpbmZv
+IGZvciBmbGV4ZmlsZXMgb24gbGF5b3V0IHJldHVybg0KPiA+IE9uIFR1ZSwgMjAxOC0wMi0wNiBh
+dCAyMzoxMCArMDEwMCwgTWtydGNoeWFuLCBUaWdyYW4gd3JvdGU6DQo+ID4gPiANCj4gPiA+IEhp
+IFRyb25kIGV0IGFsLg0KPiA+ID4gDQo+ID4gPiBieSBleHBsb3JpbmcgZGF0YSBwcm92aWRlZCBv
+biBsYXlvdXRyZXR1cm4gSSBjYW4gc2VlIHRoYXQgc29tZQ0KPiA+ID4gaW5mb3JtYXRpb24gaXMg
+d3JvbmcsIGluIHBhcnRpY3VsYXIgdGhlIElPIGxhdGVuY3kgY29tcGxldGl0aW9uDQo+ID4gPiB0
+aW1lIGZvciB3cml0ZToNCj4gPiA+IA0KPiA+ID4gew0KPiA+ID4gICAgImlvc3RhdHMiOlsNCj4g
+PiA+ICAgICAgIHsNCj4gPiA+ICAgICAgICAgICJkZXZpY2VBZGRyIjoidGNwOi8vMTkyLjE2OC4x
+NzguNDAuMTI4LjIiLA0KPiA+ID4gICAgICAgICAgImR1cmF0aW9uIjp7DQo+ID4gPiAgICAgICAg
+ICAgICAic2Vjb25kcyI6NSwNCj4gPiA+ICAgICAgICAgICAgICJuc2Vjb25kcyI6Mjg1OTI0NDYy
+DQo+ID4gPiAgICAgICAgICB9LA0KPiA+ID4gICAgICAgICAgInJlYWRJbmZvIjp7DQo+ID4gPiAg
+ICAgICAgICAgICAiYnl0ZXMiOjAsDQo+ID4gPiAgICAgICAgICAgICAibGF0ZW5jeSI6ew0KPiA+
+ID4gICAgICAgICAgICAgICAgImNvbXBsZXRpdGlvblRpbWUiOnsNCj4gPiA+ICAgICAgICAgICAg
+ICAgICAgICJzZWNvbmRzIjowLA0KPiA+ID4gICAgICAgICAgICAgICAgICAgIm5zZWNvbmRzIjow
+DQo+ID4gPiAgICAgICAgICAgICAgICB9LA0KPiA+ID4gICAgICAgICAgICAgICAgImJ5dGVzUmVx
+dWVzdGVkIjowLA0KPiA+ID4gICAgICAgICAgICAgICAgIm9wc0NvbXBsZXRlZCI6MCwNCj4gPiA+
+ICAgICAgICAgICAgICAgICJidXN5VGltZSI6ew0KPiA+ID4gICAgICAgICAgICAgICAgICAgInNl
+Y29uZHMiOjAsDQo+ID4gPiAgICAgICAgICAgICAgICAgICAibnNlY29uZHMiOjANCj4gPiA+ICAg
+ICAgICAgICAgICAgIH0sDQo+ID4gPiAgICAgICAgICAgICAgICAib3BzUmVxdWVzdGVkIjowLA0K
+PiA+ID4gICAgICAgICAgICAgICAgImJ5dGVzQ29tcGxldGVkIjowLA0KPiA+ID4gICAgICAgICAg
+ICAgICAgImJ5dGVzTm90RGVsaXZlcmVkIjowDQo+ID4gPiAgICAgICAgICAgICB9LA0KPiA+ID4g
+ICAgICAgICAgICAgImNvdW50IjowDQo+ID4gPiAgICAgICAgICB9LA0KPiA+ID4gICAgICAgICAg
+ImZoIjoiMDFjYWZmZWUwMDAwMDAwMGIxZjk2MzVlMDAwZDAwMDAwODAwMDAwMDAwMDAwMDAwMDUN
+Cj4gPiA+IDAxMzANCj4gPiA+ICIsDQo+ID4gPiAgICAgICAgICAid3JpdGVJbmZvIjp7DQo+ID4g
+PiAgICAgICAgICAgICAiYnl0ZXMiOjYyNDE5MzUzNiwNCj4gPiA+ICAgICAgICAgICAgICJsYXRl
+bmN5Ijp7DQo+ID4gPiAgICAgICAgICAgICAgICAiY29tcGxldGl0aW9uVGltZSI6ew0KPiA+ID4g
+ICAgICAgICAgICAgICAgICAgInNlY29uZHMiOjI1NzM3LA0KPiA+ID4gICAgICAgICAgICAgICAg
+ICAgIm5zZWNvbmRzIjo4MTYyMTc5MjENCj4gPiA+ICAgICAgICAgICAgICAgIH0sDQo+ID4gPiAg
+ICAgICAgICAgICAgICAiYnl0ZXNSZXF1ZXN0ZWQiOjYyNDE5MzUzNiwNCj4gPiA+ICAgICAgICAg
+ICAgICAgICJvcHNDb21wbGV0ZWQiOjk1MjYsDQo+ID4gPiAgICAgICAgICAgICAgICAiYnVzeVRp
+bWUiOnsNCj4gPiA+ICAgICAgICAgICAgICAgICAgICJzZWNvbmRzIjo1LA0KPiA+ID4gICAgICAg
+ICAgICAgICAgICAgIm5zZWNvbmRzIjoyMjQwMTc5MzcNCj4gPiA+ICAgICAgICAgICAgICAgIH0s
+DQo+ID4gPiAgICAgICAgICAgICAgICAib3BzUmVxdWVzdGVkIjo5NTI2LA0KPiA+ID4gICAgICAg
+ICAgICAgICAgImJ5dGVzQ29tcGxldGVkIjo2MjQxOTM1MzYsDQo+ID4gPiAgICAgICAgICAgICAg
+ICAiYnl0ZXNOb3REZWxpdmVyZWQiOjANCj4gPiA+ICAgICAgICAgICAgIH0sDQo+ID4gPiAgICAg
+ICAgICAgICAiY291bnQiOjk1MjYNCj4gPiA+ICAgICAgICAgIH0sDQo+ID4gPiAgICAgICAgICAi
+ZGV2aWNlSWQiOiIwMDAwMDAwMTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsDQo+ID4gPiAgICAg
+ICAgICAib3Blbi1zdGF0ZWlkIjoiNWE3YTI1OWIwMDAwMDAwMTAwMDAwMDA0Ig0KPiA+ID4gICAg
+ICAgfQ0KPiA+ID4gICAgXQ0KPiA+ID4gfQ0KPiA+ID4gDQo+ID4gPiANCj4gPiA+IHlvdSBjYW4g
+c2VlIHRoaXMgd2l0aCB3aXJlc2hhcmsgYXMgd2VsbC4NCj4gPiA+IA0KPiA+IA0KPiA+IENhbiB5
+b3UgZXhwbGFpbiB3aGF0IHlvdSB0aGluayBpcyB3cm9uZz8gV2l0aCB0aGUgYWJvdmUgYWdncmVn
+YXRlDQo+ID4gY29tcGxldGlvbiB0aW1lLCBJIGdldCBhbiBhdmVyYWdlIHBlci1vcCByb3VuZC10
+cmlwIHRpbWUgb2YNCj4gPiAyNTczNy44MTYvOTUyNiA9IDIuN3MsIHdoaWNoIGxvb2tzIGEgbGl0
+dGxlIGhpZ2ggZ2l2ZW4gdGhhdCB0aGUNCj4gPiBkdXJhdGlvbiBpcyBvbmx5IDUgc2Vjb25kcywg
+YnV0IGl0J3Mgbm90IGhvcnJpYmx5IHVubGlrZWx5IGlmIHlvdXINCj4gPiBEU2VzDQo+ID4gYXJl
+IHByb2Nlc3NpbmcgbW9zdCBvZiB0aGVzZSBvcGVyYXRpb25zIGluIHBhcmFsbGVsLg0KPiA+IA0K
+PiA+IC0tDQo+ID4gVHJvbmQgTXlrbGVidXN0DQo+ID4gTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyLCBQcmltYXJ5RGF0YQ0KPiA+IHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCj4g
+PiBO77+977+977+977+977+9cu+/ve+/vXnvv73vv73vv71i77+9WO+/ve+/vcendu+/vV7vv70p
+3rp7Lm7vv70r77+977+977+977+9e++/ve+/ve+/vSLvv73vv71ebu+/vXLvv73vv73vv71677+9
+77+977+9aO+/ve+/ve+/ve+/vSbvv73vv73vv71H77+977+977+9aO+/vQ0KPiA+ICjvv73pmo7v
+v73domoi77+977+977+9be+/ve+/ve+/ve+/ve+/vXrvv73elu+/ve+/ve+/vWbvv73vv73vv71o
+77+977+977+9fu+/vW3vv70NCj4gDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5
+ZGF0YS5jb20NCg==
 
