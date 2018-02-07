@@ -1,185 +1,184 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2120.oracle.com ([141.146.126.78]:36550 "EHLO
+Received: from aserp2120.oracle.com ([141.146.126.78]:41292 "EHLO
         aserp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754166AbeBGQO3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 11:14:29 -0500
+        with ESMTP id S1754392AbeBGQSb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 11:18:31 -0500
 Content-Type: text/plain;
         charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: [PATCH 0/1] Remote calls don't need to use privilege ports
+Subject: Re: [PATCH v4 0/5] NFS basic junction support for nfs-utils
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <87eflxo1qp.fsf@notabene.neil.brown.name>
-Date: Wed, 7 Feb 2018 11:09:21 -0500
-Cc: Tom Talpey <tom@talpey.com>, Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <4F3A3FBC-FFA9-4CDA-A38A-73AD07A62A27@oracle.com>
-References: <20180205163647.15822-1-steved@redhat.com>
- <16CF8126-7229-4963-B5D1-2AC16BFC000A@oracle.com>
- <cc08d8f9-795d-d49c-6354-f5fdbeb85a44@talpey.com>
- <87eflxo1qp.fsf@notabene.neil.brown.name>
+In-Reply-To: <878tc5nwgf.fsf@notabene.neil.brown.name>
+Date: Wed, 7 Feb 2018 11:17:11 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <16AAEEA5-EFD4-43C4-B5A6-ADA304C5CA5F@oracle.com>
+References: <20180129232527.10141.69789.stgit@manet.1015granger.net>
+ <878tc5nwgf.fsf@notabene.neil.brown.name>
 To: NeilBrown <neilb@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-> On Feb 6, 2018, at 11:35 PM, NeilBrown <neilb@suse.com> wrote:
+> On Feb 7, 2018, at 1:30 AM, NeilBrown <neilb@suse.com> wrote:
 >=20
-> On Mon, Feb 05 2018, Tom Talpey wrote:
+> On Mon, Jan 29 2018, Chuck Lever wrote:
 >=20
->> On 2/5/2018 12:02 PM, Chuck Lever wrote:
->>> Heya Steve-
->>>=20
->>>> On Feb 5, 2018, at 11:36 AM, Steve Dickson <steved@redhat.com> =
-wrote:
->>>>=20
->>>> Over the weekend I did some experimenting with
->>>> the remote call code in rpcbind. The code does
->>>> functionally work but is very antiquated when
->>>> it comes to the latest NFS versions.
->>>>=20
->>>> Since only UDP sockets are used to do remote calls
->>>> using the documented interfaces pmap_rmtcall() and callrpc()
->>>> calls to NFS will fail (actual times out) since UDP is no
->>>> longer supported.
->>>>=20
->>>> The undocumented interface rpc_call() can be used to
->>>> call into NFS since the protocol can specified, which
->>>> also means the PMAPPROC_CALLIT protocol is not used.
->>>>=20
->>>> It turns out privilege port are not needed to make
->>>> remote calls, at least with my testing.
->>>=20
->>> It's not quite clear what you are claiming here, but
->>> I'm guessing that what you demonstrated is that the
->>> CALLIT _listener_ does not have to be privileged?
->=20
-> rpcbind listens for CALLIT on port 111.
-
-Right, my bad. CALLIT is an RPC procedure, not an RPC
-program.
-
-
-> Listening on some other port wouldn't ever get the messges...
-
-Then we still do not understand why rpcbind is opening
-and registering a second listener port. I can't think of
-any reason it should do this other than that there is a
-bug.
-
-
->>>=20
->>> I claim that is true for all RPC listeners.
+>> Still UNTESTED.
 >>=20
+>> A while back I announced the deprecation of fedfs-utils. There were
+>> a handful of components in fedfs-utils that we decided to keep. One
+>> of those keepers was the "nfsref" command. (The other was autofs
+>> support for /nfs4, which I hope Ian Kent is making progress on ;-)
 >>=20
->> Why in the world is the remote-call interface even still supported?
->> It is and was a mammoth security hole allowing machine impersonation,
->> and to my knowledge no actual services or applications depends on
->> it. Why not bury it under some compatibility option, default=3Doff??
+>> This series introduces "nfsref" to nfs-utils, minus the overhead of
+>> the LDAP / FedFS machinery, and it builds support for NFS basic
+>> junctions into mountd, replacing the need to install a plug-in DLL
+>> from fedfs-utils.
+>>=20
+>> I didn't apply a lot of brain cells to this port, so it's perhaps a
+>> little larger than it needs to be. Still, it achieves a completely
+>> LDAP-free implementation that resides 100% in nfs-utils. I'm
+>> interested in comments about the approach before I do more testing
+>> and refinement.
 >=20
-> Is "ybind --broadcast" still used?
-> Even it is it, the port that rpcbind uses to forward the request =
-doesn't
-> need to be privileged.
+> It looks sensible to me, though I must confess that I haven't given =
+much
+> thought to the use of junctions, and have never tried working with =
+them.
 >=20
+> If I understand correctly, you can already do junctions by putting
+> archane magic in /etc/exports, and possibly performing
+>  mount --bind /foo /foo
+> With the patch to mountd, you can put the archane magic in an
+> xattr on the directory, and skip the --bind mount.
+> Then "nfsref" is a funky tool which adds/lists/removes the archane =
+magic
+> in a human-readable fashion.
+>=20
+> That sounds like a generally sensible idea.
+
+Yes, we would like to make the Linux server's implementation of
+NFSv4 referrals a little less "black magic," and a little more
+"sane administrative interface."
+
+
+> There seems to be rather
+> more code than I would expect for that functionality, but you've =
+already
+> admitted that, so no surprise there.
+
+This code had to support at least two types of junctions: NFS
+basic, and FedFS. That's why the junction extended attributes
+contain XML. Though we're not carrying support for FedFS junctions
+forward, parsing that XML appears to be the bulkiest part of
+this port.
+
+
+> I was rather surprised to see an rpcgen generated file without the .x.
+> I think I understand why that is, and that is one place that you will
+> probably remove a lot of unnecessary content, including the comment
+> about rpcgen.
+
+Thinking about it, the fedfs_admin.h file is probably needed only
+for its definitions of the FEDFS_ERR status codes, which are used
+throughout the internal APIs in libjunction. We're certainly not
+including an implementation of the FedFS ADMIN protocol.
+
+As a first step I could copy just those to the other new header
+file, and that could allow me to get rid of fedfs_admin.h all
+together.
+
+
+> So:  +1
+
+Thanks, Neil!
+
+
+>=20
+> Thanks,
 > NeilBrown
 >=20
 >=20
 >>=20
->> Tom.
+>> ./configure --enable-junction --enable-caps
+>>=20
+>> is needed before building.
 >>=20
 >>=20
->>>=20
->>>> I'm thinking
->>>> the only reason privilege ports were being uses was
->>>> a side effect of create_rmtcall_fd() calling
->>>> svc_tli_create() with an unbound socket.
->>>=20
->>> Privileged listener ports are being created because
->>> svc_tli_create is using bindresvport when the passed
->>> in socket is not already bound.
->>>=20
->>> svc_tli_create should use bind instead, and it needs
->>> to choose a port higher than 49151.
->>>=20
->>> =
-https://www.iana.org/assignments/service-names-port-numbers/service-names-=
-port-numbers.xhtml
->>>=20
->>>=20
->>>> So the following patch simply binds the socket
->>>> before calling svc_tli_create() which means a
->>>> non-privilege port will be reserved for remote
->>>> calls.
->>>>=20
->>>> I'm thinking this is the simplest way to
->>>> not pollute the privilege port space.
->>>=20
->>> This is going in the right direction, but the problem
->>> needs to be addressed in svc_tli_create, not in each
->>> application that calls svc_tli_create.
->>>=20
->>> This is the same issue that Guillem Jover was trying to
->>> address by making bindresvport skip well-known ports.
->>>=20
->>> In other words: this code in src/svc_generic.c is wrong:
->>>=20
->>> 218         /*
->>> 219          * If the fd is unbound, try to bind it.
->>> 220          */
->>> 221         if (madefd || !__rpc_sockisbound(fd)) {
->>> 222                 if (bindaddr =3D=3D NULL) {
->>> 223                         if (bindresvport(fd, NULL) < 0) {
->>>                                 ^^^^^^^^^^^^
->>>=20
->>> 224                                 memset(&ss, 0, sizeof ss);
->>> 225                                 ss.ss_family =3D si.si_af;
->>> 226                                 if (bind(fd, (struct sockaddr =
-*)(void *)&ss,
->>> 227                                     (socklen_t)si.si_alen) < 0) =
-{
->>> 228                                         warnx(
->>> 229                         "svc_tli_create: could not bind to =
-anonymous port");
->>> 230                                         goto freedata;
->>> 231                                 }
->>> 232                         }
->>> 233                         listen(fd, SOMAXCONN);
->>> 234                 } else {
->>> 235                         if (bind(fd,
->>> 236                             (struct sockaddr =
-*)bindaddr->addr.buf,
->>> 237                             (socklen_t)si.si_alen) < 0) {
->>> 238                                 warnx(
->>> 239                 "svc_tli_create: could not bind to requested =
-address");
->>> 240                                 goto freedata;
->>> 241                         }
->>> 242                         listen(fd, (int)bindaddr->qlen);
->>> 243                 }
->>> 244
->>> 245         }
->>>=20
->>>=20
->>>> Steve Dickson (1):
->>>>  rmtcalls: Don't use privileged ports for remote calls.
->>>>=20
->>>> src/rpcb_svc_com.c | 19 ++++++++++++++++++-
->>>> 1 file changed, 18 insertions(+), 1 deletion(-)
->>>=20
->>>=20
->>> --
->>> Chuck Lever
->>>=20
->>>=20
->>>=20
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>=20
->>>=20
+>> Changes since v3:
+>> Broke up the first patch because it was apparently too large to
+>> be reflected through vger.kernel.org.
+>>=20
+>>=20
+>> Changes since v2:
+>> None.
+>>=20
+>>=20
+>> Changes since RFC (v1):
+>> Patch 2/3 in the original series added the libnfsjunct.so DLL to
+>> nfs-utils. Series v2 instead replaces 2/3 with a patch that puts
+>> support for junctions into mountd without the need for a DLL.
+>>=20
+>> ---
+>>=20
+>> Chuck Lever (5):
+>>      Add headers to support libjunction
+>>      Add infrastructure for libjunction
+>>      Add LDAP-free version of libjunction to nfs-utils
+>>      mountd: Solder in support for NFS basic junctions
+>>      Add LDAP-free 'nfsref' command
+>>=20
+>>=20
+>> aclocal/libxml2.m4                   |   15=20
+>> configure.ac                         |   17=20
+>> support/Makefile.am                  |    4=20
+>> support/include/Makefile.am          |    2=20
+>> support/include/fedfs_admin.h        |  342 +++++++
+>> support/include/junction.h           |  125 +++
+>> support/junction/Makefile.am         |   34 +
+>> support/junction/display.c           |  159 +++
+>> support/junction/export-cache.c      |  118 +++
+>> support/junction/junction-internal.h |  121 +++
+>> support/junction/junction.c          |  494 +++++++++++
+>> support/junction/locations.c         |  131 +++
+>> support/junction/nfs.c               | 1564 =
+++++++++++++++++++++++++++++++++++
+>> support/junction/path.c              |  345 ++++++++
+>> support/junction/xml.c               |  401 +++++++++
+>> utils/Makefile.am                    |    4=20
+>> utils/mountd/Makefile.am             |    8=20
+>> utils/mountd/cache.c                 |  189 ++--
+>> utils/nfsref/Makefile.am             |   39 +
+>> utils/nfsref/add.c                   |  271 ++++++
+>> utils/nfsref/lookup.c                |  211 +++++
+>> utils/nfsref/nfsref.c                |  188 ++++
+>> utils/nfsref/nfsref.h                |   47 +
+>> utils/nfsref/nfsref.man              |  180 ++++
+>> utils/nfsref/remove.c                |  145 +++
+>> 25 files changed, 5050 insertions(+), 104 deletions(-)
+>> create mode 100644 aclocal/libxml2.m4
+>> create mode 100644 support/include/fedfs_admin.h
+>> create mode 100644 support/include/junction.h
+>> create mode 100644 support/junction/Makefile.am
+>> create mode 100644 support/junction/display.c
+>> create mode 100644 support/junction/export-cache.c
+>> create mode 100644 support/junction/junction-internal.h
+>> create mode 100644 support/junction/junction.c
+>> create mode 100644 support/junction/locations.c
+>> create mode 100644 support/junction/nfs.c
+>> create mode 100644 support/junction/path.c
+>> create mode 100644 support/junction/xml.c
+>> create mode 100644 utils/nfsref/Makefile.am
+>> create mode 100644 utils/nfsref/add.c
+>> create mode 100644 utils/nfsref/lookup.c
+>> create mode 100644 utils/nfsref/nfsref.c
+>> create mode 100644 utils/nfsref/nfsref.h
+>> create mode 100644 utils/nfsref/nfsref.man
+>> create mode 100644 utils/nfsref/remove.c
+>>=20
+>> --
+>> Chuck Lever
 >> --
 >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
 in
