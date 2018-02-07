@@ -1,102 +1,93 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:56240 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755146AbeBGVUw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Feb 2018 16:20:52 -0500
-From: NeilBrown <neilb@suse.com>
-To: Trond Myklebust <trondmy@primarydata.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Date: Thu, 08 Feb 2018 08:20:43 +1100
-Subject: Re: [PATCH 1/2] NFS: Remove a redundant call to unmap_mapping_range()
-In-Reply-To: <1518003998.3483.0.camel@primarydata.com>
-References: <20180129025822.5116-1-trond.myklebust@primarydata.com> <876079nvvc.fsf@notabene.neil.brown.name> <1518003998.3483.0.camel@primarydata.com>
-Message-ID: <87vaf8mr84.fsf@notabene.neil.brown.name>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Received: from userp2120.oracle.com ([156.151.31.85]:44236 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1755146AbeBGVYE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 16:24:04 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: [PATCH 0/1] Remote calls don't need to use privilege ports
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <87y3k4mrf8.fsf@notabene.neil.brown.name>
+Date: Wed, 7 Feb 2018 16:23:53 -0500
+Cc: Tom Talpey <tom@talpey.com>, Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <AFF64139-7DD6-4606-9142-B974FDA9C287@oracle.com>
+References: <20180205163647.15822-1-steved@redhat.com>
+ <16CF8126-7229-4963-B5D1-2AC16BFC000A@oracle.com>
+ <cc08d8f9-795d-d49c-6354-f5fdbeb85a44@talpey.com>
+ <87eflxo1qp.fsf@notabene.neil.brown.name>
+ <4F3A3FBC-FFA9-4CDA-A38A-73AD07A62A27@oracle.com>
+ <87y3k4mrf8.fsf@notabene.neil.brown.name>
+To: NeilBrown <neilb@suse.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: quoted-printable
-
-On Wed, Feb 07 2018, Trond Myklebust wrote:
-
-> On Wed, 2018-02-07 at 17:42 +1100, NeilBrown wrote:
->> On Sun, Jan 28 2018, Trond Myklebust wrote:
->>=20
->> > We don't need to call unmap_mapping_range() prior to calling
->> > nfs_sync_mapping().
->>=20
->> Don't we?
->
-> See line 2 of nfs_sync_mapping(). =E2=98=BA
-
-Ahhh.  Makes perfect sense now - thanks
-
-NeilBrown
 
 
->
->> Doesn't that allow a process which mapped the page to dirty it
->> immediately after nfs_sync_mapping(), without the page being
->> reloaded from the server first?
->> Doesn't seem right..
->>=20
->> Thanks,
->> NeilBrown
->>=20
->>=20
->> >=20
->> > Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> > ---
->> >  fs/nfs/inode.c | 1 -
->> >  1 file changed, 1 deletion(-)
->> >=20
->> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
->> > index deeb7d1097d0..49fba9ea5872 100644
->> > --- a/fs/nfs/inode.c
->> > +++ b/fs/nfs/inode.c
->> > @@ -1170,7 +1170,6 @@ static int nfs_invalidate_mapping(struct
->> > inode *inode, struct address_space *map
->> >=20=20
->> >  	if (mapping->nrpages !=3D 0) {
->> >  		if (S_ISREG(inode->i_mode)) {
->> > -			unmap_mapping_range(mapping, 0, 0, 0);
->> >  			ret =3D nfs_sync_mapping(mapping);
->> >  			if (ret < 0)
->> >  				return ret;
->> > --=20
->> > 2.14.3
->> >=20
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-
->> > nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --=20
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
+> On Feb 7, 2018, at 4:16 PM, NeilBrown <neilb@suse.com> wrote:
+> 
+> On Wed, Feb 07 2018, Chuck Lever wrote:
+> 
+>>> On Feb 6, 2018, at 11:35 PM, NeilBrown <neilb@suse.com> wrote:
+>>> 
+>>> On Mon, Feb 05 2018, Tom Talpey wrote:
+>>> 
+>>>> On 2/5/2018 12:02 PM, Chuck Lever wrote:
+>>>>> Heya Steve-
+>>>>> 
+>>>>>> On Feb 5, 2018, at 11:36 AM, Steve Dickson <steved@redhat.com> wrote:
+>>>>>> 
+>>>>>> Over the weekend I did some experimenting with
+>>>>>> the remote call code in rpcbind. The code does
+>>>>>> functionally work but is very antiquated when
+>>>>>> it comes to the latest NFS versions.
+>>>>>> 
+>>>>>> Since only UDP sockets are used to do remote calls
+>>>>>> using the documented interfaces pmap_rmtcall() and callrpc()
+>>>>>> calls to NFS will fail (actual times out) since UDP is no
+>>>>>> longer supported.
+>>>>>> 
+>>>>>> The undocumented interface rpc_call() can be used to
+>>>>>> call into NFS since the protocol can specified, which
+>>>>>> also means the PMAPPROC_CALLIT protocol is not used.
+>>>>>> 
+>>>>>> It turns out privilege port are not needed to make
+>>>>>> remote calls, at least with my testing.
+>>>>> 
+>>>>> It's not quite clear what you are claiming here, but
+>>>>> I'm guessing that what you demonstrated is that the
+>>>>> CALLIT _listener_ does not have to be privileged?
+>>> 
+>>> rpcbind listens for CALLIT on port 111.
+>> 
+>> Right, my bad. CALLIT is an RPC procedure, not an RPC
+>> program.
+>> 
+>> 
+>>> Listening on some other port wouldn't ever get the messges...
+>> 
+>> Then we still do not understand why rpcbind is opening
+>> and registering a second listener port. I can't think of
+>> any reason it should do this other than that there is a
+>> bug.
+> 
+> This is a port on which it forwards CALLIT messages and listens for
+> replies, which it then sends back to the originator.  In order to be
+> able to handle CALLIT asynchronously with other requests, it needs to
+> register the port with the internal listening framework.
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
+Sorry, this is still not making sense to me. Can you create a
+ladder diagram that shows the exchange of Call and Reply messages?
 
------BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlp7bawACgkQOeye3VZi
-gbmhMBAAsI9envk0UngT1E9LwSSvN94IgCxuK5qXJZRuLSKkAi7sq5cu4otAMf2J
-hiZvJ9YvZzW/y4IKagO6oqkuGBYjOGEt+1WRpPmcwIp8fVzzyeSQxt20O8s3w377
-XbfWFJOtw5zoqtVvYVH1P1PDoQ4eeN6GCV7Rq2k5Rzhdt5lfJ2l9cH6AC4EUhtOc
-TPyKJIhcEIlf5vj2iI7poNFUJmASSoeXnxdxneLKIF36Nu8QnJt5FDpLe5f3KV+q
-ymG8e0bUrvKscQhkEfXrxDtxvjNSi6eRdvNB10gYB0lNPMq7A5tr73gfGwds5Iza
-835VDU0dFx+XCgiDLNNnX+C5t5b1V4o+LlnrnIRT3AApbud1sMmF0sXg06lgMIbJ
-xH8eGCUotHh3Z8no16w4rkh74F+OoesKKJNh1wt926+LCfWXFisbw29PFFeGEyen
-T7oAV8Iw0MHR87RtTmk8dyTZfyux9NXPbqpt2b6y2H62m9HH5lE6j84hcQpoMsBh
-D826VEb0+vg80Fi7wj73qzwzA9/SeAJM4Cl/Ccdei8TbzeRp1p/qEpguCfQTd47P
-ynQJp6sPmE889laJStjnrwPqP4Tl4Jth5kynex+oAxnoPkktUFh/VjJymZMtEehl
-Q0WMXlf80FiUAnBQp2pdoof/wyFYGD2Wg4mz5Qa7jZvqZ439uoQ=
-=Vk6V
------END PGP SIGNATURE-----
---=-=-=--
+> For comparison, portmap handles CALLIT asynchronously by forking.
+> 
+> Thanks,
+> NeilBrown
+
+--
+Chuck Lever
+
+
+
