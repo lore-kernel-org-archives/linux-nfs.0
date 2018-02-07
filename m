@@ -1,93 +1,150 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:44236 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755146AbeBGVYE (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Feb 2018 16:24:04 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: [PATCH 0/1] Remote calls don't need to use privilege ports
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <87y3k4mrf8.fsf@notabene.neil.brown.name>
-Date: Wed, 7 Feb 2018 16:23:53 -0500
-Cc: Tom Talpey <tom@talpey.com>, Steve Dickson <steved@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <AFF64139-7DD6-4606-9142-B974FDA9C287@oracle.com>
-References: <20180205163647.15822-1-steved@redhat.com>
- <16CF8126-7229-4963-B5D1-2AC16BFC000A@oracle.com>
- <cc08d8f9-795d-d49c-6354-f5fdbeb85a44@talpey.com>
- <87eflxo1qp.fsf@notabene.neil.brown.name>
- <4F3A3FBC-FFA9-4CDA-A38A-73AD07A62A27@oracle.com>
- <87y3k4mrf8.fsf@notabene.neil.brown.name>
-To: NeilBrown <neilb@suse.com>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:55146 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1754327AbeBGVa6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Feb 2018 16:30:58 -0500
+From: Kenneth Dsouza <kdsouza@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org
+Subject: [PATCH] Add support for -R option in nfs4_getfacl so we can list the ACLs of all files and directories recursively.
+Date: Thu,  8 Feb 2018 03:00:55 +0530
+Message-Id: <20180207213055.18211-1-kdsouza@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
+---
+ libnfs4acl/nfs4_acl_for_path.c |  4 ++--
+ man/man1/nfs4_getfacl.1        | 10 ++++++++--
+ nfs4_getfacl/nfs4_getfacl.c    | 41 ++++++++++++++++++++++++++++++++---------
+ 3 files changed, 42 insertions(+), 13 deletions(-)
 
-> On Feb 7, 2018, at 4:16 PM, NeilBrown <neilb@suse.com> wrote:
-> 
-> On Wed, Feb 07 2018, Chuck Lever wrote:
-> 
->>> On Feb 6, 2018, at 11:35 PM, NeilBrown <neilb@suse.com> wrote:
->>> 
->>> On Mon, Feb 05 2018, Tom Talpey wrote:
->>> 
->>>> On 2/5/2018 12:02 PM, Chuck Lever wrote:
->>>>> Heya Steve-
->>>>> 
->>>>>> On Feb 5, 2018, at 11:36 AM, Steve Dickson <steved@redhat.com> wrote:
->>>>>> 
->>>>>> Over the weekend I did some experimenting with
->>>>>> the remote call code in rpcbind. The code does
->>>>>> functionally work but is very antiquated when
->>>>>> it comes to the latest NFS versions.
->>>>>> 
->>>>>> Since only UDP sockets are used to do remote calls
->>>>>> using the documented interfaces pmap_rmtcall() and callrpc()
->>>>>> calls to NFS will fail (actual times out) since UDP is no
->>>>>> longer supported.
->>>>>> 
->>>>>> The undocumented interface rpc_call() can be used to
->>>>>> call into NFS since the protocol can specified, which
->>>>>> also means the PMAPPROC_CALLIT protocol is not used.
->>>>>> 
->>>>>> It turns out privilege port are not needed to make
->>>>>> remote calls, at least with my testing.
->>>>> 
->>>>> It's not quite clear what you are claiming here, but
->>>>> I'm guessing that what you demonstrated is that the
->>>>> CALLIT _listener_ does not have to be privileged?
->>> 
->>> rpcbind listens for CALLIT on port 111.
->> 
->> Right, my bad. CALLIT is an RPC procedure, not an RPC
->> program.
->> 
->> 
->>> Listening on some other port wouldn't ever get the messges...
->> 
->> Then we still do not understand why rpcbind is opening
->> and registering a second listener port. I can't think of
->> any reason it should do this other than that there is a
->> bug.
-> 
-> This is a port on which it forwards CALLIT messages and listens for
-> replies, which it then sends back to the originator.  In order to be
-> able to handle CALLIT asynchronously with other requests, it needs to
-> register the port with the internal listening framework.
-
-Sorry, this is still not making sense to me. Can you create a
-ladder diagram that shows the exchange of Call and Reply messages?
-
-
-> For comparison, portmap handles CALLIT asynchronously by forking.
-> 
-> Thanks,
-> NeilBrown
-
---
-Chuck Lever
-
-
+diff --git a/libnfs4acl/nfs4_acl_for_path.c b/libnfs4acl/nfs4_acl_for_path.c
+index 7461005..a51dc34 100644
+--- a/libnfs4acl/nfs4_acl_for_path.c
++++ b/libnfs4acl/nfs4_acl_for_path.c
+@@ -95,11 +95,11 @@ static int nfs4_getxattr(const char *path, void *value, size_t size)
+ 		fprintf(stderr,"An internal NFS server error code (%d) was returned; this should never happen.\n",res);
+ 	} else if (res < 0) {
+ 		if (errno == ENOATTR)
+-			fprintf(stderr,"Attribute not found on file.\n");
++			fprintf(stderr,"Attribute not found on file: %s\n", path);
+ 		else if (errno == EREMOTEIO)
+ 		    fprintf(stderr,"An NFS server error occurred.\n");
+ 		else if (errno == EOPNOTSUPP)
+-			fprintf(stderr,"Operation to request attribute not supported.\n");
++			fprintf(stderr,"Operation to request attribute not supported: %s\n", path);
+ 		else
+ 			perror("Failed getxattr operation");
+ 	}
+diff --git a/man/man1/nfs4_getfacl.1 b/man/man1/nfs4_getfacl.1
+index 81c542d..f85d50e 100644
+--- a/man/man1/nfs4_getfacl.1
++++ b/man/man1/nfs4_getfacl.1
+@@ -8,7 +8,7 @@
+ .SH NAME
+ nfs4_getfacl \- get NFSv4 file/directory access control lists
+ .SH SYNOPSIS
+-.B nfs4_getfacl [-H]
++.B nfs4_getfacl [-HR]
+ file ...
+ .SH DESCRIPTION
+ .B nfs4_getfacl 
+@@ -18,9 +18,15 @@ support ACLs.
+ 
+ If the 
+ .BR -H / --more-help
++flag is specified,
++.B nfs4_getfacl
++will print some information about NFSv4 ACLs and the fields used in ACEs.
++
++If the
++.BR -R / --recursive
+ flag is specified, 
+ .B nfs4_getfacl
+-will print some information about NFSv4 ACLs and the fields used in ACEs.  
++will list the NFSv4 ACLs of all files and directories recursively.
+ 
+ The output format for an NFSv4 file ACL, e.g., is:
+ .RS
+diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
+index 610fe16..1705d35 100644
+--- a/nfs4_getfacl/nfs4_getfacl.c
++++ b/nfs4_getfacl/nfs4_getfacl.c
+@@ -39,14 +39,21 @@
+ #include <sys/types.h>
+ #include <libgen.h>
+ #include "libacl_nfs4.h"
++#include <ftw.h>
+ 
+ static void usage(int);
+ static void more_help();
+ static char *execname;
++static void print_acl_from_path();
++
++static int recursive(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf)
++{
++	print_acl_from_path(fpath);
++	return 0;
++}
+ 
+ int main(int argc, char **argv)
+ {
+-	struct nfs4_acl *acl;
+ 	int res = 1;
+ 	int counter = 1;
+ 	
+@@ -64,25 +71,41 @@ int main(int argc, char **argv)
+ 		more_help();
+ 		res = 0;
+ 		goto out;
++	} else if (!strcmp(argv[1], "-R") || !strcmp(argv[1], "--recursive")) {
++		if (argc < 3)
++			usage(1);
++		for(counter = 2; counter < argc; counter++) {
++			if (nftw(argv[counter], recursive, 20, 0) == -1) {
++				printf("Invalid filename: %s\n", argv[counter]);
++			}
++		}
++		res = 0;
++		goto out;
+ 	}
+ 	for (counter = 1; counter < argc; counter++) {
+-		acl = nfs4_acl_for_path(argv[counter]);
+-		if (acl != NULL) {
+-			printf("\n# file: %s\n",argv[counter]);
+-			nfs4_print_acl(stdout, acl);
+-			nfs4_free_acl(acl);
+-			res = 0;
+-               }
++		print_acl_from_path(argv[counter]);
++		res = 0;
+ 	}
+ out:
+ 	return res;
+ }
+ 
++static void print_acl_from_path(const char *fpath)
++{
++	struct nfs4_acl *acl;
++	acl = nfs4_acl_for_path(fpath);
++	if (acl != NULL) {
++		printf("\n# file: %s\n", fpath);
++		nfs4_print_acl(stdout, acl);
++		nfs4_free_acl(acl);
++	}
++}
++
+ static void usage(int label)
+ {
+ 	if (label)
+ 		fprintf(stderr, "%s %s -- get NFSv4 file or directory access control lists.\n", execname, VERSION);
+-	fprintf(stderr, "Usage: %s file\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n", execname);
++	fprintf(stderr, "Usage: %s file\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
+ }
+ 
+ static void more_help()
+-- 
+2.9.5
 
