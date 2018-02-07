@@ -1,17 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:52534 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:60771 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752682AbeBGEgK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Feb 2018 23:36:10 -0500
+        id S1750768AbeBGGaQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Feb 2018 01:30:16 -0500
 From: NeilBrown <neilb@suse.com>
-To: Tom Talpey <tom@talpey.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Steve Dickson <steved@redhat.com>
-Date: Wed, 07 Feb 2018 15:35:58 +1100
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/1] Remote calls don't need to use privilege ports
-In-Reply-To: <cc08d8f9-795d-d49c-6354-f5fdbeb85a44@talpey.com>
-References: <20180205163647.15822-1-steved@redhat.com> <16CF8126-7229-4963-B5D1-2AC16BFC000A@oracle.com> <cc08d8f9-795d-d49c-6354-f5fdbeb85a44@talpey.com>
-Message-ID: <87eflxo1qp.fsf@notabene.neil.brown.name>
+To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Date: Wed, 07 Feb 2018 17:30:08 +1100
+Subject: Re: [PATCH v4 0/5] NFS basic junction support for nfs-utils
+In-Reply-To: <20180129232527.10141.69789.stgit@manet.1015granger.net>
+References: <20180129232527.10141.69789.stgit@manet.1015granger.net>
+Message-ID: <878tc5nwgf.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: multipart/signed; boundary="=-=-=";
         micalg=pgp-sha256; protocol="application/pgp-signature"
@@ -22,145 +20,131 @@ List-ID: <linux-nfs.vger.kernel.org>
 Content-Type: text/plain
 Content-Transfer-Encoding: quoted-printable
 
-On Mon, Feb 05 2018, Tom Talpey wrote:
+On Mon, Jan 29 2018, Chuck Lever wrote:
 
-> On 2/5/2018 12:02 PM, Chuck Lever wrote:
->> Heya Steve-
->>=20
->>> On Feb 5, 2018, at 11:36 AM, Steve Dickson <steved@redhat.com> wrote:
->>>
->>> Over the weekend I did some experimenting with
->>> the remote call code in rpcbind. The code does
->>> functionally work but is very antiquated when
->>> it comes to the latest NFS versions.
->>>
->>> Since only UDP sockets are used to do remote calls
->>> using the documented interfaces pmap_rmtcall() and callrpc()
->>> calls to NFS will fail (actual times out) since UDP is no
->>> longer supported.
->>>
->>> The undocumented interface rpc_call() can be used to
->>> call into NFS since the protocol can specified, which
->>> also means the PMAPPROC_CALLIT protocol is not used.
->>>
->>> It turns out privilege port are not needed to make
->>> remote calls, at least with my testing.
->>=20
->> It's not quite clear what you are claiming here, but
->> I'm guessing that what you demonstrated is that the
->> CALLIT _listener_ does not have to be privileged?
-
-rpcbind listens for CALLIT on port 111.
-Listening on some other port wouldn't ever get the messges...
-
-
->>=20
->> I claim that is true for all RPC listeners.
+> Still UNTESTED.
 >
+> A while back I announced the deprecation of fedfs-utils. There were
+> a handful of components in fedfs-utils that we decided to keep. One
+> of those keepers was the "nfsref" command. (The other was autofs
+> support for /nfs4, which I hope Ian Kent is making progress on ;-)
 >
-> Why in the world is the remote-call interface even still supported?
-> It is and was a mammoth security hole allowing machine impersonation,
-> and to my knowledge no actual services or applications depends on
-> it. Why not bury it under some compatibility option, default=3Doff??
+> This series introduces "nfsref" to nfs-utils, minus the overhead of
+> the LDAP / FedFS machinery, and it builds support for NFS basic
+> junctions into mountd, replacing the need to install a plug-in DLL
+> from fedfs-utils.
+>
+> I didn't apply a lot of brain cells to this port, so it's perhaps a
+> little larger than it needs to be. Still, it achieves a completely
+> LDAP-free implementation that resides 100% in nfs-utils. I'm
+> interested in comments about the approach before I do more testing
+> and refinement.
 
-Is "ybind --broadcast" still used?
-Even it is it, the port that rpcbind uses to forward the request doesn't
-need to be privileged.
+It looks sensible to me, though I must confess that I haven't given much
+thought to the use of junctions, and have never tried working with them.
 
+If I understand correctly, you can already do junctions by putting
+archane magic in /etc/exports, and possibly performing
+  mount --bind /foo /foo
+With the patch to mountd, you can put the archane magic in an
+xattr on the directory, and skip the --bind mount.
+Then "nfsref" is a funky tool which adds/lists/removes the archane magic
+in a human-readable fashion.
+
+That sounds like a generally sensible idea.  There seems to be rather
+more code than I would expect for that functionality, but you've already
+admitted that, so no surprise there.
+
+I was rather surprised to see an rpcgen generated file without the .x.
+I think I understand why that is, and that is one place that you will
+probably remove a lot of unnecessary content, including the comment
+about rpcgen.
+
+So:  +1
+
+Thanks,
 NeilBrown
 
 
 >
-> Tom.
+> ./configure --enable-junction --enable-caps
+>
+> is needed before building.
 >
 >
->>=20
->>> I'm thinking
->>> the only reason privilege ports were being uses was
->>> a side effect of create_rmtcall_fd() calling
->>> svc_tli_create() with an unbound socket.
->>=20
->> Privileged listener ports are being created because
->> svc_tli_create is using bindresvport when the passed
->> in socket is not already bound.
->>=20
->> svc_tli_create should use bind instead, and it needs
->> to choose a port higher than 49151.
->>=20
->> https://www.iana.org/assignments/service-names-port-numbers/service-name=
-s-port-numbers.xhtml
->>=20
->>=20
->>> So the following patch simply binds the socket
->>> before calling svc_tli_create() which means a
->>> non-privilege port will be reserved for remote
->>> calls.
->>>
->>> I'm thinking this is the simplest way to
->>> not pollute the privilege port space.
->>=20
->> This is going in the right direction, but the problem
->> needs to be addressed in svc_tli_create, not in each
->> application that calls svc_tli_create.
->>=20
->> This is the same issue that Guillem Jover was trying to
->> address by making bindresvport skip well-known ports.
->>=20
->> In other words: this code in src/svc_generic.c is wrong:
->>=20
->> 218         /*
->> 219          * If the fd is unbound, try to bind it.
->> 220          */
->> 221         if (madefd || !__rpc_sockisbound(fd)) {
->> 222                 if (bindaddr =3D=3D NULL) {
->> 223                         if (bindresvport(fd, NULL) < 0) {
->>                                  ^^^^^^^^^^^^
->>=20
->> 224                                 memset(&ss, 0, sizeof ss);
->> 225                                 ss.ss_family =3D si.si_af;
->> 226                                 if (bind(fd, (struct sockaddr *)(voi=
-d *)&ss,
->> 227                                     (socklen_t)si.si_alen) < 0) {
->> 228                                         warnx(
->> 229                         "svc_tli_create: could not bind to anonymous=
- port");
->> 230                                         goto freedata;
->> 231                                 }
->> 232                         }
->> 233                         listen(fd, SOMAXCONN);
->> 234                 } else {
->> 235                         if (bind(fd,
->> 236                             (struct sockaddr *)bindaddr->addr.buf,
->> 237                             (socklen_t)si.si_alen) < 0) {
->> 238                                 warnx(
->> 239                 "svc_tli_create: could not bind to requested address=
-");
->> 240                                 goto freedata;
->> 241                         }
->> 242                         listen(fd, (int)bindaddr->qlen);
->> 243                 }
->> 244
->> 245         }
->>=20
->>=20
->>> Steve Dickson (1):
->>>   rmtcalls: Don't use privileged ports for remote calls.
->>>
->>> src/rpcb_svc_com.c | 19 ++++++++++++++++++-
->>> 1 file changed, 18 insertions(+), 1 deletion(-)
->>=20
->>=20
->> --
->> Chuck Lever
->>=20
->>=20
->>=20
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>=20
->>=20
+> Changes since v3:
+> Broke up the first patch because it was apparently too large to
+> be reflected through vger.kernel.org.
+>
+>
+> Changes since v2:
+> None.
+>
+>
+> Changes since RFC (v1):
+> Patch 2/3 in the original series added the libnfsjunct.so DLL to
+> nfs-utils. Series v2 instead replaces 2/3 with a patch that puts
+> support for junctions into mountd without the need for a DLL.
+>
+> ---
+>
+> Chuck Lever (5):
+>       Add headers to support libjunction
+>       Add infrastructure for libjunction
+>       Add LDAP-free version of libjunction to nfs-utils
+>       mountd: Solder in support for NFS basic junctions
+>       Add LDAP-free 'nfsref' command
+>
+>
+>  aclocal/libxml2.m4                   |   15=20
+>  configure.ac                         |   17=20
+>  support/Makefile.am                  |    4=20
+>  support/include/Makefile.am          |    2=20
+>  support/include/fedfs_admin.h        |  342 +++++++
+>  support/include/junction.h           |  125 +++
+>  support/junction/Makefile.am         |   34 +
+>  support/junction/display.c           |  159 +++
+>  support/junction/export-cache.c      |  118 +++
+>  support/junction/junction-internal.h |  121 +++
+>  support/junction/junction.c          |  494 +++++++++++
+>  support/junction/locations.c         |  131 +++
+>  support/junction/nfs.c               | 1564 ++++++++++++++++++++++++++++=
+++++++
+>  support/junction/path.c              |  345 ++++++++
+>  support/junction/xml.c               |  401 +++++++++
+>  utils/Makefile.am                    |    4=20
+>  utils/mountd/Makefile.am             |    8=20
+>  utils/mountd/cache.c                 |  189 ++--
+>  utils/nfsref/Makefile.am             |   39 +
+>  utils/nfsref/add.c                   |  271 ++++++
+>  utils/nfsref/lookup.c                |  211 +++++
+>  utils/nfsref/nfsref.c                |  188 ++++
+>  utils/nfsref/nfsref.h                |   47 +
+>  utils/nfsref/nfsref.man              |  180 ++++
+>  utils/nfsref/remove.c                |  145 +++
+>  25 files changed, 5050 insertions(+), 104 deletions(-)
+>  create mode 100644 aclocal/libxml2.m4
+>  create mode 100644 support/include/fedfs_admin.h
+>  create mode 100644 support/include/junction.h
+>  create mode 100644 support/junction/Makefile.am
+>  create mode 100644 support/junction/display.c
+>  create mode 100644 support/junction/export-cache.c
+>  create mode 100644 support/junction/junction-internal.h
+>  create mode 100644 support/junction/junction.c
+>  create mode 100644 support/junction/locations.c
+>  create mode 100644 support/junction/nfs.c
+>  create mode 100644 support/junction/path.c
+>  create mode 100644 support/junction/xml.c
+>  create mode 100644 utils/nfsref/Makefile.am
+>  create mode 100644 utils/nfsref/add.c
+>  create mode 100644 utils/nfsref/lookup.c
+>  create mode 100644 utils/nfsref/nfsref.c
+>  create mode 100644 utils/nfsref/nfsref.h
+>  create mode 100644 utils/nfsref/nfsref.man
+>  create mode 100644 utils/nfsref/remove.c
+>
+> --
+> Chuck Lever
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
@@ -171,18 +155,18 @@ Content-Type: application/pgp-signature; name="signature.asc"
 
 -----BEGIN PGP SIGNATURE-----
 
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlp6gi8ACgkQOeye3VZi
-gbnmPA/8Dz2Uj0C83176Klgmso4Z1ofdsdhZHLbfV2bwIL7bznFWSXdQAIwomPFI
-byfoK4Nmg83stHH5KnbjG9legrT/2v8BYyJ9IyGlJQVXcQuShCjo87I7OTwPdJJd
-yrrKxM/psrneLJpNdQzq2c6w8HRvDU9+v2CuqlN5MlcWKF9D2/tP4ifSWlJV8ZVm
-VIPF45YOa19xWLKjiT06PTNb2QMk0uss75oiquQn/xcjRhB0EJ7g8sP2nwm6fWim
-ySqPE67GFedfdCtytIFexvt9WIYQPaXx+Uc49r9z5BPFMShPcu2LRO4Fg+9rpceh
-4DwDp0n+qotwRzyw5J511iiwzrlE+dp0kCaeU73am8GY4p04EXa3ViY5JCVBM7N1
-/ctcljCqcKF6I830m6OPLF7EQ9we9yWZkeYnuCgSHAkLZjPeVP44VC7245oiZxNz
-P7BpbCzqiYkli826AjwK0w10x1gSeMJgd6VlEtYhxe7blSjDKfTcFTkJrR7nGLTJ
-SbRSHwacSlTBWzEGcuAN2NGYkPoFfyQjNgdkifnafrHOhT1KY5QrMMf3wXezE05z
-GmX6Kl+VfKvtp0guS1T07jnU9ZLcDAeDsoh5RAzoO8OoumxLmmnKzLtsr+1RvRPg
-p8U/s47RmGYwCRJnBUKVMdegDRwct6r98Vy2yulpqdhYT+7pcRw=
-=j8vU
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlp6nPAACgkQOeye3VZi
+gbk6WA//T4F4tofF0+LirpZIAsuJdJZc/Z9jG8ARmvjNirEQ3aQI93Onqi+o71z8
+uLyMcDau8w5nrJmf9h43JX1Fzl+P4mdhPv4JPeRKu0GrL6K0+jGO0yDmcJgkQs/G
+cDlF3TMs/BzUSDRGfVphzawyPNTuTJkALVtJ01gjzq2rKrfkhcll8Kto8gDo9aIP
+jCFEox9Iv0ChaWFcjR/B1pg0ySiwc7nBVu7Df/RFPlSPIgC6OaS37S33PZapTKED
+0owo9/MQvktuuqHryG3HoHQDqcgyK5U9qkiCXGd0G6F7MzhvFcB/PoTv1+XsyssM
+t9XVZ5FIGx9OBGserJPKazxfpmoXNydtC4/ysZPwYpJ2dGzL1oWHgCgOmgKp1TXX
+pOqgsCEPCDE9rEmpnBbRmUOA0Kwc+hjX4uawIFg9e0uBNKZC2hOOG0OuujfMeXsW
+ZA8/jI53oCqs0+pjMIAHYxMr3sNySIoaUufXMuttkQwitq0IJQb9EI0JARZzOOBg
+3sZShc/nDcMXDt9KXK4GNZf57bl7LgM9LcJmFzhyQ2wGjnXSfZquKxah4Cs7kVGa
+CpcbBDTj8Dc4UmwrZGZeS9YsVs0At4kCQADLBqO/5s3Z0hpaDishSrtE2EkWwDKM
+BofmfRGuHezkDFZAdH4IrKdd4r0EfL4+mGMqOiuW85rQhm818T8=
+=J+hA
 -----END PGP SIGNATURE-----
 --=-=-=--
