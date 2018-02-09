@@ -1,53 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:34870 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751126AbeBIOtn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Feb 2018 09:49:43 -0500
-Date: Fri, 9 Feb 2018 09:49:42 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:23191 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752171AbeBIPEq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 10:04:46 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@redhat.com" <bfields@redhat.com>,
+        "luxy.fnst@cn.fujitsu.com" <luxy.fnst@cn.fujitsu.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: Questions about pynfs:testLargeData-WRT5
-Message-ID: <20180209144942.GB30030@parsley.fieldses.org>
+Date: Fri, 9 Feb 2018 15:04:42 +0000
+Message-ID: <1518188679.8999.4.camel@primarydata.com>
 References: <918ad604-2365-b612-56a2-8d88a29f77ff@cn.fujitsu.com>
+         <20180209144942.GB30030@parsley.fieldses.org>
+In-Reply-To: <20180209144942.GB30030@parsley.fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <918ad604-2365-b612-56a2-8d88a29f77ff@cn.fujitsu.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 09, 2018 at 09:27:00AM +0800, Lu Xinyu wrote:
-> I ran pynfs on the RHEL7.4GA with different
-> kernels(3.10.0-830.el7,4.15). The testLargeData:WRT5 failed with
-> broken pipe. I investigated pynfs code and got the following
-> questions.
-> 
-> 1.The intent of WRT5 To check whether the server could handle a
-> too-large value over NFSSVC_MAXBLKSIZE.
-> 
-> 2.The expected procedure when test gets passed The server could write
-> down the oversize data successfully sent by client and return NFS4_OK.
-> Then, client could read back the data from server.
+T24gRnJpLCAyMDE4LTAyLTA5IGF0IDA5OjQ5IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIEZyaSwgRmViIDA5LCAyMDE4IGF0IDA5OjI3OjAwQU0gKzA4MDAsIEx1IFhpbnl1IHdy
+b3RlOg0KPiA+IEkgcmFuIHB5bmZzIG9uIHRoZSBSSEVMNy40R0Egd2l0aCBkaWZmZXJlbnQNCj4g
+PiBrZXJuZWxzKDMuMTAuMC04MzAuZWw3LDQuMTUpLiBUaGUgdGVzdExhcmdlRGF0YTpXUlQ1IGZh
+aWxlZCB3aXRoDQo+ID4gYnJva2VuIHBpcGUuIEkgaW52ZXN0aWdhdGVkIHB5bmZzIGNvZGUgYW5k
+IGdvdCB0aGUgZm9sbG93aW5nDQo+ID4gcXVlc3Rpb25zLg0KPiA+IA0KPiA+IDEuVGhlIGludGVu
+dCBvZiBXUlQ1IFRvIGNoZWNrIHdoZXRoZXIgdGhlIHNlcnZlciBjb3VsZCBoYW5kbGUgYQ0KPiA+
+IHRvby1sYXJnZSB2YWx1ZSBvdmVyIE5GU1NWQ19NQVhCTEtTSVpFLg0KPiA+IA0KPiA+IDIuVGhl
+IGV4cGVjdGVkIHByb2NlZHVyZSB3aGVuIHRlc3QgZ2V0cyBwYXNzZWQgVGhlIHNlcnZlciBjb3Vs
+ZA0KPiA+IHdyaXRlDQo+ID4gZG93biB0aGUgb3ZlcnNpemUgZGF0YSBzdWNjZXNzZnVsbHkgc2Vu
+dCBieSBjbGllbnQgYW5kIHJldHVybg0KPiA+IE5GUzRfT0suDQo+ID4gVGhlbiwgY2xpZW50IGNv
+dWxkIHJlYWQgYmFjayB0aGUgZGF0YSBmcm9tIHNlcnZlci4NCj4gDQo+IFllcywgdGhhdCB0ZXN0
+IGlzIGRlZmluaXRlbHkgd3JvbmcuICBJdCBtaWdodCBoYXBwZW4gdG8gd29yayBvbg0KPiBzZXJ2
+ZXJzDQo+IHRoYXQgc3VwcG9ydCBsYXJnZXIgSU8gc2l6ZSwgYnV0IHRoZSBMaW51eCBzZXJ2ZXIg
+ZG9lc24ndC4gIEFuZCwNCj4gYW55d2F5LA0KPiBpdCdzIHBlcmZlY3RseSBsZWdhbCBmb3IgYSBz
+ZXJ2ZXIgdG8gb25seSBzdXBwb3J0IGxvd2VyIHJlYWQvd3JpdGUNCj4gc2l6ZS4NCj4gDQo+IFNv
+LCB0aGUgdGVzdCBuZWVkcyBjaGVjayB0aGUgc2VydmVyJ3MgYWR2ZXJ0aXNlZCBtYXhpbXVtIHJl
+YWQgYW5kDQo+IHdyaXRlDQo+IHNpemVzLCBhbmQgdGhlbiBlaXRoZXI6DQo+IA0KPiAJMSkgdXNl
+IHRoYXQgbWF4aW11bSBzaXplLCBhbmQgZXhwZWN0IHN1Y2Nlc3MsIG9yDQo+IAkyKSB1c2UgYSBs
+YXJnZXIgc2l6ZSBhbmQgZXhwZWN0IHNvbWUgc29ydCBvZiBlcnJvci4NCj4gDQo+ID4gKEFjdHVh
+bGx5LCB0aGUgdGVzdCBmYWlsZWQgd2l0aCBicm9rZW4gcGlwZSBhbmQgZGlkIG5vdCByZXR1cm4N
+Cj4gPiBwYWNrZXQNCj4gPiBpbmZvcm1hdGlvbi4pDQo+ID4gDQo+ID4gMy5UaGUgbmZzIHNlcnZl
+cidzIHN0YW5kcmQgcHJvY2VkdXJlIG9mIGhhbmRsaW5nIG92ZXJzaXplIGRhdGEgSXQNCj4gPiBz
+ZWVtcyB0aGF0IHRoZSByZWxhdGVkIGVycm9yIGlzIG5vdCBkZWZpbmVkIGluIHRoZSBSRkMzNTMw
+LiBXaGV0aGVyDQo+ID4gdGhlIHNlcnZlciBzaG91bGQgcmV0dXJuIGFueSBORlNFUlIgYmVmb3Jl
+IGNlYXNpbmcgcmVjZXZpbmcgPw0KPiANCj4gSSdtIG5vdCBzdXJlIGlmIHRoZSBSRkMncyBzcGVj
+aWZ5IHRoZSBiZWhhdmlvciBoZXJlLiAgSSdsbCBnbyBkbyBzb21lDQo+IHJlc2VhcmNoLiAgSSBo
+YXZlIGEgZmVlbGluZyB0aGV5IGRvbid0LiAgSW4gdGhhdCBjYXNlIEkgdGhpbmsgdGhlDQo+IGJl
+c3QNCj4gb3B0aW9uIHdpbGwgYmUgMSkgYWJvdmUuDQo+ICANCg0KRm9yIE5GU3Y0LCB5b3Ugd291
+bGQgaGF2ZSB0aGUgb3B0aW9uIG9mIHJldHVybmluZyBORlM0RVJSX1JFU09VUkNFIG9yDQpwb3Nz
+aWJseSBORlM0RVJSX0lOVkFMIChwZXJzb25hbGx5LCBJJ2QgcHJlZmVyIHRoZSBsYXR0ZXIsIHNp
+bmNlDQpORlM0RVJSX1JFU09VUkNFIGlzIHRvbyB3b29seSkuDQoNCkZvciBORlN2NC4xIG9yIGFi
+b3ZlLCB5b3UgcHJvYmFibHkgaGF2ZSBhIGNob2ljZSBvZiBORlM0RVJSX1JFUV9UT09fQklHDQoo
+aWYgdGhlIHNpemUgaXMgZ3JlYXRlciB0aGFuIGNhX21heHJlcXVlc3RzaXplKSBvciBORlM0RVJS
+X0lOVkFMLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-Yes, that test is definitely wrong.  It might happen to work on servers
-that support larger IO size, but the Linux server doesn't.  And, anyway,
-it's perfectly legal for a server to only support lower read/write size.
-
-So, the test needs check the server's advertised maximum read and write
-sizes, and then either:
-
-	1) use that maximum size, and expect success, or
-	2) use a larger size and expect some sort of error.
-
-> (Actually, the test failed with broken pipe and did not return packet
-> information.)
-> 
-> 3.The nfs server's standrd procedure of handling oversize data It
-> seems that the related error is not defined in the RFC3530. Whether
-> the server should return any NFSERR before ceasing receving ?
-
-I'm not sure if the RFC's specify the behavior here.  I'll go do some
-research.  I have a feeling they don't.  In that case I think the best
-option will be 1) above.
-
---b.
