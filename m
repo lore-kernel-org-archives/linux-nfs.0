@@ -1,45 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:42554 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750942AbeBISbN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Feb 2018 13:31:13 -0500
-Date: Fri, 9 Feb 2018 13:31:12 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "luxy.fnst@cn.fujitsu.com" <luxy.fnst@cn.fujitsu.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Questions about pynfs:testLargeData-WRT5
-Message-ID: <20180209183112.GC30030@parsley.fieldses.org>
-References: <918ad604-2365-b612-56a2-8d88a29f77ff@cn.fujitsu.com>
- <20180209144942.GB30030@parsley.fieldses.org>
- <1518188679.8999.4.camel@primarydata.com>
+Received: from elasmtp-dupuy.atl.sa.earthlink.net ([209.86.89.62]:34558 "EHLO
+        elasmtp-dupuy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752218AbeBIU2d (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 15:28:33 -0500
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'J. Bruce Fields'" <bfields@redhat.com>,
+        "'Lu Xinyu'" <luxy.fnst@cn.fujitsu.com>
+Cc: <linux-nfs@vger.kernel.org>
+References: <918ad604-2365-b612-56a2-8d88a29f77ff@cn.fujitsu.com> <20180209144942.GB30030@parsley.fieldses.org>
+In-Reply-To: <20180209144942.GB30030@parsley.fieldses.org>
+Subject: RE: Questions about pynfs:testLargeData-WRT5
+Date: Fri, 9 Feb 2018 09:53:09 -0800
+Message-ID: <021c01d3a1ce$d9919cd0$8cb4d670$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1518188679.8999.4.camel@primarydata.com>
+Content-Type: text/plain;
+        charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 09, 2018 at 03:04:42PM +0000, Trond Myklebust wrote:
-> For NFSv4, you would have the option of returning NFS4ERR_RESOURCE or
-> possibly NFS4ERR_INVAL (personally, I'd prefer the latter, since
-> NFS4ERR_RESOURCE is too wooly).
+> On Fri, Feb 09, 2018 at 09:27:00AM +0800, Lu Xinyu wrote:
+> > I ran pynfs on the RHEL7.4GA with different
+> > kernels(3.10.0-830.el7,4.15). The testLargeData:WRT5 failed with
+> > broken pipe. I investigated pynfs code and got the following
+> > questions.
+> >
+> > 1.The intent of WRT5 To check whether the server could handle a
+> > too-large value over NFSSVC_MAXBLKSIZE.
+> >
+> > 2.The expected procedure when test gets passed The server could write
+> > down the oversize data successfully sent by client and return NFS4_OK.
+> > Then, client could read back the data from server.
 > 
-> For NFSv4.1 or above, you probably have a choice of NFS4ERR_REQ_TOO_BIG
-> (if the size is greater than ca_maxrequestsize) or NFS4ERR_INVAL.
+> Yes, that test is definitely wrong.  It might happen to work on servers
+that
+> support larger IO size, but the Linux server doesn't.  And, anyway, it's
+perfectly
+> legal for a server to only support lower read/write size.
 
-I think this sort of problem is typically found early in the rpc code
-(probably the check against sv_max_mesg in
-net/sunrpc/svcsock.c:svc_tcp_recv_record()).  It drops the connection.
-I'm not sure why.
+The test does happen to pass on Ganesha.
 
-Returning an NFS-level error does sound friendlier.  I guess I'd do that
-by throwing away the rest of the request data and setting a flag on the
-svc_rqst saying "this request was too long, don't trust the data" and
-then making NFS check for that flag somewhere early on.
+> So, the test needs check the server's advertised maximum read and write
+sizes,
+> and then either:
+> 
+> 	1) use that maximum size, and expect success, or
+> 	2) use a larger size and expect some sort of error.
+> 
+> > (Actually, the test failed with broken pipe and did not return packet
+> > information.)
+> >
+> > 3.The nfs server's standrd procedure of handling oversize data It
+> > seems that the related error is not defined in the RFC3530. Whether
+> > the server should return any NFSERR before ceasing receving ?
+> 
+> I'm not sure if the RFC's specify the behavior here.  I'll go do some
+research.  I
+> have a feeling they don't.  In that case I think the best option will be
+1) above.
 
-The only case I can recall seeing this in practice is when the limits
-change across reboots.  Which is something to avoid.  But the choice of
-failure mode might make this more or less easy to diagnose or recover
-from....
+That's probably the right thing to do.
 
---b.
+Frank
+
+
+---
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
+
