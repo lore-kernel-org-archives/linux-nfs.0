@@ -1,57 +1,112 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:23191 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1752171AbeBIPEq (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 10:04:46 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@redhat.com" <bfields@redhat.com>,
-        "luxy.fnst@cn.fujitsu.com" <luxy.fnst@cn.fujitsu.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Questions about pynfs:testLargeData-WRT5
-Date: Fri, 9 Feb 2018 15:04:42 +0000
-Message-ID: <1518188679.8999.4.camel@primarydata.com>
-References: <918ad604-2365-b612-56a2-8d88a29f77ff@cn.fujitsu.com>
-         <20180209144942.GB30030@parsley.fieldses.org>
-In-Reply-To: <20180209144942.GB30030@parsley.fieldses.org>
+Received: from userp2130.oracle.com ([156.151.31.86]:46666 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751034AbeBIPsv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 10:48:51 -0500
+Subject: Re: [PATCH] nfs: system crashes after NFS4ERR_MOVED recovery
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <307dc174-b2d0-461a-fc76-193711f150d2@Oracle.com>
+ <1518037638.56541.2.camel@primarydata.com>
+ <1518038401.56541.6.camel@primarydata.com>
+From: Bill Baker <Bill.Baker@Oracle.com>
+Message-ID: <f5500297-5e11-c8ec-f4be-eef0da203d6e@Oracle.com>
+Date: Fri, 9 Feb 2018 09:49:10 -0600
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <1518038401.56541.6.camel@primarydata.com>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTAyLTA5IGF0IDA5OjQ5IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIEZyaSwgRmViIDA5LCAyMDE4IGF0IDA5OjI3OjAwQU0gKzA4MDAsIEx1IFhpbnl1IHdy
-b3RlOg0KPiA+IEkgcmFuIHB5bmZzIG9uIHRoZSBSSEVMNy40R0Egd2l0aCBkaWZmZXJlbnQNCj4g
-PiBrZXJuZWxzKDMuMTAuMC04MzAuZWw3LDQuMTUpLiBUaGUgdGVzdExhcmdlRGF0YTpXUlQ1IGZh
-aWxlZCB3aXRoDQo+ID4gYnJva2VuIHBpcGUuIEkgaW52ZXN0aWdhdGVkIHB5bmZzIGNvZGUgYW5k
-IGdvdCB0aGUgZm9sbG93aW5nDQo+ID4gcXVlc3Rpb25zLg0KPiA+IA0KPiA+IDEuVGhlIGludGVu
-dCBvZiBXUlQ1IFRvIGNoZWNrIHdoZXRoZXIgdGhlIHNlcnZlciBjb3VsZCBoYW5kbGUgYQ0KPiA+
-IHRvby1sYXJnZSB2YWx1ZSBvdmVyIE5GU1NWQ19NQVhCTEtTSVpFLg0KPiA+IA0KPiA+IDIuVGhl
-IGV4cGVjdGVkIHByb2NlZHVyZSB3aGVuIHRlc3QgZ2V0cyBwYXNzZWQgVGhlIHNlcnZlciBjb3Vs
-ZA0KPiA+IHdyaXRlDQo+ID4gZG93biB0aGUgb3ZlcnNpemUgZGF0YSBzdWNjZXNzZnVsbHkgc2Vu
-dCBieSBjbGllbnQgYW5kIHJldHVybg0KPiA+IE5GUzRfT0suDQo+ID4gVGhlbiwgY2xpZW50IGNv
-dWxkIHJlYWQgYmFjayB0aGUgZGF0YSBmcm9tIHNlcnZlci4NCj4gDQo+IFllcywgdGhhdCB0ZXN0
-IGlzIGRlZmluaXRlbHkgd3JvbmcuICBJdCBtaWdodCBoYXBwZW4gdG8gd29yayBvbg0KPiBzZXJ2
-ZXJzDQo+IHRoYXQgc3VwcG9ydCBsYXJnZXIgSU8gc2l6ZSwgYnV0IHRoZSBMaW51eCBzZXJ2ZXIg
-ZG9lc24ndC4gIEFuZCwNCj4gYW55d2F5LA0KPiBpdCdzIHBlcmZlY3RseSBsZWdhbCBmb3IgYSBz
-ZXJ2ZXIgdG8gb25seSBzdXBwb3J0IGxvd2VyIHJlYWQvd3JpdGUNCj4gc2l6ZS4NCj4gDQo+IFNv
-LCB0aGUgdGVzdCBuZWVkcyBjaGVjayB0aGUgc2VydmVyJ3MgYWR2ZXJ0aXNlZCBtYXhpbXVtIHJl
-YWQgYW5kDQo+IHdyaXRlDQo+IHNpemVzLCBhbmQgdGhlbiBlaXRoZXI6DQo+IA0KPiAJMSkgdXNl
-IHRoYXQgbWF4aW11bSBzaXplLCBhbmQgZXhwZWN0IHN1Y2Nlc3MsIG9yDQo+IAkyKSB1c2UgYSBs
-YXJnZXIgc2l6ZSBhbmQgZXhwZWN0IHNvbWUgc29ydCBvZiBlcnJvci4NCj4gDQo+ID4gKEFjdHVh
-bGx5LCB0aGUgdGVzdCBmYWlsZWQgd2l0aCBicm9rZW4gcGlwZSBhbmQgZGlkIG5vdCByZXR1cm4N
-Cj4gPiBwYWNrZXQNCj4gPiBpbmZvcm1hdGlvbi4pDQo+ID4gDQo+ID4gMy5UaGUgbmZzIHNlcnZl
-cidzIHN0YW5kcmQgcHJvY2VkdXJlIG9mIGhhbmRsaW5nIG92ZXJzaXplIGRhdGEgSXQNCj4gPiBz
-ZWVtcyB0aGF0IHRoZSByZWxhdGVkIGVycm9yIGlzIG5vdCBkZWZpbmVkIGluIHRoZSBSRkMzNTMw
-LiBXaGV0aGVyDQo+ID4gdGhlIHNlcnZlciBzaG91bGQgcmV0dXJuIGFueSBORlNFUlIgYmVmb3Jl
-IGNlYXNpbmcgcmVjZXZpbmcgPw0KPiANCj4gSSdtIG5vdCBzdXJlIGlmIHRoZSBSRkMncyBzcGVj
-aWZ5IHRoZSBiZWhhdmlvciBoZXJlLiAgSSdsbCBnbyBkbyBzb21lDQo+IHJlc2VhcmNoLiAgSSBo
-YXZlIGEgZmVlbGluZyB0aGV5IGRvbid0LiAgSW4gdGhhdCBjYXNlIEkgdGhpbmsgdGhlDQo+IGJl
-c3QNCj4gb3B0aW9uIHdpbGwgYmUgMSkgYWJvdmUuDQo+ICANCg0KRm9yIE5GU3Y0LCB5b3Ugd291
-bGQgaGF2ZSB0aGUgb3B0aW9uIG9mIHJldHVybmluZyBORlM0RVJSX1JFU09VUkNFIG9yDQpwb3Nz
-aWJseSBORlM0RVJSX0lOVkFMIChwZXJzb25hbGx5LCBJJ2QgcHJlZmVyIHRoZSBsYXR0ZXIsIHNp
-bmNlDQpORlM0RVJSX1JFU09VUkNFIGlzIHRvbyB3b29seSkuDQoNCkZvciBORlN2NC4xIG9yIGFi
-b3ZlLCB5b3UgcHJvYmFibHkgaGF2ZSBhIGNob2ljZSBvZiBORlM0RVJSX1JFUV9UT09fQklHDQoo
-aWYgdGhlIHNpemUgaXMgZ3JlYXRlciB0aGFuIGNhX21heHJlcXVlc3RzaXplKSBvciBORlM0RVJS
-X0lOVkFMLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
+
+On 02/07/2018 03:20 PM, Trond Myklebust wrote:
+> On Wed, 2018-02-07 at 16:07 -0500, Trond Myklebust wrote:
+>> Hi Bill,
+>>
+>> On Wed, 2018-02-07 at 14:53 -0600, Bill Baker wrote:
+>>> nfs4_update_server unconditionally releases the nfs_client for the
+>>> source server. If migration fails, this can cause the source
+>>> server's
+>>> nfs_client struct to be left with a low reference count, resulting
+>>> in
+>>> use-after-free.
+>>>
+>>> NFS: state manager: migration failed on NFSv4 server nfsvmu10 with
+>>> error 6
+>>> WARNING: CPU: 16 PID: 17960 at fs/nfs/client.c:281
+>>> nfs_put_client+0xfa/0x110 [nfs]()
+>>>           nfs_put_client+0xfa/0x110 [nfs]
+>>>           nfs4_run_state_manager+0x30/0x40 [nfsv4]
+>>>           kthread+0xd8/0xf0
+>>>
+>>> BUG: unable to handle kernel NULL pointer dereference at
+>>> 00000000000002a8
+>>>           nfs4_xdr_enc_write+0x6b/0x160 [nfsv4]
+>>>           rpcauth_wrap_req+0xac/0xf0 [sunrpc]
+>>>           call_transmit+0x18c/0x2c0 [sunrpc]
+>>>           __rpc_execute+0xa6/0x490 [sunrpc]
+>>>           rpc_async_schedule+0x15/0x20 [sunrpc]
+>>>           process_one_work+0x160/0x470
+>>>           worker_thread+0x112/0x540
+>>>           kthread+0xd8/0xf0
+>>>
+>>> Reported-by: Helen Chao <helen.chao@oracle.com>
+>>> Fixes: 32e62b7c3ef0 ("NFS: Add nfs4_update_server")
+>>> Signed-off-by: Bill Baker <bill.baker@oracle.com>
+>>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>>    fs/nfs/nfs4client.c | 2 +-
+>>>    1 file changed, 1 insertion(+), 1 deletion(-)
+>>>
+>>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>>> index 65a7e5d..c818cdd 100644
+>>> --- a/fs/nfs/nfs4client.c
+>>> +++ b/fs/nfs/nfs4client.c
+>>> @@ -1226,11 +1226,11 @@ int nfs4_update_server(struct nfs_server
+>>> *server, const char *hostname,
+>>>                                   clp->cl_proto, clnt->cl_timeout,
+>>>                                   clp->cl_minorversion, net);
+>>>           clear_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
+>>> -       nfs_put_client(clp);
+>>>           if (error != 0) {
+>>>                   nfs_server_insert_lists(server);
+>>>                   return error;
+>>>           }
+>>> +       nfs_put_client(clp);
+>>>
+>>>           if (server->nfs_client->cl_hostname == NULL)
+>>>                   server->nfs_client->cl_hostname =
+>>> kstrdup(hostname,
+>>> GFP_KERNEL);
+>>>
+>>
+>> That looks almost right. Isn't there now a reference leak if
+>> nfs4_set_client() returns -ELOOP? I think that is really down to an
+>> existing bug in nfs4_set_client() rather than in your fix, however
+> 
+> Sorry... I should probably have been more explicit about where the bug
+> is: nfs4_set_client() should probably be calling nfs_put_client() on
+> its copy of 'clp' before returning -ELOOP.
+> 
+>> the
+>> fix does re-expose that bug.
+> 
+> By which I mean that the two bugs currently cancel each other out for
+> the case of ELOOP. By fixing one bug, but not the other, we're undoing
+> the cancellation... ☺
+> 
+
+Ah, yes, I see.
+
+         if (server->nfs_client == clp) {
+                 nfs_put_client(clp);
+                 return -ELOOP;
+         }
+
+I'll send an updated patch shortly.  Thanks for your feedback.
+
+
+-- 
+Bill Baker - Oracle Linux NFS
