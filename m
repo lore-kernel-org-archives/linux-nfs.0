@@ -1,82 +1,40 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41256 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751079AbeBHW6F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Feb 2018 17:58:05 -0500
-Date: Thu, 8 Feb 2018 17:58:04 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [GIT PULL] please pull nfsd changes for 4.16
-Message-ID: <20180208225804.GA17653@fieldses.org>
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:12859 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1752214AbeBIB1I (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Feb 2018 20:27:08 -0500
+To: <bfields@redhat.com>
+CC: <linux-nfs@vger.kernel.org>
+From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+Subject: Questions about pynfs:testLargeData-WRT5
+Message-ID: <918ad604-2365-b612-56a2-8d88a29f77ff@cn.fujitsu.com>
+Date: Fri, 9 Feb 2018 09:27:00 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 4.16 from
+Hi,Bruce
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.16
+I ran pynfs on the RHEL7.4GA with different kernels(3.10.0-830.el7,4.15). The testLargeData:WRT5 failed with broken pipe. I investigated pynfs code and got the following questions.
 
-This request is late, apologies.
+1.The intent of WRT5
+To check whether the server could handle a too-large value over NFSSVC_MAXBLKSIZE.
 
-But it's also a fairly small update this time around.  Some cleanup,
-RDMA fixes, overlayfs fixes, and a fix for an NFSv4 state bug.
+2.The expected procedure when test gets passed
+The server could write down the oversize data successfully sent by client and return NFS4_OK.
+Then, client could read back the data from server.
+(Actually, the test failed with broken pipe and did not return packet information.)
 
-The bigger deal for nfsd this time around is Jeff Layton's
-already-merged i_version patches.  This series has a minor conflict with
-that one, and the resolution should be obvious.  (Stephen Rothwell has
-been carrying it in linux-next for what it's worth.)
+3.The nfs server's standrd procedure of handling oversize data
+It seems that the related error is not defined in the RFC3530. Whether the server should return any NFSERR before ceasing receving ?
 
---b.
+Thanks for check the above questions.
 
-Amir Goldstein (2):
-      nfsd: encode stat->mtime for getattr instead of inode->i_mtime
-      nfsd: store stat times in fill_pre_wcc() instead of inode times
+Best regards!
 
-Arnd Bergmann (1):
-      NFSD: hide unused svcxdr_dupstr()
+--
+Lu Xinyu 
+--
 
-Benjamin Coddington (1):
-      nfsd4: permit layoutget of executable-only files
 
-Christoph Hellwig (1):
-      sunrpc: remove dead code in svc_sock_setbufsize
-
-Chuck Lever (2):
-      svcrdma: Post Receives in the Receive completion handler
-      svcrdma: Fix Read chunk round-up
-
-Elena Reshetova (3):
-      lockd: convert nsm_handle.sm_count from atomic_t to refcount_t
-      lockd: convert nlm_lockowner.count from atomic_t to refcount_t
-      lockd: convert nlm_rqst.a_count from atomic_t to refcount_t
-
-J. Bruce Fields (2):
-      nfsd4: don't set lock stateid's sc_type to CLOSED
-      nfsd: return RESOURCE not GARBAGE_ARGS on too many ops
-
-Trond Myklebust (1):
-      nfsd: Detect unhashed stids in nfsd4_verify_open_stid()
-
- fs/lockd/clntproc.c                        | 14 +++++++-------
- fs/lockd/host.c                            |  2 +-
- fs/lockd/mon.c                             | 14 +++++++-------
- fs/lockd/svcproc.c                         |  2 +-
- fs/locks.c                                 |  6 ++----
- fs/nfsd/nfs3xdr.c                          | 31 +++++++++++++++++++++++++++++-
- fs/nfsd/nfs4proc.c                         |  9 ++++++---
- fs/nfsd/nfs4state.c                        |  6 ++----
- fs/nfsd/nfs4xdr.c                          | 16 +++++++++------
- fs/nfsd/nfsfh.h                            | 28 ++++++---------------------
- fs/nfsd/nfsxdr.c                           |  1 +
- include/linux/lockd/lockd.h                |  6 +++---
- include/linux/sunrpc/svc_rdma.h            |  2 --
- net/sunrpc/svcsock.c                       | 14 --------------
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |  5 -----
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c    |  9 +--------
- net/sunrpc/xprtrdma/svc_rdma_rw.c          | 12 ++++++++----
- net/sunrpc/xprtrdma/svc_rdma_sendto.c      |  6 ------
- net/sunrpc/xprtrdma/svc_rdma_transport.c   | 25 +++++++-----------------
- 19 files changed, 92 insertions(+), 116 deletions(-)
