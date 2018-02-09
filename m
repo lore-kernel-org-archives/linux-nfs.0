@@ -1,80 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43588 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753114AbeBIWVn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 9 Feb 2018 17:21:43 -0500
-Date: Fri, 9 Feb 2018 17:21:42 -0500
-To: James Ettle <james@ettle.org.uk>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fix unaligned access in gss_{get,verify}_mic_v2() on
- sparc64
-Message-ID: <20180209222142.GA6474@fieldses.org>
-References: <5b06ae76-dae4-db81-8e1c-ea6ac035f5f1@ettle.org.uk>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:30188 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1753097AbeBIWtV (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 17:49:21 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
+CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [GIT PULL] Please pull NFS client bugfixes and updates
+Date: Fri, 9 Feb 2018 22:49:16 +0000
+Message-ID: <1518216553.12826.3.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5b06ae76-dae4-db81-8e1c-ea6ac035f5f1@ettle.org.uk>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for missing this.  I still don't see it upstream so have queued it
-up in my tree for 4.16.
+SGkgTGludXMsDQoNCkEgZmV3IGJ1Z2ZpeGVzIGFuZCBzb21lIHNtYWxsIHN1bnJwYyBsYXRlbmN5
+L3BlcmZvcm1hbmNlIGltcHJvdmVtZW50cw0KYmVmb3JlIHRoZSBtZXJnZSB3aW5kb3cgY2xvc2Vz
+Og0KDQpUaGUgZm9sbG93aW5nIGNoYW5nZXMgc2luY2UgY29tbWl0IGUyMzFjNjg3OWNmZDQ0ZTRm
+ZmZkMzg0YmI2ZGQ3ZDMxMzI0OWE1MjM6DQoNCiAgTkZTOiBGaXggYSByYWNlIGJldHdlZW4gbW1h
+cCgpIGFuZCBPX0RJUkVDVCAoMjAxOC0wMS0yOCAyMjowMDoxNSAtMDUwMCkNCg0KYXJlIGF2YWls
+YWJsZSBpbiB0aGUgR2l0IHJlcG9zaXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5v
+cmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE2LTINCg0K
+Zm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIDBhZmE2YjQ0MTI5ODgwMTlkYjE0YzZiZmI4
+YzZjYmRmMTIwY2E5YWQ6DQoNCiAgU1VOUlBDOiBEb24ndCBjYWxsIF9fVURQWF9JTkNfU1RBVFMo
+KSBmcm9tIGEgcHJlZW1wdGlibGUgY29udGV4dCAoMjAxOC0wMi0wOSAwOTozOTo0MiAtMDUwMCkN
+Cg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgYW5kIGxh
+dGVuY3kgaW1wcm92ZW1lbnRzIGZvciBMaW51eCA0LjE2DQoNCkhpZ2hsaWdodHMgaW5jbHVkZToN
+Cg0KU3RhYmxlIGZpeGVzOg0KLSBGaXggYW4gaW5jb3JyZWN0IGNhbGN1bGF0aW9uIG9mIHRoZSBS
+RE1BIHNlbmQgc2NhdHRlciBnYXRoZXIgZWxlbWVudCBsaW1pdA0KLSBGaXggYW4gT29wcyB3aGVu
+IGF0dGVtcHRpbmcgdG8gZnJlZSByZXNvdXJjZXMgYWZ0ZXIgUkRNQSBkZXZpY2UgcmVtb3ZhbA0K
+DQpCdWdmaXhlczoNCi0gU1VOUlBDOiBFbnN1cmUgd2UgYWx3YXlzIHJlbGVhc2UgdGhlIFRDUCBz
+b2NrZXQgaW4gYSB0aW1lbHkgZmFzaGlvbiB3aGVuDQogIHRoZSBjb25uZWN0aW9uIGlzIHNodXQg
+ZG93bi4NCi0gU1VOUlBDOiBEb24ndCBjYWxsIF9fVURQWF9JTkNfU1RBVFMoKSBmcm9tIGEgcHJl
+ZW1wdGlibGUgY29udGV4dA0KDQpMYXRlbmN5L1BlcmZvcm1hbmNlOg0KLSBTVU5SUEM6IFF1ZXVl
+IGxhdGVuY3kgc2Vuc2l0aXZlIHNvY2tldCB0YXNrcyB0byB0aGUgbGVzcyBjb250ZW5kZWQNCiAg
+eHBydGlvZCBxdWV1ZQ0KLSBTVU5SUEM6IE1ha2UgdGhlIHhwcnRpb2Qgd29ya3F1ZXVlIHVuYm91
+bmRlZC4NCi0gU1VOUlBDOiBNYWtlIHRoZSBycGNpb2Qgd29ya3F1ZXVlIHVuYm91bmRlZA0KDQot
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tDQpDaHVjayBMZXZlciAoMik6DQogICAgICB4cHJ0cmRtYTogRml4IGNhbGN1bGF0aW9u
+IG9mIHJpX21heF9zZW5kX3NnZXMNCiAgICAgIHhwcnRyZG1hOiBGaXggQlVHIGFmdGVyIGEgZGV2
+aWNlIHJlbW92YWwNCg0KT2xnYSBLb3JuaWV2c2thaWEgKDEpOg0KICAgICAgZml4IHBhcmFsbGVs
+aXNtIGZvciBycGMgdGFza3MNCg0KVHJvbmQgTXlrbGVidXN0ICg1KToNCiAgICAgIFNVTlJQQzog
+RW5zdXJlIHdlIGFsd2F5cyBjbG9zZSB0aGUgc29ja2V0IGFmdGVyIGEgY29ubmVjdGlvbiBzaHV0
+cyBkb3duDQogICAgICBNZXJnZSB0YWcgJ25mcy1yZG1hLWZvci00LjE2LTInIG9mIGdpdDovL2dp
+dC5saW51eC1uZnMub3JnL3Byb2plY3RzL2FubmEvbGludXgtbmZzDQogICAgICBTVU5SUEM6IFF1
+ZXVlIGxhdGVuY3ktc2Vuc2l0aXZlIHNvY2tldCB0YXNrcyB0byB4cHJ0aW9kDQogICAgICBNYWtl
+IHRoZSB4cHJ0aW9kIHdvcmtxdWV1ZSB1bmJvdW5kZWQuDQogICAgICBTVU5SUEM6IERvbid0IGNh
+bGwgX19VRFBYX0lOQ19TVEFUUygpIGZyb20gYSBwcmVlbXB0aWJsZSBjb250ZXh0DQoNCiBpbmNs
+dWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5oICAgfCAgMyArKysNCiBuZXQvc3VucnBjL3NjaGVkLmMg
+ICAgICAgICAgICAgfCAxNiArKysrKysrKysrKysrKy0tDQogbmV0L3N1bnJwYy94cHJ0LmMgICAg
+ICAgICAgICAgIHwgIDMgKystDQogbmV0L3N1bnJwYy94cHJ0cmRtYS9ycGNfcmRtYS5jIHwgIDIg
+Ky0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgICAgfCAgOCArKysrLS0tLQ0KIG5ldC9z
+dW5ycGMveHBydHNvY2suYyAgICAgICAgICB8IDI3ICsrKysrKysrKysrKy0tLS0tLS0tLS0tLS0t
+LQ0KIDYgZmlsZXMgY2hhbmdlZCwgMzYgaW5zZXJ0aW9ucygrKSwgMjMgZGVsZXRpb25zKC0pDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5
+RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
---b.
-
-On Sun, Jan 28, 2018 at 08:34:16PM +0000, James Ettle wrote:
-> I submitted this patch around a month ago but did it mid-thread and it without the proper subject line. I think it fell off the belt so here it is again. Checked against 4.14.15.
-> 
-> 
-> commit a90324ca784dea5a7259a2672c24626f5c03f576
-> Author: James Ettle <james@ettle.org.uk>
-> Date:   Thu Dec 7 00:50:28 2017 +0000
-> 
->     Fix unaligned access on sparc64.
-> 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_seal.c b/net/sunrpc/auth_gss/gss_krb5_seal.c
-> index 1d74d653e6c0..94a2b3f082a8 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_seal.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_seal.c
-> @@ -177,6 +177,7 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
->  	u64 seq_send;
->  	u8 *cksumkey;
->  	unsigned int cksum_usage;
-> +	__be64 seq_send_be64;
-> 
->  	dprintk("RPC:       %s\n", __func__);
-> 
-> @@ -187,7 +188,9 @@ gss_get_mic_v2(struct krb5_ctx *ctx, struct xdr_buf *text,
->  	spin_lock(&krb5_seq_lock);
->  	seq_send = ctx->seq_send64++;
->  	spin_unlock(&krb5_seq_lock);
-> -	*((__be64 *)(krb5_hdr + 8)) = cpu_to_be64(seq_send);
-> +
-> +	seq_send_be64 = cpu_to_be64(seq_send);
-> +	memcpy(krb5_hdr + 8, (char *) &seq_send_be64, 8);
-> 
->  	if (ctx->initiate) {
->  		cksumkey = ctx->initiator_sign;
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-> index dcf9515d9aef..8ea6e30d6f3f 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-> @@ -155,10 +155,12 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
->  	u8 flags;
->  	int i;
->  	unsigned int cksum_usage;
-> -
-> +	__be16 be16_ptr;
-> +	
->  	dprintk("RPC:       %s\n", __func__);
-> 
-> -	if (be16_to_cpu(*((__be16 *)ptr)) != KG2_TOK_MIC)
-> +	memcpy(&be16_ptr, (char *) ptr, 2);
-> +	if (be16_to_cpu(be16_ptr) != KG2_TOK_MIC)
->  		return GSS_S_DEFECTIVE_TOKEN;
-> 
->  	flags = ptr[2];
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
