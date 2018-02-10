@@ -1,65 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f194.google.com ([209.85.216.194]:42693 "EHLO
-        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753142AbeBJBHG (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 20:07:06 -0500
-From: Thiago Rafael Becker <thiago.becker@gmail.com>
-To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
-Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        bfields@fieldses.org, jlayton@kernel.org, davem@davemloft.net,
-        Thiago Rafael Becker <thiago.becker@gmail.com>
-Subject: [PATCH] sunrpc: Add task's xid to 'not responding' messages on call_timeout
-Date: Fri,  9 Feb 2018 23:06:28 -0200
-Message-Id: <20180210010628.19792-1-thiago.becker@gmail.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:27826 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751299AbeBJBl7 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 20:41:59 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "thiago.becker@gmail.com" <thiago.becker@gmail.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "jlayton@kernel.org" <jlayton@kernel.org>
+Subject: Re: [PATCH] sunrpc: Add task's xid to 'not responding' messages on
+ call_timeout
+Date: Sat, 10 Feb 2018 01:41:55 +0000
+Message-ID: <1518226912.22856.3.camel@primarydata.com>
+References: <20180210010628.19792-1-thiago.becker@gmail.com>
+In-Reply-To: <20180210010628.19792-1-thiago.becker@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When investigating reasons for nfs failures, packet dumps arei eventually used.
-Finding the rpc that generated the failure is done by comparing all sent
-rpc calls and all received rpc replies for those which are unanswered,
-which is prone to errors like
-- Slow server responses
-- Incomplete and uncaptured packets in the packet dump
-- The heuristics used to inspect packets failing to interpret one
-
-This patch adds the xid of rpc_tasks to the 'not responding' messages
-in call_timeout to make these analysis more precise.
-
-Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
----
- net/sunrpc/clnt.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index e2a4184f3c5d..83c8aca951f4 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -2214,9 +2214,10 @@ call_timeout(struct rpc_task *task)
- 	}
- 	if (RPC_IS_SOFT(task)) {
- 		if (clnt->cl_chatty) {
--			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
-+			printk(KERN_NOTICE "%s: server %s not responding, timed out (xid: %x)\n",
- 				clnt->cl_program->name,
--				task->tk_xprt->servername);
-+				task->tk_xprt->servername,
-+				be32_to_cpu(task->tk_rqstp->rq_xid));
- 		}
- 		if (task->tk_flags & RPC_TASK_TIMEOUT)
- 			rpc_exit(task, -ETIMEDOUT);
-@@ -2228,9 +2229,10 @@ call_timeout(struct rpc_task *task)
- 	if (!(task->tk_flags & RPC_CALL_MAJORSEEN)) {
- 		task->tk_flags |= RPC_CALL_MAJORSEEN;
- 		if (clnt->cl_chatty) {
--			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
-+			printk(KERN_NOTICE "%s: server %s not responding, still trying (xid: %x)\n",
- 			clnt->cl_program->name,
--			task->tk_xprt->servername);
-+			task->tk_xprt->servername,
-+			be32_to_cpu(task->tk_rqstp->rq_xid));
- 		}
- 	}
- 	rpc_force_rebind(clnt);
--- 
-2.14.3
+T24gRnJpLCAyMDE4LTAyLTA5IGF0IDIzOjA2IC0wMjAwLCBUaGlhZ28gUmFmYWVsIEJlY2tlciB3
+cm90ZToNCj4gV2hlbiBpbnZlc3RpZ2F0aW5nIHJlYXNvbnMgZm9yIG5mcyBmYWlsdXJlcywgcGFj
+a2V0IGR1bXBzIGFyZWkNCj4gZXZlbnR1YWxseSB1c2VkLg0KPiBGaW5kaW5nIHRoZSBycGMgdGhh
+dCBnZW5lcmF0ZWQgdGhlIGZhaWx1cmUgaXMgZG9uZSBieSBjb21wYXJpbmcgYWxsDQo+IHNlbnQN
+Cj4gcnBjIGNhbGxzIGFuZCBhbGwgcmVjZWl2ZWQgcnBjIHJlcGxpZXMgZm9yIHRob3NlIHdoaWNo
+IGFyZQ0KPiB1bmFuc3dlcmVkLA0KPiB3aGljaCBpcyBwcm9uZSB0byBlcnJvcnMgbGlrZQ0KPiAt
+IFNsb3cgc2VydmVyIHJlc3BvbnNlcw0KPiAtIEluY29tcGxldGUgYW5kIHVuY2FwdHVyZWQgcGFj
+a2V0cyBpbiB0aGUgcGFja2V0IGR1bXANCj4gLSBUaGUgaGV1cmlzdGljcyB1c2VkIHRvIGluc3Bl
+Y3QgcGFja2V0cyBmYWlsaW5nIHRvIGludGVycHJldCBvbmUNCj4gDQo+IFRoaXMgcGF0Y2ggYWRk
+cyB0aGUgeGlkIG9mIHJwY190YXNrcyB0byB0aGUgJ25vdCByZXNwb25kaW5nJyBtZXNzYWdlcw0K
+PiBpbiBjYWxsX3RpbWVvdXQgdG8gbWFrZSB0aGVzZSBhbmFseXNpcyBtb3JlIHByZWNpc2UuDQo+
+IA0KPiBTaWduZWQtb2ZmLWJ5OiBUaGlhZ28gUmFmYWVsIEJlY2tlciA8dGhpYWdvLmJlY2tlckBn
+bWFpbC5jb20+DQo+IC0tLQ0KPiAgbmV0L3N1bnJwYy9jbG50LmMgfCAxMCArKysrKystLS0tDQo+
+ICAxIGZpbGUgY2hhbmdlZCwgNiBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiANCj4g
+ZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gaW5k
+ZXggZTJhNDE4NGYzYzVkLi44M2M4YWNhOTUxZjQgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMv
+Y2xudC5jDQo+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IEBAIC0yMjE0LDkgKzIyMTQsMTAg
+QEAgY2FsbF90aW1lb3V0KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gIAl9DQo+ICAJaWYgKFJQ
+Q19JU19TT0ZUKHRhc2spKSB7DQo+ICAJCWlmIChjbG50LT5jbF9jaGF0dHkpIHsNCj4gLQkJCXBy
+aW50ayhLRVJOX05PVElDRSAiJXM6IHNlcnZlciAlcyBub3QNCj4gcmVzcG9uZGluZywgdGltZWQg
+b3V0XG4iLA0KPiArCQkJcHJpbnRrKEtFUk5fTk9USUNFICIlczogc2VydmVyICVzIG5vdA0KPiBy
+ZXNwb25kaW5nLCB0aW1lZCBvdXQgKHhpZDogJXgpXG4iLA0KPiAgCQkJCWNsbnQtPmNsX3Byb2dy
+YW0tPm5hbWUsDQo+IC0JCQkJdGFzay0+dGtfeHBydC0+c2VydmVybmFtZSk7DQo+ICsJCQkJdGFz
+ay0+dGtfeHBydC0+c2VydmVybmFtZSwNCj4gKwkJCQliZTMyX3RvX2NwdSh0YXNrLT50a19ycXN0
+cC0NCj4gPnJxX3hpZCkpOw0KPiAgCQl9DQo+ICAJCWlmICh0YXNrLT50a19mbGFncyAmIFJQQ19U
+QVNLX1RJTUVPVVQpDQo+ICAJCQlycGNfZXhpdCh0YXNrLCAtRVRJTUVET1VUKTsNCj4gQEAgLTIy
+MjgsOSArMjIyOSwxMCBAQCBjYWxsX3RpbWVvdXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAg
+CWlmICghKHRhc2stPnRrX2ZsYWdzICYgUlBDX0NBTExfTUFKT1JTRUVOKSkgew0KPiAgCQl0YXNr
+LT50a19mbGFncyB8PSBSUENfQ0FMTF9NQUpPUlNFRU47DQo+ICAJCWlmIChjbG50LT5jbF9jaGF0
+dHkpIHsNCj4gLQkJCXByaW50ayhLRVJOX05PVElDRSAiJXM6IHNlcnZlciAlcyBub3QNCj4gcmVz
+cG9uZGluZywgc3RpbGwgdHJ5aW5nXG4iLA0KPiArCQkJcHJpbnRrKEtFUk5fTk9USUNFICIlczog
+c2VydmVyICVzIG5vdA0KPiByZXNwb25kaW5nLCBzdGlsbCB0cnlpbmcgKHhpZDogJXgpXG4iLA0K
+PiAgCQkJY2xudC0+Y2xfcHJvZ3JhbS0+bmFtZSwNCj4gLQkJCXRhc2stPnRrX3hwcnQtPnNlcnZl
+cm5hbWUpOw0KPiArCQkJdGFzay0+dGtfeHBydC0+c2VydmVybmFtZSwNCj4gKwkJCWJlMzJfdG9f
+Y3B1KHRhc2stPnRrX3Jxc3RwLT5ycV94aWQpKTsNCj4gIAkJfQ0KPiAgCX0NCj4gIAlycGNfZm9y
+Y2VfcmViaW5kKGNsbnQpOw0KDQpOQUNLLiBXZSBzaG91bGQgbm90IGJlIGxvZ2dpbmcgaW50ZXJu
+YWwgaW5mb3JtYXRpb24gc3VjaCBhcyBYSURzIGFzDQpLRVJOX05PVElDRSBtZXNzYWdlcy4gSWYg
+eW91IHdhbnQgdGhpcyBpbmZvcm1hdGlvbiwgeW91IGNhbiBleHRyYWN0IGl0DQp5b3Vyc2VsZjsg
+dGhlcmUgYXJlIGFscmVhZHkgcGxlbnR5IG9mIHdheXMgdG8gZG8gc28gYXMgYSBwcml2aWxlZ2Vk
+DQp1c2VyLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
+bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
