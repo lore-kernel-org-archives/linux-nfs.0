@@ -1,60 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:30188 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753097AbeBIWtV (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 17:49:21 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes and updates
-Date: Fri, 9 Feb 2018 22:49:16 +0000
-Message-ID: <1518216553.12826.3.camel@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qt0-f194.google.com ([209.85.216.194]:42693 "EHLO
+        mail-qt0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753142AbeBJBHG (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 20:07:06 -0500
+From: Thiago Rafael Becker <thiago.becker@gmail.com>
+To: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        bfields@fieldses.org, jlayton@kernel.org, davem@davemloft.net,
+        Thiago Rafael Becker <thiago.becker@gmail.com>
+Subject: [PATCH] sunrpc: Add task's xid to 'not responding' messages on call_timeout
+Date: Fri,  9 Feb 2018 23:06:28 -0200
+Message-Id: <20180210010628.19792-1-thiago.becker@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNCkEgZmV3IGJ1Z2ZpeGVzIGFuZCBzb21lIHNtYWxsIHN1bnJwYyBsYXRlbmN5
-L3BlcmZvcm1hbmNlIGltcHJvdmVtZW50cw0KYmVmb3JlIHRoZSBtZXJnZSB3aW5kb3cgY2xvc2Vz
-Og0KDQpUaGUgZm9sbG93aW5nIGNoYW5nZXMgc2luY2UgY29tbWl0IGUyMzFjNjg3OWNmZDQ0ZTRm
-ZmZkMzg0YmI2ZGQ3ZDMxMzI0OWE1MjM6DQoNCiAgTkZTOiBGaXggYSByYWNlIGJldHdlZW4gbW1h
-cCgpIGFuZCBPX0RJUkVDVCAoMjAxOC0wMS0yOCAyMjowMDoxNSAtMDUwMCkNCg0KYXJlIGF2YWls
-YWJsZSBpbiB0aGUgR2l0IHJlcG9zaXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5v
-cmcvcHJvamVjdHMvdHJvbmRteS9saW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE2LTINCg0K
-Zm9yIHlvdSB0byBmZXRjaCBjaGFuZ2VzIHVwIHRvIDBhZmE2YjQ0MTI5ODgwMTlkYjE0YzZiZmI4
-YzZjYmRmMTIwY2E5YWQ6DQoNCiAgU1VOUlBDOiBEb24ndCBjYWxsIF9fVURQWF9JTkNfU1RBVFMo
-KSBmcm9tIGEgcHJlZW1wdGlibGUgY29udGV4dCAoMjAxOC0wMi0wOSAwOTozOTo0MiAtMDUwMCkN
-Cg0KQ2hlZXJzDQogIFRyb25kDQoNCi0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgYW5kIGxh
-dGVuY3kgaW1wcm92ZW1lbnRzIGZvciBMaW51eCA0LjE2DQoNCkhpZ2hsaWdodHMgaW5jbHVkZToN
-Cg0KU3RhYmxlIGZpeGVzOg0KLSBGaXggYW4gaW5jb3JyZWN0IGNhbGN1bGF0aW9uIG9mIHRoZSBS
-RE1BIHNlbmQgc2NhdHRlciBnYXRoZXIgZWxlbWVudCBsaW1pdA0KLSBGaXggYW4gT29wcyB3aGVu
-IGF0dGVtcHRpbmcgdG8gZnJlZSByZXNvdXJjZXMgYWZ0ZXIgUkRNQSBkZXZpY2UgcmVtb3ZhbA0K
-DQpCdWdmaXhlczoNCi0gU1VOUlBDOiBFbnN1cmUgd2UgYWx3YXlzIHJlbGVhc2UgdGhlIFRDUCBz
-b2NrZXQgaW4gYSB0aW1lbHkgZmFzaGlvbiB3aGVuDQogIHRoZSBjb25uZWN0aW9uIGlzIHNodXQg
-ZG93bi4NCi0gU1VOUlBDOiBEb24ndCBjYWxsIF9fVURQWF9JTkNfU1RBVFMoKSBmcm9tIGEgcHJl
-ZW1wdGlibGUgY29udGV4dA0KDQpMYXRlbmN5L1BlcmZvcm1hbmNlOg0KLSBTVU5SUEM6IFF1ZXVl
-IGxhdGVuY3kgc2Vuc2l0aXZlIHNvY2tldCB0YXNrcyB0byB0aGUgbGVzcyBjb250ZW5kZWQNCiAg
-eHBydGlvZCBxdWV1ZQ0KLSBTVU5SUEM6IE1ha2UgdGhlIHhwcnRpb2Qgd29ya3F1ZXVlIHVuYm91
-bmRlZC4NCi0gU1VOUlBDOiBNYWtlIHRoZSBycGNpb2Qgd29ya3F1ZXVlIHVuYm91bmRlZA0KDQot
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tDQpDaHVjayBMZXZlciAoMik6DQogICAgICB4cHJ0cmRtYTogRml4IGNhbGN1bGF0aW9u
-IG9mIHJpX21heF9zZW5kX3NnZXMNCiAgICAgIHhwcnRyZG1hOiBGaXggQlVHIGFmdGVyIGEgZGV2
-aWNlIHJlbW92YWwNCg0KT2xnYSBLb3JuaWV2c2thaWEgKDEpOg0KICAgICAgZml4IHBhcmFsbGVs
-aXNtIGZvciBycGMgdGFza3MNCg0KVHJvbmQgTXlrbGVidXN0ICg1KToNCiAgICAgIFNVTlJQQzog
-RW5zdXJlIHdlIGFsd2F5cyBjbG9zZSB0aGUgc29ja2V0IGFmdGVyIGEgY29ubmVjdGlvbiBzaHV0
-cyBkb3duDQogICAgICBNZXJnZSB0YWcgJ25mcy1yZG1hLWZvci00LjE2LTInIG9mIGdpdDovL2dp
-dC5saW51eC1uZnMub3JnL3Byb2plY3RzL2FubmEvbGludXgtbmZzDQogICAgICBTVU5SUEM6IFF1
-ZXVlIGxhdGVuY3ktc2Vuc2l0aXZlIHNvY2tldCB0YXNrcyB0byB4cHJ0aW9kDQogICAgICBNYWtl
-IHRoZSB4cHJ0aW9kIHdvcmtxdWV1ZSB1bmJvdW5kZWQuDQogICAgICBTVU5SUEM6IERvbid0IGNh
-bGwgX19VRFBYX0lOQ19TVEFUUygpIGZyb20gYSBwcmVlbXB0aWJsZSBjb250ZXh0DQoNCiBpbmNs
-dWRlL2xpbnV4L3N1bnJwYy9zY2hlZC5oICAgfCAgMyArKysNCiBuZXQvc3VucnBjL3NjaGVkLmMg
-ICAgICAgICAgICAgfCAxNiArKysrKysrKysrKysrKy0tDQogbmV0L3N1bnJwYy94cHJ0LmMgICAg
-ICAgICAgICAgIHwgIDMgKystDQogbmV0L3N1bnJwYy94cHJ0cmRtYS9ycGNfcmRtYS5jIHwgIDIg
-Ky0NCiBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgICAgfCAgOCArKysrLS0tLQ0KIG5ldC9z
-dW5ycGMveHBydHNvY2suYyAgICAgICAgICB8IDI3ICsrKysrKysrKysrKy0tLS0tLS0tLS0tLS0t
-LQ0KIDYgZmlsZXMgY2hhbmdlZCwgMzYgaW5zZXJ0aW9ucygrKSwgMjMgZGVsZXRpb25zKC0pDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5
-RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+When investigating reasons for nfs failures, packet dumps arei eventually used.
+Finding the rpc that generated the failure is done by comparing all sent
+rpc calls and all received rpc replies for those which are unanswered,
+which is prone to errors like
+- Slow server responses
+- Incomplete and uncaptured packets in the packet dump
+- The heuristics used to inspect packets failing to interpret one
+
+This patch adds the xid of rpc_tasks to the 'not responding' messages
+in call_timeout to make these analysis more precise.
+
+Signed-off-by: Thiago Rafael Becker <thiago.becker@gmail.com>
+---
+ net/sunrpc/clnt.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index e2a4184f3c5d..83c8aca951f4 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -2214,9 +2214,10 @@ call_timeout(struct rpc_task *task)
+ 	}
+ 	if (RPC_IS_SOFT(task)) {
+ 		if (clnt->cl_chatty) {
+-			printk(KERN_NOTICE "%s: server %s not responding, timed out\n",
++			printk(KERN_NOTICE "%s: server %s not responding, timed out (xid: %x)\n",
+ 				clnt->cl_program->name,
+-				task->tk_xprt->servername);
++				task->tk_xprt->servername,
++				be32_to_cpu(task->tk_rqstp->rq_xid));
+ 		}
+ 		if (task->tk_flags & RPC_TASK_TIMEOUT)
+ 			rpc_exit(task, -ETIMEDOUT);
+@@ -2228,9 +2229,10 @@ call_timeout(struct rpc_task *task)
+ 	if (!(task->tk_flags & RPC_CALL_MAJORSEEN)) {
+ 		task->tk_flags |= RPC_CALL_MAJORSEEN;
+ 		if (clnt->cl_chatty) {
+-			printk(KERN_NOTICE "%s: server %s not responding, still trying\n",
++			printk(KERN_NOTICE "%s: server %s not responding, still trying (xid: %x)\n",
+ 			clnt->cl_program->name,
+-			task->tk_xprt->servername);
++			task->tk_xprt->servername,
++			be32_to_cpu(task->tk_rqstp->rq_xid));
+ 		}
+ 	}
+ 	rpc_force_rebind(clnt);
+-- 
+2.14.3
 
