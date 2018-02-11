@@ -1,66 +1,81 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:27826 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751299AbeBJBl7 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 9 Feb 2018 20:41:59 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "thiago.becker@gmail.com" <thiago.becker@gmail.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "davem@davemloft.net" <davem@davemloft.net>,
-        "jlayton@kernel.org" <jlayton@kernel.org>
-Subject: Re: [PATCH] sunrpc: Add task's xid to 'not responding' messages on
- call_timeout
-Date: Sat, 10 Feb 2018 01:41:55 +0000
-Message-ID: <1518226912.22856.3.camel@primarydata.com>
-References: <20180210010628.19792-1-thiago.becker@gmail.com>
-In-Reply-To: <20180210010628.19792-1-thiago.becker@gmail.com>
+Received: from mail-db5eur01on0106.outbound.protection.outlook.com ([104.47.2.106]:44960
+        "EHLO EUR01-DB5-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751862AbeBKGzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 11 Feb 2018 01:55:19 -0500
+From: "Wang, Alan 1. (NSB - CN/Hangzhou)" <alan.1.wang@nokia-sbell.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+CC: "neilb@suse.com" <neilb@suse.com>
+Subject: A special case in write_flush which cause the umount busy
+Date: Sun, 11 Feb 2018 06:55:16 +0000
+Message-ID: <VI1PR07MB342127E2A55088F691693A3BA2F00@VI1PR07MB3421.eurprd07.prod.outlook.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTAyLTA5IGF0IDIzOjA2IC0wMjAwLCBUaGlhZ28gUmFmYWVsIEJlY2tlciB3
-cm90ZToNCj4gV2hlbiBpbnZlc3RpZ2F0aW5nIHJlYXNvbnMgZm9yIG5mcyBmYWlsdXJlcywgcGFj
-a2V0IGR1bXBzIGFyZWkNCj4gZXZlbnR1YWxseSB1c2VkLg0KPiBGaW5kaW5nIHRoZSBycGMgdGhh
-dCBnZW5lcmF0ZWQgdGhlIGZhaWx1cmUgaXMgZG9uZSBieSBjb21wYXJpbmcgYWxsDQo+IHNlbnQN
-Cj4gcnBjIGNhbGxzIGFuZCBhbGwgcmVjZWl2ZWQgcnBjIHJlcGxpZXMgZm9yIHRob3NlIHdoaWNo
-IGFyZQ0KPiB1bmFuc3dlcmVkLA0KPiB3aGljaCBpcyBwcm9uZSB0byBlcnJvcnMgbGlrZQ0KPiAt
-IFNsb3cgc2VydmVyIHJlc3BvbnNlcw0KPiAtIEluY29tcGxldGUgYW5kIHVuY2FwdHVyZWQgcGFj
-a2V0cyBpbiB0aGUgcGFja2V0IGR1bXANCj4gLSBUaGUgaGV1cmlzdGljcyB1c2VkIHRvIGluc3Bl
-Y3QgcGFja2V0cyBmYWlsaW5nIHRvIGludGVycHJldCBvbmUNCj4gDQo+IFRoaXMgcGF0Y2ggYWRk
-cyB0aGUgeGlkIG9mIHJwY190YXNrcyB0byB0aGUgJ25vdCByZXNwb25kaW5nJyBtZXNzYWdlcw0K
-PiBpbiBjYWxsX3RpbWVvdXQgdG8gbWFrZSB0aGVzZSBhbmFseXNpcyBtb3JlIHByZWNpc2UuDQo+
-IA0KPiBTaWduZWQtb2ZmLWJ5OiBUaGlhZ28gUmFmYWVsIEJlY2tlciA8dGhpYWdvLmJlY2tlckBn
-bWFpbC5jb20+DQo+IC0tLQ0KPiAgbmV0L3N1bnJwYy9jbG50LmMgfCAxMCArKysrKystLS0tDQo+
-ICAxIGZpbGUgY2hhbmdlZCwgNiBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiANCj4g
-ZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMvY2xudC5jIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gaW5k
-ZXggZTJhNDE4NGYzYzVkLi44M2M4YWNhOTUxZjQgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMv
-Y2xudC5jDQo+ICsrKyBiL25ldC9zdW5ycGMvY2xudC5jDQo+IEBAIC0yMjE0LDkgKzIyMTQsMTAg
-QEAgY2FsbF90aW1lb3V0KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gIAl9DQo+ICAJaWYgKFJQ
-Q19JU19TT0ZUKHRhc2spKSB7DQo+ICAJCWlmIChjbG50LT5jbF9jaGF0dHkpIHsNCj4gLQkJCXBy
-aW50ayhLRVJOX05PVElDRSAiJXM6IHNlcnZlciAlcyBub3QNCj4gcmVzcG9uZGluZywgdGltZWQg
-b3V0XG4iLA0KPiArCQkJcHJpbnRrKEtFUk5fTk9USUNFICIlczogc2VydmVyICVzIG5vdA0KPiBy
-ZXNwb25kaW5nLCB0aW1lZCBvdXQgKHhpZDogJXgpXG4iLA0KPiAgCQkJCWNsbnQtPmNsX3Byb2dy
-YW0tPm5hbWUsDQo+IC0JCQkJdGFzay0+dGtfeHBydC0+c2VydmVybmFtZSk7DQo+ICsJCQkJdGFz
-ay0+dGtfeHBydC0+c2VydmVybmFtZSwNCj4gKwkJCQliZTMyX3RvX2NwdSh0YXNrLT50a19ycXN0
-cC0NCj4gPnJxX3hpZCkpOw0KPiAgCQl9DQo+ICAJCWlmICh0YXNrLT50a19mbGFncyAmIFJQQ19U
-QVNLX1RJTUVPVVQpDQo+ICAJCQlycGNfZXhpdCh0YXNrLCAtRVRJTUVET1VUKTsNCj4gQEAgLTIy
-MjgsOSArMjIyOSwxMCBAQCBjYWxsX3RpbWVvdXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiAg
-CWlmICghKHRhc2stPnRrX2ZsYWdzICYgUlBDX0NBTExfTUFKT1JTRUVOKSkgew0KPiAgCQl0YXNr
-LT50a19mbGFncyB8PSBSUENfQ0FMTF9NQUpPUlNFRU47DQo+ICAJCWlmIChjbG50LT5jbF9jaGF0
-dHkpIHsNCj4gLQkJCXByaW50ayhLRVJOX05PVElDRSAiJXM6IHNlcnZlciAlcyBub3QNCj4gcmVz
-cG9uZGluZywgc3RpbGwgdHJ5aW5nXG4iLA0KPiArCQkJcHJpbnRrKEtFUk5fTk9USUNFICIlczog
-c2VydmVyICVzIG5vdA0KPiByZXNwb25kaW5nLCBzdGlsbCB0cnlpbmcgKHhpZDogJXgpXG4iLA0K
-PiAgCQkJY2xudC0+Y2xfcHJvZ3JhbS0+bmFtZSwNCj4gLQkJCXRhc2stPnRrX3hwcnQtPnNlcnZl
-cm5hbWUpOw0KPiArCQkJdGFzay0+dGtfeHBydC0+c2VydmVybmFtZSwNCj4gKwkJCWJlMzJfdG9f
-Y3B1KHRhc2stPnRrX3Jxc3RwLT5ycV94aWQpKTsNCj4gIAkJfQ0KPiAgCX0NCj4gIAlycGNfZm9y
-Y2VfcmViaW5kKGNsbnQpOw0KDQpOQUNLLiBXZSBzaG91bGQgbm90IGJlIGxvZ2dpbmcgaW50ZXJu
-YWwgaW5mb3JtYXRpb24gc3VjaCBhcyBYSURzIGFzDQpLRVJOX05PVElDRSBtZXNzYWdlcy4gSWYg
-eW91IHdhbnQgdGhpcyBpbmZvcm1hdGlvbiwgeW91IGNhbiBleHRyYWN0IGl0DQp5b3Vyc2VsZjsg
-dGhlcmUgYXJlIGFscmVhZHkgcGxlbnR5IG9mIHdheXMgdG8gZG8gc28gYXMgYSBwcml2aWxlZ2Vk
-DQp1c2VyLg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Hi,
+
+I have a test case on mount/umount on a partition from nfs server side. And=
+ encounter a problem of umount busy in a low probability.
+
+The Linux version is 3.10.64 with the patch "sunrpc/cache: make cache flush=
+ing more reliable".
+https://patchwork.kernel.org/patch/7410021/
+
+After some analysis and test in many times, I find that when it failed to m=
+ount, the time "then" and "now" are different, which caused the last_refres=
+h is far beyond the flush_time. So this cache is not expired and won't be c=
+lean at once.=20
+Then the ref in cache_head won't be released, and mntput_no_expire didn't b=
+e called to decrease the count. That caused the umount busy.
+
+Below are logs in my test.
+
+kernel: [  292.767801] write_flush 1480 then =3D 249, now =3D 250
+kernel: [  292.767817] cache_clean 451, cd name nfsd.fh expiry_time 7904852=
+53, cd flush_time 249, last_refresh 369, seconds_since_boot 250
+kernel: [  292.767913] write_flush 1480 then =3D 249, now =3D 250
+kernel: [  292.767928] cache_clean 451, cd name nfsd.export expiry_time 204=
+9, cd flush_time 249, last_refresh 369, seconds_since_boot 250
+kernel: [  292.773229] do_refcount_check 283 mycount 4
+kernel: [  292.773245] do_umount 1344 retval -16
+
+I think this happens in such case that the exportfs writes the flush with c=
+urrent time, the time of "then". But when seconds_since_boot being called i=
+n function write_flush, the time is on the next second, so the "now" is one=
+ second after "then".
+Because "then" is less than "now", the flush_time is set directly to origin=
+al "then", rather than "cd->flush_time + 1".
+
+
+And I want to change the condition as below. I'm not sure it's OK and has n=
+o effects to other part.
+
+--------------------------------------------------------------------------
+       then =3D get_expiry(&bp);
+       now =3D seconds_since_boot();
+       cd->nextcheck =3D now;
+       /* Can only set flush_time to 1 second beyond "now", or
+       * possibly 1 second beyond flushtime.  This is because
+       * flush_time never goes backwards so it mustn't get too far
+       * ahead of time.
+       */
+       if (then !=3D now)
+              printk("%s %d then =3D %d, now =3D %d\n", __func__, __LINE__,=
+ then, now);
+-      if (then >=3D now) {
++     if (then >=3D now - 1) {
+              /* Want to flush everything, so behave like cache_purge() */
+              if (cd->flush_time >=3D now)
+                     now =3D cd->flush_time + 1;
+              then =3D now;
+       }
+
+       cd->flush_time =3D then;
+--------------------------------------------------------------------------
+
+Best Regards,
+Alan Wang
 
