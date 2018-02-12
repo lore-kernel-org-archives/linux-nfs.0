@@ -1,85 +1,86 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:48542 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752532AbeBLR7J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 12 Feb 2018 12:59:09 -0500
-Subject: Re: [PATCH] net: make getname() functions return length rather than
- use int* parameter
-To: David Miller <davem@davemloft.net>
-Cc: linux-kernel@vger.kernel.org, netdev@vger.kernel.org,
-        linux-bluetooth@vger.kernel.org,
-        linux-decnet-user@lists.sourceforge.net,
-        linux-wireless@vger.kernel.org, linux-rdma@vger.kernel.org,
-        linux-sctp@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-x25@vger.kernel.org
-References: <20180212141518.3354-1-dvlasenk@redhat.com>
- <20180212.124738.870301786818646917.davem@davemloft.net>
-From: Denys Vlasenko <dvlasenk@redhat.com>
-Message-ID: <4f0c5a1d-f75d-4c54-8cdd-5660b2233252@redhat.com>
-Date: Mon, 12 Feb 2018 18:59:06 +0100
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:25164 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751538AbeBLS2O (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Feb 2018 13:28:14 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "thiago.becker@gmail.com" <thiago.becker@gmail.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        "davem@davemloft.net" <davem@davemloft.net>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "jlayton@kernel.org" <jlayton@kernel.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>
+Subject: Re: [PATCH] sunrpc: Add task's xid to 'not responding' messages on
+ call_timeout
+Date: Mon, 12 Feb 2018 18:28:07 +0000
+Message-ID: <1518460085.3725.3.camel@primarydata.com>
+References: <20180210010628.19792-1-thiago.becker@gmail.com>
+         <1518226912.22856.3.camel@primarydata.com>
+         <20180212165445.GD3294@fieldses.org>
+In-Reply-To: <20180212165445.GD3294@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <20180212.124738.870301786818646917.davem@davemloft.net>
-Content-Type: text/plain; charset=iso-8859-7; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 02/12/2018 06:47 PM, David Miller wrote:
-> From: Denys Vlasenko <dvlasenk@redhat.com>
-> Date: Mon, 12 Feb 2018 15:15:18 +0100
-> 
->> Before:
->> All these functions either return a negative error indicator,
->> or store length of sockaddr into "int *socklen" parameter
->> and return zero on success.
->>
->> "int *socklen" parameter is awkward. For example, if caller does not
->> care, it still needs to provide on-stack storage for the value
->> it does not need.
->>
->> None of the many FOO_getname() functions of various protocols
->> ever used old value of *socklen. They always just overwrite it.
->>
->> This change drops this parameter, and makes all these functions, on success,
->> return length of sockaddr. It's always >= 0 and can be differentiated
->> from an error.
->>
->> Tests in callers are changed from "if (err)" to "if (err < 0)", where needed.
->>
->> rpc_sockname() lost "int buflen" parameter, since its only use was
->> to be passed to kernel_getsockname() as &buflen and subsequently
->> not used in any way.
->>
->> Userspace API is not changed.
->>
->>      text    data     bss      dec     hex filename
->> 30108430 2633624  873672 33615726 200ef6e vmlinux.before.o
->> 30108109 2633612  873672 33615393 200ee21 vmlinux.o
->>
->> Signed-off-by: Denys Vlasenko <dvlasenk@redhat.com>
-> 
-> Please do an allmodconfig build, there are still some conversions you
-> missed:
-> 
-> security/tomoyo/network.c: In function ¡tomoyo_socket_listen_permission¢:
-> security/tomoyo/network.c:658:19: warning: passing argument 3 of ¡sock->ops->getname¢ makes integer from pointer without a cast [-Wint-conversion]
->              &addr, &addr_len, 0);
->                     ^
-> security/tomoyo/network.c:658:19: note: expected ¡int¢ but argument is of type ¡int *¢
-> security/tomoyo/network.c:657:21: error: too many arguments to function ¡sock->ops->getname¢
->     const int error = sock->ops->getname(sock, (struct sockaddr *)
->                       ^~~~
-> fs/dlm/lowcomms.c: In function ¡lowcomms_error_report¢:
-> fs/dlm/lowcomms.c:495:6: error: too many arguments to function ¡kernel_getpeername¢
->        kernel_getpeername(con->sock, (struct sockaddr *)&saddr, &buflen)) {
->        ^~~~~~~~~~~~~~~~~~
-> fs/dlm/lowcomms.c: In function ¡tcp_accept_from_sock¢:
-> fs/dlm/lowcomms.c:761:7: warning: passing argument 3 of ¡newsock->ops->getname¢ makes integer from pointer without a cast [-Wint-conversion]
->         &len, 2)) {
->         ^
-> fs/dlm/lowcomms.c:761:7: note: expected ¡int¢ but argument is of type ¡int *¢
-> fs/dlm/lowcomms.c:760:6: error: too many arguments to function ¡newsock->ops->getname¢
->    if (newsock->ops->getname(newsock, (struct sockaddr *)&peeraddr,
->        ^~~~~~~
+T24gTW9uLCAyMDE4LTAyLTEyIGF0IDExOjU0IC0wNTAwLCBiZmllbGRzQGZpZWxkc2VzLm9yZyB3
+cm90ZToNCj4gT24gU2F0LCBGZWIgMTAsIDIwMTggYXQgMDE6NDE6NTVBTSArMDAwMCwgVHJvbmQg
+TXlrbGVidXN0IHdyb3RlOg0KPiA+IE9uIEZyaSwgMjAxOC0wMi0wOSBhdCAyMzowNiAtMDIwMCwg
+VGhpYWdvIFJhZmFlbCBCZWNrZXIgd3JvdGU6DQo+ID4gPiBXaGVuIGludmVzdGlnYXRpbmcgcmVh
+c29ucyBmb3IgbmZzIGZhaWx1cmVzLCBwYWNrZXQgZHVtcHMgYXJlaQ0KPiA+ID4gZXZlbnR1YWxs
+eSB1c2VkLg0KPiA+ID4gRmluZGluZyB0aGUgcnBjIHRoYXQgZ2VuZXJhdGVkIHRoZSBmYWlsdXJl
+IGlzIGRvbmUgYnkgY29tcGFyaW5nDQo+ID4gPiBhbGwNCj4gPiA+IHNlbnQNCj4gPiA+IHJwYyBj
+YWxscyBhbmQgYWxsIHJlY2VpdmVkIHJwYyByZXBsaWVzIGZvciB0aG9zZSB3aGljaCBhcmUNCj4g
+PiA+IHVuYW5zd2VyZWQsDQo+ID4gPiB3aGljaCBpcyBwcm9uZSB0byBlcnJvcnMgbGlrZQ0KPiA+
+ID4gLSBTbG93IHNlcnZlciByZXNwb25zZXMNCj4gPiA+IC0gSW5jb21wbGV0ZSBhbmQgdW5jYXB0
+dXJlZCBwYWNrZXRzIGluIHRoZSBwYWNrZXQgZHVtcA0KPiA+ID4gLSBUaGUgaGV1cmlzdGljcyB1
+c2VkIHRvIGluc3BlY3QgcGFja2V0cyBmYWlsaW5nIHRvIGludGVycHJldCBvbmUNCj4gPiA+IA0K
+PiA+ID4gVGhpcyBwYXRjaCBhZGRzIHRoZSB4aWQgb2YgcnBjX3Rhc2tzIHRvIHRoZSAnbm90IHJl
+c3BvbmRpbmcnDQo+ID4gPiBtZXNzYWdlcw0KPiA+ID4gaW4gY2FsbF90aW1lb3V0IHRvIG1ha2Ug
+dGhlc2UgYW5hbHlzaXMgbW9yZSBwcmVjaXNlLg0KPiA+ID4gDQo+ID4gPiBTaWduZWQtb2ZmLWJ5
+OiBUaGlhZ28gUmFmYWVsIEJlY2tlciA8dGhpYWdvLmJlY2tlckBnbWFpbC5jb20+DQo+ID4gPiAt
+LS0NCj4gPiA+ICBuZXQvc3VucnBjL2NsbnQuYyB8IDEwICsrKysrKy0tLS0NCj4gPiA+ICAxIGZp
+bGUgY2hhbmdlZCwgNiBpbnNlcnRpb25zKCspLCA0IGRlbGV0aW9ucygtKQ0KPiA+ID4gDQo+ID4g
+PiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50LmMgYi9uZXQvc3VucnBjL2NsbnQuYw0KPiA+
+ID4gaW5kZXggZTJhNDE4NGYzYzVkLi44M2M4YWNhOTUxZjQgMTAwNjQ0DQo+ID4gPiAtLS0gYS9u
+ZXQvc3VucnBjL2NsbnQuYw0KPiA+ID4gKysrIGIvbmV0L3N1bnJwYy9jbG50LmMNCj4gPiA+IEBA
+IC0yMjE0LDkgKzIyMTQsMTAgQEAgY2FsbF90aW1lb3V0KHN0cnVjdCBycGNfdGFzayAqdGFzaykN
+Cj4gPiA+ICAJfQ0KPiA+ID4gIAlpZiAoUlBDX0lTX1NPRlQodGFzaykpIHsNCj4gPiA+ICAJCWlm
+IChjbG50LT5jbF9jaGF0dHkpIHsNCj4gPiA+IC0JCQlwcmludGsoS0VSTl9OT1RJQ0UgIiVzOiBz
+ZXJ2ZXIgJXMgbm90DQo+ID4gPiByZXNwb25kaW5nLCB0aW1lZCBvdXRcbiIsDQo+ID4gPiArCQkJ
+cHJpbnRrKEtFUk5fTk9USUNFICIlczogc2VydmVyICVzIG5vdA0KPiA+ID4gcmVzcG9uZGluZywg
+dGltZWQgb3V0ICh4aWQ6ICV4KVxuIiwNCj4gPiA+ICAJCQkJY2xudC0+Y2xfcHJvZ3JhbS0+bmFt
+ZSwNCj4gPiA+IC0JCQkJdGFzay0+dGtfeHBydC0+c2VydmVybmFtZSk7DQo+ID4gPiArCQkJCXRh
+c2stPnRrX3hwcnQtPnNlcnZlcm5hbWUsDQo+ID4gPiArCQkJCWJlMzJfdG9fY3B1KHRhc2stPnRr
+X3Jxc3RwLQ0KPiA+ID4gPiBycV94aWQpKTsNCj4gPiA+IA0KPiA+ID4gIAkJfQ0KPiA+ID4gIAkJ
+aWYgKHRhc2stPnRrX2ZsYWdzICYgUlBDX1RBU0tfVElNRU9VVCkNCj4gPiA+ICAJCQlycGNfZXhp
+dCh0YXNrLCAtRVRJTUVET1VUKTsNCj4gPiA+IEBAIC0yMjI4LDkgKzIyMjksMTAgQEAgY2FsbF90
+aW1lb3V0KHN0cnVjdCBycGNfdGFzayAqdGFzaykNCj4gPiA+ICAJaWYgKCEodGFzay0+dGtfZmxh
+Z3MgJiBSUENfQ0FMTF9NQUpPUlNFRU4pKSB7DQo+ID4gPiAgCQl0YXNrLT50a19mbGFncyB8PSBS
+UENfQ0FMTF9NQUpPUlNFRU47DQo+ID4gPiAgCQlpZiAoY2xudC0+Y2xfY2hhdHR5KSB7DQo+ID4g
+PiAtCQkJcHJpbnRrKEtFUk5fTk9USUNFICIlczogc2VydmVyICVzIG5vdA0KPiA+ID4gcmVzcG9u
+ZGluZywgc3RpbGwgdHJ5aW5nXG4iLA0KPiA+ID4gKwkJCXByaW50ayhLRVJOX05PVElDRSAiJXM6
+IHNlcnZlciAlcyBub3QNCj4gPiA+IHJlc3BvbmRpbmcsIHN0aWxsIHRyeWluZyAoeGlkOiAleClc
+biIsDQo+ID4gPiAgCQkJY2xudC0+Y2xfcHJvZ3JhbS0+bmFtZSwNCj4gPiA+IC0JCQl0YXNrLT50
+a194cHJ0LT5zZXJ2ZXJuYW1lKTsNCj4gPiA+ICsJCQl0YXNrLT50a194cHJ0LT5zZXJ2ZXJuYW1l
+LA0KPiA+ID4gKwkJCWJlMzJfdG9fY3B1KHRhc2stPnRrX3Jxc3RwLT5ycV94aWQpKTsNCj4gPiA+
+ICAJCX0NCj4gPiA+ICAJfQ0KPiA+ID4gIAlycGNfZm9yY2VfcmViaW5kKGNsbnQpOw0KPiA+IA0K
+PiA+IE5BQ0suIFdlIHNob3VsZCBub3QgYmUgbG9nZ2luZyBpbnRlcm5hbCBpbmZvcm1hdGlvbiBz
+dWNoIGFzIFhJRHMgYXMNCj4gPiBLRVJOX05PVElDRSBtZXNzYWdlcy4NCj4gDQo+IEkgZGlkbid0
+IG5vdyB0aGF0IHdhcyBhIGdlbmVyYWwgcnVsZS4gIElzIGl0IHRoYXQgS0VSTl9OT1RJQ0UgKGFu
+ZA0KPiBoaWdoZXI/KSBtZXNzYWdlcyBhcmUgZXhwZWN0ZWQgdG8gYmUgbGVha2VkIHRvIHVzZXJz
+IHdlIGRvbid0IHRydXN0Pw0KPiANCj4gSSBhbHNvIHdvdWxkbid0IGhhdmUgZXhwZWN0ZWQgWElE
+cyB0byBiZSB0ZXJyaWJseSB1c2VmdWwgdG8gYW4NCj4gYXR0YWNrZXIuDQo+IEJ1dCBtYXliZSBp
+dCBjb3VsZCBoZWxwIGluamVjdCBhIG1hbGljaW91cyByZXBseS4NCj4gDQoNCkFzIEkgc2FpZCwg
+dGhlIGluZm9ybWF0aW9uIGlzIGFscmVhZHkgYXZhaWxhYmxlIHRvIHByaXZpbGVnZWQgdXNlcnMu
+DQpUaGV5IGNhbiB0dXJuIG9uIGRwcmludGtzLCB0cmFjZXBvaW50cywgb3IgdGhleSBjYW4gbG9v
+ayBpbg0KL3N5cy9rZXJuZWwvZGVidWcuIFRoZSBPTkxZIHJlYXNvbiBmb3IgcHV0dGluZyB0aGlz
+IGluZm9ybWF0aW9uIGludG8NCnRoZSBhYm92ZSBub3RpY2Ugd291bGQgYmUgdG8gYWxsb3cgdW5w
+cml2aWxlZ2VkIHVzZXJzIHRvIGdldCB0aGUgc2FtZQ0KaW5mbyBkaXNwbGF5aW5nIG9uIHRoZWly
+IHR0eSBjb25zb2xlcy4NCg0KV2hhdCBhcmUgc2FpZCB1bnByaXZpbGVnZWQgdXNlcnMgZ29pbmcg
+dG8gZG8gd2l0aCB0aGlzIGluZm9ybWF0aW9uPw0KV2hhdCBkb2VzIGl0IGFsbG93IHRoZW0gdG8g
+ZG8gdGhhdCB0aGV5IGNvdWxkIG5vdCBkbyBiZWZvcmU/DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0
+DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1
+c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-Sorry. Will send updated patch.
-  
