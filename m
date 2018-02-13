@@ -1,177 +1,134 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:53352 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S965589AbeBMT5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 13 Feb 2018 14:57:13 -0500
-From: NeilBrown <neilb@suse.com>
-To: "Wang\, Alan 1. \(NSB - CN\/Hangzhou\)" <alan.1.wang@nokia-sbell.com>,
-        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
-to: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Wed, 14 Feb 2018 06:57:06 +1100
-Subject: Re: A special case in write_flush which cause the umount busy
-In-Reply-To: <VI1PR07MB342127E2A55088F691693A3BA2F00@VI1PR07MB3421.eurprd07.prod.outlook.com>
-References: <VI1PR07MB342127E2A55088F691693A3BA2F00@VI1PR07MB3421.eurprd07.prod.outlook.com>
-Message-ID: <87inb0r7cd.fsf@notabene.neil.brown.name>
+Return-Path: <olga.kornievskaia@gmail.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: olga.kornievskaia@gmail.com
+In-Reply-To: <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
+ <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 13 Feb 2018 15:08:01 -0500
+Message-ID: <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
+Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>, Benjamin Coddington <bcodding@redhat.com>,
+	Jeff Layton <jlayton@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
-
-On Sun, Feb 11 2018, Wang, Alan 1. (NSB - CN/Hangzhou) wrote:
-
-> Hi,
+On Mon, Nov 14, 2016 at 11:19 AM, Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
+> If the reply to a successful CLOSE call races with an OPEN to the same
+> file, we can end up scribbling over the stateid that represents the
+> new open state.
+> The race looks like:
 >
-> I have a test case on mount/umount on a partition from nfs server side. A=
-nd encounter a problem of umount busy in a low probability.
+>   Client                                Server
+>   ======                                ======
 >
-> The Linux version is 3.10.64 with the patch "sunrpc/cache: make cache flu=
-shing more reliable".
-> https://patchwork.kernel.org/patch/7410021/
+>   CLOSE stateid A on file "foo"
+>                                         CLOSE stateid A, return stateid C
+
+Hi folks,
+
+I'd like to understand this particular issue. Specifically I don't
+understand how can server return stateid C to the close with stateid
+A.
+
+As per RFC 7530 or 5661. It says that state is returned by the close
+shouldn't be used.
+
+Even though CLOSE returns a stateid, this stateid is not useful to
+   the client and should be treated as deprecated.  CLOSE "shuts down"
+   the state associated with all OPENs for the file by a single
+   open-owner.  As noted above, CLOSE will either release all file
+   locking state or return an error.  Therefore, the stateid returned by
+   CLOSE is not useful for the operations that follow.
+
+Is this because the spec says "should" and not a "must"?
+
+Linux server increments a state's sequenceid on CLOSE. Ontap server
+does not. I'm not sure what other servers do. Are all these
+implementations equality correct?
+
+>   OPEN file "foo"
+>                                         OPEN "foo", return stateid B
+>   Receive reply to OPEN
+>   Reset open state for "foo"
+>   Associate stateid B to "foo"
 >
-> After some analysis and test in many times, I find that when it failed to=
- mount, the time "then" and "now" are different, which caused the last_refr=
-esh is far beyond the flush_time. So this cache is not expired and won't be=
- clean at once.=20
-> Then the ref in cache_head won't be released, and mntput_no_expire didn't=
- be called to decrease the count. That caused the umount busy.
+>   Receive CLOSE for A
+>   Reset open state for "foo"
+>   Replace stateid B with C
 >
-> Below are logs in my test.
+> The fix is to examine the argument of the CLOSE, and check for a match
+> with the current stateid "other" field. If the two do not match, then
+> the above race occurred, and we should just ignore the CLOSE.
 >
-> kernel: [  292.767801] write_flush 1480 then =3D 249, now =3D 250
-> kernel: [  292.767817] cache_clean 451, cd name nfsd.fh expiry_time 79048=
-5253, cd flush_time 249, last_refresh 369, seconds_since_boot 250
-> kernel: [  292.767913] write_flush 1480 then =3D 249, now =3D 250
-> kernel: [  292.767928] cache_clean 451, cd name nfsd.export expiry_time 2=
-049, cd flush_time 249, last_refresh 369, seconds_since_boot 250
-> kernel: [  292.773229] do_refcount_check 283 mycount 4
-> kernel: [  292.773245] do_umount 1344 retval -16
+> Reported-by: Benjamin Coddington <bcodding@redhat.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfs/nfs4_fs.h  |  7 +++++++
+>  fs/nfs/nfs4proc.c | 12 ++++++------
+>  2 files changed, 13 insertions(+), 6 deletions(-)
 >
-> I think this happens in such case that the exportfs writes the flush with=
- current time, the time of "then". But when seconds_since_boot being called=
- in function write_flush, the time is on the next second, so the "now" is o=
-ne second after "then".
-> Because "then" is less than "now", the flush_time is set directly to orig=
-inal "then", rather than "cd->flush_time + 1".
+> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+> index 9b3a82abab07..1452177c822d 100644
+> --- a/fs/nfs/nfs4_fs.h
+> +++ b/fs/nfs/nfs4_fs.h
+> @@ -542,6 +542,13 @@ static inline bool nfs4_valid_open_stateid(const struct nfs4_state *state)
+>         return test_bit(NFS_STATE_RECOVERY_FAILED, &state->flags) == 0;
+>  }
 >
+> +static inline bool nfs4_state_match_open_stateid_other(const struct nfs4_state *state,
+> +               const nfs4_stateid *stateid)
+> +{
+> +       return test_bit(NFS_OPEN_STATE, &state->flags) &&
+> +               nfs4_stateid_match_other(&state->open_stateid, stateid);
+> +}
+> +
+>  #else
 >
-> And I want to change the condition as below. I'm not sure it's OK and has=
- no effects to other part.
-
-I think this change is safe.  It is a bit of a hack, but the "flush"
-interface was actually very poorly designed and I don't think it *can*
-be implemented cleanly.
-Maybe we should just ignore the number written in and *always* flush
-the cache completely.  That is was it always wanted.
-
-See below.
-
-Bruce: do you have any thoughts on this?
-
-Thanks,
-NeilBrown
-
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index aa36dad32db1..43f117d1547e 100644
-=2D-- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1450,7 +1450,7 @@ static ssize_t write_flush(struct file *file, const c=
-har __user *buf,
- 			   struct cache_detail *cd)
- {
- 	char tbuf[20];
-=2D	char *bp, *ep;
-+	char *ep;
- 	time_t then, now;
-=20
- 	if (*ppos || count > sizeof(tbuf)-1)
-@@ -1461,24 +1461,24 @@ static ssize_t write_flush(struct file *file, const=
- char __user *buf,
- 	simple_strtoul(tbuf, &ep, 0);
- 	if (*ep && *ep !=3D '\n')
- 		return -EINVAL;
-+	/* Note that while we check that 'buf' holds a valid number,
-+	 * we always ignore the value and just flush everything.
-+	 * Making use of the number leads to races.
-+	 */
-=20
-=2D	bp =3D tbuf;
-=2D	then =3D get_expiry(&bp);
- 	now =3D seconds_since_boot();
-=2D	cd->nextcheck =3D now;
-=2D	/* Can only set flush_time to 1 second beyond "now", or
-+	/* Always flush everything, so behave like cache_purge()
-+	 * Can only set flush_time to 1 second beyond "now", or
- 	 * possibly 1 second beyond flushtime.  This is because
- 	 * flush_time never goes backwards so it mustn't get too far
- 	 * ahead of time.
- 	 */
-=2D	if (then >=3D now) {
-=2D		/* Want to flush everything, so behave like cache_purge() */
-=2D		if (cd->flush_time >=3D now)
-=2D			now =3D cd->flush_time + 1;
-=2D		then =3D now;
-=2D	}
-=20
-=2D	cd->flush_time =3D then;
-+	if (cd->flush_time >=3D now)
-+		now =3D cd->flush_time + 1;
-+
-+	cd->flush_time =3D now;
-+	cd->nextcheck =3D now;
- 	cache_flush();
-=20
- 	*ppos +=3D count;
-
-
+>  #define nfs4_close_state(a, b) do { } while (0)
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index f550ac69ffa0..b7b0080977c0 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -1458,7 +1458,6 @@ static void nfs_resync_open_stateid_locked(struct nfs4_state *state)
+>  }
 >
-> --------------------------------------------------------------------------
->        then =3D get_expiry(&bp);
->        now =3D seconds_since_boot();
->        cd->nextcheck =3D now;
->        /* Can only set flush_time to 1 second beyond "now", or
->        * possibly 1 second beyond flushtime.  This is because
->        * flush_time never goes backwards so it mustn't get too far
->        * ahead of time.
->        */
->        if (then !=3D now)
->               printk("%s %d then =3D %d, now =3D %d\n", __func__, __LINE_=
-_, then, now);
-> -      if (then >=3D now) {
-> +     if (then >=3D now - 1) {
->               /* Want to flush everything, so behave like cache_purge() */
->               if (cd->flush_time >=3D now)
->                      now =3D cd->flush_time + 1;
->               then =3D now;
->        }
+>  static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+> -               nfs4_stateid *arg_stateid,
+>                 nfs4_stateid *stateid, fmode_t fmode)
+>  {
+>         clear_bit(NFS_O_RDWR_STATE, &state->flags);
+> @@ -1476,10 +1475,9 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
+>         }
+>         if (stateid == NULL)
+>                 return;
+> -       /* Handle races with OPEN */
+> -       if (!nfs4_stateid_match_other(arg_stateid, &state->open_stateid) ||
+> -           (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
+> -           !nfs4_stateid_is_newer(stateid, &state->open_stateid))) {
+> +       /* Handle OPEN+OPEN_DOWNGRADE races */
+> +       if (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
+> +           !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
+>                 nfs_resync_open_stateid_locked(state);
+>                 return;
+>         }
+> @@ -1493,7 +1491,9 @@ static void nfs_clear_open_stateid(struct nfs4_state *state,
+>         nfs4_stateid *stateid, fmode_t fmode)
+>  {
+>         write_seqlock(&state->seqlock);
+> -       nfs_clear_open_stateid_locked(state, arg_stateid, stateid, fmode);
+> +       /* Ignore, if the CLOSE argment doesn't match the current stateid */
+> +       if (nfs4_state_match_open_stateid_other(state, arg_stateid))
+> +               nfs_clear_open_stateid_locked(state, stateid, fmode);
+>         write_sequnlock(&state->seqlock);
+>         if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags))
+>                 nfs4_schedule_state_manager(state->owner->so_server->nfs_client);
+> --
+> 2.7.4
 >
->        cd->flush_time =3D then;
-> --------------------------------------------------------------------------
->
-> Best Regards,
-> Alan Wang
-
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlqDQxIACgkQOeye3VZi
-gbkL5w/9Eunybj16rujgplIf49Sv5SpHVWqte7AhI6WJKKA4GH2YhOFxNn3bcqhN
-wV+jvSo3qzyqW0mJN3qOO24PxOwETu958xiYad3kPyZxQhRAlIIeFZu54wLhRXZ8
-9jn+B4Ew7SlW8g/99wu6ZiLSALllJ5XMGoeATD7c/2mIUubJ1X6TO3isjN0JYTH/
-Rrjht3m2u0QoakdnLmV4MwR38c7mTzMXbd9XbS7aSiuloirTwBGZ9Hn4rpTDmC8n
-mEUaLTA6l1O98bPF6vEXzkz/X9xD0rJv++rLaMVYbQJrNV9l5lfheB/XIFjuAOx2
-euvmHKTwx5D4BrnZFB3qS5Km+txHDS5+iirKcbbhc69az+hmr+EEm7KV6AiMfBhU
-F9rXTj7I6KETUoMt16LahefQ+wuRJ/hS6eafcbS9ucjfYkSRvQXAKAKdld/nDRyt
-IKe/CjLbvqw+CD/GPd5/yXI9LldWDbn/QTaEyZ/K+Z+S5SCTTXW3wALPo8XI+1mm
-rdL7XMkIf2D9HyimK2r7it7PfP81uytA88CajFn5CITOqu+3gcpmYBvWDjud0qoC
-wTXh3PQELh1h39DQAD86lqsNjOC9fSMb6LtZK1zTos/aVJLHoW94ACjo9BMzyd83
-TElciidw6c8Zu6MjZy8F4uxz4rRne9lYiFBFb5MQfjWeDqT0MuM=
-=5V5W
------END PGP SIGNATURE-----
---=-=-=--
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
