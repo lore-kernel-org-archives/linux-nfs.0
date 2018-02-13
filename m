@@ -1,46 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mgwkm03.jp.fujitsu.com ([202.219.69.170]:37095 "EHLO
-        mgwkm03.jp.fujitsu.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933323AbeBMDby (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Feb 2018 22:31:54 -0500
-Received: from g01jpfmpwyt02.exch.g01.fujitsu.local (g01jpfmpwyt02.exch.g01.fujitsu.local [10.128.193.56])
-        by kw-mxoi2.gw.nic.fujitsu.com (Postfix) with ESMTP id A05B2AC00FB
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Feb 2018 12:20:34 +0900 (JST)
-Subject: Re: Questions about pynfs:testLargeData-WRT5
-To: <bfields@redhat.com>
-CC: <trondmy@primarydata.com>, <luxy.fnst@cn.fujitsu.com>,
-        <linux-nfs@vger.kernel.org>
-References: <20180209183112.GC30030@parsley.fieldses.org>
- <6c3159af-17c5-5556-d416-574968bb5e14@cn.fujitsu.com>
-From: Seiichi Ikarashi <s.ikarashi@jp.fujitsu.com>
-Message-ID: <738139ab-6a55-4c93-008d-56a2332774c9@jp.fujitsu.com>
-Date: Tue, 13 Feb 2018 12:19:58 +0900
+Received: from mail.aixigo.de ([5.145.142.10]:9529 "EHLO mail.aixigo.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S933919AbeBMKCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Feb 2018 05:02:20 -0500
+Received: from srvvm01.ac.aixigo.de (mail.ac.aixigo.de [172.19.96.11])
+        by gate5a.ac.aixigo.de (OpenSMTPD) with ESMTPS id c2a1e6c3 (TLSv1.2:ECDHE-RSA-AES256-GCM-SHA384:256:NO)
+        for <linux-nfs@vger.kernel.org>;
+        Tue, 13 Feb 2018 10:55:38 +0100 (CET)
+To: linux-nfs@vger.kernel.org
+From: Harald Dunkel <harald.dunkel@aixigo.de>
+Subject: running NFS in LXC
+Message-ID: <5cedd413-81eb-6921-47bc-3c56e56d530a@aixigo.de>
+Date: Tue, 13 Feb 2018 10:55:38 +0100
 MIME-Version: 1.0
-In-Reply-To: <6c3159af-17c5-5556-d416-574968bb5e14@cn.fujitsu.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi folks,
 
-On Fri, 9 Feb 2018 13:31:12 -0500, J. Bruce Fields wrote:
+to support a HA setup I have a block device mirrored via
+drbd on 2 hosts (write-through). The drbd Primary runs
+the NFS service, using a dedicated IP address. NFS is not
+running on the drbd Secondary.
 
->> For NFSv4, you would have the option of returning NFS4ERR_RESOURCE or
->> possibly NFS4ERR_INVAL (personally, I'd prefer the latter, since
->> NFS4ERR_RESOURCE is too wooly).
->>
->> For NFSv4.1 or above, you probably have a choice of NFS4ERR_REQ_TOO_BIG
->> (if the size is greater than ca_maxrequestsize) or NFS4ERR_INVAL.
-> 
-> I think this sort of problem is typically found early in the rpc code
-> (probably the check against sv_max_mesg in
-> net/sunrpc/svcsock.c:svc_tcp_recv_record()).  It drops the connection.
-> I'm not sure why.
+To make this work I have to move several system files and
+/var directories to a file system on the mirrored block
+device as well. This is pretty clumsy, it breaks system
+updates, etc.
 
-It looks implemented long time ago.
+Question: What if I run the NFS service in a LXC container
+instead?
 
-[PATCH] PATCH 11/16: NFSD: TCP: close bad connections
-https://git.kernel.org/pub/scm/linux/kernel/git/tglx/history.git/commit/?id=84e9f22a623a
+The idea is to put the whole service as a container on the
+same block device as the NFS export partitions. In case of
+a hardware failure on the Primary I can stop the NFS service,
+make the Secondary to the new Primary and start the NFS
+service on the other hardware again.
 
-Regards,
-Ikarashi
+Do you expect some serious problems here? Please share your
+thoughts. Every helpful comment is highly appreciated.
 
+
+Harri
