@@ -1,134 +1,108 @@
-Return-Path: <olga.kornievskaia@gmail.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:52064 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S965676AbeBMVDO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Feb 2018 16:03:14 -0500
+Date: Tue, 13 Feb 2018 16:03:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: "Wang, Alan 1. (NSB - CN/Hangzhou)" <alan.1.wang@nokia-sbell.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: A special case in write_flush which cause the umount busy
+Message-ID: <20180213210314.GA12201@fieldses.org>
+References: <VI1PR07MB342127E2A55088F691693A3BA2F00@VI1PR07MB3421.eurprd07.prod.outlook.com>
+ <87inb0r7cd.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Sender: olga.kornievskaia@gmail.com
-In-Reply-To: <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
- <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 13 Feb 2018 15:08:01 -0500
-Message-ID: <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
-Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>, Benjamin Coddington <bcodding@redhat.com>,
-	Jeff Layton <jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87inb0r7cd.fsf@notabene.neil.brown.name>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 14, 2016 at 11:19 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> If the reply to a successful CLOSE call races with an OPEN to the same
-> file, we can end up scribbling over the stateid that represents the
-> new open state.
-> The race looks like:
->
->   Client                                Server
->   ======                                ======
->
->   CLOSE stateid A on file "foo"
->                                         CLOSE stateid A, return stateid C
+On Wed, Feb 14, 2018 at 06:57:06AM +1100, NeilBrown wrote:
+> I think this change is safe.  It is a bit of a hack, but the "flush"
+> interface was actually very poorly designed and I don't think it *can*
+> be implemented cleanly.
+> Maybe we should just ignore the number written in and *always* flush
+> the cache completely.  That is was it always wanted.
+> 
+> See below.
+> 
+> Bruce: do you have any thoughts on this?
 
-Hi folks,
+I'm fine with ignoring the number--I agree that the chance anyone is
+doing anything fancier is vanishingly small.
 
-I'd like to understand this particular issue. Specifically I don't
-understand how can server return stateid C to the close with stateid
-A.
+--b.
 
-As per RFC 7530 or 5661. It says that state is returned by the close
-shouldn't be used.
-
-Even though CLOSE returns a stateid, this stateid is not useful to
-   the client and should be treated as deprecated.  CLOSE "shuts down"
-   the state associated with all OPENs for the file by a single
-   open-owner.  As noted above, CLOSE will either release all file
-   locking state or return an error.  Therefore, the stateid returned by
-   CLOSE is not useful for the operations that follow.
-
-Is this because the spec says "should" and not a "must"?
-
-Linux server increments a state's sequenceid on CLOSE. Ontap server
-does not. I'm not sure what other servers do. Are all these
-implementations equality correct?
-
->   OPEN file "foo"
->                                         OPEN "foo", return stateid B
->   Receive reply to OPEN
->   Reset open state for "foo"
->   Associate stateid B to "foo"
->
->   Receive CLOSE for A
->   Reset open state for "foo"
->   Replace stateid B with C
->
-> The fix is to examine the argument of the CLOSE, and check for a match
-> with the current stateid "other" field. If the two do not match, then
-> the above race occurred, and we should just ignore the CLOSE.
->
-> Reported-by: Benjamin Coddington <bcodding@redhat.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4_fs.h  |  7 +++++++
->  fs/nfs/nfs4proc.c | 12 ++++++------
->  2 files changed, 13 insertions(+), 6 deletions(-)
->
-> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-> index 9b3a82abab07..1452177c822d 100644
-> --- a/fs/nfs/nfs4_fs.h
-> +++ b/fs/nfs/nfs4_fs.h
-> @@ -542,6 +542,13 @@ static inline bool nfs4_valid_open_stateid(const struct nfs4_state *state)
->         return test_bit(NFS_STATE_RECOVERY_FAILED, &state->flags) == 0;
->  }
->
-> +static inline bool nfs4_state_match_open_stateid_other(const struct nfs4_state *state,
-> +               const nfs4_stateid *stateid)
-> +{
-> +       return test_bit(NFS_OPEN_STATE, &state->flags) &&
-> +               nfs4_stateid_match_other(&state->open_stateid, stateid);
-> +}
+> 
+> Thanks,
+> NeilBrown
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index aa36dad32db1..43f117d1547e 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -1450,7 +1450,7 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
+>  			   struct cache_detail *cd)
+>  {
+>  	char tbuf[20];
+> -	char *bp, *ep;
+> +	char *ep;
+>  	time_t then, now;
+>  
+>  	if (*ppos || count > sizeof(tbuf)-1)
+> @@ -1461,24 +1461,24 @@ static ssize_t write_flush(struct file *file, const char __user *buf,
+>  	simple_strtoul(tbuf, &ep, 0);
+>  	if (*ep && *ep != '\n')
+>  		return -EINVAL;
+> +	/* Note that while we check that 'buf' holds a valid number,
+> +	 * we always ignore the value and just flush everything.
+> +	 * Making use of the number leads to races.
+> +	 */
+>  
+> -	bp = tbuf;
+> -	then = get_expiry(&bp);
+>  	now = seconds_since_boot();
+> -	cd->nextcheck = now;
+> -	/* Can only set flush_time to 1 second beyond "now", or
+> +	/* Always flush everything, so behave like cache_purge()
+> +	 * Can only set flush_time to 1 second beyond "now", or
+>  	 * possibly 1 second beyond flushtime.  This is because
+>  	 * flush_time never goes backwards so it mustn't get too far
+>  	 * ahead of time.
+>  	 */
+> -	if (then >= now) {
+> -		/* Want to flush everything, so behave like cache_purge() */
+> -		if (cd->flush_time >= now)
+> -			now = cd->flush_time + 1;
+> -		then = now;
+> -	}
+>  
+> -	cd->flush_time = then;
+> +	if (cd->flush_time >= now)
+> +		now = cd->flush_time + 1;
 > +
->  #else
->
->  #define nfs4_close_state(a, b) do { } while (0)
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index f550ac69ffa0..b7b0080977c0 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -1458,7 +1458,6 @@ static void nfs_resync_open_stateid_locked(struct nfs4_state *state)
->  }
->
->  static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
-> -               nfs4_stateid *arg_stateid,
->                 nfs4_stateid *stateid, fmode_t fmode)
->  {
->         clear_bit(NFS_O_RDWR_STATE, &state->flags);
-> @@ -1476,10 +1475,9 @@ static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
->         }
->         if (stateid == NULL)
->                 return;
-> -       /* Handle races with OPEN */
-> -       if (!nfs4_stateid_match_other(arg_stateid, &state->open_stateid) ||
-> -           (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
-> -           !nfs4_stateid_is_newer(stateid, &state->open_stateid))) {
-> +       /* Handle OPEN+OPEN_DOWNGRADE races */
-> +       if (nfs4_stateid_match_other(stateid, &state->open_stateid) &&
-> +           !nfs4_stateid_is_newer(stateid, &state->open_stateid)) {
->                 nfs_resync_open_stateid_locked(state);
->                 return;
->         }
-> @@ -1493,7 +1491,9 @@ static void nfs_clear_open_stateid(struct nfs4_state *state,
->         nfs4_stateid *stateid, fmode_t fmode)
->  {
->         write_seqlock(&state->seqlock);
-> -       nfs_clear_open_stateid_locked(state, arg_stateid, stateid, fmode);
-> +       /* Ignore, if the CLOSE argment doesn't match the current stateid */
-> +       if (nfs4_state_match_open_stateid_other(state, arg_stateid))
-> +               nfs_clear_open_stateid_locked(state, stateid, fmode);
->         write_sequnlock(&state->seqlock);
->         if (test_bit(NFS_STATE_RECLAIM_NOGRACE, &state->flags))
->                 nfs4_schedule_state_manager(state->owner->so_server->nfs_client);
-> --
-> 2.7.4
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> +	cd->flush_time = now;
+> +	cd->nextcheck = now;
+>  	cache_flush();
+>  
+>  	*ppos += count;
+> 
+> 
+> >
+> > --------------------------------------------------------------------------
+> >        then = get_expiry(&bp);
+> >        now = seconds_since_boot();
+> >        cd->nextcheck = now;
+> >        /* Can only set flush_time to 1 second beyond "now", or
+> >        * possibly 1 second beyond flushtime.  This is because
+> >        * flush_time never goes backwards so it mustn't get too far
+> >        * ahead of time.
+> >        */
+> >        if (then != now)
+> >               printk("%s %d then = %d, now = %d\n", __func__, __LINE__, then, now);
+> > -      if (then >= now) {
+> > +     if (then >= now - 1) {
+> >               /* Want to flush eve
+
+
