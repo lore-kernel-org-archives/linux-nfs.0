@@ -1,184 +1,177 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pl0-f65.google.com ([209.85.160.65]:43778 "EHLO
-        mail-pl0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S965489AbeBMSzm (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Feb 2018 13:55:42 -0500
-Received: by mail-pl0-f65.google.com with SMTP id f4so7061990plr.10
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Feb 2018 10:55:42 -0800 (PST)
+Received: from mx2.suse.de ([195.135.220.15]:53352 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S965589AbeBMT5N (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 13 Feb 2018 14:57:13 -0500
+From: NeilBrown <neilb@suse.com>
+To: "Wang\, Alan 1. \(NSB - CN\/Hangzhou\)" <alan.1.wang@nokia-sbell.com>,
+        "linux-nfs\@vger.kernel.org" <linux-nfs@vger.kernel.org>
+to: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 14 Feb 2018 06:57:06 +1100
+Subject: Re: A special case in write_flush which cause the umount busy
+In-Reply-To: <VI1PR07MB342127E2A55088F691693A3BA2F00@VI1PR07MB3421.eurprd07.prod.outlook.com>
+References: <VI1PR07MB342127E2A55088F691693A3BA2F00@VI1PR07MB3421.eurprd07.prod.outlook.com>
+Message-ID: <87inb0r7cd.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <CACT4Y+Zgs8UnDq7mgzYDUGFxRQrVrSvO9WXpJVc2eLP0U-NVFQ@mail.gmail.com>
-References: <001a113ee9baf95598055d384ecb@google.com> <CACT4Y+aWdUXDV5-d=xJQ2VtQyFkPRKqVodpL38-nUQ9oS6+Y9A@mail.gmail.com>
- <1509897615.5851.1.camel@primarydata.com> <CACT4Y+Zgs8UnDq7mgzYDUGFxRQrVrSvO9WXpJVc2eLP0U-NVFQ@mail.gmail.com>
-From: Dmitry Vyukov <dvyukov@google.com>
-Date: Tue, 13 Feb 2018 19:55:20 +0100
-Message-ID: <CACT4Y+apvfs_MV2V2zLB=40F2NiZThn4LZsLUNLwqRdnTL1ULg@mail.gmail.com>
-Subject: Re: possible deadlock in flush_work (2)
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "bot+d8fe95298ef830cd7d05e33eefa4a5a6f6f334d4@syzkaller.appspotmail.com"
-        <bot+d8fe95298ef830cd7d05e33eefa4a5a6f6f334d4@syzkaller.appspotmail.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "jlayton@poochiereds.net" <jlayton@poochiereds.net>,
-        "jiangshanlai@gmail.com" <jiangshanlai@gmail.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "syzkaller-bugs@googlegroups.com" <syzkaller-bugs@googlegroups.com>,
-        "tj@kernel.org" <tj@kernel.org>,
-        "davem@davemloft.net" <davem@davemloft.net>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 6, 2017 at 11:34 AM, Dmitry Vyukov <dvyukov@google.com> wrote:
-> On Sun, Nov 5, 2017 at 5:00 PM, Trond Myklebust <trondmy@primarydata.com> wrote:
->>
->>
->> On Sun, 2017-11-05 at 11:53 +0300, Dmitry Vyukov wrote:
->>> On Sun, Nov 5, 2017 at 11:41 AM, syzbot
->>> <bot+d8fe95298ef830cd7d05e33eefa4a5a6f6f334d4@syzkaller.appspotmail.c
->>> om>
->>> wrote:
->>> > Hello,
->>> >
->>> > syzkaller hit the following crash on
->>> > 0f611fb6dcc0d6d91b4e1fec911321f434a3b858
->>> > git://git.cmpxchg.org/linux-mmots.git/master
->>> > compiler: gcc (GCC) 7.1.1 20170620
->>> > .config is attached
->>> > Raw console output is attached.
->>> >
->>> > xs_tcp_setup_socket: connect returned unhandled error -113
->>> > xs_tcp_setup_socket: connect returned unhandled error -113
->>> > xs_tcp_setup_socket: connect returned unhandled error -113
->>> >
->>> > ======================================================
->>> > WARNING: possible circular locking dependency detected
->>> > 4.14.0-rc5-mm1+ #20 Not tainted
->>> > ------------------------------------------------------
->>> > kworker/0:3/3400 is trying to acquire lock:
->>> >  ("xprtiod"){+.+.}, at: [<ffffffff8146adda>] start_flush_work
->>> > kernel/workqueue.c:2850 [inline]
->>> >  ("xprtiod"){+.+.}, at: [<ffffffff8146adda>] flush_work+0x55a/0x8a0
->>> > kernel/workqueue.c:2882
->>> >
->>> > but task is already holding lock:
->>> >  ((&task->u.tk_work)){+.+.}, at: [<ffffffff81471eb2>]
->>> > process_one_work+0xb32/0x1bc0 kernel/workqueue.c:2087
->>> >
->>> > which lock already depends on the new lock.
->>> >
->>> >
->>> > the existing dependency chain (in reverse order) is:
->>> >
->>> > -> #1 ((&task->u.tk_work)){+.+.}:
->>> >        process_one_work+0xba2/0x1bc0 kernel/workqueue.c:2088
->>> >        worker_thread+0x223/0x1990 kernel/workqueue.c:2246
->>> >        kthread+0x38b/0x470 kernel/kthread.c:242
->>> >        ret_from_fork+0x2a/0x40 arch/x86/entry/entry_64.S:431
->>> >
->>> > -> #0 ("xprtiod"){+.+.}:
->>> >        lock_acquire+0x1d5/0x580 kernel/locking/lockdep.c:3991
->>> >        start_flush_work kernel/workqueue.c:2851 [inline]
->>> >        flush_work+0x57f/0x8a0 kernel/workqueue.c:2882
->>> >        __cancel_work_timer+0x30a/0x7e0 kernel/workqueue.c:2954
->>> >        cancel_work_sync+0x17/0x20 kernel/workqueue.c:2990
->>> >        xprt_destroy+0xa1/0x130 net/sunrpc/xprt.c:1467
->>> >        xprt_destroy_kref net/sunrpc/xprt.c:1477 [inline]
->>> >        kref_put include/linux/kref.h:70 [inline]
->>> >        xprt_put+0x38/0x40 net/sunrpc/xprt.c:1501
->>> >        rpc_task_release_client+0x299/0x430 net/sunrpc/clnt.c:986
->>> >        rpc_release_resources_task+0x7f/0xa0 net/sunrpc/sched.c:1020
->>> >        rpc_release_task net/sunrpc/sched.c:1059 [inline]
->>> >        __rpc_execute+0x4d9/0xe70 net/sunrpc/sched.c:824
->>> >        rpc_async_schedule+0x16/0x20 net/sunrpc/sched.c:848
->>> >        process_one_work+0xbf0/0x1bc0 kernel/workqueue.c:2112
->>> >        worker_thread+0x223/0x1990 kernel/workqueue.c:2246
->>> >        kthread+0x38b/0x470 kernel/kthread.c:242
->>> >        ret_from_fork+0x2a/0x40 arch/x86/entry/entry_64.S:431
->>> >
->>> > other info that might help us debug this:
->>> >
->>> >  Possible unsafe locking scenario:
->>> >
->>> >        CPU0                    CPU1
->>> >        ----                    ----
->>> >   lock((&task->u.tk_work));
->>> >                                lock("xprtiod");
->>> >                                lock((&task->u.tk_work));
->>> >   lock("xprtiod");
->>> >
->>> >  *** DEADLOCK ***
->>> >
->>> > 2 locks held by kworker/0:3/3400:
->>> >  #0:  ("rpciod"){+.+.}, at: [<ffffffff81471e5f>] __write_once_size
->>> > include/linux/compiler.h:305 [inline]
->>> >  #0:  ("rpciod"){+.+.}, at: [<ffffffff81471e5f>] atomic64_set
->>> > arch/x86/include/asm/atomic64_64.h:33 [inline]
->>> >  #0:  ("rpciod"){+.+.}, at: [<ffffffff81471e5f>] atomic_long_set
->>> > include/asm-generic/atomic-long.h:56 [inline]
->>> >  #0:  ("rpciod"){+.+.}, at: [<ffffffff81471e5f>] set_work_data
->>> > kernel/workqueue.c:618 [inline]
->>> >  #0:  ("rpciod"){+.+.}, at: [<ffffffff81471e5f>]
->>> > set_work_pool_and_clear_pending kernel/workqueue.c:645 [inline]
->>> >  #0:  ("rpciod"){+.+.}, at: [<ffffffff81471e5f>]
->>> > process_one_work+0xadf/0x1bc0 kernel/workqueue.c:2083
->>> >  #1:  ((&task->u.tk_work)){+.+.}, at: [<ffffffff81471eb2>]
->>> > process_one_work+0xb32/0x1bc0 kernel/workqueue.c:2087
->>> >
->>> > stack backtrace:
->>> > CPU: 0 PID: 3400 Comm: kworker/0:3 Not tainted 4.14.0-rc5-mm1+ #20
->>> > Hardware name: Google Google Compute Engine/Google Compute Engine,
->>> > BIOS
->>> > Google 01/01/2011
->>> > Workqueue: rpciod rpc_async_schedule
->>> > Call Trace:
->>> >  __dump_stack lib/dump_stack.c:16 [inline]
->>> >  dump_stack+0x194/0x257 lib/dump_stack.c:52
->>> >  print_circular_bug.isra.41+0x342/0x36a
->>> > kernel/locking/lockdep.c:1258
->>> >  check_prev_add kernel/locking/lockdep.c:1901 [inline]
->>> >  check_prevs_add kernel/locking/lockdep.c:2018 [inline]
->>> >  validate_chain kernel/locking/lockdep.c:2460 [inline]
->>> >  __lock_acquire+0x2f55/0x3d50 kernel/locking/lockdep.c:3487
->>> >  lock_acquire+0x1d5/0x580 kernel/locking/lockdep.c:3991
->>> >  start_flush_work kernel/workqueue.c:2851 [inline]
->>> >  flush_work+0x57f/0x8a0 kernel/workqueue.c:2882
->>> >  __cancel_work_timer+0x30a/0x7e0 kernel/workqueue.c:2954
->>> >  cancel_work_sync+0x17/0x20 kernel/workqueue.c:2990
->>> >  xprt_destroy+0xa1/0x130 net/sunrpc/xprt.c:1467
->>> >  xprt_destroy_kref net/sunrpc/xprt.c:1477 [inline]
->>> >  kref_put include/linux/kref.h:70 [inline]
->>> >  xprt_put+0x38/0x40 net/sunrpc/xprt.c:1501
->>> >  rpc_task_release_client+0x299/0x430 net/sunrpc/clnt.c:986
->>> >  rpc_release_resources_task+0x7f/0xa0 net/sunrpc/sched.c:1020
->>> >  rpc_release_task net/sunrpc/sched.c:1059 [inline]
->>> >  __rpc_execute+0x4d9/0xe70 net/sunrpc/sched.c:824
->>> >  rpc_async_schedule+0x16/0x20 net/sunrpc/sched.c:848
->>> >  process_one_work+0xbf0/0x1bc0 kernel/workqueue.c:2112
->>> >  worker_thread+0x223/0x1990 kernel/workqueue.c:2246
->>> >  kthread+0x38b/0x470 kernel/kthread.c:242
->>> >  ret_from_fork+0x2a/0x40 arch/x86/entry/entry_64.S:431
->>>
->>>
->>> +sunrpc maintainers
->>
->> A fix for this has already been merged. Please retest with an up to
->> date kernel.
->
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
+
+On Sun, Feb 11 2018, Wang, Alan 1. (NSB - CN/Hangzhou) wrote:
+
 > Hi,
 >
-> What's the fix? Please specify it in the following form:
+> I have a test case on mount/umount on a partition from nfs server side. A=
+nd encounter a problem of umount busy in a low probability.
 >
->> syzbot will keep track of this bug report.
->> Once a fix for this bug is committed, please reply to this email with:
->> #syz fix: exact-commit-title
->> Note: all commands must start from beginning of the line.
+> The Linux version is 3.10.64 with the patch "sunrpc/cache: make cache flu=
+shing more reliable".
+> https://patchwork.kernel.org/patch/7410021/
 >
-> The bot tests HEAD of multiple branches and it needs to know what
-> fixes what, because this still happens on other branches. Once the bot
-> knows the fix, it will track when the fix reaches all tested branches.
+> After some analysis and test in many times, I find that when it failed to=
+ mount, the time "then" and "now" are different, which caused the last_refr=
+esh is far beyond the flush_time. So this cache is not expired and won't be=
+ clean at once.=20
+> Then the ref in cache_head won't be released, and mntput_no_expire didn't=
+ be called to decrease the count. That caused the umount busy.
+>
+> Below are logs in my test.
+>
+> kernel: [  292.767801] write_flush 1480 then =3D 249, now =3D 250
+> kernel: [  292.767817] cache_clean 451, cd name nfsd.fh expiry_time 79048=
+5253, cd flush_time 249, last_refresh 369, seconds_since_boot 250
+> kernel: [  292.767913] write_flush 1480 then =3D 249, now =3D 250
+> kernel: [  292.767928] cache_clean 451, cd name nfsd.export expiry_time 2=
+049, cd flush_time 249, last_refresh 369, seconds_since_boot 250
+> kernel: [  292.773229] do_refcount_check 283 mycount 4
+> kernel: [  292.773245] do_umount 1344 retval -16
+>
+> I think this happens in such case that the exportfs writes the flush with=
+ current time, the time of "then". But when seconds_since_boot being called=
+ in function write_flush, the time is on the next second, so the "now" is o=
+ne second after "then".
+> Because "then" is less than "now", the flush_time is set directly to orig=
+inal "then", rather than "cd->flush_time + 1".
+>
+>
+> And I want to change the condition as below. I'm not sure it's OK and has=
+ no effects to other part.
 
-Seems to be this one:
+I think this change is safe.  It is a bit of a hack, but the "flush"
+interface was actually very poorly designed and I don't think it *can*
+be implemented cleanly.
+Maybe we should just ignore the number written in and *always* flush
+the cache completely.  That is was it always wanted.
 
-#syz fix: SUNRPC: Destroy transport from the system workqueue
+See below.
+
+Bruce: do you have any thoughts on this?
+
+Thanks,
+NeilBrown
+
+diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+index aa36dad32db1..43f117d1547e 100644
+=2D-- a/net/sunrpc/cache.c
++++ b/net/sunrpc/cache.c
+@@ -1450,7 +1450,7 @@ static ssize_t write_flush(struct file *file, const c=
+har __user *buf,
+ 			   struct cache_detail *cd)
+ {
+ 	char tbuf[20];
+=2D	char *bp, *ep;
++	char *ep;
+ 	time_t then, now;
+=20
+ 	if (*ppos || count > sizeof(tbuf)-1)
+@@ -1461,24 +1461,24 @@ static ssize_t write_flush(struct file *file, const=
+ char __user *buf,
+ 	simple_strtoul(tbuf, &ep, 0);
+ 	if (*ep && *ep !=3D '\n')
+ 		return -EINVAL;
++	/* Note that while we check that 'buf' holds a valid number,
++	 * we always ignore the value and just flush everything.
++	 * Making use of the number leads to races.
++	 */
+=20
+=2D	bp =3D tbuf;
+=2D	then =3D get_expiry(&bp);
+ 	now =3D seconds_since_boot();
+=2D	cd->nextcheck =3D now;
+=2D	/* Can only set flush_time to 1 second beyond "now", or
++	/* Always flush everything, so behave like cache_purge()
++	 * Can only set flush_time to 1 second beyond "now", or
+ 	 * possibly 1 second beyond flushtime.  This is because
+ 	 * flush_time never goes backwards so it mustn't get too far
+ 	 * ahead of time.
+ 	 */
+=2D	if (then >=3D now) {
+=2D		/* Want to flush everything, so behave like cache_purge() */
+=2D		if (cd->flush_time >=3D now)
+=2D			now =3D cd->flush_time + 1;
+=2D		then =3D now;
+=2D	}
+=20
+=2D	cd->flush_time =3D then;
++	if (cd->flush_time >=3D now)
++		now =3D cd->flush_time + 1;
++
++	cd->flush_time =3D now;
++	cd->nextcheck =3D now;
+ 	cache_flush();
+=20
+ 	*ppos +=3D count;
+
+
+>
+> --------------------------------------------------------------------------
+>        then =3D get_expiry(&bp);
+>        now =3D seconds_since_boot();
+>        cd->nextcheck =3D now;
+>        /* Can only set flush_time to 1 second beyond "now", or
+>        * possibly 1 second beyond flushtime.  This is because
+>        * flush_time never goes backwards so it mustn't get too far
+>        * ahead of time.
+>        */
+>        if (then !=3D now)
+>               printk("%s %d then =3D %d, now =3D %d\n", __func__, __LINE_=
+_, then, now);
+> -      if (then >=3D now) {
+> +     if (then >=3D now - 1) {
+>               /* Want to flush everything, so behave like cache_purge() */
+>               if (cd->flush_time >=3D now)
+>                      now =3D cd->flush_time + 1;
+>               then =3D now;
+>        }
+>
+>        cd->flush_time =3D then;
+> --------------------------------------------------------------------------
+>
+> Best Regards,
+> Alan Wang
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlqDQxIACgkQOeye3VZi
+gbkL5w/9Eunybj16rujgplIf49Sv5SpHVWqte7AhI6WJKKA4GH2YhOFxNn3bcqhN
+wV+jvSo3qzyqW0mJN3qOO24PxOwETu958xiYad3kPyZxQhRAlIIeFZu54wLhRXZ8
+9jn+B4Ew7SlW8g/99wu6ZiLSALllJ5XMGoeATD7c/2mIUubJ1X6TO3isjN0JYTH/
+Rrjht3m2u0QoakdnLmV4MwR38c7mTzMXbd9XbS7aSiuloirTwBGZ9Hn4rpTDmC8n
+mEUaLTA6l1O98bPF6vEXzkz/X9xD0rJv++rLaMVYbQJrNV9l5lfheB/XIFjuAOx2
+euvmHKTwx5D4BrnZFB3qS5Km+txHDS5+iirKcbbhc69az+hmr+EEm7KV6AiMfBhU
+F9rXTj7I6KETUoMt16LahefQ+wuRJ/hS6eafcbS9ucjfYkSRvQXAKAKdld/nDRyt
+IKe/CjLbvqw+CD/GPd5/yXI9LldWDbn/QTaEyZ/K+Z+S5SCTTXW3wALPo8XI+1mm
+rdL7XMkIf2D9HyimK2r7it7PfP81uytA88CajFn5CITOqu+3gcpmYBvWDjud0qoC
+wTXh3PQELh1h39DQAD86lqsNjOC9fSMb6LtZK1zTos/aVJLHoW94ACjo9BMzyd83
+TElciidw6c8Zu6MjZy8F4uxz4rRne9lYiFBFb5MQfjWeDqT0MuM=
+=5V5W
+-----END PGP SIGNATURE-----
+--=-=-=--
