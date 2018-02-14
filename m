@@ -1,121 +1,56 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-qt0-f177.google.com ([209.85.216.177]:40250 "EHLO
-        mail-qt0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1032203AbeBNQUf (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Feb 2018 11:20:35 -0500
-Received: by mail-qt0-f177.google.com with SMTP id c19so8345925qtm.7
-        for <linux-nfs@vger.kernel.org>; Wed, 14 Feb 2018 08:20:35 -0800 (PST)
-Reply-To: dang@redhat.com
-Subject: Re: Questions about pynfs:testLargeData-WRT5
-To: "J. Bruce Fields" <bfields@redhat.com>,
-        Seiichi Ikarashi <s.ikarashi@jp.fujitsu.com>
-Cc: trondmy@primarydata.com, luxy.fnst@cn.fujitsu.com,
-        linux-nfs@vger.kernel.org
-References: <20180209183112.GC30030@parsley.fieldses.org>
- <6c3159af-17c5-5556-d416-574968bb5e14@cn.fujitsu.com>
- <738139ab-6a55-4c93-008d-56a2332774c9@jp.fujitsu.com>
- <20180213161540.GA26270@parsley.fieldses.org>
- <20180214154909.GA32456@parsley.fieldses.org>
-From: Daniel Gryniewicz <dang@redhat.com>
-Message-ID: <e2eeabab-7bf2-13cc-ba9d-c8db16f3e49f@redhat.com>
-Date: Wed, 14 Feb 2018 11:20:33 -0500
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: bcodding redhat <bcodding@redhat.com>, "aglo@umich.edu" <aglo@umich.edu>
+CC: "jlayton@redhat.com" <jlayton@redhat.com>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
+Date: Wed, 14 Feb 2018 16:59:21 +0000
+Message-ID: <1518627560.7484.4.camel@primarydata.com>
+References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
+	 <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+	 <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
+	 <698A2B0C-1E38-4B65-ABA3-60C396393E30@redhat.com>
+	 <1518621683.13566.5.camel@redhat.com>
+	 <1518622194.4737.1.camel@primarydata.com>
+	 <D0761437-4614-41C7-AC85-76EF45D67C70@redhat.com>
+	 <CAN-5tyH-nRRv3EM=APyShUs0ayzEWZN=8ND6ecfjXgag6XhWnQ@mail.gmail.com>
+In-Reply-To: <CAN-5tyH-nRRv3EM=APyShUs0ayzEWZN=8ND6ecfjXgag6XhWnQ@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20180214154909.GA32456@parsley.fieldses.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
-Sender: linux-nfs-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-This looks sane, and like a good improvement.
-
-Daniel
-
-On 02/14/2018 10:49 AM, J. Bruce Fields wrote:
-> On Tue, Feb 13, 2018 at 11:15:40AM -0500, J. Bruce Fields wrote:
->> WRT5 is wrong in any case, I'll fix it.
-> 
-> How about this?
-> 
-> --b.
-> 
-> commit 30f1fff66da3
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Feb 13 16:30:27 2018 -0500
-> 
->      4.0 server tests: replace WRT5 by better tests
->      
->      This test is sending a write that (at least in the knfsd case) is larger
->      than the server's maximum write size, and expecting it to succeed.
->      That's weird.
->      
->      Remove WRT5 and replace it by two tests.  Both first query the maximum
->      write size.  One does a large (but not too large) write and checks that
->      the data was written correctly.  The other does a too-large write and
->      expects nothing.  (A wide variety of server behavior would be in spec;
->      we do this just in case a buggy server might crash.)
->      
->      Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
-> index 710452efa11d..004562d2f52b 100644
-> --- a/nfs4.0/servertests/st_write.py
-> +++ b/nfs4.0/servertests/st_write.py
-> @@ -120,17 +120,22 @@ def testNoData(t, env):
->       if compareTimes(time_prior,time_after) != 0:
->           t.fail("WRITE with no data affected time_modify")
->   
-> +#WRT5 permanently retired
-> +
->   def testLargeData(t, env):
-> -    """WRITE with a large amount of data
-> +    """WRITE with the maximum size, READ it back and compare
->   
->       FLAGS: write read all
->       DEPEND: MKFILE
-> -    CODE: WRT5
-> +    CODE: WRT5a
->       """
->       c = env.c1
->       c.init_connection()
-> +    maxread, maxwrite = _get_iosize(t, c, c.homedir)
-> +    maxio = min(maxread, maxwrite)
->       fh, stateid = c.create_confirm(t.code)
-> -    data = "abcdefghijklmnopq" * 0x10000
-> +    pattern="abcdefghijklmnop"
-> +    data = pattern * (maxio / len(pattern)) + "q" * (maxio % len(pattern))
->       # Write the data
->       pos = 0
->       while pos < len(data):
-> @@ -150,6 +155,27 @@ def testLargeData(t, env):
->       if data != newdata:
->           t.fail("READ did not correspond to WRITE with large dataset")
->   
-> +def testTooLargeData(t, env):
-> +    """WRITE with more than the maximum size
-> +
-> +    FLAGS: write read all
-> +    DEPEND: MKFILE
-> +    CODE: WRT5b
-> +    """
-> +    c = env.c1
-> +    c.init_connection()
-> +    maxread, maxwrite = _get_iosize(t, c, c.homedir)
-> +    fh, stateid = c.create_confirm(t.code)
-> +    data = "a" * (maxwrite + 1000000)
-> +    try:
-> +        # We don't care much what the server does, this is just a check
-> +        # to make sure it doesn't crash.
-> +        res = c.write_file(fh, data, 0, stateid)
-> +    except IOError:
-> +        # Linux knfsd closes the socket when the write is too large.
-> +        # That's OK.
-> +        pass
-> +
->   def testDir(t, env):
->       """WRITE to a dir should return NFS4ERR_ISDIR
->   
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+T24gV2VkLCAyMDE4LTAyLTE0IGF0IDExOjA2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
+ZToNCj4gT24gV2VkLCBGZWIgMTQsIDIwMTggYXQgMTA6NDIgQU0sIEJlbmphbWluIENvZGRpbmd0
+b24NCj4gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiA+IE9uIDE0IEZlYiAyMDE4LCBh
+dCAxMDoyOSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gT24gV2VkLCAyMDE4LTAyLTE0
+IGF0IDEwOjIxIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+ID4gT24gV2VkLCAyMDE4
+LTAyLTE0IGF0IDEwOjA1IC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdyb3RlOg0KPiA+ID4g
+PiA+IEhpIE9sZ2EsDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gT24gMTMgRmViIDIwMTgsIGF0IDE1
+OjA4LCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IE9u
+IE1vbiwgTm92IDE0LCAyMDE2IGF0IDExOjE5IEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA+ID4g
+PiA+IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiA+ID4gPiA+
+IC4uLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEFoLCBnb29kIHF1ZXN0aW9uIHRoZXJlLi4gIEV2
+ZW4gdGhvdWdoIHRoZSBzdGF0ZWlkIGlzIG5vdA0KPiA+ID4gPiA+IHVzZWZ1bA0KPiA+ID4gPiA+
+IGZvcg0KPiA+ID4gPiA+IG9wZXJhdGlvbnMgdGhhdCBmb2xsb3csIEkgdGhpbmsgdGhlIHNlcXVl
+bmNlaWQgc2hvdWxkIGJlDQo+ID4gPiA+ID4gaW5jcmVtZW50ZWQgYmVjYXVzZQ0KPiA+ID4gPiA+
+IHRoZSBDTE9TRSBpcyBhbiBvcGVyYXRpb24gdGhhdCBtb2RpZmllcyB0aGUgc2V0IG9mIGxvY2tz
+IG9yDQo+ID4gPiA+ID4gc3RhdGU6DQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBJdCBk
+b2Vzbid0IG1hdHRlci4NCj4gPiANCj4gPiBZZXMsIGdvb2QgY29uZGVuc2VkIHBvaW50LiAgSXQg
+ZG9lc24ndCBtYXR0ZXIuDQo+ID4gDQo+ID4gPiA+ID4gLi4uDQo+ID4gPiANCj4gPiA+IElzIHRo
+ZXJlIGEgcHJvcG9zYWwgdG8gY2hhbmdlIHRoZSBjdXJyZW50IGNsaWVudCBiZWhhdmlvdXIgaGVy
+ZT8NCj4gPiA+IEFzIGZhcg0KPiA+ID4gYXMgSSBjYW4gdGVsbCwgdGhlIGFuc3dlciBpcyAibm8i
+LiBBbSBJIG1pc3Npbmcgc29tZXRoaW5nPw0KPiA+IA0KPiA+IE5vdCB0aGF0IEkgY2FuIHNlZS4g
+IEkgdGhpbmsgd2UncmUganVzdCBjb21wYXJpbmcgbGludXggYW5kIG5ldGFwcA0KPiA+IHNlcnZl
+cg0KPiA+IGJlaGF2aW9ycy4uDQo+ID4gDQo+ID4gQmVuDQo+IA0KPiBJIGp1c3QgZm91bmQgdmVy
+eSBzdXJwcmlzaW5nIHRoYXQgaW4gbmZzNF9jbG9zZV9kb25lKCkgd2hpY2ggY2FsbHMNCj4gZXZl
+bnR1YWxseSBjYWxscyBuZnNfY2xlYXJfb3Blbl9zdGF0ZWlkX2xvY2tlZCgpIHdlIGNoYW5nZSB0
+aGUgc3RhdGUNCj4gYmFzZWQgb24gdGhlIHN0YXRlaWQgcmVjZWl2ZWQgZnJvbSB0aGUgQ0xPU0Uu
+DQo+IG5mc19jbGVhcl9vcGVuX3N0YXRlaWRfbG9ja2VkKCkgaXMgb25seSBjYWxsZWQgZnJvbSBu
+ZnM0X2Nsb3NlX2RvbmUoKQ0KPiBhbmQgbm8gb3RoZXIgZnVuY3Rpb24uDQo+IA0KPiBJIGd1ZXNz
+IEknbSBub3Qgd29uZGVyaW5nIGlmIHdlIGhhZCB0aGlzIHByb2JsZW0gZGVzY3JpYmVkIGluIHRo
+aXMNCj4gcGF0Y2ggb2YgdGhlIGRlbGF5ZWQgQ0xPU0UsIGlmIHdlIGRpZG4ndCB1cGRhdGUgdGhl
+IHN0YXRlIGFmdGVyDQo+IHJlY2VpdmluZyB0aGUgY2xvc2UuLi4gKHNvIHllcyB0aGlzIGlzIGEg
+d2VhayBwcm9wb3NhbCkuDQo+IA0KDQpuZnM0X2Nsb3NlX2RvbmUoKSBkb2Vzbid0IG9ubHkgZGVh
+bCB3aXRoIENMT1NFLiBJdCBhbHNvIGhhcyB0byBoYW5kbGUNCk9QRU5fRE9XTkdSQURFLg0KDQot
+LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5
+RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
