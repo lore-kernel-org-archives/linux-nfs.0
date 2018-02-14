@@ -1,31 +1,43 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58172 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58530 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1030678AbeBNOB0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Feb 2018 09:01:26 -0500
-Date: Wed, 14 Feb 2018 09:01:25 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: trondmy@primarydata.com
+        id S1030288AbeBNOPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Feb 2018 09:15:07 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Harald Dunkel" <harald.dunkel@aixigo.de>
 Cc: linux-nfs@vger.kernel.org
-Subject: Question about the removal of __nfs_revalidate_inode() from
- do_setlk()
-Message-ID: <20180214140125.kkpoz4cgouuk5lvx@tonberry.usersys.redhat.com>
+Subject: Re: running NFS in LXC
+Date: Wed, 14 Feb 2018 09:15:05 -0500
+Message-ID: <F9942544-0C31-4618-BF73-292FF4265C31@redhat.com>
+In-Reply-To: <8af7b137-0698-0c12-abc5-1cdd86c53a91@aixigo.de>
+References: <5cedd413-81eb-6921-47bc-3c56e56d530a@aixigo.de>
+ <6860CF8E-9790-4456-82D3-86A6A29E90BE@redhat.com>
+ <8af7b137-0698-0c12-abc5-1cdd86c53a91@aixigo.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+On 14 Feb 2018, at 2:06, Harald Dunkel wrote:
 
-Commit ca0daa2 ("NFS: Cache aggressively when file is open for writing")
-removed the inode revalidation from do_setlk().  Why was that necessary?
-If just that part of the commit is added back in, the client still seems
-to be able to cope with out-of-order write replies.
+> Hi Ben,
+>
+> I take this as a "no serious problems by now". Good to hear.
+> Which kernel are you using?
 
-Currently the client invalidates the data cache whenever it takes a lock
-and that causes performance problems for some workloads... if a client
-wants to re-read portions of a file, and no other client has modified 
-that file, then why should the reads go out on the wire just because
-locking is being used?
+This was years ago on a 2.6.32 series.  I don't expect you'll have 
+serious problems now, either.  As far as I know, my last employer is 
+still using that architecture, but I couldn't tell you what software 
+versions they're on now..
 
--Scott
+We moved to the knfsd-in-a-container from an architecture that was 
+essentially a bunch of vanilla knfsds that could mount and any of the 
+block devices, and block devices were tied to IP addresses, and this was 
+all orchestrated by pacemaker.  The problem with that one was that when 
+a block device or filesystem was migrated, the server receiving that 
+filesystem had to be put into grace, which disrupted any existing NFS 
+serving that was going on.
+
+Test things, let us know how it works!
+
+Ben
