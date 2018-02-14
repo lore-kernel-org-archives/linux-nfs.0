@@ -1,92 +1,51 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: bcodding redhat <bcodding@redhat.com>, "jlayton@redhat.com"
-	<jlayton@redhat.com>, "aglo@umich.edu" <aglo@umich.edu>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:38940 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1031611AbeBNPmK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Feb 2018 10:42:10 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Trond Myklebust" <trondmy@primarydata.com>
+Cc: jlayton@redhat.com, aglo@umich.edu, linux-nfs@vger.kernel.org
 Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
-Date: Wed, 14 Feb 2018 15:29:56 +0000
-Message-ID: <1518622194.4737.1.camel@primarydata.com>
+Date: Wed, 14 Feb 2018 10:42:08 -0500
+Message-ID: <D0761437-4614-41C7-AC85-76EF45D67C70@redhat.com>
+In-Reply-To: <1518622194.4737.1.camel@primarydata.com>
 References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
-	 <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
-	 <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
-	 <698A2B0C-1E38-4B65-ABA3-60C396393E30@redhat.com>
-	 <1518621683.13566.5.camel@redhat.com>
-In-Reply-To: <1518621683.13566.5.camel@redhat.com>
+ <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+ <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
+ <698A2B0C-1E38-4B65-ABA3-60C396393E30@redhat.com>
+ <1518621683.13566.5.camel@redhat.com>
+ <1518622194.4737.1.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTAyLTE0IGF0IDEwOjIxIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-T24gV2VkLCAyMDE4LTAyLTE0IGF0IDEwOjA1IC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdy
-b3RlOg0KPiA+IEhpIE9sZ2EsDQo+ID4gDQo+ID4gT24gMTMgRmViIDIwMTgsIGF0IDE1OjA4LCBP
-bGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiANCj4gPiA+IE9uIE1vbiwgTm92IDE0LCAyMDE2
-IGF0IDExOjE5IEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA+IDx0cm9uZC5teWtsZWJ1c3RAcHJp
-bWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiA+ID4gSWYgdGhlIHJlcGx5IHRvIGEgc3VjY2Vzc2Z1
-bCBDTE9TRSBjYWxsIHJhY2VzIHdpdGggYW4gT1BFTiB0bw0KPiA+ID4gPiB0aGUgc2FtZQ0KPiA+
-ID4gPiBmaWxlLCB3ZSBjYW4gZW5kIHVwIHNjcmliYmxpbmcgb3ZlciB0aGUgc3RhdGVpZCB0aGF0
-IHJlcHJlc2VudHMNCj4gPiA+ID4gdGhlDQo+ID4gPiA+IG5ldyBvcGVuIHN0YXRlLg0KPiA+ID4g
-PiBUaGUgcmFjZSBsb29rcyBsaWtlOg0KPiA+ID4gPiANCj4gPiA+ID4gICBDbGllbnQgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgIFNlcnZlcg0KPiA+ID4gPiAgID09PT09PSAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgPT09PT09DQo+ID4gPiA+IA0KPiA+ID4gPiAgIENMT1NF
-IHN0YXRlaWQgQSBvbiBmaWxlICJmb28iDQo+ID4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICBDTE9TRSBzdGF0ZWlkIEEsIHJldHVybg0KPiA+ID4gPiBzdGF0ZWlk
-IEMNCj4gPiA+IA0KPiA+ID4gSGkgZm9sa3MsDQo+ID4gPiANCj4gPiA+IEknZCBsaWtlIHRvIHVu
-ZGVyc3RhbmQgdGhpcyBwYXJ0aWN1bGFyIGlzc3VlLiBTcGVjaWZpY2FsbHkgSQ0KPiA+ID4gZG9u
-J3QNCj4gPiA+IHVuZGVyc3RhbmQgaG93IGNhbiBzZXJ2ZXIgcmV0dXJuIHN0YXRlaWQgQyB0byB0
-aGUgY2xvc2Ugd2l0aA0KPiA+ID4gc3RhdGVpZA0KPiA+ID4gQS4NCj4gPiANCj4gPiBJIHRoaW5r
-IGluIHRoaXMgZXhwbGFuYXRpb24gb2YgdGhlIHJhY2UsIHN0YXRlaWQgQyBpcyBhbg0KPiA+IGlu
-Y3JlbWVudGVkIHZlcnNpb24NCj4gPiBvZiBBIC0tIHRoZSBzdGF0ZWlkJ3MgIm90aGVyIiBmaWVs
-ZHMgbWF0Y2ggLS0gT1IgaXQgaXMgdGhlIGludmFsaWQNCj4gPiBzcGVjaWFsDQo+ID4gc3RhdGVp
-ZCBhY2NvcmRpbmcgdG8gUkZDIDU2NjEsIFNlY3Rpb24gMTguMi40Lg0KPiA+IA0KPiA+ID4gQXMg
-cGVyIFJGQyA3NTMwIG9yIDU2NjEuIEl0IHNheXMgdGhhdCBzdGF0ZSBpcyByZXR1cm5lZCBieSB0
-aGUNCj4gPiA+IGNsb3NlDQo+ID4gPiBzaG91bGRuJ3QgYmUgdXNlZC4NCj4gPiA+IA0KPiA+ID4g
-RXZlbiB0aG91Z2ggQ0xPU0UgcmV0dXJucyBhIHN0YXRlaWQsIHRoaXMgc3RhdGVpZCBpcyBub3Qg
-dXNlZnVsDQo+ID4gPiB0bw0KPiA+ID4gICAgdGhlIGNsaWVudCBhbmQgc2hvdWxkIGJlIHRyZWF0
-ZWQgYXMgZGVwcmVjYXRlZC4gIENMT1NFICJzaHV0cw0KPiA+ID4gZG93biINCj4gPiA+ICAgIHRo
-ZSBzdGF0ZSBhc3NvY2lhdGVkIHdpdGggYWxsIE9QRU5zIGZvciB0aGUgZmlsZSBieSBhIHNpbmds
-ZQ0KPiA+ID4gICAgb3Blbi1vd25lci4gIEFzIG5vdGVkIGFib3ZlLCBDTE9TRSB3aWxsIGVpdGhl
-ciByZWxlYXNlIGFsbA0KPiA+ID4gZmlsZQ0KPiA+ID4gICAgbG9ja2luZyBzdGF0ZSBvciByZXR1
-cm4gYW4gZXJyb3IuICBUaGVyZWZvcmUsIHRoZSBzdGF0ZWlkDQo+ID4gPiByZXR1cm5lZCBieQ0K
-PiA+ID4gICAgQ0xPU0UgaXMgbm90IHVzZWZ1bCBmb3IgdGhlIG9wZXJhdGlvbnMgdGhhdCBmb2xs
-b3cuDQo+ID4gPiANCj4gPiA+IElzIHRoaXMgYmVjYXVzZSB0aGUgc3BlYyBzYXlzICJzaG91bGQi
-IGFuZCBub3QgYSAibXVzdCI/DQo+ID4gDQo+ID4gSSBkb24ndCB1bmRlcnN0YW5kIC0gaXMgd2hh
-dCBiZWNhdXNlPyAgVGhlIHN0YXRlIHJldHVybmVkIGZyb20NCj4gPiBDTE9TRSBpcw0KPiA+IHVz
-ZWZ1bCB0byBiZSB1c2VkIGJ5IHRoZSBjbGllbnQgZm9yIGhvdXNla2VlcGluZywgYnV0IGl0IHdv
-bid0IGJlDQo+ID4gcmUtdXNlZCBpbg0KPiA+IHRoZSBwcm90b2NvbC4NCj4gPiANCj4gPiA+IExp
-bnV4IHNlcnZlciBpbmNyZW1lbnRzIGEgc3RhdGUncyBzZXF1ZW5jZWlkIG9uIENMT1NFLiBPbnRh
-cA0KPiA+ID4gc2VydmVyDQo+ID4gPiBkb2VzIG5vdC4gSSdtIG5vdCBzdXJlIHdoYXQgb3RoZXIg
-c2VydmVycyBkby4gQXJlIGFsbCB0aGVzZQ0KPiA+ID4gaW1wbGVtZW50YXRpb25zIGVxdWFsaXR5
-IGNvcnJlY3Q/DQo+ID4gDQo+ID4gQWgsIGdvb2QgcXVlc3Rpb24gdGhlcmUuLiAgRXZlbiB0aG91
-Z2ggdGhlIHN0YXRlaWQgaXMgbm90IHVzZWZ1bA0KPiA+IGZvcg0KPiA+IG9wZXJhdGlvbnMgdGhh
-dCBmb2xsb3csIEkgdGhpbmsgdGhlIHNlcXVlbmNlaWQgc2hvdWxkIGJlDQo+ID4gaW5jcmVtZW50
-ZWQgYmVjYXVzZQ0KPiA+IHRoZSBDTE9TRSBpcyBhbiBvcGVyYXRpb24gdGhhdCBtb2RpZmllcyB0
-aGUgc2V0IG9mIGxvY2tzIG9yIHN0YXRlOg0KPiA+IA0KPiANCj4gSXQgZG9lc24ndCBtYXR0ZXIu
-DQo+IA0KPiA+IEluIFJGQyA3NTMwLCBTZWN0aW9uIDkuMS40LjIuOg0KPiA+IC4uLg0KPiA+ICAg
-IFdoZW4gc3VjaCBhIHNldCBvZiBsb2NrcyBpcyBmaXJzdCBjcmVhdGVkLCB0aGUgc2VydmVyIHJl
-dHVybnMgYQ0KPiA+ICAgIHN0YXRlaWQgd2l0aCBhIHNlcWlkIHZhbHVlIG9mIG9uZS4gIE9uIHN1
-YnNlcXVlbnQgb3BlcmF0aW9ucw0KPiA+IHRoYXQNCj4gPiAgICBtb2RpZnkgdGhlIHNldCBvZiBs
-b2NrcywgdGhlIHNlcnZlciBpcyByZXF1aXJlZCB0byBhZHZhbmNlIHRoZQ0KPiA+ICAgIHNlcWlk
-IGZpZWxkIGJ5IG9uZSB3aGVuZXZlciBpdCByZXR1cm5zIGEgc3RhdGVpZCBmb3IgdGhlIHNhbWUN
-Cj4gPiAgICBzdGF0ZS1vd25lci9maWxlL3R5cGUgY29tYmluYXRpb24gYW5kIHRoZSBvcGVyYXRp
-b24gaXMgb25lIHRoYXQNCj4gPiBtaWdodA0KPiA+ICAgIG1ha2Ugc29tZSBjaGFuZ2UgaW4gdGhl
-IHNldCBvZiBsb2NrcyBhY3R1YWxseSBkZXNpZ25hdGVkLiAgSW4NCj4gPiB0aGlzDQo+ID4gICAg
-Y2FzZSwgdGhlIHNlcnZlciB3aWxsIHJldHVybiBhIHN0YXRlaWQgd2l0aCBhbiAib3RoZXIiIGZp
-ZWxkIHRoZQ0KPiA+IHNhbWUNCj4gPiAgICBhcyBwcmV2aW91c2x5IHVzZWQgZm9yIHRoYXQgc3Rh
-dGUtb3duZXIvZmlsZS90eXBlIGNvbWJpbmF0aW9uLA0KPiA+IHdpdGgNCj4gPiAgICBhbiBpbmNy
-ZW1lbnRlZCBzZXFpZCBmaWVsZC4NCj4gPiANCj4gPiBCdXQsIGluIFJGQyA1NjYxLCB0aGUgQ0xP
-U0UgcmVzcG9uc2UgU0hPVUxEIGJlIHRoZSBpbnZhbGlkIHNwZWNpYWwNCj4gPiBzdGF0ZWlkLg0K
-PiA+IEkgZG9uJ3QgcmVjYWxsLCBkb2VzIHRoZSBsaW51eCBzZXJ2ZXIgaW5jcmVtZW50IHRoZSBl
-eGlzdGluZw0KPiA+IHN0YXRlaWQgb3Igc2VuZA0KPiA+IGJhY2sgdGhlIGludmFsaWQgc3BlY2lh
-bCBzdGF0ZWlkIG9uIHY0LjE/DQo+ID4gDQo+IA0KPiBBIENMT1NFLCBieSBkZWZpbml0aW9uLCBp
-cyBkZXN0cm95aW5nIHRoZSBvbGQgc3RhdGVpZCwgc28gd2hhdCBkb2VzDQo+IGl0DQo+IG1hdHRl
-ciB3aGF0IHlvdSByZXR1cm4gb24gc3VjY2Vzcz8gSXQncyBib2d1cyBlaXRoZXIgd2F5Lg0KPiAN
-Cj4gSWYga25mc2QgaXMgc2VuZGluZyBiYWNrIGEgInJlYWwiIHN0YXRlaWQgdGhlcmUsIHRoZW4g
-aXQncyBsaWtlbHkNCj4gb25seQ0KPiBiZWNhdXNlIHRoYXQncyB3aGF0IHRoZSB2NC4wIHNwZWMg
-c2FpZCB0byBkbyB+MTAgeWVhcnMgYWdvLiBJdCdzDQo+IHByb2JhYmx5IGZpbmUgdG8gZml4IGl0
-IHRvIGp1c3QgcmV0dXJuIHRoZSBpbnZhbGlkIHNwZWNpYWwgc3RhdGVpZA0KPiBhbmQNCj4gY2Fs
-bCBpdCBhIGRheS4gQWxsIGNsaWVudHMgc2hvdWxkIGp1c3QgaWdub3JlIGl0Lg0KPiANCg0KSXMg
-dGhlcmUgYSBwcm9wb3NhbCB0byBjaGFuZ2UgdGhlIGN1cnJlbnQgY2xpZW50IGJlaGF2aW91ciBo
-ZXJlPyBBcyBmYXINCmFzIEkgY2FuIHRlbGwsIHRoZSBhbnN3ZXIgaXMgIm5vIi4gQW0gSSBtaXNz
-aW5nIHNvbWV0aGluZz8NCg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20N
-Cg==
+On 14 Feb 2018, at 10:29, Trond Myklebust wrote:
+> On Wed, 2018-02-14 at 10:21 -0500, Jeff Layton wrote:
+>> On Wed, 2018-02-14 at 10:05 -0500, Benjamin Coddington wrote:
+>>> Hi Olga,
+>>>
+>>> On 13 Feb 2018, at 15:08, Olga Kornievskaia wrote:
+>>>
+>>>> On Mon, Nov 14, 2016 at 11:19 AM, Trond Myklebust
+>>>> <trond.myklebust@primarydata.com> wrote:
+>>>> ...
+>>> Ah, good question there..  Even though the stateid is not useful
+>>> for
+>>> operations that follow, I think the sequenceid should be
+>>> incremented because
+>>> the CLOSE is an operation that modifies the set of locks or state:
+>>>
+>>
+>> It doesn't matter.
+
+Yes, good condensed point.  It doesn't matter.
+
+>>> ...
+> Is there a proposal to change the current client behaviour here? As far
+> as I can tell, the answer is "no". Am I missing something?
+
+Not that I can see.  I think we're just comparing linux and netapp server
+behaviors..
+
+Ben
