@@ -1,32 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.aixigo.de ([5.145.142.10]:1819 "EHLO mail.aixigo.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754470AbeBNHG1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Feb 2018 02:06:27 -0500
-Subject: Re: running NFS in LXC
-To: Benjamin Coddington <bcodding@redhat.com>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58172 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1030678AbeBNOB0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Feb 2018 09:01:26 -0500
+Date: Wed, 14 Feb 2018 09:01:25 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: trondmy@primarydata.com
 Cc: linux-nfs@vger.kernel.org
-References: <5cedd413-81eb-6921-47bc-3c56e56d530a@aixigo.de>
- <6860CF8E-9790-4456-82D3-86A6A29E90BE@redhat.com>
-From: Harald Dunkel <harald.dunkel@aixigo.de>
-Message-ID: <8af7b137-0698-0c12-abc5-1cdd86c53a91@aixigo.de>
-Date: Wed, 14 Feb 2018 08:06:25 +0100
+Subject: Question about the removal of __nfs_revalidate_inode() from
+ do_setlk()
+Message-ID: <20180214140125.kkpoz4cgouuk5lvx@tonberry.usersys.redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <6860CF8E-9790-4456-82D3-86A6A29E90BE@redhat.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben,
+Hi Trond,
 
-I take this as a "no serious problems by now". Good to hear.
-Which kernel are you using?
+Commit ca0daa2 ("NFS: Cache aggressively when file is open for writing")
+removed the inode revalidation from do_setlk().  Why was that necessary?
+If just that part of the commit is added back in, the client still seems
+to be able to cope with out-of-order write replies.
 
-I like your suggestion to use an (redundant?) iscsi server
-instead of drbd, but I have to live with the current hardware.
-Surely I will consider it for the next NFS server configuration.
-On the other hand, drbd 8 has proven as rock-solid.
+Currently the client invalidates the data cache whenever it takes a lock
+and that causes performance problems for some workloads... if a client
+wants to re-read portions of a file, and no other client has modified 
+that file, then why should the reads go out on the wire just because
+locking is being used?
 
-
-Regards
-Harri
+-Scott
