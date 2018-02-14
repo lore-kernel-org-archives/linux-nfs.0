@@ -1,48 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:28159 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1030382AbeBNPBL (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Feb 2018 10:01:11 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question about the removal of __nfs_revalidate_inode() from
- do_setlk()
-Date: Wed, 14 Feb 2018 15:01:06 +0000
-Message-ID: <1518620465.2999.11.camel@primarydata.com>
-References: <20180214140125.kkpoz4cgouuk5lvx@tonberry.usersys.redhat.com>
-In-Reply-To: <20180214140125.kkpoz4cgouuk5lvx@tonberry.usersys.redhat.com>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51950 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1030684AbeBNPF0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Feb 2018 10:05:26 -0500
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Olga Kornievskaia" <aglo@umich.edu>
+Cc: "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        "Jeff Layton" <jlayton@redhat.com>
+Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
+Date: Wed, 14 Feb 2018 10:05:25 -0500
+Message-ID: <698A2B0C-1E38-4B65-ABA3-60C396393E30@redhat.com>
+In-Reply-To: <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
+References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
+ <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+ <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTAyLTE0IGF0IDA5OjAxIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IEhpIFRyb25kLA0KPiANCj4gQ29tbWl0IGNhMGRhYTIgKCJORlM6IENhY2hlIGFnZ3Jlc3NpdmVs
-eSB3aGVuIGZpbGUgaXMgb3BlbiBmb3INCj4gd3JpdGluZyIpDQo+IHJlbW92ZWQgdGhlIGlub2Rl
-IHJldmFsaWRhdGlvbiBmcm9tIGRvX3NldGxrKCkuICBXaHkgd2FzIHRoYXQNCj4gbmVjZXNzYXJ5
-Pw0KPiBJZiBqdXN0IHRoYXQgcGFydCBvZiB0aGUgY29tbWl0IGlzIGFkZGVkIGJhY2sgaW4sIHRo
-ZSBjbGllbnQgc3RpbGwNCj4gc2VlbXMNCj4gdG8gYmUgYWJsZSB0byBjb3BlIHdpdGggb3V0LW9m
-LW9yZGVyIHdyaXRlIHJlcGxpZXMuDQoNCkl0IGNhbiBjb3BlIHdpdGggb3V0IG9mIG9yZGVyIHJl
-cGxpZXMsIGJ1dCBub3Qgd2l0aCBjaGFuZ2VzIGJ5IGEgc2Vjb25kDQpjbGllbnQsIHdoaWNoIGlz
-IGhpZ2hseSBsaWtlbHkgd2hlbiB5b3UgYXJlIHVzaW5nIGZpbGUgbG9ja2luZy4gSW4gdGhhdA0K
-Y2FzZSwgd2Ugc3RpbGwgbmVlZCB0byBpbnZhbGlkYXRlIHRoZSBkYXRhIGNhY2hlLg0KDQo+IEN1
-cnJlbnRseSB0aGUgY2xpZW50IGludmFsaWRhdGVzIHRoZSBkYXRhIGNhY2hlIHdoZW5ldmVyIGl0
-IHRha2VzIGENCj4gbG9jaw0KPiBhbmQgdGhhdCBjYXVzZXMgcGVyZm9ybWFuY2UgcHJvYmxlbXMg
-Zm9yIHNvbWUgd29ya2xvYWRzLi4uIGlmIGEgDQoNCkV4YWN0bHkgd2hpY2ggd29ya2xvYWRzPw0K
-DQo+IGNsaWVudA0KPiB3YW50cyB0byByZS1yZWFkIHBvcnRpb25zIG9mIGEgZmlsZSwgYW5kIG5v
-IG90aGVyIGNsaWVudCBoYXMNCj4gbW9kaWZpZWQgDQo+IHRoYXQgZmlsZSwgdGhlbiB3aHkgc2hv
-dWxkIHRoZSByZWFkcyBnbyBvdXQgb24gdGhlIHdpcmUganVzdCBiZWNhdXNlDQo+IGxvY2tpbmcg
-aXMgYmVpbmcgdXNlZD8NCg0KVGhlIHBvaW50IG9mIHRoZSBwYXRjaCBpcyB0byBubyBsb25nZXIg
-dHJhY2sgd2hldGhlciBvciBub3QgYW5vdGhlcg0KY2xpZW50IGhhcyBjaGFuZ2VkIHRoZSBmaWxl
-IHdoaWxlIHRoZSBmaWxlIGlzIG9wZW4uIFRoYXQgdHJhY2tpbmcgd2FzDQpwcm9kdWNpbmcgd2F5
-IHRvbyBtYW55IGZhbHNlIHBvc2l0aXZlcyBmb3Igbm8gZ2FpbiwgYW5kIGNhdXNpbmcgaGVhdnkN
-CnNsb3dkb3ducyBmb3IgcGVyZm9ybWFuY2Ugb3B0aW1pc2VkIHdvcmtsb2FkcyBkdWUgdG8gc3B1
-cmlvdXMgY2FjaGUNCmludmFsaWRhdGlvbnMuIFdvcmtsb2FkcyB0aGF0IHVzZSBsb2NraW5nIGFy
-ZSBnZW5lcmFsbHkgX25vdF8NCmNvbnNpZGVyZWQgdG8gYmUgb3B0aW1pc2VkIGZvciBwZXJmb3Jt
-YW5jZS4NCg0KSU9XOiBUaGUgcGF0Y2ggaXMgcmVzdG9yaW5nIHRoZSBiZWhhdmlvdXIgb2YgdGhl
-IGxvY2tpbmcgY29kZSB0byB0aGUNCmhpc3RvcmljYWxseSBwcmVmZXJyZWQgb25lIGFzIGRlc2Ny
-aWJlZCBpbiB0aGUgTkZTIEZBUS4NClNlZSBodHRwOi8vbmZzLnNvdXJjZWZvcmdlLm5ldC8jZmFx
-X2E4DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
-IFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+Hi Olga,
 
+On 13 Feb 2018, at 15:08, Olga Kornievskaia wrote:
+
+> On Mon, Nov 14, 2016 at 11:19 AM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> If the reply to a successful CLOSE call races with an OPEN to the same
+>> file, we can end up scribbling over the stateid that represents the
+>> new open state.
+>> The race looks like:
+>>
+>>   Client                                Server
+>>   ======                                ======
+>>
+>>   CLOSE stateid A on file "foo"
+>>                                         CLOSE stateid A, return stateid C
+>
+> Hi folks,
+>
+> I'd like to understand this particular issue. Specifically I don't
+> understand how can server return stateid C to the close with stateid
+> A.
+
+I think in this explanation of the race, stateid C is an incremented version
+of A -- the stateid's "other" fields match -- OR it is the invalid special
+stateid according to RFC 5661, Section 18.2.4.
+
+> As per RFC 7530 or 5661. It says that state is returned by the close
+> shouldn't be used.
+>
+> Even though CLOSE returns a stateid, this stateid is not useful to
+>    the client and should be treated as deprecated.  CLOSE "shuts down"
+>    the state associated with all OPENs for the file by a single
+>    open-owner.  As noted above, CLOSE will either release all file
+>    locking state or return an error.  Therefore, the stateid returned by
+>    CLOSE is not useful for the operations that follow.
+>
+> Is this because the spec says "should" and not a "must"?
+
+I don't understand - is what because?  The state returned from CLOSE is
+useful to be used by the client for housekeeping, but it won't be re-used in
+the protocol.
+
+> Linux server increments a state's sequenceid on CLOSE. Ontap server
+> does not. I'm not sure what other servers do. Are all these
+> implementations equality correct?
+
+Ah, good question there..  Even though the stateid is not useful for
+operations that follow, I think the sequenceid should be incremented because
+the CLOSE is an operation that modifies the set of locks or state:
+
+In RFC 7530, Section 9.1.4.2.:
+...
+   When such a set of locks is first created, the server returns a
+   stateid with a seqid value of one.  On subsequent operations that
+   modify the set of locks, the server is required to advance the
+   seqid field by one whenever it returns a stateid for the same
+   state-owner/file/type combination and the operation is one that might
+   make some change in the set of locks actually designated.  In this
+   case, the server will return a stateid with an "other" field the same
+   as previously used for that state-owner/file/type combination, with
+   an incremented seqid field.
+
+But, in RFC 5661, the CLOSE response SHOULD be the invalid special stateid.
+I don't recall, does the linux server increment the existing stateid or send
+back the invalid special stateid on v4.1?
+
+Ben
