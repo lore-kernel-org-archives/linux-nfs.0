@@ -1,43 +1,48 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:58530 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1030288AbeBNOPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Feb 2018 09:15:07 -0500
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: "Harald Dunkel" <harald.dunkel@aixigo.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: running NFS in LXC
-Date: Wed, 14 Feb 2018 09:15:05 -0500
-Message-ID: <F9942544-0C31-4618-BF73-292FF4265C31@redhat.com>
-In-Reply-To: <8af7b137-0698-0c12-abc5-1cdd86c53a91@aixigo.de>
-References: <5cedd413-81eb-6921-47bc-3c56e56d530a@aixigo.de>
- <6860CF8E-9790-4456-82D3-86A6A29E90BE@redhat.com>
- <8af7b137-0698-0c12-abc5-1cdd86c53a91@aixigo.de>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:28159 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1030382AbeBNPBL (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 14 Feb 2018 10:01:11 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question about the removal of __nfs_revalidate_inode() from
+ do_setlk()
+Date: Wed, 14 Feb 2018 15:01:06 +0000
+Message-ID: <1518620465.2999.11.camel@primarydata.com>
+References: <20180214140125.kkpoz4cgouuk5lvx@tonberry.usersys.redhat.com>
+In-Reply-To: <20180214140125.kkpoz4cgouuk5lvx@tonberry.usersys.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 14 Feb 2018, at 2:06, Harald Dunkel wrote:
+T24gV2VkLCAyMDE4LTAyLTE0IGF0IDA5OjAxIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IEhpIFRyb25kLA0KPiANCj4gQ29tbWl0IGNhMGRhYTIgKCJORlM6IENhY2hlIGFnZ3Jlc3NpdmVs
+eSB3aGVuIGZpbGUgaXMgb3BlbiBmb3INCj4gd3JpdGluZyIpDQo+IHJlbW92ZWQgdGhlIGlub2Rl
+IHJldmFsaWRhdGlvbiBmcm9tIGRvX3NldGxrKCkuICBXaHkgd2FzIHRoYXQNCj4gbmVjZXNzYXJ5
+Pw0KPiBJZiBqdXN0IHRoYXQgcGFydCBvZiB0aGUgY29tbWl0IGlzIGFkZGVkIGJhY2sgaW4sIHRo
+ZSBjbGllbnQgc3RpbGwNCj4gc2VlbXMNCj4gdG8gYmUgYWJsZSB0byBjb3BlIHdpdGggb3V0LW9m
+LW9yZGVyIHdyaXRlIHJlcGxpZXMuDQoNCkl0IGNhbiBjb3BlIHdpdGggb3V0IG9mIG9yZGVyIHJl
+cGxpZXMsIGJ1dCBub3Qgd2l0aCBjaGFuZ2VzIGJ5IGEgc2Vjb25kDQpjbGllbnQsIHdoaWNoIGlz
+IGhpZ2hseSBsaWtlbHkgd2hlbiB5b3UgYXJlIHVzaW5nIGZpbGUgbG9ja2luZy4gSW4gdGhhdA0K
+Y2FzZSwgd2Ugc3RpbGwgbmVlZCB0byBpbnZhbGlkYXRlIHRoZSBkYXRhIGNhY2hlLg0KDQo+IEN1
+cnJlbnRseSB0aGUgY2xpZW50IGludmFsaWRhdGVzIHRoZSBkYXRhIGNhY2hlIHdoZW5ldmVyIGl0
+IHRha2VzIGENCj4gbG9jaw0KPiBhbmQgdGhhdCBjYXVzZXMgcGVyZm9ybWFuY2UgcHJvYmxlbXMg
+Zm9yIHNvbWUgd29ya2xvYWRzLi4uIGlmIGEgDQoNCkV4YWN0bHkgd2hpY2ggd29ya2xvYWRzPw0K
+DQo+IGNsaWVudA0KPiB3YW50cyB0byByZS1yZWFkIHBvcnRpb25zIG9mIGEgZmlsZSwgYW5kIG5v
+IG90aGVyIGNsaWVudCBoYXMNCj4gbW9kaWZpZWQgDQo+IHRoYXQgZmlsZSwgdGhlbiB3aHkgc2hv
+dWxkIHRoZSByZWFkcyBnbyBvdXQgb24gdGhlIHdpcmUganVzdCBiZWNhdXNlDQo+IGxvY2tpbmcg
+aXMgYmVpbmcgdXNlZD8NCg0KVGhlIHBvaW50IG9mIHRoZSBwYXRjaCBpcyB0byBubyBsb25nZXIg
+dHJhY2sgd2hldGhlciBvciBub3QgYW5vdGhlcg0KY2xpZW50IGhhcyBjaGFuZ2VkIHRoZSBmaWxl
+IHdoaWxlIHRoZSBmaWxlIGlzIG9wZW4uIFRoYXQgdHJhY2tpbmcgd2FzDQpwcm9kdWNpbmcgd2F5
+IHRvbyBtYW55IGZhbHNlIHBvc2l0aXZlcyBmb3Igbm8gZ2FpbiwgYW5kIGNhdXNpbmcgaGVhdnkN
+CnNsb3dkb3ducyBmb3IgcGVyZm9ybWFuY2Ugb3B0aW1pc2VkIHdvcmtsb2FkcyBkdWUgdG8gc3B1
+cmlvdXMgY2FjaGUNCmludmFsaWRhdGlvbnMuIFdvcmtsb2FkcyB0aGF0IHVzZSBsb2NraW5nIGFy
+ZSBnZW5lcmFsbHkgX25vdF8NCmNvbnNpZGVyZWQgdG8gYmUgb3B0aW1pc2VkIGZvciBwZXJmb3Jt
+YW5jZS4NCg0KSU9XOiBUaGUgcGF0Y2ggaXMgcmVzdG9yaW5nIHRoZSBiZWhhdmlvdXIgb2YgdGhl
+IGxvY2tpbmcgY29kZSB0byB0aGUNCmhpc3RvcmljYWxseSBwcmVmZXJyZWQgb25lIGFzIGRlc2Ny
+aWJlZCBpbiB0aGUgTkZTIEZBUS4NClNlZSBodHRwOi8vbmZzLnNvdXJjZWZvcmdlLm5ldC8jZmFx
+X2E4DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIs
+IFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-> Hi Ben,
->
-> I take this as a "no serious problems by now". Good to hear.
-> Which kernel are you using?
-
-This was years ago on a 2.6.32 series.  I don't expect you'll have 
-serious problems now, either.  As far as I know, my last employer is 
-still using that architecture, but I couldn't tell you what software 
-versions they're on now..
-
-We moved to the knfsd-in-a-container from an architecture that was 
-essentially a bunch of vanilla knfsds that could mount and any of the 
-block devices, and block devices were tied to IP addresses, and this was 
-all orchestrated by pacemaker.  The problem with that one was that when 
-a block device or filesystem was migrated, the server receiving that 
-filesystem had to be put into grace, which disrupted any existing NFS 
-serving that was going on.
-
-Test things, let us know how it works!
-
-Ben
