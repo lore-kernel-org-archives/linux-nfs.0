@@ -1,56 +1,80 @@
-Return-Path: <trondmy@primarydata.com>
-From: Trond Myklebust <trondmy@primarydata.com>
-To: bcodding redhat <bcodding@redhat.com>, "aglo@umich.edu" <aglo@umich.edu>
-CC: "jlayton@redhat.com" <jlayton@redhat.com>, "linux-nfs@vger.kernel.org"
-	<linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
-Date: Wed, 14 Feb 2018 16:59:21 +0000
-Message-ID: <1518627560.7484.4.camel@primarydata.com>
-References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
-	 <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
-	 <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
-	 <698A2B0C-1E38-4B65-ABA3-60C396393E30@redhat.com>
-	 <1518621683.13566.5.camel@redhat.com>
-	 <1518622194.4737.1.camel@primarydata.com>
-	 <D0761437-4614-41C7-AC85-76EF45D67C70@redhat.com>
-	 <CAN-5tyH-nRRv3EM=APyShUs0ayzEWZN=8ND6ecfjXgag6XhWnQ@mail.gmail.com>
-In-Reply-To: <CAN-5tyH-nRRv3EM=APyShUs0ayzEWZN=8ND6ecfjXgag6XhWnQ@mail.gmail.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:43602 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1161820AbeBNSWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Feb 2018 13:22:11 -0500
+Date: Wed, 14 Feb 2018 13:22:10 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Question about the removal of __nfs_revalidate_inode() from
+ do_setlk()
+Message-ID: <20180214182210.6k25ni7snxxywxi3@tonberry.usersys.redhat.com>
+References: <20180214140125.kkpoz4cgouuk5lvx@tonberry.usersys.redhat.com>
+ <1518620465.2999.11.camel@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1518620465.2999.11.camel@primarydata.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTAyLTE0IGF0IDExOjA2IC0wNTAwLCBPbGdhIEtvcm5pZXZza2FpYSB3cm90
-ZToNCj4gT24gV2VkLCBGZWIgMTQsIDIwMTggYXQgMTA6NDIgQU0sIEJlbmphbWluIENvZGRpbmd0
-b24NCj4gPGJjb2RkaW5nQHJlZGhhdC5jb20+IHdyb3RlOg0KPiA+IE9uIDE0IEZlYiAyMDE4LCBh
-dCAxMDoyOSwgVHJvbmQgTXlrbGVidXN0IHdyb3RlOg0KPiA+ID4gT24gV2VkLCAyMDE4LTAyLTE0
-IGF0IDEwOjIxIC0wNTAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4gPiA+ID4gT24gV2VkLCAyMDE4
-LTAyLTE0IGF0IDEwOjA1IC0wNTAwLCBCZW5qYW1pbiBDb2RkaW5ndG9uIHdyb3RlOg0KPiA+ID4g
-PiA+IEhpIE9sZ2EsDQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gT24gMTMgRmViIDIwMTgsIGF0IDE1
-OjA4LCBPbGdhIEtvcm5pZXZza2FpYSB3cm90ZToNCj4gPiA+ID4gPiANCj4gPiA+ID4gPiA+IE9u
-IE1vbiwgTm92IDE0LCAyMDE2IGF0IDExOjE5IEFNLCBUcm9uZCBNeWtsZWJ1c3QNCj4gPiA+ID4g
-PiA+IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiA+ID4gPiA+
-IC4uLg0KPiA+ID4gPiA+IA0KPiA+ID4gPiA+IEFoLCBnb29kIHF1ZXN0aW9uIHRoZXJlLi4gIEV2
-ZW4gdGhvdWdoIHRoZSBzdGF0ZWlkIGlzIG5vdA0KPiA+ID4gPiA+IHVzZWZ1bA0KPiA+ID4gPiA+
-IGZvcg0KPiA+ID4gPiA+IG9wZXJhdGlvbnMgdGhhdCBmb2xsb3csIEkgdGhpbmsgdGhlIHNlcXVl
-bmNlaWQgc2hvdWxkIGJlDQo+ID4gPiA+ID4gaW5jcmVtZW50ZWQgYmVjYXVzZQ0KPiA+ID4gPiA+
-IHRoZSBDTE9TRSBpcyBhbiBvcGVyYXRpb24gdGhhdCBtb2RpZmllcyB0aGUgc2V0IG9mIGxvY2tz
-IG9yDQo+ID4gPiA+ID4gc3RhdGU6DQo+ID4gPiA+ID4gDQo+ID4gPiA+IA0KPiA+ID4gPiBJdCBk
-b2Vzbid0IG1hdHRlci4NCj4gPiANCj4gPiBZZXMsIGdvb2QgY29uZGVuc2VkIHBvaW50LiAgSXQg
-ZG9lc24ndCBtYXR0ZXIuDQo+ID4gDQo+ID4gPiA+ID4gLi4uDQo+ID4gPiANCj4gPiA+IElzIHRo
-ZXJlIGEgcHJvcG9zYWwgdG8gY2hhbmdlIHRoZSBjdXJyZW50IGNsaWVudCBiZWhhdmlvdXIgaGVy
-ZT8NCj4gPiA+IEFzIGZhcg0KPiA+ID4gYXMgSSBjYW4gdGVsbCwgdGhlIGFuc3dlciBpcyAibm8i
-LiBBbSBJIG1pc3Npbmcgc29tZXRoaW5nPw0KPiA+IA0KPiA+IE5vdCB0aGF0IEkgY2FuIHNlZS4g
-IEkgdGhpbmsgd2UncmUganVzdCBjb21wYXJpbmcgbGludXggYW5kIG5ldGFwcA0KPiA+IHNlcnZl
-cg0KPiA+IGJlaGF2aW9ycy4uDQo+ID4gDQo+ID4gQmVuDQo+IA0KPiBJIGp1c3QgZm91bmQgdmVy
-eSBzdXJwcmlzaW5nIHRoYXQgaW4gbmZzNF9jbG9zZV9kb25lKCkgd2hpY2ggY2FsbHMNCj4gZXZl
-bnR1YWxseSBjYWxscyBuZnNfY2xlYXJfb3Blbl9zdGF0ZWlkX2xvY2tlZCgpIHdlIGNoYW5nZSB0
-aGUgc3RhdGUNCj4gYmFzZWQgb24gdGhlIHN0YXRlaWQgcmVjZWl2ZWQgZnJvbSB0aGUgQ0xPU0Uu
-DQo+IG5mc19jbGVhcl9vcGVuX3N0YXRlaWRfbG9ja2VkKCkgaXMgb25seSBjYWxsZWQgZnJvbSBu
-ZnM0X2Nsb3NlX2RvbmUoKQ0KPiBhbmQgbm8gb3RoZXIgZnVuY3Rpb24uDQo+IA0KPiBJIGd1ZXNz
-IEknbSBub3Qgd29uZGVyaW5nIGlmIHdlIGhhZCB0aGlzIHByb2JsZW0gZGVzY3JpYmVkIGluIHRo
-aXMNCj4gcGF0Y2ggb2YgdGhlIGRlbGF5ZWQgQ0xPU0UsIGlmIHdlIGRpZG4ndCB1cGRhdGUgdGhl
-IHN0YXRlIGFmdGVyDQo+IHJlY2VpdmluZyB0aGUgY2xvc2UuLi4gKHNvIHllcyB0aGlzIGlzIGEg
-d2VhayBwcm9wb3NhbCkuDQo+IA0KDQpuZnM0X2Nsb3NlX2RvbmUoKSBkb2Vzbid0IG9ubHkgZGVh
-bCB3aXRoIENMT1NFLiBJdCBhbHNvIGhhcyB0byBoYW5kbGUNCk9QRU5fRE9XTkdSQURFLg0KDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5
-RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Wed, 14 Feb 2018, Trond Myklebust wrote:
+
+> On Wed, 2018-02-14 at 09:01 -0500, Scott Mayhew wrote:
+> > Hi Trond,
+> > 
+> > Commit ca0daa2 ("NFS: Cache aggressively when file is open for
+> > writing")
+> > removed the inode revalidation from do_setlk().  Why was that
+> > necessary?
+> > If just that part of the commit is added back in, the client still
+> > seems
+> > to be able to cope with out-of-order write replies.
+> 
+> It can cope with out of order replies, but not with changes by a second
+> client, which is highly likely when you are using file locking. In that
+> case, we still need to invalidate the data cache.
+
+Couldn't do_setlk incorporate a check similar to nfs_file_has_writers
+and do the revalidation if there are no writers, otherwise do the
+invalidation if there are writers?
+
+> 
+> > Currently the client invalidates the data cache whenever it takes a
+> > lock
+> > and that causes performance problems for some workloads... if a 
+> 
+> Exactly which workloads?
+
+I'll need to get specifics on the actual workload, all that was attached
+to the bugzilla was a script to illustrate the behavior, basically
+flock/read/unlock in a loop (and looking at the support case attached
+to the bug I don't really see any specifics either).
+
+> 
+> > client
+> > wants to re-read portions of a file, and no other client has
+> > modified 
+> > that file, then why should the reads go out on the wire just because
+> > locking is being used?
+> 
+> The point of the patch is to no longer track whether or not another
+> client has changed the file while the file is open. That tracking was
+> producing way too many false positives for no gain, and causing heavy
+> slowdowns for performance optimised workloads due to spurious cache
+> invalidations. Workloads that use locking are generally _not_
+> considered to be optimised for performance.
+> 
+> IOW: The patch is restoring the behaviour of the locking code to the
+> historically preferred one as described in the NFS FAQ.
+> See http://nfs.sourceforge.net/#faq_a8
+
+Doesn't that need to be reconciled with section 10.3.2 in RFCs 5661 &
+7530?  Maybe those need to be amended?
+
+-Scott
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
