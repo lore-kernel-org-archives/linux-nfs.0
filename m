@@ -1,133 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f43.google.com ([209.85.213.43]:42288 "EHLO
-        mail-vk0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1033208AbeBOT7Q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 15 Feb 2018 14:59:16 -0500
-Received: by mail-vk0-f43.google.com with SMTP id b132so553000vke.9
-        for <linux-nfs@vger.kernel.org>; Thu, 15 Feb 2018 11:59:16 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20180125220440.GA21492@fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com> <20171024174752.74910-6-kolga@netapp.com>
- <20180125220440.GA21492@fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 15 Feb 2018 14:59:14 -0500
-Message-ID: <CAN-5tyHoYk+tybHBaMXNE2vgtb8nfAn+3h5yBk8hd5f5UCUmpQ@mail.gmail.com>
-Subject: Re: [PATCH v6 05/10] NFSD first draft of async copy
-To: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:56522 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1162691AbeBOUGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Feb 2018 15:06:04 -0500
+Date: Thu, 15 Feb 2018 15:06:04 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Olga Kornievskaia <aglo@umich.edu>
 Cc: Olga Kornievskaia <kolga@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
         linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Subject: Re: [PATCH v6 05/10] NFSD first draft of async copy
+Message-ID: <20180215200604.GA13228@fieldses.org>
+References: <20171024174752.74910-1-kolga@netapp.com>
+ <20171024174752.74910-6-kolga@netapp.com>
+ <20180125220440.GA21492@fieldses.org>
+ <CAN-5tyHoYk+tybHBaMXNE2vgtb8nfAn+3h5yBk8hd5f5UCUmpQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyHoYk+tybHBaMXNE2vgtb8nfAn+3h5yBk8hd5f5UCUmpQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 25, 2018 at 5:04 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> Nit: this could use a better subject line.
->
-> On Tue, Oct 24, 2017 at 01:47:47PM -0400, Olga Kornievskaia wrote:
-> ...
->> +     if (!copy->cp_synchronous) {
->> +             status = nfsd4_init_copy_res(copy, 0);
->> +             async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
->> +             if (!async_copy) {
->> +                     status = nfserrno(-ENOMEM);
->> +                     goto out;
->> +             }
->> +             dup_copy_fields(copy, async_copy);
->> +             memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
->> +                     sizeof(copy->cp_dst_stateid));
->> +             spin_lock(&async_copy->cp_clp->async_lock);
->> +             list_add(&async_copy->copies,
->> +                             &async_copy->cp_clp->async_copies);
->> +             spin_unlock(&async_copy->cp_clp->async_lock);
->
-> At this point other threads could in theory look up this async_copy, but
-> its copy_task field is not yet initialized.  I don't *think* that's a
-> problem for nfsd4_shutdown_copy, because I don't think the server could
-> be processing rpc's for this client any more at that point.  But I think
-> a malicious client might be able to trigger a NULL dereference in
-> nfsd4_offload_cancel.
->
-> Is there any reason not to assign copy_task before adding it to this
-> list?
+On Thu, Feb 15, 2018 at 02:59:14PM -0500, Olga Kornievskaia wrote:
+> On Thu, Jan 25, 2018 at 5:04 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > Nit: this could use a better subject line.
+> >
+> > On Tue, Oct 24, 2017 at 01:47:47PM -0400, Olga Kornievskaia wrote:
+> > ...
+> >> +     if (!copy->cp_synchronous) {
+> >> +             status = nfsd4_init_copy_res(copy, 0);
+> >> +             async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+> >> +             if (!async_copy) {
+> >> +                     status = nfserrno(-ENOMEM);
+> >> +                     goto out;
+> >> +             }
+> >> +             dup_copy_fields(copy, async_copy);
+> >> +             memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+> >> +                     sizeof(copy->cp_dst_stateid));
+> >> +             spin_lock(&async_copy->cp_clp->async_lock);
+> >> +             list_add(&async_copy->copies,
+> >> +                             &async_copy->cp_clp->async_copies);
+> >> +             spin_unlock(&async_copy->cp_clp->async_lock);
+> >
+> > At this point other threads could in theory look up this async_copy, but
+> > its copy_task field is not yet initialized.  I don't *think* that's a
+> > problem for nfsd4_shutdown_copy, because I don't think the server could
+> > be processing rpc's for this client any more at that point.  But I think
+> > a malicious client might be able to trigger a NULL dereference in
+> > nfsd4_offload_cancel.
+> >
+> > Is there any reason not to assign copy_task before adding it to this
+> > list?
+> 
+> Now that I'm making changes I don't believe this is an issue. A client
+> can't send nfsd4_offload_cancel() because it needs a copy stateid to
+> send it with. And at this point the copy has not been replied to.
 
-Now that I'm making changes I don't believe this is an issue. A client
-can't send nfsd4_offload_cancel() because it needs a copy stateid to
-send it with. And at this point the copy has not been replied to.
+Right, but a malicious client might guess that copy stateid before it
+gets the reply.
 
->
-> --b.
->
->> +             async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
->> +                             async_copy, "%s", "copy thread");
->> +             if (IS_ERR(async_copy->copy_task)) {
->> +                     status = PTR_ERR(async_copy->copy_task);
->> +                     goto out_err_dec;
->> +             }
->> +             wake_up_process(async_copy->copy_task);
->> +     } else {
->> +             status = nfsd4_do_copy(copy, 1);
->>       }
->> -
->> -     fput(src);
->> -     fput(dst);
->>  out:
->>       return status;
->> +out_err_dec:
->> +     cleanup_async_copy(async_copy);
->> +     goto out;
->>  }
->>
->>  static __be32
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 0c04f81..d7767a1 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -1774,6 +1774,8 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
->>  #ifdef CONFIG_NFSD_PNFS
->>       INIT_LIST_HEAD(&clp->cl_lo_states);
->>  #endif
->> +     INIT_LIST_HEAD(&clp->async_copies);
->> +     spin_lock_init(&clp->async_lock);
->>       spin_lock_init(&clp->cl_lock);
->>       rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
->>       return clp;
->> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> index f8b0210..9189062 100644
->> --- a/fs/nfsd/state.h
->> +++ b/fs/nfsd/state.h
->> @@ -352,6 +352,8 @@ struct nfs4_client {
->>       struct rpc_wait_queue   cl_cb_waitq;    /* backchannel callers may */
->>                                               /* wait here for slots */
->>       struct net              *net;
->> +     struct list_head        async_copies;   /* list of async copies */
->> +     spinlock_t              async_lock;     /* lock for async copies */
->>  };
->>
->>  /* struct nfs4_client_reset
->> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->> index 9b0c099..0a19954 100644
->> --- a/fs/nfsd/xdr4.h
->> +++ b/fs/nfsd/xdr4.h
->> @@ -529,6 +529,15 @@ struct nfsd4_copy {
->>       struct nfsd4_callback   cp_cb;
->>       __be32                  nfserr;
->>       struct knfsd_fh         fh;
->> +
->> +     struct nfs4_client      *cp_clp;
->> +
->> +     struct file             *fh_src;
->> +     struct file             *fh_dst;
->> +     struct net              *net;
->> +
->> +     struct list_head        copies;
->> +     struct task_struct      *copy_task;
->>  };
->>
->>  struct nfsd4_seek {
->> --
->> 1.8.3.1
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+We want to make sure we're safe from crashing even on input that is very
+unlikely.
+
+--b.
