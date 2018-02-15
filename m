@@ -1,49 +1,34 @@
-Return-Path: <bfields@fieldses.org>
-Date: Thu, 15 Feb 2018 10:45:16 -0500
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: Harald Dunkel <harald.dunkel@aixigo.de>, linux-nfs@vger.kernel.org
-Subject: Re: running NFS in LXC
-Message-ID: <20180215154516.GB9999@fieldses.org>
-References: <5cedd413-81eb-6921-47bc-3c56e56d530a@aixigo.de>
- <6860CF8E-9790-4456-82D3-86A6A29E90BE@redhat.com>
- <8af7b137-0698-0c12-abc5-1cdd86c53a91@aixigo.de>
- <F9942544-0C31-4618-BF73-292FF4265C31@redhat.com>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:55948 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1424630AbeBOQDF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 15 Feb 2018 11:03:05 -0500
+Date: Thu, 15 Feb 2018 11:03:05 -0500
+To: Seiichi Ikarashi <s.ikarashi@jp.fujitsu.com>
+Cc: bfields@redhat.com, trondmy@primarydata.com,
+        luxy.fnst@cn.fujitsu.com, linux-nfs@vger.kernel.org
+Subject: Re: Questions about pynfs:testLargeData-WRT5
+Message-ID: <20180215160305.GC9999@fieldses.org>
+References: <20180209183112.GC30030@parsley.fieldses.org>
+ <6c3159af-17c5-5556-d416-574968bb5e14@cn.fujitsu.com>
+ <738139ab-6a55-4c93-008d-56a2332774c9@jp.fujitsu.com>
+ <20180213161540.GA26270@parsley.fieldses.org>
+ <20180214154909.GA32456@parsley.fieldses.org>
+ <225b853a-d388-f281-0902-d34f998210bf@jp.fujitsu.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <F9942544-0C31-4618-BF73-292FF4265C31@redhat.com>
+In-Reply-To: <225b853a-d388-f281-0902-d34f998210bf@jp.fujitsu.com>
 From: bfields@fieldses.org (J. Bruce Fields)
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 14, 2018 at 09:15:05AM -0500, Benjamin Coddington wrote:
-> On 14 Feb 2018, at 2:06, Harald Dunkel wrote:
+On Thu, Feb 15, 2018 at 11:08:51AM +0900, Seiichi Ikarashi wrote:
+> How about the name "testMaximumData()" or something?
+> It's not just "Large".
+...
+> > +def testTooLargeData(t, env):
+> > +    """WRITE with more than the maximum size
 > 
-> >Hi Ben,
-> >
-> >I take this as a "no serious problems by now". Good to hear.
-> >Which kernel are you using?
-> 
-> This was years ago on a 2.6.32 series.  I don't expect you'll have
-> serious problems now, either.  As far as I know, my last employer is
-> still using that architecture, but I couldn't tell you what software
-> versions they're on now..
-> 
-> We moved to the knfsd-in-a-container from an architecture that was
-> essentially a bunch of vanilla knfsds that could mount and any of
-> the block devices, and block devices were tied to IP addresses, and
-> this was all orchestrated by pacemaker.  The problem with that one
-> was that when a block device or filesystem was migrated, the server
-> receiving that filesystem had to be put into grace, which disrupted
-> any existing NFS serving that was going on.
-> 
-> Test things, let us know how it works!
+>                 with 10^6 bytes beyond the maximum size
 
-I think you were using KVM, right, Ben?
-
-Harald is talking about LXC, and there are still a few problems there.
-
-Jeff, do you object to going back to our plan B for reboot recovery (the
-daemon)?  The usermode helper containerization seems stalled and I have
-to admit I'm probably not going to take it on myself.  That might be the
-only knfsd-in-a-container obstacle left.
-
---b.
+Both done, thanks.--b.
