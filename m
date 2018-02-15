@@ -1,82 +1,78 @@
-Return-Path: <bfields@fieldses.org>
-Date: Thu, 15 Feb 2018 10:29:20 -0500
-From: Bruce Fields <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-	Olga Kornievskaia <aglo@umich.edu>,
-	Trond Myklebust <trond.myklebust@primarydata.com>,
-	linux-nfs <linux-nfs@vger.kernel.org>,
-	Benjamin Coddington <bcodding@redhat.com>
+Return-Path: <trondmy@primarydata.com>
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>, "jlayton@redhat.com"
+	<jlayton@redhat.com>
+CC: bcodding redhat <bcodding@redhat.com>, "tigran.mkrtchyan@desy.de"
+	<tigran.mkrtchyan@desy.de>, "linux-nfs@vger.kernel.org"
+	<linux-nfs@vger.kernel.org>, "aglo@umich.edu" <aglo@umich.edu>
 Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
-Message-ID: <20180215152920.GA9999@fieldses.org>
+Date: Thu, 15 Feb 2018 15:37:09 +0000
+Message-ID: <1518709027.15488.4.camel@primarydata.com>
 References: <1479140396-17779-1-git-send-email-trond.myklebust@primarydata.com>
- <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
- <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
- <159288847.6126985.1518697149126.JavaMail.zimbra@desy.de>
- <1518697380.4086.10.camel@redhat.com>
+	 <1479140396-17779-2-git-send-email-trond.myklebust@primarydata.com>
+	 <CAN-5tyGEn3vGJicR+00ATSp7PzUEm_6FzjBwYwiS-++OcqqfaA@mail.gmail.com>
+	 <159288847.6126985.1518697149126.JavaMail.zimbra@desy.de>
+	 <1518697380.4086.10.camel@redhat.com> <20180215152920.GA9999@fieldses.org>
+In-Reply-To: <20180215152920.GA9999@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1518697380.4086.10.camel@redhat.com>
+Content-Type: text/plain; charset=UTF-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 15, 2018 at 07:23:00AM -0500, Jeff Layton wrote:
-> On Thu, 2018-02-15 at 13:19 +0100, Mkrtchyan, Tigran wrote:
-> > 
-> > ----- Original Message -----
-> > > From: "Olga Kornievskaia" <aglo@umich.edu>
-> > > To: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> > > Cc: "linux-nfs" <linux-nfs@vger.kernel.org>, "Benjamin Coddington" <bcodding@redhat.com>, "Jeff Layton"
-> > > <jlayton@redhat.com>
-> > > Sent: Tuesday, February 13, 2018 9:08:01 PM
-> > > Subject: Re: [PATCH 1/2] NFSv4: Fix CLOSE races with OPEN
-> > > On Mon, Nov 14, 2016 at 11:19 AM, Trond Myklebust
-> > > <trond.myklebust@primarydata.com> wrote:
-> > > > If the reply to a successful CLOSE call races with an OPEN to the same
-> > > > file, we can end up scribbling over the stateid that represents the
-> > > > new open state.
-> > > > The race looks like:
-> > > > 
-> > > >   Client                                Server
-> > > >   ======                                ======
-> > > > 
-> > > >   CLOSE stateid A on file "foo"
-> > > >                                         CLOSE stateid A, return stateid C
-> > > 
-> > > Hi folks,
-> > > 
-> > > I'd like to understand this particular issue. Specifically I don't
-> > > understand how can server return stateid C to the close with stateid
-> > > A.
-> > > 
-> > > As per RFC 7530 or 5661. It says that state is returned by the close
-> > > shouldn't be used.
-> > > 
-> > > Even though CLOSE returns a stateid, this stateid is not useful to
-> > >   the client and should be treated as deprecated.  CLOSE "shuts down"
-> > >   the state associated with all OPENs for the file by a single
-> > >   open-owner.  As noted above, CLOSE will either release all file
-> > >   locking state or return an error.  Therefore, the stateid returned by
-> > >   CLOSE is not useful for the operations that follow.
-> > > 
-> > > Is this because the spec says "should" and not a "must"?
-> > > 
-> > > Linux server increments a state's sequenceid on CLOSE. Ontap server
-> > > does not. I'm not sure what other servers do. Are all these
-> > 
-> > 
-> > Our server sends back invalid state id for v4.1 and v4.0.
-> > 
-> > Tigran.
-> > 
-> 
-> That's probably the best thing to do, and we should probably do the same
->  for v4.0 in knfsd. Doing that might cause problems for clients that are
-> not ignoring that field like they should, but they're buggy already.
-
-Not only buggy in theory, but actually failing in practice, it sounds
-like.  So, a pretty safe change?
-
-Returning an all-zeroes stateid would be simple and make the situation
-really obvious.
-
---b.
+T24gVGh1LCAyMDE4LTAyLTE1IGF0IDEwOjI5IC0wNTAwLCBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
+IE9uIFRodSwgRmViIDE1LCAyMDE4IGF0IDA3OjIzOjAwQU0gLTA1MDAsIEplZmYgTGF5dG9uIHdy
+b3RlOg0KPiA+IE9uIFRodSwgMjAxOC0wMi0xNSBhdCAxMzoxOSArMDEwMCwgTWtydGNoeWFuLCBU
+aWdyYW4gd3JvdGU6DQo+ID4gPiANCj4gPiA+IC0tLS0tIE9yaWdpbmFsIE1lc3NhZ2UgLS0tLS0N
+Cj4gPiA+ID4gRnJvbTogIk9sZ2EgS29ybmlldnNrYWlhIiA8YWdsb0B1bWljaC5lZHU+DQo+ID4g
+PiA+IFRvOiAiVHJvbmQgTXlrbGVidXN0IiA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNv
+bT4NCj4gPiA+ID4gQ2M6ICJsaW51eC1uZnMiIDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPiwg
+IkJlbmphbWluDQo+ID4gPiA+IENvZGRpbmd0b24iIDxiY29kZGluZ0ByZWRoYXQuY29tPiwgIkpl
+ZmYgTGF5dG9uIg0KPiA+ID4gPiA8amxheXRvbkByZWRoYXQuY29tPg0KPiA+ID4gPiBTZW50OiBU
+dWVzZGF5LCBGZWJydWFyeSAxMywgMjAxOCA5OjA4OjAxIFBNDQo+ID4gPiA+IFN1YmplY3Q6IFJl
+OiBbUEFUQ0ggMS8yXSBORlN2NDogRml4IENMT1NFIHJhY2VzIHdpdGggT1BFTg0KPiA+ID4gPiBP
+biBNb24sIE5vdiAxNCwgMjAxNiBhdCAxMToxOSBBTSwgVHJvbmQgTXlrbGVidXN0DQo+ID4gPiA+
+IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPiB3cm90ZToNCj4gPiA+ID4gPiBJZiB0
+aGUgcmVwbHkgdG8gYSBzdWNjZXNzZnVsIENMT1NFIGNhbGwgcmFjZXMgd2l0aCBhbiBPUEVOIHRv
+DQo+ID4gPiA+ID4gdGhlIHNhbWUNCj4gPiA+ID4gPiBmaWxlLCB3ZSBjYW4gZW5kIHVwIHNjcmli
+Ymxpbmcgb3ZlciB0aGUgc3RhdGVpZCB0aGF0DQo+ID4gPiA+ID4gcmVwcmVzZW50cyB0aGUNCj4g
+PiA+ID4gPiBuZXcgb3BlbiBzdGF0ZS4NCj4gPiA+ID4gPiBUaGUgcmFjZSBsb29rcyBsaWtlOg0K
+PiA+ID4gPiA+IA0KPiA+ID4gPiA+ICAgQ2xpZW50ICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICBTZXJ2ZXINCj4gPiA+ID4gPiAgID09PT09PSAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICAgPT09PT09DQo+ID4gPiA+ID4gDQo+ID4gPiA+ID4gICBDTE9TRSBzdGF0ZWlkIEEgb24g
+ZmlsZSAiZm9vIg0KPiA+ID4gPiA+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
+ICAgICBDTE9TRSBzdGF0ZWlkIEEsDQo+ID4gPiA+ID4gcmV0dXJuIHN0YXRlaWQgQw0KPiA+ID4g
+PiANCj4gPiA+ID4gSGkgZm9sa3MsDQo+ID4gPiA+IA0KPiA+ID4gPiBJJ2QgbGlrZSB0byB1bmRl
+cnN0YW5kIHRoaXMgcGFydGljdWxhciBpc3N1ZS4gU3BlY2lmaWNhbGx5IEkNCj4gPiA+ID4gZG9u
+J3QNCj4gPiA+ID4gdW5kZXJzdGFuZCBob3cgY2FuIHNlcnZlciByZXR1cm4gc3RhdGVpZCBDIHRv
+IHRoZSBjbG9zZSB3aXRoDQo+ID4gPiA+IHN0YXRlaWQNCj4gPiA+ID4gQS4NCj4gPiA+ID4gDQo+
+ID4gPiA+IEFzIHBlciBSRkMgNzUzMCBvciA1NjYxLiBJdCBzYXlzIHRoYXQgc3RhdGUgaXMgcmV0
+dXJuZWQgYnkgdGhlDQo+ID4gPiA+IGNsb3NlDQo+ID4gPiA+IHNob3VsZG4ndCBiZSB1c2VkLg0K
+PiA+ID4gPiANCj4gPiA+ID4gRXZlbiB0aG91Z2ggQ0xPU0UgcmV0dXJucyBhIHN0YXRlaWQsIHRo
+aXMgc3RhdGVpZCBpcyBub3QgdXNlZnVsDQo+ID4gPiA+IHRvDQo+ID4gPiA+ICAgdGhlIGNsaWVu
+dCBhbmQgc2hvdWxkIGJlIHRyZWF0ZWQgYXMgZGVwcmVjYXRlZC4gIENMT1NFICJzaHV0cw0KPiA+
+ID4gPiBkb3duIg0KPiA+ID4gPiAgIHRoZSBzdGF0ZSBhc3NvY2lhdGVkIHdpdGggYWxsIE9QRU5z
+IGZvciB0aGUgZmlsZSBieSBhIHNpbmdsZQ0KPiA+ID4gPiAgIG9wZW4tb3duZXIuICBBcyBub3Rl
+ZCBhYm92ZSwgQ0xPU0Ugd2lsbCBlaXRoZXIgcmVsZWFzZSBhbGwNCj4gPiA+ID4gZmlsZQ0KPiA+
+ID4gPiAgIGxvY2tpbmcgc3RhdGUgb3IgcmV0dXJuIGFuIGVycm9yLiAgVGhlcmVmb3JlLCB0aGUg
+c3RhdGVpZA0KPiA+ID4gPiByZXR1cm5lZCBieQ0KPiA+ID4gPiAgIENMT1NFIGlzIG5vdCB1c2Vm
+dWwgZm9yIHRoZSBvcGVyYXRpb25zIHRoYXQgZm9sbG93Lg0KPiA+ID4gPiANCj4gPiA+ID4gSXMg
+dGhpcyBiZWNhdXNlIHRoZSBzcGVjIHNheXMgInNob3VsZCIgYW5kIG5vdCBhICJtdXN0Ij8NCj4g
+PiA+ID4gDQo+ID4gPiA+IExpbnV4IHNlcnZlciBpbmNyZW1lbnRzIGEgc3RhdGUncyBzZXF1ZW5j
+ZWlkIG9uIENMT1NFLiBPbnRhcA0KPiA+ID4gPiBzZXJ2ZXINCj4gPiA+ID4gZG9lcyBub3QuIEkn
+bSBub3Qgc3VyZSB3aGF0IG90aGVyIHNlcnZlcnMgZG8uIEFyZSBhbGwgdGhlc2UNCj4gPiA+IA0K
+PiA+ID4gDQo+ID4gPiBPdXIgc2VydmVyIHNlbmRzIGJhY2sgaW52YWxpZCBzdGF0ZSBpZCBmb3Ig
+djQuMSBhbmQgdjQuMC4NCj4gPiA+IA0KPiA+ID4gVGlncmFuLg0KPiA+ID4gDQo+ID4gDQo+ID4g
+VGhhdCdzIHByb2JhYmx5IHRoZSBiZXN0IHRoaW5nIHRvIGRvLCBhbmQgd2Ugc2hvdWxkIHByb2Jh
+Ymx5IGRvIHRoZQ0KPiA+IHNhbWUNCj4gPiAgZm9yIHY0LjAgaW4ga25mc2QuIERvaW5nIHRoYXQg
+bWlnaHQgY2F1c2UgcHJvYmxlbXMgZm9yIGNsaWVudHMNCj4gPiB0aGF0IGFyZQ0KPiA+IG5vdCBp
+Z25vcmluZyB0aGF0IGZpZWxkIGxpa2UgdGhleSBzaG91bGQsIGJ1dCB0aGV5J3JlIGJ1Z2d5DQo+
+ID4gYWxyZWFkeS4NCj4gDQo+IE5vdCBvbmx5IGJ1Z2d5IGluIHRoZW9yeSwgYnV0IGFjdHVhbGx5
+IGZhaWxpbmcgaW4gcHJhY3RpY2UsIGl0IHNvdW5kcw0KPiBsaWtlLiAgU28sIGEgcHJldHR5IHNh
+ZmUgY2hhbmdlPw0KPiANCj4gUmV0dXJuaW5nIGFuIGFsbC16ZXJvZXMgc3RhdGVpZCB3b3VsZCBi
+ZSBzaW1wbGUgYW5kIG1ha2UgdGhlDQo+IHNpdHVhdGlvbg0KPiByZWFsbHkgb2J2aW91cy4NCj4g
+DQoNCklmIHlvdSdyZSBnb2luZyB0byBkbyB0aGF0LCB0aGVuIHdoeSBub3QganVzdCBleHBhbmQg
+ZmI1MDBhN2NmZWU3IHRvDQphcHBseSB0byBORlN2NC4wIHRvbz8gSWYgeW91J3JlIGdvaW5nIHRv
+IHZpb2xhdGUgdGhlIHY0LjAgc3BlYywgdGhlbg0KeW91IG1pZ2h0IGFzIHdlbGwgZG8gaXQgaW4g
+YSB3YXkgdGhhdCBpcyBzYW5jdGlvbmVkIGJ5IHY0LjEsIHNvIHRoYXQNCnBlb3BsZSBjYW4gdXNl
+IHRoZSBzYW1lIHdpcmVzaGFyayBmaWx0ZXJzIHdoZW4gZGVidWdnaW5nLg0KDQotLSANClRyb25k
+IE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJv
+bmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
