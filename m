@@ -1,65 +1,64 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:56522 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1162691AbeBOUGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 15 Feb 2018 15:06:04 -0500
-Date: Thu, 15 Feb 2018 15:06:04 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v6 05/10] NFSD first draft of async copy
-Message-ID: <20180215200604.GA13228@fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com>
- <20171024174752.74910-6-kolga@netapp.com>
- <20180125220440.GA21492@fieldses.org>
- <CAN-5tyHoYk+tybHBaMXNE2vgtb8nfAn+3h5yBk8hd5f5UCUmpQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyHoYk+tybHBaMXNE2vgtb8nfAn+3h5yBk8hd5f5UCUmpQ@mail.gmail.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <jlayton@kernel.org>
+From: Jeff Layton <jlayton@kernel.org>
+To: bfields@fieldses.org
+Cc: aglo@umich.edu,
+	bcodding@redhat.com,
+	linux-nfs@vger.kernel.org,
+	trondmy@primarydata.com,
+	tigran.mkrtchyan@desy.de
+Subject: [PATCH] nfsd4: send the special close_stateid in v4.0 replies as well
+Date: Thu, 15 Feb 2018 15:16:18 -0500
+Message-Id: <20180215201618.2617-1-jlayton@kernel.org>
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 15, 2018 at 02:59:14PM -0500, Olga Kornievskaia wrote:
-> On Thu, Jan 25, 2018 at 5:04 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > Nit: this could use a better subject line.
-> >
-> > On Tue, Oct 24, 2017 at 01:47:47PM -0400, Olga Kornievskaia wrote:
-> > ...
-> >> +     if (!copy->cp_synchronous) {
-> >> +             status = nfsd4_init_copy_res(copy, 0);
-> >> +             async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
-> >> +             if (!async_copy) {
-> >> +                     status = nfserrno(-ENOMEM);
-> >> +                     goto out;
-> >> +             }
-> >> +             dup_copy_fields(copy, async_copy);
-> >> +             memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
-> >> +                     sizeof(copy->cp_dst_stateid));
-> >> +             spin_lock(&async_copy->cp_clp->async_lock);
-> >> +             list_add(&async_copy->copies,
-> >> +                             &async_copy->cp_clp->async_copies);
-> >> +             spin_unlock(&async_copy->cp_clp->async_lock);
-> >
-> > At this point other threads could in theory look up this async_copy, but
-> > its copy_task field is not yet initialized.  I don't *think* that's a
-> > problem for nfsd4_shutdown_copy, because I don't think the server could
-> > be processing rpc's for this client any more at that point.  But I think
-> > a malicious client might be able to trigger a NULL dereference in
-> > nfsd4_offload_cancel.
-> >
-> > Is there any reason not to assign copy_task before adding it to this
-> > list?
-> 
-> Now that I'm making changes I don't believe this is an issue. A client
-> can't send nfsd4_offload_cancel() because it needs a copy stateid to
-> send it with. And at this point the copy has not been replied to.
+From: Jeff Layton <jlayton@redhat.com>
 
-Right, but a malicious client might guess that copy stateid before it
-gets the reply.
+We already send it for v4.1, but RFC7530 also notes that the stateid in
+the close reply is bogus.
 
-We want to make sure we're safe from crashing even on input that is very
-unlikely.
+Always send the special close stateid, even in v4.0 responses. No client
+should put any meaning on it whatsoever. For now, we continue to
+increment the stateid value, though that might not be necessary either.
 
---b.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 19 +++++++++++++++----
+ 1 file changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 150521c9671b..08c700864fee 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5481,15 +5481,26 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		goto out; 
+ 
+ 	stp->st_stid.sc_type = NFS4_CLOSED_STID;
++
++	/*
++	 * Technically we don't _really_ have to increment or copy it, since
++	 * it should just be gone after this operation and we clobber the
++	 * copied value below, but we continue to do so here just to ensure
++	 * that racing ops see that there was a state change.
++	 */
+ 	nfs4_inc_and_copy_stateid(&close->cl_stateid, &stp->st_stid);
+ 
+ 	nfsd4_close_open_stateid(stp);
+ 	mutex_unlock(&stp->st_mutex);
+ 
+-	/* See RFC5661 sectionm 18.2.4 */
+-	if (stp->st_stid.sc_client->cl_minorversion)
+-		memcpy(&close->cl_stateid, &close_stateid,
+-				sizeof(close->cl_stateid));
++	/* v4.1+ suggests that we send a special stateid in here, since the
++	 * clients should just ignore this anyway. Since this is not useful
++	 * for v4.0 clients either, we set it to the special close_stateid
++	 * universally.
++	 *
++	 * See RFC5661 section 18.2.4, and RFC7530 section 16.2.5
++	 */
++	memcpy(&close->cl_stateid, &close_stateid, sizeof(close->cl_stateid));
+ 
+ 	/* put reference from nfs4_preprocess_seqid_op */
+ 	nfs4_put_stid(&stp->st_stid);
+-- 
+2.14.3
