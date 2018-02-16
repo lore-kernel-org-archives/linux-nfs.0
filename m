@@ -1,159 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:56898 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:43636 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1162415AbeBPSKn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Feb 2018 13:10:43 -0500
-Date: Fri, 16 Feb 2018 13:10:36 -0500
+        id S1755851AbeBPSMj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Feb 2018 13:12:39 -0500
+Date: Fri, 16 Feb 2018 13:12:38 -0500
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Olga Kornievskaia <kolga@netapp.com>,
         linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v6 08/10] NFSD handle OFFLOAD_CANCEL op
-Message-ID: <20180216181035.GA2623@parsley.fieldses.org>
+Subject: Re: [PATCH v6 07/10] NFSD create new stateid for async copy
+Message-ID: <20180216181237.GB2623@parsley.fieldses.org>
 References: <20171024174752.74910-1-kolga@netapp.com>
- <20171024174752.74910-9-kolga@netapp.com>
- <CAN-5tyFugGyOj0HXjOOzRsPz5HR=X45AJNa9W7YrM9Uo77riFg@mail.gmail.com>
+ <20171024174752.74910-8-kolga@netapp.com>
+ <20180126215942.GC7770@fieldses.org>
+ <CAN-5tyGBBfh0i9QmyHTHp-SWa6ncMCz4ZQdZcAuyWKhxtQ9xLA@mail.gmail.com>
+ <20180202214545.GB7229@parsley.fieldses.org>
+ <CAN-5tyHOa6SM1Gv+dv=pfQaQ--YTjfkyA6V57wgGic5qEK+jvg@mail.gmail.com>
+ <20180216014337.GA3591@parsley.fieldses.org>
+ <CAN-5tyFMSqC8GJEvCjxzTO7Nf3c69YBMjmRRc6EFrgXzKJ4+cg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyFugGyOj0HXjOOzRsPz5HR=X45AJNa9W7YrM9Uo77riFg@mail.gmail.com>
+In-Reply-To: <CAN-5tyFMSqC8GJEvCjxzTO7Nf3c69YBMjmRRc6EFrgXzKJ4+cg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 16, 2018 at 12:28:19PM -0500, Olga Kornievskaia wrote:
-> On Tue, Oct 24, 2017 at 1:47 PM, Olga Kornievskaia <kolga@netapp.com> wrote:
-> > Upon receiving OFFLOAD_CANCEL search the list of copy stateids,
-> > if found then set the SIGPENDING signal so that do_splice stops
-> > copying and also send kthread_stop to the copy thread to stop
-> > and wait for it. Take a reference on the copy from the
-> > offload_cancel thread so that it won't go away while we are
-> > trying to process it. Server won't be sending CB_OFFLOAD to the
-> > client since it received a cancel.
+On Fri, Feb 16, 2018 at 11:06:07AM -0500, Olga Kornievskaia wrote:
+> On Thu, Feb 15, 2018 at 8:43 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> > On Thu, Feb 15, 2018 at 05:18:55PM -0500, Olga Kornievskaia wrote:
+> >> On Fri, Feb 2, 2018 at 4:45 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> >> > Is it really OK to do a COPY with a delegation stateid?  That sounds
+> >> > messy if the delegation is revoked partway through the copy.
+> >>
+> >> Yes, according to the spec, it is ok to use any of the stateids.
+> >>
+> >> RFC 7862 15.2.3
+> >> The ca_dst_stateid MUST refer to a stateid that is valid for a WRITE
+> >>    operation and follows the rules for stateids in Sections 8.2.5 and
+> >>    18.32.3 of [RFC5661].... while for an intra-server copy
+> >> ca_src_stateid MUST refer
+> >>    to a stateid that is valid for a READ operation and follows the rules
+> >>    for stateids in Sections 8.2.5 and 18.22.3 of [RFC5661].
+> >>
+> >> 8.2.5 is the section that says in the decreasing priority to choose
+> >> delegation stateid, locking stateid, open stateid.
+> >>
+> >> Trying to deal with the delegation stateid seems to be rather complex.
+> >> Here's what I could do (which I mentioned before already):
+> >> 1. possibly change the client to never use a delegation stateid.
+> >> 2. for CLOSE/UNLOCK send back ERR_DELAY if copy list is not empty.
+> >> 3. for DELEGRETURN (or when the server initiates CB_RECALL?) kill any
+> >> on-going copies. Change the nfsd copy to send a reply if it was killed
+> >> with a signal. What I'm not sure if when it's killed I get any partial
+> >> bytes from the VFS, I don't think so. I think in that case, the only
+> >> thing that I might reply with is a 0bytes copy. And whatever client
+> >> that did sent a copy with a delegation stateid would deal with
+> >> restarting it with a different stateid.
+> >>
+> >> Having said all that, I'd like to ask why do you think handling
+> >> CLOSE/LOCKU/DELEGRETURN should be any different for async copy vs what
+> >> is currently there for the synchronous copy. Right now if the server
+> >> receives those operations it does nothing to the on-going synchronous
+> >> copy.
 > >
-> > Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> > ---
-> >  fs/nfsd/nfs4proc.c | 46 ++++++++++++++++++++++++++++++++++++++++++++--
-> >  fs/nfsd/xdr4.h     |  1 +
-> >  2 files changed, 45 insertions(+), 2 deletions(-)
+> > Or for that matter, why should it be different from READ and
+> > WRITE--looks like those can also continue executing after a close, too.
+> > So, good point.
 > >
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index 6876080..3b0bb54 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -1097,6 +1097,14 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
-> >  out:
-> >         return status;
-> >  }
-> > +
-> > +static void nfs4_put_copy(struct nfsd4_copy *copy)
-> > +{
-> > +       if (!atomic_dec_and_test(&copy->refcount))
-> > +               return;
-> > +       kfree(copy);
-> > +}
-> > +
-> >  static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
-> >  {
-> >         struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
-> > @@ -1134,6 +1142,8 @@ static int _nfsd_copy_file_range(struct nfsd4_copy *copy)
-> >         u64 dst_pos = copy->cp_dst_pos;
+> >> As you noted, the async copy takes a reference on the parent stateid
+> >> so the state won't go away while the async copy is going on. Why not
+> >> keep async copy same as the synchronous one?
 > >
-> >         do {
-> > +               if (signalled() || kthread_should_stop())
-> > +                       return -1;
-> >                 bytes_copied = nfsd_copy_file_range(copy->fh_src, src_pos,
-> >                                 copy->fh_dst, dst_pos, bytes_total);
-> >                 if (bytes_copied <= 0)
-> > @@ -1152,11 +1162,16 @@ static int nfsd4_do_copy(struct nfsd4_copy *copy, bool sync)
-> >         ssize_t bytes;
+> > OK, so maybe it's not such a big deal.
 > >
-> >         bytes = _nfsd_copy_file_range(copy);
-> > +       if (signalled() || kthread_should_stop()) {
-> > +               status = -1;
-> > +               goto cleanup;
-> > +       }
-> >         if (bytes < 0 && !copy->cp_res.wr_bytes_written)
-> >                 status = nfserrno(bytes);
-> >         else
-> >                 status = nfsd4_init_copy_res(copy, sync);
+> > I'm still confused about the delegation case, though: a copy can take a
+> > very long time, so we can't just wait for the copy to end before
+> > revoking the delegation.  So do we allow the copy to continue
+> > indefinitely even after the delegation stateid it was initiated with has
+> > long ago been revoked?
 > >
-> > +cleanup:
-> >         fput(copy->fh_src);
-> >         fput(copy->fh_dst);
-> >         return status;
-> > @@ -1194,7 +1209,7 @@ static void cleanup_async_copy(struct nfsd4_copy *copy)
-> >         list_del(&copy->copies);
-> >         spin_unlock(&copy->cp_clp->async_lock);
-> >         atomic_dec(&copy->cp_clp->cl_refcount);
-> > -       kfree(copy);
-> > +       nfs4_put_copy(copy);
-> >  }
-> >
-> >  static int nfsd4_do_async_copy(void *data)
-> > @@ -1203,6 +1218,9 @@ static int nfsd4_do_async_copy(void *data)
-> >         struct nfsd4_copy *cb_copy;
-> >
-> >         copy->nfserr = nfsd4_do_copy(copy, 0);
-> > +       if (signalled() || kthread_should_stop())
-> > +               goto out;
-> > +
-> >         cb_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
-> >         if (!cb_copy)
-> >                 goto out;
-> > @@ -1259,6 +1277,7 @@ static int nfsd4_do_async_copy(void *data)
-> >                 memcpy(&copy->cp_res.cb_stateid, &copy->cps->cp_stateid,
-> >                         sizeof(copy->cps->cp_stateid));
-> >                 dup_copy_fields(copy, async_copy);
-> > +               atomic_set(&async_copy->refcount, 1);
-> >                 spin_lock(&async_copy->cp_clp->async_lock);
-> >                 list_add(&async_copy->copies,
-> >                                 &async_copy->cp_clp->async_copies);
-> > @@ -1285,7 +1304,30 @@ static int nfsd4_do_async_copy(void *data)
-> >                      struct nfsd4_compound_state *cstate,
-> >                      union nfsd4_op_u *u)
-> >  {
-> > -       return 0;
-> > +       struct nfsd4_offload_status *os = &u->offload_status;
-> > +       __be32 status = 0;
-> > +       struct nfsd4_copy *copy;
-> > +       bool found = false;
-> > +       struct nfs4_client *clp = cstate->clp;
-> > +
-> > +       spin_lock(&clp->async_lock);
-> > +       list_for_each_entry(copy, &clp->async_copies, copies) {
-> > +               if (memcmp(&copy->cps->cp_stateid, &os->stateid,
-> > +                               NFS4_STATEID_SIZE))
-> > +                       continue;
-> > +               found = true;
-> > +               atomic_inc(&copy->refcount);
-> > +               break;
-> > +       }
-> > +       spin_unlock(&clp->async_lock);
-> > +       if (found) {
-> > +               set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
-> > +               kthread_stop(copy->copy_task);
-> > +               nfs4_put_copy(copy);
-> > +       } else
-> > +               status = nfserr_bad_stateid;
-> > +
-> > +       return status;
-> >  }
-> >
-> >  static __be32
-> > diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> > index 27bac6a..3127b58 100644
-> > --- a/fs/nfsd/xdr4.h
-> > +++ b/fs/nfsd/xdr4.h
-> > @@ -540,6 +540,7 @@ struct nfsd4_copy {
-> >
-> >         struct list_head        copies;
-> >         struct task_struct      *copy_task;
-> > +       atomic_t                refcount;
+> > Maybe it's not a problem.  I guess I'm having trouble remembering why
+> > copies (or IO in general) uses stateids in the first place....
 > 
-> Hi Bruce,
-> 
-> Is the code moving away from using atomic_t and using refcount_t
-> instead. Should I be changing this as well?
+> Sigh. No you are right, we shouldn't let it run long past the
+> revocation.
 
-Yeah, that would be a good idea, thanks.
+I'm worried by it running long past the revocation, but I'm also not
+managing to come with a case where it causes an actual problem.
 
 --b.
+
+> With IO operations, once it starts an operation like
+> CLOSE/UNLOCK/DELEGRETURN can arrive at the server and it's ok because
+> IO isn't long, and once it's done the client will notice a change in
+> stateid and will choose a different stateid to do the next IO
+> operation. I guess that's why a synchronous copy is still bordering ok
+> because it's relatively short and the next copy will choose a
+> different stateid.
+> 
+> Unless there are any big objections, I'll make the following changes
+> 1. CLOSE/UNLOCK will check for none-empty list and return ERR_DELAY.
+> 2. change the copy code to once received a signal to return the
+> partial copy back.
+> 3. DELEGRETURN will stop/kill any on-going copies, which would trigger
+> a partial copy reply and the next copy should choose a different
+> stateid.
