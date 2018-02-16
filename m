@@ -1,32 +1,97 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f72.google.com ([209.85.214.72]:54675 "EHLO
-        mail-it0-f72.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1033532AbeBPOrr (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Feb 2018 09:47:47 -0500
-Received: by mail-it0-f72.google.com with SMTP id 6so1824890iti.4
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Feb 2018 06:47:47 -0800 (PST)
+Received: from mail-ua0-f173.google.com ([209.85.217.173]:42929 "EHLO
+        mail-ua0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752900AbeBPQGK (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Feb 2018 11:06:10 -0500
+Received: by mail-ua0-f173.google.com with SMTP id 47so2186551uau.9
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Feb 2018 08:06:09 -0800 (PST)
 MIME-Version: 1.0
-Message-ID: <001a11403efc7fc10b0565556dea@google.com>
-Date: Fri, 16 Feb 2018 14:47:47 +0000
-Subject: Targeted B2B Companies Emails List 
-From: lorraine.booth@dedicatedaccounts.com
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset="UTF-8"; format=flowed; delsp=yes
+In-Reply-To: <20180216014337.GA3591@parsley.fieldses.org>
+References: <20171024174752.74910-1-kolga@netapp.com> <20171024174752.74910-8-kolga@netapp.com>
+ <20180126215942.GC7770@fieldses.org> <CAN-5tyGBBfh0i9QmyHTHp-SWa6ncMCz4ZQdZcAuyWKhxtQ9xLA@mail.gmail.com>
+ <20180202214545.GB7229@parsley.fieldses.org> <CAN-5tyHOa6SM1Gv+dv=pfQaQ--YTjfkyA6V57wgGic5qEK+jvg@mail.gmail.com>
+ <20180216014337.GA3591@parsley.fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 16 Feb 2018 11:06:07 -0500
+Message-ID: <CAN-5tyFMSqC8GJEvCjxzTO7Nf3c69YBMjmRRc6EFrgXzKJ4+cg@mail.gmail.com>
+Subject: Re: [PATCH v6 07/10] NFSD create new stateid for async copy
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGksDQoNCg0KV291bGQgeW91IGJlIGludGVyZXN0ZWQgaW4gU3RvcmFnZSBBcHBsaWNhdGlvbiBV
-c2VycyBjb250YWN0IGluZm9ybWF0aW9uIGluICANCmV4Y2VsIHNoZWV0IGZvciB1bmxpbWl0ZWQg
-bWFya2V0aW5nIHVzYWdlPyBXZSBwcm92aWRlIFRvcCBEZWNpc2lvbiBNYWtlcnMgIA0KaW5mb3Jt
-YXRpb24gbGlrZSBOYW1lLCBFbWFpbCwgVGl0bGUsIFBob25lIGFuZCBjb21wYW55IGRldGFpbHMg
-b2YgY29tcGFuaWVzICANCnVzaW5nIFN0b3JhZ2UgQXBwbGljYXRpb25zLg0KDQpFTUMNClZNd2Fy
-ZQ0KVmVlYW0NCkRlbGwgU3RvcmFnZQ0KQWNyb25pcw0KQnJvY2FkZQ0KU3ltYW50ZWMNCk51dGFu
-aXgNCkhQDQoNCldlIGFsc28gcHJvdmlkZSBJVCBEZWNpc2lvbiBNYWtlcnMsIFNhbGVzIGFuZCBN
-YXJrZXRpbmcgRGVjaXNpb24gTWFrZXJzLCAgDQpDLWxldmVsIFRpdGxlcyBhbmQgb3RoZXIgdGl0
-bGVzIGFzIHBlciB5b3VyIHJlcXVpcmVtZW50Lg0KDQpQbGVhc2UgbGV0IG1lIGtub3cgeW91ciB0
-aG91Z2h0cyBzbyB0aGF0IEkgY2FuIHNlbmQgeW91IGNvc3Qgb2YgdGhlIGxpc3QuDQoNClJlZ2Fy
-ZHMsDQoNCkxvcnJhaW5lIEJvb3RoDQpTdG9yYWdlIEFwcGxpY2F0aW9uIENvbnN1bHRhbnQNCg0K
-fCBMaXN0IGFjcXVpc2l0aW9uIHwgVGVjaG5vbG9neSBMaXN0cyB8IEVtYWlsL0RhdGEgQXBwZW5k
-aW5nIHwgU2VhcmNoICANCkVuZ2luZSBPcHRpbWl6YXRpb24gfA0KDQpJZiB5b3UgZG9uJ3Qgd2Fu
-dCB0byBpbmNsdWRlIHlvdXJzZWxmIGluIG91ciBtYWlsaW5nIGxpc3QsIHBsZWFzZSByZXBseSAg
-DQpiYWNrIOKAnExlYXZlIE91dCIgaW4gYSBzdWJqZWN0IGxpbmUNCg0K
+On Thu, Feb 15, 2018 at 8:43 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+> On Thu, Feb 15, 2018 at 05:18:55PM -0500, Olga Kornievskaia wrote:
+>> On Fri, Feb 2, 2018 at 4:45 PM, J. Bruce Fields <bfields@redhat.com> wrote:
+>> > Is it really OK to do a COPY with a delegation stateid?  That sounds
+>> > messy if the delegation is revoked partway through the copy.
+>>
+>> Yes, according to the spec, it is ok to use any of the stateids.
+>>
+>> RFC 7862 15.2.3
+>> The ca_dst_stateid MUST refer to a stateid that is valid for a WRITE
+>>    operation and follows the rules for stateids in Sections 8.2.5 and
+>>    18.32.3 of [RFC5661].... while for an intra-server copy
+>> ca_src_stateid MUST refer
+>>    to a stateid that is valid for a READ operation and follows the rules
+>>    for stateids in Sections 8.2.5 and 18.22.3 of [RFC5661].
+>>
+>> 8.2.5 is the section that says in the decreasing priority to choose
+>> delegation stateid, locking stateid, open stateid.
+>>
+>> Trying to deal with the delegation stateid seems to be rather complex.
+>> Here's what I could do (which I mentioned before already):
+>> 1. possibly change the client to never use a delegation stateid.
+>> 2. for CLOSE/UNLOCK send back ERR_DELAY if copy list is not empty.
+>> 3. for DELEGRETURN (or when the server initiates CB_RECALL?) kill any
+>> on-going copies. Change the nfsd copy to send a reply if it was killed
+>> with a signal. What I'm not sure if when it's killed I get any partial
+>> bytes from the VFS, I don't think so. I think in that case, the only
+>> thing that I might reply with is a 0bytes copy. And whatever client
+>> that did sent a copy with a delegation stateid would deal with
+>> restarting it with a different stateid.
+>>
+>> Having said all that, I'd like to ask why do you think handling
+>> CLOSE/LOCKU/DELEGRETURN should be any different for async copy vs what
+>> is currently there for the synchronous copy. Right now if the server
+>> receives those operations it does nothing to the on-going synchronous
+>> copy.
+>
+> Or for that matter, why should it be different from READ and
+> WRITE--looks like those can also continue executing after a close, too.
+> So, good point.
+>
+>> As you noted, the async copy takes a reference on the parent stateid
+>> so the state won't go away while the async copy is going on. Why not
+>> keep async copy same as the synchronous one?
+>
+> OK, so maybe it's not such a big deal.
+>
+> I'm still confused about the delegation case, though: a copy can take a
+> very long time, so we can't just wait for the copy to end before
+> revoking the delegation.  So do we allow the copy to continue
+> indefinitely even after the delegation stateid it was initiated with has
+> long ago been revoked?
+>
+> Maybe it's not a problem.  I guess I'm having trouble remembering why
+> copies (or IO in general) uses stateids in the first place....
+
+Sigh. No you are right, we shouldn't let it run long past the
+revocation. With IO operations, once it starts an operation like
+CLOSE/UNLOCK/DELEGRETURN can arrive at the server and it's ok because
+IO isn't long, and once it's done the client will notice a change in
+stateid and will choose a different stateid to do the next IO
+operation. I guess that's why a synchronous copy is still bordering ok
+because it's relatively short and the next copy will choose a
+different stateid.
+
+Unless there are any big objections, I'll make the following changes
+1. CLOSE/UNLOCK will check for none-empty list and return ERR_DELAY.
+2. change the copy code to once received a signal to return the
+partial copy back.
+3. DELEGRETURN will stop/kill any on-going copies, which would trigger
+a partial copy reply and the next copy should choose a different
+stateid.
