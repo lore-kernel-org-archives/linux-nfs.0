@@ -1,97 +1,197 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f173.google.com ([209.85.217.173]:42929 "EHLO
-        mail-ua0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752900AbeBPQGK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Feb 2018 11:06:10 -0500
-Received: by mail-ua0-f173.google.com with SMTP id 47so2186551uau.9
-        for <linux-nfs@vger.kernel.org>; Fri, 16 Feb 2018 08:06:09 -0800 (PST)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:36596 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1758803AbeBPRDx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Feb 2018 12:03:53 -0500
+Received: by mail-it0-f67.google.com with SMTP id 18so2604121itj.1
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Feb 2018 09:03:53 -0800 (PST)
+Subject: [PATCH v2 1/4] Add an internal helper for binding to a
+ dynamically-assigned port
+From: Chuck Lever <chuck.lever@oracle.com>
+To: steve.dickson@redhat.com
+Cc: linux-nfs@vger.kernel.org, libtirpc-devel@lists.sourceforge.net
+Date: Fri, 16 Feb 2018 12:03:51 -0500
+Message-ID: <20180216170351.9986.55244.stgit@klimt.1015granger.net>
+In-Reply-To: <20180216164846.9986.58128.stgit@klimt.1015granger.net>
+References: <20180216164846.9986.58128.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <20180216014337.GA3591@parsley.fieldses.org>
-References: <20171024174752.74910-1-kolga@netapp.com> <20171024174752.74910-8-kolga@netapp.com>
- <20180126215942.GC7770@fieldses.org> <CAN-5tyGBBfh0i9QmyHTHp-SWa6ncMCz4ZQdZcAuyWKhxtQ9xLA@mail.gmail.com>
- <20180202214545.GB7229@parsley.fieldses.org> <CAN-5tyHOa6SM1Gv+dv=pfQaQ--YTjfkyA6V57wgGic5qEK+jvg@mail.gmail.com>
- <20180216014337.GA3591@parsley.fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 16 Feb 2018 11:06:07 -0500
-Message-ID: <CAN-5tyFMSqC8GJEvCjxzTO7Nf3c69YBMjmRRc6EFrgXzKJ4+cg@mail.gmail.com>
-Subject: Re: [PATCH v6 07/10] NFSD create new stateid for async copy
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 15, 2018 at 8:43 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> On Thu, Feb 15, 2018 at 05:18:55PM -0500, Olga Kornievskaia wrote:
->> On Fri, Feb 2, 2018 at 4:45 PM, J. Bruce Fields <bfields@redhat.com> wrote:
->> > Is it really OK to do a COPY with a delegation stateid?  That sounds
->> > messy if the delegation is revoked partway through the copy.
->>
->> Yes, according to the spec, it is ok to use any of the stateids.
->>
->> RFC 7862 15.2.3
->> The ca_dst_stateid MUST refer to a stateid that is valid for a WRITE
->>    operation and follows the rules for stateids in Sections 8.2.5 and
->>    18.32.3 of [RFC5661].... while for an intra-server copy
->> ca_src_stateid MUST refer
->>    to a stateid that is valid for a READ operation and follows the rules
->>    for stateids in Sections 8.2.5 and 18.22.3 of [RFC5661].
->>
->> 8.2.5 is the section that says in the decreasing priority to choose
->> delegation stateid, locking stateid, open stateid.
->>
->> Trying to deal with the delegation stateid seems to be rather complex.
->> Here's what I could do (which I mentioned before already):
->> 1. possibly change the client to never use a delegation stateid.
->> 2. for CLOSE/UNLOCK send back ERR_DELAY if copy list is not empty.
->> 3. for DELEGRETURN (or when the server initiates CB_RECALL?) kill any
->> on-going copies. Change the nfsd copy to send a reply if it was killed
->> with a signal. What I'm not sure if when it's killed I get any partial
->> bytes from the VFS, I don't think so. I think in that case, the only
->> thing that I might reply with is a 0bytes copy. And whatever client
->> that did sent a copy with a delegation stateid would deal with
->> restarting it with a different stateid.
->>
->> Having said all that, I'd like to ask why do you think handling
->> CLOSE/LOCKU/DELEGRETURN should be any different for async copy vs what
->> is currently there for the synchronous copy. Right now if the server
->> receives those operations it does nothing to the on-going synchronous
->> copy.
->
-> Or for that matter, why should it be different from READ and
-> WRITE--looks like those can also continue executing after a close, too.
-> So, good point.
->
->> As you noted, the async copy takes a reference on the parent stateid
->> so the state won't go away while the async copy is going on. Why not
->> keep async copy same as the synchronous one?
->
-> OK, so maybe it's not such a big deal.
->
-> I'm still confused about the delegation case, though: a copy can take a
-> very long time, so we can't just wait for the copy to end before
-> revoking the delegation.  So do we allow the copy to continue
-> indefinitely even after the delegation stateid it was initiated with has
-> long ago been revoked?
->
-> Maybe it's not a problem.  I guess I'm having trouble remembering why
-> copies (or IO in general) uses stateids in the first place....
+Create a helper function akin to bindresvport(3) that instead binds
+to a dynamically assigned port using the rules in RFC 6335 Section 6
+to avoid all IANA-assigned service port numbers.
 
-Sigh. No you are right, we shouldn't let it run long past the
-revocation. With IO operations, once it starts an operation like
-CLOSE/UNLOCK/DELEGRETURN can arrive at the server and it's ok because
-IO isn't long, and once it's done the client will notice a change in
-stateid and will choose a different stateid to do the next IO
-operation. I guess that's why a synchronous copy is still bordering ok
-because it's relatively short and the next copy will choose a
-different stateid.
+This is intended to remain an internal helper for the time being, so
+this commit provides no header declaration.
 
-Unless there are any big objections, I'll make the following changes
-1. CLOSE/UNLOCK will check for none-empty list and return ERR_DELAY.
-2. change the copy code to once received a signal to return the
-partial copy back.
-3. DELEGRETURN will stop/kill any on-going copies, which would trigger
-a partial copy reply and the next copy should choose a different
-stateid.
+All internal bindresvport(3) call sites manufacture an INADDR_ANY-
+type address to pass to bind(2), so the helper handles that as well,
+to avoid code duplication. This means that callers do not need to
+pass in a sockaddr. Only an open socket is required.
+
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=320
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ src/Makefile.am   |    5 +-
+ src/binddynport.c |  133 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 136 insertions(+), 2 deletions(-)
+ create mode 100644 src/binddynport.c
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index fba2aa4..932414d 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -15,8 +15,9 @@ lib_LTLIBRARIES = libtirpc.la
+ libtirpc_la_LDFLAGS = @LDFLAG_NOUNDEFINED@ -no-undefined -lpthread
+ libtirpc_la_LDFLAGS += -version-info @LT_VERSION_INFO@
+ 
+-libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c bindresvport.c clnt_bcast.c \
+-        clnt_dg.c clnt_generic.c clnt_perror.c clnt_raw.c clnt_simple.c \
++libtirpc_la_SOURCES = auth_none.c auth_unix.c authunix_prot.c \
++        binddynport.c bindresvport.c \
++        clnt_bcast.c clnt_dg.c clnt_generic.c clnt_perror.c clnt_raw.c clnt_simple.c \
+         clnt_vc.c rpc_dtablesize.c getnetconfig.c getnetpath.c getrpcent.c \
+         getrpcport.c mt_misc.c pmap_clnt.c pmap_getmaps.c pmap_getport.c \
+         pmap_prot.c pmap_prot2.c pmap_rmt.c rpc_prot.c rpc_commondata.c \
+diff --git a/src/binddynport.c b/src/binddynport.c
+new file mode 100644
+index 0000000..6fa18e0
+--- /dev/null
++++ b/src/binddynport.c
+@@ -0,0 +1,133 @@
++/*
++ * Copyright (c) 2018, Oracle America, Inc.
++ * All rights reserved.
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions are met:
++ * - Redistributions of source code must retain the above copyright notice,
++ *   this list of conditions and the following disclaimer.
++ * - Redistributions in binary form must reproduce the above copyright notice,
++ *   this list of conditions and the following disclaimer in the documentation
++ *   and/or other materials provided with the distribution.
++ * - Neither the name of "Oracle America, Inc." nor the names of its
++ *   contributors may be used to endorse or promote products derived
++ *   from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
++ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
++ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
++ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
++ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
++ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
++ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
++ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
++ * POSSIBILITY OF SUCH DAMAGE.
++ */
++
++#include <sys/types.h>
++#include <sys/socket.h>
++
++#include <netdb.h>
++#include <netinet/in.h>
++
++#include <stdlib.h>
++#include <unistd.h>
++#include <errno.h>
++#include <string.h>
++
++#include <rpc/rpc.h>
++
++#include "reentrant.h"
++#include "rpc_com.h"
++
++extern pthread_mutex_t port_lock;
++
++/*
++ * Dynamic port range as defined in RFC 6335 Section 6.
++ * This range avoids all IANA-assigned service port
++ * numbers.
++ */
++enum {
++	LOWPORT		= 49152,
++	ENDPORT		= 65534,
++	NPORTS		= ENDPORT - LOWPORT + 1,
++};
++
++/*
++ * Bind a socket to a dynamically-assigned IP port.
++ *
++ * @fd is an open but unbound socket.
++ *
++ * On each call, a port number is chosen at random from
++ * within the dynamic/private port range, even if the
++ * caller has CAP_NET_ADMIN_BIND.
++ *
++ * Returns 0 on success, -1 on failure. errno may be
++ * set to a non-determinant value.
++ *
++ * This function is re-entrant.
++ */
++int __binddynport(int fd)
++{
++	struct sockaddr_storage ss;
++#ifdef INET6
++	struct sockaddr_in6 *sin6;
++#endif
++	struct sockaddr_in *sin;
++	in_port_t port, *portp;
++	struct sockaddr *sap;
++	socklen_t salen;
++	unsigned int seed;
++	int i, res;
++
++	if (__rpc_sockisbound(fd))
++		return 0;
++
++	res = -1;
++	sap = (struct sockaddr *)(void *)&ss;
++	salen = sizeof(ss);
++	memset(sap, 0, salen);
++
++	mutex_lock(&port_lock);
++
++	if (getsockname(fd, sap, &salen) == -1)
++		goto out;
++
++	switch (ss.ss_family) {
++	case AF_INET:
++		sin = (struct sockaddr_in *)(void *)&ss;
++		portp = &sin->sin_port;
++		salen = sizeof(struct sockaddr_in);
++		break;
++#ifdef INET6
++	case AF_INET6:
++		sin6 = (struct sockaddr_in6 *)(void *)&ss;
++		portp = &sin6->sin6_port;
++		salen = sizeof(struct sockaddr_in6);
++		break;
++#endif
++	default:
++		goto out;
++	}
++
++	seed = time(NULL);
++	port = (rand_r(&seed) % NPORTS) + LOWPORT;
++	for (i = 0; i < NPORTS; ++i) {
++		*portp = htons(port++);
++		res = bind(fd, sap, salen);
++		if (res >= 0) {
++			res = 0;
++			break;
++		}
++		if (errno != EADDRINUSE)
++			break;
++		if (port > ENDPORT)
++			port = LOWPORT;
++	}
++
++out:
++	mutex_unlock(&port_lock);
++	return res;
++}
+
