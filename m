@@ -1,15 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38405 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:38409 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750979AbeBSFDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Feb 2018 00:03:24 -0500
+        id S1750774AbeBSFDa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Feb 2018 00:03:30 -0500
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date: Mon, 19 Feb 2018 16:02:28 +1100
-Subject: [PATCH 02/23] cred: add get_cred_rcu()
+Subject: [PATCH 03/23] cred: export get_task_cred().
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <151901654881.17421.15935912932141802454.stgit@noble>
+Message-ID: <151901654884.17421.2146401182386690621.stgit@noble>
 In-Reply-To: <151901634940.17421.7637564368419392071.stgit@noble>
 References: <151901634940.17421.7637564368419392071.stgit@noble>
 MIME-Version: 1.0
@@ -17,54 +17,26 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sometimes we want to opportunistically get a
-ref to a cred in an rcu_read_lock protected section.
-get_task_cred() does this, and NFS does as similar thing
-with its own credential structures.
-To prepare for NFS converting to use 'struct cred' more
-uniformly, define get_cred_rcu(), and use it in
-get_task_cred().
+There is no reason that modules should not be able
+to use this, and NFS will need it when converted to
+use 'struct cred'.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- include/linux/cred.h |   11 +++++++++++
- kernel/cred.c        |    2 +-
- 2 files changed, 12 insertions(+), 1 deletion(-)
+ kernel/cred.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/include/linux/cred.h b/include/linux/cred.h
-index 6dd51e503f23..69ed76f7d49f 100644
---- a/include/linux/cred.h
-+++ b/include/linux/cred.h
-@@ -247,6 +247,17 @@ static inline const struct cred *get_cred(const struct cred *cred)
- 	return get_new_cred(nonconst_cred);
- }
- 
-+static inline const struct cred *get_cred_rcu(const struct cred *cred)
-+{
-+	struct cred *nonconst_cred = (struct cred *) cred;
-+	if (!cred)
-+		return NULL;
-+	if (!atomic_inc_not_zero(&nonconst_cred->usage))
-+		return NULL;
-+	validate_creds(cred);
-+	return cred;
-+}
-+
- /**
-  * put_cred - Release a reference to a set of credentials
-  * @cred: The credentials to release
 diff --git a/kernel/cred.c b/kernel/cred.c
-index 4ce75c6fb752..f11aa4e0d2b9 100644
+index f11aa4e0d2b9..3e43bde1fd3c 100644
 --- a/kernel/cred.c
 +++ b/kernel/cred.c
-@@ -195,7 +195,7 @@ const struct cred *get_task_cred(struct task_struct *task)
- 	do {
- 		cred = __task_cred((task));
- 		BUG_ON(!cred);
--	} while (!atomic_inc_not_zero(&((struct cred *)cred)->usage));
-+	} while (!get_cred_rcu(cred));
- 
+@@ -200,6 +200,7 @@ const struct cred *get_task_cred(struct task_struct *task)
  	rcu_read_unlock();
  	return cred;
+ }
++EXPORT_SYMBOL(get_task_cred);
+ 
+ /*
+  * Allocate blank credentials, such that the credentials can be filled in at a
 
 
