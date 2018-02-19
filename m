@@ -1,16 +1,15 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38414 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:38419 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751000AbeBSFDf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Feb 2018 00:03:35 -0500
+        id S1751000AbeBSFDl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Feb 2018 00:03:41 -0500
 From: NeilBrown <neilb@suse.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date: Mon, 19 Feb 2018 16:02:28 +1100
-Subject: [PATCH 04/23] cred: allow get_cred() and put_cred() to be given
- NULL.
+Subject: [PATCH 05/23] SUNRPC: add 'struct cred *' to auth_cred and rpc_cred
 Cc: linux-nfs@vger.kernel.org
-Message-ID: <151901654887.17421.3586411951654781069.stgit@noble>
+Message-ID: <151901654890.17421.13923830901329128619.stgit@noble>
 In-Reply-To: <151901634940.17421.7637564368419392071.stgit@noble>
 References: <151901634940.17421.7637564368419392071.stgit@noble>
 MIME-Version: 1.0
@@ -18,62 +17,233 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is common practice of helps like this so silently,
-accept a NULL pointer.
-get_rpccred() and put_rpccred() used by NFS act this way
-and using the same interface will ease the conversion
-for NFS, and simplify the resulting code.
+The SUNRPC credential framework was put together before
+Linux has 'struct cred'.  Now that we have it, it makes sense to
+use it.
+This first step just includes a suitable 'struct cred *' pointer
+in every 'struct auth_cred' and almost every 'struct rpc_cred'.
+
+The rpc_cred used for auth_null has a NULL 'struct cred *' as nothing
+else really makes sense.
+
+For rpc_cred, the pointer is reference counted.
+For auth_cred it isn't.  struct auth_cred are either allocated on
+the stack, in which case the thread owns a reference to the auth,
+or are part of 'struct generic_cred' in which case gc_base owns the
+reference and acred shares it.
+
+===Changelog
+ Fixed typo in get_backchannel_cred - testing wrong field for NULL.
+ Call put_cred() from crdestroy() callback, so it is still available
+ for auth_gss to use.
 
 Signed-off-by: NeilBrown <neilb@suse.com>
 ---
- include/linux/cred.h |   14 +++++++++-----
- 1 file changed, 9 insertions(+), 5 deletions(-)
+ fs/nfs/flexfilelayout/flexfilelayout.c |   17 +++++++++++++++++
+ fs/nfsd/nfs4callback.c                 |   13 ++++++++++++-
+ include/linux/sunrpc/auth.h            |    2 ++
+ net/sunrpc/auth.c                      |    8 +++++++-
+ net/sunrpc/auth_generic.c              |    8 +++++++-
+ net/sunrpc/auth_gss/auth_gss.c         |    2 ++
+ net/sunrpc/auth_unix.c                 |    1 +
+ 7 files changed, 48 insertions(+), 3 deletions(-)
 
-diff --git a/include/linux/cred.h b/include/linux/cred.h
-index 69ed76f7d49f..c9ba3c8747e9 100644
---- a/include/linux/cred.h
-+++ b/include/linux/cred.h
-@@ -232,7 +232,7 @@ static inline struct cred *get_new_cred(struct cred *cred)
-  * @cred: The credentials to reference
-  *
-  * Get a reference on the specified set of credentials.  The caller must
-- * release the reference.
-+ * release the reference.  If %NULL is passed, it is returned with no action.
-  *
-  * This is used to deal with a committed set of credentials.  Although the
-  * pointer is const, this will temporarily discard the const and increment the
-@@ -243,6 +243,8 @@ static inline struct cred *get_new_cred(struct cred *cred)
- static inline const struct cred *get_cred(const struct cred *cred)
- {
- 	struct cred *nonconst_cred = (struct cred *) cred;
-+	if (!cred)
-+		return cred;
- 	validate_creds(cred);
- 	return get_new_cred(nonconst_cred);
- }
-@@ -263,7 +265,7 @@ static inline const struct cred *get_cred_rcu(const struct cred *cred)
-  * @cred: The credentials to release
-  *
-  * Release a reference to a set of credentials, deleting them when the last ref
-- * is released.
-+ * is released.  If %NULL is passed, nothing is done.
-  *
-  * This takes a const pointer to a set of credentials because the credentials
-  * on task_struct are attached by const pointers to prevent accidental
-@@ -273,9 +275,11 @@ static inline void put_cred(const struct cred *_cred)
- {
- 	struct cred *cred = (struct cred *) _cred;
+diff --git a/fs/nfs/flexfilelayout/flexfilelayout.c b/fs/nfs/flexfilelayout/flexfilelayout.c
+index c75ad982bcfc..b727579a1508 100644
+--- a/fs/nfs/flexfilelayout/flexfilelayout.c
++++ b/fs/nfs/flexfilelayout/flexfilelayout.c
+@@ -9,6 +9,7 @@
+ #include <linux/nfs_fs.h>
+ #include <linux/nfs_page.h>
+ #include <linux/module.h>
++#include <linux/sched/mm.h>
  
--	validate_creds(cred);
--	if (atomic_dec_and_test(&(cred)->usage))
--		__put_cred(cred);
-+	if (cred) {
-+		validate_creds(cred);
-+		if (atomic_dec_and_test(&(cred)->usage))
-+			__put_cred(cred);
-+	}
+ #include <linux/sunrpc/metrics.h>
+ 
+@@ -415,6 +416,7 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 		struct nfs4_ff_layout_mirror *mirror;
+ 		struct auth_cred acred = { .group_info = ff_zero_group };
+ 		struct rpc_cred	__rcu *cred;
++		struct cred *kcred;
+ 		u32 ds_count, fh_count, id;
+ 		int j;
+ 
+@@ -491,8 +493,23 @@ ff_layout_alloc_lseg(struct pnfs_layout_hdr *lh,
+ 
+ 		acred.gid = make_kgid(&init_user_ns, id);
+ 
++		if (gfp_flags & __GFP_FS)
++			kcred = prepare_kernel_cred(NULL);
++		else {
++			unsigned int nofs_flags = memalloc_nofs_save();
++			kcred = prepare_kernel_cred(NULL);
++			memalloc_nofs_restore(nofs_flags);
++		}
++		rc = -ENOMEM;
++		if (!kcred)
++			goto out_err_free;
++		kcred->fsuid = acred.uid;
++		kcred->fsgid = acred.gid;
++		acred.cred = kcred;
++
+ 		/* find the cred for it */
+ 		rcu_assign_pointer(cred, rpc_lookup_generic_cred(&acred, 0, gfp_flags));
++		put_cred(kcred);
+ 		if (IS_ERR(cred)) {
+ 			rc = PTR_ERR(cred);
+ 			goto out_err_free;
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 49b0a9e7ff18..65c39817fcfc 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -773,10 +773,21 @@ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc
+ 	} else {
+ 		struct rpc_auth *auth = client->cl_auth;
+ 		struct auth_cred acred = {};
++		struct cred *kcred;
++		struct rpc_cred *ret;
++
++		kcred = prepare_kernel_cred(NULL);
++		if (!kcred)
++			return NULL;
+ 
+ 		acred.uid = ses->se_cb_sec.uid;
+ 		acred.gid = ses->se_cb_sec.gid;
+-		return auth->au_ops->lookup_cred(client->cl_auth, &acred, 0);
++		kcred->uid = acred.uid;
++		kcred->gid = acred.gid;
++		acred.cred = kcred;
++		ret = auth->au_ops->lookup_cred(client->cl_auth, &acred, 0);
++		put_cred(kcred);
++		return ret;
+ 	}
  }
  
- /**
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index d9af474a857d..57633e241d4a 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -46,6 +46,7 @@ enum {
+ 
+ /* Work around the lack of a VFS credential */
+ struct auth_cred {
++	const struct cred *cred;
+ 	kuid_t	uid;
+ 	kgid_t	gid;
+ 	struct group_info *group_info;
+@@ -68,6 +69,7 @@ struct rpc_cred {
+ 	unsigned long		cr_expire;	/* when to gc */
+ 	unsigned long		cr_flags;	/* various flags */
+ 	atomic_t		cr_count;	/* ref count */
++	const struct cred	*cr_cred;
+ 
+ 	kuid_t			cr_uid;
+ 
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index d2623b9f23d6..bb5a99b0e088 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -634,6 +634,7 @@ rpcauth_lookupcred(struct rpc_auth *auth, int flags)
+ 	acred.uid = cred->fsuid;
+ 	acred.gid = cred->fsgid;
+ 	acred.group_info = cred->group_info;
++	acred.cred = cred;
+ 	ret = auth->au_ops->lookup_cred(auth, &acred, flags);
+ 	return ret;
+ }
+@@ -649,6 +650,7 @@ rpcauth_init_cred(struct rpc_cred *cred, const struct auth_cred *acred,
+ 	cred->cr_auth = auth;
+ 	cred->cr_ops = ops;
+ 	cred->cr_expire = jiffies;
++	cred->cr_cred = get_cred(acred->cred);
+ 	cred->cr_uid = acred->uid;
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_init_cred);
+@@ -669,11 +671,15 @@ rpcauth_bind_root_cred(struct rpc_task *task, int lookupflags)
+ 	struct auth_cred acred = {
+ 		.uid = GLOBAL_ROOT_UID,
+ 		.gid = GLOBAL_ROOT_GID,
++		.cred = get_task_cred(&init_task),
+ 	};
++	struct rpc_cred *ret;
+ 
+ 	dprintk("RPC: %5u looking up %s cred\n",
+ 		task->tk_pid, task->tk_client->cl_auth->au_ops->au_name);
+-	return auth->au_ops->lookup_cred(auth, &acred, lookupflags);
++	ret = auth->au_ops->lookup_cred(auth, &acred, lookupflags);
++	put_cred(acred.cred);
++	return ret;
+ }
+ 
+ static struct rpc_cred *
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+index f1df9837f1ac..83caae7a7e97 100644
+--- a/net/sunrpc/auth_generic.c
++++ b/net/sunrpc/auth_generic.c
+@@ -61,11 +61,15 @@ struct rpc_cred *rpc_lookup_machine_cred(const char *service_name)
+ 		.gid = RPC_MACHINE_CRED_GROUPID,
+ 		.principal = service_name,
+ 		.machine_cred = 1,
++		.cred = get_task_cred(&init_task),
+ 	};
++	struct rpc_cred *ret;
+ 
+ 	dprintk("RPC:       looking up machine cred for service %s\n",
+ 			service_name);
+-	return generic_auth.au_ops->lookup_cred(&generic_auth, &acred, 0);
++	ret = generic_auth.au_ops->lookup_cred(&generic_auth, &acred, 0);
++	put_cred(acred.cred);
++	return ret;
+ }
+ EXPORT_SYMBOL_GPL(rpc_lookup_machine_cred);
+ 
+@@ -110,6 +114,7 @@ generic_create_cred(struct rpc_auth *auth, struct auth_cred *acred, int flags, g
+ 	gcred->acred.uid = acred->uid;
+ 	gcred->acred.gid = acred->gid;
+ 	gcred->acred.group_info = acred->group_info;
++	gcred->acred.cred = gcred->gc_base.cr_cred;
+ 	gcred->acred.ac_flags = 0;
+ 	if (gcred->acred.group_info != NULL)
+ 		get_group_info(gcred->acred.group_info);
+@@ -132,6 +137,7 @@ generic_free_cred(struct rpc_cred *cred)
+ 	dprintk("RPC:       generic_free_cred %p\n", gcred);
+ 	if (gcred->acred.group_info != NULL)
+ 		put_group_info(gcred->acred.group_info);
++	put_cred(cred->cr_cred);
+ 	kfree(gcred);
+ }
+ 
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 9463af4b32e8..76e6086081b7 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1288,6 +1288,7 @@ gss_destroy_nullcred(struct rpc_cred *cred)
+ 	struct gss_cl_ctx *ctx = rcu_dereference_protected(gss_cred->gc_ctx, 1);
+ 
+ 	RCU_INIT_POINTER(gss_cred->gc_ctx, NULL);
++	put_cred(cred->cr_cred);
+ 	call_rcu(&cred->cr_rcu, gss_free_cred_callback);
+ 	if (ctx)
+ 		gss_put_ctx(ctx);
+@@ -1553,6 +1554,7 @@ static int gss_renew_cred(struct rpc_task *task)
+ 	struct rpc_auth *auth = oldcred->cr_auth;
+ 	struct auth_cred acred = {
+ 		.uid = oldcred->cr_uid,
++		.cred = oldcred->cr_cred,
+ 		.principal = gss_cred->gc_principal,
+ 		.machine_cred = (gss_cred->gc_principal != NULL ? 1 : 0),
+ 	};
+diff --git a/net/sunrpc/auth_unix.c b/net/sunrpc/auth_unix.c
+index dafd6b870ba3..bb1996dd763e 100644
+--- a/net/sunrpc/auth_unix.c
++++ b/net/sunrpc/auth_unix.c
+@@ -97,6 +97,7 @@ static void
+ unx_free_cred(struct unx_cred *unx_cred)
+ {
+ 	dprintk("RPC:       unx_free_cred %p\n", unx_cred);
++	put_cred(unx_cred->uc_base.cr_cred);
+ 	kfree(unx_cred);
+ }
+ 
 
 
