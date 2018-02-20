@@ -1,191 +1,141 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx141.netapp.com ([216.240.21.12]:20627 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752384AbeBTQvy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Feb 2018 11:51:54 -0500
+        id S1752384AbeBTQvv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Feb 2018 11:51:51 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v7 05/12] NFS OFFLOAD_CANCEL xdr
-Date: Tue, 20 Feb 2018 11:42:17 -0500
-Message-ID: <20180220164224.65366-6-kolga@netapp.com>
-In-Reply-To: <20180220164224.65366-1-kolga@netapp.com>
-References: <20180220164224.65366-1-kolga@netapp.com>
+Subject: [PATCH v7 06/10] NFSD return nfs4_stid in nfs4_preprocess_stateid_op
+Date: Tue, 20 Feb 2018 11:42:25 -0500
+Message-ID: <20180220164229.65404-7-kolga@netapp.com>
+In-Reply-To: <20180220164229.65404-1-kolga@netapp.com>
+References: <20180220164229.65404-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Needed for copy to add nfs4_cp_state to the nfs4_stid.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42xdr.c         | 68 +++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/nfs4proc.c         |  1 +
- fs/nfs/nfs4xdr.c          |  1 +
- include/linux/nfs4.h      |  1 +
- include/linux/nfs_fs_sb.h |  1 +
- 5 files changed, 72 insertions(+)
+ fs/nfsd/nfs4proc.c  | 17 ++++++++++-------
+ fs/nfsd/nfs4state.c |  8 ++++++--
+ fs/nfsd/state.h     |  3 ++-
+ 3 files changed, 18 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/nfs42xdr.c b/fs/nfs/nfs42xdr.c
-index 8789486..7fda85c 100644
---- a/fs/nfs/nfs42xdr.c
-+++ b/fs/nfs/nfs42xdr.c
-@@ -31,6 +31,9 @@
- #define decode_offload_status_maxsz	(op_decode_hdr_maxsz + \
- 					 2 /* osr_count */ + \
- 					 1 + 1 /* osr_complete<1> */)
-+#define encode_offload_cancel_maxsz	(op_encode_hdr_maxsz + \
-+					 XDR_QUADLEN(NFS4_STATEID_SIZE))
-+#define decode_offload_cancel_maxsz	(op_decode_hdr_maxsz)
- #define encode_deallocate_maxsz		(op_encode_hdr_maxsz + \
- 					 encode_fallocate_maxsz)
- #define decode_deallocate_maxsz		(op_decode_hdr_maxsz)
-@@ -86,6 +89,12 @@
- #define NFS4_dec_offload_status_sz	(compound_decode_hdr_maxsz + \
- 					 decode_putfh_maxsz + \
- 					 decode_offload_status_maxsz)
-+#define NFS4_enc_offload_cancel_sz	(compound_encode_hdr_maxsz + \
-+					 encode_putfh_maxsz + \
-+					 encode_offload_cancel_maxsz)
-+#define NFS4_dec_offload_cancel_sz	(compound_decode_hdr_maxsz + \
-+					 decode_putfh_maxsz + \
-+					 decode_offload_cancel_maxsz)
- #define NFS4_enc_deallocate_sz		(compound_encode_hdr_maxsz + \
- 					 encode_putfh_maxsz + \
- 					 encode_deallocate_maxsz + \
-@@ -164,6 +173,14 @@ static void encode_offload_status(struct xdr_stream *xdr,
- 	encode_nfs4_stateid(xdr, &args->osa_stateid);
- }
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 91d1544..aafd5a58 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -766,7 +766,8 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
+ 	/* check stateid */
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+ 					&read->rd_stateid, RD_STATE,
+-					&read->rd_filp, &read->rd_tmp_file);
++					&read->rd_filp, &read->rd_tmp_file,
++					NULL);
+ 	if (status) {
+ 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
+ 		goto out;
+@@ -937,7 +938,7 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
+ 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
+ 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
+ 				&cstate->current_fh, &setattr->sa_stateid,
+-				WR_STATE, NULL, NULL);
++				WR_STATE, NULL, NULL, NULL);
+ 		if (status) {
+ 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
+ 			return status;
+@@ -1003,7 +1004,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+ 		return nfserr_inval;
  
-+static void encode_offload_cancel(struct xdr_stream *xdr,
-+				  const struct nfs42_offload_status_args *args,
-+				  struct compound_hdr *hdr)
-+{
-+	encode_op_hdr(xdr, OP_OFFLOAD_CANCEL, decode_offload_cancel_maxsz, hdr);
-+	encode_nfs4_stateid(xdr, &args->osa_stateid);
-+}
-+
- static void encode_deallocate(struct xdr_stream *xdr,
- 			      const struct nfs42_falloc_args *args,
- 			      struct compound_hdr *hdr)
-@@ -299,6 +316,25 @@ static void nfs4_xdr_enc_offload_status(struct rpc_rqst *req,
- }
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+-						stateid, WR_STATE, &filp, NULL);
++					stateid, WR_STATE, &filp, NULL, NULL);
+ 	if (status) {
+ 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
+ 		return status;
+@@ -1034,14 +1035,16 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+ 	__be32 status;
  
- /*
-+ * Encode OFFLOAD_CANEL request
-+ */
-+static void nfs4_xdr_enc_offload_cancel(struct rpc_rqst *req,
-+					struct xdr_stream *xdr,
-+					const void *data)
-+{
-+	const struct nfs42_offload_status_args *args = data;
-+	struct compound_hdr hdr = {
-+		.minorversion = nfs4_xdr_minorversion(&args->osa_seq_args),
-+	};
-+
-+	encode_compound_hdr(xdr, req, &hdr);
-+	encode_sequence(xdr, &args->osa_seq_args, &hdr);
-+	encode_putfh(xdr, args->osa_src_fh, &hdr);
-+	encode_offload_cancel(xdr, args, &hdr);
-+	encode_nops(&hdr);
-+}
-+
-+/*
-  * Encode DEALLOCATE request
-  */
- static void nfs4_xdr_enc_deallocate(struct rpc_rqst *req,
-@@ -478,6 +514,12 @@ static int decode_offload_status(struct xdr_stream *xdr,
- 	return -EIO;
- }
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->save_fh,
+-					    src_stateid, RD_STATE, src, NULL);
++					    src_stateid, RD_STATE, src, NULL,
++					    NULL);
+ 	if (status) {
+ 		dprintk("NFSD: %s: couldn't process src stateid!\n", __func__);
+ 		goto out;
+ 	}
  
-+static int decode_offload_cancel(struct xdr_stream *xdr,
-+				 struct nfs42_offload_status_res *res)
-+{
-+	return decode_op_hdr(xdr, OP_OFFLOAD_CANCEL);
-+}
-+
- static int decode_deallocate(struct xdr_stream *xdr, struct nfs42_falloc_res *res)
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+-					    dst_stateid, WR_STATE, dst, NULL);
++					    dst_stateid, WR_STATE, dst, NULL,
++					    NULL);
+ 	if (status) {
+ 		dprintk("NFSD: %s: couldn't process dst stateid!\n", __func__);
+ 		goto out_put_src;
+@@ -1273,7 +1276,7 @@ static int nfsd4_do_async_copy(void *data)
+ 
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+ 					    &fallocate->falloc_stateid,
+-					    WR_STATE, &file, NULL);
++					    WR_STATE, &file, NULL, NULL);
+ 	if (status != nfs_ok) {
+ 		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
+ 		return status;
+@@ -1320,7 +1323,7 @@ static int nfsd4_do_async_copy(void *data)
+ 
+ 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+ 					    &seek->seek_stateid,
+-					    RD_STATE, &file, NULL);
++					    RD_STATE, &file, NULL, NULL);
+ 	if (status) {
+ 		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
+ 		return status;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fe665b0..e05832b 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5092,7 +5092,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ __be32
+ nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
+-		stateid_t *stateid, int flags, struct file **filpp, bool *tmp_file)
++		stateid_t *stateid, int flags, struct file **filpp,
++		bool *tmp_file, struct nfs4_stid **cstid)
  {
- 	return decode_op_hdr(xdr, OP_DEALLOCATE);
-@@ -604,6 +646,32 @@ static int nfs4_xdr_dec_offload_status(struct rpc_rqst *rqstp,
+ 	struct inode *ino = d_inode(fhp->fh_dentry);
+ 	struct net *net = SVC_NET(rqstp);
+@@ -5143,8 +5144,11 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 	if (!status && filpp)
+ 		status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
+ out:
+-	if (s)
++	if (s) {
++		if (!status && cstid)
++			*cstid = s;
+ 		nfs4_put_stid(s);
++	}
+ 	return status;
  }
  
- /*
-+ * Decode OFFLOAD_CANCEL response
-+ */
-+static int nfs4_xdr_dec_offload_cancel(struct rpc_rqst *rqstp,
-+				       struct xdr_stream *xdr,
-+				       void *data)
-+{
-+	struct nfs42_offload_status_res *res = data;
-+	struct compound_hdr hdr;
-+	int status;
-+
-+	status = decode_compound_hdr(xdr, &hdr);
-+	if (status)
-+		goto out;
-+	status = decode_sequence(xdr, &res->osr_seq_res, rqstp);
-+	if (status)
-+		goto out;
-+	status = decode_putfh(xdr);
-+	if (status)
-+		goto out;
-+	status = decode_offload_cancel(xdr, res);
-+
-+out:
-+	return status;
-+}
-+
-+/*
-  * Decode DEALLOCATE request
-  */
- static int nfs4_xdr_dec_deallocate(struct rpc_rqst *rqstp,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 08f12b5..46571f7a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -9496,6 +9496,7 @@ static bool nfs4_match_stateid(const nfs4_stateid *s1,
- 		| NFS_CAP_ALLOCATE
- 		| NFS_CAP_COPY
- 		| NFS_CAP_OFFLOAD_STATUS
-+		| NFS_CAP_OFFLOAD_CANCEL
- 		| NFS_CAP_DEALLOCATE
- 		| NFS_CAP_SEEK
- 		| NFS_CAP_LAYOUTSTATS
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index ca82e16..a7d4107 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -7756,6 +7756,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
- 	PROC42(CLONE,		enc_clone,		dec_clone),
- 	PROC42(COPY,		enc_copy,		dec_copy),
- 	PROC42(OFFLOAD_STATUS,	enc_offload_status,	dec_offload_status),
-+	PROC42(OFFLOAD_CANCEL,	enc_offload_cancel,	dec_offload_cancel),
- 	PROC(LOOKUPP,		enc_lookupp,		dec_lookupp),
- };
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 491030e..9b7d7a0 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -605,7 +605,8 @@ struct nfsd4_blocked_lock {
  
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 47ae050..e796f56 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -528,6 +528,7 @@ enum {
- 	NFSPROC4_CLNT_CLONE,
- 	NFSPROC4_CLNT_COPY,
- 	NFSPROC4_CLNT_OFFLOAD_STATUS,
-+	NFSPROC4_CLNT_OFFLOAD_CANCEL,
- 
- 	NFSPROC4_CLNT_LOOKUPP,
- };
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index 1f6e9d6..6d2a5c8 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -255,5 +255,6 @@ struct nfs_server {
- #define NFS_CAP_CLONE		(1U << 23)
- #define NFS_CAP_COPY		(1U << 24)
- #define NFS_CAP_OFFLOAD_STATUS	(1U << 25)
-+#define NFS_CAP_OFFLOAD_CANCEL	(1U << 26)
- 
- #endif
+ extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
+-		stateid_t *stateid, int flags, struct file **filp, bool *tmp_file);
++		stateid_t *stateid, int flags, struct file **filp,
++		bool *tmp_file, struct nfs4_stid **cstid);
+ __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+ 		     stateid_t *stateid, unsigned char typemask,
+ 		     struct nfs4_stid **s, struct nfsd_net *nn);
 -- 
 1.8.3.1
 
