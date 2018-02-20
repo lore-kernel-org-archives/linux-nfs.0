@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:20627 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:20662 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752384AbeBTQvv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Feb 2018 11:51:51 -0500
+        id S1752708AbeBTQvy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Feb 2018 11:51:54 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
 To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v7 06/10] NFSD return nfs4_stid in nfs4_preprocess_stateid_op
-Date: Tue, 20 Feb 2018 11:42:25 -0500
-Message-ID: <20180220164229.65404-7-kolga@netapp.com>
+Subject: [PATCH v7 02/10] NFSD OFFLOAD_STATUS xdr
+Date: Tue, 20 Feb 2018 11:42:21 -0500
+Message-ID: <20180220164229.65404-3-kolga@netapp.com>
 In-Reply-To: <20180220164229.65404-1-kolga@netapp.com>
 References: <20180220164229.65404-1-kolga@netapp.com>
 MIME-Version: 1.0
@@ -16,126 +16,145 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Needed for copy to add nfs4_cp_state to the nfs4_stid.
-
-Signed-off-by: Andy Adamson <andros@netapp.com>
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c  | 17 ++++++++++-------
- fs/nfsd/nfs4state.c |  8 ++++++--
- fs/nfsd/state.h     |  3 ++-
- 3 files changed, 18 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4proc.c | 20 ++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c  | 27 +++++++++++++++++++++++++--
+ fs/nfsd/xdr4.h     | 10 ++++++++++
+ 3 files changed, 55 insertions(+), 2 deletions(-)
 
 diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 91d1544..aafd5a58 100644
+index a0bed2b..ef64873 100644
 --- a/fs/nfsd/nfs4proc.c
 +++ b/fs/nfsd/nfs4proc.c
-@@ -766,7 +766,8 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
- 	/* check stateid */
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					&read->rd_stateid, RD_STATE,
--					&read->rd_filp, &read->rd_tmp_file);
-+					&read->rd_filp, &read->rd_tmp_file,
-+					NULL);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_read: couldn't process stateid!\n");
- 		goto out;
-@@ -937,7 +938,7 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
- 	if (setattr->sa_iattr.ia_valid & ATTR_SIZE) {
- 		status = nfs4_preprocess_stateid_op(rqstp, cstate,
- 				&cstate->current_fh, &setattr->sa_stateid,
--				WR_STATE, NULL, NULL);
-+				WR_STATE, NULL, NULL, NULL);
- 		if (status) {
- 			dprintk("NFSD: nfsd4_setattr: couldn't process stateid!\n");
- 			return status;
-@@ -1003,7 +1004,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 		return nfserr_inval;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
--						stateid, WR_STATE, &filp, NULL);
-+					stateid, WR_STATE, &filp, NULL, NULL);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_write: couldn't process stateid!\n");
- 		return status;
-@@ -1034,14 +1035,16 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
- 	__be32 status;
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->save_fh,
--					    src_stateid, RD_STATE, src, NULL);
-+					    src_stateid, RD_STATE, src, NULL,
-+					    NULL);
- 	if (status) {
- 		dprintk("NFSD: %s: couldn't process src stateid!\n", __func__);
- 		goto out;
- 	}
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
--					    dst_stateid, WR_STATE, dst, NULL);
-+					    dst_stateid, WR_STATE, dst, NULL,
-+					    NULL);
- 	if (status) {
- 		dprintk("NFSD: %s: couldn't process dst stateid!\n", __func__);
- 		goto out_put_src;
-@@ -1273,7 +1276,7 @@ static int nfsd4_do_async_copy(void *data)
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					    &fallocate->falloc_stateid,
--					    WR_STATE, &file, NULL);
-+					    WR_STATE, &file, NULL, NULL);
- 	if (status != nfs_ok) {
- 		dprintk("NFSD: nfsd4_fallocate: couldn't process stateid!\n");
- 		return status;
-@@ -1320,7 +1323,7 @@ static int nfsd4_do_async_copy(void *data)
- 
- 	status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
- 					    &seek->seek_stateid,
--					    RD_STATE, &file, NULL);
-+					    RD_STATE, &file, NULL, NULL);
- 	if (status) {
- 		dprintk("NFSD: nfsd4_seek: couldn't process stateid!\n");
- 		return status;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fe665b0..e05832b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -5092,7 +5092,8 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- __be32
- nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
--		stateid_t *stateid, int flags, struct file **filpp, bool *tmp_file)
-+		stateid_t *stateid, int flags, struct file **filpp,
-+		bool *tmp_file, struct nfs4_stid **cstid)
- {
- 	struct inode *ino = d_inode(fhp->fh_dentry);
- 	struct net *net = SVC_NET(rqstp);
-@@ -5143,8 +5144,11 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	if (!status && filpp)
- 		status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
- out:
--	if (s)
-+	if (s) {
-+		if (!status && cstid)
-+			*cstid = s;
- 		nfs4_put_stid(s);
-+	}
+@@ -1140,6 +1140,13 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+ 	fput(file);
  	return status;
  }
++static __be32
++nfsd4_offload_status(struct svc_rqst *rqstp,
++		     struct nfsd4_compound_state *cstate,
++		     union nfsd4_op_u *u)
++{
++	return nfserr_notsupp;
++}
  
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 491030e..9b7d7a0 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -605,7 +605,8 @@ struct nfsd4_blocked_lock {
+ static __be32
+ nfsd4_allocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+@@ -2040,6 +2047,14 @@ static inline u32 nfsd4_copy_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 		1 /* cr_synchronous */) * sizeof(__be32);
+ }
  
- extern __be32 nfs4_preprocess_stateid_op(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *cstate, struct svc_fh *fhp,
--		stateid_t *stateid, int flags, struct file **filp, bool *tmp_file);
-+		stateid_t *stateid, int flags, struct file **filp,
-+		bool *tmp_file, struct nfs4_stid **cstid);
- __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 		     stateid_t *stateid, unsigned char typemask,
- 		     struct nfs4_stid **s, struct nfsd_net *nn);
++static inline u32 nfsd4_offload_status_rsize(struct svc_rqst *rqstp,
++					     struct nfsd4_op *op)
++{
++	return (op_encode_hdr_size +
++		2 /* osr_count */ +
++		1 /* osr_complete<1> optional 0 for now */) * sizeof(__be32);
++}
++
+ #ifdef CONFIG_NFSD_PNFS
+ static inline u32 nfsd4_getdeviceinfo_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ {
+@@ -2453,6 +2468,11 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 		.op_name = "OP_SEEK",
+ 		.op_rsize_bop = nfsd4_seek_rsize,
+ 	},
++	[OP_OFFLOAD_STATUS] = {
++		.op_func = nfsd4_offload_status,
++		.op_name = "OP_OFFLOAD_STATUS",
++		.op_rsize_bop = nfsd4_offload_status_rsize,
++	},
+ };
+ 
+ /**
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e502fd1..bd9b46d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1767,6 +1767,13 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ }
+ 
+ static __be32
++nfsd4_decode_offload_status(struct nfsd4_compoundargs *argp,
++			    struct nfsd4_offload_status *os)
++{
++	return nfsd4_decode_stateid(argp, &os->stateid);
++}
++
++static __be32
+ nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+ {
+ 	DECODE_HEAD;
+@@ -1873,7 +1880,7 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
++	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
+ 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_dec)nfsd4_decode_notsupp,
+@@ -4220,6 +4227,22 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ }
+ 
+ static __be32
++nfsd4_encode_offload_status(struct nfsd4_compoundres *resp, __be32 nfserr,
++			    struct nfsd4_offload_status *os)
++{
++	struct xdr_stream *xdr = &resp->xdr;
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, 8 + 4);
++	if (!p)
++		return nfserr_resource;
++	p = xdr_encode_hyper(p, os->count);
++	*p++ = cpu_to_be32(0);
++
++	return nfserr;
++}
++
++static __be32
+ nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		  struct nfsd4_seek *seek)
+ {
+@@ -4322,7 +4345,7 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ 	[OP_LAYOUTERROR]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_LAYOUTSTATS]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_OFFLOAD_CANCEL]	= (nfsd4_enc)nfsd4_encode_noop,
+-	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
++	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_offload_status,
+ 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
+ 	[OP_WRITE_SAME]		= (nfsd4_enc)nfsd4_encode_noop,
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index c573f3b..4fc0e35 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -542,6 +542,15 @@ struct nfsd4_seek {
+ 	loff_t		seek_pos;
+ };
+ 
++struct nfsd4_offload_status {
++	/* request */
++	stateid_t	stateid;
++
++	/* response */
++	u64		count;
++	u32		status;
++};
++
+ struct nfsd4_op {
+ 	int					opnum;
+ 	const struct nfsd4_operation *		opdesc;
+@@ -600,6 +609,7 @@ struct nfsd4_op {
+ 		struct nfsd4_fallocate		deallocate;
+ 		struct nfsd4_clone		clone;
+ 		struct nfsd4_copy		copy;
++		struct nfsd4_offload_status	offload_status;
+ 		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
 -- 
 1.8.3.1
 
