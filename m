@@ -1,76 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
 Received: from mx141.netapp.com ([216.240.21.12]:20627 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752079AbeBTQvq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Feb 2018 11:51:46 -0500
+        id S1752219AbeBTQvs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Feb 2018 11:51:48 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v7 00/12] NFS support for async intra COPY
-Date: Tue, 20 Feb 2018 11:42:12 -0500
-Message-ID: <20180220164224.65366-1-kolga@netapp.com>
+Subject: [PATCH v7 04/10] NFSD xdr callback stateid in async COPY reply
+Date: Tue, 20 Feb 2018 11:42:23 -0500
+Message-ID: <20180220164229.65404-5-kolga@netapp.com>
+In-Reply-To: <20180220164229.65404-1-kolga@netapp.com>
+References: <20180220164229.65404-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the client side to always request an asynchronous copy.
+Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+---
+ fs/nfsd/nfs4xdr.c | 21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
 
-If server replies to the COPY with the copy stateid, client will go
-wait on the CB_OFFLOAD. To fend off the race between CB_OFFLOAD and
-COPY reply, we check the list of pending callbacks before going to
-wait. Client adds the copy to the global list of copy stateids for the
-callback to look thru and signal the waiting copy.
-
-When the client receives reply from the CB_OFFLOAD with some bytes and
-committed how is UNSTABLE, then COMMIT is sent to the server. The results
-are propagated to the VFS and application. Assuming that application
-will deal with a partial result and continue from the new offset if needed.
-
-If server errs with ERR_OFFLOAD_NOREQS the copy will be re-sent as a
-synchronous COPY. If application cancels an in-flight COPY,
-OFFLOAD_CANCEL is sent to the server (sending it as an async RPC in the
-context of the nfsid_workqueue).
-
-v7:
-1. addressed Anna's comment on handle_async_copy() don't pass the last
-argument but it the write_res.count in the function itself.
-
-
-Anna Schumaker (1):
-  fs: Don't copy beyond the end of the file
-
-Olga Kornievskaia (11):
-  NFS CB_OFFLOAD xdr
-  NFS OFFLOAD_STATUS xdr
-  NFS OFFLOAD_STATUS op
-  NFS OFFLOAD_CANCEL xdr
-  NFS COPY xdr handle async reply
-  NFS add support for asynchronous COPY
-  NFS handle COPY reply CB_OFFLOAD call race
-  NFS export nfs4_async_handle_error
-  NFS send OFFLOAD_CANCEL when COPY killed
-  NFS handle COPY ERR_OFFLOAD_NO_REQS
-  NFS add a simple sync nfs4_proc_commit after async COPY
-
- fs/nfs/callback.h         |  12 +++
- fs/nfs/callback_proc.c    |  54 +++++++++++
- fs/nfs/callback_xdr.c     |  81 +++++++++++++++-
- fs/nfs/client.c           |   1 +
- fs/nfs/nfs42.h            |   5 +-
- fs/nfs/nfs42proc.c        | 241 ++++++++++++++++++++++++++++++++++++++++++++--
- fs/nfs/nfs42xdr.c         | 189 +++++++++++++++++++++++++++++++++---
- fs/nfs/nfs4_fs.h          |   5 +-
- fs/nfs/nfs4client.c       |  15 +++
- fs/nfs/nfs4proc.c         |  38 +++++++-
- fs/nfs/nfs4xdr.c          |   2 +
- fs/read_write.c           |   3 +
- include/linux/nfs4.h      |   2 +
- include/linux/nfs_fs.h    |   9 ++
- include/linux/nfs_fs_sb.h |   4 +
- include/linux/nfs_xdr.h   |  14 +++
- 16 files changed, 652 insertions(+), 23 deletions(-)
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2b7c507..f9b74a3 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -4194,15 +4194,27 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ #endif /* CONFIG_NFSD_PNFS */
+ 
+ static __be32
+-nfsd42_encode_write_res(struct nfsd4_compoundres *resp, struct nfsd42_write_res *write)
++nfsd42_encode_write_res(struct nfsd4_compoundres *resp,
++		struct nfsd42_write_res *write, bool sync)
+ {
+ 	__be32 *p;
++	p = xdr_reserve_space(&resp->xdr, 4);
++	if (!p)
++		return nfserr_resource;
+ 
+-	p = xdr_reserve_space(&resp->xdr, 4 + 8 + 4 + NFS4_VERIFIER_SIZE);
++	if (sync)
++		*p++ = cpu_to_be32(0);
++	else {
++		__be32 nfserr;
++		*p++ = cpu_to_be32(1);
++		nfserr = nfsd4_encode_stateid(&resp->xdr, &write->cb_stateid);
++		if (nfserr)
++			return nfserr;
++	}
++	p = xdr_reserve_space(&resp->xdr, 8 + 4 + NFS4_VERIFIER_SIZE);
+ 	if (!p)
+ 		return nfserr_resource;
+ 
+-	*p++ = cpu_to_be32(0);
+ 	p = xdr_encode_hyper(p, write->wr_bytes_written);
+ 	*p++ = cpu_to_be32(write->wr_stable_how);
+ 	p = xdr_encode_opaque_fixed(p, write->wr_verifier.data,
+@@ -4216,7 +4228,8 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
+ {
+ 	__be32 *p;
+ 
+-	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res);
++	nfserr = nfsd42_encode_write_res(resp, &copy->cp_res,
++			copy->cp_synchronous);
+ 	if (nfserr)
+ 		return nfserr;
+ 
 -- 
 1.8.3.1
 
