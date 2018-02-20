@@ -1,147 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:22670 "EHLO mx144.netapp.com"
+Received: from mx142.netapp.com ([216.240.21.19]:56178 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752079AbeBTQyt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Feb 2018 11:54:49 -0500
+        id S1752247AbeBTQzt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Feb 2018 11:55:49 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
+To: <bfields@redhat.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v7 10/12] NFS send OFFLOAD_CANCEL when COPY killed
-Date: Tue, 20 Feb 2018 11:42:22 -0500
-Message-ID: <20180220164224.65366-11-kolga@netapp.com>
-In-Reply-To: <20180220164224.65366-1-kolga@netapp.com>
-References: <20180220164224.65366-1-kolga@netapp.com>
+Subject: [PATCH v7 10/10] NFSD stop queued async copies on client shutdown
+Date: Tue, 20 Feb 2018 11:42:29 -0500
+Message-ID: <20180220164229.65404-11-kolga@netapp.com>
+In-Reply-To: <20180220164229.65404-1-kolga@netapp.com>
+References: <20180220164229.65404-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When COPY is killed by the user send OFFLOAD_CANCEL to server
-processing the copy.
+If client is shutting down and there are still async copies going
+on, then stop queued async copies.
 
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfs/nfs42proc.c | 90 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 89 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4proc.c  | 13 +++++++++++++
+ fs/nfsd/nfs4state.c |  1 +
+ fs/nfsd/state.h     |  1 +
+ 3 files changed, 15 insertions(+)
 
-diff --git a/fs/nfs/nfs42proc.c b/fs/nfs/nfs42proc.c
-index fa4631d..2971eda 100644
---- a/fs/nfs/nfs42proc.c
-+++ b/fs/nfs/nfs42proc.c
-@@ -17,6 +17,7 @@
- #include "internal.h"
- 
- #define NFSDBG_FACILITY NFSDBG_PROC
-+static int nfs42_do_offload_cancel_async(struct file *dst, nfs4_stateid *std);
- 
- static int _nfs42_proc_fallocate(struct rpc_message *msg, struct file *filep,
- 		struct nfs_lock_context *lock, loff_t offset, loff_t len)
-@@ -166,10 +167,15 @@ static int handle_async_copy(struct nfs42_copy_res *res,
- 	list_add_tail(&copy->copies, &server->ss_copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
- 
--	wait_for_completion_interruptible(&copy->completion);
-+	status = wait_for_completion_interruptible(&copy->completion);
- 	spin_lock(&server->nfs_client->cl_lock);
- 	list_del_init(&copy->copies);
- 	spin_unlock(&server->nfs_client->cl_lock);
-+	if (status == -ERESTARTSYS) {
-+		nfs42_do_offload_cancel_async(dst, &copy->stateid);
-+		kfree(copy);
-+		return status;
-+	}
- out:
- 	res->write_res.count = copy->count;
- 	memcpy(&res->write_res.verifier, &copy->verf, sizeof(copy->verf));
-@@ -327,6 +333,88 @@ ssize_t nfs42_proc_copy(struct file *src, loff_t pos_src,
- 	return err;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 57d0daa..54039e4 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1096,6 +1096,19 @@ static void nfs4_put_copy(struct nfsd4_copy *copy)
+ 	kfree(copy);
  }
  
-+struct nfs42_offloadcancel_data {
-+	struct nfs_server *seq_server;
-+	struct nfs42_offload_status_args args;
-+	struct nfs42_offload_status_res res;
-+};
-+
-+static void nfs42_offload_cancel_prepare(struct rpc_task *task, void *calldata)
++void nfsd4_shutdown_copy(struct nfs4_client *clp)
 +{
-+	struct nfs42_offloadcancel_data *data = calldata;
++	struct nfsd4_copy *copy;
 +
-+	nfs4_setup_sequence(data->seq_server->nfs_client,
-+				&data->args.osa_seq_args,
-+				&data->res.osr_seq_res, task);
++	spin_lock(&clp->async_lock);
++	list_for_each_entry(copy, &clp->async_copies, copies) {
++		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
++		kthread_stop(copy->copy_task);
++		nfs4_put_copy(copy);
++	}
++	spin_unlock(&clp->async_lock);
 +}
 +
-+static void nfs42_offload_cancel_done(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs42_offloadcancel_data *data = calldata;
-+
-+	nfs41_sequence_done(task, &data->res.osr_seq_res);
-+	if (task->tk_status &&
-+		nfs4_async_handle_error(task, data->seq_server, NULL,
-+			NULL) == -EAGAIN)
-+		rpc_restart_call_prepare(task);
-+}
-+
-+static void nfs42_free_offloadcancel_data(void *data)
-+{
-+	kfree(data);
-+}
-+
-+static const struct rpc_call_ops nfs42_offload_cancel_ops = {
-+	.rpc_call_prepare = nfs42_offload_cancel_prepare,
-+	.rpc_call_done = nfs42_offload_cancel_done,
-+	.rpc_release = nfs42_free_offloadcancel_data,
-+};
-+
-+static int nfs42_do_offload_cancel_async(struct file *dst,
-+				nfs4_stateid *stateid)
-+{
-+	struct nfs_server *dst_server = NFS_SERVER(file_inode(dst));
-+	struct nfs42_offloadcancel_data *data = NULL;
-+	struct nfs_open_context *ctx = nfs_file_open_context(dst);
-+	struct rpc_task *task;
-+	struct rpc_message msg = {
-+		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_OFFLOAD_CANCEL],
-+		.rpc_cred = ctx->cred,
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = dst_server->client,
-+		.rpc_message = &msg,
-+		.callback_ops = &nfs42_offload_cancel_ops,
-+		.workqueue = nfsiod_workqueue,
-+		.flags = RPC_TASK_ASYNC,
-+	};
-+	int status;
-+
-+	if (!(dst_server->caps & NFS_CAP_OFFLOAD_CANCEL))
-+		return -EOPNOTSUPP;
-+
-+	data = kzalloc(sizeof(struct nfs42_offloadcancel_data), GFP_NOFS);
-+	if (data == NULL)
-+		return -ENOMEM;
-+
-+	data->seq_server = dst_server;
-+	data->args.osa_src_fh = NFS_FH(file_inode(dst));
-+	memcpy(&data->args.osa_stateid, stateid,
-+		sizeof(data->args.osa_stateid));
-+	msg.rpc_argp = &data->args;
-+	msg.rpc_resp = &data->res;
-+	task_setup_data.callback_data = data;
-+	nfs4_init_sequence(&data->args.osa_seq_args, &data->res.osr_seq_res, 1);
-+	task = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(task))
-+		return PTR_ERR(task);
-+	status = rpc_wait_for_completion_task(task);
-+	if (status == -ENOTSUPP)
-+		dst_server->caps &= ~NFS_CAP_OFFLOAD_CANCEL;
-+	rpc_put_task(task);
-+	return status;
-+}
-+
- int _nfs42_proc_offload_status(struct file *dst, nfs4_stateid *stateid,
- 				struct nfs42_offload_status_res *res)
+ static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
  {
+ 	struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index bd76bd1..f9f2383 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1965,6 +1965,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ 		release_openowner(oo);
+ 	}
+ 	nfsd4_return_all_client_layouts(clp);
++	nfsd4_shutdown_copy(clp);
+ 	nfsd4_shutdown_callback(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+ 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 49709d1..131aefa 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -646,6 +646,7 @@ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
++extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
+ extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
 -- 
 1.8.3.1
 
