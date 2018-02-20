@@ -1,72 +1,56 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:20662 "EHLO mx141.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:20664 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752253AbeBTQvz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Feb 2018 11:51:55 -0500
+        id S1752384AbeBTQv5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Feb 2018 11:51:57 -0500
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <bfields@redhat.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v7 03/10] NFSD OFFLOAD_CANCEL xdr
-Date: Tue, 20 Feb 2018 11:42:22 -0500
-Message-ID: <20180220164229.65404-4-kolga@netapp.com>
-In-Reply-To: <20180220164229.65404-1-kolga@netapp.com>
-References: <20180220164229.65404-1-kolga@netapp.com>
+Subject: [PATCH v7 09/12] NFS export nfs4_async_handle_error
+Date: Tue, 20 Feb 2018 11:42:21 -0500
+Message-ID: <20180220164224.65366-10-kolga@netapp.com>
+In-Reply-To: <20180220164224.65366-1-kolga@netapp.com>
+References: <20180220164224.65366-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Make this function available to nfs42proc.c
+
 Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 14 ++++++++++++++
- fs/nfsd/nfs4xdr.c  |  2 +-
- 2 files changed, 15 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4_fs.h  | 3 +++
+ fs/nfs/nfs4proc.c | 2 +-
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index ef64873..e11494f 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1119,6 +1119,14 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index b374f68..7303a6f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -248,6 +248,9 @@ int nfs4_replace_transport(struct nfs_server *server,
+ 
+ /* nfs4proc.c */
+ extern int nfs4_handle_exception(struct nfs_server *, int, struct nfs4_exception *);
++extern int nfs4_async_handle_error(struct rpc_task *task,
++				   struct nfs_server *server,
++				   struct nfs4_state *state, long *timeout);
+ extern int nfs4_call_sync(struct rpc_clnt *, struct nfs_server *,
+ 			  struct rpc_message *, struct nfs4_sequence_args *,
+ 			  struct nfs4_sequence_res *, int);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 46571f7a..dcd08ba 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -553,7 +553,7 @@ int nfs4_handle_exception(struct nfs_server *server, int errorcode, struct nfs4_
+ 	return ret;
  }
  
- static __be32
-+nfsd4_offload_cancel(struct svc_rqst *rqstp,
-+		     struct nfsd4_compound_state *cstate,
-+		     union nfsd4_op_u *u)
-+{
-+	return 0;
-+}
-+
-+static __be32
- nfsd4_fallocate(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		struct nfsd4_fallocate *fallocate, int flags)
+-static int
++int
+ nfs4_async_handle_error(struct rpc_task *task, struct nfs_server *server,
+ 			struct nfs4_state *state, long *timeout)
  {
-@@ -2473,6 +2481,12 @@ static inline u32 nfsd4_seek_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
- 		.op_name = "OP_OFFLOAD_STATUS",
- 		.op_rsize_bop = nfsd4_offload_status_rsize,
- 	},
-+	[OP_OFFLOAD_CANCEL] = {
-+		.op_func = nfsd4_offload_cancel,
-+		.op_flags = OP_MODIFIES_SOMETHING,
-+		.op_name = "OP_OFFLOAD_CANCEL",
-+		.op_rsize_bop = nfsd4_only_status_rsize,
-+	},
- };
- 
- /**
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index bd9b46d..2b7c507 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1879,7 +1879,7 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTERROR]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_LAYOUTSTATS]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_CANCEL]	= (nfsd4_dec)nfsd4_decode_offload_status,
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_offload_status,
- 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
 -- 
 1.8.3.1
 
