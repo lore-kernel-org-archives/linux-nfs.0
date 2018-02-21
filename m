@@ -1,57 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:50662 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S932778AbeBUQtD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Feb 2018 11:49:03 -0500
-Message-ID: <1519231741.7497.18.camel@redhat.com>
-Subject: Re: nfs-utils: rpc.svcgssd segmentation fault in
- nss_gss_princ_to_ids()
-From: Justin Mitchell <jumitche@redhat.com>
-To: Matthias Gerstner <matthias.gerstner@nefkom.net>
+Received: from aserp2130.oracle.com ([141.146.126.79]:43546 "EHLO
+        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752667AbeBUSqs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Feb 2018 13:46:48 -0500
+Date: Wed, 21 Feb 2018 12:46:43 -0600 (CST)
+From: Bill.Baker@oracle.com
+Message-Id: <201802211846.w1LIkhqC736598@jurassic.us.oracle.com>
+To: Anna.Schumaker@Netapp.com, trondmy@primarydata.com
 Cc: linux-nfs@vger.kernel.org
-Date: Wed, 21 Feb 2018 16:49:01 +0000
-In-Reply-To: <20180220224858.GA14972@q910.gerrit.home>
-References: <20180220224858.GA14972@q910.gerrit.home>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Subject: [PATCH v2] nfs: system crashes after NFS4ERR_MOVED recovery
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2018-02-20 at 23:48 +0100, Matthias Gerstner wrote:
-> Hello!
-> 
-> I hope I have found the right place to report this.
-> 
-> I have recently upgraded from nfs-utils-1.3.4 to nfs-utils-2.3.1 on a Gentoo
-> Linux (hardened) system. After this upgrade the rpc.svcgssd crashes on my
-> kerberized NFS server each time a client tries to mount an NFS export.
-<snip>
->   
-> I debugged this a bit and strange things came about. There seem to be
-> duplicate instances of the local_realms variable in the
-> support/nfsidmap/nfsidmap_common.c compilation unit:
-<snip>
-> So there's one instance of the variable that was actually assigned the
-> expected data. And there's another one that is at NULL and returned from
-> get_local_realms().
-> 
-> This is related to the "#pragma GCC visibility push(hidden)" in the
-> compilation unit. Moving it after the local_realms variable declaration fixes
-> the issue. I've attached a patch that does just this.
-> 
-> I am not quite sure whether this is a compiler issue or an invalid use of the
-> visibility hidden pragma. The compiler used is:
 
-This is part of my previous work to fold libnfsidmap into the nfs-utils
-tree, in this case the #pragma is used to make the local_realms global
-accessible only by other parts of the library that need it, external
-users such as the nss plugin get access to it via the get_local_realms()
-function.
+nfs4_update_server unconditionally releases the nfs_client for the
+source server. If migration fails, this can cause the source server's
+nfs_client struct to be left with a low reference count, resulting in
+use-after-free.  Also, adjust reference count handling for ELOOP.
 
-I will run some tests to see if this is isolated to certain compiler
-versions, or if the pragma isnt working as I expected.
+NFS: state manager: migration failed on NFSv4 server nfsvmu10 with error 6
+WARNING: CPU: 16 PID: 17960 at fs/nfs/client.c:281 nfs_put_client+0xfa/0x110 [nfs]()
+	nfs_put_client+0xfa/0x110 [nfs]
+	nfs4_run_state_manager+0x30/0x40 [nfsv4]
+	kthread+0xd8/0xf0
 
-However simply moving the #pragma hidden will change the ABI which is a
-problem for some, so if necessary I will instead reorganise the code to
-achieve the same functionality without using the pragma
+BUG: unable to handle kernel NULL pointer dereference at 00000000000002a8
+	nfs4_xdr_enc_write+0x6b/0x160 [nfsv4]
+	rpcauth_wrap_req+0xac/0xf0 [sunrpc]
+	call_transmit+0x18c/0x2c0 [sunrpc]
+	__rpc_execute+0xa6/0x490 [sunrpc]
+	rpc_async_schedule+0x15/0x20 [sunrpc]
+	process_one_work+0x160/0x470
+	worker_thread+0x112/0x540
+	? rescuer_thread+0x3f0/0x3f0
+	kthread+0xd8/0xf0
+
+This bug was introduced by 32e62b7c ("NFS: Add nfs4_update_server"),
+but the fix applies cleanly to 52442f9b ("NFS4: Avoid migration loops")
+
+Reported-by: Helen Chao <helen.chao@oracle.com>
+Fixes: 52442f9b11b7 ("NFS4: Avoid migration loops")
+Signed-off-by: Bill Baker <bill.baker@oracle.com>
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4client.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+changes since v1:
+	ensure clp isn't leaked if source and dest servers are the same
+
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 65a7e5d..2c9a9b0 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -867,8 +867,10 @@ static int nfs4_set_client(struct nfs_server *server,
+ 	if (IS_ERR(clp))
+ 		return PTR_ERR(clp);
+ 
+-	if (server->nfs_client == clp)
++	if (server->nfs_client == clp) {
++		nfs_put_client(clp);
+ 		return -ELOOP;
++	}
+ 
+ 	/*
+ 	 * Query for the lease time on clientid setup or renewal
+@@ -1226,11 +1228,11 @@ int nfs4_update_server(struct nfs_server *server, const char *hostname,
+ 				clp->cl_proto, clnt->cl_timeout,
+ 				clp->cl_minorversion, net);
+ 	clear_bit(NFS_MIG_TSM_POSSIBLE, &server->mig_status);
+-	nfs_put_client(clp);
+ 	if (error != 0) {
+ 		nfs_server_insert_lists(server);
+ 		return error;
+ 	}
++	nfs_put_client(clp);
+ 
+ 	if (server->nfs_client->cl_hostname == NULL)
+ 		server->nfs_client->cl_hostname = kstrdup(hostname, GFP_KERNEL);
+-- 
+1.8.3.1
 
