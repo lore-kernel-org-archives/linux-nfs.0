@@ -1,58 +1,69 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41866 "EHLO fieldses.org"
+Received: from mga03.intel.com ([134.134.136.65]:3956 "EHLO mga03.intel.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751378AbeBVAuf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Feb 2018 19:50:35 -0500
-Date: Wed, 21 Feb 2018 19:50:35 -0500
-From: "J . Bruce Fields" <bfields@fieldses.org>
-To: Colin King <colin.king@canonical.com>
-Cc: Jeff Layton <jlayton@kernel.org>,
+        id S1751729AbeBVBoy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Feb 2018 20:44:54 -0500
+Date: Thu, 22 Feb 2018 09:51:23 +0800
+From: Philip Li <philip.li@intel.com>
+To: NeilBrown <neilb@suse.com>
+Cc: kbuild test robot <lkp@intel.com>, linux-nfs@vger.kernel.org,
         Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] lockd: make nlm_ntf_refcnt and nlm_ntf_wq static
-Message-ID: <20180222005035.GG6535@fieldses.org>
-References: <20180207102947.29292-1-colin.king@canonical.com>
+        kbuild-all@01.org, Anna Schumaker <anna.schumaker@netapp.com>
+Subject: Re: [kbuild-all] [PATCH 19/23] NFS/NFSD/SUNRPC: replace generic
+ creds with 'struct cred'.
+Message-ID: <20180222015123.GA14244@intel.com>
+References: <151901654943.17421.16135174786512989263.stgit@noble>
+ <201802192252.Y6fdV4Fk%fengguang.wu@intel.com>
+ <87woz8jz0g.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180207102947.29292-1-colin.king@canonical.com>
+In-Reply-To: <87woz8jz0g.fsf@notabene.neil.brown.name>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
+On Tue, Feb 20, 2018 at 11:17:03AM +1100, NeilBrown wrote:
+> On Mon, Feb 19 2018, kbuild test robot wrote:
+> 
+> > Hi NeilBrown,
+> >
+> > Thank you for the patch! Perhaps something to improve:
+> >
+> > [auto build test WARNING on nfs/linux-next]
+> > [also build test WARNING on v4.16-rc2 next-20180219]
+> > [if your patch is applied to the wrong git tree, please drop us a note to help improve the system]
+> >
+> > url:    https://github.com/0day-ci/linux/commits/NeilBrown/Remove-generic-rpc-credentials-and-associated-changed-V3/20180219-190836
+> > base:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git linux-next
+> > reproduce:
+> >         # apt-get install sparse
+> >         make ARCH=x86_64 allmodconfig
+> >         make C=1 CF=-D__CHECK_ENDIAN__
+> >
+> >
+> > sparse warnings: (new ones prefixed by >>)
+> >
+> >>> fs/nfs/flexfilelayout/flexfilelayout.c:517:40: sparse: incorrect type in initializer (different address spaces) @@ expected struct cred const @@ got cred const @@
+> >    fs/nfs/flexfilelayout/flexfilelayout.c:517:40: expected struct cred const
+> >    fs/nfs/flexfilelayout/flexfilelayout.c:517:40: got struct cred const Documentation Kbuild Kconfig Makefile certs drivers firmware fs include samples scripts sound tools cred
+> 
+> Hi Mr Robot :-)
+>  It looks like you have some strange wild-card expansion happening here.
+>  I think the above should be
+> >    fs/nfs/flexfilelayout/flexfilelayout.c:517:40: got struct cred const * cred
+thanks for pointing this out, we will fix it.
 
-On Wed, Feb 07, 2018 at 10:29:47AM +0000, Colin King wrote:
-> From: Colin Ian King <colin.king@canonical.com>
 > 
-> The variables nlm_ntf_refcnt and nlm_ntf_wq are local to the source and
-> do not need to be in global scope, so make them static.
+> Even after correcting the that, I cannot see what the different address
+> spaces are that might be a problem.
+> Does anyone have any ideas?
 > 
-> Cleans up sparse warnings:
-> fs/lockd/svc.c:60:10: warning: symbol 'nlm_ntf_refcnt' was not declared.
-> Should it be static?
-> fs/lockd/svc.c:61:1: warning: symbol 'nlm_ntf_wq' was not declared.
-> Should it be static?
-> 
-> Signed-off-by: Colin Ian King <colin.king@canonical.com>
-> ---
->  fs/lockd/svc.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 9c36d614bf89..346ed161756d 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -57,8 +57,8 @@ static struct task_struct	*nlmsvc_task;
->  static struct svc_rqst		*nlmsvc_rqst;
->  unsigned long			nlmsvc_timeout;
->  
-> -atomic_t nlm_ntf_refcnt = ATOMIC_INIT(0);
-> -DECLARE_WAIT_QUEUE_HEAD(nlm_ntf_wq);
-> +static atomic_t nlm_ntf_refcnt = ATOMIC_INIT(0);
-> +static DECLARE_WAIT_QUEUE_HEAD(nlm_ntf_wq);
->  
->  unsigned int lockd_net_id;
->  
-> -- 
-> 2.15.1
+> Thanks,
+> NeilBrown
+
+
+
+> _______________________________________________
+> kbuild-all mailing list
+> kbuild-all@lists.01.org
+> https://lists.01.org/mailman/listinfo/kbuild-all
+
