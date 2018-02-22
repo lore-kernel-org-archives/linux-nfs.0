@@ -1,70 +1,58 @@
-Return-Path: <bfields@fieldses.org>
-Date: Wed, 21 Feb 2018 19:48:17 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: aglo@umich.edu, bcodding@redhat.com, linux-nfs@vger.kernel.org,
-	trondmy@primarydata.com, tigran.mkrtchyan@desy.de
-Subject: Re: [PATCH] nfsd4: send the special close_stateid in v4.0 replies as
- well
-Message-ID: <20180222004817.GF6535@fieldses.org>
-References: <20180215201618.2617-1-jlayton@kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:41866 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751378AbeBVAuf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Feb 2018 19:50:35 -0500
+Date: Wed, 21 Feb 2018 19:50:35 -0500
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Colin King <colin.king@canonical.com>
+Cc: Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, kernel-janitors@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH] lockd: make nlm_ntf_refcnt and nlm_ntf_wq static
+Message-ID: <20180222005035.GG6535@fieldses.org>
+References: <20180207102947.29292-1-colin.king@canonical.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180215201618.2617-1-jlayton@kernel.org>
+In-Reply-To: <20180207102947.29292-1-colin.king@canonical.com>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 15, 2018 at 03:16:18PM -0500, Jeff Layton wrote:
-> From: Jeff Layton <jlayton@redhat.com>
-> 
-> We already send it for v4.1, but RFC7530 also notes that the stateid in
-> the close reply is bogus.
-> 
-> Always send the special close stateid, even in v4.0 responses. No client
-> should put any meaning on it whatsoever. For now, we continue to
-> increment the stateid value, though that might not be necessary either.
+Thanks, applying.--b.
 
-Thanks!  Applying for 4.17.--b.
-
+On Wed, Feb 07, 2018 at 10:29:47AM +0000, Colin King wrote:
+> From: Colin Ian King <colin.king@canonical.com>
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> The variables nlm_ntf_refcnt and nlm_ntf_wq are local to the source and
+> do not need to be in global scope, so make them static.
+> 
+> Cleans up sparse warnings:
+> fs/lockd/svc.c:60:10: warning: symbol 'nlm_ntf_refcnt' was not declared.
+> Should it be static?
+> fs/lockd/svc.c:61:1: warning: symbol 'nlm_ntf_wq' was not declared.
+> Should it be static?
+> 
+> Signed-off-by: Colin Ian King <colin.king@canonical.com>
 > ---
->  fs/nfsd/nfs4state.c | 19 +++++++++++++++----
->  1 file changed, 15 insertions(+), 4 deletions(-)
+>  fs/lockd/svc.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 150521c9671b..08c700864fee 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -5481,15 +5481,26 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  		goto out; 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 9c36d614bf89..346ed161756d 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -57,8 +57,8 @@ static struct task_struct	*nlmsvc_task;
+>  static struct svc_rqst		*nlmsvc_rqst;
+>  unsigned long			nlmsvc_timeout;
 >  
->  	stp->st_stid.sc_type = NFS4_CLOSED_STID;
-> +
-> +	/*
-> +	 * Technically we don't _really_ have to increment or copy it, since
-> +	 * it should just be gone after this operation and we clobber the
-> +	 * copied value below, but we continue to do so here just to ensure
-> +	 * that racing ops see that there was a state change.
-> +	 */
->  	nfs4_inc_and_copy_stateid(&close->cl_stateid, &stp->st_stid);
+> -atomic_t nlm_ntf_refcnt = ATOMIC_INIT(0);
+> -DECLARE_WAIT_QUEUE_HEAD(nlm_ntf_wq);
+> +static atomic_t nlm_ntf_refcnt = ATOMIC_INIT(0);
+> +static DECLARE_WAIT_QUEUE_HEAD(nlm_ntf_wq);
 >  
->  	nfsd4_close_open_stateid(stp);
->  	mutex_unlock(&stp->st_mutex);
+>  unsigned int lockd_net_id;
 >  
-> -	/* See RFC5661 sectionm 18.2.4 */
-> -	if (stp->st_stid.sc_client->cl_minorversion)
-> -		memcpy(&close->cl_stateid, &close_stateid,
-> -				sizeof(close->cl_stateid));
-> +	/* v4.1+ suggests that we send a special stateid in here, since the
-> +	 * clients should just ignore this anyway. Since this is not useful
-> +	 * for v4.0 clients either, we set it to the special close_stateid
-> +	 * universally.
-> +	 *
-> +	 * See RFC5661 section 18.2.4, and RFC7530 section 16.2.5
-> +	 */
-> +	memcpy(&close->cl_stateid, &close_stateid, sizeof(close->cl_stateid));
->  
->  	/* put reference from nfs4_preprocess_seqid_op */
->  	nfs4_put_stid(&stp->st_stid);
 > -- 
-> 2.14.3
+> 2.15.1
