@@ -1,66 +1,67 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-out.m-online.net ([212.18.0.10]:43435 "EHLO
-        mail-out.m-online.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752628AbeBVISh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Feb 2018 03:18:37 -0500
-Date: Thu, 22 Feb 2018 09:18:34 +0100
-From: Matthias Gerstner <matthias.gerstner@nefkom.net>
-To: Justin Mitchell <jumitche@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: nfs-utils: rpc.svcgssd segmentation fault in
- nss_gss_princ_to_ids()
-Message-ID: <20180222081834.GB883@q910.gerrit.home>
-References: <20180220224858.GA14972@q910.gerrit.home>
- <1519231741.7497.18.camel@redhat.com>
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35474 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933317AbeBVRQb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Feb 2018 12:16:31 -0500
+Received: by mail-it0-f68.google.com with SMTP id v194so7351097itb.0
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Feb 2018 09:16:30 -0800 (PST)
+Received: from leira.trondhjem.org.localdomain (c-68-49-162-121.hsd1.mi.comcast.net. [68.49.162.121])
+        by smtp.gmail.com with ESMTPSA id 5sm656168itb.36.2018.02.22.09.16.28
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
+        Thu, 22 Feb 2018 09:16:29 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix broken cast in nfs4_callback_recallany()
+Date: Thu, 22 Feb 2018 12:16:07 -0500
+Message-Id: <20180222171607.19036-1-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
-        protocol="application/pgp-signature"; boundary="7iMSBzlTiPOCCT2k"
-In-Reply-To: <1519231741.7497.18.camel@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Passing a pointer to a unsigned integer to test_bit() is broken.
 
---7iMSBzlTiPOCCT2k
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/callback_proc.c | 14 ++++++--------
+ 1 file changed, 6 insertions(+), 8 deletions(-)
 
-Hello,
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index 2435af56b87e..a50d7813e3ea 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -572,7 +572,7 @@ __be32 nfs4_callback_sequence(void *argp, void *resp,
+ }
+ 
+ static bool
+-validate_bitmap_values(unsigned long mask)
++validate_bitmap_values(unsigned int mask)
+ {
+ 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
+ }
+@@ -596,17 +596,15 @@ __be32 nfs4_callback_recallany(void *argp, void *resp,
+ 		goto out;
+ 
+ 	status = cpu_to_be32(NFS4_OK);
+-	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
+-		     &args->craa_type_mask))
++	if (args->craa_type_mask & BIT(RCA4_TYPE_MASK_RDATA_DLG))
+ 		flags = FMODE_READ;
+-	if (test_bit(RCA4_TYPE_MASK_WDATA_DLG, (const unsigned long *)
+-		     &args->craa_type_mask))
++	if (args->craa_type_mask & BIT(RCA4_TYPE_MASK_WDATA_DLG))
+ 		flags |= FMODE_WRITE;
+-	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
+-		     &args->craa_type_mask))
+-		pnfs_recall_all_layouts(cps->clp);
+ 	if (flags)
+ 		nfs_expire_unused_delegation_types(cps->clp, flags);
++
++	if (args->craa_type_mask & BIT(RCA4_TYPE_MASK_FILE_LAYOUT))
++		pnfs_recall_all_layouts(cps->clp);
+ out:
+ 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
+ 	return status;
+-- 
+2.14.3
 
-> I will run some tests to see if this is isolated to certain compiler
-> versions, or if the pragma isnt working as I expected.
->=20
-> However simply moving the #pragma hidden will change the ABI which is a
-> problem for some, so if necessary I will instead reorganise the code to
-> achieve the same functionality without using the pragma
-
-yes I understand. I was not suggesting this patch to be an actual solution.
-
-Thanks for looking into this.
-
-Regards
-
-Matthias
-
---7iMSBzlTiPOCCT2k
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEQMifAG+4oyi4OjfMFK1vZXkJcoQFAlqOfNoACgkQFK1vZXkJ
-coQ7DA/9GSa0EmwNg9GhJVkI93bJysg4ASlanBeUJYfmiYJSSTAu+9tcOtX7U/xo
-UNM/tSDqJfR9UeX3bA3uOUwhFNra8NVfkIJiguWUtl7qLiceiHLB3A43NSELbgUt
-dAsvAE1Hcfu6YDyM5XHOFB+uxgRmK4nMuw+wsZ3RD4p/V4+kw7HczFbGc+GOQURb
-X0S3jcLUeaAUn0ctf5c1z0fa+TRS3KRlsn4fNPfBTIN5C2fvZXH4clDCy3nIIZi6
-jxqNYBKDG8Km3jtpLnP+lwtacCjZ8PsnAGCTYdmDYwrD/HuELib7k29yj2wg8EJb
-duSNgpZ0oj2bbc1Rd+bh8fgrYo6+veCd7MMouwXjE78oZj5QxY2uvFY759eHlFzU
-2wjqC5e/kar5WUt4EEMvrs5dmnFIwPrVoykwPt+mUxQP9oDwCim+HxqT3sfdG8M9
-YCoikMBf0SPgVi2kHgG4Xp9PJMQrevd8+48swkxbaT4ZTD6wNbb1KmV8KNFx53v+
-0BoFYN8hR6NPI/mK5aPKMMy4/2JRf85rIZPW/+N1t+RG7E3ffshlF+4F3fyeNTFD
-lM/hKjeHxV0oKovccoXtTPup4MeB1ypeKPHzoyy7P9ow1uAQ/NARxWhdtJpFuGmk
-KZUPyBKNPNX2ePDlLXeRoO/Jpt0zcdu/Ih50+bCiz27NAqH2LgM=
-=Njwi
------END PGP SIGNATURE-----
-
---7iMSBzlTiPOCCT2k--
