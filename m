@@ -1,67 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35474 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933317AbeBVRQb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Feb 2018 12:16:31 -0500
-Received: by mail-it0-f68.google.com with SMTP id v194so7351097itb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Feb 2018 09:16:30 -0800 (PST)
-Received: from leira.trondhjem.org.localdomain (c-68-49-162-121.hsd1.mi.comcast.net. [68.49.162.121])
-        by smtp.gmail.com with ESMTPSA id 5sm656168itb.36.2018.02.22.09.16.28
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Thu, 22 Feb 2018 09:16:29 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSv4: Fix broken cast in nfs4_callback_recallany()
-Date: Thu, 22 Feb 2018 12:16:07 -0500
-Message-Id: <20180222171607.19036-1-trond.myklebust@primarydata.com>
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:41869 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S933279AbeBVRU0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Feb 2018 12:20:26 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "Anna.Schumaker@Netapp.com" <Anna.Schumaker@Netapp.com>,
+        "Bill.Baker@oracle.com" <Bill.Baker@oracle.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] nfs: system crashes after NFS4ERR_MOVED recovery
+Date: Thu, 22 Feb 2018 17:20:03 +0000
+Message-ID: <1519320002.19115.0.camel@primarydata.com>
+References: <201802211846.w1LIkhqC736598@jurassic.us.oracle.com>
+In-Reply-To: <201802211846.w1LIkhqC736598@jurassic.us.oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Passing a pointer to a unsigned integer to test_bit() is broken.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/callback_proc.c | 14 ++++++--------
- 1 file changed, 6 insertions(+), 8 deletions(-)
-
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 2435af56b87e..a50d7813e3ea 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -572,7 +572,7 @@ __be32 nfs4_callback_sequence(void *argp, void *resp,
- }
- 
- static bool
--validate_bitmap_values(unsigned long mask)
-+validate_bitmap_values(unsigned int mask)
- {
- 	return (mask & ~RCA4_TYPE_MASK_ALL) == 0;
- }
-@@ -596,17 +596,15 @@ __be32 nfs4_callback_recallany(void *argp, void *resp,
- 		goto out;
- 
- 	status = cpu_to_be32(NFS4_OK);
--	if (test_bit(RCA4_TYPE_MASK_RDATA_DLG, (const unsigned long *)
--		     &args->craa_type_mask))
-+	if (args->craa_type_mask & BIT(RCA4_TYPE_MASK_RDATA_DLG))
- 		flags = FMODE_READ;
--	if (test_bit(RCA4_TYPE_MASK_WDATA_DLG, (const unsigned long *)
--		     &args->craa_type_mask))
-+	if (args->craa_type_mask & BIT(RCA4_TYPE_MASK_WDATA_DLG))
- 		flags |= FMODE_WRITE;
--	if (test_bit(RCA4_TYPE_MASK_FILE_LAYOUT, (const unsigned long *)
--		     &args->craa_type_mask))
--		pnfs_recall_all_layouts(cps->clp);
- 	if (flags)
- 		nfs_expire_unused_delegation_types(cps->clp, flags);
-+
-+	if (args->craa_type_mask & BIT(RCA4_TYPE_MASK_FILE_LAYOUT))
-+		pnfs_recall_all_layouts(cps->clp);
- out:
- 	dprintk("%s: exit with status = %d\n", __func__, ntohl(status));
- 	return status;
--- 
-2.14.3
+T24gV2VkLCAyMDE4LTAyLTIxIGF0IDEyOjQ2IC0wNjAwLCBCaWxsLkJha2VyQG9yYWNsZS5jb20g
+d3JvdGU6DQo+IG5mczRfdXBkYXRlX3NlcnZlciB1bmNvbmRpdGlvbmFsbHkgcmVsZWFzZXMgdGhl
+IG5mc19jbGllbnQgZm9yIHRoZQ0KPiBzb3VyY2Ugc2VydmVyLiBJZiBtaWdyYXRpb24gZmFpbHMs
+IHRoaXMgY2FuIGNhdXNlIHRoZSBzb3VyY2Ugc2VydmVyJ3MNCj4gbmZzX2NsaWVudCBzdHJ1Y3Qg
+dG8gYmUgbGVmdCB3aXRoIGEgbG93IHJlZmVyZW5jZSBjb3VudCwgcmVzdWx0aW5nIGluDQo+IHVz
+ZS1hZnRlci1mcmVlLiAgQWxzbywgYWRqdXN0IHJlZmVyZW5jZSBjb3VudCBoYW5kbGluZyBmb3Ig
+RUxPT1AuDQo+IA0KPiBORlM6IHN0YXRlIG1hbmFnZXI6IG1pZ3JhdGlvbiBmYWlsZWQgb24gTkZT
+djQgc2VydmVyIG5mc3ZtdTEwIHdpdGgNCj4gZXJyb3IgNg0KPiBXQVJOSU5HOiBDUFU6IDE2IFBJ
+RDogMTc5NjAgYXQgZnMvbmZzL2NsaWVudC5jOjI4MQ0KPiBuZnNfcHV0X2NsaWVudCsweGZhLzB4
+MTEwIFtuZnNdKCkNCj4gCW5mc19wdXRfY2xpZW50KzB4ZmEvMHgxMTAgW25mc10NCj4gCW5mczRf
+cnVuX3N0YXRlX21hbmFnZXIrMHgzMC8weDQwIFtuZnN2NF0NCj4gCWt0aHJlYWQrMHhkOC8weGYw
+DQo+IA0KPiBCVUc6IHVuYWJsZSB0byBoYW5kbGUga2VybmVsIE5VTEwgcG9pbnRlciBkZXJlZmVy
+ZW5jZSBhdA0KPiAwMDAwMDAwMDAwMDAwMmE4DQo+IAluZnM0X3hkcl9lbmNfd3JpdGUrMHg2Yi8w
+eDE2MCBbbmZzdjRdDQo+IAlycGNhdXRoX3dyYXBfcmVxKzB4YWMvMHhmMCBbc3VucnBjXQ0KPiAJ
+Y2FsbF90cmFuc21pdCsweDE4Yy8weDJjMCBbc3VucnBjXQ0KPiAJX19ycGNfZXhlY3V0ZSsweGE2
+LzB4NDkwIFtzdW5ycGNdDQo+IAlycGNfYXN5bmNfc2NoZWR1bGUrMHgxNS8weDIwIFtzdW5ycGNd
+DQo+IAlwcm9jZXNzX29uZV93b3JrKzB4MTYwLzB4NDcwDQo+IAl3b3JrZXJfdGhyZWFkKzB4MTEy
+LzB4NTQwDQo+IAk/IHJlc2N1ZXJfdGhyZWFkKzB4M2YwLzB4M2YwDQo+IAlrdGhyZWFkKzB4ZDgv
+MHhmMA0KPiANCj4gVGhpcyBidWcgd2FzIGludHJvZHVjZWQgYnkgMzJlNjJiN2MgKCJORlM6IEFk
+ZCBuZnM0X3VwZGF0ZV9zZXJ2ZXIiKSwNCj4gYnV0IHRoZSBmaXggYXBwbGllcyBjbGVhbmx5IHRv
+IDUyNDQyZjliICgiTkZTNDogQXZvaWQgbWlncmF0aW9uDQo+IGxvb3BzIikNCj4gDQo+IFJlcG9y
+dGVkLWJ5OiBIZWxlbiBDaGFvIDxoZWxlbi5jaGFvQG9yYWNsZS5jb20+DQo+IEZpeGVzOiA1MjQ0
+MmY5YjExYjcgKCJORlM0OiBBdm9pZCBtaWdyYXRpb24gbG9vcHMiKQ0KPiBTaWduZWQtb2ZmLWJ5
+OiBCaWxsIEJha2VyIDxiaWxsLmJha2VyQG9yYWNsZS5jb20+DQo+IFJldmlld2VkLWJ5OiBDaHVj
+ayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gLS0tDQo+ICBmcy9uZnMvbmZzNGNs
+aWVudC5jIHwgNiArKysrLS0NCj4gIDEgZmlsZSBjaGFuZ2VkLCA0IGluc2VydGlvbnMoKyksIDIg
+ZGVsZXRpb25zKC0pDQo+IA0KPiBjaGFuZ2VzIHNpbmNlIHYxOg0KPiAJZW5zdXJlIGNscCBpc24n
+dCBsZWFrZWQgaWYgc291cmNlIGFuZCBkZXN0IHNlcnZlcnMgYXJlIHRoZSBzYW1lDQo+IA0KPiBk
+aWZmIC0tZ2l0IGEvZnMvbmZzL25mczRjbGllbnQuYyBiL2ZzL25mcy9uZnM0Y2xpZW50LmMNCj4g
+aW5kZXggNjVhN2U1ZC4uMmM5YTliMCAxMDA2NDQNCj4gLS0tIGEvZnMvbmZzL25mczRjbGllbnQu
+Yw0KPiArKysgYi9mcy9uZnMvbmZzNGNsaWVudC5jDQo+IEBAIC04NjcsOCArODY3LDEwIEBAIHN0
+YXRpYyBpbnQgbmZzNF9zZXRfY2xpZW50KHN0cnVjdCBuZnNfc2VydmVyDQo+ICpzZXJ2ZXIsDQo+
+ICAJaWYgKElTX0VSUihjbHApKQ0KPiAgCQlyZXR1cm4gUFRSX0VSUihjbHApOw0KPiAgDQo+IC0J
+aWYgKHNlcnZlci0+bmZzX2NsaWVudCA9PSBjbHApDQo+ICsJaWYgKHNlcnZlci0+bmZzX2NsaWVu
+dCA9PSBjbHApIHsNCj4gKwkJbmZzX3B1dF9jbGllbnQoY2xwKTsNCj4gIAkJcmV0dXJuIC1FTE9P
+UDsNCj4gKwl9DQo+ICANCj4gIAkvKg0KPiAgCSAqIFF1ZXJ5IGZvciB0aGUgbGVhc2UgdGltZSBv
+biBjbGllbnRpZCBzZXR1cCBvciByZW5ld2FsDQo+IEBAIC0xMjI2LDExICsxMjI4LDExIEBAIGlu
+dCBuZnM0X3VwZGF0ZV9zZXJ2ZXIoc3RydWN0IG5mc19zZXJ2ZXINCj4gKnNlcnZlciwgY29uc3Qg
+Y2hhciAqaG9zdG5hbWUsDQo+ICAJCQkJY2xwLT5jbF9wcm90bywgY2xudC0+Y2xfdGltZW91dCwN
+Cj4gIAkJCQljbHAtPmNsX21pbm9ydmVyc2lvbiwgbmV0KTsNCj4gIAljbGVhcl9iaXQoTkZTX01J
+R19UU01fUE9TU0lCTEUsICZzZXJ2ZXItPm1pZ19zdGF0dXMpOw0KPiAtCW5mc19wdXRfY2xpZW50
+KGNscCk7DQo+ICAJaWYgKGVycm9yICE9IDApIHsNCj4gIAkJbmZzX3NlcnZlcl9pbnNlcnRfbGlz
+dHMoc2VydmVyKTsNCj4gIAkJcmV0dXJuIGVycm9yOw0KPiAgCX0NCj4gKwluZnNfcHV0X2NsaWVu
+dChjbHApOw0KPiAgDQo+ICAJaWYgKHNlcnZlci0+bmZzX2NsaWVudC0+Y2xfaG9zdG5hbWUgPT0g
+TlVMTCkNCj4gIAkJc2VydmVyLT5uZnNfY2xpZW50LT5jbF9ob3N0bmFtZSA9IGtzdHJkdXAoaG9z
+dG5hbWUsDQo+IEdGUF9LRVJORUwpOw0KDQpUaGFua3MgQmlsbCEgQXBwbGllZCB0byBsaW51eC1u
+ZXh0Li4uDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWlu
+ZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
