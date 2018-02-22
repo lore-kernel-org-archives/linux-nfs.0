@@ -1,74 +1,36 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f171.google.com ([209.85.217.171]:46518 "EHLO
-        mail-ua0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751360AbeBVA1O (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Feb 2018 19:27:14 -0500
-Received: by mail-ua0-f171.google.com with SMTP id n48so2242533uae.13
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Feb 2018 16:27:14 -0800 (PST)
+Received: from fieldses.org ([173.255.197.46]:41832 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751565AbeBVAee (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Feb 2018 19:34:34 -0500
+Date: Wed, 21 Feb 2018 19:34:34 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kenneth Dsouza <kdsouza@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Add support for -R option in nfs4_getfacl so we can list
+ the ACLs of all files and directories recursively.
+Message-ID: <20180222003434.GD6535@fieldses.org>
+References: <20180207213055.18211-1-kdsouza@redhat.com>
+ <20180221225548.GC6535@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <CAGXu5jJRtiPNTZdA_RBUR=Xy6xcstqJUn_KoQtT4t=8jkucFQg@mail.gmail.com>
-References: <CAGXu5jLc_A1w4FM8FvQHGSPjLfOu80L_vbt_FkcE6+Bh_XMjxw@mail.gmail.com>
- <6be06ce5-87e6-0d9d-55b9-6c70c3578ecf@maciej.szmigiero.name>
- <CAGXu5j+gvH+X-XyqFbY+X0xtG2mQoL5bO7T2_QaeEyr3-Z5eLw@mail.gmail.com>
- <CA+55aFzsiVMFZVwm92N8L=E+YgOG+fpjwxt7rmz72=yMQGz8rg@mail.gmail.com>
- <CAGXu5jL5C1PHzVKwaQXuMm+jB=Wf0x-AN71_19RtzxvgYHHz3g@mail.gmail.com>
- <CA+55aFxyvr-PVWaOe_PGjej4gGMdfF_Moq0a3A9xZ6gGWAQjbQ@mail.gmail.com> <CAGXu5jJRtiPNTZdA_RBUR=Xy6xcstqJUn_KoQtT4t=8jkucFQg@mail.gmail.com>
-From: Kees Cook <keescook@chromium.org>
-Date: Wed, 21 Feb 2018 16:27:12 -0800
-Message-ID: <CAGXu5jJZh5AY5pTJXL2qn3=oMCvebNrx-BdQYnHtafnO6ywWWg@mail.gmail.com>
-Subject: Re: RANDSTRUCT structs need linux/compiler_types.h (Was: [nfsd4]
- potentially hardware breaking regression in 4.14-rc and 4.13.11)
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: "Maciej S. Szmigiero" <mail@maciej.szmigiero.name>,
-        Patrick McLean <chutzpah@gentoo.org>,
-        Emese Revfy <re.emese@gmail.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Bruce Fields <bfields@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Thorsten Leemhuis <regressions@leemhuis.info>,
-        "kernel-hardening@lists.openwall.com"
-        <kernel-hardening@lists.openwall.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180221225548.GC6535@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 21, 2018 at 4:23 PM, Kees Cook <keescook@chromium.org> wrote:
-> On Wed, Feb 21, 2018 at 4:22 PM, Linus Torvalds
-> <torvalds@linux-foundation.org> wrote:
->> On Wed, Feb 21, 2018 at 4:12 PM, Kees Cook <keescook@chromium.org> wrote:
->>>
->>> Do you want me to send the patch for this, or do you already have it
->>> prepared?
->>
->> I'd rather get something explicitly tested. I tried my earlier patch
->> with "make allmodconfig" (and a fix to nfsd to make it compile), but
->> now I'm back to testing hjl's gas updates so it would be better to get
->> a tested commit with a good commit message.
->>
->>> The body-fields I had prepared for the nfs were:
->>>
->>> Reported-by: Patrick McLean <chutzpah@gentoo.org>
->>> Reported-by: Maciej S. Szmigiero <mail@maciej.szmigiero.name>
->>
->> Oh, I think Maciej needs to get more than a "Reported-by:". This was a
->> really subtle thing that we didn't figure out in the original thread,
->> so give him a gold star in the form of "Root-caused-by:" or something.
->
-> Oops, I just sent this out. I will adjust a re-send. I couldn't find a
-> documented field name for this...
+On Wed, Feb 21, 2018 at 05:55:48PM -0500, J. Bruce Fields wrote:
+> People have been request recursive operation and I keep not getting
+> around to it, thanks for doing this.
+> 
+> How are you testing this?
 
-With the "root-cause" hint, I see we have used:
+Also, on top of this patch (which I've committed, thanks) it might also
+be nice to:
 
-2    Root-cause-analysis-by:
-2    Root-caused-by:
-1    Root-cause-found-by:
+	- add -L and -P options to choose whether you want to follow
+	  symlinks, as "getfacl" does.  I think this is just a matter of
+	  passing the right flags to nftw.
+	- switch to using getopt instead of parsing the flags by hand
+	  (looks like nfs4_setfacl already does this).
 
-I'll go with your "Root-caused-by" to tip the scale. :)
-
--Kees
-
--- 
-Kees Cook
-Pixel Security
+--b.
