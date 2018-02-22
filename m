@@ -1,17 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f67.google.com ([209.85.213.67]:36821 "EHLO
-        mail-vk0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751119AbeBUXeg (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Feb 2018 18:34:36 -0500
-Received: by mail-vk0-f67.google.com with SMTP id q7so2058979vkh.3
-        for <linux-nfs@vger.kernel.org>; Wed, 21 Feb 2018 15:34:36 -0800 (PST)
+Received: from mail-ua0-f193.google.com ([209.85.217.193]:36851 "EHLO
+        mail-ua0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751158AbeBVAMd (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Feb 2018 19:12:33 -0500
+Received: by mail-ua0-f193.google.com with SMTP id i15so2232482uak.3
+        for <linux-nfs@vger.kernel.org>; Wed, 21 Feb 2018 16:12:32 -0800 (PST)
 MIME-Version: 1.0
-In-Reply-To: <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com>
+In-Reply-To: <CA+55aFzsiVMFZVwm92N8L=E+YgOG+fpjwxt7rmz72=yMQGz8rg@mail.gmail.com>
 References: <CAGXu5jLc_A1w4FM8FvQHGSPjLfOu80L_vbt_FkcE6+Bh_XMjxw@mail.gmail.com>
- <6be06ce5-87e6-0d9d-55b9-6c70c3578ecf@maciej.szmigiero.name> <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com>
+ <6be06ce5-87e6-0d9d-55b9-6c70c3578ecf@maciej.szmigiero.name>
+ <CAGXu5j+gvH+X-XyqFbY+X0xtG2mQoL5bO7T2_QaeEyr3-Z5eLw@mail.gmail.com> <CA+55aFzsiVMFZVwm92N8L=E+YgOG+fpjwxt7rmz72=yMQGz8rg@mail.gmail.com>
 From: Kees Cook <keescook@chromium.org>
-Date: Wed, 21 Feb 2018 15:34:34 -0800
-Message-ID: <CAGXu5jK3ZEs5SauEMHA3BnAyM1zbOkoG5cbM3B44_67TH1EZ=A@mail.gmail.com>
+Date: Wed, 21 Feb 2018 16:12:29 -0800
+Message-ID: <CAGXu5jL5C1PHzVKwaQXuMm+jB=Wf0x-AN71_19RtzxvgYHHz3g@mail.gmail.com>
 Subject: Re: RANDSTRUCT structs need linux/compiler_types.h (Was: [nfsd4]
  potentially hardware breaking regression in 4.14-rc and 4.13.11)
 To: Linus Torvalds <torvalds@linux-foundation.org>
@@ -30,90 +31,33 @@ Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 21, 2018 at 2:47 PM, Linus Torvalds
+On Wed, Feb 21, 2018 at 3:24 PM, Linus Torvalds
 <torvalds@linux-foundation.org> wrote:
-> And other attribute specifiers we encourage people to put in other
-> parts of the type, like __user etc, so they don't have that same
-> parsing issue.
-
-Looking at other attributes we use on structs, we may have similar
-risks for these:
-
-__packed
-____cacheline_aligned
-____cacheline_aligned_in_smp
-____cacheline_internodealigned_in_smp
-
-But they just haven't been used in places that we could trip over it
-as badly, AFAICT.
-
-> I guess one _extreme_ fix for this would be to put
+> On Wed, Feb 21, 2018 at 2:52 PM, Kees Cook <keescook@chromium.org> wrote:
+>>
+>> I'll play with Linus's suggestion and see what we get.
 >
->     extern struct nostruct __randomize_layout;
->
-> in our include/linux/kconfig.h, which I think we end up always
-> including first thanks to having it on the command line.
+> It may be just as well to just include <linux/compiler_types.h> from
+> <linux/kconfig.h> and be done with it.
 
-We could do that for all the above, but I wonder if the real problem
-is our convention of using "regular" names for these kinds of
-attributes instead of parameterized names. If we always used something
-like:
+Hah, yeah, that would certainly solve it too. :)
 
-#define __struct(x)   __attribute__(x)
+> I do hate including unnecessary stuff because it makes builds slower,
+> but kernel header files probably don't get much more core than
+> <linux/compiler_types.h>.
 
-We'd avoid it, but we'd uglify our struct attributes:
+It also has the benefit of not letting it "go wrong" in the first
+place. (And the separate fix for nfs isn't needed...)
 
-struct thing { ... } __struct(randomize_layout);
+Do you want me to send the patch for this, or do you already have it
+prepared? The body-fields I had prepared for the nfs were:
 
-though trying this now creates other problems. Hmmm.
-
-(Regardless, let me send the nfs fix separately...)
+Reported-by: Patrick McLean <chutzpah@gentoo.org>
+Reported-by: Maciej S. Szmigiero <mail@maciej.szmigiero.name>
+Fixes: 3859a271a003 ("randstruct: Mark various structs for randomization")
 
 -Kees
 
->
-> Because if you do that, you actually get an error:
->
->     CC [M]  fs/nfsd/nfs4xdr.o
->   In file included from ./include/linux/fs_struct.h:5:0,
->                    from fs/nfsd/nfs4xdr.c:36:
->   ./include/linux/path.h:11:3: error: conflicting types for =E2=80=98__ra=
-ndomize_layout=E2=80=99
->    } __randomize_layout;
->      ^~~~~~~~~~~~~~~~~~
->   In file included from <command-line>:0:0:
->   ././include/linux/kconfig.h:8:28: note: previous declaration of
-> =E2=80=98__randomize_layout=E2=80=99 was here
->        extern struct nostruct __randomize_layout;
->                               ^~~~~~~~~~~~~~~~~~
->   make[1]: *** [scripts/Makefile.build:317: fs/nfsd/nfs4xdr.o] Error 1
->
-> and we would have figured this out immediately.
->
-> Broken example patch appended, in case somebody wants to play with
-> something like this or comes up with a better model entirely..
->
->                Linus
->
-> ---
->
-> diff --git a/include/linux/kconfig.h b/include/linux/kconfig.h
-> index fec5076eda91..537dacb83380 100644
-> --- a/include/linux/kconfig.h
-> +++ b/include/linux/kconfig.h
-> @@ -4,6 +4,10 @@
->
->  #include <generated/autoconf.h>
->
-> +#ifndef __ASSEMBLY__
-> + extern struct nostruct __randomize_layout;
-> +#endif
-> +
->  #define __ARG_PLACEHOLDER_1 0,
->  #define __take_second_arg(__ignored, val, ...) val
-
-
-
---=20
+-- 
 Kees Cook
 Pixel Security
