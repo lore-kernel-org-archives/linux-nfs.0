@@ -1,99 +1,54 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f195.google.com ([209.85.217.195]:39862 "EHLO
-        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751402AbeBWRFK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Feb 2018 12:05:10 -0500
-Received: by mail-ua0-f195.google.com with SMTP id c20so5340011uak.6
-        for <linux-nfs@vger.kernel.org>; Fri, 23 Feb 2018 09:05:10 -0800 (PST)
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48156 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1754475AbeBWTJn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Feb 2018 14:09:43 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: SteveD redhat <steved@redhat.com>,
+        "aglo@umich.edu" <aglo@umich.edu>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "kolga@netapp.com" <kolga@netapp.com>
+Subject: Re: [PATCH 1/1] NFS guard against incorrect vers inputs from
+ nfs-utils
+Date: Fri, 23 Feb 2018 19:09:36 +0000
+Message-ID: <1519412975.8738.3.camel@primarydata.com>
+References: <20180222192806.67911-1-kolga@netapp.com>
+         <034fb5f1-eba5-030b-aad2-6ac5e87f2066@RedHat.com>
+         <CAN-5tyE2wqrgkQuHSFy7=EDricmx6jPKA9=PnqSdf8rr_0rxwQ@mail.gmail.com>
+         <6e314995-964f-e70d-cc45-fc1716b4ec81@RedHat.com>
+In-Reply-To: <6e314995-964f-e70d-cc45-fc1716b4ec81@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <034fb5f1-eba5-030b-aad2-6ac5e87f2066@RedHat.com>
-References: <20180222192806.67911-1-kolga@netapp.com> <034fb5f1-eba5-030b-aad2-6ac5e87f2066@RedHat.com>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 23 Feb 2018 12:05:08 -0500
-Message-ID: <CAN-5tyE2wqrgkQuHSFy7=EDricmx6jPKA9=PnqSdf8rr_0rxwQ@mail.gmail.com>
-Subject: Re: [PATCH 1/1] NFS guard against incorrect vers inputs from nfs-utils
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 23, 2018 at 11:24 AM, Steve Dickson <SteveD@redhat.com> wrote:
-> Hey Olga,
->
-> On 02/22/2018 02:28 PM, Olga Kornievskaia wrote:
->> It is possible that userland can pass to the kernel mismatching
->> inputs for the minorversion. like vers=4.1,minorversion=0. Instead
->> of making the kernel responposible for 'choosing' the minorversion,
->> make the userland always responsible for not sending a mismatch.
-> I'm thinking this is probably more of mount problem...
+T24gRnJpLCAyMDE4LTAyLTIzIGF0IDEzOjQ1IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
+PiANCj4gT24gMDIvMjMvMjAxOCAxMjowNSBQTSwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+
+ID4gT24gRnJpLCBGZWIgMjMsIDIwMTggYXQgMTE6MjQgQU0sIFN0ZXZlIERpY2tzb24gPFN0ZXZl
+REByZWRoYXQuY29tPg0KPiA+IHdyb3RlOg0KPiA+ID4gSGV5IE9sZ2EsDQo+ID4gPiANCj4gPiA+
+IE9uIDAyLzIyLzIwMTggMDI6MjggUE0sIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiA+ID4g
+PiBJdCBpcyBwb3NzaWJsZSB0aGF0IHVzZXJsYW5kIGNhbiBwYXNzIHRvIHRoZSBrZXJuZWwgbWlz
+bWF0Y2hpbmcNCj4gPiA+ID4gaW5wdXRzIGZvciB0aGUgbWlub3J2ZXJzaW9uLiBsaWtlIHZlcnM9
+NC4xLG1pbm9ydmVyc2lvbj0wLg0KPiA+ID4gPiBJbnN0ZWFkDQo+ID4gPiA+IG9mIG1ha2luZyB0
+aGUga2VybmVsIHJlc3BvbnBvc2libGUgZm9yICdjaG9vc2luZycgdGhlDQo+ID4gPiA+IG1pbm9y
+dmVyc2lvbiwNCj4gPiA+ID4gbWFrZSB0aGUgdXNlcmxhbmQgYWx3YXlzIHJlc3BvbnNpYmxlIGZv
+ciBub3Qgc2VuZGluZyBhDQo+ID4gPiA+IG1pc21hdGNoLg0KPiA+ID4gDQo+ID4gPiBJJ20gdGhp
+bmtpbmcgdGhpcyBpcyBwcm9iYWJseSBtb3JlIG9mIG1vdW50IHByb2JsZW0uLi4NCj4gPiANCj4g
+PiBZZXMgdGhlIHByb2JsZW0gaXMgYSBicm9rZW4gdXNlciBsYW5kIHNlbmRpbmcgaW5jb3JyZWN0
+IGFyZ3VtZW50cw0KPiA+IGJ1dA0KPiA+IEkgc3RpbGwgdGhpbmsgdGhlIGtlcm5lbCBuZWVkcyB0
+byBkbyBzYW5pdHkgY2hlY2tpbmcgb24gYXJndW1lbnRzDQo+ID4gdG8NCj4gPiBwcmV2ZW50IHRo
+aXMgZnJvbSBoYXBwZW5pbmcgYWdhaW4uDQo+ID4gDQo+ID4gPiBtb3VudCAtdCBuZnM0IC1vIG1p
+bm9ydmVyc2lvbj0wIHNlcnZlcjovZXhwb3J0IC9tbnQNCj4gPiA+IA0KPiA+ID4gc2hvdWxkbid0
+IHRoaXMgYmUgYSAgdjQuMCBtb3VudCBpbnN0ZWFkIG9mIGEgNC4yIG1vdW50Pw0KPiA+IA0KPiA+
+IFllcyBJIHdvdWxkIHRoaW5rIHRoaXMgc2hvdWxkIGNyZWF0ZSBhIHY0LjAgbW91bnQuDQo+IA0K
+PiBXYXkgYmFjayB3aGVuLi4uIHRoZXJlIHdhcyBzb21lIHRhbGsgYWJvdXQgZGVwcmVjYXRpbmcg
+DQo+IG1pbm9ydmVyc2lvbj0gZmxhZy4uLiBTaW5jZSBpdCBpcyBicm9rZW4sIG1heWJlIHRoaXMg
+aXMgDQo+IGEgZ29vZCB0aW1lIHRvIGRvIGl0Pw0KPiANCj4gVGhvdWdodHM/DQoNCkkndmUgbmV2
+ZXIgbGlrZWQgdGhlIHNlcGFyYXRlIHY0LW9ubHkgJ21pbm9ydmVyc2lvbicga2V5d29yZCwgd2hp
+Y2ggaXMNCndoeSBJIGludHJvZHVjZWQgdGhlICd2ZXJzaW9uPTQueCcgZm9ybWF0LiBNeSBwcmVm
+ZXJlbmNlIGlzIHRoZXJlZm9yZQ0KdGhhdCB3ZSBjb250aW51ZSB0byBkZXByZWNhdGUgdXNlIG9m
+ICdtaW5vcnZlcnNpb24nIHdpdGggYSB2aWV3IHRvDQpraWxsaW5nIGl0IG9mZiBjb21wbGV0ZWx5
+Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQ
+cmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-Yes the problem is a broken user land sending incorrect arguments but
-I still think the kernel needs to do sanity checking on arguments to
-prevent this from happening again.
-
-> mount -t nfs4 -o minorversion=0 server:/export /mnt
->
-> shouldn't this be a  v4.0 mount instead of a 4.2 mount?
-
-Yes I would think this should create a v4.0 mount.
-
->
-> steved.
->
->>
->> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
->> ---
->>  fs/nfs/super.c | 10 +++++++++-
->>  1 file changed, 9 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index 29bacdc..90c0584 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -1207,7 +1207,7 @@ static int nfs_parse_mount_options(char *raw,
->>                                  struct nfs_parsed_mount_data *mnt)
->>  {
->>       char *p, *string, *secdata;
->> -     int rc, sloppy = 0, invalid_option = 0;
->> +     int rc, sloppy = 0, invalid_option = 0, minorversion = -1;
->>       unsigned short protofamily = AF_UNSPEC;
->>       unsigned short mountfamily = AF_UNSPEC;
->>
->> @@ -1419,6 +1419,7 @@ static int nfs_parse_mount_options(char *raw,
->>                       if (option > NFS4_MAX_MINOR_VERSION)
->>                               goto out_invalid_value;
->>                       mnt->minorversion = option;
->> +                     minorversion = option;
->>                       break;
->>
->>               /*
->> @@ -1655,6 +1656,9 @@ static int nfs_parse_mount_options(char *raw,
->>               }
->>       }
->>
->> +     if (minorversion >= 0 && minorversion != mnt->minorversion)
->> +             goto out_mountvers_mismatch;
->> +
->>       return 1;
->>
->>  out_mountproto_mismatch:
->> @@ -1685,6 +1689,10 @@ static int nfs_parse_mount_options(char *raw,
->>       free_secdata(secdata);
->>       printk(KERN_INFO "NFS: security options invalid: %d\n", rc);
->>       return 0;
->> +out_mountvers_mismatch:
->> +     printk(KERN_INFO "NFS: mismatch versions supplied vers=4.%d and "
->> +                      "minorversion=%d\n", mnt->minorversion, minorversion);
->> +     return 0;
->>  }
->>
->>  /*
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
