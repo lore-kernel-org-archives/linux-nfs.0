@@ -1,54 +1,77 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:48156 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1754475AbeBWTJn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Feb 2018 14:09:43 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: SteveD redhat <steved@redhat.com>,
-        "aglo@umich.edu" <aglo@umich.edu>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+Received: from mail-vk0-f54.google.com ([209.85.213.54]:46888 "EHLO
+        mail-vk0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754583AbeBWT2F (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 23 Feb 2018 14:28:05 -0500
+Received: by mail-vk0-f54.google.com with SMTP id x125so6104893vkc.13
+        for <linux-nfs@vger.kernel.org>; Fri, 23 Feb 2018 11:28:04 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <1519412975.8738.3.camel@primarydata.com>
+References: <20180222192806.67911-1-kolga@netapp.com> <034fb5f1-eba5-030b-aad2-6ac5e87f2066@RedHat.com>
+ <CAN-5tyE2wqrgkQuHSFy7=EDricmx6jPKA9=PnqSdf8rr_0rxwQ@mail.gmail.com>
+ <6e314995-964f-e70d-cc45-fc1716b4ec81@RedHat.com> <1519412975.8738.3.camel@primarydata.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Fri, 23 Feb 2018 14:28:03 -0500
+Message-ID: <CAN-5tyHzWrC7FVzCj+bSdvQFdN=5+1f750u1wWMs=2jub6y5-w@mail.gmail.com>
+Subject: Re: [PATCH 1/1] NFS guard against incorrect vers inputs from nfs-utils
+To: Trond Myklebust <trondmy@primarydata.com>
+Cc: SteveD redhat <steved@redhat.com>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
         "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
         "kolga@netapp.com" <kolga@netapp.com>
-Subject: Re: [PATCH 1/1] NFS guard against incorrect vers inputs from
- nfs-utils
-Date: Fri, 23 Feb 2018 19:09:36 +0000
-Message-ID: <1519412975.8738.3.camel@primarydata.com>
-References: <20180222192806.67911-1-kolga@netapp.com>
-         <034fb5f1-eba5-030b-aad2-6ac5e87f2066@RedHat.com>
-         <CAN-5tyE2wqrgkQuHSFy7=EDricmx6jPKA9=PnqSdf8rr_0rxwQ@mail.gmail.com>
-         <6e314995-964f-e70d-cc45-fc1716b4ec81@RedHat.com>
-In-Reply-To: <6e314995-964f-e70d-cc45-fc1716b4ec81@RedHat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTAyLTIzIGF0IDEzOjQ1IC0wNTAwLCBTdGV2ZSBEaWNrc29uIHdyb3RlOg0K
-PiANCj4gT24gMDIvMjMvMjAxOCAxMjowNSBQTSwgT2xnYSBLb3JuaWV2c2thaWEgd3JvdGU6DQo+
-ID4gT24gRnJpLCBGZWIgMjMsIDIwMTggYXQgMTE6MjQgQU0sIFN0ZXZlIERpY2tzb24gPFN0ZXZl
-REByZWRoYXQuY29tPg0KPiA+IHdyb3RlOg0KPiA+ID4gSGV5IE9sZ2EsDQo+ID4gPiANCj4gPiA+
-IE9uIDAyLzIyLzIwMTggMDI6MjggUE0sIE9sZ2EgS29ybmlldnNrYWlhIHdyb3RlOg0KPiA+ID4g
-PiBJdCBpcyBwb3NzaWJsZSB0aGF0IHVzZXJsYW5kIGNhbiBwYXNzIHRvIHRoZSBrZXJuZWwgbWlz
-bWF0Y2hpbmcNCj4gPiA+ID4gaW5wdXRzIGZvciB0aGUgbWlub3J2ZXJzaW9uLiBsaWtlIHZlcnM9
-NC4xLG1pbm9ydmVyc2lvbj0wLg0KPiA+ID4gPiBJbnN0ZWFkDQo+ID4gPiA+IG9mIG1ha2luZyB0
-aGUga2VybmVsIHJlc3BvbnBvc2libGUgZm9yICdjaG9vc2luZycgdGhlDQo+ID4gPiA+IG1pbm9y
-dmVyc2lvbiwNCj4gPiA+ID4gbWFrZSB0aGUgdXNlcmxhbmQgYWx3YXlzIHJlc3BvbnNpYmxlIGZv
-ciBub3Qgc2VuZGluZyBhDQo+ID4gPiA+IG1pc21hdGNoLg0KPiA+ID4gDQo+ID4gPiBJJ20gdGhp
-bmtpbmcgdGhpcyBpcyBwcm9iYWJseSBtb3JlIG9mIG1vdW50IHByb2JsZW0uLi4NCj4gPiANCj4g
-PiBZZXMgdGhlIHByb2JsZW0gaXMgYSBicm9rZW4gdXNlciBsYW5kIHNlbmRpbmcgaW5jb3JyZWN0
-IGFyZ3VtZW50cw0KPiA+IGJ1dA0KPiA+IEkgc3RpbGwgdGhpbmsgdGhlIGtlcm5lbCBuZWVkcyB0
-byBkbyBzYW5pdHkgY2hlY2tpbmcgb24gYXJndW1lbnRzDQo+ID4gdG8NCj4gPiBwcmV2ZW50IHRo
-aXMgZnJvbSBoYXBwZW5pbmcgYWdhaW4uDQo+ID4gDQo+ID4gPiBtb3VudCAtdCBuZnM0IC1vIG1p
-bm9ydmVyc2lvbj0wIHNlcnZlcjovZXhwb3J0IC9tbnQNCj4gPiA+IA0KPiA+ID4gc2hvdWxkbid0
-IHRoaXMgYmUgYSAgdjQuMCBtb3VudCBpbnN0ZWFkIG9mIGEgNC4yIG1vdW50Pw0KPiA+IA0KPiA+
-IFllcyBJIHdvdWxkIHRoaW5rIHRoaXMgc2hvdWxkIGNyZWF0ZSBhIHY0LjAgbW91bnQuDQo+IA0K
-PiBXYXkgYmFjayB3aGVuLi4uIHRoZXJlIHdhcyBzb21lIHRhbGsgYWJvdXQgZGVwcmVjYXRpbmcg
-DQo+IG1pbm9ydmVyc2lvbj0gZmxhZy4uLiBTaW5jZSBpdCBpcyBicm9rZW4sIG1heWJlIHRoaXMg
-aXMgDQo+IGEgZ29vZCB0aW1lIHRvIGRvIGl0Pw0KPiANCj4gVGhvdWdodHM/DQoNCkkndmUgbmV2
-ZXIgbGlrZWQgdGhlIHNlcGFyYXRlIHY0LW9ubHkgJ21pbm9ydmVyc2lvbicga2V5d29yZCwgd2hp
-Y2ggaXMNCndoeSBJIGludHJvZHVjZWQgdGhlICd2ZXJzaW9uPTQueCcgZm9ybWF0LiBNeSBwcmVm
-ZXJlbmNlIGlzIHRoZXJlZm9yZQ0KdGhhdCB3ZSBjb250aW51ZSB0byBkZXByZWNhdGUgdXNlIG9m
-ICdtaW5vcnZlcnNpb24nIHdpdGggYSB2aWV3IHRvDQpraWxsaW5nIGl0IG9mZiBjb21wbGV0ZWx5
-Lg0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQ
-cmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+On Fri, Feb 23, 2018 at 2:09 PM, Trond Myklebust
+<trondmy@primarydata.com> wrote:
+> On Fri, 2018-02-23 at 13:45 -0500, Steve Dickson wrote:
+>>
+>> On 02/23/2018 12:05 PM, Olga Kornievskaia wrote:
+>> > On Fri, Feb 23, 2018 at 11:24 AM, Steve Dickson <SteveD@redhat.com>
+>> > wrote:
+>> > > Hey Olga,
+>> > >
+>> > > On 02/22/2018 02:28 PM, Olga Kornievskaia wrote:
+>> > > > It is possible that userland can pass to the kernel mismatching
+>> > > > inputs for the minorversion. like vers=4.1,minorversion=0.
+>> > > > Instead
+>> > > > of making the kernel responposible for 'choosing' the
+>> > > > minorversion,
+>> > > > make the userland always responsible for not sending a
+>> > > > mismatch.
+>> > >
+>> > > I'm thinking this is probably more of mount problem...
+>> >
+>> > Yes the problem is a broken user land sending incorrect arguments
+>> > but
+>> > I still think the kernel needs to do sanity checking on arguments
+>> > to
+>> > prevent this from happening again.
+>> >
+>> > > mount -t nfs4 -o minorversion=0 server:/export /mnt
+>> > >
+>> > > shouldn't this be a  v4.0 mount instead of a 4.2 mount?
+>> >
+>> > Yes I would think this should create a v4.0 mount.
+>>
+>> Way back when... there was some talk about deprecating
+>> minorversion= flag... Since it is broken, maybe this is
+>> a good time to do it?
+>>
+>> Thoughts?
+>
+> I've never liked the separate v4-only 'minorversion' keyword, which is
+> why I introduced the 'version=4.x' format. My preference is therefore
+> that we continue to deprecate use of 'minorversion' with a view to
+> killing it off completely.
 
+It all seems like a good idea except I wonder how widely used and
+relied on "minorversion" option is. Steve you might have a good idea
+about it.
+
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
