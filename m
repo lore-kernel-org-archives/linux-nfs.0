@@ -1,42 +1,55 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:33279 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751689AbeBYRCp (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Feb 2018 12:02:45 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Sun, 25 Feb 2018 17:02:40 +0000
-Message-ID: <1519578159.3131.1.camel@primarydata.com>
+Received: from mail-io0-f196.google.com ([209.85.223.196]:41015 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751505AbeBYSR0 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Feb 2018 13:17:26 -0500
+Received: by mail-io0-f196.google.com with SMTP id q24so7555060ioh.8
+        for <linux-nfs@vger.kernel.org>; Sun, 25 Feb 2018 10:17:25 -0800 (PST)
+Subject: [PATCH v3 0/4] Avoid IANA-assigned port numbers
+From: Chuck Lever <chuck.lever@oracle.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, libtirpc-devel@lists.sourceforge.net
+Date: Sun, 25 Feb 2018 13:17:23 -0500
+Message-ID: <20180225180530.2983.82980.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgYWYzZTc5ZDI5
-NTU1Yjk3ZGQwOTZlMmY4ZTM2YTBmNTAyMTM4MDhhODoNCg0KICBNZXJnZSB0YWcgJ2xlZHNfZm9y
-LTQuMTYtcmMzJyBvZiBnaXQ6Ly9naXQua2VybmVsLm9yZy9wdWIvc2NtL2xpbnV4L2tlcm5lbC9n
-aXQvai5hbmFzemV3c2tpL2xpbnV4LWxlZHMgKDIwMTgtMDItMjAgMTA6MDU6MDIgLTA4MDApDQoN
-CmFyZSBhdmFpbGFibGUgaW4gdGhlIEdpdCByZXBvc2l0b3J5IGF0Og0KDQogIGdpdDovL2dpdC5s
-aW51eC1uZnMub3JnL3Byb2plY3RzL3Ryb25kbXkvbGludXgtbmZzLmdpdCB0YWdzL25mcy1mb3It
-NC4xNi0zDQoNCmZvciB5b3UgdG8gZmV0Y2ggY2hhbmdlcyB1cCB0byAxYjcyMDQwNjQ1ODI3OTJi
-NzdjNmJlNzk2ZTc4YmQ4MjFjOWY3MWIxOg0KDQogIE5GUzogbWFrZSBzdHJ1Y3QgbmxtY2xudF9m
-bF9jbG9zZV9sb2NrX29wcyBzdGF0aWMgKDIwMTgtMDItMjIgMTI6MjM6MDEgLTA1MDApDQoNCi0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0NCk5GUyBjbGllbnQgYnVnZml4ZXMgZm9yIExpbnV4IDQuMTYNCg0KSGlnaHRsaWdodHMg
-aW5jbHVkZToNCi0gRml4IGEgYnJva2VuIGNhc3QgaW4gbmZzNF9jYWxsYmFja19yZWNhbGxhbnko
-KQ0KLSBGaXggYW4gT29wcyBkdXJpbmcgTkZTdjQgbWlncmF0aW9uIGV2ZW50cw0KLSBtYWtlIHN0
-cnVjdCBubG1jbG50X2ZsX2Nsb3NlX2xvY2tfb3BzIHN0YXRpYw0KDQotLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpCaWxsLkJh
-a2VyQG9yYWNsZS5jb20gKDEpOg0KICAgICAgbmZzOiBzeXN0ZW0gY3Jhc2hlcyBhZnRlciBORlM0
-RVJSX01PVkVEIHJlY292ZXJ5DQoNCkNvbGluIElhbiBLaW5nICgxKToNCiAgICAgIE5GUzogbWFr
-ZSBzdHJ1Y3QgbmxtY2xudF9mbF9jbG9zZV9sb2NrX29wcyBzdGF0aWMNCg0KVHJvbmQgTXlrbGVi
-dXN0ICgxKToNCiAgICAgIE5GU3Y0OiBGaXggYnJva2VuIGNhc3QgaW4gbmZzNF9jYWxsYmFja19y
-ZWNhbGxhbnkoKQ0KDQogZnMvbmZzL2NhbGxiYWNrX3Byb2MuYyB8IDE0ICsrKysrKy0tLS0tLS0t
-DQogZnMvbmZzL25mczNwcm9jLmMgICAgICB8ICAyICstDQogZnMvbmZzL25mczRjbGllbnQuYyAg
-ICB8ICA2ICsrKystLQ0KIDMgZmlsZXMgY2hhbmdlZCwgMTEgaW5zZXJ0aW9ucygrKSwgMTEgZGVs
-ZXRpb25zKC0pDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFp
-bmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Following up on https://bugzilla.linux-nfs.org/show_bug.cgi?id=320 .
 
+Here's a possible way to get libtirpc to avoid IANA-assigned port
+numbers when a caller requests a dynamically-assigned port. This
+approach also reduces the number of reserved ports used by long
+running user space RPC daemons, and can be applied in combination
+with changing bindresvport(3) to skip port numbers that appear in
+/etc/services.
+
+Changes since v2:
+- make port assignment more random across serial callers and
+  processes
+
+Changes since RFC:
+- fixed bugs
+- re-organized the patches slightly
+- clarified the patch descriptions
+
+---
+
+Chuck Lever (4):
+      Add an internal helper for binding to a dynamically-assigned port
+      Avoid choosing reserved ports in svc_tli_create(3)
+      Avoid choosing reserved ports in clnt_tli_create(3)
+      Avoid choosing reserved ports in legacy RPC APIs
+
+
+ src/Makefile.am    |    5 +-
+ src/binddynport.c  |  139 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ src/clnt_generic.c |    4 +
+ src/rpc_soc.c      |   10 +---
+ src/svc_generic.c  |   12 +---
+ 5 files changed, 153 insertions(+), 17 deletions(-)
+ create mode 100644 src/binddynport.c
+
+--
+Chuck Lever
