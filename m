@@ -1,55 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:41015 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751505AbeBYSR0 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Feb 2018 13:17:26 -0500
-Received: by mail-io0-f196.google.com with SMTP id q24so7555060ioh.8
-        for <linux-nfs@vger.kernel.org>; Sun, 25 Feb 2018 10:17:25 -0800 (PST)
-Subject: [PATCH v3 0/4] Avoid IANA-assigned port numbers
+Received: from mail-it0-f45.google.com ([209.85.214.45]:34475 "EHLO
+        mail-it0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751557AbeBYSRg (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Feb 2018 13:17:36 -0500
+Received: by mail-it0-f45.google.com with SMTP id a203so9700815itd.1
+        for <linux-nfs@vger.kernel.org>; Sun, 25 Feb 2018 10:17:36 -0800 (PST)
+Subject: [PATCH v3 2/4] Avoid choosing reserved ports in svc_tli_create(3)
 From: Chuck Lever <chuck.lever@oracle.com>
 To: steved@redhat.com
 Cc: linux-nfs@vger.kernel.org, libtirpc-devel@lists.sourceforge.net
-Date: Sun, 25 Feb 2018 13:17:23 -0500
-Message-ID: <20180225180530.2983.82980.stgit@klimt.1015granger.net>
+Date: Sun, 25 Feb 2018 13:17:34 -0500
+Message-ID: <20180225181734.2983.27259.stgit@klimt.1015granger.net>
+In-Reply-To: <20180225180530.2983.82980.stgit@klimt.1015granger.net>
+References: <20180225180530.2983.82980.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Following up on https://bugzilla.linux-nfs.org/show_bug.cgi?id=320 .
+Callers of svc_tli_create(3) can specify that an arbitrary port
+number be dynamically assigned for the service listener being
+created. svc_tli_create(3) tries bindresvport(3) first in this
+case. bindresvport(3) chooses a reserved port if the caller has
+CAP_NET_ADMIN_BIND privilege. If this fails, bind(2) is used to
+assign a port number from the range above 1024.
 
-Here's a possible way to get libtirpc to avoid IANA-assigned port
-numbers when a caller requests a dynamically-assigned port. This
-approach also reduces the number of reserved ports used by long
-running user space RPC daemons, and can be applied in combination
-with changing bindresvport(3) to skip port numbers that appear in
-/etc/services.
+This approach becomes a problem should bindresvport(3) or bind(2)
+happen to choose the port number of a well-known service. If the
+caller is a long-running service (like rpc.statd), the caller's
+listener indefinitely blocks the IANA-assigned well-known service
+for that port from starting.
 
-Changes since v2:
-- make port assignment more random across serial callers and
-  processes
+Moreover, it seems that a reserved port is completely unnecessary
+for listener sockets. It does not confer any extra privilege or
+functionality to the listener socket, nor do remote clients infer
+any extra privilege from a listener on a port number lower than
+1024.
 
-Changes since RFC:
-- fixed bugs
-- re-organized the patches slightly
-- clarified the patch descriptions
+Therefore, remove the bindresvport step, and instead of invoking
+bind(2) directly, use a mechanism which allocates the port number
+from the dynamic port range described in RFC 6335 Section 6.
 
+This also impacts all users of svc_tli_create(3) within the library,
+such as svc_tp_create(3).
+
+BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=320
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
+ src/svc_generic.c |   12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
 
-Chuck Lever (4):
-      Add an internal helper for binding to a dynamically-assigned port
-      Avoid choosing reserved ports in svc_tli_create(3)
-      Avoid choosing reserved ports in clnt_tli_create(3)
-      Avoid choosing reserved ports in legacy RPC APIs
+diff --git a/src/svc_generic.c b/src/svc_generic.c
+index 7aae796..52a56c2 100644
+--- a/src/svc_generic.c
++++ b/src/svc_generic.c
+@@ -53,6 +53,7 @@
+ #include <rpc/svc.h>
+ 
+ extern int __svc_vc_setflag(SVCXPRT *, int);
++extern int __binddynport(int fd);
+ 
+ /*
+  * The highest level interface for server creation.
+@@ -220,15 +221,10 @@ svc_tli_create(fd, nconf, bindaddr, sendsz, recvsz)
+ 	 */
+ 	if (madefd || !__rpc_sockisbound(fd)) {
+ 		if (bindaddr == NULL) {
+-			if (bindresvport(fd, NULL) < 0) {
+-				memset(&ss, 0, sizeof ss);
+-				ss.ss_family = si.si_af;
+-				if (bind(fd, (struct sockaddr *)(void *)&ss,
+-				    (socklen_t)si.si_alen) < 0) {
+-					warnx(
++			if (__binddynport(fd) == -1) {
++				warnx(
+ 			"svc_tli_create: could not bind to anonymous port");
+-					goto freedata;
+-				}
++				goto freedata;
+ 			}
+ 			listen(fd, SOMAXCONN);
+ 		} else {
 
-
- src/Makefile.am    |    5 +-
- src/binddynport.c  |  139 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- src/clnt_generic.c |    4 +
- src/rpc_soc.c      |   10 +---
- src/svc_generic.c  |   12 +---
- 5 files changed, 153 insertions(+), 17 deletions(-)
- create mode 100644 src/binddynport.c
-
---
-Chuck Lever
