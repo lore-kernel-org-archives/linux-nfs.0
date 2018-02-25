@@ -1,76 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f48.google.com ([209.85.214.48]:52687 "EHLO
-        mail-it0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751558AbeBYSRl (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Feb 2018 13:17:41 -0500
-Received: by mail-it0-f48.google.com with SMTP id k135so3312739ite.2
-        for <linux-nfs@vger.kernel.org>; Sun, 25 Feb 2018 10:17:41 -0800 (PST)
-Subject: [PATCH v3 3/4] Avoid choosing reserved ports in clnt_tli_create(3)
-From: Chuck Lever <chuck.lever@oracle.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org, libtirpc-devel@lists.sourceforge.net
-Date: Sun, 25 Feb 2018 13:17:39 -0500
-Message-ID: <20180225181739.2983.93606.stgit@klimt.1015granger.net>
-In-Reply-To: <20180225180530.2983.82980.stgit@klimt.1015granger.net>
-References: <20180225180530.2983.82980.stgit@klimt.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:37466 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751838AbeBYUlt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 25 Feb 2018 15:41:49 -0500
+Subject: Re: [PATCH] Add LICENSE for Connectathon test suite
+To: Trond Myklebust <trondmy@primarydata.com>,
+        "sumitgt@google.com" <sumitgt@google.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+References: <20180224010702.235739-1-sumitgt@google.com>
+ <1519441996.24645.5.camel@primarydata.com>
+ <CAKVgptYWbvrf6+PUm55id8vBGAkHYaxHRQ8Rx8wURK6cTRSkEg@mail.gmail.com>
+ <1519443337.24645.17.camel@primarydata.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <86922e14-8764-6582-047c-e5c39746c21c@RedHat.com>
+Date: Sun, 25 Feb 2018 15:41:48 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <1519443337.24645.17.camel@primarydata.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Callers of clnt_tli_create(3) can specify that an arbitrary port
-number be dynamically assigned for the client socket being created.
-clnt_tli_create(3) tries bindresvport(3) first in this case.
-bindresvport(3) chooses a reserved port if the caller has
-CAP_NET_ADMIN_BIND privilege. If this fails, bind(2) is used to
-assign a port number from the range above 1024.
 
-This approach becomes a problem should bindresvport(3) or bind(2)
-happen to choose the port number of a well-known service. If the
-caller is a long-running service (like rpc.statd), it indefinitely
-blocks the IANA-assigned well-known service for that port from
-starting.
 
-When using the AUTH_SYS authentication flavor, RPC services can use
-the remote client's source port number to determine whether the
-client is privileged, and thus the UID and GID numbers in the RPC
-are trustworthy. However, it's pretty easy for a man-in-the-middle
-to replace these values while the RPC is in flight. The source port
-number is no guarantee of actual security.
+On 02/23/2018 10:35 PM, Trond Myklebust wrote:
+> On Sat, 2018-02-24 at 03:17 +0000, Sumit Gouthaman wrote:
+>> Sorry, should have clarified in the description.
+>>
+>> This was after checking with the maintainer Steve Dickson (steved@red
+>> hat.com),
+>> who suggested we should send in a patch adding the license file.
+This is true... 
 
-Therefore, remove the bindresvport step, and instead of invoking
-bind(2) directly, use a mechanism which allocates the port number
-from the dynamic port range described in RFC 6335 Section 6.
+> 
+> In order to do so, you would have to get the consent of the main
+> copyright holders. The problem is that the Connectathon event rules
+> themselves never contained a copyright assignment or license for the
+> test suite contributions, and neither did anyone keep a clear record of
+> who contributed what code.The people you talk of... no longer exist... The tests were built
+at Lachman Associates back in the late 80's or early 90's
+then they were used as the go to tests suite for all those
+years at the Sun sponsored Connectations... 
 
-This also impacts all users of clnt_tli_create(3) within the
-library, such as clnt_tp_create(3), and the portmap/rpcbind clients.
+So thee bottom line... there are no "copyright holders".
 
-BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=320
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- src/clnt_generic.c |    4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+> 
+> I therefore suspect that if you were to talk to your employer's legal
+> department, they would strongly advise to let these particular sleeping
+> dogs lie.
+If the google lawyers are good with this... Why should we be??
 
-diff --git a/src/clnt_generic.c b/src/clnt_generic.c
-index 3f3dabf..e5a314f 100644
---- a/src/clnt_generic.c
-+++ b/src/clnt_generic.c
-@@ -47,6 +47,7 @@
- 
- extern bool_t __rpc_is_local_host(const char *);
- int __rpc_raise_fd(int);
-+extern int __binddynport(int fd);
- 
- #ifndef NETIDLEN
- #define	NETIDLEN 32
-@@ -340,7 +341,8 @@ clnt_tli_create(int fd, const struct netconfig *nconf,
- 		servtype = nconf->nc_semantics;
- 		if (!__rpc_fd2sockinfo(fd, &si))
- 			goto err;
--		bindresvport(fd, NULL);
-+		if (__binddynport(fd) == -1)
-+			goto err;
- 	} else {
- 		if (!__rpc_fd2sockinfo(fd, &si))
- 			goto err;
+steved.
 
+> 
+>> On Fri, Feb 23, 2018 at 7:13 PM Trond Myklebust <trondmy@primarydata.
+>> com> wrote:
+>>> On Fri, 2018-02-23 at 17:07 -0800, Sumit Gouthaman wrote:
+>>>> Adding a new LICENSE file with Apache 2.0 License.
+>>>>
+>>>> Signed-off-by: Sumit Gouthaman <sumitgt@google.com>
+>>>> ---
+>>>>  LICENSE | 14 ++++++++++++++
+>>>>  1 file changed, 14 insertions(+)
+>>>>  create mode 100644 LICENSE
+>>>>
+>>>> diff --git a/LICENSE b/LICENSE
+>>>> new file mode 100644
+>>>> index 0000000..5e54891
+>>>> --- /dev/null
+>>>> +++ b/LICENSE
+>>>> @@ -0,0 +1,14 @@
+>>>> +Copyright 2018, Connectathon NFS Testsuites Authors.
+>>>> +
+>>>> +Licensed under the Apache License, Version 2.0 (the "License");
+>>>> +you may not use this file except in compliance with the License.
+>>>> +You may obtain a copy of the License at
+>>>> +
+>>>> +    http://www.apache.org/licenses/LICENSE-2.0
+>>>> +
+>>>> +Unless required by applicable law or agreed to in writing,
+>>> software
+>>>> +distributed under the License is distributed on an "AS IS"
+>>> BASIS,
+>>>> +WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+>>>> implied.
+>>>> +See the License for the specific language governing permissions
+>>> and
+>>>> +limitations under the License.
+>>>> +
+>>>
+>>> Exactly what claim are you asserting that might give you the right
+>>> to
+>>> slap a license on it? Unless you are claiming to be the main
+>>> author,
+>>> then you I can't see that have any right whatsoever to submit this
+>>> patch.
+>>>
+>>> --
+>>> Trond Myklebust
+>>> Linux NFS client maintainer, PrimaryData
+>>> trond.myklebust@primarydata.com
+>>
+>>
