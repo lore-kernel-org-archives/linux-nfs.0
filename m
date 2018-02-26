@@ -1,82 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:27394 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59610 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751165AbeBZTDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 26 Feb 2018 14:03:43 -0500
-Subject: Re: [PATCH] Add LICENSE for Connectathon test suite
-To: "bfields@fieldses.org" <bfields@fieldses.org>
-Cc: Trond Myklebust <trondmy@primarydata.com>,
-        "sumitgt@google.com" <sumitgt@google.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-References: <20180224010702.235739-1-sumitgt@google.com>
- <1519441996.24645.5.camel@primarydata.com>
- <CAKVgptYWbvrf6+PUm55id8vBGAkHYaxHRQ8Rx8wURK6cTRSkEg@mail.gmail.com>
- <1519443337.24645.17.camel@primarydata.com>
- <86922e14-8764-6582-047c-e5c39746c21c@RedHat.com>
- <20180225234734.GA12540@fieldses.org>
- <1519608588.27305.5.camel@primarydata.com>
- <10fdcb85-66dd-1a13-8a86-735e605dcd0c@RedHat.com>
- <20180226150641.GH15876@fieldses.org>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <da8e26ae-aea8-3fd9-2c6e-865f4f85a6d4@RedHat.com>
-Date: Mon, 26 Feb 2018 14:03:41 -0500
-MIME-Version: 1.0
-In-Reply-To: <20180226150641.GH15876@fieldses.org>
-Content-Type: text/plain; charset=utf-8
+        id S1751165AbeBZTPo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 26 Feb 2018 14:15:44 -0500
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id BD5D87FEBF
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Feb 2018 19:15:44 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-20.phx2.redhat.com [10.3.116.20])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 7962860C8D
+        for <linux-nfs@vger.kernel.org>; Mon, 26 Feb 2018 19:15:44 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/1] minorversion= is being ignored
+Date: Mon, 26 Feb 2018 14:15:41 -0500
+Message-Id: <20180226191542.31447-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch ensure "mount -t" mounts that have the 
+minorversion= flag set, the given minor version
+is used. 
 
+There has been some talk about deprecating the
+minorversion option which it appears to be fairly 
+simple in the kernel, but I think would be pretty
+difficult in the userland, do to all the per-existing
+scripts that used the option. 
 
-On 02/26/2018 10:06 AM, bfields@fieldses.org wrote:
-> On Mon, Feb 26, 2018 at 09:04:53AM -0500, Steve Dickson wrote:
->> On 02/25/2018 08:29 PM, Trond Myklebust wrote:
->>> On Sun, 2018-02-25 at 18:47 -0500, J. Bruce Fields wrote:
->>>> On Sun, Feb 25, 2018 at 03:41:48PM -0500, Steve Dickson wrote:
->>>>> On 02/23/2018 10:35 PM, Trond Myklebust wrote:
->>>>>> I therefore suspect that if you were to talk to your employer's
->>>>>> legal
->>>>>> department, they would strongly advise to let these particular
->>>>>> sleeping
->>>>>> dogs lie.
->>>>>
->>>>> If the google lawyers are good with this...
->>>>
->>>> I've seen no evidence that google has any ownership of any of the
->>>> Connectathon test suite code.
->> Who owns the code now? The same people that owned it way back when?
-> 
-> Probably.
-I'm thinking the point is nobody owns the code or cares... 
+To make the deprecation possible in the kernel, 
+code was added to convert minorversion= into
+vers=4.x in the string that passed to the kernel.  
 
-> 
->>>> We need to leave this alone unless we get a much better explanation.
->>>
->>> If Google does want to contribute, then perhaps they might volunteer to
->>> write an Apache licensed and independently developed version of the
->>> testsuite? That would break the deadlock that we have today without
->>> risking offending any of the original copyright holders, and would
->>> allow us to resume contributing further extensions.
->>>
->> By no means am I a lawyer... Actually I avoid as much as possible ;-) 
->> But you are saying if Google adds this license they now own the code?
-> 
-> Basically there's a little bit of land out in the country where we've
-> been meeting for regular picnics a few times a year.  The old owners
-> were OK with that and the place seems kinda abandoned, so we figure
-> nobody will mind if we keep holding the picnics.  But we're not going to
-> encourage anyone to build a house there, either.  Or start putting up
-> signs saying what people can or can't do with the property, as if it
-> were ours.
-You forgot got to end with...  "grasshopper" ;-) 
+Steve Dickson (1):
+  mount.nfs: minorversion setting is being ignored with -t flag
 
-I understand your point... but the old owners would not care if
-we put up a sign to invite more people to the picnic, true?
+ utils/mount/network.c | 15 ++++++++++-----
+ utils/mount/stropts.c | 14 ++++++++++++++
+ 2 files changed, 24 insertions(+), 5 deletions(-)
 
-So I guess the main concern is if Google add the license they
-would own the code and could revoke the use of it down the
-road... hmm.
+-- 
+2.14.3
 
-So since this code has never been licensed, it an never be licensed?
-
-steved.
