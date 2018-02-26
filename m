@@ -1,45 +1,107 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:29565 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751913AbeBZB3z (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 25 Feb 2018 20:29:55 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "bfields@fieldses.org" <bfields@fieldses.org>,
-        SteveD redhat <steved@redhat.com>
-CC: "sumitgt@google.com" <sumitgt@google.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Add LICENSE for Connectathon test suite
-Date: Mon, 26 Feb 2018 01:29:49 +0000
-Message-ID: <1519608588.27305.5.camel@primarydata.com>
-References: <20180224010702.235739-1-sumitgt@google.com>
-         <1519441996.24645.5.camel@primarydata.com>
-         <CAKVgptYWbvrf6+PUm55id8vBGAkHYaxHRQ8Rx8wURK6cTRSkEg@mail.gmail.com>
-         <1519443337.24645.17.camel@primarydata.com>
-         <86922e14-8764-6582-047c-e5c39746c21c@RedHat.com>
-         <20180225234734.GA12540@fieldses.org>
-In-Reply-To: <20180225234734.GA12540@fieldses.org>
+Received: from mail-yw0-f170.google.com ([209.85.161.170]:45744 "EHLO
+        mail-yw0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752714AbeBZNvE (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Feb 2018 08:51:04 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <4b9de5cb-1366-a95c-118c-7b57042bf32e@suse.com>
+References: <1519141810.8586.4.camel@venev.name> <2ce8eab1-8951-a1c7-d4fa-5f4f3201923d@suse.com>
+ <1519646493.12248.7.camel@venev.name> <4b9de5cb-1366-a95c-118c-7b57042bf32e@suse.com>
+From: Amir Goldstein <amir73il@gmail.com>
+Date: Mon, 26 Feb 2018 15:51:03 +0200
+Message-ID: <CAOQ4uxgnsXy7vOeVFzE0+x7amjzR20XMm-D_rT8hWfFPvz0pxQ@mail.gmail.com>
+Subject: Re: btrfs_clone_files and bind mounts
+To: Nikolay Borisov <nborisov@suse.com>
+Cc: Hristo Venev <hristo@venev.name>,
+        Linux Btrfs <linux-btrfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Christoph Hellwig <hch@lst.de>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gU3VuLCAyMDE4LTAyLTI1IGF0IDE4OjQ3IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
-DQo+IE9uIFN1biwgRmViIDI1LCAyMDE4IGF0IDAzOjQxOjQ4UE0gLTA1MDAsIFN0ZXZlIERpY2tz
-b24gd3JvdGU6DQo+ID4gT24gMDIvMjMvMjAxOCAxMDozNSBQTSwgVHJvbmQgTXlrbGVidXN0IHdy
-b3RlOg0KPiA+ID4gSSB0aGVyZWZvcmUgc3VzcGVjdCB0aGF0IGlmIHlvdSB3ZXJlIHRvIHRhbGsg
-dG8geW91ciBlbXBsb3llcidzDQo+ID4gPiBsZWdhbA0KPiA+ID4gZGVwYXJ0bWVudCwgdGhleSB3
-b3VsZCBzdHJvbmdseSBhZHZpc2UgdG8gbGV0IHRoZXNlIHBhcnRpY3VsYXINCj4gPiA+IHNsZWVw
-aW5nDQo+ID4gPiBkb2dzIGxpZS4NCj4gPiANCj4gPiBJZiB0aGUgZ29vZ2xlIGxhd3llcnMgYXJl
-IGdvb2Qgd2l0aCB0aGlzLi4uDQo+IA0KPiBJJ3ZlIHNlZW4gbm8gZXZpZGVuY2UgdGhhdCBnb29n
-bGUgaGFzIGFueSBvd25lcnNoaXAgb2YgYW55IG9mIHRoZQ0KPiBDb25uZWN0YXRob24gdGVzdCBz
-dWl0ZSBjb2RlLg0KPiANCj4gV2UgbmVlZCB0byBsZWF2ZSB0aGlzIGFsb25lIHVubGVzcyB3ZSBn
-ZXQgYSBtdWNoIGJldHRlciBleHBsYW5hdGlvbi4NCg0KSWYgR29vZ2xlIGRvZXMgd2FudCB0byBj
-b250cmlidXRlLCB0aGVuIHBlcmhhcHMgdGhleSBtaWdodCB2b2x1bnRlZXIgdG8NCndyaXRlIGFu
-IEFwYWNoZSBsaWNlbnNlZCBhbmQgaW5kZXBlbmRlbnRseSBkZXZlbG9wZWQgdmVyc2lvbiBvZiB0
-aGUNCnRlc3RzdWl0ZT8gVGhhdCB3b3VsZCBicmVhayB0aGUgZGVhZGxvY2sgdGhhdCB3ZSBoYXZl
-IHRvZGF5IHdpdGhvdXQNCnJpc2tpbmcgb2ZmZW5kaW5nIGFueSBvZiB0aGUgb3JpZ2luYWwgY29w
-eXJpZ2h0IGhvbGRlcnMsIGFuZCB3b3VsZA0KYWxsb3cgdXMgdG8gcmVzdW1lIGNvbnRyaWJ1dGlu
-ZyBmdXJ0aGVyIGV4dGVuc2lvbnMuDQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMg
-Y2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
-dGEuY29tDQo=
+On Mon, Feb 26, 2018 at 3:01 PM, Nikolay Borisov <nborisov@suse.com> wrote:
+> [CCing Amir since he touched precisely the code responsible for this
+> semantics]
 
+[CCing fsdevel and NFS list since there is already a long standing attempt
+ to relax the copy_file_range() API for cross server copy]
+
+>
+> On 26.02.2018 14:01, Hristo Venev wrote:
+>> On Tue, 2018-02-20 at 18:41 +0200, Nikolay Borisov wrote:
+>>>
+>>> On 20.02.2018 17:50, Hristo Venev wrote:
+>>>> What is the problem with cloning files between different
+>>>> (vfs)mounts of
+>>>> the same filesystem?
+>>>>
+>>>
+>>> The "problem" is not really a problem, but rather a well-imposed
+>>> restriction:
+>>>
+>>> From  http://man7.org/linux/man-pages/man2/ioctl_ficlonerange.2.html
+>>>
+>>> "Both files must reside within the same filesystem."
+>>>
+>>> And as a matter of fact this is enforced in the generic
+>>> vfs_clone_file_range. Of course if we were to do this across
+>>> filesystem
+>>> then we'd have all the problems associated with not being able to
+>>> ensure
+>>> atomicity of operations.
+>>
+>> My question was about doing this within the same filesystem. In my case
+>> (and I think it's relatively common), subvolumes of the same filesystem
+>> are mounted separately, and I can't think of a good reason why
+>> FICLONERANGE can't be made to work (it works if the subvolumes are
+>> accessed within the same mount point).
+>>
+>
+> So Amir,
+>
+> In 913b86e92e1f ("vfs: allow vfs_clone_file_range() across mount
+> points") you did relax the requirements of vfs_clone_file_range by
+> moving the mount point check into ioctl_file_clone.
+
+[...]
+>
+>
+> Shouldn't reflinking be allowed in this case? ftrace shows that we are
+> failing "if (src_file.file->f_path.mnt != dst_file->f_path.mnt)" in
+> ioctl_file_clone
+>
+>
+> In your commit you state:
+>
+> FICLONE/FICLONERANGE ioctls enforce that src and dest files are on
+>  the same mount.
+>
+> Whereas the man page says they should be on the same filesystem (not
+> necessarily on the same mount?)
+
+See, all I did was avoid the flames involved with changing application
+behavior, because I had no reason to change it.
+Not that the man page is what matters, its what applications expect that
+matter, but the man page also says this open for interpretation phrase:
+EXDEV  dest_fd and src_fd are not on the same *mounted* filesystem.
+
+NFS folks have been trying to change the behavior of copy_file_range()
+for over two years now, we little success as far as I can tell:
+https://marc.info/?l=linux-fsdevel&m=149971144627690&w=2
+
+Semi-interesting point - it looks like this commit has changed behavior
+of clone file range on CIFS:
+04b38d601239 vfs: pull btrfs clone API to vfs layer
+
+I don't see that CIFS has the "same mount" restriction before the
+generalized VFS API, but btrfs had the restriction in-place and it still exists
+in the btrfs implementation btrfs_clone_files().
+
+So I think you will have no way around this other than proposing a new
+ioctl FICLONERANGE2 with flags argument to opt-in for the new required
+behavior. I you do that please CC linux-api and expect the flames.
+
+Thanks,
+Amir.
