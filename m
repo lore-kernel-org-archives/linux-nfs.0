@@ -1,88 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:35968 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:52706 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753299AbeBZOHQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 26 Feb 2018 09:07:16 -0500
-Subject: Re: [PATCH 1/1] NFS guard against incorrect vers inputs from
- nfs-utils
-To: Olga Kornievskaia <aglo@umich.edu>,
-        Trond Myklebust <trondmy@primarydata.com>
-Cc: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "kolga@netapp.com" <kolga@netapp.com>
-References: <20180222192806.67911-1-kolga@netapp.com>
- <034fb5f1-eba5-030b-aad2-6ac5e87f2066@RedHat.com>
- <CAN-5tyE2wqrgkQuHSFy7=EDricmx6jPKA9=PnqSdf8rr_0rxwQ@mail.gmail.com>
- <6e314995-964f-e70d-cc45-fc1716b4ec81@RedHat.com>
- <1519412975.8738.3.camel@primarydata.com>
- <CAN-5tyHzWrC7FVzCj+bSdvQFdN=5+1f750u1wWMs=2jub6y5-w@mail.gmail.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <aa18c5d2-efc6-eb79-1ee5-966e69c84d29@RedHat.com>
-Date: Mon, 26 Feb 2018 09:07:14 -0500
+        id S1753995AbeBZPGm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 26 Feb 2018 10:06:42 -0500
+Date: Mon, 26 Feb 2018 10:06:41 -0500
+From: "bfields@fieldses.org" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@RedHat.com>
+Cc: Trond Myklebust <trondmy@primarydata.com>,
+        "sumitgt@google.com" <sumitgt@google.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Add LICENSE for Connectathon test suite
+Message-ID: <20180226150641.GH15876@fieldses.org>
+References: <20180224010702.235739-1-sumitgt@google.com>
+ <1519441996.24645.5.camel@primarydata.com>
+ <CAKVgptYWbvrf6+PUm55id8vBGAkHYaxHRQ8Rx8wURK6cTRSkEg@mail.gmail.com>
+ <1519443337.24645.17.camel@primarydata.com>
+ <86922e14-8764-6582-047c-e5c39746c21c@RedHat.com>
+ <20180225234734.GA12540@fieldses.org>
+ <1519608588.27305.5.camel@primarydata.com>
+ <10fdcb85-66dd-1a13-8a86-735e605dcd0c@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <CAN-5tyHzWrC7FVzCj+bSdvQFdN=5+1f750u1wWMs=2jub6y5-w@mail.gmail.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <10fdcb85-66dd-1a13-8a86-735e605dcd0c@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Feb 26, 2018 at 09:04:53AM -0500, Steve Dickson wrote:
+> On 02/25/2018 08:29 PM, Trond Myklebust wrote:
+> > On Sun, 2018-02-25 at 18:47 -0500, J. Bruce Fields wrote:
+> >> On Sun, Feb 25, 2018 at 03:41:48PM -0500, Steve Dickson wrote:
+> >>> On 02/23/2018 10:35 PM, Trond Myklebust wrote:
+> >>>> I therefore suspect that if you were to talk to your employer's
+> >>>> legal
+> >>>> department, they would strongly advise to let these particular
+> >>>> sleeping
+> >>>> dogs lie.
+> >>>
+> >>> If the google lawyers are good with this...
+> >>
+> >> I've seen no evidence that google has any ownership of any of the
+> >> Connectathon test suite code.
+> Who owns the code now? The same people that owned it way back when?
 
+Probably.
 
-On 02/23/2018 02:28 PM, Olga Kornievskaia wrote:
-> On Fri, Feb 23, 2018 at 2:09 PM, Trond Myklebust
-> <trondmy@primarydata.com> wrote:
->> On Fri, 2018-02-23 at 13:45 -0500, Steve Dickson wrote:
->>>
->>> On 02/23/2018 12:05 PM, Olga Kornievskaia wrote:
->>>> On Fri, Feb 23, 2018 at 11:24 AM, Steve Dickson <SteveD@redhat.com>
->>>> wrote:
->>>>> Hey Olga,
->>>>>
->>>>> On 02/22/2018 02:28 PM, Olga Kornievskaia wrote:
->>>>>> It is possible that userland can pass to the kernel mismatching
->>>>>> inputs for the minorversion. like vers=4.1,minorversion=0.
->>>>>> Instead
->>>>>> of making the kernel responposible for 'choosing' the
->>>>>> minorversion,
->>>>>> make the userland always responsible for not sending a
->>>>>> mismatch.
->>>>>
->>>>> I'm thinking this is probably more of mount problem...
->>>>
->>>> Yes the problem is a broken user land sending incorrect arguments
->>>> but
->>>> I still think the kernel needs to do sanity checking on arguments
->>>> to
->>>> prevent this from happening again.
->>>>
->>>>> mount -t nfs4 -o minorversion=0 server:/export /mnt
->>>>>
->>>>> shouldn't this be a  v4.0 mount instead of a 4.2 mount?
->>>>
->>>> Yes I would think this should create a v4.0 mount.
->>>
->>> Way back when... there was some talk about deprecating
->>> minorversion= flag... Since it is broken, maybe this is
->>> a good time to do it?
->>>
->>> Thoughts?
->>
->> I've never liked the separate v4-only 'minorversion' keyword, which is
->> why I introduced the 'version=4.x' format. My preference is therefore
->> that we continue to deprecate use of 'minorversion' with a view to
->> killing it off completely.
-> 
-> It all seems like a good idea except I wonder how widely used and
-> relied on "minorversion" option is. Steve you might have a good idea
-> about it.
-I have no idea... Actually I'm not sure how to deprecate a mount
-option... I don't think that has every happen before... But 
-I'm sure it will break something! ;-) 
+> >> We need to leave this alone unless we get a much better explanation.
+> > 
+> > If Google does want to contribute, then perhaps they might volunteer to
+> > write an Apache licensed and independently developed version of the
+> > testsuite? That would break the deadlock that we have today without
+> > risking offending any of the original copyright holders, and would
+> > allow us to resume contributing further extensions.
+> > 
+> By no means am I a lawyer... Actually I avoid as much as possible ;-) 
+> But you are saying if Google adds this license they now own the code?
 
-steved.
+Basically there's a little bit of land out in the country where we've
+been meeting for regular picnics a few times a year.  The old owners
+were OK with that and the place seems kinda abandoned, so we figure
+nobody will mind if we keep holding the picnics.  But we're not going to
+encourage anyone to build a house there, either.  Or start putting up
+signs saying what people can or can't do with the property, as if it
+were ours.
 
-> 
->>
->> --
->> Trond Myklebust
->> Linux NFS client maintainer, PrimaryData
->> trond.myklebust@primarydata.com
+--b.
