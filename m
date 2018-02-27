@@ -1,59 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:32978 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33180 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751554AbeB0WAw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Feb 2018 17:00:52 -0500
-Subject: Re: [PATCH 1/1] mount.nfs: minorversion setting is being ignored with
- -t flag
-To: NeilBrown <neilb@suse.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20180226191542.31447-1-steved@redhat.com>
- <20180226191542.31447-2-steved@redhat.com>
- <87zi3vgoza.fsf@notabene.neil.brown.name>
- <517662da-56b9-5a41-7e3f-25431ced819b@RedHat.com>
- <87woyygnuq.fsf@notabene.neil.brown.name>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <eccb6c11-402d-4af5-cd39-70f93bed79bf@RedHat.com>
-Date: Tue, 27 Feb 2018 17:00:51 -0500
-MIME-Version: 1.0
-In-Reply-To: <87woyygnuq.fsf@notabene.neil.brown.name>
-Content-Type: text/plain; charset=utf-8
+        id S1751633AbeB0WNU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Feb 2018 17:13:20 -0500
+Received: from smtp.corp.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 8A76CC04BE01
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Feb 2018 22:13:20 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-98.phx2.redhat.com [10.3.116.98])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id 48B4A60181
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Feb 2018 22:13:20 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/1 V2] minorversion= is being ignored
+Date: Tue, 27 Feb 2018 17:13:17 -0500
+Message-Id: <20180227221318.4866-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch ensure "mount -t" mounts that have the 
+minorversion= flag set, the given minor version is used. 
 
+There has been some talk about deprecating the
+minorversion option which it appears to be fairly 
+simple in the kernel, but I think would be pretty
+difficult in the userland, do to all the per-existing
+scripts that used the option. 
 
-On 02/27/2018 03:49 PM, NeilBrown wrote:
-> On Tue, Feb 27 2018, Steve Dickson wrote:
->> Question, do packages like glibc have these types of policies?
-> 
-> glibc documents in README the minimum kernel version.
-> In Apr 2014 it was raised to 2.6.32.
-> In Map 2017 it was raised to 3.2
-> Though some archs have different rules
->   git grep arch_minimum_kernel sysdeps
-> in the glibc source.
-> 
-> systemd also sets a minimum, currently:
-> REQUIREMENTS:
->         Linux kernel >= 3.13
->         Linux kernel >= 4.2 for unified cgroup hierarchy support
-> 
-> according to README.
-> 
-> So if we want to require 3.5 or later, then I have not problem with
-> that.
-> I just think it should be clearly announced in the git commit, and
-> documented in a README or similar.
-Thanks for pointing this out... 
+To make the deprecation possible in the kernel, 
+code was added to convert minorversion= into
+vers=4.x in the string that passed to the kernel  
+when the kernel is later than v3.4
 
-I'm thinking we should probably create this kernel requirement
-once the option is deprecated... 
+Steve Dickson (1):
+  mount.nfs: minorversion setting is being ignored with the -t flag
 
-Since the precedent has already been set to check the kernel version in 
-the mounting code, I'm going to use that to fix the bug, so I can back 
-port the fix to other releases... 
+ utils/mount/network.c | 15 ++++++++++-----
+ utils/mount/stropts.c | 15 +++++++++++++++
+ 2 files changed, 25 insertions(+), 5 deletions(-)
 
-Again, thanks for the info and the suggestions! 
+-- 
+2.14.3
 
-steved.
