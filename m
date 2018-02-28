@@ -1,15 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:35928 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934322AbeB1Uap (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Feb 2018 15:30:45 -0500
-Subject: [PATCH 4/8] xprtrdma: ->send_request returns -EAGAIN when there are
- no free MRs
+Received: from mail-it0-f68.google.com ([209.85.214.68]:54461 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934322AbeB1UbB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Feb 2018 15:31:01 -0500
+Subject: [PATCH 7/8] xprtrdma: Chain Send to FastReg WRs
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 28 Feb 2018 15:30:44 -0500
-Message-ID: <20180228203043.25968.71704.stgit@manet.1015granger.net>
+Date: Wed, 28 Feb 2018 15:30:59 -0500
+Message-ID: <20180228203059.25968.28807.stgit@manet.1015granger.net>
 In-Reply-To: <20180228202916.25968.21750.stgit@manet.1015granger.net>
 References: <20180228202916.25968.21750.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,174 +16,172 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, when the MR free list is exhausted during marshaling, the
-RPC/RDMA transport places the RPC task on the delayq, which forces a
-wait for HZ >> 2 before the marshal and send is retried.
+With FRWR, the client transport can perform memory registration and
+post a Send with just a single ib_post_send.
 
-With this change, the transport now places such an RPC task on the
-pending queue, and wakes it just as soon as more MRs have been
-created. Creating more MRs typically takes less than a millisecond,
-and this waking mechanism is less deadlock-prone.
-
-Moreover, the waiting RPC task is holding the transport's write
-lock, which blocks the transport from sending RPCs. Therefore faster
-recovery from MR exhaustion is desirable.
-
-This is the same mechanism that the TCP transport utilizes when
-handling write buffer space exhaustion.
+This reduces contention between the send_request path and the Send
+Completion handlers, and reduces the overhead of registering a chunk
+that has multiple segments.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/fmr_ops.c   |    2 +-
- net/sunrpc/xprtrdma/frwr_ops.c  |    2 +-
- net/sunrpc/xprtrdma/rpc_rdma.c  |   30 +++++++++++++++++++++---------
- net/sunrpc/xprtrdma/transport.c |    3 ++-
- net/sunrpc/xprtrdma/verbs.c     |    3 ++-
- 5 files changed, 27 insertions(+), 13 deletions(-)
+ net/sunrpc/xprtrdma/fmr_ops.c   |   11 ++++++++
+ net/sunrpc/xprtrdma/frwr_ops.c  |   51 +++++++++++++++++++++++++++------------
+ net/sunrpc/xprtrdma/verbs.c     |    3 +-
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
+ 4 files changed, 49 insertions(+), 18 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
-index d5f95bb..629e539 100644
+index 629e539..5cc68a8 100644
 --- a/net/sunrpc/xprtrdma/fmr_ops.c
 +++ b/net/sunrpc/xprtrdma/fmr_ops.c
-@@ -191,7 +191,7 @@ enum {
+@@ -251,6 +251,16 @@ enum {
+ 	return ERR_PTR(-EIO);
+ }
  
- 	mr = rpcrdma_mr_get(r_xprt);
- 	if (!mr)
--		return ERR_PTR(-ENOBUFS);
-+		return ERR_PTR(-EAGAIN);
++/* Post Send WR containing the RPC Call message.
++ */
++static int
++fmr_op_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
++{
++	struct ib_send_wr *bad_wr;
++
++	return ib_post_send(ia->ri_id->qp, &req->rl_sendctx->sc_wr, &bad_wr);
++}
++
+ /* Invalidate all memory regions that were registered for "req".
+  *
+  * Sleeps until it is safe for the host CPU to access the
+@@ -305,6 +315,7 @@ enum {
  
- 	pageoff = offset_in_page(seg1->mr_offset);
- 	seg1->mr_offset -= pageoff;	/* start of page */
+ const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
+ 	.ro_map				= fmr_op_map,
++	.ro_send			= fmr_op_send,
+ 	.ro_unmap_sync			= fmr_op_unmap_sync,
+ 	.ro_recover_mr			= fmr_op_recover_mr,
+ 	.ro_open			= fmr_op_open,
 diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
-index 90f688f..e21781c 100644
+index e21781c..c5743a0 100644
 --- a/net/sunrpc/xprtrdma/frwr_ops.c
 +++ b/net/sunrpc/xprtrdma/frwr_ops.c
-@@ -367,7 +367,7 @@
- 			rpcrdma_mr_defer_recovery(mr);
- 		mr = rpcrdma_mr_get(r_xprt);
- 		if (!mr)
--			return ERR_PTR(-ENOBUFS);
-+			return ERR_PTR(-EAGAIN);
- 	} while (mr->frwr.fr_state != FRWR_IS_INVALID);
- 	frwr = &mr->frwr;
- 	frwr->fr_state = FRWR_IS_VALID;
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 4bc0f4d..e8adad3 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -365,7 +365,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
- 						   false, &mr);
- 		if (IS_ERR(seg))
--			return PTR_ERR(seg);
-+			goto out_maperr;
- 		rpcrdma_mr_push(mr, &req->rl_registered);
+@@ -357,8 +357,7 @@
+ 	struct rpcrdma_mr *mr;
+ 	struct ib_mr *ibmr;
+ 	struct ib_reg_wr *reg_wr;
+-	struct ib_send_wr *bad_wr;
+-	int rc, i, n;
++	int i, n;
+ 	u8 key;
  
- 		if (encode_read_segment(xdr, mr, pos) < 0)
-@@ -377,6 +377,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	} while (nsegs);
+ 	mr = NULL;
+@@ -407,22 +406,12 @@
+ 	ib_update_fast_reg_key(ibmr, ++key);
  
- 	return 0;
+ 	reg_wr = &frwr->fr_regwr;
+-	reg_wr->wr.next = NULL;
+-	reg_wr->wr.opcode = IB_WR_REG_MR;
+-	frwr->fr_cqe.done = frwr_wc_fastreg;
+-	reg_wr->wr.wr_cqe = &frwr->fr_cqe;
+-	reg_wr->wr.num_sge = 0;
+-	reg_wr->wr.send_flags = 0;
+ 	reg_wr->mr = ibmr;
+ 	reg_wr->key = ibmr->rkey;
+ 	reg_wr->access = writing ?
+ 			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+ 			 IB_ACCESS_REMOTE_READ;
+ 
+-	rc = ib_post_send(ia->ri_id->qp, &reg_wr->wr, &bad_wr);
+-	if (rc)
+-		goto out_senderr;
+-
+ 	mr->mr_handle = ibmr->rkey;
+ 	mr->mr_length = ibmr->length;
+ 	mr->mr_offset = ibmr->iova;
+@@ -442,11 +431,40 @@
+ 	       frwr->fr_mr, n, mr->mr_nents);
+ 	rpcrdma_mr_defer_recovery(mr);
+ 	return ERR_PTR(-EIO);
++}
+ 
+-out_senderr:
+-	pr_err("rpcrdma: FRWR registration ib_post_send returned %i\n", rc);
+-	rpcrdma_mr_defer_recovery(mr);
+-	return ERR_PTR(-ENOTCONN);
++/* Post Send WR containing the RPC Call message.
++ *
++ * For FRMR, chain any FastReg WRs to the Send WR. Only a
++ * single ib_post_send call is needed to register memory
++ * and then post the Send WR.
++ */
++static int
++frwr_op_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
++{
++	struct ib_send_wr *post_wr, *bad_wr;
++	struct rpcrdma_mr *mr;
 +
-+out_maperr:
-+	if (PTR_ERR(seg) == -EAGAIN)
-+		xprt_wait_for_buffer_space(rqst->rq_task, NULL);
-+	return PTR_ERR(seg);
- }
- 
- /* Register and XDR encode the Write list. Supports encoding a list
-@@ -423,7 +428,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
- 						   true, &mr);
- 		if (IS_ERR(seg))
--			return PTR_ERR(seg);
-+			goto out_maperr;
- 		rpcrdma_mr_push(mr, &req->rl_registered);
- 
- 		if (encode_rdma_segment(xdr, mr) < 0)
-@@ -440,6 +445,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	*segcount = cpu_to_be32(nchunks);
- 
- 	return 0;
++	post_wr = &req->rl_sendctx->sc_wr;
++	list_for_each_entry(mr, &req->rl_registered, mr_list) {
++		struct rpcrdma_frwr *frwr;
 +
-+out_maperr:
-+	if (PTR_ERR(seg) == -EAGAIN)
-+		xprt_wait_for_buffer_space(rqst->rq_task, NULL);
-+	return PTR_ERR(seg);
- }
- 
- /* Register and XDR encode the Reply chunk. Supports encoding an array
-@@ -481,7 +491,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 		seg = r_xprt->rx_ia.ri_ops->ro_map(r_xprt, seg, nsegs,
- 						   true, &mr);
- 		if (IS_ERR(seg))
--			return PTR_ERR(seg);
-+			goto out_maperr;
- 		rpcrdma_mr_push(mr, &req->rl_registered);
- 
- 		if (encode_rdma_segment(xdr, mr) < 0)
-@@ -498,6 +508,11 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	*segcount = cpu_to_be32(nchunks);
- 
- 	return 0;
++		frwr = &mr->frwr;
 +
-+out_maperr:
-+	if (PTR_ERR(seg) == -EAGAIN)
-+		xprt_wait_for_buffer_space(rqst->rq_task, NULL);
-+	return PTR_ERR(seg);
++		frwr->fr_cqe.done = frwr_wc_fastreg;
++		frwr->fr_regwr.wr.next = post_wr;
++		frwr->fr_regwr.wr.wr_cqe = &frwr->fr_cqe;
++		frwr->fr_regwr.wr.num_sge = 0;
++		frwr->fr_regwr.wr.opcode = IB_WR_REG_MR;
++		frwr->fr_regwr.wr.send_flags = 0;
++
++		post_wr = &frwr->fr_regwr.wr;
++	}
++
++	/* If ib_post_send fails, the next ->send_request for
++	 * @req will queue these MWs for recovery.
++	 */
++	return ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
  }
  
- /**
-@@ -724,8 +739,8 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
-  * Returns:
-  *	%0 if the RPC was sent successfully,
-  *	%-ENOTCONN if the connection was lost,
-- *	%-EAGAIN if not enough pages are available for on-demand reply buffer,
-- *	%-ENOBUFS if no MRs are available to register chunks,
-+ *	%-EAGAIN if the caller should call again with the same arguments,
-+ *	%-ENOBUFS if the caller should call again after a delay,
-  *	%-EMSGSIZE if the transport header is too small,
-  *	%-EIO if a permanent problem occurred while marshaling.
-  */
-@@ -868,10 +883,7 @@ static bool rpcrdma_results_inline(struct rpcrdma_xprt *r_xprt,
- 	return 0;
+ /* Handle a remotely invalidated mr on the @mrs list
+@@ -561,6 +579,7 @@
  
- out_err:
--	if (ret != -ENOBUFS) {
--		pr_err("rpcrdma: header marshaling failed (%d)\n", ret);
--		r_xprt->rx_stats.failed_marshal_count++;
--	}
-+	r_xprt->rx_stats.failed_marshal_count++;
- 	return ret;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 47b4604..0819689 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -689,7 +689,8 @@
-  * Returns:
-  *	%0 if the RPC message has been sent
-  *	%-ENOTCONN if the caller should reconnect and call again
-- *	%-ENOBUFS if the caller should call again later
-+ *	%-EAGAIN if the caller should call again
-+ *	%-ENOBUFS if the caller should call again after a delay
-  *	%-EIO if a permanent error occurred and the request was not
-  *		sent. Do not try to send this message again.
-  */
+ const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
+ 	.ro_map				= frwr_op_map,
++	.ro_send			= frwr_op_send,
+ 	.ro_reminv			= frwr_op_reminv,
+ 	.ro_unmap_sync			= frwr_op_unmap_sync,
+ 	.ro_recover_mr			= frwr_op_recover_mr,
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 520e7e4..d36c18f 100644
+index ab86724..626fd30 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1048,8 +1048,9 @@ void rpcrdma_sendctx_put_locked(struct rpcrdma_sendctx *sc)
- 	list_splice(&all, &buf->rb_all);
- 	r_xprt->rx_stats.mrs_allocated += count;
- 	spin_unlock(&buf->rb_mrlock);
--
- 	trace_xprtrdma_createmrs(r_xprt, count);
-+
-+	xprt_write_space(&r_xprt->rx_xprt);
- }
+@@ -1535,7 +1535,6 @@ struct rpcrdma_regbuf *
+ 		struct rpcrdma_req *req)
+ {
+ 	struct ib_send_wr *send_wr = &req->rl_sendctx->sc_wr;
+-	struct ib_send_wr *send_wr_fail;
+ 	int rc;
  
- static void
+ 	if (req->rl_reply) {
+@@ -1554,7 +1553,7 @@ struct rpcrdma_regbuf *
+ 		--ep->rep_send_count;
+ 	}
+ 
+-	rc = ib_post_send(ia->ri_id->qp, send_wr, &send_wr_fail);
++	rc = ia->ri_ops->ro_send(ia, req);
+ 	trace_xprtrdma_post_send(req, rc);
+ 	if (rc)
+ 		return -ENOTCONN;
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 29ea0b4..3d3b423 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -472,6 +472,8 @@ struct rpcrdma_memreg_ops {
+ 			(*ro_map)(struct rpcrdma_xprt *,
+ 				  struct rpcrdma_mr_seg *, int, bool,
+ 				  struct rpcrdma_mr **);
++	int		(*ro_send)(struct rpcrdma_ia *ia,
++				   struct rpcrdma_req *req);
+ 	void		(*ro_reminv)(struct rpcrdma_rep *rep,
+ 				     struct list_head *mrs);
+ 	void		(*ro_unmap_sync)(struct rpcrdma_xprt *,
 
