@@ -1,136 +1,196 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:50548 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S934609AbeB1UbH (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Feb 2018 15:31:07 -0500
-Subject: [PATCH 8/8] xprtrdma: Move creation of rl_rdmabuf to
- rpcrdma_create_req
-From: Chuck Lever <chuck.lever@oracle.com>
-To: anna.schumaker@netapp.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Wed, 28 Feb 2018 15:31:05 -0500
-Message-ID: <20180228203105.25968.91937.stgit@manet.1015granger.net>
-In-Reply-To: <20180228202916.25968.21750.stgit@manet.1015granger.net>
+Received: from mx143.netapp.com ([216.240.21.24]:13083 "EHLO mx143.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S935042AbeB1Vve (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Feb 2018 16:51:34 -0500
+Subject: Re: [PATCH 7/8] xprtrdma: Chain Send to FastReg WRs
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: <linux-rdma@vger.kernel.org>, <linux-nfs@vger.kernel.org>
 References: <20180228202916.25968.21750.stgit@manet.1015granger.net>
+ <20180228203059.25968.28807.stgit@manet.1015granger.net>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <37357f5c-25c5-b862-4e4f-7f84a38a29b2@Netapp.com>
+Date: Wed, 28 Feb 2018 16:51:11 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20180228203059.25968.28807.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Refactor: Both rpcrdma_create_req call sites have to allocate the
-buffer where the transport header is built, so just move that
-allocation into rpcrdma_create_req.
 
-This buffer is a fixed size. There's no needed information available
-in call_allocate that is not also available when the transport is
-created.
 
-The original purpose for allocating these buffers on demand was to
-reduce the possibility that an allocation failure during transport
-creation will hork the mount operation during low memory scenarios.
-Some relief for this rare possibility is coming up in the next few
-patches.
+On 02/28/2018 03:30 PM, Chuck Lever wrote:
+> With FRWR, the client transport can perform memory registration and
+> post a Send with just a single ib_post_send.
+> 
+> This reduces contention between the send_request path and the Send
+> Completion handlers, and reduces the overhead of registering a chunk
+> that has multiple segments.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  net/sunrpc/xprtrdma/fmr_ops.c   |   11 ++++++++
+>  net/sunrpc/xprtrdma/frwr_ops.c  |   51 +++++++++++++++++++++++++++------------
+>  net/sunrpc/xprtrdma/verbs.c     |    3 +-
+>  net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
+>  4 files changed, 49 insertions(+), 18 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/fmr_ops.c b/net/sunrpc/xprtrdma/fmr_ops.c
+> index 629e539..5cc68a8 100644
+> --- a/net/sunrpc/xprtrdma/fmr_ops.c
+> +++ b/net/sunrpc/xprtrdma/fmr_ops.c
+> @@ -251,6 +251,16 @@ enum {
+>  	return ERR_PTR(-EIO);
+>  }
+>  
+> +/* Post Send WR containing the RPC Call message.
+> + */
+> +static int
+> +fmr_op_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
+> +{
+> +	struct ib_send_wr *bad_wr;
+> +
+> +	return ib_post_send(ia->ri_id->qp, &req->rl_sendctx->sc_wr, &bad_wr);
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- net/sunrpc/xprtrdma/backchannel.c |    7 -------
- net/sunrpc/xprtrdma/transport.c   |   25 -------------------------
- net/sunrpc/xprtrdma/verbs.c       |   14 ++++++++++++--
- 3 files changed, 12 insertions(+), 34 deletions(-)
+I wish there was a bad_wr null-check in ib_post_send() (or in the infiniband drivers) so you don't have to declare a variable that's never used again.  Coordinating that might be more work than it's worth, though.
 
-diff --git a/net/sunrpc/xprtrdma/backchannel.c b/net/sunrpc/xprtrdma/backchannel.c
-index ed1a4a3..47ebac9 100644
---- a/net/sunrpc/xprtrdma/backchannel.c
-+++ b/net/sunrpc/xprtrdma/backchannel.c
-@@ -44,13 +44,6 @@ static int rpcrdma_bc_setup_rqst(struct rpcrdma_xprt *r_xprt,
- 	if (IS_ERR(req))
- 		return PTR_ERR(req);
- 
--	rb = rpcrdma_alloc_regbuf(RPCRDMA_HDRBUF_SIZE,
--				  DMA_TO_DEVICE, GFP_KERNEL);
--	if (IS_ERR(rb))
--		goto out_fail;
--	req->rl_rdmabuf = rb;
--	xdr_buf_init(&req->rl_hdrbuf, rb->rg_base, rdmab_length(rb));
--
- 	size = r_xprt->rx_data.inline_rsize;
- 	rb = rpcrdma_alloc_regbuf(size, DMA_TO_DEVICE, GFP_KERNEL);
- 	if (IS_ERR(rb))
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 7e39faa..67e4386 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -537,29 +537,6 @@
- 	}
- }
- 
--/* Allocate a fixed-size buffer in which to construct and send the
-- * RPC-over-RDMA header for this request.
-- */
--static bool
--rpcrdma_get_rdmabuf(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
--		    gfp_t flags)
--{
--	size_t size = RPCRDMA_HDRBUF_SIZE;
--	struct rpcrdma_regbuf *rb;
--
--	if (req->rl_rdmabuf)
--		return true;
--
--	rb = rpcrdma_alloc_regbuf(size, DMA_TO_DEVICE, flags);
--	if (IS_ERR(rb))
--		return false;
--
--	r_xprt->rx_stats.hardway_register_count += size;
--	req->rl_rdmabuf = rb;
--	xdr_buf_init(&req->rl_hdrbuf, rb->rg_base, rdmab_length(rb));
--	return true;
--}
--
- static bool
- rpcrdma_get_sendbuf(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
- 		    size_t size, gfp_t flags)
-@@ -641,8 +618,6 @@
- 	if (RPC_IS_SWAPPER(task))
- 		flags = __GFP_MEMALLOC | GFP_NOWAIT | __GFP_NOWARN;
- 
--	if (!rpcrdma_get_rdmabuf(r_xprt, req, flags))
--		goto out_fail;
- 	if (!rpcrdma_get_sendbuf(r_xprt, req, rqst->rq_callsize, flags))
- 		goto out_fail;
- 	if (!rpcrdma_get_recvbuf(r_xprt, req, rqst->rq_rcvsize, flags))
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 626fd30..6a7a5a2 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1068,17 +1068,27 @@ struct rpcrdma_req *
- rpcrdma_create_req(struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_buffer *buffer = &r_xprt->rx_buf;
-+	struct rpcrdma_regbuf *rb;
- 	struct rpcrdma_req *req;
- 
- 	req = kzalloc(sizeof(*req), GFP_KERNEL);
- 	if (req == NULL)
- 		return ERR_PTR(-ENOMEM);
- 
-+	rb = rpcrdma_alloc_regbuf(RPCRDMA_HDRBUF_SIZE,
-+				  DMA_TO_DEVICE, GFP_KERNEL);
-+	if (IS_ERR(rb)) {
-+		kfree(req);
-+		return ERR_PTR(-ENOMEM);
-+	}
-+	req->rl_rdmabuf = rb;
-+	xdr_buf_init(&req->rl_hdrbuf, rb->rg_base, rdmab_length(rb));
-+	req->rl_buffer = buffer;
-+	INIT_LIST_HEAD(&req->rl_registered);
-+
- 	spin_lock(&buffer->rb_reqslock);
- 	list_add(&req->rl_all, &buffer->rb_allreqs);
- 	spin_unlock(&buffer->rb_reqslock);
--	req->rl_buffer = &r_xprt->rx_buf;
--	INIT_LIST_HEAD(&req->rl_registered);
- 	return req;
- }
- 
+Anna
 
+> +}
+> +
+>  /* Invalidate all memory regions that were registered for "req".
+>   *
+>   * Sleeps until it is safe for the host CPU to access the
+> @@ -305,6 +315,7 @@ enum {
+>  
+>  const struct rpcrdma_memreg_ops rpcrdma_fmr_memreg_ops = {
+>  	.ro_map				= fmr_op_map,
+> +	.ro_send			= fmr_op_send,
+>  	.ro_unmap_sync			= fmr_op_unmap_sync,
+>  	.ro_recover_mr			= fmr_op_recover_mr,
+>  	.ro_open			= fmr_op_open,
+> diff --git a/net/sunrpc/xprtrdma/frwr_ops.c b/net/sunrpc/xprtrdma/frwr_ops.c
+> index e21781c..c5743a0 100644
+> --- a/net/sunrpc/xprtrdma/frwr_ops.c
+> +++ b/net/sunrpc/xprtrdma/frwr_ops.c
+> @@ -357,8 +357,7 @@
+>  	struct rpcrdma_mr *mr;
+>  	struct ib_mr *ibmr;
+>  	struct ib_reg_wr *reg_wr;
+> -	struct ib_send_wr *bad_wr;
+> -	int rc, i, n;
+> +	int i, n;
+>  	u8 key;
+>  
+>  	mr = NULL;
+> @@ -407,22 +406,12 @@
+>  	ib_update_fast_reg_key(ibmr, ++key);
+>  
+>  	reg_wr = &frwr->fr_regwr;
+> -	reg_wr->wr.next = NULL;
+> -	reg_wr->wr.opcode = IB_WR_REG_MR;
+> -	frwr->fr_cqe.done = frwr_wc_fastreg;
+> -	reg_wr->wr.wr_cqe = &frwr->fr_cqe;
+> -	reg_wr->wr.num_sge = 0;
+> -	reg_wr->wr.send_flags = 0;
+>  	reg_wr->mr = ibmr;
+>  	reg_wr->key = ibmr->rkey;
+>  	reg_wr->access = writing ?
+>  			 IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+>  			 IB_ACCESS_REMOTE_READ;
+>  
+> -	rc = ib_post_send(ia->ri_id->qp, &reg_wr->wr, &bad_wr);
+> -	if (rc)
+> -		goto out_senderr;
+> -
+>  	mr->mr_handle = ibmr->rkey;
+>  	mr->mr_length = ibmr->length;
+>  	mr->mr_offset = ibmr->iova;
+> @@ -442,11 +431,40 @@
+>  	       frwr->fr_mr, n, mr->mr_nents);
+>  	rpcrdma_mr_defer_recovery(mr);
+>  	return ERR_PTR(-EIO);
+> +}
+>  
+> -out_senderr:
+> -	pr_err("rpcrdma: FRWR registration ib_post_send returned %i\n", rc);
+> -	rpcrdma_mr_defer_recovery(mr);
+> -	return ERR_PTR(-ENOTCONN);
+> +/* Post Send WR containing the RPC Call message.
+> + *
+> + * For FRMR, chain any FastReg WRs to the Send WR. Only a
+> + * single ib_post_send call is needed to register memory
+> + * and then post the Send WR.
+> + */
+> +static int
+> +frwr_op_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
+> +{
+> +	struct ib_send_wr *post_wr, *bad_wr;
+> +	struct rpcrdma_mr *mr;
+> +
+> +	post_wr = &req->rl_sendctx->sc_wr;
+> +	list_for_each_entry(mr, &req->rl_registered, mr_list) {
+> +		struct rpcrdma_frwr *frwr;
+> +
+> +		frwr = &mr->frwr;
+> +
+> +		frwr->fr_cqe.done = frwr_wc_fastreg;
+> +		frwr->fr_regwr.wr.next = post_wr;
+> +		frwr->fr_regwr.wr.wr_cqe = &frwr->fr_cqe;
+> +		frwr->fr_regwr.wr.num_sge = 0;
+> +		frwr->fr_regwr.wr.opcode = IB_WR_REG_MR;
+> +		frwr->fr_regwr.wr.send_flags = 0;
+> +
+> +		post_wr = &frwr->fr_regwr.wr;
+> +	}
+> +
+> +	/* If ib_post_send fails, the next ->send_request for
+> +	 * @req will queue these MWs for recovery.
+> +	 */
+> +	return ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
+>  }
+>  
+>  /* Handle a remotely invalidated mr on the @mrs list
+> @@ -561,6 +579,7 @@
+>  
+>  const struct rpcrdma_memreg_ops rpcrdma_frwr_memreg_ops = {
+>  	.ro_map				= frwr_op_map,
+> +	.ro_send			= frwr_op_send,
+>  	.ro_reminv			= frwr_op_reminv,
+>  	.ro_unmap_sync			= frwr_op_unmap_sync,
+>  	.ro_recover_mr			= frwr_op_recover_mr,
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index ab86724..626fd30 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1535,7 +1535,6 @@ struct rpcrdma_regbuf *
+>  		struct rpcrdma_req *req)
+>  {
+>  	struct ib_send_wr *send_wr = &req->rl_sendctx->sc_wr;
+> -	struct ib_send_wr *send_wr_fail;
+>  	int rc;
+>  
+>  	if (req->rl_reply) {
+> @@ -1554,7 +1553,7 @@ struct rpcrdma_regbuf *
+>  		--ep->rep_send_count;
+>  	}
+>  
+> -	rc = ib_post_send(ia->ri_id->qp, send_wr, &send_wr_fail);
+> +	rc = ia->ri_ops->ro_send(ia, req);
+>  	trace_xprtrdma_post_send(req, rc);
+>  	if (rc)
+>  		return -ENOTCONN;
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index 29ea0b4..3d3b423 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -472,6 +472,8 @@ struct rpcrdma_memreg_ops {
+>  			(*ro_map)(struct rpcrdma_xprt *,
+>  				  struct rpcrdma_mr_seg *, int, bool,
+>  				  struct rpcrdma_mr **);
+> +	int		(*ro_send)(struct rpcrdma_ia *ia,
+> +				   struct rpcrdma_req *req);
+>  	void		(*ro_reminv)(struct rpcrdma_rep *rep,
+>  				     struct list_head *mrs);
+>  	void		(*ro_unmap_sync)(struct rpcrdma_xprt *,
+> 
