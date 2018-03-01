@@ -1,91 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from aserp2130.oracle.com ([141.146.126.79]:35522 "EHLO
-        aserp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S935590AbeB1XER (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Feb 2018 18:04:17 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: [PATCH 7/8] xprtrdma: Chain Send to FastReg WRs
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180228225946.GF19007@ziepe.ca>
-Date: Wed, 28 Feb 2018 18:04:13 -0500
-Cc: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <59D65B93-6B35-46CC-B550-A5854A89757E@oracle.com>
-References: <20180228202916.25968.21750.stgit@manet.1015granger.net>
- <20180228203059.25968.28807.stgit@manet.1015granger.net>
- <37357f5c-25c5-b862-4e4f-7f84a38a29b2@Netapp.com>
- <20180228225946.GF19007@ziepe.ca>
-To: Jason Gunthorpe <jgg@ziepe.ca>
+Received: from mail-pg0-f66.google.com ([74.125.83.66]:37288 "EHLO
+        mail-pg0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S964824AbeCAAZj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Feb 2018 19:25:39 -0500
+Received: by mail-pg0-f66.google.com with SMTP id y26so1618269pgv.4
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Feb 2018 16:25:39 -0800 (PST)
+From: "Eric Rannaud" <e@nanocritical.com>
+To: linux-nfs@vger.kernel.org
+Cc: Eric Rannaud <e@nanocritical.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.Schumaker@netapp.com>,
+        Jessica Peters <jessica.peters@netapp.com>
+Subject: [PATCH] nfs: nfs_fileid_valid() is wrong on NFSv3 and incomplete on NFSv4
+Date: Wed, 28 Feb 2018 16:25:05 -0800
+Message-Id: <643b19f35980727fbf9a1756c33a59981b538dd0.1519862053.git.e@nanocritical.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On NFSv3, in normal circumstances, NFS_ATTR_FATTR_MOUNTED_ON_FILEID is
+not set on fattr->valid. It is only set in nfs3_decode_dirent() if
+entry->fattr->fileid != entry->ino, which typically only happens for
+mountpoints. (See 1ae04b252351 NFSv3: Use the readdir fileid as the
+mounted-on-fileid.)
 
+nfs_fileid_valid() returns 'ret1 || ret2', initializing both ret1 and
+ret2 to true, but sets them only conditionally. Therefore, in normal
+circumstances, nfs_fileid_valid() wrongly returns 'false || true' when
+the fileid has changed.
 
-> On Feb 28, 2018, at 5:59 PM, Jason Gunthorpe <jgg@ziepe.ca> wrote:
->=20
-> On Wed, Feb 28, 2018 at 04:51:11PM -0500, Anna Schumaker wrote:
->>=20
->>=20
->> On 02/28/2018 03:30 PM, Chuck Lever wrote:
->>> With FRWR, the client transport can perform memory registration and
->>> post a Send with just a single ib_post_send.
->>>=20
->>> This reduces contention between the send_request path and the Send
->>> Completion handlers, and reduces the overhead of registering a chunk
->>> that has multiple segments.
->>>=20
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> net/sunrpc/xprtrdma/fmr_ops.c   |   11 ++++++++
->>> net/sunrpc/xprtrdma/frwr_ops.c  |   51 =
-+++++++++++++++++++++++++++------------
->>> net/sunrpc/xprtrdma/verbs.c     |    3 +-
->>> net/sunrpc/xprtrdma/xprt_rdma.h |    2 ++
->>> 4 files changed, 49 insertions(+), 18 deletions(-)
->>>=20
->>> diff --git a/net/sunrpc/xprtrdma/fmr_ops.c =
-b/net/sunrpc/xprtrdma/fmr_ops.c
->>> index 629e539..5cc68a8 100644
->>> +++ b/net/sunrpc/xprtrdma/fmr_ops.c
->>> @@ -251,6 +251,16 @@ enum {
->>> 	return ERR_PTR(-EIO);
->>> }
->>>=20
->>> +/* Post Send WR containing the RPC Call message.
->>> + */
->>> +static int
->>> +fmr_op_send(struct rpcrdma_ia *ia, struct rpcrdma_req *req)
->>> +{
->>> +	struct ib_send_wr *bad_wr;
->>> +
->>> +	return ib_post_send(ia->ri_id->qp, &req->rl_sendctx->sc_wr, =
-&bad_wr);
->>=20
->> I wish there was a bad_wr null-check in ib_post_send() (or in the
->> infiniband drivers) so you don't have to declare a variable that's
->> never used again.  Coordinating that might be more work than it's
->> worth, though.
->=20
-> It is a good point, I actually don't think we have any user in kernel
-> of bad_wr ..
+There is another bug in this function for NFSv4: a server may return a
+fattr with NFS_ATTR_FATTR_FILEID|NFS_ATTR_FATTR_MOUNTED_ON_FILEID.
+nfs_fileid_valid() will fail to detect a change in fileid in the case
+where the fattr->fileid happens to match, by chance, the stored
+nfsi->fileid (copied from a previous fattr->mounted_on_fileid).
 
-Yes, frwr_op_unmap_sync() uses the 3rd argument, and I'm about to add
-a call site for ib_post_recv which uses that argument as well.
+If this is a mountpoint, the current fattr->fileid and the old
+fattr->mounted_on_fileid come from different filesystems and may well
+happen to be identical.
 
+The condition should be written as an if / else if:
 
-> Would prefer to just drop the parameter and add a new function call if
-> really, really needed.
+	if (fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
+	else if (fattr->valid & NFS_ATTR_FATTR_FILEID)
 
-You could do something like
+as is done elsewhere in NFSv4 code.
+---
+ fs/nfs/inode.c | 10 ++++------
+ 1 file changed, 4 insertions(+), 6 deletions(-)
 
-  ib_post_send_one(qp, wr);
-
-for the common case; and likewise for ib_post_recv.
-
---
-Chuck Lever
-
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 7d893543cf3b..e1ad5ec75795 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1717,13 +1717,11 @@ EXPORT_SYMBOL_GPL(nfs_post_op_update_inode_force_wcc);
+ static inline bool nfs_fileid_valid(struct nfs_inode *nfsi,
+ 				    struct nfs_fattr *fattr)
+ {
+-	bool ret1 = true, ret2 = true;
+-
+-	if (fattr->valid & NFS_ATTR_FATTR_FILEID)
+-		ret1 = (nfsi->fileid == fattr->fileid);
+ 	if (fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
+-		ret2 = (nfsi->fileid == fattr->mounted_on_fileid);
+-	return ret1 || ret2;
++		return nfsi->fileid == fattr->mounted_on_fileid;
++	else if (fattr->valid & NFS_ATTR_FATTR_FILEID)
++		return nfsi->fileid == fattr->fileid;
++	return true;
+ }
+ 
+ /*
+-- 
+2.16.2
 
