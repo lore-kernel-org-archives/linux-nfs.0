@@ -1,61 +1,45 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60886 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1946341AbeCBPqM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 2 Mar 2018 10:46:12 -0500
-Subject: Re: [PATCH] clnt_dg_call: Fix a buffer overflow (CVE-2016-4429)
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-References: <20180301170629.20780-1-steved@redhat.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <a86a7db9-2f91-3d1a-15d6-df8d5d9a0fc4@RedHat.com>
-Date: Fri, 2 Mar 2018 10:46:10 -0500
-MIME-Version: 1.0
-In-Reply-To: <20180301170629.20780-1-steved@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:48838 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1946608AbeCBQAj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 2 Mar 2018 11:00:39 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: nfs_commit_inode should redirty inode if the inode has outstanding requests
+Date: Fri,  2 Mar 2018 11:00:38 -0500
+Message-Id: <20180302160038.1598-1-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+It seems that nfs_commit_inode can be called where the nfs_inode has
+outstanding requests and the commit lists are empty.  That can lead to
+invalidate_complete_page2 failing due to the associated page having
+private data which in turn leads to invalidate_inode_pages2_range
+returning -EBUSY.
 
+Instead of having nfs_commit_inode exit early when the commit lists are
+empty, only do so if nrequests is also 0.
 
-On 03/01/2018 12:06 PM, Steve Dickson wrote:
-> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1337142
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
+Fixes: dc4fd9ab01 ("nfs: don't wait on commit in nfs_commit_inode() if there were no commit requests")
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ fs/nfs/write.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-steved.
-> ---
->  src/clnt_dg.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/src/clnt_dg.c b/src/clnt_dg.c
-> index 248138b..884a2db 100644
-> --- a/src/clnt_dg.c
-> +++ b/src/clnt_dg.c
-> @@ -433,6 +433,11 @@ get_reply:
->  	  char *cbuf = (char *) alloca (outlen + 256);
->  	  int ret;
->  
-> +	  if (cbuf == NULL) 
-> +	  {
-> +	  	cu->cu_error.re_errno = errno;
-> +		return (cu->cu_error.re_status = RPC_CANTRECV);
-> +	  }
->  	  iov.iov_base = cbuf + 256;
->  	  iov.iov_len = outlen;
->  	  msg.msg_name = (void *) &err_addr;
-> @@ -457,11 +462,13 @@ get_reply:
->  		 cmsg = CMSG_NXTHDR (&msg, cmsg))
->  	      if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
->  		{
-> +		  free(cbuf);
->  		  e = (struct sock_extended_err *) CMSG_DATA(cmsg);
->  		  cu->cu_error.re_errno = e->ee_errno;
->  		  release_fd_lock(cu->cu_fd, mask);
->  		  return (cu->cu_error.re_status = RPC_CANTRECV);
->  		}
-> +	  free(cbuf);
->  	}
->  #endif
->  
-> 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 7428a66..0268bd1 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1890,7 +1890,7 @@ int nfs_commit_inode(struct inode *inode, int how)
+ 	if (res)
+ 		error = nfs_generic_commit_list(inode, &head, how, &cinfo);
+ 	nfs_commit_end(cinfo.mds);
+-	if (res == 0)
++	if (res == 0 && !nfs_have_writebacks(inode))
+ 		return res;
+ 	if (error < 0)
+ 		goto out_error;
+-- 
+2.9.5
+
