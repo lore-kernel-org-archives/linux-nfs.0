@@ -1,155 +1,174 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from condef-08.nifty.com ([202.248.20.73]:17789 "EHLO
-        condef-08.nifty.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S933485AbeCEJlv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 04:41:51 -0500
-Received: from conssluserg-03.nifty.com ([10.126.8.82])by condef-08.nifty.com with ESMTP id w259SnhU030118
-        for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2018 18:28:49 +0900
+Received: from bsdsz2.pd.infn.it ([192.84.143.16]:35757 "EHLO
+        bsdsz2.pd.infn.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751288AbeCEKBn (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 05:01:43 -0500
+Received: from lxtraldi.pd.infn.it (lxtraldi.pd.infn.it [193.205.157.246])
+        (authenticated bits=0)
+        by bsdsz2.pd.infn.it (8.15.2/8.15.2) with ESMTPSA id w259rLHH064891
+        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=OK)
+        for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2018 10:53:24 +0100 (CET)
+        (envelope-from sergio.traldi@pd.infn.it)
+To: linux-nfs@vger.kernel.org
+From: Sergio Traldi <sergio.traldi@pd.infn.it>
+Subject: NFS sync and async mode
+Message-ID: <b4b5c9d2-409f-fbd3-4b87-7b4ae41427cf@pd.infn.it>
+Date: Mon, 5 Mar 2018 10:53:21 +0100
 MIME-Version: 1.0
-In-Reply-To: <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com>
-References: <CAGXu5jLc_A1w4FM8FvQHGSPjLfOu80L_vbt_FkcE6+Bh_XMjxw@mail.gmail.com>
- <6be06ce5-87e6-0d9d-55b9-6c70c3578ecf@maciej.szmigiero.name> <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com>
-From: Masahiro Yamada <yamada.masahiro@socionext.com>
-Date: Mon, 5 Mar 2018 18:27:44 +0900
-Message-ID: <CAK7LNASKHOb5GNPu9XHWxyq-iucxTRkw99_7wL4zgm5HNc6_SA@mail.gmail.com>
-Subject: Re: RANDSTRUCT structs need linux/compiler_types.h (Was: [nfsd4]
- potentially hardware breaking regression in 4.14-rc and 4.13.11)
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: "Maciej S. Szmigiero" <mail@maciej.szmigiero.name>,
-        Kees Cook <keescook@chromium.org>,
-        Patrick McLean <chutzpah@gentoo.org>,
-        Emese Revfy <re.emese@gmail.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Bruce Fields <bfields@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Thorsten Leemhuis <regressions@leemhuis.info>,
-        "kernel-hardening@lists.openwall.com"
-        <kernel-hardening@lists.openwall.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+Hi,
+I have host A  and host B using nfs4 or nfs3.
+In host A I mount a partition or a disk formatted in ext4 or xfs in 
+/nfsdisk
+I put this file inside the directory:
+wget --no-check-certificate 
+https://root.cern.ch/download/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz 
+-O /nfsdisk/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
 
-2018-02-22 7:47 GMT+09:00 Linus Torvalds <torvalds@linux-foundation.org>:
-> On Wed, Feb 21, 2018 at 2:19 PM, Maciej S. Szmigiero
-> <mail@maciej.szmigiero.name> wrote:
->>
->> One can see that offsets used to access various members of struct path a=
-re
->> different, and also that the original file from step 3 contains an objec=
-t
->> named "__randomize_layout".
->
-> Whee.
->
-> Thanks for root-causing this issue, and this syntax of ours is clearly
-> *much* too fragile.
->
-> We actually have similar issues with some of our other attributes,
-> where out nice "helpful" attribute shorthand can end up being just
-> silently interpreted as a variable name if they aren't defined in
-> time.
->
-> For most of our other attributes, it just doesn't matter all that much
-> if some user doesn't happen to see the attribute. For
-> __randomize_layout, it's obviously very fatal, and silently just
-> generates crazy code.
->
-> I'm not entirely sure what the right solution is, because it's
-> obviously much too easy to miss some #include by mistake. It's easy to
-> say "you should always include the proper header", but if a failure to
-> do so doesn't end up with any warnings or errors, but just silent bad
-> code generation, it's much too fragile.
->
-> I wonder if we could change the syntax of that "__randomize_layout"
-> thing. Some of our related helper macros (ie
-> randomized_struct_fields_start/end) don't have the same problem,
-> because if you don't have the define for them, the compiler will
-> complain about bad syntax.
->
-> And other attribute specifiers we encourage people to put in other
-> parts of the type, like __user etc, so they don't have that same
-> parsing issue.
->
-> I guess one _extreme_ fix for this would be to put
->
->     extern struct nostruct __randomize_layout;
->
-> in our include/linux/kconfig.h, which I think we end up always
-> including first thanks to having it on the command line.
->
-> Because if you do that, you actually get an error:
->
->     CC [M]  fs/nfsd/nfs4xdr.o
->   In file included from ./include/linux/fs_struct.h:5:0,
->                    from fs/nfsd/nfs4xdr.c:36:
->   ./include/linux/path.h:11:3: error: conflicting types for =E2=80=98__ra=
-ndomize_layout=E2=80=99
->    } __randomize_layout;
->      ^~~~~~~~~~~~~~~~~~
->   In file included from <command-line>:0:0:
->   ././include/linux/kconfig.h:8:28: note: previous declaration of
-> =E2=80=98__randomize_layout=E2=80=99 was here
->        extern struct nostruct __randomize_layout;
->                               ^~~~~~~~~~~~~~~~~~
->   make[1]: *** [scripts/Makefile.build:317: fs/nfsd/nfs4xdr.o] Error 1
->
-> and we would have figured this out immediately.
->
-> Broken example patch appended, in case somebody wants to play with
-> something like this or comes up with a better model entirely..
->
->                Linus
->
+In host A I export that partition with this line in /etc/exports
+/nfsdisk 
+192.168.1.1.0/24(rw,sync,no_wdelay,no_root_squash,no_subtree_check)
+OR using async mode:
+/nfsdisk 192.168.1.1.0/24(rw,async,no_root_squash)
 
+ From host B I mount via nfs the disk:
+mount -t nfs <ip-hostA>:/nfsdisk /nfsdisk
 
-Sorry for chiming in late.
+and I obtain something similar to (with mount command):
+192.168.1.1:/nfstest on /nfstest type nfs4 
+(rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.2,local_lock=none,addr=192.168.1.1)
 
-I noticed this thread today,
-honestly, the commit made me upset.
+In host B I exec:
+time tar zxvf root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
 
+I try with different hosts bare metal or virtual machine and with 
+different controller.
+1) with bare metal host:
+1.1) A and B bare metal with CentOS7 with kernel 3.10.0-514.2.2.el7 with 
+nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and rpcbind-0.2.0-42.el7.x86_64
 
-Can I suggest another way to make it less fragile?
-__attribute((...)) can be placed after 'struct'.
+In host A:
+real    0m45.338s
+user    0m8.334s
+sys    0m5.387s
 
+In Host B I obtain
+   sync mode:
+real    11m56.146s
+user    0m9.947s
+sys    0m8.346s
+   async mode:
+real    0m46.328s
+user    0m8.709s
+sys    0m5.747s
 
-So, we can write:
+1.2) A and B bare metal with Ubuntu 14.04 jessie with kernel 
+3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server 
+1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
 
+In host A:
+real    0m10.667s
+user    0m7.856s
+sys    0m3.190s
 
-struct __randomize_layout path {
-        struct vfsmount *mnt;
-        struct dentry *dentry;
-};
+In host B:
+    sync mode:
+real    9m45.146s
+user    0m9.697s
+sys    0m8.037s
+   async mode:
+real    0m14.843s
+user    0m7.916s
+sys    0m3.780s
 
+1.3) A and B bare metal with Scientific Linux 6.2 with Kernel 
+2.6.32-220.el6.x86_64 with nfs-utils-1.2.3-15.el6.x86_64 - 
+rpcbind-0.2.0-13.el6_9.1.x86_64
 
-  instead of
+In host A:
+real    0m5.943s
+user    0m5.611s
+sys    0m1.585s
 
+In host B:
+    sync mode:
+real    8m37.495s
+user    0m5.680s
+sys    0m3.091s
+    async mode:
+real    0m21.121s
+user    0m5.782s
+sys    0m3.089s
 
-struct path {
-        struct vfsmount *mnt;
-        struct dentry *dentry;
-} __randomize_layout;
+2) with Virtual Machine Libvirt KVM
+2.1) A and B virtual with CentOS7 with kernel 3.10.0-514.2.2.el7 with 
+nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and rpcbind-0.2.0-42.el7.x86_64
 
+In host A:
+real    0m46.126s
+user    0m9.034s
+sys    0m6.187s
 
+In Host B I obtain
+   sync mode:
+real    12m31.167s
+user    0m9.997s
+sys    0m8.466s
+   async mode:
+real    0m45.388s
+user    0m8.416s
+sys    0m5.587s
 
-If we force the former notation,
-the undefined __randomize_layout results in a build error
-instead of silent broken code generation.
+2.2) A and B virtual with Ubuntu 14.04 jessie with kernel 
+3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server 
+1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
+In  host A:
+real    0m10.787s
+user    0m7.912s
+sys    0m3.335s
 
+In Host B I obtain
+   sync mode:
+real    11m54.265s
+user    0m8.264s
+sys    0m6.541s
+    async mode:
+real    0m11.457s
+user    0m7.619s
+sys    0m3.531s
 
-It is true somebody can still place
-__randomize_layout after the closing brace,
-but can we check this by coccicheck or checkpatch.pl?
-(we can describe it in coding style documentation, of course)
+Just in two other bare metal hosts I have same situation of 1.3 (old 
+O.S. and old nfs) and I obtain sync and asyc mode in host B similar in 
+about:
+real    0m37.050s
+user    0m9.326s
+sys    0m4.220s
+in that case the host A has a controller RAID bus controller: 
+Hewlett-Packard Company Smart Array G6 controllers (rev 01)
 
+Now my question why is there to much difference from sync and async mode?
 
-IMHO, we should not (ab)use include/linux/kconfig.h
-to bring in misc things.
+I try to optimize network in A and B, I try to mount with different 
+rsize and wsize in B host, I try to change timeo in nfs from B.|
+I try to to increase nfsd threads in host A.
+I try to change disk scheduler ( /sys/block/sda/queue/scheduler noop 
+deadline [cfq]) in host A.
+I try to use NFS3.
 
+I observe some little improvement in some case but the gap from async 
+and sync is always very high, except for the bare metal with G6 array 
+controller.
 
---=20
-Best Regards
-Masahiro Yamada
+We would like to use nfs with sync for our infrastructure, but we can 
+not loose to much performance.
+
+Is there a way to use sync mode with some specific parameter and improve 
+considerably performance?
+
+Thanks in advance for any hint.
+Cheers
+Sergio
+
