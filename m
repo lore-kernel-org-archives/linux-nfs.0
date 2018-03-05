@@ -1,154 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:61702 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751462AbeCEQji (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 5 Mar 2018 11:39:38 -0500
-Subject: Re: [PATCH] Removed -Werror=unused-result warnings.
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <20180305155420.104418-1-steved@redhat.com>
- <77652250-8A81-4BE0-B5E5-69707D4E210B@oracle.com>
-From: Steve Dickson <SteveD@RedHat.com>
-Message-ID: <b66fb6f9-e577-57fc-e3a0-bf7112719727@RedHat.com>
-Date: Mon, 5 Mar 2018 11:39:37 -0500
-MIME-Version: 1.0
-In-Reply-To: <77652250-8A81-4BE0-B5E5-69707D4E210B@oracle.com>
-Content-Type: text/plain; charset=utf-8
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:47082 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751679AbeCERSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Mar 2018 12:18:12 -0500
+From: Kenneth Dsouza <kdsouza@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: bfields@fieldses.org
+Subject: [PATCH] Switch to getopt instead of parsing the flags by hand.
+Date: Mon,  5 Mar 2018 22:48:06 +0530
+Message-Id: <20180305171806.9576-1-kdsouza@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
+---
+ nfs4_getfacl/nfs4_getfacl.c | 62 ++++++++++++++++++++++++++++++---------------
+ 1 file changed, 41 insertions(+), 21 deletions(-)
 
+diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
+index 1705d35..5a9c911 100644
+--- a/nfs4_getfacl/nfs4_getfacl.c
++++ b/nfs4_getfacl/nfs4_getfacl.c
+@@ -40,6 +40,7 @@
+ #include <libgen.h>
+ #include "libacl_nfs4.h"
+ #include <ftw.h>
++#include <getopt.h>
+ 
+ static void usage(int);
+ static void more_help();
+@@ -52,10 +53,17 @@ static int recursive(const char *fpath, const struct stat *sb, int tflag, struct
+ 	return 0;
+ }
+ 
++static struct option long_options[] = {
++        {"more-help",    0, 0, 'H' },
++        {"help",         0, 0, 'h' },
++        {"recursive",     0, 0, 'R' },
++        { NULL,          0, 0, 0,  },
++};
++
+ int main(int argc, char **argv)
+ {
+-	int res = 1;
+-	int counter = 1;
++	int opt, res = 1;
++        int do_recursive = 0;
+ 	
+ 	execname = basename(argv[0]);
+ 
+@@ -63,27 +71,39 @@ int main(int argc, char **argv)
+ 		fprintf(stderr, "%s: you must specify a path.\n", execname);
+ 		usage(0);
+ 		goto out;
+-	} else if (!strcmp(argv[1], "-?") || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
+-		usage(1);
+-		res = 0;
+-		goto out;
+-	} else if (!strcmp(argv[1], "-H") || !strcmp(argv[1], "--more-help")) {
+-		more_help();
+-		res = 0;
+-		goto out;
+-	} else if (!strcmp(argv[1], "-R") || !strcmp(argv[1], "--recursive")) {
+-		if (argc < 3)
+-			usage(1);
+-		for(counter = 2; counter < argc; counter++) {
+-			if (nftw(argv[counter], recursive, 20, 0) == -1) {
+-				printf("Invalid filename: %s\n", argv[counter]);
+-			}
++	}
++
++	while ((opt = getopt_long(argc, argv, "HR?h", long_options, NULL)) != -1) {
++		switch(opt) {
++			case 'H':
++				more_help();
++				res = 0;
++				goto out;
++
++			case 'R':
++				do_recursive = 1;
++				break;
++
++			default:
++				usage(1);
++				res = 0;
++				goto out;
+ 		}
+-		res = 0;
++	}
++
++	if (optind >= argc) {
++		fprintf(stderr, "%s: you must specify a path after options.\n", execname);
++		usage(0);
+ 		goto out;
+ 	}
+-	for (counter = 1; counter < argc; counter++) {
+-		print_acl_from_path(argv[counter]);
++
++	for(; optind < argc; optind++) {
++		if(do_recursive) {
++			if (nftw(argv[optind], recursive, 20, 0) == -1)
++				printf("Invalid filename: %s\n", argv[optind]);
++		}
++		else
++			print_acl_from_path(argv[optind]);
+ 		res = 0;
+ 	}
+ out:
+@@ -105,7 +125,7 @@ static void usage(int label)
+ {
+ 	if (label)
+ 		fprintf(stderr, "%s %s -- get NFSv4 file or directory access control lists.\n", execname, VERSION);
+-	fprintf(stderr, "Usage: %s file\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
++	fprintf(stderr, "Usage: %s [-R] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
+ }
+ 
+ static void more_help()
+-- 
+2.9.5
 
-On 03/05/2018 11:06 AM, Chuck Lever wrote:
-> Hi Steve-
-> 
->> On Mar 5, 2018, at 10:54 AM, Steve Dickson <steved@redhat.com> wrote:
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->> support/nfs/nfs_mntent.c         | 3 ++-
->> utils/blkmapd/device-discovery.c | 6 ++++--
->> utils/mount/network.c            | 8 ++++++--
->> utils/nfsd/nfssvc.c              | 5 +++--
->> utils/statd/statd.c              | 3 ++-
->> 5 files changed, 17 insertions(+), 8 deletions(-)
->>
->> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
->> index a2118a2..c60988a 100644
->> --- a/support/nfs/nfs_mntent.c
->> +++ b/support/nfs/nfs_mntent.c
->> @@ -150,7 +150,8 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
->> 		res = fflush(mfp->mntent_fp);
->> 		if (res < 0)
->> 			/* Avoid leaving a corrupt mtab file */
->> -			ftruncate(fileno(mfp->mntent_fp), length);
->> +			if (ftruncate(fileno(mfp->mntent_fp), length))
->> +				{/* ignore return value */};
-> 
-> Why not
-> 
-> 			(void)ftruncate(fileno(mfp->mntent_fp), length);
-> 
-> ?
-That was the first I tried and it did not work... I still got the 
-warning/error... If you have any better idea, I'm all hears! :-)
-
-And more strangeness... I did not see these warning/errrors when I
-compiled the upstream git tree on a Fedora 27 box but I do
-see them when I take that tree and compile for an Fedora 28 rpm.
-
-Thanks for cycles! 
-
-steved.
-> 
-> 
->> 	}
->> 	return (res < 0) ? 1 : 0;
->> }
->> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
->> index b71c949..1afc80f 100644
->> --- a/utils/blkmapd/device-discovery.c
->> +++ b/utils/blkmapd/device-discovery.c
->> @@ -504,9 +504,11 @@ int main(int argc, char **argv)
->> 			close(pidfd);
->> 			exit(1);
->> 		}
->> -		ftruncate(pidfd, 0);
->> +		if (ftruncate(pidfd, 0) < 0)
->> +			BL_LOG_WARNING("ftruncate on %s failed: m\n", PID_FILE);
->> 		sprintf(pidbuf, "%d\n", getpid());
->> -		write(pidfd, pidbuf, strlen(pidbuf));
->> +		if (write(pidfd, pidbuf, strlen(pidbuf)) != (ssize_t)strlen(pidbuf))
->> +			BL_LOG_WARNING("write on %s failed: m\n", PID_FILE);
->> 	}
->>
->> 	signal(SIGINT, sig_die);
->> diff --git a/utils/mount/network.c b/utils/mount/network.c
->> index 8d6e4c6..9a2c878 100644
->> --- a/utils/mount/network.c
->> +++ b/utils/mount/network.c
->> @@ -811,8 +811,12 @@ int start_statd(void)
->> 			switch (pid) {
->> 			case 0: /* child */
->> 				setgroups(0, NULL);
->> -				setgid(0);
->> -				setuid(0);
->> +				if (setgid(0) < 0)
->> +					nfs_error(_("%s: setgid(0) failed: %s"),
->> +						progname, strerror(errno));
->> +				if (setuid(0) < 0)
->> +					nfs_error(_("%s: setuid(0) failed: %s"),
->> +						progname, strerror(errno));
->> 				execle(START_STATD, START_STATD, NULL, envp);
->> 				exit(1);
->> 			case -1: /* error */
->> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
->> index fc36792..7923f5d 100644
->> --- a/utils/nfsd/nfssvc.c
->> +++ b/utils/nfsd/nfssvc.c
->> @@ -68,7 +68,7 @@ nfssvc_mount_nfsdfs(char *progname)
->> 	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
->> 	 * code from it and just check for the "threads" file afterward.
->> 	 */
->> -	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
->> +	err = system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
->>
->> 	err = stat(NFSD_THREAD_FILE, &statbuf);
->> 	if (err == 0)
->> @@ -325,7 +325,8 @@ nfssvc_set_time(const char *type, const int seconds)
->> 		/* set same value for lockd */
->> 		fd = open("/proc/sys/fs/nfs/nlm_grace_period", O_WRONLY);
->> 		if (fd >= 0) {
->> -			write(fd, nbuf, strlen(nbuf));
->> +			if (write(fd, nbuf, strlen(nbuf)) != (ssize_t)strlen(nbuf))
->> +				xlog(L_ERROR, "Unable to write nlm_grace_period : %m");
->> 			close(fd);
->> 		}
->> 	}
->> diff --git a/utils/statd/statd.c b/utils/statd/statd.c
->> index 197d853..563a272 100644
->> --- a/utils/statd/statd.c
->> +++ b/utils/statd/statd.c
->> @@ -225,7 +225,8 @@ static void set_nlm_port(char *type, int port)
->> 	fd = open(pathbuf, O_WRONLY);
->> 	if (fd < 0 && errno == ENOENT) {
->> 		/* probably module not loaded */
->> -		system("modprobe lockd");
->> +		if (system("modprobe lockd"))
->> +			{/* ignore return value */};
->> 		fd = open(pathbuf, O_WRONLY);
->> 	}
->> 	if (fd >= 0) {
->> -- 
->> 2.14.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
