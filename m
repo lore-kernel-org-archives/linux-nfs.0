@@ -1,235 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37810 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:37820 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752162AbeCEVuY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 5 Mar 2018 16:50:24 -0500
-Date: Mon, 5 Mar 2018 16:50:23 -0500
-To: Sergio Traldi <sergio.traldi@pd.infn.it>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: NFS sync and async mode
-Message-ID: <20180305215023.GB29226@fieldses.org>
-References: <b4b5c9d2-409f-fbd3-4b87-7b4ae41427cf@pd.infn.it>
+        id S1752931AbeCEVxv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Mar 2018 16:53:51 -0500
+Date: Mon, 5 Mar 2018 16:53:50 -0500
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Removed -Werror=unused-result warnings.
+Message-ID: <20180305215350.GC29226@fieldses.org>
+References: <20180305155420.104418-1-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <b4b5c9d2-409f-fbd3-4b87-7b4ae41427cf@pd.infn.it>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180305155420.104418-1-steved@redhat.com>
 From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This should be on a FAQ or something.  Anyway, because I've been
-thinking about it lately:
+On Mon, Mar 05, 2018 at 10:54:20AM -0500, Steve Dickson wrote:
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  support/nfs/nfs_mntent.c         | 3 ++-
+>  utils/blkmapd/device-discovery.c | 6 ++++--
+>  utils/mount/network.c            | 8 ++++++--
+>  utils/nfsd/nfssvc.c              | 5 +++--
+>  utils/statd/statd.c              | 3 ++-
+>  5 files changed, 17 insertions(+), 8 deletions(-)
+> 
+> diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+> index a2118a2..c60988a 100644
+> --- a/support/nfs/nfs_mntent.c
+> +++ b/support/nfs/nfs_mntent.c
+> @@ -150,7 +150,8 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
+>  		res = fflush(mfp->mntent_fp);
+>  		if (res < 0)
+>  			/* Avoid leaving a corrupt mtab file */
+> -			ftruncate(fileno(mfp->mntent_fp), length);
+> +			if (ftruncate(fileno(mfp->mntent_fp), length))
+> +				{/* ignore return value */};
 
-On an NFS filesystem, creation of a new file is a synchronous operation:
-the client doesn't return from open()/creat() until it's gotten a
-response from the server, and the server isn't allowed to respond until
-it knows that the file creation has actually reached disk--so it'll
-generally be waiting for at least a disk seek or two.
-
-Also when it finishes writing a file and closes it, the close() has to
-wait again for the new data to hit disk.
-
-That's probably what dominates the runtime in your case.  Take the
-number of files in that tarball and divide into the total runtime, and
-the answer will probably be about the time it takes to create one file
-and commit the write data on close.
-
-As you know, exporting with async is not recommended--it tells the
-server to violate the protocol and lie to the client, telling it that
-the client that stuff has reached disk when it hasn't really.  This
-works fine until you have a power outage and a bunch of files that the
-file has every right to believe were actually sync'd to disk suddenly
-vanish....
-
-Other possible solutions/workarounds:
-
-	- use storage that can commit data to stable storage very
-	  quickly: this is what most "real" NFS servers do, generally I
-	  think by including some kind of battery-backed RAM to use as
-	  write cache.  I don't know if this is something your HP
-	  controllers should be able to do.
-
-	  The cheapo version of this approach that I use for my home
-	  server is an SSD with capacitors sufficient to destage the
-	  write cache on shutdown.  SSDs marketed as "enterprise" often
-	  do this--look for something like "power loss protection" in
-	  the specs.  Since I was too cheap to put all my data on SSDs,
-	  I use an ext4 filesystem on a couple big conventional drives,
-	  mounted with "data=journal" and an external journal on an SSD.
-
-	- write a parallel version of tar.  Tar would go a lot faster if
-	  it wasn't forced to wait for one file creation before starting
-	  the next one.
-
-	- implement NFS write delegations: we've got this on the client,
-	  I'm working on the server.  It can't help with the latency of
-	  the original file create, but it should free the client from
-	  waiting for the close.  But I don't know if/how much it will
-	  help in practice yet.
-
-	- specify/implement NFS directory write delegations: there's not
-	  really any reason the client *couldn't* create files locally
-	  and later commit them to the server, somebody just needs to
-	  write the RFC's and the code.
-
-	  I seem to remember Trond also had a simpler proposal just to
-	  allow the server to return from a file-creating OPEN without
-	  waiting for disk if it returned a write delegation, but I
-	  can't find that proposal right now....
+Might be worth a log warning?
 
 --b.
 
-On Mon, Mar 05, 2018 at 10:53:21AM +0100, Sergio Traldi wrote:
-> I have host A  and host B using nfs4 or nfs3.
-> In host A I mount a partition or a disk formatted in ext4 or xfs in
-> /nfsdisk
-> I put this file inside the directory:
-> wget --no-check-certificate https://root.cern.ch/download/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
-> -O /nfsdisk/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
-> 
-> In host A I export that partition with this line in /etc/exports
-> /nfsdisk
-> 192.168.1.1.0/24(rw,sync,no_wdelay,no_root_squash,no_subtree_check)
-> OR using async mode:
-> /nfsdisk 192.168.1.1.0/24(rw,async,no_root_squash)
-> 
-> From host B I mount via nfs the disk:
-> mount -t nfs <ip-hostA>:/nfsdisk /nfsdisk
-> 
-> and I obtain something similar to (with mount command):
-> 192.168.1.1:/nfstest on /nfstest type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.2,local_lock=none,addr=192.168.1.1)
-> 
-> In host B I exec:
-> time tar zxvf root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
-> 
-> I try with different hosts bare metal or virtual machine and with
-> different controller.
-> 1) with bare metal host:
-> 1.1) A and B bare metal with CentOS7 with kernel 3.10.0-514.2.2.el7
-> with nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and
-> rpcbind-0.2.0-42.el7.x86_64
-> 
-> In host A:
-> real    0m45.338s
-> user    0m8.334s
-> sys    0m5.387s
-> 
-> In Host B I obtain
->   sync mode:
-> real    11m56.146s
-> user    0m9.947s
-> sys    0m8.346s
->   async mode:
-> real    0m46.328s
-> user    0m8.709s
-> sys    0m5.747s
-> 
-> 1.2) A and B bare metal with Ubuntu 14.04 jessie with kernel
-> 3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server
-> 1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
-> 
-> In host A:
-> real    0m10.667s
-> user    0m7.856s
-> sys    0m3.190s
-> 
-> In host B:
->    sync mode:
-> real    9m45.146s
-> user    0m9.697s
-> sys    0m8.037s
->   async mode:
-> real    0m14.843s
-> user    0m7.916s
-> sys    0m3.780s
-> 
-> 1.3) A and B bare metal with Scientific Linux 6.2 with Kernel
-> 2.6.32-220.el6.x86_64 with nfs-utils-1.2.3-15.el6.x86_64 -
-> rpcbind-0.2.0-13.el6_9.1.x86_64
-> 
-> In host A:
-> real    0m5.943s
-> user    0m5.611s
-> sys    0m1.585s
-> 
-> In host B:
->    sync mode:
-> real    8m37.495s
-> user    0m5.680s
-> sys    0m3.091s
->    async mode:
-> real    0m21.121s
-> user    0m5.782s
-> sys    0m3.089s
-> 
-> 2) with Virtual Machine Libvirt KVM
-> 2.1) A and B virtual with CentOS7 with kernel 3.10.0-514.2.2.el7
-> with nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and
-> rpcbind-0.2.0-42.el7.x86_64
-> 
-> In host A:
-> real    0m46.126s
-> user    0m9.034s
-> sys    0m6.187s
-> 
-> In Host B I obtain
->   sync mode:
-> real    12m31.167s
-> user    0m9.997s
-> sys    0m8.466s
->   async mode:
-> real    0m45.388s
-> user    0m8.416s
-> sys    0m5.587s
-> 
-> 2.2) A and B virtual with Ubuntu 14.04 jessie with kernel
-> 3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server
-> 1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
-> In  host A:
-> real    0m10.787s
-> user    0m7.912s
-> sys    0m3.335s
-> 
-> In Host B I obtain
->   sync mode:
-> real    11m54.265s
-> user    0m8.264s
-> sys    0m6.541s
->    async mode:
-> real    0m11.457s
-> user    0m7.619s
-> sys    0m3.531s
-> 
-> Just in two other bare metal hosts I have same situation of 1.3 (old
-> O.S. and old nfs) and I obtain sync and asyc mode in host B similar
-> in about:
-> real    0m37.050s
-> user    0m9.326s
-> sys    0m4.220s
-> in that case the host A has a controller RAID bus controller:
-> Hewlett-Packard Company Smart Array G6 controllers (rev 01)
-> 
-> Now my question why is there to much difference from sync and async mode?
-> 
-> I try to optimize network in A and B, I try to mount with different
-> rsize and wsize in B host, I try to change timeo in nfs from B.|
-> I try to to increase nfsd threads in host A.
-> I try to change disk scheduler ( /sys/block/sda/queue/scheduler noop
-> deadline [cfq]) in host A.
-> I try to use NFS3.
-> 
-> I observe some little improvement in some case but the gap from
-> async and sync is always very high, except for the bare metal with
-> G6 array controller.
-> 
-> We would like to use nfs with sync for our infrastructure, but we
-> can not loose to much performance.
-> 
-> Is there a way to use sync mode with some specific parameter and
-> improve considerably performance?
-> 
-> Thanks in advance for any hint.
-> Cheers
-> Sergio
+>  	}
+>  	return (res < 0) ? 1 : 0;
+>  }
+> diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+> index b71c949..1afc80f 100644
+> --- a/utils/blkmapd/device-discovery.c
+> +++ b/utils/blkmapd/device-discovery.c
+> @@ -504,9 +504,11 @@ int main(int argc, char **argv)
+>  			close(pidfd);
+>  			exit(1);
+>  		}
+> -		ftruncate(pidfd, 0);
+> +		if (ftruncate(pidfd, 0) < 0)
+> +			BL_LOG_WARNING("ftruncate on %s failed: m\n", PID_FILE);
+>  		sprintf(pidbuf, "%d\n", getpid());
+> -		write(pidfd, pidbuf, strlen(pidbuf));
+> +		if (write(pidfd, pidbuf, strlen(pidbuf)) != (ssize_t)strlen(pidbuf))
+> +			BL_LOG_WARNING("write on %s failed: m\n", PID_FILE);
+>  	}
+>  
+>  	signal(SIGINT, sig_die);
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index 8d6e4c6..9a2c878 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -811,8 +811,12 @@ int start_statd(void)
+>  			switch (pid) {
+>  			case 0: /* child */
+>  				setgroups(0, NULL);
+> -				setgid(0);
+> -				setuid(0);
+> +				if (setgid(0) < 0)
+> +					nfs_error(_("%s: setgid(0) failed: %s"),
+> +						progname, strerror(errno));
+> +				if (setuid(0) < 0)
+> +					nfs_error(_("%s: setuid(0) failed: %s"),
+> +						progname, strerror(errno));
+>  				execle(START_STATD, START_STATD, NULL, envp);
+>  				exit(1);
+>  			case -1: /* error */
+> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+> index fc36792..7923f5d 100644
+> --- a/utils/nfsd/nfssvc.c
+> +++ b/utils/nfsd/nfssvc.c
+> @@ -68,7 +68,7 @@ nfssvc_mount_nfsdfs(char *progname)
+>  	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
+>  	 * code from it and just check for the "threads" file afterward.
+>  	 */
+> -	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
+> +	err = system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
+>  
+>  	err = stat(NFSD_THREAD_FILE, &statbuf);
+>  	if (err == 0)
+> @@ -325,7 +325,8 @@ nfssvc_set_time(const char *type, const int seconds)
+>  		/* set same value for lockd */
+>  		fd = open("/proc/sys/fs/nfs/nlm_grace_period", O_WRONLY);
+>  		if (fd >= 0) {
+> -			write(fd, nbuf, strlen(nbuf));
+> +			if (write(fd, nbuf, strlen(nbuf)) != (ssize_t)strlen(nbuf))
+> +				xlog(L_ERROR, "Unable to write nlm_grace_period : %m");
+>  			close(fd);
+>  		}
+>  	}
+> diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+> index 197d853..563a272 100644
+> --- a/utils/statd/statd.c
+> +++ b/utils/statd/statd.c
+> @@ -225,7 +225,8 @@ static void set_nlm_port(char *type, int port)
+>  	fd = open(pathbuf, O_WRONLY);
+>  	if (fd < 0 && errno == ENOENT) {
+>  		/* probably module not loaded */
+> -		system("modprobe lockd");
+> +		if (system("modprobe lockd"))
+> +			{/* ignore return value */};
+>  		fd = open(pathbuf, O_WRONLY);
+>  	}
+>  	if (fd >= 0) {
+> -- 
+> 2.14.3
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
