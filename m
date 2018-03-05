@@ -1,41 +1,155 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:48186 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1163227AbeCBREM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 2 Mar 2018 12:04:12 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: nfs_commit_inode should redirty inode if the inode
- has outstanding requests
-Date: Fri, 2 Mar 2018 17:04:06 +0000
-Message-ID: <1520010245.6669.7.camel@primarydata.com>
-References: <20180302160038.1598-1-smayhew@redhat.com>
-         <1520009534.6669.3.camel@primarydata.com>
-In-Reply-To: <1520009534.6669.3.camel@primarydata.com>
+Received: from condef-08.nifty.com ([202.248.20.73]:17789 "EHLO
+        condef-08.nifty.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S933485AbeCEJlv (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 04:41:51 -0500
+Received: from conssluserg-03.nifty.com ([10.126.8.82])by condef-08.nifty.com with ESMTP id w259SnhU030118
+        for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2018 18:28:49 +0900
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com>
+References: <CAGXu5jLc_A1w4FM8FvQHGSPjLfOu80L_vbt_FkcE6+Bh_XMjxw@mail.gmail.com>
+ <6be06ce5-87e6-0d9d-55b9-6c70c3578ecf@maciej.szmigiero.name> <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com>
+From: Masahiro Yamada <yamada.masahiro@socionext.com>
+Date: Mon, 5 Mar 2018 18:27:44 +0900
+Message-ID: <CAK7LNASKHOb5GNPu9XHWxyq-iucxTRkw99_7wL4zgm5HNc6_SA@mail.gmail.com>
+Subject: Re: RANDSTRUCT structs need linux/compiler_types.h (Was: [nfsd4]
+ potentially hardware breaking regression in 4.14-rc and 4.13.11)
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: "Maciej S. Szmigiero" <mail@maciej.szmigiero.name>,
+        Kees Cook <keescook@chromium.org>,
+        Patrick McLean <chutzpah@gentoo.org>,
+        Emese Revfy <re.emese@gmail.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Bruce Fields <bfields@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Thorsten Leemhuis <regressions@leemhuis.info>,
+        "kernel-hardening@lists.openwall.com"
+        <kernel-hardening@lists.openwall.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTAzLTAyIGF0IDE2OjUyICswMDAwLCBUcm9uZCBNeWtsZWJ1c3Qgd3JvdGU6
-DQo+IE9uIEZyaSwgMjAxOC0wMy0wMiBhdCAxMTowMCAtMDUwMCwgU2NvdHQgTWF5aGV3IHdyb3Rl
-Og0KPiA+IEl0IHNlZW1zIHRoYXQgbmZzX2NvbW1pdF9pbm9kZSBjYW4gYmUgY2FsbGVkIHdoZXJl
-IHRoZSBuZnNfaW5vZGUNCj4gPiBoYXMNCj4gPiBvdXRzdGFuZGluZyByZXF1ZXN0cyBhbmQgdGhl
-IGNvbW1pdCBsaXN0cyBhcmUgZW1wdHkuICBUaGF0IGNhbiBsZWFkDQo+ID4gdG8NCj4gPiBpbnZh
-bGlkYXRlX2NvbXBsZXRlX3BhZ2UyIGZhaWxpbmcgZHVlIHRvIHRoZSBhc3NvY2lhdGVkIHBhZ2Ug
-aGF2aW5nDQo+ID4gcHJpdmF0ZSBkYXRhIHdoaWNoIGluIHR1cm4gbGVhZHMgdG8gaW52YWxpZGF0
-ZV9pbm9kZV9wYWdlczJfcmFuZ2UNCj4gPiByZXR1cm5pbmcgLUVCVVNZLg0KPiA+IA0KPiA+IElu
-c3RlYWQgb2YgaGF2aW5nIG5mc19jb21taXRfaW5vZGUgZXhpdCBlYXJseSB3aGVuIHRoZSBjb21t
-aXQgbGlzdHMNCj4gPiBhcmUNCj4gPiBlbXB0eSwgb25seSBkbyBzbyBpZiBucmVxdWVzdHMgaXMg
-YWxzbyAwLg0KPiA+IA0KPiA+IA0KPiANCj4gSSdtIG5vdCBzZWVpbmcgaG93IHRoaXMgZmFpbHVy
-ZSB3b3VsZCBoYXBwZW4uIElzIHRoZXJlIGEgYnVnIGluDQo+IG5mc19sYXVuZGVyX3BhZ2UoKSBh
-bmQvb3IgbmZzX3diX3BhZ2UoKT8NCj4gDQo+IA0KQWguLi4gSXQgbG9va3MgYXMgaWYgZG9fbGF1
-bmRlcl9wYWdlKCkgb25seSBjaGVja3MgZm9yIFBhZ2VEaXJ0eSgpLCBzbw0KaXQgd29uJ3QgY2F0
-Y2ggdGhlIHVuc3RhYmxlIHdyaXRlIHN0YXRlLiBDYW4ndCB3ZSBmaXggdGhhdD8gSXQgbG9va3Mg
-YXMNCmlmIGFsbCB0aGUgb3RoZXIgZmlsZXN5c3RlbSBsYXVuZGVyX3BhZ2UoKSBoYW5kbGVycyB3
-b3VsZCBiZSBzYWZlIHdpdGgNCmEgY2hlY2sgZm9yIFBhZ2VEaXJ0eSB8fCBQYWdlUHJpdmF0ZS4N
-Cg0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJp
-bWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
+Hi Linus,
 
+2018-02-22 7:47 GMT+09:00 Linus Torvalds <torvalds@linux-foundation.org>:
+> On Wed, Feb 21, 2018 at 2:19 PM, Maciej S. Szmigiero
+> <mail@maciej.szmigiero.name> wrote:
+>>
+>> One can see that offsets used to access various members of struct path a=
+re
+>> different, and also that the original file from step 3 contains an objec=
+t
+>> named "__randomize_layout".
+>
+> Whee.
+>
+> Thanks for root-causing this issue, and this syntax of ours is clearly
+> *much* too fragile.
+>
+> We actually have similar issues with some of our other attributes,
+> where out nice "helpful" attribute shorthand can end up being just
+> silently interpreted as a variable name if they aren't defined in
+> time.
+>
+> For most of our other attributes, it just doesn't matter all that much
+> if some user doesn't happen to see the attribute. For
+> __randomize_layout, it's obviously very fatal, and silently just
+> generates crazy code.
+>
+> I'm not entirely sure what the right solution is, because it's
+> obviously much too easy to miss some #include by mistake. It's easy to
+> say "you should always include the proper header", but if a failure to
+> do so doesn't end up with any warnings or errors, but just silent bad
+> code generation, it's much too fragile.
+>
+> I wonder if we could change the syntax of that "__randomize_layout"
+> thing. Some of our related helper macros (ie
+> randomized_struct_fields_start/end) don't have the same problem,
+> because if you don't have the define for them, the compiler will
+> complain about bad syntax.
+>
+> And other attribute specifiers we encourage people to put in other
+> parts of the type, like __user etc, so they don't have that same
+> parsing issue.
+>
+> I guess one _extreme_ fix for this would be to put
+>
+>     extern struct nostruct __randomize_layout;
+>
+> in our include/linux/kconfig.h, which I think we end up always
+> including first thanks to having it on the command line.
+>
+> Because if you do that, you actually get an error:
+>
+>     CC [M]  fs/nfsd/nfs4xdr.o
+>   In file included from ./include/linux/fs_struct.h:5:0,
+>                    from fs/nfsd/nfs4xdr.c:36:
+>   ./include/linux/path.h:11:3: error: conflicting types for =E2=80=98__ra=
+ndomize_layout=E2=80=99
+>    } __randomize_layout;
+>      ^~~~~~~~~~~~~~~~~~
+>   In file included from <command-line>:0:0:
+>   ././include/linux/kconfig.h:8:28: note: previous declaration of
+> =E2=80=98__randomize_layout=E2=80=99 was here
+>        extern struct nostruct __randomize_layout;
+>                               ^~~~~~~~~~~~~~~~~~
+>   make[1]: *** [scripts/Makefile.build:317: fs/nfsd/nfs4xdr.o] Error 1
+>
+> and we would have figured this out immediately.
+>
+> Broken example patch appended, in case somebody wants to play with
+> something like this or comes up with a better model entirely..
+>
+>                Linus
+>
+
+
+Sorry for chiming in late.
+
+I noticed this thread today,
+honestly, the commit made me upset.
+
+
+Can I suggest another way to make it less fragile?
+__attribute((...)) can be placed after 'struct'.
+
+
+So, we can write:
+
+
+struct __randomize_layout path {
+        struct vfsmount *mnt;
+        struct dentry *dentry;
+};
+
+
+  instead of
+
+
+struct path {
+        struct vfsmount *mnt;
+        struct dentry *dentry;
+} __randomize_layout;
+
+
+
+If we force the former notation,
+the undefined __randomize_layout results in a build error
+instead of silent broken code generation.
+
+
+It is true somebody can still place
+__randomize_layout after the closing brace,
+but can we check this by coccicheck or checkpatch.pl?
+(we can describe it in coding style documentation, of course)
+
+
+IMHO, we should not (ab)use include/linux/kconfig.h
+to bring in misc things.
+
+
+--=20
+Best Regards
+Masahiro Yamada
