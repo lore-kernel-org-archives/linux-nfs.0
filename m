@@ -1,121 +1,90 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:47082 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751679AbeCERSM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 5 Mar 2018 12:18:12 -0500
-From: Kenneth Dsouza <kdsouza@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: bfields@fieldses.org
-Subject: [PATCH] Switch to getopt instead of parsing the flags by hand.
-Date: Mon,  5 Mar 2018 22:48:06 +0530
-Message-Id: <20180305171806.9576-1-kdsouza@redhat.com>
+Received: from mail-ua0-f195.google.com ([209.85.217.195]:40307 "EHLO
+        mail-ua0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751311AbeCETPh (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 14:15:37 -0500
+Received: by mail-ua0-f195.google.com with SMTP id c14so11283998uak.7
+        for <linux-nfs@vger.kernel.org>; Mon, 05 Mar 2018 11:15:37 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <CAK7LNASKHOb5GNPu9XHWxyq-iucxTRkw99_7wL4zgm5HNc6_SA@mail.gmail.com>
+References: <CAGXu5jLc_A1w4FM8FvQHGSPjLfOu80L_vbt_FkcE6+Bh_XMjxw@mail.gmail.com>
+ <6be06ce5-87e6-0d9d-55b9-6c70c3578ecf@maciej.szmigiero.name>
+ <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com> <CAK7LNASKHOb5GNPu9XHWxyq-iucxTRkw99_7wL4zgm5HNc6_SA@mail.gmail.com>
+From: Kees Cook <keescook@chromium.org>
+Date: Mon, 5 Mar 2018 11:15:35 -0800
+Message-ID: <CAGXu5jJo+c4d+=57rFiHaFrOHxDHVSZzMhWSMqNQe+tcw0-4zQ@mail.gmail.com>
+Subject: Re: RANDSTRUCT structs need linux/compiler_types.h (Was: [nfsd4]
+ potentially hardware breaking regression in 4.14-rc and 4.13.11)
+To: Masahiro Yamada <yamada.masahiro@socionext.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        "Maciej S. Szmigiero" <mail@maciej.szmigiero.name>,
+        Patrick McLean <chutzpah@gentoo.org>,
+        Emese Revfy <re.emese@gmail.com>,
+        Al Viro <viro@zeniv.linux.org.uk>,
+        Bruce Fields <bfields@redhat.com>,
+        "Darrick J. Wong" <darrick.wong@oracle.com>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Thorsten Leemhuis <regressions@leemhuis.info>,
+        "kernel-hardening@lists.openwall.com"
+        <kernel-hardening@lists.openwall.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kenneth D'souza <kdsouza@redhat.com>
----
- nfs4_getfacl/nfs4_getfacl.c | 62 ++++++++++++++++++++++++++++++---------------
- 1 file changed, 41 insertions(+), 21 deletions(-)
+On Mon, Mar 5, 2018 at 1:27 AM, Masahiro Yamada
+<yamada.masahiro@socionext.com> wrote:
+> Sorry for chiming in late.
+>
+> I noticed this thread today,
+> honestly, the commit made me upset.
+>
+>
+> Can I suggest another way to make it less fragile?
+> __attribute((...)) can be placed after 'struct'.
+>
+>
+> So, we can write:
+>
+>
+> struct __randomize_layout path {
+>         struct vfsmount *mnt;
+>         struct dentry *dentry;
+> };
+>
+>
+>   instead of
+>
+>
+> struct path {
+>         struct vfsmount *mnt;
+>         struct dentry *dentry;
+> } __randomize_layout;
 
-diff --git a/nfs4_getfacl/nfs4_getfacl.c b/nfs4_getfacl/nfs4_getfacl.c
-index 1705d35..5a9c911 100644
---- a/nfs4_getfacl/nfs4_getfacl.c
-+++ b/nfs4_getfacl/nfs4_getfacl.c
-@@ -40,6 +40,7 @@
- #include <libgen.h>
- #include "libacl_nfs4.h"
- #include <ftw.h>
-+#include <getopt.h>
- 
- static void usage(int);
- static void more_help();
-@@ -52,10 +53,17 @@ static int recursive(const char *fpath, const struct stat *sb, int tflag, struct
- 	return 0;
- }
- 
-+static struct option long_options[] = {
-+        {"more-help",    0, 0, 'H' },
-+        {"help",         0, 0, 'h' },
-+        {"recursive",     0, 0, 'R' },
-+        { NULL,          0, 0, 0,  },
-+};
-+
- int main(int argc, char **argv)
- {
--	int res = 1;
--	int counter = 1;
-+	int opt, res = 1;
-+        int do_recursive = 0;
- 	
- 	execname = basename(argv[0]);
- 
-@@ -63,27 +71,39 @@ int main(int argc, char **argv)
- 		fprintf(stderr, "%s: you must specify a path.\n", execname);
- 		usage(0);
- 		goto out;
--	} else if (!strcmp(argv[1], "-?") || !strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
--		usage(1);
--		res = 0;
--		goto out;
--	} else if (!strcmp(argv[1], "-H") || !strcmp(argv[1], "--more-help")) {
--		more_help();
--		res = 0;
--		goto out;
--	} else if (!strcmp(argv[1], "-R") || !strcmp(argv[1], "--recursive")) {
--		if (argc < 3)
--			usage(1);
--		for(counter = 2; counter < argc; counter++) {
--			if (nftw(argv[counter], recursive, 20, 0) == -1) {
--				printf("Invalid filename: %s\n", argv[counter]);
--			}
-+	}
-+
-+	while ((opt = getopt_long(argc, argv, "HR?h", long_options, NULL)) != -1) {
-+		switch(opt) {
-+			case 'H':
-+				more_help();
-+				res = 0;
-+				goto out;
-+
-+			case 'R':
-+				do_recursive = 1;
-+				break;
-+
-+			default:
-+				usage(1);
-+				res = 0;
-+				goto out;
- 		}
--		res = 0;
-+	}
-+
-+	if (optind >= argc) {
-+		fprintf(stderr, "%s: you must specify a path after options.\n", execname);
-+		usage(0);
- 		goto out;
- 	}
--	for (counter = 1; counter < argc; counter++) {
--		print_acl_from_path(argv[counter]);
-+
-+	for(; optind < argc; optind++) {
-+		if(do_recursive) {
-+			if (nftw(argv[optind], recursive, 20, 0) == -1)
-+				printf("Invalid filename: %s\n", argv[optind]);
-+		}
-+		else
-+			print_acl_from_path(argv[optind]);
- 		res = 0;
- 	}
- out:
-@@ -105,7 +125,7 @@ static void usage(int label)
- {
- 	if (label)
- 		fprintf(stderr, "%s %s -- get NFSv4 file or directory access control lists.\n", execname, VERSION);
--	fprintf(stderr, "Usage: %s file\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
-+	fprintf(stderr, "Usage: %s [-R] file ...\n  -H, --more-help\tdisplay ACL format information\n  -?, -h, --help\tdisplay this help text\n  -R --recursive\trecurse into subdirectories\n", execname);
- }
- 
- static void more_help()
+Ugh. I had tried this after the struct _name_, not after "struct"
+itself. This does fix it, though it remains fragile, as you mention.
+
+> If we force the former notation,
+> the undefined __randomize_layout results in a build error
+> instead of silent broken code generation.
+>
+>
+> It is true somebody can still place
+> __randomize_layout after the closing brace,
+> but can we check this by coccicheck or checkpatch.pl?
+> (we can describe it in coding style documentation, of course)
+>
+>
+> IMHO, we should not (ab)use include/linux/kconfig.h
+> to bring in misc things.
+
+I'm happy to send a patch that reverts the other changes and relocates
+all the markings...
+
+Linus, how would you like this to go?
+
+-Kees
+
 -- 
-2.9.5
-
+Kees Cook
+Pixel Security
