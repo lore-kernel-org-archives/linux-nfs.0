@@ -1,63 +1,61 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:37782 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752063AbeCEVQT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 5 Mar 2018 16:16:19 -0500
-Date: Mon, 5 Mar 2018 16:16:19 -0500
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
-        linux-nfs@vger.kernel.org
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:25350 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1752063AbeCEVsR (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 16:48:17 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH] nfs: nfs_commit_inode should redirty inode if the inode
  has outstanding requests
-Message-ID: <20180305211619.GA29226@fieldses.org>
+Date: Mon, 5 Mar 2018 21:48:13 +0000
+Message-ID: <1520286491.21829.13.camel@primarydata.com>
 References: <20180302160038.1598-1-smayhew@redhat.com>
+         <20180305211619.GA29226@fieldses.org>
+In-Reply-To: <20180305211619.GA29226@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180302160038.1598-1-smayhew@redhat.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 02, 2018 at 11:00:38AM -0500, Scott Mayhew wrote:
-> It seems that nfs_commit_inode can be called where the nfs_inode has
-> outstanding requests and the commit lists are empty.  That can lead to
-> invalidate_complete_page2 failing due to the associated page having
-> private data which in turn leads to invalidate_inode_pages2_range
-> returning -EBUSY.
+T24gTW9uLCAyMDE4LTAzLTA1IGF0IDE2OjE2IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIEZyaSwgTWFyIDAyLCAyMDE4IGF0IDExOjAwOjM4QU0gLTA1MDAsIFNjb3R0IE1heWhl
+dyB3cm90ZToNCj4gPiBJdCBzZWVtcyB0aGF0IG5mc19jb21taXRfaW5vZGUgY2FuIGJlIGNhbGxl
+ZCB3aGVyZSB0aGUgbmZzX2lub2RlDQo+ID4gaGFzDQo+ID4gb3V0c3RhbmRpbmcgcmVxdWVzdHMg
+YW5kIHRoZSBjb21taXQgbGlzdHMgYXJlIGVtcHR5LiAgVGhhdCBjYW4gbGVhZA0KPiA+IHRvDQo+
+ID4gaW52YWxpZGF0ZV9jb21wbGV0ZV9wYWdlMiBmYWlsaW5nIGR1ZSB0byB0aGUgYXNzb2NpYXRl
+ZCBwYWdlIGhhdmluZw0KPiA+IHByaXZhdGUgZGF0YSB3aGljaCBpbiB0dXJuIGxlYWRzIHRvIGlu
+dmFsaWRhdGVfaW5vZGVfcGFnZXMyX3JhbmdlDQo+ID4gcmV0dXJuaW5nIC1FQlVTWS4NCj4gDQo+
+IEZvciB3aGF0IGl0J3Mgd29ydGgsIEkgdmVyaWZpZWQgdGhhdCB0aGlzIGZpeGVzIHRoZSBFQlVT
+WSBJIHdhcw0KPiBzZWVpbmc6DQo+IA0KPiAJaHR0cDovL21hcmMuaW5mby8/aT0yMDE4MDIyMzE2
+MDM1MC5HRjE1ODc2QGZpZWxkc2VzLm9yZw0KPiANCg0KRmluZSwgYnV0IHRoZSBwYXRjaCB3aWxs
+IGFsc28gY2F1c2UgdGhlIGlub2RlIHRvIGJlIG1hcmtlZCBhcyBkaXJ0eSBpbg0KY2FzZXMgd2hl
+cmUgdGhlcmUgYXJlIG5vIHVuc3RhYmxlIHdyaXRlcyB0byBjb21taXQsIGJ1dCB0aGVyZSBhcmUg
+cGFnZXMNCnVuZGVyZ29pbmcgd3JpdGViYWNrLg0KSU9XOiBpdCByZWdyZXNzZXMgdGhlIGZpeCB0
+aGF0IHdhcyBtYWRlIGluIGRjNGZkOWFiMDENCg0KU28gcGxlYXNlIGRvIGxvb2sgaW50byBmaXhp
+bmcgZG9fbGF1bmRlcl9wYWdlKCkuDQoNCj4gDQo+ID4gDQo+ID4gSW5zdGVhZCBvZiBoYXZpbmcg
+bmZzX2NvbW1pdF9pbm9kZSBleGl0IGVhcmx5IHdoZW4gdGhlIGNvbW1pdCBsaXN0cw0KPiA+IGFy
+ZQ0KPiA+IGVtcHR5LCBvbmx5IGRvIHNvIGlmIG5yZXF1ZXN0cyBpcyBhbHNvIDAuDQo+ID4gDQo+
+ID4gRml4ZXM6IGRjNGZkOWFiMDEgKCJuZnM6IGRvbid0IHdhaXQgb24gY29tbWl0IGluIG5mc19j
+b21taXRfaW5vZGUoKQ0KPiA+IGlmIHRoZXJlIHdlcmUgbm8gY29tbWl0IHJlcXVlc3RzIikNCj4g
+PiBTaWduZWQtb2ZmLWJ5OiBTY290dCBNYXloZXcgPHNtYXloZXdAcmVkaGF0LmNvbT4NCj4gPiAt
+LS0NCj4gPiAgZnMvbmZzL3dyaXRlLmMgfCAyICstDQo+ID4gIDEgZmlsZSBjaGFuZ2VkLCAxIGlu
+c2VydGlvbigrKSwgMSBkZWxldGlvbigtKQ0KPiA+IA0KPiA+IGRpZmYgLS1naXQgYS9mcy9uZnMv
+d3JpdGUuYyBiL2ZzL25mcy93cml0ZS5jDQo+ID4gaW5kZXggNzQyOGE2Ni4uMDI2OGJkMSAxMDA2
+NDQNCj4gPiAtLS0gYS9mcy9uZnMvd3JpdGUuYw0KPiA+ICsrKyBiL2ZzL25mcy93cml0ZS5jDQo+
+ID4gQEAgLTE4OTAsNyArMTg5MCw3IEBAIGludCBuZnNfY29tbWl0X2lub2RlKHN0cnVjdCBpbm9k
+ZSAqaW5vZGUsIGludA0KPiA+IGhvdykNCj4gPiAgCWlmIChyZXMpDQo+ID4gIAkJZXJyb3IgPSBu
+ZnNfZ2VuZXJpY19jb21taXRfbGlzdChpbm9kZSwgJmhlYWQsIGhvdywNCj4gPiAmY2luZm8pOw0K
+PiA+ICAJbmZzX2NvbW1pdF9lbmQoY2luZm8ubWRzKTsNCj4gPiAtCWlmIChyZXMgPT0gMCkNCj4g
+PiArCWlmIChyZXMgPT0gMCAmJiAhbmZzX2hhdmVfd3JpdGViYWNrcyhpbm9kZSkpDQo+ID4gIAkJ
+cmV0dXJuIHJlczsNCj4gPiAgCWlmIChlcnJvciA8IDApDQo+ID4gIAkJZ290byBvdXRfZXJyb3I7
+DQo+ID4gLS0gDQo+ID4gMi45LjUNCj4gPiANCj4gPiAtLQ0KPiA+IFRvIHVuc3Vic2NyaWJlIGZy
+b20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC0NCj4gPiBuZnMi
+IGluDQo+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5v
+cmcNCj4gPiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21h
+am9yZG9tby1pbmZvLmh0bWwNCj4gDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5
+ZGF0YS5jb20NCg==
 
-For what it's worth, I verified that this fixes the EBUSY I was seeing:
-
-	http://marc.info/?i=20180223160350.GF15876@fieldses.org
-
---b.
-
-> 
-> Instead of having nfs_commit_inode exit early when the commit lists are
-> empty, only do so if nrequests is also 0.
-> 
-> Fixes: dc4fd9ab01 ("nfs: don't wait on commit in nfs_commit_inode() if there were no commit requests")
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/write.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 7428a66..0268bd1 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1890,7 +1890,7 @@ int nfs_commit_inode(struct inode *inode, int how)
->  	if (res)
->  		error = nfs_generic_commit_list(inode, &head, how, &cinfo);
->  	nfs_commit_end(cinfo.mds);
-> -	if (res == 0)
-> +	if (res == 0 && !nfs_have_writebacks(inode))
->  		return res;
->  	if (error < 0)
->  		goto out_error;
-> -- 
-> 2.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
