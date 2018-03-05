@@ -1,52 +1,53 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f181.google.com ([209.85.223.181]:36322 "EHLO
-        mail-io0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751490AbeCETSw (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 14:18:52 -0500
+Received: from mail-io0-f193.google.com ([209.85.223.193]:34108 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751462AbeCEUMx (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 15:12:53 -0500
+Subject: [PATCH 0/9] Second round of v4.17 NFS/RDMA client patches
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Mon, 05 Mar 2018 15:12:51 -0500
+Message-ID: <20180305200825.10904.40829.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <CAK7LNASKHOb5GNPu9XHWxyq-iucxTRkw99_7wL4zgm5HNc6_SA@mail.gmail.com>
-References: <CAGXu5jLc_A1w4FM8FvQHGSPjLfOu80L_vbt_FkcE6+Bh_XMjxw@mail.gmail.com>
- <6be06ce5-87e6-0d9d-55b9-6c70c3578ecf@maciej.szmigiero.name>
- <CA+55aFz-AD8rWb66rjN-YhAtPXukMiGSFfW3nBMCp8k1RYUvOQ@mail.gmail.com> <CAK7LNASKHOb5GNPu9XHWxyq-iucxTRkw99_7wL4zgm5HNc6_SA@mail.gmail.com>
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Date: Mon, 5 Mar 2018 11:18:50 -0800
-Message-ID: <CA+55aFyf9NkW26BNyEnvUT60u2oXezRiXMexdHy8yx1AD9aUYw@mail.gmail.com>
-Subject: Re: RANDSTRUCT structs need linux/compiler_types.h (Was: [nfsd4]
- potentially hardware breaking regression in 4.14-rc and 4.13.11)
-To: Masahiro Yamada <yamada.masahiro@socionext.com>
-Cc: "Maciej S. Szmigiero" <mail@maciej.szmigiero.name>,
-        Kees Cook <keescook@chromium.org>,
-        Patrick McLean <chutzpah@gentoo.org>,
-        Emese Revfy <re.emese@gmail.com>,
-        Al Viro <viro@zeniv.linux.org.uk>,
-        Bruce Fields <bfields@redhat.com>,
-        "Darrick J. Wong" <darrick.wong@oracle.com>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Thorsten Leemhuis <regressions@leemhuis.info>,
-        "kernel-hardening@lists.openwall.com"
-        <kernel-hardening@lists.openwall.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 5, 2018 at 1:27 AM, Masahiro Yamada
-<yamada.masahiro@socionext.com> wrote:
->
-> Can I suggest another way to make it less fragile?
-> __attribute((...)) can be placed after 'struct'.
+Hi Anna-
 
-That avoids the actual bug, but it wouldn't have helped _find_ the
-problem in the first place.
+Second round of three. This set could be more controversial. In it,
+I adjust some code paths so that I can create rpcrdma-specific
+alloc_slot and free_slot methods. These are clean-ups that make
+it straightforward to do the changes coming in the third round,
+and hopefully add a little bit of a scalability boost as well.
 
-If somebody ever does the same thing, they'd hit the same issue. And
-it's not just __randomize_struct, it's any of our other type markers.
 
-We can say "don't do that", but if there is no automated checking,
-it's still ripe to cause problems just because somebody didn't notice.
+---
 
-So I'd rather have something that causes a build failure when
-something goes wrong, rather than silently accepting syntax that
-wasn't intended.
+Chuck Lever (9):
+      SUNRPC: Move xprt_update_rtt callsite
+      SUNRPC: Make RTT measurement more precise (Receive)
+      SUNRPC: Make RTT measurement more precise (Send)
+      SUNRPC: Make num_reqs a non-atomic integer
+      SUNRPC: Initialize rpc_rqst outside of xprt->reserve_lock
+      SUNRPC: Add a ->free_slot transport callout
+      xprtrdma: Introduce ->alloc_slot call-out for xprtrdma
+      xprtrdma: Make rpc_rqst part of rpcrdma_req
+      xprtrdma: Allocate rpcrdma_reps during Receive completion
 
-                   Linus
+
+ include/linux/sunrpc/xprt.h                |    9 ++-
+ net/sunrpc/clnt.c                          |    1 
+ net/sunrpc/xprt.c                          |   51 +++++++++------
+ net/sunrpc/xprtrdma/backchannel.c          |   94 ++++++++++------------------
+ net/sunrpc/xprtrdma/rpc_rdma.c             |    8 ++
+ net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 
+ net/sunrpc/xprtrdma/transport.c            |   61 ++++++++++++++----
+ net/sunrpc/xprtrdma/verbs.c                |   35 ++++++++--
+ net/sunrpc/xprtrdma/xprt_rdma.h            |   13 +---
+ net/sunrpc/xprtsock.c                      |    8 ++
+ 10 files changed, 166 insertions(+), 115 deletions(-)
+
+--
+Chuck Lever
