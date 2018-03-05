@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:39969 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751462AbeCEUNJ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 15:13:09 -0500
-Subject: [PATCH 3/9] SUNRPC: Make RTT measurement more precise (Send)
+Received: from mail-io0-f196.google.com ([209.85.223.196]:43046 "EHLO
+        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751462AbeCEUM6 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 15:12:58 -0500
+Subject: [PATCH 1/9] SUNRPC: Move xprt_update_rtt callsite
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 05 Mar 2018 15:13:07 -0500
-Message-ID: <20180305201307.10904.62368.stgit@manet.1015granger.net>
+Date: Mon, 05 Mar 2018 15:12:57 -0500
+Message-ID: <20180305201256.10904.41488.stgit@manet.1015granger.net>
 In-Reply-To: <20180305200825.10904.40829.stgit@manet.1015granger.net>
 References: <20180305200825.10904.40829.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,75 +16,77 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some RPC transports have more overhead in their send_request
-callouts than others. For example, for RPC-over-RDMA:
-
-- Marshaling an RPC often has to DMA map the RPC arguments
-
-- Registration methods perform memory registration as part of
-  marshaling
-
-To capture just server and network latencies more precisely: when
-sending a Call, capture the rq_xtime timestamp _after_ the transport
-header has been marshaled.
+Since commit 33849792cbcd ("xprtrdma: Detect unreachable NFS/RDMA
+servers more reliably"), the xprtrdma transport now has a ->timer
+callout. But xprtrdma does not need to compute RTT data, only UDP
+needs that. Move the xprt_update_rtt call into the UDP transport
+implementation.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprt.c               |    1 -
- net/sunrpc/xprtrdma/transport.c |    1 +
- net/sunrpc/xprtsock.c           |    3 +++
- 3 files changed, 4 insertions(+), 1 deletion(-)
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/xprt.c           |   11 ++++++++---
+ net/sunrpc/xprtsock.c       |    1 +
+ 3 files changed, 10 insertions(+), 3 deletions(-)
 
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 7fad838..ad322ce 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -373,6 +373,7 @@ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *
+ void			xprt_write_space(struct rpc_xprt *xprt);
+ void			xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result);
+ struct rpc_rqst *	xprt_lookup_rqst(struct rpc_xprt *xprt, __be32 xid);
++void			xprt_update_rtt(struct rpc_task *task);
+ void			xprt_complete_rqst(struct rpc_task *task, int copied);
+ void			xprt_pin_rqst(struct rpc_rqst *req);
+ void			xprt_unpin_rqst(struct rpc_rqst *req);
 diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index cb7784c..73f05a1 100644
+index 8f0ad4f..13fbb48 100644
 --- a/net/sunrpc/xprt.c
 +++ b/net/sunrpc/xprt.c
-@@ -1033,7 +1033,6 @@ void xprt_transmit(struct rpc_task *task)
- 		return;
+@@ -889,7 +889,13 @@ static void xprt_wait_on_pinned_rqst(struct rpc_rqst *req)
+ 	}
+ }
  
- 	connect_cookie = xprt->connect_cookie;
--	req->rq_xtime = ktime_get();
- 	status = xprt->ops->send_request(task);
- 	trace_xprt_transmit(xprt, req->rq_xid, status);
- 	if (status != 0) {
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 67e4386..cc1aad3 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -696,6 +696,7 @@
- 	/* Must suppress retransmit to maintain credits */
- 	if (rqst->rq_connect_cookie == xprt->connect_cookie)
- 		goto drop_connection;
-+	rqst->rq_xtime = ktime_get();
+-static void xprt_update_rtt(struct rpc_task *task)
++/**
++ * xprt_update_rtt - Update RPC RTT statistics
++ * @task: RPC request that recently completed
++ *
++ * Caller holds xprt->recv_lock.
++ */
++void xprt_update_rtt(struct rpc_task *task)
+ {
+ 	struct rpc_rqst *req = task->tk_rqstp;
+ 	struct rpc_rtt *rtt = task->tk_client->cl_rtt;
+@@ -902,6 +908,7 @@ static void xprt_update_rtt(struct rpc_task *task)
+ 		rpc_set_timeo(rtt, timer, req->rq_ntrans - 1);
+ 	}
+ }
++EXPORT_SYMBOL_GPL(xprt_update_rtt);
  
- 	__set_bit(RPCRDMA_REQ_F_PENDING, &req->rl_flags);
- 	if (rpcrdma_ep_post(&r_xprt->rx_ia, &r_xprt->rx_ep, req))
+ /**
+  * xprt_complete_rqst - called when reply processing is complete
+@@ -921,8 +928,6 @@ void xprt_complete_rqst(struct rpc_task *task, int copied)
+ 
+ 	xprt->stat.recvs++;
+ 	req->rq_rtt = ktime_sub(ktime_get(), req->rq_xtime);
+-	if (xprt->ops->timer != NULL)
+-		xprt_update_rtt(task);
+ 
+ 	list_del_init(&req->rq_list);
+ 	req->rq_private_buf.len = copied;
 diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 61df77f..e3c6a3d 100644
+index a6b8c1f..61df77f 100644
 --- a/net/sunrpc/xprtsock.c
 +++ b/net/sunrpc/xprtsock.c
-@@ -527,6 +527,7 @@ static int xs_local_send_request(struct rpc_task *task)
- 	xs_pktdump("packet data:",
- 			req->rq_svec->iov_base, req->rq_svec->iov_len);
+@@ -1060,6 +1060,7 @@ static void xs_udp_data_read_skb(struct rpc_xprt *xprt,
+ 	if (!rovr)
+ 		goto out_unlock;
+ 	xprt_pin_rqst(rovr);
++	xprt_update_rtt(rovr->rq_task);
+ 	spin_unlock(&xprt->recv_lock);
+ 	task = rovr->rq_task;
  
-+	req->rq_xtime = ktime_get();
- 	status = xs_sendpages(transport->sock, NULL, 0, xdr, req->rq_bytes_sent,
- 			      true, &sent);
- 	dprintk("RPC:       %s(%u) = %d\n",
-@@ -589,6 +590,7 @@ static int xs_udp_send_request(struct rpc_task *task)
- 
- 	if (!xprt_bound(xprt))
- 		return -ENOTCONN;
-+	req->rq_xtime = ktime_get();
- 	status = xs_sendpages(transport->sock, xs_addr(xprt), xprt->addrlen,
- 			      xdr, req->rq_bytes_sent, true, &sent);
- 
-@@ -678,6 +680,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
- 	/* Continue transmitting the packet/record. We must be careful
- 	 * to cope with writespace callbacks arriving _after_ we have
- 	 * called sendmsg(). */
-+	req->rq_xtime = ktime_get();
- 	while (1) {
- 		sent = 0;
- 		status = xs_sendpages(transport->sock, NULL, 0, xdr,
 
