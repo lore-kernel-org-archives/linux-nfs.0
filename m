@@ -1,174 +1,121 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bsdsz2.pd.infn.it ([192.84.143.16]:35757 "EHLO
-        bsdsz2.pd.infn.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751288AbeCEKBn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 05:01:43 -0500
-Received: from lxtraldi.pd.infn.it (lxtraldi.pd.infn.it [193.205.157.246])
-        (authenticated bits=0)
-        by bsdsz2.pd.infn.it (8.15.2/8.15.2) with ESMTPSA id w259rLHH064891
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128 verify=OK)
-        for <linux-nfs@vger.kernel.org>; Mon, 5 Mar 2018 10:53:24 +0100 (CET)
-        (envelope-from sergio.traldi@pd.infn.it)
-To: linux-nfs@vger.kernel.org
-From: Sergio Traldi <sergio.traldi@pd.infn.it>
-Subject: NFS sync and async mode
-Message-ID: <b4b5c9d2-409f-fbd3-4b87-7b4ae41427cf@pd.infn.it>
-Date: Mon, 5 Mar 2018 10:53:21 +0100
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:34198 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751462AbeCEPyX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Mar 2018 10:54:23 -0500
+Received: from smtp.corp.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 1D14022B69
+        for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2018 15:54:23 +0000 (UTC)
+Received: from steved.boston.devel.redhat.com (ovpn-116-53.phx2.redhat.com [10.3.116.53])
+        by smtp.corp.redhat.com (Postfix) with ESMTP id C5E5260C89
+        for <linux-nfs@vger.kernel.org>; Mon,  5 Mar 2018 15:54:22 +0000 (UTC)
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Removed -Werror=unused-result warnings.
+Date: Mon,  5 Mar 2018 10:54:20 -0500
+Message-Id: <20180305155420.104418-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
-I have host A  and host B using nfs4 or nfs3.
-In host A I mount a partition or a disk formatted in ext4 or xfs in 
-/nfsdisk
-I put this file inside the directory:
-wget --no-check-certificate 
-https://root.cern.ch/download/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz 
--O /nfsdisk/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ support/nfs/nfs_mntent.c         | 3 ++-
+ utils/blkmapd/device-discovery.c | 6 ++++--
+ utils/mount/network.c            | 8 ++++++--
+ utils/nfsd/nfssvc.c              | 5 +++--
+ utils/statd/statd.c              | 3 ++-
+ 5 files changed, 17 insertions(+), 8 deletions(-)
 
-In host A I export that partition with this line in /etc/exports
-/nfsdisk 
-192.168.1.1.0/24(rw,sync,no_wdelay,no_root_squash,no_subtree_check)
-OR using async mode:
-/nfsdisk 192.168.1.1.0/24(rw,async,no_root_squash)
-
- From host B I mount via nfs the disk:
-mount -t nfs <ip-hostA>:/nfsdisk /nfsdisk
-
-and I obtain something similar to (with mount command):
-192.168.1.1:/nfstest on /nfstest type nfs4 
-(rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.2,local_lock=none,addr=192.168.1.1)
-
-In host B I exec:
-time tar zxvf root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
-
-I try with different hosts bare metal or virtual machine and with 
-different controller.
-1) with bare metal host:
-1.1) A and B bare metal with CentOS7 with kernel 3.10.0-514.2.2.el7 with 
-nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and rpcbind-0.2.0-42.el7.x86_64
-
-In host A:
-real    0m45.338s
-user    0m8.334s
-sys    0m5.387s
-
-In Host B I obtain
-   sync mode:
-real    11m56.146s
-user    0m9.947s
-sys    0m8.346s
-   async mode:
-real    0m46.328s
-user    0m8.709s
-sys    0m5.747s
-
-1.2) A and B bare metal with Ubuntu 14.04 jessie with kernel 
-3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server 
-1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
-
-In host A:
-real    0m10.667s
-user    0m7.856s
-sys    0m3.190s
-
-In host B:
-    sync mode:
-real    9m45.146s
-user    0m9.697s
-sys    0m8.037s
-   async mode:
-real    0m14.843s
-user    0m7.916s
-sys    0m3.780s
-
-1.3) A and B bare metal with Scientific Linux 6.2 with Kernel 
-2.6.32-220.el6.x86_64 with nfs-utils-1.2.3-15.el6.x86_64 - 
-rpcbind-0.2.0-13.el6_9.1.x86_64
-
-In host A:
-real    0m5.943s
-user    0m5.611s
-sys    0m1.585s
-
-In host B:
-    sync mode:
-real    8m37.495s
-user    0m5.680s
-sys    0m3.091s
-    async mode:
-real    0m21.121s
-user    0m5.782s
-sys    0m3.089s
-
-2) with Virtual Machine Libvirt KVM
-2.1) A and B virtual with CentOS7 with kernel 3.10.0-514.2.2.el7 with 
-nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and rpcbind-0.2.0-42.el7.x86_64
-
-In host A:
-real    0m46.126s
-user    0m9.034s
-sys    0m6.187s
-
-In Host B I obtain
-   sync mode:
-real    12m31.167s
-user    0m9.997s
-sys    0m8.466s
-   async mode:
-real    0m45.388s
-user    0m8.416s
-sys    0m5.587s
-
-2.2) A and B virtual with Ubuntu 14.04 jessie with kernel 
-3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server 
-1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
-In  host A:
-real    0m10.787s
-user    0m7.912s
-sys    0m3.335s
-
-In Host B I obtain
-   sync mode:
-real    11m54.265s
-user    0m8.264s
-sys    0m6.541s
-    async mode:
-real    0m11.457s
-user    0m7.619s
-sys    0m3.531s
-
-Just in two other bare metal hosts I have same situation of 1.3 (old 
-O.S. and old nfs) and I obtain sync and asyc mode in host B similar in 
-about:
-real    0m37.050s
-user    0m9.326s
-sys    0m4.220s
-in that case the host A has a controller RAID bus controller: 
-Hewlett-Packard Company Smart Array G6 controllers (rev 01)
-
-Now my question why is there to much difference from sync and async mode?
-
-I try to optimize network in A and B, I try to mount with different 
-rsize and wsize in B host, I try to change timeo in nfs from B.|
-I try to to increase nfsd threads in host A.
-I try to change disk scheduler ( /sys/block/sda/queue/scheduler noop 
-deadline [cfq]) in host A.
-I try to use NFS3.
-
-I observe some little improvement in some case but the gap from async 
-and sync is always very high, except for the bare metal with G6 array 
-controller.
-
-We would like to use nfs with sync for our infrastructure, but we can 
-not loose to much performance.
-
-Is there a way to use sync mode with some specific parameter and improve 
-considerably performance?
-
-Thanks in advance for any hint.
-Cheers
-Sergio
+diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
+index a2118a2..c60988a 100644
+--- a/support/nfs/nfs_mntent.c
++++ b/support/nfs/nfs_mntent.c
+@@ -150,7 +150,8 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
+ 		res = fflush(mfp->mntent_fp);
+ 		if (res < 0)
+ 			/* Avoid leaving a corrupt mtab file */
+-			ftruncate(fileno(mfp->mntent_fp), length);
++			if (ftruncate(fileno(mfp->mntent_fp), length))
++				{/* ignore return value */};
+ 	}
+ 	return (res < 0) ? 1 : 0;
+ }
+diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
+index b71c949..1afc80f 100644
+--- a/utils/blkmapd/device-discovery.c
++++ b/utils/blkmapd/device-discovery.c
+@@ -504,9 +504,11 @@ int main(int argc, char **argv)
+ 			close(pidfd);
+ 			exit(1);
+ 		}
+-		ftruncate(pidfd, 0);
++		if (ftruncate(pidfd, 0) < 0)
++			BL_LOG_WARNING("ftruncate on %s failed: m\n", PID_FILE);
+ 		sprintf(pidbuf, "%d\n", getpid());
+-		write(pidfd, pidbuf, strlen(pidbuf));
++		if (write(pidfd, pidbuf, strlen(pidbuf)) != (ssize_t)strlen(pidbuf))
++			BL_LOG_WARNING("write on %s failed: m\n", PID_FILE);
+ 	}
+ 
+ 	signal(SIGINT, sig_die);
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 8d6e4c6..9a2c878 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -811,8 +811,12 @@ int start_statd(void)
+ 			switch (pid) {
+ 			case 0: /* child */
+ 				setgroups(0, NULL);
+-				setgid(0);
+-				setuid(0);
++				if (setgid(0) < 0)
++					nfs_error(_("%s: setgid(0) failed: %s"),
++						progname, strerror(errno));
++				if (setuid(0) < 0)
++					nfs_error(_("%s: setuid(0) failed: %s"),
++						progname, strerror(errno));
+ 				execle(START_STATD, START_STATD, NULL, envp);
+ 				exit(1);
+ 			case -1: /* error */
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index fc36792..7923f5d 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -68,7 +68,7 @@ nfssvc_mount_nfsdfs(char *progname)
+ 	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
+ 	 * code from it and just check for the "threads" file afterward.
+ 	 */
+-	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
++	err = system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
+ 
+ 	err = stat(NFSD_THREAD_FILE, &statbuf);
+ 	if (err == 0)
+@@ -325,7 +325,8 @@ nfssvc_set_time(const char *type, const int seconds)
+ 		/* set same value for lockd */
+ 		fd = open("/proc/sys/fs/nfs/nlm_grace_period", O_WRONLY);
+ 		if (fd >= 0) {
+-			write(fd, nbuf, strlen(nbuf));
++			if (write(fd, nbuf, strlen(nbuf)) != (ssize_t)strlen(nbuf))
++				xlog(L_ERROR, "Unable to write nlm_grace_period : %m");
+ 			close(fd);
+ 		}
+ 	}
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 197d853..563a272 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -225,7 +225,8 @@ static void set_nlm_port(char *type, int port)
+ 	fd = open(pathbuf, O_WRONLY);
+ 	if (fd < 0 && errno == ENOENT) {
+ 		/* probably module not loaded */
+-		system("modprobe lockd");
++		if (system("modprobe lockd"))
++			{/* ignore return value */};
+ 		fd = open(pathbuf, O_WRONLY);
+ 	}
+ 	if (fd >= 0) {
+-- 
+2.14.3
 
