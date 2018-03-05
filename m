@@ -1,183 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:50634 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752063AbeCEVGQ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 16:06:16 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Use of uninitialized value $line in pattern match
-Date: Mon, 5 Mar 2018 16:06:08 -0500
-References: <20180305210022.18859.37483.stgit@klimt.1015granger.net>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-To: Andy Whitcroft <apw@canonical.com>, Joe Perches <joe@perches.com>
-Message-Id: <7BF29D14-256C-4C81-A37C-C816441E57C8@oracle.com>
+Received: from fieldses.org ([173.255.197.46]:37782 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752063AbeCEVQT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 5 Mar 2018 16:16:19 -0500
+Date: Mon, 5 Mar 2018 16:16:19 -0500
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: trond.myklebust@primarydata.com, anna.schumaker@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: nfs_commit_inode should redirty inode if the inode
+ has outstanding requests
+Message-ID: <20180305211619.GA29226@fieldses.org>
+References: <20180302160038.1598-1-smayhew@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180302160038.1598-1-smayhew@redhat.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I think I'm seeing a parsing error in v4.16-rc4 scripts/checkpatch.pl:
+On Fri, Mar 02, 2018 at 11:00:38AM -0500, Scott Mayhew wrote:
+> It seems that nfs_commit_inode can be called where the nfs_inode has
+> outstanding requests and the commit lists are empty.  That can lead to
+> invalidate_complete_page2 failing due to the associated page having
+> private data which in turn leads to invalidate_inode_pages2_range
+> returning -EBUSY.
 
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-Use of uninitialized value $line in pattern match (m//) at =
-scripts/checkpatch.pl line 1300.
-total: 0 errors, 0 warnings, 69 lines checked
+For what it's worth, I verified that this fixes the EBUSY I was seeing:
 
-patches-nfsd-rdma-for-4.17/nfsd-compound-trace-points has no obvious =
-style problems and is ready for submission.
+	http://marc.info/?i=20180223160350.GF15876@fieldses.org
 
+--b.
 
-
-nfsd: Trace NFSv4 COMPOUND execution
-
-This helps record the identity and timing of the ops in each NFSv4
-COMPOUND, replacing dprintk calls that did much the same thing.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-fs/nfsd/nfs4proc.c |    9 +++------
-fs/nfsd/trace.h    |   39 +++++++++++++++++++++++++++++++++++++++
-2 files changed, 42 insertions(+), 6 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 39016b6..0df37e0 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1722,12 +1722,10 @@ static void svcxdr_init_encode(struct svc_rqst =
-*rqstp,
-		goto encode_op;
-	}
-
-+	trace_nfsd_compound(rqstp, args->opcnt);
-	while (!status && resp->opcnt < args->opcnt) {
-		op =3D &args->ops[resp->opcnt++];
-
--		dprintk("nfsv4 compound op #%d/%d: %d (%s)\n",
--			resp->opcnt, args->opcnt, op->opnum,
--			nfsd4_op_name(op->opnum));
-		/*
-		 * The XDR decode routines may have pre-set op->status;
-		 * for example, if there is a miscellaneous XDR error
-@@ -1801,9 +1799,8 @@ static void svcxdr_init_encode(struct svc_rqst =
-*rqstp,
-			status =3D op->status;
-		}
-
--		dprintk("nfsv4 compound op %p opcnt %d #%d: %d: status =
-%d\n",
--			args->ops, args->opcnt, resp->opcnt, op->opnum,
--			be32_to_cpu(status));
-+		trace_nfsd_compound_status(args->opcnt, resp->opcnt, =
-status,
-+					   nfsd4_op_name(op->opnum));
-
-		nfsd4_cstate_clear_replay(cstate);
-		nfsd4_increment_op_stats(op->opnum);
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index a8bbd9d..80933e4 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -11,6 +11,45 @@
-#include <linux/tracepoint.h>
-#include "nfsfh.h"
-
-+TRACE_EVENT(nfsd_compound,
-+	TP_PROTO(const struct svc_rqst *rqst,
-+		 u32 args_opcnt),
-+	TP_ARGS(rqst, args_opcnt),
-+	TP_STRUCT__entry(
-+		__field(u32, xid)
-+		__field(u32, args_opcnt)
-+	),
-+	TP_fast_assign(
-+		__entry->xid =3D be32_to_cpu(rqst->rq_xid);
-+		__entry->args_opcnt =3D args_opcnt;
-+	),
-+	TP_printk("xid=3D0x%08x opcnt=3D%u",
-+		__entry->xid, __entry->args_opcnt)
-+)
-+
-+TRACE_EVENT(nfsd_compound_status,
-+	TP_PROTO(u32 args_opcnt,
-+		 u32 resp_opcnt,
-+		 __be32 status,
-+		 const char *name),
-+	TP_ARGS(args_opcnt, resp_opcnt, status, name),
-+	TP_STRUCT__entry(
-+		__field(u32, args_opcnt)
-+		__field(u32, resp_opcnt)
-+		__field(int, status)
-+		__string(name, name)
-+	),
-+	TP_fast_assign(
-+		__entry->args_opcnt =3D args_opcnt;
-+		__entry->resp_opcnt =3D resp_opcnt;
-+		__entry->status =3D be32_to_cpu(status);
-+		__assign_str(name, name);
-+	),
-+	TP_printk("op=3D%u/%u %s status=3D%d",
-+		__entry->resp_opcnt, __entry->args_opcnt,
-+		__get_str(name), __entry->status)
-+)
-+
-DECLARE_EVENT_CLASS(nfsd_io_class,
-	TP_PROTO(struct svc_rqst *rqstp,
-		 struct svc_fh	*fhp,
-
-
---
-Chuck Lever
-
-
-
+> 
+> Instead of having nfs_commit_inode exit early when the commit lists are
+> empty, only do so if nrequests is also 0.
+> 
+> Fixes: dc4fd9ab01 ("nfs: don't wait on commit in nfs_commit_inode() if there were no commit requests")
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  fs/nfs/write.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 7428a66..0268bd1 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1890,7 +1890,7 @@ int nfs_commit_inode(struct inode *inode, int how)
+>  	if (res)
+>  		error = nfs_generic_commit_list(inode, &head, how, &cinfo);
+>  	nfs_commit_end(cinfo.mds);
+> -	if (res == 0)
+> +	if (res == 0 && !nfs_have_writebacks(inode))
+>  		return res;
+>  	if (error < 0)
+>  		goto out_error;
+> -- 
+> 2.9.5
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
