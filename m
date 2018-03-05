@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:34177 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751462AbeCEUNZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 15:13:25 -0500
-Subject: [PATCH 6/9] SUNRPC: Add a ->free_slot transport callout
+Received: from mail-it0-f68.google.com ([209.85.214.68]:35624 "EHLO
+        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751462AbeCEUNb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 5 Mar 2018 15:13:31 -0500
+Subject: [PATCH 7/9] xprtrdma: Introduce ->alloc_slot call-out for xprtrdma
 From: Chuck Lever <chuck.lever@oracle.com>
 To: anna.schumaker@netapp.com
 Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
-Date: Mon, 05 Mar 2018 15:13:23 -0500
-Message-ID: <20180305201323.10904.31929.stgit@manet.1015granger.net>
+Date: Mon, 05 Mar 2018 15:13:29 -0500
+Message-ID: <20180305201329.10904.5164.stgit@manet.1015granger.net>
 In-Reply-To: <20180305200825.10904.40829.stgit@manet.1015granger.net>
 References: <20180305200825.10904.40829.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -16,129 +16,105 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Refactor: xprtrdma needs to have better control over when RPCs are
-awoken from the backlog queue, so replace xprt_free_slot with a
-transport op callout.
+rpcrdma_buffer_get acquires an rpcrdma_req and rep for each RPC.
+Currently this is done in the call_allocate action, and sometimes it
+can fail if there are many outstanding RPCs.
+
+When call_allocate fails, the RPC task is put on the delayq. It is
+awoken a few milliseconds later, but there's no guarantee it will
+get a buffer at that time. The RPC task can be repeatedly put back
+to sleep or even starved.
+
+The call_allocate action should rarely fail. The delayq mechanism is
+not meant to deal with transport congestion.
+
+In the current sunrpc stack, there is a friendlier way to deal with
+this situation. These objects are actually tantamount to an RPC
+slot (rpc_rqst) and there is a separate FSM action, distinct from
+call_allocate, for allocating slot resources. This is the
+call_reserve action.
+
+When allocation fails during this action, the RPC is placed on the
+transport's backlog queue. The backlog mechanism provides a stronger
+guarantee that when the RPC is awoken, a buffer will be available
+for it; and backlogged RPCs are awoken one-at-a-time.
+
+To make slot resource allocation occur in the call_reserve action,
+create special ->alloc_slot and ->free_slot call-outs for xprtrdma.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/xprt.h                |    4 ++++
- net/sunrpc/xprt.c                          |    5 +++--
- net/sunrpc/xprtrdma/svc_rdma_backchannel.c |    1 +
- net/sunrpc/xprtrdma/transport.c            |    1 +
- net/sunrpc/xprtsock.c                      |    4 ++++
- 5 files changed, 13 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtrdma/transport.c |   52 ++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 50 insertions(+), 2 deletions(-)
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 9784e28..706eef1 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -127,6 +127,8 @@ struct rpc_xprt_ops {
- 	int		(*reserve_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
- 	void		(*release_xprt)(struct rpc_xprt *xprt, struct rpc_task *task);
- 	void		(*alloc_slot)(struct rpc_xprt *xprt, struct rpc_task *task);
-+	void		(*free_slot)(struct rpc_xprt *xprt,
-+				     struct rpc_rqst *req);
- 	void		(*rpcbind)(struct rpc_task *task);
- 	void		(*set_port)(struct rpc_xprt *xprt, unsigned short port);
- 	void		(*connect)(struct rpc_xprt *xprt, struct rpc_task *task);
-@@ -329,6 +331,8 @@ struct xprt_class {
- int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
- int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
-+void			xprt_free_slot(struct rpc_xprt *xprt,
-+				       struct rpc_rqst *req);
- void			xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task);
- bool			xprt_prepare_transmit(struct rpc_task *task);
- void			xprt_transmit(struct rpc_task *task);
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index a394b46..fb3093d 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1186,7 +1186,7 @@ void xprt_lock_and_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
- }
- EXPORT_SYMBOL_GPL(xprt_lock_and_alloc_slot);
- 
--static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
-+void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
- {
- 	spin_lock(&xprt->reserve_lock);
- 	if (!xprt_dynamic_free_slot(xprt, req)) {
-@@ -1196,6 +1196,7 @@ static void xprt_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *req)
- 	xprt_wake_up_backlog(xprt);
- 	spin_unlock(&xprt->reserve_lock);
- }
-+EXPORT_SYMBOL_GPL(xprt_free_slot);
- 
- static void xprt_free_all_slots(struct rpc_xprt *xprt)
- {
-@@ -1375,7 +1376,7 @@ void xprt_release(struct rpc_task *task)
- 
- 	dprintk("RPC: %5u release request %p\n", task->tk_pid, req);
- 	if (likely(!bc_prealloc(req)))
--		xprt_free_slot(xprt, req);
-+		xprt->ops->free_slot(xprt, req);
- 	else
- 		xprt_free_bc_request(req);
- }
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-index a73632c..1035516 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_backchannel.c
-@@ -273,6 +273,7 @@ static int svc_rdma_bc_sendto(struct svcxprt_rdma *rdma,
- 	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.release_request	= xprt_release_rqst_cong,
- 	.buf_alloc		= xprt_rdma_bc_allocate,
- 	.buf_free		= xprt_rdma_bc_free,
 diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index cc1aad3..40ff91d 100644
+index 40ff91d..1dac949 100644
 --- a/net/sunrpc/xprtrdma/transport.c
 +++ b/net/sunrpc/xprtrdma/transport.c
-@@ -780,6 +780,7 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+@@ -537,6 +537,54 @@
+ 	}
+ }
+ 
++/**
++ * xprt_rdma_alloc_slot - allocate an rpc_rqst
++ * @xprt: controlling RPC transport
++ * @task: RPC task requesting a fresh rpc_rqst
++ *
++ * tk_status values:
++ *	%0 if task->tk_rqstp points to a fresh rpc_rqst
++ *	%-EAGAIN if no rpc_rqst is available; queued on backlog
++ */
++static void
++xprt_rdma_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
++{
++	struct rpc_rqst *rqst;
++
++	spin_lock(&xprt->reserve_lock);
++	if (list_empty(&xprt->free))
++		goto out_sleep;
++	rqst = list_first_entry(&xprt->free, struct rpc_rqst, rq_list);
++	list_del(&rqst->rq_list);
++	spin_unlock(&xprt->reserve_lock);
++
++	task->tk_rqstp = rqst;
++	task->tk_status = 0;
++	return;
++
++out_sleep:
++	rpc_sleep_on(&xprt->backlog, task, NULL);
++	spin_unlock(&xprt->reserve_lock);
++	task->tk_status = -EAGAIN;
++}
++
++/**
++ * xprt_rdma_free_slot - release an rpc_rqst
++ * @xprt: controlling RPC transport
++ * @rqst: rpc_rqst to release
++ *
++ */
++static void
++xprt_rdma_free_slot(struct rpc_xprt *xprt, struct rpc_rqst *rqst)
++{
++	memset(rqst, 0, sizeof(*rqst));
++
++	spin_lock(&xprt->reserve_lock);
++	list_add(&rqst->rq_list, &xprt->free);
++	rpc_wake_up_next(&xprt->backlog);
++	spin_unlock(&xprt->reserve_lock);
++}
++
+ static bool
+ rpcrdma_get_sendbuf(struct rpcrdma_xprt *r_xprt, struct rpcrdma_req *req,
+ 		    size_t size, gfp_t flags)
+@@ -779,8 +827,8 @@ void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+ static const struct rpc_xprt_ops xprt_rdma_procs = {
  	.reserve_xprt		= xprt_reserve_xprt_cong,
  	.release_xprt		= xprt_release_xprt_cong, /* sunrpc/xprt.c */
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
+-	.alloc_slot		= xprt_alloc_slot,
+-	.free_slot		= xprt_free_slot,
++	.alloc_slot		= xprt_rdma_alloc_slot,
++	.free_slot		= xprt_rdma_free_slot,
  	.release_request	= xprt_release_rqst_cong,       /* ditto */
  	.set_retrans_timeout	= xprt_set_retrans_timeout_def, /* ditto */
  	.timer			= xprt_rdma_timer,
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index e3c6a3d..2511c21 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2764,6 +2764,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.rpcbind		= xs_local_rpcbind,
- 	.set_port		= xs_local_set_port,
- 	.connect		= xs_local_connect,
-@@ -2783,6 +2784,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.rpcbind		= rpcb_getport_async,
- 	.set_port		= xs_set_port,
- 	.connect		= xs_connect,
-@@ -2804,6 +2806,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xs_tcp_release_xprt,
- 	.alloc_slot		= xprt_lock_and_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.rpcbind		= rpcb_getport_async,
- 	.set_port		= xs_set_port,
- 	.connect		= xs_connect,
-@@ -2835,6 +2838,7 @@ static void bc_destroy(struct rpc_xprt *xprt)
- 	.reserve_xprt		= xprt_reserve_xprt,
- 	.release_xprt		= xprt_release_xprt,
- 	.alloc_slot		= xprt_alloc_slot,
-+	.free_slot		= xprt_free_slot,
- 	.buf_alloc		= bc_malloc,
- 	.buf_free		= bc_free,
- 	.send_request		= bc_send_request,
 
