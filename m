@@ -1,102 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f178.google.com ([209.85.217.178]:32904 "EHLO
-        mail-ua0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753045AbeCFSJD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2018 13:09:03 -0500
-Received: by mail-ua0-f178.google.com with SMTP id f6so8434492ual.0
-        for <linux-nfs@vger.kernel.org>; Tue, 06 Mar 2018 10:09:03 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <D9BFFDFE-B80F-4220-9A54-F09F882BD0A1@gmail.com>
-References: <20180110004920.11100-1-gjover@sipwise.com> <e18f29cd-639d-be9d-ee93-80df592468db@RedHat.com>
- <20180112184151.GA10261@thunder.hadrons.org> <9a53753a-56bf-12b5-f328-ff1f3a72249d@talpey.com>
- <CAFMMQGv03UmmsyXF4BOrwgW9ngpeO=dLjv=Qt=YiPpvgxfo85A@mail.gmail.com> <D9BFFDFE-B80F-4220-9A54-F09F882BD0A1@gmail.com>
-From: Chuck Lever <chucklever@gmail.com>
-Date: Tue, 6 Mar 2018 13:09:01 -0500
-Message-ID: <CAFMMQGtt_u19RoCyQAQEaSZRXu3WQ-YSKu4u1BtKtJnaTQbKYw@mail.gmail.com>
-Subject: Re: [PATCH] Do not bind to reserved ports registered in /etc/services
-To: Guillem Jover <gjover@sipwise.com>
+Received: from userp2130.oracle.com ([156.151.31.86]:38548 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750782AbeCFST2 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2018 13:19:28 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: [PATCH] clnt_dg_call: Change the memory allocation
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20180306180323.12131-1-steved@redhat.com>
+Date: Tue, 6 Mar 2018 13:19:13 -0500
 Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Message-Id: <78C60E78-91DF-427B-9BB9-27883F17D28E@oracle.com>
+References: <20180306180323.12131-1-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 8, 2018 at 1:36 PM, Chuck Lever <chucklever@gmail.com> wrote:
->
->
->> On Feb 8, 2018, at 1:07 PM, Chuck Lever <chucklever@gmail.com> wrote:
->>
->> At Steve's request, I've filed a bug against libtirpc:
->>
->> https://bugzilla.linux-nfs.org/show_bug.cgi?id=320
->>
->> to document the issue and the rationales for alternate solutions.
->>
->> I'm fairly confident that bindresvport(3) is never necessary for
->> svc_tli_create(3). It is arguably also not appropriate for
->> clnt_tli_create(3). Therefore IMO it should be removed from those code
->> paths. That by itself would provide some relief and would eliminate
->> the need to alter the current bindresvport(3) implementation (say, by
->> introducing a blacklisting mechanism).
->>
->> As Tom mentioned above, RFC 6335 describes a port range that will
->> never interfere with service ports allocated by IANA. This range is
->> known as the Dynamic or Private port range (49152 - 65535). On my
->> systems, bind(3) already frequently allocates from the Dynamic port
->> range purely by chance.
->>
->> To completely prevent the accidental allocation of a well-known
->> service port, a special internal wrapper for the bind(3) system call
->> (similar to bindresvport(3)) can be constructed for libtirpc that
->> allocates only from the Dynamic port range whenever a caller does not
->> specify a port, making libtirpc adhere to the Best Common Practices
->> outlined in RFC 6335, and thereby closing this window for user space
->> RPC services completely.
->>
->> A more thorough solution IMO would be to fix up the bind(3) system
->> call to allocate only from the Dynamic port range whenever a caller
->> does not specify a port. This would take care of not only user space
->> RPC services but of all dynamically allocated ports on the system,
->> including ports dynamically allocated in the kernel.
->
-> Replace "bind(3)" with "bind(2)" throughout. Oops.
->
-> --
-> Chuck Lever
-> chucklever@gmail.com
 
-As a first step, Steve has committed patches that address bugzilla 320.
-This makes libtirpc avoid allocating reserved ports for RPC service
-listeners and long-running clients that request a dynamically assigned
-port. svc_tli_create(3) and clnt_tli_create(3) were wrong to use
-bindresvport(3) for this purpose.
 
-IMO this addresses the two cases Guillem Jover reported explicitly:
-rpc.statd's listener, and the rpcbind CALLIT client. mountd on RHEL
-systems appears to use 20048 (though it can use any dynamically-
-assigned port) and lockd's service port is assigned by the kernel, so
-it is typically outside the reserved port range.
+> On Mar 6, 2018, at 1:03 PM, Steve Dickson <steved@redhat.com> wrote:
+> 
+> Change the memory allocation from the stack
+> to the heap by calling calloc() verses alloca
 
-Even so, I can see that making bindresvport(3) more particular
-about skipping IANA-assigned ports in the reserved port range might
-provide additional benefit/relief.
+> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1552163
 
-I checked with a pal on the Solaris NFS team to see if their user
-space bindresvport(3) implementation was careful to avoid IANA-
-assigned ports. He said it does not currently, but they have
-considered it and probably will consider it again because there are
-occasional requests for such functionality.
+IMO, this should be:
 
-The question now is whether to consult /etc/services, a separate
-blacklist, or both, when trolling for an unused reserved port. It seems
-easiest to start with /etc/services; then perhaps introduce a blacklist
-file/directory later if that is desirable. Other opinions?
+Fixes: 2936f109590e ("clnt_dg_call: Fix a buffer overflow (CVE-2016-4429)")
+BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=1552163
 
-Note that neither of these solutions addresses the largest consumer
-of dynamically-assigned reserved ports: the kernel NFS client. The
-only way we have to address that today is the "noresvport" mount
-option. (We could make that the default for Kerberos mounts).
+Can the patch description explain the problem and why
+this is the correct fix? It looks like 2936f109590e
+added some free(3) call sites that were perhaps
+unneeded. Why not just remove them, for instance?
 
--- 
-"We cannot take our next breath without the exhale."
- -- Ellen Scott Grable
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+
+
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> src/clnt_dg.c | 6 +++---
+> 1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/src/clnt_dg.c b/src/clnt_dg.c
+> index 884a2db..1d55b1e 100644
+> --- a/src/clnt_dg.c
+> +++ b/src/clnt_dg.c
+> @@ -430,7 +430,7 @@ get_reply:
+> 	  struct sockaddr_in err_addr;
+> 	  struct sockaddr_in *sin = (struct sockaddr_in *)&cu->cu_raddr;
+> 	  struct iovec iov;
+> -	  char *cbuf = (char *) alloca (outlen + 256);
+> +	  char *cbuf = (char *) mem_alloc(outlen + 256);
+> 	  int ret;
+> 
+> 	  if (cbuf == NULL) 
+> @@ -462,13 +462,13 @@ get_reply:
+> 		 cmsg = CMSG_NXTHDR (&msg, cmsg))
+> 	      if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
+> 		{
+> -		  free(cbuf);
+> +		  mem_free(cbuf, (outlen + 256));
+> 		  e = (struct sock_extended_err *) CMSG_DATA(cmsg);
+> 		  cu->cu_error.re_errno = e->ee_errno;
+> 		  release_fd_lock(cu->cu_fd, mask);
+> 		  return (cu->cu_error.re_status = RPC_CANTRECV);
+> 		}
+> -	  free(cbuf);
+> +	  mem_free(cbuf, (outlen + 256));
+> 	}
+> #endif
+> 
+> -- 
+> 2.14.3
+
+--
+Chuck Lever
+
+
+
