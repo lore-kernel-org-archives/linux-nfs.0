@@ -1,135 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:59296 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754056AbeCFTWC (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 6 Mar 2018 14:22:02 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: [PATCH] clnt_dg_call: Change the memory allocation
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <c3879bfd-c916-6afe-5867-bd0b53de8e9a@RedHat.com>
-Date: Tue, 6 Mar 2018 14:21:48 -0500
-Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <CCA63938-32E1-4367-8078-B98EC5820341@oracle.com>
-References: <20180306180323.12131-1-steved@redhat.com>
- <78C60E78-91DF-427B-9BB9-27883F17D28E@oracle.com>
- <c3879bfd-c916-6afe-5867-bd0b53de8e9a@RedHat.com>
-To: Steve Dickson <SteveD@RedHat.com>
+Received: from fieldses.org ([173.255.197.46]:39768 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754017AbeCFTdL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Mar 2018 14:33:11 -0500
+Date: Tue, 6 Mar 2018 14:33:11 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v6 07/10] NFSD create new stateid for async copy
+Message-ID: <20180306193311.GF7099@fieldses.org>
+References: <20180126215942.GC7770@fieldses.org>
+ <CAN-5tyGBBfh0i9QmyHTHp-SWa6ncMCz4ZQdZcAuyWKhxtQ9xLA@mail.gmail.com>
+ <20180202214545.GB7229@parsley.fieldses.org>
+ <CAN-5tyHOa6SM1Gv+dv=pfQaQ--YTjfkyA6V57wgGic5qEK+jvg@mail.gmail.com>
+ <20180216014337.GA3591@parsley.fieldses.org>
+ <CAN-5tyFMSqC8GJEvCjxzTO7Nf3c69YBMjmRRc6EFrgXzKJ4+cg@mail.gmail.com>
+ <20180216181237.GB2623@parsley.fieldses.org>
+ <CAN-5tyHmt1DWgPz9nzuK9V2bVBRhEGev3iOoMv7TNY_k8shgXA@mail.gmail.com>
+ <20180220184829.GA528@fieldses.org>
+ <CAN-5tyEJu0PZ8i+t5c6EGMSWuW=zpcH1+1z8W+mXNxt-rON9AQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyEJu0PZ8i+t5c6EGMSWuW=zpcH1+1z8W+mXNxt-rON9AQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Mar 06, 2018 at 12:15:59PM -0500, Olga Kornievskaia wrote:
+> On Tue, Feb 20, 2018 at 1:48 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > Yeah, I kinda suspect there's a bug in the CLOSE and UNLOCK case too.
+> >
+> > I don't know if the client really causes trouble for anyone but itself
+> > if it allows IO to go on past close, unlock, or delegreturn.
+> >
+> > If it's still going on after another client acquires a conflicting open,
+> > lock, or delegation, that could be a problem: a client that holds a
+> > mandatory lock, or an open with DENY_WRITE, or a delegation, has a right
+> > not to expect the file to change underneath it.  We should already be
+> > safe against that in the delegation case thanks to the vfs checks in
+> > fs/locks.c:check_conflicting_open().
+> >
+> > In the DENY_WRITE case I bet there's still bug.  Maybe in the mandatory
+> > lock case, too.  But those cases are rare and already have other
+> > problems.
+> >
+> > So, I guess I don't care too much unless someone's seeing another
+> > problem.
+> >
+> > Still, killing off a long-running copy is probably a good precaution?
+> 
+> Now that I got back into the code and remembered it again, copy
+> stateid is never associated with a delegation stateid. Copy is
+> associated with the destination file's stateid which is opened for
+> write. Since linux server does not give out write delegations, then
+> the stateid is either an open stateid or lock stateid (in my testing I
+> varied not locking and locking the destination file so to get open
+> stateid as well as lock stateid to be used in the copy). If you want
+> me to keep the code for killing off copy in the delegreturn because in
+> the future there might be write delegations, I can but I recall the
+> rule of thumb is to keep it simple, thus I'm inclined to remove it.
 
+I'm hoping to get to write delegations soon....  And you can actually
+write while holding a read delegation.  (Currently knfsd breaks the
+delegation in that case, but I'm fixing that.)
 
-> On Mar 6, 2018, at 2:10 PM, Steve Dickson <SteveD@RedHat.com> wrote:
->=20
->=20
->=20
-> On 03/06/2018 01:19 PM, Chuck Lever wrote:
->>=20
->>=20
->>> On Mar 6, 2018, at 1:03 PM, Steve Dickson <steved@redhat.com> wrote:
->>>=20
->>> Change the memory allocation from the stack
->>> to the heap by calling calloc() verses alloca
->>=20
->>> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=3D1552163
->>=20
->> IMO, this should be:
->>=20
->> Fixes: 2936f109590e ("clnt_dg_call: Fix a buffer overflow =
-(CVE-2016-4429)")
->> BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=3D1552163
-> point.
->=20
->>=20
->> Can the patch description explain the problem and why
->> this is the correct fix? It looks like 2936f109590e
->> added some free(3) call sites that were perhaps
->> unneeded.=20
-> Yeah alloca() allocates from the stack and the memory
-> is automatically freed when routine returns
-> (something that was pointed out to me by IRC people
-> when their UDP mounts broke ;-) So this CVE is basically bogus!
+That said, I still haven't convinced myself there's any real issue here.
+So, I'm fine with leaving that out.
 
-> But it was also point out (by the IRC people) that=20
-> allocating from the heap is probably better than=20
-> scribbling on stack and I agree.
-
-Yeah, I prefer to avoid alloca too.
-
-As a generic comment, any new code needs to be careful
-about bounds checking when writing into cbuf, even if
-cbuf is on the heap instead of the stack. I didn't look
-carefully at that, but sounds like I will get a second
-shot to review ;-)
-
-
-> I'll try to be more more descriptive in the description.
-
-Cool, thanks.
-
-
-> Why not just remove them, for instance?
-> I assumed outlen can be variable size, but did not=20
-> look very hard. I'm just trying to clean up some=20
-> old bz so the less change I do the better... IMHO...=20
-
->> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-> Thanks!
->=20
-> steved.
->=20
->>=20
->>=20
->>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>> ---
->>> src/clnt_dg.c | 6 +++---
->>> 1 file changed, 3 insertions(+), 3 deletions(-)
->>>=20
->>> diff --git a/src/clnt_dg.c b/src/clnt_dg.c
->>> index 884a2db..1d55b1e 100644
->>> --- a/src/clnt_dg.c
->>> +++ b/src/clnt_dg.c
->>> @@ -430,7 +430,7 @@ get_reply:
->>> 	  struct sockaddr_in err_addr;
->>> 	  struct sockaddr_in *sin =3D (struct sockaddr_in =
-*)&cu->cu_raddr;
->>> 	  struct iovec iov;
->>> -	  char *cbuf =3D (char *) alloca (outlen + 256);
->>> +	  char *cbuf =3D (char *) mem_alloc(outlen + 256);
->>> 	  int ret;
->>>=20
->>> 	  if (cbuf =3D=3D NULL)=20
->>> @@ -462,13 +462,13 @@ get_reply:
->>> 		 cmsg =3D CMSG_NXTHDR (&msg, cmsg))
->>> 	      if (cmsg->cmsg_level =3D=3D SOL_IP && cmsg->cmsg_type =3D=3D=
- IP_RECVERR)
->>> 		{
->>> -		  free(cbuf);
->>> +		  mem_free(cbuf, (outlen + 256));
->>> 		  e =3D (struct sock_extended_err *) CMSG_DATA(cmsg);
->>> 		  cu->cu_error.re_errno =3D e->ee_errno;
->>> 		  release_fd_lock(cu->cu_fd, mask);
->>> 		  return (cu->cu_error.re_status =3D RPC_CANTRECV);
->>> 		}
->>> -	  free(cbuf);
->>> +	  mem_free(cbuf, (outlen + 256));
->>> 	}
->>> #endif
->>>=20
->>> --=20
->>> 2.14.3
->>=20
->> --
->> Chuck Lever
->>=20
->>=20
->>=20
-
---
-Chuck Lever
-
-
-
+--b.
