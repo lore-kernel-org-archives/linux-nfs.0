@@ -1,136 +1,109 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:57282 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:35430 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1750838AbeCFS6n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 6 Mar 2018 13:58:43 -0500
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 70611EBFE7
-        for <linux-nfs@vger.kernel.org>; Tue,  6 Mar 2018 18:58:43 +0000 (UTC)
-Received: from steved.boston.devel.redhat.com (steved.boston.devel.redhat.com [10.19.60.47])
-        by smtp.corp.redhat.com (Postfix) with ESMTP id 5B7C91C718
-        for <linux-nfs@vger.kernel.org>; Tue,  6 Mar 2018 18:58:43 +0000 (UTC)
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH V2] Removed -Werror=unused-result warnings.
-Date: Tue,  6 Mar 2018 13:58:42 -0500
-Message-Id: <20180306185842.31049-1-steved@redhat.com>
+        id S1751874AbeCFTKr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 6 Mar 2018 14:10:47 -0500
+Subject: Re: [PATCH] clnt_dg_call: Change the memory allocation
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <20180306180323.12131-1-steved@redhat.com>
+ <78C60E78-91DF-427B-9BB9-27883F17D28E@oracle.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <c3879bfd-c916-6afe-5867-bd0b53de8e9a@RedHat.com>
+Date: Tue, 6 Mar 2018 14:10:46 -0500
+MIME-Version: 1.0
+In-Reply-To: <78C60E78-91DF-427B-9BB9-27883F17D28E@oracle.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- support/nfs/nfs_mntent.c         | 8 ++++++--
- utils/blkmapd/device-discovery.c | 6 ++++--
- utils/mount/network.c            | 8 ++++++--
- utils/nfsd/nfssvc.c              | 5 +++--
- utils/statd/statd.c              | 3 ++-
- 5 files changed, 21 insertions(+), 9 deletions(-)
 
-v2: Clean up nfs_addmntent() error handling 
 
-diff --git a/support/nfs/nfs_mntent.c b/support/nfs/nfs_mntent.c
-index a2118a2..05a4c68 100644
---- a/support/nfs/nfs_mntent.c
-+++ b/support/nfs/nfs_mntent.c
-@@ -13,6 +13,7 @@
- #include <ctype.h>		/* for isdigit */
- #include <sys/stat.h>		/* for umask */
- #include <unistd.h>		/* for ftruncate */
-+#include <errno.h>		/* for errno */
- 
- #include "nfs_mntent.h"
- #include "nls.h"
-@@ -148,9 +149,12 @@ nfs_addmntent (mntFILE *mfp, struct mntent *mnt) {
- 	free(m4);
- 	if (res >= 0) {
- 		res = fflush(mfp->mntent_fp);
--		if (res < 0)
-+		if (res < 0) {
-+			nfs_error("Cant't flush out mtab: %s", strerror(errno));
- 			/* Avoid leaving a corrupt mtab file */
--			ftruncate(fileno(mfp->mntent_fp), length);
-+			if (ftruncate(fileno(mfp->mntent_fp), length))
-+				{/* Ignore this failure; Why confuse things */}
-+		}
- 	}
- 	return (res < 0) ? 1 : 0;
- }
-diff --git a/utils/blkmapd/device-discovery.c b/utils/blkmapd/device-discovery.c
-index b71c949..1afc80f 100644
---- a/utils/blkmapd/device-discovery.c
-+++ b/utils/blkmapd/device-discovery.c
-@@ -504,9 +504,11 @@ int main(int argc, char **argv)
- 			close(pidfd);
- 			exit(1);
- 		}
--		ftruncate(pidfd, 0);
-+		if (ftruncate(pidfd, 0) < 0)
-+			BL_LOG_WARNING("ftruncate on %s failed: m\n", PID_FILE);
- 		sprintf(pidbuf, "%d\n", getpid());
--		write(pidfd, pidbuf, strlen(pidbuf));
-+		if (write(pidfd, pidbuf, strlen(pidbuf)) != (ssize_t)strlen(pidbuf))
-+			BL_LOG_WARNING("write on %s failed: m\n", PID_FILE);
- 	}
- 
- 	signal(SIGINT, sig_die);
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index 8d6e4c6..9a2c878 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -811,8 +811,12 @@ int start_statd(void)
- 			switch (pid) {
- 			case 0: /* child */
- 				setgroups(0, NULL);
--				setgid(0);
--				setuid(0);
-+				if (setgid(0) < 0)
-+					nfs_error(_("%s: setgid(0) failed: %s"),
-+						progname, strerror(errno));
-+				if (setuid(0) < 0)
-+					nfs_error(_("%s: setuid(0) failed: %s"),
-+						progname, strerror(errno));
- 				execle(START_STATD, START_STATD, NULL, envp);
- 				exit(1);
- 			case -1: /* error */
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index fc36792..7923f5d 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -68,7 +68,7 @@ nfssvc_mount_nfsdfs(char *progname)
- 	 * mount nfsdfs when nfsd.ko is plugged in. So, ignore the return
- 	 * code from it and just check for the "threads" file afterward.
- 	 */
--	system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
-+	err = system("/bin/mount -t nfsd nfsd " NFSD_FS_DIR " >/dev/null 2>&1");
- 
- 	err = stat(NFSD_THREAD_FILE, &statbuf);
- 	if (err == 0)
-@@ -325,7 +325,8 @@ nfssvc_set_time(const char *type, const int seconds)
- 		/* set same value for lockd */
- 		fd = open("/proc/sys/fs/nfs/nlm_grace_period", O_WRONLY);
- 		if (fd >= 0) {
--			write(fd, nbuf, strlen(nbuf));
-+			if (write(fd, nbuf, strlen(nbuf)) != (ssize_t)strlen(nbuf))
-+				xlog(L_ERROR, "Unable to write nlm_grace_period : %m");
- 			close(fd);
- 		}
- 	}
-diff --git a/utils/statd/statd.c b/utils/statd/statd.c
-index 197d853..563a272 100644
---- a/utils/statd/statd.c
-+++ b/utils/statd/statd.c
-@@ -225,7 +225,8 @@ static void set_nlm_port(char *type, int port)
- 	fd = open(pathbuf, O_WRONLY);
- 	if (fd < 0 && errno == ENOENT) {
- 		/* probably module not loaded */
--		system("modprobe lockd");
-+		if (system("modprobe lockd"))
-+			{/* ignore return value */};
- 		fd = open(pathbuf, O_WRONLY);
- 	}
- 	if (fd >= 0) {
--- 
-2.14.3
+On 03/06/2018 01:19 PM, Chuck Lever wrote:
+> 
+> 
+>> On Mar 6, 2018, at 1:03 PM, Steve Dickson <steved@redhat.com> wrote:
+>>
+>> Change the memory allocation from the stack
+>> to the heap by calling calloc() verses alloca
+> 
+>> Fixes: https://bugzilla.redhat.com/show_bug.cgi?id=1552163
+> 
+> IMO, this should be:
+> 
+> Fixes: 2936f109590e ("clnt_dg_call: Fix a buffer overflow (CVE-2016-4429)")
+> BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=1552163
+point.
 
+> 
+> Can the patch description explain the problem and why
+> this is the correct fix? It looks like 2936f109590e
+> added some free(3) call sites that were perhaps
+> unneeded. 
+Yeah alloca() allocates from the stack and the memory
+is automatically freed when routine returns
+(something that was pointed out to me by IRC people
+when their UDP mounts broke ;-) So this CVE is basically bogus!
+
+But it was also point out (by the IRC people) that 
+allocating from the heap is probably better than 
+scribbling on stack and I agree. 
+
+I'll try to be more more descriptive in the description.
+ 
+Why not just remove them, for instance?
+I assumed outlen can be variable size, but did not 
+look very hard. I'm just trying to clean up some 
+old bz so the less change I do the better... IMHO... 
+ 
+> 
+> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Thanks!
+
+steved.
+
+> 
+> 
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>> src/clnt_dg.c | 6 +++---
+>> 1 file changed, 3 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/src/clnt_dg.c b/src/clnt_dg.c
+>> index 884a2db..1d55b1e 100644
+>> --- a/src/clnt_dg.c
+>> +++ b/src/clnt_dg.c
+>> @@ -430,7 +430,7 @@ get_reply:
+>> 	  struct sockaddr_in err_addr;
+>> 	  struct sockaddr_in *sin = (struct sockaddr_in *)&cu->cu_raddr;
+>> 	  struct iovec iov;
+>> -	  char *cbuf = (char *) alloca (outlen + 256);
+>> +	  char *cbuf = (char *) mem_alloc(outlen + 256);
+>> 	  int ret;
+>>
+>> 	  if (cbuf == NULL) 
+>> @@ -462,13 +462,13 @@ get_reply:
+>> 		 cmsg = CMSG_NXTHDR (&msg, cmsg))
+>> 	      if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
+>> 		{
+>> -		  free(cbuf);
+>> +		  mem_free(cbuf, (outlen + 256));
+>> 		  e = (struct sock_extended_err *) CMSG_DATA(cmsg);
+>> 		  cu->cu_error.re_errno = e->ee_errno;
+>> 		  release_fd_lock(cu->cu_fd, mask);
+>> 		  return (cu->cu_error.re_status = RPC_CANTRECV);
+>> 		}
+>> -	  free(cbuf);
+>> +	  mem_free(cbuf, (outlen + 256));
+>> 	}
+>> #endif
+>>
+>> -- 
+>> 2.14.3
+> 
+> --
+> Chuck Lever
+> 
+> 
+> 
