@@ -1,214 +1,173 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:52971 "EHLO mx143.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S934877AbeCGUAJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 7 Mar 2018 15:00:09 -0500
-Subject: Re: [PATCH 5/9] SUNRPC: Initialize rpc_rqst outside of
- xprt->reserve_lock
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-References: <20180305200825.10904.40829.stgit@manet.1015granger.net>
- <20180305201318.10904.57825.stgit@manet.1015granger.net>
- <4dd8259a-e447-122b-c267-75e2e6b4714e@Netapp.com>
- <FA9A696D-3702-43DB-8FBA-E924B54E0F28@oracle.com>
- <41538F44-115C-4F64-9BCA-0A6B8723A9F5@oracle.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <9ac7ea34-d409-da6a-21cb-35fa6e09cd66@Netapp.com>
-Date: Wed, 7 Mar 2018 15:00:01 -0500
+Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:45823 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S934658AbeCGUJ3 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2018 15:09:29 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Kernel ops with flexfiles
+Date: Wed, 7 Mar 2018 20:09:24 +0000
+Message-ID: <1520453102.39525.3.camel@primarydata.com>
+References: <1569515727.10818617.1520288819283.JavaMail.zimbra@desy.de>
+In-Reply-To: <1569515727.10818617.1520288819283.JavaMail.zimbra@desy.de>
 MIME-Version: 1.0
-In-Reply-To: <41538F44-115C-4F64-9BCA-0A6B8723A9F5@oracle.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+SGkgVGlncmFuLA0KDQpPbiBNb24sIDIwMTgtMDMtMDUgYXQgMjM6MjYgKzAxMDAsIE1rcnRjaHlh
+biwgVGlncmFuIHdyb3RlOg0KPiBIaSBUcm9uZCBldCBhbC4NCj4gDQo+IGxvb2tzIGxpa2UgSSBj
+YW4gYWx3YXlzIHJlcHJvZHVjZSB0aGUgZm9sbG93aW5nIG9wcyB3aXRoIGEgc2ltcGxlIGNwOg0K
+PiANCj4gWzEwNzIyLjcyOTQ2M10gbmZzNGZsZXhmaWxlbGF5b3V0X2luaXQ6IE5GU3Y0IEZsZXhm
+aWxlIExheW91dCBEcml2ZXINCj4gUmVnaXN0ZXJpbmcuLi4NCj4gWzEwNzM2LjE4NzQwM10gLS0t
+LS0tLS0tLS0tWyBjdXQgaGVyZSBdLS0tLS0tLS0tLS0tDQo+IFsxMDczNi4xODc0MDVdIEtlcm5l
+bCBCVUcgYXQgMDAwMDAwMDBmNzE2NDVmNyBbdmVyYm9zZSBkZWJ1ZyBpbmZvDQo+IHVuYXZhaWxh
+YmxlXQ0KPiBbMTA3MzYuMTg3NDE3XSAtLS0tLS0tLS0tLS1bIGN1dCBoZXJlIF0tLS0tLS0tLS0t
+LS0NCj4gWzEwNzM2LjE4NzQzMl0gcmVmY291bnRfdCBoaXQgemVybyBhdA0KPiBwbmZzX2xheW91
+dF9yZW1vdmVfbHNlZysweDQ2LzB4OTAgW25mc3Y0XSBpbiBrd29ya2VyLzE6MFsxNjQwOV0sDQo+
+IHVpZC9ldWlkOiAwLzANCj4gWzEwNzM2LjE4NzQzNl0gV0FSTklORzogQ1BVOiAxIFBJRDogMTY0
+MDkgYXQga2VybmVsL3BhbmljLmM6NjU3DQo+IHJlZmNvdW50X2Vycm9yX3JlcG9ydCsweDk0LzB4
+OWUNCj4gWzEwNzM2LjE4NzQzNl0gTW9kdWxlcyBsaW5rZWQgaW46IG5mc19sYXlvdXRfZmxleGZp
+bGVzDQo+IHJwY3NlY19nc3Nfa3JiNSBhdXRoX3JwY2dzcyBuZnN2NCBkbnNfcmVzb2x2ZXIgbmZz
+IGxvY2tkIGdyYWNlDQo+IGZzY2FjaGUgeHRfbmF0IHZldGggaXB0X01BU1FVRVJBREUgbmZfbmF0
+X21hc3F1ZXJhZGVfaXB2NCB4dF9hZGRydHlwZQ0KPiBicl9uZXRmaWx0ZXIgb3ZlcmxheSB0dW4g
+cmZjb21tIGZ1c2UgY2NtIG5mX2Nvbm50cmFja19uZXRiaW9zX25zDQo+IG5mX2Nvbm50cmFja19i
+cm9hZGNhc3QgeHRfQ1QgaXA2dF9ycGZpbHRlciBpcDZ0X1JFSkVDVCBuZl9yZWplY3RfaXB2Ng0K
+PiB4dF9jb25udHJhY2sgeHRfbXVsdGlwb3J0IGlwX3NldCBuZm5ldGxpbmsgZWJ0YWJsZV9uYXQg
+ZWJ0YWJsZV9icm91dGUNCj4gYnJpZGdlIHN0cCBsbGMgaXA2dGFibGVfbmF0IG5mX2Nvbm50cmFj
+a19pcHY2IG5mX2RlZnJhZ19pcHY2DQo+IG5mX25hdF9pcHY2IGlwNnRhYmxlX21hbmdsZSBpcDZ0
+YWJsZV9yYXcgaXA2dGFibGVfc2VjdXJpdHkNCj4gaXB0YWJsZV9uYXQgbmZfY29ubnRyYWNrX2lw
+djQgbmZfZGVmcmFnX2lwdjQgbmZfbmF0X2lwdjQgbmZfbmF0DQo+IG5mX2Nvbm50cmFjayBsaWJj
+cmMzMmMgaXB0YWJsZV9tYW5nbGUgaXB0YWJsZV9yYXcgaXB0YWJsZV9zZWN1cml0eQ0KPiBlYnRh
+YmxlX2ZpbHRlciBlYnRhYmxlcyBpcDZ0YWJsZV9maWx0ZXIgaXA2X3RhYmxlcyBjbWFjIGJpbmZt
+dF9taXNjDQo+IGJuZXAgc3VucnBjIHZmYXQgZmF0IGFyYzQgc25kX3NvY19za2wgc25kX2hkYV9j
+b2RlY19oZG1pDQo+IHNuZF9zb2Nfc2tsX2lwYyBzbmRfaGRhX2V4dF9jb3JlIHNuZF9zb2Nfc3N0
+X2RzcA0KPiBbMTA3MzYuMTg3NDYzXSAgc25kX3NvY19zc3RfaXBjIHNuZF9zb2NfYWNwaSB1dmN2
+aWRlbyBzbmRfc29jX2NvcmUNCj4gdmlkZW9idWYyX3ZtYWxsb2MgYnR1c2IgYnRydGwgaW50ZWxf
+cmFwbCBidGJjbSBidGludGVsDQo+IHZpZGVvYnVmMl9tZW1vcHMgeDg2X3BrZ190ZW1wX3RoZXJt
+YWwgaW50ZWxfcG93ZXJjbGFtcCB2aWRlb2J1ZjJfdjRsMg0KPiBibHVldG9vdGggc25kX2hkYV9j
+b2RlY19yZWFsdGVrIHZpZGVvYnVmMl9jb3JlIGl3bG12bQ0KPiBzbmRfaGRhX2NvZGVjX2dlbmVy
+aWMgY29yZXRlbXAgdmlkZW9kZXYga3ZtX2ludGVsIHNuZF9jb21wcmVzcw0KPiBzbmRfcGNtX2Rt
+YWVuZ2luZSBhYzk3X2J1cyBtYWM4MDIxMSBtZWRpYSBzbmRfaGRhX2ludGVsIGt2bQ0KPiBzbmRf
+aGRhX2NvZGVjIGlUQ09fd2R0IGlUQ09fdmVuZG9yX3N1cHBvcnQgaXdsd2lmaSBtZWlfd2R0IGRl
+bGxfd21pDQo+IGVjZGhfZ2VuZXJpYyB3bWlfYm1vZiBkZWxsX3NtYmlvc193bWkgZGVsbF9sYXB0
+b3Agc3BhcnNlX2tleW1hcA0KPiBzbmRfaGRhX2NvcmUgZGVsbF93bWlfZGVzY3JpcHRvciBwcGRl
+diBkZWxsX3NtYmlvc19zbW0gZGVsbF9zbWJpb3MNCj4gZGNkYmFzIHNuZF9od2RlcCBpcnFieXBh
+c3MgY3JjdDEwZGlmX3BjbG11bCBkZWxsX3NtbV9od21vbg0KPiBjcmMzMl9wY2xtdWwgc25kX3Nl
+cSBjZmc4MDIxMSBzbmRfc2VxX2RldmljZSBnaGFzaF9jbG11bG5pX2ludGVsDQo+IHNuZF9wY20g
+aW50ZWxfY3N0YXRlIGludGVsX3VuY29yZSBpMmNfaTgwMSBpbnRlbF9yYXBsX3BlcmYgc25kX3Rp
+bWVyDQo+IGpveWRldiBydHN4X3BjaV9tcyBtZW1zdGljayBzbmQgbWVpX21lIHNvdW5kY29yZQ0K
+PiBbMTA3MzYuMTg3NDkxXSAgbWVpIHByb2Nlc3Nvcl90aGVybWFsX2RldmljZSBzaHBjaHANCj4g
+aW50ZWxfc29jX2R0c19pb3NmIGludGVsX3BjaF90aGVybWFsIHdtaSBwYXJwb3J0X3BjIHBhcnBv
+cnQgZGVsbF9yYnRuDQo+IGludDM0MDBfdGhlcm1hbCBhY3BpX3RoZXJtYWxfcmVsIGFjcGlfcGFk
+IGludDM0MDNfdGhlcm1hbCByZmtpbGwNCj4gaW50MzQweF90aGVybWFsX3pvbmUgaTkxNSBydHN4
+X3BjaV9zZG1tYyBtbWNfY29yZSBpMmNfYWxnb19iaXQNCj4gZHJtX2ttc19oZWxwZXIgZHJtIGUx
+MDAwZSBjcmMzMmNfaW50ZWwgc2VyaW9fcmF3IHJ0c3hfcGNpIHB0cA0KPiBwcHNfY29yZSB2aWRl
+bw0KPiBbMTA3MzYuMTg3NTA0XSBDUFU6IDEgUElEOiAxNjQwOSBDb21tOiBrd29ya2VyLzE6MCBU
+YWludGVkOg0KPiBHICAgICAgICBXICAgICAgICA0LjE1LjYtMzAwLmZjMjcueDg2XzY0ICMxDQo+
+IFsxMDczNi4xODc1MDVdIEhhcmR3YXJlIG5hbWU6IERlbGwgSW5jLiBMYXRpdHVkZSBFNzQ3MC8w
+VDZISEosIEJJT1MNCj4gMS42LjMgMDYvMTUvMjAxNg0KPiBbMTA3MzYuMTg3NTE4XSBXb3JrcXVl
+dWU6IG5mc2lvZCBycGNfYXN5bmNfcmVsZWFzZSBbc3VucnBjXQ0KPiBbMTA3MzYuMTg3NTIwXSBS
+SVA6IDAwMTA6cmVmY291bnRfZXJyb3JfcmVwb3J0KzB4OTQvMHg5ZQ0KPiBbMTA3MzYuMTg3NTIx
+XSBSU1A6IDAwMTg6ZmZmZmE1YzZkMTk2ZmFjMCBFRkxBR1M6IDAwMDEwMjgyDQo+IFsxMDczNi4x
+ODc1MjJdIFJBWDogMDAwMDAwMDAwMDAwMDAwMCBSQlg6IGZmZmZmZmZmOTMwODgyNzMgUkNYOg0K
+PiAwMDAwMDAwMDAwMDAwMDA2DQo+IFsxMDczNi4xODc1MjNdIFJEWDogMDAwMDAwMDAwMDAwMDAw
+NyBSU0k6IDAwMDAwMDAwMDAwMDAwODIgUkRJOg0KPiBmZmZmOWE3ODBkYzk2OGYwDQo+IFsxMDcz
+Ni4xODc1MjNdIFJCUDogZmZmZmE1YzZkMTk2ZmMwOCBSMDg6IDAwMDAwMDAwMDAwMDA2NTEgUjA5
+Og0KPiAwMDAwMDAwMDAwMDAwMDA0DQo+IFsxMDczNi4xODc1MjRdIFIxMDogZmZmZmZmZmY5MzIw
+NmE4MCBSMTE6IDAwMDAwMDAwMDAwMDAwMDEgUjEyOg0KPiBmZmZmOWE3NzZmZTYzZjgwDQo+IFsx
+MDczNi4xODc1MjVdIFIxMzogMDAwMDAwMDAwMDAwMDAwMCBSMTQ6IGZmZmZmZmZmOTMwNzk1YjUg
+UjE1Og0KPiAwMDAwMDAwMDAwMDAwMDA0DQo+IFsxMDczNi4xODc1MjZdIEZTOiAgMDAwMDAwMDAw
+MDAwMDAwMCgwMDAwKSBHUzpmZmZmOWE3ODBkYzgwMDAwKDAwMDApDQo+IGtubEdTOjAwMDAwMDAw
+MDAwMDAwMDANCj4gWzEwNzM2LjE4NzUyN10gQ1M6ICAwMDEwIERTOiAwMDAwIEVTOiAwMDAwIENS
+MDogMDAwMDAwMDA4MDA1MDAzMw0KPiBbMTA3MzYuMTg3NTI4XSBDUjI6IDAwMDAwMDAwMDAwMDAw
+MGMgQ1IzOiAwMDAwMDAwMzYxMjBhMDA1IENSNDoNCj4gMDAwMDAwMDAwMDM2MDZlMA0KPiBbMTA3
+MzYuMTg3NTI5XSBEUjA6IDAwMDAwMDAwMDAwMDAwMDAgRFIxOiAwMDAwMDAwMDAwMDAwMDAwIERS
+MjoNCj4gMDAwMDAwMDAwMDAwMDAwMA0KPiBbMTA3MzYuMTg3NTI5XSBEUjM6IDAwMDAwMDAwMDAw
+MDAwMDAgRFI2OiAwMDAwMDAwMGZmZmUwZmYwIERSNzoNCj4gMDAwMDAwMDAwMDAwMDQwMA0KPiBb
+MTA3MzYuMTg3NTMwXSBDYWxsIFRyYWNlOg0KPiBbMTA3MzYuMTg3NTM0XSAgZXhfaGFuZGxlcl9y
+ZWZjb3VudCsweDRlLzB4ODANCj4gWzEwNzM2LjE4NzUzNl0gIGZpeHVwX2V4Y2VwdGlvbisweDMz
+LzB4NDANCj4gWzEwNzM2LjE4NzUzOF0gIGRvX3RyYXArMHg4My8weDE0MA0KPiBbMTA3MzYuMTg3
+NTQwXSAgZG9fZXJyb3JfdHJhcCsweDlkLzB4MTIwDQo+IFsxMDczNi4xODc1NTBdICA/IG5mczQy
+X3Byb2NfY2xvbmUrMHgyYzcvMHgzMDkgW25mc3Y0XQ0KPiBbMTA3MzYuMTg3NTUyXSAgPyBfX3Vw
+ZGF0ZV9sb2FkX2F2Z19zZS5pc3JhLjMwKzB4MWI2LzB4MWMwDQo+IFsxMDczNi4xODc1NTNdICA/
+IF9fdXBkYXRlX2xvYWRfYXZnX3NlLmlzcmEuMzArMHgxYjYvMHgxYzANCj4gWzEwNzM2LjE4NzU1
+NV0gID8gdXBkYXRlX2xvYWRfYXZnKzB4NTU4LzB4NmIwDQo+IFsxMDczNi4xODc1NTddICBpbnZh
+bGlkX29wKzB4NTEvMHg3MA0KPiBbMTA3MzYuMTg3NTY2XSBSSVA6IDAwMTA6cG5mc19sYXlvdXRf
+cmVtb3ZlX2xzZWcrMHg0Ni8weDkwIFtuZnN2NF0NCj4gWzEwNzM2LjE4NzU2Nl0gUlNQOiAwMDE4
+OmZmZmZhNWM2ZDE5NmZjYjggRUZMQUdTOiAwMDAxMDI0Ng0KPiBbMTA3MzYuMTg3NTY3XSBSQVg6
+IGZmZmY5YTc2NWNjMDdmMjggUkJYOiBmZmZmOWE3NTdmZTVmMDAwIFJDWDoNCj4gZmZmZjlhNzY1
+Y2MwN2YwMA0KPiBbMTA3MzYuMTg3NTY4XSBSRFg6IGZmZmY5YTc2NWNjMDdmMjggUlNJOiBmZmZm
+OWE3NTdmZTVmMDAwIFJESToNCj4gZmZmZjlhNzU3ZmU1ZjAwMA0KPiBbMTA3MzYuMTg3NTY5XSBS
+QlA6IGZmZmY5YTc2NWNjMDdmMDAgUjA4OiAwMDAwMDAwMDAwMDAwMDA0IFIwOToNCj4gMGZiMTlk
+NWEwMTAwMDAwMA0KPiBbMTA3MzYuMTg3NTcwXSBSMTA6IGZmZmZhNWM2ZDE5NmZkYTggUjExOiBm
+ZmZmZmZmZmMxMGUzNDcwIFIxMjoNCj4gZmZmZjlhNzY1Y2MwN2YwMQ0KPiBbMTA3MzYuMTg3NTcw
+XSBSMTM6IGZmZmY5YTc1NmNjMmQ4YzAgUjE0OiAwMDAwMDAwMDAwMDAwMDAwIFIxNToNCj4gZmZm
+ZjlhNzY1Y2MwN2YwMA0KPiBbMTA3MzYuMTg3NTc5XSAgPyBwbmZzX2xheW91dF9yZW1vdmVfbHNl
+ZysweDFkLzB4OTAgW25mc3Y0XQ0KPiBbMTA3MzYuMTg3NTg1XSAgcG5mc19sc2VnX2RlY19hbmRf
+cmVtb3ZlX3plcm8rMHgzNy8weDcwIFtuZnN2NF0NCj4gWzEwNzM2LjE4NzU5M10gIG1hcmtfbHNl
+Z19pbnZhbGlkKzB4MjkvMHg1MCBbbmZzdjRdDQo+IFsxMDczNi4xODc2MDBdICBwbmZzX3JvYysw
+eDFhZC8weDMxMCBbbmZzdjRdDQo+IFsxMDczNi4xODc2MDZdICA/IG5mczRfZG9fY2xvc2UrMHgx
+YzkvMHgyZTAgW25mc3Y0XQ0KPiBbMTA3MzYuMTg3NjExXSAgbmZzNF9kb19jbG9zZSsweDFjOS8w
+eDJlMCBbbmZzdjRdDQo+IFsxMDczNi4xODc2MjBdICBfX3B1dF9uZnNfb3Blbl9jb250ZXh0KzB4
+N2MvMHgxMDAgW25mc10NCj4gWzEwNzM2LjE4NzYyN10gIG5mc19jb21taXRkYXRhX3JlbGVhc2Ur
+MHgxNS8weDMwIFtuZnNdDQo+IFsxMDczNi4xODc2MzRdICBycGNfZnJlZV90YXNrKzB4MmQvMHg3
+MCBbc3VucnBjXQ0KPiBbMTA3MzYuMTg3NjM3XSAgcHJvY2Vzc19vbmVfd29yaysweDE3NS8weDM5
+MA0KPiBbMTA3MzYuMTg3NjQwXSAgd29ya2VyX3RocmVhZCsweDJlLzB4MzgwDQo+IFsxMDczNi4x
+ODc2NDFdICA/IHByb2Nlc3Nfb25lX3dvcmsrMHgzOTAvMHgzOTANCj4gWzEwNzM2LjE4NzY0NF0g
+IGt0aHJlYWQrMHgxMTMvMHgxMzANCj4gWzEwNzM2LjE4NzY0NV0gID8ga3RocmVhZF9jcmVhdGVf
+d29ya2VyX29uX2NwdSsweDcwLzB4NzANCj4gWzEwNzM2LjE4NzY0N10gID8ga3RocmVhZF9jcmVh
+dGVfd29ya2VyX29uX2NwdSsweDcwLzB4NzANCj4gWzEwNzM2LjE4NzY0OF0gIHJldF9mcm9tX2Zv
+cmsrMHgzNS8weDQwDQo+IFsxMDczNi4xODc2NDldIENvZGU6IDQ4IDhiIDk1IDgwIDAwIDAwIDAw
+IDQxIDU1IDQ5IDhkIDhjIDI0IDQ4IDA3IDAwDQo+IDAwIDQ1IDhiIDg0IDI0IDY4IDA1IDAwIDAw
+IDQxIDg5IGMxIDQ4IDg5IGRlIDQ4IGM3IGM3IGMwIGM3IDA4IDkzIGU4DQo+IDRjIGZhIGZmIGZm
+IDwwZj4gMGIgNTggNWIgNWQgNDEgNWMgNDEgNWQgYzMgMGYgMWYgNDQgMDAgMDAgNTUgNDggODkN
+Cj4gZTUgNDEgNTYgDQo+IFsxMDczNi4xODc2NzNdIC0tLVsgZW5kIHRyYWNlIGFlODY1MzMwZjhi
+ZmQ0ZjAgXS0tLQ0KPiBbMTA3MzYuMTg3Njk5XSAtLS0tLS0tLS0tLS1bIGN1dCBoZXJlIF0tLS0t
+LS0tLS0tLS0NCj4gWzEwNzM2LjE4NzcwMF0gS2VybmVsIEJVRyBhdCAwMDAwMDAwMGMxMWVkNGIx
+IFt2ZXJib3NlIGRlYnVnIGluZm8NCj4gdW5hdmFpbGFibGVdDQo+IA0KPiANCj4gSWYgSSBkb3du
+Z3JhZGUgbXkga2VybmVsIHRvIGFueSBvZiA0LjE0IC0gb3BzIGlzIGdvbmUuIFRoZSA0LjE2LXJj
+NA0KPiBwYW5pY3MgYXMgd2VsbC4NCj4gTGV0IG1lIGtub3cgaWYgeW91IG5lZWQgbW9yZSBpbmZv
+IG9yIHRlc3RpbmcuDQoNCkRvZXMgdGhlIGZvbGxvd2luZyBwYXRjaCBmaXggaXQ/DQo4PC0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tDQpGcm9t
+IGE1YzgxZjUwNDBhOWU5ODZlYWZiNzI4NzE5ZGZhYjJkNTg4ZmUyZDAgTW9uIFNlcCAxNyAwMDow
+MDowMCAyMDAxDQpGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5
+ZGF0YS5jb20+DQpEYXRlOiBXZWQsIDcgTWFyIDIwMTggMTQ6NDk6MDYgLTA1MDANClN1YmplY3Q6
+IFtQQVRDSF0gcE5GUzogUHJldmVudCB0aGUgbGF5b3V0IGhlYWRlciByZWZjb3VudCBnb2luZyB0
+byB6ZXJvIGluDQogcG5mc19yb2MoKQ0KDQpFbnN1cmUgdGhhdCB3ZSBob2xkIGEgcmVmZXJlbmNl
+IHRvIHRoZSBsYXlvdXQgaGVhZGVyIHdoZW4gcHJvY2Vzc2luZw0KdGhlIHBORlMgcmV0dXJuLW9u
+LWNsb3NlIHNvIHRoYXQgdGhlIHJlZmNvdW50IHZhbHVlIGRvZXMgbm90IGluYWR2ZXJ0ZW50bHkN
+CmdvIHRvIHplcm8uDQoNClJlcG9ydGVkLWJ5OiBUaWdyYW4gTWtydGNoeWFuIDx0aWdyYW4ubWty
+dGNoeWFuQGRlc3kuZGU+DQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15
+a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20+DQpDYzogc3RhYmxlQHZnZXIua2VybmVsLm9yZyAjIHY0
+LjEwKw0KLS0tDQogZnMvbmZzL3BuZnMuYyB8IDEzICsrKysrKysrKystLS0NCiAxIGZpbGUgY2hh
+bmdlZCwgMTAgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2Zz
+L25mcy9wbmZzLmMgYi9mcy9uZnMvcG5mcy5jDQppbmRleCBjMTNlODI2NjE0YjUuLmVlNzIzYWEx
+NTNhMyAxMDA2NDQNCi0tLSBhL2ZzL25mcy9wbmZzLmMNCisrKyBiL2ZzL25mcy9wbmZzLmMNCkBA
+IC0yOTIsOCArMjkyLDExIEBAIHBuZnNfZGV0YWNoX2xheW91dF9oZHIoc3RydWN0IHBuZnNfbGF5
+b3V0X2hkciAqbG8pDQogdm9pZA0KIHBuZnNfcHV0X2xheW91dF9oZHIoc3RydWN0IHBuZnNfbGF5
+b3V0X2hkciAqbG8pDQogew0KLQlzdHJ1Y3QgaW5vZGUgKmlub2RlID0gbG8tPnBsaF9pbm9kZTsN
+CisJc3RydWN0IGlub2RlICppbm9kZTsNCiANCisJaWYgKCFsbykNCisJCXJldHVybjsNCisJaW5v
+ZGUgPSBsby0+cGxoX2lub2RlOw0KIAlwbmZzX2xheW91dHJldHVybl9iZWZvcmVfcHV0X2xheW91
+dF9oZHIobG8pOw0KIA0KIAlpZiAocmVmY291bnRfZGVjX2FuZF9sb2NrKCZsby0+cGxoX3JlZmNv
+dW50LCAmaW5vZGUtPmlfbG9jaykpIHsNCkBAIC0xMjQxLDEwICsxMjQ0LDEyIEBAIGJvb2wgcG5m
+c19yb2Moc3RydWN0IGlub2RlICppbm8sDQogCXNwaW5fbG9jaygmaW5vLT5pX2xvY2spOw0KIAls
+byA9IG5mc2ktPmxheW91dDsNCiAJaWYgKCFsbyB8fCAhcG5mc19sYXlvdXRfaXNfdmFsaWQobG8p
+IHx8DQotCSAgICB0ZXN0X2JpdChORlNfTEFZT1VUX0JVTEtfUkVDQUxMLCAmbG8tPnBsaF9mbGFn
+cykpDQorCSAgICB0ZXN0X2JpdChORlNfTEFZT1VUX0JVTEtfUkVDQUxMLCAmbG8tPnBsaF9mbGFn
+cykpIHsNCisJCWxvID0gTlVMTDsNCiAJCWdvdG8gb3V0X25vcm9jOw0KKwl9DQorCXBuZnNfZ2V0
+X2xheW91dF9oZHIobG8pOw0KIAlpZiAodGVzdF9iaXQoTkZTX0xBWU9VVF9SRVRVUk5fTE9DSywg
+JmxvLT5wbGhfZmxhZ3MpKSB7DQotCQlwbmZzX2dldF9sYXlvdXRfaGRyKGxvKTsNCiAJCXNwaW5f
+dW5sb2NrKCZpbm8tPmlfbG9jayk7DQogCQl3YWl0X29uX2JpdCgmbG8tPnBsaF9mbGFncywgTkZT
+X0xBWU9VVF9SRVRVUk4sDQogCQkJCVRBU0tfVU5JTlRFUlJVUFRJQkxFKTsNCkBAIC0xMzEyLDEw
+ICsxMzE3LDEyIEBAIGJvb2wgcG5mc19yb2Moc3RydWN0IGlub2RlICppbm8sDQogCQlzdHJ1Y3Qg
+cG5mc19sYXlvdXRkcml2ZXJfdHlwZSAqbGQgPSBORlNfU0VSVkVSKGlubyktPnBuZnNfY3Vycl9s
+ZDsNCiAJCWlmIChsZC0+cHJlcGFyZV9sYXlvdXRyZXR1cm4pDQogCQkJbGQtPnByZXBhcmVfbGF5
+b3V0cmV0dXJuKGFyZ3MpOw0KKwkJcG5mc19wdXRfbGF5b3V0X2hkcihsbyk7DQogCQlyZXR1cm4g
+dHJ1ZTsNCiAJfQ0KIAlpZiAobGF5b3V0cmV0dXJuKQ0KIAkJcG5mc19zZW5kX2xheW91dHJldHVy
+bihsbywgJnN0YXRlaWQsIGlvbW9kZSwgdHJ1ZSk7DQorCXBuZnNfcHV0X2xheW91dF9oZHIobG8p
+Ow0KIAlyZXR1cm4gZmFsc2U7DQogfQ0KIA0KLS0gDQoyLjE0LjMNCg0KLS0gDQpUcm9uZCBNeWts
+ZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15
+a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg==
 
-
-On 03/06/2018 05:30 PM, Chuck Lever wrote:
-> 
-> 
->> On Mar 6, 2018, at 5:07 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->>
->>
->>
->>> On Mar 6, 2018, at 5:02 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
->>>
->>> Hi Chuck,
->>>
->>> I'm seeing a huge performance hit with this patch.  I'm just running cthon over TCP, and it goes from finishing in 22 seconds to taking well over 5 minutes.  I seem to only see this on the read and write tests, such as basic test5 taking a minute to finish:
->>>
->>>   ./test5: read and write                                                                                       
->>>           wrote 1048576 byte file 10 times in 60.35 seconds (173737 bytes/sec)                                  
->>>           read 1048576 byte file 10 times in 0.0  seconds (-2147483648 bytes/sec)                               
->>>           ./test5 ok. 
->>
->> OK. This looks like write is impacted, but this test doesn't
->> actually perform any reads on the wire. Try iozone with -I,
->> maybe? That would show results for both read and write.
-> 
-> Hum.
-> 
-> Stock v4.16-rc4:
-> 
-> ./test5: read and write
-> 	wrote 1048576 byte file 10 times in 0.2  seconds (350811642 bytes/sec)
-> 	read 1048576 byte file 10 times in 0.0  seconds (-2147483648 bytes/sec)
-> 	./test5 ok.
-> 
-> 
-> v4.16-rc4 with my full set of patches:
-> 
-> ./test5: read and write
-> 	wrote 1048576 byte file 10 times in 0.2  seconds (354236681 bytes/sec)
-> 	read 1048576 byte file 10 times in 0.0  seconds (-2147483648 bytes/sec)
-> 	./test5 ok.
-> 
-> I don't see a regression here. Let me know how it goes!
-
-I'm using rc4 too, so maybe it's something different in my setup?  Making this change fixes the issue for me:
-
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index a394b4635f8e..273847f7e455 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -987,8 +987,6 @@ bool xprt_prepare_transmit(struct rpc_task *task)
-                task->tk_status = -EAGAIN;
-                goto out_unlock;
-        }
--       if (likely(!bc_prealloc(req)))
--               req->rq_xid = xprt_alloc_xid(xprt);
-        ret = true;
- out_unlock:
-        spin_unlock_bh(&xprt->transport_lock);
-@@ -1315,6 +1313,7 @@ void xprt_request_init(struct rpc_task *task)
-        req->rq_task    = task;
-        req->rq_xprt    = xprt;
-        req->rq_buffer  = NULL;
-+       req->rq_xid     = xprt_alloc_xid(xprt);
-        req->rq_connect_cookie = xprt->connect_cookie - 1;
-        req->rq_bytes_sent = 0;
-        req->rq_snd_buf.len = 0;
-
-
-Anna
-
-> 
-> 
->>> I haven't dug into this too deeply, but my best guess is that maybe it's due to adding a call to xprt_request_init() in net/sunrpc/clnt.c:call_reserveresult()
->>
->> It wasn't added there, it was moved from xprt_alloc_slot. So,
->> it's not new work per-RPC.
->>
->> Any additional information would be appreciated!
->>
->>
->>> Thoughts?
->>> Anna
->>>
->>> On 03/05/2018 03:13 PM, Chuck Lever wrote:
->>>> alloc_slot is a transport-specific op, but initializing an rpc_rqst
->>>> is common to all transports. Move initialization to common code in
->>>> preparation for adding a transport-specific alloc_slot to xprtrdma.
->>>>
->>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>> ---
->>>> include/linux/sunrpc/xprt.h |    1 +
->>>> net/sunrpc/clnt.c           |    1 +
->>>> net/sunrpc/xprt.c           |   12 +++++++-----
->>>> 3 files changed, 9 insertions(+), 5 deletions(-)
->>>>
->>>> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
->>>> index 5fea0fb..9784e28 100644
->>>> --- a/include/linux/sunrpc/xprt.h
->>>> +++ b/include/linux/sunrpc/xprt.h
->>>> @@ -324,6 +324,7 @@ struct xprt_class {
->>>> struct rpc_xprt		*xprt_create_transport(struct xprt_create *args);
->>>> void			xprt_connect(struct rpc_task *task);
->>>> void			xprt_reserve(struct rpc_task *task);
->>>> +void			xprt_request_init(struct rpc_task *task);
->>>> void			xprt_retry_reserve(struct rpc_task *task);
->>>> int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
->>>> int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
->>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>>> index 6e432ec..226f558 100644
->>>> --- a/net/sunrpc/clnt.c
->>>> +++ b/net/sunrpc/clnt.c
->>>> @@ -1546,6 +1546,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
->>>> 	task->tk_status = 0;
->>>> 	if (status >= 0) {
->>>> 		if (task->tk_rqstp) {
->>>> +			xprt_request_init(task);
->>>> 			task->tk_action = call_refresh;
->>>> 			return;
->>>> 		}
->>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>>> index 70f0050..a394b46 100644
->>>> --- a/net/sunrpc/xprt.c
->>>> +++ b/net/sunrpc/xprt.c
->>>> @@ -66,7 +66,7 @@
->>>> * Local functions
->>>> */
->>>> static void	 xprt_init(struct rpc_xprt *xprt, struct net *net);
->>>> -static void	xprt_request_init(struct rpc_task *, struct rpc_xprt *);
->>>> +static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
->>>> static void	xprt_connect_status(struct rpc_task *task);
->>>> static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task *);
->>>> static void     __xprt_put_cong(struct rpc_xprt *, struct rpc_rqst *);
->>>> @@ -987,6 +987,8 @@ bool xprt_prepare_transmit(struct rpc_task *task)
->>>> 		task->tk_status = -EAGAIN;
->>>> 		goto out_unlock;
->>>> 	}
->>>> +	if (likely(!bc_prealloc(req)))
->>>> +		req->rq_xid = xprt_alloc_xid(xprt);
->>>> 	ret = true;
->>>> out_unlock:
->>>> 	spin_unlock_bh(&xprt->transport_lock);
->>>> @@ -1163,10 +1165,10 @@ void xprt_alloc_slot(struct rpc_xprt *xprt, struct rpc_task *task)
->>>> out_init_req:
->>>> 	xprt->stat.max_slots = max_t(unsigned int, xprt->stat.max_slots,
->>>> 				     xprt->num_reqs);
->>>> +	spin_unlock(&xprt->reserve_lock);
->>>> +
->>>> 	task->tk_status = 0;
->>>> 	task->tk_rqstp = req;
->>>> -	xprt_request_init(task, xprt);
->>>> -	spin_unlock(&xprt->reserve_lock);
->>>> }
->>>> EXPORT_SYMBOL_GPL(xprt_alloc_slot);
->>>>
->>>> @@ -1303,8 +1305,9 @@ static inline void xprt_init_xid(struct rpc_xprt *xprt)
->>>> 	xprt->xid = prandom_u32();
->>>> }
->>>>
->>>> -static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
->>>> +void xprt_request_init(struct rpc_task *task)
->>>> {
->>>> +	struct rpc_xprt *xprt = task->tk_xprt;
->>>> 	struct rpc_rqst	*req = task->tk_rqstp;
->>>>
->>>> 	INIT_LIST_HEAD(&req->rq_list);
->>>> @@ -1312,7 +1315,6 @@ static void xprt_request_init(struct rpc_task *task, struct rpc_xprt *xprt)
->>>> 	req->rq_task	= task;
->>>> 	req->rq_xprt    = xprt;
->>>> 	req->rq_buffer  = NULL;
->>>> -	req->rq_xid     = xprt_alloc_xid(xprt);
->>>> 	req->rq_connect_cookie = xprt->connect_cookie - 1;
->>>> 	req->rq_bytes_sent = 0;
->>>> 	req->rq_snd_buf.len = 0;
->>>>
->>
->> --
->> Chuck Lever
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> 
-> 
-> 
