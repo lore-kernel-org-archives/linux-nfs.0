@@ -1,127 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:50609 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S934190AbeCGUiZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2018 15:38:25 -0500
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "smayhew@redhat.com" <smayhew@redhat.com>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: nfs_commit_inode should redirty inode if the inode
- has outstanding requests
-Date: Wed, 7 Mar 2018 20:38:20 +0000
-Message-ID: <1520455098.2858.4.camel@primarydata.com>
-References: <20180302160038.1598-1-smayhew@redhat.com>
-         <20180305211619.GA29226@fieldses.org>
-         <1520286491.21829.13.camel@primarydata.com>
-         <20180307195313.kzqdboqk5j2hyrf3@tonberry.usersys.redhat.com>
-In-Reply-To: <20180307195313.kzqdboqk5j2hyrf3@tonberry.usersys.redhat.com>
+Received: from fieldses.org ([173.255.197.46]:42040 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S934190AbeCGUie (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Mar 2018 15:38:34 -0500
+Date: Wed, 7 Mar 2018 15:38:34 -0500
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v7 05/10] NFSD introduce asynch copy feature
+Message-ID: <20180307203834.GB28844@fieldses.org>
+References: <20180220164229.65404-1-kolga@netapp.com>
+ <20180220164229.65404-6-kolga@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180220164229.65404-6-kolga@netapp.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gV2VkLCAyMDE4LTAzLTA3IGF0IDE0OjUzIC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
-IE9uIE1vbiwgMDUgTWFyIDIwMTgsIFRyb25kIE15a2xlYnVzdCB3cm90ZToNCj4gDQo+ID4gT24g
-TW9uLCAyMDE4LTAzLTA1IGF0IDE2OjE2IC0wNTAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6DQo+
-ID4gPiBPbiBGcmksIE1hciAwMiwgMjAxOCBhdCAxMTowMDozOEFNIC0wNTAwLCBTY290dCBNYXlo
-ZXcgd3JvdGU6DQo+ID4gPiA+IEl0IHNlZW1zIHRoYXQgbmZzX2NvbW1pdF9pbm9kZSBjYW4gYmUg
-Y2FsbGVkIHdoZXJlIHRoZQ0KPiA+ID4gPiBuZnNfaW5vZGUNCj4gPiA+ID4gaGFzDQo+ID4gPiA+
-IG91dHN0YW5kaW5nIHJlcXVlc3RzIGFuZCB0aGUgY29tbWl0IGxpc3RzIGFyZSBlbXB0eS4gIFRo
-YXQgY2FuDQo+ID4gPiA+IGxlYWQNCj4gPiA+ID4gdG8NCj4gPiA+ID4gaW52YWxpZGF0ZV9jb21w
-bGV0ZV9wYWdlMiBmYWlsaW5nIGR1ZSB0byB0aGUgYXNzb2NpYXRlZCBwYWdlDQo+ID4gPiA+IGhh
-dmluZw0KPiA+ID4gPiBwcml2YXRlIGRhdGEgd2hpY2ggaW4gdHVybiBsZWFkcyB0bw0KPiA+ID4g
-PiBpbnZhbGlkYXRlX2lub2RlX3BhZ2VzMl9yYW5nZQ0KPiA+ID4gPiByZXR1cm5pbmcgLUVCVVNZ
-Lg0KPiA+ID4gDQo+ID4gPiBGb3Igd2hhdCBpdCdzIHdvcnRoLCBJIHZlcmlmaWVkIHRoYXQgdGhp
-cyBmaXhlcyB0aGUgRUJVU1kgSSB3YXMNCj4gPiA+IHNlZWluZzoNCj4gPiA+IA0KPiA+ID4gCWh0
-dHA6Ly9tYXJjLmluZm8vP2k9MjAxODAyMjMxNjAzNTAuR0YxNTg3NkBmaWVsZHNlcy5vcmcNCj4g
-PiA+IA0KPiA+IA0KPiA+IEZpbmUsIGJ1dCB0aGUgcGF0Y2ggd2lsbCBhbHNvIGNhdXNlIHRoZSBp
-bm9kZSB0byBiZSBtYXJrZWQgYXMgZGlydHkNCj4gPiBpbg0KPiA+IGNhc2VzIHdoZXJlIHRoZXJl
-IGFyZSBubyB1bnN0YWJsZSB3cml0ZXMgdG8gY29tbWl0LCBidXQgdGhlcmUgYXJlDQo+ID4gcGFn
-ZXMNCj4gPiB1bmRlcmdvaW5nIHdyaXRlYmFjay4NCj4gPiBJT1c6IGl0IHJlZ3Jlc3NlcyB0aGUg
-Zml4IHRoYXQgd2FzIG1hZGUgaW4gZGM0ZmQ5YWIwMQ0KPiA+IA0KPiA+IFNvIHBsZWFzZSBkbyBs
-b29rIGludG8gZml4aW5nIGRvX2xhdW5kZXJfcGFnZSgpLg0KPiA+IA0KPiANCj4gWWVzLCBzb3Jy
-eS4uLiBzbyBJJ3ZlIGJlZW4gdGVzdGluZyB3aXRoIHRoaXMgY2hhbmdlIHNpbmNlIEZyaWRheQ0K
-PiBhZnRlcm5vb246DQo+IA0KPiBkaWZmIC0tZ2l0IGEvbW0vdHJ1bmNhdGUuYyBiL21tL3RydW5j
-YXRlLmMNCj4gaW5kZXggYzM0ZTJmZDRmNTgzLi45MDk3MzRhNWQzYTMgMTAwNjQ0DQo+IC0tLSBh
-L21tL3RydW5jYXRlLmMNCj4gKysrIGIvbW0vdHJ1bmNhdGUuYw0KPiBAQCAtNjQ3LDcgKzY0Nyw3
-IEBAIGludmFsaWRhdGVfY29tcGxldGVfcGFnZTIoc3RydWN0IGFkZHJlc3Nfc3BhY2UNCj4gKm1h
-cHBpbmcsIHN0cnVjdCBwYWdlICpwYWdlKQ0KPiAgDQo+ICBzdGF0aWMgaW50IGRvX2xhdW5kZXJf
-cGFnZShzdHJ1Y3QgYWRkcmVzc19zcGFjZSAqbWFwcGluZywgc3RydWN0DQo+IHBhZ2UgKnBhZ2Up
-DQo+ICB7DQo+IC0gICAgICAgaWYgKCFQYWdlRGlydHkocGFnZSkpDQo+ICsgICAgICAgaWYgKCFQ
-YWdlRGlydHkocGFnZSkgJiYgIVBhZ2VQcml2YXRlKHBhZ2UpKQ0KPiAgICAgICAgICAgICAgICAg
-cmV0dXJuIDA7DQo+ICAgICAgICAgaWYgKHBhZ2UtPm1hcHBpbmcgIT0gbWFwcGluZyB8fCBtYXBw
-aW5nLT5hX29wcy0+bGF1bmRlcl9wYWdlDQo+ID09IE5VTEwpDQo+ICAgICAgICAgICAgICAgICBy
-ZXR1cm4gMDsNCj4gDQo+IEJ1dCBJJ20gZnJlcXVlbnRseSBzZWVpbmcgc29mdCBsb2NrdXBzIHRo
-b3VnaCwgb24gYm90aCA0LjE2LXJjNCBhbmQNCj4gb24NCj4gdGhlIGxhdGVzdCBSSEVMIDcga2Vy
-bmVsLg0KPiANCj4gTWFyICA3IDEzOjUyOjA4IGxvY2FsaG9zdCBrZXJuZWw6IHdhdGNoZG9nOiBC
-VUc6IHNvZnQgbG9ja3VwIC0gQ1BVIzUNCj4gc3R1Y2sgZm9yIDIzcyEgW3hmc19pbzoxNzY2N10N
-Cj4gTWFyICA3IDEzOjUyOjA4IGxvY2FsaG9zdCBrZXJuZWw6IE1vZHVsZXMgbGlua2VkIGluOiBy
-cGNzZWNfZ3NzX2tyYjUNCj4gYXV0aF9ycGNnc3MgbmZzdjQgZG5zX3Jlc29sdmVyIG5mcyBsb2Nr
-ZCBncmFjZSBmc2NhY2hlIHN1bnJwYw0KPiBjcmN0MTBkaWZfcGNsbXVsIGNyYzMyX3BjbG11bCBn
-aGFzaF9jbG11bG5pX2ludGVsIHZpcnRpb19iYWxsb29uDQo+IGkyY19waWl4NCBqb3lkZXYgeGZz
-IGxpYmNyYzMyYyBxeGwgZHJtX2ttc19oZWxwZXIgdHRtIHZpcnRpb19jb25zb2xlDQo+IHZpcnRp
-b19uZXQgZHJtIHZpcnRpb19zY3NpIHNlcmlvX3JhdyBjcmMzMmNfaW50ZWwgYXRhX2dlbmVyaWMN
-Cj4gdmlydGlvX3BjaSBwYXRhX2FjcGkgcWVtdV9md19jZmcgdmlydGlvX3JuZyB2aXJ0aW9fcmlu
-ZyB2aXJ0aW8NCj4gTWFyICA3IDEzOjUyOjA4IGxvY2FsaG9zdCBrZXJuZWw6IENQVTogNSBQSUQ6
-IDE3NjY3IENvbW06IHhmc19pbw0KPiBUYWludGVkOiBHICAgICAgICAgICAgIEwgICA0LjE2LjAt
-cmM0KyAjMg0KPiBNYXIgIDcgMTM6NTI6MDggbG9jYWxob3N0IGtlcm5lbDogSGFyZHdhcmUgbmFt
-ZTogUmVkIEhhdCBSSEVWDQo+IEh5cGVydmlzb3IsIEJJT1MgMS4xMC4yLTMuZWw3XzQuMSAwNC8w
-MS8yMDE0DQo+IE1hciAgNyAxMzo1MjowOCBsb2NhbGhvc3Qga2VybmVsOiBSSVA6DQo+IDAwMTA6
-bmZzX2NvbW1pdF9pbm9kZSsweDg3LzB4MTYwIFtuZnNdDQo+IE1hciAgNyAxMzo1MjowOCBsb2Nh
-bGhvc3Qga2VybmVsOiBSU1A6IDAwMTg6ZmZmZmFiMzEwZTYyN2IwMCBFRkxBR1M6DQo+IDAwMDAw
-MjAyIE9SSUdfUkFYOiBmZmZmZmZmZmZmZmZmZjEyDQo+IE1hciAgNyAxMzo1MjowOCBsb2NhbGhv
-c3Qga2VybmVsOiBSQVg6IDAwMDAwMDAwMDAwMDAwMDAgUkJYOg0KPiBmZmZmOGNkODM0ZjBhM2Uw
-IFJDWDogMDAwMDAwMDAwMDAwMDAwMA0KPiBNYXIgIDcgMTM6NTI6MDggbG9jYWxob3N0IGtlcm5l
-bDogUkRYOiBmZmZmOGNkODM0ZjBhMzAwIFJTSToNCj4gMDAwMDAwMDAwMDAwMDAwMSBSREk6IGZm
-ZmY4Y2Q4MzRmMGEzZTANCj4gTWFyICA3IDEzOjUyOjA4IGxvY2FsaG9zdCBrZXJuZWw6IFJCUDog
-MDAwMDAwMDAwMDAwMDAwMSBSMDg6DQo+IGZmZmZhYjMxMGU2MjdjMzAgUjA5OiAwMDAwMDAwMDAw
-MDFkNDAwDQo+IE1hciAgNyAxMzo1MjowOCBsb2NhbGhvc3Qga2VybmVsOiBSMTA6IGZmZmY4Y2Q4
-MzZjMDI0ODAgUjExOg0KPiBmZmZmOGNkODMzMDIwNDNjIFIxMjogZmZmZmFiMzEwZTYyN2I3MA0K
-PiBNYXIgIDcgMTM6NTI6MDggbG9jYWxob3N0IGtlcm5lbDogUjEzOiBmZmZmZmZmZmZmZmZmZmZm
-IFIxNDoNCj4gMDAwMDAwMDAwMDAwMDAwMCBSMTU6IGZmZmZjZDAxNDcwNTVmMDANCj4gTWFyICA3
-IDEzOjUyOjA4IGxvY2FsaG9zdCBrZXJuZWw6IEZTOiAgMDAwMDdmZWFlMmQ5N2I4MCgwMDAwKQ0K
-PiBHUzpmZmZmOGNkODM3MzQwMDAwKDAwMDApIGtubEdTOjAwMDAwMDAwMDAwMDAwMDANCj4gTWFy
-ICA3IDEzOjUyOjA4IGxvY2FsaG9zdCBrZXJuZWw6IENTOiAgMDAxMCBEUzogMDAwMCBFUzogMDAw
-MCBDUjA6DQo+IDAwMDAwMDAwODAwNTAwMzMNCj4gTWFyICA3IDEzOjUyOjA4IGxvY2FsaG9zdCBr
-ZXJuZWw6IENSMjogMDAwMDdmZWFlMjEwM2ZiOCBDUjM6DQo+IDAwMDAwMDAxMjBmYzIwMDIgQ1I0
-OiAwMDAwMDAwMDAwMzYwNmUwDQo+IE1hciAgNyAxMzo1MjowOCBsb2NhbGhvc3Qga2VybmVsOiBE
-UjA6IDAwMDAwMDAwMDAwMDAwMDAgRFIxOg0KPiAwMDAwMDAwMDAwMDAwMDAwIERSMjogMDAwMDAw
-MDAwMDAwMDAwMA0KPiBNYXIgIDcgMTM6NTI6MDggbG9jYWxob3N0IGtlcm5lbDogRFIzOiAwMDAw
-MDAwMDAwMDAwMDAwIERSNjoNCj4gMDAwMDAwMDBmZmZlMGZmMCBEUjc6IDAwMDAwMDAwMDAwMDA0
-MDANCj4gTWFyICA3IDEzOjUyOjA4IGxvY2FsaG9zdCBrZXJuZWw6IENhbGwgVHJhY2U6DQo+IE1h
-ciAgNyAxMzo1MjowOCBsb2NhbGhvc3Qga2VybmVsOiBuZnNfd2JfcGFnZSsweGQ3LzB4MWIwIFtu
-ZnNdDQoNCkFoLi4uIFNvIHRoZSByZWFsIHByb2JsZW0gaXMgdGhhdCB3ZSdyZSBub3Qgd2FpdGlu
-ZyBmb3IgdGhlIG91dHN0YW5kaW5nDQpjb21taXQ/IE9LLCBzbyBob3cgYWJvdXQgc29tZXRoaW5n
-IGxpa2UgdGhlIGZvbGxvd2luZyB0aGVuPw0KDQo4PC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSBmMmI3NjM0ZDhhMDUxMDA2MzFhYjAxOWQ0ZmI1MDkyZWQ1
-ZmUzYzAzIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0
-cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KRGF0ZTogV2VkLCA3IE1hciAyMDE4IDE1
-OjIyOjMxIC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0hdIE5GUzogRG9uJ3QgY2lyY3VtdmVudCB3YWl0
-IGZvciBjb21taXQgY29tcGxldGlvbg0KDQpXZSBkbyB3YW50IHRvIHJlc3BlY3QgdGhlIEZMVVNI
-X1NZTkMgYXJndW1lbnQgdG8gbmZzX2NvbW1pdF9pbm9kZSgpIHRvDQplbnN1cmUgdGhhdCBhbGwg
-b3V0c3RhbmRpbmcgQ09NTUlUIHJlcXVlc3RzIHRvIHRoZSBpbm9kZSBpbiBxdWVzdGlvbiBhcmUN
-CmNvbXBsZXRlLiBDdXJyZW50bHkgd2Ugd2lsbCBleGl0IGVhcmx5IGlmIHdlIGRpZCBub3QgaGF2
-ZSB0byBzY2hlZHVsZQ0KYSBuZXcgQ09NTUlUIHJlcXVlc3QuDQoNCkZpeGVzOiBkYzRmZDlhYjAx
-YWIzICgibmZzOiBkb24ndCB3YWl0IG9uIGNvbW1pdCBpbiBuZnNfY29tbWl0X2lub2RlKCkuLi4i
-KQ0KU2lnbmVkLW9mZi1ieTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFy
-eWRhdGEuY29tPg0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcgIyA0LjUrDQotLS0NCiBmcy9u
-ZnMvd3JpdGUuYyB8IDUgKystLS0NCiAxIGZpbGUgY2hhbmdlZCwgMiBpbnNlcnRpb25zKCspLCAz
-IGRlbGV0aW9ucygtKQ0KDQpkaWZmIC0tZ2l0IGEvZnMvbmZzL3dyaXRlLmMgYi9mcy9uZnMvd3Jp
-dGUuYw0KaW5kZXggOTM0NjBmMWNmNWE0Li44OWNhN2I3MjU0NTQgMTAwNjQ0DQotLS0gYS9mcy9u
-ZnMvd3JpdGUuYw0KKysrIGIvZnMvbmZzL3dyaXRlLmMNCkBAIC0xODg2LDggKzE4ODYsNiBAQCBp
-bnQgbmZzX2NvbW1pdF9pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQgaG93KQ0KIAlpZiAo
-cmVzKQ0KIAkJZXJyb3IgPSBuZnNfZ2VuZXJpY19jb21taXRfbGlzdChpbm9kZSwgJmhlYWQsIGhv
-dywgJmNpbmZvKTsNCiAJbmZzX2NvbW1pdF9lbmQoY2luZm8ubWRzKTsNCi0JaWYgKHJlcyA9PSAw
-KQ0KLQkJcmV0dXJuIHJlczsNCiAJaWYgKGVycm9yIDwgMCkNCiAJCWdvdG8gb3V0X2Vycm9yOw0K
-IAlpZiAoIW1heV93YWl0KQ0KQEAgLTE5MDQsNyArMTkwMiw4IEBAIGludCBuZnNfY29tbWl0X2lu
-b2RlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIGludCBob3cpDQogCSAqIHRoYXQgdGhlIGRhdGEgaXMg
-b24gdGhlIGRpc2suDQogCSAqLw0KIG91dF9tYXJrX2RpcnR5Og0KLQlfX21hcmtfaW5vZGVfZGly
-dHkoaW5vZGUsIElfRElSVFlfREFUQVNZTkMpOw0KKwlpZiAoYXRvbWljX3JlYWQoJmNpbmZvLm1k
-cy0+cnBjc19vdXQpKQ0KKwkJX19tYXJrX2lub2RlX2RpcnR5KGlub2RlLCBJX0RJUlRZX0RBVEFT
-WU5DKTsNCiAJcmV0dXJuIHJlczsNCiB9DQogRVhQT1JUX1NZTUJPTF9HUEwobmZzX2NvbW1pdF9p
-bm9kZSk7DQotLSANCjIuMTQuMw0KDQotLSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNs
-aWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
-LmNvbQ0K
+On Tue, Feb 20, 2018 at 11:42:24AM -0500, Olga Kornievskaia wrote:
+> +static int nfsd4_init_copy_res(struct nfsd4_copy *copy, bool sync)
+> +{
+> +	memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+> +		sizeof(copy->cp_dst_stateid));
+> +	copy->cp_res.wr_stable_how = NFS_UNSTABLE;
+> +	copy->cp_consecutive = 1;
 
+The cp_consecutive field was there before you came along, but I don't
+really see the point of it; all we do is ignore it and always set it to
+one.  I'd just hard-code it into the xdr code:
+
+commit f0a45f80333e
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Mar 7 15:37:35 2018 -0500
+
+    nfsd: remove unsused "cp_consecutive" field
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index a0bed2b2004d..40dfb759d38d 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1106,7 +1106,6 @@ nfsd4_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	else {
+ 		copy->cp_res.wr_bytes_written = bytes;
+ 		copy->cp_res.wr_stable_how = NFS_UNSTABLE;
+-		copy->cp_consecutive = 1;
+ 		copy->cp_synchronous = 1;
+ 		gen_boot_verifier(&copy->cp_res.wr_verifier, SVC_NET(rqstp));
+ 		status = nfs_ok;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e502fd16246b..9f8ef2c6e508 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1759,7 +1759,7 @@ nfsd4_decode_copy(struct nfsd4_compoundargs *argp, struct nfsd4_copy *copy)
+ 	p = xdr_decode_hyper(p, &copy->cp_src_pos);
+ 	p = xdr_decode_hyper(p, &copy->cp_dst_pos);
+ 	p = xdr_decode_hyper(p, &copy->cp_count);
+-	copy->cp_consecutive = be32_to_cpup(p++);
++	p++; /* ca_consecutive: we always do consecutive copies */
+ 	copy->cp_synchronous = be32_to_cpup(p++);
+ 	tmp = be32_to_cpup(p); /* Source server list not supported */
+ 
+@@ -4214,7 +4214,7 @@ nfsd4_encode_copy(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		return nfserr;
+ 
+ 	p = xdr_reserve_space(&resp->xdr, 4 + 4);
+-	*p++ = cpu_to_be32(copy->cp_consecutive);
++	*p++ = xdr_one; /* cr_consecutive */
+ 	*p++ = cpu_to_be32(copy->cp_synchronous);
+ 	return 0;
+ }
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index bc29511b6405..7cbc129092fe 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -518,7 +518,6 @@ struct nfsd4_copy {
+ 	u64		cp_count;
+ 
+ 	/* both */
+-	bool		cp_consecutive;
+ 	bool		cp_synchronous;
+ 
+ 	/* response */
