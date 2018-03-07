@@ -1,326 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:48884 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754577AbeCGU7r (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2018 15:59:47 -0500
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
-Subject: Re: [PATCH 5/9] SUNRPC: Initialize rpc_rqst outside of
- xprt->reserve_lock
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <48c31eb1-4acf-534b-57d7-7a37e5cbe3b4@Netapp.com>
-Date: Wed, 7 Mar 2018 15:44:41 -0500
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F17409F3-4C24-4124-BF58-A8B2C1C216F6@oracle.com>
-References: <20180305200825.10904.40829.stgit@manet.1015granger.net>
- <20180305201318.10904.57825.stgit@manet.1015granger.net>
- <4dd8259a-e447-122b-c267-75e2e6b4714e@Netapp.com>
- <FA9A696D-3702-43DB-8FBA-E924B54E0F28@oracle.com>
- <41538F44-115C-4F64-9BCA-0A6B8723A9F5@oracle.com>
- <9ac7ea34-d409-da6a-21cb-35fa6e09cd66@Netapp.com>
- <6C6A09E2-88A2-4968-89CD-8F6DF959B815@oracle.com>
- <48c31eb1-4acf-534b-57d7-7a37e5cbe3b4@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from fieldses.org ([173.255.197.46]:42080 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1754333AbeCGVFw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Mar 2018 16:05:52 -0500
+Date: Wed, 7 Mar 2018 16:05:51 -0500
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v7 05/10] NFSD introduce asynch copy feature
+Message-ID: <20180307210551.GC28844@fieldses.org>
+References: <20180220164229.65404-1-kolga@netapp.com>
+ <20180220164229.65404-6-kolga@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180220164229.65404-6-kolga@netapp.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+It looks like "struct nfsd_copy" is being used in at least three
+different ways: to hold the xdr arguments and reply, to hold the state
+needed while doing a copy, and to hold the callback arguments.  I wonder
+if the code would be clearer if those were three different data
+structures.
 
+> +static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
+> +{
+> +	memcpy(&dst->cp_src_stateid, &src->cp_src_stateid, sizeof(stateid_t));
+> +	memcpy(&dst->cp_dst_stateid, &src->cp_dst_stateid, sizeof(stateid_t));
+> +	dst->cp_src_pos = src->cp_src_pos;
+> +	dst->cp_dst_pos = src->cp_dst_pos;
+> +	dst->cp_count = src->cp_count;
+> +	dst->cp_consecutive = src->cp_consecutive;
+> +	dst->cp_synchronous = src->cp_synchronous;
+> +	memcpy(&dst->cp_res, &src->cp_res, sizeof(src->cp_res));
+> +	/* skipping nfsd4_callback */
+> +	memcpy(&dst->fh, &src->fh, sizeof(src->fh));
+> +	dst->net = src->net;
+> +	dst->cp_clp = src->cp_clp;
+> +	atomic_inc(&dst->cp_clp->cl_refcount);
+> +	dst->fh_dst = get_file(src->fh_dst);
+> +	dst->fh_src = get_file(src->fh_src);
 
-> On Mar 7, 2018, at 3:32 PM, Anna Schumaker <Anna.Schumaker@netapp.com> =
-wrote:
->=20
->=20
->=20
-> On 03/07/2018 03:23 PM, Chuck Lever wrote:
->>=20
->>=20
->>> On Mar 7, 2018, at 3:00 PM, Anna Schumaker =
-<Anna.Schumaker@netapp.com> wrote:
->>>=20
->>>=20
->>>=20
->>> On 03/06/2018 05:30 PM, Chuck Lever wrote:
->>>>=20
->>>>=20
->>>>> On Mar 6, 2018, at 5:07 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->>>>>=20
->>>>>=20
->>>>>=20
->>>>>> On Mar 6, 2018, at 5:02 PM, Anna Schumaker =
-<Anna.Schumaker@netapp.com> wrote:
->>>>>>=20
->>>>>> Hi Chuck,
->>>>>>=20
->>>>>> I'm seeing a huge performance hit with this patch.  I'm just =
-running cthon over TCP, and it goes from finishing in 22 seconds to =
-taking well over 5 minutes.  I seem to only see this on the read and =
-write tests, such as basic test5 taking a minute to finish:
->>>>>>=20
->>>>>> ./test5: read and write                                           =
-                                           =20
->>>>>>         wrote 1048576 byte file 10 times in 60.35 seconds (173737 =
-bytes/sec)                                 =20
->>>>>>         read 1048576 byte file 10 times in 0.0  seconds =
-(-2147483648 bytes/sec)                              =20
->>>>>>         ./test5 ok.=20
->>>>>=20
->>>>> OK. This looks like write is impacted, but this test doesn't
->>>>> actually perform any reads on the wire. Try iozone with -I,
->>>>> maybe? That would show results for both read and write.
->>>>=20
->>>> Hum.
->>>>=20
->>>> Stock v4.16-rc4:
->>>>=20
->>>> ./test5: read and write
->>>> 	wrote 1048576 byte file 10 times in 0.2  seconds (350811642 =
-bytes/sec)
->>>> 	read 1048576 byte file 10 times in 0.0  seconds (-2147483648 =
-bytes/sec)
->>>> 	./test5 ok.
->>>>=20
->>>>=20
->>>> v4.16-rc4 with my full set of patches:
->>>>=20
->>>> ./test5: read and write
->>>> 	wrote 1048576 byte file 10 times in 0.2  seconds (354236681 =
-bytes/sec)
->>>> 	read 1048576 byte file 10 times in 0.0  seconds (-2147483648 =
-bytes/sec)
->>>> 	./test5 ok.
->>>>=20
->>>> I don't see a regression here. Let me know how it goes!
->>>=20
->>> I'm using rc4 too, so maybe it's something different in my setup?
->>=20
->> What is your setup, exactly? I assume your client is maybe a
->> single CPU guest, and the server is the same, and both are
->> hosted on one system?
->=20
-> Client is single CPU kvm guest with 1 gig ram, server is also kvm on =
-the same system with 2 cpus and 4 gigs ram.
->=20
->>=20
->>=20
->>> Making this change fixes the issue for me:
->>>=20
->>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>> index a394b4635f8e..273847f7e455 100644
->>> --- a/net/sunrpc/xprt.c
->>> +++ b/net/sunrpc/xprt.c
->>> @@ -987,8 +987,6 @@ bool xprt_prepare_transmit(struct rpc_task =
-*task)
->>>               task->tk_status =3D -EAGAIN;
->>>               goto out_unlock;
->>>       }
->>> -       if (likely(!bc_prealloc(req)))
->>> -               req->rq_xid =3D xprt_alloc_xid(xprt);
->>>       ret =3D true;
->>> out_unlock:
->>>       spin_unlock_bh(&xprt->transport_lock);
->>> @@ -1315,6 +1313,7 @@ void xprt_request_init(struct rpc_task *task)
->>>       req->rq_task    =3D task;
->>>       req->rq_xprt    =3D xprt;
->>>       req->rq_buffer  =3D NULL;
->>> +       req->rq_xid     =3D xprt_alloc_xid(xprt);
->>=20
->> xprt_alloc_xid is just=20
->>=20
->> 1299 static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
->> 1300 {
->> 1301         return (__force __be32)xprt->xid++;
->> 1302 }
->>=20
->> I don't believe the new call site for xprt_request_init is
->> adequately serialized for this to be safe in general. That's why
->> I'm calling xprt_alloc_xid in xprt_prepare_transmit, behind the
->> transport_lock.
->=20
-> This makes sense.
->=20
->>=20
->> However, I think we need to explain why that helps your performance
->> issue, because it doesn't make sense to me that this would make a
->> difference. Why did you think to try this change? Is there evidence
->> on the wire of XID re-use, for example?
->=20
-> I selectively reverted parts of your original patch until I found the =
-parts that kill my performance.
+Just another minor gripe, but: could we name those fd_* or file_* or
+something instead of fh?  I tend to assume "fh" means "nfs filehandle".
 
-Fair enough, but that doesn't explain why your change helps. :-)
-Since I can't reproduce the regression here, try this:
+> +}
+> +
+> +static void cleanup_async_copy(struct nfsd4_copy *copy, bool remove)
+> +{
+> +	fput(copy->fh_dst);
+> +	fput(copy->fh_src);
+> +	if (remove) {
+> +		spin_lock(&copy->cp_clp->async_lock);
+> +		list_del(&copy->copies);
+> +		spin_unlock(&copy->cp_clp->async_lock);
+> +	}
 
-0. Build a kernel with the regression
+I don't understand yet why you need these two cases.  Anyway, I'd rather
+you did this in the caller.  So the caller can do either:
 
-1. On your client:  # trace-cmd record -e sunrpc:* -e rpcrdma:*
+	spin_lock()
+	list_del()
+	spin_unlock()
+	cleanup_async_copy()
 
-2. Run the cthon04 basic tests
+or just
 
-3. ^C the trace-cmd
+	cleanup_async_copy()
 
-4. Rename trace.dat
+Or define another helper for the first case if you're really doing it a
+lot.  Just don't make me have to remember what that second argument
+means each time I see it used.
 
-5. Repeat steps 1-4 with stock v4.16-rc4
+> +	atomic_dec(&copy->cp_clp->cl_refcount);
+> +	kfree(copy);
+> +}
+...
+> +	copy->cp_clp = cstate->clp;
+> +	memcpy(&copy->fh, &cstate->current_fh.fh_handle,
+> +		sizeof(struct knfsd_fh));
+> +	copy->net = SVC_NET(rqstp);
+> +	/* for now disable asynchronous copy feature */
+> +	copy->cp_synchronous = 1;
+> +	if (!copy->cp_synchronous) {
+> +		status = nfsd4_init_copy_res(copy, 0);
+> +		async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+> +		if (!async_copy) {
+> +			status = nfserrno(-ENOMEM);
+> +			goto out;
+> +		}
+> +		dup_copy_fields(copy, async_copy);
+> +		memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+> +			sizeof(copy->cp_dst_stateid));
+> +		async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
+> +				async_copy, "%s", "copy thread");
+> +		if (IS_ERR(async_copy->copy_task)) {
+> +			status = PTR_ERR(async_copy->copy_task);
 
-6. tar and gzip the .dat files and send them to me
+status should be an nfs error.
 
+--b.
 
->>>       req->rq_connect_cookie =3D xprt->connect_cookie - 1;
->>>       req->rq_bytes_sent =3D 0;
->>>       req->rq_snd_buf.len =3D 0;
->>>=20
->>>=20
->>> Anna
->>>=20
->>>>=20
->>>>=20
->>>>>> I haven't dug into this too deeply, but my best guess is that =
-maybe it's due to adding a call to xprt_request_init() in =
-net/sunrpc/clnt.c:call_reserveresult()
->>>>>=20
->>>>> It wasn't added there, it was moved from xprt_alloc_slot. So,
->>>>> it's not new work per-RPC.
->>>>>=20
->>>>> Any additional information would be appreciated!
->>>>>=20
->>>>>=20
->>>>>> Thoughts?
->>>>>> Anna
->>>>>>=20
->>>>>> On 03/05/2018 03:13 PM, Chuck Lever wrote:
->>>>>>> alloc_slot is a transport-specific op, but initializing an =
-rpc_rqst
->>>>>>> is common to all transports. Move initialization to common code =
-in
->>>>>>> preparation for adding a transport-specific alloc_slot to =
-xprtrdma.
->>>>>>>=20
->>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>>>>>> ---
->>>>>>> include/linux/sunrpc/xprt.h |    1 +
->>>>>>> net/sunrpc/clnt.c           |    1 +
->>>>>>> net/sunrpc/xprt.c           |   12 +++++++-----
->>>>>>> 3 files changed, 9 insertions(+), 5 deletions(-)
->>>>>>>=20
->>>>>>> diff --git a/include/linux/sunrpc/xprt.h =
-b/include/linux/sunrpc/xprt.h
->>>>>>> index 5fea0fb..9784e28 100644
->>>>>>> --- a/include/linux/sunrpc/xprt.h
->>>>>>> +++ b/include/linux/sunrpc/xprt.h
->>>>>>> @@ -324,6 +324,7 @@ struct xprt_class {
->>>>>>> struct rpc_xprt		*xprt_create_transport(struct =
-xprt_create *args);
->>>>>>> void			xprt_connect(struct rpc_task *task);
->>>>>>> void			xprt_reserve(struct rpc_task *task);
->>>>>>> +void			xprt_request_init(struct rpc_task =
-*task);
->>>>>>> void			xprt_retry_reserve(struct rpc_task =
-*task);
->>>>>>> int			xprt_reserve_xprt(struct rpc_xprt *xprt, =
-struct rpc_task *task);
->>>>>>> int			xprt_reserve_xprt_cong(struct rpc_xprt =
-*xprt, struct rpc_task *task);
->>>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>>>>>> index 6e432ec..226f558 100644
->>>>>>> --- a/net/sunrpc/clnt.c
->>>>>>> +++ b/net/sunrpc/clnt.c
->>>>>>> @@ -1546,6 +1546,7 @@ void rpc_force_rebind(struct rpc_clnt =
-*clnt)
->>>>>>> 	task->tk_status =3D 0;
->>>>>>> 	if (status >=3D 0) {
->>>>>>> 		if (task->tk_rqstp) {
->>>>>>> +			xprt_request_init(task);
->>>>>>> 			task->tk_action =3D call_refresh;
->>>>>>> 			return;
->>>>>>> 		}
->>>>>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>>>>>> index 70f0050..a394b46 100644
->>>>>>> --- a/net/sunrpc/xprt.c
->>>>>>> +++ b/net/sunrpc/xprt.c
->>>>>>> @@ -66,7 +66,7 @@
->>>>>>> * Local functions
->>>>>>> */
->>>>>>> static void	 xprt_init(struct rpc_xprt *xprt, struct net =
-*net);
->>>>>>> -static void	xprt_request_init(struct rpc_task *, struct =
-rpc_xprt *);
->>>>>>> +static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
->>>>>>> static void	xprt_connect_status(struct rpc_task *task);
->>>>>>> static int      __xprt_get_cong(struct rpc_xprt *, struct =
-rpc_task *);
->>>>>>> static void     __xprt_put_cong(struct rpc_xprt *, struct =
-rpc_rqst *);
->>>>>>> @@ -987,6 +987,8 @@ bool xprt_prepare_transmit(struct rpc_task =
-*task)
->>>>>>> 		task->tk_status =3D -EAGAIN;
->>>>>>> 		goto out_unlock;
->>>>>>> 	}
->>>>>>> +	if (likely(!bc_prealloc(req)))
->>>>>>> +		req->rq_xid =3D xprt_alloc_xid(xprt);
->>>>>>> 	ret =3D true;
->>>>>>> out_unlock:
->>>>>>> 	spin_unlock_bh(&xprt->transport_lock);
->>>>>>> @@ -1163,10 +1165,10 @@ void xprt_alloc_slot(struct rpc_xprt =
-*xprt, struct rpc_task *task)
->>>>>>> out_init_req:
->>>>>>> 	xprt->stat.max_slots =3D max_t(unsigned int, =
-xprt->stat.max_slots,
->>>>>>> 				     xprt->num_reqs);
->>>>>>> +	spin_unlock(&xprt->reserve_lock);
->>>>>>> +
->>>>>>> 	task->tk_status =3D 0;
->>>>>>> 	task->tk_rqstp =3D req;
->>>>>>> -	xprt_request_init(task, xprt);
->>>>>>> -	spin_unlock(&xprt->reserve_lock);
->>>>>>> }
->>>>>>> EXPORT_SYMBOL_GPL(xprt_alloc_slot);
->>>>>>>=20
->>>>>>> @@ -1303,8 +1305,9 @@ static inline void xprt_init_xid(struct =
-rpc_xprt *xprt)
->>>>>>> 	xprt->xid =3D prandom_u32();
->>>>>>> }
->>>>>>>=20
->>>>>>> -static void xprt_request_init(struct rpc_task *task, struct =
-rpc_xprt *xprt)
->>>>>>> +void xprt_request_init(struct rpc_task *task)
->>>>>>> {
->>>>>>> +	struct rpc_xprt *xprt =3D task->tk_xprt;
->>>>>>> 	struct rpc_rqst	*req =3D task->tk_rqstp;
->>>>>>>=20
->>>>>>> 	INIT_LIST_HEAD(&req->rq_list);
->>>>>>> @@ -1312,7 +1315,6 @@ static void xprt_request_init(struct =
-rpc_task *task, struct rpc_xprt *xprt)
->>>>>>> 	req->rq_task	=3D task;
->>>>>>> 	req->rq_xprt    =3D xprt;
->>>>>>> 	req->rq_buffer  =3D NULL;
->>>>>>> -	req->rq_xid     =3D xprt_alloc_xid(xprt);
->>>>>>> 	req->rq_connect_cookie =3D xprt->connect_cookie - 1;
->>>>>>> 	req->rq_bytes_sent =3D 0;
->>>>>>> 	req->rq_snd_buf.len =3D 0;
->>>>>>>=20
->>>>>=20
->>>>> --
->>>>> Chuck Lever
->>>>>=20
->>>>>=20
->>>>>=20
->>>>> --
->>>>> To unsubscribe from this list: send the line "unsubscribe =
-linux-rdma" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>>=20
->>>> --
->>>> Chuck Lever
->>=20
->> --
->> Chuck Lever
-
---
-Chuck Lever
-
-
-
+> +			goto out_err;
+> +		}
+> +		spin_lock(&async_copy->cp_clp->async_lock);
+> +		list_add(&async_copy->copies,
+> +				&async_copy->cp_clp->async_copies);
+> +		spin_unlock(&async_copy->cp_clp->async_lock);
+> +		wake_up_process(async_copy->copy_task);
+> +	} else {
+> +		status = nfsd4_do_copy(copy, 1);
+>  	}
+> -
+> -	fput(src);
+> -	fput(dst);
+>  out:
+>  	return status;
+> +out_err:
+> +	cleanup_async_copy(async_copy, false);
+> +	goto out;
+>  }
+>  
+>  static __be32
