@@ -1,49 +1,326 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:53477 "EHLO
-        mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754578AbeCGU6k (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2018 15:58:40 -0500
-Received: by mail-it0-f68.google.com with SMTP id w63so4941820ita.3
-        for <linux-nfs@vger.kernel.org>; Wed, 07 Mar 2018 12:58:40 -0800 (PST)
-Received: from leira.trondhjem.org.localdomain (c-68-49-162-121.hsd1.mi.comcast.net. [68.49.162.121])
-        by smtp.gmail.com with ESMTPSA id j130sm9248090ita.33.2018.03.07.12.58.38
-        for <linux-nfs@vger.kernel.org>
-        (version=TLS1_2 cipher=ECDHE-RSA-CHACHA20-POLY1305 bits=256/256);
-        Wed, 07 Mar 2018 12:58:39 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFS: Fix an incorrect type in struct nfs_direct_req
-Date: Wed,  7 Mar 2018 15:58:16 -0500
-Message-Id: <20180307205817.5913-1-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
+Received: from userp2130.oracle.com ([156.151.31.86]:48884 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754577AbeCGU7r (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2018 15:59:47 -0500
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.2 \(3445.5.20\))
+Subject: Re: [PATCH 5/9] SUNRPC: Initialize rpc_rqst outside of
+ xprt->reserve_lock
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <48c31eb1-4acf-534b-57d7-7a37e5cbe3b4@Netapp.com>
+Date: Wed, 7 Mar 2018 15:44:41 -0500
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F17409F3-4C24-4124-BF58-A8B2C1C216F6@oracle.com>
+References: <20180305200825.10904.40829.stgit@manet.1015granger.net>
+ <20180305201318.10904.57825.stgit@manet.1015granger.net>
+ <4dd8259a-e447-122b-c267-75e2e6b4714e@Netapp.com>
+ <FA9A696D-3702-43DB-8FBA-E924B54E0F28@oracle.com>
+ <41538F44-115C-4F64-9BCA-0A6B8723A9F5@oracle.com>
+ <9ac7ea34-d409-da6a-21cb-35fa6e09cd66@Netapp.com>
+ <6C6A09E2-88A2-4968-89CD-8F6DF959B815@oracle.com>
+ <48c31eb1-4acf-534b-57d7-7a37e5cbe3b4@Netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The start offset needs to be of type loff_t.
 
-Fixed: 5fadeb47dcc5c ("nfs: count DIO good bytes correctly with mirroring")
-Cc: stable@vger.kernel.org # v4.0+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/direct.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 8c10b0562e75..621c517b325c 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -86,10 +86,10 @@ struct nfs_direct_req {
- 	struct nfs_direct_mirror mirrors[NFS_PAGEIO_DESCRIPTOR_MIRROR_MAX];
- 	int			mirror_count;
- 
-+	loff_t			io_start;	/* Start offset for I/O */
- 	ssize_t			count,		/* bytes actually processed */
- 				max_count,	/* max expected count */
- 				bytes_left,	/* bytes left to be sent */
--				io_start,	/* start of IO */
- 				error;		/* any reported error */
- 	struct completion	completion;	/* wait for i/o completion */
- 
--- 
-2.14.3
+> On Mar 7, 2018, at 3:32 PM, Anna Schumaker <Anna.Schumaker@netapp.com> =
+wrote:
+>=20
+>=20
+>=20
+> On 03/07/2018 03:23 PM, Chuck Lever wrote:
+>>=20
+>>=20
+>>> On Mar 7, 2018, at 3:00 PM, Anna Schumaker =
+<Anna.Schumaker@netapp.com> wrote:
+>>>=20
+>>>=20
+>>>=20
+>>> On 03/06/2018 05:30 PM, Chuck Lever wrote:
+>>>>=20
+>>>>=20
+>>>>> On Mar 6, 2018, at 5:07 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>>>>>=20
+>>>>>=20
+>>>>>=20
+>>>>>> On Mar 6, 2018, at 5:02 PM, Anna Schumaker =
+<Anna.Schumaker@netapp.com> wrote:
+>>>>>>=20
+>>>>>> Hi Chuck,
+>>>>>>=20
+>>>>>> I'm seeing a huge performance hit with this patch.  I'm just =
+running cthon over TCP, and it goes from finishing in 22 seconds to =
+taking well over 5 minutes.  I seem to only see this on the read and =
+write tests, such as basic test5 taking a minute to finish:
+>>>>>>=20
+>>>>>> ./test5: read and write                                           =
+                                           =20
+>>>>>>         wrote 1048576 byte file 10 times in 60.35 seconds (173737 =
+bytes/sec)                                 =20
+>>>>>>         read 1048576 byte file 10 times in 0.0  seconds =
+(-2147483648 bytes/sec)                              =20
+>>>>>>         ./test5 ok.=20
+>>>>>=20
+>>>>> OK. This looks like write is impacted, but this test doesn't
+>>>>> actually perform any reads on the wire. Try iozone with -I,
+>>>>> maybe? That would show results for both read and write.
+>>>>=20
+>>>> Hum.
+>>>>=20
+>>>> Stock v4.16-rc4:
+>>>>=20
+>>>> ./test5: read and write
+>>>> 	wrote 1048576 byte file 10 times in 0.2  seconds (350811642 =
+bytes/sec)
+>>>> 	read 1048576 byte file 10 times in 0.0  seconds (-2147483648 =
+bytes/sec)
+>>>> 	./test5 ok.
+>>>>=20
+>>>>=20
+>>>> v4.16-rc4 with my full set of patches:
+>>>>=20
+>>>> ./test5: read and write
+>>>> 	wrote 1048576 byte file 10 times in 0.2  seconds (354236681 =
+bytes/sec)
+>>>> 	read 1048576 byte file 10 times in 0.0  seconds (-2147483648 =
+bytes/sec)
+>>>> 	./test5 ok.
+>>>>=20
+>>>> I don't see a regression here. Let me know how it goes!
+>>>=20
+>>> I'm using rc4 too, so maybe it's something different in my setup?
+>>=20
+>> What is your setup, exactly? I assume your client is maybe a
+>> single CPU guest, and the server is the same, and both are
+>> hosted on one system?
+>=20
+> Client is single CPU kvm guest with 1 gig ram, server is also kvm on =
+the same system with 2 cpus and 4 gigs ram.
+>=20
+>>=20
+>>=20
+>>> Making this change fixes the issue for me:
+>>>=20
+>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>> index a394b4635f8e..273847f7e455 100644
+>>> --- a/net/sunrpc/xprt.c
+>>> +++ b/net/sunrpc/xprt.c
+>>> @@ -987,8 +987,6 @@ bool xprt_prepare_transmit(struct rpc_task =
+*task)
+>>>               task->tk_status =3D -EAGAIN;
+>>>               goto out_unlock;
+>>>       }
+>>> -       if (likely(!bc_prealloc(req)))
+>>> -               req->rq_xid =3D xprt_alloc_xid(xprt);
+>>>       ret =3D true;
+>>> out_unlock:
+>>>       spin_unlock_bh(&xprt->transport_lock);
+>>> @@ -1315,6 +1313,7 @@ void xprt_request_init(struct rpc_task *task)
+>>>       req->rq_task    =3D task;
+>>>       req->rq_xprt    =3D xprt;
+>>>       req->rq_buffer  =3D NULL;
+>>> +       req->rq_xid     =3D xprt_alloc_xid(xprt);
+>>=20
+>> xprt_alloc_xid is just=20
+>>=20
+>> 1299 static inline __be32 xprt_alloc_xid(struct rpc_xprt *xprt)
+>> 1300 {
+>> 1301         return (__force __be32)xprt->xid++;
+>> 1302 }
+>>=20
+>> I don't believe the new call site for xprt_request_init is
+>> adequately serialized for this to be safe in general. That's why
+>> I'm calling xprt_alloc_xid in xprt_prepare_transmit, behind the
+>> transport_lock.
+>=20
+> This makes sense.
+>=20
+>>=20
+>> However, I think we need to explain why that helps your performance
+>> issue, because it doesn't make sense to me that this would make a
+>> difference. Why did you think to try this change? Is there evidence
+>> on the wire of XID re-use, for example?
+>=20
+> I selectively reverted parts of your original patch until I found the =
+parts that kill my performance.
+
+Fair enough, but that doesn't explain why your change helps. :-)
+Since I can't reproduce the regression here, try this:
+
+0. Build a kernel with the regression
+
+1. On your client:  # trace-cmd record -e sunrpc:* -e rpcrdma:*
+
+2. Run the cthon04 basic tests
+
+3. ^C the trace-cmd
+
+4. Rename trace.dat
+
+5. Repeat steps 1-4 with stock v4.16-rc4
+
+6. tar and gzip the .dat files and send them to me
+
+
+>>>       req->rq_connect_cookie =3D xprt->connect_cookie - 1;
+>>>       req->rq_bytes_sent =3D 0;
+>>>       req->rq_snd_buf.len =3D 0;
+>>>=20
+>>>=20
+>>> Anna
+>>>=20
+>>>>=20
+>>>>=20
+>>>>>> I haven't dug into this too deeply, but my best guess is that =
+maybe it's due to adding a call to xprt_request_init() in =
+net/sunrpc/clnt.c:call_reserveresult()
+>>>>>=20
+>>>>> It wasn't added there, it was moved from xprt_alloc_slot. So,
+>>>>> it's not new work per-RPC.
+>>>>>=20
+>>>>> Any additional information would be appreciated!
+>>>>>=20
+>>>>>=20
+>>>>>> Thoughts?
+>>>>>> Anna
+>>>>>>=20
+>>>>>> On 03/05/2018 03:13 PM, Chuck Lever wrote:
+>>>>>>> alloc_slot is a transport-specific op, but initializing an =
+rpc_rqst
+>>>>>>> is common to all transports. Move initialization to common code =
+in
+>>>>>>> preparation for adding a transport-specific alloc_slot to =
+xprtrdma.
+>>>>>>>=20
+>>>>>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>>>>>> ---
+>>>>>>> include/linux/sunrpc/xprt.h |    1 +
+>>>>>>> net/sunrpc/clnt.c           |    1 +
+>>>>>>> net/sunrpc/xprt.c           |   12 +++++++-----
+>>>>>>> 3 files changed, 9 insertions(+), 5 deletions(-)
+>>>>>>>=20
+>>>>>>> diff --git a/include/linux/sunrpc/xprt.h =
+b/include/linux/sunrpc/xprt.h
+>>>>>>> index 5fea0fb..9784e28 100644
+>>>>>>> --- a/include/linux/sunrpc/xprt.h
+>>>>>>> +++ b/include/linux/sunrpc/xprt.h
+>>>>>>> @@ -324,6 +324,7 @@ struct xprt_class {
+>>>>>>> struct rpc_xprt		*xprt_create_transport(struct =
+xprt_create *args);
+>>>>>>> void			xprt_connect(struct rpc_task *task);
+>>>>>>> void			xprt_reserve(struct rpc_task *task);
+>>>>>>> +void			xprt_request_init(struct rpc_task =
+*task);
+>>>>>>> void			xprt_retry_reserve(struct rpc_task =
+*task);
+>>>>>>> int			xprt_reserve_xprt(struct rpc_xprt *xprt, =
+struct rpc_task *task);
+>>>>>>> int			xprt_reserve_xprt_cong(struct rpc_xprt =
+*xprt, struct rpc_task *task);
+>>>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>>>>>> index 6e432ec..226f558 100644
+>>>>>>> --- a/net/sunrpc/clnt.c
+>>>>>>> +++ b/net/sunrpc/clnt.c
+>>>>>>> @@ -1546,6 +1546,7 @@ void rpc_force_rebind(struct rpc_clnt =
+*clnt)
+>>>>>>> 	task->tk_status =3D 0;
+>>>>>>> 	if (status >=3D 0) {
+>>>>>>> 		if (task->tk_rqstp) {
+>>>>>>> +			xprt_request_init(task);
+>>>>>>> 			task->tk_action =3D call_refresh;
+>>>>>>> 			return;
+>>>>>>> 		}
+>>>>>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>>>>>> index 70f0050..a394b46 100644
+>>>>>>> --- a/net/sunrpc/xprt.c
+>>>>>>> +++ b/net/sunrpc/xprt.c
+>>>>>>> @@ -66,7 +66,7 @@
+>>>>>>> * Local functions
+>>>>>>> */
+>>>>>>> static void	 xprt_init(struct rpc_xprt *xprt, struct net =
+*net);
+>>>>>>> -static void	xprt_request_init(struct rpc_task *, struct =
+rpc_xprt *);
+>>>>>>> +static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
+>>>>>>> static void	xprt_connect_status(struct rpc_task *task);
+>>>>>>> static int      __xprt_get_cong(struct rpc_xprt *, struct =
+rpc_task *);
+>>>>>>> static void     __xprt_put_cong(struct rpc_xprt *, struct =
+rpc_rqst *);
+>>>>>>> @@ -987,6 +987,8 @@ bool xprt_prepare_transmit(struct rpc_task =
+*task)
+>>>>>>> 		task->tk_status =3D -EAGAIN;
+>>>>>>> 		goto out_unlock;
+>>>>>>> 	}
+>>>>>>> +	if (likely(!bc_prealloc(req)))
+>>>>>>> +		req->rq_xid =3D xprt_alloc_xid(xprt);
+>>>>>>> 	ret =3D true;
+>>>>>>> out_unlock:
+>>>>>>> 	spin_unlock_bh(&xprt->transport_lock);
+>>>>>>> @@ -1163,10 +1165,10 @@ void xprt_alloc_slot(struct rpc_xprt =
+*xprt, struct rpc_task *task)
+>>>>>>> out_init_req:
+>>>>>>> 	xprt->stat.max_slots =3D max_t(unsigned int, =
+xprt->stat.max_slots,
+>>>>>>> 				     xprt->num_reqs);
+>>>>>>> +	spin_unlock(&xprt->reserve_lock);
+>>>>>>> +
+>>>>>>> 	task->tk_status =3D 0;
+>>>>>>> 	task->tk_rqstp =3D req;
+>>>>>>> -	xprt_request_init(task, xprt);
+>>>>>>> -	spin_unlock(&xprt->reserve_lock);
+>>>>>>> }
+>>>>>>> EXPORT_SYMBOL_GPL(xprt_alloc_slot);
+>>>>>>>=20
+>>>>>>> @@ -1303,8 +1305,9 @@ static inline void xprt_init_xid(struct =
+rpc_xprt *xprt)
+>>>>>>> 	xprt->xid =3D prandom_u32();
+>>>>>>> }
+>>>>>>>=20
+>>>>>>> -static void xprt_request_init(struct rpc_task *task, struct =
+rpc_xprt *xprt)
+>>>>>>> +void xprt_request_init(struct rpc_task *task)
+>>>>>>> {
+>>>>>>> +	struct rpc_xprt *xprt =3D task->tk_xprt;
+>>>>>>> 	struct rpc_rqst	*req =3D task->tk_rqstp;
+>>>>>>>=20
+>>>>>>> 	INIT_LIST_HEAD(&req->rq_list);
+>>>>>>> @@ -1312,7 +1315,6 @@ static void xprt_request_init(struct =
+rpc_task *task, struct rpc_xprt *xprt)
+>>>>>>> 	req->rq_task	=3D task;
+>>>>>>> 	req->rq_xprt    =3D xprt;
+>>>>>>> 	req->rq_buffer  =3D NULL;
+>>>>>>> -	req->rq_xid     =3D xprt_alloc_xid(xprt);
+>>>>>>> 	req->rq_connect_cookie =3D xprt->connect_cookie - 1;
+>>>>>>> 	req->rq_bytes_sent =3D 0;
+>>>>>>> 	req->rq_snd_buf.len =3D 0;
+>>>>>>>=20
+>>>>>=20
+>>>>> --
+>>>>> Chuck Lever
+>>>>>=20
+>>>>>=20
+>>>>>=20
+>>>>> --
+>>>>> To unsubscribe from this list: send the line "unsubscribe =
+linux-rdma" in
+>>>>> the body of a message to majordomo@vger.kernel.org
+>>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>>=20
+>>>> --
+>>>> Chuck Lever
+>>=20
+>> --
+>> Chuck Lever
+
+--
+Chuck Lever
+
+
 
