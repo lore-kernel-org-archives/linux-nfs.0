@@ -1,55 +1,64 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:2567 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1751042AbeCGHLX (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 7 Mar 2018 02:11:23 -0500
-Received: from G08CNEXCHPEKD02.g08.fujitsu.local (unknown [10.167.33.83])
-        by cn.fujitsu.com (Postfix) with ESMTP id 4D2CA48AE761
-        for <linux-nfs@vger.kernel.org>; Wed,  7 Mar 2018 15:11:19 +0800 (CST)
-Subject: Inheritance of sgid in nfsv3 (supplement)
-References: <e5575bea-dd50-36f2-271e-46404dc0cc7d@cn.fujitsu.com>
-To: <linux-nfs@vger.kernel.org>
-From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-Message-ID: <95ae6cdf-4b42-3da5-eab8-6e458db84b07@cn.fujitsu.com>
-Date: Wed, 7 Mar 2018 15:11:24 +0800
-MIME-Version: 1.0
-In-Reply-To: <e5575bea-dd50-36f2-271e-46404dc0cc7d@cn.fujitsu.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:50538 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753901AbeCGOJF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 7 Mar 2018 09:09:05 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH V2] clnt_dg_call: Change the memory allocation
+Date: Wed,  7 Mar 2018 09:09:03 -0500
+Message-Id: <20180307140903.13278-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hi, folks
+Commit 2936f109590e add free()s on memory that
+was allocated from the stack (via alloca()).
+That type memory is automatically freed so
+those added free()s was causing a double frees.
 
+It was suggested allocating memory from the
+stack can be a bit troublesome. So this patch
+changes the memory allocation from the stack
+to the heap which also eliminates the double frees.
 
-I have client and server using nfsv3. The kernels are all 4.16-rc3.
-In client I mount a partition or a disk formatted in xfs/ext4 in
-/nfstest. It seems there is someting wrong with inheritance of sgid. I
-try the following operations in the client.
-> [root@localhost ]#id user1
-> uid=1003(user1) gid=1006(testgroup1) groups=1006(testgroup1),1007(testgroup2)
-> [root@localhost ]# mount -t nfs -o vers=3 -o noac 192.168.56.9:/data/nfstest /mnt/test/ 
-> [root@localhost ]# cd /mnt/test/
-> [root@localhost ]# mkdir mainsub
-> [root@localhost ]# setfacl -d -m u:user2:rwx mainsub/
-> [root@localhost ]# chown user1:testgroup1 mainsub/
-      (supplement) # chmod 2775 mainsub/
-> [root@localhost ]# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
-> [root@localhost ]# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
-> [root@localhost ]# ls -l mainsub/
-> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
-> drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
+Fixes: 2936f109590e ("clnt_dg_call: Fix a buffer overflow (CVE-2016-4429)")
+BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=1552163
 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ src/clnt_dg.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-The subdir2 losts SGID. But if the same operations are applied in the
-xfs or ext4 directedly, the SGID could be interited normally.
-
-> [root@localhost ]# ls -l mainsub/
-> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir1
-> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir2
-
-Is this a bug of NFSv3?
-
-
-Lu Xinyu
-
+diff --git a/src/clnt_dg.c b/src/clnt_dg.c
+index 884a2db..04a2aba 100644
+--- a/src/clnt_dg.c
++++ b/src/clnt_dg.c
+@@ -430,7 +430,7 @@ get_reply:
+ 	  struct sockaddr_in err_addr;
+ 	  struct sockaddr_in *sin = (struct sockaddr_in *)&cu->cu_raddr;
+ 	  struct iovec iov;
+-	  char *cbuf = (char *) alloca (outlen + 256);
++	  char *cbuf = (char *) mem_alloc((outlen + 256));
+ 	  int ret;
+ 
+ 	  if (cbuf == NULL) 
+@@ -462,13 +462,13 @@ get_reply:
+ 		 cmsg = CMSG_NXTHDR (&msg, cmsg))
+ 	      if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
+ 		{
+-		  free(cbuf);
++		  mem_free(cbuf, (outlen + 256));
+ 		  e = (struct sock_extended_err *) CMSG_DATA(cmsg);
+ 		  cu->cu_error.re_errno = e->ee_errno;
+ 		  release_fd_lock(cu->cu_fd, mask);
+ 		  return (cu->cu_error.re_status = RPC_CANTRECV);
+ 		}
+-	  free(cbuf);
++	  mem_free(cbuf, (outlen + 256));
+ 	}
+ #endif
+ 
+-- 
+2.14.3
 
