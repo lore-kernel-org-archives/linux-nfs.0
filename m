@@ -1,86 +1,139 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43760 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752099AbeCHRFL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Mar 2018 12:05:11 -0500
-Date: Thu, 8 Mar 2018 12:05:11 -0500
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v7 10/10] NFSD stop queued async copies on client shutdown
-Message-ID: <20180308170511.GF10782@fieldses.org>
-References: <20180220164229.65404-1-kolga@netapp.com>
- <20180220164229.65404-11-kolga@netapp.com>
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:34199 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S932091AbeCHROD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 8 Mar 2018 12:14:03 -0500
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "smayhew@redhat.com" <smayhew@redhat.com>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: nfs_commit_inode should redirty inode if the inode
+ has outstanding requests
+Date: Thu, 8 Mar 2018 17:13:57 +0000
+Message-ID: <1520529236.3530.16.camel@primarydata.com>
+References: <20180302160038.1598-1-smayhew@redhat.com>
+         <20180305211619.GA29226@fieldses.org>
+         <1520286491.21829.13.camel@primarydata.com>
+         <20180307195313.kzqdboqk5j2hyrf3@tonberry.usersys.redhat.com>
+         <1520455098.2858.4.camel@primarydata.com>
+         <20180308130901.h2qbbzsuejggogut@tonberry.usersys.redhat.com>
+In-Reply-To: <20180308130901.h2qbbzsuejggogut@tonberry.usersys.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180220164229.65404-11-kolga@netapp.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 20, 2018 at 11:42:29AM -0500, Olga Kornievskaia wrote:
-> If client is shutting down and there are still async copies going
-> on, then stop queued async copies.
-> 
-> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
-> ---
->  fs/nfsd/nfs4proc.c  | 13 +++++++++++++
->  fs/nfsd/nfs4state.c |  1 +
->  fs/nfsd/state.h     |  1 +
->  3 files changed, 15 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 57d0daa..54039e4 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1096,6 +1096,19 @@ static void nfs4_put_copy(struct nfsd4_copy *copy)
->  	kfree(copy);
->  }
->  
-> +void nfsd4_shutdown_copy(struct nfs4_client *clp)
-> +{
-> +	struct nfsd4_copy *copy;
-> +
-> +	spin_lock(&clp->async_lock);
-> +	list_for_each_entry(copy, &clp->async_copies, copies) {
-> +		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
-> +		kthread_stop(copy->copy_task);
-> +		nfs4_put_copy(copy);
+T24gVGh1LCAyMDE4LTAzLTA4IGF0IDA4OjA5IC0wNTAwLCBTY290dCBNYXloZXcgd3JvdGU6DQo+
+IFllcywgdGhpcyB3b3Jrcy4gIEkgcmFuIGl0IHRocm91Z2ggYSBkb3plbiBmaW8gcnVucyBvbiB2
+NC4xIGFuZCAxMDAwDQo+IHJ1bnMNCj4gb2YgZ2VuZXJpYy8yNDcgb24gdjMvdjQuMC92NC4xL3Y0
+LjIgYW5kIGRpZG4ndCBzZWUgYW55IEVCVVNZIGVycm9ycy4NCj4gQWxzbyByYW4gdGhlIHhmc3Rl
+c3RzICJxdWljayIgZ3JvdXAgKH44MC05MCB0ZXN0cykgcGx1cyBnZW5lcmljLzA3NA0KPiBvbg0K
+PiB2My92NC4wL3Y0LjEvdjQuMi4gIEZpbmFsbHksIEkgZG91YmxlIGNoZWNrZWQgdGhlIHBhbmlj
+IG9uIHVtb3VudA0KPiBpc3N1ZQ0KPiB0aGF0IGRjNGZkOWFiMDFhYjMgZml4ZWQgYW5kIHRoYXQg
+c3RpbGwgd29ya3MgdG9vLg0KDQpJIHRvb2sgYSBsb25nIGhhcmQgbG9vayBhdCB3aGF0IHdlIGFj
+dHVhbGx5IG5lZWQgaW4gdGhhdCBhcmVhIG9mIHRoZQ0KY29kZS4gVGhlcmUgYXJlIGEgZmV3IHRo
+aW5ncyB0aGF0IGFyZSBzdGlsbCBicm9rZW4gdGhlcmU6DQoNCkZpcnN0bHksIHdlIHdhbnQgdG8g
+a2VlcCB0aGUgaW5vZGUgbWFya2VkIGFzIElfRElSVFlfREFUQVNZTkMgYXMgbG9uZw0KYXMgd2Ug
+aGF2ZSBzdGFibGUgd3JpdGVzIHRoYXQgYXJlIHVuZGVyZ29pbmcgY29tbWl0IG9yIGFyZSB3YWl0
+aW5nIHRvDQpiZSBzY2hlZHVsZWQuIFRoZSByZWFzb24gaXMgdGhhdCBlbnN1cmVzIHN5bmNfaW5v
+ZGUoKSBiZWhhdmVzIGNvcnJlY3RseQ0KYnkgY2FsbGluZyBpbnRvIG5mc193cml0ZV9pbm9kZSgp
+IHNvIHRoYXQgd2UgY2FuIHNjaGVkdWxlIENPTU1JVHMgYW5kDQp3YWl0IGZvciB0aGVtIGFsbCB0
+byBjb21wbGV0ZS4NCkN1cnJlbnRseSB3ZSBhcmUgYnJva2VuIGluIHRoYXQgbmZzX3dyaXRlX2lu
+b2RlKCkgd2lsbCBub3QgcmVzZXQNCklfRElSVFlfREFUQVNZTkMgaWYgdGhlcmUgYXJlIHN0aWxs
+IENPTU1JVHMgaW4gZmxpZ2h0IGR1ZSB0byBoYXZpbmcNCmNhbGxlZCBpdCB3aXRoIHdiYy0+c3lu
+Y19tb2RlID09IFdCX1NZTkNfTk9ORS4NCg0KU2Vjb25kbHksIHdlIHdhbnQgdG8gZW5zdXJlIHRo
+YXQgaWYgdGhlIG51bWJlciBvZiByZXF1ZXN0cyBpcyA+DQpJTlRfTUFYLCB3ZSBsb29wIGFyb3Vu
+ZCBhbmQgc2NoZWR1bGUgbW9yZSBDT01NSVRzIHNvIHRoYXQNCm5mc19jb21taXRfaW5vZGUoaW5v
+ZGUsIEZMVVNIX1NZTkMpIGlzIHJlbGlhYmxlIG9uIHN5c3RlbXMgd2l0aCBsb3RzIG9mDQptZW1v
+cnkuDQoNCkZpbmFsbHksIGl0IGlzIHdvcnRoIG5vdGluZyB0aGF0IGl0J3Mgb25seSB3aGVuIGNh
+bGxlZCBmcm9tDQpfX3dyaXRlYmFja19zaW5nbGVfaW5vZGUoKSwgYW5kIHRoZSBhdHRlbXB0IHRv
+IGNsZWFuIHRoZSBpbm9kZSBmYWlsZWQNCnRoYXQgd2UgbmVlZCB0byByZXNldCB0aGUgaW5vZGUg
+c3RhdGUuIFNvIHdlIGNhbiBvcHRpbWlzZSBieSBwdXNoaW5nDQp0aG9zZSBjYWxscyB0byBfX21h
+cmtfaW5vZGVfZGlydHkoKSBpbnRvIG5mc193cml0ZV9pbm9kZSgpLg0KDQpTbyBob3cgYWJvdXQg
+dGhlIGZvbGxvd2luZyB2MiBwYXRjaCBpbnN0ZWFkPw0KODwtLS0tLS0tLS0tLS0tLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KRnJvbSAzODY5NzhjYzNlZjQ0OTRiOWY5NTM5MDc0N2My
+MjY4ZjgzMThiOTRiIE1vbiBTZXAgMTcgMDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVi
+dXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tPg0KRGF0ZTogV2VkLCA3IE1hciAy
+MDE4IDE1OjIyOjMxIC0wNTAwDQpTdWJqZWN0OiBbUEFUQ0ggdjJdIE5GUzogRml4IHVuc3RhYmxl
+IHdyaXRlIGNvbXBsZXRpb24NCg0KV2UgZG8gd2FudCB0byByZXNwZWN0IHRoZSBGTFVTSF9TWU5D
+IGFyZ3VtZW50IHRvIG5mc19jb21taXRfaW5vZGUoKSB0bw0KZW5zdXJlIHRoYXQgYWxsIG91dHN0
+YW5kaW5nIENPTU1JVCByZXF1ZXN0cyB0byB0aGUgaW5vZGUgaW4gcXVlc3Rpb24gYXJlDQpjb21w
+bGV0ZS4gQ3VycmVudGx5IHdlIG1heSBleGl0IGVhcmx5IGZyb20gYm90aCBuZnNfY29tbWl0X2lu
+b2RlKCkgYW5kDQpuZnNfd3JpdGVfaW5vZGUoKSBldmVuIGlmIHRoZXJlIGFyZSBDT01NSVQgcmVx
+dWVzdHMgaW4gZmxpZ2h0LCBvciB1bnN0YWJsZQ0Kd3JpdGVzIG9uIHRoZSBjb21taXQgbGlzdC4N
+Cg0KSW4gb3JkZXIgdG8gZ2V0IHRoZSByaWdodCBzZW1hbnRpY3Mgdy5yLnQuIHN5bmNfaW5vZGUo
+KSwgd2UgZG9uJ3QgbmVlZA0KdG8gaGF2ZSBuZnNfY29tbWl0X2lub2RlKCkgcmVzZXQgdGhlIGlu
+b2RlIGRpcnR5IGZsYWdzIHdoZW4gY2FsbGVkIGZyb20NCm5mc193Yl9wYWdlKCkgYW5kL29yIG5m
+c193Yl9hbGwoKS4gV2UganVzdCBuZWVkIHRvIGVuc3VyZSB0aGF0DQpuZnNfd3JpdGVfaW5vZGUo
+KSBsZWF2ZXMgdGhlbSBpbiB0aGUgcmlnaHQgc3RhdGUgaWYgdGhlcmUgYXJlIG91dHN0YW5kaW5n
+DQpjb21taXRzLCBvciBzdGFibGUgcGFnZXMuDQoNClJlcG9ydGVkLWJ5OiBTY290dCBNYXloZXcg
+PHNtYXloZXdAcmVkaGF0LmNvbT4NCkZpeGVzOiBkYzRmZDlhYjAxYWIgKCJuZnM6IGRvbid0IHdh
+aXQgb24gY29tbWl0IGluIG5mc19jb21taXRfaW5vZGUoKS4uLiIpDQpDYzogc3RhYmxlQHZnZXIu
+a2VybmVsLm9yZyAjIHY0LjUrOiA1Y2I5NTNkNGIxZTc6IE5GUzogVXNlIGFuIGF0b21pY19sb25n
+X3QNCkNjOiBzdGFibGVAdmdlci5rZXJuZWwub3JnICMgdjQuNSsNClNpZ25lZC1vZmYtYnk6IFRy
+b25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCi0tLQ0KIGZz
+L25mcy93cml0ZS5jIHwgODMgKysrKysrKysrKysrKysrKysrKysrKysrKysrKysrLS0tLS0tLS0t
+LS0tLS0tLS0tLS0tLS0tLS0tLQ0KIDEgZmlsZSBjaGFuZ2VkLCA0MyBpbnNlcnRpb25zKCspLCA0
+MCBkZWxldGlvbnMoLSkNCg0KZGlmZiAtLWdpdCBhL2ZzL25mcy93cml0ZS5jIGIvZnMvbmZzL3dy
+aXRlLmMNCmluZGV4IDc0MjhhNjY5ZDdhNy4uZTdkOGNlYWU4ZjI2IDEwMDY0NA0KLS0tIGEvZnMv
+bmZzL3dyaXRlLmMNCisrKyBiL2ZzL25mcy93cml0ZS5jDQpAQCAtMTg3Niw0MCArMTg3Niw0MyBA
+QCBpbnQgbmZzX2dlbmVyaWNfY29tbWl0X2xpc3Qoc3RydWN0IGlub2RlICppbm9kZSwgc3RydWN0
+IGxpc3RfaGVhZCAqaGVhZCwNCiAJcmV0dXJuIHN0YXR1czsNCiB9DQogDQotaW50IG5mc19jb21t
+aXRfaW5vZGUoc3RydWN0IGlub2RlICppbm9kZSwgaW50IGhvdykNCitzdGF0aWMgaW50IF9fbmZz
+X2NvbW1pdF9pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2RlLCBpbnQgaG93LA0KKwkJc3RydWN0IHdy
+aXRlYmFja19jb250cm9sICp3YmMpDQogew0KIAlMSVNUX0hFQUQoaGVhZCk7DQogCXN0cnVjdCBu
+ZnNfY29tbWl0X2luZm8gY2luZm87DQogCWludCBtYXlfd2FpdCA9IGhvdyAmIEZMVVNIX1NZTkM7
+DQotCWludCBlcnJvciA9IDA7DQotCWludCByZXM7DQorCWludCByZXQsIG5zY2FuOw0KIA0KIAlu
+ZnNfaW5pdF9jaW5mb19mcm9tX2lub2RlKCZjaW5mbywgaW5vZGUpOw0KIAluZnNfY29tbWl0X2Jl
+Z2luKGNpbmZvLm1kcyk7DQotCXJlcyA9IG5mc19zY2FuX2NvbW1pdChpbm9kZSwgJmhlYWQsICZj
+aW5mbyk7DQotCWlmIChyZXMpDQotCQllcnJvciA9IG5mc19nZW5lcmljX2NvbW1pdF9saXN0KGlu
+b2RlLCAmaGVhZCwgaG93LCAmY2luZm8pOw0KKwlmb3IgKDs7KSB7DQorCQlyZXQgPSBuc2NhbiA9
+IG5mc19zY2FuX2NvbW1pdChpbm9kZSwgJmhlYWQsICZjaW5mbyk7DQorCQlpZiAocmV0IDw9IDAp
+DQorCQkJYnJlYWs7DQorCQlyZXQgPSBuZnNfZ2VuZXJpY19jb21taXRfbGlzdChpbm9kZSwgJmhl
+YWQsIGhvdywgJmNpbmZvKTsNCisJCWlmIChyZXQgPCAwKQ0KKwkJCWJyZWFrOw0KKwkJcmV0ID0g
+MDsNCisJCWlmICh3YmMgJiYgd2JjLT5zeW5jX21vZGUgPT0gV0JfU1lOQ19OT05FKSB7DQorCQkJ
+aWYgKG5zY2FuIDwgd2JjLT5ucl90b193cml0ZSkNCisJCQkJd2JjLT5ucl90b193cml0ZSAtPSBu
+c2NhbjsNCisJCQllbHNlDQorCQkJCXdiYy0+bnJfdG9fd3JpdGUgPSAwOw0KKwkJfQ0KKwkJaWYg
+KG5zY2FuIDwgSU5UX01BWCkNCisJCQlicmVhazsNCisJCWNvbmRfcmVzY2hlZCgpOw0KKwl9DQog
+CW5mc19jb21taXRfZW5kKGNpbmZvLm1kcyk7DQotCWlmIChyZXMgPT0gMCkNCi0JCXJldHVybiBy
+ZXM7DQotCWlmIChlcnJvciA8IDApDQotCQlnb3RvIG91dF9lcnJvcjsNCi0JaWYgKCFtYXlfd2Fp
+dCkNCi0JCWdvdG8gb3V0X21hcmtfZGlydHk7DQotCWVycm9yID0gd2FpdF9vbl9jb21taXQoY2lu
+Zm8ubWRzKTsNCi0JaWYgKGVycm9yIDwgMCkNCi0JCXJldHVybiBlcnJvcjsNCi0JcmV0dXJuIHJl
+czsNCi1vdXRfZXJyb3I6DQotCXJlcyA9IGVycm9yOw0KLQkvKiBOb3RlOiBJZiB3ZSBleGl0IHdp
+dGhvdXQgZW5zdXJpbmcgdGhhdCB0aGUgY29tbWl0IGlzIGNvbXBsZXRlLA0KLQkgKiB3ZSBtdXN0
+IG1hcmsgdGhlIGlub2RlIGFzIGRpcnR5LiBPdGhlcndpc2UsIGZ1dHVyZSBjYWxscyB0bw0KLQkg
+KiBzeW5jX2lub2RlKCkgd2l0aCB0aGUgV0JfU1lOQ19BTEwgZmxhZyBzZXQgd2lsbCBmYWlsIHRv
+IGVuc3VyZQ0KLQkgKiB0aGF0IHRoZSBkYXRhIGlzIG9uIHRoZSBkaXNrLg0KLQkgKi8NCi1vdXRf
+bWFya19kaXJ0eToNCi0JX19tYXJrX2lub2RlX2RpcnR5KGlub2RlLCBJX0RJUlRZX0RBVEFTWU5D
+KTsNCi0JcmV0dXJuIHJlczsNCisJaWYgKHJldCB8fCAhbWF5X3dhaXQpDQorCQlyZXR1cm4gcmV0
+Ow0KKwlyZXR1cm4gd2FpdF9vbl9jb21taXQoY2luZm8ubWRzKTsNCit9DQorDQoraW50IG5mc19j
+b21taXRfaW5vZGUoc3RydWN0IGlub2RlICppbm9kZSwgaW50IGhvdykNCit7DQorCXJldHVybiBf
+X25mc19jb21taXRfaW5vZGUoaW5vZGUsIGhvdywgTlVMTCk7DQogfQ0KIEVYUE9SVF9TWU1CT0xf
+R1BMKG5mc19jb21taXRfaW5vZGUpOw0KIA0KQEAgLTE5MTksMTEgKzE5MjIsMTEgQEAgaW50IG5m
+c193cml0ZV9pbm9kZShzdHJ1Y3QgaW5vZGUgKmlub2RlLCBzdHJ1Y3Qgd3JpdGViYWNrX2NvbnRy
+b2wgKndiYykNCiAJaW50IGZsYWdzID0gRkxVU0hfU1lOQzsNCiAJaW50IHJldCA9IDA7DQogDQot
+CS8qIG5vIGNvbW1pdHMgbWVhbnMgbm90aGluZyBuZWVkcyB0byBiZSBkb25lICovDQotCWlmICgh
+YXRvbWljX2xvbmdfcmVhZCgmbmZzaS0+Y29tbWl0X2luZm8ubmNvbW1pdCkpDQotCQlyZXR1cm4g
+cmV0Ow0KLQ0KIAlpZiAod2JjLT5zeW5jX21vZGUgPT0gV0JfU1lOQ19OT05FKSB7DQorCQkvKiBu
+byBjb21taXRzIG1lYW5zIG5vdGhpbmcgbmVlZHMgdG8gYmUgZG9uZSAqLw0KKwkJaWYgKCFhdG9t
+aWNfbG9uZ19yZWFkKCZuZnNpLT5jb21taXRfaW5mby5uY29tbWl0KSkNCisJCQlnb3RvIGNoZWNr
+X3JlcXVlc3RzX291dHN0YW5kaW5nOw0KKw0KIAkJLyogRG9uJ3QgY29tbWl0IHlldCBpZiB0aGlz
+IGlzIGEgbm9uLWJsb2NraW5nIGZsdXNoIGFuZCB0aGVyZQ0KIAkJICogYXJlIGEgbG90IG9mIG91
+dHN0YW5kaW5nIHdyaXRlcyBmb3IgdGhpcyBtYXBwaW5nLg0KIAkJICovDQpAQCAtMTkzNCwxNiAr
+MTkzNywxNiBAQCBpbnQgbmZzX3dyaXRlX2lub2RlKHN0cnVjdCBpbm9kZSAqaW5vZGUsIHN0cnVj
+dCB3cml0ZWJhY2tfY29udHJvbCAqd2JjKQ0KIAkJZmxhZ3MgPSAwOw0KIAl9DQogDQotCXJldCA9
+IG5mc19jb21taXRfaW5vZGUoaW5vZGUsIGZsYWdzKTsNCi0JaWYgKHJldCA+PSAwKSB7DQotCQlp
+ZiAod2JjLT5zeW5jX21vZGUgPT0gV0JfU1lOQ19OT05FKSB7DQotCQkJaWYgKHJldCA8IHdiYy0+
+bnJfdG9fd3JpdGUpDQotCQkJCXdiYy0+bnJfdG9fd3JpdGUgLT0gcmV0Ow0KLQkJCWVsc2UNCi0J
+CQkJd2JjLT5ucl90b193cml0ZSA9IDA7DQotCQl9DQotCQlyZXR1cm4gMDsNCi0JfQ0KKwlyZXQg
+PSBfX25mc19jb21taXRfaW5vZGUoaW5vZGUsIGZsYWdzLCB3YmMpOw0KKwlpZiAoIXJldCkgew0K
+KwkJaWYgKGZsYWdzICYgRkxVU0hfU1lOQykNCisJCQlyZXR1cm4gMDsNCisJfSBlbHNlIGlmIChh
+dG9taWNfbG9uZ19yZWFkKCZuZnNpLT5jb21taXRfaW5mby5uY29tbWl0KSkNCisJCWdvdG8gb3V0
+X21hcmtfZGlydHk7DQorDQorY2hlY2tfcmVxdWVzdHNfb3V0c3RhbmRpbmc6DQorCWlmICghYXRv
+bWljX3JlYWQoJm5mc2ktPmNvbW1pdF9pbmZvLnJwY3Nfb3V0KSkNCisJCXJldHVybiByZXQ7DQog
+b3V0X21hcmtfZGlydHk6DQogCV9fbWFya19pbm9kZV9kaXJ0eShpbm9kZSwgSV9ESVJUWV9EQVRB
+U1lOQyk7DQogCXJldHVybiByZXQ7DQotLSANCjIuMTQuMw0KDQotLSANClRyb25kIE15a2xlYnVz
+dA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVi
+dXN0QHByaW1hcnlkYXRhLmNvbQ0K
 
-Those three lines could go in a common helper to be called here and from
-nfsd4_offload_cancel().
-
---b.
-
-> +	}
-> +	spin_unlock(&clp->async_lock);
-> +}
-> +
->  static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
->  {
->  	struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index bd76bd1..f9f2383 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1965,6 +1965,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
->  		release_openowner(oo);
->  	}
->  	nfsd4_return_all_client_layouts(clp);
-> +	nfsd4_shutdown_copy(clp);
->  	nfsd4_shutdown_callback(clp);
->  	if (clp->cl_cb_conn.cb_xprt)
->  		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
-> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-> index 49709d1..131aefa 100644
-> --- a/fs/nfsd/state.h
-> +++ b/fs/nfsd/state.h
-> @@ -646,6 +646,7 @@ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
->  extern int nfsd4_create_callback_queue(void);
->  extern void nfsd4_destroy_callback_queue(void);
->  extern void nfsd4_shutdown_callback(struct nfs4_client *);
-> +extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
->  extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
->  extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
->  							struct nfsd_net *nn);
-> -- 
-> 1.8.3.1
