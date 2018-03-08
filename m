@@ -1,50 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43570 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:43584 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752093AbeCHPHG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Mar 2018 10:07:06 -0500
-Date: Thu, 8 Mar 2018 10:07:05 -0500
+        id S1754184AbeCHPOG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 8 Mar 2018 10:14:06 -0500
+Date: Thu, 8 Mar 2018 10:14:06 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Olga Kornievskaia <aglo@umich.edu>
 Cc: Olga Kornievskaia <kolga@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
         linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 05/10] NFSD introduce asynch copy feature
-Message-ID: <20180308150705.GA10782@fieldses.org>
+Subject: Re: [PATCH v7 06/10] NFSD return nfs4_stid in
+ nfs4_preprocess_stateid_op
+Message-ID: <20180308151406.GB10782@fieldses.org>
 References: <20180220164229.65404-1-kolga@netapp.com>
- <20180220164229.65404-6-kolga@netapp.com>
- <20180307210551.GC28844@fieldses.org>
- <CAN-5tyGBTSOeqiLxVoAE04VTF+--9UtGoxoNvHzAXH++c6vRCw@mail.gmail.com>
+ <20180220164229.65404-7-kolga@netapp.com>
+ <20180307214336.GD28844@fieldses.org>
+ <CAN-5tyE9++KkQs064P25NtYkX6L03sNinhVU4Xg41cX_j_EfXg@mail.gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyGBTSOeqiLxVoAE04VTF+--9UtGoxoNvHzAXH++c6vRCw@mail.gmail.com>
+In-Reply-To: <CAN-5tyE9++KkQs064P25NtYkX6L03sNinhVU4Xg41cX_j_EfXg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 07, 2018 at 05:06:21PM -0500, Olga Kornievskaia wrote:
-> On Wed, Mar 7, 2018 at 4:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > I don't understand yet why you need these two cases.  Anyway, I'd rather
-> > you did this in the caller.  So the caller can do either:
+On Wed, Mar 07, 2018 at 04:54:50PM -0500, Olga Kornievskaia wrote:
+> On Wed, Mar 7, 2018 at 4:43 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Tue, Feb 20, 2018 at 11:42:25AM -0500, Olga Kornievskaia wrote:
+> >> @@ -5143,8 +5144,11 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+> >>       if (!status && filpp)
+> >>               status = nfs4_check_file(rqstp, fhp, s, filpp, tmp_file, flags);
+> >>  out:
+> >> -     if (s)
+> >> +     if (s) {
+> >> +             if (!status && cstid)
+> >> +                     *cstid = s;
+> >>               nfs4_put_stid(s);
 > >
-> >         spin_lock()
-> >         list_del()
-> >         spin_unlock()
-> >         cleanup_async_copy()
-> >
-> > or just
-> >
-> >         cleanup_async_copy()
-> >
-> > Or define another helper for the first case if you're really doing it a
-> > lot.  Just don't make me have to remember what that second argument
-> > means each time I see it used.
+> > Are you sure that's right?  Normally you wouldn't drop a reference on
+> > something you're returning.
 > 
-> Ok I'll fix it. It was added after I changed where copy was added to
-> the list. In one case, now I needed to do all of the cleanup but the
-> copy wasn't added to the list yet.
+> Hm. Should it be taken here then? I do up the reference on the stateid
+> later in the code in the nfds4_copy().
 
-As long as you've at least initialized the list, it's OK to call
-list_del() on it.  So another alternative might just be to call
-list_del() in both cases.
+Yeah, you probably want
+
+		if (!status && cstid)
+			*cstid = s;
+		else
+			nfs4_put_stid(s);
+
+instead of doing the increment later in nfsd4_copy() code.
+
+Otherwise, in theory a close or free_stateid or something could
+race in and destroy the stateid before you get the chance to increment
+the reference again.
 
 --b.
