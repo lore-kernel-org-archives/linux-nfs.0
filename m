@@ -1,54 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:44730 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:40002 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750859AbeCICqA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 8 Mar 2018 21:46:00 -0500
-Date: Thu, 8 Mar 2018 21:46:00 -0500
-From: "bfields@fieldses.org" <bfields@fieldses.org>
-To: Trond Myklebust <trondmy@primarydata.com>
-Cc: "smayhew@redhat.com" <smayhew@redhat.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: nfs_commit_inode should redirty inode if the inode
- has outstanding requests
-Message-ID: <20180309024600.GA20826@fieldses.org>
-References: <20180302160038.1598-1-smayhew@redhat.com>
- <20180305211619.GA29226@fieldses.org>
- <1520286491.21829.13.camel@primarydata.com>
- <20180307195313.kzqdboqk5j2hyrf3@tonberry.usersys.redhat.com>
- <1520455098.2858.4.camel@primarydata.com>
- <20180308130901.h2qbbzsuejggogut@tonberry.usersys.redhat.com>
- <20180308213904.GD16485@fieldses.org>
- <1520546500.91818.2.camel@primarydata.com>
+        id S932130AbeCJPKL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sat, 10 Mar 2018 10:10:11 -0500
+Subject: Re: [PATCH V2] clnt_dg_call: Change the memory allocation
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20180307140903.13278-1-steved@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <c4f100aa-8d75-f37a-6422-b5ffb20d8a49@RedHat.com>
+Date: Sat, 10 Mar 2018 10:10:10 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1520546500.91818.2.camel@primarydata.com>
+In-Reply-To: <20180307140903.13278-1-steved@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 08, 2018 at 10:01:42PM +0000, Trond Myklebust wrote:
-> On Thu, 2018-03-08 at 16:39 -0500, bfields@fieldses.org wrote:
-> > On Thu, Mar 08, 2018 at 08:09:01AM -0500, Scott Mayhew wrote:
-> > > Yes, this works.  I ran it through a dozen fio runs on v4.1 and
-> > > 1000 runs
-> > > of generic/247 on v3/v4.0/v4.1/v4.2 and didn't see any EBUSY
-> > > errors.
-> > > Also ran the xfstests "quick" group (~80-90 tests) plus generic/074
-> > > on
-> > > v3/v4.0/v4.1/v4.2.  Finally, I double checked the panic on umount
-> > > issue
-> > > that dc4fd9ab01ab3 fixed and that still works too.
-> > 
-> > Works for me too.
-> > 
-> > (Yeah, I see there's a new patch.  Testing queued up but not run
-> > yet...).
+
+
+On 03/07/2018 09:09 AM, Steve Dickson wrote:
+> Commit 2936f109590e add free()s on memory that
+> was allocated from the stack (via alloca()).
+> That type memory is automatically freed so
+> those added free()s was causing a double frees.
 > 
-> Sorry for pulling the "new patch switch" on you both, but I figured it
-> would be better to re-examine where the requirement for the dirty flag
-> is coming from, and to ensure that we meet that requirement once and
-> for all.
+> It was suggested allocating memory from the
+> stack can be a bit troublesome. So this patch
+> changes the memory allocation from the stack
+> to the heap which also eliminates the double frees.
+> 
+> Fixes: 2936f109590e ("clnt_dg_call: Fix a buffer overflow (CVE-2016-4429)")
+> BugLink: https://bugzilla.redhat.com/show_bug.cgi?id=1552163
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
-No problem.  My tests are passing on the new patch as well.
-
---b.
+steved.
+> ---
+>  src/clnt_dg.c | 6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/src/clnt_dg.c b/src/clnt_dg.c
+> index 884a2db..04a2aba 100644
+> --- a/src/clnt_dg.c
+> +++ b/src/clnt_dg.c
+> @@ -430,7 +430,7 @@ get_reply:
+>  	  struct sockaddr_in err_addr;
+>  	  struct sockaddr_in *sin = (struct sockaddr_in *)&cu->cu_raddr;
+>  	  struct iovec iov;
+> -	  char *cbuf = (char *) alloca (outlen + 256);
+> +	  char *cbuf = (char *) mem_alloc((outlen + 256));
+>  	  int ret;
+>  
+>  	  if (cbuf == NULL) 
+> @@ -462,13 +462,13 @@ get_reply:
+>  		 cmsg = CMSG_NXTHDR (&msg, cmsg))
+>  	      if (cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR)
+>  		{
+> -		  free(cbuf);
+> +		  mem_free(cbuf, (outlen + 256));
+>  		  e = (struct sock_extended_err *) CMSG_DATA(cmsg);
+>  		  cu->cu_error.re_errno = e->ee_errno;
+>  		  release_fd_lock(cu->cu_fd, mask);
+>  		  return (cu->cu_error.re_status = RPC_CANTRECV);
+>  		}
+> -	  free(cbuf);
+> +	  mem_free(cbuf, (outlen + 256));
+>  	}
+>  #endif
+>  
+> 
