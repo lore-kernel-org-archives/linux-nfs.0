@@ -1,131 +1,363 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:44853 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751229AbeCLNHP (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2018 09:07:15 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "tom@talpey.com" <tom@talpey.com>,
-        "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "jlayton@redhat.com" <jlayton@redhat.com>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] SUNRPC: Initialize rpc_rqst outside of
- xprt->reserve_lock
-Date: Mon, 12 Mar 2018 13:07:09 +0000
-Message-ID: <1520860026.3554.7.camel@primarydata.com>
-References: <20180311152620.16974.96109.stgit@manet.1015granger.net>
-         <0141adad-602c-70d0-08d6-e33b954cc163@talpey.com>
-         <1520852218.4440.2.camel@redhat.com>
-In-Reply-To: <1520852218.4440.2.camel@redhat.com>
+Received: from bsdsz2.pd.infn.it ([192.84.143.16]:62115 "EHLO
+        bsdsz2.pd.infn.it" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751242AbeCLNjm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2018 09:39:42 -0400
+Subject: Re: NFS sync and async mode
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+References: <b4b5c9d2-409f-fbd3-4b87-7b4ae41427cf@pd.infn.it>
+ <20180305215023.GB29226@fieldses.org>
+From: Sergio Traldi <sergio.traldi@pd.infn.it>
+Message-ID: <751e52ed-eccc-f31c-83bf-a08b98e29dc8@pd.infn.it>
+Date: Mon, 12 Mar 2018 14:39:35 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <20180305215023.GB29226@fieldses.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCAyMDE4LTAzLTEyIGF0IDA2OjU2IC0wNDAwLCBKZWZmIExheXRvbiB3cm90ZToNCj4g
-SXQgaXMgb3BhcXVlLiBCdXQsIGl0J3MgaGVscGZ1bCB0byB0cmVhdCBpdCBhcyBpZiBpdCBoYXMg
-ZW5kaWFubmVzcywNCj4gaWYNCj4gb25seSB0byBtYWtlIGxvZ2ZpbGVzLCB0cmFjZXMgYW5kIHN1
-Y2ggbG9vayBjb25zaXN0ZW50IHdoZW4gKGUuZy4pDQo+IHRoZQ0KPiBjbGllbnQgYW5kIHNlcnZl
-ciBhcmUgZGlmZmVyZW50IGVuZGlhbm5lc3MuDQoNCkFncmVlZC4gVGhlIG90aGVyIHRoaW5nIHRv
-IG5vdGUgaXMgdGhhdCBhbGwgbmF0aXZlIFhEUiBvYmplY3RzIGFyZQ0KYW5ub3RhdGVkIGFzIGJl
-aW5nIGJpZyBlbmRpYW4gaW4gb3JkZXIgdG8gYWxsb3cgJ3NwYXJzZScgYW5kIG90aGVyDQpzdGF0
-aWMgdHlwZSBjaGVja2VycyB0byBpZGVudGlmeSBkb2RneSBjYXN0cyBhbmQgZmFpbHVyZXMgdG8g
-Y29udmVydA0KdGhlIGVuZGlhbm5lc3MuDQpTbyBieSBsYWJlbGxpbmcgdGhlIFhJRCBhcyBfX2Jl
-MzIsIHdlJ3JlIGluIGVmZmVjdCB0ZWxsaW5nIHRob3NlDQpjaGVja2VycyB0aGF0IHdlIGRvIG5v
-dCBuZWVkIHRvIGNvbnZlcnQgdGhpcyBvYmplY3Qgd2hlbiBYRFIgZW5jb2RpbmcNCml0Lg0KDQpD
-aGVlcnMNCiAgVHJvbmQNCg0KPiANCj4gT24gU3VuLCAyMDE4LTAzLTExIGF0IDE3OjQxIC0wNzAw
-LCBUb20gVGFscGV5IHdyb3RlOg0KPiA+ICA+ICtzdGF0aWMgX19iZTMyCXhwcnRfYWxsb2NfeGlk
-KHN0cnVjdCBycGNfeHBydCAqeHBydCk7DQo+ID4gDQo+ID4gV2h5IGlzIHRoZSB0eXBlIGEgYmUz
-Mj8gVGhlIFhJRCBpcyBvcGFxdWUsIHRlc3RlZCBvbmx5IGZvcg0KPiA+IGVxdWFsaXR5LCBhbmQN
-Cj4gPiBubyBieXRlIG9yZGVyIGlzIGRlZmluZWQgYnkgdGhlIFJQQyBwcm90b2NvbC4NCj4gPiAN
-Cj4gPiBNZXRoaW5rcyBpdCBzaG91bGQgYmUgdTMyLg0KPiA+IA0KPiA+IFRvbS4NCj4gPiANCj4g
-PiBPbiAzLzExLzIwMTggODoyNyBBTSwgQ2h1Y2sgTGV2ZXIgd3JvdGU6DQo+ID4gPiBhbGxvY19z
-bG90IGlzIGEgdHJhbnNwb3J0LXNwZWNpZmljIG9wLCBidXQgaW5pdGlhbGl6aW5nIGFuDQo+ID4g
-PiBycGNfcnFzdA0KPiA+ID4gaXMgY29tbW9uIHRvIGFsbCB0cmFuc3BvcnRzLiBJbiBhZGRpdGlv
-biwgdGhlIG9ubHkgcGFydCBvZg0KPiA+ID4gaW5pdGlhbC0NCj4gPiA+IGl6aW5nIGFuIHJwY19y
-cXN0IHRoYXQgbmVlZHMgc2VyaWFsaXphdGlvbiBpcyBnZXR0aW5nIGEgZnJlc2gNCj4gPiA+IFhJ
-RC4NCj4gPiA+IA0KPiA+ID4gTW92ZSBycGNfcnFzdCBpbml0aWFsaXphdGlvbiB0byBjb21tb24g
-Y29kZSBpbiBwcmVwYXJhdGlvbiBmb3INCj4gPiA+IGFkZGluZyBhIHRyYW5zcG9ydC1zcGVjaWZp
-YyBhbGxvY19zbG90IHRvIHhwcnRyZG1hLg0KPiA+ID4gDQo+ID4gPiBTaWduZWQtb2ZmLWJ5OiBD
-aHVjayBMZXZlciA8Y2h1Y2subGV2ZXJAb3JhY2xlLmNvbT4NCj4gPiA+IC0tLQ0KPiA+ID4gICBp
-bmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmggfCAgICAxICsNCj4gPiA+ICAgbmV0L3N1bnJwYy9j
-bG50LmMgICAgICAgICAgIHwgICAgMSArDQo+ID4gPiAgIG5ldC9zdW5ycGMveHBydC5jICAgICAg
-ICAgICB8ICAgMTIgKysrKysrKy0tLS0tDQo+ID4gPiAgIDMgZmlsZXMgY2hhbmdlZCwgOSBpbnNl
-cnRpb25zKCspLCA1IGRlbGV0aW9ucygtKQ0KPiA+ID4gDQo+ID4gPiBDaGFuZ2VzIHNpbmNlIHYx
-Og0KPiA+ID4gLSBQYXJ0aWFsIHNlbmRzIHNob3VsZCBub3QgYnVtcCB0aGUgWElEDQo+ID4gPiAN
-Cj4gPiA+IGRpZmYgLS1naXQgYS9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgNCj4gPiA+IGIv
-aW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+ID4gPiBpbmRleCA1ZmVhMGZiLi45Nzg0ZTI4
-IDEwMDY0NA0KPiA+ID4gLS0tIGEvaW5jbHVkZS9saW51eC9zdW5ycGMveHBydC5oDQo+ID4gPiAr
-KysgYi9pbmNsdWRlL2xpbnV4L3N1bnJwYy94cHJ0LmgNCj4gPiA+IEBAIC0zMjQsNiArMzI0LDcg
-QEAgc3RydWN0IHhwcnRfY2xhc3Mgew0KPiA+ID4gICBzdHJ1Y3QgcnBjX3hwcnQJCSp4cHJ0X2Ny
-ZWF0ZV90cmFuc3BvcnQoc3RydWN0DQo+ID4gPiB4cHJ0X2NyZWF0ZSAqYXJncyk7DQo+ID4gPiAg
-IHZvaWQJCQl4cHJ0X2Nvbm5lY3Qoc3RydWN0IHJwY190YXNrDQo+ID4gPiAqdGFzayk7DQo+ID4g
-PiAgIHZvaWQJCQl4cHJ0X3Jlc2VydmUoc3RydWN0IHJwY190YXNrDQo+ID4gPiAqdGFzayk7DQo+
-ID4gPiArdm9pZAkJCXhwcnRfcmVxdWVzdF9pbml0KHN0cnVjdCBycGNfdGFzaw0KPiA+ID4gKnRh
-c2spOw0KPiA+ID4gICB2b2lkCQkJeHBydF9yZXRyeV9yZXNlcnZlKHN0cnVjdCBycGNfdGFzaw0K
-PiA+ID4gKnRhc2spOw0KPiA+ID4gICBpbnQJCQl4cHJ0X3Jlc2VydmVfeHBydChzdHJ1Y3QgcnBj
-X3hwcnQNCj4gPiA+ICp4cHJ0LCBzdHJ1Y3QgcnBjX3Rhc2sgKnRhc2spOw0KPiA+ID4gICBpbnQJ
-CQl4cHJ0X3Jlc2VydmVfeHBydF9jb25nKHN0cnVjdA0KPiA+ID4gcnBjX3hwcnQgKnhwcnQsIHN0
-cnVjdCBycGNfdGFzayAqdGFzayk7DQo+ID4gPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy9jbG50
-LmMgYi9uZXQvc3VucnBjL2NsbnQuYw0KPiA+ID4gaW5kZXggNmU0MzJlYy4uMjI2ZjU1OCAxMDA2
-NDQNCj4gPiA+IC0tLSBhL25ldC9zdW5ycGMvY2xudC5jDQo+ID4gPiArKysgYi9uZXQvc3VucnBj
-L2NsbnQuYw0KPiA+ID4gQEAgLTE1NDYsNiArMTU0Niw3IEBAIHZvaWQgcnBjX2ZvcmNlX3JlYmlu
-ZChzdHJ1Y3QgcnBjX2NsbnQNCj4gPiA+ICpjbG50KQ0KPiA+ID4gICAJdGFzay0+dGtfc3RhdHVz
-ID0gMDsNCj4gPiA+ICAgCWlmIChzdGF0dXMgPj0gMCkgew0KPiA+ID4gICAJCWlmICh0YXNrLT50
-a19ycXN0cCkgew0KPiA+ID4gKwkJCXhwcnRfcmVxdWVzdF9pbml0KHRhc2spOw0KPiA+ID4gICAJ
-CQl0YXNrLT50a19hY3Rpb24gPSBjYWxsX3JlZnJlc2g7DQo+ID4gPiAgIAkJCXJldHVybjsNCj4g
-PiA+ICAgCQl9DQo+ID4gPiBkaWZmIC0tZ2l0IGEvbmV0L3N1bnJwYy94cHJ0LmMgYi9uZXQvc3Vu
-cnBjL3hwcnQuYw0KPiA+ID4gaW5kZXggNzBmMDA1MC4uMmQ5NTkyNiAxMDA2NDQNCj4gPiA+IC0t
-LSBhL25ldC9zdW5ycGMveHBydC5jDQo+ID4gPiArKysgYi9uZXQvc3VucnBjL3hwcnQuYw0KPiA+
-ID4gQEAgLTY2LDcgKzY2LDcgQEANCj4gPiA+ICAgICogTG9jYWwgZnVuY3Rpb25zDQo+ID4gPiAg
-ICAqLw0KPiA+ID4gICBzdGF0aWMgdm9pZAkgeHBydF9pbml0KHN0cnVjdCBycGNfeHBydCAqeHBy
-dCwgc3RydWN0IG5ldA0KPiA+ID4gKm5ldCk7DQo+ID4gPiAtc3RhdGljIHZvaWQJeHBydF9yZXF1
-ZXN0X2luaXQoc3RydWN0IHJwY190YXNrICosIHN0cnVjdA0KPiA+ID4gcnBjX3hwcnQgKik7DQo+
-ID4gPiArc3RhdGljIF9fYmUzMgl4cHJ0X2FsbG9jX3hpZChzdHJ1Y3QgcnBjX3hwcnQgKnhwcnQp
-Ow0KPiA+ID4gICBzdGF0aWMgdm9pZAl4cHJ0X2Nvbm5lY3Rfc3RhdHVzKHN0cnVjdCBycGNfdGFz
-ayAqdGFzayk7DQo+ID4gPiAgIHN0YXRpYyBpbnQgICAgICBfX3hwcnRfZ2V0X2Nvbmcoc3RydWN0
-IHJwY194cHJ0ICosIHN0cnVjdA0KPiA+ID4gcnBjX3Rhc2sgKik7DQo+ID4gPiAgIHN0YXRpYyB2
-b2lkICAgICBfX3hwcnRfcHV0X2Nvbmcoc3RydWN0IHJwY194cHJ0ICosIHN0cnVjdA0KPiA+ID4g
-cnBjX3Jxc3QgKik7DQo+ID4gPiBAQCAtOTg3LDYgKzk4Nyw4IEBAIGJvb2wgeHBydF9wcmVwYXJl
-X3RyYW5zbWl0KHN0cnVjdCBycGNfdGFzaw0KPiA+ID4gKnRhc2spDQo+ID4gPiAgIAkJdGFzay0+
-dGtfc3RhdHVzID0gLUVBR0FJTjsNCj4gPiA+ICAgCQlnb3RvIG91dF91bmxvY2s7DQo+ID4gPiAg
-IAl9DQo+ID4gPiArCWlmICghYmNfcHJlYWxsb2MocmVxKSAmJiAhcmVxLT5ycV94bWl0X2J5dGVz
-X3NlbnQpDQo+ID4gPiArCQlyZXEtPnJxX3hpZCA9IHhwcnRfYWxsb2NfeGlkKHhwcnQpOw0KPiA+
-ID4gICAJcmV0ID0gdHJ1ZTsNCj4gPiA+ICAgb3V0X3VubG9jazoNCj4gPiA+ICAgCXNwaW5fdW5s
-b2NrX2JoKCZ4cHJ0LT50cmFuc3BvcnRfbG9jayk7DQo+ID4gPiBAQCAtMTE2MywxMCArMTE2NSwx
-MCBAQCB2b2lkIHhwcnRfYWxsb2Nfc2xvdChzdHJ1Y3QgcnBjX3hwcnQNCj4gPiA+ICp4cHJ0LCBz
-dHJ1Y3QgcnBjX3Rhc2sgKnRhc2spDQo+ID4gPiAgIG91dF9pbml0X3JlcToNCj4gPiA+ICAgCXhw
-cnQtPnN0YXQubWF4X3Nsb3RzID0gbWF4X3QodW5zaWduZWQgaW50LCB4cHJ0LQ0KPiA+ID4gPnN0
-YXQubWF4X3Nsb3RzLA0KPiA+ID4gICAJCQkJICAgICB4cHJ0LT5udW1fcmVxcyk7DQo+ID4gPiAr
-CXNwaW5fdW5sb2NrKCZ4cHJ0LT5yZXNlcnZlX2xvY2spOw0KPiA+ID4gKw0KPiA+ID4gICAJdGFz
-ay0+dGtfc3RhdHVzID0gMDsNCj4gPiA+ICAgCXRhc2stPnRrX3Jxc3RwID0gcmVxOw0KPiA+ID4g
-LQl4cHJ0X3JlcXVlc3RfaW5pdCh0YXNrLCB4cHJ0KTsNCj4gPiA+IC0Jc3Bpbl91bmxvY2soJnhw
-cnQtPnJlc2VydmVfbG9jayk7DQo+ID4gPiAgIH0NCj4gPiA+ICAgRVhQT1JUX1NZTUJPTF9HUEwo
-eHBydF9hbGxvY19zbG90KTsNCj4gPiA+ICAgDQo+ID4gPiBAQCAtMTMwMyw4ICsxMzA1LDkgQEAg
-c3RhdGljIGlubGluZSB2b2lkIHhwcnRfaW5pdF94aWQoc3RydWN0DQo+ID4gPiBycGNfeHBydCAq
-eHBydCkNCj4gPiA+ICAgCXhwcnQtPnhpZCA9IHByYW5kb21fdTMyKCk7DQo+ID4gPiAgIH0NCj4g
-PiA+ICAgDQo+ID4gPiAtc3RhdGljIHZvaWQgeHBydF9yZXF1ZXN0X2luaXQoc3RydWN0IHJwY190
-YXNrICp0YXNrLCBzdHJ1Y3QNCj4gPiA+IHJwY194cHJ0ICp4cHJ0KQ0KPiA+ID4gK3ZvaWQgeHBy
-dF9yZXF1ZXN0X2luaXQoc3RydWN0IHJwY190YXNrICp0YXNrKQ0KPiA+ID4gICB7DQo+ID4gPiAr
-CXN0cnVjdCBycGNfeHBydCAqeHBydCA9IHRhc2stPnRrX3hwcnQ7DQo+ID4gPiAgIAlzdHJ1Y3Qg
-cnBjX3Jxc3QJKnJlcSA9IHRhc2stPnRrX3Jxc3RwOw0KPiA+ID4gICANCj4gPiA+ICAgCUlOSVRf
-TElTVF9IRUFEKCZyZXEtPnJxX2xpc3QpOw0KPiA+ID4gQEAgLTEzMTIsNyArMTMxNSw2IEBAIHN0
-YXRpYyB2b2lkIHhwcnRfcmVxdWVzdF9pbml0KHN0cnVjdA0KPiA+ID4gcnBjX3Rhc2sgKnRhc2ss
-IHN0cnVjdCBycGNfeHBydCAqeHBydCkNCj4gPiA+ICAgCXJlcS0+cnFfdGFzawk9IHRhc2s7DQo+
-ID4gPiAgIAlyZXEtPnJxX3hwcnQgICAgPSB4cHJ0Ow0KPiA+ID4gICAJcmVxLT5ycV9idWZmZXIg
-ID0gTlVMTDsNCj4gPiA+IC0JcmVxLT5ycV94aWQgICAgID0geHBydF9hbGxvY194aWQoeHBydCk7
-DQo+ID4gPiAgIAlyZXEtPnJxX2Nvbm5lY3RfY29va2llID0geHBydC0+Y29ubmVjdF9jb29raWUg
-LSAxOw0KPiA+ID4gICAJcmVxLT5ycV9ieXRlc19zZW50ID0gMDsNCj4gPiA+ICAgCXJlcS0+cnFf
-c25kX2J1Zi5sZW4gPSAwOw0KPiA+ID4gDQo+ID4gPiAtLQ0KPiA+ID4gVG8gdW5zdWJzY3JpYmUg
-ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LQ0KPiA+ID4g
-bmZzIiBpbg0KPiA+ID4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtl
-cm5lbC5vcmcNCj4gPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5l
-bC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtDQo+ID4gPiBsDQo+ID4gPiANCj4gPiA+IA0KPiA+IA0K
-PiA+IC0tDQo+ID4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUg
-InVuc3Vic2NyaWJlIGxpbnV4LQ0KPiA+IG5mcyIgaW4NCj4gPiB0aGUgYm9keSBvZiBhIG1lc3Nh
-Z2UgdG8gbWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPiA+IE1vcmUgbWFqb3Jkb21vIGluZm8g
-YXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPiANCj4gDQot
-LSANClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5
-RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0K
+Hi Bruce,
+
+thanks for answering, I understand your response, but the problem is not 
+exactly the disk writing or disk synchronization.
+
+I tried to do a simple test just in one host so the network has been 
+keep out. (Just the network interface could be taken into account.)
+
+I have a bare metal host:
+
+With this simple features:
+
+O.S:
+CentOS Linux release 7.4.1708 (Core)
+
+Kernel:
+Linux cld-ctrl-pa-02.cloud.pd.infn.it 3.10.0-693.2.2.el7.x86_64 #1 SMP 
+Tue Sep 12 22:26:13 UTC 2017 x86_64 x86_64 x86_64 GNU/Linux
+
+disk:
+Disk /dev/sda: 500.1 GB, 500107862016 bytes, 976773168 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x000709ef
+
+    Device Boot      Start         End      Blocks   Id  System
+/dev/sda1   *        2048     2099199     1048576   83  Linux
+/dev/sda2         2099200    18876415     8388608   82  Linux swap / Solaris
+/dev/sda3        18876416   976773119   478948352   83  Linux
+
+controller disk:
+IDE interface: Intel Corporation 82801JI (ICH10 Family) 4 port SATA IDE 
+Controller #1
+
+I have this rpms for nfs and rpc:
+[ ~]# rpm -qa | grep nfs
+libnfsidmap-0.25-17.el7.x86_64
+nfs-utils-1.3.0-0.48.el7_4.1.x86_64
+
+[ ~]# rpm -qa | grep rpc
+libtirpc-0.2.4-0.10.el7.x86_64
+rpcbind-0.2.0-42.el7.x86_64
+
+I try in direcory /nfstest to untar my file I obtain:
+[ ~]# time tar zxvf root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
+....
+real    0m7.324s
+user    0m7.018s
+sys    0m2.474s
+
+In this case you should say there be a cache in memory of kernel and 
+command tar, so I try to use the option -w for tar the help say:
+   -w, --interactive, --confirmation
+                              ask for confirmation for every action
+
+So I think I force the tar command to do each file a file open and a 
+file close I use this command:
+
+[ ~]# time yes y | tar xzvfw 
+root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
+....
+sreal    0m7.590s
+user    0m7.247s
+sys    0m2.569s
+
+I conclude the time to write thoose files in disk is about 8 seconds.
+
+Now in same host (192.168.60.171) I mount /nfstest in same host in 
+/nfsmount:
+[ ~]# cat /etc/exports
+/nfstest 192.168.60.0/24(rw,sync,no_wdelay,no_root_squash,no_subtree_check)
+
+mount -t nfs 192.168.60.171:/nfstest/ /nfsmount/
+
+I can see with mount command:
+[ ~]#  mount
+...
+192.168.60.171:/nfstest on /nfsmount type nfs4 
+(rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.60.171,local_lock=none,addr=192.168.60.171)
+
+and I try to untar my file:
+[ ~]# time tar zxvf root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
+....
+real    11m27.853s
+user    0m8.466s
+sys    0m5.435s
+
+So I can not understand why the untar take about 8 seconds and the untar 
+using directory mounted with nfs in same host take about 11 minutes and 
+30 seconds, in all the 2 case there be a fo and fc.
+I know there are a file open and file close and ACK in the case of NFS 
+so I expect an overhead, but not a so big overhead. I think there be 
+something other wrong in the protocol or some timeout somewhere.
+
+I agree with you if I use big file the problem is reduced:
+In host:
+time tar zxvf test.tgz
+Fedora-Server-netinst-x86_64-27-1.6.iso
+Fedora-Workstation-Live-x86_64-27-1.6.iso
+
+real    0m52.047s
+user    0m24.382s
+sys    0m11.597s
+
+
+Mounted via NFS:
+time tar zxvf test.tgz
+Fedora-Server-netinst-x86_64-27-1.6.iso
+Fedora-Workstation-Live-x86_64-27-1.6.iso
+
+real    0m55.453s
+user    0m25.905s
+sys    0m10.095s
+
+There is a way to got nfs server from source and build may be with some 
+verbose logging or build with some optimization to this "performance 
+problem".
+
+Cheers
+Sergio
+
+On 03/05/2018 10:50 PM, J. Bruce Fields wrote:
+> This should be on a FAQ or something.  Anyway, because I've been
+> thinking about it lately:
+>
+> On an NFS filesystem, creation of a new file is a synchronous operation:
+> the client doesn't return from open()/creat() until it's gotten a
+> response from the server, and the server isn't allowed to respond until
+> it knows that the file creation has actually reached disk--so it'll
+> generally be waiting for at least a disk seek or two.
+>
+> Also when it finishes writing a file and closes it, the close() has to
+> wait again for the new data to hit disk.
+>
+> That's probably what dominates the runtime in your case.  Take the
+> number of files in that tarball and divide into the total runtime, and
+> the answer will probably be about the time it takes to create one file
+> and commit the write data on close.
+>
+> As you know, exporting with async is not recommended--it tells the
+> server to violate the protocol and lie to the client, telling it that
+> the client that stuff has reached disk when it hasn't really.  This
+> works fine until you have a power outage and a bunch of files that the
+> file has every right to believe were actually sync'd to disk suddenly
+> vanish....
+>
+> Other possible solutions/workarounds:
+>
+> 	- use storage that can commit data to stable storage very
+> 	  quickly: this is what most "real" NFS servers do, generally I
+> 	  think by including some kind of battery-backed RAM to use as
+> 	  write cache.  I don't know if this is something your HP
+> 	  controllers should be able to do.
+>
+> 	  The cheapo version of this approach that I use for my home
+> 	  server is an SSD with capacitors sufficient to destage the
+> 	  write cache on shutdown.  SSDs marketed as "enterprise" often
+> 	  do this--look for something like "power loss protection" in
+> 	  the specs.  Since I was too cheap to put all my data on SSDs,
+> 	  I use an ext4 filesystem on a couple big conventional drives,
+> 	  mounted with "data=journal" and an external journal on an SSD.
+>
+> 	- write a parallel version of tar.  Tar would go a lot faster if
+> 	  it wasn't forced to wait for one file creation before starting
+> 	  the next one.
+>
+> 	- implement NFS write delegations: we've got this on the client,
+> 	  I'm working on the server.  It can't help with the latency of
+> 	  the original file create, but it should free the client from
+> 	  waiting for the close.  But I don't know if/how much it will
+> 	  help in practice yet.
+>
+> 	- specify/implement NFS directory write delegations: there's not
+> 	  really any reason the client *couldn't* create files locally
+> 	  and later commit them to the server, somebody just needs to
+> 	  write the RFC's and the code.
+>
+> 	  I seem to remember Trond also had a simpler proposal just to
+> 	  allow the server to return from a file-creating OPEN without
+> 	  waiting for disk if it returned a write delegation, but I
+> 	  can't find that proposal right now....
+>
+> --b.
+>
+> On Mon, Mar 05, 2018 at 10:53:21AM +0100, Sergio Traldi wrote:
+>> I have host A  and host B using nfs4 or nfs3.
+>> In host A I mount a partition or a disk formatted in ext4 or xfs in
+>> /nfsdisk
+>> I put this file inside the directory:
+>> wget --no-check-certificate https://root.cern.ch/download/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
+>> -O /nfsdisk/root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
+>>
+>> In host A I export that partition with this line in /etc/exports
+>> /nfsdisk
+>> 192.168.1.1.0/24(rw,sync,no_wdelay,no_root_squash,no_subtree_check)
+>> OR using async mode:
+>> /nfsdisk 192.168.1.1.0/24(rw,async,no_root_squash)
+>>
+>>  From host B I mount via nfs the disk:
+>> mount -t nfs <ip-hostA>:/nfsdisk /nfsdisk
+>>
+>> and I obtain something similar to (with mount command):
+>> 192.168.1.1:/nfstest on /nfstest type nfs4 (rw,relatime,vers=4.1,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=192.168.1.2,local_lock=none,addr=192.168.1.1)
+>>
+>> In host B I exec:
+>> time tar zxvf root_v6.08.06.Linux-centos7-x86_64-gcc4.8.tar.gz
+>>
+>> I try with different hosts bare metal or virtual machine and with
+>> different controller.
+>> 1) with bare metal host:
+>> 1.1) A and B bare metal with CentOS7 with kernel 3.10.0-514.2.2.el7
+>> with nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and
+>> rpcbind-0.2.0-42.el7.x86_64
+>>
+>> In host A:
+>> real    0m45.338s
+>> user    0m8.334s
+>> sys    0m5.387s
+>>
+>> In Host B I obtain
+>>    sync mode:
+>> real    11m56.146s
+>> user    0m9.947s
+>> sys    0m8.346s
+>>    async mode:
+>> real    0m46.328s
+>> user    0m8.709s
+>> sys    0m5.747s
+>>
+>> 1.2) A and B bare metal with Ubuntu 14.04 jessie with kernel
+>> 3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server
+>> 1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
+>>
+>> In host A:
+>> real    0m10.667s
+>> user    0m7.856s
+>> sys    0m3.190s
+>>
+>> In host B:
+>>     sync mode:
+>> real    9m45.146s
+>> user    0m9.697s
+>> sys    0m8.037s
+>>    async mode:
+>> real    0m14.843s
+>> user    0m7.916s
+>> sys    0m3.780s
+>>
+>> 1.3) A and B bare metal with Scientific Linux 6.2 with Kernel
+>> 2.6.32-220.el6.x86_64 with nfs-utils-1.2.3-15.el6.x86_64 -
+>> rpcbind-0.2.0-13.el6_9.1.x86_64
+>>
+>> In host A:
+>> real    0m5.943s
+>> user    0m5.611s
+>> sys    0m1.585s
+>>
+>> In host B:
+>>     sync mode:
+>> real    8m37.495s
+>> user    0m5.680s
+>> sys    0m3.091s
+>>     async mode:
+>> real    0m21.121s
+>> user    0m5.782s
+>> sys    0m3.089s
+>>
+>> 2) with Virtual Machine Libvirt KVM
+>> 2.1) A and B virtual with CentOS7 with kernel 3.10.0-514.2.2.el7
+>> with nfs-utils-1.3.0-0.48.el7_4.1.x86_64 and
+>> rpcbind-0.2.0-42.el7.x86_64
+>>
+>> In host A:
+>> real    0m46.126s
+>> user    0m9.034s
+>> sys    0m6.187s
+>>
+>> In Host B I obtain
+>>    sync mode:
+>> real    12m31.167s
+>> user    0m9.997s
+>> sys    0m8.466s
+>>    async mode:
+>> real    0m45.388s
+>> user    0m8.416s
+>> sys    0m5.587s
+>>
+>> 2.2) A and B virtual with Ubuntu 14.04 jessie with kernel
+>> 3.13.0-141-generic with nfs-common 1:1.2.8-6ubuntu1.2 - nfs-server
+>> 1:1.2.8-6ubuntu1.2  - rpcbind 0.2.1-2ubuntu2.2
+>> In  host A:
+>> real    0m10.787s
+>> user    0m7.912s
+>> sys    0m3.335s
+>>
+>> In Host B I obtain
+>>    sync mode:
+>> real    11m54.265s
+>> user    0m8.264s
+>> sys    0m6.541s
+>>     async mode:
+>> real    0m11.457s
+>> user    0m7.619s
+>> sys    0m3.531s
+>>
+>> Just in two other bare metal hosts I have same situation of 1.3 (old
+>> O.S. and old nfs) and I obtain sync and asyc mode in host B similar
+>> in about:
+>> real    0m37.050s
+>> user    0m9.326s
+>> sys    0m4.220s
+>> in that case the host A has a controller RAID bus controller:
+>> Hewlett-Packard Company Smart Array G6 controllers (rev 01)
+>>
+>> Now my question why is there to much difference from sync and async mode?
+>>
+>> I try to optimize network in A and B, I try to mount with different
+>> rsize and wsize in B host, I try to change timeo in nfs from B.|
+>> I try to to increase nfsd threads in host A.
+>> I try to change disk scheduler ( /sys/block/sda/queue/scheduler noop
+>> deadline [cfq]) in host A.
+>> I try to use NFS3.
+>>
+>> I observe some little improvement in some case but the gap from
+>> async and sync is always very high, except for the bare metal with
+>> G6 array controller.
+>>
+>> We would like to use nfs with sync for our infrastructure, but we
+>> can not loose to much performance.
+>>
+>> Is there a way to use sync mode with some specific parameter and
+>> improve considerably performance?
+>>
+>> Thanks in advance for any hint.
+>> Cheers
+>> Sergio
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
