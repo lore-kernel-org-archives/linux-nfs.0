@@ -1,42 +1,84 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([216.205.24.194]:46049 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S932511AbeCLR3W (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 12 Mar 2018 13:29:22 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "torvalds@linux-foundation.org" <torvalds@linux-foundation.org>
-CC: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Mon, 12 Mar 2018 17:29:17 +0000
-Message-ID: <1520875756.12462.1.camel@primarydata.com>
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:20684 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1751525AbeCMGUj (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2018 02:20:39 -0400
+Subject: Fwd: Crash of Nfstest_Delegation
+References: <b758807a-1e5b-44ff-a3b3-4029e67f7d98@cn.fujitsu.com>
+To: <mora@netapp.com>
+CC: <linux-nfs@vger.kernel.org>
+From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
+Message-ID: <86328fc7-2441-39cf-80e6-9e965fa85386@cn.fujitsu.com>
+Date: Tue, 13 Mar 2018 14:20:42 +0800
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <b758807a-1e5b-44ff-a3b3-4029e67f7d98@cn.fujitsu.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SGkgTGludXMsDQoNClRoZSBmb2xsb3dpbmcgY2hhbmdlcyBzaW5jZSBjb21taXQgMWI4OGFjY2Y2
-YTY1OWM0NmQ1YzhlNjg5MTI4OTZmMTEyYmY4ODJiYjoNCg0KICBNZXJnZSB0YWcgJ2Zvcl9saW51
-cycgb2YgZ2l0Oi8vZ2l0Lmtlcm5lbC5vcmcvcHViL3NjbS9saW51eC9rZXJuZWwvZ2l0L21zdC92
-aG9zdCAoMjAxOC0wMy0wNyAxNzo0OTozMyAtMDgwMCkNCg0KYXJlIGF2YWlsYWJsZSBpbiB0aGUg
-R2l0IHJlcG9zaXRvcnkgYXQ6DQoNCiAgZ2l0Oi8vZ2l0LmxpbnV4LW5mcy5vcmcvcHJvamVjdHMv
-dHJvbmRteS9saW51eC1uZnMuZ2l0IHRhZ3MvbmZzLWZvci00LjE2LTQNCg0KZm9yIHlvdSB0byBm
-ZXRjaCBjaGFuZ2VzIHVwIHRvIGM0ZjI0ZGY5NDJhMTgxNjk5YzViYWIwMWI4ZTVlODJiOTI1Zjc3
-ZjM6DQoNCiAgTkZTOiBGaXggdW5zdGFibGUgd3JpdGUgY29tcGxldGlvbiAoMjAxOC0wMy0wOCAx
-Mjo1NjozMiAtMDUwMCkNCg0KLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLQ0KTkZTIGNsaWVudCBidWdmaXhlcyBmb3IgTGludXgg
-NC4xNg0KDQpIaWdodGxpZ2h0cyBpbmNsdWRlIHRoZSBmb2xsb3dpbmcgc3RhYmxlIGZpeGVzOg0K
-DQotIE5GUzogRml4IGFuIGluY29ycmVjdCB0eXBlIGluIHN0cnVjdCBuZnNfZGlyZWN0X3JlcQ0K
-LSBwTkZTOiBQcmV2ZW50IHRoZSBsYXlvdXQgaGVhZGVyIHJlZmNvdW50IGdvaW5nIHRvIHplcm8g
-aW4gcG5mc19yb2MoKQ0KLSBORlM6IEZpeCB1bnN0YWJsZSB3cml0ZSBjb21wbGV0aW9uDQoNCi0t
-LS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLS0NClRyb25kIE15a2xlYnVzdCAoMyk6DQogICAgICBORlM6IEZpeCBhbiBpbmNvcnJlY3Qg
-dHlwZSBpbiBzdHJ1Y3QgbmZzX2RpcmVjdF9yZXENCiAgICAgIHBORlM6IFByZXZlbnQgdGhlIGxh
-eW91dCBoZWFkZXIgcmVmY291bnQgZ29pbmcgdG8gemVybyBpbiBwbmZzX3JvYygpDQogICAgICBO
-RlM6IEZpeCB1bnN0YWJsZSB3cml0ZSBjb21wbGV0aW9uDQoNCiBmcy9uZnMvZGlyZWN0LmMgfCAg
-MiArLQ0KIGZzL25mcy9wbmZzLmMgICB8IDEzICsrKysrKy0tLQ0KIGZzL25mcy93cml0ZS5jICB8
-IDgzICsrKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0tLS0tLS0tLS0tLS0tLS0tLS0tLS0t
-LS0tLQ0KIDMgZmlsZXMgY2hhbmdlZCwgNTQgaW5zZXJ0aW9ucygrKSwgNDQgZGVsZXRpb25zKC0p
-DQoNCi0tIA0KVHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFBy
-aW1hcnlEYXRhDQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
+
+Hi Jorge
+
+  Maybe there was something wrong with my email client and the last mail
+got lost.
+  I ran the nfstest-2.1.5 on RHEL7.5beta with kernel
+3.10. It crashed at delegation_recall04 and all the
+following tests were skipped.
+
+>   DBG3: 23:00:35.812283 - Open file /mnt/t/nfstest_delegation_20180301225932_f_1 so open owner sticks around
+>     DBG3: 23:00:35.832005 - Open file for WRITE [/mnt/t/nfstest_delegation_20180301225932_f_7]
+>     DBG3: 23:00:35.835889 - Lock file (F_SETLKW) start=0 len=0
+>     DBG2: 23:00:35.939107 - Write same file from another client to recall delegation [/mnt/t/nfstest_delegation_20180301225932_f_7]
+>     FAIL: Traceback (most recent call last):
+>             File "./nfstest_delegation", line 708, in <module>
+>               x.run_tests()
+>             File "/home/test_admin/NFStest-2.1.5/nfstest/test_util.py", line 913, in run_tests
+>               getattr(self, testmethod)(**kwargs)
+>             File "./nfstest_delegation", line 674, in recall04_test
+>               self.recall_deleg_test(OPEN_DELEGATE_WRITE, lock=True)
+>             File "./nfstest_delegation", line 502, in recall_deleg_test
+>               os.close(fd)
+>           OSError: [Errno 5] Input/output error
+>           
+>     DBG3: 23:00:36.282999 - Sync all buffers to disk
+>     DBG2: 23:00:37.290874 - Unmount volume: ssh -t -t 192.168.56.8 "/usr/bin/sudo umount -f /mnt/t"
+>     TIME: 4.690745s
+> 
+>     DBG7: 23:00:37.534359 - CLEANUP starts
+>     DBG3: 23:00:37.534555 -     Stop remote procedure server at 192.168.56.8
+>     DBG5: 23:00:37.541372 -     Removing file [/mnt/t/nfstest_delegation_20180301225932_f_7]
+>     DBG5: 23:00:37.544663 -     Removing file [/mnt/t/nfstest_delegation_20180301225932_f_6]
+>     DBG5: 23:00:37.548944 -     Removing file [/mnt/t/nfstest_delegation_20180301225932_f_5]
+>     DBG5: 23:00:37.552021 -     Removing file [/mnt/t/nfstest_delegation_20180301225932_f_4]
+>     DBG5: 23:00:37.554800 -     Removing file [/mnt/t/nfstest_delegation_20180301225932_f_3]
+>     DBG5: 23:00:37.557419 -     Removing file [/mnt/t/nfstest_delegation_20180301225932_f_2]
+>     DBG5: 23:00:37.559556 -     Removing file [/mnt/t/nfstest_delegation_20180301225932_f_1]
+>     DBG3: 23:00:37.566209 - Sync all buffers to disk
+>     DBG2: 23:00:38.582031 - Unmount volume: /usr/bin/sudo umount -f /mnt/t
+>     DBG2: 23:00:38.630358 - umount.nfs4: /mnt/t: device is busy
+>           
+>     DBG2: 23:00:39.632131 - Unmount volume: /usr/bin/sudo umount -f /mnt/t
+>     DBG2: 23:00:39.680915 - umount.nfs4: /mnt/t: device is busy
+>           
+>     DBG2: 23:00:40.682569 - Unmount volume: /usr/bin/sudo umount -f /mnt/t
+>     DBG2: 23:00:40.730187 - umount.nfs4: /mnt/t: device is busy
+>           
+>     DBG2: 23:00:41.731738 - Unmount volume: /usr/bin/sudo umount -f /mnt/t
+>     DBG2: 23:00:41.757786 - umount.nfs4: /mnt/t: device is busy
+>           
+>     DBG2: 23:00:42.759246 - Unmount volume: /usr/bin/sudo umount -f /mnt/t
+>     DBG2: 23:00:42.784288 - umount.nfs4: /mnt/t: device is busy
+>           
+>     DBG7: 23:00:42.784526 - CLEANUP done
+>     TIME: 5.258319s
+
+It seems recall06 and recall10 also have this problem.
+Server's /etc/exports:
+> /nfsroot      *(rw,insecure,no_subtree_check,no_root_squash,fsid=1
+
+And the file system is xfs. Should the nfstest_delegation be corrected?
+
+Thanks!
+Lu Xinyu
+
 
