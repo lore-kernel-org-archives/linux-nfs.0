@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:36267 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S964872AbeCMPo3 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2018 11:44:29 -0400
-Received: by mail-io0-f195.google.com with SMTP id e30so642005ioc.3
-        for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2018 08:44:28 -0700 (PDT)
-Subject: [PATCH 09/15] sunrpc: Report per-RPC execution stats
+Received: from mail-it0-f65.google.com ([209.85.214.65]:35900 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S934827AbeCMPpB (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 13 Mar 2018 11:45:01 -0400
+Received: by mail-it0-f65.google.com with SMTP id u5-v6so724155itc.1
+        for <linux-nfs@vger.kernel.org>; Tue, 13 Mar 2018 08:45:00 -0700 (PDT)
+Subject: [PATCH 15/15] nfsd: Trace NFSv4 COMPOUND execution
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 13 Mar 2018 11:44:27 -0400
-Message-ID: <20180313154427.21531.85993.stgit@klimt.1015granger.net>
+Date: Tue, 13 Mar 2018 11:44:59 -0400
+Message-ID: <20180313154459.21531.606.stgit@klimt.1015granger.net>
 In-Reply-To: <20180313154053.21531.86316.stgit@klimt.1015granger.net>
 References: <20180313154053.21531.86316.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
@@ -18,138 +18,93 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce a mechanism to report the server-side execution latency of
-each RPC. The goal is to enable user space to filter the trace
-record for latency outliers, build histograms, etc.
+This helps record the identity and timing of the ops in each NFSv4
+COMPOUND, replacing dprintk calls that did much the same thing.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc.h               |    1 +
- include/linux/sunrpc/svc_rdma.h          |    1 +
- include/trace/events/sunrpc.h            |   20 ++++++++++++++++++++
- net/sunrpc/svc_xprt.c                    |    2 +-
- net/sunrpc/svcsock.c                     |    2 ++
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |    1 +
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    1 +
- 7 files changed, 27 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4proc.c |    9 +++------
+ fs/nfsd/trace.h    |   39 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 42 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 786ae22..1939709 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -245,6 +245,7 @@ struct svc_rqst {
- 	void *			rq_xprt_ctxt;	/* transport specific context ptr */
- 	struct svc_deferred_req*rq_deferred;	/* deferred request we are replaying */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 39016b6..0df37e0 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1722,12 +1722,10 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+ 		goto encode_op;
+ 	}
  
-+	ktime_t			rq_rtime;	/* receive time */
- 	size_t			rq_xprt_hlen;	/* xprt header len */
- 	struct xdr_buf		rq_arg;
- 	struct xdr_buf		rq_res;
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 4b731b0..8045981 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -79,6 +79,7 @@ struct svc_rdma_op_ctxt {
- 	struct list_head list;
- 	struct xdr_buf arg;
- 	struct ib_cqe cqe;
-+	ktime_t rtime;
- 	u32 byte_len;
- 	struct svcxprt_rdma *xprt;
- 	enum dma_data_direction direction;
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 5a8157c..50de512 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -705,6 +705,26 @@
- 		__entry->len, show_svc_xprt_flags(__entry->flags))
- );
++	trace_nfsd_compound(rqstp, args->opcnt);
+ 	while (!status && resp->opcnt < args->opcnt) {
+ 		op = &args->ops[resp->opcnt++];
  
-+TRACE_EVENT(svc_stats_latency,
-+	TP_PROTO(const struct svc_rqst *rqst, ktime_t end),
-+
-+	TP_ARGS(rqst, end),
-+
+-		dprintk("nfsv4 compound op #%d/%d: %d (%s)\n",
+-			resp->opcnt, args->opcnt, op->opnum,
+-			nfsd4_op_name(op->opnum));
+ 		/*
+ 		 * The XDR decode routines may have pre-set op->status;
+ 		 * for example, if there is a miscellaneous XDR error
+@@ -1801,9 +1799,8 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+ 			status = op->status;
+ 		}
+ 
+-		dprintk("nfsv4 compound op %p opcnt %d #%d: %d: status %d\n",
+-			args->ops, args->opcnt, resp->opcnt, op->opnum,
+-			be32_to_cpu(status));
++		trace_nfsd_compound_status(args->opcnt, resp->opcnt, status,
++					   nfsd4_op_name(op->opnum));
+ 
+ 		nfsd4_cstate_clear_replay(cstate);
+ 		nfsd4_increment_op_stats(op->opnum);
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index a8bbd9d..80933e4 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -11,6 +11,45 @@
+ #include <linux/tracepoint.h>
+ #include "nfsfh.h"
+ 
++TRACE_EVENT(nfsd_compound,
++	TP_PROTO(const struct svc_rqst *rqst,
++		 u32 args_opcnt),
++	TP_ARGS(rqst, args_opcnt),
 +	TP_STRUCT__entry(
 +		__field(u32, xid)
-+		__field(unsigned long, execute)
-+		__string(addr, rqst->rq_xprt->xpt_remotebuf)
++		__field(u32, args_opcnt)
 +	),
-+
 +	TP_fast_assign(
 +		__entry->xid = be32_to_cpu(rqst->rq_xid);
-+		__entry->execute = ktime_to_us(ktime_sub(end, rqst->rq_rtime));
-+		__assign_str(addr, rqst->rq_xprt->xpt_remotebuf);
++		__entry->args_opcnt = args_opcnt;
 +	),
++	TP_printk("xid=0x%08x opcnt=%u",
++		__entry->xid, __entry->args_opcnt)
++)
 +
-+	TP_printk("addr=%s xid=0x%08x execute=%lu",
-+		__get_str(addr), __entry->xid, __entry->execute)
-+);
- 
- DECLARE_EVENT_CLASS(svc_deferred_event,
- 	TP_PROTO(struct svc_deferred_req *dr),
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f745754..2556e6e 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -782,7 +782,6 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 			len = svc_deferred_recv(rqstp);
- 		else
- 			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
--		dprintk("svc: got len=%d\n", len);
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
- 	}
-@@ -893,6 +892,7 @@ int svc_send(struct svc_rqst *rqstp)
- 		len = -ENOTCONN;
- 	else
- 		len = xprt->xpt_ops->xpo_sendto(rqstp);
-+	trace_svc_stats_latency(rqstp, ktime_get_real());
- 	mutex_unlock(&xprt->xpt_mutex);
- 	rpc_wake_up(&xprt->xpt_bc_pending);
- 	trace_svc_send(rqstp, len);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index 4ca1d92..f616962 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -574,6 +574,7 @@ static int svc_udp_recvfrom(struct svc_rqst *rqstp)
- 		/* Don't enable netstamp, sunrpc doesn't
- 		   need that much accuracy */
- 	}
-+	rqstp->rq_rtime = skb->tstamp;
- 	svsk->sk_sk->sk_stamp = skb->tstamp;
- 	set_bit(XPT_DATA, &svsk->sk_xprt.xpt_flags); /* there may be more data... */
- 
-@@ -1143,6 +1144,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
- 	if (len < 0)
- 		goto error;
- 
-+	rqstp->rq_rtime = ktime_get_real();
- 	svc_xprt_copy_addrs(rqstp, &svsk->sk_xprt);
- 	if (serv->sv_stats)
- 		serv->sv_stats->nettcpcnt++;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 19e9c6b..446b9d6 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -558,6 +558,7 @@ int svc_rdma_recvfrom(struct svc_rqst *rqstp)
- 		goto out_readchunk;
- 
- complete:
-+	rqstp->rq_rtime = ctxt->rtime;
- 	svc_rdma_put_context(ctxt, 0);
- 	dprintk("svcrdma: recvfrom: xprt=%p, rqstp=%p, rq_arg.len=%u\n",
- 		rdma_xprt, rqstp, rqstp->rq_arg.len);
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index ca211dc..08fa7de 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -316,6 +316,7 @@ static void svc_rdma_wc_receive(struct ib_cq *cq, struct ib_wc *wc)
- 		goto flushed;
- 
- 	/* All wc fields are now known to be valid */
-+	ctxt->rtime = ktime_get_real();
- 	ctxt->byte_len = wc->byte_len;
- 	spin_lock(&xprt->sc_rq_dto_lock);
- 	list_add_tail(&ctxt->list, &xprt->sc_rq_dto_q);
++TRACE_EVENT(nfsd_compound_status,
++	TP_PROTO(u32 args_opcnt,
++		 u32 resp_opcnt,
++		 __be32 status,
++		 const char *name),
++	TP_ARGS(args_opcnt, resp_opcnt, status, name),
++	TP_STRUCT__entry(
++		__field(u32, args_opcnt)
++		__field(u32, resp_opcnt)
++		__field(int, status)
++		__string(name, name)
++	),
++	TP_fast_assign(
++		__entry->args_opcnt = args_opcnt;
++		__entry->resp_opcnt = resp_opcnt;
++		__entry->status = be32_to_cpu(status);
++		__assign_str(name, name);
++	),
++	TP_printk("op=%u/%u %s status=%d",
++		__entry->resp_opcnt, __entry->args_opcnt,
++		__get_str(name), __entry->status)
++)
++
+ DECLARE_EVENT_CLASS(nfsd_io_class,
+ 	TP_PROTO(struct svc_rqst *rqstp,
+ 		 struct svc_fh	*fhp,
 
