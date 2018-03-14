@@ -1,38 +1,115 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50180 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:50186 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751408AbeCNUwu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 14 Mar 2018 16:52:50 -0400
-Date: Wed, 14 Mar 2018 16:52:50 -0400
+        id S1750779AbeCNUzP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 14 Mar 2018 16:55:15 -0400
+Date: Wed, 14 Mar 2018 16:55:15 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Chuck Lever <chuck.lever@oracle.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 11/15] nfsd: Record request byte count, not count of
- vectors
-Message-ID: <20180314205250.GC7241@fieldses.org>
+Subject: Re: [PATCH 15/15] nfsd: Trace NFSv4 COMPOUND execution
+Message-ID: <20180314205515.GD7241@fieldses.org>
 References: <20180313154053.21531.86316.stgit@klimt.1015granger.net>
- <20180313154437.21531.89300.stgit@klimt.1015granger.net>
+ <20180313154459.21531.606.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180313154437.21531.89300.stgit@klimt.1015granger.net>
+In-Reply-To: <20180313154459.21531.606.stgit@klimt.1015granger.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 13, 2018 at 11:44:37AM -0400, Chuck Lever wrote:
->  	TP_fast_assign(
->  		__entry->xid = be32_to_cpu(rqstp->rq_xid);
-> -		do {
-> -			struct knfsd_fh fh;
-> -
-> -			fh_copy_shallow(&fh, &fhp->fh_handle);
-> -			__entry->fh_hash = knfsd_fh_hash(&fh);
-> -		} while (0);
-> +		__entry->fh_hash = knfsd_fh_hash(&fhp->fh_handle);
->  		__entry->offset = offset;
->  		__entry->len = len;
->  	),
+On Tue, Mar 13, 2018 at 11:44:59AM -0400, Chuck Lever wrote:
+> This helps record the identity and timing of the ops in each NFSv4
+> COMPOUND, replacing dprintk calls that did much the same thing.
 
-What's that about?  Why did someone originally think we needed to copy
-before hashing?
+Would it be better to leave it to userspace to translate an operation
+number to a name?
 
 --b.
+
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>  fs/nfsd/nfs4proc.c |    9 +++------
+>  fs/nfsd/trace.h    |   39 +++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 42 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 39016b6..0df37e0 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1722,12 +1722,10 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  		goto encode_op;
+>  	}
+>  
+> +	trace_nfsd_compound(rqstp, args->opcnt);
+>  	while (!status && resp->opcnt < args->opcnt) {
+>  		op = &args->ops[resp->opcnt++];
+>  
+> -		dprintk("nfsv4 compound op #%d/%d: %d (%s)\n",
+> -			resp->opcnt, args->opcnt, op->opnum,
+> -			nfsd4_op_name(op->opnum));
+>  		/*
+>  		 * The XDR decode routines may have pre-set op->status;
+>  		 * for example, if there is a miscellaneous XDR error
+> @@ -1801,9 +1799,8 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+>  			status = op->status;
+>  		}
+>  
+> -		dprintk("nfsv4 compound op %p opcnt %d #%d: %d: status %d\n",
+> -			args->ops, args->opcnt, resp->opcnt, op->opnum,
+> -			be32_to_cpu(status));
+> +		trace_nfsd_compound_status(args->opcnt, resp->opcnt, status,
+> +					   nfsd4_op_name(op->opnum));
+>  
+>  		nfsd4_cstate_clear_replay(cstate);
+>  		nfsd4_increment_op_stats(op->opnum);
+> diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+> index a8bbd9d..80933e4 100644
+> --- a/fs/nfsd/trace.h
+> +++ b/fs/nfsd/trace.h
+> @@ -11,6 +11,45 @@
+>  #include <linux/tracepoint.h>
+>  #include "nfsfh.h"
+>  
+> +TRACE_EVENT(nfsd_compound,
+> +	TP_PROTO(const struct svc_rqst *rqst,
+> +		 u32 args_opcnt),
+> +	TP_ARGS(rqst, args_opcnt),
+> +	TP_STRUCT__entry(
+> +		__field(u32, xid)
+> +		__field(u32, args_opcnt)
+> +	),
+> +	TP_fast_assign(
+> +		__entry->xid = be32_to_cpu(rqst->rq_xid);
+> +		__entry->args_opcnt = args_opcnt;
+> +	),
+> +	TP_printk("xid=0x%08x opcnt=%u",
+> +		__entry->xid, __entry->args_opcnt)
+> +)
+> +
+> +TRACE_EVENT(nfsd_compound_status,
+> +	TP_PROTO(u32 args_opcnt,
+> +		 u32 resp_opcnt,
+> +		 __be32 status,
+> +		 const char *name),
+> +	TP_ARGS(args_opcnt, resp_opcnt, status, name),
+> +	TP_STRUCT__entry(
+> +		__field(u32, args_opcnt)
+> +		__field(u32, resp_opcnt)
+> +		__field(int, status)
+> +		__string(name, name)
+> +	),
+> +	TP_fast_assign(
+> +		__entry->args_opcnt = args_opcnt;
+> +		__entry->resp_opcnt = resp_opcnt;
+> +		__entry->status = be32_to_cpu(status);
+> +		__assign_str(name, name);
+> +	),
+> +	TP_printk("op=%u/%u %s status=%d",
+> +		__entry->resp_opcnt, __entry->args_opcnt,
+> +		__get_str(name), __entry->status)
+> +)
+> +
+>  DECLARE_EVENT_CLASS(nfsd_io_class,
+>  	TP_PROTO(struct svc_rqst *rqstp,
+>  		 struct svc_fh	*fhp,
