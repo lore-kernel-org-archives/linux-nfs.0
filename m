@@ -1,103 +1,106 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:41354 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:41260 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751454AbeCPNrY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Mar 2018 09:47:24 -0400
+        id S1752130AbeCPNqs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Mar 2018 09:46:48 -0400
 From: Jeff Layton <jlayton@kernel.org>
 To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: move nfs4_client allocation to dedicated slabcache
-Date: Fri, 16 Mar 2018 09:47:22 -0400
-Message-Id: <20180316134722.25949-1-jlayton@kernel.org>
+Cc: smayhew@redhat.com, sorenson@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: remove blocked locks on client teardown
+Date: Fri, 16 Mar 2018 09:46:46 -0400
+Message-Id: <20180316134646.25845-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: Jeff Layton <jlayton@redhat.com>
 
-On x86_64, it's 1152 bytes, so we can avoid wasting 896 bytes each.
+We had some reports of panics in nfsd4_lm_notify, and that showed a
+nfs4_lockowner that had outlived its so_client.
 
+Ensure that we walk any leftover lockowners after tearing down all of
+the stateids, and remove any blocked locks that they hold.
+
+Fixes: 76d348fadff5 (nfsd: have nfsd4_lock use blocking locks for v4.1+ locks)
+Reported-by: Frank Sorenson <fsorenso@redhat.com>
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Cc: stable@vger.kernel.org # 4.9
 ---
- fs/nfsd/nfs4state.c | 18 +++++++++++++-----
- 1 file changed, 13 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 41 +++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0c1eff2be2e8..ff41845500ca 100644
+index 08c700864fee..0c1eff2be2e8 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -98,6 +98,7 @@ enum nfsd4_st_mutex_lock_subclass {
-  */
- static DECLARE_WAIT_QUEUE_HEAD(close_wq);
- 
-+static struct kmem_cache *client_slab;
- static struct kmem_cache *openowner_slab;
- static struct kmem_cache *lockowner_slab;
- static struct kmem_cache *file_slab;
-@@ -1794,7 +1795,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
- 	struct nfs4_client *clp;
- 	int i;
- 
--	clp = kzalloc(sizeof(struct nfs4_client), GFP_KERNEL);
-+	clp = kmem_cache_zalloc(client_slab, GFP_KERNEL);
- 	if (clp == NULL)
- 		return NULL;
- 	clp->cl_name.data = kmemdup(name.data, name.len, GFP_KERNEL);
-@@ -1825,7 +1826,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
- err_no_hashtbl:
- 	kfree(clp->cl_name.data);
- err_no_name:
--	kfree(clp);
-+	kmem_cache_free(client_slab, clp);
- 	return NULL;
+@@ -268,6 +268,35 @@ free_blocked_lock(struct nfsd4_blocked_lock *nbl)
+ 	kfree(nbl);
  }
  
-@@ -1845,7 +1846,7 @@ free_client(struct nfs4_client *clp)
- 	kfree(clp->cl_ownerstr_hashtbl);
- 	kfree(clp->cl_name.data);
- 	idr_destroy(&clp->cl_stateids);
--	kfree(clp);
-+	kmem_cache_free(client_slab, clp);
- }
- 
- /* must be called under the client_lock */
-@@ -3471,21 +3472,26 @@ static void nfsd4_init_file(struct knfsd_fh *fh, unsigned int hashval,
- void
- nfsd4_free_slabs(void)
++static void
++remove_blocked_locks(struct nfs4_lockowner *lo)
++{
++	struct nfs4_client *clp = lo->lo_owner.so_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfsd4_blocked_lock *nbl;
++	LIST_HEAD(reaplist);
++
++	/* Dequeue all blocked locks */
++	spin_lock(&nn->blocked_locks_lock);
++	while (!list_empty(&lo->lo_blocked)) {
++		nbl = list_first_entry(&lo->lo_blocked,
++					struct nfsd4_blocked_lock,
++					nbl_list);
++		list_del_init(&nbl->nbl_list);
++		list_move(&nbl->nbl_lru, &reaplist);
++	}
++	spin_unlock(&nn->blocked_locks_lock);
++
++	/* Now free them */
++	while (!list_empty(&reaplist)) {
++		nbl = list_first_entry(&reaplist, struct nfsd4_blocked_lock,
++					nbl_lru);
++		list_del_init(&nbl->nbl_lru);
++		posix_unblock_lock(&nbl->nbl_lock);
++		free_blocked_lock(nbl);
++	}
++}
++
+ static int
+ nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
  {
--	kmem_cache_destroy(odstate_slab);
-+	kmem_cache_destroy(client_slab);
- 	kmem_cache_destroy(openowner_slab);
- 	kmem_cache_destroy(lockowner_slab);
- 	kmem_cache_destroy(file_slab);
- 	kmem_cache_destroy(stateid_slab);
- 	kmem_cache_destroy(deleg_slab);
-+	kmem_cache_destroy(odstate_slab);
- }
- 
- int
- nfsd4_init_slabs(void)
+@@ -1866,6 +1895,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ static void
+ __destroy_client(struct nfs4_client *clp)
  {
-+	client_slab = kmem_cache_create("nfsd4_clients",
-+			sizeof(struct nfs4_client), 0, 0, NULL);
-+	if (client_slab == NULL)
-+		goto out;
- 	openowner_slab = kmem_cache_create("nfsd4_openowners",
- 			sizeof(struct nfs4_openowner), 0, 0, NULL);
- 	if (openowner_slab == NULL)
--		goto out;
-+		goto out_free_client_slab;
- 	lockowner_slab = kmem_cache_create("nfsd4_lockowners",
- 			sizeof(struct nfs4_lockowner), 0, 0, NULL);
- 	if (lockowner_slab == NULL)
-@@ -3518,6 +3524,8 @@ nfsd4_init_slabs(void)
- 	kmem_cache_destroy(lockowner_slab);
- out_free_openowner_slab:
- 	kmem_cache_destroy(openowner_slab);
-+out_free_client_slab:
-+	kmem_cache_destroy(client_slab);
- out:
- 	dprintk("nfsd4: out of memory while initializing nfsv4\n");
- 	return -ENOMEM;
++	int i;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
+ 	struct list_head reaplist;
+@@ -1895,6 +1925,16 @@ __destroy_client(struct nfs4_client *clp)
+ 		nfs4_get_stateowner(&oo->oo_owner);
+ 		release_openowner(oo);
+ 	}
++	for (i = 0; i < OWNER_HASH_SIZE; i++) {
++		struct nfs4_stateowner *so, *tmp;
++
++		list_for_each_entry_safe(so, tmp, &clp->cl_ownerstr_hashtbl[i],
++					 so_strhash) {
++			/* Should be no openowners at this point */
++			WARN_ON_ONCE(so->so_is_open_owner);
++			remove_blocked_locks(lockowner(so));
++		}
++	}
+ 	nfsd4_return_all_client_layouts(clp);
+ 	nfsd4_shutdown_callback(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+@@ -6366,6 +6406,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+ 	free_ol_stateid_reaplist(&reaplist);
++	remove_blocked_locks(lo);
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ 
+ 	return status;
 -- 
 2.14.3
 
