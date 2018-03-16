@@ -1,37 +1,153 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:36370 "EHLO fieldses.org"
+Received: from mail.kernel.org ([198.145.29.99]:57402 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752579AbeCPOnt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Mar 2018 10:43:49 -0400
-Date: Fri, 16 Mar 2018 10:43:49 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: NeilBrown <neilb@suse.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH 3/3] nfsd: clients don't need to break their own
- delegations
-Message-ID: <20180316144349.GH18719@fieldses.org>
-References: <1503697958-6122-1-git-send-email-bfields@redhat.com>
- <1503697958-6122-4-git-send-email-bfields@redhat.com>
- <87bmn0ia6i.fsf@notabene.neil.brown.name>
- <20170829214907.GJ8822@parsley.fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20170829214907.GJ8822@parsley.fieldses.org>
-From: bfields@fieldses.org (J. Bruce Fields)
+        id S933235AbeCPPcE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Mar 2018 11:32:04 -0400
+From: Jeff Layton <jlayton@kernel.org>
+To: sorenson@redhat.com, bfields@fieldses.org
+Cc: smayhew@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfsd: remove blocked locks on client teardown
+Date: Fri, 16 Mar 2018 11:32:02 -0400
+Message-Id: <20180316153202.379-1-jlayton@kernel.org>
+In-Reply-To: <20180316134646.25845-1-jlayton@kernel.org>
+References: <20180316134646.25845-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Aug 29, 2017 at 05:49:07PM -0400, J. Bruce Fields wrote:
-> Now we get to harder questions....
-> 
-> On Mon, Aug 28, 2017 at 02:32:53PM +1000, NeilBrown wrote:
-> > Would this all turn out to be easier if nfsd took a separate lease for
-> > each client?  What would be the cost of that?
-> 
-> I'll have to remind myself.
+From: Jeff Layton <jlayton@redhat.com>
 
-OK, done and I think it's actually nicer that way.  I'll post the whole
-series later today.
+We had some reports of panics in nfsd4_lm_notify, and that showed a
+nfs4_lockowner that had outlived its so_client.
 
---b.
+Ensure that we walk any leftover lockowners after tearing down all of
+the stateids, and remove any blocked locks that they hold.
+
+With this change, we also don't need to walk the nbl_lru on nfsd_net
+shutdown, as that will happen naturally when we tear down the clients.
+
+Fixes: 76d348fadff5 (nfsd: have nfsd4_lock use blocking locks for v4.1+ locks)
+Reported-by: Frank Sorenson <fsorenso@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Cc: stable@vger.kernel.org # 4.9
+---
+ fs/nfsd/nfs4state.c | 62 +++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 43 insertions(+), 19 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 08c700864fee..34e6915831d8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -268,6 +268,35 @@ free_blocked_lock(struct nfsd4_blocked_lock *nbl)
+ 	kfree(nbl);
+ }
+ 
++static void
++remove_blocked_locks(struct nfs4_lockowner *lo)
++{
++	struct nfs4_client *clp = lo->lo_owner.so_client;
++	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++	struct nfsd4_blocked_lock *nbl;
++	LIST_HEAD(reaplist);
++
++	/* Dequeue all blocked locks */
++	spin_lock(&nn->blocked_locks_lock);
++	while (!list_empty(&lo->lo_blocked)) {
++		nbl = list_first_entry(&lo->lo_blocked,
++					struct nfsd4_blocked_lock,
++					nbl_list);
++		list_del_init(&nbl->nbl_list);
++		list_move(&nbl->nbl_lru, &reaplist);
++	}
++	spin_unlock(&nn->blocked_locks_lock);
++
++	/* Now free them */
++	while (!list_empty(&reaplist)) {
++		nbl = list_first_entry(&reaplist, struct nfsd4_blocked_lock,
++					nbl_lru);
++		list_del_init(&nbl->nbl_lru);
++		posix_unblock_lock(&nbl->nbl_lock);
++		free_blocked_lock(nbl);
++	}
++}
++
+ static int
+ nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
+ {
+@@ -1866,6 +1895,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
+ static void
+ __destroy_client(struct nfs4_client *clp)
+ {
++	int i;
+ 	struct nfs4_openowner *oo;
+ 	struct nfs4_delegation *dp;
+ 	struct list_head reaplist;
+@@ -1895,6 +1925,16 @@ __destroy_client(struct nfs4_client *clp)
+ 		nfs4_get_stateowner(&oo->oo_owner);
+ 		release_openowner(oo);
+ 	}
++	for (i = 0; i < OWNER_HASH_SIZE; i++) {
++		struct nfs4_stateowner *so, *tmp;
++
++		list_for_each_entry_safe(so, tmp, &clp->cl_ownerstr_hashtbl[i],
++					 so_strhash) {
++			/* Should be no openowners at this point */
++			WARN_ON_ONCE(so->so_is_open_owner);
++			remove_blocked_locks(lockowner(so));
++		}
++	}
+ 	nfsd4_return_all_client_layouts(clp);
+ 	nfsd4_shutdown_callback(clp);
+ 	if (clp->cl_cb_conn.cb_xprt)
+@@ -6366,6 +6406,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+ 	free_ol_stateid_reaplist(&reaplist);
++	remove_blocked_locks(lo);
+ 	nfs4_put_stateowner(&lo->lo_owner);
+ 
+ 	return status;
+@@ -7151,6 +7192,8 @@ nfs4_state_destroy_net(struct net *net)
+ 		}
+ 	}
+ 
++	WARN_ON(!list_empty(&nn->blocked_locks_lru));
++
+ 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+ 		while (!list_empty(&nn->unconf_id_hashtbl[i])) {
+ 			clp = list_entry(nn->unconf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
+@@ -7217,7 +7260,6 @@ nfs4_state_shutdown_net(struct net *net)
+ 	struct nfs4_delegation *dp = NULL;
+ 	struct list_head *pos, *next, reaplist;
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+-	struct nfsd4_blocked_lock *nbl;
+ 
+ 	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	locks_end_grace(&nn->nfsd4_manager);
+@@ -7238,24 +7280,6 @@ nfs4_state_shutdown_net(struct net *net)
+ 		nfs4_put_stid(&dp->dl_stid);
+ 	}
+ 
+-	BUG_ON(!list_empty(&reaplist));
+-	spin_lock(&nn->blocked_locks_lock);
+-	while (!list_empty(&nn->blocked_locks_lru)) {
+-		nbl = list_first_entry(&nn->blocked_locks_lru,
+-					struct nfsd4_blocked_lock, nbl_lru);
+-		list_move(&nbl->nbl_lru, &reaplist);
+-		list_del_init(&nbl->nbl_list);
+-	}
+-	spin_unlock(&nn->blocked_locks_lock);
+-
+-	while (!list_empty(&reaplist)) {
+-		nbl = list_first_entry(&reaplist,
+-					struct nfsd4_blocked_lock, nbl_lru);
+-		list_del_init(&nbl->nbl_lru);
+-		posix_unblock_lock(&nbl->nbl_lock);
+-		free_blocked_lock(nbl);
+-	}
+-
+ 	nfsd4_client_tracking_exit(net);
+ 	nfs4_state_destroy_net(net);
+ }
+-- 
+2.14.3
+
