@@ -1,88 +1,103 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:50527 "EHLO
-        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1751236AbeCPMKn (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2018 08:10:43 -0400
-From: Trond Myklebust <trondmy@primarydata.com>
-To: "neilb@suse.com" <neilb@suse.com>,
-        "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>
-CC: "anna.schumaker@netapp.com" <anna.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH - v2] NFSv4: handle EINVAL from EXCHANGE_ID better.
-Date: Fri, 16 Mar 2018 12:10:35 +0000
-Message-ID: <1521202233.3008.16.camel@primarydata.com>
-References: <87bmfoc3yi.fsf@notabene.neil.brown.name>
-         <878tasc3ag.fsf@notabene.neil.brown.name>
-         <584484878.12780264.1521192712528.JavaMail.zimbra@desy.de>
-In-Reply-To: <584484878.12780264.1521192712528.JavaMail.zimbra@desy.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.kernel.org ([198.145.29.99]:41354 "EHLO mail.kernel.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751454AbeCPNrY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 16 Mar 2018 09:47:24 -0400
+From: Jeff Layton <jlayton@kernel.org>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: move nfs4_client allocation to dedicated slabcache
+Date: Fri, 16 Mar 2018 09:47:22 -0400
+Message-Id: <20180316134722.25949-1-jlayton@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gRnJpLCAyMDE4LTAzLTE2IGF0IDEwOjMxICswMTAwLCBNa3J0Y2h5YW4sIFRpZ3JhbiB3cm90
-ZToNCj4gSGkgTmVpbCwNCj4gDQo+IGFjY29yZGluZyB0byByZmM1NjYxLCBORlM0RVJSX0lOVkFM
-IGlzIHJldHVybmVkIGJ5IHRoZSBzZXJ2ZXIgaWYgaXQNCj4gdGhpbmtzIHRoYXQgY2xpZW50IHNl
-bmRzIGFuIGludmFsaWQgcmVxdWVzdCAoZS5nLiBwb2ludHMgdG8gYSBjbGllbnQNCj4gYnVnKQ0K
-PiBvciBzZXJ2ZXIgbWlzaW50ZXJwcmV0IGl0IChicm9rZW4gc2VydmVyKS4NCj4gDQo+IFdpdGgg
-eW91ciBjaGFuZ2UgaW5zdGVhZCBvZiBmYWlsaW5nIHRoZSBtb3VudCwgY2xpZW50IHdpbGwgc2ls
-ZW50bHkNCj4gZ28gZm9yDQo+IHY0LjAsIGV2ZW4gdjQuMSBtb3VudCB3YXMgcmVxdWVzdGVkIGFu
-ZCBwcm9kdWNlIHVuZGVzaXJhYmxlIGJlaGF2aW9yLA0KPiBlLmcuDQo+IHByb3h5LWlvIGluc3Rl
-YWQgb2YgcG5mcy4gSSBmaWxsIHByZWZlciBmYWlsLWZhc3QgaW5zdGVhZCBvZiBsb25nDQo+IGRl
-YnVnDQo+IHNlc3Npb25zLg0KPiANCj4gT24gdGhlIG90aGVyIGhhbmQsIEkgdW5kZXJzdGFuZCwg
-dGhhdCBpdCdzIG5vdCBhbHdheXMgcG9zc2libGUgdG8gZml4DQo+IHNlcnZlcg0KPiBvciBjbGll
-bnRzIGluIHByb2R1Y3Rpb24gZW52aXJvbm1lbnQgYW5kIHRpbWUtdG8tdGltZSB3b3JrYXJvdW5k
-cyBhcmUNCj4gbmVjZXNzYXJ5Lg0KPiANCj4gDQoNCkknZCB0ZW5kIHRvIGFncmVlIHdpdGggVGln
-cmFuLiBIaWRpbmcgc2VydmVyIGJ1Z3MsIHNob3VsZCBub3QgYmUgYQ0KcHJpb3JpdHkgYW5kIHBh
-cnRpY3VsYXJseSBub3QgaW4gdGhpcyBjYXNlLCB3aGVyZSB0aGUgd29ya2Fyb3VuZCBpcw0Kc2lt
-cGxlOiBlaXRoZXIgdHVybiBvZmYgdmVyc2lvbiBuZWdvdGlhdGlvbiBhbHRvZ2V0aGVyLCBvciBl
-ZGl0DQovZXRjL25mc21vdW50LmNvbmYgdG8gbmVnb3RpYXRlIGEgZGlmZmVyZW50IHNldCBvZiB2
-ZXJzaW9ucy4NCg0KV2hhdCB3ZSBtaWdodCB3YW50IHRvIGRvLCBpcyBtYWtlIGl0IGVhc2llciB0
-byBhbGxvdyB0aGUgdXNlciB0byBkZXRlY3QNCnRoYXQgdGhpcyBpcyBpbmRlZWQgYSBzZXJ2ZXIg
-YnVnIGFuZCBpcyBub3QgYSBwcm9ibGVtIHdpdGggdGhlDQphcmd1bWVudHMgc3VwcGxpZWQgdG8g
-dGhlICJtb3VudCIgdXRpbGl0eS4gUGVyaGFwcyB3ZSBtaWdodCBoYXZlIHRoZQ0Ka2VybmVsIGxv
-ZyBzb21ldGhpbmcgaW4gdGhlIHN5c2xvZ3M/DQoNCkNoZWVycw0KICBUcm9uZA0KDQo+IFRpZ3Jh
-bi4NCj4gDQo+IA0KPiAtLS0tLSBPcmlnaW5hbCBNZXNzYWdlIC0tLS0tDQo+ID4gRnJvbTogIk5l
-aWxCcm93biIgPG5laWxiQHN1c2UuY29tPg0KPiA+IFRvOiAiVHJvbmQgTXlrbGVidXN0IiA8dHJv
-bmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4sICJBbm5hDQo+ID4gU2NodW1ha2VyIiA8YW5u
-YS5zY2h1bWFrZXJAbmV0YXBwLmNvbT4NCj4gPiBDYzogImxpbnV4LW5mcyIgPGxpbnV4LW5mc0B2
-Z2VyLmtlcm5lbC5vcmc+DQo+ID4gU2VudDogRnJpZGF5LCBNYXJjaCAxNiwgMjAxOCAxMjo0NDoy
-MyBBTQ0KPiA+IFN1YmplY3Q6IFtQQVRDSCAtIHYyXSBORlN2NDogaGFuZGxlIEVJTlZBTCBmcm9t
-IEVYQ0hBTkdFX0lEIGJldHRlci4NCj4gPiBuZnM0X3Byb2NfZXhjaGFuZ2VfaWQoKSBjYW4gcmV0
-dXJuIC1FSU5WQUwgaWYgdGhlIHNlcnZlcg0KPiA+IHJlcG9ydGVkIE5GUzRJTlZBTCAod2hpY2gg
-SSBoYXZlIHNlZW4gaW4gYSBwYWNrZXQgdHJhY2UpLA0KPiA+IG9yIG5mczRfY2hlY2tfY2xfZXhj
-aGFuZ2VfZmxhZ3MoKSBleGNoYW5nZSBmbGFncyBkZXRlY3RzDQo+ID4gYSBwcm9ibGVtLg0KPiA+
-IEVhY2ggb2YgdGhlc2UgbWVhbiB0aGF0IE5GU3Y0LjEgbGF0ZXIgY2Fubm90IGJlIHVzZSwgYnV0
-DQo+ID4gdGhleSBzaG91bGQgbm90IHByZXZlbnQgZmFsbGJhY2sgdG8gTkZTdjQuMC4NCj4gPiAN
-Cj4gPiBDdXJyZW50bHkgdGhpcyBFSU5WQUwgZXJyb3IgaXMgcmV0dXJuZWQgYnkgbmZzNF9wcm9j
-X2V4Y2hhbmdlX2lkKCkNCj4gPiB0bw0KPiA+IG5mczQxX2Rpc2NvdmVyX3NlcnZlcl90cnVua2lu
-ZygpLCBhbmQgdGhlbmNlIHRvDQo+ID4gbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoKS4N
-Cj4gPiBuZnM0X2Rpc2NvdmVyX3NlcnZlcl90cnVua2luZygpIGRvZXNuJ3QgdW5kZXJzdGFuZCBF
-SU5WQUwsIHNvDQo+ID4gY29udmVydHMNCj4gPiBpdCB0byBFSU8gd2hpY2ggY2F1c2VzIG1vdW50
-Lm5mcyB0byB0aGluayBzb21ldGhpbmcgaXMgaG9ycmlibHkNCj4gPiB3cm9uZw0KPiA+IGFuZCB0
-byBnaXZlIHVwLg0KPiA+IA0KPiA+IEl0IHdvdWxkIGJlIGEgbW9yZSBncmFjZWZ1bCBmYWlsdXJl
-IGlmDQo+ID4gbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJfdHJ1bmtpbmcoKQ0KPiA+IG1hcHBlZCAtRUlO
-VkFMIHRvIC1FUFJPVE9OT1NVUFBPUlQgLSBhIGZhaWx1cmUgdG8gbmVnb3RpYXRlIGENCj4gPiBj
-bGllbnQNCj4gPiBJRCBjbGVhcmx5IHNob3dzIHRoYXQgTkZTdjQuMSBjYW5ub3QgYmUgc3VwcG9y
-dGVkLCBidXQgaXNuJ3QgYXMNCj4gPiBnZW5lcmFsIGEgZmFpbHVyZSBhcyBFSU8uDQo+ID4gDQo+
-ID4gU2lnbmVkLW9mZi1ieTogTmVpbEJyb3duIDxuZWlsYkBzdXNlLmNvbT4NCj4gPiAtLS0NCj4g
-PiANCj4gPiBTb3JyeSAtIGEgYml0IHRvbyB0cmlnZ2VyLWhhcHB5IHdpdGggdGhhdCBmaXJzdCB2
-ZXJzaW9uIG9mIHRoZQ0KPiA+IHBhdGNoLg0KPiA+IA0KPiA+IE5laWxCcm93bg0KPiA+IA0KPiA+
-IGZzL25mcy9uZnM0c3RhdGUuYyB8IDIgKysNCj4gPiAxIGZpbGUgY2hhbmdlZCwgMiBpbnNlcnRp
-b25zKCspDQo+ID4gDQo+ID4gZGlmZiAtLWdpdCBhL2ZzL25mcy9uZnM0c3RhdGUuYyBiL2ZzL25m
-cy9uZnM0c3RhdGUuYw0KPiA+IGluZGV4IDkxYTRkNGVlYjIzNS4uYjk4OGU0NjA1NTNkIDEwMDY0
-NA0KPiA+IC0tLSBhL2ZzL25mcy9uZnM0c3RhdGUuYw0KPiA+ICsrKyBiL2ZzL25mcy9uZnM0c3Rh
-dGUuYw0KPiA+IEBAIC0yMjE5LDYgKzIyMTksOCBAQCBpbnQgbmZzNF9kaXNjb3Zlcl9zZXJ2ZXJf
-dHJ1bmtpbmcoc3RydWN0DQo+ID4gbmZzX2NsaWVudCAqY2xwLA0KPiA+IAkJY2xudCA9IGNscC0+
-Y2xfcnBjY2xpZW50Ow0KPiA+IAkJZ290byBhZ2FpbjsNCj4gPiANCj4gPiArCWNhc2UgLU5GUzRF
-UlJfSU5WQUw6DQo+ID4gKwkJLyogU2VydmVyIGNvbmZ1c2VkIC0gYXNzdW1lIHRoaXMgbWlub3Ig
-aXNuJ3QNCj4gPiBzdXBwb3J0ZWQgKi8NCj4gPiAJY2FzZSAtTkZTNEVSUl9NSU5PUl9WRVJTX01J
-U01BVENIOg0KPiA+IAkJc3RhdHVzID0gLUVQUk9UT05PU1VQUE9SVDsNCj4gPiAJCWJyZWFrOw0K
-PiA+IC0tDQo+ID4gMi4xNC4wLnJjMC5kaXJ0eQ0KPiANCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUg
-ZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyINCj4g
-aW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcN
-Cj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRv
-bW8taW5mby5odG1sDQo+IA0KLS0gDQpUcm9uZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQg
-bWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20N
-Cg==
+From: Jeff Layton <jlayton@redhat.com>
+
+On x86_64, it's 1152 bytes, so we can avoid wasting 896 bytes each.
+
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 18 +++++++++++++-----
+ 1 file changed, 13 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0c1eff2be2e8..ff41845500ca 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -98,6 +98,7 @@ enum nfsd4_st_mutex_lock_subclass {
+  */
+ static DECLARE_WAIT_QUEUE_HEAD(close_wq);
+ 
++static struct kmem_cache *client_slab;
+ static struct kmem_cache *openowner_slab;
+ static struct kmem_cache *lockowner_slab;
+ static struct kmem_cache *file_slab;
+@@ -1794,7 +1795,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ 	struct nfs4_client *clp;
+ 	int i;
+ 
+-	clp = kzalloc(sizeof(struct nfs4_client), GFP_KERNEL);
++	clp = kmem_cache_zalloc(client_slab, GFP_KERNEL);
+ 	if (clp == NULL)
+ 		return NULL;
+ 	clp->cl_name.data = kmemdup(name.data, name.len, GFP_KERNEL);
+@@ -1825,7 +1826,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ err_no_hashtbl:
+ 	kfree(clp->cl_name.data);
+ err_no_name:
+-	kfree(clp);
++	kmem_cache_free(client_slab, clp);
+ 	return NULL;
+ }
+ 
+@@ -1845,7 +1846,7 @@ free_client(struct nfs4_client *clp)
+ 	kfree(clp->cl_ownerstr_hashtbl);
+ 	kfree(clp->cl_name.data);
+ 	idr_destroy(&clp->cl_stateids);
+-	kfree(clp);
++	kmem_cache_free(client_slab, clp);
+ }
+ 
+ /* must be called under the client_lock */
+@@ -3471,21 +3472,26 @@ static void nfsd4_init_file(struct knfsd_fh *fh, unsigned int hashval,
+ void
+ nfsd4_free_slabs(void)
+ {
+-	kmem_cache_destroy(odstate_slab);
++	kmem_cache_destroy(client_slab);
+ 	kmem_cache_destroy(openowner_slab);
+ 	kmem_cache_destroy(lockowner_slab);
+ 	kmem_cache_destroy(file_slab);
+ 	kmem_cache_destroy(stateid_slab);
+ 	kmem_cache_destroy(deleg_slab);
++	kmem_cache_destroy(odstate_slab);
+ }
+ 
+ int
+ nfsd4_init_slabs(void)
+ {
++	client_slab = kmem_cache_create("nfsd4_clients",
++			sizeof(struct nfs4_client), 0, 0, NULL);
++	if (client_slab == NULL)
++		goto out;
+ 	openowner_slab = kmem_cache_create("nfsd4_openowners",
+ 			sizeof(struct nfs4_openowner), 0, 0, NULL);
+ 	if (openowner_slab == NULL)
+-		goto out;
++		goto out_free_client_slab;
+ 	lockowner_slab = kmem_cache_create("nfsd4_lockowners",
+ 			sizeof(struct nfs4_lockowner), 0, 0, NULL);
+ 	if (lockowner_slab == NULL)
+@@ -3518,6 +3524,8 @@ nfsd4_init_slabs(void)
+ 	kmem_cache_destroy(lockowner_slab);
+ out_free_openowner_slab:
+ 	kmem_cache_destroy(openowner_slab);
++out_free_client_slab:
++	kmem_cache_destroy(client_slab);
+ out:
+ 	dprintk("nfsd4: out of memory while initializing nfsv4\n");
+ 	return -ENOMEM;
+-- 
+2.14.3
 
