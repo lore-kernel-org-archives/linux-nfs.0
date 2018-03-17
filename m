@@ -1,153 +1,131 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:57402 "EHLO mail.kernel.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S933235AbeCPPcE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 16 Mar 2018 11:32:04 -0400
-From: Jeff Layton <jlayton@kernel.org>
-To: sorenson@redhat.com, bfields@fieldses.org
-Cc: smayhew@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] nfsd: remove blocked locks on client teardown
-Date: Fri, 16 Mar 2018 11:32:02 -0400
-Message-Id: <20180316153202.379-1-jlayton@kernel.org>
-In-Reply-To: <20180316134646.25845-1-jlayton@kernel.org>
-References: <20180316134646.25845-1-jlayton@kernel.org>
+Received: from mail-vk0-f42.google.com ([209.85.213.42]:40115 "EHLO
+        mail-vk0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751348AbeCQA6U (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Fri, 16 Mar 2018 20:58:20 -0400
+Received: by mail-vk0-f42.google.com with SMTP id x5so6173268vkd.7
+        for <linux-nfs@vger.kernel.org>; Fri, 16 Mar 2018 17:58:20 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <a4168fd0-dcbf-65c3-f715-a51b30261c5b@Netapp.com>
+References: <643b19f35980727fbf9a1756c33a59981b538dd0.1519862053.git.e@nanocritical.com>
+ <a4168fd0-dcbf-65c3-f715-a51b30261c5b@Netapp.com>
+From: Eric Rannaud <e@nanocritical.com>
+Date: Fri, 16 Mar 2018 17:57:58 -0700
+Message-ID: <CAH_=xobmsY_fUhFBCMFVUNN+jwgaOuo71rpEKSf7+Yn0xnikTA@mail.gmail.com>
+Subject: Re: [PATCH] nfs: nfs_fileid_valid() is wrong on NFSv3 and incomplete
+ on NFSv4
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jessica Peters <jessica.peters@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jeff Layton <jlayton@redhat.com>
+Hi Anna,
 
-We had some reports of panics in nfsd4_lm_notify, and that showed a
-nfs4_lockowner that had outlived its so_client.
+On Wed, Mar 14, 2018 at 12:36 PM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+>> The condition should be written as an if / else if:
+>>
+>>       if (fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
+>>       else if (fattr->valid & NFS_ATTR_FATTR_FILEID)
+>
+> We're requesting both of these attributes as part of the READDIR operatio=
+n, so won't this return the wrong answer in some cases?
+>
+> I'm running xfstests "quick" tests with NFS v4.1, and my server is export=
+ing an xfs filesystem for both test and scratch directories (they're on the=
+ same partition, but different exported directories using the fsid=3DX expo=
+rt option).  I'm seeing the following message fairly frequently in my dmesg=
+ log once I apply your patch:
+>
+>       [  222.093367] NFS: server 192.168.100.215 error: fileid changed
+>                      fsid 0:48: expected fileid 0x60, got 0x60
+>
+> So I'm thinking that the server is replying with both FATTR_MOUNTED_ON_FI=
+LEID and FATTR_FILEID, and then returning false in the mounted-on check whe=
+n the plain fileid should be compared instead.
+>
+> I wonder if it would make sense to add another field to the nfs inode to =
+keep track of which fileid is being used.
+>
 
-Ensure that we walk any leftover lockowners after tearing down all of
-the stateids, and remove any blocked locks that they hold.
+Thanks for testing. I was able to reproduce by using the following
+setup (which I believe is similar enough to yours).
 
-With this change, we also don't need to walk the nbl_lru on nfsd_net
-shutdown, as that will happen naturally when we tear down the clients.
+  # server
+  /mnt/xfs/  # mount point of XFS filesystem
+  /mnt/xfs/test  # normal directory
+  /mnt/xfs/scratch  # normal directory
+  # /etc/exports
+  /mnt/xfs *(rw,sync,insecure,no_root_squash,fsid=3D0)
+  /mnt/xfs/test *(rw,sync,insecure,no_root_squash,fsid=3D1)
+  /mnt/xfs/scratch *(rw,sync,insecure,no_root_squash,fsid=3D2)
+  # client
+  mount 10.0.2.2:/test /mnt/test
+  mount 10.0.2.2:/scratch /mnt/scratch
+  # dmesg client
+  NFS: server 10.0.2.2 error: fileid changed
+  fsid 0:34: expected fileid 0x60, got 0x60
 
-Fixes: 76d348fadff5 (nfsd: have nfsd4_lock use blocking locks for v4.1+ locks)
-Reported-by: Frank Sorenson <fsorenso@redhat.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Cc: stable@vger.kernel.org # 4.9
----
- fs/nfsd/nfs4state.c | 62 +++++++++++++++++++++++++++++++++++++----------------
- 1 file changed, 43 insertions(+), 19 deletions(-)
+Just mounting both /test and /scratch is enough to get the error message.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 08c700864fee..34e6915831d8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -268,6 +268,35 @@ free_blocked_lock(struct nfsd4_blocked_lock *nbl)
- 	kfree(nbl);
- }
- 
-+static void
-+remove_blocked_locks(struct nfs4_lockowner *lo)
-+{
-+	struct nfs4_client *clp = lo->lo_owner.so_client;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+	struct nfsd4_blocked_lock *nbl;
-+	LIST_HEAD(reaplist);
-+
-+	/* Dequeue all blocked locks */
-+	spin_lock(&nn->blocked_locks_lock);
-+	while (!list_empty(&lo->lo_blocked)) {
-+		nbl = list_first_entry(&lo->lo_blocked,
-+					struct nfsd4_blocked_lock,
-+					nbl_list);
-+		list_del_init(&nbl->nbl_list);
-+		list_move(&nbl->nbl_lru, &reaplist);
-+	}
-+	spin_unlock(&nn->blocked_locks_lock);
-+
-+	/* Now free them */
-+	while (!list_empty(&reaplist)) {
-+		nbl = list_first_entry(&reaplist, struct nfsd4_blocked_lock,
-+					nbl_lru);
-+		list_del_init(&nbl->nbl_lru);
-+		posix_unblock_lock(&nbl->nbl_lock);
-+		free_blocked_lock(nbl);
-+	}
-+}
-+
- static int
- nfsd4_cb_notify_lock_done(struct nfsd4_callback *cb, struct rpc_task *task)
- {
-@@ -1866,6 +1895,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
- static void
- __destroy_client(struct nfs4_client *clp)
- {
-+	int i;
- 	struct nfs4_openowner *oo;
- 	struct nfs4_delegation *dp;
- 	struct list_head reaplist;
-@@ -1895,6 +1925,16 @@ __destroy_client(struct nfs4_client *clp)
- 		nfs4_get_stateowner(&oo->oo_owner);
- 		release_openowner(oo);
- 	}
-+	for (i = 0; i < OWNER_HASH_SIZE; i++) {
-+		struct nfs4_stateowner *so, *tmp;
-+
-+		list_for_each_entry_safe(so, tmp, &clp->cl_ownerstr_hashtbl[i],
-+					 so_strhash) {
-+			/* Should be no openowners at this point */
-+			WARN_ON_ONCE(so->so_is_open_owner);
-+			remove_blocked_locks(lockowner(so));
-+		}
-+	}
- 	nfsd4_return_all_client_layouts(clp);
- 	nfsd4_shutdown_callback(clp);
- 	if (clp->cl_cb_conn.cb_xprt)
-@@ -6366,6 +6406,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	}
- 	spin_unlock(&clp->cl_lock);
- 	free_ol_stateid_reaplist(&reaplist);
-+	remove_blocked_locks(lo);
- 	nfs4_put_stateowner(&lo->lo_owner);
- 
- 	return status;
-@@ -7151,6 +7192,8 @@ nfs4_state_destroy_net(struct net *net)
- 		}
- 	}
- 
-+	WARN_ON(!list_empty(&nn->blocked_locks_lru));
-+
- 	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
- 		while (!list_empty(&nn->unconf_id_hashtbl[i])) {
- 			clp = list_entry(nn->unconf_id_hashtbl[i].next, struct nfs4_client, cl_idhash);
-@@ -7217,7 +7260,6 @@ nfs4_state_shutdown_net(struct net *net)
- 	struct nfs4_delegation *dp = NULL;
- 	struct list_head *pos, *next, reaplist;
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
--	struct nfsd4_blocked_lock *nbl;
- 
- 	cancel_delayed_work_sync(&nn->laundromat_work);
- 	locks_end_grace(&nn->nfsd4_manager);
-@@ -7238,24 +7280,6 @@ nfs4_state_shutdown_net(struct net *net)
- 		nfs4_put_stid(&dp->dl_stid);
- 	}
- 
--	BUG_ON(!list_empty(&reaplist));
--	spin_lock(&nn->blocked_locks_lock);
--	while (!list_empty(&nn->blocked_locks_lru)) {
--		nbl = list_first_entry(&nn->blocked_locks_lru,
--					struct nfsd4_blocked_lock, nbl_lru);
--		list_move(&nbl->nbl_lru, &reaplist);
--		list_del_init(&nbl->nbl_list);
--	}
--	spin_unlock(&nn->blocked_locks_lock);
--
--	while (!list_empty(&reaplist)) {
--		nbl = list_first_entry(&reaplist,
--					struct nfsd4_blocked_lock, nbl_lru);
--		list_del_init(&nbl->nbl_lru);
--		posix_unblock_lock(&nbl->nbl_lock);
--		free_blocked_lock(nbl);
--	}
--
- 	nfsd4_client_tracking_exit(net);
- 	nfs4_state_destroy_net(net);
- }
--- 
-2.14.3
+0x60 is the root of the XFS filesystem, which is not itself mounted,
+but the nfs4 client first gets the export root FH (the
+root-of-all-exports) and then follows the export path to the actual
+export being mounted. This is why this filehandle gets loaded at all.
+On the second mount, the inode for the export root gets revalidated
+and we get the error.
 
+I was getting confused as I thought the following invariant held:
+
+        fattr->mounted_on_fileid !=3D fattr->fileid  # fattr as returned
+by the server
+    <=3D> super_block->fsid !=3D fattr->fsid  # which is how nfs_fhget()
+chooses whether to use mounted_on_fileid
+
+as the server only returns a different mounted_on_fileid if the target
+FH is itself a mount point on the server (leading to a different
+fsid).
+
+But that's not true for the export root when it happens to be a mount
+point on the server:
+  - the server does return a different mounted_on_fileid for it,
+because it is a mount point;
+  - but the client sees that its fsid =3D=3D super_block->fsid and does
+not use mounted_on_fileid.
+
+So you're correct that we need to more accurately choose whether we
+want to compare against fileid or mounted_on_fileid when revalidating.
+
+We could try to write in nfs_fileid_valid() the full logic that is
+used elsewhere to decide whether to use fileid or mounted_on_fileid
+(assuming we have access to the needed information -- I think so? --
+but are all code paths consistent?), or we could remember in the NFS
+inode which one was used to set fileid, which is your suggestion (can
+we use nfs_inode's flags?).
+
+As an experiment, I implemented your suggestion with a flag in the NFS
+inode, and xfstests nfs/quick does not generate that error anymore.
+
+I do think it would be better to have nfs_fileid_valid() be capable of
+figuring out on its own which one to compare against, using a
+(side-effect free) version of the logic (confusingly) spread across
+nfs_attr_check_mountpoint() and nfs_attr_use_mounted_on_fileid(). And
+make sure that everybody is using the same helper in the client.
+What's your preference?
+
+As an aside, nfs_fhget() overwrites fattr->fileid with
+fattr->mounted_on_fileid if it decides to use mounted_on_fileid (so
+that nfs_find_actor() and nfs_init_locked() do the right thing) which
+to my eye is quite confusing for callers of nfs_fhget() which may be
+entitled to think that fattr will be left untouched.
+
+Also, the error message is not printing which of fileid or
+mounted_on_fileid we compared against, and we get something asinine
+like "expected 0x60, but got 0x60". I'll fix that in the next version
+of this patch.
+
+Thanks,
+Eric
