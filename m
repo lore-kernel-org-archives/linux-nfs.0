@@ -1,428 +1,132 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:55797 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S967654AbeCSS44 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2018 14:56:56 -0400
-Received: by mail-it0-f65.google.com with SMTP id e195-v6so11813857ita.5
-        for <linux-nfs@vger.kernel.org>; Mon, 19 Mar 2018 11:56:56 -0700 (PDT)
-Subject: [PATCH v1 2/2] NFSD: Clean up symlink argument XDR decoders
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Mon, 19 Mar 2018 14:56:54 -0400
-Message-ID: <20180319185654.10100.35083.stgit@klimt.1015granger.net>
-In-Reply-To: <20180319184647.10100.25736.stgit@klimt.1015granger.net>
-References: <20180319184647.10100.25736.stgit@klimt.1015granger.net>
+Received: from mx144.netapp.com ([216.240.21.25]:64618 "EHLO mx144.netapp.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S969754AbeCSTws (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 19 Mar 2018 15:52:48 -0400
+Subject: Re: [PATCH] nfs: nfs_fileid_valid() is wrong on NFSv3 and incomplete
+ on NFSv4
+To: Eric Rannaud <e@nanocritical.com>
+CC: <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jessica Peters <jessica.peters@netapp.com>
+References: <643b19f35980727fbf9a1756c33a59981b538dd0.1519862053.git.e@nanocritical.com>
+ <a4168fd0-dcbf-65c3-f715-a51b30261c5b@Netapp.com>
+ <CAH_=xobmsY_fUhFBCMFVUNN+jwgaOuo71rpEKSf7+Yn0xnikTA@mail.gmail.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <b085998a-5414-4089-8e30-a1b9af282d80@Netapp.com>
+Date: Mon, 19 Mar 2018 15:52:30 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <CAH_=xobmsY_fUhFBCMFVUNN+jwgaOuo71rpEKSf7+Yn0xnikTA@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move common code in NFSD's symlink arg decoders into a helper. The
-immediate benefits include:
 
- - one fewer data copies on transports that support DDP
- - no memory allocation in the NFSv4 XDR decoder
- - consistent error checking across all versions
- - reduction of code duplication
- - support for both legal forms of SYMLINK requests on RDMA
-   transports for all versions of NFS (in particular, NFSv2, for
-   completeness)
 
-In the long term, this helper is an appropriate spot to perform a
-per-transport call-out to fill the pathname argument using, say,
-RDMA Reads.
+On 03/16/2018 08:57 PM, Eric Rannaud wrote:
+> Hi Anna,
+> 
+> On Wed, Mar 14, 2018 at 12:36 PM, Anna Schumaker
+> <Anna.Schumaker@netapp.com> wrote:
+>>> The condition should be written as an if / else if:
+>>>
+>>>       if (fattr->valid & NFS_ATTR_FATTR_MOUNTED_ON_FILEID)
+>>>       else if (fattr->valid & NFS_ATTR_FATTR_FILEID)
+>>
+>> We're requesting both of these attributes as part of the READDIR operation, so won't this return the wrong answer in some cases?
+>>
+>> I'm running xfstests "quick" tests with NFS v4.1, and my server is exporting an xfs filesystem for both test and scratch directories (they're on the same partition, but different exported directories using the fsid=X export option).  I'm seeing the following message fairly frequently in my dmesg log once I apply your patch:
+>>
+>>       [  222.093367] NFS: server 192.168.100.215 error: fileid changed
+>>                      fsid 0:48: expected fileid 0x60, got 0x60
+>>
+>> So I'm thinking that the server is replying with both FATTR_MOUNTED_ON_FILEID and FATTR_FILEID, and then returning false in the mounted-on check when the plain fileid should be compared instead.
+>>
+>> I wonder if it would make sense to add another field to the nfs inode to keep track of which fileid is being used.
+>>
+> 
+> Thanks for testing. I was able to reproduce by using the following
+> setup (which I believe is similar enough to yours).
+> 
+>   # server
+>   /mnt/xfs/  # mount point of XFS filesystem
+>   /mnt/xfs/test  # normal directory
+>   /mnt/xfs/scratch  # normal directory
+>   # /etc/exports
+>   /mnt/xfs *(rw,sync,insecure,no_root_squash,fsid=0)
+>   /mnt/xfs/test *(rw,sync,insecure,no_root_squash,fsid=1)
+>   /mnt/xfs/scratch *(rw,sync,insecure,no_root_squash,fsid=2)
+>   # client
+>   mount 10.0.2.2:/test /mnt/test
+>   mount 10.0.2.2:/scratch /mnt/scratch
+>   # dmesg client
+>   NFS: server 10.0.2.2 error: fileid changed
+>   fsid 0:34: expected fileid 0x60, got 0x60
+> 
+> Just mounting both /test and /scratch is enough to get the error message.
+> 
+> 0x60 is the root of the XFS filesystem, which is not itself mounted,
+> but the nfs4 client first gets the export root FH (the
+> root-of-all-exports) and then follows the export path to the actual
+> export being mounted. This is why this filehandle gets loaded at all.
+> On the second mount, the inode for the export root gets revalidated
+> and we get the error.
+> 
+> I was getting confused as I thought the following invariant held:
+> 
+>         fattr->mounted_on_fileid != fattr->fileid  # fattr as returned
+> by the server
+>     <=> super_block->fsid != fattr->fsid  # which is how nfs_fhget()
+> chooses whether to use mounted_on_fileid
+> 
+> as the server only returns a different mounted_on_fileid if the target
+> FH is itself a mount point on the server (leading to a different
+> fsid).
+> 
+> But that's not true for the export root when it happens to be a mount
+> point on the server:
+>   - the server does return a different mounted_on_fileid for it,
+> because it is a mount point;
+>   - but the client sees that its fsid == super_block->fsid and does
+> not use mounted_on_fileid.
+> 
+> So you're correct that we need to more accurately choose whether we
+> want to compare against fileid or mounted_on_fileid when revalidating.
+> 
+> We could try to write in nfs_fileid_valid() the full logic that is
+> used elsewhere to decide whether to use fileid or mounted_on_fileid
+> (assuming we have access to the needed information -- I think so? --
+> but are all code paths consistent?), or we could remember in the NFS
+> inode which one was used to set fileid, which is your suggestion (can
+> we use nfs_inode's flags?).
+> 
+> As an experiment, I implemented your suggestion with a flag in the NFS
+> inode, and xfstests nfs/quick does not generate that error anymore.
+> 
+> I do think it would be better to have nfs_fileid_valid() be capable of
+> figuring out on its own which one to compare against, using a
+> (side-effect free) version of the logic (confusingly) spread across
+> nfs_attr_check_mountpoint() and nfs_attr_use_mounted_on_fileid(). And
+> make sure that everybody is using the same helper in the client.
+> What's your preference?
 
-Filling the pathname in the proc function also means that eventually
-the incoming filehandle can be interpreted so that filesystem-
-specific memory can be allocated as a sink for the pathname
-argument, rather than using anonymous pages.
+I wonder if it would be easier in the long run just to add a mounted-on-fileid field to the nfs_inode, removing the need to guess which one we're supposed to compare against.  It might also help with the overwriting issue / potential confusion you mention in the next paragraph.
 
-Wondering why the current code punts a zero-length SYMLINK. Is it
-illegal to create a zero-length SYMLINK on Linux?
+What do you think?
+Anna
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfsd/nfs3proc.c         |   10 +++++++
- fs/nfsd/nfs3xdr.c          |   51 ++++++++-------------------------
- fs/nfsd/nfs4proc.c         |    7 +++++
- fs/nfsd/nfs4xdr.c          |   10 +++++--
- fs/nfsd/nfsproc.c          |   14 +++++----
- fs/nfsd/nfsxdr.c           |   49 +++++++++++++++++++-------------
- fs/nfsd/xdr.h              |    1 +
- fs/nfsd/xdr3.h             |    1 +
- fs/nfsd/xdr4.h             |    2 +
- include/linux/sunrpc/svc.h |    2 +
- net/sunrpc/svc.c           |   67 ++++++++++++++++++++++++++++++++++++++++++++
- 11 files changed, 146 insertions(+), 68 deletions(-)
-
-diff --git a/fs/nfsd/nfs3proc.c b/fs/nfsd/nfs3proc.c
-index 2dd95eb..6259a4b 100644
---- a/fs/nfsd/nfs3proc.c
-+++ b/fs/nfsd/nfs3proc.c
-@@ -283,6 +283,16 @@
- 	struct nfsd3_diropres *resp = rqstp->rq_resp;
- 	__be32	nfserr;
- 
-+	if (argp->tlen == 0)
-+		RETURN_STATUS(nfserr_inval);
-+	if (argp->tlen > NFS3_MAXPATHLEN)
-+		RETURN_STATUS(nfserr_nametoolong);
-+
-+	argp->tname = svc_fill_symlink_pathname(rqstp, &argp->first,
-+						argp->tlen);
-+	if (IS_ERR(argp->tname))
-+		RETURN_STATUS(nfserrno(PTR_ERR(argp->tname)));
-+
- 	dprintk("nfsd: SYMLINK(3)  %s %.*s -> %.*s\n",
- 				SVCFH_fmt(&argp->ffh),
- 				argp->flen, argp->fname,
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index e19fc5d..3192b54 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -481,51 +481,24 @@ void fill_post_wcc(struct svc_fh *fhp)
- nfs3svc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
- {
- 	struct nfsd3_symlinkargs *args = rqstp->rq_argp;
--	unsigned int len, avail;
--	char *old, *new;
--	struct kvec *vec;
-+	char *base = (char *)p;
-+	size_t dlen;
- 
- 	if (!(p = decode_fh(p, &args->ffh)) ||
--	    !(p = decode_filename(p, &args->fname, &args->flen))
--		)
-+	    !(p = decode_filename(p, &args->fname, &args->flen)))
- 		return 0;
- 	p = decode_sattr3(p, &args->attrs);
- 
--	/* now decode the pathname, which might be larger than the first page.
--	 * As we have to check for nul's anyway, we copy it into a new page
--	 * This page appears in the rq_res.pages list, but as pages_len is always
--	 * 0, it won't get in the way
--	 */
--	len = ntohl(*p++);
--	if (len == 0 || len > NFS3_MAXPATHLEN || len >= PAGE_SIZE)
--		return 0;
--	args->tname = new = page_address(*(rqstp->rq_next_page++));
--	args->tlen = len;
--	/* first copy and check from the first page */
--	old = (char*)p;
--	vec = &rqstp->rq_arg.head[0];
--	if ((void *)old > vec->iov_base + vec->iov_len)
--		return 0;
--	avail = vec->iov_len - (old - (char*)vec->iov_base);
--	while (len && avail && *old) {
--		*new++ = *old++;
--		len--;
--		avail--;
--	}
--	/* now copy next page if there is one */
--	if (len && !avail && rqstp->rq_arg.page_len) {
--		avail = min_t(unsigned int, rqstp->rq_arg.page_len, PAGE_SIZE);
--		old = page_address(rqstp->rq_arg.pages[0]);
--	}
--	while (len && avail && *old) {
--		*new++ = *old++;
--		len--;
--		avail--;
--	}
--	*new = '\0';
--	if (len)
--		return 0;
-+	args->tlen = ntohl(*p++);
- 
-+	args->first.iov_base = p;
-+	args->first.iov_len = rqstp->rq_arg.head[0].iov_len;
-+	args->first.iov_len -= (char *)p - base;
-+
-+	dlen = args->first.iov_len + rqstp->rq_arg.page_len +
-+	       rqstp->rq_arg.tail[0].iov_len;
-+	if (dlen < XDR_QUADLEN(args->tlen) << 2)
-+		return 0;
- 	return 1;
- }
- 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index cf30544..c8dfcc4 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -605,6 +605,13 @@ static void gen_boot_verifier(nfs4_verifier *verifier, struct net *net)
- 
- 	switch (create->cr_type) {
- 	case NF4LNK:
-+		if (create->cr_datalen > NFS4_MAXPATHLEN)
-+			return nfserr_nametoolong;
-+		create->cr_data =
-+			svc_fill_symlink_pathname(rqstp, &create->cr_first,
-+						  create->cr_datalen);
-+		if (IS_ERR(create->cr_data))
-+			return nfserrno(PTR_ERR(create->cr_data));
- 		status = nfsd_symlink(rqstp, &cstate->current_fh,
- 				      create->cr_name, create->cr_namelen,
- 				      create->cr_data, &resfh);
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d33c8aa..8e286ce 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -649,6 +649,7 @@ static __be32 nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp,
- static __be32
- nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create)
- {
-+	struct kvec *head;
- 	DECODE_HEAD;
- 
- 	READ_BUF(4);
-@@ -657,10 +658,13 @@ static __be32 nfsd4_decode_bind_conn_to_session(struct nfsd4_compoundargs *argp,
- 	case NF4LNK:
- 		READ_BUF(4);
- 		create->cr_datalen = be32_to_cpup(p++);
-+		if (create->cr_datalen == 0)
-+			return nfserr_inval;
-+		head = argp->rqstp->rq_arg.head;
-+		create->cr_first.iov_base = p;
-+		create->cr_first.iov_len = head->iov_len;
-+		create->cr_first.iov_len -= (char *)p - (char *)head->iov_base;
- 		READ_BUF(create->cr_datalen);
--		create->cr_data = svcxdr_dupstr(argp, p, create->cr_datalen);
--		if (!create->cr_data)
--			return nfserr_jukebox;
- 		break;
- 	case NF4BLK:
- 	case NF4CHR:
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 1995ea6..f107f9f 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -449,17 +449,19 @@
- 	struct svc_fh	newfh;
- 	__be32		nfserr;
- 
-+	if (argp->tlen > NFS_MAXPATHLEN)
-+		return nfserr_nametoolong;
-+
-+	argp->tname = svc_fill_symlink_pathname(rqstp, &argp->first,
-+						argp->tlen);
-+	if (IS_ERR(argp->tname))
-+		return nfserrno(PTR_ERR(argp->tname));
-+
- 	dprintk("nfsd: SYMLINK  %s %.*s -> %.*s\n",
- 		SVCFH_fmt(&argp->ffh), argp->flen, argp->fname,
- 		argp->tlen, argp->tname);
- 
- 	fh_init(&newfh, NFS_FHSIZE);
--	/*
--	 * Crazy hack: the request fits in a page, and already-decoded
--	 * attributes follow argp->tname, so it's safe to just write a
--	 * null to ensure it's null-terminated:
--	 */
--	argp->tname[argp->tlen] = '\0';
- 	nfserr = nfsd_symlink(rqstp, &argp->ffh, argp->fname, argp->flen,
- 						 argp->tname, &newfh);
- 
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index db24ae8..a43e826 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -71,22 +71,6 @@ __be32 *nfs2svc_decode_fh(__be32 *p, struct svc_fh *fhp)
- }
- 
- static __be32 *
--decode_pathname(__be32 *p, char **namp, unsigned int *lenp)
--{
--	char		*name;
--	unsigned int	i;
--
--	if ((p = xdr_decode_string_inplace(p, namp, lenp, NFS_MAXPATHLEN)) != NULL) {
--		for (i = 0, name = *namp; i < *lenp; i++, name++) {
--			if (*name == '\0')
--				return NULL;
--		}
--	}
--
--	return p;
--}
--
--static __be32 *
- decode_sattr(__be32 *p, struct iattr *iap)
- {
- 	u32	tmp, tmp1;
-@@ -384,14 +368,39 @@ __be32 *nfs2svc_encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *f
- nfssvc_decode_symlinkargs(struct svc_rqst *rqstp, __be32 *p)
- {
- 	struct nfsd_symlinkargs *args = rqstp->rq_argp;
-+	char *base = (char *)p;
-+	size_t xdrlen;
- 
- 	if (   !(p = decode_fh(p, &args->ffh))
--	    || !(p = decode_filename(p, &args->fname, &args->flen))
--	    || !(p = decode_pathname(p, &args->tname, &args->tlen)))
-+	    || !(p = decode_filename(p, &args->fname, &args->flen)))
- 		return 0;
--	p = decode_sattr(p, &args->attrs);
- 
--	return xdr_argsize_check(rqstp, p);
-+	args->tlen = ntohl(*p++);
-+	if (args->tlen == 0)
-+		return 0;
-+
-+	args->first.iov_base = p;
-+	args->first.iov_len = rqstp->rq_arg.head[0].iov_len;
-+	args->first.iov_len -= (char *)p - base;
-+
-+	/* This request is never larger than a page. Therefore,
-+	 * transport will deliver either:
-+	 * 1. pathname in the pagelist -> sattr is in the tail.
-+	 * 2. everything in the head buffer -> sattr is in the head.
-+	 */
-+	if (rqstp->rq_arg.page_len) {
-+		if (args->tlen != rqstp->rq_arg.page_len)
-+			return 0;
-+		p = rqstp->rq_arg.tail[0].iov_base;
-+	} else {
-+		xdrlen = XDR_QUADLEN(args->tlen);
-+		if (xdrlen > args->first.iov_len - (8 * sizeof(__be32)))
-+			return 0;
-+		p += xdrlen;
-+	}
-+	decode_sattr(p, &args->attrs);
-+
-+	return 1;
- }
- 
- int
-diff --git a/fs/nfsd/xdr.h b/fs/nfsd/xdr.h
-index a765c41..ea7cca3 100644
---- a/fs/nfsd/xdr.h
-+++ b/fs/nfsd/xdr.h
-@@ -72,6 +72,7 @@ struct nfsd_symlinkargs {
- 	char *			tname;
- 	unsigned int		tlen;
- 	struct iattr		attrs;
-+	struct kvec		first;
- };
- 
- struct nfsd_readdirargs {
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index deccf7f..2cb29e9 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -90,6 +90,7 @@ struct nfsd3_symlinkargs {
- 	char *			tname;
- 	unsigned int		tlen;
- 	struct iattr		attrs;
-+	struct kvec		first;
- };
- 
- struct nfsd3_readdirargs {
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index d56219d..b485cd1 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -110,6 +110,7 @@ struct nfsd4_create {
- 		struct {
- 			u32 datalen;
- 			char *data;
-+			struct kvec first;
- 		} link;   /* NF4LNK */
- 		struct {
- 			u32 specdata1;
-@@ -124,6 +125,7 @@ struct nfsd4_create {
- };
- #define cr_datalen	u.link.datalen
- #define cr_data		u.link.data
-+#define cr_first	u.link.first
- #define cr_specdata1	u.dev.specdata1
- #define cr_specdata2	u.dev.specdata2
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 6dc7879..4eeeca8 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -496,6 +496,8 @@ int		   svc_register(const struct svc_serv *, struct net *, const int,
- char *		   svc_print_addr(struct svc_rqst *, char *, size_t);
- unsigned int	   svc_fill_write_vector(struct svc_rqst *rqstp,
- 					 struct kvec *first, size_t total);
-+char		  *svc_fill_symlink_pathname(struct svc_rqst *rqstp,
-+					     struct kvec *first, size_t total);
- 
- #define	RPC_MAX_ADDRBUFLEN	(63U)
- 
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index a155e2d..30a4226 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -1575,3 +1575,70 @@ unsigned int svc_fill_write_vector(struct svc_rqst *rqstp, struct kvec *first,
- 	return i;
- }
- EXPORT_SYMBOL_GPL(svc_fill_write_vector);
-+
-+/**
-+ * svc_fill_symlink_pathname - Construct pathname argument for VFS symlink call
-+ * @rqstp: svc_rqst to operate on
-+ * @first: buffer containing first section of pathname
-+ * @total: total length of the pathname argument
-+ *
-+ * Returns pointer to a NUL-terminated string, or an ERR_PTR. The buffer is
-+ * released automatically when @rqstp is recycled.
-+ */
-+char *svc_fill_symlink_pathname(struct svc_rqst *rqstp, struct kvec *first,
-+				size_t total)
-+{
-+	struct xdr_buf *arg = &rqstp->rq_arg;
-+	struct page **pages;
-+	char *result;
-+
-+	/* VFS API demands a NUL-terminated pathname. This function
-+	 * uses a page from @rqstp as the pathname buffer, to enable
-+	 * direct placement. Thus the total buffer size is PAGE_SIZE.
-+	 * Space in this buffer for NUL-termination requires that we
-+	 * cap the size of the returned symlink pathname just a
-+	 * little early.
-+	 */
-+	if (total > PAGE_SIZE - 1)
-+		return ERR_PTR(-ENAMETOOLONG);
-+
-+	/* Some types of transport can present the pathname entirely
-+	 * in rq_arg.pages. If not, then copy the pathname into one
-+	 * page.
-+	 */
-+	pages = arg->pages;
-+	WARN_ON_ONCE(arg->page_base != 0);
-+	if (first->iov_base == 0) {
-+		result = page_address(*pages);
-+		result[total] = '\0';
-+	} else {
-+		size_t len, remaining;
-+		char *dst;
-+
-+		result = page_address(*(rqstp->rq_next_page++));
-+		dst = result;
-+		remaining = total;
-+
-+		len = min_t(size_t, total, first->iov_len);
-+		memcpy(dst, first->iov_base, len);
-+		dst += len;
-+		remaining -= len;
-+
-+		/* No more than one page left */
-+		if (remaining) {
-+			len = min_t(size_t, remaining, PAGE_SIZE);
-+			memcpy(dst, page_address(*pages), len);
-+			dst += len;
-+		}
-+
-+		*dst = '\0';
-+	}
-+
-+	/* Sanity check: we don't allow the pathname argument to
-+	 * contain a NUL byte.
-+	 */
-+	if (strlen(result) != total)
-+		return ERR_PTR(-EINVAL);
-+	return result;
-+}
-+EXPORT_SYMBOL_GPL(svc_fill_symlink_pathname);
-
+> 
+> As an aside, nfs_fhget() overwrites fattr->fileid with
+> fattr->mounted_on_fileid if it decides to use mounted_on_fileid (so
+> that nfs_find_actor() and nfs_init_locked() do the right thing) which
+> to my eye is quite confusing for callers of nfs_fhget() which may be
+> entitled to think that fattr will be left untouched.
+> 
+> Also, the error message is not printing which of fileid or
+> mounted_on_fileid we compared against, and we get something asinine
+> like "expected 0x60, but got 0x60". I'll fix that in the next version
+> of this patch.
+> 
+> Thanks,
+> Eric
+> 
