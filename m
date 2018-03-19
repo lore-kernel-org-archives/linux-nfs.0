@@ -1,106 +1,91 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:41694 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755749AbeCSOgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 19 Mar 2018 10:36:47 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 07/10] nfsd: factor out common delegation-destruction code
-Date: Mon, 19 Mar 2018 10:36:31 -0400
-Message-Id: <1521470194-24840-8-git-send-email-bfields@redhat.com>
-In-Reply-To: <1521470194-24840-1-git-send-email-bfields@redhat.com>
-References: <1521470194-24840-1-git-send-email-bfields@redhat.com>
+Received: from mail-it0-f66.google.com ([209.85.214.66]:53624 "EHLO
+        mail-it0-f66.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1031408AbeCSSXU (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 19 Mar 2018 14:23:20 -0400
+Subject: [PATCH] xprtrdma: Fix corner cases when handling device removal
+From: Chuck Lever <chuck.lever@oracle.com>
+To: anna.schumaker@netapp.com
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
+        stable@vger.kernel.org
+Date: Mon, 19 Mar 2018 14:23:16 -0400
+Message-ID: <20180319182316.3060.7675.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Michal Kalderon has found some corner cases around device unload
+with active NFS mounts that I didn't have the imagination to test
+when xprtrdma device removal was added last year.
 
-Pull some duplicated code into a common helper.
+- The ULP device removal handler is responsible for deallocating
+  the PD. That wasn't clear to me initially, and my own testing
+  suggested it was not necessary, but that is incorrect.
 
-This changes the order in destroy_delegation a little, but it looks to
-me like that shouldn't matter.
+- The transport destruction path can no longer assume that there
+  is a valid ID.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+- When destroying a transport, ensure that ib_free_cq() is not
+  invoked on a CQ that was already released.
+
+Reported-by: Michal Kalderon <Michal.Kalderon@cavium.com>
+Fixes: bebd031866ca ("xprtrdma: Support unplugging an HCA from ...")
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: stable@vger.kernel.org
 ---
- fs/nfsd/nfs4state.c | 31 ++++++++++++++-----------------
- 1 file changed, 14 insertions(+), 17 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   13 +++++++++----
+ 1 file changed, 9 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b49000797c6f..268d095477e8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -864,6 +864,13 @@ static void nfs4_put_deleg_lease(struct nfs4_delegation *dp)
- 	}
- }
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index fe518b3..5e3afed 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -250,7 +250,6 @@
+ 		wait_for_completion(&ia->ri_remove_done);
  
-+static void destroy_unhashed_deleg(struct nfs4_delegation *dp)
-+{
-+	put_clnt_odstate(dp->dl_clnt_odstate);
-+	nfs4_put_deleg_lease(dp);
-+	nfs4_put_stid(&dp->dl_stid);
-+}
-+
- void nfs4_unhash_stid(struct nfs4_stid *s)
+ 		ia->ri_id = NULL;
+-		ia->ri_pd = NULL;
+ 		ia->ri_device = NULL;
+ 		/* Return 1 to ensure the core destroys the id. */
+ 		return 1;
+@@ -448,7 +447,9 @@
+ 		ia->ri_id->qp = NULL;
+ 	}
+ 	ib_free_cq(ep->rep_attr.recv_cq);
++	ep->rep_attr.recv_cq = NULL;
+ 	ib_free_cq(ep->rep_attr.send_cq);
++	ep->rep_attr.send_cq = NULL;
+ 
+ 	/* The ULP is responsible for ensuring all DMA
+ 	 * mappings and MRs are gone.
+@@ -461,6 +462,8 @@
+ 		rpcrdma_dma_unmap_regbuf(req->rl_recvbuf);
+ 	}
+ 	rpcrdma_mrs_destroy(buf);
++	ib_dealloc_pd(ia->ri_pd);
++	ia->ri_pd = NULL;
+ 
+ 	/* Allow waiters to continue */
+ 	complete(&ia->ri_remove_done);
+@@ -628,14 +631,16 @@
  {
- 	s->sc_type = 0;
-@@ -955,11 +962,8 @@ static void destroy_delegation(struct nfs4_delegation *dp)
- 	spin_lock(&state_lock);
- 	unhashed = unhash_delegation_locked(dp);
- 	spin_unlock(&state_lock);
--	if (unhashed) {
--		put_clnt_odstate(dp->dl_clnt_odstate);
--		nfs4_put_deleg_lease(dp);
--		nfs4_put_stid(&dp->dl_stid);
--	}
-+	if (unhashed)
-+		destroy_unhashed_deleg(dp);
+ 	cancel_delayed_work_sync(&ep->rep_connect_worker);
+ 
+-	if (ia->ri_id->qp) {
++	if (ia->ri_id && ia->ri_id->qp) {
+ 		rpcrdma_ep_disconnect(ep, ia);
+ 		rdma_destroy_qp(ia->ri_id);
+ 		ia->ri_id->qp = NULL;
+ 	}
+ 
+-	ib_free_cq(ep->rep_attr.recv_cq);
+-	ib_free_cq(ep->rep_attr.send_cq);
++	if (ep->rep_attr.recv_cq)
++		ib_free_cq(ep->rep_attr.recv_cq);
++	if (ep->rep_attr.send_cq)
++		ib_free_cq(ep->rep_attr.send_cq);
  }
  
- static void revoke_delegation(struct nfs4_delegation *dp)
-@@ -968,17 +972,14 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- 
- 	WARN_ON(!list_empty(&dp->dl_recall_lru));
- 
--	put_clnt_odstate(dp->dl_clnt_odstate);
--	nfs4_put_deleg_lease(dp);
--
--	if (clp->cl_minorversion == 0)
--		nfs4_put_stid(&dp->dl_stid);
--	else {
-+	if (clp->cl_minorversion) {
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
-+		refcount_inc(&dp->dl_stid.sc_count);
- 		spin_lock(&clp->cl_lock);
- 		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
- 		spin_unlock(&clp->cl_lock);
- 	}
-+	destroy_unhashed_deleg(dp);
- }
- 
- /* 
-@@ -1879,9 +1880,7 @@ __destroy_client(struct nfs4_client *clp)
- 	while (!list_empty(&reaplist)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
- 		list_del_init(&dp->dl_recall_lru);
--		put_clnt_odstate(dp->dl_clnt_odstate);
--		nfs4_put_deleg_lease(dp);
--		nfs4_put_stid(&dp->dl_stid);
-+		destroy_unhashed_deleg(dp);
- 	}
- 	while (!list_empty(&clp->cl_revoked)) {
- 		dp = list_entry(clp->cl_revoked.next, struct nfs4_delegation, dl_recall_lru);
-@@ -7219,9 +7218,7 @@ nfs4_state_shutdown_net(struct net *net)
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		list_del_init(&dp->dl_recall_lru);
--		put_clnt_odstate(dp->dl_clnt_odstate);
--		nfs4_put_deleg_lease(dp);
--		nfs4_put_stid(&dp->dl_stid);
-+		destroy_unhashed_deleg(dp);
- 	}
- 
- 	BUG_ON(!list_empty(&reaplist));
--- 
-2.14.3
+ /* Re-establish a connection after a device removal event.
 
