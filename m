@@ -1,43 +1,66 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f196.google.com ([209.85.223.196]:42866 "EHLO
-        mail-io0-f196.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751539AbeCTUx4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 16:53:56 -0400
-Received: by mail-io0-f196.google.com with SMTP id d5so4043287iob.9
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2018 13:53:56 -0700 (PDT)
+Received: from mail-it0-f67.google.com ([209.85.214.67]:34728 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751553AbeCTUyA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 16:54:00 -0400
+Received: by mail-it0-f67.google.com with SMTP id z7-v6so13983866iti.1
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2018 13:54:00 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/6] Finer grained attribute checking for NFSv4.x
-Date: Tue, 20 Mar 2018 16:53:26 -0400
-Message-Id: <20180320205332.94132-1-trond.myklebust@primarydata.com>
+Subject: [PATCH 4/6] NFS: Don't force unnecessary cache invalidation in nfs_update_inode()
+Date: Tue, 20 Mar 2018 16:53:30 -0400
+Message-Id: <20180320205332.94132-5-trond.myklebust@primarydata.com>
+In-Reply-To: <20180320205332.94132-4-trond.myklebust@primarydata.com>
+References: <20180320205332.94132-1-trond.myklebust@primarydata.com>
+ <20180320205332.94132-2-trond.myklebust@primarydata.com>
+ <20180320205332.94132-3-trond.myklebust@primarydata.com>
+ <20180320205332.94132-4-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch series allows the NFS client to track attribute information
-on a more fine grained basis, so that we do not end up worrying about
-the validity of the mode, owner, group etc information when asked about
-the timestamps.
-Basically, this means that the NFSv4 cache consistency data is tracked
-separately from the other attribute data, allowing it to be revalidated
-by the cache consistency GETATTR operations.
+If we managed to revalidate all the attributes, then there is no reason
+to mark them as invalid again. We do, however want to ensure that we
+set nfsi->attrtimeo correctly.
 
-Trond Myklebust (6):
-  NFS: Convert NFS_INO_INVALID flags to unsigned long
-  NFS: Don't force a revalidation of all attributes if change is missing
-  NFS: Don't redirty the attribute cache in nfs_wcc_update_inode()
-  NFS: Don't force unnecessary cache invalidation in nfs_update_inode()
-  NFS: More fine grained attribute tracking
-  NFSv4: Ignore change attribute invalidations if we hold a delegation
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/inode.c | 7 +++----
+ 1 file changed, 3 insertions(+), 4 deletions(-)
 
- fs/nfs/dir.c           |   4 +-
- fs/nfs/inode.c         | 132 ++++++++++++++++++++++++++++---------------------
- fs/nfs/nfs4proc.c      |   7 ++-
- fs/nfs/write.c         |   7 ++-
- include/linux/nfs_fs.h |  35 ++++++++-----
- 5 files changed, 111 insertions(+), 74 deletions(-)
-
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index d8e8bf9da211..6e5a96e2e9a0 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1799,6 +1799,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 					| NFS_INO_INVALID_DATA
+ 					| NFS_INO_INVALID_ACCESS
+ 					| NFS_INO_INVALID_ACL;
++				/* Force revalidate of all attributes */
++				save_cache_validity |= NFS_INO_INVALID_ATTR;
+ 				if (S_ISDIR(inode->i_mode))
+ 					nfs_force_lookup_revalidate(inode);
+ 			}
+@@ -1937,6 +1939,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 
+ 	/* Update attrtimeo value if we're out of the unstable period */
+ 	if (invalid & NFS_INO_INVALID_ATTR) {
++		invalid &= ~NFS_INO_INVALID_ATTR;
+ 		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
+ 		nfsi->attrtimeo = NFS_MINATTRTIMEO(inode);
+ 		nfsi->attrtimeo_timestamp = now;
+@@ -1957,10 +1960,6 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 			nfsi->attr_gencount = fattr->gencount;
+ 	}
+ 
+-	/* Don't declare attrcache up to date if there were no attrs! */
+-	if (cache_revalidated)
+-		invalid &= ~NFS_INO_INVALID_ATTR;
+-
+ 	/* Don't invalidate the data if we were to blame */
+ 	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)
+ 				|| S_ISLNK(inode->i_mode)))
 -- 
 2.14.3
 
