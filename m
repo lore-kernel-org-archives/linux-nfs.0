@@ -1,58 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:43370 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751269AbeCTOwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Mar 2018 10:52:55 -0400
-Date: Tue, 20 Mar 2018 10:52:54 -0400
-To: David Howells <dhowells@redhat.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
+Received: from us-smtp-delivery-194.mimecast.com ([63.128.21.194]:25567 "EHLO
+        us-smtp-delivery-194.mimecast.com" rhost-flags-OK-OK-OK-OK)
+        by vger.kernel.org with ESMTP id S1751330AbeCTPNy (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 11:13:54 -0400
+From: Trond Myklebust <trondmy@primarydata.com>
+To: "bfields@fieldses.org" <bfields@fieldses.org>
+CC: "bfields@redhat.com" <bfields@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "dhowells@redhat.com" <dhowells@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
 Subject: Re: [PATCH 10/10] nfsd: clients don't need to break their own
  delegations
-Message-ID: <20180320145254.GB4288@fieldses.org>
+Date: Tue, 20 Mar 2018 15:13:47 +0000
+Message-ID: <1521558822.15893.12.camel@primarydata.com>
 References: <1521470194-24840-11-git-send-email-bfields@redhat.com>
- <1521470194-24840-1-git-send-email-bfields@redhat.com>
- <29167.1521552951@warthog.procyon.org.uk>
+         <1521470194-24840-1-git-send-email-bfields@redhat.com>
+         <29167.1521552951@warthog.procyon.org.uk>
+         <1521553578.10293.4.camel@primarydata.com>
+         <20180320144928.GA4288@fieldses.org>
+In-Reply-To: <20180320144928.GA4288@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <29167.1521552951@warthog.procyon.org.uk>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 20, 2018 at 01:35:51PM +0000, David Howells wrote:
-> J. Bruce Fields <bfields@redhat.com> wrote:
-> 
-> > @@ -139,6 +139,9 @@ struct cred {
-> >  	struct key	*thread_keyring; /* keyring private to this thread */
-> >  	struct key	*request_key_auth; /* assumed request_key authority */
-> >  #endif
-> > +#ifdef CONFIG_FILE_LOCKING
-> > +	void		*lease_breaker; /* identify NFS client breaking a delegation */
-> > +#endif
-> >  #ifdef CONFIG_SECURITY
-> >  	void		*security;	/* subjective LSM security */
-> >  #endif
-> 
-> Sorry, but ewww.
+T24gVHVlLCAyMDE4LTAzLTIwIGF0IDEwOjQ5IC0wNDAwLCBKLiBCcnVjZSBGaWVsZHMgd3JvdGU6
+DQo+IE9uIFR1ZSwgTWFyIDIwLCAyMDE4IGF0IDAxOjQ2OjIwUE0gKzAwMDAsIFRyb25kIE15a2xl
+YnVzdCB3cm90ZToNCj4gPiBPbiBUdWUsIDIwMTgtMDMtMjAgYXQgMTM6MzUgKzAwMDAsIERhdmlk
+IEhvd2VsbHMgd3JvdGU6DQo+ID4gPiBKLiBCcnVjZSBGaWVsZHMgPGJmaWVsZHNAcmVkaGF0LmNv
+bT4gd3JvdGU6DQo+ID4gPiANCj4gPiA+ID4gQEAgLTEzOSw2ICsxMzksOSBAQCBzdHJ1Y3QgY3Jl
+ZCB7DQo+ID4gPiA+ICAJc3RydWN0IGtleQkqdGhyZWFkX2tleXJpbmc7IC8qIGtleXJpbmcgcHJp
+dmF0ZQ0KPiA+ID4gPiB0bw0KPiA+ID4gPiB0aGlzIHRocmVhZCAqLw0KPiA+ID4gPiAgCXN0cnVj
+dCBrZXkJKnJlcXVlc3Rfa2V5X2F1dGg7IC8qIGFzc3VtZWQNCj4gPiA+ID4gcmVxdWVzdF9rZXkg
+YXV0aG9yaXR5ICovDQo+ID4gPiA+ICAjZW5kaWYNCj4gPiA+ID4gKyNpZmRlZiBDT05GSUdfRklM
+RV9MT0NLSU5HDQo+ID4gPiA+ICsJdm9pZAkJKmxlYXNlX2JyZWFrZXI7IC8qIGlkZW50aWZ5IE5G
+Uw0KPiA+ID4gPiBjbGllbnQNCj4gPiA+ID4gYnJlYWtpbmcgYSBkZWxlZ2F0aW9uICovDQo+ID4g
+PiA+ICsjZW5kaWYNCj4gPiA+ID4gICNpZmRlZiBDT05GSUdfU0VDVVJJVFkNCj4gPiA+ID4gIAl2
+b2lkCQkqc2VjdXJpdHk7CS8qIHN1YmplY3RpdmUNCj4gPiA+ID4gTFNNDQo+ID4gPiA+IHNlY3Vy
+aXR5ICovDQo+ID4gPiA+ICAjZW5kaWYNCj4gPiA+IA0KPiA+ID4gU29ycnksIGJ1dCBld3d3Lg0K
+PiA+ID4gDQo+ID4gPiBUd28gcmVhc29ucyBmb3IgdGhhdCBjb21tZW50Og0KPiA+ID4gDQo+ID4g
+PiAgKDEpIFRoZSBjcmVkIHN0cnVjdCBtYXkgZ2V0IHJldGFpbmVkIGxvbmcgcGFzdCB3aGVyZSB5
+b3UgZXhwZWN0DQo+ID4gPiBpZg0KPiA+ID4gaXQgZ2V0cw0KPiA+ID4gICAgICBhdHRhY2hlZCB0
+byBhbm90aGVyIHByb2Nlc3Mgb3IgYSBmaWxlIGRlc2NyaXB0b3IuDQo+ID4gPiANCj4gPiA+ICAo
+MikgVGhlIC0+bGVhc2VfYnJlYWtlciBwb2ludGVyIG5lZWRzIGxpZmV0aW1lIG1hbmFnZW1lbnQg
+aW4NCj4gPiA+IGNyZWQuYy4gIEl0IHdpbGwNCj4gPiA+ICAgICAgcG90ZW50aWFsbHkgZ2V0IGNv
+cGllZCBhcm91bmQgYW5kIG1heSBuZWVkIGNsZWFuaW5nIHVwLg0KPiA+ID4gDQo+ID4gPiBDYW4g
+eW91IHN0aWNrIHlvdXIgYnJlYWtlciBpZGVudGl0eSBpbiBhIGtleSBzdHJ1Y3QgYXMgSmVmZg0K
+PiA+ID4gc3VnZ2VzdGVkPw0KPiA+ID4gDQo+ID4gDQo+ID4gQnJ1Y2UsDQo+ID4gDQo+ID4gRG8g
+eW91IHJlYWxseSBuZWVkIHRvIGRvIG1vcmUgdGhhbiBqdXN0IGlkZW50aWZ5IHRoYXQgdGhpcyBp
+cyBhDQo+ID4ga25mc2QNCj4gPiB0aHJlYWQgdnMgbm90IGEga25mc2QgdGhyZWFkPyBJJ20gYXNz
+dW1pbmcgdGhhdCBhIGtuZnNkIHRocmVhZCB3aWxsDQo+ID4gdXN1YWxseSBiZSBpbiBhIHBvc2l0
+aW9uIHRvIHJlY2FsbCBkZWxlZ2F0aW9ucyBiZWZvcmUgaXQgZXZlbg0KPiA+IGluaXRpYXRlcw0K
+PiA+IGFuIG9wZXJhdGlvbiBvbiB0aGUgaW5vZGUgaW4gcXVlc3Rpb24sIHdvbid0IGl0Pw0KPiAN
+Cj4gSSB0aGluayBpdCBjb3VsZC4gIEknbSByZWx1Y3RhbnQ6DQo+IA0KPiAJLSBPbmNlIHdlIHN1
+cHBvcnQgd3JpdGUgZGVsZWdhdGlvbnMsIEkgdGhpbmsgd2UgZW5kIHVwIGhhdmluZw0KPiB0bw0K
+PiAJICBkbyB0aGF0IGJlZm9yZSBiYXNpY2FsbHkgZXZlcnkgb3BlcmF0aW9uIG9uIGEgaW5vZGUu
+DQo+IAktIEknZCBsaWtlIHRoaXMgdG8gbWFrZSBpdCBlYXN5IGZvciBzb21lb25lIHRvIGV4dGVu
+ZA0KPiBkZWxlZ2F0aW9uDQo+IAkgIHN1cHBvcnQgdG8gdXNlcnNwYWNlIGV2ZW50dWFsbHkgdG9v
+LiAgSSdtIG5vdCBzdXJlIGV4YWN0bHkNCj4gaG93DQo+IAkgIHdlJ2QgaWRlbnRpZnkgc2VsZi1j
+b25mbGljdHMgaW4gdGhhdCBjYXNlIChzdHJ1Y3QgZmlsZXM/KSwNCj4gYnV0DQo+IAkgIGFueXdh
+eSBJJ2QgcmF0aGVyIHRoaXMgd2Fzbid0IHRvbyBuZnNkLXNwZWNpZmljLg0KDQpUaGF0J3MgbXkg
+cG9pbnQuIEEgdXNlcnNwYWNlIGFwcGxpY2F0aW9uIGlzIGdvaW5nIHRvIGhhdmUgdG8gZG8NCnNv
+bWV0aGluZyBsaWtlIHRoaXMgYW55d2F5LiBJdCBjYW5ub3QgaW5zdGFsbCBob29rcyBpbiB0aGUg
+a2VybmVsIHRvDQpwZXJmb3JtIGVsYWJvcmF0ZSB0ZXN0cywgc28gaXQgaXMgZ29pbmcgdG8gaGF2
+ZSB0byByZWx5IG9uIHNvbWV0aGluZw0KbGlrZSB0aGUgc3RydWN0IGZpbGVfbG9jayAnZmxfbnNw
+aWQnIGZpZWxkIGluIG9yZGVyIHRvIGRldGVybWluZQ0Kd2hldGhlciBvciBub3QgdG8gYXBwbHkg
+YSBsZWFzZSBicmVhay4NCg0KaS5lLjogdGhlIHVzZXJzcGFjZSBydWxlIHNob3VsZCBiZSB0byBi
+cmVhayB0aGUgbGVhc2UgaWYgYW5kIG9ubHkgaWYgaXQNCmlzIG5vdCBvd25lZCBieSBteSBwcm9j
+ZXNzLg0KDQo+IFRoYXQgc2FpZCwgSSdtIHN0aWxsIGN1cmlvdXM6DQo+IA0KPiA+IElPVzogd2hh
+dCBpZiB5b3Ugd2VyZSB0byBtb2RpZnkgdGhlIGxlYXNlIGNvZGUgdG8gYWxsb3cga25mc2QNCj4g
+PiB0aHJlYWRzDQo+ID4gdG8gcmV0dXJuIGEgInBsZWFzZSBpZ25vcmUgbWUsIGFuZCBwcm9jZWVk
+IHdpdGggdGhlIG9wZXJhdGlvbiB0aGF0DQo+ID4gdHJpZ2dlcmVkIHRoZSBsZWFzZSBicmVhayIg
+cmVwbHksIGFuZCB0aGVuIGhhbmRsZSBjb25mbGljdHMgYmV0d2Vlbg0KPiA+IE5GUw0KPiA+IGNs
+aWVudHMgb3V0c2lkZSB0aGUgbGVhc2UgY2FsbGJhY2sgY29kZSBhbHRvZ2V0aGVyPw0KPiANCj4g
+U28gaWYgeW91J3JlIGEgcmFuZG9tIGJpdCBvZiBjb2RlLCBob3cgd291bGQgeW91IHJlY29tbWVu
+ZCB0ZXN0aW5nDQo+IHdoZXRoZXIgeW91J3JlIHJ1bm5pbmcgaW4gYSBrbmZzZCB0aHJlYWQ/DQoN
+ClJpZ2h0IG5vdywgdGhlIGtuZnNkIHRocmVhZHMgYXJlIHJlZ3VsYXIga2VybmVsIHRocmVhZHMs
+IHdpdGggZWFjaA0KdGhyZWFkIGFwcGVhcmluZyB0byB1c2Vyc3BhY2UgdG8gYmUgYSBwcm9jZXNz
+IGluIGl0cyBvd24gcmlnaHQuDQpJcyB0aGVyZSBhbnkgcmVhc29uIHdoeSB3ZSBjb3VsZCBub3Qg
+YXNzaWduIHRoZW0gYSBncm91cCBwaWQgdGhhdCB3b3VsZA0KYWxsb3cgdGhlIGZsX25zcGlkIG1l
+Y2hhbmlzbSB0byB3b3JrIChpLmUuIHNldCB0YXNrLT5ncm91cF9sZWFkZXIpPw0KDQoNCi0tIA0K
+VHJvbmQgTXlrbGVidXN0DQpMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRh
+DQp0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo=
 
-I'm sure you're right, but, to make sure I understand:
-
-> Two reasons for that comment:
-> 
->  (1) The cred struct may get retained long past where you expect if it gets
->      attached to another process or a file descriptor.
-
-How would that happen in the case of a knfsd thread?
-
->  (2) The ->lease_breaker pointer needs lifetime management in cred.c.  It will
->      potentially get copied around and may need cleaning up.
-
-Hm, OK.
-
-> Can you stick your breaker identity in a key struct as Jeff suggested?
-
-Probably so.  I'm unfamiliar with the keyring code.  How would you
-recommend doing that?
-
---b.
