@@ -1,64 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f44.google.com ([209.85.214.44]:35456 "EHLO
-        mail-it0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751480AbeCTUnt (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 16:43:49 -0400
-Received: by mail-it0-f44.google.com with SMTP id v194-v6so4116532itb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2018 13:43:49 -0700 (PDT)
+Received: from mail-io0-f194.google.com ([209.85.223.194]:44578 "EHLO
+        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751348AbeCTUnp (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 16:43:45 -0400
+Received: by mail-io0-f194.google.com with SMTP id h23so4005800iob.11
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2018 13:43:45 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/8] NFS: Move the delegation return down into _nfs4_do_setattr()
-Date: Tue, 20 Mar 2018 16:43:18 -0400
-Message-Id: <20180320204320.93656-7-trond.myklebust@primarydata.com>
-In-Reply-To: <20180320204320.93656-6-trond.myklebust@primarydata.com>
+Subject: [PATCH 2/8] NFS: Move the delegation return down into nfs4_proc_link()
+Date: Tue, 20 Mar 2018 16:43:14 -0400
+Message-Id: <20180320204320.93656-3-trond.myklebust@primarydata.com>
+In-Reply-To: <20180320204320.93656-2-trond.myklebust@primarydata.com>
 References: <20180320204320.93656-1-trond.myklebust@primarydata.com>
  <20180320204320.93656-2-trond.myklebust@primarydata.com>
- <20180320204320.93656-3-trond.myklebust@primarydata.com>
- <20180320204320.93656-4-trond.myklebust@primarydata.com>
- <20180320204320.93656-5-trond.myklebust@primarydata.com>
- <20180320204320.93656-6-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Move the delegation return out of generic code.
+
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/inode.c    | 5 -----
- fs/nfs/nfs4proc.c | 4 ++++
- 2 files changed, 4 insertions(+), 5 deletions(-)
+ fs/nfs/dir.c      | 2 --
+ fs/nfs/nfs4proc.c | 2 ++
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 7d893543cf3b..9da00b2e26a1 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -613,11 +613,6 @@ nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 		goto out;
- 	}
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2f3f86726f5b..b4549e54007d 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1932,8 +1932,6 @@ nfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *dentry)
+ 		old_dentry, dentry);
  
--	/*
--	 * Return any delegations if we're going to change ACLs
--	 */
--	if ((attr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
--		NFS_PROTO(inode)->return_delegation(inode);
- 	error = NFS_PROTO(inode)->setattr(dentry, fattr, attr);
- 	if (error == 0)
- 		error = nfs_refresh_inode(inode, fattr);
+ 	trace_nfs_link_enter(inode, dir, dentry);
+-	NFS_PROTO(inode)->return_delegation(inode);
+-
+ 	d_drop(dentry);
+ 	error = NFS_PROTO(dir)->link(inode, dir, &dentry->d_name);
+ 	if (error == 0) {
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2953da680bc7..e1550627c4d5 100644
+index 75b8ea08e6f7..8290a04907b0 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -3875,6 +3875,10 @@ nfs4_proc_setattr(struct dentry *dentry, struct nfs_fattr *fattr,
- 	if (IS_ERR(label))
- 		return PTR_ERR(label);
+@@ -4318,6 +4318,8 @@ static int _nfs4_proc_link(struct inode *inode, struct inode *dir, const struct
+ 	}
+ 	arg.bitmask = nfs4_bitmask(server, res.label);
  
-+	/* Return any delegations if we're going to change ACLs */
-+	if ((sattr->ia_valid & (ATTR_MODE|ATTR_UID|ATTR_GID)) != 0)
-+		nfs4_inode_return_delegation(inode);
++	nfs4_inode_return_delegation(inode);
 +
- 	status = nfs4_do_setattr(inode, cred, fattr, sattr, ctx, NULL, label);
- 	if (status == 0) {
- 		nfs_setattr_update_inode(inode, sattr, fattr);
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (!status) {
+ 		update_changeattr(dir, &res.cinfo, res.fattr->time_start);
 -- 
 2.14.3
 
