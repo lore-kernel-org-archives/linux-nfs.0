@@ -1,17 +1,17 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f65.google.com ([209.85.214.65]:55778 "EHLO
-        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751320AbeCTVDv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 17:03:51 -0400
-Received: by mail-it0-f65.google.com with SMTP id e195-v6so4238967ita.5
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2018 14:03:50 -0700 (PDT)
+Received: from mail-io0-f193.google.com ([209.85.223.193]:39365 "EHLO
+        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751320AbeCTVDs (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 17:03:48 -0400
+Received: by mail-io0-f193.google.com with SMTP id v13so4068891iob.6
+        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2018 14:03:48 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Anna Schumaker <Anna.Schumaker@Netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 9/9] NFSv4: Fix the nfs_inode_set_delegation() arguments
-Date: Tue, 20 Mar 2018 17:03:13 -0400
-Message-Id: <20180320210313.94429-10-trond.myklebust@primarydata.com>
-In-Reply-To: <20180320210313.94429-9-trond.myklebust@primarydata.com>
+Subject: [PATCH 7/9] NFSv4: Don't ask for attributes when ACCESS is protected by a delegation
+Date: Tue, 20 Mar 2018 17:03:11 -0400
+Message-Id: <20180320210313.94429-8-trond.myklebust@primarydata.com>
+In-Reply-To: <20180320210313.94429-7-trond.myklebust@primarydata.com>
 References: <20180320210313.94429-1-trond.myklebust@primarydata.com>
  <20180320210313.94429-2-trond.myklebust@primarydata.com>
  <20180320210313.94429-3-trond.myklebust@primarydata.com>
@@ -19,158 +19,78 @@ References: <20180320210313.94429-1-trond.myklebust@primarydata.com>
  <20180320210313.94429-5-trond.myklebust@primarydata.com>
  <20180320210313.94429-6-trond.myklebust@primarydata.com>
  <20180320210313.94429-7-trond.myklebust@primarydata.com>
- <20180320210313.94429-8-trond.myklebust@primarydata.com>
- <20180320210313.94429-9-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Neither nfs_inode_set_delegation() nor nfs_inode_reclaim_delegation() are
-generic code. They have no business delving into NFSv4 OPEN xdr structures,
-so let's replace the "struct nfs_openres" parameter.
+If we hold a delegation, then the results of the ACCESS call are protected
+anyway.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/delegation.c | 35 ++++++++++++++++++++++-------------
- fs/nfs/delegation.h |  6 ++++--
- fs/nfs/nfs4proc.c   | 12 ++++++++----
- 3 files changed, 34 insertions(+), 19 deletions(-)
+ fs/nfs/nfs4proc.c | 13 ++++++++-----
+ fs/nfs/nfs4xdr.c  |  6 ++++--
+ 2 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index a5cb44375100..1819d0d0ba4b 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -172,11 +172,15 @@ static int nfs_delegation_claim_opens(struct inode *inode,
-  * nfs_inode_reclaim_delegation - process a delegation reclaim request
-  * @inode: inode to process
-  * @cred: credential to use for request
-- * @res: new delegation state from server
-+ * @type: delegation type
-+ * @stateid: delegation stateid
-+ * @pagemod_limit: write delegation "space_limit"
-  *
-  */
- void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
--				  struct nfs_openres *res)
-+				  fmode_t type,
-+				  const nfs4_stateid *stateid,
-+				  unsigned long pagemod_limit)
- {
- 	struct nfs_delegation *delegation;
- 	struct rpc_cred *oldcred = NULL;
-@@ -186,9 +190,9 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
- 	if (delegation != NULL) {
- 		spin_lock(&delegation->lock);
- 		if (delegation->inode != NULL) {
--			nfs4_stateid_copy(&delegation->stateid, &res->delegation);
--			delegation->type = res->delegation_type;
--			delegation->pagemod_limit = res->pagemod_limit;
-+			nfs4_stateid_copy(&delegation->stateid, stateid);
-+			delegation->type = type;
-+			delegation->pagemod_limit = pagemod_limit;
- 			oldcred = delegation->cred;
- 			delegation->cred = get_rpccred(cred);
- 			clear_bit(NFS_DELEGATION_NEED_RECLAIM,
-@@ -196,14 +200,14 @@ void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
- 			spin_unlock(&delegation->lock);
- 			rcu_read_unlock();
- 			put_rpccred(oldcred);
--			trace_nfs4_reclaim_delegation(inode, res->delegation_type);
-+			trace_nfs4_reclaim_delegation(inode, type);
- 			return;
- 		}
- 		/* We appear to have raced with a delegation return. */
- 		spin_unlock(&delegation->lock);
- 	}
- 	rcu_read_unlock();
--	nfs_inode_set_delegation(inode, cred, res);
-+	nfs_inode_set_delegation(inode, cred, type, stateid, pagemod_limit);
- }
- 
- static int nfs_do_return_delegation(struct inode *inode, struct nfs_delegation *delegation, int issync)
-@@ -330,11 +334,16 @@ nfs_update_inplace_delegation(struct nfs_delegation *delegation,
-  * nfs_inode_set_delegation - set up a delegation on an inode
-  * @inode: inode to which delegation applies
-  * @cred: cred to use for subsequent delegation processing
-- * @res: new delegation state from server
-+ * @type: delegation type
-+ * @stateid: delegation stateid
-+ * @pagemod_limit: write delegation "space_limit"
-  *
-  * Returns zero on success, or a negative errno value.
-  */
--int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res)
-+int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred,
-+				  fmode_t type,
-+				  const nfs4_stateid *stateid,
-+				  unsigned long pagemod_limit)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs_client *clp = server->nfs_client;
-@@ -346,9 +355,9 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 	delegation = kmalloc(sizeof(*delegation), GFP_NOFS);
- 	if (delegation == NULL)
- 		return -ENOMEM;
--	nfs4_stateid_copy(&delegation->stateid, &res->delegation);
--	delegation->type = res->delegation_type;
--	delegation->pagemod_limit = res->pagemod_limit;
-+	nfs4_stateid_copy(&delegation->stateid, stateid);
-+	delegation->type = type;
-+	delegation->pagemod_limit = pagemod_limit;
- 	delegation->change_attr = inode_peek_iversion_raw(inode);
- 	delegation->cred = get_rpccred(cred);
- 	delegation->inode = inode;
-@@ -393,7 +402,7 @@ int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct
- 	rcu_assign_pointer(nfsi->delegation, delegation);
- 	delegation = NULL;
- 
--	trace_nfs4_set_delegation(inode, res->delegation_type);
-+	trace_nfs4_set_delegation(inode, type);
- 
- out:
- 	spin_unlock(&clp->cl_lock);
-diff --git a/fs/nfs/delegation.h b/fs/nfs/delegation.h
-index dcc8a783a6e1..bb1ef8c37af4 100644
---- a/fs/nfs/delegation.h
-+++ b/fs/nfs/delegation.h
-@@ -36,8 +36,10 @@ enum {
- 	NFS_DELEGATION_TEST_EXPIRED,
- };
- 
--int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
--void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred, struct nfs_openres *res);
-+int nfs_inode_set_delegation(struct inode *inode, struct rpc_cred *cred,
-+		fmode_t type, const nfs4_stateid *stateid, unsigned long pagemod_limit);
-+void nfs_inode_reclaim_delegation(struct inode *inode, struct rpc_cred *cred,
-+		fmode_t type, const nfs4_stateid *stateid, unsigned long pagemod_limit);
- int nfs4_inode_return_delegation(struct inode *inode);
- int nfs_async_inode_return_delegation(struct inode *inode, const nfs4_stateid *stateid);
- void nfs_inode_return_delegation_noreclaim(struct inode *inode);
 diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 64dd0fa7afaa..6933109fa30f 100644
+index acb3350c7571..64dd0fa7afaa 100644
 --- a/fs/nfs/nfs4proc.c
 +++ b/fs/nfs/nfs4proc.c
-@@ -1754,12 +1754,16 @@ nfs4_opendata_check_deleg(struct nfs4_opendata *data, struct nfs4_state *state)
+@@ -4055,7 +4055,6 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct nfs4_accessargs args = {
+ 		.fh = NFS_FH(inode),
+-		.bitmask = server->cache_consistency_bitmask,
+ 		.access = entry->mask,
+ 	};
+ 	struct nfs4_accessres res = {
+@@ -4069,14 +4068,18 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
+ 	};
+ 	int status = 0;
+ 
+-	res.fattr = nfs_alloc_fattr();
+-	if (res.fattr == NULL)
+-		return -ENOMEM;
++	if (!nfs_have_delegated_attributes(inode)) {
++		res.fattr = nfs_alloc_fattr();
++		if (res.fattr == NULL)
++			return -ENOMEM;
++		args.bitmask = server->cache_consistency_bitmask;
++	}
+ 
+ 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (!status) {
+ 		nfs_access_set_mask(entry, res.access);
+-		nfs_refresh_inode(inode, res.fattr);
++		if (res.fattr)
++			nfs_refresh_inode(inode, res.fattr);
  	}
- 	if ((delegation_flags & 1UL<<NFS_DELEGATION_NEED_RECLAIM) == 0)
- 		nfs_inode_set_delegation(state->inode,
--					 data->owner->so_cred,
--					 &data->o_res);
-+				data->owner->so_cred,
-+				data->o_res.delegation_type,
-+				&data->o_res.delegation,
-+				data->o_res.pagemod_limit);
- 	else
- 		nfs_inode_reclaim_delegation(state->inode,
--					     data->owner->so_cred,
--					     &data->o_res);
-+				data->owner->so_cred,
-+				data->o_res.delegation_type,
-+				&data->o_res.delegation,
-+				data->o_res.pagemod_limit);
+ 	nfs_free_fattr(res.fattr);
+ 	return status;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 79f1774b9d68..51264f5d9d2a 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -2102,7 +2102,8 @@ static void nfs4_xdr_enc_access(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_sequence(xdr, &args->seq_args, &hdr);
+ 	encode_putfh(xdr, args->fh, &hdr);
+ 	encode_access(xdr, args->access, &hdr);
+-	encode_getfattr(xdr, args->bitmask, &hdr);
++	if (args->bitmask)
++		encode_getfattr(xdr, args->bitmask, &hdr);
+ 	encode_nops(&hdr);
  }
  
- /*
+@@ -6236,7 +6237,8 @@ static int nfs4_xdr_dec_access(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+ 	status = decode_access(xdr, &res->supported, &res->access);
+ 	if (status != 0)
+ 		goto out;
+-	decode_getfattr(xdr, res->fattr, res->server);
++	if (res->fattr)
++		decode_getfattr(xdr, res->fattr, res->server);
+ out:
+ 	return status;
+ }
 -- 
 2.14.3
 
