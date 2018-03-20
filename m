@@ -1,74 +1,45 @@
-Return-Path: <smayhew@redhat.com>
-Date: Tue, 20 Mar 2018 09:22:11 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: Jeff Layton <jlayton@kernel.org>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-	Benjamin Coddington <bcodding@redhat.com>,
-	Harald Dunkel <harald.dunkel@aixigo.de>, linux-nfs@vger.kernel.org
-Subject: Re: running NFS in LXC
-Message-ID: <20180320132211.xa3qnphkcjrtijxz@tonberry.usersys.redhat.com>
-References: <5cedd413-81eb-6921-47bc-3c56e56d530a@aixigo.de>
- <6860CF8E-9790-4456-82D3-86A6A29E90BE@redhat.com>
- <8af7b137-0698-0c12-abc5-1cdd86c53a91@aixigo.de>
- <F9942544-0C31-4618-BF73-292FF4265C31@redhat.com>
- <20180215154516.GB9999@fieldses.org>
- <1521547289.4686.2.camel@kernel.org>
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:60296 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1753336AbeCTNfx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 20 Mar 2018 09:35:53 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <1521470194-24840-11-git-send-email-bfields@redhat.com>
+References: <1521470194-24840-11-git-send-email-bfields@redhat.com> <1521470194-24840-1-git-send-email-bfields@redhat.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 10/10] nfsd: clients don't need to break their own delegations
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1521547289.4686.2.camel@kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Date: Tue, 20 Mar 2018 13:35:51 +0000
+Message-ID: <29167.1521552951@warthog.procyon.org.uk>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 20 Mar 2018, Jeff Layton wrote:
+J. Bruce Fields <bfields@redhat.com> wrote:
 
-> On Thu, 2018-02-15 at 10:45 -0500, J. Bruce Fields wrote:
-> > On Wed, Feb 14, 2018 at 09:15:05AM -0500, Benjamin Coddington wrote:
-> > > On 14 Feb 2018, at 2:06, Harald Dunkel wrote:
-> > > 
-> > > > Hi Ben,
-> > > > 
-> > > > I take this as a "no serious problems by now". Good to hear.
-> > > > Which kernel are you using?
-> > > 
-> > > This was years ago on a 2.6.32 series.  I don't expect you'll have
-> > > serious problems now, either.  As far as I know, my last employer is
-> > > still using that architecture, but I couldn't tell you what software
-> > > versions they're on now..
-> > > 
-> > > We moved to the knfsd-in-a-container from an architecture that was
-> > > essentially a bunch of vanilla knfsds that could mount and any of
-> > > the block devices, and block devices were tied to IP addresses, and
-> > > this was all orchestrated by pacemaker.  The problem with that one
-> > > was that when a block device or filesystem was migrated, the server
-> > > receiving that filesystem had to be put into grace, which disrupted
-> > > any existing NFS serving that was going on.
-> > > 
-> > > Test things, let us know how it works!
-> > 
-> > I think you were using KVM, right, Ben?
-> > 
-> > Harald is talking about LXC, and there are still a few problems there.
-> > 
-> > Jeff, do you object to going back to our plan B for reboot recovery (the
-> > daemon)?  The usermode helper containerization seems stalled and I have
-> > to admit I'm probably not going to take it on myself.  That might be the
-> > only knfsd-in-a-container obstacle left.
-> 
-> Sorry for the late response. I've no objection to resurrecting that
-> approach if it helps this use-case. The daemon and umh callout should be
-> able to share a lot of the same code and database if it's done properly.
+> @@ -139,6 +139,9 @@ struct cred {
+>  	struct key	*thread_keyring; /* keyring private to this thread */
+>  	struct key	*request_key_auth; /* assumed request_key authority */
+>  #endif
+> +#ifdef CONFIG_FILE_LOCKING
+> +	void		*lease_breaker; /* identify NFS client breaking a delegation */
+> +#endif
+>  #ifdef CONFIG_SECURITY
+>  	void		*security;	/* subjective LSM security */
+>  #endif
 
-I'm sorta in the early stages of resurrecting nfsdcld because I wanted
-to tie it in to corosync for use in pacemaker clusters.  I'm planning on
-having the cluster-related stuff controls by a command-line or nfs.conf
-flag, but I think even in the standalone case the upcall message needs
-to change to include the session flag (which the umh callout passes via
-an environment variable)... but I was also looking at maybe adding the
-server address and filesystem fsid to the message.
+Sorry, but ewww.
 
-> 
-> -- 
-> Jeff Layton <jlayton@kernel.org>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Two reasons for that comment:
+
+ (1) The cred struct may get retained long past where you expect if it gets
+     attached to another process or a file descriptor.
+
+ (2) The ->lease_breaker pointer needs lifetime management in cred.c.  It will
+     potentially get copied around and may need cleaning up.
+
+Can you stick your breaker identity in a key struct as Jeff suggested?
+
+David
