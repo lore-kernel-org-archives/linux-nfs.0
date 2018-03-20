@@ -1,96 +1,38 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:39365 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751320AbeCTVDs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 17:03:48 -0400
-Received: by mail-io0-f193.google.com with SMTP id v13so4068891iob.6
-        for <linux-nfs@vger.kernel.org>; Tue, 20 Mar 2018 14:03:48 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 7/9] NFSv4: Don't ask for attributes when ACCESS is protected by a delegation
-Date: Tue, 20 Mar 2018 17:03:11 -0400
-Message-Id: <20180320210313.94429-8-trond.myklebust@primarydata.com>
-In-Reply-To: <20180320210313.94429-7-trond.myklebust@primarydata.com>
-References: <20180320210313.94429-1-trond.myklebust@primarydata.com>
- <20180320210313.94429-2-trond.myklebust@primarydata.com>
- <20180320210313.94429-3-trond.myklebust@primarydata.com>
- <20180320210313.94429-4-trond.myklebust@primarydata.com>
- <20180320210313.94429-5-trond.myklebust@primarydata.com>
- <20180320210313.94429-6-trond.myklebust@primarydata.com>
- <20180320210313.94429-7-trond.myklebust@primarydata.com>
+Received: from mail-it0-f65.google.com ([209.85.214.65]:50900 "EHLO
+        mail-it0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751657AbeCTVFH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 20 Mar 2018 17:05:07 -0400
+Subject: [PATCH 0/3] Three short subjects for v4.17
+From: Chuck Lever <chuck.lever@oracle.com>
+To: bfields@fieldses.org
+Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org
+Date: Tue, 20 Mar 2018 17:05:04 -0400
+Message-ID: <20180320210219.13273.89049.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we hold a delegation, then the results of the ACCESS call are protected
-anyway.
+Hi Bruce-
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+I have a bunch of patches left, but it looks like -rc7 is going to
+be the last -rc, and you are working on read delegation. So let's
+draw to a close with these three simple fixes, and I can postpone
+the rest until v4.18.
+
 ---
- fs/nfs/nfs4proc.c | 13 ++++++++-----
- fs/nfs/nfs4xdr.c  |  6 ++++--
- 2 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index acb3350c7571..64dd0fa7afaa 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4055,7 +4055,6 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	struct nfs_server *server = NFS_SERVER(inode);
- 	struct nfs4_accessargs args = {
- 		.fh = NFS_FH(inode),
--		.bitmask = server->cache_consistency_bitmask,
- 		.access = entry->mask,
- 	};
- 	struct nfs4_accessres res = {
-@@ -4069,14 +4068,18 @@ static int _nfs4_proc_access(struct inode *inode, struct nfs_access_entry *entry
- 	};
- 	int status = 0;
- 
--	res.fattr = nfs_alloc_fattr();
--	if (res.fattr == NULL)
--		return -ENOMEM;
-+	if (!nfs_have_delegated_attributes(inode)) {
-+		res.fattr = nfs_alloc_fattr();
-+		if (res.fattr == NULL)
-+			return -ENOMEM;
-+		args.bitmask = server->cache_consistency_bitmask;
-+	}
- 
- 	status = nfs4_call_sync(server->client, server, &msg, &args.seq_args, &res.seq_res, 0);
- 	if (!status) {
- 		nfs_access_set_mask(entry, res.access);
--		nfs_refresh_inode(inode, res.fattr);
-+		if (res.fattr)
-+			nfs_refresh_inode(inode, res.fattr);
- 	}
- 	nfs_free_fattr(res.fattr);
- 	return status;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 79f1774b9d68..51264f5d9d2a 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -2102,7 +2102,8 @@ static void nfs4_xdr_enc_access(struct rpc_rqst *req, struct xdr_stream *xdr,
- 	encode_sequence(xdr, &args->seq_args, &hdr);
- 	encode_putfh(xdr, args->fh, &hdr);
- 	encode_access(xdr, args->access, &hdr);
--	encode_getfattr(xdr, args->bitmask, &hdr);
-+	if (args->bitmask)
-+		encode_getfattr(xdr, args->bitmask, &hdr);
- 	encode_nops(&hdr);
- }
- 
-@@ -6236,7 +6237,8 @@ static int nfs4_xdr_dec_access(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
- 	status = decode_access(xdr, &res->supported, &res->access);
- 	if (status != 0)
- 		goto out;
--	decode_getfattr(xdr, res->fattr, res->server);
-+	if (res->fattr)
-+		decode_getfattr(xdr, res->fattr, res->server);
- out:
- 	return status;
- }
--- 
-2.14.3
+Chuck Lever (3):
+      svcrdma: Use pr_err to report Receive errors
+      svcrdma: Consult max_qp_init_rd_atom when accepting connections
+      svcrdma: Clean up rdma_build_arg_xdr
 
+
+ net/sunrpc/xprtrdma/svc_rdma.c           |    4 ++--
+ net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   33 +++++++++++++++---------------
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   28 +++++++++++--------------
+ 3 files changed, 30 insertions(+), 35 deletions(-)
+
+--
+Chuck Lever
