@@ -1,36 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx61.netapp.com ([216.240.31.181]:52522 "EHLO mx61.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752753AbeCUTgM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 21 Mar 2018 15:36:12 -0400
-Subject: Re: linux-next: please clean up the nfs-anna tree
-To: Stephen Rothwell <sfr@canb.auug.org.au>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        NFS Mailing List <linux-nfs@vger.kernel.org>
-CC: Linux-Next Mailing List <linux-next@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-References: <20180321111140.618e1e6c@canb.auug.org.au>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <df592a0d-8318-7a7c-386c-07838351524a@Netapp.com>
-Date: Wed, 21 Mar 2018 15:36:02 -0400
-MIME-Version: 1.0
-In-Reply-To: <20180321111140.618e1e6c@canb.auug.org.au>
-Content-Type: text/plain; charset=windows-1252
+Received: from metis.ext.pengutronix.de ([85.220.165.71]:43585 "EHLO
+        metis.ext.pengutronix.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752637AbeCUTwu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 21 Mar 2018 15:52:50 -0400
+From: Lucas Stach <l.stach@pengutronix.de>
+To: "J . Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>
+Cc: linux-nfs@vger.kernel.org, kernel@pengutronix.de,
+        patchwork-lst@pengutronix.de
+Subject: [PATCH] nfsd: zero out umask if the client didn't provide one
+Date: Wed, 21 Mar 2018 20:52:42 +0100
+Message-Id: <20180321195242.4250-1-l.stach@pengutronix.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When the server is serving a mixed set of clients where some support the
+NFS 4.2 umask attribute and some don't, we need to make sure to reset the
+nfd thread umask to 0 when serving a client that isn't providing the umask,
+otherwise a stale umask from a previous request will be applied.
 
+This was only done in the nfsd4_decode_open() callsite, but not in
+nfsd4_decode_create() leading to newly created directories ending up with
+wrong permissions in some cases. To avoid any such inconsistency in the
+future, reset the umask in nfsd4_decode_fattr() where we know if the
+client did provide a umask.
 
-On 03/20/2018 08:11 PM, Stephen Rothwell wrote:
-> Hi all,
-> 
-> It only seems to contain commits that have been upsreamed as different
-> commits and is causing conflicts:
-> 
-> CONFLICT (content): Merge conflict in net/sunrpc/xprtrdma/transport.c
-> CONFLICT (content): Merge conflict in net/sunrpc/xprt.c
+Fixes: 47057abde515 (nfsd: add support for the umask attribute)
+Signed-off-by: Lucas Stach <l.stach@pengutronix.de>
+---
+ fs/nfsd/nfs4xdr.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-Sorry about that!  I've updated the tree, and added in patches for 4.17 while I was at it
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e502fd16246b..1eb33b34c51b 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -486,6 +486,8 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+ 		dummy32 = be32_to_cpup(p++);
+ 		*umask = dummy32 & S_IRWXUGO;
+ 		iattr->ia_valid |= ATTR_MODE;
++	} else if (umask) {
++		*umask = 0;
+ 	}
+ 	if (len != expected_len)
+ 		goto xdr_error;
+@@ -927,7 +929,6 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
+ 	case NFS4_OPEN_NOCREATE:
+ 		break;
+ 	case NFS4_OPEN_CREATE:
+-		current->fs->umask = 0;
+ 		READ_BUF(4);
+ 		open->op_createmode = be32_to_cpup(p++);
+ 		switch (open->op_createmode) {
+-- 
+2.16.1
 
-Anna
-> 
