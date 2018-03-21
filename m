@@ -1,53 +1,63 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from ozlabs.org ([103.22.144.67]:60903 "EHLO ozlabs.org"
+Received: from mx143.netapp.com ([216.240.21.24]:8090 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751343AbeCUAMW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 20 Mar 2018 20:12:22 -0400
-Date: Wed, 21 Mar 2018 11:11:40 +1100
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-To: Anna Schumaker <Anna.Schumaker@Netapp.com>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc: Linux-Next Mailing List <linux-next@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: linux-next: please clean up the nfs-anna tree
-Message-ID: <20180321111140.618e1e6c@canb.auug.org.au>
+        id S1751608AbeCUOt7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 21 Mar 2018 10:49:59 -0400
+Subject: Re: [md PATCH 0/4] Minor 'cred' improvements prepare for NFS
+ conversion
+To: NeilBrown <neilb@suse.com>, David Howells <dhowells@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        Ingo Molnar <mingo@kernel.org>
+CC: NFS <linux-nfs@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>
+References: <151737571564.14845.2874586176125198504.stgit@noble>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <2ae93c98-108e-c687-4e21-f346515f5f66@Netapp.com>
+Date: Wed, 21 Mar 2018 10:49:49 -0400
 MIME-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha256;
- boundary="Sig_/WLFs3oQvoBhVVy2EDOm/H.0"; protocol="application/pgp-signature"
+In-Reply-To: <151737571564.14845.2874586176125198504.stgit@noble>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/WLFs3oQvoBhVVy2EDOm/H.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-Hi all,
 
-It only seems to contain commits that have been upsreamed as different
-commits and is causing conflicts:
+On 01/31/2018 12:15 AM, NeilBrown wrote:
+> Hi,
+>  NFS and SUNRPC have an internal "rpc_cred" which plays two distinct
+>  roles, one of which is much the same as 'struct cred' (which didn't
+>  exist when rpc_cred was created).
+>  I want to replace that usage of rpc_cred with 'struct cred'.
+>  Doing so requires some minor improvements to cred.c and cred.h as
+>  follows.
+> 
+>  It isn't clear to me who "maintains" cred.c and cred.h, so I'm hoping
+>  that Andrew Morton will take these (if no-one complains).
+>  Alternately if I got one or two credible "Acked-by"s, they could go
+>  upstream through the NFS tree when the rest of the patches are ready.
 
-CONFLICT (content): Merge conflict in net/sunrpc/xprtrdma/transport.c
-CONFLICT (content): Merge conflict in net/sunrpc/xprt.c
+Neil sent these patches out a while ago, and I haven't heard any acks for them yet.  Does anybody have a problem with me taking them through the NFS tree for 4.17?
 
---=20
-Cheers,
-Stephen Rothwell
+Anna
 
---Sig_/WLFs3oQvoBhVVy2EDOm/H.0
-Content-Type: application/pgp-signature
-Content-Description: OpenPGP digital signature
-
------BEGIN PGP SIGNATURE-----
-
-iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAlqxozwACgkQAVBC80lX
-0GwrPAf/ebBneh78TQ4IIol/aYP56kfjR2m63E03h4qzJi1R4PFH4tZwP7MnfvlQ
-U9lqke8kwBWFnzUM0lMOMZtF7VKodfWvrfGejqO0eg0qmf3DjXNhSjuW8OW4tTEt
-t2kPgSSi2aOMyDfCR4qooDBFnB9HKdYGfaDqyMPyjKTObDjwStyhtNOCJcKYBaWz
-T1QN24g03n0/7TGpYQaVwpDd0aV9Tlvg79kn87/6YNNtIb05ZVo32/pIA4lhNCWR
-cleFoWfb3kSfCcvA0azAckIPzM4CcP32QB11qbQWtdSbRzcC5WU2Ogo33dX9+/Pl
-TxDEtj0yZYx27lQZU/K/VLwfNCXumg==
-=0kRP
------END PGP SIGNATURE-----
-
---Sig_/WLFs3oQvoBhVVy2EDOm/H.0--
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> ---
+> 
+> NeilBrown (4):
+>       cred: add cred_fscmp() for comparing creds.
+>       cred: add get_cred_rcu()
+>       cred: export get_task_cred().
+>       cred: allow get_cred() and put_cred() to be given NULL.
+> 
+> 
+>  include/linux/cred.h |   26 ++++++++++++++++++----
+>  kernel/cred.c        |   58 +++++++++++++++++++++++++++++++++++++++++++++++++-
+>  2 files changed, 78 insertions(+), 6 deletions(-)
+> 
+> --
+> Signature
+> 
