@@ -1,18 +1,18 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f172.google.com ([209.85.217.172]:46246 "EHLO
-        mail-ua0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752099AbeCVPIh (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2018 11:08:37 -0400
-Received: by mail-ua0-f172.google.com with SMTP id d1so5754437ual.13
-        for <linux-nfs@vger.kernel.org>; Thu, 22 Mar 2018 08:08:36 -0700 (PDT)
+Received: from mail-vk0-f65.google.com ([209.85.213.65]:40835 "EHLO
+        mail-vk0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751706AbeCVPMZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 22 Mar 2018 11:12:25 -0400
+Received: by mail-vk0-f65.google.com with SMTP id x5so5423101vkd.7
+        for <linux-nfs@vger.kernel.org>; Thu, 22 Mar 2018 08:12:24 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20180307210551.GC28844@fieldses.org>
-References: <20180220164229.65404-1-kolga@netapp.com> <20180220164229.65404-6-kolga@netapp.com>
- <20180307210551.GC28844@fieldses.org>
+In-Reply-To: <20180308163121.GE10782@fieldses.org>
+References: <20180220164229.65404-1-kolga@netapp.com> <20180220164229.65404-8-kolga@netapp.com>
+ <20180308163121.GE10782@fieldses.org>
 From: Olga Kornievskaia <aglo@umich.edu>
-Date: Thu, 22 Mar 2018 11:08:35 -0400
-Message-ID: <CAN-5tyHx9ML5dtmhWwEJ_g1Vt8Fs9tKBM=jY=OjCe8wVJw9X4w@mail.gmail.com>
-Subject: Re: [PATCH v7 05/10] NFSD introduce asynch copy feature
+Date: Thu, 22 Mar 2018 11:12:23 -0400
+Message-ID: <CAN-5tyH08LBhkY24yC24cCb16kJ5C8zN7Dp3cqawVStiJr6u5w@mail.gmail.com>
+Subject: Re: [PATCH v7 07/10] NFSD create new stateid for async copy
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: Olga Kornievskaia <kolga@netapp.com>,
         "J. Bruce Fields" <bfields@redhat.com>,
@@ -21,194 +21,326 @@ Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 7, 2018 at 4:05 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> It looks like "struct nfsd_copy" is being used in at least three
-> different ways: to hold the xdr arguments and reply, to hold the state
-> needed while doing a copy, and to hold the callback arguments.  I wonder
-> if the code would be clearer if those were three different data
-> structures.
-
-I'm having trouble with this one. Because things are done in 3
-different running contexts and we need to pass information between
-them then having a single data structure make more sense to me.
-Furthermore, because there is also synchronous and asynchronous copies
-then things like state and xdr needs to be accessed by the original
-thread for the synchronous case.
-
-nfsd4_copy structure needs to the passed into xdr decode/encode. But
-for instance, offsets, count, synchronous need to be also a part of
-the "copy_state" structure. xdr encode can be done from either the
-main thread or the callback thread. to pass into the callback thread,
-it first needs to be copied to the copy thread. only a single data
-structure can be passed as arguments into the thread start function.
-
-I have detailed each of the fields of where they are used (the intent
-is to specify the need to access from multiple places). I have located
-3 fields that I think don't need to be dup_copy_fields().  But I
-haven't tested it yet.
-
-struct nfsd4_copy {
-       /* request */
-        stateid_t       cp_src_stateid;  xdr args field needed by the
-main copy (i should skip copying it in dup_copy_fields)
-        stateid_t       cp_dst_stateid; xdr args field needed by the
-main copy (i should skip copying it in the dup_copy_fileds)
-        u64             cp_src_pos; xdr args field needed by the main
-copy and then copy thread
-        u64             cp_dst_pos; xdr args field needed by the main
-copy and then copy thread
-        u64             cp_count; xdr field needed by the main copy
-and then copy thread
-
-        /* both */
-        bool            cp_synchronous; xdr args/res field need by the
-main copy and then copy thread
-
-        /* response */
-        struct nfsd42_write_res cp_res; xdr res field needed by the
-main copy and copy thread and callback thread
-
-        /* for cb_offload */
-        struct nfsd4_callback cp_cb; needed by the callback but has to
-be setup by the structure not on the stack
-        __be32                        nfserr; copy state info needed
-by the main thread, copy thread, and callback thread
-        struct knfsd_fh               fh; copy state available in the
-main thread then copied to the copy thread and needed by the callback
-thread
-
-        struct nfs4_client      *cp_clp; copy state info needed by the
-main thread, copy thread, and callback thread
-
-        struct file             *file_src; copy state info set by the
-main thread, needed by the copy thread
-        struct file             *file_dst; copy state info set by the
-main thread, needed by the copy thread
-        struct net              *net; copy state info available/set in
-the main thread, needed by the main thread and the copy thread
-        struct nfs4_stid        *stid; copy state info available/set
-in the main thread, needed by the main thread. (i should skip copying
-it in the dup_copy_fields. Now I don't recall how "inter" copy uses
-this.)
-        struct nfs4_cp_state    *cps; copy state info set in the main
-thread, needed by the callback so copied thru the copy thread
-
-        struct list_head        copies; copy state information, needed
-by the main thread and other parallel operations
-        struct task_struct      *copy_task; copy state information/
-        refcount_t              refcount; copy state information
-needed by the main thread, needed by the callback so copied thru the
-copy thread
-        bool                    stopped; copy state information needed
-by the copy thread, used by parallel threads (offload_cancel, close).
-
-I also want to say that the data structure (will be) is used by the
-"inter/intra" copy so some fields are there before they make more
-sense in the "inter" case. Like the nfs4_cp_state is used for the
-inter but the generated stateid is saved in that data structure
-because it's share by what's COPY_NOTIFY will use to store it's copy
-stateids it gives out and what COPY uses.
-
+On Thu, Mar 8, 2018 at 11:31 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Tue, Feb 20, 2018 at 11:42:26AM -0500, Olga Kornievskaia wrote:
+>> Generate a new stateid to be used for reply to the asynchronous
+>> COPY (this would also be used later by COPY_NOTIFY as well).
+>> Associate the stateid with the parent OPEN/LOCK/DELEG stateid
+>> that can be freed during the free of the parent stateid. However,
+>> right now deciding to bind the lifetime to when the vfs copy
+>> is done. This way don't need to keep the nfsd_net structure for
+>> the callback. The drawback is that time copy state information
+>> is available for query by OFFLOAD_STATUS is slightly less.
 >
->> +static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
->> +{
->> +     memcpy(&dst->cp_src_stateid, &src->cp_src_stateid, sizeof(stateid_t));
->> +     memcpy(&dst->cp_dst_stateid, &src->cp_dst_stateid, sizeof(stateid_t));
->> +     dst->cp_src_pos = src->cp_src_pos;
->> +     dst->cp_dst_pos = src->cp_dst_pos;
->> +     dst->cp_count = src->cp_count;
->> +     dst->cp_consecutive = src->cp_consecutive;
->> +     dst->cp_synchronous = src->cp_synchronous;
->> +     memcpy(&dst->cp_res, &src->cp_res, sizeof(src->cp_res));
->> +     /* skipping nfsd4_callback */
->> +     memcpy(&dst->fh, &src->fh, sizeof(src->fh));
->> +     dst->net = src->net;
->> +     dst->cp_clp = src->cp_clp;
->> +     atomic_inc(&dst->cp_clp->cl_refcount);
->> +     dst->fh_dst = get_file(src->fh_dst);
->> +     dst->fh_src = get_file(src->fh_src);
+> I don't understand yet the purpose of the parent stateid.
 >
-> Just another minor gripe, but: could we name those fd_* or file_* or
-> something instead of fh?  I tend to assume "fh" means "nfs filehandle".
->
->> +}
->> +
->> +static void cleanup_async_copy(struct nfsd4_copy *copy, bool remove)
->> +{
->> +     fput(copy->fh_dst);
->> +     fput(copy->fh_src);
->> +     if (remove) {
->> +             spin_lock(&copy->cp_clp->async_lock);
->> +             list_del(&copy->copies);
->> +             spin_unlock(&copy->cp_clp->async_lock);
->> +     }
->
-> I don't understand yet why you need these two cases.  Anyway, I'd rather
-> you did this in the caller.  So the caller can do either:
->
->         spin_lock()
->         list_del()
->         spin_unlock()
->         cleanup_async_copy()
->
-> or just
->
->         cleanup_async_copy()
->
-> Or define another helper for the first case if you're really doing it a
-> lot.  Just don't make me have to remember what that second argument
-> means each time I see it used.
->
->> +     atomic_dec(&copy->cp_clp->cl_refcount);
->> +     kfree(copy);
->> +}
-> ...
->> +     copy->cp_clp = cstate->clp;
->> +     memcpy(&copy->fh, &cstate->current_fh.fh_handle,
->> +             sizeof(struct knfsd_fh));
->> +     copy->net = SVC_NET(rqstp);
->> +     /* for now disable asynchronous copy feature */
->> +     copy->cp_synchronous = 1;
->> +     if (!copy->cp_synchronous) {
->> +             status = nfsd4_init_copy_res(copy, 0);
->> +             async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
->> +             if (!async_copy) {
->> +                     status = nfserrno(-ENOMEM);
->> +                     goto out;
->> +             }
->> +             dup_copy_fields(copy, async_copy);
->> +             memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
->> +                     sizeof(copy->cp_dst_stateid));
->> +             async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
->> +                             async_copy, "%s", "copy thread");
->> +             if (IS_ERR(async_copy->copy_task)) {
->> +                     status = PTR_ERR(async_copy->copy_task);
->
-> status should be an nfs error.
+> I understand that it's part of the COPY arguments and that we need to
+> check it when we first process the COPY.  But what's it used for after
+> that?  Why do we need to keep it around?
+
+Parent stateid tie is needed for when the "CLOSE" is received. CLOSE
+only has the parent state. We have a global list of async copies and
+then each copy has a pointer to parent to provide the match.
+
 >
 > --b.
 >
->> +                     goto out_err;
->> +             }
->> +             spin_lock(&async_copy->cp_clp->async_lock);
->> +             list_add(&async_copy->copies,
->> +                             &async_copy->cp_clp->async_copies);
->> +             spin_unlock(&async_copy->cp_clp->async_lock);
->> +             wake_up_process(async_copy->copy_task);
->> +     } else {
->> +             status = nfsd4_do_copy(copy, 1);
->>       }
->> -
->> -     fput(src);
->> -     fput(dst);
->>  out:
->>       return status;
->> +out_err:
->> +     cleanup_async_copy(async_copy, false);
->> +     goto out;
+>>
+>> Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+>> ---
+>>  fs/nfsd/netns.h     |  8 +++++++
+>>  fs/nfsd/nfs4proc.c  | 34 ++++++++++++++++++--------
+>>  fs/nfsd/nfs4state.c | 69 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/nfsctl.c    |  1 +
+>>  fs/nfsd/state.h     | 14 +++++++++++
+>>  fs/nfsd/xdr4.h      |  2 ++
+>>  6 files changed, 118 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+>> index 36358d4..e83cf6e 100644
+>> --- a/fs/nfsd/netns.h
+>> +++ b/fs/nfsd/netns.h
+>> @@ -122,6 +122,14 @@ struct nfsd_net {
+>>
+>>       wait_queue_head_t ntf_wq;
+>>       atomic_t ntf_refcnt;
+>> +
+>> +     /*
+>> +      * clientid and stateid data for construction of net unique COPY
+>> +      * stateids.
+>> +      */
+>> +     u32             s2s_cp_cl_id;
+>> +     struct idr      s2s_cp_stateids;
+>> +     spinlock_t      s2s_cp_lock;
+>>  };
+>>
+>>  /* Simple check to find out if a given net was properly initialized */
+>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+>> index aafd5a58..eb9f528 100644
+>> --- a/fs/nfsd/nfs4proc.c
+>> +++ b/fs/nfsd/nfs4proc.c
+>> @@ -1030,7 +1030,8 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>>  static __be32
+>>  nfsd4_verify_copy(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>>                 stateid_t *src_stateid, struct file **src,
+>> -               stateid_t *dst_stateid, struct file **dst)
+>> +               stateid_t *dst_stateid, struct file **dst,
+>> +               struct nfs4_stid **stid)
+>>  {
+>>       __be32 status;
+>>
+>> @@ -1044,7 +1045,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>>
+>>       status = nfs4_preprocess_stateid_op(rqstp, cstate, &cstate->current_fh,
+>>                                           dst_stateid, WR_STATE, dst, NULL,
+>> -                                         NULL);
+>> +                                         stid);
+>>       if (status) {
+>>               dprintk("NFSD: %s: couldn't process dst stateid!\n", __func__);
+>>               goto out_put_src;
+>> @@ -1075,7 +1076,7 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
+>>       __be32 status;
+>>
+>>       status = nfsd4_verify_copy(rqstp, cstate, &clone->cl_src_stateid, &src,
+>> -                                &clone->cl_dst_stateid, &dst);
+>> +                                &clone->cl_dst_stateid, &dst, NULL);
+>>       if (status)
+>>               goto out;
+>>
+>> @@ -1108,8 +1109,6 @@ static int nfsd4_cb_offload_done(struct nfsd4_callback *cb,
+>>
+>>  static int nfsd4_init_copy_res(struct nfsd4_copy *copy, bool sync)
+>>  {
+>> -     memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+>> -             sizeof(copy->cp_dst_stateid));
+>>       copy->cp_res.wr_stable_how = NFS_UNSTABLE;
+>>       copy->cp_consecutive = 1;
+>>       copy->cp_synchronous = sync;
+>> @@ -1171,10 +1170,15 @@ static void dup_copy_fields(struct nfsd4_copy *src, struct nfsd4_copy *dst)
+>>       atomic_inc(&dst->cp_clp->cl_refcount);
+>>       dst->fh_dst = get_file(src->fh_dst);
+>>       dst->fh_src = get_file(src->fh_src);
+>> +     dst->stid = src->stid;
+>> +     dst->cps = src->cps;
 >>  }
 >>
->>  static __be32
+>>  static void cleanup_async_copy(struct nfsd4_copy *copy, bool remove)
+>>  {
+>> +     list_del(&copy->cps->cp_list);
+>> +     nfs4_free_cp_state(copy->cps);
+>> +     nfs4_put_stid(copy->stid);
+>>       fput(copy->fh_dst);
+>>       fput(copy->fh_src);
+>>       if (remove) {
+>> @@ -1218,7 +1222,7 @@ static int nfsd4_do_async_copy(void *data)
+>>
+>>       status = nfsd4_verify_copy(rqstp, cstate, &copy->cp_src_stateid,
+>>                                  &copy->fh_src, &copy->cp_dst_stateid,
+>> -                                &copy->fh_dst);
+>> +                                &copy->fh_dst, &copy->stid);
+>>       if (status)
+>>               goto out;
+>>
+>> @@ -1226,18 +1230,28 @@ static int nfsd4_do_async_copy(void *data)
+>>       memcpy(&copy->fh, &cstate->current_fh.fh_handle,
+>>               sizeof(struct knfsd_fh));
+>>       copy->net = SVC_NET(rqstp);
+>> -     /* for now disable asynchronous copy feature */
+>> -     copy->cp_synchronous = 1;
+>>       if (!copy->cp_synchronous) {
+>> +             struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+>> +
+>>               status = nfsd4_init_copy_res(copy, 0);
+>>               async_copy = kzalloc(sizeof(struct nfsd4_copy), GFP_KERNEL);
+>>               if (!async_copy) {
+>>                       status = nfserrno(-ENOMEM);
+>>                       goto out;
+>>               }
+>> +             copy->cps = nfs4_alloc_init_cp_state(nn, copy->stid);
+>> +             if (!copy->cps) {
+>> +                     status = nfserrno(-ENOMEM);
+>> +                     kfree(async_copy);
+>> +                     goto out;
+>> +             }
+>> +             /* take a reference on the parent stateid so it's not
+>> +              * not freed by the copy compound
+>> +              */
+>> +             refcount_inc(&copy->stid->sc_count);
+>> +             memcpy(&copy->cp_res.cb_stateid, &copy->cps->cp_stateid,
+>> +                     sizeof(copy->cps->cp_stateid));
+>>               dup_copy_fields(copy, async_copy);
+>> -             memcpy(&copy->cp_res.cb_stateid, &copy->cp_dst_stateid,
+>> -                     sizeof(copy->cp_dst_stateid));
+>>               async_copy->copy_task = kthread_create(nfsd4_do_async_copy,
+>>                               async_copy, "%s", "copy thread");
+>>               if (IS_ERR(async_copy->copy_task)) {
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index e05832b..bd76bd1 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -667,6 +667,7 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
+>>       /* Will be incremented before return to client: */
+>>       refcount_set(&stid->sc_count, 1);
+>>       spin_lock_init(&stid->sc_lock);
+>> +     INIT_LIST_HEAD(&stid->sc_cp_list);
+>>
+>>       /*
+>>        * It shouldn't be a problem to reuse an opaque stateid value.
+>> @@ -683,6 +684,69 @@ struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *sla
+>>       return NULL;
+>>  }
+>>
+>> +/*
+>> + * Create a unique stateid_t to represent each COPY. Hang the copy
+>> + * stateids off the OPEN/LOCK/DELEG stateid from the client open
+>> + * the source file.
+>> + */
+>> +struct nfs4_cp_state *nfs4_alloc_init_cp_state(struct nfsd_net *nn,
+>> +                                            struct nfs4_stid *p_stid)
+>> +{
+>> +     struct nfs4_cp_state *cps;
+>> +     int new_id;
+>> +
+>> +     cps = kzalloc(sizeof(struct nfs4_cp_state), GFP_KERNEL);
+>> +     if (!cps)
+>> +             return NULL;
+>> +     idr_preload(GFP_KERNEL);
+>> +     spin_lock(&nn->s2s_cp_lock);
+>> +     new_id = idr_alloc_cyclic(&nn->s2s_cp_stateids, cps, 0, 0, GFP_NOWAIT);
+>> +     spin_unlock(&nn->s2s_cp_lock);
+>> +     idr_preload_end();
+>> +     if (new_id < 0)
+>> +             goto out_free;
+>> +     cps->cp_stateid.si_opaque.so_id = new_id;
+>> +     cps->cp_stateid.si_opaque.so_clid.cl_boot = nn->boot_time;
+>> +     cps->cp_stateid.si_opaque.so_clid.cl_id = nn->s2s_cp_cl_id;
+>> +     cps->cp_p_stid = p_stid;
+>> +     spin_lock(&p_stid->sc_lock);
+>> +     list_add(&cps->cp_list, &p_stid->sc_cp_list);
+>> +     spin_unlock(&p_stid->sc_lock);
+>> +
+>> +     return cps;
+>> +out_free:
+>> +     kfree(cps);
+>> +     return NULL;
+>> +}
+>> +
+>> +void nfs4_free_cp_state(struct nfs4_cp_state *cps)
+>> +{
+>> +     struct nfsd_net *nn;
+>> +
+>> +     nn = net_generic(cps->cp_p_stid->sc_client->net, nfsd_net_id);
+>> +     spin_lock(&nn->s2s_cp_lock);
+>> +     idr_remove(&nn->s2s_cp_stateids, cps->cp_stateid.si_opaque.so_id);
+>> +     spin_unlock(&nn->s2s_cp_lock);
+>> +
+>> +     kfree(cps);
+>> +}
+>> +
+>> +static void nfs4_free_cp_statelist(struct nfs4_stid *stid)
+>> +{
+>> +     struct nfs4_cp_state *cps;
+>> +
+>> +     might_sleep();
+>> +
+>> +     spin_lock(&stid->sc_lock);
+>> +     while (!list_empty(&stid->sc_cp_list)) {
+>> +             cps = list_first_entry(&stid->sc_cp_list, struct nfs4_cp_state,
+>> +                                    cp_list);
+>> +             list_del(&cps->cp_list);
+>> +             nfs4_free_cp_state(cps);
+>> +     }
+>> +     spin_unlock(&stid->sc_lock);
+>> +}
+>> +
+>>  static struct nfs4_ol_stateid * nfs4_alloc_open_stateid(struct nfs4_client *clp)
+>>  {
+>>       struct nfs4_stid *stid;
+>> @@ -828,6 +892,9 @@ static void block_delegations(struct knfsd_fh *fh)
+>>       }
+>>       idr_remove(&clp->cl_stateids, s->sc_stateid.si_opaque.so_id);
+>>       spin_unlock(&clp->cl_lock);
+>> +
+>> +     nfs4_free_cp_statelist(s);
+>> +
+>>       s->sc_free(s);
+>>       if (fp)
+>>               put_nfs4_file(fp);
+>> @@ -7115,6 +7182,8 @@ static int nfs4_state_create_net(struct net *net)
+>>       INIT_LIST_HEAD(&nn->close_lru);
+>>       INIT_LIST_HEAD(&nn->del_recall_lru);
+>>       spin_lock_init(&nn->client_lock);
+>> +     spin_lock_init(&nn->s2s_cp_lock);
+>> +     idr_init(&nn->s2s_cp_stateids);
+>>
+>>       spin_lock_init(&nn->blocked_locks_lock);
+>>       INIT_LIST_HEAD(&nn->blocked_locks_lru);
+>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>> index d107b44..63edf68 100644
+>> --- a/fs/nfsd/nfsctl.c
+>> +++ b/fs/nfsd/nfsctl.c
+>> @@ -1241,6 +1241,7 @@ static __net_init int nfsd_init_net(struct net *net)
+>>       nn->nfsd4_grace = 90;
+>>       nn->clverifier_counter = prandom_u32();
+>>       nn->clientid_counter = prandom_u32();
+>> +     nn->s2s_cp_cl_id = nn->clientid_counter++;
+>>
+>>       atomic_set(&nn->ntf_refcnt, 0);
+>>       init_waitqueue_head(&nn->ntf_wq);
+>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> index 9b7d7a0..49709d1 100644
+>> --- a/fs/nfsd/state.h
+>> +++ b/fs/nfsd/state.h
+>> @@ -94,6 +94,7 @@ struct nfs4_stid {
+>>  #define NFS4_REVOKED_DELEG_STID 16
+>>  #define NFS4_CLOSED_DELEG_STID 32
+>>  #define NFS4_LAYOUT_STID 64
+>> +     struct list_head        sc_cp_list;
+>>       unsigned char           sc_type;
+>>       stateid_t               sc_stateid;
+>>       spinlock_t              sc_lock;
+>> @@ -103,6 +104,17 @@ struct nfs4_stid {
+>>  };
+>>
+>>  /*
+>> + * Keep a list of stateids issued by the COPY, associate it with the
+>> + * parent OPEN/LOCK/DELEG stateid. Used for lookup by
+>> + * OFFLOAD_CANCEL and OFFLOAD_STATUS (as well as COPY_NOTIFY)
+>> + */
+>> +struct nfs4_cp_state {
+>> +     stateid_t               cp_stateid;
+>> +     struct list_head        cp_list;        /* per parent nfs4_stid */
+>> +     struct nfs4_stid        *cp_p_stid;     /* pointer to parent */
+>> +};
+>> +
+>> +/*
+>>   * Represents a delegation stateid. The nfs4_client holds references to these
+>>   * and they are put when it is being destroyed or when the delegation is
+>>   * returned by the client:
+>> @@ -612,6 +624,8 @@ __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
+>>                    struct nfs4_stid **s, struct nfsd_net *nn);
+>>  struct nfs4_stid *nfs4_alloc_stid(struct nfs4_client *cl, struct kmem_cache *slab,
+>>                                 void (*sc_free)(struct nfs4_stid *));
+>> +struct nfs4_cp_state *nfs4_alloc_init_cp_state(struct nfsd_net *nn, struct nfs4_stid *p_stid);
+>> +void nfs4_free_cp_state(struct nfs4_cp_state *cps);
+>>  void nfs4_unhash_stid(struct nfs4_stid *s);
+>>  void nfs4_put_stid(struct nfs4_stid *s);
+>>  void nfs4_inc_and_copy_stateid(stateid_t *dst, struct nfs4_stid *stid);
+>> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+>> index 3b6b655..5d493b9 100644
+>> --- a/fs/nfsd/xdr4.h
+>> +++ b/fs/nfsd/xdr4.h
+>> @@ -535,6 +535,8 @@ struct nfsd4_copy {
+>>       struct file             *fh_src;
+>>       struct file             *fh_dst;
+>>       struct net              *net;
+>> +     struct nfs4_stid        *stid;
+>> +     struct nfs4_cp_state    *cps;
+>>
+>>       struct list_head        copies;
+>>       struct task_struct      *copy_task;
+>> --
+>> 1.8.3.1
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
