@@ -1,53 +1,52 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:50076 "EHLO fieldses.org"
+Received: from mx142.netapp.com ([216.240.21.19]:52177 "EHLO mx142.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751699AbeCWSuN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 23 Mar 2018 14:50:13 -0400
-Date: Fri, 23 Mar 2018 14:50:13 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Dan Carpenter <dan.carpenter@oracle.com>
-Cc: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
-        kernel-janitors@vger.kernel.org
-Subject: Re: [PATCH] nfsd: tidy return values in nfs4_delegation_exists()
-Message-ID: <20180323185013.GT4288@fieldses.org>
-References: <20180323113705.GB28518@mwanda>
+        id S1752545AbeCWSyI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 23 Mar 2018 14:54:08 -0400
+Subject: Re: [PATCH net-next nfs 4/6] net: Convert nfs4_dns_resolver_ops
+To: Kirill Tkhai <ktkhai@virtuozzo.com>, <davem@davemloft.net>,
+        <trond.myklebust@primarydata.com>, <bfields@fieldses.org>,
+        <jlayton@kernel.org>, <dhowells@redhat.com>,
+        <keescook@chromium.org>, <dwindsor@gmail.com>,
+        <ishkamiel@gmail.com>, <elena.reshetova@intel.com>,
+        <linux-nfs@vger.kernel.org>, <linux-afs@lists.infradead.org>,
+        <netdev@vger.kernel.org>
+References: <152093778442.8636.10592672493816457119.stgit@localhost.localdomain>
+ <152093818835.8636.5993458301872634002.stgit@localhost.localdomain>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <32c74ecc-a577-960b-523c-850068e56673@Netapp.com>
+Date: Fri, 23 Mar 2018 14:53:57 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180323113705.GB28518@mwanda>
+In-Reply-To: <152093818835.8636.5993458301872634002.stgit@localhost.localdomain>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 23, 2018 at 02:37:05PM +0300, Dan Carpenter wrote:
-> We made nfs4_delegation_exists() return a bool in 68b18f52947b ("nfsd:
-> make nfs4_get_existing_delegation less confusing"), but it's still
-> returning -EINVAL.  That's fine, because it -EINVAL becomes true which
-> is what we want, but it's not very tidy.
 
-Oops, I fixed this a couple days ago when Fengguang Wu complained about
-the 0/false thing, but forgot to push it out.  Added a Reported-by: for
-you and pushed it out now to
 
-	git://linux-nfs.org/~bfields/linux.git nfsd-next
-
---b.
-
+On 03/13/2018 06:49 AM, Kirill Tkhai wrote:
+> These pernet_operations look similar to rpcsec_gss_net_ops,
+> they just create and destroy another cache. Also they create
+> and destroy directory. So, they also look safe to be async.
 > 
-> Signed-off-by: Dan Carpenter <dan.carpenter@oracle.com>
+> Signed-off-by: Kirill Tkhai <ktkhai@virtuozzo.com>
+
+Acked-by: Anna Schumaker <Anna.Schumaker@netapp.com>
+
+> ---
+>  fs/nfs/dns_resolve.c |    1 +
+>  1 file changed, 1 insertion(+)
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index a64ee08aadb2..f0b5af3ca8f7 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -935,10 +935,10 @@ nfs4_delegation_exists(struct nfs4_client *clp, struct nfs4_file *fp)
->  	list_for_each_entry(searchdp, &fp->fi_delegations, dl_perfile) {
->  		searchclp = searchdp->dl_stid.sc_client;
->  		if (clp == searchclp) {
-> -			return -EAGAIN;
-> +			return true;
->  		}
->  	}
-> -	return 0;
-> +	return false;
->  }
+> diff --git a/fs/nfs/dns_resolve.c b/fs/nfs/dns_resolve.c
+> index 060c658eab66..e90bd69ab653 100644
+> --- a/fs/nfs/dns_resolve.c
+> +++ b/fs/nfs/dns_resolve.c
+> @@ -410,6 +410,7 @@ static void nfs4_dns_net_exit(struct net *net)
+>  static struct pernet_operations nfs4_dns_resolver_ops = {
+>  	.init = nfs4_dns_net_init,
+>  	.exit = nfs4_dns_net_exit,
+> +	.async = true,
+>  };
 >  
->  /**
+>  static int rpc_pipefs_event(struct notifier_block *nb, unsigned long event,
+> 
