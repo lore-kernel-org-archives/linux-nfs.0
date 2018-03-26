@@ -1,33 +1,65 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from smtp.gls-italy.com ([93.62.193.36]:32861 "EHLO
-        smtp.gls-italy.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750955AbeCZIDD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 26 Mar 2018 04:03:03 -0400
-Date: Mon, 26 Mar 2018 09:51:30 +0200 (CEST)
-From: Wesley <micaela.dorigoni@gls-italy.com>
-Reply-To: Wesley <wesleycoolguy3@outlook.com>
-Message-ID: <1694585637.144976280.1522050690753.JavaMail.zimbra@gls-italy.com>
-Subject: =?utf-8?Q?Cze=C5=9B=C4=87_s=C5=82odka?=
+Received: from mail-eopbgr00104.outbound.protection.outlook.com ([40.107.0.104]:41437
+        "EHLO EUR02-AM5-obe.outbound.protection.outlook.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1750864AbeCZJag (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 26 Mar 2018 05:30:36 -0400
+Subject: Re: [PATCH net-next nfs 1/6] net: Convert rpcsec_gss_net_ops
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>, davem@davemloft.net,
+        trond.myklebust@primarydata.com, bfields@fieldses.org,
+        jlayton@kernel.org, dhowells@redhat.com, keescook@chromium.org,
+        dwindsor@gmail.com, ishkamiel@gmail.com, elena.reshetova@intel.com,
+        linux-nfs@vger.kernel.org, linux-afs@lists.infradead.org,
+        netdev@vger.kernel.org
+References: <152093778442.8636.10592672493816457119.stgit@localhost.localdomain>
+ <152093815494.8636.6607369744413088370.stgit@localhost.localdomain>
+ <28c32fa9-17e1-0399-d7bf-760441128cf8@Netapp.com>
+From: Kirill Tkhai <ktkhai@virtuozzo.com>
+Message-ID: <3830b0b9-1198-27c6-1d61-3e2b9f00c9c5@virtuozzo.com>
+Date: Mon, 26 Mar 2018 12:30:28 +0300
 MIME-Version: 1.0
+In-Reply-To: <28c32fa9-17e1-0399-d7bf-760441128cf8@Netapp.com>
 Content-Type: text/plain; charset=utf-8
-To: unlisted-recipients:; (no To-header on input)@mail.corp.redhat.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Am Wes ze Stanów Zjednoczonych, ale obecnie przebywa w Syrii na misji pokojowej. Obecnie szukam przyjaźni, która doprowadzi do związku, w którym znowu czuję się kochana ...
+On 23.03.2018 21:53, Anna Schumaker wrote:
+> 
+> 
+> On 03/13/2018 06:49 AM, Kirill Tkhai wrote:
+>> These pernet_operations initialize and destroy sunrpc_net_id
+>> refered per-net items. Only used global list is cache_list,
+>> and accesses already serialized.
+>>
+>> sunrpc_destroy_cache_detail() check for list_empty() without
+>> cache_list_lock, but when it's called from unregister_pernet_subsys(),
+>> there can't be callers in parallel, so we won't miss list_empty()
+>> in this case.
+>>
+>> Signed-off-by: Kirill Tkhai <ktkhai@virtuozzo.com>
+> 
+> It might make sense to take these and the other NFS patches through the net tree, since the pernet_operations don't yet have the async field in my tree (and I therefore can't compile once these are applied).
+> 
+> Acked-by: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-Chcę cię lepiej poznać, jeśli mogę być odważny. Uważam się za łatwego człowieka ..............
+Thanks a lot, Anna!
 
-Proszę wybaczyć moje maniery nie są dobre, jeśli chodzi o Internet, ponieważ to nie jest moja dziedzina. Tutaj w Syrii nie wolno nam wychodzić, co sprawia, że bardzo się nudzę, więc myślę, że potrzebuję przyjaciela do rozmowy z zewnątrz, żeby mnie utrzymać ...
+Kirill
 
-Chciałbym poznać "prawdziwego" ciebie jako przyjaciela. Twoje polubienia, nielubienia, twoje zainteresowania ...... co cię wyróżnia.
-
-Mój ulubiony kolor to niebieski. Moje ulubione jedzenie to BACON, mogłem z łatwością zostać wegetarianinem, gdyby nie było to na bekonie !!
-
-Mam nadzieję, że możesz mi powiedzieć więcej szczegółów na temat twojej pracy, związku i przeszłości .........
-
-
-
-Mam nadzieję, że wkrótce skontaktuję się z Tobą .........
-
-Wes.
+>> ---
+>>  net/sunrpc/auth_gss/auth_gss.c |    1 +
+>>  1 file changed, 1 insertion(+)
+>>
+>> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+>> index 9463af4b32e8..44f939cb6bc8 100644
+>> --- a/net/sunrpc/auth_gss/auth_gss.c
+>> +++ b/net/sunrpc/auth_gss/auth_gss.c
+>> @@ -2063,6 +2063,7 @@ static __net_exit void rpcsec_gss_exit_net(struct net *net)
+>>  static struct pernet_operations rpcsec_gss_net_ops = {
+>>  	.init = rpcsec_gss_init_net,
+>>  	.exit = rpcsec_gss_exit_net,
+>> +	.async = true,
+>>  };
+>>  
+>>  /*
+>>
