@@ -1,57 +1,34 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:45060 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([173.255.197.46]:57540 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753199AbeC0QbC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Mar 2018 12:31:02 -0400
-Date: Tue, 27 Mar 2018 12:31:02 -0400 (EDT)
-From: Jianhong Yin <jiyin@redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: "Jianhong.Yin" <yin-jianhong@163.com>, linux-nfs@vger.kernel.org
-Message-ID: <464328612.13844650.1522168262083.JavaMail.zimbra@redhat.com>
-In-Reply-To: <20180327162711.GA13526@parsley.fieldses.org>
-References: <20180327064055.9559-1-yin-jianhong@163.com> <20180327162711.GA13526@parsley.fieldses.org>
-Subject: Re: [PATCH] [pynfs] remove redundant ply, gssapi and rpcgen.py
+        id S1750914AbeC0Sh0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Mar 2018 14:37:26 -0400
+Date: Tue, 27 Mar 2018 14:37:25 -0400
+To: "Jianhong.Yin" <yin-jianhong@163.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org,
+        Jianhong Yin <jiyin@redhat.com>
+Subject: Re: [PATCH 1/2] [pynfs] remove redundant ply, gssapi and rpcgen.py
  modules
+Message-ID: <20180327183725.GA22077@fieldses.org>
+References: <20180327172709.13071-1-yin-jianhong@163.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180327172709.13071-1-yin-jianhong@163.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Mar 28, 2018 at 01:27:08AM +0800, Jianhong.Yin wrote:
+> +Install dependent modules:
+> +	#Fedora: yum install krb5-devel python-devel swig python-pip
+> +	#Debian: apt-get install libkrb5-dev python-dev swig python-pip
+> +	pip install ply gssapi
 
------ 原始邮件 -----
-> 发件人: "J. Bruce Fields" <bfields@redhat.com>
-> 收件人: "Jianhong.Yin" <yin-jianhong@163.com>
-> 抄送: linux-nfs@vger.kernel.org, jiyin@redhat.com
-> 发送时间: 星期三, 2018年 3 月 28日 上午 12:27:11
-> 主题: Re: [PATCH] [pynfs] remove redundant ply, gssapi and rpcgen.py modules
-> 
-> Hm, I'm getting
-> 
-> Moving to nfs4.0
-> Traceback (most recent call last):
->   File "./setup.py", line 16, in <module>
->     import use_local
-> ImportError: No module named use_local
-> 
-> I guess that's due to this:
-yes, need install xdr first.
+I've never used pip.  Googling around, I see some people warn about
+potential conflicts between pip and rpm/dpkg.  Would it be better to
+recommend pip install --user?
 
-they are copied from nfs4.1/setup.py, I will investigate what's use_local
-> 
-> On Tue, Mar 27, 2018 at 02:40:55PM +0800, Jianhong.Yin wrote:
-> > diff --git a/nfs4.0/setup.py b/nfs4.0/setup.py
-> > index f17a1c9..d5d3ad8 100755
-> > --- a/nfs4.0/setup.py
-> > +++ b/nfs4.0/setup.py
-> > @@ -10,18 +10,20 @@ from distutils.core import setup, Extension
-> >  from distutils.dep_util import newer_group
-> >  import os
-> >  import glob
-> > +try:
-> > +    import xdrgen
-> > +except ImportError:
-> > +    import use_local
-> > +    import xdrgen
-> 
-> --b.
-> 
+Anyway, looks better than carrying our own copy around.  Applying,
+thanks!
+
+--b.
