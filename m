@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-it0-f68.google.com ([209.85.214.68]:35130 "EHLO
+Received: from mail-it0-f68.google.com ([209.85.214.68]:54108 "EHLO
         mail-it0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751349AbeC0OwT (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2018 10:52:19 -0400
-Received: by mail-it0-f68.google.com with SMTP id v194-v6so15640717itb.0
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2018 07:52:19 -0700 (PDT)
-Subject: [PATCH v2 09/18] sunrpc: Report per-RPC execution stats
+        with ESMTP id S1750898AbeC0Owu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2018 10:52:50 -0400
+Received: by mail-it0-f68.google.com with SMTP id m134-v6so10825080itb.3
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2018 07:52:50 -0700 (PDT)
+Subject: [PATCH v2 11/18] nfsd: Fix NFSD trace points
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 27 Mar 2018 10:51:39 -0400
-Message-ID: <20180327145139.7710.14287.stgit@oracle-ib-101.nfsv4bat.org>
+Date: Tue, 27 Mar 2018 10:52:43 -0400
+Message-ID: <20180327145243.7710.61728.stgit@oracle-ib-101.nfsv4bat.org>
 In-Reply-To: <20180327144420.7710.82288.stgit@oracle-ib-101.nfsv4bat.org>
 References: <20180327144420.7710.82288.stgit@oracle-ib-101.nfsv4bat.org>
 MIME-Version: 1.0
@@ -18,80 +18,55 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Introduce a mechanism to report the server-side execution latency of
-each RPC. The goal is to enable user space to filter the trace
-record for latency outliers, build histograms, etc.
+nfsd-1915  [003] 77915.780959: write_opened:
+	[FAILED TO PARSE] xid=3286130958 fh=0 offset=154624 len=1
+nfsd-1915  [003] 77915.780960: write_io_done:
+	[FAILED TO PARSE] xid=3286130958 fh=0 offset=154624 len=1
+nfsd-1915  [003] 77915.780964: write_done:
+	[FAILED TO PARSE] xid=3286130958 fh=0 offset=154624 len=1
+
+Byte swapping and knfsd_fh_hash() are not available in "trace-cmd
+report", where the print format string is actually used. These
+data transformations have to be done during the TP_fast_assign step.
 
 Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- include/linux/sunrpc/svc.h    |    1 +
- include/trace/events/sunrpc.h |   21 +++++++++++++++++++++
- net/sunrpc/svc_xprt.c         |    3 ++-
- 3 files changed, 24 insertions(+), 1 deletion(-)
+ fs/nfsd/trace.h |   17 +++++++++++------
+ 1 file changed, 11 insertions(+), 6 deletions(-)
 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 786ae22..3bd7504 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -283,6 +283,7 @@ struct svc_rqst {
- 	int			rq_reserved;	/* space on socket outq
- 						 * reserved for this request
- 						 */
-+	ktime_t			rq_stime;	/* start time */
- 
- 	struct cache_req	rq_chandle;	/* handle passed to caches for 
- 						 * request delaying 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index 5a8157c..1b383f7 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -705,6 +705,27 @@
- 		__entry->len, show_svc_xprt_flags(__entry->flags))
- );
- 
-+TRACE_EVENT(svc_stats_latency,
-+	TP_PROTO(const struct svc_rqst *rqst),
-+
-+	TP_ARGS(rqst),
-+
-+	TP_STRUCT__entry(
+diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
+index 8b2f1d9..3aa3f3b 100644
+--- a/fs/nfsd/trace.h
++++ b/fs/nfsd/trace.h
+@@ -18,19 +18,24 @@
+ 		 int		len),
+ 	TP_ARGS(rqstp, fhp, offset, len),
+ 	TP_STRUCT__entry(
+-		__field(__be32, xid)
+-		__field_struct(struct knfsd_fh, fh)
 +		__field(u32, xid)
-+		__field(unsigned long, execute)
-+		__string(addr, rqst->rq_xprt->xpt_remotebuf)
-+	),
++		__field(u32, fh_hash)
+ 		__field(loff_t, offset)
+ 		__field(int, len)
+ 	),
+ 	TP_fast_assign(
+-		__entry->xid = rqstp->rq_xid,
+-		fh_copy_shallow(&__entry->fh, &fhp->fh_handle);
++		__entry->xid = be32_to_cpu(rqstp->rq_xid);
++		do {
++			struct knfsd_fh fh;
 +
-+	TP_fast_assign(
-+		__entry->xid = be32_to_cpu(rqst->rq_xid);
-+		__entry->execute = ktime_to_us(ktime_sub(ktime_get(),
-+							 rqst->rq_stime));
-+		__assign_str(addr, rqst->rq_xprt->xpt_remotebuf);
-+	),
-+
-+	TP_printk("addr=%s xid=0x%08x execute-us=%lu",
-+		__get_str(addr), __entry->xid, __entry->execute)
-+);
++			fh_copy_shallow(&fh, &fhp->fh_handle);
++			__entry->fh_hash = knfsd_fh_hash(&fh);
++		} while (0);
+ 		__entry->offset = offset;
+ 		__entry->len = len;
+ 	),
+-	TP_printk("xid=0x%x fh=0x%x offset=%lld len=%d",
+-		  __be32_to_cpu(__entry->xid), knfsd_fh_hash(&__entry->fh),
++	TP_printk("xid=0x%08x fh_hash=0x%08x offset=%lld len=%d",
++		  __entry->xid, __entry->fh_hash,
+ 		  __entry->offset, __entry->len)
+ )
  
- DECLARE_EVENT_CLASS(svc_deferred_event,
- 	TP_PROTO(struct svc_deferred_req *dr),
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f745754..a7425da 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -782,7 +782,7 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
- 			len = svc_deferred_recv(rqstp);
- 		else
- 			len = xprt->xpt_ops->xpo_recvfrom(rqstp);
--		dprintk("svc: got len=%d\n", len);
-+		rqstp->rq_stime = ktime_get();
- 		rqstp->rq_reserved = serv->sv_max_mesg;
- 		atomic_add(rqstp->rq_reserved, &xprt->xpt_reserved);
- 	}
-@@ -888,6 +888,7 @@ int svc_send(struct svc_rqst *rqstp)
- 
- 	/* Grab mutex to serialize outgoing data. */
- 	mutex_lock(&xprt->xpt_mutex);
-+	trace_svc_stats_latency(rqstp);
- 	if (test_bit(XPT_DEAD, &xprt->xpt_flags)
- 			|| test_bit(XPT_CLOSE, &xprt->xpt_flags))
- 		len = -ENOTCONN;
 
