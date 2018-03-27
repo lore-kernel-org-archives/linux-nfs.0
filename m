@@ -1,88 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-pg0-f68.google.com ([74.125.83.68]:44281 "EHLO
-        mail-pg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752209AbeC0W3y (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2018 18:29:54 -0400
-Received: by mail-pg0-f68.google.com with SMTP id v26so181999pge.11
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2018 15:29:54 -0700 (PDT)
-Date: Tue, 27 Mar 2018 15:29:50 -0700
-From: Eric Biggers <ebiggers@google.com>
-To: Michael Young <m.a.young@durham.ac.uk>
-Cc: Herbert Xu <herbert@gondor.apana.org.au>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: NFS mounts failing when keytab present on client
-Message-ID: <20180327222950.GB257332@google.com>
-References: <alpine.LFD.2.21.1803272126070.3013@austen3.home>
+Received: from mx1.redhat.com ([209.132.183.28]:60652 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752279AbeC0XOH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Mar 2018 19:14:07 -0400
+Date: Tue, 27 Mar 2018 19:14:07 -0400 (EDT)
+From: Jianhong Yin <jiyin@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "Jianhong.Yin" <yin-jianhong@163.com>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org
+Message-ID: <1764206678.13920688.1522192447032.JavaMail.zimbra@redhat.com>
+In-Reply-To: <20180327183725.GA22077@fieldses.org>
+References: <20180327172709.13071-1-yin-jianhong@163.com> <20180327183725.GA22077@fieldses.org>
+Subject: Re: [PATCH 1/2] [pynfs] remove redundant ply, gssapi and rpcgen.py
+ modules
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.LFD.2.21.1803272126070.3013@austen3.home>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Michael,
+Good to know.
+will update README to inform users: they could use any/different methods to install these modules.
 
-On Tue, Mar 27, 2018 at 11:06:14PM +0100, Michael Young wrote:
-> NFS mounts stopped working on one of my computers after a kernel update from
-> 4.15.3 to 4.15.4. I traced the problem to the commit
-> [46e8d06e423c4f35eac7a8b677b713b3ec9b0684] crypto: hash - prevent using
-> keyed hashes without setting key
-> and a later kernel with this patch reverted works normally.
+Thanks!
+
+----- 原始邮件 -----
+> 发件人: "J. Bruce Fields" <bfields@fieldses.org>
+> 收件人: "Jianhong.Yin" <yin-jianhong@163.com>
+> 抄送: bfields@redhat.com, linux-nfs@vger.kernel.org, "Jianhong Yin" <jiyin@redhat.com>
+> 发送时间: 星期三, 2018年 3 月 28日 上午 2:37:25
+> 主题: Re: [PATCH 1/2] [pynfs] remove redundant ply, gssapi and rpcgen.py modules
 > 
-> The problem seems to be related to kerberos as the mount fails when the
-> keytab is present, but works if I rename the keytab file. This is true even
-> though the mount is with sec=sys . The mount should also work with sec=krb5
-> but that also fails in the same way. When the mount fails there are errors
-> in dmesg like
-> [ 1232.522816] gss_marshal: gss_get_mic FAILED (851968)
-> [ 1232.522819] RPC: couldn't encode RPC header, exit EIO
-> [ 1232.522856] gss_marshal: gss_get_mic FAILED (851968)
-> [ 1232.522857] RPC: couldn't encode RPC header, exit EIO
-> [ 1232.522863] NFS: nfs4_discover_server_trunking unhandled error -5.
-> Exiting with error EIO
-> [ 1232.525039] gss_marshal: gss_get_mic FAILED (851968)
-> [ 1232.525042] RPC: couldn't encode RPC header, exit EIO
+> On Wed, Mar 28, 2018 at 01:27:08AM +0800, Jianhong.Yin wrote:
+> > +Install dependent modules:
+> > +	#Fedora: yum install krb5-devel python-devel swig python-pip
+> > +	#Debian: apt-get install libkrb5-dev python-dev swig python-pip
+> > +	pip install ply gssapi
 > 
-> 	Michael Young
-
-Thanks for the bug report.  I think the error is coming from
-net/sunrpc/auth_gss/gss_krb5_crypto.c.  There are two potential problems I see.
-The first one, which is definitely a bug, is that make_checksum_hmac_md5()
-allocates an HMAC transform and request, then does these crypto API calls:
-
-	crypto_ahash_init()
-	crypto_ahash_setkey()
-	crypto_ahash_digest()
-
-This is wrong because it makes no sense to init() the HMAC request before the
-key has been set, and doubly so when it's calling digest() which is shorthand
-for init() + update() + final().  So I think it just needs to be removed.  You
-can test the following patch:
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-index 12649c9fedab..8654494b4d0a 100644
---- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-@@ -237,9 +237,6 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
- 
-        ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP, NULL, NULL);
- 
--       err = crypto_ahash_init(req);
--       if (err)
--               goto out;
-        err = crypto_ahash_setkey(hmac_md5, cksumkey, kctx->gk5e->keylength);
-        if (err)
-                goto out;
-
-If that's not it, it's also possible that the error is coming from the
-crypto_ahash_init() in make_checksum().  That can only happen if 'cksumkey' is
-NULL and the hash algorithm is keyed, which implies a logical error as it
-doesn't make sense to use a keyed hash algorithm without the key.  The callers
-do check kctx->gk5e->keyed_cksum which I'd hope would prevent this, though
-perhaps kctx->cksum can be NULL.
-
-Eric
+> I've never used pip.  Googling around, I see some people warn about
+> potential conflicts between pip and rpm/dpkg.  Would it be better to
+> recommend pip install --user?
+> 
+> Anyway, looks better than carrying our own copy around.  Applying,
+> thanks!
+> 
+> --b.
+> 
