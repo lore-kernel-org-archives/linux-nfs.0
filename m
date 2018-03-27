@@ -1,52 +1,79 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f193.google.com ([209.85.223.193]:37786 "EHLO
-        mail-io0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752344AbeC0Ota (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2018 10:49:30 -0400
-Received: by mail-io0-f193.google.com with SMTP id y128so27931072iod.4
-        for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2018 07:49:30 -0700 (PDT)
-Subject: [PATCH v2 01/18] sunrpc: Remove unneeded pointer dereference
+Received: from mail-io0-f170.google.com ([209.85.223.170]:41652 "EHLO
+        mail-io0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751138AbeC0OtP (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2018 10:49:15 -0400
+Received: by mail-io0-f170.google.com with SMTP id m83so27898435ioi.8
+        for <linux-nfs@vger.kernel.org>; Tue, 27 Mar 2018 07:49:14 -0700 (PDT)
+Subject: [PATCH v2 00/18] NFS/RDMA server for v4.17
 From: Chuck Lever <chuck.lever@oracle.com>
 To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org
-Date: Tue, 27 Mar 2018 10:49:22 -0400
-Message-ID: <20180327144922.7710.36847.stgit@oracle-ib-101.nfsv4bat.org>
-In-Reply-To: <20180327144420.7710.82288.stgit@oracle-ib-101.nfsv4bat.org>
-References: <20180327144420.7710.82288.stgit@oracle-ib-101.nfsv4bat.org>
+Date: Tue, 27 Mar 2018 10:49:07 -0400
+Message-ID: <20180327144420.7710.82288.stgit@oracle-ib-101.nfsv4bat.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Noticed during code inspection that there is already a
-local automatic variable "xprt" so dereferencing rqst->rq_xprt
-again is unnecessary.
+Hi Bruce-
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Here's a revision of the first two "for v4.17" patchsets I sent you
+a couple of weeks ago. This series includes fixes for NFSD and
+server-side RPC trace points, and the write and symlink XDR decoder
+clean up patches.
+
+
+Changes since v1:
+- svc_process latency report no longer includes transport latency
+- new separate report of transport queuing latency
+- fix bug when reading holes over NFSv4
+- NFSv4-related hunks removed from the XDR decoder clean up patches
+
 ---
- net/sunrpc/svc_xprt.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index f9307bd..6dca0f5 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -492,7 +492,7 @@ static void svc_xprt_release(struct svc_rqst *rqstp)
- {
- 	struct svc_xprt	*xprt = rqstp->rq_xprt;
- 
--	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
-+	xprt->xpt_ops->xpo_release_rqst(rqstp);
- 
- 	kfree(rqstp->rq_deferred);
- 	rqstp->rq_deferred = NULL;
-@@ -889,7 +889,7 @@ int svc_send(struct svc_rqst *rqstp)
- 		goto out;
- 
- 	/* release the receive skb before sending the reply */
--	rqstp->rq_xprt->xpt_ops->xpo_release_rqst(rqstp);
-+	xprt->xpt_ops->xpo_release_rqst(rqstp);
- 
- 	/* calculate over-all length */
- 	xb = &rqstp->rq_res;
+Chuck Lever (18):
+      sunrpc: Remove unneeded pointer dereference
+      svc: Simplify ->xpo_secure_port
+      sunrpc: Update show_svc_xprt_flags() to include recently added flags
+      sunrpc: Move trace_svc_xprt_dequeue()
+      sunrpc: Simplify do_enqueue tracing
+      sunrpc: Simplify trace_svc_recv
+      sunrpc: Save remote presentation address in svc_xprt for trace events
+      sunrpc: Re-purpose trace_svc_process
+      sunrpc: Report per-RPC execution stats
+      svc: Report xprt dequeue latency
+      nfsd: Fix NFSD trace points
+      nfsd: Record request byte count, not count of vectors
+      nfsd: Add "nfsd_" to trace point names
+      nfsd: Add I/O trace points in the NFSv4 write path
+      nfsd: Add I/O trace points in the NFSv4 read proc
+      nfsd: Trace NFSv4 COMPOUND execution
+      NFSD: Clean up legacy NFS WRITE argument XDR decoders
+      NFSD: Clean up legacy NFS SYMLINK argument XDR decoders
 
+
+ fs/nfsd/nfs3proc.c                       |   18 ++-
+ fs/nfsd/nfs3xdr.c                        |   67 ++--------
+ fs/nfsd/nfs4layouts.c                    |   16 +-
+ fs/nfsd/nfs4proc.c                       |   25 ++--
+ fs/nfsd/nfs4xdr.c                        |   56 ++++++--
+ fs/nfsd/nfsproc.c                        |   23 ++-
+ fs/nfsd/nfsxdr.c                         |   63 +++++----
+ fs/nfsd/trace.h                          |   98 +++++++++++++-
+ fs/nfsd/vfs.c                            |   85 ++++++-------
+ fs/nfsd/vfs.h                            |    8 +
+ fs/nfsd/xdr.h                            |    3 
+ fs/nfsd/xdr3.h                           |    3 
+ fs/nfsd/xdr4.h                           |    2 
+ include/linux/sunrpc/svc.h               |    6 +
+ include/linux/sunrpc/svc_xprt.h          |    6 +
+ include/trace/events/sunrpc.h            |  204 ++++++++++++++++++------------
+ net/sunrpc/svc.c                         |  118 ++++++++++++++++-
+ net/sunrpc/svc_xprt.c                    |   34 ++---
+ net/sunrpc/svcsock.c                     |    8 +
+ net/sunrpc/xprtrdma/svc_rdma_transport.c |   10 +
+ 20 files changed, 545 insertions(+), 308 deletions(-)
+
+--
+Chuck Lever
