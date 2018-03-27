@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:56884 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:57310 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752444AbeC0Rh1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Mar 2018 13:37:27 -0400
+        id S1752384AbeC0RoC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 27 Mar 2018 13:44:02 -0400
 From: "Jianhong.Yin" <yin-jianhong@163.com>
 To: bfields@redhat.com
 Cc: linux-nfs@vger.kernel.org, "Jianhong.Yin" <yin-jianhong@163.com>
-Subject: [PATCH 2/2] [pynfs] fix nfs4.1/use_local.py && add symlink nfs4.0/use_local.py
-Date: Wed, 28 Mar 2018 01:37:21 +0800
-Message-Id: <20180327173721.13182-1-yin-jianhong@163.com>
+Subject: [PATCH 2/2] [pynfs] fix nfs4.1/use_local.py; and add symlink to it in nfs4.0
+Date: Wed, 28 Mar 2018 01:43:57 +0800
+Message-Id: <20180327174357.13255-1-yin-jianhong@163.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
