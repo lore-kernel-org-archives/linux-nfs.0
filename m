@@ -1,73 +1,60 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f194.google.com ([209.85.223.194]:42175 "EHLO
-        mail-io0-f194.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751135AbeC1QSb (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2018 12:18:31 -0400
-Received: by mail-io0-f194.google.com with SMTP id d5so4189300iob.9
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2018 09:18:31 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: "J . Bruce Fields" <bfields@fieldses.org>
+Received: from mx1.pingtimeout.net ([87.108.18.35]:50997 "EHLO
+        mx1.pingtimeout.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752070AbeC1QtH (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2018 12:49:07 -0400
+Subject: Re: Regarding client fairness
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: Do not refuse to serve out of cache
-Date: Wed, 28 Mar 2018 12:18:01 -0400
-Message-Id: <20180328161801.8360-1-trond.myklebust@primarydata.com>
+References: <f9c6c1c493d0dde6c4a24afeca00fa5b@pingtimeout.net>
+ <20180328145406.GA2641@fieldses.org> <20180328145930.GB2641@fieldses.org>
+ <4abd5e4f-2992-730b-8d44-5e611a3a2451@pingtimeout.net>
+ <20180328155801.GA3354@fieldses.org>
+From: =?UTF-8?B?QW50dGkgVMO2bmt5csOk?= <daedalus@pingtimeout.net>
+Message-ID: <29dabd12-aa86-0be2-133a-71611f42a735@pingtimeout.net>
+Date: Wed, 28 Mar 2018 19:49:01 +0300
 MIME-Version: 1.0
+In-Reply-To: <20180328155801.GA3354@fieldses.org>
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently the knfsd replay cache appears to try to refuse replying to
-retries that come within 200ms of the cache entry being created. That
-makes limited sense in today's world of high speed TCP.
+On 2018-03-28 18:58, J. Bruce Fields wrote:
+> On Wed, Mar 28, 2018 at 06:35:53PM +0300, Antti Tönkyrä wrote:
+>> On 2018-03-28 17:59, J. Bruce Fields wrote:
+>>> On Wed, Mar 28, 2018 at 10:54:06AM -0400, bfields wrote:
+>>>> On Wed, Mar 28, 2018 at 02:04:57PM +0300, daedalus@pingtimeout.net wrote:
+>>>>> I came across a rather annoying issue where a single NFS client
+>>>>> caused resource starvation for NFS server. The server has several
+>>>>> storage pools which are used, in this particular case a single
+>>>>> client did fairly large read requests and effectively ate all nfsd
+>>>>> threads on the server and during that other clients were getting
+>>>>> hardly any I/O through to the other storage pool which was
+>>>>> completely idle.
+>>>> What version of the kernel are you running on your server?
+>> 4.15.10 on the system I am testing on.
+>>> I'm thinking that if it includes upstream 637600f3ffbf "SUNRPC: Change
+>>> TCP socket space reservation" (in upstream 4.8), then you may want to
+>>> experiment setting the sunrpc.svc_rpc_per_connection_limit module
+>>> parameter added in ff3ac5c3dc23 "SUNRPC: Add a server side
+>>> per-connection limit".
+>>>
+>>> You probably want to experiment with values greater than 0 (the default,
+>>> no limit) and the number of server threads.
+>> That helps for the client slowing down the whole server, thanks for
+>> the tip!
+> We should probably revisit 637600f3ffbf "SUNRPC: Change TCP socket space
+> reservation".  There's got to be some way to keep high bandwidth pipes
+> filled with read data without introducing this problem where a single
+> client can tie up every server thread.
+>
+> Just out of curiosity, do you know (approximately) the network and disk
+> bandwidth in this case?
+>
+> --b.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/cache.h    | 5 -----
- fs/nfsd/nfscache.c | 6 ++----
- 2 files changed, 2 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
-index 046b3f048757..b7559c6f2b97 100644
---- a/fs/nfsd/cache.h
-+++ b/fs/nfsd/cache.h
-@@ -67,11 +67,6 @@ enum {
- 	RC_REPLBUFF,
- };
- 
--/*
-- * If requests are retransmitted within this interval, they're dropped.
-- */
--#define RC_DELAY		(HZ/5)
--
- /* Cache entries expire after this time period */
- #define RC_EXPIRE		(120 * HZ)
- 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 334f2ad60704..637f87c39183 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -394,7 +394,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 	__wsum			csum;
- 	u32 hash = nfsd_cache_hash(xid);
- 	struct nfsd_drc_bucket *b = &drc_hashtbl[hash];
--	unsigned long		age;
- 	int type = rqstp->rq_cachetype;
- 	int rtn = RC_DOIT;
- 
-@@ -461,12 +460,11 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- found_entry:
- 	nfsdstats.rchits++;
- 	/* We found a matching entry which is either in progress or done. */
--	age = jiffies - rp->c_timestamp;
- 	lru_put_end(b, rp);
- 
- 	rtn = RC_DROPIT;
--	/* Request being processed or excessive rexmits */
--	if (rp->c_state == RC_INPROG || age < RC_DELAY)
-+	/* Request being processed */
-+	if (rp->c_state == RC_INPROG)
- 		goto out;
- 
- 	/* From the hall of fame of impractical attacks:
--- 
-2.14.3
-
+Locally I can read at about 150-200MB/s (two spindles in mirror). 
+Additionally I have another mount which is a NVMe drive which performs 
+ >500MB/s which I used to verify that I was not bottlenecked when 
+running the dd read test which tied up the server threads. Network 
+bandwidth is 10Gbps.
