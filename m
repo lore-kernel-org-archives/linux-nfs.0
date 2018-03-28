@@ -1,76 +1,73 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:55402 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752694AbeC1Usi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Mar 2018 16:48:38 -0400
-From: "Benjamin Coddington" <bcodding@redhat.com>
-To: chendt <chendt.fnst@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org,
-        "Trond Myklebust" <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH] NFSv3/acl: forget acl cache after setattr
-Date: Wed, 28 Mar 2018 16:48:36 -0400
-Message-ID: <DE56FEF6-A0F6-4584-B6B5-517FDCE80531@redhat.com>
-In-Reply-To: <ca4d7366-bc4c-1710-13a2-f99510c53be4@cn.fujitsu.com>
-References: <ca4d7366-bc4c-1710-13a2-f99510c53be4@cn.fujitsu.com>
+Received: from fieldses.org ([173.255.197.46]:59838 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752090AbeC1VMS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Mar 2018 17:12:18 -0400
+Date: Wed, 28 Mar 2018 17:12:17 -0400
+From: "J . Bruce Fields" <bfields@fieldses.org>
+To: Eric Biggers <ebiggers@google.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-crypto@vger.kernel.org,
+        Herbert Xu <herbert@gondor.apana.org.au>,
+        Michael Young <m.a.young@durham.ac.uk>, stable@vger.kernel.org
+Subject: Re: [PATCH] sunrpc: remove incorrect HMAC request initialization
+Message-ID: <20180328211217.GA7111@fieldses.org>
+References: <20180328175722.193355-1-ebiggers@google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180328175722.193355-1-ebiggers@google.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I'm seeing this on xfstests generic/099 as well. Do we want to use 
-nfs_zap_acl_cache() instead so that we clear NFS_INO_INVALID_ACL?
+Applying, thanks!--b.
 
-Ben
-
-On 28 Mar 2018, at 6:12, chendt wrote:
-
-> Sync of ACL with std permissions fail，do We need to forget the ACL
-> cache after setattr?
->
-> Reproduction:
-> #!/bin/bash
-> touch testfile
-> cat <<EOF >testfile
-> #!/bin/bash
-> echo "Test was executed"
-> EOF
-> chmod u=rwx testfile
-> chmod g=rw- testfile
-> chmod o=r-- testfile
->
-> chacl u::r--,g::rwx,o:rw- testfile
-> chmod u+w testfile
-> ls -ln testfile
-> chacl -l testfile
->
-> Output：
-> -rw-rwxrw- 1 root root 0 Mar 28 05:29 testfile
-> testfile [u::r--,g::rwx,o::rw-]
->
-> Signed-off-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
+On Wed, Mar 28, 2018 at 10:57:22AM -0700, Eric Biggers wrote:
+> make_checksum_hmac_md5() is allocating an HMAC transform and doing
+> crypto API calls in the following order:
+> 
+>     crypto_ahash_init()
+>     crypto_ahash_setkey()
+>     crypto_ahash_digest()
+> 
+> This is wrong because it makes no sense to init() the request before a
+> key has been set, given that the initial state depends on the key.  And
+> digest() is short for init() + update() + final(), so in this case
+> there's no need to explicitly call init() at all.
+> 
+> Before commit 9fa68f620041 ("crypto: hash - prevent using keyed hashes
+> without setting key") the extra init() had no real effect, at least for
+> the software HMAC implementation.  (There are also hardware drivers that
+> implement HMAC-MD5, and it's not immediately obvious how gracefully they
+> handle init() before setkey().)  But now the crypto API detects this
+> incorrect initialization and returns -ENOKEY.  This is breaking NFS
+> mounts in some cases.
+> 
+> Fix it by removing the incorrect call to crypto_ahash_init().
+> 
+> Reported-by: Michael Young <m.a.young@durham.ac.uk>
+> Fixes: 9fa68f620041 ("crypto: hash - prevent using keyed hashes without setting key")
+> Fixes: fffdaef2eb4a ("gss_krb5: Add support for rc4-hmac encryption")
+> Cc: stable@vger.kernel.org
+> Signed-off-by: Eric Biggers <ebiggers@google.com>
 > ---
->  fs/nfs/nfs3proc.c | 1 +
->  1 file changed, 1 insertion(+)
->
-> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-> index 7327930..ef3e17c 100644
-> --- a/fs/nfs/nfs3proc.c
-> +++ b/fs/nfs/nfs3proc.c
-> @@ -140,6 +140,7 @@
->  	status = rpc_call_sync(NFS_CLIENT(inode), &msg, 0);
->  	if (status == 0)
->  		nfs_setattr_update_inode(inode, sattr, fattr);
-> +		forget_all_cached_acls(inode);
->  	dprintk("NFS reply setattr: %d\n", status);
->  	return status;
->  }
+>  net/sunrpc/auth_gss/gss_krb5_crypto.c | 3 ---
+>  1 file changed, 3 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> index 12649c9fedab..8654494b4d0a 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> @@ -237,9 +237,6 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+>  
+>  	ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP, NULL, NULL);
+>  
+> -	err = crypto_ahash_init(req);
+> -	if (err)
+> -		goto out;
+>  	err = crypto_ahash_setkey(hmac_md5, cksumkey, kctx->gk5e->keylength);
+>  	if (err)
+>  		goto out;
 > -- 
-> 1.8.3.1
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 2.17.0.rc1.321.gba9d0f2565-goog
