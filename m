@@ -1,223 +1,101 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-io0-f195.google.com ([209.85.223.195]:35507 "EHLO
-        mail-io0-f195.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752090AbeC1R3U (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2018 13:29:20 -0400
-Received: by mail-io0-f195.google.com with SMTP id e7so4479092iof.2
-        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2018 10:29:20 -0700 (PDT)
-Subject: [PATCH v3] nfsd: Add I/O trace points in the NFSv4 read proc
-From: Chuck Lever <chuck.lever@oracle.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 28 Mar 2018 13:29:11 -0400
-Message-ID: <20180328172741.10746.19214.stgit@oracle-ib-101.nfsv4bat.org>
+Received: from mail-pg0-f54.google.com ([74.125.83.54]:46266 "EHLO
+        mail-pg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752349AbeC1RsA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2018 13:48:00 -0400
+Received: by mail-pg0-f54.google.com with SMTP id t12so1227765pgp.13
+        for <linux-nfs@vger.kernel.org>; Wed, 28 Mar 2018 10:48:00 -0700 (PDT)
+Date: Wed, 28 Mar 2018 10:47:57 -0700
+From: Eric Biggers <ebiggers@google.com>
+To: M A Young <m.a.young@durham.ac.uk>
+Cc: Herbert Xu <herbert@gondor.apana.org.au>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS mounts failing when keytab present on client
+Message-ID: <20180328174757.GA185597@google.com>
+References: <alpine.LFD.2.21.1803272126070.3013@austen3.home>
+ <20180327222950.GB257332@google.com>
+ <alpine.LFD.2.21.1803280857200.2500@algedi.dur.ac.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.LFD.2.21.1803280857200.2500@algedi.dur.ac.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFSv4 read compound processing invokes nfsd_splice_read and
-nfs_readv directly, so the trace points currently in nfsd_read are
-not invoked for NFSv4 reads.
+On Wed, Mar 28, 2018 at 09:00:14AM +0100, M A Young wrote:
+> On Tue, 27 Mar 2018, Eric Biggers wrote:
+> 
+> > Hi Michael,
+> > 
+> > On Tue, Mar 27, 2018 at 11:06:14PM +0100, Michael Young wrote:
+> > > NFS mounts stopped working on one of my computers after a kernel update from
+> > > 4.15.3 to 4.15.4. I traced the problem to the commit
+> > > [46e8d06e423c4f35eac7a8b677b713b3ec9b0684] crypto: hash - prevent using
+> > > keyed hashes without setting key
+> > > and a later kernel with this patch reverted works normally.
+> > > 
+> > > The problem seems to be related to kerberos as the mount fails when the
+> > > keytab is present, but works if I rename the keytab file. This is true even
+> > > though the mount is with sec=sys . The mount should also work with sec=krb5
+> > > but that also fails in the same way. When the mount fails there are errors
+> > > in dmesg like
+> > > [ 1232.522816] gss_marshal: gss_get_mic FAILED (851968)
+> > > [ 1232.522819] RPC: couldn't encode RPC header, exit EIO
+> > > [ 1232.522856] gss_marshal: gss_get_mic FAILED (851968)
+> > > [ 1232.522857] RPC: couldn't encode RPC header, exit EIO
+> > > [ 1232.522863] NFS: nfs4_discover_server_trunking unhandled error -5.
+> > > Exiting with error EIO
+> > > [ 1232.525039] gss_marshal: gss_get_mic FAILED (851968)
+> > > [ 1232.525042] RPC: couldn't encode RPC header, exit EIO
+> > > 
+> > > 	Michael Young
+> > 
+> > Thanks for the bug report.  I think the error is coming from
+> > net/sunrpc/auth_gss/gss_krb5_crypto.c.  There are two potential problems I see.
+> > The first one, which is definitely a bug, is that make_checksum_hmac_md5()
+> > allocates an HMAC transform and request, then does these crypto API calls:
+> > 
+> > 	crypto_ahash_init()
+> > 	crypto_ahash_setkey()
+> > 	crypto_ahash_digest()
+> > 
+> > This is wrong because it makes no sense to init() the HMAC request before the
+> > key has been set, and doubly so when it's calling digest() which is shorthand
+> > for init() + update() + final().  So I think it just needs to be removed.  You
+> > can test the following patch:
+> > 
+> > diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> > index 12649c9fedab..8654494b4d0a 100644
+> > --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> > +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> > @@ -237,9 +237,6 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+> >  
+> >         ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP, NULL, NULL);
+> >  
+> > -       err = crypto_ahash_init(req);
+> > -       if (err)
+> > -               goto out;
+> >         err = crypto_ahash_setkey(hmac_md5, cksumkey, kctx->gk5e->keylength);
+> >         if (err)
+> >                 goto out;
+> > 
+> > If that's not it, it's also possible that the error is coming from the
+> > crypto_ahash_init() in make_checksum().  That can only happen if 'cksumkey' is
+> > NULL and the hash algorithm is keyed, which implies a logical error as it
+> > doesn't make sense to use a keyed hash algorithm without the key.  The callers
+> > do check kctx->gk5e->keyed_cksum which I'd hope would prevent this, though
+> > perhaps kctx->cksum can be NULL.
+> > 
+> > Eric
+> 
+> The patch fixes the problem.
+> 
+> 	Michael Young
 
-Move the NFSD READ trace points to common helpers so that NFSv4
-reads are captured.
+Okay, thanks for testing!  I'll send a formal patch.
 
-Also, record any local I/O error that occurs, the total count of
-bytes that were actually returned, and whether splice or vectored
-read was used.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-Hi Bruce-
-
-This version replaces v2 "nfsd: Add I/O trace points in the NFSv4
-read proc".
-
-Changes since v2:
-- Ensure NFSv4 and legacy NFS READ encoders behave the same
-
-
- fs/nfsd/nfs4proc.c |    5 +++++
- fs/nfsd/nfs4xdr.c  |   10 ++++++----
- fs/nfsd/trace.h    |    4 +++-
- fs/nfsd/vfs.c      |   34 ++++++++++++++++++----------------
- fs/nfsd/vfs.h      |   11 +++++++----
- 5 files changed, 39 insertions(+), 25 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index b93673e..39016b6 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -751,6 +751,9 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
- 	if (read->rd_offset >= OFFSET_MAX)
- 		return nfserr_inval;
- 
-+	trace_nfsd_read_start(rqstp, &cstate->current_fh,
-+			      read->rd_offset, read->rd_length);
-+
- 	/*
- 	 * If we do a zero copy read, then a client will see read data
- 	 * that reflects the state of the file *after* performing the
-@@ -783,6 +786,8 @@ static __be32 nfsd4_do_lookupp(struct svc_rqst *rqstp, struct svc_fh *fh)
- {
- 	if (u->read.rd_filp)
- 		fput(u->read.rd_filp);
-+	trace_nfsd_read_done(u->read.rd_rqstp, u->read.rd_fhp,
-+			     u->read.rd_offset, u->read.rd_length);
- }
- 
- static __be32
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e502fd1..f99d426 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3427,8 +3427,9 @@ static __be32 nfsd4_encode_splice_read(
- 		return nfserr_resource;
- 
- 	len = maxcount;
--	nfserr = nfsd_splice_read(read->rd_rqstp, file,
--				  read->rd_offset, &maxcount);
-+	nfserr = nfsd_splice_read(read->rd_rqstp, read->rd_fhp,
-+				  file, read->rd_offset, &maxcount);
-+	read->rd_length = maxcount;
- 	if (nfserr) {
- 		/*
- 		 * nfsd_splice_actor may have already messed with the
-@@ -3511,8 +3512,9 @@ static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
- 	read->rd_vlen = v;
- 
- 	len = maxcount;
--	nfserr = nfsd_readv(file, read->rd_offset, resp->rqstp->rq_vec,
--			read->rd_vlen, &maxcount);
-+	nfserr = nfsd_readv(resp->rqstp, read->rd_fhp, file, read->rd_offset,
-+			    resp->rqstp->rq_vec, read->rd_vlen, &maxcount);
-+	read->rd_length = maxcount;
- 	if (nfserr)
- 		return nfserr;
- 	xdr_truncate_encode(xdr, starting_len + 8 + ((maxcount+3)&~3));
-diff --git a/fs/nfsd/trace.h b/fs/nfsd/trace.h
-index 653e9ee..a8bbd9d 100644
---- a/fs/nfsd/trace.h
-+++ b/fs/nfsd/trace.h
-@@ -43,7 +43,8 @@
- 	TP_ARGS(rqstp, fhp, offset, len))
- 
- DEFINE_NFSD_IO_EVENT(read_start);
--DEFINE_NFSD_IO_EVENT(read_opened);
-+DEFINE_NFSD_IO_EVENT(read_splice);
-+DEFINE_NFSD_IO_EVENT(read_vector);
- DEFINE_NFSD_IO_EVENT(read_io_done);
- DEFINE_NFSD_IO_EVENT(read_done);
- DEFINE_NFSD_IO_EVENT(write_start);
-@@ -82,6 +83,7 @@
- 		 int		len),		\
- 	TP_ARGS(rqstp, fhp, offset, len))
- 
-+DEFINE_NFSD_ERR_EVENT(read_err);
- DEFINE_NFSD_ERR_EVENT(write_err);
- 
- #include "state.h"
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ee59a0b..2410b09 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -881,20 +881,24 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
- 	return __splice_from_pipe(pipe, sd, nfsd_splice_actor);
- }
- 
--static __be32
--nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
-+static __be32 nfsd_finish_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+			       struct file *file, loff_t offset,
-+			       unsigned long *count, int host_err)
- {
- 	if (host_err >= 0) {
- 		nfsdstats.io_read += host_err;
- 		*count = host_err;
- 		fsnotify_access(file);
-+		trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
- 		return 0;
--	} else 
-+	} else {
-+		trace_nfsd_read_err(rqstp, fhp, offset, host_err);
- 		return nfserrno(host_err);
-+	}
- }
- 
--__be32 nfsd_splice_read(struct svc_rqst *rqstp,
--		     struct file *file, loff_t offset, unsigned long *count)
-+__be32 nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+			struct file *file, loff_t offset, unsigned long *count)
- {
- 	struct splice_desc sd = {
- 		.len		= 0,
-@@ -904,21 +908,23 @@ __be32 nfsd_splice_read(struct svc_rqst *rqstp,
- 	};
- 	int host_err;
- 
-+	trace_nfsd_read_splice(rqstp, fhp, offset, *count);
- 	rqstp->rq_next_page = rqstp->rq_respages + 1;
- 	host_err = splice_direct_to_actor(file, &sd, nfsd_direct_splice_actor);
--	return nfsd_finish_read(file, count, host_err);
-+	return nfsd_finish_read(rqstp, fhp, file, offset, count, host_err);
- }
- 
--__be32 nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
--		unsigned long *count)
-+__be32 nfsd_readv(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+		  struct file *file, loff_t offset,
-+		  struct kvec *vec, int vlen, unsigned long *count)
- {
- 	struct iov_iter iter;
- 	int host_err;
- 
-+	trace_nfsd_read_vector(rqstp, fhp, offset, *count);
- 	iov_iter_kvec(&iter, READ | ITER_KVEC, vec, vlen, *count);
- 	host_err = vfs_iter_read(file, &iter, &offset, 0);
--
--	return nfsd_finish_read(file, count, host_err);
-+	return nfsd_finish_read(rqstp, fhp, file, offset, count, host_err);
- }
- 
- /*
-@@ -1034,14 +1040,10 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 
- 	ra = nfsd_init_raparms(file);
- 
--	trace_nfsd_read_opened(rqstp, fhp, offset, *count);
--
- 	if (file->f_op->splice_read && test_bit(RQ_SPLICE_OK, &rqstp->rq_flags))
--		err = nfsd_splice_read(rqstp, file, offset, count);
-+		err = nfsd_splice_read(rqstp, fhp, file, offset, count);
- 	else
--		err = nfsd_readv(file, offset, vec, vlen, count);
--
--	trace_nfsd_read_io_done(rqstp, fhp, offset, *count);
-+		err = nfsd_readv(rqstp, fhp, file, offset, vec, vlen, count);
- 
- 	if (ra)
- 		nfsd_put_raparams(file, ra);
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index be6d8e0..a7e1073 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -78,10 +78,13 @@ __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
- 				int, struct file **);
- struct raparms;
--__be32		nfsd_splice_read(struct svc_rqst *,
--				struct file *, loff_t, unsigned long *);
--__be32		nfsd_readv(struct file *, loff_t, struct kvec *, int,
--				unsigned long *);
-+__be32		nfsd_splice_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+				struct file *file, loff_t offset,
-+				unsigned long *count);
-+__be32		nfsd_readv(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+				struct file *file, loff_t offset,
-+				struct kvec *vec, int vlen,
-+				unsigned long *count);
- __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *, int, unsigned long *);
- __be32 		nfsd_write(struct svc_rqst *, struct svc_fh *, loff_t,
-
+Eric
