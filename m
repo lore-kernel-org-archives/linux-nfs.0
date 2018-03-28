@@ -1,104 +1,51 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59234 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59250 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753816AbeC1Pq2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Mar 2018 11:46:28 -0400
-Date: Wed, 28 Mar 2018 11:46:28 -0400
+        id S1753949AbeC1Pry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Mar 2018 11:47:54 -0400
+Date: Wed, 28 Mar 2018 11:47:54 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Eric Biggers <ebiggers@google.com>
-Cc: Michael Young <m.a.young@durham.ac.uk>,
-        Herbert Xu <herbert@gondor.apana.org.au>,
-        Jeff Layton <jlayton@kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: NFS mounts failing when keytab present on client
-Message-ID: <20180328154628.GA3038@fieldses.org>
-References: <alpine.LFD.2.21.1803272126070.3013@austen3.home>
- <20180327222950.GB257332@google.com>
+To: Antti =?utf-8?B?VMO2bmt5csOk?= <daedalus@pingtimeout.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Regarding client fairness
+Message-ID: <20180328154754.GB3038@fieldses.org>
+References: <f9c6c1c493d0dde6c4a24afeca00fa5b@pingtimeout.net>
+ <20180328145406.GA2641@fieldses.org>
+ <20180328145930.GB2641@fieldses.org>
+ <4abd5e4f-2992-730b-8d44-5e611a3a2451@pingtimeout.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180327222950.GB257332@google.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <4abd5e4f-2992-730b-8d44-5e611a3a2451@pingtimeout.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 27, 2018 at 03:29:50PM -0700, Eric Biggers wrote:
-> Hi Michael,
-> 
-> On Tue, Mar 27, 2018 at 11:06:14PM +0100, Michael Young wrote:
-> > NFS mounts stopped working on one of my computers after a kernel update from
-> > 4.15.3 to 4.15.4. I traced the problem to the commit
-> > [46e8d06e423c4f35eac7a8b677b713b3ec9b0684] crypto: hash - prevent using
-> > keyed hashes without setting key
-> > and a later kernel with this patch reverted works normally.
-> > 
-> > The problem seems to be related to kerberos as the mount fails when the
-> > keytab is present, but works if I rename the keytab file. This is true even
-> > though the mount is with sec=sys . The mount should also work with sec=krb5
-> > but that also fails in the same way. When the mount fails there are errors
-> > in dmesg like
-> > [ 1232.522816] gss_marshal: gss_get_mic FAILED (851968)
-> > [ 1232.522819] RPC: couldn't encode RPC header, exit EIO
-> > [ 1232.522856] gss_marshal: gss_get_mic FAILED (851968)
-> > [ 1232.522857] RPC: couldn't encode RPC header, exit EIO
-> > [ 1232.522863] NFS: nfs4_discover_server_trunking unhandled error -5.
-> > Exiting with error EIO
-> > [ 1232.525039] gss_marshal: gss_get_mic FAILED (851968)
-> > [ 1232.525042] RPC: couldn't encode RPC header, exit EIO
-> > 
-> > 	Michael Young
-> 
-> Thanks for the bug report.  I think the error is coming from
-> net/sunrpc/auth_gss/gss_krb5_crypto.c.  There are two potential problems I see.
-> The first one, which is definitely a bug, is that make_checksum_hmac_md5()
-> allocates an HMAC transform and request, then does these crypto API calls:
-> 
-> 	crypto_ahash_init()
-> 	crypto_ahash_setkey()
-> 	crypto_ahash_digest()
-> 
-> This is wrong because it makes no sense to init() the HMAC request before the
-> key has been set, and doubly so when it's calling digest() which is shorthand
-> for init() + update() + final().  So I think it just needs to be removed.  You
-> can test the following patch:
+On Wed, Mar 28, 2018 at 06:35:53PM +0300, Antti Tönkyrä wrote:
+> On 2018-03-28 17:59, J. Bruce Fields wrote:
+> >On Wed, Mar 28, 2018 at 10:54:06AM -0400, bfields wrote:
+> >>On Wed, Mar 28, 2018 at 02:04:57PM +0300, daedalus@pingtimeout.net wrote:
+> >>>I came across a rather annoying issue where a single NFS client
+> >>>caused resource starvation for NFS server. The server has several
+> >>>storage pools which are used, in this particular case a single
+> >>>client did fairly large read requests and effectively ate all nfsd
+> >>>threads on the server and during that other clients were getting
+> >>>hardly any I/O through to the other storage pool which was
+> >>>completely idle.
+> >>What version of the kernel are you running on your server?
+> 4.15.10 on the system I am testing on.
+> >I'm thinking that if it includes upstream 637600f3ffbf "SUNRPC: Change
+> >TCP socket space reservation" (in upstream 4.8), then you may want to
+> >experiment setting the sunrpc.svc_rpc_per_connection_limit module
+> >parameter added in ff3ac5c3dc23 "SUNRPC: Add a server side
+> >per-connection limit".
+> >
+> >You probably want to experiment with values greater than 0 (the default,
+> >no limit) and the number of server threads.
+> That helps for the client slowing down the whole server, thanks for
+> the tip! Of course this doesn't help with the case of client
+> accessing 2 different shares on the same server but that is
+> something I can work around.
 
-When was this introduced? 
-
-3b5cf20cf439 "sunrpc: Use skcipher and ahash/shash"
-	- probably not, assuming the above was still just as wrong with
-	  crypto_hash_{init,setkey,digest} as it is with
-	  crypto_ahash_{init,setkey,digest}
-
-So I'm guessing it was wrong from the start when it was added by
-fffdaef2eb4a "gss_krb5: Add support for rc4-hmac encryption" 8 years
-ago.  Wonder why it took this long to notice?  Did something else
-change?
+I thought the Linux client shared a single connection in that case, but
+I could be wrong.
 
 --b.
-
-
-> 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> index 12649c9fedab..8654494b4d0a 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
-> @@ -237,9 +237,6 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
->  
->         ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP, NULL, NULL);
->  
-> -       err = crypto_ahash_init(req);
-> -       if (err)
-> -               goto out;
->         err = crypto_ahash_setkey(hmac_md5, cksumkey, kctx->gk5e->keylength);
->         if (err)
->                 goto out;
-> 
-> If that's not it, it's also possible that the error is coming from the
-> crypto_ahash_init() in make_checksum().  That can only happen if 'cksumkey' is
-> NULL and the hash algorithm is keyed, which implies a logical error as it
-> doesn't make sense to use a keyed hash algorithm without the key.  The callers
-> do check kctx->gk5e->keyed_cksum which I'd hope would prevent this, though
-> perhaps kctx->cksum can be NULL.
-> 
-> Eric
