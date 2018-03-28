@@ -1,77 +1,104 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.pingtimeout.net ([87.108.18.35]:50723 "EHLO
-        mx1.pingtimeout.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753908AbeC1Pf6 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 28 Mar 2018 11:35:58 -0400
-Subject: Re: Regarding client fairness
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-References: <f9c6c1c493d0dde6c4a24afeca00fa5b@pingtimeout.net>
- <20180328145406.GA2641@fieldses.org> <20180328145930.GB2641@fieldses.org>
-From: =?UTF-8?B?QW50dGkgVMO2bmt5csOk?= <daedalus@pingtimeout.net>
-Message-ID: <4abd5e4f-2992-730b-8d44-5e611a3a2451@pingtimeout.net>
-Date: Wed, 28 Mar 2018 18:35:53 +0300
+Received: from fieldses.org ([173.255.197.46]:59234 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1753816AbeC1Pq2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Mar 2018 11:46:28 -0400
+Date: Wed, 28 Mar 2018 11:46:28 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Eric Biggers <ebiggers@google.com>
+Cc: Michael Young <m.a.young@durham.ac.uk>,
+        Herbert Xu <herbert@gondor.apana.org.au>,
+        Jeff Layton <jlayton@kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: NFS mounts failing when keytab present on client
+Message-ID: <20180328154628.GA3038@fieldses.org>
+References: <alpine.LFD.2.21.1803272126070.3013@austen3.home>
+ <20180327222950.GB257332@google.com>
 MIME-Version: 1.0
-In-Reply-To: <20180328145930.GB2641@fieldses.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180327222950.GB257332@google.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2018-03-28 17:59, J. Bruce Fields wrote:
-> On Wed, Mar 28, 2018 at 10:54:06AM -0400, bfields wrote:
->> On Wed, Mar 28, 2018 at 02:04:57PM +0300, daedalus@pingtimeout.net wrote:
->>> I came across a rather annoying issue where a single NFS client
->>> caused resource starvation for NFS server. The server has several
->>> storage pools which are used, in this particular case a single
->>> client did fairly large read requests and effectively ate all nfsd
->>> threads on the server and during that other clients were getting
->>> hardly any I/O through to the other storage pool which was
->>> completely idle.
->> What version of the kernel are you running on your server?
-4.15.10 on the system I am testing on.
-> I'm thinking that if it includes upstream 637600f3ffbf "SUNRPC: Change
-> TCP socket space reservation" (in upstream 4.8), then you may want to
-> experiment setting the sunrpc.svc_rpc_per_connection_limit module
-> parameter added in ff3ac5c3dc23 "SUNRPC: Add a server side
-> per-connection limit".
->
-> You probably want to experiment with values greater than 0 (the default,
-> no limit) and the number of server threads.
-That helps for the client slowing down the whole server, thanks for the 
-tip! Of course this doesn't help with the case of client accessing 2 
-different shares on the same server but that is something I can work around.
->
-> --b.
->
->> --b.
->>
->>> I then proceeded to make a simple testcase and noticed that reading
->>> a file with large blocksize causes NFS server to read using multiple
->>> threads, effectively consuming all nfsd threads on the server and
->>> causing starvation to other clients regardless of the share/backing
->>> disk they were accessing.
->>>
->>> In my testcase a simple (ridiculous) dd was able to effectively
->>> reserve the entire NFS server for itself:
->>>
->>> # dd if=fgsfds bs=1000M count=10000 iflag=direct
->>>
->>> Also several similar dd runs with blocksize of 100M caused the same
->>> effect. During those dd-runs the server was responding at a very
->>> slow rate to any other requests by other clients (or to other NFS
->>> shares on different disks on the server).
->>>
->>> My question here is that are there any methods to ensure client
->>> fairness with Linux NFS and/or are there some best common practices
->>> to ensure something like that. I think it would be pretty awesome if
->>> clients had some kind of limit/fairness that would be scoped like
->>> {client, share-on-server} so client which accesses a single share on
->>> a server (with large read IO requests) would not effectively cause
->>> denial of service for the entire NFS server but rather only to the
->>> share it is accessing and at same time other clients accessing
->>> different/same share would get fair amount of access to the data.
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Tue, Mar 27, 2018 at 03:29:50PM -0700, Eric Biggers wrote:
+> Hi Michael,
+> 
+> On Tue, Mar 27, 2018 at 11:06:14PM +0100, Michael Young wrote:
+> > NFS mounts stopped working on one of my computers after a kernel update from
+> > 4.15.3 to 4.15.4. I traced the problem to the commit
+> > [46e8d06e423c4f35eac7a8b677b713b3ec9b0684] crypto: hash - prevent using
+> > keyed hashes without setting key
+> > and a later kernel with this patch reverted works normally.
+> > 
+> > The problem seems to be related to kerberos as the mount fails when the
+> > keytab is present, but works if I rename the keytab file. This is true even
+> > though the mount is with sec=sys . The mount should also work with sec=krb5
+> > but that also fails in the same way. When the mount fails there are errors
+> > in dmesg like
+> > [ 1232.522816] gss_marshal: gss_get_mic FAILED (851968)
+> > [ 1232.522819] RPC: couldn't encode RPC header, exit EIO
+> > [ 1232.522856] gss_marshal: gss_get_mic FAILED (851968)
+> > [ 1232.522857] RPC: couldn't encode RPC header, exit EIO
+> > [ 1232.522863] NFS: nfs4_discover_server_trunking unhandled error -5.
+> > Exiting with error EIO
+> > [ 1232.525039] gss_marshal: gss_get_mic FAILED (851968)
+> > [ 1232.525042] RPC: couldn't encode RPC header, exit EIO
+> > 
+> > 	Michael Young
+> 
+> Thanks for the bug report.  I think the error is coming from
+> net/sunrpc/auth_gss/gss_krb5_crypto.c.  There are two potential problems I see.
+> The first one, which is definitely a bug, is that make_checksum_hmac_md5()
+> allocates an HMAC transform and request, then does these crypto API calls:
+> 
+> 	crypto_ahash_init()
+> 	crypto_ahash_setkey()
+> 	crypto_ahash_digest()
+> 
+> This is wrong because it makes no sense to init() the HMAC request before the
+> key has been set, and doubly so when it's calling digest() which is shorthand
+> for init() + update() + final().  So I think it just needs to be removed.  You
+> can test the following patch:
 
+When was this introduced? 
+
+3b5cf20cf439 "sunrpc: Use skcipher and ahash/shash"
+	- probably not, assuming the above was still just as wrong with
+	  crypto_hash_{init,setkey,digest} as it is with
+	  crypto_ahash_{init,setkey,digest}
+
+So I'm guessing it was wrong from the start when it was added by
+fffdaef2eb4a "gss_krb5: Add support for rc4-hmac encryption" 8 years
+ago.  Wonder why it took this long to notice?  Did something else
+change?
+
+--b.
+
+
+> 
+> diff --git a/net/sunrpc/auth_gss/gss_krb5_crypto.c b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> index 12649c9fedab..8654494b4d0a 100644
+> --- a/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> +++ b/net/sunrpc/auth_gss/gss_krb5_crypto.c
+> @@ -237,9 +237,6 @@ make_checksum_hmac_md5(struct krb5_ctx *kctx, char *header, int hdrlen,
+>  
+>         ahash_request_set_callback(req, CRYPTO_TFM_REQ_MAY_SLEEP, NULL, NULL);
+>  
+> -       err = crypto_ahash_init(req);
+> -       if (err)
+> -               goto out;
+>         err = crypto_ahash_setkey(hmac_md5, cksumkey, kctx->gk5e->keylength);
+>         if (err)
+>                 goto out;
+> 
+> If that's not it, it's also possible that the error is coming from the
+> crypto_ahash_init() in make_checksum().  That can only happen if 'cksumkey' is
+> NULL and the hash algorithm is keyed, which implies a logical error as it
+> doesn't make sense to use a keyed hash algorithm without the key.  The callers
+> do check kctx->gk5e->keyed_cksum which I'd hope would prevent this, though
+> perhaps kctx->cksum can be NULL.
+> 
+> Eric
