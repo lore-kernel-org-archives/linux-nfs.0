@@ -1,47 +1,100 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:60652 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752279AbeC0XOH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 27 Mar 2018 19:14:07 -0400
-Date: Tue, 27 Mar 2018 19:14:07 -0400 (EDT)
-From: Jianhong Yin <jiyin@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "Jianhong.Yin" <yin-jianhong@163.com>, bfields@redhat.com,
-        linux-nfs@vger.kernel.org
-Message-ID: <1764206678.13920688.1522192447032.JavaMail.zimbra@redhat.com>
-In-Reply-To: <20180327183725.GA22077@fieldses.org>
-References: <20180327172709.13071-1-yin-jianhong@163.com> <20180327183725.GA22077@fieldses.org>
-Subject: Re: [PATCH 1/2] [pynfs] remove redundant ply, gssapi and rpcgen.py
- modules
+Received: from agate.clustertech.com ([103.31.20.128]:44780 "EHLO
+        agate.clustertech.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752733AbeC1BVA (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 27 Mar 2018 21:21:00 -0400
+Date: Wed, 28 Mar 2018 09:14:17 +0800
+From: Dai Qizhi <qzdai@clustertech.com>
+To: Amir Goldstein <amir73il@gmail.com>
+Subject: Re: client side see wrong directory entries with nfs_export on overlayfs
+Cc: linux-nfs@vger.kernel.org, linux-unionfs@vger.kernel.org
+In-Reply-To: <CAOQ4uxgtD1F_S_tGoAKo7egqbXRGa-sM6SL-Ab7K62LN0FYBSA@mail.gmail.com>
+References: <20180327182450.38D9.733CD922@clustertech.com> <CAOQ4uxgtD1F_S_tGoAKo7egqbXRGa-sM6SL-Ab7K62LN0FYBSA@mail.gmail.com>
+Message-Id: <20180328091413.38DF.733CD922@clustertech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Good to know.
-will update README to inform users: they could use any/different methods to install these modules.
+> 2018-03-27 13:24 GMT+03:00 Dai Qizhi <qzdai@clustertech.com>:
+> > Dear Amir Goldstein,
+> >
+> 
+> Hi Dai,
+> 
+> Do you mind if I re-posting your question to overlayfs mailing list.
+> There are other people out there that would encounter the same
+> problem and will benefit from my answer.
 
-Thanks!
+no problem. 
+> 
+> > I tested overlayfs with nfs_export feature , the kernel is built by
+> > ubuntu , 4.16.0-041600rc7, http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.16-rc7/
+> >
+> > the problem is , when i export two different overlay mount points on
+> > server side, then mount them use nfs on the client side, the client side
+> > views the two differnet mount points as the same.
+> >
+> >
+> > on server side:
+> >
+> > none on /mnt/m1 type overlay (rw,relatime,lowerdir=m1/ro,upperdir=m1/rw,workdir=
+> > m1/w,index=on,nfs_export=on)
+> > none on /mnt/m2 type overlay (rw,relatime,lowerdir=m2/ro,upperdir=m2/rw,workdir=
+> > m2/w,index=on,nfs_export=on)
+> > [root@localhost data]# exportfs -rv
+> > exporting *:/mnt/m4
+> > exporting *:/mnt/m3
+> > exporting *:/mnt/m2
+> > exporting *:/mnt/m1
+> > [root@localhost data]# ls /mnt/m1
+> > this_is_m1
+> > [root@localhost data]# ls /mnt/m2
+> > this_is_m2
+> >
+> >
+> > on client side:
+> >
+> > [root@localhost mnt]# mount 192.168.0.1:/mnt/m1 m1
+> > [root@localhost mnt]# mount 192.168.0.1:/mnt/m2 m2
+> > [root@localhost mnt]# mount |grep 192
+> > 192.168.0.1:/mnt/m1 on /mnt/m1 type nfs (rw,relatime,vers=3,rsize=524288,wsize=5
+> > 24288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.0.
+> > 1,mountvers=3,mountport=20048,mountproto=udp,local_lock=none,addr=192.168.0.1)
+> > 192.168.0.1:/mnt/m1 on /mnt/m2 type nfs (rw,relatime,vers=3,rsize=524288,wsize=5
+> > 24288,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=192.168.0.
+> > 1,mountvers=3,mountport=20048,mountproto=udp,local_lock=none,addr=192.168.0.1)
+> >
+> > [root@localhost mnt]# ls /mnt/m1
+> > this_is_m1
+> > [root@localhost mnt]# ls /mnt/m2
+> > this_is_m1
+> > [root@localhost mnt]#
+> 
+> 
+> Please refer to the man page of exports(5), the section about 'fsid' describes
+> this problem related to exporting file systems that are not on a block device,
+> such as overlayfs.
 
------ 原始邮件 -----
-> 发件人: "J. Bruce Fields" <bfields@fieldses.org>
-> 收件人: "Jianhong.Yin" <yin-jianhong@163.com>
-> 抄送: bfields@redhat.com, linux-nfs@vger.kernel.org, "Jianhong Yin" <jiyin@redhat.com>
-> 发送时间: 星期三, 2018年 3 月 28日 上午 2:37:25
-> 主题: Re: [PATCH 1/2] [pynfs] remove redundant ply, gssapi and rpcgen.py modules
+yes, export different mount point with different fsid= option works as
+expected.
+
+
 > 
-> On Wed, Mar 28, 2018 at 01:27:08AM +0800, Jianhong.Yin wrote:
-> > +Install dependent modules:
-> > +	#Fedora: yum install krb5-devel python-devel swig python-pip
-> > +	#Debian: apt-get install libkrb5-dev python-dev swig python-pip
-> > +	pip install ply gssapi
+> If you are interested to know if there is a way to fix this that does
+> not involve manually
+> configuring different fsid per export, I will have to consult with the
+> NFS experts, so please
+> reply to this message with CC to <linux-unionfs@vger.kernel.org> and
+> <linux-nfs@vger.kernel.org>
+
+when exporting parent directory with crossmnt option and mount differnet overlayfs
+under that directory, we encounter the same problem on client side.. 
+
 > 
-> I've never used pip.  Googling around, I see some people warn about
-> potential conflicts between pip and rpm/dpkg.  Would it be better to
-> recommend pip install --user?
-> 
-> Anyway, looks better than carrying our own copy around.  Applying,
-> thanks!
-> 
-> --b.
-> 
+> Thanks,
+> Amir.
+
+Best regards,
+Dai Qizhi
+
