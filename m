@@ -1,14 +1,14 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:59250 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:59262 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753949AbeC1Pry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Mar 2018 11:47:54 -0400
-Date: Wed, 28 Mar 2018 11:47:54 -0400
+        id S1753816AbeC1P6C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Mar 2018 11:58:02 -0400
+Date: Wed, 28 Mar 2018 11:58:01 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Antti =?utf-8?B?VMO2bmt5csOk?= <daedalus@pingtimeout.net>
 Cc: linux-nfs@vger.kernel.org
 Subject: Re: Regarding client fairness
-Message-ID: <20180328154754.GB3038@fieldses.org>
+Message-ID: <20180328155801.GA3354@fieldses.org>
 References: <f9c6c1c493d0dde6c4a24afeca00fa5b@pingtimeout.net>
  <20180328145406.GA2641@fieldses.org>
  <20180328145930.GB2641@fieldses.org>
@@ -41,11 +41,14 @@ On Wed, Mar 28, 2018 at 06:35:53PM +0300, Antti Tönkyrä wrote:
 > >You probably want to experiment with values greater than 0 (the default,
 > >no limit) and the number of server threads.
 > That helps for the client slowing down the whole server, thanks for
-> the tip! Of course this doesn't help with the case of client
-> accessing 2 different shares on the same server but that is
-> something I can work around.
+> the tip!
 
-I thought the Linux client shared a single connection in that case, but
-I could be wrong.
+We should probably revisit 637600f3ffbf "SUNRPC: Change TCP socket space
+reservation".  There's got to be some way to keep high bandwidth pipes
+filled with read data without introducing this problem where a single
+client can tie up every server thread.
+
+Just out of curiosity, do you know (approximately) the network and disk
+bandwidth in this case?
 
 --b.
