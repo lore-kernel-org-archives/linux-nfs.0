@@ -1,124 +1,76 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx141.netapp.com ([216.240.21.12]:50775 "EHLO mx141.netapp.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752479AbeC1Up4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 28 Mar 2018 16:45:56 -0400
-Subject: Re: [PATCH v2] NFSv4.1: Fix exclusive create
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-References: <20180328201817.12444-1-trond.myklebust@primarydata.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <7558de60-8f09-fc42-bdd0-adc1a0824996@Netapp.com>
-Date: Wed, 28 Mar 2018 16:45:10 -0400
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:55402 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752694AbeC1Usi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 28 Mar 2018 16:48:38 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: chendt <chendt.fnst@cn.fujitsu.com>
+Cc: linux-nfs@vger.kernel.org,
+        "Trond Myklebust" <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH] NFSv3/acl: forget acl cache after setattr
+Date: Wed, 28 Mar 2018 16:48:36 -0400
+Message-ID: <DE56FEF6-A0F6-4584-B6B5-517FDCE80531@redhat.com>
+In-Reply-To: <ca4d7366-bc4c-1710-13a2-f99510c53be4@cn.fujitsu.com>
+References: <ca4d7366-bc4c-1710-13a2-f99510c53be4@cn.fujitsu.com>
 MIME-Version: 1.0
-In-Reply-To: <20180328201817.12444-1-trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I'm seeing this on xfstests generic/099 as well. Do we want to use 
+nfs_zap_acl_cache() instead so that we clear NFS_INO_INVALID_ACL?
 
+Ben
 
-On 03/28/2018 04:18 PM, Trond Myklebust wrote:
-> When we use EXCLUSIVE4_1 mode, the server returns an attribute mask where
-> all the bits indicate which attributes were set, and where the verifier
-> was stored. In order to figure out which attribute we have to resend,
-> we need to clear out the attributes that are set in exclcreat_bitmask.
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+On 28 Mar 2018, at 6:12, chendt wrote:
+
+> Sync of ACL with std permissions fail，do We need to forget the ACL
+> cache after setattr?
+>
+> Reproduction:
+> #!/bin/bash
+> touch testfile
+> cat <<EOF >testfile
+> #!/bin/bash
+> echo "Test was executed"
+> EOF
+> chmod u=rwx testfile
+> chmod g=rw- testfile
+> chmod o=r-- testfile
+>
+> chacl u::r--,g::rwx,o:rw- testfile
+> chmod u+w testfile
+> ls -ln testfile
+> chacl -l testfile
+>
+> Output：
+> -rw-rwxrw- 1 root root 0 Mar 28 05:29 testfile
+> testfile [u::r--,g::rwx,o::rw-]
+>
+> Signed-off-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
 > ---
->  fs/nfs/nfs4proc.c | 49 +++++++++++++++++++++++++++++++++----------------
->  1 file changed, 33 insertions(+), 16 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 6933109fa30f..0d1d37d9a345 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2750,27 +2750,40 @@ static int nfs41_open_expired(struct nfs4_state_owner *sp, struct nfs4_state *st
->   * fields corresponding to attributes that were used to store the verifier.
->   * Make sure we clobber those fields in the later setattr call
->   */
-> -static inline void nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
-> +static unsigned nfs4_exclusive_attrset(struct nfs4_opendata *opendata,
->  				struct iattr *sattr, struct nfs4_label **label)
->  {
-> -	const u32 *attrset = opendata->o_res.attrset;
-> +	const __u32 *bitmask = opendata->o_arg.server->exclcreat_bitmask;
-> +	__u32 attrset[3];
-> +	unsigned ret;
-> +	unsigned i;
->  
-> -	if ((attrset[1] & FATTR4_WORD1_TIME_ACCESS) &&
-> -	    !(sattr->ia_valid & ATTR_ATIME_SET))
-> -		sattr->ia_valid |= ATTR_ATIME;
-> +	for (i = 0; i < ARRAY_SIZE(attrset); i++) {
-> +		attrset[i] = opendata->o_res.attrset[i];
-> +		if (opendata->o_arg.createmode == NFS4_CREATE_EXCLUSIVE4_1)
-> +			attrset[i] &= ~bitmask[i];
-> +	}
-> +
-> +	ret = (opendata->o_arg.createmode == NFS4_CREATE_EXCLUSIVE4) ?
-                                             ^^^^^^^^^^^^^^^^^^^^^^
-I assume you mean NFS4_CREATE_EXCLUSIVE?  I can fix it in my tree if you want
-
-anna@gouda ~/linux/anna (git)-[linux-next] % git grep NFS4_CREATE_EXCLUSIVE include/
-include/linux/nfs4.h:   NFS4_CREATE_EXCLUSIVE = 2,
-include/linux/nfs4.h:   NFS4_CREATE_EXCLUSIVE4_1 = 3
-
-> +		sattr->ia_valid : 0;
->  
-> -	if ((attrset[1] & FATTR4_WORD1_TIME_MODIFY) &&
-> -	    !(sattr->ia_valid & ATTR_MTIME_SET))
-> -		sattr->ia_valid |= ATTR_MTIME;
-> +	if ((attrset[1] & (FATTR4_WORD1_TIME_ACCESS|FATTR4_WORD1_TIME_ACCESS_SET))) {
-> +		if (sattr->ia_valid & ATTR_ATIME_SET)
-> +			ret |= ATTR_ATIME_SET;
-> +		else
-> +			ret |= ATTR_ATIME;
-> +	}
->  
-> -	/* Except MODE, it seems harmless of setting twice. */
-> -	if (opendata->o_arg.createmode != NFS4_CREATE_EXCLUSIVE &&
-> -		(attrset[1] & FATTR4_WORD1_MODE ||
-> -		 attrset[2] & FATTR4_WORD2_MODE_UMASK))
-> -		sattr->ia_valid &= ~ATTR_MODE;
-> +	if ((attrset[1] & (FATTR4_WORD1_TIME_MODIFY|FATTR4_WORD1_TIME_MODIFY_SET))) {
-> +		if (sattr->ia_valid & ATTR_MTIME_SET)
-> +			ret |= ATTR_MTIME_SET;
-> +		else
-> +			ret |= ATTR_MTIME;
-> +	}
->  
-> -	if (attrset[2] & FATTR4_WORD2_SECURITY_LABEL)
-> +	if (!(attrset[2] & FATTR4_WORD2_SECURITY_LABEL))
->  		*label = NULL;
-> +	return ret;
+>  fs/nfs/nfs3proc.c | 1 +
+>  1 file changed, 1 insertion(+)
+>
+> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+> index 7327930..ef3e17c 100644
+> --- a/fs/nfs/nfs3proc.c
+> +++ b/fs/nfs/nfs3proc.c
+> @@ -140,6 +140,7 @@
+>  	status = rpc_call_sync(NFS_CLIENT(inode), &msg, 0);
+>  	if (status == 0)
+>  		nfs_setattr_update_inode(inode, sattr, fattr);
+> +		forget_all_cached_acls(inode);
+>  	dprintk("NFS reply setattr: %d\n", status);
+>  	return status;
 >  }
->  
->  static int _nfs4_open_and_get_state(struct nfs4_opendata *opendata,
-> @@ -2899,12 +2912,15 @@ static int _nfs4_do_open(struct inode *dir,
->  
->  	if ((opendata->o_arg.open_flags & (O_CREAT|O_EXCL)) == (O_CREAT|O_EXCL) &&
->  	    (opendata->o_arg.createmode != NFS4_CREATE_GUARDED)) {
-> -		nfs4_exclusive_attrset(opendata, sattr, &label);
-> +		unsigned attrs = nfs4_exclusive_attrset(opendata, sattr, &label);
->  		/*
->  		 * send create attributes which was not set by open
->  		 * with an extra setattr.
->  		 */
-> -		if (sattr->ia_valid & NFS4_VALID_ATTRS) {
-> +		if (attrs || label) {
-> +			unsigned ia_old = sattr->ia_valid;
-> +
-> +			sattr->ia_valid = attrs;
->  			nfs_fattr_init(opendata->o_res.f_attr);
->  			status = nfs4_do_setattr(state->inode, cred,
->  					opendata->o_res.f_attr, sattr,
-> @@ -2914,6 +2930,7 @@ static int _nfs4_do_open(struct inode *dir,
->  						opendata->o_res.f_attr);
->  				nfs_setsecurity(state->inode, opendata->o_res.f_attr, olabel);
->  			}
-> +			sattr->ia_valid = ia_old;
->  		}
->  	}
->  	if (opened && opendata->file_created)
-> 
+> -- 
+> 1.8.3.1
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
