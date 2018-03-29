@@ -1,51 +1,75 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from esa11.utexas.iphmx.com ([216.71.154.254]:12312 "EHLO
-        esa11.utexas.iphmx.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751182AbeC2QpZ (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Thu, 29 Mar 2018 12:45:25 -0400
-Subject: Re: client side see wrong directory entries with nfs_export on
- overlayfs
-To: Jeff Layton <jlayton@kernel.org>,
-        Amir Goldstein <amir73il@gmail.com>,
-        Dai Qizhi <qzdai@clustertech.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        overlayfs <linux-unionfs@vger.kernel.org>
-References: <20180327182450.38D9.733CD922@clustertech.com>
- <CAOQ4uxgtD1F_S_tGoAKo7egqbXRGa-sM6SL-Ab7K62LN0FYBSA@mail.gmail.com>
- <20180328091413.38DF.733CD922@clustertech.com>
- <CAOQ4uxgZd7qC2xW3pYNYKqrpVJYBDRovyeAkeySWLjM4+WhGxw@mail.gmail.com>
- <1522235739.18706.13.camel@kernel.org>
-From: Patrick Goetz <pgoetz@math.utexas.edu>
-Message-ID: <795e539b-21e5-be97-d464-6dd087318f48@math.utexas.edu>
-Date: Thu, 29 Mar 2018 11:35:53 -0500
+Received: from fieldses.org ([173.255.197.46]:33304 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750735AbeC2QqX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 29 Mar 2018 12:46:23 -0400
+Date: Thu, 29 Mar 2018 12:46:23 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: linux-nfs@vger.kernel.org, "'J. Bruce Fields'" <bfields@redhat.com>
+Subject: Re: [pynfs] [PATCH 3/3] Fix DELEG21 to have CODE:
+Message-ID: <20180329164623.GB17806@fieldses.org>
+References: <00e801d3c6e9$8ab47c00$a01d7400$@mindspring.com>
 MIME-Version: 1.0
-In-Reply-To: <1522235739.18706.13.camel@kernel.org>
-Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <00e801d3c6e9$8ab47c00$a01d7400$@mindspring.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/28/2018 06:15 AM, Jeff Layton wrote:
-> Long, long ago, the fsid for the export was almost always determined by
-> the device major/minor tuple. That became really problematic whenever
-> devices got reordered after adding a disk to the system and rebooting.
-> So, Neil Brown added the ability to determine the fsid from the
-> libblkdev uuid (see nfs-utils commit e91ff0175602c, and kernel commits
-> from around that time).
+Uh, I think I didn't actually mean to commit that test at all.  Oh well,
+I'll take this and then go see if I can find what else I had to patch to
+make it work.
+
+I realized after writing this that the existing tests all *require* that
+clients' operations conflict with their own delegations.  So at some
+point those tests need fixing too, but for now they're useful tests of
+my patches--when they start failing I know I've got something right.
+
+--b.
+
+On Wed, Mar 28, 2018 at 04:07:27PM -0700, Frank Filz wrote:
+> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
 > 
-
-I recently got burned by this because it appears that bind-mounted XFS 
-exports are somehow different from bind-mounted ext4 exports?  I.e. I 
-was able to export one bind mounted filesystem (under an NFS4 root 
-export) with no fsid, but when I tried to add another one (also a bind 
-mount under the same root), the export failed in an odd way.  The only 
-difference was in the first case the underlying filesystem was ext4 and 
-the other XFS.  I'll post a question about this later, but for now ...
-
-This seems like bad design.  Wouldn't it make more sense to require that 
-an fsid be assigned to all exports? Then there's no question in the 
-user's mind of do I need an fsid or don't I?
-
-
-
-
+> ---
+> 
+> nfs4.0/servertests/st_delegation.py | 2 +-
+> 
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+>  
+> 
+> diff --git a/nfs4.0/servertests/st_delegation.py
+> b/nfs4.0/servertests/st_delegation.py
+> 
+> index e204e50..1d69fb5 100644
+> 
+> --- a/nfs4.0/servertests/st_delegation.py
+> 
+> +++ b/nfs4.0/servertests/st_delegation.py
+> 
+> @@ -714,7 +714,7 @@ def testServerSelfConflict(t, env):
+> 
+>      It should not conflict with the read delegation.
+> 
+>      FLAGS: delegations
+> 
+> -    DELEG21
+> 
+> +    CODE: DELEG21
+> 
+>      """
+> 
+>      c = env.c1
+> 
+>      count = c.cb_server.opcounts[OP_CB_RECALL]
+> 
+> -- 
+> 
+> 2.5.5
+> 
+>  
+> 
+>  
+> 
+>  
+> 
