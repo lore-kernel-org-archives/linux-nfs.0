@@ -1,67 +1,85 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33304 "EHLO fieldses.org"
+Received: from fieldses.org ([173.255.197.46]:33314 "EHLO fieldses.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750735AbeC2QqX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 29 Mar 2018 12:46:23 -0400
-Date: Thu, 29 Mar 2018 12:46:23 -0400
-From: Bruce Fields <bfields@fieldses.org>
+        id S1750732AbeC2QrD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 29 Mar 2018 12:47:03 -0400
+Date: Thu, 29 Mar 2018 12:47:02 -0400
 To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: linux-nfs@vger.kernel.org, "'J. Bruce Fields'" <bfields@redhat.com>
-Subject: Re: [pynfs] [PATCH 3/3] Fix DELEG21 to have CODE:
-Message-ID: <20180329164623.GB17806@fieldses.org>
-References: <00e801d3c6e9$8ab47c00$a01d7400$@mindspring.com>
+Cc: Kernel NFS List <linux-nfs@vger.kernel.org>,
+        "'J. Bruce Fields'" <bfields@redhat.com>
+Subject: Re: [pynfs] [PATCH 2/3] Remove ganesha tag from DSESS9002 and
+ DSESS9003
+Message-ID: <20180329164702.GC17806@fieldses.org>
+References: <00e301d3c6e9$76f406e0$64dc14a0$@mindspring.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <00e801d3c6e9$8ab47c00$a01d7400$@mindspring.com>
+In-Reply-To: <00e301d3c6e9$76f406e0$64dc14a0$@mindspring.com>
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Uh, I think I didn't actually mean to commit that test at all.  Oh well,
-I'll take this and then go see if I can find what else I had to patch to
-make it work.
+On Wed, Mar 28, 2018 at 04:06:54PM -0700, Frank Filz wrote:
+> These tests actually require operational delegations which are not
+> 
+> generally available in Ganesha. With the fixedup tests, they now
+> 
+> hang without delegation support.
 
-I realized after writing this that the existing tests all *require* that
-clients' operations conflict with their own delegations.  So at some
-point those tests need fixing too, but for now they're useful tests of
-my patches--when they start failing I know I've got something right.
+OK, thanks.--b.
 
---b.
-
-On Wed, Mar 28, 2018 at 04:07:27PM -0700, Frank Filz wrote:
+> 
+>  
+> 
 > Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
 > 
 > ---
 > 
-> nfs4.0/servertests/st_delegation.py | 2 +-
+> nfs4.1/server41tests/st_destroy_session.py | 4 ++--
 > 
-> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 1 file changed, 2 insertions(+), 2 deletions(-)
 > 
 >  
 > 
-> diff --git a/nfs4.0/servertests/st_delegation.py
-> b/nfs4.0/servertests/st_delegation.py
+> diff --git a/nfs4.1/server41tests/st_destroy_session.py
+> b/nfs4.1/server41tests/st_destroy_session.py
 > 
-> index e204e50..1d69fb5 100644
+> index c247434..c48d144 100644
 > 
-> --- a/nfs4.0/servertests/st_delegation.py
+> --- a/nfs4.1/server41tests/st_destroy_session.py
 > 
-> +++ b/nfs4.0/servertests/st_delegation.py
+> +++ b/nfs4.1/server41tests/st_destroy_session.py
 > 
-> @@ -714,7 +714,7 @@ def testServerSelfConflict(t, env):
+> @@ -39,7 +39,7 @@ def testDestroy2(t, env):
 > 
->      It should not conflict with the read delegation.
+>       tests for example)
 > 
->      FLAGS: delegations
+>     - check that we get the callback
 > 
-> -    DELEG21
+> -    FLAGS: destroy_session ganesha
 > 
-> +    CODE: DELEG21
+> +    FLAGS: destroy_session
+> 
+>      CODE: DSESS9002
 > 
 >      """
 > 
->      c = env.c1
+>      recall = threading.Event()
 > 
->      count = c.cb_server.opcounts[OP_CB_RECALL]
+> @@ -88,7 +88,7 @@ def testDestroy3(t, env):
+> 
+>     - check that a new callback is sent over the new session.  Some
+> 
+>       servers will do this very quickly, some might take longer.
+> 
+> -    FLAGS: destroy_session ganesha
+> 
+> +    FLAGS: destroy_session
+> 
+>      CODE: DSESS9003
+> 
+>      """
+> 
+>      recall = threading.Event()
 > 
 > -- 
 > 
