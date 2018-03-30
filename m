@@ -1,78 +1,95 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33492 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751968AbeC2TAY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 29 Mar 2018 15:00:24 -0400
-Date: Thu, 29 Mar 2018 15:00:23 -0400
-To: Frank Filz <ffilzlnx@mindspring.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [pynfs] [PATCH 1/3] Add required RECLAIM_COMPLETE ops for new
- clients in
-Message-ID: <20180329190023.GA20325@fieldses.org>
-References: <00e001d3c6e4$13ed2c70$3bc78550$@mindspring.com>
+Return-Path: <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH xfstests] generic/035: Override output for NFS testing
+To: Benjamin Coddington <bcodding@redhat.com>, <fstests@vger.kernel.org>
+CC: Scott Mayhew <smayhew@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
+	<linux-nfs@vger.kernel.org>
+References: <e82df2bc4db926b051307ba4066d77b616c79b0c.1522337478.git.bcodding@redhat.com>
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Message-ID: <b6d7f60d-a394-1304-cf06-f4fb385dc002@Netapp.com>
+Date: Fri, 30 Mar 2018 10:41:43 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <00e001d3c6e4$13ed2c70$3bc78550$@mindspring.com>
-From: bfields@fieldses.org (J. Bruce Fields)
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <e82df2bc4db926b051307ba4066d77b616c79b0c.1522337478.git.bcodding@redhat.com>
+Content-Type: text/plain; charset=utf-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.
+I like this patch!  It's weird to see generic/035 actually pass for a change :)
 
-(But it might be simpler to use new_client_session.)
+Anna
 
---b.
-
-On Wed, Mar 28, 2018 at 03:28:20PM -0700, Frank Filz wrote:
-> Signed-off-by: Frank S. Filz <ffilzlnx@mindspring.com>
+On 03/29/2018 11:34 AM, Benjamin Coddington wrote:
+> We'd like to run generic tests for NFS, but often have slightly different
+> output for our results.  One instance is that for the NFS client the
+> removal of an open file or directory is handled differently than for a
+> local filesystem.  We can expect nlink to be 1 for files, and to receive
+> -ESTALE for operations on deleted directories, isn't that silly?
+> 
+> Override the default output when FSTYP == "nfs".
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 > ---
->  nfs4.1/server41tests/st_destroy_session.py | 4 ++++
->  1 file changed, 4 insertions(+)
+>  .gitignore                                 | 1 +
+>  tests/generic/035                          | 3 +++
+>  tests/generic/035.cfg                      | 1 +
+>  tests/generic/{035.out => 035.out.default} | 0
+>  tests/generic/035.out.nfs                  | 5 +++++
+>  5 files changed, 10 insertions(+)
+>  create mode 100644 tests/generic/035.cfg
+>  rename tests/generic/{035.out => 035.out.default} (100%)
+>  create mode 100644 tests/generic/035.out.nfs
 > 
-> diff --git a/nfs4.1/server41tests/st_destroy_session.py
-> b/nfs4.1/server41tests/st_destroy_session.py
-> index 435ef4b..c247434 100644
-> --- a/nfs4.1/server41tests/st_destroy_session.py
-> +++ b/nfs4.1/server41tests/st_destroy_session.py
-> @@ -51,6 +51,7 @@ def testDestroy2(t, env):
->          return res
->      c = env.c1.new_client(env.testname(t))
->      sess1 = c.create_session()
-> +    sess1.compound([op.reclaim_complete(FALSE)])
->      res = c.c.compound([op.destroy_session(sess1.sessionid)])
->      sess2 = c.create_session()
->      res = create_file(sess2, env.testname(t),
-> @@ -63,6 +64,7 @@ def testDestroy2(t, env):
->          fail("Could not get delegation")
->      c2 = env.c1.new_client("%s_2" % env.testname(t))
->      sess3 = c2.create_session()
-> +    sess3.compound([op.reclaim_complete(FALSE)])
->      claim = open_claim4(CLAIM_NULL, env.testname(t))
->      owner = open_owner4(0, "My Open Owner 2")
->      how = openflag4(OPEN4_NOCREATE)
-> @@ -100,6 +102,7 @@ def testDestroy3(t, env):
->          return res
->      c = env.c1.new_client(env.testname(t))
->      sess1 = c.create_session()
-> +    sess1.compound([op.reclaim_complete(FALSE)])
->      res = create_file(sess1, env.testname(t),
->                        access=OPEN4_SHARE_ACCESS_READ |
->                        OPEN4_SHARE_ACCESS_WANT_READ_DELEG)
-> @@ -112,6 +115,7 @@ def testDestroy3(t, env):
->      recall.happened = False
->      c2 = env.c1.new_client("%s_2" % env.testname(t))
->      sess2 = c2.create_session()
-> +    sess2.compound([op.reclaim_complete(FALSE)])
->      claim = open_claim4(CLAIM_NULL, env.testname(t))
->      owner = open_owner4(0, "My Open Owner 2")
->      how = openflag4(OPEN4_NOCREATE)
-> -- 
-> 2.5.5
+> diff --git a/.gitignore b/.gitignore
+> index 368d11c84a66..b2419862aff9 100644
+> --- a/.gitignore
+> +++ b/.gitignore
+> @@ -246,6 +246,7 @@
+>  /tests/xfs/033.out
+>  /tests/xfs/071.out
+>  /tests/xfs/096.out
+> +/tests/generic/035.out
+>  
+>  # cscope files
+>  cscope.*
+> diff --git a/tests/generic/035 b/tests/generic/035
+> index 443ddd57bfc0..37423f32dddd 100755
+> --- a/tests/generic/035
+> +++ b/tests/generic/035
+> @@ -21,6 +21,7 @@
+>  #-----------------------------------------------------------------------
+>  #
+>  
+> +seqfull=$0
+>  seq=`basename $0`
+>  seqres=$RESULT_DIR/$seq
+>  echo "QA output created by $seq"
+> @@ -44,6 +45,8 @@ _supported_os Linux
+>  
+>  _require_test
+>  
+> +_link_out_file $FSTYP
+> +
+>  # real QA test starts here
+>  
+>  rename_dir=$TEST_DIR/$$
+> diff --git a/tests/generic/035.cfg b/tests/generic/035.cfg
+> new file mode 100644
+> index 000000000000..d02b0ce907d4
+> --- /dev/null
+> +++ b/tests/generic/035.cfg
+> @@ -0,0 +1 @@
+> +nfs: nfs
+> diff --git a/tests/generic/035.out b/tests/generic/035.out.default
+> similarity index 100%
+> rename from tests/generic/035.out
+> rename to tests/generic/035.out.default
+> diff --git a/tests/generic/035.out.nfs b/tests/generic/035.out.nfs
+> new file mode 100644
+> index 000000000000..6359197f1d04
+> --- /dev/null
+> +++ b/tests/generic/035.out.nfs
+> @@ -0,0 +1,5 @@
+> +QA output created by 035
+> +overwriting regular file:
+> +nlink is 1, should be 0
+> +overwriting directory:
+> +t_rename_overwrite: fstat(3): Stale file handle
 > 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
