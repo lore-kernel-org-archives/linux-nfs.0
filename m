@@ -1,95 +1,75 @@
-Return-Path: <Anna.Schumaker@netapp.com>
-Subject: Re: [PATCH xfstests] generic/035: Override output for NFS testing
-To: Benjamin Coddington <bcodding@redhat.com>, <fstests@vger.kernel.org>
-CC: Scott Mayhew <smayhew@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-	<linux-nfs@vger.kernel.org>
-References: <e82df2bc4db926b051307ba4066d77b616c79b0c.1522337478.git.bcodding@redhat.com>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <b6d7f60d-a394-1304-cf06-f4fb385dc002@Netapp.com>
-Date: Fri, 30 Mar 2018 10:41:43 -0400
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:62442 "EHLO
+        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1751404AbeCaFfY (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2018 01:35:24 -0400
+Received: from G08CNEXCHPEKD02.g08.fujitsu.local (unknown [10.167.33.83])
+        by cn.fujitsu.com (Postfix) with ESMTP id 29FAE48AE76D
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2018 13:35:23 +0800 (CST)
+From: sunlianwen <sunlw.fnst@cn.fujitsu.com>
+Subject: [BUG] nfsv3 mkdir miss SGID
+To: <linux-nfs@vger.kernel.org>
+Message-ID: <863682d4-75ee-28ed-664b-d62cb3f01d01@cn.fujitsu.com>
+Date: Sat, 31 Mar 2018 13:35:26 +0800
 MIME-Version: 1.0
-In-Reply-To: <e82df2bc4db926b051307ba4066d77b616c79b0c.1522337478.git.bcodding@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset="utf-8"; format=flowed
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I like this patch!  It's weird to see generic/035 actually pass for a change :)
+Hi ,
 
-Anna
+I report a bug about nfsv3 , the reproducer is below:
 
-On 03/29/2018 11:34 AM, Benjamin Coddington wrote:
-> We'd like to run generic tests for NFS, but often have slightly different
-> output for our results.  One instance is that for the NFS client the
-> removal of an open file or directory is handled differently than for a
-> local filesystem.  We can expect nlink to be 1 for files, and to receive
-> -ESTALE for operations on deleted directories, isn't that silly?
-> 
-> Override the default output when FSTYP == "nfs".
-> 
-> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
-> ---
->  .gitignore                                 | 1 +
->  tests/generic/035                          | 3 +++
->  tests/generic/035.cfg                      | 1 +
->  tests/generic/{035.out => 035.out.default} | 0
->  tests/generic/035.out.nfs                  | 5 +++++
->  5 files changed, 10 insertions(+)
->  create mode 100644 tests/generic/035.cfg
->  rename tests/generic/{035.out => 035.out.default} (100%)
->  create mode 100644 tests/generic/035.out.nfs
-> 
-> diff --git a/.gitignore b/.gitignore
-> index 368d11c84a66..b2419862aff9 100644
-> --- a/.gitignore
-> +++ b/.gitignore
-> @@ -246,6 +246,7 @@
->  /tests/xfs/033.out
->  /tests/xfs/071.out
->  /tests/xfs/096.out
-> +/tests/generic/035.out
->  
->  # cscope files
->  cscope.*
-> diff --git a/tests/generic/035 b/tests/generic/035
-> index 443ddd57bfc0..37423f32dddd 100755
-> --- a/tests/generic/035
-> +++ b/tests/generic/035
-> @@ -21,6 +21,7 @@
->  #-----------------------------------------------------------------------
->  #
->  
-> +seqfull=$0
->  seq=`basename $0`
->  seqres=$RESULT_DIR/$seq
->  echo "QA output created by $seq"
-> @@ -44,6 +45,8 @@ _supported_os Linux
->  
->  _require_test
->  
-> +_link_out_file $FSTYP
-> +
->  # real QA test starts here
->  
->  rename_dir=$TEST_DIR/$$
-> diff --git a/tests/generic/035.cfg b/tests/generic/035.cfg
-> new file mode 100644
-> index 000000000000..d02b0ce907d4
-> --- /dev/null
-> +++ b/tests/generic/035.cfg
-> @@ -0,0 +1 @@
-> +nfs: nfs
-> diff --git a/tests/generic/035.out b/tests/generic/035.out.default
-> similarity index 100%
-> rename from tests/generic/035.out
-> rename to tests/generic/035.out.default
-> diff --git a/tests/generic/035.out.nfs b/tests/generic/035.out.nfs
-> new file mode 100644
-> index 000000000000..6359197f1d04
-> --- /dev/null
-> +++ b/tests/generic/035.out.nfs
-> @@ -0,0 +1,5 @@
-> +QA output created by 035
-> +overwriting regular file:
-> +nlink is 1, should be 0
-> +overwriting directory:
-> +t_rename_overwrite: fstat(3): Stale file handle
-> 
+----------                       ---------
+|         |-eth0 -------   eth0-|         |
+|  host1  |                     |  host2  |
+| (Client)|                     | (Server)|
+|         |                     |         |
+----------                       ----------
+Host1 : eth0 192.168.56.7/24
+Host2 : eth0 192.168.56.9/24
+
+
+Host2:
+# mkdir –m 777 /nfstest
+# cat /etc/exports
+/nfstest      *(rw,insecure,no_subtree_check,no_root_squash,fsid=1)
+# systemctl restart rpcbind
+# systenctl restart nfs
+
+Host1:
+# mkdir –m 777 /mnt/test
+# mount -t nfs -o vers=3 -o noac 192.168.56.9:/nfstest/mnt/test/
+# useradd user1
+# useradd user2
+# groupadd testgroup1
+# groupadd testgroup2
+# usermod –G testgroup1,testgroup2 user1
+# usermod –g testgroup1 user1
+# id user1
+uid=1001(user1) gid=1002(testgroup1) 
+groups=1002(testgroup1),1003(testgroup2)
+# id user2
+uid=1003(user2) gid=1007(user2) groups=1007(user2)
+# cd /mnt/test/
+# mkdir mainsub
+# setfacl -d -m u:user2:rwx mainsub/
+# chown user1:testgroup1 mainsub/
+# chmod 2755 mainsub/
+# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
+# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
+# ls -l mainsub/
+drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
+drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
+
+the "drwxrwxr-x+ 2" on subdir2 do not have the flage of "s" which mean 
+the "SGID" is miss.
+
+
+Thanks,
+Lianwen Sun
+
+
+
+
+
