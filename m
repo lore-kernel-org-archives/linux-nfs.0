@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:62442 "EHLO
+Received: from mail.cn.fujitsu.com ([183.91.158.132]:19297 "EHLO
         heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1751404AbeCaFfY (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2018 01:35:24 -0400
+        with ESMTP id S1751217AbeCaFqT (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 31 Mar 2018 01:46:19 -0400
 Received: from G08CNEXCHPEKD02.g08.fujitsu.local (unknown [10.167.33.83])
-        by cn.fujitsu.com (Postfix) with ESMTP id 29FAE48AE76D
-        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2018 13:35:23 +0800 (CST)
-From: sunlianwen <sunlw.fnst@cn.fujitsu.com>
-Subject: [BUG] nfsv3 mkdir miss SGID
+        by cn.fujitsu.com (Postfix) with ESMTP id D5314486A78C
+        for <linux-nfs@vger.kernel.org>; Sat, 31 Mar 2018 13:46:16 +0800 (CST)
 To: <linux-nfs@vger.kernel.org>
-Message-ID: <863682d4-75ee-28ed-664b-d62cb3f01d01@cn.fujitsu.com>
-Date: Sat, 31 Mar 2018 13:35:26 +0800
+From: sunlianwen <sunlw.fnst@cn.fujitsu.com>
+Subject: [BUG/2 ] nfsv3 mkdir miss SGID
+Message-ID: <dfcaac63-3758-585b-0da3-94a83254aa4b@cn.fujitsu.com>
+Date: Sat, 31 Mar 2018 13:46:20 +0800
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
@@ -31,21 +31,21 @@ Host2 : eth0 192.168.56.9/24
 
 
 Host2:
-# mkdir –m 777 /nfstest
+# mkdir -m 777 /nfstest
 # cat /etc/exports
 /nfstest      *(rw,insecure,no_subtree_check,no_root_squash,fsid=1)
 # systemctl restart rpcbind
 # systenctl restart nfs
 
 Host1:
-# mkdir –m 777 /mnt/test
+# mkdir -m 777 /mnt/test
 # mount -t nfs -o vers=3 -o noac 192.168.56.9:/nfstest/mnt/test/
 # useradd user1
 # useradd user2
 # groupadd testgroup1
 # groupadd testgroup2
-# usermod –G testgroup1,testgroup2 user1
-# usermod –g testgroup1 user1
+# usermod -G testgroup1,testgroup2 user1
+# usermod -g testgroup1 user1
 # id user1
 uid=1001(user1) gid=1002(testgroup1) 
 groups=1002(testgroup1),1003(testgroup2)
@@ -68,8 +68,5 @@ the "SGID" is miss.
 
 Thanks,
 Lianwen Sun
-
-
-
 
 
