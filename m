@@ -1,58 +1,111 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zeniv.linux.org.uk ([195.92.253.2]:37034 "EHLO
-        ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1756678AbeDBUhs (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Apr 2018 16:37:48 -0400
-Date: Mon, 2 Apr 2018 21:37:46 +0100
-From: Al Viro <viro@ZenIV.linux.org.uk>
-To: Eric Biggers <ebiggers3@gmail.com>
-Cc: syzbot <syzbot+f3bd89a5ab3266b10540@syzkaller.appspotmail.com>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        syzkaller-bugs@googlegroups.com, linux-nfs@vger.kernel.org
-Subject: Re: BUG: corrupted list in __dentry_kill
-Message-ID: <20180402203745.GE30522@ZenIV.linux.org.uk>
-References: <001a11447acaa9eec40568bd5438@google.com>
- <20180401033519.GZ30522@ZenIV.linux.org.uk>
- <20180401200531.GA30522@ZenIV.linux.org.uk>
- <20180401210508.GA743@sol.localdomain>
- <20180401214854.GB743@sol.localdomain>
- <20180402064437.GB30522@ZenIV.linux.org.uk>
+Received: from mail-it0-f67.google.com ([209.85.214.67]:54424 "EHLO
+        mail-it0-f67.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753253AbeDBVMq (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Apr 2018 17:12:46 -0400
+Received: by mail-it0-f67.google.com with SMTP id h143-v6so20524579ita.4
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Apr 2018 14:12:46 -0700 (PDT)
+Received: from hut.sorensonfamily.com (198-0-247-150-static.hfc.comcastbusiness.net. [198.0.247.150])
+        by smtp.gmail.com with ESMTPSA id 17sm579330iom.73.2018.04.02.14.12.45
+        for <linux-nfs@vger.kernel.org>
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Mon, 02 Apr 2018 14:12:45 -0700 (PDT)
+To: linux-nfs@vger.kernel.org
+From: Frank Sorenson <sorenson@redhat.com>
+Subject: [PATCH] NFS: advance nfs_entry cookie only after decoding completes
+ successfully
+Message-ID: <6ce3a0df-b9f1-e839-4e55-097f2f3b8c2b@redhat.com>
+Date: Mon, 2 Apr 2018 16:12:45 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20180402064437.GB30522@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 02, 2018 at 07:44:37AM +0100, Al Viro wrote:
-> On Sun, Apr 01, 2018 at 02:48:54PM -0700, Eric Biggers wrote:
-> > [+Cc linux-nfs]
-> > > 
-> > > [   42.965515] net/sunrpc/rpc_pipe.c: __rpc_create_common failed to allocate inode for dentry blocklayout
-> > > [   42.967234] net/sunrpc/rpc_pipe.c: rpc_mkpipe_dentry() failed to create pipe nfs/blocklayout (errno = -12)
-> 
-> 	AFAICS, there's nothing to zero nn->bl_device_pipe->dentry after
-> nfs4blocklayout_unregister_sb(), is there?  If nothing else, what's
-> going to happen after mount/umount/mount with failing
-> nfs4blocklayout_register_sb()?  AFAICS, we'll have stale pointer to
-> dentry sitting in nn->bl_device_pipe->dentry, and call rpc_unlink()
-> on it while cleaning up after the failing mount.
-> 
-> 	I don't think that's all there is to it, but it does smell like
-> a bug.
+Author: Frank Sorenson <sorenson@redhat.com>
+Date:   2018-04-02 15:56:02 -0500
 
-That's not all.  Making nfs4blocklayout_register_sb() immediately fail
-(without doing anything) leads to that oops on the very first attempt
-to mount rpc_pipefs.
+    NFS: advance nfs_entry cookie only after decoding completes successfully
+    
+    In nfs[34]_decode_dirent, the cookie is advanced as soon as it is
+    read, but decoding may still fail later in the function, returning
+    an error.  Because the cookie has been advanced, the failing entry
+    is not re-requested from the server, resulting in a missing directory
+    entry.
+    
+    In addition, nfs v3 and v4 read the cookie at different locations
+    in the xdr_stream, so the behavior of the two can be inconsistent.
+    
+    Fix these by reading the cookie into a temporary variable, and
+    only advancing the cookie once the entire entry has been decoded
+    from the xdr_stream successfully.
+    
+    Signed-off-by: Frank Sorenson <sorenson@redhat.com>
+---
+ fs/nfs/nfs3xdr.c | 7 +++++--
+ fs/nfs/nfs4xdr.c | 7 +++++--
+ 2 files changed, 10 insertions(+), 4 deletions(-)
 
-Matter of fact, rpc_gssd_dummy_depopulate() is garbage.  I don't know
-how it had been tested, but it will do an extra dput() of gssd_dentry
-whenever it's called.  _Any_ failure that sends us to err_depopulate:
-(== any failure in rpc_pipefs_notifier_list callbacks) means an oops
-there on attempt to dput() an already freed dentry.
-
-Hell, turn that if (err) goto err_depopulate; into
-if (err || !strcmp(current->comm, "bugger")) goto err_depopulate;
-cp /bin/mount /root/bugger, then boot with init=/bin/sh
-and
-cd /root; ./bugger -t rpc_pipefs none /mnt
-will trigger just that.
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index 6cd33bd5da87..09ee36dd8426 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -1997,6 +1997,7 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	struct nfs_entry old = *entry;
+ 	__be32 *p;
+ 	int error;
++	u64 new_cookie;
+ 
+ 	p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(p == NULL))
+@@ -2019,8 +2020,7 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	if (unlikely(error))
+ 		return error;
+ 
+-	entry->prev_cookie = entry->cookie;
+-	error = decode_cookie3(xdr, &entry->cookie);
++	error = decode_cookie3(xdr, &new_cookie);
+ 	if (unlikely(error))
+ 		return error;
+ 
+@@ -2054,6 +2054,9 @@ int nfs3_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 			zero_nfs_fh3(entry->fh);
+ 	}
+ 
++	entry->prev_cookie = entry->cookie;
++	entry->cookie = new_cookie;
++
+ 	return 0;
+ 
+ out_overflow:
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 65c9c4175145..1d7119a25c3a 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -7536,6 +7536,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	unsigned int savep;
+ 	uint32_t bitmap[3] = {0};
+ 	uint32_t len;
++	uint64_t new_cookie;
+ 	__be32 *p = xdr_inline_decode(xdr, 4);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+@@ -7552,8 +7553,7 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	p = xdr_inline_decode(xdr, 12);
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+-	entry->prev_cookie = entry->cookie;
+-	p = xdr_decode_hyper(p, &entry->cookie);
++	p = xdr_decode_hyper(p, &new_cookie);
+ 	entry->len = be32_to_cpup(p);
+ 
+ 	p = xdr_inline_decode(xdr, entry->len);
+@@ -7587,6 +7587,9 @@ int nfs4_decode_dirent(struct xdr_stream *xdr, struct nfs_entry *entry,
+ 	if (entry->fattr->valid & NFS_ATTR_FATTR_TYPE)
+ 		entry->d_type = nfs_umode_to_dtype(entry->fattr->mode);
+ 
++	entry->prev_cookie = entry->cookie;
++	entry->cookie = new_cookie;
++
+ 	return 0;
+ 
+ out_overflow:
