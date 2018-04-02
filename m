@@ -1,101 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.nwra.com ([72.52.192.72]:39838 "EHLO mail.nwra.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752920AbeDBR5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 2 Apr 2018 13:57:35 -0400
-Received: from barry.cora.nwra.com (inferno.cora.nwra.com [208.187.183.84])
-        (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
-        (No client certificate requested)
-        by mail.nwra.com (Postfix) with ESMTPS id E893B3406B0
-        for <linux-nfs@vger.kernel.org>; Mon,  2 Apr 2018 10:50:24 -0700 (PDT)
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Orion Poplawski <orion@nwra.com>
-Subject: NFS troubles
-Message-ID: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
-Date: Mon, 2 Apr 2018 11:50:24 -0600
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:52296 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1753072AbeDBSab (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 2 Apr 2018 14:30:31 -0400
+From: "Benjamin Coddington" <bcodding@redhat.com>
+To: "Orion Poplawski" <orion@nwra.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS troubles
+Date: Mon, 02 Apr 2018 14:30:29 -0400
+Message-ID: <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com>
+In-Reply-To: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
+References: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------5211011A03A2E4A22AE5246C"
+Content-Type: text/plain; charset=utf-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------5211011A03A2E4A22AE5246C
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
+NFS4ERR_EXPIRED means the client is trying to use state that the server 
+believes to have expired or that has been supplanted by newer state.  
+Can we get kernel versions for the client and server?  Have you talked 
+to your Red Hat support channel about this?
 
-I'm having a lot of trouble with NFS going out to lunch between my RHEL7
-machines.  Users cannot access files, and get errors like:
+This capture doesn't appear to show any bugs or bad behaviors, but a 
+longer capture may..
 
-$ touch blah
-touch: cannot touch ‘blah’: Input/output error
+Ben
 
-I'm attaching a pcap trace of the above touch during the problem.  It seems
-that the server is returning NFS4ERR_EXPIRED.
+On 2 Apr 2018, at 13:50, Orion Poplawski wrote:
 
-Reboots/restarts of nfs help for a bit but then the problems return.
-
-Other symptoms of trouble are messages like:
-
-RPC: fragment too large: 613351424
-
-on the client.
-
-Any help with trying to track this down would be greatly appreciated.
-
--- 
-Orion Poplawski
-Manager of NWRA Technical Systems          720-772-5637
-NWRA, Boulder/CoRA Office             FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                 https://www.nwra.com/
-
---------------5211011A03A2E4A22AE5246C
-Content-Type: application/vnd.tcpdump.pcap;
- name="nfs-bad.pcap"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment;
- filename="nfs-bad.pcap"
-
-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
---------------5211011A03A2E4A22AE5246C--
+> I'm having a lot of trouble with NFS going out to lunch between my 
+> RHEL7
+> machines.  Users cannot access files, and get errors like:
+>
+> $ touch blah
+> touch: cannot touch ‘blah’: Input/output error
+>
+> I'm attaching a pcap trace of the above touch during the problem.  It 
+> seems
+> that the server is returning NFS4ERR_EXPIRED.
+>
+> Reboots/restarts of nfs help for a bit but then the problems return.
+>
+> Other symptoms of trouble are messages like:
+>
+> RPC: fragment too large: 613351424
+>
+> on the client.
+>
+> Any help with trying to track this down would be greatly appreciated.
+>
+> -- 
+> Orion Poplawski
+> Manager of NWRA Technical Systems          720-772-5637
+> NWRA, Boulder/CoRA Office             FAX: 303-415-9702
+> 3380 Mitchell Lane                       orion@nwra.com
+> Boulder, CO 80301                 https://www.nwra.com/
