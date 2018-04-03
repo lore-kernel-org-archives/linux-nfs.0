@@ -1,70 +1,126 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:41774 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1754550AbeDCAmG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 2 Apr 2018 20:42:06 -0400
-From: NeilBrown <neilb@suse.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Date: Tue, 03 Apr 2018 10:41:56 +1000
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH - v2] NFSv4: handle EINVAL from EXCHANGE_ID better.
-In-Reply-To: <20180320214821.GF4288@fieldses.org>
-References: <87bmfoc3yi.fsf@notabene.neil.brown.name> <878tasc3ag.fsf@notabene.neil.brown.name> <20180320214821.GF4288@fieldses.org>
-Message-ID: <87bmf115pn.fsf@notabene.neil.brown.name>
+Received: from mail-pl0-f65.google.com ([209.85.160.65]:35580 "EHLO
+        mail-pl0-f65.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750826AbeDCJDZ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Apr 2018 05:03:25 -0400
+Date: Tue, 3 Apr 2018 17:03:17 +0800
+From: Eryu Guan <guaneryu@gmail.com>
+To: Benjamin Coddington <bcodding@redhat.com>
+Cc: fstests@vger.kernel.org, Scott Mayhew <smayhew@redhat.com>,
+        Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH xfstests] generic/035: Override output for NFS testing
+Message-ID: <20180403090317.GM30836@localhost.localdomain>
+References: <e82df2bc4db926b051307ba4066d77b616c79b0c.1522337478.git.bcodding@redhat.com>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-        micalg=pgp-sha256; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <e82df2bc4db926b051307ba4066d77b616c79b0c.1522337478.git.bcodding@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+On Thu, Mar 29, 2018 at 11:34:39AM -0400, Benjamin Coddington wrote:
+> We'd like to run generic tests for NFS, but often have slightly different
+> output for our results.  One instance is that for the NFS client the
+> removal of an open file or directory is handled differently than for a
+> local filesystem.  We can expect nlink to be 1 for files, and to receive
+> -ESTALE for operations on deleted directories, isn't that silly?
+> 
+> Override the default output when FSTYP == "nfs".
+> 
+> Signed-off-by: Benjamin Coddington <bcodding@redhat.com>
 
-On Tue, Mar 20 2018, J. Bruce Fields wrote:
+Thanks for the patch!
 
-> On Fri, Mar 16, 2018 at 10:44:23AM +1100, NeilBrown wrote:
->>=20
->> nfs4_proc_exchange_id() can return -EINVAL if the server
->> reported NFS4INVAL (which I have seen in a packet trace),
->
-> Can you say which server this was?  (One we can fix?)
+> ---
+>  .gitignore                                 | 1 +
+>  tests/generic/035                          | 3 +++
+>  tests/generic/035.cfg                      | 1 +
+>  tests/generic/{035.out => 035.out.default} | 0
+>  tests/generic/035.out.nfs                  | 5 +++++
+>  5 files changed, 10 insertions(+)
+>  create mode 100644 tests/generic/035.cfg
+>  rename tests/generic/{035.out => 035.out.default} (100%)
+>  create mode 100644 tests/generic/035.out.nfs
+> 
+> diff --git a/.gitignore b/.gitignore
+> index 368d11c84a66..b2419862aff9 100644
+> --- a/.gitignore
+> +++ b/.gitignore
+> @@ -246,6 +246,7 @@
+>  /tests/xfs/033.out
+>  /tests/xfs/071.out
+>  /tests/xfs/096.out
+> +/tests/generic/035.out
+>  
+>  # cscope files
+>  cscope.*
+> diff --git a/tests/generic/035 b/tests/generic/035
+> index 443ddd57bfc0..37423f32dddd 100755
+> --- a/tests/generic/035
+> +++ b/tests/generic/035
+> @@ -21,6 +21,7 @@
+>  #-----------------------------------------------------------------------
+>  #
+>  
+> +seqfull=$0
+>  seq=`basename $0`
+>  seqres=$RESULT_DIR/$seq
+>  echo "QA output created by $seq"
+> @@ -44,6 +45,8 @@ _supported_os Linux
+>  
+>  _require_test
+>  
+> +_link_out_file $FSTYP
+> +
 
-It was Linux 2.6.32 (on armv5), and presumably anything before
-Commit: 357f54d6b382 ("NFS fix the setting of exchange id flag")
-which landed in 2.6.38.
+We usually _link_out_file according to the features enabled at mkfs
+time, so linking a .out file based on $FSTYP makes me wonder if it's
+really a 'generic' test then.
 
-These servers return NFS4ERR_INVAL when EXCHGID4_FLAG_BIND_PRINC_STATEID
-is set in the exchange_id flags, which Linux has done since
-Commit: 4f0b429df104 ("NFSv4.1: Enable state protection")
-in 3.11.
+So I think we could 'edit' the output for NFS a bit, e.g.
 
-Maybe NFS should retry without that flag if it gets EINVAL??  Or it could
-just say that NFSv4.1 isn't supported.  I still don't think EIO is justifie=
-d.
+-src/t_rename_overwrite $file1 $file2
++# comments about why we special-case nfs here
++src/t_rename_overwrite $file1 $file2 >$tmp.file 2>&1
++if [ "$FSTYP" = "nfs" ]; then
++       sed -i '/nlink is 1/d' $tmp.file
++fi
++cat $tmp.file
+
+Similar 'edit' can be done to the dir case too.
 
 Thanks,
-NeilBrown
+Eryu
 
---=-=-=
-Content-Type: application/pgp-signature; name="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-
-iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlrCzdQACgkQOeye3VZi
-gbnhmA//TKL02mWToXL1oF2lafOEt3viNUgCD7KiTGfcFu72uc9i3lXdR2jLY9Ic
-A07myAzcYbBDivRUY3QUawcAxlDGepnG5yGAmhnzR9hF8DWPsFHVGbCVPzGE/csc
-VC3v/TVs7spMmDtt8B1amKAwTxoFRBNHoL5KQRXlRbxWvFrIGjizwYEGiDTOsECj
-gVjr+SyQ5c+Zhrdo7ErAflXaZRKLLjAmWIba1rItLCYXX+fd5XNJcmj2xzTF7Bf5
-T9riHw9mUy+NXDBSrn2hJJp6x0vGzUJVwxtRW3/5Gg9WC3D7Ou7pr7Te+qi0QOMe
-0u5v1ZwJeNutWpg63r9tMM8OMwIi+RwahPnvjiNeb7UQUDxeRTkhXqYHdazgNa0+
-G+SFUR9S8olHQC/7t7e3FemCXo+ugCYMyWTLZqyv6QEHbp5gE0ozpWcRkAlwQdxQ
-4+3Nv9S2JO/yiDzXjLVeqiuQ4zjC2YQzYTH2M8GArq20dCKLo/w8veRuZROoz3fg
-XGVyKw4OnLpVtfXiRg/+Ual+RVgAL4RckT94ONIlwrBOLVcCqu/oBrvOqVOs/OYC
-jQ4xxpSooRenIzhAEbcFG/1YR0VkUvjjpkmzMa78X+NcwecialijaZgsKRvEcsiQ
-OI2wiBkobjFhnu8Lzd5ZA5bqi9+F6Thm54jOZojw4MhQCfiOmgg=
-=Zhx3
------END PGP SIGNATURE-----
---=-=-=--
+>  # real QA test starts here
+>  
+>  rename_dir=$TEST_DIR/$$
+> diff --git a/tests/generic/035.cfg b/tests/generic/035.cfg
+> new file mode 100644
+> index 000000000000..d02b0ce907d4
+> --- /dev/null
+> +++ b/tests/generic/035.cfg
+> @@ -0,0 +1 @@
+> +nfs: nfs
+> diff --git a/tests/generic/035.out b/tests/generic/035.out.default
+> similarity index 100%
+> rename from tests/generic/035.out
+> rename to tests/generic/035.out.default
+> diff --git a/tests/generic/035.out.nfs b/tests/generic/035.out.nfs
+> new file mode 100644
+> index 000000000000..6359197f1d04
+> --- /dev/null
+> +++ b/tests/generic/035.out.nfs
+> @@ -0,0 +1,5 @@
+> +QA output created by 035
+> +overwriting regular file:
+> +nlink is 1, should be 0
+> +overwriting directory:
+> +t_rename_overwrite: fstat(3): Stale file handle
+> -- 
+> 2.9.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe fstests" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
