@@ -1,69 +1,57 @@
-Return-Path: <orion@nwra.com>
-Subject: Re: NFS troubles
-To: Benjamin Coddington <bcodding@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-References: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
- <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com>
-From: Orion Poplawski <orion@nwra.com>
-Message-ID: <efe6d26f-d1e9-bf16-e608-a2595e4fdbdf@nwra.com>
-Date: Tue, 3 Apr 2018 09:44:07 -0600
+Return-Path: <linux-nfs-owner@vger.kernel.org>
+Received: from fieldses.org ([173.255.197.46]:42126 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751333AbeDCQC7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 3 Apr 2018 12:02:59 -0400
+Date: Tue, 3 Apr 2018 12:02:58 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - v2] NFSv4: handle EINVAL from EXCHANGE_ID better.
+Message-ID: <20180403160258.GC20297@fieldses.org>
+References: <87bmfoc3yi.fsf@notabene.neil.brown.name>
+ <878tasc3ag.fsf@notabene.neil.brown.name>
+ <20180320214821.GF4288@fieldses.org>
+ <87bmf115pn.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-In-Reply-To: <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com>
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <87bmf115pn.fsf@notabene.neil.brown.name>
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Kernel is 3.10.0-693.21.1.el7.x86_64  I don't have Red Hat support for these
-systems.
-
-I discovered that I'd been forcing vers=4.0 mounts in order to work around a
-mounting issue.  I'm moving back to the default 4.1 mounts as it seems to work
-better for this issue.  If the issue returns I'll try to grab a longer trace.
-
-Thanks.
-
-On 04/02/2018 12:30 PM, Benjamin Coddington wrote:
-> NFS4ERR_EXPIRED means the client is trying to use state that the server
-> believes to have expired or that has been supplanted by newer state.  Can we
-> get kernel versions for the client and server?  Have you talked to your Red
-> Hat support channel about this?
+On Tue, Apr 03, 2018 at 10:41:56AM +1000, NeilBrown wrote:
+> On Tue, Mar 20 2018, J. Bruce Fields wrote:
 > 
-> This capture doesn't appear to show any bugs or bad behaviors, but a longer
-> capture may..
+> > On Fri, Mar 16, 2018 at 10:44:23AM +1100, NeilBrown wrote:
+> >> 
+> >> nfs4_proc_exchange_id() can return -EINVAL if the server
+> >> reported NFS4INVAL (which I have seen in a packet trace),
+> >
+> > Can you say which server this was?  (One we can fix?)
 > 
-> Ben
+> It was Linux 2.6.32 (on armv5), and presumably anything before
+> Commit: 357f54d6b382 ("NFS fix the setting of exchange id flag")
+> which landed in 2.6.38.
+
+The kernel defaulted to keeping 4.1 off at that point, probably for good
+reason--that default didn't change for another 4 or 5 years.  I suspect
+this is only the first of multiple 4.1 bugs you'd run into in a server
+of that vintage.  So the solution is probably just to keep 4.1 off.
+
+--b.
+
 > 
-> On 2 Apr 2018, at 13:50, Orion Poplawski wrote:
+> These servers return NFS4ERR_INVAL when EXCHGID4_FLAG_BIND_PRINC_STATEID
+> is set in the exchange_id flags, which Linux has done since
+> Commit: 4f0b429df104 ("NFSv4.1: Enable state protection")
+> in 3.11.
 > 
->> I'm having a lot of trouble with NFS going out to lunch between my RHEL7
->> machines.  Users cannot access files, and get errors like:
->>
->> $ touch blah
->> touch: cannot touch ‘blah’: Input/output error
->>
->> I'm attaching a pcap trace of the above touch during the problem.  It seems
->> that the server is returning NFS4ERR_EXPIRED.
->>
->> Reboots/restarts of nfs help for a bit but then the problems return.
->>
->> Other symptoms of trouble are messages like:
->>
->> RPC: fragment too large: 613351424
->>
->> on the client.
->>
->> Any help with trying to track this down would be greatly appreciated.
->>
->> -- 
->> Orion Poplawski
->> Manager of NWRA Technical Systems          720-772-5637
->> NWRA, Boulder/CoRA Office             FAX: 303-415-9702
->> 3380 Mitchell Lane                       orion@nwra.com
->> Boulder, CO 80301                 https://www.nwra.com/
+> Maybe NFS should retry without that flag if it gets EINVAL??  Or it could
+> just say that NFSv4.1 isn't supported.  I still don't think EIO is justified.
+> 
+> Thanks,
+> NeilBrown
 
 
--- 
-Orion Poplawski
-Manager of NWRA Technical Systems          720-772-5637
-NWRA, Boulder/CoRA Office             FAX: 303-415-9702
-3380 Mitchell Lane                       orion@nwra.com
-Boulder, CO 80301                 https://www.nwra.com/
