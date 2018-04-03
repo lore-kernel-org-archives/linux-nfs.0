@@ -1,195 +1,203 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:42656 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752420AbeDCUjR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 3 Apr 2018 16:39:17 -0400
-Date: Tue, 3 Apr 2018 16:39:16 -0400
-From: "J . Bruce Fields" <bfields@fieldses.org>
-To: Lucas Stach <l.stach@pengutronix.de>
-Cc: Jeff Layton <jlayton@kernel.org>, linux-nfs@vger.kernel.org,
-        kernel@pengutronix.de, patchwork-lst@pengutronix.de,
-        agruenba@redhat.com
-Subject: Re: [PATCH] nfsd: zero out umask if the client didn't provide one
-Message-ID: <20180403203916.GH20297@fieldses.org>
-References: <20180321195242.4250-1-l.stach@pengutronix.de>
- <20180321213505.GI4288@fieldses.org>
- <1521710718.21240.1.camel@pengutronix.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1521710718.21240.1.camel@pengutronix.de>
+Received: from userp2120.oracle.com ([156.151.31.85]:45882 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753235AbeDCUtD (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Apr 2018 16:49:03 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
+Subject: Re: [PATCH v2] SUNRPC: Initialize rpc_rqst outside of
+ xprt->reserve_lock
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <09F0E9FA-19E9-4780-A677-57AEC58CEE95@oracle.com>
+Date: Tue, 3 Apr 2018 16:48:57 -0400
+Cc: linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <B5C61491-60DB-418D-B677-680556E7E764@oracle.com>
+References: <20180311152620.16974.96109.stgit@manet.1015granger.net>
+ <fa0afd37-bd06-cfe6-4c5f-e471ede3703f@Netapp.com>
+ <09F0E9FA-19E9-4780-A677-57AEC58CEE95@oracle.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is what I'm planning to apply (pending some testing).
 
---b.
 
-commit 880a3a532548
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Wed Mar 21 17:19:02 2018 -0400
+> On Apr 3, 2018, at 4:38 PM, Chuck Lever <chuck.lever@oracle.com> =
+wrote:
+>=20
+>=20
+>=20
+>> On Apr 3, 2018, at 4:12 PM, Anna Schumaker =
+<Anna.Schumaker@netapp.com> wrote:
+>>=20
+>> Hi Chuck,
+>>=20
+>> On 03/11/2018 11:27 AM, Chuck Lever wrote:
+>>> alloc_slot is a transport-specific op, but initializing an rpc_rqst
+>>> is common to all transports. In addition, the only part of initial-
+>>> izing an rpc_rqst that needs serialization is getting a fresh XID.
+>>>=20
+>>> Move rpc_rqst initialization to common code in preparation for
+>>> adding a transport-specific alloc_slot to xprtrdma.
+>>=20
+>> I'm having trouble with this patch again.  This time I'm running =
+xfstests generic/074 with NFS v4.0, and my client starts seeing "nfs: =
+server 192.168.100.215 not responding, still trying" after about a =
+minute.  Any thoughts about what's going on here?
+>=20
+> Random thoughts:
+>=20
+> "nfs: server not responding" is a very generic failure. One
+> minute is the TCP timeout setting. NFSv4.0 clients don't
+> typically retransmit unless the server drops the connection.
 
-    nfsd: fix incorrect umasks
-    
-    We're neglecting to clear the umask after it's set, which can cause a
-    later unrelated rpc to (incorrectly) use the same umask if it happens to
-    be processed by the same thread.
-    
-    There's a more subtle problem here too:
-    
-    An NFSv4 compound request is decoded all in one pass before any
-    operations are executed.
-    
-    Currently we're setting current->fs->umask at the time we decode the
-    compound.  In theory a single compound could contain multiple creates
-    each setting a umask.  In that case we'd end up using whichever umask
-    was passed in the *last* operation as the umask for all the creates,
-    whether that was correct or not.
-    
-    So, we should just be saving the umask at decode time and waiting to set
-    it until we actually process the corresponding operation.
-    
-    In practice it's unlikely any client would do multiple creates in a
-    single compound.  And even if it did they'd likely be from the same
-    process (hence carry the same umask).  So this is a little academic, but
-    we should get it right anyway.
-    
-    Fixes: 47057abde515 (nfsd: add support for the umask attribute)
-    Cc: stable@vger.kernel.org
-    Reported-by: Lucash Stach <l.stach@pengutronix.de>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Another thought:
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index c6157ece46b1..5d99e8810b85 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -32,6 +32,7 @@
-  *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
-+#include <linux/fs_struct.h>
- #include <linux/file.h>
- #include <linux/falloc.h>
- #include <linux/slab.h>
-@@ -252,11 +253,13 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
- 		 * Note: create modes (UNCHECKED,GUARDED...) are the same
- 		 * in NFSv4 as in v3 except EXCLUSIVE4_1.
- 		 */
-+		current->fs->umask = open->op_umask;
- 		status = do_nfsd_create(rqstp, current_fh, open->op_fname.data,
- 					open->op_fname.len, &open->op_iattr,
- 					*resfh, open->op_createmode,
- 					(u32 *)open->op_verf.data,
- 					&open->op_truncate, &open->op_created);
-+		current->fs->umask = 0;
- 
- 		if (!status && open->op_label.len)
- 			nfsd4_security_inode_setsecctx(*resfh, &open->op_label, open->op_bmval);
-@@ -603,6 +606,7 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (status)
- 		return status;
- 
-+	current->fs->umask = create->cr_umask;
- 	switch (create->cr_type) {
- 	case NF4LNK:
- 		status = nfsd_symlink(rqstp, &cstate->current_fh,
-@@ -611,20 +615,22 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		break;
- 
- 	case NF4BLK:
-+		status = nfserr_inval;
- 		rdev = MKDEV(create->cr_specdata1, create->cr_specdata2);
- 		if (MAJOR(rdev) != create->cr_specdata1 ||
- 		    MINOR(rdev) != create->cr_specdata2)
--			return nfserr_inval;
-+			goto out_umask;
- 		status = nfsd_create(rqstp, &cstate->current_fh,
- 				     create->cr_name, create->cr_namelen,
- 				     &create->cr_iattr, S_IFBLK, rdev, &resfh);
- 		break;
- 
- 	case NF4CHR:
-+		status = nfserr_inval;
- 		rdev = MKDEV(create->cr_specdata1, create->cr_specdata2);
- 		if (MAJOR(rdev) != create->cr_specdata1 ||
- 		    MINOR(rdev) != create->cr_specdata2)
--			return nfserr_inval;
-+			goto out_umask;
- 		status = nfsd_create(rqstp, &cstate->current_fh,
- 				     create->cr_name, create->cr_namelen,
- 				     &create->cr_iattr,S_IFCHR, rdev, &resfh);
-@@ -668,6 +674,8 @@ nfsd4_create(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	fh_dup2(&cstate->current_fh, &resfh);
- out:
- 	fh_put(&resfh);
-+out_umask:
-+	current->fs->umask = 0;
- 	return status;
- }
- 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index dd72cdf3662e..1d048dd95464 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -33,7 +33,6 @@
-  *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  */
- 
--#include <linux/fs_struct.h>
- #include <linux/file.h>
- #include <linux/slab.h>
- #include <linux/namei.h>
-@@ -682,7 +681,7 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
- 
- 	status = nfsd4_decode_fattr(argp, create->cr_bmval, &create->cr_iattr,
- 				    &create->cr_acl, &create->cr_label,
--				    &current->fs->umask);
-+				    &create->cr_umask);
- 	if (status)
- 		goto out;
- 
-@@ -927,7 +926,6 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 	case NFS4_OPEN_NOCREATE:
- 		break;
- 	case NFS4_OPEN_CREATE:
--		current->fs->umask = 0;
- 		READ_BUF(4);
- 		open->op_createmode = be32_to_cpup(p++);
- 		switch (open->op_createmode) {
-@@ -935,7 +933,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 		case NFS4_CREATE_GUARDED:
- 			status = nfsd4_decode_fattr(argp, open->op_bmval,
- 				&open->op_iattr, &open->op_acl, &open->op_label,
--				&current->fs->umask);
-+				&open->op_umask);
- 			if (status)
- 				goto out;
- 			break;
-@@ -950,7 +948,7 @@ nfsd4_decode_open(struct nfsd4_compoundargs *argp, struct nfsd4_open *open)
- 			COPYMEM(open->op_verf.data, NFS4_VERIFIER_SIZE);
- 			status = nfsd4_decode_fattr(argp, open->op_bmval,
- 				&open->op_iattr, &open->op_acl, &open->op_label,
--				&current->fs->umask);
-+				&open->op_umask);
- 			if (status)
- 				goto out;
- 			break;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 468020fe2a07..17c453a7999c 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -119,6 +119,7 @@ struct nfsd4_create {
- 	} u;
- 	u32		cr_bmval[3];        /* request */
- 	struct iattr	cr_iattr;           /* request */
-+	int		cr_umask;           /* request */
- 	struct nfsd4_change_info  cr_cinfo; /* response */
- 	struct nfs4_acl *cr_acl;
- 	struct xdr_netobj cr_label;
-@@ -230,6 +231,7 @@ struct nfsd4_open {
- 	u32		op_why_no_deleg;    /* response - DELEG_NONE_EXT only */
- 	u32		op_create;     	    /* request */
- 	u32		op_createmode;      /* request */
-+	int		op_umask;           /* request */
- 	u32		op_bmval[3];        /* request */
- 	struct iattr	op_iattr;           /* UNCHECKED4, GUARDED4, EXCLUSIVE4_1 */
- 	nfs4_verifier	op_verf __attribute__((aligned(32)));
+The problem before was that the client didn't recognize an XID
+returned by the server because the client had overwritten the
+rqst's rq_xid field. It should be straightforward to have
+xprt_lookup_rqst complain about an unrecognized XID, to confirm
+that this is happening again. Or there might even be a counter
+somewhere that you can view with a tool like mountstats.
+
+
+> What is your client, server, and network configuration?
+>=20
+> Can you reproduce with NFSv3 or NFSv4.1? I assume you are
+> using TCP for this test.
+>=20
+> Any other relevant messages in the client's or server's /v/l/m?
+>=20
+>=20
+>> I keep trying to capture it with Wireshark, but there are enough =
+packets on the wire to crash Wireshark.
+>=20
+> Use tcpdump instead, and capture into a tmpfs.
+>=20
+>=20
+>> Thoughts?
+>> Anna
+>>=20
+>>>=20
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> include/linux/sunrpc/xprt.h |    1 +
+>>> net/sunrpc/clnt.c           |    1 +
+>>> net/sunrpc/xprt.c           |   12 +++++++-----
+>>> 3 files changed, 9 insertions(+), 5 deletions(-)
+>>>=20
+>>> Changes since v1:
+>>> - Partial sends should not bump the XID
+>>>=20
+>>> diff --git a/include/linux/sunrpc/xprt.h =
+b/include/linux/sunrpc/xprt.h
+>>> index 5fea0fb..9784e28 100644
+>>> --- a/include/linux/sunrpc/xprt.h
+>>> +++ b/include/linux/sunrpc/xprt.h
+>>> @@ -324,6 +324,7 @@ struct xprt_class {
+>>> struct rpc_xprt		*xprt_create_transport(struct =
+xprt_create *args);
+>>> void			xprt_connect(struct rpc_task *task);
+>>> void			xprt_reserve(struct rpc_task *task);
+>>> +void			xprt_request_init(struct rpc_task =
+*task);
+>>> void			xprt_retry_reserve(struct rpc_task =
+*task);
+>>> int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct =
+rpc_task *task);
+>>> int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, =
+struct rpc_task *task);
+>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>> index 6e432ec..226f558 100644
+>>> --- a/net/sunrpc/clnt.c
+>>> +++ b/net/sunrpc/clnt.c
+>>> @@ -1546,6 +1546,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
+>>> 	task->tk_status =3D 0;
+>>> 	if (status >=3D 0) {
+>>> 		if (task->tk_rqstp) {
+>>> +			xprt_request_init(task);
+>>> 			task->tk_action =3D call_refresh;
+>>> 			return;
+>>> 		}
+>>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+>>> index 70f0050..2d95926 100644
+>>> --- a/net/sunrpc/xprt.c
+>>> +++ b/net/sunrpc/xprt.c
+>>> @@ -66,7 +66,7 @@
+>>> * Local functions
+>>> */
+>>> static void	 xprt_init(struct rpc_xprt *xprt, struct net *net);
+>>> -static void	xprt_request_init(struct rpc_task *, struct =
+rpc_xprt *);
+>>> +static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
+>>> static void	xprt_connect_status(struct rpc_task *task);
+>>> static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task =
+*);
+>>> static void     __xprt_put_cong(struct rpc_xprt *, struct rpc_rqst =
+*);
+>>> @@ -987,6 +987,8 @@ bool xprt_prepare_transmit(struct rpc_task =
+*task)
+>>> 		task->tk_status =3D -EAGAIN;
+>>> 		goto out_unlock;
+>>> 	}
+>>> +	if (!bc_prealloc(req) && !req->rq_xmit_bytes_sent)
+>>> +		req->rq_xid =3D xprt_alloc_xid(xprt);
+>>> 	ret =3D true;
+>>> out_unlock:
+>>> 	spin_unlock_bh(&xprt->transport_lock);
+>>> @@ -1163,10 +1165,10 @@ void xprt_alloc_slot(struct rpc_xprt *xprt, =
+struct rpc_task *task)
+>>> out_init_req:
+>>> 	xprt->stat.max_slots =3D max_t(unsigned int, =
+xprt->stat.max_slots,
+>>> 				     xprt->num_reqs);
+>>> +	spin_unlock(&xprt->reserve_lock);
+>>> +
+>>> 	task->tk_status =3D 0;
+>>> 	task->tk_rqstp =3D req;
+>>> -	xprt_request_init(task, xprt);
+>>> -	spin_unlock(&xprt->reserve_lock);
+>>> }
+>>> EXPORT_SYMBOL_GPL(xprt_alloc_slot);
+>>>=20
+>>> @@ -1303,8 +1305,9 @@ static inline void xprt_init_xid(struct =
+rpc_xprt *xprt)
+>>> 	xprt->xid =3D prandom_u32();
+>>> }
+>>>=20
+>>> -static void xprt_request_init(struct rpc_task *task, struct =
+rpc_xprt *xprt)
+>>> +void xprt_request_init(struct rpc_task *task)
+>>> {
+>>> +	struct rpc_xprt *xprt =3D task->tk_xprt;
+>>> 	struct rpc_rqst	*req =3D task->tk_rqstp;
+>>>=20
+>>> 	INIT_LIST_HEAD(&req->rq_list);
+>>> @@ -1312,7 +1315,6 @@ static void xprt_request_init(struct rpc_task =
+*task, struct rpc_xprt *xprt)
+>>> 	req->rq_task	=3D task;
+>>> 	req->rq_xprt    =3D xprt;
+>>> 	req->rq_buffer  =3D NULL;
+>>> -	req->rq_xid     =3D xprt_alloc_xid(xprt);
+>>> 	req->rq_connect_cookie =3D xprt->connect_cookie - 1;
+>>> 	req->rq_bytes_sent =3D 0;
+>>> 	req->rq_snd_buf.len =3D 0;
+>>>=20
+>=20
+> --
+> Chuck Lever
+>=20
+>=20
+>=20
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
+
