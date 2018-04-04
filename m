@@ -1,203 +1,91 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2120.oracle.com ([156.151.31.85]:45882 "EHLO
-        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1753235AbeDCUtD (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Apr 2018 16:49:03 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: [PATCH v2] SUNRPC: Initialize rpc_rqst outside of
- xprt->reserve_lock
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <09F0E9FA-19E9-4780-A677-57AEC58CEE95@oracle.com>
-Date: Tue, 3 Apr 2018 16:48:57 -0400
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B5C61491-60DB-418D-B677-680556E7E764@oracle.com>
-References: <20180311152620.16974.96109.stgit@manet.1015granger.net>
- <fa0afd37-bd06-cfe6-4c5f-e471ede3703f@Netapp.com>
- <09F0E9FA-19E9-4780-A677-57AEC58CEE95@oracle.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Return-Path: <olga.kornievskaia@gmail.com>
+MIME-Version: 1.0
+Sender: olga.kornievskaia@gmail.com
+In-Reply-To: <efe6d26f-d1e9-bf16-e608-a2595e4fdbdf@nwra.com>
+References: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
+ <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com> <efe6d26f-d1e9-bf16-e608-a2595e4fdbdf@nwra.com>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Wed, 4 Apr 2018 10:08:07 -0400
+Message-ID: <CAN-5tyE6RxfbGhMv1AzPMSomwKoxUNFEyZgAQYB=Du6HG-iisQ@mail.gmail.com>
+Subject: Re: NFS troubles
+To: Orion Poplawski <orion@nwra.com>
+Cc: Benjamin Coddington <bcodding@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 List-ID: <linux-nfs.vger.kernel.org>
 
+I wonder if this is the issue we ran into during the NFS bakeathon
+testing last week. Problem was that a previous NFS4.0 mount left state
+so that umount didn't actually unmount. Next mount only did a
+PUTROOTFH and there was no SETCLIENTID, then any operations that tried
+to use the clientid got ERR_EXPIRED. We will be trying to reproduce it
+again and trying to fix it.
 
-
-> On Apr 3, 2018, at 4:38 PM, Chuck Lever <chuck.lever@oracle.com> =
-wrote:
->=20
->=20
->=20
->> On Apr 3, 2018, at 4:12 PM, Anna Schumaker =
-<Anna.Schumaker@netapp.com> wrote:
->>=20
->> Hi Chuck,
->>=20
->> On 03/11/2018 11:27 AM, Chuck Lever wrote:
->>> alloc_slot is a transport-specific op, but initializing an rpc_rqst
->>> is common to all transports. In addition, the only part of initial-
->>> izing an rpc_rqst that needs serialization is getting a fresh XID.
->>>=20
->>> Move rpc_rqst initialization to common code in preparation for
->>> adding a transport-specific alloc_slot to xprtrdma.
->>=20
->> I'm having trouble with this patch again.  This time I'm running =
-xfstests generic/074 with NFS v4.0, and my client starts seeing "nfs: =
-server 192.168.100.215 not responding, still trying" after about a =
-minute.  Any thoughts about what's going on here?
->=20
-> Random thoughts:
->=20
-> "nfs: server not responding" is a very generic failure. One
-> minute is the TCP timeout setting. NFSv4.0 clients don't
-> typically retransmit unless the server drops the connection.
-
-Another thought:
-
-The problem before was that the client didn't recognize an XID
-returned by the server because the client had overwritten the
-rqst's rq_xid field. It should be straightforward to have
-xprt_lookup_rqst complain about an unrecognized XID, to confirm
-that this is happening again. Or there might even be a counter
-somewhere that you can view with a tool like mountstats.
-
-
-> What is your client, server, and network configuration?
->=20
-> Can you reproduce with NFSv3 or NFSv4.1? I assume you are
-> using TCP for this test.
->=20
-> Any other relevant messages in the client's or server's /v/l/m?
->=20
->=20
->> I keep trying to capture it with Wireshark, but there are enough =
-packets on the wire to crash Wireshark.
->=20
-> Use tcpdump instead, and capture into a tmpfs.
->=20
->=20
->> Thoughts?
->> Anna
->>=20
->>>=20
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>> include/linux/sunrpc/xprt.h |    1 +
->>> net/sunrpc/clnt.c           |    1 +
->>> net/sunrpc/xprt.c           |   12 +++++++-----
->>> 3 files changed, 9 insertions(+), 5 deletions(-)
->>>=20
->>> Changes since v1:
->>> - Partial sends should not bump the XID
->>>=20
->>> diff --git a/include/linux/sunrpc/xprt.h =
-b/include/linux/sunrpc/xprt.h
->>> index 5fea0fb..9784e28 100644
->>> --- a/include/linux/sunrpc/xprt.h
->>> +++ b/include/linux/sunrpc/xprt.h
->>> @@ -324,6 +324,7 @@ struct xprt_class {
->>> struct rpc_xprt		*xprt_create_transport(struct =
-xprt_create *args);
->>> void			xprt_connect(struct rpc_task *task);
->>> void			xprt_reserve(struct rpc_task *task);
->>> +void			xprt_request_init(struct rpc_task =
-*task);
->>> void			xprt_retry_reserve(struct rpc_task =
-*task);
->>> int			xprt_reserve_xprt(struct rpc_xprt *xprt, struct =
-rpc_task *task);
->>> int			xprt_reserve_xprt_cong(struct rpc_xprt *xprt, =
-struct rpc_task *task);
->>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>> index 6e432ec..226f558 100644
->>> --- a/net/sunrpc/clnt.c
->>> +++ b/net/sunrpc/clnt.c
->>> @@ -1546,6 +1546,7 @@ void rpc_force_rebind(struct rpc_clnt *clnt)
->>> 	task->tk_status =3D 0;
->>> 	if (status >=3D 0) {
->>> 		if (task->tk_rqstp) {
->>> +			xprt_request_init(task);
->>> 			task->tk_action =3D call_refresh;
->>> 			return;
->>> 		}
->>> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
->>> index 70f0050..2d95926 100644
->>> --- a/net/sunrpc/xprt.c
->>> +++ b/net/sunrpc/xprt.c
->>> @@ -66,7 +66,7 @@
->>> * Local functions
->>> */
->>> static void	 xprt_init(struct rpc_xprt *xprt, struct net *net);
->>> -static void	xprt_request_init(struct rpc_task *, struct =
-rpc_xprt *);
->>> +static __be32	xprt_alloc_xid(struct rpc_xprt *xprt);
->>> static void	xprt_connect_status(struct rpc_task *task);
->>> static int      __xprt_get_cong(struct rpc_xprt *, struct rpc_task =
-*);
->>> static void     __xprt_put_cong(struct rpc_xprt *, struct rpc_rqst =
-*);
->>> @@ -987,6 +987,8 @@ bool xprt_prepare_transmit(struct rpc_task =
-*task)
->>> 		task->tk_status =3D -EAGAIN;
->>> 		goto out_unlock;
->>> 	}
->>> +	if (!bc_prealloc(req) && !req->rq_xmit_bytes_sent)
->>> +		req->rq_xid =3D xprt_alloc_xid(xprt);
->>> 	ret =3D true;
->>> out_unlock:
->>> 	spin_unlock_bh(&xprt->transport_lock);
->>> @@ -1163,10 +1165,10 @@ void xprt_alloc_slot(struct rpc_xprt *xprt, =
-struct rpc_task *task)
->>> out_init_req:
->>> 	xprt->stat.max_slots =3D max_t(unsigned int, =
-xprt->stat.max_slots,
->>> 				     xprt->num_reqs);
->>> +	spin_unlock(&xprt->reserve_lock);
->>> +
->>> 	task->tk_status =3D 0;
->>> 	task->tk_rqstp =3D req;
->>> -	xprt_request_init(task, xprt);
->>> -	spin_unlock(&xprt->reserve_lock);
->>> }
->>> EXPORT_SYMBOL_GPL(xprt_alloc_slot);
->>>=20
->>> @@ -1303,8 +1305,9 @@ static inline void xprt_init_xid(struct =
-rpc_xprt *xprt)
->>> 	xprt->xid =3D prandom_u32();
->>> }
->>>=20
->>> -static void xprt_request_init(struct rpc_task *task, struct =
-rpc_xprt *xprt)
->>> +void xprt_request_init(struct rpc_task *task)
->>> {
->>> +	struct rpc_xprt *xprt =3D task->tk_xprt;
->>> 	struct rpc_rqst	*req =3D task->tk_rqstp;
->>>=20
->>> 	INIT_LIST_HEAD(&req->rq_list);
->>> @@ -1312,7 +1315,6 @@ static void xprt_request_init(struct rpc_task =
-*task, struct rpc_xprt *xprt)
->>> 	req->rq_task	=3D task;
->>> 	req->rq_xprt    =3D xprt;
->>> 	req->rq_buffer  =3D NULL;
->>> -	req->rq_xid     =3D xprt_alloc_xid(xprt);
->>> 	req->rq_connect_cookie =3D xprt->connect_cookie - 1;
->>> 	req->rq_bytes_sent =3D 0;
->>> 	req->rq_snd_buf.len =3D 0;
->>>=20
->=20
+On Tue, Apr 3, 2018 at 11:44 AM, Orion Poplawski <orion@nwra.com> wrote:
+> Kernel is 3.10.0-693.21.1.el7.x86_64  I don't have Red Hat support for th=
+ese
+> systems.
+>
+> I discovered that I'd been forcing vers=3D4.0 mounts in order to work aro=
+und a
+> mounting issue.  I'm moving back to the default 4.1 mounts as it seems to=
+ work
+> better for this issue.  If the issue returns I'll try to grab a longer tr=
+ace.
+>
+> Thanks.
+>
+> On 04/02/2018 12:30 PM, Benjamin Coddington wrote:
+>> NFS4ERR_EXPIRED means the client is trying to use state that the server
+>> believes to have expired or that has been supplanted by newer state.  Ca=
+n we
+>> get kernel versions for the client and server?  Have you talked to your =
+Red
+>> Hat support channel about this?
+>>
+>> This capture doesn't appear to show any bugs or bad behaviors, but a lon=
+ger
+>> capture may..
+>>
+>> Ben
+>>
+>> On 2 Apr 2018, at 13:50, Orion Poplawski wrote:
+>>
+>>> I'm having a lot of trouble with NFS going out to lunch between my RHEL=
+7
+>>> machines.  Users cannot access files, and get errors like:
+>>>
+>>> $ touch blah
+>>> touch: cannot touch =E2=80=98blah=E2=80=99: Input/output error
+>>>
+>>> I'm attaching a pcap trace of the above touch during the problem.  It s=
+eems
+>>> that the server is returning NFS4ERR_EXPIRED.
+>>>
+>>> Reboots/restarts of nfs help for a bit but then the problems return.
+>>>
+>>> Other symptoms of trouble are messages like:
+>>>
+>>> RPC: fragment too large: 613351424
+>>>
+>>> on the client.
+>>>
+>>> Any help with trying to track this down would be greatly appreciated.
+>>>
+>>> --
+>>> Orion Poplawski
+>>> Manager of NWRA Technical Systems          720-772-5637
+>>> NWRA, Boulder/CoRA Office             FAX: 303-415-9702
+>>> 3380 Mitchell Lane                       orion@nwra.com
+>>> Boulder, CO 80301                 https://www.nwra.com/
+>
+>
 > --
-> Chuck Lever
->=20
->=20
->=20
+> Orion Poplawski
+> Manager of NWRA Technical Systems          720-772-5637
+> NWRA, Boulder/CoRA Office             FAX: 303-415-9702
+> 3380 Mitchell Lane                       orion@nwra.com
+> Boulder, CO 80301                 https://www.nwra.com/
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
-in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-
-
-
