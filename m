@@ -1,37 +1,29 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx144.netapp.com ([216.240.21.25]:49717 "EHLO mx144.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:56848 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751281AbeDDSS6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Apr 2018 14:18:58 -0400
+        id S1751356AbeDDSkP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Apr 2018 14:40:15 -0400
 Subject: Re: [PATCH net-next 0/3] fscache: quick review
-To: David Howells <dhowells@redhat.com>, <steved@redhat.com>
-CC: <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <linux-afs@lists.infradead.org>
+To: David Howells <dhowells@redhat.com>, anna.schumaker@netapp.com
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-afs@lists.infradead.org
 References: <152276719197.15943.8722265175158239235.stgit@warthog.procyon.org.uk>
-From: Anna Schumaker <Anna.Schumaker@Netapp.com>
-Message-ID: <d250cd81-8986-5bcf-29cf-be64fa1bc413@Netapp.com>
-Date: Wed, 4 Apr 2018 14:18:36 -0400
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <c0e6d7f2-e3ee-b80d-fbfa-b0c61b25aa43@RedHat.com>
+Date: Wed, 4 Apr 2018 14:40:14 -0400
 MIME-Version: 1.0
 In-Reply-To: <152276719197.15943.8722265175158239235.stgit@warthog.procyon.org.uk>
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi David,
+
 
 On 04/03/2018 10:53 AM, David Howells wrote:
 > 
 > Hi Anna, Steve,
 > 
 > Could you give these three patches a quick look over?  They:
-
-The NFS bits look okay to me.  Feel free to add my acked-by to patches 1 and 2:
-
-    Acked-by: Anna Schumaker <anna.schumaker@netapp.com>
-
-Cheers,
-Anna
-
 > 
 >  (1) Modify the netfs->fscache API to store the index key, auxiliary data
 >      and data size in the cookie/object rather than calling back into the
@@ -47,6 +39,11 @@ Anna
 > which add a few fixes and some tracepoints:
 > 
 > 	http://git.kernel.org/cgit/linux/kernel/git/dhowells/linux-fs.git/log/?h=fscache-next
+I took these patches and put them into a Fedora rawhide kernel.... 
+
+They seem to work... Tested-by: Steve Dickson <steved@redhat.com>
+
+steved.
 > 
 > Thanks,
 > David
