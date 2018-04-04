@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51316 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51310 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752262AbeDDWHL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 4 Apr 2018 18:07:11 -0400
-Subject: [PATCH 04/12] fscache, cachefiles: Fix checker warnings
+        id S1752383AbeDDWGt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 4 Apr 2018 18:06:49 -0400
+Subject: [PATCH 01/12] afs: Invalidate cache on server data change
 From: David Howells <dhowells@redhat.com>
 To: torvalds@linux-foundation.org
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         dhowells@redhat.com, linux-cachefs@redhat.com,
         linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org
-Date: Wed, 04 Apr 2018 23:07:09 +0100
-Message-ID: <152287962922.14760.8383895930885499464.stgit@warthog.procyon.org.uk>
+Date: Wed, 04 Apr 2018 23:06:47 +0100
+Message-ID: <152287960744.14760.15224735251275266488.stgit@warthog.procyon.org.uk>
 In-Reply-To: <152287959470.14760.10350886166577848180.stgit@warthog.procyon.org.uk>
 References: <152287959470.14760.10350886166577848180.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,42 +18,28 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fix a couple of checker warnings in fscache and cachefiles:
-
- (1) fscache_n_op_requeue is never used, so get rid of it.
-
- (2) cachefiles_uncache_page() is passed in a lock that it releases, so
-     this needs annotating.
+Invalidate any data stored in fscache for a vnode that changes on the
+server so that we don't end up with the cache in a bad state locally.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/cachefiles/rdwr.c |    1 +
- fs/fscache/stats.c   |    1 -
- 2 files changed, 1 insertion(+), 1 deletion(-)
+ fs/afs/inode.c |    4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/cachefiles/rdwr.c b/fs/cachefiles/rdwr.c
-index 883bc7bb12c5..5082c8a49686 100644
---- a/fs/cachefiles/rdwr.c
-+++ b/fs/cachefiles/rdwr.c
-@@ -952,6 +952,7 @@ int cachefiles_write_page(struct fscache_storage *op, struct page *page)
-  * - cache withdrawal is prevented by the caller
-  */
- void cachefiles_uncache_page(struct fscache_object *_object, struct page *page)
-+	__releases(&object->fscache.cookie->lock)
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index 6b39d0255b72..42f83fd5a896 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -343,6 +343,10 @@ void afs_zap_data(struct afs_vnode *vnode)
  {
- 	struct cachefiles_object *object;
- 	struct cachefiles_cache *cache;
-diff --git a/fs/fscache/stats.c b/fs/fscache/stats.c
-index 7ac6e839b065..fcc8c2f2690e 100644
---- a/fs/fscache/stats.c
-+++ b/fs/fscache/stats.c
-@@ -21,7 +21,6 @@
- atomic_t fscache_n_op_pend;
- atomic_t fscache_n_op_run;
- atomic_t fscache_n_op_enqueue;
--atomic_t fscache_n_op_requeue;
- atomic_t fscache_n_op_deferred_release;
- atomic_t fscache_n_op_initialised;
- atomic_t fscache_n_op_release;
+ 	_enter("{%x:%u}", vnode->fid.vid, vnode->fid.vnode);
+ 
++#ifdef CONFIG_AFS_FSCACHE
++	fscache_invalidate(vnode->cache);
++#endif
++
+ 	/* nuke all the non-dirty pages that aren't locked, mapped or being
+ 	 * written back in a regular file and completely discard the pages in a
+ 	 * directory or symlink */
 
