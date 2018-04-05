@@ -1,121 +1,62 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:45864 "EHLO fieldses.org"
+Received: from ozlabs.org ([103.22.144.67]:60837 "EHLO ozlabs.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751179AbeDEOXa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 5 Apr 2018 10:23:30 -0400
-Date: Thu, 5 Apr 2018 10:23:29 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [GIT PULL] nfsd changes for 4.17
-Message-ID: <20180405142329.GR20297@fieldses.org>
+        id S1752126AbeDEVo1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 5 Apr 2018 17:44:27 -0400
+Date: Fri, 6 Apr 2018 07:43:14 +1000
+From: Stephen Rothwell <sfr@canb.auug.org.au>
+To: Anna Schumaker <Anna.Schumaker@Netapp.com>,
+        Trond Myklebust <trondmy@gmail.com>,
+        NFS Mailing List <linux-nfs@vger.kernel.org>
+Cc: Linux-Next Mailing List <linux-next@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: linux-next: bad commits in the nfs-anna tree
+Message-ID: <20180406074314.7ae8652e@canb.auug.org.au>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: multipart/signed; micalg=pgp-sha256;
+ boundary="Sig_/uDFnaOk4wPVxf/kgy+3jQP5"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 4.17 from:
+--Sig_/uDFnaOk4wPVxf/kgy+3jQP5
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-  git://linux-nfs.org/~bfields/linux.git tags/nfsd-4.17
+Hi all,
 
-Chuck Lever did a bunch of work on nfsd tracepoints, on RDMA, and on
-server xdr decoding (with an eye towards eliminating a data copy in the
-RDMA case).
+It looks like part of Linus' tree has been rebased into the nfs-anna tree .=
+.. commits
 
-I did some refactoring of the delegation code in preparation for
-eliminating some delegation self-conflicts and implementing write
-delegations.
+  4c8936622a01 ("btrfs: use kvzalloc to allocate btrfs_fs_info")
+to
+  8f1cd0ae48f5 ("Linux 4.16-rc4")
 
---b.
+in the nfs-anna tree are the same as commits
 
-Chuck Lever (21):
-      svcrdma: Use pr_err to report Receive errors
-      svcrdma: Consult max_qp_init_rd_atom when accepting connections
-      svcrdma: Clean up rdma_build_arg_xdr
-      sunrpc: Remove unneeded pointer dereference
-      svc: Simplify ->xpo_secure_port
-      sunrpc: Update show_svc_xprt_flags() to include recently added flags
-      sunrpc: Move trace_svc_xprt_dequeue()
-      sunrpc: Simplify do_enqueue tracing
-      sunrpc: Simplify trace_svc_recv
-      sunrpc: Save remote presentation address in svc_xprt for trace events
-      sunrpc: Re-purpose trace_svc_process
-      sunrpc: Report per-RPC execution stats
-      svc: Report xprt dequeue latency
-      nfsd: Fix NFSD trace points
-      nfsd: Record request byte count, not count of vectors
-      nfsd: Add "nfsd_" to trace point names
-      nfsd: Add I/O trace points in the NFSv4 write path
-      nfsd: Add I/O trace points in the NFSv4 read proc
-      nfsd: Trace NFSv4 COMPOUND execution
-      NFSD: Clean up legacy NFS WRITE argument XDR decoders
-      NFSD: Clean up legacy NFS SYMLINK argument XDR decoders
+  a8fd1f717493 ("btrfs: use kvzalloc to allocate btrfs_fs_info")
+to
+  661e50bc8532 ("Linux 4.16-rc4")
 
-Colin Ian King (1):
-      lockd: make nlm_ntf_refcnt and nlm_ntf_wq static
+I can't use the nfs-anna tree as it is, please fis it up.
 
-Eric Biggers (1):
-      sunrpc: remove incorrect HMAC request initialization
+--=20
+Cheers,
+Stephen Rothwell
 
-Fengguang Wu (1):
-      nfsd: fix boolreturn.cocci warnings
+--Sig_/uDFnaOk4wPVxf/kgy+3jQP5
+Content-Type: application/pgp-signature
+Content-Description: OpenPGP digital signature
 
-J. Bruce Fields (11):
-      nfsd: remove unsused "cp_consecutive" field
-      nfsd: don't require low ports for gss requests
-      nfsd: simplify put of fi_deleg_file
-      nfsd: simplify nfs4_put_deleg_lease calls
-      nfsd4: set fl_owner to delegation, not file pointer
-      nfsd4: dp->dl_stid.sc_file doesn't need locking
-      nfsd: make nfs4_get_existing_delegation less confusing
-      nfsd: factor out common delegation-destruction code
-      nfsd: move sc_file assignment into alloc_init_deleg
-      nfsd: create a separate lease for each delegation
-      nfsd: fix incorrect umasks
+-----BEGIN PGP SIGNATURE-----
 
-James Ettle (1):
-      sunrpc: Fix unaligned access on sparc64
+iQEzBAEBCAAdFiEENIC96giZ81tWdLgKAVBC80lX0GwFAlrGmHIACgkQAVBC80lX
+0GwCVwf+Mt1XgGtCqTgcOK02dVHra2VC+3qNlTUWdZZXuQDyu8CkY4/J7FcgP2W4
+h6VXup3qfN1iqTQexO/LAZtfgHZ+FympYwociJWa4jbkype8hPh82zj3F7nb6mqv
+A4SiOdRy1/98ApY6LA0zN4URK+Q99pfiRB4kRbbMFflsN02jY+dfmMpVc/M8xke5
+V3gNZuart5bRy/0AlqLZWI+Qf3+/hIiL+tKdfnFqsbFgiZKCnw3mxNU8Azy+2e42
+riBueMBmDgUXtnOlpsMWD1BP54OmWzu7k9tfwEfvVwGgJ7phNwl+FNuLuIImzvWJ
+rSTQ0+LhUf1FPQQp+/ZRQN12T4m98g==
+=m25L
+-----END PGP SIGNATURE-----
 
-Jeff Layton (2):
-      nfsd4: send the special close_stateid in v4.0 replies as well
-      nfsd: move nfs4_client allocation to dedicated slabcache
-
-NeilBrown (1):
-      SUNRPC: cache: ignore timestamp written to 'flush' file.
-
-Stefan Agner (1):
-      nfsd: use correct enum type in decode_cb_op_status
-
- fs/lockd/svc.c                           |   4 +-
- fs/nfsd/nfs3proc.c                       |  18 +-
- fs/nfsd/nfs3xdr.c                        |  67 ++------
- fs/nfsd/nfs4callback.c                   |   4 +-
- fs/nfsd/nfs4layouts.c                    |  16 +-
- fs/nfsd/nfs4proc.c                       |  38 ++--
- fs/nfsd/nfs4state.c                      | 286 ++++++++++++++-----------------
- fs/nfsd/nfs4xdr.c                        |  22 +--
- fs/nfsd/nfsfh.c                          |  12 +-
- fs/nfsd/nfsproc.c                        |  23 ++-
- fs/nfsd/nfsxdr.c                         |  63 ++++---
- fs/nfsd/trace.h                          |  98 +++++++++--
- fs/nfsd/vfs.c                            |  65 +++----
- fs/nfsd/vfs.h                            |  11 +-
- fs/nfsd/xdr.h                            |   3 +-
- fs/nfsd/xdr3.h                           |   3 +-
- fs/nfsd/xdr4.h                           |   5 +-
- include/linux/sunrpc/svc.h               |   6 +
- include/linux/sunrpc/svc_rdma.h          |   3 -
- include/linux/sunrpc/svc_xprt.h          |   6 +-
- include/trace/events/sunrpc.h            | 204 +++++++++++++---------
- net/sunrpc/auth_gss/gss_krb5_crypto.c    |   3 -
- net/sunrpc/auth_gss/gss_krb5_seal.c      |   5 +-
- net/sunrpc/auth_gss/gss_krb5_unseal.c    |   4 +-
- net/sunrpc/cache.c                       |  32 ++--
- net/sunrpc/svc.c                         | 118 ++++++++++++-
- net/sunrpc/svc_xprt.c                    |  34 ++--
- net/sunrpc/svcsock.c                     |   8 +-
- net/sunrpc/xprtrdma/svc_rdma.c           |   4 +-
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |  33 ++--
- net/sunrpc/xprtrdma/svc_rdma_transport.c |  38 ++--
- 31 files changed, 721 insertions(+), 515 deletions(-)
+--Sig_/uDFnaOk4wPVxf/kgy+3jQP5--
