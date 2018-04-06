@@ -1,154 +1,99 @@
-Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:34928 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751412AbeDFUAI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Apr 2018 16:00:08 -0400
-From: David Howells <dhowells@redhat.com>
-To: torvalds@linux-foundation.org
-cc: dhowells@redhat.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-cachefs@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org
-Subject: [GIT PULL] fscache: Fixes, traces and development
+Return-Path: <orion@nwra.com>
+Subject: Re: NFS troubles
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Benjamin Coddington <bcodding@redhat.com>,
+ Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+References: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
+ <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com>
+ <efe6d26f-d1e9-bf16-e608-a2595e4fdbdf@nwra.com>
+ <fa393c5e-a18c-2963-3aa8-f56ba35e8baf@nwra.com>
+ <7A560163-BA54-4051-9BB4-12087952987D@oracle.com>
+From: Orion Poplawski <orion@nwra.com>
+Message-ID: <e1d10240-31a6-af26-d71c-df96d0c19829@nwra.com>
+Date: Fri, 6 Apr 2018 16:05:48 -0600
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Date: Fri, 06 Apr 2018 21:00:04 +0100
-Message-ID: <14829.1523044804@warthog.procyon.org.uk>
-Sender: linux-nfs-owner@vger.kernel.org
+In-Reply-To: <7A560163-BA54-4051-9BB4-12087952987D@oracle.com>
+Content-Type: text/plain; charset=utf-8
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Linus,
+On 04/06/2018 10:24 AM, Chuck Lever wrote:
+> 
+> 
+>> On Apr 6, 2018, at 12:07 PM, Orion Poplawski <orion@nwra.com> wrote:
+>>
+>> On 04/03/2018 09:44 AM, Orion Poplawski wrote:
+>>> Kernel is 3.10.0-693.21.1.el7.x86_64  I don't have Red Hat support for these
+>>> systems.
+>>>
+>>> I discovered that I'd been forcing vers=4.0 mounts in order to work around a
+>>> mounting issue.  
+>>
+>> And I'm back to seeing the mount issue at boot.  Here's the situation - we're
+>> forcing kerberos on the public network, but allowing sec=sys on some private
+>> networks:
+>>
+>> /etc/exports:
+>> /               -ro,async,fsid=0 192.168.1.0/24(sec=sys)
+>> 192.168.2.0/24(sec=sys) *.nwra.com(sec=krb5)
+>> /export/home    -rw,async,nohide 192.168.1.0/24(sec=sys)
+>> 192.168.2.0/24(sec=sys) *.nwra.com(sec=krb5)
+>>
+>> So for a while after boot, attempts to mount with sec=sys fail:
+>>
+>> # mount -t nfs4 -s -o
+>> sec=sys,intr,rsize=262144,wsize=262144,noatime,lookupcache=positive,actimeo=1
+>> earthib.cora.nwra.com:/export/home/greg /mnt
+>> mount.nfs4: Operation not permitted
+>>
+>> But then later they work:
+>>
+>> # mount -t nfs4 -s -o
+>> sec=sys,intr,rsize=262144,wsize=262144,noatime,lookupcache=positive,actimeo=1
+>> earthib.cora.nwra.com:/export/home/greg /mnt
+>> # umount /mnt
+>>
+>> This can cycle back and forth.
+>>
+>> I've attached a packet capture of some failed mount attempts.  It seems that
+>> even with specifying sec=sys, some kerberos stuff is going on.
+>>
+>> It appears to be related to mounting a different sec=krb5 mount over the
+>> public network from the same server.  While that mount is active, the sec=sys
+>> mounts fail.  When it is unmounted, they work.  At least now I think I can
+>> work around this...
+> 
+> For NFSv4, the client is going to use krb5i to do lease management even
+> on sec=sys mounts. An NFSv4 server has to know for sure when it is talking
+> to the same client on different network interfaces or with different
+> security flavors. Thus the client has to use the same security flavor for
+> lease management on all of its mounts of that server. That's not controlled
+> by the sec= mount option.
+> 
+> I assume that "but then later" lasts only a few multiples of the server's
+> lease time (90 seconds by default)?
+> 
+> Clients that use only the private network interface should be able to use
+> sec=sys. But clients that use both the public and private interfaces should
+> need to use sec=krb5 on both.
 
-Here are some patches that fix some of AFS's usage of fscache, two of which
-conflict with later patches in this series, so I've included them here:
+Testing again with RHEL 7.5 beta:
+3.10.0-830.el7.x86_64
+nfs-utils-1.3.0-0.52.el7.x86_64
 
- (1) Need to invalidate the cache if a foreign data change is detected on
-     the server.
+Near as I can tell, with NFS version 4.1 mounts, as long as there is an active
+sec=krb5 mount to a server, sec=sys mounts to that server fail (with the above
+/etc/exports).  As soon as I unmount the sec=krb5 mount, the sec=sys mount
+works.  And vice-versa - an active sec=sys mount prevents sec=krb5 mounts.
+Waiting does not appear to help.  The sporadic behavior noted before was due
+to the use of the automounter - as mounts came and went different ones would
+break.
 
- (2) Move the vnode ID uniquifier (equivalent to i_generation) from the
-     auxiliary data to the index key to prevent a race between file delete
-     and a subsequent file create seeing the same index key.
+If I use NFS version 4.0, I can have both.  But then I get the locking bug in
+my original post.
 
- (3) Need to retire cookies that correspond to files that we think got
-     deleted on the server.
-
-There are some patches to fix some things in fscache and cachefiles:
-
- (4) Fix a couple of checker warnings.
-
- (5) Correctly indicate to the end-of-operation callback whether an
-     operation completed or was cancelled.
-
- (6) Add a check for multiple cookie relinquishment.
-
- (7) Fix a path through the asynchronous write that doesn't wake up a
-     waiter for a page if the cache decides not to write that page, but
-     discards it instead.
-
-There a couple of patches to add tracepoints to fscache and cachefiles:
-
- (8) Add tracepoints for cookie operators, object state machine execution,
-     cachefiles object management and cachefiles VFS operations.
-
- (9) Add tracepoints for fscache operation management and page wrangling.
-
-And then three development patches:
-
-(10) Attach the index key and auxiliary data to the cookie, pass this
-     information through various fscache-netfs API functions and get rid of
-     the callbacks to the netfs to get it.
-
-     This means that the cache can get at this information, even if the
-     netfs goes away.  It also means that the cache can be lazy in updating
-     the coherency data.
-
-(11) Pass the object data size through various fscache-netfs API rather
-     than calling back to the netfs for it, and store the value in the
-     object.
-
-     This makes it easier to correctly resize the object, as the size is
-     updated on writes to the cache, rather than calling back out to the
-     netfs.
-
-(12) Maintain a catalogue of allocated cookies.  This makes it possible to
-     catch cookie collision up front rather than down in the bowels of the
-     cache being run from a service thread from the object state machine.
-
-     This will also make it possible in the future to reconnect to a cookie
-     that's not gone dead yet because it's waiting for finalisation of the
-     storage and also make it possible to bring cookies online if the cache
-     is added after the cookie has been obtained.
-
-I modified this from the previous post to fix a bug found by the kbuild test
-robot.
-
-David
----
-The following changes since commit 17dec0a949153d9ac00760ba2f5b78cb583e995f:
-
-  Merge branch 'userns-linus' of git://git.kernel.org/pub/scm/linux/kernel/git/ebiederm/user-namespace (2018-04-03 19:15:32 -0700)
-
-are available in the Git repository at:
-
-  git://git.kernel.org/pub/scm/linux/kernel/git/dhowells/linux-fs.git tags/fscache-next-20180406
-
-for you to fetch changes up to ec0328e46d6e5d0f17372eb90ab8e333c2ac7ca9:
-
-  fscache: Maintain a catalogue of allocated cookies (2018-04-06 14:05:14 +0100)
-
-----------------------------------------------------------------
-fscache development
-
-----------------------------------------------------------------
-David Howells (12):
-      afs: Invalidate cache on server data change
-      afs: Use the vnode ID uniquifier in the cache key not the aux data
-      afs: Be more aggressive in retiring cached vnodes
-      fscache, cachefiles: Fix checker warnings
-      fscache: Pass the correct cancelled indications to fscache_op_complete()
-      fscache: Detect multiple relinquishment of a cookie
-      fscache: Fix hanging wait on page discarded by writeback
-      fscache: Add tracepoints
-      fscache: Add more tracepoints
-      fscache: Attach the index key and aux data to the cookie
-      fscache: Pass object size in rather than calling back for it
-      fscache: Maintain a catalogue of allocated cookies
-
- Documentation/filesystems/caching/netfs-api.txt | 157 ++++---
- fs/9p/cache.c                                   | 100 ++---
- fs/afs/cache.c                                  | 150 +------
- fs/afs/cell.c                                   |   6 +-
- fs/afs/file.c                                   |   6 +-
- fs/afs/inode.c                                  |  49 ++-
- fs/afs/internal.h                               |   7 +
- fs/afs/volume.c                                 |   6 +-
- fs/cachefiles/interface.c                       |  61 ++-
- fs/cachefiles/internal.h                        |   2 +
- fs/cachefiles/main.c                            |   1 +
- fs/cachefiles/namei.c                           |  75 ++--
- fs/cachefiles/rdwr.c                            |   1 +
- fs/cachefiles/xattr.c                           |   8 +-
- fs/ceph/cache.c                                 | 113 ++---
- fs/cifs/cache.c                                 | 168 +-------
- fs/cifs/fscache.c                               | 130 +++++-
- fs/cifs/fscache.h                               |  13 +
- fs/fscache/cache.c                              |   2 +-
- fs/fscache/cookie.c                             | 386 ++++++++++++++---
- fs/fscache/fsdef.c                              |  55 +--
- fs/fscache/internal.h                           |  44 +-
- fs/fscache/main.c                               |   1 +
- fs/fscache/netfs.c                              |  71 +---
- fs/fscache/object-list.c                        |  28 +-
- fs/fscache/object.c                             |  66 ++-
- fs/fscache/operation.c                          |  26 +-
- fs/fscache/page.c                               |  84 +++-
- fs/fscache/stats.c                              |   1 -
- fs/nfs/fscache-index.c                          | 159 +------
- fs/nfs/fscache.c                                |  89 +++-
- fs/nfs/fscache.h                                |  15 +
- include/linux/fscache-cache.h                   |  26 +-
- include/linux/fscache.h                         | 142 ++++---
- include/trace/events/cachefiles.h               | 325 ++++++++++++++
- include/trace/events/fscache.h                  | 537 ++++++++++++++++++++++++
- 36 files changed, 2029 insertions(+), 1081 deletions(-)
- create mode 100644 include/trace/events/cachefiles.h
- create mode 100644 include/trace/events/fscache.h
+-- 
+Orion Poplawski
+Manager of NWRA Technical Systems          720-772-5637
+NWRA, Boulder/CoRA Office             FAX: 303-415-9702
+3380 Mitchell Lane                       orion@nwra.com
+Boulder, CO 80301                 https://www.nwra.com/
