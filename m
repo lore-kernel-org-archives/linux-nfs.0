@@ -1,89 +1,124 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48594 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751544AbeDGCqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 6 Apr 2018 22:46:55 -0400
-Date: Fri, 6 Apr 2018 22:46:55 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Received: from userp2130.oracle.com ([156.151.31.86]:52434 "EHLO
+        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752006AbeDGVX4 (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Apr 2018 17:23:56 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
 Subject: Re: NFS troubles
-Message-ID: <20180407024655.GD5306@fieldses.org>
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20180407024655.GD5306@fieldses.org>
+Date: Sat, 7 Apr 2018 17:23:50 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2ADCC180-7FFF-4A9F-8550-0AE6384E86F6@oracle.com>
 References: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
  <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com>
  <efe6d26f-d1e9-bf16-e608-a2595e4fdbdf@nwra.com>
  <fa393c5e-a18c-2963-3aa8-f56ba35e8baf@nwra.com>
  <D16F3893-3A2C-46B0-A05A-52C8155C66AB@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <D16F3893-3A2C-46B0-A05A-52C8155C66AB@oracle.com>
+ <20180407024655.GD5306@fieldses.org>
+To: Bruce Fields <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 06, 2018 at 08:15:35PM -0400, Chuck Lever wrote:
-> 
-> > On Apr 6, 2018, at 12:07 PM, Orion Poplawski <orion@nwra.com> wrote:
-> > 
-> > On 04/03/2018 09:44 AM, Orion Poplawski wrote:
-> >> Kernel is 3.10.0-693.21.1.el7.x86_64  I don't have Red Hat support for these
-> >> systems.
-> >> 
-> >> I discovered that I'd been forcing vers=4.0 mounts in order to work around a
-> >> mounting issue.  
-> > 
-> > And I'm back to seeing the mount issue at boot.  Here's the situation - we're
-> > forcing kerberos on the public network, but allowing sec=sys on some private
-> > networks:
-> > 
-> > /etc/exports:
-> > /               -ro,async,fsid=0 192.168.1.0/24(sec=sys)
-> > 192.168.2.0/24(sec=sys) *.nwra.com(sec=krb5)
-> > /export/home    -rw,async,nohide 192.168.1.0/24(sec=sys)
-> > 192.168.2.0/24(sec=sys) *.nwra.com(sec=krb5)
-> > 
-> > So for a while after boot, attempts to mount with sec=sys fail:
-> > 
-> > # mount -t nfs4 -s -o
-> > sec=sys,intr,rsize=262144,wsize=262144,noatime,lookupcache=positive,actimeo=1
-> > earthib.cora.nwra.com:/export/home/greg /mnt
-> > mount.nfs4: Operation not permitted
-> > 
-> > But then later they work:
-> > 
-> > # mount -t nfs4 -s -o
-> > sec=sys,intr,rsize=262144,wsize=262144,noatime,lookupcache=positive,actimeo=1
-> > earthib.cora.nwra.com:/export/home/greg /mnt
-> > # umount /mnt
-> > 
-> > This can cycle back and forth.
-> > 
-> > I've attached a packet capture of some failed mount attempts.  It seems that
-> > even with specifying sec=sys, some kerberos stuff is going on.
-> 
-> > It appears to be related to mounting a different sec=krb5 mount over the
-> > public network from the same server.  While that mount is active, the sec=sys
-> > mounts fail.  When it is unmounted, they work.  At least now I think I can
-> > work around this...
-> 
-> Bruce-
-> 
-> I examined the attached network capture. There are two attempts to do an
-> EXCHANGE_ID operation. Both times:
-> 
-> - a fresh GSS context is established successfully
-> - a fresh TCP connection is established by the client
-> - EXCHANGE_ID is sent using krb5i and the previously established GSS context
-> -- client owner verifier is 0x5ac794e81d0a1d81
-> -- client owner is "Linux NFSv4.1 qcomp1.cora.nwra.com"
-> -- state protection is SP4_MACH_CRED
-> - the server responds NFS4_OK; the CONFIRMED_R, PNFS_MDS, and MOVED_REFER flags are set
-> - the client destroys the GSS context
-> - the client closes the TCP connection
 
-Huh.  If this is a second mount to the same server, it shouldn't need to
-do another EXCHANGE_ID at all, should it?  I suppose the trunking
-detection code's being overzealous.  Anyway, doesn't sound like the
-trace tells us much.  Sounds easy to reproduce, so maybe we just need to
-try it and see where exactly the client code is failing.
 
---b.
+> On Apr 6, 2018, at 10:46 PM, Bruce Fields <bfields@fieldses.org> =
+wrote:
+>=20
+> On Fri, Apr 06, 2018 at 08:15:35PM -0400, Chuck Lever wrote:
+>>=20
+>>> On Apr 6, 2018, at 12:07 PM, Orion Poplawski <orion@nwra.com> wrote:
+>>>=20
+>>> On 04/03/2018 09:44 AM, Orion Poplawski wrote:
+>>>> Kernel is 3.10.0-693.21.1.el7.x86_64  I don't have Red Hat support =
+for these
+>>>> systems.
+>>>>=20
+>>>> I discovered that I'd been forcing vers=3D4.0 mounts in order to =
+work around a
+>>>> mounting issue. =20
+>>>=20
+>>> And I'm back to seeing the mount issue at boot.  Here's the =
+situation - we're
+>>> forcing kerberos on the public network, but allowing sec=3Dsys on =
+some private
+>>> networks:
+>>>=20
+>>> /etc/exports:
+>>> /               -ro,async,fsid=3D0 192.168.1.0/24(sec=3Dsys)
+>>> 192.168.2.0/24(sec=3Dsys) *.nwra.com(sec=3Dkrb5)
+>>> /export/home    -rw,async,nohide 192.168.1.0/24(sec=3Dsys)
+>>> 192.168.2.0/24(sec=3Dsys) *.nwra.com(sec=3Dkrb5)
+>>>=20
+>>> So for a while after boot, attempts to mount with sec=3Dsys fail:
+>>>=20
+>>> # mount -t nfs4 -s -o
+>>> =
+sec=3Dsys,intr,rsize=3D262144,wsize=3D262144,noatime,lookupcache=3Dpositiv=
+e,actimeo=3D1
+>>> earthib.cora.nwra.com:/export/home/greg /mnt
+>>> mount.nfs4: Operation not permitted
+>>>=20
+>>> But then later they work:
+>>>=20
+>>> # mount -t nfs4 -s -o
+>>> =
+sec=3Dsys,intr,rsize=3D262144,wsize=3D262144,noatime,lookupcache=3Dpositiv=
+e,actimeo=3D1
+>>> earthib.cora.nwra.com:/export/home/greg /mnt
+>>> # umount /mnt
+>>>=20
+>>> This can cycle back and forth.
+>>>=20
+>>> I've attached a packet capture of some failed mount attempts.  It =
+seems that
+>>> even with specifying sec=3Dsys, some kerberos stuff is going on.
+>>=20
+>>> It appears to be related to mounting a different sec=3Dkrb5 mount =
+over the
+>>> public network from the same server.  While that mount is active, =
+the sec=3Dsys
+>>> mounts fail.  When it is unmounted, they work.  At least now I think =
+I can
+>>> work around this...
+>>=20
+>> Bruce-
+>>=20
+>> I examined the attached network capture. There are two attempts to do =
+an
+>> EXCHANGE_ID operation. Both times:
+>>=20
+>> - a fresh GSS context is established successfully
+>> - a fresh TCP connection is established by the client
+>> - EXCHANGE_ID is sent using krb5i and the previously established GSS =
+context
+>> -- client owner verifier is 0x5ac794e81d0a1d81
+>> -- client owner is "Linux NFSv4.1 qcomp1.cora.nwra.com"
+>> -- state protection is SP4_MACH_CRED
+>> - the server responds NFS4_OK; the CONFIRMED_R, PNFS_MDS, and =
+MOVED_REFER flags are set
+>> - the client destroys the GSS context
+>> - the client closes the TCP connection
+>=20
+> Huh.  If this is a second mount to the same server, it shouldn't need =
+to
+> do another EXCHANGE_ID at all, should it?
+
+The EXCHANGE_ID attempts are five seconds apart. It could be that there
+were two separate mount attempts.
+
+
+> I suppose the trunking
+> detection code's being overzealous.  Anyway, doesn't sound like the
+> trace tells us much.  Sounds easy to reproduce, so maybe we just need =
+to
+> try it and see where exactly the client code is failing.
+
+
+--
+Chuck Lever
+
+
+
