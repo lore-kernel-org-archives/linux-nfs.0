@@ -1,101 +1,49 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:56552 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751528AbeDGAPk (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Apr 2018 20:15:40 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: NFS troubles
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <fa393c5e-a18c-2963-3aa8-f56ba35e8baf@nwra.com>
-Date: Fri, 6 Apr 2018 20:15:35 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D16F3893-3A2C-46B0-A05A-52C8155C66AB@oracle.com>
-References: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
- <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com>
- <efe6d26f-d1e9-bf16-e608-a2595e4fdbdf@nwra.com>
- <fa393c5e-a18c-2963-3aa8-f56ba35e8baf@nwra.com>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from fieldses.org ([173.255.197.46]:48586 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751367AbeDGCnZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 6 Apr 2018 22:43:25 -0400
+Date: Fri, 6 Apr 2018 22:43:25 -0400
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <schumakeranna@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: lock debugging warning in nfs_async_unlink_release
+Message-ID: <20180407024325.GC5306@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+From: bfields@fieldses.org (J. Bruce Fields)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Is this something you already know about?
 
-> On Apr 6, 2018, at 12:07 PM, Orion Poplawski <orion@nwra.com> wrote:
->=20
-> On 04/03/2018 09:44 AM, Orion Poplawski wrote:
->> Kernel is 3.10.0-693.21.1.el7.x86_64  I don't have Red Hat support =
-for these
->> systems.
->>=20
->> I discovered that I'd been forcing vers=3D4.0 mounts in order to work =
-around a
->> mounting issue. =20
->=20
-> And I'm back to seeing the mount issue at boot.  Here's the situation =
-- we're
-> forcing kerberos on the public network, but allowing sec=3Dsys on some =
-private
-> networks:
->=20
-> /etc/exports:
-> /               -ro,async,fsid=3D0 192.168.1.0/24(sec=3Dsys)
-> 192.168.2.0/24(sec=3Dsys) *.nwra.com(sec=3Dkrb5)
-> /export/home    -rw,async,nohide 192.168.1.0/24(sec=3Dsys)
-> 192.168.2.0/24(sec=3Dsys) *.nwra.com(sec=3Dkrb5)
->=20
-> So for a while after boot, attempts to mount with sec=3Dsys fail:
->=20
-> # mount -t nfs4 -s -o
-> =
-sec=3Dsys,intr,rsize=3D262144,wsize=3D262144,noatime,lookupcache=3Dpositiv=
-e,actimeo=3D1
-> earthib.cora.nwra.com:/export/home/greg /mnt
-> mount.nfs4: Operation not permitted
->=20
-> But then later they work:
->=20
-> # mount -t nfs4 -s -o
-> =
-sec=3Dsys,intr,rsize=3D262144,wsize=3D262144,noatime,lookupcache=3Dpositiv=
-e,actimeo=3D1
-> earthib.cora.nwra.com:/export/home/greg /mnt
-> # umount /mnt
->=20
-> This can cycle back and forth.
->=20
-> I've attached a packet capture of some failed mount attempts.  It =
-seems that
-> even with specifying sec=3Dsys, some kerberos stuff is going on.
+--b.
 
-> It appears to be related to mounting a different sec=3Dkrb5 mount over =
-the
-> public network from the same server.  While that mount is active, the =
-sec=3Dsys
-> mounts fail.  When it is unmounted, they work.  At least now I think I =
-can
-> work around this...
-
-Bruce-
-
-I examined the attached network capture. There are two attempts to do an
-EXCHANGE_ID operation. Both times:
-
-- a fresh GSS context is established successfully
-- a fresh TCP connection is established by the client
-- EXCHANGE_ID is sent using krb5i and the previously established GSS =
-context
--- client owner verifier is 0x5ac794e81d0a1d81
--- client owner is "Linux NFSv4.1 qcomp1.cora.nwra.com"
--- state protection is SP4_MACH_CRED
-- the server responds NFS4_OK; the CONFIRMED_R, PNFS_MDS, and =
-MOVED_REFER flags are set
-- the client destroys the GSS context
-- the client closes the TCP connection
-
-
---
-Chuck Lever
-
-
+DEBUG_LOCKS_WARN_ON(sem->owner != ((struct task_struct *)1UL))
+WARNING: CPU: 1 PID: 1418 at kernel/locking/rwsem.c:217 up_read_non_owner+0x58/0x60
+Modules linked in: rpcsec_gss_krb5 nfsv4 nfs nfsd auth_rpcgss nfs_acl lockd grace sunrpc
+CPU: 1 PID: 1418 Comm: kworker/1:2 Not tainted 4.16.0-09576-g38c23685b273 #1706
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.10.2-2.fc27 04/01/2014
+Workqueue: nfsiod rpc_async_release [sunrpc]
+RIP: 0010:up_read_non_owner+0x58/0x60
+RSP: 0018:ffffc900019efe20 EFLAGS: 00010282
+RAX: 000000000000003e RBX: ffff880221246338 RCX: 0000000000000001
+RDX: 0000000080000001 RSI: 0000000000000001 RDI: 00000000ffffffff
+RBP: ffff8802319a9000 R08: 0000000000000000 R09: ffffffff810ee1c9
+R10: ffffc900019efe00 R11: 0000000000000000 R12: ffff880230515000
+R13: ffff880232badb40 R14: 0000000000000000 R15: ffff88023fd1fec0
+FS:  0000000000000000(0000) GS:ffff88023fd00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007ffd79b9290c CR3: 0000000235fb8000 CR4: 00000000000406e0
+Call Trace:
+nfs_async_unlink_release+0x2d/0x80 [nfs]
+rpc_free_task+0x2d/0x70 [sunrpc]
+process_one_work+0x1e8/0x650
+worker_thread+0x3a/0x390
+? process_one_work+0x650/0x650
+kthread+0x11e/0x140
+? kthread_create_on_node+0x40/0x40
+ret_from_fork+0x3a/0x50
+Code: ff b3 00 5b c3 e8 39 67 60 00 85 c0 74 df 8b 05 97 87 bd 02 85 c0 75 d5 48 c7 c6 b8 cc 4f 82 48 c7 c7 1b c4 4e 82 e8 98 be fa ff <0f> 0b eb be 0f 1f 40 00 66 66 66 66 90 53 48 8b
+74 24 08 48 89 
 
