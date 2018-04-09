@@ -1,124 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from userp2130.oracle.com ([156.151.31.86]:52434 "EHLO
-        userp2130.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752006AbeDGVX4 (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 7 Apr 2018 17:23:56 -0400
-Content-Type: text/plain;
-        charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
-Subject: Re: NFS troubles
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20180407024655.GD5306@fieldses.org>
-Date: Sat, 7 Apr 2018 17:23:50 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <2ADCC180-7FFF-4A9F-8550-0AE6384E86F6@oracle.com>
-References: <a6548640-bc0c-3bdd-7a0c-b1996978a26d@nwra.com>
- <A5B6EFB3-239C-420C-91F4-2B8D1BCBA85A@redhat.com>
- <efe6d26f-d1e9-bf16-e608-a2595e4fdbdf@nwra.com>
- <fa393c5e-a18c-2963-3aa8-f56ba35e8baf@nwra.com>
- <D16F3893-3A2C-46B0-A05A-52C8155C66AB@oracle.com>
- <20180407024655.GD5306@fieldses.org>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:36188 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1751653AbeDIR22 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 9 Apr 2018 13:28:28 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] clnt_com_create: Restore backwards compatibility with the legacy glibc code.
+Date: Mon,  9 Apr 2018 13:28:25 -0400
+Message-Id: <20180409172825.169380-1-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit 46e04a73 changed clnt_com_create() to avoid
+using reserved ports when creating the the CLIENT ptr.
+This change breaks backward compatibility with the
+legacy RPC code that was in glibc.
 
+This patch reverts that commit to restore backwards compatibility
 
-> On Apr 6, 2018, at 10:46 PM, Bruce Fields <bfields@fieldses.org> =
-wrote:
->=20
-> On Fri, Apr 06, 2018 at 08:15:35PM -0400, Chuck Lever wrote:
->>=20
->>> On Apr 6, 2018, at 12:07 PM, Orion Poplawski <orion@nwra.com> wrote:
->>>=20
->>> On 04/03/2018 09:44 AM, Orion Poplawski wrote:
->>>> Kernel is 3.10.0-693.21.1.el7.x86_64  I don't have Red Hat support =
-for these
->>>> systems.
->>>>=20
->>>> I discovered that I'd been forcing vers=3D4.0 mounts in order to =
-work around a
->>>> mounting issue. =20
->>>=20
->>> And I'm back to seeing the mount issue at boot.  Here's the =
-situation - we're
->>> forcing kerberos on the public network, but allowing sec=3Dsys on =
-some private
->>> networks:
->>>=20
->>> /etc/exports:
->>> /               -ro,async,fsid=3D0 192.168.1.0/24(sec=3Dsys)
->>> 192.168.2.0/24(sec=3Dsys) *.nwra.com(sec=3Dkrb5)
->>> /export/home    -rw,async,nohide 192.168.1.0/24(sec=3Dsys)
->>> 192.168.2.0/24(sec=3Dsys) *.nwra.com(sec=3Dkrb5)
->>>=20
->>> So for a while after boot, attempts to mount with sec=3Dsys fail:
->>>=20
->>> # mount -t nfs4 -s -o
->>> =
-sec=3Dsys,intr,rsize=3D262144,wsize=3D262144,noatime,lookupcache=3Dpositiv=
-e,actimeo=3D1
->>> earthib.cora.nwra.com:/export/home/greg /mnt
->>> mount.nfs4: Operation not permitted
->>>=20
->>> But then later they work:
->>>=20
->>> # mount -t nfs4 -s -o
->>> =
-sec=3Dsys,intr,rsize=3D262144,wsize=3D262144,noatime,lookupcache=3Dpositiv=
-e,actimeo=3D1
->>> earthib.cora.nwra.com:/export/home/greg /mnt
->>> # umount /mnt
->>>=20
->>> This can cycle back and forth.
->>>=20
->>> I've attached a packet capture of some failed mount attempts.  It =
-seems that
->>> even with specifying sec=3Dsys, some kerberos stuff is going on.
->>=20
->>> It appears to be related to mounting a different sec=3Dkrb5 mount =
-over the
->>> public network from the same server.  While that mount is active, =
-the sec=3Dsys
->>> mounts fail.  When it is unmounted, they work.  At least now I think =
-I can
->>> work around this...
->>=20
->> Bruce-
->>=20
->> I examined the attached network capture. There are two attempts to do =
-an
->> EXCHANGE_ID operation. Both times:
->>=20
->> - a fresh GSS context is established successfully
->> - a fresh TCP connection is established by the client
->> - EXCHANGE_ID is sent using krb5i and the previously established GSS =
-context
->> -- client owner verifier is 0x5ac794e81d0a1d81
->> -- client owner is "Linux NFSv4.1 qcomp1.cora.nwra.com"
->> -- state protection is SP4_MACH_CRED
->> - the server responds NFS4_OK; the CONFIRMED_R, PNFS_MDS, and =
-MOVED_REFER flags are set
->> - the client destroys the GSS context
->> - the client closes the TCP connection
->=20
-> Huh.  If this is a second mount to the same server, it shouldn't need =
-to
-> do another EXCHANGE_ID at all, should it?
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ src/rpc_soc.c | 10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
 
-The EXCHANGE_ID attempts are five seconds apart. It could be that there
-were two separate mount attempts.
-
-
-> I suppose the trunking
-> detection code's being overzealous.  Anyway, doesn't sound like the
-> trace tells us much.  Sounds easy to reproduce, so maybe we just need =
-to
-> try it and see where exactly the client code is failing.
-
-
---
-Chuck Lever
-
-
+diff --git a/src/rpc_soc.c b/src/rpc_soc.c
+index af6c482..ed0892a 100644
+--- a/src/rpc_soc.c
++++ b/src/rpc_soc.c
+@@ -67,8 +67,6 @@
+ 
+ extern mutex_t	rpcsoc_lock;
+ 
+-extern int __binddynport(int fd);
+-
+ static CLIENT *clnt_com_create(struct sockaddr_in *, rpcprog_t, rpcvers_t,
+     int *, u_int, u_int, char *, int);
+ static SVCXPRT *svc_com_create(int, u_int, u_int, char *);
+@@ -147,8 +145,7 @@ clnt_com_create(raddr, prog, vers, sockp, sendsz, recvsz, tp, flags)
+ 	bindaddr.maxlen = bindaddr.len =  sizeof (struct sockaddr_in);
+ 	bindaddr.buf = raddr;
+ 
+-	if (__binddynport(fd) == -1)
+-		goto err;
++	bindresvport(fd, NULL);
+ 	cl = clnt_tli_create(fd, nconf, &bindaddr, prog, vers,
+ 				sendsz, recvsz);
+ 	if (cl) {
+@@ -316,6 +313,7 @@ svc_com_create(fd, sendsize, recvsize, netid)
+ 	SVCXPRT *svc;
+ 	int madefd = FALSE;
+ 	int port;
++	struct sockaddr_in sin;
+ 
+ 	if ((nconf = __rpc_getconfip(netid)) == NULL) {
+ 		(void) syslog(LOG_ERR, "Could not get %s transport", netid);
+@@ -332,6 +330,10 @@ svc_com_create(fd, sendsize, recvsize, netid)
+ 		madefd = TRUE;
+ 	}
+ 
++	memset(&sin, 0, sizeof sin);
++	sin.sin_family = AF_INET;
++	bindresvport(fd, &sin);
++	listen(fd, SOMAXCONN);
+ 	svc = svc_tli_create(fd, nconf, NULL, sendsize, recvsize);
+ 	(void) freenetconfigent(nconf);
+ 	if (svc == NULL) {
+-- 
+2.14.3
 
