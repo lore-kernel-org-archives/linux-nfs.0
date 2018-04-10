@@ -1,54 +1,95 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:40744 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752016AbeDJVaq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 10 Apr 2018 17:30:46 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/2] Restore creating listening connection to server connections
-Date: Tue, 10 Apr 2018 17:30:43 -0400
-Message-Id: <20180410213043.5545-2-steved@redhat.com>
+Received: from userp2120.oracle.com ([156.151.31.85]:42388 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751600AbeDJWRm (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Apr 2018 18:17:42 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
+Subject: Re: [Libtirpc-devel] [PATCH 1/2] Restore using reserve ports for
+ client connections
+From: Chuck Lever <chuck.lever@oracle.com>
 In-Reply-To: <20180410213043.5545-1-steved@redhat.com>
+Date: Tue, 10 Apr 2018 16:17:30 -0600
+Cc: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <1E130010-3BB3-4BB8-9521-1B6096BC615B@oracle.com>
 References: <20180410213043.5545-1-steved@redhat.com>
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 46e04a73 changed svc_com_create() to avoid using
-reserve ports but removed the listen() call which
-could break, undocumented expectations, of legacy
-server apps.
 
-Reserve ports are not needed for listening ports, so
-the new  __binddynport() is used to avoid squatting
-on ports that are assigned to other network services,
-but it is important to say backwards compatible
-with the legacy glibc code so the the listen()
-call is added back.
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/rpc_soc.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+> On Apr 10, 2018, at 3:30 PM, Steve Dickson <steved@redhat.com> wrote:
+>=20
+> Commit 46e04a73 changed both clnt_com_create()
+> and clnt_tli_create() to avoid using reserve ports when
+> creating connection to the server.
+>=20
+> For certain legacy apps, the client has to used
+> reserve port to be able to communicate with its
+> server so using of reserve ports is restored.
 
-diff --git a/src/rpc_soc.c b/src/rpc_soc.c
-index f32a27c..cf15216 100644
---- a/src/rpc_soc.c
-+++ b/src/rpc_soc.c
-@@ -331,6 +331,13 @@ svc_com_create(fd, sendsize, recvsize, netid)
- 		madefd = TRUE;
- 	}
- 
-+	if (__binddynport(fd) == -1) {
-+		if (madefd)
-+			(void)close(fd);
-+		(void) syslog(LOG_ERR,
-+			"svc%s_create: could not bind connection: %m", netid);
-+	}
-+	listen(fd, SOMAXCONN);
- 	svc = svc_tli_create(fd, nconf, NULL, sendsize, recvsize);
- 	(void) freenetconfigent(nconf);
- 	if (svc == NULL) {
--- 
-2.14.3
+Hi Steve-
+
+Which legacy apps use clnt_tli_create and require this behavior?
+There is no backwards compatibility requirement for this API.
+
+
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> src/clnt_generic.c | 3 +--
+> src/rpc_soc.c      | 3 +--
+> 2 files changed, 2 insertions(+), 4 deletions(-)
+>=20
+> diff --git a/src/clnt_generic.c b/src/clnt_generic.c
+> index e5a314f..774292b 100644
+> --- a/src/clnt_generic.c
+> +++ b/src/clnt_generic.c
+> @@ -341,8 +341,7 @@ clnt_tli_create(int fd, const struct netconfig =
+*nconf,
+> 		servtype =3D nconf->nc_semantics;
+> 		if (!__rpc_fd2sockinfo(fd, &si))
+> 			goto err;
+> -		if (__binddynport(fd) =3D=3D -1)
+> -			goto err;
+> +		bindresvport(fd, NULL);
+> 	} else {
+> 		if (!__rpc_fd2sockinfo(fd, &si))
+> 			goto err;
+> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
+> index af6c482..f32a27c 100644
+> --- a/src/rpc_soc.c
+> +++ b/src/rpc_soc.c
+> @@ -147,8 +147,7 @@ clnt_com_create(raddr, prog, vers, sockp, sendsz, =
+recvsz, tp, flags)
+> 	bindaddr.maxlen =3D bindaddr.len =3D  sizeof (struct =
+sockaddr_in);
+> 	bindaddr.buf =3D raddr;
+>=20
+> -	if (__binddynport(fd) =3D=3D -1)
+> -		goto err;
+> +	bindresvport(fd, NULL);
+> 	cl =3D clnt_tli_create(fd, nconf, &bindaddr, prog, vers,
+> 				sendsz, recvsz);
+> 	if (cl) {
+> --=20
+> 2.14.3
+>=20
+>=20
+> =
+--------------------------------------------------------------------------=
+----
+> Check out the vibrant tech community on one of the world's most
+> engaging tech sites, Slashdot.org! http://sdm.link/slashdot
+> _______________________________________________
+> Libtirpc-devel mailing list
+> Libtirpc-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+
+--
+Chuck Lever
+
+
 
