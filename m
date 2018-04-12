@@ -1,79 +1,71 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:33372 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751599AbeDKRdj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Wed, 11 Apr 2018 13:33:39 -0400
-Date: Wed, 11 Apr 2018 13:33:37 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Olga Kornievskaia <aglo@umich.edu>,
-        Olga Kornievskaia <kolga@netapp.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v7 10/10] NFSD stop queued async copies on client shutdown
-Message-ID: <20180411173337.GQ16717@parsley.fieldses.org>
-References: <20180220164229.65404-1-kolga@netapp.com>
- <20180220164229.65404-11-kolga@netapp.com>
- <20180308170511.GF10782@fieldses.org>
- <CAN-5tyFZR7nOKks7nA__rLE3p4Dr7uwm7dHyKb_obOn74NbnHw@mail.gmail.com>
- <20180410202123.GB5685@parsley.fieldses.org>
- <CAN-5tyHrO898GGFgtFELwidJM3O47HGJNHQ=HvFYv22ve51Q5g@mail.gmail.com>
- <20180410211307.GB314@fieldses.org>
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:37384 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1752484AbeDLO0t (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 12 Apr 2018 10:26:49 -0400
+Subject: Re: [PATCH] clnt_create: Restore using reserve ports for client
+ connections
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+References: <20180411150803.26680-1-steved@redhat.com>
+From: Steve Dickson <SteveD@RedHat.com>
+Message-ID: <55637d9e-e19c-9179-095a-a3eff8a01985@RedHat.com>
+Date: Thu, 12 Apr 2018 10:26:48 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180410211307.GB314@fieldses.org>
+In-Reply-To: <20180411150803.26680-1-steved@redhat.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 10, 2018 at 05:13:07PM -0400, J. Bruce Fields wrote:
-> On Tue, Apr 10, 2018 at 05:07:02PM -0400, Olga Kornievskaia wrote:
-> > On Tue, Apr 10, 2018 at 4:21 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> > > DESTROY_CLIENTID doesn't throw away all the client's state for it, it's
-> > > only meant to be called after the client has already cleaned up
-> > > everything else.  So:
-> > >
-> > >         https://tools.ietf.org/html/rfc5661#section-18.50.3
-> > >
-> > >         If there are sessions (both idle and non-idle), opens, locks,
-> > >         delegations, layouts, and/or wants (Section 18.49) associated
-> > >         with the unexpired lease of the client ID, the server MUST
-> > >         return NFS4ERR_CLIENTID_BUSY.
-> > >
-> > > My feeling is that "ongoing copies" also belongs on that list.
 
-And come to think of it we should actually be adding that check to
-client_has_state()--it should return clientid_busy if there are any
-copies in progress.
 
-> > > So the server behavior you're seeing sounds correct to me--the client
-> > > should cancel any ongoing copies before calling DESTROY_CLIENTID.
-> > 
-> > If the behavior of returning ERR_DELAY until the copy is done is
-> > correct one, then I don't think I need this patch at all. Since copy
-> > takes a reference on the nfs4_client structure, then in
-> > __destroy_client() where nfsd4_shutdown_copy() is called the list will
-> > always be empty.
+On 04/11/2018 11:08 AM, Steve Dickson wrote:
+> Commit 46e04a73 changed clnt_create(3) not to
+> use reserve ports when binding a connection to
+> a server.
 > 
-> Actually I guess it should be returning CLIENTID_BUSY.  Maybe that's a
-> preexisting bug.
+> For certain legacy apps, like some of the NIS commands,
+> the client has to used reserve port to be able
+> to communicate with the server.
+> 
+> So the use of reserve ports in clnt_create(3)
+> has been restored.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
-So the copy should be caught by the earlier client_has_state() check
-before it gets to the later mark_client_expired_locked().
-
-And after reminding myself how this works....  We only hold references
-on clients temporarily such as while we're actually processing an RPC
-from a client.
-
-An elevated cl_refcount prevents the server from removing the client
-even after the lease expires, or after the client reboots and attempts
-to clear its old state with a new EXCHANGE_ID/CREATE_SESSION.  I don't
-think that's what we want.  Clients still need to renew their lease in
-the usual way, a long-running async copy doesn't keep the lease renewed
-automatically.
-
-So, the asynchronous copy shouldn't hold a reference on the client.
-
-The copy thread can still safely use the client while it's running,
-because it knows that anyone destroying the client will first cancel the
-copy and wait for the thread to die.
-
---b.
+steved.
+> ---
+>  src/clnt_generic.c | 3 +--
+>  src/rpc_soc.c      | 3 +--
+>  2 files changed, 2 insertions(+), 4 deletions(-)
+> 
+> diff --git a/src/clnt_generic.c b/src/clnt_generic.c
+> index e5a314f..774292b 100644
+> --- a/src/clnt_generic.c
+> +++ b/src/clnt_generic.c
+> @@ -341,8 +341,7 @@ clnt_tli_create(int fd, const struct netconfig *nconf,
+>  		servtype = nconf->nc_semantics;
+>  		if (!__rpc_fd2sockinfo(fd, &si))
+>  			goto err;
+> -		if (__binddynport(fd) == -1)
+> -			goto err;
+> +		bindresvport(fd, NULL);
+>  	} else {
+>  		if (!__rpc_fd2sockinfo(fd, &si))
+>  			goto err;
+> diff --git a/src/rpc_soc.c b/src/rpc_soc.c
+> index af6c482..f32a27c 100644
+> --- a/src/rpc_soc.c
+> +++ b/src/rpc_soc.c
+> @@ -147,8 +147,7 @@ clnt_com_create(raddr, prog, vers, sockp, sendsz, recvsz, tp, flags)
+>  	bindaddr.maxlen = bindaddr.len =  sizeof (struct sockaddr_in);
+>  	bindaddr.buf = raddr;
+>  
+> -	if (__binddynport(fd) == -1)
+> -		goto err;
+> +	bindresvport(fd, NULL);
+>  	cl = clnt_tli_create(fd, nconf, &bindaddr, prog, vers,
+>  				sendsz, recvsz);
+>  	if (cl) {
+> 
