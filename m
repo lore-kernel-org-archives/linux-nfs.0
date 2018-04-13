@@ -1,115 +1,42 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx142.netapp.com ([216.240.21.19]:53402 "EHLO mx142.netapp.com"
+Received: from mx143.netapp.com ([216.240.21.24]:3168 "EHLO mx143.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752584AbeDMRCJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Apr 2018 13:02:09 -0400
+        id S1750867AbeDMRDS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Apr 2018 13:03:18 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <bfields@redhat.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v8 8/9] NFSD support OFFLOAD_STATUS
-Date: Fri, 13 Apr 2018 13:01:57 -0400
-Message-ID: <20180413170158.17589-9-kolga@netapp.com>
-In-Reply-To: <20180413170158.17589-1-kolga@netapp.com>
-References: <20180413170158.17589-1-kolga@netapp.com>
+Subject: [PATCH v8 01/13] fs: Don't copy beyond the end of the file
+Date: Fri, 13 Apr 2018 13:03:02 -0400
+Message-ID: <20180413170314.17634-2-kolga@netapp.com>
+In-Reply-To: <20180413170314.17634-1-kolga@netapp.com>
+References: <20180413170314.17634-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Search the list for the asynchronous copy based on the stateid,
-then lookup the number of bytes copied so far.
+From: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfsd/nfs4proc.c | 45 ++++++++++++++++++++++++++++++++-------------
- fs/nfsd/state.h    |  2 ++
- 2 files changed, 34 insertions(+), 13 deletions(-)
+ fs/read_write.c | 3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index cebc087..7e28921 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1272,6 +1272,23 @@ static int nfsd4_do_async_copy(void *data)
- 	goto out;
- }
+diff --git a/fs/read_write.c b/fs/read_write.c
+index f8547b8..316394f 100644
+--- a/fs/read_write.c
++++ b/fs/read_write.c
+@@ -1543,6 +1543,9 @@ ssize_t vfs_copy_file_range(struct file *file_in, loff_t pos_in,
+ 	if (unlikely(ret))
+ 		return ret;
  
-+struct nfsd4_copy *
-+find_async_copy(struct nfs4_client *clp, stateid_t *stateid)
-+{
-+	struct nfsd4_copy *copy;
++	if (pos_in >= i_size_read(inode_in))
++		return -EINVAL;
 +
-+	spin_lock(&clp->async_lock);
-+	list_for_each_entry(copy, &clp->async_copies, copies) {
-+		if (memcmp(&copy->cp_stateid, stateid, NFS4_STATEID_SIZE))
-+			continue;
-+		refcount_inc(&copy->refcount);
-+		spin_unlock(&clp->async_lock);
-+		return copy;
-+	}
-+	spin_unlock(&clp->async_lock);
-+	return NULL;
-+}
-+
- static __be32
- nfsd4_offload_cancel(struct svc_rqst *rqstp,
- 		     struct nfsd4_compound_state *cstate,
-@@ -1280,20 +1297,10 @@ static int nfsd4_do_async_copy(void *data)
- 	struct nfsd4_offload_status *os = &u->offload_status;
- 	__be32 status = 0;
- 	struct nfsd4_copy *copy;
--	bool found = false;
- 	struct nfs4_client *clp = cstate->clp;
- 
--	spin_lock(&clp->async_lock);
--	list_for_each_entry(copy, &clp->async_copies, copies) {
--		if (memcmp(&copy->cps->cp_stateid, &os->stateid,
--				NFS4_STATEID_SIZE))
--			continue;
--		found = true;
--		refcount_inc(&copy->refcount);
--		break;
--	}
--	spin_unlock(&clp->async_lock);
--	if (found) {
-+	copy = find_async_copy(clp, &os->stateid);
-+	if (copy) {
- 		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
- 		kthread_stop(copy->copy_task);
- 		nfs4_put_copy(copy);
-@@ -1330,7 +1337,19 @@ static int nfsd4_do_async_copy(void *data)
- 		     struct nfsd4_compound_state *cstate,
- 		     union nfsd4_op_u *u)
- {
--	return nfserr_notsupp;
-+	struct nfsd4_offload_status *os = &u->offload_status;
-+	__be32 status = 0;
-+	struct nfsd4_copy *copy;
-+	struct nfs4_client *clp = cstate->clp;
-+
-+	copy = find_async_copy(clp, &os->stateid);
-+	if (copy) {
-+		os->count = copy->cp_res.wr_bytes_written;
-+		nfs4_put_copy(copy);
-+	} else
-+		status = nfserr_bad_stateid;
-+
-+	return status;
- }
- 
- static __be32
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 0ee2ed3..0bd4329 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -642,6 +642,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- struct nfs4_file *find_file(struct knfsd_fh *fh);
- void put_nfs4_file(struct nfs4_file *fi);
- extern void nfs4_put_copy(struct nfsd4_copy *copy);
-+extern struct nfsd4_copy *
-+find_async_copy(struct nfs4_client *clp, stateid_t *staetid);
- static inline void get_nfs4_file(struct nfs4_file *fi)
- {
- 	refcount_inc(&fi->fi_ref);
+ 	if (!(file_in->f_mode & FMODE_READ) ||
+ 	    !(file_out->f_mode & FMODE_WRITE) ||
+ 	    (file_out->f_flags & O_APPEND))
 -- 
 1.8.3.1
 
