@@ -1,12 +1,12 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from zmta2.savba.sk ([147.213.1.24]:58337 "EHLO zmta2.savba.sk"
+Received: from zmta2.savba.sk ([147.213.1.24]:38048 "EHLO zmta2.savba.sk"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752697AbeDMCdR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 12 Apr 2018 22:33:17 -0400
-Date: Fri, 13 Apr 2018 04:25:40 +0200 (CEST)
+        id S1752594AbeDMCk2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 12 Apr 2018 22:40:28 -0400
+Date: Fri, 13 Apr 2018 04:40:19 +0200 (CEST)
 From: Ingrid Pechanova <ingrid.pechanova@savba.sk>
 Reply-To: Apex Finanzdienstleistung <info@apexfinancialservice.com>
-Message-ID: <1485517506.48773549.1523586340077.JavaMail.zimbra@savba.sk>
+Message-ID: <879152484.48774656.1523587219143.JavaMail.zimbra@savba.sk>
 Subject: 3% Darlehensangebot
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
