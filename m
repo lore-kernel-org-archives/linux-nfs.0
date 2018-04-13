@@ -1,153 +1,83 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx143.netapp.com ([216.240.21.24]:63444 "EHLO mx143.netapp.com"
+Received: from mx141.netapp.com ([216.240.21.12]:56804 "EHLO mx141.netapp.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752163AbeDMRCi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Fri, 13 Apr 2018 13:02:38 -0400
+        id S1750867AbeDMRDR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Fri, 13 Apr 2018 13:03:17 -0400
 From: Olga Kornievskaia <kolga@netapp.com>
-To: <bfields@redhat.com>
+To: <Trond.Myklebust@primarydata.com>, <anna.schumaker@netapp.com>
 CC: <linux-nfs@vger.kernel.org>
-Subject: [PATCH v8 9/9] NFSD stop ongoing async copies on client shutdown
-Date: Fri, 13 Apr 2018 13:01:58 -0400
-Message-ID: <20180413170158.17589-10-kolga@netapp.com>
-In-Reply-To: <20180413170158.17589-1-kolga@netapp.com>
-References: <20180413170158.17589-1-kolga@netapp.com>
+Subject: [PATCH v8 00/13] NFS support for async intra COPY
+Date: Fri, 13 Apr 2018 13:03:01 -0400
+Message-ID: <20180413170314.17634-1-kolga@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If client received DESTROY_CLIENTID and there are (for some reason)
-on-going async copies, send CLIENT_BUSY error back (eg., client
-didn't send OFFLOAD_CANCEL).
+Change the client side to always request an asynchronous copy.
 
-If client's lease expired and client structure is being shutdown
-and there are on-going async copies, then shutdown the copies.
+If server replies to the COPY with the copy stateid, client will go
+wait on the CB_OFFLOAD. To fend off the race between CB_OFFLOAD and
+COPY reply, we check the list of pending callbacks before going to
+wait. Client adds the copy to the global list of copy stateids for the
+callback to look thru and signal the waiting copy.
 
-Signed-off-by: Olga Kornievskaia <kolga@netapp.com>
----
- fs/nfsd/nfs4proc.c  | 53 ++++++++++++++++++++++++++++++++++++++++++++++++-----
- fs/nfsd/nfs4state.c |  4 +++-
- fs/nfsd/state.h     |  1 +
- fs/nfsd/xdr4.h      |  1 +
- 4 files changed, 53 insertions(+), 6 deletions(-)
+When the client receives reply from the CB_OFFLOAD with some bytes and
+committed how is UNSTABLE, then COMMIT is sent to the server. The results
+are propagated to the VFS and application. Assuming that application
+will deal with a partial result and continue from the new offset if needed.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 7e28921..9536813 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1108,6 +1108,51 @@ void nfs4_put_copy(struct nfsd4_copy *copy)
- 	kfree(copy);
- }
- 
-+static bool
-+check_and_set_stop_copy(struct nfsd4_copy *copy)
-+{
-+	bool value;
-+
-+	spin_lock(&copy->cp_clp->async_lock);
-+	value = copy->stopped;
-+	if (!copy->stopped)
-+		copy->stopped = true;
-+	spin_unlock(&copy->cp_clp->async_lock);
-+	return value;
-+}
-+
-+static void nfsd4_stop_copy(struct nfsd4_copy *copy)
-+{
-+	/* only 1 thread should stop the copy */
-+	if (!check_and_set_stop_copy(copy)) {
-+		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
-+		kthread_stop(copy->copy_task);
-+	}
-+	nfs4_put_copy(copy);
-+}
-+
-+static struct nfsd4_copy *nfsd4_get_copy(struct nfs4_client *clp)
-+{
-+	struct nfsd4_copy *copy = NULL;
-+
-+	spin_lock(&clp->async_lock);
-+	if (!list_empty(&clp->async_copies)) {
-+		copy = list_first_entry(&clp->async_copies, struct nfsd4_copy,
-+					copies);
-+		refcount_inc(&copy->refcount);
-+	}
-+	spin_unlock(&clp->async_lock);
-+	return copy;
-+}
-+
-+void nfsd4_shutdown_copy(struct nfs4_client *clp)
-+{
-+	struct nfsd4_copy *copy;
-+
-+	while ((copy = nfsd4_get_copy(clp)) != NULL)
-+		nfsd4_stop_copy(copy);
-+}
-+
- static void nfsd4_cb_offload_release(struct nfsd4_callback *cb)
- {
- 	struct nfsd4_copy *copy = container_of(cb, struct nfsd4_copy, cp_cb);
-@@ -1300,11 +1345,9 @@ struct nfsd4_copy *
- 	struct nfs4_client *clp = cstate->clp;
- 
- 	copy = find_async_copy(clp, &os->stateid);
--	if (copy) {
--		set_tsk_thread_flag(copy->copy_task, TIF_SIGPENDING);
--		kthread_stop(copy->copy_task);
--		nfs4_put_copy(copy);
--	} else
-+	if (copy)
-+		nfsd4_stop_copy(copy);
-+	else
- 		status = nfserr_bad_stateid;
- 
- 	return status;
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3416d29..2d13d99 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1973,6 +1973,7 @@ static __be32 mark_client_expired_locked(struct nfs4_client *clp)
- 		}
- 	}
- 	nfsd4_return_all_client_layouts(clp);
-+	nfsd4_shutdown_copy(clp);
- 	nfsd4_shutdown_callback(clp);
- 	if (clp->cl_cb_conn.cb_xprt)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
-@@ -2503,7 +2504,8 @@ static bool client_has_state(struct nfs4_client *clp)
- 		|| !list_empty(&clp->cl_lo_states)
- #endif
- 		|| !list_empty(&clp->cl_delegations)
--		|| !list_empty(&clp->cl_sessions);
-+		|| !list_empty(&clp->cl_sessions)
-+		|| !list_empty(&clp->async_copies);
- }
- 
- __be32
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 0bd4329..8db45f9 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -634,6 +634,7 @@ extern void nfsd4_init_cb(struct nfsd4_callback *cb, struct nfs4_client *clp,
- extern int nfsd4_create_callback_queue(void);
- extern void nfsd4_destroy_callback_queue(void);
- extern void nfsd4_shutdown_callback(struct nfs4_client *);
-+extern void nfsd4_shutdown_copy(struct nfs4_client *clp);
- extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 249d883..feeb6d4 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -543,6 +543,7 @@ struct nfsd4_copy {
- 	struct list_head	copies;
- 	struct task_struct	*copy_task;
- 	refcount_t		refcount;
-+	bool			stopped;
- };
- 
- struct nfsd4_seek {
+If server errs with ERR_OFFLOAD_NOREQS the copy will be re-sent as a
+synchronous COPY. If application cancels an in-flight COPY,
+OFFLOAD_CANCEL is sent to the server (sending it as an async RPC in the
+context of the nfsid_workqueue).
+
+v8. 
+- added patch 13 to handle reboot recovery of the server or network
+partition. this patch was a part of the initial "inter async" series
+but never got added to the async series. without this patch if the
+server goes away, thread that was doing the copy would be hanging
+waiting for the callback that would never arrive.
+
+
+
+Anna Schumaker (1):
+  fs: Don't copy beyond the end of the file
+
+Olga Kornievskaia (12):
+  NFS CB_OFFLOAD xdr
+  NFS OFFLOAD_STATUS xdr
+  NFS OFFLOAD_STATUS op
+  NFS OFFLOAD_CANCEL xdr
+  NFS COPY xdr handle async reply
+  NFS add support for asynchronous COPY
+  NFS handle COPY reply CB_OFFLOAD call race
+  NFS export nfs4_async_handle_error
+  NFS send OFFLOAD_CANCEL when COPY killed
+  NFS handle COPY ERR_OFFLOAD_NO_REQS
+  NFS add a simple sync nfs4_proc_commit after async COPY
+  NFS recover from destination server reboot for copies
+
+ fs/nfs/callback.h         |  12 +++
+ fs/nfs/callback_proc.c    |  54 ++++++++++
+ fs/nfs/callback_xdr.c     |  81 ++++++++++++++-
+ fs/nfs/client.c           |   1 +
+ fs/nfs/nfs42.h            |   5 +-
+ fs/nfs/nfs42proc.c        | 251 ++++++++++++++++++++++++++++++++++++++++++++--
+ fs/nfs/nfs42xdr.c         | 189 +++++++++++++++++++++++++++++++---
+ fs/nfs/nfs4_fs.h          |   8 +-
+ fs/nfs/nfs4client.c       |  15 +++
+ fs/nfs/nfs4file.c         |   9 +-
+ fs/nfs/nfs4proc.c         |  38 ++++++-
+ fs/nfs/nfs4state.c        |  15 +++
+ fs/nfs/nfs4xdr.c          |   2 +
+ fs/read_write.c           |   3 +
+ include/linux/nfs4.h      |   2 +
+ include/linux/nfs_fs.h    |  11 ++
+ include/linux/nfs_fs_sb.h |   4 +
+ include/linux/nfs_xdr.h   |  14 +++
+ 18 files changed, 689 insertions(+), 25 deletions(-)
+
 -- 
 1.8.3.1
 
