@@ -1,34 +1,50 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f46.google.com ([209.85.213.46]:41962 "EHLO
-        mail-vk0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750942AbeDNMcu (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Apr 2018 08:32:50 -0400
-Received: by mail-vk0-f46.google.com with SMTP id i75so2112548vke.8
-        for <linux-nfs@vger.kernel.org>; Sat, 14 Apr 2018 05:32:50 -0700 (PDT)
+Received: from mail-pl0-f68.google.com ([209.85.160.68]:34246 "EHLO
+        mail-pl0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1751590AbeDNTmu (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Apr 2018 15:42:50 -0400
+Received: by mail-pl0-f68.google.com with SMTP id z12-v6so408100plo.1
+        for <linux-nfs@vger.kernel.org>; Sat, 14 Apr 2018 12:42:50 -0700 (PDT)
+Date: Sun, 15 Apr 2018 01:14:42 +0530
+From: Souptick Joarder <jrdr.linux@gmail.com>
+To: trond.myklebust@primarydata.com, anna.schumaker@netapp.com
+Cc: linux-nfs@vger.kernel.org, willy@infradead.org
+Subject: [PATCH] fs: nfs: Adding new return type vm_fault_t
+Message-ID: <20180414194442.GA20044@jordon-HP-15-Notebook-PC>
 MIME-Version: 1.0
-In-Reply-To: <20180414072202.GA6514@infradead.org>
-References: <20180413170158.17589-1-kolga@netapp.com> <20180414072202.GA6514@infradead.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Sat, 14 Apr 2018 08:32:48 -0400
-Message-ID: <CAN-5tyGDJUV6wVWoLoEy8V=RM+cF+y_JT-UkrG+7rcHv1VzgmQ@mail.gmail.com>
-Subject: Re: [PATCH v8 0/9] NFSD support for async COPY
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Apr 14, 2018 at 3:22 AM, Christoph Hellwig <hch@infradead.org> wrote:
-> What is the use case for adding all these crazy complications?
+Use new return type vm_fault_t for page_mkwrite
+handler.
 
-We have already provided evidence for improved performance of
-asynchronous copy vs synchronous copy. This is also foundation for the
-"inter" server-to-server copy which is coming later as it was decided
-to add the support in parts.
+Signed-off-by: Souptick Joarder <jrdr.linux@gmail.com>
+Reviewed-by: Matthew Wilcox <mawilcox@microsoft.com>
+---
+ fs/nfs/file.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/nfs/file.c b/fs/nfs/file.c
+index 81cca49..29553fd 100644
+--- a/fs/nfs/file.c
++++ b/fs/nfs/file.c
+@@ -532,13 +532,13 @@ static void nfs_swap_deactivate(struct file *file)
+  * writable, implying that someone is about to modify the page through a
+  * shared-writable mapping
+  */
+-static int nfs_vm_page_mkwrite(struct vm_fault *vmf)
++static vm_fault_t nfs_vm_page_mkwrite(struct vm_fault *vmf)
+ {
+ 	struct page *page = vmf->page;
+ 	struct file *filp = vmf->vma->vm_file;
+ 	struct inode *inode = file_inode(filp);
+ 	unsigned pagelen;
+-	int ret = VM_FAULT_NOPAGE;
++	vm_fault_t ret = VM_FAULT_NOPAGE;
+ 	struct address_space *mapping;
+
+ 	dfprintk(PAGECACHE, "NFS: vm_page_mkwrite(%pD2(%lu), offset %lld)\n",
+--
+1.9.1
+
