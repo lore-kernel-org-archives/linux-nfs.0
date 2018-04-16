@@ -1,58 +1,31 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:44938 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52140 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1751199AbeDPV3o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 16 Apr 2018 17:29:44 -0400
-Date: Mon, 16 Apr 2018 17:29:43 -0400
+        id S1751882AbeDPVpY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 16 Apr 2018 17:45:24 -0400
+Date: Mon, 16 Apr 2018 17:45:22 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        ng-linux-team <ng-linux-team@netapp.com>
-Subject: Re: nfsd issue with a kerberized callback
-Message-ID: <20180416212942.GA2634@parsley.fieldses.org>
-References: <680B7A1A-792A-4B9E-A0CA-46E459B65077@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Olga Kornievskaia <kolga@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v8 0/9] NFSD support for async COPY
+Message-ID: <20180416214522.GC2634@parsley.fieldses.org>
+References: <20180413170158.17589-1-kolga@netapp.com>
+ <20180414072202.GA6514@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <680B7A1A-792A-4B9E-A0CA-46E459B65077@netapp.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180414072202.GA6514@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 16, 2018 at 03:48:49PM -0400, Olga Kornievskaia wrote:
-> I have a failure that I’m investigating from the Bakeathon (this was
-> going against redhat-75 server. Not sure who was running that server.
-> But I believe that was RHEL7.5 server). I have a network trace and I
-> was wondering if you could help with what the server is doing.
->
-> I’m attaching a network trace. The parts I’m interested in explaining
-> have to do with the kerberized backchannel for NFS4.0.
-> 
-> A setup is client doing v3 and v4 mount and opening file with one
-> version and appending to it with a different version. Its opened with
-> 4.0 and got a delegation and it’s trying to write with v3 and server
-> is recalling a delegation
-> 
-> Server is issuing CB_NULL gss_init trying to establish a gss context.
-> But it’s doing it twice in frame 259 and frame 261. It’s weird that
-> it’s doing it twice. But Ok.
+On Sat, Apr 14, 2018 at 12:22:02AM -0700, Christoph Hellwig wrote:
+> What is the use case for adding all these crazy complications?
 
-I also wonder why the client sent two sets of
-SETCLIENTID/SETCLIENTID_CONFIRM calls.  The second gets back the same
-clientid as the first, so I think the only thing the server might do is
-update the callback information--but the callback information is the
-same in both cases.  Maybe some server bug is causing it not to handle
-that update correctly?
+Is there anything specific that you think is too complicated?
 
-I also expect the server to start a CB_NULL as soon as it gets the
-setclientid_confirm, so I would have expected to see that sooner.
+I know you don't think server-to-server copy offload is worth the
+trouble, but I haven't seen you actually explain why (beyond just that
+it's more complicated).
 
-> Now in frame, 283 it sends CB_COMPOUND CB_RECALL And in frame 285 it
-> sends CB_NULL with gss_data with the CB_NULL as the payload. I think
-> this is to establish the callback.
-> 
-> In frame 287, client responds with RPC accept state of 6000 (which I
-> believe is "drop reply").
+Is there some reason you think it won't actually be useful?
 
-That value shouldn't ever appear on the wire.
-
-Looks like RHEL7 may need 0533b13072f4 "svc: Avoid garbage replies when
-pc_func() returns rpc_drop_reply".
+--b.
