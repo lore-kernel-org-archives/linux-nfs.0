@@ -1,39 +1,68 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([209.132.183.28]:53806 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1753070AbeDQNV6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Apr 2018 09:21:58 -0400
-Date: Tue, 17 Apr 2018 09:21:56 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Olga Kornievskaia <kolga@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        ng-linux-team <ng-linux-team@netapp.com>
-Subject: Re: nfsd issue with a kerberized callback
-Message-ID: <20180417132156.GA10291@parsley.fieldses.org>
-References: <680B7A1A-792A-4B9E-A0CA-46E459B65077@netapp.com>
- <20180416212942.GA2634@parsley.fieldses.org>
- <EC52DFFD-CB6F-45F5-BAB9-C684C205DE26@netapp.com>
+Received: from mail-vk0-f54.google.com ([209.85.213.54]:34543 "EHLO
+        mail-vk0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753070AbeDQNWC (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Apr 2018 09:22:02 -0400
+Received: by mail-vk0-f54.google.com with SMTP id m76so11210vka.1
+        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2018 06:22:02 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <EC52DFFD-CB6F-45F5-BAB9-C684C205DE26@netapp.com>
+In-Reply-To: <20180417065203.GA15145@infradead.org>
+References: <20180413170158.17589-1-kolga@netapp.com> <20180414072202.GA6514@infradead.org>
+ <20180416214522.GC2634@parsley.fieldses.org> <20180417065203.GA15145@infradead.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Tue, 17 Apr 2018 09:22:01 -0400
+Message-ID: <CAN-5tyEjCEo+P=p2nPkEiwa3BwM8Nj_N3KmvMXMU+VDmQJcjLA@mail.gmail.com>
+Subject: Re: [PATCH v8 0/9] NFSD support for async COPY
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>,
+        Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 16, 2018 at 08:05:44PM -0400, Olga Kornievskaia wrote:
-> > On Apr 16, 2018, at 5:29 PM, J. Bruce Fields <bfields@redhat.com> wrote:
-> >> I believe what’s happening is that because the client hasn’t received
-> >> CB_NULL that establishes a callback channel but got a CB_RECALL it’s
-> >> just ignoring it.
-> > 
-> > I see two succesful CB_NULL calls and replies, so I think the context
-> > establishment worked.  I don't know why there's a third CB_NULL in frame
-> > 285.
-> 
-> The two CB_NULL calls are both gss_init calls. They are not RPC NULL call. Server for some reason establishes 2 different gss context (again not necessarily a problem). The 3rd CB_NULL is gss_data and it sends an actual NULL call. I believe that’s the one that establishes a callback channel.
+On Tue, Apr 17, 2018 at 2:52 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> On Mon, Apr 16, 2018 at 05:45:22PM -0400, J. Bruce Fields wrote:
+>> On Sat, Apr 14, 2018 at 12:22:02AM -0700, Christoph Hellwig wrote:
+>> > What is the use case for adding all these crazy complications?
+>>
+>> Is there anything specific that you think is too complicated?
+>
+> It is a lot of complexity for little gain.
+>
+>> I know you don't think server-to-server copy offload is worth the
+>> trouble, but I haven't seen you actually explain why (beyond just that
+>> it's more complicated).
+>
+> I'd like to see numbers for actual, real use cases.  Note that this
+> series doesn't seem to include inter-server support, so this is locally
+> only, and I'd like to see why we want to support this over the simpler
+> and better performing CLONE op.
+>
+> Also even if we have a good reason to add it I absolutely want a config
+> option for the feature - it is a lot code adding potential attack
+> vectors, so we should not just enabled it by default.
+>
+>> Is there some reason you think it won't actually be useful?
+>
+> Lets start with explaining why it would actually be useful and benefit
+> Linux users.
 
-Oh, I see.  No, that NULL call isn't necessary.  It's just the server
-probing to see whether the callback channel works.  That NULL call isn't
-required by the spec and everything should still work if the CB_RECALL
-is sent out before it completes.
+This is performance improvement feature. Why do you keep asking about
+benefits? Besides my employer I had other companies chime in on this
+mailing list that they are interested in the copy offload feature
+therefore this work is being done.
 
---b.
+Yes this series only introduced asynchronous copy offload because the
+concern was that doing "inter"+asynchronous was too much to review and
+therefore it is being done in parts.
+
+I have no objections to having a configuration option for this
+feature. It would be up to the Linux distributions to "make is a
+default". Bruce/Anna/Trond, do you want this code to be ifdef-ed under
+a config option(s) (one for the client and one for the server)?
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
