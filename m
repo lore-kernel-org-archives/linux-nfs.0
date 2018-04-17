@@ -1,72 +1,127 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:42834 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752805AbeDQULT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 17 Apr 2018 16:11:19 -0400
-Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
-        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
-        (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 22F4E4023BAD
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2018 20:11:19 +0000 (UTC)
-Received: from f27-node1.dwysocha.net (dhcp145-42.rdu.redhat.com [10.13.145.42])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 199437C37
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Apr 2018 20:11:19 +0000 (UTC)
-From: Dave Wysochanski <dwysocha@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] Fix possible stack smash in nfs_idmap_read_and_verify_message
-Date: Tue, 17 Apr 2018 16:11:18 -0400
-Message-Id: <20180417201118.17841-1-dwysocha@redhat.com>
+Received: from fieldses.org ([173.255.197.46]:35914 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1752944AbeDQVdJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 17 Apr 2018 17:33:09 -0400
+Date: Tue, 17 Apr 2018 17:33:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: syzbot <syzbot+4b98281f2401ab849f4b@syzkaller.appspotmail.com>
+Cc: anna.schumaker@netapp.com, davem@davemloft.net, jlayton@kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        trond.myklebust@primarydata.com
+Subject: Re: general protection fault in encode_rpcb_string
+Message-ID: <20180417213308.GC18217@fieldses.org>
+References: <f4f5e80803d08f47b9056a0366dd@google.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <f4f5e80803d08f47b9056a0366dd@google.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In nfs_idmap_read_and_verify_message there is an unprotected sprintf
-that converts the __u32 'im_id' from struct idmap_msg to 'id_str'
-that is a stack variable of 'NFS_UINT_MAXLEN' (defined as 11).
-If a uid or gid value is > 2147483647 = 0x7fffffff we corrupt
-kernel memory by one byte and if CONFIG_CC_STACKPROTECTOR_STRONG
-is set we see a stack-protector panic as follows:
+On Mon, Apr 16, 2018 at 09:02:01PM -0700, syzbot wrote:
+> syzbot hit the following crash on bpf-next commit
+> 5d1365940a68dd57b031b6e3c07d7d451cd69daf (Thu Apr 12 18:09:05 2018 +0000)
+> Merge git://git.kernel.org/pub/scm/linux/kernel/git/davem/net
+> syzbot dashboard link:
+> https://syzkaller.appspot.com/bug?extid=4b98281f2401ab849f4b
+> 
+> So far this crash happened 2 times on bpf-next.
+> C reproducer: https://syzkaller.appspot.com/x/repro.c?id=6433835633868800
+> syzkaller reproducer:
+> https://syzkaller.appspot.com/x/repro.syz?id=6407311794896896
+> Raw console output:
+> https://syzkaller.appspot.com/x/log.txt?id=5861511176126464
 
-[11558053.616565] Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: ffffffffa05b8a8c
+Based on that, looks like it's attempting an nfs mount while causing
+kmalloc failures?
 
-[11558053.639063] CPU: 6 PID: 9423 Comm: rpc.idmapd Tainted: G        W      ------------ T 3.10.0-514.el7.x86_64 #1
-[11558053.641990] Hardware name: Red Hat OpenStack Compute, BIOS 1.10.2-3.el7_4.1 04/01/2014
-[11558053.644462]  ffffffff818c7bc0 00000000b1f3aec1 ffff880de0f9bd48 ffffffff81685eac
-[11558053.646430]  ffff880de0f9bdc8 ffffffff8167f2b3 ffffffff00000010 ffff880de0f9bdd8
-[11558053.648313]  ffff880de0f9bd78 00000000b1f3aec1 ffffffff811dcb03 ffffffffa05b8a8c
-[11558053.650107] Call Trace:
-[11558053.651347]  [<ffffffff81685eac>] dump_stack+0x19/0x1b
-[11558053.653013]  [<ffffffff8167f2b3>] panic+0xe3/0x1f2
-[11558053.666240]  [<ffffffff811dcb03>] ? kfree+0x103/0x140
-[11558053.682589]  [<ffffffffa05b8a8c>] ? idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
-[11558053.689710]  [<ffffffff810855db>] __stack_chk_fail+0x1b/0x30
-[11558053.691619]  [<ffffffffa05b8a8c>] idmap_pipe_downcall+0x1cc/0x1e0 [nfsv4]
-[11558053.693867]  [<ffffffffa00209d6>] rpc_pipe_write+0x56/0x70 [sunrpc]
-[11558053.695763]  [<ffffffff811fe12d>] vfs_write+0xbd/0x1e0
-[11558053.702236]  [<ffffffff810acccc>] ? task_work_run+0xac/0xe0
-[11558053.704215]  [<ffffffff811fec4f>] SyS_write+0x7f/0xe0
-[11558053.709674]  [<ffffffff816964c9>] system_call_fastpath+0x16/0x1b
+Probably one of rpcb->r_netid, r_addr, or r_owner was bad in
+rpcb_enc_getaddr.
 
-Fix this by snprintf and a safe length based on sizeof(id_str).
+Hm, and previous log makes it look like it was an rpc_sockaddr2uaddr()
+in rpcb_getport_async() that was made to fail.  Do we need to check for
+failure of:
 
-Signed-off-by: Dave Wysochanski <dwysocha@redhat.com>
-Reported-by: Stephen Johnston <sjohnsto@redhat.com>
----
- fs/nfs/nfs4idmap.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+	map->r_addr = rpc_sockaddr2uaddr(sap, GFP_ATOMIC);
 
-diff --git a/fs/nfs/nfs4idmap.c b/fs/nfs/nfs4idmap.c
-index 22dc30a679a0..a8c663f8dd99 100644
---- a/fs/nfs/nfs4idmap.c
-+++ b/fs/nfs/nfs4idmap.c
-@@ -627,7 +627,7 @@ static int nfs_idmap_read_and_verify_message(struct idmap_msg *im,
- 		if (strcmp(upcall->im_name, im->im_name) != 0)
- 			break;
- 		/* Note: here we store the NUL terminator too */
--		len = sprintf(id_str, "%d", im->im_id) + 1;
-+		len = snprintf(id_str, sizeof(id_str), "%u", im->im_id) + 1;
- 		ret = nfs_idmap_instantiate(key, authkey, id_str, len);
- 		break;
- 	case IDMAP_CONV_IDTONAME:
--- 
-2.14.3
+?
 
+--b.
+
+> Kernel config:
+> https://syzkaller.appspot.com/x/.config?id=-5947642240294114534
+> compiler: gcc (GCC) 8.0.1 20180413 (experimental)
+> 
+> IMPORTANT: if you fix the bug, please add the following tag to the commit:
+> Reported-by: syzbot+4b98281f2401ab849f4b@syzkaller.appspotmail.com
+> It will help syzbot understand when the bug is fixed. See footer for
+> details.
+> If you forward the report, please keep this part and the footer.
+> 
+> RBP: 00000000006dbc50 R08: 000000002000a000 R09: 0000000000003437
+> R10: 0000000000000000 R11: 0000000000000246 R12: 00007fe464ffed80
+> R13: 0030656c69662f2e R14: ffffffffffffffff R15: 0000000000000006
+> kasan: CONFIG_KASAN_INLINE enabled
+> kasan: GPF could be caused by NULL-ptr deref or user memory access
+> general protection fault: 0000 [#1] SMP KASAN
+> Dumping ftrace buffer:
+>    (ftrace buffer empty)
+> Modules linked in:
+> CPU: 0 PID: 1861 Comm: kworker/u4:4 Not tainted 4.16.0+ #2
+> Hardware name: Google Google Compute Engine/Google Compute Engine,
+> BIOS Google 01/01/2011
+> Workqueue: rpciod rpc_async_schedule
+> RIP: 0010:strlen+0x1f/0xa0 lib/string.c:479
+> RSP: 0018:ffff8801cf75f318 EFLAGS: 00010296
+> RAX: dffffc0000000000 RBX: ffff8801cf68f200 RCX: ffffffff86a8c407
+> RDX: 0000000000000000 RSI: ffffffff86a84d7b RDI: 0000000000000000
+> RBP: ffff8801cf75f330 R08: ffff8801cf7de080 R09: ffffed0039ea3d43
+> R10: ffffed0039ea3d43 R11: ffff8801cf51ea1f R12: 0000000000000000
+> R13: 0000000002000000 R14: 0000000000000000 R15: ffff8801cf75f3e0
+> FS:  0000000000000000(0000) GS:ffff8801db000000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007f64808a4000 CR3: 00000001b566a000 CR4: 00000000001406f0
+> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+> DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 0000000000000400
+> Call Trace:
+>  strlen include/linux/string.h:267 [inline]
+>  encode_rpcb_string+0x23/0x70 net/sunrpc/rpcb_clnt.c:914
+>  rpcb_enc_getaddr+0x146/0x1f0 net/sunrpc/rpcb_clnt.c:940
+>  rpcauth_wrap_req_encode net/sunrpc/auth.c:777 [inline]
+>  rpcauth_wrap_req+0x1a8/0x230 net/sunrpc/auth.c:791
+>  rpc_xdr_encode net/sunrpc/clnt.c:1754 [inline]
+>  call_transmit+0x8a9/0xfe0 net/sunrpc/clnt.c:1949
+>  __rpc_execute+0x28a/0xfe0 net/sunrpc/sched.c:784
+>  rpc_async_schedule+0x16/0x20 net/sunrpc/sched.c:857
+>  process_one_work+0xc1e/0x1b50 kernel/workqueue.c:2145
+>  worker_thread+0x1cc/0x1440 kernel/workqueue.c:2279
+>  kthread+0x345/0x410 kernel/kthread.c:238
+>  ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:411
+> Code: 37 ff ff ff 0f 1f 84 00 00 00 00 00 48 b8 00 00 00 00 00 fc ff
+> df 55 48 89 fa 48 c1 ea 03 48 89 e5 41 54 49 89 fc 53 48 83 ec 08
+> <0f> b6 04 02 48 89 fa 83 e2 07 38 d0 7f 04 84 c0 75 4d 41 80 3c
+> RIP: strlen+0x1f/0xa0 lib/string.c:479 RSP: ffff8801cf75f318
+> ---[ end trace bd76ed0378a56845 ]---
+> 
+> 
+> ---
+> This bug is generated by a dumb bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for details.
+> Direct all questions to syzkaller@googlegroups.com.
+> 
+> syzbot will keep track of this bug report.
+> If you forgot to add the Reported-by tag, once the fix for this bug
+> is merged
+> into any tree, please reply to this email with:
+> #syz fix: exact-commit-title
+> If you want to test a patch for this bug, please reply with:
+> #syz test: git://repo/address.git branch
+> and provide the patch inline or as an attachment.
+> To mark this as a duplicate of another syzbot report, please reply with:
+> #syz dup: exact-subject-of-another-report
+> If it's a one-off invalid bug report, please reply with:
+> #syz invalid
+> Note: if the crash happens again, it will cause creation of a new
+> bug report.
+> Note: all commands must start from beginning of the line in the email body.
