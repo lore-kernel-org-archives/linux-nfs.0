@@ -1,35 +1,32 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([198.137.202.133]:54126 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.133]:56474 "EHLO
         bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1752762AbeDRHHK (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Apr 2018 03:07:10 -0400
-Date: Wed, 18 Apr 2018 00:07:09 -0700
+        with ESMTP id S1752568AbeDRHIo (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Apr 2018 03:08:44 -0400
+Date: Wed, 18 Apr 2018 00:08:42 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Olga Kornievskaia <kolga@netapp.com>, linux-nfs@vger.kernel.org
+To: Olga Kornievskaia <kolga@netapp.com>
+Cc: Steve Dickson <SteveD@RedHat.com>,
+        Olga Kornievskaia <aglo@umich.edu>,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH v8 0/9] NFSD support for async COPY
-Message-ID: <20180418070709.GB8764@infradead.org>
+Message-ID: <20180418070842.GC8764@infradead.org>
 References: <20180413170158.17589-1-kolga@netapp.com>
  <20180414072202.GA6514@infradead.org>
  <20180416214522.GC2634@parsley.fieldses.org>
+ <20180417065203.GA15145@infradead.org>
+ <CAN-5tyEjCEo+P=p2nPkEiwa3BwM8Nj_N3KmvMXMU+VDmQJcjLA@mail.gmail.com>
+ <1b45673f-516d-51ff-a1ef-8b07b9dd8619@RedHat.com>
+ <1E0C45FE-2214-41FB-8634-1005CC13AD9E@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180416214522.GC2634@parsley.fieldses.org>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1E0C45FE-2214-41FB-8634-1005CC13AD9E@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 16, 2018 at 05:45:22PM -0400, J. Bruce Fields wrote:
-> On Sat, Apr 14, 2018 at 12:22:02AM -0700, Christoph Hellwig wrote:
-> > What is the use case for adding all these crazy complications?
-> 
-> Is there anything specific that you think is too complicated?
-> 
-> I know you don't think server-to-server copy offload is worth the
-> trouble, but I haven't seen you actually explain why (beyond just that
-> it's more complicated).
+On Tue, Apr 17, 2018 at 11:19:25AM -0400, Olga Kornievskaia wrote:
+> Yes I agree. Let’s please decide if this will go in (with whatever code improvements are required) or let’s drop it.
 
-For one all code is buggy and introduces issues, and code implementing
-asynchronous, distributed state machines is even more so.  So a large
-chunk of code is a big warning sign.  Especially if it isn't actually
-useful to normal users.
+Well, my vote is very clearly to drop it.
