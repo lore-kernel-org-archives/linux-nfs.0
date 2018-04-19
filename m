@@ -1,47 +1,72 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:42664 "EHLO mx1.redhat.com"
-        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1751903AbeDSNbL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 19 Apr 2018 09:31:11 -0400
-Subject: [PATCH 01/24] vfs: Undo an overly zealous MS_RDONLY -> SB_RDONLY
- conversion [ver #7]
-From: David Howells <dhowells@redhat.com>
-To: viro@zeniv.linux.org.uk
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        dhowells@redhat.com, linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org
-Date: Thu, 19 Apr 2018 14:31:08 +0100
-Message-ID: <152414466871.23902.14667248706795552315.stgit@warthog.procyon.org.uk>
-In-Reply-To: <152414466005.23902.12967974041384198114.stgit@warthog.procyon.org.uk>
-References: <152414466005.23902.12967974041384198114.stgit@warthog.procyon.org.uk>
+Received: from mail-ua0-f182.google.com ([209.85.217.182]:44554 "EHLO
+        mail-ua0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1752413AbeDSPKJ (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Apr 2018 11:10:09 -0400
+Received: by mail-ua0-f182.google.com with SMTP id r16so3652772uak.11
+        for <linux-nfs@vger.kernel.org>; Thu, 19 Apr 2018 08:10:09 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20180417132156.GA10291@parsley.fieldses.org>
+References: <680B7A1A-792A-4B9E-A0CA-46E459B65077@netapp.com>
+ <20180416212942.GA2634@parsley.fieldses.org> <EC52DFFD-CB6F-45F5-BAB9-C684C205DE26@netapp.com>
+ <20180417132156.GA10291@parsley.fieldses.org>
+From: Olga Kornievskaia <aglo@umich.edu>
+Date: Thu, 19 Apr 2018 11:10:06 -0400
+Message-ID: <CAN-5tyEW+vZ1gYeP8zey1SkvuzXsJwdmrG=ZEXi6XXEVNM9Z_w@mail.gmail.com>
+Subject: Re: nfsd issue with a kerberized callback
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Olga Kornievskaia <kolga@netapp.com>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        ng-linux-team <ng-linux-team@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In do_mount() when the MS_* flags are being converted to MNT_* flags,
-MS_RDONLY got accidentally convered to SB_RDONLY.
+On Tue, Apr 17, 2018 at 9:21 AM, J. Bruce Fields <bfields@redhat.com> wrote=
+:
+> On Mon, Apr 16, 2018 at 08:05:44PM -0400, Olga Kornievskaia wrote:
+>> > On Apr 16, 2018, at 5:29 PM, J. Bruce Fields <bfields@redhat.com> wrot=
+e:
+>> >> I believe what=E2=80=99s happening is that because the client hasn=E2=
+=80=99t received
+>> >> CB_NULL that establishes a callback channel but got a CB_RECALL it=E2=
+=80=99s
+>> >> just ignoring it.
+>> >
+>> > I see two succesful CB_NULL calls and replies, so I think the context
+>> > establishment worked.  I don't know why there's a third CB_NULL in fra=
+me
+>> > 285.
+>>
+>> The two CB_NULL calls are both gss_init calls. They are not RPC NULL cal=
+l. Server for some reason establishes 2 different gss context (again not ne=
+cessarily a problem). The 3rd CB_NULL is gss_data and it sends an actual NU=
+LL call. I believe that=E2=80=99s the one that establishes a callback chann=
+el.
+>
+> Oh, I see.  No, that NULL call isn't necessary.  It's just the server
+> probing to see whether the callback channel works.  That NULL call isn't
+> required by the spec and everything should still work if the CB_RECALL
+> is sent out before it completes.
 
-Undo this change.
+Ok thank you. Another question: can the nfsd decide to give out
+delegation regardless of the existence of the callback path? Looking
+at the nfsd open code I see that it checks if cl_cb_state is
+NFSD4_CB_UP. But I guess somehow (according to this trace), it finds
+it up? Any ideas, looks like a bug...
 
-Fixes: e462ec50cb5f ("VFS: Differentiate mount flags (MS_*) from internal superblock flags")
-Signed-off-by: David Howells <dhowells@redhat.com>
----
+On this particular network trace, in frame 240, the server gives out
+the read delegation (which is later on it's trying to recall). However
+the setup of the callback path(s) doesn't happen until frames 259/261
+(tcp connections are established starting from frames 253/256).
 
- fs/namespace.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Goal is to try and reproduce this problem where the client is failing
+the CB_RECALL... but so far I can't trigger this.
 
-diff --git a/fs/namespace.c b/fs/namespace.c
-index e398f32d7541..6f720ebca133 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -2814,7 +2814,7 @@ long do_mount(const char *dev_name, const char __user *dir_name,
- 		mnt_flags |= MNT_NODIRATIME;
- 	if (flags & MS_STRICTATIME)
- 		mnt_flags &= ~(MNT_RELATIME | MNT_NOATIME);
--	if (flags & SB_RDONLY)
-+	if (flags & MS_RDONLY)
- 		mnt_flags |= MNT_READONLY;
- 
- 	/* The default atime for remount is preservation */
-
+Also I figured out why there are 2 SETCLIENTIDs and it's not because
+of the 2 mounts (with unmount in the middle). First SETCLIENTID is
+trunking discovery. Second SETCLIENTID is for when client is trying to
+do an operation requiring a clientid. Therefore this leads to
+existence of 2 callback paths (ie 2 CB_NULL gss context
+establishment). I'm not sure if this is somehow incorrect that client
+provides 2 callback path and server establishes context for both.
