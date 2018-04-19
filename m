@@ -1,16 +1,16 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:60590 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:60548 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1752380AbeDSNdC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Thu, 19 Apr 2018 09:33:02 -0400
-Subject: [PATCH 16/24] hugetlbfs: Convert to fs_context [ver #7]
+        id S1751449AbeDSNch (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Thu, 19 Apr 2018 09:32:37 -0400
+Subject: [PATCH 13/24] ipc: Convert mqueue fs to fs_context [ver #7]
 From: David Howells <dhowells@redhat.com>
 To: viro@zeniv.linux.org.uk
 Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
         dhowells@redhat.com, linux-security-module@vger.kernel.org,
         linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org
-Date: Thu, 19 Apr 2018 14:33:00 +0100
-Message-ID: <152414477998.23902.1572532467093131575.stgit@warthog.procyon.org.uk>
+Date: Thu, 19 Apr 2018 14:32:35 +0100
+Message-ID: <152414475508.23902.7607267381447716752.stgit@warthog.procyon.org.uk>
 In-Reply-To: <152414466005.23902.12967974041384198114.stgit@warthog.procyon.org.uk>
 References: <152414466005.23902.12967974041384198114.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
@@ -18,407 +18,148 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Convert the hugetlbfs to use the fs_context during mount.
+Convert the mqueue filesystem to use the filesystem context stuff.
+
+Notes:
+
+ (1) The relevant ipc namespace is selected in when the context is
+     initialised (and it defaults to the current task's ipc namespace).
+     The caller can override this before calling vfs_get_tree().
+
+ (2) Rather than simply calling kern_mount_data(), mq_init_ns() and
+     mq_internal_mount() create a context, adjust it and then do the rest
+     of the mount procedure.
+
+ (3) The lazy mqueue mounting on creation of a new namespace is retained
+     from a previous patch, but the avoidance of sget() if no superblock
+     yet exists is reverted and the superblock is again keyed on the
+     namespace pointer.
+
+     Yes, there was a performance gain in not searching the superblock
+     hash, but it's only paid once per ipc namespace - and only if someone
+     uses mqueue within that namespace, so I'm not sure it's worth it,
+     especially as calling sget() allows avoidance of recursion.
 
 Signed-off-by: David Howells <dhowells@redhat.com>
 ---
 
- fs/hugetlbfs/inode.c |  330 ++++++++++++++++++++++++++++----------------------
- 1 file changed, 184 insertions(+), 146 deletions(-)
+ ipc/mqueue.c |  116 +++++++++++++++++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 94 insertions(+), 22 deletions(-)
 
-diff --git a/fs/hugetlbfs/inode.c b/fs/hugetlbfs/inode.c
-index 76fb8eb2bea8..11056af43e66 100644
---- a/fs/hugetlbfs/inode.c
-+++ b/fs/hugetlbfs/inode.c
-@@ -45,11 +45,18 @@ const struct file_operations hugetlbfs_file_operations;
- static const struct inode_operations hugetlbfs_dir_inode_operations;
- static const struct inode_operations hugetlbfs_inode_operations;
+diff --git a/ipc/mqueue.c b/ipc/mqueue.c
+index 910c3c7532e6..2f2e7d73b13d 100644
+--- a/ipc/mqueue.c
++++ b/ipc/mqueue.c
+@@ -18,6 +18,7 @@
+ #include <linux/pagemap.h>
+ #include <linux/file.h>
+ #include <linux/mount.h>
++#include <linux/fs_context.h>
+ #include <linux/namei.h>
+ #include <linux/sysctl.h>
+ #include <linux/poll.h>
+@@ -42,6 +43,11 @@
+ #include <net/sock.h>
+ #include "util.h"
  
--struct hugetlbfs_config {
-+enum hugetlbfs_size_type { NO_SIZE, SIZE_STD, SIZE_PERCENT };
-+
-+struct hugetlbfs_fs_context {
++struct mqueue_fs_context {
 +	struct fs_context	fc;
- 	struct hstate		*hstate;
-+	unsigned long long	max_size_opt;
-+	unsigned long long	min_size_opt;
- 	long			max_hpages;
- 	long			nr_inodes;
- 	long			min_hpages;
-+	enum hugetlbfs_size_type max_val_type;
-+	enum hugetlbfs_size_type min_val_type;
- 	kuid_t			uid;
- 	kgid_t			gid;
- 	umode_t			mode;
-@@ -708,16 +715,16 @@ static int hugetlbfs_setattr(struct dentry *dentry, struct iattr *attr)
- }
- 
- static struct inode *hugetlbfs_get_root(struct super_block *sb,
--					struct hugetlbfs_config *config)
-+					struct hugetlbfs_fs_context *ctx)
- {
- 	struct inode *inode;
- 
- 	inode = new_inode(sb);
- 	if (inode) {
- 		inode->i_ino = get_next_ino();
--		inode->i_mode = S_IFDIR | config->mode;
--		inode->i_uid = config->uid;
--		inode->i_gid = config->gid;
-+		inode->i_mode = S_IFDIR | ctx->mode;
-+		inode->i_uid = ctx->uid;
-+		inode->i_gid = ctx->gid;
- 		inode->i_atime = inode->i_mtime = inode->i_ctime = current_time(inode);
- 		inode->i_op = &hugetlbfs_dir_inode_operations;
- 		inode->i_fop = &simple_dir_operations;
-@@ -1081,8 +1088,6 @@ static const struct super_operations hugetlbfs_ops = {
- 	.show_options	= hugetlbfs_show_options,
- };
- 
--enum hugetlbfs_size_type { NO_SIZE, SIZE_STD, SIZE_PERCENT };
--
- /*
-  * Convert size option passed from command line to number of huge pages
-  * in the pool specified by hstate.  Size option could be in bytes
-@@ -1105,171 +1110,156 @@ hugetlbfs_size_to_hpages(struct hstate *h, unsigned long long size_opt,
- 	return size_opt;
- }
- 
--static int
--hugetlbfs_parse_options(char *options, struct hugetlbfs_config *pconfig)
-+/*
-+ * Parse one mount option.
-+ */
-+static int hugetlbfs_parse_option(struct fs_context *fc, char *opt, size_t len)
- {
--	char *p, *rest;
-+	struct hugetlbfs_fs_context *ctx = container_of(fc, struct hugetlbfs_fs_context, fc);
-+	char *rest;
-+	unsigned long ps;
- 	substring_t args[MAX_OPT_ARGS];
--	int option;
--	unsigned long long max_size_opt = 0, min_size_opt = 0;
--	enum hugetlbfs_size_type max_val_type = NO_SIZE, min_val_type = NO_SIZE;
--
--	if (!options)
-+	int token, option;
-+
-+	token = match_token(opt, tokens, args);
-+	switch (token) {
-+	case Opt_uid:
-+		if (match_int(&args[0], &option))
-+			goto bad_val;
-+		ctx->uid = make_kuid(current_user_ns(), option);
-+		if (!uid_valid(ctx->uid))
-+			goto bad_val;
- 		return 0;
- 
--	while ((p = strsep(&options, ",")) != NULL) {
--		int token;
--		if (!*p)
--			continue;
-+	case Opt_gid:
-+		if (match_int(&args[0], &option))
-+			goto bad_val;
-+		ctx->gid = make_kgid(current_user_ns(), option);
-+		if (!gid_valid(ctx->gid))
-+			goto bad_val;
-+		return 0;
- 
--		token = match_token(p, tokens, args);
--		switch (token) {
--		case Opt_uid:
--			if (match_int(&args[0], &option))
-- 				goto bad_val;
--			pconfig->uid = make_kuid(current_user_ns(), option);
--			if (!uid_valid(pconfig->uid))
--				goto bad_val;
--			break;
-+	case Opt_mode:
-+		if (match_octal(&args[0], &option))
-+			goto bad_val;
-+		ctx->mode = option & 01777U;
-+		return 0;
- 
--		case Opt_gid:
--			if (match_int(&args[0], &option))
-- 				goto bad_val;
--			pconfig->gid = make_kgid(current_user_ns(), option);
--			if (!gid_valid(pconfig->gid))
--				goto bad_val;
--			break;
-+	case Opt_size:
-+		/* memparse() will accept a K/M/G without a digit */
-+		if (!isdigit(*args[0].from))
-+			goto bad_val;
-+		ctx->max_size_opt = memparse(args[0].from, &rest);
-+		ctx->max_val_type = SIZE_STD;
-+		if (*rest == '%')
-+			ctx->max_val_type = SIZE_PERCENT;
-+		return 0;
- 
--		case Opt_mode:
--			if (match_octal(&args[0], &option))
-- 				goto bad_val;
--			pconfig->mode = option & 01777U;
--			break;
-+	case Opt_nr_inodes:
-+		/* memparse() will accept a K/M/G without a digit */
-+		if (!isdigit(*args[0].from))
-+			goto bad_val;
-+		ctx->nr_inodes = memparse(args[0].from, &rest);
-+		return 0;
- 
--		case Opt_size: {
--			/* memparse() will accept a K/M/G without a digit */
--			if (!isdigit(*args[0].from))
--				goto bad_val;
--			max_size_opt = memparse(args[0].from, &rest);
--			max_val_type = SIZE_STD;
--			if (*rest == '%')
--				max_val_type = SIZE_PERCENT;
--			break;
-+	case Opt_pagesize:
-+		ps = memparse(args[0].from, &rest);
-+		ctx->hstate = size_to_hstate(ps);
-+		if (!ctx->hstate) {
-+			pr_err("Unsupported page size %lu MB\n", ps >> 20);
-+			return -EINVAL;
- 		}
-+		return 0;
- 
--		case Opt_nr_inodes:
--			/* memparse() will accept a K/M/G without a digit */
--			if (!isdigit(*args[0].from))
--				goto bad_val;
--			pconfig->nr_inodes = memparse(args[0].from, &rest);
--			break;
-+	case Opt_min_size:
-+		/* memparse() will accept a K/M/G without a digit */
-+		if (!isdigit(*args[0].from))
-+			goto bad_val;
-+		ctx->min_size_opt = memparse(args[0].from, &rest);
-+		ctx->min_val_type = SIZE_STD;
-+		if (*rest == '%')
-+			ctx->min_val_type = SIZE_PERCENT;
-+		return 0;
- 
--		case Opt_pagesize: {
--			unsigned long ps;
--			ps = memparse(args[0].from, &rest);
--			pconfig->hstate = size_to_hstate(ps);
--			if (!pconfig->hstate) {
--				pr_err("Unsupported page size %lu MB\n",
--					ps >> 20);
--				return -EINVAL;
--			}
--			break;
--		}
-+	default:
-+		pr_err("Bad mount option: \"%s\"\n", opt);
-+		return -EINVAL;
-+	}
- 
--		case Opt_min_size: {
--			/* memparse() will accept a K/M/G without a digit */
--			if (!isdigit(*args[0].from))
--				goto bad_val;
--			min_size_opt = memparse(args[0].from, &rest);
--			min_val_type = SIZE_STD;
--			if (*rest == '%')
--				min_val_type = SIZE_PERCENT;
--			break;
--		}
-+bad_val:
-+	pr_err("Bad value '%s' for mount option '%s'\n", args[0].from, opt);
-+	return -EINVAL;
-+}
- 
--		default:
--			pr_err("Bad mount option: \"%s\"\n", p);
--			return -EINVAL;
--			break;
--		}
--	}
-+/*
-+ * Validate the parsed options.
-+ */
-+static int hugetlbfs_validate(struct fs_context *fc)
-+{
-+	struct hugetlbfs_fs_context *ctx = container_of(fc, struct hugetlbfs_fs_context, fc);
- 
- 	/*
- 	 * Use huge page pool size (in hstate) to convert the size
- 	 * options to number of huge pages.  If NO_SIZE, -1 is returned.
- 	 */
--	pconfig->max_hpages = hugetlbfs_size_to_hpages(pconfig->hstate,
--						max_size_opt, max_val_type);
--	pconfig->min_hpages = hugetlbfs_size_to_hpages(pconfig->hstate,
--						min_size_opt, min_val_type);
-+	ctx->max_hpages = hugetlbfs_size_to_hpages(ctx->hstate,
-+						   ctx->max_size_opt,
-+						   ctx->max_val_type);
-+	ctx->min_hpages = hugetlbfs_size_to_hpages(ctx->hstate,
-+						   ctx->min_size_opt,
-+						   ctx->min_val_type);
- 
- 	/*
- 	 * If max_size was specified, then min_size must be smaller
- 	 */
--	if (max_val_type > NO_SIZE &&
--	    pconfig->min_hpages > pconfig->max_hpages) {
--		pr_err("minimum size can not be greater than maximum size\n");
-+	if (ctx->max_val_type > NO_SIZE &&
-+	    ctx->min_hpages > ctx->max_hpages) {
-+		pr_err("Minimum size can not be greater than maximum size\n");
- 		return -EINVAL;
- 	}
- 
- 	return 0;
--
--bad_val:
--	pr_err("Bad value '%s' for mount option '%s'\n", args[0].from, p);
-- 	return -EINVAL;
- }
- 
- static int
--hugetlbfs_fill_super(struct super_block *sb, void *data, size_t data_size,
--		     int silent)
-+hugetlbfs_fill_super(struct super_block *sb, struct fs_context *fc)
- {
--	int ret;
--	struct hugetlbfs_config config;
-+	struct hugetlbfs_fs_context *ctx =
-+		container_of(fc, struct hugetlbfs_fs_context, fc);
- 	struct hugetlbfs_sb_info *sbinfo;
- 
--	config.max_hpages = -1; /* No limit on size by default */
--	config.nr_inodes = -1; /* No limit on number of inodes by default */
--	config.uid = current_fsuid();
--	config.gid = current_fsgid();
--	config.mode = 0755;
--	config.hstate = &default_hstate;
--	config.min_hpages = -1; /* No default minimum size */
--	ret = hugetlbfs_parse_options(data, &config);
--	if (ret)
--		return ret;
--
- 	sbinfo = kmalloc(sizeof(struct hugetlbfs_sb_info), GFP_KERNEL);
- 	if (!sbinfo)
- 		return -ENOMEM;
- 	sb->s_fs_info = sbinfo;
--	sbinfo->hstate = config.hstate;
- 	spin_lock_init(&sbinfo->stat_lock);
--	sbinfo->max_inodes = config.nr_inodes;
--	sbinfo->free_inodes = config.nr_inodes;
--	sbinfo->spool = NULL;
--	sbinfo->uid = config.uid;
--	sbinfo->gid = config.gid;
--	sbinfo->mode = config.mode;
-+	sbinfo->hstate		= ctx->hstate;
-+	sbinfo->max_inodes	= ctx->nr_inodes;
-+	sbinfo->free_inodes	= ctx->nr_inodes;
-+	sbinfo->spool		= NULL;
-+	sbinfo->uid		= ctx->uid;
-+	sbinfo->gid		= ctx->gid;
-+	sbinfo->mode		= ctx->mode;
- 
- 	/*
- 	 * Allocate and initialize subpool if maximum or minimum size is
- 	 * specified.  Any needed reservations (for minimim size) are taken
- 	 * taken when the subpool is created.
- 	 */
--	if (config.max_hpages != -1 || config.min_hpages != -1) {
--		sbinfo->spool = hugepage_new_subpool(config.hstate,
--							config.max_hpages,
--							config.min_hpages);
-+	if (ctx->max_hpages != -1 || ctx->min_hpages != -1) {
-+		sbinfo->spool = hugepage_new_subpool(ctx->hstate,
-+						     ctx->max_hpages,
-+						     ctx->min_hpages);
- 		if (!sbinfo->spool)
- 			goto out_free;
- 	}
- 	sb->s_maxbytes = MAX_LFS_FILESIZE;
--	sb->s_blocksize = huge_page_size(config.hstate);
--	sb->s_blocksize_bits = huge_page_shift(config.hstate);
-+	sb->s_blocksize = huge_page_size(ctx->hstate);
-+	sb->s_blocksize_bits = huge_page_shift(ctx->hstate);
- 	sb->s_magic = HUGETLBFS_MAGIC;
- 	sb->s_op = &hugetlbfs_ops;
- 	sb->s_time_gran = 1;
--	sb->s_root = d_make_root(hugetlbfs_get_root(sb, &config));
-+	sb->s_root = d_make_root(hugetlbfs_get_root(sb, ctx));
- 	if (!sb->s_root)
- 		goto out_free;
- 	return 0;
-@@ -1279,17 +1269,39 @@ hugetlbfs_fill_super(struct super_block *sb, void *data, size_t data_size,
- 	return -ENOMEM;
- }
- 
--static struct dentry *hugetlbfs_mount(struct file_system_type *fs_type,
--	int flags, const char *dev_name, void *data, size_t data_size)
-+static int hugetlbfs_get_tree(struct fs_context *fc)
-+{
-+	return vfs_get_super(fc, vfs_get_independent_super, hugetlbfs_fill_super);
-+}
-+
-+static const struct fs_context_operations hugetlbfs_fs_context_ops = {
-+	.parse_option	= hugetlbfs_parse_option,
-+	.validate	= hugetlbfs_validate,
-+	.get_tree	= hugetlbfs_get_tree,
++	struct ipc_namespace	*ipc_ns;
 +};
 +
-+static int hugetlbfs_init_fs_context(struct fs_context *fc, struct super_block *src_sb)
- {
--	return mount_nodev(fs_type, flags, data, data_size,
--			   hugetlbfs_fill_super);
-+	struct hugetlbfs_fs_context *ctx = container_of(fc, struct hugetlbfs_fs_context, fc);
-+
-+	ctx->max_hpages	= -1; /* No limit on size by default */
-+	ctx->nr_inodes	= -1; /* No limit on number of inodes by default */
-+	ctx->uid	= current_fsuid();
-+	ctx->gid	= current_fsgid();
-+	ctx->mode	= 0755;
-+	ctx->hstate	= &default_hstate;
-+	ctx->min_hpages	= -1; /* No default minimum size */
-+	ctx->max_val_type = NO_SIZE;
-+	ctx->min_val_type = NO_SIZE;
-+	ctx->fc.ops	= &hugetlbfs_fs_context_ops;
-+	return 0;
- }
- 
- static struct file_system_type hugetlbfs_fs_type = {
--	.name		= "hugetlbfs",
--	.mount		= hugetlbfs_mount,
--	.kill_sb	= kill_litter_super,
-+	.name			= "hugetlbfs",
-+	.fs_context_size	= sizeof(struct hugetlbfs_fs_context),
-+	.init_fs_context	= hugetlbfs_init_fs_context,
-+	.kill_sb		= kill_litter_super,
+ #define MQUEUE_MAGIC	0x19800202
+ #define DIRENT_SIZE	20
+ #define FILENT_SIZE	80
+@@ -87,9 +93,11 @@ struct mqueue_inode_info {
+ 	unsigned long qsize; /* size of queue in memory (sum of all msgs) */
  };
  
- static struct vfsmount *hugetlbfs_vfsmount[HUGE_MAX_HSTATE];
-@@ -1396,8 +1408,47 @@ struct file *hugetlb_file_setup(const char *name, size_t size,
- 	return file;
++static struct file_system_type mqueue_fs_type;
+ static const struct inode_operations mqueue_dir_inode_operations;
+ static const struct file_operations mqueue_file_operations;
+ static const struct super_operations mqueue_super_ops;
++static const struct fs_context_operations mqueue_fs_context_ops;
+ static void remove_notification(struct mqueue_inode_info *info);
+ 
+ static struct kmem_cache *mqueue_inode_cachep;
+@@ -322,7 +330,7 @@ static struct inode *mqueue_get_inode(struct super_block *sb,
+ 	return ERR_PTR(ret);
  }
  
-+static struct vfsmount *__init mount_one_hugetlbfs(struct hstate *h)
+-static int mqueue_fill_super(struct super_block *sb, void *data, size_t data_size, int silent)
++static int mqueue_fill_super(struct super_block *sb, struct fs_context *fc)
+ {
+ 	struct inode *inode;
+ 	struct ipc_namespace *ns = sb->s_fs_info;
+@@ -343,19 +351,77 @@ static int mqueue_fill_super(struct super_block *sb, void *data, size_t data_siz
+ 	return 0;
+ }
+ 
+-static struct dentry *mqueue_mount(struct file_system_type *fs_type,
+-			 int flags, const char *dev_name,
+-			 void *data, size_t data_size)
++static int mqueue_get_tree(struct fs_context *fc)
+ {
+-	struct ipc_namespace *ns;
+-	if (flags & SB_KERNMOUNT) {
+-		ns = data;
+-		data = NULL;
+-	} else {
+-		ns = current->nsproxy->ipc_ns;
++	struct mqueue_fs_context *ctx = container_of(fc, struct mqueue_fs_context, fc);
++
++	/* As a shortcut, if the namespace already has a superblock created,
++	 * use the root from that directly rather than invoking sget() again.
++	 */
++	spin_lock(&mq_lock);
++	if (ctx->ipc_ns->mq_mnt) {
++		fc->root = dget(ctx->ipc_ns->mq_mnt->mnt_sb->s_root);
++		atomic_inc(&fc->root->d_sb->s_active);
++	}
++	spin_unlock(&mq_lock);
++	if (fc->root) {
++		down_write(&fc->root->d_sb->s_umount);
++		return 0;
+ 	}
+-	return mount_ns(fs_type, flags, data, data_size, ns, ns->user_ns,
+-			mqueue_fill_super);
++
++	ctx->fc.s_fs_info = ctx->ipc_ns;
++	return vfs_get_super(fc, vfs_get_keyed_super, mqueue_fill_super);
++}
++
++static void mqueue_fs_context_free(struct fs_context *fc)
 +{
-+	struct hugetlbfs_fs_context *ctx;
++	struct mqueue_fs_context *ctx = container_of(fc, struct mqueue_fs_context, fc);
++
++	if (ctx->ipc_ns)
++		put_ipc_ns(ctx->ipc_ns);
++}
++
++static int mqueue_init_fs_context(struct fs_context *fc, struct super_block *src_sb)
++{
++	struct mqueue_fs_context *ctx = container_of(fc, struct mqueue_fs_context, fc);
++
++	ctx->ipc_ns = get_ipc_ns(current->nsproxy->ipc_ns);
++	ctx->fc.ops = &mqueue_fs_context_ops;
++	return 0;
++}
++
++static struct vfsmount *mq_create_mount(struct ipc_namespace *ns)
++{
++	struct mqueue_fs_context *ctx;
 +	struct fs_context *fc;
 +	struct vfsmount *mnt;
 +	int ret;
 +
-+	fc = vfs_new_fs_context(&hugetlbfs_fs_type, NULL, 0,
++	fc = vfs_new_fs_context(&mqueue_fs_type, NULL, 0,
 +				FS_CONTEXT_FOR_KERNEL_MOUNT);
-+	if (IS_ERR(fc)) {
-+		ret = PTR_ERR(fc);
-+		goto err;
-+	}
++	if (IS_ERR(fc))
++		return ERR_CAST(fc);
 +
-+	ctx = container_of(fc, struct hugetlbfs_fs_context, fc);
-+	ctx->hstate = h;
++	ctx = container_of(fc, struct mqueue_fs_context, fc);
++	put_ipc_ns(ctx->ipc_ns);
++	ctx->ipc_ns = get_ipc_ns(ns);
 +
 +	ret = vfs_get_tree(fc);
 +	if (ret < 0)
@@ -435,46 +176,53 @@ index 76fb8eb2bea8..11056af43e66 100644
 +
 +err_fc:
 +	put_fs_context(fc);
-+err:
-+	pr_err("Cannot mount internal hugetlbfs for page size %uK",
-+	       1U << (h->order + PAGE_SHIFT - 10));
 +	return ERR_PTR(ret);
-+}
+ }
+ 
+ static void init_once(void *foo)
+@@ -1521,15 +1587,23 @@ static const struct super_operations mqueue_super_ops = {
+ 	.statfs = simple_statfs,
+ };
+ 
++static const struct fs_context_operations mqueue_fs_context_ops = {
++	.free		= mqueue_fs_context_free,
++	.get_tree	= mqueue_get_tree,
++};
 +
- static int __init init_hugetlbfs_fs(void)
+ static struct file_system_type mqueue_fs_type = {
+-	.name = "mqueue",
+-	.mount = mqueue_mount,
+-	.kill_sb = kill_litter_super,
+-	.fs_flags = FS_USERNS_MOUNT,
++	.name			= "mqueue",
++	.fs_context_size	= sizeof(struct mqueue_fs_context),
++	.init_fs_context	= mqueue_init_fs_context,
++	.kill_sb		= kill_litter_super,
++	.fs_flags		= FS_USERNS_MOUNT,
+ };
+ 
+ int mq_init_ns(struct ipc_namespace *ns)
  {
-+	struct vfsmount *mnt;
- 	struct hstate *h;
- 	int error;
- 	int i;
-@@ -1420,25 +1471,12 @@ static int __init init_hugetlbfs_fs(void)
++	struct vfsmount *m;
++
+ 	ns->mq_queues_count  = 0;
+ 	ns->mq_queues_max    = DFLT_QUEUESMAX;
+ 	ns->mq_msg_max       = DFLT_MSGMAX;
+@@ -1537,12 +1611,10 @@ int mq_init_ns(struct ipc_namespace *ns)
+ 	ns->mq_msg_default   = DFLT_MSG;
+ 	ns->mq_msgsize_default  = DFLT_MSGSIZE;
  
- 	i = 0;
- 	for_each_hstate(h) {
--		char buf[50];
--		unsigned ps_kb = 1U << (h->order + PAGE_SHIFT - 10);
--		int n;
--
--		n = snprintf(buf, sizeof(buf), "pagesize=%uK", ps_kb);
--		hugetlbfs_vfsmount[i] = kern_mount_data(&hugetlbfs_fs_type,
--							buf, n + 1);
--
--		if (IS_ERR(hugetlbfs_vfsmount[i])) {
--			pr_err("Cannot mount internal hugetlbfs for "
--				"page size %uK", ps_kb);
--			error = PTR_ERR(hugetlbfs_vfsmount[i]);
--			hugetlbfs_vfsmount[i] = NULL;
--		}
-+		mnt = mount_one_hugetlbfs(h);
-+		if (IS_ERR(mnt) && i == 0)
-+			goto out;
-+		hugetlbfs_vfsmount[i] = mnt;
- 		i++;
- 	}
--	/* Non default hstates are optional */
--	if (!IS_ERR_OR_NULL(hugetlbfs_vfsmount[default_hstate_idx]))
--		return 0;
+-	ns->mq_mnt = kern_mount_data(&mqueue_fs_type, ns, 0);
+-	if (IS_ERR(ns->mq_mnt)) {
+-		int err = PTR_ERR(ns->mq_mnt);
+-		ns->mq_mnt = NULL;
+-		return err;
+-	}
++	m = mq_create_mount(&init_ipc_ns);
++	if (IS_ERR(m))
++		return PTR_ERR(ns->mq_mnt);
++	ns->mq_mnt = m;
+ 	return 0;
+ }
  
-  out:
- 	kmem_cache_destroy(hugetlbfs_inode_cachep);
 
