@@ -1,21 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:33720 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51834 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S1755700AbeDWPe1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 23 Apr 2018 11:34:27 -0400
-Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+        id S1755489AbeDWPfP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Apr 2018 11:35:15 -0400
+Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id 3ABC5EBFE3
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:34:27 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 4BD78402335F
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:35:15 +0000 (UTC)
 Received: from jumitche.remote.csb (unknown [10.33.36.46])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id CC6ED215CDC8
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:34:26 +0000 (UTC)
-Message-ID: <1524497665.7418.10.camel@redhat.com>
-Subject: [PATCH 6/7] nfs-utils: Add nfsconftool cli
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id E17B91102E28
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:35:14 +0000 (UTC)
+Message-ID: <1524497713.7418.11.camel@redhat.com>
+Subject: [PATCH 7/7] nfs-utils: use nfsconftool cli to test library function
 From: Justin Mitchell <jumitche@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Mon, 23 Apr 2018 16:34:25 +0100
+Date: Mon, 23 Apr 2018 16:35:13 +0100
 In-Reply-To: <1524496788.7418.2.camel@redhat.com>
 References: <1524496788.7418.2.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -23,227 +23,206 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This tool uses the conffile facilities to allow commandline
-querying of configuration settings and to dump the current
-config for diagnosis and testing
+Uses the nfsconftool cli to test that the configuration
+library functions are operating as expected
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- Makefile.am                |   2 +-
- configure.ac               |   1 +
- tools/Makefile.am          |   2 +
- tools/nfsconf/Makefile.am  |   9 +++
- tools/nfsconf/nfsconfcli.c | 144 +++++++++++++++++++++++++++++++++++++++++++++
- 5 files changed, 157 insertions(+), 1 deletion(-)
- create mode 100644 tools/nfsconf/Makefile.am
- create mode 100644 tools/nfsconf/nfsconfcli.c
+ tests/Makefile.am            |  3 ++-
+ tests/nfsconf/01-errors.conf | 20 ++++++++++++++++++++
+ tests/nfsconf/01-errors.exp  | 14 ++++++++++++++
+ tests/nfsconf/02-valid.conf  | 25 +++++++++++++++++++++++++
+ tests/nfsconf/02-valid.exp   | 26 ++++++++++++++++++++++++++
+ tests/nfsconf/02-valid.sub   |  7 +++++++
+ tests/t0002-nfsconf.sh       | 38 ++++++++++++++++++++++++++++++++++++++
+ 7 files changed, 132 insertions(+), 1 deletion(-)
+ create mode 100644 tests/nfsconf/01-errors.conf
+ create mode 100644 tests/nfsconf/01-errors.exp
+ create mode 100644 tests/nfsconf/02-valid.conf
+ create mode 100644 tests/nfsconf/02-valid.exp
+ create mode 100644 tests/nfsconf/02-valid.sub
+ create mode 100755 tests/t0002-nfsconf.sh
 
-diff --git a/Makefile.am b/Makefile.am
-index e1f39aa..0022084 100644
---- a/Makefile.am
-+++ b/Makefile.am
-@@ -2,7 +2,7 @@
- 
- AUTOMAKE_OPTIONS = foreign
- 
--SUBDIRS = tools support utils linux-nfs tests systemd
-+SUBDIRS = support tools utils linux-nfs tests systemd
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index 1f96264..60691cc 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -10,5 +10,6 @@ SUBDIRS = nsm_client
  
  MAINTAINERCLEANFILES = Makefile.in
  
-diff --git a/configure.ac b/configure.ac
-index 5a11636..b925666 100644
---- a/configure.ac
-+++ b/configure.ac
-@@ -616,6 +616,7 @@ AC_CONFIG_FILES([
- 	tools/rpcgen/Makefile
- 	tools/mountstats/Makefile
- 	tools/nfs-iostat/Makefile
-+	tools/nfsconf/Makefile
- 	utils/Makefile
- 	utils/blkmapd/Makefile
- 	utils/nfsdcltrack/Makefile
-diff --git a/tools/Makefile.am b/tools/Makefile.am
-index f2ce282..4266da4 100644
---- a/tools/Makefile.am
-+++ b/tools/Makefile.am
-@@ -6,6 +6,8 @@ if CONFIG_RPCGEN
- OPTDIRS += rpcgen
- endif
- 
-+OPTDIRS += nfsconf
-+
- SUBDIRS = locktest rpcdebug nlmtest mountstats nfs-iostat $(OPTDIRS)
- 
- MAINTAINERCLEANFILES = Makefile.in
-diff --git a/tools/nfsconf/Makefile.am b/tools/nfsconf/Makefile.am
+-TESTS = t0001-statd-basic-mon-unmon.sh
++TESTS = t0001-statd-basic-mon-unmon.sh \
++	t0002-nfsconf.sh
+ EXTRA_DIST = test-lib.sh $(TESTS)
+diff --git a/tests/nfsconf/01-errors.conf b/tests/nfsconf/01-errors.conf
 new file mode 100644
-index 0000000..4baaa26
+index 0000000..ca64d2c
 --- /dev/null
-+++ b/tools/nfsconf/Makefile.am
-@@ -0,0 +1,9 @@
-+## Process this file with automake to produce Makefile.in
++++ b/tests/nfsconf/01-errors.conf
+@@ -0,0 +1,20 @@
++# file of deliberate errors
++[default]
 +
-+bin_PROGRAMS = nfsconftool
 +
-+nfsconftool_SOURCES = nfsconfcli.c
-+nfsconftool_LDADD = ../../support/nfs/libnfsconf.la
++[ one
 +
-+MAINTAINERCLEANFILES = Makefile.in
++[ two " foo ]
++aa = foo
 +
-diff --git a/tools/nfsconf/nfsconfcli.c b/tools/nfsconf/nfsconfcli.c
++[ three 
++val = none
++
++[four]
++one
++ = two
++three =
++four = foo = bar
++five = " nothing
++six = normal
++
+diff --git a/tests/nfsconf/01-errors.exp b/tests/nfsconf/01-errors.exp
 new file mode 100644
-index 0000000..1443e97
+index 0000000..2bf1b8c
 --- /dev/null
-+++ b/tools/nfsconf/nfsconfcli.c
-@@ -0,0 +1,144 @@
-+#include <stdlib.h>
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <getopt.h>
-+#include <string.h>
-+#include <errno.h>
-+#include "config.h"
-+#include "conffile.h"
-+#include "xlog.h"
++++ b/tests/nfsconf/01-errors.exp
+@@ -0,0 +1,14 @@
++nfsconf: config error at 01-errors.conf:5: non-matched ']', ignoring until next section
++nfsconf: config error at 01-errors.conf:7: non-matched '"', ignoring until next section
++nfsconf: config error at 01-errors.conf:10: non-matched ']', ignoring until next section
++nfsconf: config error at 01-errors.conf:11: ignoring line not in a section
++nfsconf: config error at 01-errors.conf:14: line not empty and not an assignment
++nfsconf: config error at 01-errors.conf:15: missing tag in assignment
++nfsconf: config error at 01-errors.conf:16: missing value in assignment
++nfsconf: config error at 01-errors.conf:18: unmatched quotes
++[four]
++ four = foo = bar
++ six = normal
 +
-+typedef enum {
-+	MODE_NONE,
-+	MODE_GET,
-+	MODE_ISSET,
-+	MODE_DUMP
-+} confmode_t;
++[two]
++ aa = foo
+diff --git a/tests/nfsconf/02-valid.conf b/tests/nfsconf/02-valid.conf
+new file mode 100644
+index 0000000..ca8ccab
+--- /dev/null
++++ b/tests/nfsconf/02-valid.conf
+@@ -0,0 +1,25 @@
++[environment]
++one = 1
++two = 2
++three = 3
 +
-+static void usage(const char *name)
-+{
-+	fprintf(stderr, "Usage: %s [-v] [--file filename.conf] ...\n", name);
-+	fprintf(stderr, "Options:\n");
-+	fprintf(stderr, " -v			Increase Verbosity\n");
-+	fprintf(stderr, " --file filename.conf	Load this config file\n");
-+	fprintf(stderr, "     (Default config file: " NFS_CONFFILE "\n");
-+	fprintf(stderr, "Modes:\n");
-+	fprintf(stderr, "  --dump [outputfile]\n");
-+	fprintf(stderr, "      Outputs the configuration to the named file\n");
-+	fprintf(stderr, "  --get [--arg subsection] {section} {tag}\n");
-+	fprintf(stderr, "      Output one specific config value\n");
-+	fprintf(stderr, "  --isset [--arg subsection] {section} {tag}\n");
-+	fprintf(stderr, "      Return code indicates if config value is present\n");
-+}
++[section_one]
++one = 11
++two = 22
++three = $three
++ four   =   "six  "
++ five six = seven eight
 +
-+int main(int argc, char **argv)
-+{
-+	const char * val;
-+	char * confpath = NFS_CONFFILE;
-+	char * arg = NULL;
-+	int verbose=0;
-+	int ret = 0;
-+	char * dumpfile = NULL;
++[section_two "two"]
++one = Un
++two = Dau
++include = "02-valid.sub"
 +
-+	confmode_t mode = MODE_NONE;
++[section_two "one"]
++one = Un
++two = Deux
 +
-+	while (1) {
-+		int c;
-+		int index = 0;
-+		struct option long_options[] = {
-+			{"get",		no_argument, 0, 'g' },
-+			{"arg",	  required_argument, 0, 'a' },
-+			{"isset", 	no_argument, 0, 'i' },
-+			{"dump",  optional_argument, 0, 'd' },
-+			{"file",  required_argument, 0, 'f' },
-+			{"verbose",	no_argument, 0, 'v' },
-+			{NULL,			  0, 0, 0 }
-+		};
++[section_two "two"]
++four = Pedwar
++   five   =    " Pump "
 +
-+		c = getopt_long(argc, argv, "ga:id::f:v", long_options, &index);
-+		if (c == -1) break;
+diff --git a/tests/nfsconf/02-valid.exp b/tests/nfsconf/02-valid.exp
+new file mode 100644
+index 0000000..379d7a4
+--- /dev/null
++++ b/tests/nfsconf/02-valid.exp
+@@ -0,0 +1,26 @@
++[environment]
++ one = 1
++ three = 3
++ two = 2
 +
-+		switch (c) {
-+			case 0:
-+				break;
-+			case 'f':
-+				confpath = optarg;
-+				break;
-+			case 'a':
-+				arg = optarg;
-+				break;
-+			case 'v':
-+				verbose++;
-+				break;
-+			case 'g':
-+				mode = MODE_GET;
-+				break;
-+			case 'i':
-+				mode = MODE_ISSET;
-+				break;
-+			case 'd':
-+				if (optarg==NULL && argv[optind]!=NULL && argv[optind][0]!='-')
-+					optarg = argv[optind++];
-+				mode = MODE_DUMP;
-+				dumpfile = optarg;
-+				break;
-+			default:
-+				usage(argv[0]);
-+				return 1;
-+		}
-+	}
++[extra_section]
++ bar = baz
++ foo = bar
 +
-+	if (verbose) xlog_config(D_ALL, 1);
-+	xlog_stderr(1);
-+	xlog_syslog(0);
-+	xlog_open("nfsconf");
++[section_one]
++ five six = seven eight
++ four = "six  "
++ one = 11
++ three = $three
++ two = 22
 +
-+	if (mode == MODE_NONE) {
-+		fprintf(stderr, "Error: No MODE selected.\n");
-+		usage(argv[0]);
-+		return 1;
-+	}
++[section_two "one"]
++ one = Un
++ two = Deux
 +
-+	if (conf_init_file(confpath)) {
-+		if (verbose || mode != MODE_ISSET) fprintf(stderr, "Error loading config file %s\n", confpath);
-+		if (mode != MODE_ISSET) return 1;
-+	}
++[section_two "two"]
++ five = " Pump "
++ four = Pedwar
++ one = Un
++ three = Tri
++ two = Dau
+diff --git a/tests/nfsconf/02-valid.sub b/tests/nfsconf/02-valid.sub
+new file mode 100644
+index 0000000..ab7beda
+--- /dev/null
++++ b/tests/nfsconf/02-valid.sub
+@@ -0,0 +1,7 @@
++# Included configs don't need a section, it is inherited
++three=Tri
 +
-+	if (mode == MODE_DUMP) {
-+		FILE *out = stdout;
-+		if (dumpfile) {
-+			if ((out=fopen(dumpfile, "w"))==NULL) {
-+				fprintf(stderr, "Error opening dumpfile %s: %s\n", dumpfile, strerror(errno));
-+				ret = 2;
-+				goto cleanup;
-+			}
-+			if (verbose) printf("Dumping config to %s\n", dumpfile);
-+		}
-+		conf_report(out);
-+		if (dumpfile) fclose(out);
-+	} else
-+	if (mode == MODE_GET || mode == MODE_ISSET) {
-+		if (optind+1 >= argc) {
-+			fprintf(stderr, "Error: insufficient arguments for mode\n");
-+			usage(argv[0]);
-+			ret = 2;
-+			goto cleanup;
-+		}
-+		char * section = argv[optind++];
-+		char * tag = argv[optind++];
++# But if they do, that works also
++[extra_section]
++foo = bar
++bar = baz
+diff --git a/tests/t0002-nfsconf.sh b/tests/t0002-nfsconf.sh
+new file mode 100755
+index 0000000..511d248
+--- /dev/null
++++ b/tests/t0002-nfsconf.sh
+@@ -0,0 +1,38 @@
++#!/bin/bash
 +
-+		if ((val=conf_get_section(section, arg, tag))!=NULL) {
-+			if (mode == MODE_GET) printf("%s\n", val);
-+		} else {
-+			if (mode == MODE_GET && verbose) fprintf(stderr, "Tag '%s' not found\n", tag);
-+			ret = 1;
-+		}
-+	} else {
-+		fprintf(stderr, "Mode not yet implimented.\n");
-+		ret = 2;
-+	}
++TESTFILES=nfsconf
++DUMPER=`realpath ../tools/nfsconf/nfsconftool`
 +
-+cleanup:
-+	conf_cleanup();
-+	return ret;
-+}
++BASEDIR=`dirname "$0"`
++pushd $BASEDIR/$TESTFILES
++
++rm -f *.out
++
++TCOUNT=0
++TPASS=0
++
++for i in *.conf
++do
++TNAME=`basename "$i" .conf`
++
++echo "Running test $TNAME"
++TCOUNT=$((TCOUNT + 1))
++
++if ! $DUMPER --file "$i" --dump - > "$TNAME.out" 2>&1
++then
++echo "Error running test $TNAME"
++elif ! diff -u "$TNAME.exp" "$TNAME.out"
++then
++echo "FAIL differences detected in test $TNAME"
++else
++echo "PASS $TNAME"
++TPASS=$((TPASS + 1))
++fi
++
++done
++
++echo "nfsconf tests complete. $TPASS of $TCOUNT tests passed"
++
++if [ $TPASS -lt $TCOUNT ]; then
++exit 1
++fi
 -- 
 1.8.3.1
-
 
 
 
