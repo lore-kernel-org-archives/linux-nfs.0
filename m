@@ -1,56 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from upbd19pa07.eemsg.mail.mil ([214.24.27.82]:62804 "EHLO
-        upbd19pa07.eemsg.mail.mil" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1755332AbeDWNeO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Apr 2018 09:34:14 -0400
-Subject: Re: [PATCH 04/24] VFS: Add LSM hooks for filesystem context [ver #7]
-To: David Howells <dhowells@redhat.com>,
-        Paul Moore <paul@paul-moore.com>
-Cc: viro@zeniv.linux.org.uk, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        linux-security-module@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-afs@lists.infradead.org,
-        selinux@tycho.nsa.gov
-References: <CAHC9VhQhaBNBFwAXJ4TxKO56UTcwb_LcT2G8LwNxdxOD96tTvA@mail.gmail.com>
- <152414466005.23902.12967974041384198114.stgit@warthog.procyon.org.uk>
- <152414469006.23902.8132059438921850399.stgit@warthog.procyon.org.uk>
- <3232.1524238511@warthog.procyon.org.uk>
-From: Stephen Smalley <sds@tycho.nsa.gov>
-Message-ID: <aca7e68c-022b-47ac-c249-59e042d431e8@tycho.nsa.gov>
-Date: Mon, 23 Apr 2018 09:25:09 -0400
-MIME-Version: 1.0
-In-Reply-To: <3232.1524238511@warthog.procyon.org.uk>
-Content-Type: text/plain; charset=utf-8
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:46172 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1755513AbeDWPTu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Apr 2018 11:19:50 -0400
+Received: from smtp.corp.redhat.com (int-mx06.intmail.prod.int.rdu2.redhat.com [10.11.54.6])
+        (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
+        (No client certificate requested)
+        by mx1.redhat.com (Postfix) with ESMTPS id 769DA417E590
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:19:50 +0000 (UTC)
+Received: from jumitche.remote.csb (unknown [10.33.36.46])
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id 18752215CDC8
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:19:49 +0000 (UTC)
+Message-ID: <1524496788.7418.2.camel@redhat.com>
+Subject: [PATCH 0/7] nfs-utils: nfsconf cli tool and code tests
+From: Justin Mitchell <jumitche@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Date: Mon, 23 Apr 2018 16:19:48 +0100
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/20/2018 11:35 AM, David Howells wrote:
-> Paul Moore <paul@paul-moore.com> wrote:
-> 
->> Adding the SELinux mailing list to the CC line; in the future please
->> include the SELinux mailing list on patches like this.  It would also
->> be very helpful to include "selinux" somewhere in the subject line
->> when the patch is predominately SELinux related (much like you did for
->> the other LSMs in this patchset).
-> 
-> I should probably evict the SELinux bits into their own patch since the point
-> of this patch is the LSM hooks, not specifically SELinux's implementation
-> thereof.
-> 
->> I can't say I've digested all of this yet, but what SELinux testing
->> have you done with this patchset?
-> 
-> Using the fsopen()/fsmount() syscalls, these hooks will be made use of, say
-> for NFS (which I haven't included in this list).  Even sys_mount() will make
-> use of them a bit, so just booting the system does that.
-> 
-> Note that for SELinux these hooks don't change very much except how the
-> parameters are handled.  It doesn't actually change the checks that are made -
-> at least, not yet.  There are some additional syscalls under consideration
-> (such as the ability to pick a live mounted filesystem into a context) that
-> might require additional permits.
+This series introduces a new cli tool to nfs-utils which provides
+for the dumping of the current configuration, querying of individual
+settings in a scripting friendly manner and by extension the 
+scripted testing and verification of nfsconf functionality.
 
-Neither fsopen() nor fscontext_fs_write() appear to perform any kind of up-front
-permission checking (DAC or MAC), although some security hooks may be ultimately called
-to allocate structures, parse security options, etc.  Is there a reason not apply a may_mount()
-or similar check up front?
+The previously unreferenced conf_report() is modified to produce
+a sorted output, which allows you to --dump the current config in
+a way thats easier to diff
+
+As well as some improved error messages a script is included which
+tests the current config parsing code by supplying various example
+config files and comparing the results of the --dump output.
+
+The cli tool also allows a simple test to check if a config item
+has been set, and to retrieve the current value in a way that is
+easy to call from a shell script.
+
+As the next stage I hope to implement config setting via the cli 
+tool in order to provide an api for automation and management tools
+
+Signed-off-by: Justin Mitchell <jumitche@redhat.com>
+
+
