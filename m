@@ -1,22 +1,21 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx3-rdu2.redhat.com ([66.187.233.73]:51292 "EHLO mx1.redhat.com"
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:46970 "EHLO mx1.redhat.com"
         rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-        id S932186AbeDWPZ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 23 Apr 2018 11:25:27 -0400
-Received: from smtp.corp.redhat.com (int-mx03.intmail.prod.int.rdu2.redhat.com [10.11.54.3])
+        id S1755820AbeDWP0M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 23 Apr 2018 11:26:12 -0400
+Received: from smtp.corp.redhat.com (int-mx05.intmail.prod.int.rdu2.redhat.com [10.11.54.5])
         (using TLSv1.2 with cipher AECDH-AES256-SHA (256/256 bits))
         (No client certificate requested)
-        by mx1.redhat.com (Postfix) with ESMTPS id C1E5F401DEA0
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:25:26 +0000 (UTC)
+        by mx1.redhat.com (Postfix) with ESMTPS id 661BA8DC3E
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:26:12 +0000 (UTC)
 Received: from jumitche.remote.csb (unknown [10.33.36.46])
-        by smtp.corp.redhat.com (Postfix) with ESMTPS id 630C21102E26
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:25:26 +0000 (UTC)
-Message-ID: <1524497125.7418.5.camel@redhat.com>
-Subject: [PATCH 2/7] nfs-utils: Make config includes relative to current
- config
+        by smtp.corp.redhat.com (Postfix) with ESMTPS id AD44083B96
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Apr 2018 15:26:11 +0000 (UTC)
+Message-ID: <1524497170.7418.6.camel@redhat.com>
+Subject: [PATCH 3/7] nfs-utils: Use config file name in error messages
 From: Justin Mitchell <jumitche@redhat.com>
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Date: Mon, 23 Apr 2018 16:25:25 +0100
+Date: Mon, 23 Apr 2018 16:26:10 +0100
 In-Reply-To: <1524496788.7418.2.camel@redhat.com>
 References: <1524496788.7418.2.camel@redhat.com>
 Content-Type: text/plain; charset="UTF-8"
@@ -24,134 +23,125 @@ Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When including additional config files with the include directive
-make relative paths be relative to the current config file instead
-of to the process's cwd.
+Improve readability of error configuration error messages
+by including the filename currently being read.
 
 Signed-off-by: Justin Mitchell <jumitche@redhat.com>
 ---
- support/nfs/conffile.c | 50 +++++++++++++++++++++++++++++++++++++++++---------
- 1 file changed, 41 insertions(+), 9 deletions(-)
+ support/nfs/conffile.c | 38 +++++++++++++++++++-------------------
+ 1 file changed, 19 insertions(+), 19 deletions(-)
 
 diff --git a/support/nfs/conffile.c b/support/nfs/conffile.c
-index a4cc236..42c0913 100644
+index 42c0913..fe41de5 100644
 --- a/support/nfs/conffile.c
 +++ b/support/nfs/conffile.c
-@@ -49,6 +49,7 @@
- #include <errno.h>
- #include <err.h>
- #include <syslog.h>
-+#include <libgen.h>
- 
- #include "conffile.h"
- #include "xlog.h"
-@@ -60,7 +61,7 @@ static char * conf_readfile(const char *path);
- static int conf_set(int , const char *, const char *, const char *, 
- 	const char *, int , int );
- static void conf_parse(int trans, char *buf, 
--	char **section, char **subsection);
-+	char **section, char **subsection, const char *filename);
- 
- struct conf_trans {
- 	TAILQ_ENTRY (conf_trans) link;
-@@ -206,12 +207,40 @@ conf_set_now(const char *section, const char *arg, const char *tag,
- 	return 0;
- }
- 
-+/* Attempt to construct a relative path to the new file */
-+static char *
-+relative_path(const char *oldfile, const char *newfile)
-+{
-+	char * tmpcopy = NULL;
-+	char * dir = NULL;
-+	char * relpath = NULL;
-+
-+	if (!newfile) return strdup(oldfile);
-+	if (newfile[0] == '/') return strdup(newfile);
-+
-+	tmpcopy = strdup(oldfile);
-+	if (!tmpcopy) goto mem_err;
-+
-+	dir = dirname(tmpcopy);
-+	size_t pathlen =  strlen(dir)+strlen(newfile)+2;
-+	relpath = calloc(1, pathlen);
-+	if (!relpath) goto mem_err;
-+	snprintf(relpath, pathlen, "%s/%s", dir, newfile);
-+
-+	free(tmpcopy);
-+	return relpath;
-+mem_err:
-+	if (tmpcopy) free(tmpcopy);
-+	return NULL;
-+}
-+
-+
- /*
-  * Parse the line LINE of SZ bytes.  Skip Comments, recognize section
-  * headers and feed tag-value pairs into our configuration database.
-  */
- static void
--conf_parse_line(int trans, char *line, int lineno, char **section, char **subsection)
-+conf_parse_line(int trans, char *line, const char *filename, int lineno, char **section, char **subsection)
- {
- 	char *val, *ptr;
- 
-@@ -366,10 +395,12 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
- 
- 	if (strcasecmp(line, "include")==0) {
- 		/* load and parse subordinate config files */
--		char * subconf = conf_readfile(val);
-+		char * relpath = relative_path(filename, val);
-+		char * subconf = conf_readfile(relpath);
- 		if (subconf == NULL) {
+@@ -276,8 +276,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 		/* find the closing ] */
+ 		ptr = strchr(line, ']');
+ 		if (ptr == NULL) {
 -			xlog_warn("config file error: line %d: "
--			"error loading included config", lineno);
-+			xlog_warn("%s:%d: error loading included config %s", 
-+				  filename, lineno, relpath);
-+			if (relpath) free(relpath);
+- 				"non-matched ']', ignoring until next section", lineno);
++			xlog_warn("config error at %s:%d: "
++ 				"non-matched ']', ignoring until next section", filename, lineno);
  			return;
  		}
  
-@@ -383,10 +414,11 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
- 				inc_subsection = strdup(*subsection);
+@@ -302,7 +302,7 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 		/* copy the section name */
+ 		*section = strdup(line);
+ 		if (!*section) {
+-			xlog_warn("conf_parse_line: %d: malloc failed", lineno);
++			xlog_warn("config error at %s:%d: malloc failed", filename, lineno);
+ 			return;
  		}
  
--		conf_parse(trans, subconf, &inc_section, &inc_subsection);
-+		conf_parse(trans, subconf, &inc_section, &inc_subsection, relpath);
- 
- 		if (inc_section) free(inc_section);
- 		if (inc_subsection) free(inc_subsection);
-+		if (relpath) free(relpath);
- 		free(subconf);
- 	} else {
- 		/* XXX Perhaps should we not ignore errors?  */
-@@ -396,7 +428,7 @@ conf_parse_line(int trans, char *line, int lineno, char **section, char **subsec
- 
- /* Parse the mapped configuration file.  */
- static void
--conf_parse(int trans, char *buf, char **section, char **subsection)
-+conf_parse(int trans, char *buf, char **section, char **subsection, const char *filename)
- {
- 	char *cp = buf;
- 	char *bufend = NULL;
-@@ -413,7 +445,7 @@ conf_parse(int trans, char *buf, char **section, char **subsection)
- 			else {
- 				*cp = '\0';
- 				lineno++;
--				conf_parse_line(trans, line, lineno, section, subsection);
-+				conf_parse_line(trans, line, filename, lineno, section, subsection);
- 				line = cp + 1;
- 			}
+@@ -312,14 +312,14 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 		/* check for the closing " */
+ 		ptr = strchr(val, '"');
+ 		if (ptr == NULL) {
+-			xlog_warn("config file error: line %d: "
+- 				"non-matched '\"', ignoring until next section", lineno);
++			xlog_warn("config error at %s:%d: "
++ 				"non-matched '\"', ignoring until next section", filename, lineno);
+ 			return;
  		}
-@@ -508,7 +540,7 @@ conf_load_file(const char *conf_file)
- 	/* Parse config contents into the transaction queue */
- 	char *section = NULL;
- 	char *subsection = NULL;
--	conf_parse(trans, conf_data, &section, &subsection);
-+	conf_parse(trans, conf_data, &section, &subsection, conf_file);
- 	if (section) free(section);
- 	if (subsection) free(subsection);
- 	free(conf_data);
+ 		*ptr = '\0';
+ 		*subsection = strdup(val);
+ 		if (!*subsection) 
+-			xlog_warn("conf_parse_line: %d: malloc arg failed", lineno);
++			xlog_warn("config error at %s:%d: malloc failed", filename, lineno);
+ 		return;
+ 	}
+ 
+@@ -330,15 +330,15 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 	if (ptr == NULL) {
+ 		/* Other non-empty lines are weird.  */
+ 		if (line[strspn(line, " \t")])
+-			xlog_warn("config file error: line %d: "
+-				"line not empty and not an assignment", lineno);
++			xlog_warn("config error at %s:%d: "
++				"line not empty and not an assignment", filename, lineno);
+ 		return;
+ 	}
+ 
+ 	/* If no section, we are ignoring the line.  */
+ 	if (!*section) {
+-		xlog_warn("config file error: line %d: "
+-			"ignoring line due to no section", lineno);
++		xlog_warn("config error at %s:%d: "
++			"ignoring line not in a section", filename, lineno);
+ 		return;
+ 	}
+ 
+@@ -355,8 +355,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 		val++;
+ 		ptr = strchr(val, '"');
+ 		if (ptr == NULL) {
+-			xlog_warn("config file error: line %d: "
+-				"unmatched quotes", lineno);
++			xlog_warn("config error at %s:%d: "
++				"unmatched quotes", filename, lineno);
+ 			return;
+ 		}
+ 		*ptr = '\0';
+@@ -365,8 +365,8 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 		val++;
+ 		ptr = strchr(val, '\'');
+ 		if (ptr == NULL) {
+-			xlog_warn("config file error: line %d: "
+-				"unmatched quotes", lineno);
++			xlog_warn("config error at %s:%d: "
++				"unmatched quotes", filename, lineno);
+ 			return;
+ 		}
+ 		*ptr = '\0';
+@@ -383,13 +383,13 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 	}
+ 
+ 	if (*line == '\0') {
+-		xlog_warn("config file error: line %d: "
+-			"missing tag in assignment", lineno);
++		xlog_warn("config error at %s:%d: "
++			"missing tag in assignment", filename, lineno);
+ 		return;
+ 	}
+ 	if (*val == '\0') {
+-		xlog_warn("config file error: line %d: "
+-			"missing value in assignment", lineno);
++		xlog_warn("config error at %s:%d: "
++			"missing value in assignment", filename, lineno);
+ 		return;
+ 	}
+ 
+@@ -398,7 +398,7 @@ conf_parse_line(int trans, char *line, const char *filename, int lineno, char **
+ 		char * relpath = relative_path(filename, val);
+ 		char * subconf = conf_readfile(relpath);
+ 		if (subconf == NULL) {
+-			xlog_warn("%s:%d: error loading included config %s", 
++			xlog_warn("config error at %s:%d: error loading included config %s", 
+ 				  filename, lineno, relpath);
+ 			if (relpath) free(relpath);
+ 			return;
 -- 
 1.8.3.1
 
