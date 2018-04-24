@@ -1,47 +1,57 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:48496 "EHLO fieldses.org"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750756AbeDXWQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Tue, 24 Apr 2018 18:16:12 -0400
-Date: Tue, 24 Apr 2018 18:16:12 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Olga Kornievskaia <aglo@umich.edu>
-Cc: Mailing List Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Args need to be the same for replay cache
-Message-ID: <20180424221612.GA30120@fieldses.org>
-References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
- <20180410194922.GD5652@fieldses.org>
- <CAN-5tyFZDJcQPyHyBjeS0BDS-dqe6iS1+k9jftxDqnDMy__D5g@mail.gmail.com>
+Received: from lithops.sigma-star.at ([195.201.40.130]:42754 "EHLO
+        lithops.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1750766AbeDXWSt (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2018 18:18:49 -0400
+From: Richard Weinberger <richard@nod.at>
+To: Michal Hocko <mhocko@kernel.org>
+Cc: LKML <linux-kernel@vger.kernel.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Brian Norris <computersforpeace@gmail.com>,
+        Boris Brezillon <boris.brezillon@free-electrons.com>,
+        Marek Vasut <marek.vasut@gmail.com>,
+        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+        Theodore Ts'o <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Kate Stewart <kstewart@linuxfoundation.org>,
+        Mikulas Patocka <mpatocka@redhat.com>,
+        linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: vmalloc with GFP_NOFS
+Date: Wed, 25 Apr 2018 00:18:40 +0200
+Message-ID: <3894056.cxOY6eVYVp@blindfold>
+In-Reply-To: <20180424192803.GT17484@dhcp22.suse.cz>
+References: <20180424162712.GL17484@dhcp22.suse.cz> <3732370.1623zxSvNg@blindfold> <20180424192803.GT17484@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAN-5tyFZDJcQPyHyBjeS0BDS-dqe6iS1+k9jftxDqnDMy__D5g@mail.gmail.com>
+Content-Type: text/plain; charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 24, 2018 at 04:10:29PM -0400, Olga Kornievskaia wrote:
-> Do you by any chance have a reference to this discussion?
+Am Dienstag, 24. April 2018, 21:28:03 CEST schrieb Michal Hocko:
+> > Also only for debugging.
+> > Getting rid of vmalloc with GFP_NOFS in UBIFS is no big problem.
+> > I can prepare a patch.
+> 
+> Cool!
+> 
+> Anyway, if UBIFS has some reclaim recursion critical sections in general
+> it would be really great to have them documented and that is where the
+> scope api is really handy. Just add the scope and document what is the
+> recursion issue. This will help people reading the code as well. Ideally
+> there shouldn't be any explicit GFP_NOFS in the code.
 
-This:
-	http://lkml.kernel.org/r/1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com
+So in a perfect world a filesystem calls memalloc_nofs_save/restore and
+always uses GFP_KERNEL for kmalloc/vmalloc?
 
-and this:
+Thanks,
+//richard
 
-	http://lkml.kernel.org/r/E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com
 
-and followups.
-
-> I would like to reference it. For now I'm hijacking this thread to
-> bring this up. I'm still concerned about the case where client sent a
-> request and slot got interrupted (so by default the client doesn't
-> increment the seq#). Then the client re-used the slot for the same
-> kind of operation (WRITE is very interesting) with same arguments but
-> say different FH. Is the server obligated the cache the whole call to
-> address and check that? You have a patch to check for false retries
-> that checks for different creds but I don't think you have something
-> that would catch this case?
-
-Right.  I don't believe the spec requires us to catch false retries in
-every possible case.  That may mean we return a pretty bizarre reply
-that doesn't match the request, but that's the client's own fault....
-
---b.
