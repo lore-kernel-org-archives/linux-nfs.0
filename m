@@ -1,18 +1,19 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from lithops.sigma-star.at ([195.201.40.130]:40528 "EHLO
-        lithops.sigma-star.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1751683AbeDXTKM (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2018 15:10:12 -0400
-From: Richard Weinberger <richard@nod.at>
-To: Michal Hocko <mhocko@kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:53778 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750791AbeDXTZs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Apr 2018 15:25:48 -0400
+Date: Tue, 24 Apr 2018 13:25:42 -0600
+From: Michal Hocko <mhocko@kernel.org>
+To: "Theodore Y. Ts'o" <tytso@mit.edu>
 Cc: LKML <linux-kernel@vger.kernel.org>,
         Artem Bityutskiy <dedekind1@gmail.com>,
+        Richard Weinberger <richard@nod.at>,
         David Woodhouse <dwmw2@infradead.org>,
         Brian Norris <computersforpeace@gmail.com>,
         Boris Brezillon <boris.brezillon@free-electrons.com>,
         Marek Vasut <marek.vasut@gmail.com>,
         Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
-        Theodore Ts'o <tytso@mit.edu>,
         Andreas Dilger <adilger.kernel@dilger.ca>,
         Steven Whitehouse <swhiteho@redhat.com>,
         Bob Peterson <rpeterso@redhat.com>,
@@ -26,39 +27,80 @@ Cc: LKML <linux-kernel@vger.kernel.org>,
         cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
         linux-mm@kvack.org
 Subject: Re: vmalloc with GFP_NOFS
-Date: Tue, 24 Apr 2018 21:10:08 +0200
-Message-ID: <1912881.zKmfqiQKhD@blindfold>
-In-Reply-To: <20180424162712.GL17484@dhcp22.suse.cz>
+Message-ID: <20180424192542.GS17484@dhcp22.suse.cz>
 References: <20180424162712.GL17484@dhcp22.suse.cz>
+ <20180424183536.GF30619@thunk.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20180424183536.GF30619@thunk.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[resending without html ...]
+On Tue 24-04-18 14:35:36, Theodore Ts'o wrote:
+> On Tue, Apr 24, 2018 at 10:27:12AM -0600, Michal Hocko wrote:
+> > fs/ext4/xattr.c
+> > 
+> > What to do about this? Well, there are two things. Firstly, it would be
+> > really great to double check whether the GFP_NOFS is really needed. I
+> > cannot judge that because I am not familiar with the code.
+> 
+> *Most* of the time it's not needed, but there are times when it is.
+> We could be more smart about sending down GFP_NOFS only when it is
+> needed.
 
-Am Dienstag, 24. April 2018, 18:27:12 CEST schrieb Michal Hocko:
-> Hi,
-> it seems that we still have few vmalloc users who perform GFP_NOFS
-> allocation:
-> drivers/mtd/ubi/io.c
+Well, the primary idea is that you do not have to. All you care about is
+to use the scope api where it matters + a comment describing the
+reclaim recursion context (e.g. this lock will be held in the reclaim
+path here and there).
 
-UBI is not a big deal. We use it here like in UBIFS for debugging
-when self-checks are enabled.
+> If we are sending too many GFP_NOFS's allocations such that
+> it's causing heartburn, we could fix this.  (xattr commands are rare
+> enough that I dind't think it was worth it to modulate the GFP flags
+> for this particular case, but we could make it be smarter if it would
+> help.)
 
-> fs/ext4/xattr.c
-> fs/gfs2/dir.c
-> fs/gfs2/quota.c
-> fs/nfs/blocklayout/extent_tree.c
-> fs/ubifs/debug.c
-> fs/ubifs/lprops.c
-> fs/ubifs/lpt_commit.c
-> fs/ubifs/orphan.c
+Well, the vmalloc is actually a correctness issue rather than a
+heartburn...
 
-All users in UBIFS are debugging code and some error reporting.
-No fast paths.
-I think we can switch to prealloation + locking without much hassle.
-I can prepare a patch.
+> > If the use is really valid then we have a way to do the vmalloc
+> > allocation properly. We have memalloc_nofs_{save,restore} scope api. How
+> > does that work? You simply call memalloc_nofs_save when the reclaim
+> > recursion critical section starts (e.g. when you take a lock which is
+> > then used in the reclaim path - e.g. shrinker) and memalloc_nofs_restore
+> > when the critical section ends. _All_ allocations within that scope
+> > will get GFP_NOFS semantic automagically. If you are not sure about the
+> > scope itself then the easiest workaround is to wrap the vmalloc itself
+> > with a big fat comment that this should be revisited.
+> 
+> This is something we could do in ext4.  It hadn't been high priority,
+> because we've been rather overloaded.
 
-Thanks,
-//richard
+Well, ext/jbd already has scopes defined for the transaction context so
+anything down that road can be converted to GFP_KERNEL (well, unless the
+same code path is shared outside of the transaction context and still
+requires a protection). It would be really great to identify other
+contexts and slowly move away from the explicit GFP_NOFS. Are you aware
+of other contexts?
+
+> As a suggestion, could you take
+> documentation about how to convert to the memalloc_nofs_{save,restore}
+> scope api (which I think you've written about e-mails at length
+> before), and put that into a file in Documentation/core-api?
+
+I can.
+
+> The question I was trying to figure out which triggered the above
+> request is how/whether to gradually convert to that scope API.  Is it
+> safe to add the memalloc_nofs_{save,restore} to code and keep the
+> GFP_NOFS flags until we're sure we got it all right, for all of the
+> code paths, and then drop the GFP_NOFS?
+
+The first stage is to define and document those scopes. I have provided
+a debugging patch [1] in the past that would dump_stack when seeing an
+explicit GFP_NOFS from a scope which could help to eliminate existing
+users.
+
+[1] http://lkml.kernel.org/r/20170106141845.24362-1-mhocko@kernel.org
+-- 
+Michal Hocko
+SUSE Labs
