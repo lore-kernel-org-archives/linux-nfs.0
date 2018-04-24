@@ -1,37 +1,47 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-vk0-f48.google.com ([209.85.213.48]:38866 "EHLO
-        mail-vk0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1750756AbeDXU3Q (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Apr 2018 16:29:16 -0400
-Received: by mail-vk0-f48.google.com with SMTP id b16so12500432vka.5
-        for <linux-nfs@vger.kernel.org>; Tue, 24 Apr 2018 13:29:16 -0700 (PDT)
+Received: from fieldses.org ([173.255.197.46]:48496 "EHLO fieldses.org"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750756AbeDXWQM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Tue, 24 Apr 2018 18:16:12 -0400
+Date: Tue, 24 Apr 2018 18:16:12 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Olga Kornievskaia <aglo@umich.edu>
+Cc: Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Args need to be the same for replay cache
+Message-ID: <20180424221612.GA30120@fieldses.org>
+References: <1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com>
+ <20180410194922.GD5652@fieldses.org>
+ <CAN-5tyFZDJcQPyHyBjeS0BDS-dqe6iS1+k9jftxDqnDMy__D5g@mail.gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20180418070842.GC8764@infradead.org>
-References: <20180413170158.17589-1-kolga@netapp.com> <20180414072202.GA6514@infradead.org>
- <20180416214522.GC2634@parsley.fieldses.org> <20180417065203.GA15145@infradead.org>
- <CAN-5tyEjCEo+P=p2nPkEiwa3BwM8Nj_N3KmvMXMU+VDmQJcjLA@mail.gmail.com>
- <1b45673f-516d-51ff-a1ef-8b07b9dd8619@RedHat.com> <1E0C45FE-2214-41FB-8634-1005CC13AD9E@netapp.com>
- <20180418070842.GC8764@infradead.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Tue, 24 Apr 2018 16:29:14 -0400
-Message-ID: <CAN-5tyGVc5myRVrnS0vc3gKq5NbhhrkVVDuLZPn2XxXoO-=T8A@mail.gmail.com>
-Subject: Re: [PATCH v8 0/9] NFSD support for async COPY
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAN-5tyFZDJcQPyHyBjeS0BDS-dqe6iS1+k9jftxDqnDMy__D5g@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 18, 2018 at 3:08 AM, Christoph Hellwig <hch@infradead.org> wrot=
-e:
-> On Tue, Apr 17, 2018 at 11:19:25AM -0400, Olga Kornievskaia wrote:
->> Yes I agree. Let=E2=80=99s please decide if this will go in (with whatev=
-er code improvements are required) or let=E2=80=99s drop it.
->
-> Well, my vote is very clearly to drop it.
+On Tue, Apr 24, 2018 at 04:10:29PM -0400, Olga Kornievskaia wrote:
+> Do you by any chance have a reference to this discussion?
 
-Bruce, when will you make a decision about this? Is there something
-more that needs to happen before it can be decided if the "async"
-patches are moving forward (and then "inter" patches).
+This:
+	http://lkml.kernel.org/r/1507740502-5151-1-git-send-email-Thomas.Haynes@primarydata.com
+
+and this:
+
+	http://lkml.kernel.org/r/E0161195-9F4A-4B36-A71D-6A924498C893@primarydata.com
+
+and followups.
+
+> I would like to reference it. For now I'm hijacking this thread to
+> bring this up. I'm still concerned about the case where client sent a
+> request and slot got interrupted (so by default the client doesn't
+> increment the seq#). Then the client re-used the slot for the same
+> kind of operation (WRITE is very interesting) with same arguments but
+> say different FH. Is the server obligated the cache the whole call to
+> address and check that? You have a patch to check for false retries
+> that checks for different creds but I don't think you have something
+> that would catch this case?
+
+Right.  I don't believe the spec requires us to catch false retries in
+every possible case.  That may mean we return a pretty bizarre reply
+that doesn't match the request, but that's the client's own fault....
+
+--b.
