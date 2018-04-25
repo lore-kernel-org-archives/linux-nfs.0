@@ -1,62 +1,87 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.cn.fujitsu.com ([183.91.158.132]:22015 "EHLO
-        heian.cn.fujitsu.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-        with ESMTP id S1750882AbeDYGCv (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Wed, 25 Apr 2018 02:02:51 -0400
-Received: from G08CNEXCHPEKD02.g08.fujitsu.local (unknown [10.167.33.83])
-        by cn.fujitsu.com (Postfix) with ESMTP id F03304B3148E
-        for <linux-nfs@vger.kernel.org>; Wed, 25 Apr 2018 14:02:45 +0800 (CST)
-From: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-To: <linux-nfs@vger.kernel.org>
-Subject: SGID loss with nfsv3
-Message-ID: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
-Date: Wed, 25 Apr 2018 14:03:20 +0800
+Received: from mx3-rdu2.redhat.com ([66.187.233.73]:38342 "EHLO mx1.redhat.com"
+        rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+        id S1751525AbeDYMnh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Wed, 25 Apr 2018 08:43:37 -0400
+Date: Wed, 25 Apr 2018 08:43:32 -0400 (EDT)
+From: Mikulas Patocka <mpatocka@redhat.com>
+To: Michal Hocko <mhocko@kernel.org>
+cc: Richard Weinberger <richard@nod.at>,
+        LKML <linux-kernel@vger.kernel.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        David Woodhouse <dwmw2@infradead.org>,
+        Brian Norris <computersforpeace@gmail.com>,
+        Boris Brezillon <boris.brezillon@free-electrons.com>,
+        Marek Vasut <marek.vasut@gmail.com>,
+        Cyrille Pitchen <cyrille.pitchen@wedev4u.fr>,
+        "Theodore Ts'o" <tytso@mit.edu>,
+        Andreas Dilger <adilger.kernel@dilger.ca>,
+        Steven Whitehouse <swhiteho@redhat.com>,
+        Bob Peterson <rpeterso@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Philippe Ombredanne <pombredanne@nexb.com>,
+        Kate Stewart <kstewart@linuxfoundation.org>,
+        linux-mtd@lists.infradead.org, linux-ext4@vger.kernel.org,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: vmalloc with GFP_NOFS
+In-Reply-To: <20180424232517.GC17484@dhcp22.suse.cz>
+Message-ID: <alpine.LRH.2.02.1804250841230.16455@file01.intranet.prod.int.rdu2.redhat.com>
+References: <20180424162712.GL17484@dhcp22.suse.cz> <3732370.1623zxSvNg@blindfold> <20180424192803.GT17484@dhcp22.suse.cz> <3894056.cxOY6eVYVp@blindfold> <20180424230943.GY17484@dhcp22.suse.cz> <alpine.LRH.2.02.1804241911040.19786@file01.intranet.prod.int.rdu2.redhat.com>
+ <20180424232517.GC17484@dhcp22.suse.cz>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hi, folks
 
 
-I have client and server using nfsv3. The kernels are all 4.16-rc3.
-In client I mount a partition or a disk formatted in xfs/ext4 in
-/nfstest. It seems there is someting wrong with inheritance of sgid. I
-try the following operations in the client.
-> [root@localhost ]#id user1
-> uid=1003(user1) gid=1006(testgroup1)
-groups=1006(testgroup1),1007(testgroup2)
-> [root@localhost ]# mount -t nfs -o vers=3 -o noac
-192.168.56.9:/data/nfstest /mnt/test/
-> [root@localhost ]# cd /mnt/test/
-> [root@localhost ]# mkdir mainsub
-> [root@localhost ]# setfacl -d -m u:user2:rwx mainsub/
-> [root@localhost ]# chown user1:testgroup1 mainsub/
->                  # chmod 2775 mainsub/
-> [root@localhost ]# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
-> [root@localhost ]# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
-> [root@localhost ]# ls -l mainsub/
-> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
-> drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
+On Tue, 24 Apr 2018, Michal Hocko wrote:
 
+> On Tue 24-04-18 19:17:12, Mikulas Patocka wrote:
+> > 
+> > 
+> > On Tue, 24 Apr 2018, Michal Hocko wrote:
+> > 
+> > > On Wed 25-04-18 00:18:40, Richard Weinberger wrote:
+> > > > Am Dienstag, 24. April 2018, 21:28:03 CEST schrieb Michal Hocko:
+> > > > > > Also only for debugging.
+> > > > > > Getting rid of vmalloc with GFP_NOFS in UBIFS is no big problem.
+> > > > > > I can prepare a patch.
+> > > > > 
+> > > > > Cool!
+> > > > > 
+> > > > > Anyway, if UBIFS has some reclaim recursion critical sections in general
+> > > > > it would be really great to have them documented and that is where the
+> > > > > scope api is really handy. Just add the scope and document what is the
+> > > > > recursion issue. This will help people reading the code as well. Ideally
+> > > > > there shouldn't be any explicit GFP_NOFS in the code.
+> > > > 
+> > > > So in a perfect world a filesystem calls memalloc_nofs_save/restore and
+> > > > always uses GFP_KERNEL for kmalloc/vmalloc?
+> > > 
+> > > Exactly! And in a dream world those memalloc_nofs_save act as a
+> > > documentation of the reclaim recursion documentation ;)
+> > > -- 
+> > > Michal Hocko
+> > > SUSE Labs
+> > 
+> > BTW. should memalloc_nofs_save and memalloc_noio_save be merged into just 
+> > one that prevents both I/O and FS recursion?
+> 
+> Why should FS usage stop IO altogether?
 
-The subdir2 losts SGID. But if the same operations are applied in the
-xfs or ext4 directedly, the SGID could be interited normally.
+Because the IO may reach loop and loop may redirect it to the same 
+filesystem that is running under memalloc_nofs_save and deadlock.
 
-> [root@localhost ]# ls -l mainsub/
-> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir1
-> drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir2
+> > memalloc_nofs_save allows submitting bios to I/O stack and the bios 
+> > created under memalloc_nofs_save could be sent to the loop device and the 
+> > loop device calls the filesystem...
+> 
+> Don't those use NOIO context?
 
-Is this a bug of NFSv3?
+What do you mean?
 
-> https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=073931017b49d9458aa351605b43a7e34598caef
-
-
-Clear SGID bit when setting file permissions
-
-It seems this patch will clear the nfs sgid. Should we keep it?
-
-
-Xinyu Lu
-
-
+Mikulas
