@@ -1,76 +1,218 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-ua0-f171.google.com ([209.85.217.171]:35296 "EHLO
-        mail-ua0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S932342AbeD0XLO (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Apr 2018 19:11:14 -0400
-Received: by mail-ua0-f171.google.com with SMTP id a2so1736877uak.2
-        for <linux-nfs@vger.kernel.org>; Fri, 27 Apr 2018 16:11:14 -0700 (PDT)
+Received: from mail-oi0-f45.google.com ([209.85.218.45]:36384 "EHLO
+        mail-oi0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1754164AbeD2XQe (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Apr 2018 19:16:34 -0400
+Received: by mail-oi0-f45.google.com with SMTP id v2-v6so6065305oif.3
+        for <linux-nfs@vger.kernel.org>; Sun, 29 Apr 2018 16:16:33 -0700 (PDT)
 MIME-Version: 1.0
-In-Reply-To: <20180427160349.GA22412@parsley.fieldses.org>
-References: <20180413170158.17589-1-kolga@netapp.com> <20180414072202.GA6514@infradead.org>
- <20180416214522.GC2634@parsley.fieldses.org> <20180417065203.GA15145@infradead.org>
- <CAN-5tyEjCEo+P=p2nPkEiwa3BwM8Nj_N3KmvMXMU+VDmQJcjLA@mail.gmail.com>
- <1b45673f-516d-51ff-a1ef-8b07b9dd8619@RedHat.com> <1E0C45FE-2214-41FB-8634-1005CC13AD9E@netapp.com>
- <20180418070842.GC8764@infradead.org> <CAN-5tyGVc5myRVrnS0vc3gKq5NbhhrkVVDuLZPn2XxXoO-=T8A@mail.gmail.com>
- <20180427160349.GA22412@parsley.fieldses.org>
-From: Olga Kornievskaia <aglo@umich.edu>
-Date: Fri, 27 Apr 2018 19:11:12 -0400
-Message-ID: <CAN-5tyH3VAcOXZ87ZGJFn5BffO+Si9A1shEgUsP=H-FUu+K23A@mail.gmail.com>
-Subject: Re: [PATCH v8 0/9] NFSD support for async COPY
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Olga Kornievskaia <kolga@netapp.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
+From: Will Dietz <w@wdtz.org>
+Date: Sun, 29 Apr 2018 18:16:32 -0500
+Message-ID: <CAKGWAO_DsJWLeKCrDytXLGUM-Je+P6T6d9z8P=tV_PCgJAYxzw@mail.gmail.com>
+Subject: Patches: fix non-standard getaddrinfo usage, minor fixups (fix w/musl)
+To: linux-nfs@vger.kernel.org
+Content-Type: multipart/mixed; boundary="00000000000090ca83056b04edbc"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 27, 2018 at 12:03 PM, J. Bruce Fields <bfields@redhat.com> wrot=
-e:
-> On Tue, Apr 24, 2018 at 04:29:14PM -0400, Olga Kornievskaia wrote:
->> On Wed, Apr 18, 2018 at 3:08 AM, Christoph Hellwig <hch@infradead.org> w=
-rote:
->> > On Tue, Apr 17, 2018 at 11:19:25AM -0400, Olga Kornievskaia wrote:
->> >> Yes I agree. Let=E2=80=99s please decide if this will go in (with wha=
-tever code improvements are required) or let=E2=80=99s drop it.
->> >
->> > Well, my vote is very clearly to drop it.
->>
->> Bruce, when will you make a decision about this? Is there something
->> more that needs to happen before it can be decided if the "async"
->> patches are moving forward (and then "inter" patches).
->
-> I'm OK with the patches.
->
-> It could help to have some more information about actual customer use
-> cases: who specifically is asking for this, and what about their
-> situation makes them believe they'll benefit?
+--00000000000090ca83056b04edbc
+Content-Type: text/plain; charset="UTF-8"
 
-I'm really not involved with customer or know of how exactly they will
-benefit. I have some knowledge of some company that is interested in
-using copy offload functionality in game development. I have no
-details. It has been talked about a case scenario of copying VM
-images. I don't know if VMware uses copy offload or not.
+The getaddrinfo problem needs a proper fix and probably a
+consideration of similar patterns elsewhere in the code.
 
-> But to me it seems obvious that server-to-server copy will be faster in
-> some cases as long there's not some screwup preventing it from using the
-> server-to-server bandwidth (and your numbers don't show any).  So I'm
-> not terribly worried about this.
->
-> If we wanted to simplify I think we could ditch the asynchronous
-> protocol and still make server-to-server copy work as a series of
-> synchronous calls.  (Or maybe that would make getting good performance
-> the complicated part.)
+The others are relatively straightforward and are more suitable for use as-is.
 
-I'm not in favor of dropping asynchronous piece as I think it's an
-important performance improvement. It's likely it won't be must of an
-improvement due to an overhead of establishing clientid/session for
-every "chuck" of the copy that will be sent synchronously.
+A fix not included would be to avoid using "-Werror" except when
+developing-- or at least make its use optional.  Without knowledge of
+the compilers used by downstream, this option may cause builds to fail
+for unimportant reasons (and even if it works with all compilers
+today, it might not tomorrow...).   Would be nice to have that in
+before the next tagged release :).  GCC 7.3.0 seems to be unhappy with
+some prototypes for example, I don't have them handy but can send them
+along if that'd be useful.
 
-> The only security issue I'm worried about is the fact that you can make
-> it try to copy from any arbitrary IP address.  I'd be satisfied if we
-> document the issue and make server-to-server-copy support require a
-> runtime switch that defaults to off.  (And with that in place I don't
-> see a need to also provide a build option.)
+Thanks! LMK if you have any questions or concerns, hopefully these are helpful.
 
-Ok, runtime option, I'll work on it.
+~Will
+
+--00000000000090ca83056b04edbc
+Content-Type: text/x-patch; charset="US-ASCII";
+	name="0001-sm-notify-don-t-rely-on-non-standard-getaddrinfo-beh.patch"
+Content-Disposition: attachment;
+	filename="0001-sm-notify-don-t-rely-on-non-standard-getaddrinfo-beh.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_jglflwj10
+
+RnJvbSAwYzVlMWM1MDBhODEzMTRlZGJmNjY4YmFhYTc2Y2MzOTA1MzI2OWE3IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
+IEFwciAyMDE4IDE0OjAwOjE2IC0wNTAwClN1YmplY3Q6IFtQQVRDSCAxLzZdIHNtLW5vdGlmeTog
+ZG9uJ3QgcmVseSBvbiBub24tc3RhbmRhcmQgZ2V0YWRkcmluZm8KIGJlaGF2aW9yCgpnZXRhZGRy
+aW5mbyBkb2Vzbid0IHN1cHBvcnQgYm90aCBub2RlPU5VTEwgYW5kIHNlcnZpY2U9TlVMTCwKb25l
+IG9yIGJvdGggb2YgdGhlc2UgbXVzdCBiZSBzcGVjaWZpZWQuCgpUbyB3b3JrYXJvdW5kIGhhdmlu
+ZyB0byBzcGVjaWZ5IG9uZSBvZiB0aGVzZSwgc21uX2JpbmRfYWRkcmVzcygpCnVzZXMgZ2V0YWRk
+cmluZm8oTlVMTCwgIiIsIC4uLikgaW4gdGhlIGhvcGVzIHRoYXQgZW1wdHkgc3RyaW5nCmNvdW50
+cyBhcyBzcGVjaWZpZWQgKG5vbi1udWxsKSB3aGlsZSBub3QgYWN0dWFsbHkgc3BlY2lmeWluZwp0
+aGUgc2VydmljZSBpbiB0ZXJtcyBvZiBsaW1pdGluZyB0aGUgYWRkcmVzc2VzIHVzZWQuClRoYXQn
+cyBteSBiZXN0IGd1ZXNzIGFueXdheS4KClVuZm9ydHVuYXRlbHkgdGhpcyBpcyBub3QgdmFsaWQg
+dXNlIG9mIGdldGFkZHJpbmZvLAphbmQgQUZBSUNUIHN0YW5kYXJkIHNheXMgdGhpcyBzaG91bGQg
+cmVzdWx0IGluIGFuIGVycm9yCihlc3BlY2lhbGx5IHdoZW4gc3BlY2lmeWluZyBBSV9OVU1FUklD
+U0VSVikuCgpBcHBhcmVudGx5IHNvbWUgcGxhdGZvcm1zIGRvbid0IHJldHVybiBlcnJvciBpbiB0
+aGlzIGNhc2UsCmFsdGhvdWdoIG5vbmUgZG9jdW1lbnQgdGhpcyBhbHRlcm5hdGUgYmVoYXZpb3Ig
+c28KaG9wZWZ1bGx5IGl0IGRvZXMgd2hhdGV2ZXIgTkZTIGhvcGVzIGl0IGRvZXMgOikuCgpUaGlz
+IGludmFsaWQgdXNhZ2UgY2F1c2VzIHByb2JsZW1zIHdoZW4gdXNpbmcgbXVzbCwKd2hpY2ggcmV0
+dXJucyBhbiBlcnJvciAoYXMgdGhlIHN0YW5kYXJkcyBpbmRpY2F0ZSkuCgpGcm9tIGdldGFkZHJp
+bmZvKDMpOgoKLS0tLS0tLQpJZiBBSV9OVU1FUklDU0VSViAgaXMgIHNwZWNpZmllZCBpbiAgaGlu
+dHMuYWlfZmxhZ3MgIGFuZCAgc2VydmljZSAgaXMgbm90Ck5VTEwsIHRoZW4gc2VydmljZSBtdXN0
+IHBvaW50IHRvIGEgc3RyaW5nIGNvbnRhaW5pbmcgYSBudW1lcmljIHBvcnQKbnVtYmVyLgotLS0t
+LS0tCgpUaGUgc3RyaW5nICIiIGlzIG5vdCBhIG51bWVyaWMgcG9ydCBudW1iZXIuICBJdCBpcyBu
+b3QgYSBudW1iZXIuCgpBbmQgbGF0ZXIgd2hlbiBkZXNjcmliaW5nIHJldHVybiB2YWx1ZXMgYW5k
+IG1lYW5pbmc6CgotLS0tLS0tCkVBSV9OT05BTUUKICAgICAgVGhlIG5vZGUgb3Igc2VydmljZSBp
+cyBub3Qga25vd247IG9yIGJvdGggbm9kZSBhbmQgc2VydmljZQphcmUgTlVMTDsgb3IgQUlfTlVN
+RVJJQ1NFUlYgd2FzIHNwZWNpZmllZCBpbiBoaW50cy5haV9mbGFncyBhbmQgc2VydmljZQp3YXMg
+bm90IGEgbnVtZXJpYyBwb3J0LW51bWJlciBzdHJpbmcuCi0tLS0tLS0KCldoaWNoIGlzIHdoYXQg
+bXVzbCdzIGdldGFkZHJpbmZvIHJldHVybnMuCgpBcyBhIHF1aWNrLWZpeCwgdGhpcyB1c2VzICdn
+ZXRhZGRyaW5mbygiMC4wLjAuMCIsIE5VTEwsIC4uLikiCmluIHRoaXMgc2l0dWF0aW9uIHdoaWNo
+IGlzbid0IHF1aXRlIHJpZ2h0IGJ1dCBpcyBlbm91Z2ggdG8gZml4CnNtLW5vdGlmeSB3aGVuIGJ1
+aWx0IHcvbXVzbCBhbmQgdXNpbmcgSVBWNC4KCkZpeGluZyBpdCAicHJvcGVybHkiIGlzIG1vc3Rs
+eSBhIHF1ZXN0aW9uIG9mIGRldGVybWluaW5nCndoYXQgTkZTICJ3YW50cyIgdG8gYmUgZG9uZSwg
+YW5kIHJld29ya2luZyBjb2RlIHRvCmF2b2lkIHJlbHlpbmcgb24gbm9uLXN0YW5kYXJkIGJlaGF2
+aW9yLgoKVGhlcmUgYXJlIG90aGVyIGluc3RhbmNlcyBvZiB0aGlzIHBhdHRlcm4gaW4gdGhlIGNv
+ZGViYXNlLAp3aGljaCBzaG91bGQgcHJvYmFibHkgYmUgZml4aW5nIGluIHRoZSBzYW1lIGVmZm9y
+dC4KClRoaXMgYXJ0aWNsZSBleHBsb3JlcyB0aGlzIGlzc3VlIGEgYml0IG9uIHZhcmlvdXMgcGxh
+dGZvcm1zOgpodHRwOi8va2xpY2t2ZXJib3QuYXQvYmxvZy8yMDEyLzAxL2dldGFkZHJpbmZvLWVk
+Z2UtY2FzZS1iZWhhdmlvci1vbi13aW5kb3dzLWxpbnV4LWFuZC1vc3gvCi0tLQogdXRpbHMvc3Rh
+dGQvc20tbm90aWZ5LmMgfCA0ICsrLS0KIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyks
+IDIgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvdXRpbHMvc3RhdGQvc20tbm90aWZ5LmMgYi91
+dGlscy9zdGF0ZC9zbS1ub3RpZnkuYwppbmRleCA2ZDE5ZWMxLi42ZTk3OGQzIDEwMDY0NAotLS0g
+YS91dGlscy9zdGF0ZC9zbS1ub3RpZnkuYworKysgYi91dGlscy9zdGF0ZC9zbS1ub3RpZnkuYwpA
+QCAtMzY4LDggKzM2OCw4IEBAIHNtbl9iaW5kX2FkZHJlc3MoY29uc3QgY2hhciAqc3JjYWRkciwg
+Y29uc3QgY2hhciAqc3JjcG9ydCkKIAkJaGludC5haV9mbGFncyB8PSBBSV9QQVNTSVZFOwogCiAJ
+LyogRG8gbm90IGFsbG93ICJub2RlIiBhbmQgInNlcnZpY2UiIHBhcmFtZXRlcnMgYm90aCB0byBi
+ZSBOVUxMICovCi0JaWYgKHNyY3BvcnQgPT0gTlVMTCkKLQkJZXJyb3IgPSBnZXRhZGRyaW5mbyhz
+cmNhZGRyLCAiIiwgJmhpbnQsICZhaSk7CisJaWYgKHNyY2FkZHIgPT0gTlVMTCAmJiBzcmNwb3J0
+ID09IE5VTEwpCisJCWVycm9yID0gZ2V0YWRkcmluZm8oIjAuMC4wLjAiLCBzcmNwb3J0LCAmaGlu
+dCwgJmFpKTsKIAllbHNlCiAJCWVycm9yID0gZ2V0YWRkcmluZm8oc3JjYWRkciwgc3JjcG9ydCwg
+JmhpbnQsICZhaSk7CiAJaWYgKGVycm9yICE9IDApIHsKLS0gCjIuMTcuMAoK
+--00000000000090ca83056b04edbc
+Content-Type: text/x-patch; charset="US-ASCII";
+	name="0002-fix-HAVE_-checks-so-they-work-when-functions-aren-t-.patch"
+Content-Disposition: attachment;
+	filename="0002-fix-HAVE_-checks-so-they-work-when-functions-aren-t-.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_jglflwjb1
+
+RnJvbSBmNTQzZGNkNTBmNjZjZjc5ZGY1ZmU5NjNkZjJhYmI5NGExM2IzNTg5IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
+IEFwciAyMDE4IDE1OjU5OjM3IC0wNTAwClN1YmplY3Q6IFtQQVRDSCAyLzZdIGZpeCBIQVZFXyog
+Y2hlY2tzIHNvIHRoZXkgd29yayB3aGVuIGZ1bmN0aW9ucyBhcmVuJ3QKIGZvdW5kCgpUaGUgY3Vy
+cmVudCBjaGVja3MgYXJlIG9mIGZvcm0gYCNpZiBIQVZFX1hgLAp3aGljaCBjYXVzZXMgYW4gZXJy
+b3Igd2hlbiBgSEFWRV9YYCBpc24ndCBkZWZpbmVkLgoKQUNfQ0hFQ0tfRlVOQ1MgZGVmaW5lcyB0
+aGVzZSBpZiB0aGV5J3JlIGZvdW5kLAphbmQgbGVhdmVzIHRoZW0gdW5kZWZpbmVkIG90aGVyd2lz
+ZS4KLS0tCiBzdXBwb3J0L25mcy9zdmNfc29ja2V0LmMgfCAyICstCiB1dGlscy9tb3VudGQvY2Fj
+aGUuYyAgICAgfCAyICstCiAyIGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMiBkZWxl
+dGlvbnMoLSkKCmRpZmYgLS1naXQgYS9zdXBwb3J0L25mcy9zdmNfc29ja2V0LmMgYi9zdXBwb3J0
+L25mcy9zdmNfc29ja2V0LmMKaW5kZXggMTIzOTcxMi4uZDU2NTA3YSAxMDA2NDQKLS0tIGEvc3Vw
+cG9ydC9uZnMvc3ZjX3NvY2tldC5jCisrKyBiL3N1cHBvcnQvbmZzL3N2Y19zb2NrZXQuYwpAQCAt
+NDYsNyArNDYsNyBAQCBpbnQgZ2V0c2VydnBvcnQodV9sb25nIG51bWJlciwgY29uc3QgY2hhciAq
+cHJvdG8pCiAJc3RydWN0IHJwY2VudCAqcnBjcDsKIAlzdHJ1Y3Qgc2VydmVudCBzZXJ2YnVmLCAq
+c2VydnAgPSBOVUxMOwogCWludCByZXQgPSAwOwotI2lmIEhBVkVfR0VUUlBDQllOVU1CRVJfUgor
+I2lmZGVmIEhBVkVfR0VUUlBDQllOVU1CRVJfUgogCWNoYXIgcnBjZGF0YVsxMDI0XTsKIAlzdHJ1
+Y3QgcnBjZW50IHJwY2J1ZjsKIApkaWZmIC0tZ2l0IGEvdXRpbHMvbW91bnRkL2NhY2hlLmMgYi91
+dGlscy9tb3VudGQvY2FjaGUuYwppbmRleCA2ZjQyNTEyLi5jODdlZThkIDEwMDY0NAotLS0gYS91
+dGlscy9tb3VudGQvY2FjaGUuYworKysgYi91dGlscy9tb3VudGQvY2FjaGUuYwpAQCAtNDI2LDcg
+KzQyNiw3IEBAIHN0YXRpYyBpbnQgc2FtZV9wYXRoKGNoYXIgKmNoaWxkLCBjaGFyICpwYXJlbnQs
+IGludCBsZW4pCiAJaWYgKGNvdW50X3NsYXNoZXMocCkgIT0gY291bnRfc2xhc2hlcyhwYXJlbnQp
+KQogCQlyZXR1cm4gMDsKIAotI2lmIEhBVkVfTkFNRV9UT19IQU5ETEVfQVQKKyNpZmRlZiBIQVZF
+X05BTUVfVE9fSEFORExFX0FUCiAJc3RydWN0IHsKIAkJc3RydWN0IGZpbGVfaGFuZGxlIGZoOwog
+CQl1bnNpZ25lZCBjaGFyIGhhbmRsZVsxMjhdOwotLSAKMi4xNy4wCgo=
+--00000000000090ca83056b04edbc
+Content-Type: text/x-patch; charset="US-ASCII";
+	name="0003-network.c-fix-build-w-non-glibc.patch"
+Content-Disposition: attachment;
+	filename="0003-network.c-fix-build-w-non-glibc.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_jglflwjf2
+
+RnJvbSAwY2Q1Y2EzNzQxOTgwZWU0ODQ4NzZiMzdkZTIzYzNkNGNkN2EzMzBmIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
+IEFwciAyMDE4IDE2OjExOjQxIC0wNTAwClN1YmplY3Q6IFtQQVRDSCAzLzZdIG5ldHdvcmsuYzog
+Zml4IGJ1aWxkIHcvbm9uLWdsaWJjCgotLS0KIHV0aWxzL21vdW50L25ldHdvcmsuYyB8IDEwICsr
+KysrKysrKy0KIDEgZmlsZSBjaGFuZ2VkLCA5IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkK
+CmRpZmYgLS1naXQgYS91dGlscy9tb3VudC9uZXR3b3JrLmMgYi91dGlscy9tb3VudC9uZXR3b3Jr
+LmMKaW5kZXggZTQ5MDM5OS4uNzVlZjM5OSAxMDA2NDQKLS0tIGEvdXRpbHMvbW91bnQvbmV0d29y
+ay5jCisrKyBiL3V0aWxzL21vdW50L25ldHdvcmsuYwpAQCAtMzksMTMgKzM5LDIxIEBACiAjaW5j
+bHVkZSA8c3lzL3NvY2tldC5oPgogI2luY2x1ZGUgPHN5cy93YWl0Lmg+CiAjaW5jbHVkZSA8c3lz
+L3N0YXQuaD4KLSNpZiBkZWZpbmVkKF9fR0xJQkNfXykgJiYgKF9fR0xJQkNfXyA8IDIpIHx8IChf
+X0dMSUJDX18gPT0gMiAmJiBfX0dMSUJDX01JTk9SX18gPCAyNCkKKworI2lmIGRlZmluZWQoX19H
+TElCQ19fKQorI2lmIChfX0dMSUJDX18gPCAyKSB8fCAoX19HTElCQ19fID09IDIgJiYgX19HTElC
+Q19NSU5PUl9fIDwgMjQpCisjZGVmaW5lIENBTk5PVF9JTkNMVURFX0lONgorI2VuZGlmCisjZW5k
+aWYKKworI2lmbmRlZiBDQU5OT1RfSU5DTFVERV9JTjYKIC8qIENhbm5vdCBzYWZlbHkgaW5jbHVk
+ZSBsaW51eC9pbjYuaCBpbiBvbGQgZ2xpYmMsIHNvIGhhcmRjb2RlIHRoZSBuZWVkZWQgdmFsdWVz
+ICovCiAjIGRlZmluZSBJUFY2X1BSRUZFUl9TUkNfUFVCTElDIDIKICMgZGVmaW5lIElQVjZfQURE
+Ul9QUkVGRVJFTkNFUyA3MgogI2Vsc2UKICMgaW5jbHVkZSA8bGludXgvaW42Lmg+CiAjZW5kaWYK
+KwogI2luY2x1ZGUgPG5ldGluZXQvaW4uaD4KICNpbmNsdWRlIDxycGMvcnBjLmg+CiAjaW5jbHVk
+ZSA8cnBjL3BtYXBfcHJvdC5oPgotLSAKMi4xNy4wCgo=
+--00000000000090ca83056b04edbc
+Content-Type: text/x-patch; charset="US-ASCII";
+	name="0004-misc-file.c-include-limits.h-for-PATH_MAX.patch"
+Content-Disposition: attachment;
+	filename="0004-misc-file.c-include-limits.h-for-PATH_MAX.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_jglflwji3
+
+RnJvbSBlNmU4OWU0MWFiYTllNTdmNjQyMDdlYzlhOWVlNzUwYzNjZjYzNjQ3IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
+IEFwciAyMDE4IDE2OjE0OjAxIC0wNTAwClN1YmplY3Q6IFtQQVRDSCA0LzZdIG1pc2MvZmlsZS5j
+OiBpbmNsdWRlIGxpbWl0cy5oIGZvciBQQVRIX01BWAoKLS0tCiBzdXBwb3J0L21pc2MvZmlsZS5j
+IHwgMSArCiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKykKCmRpZmYgLS1naXQgYS9zdXBw
+b3J0L21pc2MvZmlsZS5jIGIvc3VwcG9ydC9taXNjL2ZpbGUuYwppbmRleCA2MzU5N2RmLi5kNDdl
+OGJlIDEwMDY0NAotLS0gYS9zdXBwb3J0L21pc2MvZmlsZS5jCisrKyBiL3N1cHBvcnQvbWlzYy9m
+aWxlLmMKQEAgLTI3LDYgKzI3LDcgQEAKICNpbmNsdWRlIDxkaXJlbnQuaD4KICNpbmNsdWRlIDxz
+dGRsaWIuaD4KICNpbmNsdWRlIDxzdGRib29sLmg+CisjaW5jbHVkZSA8bGltaXRzLmg+CiAKICNp
+bmNsdWRlICJ4bG9nLmgiCiAjaW5jbHVkZSAibWlzYy5oIgotLSAKMi4xNy4wCgo=
+--00000000000090ca83056b04edbc
+Content-Type: text/x-patch; charset="US-ASCII";
+	name="0005-network.c-add-cast-to-appease-warning.patch"
+Content-Disposition: attachment;
+	filename="0005-network.c-add-cast-to-appease-warning.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_jglflwjn4
+
+RnJvbSAxZWMzZTQwYzVmODA1NWUyN2I4MDJjZTUyZTMzMGNkMWRjN2VjZDM3IE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
+IEFwciAyMDE4IDE2OjE2OjIyIC0wNTAwClN1YmplY3Q6IFtQQVRDSCA1LzZdIG5ldHdvcmsuYzog
+YWRkIGNhc3QgdG8gYXBwZWFzZSB3YXJuaW5nCgotLS0KIHV0aWxzL21vdW50L25ldHdvcmsuYyB8
+IDIgKy0KIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQoKZGlm
+ZiAtLWdpdCBhL3V0aWxzL21vdW50L25ldHdvcmsuYyBiL3V0aWxzL21vdW50L25ldHdvcmsuYwpp
+bmRleCA3NWVmMzk5Li4zZTRiOWI2IDEwMDY0NAotLS0gYS91dGlscy9tb3VudC9uZXR3b3JrLmMK
+KysrIGIvdXRpbHMvbW91bnQvbmV0d29yay5jCkBAIC0xMDY4LDcgKzEwNjgsNyBAQCBpbnQgY2xu
+dF9waW5nKHN0cnVjdCBzb2NrYWRkcl9pbiAqc2FkZHIsIGNvbnN0IHVuc2lnbmVkIGxvbmcgcHJv
+ZywKIAlpZiAoY2FkZHIpIHsKIAkJLyogR2V0IHRoZSBhZGRyZXNzIG9mIG91ciBlbmQgb2YgdGhp
+cyBjb25uZWN0aW9uICovCiAJCXNvY2tsZW5fdCBsZW4gPSBzaXplb2YoKmNhZGRyKTsKLQkJaWYg
+KGdldHNvY2tuYW1lKHNvY2ssIGNhZGRyLCAmbGVuKSAhPSAwKQorCQlpZiAoZ2V0c29ja25hbWUo
+c29jaywgKHN0cnVjdCBzb2NrYWRkciAqKWNhZGRyLCAmbGVuKSAhPSAwKQogCQkJY2FkZHItPnNp
+bl9mYW1pbHkgPSAwOwogCX0KIAotLSAKMi4xNy4wCgo=
+--00000000000090ca83056b04edbc
+Content-Type: text/x-patch; charset="US-ASCII";
+	name="0006-configure.ac-check-for-res_querydomain-instead-of-__.patch"
+Content-Disposition: attachment;
+	filename="0006-configure.ac-check-for-res_querydomain-instead-of-__.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_jglflwjr5
+
+RnJvbSA2NjVhMGU2NjVhMGU1MjZhNWQ0MDIxZGUyOGMzYTM2MTNjYmUwMmRiIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
+IEFwciAyMDE4IDE2OjIxOjU2IC0wNTAwClN1YmplY3Q6IFtQQVRDSCA2LzZdIGNvbmZpZ3VyZS5h
+YzogY2hlY2sgZm9yIHJlc19xdWVyeWRvbWFpbiBpbnN0ZWFkIG9mCiBfX3Jlc19xdWVyeWRvbWFp
+bgoKLS0tCiBjb25maWd1cmUuYWMgfCAyICstCiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24o
+KyksIDEgZGVsZXRpb24oLSkKCmRpZmYgLS1naXQgYS9jb25maWd1cmUuYWMgYi9jb25maWd1cmUu
+YWMKaW5kZXggNWExMTYzNi4uOGQ1ZDlhMSAxMDA2NDQKLS0tIGEvY29uZmlndXJlLmFjCisrKyBi
+L2NvbmZpZ3VyZS5hYwpAQCAtNDA4LDcgKzQwOCw3IEBAIGlmIHRlc3QgIiRlbmFibGVfZ3NzIiA9
+IHllczsgdGhlbgogZmkKIAogZG5sIGxpYmRuc2lkbWFwIHNwZWNpZmljIGNoZWNrcwotQUNfQ0hF
+Q0tfTElCKFtyZXNvbHZdLCBbX19yZXNfcXVlcnlkb21haW5dLCAsIEFDX01TR19FUlJPUihyZXNf
+cXVlcnlkb21haW4gbmVlZGVkKSkKK0FDX0NIRUNLX0xJQihbcmVzb2x2XSwgW3Jlc19xdWVyeWRv
+bWFpbl0sICwgQUNfTVNHX0VSUk9SKHJlc19xdWVyeWRvbWFpbiBuZWVkZWQpKQogCiBBQ19BUkdf
+RU5BQkxFKFtsZGFwXSwKIAlbQVNfSEVMUF9TVFJJTkcoWy0tZGlzYWJsZS1sZGFwXSxbRGlzYWJs
+ZSBzdXBwb3J0IGZvciBMREFQIEA8OmRlZmF1bHQ9ZGV0ZWN0QDo+QF0pXSkKLS0gCjIuMTcuMAoK
+--00000000000090ca83056b04edbc--
