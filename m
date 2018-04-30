@@ -1,78 +1,231 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx0a-001b2d01.pphosted.com ([148.163.156.1]:40776 "EHLO
-        mx0a-001b2d01.pphosted.com" rhost-flags-OK-OK-OK-OK)
-        by vger.kernel.org with ESMTP id S1753582AbeD3Pdy (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Apr 2018 11:33:54 -0400
-Received: from pps.filterd (m0098410.ppops.net [127.0.0.1])
-        by mx0a-001b2d01.pphosted.com (8.16.0.22/8.16.0.22) with SMTP id w3UFVOe4044714
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Apr 2018 11:33:54 -0400
-Received: from e14.ny.us.ibm.com (e14.ny.us.ibm.com [129.33.205.204])
-        by mx0a-001b2d01.pphosted.com with ESMTP id 2hp5da1gjt-1
-        (version=TLSv1.2 cipher=AES256-GCM-SHA384 bits=256 verify=NOT)
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Apr 2018 11:33:53 -0400
-Received: from localhost
-        by e14.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-        for <linux-nfs@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-        Mon, 30 Apr 2018 11:33:51 -0400
-Date: Mon, 30 Apr 2018 08:35:05 -0700
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-To: Steven Rostedt <rostedt@goodmis.org>
-Cc: Josh Triplett <josh@joshtriplett.org>, NeilBrown <neilb@suse.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>,
-        linux-nfs@vger.kernel.org, Lai Jiangshan <jiangshanlai@gmail.com>,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/4] rculist: add list_for_each_entry_from_rcu()
-Reply-To: paulmck@linux.vnet.ibm.com
-References: <152506256513.7246.13171564155614823841.stgit@noble>
- <152506269061.7246.13075216914692813995.stgit@noble>
- <20180430052032.GA16963@localhost>
- <20180430134308.GT26088@linux.vnet.ibm.com>
- <20180430111454.722c2aa8@gandalf.local.home>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20180430111454.722c2aa8@gandalf.local.home>
-Message-Id: <20180430153505.GW26088@linux.vnet.ibm.com>
+Received: from userp2120.oracle.com ([156.151.31.85]:58950 "EHLO
+        userp2120.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+        with ESMTP id S1753582AbeD3Pjb (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Apr 2018 11:39:31 -0400
+Content-Type: text/plain;
+        charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 11.3 \(3445.6.18\))
+Subject: Re: KASAN: use-after-free Read in perf_trace_rpc_stats_latency
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <00000000000027a3e2056b10e81e@google.com>
+Date: Mon, 30 Apr 2018 11:39:17 -0400
+Cc: Anna Schumaker <anna.schumaker@netapp.com>,
+        Bruce Fields <bfields@fieldses.org>,
+        "David S . Miller" <davem@davemloft.net>,
+        Jeff Layton <jlayton@kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, syzkaller-bugs@googlegroups.com,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Message-Id: <0F0C0FCB-2D27-4DF5-8D5A-2E4CADC5365D@oracle.com>
+References: <00000000000027a3e2056b10e81e@google.com>
+To: syzbot <syzbot+27db1f90e2b972a5f2d3@syzkaller.appspotmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 30, 2018 at 11:14:54AM -0400, Steven Rostedt wrote:
-> On Mon, 30 Apr 2018 06:43:08 -0700
-> "Paul E. McKenney" <paulmck@linux.vnet.ibm.com> wrote:
-> 
-> > On Sun, Apr 29, 2018 at 10:20:33PM -0700, Josh Triplett wrote:
-> > > On Mon, Apr 30, 2018 at 02:31:30PM +1000, NeilBrown wrote:  
-> > > > list_for_each_entry_from_rcu() is an RCU version of
-> > > > list_for_each_entry_from().  It walks a linked list under rcu
-> > > > protection, from a given start point.
-> > > > 
-> > > > It is similar to list_for_each_entry_continue_rcu() but starts *at*
-> > > > the given position rather than *after* it.
-> > > > 
-> > > > Naturally, the start point must be known to be in the list.  
-> > > 
-> > > I'd suggest giving an explicit advisory comment to clarify and suggest
-> > > correct usage:
-> > > 
-> > > "This would typically require either that you obtained the node from a
-> > > previous walk of the list in the same RCU read-side critical section, or
-> > > that you held some sort of non-RCU reference (such as a reference count)
-> > > to keep the node alive *and* in the list."
-> > > 
-> > > (Feel free to wordsmith the exact wording, but something like that seems
-> > > like it would help people understand how to use this correctly, and make
-> > > it less likely that they'd use it incorrectly.)  
-> > 
-> > What Josh said!  Could you also contrast this with the existing
-> > list_for_each_entry_continue_rcu() macro in the header comment as well
-> > as in the commit log?
-> 
-> Should Documentation/RCU/whatisRCU.txt be updated?
-> 
-> Specifically section: 7.  FULL LIST OF RCU APIs
 
-Very much so, thank you for catching this!
 
-							Thanx, Paul
+> On Apr 30, 2018, at 9:34 AM, syzbot =
+<syzbot+27db1f90e2b972a5f2d3@syzkaller.appspotmail.com> wrote:
+>=20
+> Hello,
+>=20
+> syzbot hit the following crash on bpf-next commit
+> f60ad0a0c441530280a4918eca781a6a94dffa50 (Sun Apr 29 15:45:55 2018 =
++0000)
+> Merge branch 'bpf_get_stack'
+> syzbot dashboard link: =
+https://syzkaller.appspot.com/bug?extid=3D27db1f90e2b972a5f2d3
+>=20
+> Unfortunately, I don't have any reproducer for this crash yet.
+> Raw console output: =
+https://syzkaller.appspot.com/x/log.txt?id=3D6741221342969856
+> Kernel config: =
+https://syzkaller.appspot.com/x/.config?id=3D4410550353033654931
+> compiler: gcc (GCC) 8.0.1 20180413 (experimental)
+>=20
+> IMPORTANT: if you fix the bug, please add the following tag to the =
+commit:
+> Reported-by: syzbot+27db1f90e2b972a5f2d3@syzkaller.appspotmail.com
+> It will help syzbot understand when the bug is fixed. See footer for =
+details.
+> If you forward the report, please keep this part and the footer.
+>=20
+> rpcbind: RPC call returned error 22
+> rpcbind: RPC call returned error 22
+> rpcbind: RPC call returned error 22
+> rpcbind: RPC call returned error 22
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> BUG: KASAN: use-after-free in strlen+0x83/0xa0 lib/string.c:482
+> Read of size 1 at addr ffff8801d6f0a1c0 by task syz-executor7/5079
+>=20
+> CPU: 1 PID: 5079 Comm: syz-executor7 Not tainted 4.17.0-rc2+ #16
+> Hardware name: Google Google Compute Engine/Google Compute Engine, =
+BIOS Google 01/01/2011
+> Call Trace:
+> __dump_stack lib/dump_stack.c:77 [inline]
+> dump_stack+0x1b9/0x294 lib/dump_stack.c:113
+> print_address_description+0x6c/0x20b mm/kasan/report.c:256
+> kasan_report_error mm/kasan/report.c:354 [inline]
+> kasan_report.cold.7+0x242/0x2fe mm/kasan/report.c:412
+> __asan_report_load1_noabort+0x14/0x20 mm/kasan/report.c:430
+> strlen+0x83/0xa0 lib/string.c:482
+> trace_event_get_offsets_rpc_stats_latency =
+include/trace/events/sunrpc.h:215 [inline]
+> perf_trace_rpc_stats_latency+0x318/0x10d0 =
+include/trace/events/sunrpc.h:215
+> trace_rpc_stats_latency include/trace/events/sunrpc.h:215 [inline]
+> rpc_count_iostats_metrics+0x594/0x8a0 net/sunrpc/stats.c:182
+> rpc_count_iostats+0x76/0x90 net/sunrpc/stats.c:195
+> xprt_release+0xa3b/0x1110 net/sunrpc/xprt.c:1351
+> rpc_release_resources_task+0x20/0xa0 net/sunrpc/sched.c:1024
+> rpc_release_task net/sunrpc/sched.c:1068 [inline]
+> __rpc_execute+0x5e9/0xf50 net/sunrpc/sched.c:833
+> rpc_execute+0x37f/0x480 net/sunrpc/sched.c:852
+> rpc_run_task+0x615/0x8c0 net/sunrpc/clnt.c:1053
+> rpc_call_sync+0x196/0x290 net/sunrpc/clnt.c:1082
+> rpc_ping+0x155/0x1f0 net/sunrpc/clnt.c:2513
+> rpc_create_xprt+0x282/0x3f0 net/sunrpc/clnt.c:479
+> rpc_create+0x52e/0x900 net/sunrpc/clnt.c:587
+> nfs_create_rpc_client+0x63e/0x850 fs/nfs/client.c:523
+> nfs_init_client+0x74/0x100 fs/nfs/client.c:634
+> nfs_get_client+0x1065/0x1500 fs/nfs/client.c:425
+> nfs_init_server+0x364/0xfb0 fs/nfs/client.c:670
+> nfs_create_server+0x86/0x5f0 fs/nfs/client.c:953
+> nfs_try_mount+0x177/0xab0 fs/nfs/super.c:1884
+> nfs_fs_mount+0x17de/0x2efd fs/nfs/super.c:2695
+> mount_fs+0xae/0x328 fs/super.c:1267
+> vfs_kern_mount.part.34+0xd4/0x4d0 fs/namespace.c:1037
+> vfs_kern_mount fs/namespace.c:1027 [inline]
+> do_new_mount fs/namespace.c:2518 [inline]
+> do_mount+0x564/0x3070 fs/namespace.c:2848
+> ksys_mount+0x12d/0x140 fs/namespace.c:3064
+> __do_sys_mount fs/namespace.c:3078 [inline]
+> __se_sys_mount fs/namespace.c:3075 [inline]
+> __x64_sys_mount+0xbe/0x150 fs/namespace.c:3075
+> do_syscall_64+0x1b1/0x800 arch/x86/entry/common.c:287
+> entry_SYSCALL_64_after_hwframe+0x49/0xbe
+> RIP: 0033:0x455979
+> RSP: 002b:00007f1e2785bc68 EFLAGS: 00000246 ORIG_RAX: 00000000000000a5
+> RAX: ffffffffffffffda RBX: 00007f1e2785c6d4 RCX: 0000000000455979
+> RDX: 0000000020fb5ffc RSI: 0000000020343ff8 RDI: 000000002091dff8
+> RBP: 000000000072bf50 R08: 000000002000a000 R09: 0000000000000000
+> R10: 0000000000000000 R11: 0000000000000246 R12: 00000000ffffffff
+> R13: 0000000000000440 R14: 00000000006fa6a0 R15: 0000000000000001
+>=20
+> Allocated by task 5079:
+> save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+> set_track mm/kasan/kasan.c:460 [inline]
+> kasan_kmalloc+0xc4/0xe0 mm/kasan/kasan.c:553
+> __do_kmalloc mm/slab.c:3718 [inline]
+> __kmalloc_track_caller+0x14a/0x760 mm/slab.c:3733
+> kstrdup+0x39/0x70 mm/util.c:56
+> xs_format_common_peer_ports+0x130/0x370 net/sunrpc/xprtsock.c:290
+> xs_format_peer_addresses net/sunrpc/xprtsock.c:303 [inline]
+> xs_setup_udp+0x5ea/0x880 net/sunrpc/xprtsock.c:3037
+> xprt_create_transport+0x1d7/0x596 net/sunrpc/xprt.c:1433
+> rpc_create+0x489/0x900 net/sunrpc/clnt.c:573
+> nfs_create_rpc_client+0x63e/0x850 fs/nfs/client.c:523
+> nfs_init_client+0x74/0x100 fs/nfs/client.c:634
+> nfs_get_client+0x1065/0x1500 fs/nfs/client.c:425
+> nfs_init_server+0x364/0xfb0 fs/nfs/client.c:670
+> nfs_create_server+0x86/0x5f0 fs/nfs/client.c:953
+> nfs_try_mount+0x177/0xab0 fs/nfs/super.c:1884
+> nfs_fs_mount+0x17de/0x2efd fs/nfs/super.c:2695
+> mount_fs+0xae/0x328 fs/super.c:1267
+> vfs_kern_mount.part.34+0xd4/0x4d0 fs/namespace.c:1037
+> vfs_kern_mount fs/namespace.c:1027 [inline]
+> do_new_mount fs/namespace.c:2518 [inline]
+> do_mount+0x564/0x3070 fs/namespace.c:2848
+> ksys_mount+0x12d/0x140 fs/namespace.c:3064
+> __do_sys_mount fs/namespace.c:3078 [inline]
+> __se_sys_mount fs/namespace.c:3075 [inline]
+> __x64_sys_mount+0xbe/0x150 fs/namespace.c:3075
+> do_syscall_64+0x1b1/0x800 arch/x86/entry/common.c:287
+> entry_SYSCALL_64_after_hwframe+0x49/0xbe
+>=20
+> Freed by task 6:
+> save_stack+0x43/0xd0 mm/kasan/kasan.c:448
+> set_track mm/kasan/kasan.c:460 [inline]
+> __kasan_slab_free+0x11a/0x170 mm/kasan/kasan.c:521
+> kasan_slab_free+0xe/0x10 mm/kasan/kasan.c:528
+> __cache_free mm/slab.c:3498 [inline]
+> kfree+0xd9/0x260 mm/slab.c:3813
+> xs_update_peer_port net/sunrpc/xprtsock.c:309 [inline]
+> xs_set_port+0x105/0x180 net/sunrpc/xprtsock.c:1827
+> rpcb_getport_done+0x224/0x2d0 net/sunrpc/rpcb_clnt.c:824
+> rpc_exit_task+0xc9/0x2d0 net/sunrpc/sched.c:725
+> __rpc_execute+0x28a/0xf50 net/sunrpc/sched.c:784
+> rpc_async_schedule+0x16/0x20 net/sunrpc/sched.c:857
+> process_one_work+0xc1e/0x1b50 kernel/workqueue.c:2145
+> worker_thread+0x1cc/0x1440 kernel/workqueue.c:2279
+> kthread+0x345/0x410 kernel/kthread.c:238
+> ret_from_fork+0x3a/0x50 arch/x86/entry/entry_64.S:412
+>=20
+> The buggy address belongs to the object at ffff8801d6f0a1c0
+> which belongs to the cache kmalloc-32 of size 32
+> The buggy address is located 0 bytes inside of
+> 32-byte region [ffff8801d6f0a1c0, ffff8801d6f0a1e0)
+> The buggy address belongs to the page:
+> page:ffffea00075bc280 count:1 mapcount:0 mapping:ffff8801d6f0a000 =
+index:0xffff8801d6f0afc1
+> flags: 0x2fffc0000000100(slab)
+> raw: 02fffc0000000100 ffff8801d6f0a000 ffff8801d6f0afc1 =
+0000000100000024
+> raw: ffffea00075c52a0 ffff8801da801238 ffff8801da8001c0 =
+0000000000000000
+> page dumped because: kasan: bad access detected
+>=20
+> Memory state around the buggy address:
+> ffff8801d6f0a080: 01 fc fc fc fc fc fc fc 00 02 fc fc fc fc fc fc
+> ffff8801d6f0a100: 00 02 fc fc fc fc fc fc 00 02 fc fc fc fc fc fc
+>> ffff8801d6f0a180: fb fb fb fb fc fc fc fc fb fb fb fb fc fc fc fc
+>                                           ^
+> ffff8801d6f0a200: 00 02 fc fc fc fc fc fc 01 fc fc fc fc fc fc fc
+> ffff8801d6f0a280: fb fb fb fb fc fc fc fc fb fb fb fb fc fc fc fc
+> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+
+The rpc_task survived longer than the transport. task->tk_xprt
+points to freed memory by the time rpc_count_iostats_metrics
+runs.
+
+The naive fix is to remove the references to task->tk_xprt
+in the trace point. I'm still checking to see if this is the
+fully correct fix.
+
+
+> ---
+> This bug is generated by a dumb bot. It may contain errors.
+> See https://goo.gl/tpsmEJ for details.
+> Direct all questions to syzkaller@googlegroups.com.
+>=20
+> syzbot will keep track of this bug report.
+> If you forgot to add the Reported-by tag, once the fix for this bug is =
+merged
+> into any tree, please reply to this email with:
+> #syz fix: exact-commit-title
+> To mark this as a duplicate of another syzbot report, please reply =
+with:
+> #syz dup: exact-subject-of-another-report
+> If it's a one-off invalid bug report, please reply with:
+> #syz invalid
+> Note: if the crash happens again, it will cause creation of a new bug =
+report.
+> Note: all commands must start from beginning of the line in the email =
+body.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" =
+in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+
+
 
