@@ -1,218 +1,359 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-oi0-f45.google.com ([209.85.218.45]:36384 "EHLO
-        mail-oi0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-        with ESMTP id S1754164AbeD2XQe (ORCPT
-        <rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Apr 2018 19:16:34 -0400
-Received: by mail-oi0-f45.google.com with SMTP id v2-v6so6065305oif.3
-        for <linux-nfs@vger.kernel.org>; Sun, 29 Apr 2018 16:16:33 -0700 (PDT)
+Received: from mx2.suse.de ([195.135.220.15]:60287 "EHLO mx2.suse.de"
+        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+        id S1750938AbeD3C1p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Sun, 29 Apr 2018 22:27:45 -0400
+From: NeilBrown <neilb@suse.com>
+To: Mathieu Desnoyers <mathieu.desnoyers@efficios.com>
+Date: Mon, 30 Apr 2018 12:27:34 +1000
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+        Josh Triplett <josh@joshtriplett.org>,
+        rostedt <rostedt@goodmis.org>,
+        Lai Jiangshan <jiangshanlai@gmail.com>,
+        linux-nfs@vger.kernel.org,
+        linux-kernel <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Avoid quadratic search when freeing delegations.
+In-Reply-To: <633967151.5813.1524838464457.JavaMail.zimbra@efficios.com>
+References: <87h8nxkyjk.fsf@notabene.neil.brown.name> <633967151.5813.1524838464457.JavaMail.zimbra@efficios.com>
+Message-ID: <87d0yhig2x.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-From: Will Dietz <w@wdtz.org>
-Date: Sun, 29 Apr 2018 18:16:32 -0500
-Message-ID: <CAKGWAO_DsJWLeKCrDytXLGUM-Je+P6T6d9z8P=tV_PCgJAYxzw@mail.gmail.com>
-Subject: Patches: fix non-standard getaddrinfo usage, minor fixups (fix w/musl)
-To: linux-nfs@vger.kernel.org
-Content-Type: multipart/mixed; boundary="00000000000090ca83056b04edbc"
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---00000000000090ca83056b04edbc
-Content-Type: text/plain; charset="UTF-8"
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-The getaddrinfo problem needs a proper fix and probably a
-consideration of similar patterns elsewhere in the code.
+On Fri, Apr 27 2018, Mathieu Desnoyers wrote:
 
-The others are relatively straightforward and are more suitable for use as-is.
+> ----- On Apr 27, 2018, at 1:29 AM, NeilBrown neilb@suse.com wrote:
+>
+>> If an NFS client has 10,000 delegations which are between 90 and 180 sec=
+onds
+>> old,
+>> and 10,000 which are between 180 and 270 seconds old, with none of them =
+still
+>> in use, it is likely that the old ones are at the end of the list.
+>> The first 10,000 will not be marked to be returned, the last 10,000 will.
+>>=20
+>> To return these, the code starts at the front of the list and finds the
+>> first delegation needing to be returned (testing 10,000 on the way).
+>> Then it drops rcu_readlock(), returns the delegation and starts again,
+>> and does this 10,000 times.
+>>=20
+>> As delegation return is async, it may never block, so these 10,000
+>> delegation will be returned without stopping for a breath.  The soft-lock
+>> detector will notice and complain.
+>>=20
+>> This patch makes 3 changes.
+>>=20
+>> 1/ cond_resched() is added so that the soft-lockup detector doesn't noti=
+ce.
+>> 2/ A place-holder (an inode) is kept when locks are dropped, so that
+>>   the place can usually be found again after taking rcu_readlock().
+>>   This means we don't need to skip over 10,000 entries 10,000 times,
+>>   100 million pointless operations - which could eaisly be a larger
+>>   number.
+>> 3/ If nfs_sb_active() fails, break out of the loop - there is no point
+>>   in continuing.
+>>=20
+>> The patch also add list_for_each_entry_from_rcu() to rculist.h in
+>> order to achieve 2/.
+>>=20
+>> Signed-off-by: NeilBrown <neilb@suse.com>
+>> ---
+>>=20
+>> Hi,
+>> I'm hoping one of the RCU reviewers will provide an Acked-by for the
+>> rculist.h change.
+>>=20
+>> If you'ld like 3 patches instead of just one, please let me know.  But
+>> they all see to fit well together.
 
-A fix not included would be to avoid using "-Werror" except when
-developing-- or at least make its use optional.  Without knowledge of
-the compilers used by downstream, this option may cause builds to fail
-for unimportant reasons (and even if it works with all compilers
-today, it might not tomorrow...).   Would be nice to have that in
-before the next tagged release :).  GCC 7.3.0 seems to be unhappy with
-some prototypes for example, I don't have them handy but can send them
-along if that'd be useful.
+Thanks for your review!
 
-Thanks! LMK if you have any questions or concerns, hopefully these are helpful.
+>
+> I think the RCU list API changes should sit in their own patch.
 
-~Will
+I guess I can split it into a separate patch if you like.  Hopefully it
+can still go in through the NFS tree so we need to sync separate trees.
 
---00000000000090ca83056b04edbc
-Content-Type: text/x-patch; charset="US-ASCII";
-	name="0001-sm-notify-don-t-rely-on-non-standard-getaddrinfo-beh.patch"
-Content-Disposition: attachment;
-	filename="0001-sm-notify-don-t-rely-on-non-standard-getaddrinfo-beh.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_jglflwj10
 
-RnJvbSAwYzVlMWM1MDBhODEzMTRlZGJmNjY4YmFhYTc2Y2MzOTA1MzI2OWE3IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
-IEFwciAyMDE4IDE0OjAwOjE2IC0wNTAwClN1YmplY3Q6IFtQQVRDSCAxLzZdIHNtLW5vdGlmeTog
-ZG9uJ3QgcmVseSBvbiBub24tc3RhbmRhcmQgZ2V0YWRkcmluZm8KIGJlaGF2aW9yCgpnZXRhZGRy
-aW5mbyBkb2Vzbid0IHN1cHBvcnQgYm90aCBub2RlPU5VTEwgYW5kIHNlcnZpY2U9TlVMTCwKb25l
-IG9yIGJvdGggb2YgdGhlc2UgbXVzdCBiZSBzcGVjaWZpZWQuCgpUbyB3b3JrYXJvdW5kIGhhdmlu
-ZyB0byBzcGVjaWZ5IG9uZSBvZiB0aGVzZSwgc21uX2JpbmRfYWRkcmVzcygpCnVzZXMgZ2V0YWRk
-cmluZm8oTlVMTCwgIiIsIC4uLikgaW4gdGhlIGhvcGVzIHRoYXQgZW1wdHkgc3RyaW5nCmNvdW50
-cyBhcyBzcGVjaWZpZWQgKG5vbi1udWxsKSB3aGlsZSBub3QgYWN0dWFsbHkgc3BlY2lmeWluZwp0
-aGUgc2VydmljZSBpbiB0ZXJtcyBvZiBsaW1pdGluZyB0aGUgYWRkcmVzc2VzIHVzZWQuClRoYXQn
-cyBteSBiZXN0IGd1ZXNzIGFueXdheS4KClVuZm9ydHVuYXRlbHkgdGhpcyBpcyBub3QgdmFsaWQg
-dXNlIG9mIGdldGFkZHJpbmZvLAphbmQgQUZBSUNUIHN0YW5kYXJkIHNheXMgdGhpcyBzaG91bGQg
-cmVzdWx0IGluIGFuIGVycm9yCihlc3BlY2lhbGx5IHdoZW4gc3BlY2lmeWluZyBBSV9OVU1FUklD
-U0VSVikuCgpBcHBhcmVudGx5IHNvbWUgcGxhdGZvcm1zIGRvbid0IHJldHVybiBlcnJvciBpbiB0
-aGlzIGNhc2UsCmFsdGhvdWdoIG5vbmUgZG9jdW1lbnQgdGhpcyBhbHRlcm5hdGUgYmVoYXZpb3Ig
-c28KaG9wZWZ1bGx5IGl0IGRvZXMgd2hhdGV2ZXIgTkZTIGhvcGVzIGl0IGRvZXMgOikuCgpUaGlz
-IGludmFsaWQgdXNhZ2UgY2F1c2VzIHByb2JsZW1zIHdoZW4gdXNpbmcgbXVzbCwKd2hpY2ggcmV0
-dXJucyBhbiBlcnJvciAoYXMgdGhlIHN0YW5kYXJkcyBpbmRpY2F0ZSkuCgpGcm9tIGdldGFkZHJp
-bmZvKDMpOgoKLS0tLS0tLQpJZiBBSV9OVU1FUklDU0VSViAgaXMgIHNwZWNpZmllZCBpbiAgaGlu
-dHMuYWlfZmxhZ3MgIGFuZCAgc2VydmljZSAgaXMgbm90Ck5VTEwsIHRoZW4gc2VydmljZSBtdXN0
-IHBvaW50IHRvIGEgc3RyaW5nIGNvbnRhaW5pbmcgYSBudW1lcmljIHBvcnQKbnVtYmVyLgotLS0t
-LS0tCgpUaGUgc3RyaW5nICIiIGlzIG5vdCBhIG51bWVyaWMgcG9ydCBudW1iZXIuICBJdCBpcyBu
-b3QgYSBudW1iZXIuCgpBbmQgbGF0ZXIgd2hlbiBkZXNjcmliaW5nIHJldHVybiB2YWx1ZXMgYW5k
-IG1lYW5pbmc6CgotLS0tLS0tCkVBSV9OT05BTUUKICAgICAgVGhlIG5vZGUgb3Igc2VydmljZSBp
-cyBub3Qga25vd247IG9yIGJvdGggbm9kZSBhbmQgc2VydmljZQphcmUgTlVMTDsgb3IgQUlfTlVN
-RVJJQ1NFUlYgd2FzIHNwZWNpZmllZCBpbiBoaW50cy5haV9mbGFncyBhbmQgc2VydmljZQp3YXMg
-bm90IGEgbnVtZXJpYyBwb3J0LW51bWJlciBzdHJpbmcuCi0tLS0tLS0KCldoaWNoIGlzIHdoYXQg
-bXVzbCdzIGdldGFkZHJpbmZvIHJldHVybnMuCgpBcyBhIHF1aWNrLWZpeCwgdGhpcyB1c2VzICdn
-ZXRhZGRyaW5mbygiMC4wLjAuMCIsIE5VTEwsIC4uLikiCmluIHRoaXMgc2l0dWF0aW9uIHdoaWNo
-IGlzbid0IHF1aXRlIHJpZ2h0IGJ1dCBpcyBlbm91Z2ggdG8gZml4CnNtLW5vdGlmeSB3aGVuIGJ1
-aWx0IHcvbXVzbCBhbmQgdXNpbmcgSVBWNC4KCkZpeGluZyBpdCAicHJvcGVybHkiIGlzIG1vc3Rs
-eSBhIHF1ZXN0aW9uIG9mIGRldGVybWluaW5nCndoYXQgTkZTICJ3YW50cyIgdG8gYmUgZG9uZSwg
-YW5kIHJld29ya2luZyBjb2RlIHRvCmF2b2lkIHJlbHlpbmcgb24gbm9uLXN0YW5kYXJkIGJlaGF2
-aW9yLgoKVGhlcmUgYXJlIG90aGVyIGluc3RhbmNlcyBvZiB0aGlzIHBhdHRlcm4gaW4gdGhlIGNv
-ZGViYXNlLAp3aGljaCBzaG91bGQgcHJvYmFibHkgYmUgZml4aW5nIGluIHRoZSBzYW1lIGVmZm9y
-dC4KClRoaXMgYXJ0aWNsZSBleHBsb3JlcyB0aGlzIGlzc3VlIGEgYml0IG9uIHZhcmlvdXMgcGxh
-dGZvcm1zOgpodHRwOi8va2xpY2t2ZXJib3QuYXQvYmxvZy8yMDEyLzAxL2dldGFkZHJpbmZvLWVk
-Z2UtY2FzZS1iZWhhdmlvci1vbi13aW5kb3dzLWxpbnV4LWFuZC1vc3gvCi0tLQogdXRpbHMvc3Rh
-dGQvc20tbm90aWZ5LmMgfCA0ICsrLS0KIDEgZmlsZSBjaGFuZ2VkLCAyIGluc2VydGlvbnMoKyks
-IDIgZGVsZXRpb25zKC0pCgpkaWZmIC0tZ2l0IGEvdXRpbHMvc3RhdGQvc20tbm90aWZ5LmMgYi91
-dGlscy9zdGF0ZC9zbS1ub3RpZnkuYwppbmRleCA2ZDE5ZWMxLi42ZTk3OGQzIDEwMDY0NAotLS0g
-YS91dGlscy9zdGF0ZC9zbS1ub3RpZnkuYworKysgYi91dGlscy9zdGF0ZC9zbS1ub3RpZnkuYwpA
-QCAtMzY4LDggKzM2OCw4IEBAIHNtbl9iaW5kX2FkZHJlc3MoY29uc3QgY2hhciAqc3JjYWRkciwg
-Y29uc3QgY2hhciAqc3JjcG9ydCkKIAkJaGludC5haV9mbGFncyB8PSBBSV9QQVNTSVZFOwogCiAJ
-LyogRG8gbm90IGFsbG93ICJub2RlIiBhbmQgInNlcnZpY2UiIHBhcmFtZXRlcnMgYm90aCB0byBi
-ZSBOVUxMICovCi0JaWYgKHNyY3BvcnQgPT0gTlVMTCkKLQkJZXJyb3IgPSBnZXRhZGRyaW5mbyhz
-cmNhZGRyLCAiIiwgJmhpbnQsICZhaSk7CisJaWYgKHNyY2FkZHIgPT0gTlVMTCAmJiBzcmNwb3J0
-ID09IE5VTEwpCisJCWVycm9yID0gZ2V0YWRkcmluZm8oIjAuMC4wLjAiLCBzcmNwb3J0LCAmaGlu
-dCwgJmFpKTsKIAllbHNlCiAJCWVycm9yID0gZ2V0YWRkcmluZm8oc3JjYWRkciwgc3JjcG9ydCwg
-JmhpbnQsICZhaSk7CiAJaWYgKGVycm9yICE9IDApIHsKLS0gCjIuMTcuMAoK
---00000000000090ca83056b04edbc
-Content-Type: text/x-patch; charset="US-ASCII";
-	name="0002-fix-HAVE_-checks-so-they-work-when-functions-aren-t-.patch"
-Content-Disposition: attachment;
-	filename="0002-fix-HAVE_-checks-so-they-work-when-functions-aren-t-.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_jglflwjb1
+>
+>>=20
+>> thanks,
+>> NeilBrown
+>>=20
+>>=20
+>> fs/nfs/delegation.c     | 57 +++++++++++++++++++++++++++++++++++++++++++=
++-----
+>> include/linux/rculist.h | 10 +++++++++
+>> 2 files changed, 62 insertions(+), 5 deletions(-)
+>>=20
+>> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+>> index 1819d0d0ba4b..c3d9e21ab440 100644
+>> --- a/fs/nfs/delegation.c
+>> +++ b/fs/nfs/delegation.c
+>> @@ -483,19 +483,56 @@ static bool nfs_delegation_need_return(struct
+>> nfs_delegation *delegation)
+>> int nfs_client_return_marked_delegations(struct nfs_client *clp)
+>> {
+>> 	struct nfs_delegation *delegation;
+>> +	struct nfs_delegation *prev;
+>> 	struct nfs_server *server;
+>> 	struct inode *inode;
+>> +	struct inode *place_holder =3D NULL;
+>> 	int err =3D 0;
+>>=20
+>> restart:
+>> +	/*
+>> +	 * To avoid quadratic looping we hold an reference
+>
+> an reference -> a reference
 
-RnJvbSBmNTQzZGNkNTBmNjZjZjc5ZGY1ZmU5NjNkZjJhYmI5NGExM2IzNTg5IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
-IEFwciAyMDE4IDE1OjU5OjM3IC0wNTAwClN1YmplY3Q6IFtQQVRDSCAyLzZdIGZpeCBIQVZFXyog
-Y2hlY2tzIHNvIHRoZXkgd29yayB3aGVuIGZ1bmN0aW9ucyBhcmVuJ3QKIGZvdW5kCgpUaGUgY3Vy
-cmVudCBjaGVja3MgYXJlIG9mIGZvcm0gYCNpZiBIQVZFX1hgLAp3aGljaCBjYXVzZXMgYW4gZXJy
-b3Igd2hlbiBgSEFWRV9YYCBpc24ndCBkZWZpbmVkLgoKQUNfQ0hFQ0tfRlVOQ1MgZGVmaW5lcyB0
-aGVzZSBpZiB0aGV5J3JlIGZvdW5kLAphbmQgbGVhdmVzIHRoZW0gdW5kZWZpbmVkIG90aGVyd2lz
-ZS4KLS0tCiBzdXBwb3J0L25mcy9zdmNfc29ja2V0LmMgfCAyICstCiB1dGlscy9tb3VudGQvY2Fj
-aGUuYyAgICAgfCAyICstCiAyIGZpbGVzIGNoYW5nZWQsIDIgaW5zZXJ0aW9ucygrKSwgMiBkZWxl
-dGlvbnMoLSkKCmRpZmYgLS1naXQgYS9zdXBwb3J0L25mcy9zdmNfc29ja2V0LmMgYi9zdXBwb3J0
-L25mcy9zdmNfc29ja2V0LmMKaW5kZXggMTIzOTcxMi4uZDU2NTA3YSAxMDA2NDQKLS0tIGEvc3Vw
-cG9ydC9uZnMvc3ZjX3NvY2tldC5jCisrKyBiL3N1cHBvcnQvbmZzL3N2Y19zb2NrZXQuYwpAQCAt
-NDYsNyArNDYsNyBAQCBpbnQgZ2V0c2VydnBvcnQodV9sb25nIG51bWJlciwgY29uc3QgY2hhciAq
-cHJvdG8pCiAJc3RydWN0IHJwY2VudCAqcnBjcDsKIAlzdHJ1Y3Qgc2VydmVudCBzZXJ2YnVmLCAq
-c2VydnAgPSBOVUxMOwogCWludCByZXQgPSAwOwotI2lmIEhBVkVfR0VUUlBDQllOVU1CRVJfUgor
-I2lmZGVmIEhBVkVfR0VUUlBDQllOVU1CRVJfUgogCWNoYXIgcnBjZGF0YVsxMDI0XTsKIAlzdHJ1
-Y3QgcnBjZW50IHJwY2J1ZjsKIApkaWZmIC0tZ2l0IGEvdXRpbHMvbW91bnRkL2NhY2hlLmMgYi91
-dGlscy9tb3VudGQvY2FjaGUuYwppbmRleCA2ZjQyNTEyLi5jODdlZThkIDEwMDY0NAotLS0gYS91
-dGlscy9tb3VudGQvY2FjaGUuYworKysgYi91dGlscy9tb3VudGQvY2FjaGUuYwpAQCAtNDI2LDcg
-KzQyNiw3IEBAIHN0YXRpYyBpbnQgc2FtZV9wYXRoKGNoYXIgKmNoaWxkLCBjaGFyICpwYXJlbnQs
-IGludCBsZW4pCiAJaWYgKGNvdW50X3NsYXNoZXMocCkgIT0gY291bnRfc2xhc2hlcyhwYXJlbnQp
-KQogCQlyZXR1cm4gMDsKIAotI2lmIEhBVkVfTkFNRV9UT19IQU5ETEVfQVQKKyNpZmRlZiBIQVZF
-X05BTUVfVE9fSEFORExFX0FUCiAJc3RydWN0IHsKIAkJc3RydWN0IGZpbGVfaGFuZGxlIGZoOwog
-CQl1bnNpZ25lZCBjaGFyIGhhbmRsZVsxMjhdOwotLSAKMi4xNy4wCgo=
---00000000000090ca83056b04edbc
-Content-Type: text/x-patch; charset="US-ASCII";
-	name="0003-network.c-fix-build-w-non-glibc.patch"
-Content-Disposition: attachment;
-	filename="0003-network.c-fix-build-w-non-glibc.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_jglflwjf2
+Fixed, thanks.
 
-RnJvbSAwY2Q1Y2EzNzQxOTgwZWU0ODQ4NzZiMzdkZTIzYzNkNGNkN2EzMzBmIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
-IEFwciAyMDE4IDE2OjExOjQxIC0wNTAwClN1YmplY3Q6IFtQQVRDSCAzLzZdIG5ldHdvcmsuYzog
-Zml4IGJ1aWxkIHcvbm9uLWdsaWJjCgotLS0KIHV0aWxzL21vdW50L25ldHdvcmsuYyB8IDEwICsr
-KysrKysrKy0KIDEgZmlsZSBjaGFuZ2VkLCA5IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb24oLSkK
-CmRpZmYgLS1naXQgYS91dGlscy9tb3VudC9uZXR3b3JrLmMgYi91dGlscy9tb3VudC9uZXR3b3Jr
-LmMKaW5kZXggZTQ5MDM5OS4uNzVlZjM5OSAxMDA2NDQKLS0tIGEvdXRpbHMvbW91bnQvbmV0d29y
-ay5jCisrKyBiL3V0aWxzL21vdW50L25ldHdvcmsuYwpAQCAtMzksMTMgKzM5LDIxIEBACiAjaW5j
-bHVkZSA8c3lzL3NvY2tldC5oPgogI2luY2x1ZGUgPHN5cy93YWl0Lmg+CiAjaW5jbHVkZSA8c3lz
-L3N0YXQuaD4KLSNpZiBkZWZpbmVkKF9fR0xJQkNfXykgJiYgKF9fR0xJQkNfXyA8IDIpIHx8IChf
-X0dMSUJDX18gPT0gMiAmJiBfX0dMSUJDX01JTk9SX18gPCAyNCkKKworI2lmIGRlZmluZWQoX19H
-TElCQ19fKQorI2lmIChfX0dMSUJDX18gPCAyKSB8fCAoX19HTElCQ19fID09IDIgJiYgX19HTElC
-Q19NSU5PUl9fIDwgMjQpCisjZGVmaW5lIENBTk5PVF9JTkNMVURFX0lONgorI2VuZGlmCisjZW5k
-aWYKKworI2lmbmRlZiBDQU5OT1RfSU5DTFVERV9JTjYKIC8qIENhbm5vdCBzYWZlbHkgaW5jbHVk
-ZSBsaW51eC9pbjYuaCBpbiBvbGQgZ2xpYmMsIHNvIGhhcmRjb2RlIHRoZSBuZWVkZWQgdmFsdWVz
-ICovCiAjIGRlZmluZSBJUFY2X1BSRUZFUl9TUkNfUFVCTElDIDIKICMgZGVmaW5lIElQVjZfQURE
-Ul9QUkVGRVJFTkNFUyA3MgogI2Vsc2UKICMgaW5jbHVkZSA8bGludXgvaW42Lmg+CiAjZW5kaWYK
-KwogI2luY2x1ZGUgPG5ldGluZXQvaW4uaD4KICNpbmNsdWRlIDxycGMvcnBjLmg+CiAjaW5jbHVk
-ZSA8cnBjL3BtYXBfcHJvdC5oPgotLSAKMi4xNy4wCgo=
---00000000000090ca83056b04edbc
-Content-Type: text/x-patch; charset="US-ASCII";
-	name="0004-misc-file.c-include-limits.h-for-PATH_MAX.patch"
-Content-Disposition: attachment;
-	filename="0004-misc-file.c-include-limits.h-for-PATH_MAX.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_jglflwji3
+>
+>> +	 * to an inode place_holder.  Each time we restart, we
+>> +	 * list nfs_servers from the server of that inode, and
+>> +	 * delegation in the server from the delegations of that
+>> +	 * inode.
+>> +	 * prev is an RCU-protected pointer to a delegation which
+>> +	 * wasn't marked for return and might be a good choice for
+>> +	 * the next place_holder.
+>> +	 */
+>> 	rcu_read_lock();
+>> -	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+>> -		list_for_each_entry_rcu(delegation, &server->delegations,
+>> -								super_list) {
+>> -			if (!nfs_delegation_need_return(delegation))
+>> +	prev =3D NULL;
+>> +	if (place_holder)
+>> +		server =3D NFS_SERVER(place_holder);
+>> +	else
+>> +		server =3D list_entry_rcu(clp->cl_superblocks.next,
+>> +					struct nfs_server, client_link);
+>> +	list_for_each_entry_from_rcu(server, &clp->cl_superblocks, client_link=
+) {
+>
+> Unless I'm missing something, you should define the delegation variable w=
+ithin
+> this scope.
 
-RnJvbSBlNmU4OWU0MWFiYTllNTdmNjQyMDdlYzlhOWVlNzUwYzNjZjYzNjQ3IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
-IEFwciAyMDE4IDE2OjE0OjAxIC0wNTAwClN1YmplY3Q6IFtQQVRDSCA0LzZdIG1pc2MvZmlsZS5j
-OiBpbmNsdWRlIGxpbWl0cy5oIGZvciBQQVRIX01BWAoKLS0tCiBzdXBwb3J0L21pc2MvZmlsZS5j
-IHwgMSArCiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24oKykKCmRpZmYgLS1naXQgYS9zdXBw
-b3J0L21pc2MvZmlsZS5jIGIvc3VwcG9ydC9taXNjL2ZpbGUuYwppbmRleCA2MzU5N2RmLi5kNDdl
-OGJlIDEwMDY0NAotLS0gYS9zdXBwb3J0L21pc2MvZmlsZS5jCisrKyBiL3N1cHBvcnQvbWlzYy9m
-aWxlLmMKQEAgLTI3LDYgKzI3LDcgQEAKICNpbmNsdWRlIDxkaXJlbnQuaD4KICNpbmNsdWRlIDxz
-dGRsaWIuaD4KICNpbmNsdWRlIDxzdGRib29sLmg+CisjaW5jbHVkZSA8bGltaXRzLmg+CiAKICNp
-bmNsdWRlICJ4bG9nLmgiCiAjaW5jbHVkZSAibWlzYy5oIgotLSAKMi4xNy4wCgo=
---00000000000090ca83056b04edbc
-Content-Type: text/x-patch; charset="US-ASCII";
-	name="0005-network.c-add-cast-to-appease-warning.patch"
-Content-Disposition: attachment;
-	filename="0005-network.c-add-cast-to-appease-warning.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_jglflwjn4
+I could, yes.  But that was true before the patch as well.  I don't
+really want to change things that I don't need to change.
+This is really a style issue.  If Trond or Anna prefer the variable in
+the most local scope, I'll move it.
 
-RnJvbSAxZWMzZTQwYzVmODA1NWUyN2I4MDJjZTUyZTMzMGNkMWRjN2VjZDM3IE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
-IEFwciAyMDE4IDE2OjE2OjIyIC0wNTAwClN1YmplY3Q6IFtQQVRDSCA1LzZdIG5ldHdvcmsuYzog
-YWRkIGNhc3QgdG8gYXBwZWFzZSB3YXJuaW5nCgotLS0KIHV0aWxzL21vdW50L25ldHdvcmsuYyB8
-IDIgKy0KIDEgZmlsZSBjaGFuZ2VkLCAxIGluc2VydGlvbigrKSwgMSBkZWxldGlvbigtKQoKZGlm
-ZiAtLWdpdCBhL3V0aWxzL21vdW50L25ldHdvcmsuYyBiL3V0aWxzL21vdW50L25ldHdvcmsuYwpp
-bmRleCA3NWVmMzk5Li4zZTRiOWI2IDEwMDY0NAotLS0gYS91dGlscy9tb3VudC9uZXR3b3JrLmMK
-KysrIGIvdXRpbHMvbW91bnQvbmV0d29yay5jCkBAIC0xMDY4LDcgKzEwNjgsNyBAQCBpbnQgY2xu
-dF9waW5nKHN0cnVjdCBzb2NrYWRkcl9pbiAqc2FkZHIsIGNvbnN0IHVuc2lnbmVkIGxvbmcgcHJv
-ZywKIAlpZiAoY2FkZHIpIHsKIAkJLyogR2V0IHRoZSBhZGRyZXNzIG9mIG91ciBlbmQgb2YgdGhp
-cyBjb25uZWN0aW9uICovCiAJCXNvY2tsZW5fdCBsZW4gPSBzaXplb2YoKmNhZGRyKTsKLQkJaWYg
-KGdldHNvY2tuYW1lKHNvY2ssIGNhZGRyLCAmbGVuKSAhPSAwKQorCQlpZiAoZ2V0c29ja25hbWUo
-c29jaywgKHN0cnVjdCBzb2NrYWRkciAqKWNhZGRyLCAmbGVuKSAhPSAwKQogCQkJY2FkZHItPnNp
-bl9mYW1pbHkgPSAwOwogCX0KIAotLSAKMi4xNy4wCgo=
---00000000000090ca83056b04edbc
-Content-Type: text/x-patch; charset="US-ASCII";
-	name="0006-configure.ac-check-for-res_querydomain-instead-of-__.patch"
-Content-Disposition: attachment;
-	filename="0006-configure.ac-check-for-res_querydomain-instead-of-__.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_jglflwjr5
+>
+>> +		delegation =3D NULL;
+>> +		if (place_holder && server =3D=3D NFS_SERVER(place_holder))
+>> +			delegation =3D rcu_dereference(NFS_I(place_holder)->delegation);
+>> +		if (!delegation)
+>> +			delegation =3D list_entry_rcu(server->delegations.next,
+>> +						    struct nfs_delegation, super_list);
+>
+> AFAIU, what makes this work is that you expect grabbing the inode
+> reference will ensure the entry is not removed from the RCU list until
+> the iput().
+>
 
-RnJvbSA2NjVhMGU2NjVhMGU1MjZhNWQ0MDIxZGUyOGMzYTM2MTNjYmUwMmRiIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQpGcm9tOiBXaWxsIERpZXR6IDx3QHdkdHoub3JnPgpEYXRlOiBTdW4sIDI5
-IEFwciAyMDE4IDE2OjIxOjU2IC0wNTAwClN1YmplY3Q6IFtQQVRDSCA2LzZdIGNvbmZpZ3VyZS5h
-YzogY2hlY2sgZm9yIHJlc19xdWVyeWRvbWFpbiBpbnN0ZWFkIG9mCiBfX3Jlc19xdWVyeWRvbWFp
-bgoKLS0tCiBjb25maWd1cmUuYWMgfCAyICstCiAxIGZpbGUgY2hhbmdlZCwgMSBpbnNlcnRpb24o
-KyksIDEgZGVsZXRpb24oLSkKCmRpZmYgLS1naXQgYS9jb25maWd1cmUuYWMgYi9jb25maWd1cmUu
-YWMKaW5kZXggNWExMTYzNi4uOGQ1ZDlhMSAxMDA2NDQKLS0tIGEvY29uZmlndXJlLmFjCisrKyBi
-L2NvbmZpZ3VyZS5hYwpAQCAtNDA4LDcgKzQwOCw3IEBAIGlmIHRlc3QgIiRlbmFibGVfZ3NzIiA9
-IHllczsgdGhlbgogZmkKIAogZG5sIGxpYmRuc2lkbWFwIHNwZWNpZmljIGNoZWNrcwotQUNfQ0hF
-Q0tfTElCKFtyZXNvbHZdLCBbX19yZXNfcXVlcnlkb21haW5dLCAsIEFDX01TR19FUlJPUihyZXNf
-cXVlcnlkb21haW4gbmVlZGVkKSkKK0FDX0NIRUNLX0xJQihbcmVzb2x2XSwgW3Jlc19xdWVyeWRv
-bWFpbl0sICwgQUNfTVNHX0VSUk9SKHJlc19xdWVyeWRvbWFpbiBuZWVkZWQpKQogCiBBQ19BUkdf
-RU5BQkxFKFtsZGFwXSwKIAlbQVNfSEVMUF9TVFJJTkcoWy0tZGlzYWJsZS1sZGFwXSxbRGlzYWJs
-ZSBzdXBwb3J0IGZvciBMREFQIEA8OmRlZmF1bHQ9ZGV0ZWN0QDo+QF0pXSkKLS0gCjIuMTcuMAoK
---00000000000090ca83056b04edbc--
+There are two lists, a per "struct nfs_client" list of "struct
+nfs_server", and a per "struct nfs_server" list of "struct
+nfs_delegation".
+
+I expect that grabbing the inode will stop the filesystem from being
+unmounted, so that nfs_server will remain in the list from the
+nfs_client.
+
+Also I expect that grabbing the inode will mean that it remains safe to
+dereference NFS_I(place_holder)->delegation.  If that is not NULL,
+then it is either the same delegation that we had before or, just
+possibly, a new one.  If it is a new one it will have been added to the
+end of the list, so we could end up missing a few delegations.
+This is not a critical problem as this is a periodic cleanup and if it
+missing some occasionally, it isn't a big problem.
+However it would be easy enough to keep track of what the previous
+delegation was, and only use the new one if it is the same.  I'll do
+that.
+
+
+>
+>> +		list_for_each_entry_from_rcu(delegation, &server->delegations, super_=
+list) {
+>> +			struct inode *to_put =3D NULL;
+>> +
+>> +			if (!nfs_delegation_need_return(delegation)) {
+>> +				prev =3D delegation;
+>> 				continue;
+>> +			}
+>> 			if (!nfs_sb_active(server->super))
+>> -				continue;
+>> +				break;
+>> +
+>> +			if (prev) {
+>> +				struct inode *tmp;
+>
+> missing whiteline, or the assignment can be done on the variable definiti=
+on.
+>
+>> +				tmp =3D nfs_delegation_grab_inode(prev);
+>> +				if (tmp) {
+>> +					to_put =3D place_holder;
+>> +					place_holder =3D tmp;
+>> +				}
+>> +			}
+>> +
+>> 			inode =3D nfs_delegation_grab_inode(delegation);
+>> 			if (inode =3D=3D NULL) {
+>> 				rcu_read_unlock();
+>> @@ -505,16 +542,26 @@ int nfs_client_return_marked_delegations(struct nf=
+s_client
+>> *clp)
+>> 			delegation =3D nfs_start_delegation_return_locked(NFS_I(inode));
+>> 			rcu_read_unlock();
+>>=20
+>> +			if (to_put) {
+>> +				iput(to_put);
+>> +				to_put =3D NULL;
+>
+> considering the scope of to_put, I think assigning it to NULL is redundant
+> with the variable definition.
+
+True ... and that actually highlights a bug for me.  Earlier where I
+have "goto restart" I need to iput(to_put).  Thanks.
+
+>
+>> +			}
+>> +
+>> 			err =3D nfs_end_delegation_return(inode, delegation, 0);
+>> 			iput(inode);
+>> 			nfs_sb_deactive(server->super);
+>> +			cond_resched();
+>> 			if (!err)
+>> 				goto restart;
+>> 			set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
+>> +			if (place_holder)
+>> +				iput(place_holder);
+>> 			return err;
+>> 		}
+>> 	}
+>> 	rcu_read_unlock();
+>> +	if (place_holder)
+>> +		iput(place_holder);
+>> 	return 0;
+>> }
+>>=20
+>> diff --git a/include/linux/rculist.h b/include/linux/rculist.h
+>> index 127f534fec94..2d86f9869842 100644
+>> --- a/include/linux/rculist.h
+>> +++ b/include/linux/rculist.h
+>> @@ -403,6 +403,16 @@ static inline void list_splice_tail_init_rcu(struct
+>> list_head *list,
+>> 	     &pos->member !=3D (head);	\
+>> 	     pos =3D list_entry_rcu(pos->member.next, typeof(*pos), member))
+>>=20
+>> +/**
+>> + * list_for_each_entry_from_rcu - iterate over a list continuing from c=
+urrent
+>> point
+>
+> There is some documentation missing about the requirements for continuing
+> a RCU list iteration.
+
+If that is true, then the already existing
+list_for_each_entry_continue_rcu() also is missing some documentation.
+
+I've removed the word "continue" so it now reads.
+
+ * list_for_each_entry_from_rcu - iterate over a list from current point
+
+Does it really need to be said that you actually have to have a "current
+point" that is known to be in the list?  I've added
+
+ * Iterate over the tail of a list starting from a given position,
+ * which must have been in the list when the RCU read lock was taken.
+
+in case it does help.
+
+>
+> The simple case is that both original iteration and continued iteration
+> need to be in the same RCU read-side critical section.
+>
+> A more complex case like yours is along those lines:
+>
+> rcu_read_lock()
+> list_iteration
+>    break;
+> grab inode ref (prohibit removal of node from list)
+> rcu_read_unlock()
+>
+> rcu_read_lock()
+> put inode ref
+> continue list iteration
+> rcu_read_unlock()
+>
+> I'm thinking these allowed patterns should be documented somehow,
+> else we'll see list iteration being continued across different
+> RCU read-side critical sections without any reference counting
+> (or locking) to ensure protection against removal.
+
+If that was a real risk, surely we would already see it with
+list_for_each_entry_continue_rcu().
+
+Thanks a lot,
+NeilBrown
+
+
+>
+> Thanks,
+>
+> Mathieu
+>
+>> + * @pos:	the type * to use as a loop cursor.
+>> + * @head:	the head for your list.
+>> + * @member:	the name of the list_node within the struct.
+>> + */
+>> +#define list_for_each_entry_from_rcu(pos, head, member)			\
+>> +	for (; &(pos)->member !=3D (head);					\
+>> +		pos =3D list_entry_rcu(pos->member.next, typeof(*(pos)), member))
+>> +
+>> /**
+>>  * hlist_del_rcu - deletes entry from hash list without re-initialization
+>>  * @n: the element to delete from the hash list.
+>> --
+>> 2.14.0.rc0.dirty
+>
+> --=20
+> Mathieu Desnoyers
+> EfficiOS Inc.
+> http://www.efficios.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlrmfxcACgkQOeye3VZi
+gblRPQ/+NzZLlOcqvvJhXRT90Ukj8dCrqgsZfYMsF7ZhwL+ddWmW9/ItLVNWLJbp
+/yVgpeW6qZ8KNHxTooi1d2JLBfL8Zz/bhJTN6+SW/jAs/Qf/tVcHtPfd1JDd2ox4
+nSexzv7/hZF+MzpGsianUW0gSBARbyQkhSWQhuGZLU2jUbRHxkQzRFv6dxeBMbHQ
+KzY97mk4q4pnTdiqGIeiCICLQmMegzm10a5mXa0k0g4rNPJr2i8cFFOWMdCv2/m3
+iyNfZpl8Qpf/144KlPo7juvJaayQ7IUCvld97FSZ0pSjmduhRbCIerlzsl6OSKfJ
+AVybB3NzkkJWDgp6d2TgiI0vJrvwar9wGiU/Ak3G47DBx7H5FFXJHSICoJ2zNhXz
+ixC9AmhfwsBnLkGYcwgBDehookr3lxjAWzsE/hoOloUUGle+6a0Awxk5uFO8qxvz
+vFvg3/BmkvdrXRiZxdBhXfdjx6AEr3OSSmXQxatGx8yo24oeNjvNm+Jk6/Mx6qiX
+rlAvSp6zOszii8YLhVPWDoVXKyVHk7D/Ox+9Jtu3ht01sRBoBZgBR6BPqNSou5eM
+ZScSD0hEJD/79YmCggWMHaohEK3OybP3Ray96/TpDpkL7d3ZZE0w3xRuRYvCH6M+
+LRdiPBr9B/Frz8oWTlUWZLG92bXOoFaFZP/iVzbfaVb65hhuDGc=
+=R1d4
+-----END PGP SIGNATURE-----
+--=-=-=--
