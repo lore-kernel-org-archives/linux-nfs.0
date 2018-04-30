@@ -1,62 +1,89 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.kernel.org ([198.145.29.99]:37140 "EHLO mail.kernel.org"
+Received: from mail.kernel.org ([198.145.29.99]:37498 "EHLO mail.kernel.org"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1752255AbeD3PO5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Apr 2018 11:14:57 -0400
-Date: Mon, 30 Apr 2018 11:14:54 -0400
+        id S1751938AbeD3PRo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Apr 2018 11:17:44 -0400
+Date: Mon, 30 Apr 2018 11:17:41 -0400
 From: Steven Rostedt <rostedt@goodmis.org>
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Cc: Josh Triplett <josh@joshtriplett.org>, NeilBrown <neilb@suse.com>,
+To: NeilBrown <neilb@suse.com>
+Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
         Anna Schumaker <anna.schumaker@netapp.com>,
         linux-nfs@vger.kernel.org, Lai Jiangshan <jiangshanlai@gmail.com>,
+        Josh Triplett <josh@joshtriplett.org>,
         linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/4] rculist: add list_for_each_entry_from_rcu()
-Message-ID: <20180430111454.722c2aa8@gandalf.local.home>
-In-Reply-To: <20180430134308.GT26088@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/4] NFS: slight optimization for walking list for
+ delegations
+Message-ID: <20180430111741.561df374@gandalf.local.home>
+In-Reply-To: <152506269054.7246.3941740801391514623.stgit@noble>
 References: <152506256513.7246.13171564155614823841.stgit@noble>
-        <152506269061.7246.13075216914692813995.stgit@noble>
-        <20180430052032.GA16963@localhost>
-        <20180430134308.GT26088@linux.vnet.ibm.com>
+        <152506269054.7246.3941740801391514623.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 30 Apr 2018 06:43:08 -0700
-"Paul E. McKenney" <paulmck@linux.vnet.ibm.com> wrote:
+On Mon, 30 Apr 2018 14:31:30 +1000
+NeilBrown <neilb@suse.com> wrote:
 
-> On Sun, Apr 29, 2018 at 10:20:33PM -0700, Josh Triplett wrote:
-> > On Mon, Apr 30, 2018 at 02:31:30PM +1000, NeilBrown wrote:  
-> > > list_for_each_entry_from_rcu() is an RCU version of
-> > > list_for_each_entry_from().  It walks a linked list under rcu
-> > > protection, from a given start point.
-> > > 
-> > > It is similar to list_for_each_entry_continue_rcu() but starts *at*
-> > > the given position rather than *after* it.
-> > > 
-> > > Naturally, the start point must be known to be in the list.  
-> > 
-> > I'd suggest giving an explicit advisory comment to clarify and suggest
-> > correct usage:
-> > 
-> > "This would typically require either that you obtained the node from a
-> > previous walk of the list in the same RCU read-side critical section, or
-> > that you held some sort of non-RCU reference (such as a reference count)
-> > to keep the node alive *and* in the list."
-> > 
-> > (Feel free to wordsmith the exact wording, but something like that seems
-> > like it would help people understand how to use this correctly, and make
-> > it less likely that they'd use it incorrectly.)  
+> There are 3 places where we walk the list of delegations
+> for an nfs_client.
+> In each case there are two nested loops, one for nfs_servers
+> and one for nfs_delegations.
 > 
-> What Josh said!  Could you also contrast this with the existing
-> list_for_each_entry_continue_rcu() macro in the header comment as well
-> as in the commit log?
+> When we find an interesting delegation we try to get an active
+> reference to the server.  If that fails, it is pointless to
+> continue to look at the other delegation for the server as
+> we will never be able to get an active reference.
+> So instead of continuing in the inner loop, break out
+> and continue in the outer loop.
+> ---
+>  fs/nfs/delegation.c |    6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
 > 
+> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+> index 1819d0d0ba4b..af32365894c8 100644
+> --- a/fs/nfs/delegation.c
+> +++ b/fs/nfs/delegation.c
+> @@ -495,7 +495,7 @@ int nfs_client_return_marked_delegations(struct nfs_client *clp)
+>  			if (!nfs_delegation_need_return(delegation))
+>  				continue;
+>  			if (!nfs_sb_active(server->super))
+> -				continue;
+> +				break;
 
-Should Documentation/RCU/whatisRCU.txt be updated?
+For documentation purposes, what I usually do when using a break inside
+a inner loop to continue the outer loop, I add a comment:
 
-Specifically section: 7.  FULL LIST OF RCU APIs
+				break; /* continue outer loop */
+
+Such that in the future, people will know exactly what you mean and
+don't think it's a bug (thinking it breaks out of all loops).
 
 -- Steve
+
+
+>  			inode = nfs_delegation_grab_inode(delegation);
+>  			if (inode == NULL) {
+>  				rcu_read_unlock();
+> @@ -887,7 +887,7 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp)
+>  						&delegation->flags) == 0)
+>  				continue;
+>  			if (!nfs_sb_active(server->super))
+> -				continue;
+> +				break;
+>  			inode = nfs_delegation_grab_inode(delegation);
+>  			if (inode == NULL) {
+>  				rcu_read_unlock();
+> @@ -995,7 +995,7 @@ void nfs_reap_expired_delegations(struct nfs_client *clp)
+>  						&delegation->flags) == 0)
+>  				continue;
+>  			if (!nfs_sb_active(server->super))
+> -				continue;
+> +				break;
+>  			inode = nfs_delegation_grab_inode(delegation);
+>  			if (inode == NULL) {
+>  				rcu_read_unlock();
+> 
+
