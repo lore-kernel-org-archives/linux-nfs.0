@@ -1,73 +1,46 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38731 "EHLO mx2.suse.de"
-        rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750771AbeD3EcE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Apr 2018 00:32:04 -0400
-From: NeilBrown <neilb@suse.com>
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+Received: from mslow2.mail.gandi.net ([217.70.178.242]:35764 "EHLO
+        slow1-d.mail.gandi.net" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+        with ESMTP id S1752063AbeD3Ftl (ORCPT
+        <rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Apr 2018 01:49:41 -0400
+Date: Sun, 29 Apr 2018 22:20:33 -0700
+From: Josh Triplett <josh@joshtriplett.org>
+To: NeilBrown <neilb@suse.com>
+Cc: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
-        Anna Schumaker <anna.schumaker@netapp.com>
-Date: Mon, 30 Apr 2018 14:31:30 +1000
-Subject: [PATCH 1/4] NFS: slight optimization for walking list for
- delegations
-Cc: linux-nfs@vger.kernel.org, Lai Jiangshan <jiangshanlai@gmail.com>,
-        Josh Triplett <josh@joshtriplett.org>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, Lai Jiangshan <jiangshanlai@gmail.com>,
         Steven Rostedt <rostedt@goodmis.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <152506269054.7246.3941740801391514623.stgit@noble>
-In-Reply-To: <152506256513.7246.13171564155614823841.stgit@noble>
+Subject: Re: [PATCH 3/4] rculist: add list_for_each_entry_from_rcu()
+Message-ID: <20180430052032.GA16963@localhost>
 References: <152506256513.7246.13171564155614823841.stgit@noble>
+ <152506269061.7246.13075216914692813995.stgit@noble>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <152506269061.7246.13075216914692813995.stgit@noble>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There are 3 places where we walk the list of delegations
-for an nfs_client.
-In each case there are two nested loops, one for nfs_servers
-and one for nfs_delegations.
+On Mon, Apr 30, 2018 at 02:31:30PM +1000, NeilBrown wrote:
+> list_for_each_entry_from_rcu() is an RCU version of
+> list_for_each_entry_from().  It walks a linked list under rcu
+> protection, from a given start point.
+> 
+> It is similar to list_for_each_entry_continue_rcu() but starts *at*
+> the given position rather than *after* it.
+> 
+> Naturally, the start point must be known to be in the list.
 
-When we find an interesting delegation we try to get an active
-reference to the server.  If that fails, it is pointless to
-continue to look at the other delegation for the server as
-we will never be able to get an active reference.
-So instead of continuing in the inner loop, break out
-and continue in the outer loop.
----
- fs/nfs/delegation.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+I'd suggest giving an explicit advisory comment to clarify and suggest
+correct usage:
 
-diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-index 1819d0d0ba4b..af32365894c8 100644
---- a/fs/nfs/delegation.c
-+++ b/fs/nfs/delegation.c
-@@ -495,7 +495,7 @@ int nfs_client_return_marked_delegations(struct nfs_client *clp)
- 			if (!nfs_delegation_need_return(delegation))
- 				continue;
- 			if (!nfs_sb_active(server->super))
--				continue;
-+				break;
- 			inode = nfs_delegation_grab_inode(delegation);
- 			if (inode == NULL) {
- 				rcu_read_unlock();
-@@ -887,7 +887,7 @@ void nfs_delegation_reap_unclaimed(struct nfs_client *clp)
- 						&delegation->flags) == 0)
- 				continue;
- 			if (!nfs_sb_active(server->super))
--				continue;
-+				break;
- 			inode = nfs_delegation_grab_inode(delegation);
- 			if (inode == NULL) {
- 				rcu_read_unlock();
-@@ -995,7 +995,7 @@ void nfs_reap_expired_delegations(struct nfs_client *clp)
- 						&delegation->flags) == 0)
- 				continue;
- 			if (!nfs_sb_active(server->super))
--				continue;
-+				break;
- 			inode = nfs_delegation_grab_inode(delegation);
- 			if (inode == NULL) {
- 				rcu_read_unlock();
+"This would typically require either that you obtained the node from a
+previous walk of the list in the same RCU read-side critical section, or
+that you held some sort of non-RCU reference (such as a reference count)
+to keep the node alive *and* in the list."
 
-
+(Feel free to wordsmith the exact wording, but something like that seems
+like it would help people understand how to use this correctly, and make
+it less likely that they'd use it incorrectly.)
