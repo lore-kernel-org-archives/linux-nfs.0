@@ -1,48 +1,167 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx2.suse.de ([195.135.220.15]:38715 "EHLO mx2.suse.de"
+Received: from mx2.suse.de ([195.135.220.15]:38800 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1750771AbeD3Eb6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Apr 2018 00:31:58 -0400
+        id S1751754AbeD3Ec1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Apr 2018 00:32:27 -0400
 From: NeilBrown <neilb@suse.com>
 To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
         Trond Myklebust <trond.myklebust@primarydata.com>,
         Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
         Anna Schumaker <anna.schumaker@netapp.com>
 Date: Mon, 30 Apr 2018 14:31:30 +1000
-Subject: [PATCH 0/4 V2] Avoid quadratic search when freeing delegations
+Subject: [PATCH 4/4] NFS: Avoid quadratic search when freeing delegations.
 Cc: linux-nfs@vger.kernel.org, Lai Jiangshan <jiangshanlai@gmail.com>,
         Josh Triplett <josh@joshtriplett.org>,
         Steven Rostedt <rostedt@goodmis.org>,
         linux-kernel@vger.kernel.org
-Message-ID: <152506256513.7246.13171564155614823841.stgit@noble>
+Message-ID: <152506269064.7246.3777224904785228306.stgit@noble>
+In-Reply-To: <152506256513.7246.13171564155614823841.stgit@noble>
+References: <152506256513.7246.13171564155614823841.stgit@noble>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Following review from Mathieu (thanks) I've made some revisions
-and split this into four patches.  The RCU change is now in patch 3
-by itself.
-I've also revised the description in the main (final) patch quite
-a bit.
+There are three places that walk all delegation for an nfs_client and
+restart whenever they find something interesting - potentially
+resulting in a quadratic search:  If there are 10,000 uninteresting
+delegations followed by 10,000 interesting one, then the code
+skips over 100,000,000 delegations, which can take a noticeable amount
+of time.
 
-Thanks,
-NeilBrown
+Of these nfs_delegation_reap_unclaimed() and
+nfs_reap_expired_delegations() are only called during unusual events:
+a server reboots or reports expired delegations, probably due to a
+network partition.  Optimizing these is not particularly important.
 
+The third, nfs_client_return_marked_delegations(), is called
+periodically via nfs_expire_unreferenced_delegations().  It could
+cause periodic problems on a busy server.
 
+New delegations are added to the end of the list, so if there are
+10,000 open files with delegations, and 10,000 more recently opened files
+that received delegations but are now closed, then
+nfs_client_return_marked_delegations() can take seconds to skip over
+the 10,000 open files 10,000 times.  That is a waste of time.
+
+The avoid this waste a place-holder (an inode) is kept when locks are
+dropped, so that the place can usually be found again after taking
+rcu_readlock().  This place holder ensure that we find the right
+starting point in the list of nfs_servers, and makes is probable that
+we find the right starting point in the list of delegations.
+We might need to occasionally restart at the head of that list.
+
+It might be possible that the place_holder inode could lose its
+delegation separately, and then get a new one using the same (freed
+and then reallocated) 'struct nfs_delegation'.  Were this to happen,
+the new delegation would be at the end of the list and we would miss
+returning some other delegations.  This would have the effect of
+unnecessarily delaying the return of some unused delegations until the
+next time this function is called - typically 90 seconds later.  As
+this is not a correctness issue and is vanishingly unlikely to happen,
+it does not seem worth addressing.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
 ---
+ fs/nfs/delegation.c |   57 +++++++++++++++++++++++++++++++++++++++++++++++----
+ 1 file changed, 53 insertions(+), 4 deletions(-)
 
-NeilBrown (4):
-      NFS: slight optimization for walking list for delegations
-      NFS: use cond_resched() when restarting walk of delegation list.
-      rculist: add list_for_each_entry_from_rcu()
-      NFS: Avoid quadratic search when freeing delegations.
+diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
+index 76ab1374f589..cfec852c8bad 100644
+--- a/fs/nfs/delegation.c
++++ b/fs/nfs/delegation.c
+@@ -483,28 +483,73 @@ static bool nfs_delegation_need_return(struct nfs_delegation *delegation)
+ int nfs_client_return_marked_delegations(struct nfs_client *clp)
+ {
+ 	struct nfs_delegation *delegation;
++	struct nfs_delegation *prev;
+ 	struct nfs_server *server;
+ 	struct inode *inode;
++	struct inode *place_holder = NULL;
++	struct nfs_delegation *place_holder_deleg = NULL;
+ 	int err = 0;
+ 
+ restart:
++	/*
++	 * To avoid quadratic looping we hold a reference
++	 * to an inode place_holder.  Each time we restart, we
++	 * list nfs_servers from the server of that inode, and
++	 * delegation in the server from the delegations of that
++	 * inode.
++	 * prev is an RCU-protected pointer to a delegation which
++	 * wasn't marked for return and might be a good choice for
++	 * the next place_holder.
++	 */
+ 	rcu_read_lock();
+-	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
+-		list_for_each_entry_rcu(delegation, &server->delegations,
+-								super_list) {
+-			if (!nfs_delegation_need_return(delegation))
++	prev = NULL;
++	if (place_holder)
++		server = NFS_SERVER(place_holder);
++	else
++		server = list_entry_rcu(clp->cl_superblocks.next,
++					struct nfs_server, client_link);
++	list_for_each_entry_from_rcu(server, &clp->cl_superblocks, client_link) {
++		delegation = NULL;
++		if (place_holder && server == NFS_SERVER(place_holder))
++			delegation = rcu_dereference(NFS_I(place_holder)->delegation);
++		if (!delegation || delegation != place_holder_deleg)
++			delegation = list_entry_rcu(server->delegations.next,
++						    struct nfs_delegation, super_list);
++		list_for_each_entry_from_rcu(delegation, &server->delegations, super_list) {
++			struct inode *to_put = NULL;
++
++			if (!nfs_delegation_need_return(delegation)) {
++				prev = delegation;
+ 				continue;
++			}
+ 			if (!nfs_sb_active(server->super))
+ 				break;
++
++			if (prev) {
++				struct inode *tmp;
++
++				tmp = nfs_delegation_grab_inode(prev);
++				if (tmp) {
++					to_put = place_holder;
++					place_holder = tmp;
++					place_holder_deleg = prev;
++				}
++			}
++
+ 			inode = nfs_delegation_grab_inode(delegation);
+ 			if (inode == NULL) {
+ 				rcu_read_unlock();
++				if (to_put)
++					iput(to_put);
+ 				nfs_sb_deactive(server->super);
+ 				goto restart;
+ 			}
+ 			delegation = nfs_start_delegation_return_locked(NFS_I(inode));
+ 			rcu_read_unlock();
+ 
++			if (to_put)
++				iput(to_put);
++
+ 			err = nfs_end_delegation_return(inode, delegation, 0);
+ 			iput(inode);
+ 			nfs_sb_deactive(server->super);
+@@ -512,10 +557,14 @@ int nfs_client_return_marked_delegations(struct nfs_client *clp)
+ 			if (!err)
+ 				goto restart;
+ 			set_bit(NFS4CLNT_DELEGRETURN, &clp->cl_state);
++			if (place_holder)
++				iput(place_holder);
+ 			return err;
+ 		}
+ 	}
+ 	rcu_read_unlock();
++	if (place_holder)
++		iput(place_holder);
+ 	return 0;
+ }
+ 
 
-
- fs/nfs/delegation.c     |   66 ++++++++++++++++++++++++++++++++++++++++++-----
- include/linux/rculist.h |   13 +++++++++
- 2 files changed, 72 insertions(+), 7 deletions(-)
-
---
-Signature
 
