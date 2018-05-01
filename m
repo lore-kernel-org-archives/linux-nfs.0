@@ -1,75 +1,143 @@
 Return-Path: <linux-nfs-owner@vger.kernel.org>
-Received: from fieldses.org ([173.255.197.46]:33258 "EHLO fieldses.org"
+Received: from mx2.suse.de ([195.135.220.15]:56826 "EHLO mx2.suse.de"
         rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-        id S1755871AbeD3UQY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-        Mon, 30 Apr 2018 16:16:24 -0400
-Date: Mon, 30 Apr 2018 16:16:23 -0400
-To: Lu Xinyu <luxy.fnst@cn.fujitsu.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: SGID loss with nfsv3
-Message-ID: <20180430201623.GA3207@fieldses.org>
-References: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
+        id S1751558AbeEADLp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+        Mon, 30 Apr 2018 23:11:45 -0400
+From: NeilBrown <neilb@suse.com>
+To: paulmck@linux.vnet.ibm.com, Steven Rostedt <rostedt@goodmis.org>
+Date: Tue, 01 May 2018 13:11:29 +1000
+Cc: Josh Triplett <josh@joshtriplett.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Mathieu Desnoyers <mathieu.desnoyers@efficios.com>,
+        Anna Schumaker <anna.schumaker@netapp.com>,
+        linux-nfs@vger.kernel.org, Lai Jiangshan <jiangshanlai@gmail.com>,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH 3/4 v2] rculist: add list_for_each_entry_from_rcu()
+In-Reply-To: <20180430153505.GW26088@linux.vnet.ibm.com>
+References: <152506256513.7246.13171564155614823841.stgit@noble> <152506269061.7246.13075216914692813995.stgit@noble> <20180430052032.GA16963@localhost> <20180430134308.GT26088@linux.vnet.ibm.com> <20180430111454.722c2aa8@gandalf.local.home> <20180430153505.GW26088@linux.vnet.ibm.com>
+Message-ID: <87y3h4gjdq.fsf@notabene.neil.brown.name>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <f9f2d605-b930-7db8-ad1e-fd189e074e9c@cn.fujitsu.com>
-From: bfields@fieldses.org (J. Bruce Fields)
+Content-Type: multipart/signed; boundary="=-=-=";
+        micalg=pgp-sha256; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 25, 2018 at 02:03:20PM +0800, Lu Xinyu wrote:
-> hi, folks
-> 
-> 
-> I have client and server using nfsv3. The kernels are all 4.16-rc3.
-> In client I mount a partition or a disk formatted in xfs/ext4 in
-> /nfstest. It seems there is someting wrong with inheritance of sgid. I
-> try the following operations in the client.
-> > [root@localhost ]#id user1
-> > uid=1003(user1) gid=1006(testgroup1)
-> groups=1006(testgroup1),1007(testgroup2)
-> > [root@localhost ]# mount -t nfs -o vers=3 -o noac
-> 192.168.56.9:/data/nfstest /mnt/test/
-> > [root@localhost ]# cd /mnt/test/
-> > [root@localhost ]# mkdir mainsub
-> > [root@localhost ]# setfacl -d -m u:user2:rwx mainsub/
-> > [root@localhost ]# chown user1:testgroup1 mainsub/
-> >                  # chmod 2775 mainsub/
-> > [root@localhost ]# runuser -u user1 -g testgroup1 mkdir mainsub/subdir1
-> > [root@localhost ]# runuser -u user1 -g testgroup2 mkdir mainsub/subdir2
-> > [root@localhost ]# ls -l mainsub/
-> > drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir1
-> > drwxrwxr-x+ 2 user1 testgroup1 4096 Mar  6 22:50 subdir2
-> 
-> 
-> The subdir2 losts SGID. But if the same operations are applied in the
-> xfs or ext4 directedly, the SGID could be interited normally.
-> 
-> > [root@localhost ]# ls -l mainsub/
-> > drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir1
-> > drwxrwsr-x+ 2 user1 testgroup1 4096 Mar  6 22:55 subdir2
-> 
-> Is this a bug of NFSv3?
-> 
-> > https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=073931017b49d9458aa351605b43a7e34598caef
-> 
-> 
-> Clear SGID bit when setting file permissions
-> 
-> It seems this patch will clear the nfs sgid. Should we keep it?
+--=-=-=
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-Just searching for that commit id.... It looks like this was fixed by
-ext4 by a3bb2d5587521eea6dab2d05326abb0afb460abd "ext4: Don't clear SGID
-when inheriting ACLs".  And there are similar patches for a bunch of
-other filesystems.
 
---b.
+list_for_each_entry_from_rcu() is an RCU version of
+list_for_each_entry_from().  It walks a linked list under rcu
+protection, from a given start point.
 
-> 
-> 
-> Xinyu Lu
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+It is similar to list_for_each_entry_continue_rcu() but starts *at*
+the given position rather than *after* it.
+
+Naturally, the start point must be known to be in the list.
+
+Also update the documentation for list_for_each_entry_continue_rcu()
+to match the documentation for the new list_for_each_entry_from_rcu(),
+and add list_for_each_entry_from_rcu() and the already existing
+hlist_for_each_entry_from_rcu() to section 7 of whatisRCU.txt.
+
+Signed-off-by: NeilBrown <neilb@suse.com>
+=2D--
+ Documentation/RCU/whatisRCU.txt |  2 ++
+ include/linux/rculist.h         | 32 +++++++++++++++++++++++++++++++-
+ 2 files changed, 33 insertions(+), 1 deletion(-)
+
+diff --git a/Documentation/RCU/whatisRCU.txt b/Documentation/RCU/whatisRCU.=
+txt
+index a27fbfb0efb8..b7d38bd212d2 100644
+=2D-- a/Documentation/RCU/whatisRCU.txt
++++ b/Documentation/RCU/whatisRCU.txt
+@@ -814,11 +814,13 @@ RCU list traversal:
+ 	list_next_rcu
+ 	list_for_each_entry_rcu
+ 	list_for_each_entry_continue_rcu
++	list_for_each_entry_from_rcu
+ 	hlist_first_rcu
+ 	hlist_next_rcu
+ 	hlist_pprev_rcu
+ 	hlist_for_each_entry_rcu
+ 	hlist_for_each_entry_rcu_bh
++	hlist_for_each_entry_from_rcu
+ 	hlist_for_each_entry_continue_rcu
+ 	hlist_for_each_entry_continue_rcu_bh
+ 	hlist_nulls_first_rcu
+diff --git a/include/linux/rculist.h b/include/linux/rculist.h
+index 127f534fec94..4786c2235b98 100644
+=2D-- a/include/linux/rculist.h
++++ b/include/linux/rculist.h
+@@ -396,13 +396,43 @@ static inline void list_splice_tail_init_rcu(struct l=
+ist_head *list,
+  * @member:	the name of the list_head within the struct.
+  *
+  * Continue to iterate over list of given type, continuing after
+=2D * the current position.
++ * the current position which must have been in the list when the RCU read
++ * lock was taken.
++ * This would typically require either that you obtained the node from a
++ * previous walk of the list in the same RCU read-side critical section, or
++ * that you held some sort of non-RCU reference (such as a reference count)
++ * to keep the node alive *and* in the list.
++ *
++ * This iterator is similar to list_for_each_entry_from_rcu() except
++ * this starts after the given position and that one starts at the given
++ * position.
+  */
+ #define list_for_each_entry_continue_rcu(pos, head, member) 		\
+ 	for (pos =3D list_entry_rcu(pos->member.next, typeof(*pos), member); \
+ 	     &pos->member !=3D (head);	\
+ 	     pos =3D list_entry_rcu(pos->member.next, typeof(*pos), member))
+=20
++/**
++ * list_for_each_entry_from_rcu - iterate over a list from current point
++ * @pos:	the type * to use as a loop cursor.
++ * @head:	the head for your list.
++ * @member:	the name of the list_node within the struct.
++ *
++ * Iterate over the tail of a list starting from a given position,
++ * which must have been in the list when the RCU read lock was taken.
++ * This would typically require either that you obtained the node from a
++ * previous walk of the list in the same RCU read-side critical section, or
++ * that you held some sort of non-RCU reference (such as a reference count)
++ * to keep the node alive *and* in the list.
++ *
++ * This iterator is similar to list_for_each_entry_continue_rcu() except
++ * this starts from the given position and that one starts from the positi=
+on
++ * after the given position.
++ */
++#define list_for_each_entry_from_rcu(pos, head, member)			\
++	for (; &(pos)->member !=3D (head);					\
++		pos =3D list_entry_rcu(pos->member.next, typeof(*(pos)), member))
++
+ /**
+  * hlist_del_rcu - deletes entry from hash list without re-initialization
+  * @n: the element to delete from the hash list.
+=2D-=20
+2.14.0.rc0.dirty
+
+
+--=-=-=
+Content-Type: application/pgp-signature; name="signature.asc"
+
+-----BEGIN PGP SIGNATURE-----
+
+iQIzBAEBCAAdFiEEG8Yp69OQ2HB7X0l6Oeye3VZigbkFAlrn2uMACgkQOeye3VZi
+gbl7bA//W3TjUzSU4+ja3D9oxTbNDhIv2f1bnpDn/vnltpEe4pHlc65X9ldm8Xyz
+y4PmifQozWFUjYJwHyLasWgHGJrVD/Ij9bEv7bj94DJEOkF4S611XcLEM+Ke6R8t
+rf9lYzJQINcdbJcgubC2FKa11aMmBn78pqUQPUSfYomo/kaDdyQaReUJ2p4cujr9
+vewOHFdFp6nksvFLU7AAWgj77jyDQ40CVJC4RnS7c6V72I+kcK+r1+dWv2K05onA
+4HZGA5Hr8mamdgAT4QCr2azG93Vyp3HROug50rszEpk4JnYex0nN1e9YH4d9/9zl
+aHOK2RsS+hd/S8gkRcsgStMNVnyqE+DKIDBXdHejaTPtY6M9JrfrihFMhLhzrjhe
+YqNFngoZ3l9D7F+cI6gmacGoiEKvLDrl7l9TDu2Np01p1eFc4tgG6qJ5nCV4ikcL
+y/tw4OBK2/WVrkZbPPfd7pKmkzUzP/KKyd53PchQfpK/OhjOBVwSCE7hW1Lrs4iI
+vyiuOaexLfYYaFhAvzTdJNd4wz0pxiEKN1U9e1v624Zys+mDMxQs7F+v+vf/WF7F
+WaPDG60kvO16G6GGWMYAdePfXJ4xPyYKxzSelR56MvaByIDWiAh2Qr7f14RjZL3F
+YeOnr7SOndaNM5/R6zsEshnbCM3tvFFuOAEHHyvIlfa7SRFtRow=
+=UjZC
+-----END PGP SIGNATURE-----
+--=-=-=--
